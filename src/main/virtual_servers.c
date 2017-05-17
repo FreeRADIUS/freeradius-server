@@ -31,6 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/modpriv.h>
 #include <freeradius-devel/interpreter.h>
 #include <freeradius-devel/parser.h>
+#include <freeradius-devel/protocol.h>
 
 static int default_component_results[MOD_COUNT] = {
 	RLM_MODULE_REJECT,	/* AUTH */
@@ -543,6 +544,7 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 	     cs = cf_subsection_find_next(config, cs, "server")) {
 		CONF_ITEM *ci;
 		CONF_SECTION *subcs;
+		CONF_PAIR *cp;
 
 		server_name = cf_section_name2(cs);
 		if (!server_name) {
@@ -564,6 +566,43 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 			return -1;
 		}
 
+		/*
+		 *	New-style virtual servers are special.
+		 */
+		cp = cf_pair_find(cs, "namespace");
+		if (cp) {
+			char const *value;
+			dl_t const *module;
+			fr_app_t const *app;
+
+			value = cf_pair_value(cp);
+			if (!value) {
+				cf_log_err_cs(cs, "Cannot have empty namespace");
+				return -1;
+			}
+
+			if (strcmp(value, "radius") != 0) {
+				cf_log_err_cs(cs, "Unknown namespace '%s'", value);
+				return -1;
+			}
+
+			module = dl_module(cs, NULL, value, DL_TYPE_PROTO);
+			if (!module) {
+				cf_log_err_cs(cs, "Failed to find library for 'namespace = %s'", value);
+				return -1;
+			}
+
+			app = (fr_app_t const *) module->common;
+
+			if (app->bootstrap && (app->bootstrap(cs) < 0)) {
+				cf_log_err_cs(cs, "Failed to bootstrap library for 'namespace = %s'", value);
+				return -1;
+			}
+
+			cf_data_add(cs, module, "app", false);
+			continue;
+		}
+
 		for (ci = cf_item_find_next(cs, NULL);
 		     ci != NULL;
 		     ci = cf_item_find_next(cs, ci)) {
@@ -571,19 +610,8 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 			char const *name1;
 
 			if (cf_item_is_pair(ci)) {
-				CONF_PAIR *cp;
-
-				cp = cf_item_to_pair(ci);
-				name1 = cf_pair_attr(cp);
-				if (strcmp(name1, "namespace") != 0) {
-					cf_log_err(ci, "Cannot set variables inside of a virtual server.");
-					return -1;
-				}
-
-				if (!cf_pair_value(cp)) {
-					cf_log_err(ci, "'namespace' cannot be empty");
-					return -1;
-				}
+				cf_log_err(ci, "Cannot set variables inside of a virtual server.");
+				return -1;
 			}
 
 			if (!cf_item_is_section(ci)) continue;
@@ -592,8 +620,6 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 			name1 = cf_section_name1(subcs);
 
 			if (strcmp(name1, "listen") == 0) {
-				if (cf_pair_find(cs, "namespace") != NULL) continue;
-
 				if (listen_bootstrap(cs, subcs, server_name) < 0) return -1;
 				continue;
 			}
@@ -627,6 +653,29 @@ int virtual_servers_init(CONF_SECTION *config)
 	for (cs = cf_subsection_find_next(config, NULL, "server");
 	     cs != NULL;
 	     cs = cf_subsection_find_next(config, cs, "server")) {
+		/*
+		 *	Skip new-style virtual servers.
+		 */
+		if (cf_pair_find(cs, "namespace")) {
+			dl_t const *module;
+			fr_app_t const *app;
+			fr_app_io_t *io;
+
+			module = cf_data_find(cs, dl_t, "app");
+			if (!module) continue;
+
+			app = (fr_app_t const *) module->common;
+
+			if (app->compile) {
+				io = app->compile(cs);
+				if (!io) continue;
+
+				DEBUG("Loaded Protocol %s", module->name);
+			}
+
+			continue;
+		}
+
 		if (virtual_servers_compile(cs) < 0) {
 			return -1;
 		}

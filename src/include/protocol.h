@@ -84,6 +84,32 @@ int common_socket_open(CONF_SECTION *cs, rad_listen_t *this);
 int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize);
 void common_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received);
 
+
+typedef int (*fr_app_bootstrap_t)(CONF_SECTION *);
+
+/*
+ *	src/lib/io/transport.h
+ */
+typedef struct fr_transport_t fr_transport_t;
+
+typedef struct fr_app_io_t {
+	int		fd;
+	void		*ctx;
+	fr_transport_t	*transport;
+} fr_app_io_t;
+
+typedef fr_app_io_t *(*fr_app_compile_t)(CONF_SECTION *);
+
+/*
+ *	Functions for new virtual servers and listeners
+ */
+typedef struct fr_app_t {
+	RAD_MODULE_COMMON;				//!< Common fields to all loadable modules.
+
+	fr_app_bootstrap_t	bootstrap;
+	fr_app_compile_t	compile;
+} fr_app_t;
+
 #ifdef __cplusplus
 }
 #endif
