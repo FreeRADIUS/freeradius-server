@@ -918,6 +918,7 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 	case FR_TYPE_DATE_NANOSECONDS:
 		dst->datum.date_nanoseconds = htonll(src->datum.date_nanoseconds);
 		break;
+
 	case FR_TYPE_BOOL:
 	case FR_TYPE_UINT8:
 	case FR_TYPE_INT8:
@@ -932,7 +933,6 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 	case FR_TYPE_ABINARY:
 		fr_value_box_copy(NULL, dst, src);
 		return 0;
-
 
 	case FR_TYPE_OCTETS:
 	case FR_TYPE_STRING:
