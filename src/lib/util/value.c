@@ -1149,17 +1149,20 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
  *
  * @param[in] ctx	Where to allocate any talloc buffers required.
  * @param[out] dst	value_box to write the result to.
+ * @param[in] type	to decode data to.
+ * @param[in] enumv	Aliases for values.
  * @param[in] src	Binary data to decode.
  * @param[in] len	Length of data to decode.  For fixed length types we only
  *			decode complete values.
- * @param[in] type	to decode data to.
  * @param[in] tainted	Whether the value came from a trusted source.
  * @return
  *	- >= 0 The number of bytes consumed.
  *	- <0 on error.
  */
-ssize_t fr_value_box_from_network(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t const *src, size_t len,
-				  fr_type_t type, bool tainted)
+ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
+				  fr_value_box_t *dst, fr_type_t type, fr_dict_attr_t const *enumv,
+				  uint8_t const *src, size_t len,
+				  bool tainted)
 {
 	if (len < fr_value_box_network_sizes[type][0]) {
 		fr_strerror_printf("Got truncated value parsing type \"%s\". "
@@ -1178,11 +1181,11 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t 
 
 	switch (type) {
 	case FR_TYPE_STRING:
-		if (fr_value_box_bstrndup(ctx, dst, (char const *)src, len, tainted) < 0) return -1;
+		if (fr_value_box_bstrndup(ctx, dst, enumv, (char const *)src, len, tainted) < 0) return -1;
 		return len;
 
 	case FR_TYPE_OCTETS:
-		if (fr_value_box_memdup(ctx, dst, src, len, tainted) < 0) return -1;
+		if (fr_value_box_memdup(ctx, dst, enumv, src, len, tainted) < 0) return -1;
 		return len;
 
 	/*
@@ -1257,7 +1260,7 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t 
 
 	dst->type = type;
 	dst->tainted = tainted;
-	dst->enumv = NULL;
+	dst->enumv = enumv;
 	dst->next = NULL;
 
 	return len;
@@ -1322,7 +1325,7 @@ static inline int fr_value_box_cast_to_strvalue(TALLOC_CTX *ctx, fr_value_box_t 
  * @param src		Input data.
  */
 static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *dst,
-					      fr_type_t dst_type, UNUSED fr_dict_attr_t const *dst_enumv,
+					      fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 					      fr_value_box_t const *src)
 {
 	uint8_t *bin;
@@ -1386,7 +1389,7 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 	if (!bin) return -1;
 
 	talloc_set_type(bin, uint8_t);
-	fr_value_box_memsteal(ctx, dst, bin, src->tainted);
+	fr_value_box_memsteal(ctx, dst, dst_enumv, bin, src->tainted);
 	dst->type = FR_TYPE_OCTETS;
 
 	return 0;
@@ -2170,7 +2173,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_value_box_from_ipaddr(fr_value_box_t *dst, fr_ipaddr_t const *ipaddr, bool tainted)
+int fr_value_box_from_ipaddr(fr_value_box_t *dst, fr_dict_attr_t const *enumv, fr_ipaddr_t const *ipaddr, bool tainted)
 {
 	fr_type_t type;
 
@@ -2209,7 +2212,7 @@ int fr_value_box_from_ipaddr(fr_value_box_t *dst, fr_ipaddr_t const *ipaddr, boo
 	dst->type = type;
 	dst->tainted = tainted;
 	dst->datum.ip = *ipaddr;
-	dst->enumv = NULL;
+	dst->enumv = enumv;
 	dst->next = NULL;
 
 	return 0;
@@ -2359,7 +2362,8 @@ int fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
  * @param[in] src 	a nul terminated buffer.
  * @param[in] tainted	Whether the value came from a trusted source.
  */
-int fr_value_box_strdup(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, bool tainted)
+int fr_value_box_strdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+			char const *src, bool tainted)
 {
 	char const	*str;
 
@@ -2373,7 +2377,7 @@ int fr_value_box_strdup(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, b
 	dst->tainted = tainted;
 	dst->datum.strvalue = str;
 	dst->datum.length = talloc_array_length(str) - 1;
-	dst->enumv = NULL;
+	dst->enumv = enumv;
 	dst->next = NULL;
 
 	return 0;
@@ -2383,11 +2387,13 @@ int fr_value_box_strdup(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, b
  *
  * @param[in] ctx 	to allocate any new buffers in.
  * @param[in] dst 	to assign new buffer to.
+ * @param[in] enumv	Aliases for values.
  * @param[in] src 	a string.
  * @param[in] len	of src.
  * @param[in] tainted	Whether the value came from a trusted source.
  */
-int fr_value_box_bstrndup(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, size_t len, bool tainted)
+int fr_value_box_bstrndup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+			  char const *src, size_t len, bool tainted)
 {
 	char const	*str;
 
@@ -2401,7 +2407,7 @@ int fr_value_box_bstrndup(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src,
 	dst->tainted = tainted;
 	dst->datum.strvalue = str;
 	dst->datum.length = len;
-	dst->enumv = NULL;
+	dst->enumv = enumv;
 	dst->next = NULL;
 
 	return 0;
@@ -2415,13 +2421,15 @@ int fr_value_box_bstrndup(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src,
  *
  * @param[in] ctx 	to allocate any new buffers in.
  * @param[in] dst 	to assign new buffer to.
+ * @param[in] enumv	Aliases for values.
  * @param[in] src 	a talloced nul terminated buffer.
  * @param[in] tainted	Whether the value came from a trusted source.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_value_box_strdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, bool tainted)
+int fr_value_box_strdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+			       char const *src, bool tainted)
 {
 	char	*str;
 	size_t	len;
@@ -2442,7 +2450,7 @@ int fr_value_box_strdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, char const 
 	dst->tainted = tainted;
 	dst->datum.strvalue = str;
 	dst->datum.length = talloc_array_length(str) - 1;
-	dst->enumv = NULL;
+	dst->enumv = enumv;
 	dst->next = NULL;
 
 	return 0;
@@ -2456,13 +2464,15 @@ int fr_value_box_strdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, char const 
  *
  * @param[in] ctx 	to allocate any new buffers in.
  * @param[in] dst 	to assign new buffer to.
+ * @param[in] enumv	Aliases for values.
  * @param[in] src 	a talloced nul terminated buffer.
  * @param[in] tainted	Whether the value came from a trusted source.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_value_box_strsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, char *src, bool tainted)
+int fr_value_box_strsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+			  char *src, bool tainted)
 {
 	size_t	len;
 	char	*str;
@@ -2483,7 +2493,7 @@ int fr_value_box_strsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, char *src, bool 
 	dst->tainted = tainted;
 	dst->datum.strvalue = str;
 	dst->datum.length = len - 1;
-	dst->enumv = NULL;
+	dst->enumv = enumv;
 	dst->next = NULL;
 
 	return 0;
@@ -2492,19 +2502,21 @@ int fr_value_box_strsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, char *src, bool 
 /** Assign a buffer containing a nul terminated string to a box, but don't copy it
  *
  * @param[in] dst	to assign string to.
+ * @param[in] enumv	Aliases for values.
  * @param[in] src	to copy string to.
  * @param[in] tainted	Whether the value came from a trusted source.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_value_box_strdup_shallow(fr_value_box_t *dst, char const *src, bool tainted)
+int fr_value_box_strdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+				char const *src, bool tainted)
 {
 	dst->type = FR_TYPE_STRING;
 	dst->tainted = tainted;
 	dst->datum.strvalue = src;
 	dst->datum.length = strlen(src);
-	dst->enumv = NULL;
+	dst->enumv = enumv;
 	dst->next = NULL;
 
 	return 0;
@@ -2516,13 +2528,15 @@ int fr_value_box_strdup_shallow(fr_value_box_t *dst, char const *src, bool taint
  *
  * @param[in] ctx	to add reference from.  If NULL no reference will be added.
  * @param[in] dst	to assign string to.
+ * @param[in] enumv	Aliases for values.
  * @param[in] src	to copy string to.
  * @param[in] tainted	Whether the value came from a trusted source.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_value_box_strdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, bool tainted)
+int fr_value_box_strdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+				       char const *src, bool tainted)
 {
 	size_t	len;
 
@@ -2538,7 +2552,7 @@ int fr_value_box_strdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, cha
 	dst->tainted = tainted;
 	dst->datum.strvalue = ctx ? talloc_reference(ctx, src) : src;
 	dst->datum.length = len - 1;
-	dst->enumv = NULL;
+	dst->enumv = enumv;
 	dst->next = NULL;
 
 	return 0;
@@ -2552,6 +2566,7 @@ int fr_value_box_strdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, cha
  *
  * @param[in] ctx	to allocate any new buffers in.
  * @param[in] dst	to assign new buffer to.
+ * @param[in] enumv	Aliases for values.
  * @param[in] src	a buffer.
  * @param[in] len	of data in the buffer.
  * @param[in] tainted	Whether the value came from a trusted source.
@@ -2559,7 +2574,8 @@ int fr_value_box_strdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, cha
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_value_box_memdup(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t const *src, size_t len, bool tainted)
+int fr_value_box_memdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+			uint8_t const *src, size_t len, bool tainted)
 {
 	uint8_t *bin;
 
@@ -2568,12 +2584,13 @@ int fr_value_box_memdup(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t const *src
 		fr_strerror_printf("Failed allocating octets buffer");
 		return -1;
 	}
+	talloc_set_type(bin, uint8_t);
 
 	dst->type = FR_TYPE_OCTETS;
 	dst->tainted = tainted;
 	dst->datum.octets = bin;
 	dst->datum.length = len;
-	dst->enumv = NULL;
+	dst->enumv = enumv;
 	dst->next = NULL;
 
 	return 0;
@@ -2585,17 +2602,19 @@ int fr_value_box_memdup(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t const *src
  *
  * @param[in] ctx	to allocate any new buffers in.
  * @param[in] dst	to assign new buffer to.
+ * @param[in] enumv	Aliases for values.
  * @param[in] src	a buffer.
  * @param[in] tainted	Whether the value came from a trusted source.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_value_box_memdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t *src, bool tainted)
+int fr_value_box_memdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+			       uint8_t *src, bool tainted)
 {
 	(void) talloc_get_type_abort(src, uint8_t);
 
-	return fr_value_box_memdup(ctx, dst, src, talloc_array_length(src), tainted);
+	return fr_value_box_memdup(ctx, dst, enumv, src, talloc_array_length(src), tainted);
 }
 
 /** Steal a talloced buffer into a specified ctx, and assign to a #fr_value_box_t
@@ -2604,13 +2623,15 @@ int fr_value_box_memdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t *sr
  *
  * @param[in] ctx 	to allocate any new buffers in.
  * @param[in] dst 	to assign new buffer to.
+ * @param[in] enumv	Aliases for values.
  * @param[in] src 	a talloced nul terminated buffer.
  * @param[in] tainted	Whether the value came from a trusted source.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_value_box_memsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t const *src, bool tainted)
+int fr_value_box_memsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+			  uint8_t const *src, bool tainted)
 {
 	uint8_t const	*bin;
 
@@ -2626,7 +2647,7 @@ int fr_value_box_memsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t const *s
 	dst->tainted = tainted;
 	dst->datum.octets = bin;
 	dst->datum.length = talloc_array_length(src);
-	dst->enumv = NULL;
+	dst->enumv = enumv;
 	dst->next = NULL;
 
 	return 0;
@@ -2641,6 +2662,7 @@ int fr_value_box_memsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t const *s
  * @note Will free any exiting buffers associated with the value box.
  *
  * @param[in] dst 	to assign buffer to.
+ * @param[in] enumv	Aliases for values.
  * @param[in] src	a talloced buffer.
  * @param[in] len	of buffer.
  * @param[in] tainted	Whether the value came from a trusted source.
@@ -2648,13 +2670,14 @@ int fr_value_box_memsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t const *s
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_value_box_memdup_shallow(fr_value_box_t *dst, uint8_t *src, size_t len, bool tainted)
+int fr_value_box_memdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+				uint8_t *src, size_t len, bool tainted)
 {
 	dst->type = FR_TYPE_OCTETS;
 	dst->tainted = tainted;
 	dst->datum.octets = src;
 	dst->datum.length = len;
-	dst->enumv = NULL;
+	dst->enumv = enumv;
 	dst->next = NULL;
 
 	return 0;
@@ -2666,13 +2689,15 @@ int fr_value_box_memdup_shallow(fr_value_box_t *dst, uint8_t *src, size_t len, b
  *
  * @param[in] ctx 	to allocate any new buffers in.
  * @param[in] dst 	to assign buffer to.
+ * @param[in] enumv	Aliases for values.
  * @param[in] src	a talloced buffer.
  * @param[in] tainted	Whether the value came from a trusted source.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t *src, bool tainted)
+int fr_value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+				       uint8_t *src, bool tainted)
 {
 	(void) talloc_get_type_abort(src, uint8_t);
 
@@ -2680,7 +2705,7 @@ int fr_value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, uin
 	dst->tainted = tainted;
 	dst->datum.octets = ctx ? talloc_reference(ctx, src) : src;
 	dst->datum.length = talloc_array_length(src);
-	dst->enumv = NULL;
+	dst->enumv = enumv;
 	dst->next = NULL;
 
 	return 0;

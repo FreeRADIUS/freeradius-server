@@ -204,40 +204,53 @@ size_t		fr_value_box_network_length(fr_value_box_t *value);
 
 ssize_t		fr_value_box_to_network(size_t *need, uint8_t *out, size_t outlen, fr_value_box_t const *value);
 
-ssize_t		fr_value_box_from_network(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t const *src, size_t len,
-					  fr_type_t type, bool tainted);
+ssize_t		fr_value_box_from_network(TALLOC_CTX *ctx,
+					  fr_value_box_t *dst, fr_type_t type, fr_dict_attr_t const *enumv,
+				  	  uint8_t const *src, size_t len, bool tainted);
 
 int		fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				  fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 				  fr_value_box_t const *src);
 
-int		fr_value_box_from_ipaddr(fr_value_box_t *dst, fr_ipaddr_t const *ipaddr, bool tainted);
+int		fr_value_box_from_ipaddr(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+					 fr_ipaddr_t const *ipaddr, bool tainted);
 
 /*
  *	Assignment
  */
-int		fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst,  const fr_value_box_t *src);
+int		fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t *src);
 void		fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t *src);
 int		fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *src);
 
-int		fr_value_box_strdup(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, bool tainted);
-int		fr_value_box_bstrndup(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, size_t len, bool tainted);
-int		fr_value_box_strdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, bool tainted);
-int		fr_value_box_strsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, char *src, bool tainted);
-int		fr_value_box_strdup_shallow(fr_value_box_t *dst, char const *src, bool tainted);
-int		fr_value_box_strdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, bool tainted);
+int		fr_value_box_strdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+				    char const *src, bool tainted);
+int		fr_value_box_bstrndup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+				      char const *src, size_t len, bool tainted);
+int		fr_value_box_strdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+					   char const *src, bool tainted);
+int		fr_value_box_strsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+				      char *src, bool tainted);
+int		fr_value_box_strdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+					    char const *src, bool tainted);
+int		fr_value_box_strdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+						   char const *src, bool tainted);
 
-int		fr_value_box_memdup(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t const *src, size_t len, bool tainted);
-int		fr_value_box_memdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t *src, bool tainted);
-int		fr_value_box_memsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t const *src, bool tainted);
-int		fr_value_box_memdup_shallow(fr_value_box_t *dst, uint8_t *src, size_t len, bool tainted);
-int		fr_value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t *src, bool tainted);
+int		fr_value_box_memdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+				    uint8_t const *src, size_t len, bool tainted);
+int		fr_value_box_memdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+					   uint8_t *src, bool tainted);
+int		fr_value_box_memsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+				      uint8_t const *src, bool tainted);
+int		fr_value_box_memdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+					    uint8_t *src, size_t len, bool tainted);
+int		fr_value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+						   uint8_t *src, bool tainted);
 
 /*
  *	Parsing
  */
 int		fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
-				      fr_type_t *src_type, fr_dict_attr_t const *src_enumv,
+				      fr_type_t *dst_type, fr_dict_attr_t const *dst_enumv,
 				      char const *src, ssize_t src_len, char quote, bool tainted);
 
 /*
