@@ -26,6 +26,9 @@ RCSID("$Id$")
 #include "eap_ttls.h"
 #include "eap_chbind.h"
 
+
+#define FR_DIAMETER_AVP_FLAG_VENDOR	0x80
+#define FR_DIAMETER_AVP_FLAG_MANDATORY	0x40
 /*
  *    0                   1                   2                   3
  *    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -135,122 +138,119 @@ static int diameter_verify(REQUEST *request, uint8_t const *data, unsigned int d
 /*
  *	Convert diameter attributes to our VALUE_PAIR's
  */
-static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
-			       uint8_t const *data, size_t data_len)
+static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
+				    uint8_t const *data, size_t data_len,
+				    void *decoder_ctx)
 {
-	uint32_t	attr;
-	uint32_t	vendor;
-	uint32_t	length;
-	size_t		offset;
-	size_t		size;
-	size_t		data_left = data_len;
-	ssize_t		decoded;
-	VALUE_PAIR	*first = NULL;
-	VALUE_PAIR	*vp = NULL;
-	RADIUS_PACKET	*packet = fake->packet; /* FIXME: api issues */
-	vp_cursor_t	out;
-	fr_dict_attr_t const *da;
+	uint8_t const		*p = data, *end = p + data_len;
 
-	fr_pair_cursor_init(&out, &first);
+	VALUE_PAIR		*vp = NULL;
+	fr_dict_attr_t const	*vendor_root = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal),
+									 PW_VENDOR_SPECIFIC);
+	SSL			*ssl = decoder_ctx;
 
-	while (data_left > 0) {
-		rad_assert(data_left <= data_len);
-		memcpy(&attr, data, sizeof(attr));
-		data += 4;
-		attr = ntohl(attr);
-		vendor = 0;
+	while (p < end) {
+		ssize_t			ret;
+		uint32_t		attr, vendor, length, value_len;
+		uint8_t			flags;
+		fr_dict_attr_t const	*our_parent = parent;
 
-		memcpy(&length, data, sizeof(length));
-		data += 4;
-		length = ntohl(length);
-
-		/*
-		 *	A "vendor" flag, with a vendor ID of zero,
-		 *	is equivalent to no vendor.  This is stupid.
-		 */
-		offset = 8;
-		if ((length & ((uint32_t)1 << 31)) != 0) {
-			memcpy(&vendor, data, sizeof(vendor));
-			vendor = ntohl(vendor);
-
-			data += 4; /* skip the vendor field, it's zero */
-			offset += 4; /* offset to value field */
+		if ((end - p) < 8) {
+			fr_strerror_printf("Malformed diameter VPs.  Needed at least 8 bytes, got %zu bytes", end - p);
+		error:
+			fr_pair_cursor_free(cursor);
+			return -1;
 		}
 
-		/*
-		 *	FIXME: Handle the M bit.  For now, we assume that
-		 *	some other module takes care of any attribute
-		 *	with the M bit set.
-		 */
+		attr = fr_ntoh32_bin(p);
+		p += 4;
+
+		flags = p[0];
+		p++;
+
+		value_len = length = fr_ntoh24_bin(p);	/* Yes, that is a 24 bit length field */
+		p += 3;
+
+		value_len -= 8;	/* -= 8 for AVP code (4), flags (1), AVP length (3) */
+
+		vp = fr_pair_alloc(ctx);
 
 		/*
-		 *	Get the length.
+		 *	Do we have a vendor field?
 		 */
-		length &= 0x00ffffff;
+		if (flags & FR_DIAMETER_AVP_FLAG_VENDOR) {
+			vendor = fr_ntoh32_bin(p);
+			p += 4;
+			value_len -= 4;	/* -= 4 for the vendor ID field */
 
-		/*
-		 *	Get the size of the value portion of the
-		 *	attribute.
-		 */
-		size = length - offset;
+			our_parent = fr_dict_vendor_attr_by_num(fr_dict_internal, PW_VENDOR_SPECIFIC, vendor);
+			if (!our_parent) {
+				if (flags & FR_DIAMETER_AVP_FLAG_MANDATORY) {
+					fr_strerror_printf("Mandatory bit set and no vendor %u found", vendor);
+					talloc_free(vp);
+					goto error;
+				}
 
-		/*
-		 *	We don't allow attributes larger than 255.
-		 */
-		if (attr > 255) {
-			RWDEBUG2("Skipping Diameter attribute %u", attr);
-			goto next_attr;
-		}
-
-		/*
-		 *	Create it.  If this fails, it's because we're OOM.
-		 */
-		da = fr_dict_attr_by_num(NULL, vendor, attr);
-		if (da) {
-			decoded = fr_radius_decode_pair_value(packet, &out, da, data, size, data_left, NULL);
-			if (decoded < 0) goto raw;
-
+				MEM(vp->da = fr_dict_unknown_afrom_fields(vp, vendor_root, vendor, attr));
+				goto do_value;
+			}
 		} else {
-		raw:
-			da = fr_dict_unknown_afrom_fields(packet, fr_dict_root(fr_dict_internal), vendor, attr);
-			if (!da) {
-				RDEBUG("Failed creating unknown attribute %u %u", vendor, attr);
-				return NULL;
-			}
-
-			vp = fr_pair_afrom_da(packet, da);
-			if (!vp) {
-				RDEBUG("Failed creating VP from unknown attribute %u %u", vendor, attr);
-				return NULL;
-			}
-
-			fr_pair_value_memcpy(vp, data, size);
-			fr_pair_cursor_append(&out, vp);
-			goto next_attr;
+			our_parent = fr_dict_root(fr_dict_internal);
 		}
 
-		vp = fr_pair_cursor_current(&out);
+		/*
+		 *	Is the attribute known?
+		 */
+		vp->da = fr_dict_attr_child_by_num(our_parent, attr);
+		if (!vp->da) {
+			if (flags & FR_DIAMETER_AVP_FLAG_MANDATORY) {
+				fr_strerror_printf("Mandatory bit set and no attribute %u defined", attr);
+				talloc_free(vp);
+				goto error;
+			}
+			MEM(vp->da = fr_dict_unknown_afrom_fields(vp, parent, 0, attr));
+		}
+
+do_value:
+		ret = fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, p, value_len, true);
+		/*
+		 *	The length does NOT include the padding, so
+		 *	we've got to account for it here by rounding up
+		 *	to the nearest 4-byte boundary.
+		 */
+		p += (value_len + 0x03) & ~0x03;
+
+		if (ret < 0) {
+			/*
+			 *	Mandatory bit is set, and the attribute
+			 *	is malformed. Fail.
+			 */
+			if (flags & FR_DIAMETER_AVP_FLAG_MANDATORY) {
+				fr_strerror_printf("Mandatory bit is set and attribute is malformed");
+				talloc_free(vp);
+				goto error;
+			}
+
+			fr_pair_to_unknown(vp);
+			fr_pair_value_memcpy(vp, data, value_len);
+			fr_pair_cursor_append(cursor, vp);
+			continue;
+		}
+		fr_pair_cursor_append(cursor, vp);
 
 		/*
-		 *	Ensure that the client is using the
-		 *	correct challenge.  This weirdness is
-		 *	to protect against against replay
-		 *	attacks, where anyone observing the
-		 *	CHAP exchange could pose as that user,
-		 *	by simply choosing to use the same
+		 *	Ensure that the client is using the correct challenge.
+		 *
+		 *	This weirdness is to protect against against replay
+		 *	attacks, where anyone observing the CHAP exchange could
+		 *	pose as that user, by simply choosing to use the same
 		 *	challenge.
-		 *
-		 *	By using a challenge based on
-		 *	information from the current session,
-		 *	we can guarantee that the client is
-		 *	not *choosing* a challenge.
-		 *
-		 *	We're a little forgiving in that we
-		 *	have loose checks on the length, and
-		 *	we do NOT check the Id (first octet of
-		 *	the response to the challenge)
-		 *
-		 *	But if the client gets the challenge correct,
+		 *	By using a challenge based on information from the
+		 *	current session, we can guarantee that the client is
+		 *	not *choosing* a challenge. We're a little forgiving in
+		 *	that we have loose checks on the length, and we do NOT
+		 *	check the Id (first octet of the response to the
+		 *	challenge) But if the client gets the challenge correct,
 		 *	we're not too worried about the Id.
 		 */
 		if (((vp->da->vendor == 0) && (vp->da->attr == PW_CHAP_CHALLENGE)) ||
@@ -258,58 +258,30 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 			uint8_t	challenge[16];
 			uint8_t	scratch[16];
 
-			if ((vp->vp_length < 8) ||
-			    (vp->vp_length > 16)) {
-				RDEBUG("Tunneled challenge has invalid length");
-				fr_pair_list_free(&first);
-				return NULL;
+			if ((vp->vp_length < 8) || (vp->vp_length > 16)) {
+				fr_strerror_printf("Tunneled challenge has invalid length");
+				goto error;
 			}
 
 			eap_tls_gen_challenge(ssl, challenge, scratch,
 					      sizeof(challenge), "ttls challenge");
 
-			if (memcmp(challenge, vp->vp_octets,
-				   vp->vp_length) != 0) {
-				RDEBUG("Tunneled challenge is incorrect");
-				fr_pair_list_free(&first);
-				return NULL;
+			if (memcmp(challenge, vp->vp_octets, vp->vp_length) != 0) {
+				fr_strerror_printf("Tunneled challenge is incorrect");
+				goto error;
 			}
 		}
 
 		/*
 		 *	Diameter pads strings (i.e. User-Password) with trailing zeros.
 		 */
-		if (vp->vp_type == FR_TYPE_STRING) {
-			fr_pair_value_strcpy(vp, vp->vp_strvalue);
-		}
-
-	next_attr:
-		while (fr_pair_cursor_next(&out)) {
-			/* nothing */
-		}
-
-		/*
-		 *	Catch non-aligned attributes.
-		 */
-		if (data_left == length) break;
-
-		/*
-		 *	The length does NOT include the padding, so
-		 *	we've got to account for it here by rounding up
-		 *	to the nearest 4-byte boundary.
-		 */
-		length += 0x03;
-		length &= ~0x03;
-
-		rad_assert(data_left >= length);
-		data_left -= length;
-		data += length - offset; /* already updated */
+		if (vp->vp_type == FR_TYPE_STRING) fr_pair_value_strcpy(vp, vp->vp_strvalue);
 	}
 
 	/*
 	 *	We got this far.  It looks OK.
 	 */
-	return first;
+	return p - data;
 }
 
 /*
@@ -743,7 +715,8 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	PW_CODE			code = PW_CODE_ACCESS_REJECT;
 	rlm_rcode_t		rcode;
 	REQUEST			*fake = NULL;
-	VALUE_PAIR		*vp;
+	VALUE_PAIR		*vp = NULL;
+	vp_cursor_t		cursor;
 	ttls_tunnel_t		*t;
 	uint8_t			const *data;
 	size_t			data_len;
@@ -795,8 +768,9 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	/*
 	 *	Add the tunneled attributes to the fake request.
 	 */
-	fake->packet->vps = diameter2vp(request, fake, tls_session->ssl, data, data_len);
-	if (!fake->packet->vps) {
+	fr_pair_cursor_init(&cursor, &fake->packet->vps);
+	if (eap_ttls_decode_pair(fake->packet, &cursor, fr_dict_root(fr_dict_internal),
+				 data, data_len, tls_session->ssl) < 0) {
 		code = PW_CODE_ACCESS_REJECT;
 		goto finish;
 	}
