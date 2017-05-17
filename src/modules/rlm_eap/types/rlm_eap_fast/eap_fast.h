@@ -1,12 +1,8 @@
 /*
- * eap_fast.h
- *
- * Version:     $Id$
- *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
+ *   the Free Software Foundation; either version 2 of the License, or (at
+ *   your option) any later version.
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,13 +12,20 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
+/**
+ * $Id$
+ * @file eap_fast.h
+ * @brief Function declarations and packet structures
  *
- * Copyright 2003 Alan DeKok <aland@freeradius.org>
- * Copyright 2006 The FreeRADIUS server project
+ * @author Alexander Clouter <alex@digriz.org.uk>
+ *
+ * @copyright 2016 Alan DeKok <aland@freeradius.org>
+ * @copyright 2016 The FreeRADIUS server project
  */
 #ifndef _EAP_FAST_H
 #define _EAP_FAST_H
-
 RCSIDH(eap_fast_h, "$Id$")
 
 #include "eap_tls.h"
