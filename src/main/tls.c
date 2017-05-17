@@ -823,10 +823,10 @@ static void session_init(tls_session_t *ssn)
 
 static void session_close(tls_session_t *ssn)
 {
-	SSL_set_quiet_shutdown(ssn->ssl, 1);
-	SSL_shutdown(ssn->ssl);
-
 	if (ssn->ssl) {
+		SSL_set_quiet_shutdown(ssn->ssl, 1);
+		SSL_shutdown(ssn->ssl);
+
 		SSL_free(ssn->ssl);
 		ssn->ssl = NULL;
 	}
