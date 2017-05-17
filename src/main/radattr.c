@@ -819,7 +819,8 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 
 		if (strncmp(p, "decode-dhcp ", 12) == 0) {
 			vp_cursor_t cursor;
-			ssize_t my_len = 0;
+			size_t my_len = 0;
+			int ret = 0;
 
 			if (strcmp(p + 12, "-") == 0) {
 				attr = data;
@@ -846,10 +847,13 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 				 */
 				while (option_p < end) {
 					vp = NULL;
-					my_len = fr_dhcp_decode_option(NULL, &cursor,
+					my_len = end - option_p;
+					ret = fr_dhcp_decode_option(NULL, &cursor,
 								       fr_dict_root(fr_dict_internal), option_p,
-								       end - option_p, NULL);
-					if (my_len <= 0) {
+								       &my_len, NULL);
+					if (ret == 1) break;
+
+					if (ret < 0) {
 						fr_pair_list_free(&head);
 						break;
 					}
@@ -875,7 +879,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 				}
 
 				fr_pair_list_free(&head);
-			} else if (my_len < 0) {
+			} else if (ret < 0) {
 				strlcpy(output, fr_strerror(), sizeof(output));
 
 			} else { /* zero-length attribute */

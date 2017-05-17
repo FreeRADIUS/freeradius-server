@@ -52,8 +52,8 @@ ssize_t		fr_dhcp_encode_option(uint8_t *out, size_t outlen, vp_cursor_t *cursor,
 
 int		fr_dhcp_encode(RADIUS_PACKET *packet);
 
-ssize_t		fr_dhcp_decode_option(TALLOC_CTX *ctx, vp_cursor_t *cursor,
-				      fr_dict_attr_t const *parent, uint8_t const *data, size_t len,
+int		fr_dhcp_decode_option(TALLOC_CTX *ctx, vp_cursor_t *cursor,
+				      fr_dict_attr_t const *parent, uint8_t const *data, size_t *len,
 				      void *decoder_ctx);
 
 int		fr_dhcp_decode(RADIUS_PACKET *packet);

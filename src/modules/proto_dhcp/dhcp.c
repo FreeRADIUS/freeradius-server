@@ -1029,22 +1029,26 @@ static ssize_t decode_value(TALLOC_CTX *ctx, vp_cursor_t *cursor,
  * @param[in,out] cursor Where to write the decoded options.
  * @param[in] parent The root of the protocol dictionary used to decode DHCP attributes.
  * @param[in] data to parse.
- * @param[in] data_len of data to parse.
+ * @param[in,out] data_len of data to parse, data_len of parsed data.
  * @param[in] decoder_ctx Unused.
- */
-ssize_t fr_dhcp_decode_option(TALLOC_CTX *ctx, vp_cursor_t *cursor,
-			      fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len,
+ * @return
+ *	- +1 on end of options
+ *	- 0 on success.
+ *	- -1 on failure.
+*/
+int fr_dhcp_decode_option(TALLOC_CTX *ctx, vp_cursor_t *cursor,
+			      fr_dict_attr_t const *parent, uint8_t const *data, size_t *data_len,
 			      UNUSED void *decoder_ctx)
 {
 	ssize_t			ret;
 	uint8_t const		*p = data;
 	fr_dict_attr_t const	*child;
 
-	FR_PROTO_TRACE("%s called to parse %zu byte(s)", __FUNCTION__, data_len);
+	FR_PROTO_TRACE("%s called to parse %zu byte(s)", __FUNCTION__, *data_len);
 
-	if (data_len == 0) return 0;
+	if (*data_len == 0) return -1;
 
-	FR_PROTO_HEX_DUMP(NULL, data, data_len);
+	FR_PROTO_HEX_DUMP(NULL, data, *data_len);
 
 	/*
 	 *	Stupid hacks until we have protocol specific dictionaries
@@ -1064,24 +1068,18 @@ ssize_t fr_dhcp_decode_option(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	/*
 	 *	Padding / End of options
 	 */
-	if (p[0] == 0) return 1;		/* 0x00 - Padding option */
+	if (p[0] == 0) {
+		*data_len = 1;
+		return 0;		/* 0x00 - Padding option */
+	}
 	if (p[0] == 255) {			/* 0xff - End of options signifier */
-		size_t i;
-
-		for (i = 1; i < data_len; i++) {
-			if (p[i] != 0) {
-				fr_strerror_printf("%s: Non padding option follows end of options signifier",
-						   __FUNCTION__);
-				return -1;
-			}
-		}
-		return data_len;
+		return 1;
 	}
 
 	/*
 	 *	Everything else should be real options
 	 */
-	if ((data_len < 2) || (data[1] > data_len)) {
+	if ((*data_len < 2) || (data[1] > *data_len)) {
 		fr_strerror_printf("%s: Insufficient data", __FUNCTION__);
 		return -1;
 	}
@@ -1102,11 +1100,13 @@ ssize_t fr_dhcp_decode_option(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	ret = decode_value(ctx, cursor, child, data + 2, data[1]);
 	if (ret < 0) {
 		fr_dict_unknown_free(&child);
-		return ret;
+		return -1;
 	}
 	ret += 2; /* For header */
 	FR_PROTO_TRACE("decoding option complete, returning %zu byte(s)", ret);
-	return ret;
+
+	*data_len = ret;
+	return 0;
 }
 
 int fr_dhcp_decode(RADIUS_PACKET *packet)
@@ -1233,7 +1233,8 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	 */
 	{
 		uint8_t const *end;
-		ssize_t len;
+		size_t len;
+		int ret;
 
 		p = packet->data + 240;
 		end = p + (packet->data_len - 240);
@@ -1242,9 +1243,12 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 		 *	Loop over all the options data
 		 */
 		while (p < end) {
-			len = fr_dhcp_decode_option(packet, &cursor, fr_dict_root(fr_dict_internal),
-						    p, ((end - p) > UINT8_MAX) ? UINT8_MAX : (end - p), NULL);
-			if (len <= 0) {
+			len = ((end - p) > UINT8_MAX) ? UINT8_MAX : (end - p);
+			ret = fr_dhcp_decode_option(packet, &cursor, fr_dict_root(fr_dict_internal),
+						    p, &len, NULL);
+			if (ret == 1) break;
+
+			if (ret < 0) {
 				fr_pair_list_free(&head);
 				return len;
 			}
@@ -1319,7 +1323,7 @@ int8_t fr_dhcp_attr_cmp(void const *a, void const *b)
 {
 	VALUE_PAIR const *my_a = a;
 	VALUE_PAIR const *my_b = b;
-	fr_dict_attr_t const *a_82, *b_82;
+	fr_dict_attr_t const *ancestor_a, *ancestor_b;
 
 	VERIFY_VP(my_a);
 	VERIFY_VP(my_b);
@@ -1348,10 +1352,10 @@ int8_t fr_dhcp_attr_cmp(void const *a, void const *b)
 	 *
 	 *	Check if either of the options are descended from option 82.
 	 */
-	a_82 = fr_dict_parent_common(dhcp_option_82, my_a->da, true);
-	b_82 = fr_dict_parent_common(dhcp_option_82, my_b->da, true);
-	if (a_82 && !b_82) return +1;
-	if (!a_82 && !b_82) return -1;
+	ancestor_a = fr_dict_parent_common(dhcp_option_82, my_a->da, true) ;
+	ancestor_b = fr_dict_parent_common(dhcp_option_82, my_b->da, true);
+	if (ancestor_a && ancestor_a->attr == PW_DHCP_OPTION_82 && !ancestor_b) return +1;
+	if (!ancestor_a && ancestor_b && ancestor_b->attr == PW_DHCP_OPTION_82) return -1;
 
 	return fr_pair_cmp_by_parent_num_tag(my_a, my_b);
 }
