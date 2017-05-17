@@ -423,6 +423,9 @@ typedef struct CONF_PARSER {
 #define CONF_PARSER_TERMINATOR	{ .name = NULL, .type = ~(UINT32_MAX - 1), \
 				  .offset = 0, .data = NULL, .dflt = NULL, .quote = T_INVALID }
 
+#define CONF_PARSER_PARTIAL_TERMINATOR	{ .name = NULL, .type = ~(UINT32_MAX - 1), \
+					  .offset = 1, .data = NULL, .dflt = NULL, .quote = T_INVALID }
+
 typedef int (*cf_walker_t)(void *data, void *ctx);
 
 void		cf_file_check_user(uid_t uid, gid_t gid);

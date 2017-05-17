@@ -2472,6 +2472,14 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs, CONF_PARSER 
 	void	*data;
 	bool	*is_set = NULL;
 
+	/*
+	 *	Hack for partially parsed sections.
+	 */
+	if (!variables) {
+		cf_log_info(cs, "%.*s}", cs->depth, parse_spaces);
+		return 0;
+	}
+
 	cs->variables = variables; /* this doesn't hurt anything */
 
 	if (!cs->name2) {
@@ -2548,13 +2556,20 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs, CONF_PARSER 
 	 */
 	rad_cond_assert(variables[i].type == conf_term.type);
 
+	cs->base = base;
+
+	/*
+	 *	Hack for partially parsed sections.  We don't print
+	 *	out the final "}", that will be printed out when the
+	 *	caller re-calls us with 'variable=NULL'.  And, we don't warn about unused
+	 */
+	if (variables[i].offset == 1) return ret;
+
 	/*
 	 *	Warn about items in the configuration which weren't
 	 *	checked during parsing.
 	 */
 	if (rad_debug_lvl >= 3) cf_section_parse_warn(cs);
-
-	cs->base = base;
 
 	cf_log_info(cs, "%.*s}", cs->depth, parse_spaces);
 
