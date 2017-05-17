@@ -2427,7 +2427,8 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 						true, true, EXEC_TIMEOUT) != 0) {
 				AUTH(LOG_PREFIX ": Certificate CN (%s) fails external verification!", common_name);
 				my_ok = 0;
-			} else {
+
+			} else  if (request) {
 				RDEBUG("Client certificate CN %s passed external validation", common_name);
 			}
 
