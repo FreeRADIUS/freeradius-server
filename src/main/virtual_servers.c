@@ -653,6 +653,10 @@ int virtual_servers_init(CONF_SECTION *config)
 	for (cs = cf_subsection_find_next(config, NULL, "server");
 	     cs != NULL;
 	     cs = cf_subsection_find_next(config, cs, "server")) {
+		char const *name2;
+
+		name2 = cf_section_name2(cs);
+
 		/*
 		 *	Skip new-style virtual servers.
 		 */
@@ -668,7 +672,10 @@ int virtual_servers_init(CONF_SECTION *config)
 
 			if (app->compile) {
 				io = app->compile(cs);
-				if (!io) continue;
+				if (!io) {
+					cf_log_err_cs(cs, "Failed loading virtual server %s", name2);
+					continue;
+				}
 
 				DEBUG("Loaded Protocol %s", module->name);
 			}

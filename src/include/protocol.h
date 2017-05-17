@@ -30,6 +30,7 @@ extern "C" {
 #endif
 
 #include <freeradius-devel/dl.h>
+#include <freeradius-devel/io/transport.h>
 
 /*
  *	We'll use this below.
@@ -100,6 +101,9 @@ typedef struct fr_app_io_t {
 
 typedef fr_app_io_t *(*fr_app_compile_t)(CONF_SECTION *);
 
+typedef fr_transport_final_t (*fr_app_process_t)(REQUEST *request);
+
+
 /*
  *	Functions for new virtual servers and listeners
  */
@@ -108,7 +112,20 @@ typedef struct fr_app_t {
 
 	fr_app_bootstrap_t	bootstrap;
 	fr_app_compile_t	compile;
+	fr_app_process_t	process;
 } fr_app_t;
+
+typedef int (*fr_app_subtype_compile_t)(CONF_SECTION *cs);
+
+/*
+ *	Functions for new virtual servers and listeners
+ */
+typedef struct fr_app_subtype_t {
+	RAD_MODULE_COMMON;				//!< Common fields to all loadable modules.
+
+	fr_app_subtype_compile_t  compile;
+	fr_app_process_t	  process;
+} fr_app_subtype_t;
 
 #ifdef __cplusplus
 }

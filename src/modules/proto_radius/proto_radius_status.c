@@ -216,148 +216,6 @@ static fr_transport_final_t status_process(REQUEST *request)
 }
 
 
-static void status_running(REQUEST *request, fr_state_action_t action)
-{
-	fr_transport_final_t rcode;
-
-	TRACE_STATE_MACHINE;
-
-	/*
-	 *	Async (in the same thread, tho) signal to be done.
-	 */
-	if (action == FR_ACTION_DONE) goto done;
-
-	/*
-	 *	We ignore all other actions.
-	 */
-	if (action != FR_ACTION_RUN) return;
-
-	switch (request->request_state) {
-	case REQUEST_INIT:
-		request->server = request->listener->server;
-		request->server_cs = request->listener->server_cs;
-		/* FALL-THROUGH */
-
-	case REQUEST_RECV:
-	case REQUEST_SEND:
-		rcode = status_process(request);
-		if (rcode == FR_TRANSPORT_YIELD) return;
-
-		if (rcode == FR_TRANSPORT_REPLY) {
-			if (fr_radius_packet_send(request->reply, request->packet, request->client->secret) < 0) {
-				RDEBUG("Failed sending RADIUS reply: %s", fr_strerror());
-			}
-		}
-		/* FALL-THROUGH */
-
-	default:
-	done:
-		(void) fr_heap_extract(request->backlog, request);
-		request_thread_done(request);
-		request_delete(request);
-		break;
-	}
-}
-
-
-/** Process events while the request is queued.
- *
- *  We give different messages on DUP, and on DONE,
- *  remove the request from the queue
- *
- *  \dot
- *	digraph status_queued {
- *		status_queued -> done [ label = "TIMER >= max_request_time" ];
- *		status_queued -> status_running [ label = "RUNNING" ];
- *	}
- *  \enddot
- */
-static void status_queued(REQUEST *request, fr_state_action_t action)
-{
-	VERIFY_REQUEST(request);
-
-	TRACE_STATE_MACHINE;
-
-	switch (action) {
-	case FR_ACTION_RUN:
-		request->process = status_running;
-		request->process(request, action);
-		break;
-
-	case FR_ACTION_DONE:
-		(void) fr_heap_extract(request->backlog, request);
-		fr_event_timer_delete(request->el, &request->ev);
-
-		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",
-			request->packet->id,
-			(unsigned int) (request->packet->timestamp.tv_sec - fr_start_time));
-		request_delete(request);
-		break;
-
-	default:
-		break;
-	}
-}
-
-
-/*
- *	Check if an incoming request is "ok"
- *
- *	It takes packets, not requests.  It sees if the packet looks
- *	OK.  If so, it does a number of sanity checks on it.
- */
-static int status_socket_recv(rad_listen_t *listener)
-{
-	RADIUS_PACKET	*packet;
-	RADCLIENT	*client;
-	TALLOC_CTX	*ctx;
-	REQUEST		*request;
-
-	ctx = talloc_pool(NULL, main_config.talloc_pool_size);
-	if (!ctx) {
-		(void) udp_recv_discard(listener->fd);
-		return 0;
-	}
-	talloc_set_name_const(ctx, "status_listener_pool");
-
-	packet = fr_radius_packet_recv(ctx, listener->fd, 0, false);
-	if (!packet) {
-		ERROR("%s", fr_strerror());
-		talloc_free(ctx);
-		return 0;
-	}
-
-	if (packet->code != PW_CODE_STATUS_SERVER) {
-		DEBUG2("Invalid packet code %d", packet->code);
-		talloc_free(ctx);
-		return 0;
-	}
-
-	if ((client = client_listener_find(listener,
-					   &packet->src_ipaddr,
-					   packet->src_port)) == NULL) {
-		talloc_free(ctx);
-		return 0;
-	}
-
-	if (request_limit(listener, client, packet)) {
-		talloc_free(ctx);
-		return 0;
-	}
-
-	request = request_setup(ctx, listener, packet, client, NULL);
-	if (!request) {
-		talloc_free(ctx);
-		return 0;
-	}
-
-	request->process = status_queued;
-	request_enqueue(request);
-
-	return 1;
-}
-
-
 static int status_compile_section(CONF_SECTION *server_cs, char const *name1, char const *name2, rlm_components_t component)
 {
 	CONF_SECTION *cs;
@@ -366,6 +224,15 @@ static int status_compile_section(CONF_SECTION *server_cs, char const *name1, ch
 	if (!cs) return 0;
 
 	cf_log_module(cs, "Loading %s %s {...}", name1, name2);
+
+	/*
+	 *	FIXME: check if it's already compiled?
+	 *
+	 *	What happens when we have Access-Accept in response to Status-Server,
+	 *	versus Access-Accept in response to Access-Request?
+	 *
+	 *	Damn...
+	 */
 
 	if (unlang_compile(cs, component) < 0) {
 		cf_log_err_cs(cs, "Failed compiling '%s %s { ... }' section", name1, name2);
@@ -379,7 +246,7 @@ static int status_compile_section(CONF_SECTION *server_cs, char const *name1, ch
 /*
  *	Ensure that the "radius" section is compiled.
  */
-static int status_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *listen_cs)
+static int status_compile(CONF_SECTION *server_cs)
 {
 	int rcode;
 
@@ -410,33 +277,11 @@ static int status_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *l
 	return 0;
 }
 
-static int status_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
-{
-	listen_socket_t *sock = this->data;
 
-	if (common_socket_parse(cs, this) < 0) return -1;
-
-	if (!sock->my_port) sock->my_port = PW_AUTH_UDP_PORT;
-
-	return 0;
-}
-
-
-extern rad_protocol_t proto_radius_status;
-rad_protocol_t proto_radius_status = {
+extern fr_app_subtype_t proto_radius_status;
+fr_app_subtype_t proto_radius_status = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "radius_status",
-	.inst_size	= sizeof(listen_socket_t),
-	.transports	= TRANSPORT_UDP,
-	.tls		= false,
-	.bootstrap	= NULL,	/* don't do Acct-Type any more */
-	.compile	= status_listen_compile,
-	.parse		= status_socket_parse,
-	.open		= common_socket_open,
-	.recv		= status_socket_recv,
-	.send		= NULL,
-	.print		= common_socket_print,
-	.debug		= common_packet_debug,
-	.encode		= NULL,
-	.decode		= NULL,
+	.compile	= status_compile,
+	.process	= status_process,
 };
