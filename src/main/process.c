@@ -2571,8 +2571,6 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 
 #ifdef WITH_ACCOUNTING
 	case PW_CODE_ACCOUNTING_REQUEST:
-		proxy_acct_stats.last_packet = packet->timestamp.tv_sec;
-
 		request->proxy_listener->stats.total_responses++;
 		proxy_acct_stats.last_packet = packet->timestamp.tv_sec;
 		break;
