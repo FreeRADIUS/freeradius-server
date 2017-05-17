@@ -299,7 +299,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, vp_c
 		 *	disallowed.
 		 */
 		case FR_TYPE_TLV:
-			vp->da = fr_dict_unknown_afrom_fields(vp, vp->da->parent, vp->da->vendor, vp->da->attr);
+			fr_pair_to_unknown(vp);
 			/* FALL-THROUGH */
 
 		case FR_TYPE_OCTETS:

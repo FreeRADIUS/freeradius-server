@@ -194,7 +194,7 @@ static int arp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 		MEM(vp = fr_pair_afrom_da(request->packet, da));
 		ret = fr_value_box_from_network(vp, &vp->data, p, len, da->type, true);
 		if (ret <= 0) {
-			vp->da = fr_dict_unknown_afrom_fields(vp, vp->da->parent, vp->da->vendor, vp->da->attr);
+			fr_pair_to_unknown(vp);
 			fr_pair_value_memcpy(vp, p, len);
 		}
 
