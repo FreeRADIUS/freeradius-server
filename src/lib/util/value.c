@@ -2180,6 +2180,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
  * and the length of the prefix field.
  *
  * @param[in] dst	to assign ipaddr to.
+ * @param[in] enumv	Aliases for values.
  * @param[in] ipaddr	to copy address from.
  * @param[in] tainted	Whether the value came from a trusted source.
  * @return
@@ -2372,6 +2373,7 @@ int fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
  *
  * @param[in] ctx 	to allocate any new buffers in.
  * @param[in] dst 	to assign new buffer to.
+ * @param[in] enumv	Aliases for values.
  * @param[in] src 	a nul terminated buffer.
  * @param[in] tainted	Whether the value came from a trusted source.
  */
