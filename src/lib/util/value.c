@@ -104,9 +104,9 @@ static size_t const fr_value_box_network_sizes[FR_TYPE_MAX + 1][2] = {
 	[FR_TYPE_OCTETS]			= {0, ~0},
 
 	[FR_TYPE_IPV4_ADDR]			= {4, 4},
-	[FR_TYPE_IPV4_PREFIX]			= {6, 6},
-	[FR_TYPE_IPV6_ADDR]			= {16, 16},
-	[FR_TYPE_IPV6_PREFIX]			= {18, 18},
+	[FR_TYPE_IPV4_PREFIX]			= {5, 5},
+	[FR_TYPE_IPV6_ADDR]			= {16, 17},
+	[FR_TYPE_IPV6_PREFIX]			= {17, 18},
 	[FR_TYPE_IFID]				= {8, 8},
 	[FR_TYPE_ETHERNET]			= {6, 6},
 
@@ -1006,6 +1006,7 @@ size_t fr_value_box_network_length(fr_value_box_t *value)
 ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_value_box_t const *value)
 {
 	size_t min, max;
+	uint8_t *p = dst;
 
 	/*
 	 *	Variable length types
@@ -1063,13 +1064,19 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 	 */
 	case FR_TYPE_IPV4_PREFIX:
 	 	dst[0] = value->datum.ip.prefix;
-		memcpy(&dst[1], (uint8_t const *)&value->datum.ip.addr.v4.s_addr, sizeof(value->datum.ip.addr.v4.s_addr));
+		memcpy(&dst[1], (uint8_t const *)&value->datum.ip.addr.v4.s_addr,
+				 sizeof(value->datum.ip.addr.v4.s_addr));
+		break;
+
+	case FR_TYPE_IPV6_ADDR:
+		if (value->datum.ip.scope_id > 0) *p++ = value->datum.ip.scope_id;
+		memcpy(p, value->datum.ip.addr.v6.s6_addr, sizeof(value->datum.ip.addr.v6.s6_addr));
 		break;
 
 	case FR_TYPE_IPV6_PREFIX:
-		dst[0] = value->datum.ip.scope_id;
-		dst[1] = value->datum.ip.prefix;
-		memcpy(&dst[2], value->datum.ip.addr.v6.s6_addr, sizeof(value->datum.ip.addr.v6.s6_addr));
+		if (value->datum.ip.scope_id > 0) *p++ = value->datum.ip.scope_id;
+		*p++ = value->datum.ip.prefix;
+		memcpy(p, value->datum.ip.addr.v6.s6_addr, sizeof(value->datum.ip.addr.v6.s6_addr));
 		break;
 
 	case FR_TYPE_BOOL:
@@ -1080,7 +1087,6 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 	 *	Already in network byte-order
 	 */
 	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_IPV6_ADDR:
 	case FR_TYPE_IFID:
 	case FR_TYPE_ETHERNET:
 	case FR_TYPE_UINT8:
@@ -1164,18 +1170,24 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 				  uint8_t const *src, size_t len,
 				  bool tainted)
 {
-	if (len < fr_value_box_network_sizes[type][0]) {
+	uint8_t	const *p = src;
+	size_t	min, max;
+
+	min = fr_value_box_network_sizes[type][0];
+	max = fr_value_box_network_sizes[type][1];
+
+	if (len < min) {
 		fr_strerror_printf("Got truncated value parsing type \"%s\". "
 				   "Expected length >= %zu bytes, got %zu bytes",
 				   fr_int2str(dict_attr_types, type, "<INVALID>"),
-				   fr_value_box_network_sizes[type][0], len);
+				   min, len);
 		return -1;
 	}
-	if (len > fr_value_box_network_sizes[type][1]) {
+	if (len > max) {
 		fr_strerror_printf("Found trailing garbage parsing type \"%s\". "
 				   "Expected length <= %zu bytes, got %zu bytes",
 				   fr_int2str(dict_attr_types, type, "<INVALID>"),
-				   fr_value_box_network_sizes[type][1], len);
+				   max, len);
 		return -1;
 	}
 
@@ -1194,29 +1206,30 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 	case FR_TYPE_IPV4_ADDR:
 		memcpy(&dst->datum.ip.addr.v4, src, len);
 		dst->datum.ip.af = AF_INET;
-		dst->datum.ip.scope_id = 0;
 		dst->datum.ip.prefix = 32;
+		dst->datum.ip.scope_id = 0;	/* init even if it's unused */
 		break;
 
 	case FR_TYPE_IPV4_PREFIX:
-		memcpy(&dst->datum.ip.addr.v4, src + 1, len - 1);
 		dst->datum.ip.af = AF_INET;
-		dst->datum.ip.scope_id = 0;
-		dst->datum.ip.prefix = src[0];
+		dst->datum.ip.prefix = *p++;
+		memcpy(&dst->datum.ip.addr.v4, p, sizeof(dst->datum.ip.addr.v4));
+		dst->datum.ip.scope_id = 0;	/* init even if it's unused */
+
 		break;
 
 	case FR_TYPE_IPV6_ADDR:
-		memcpy(&dst->datum.ip.addr.v6, src, len - 1);
 		dst->datum.ip.af = AF_INET6;
-		dst->datum.ip.scope_id = 0;
+		dst->datum.ip.scope_id = len == max ? *p++ : 0;		/* optional */
+		memcpy(&dst->datum.ip.addr.v6, p, sizeof(dst->datum.ip.addr.v6));
 		dst->datum.ip.prefix = 128;
 		break;
 
 	case FR_TYPE_IPV6_PREFIX:
-		memcpy(&dst->datum.ip.addr.v6, src + 2, len - 2);
 		dst->datum.ip.af = AF_INET6;
-		dst->datum.ip.scope_id = src[0];
-		dst->datum.ip.prefix = src[1];
+		dst->datum.ip.scope_id = len == max ? *p++ : 0;		/* optional */
+		dst->datum.ip.prefix = *p++;
+		memcpy(&dst->datum.ip.addr.v6, p, sizeof(dst->datum.ip.addr.v6));
 		break;
 
 	case FR_TYPE_BOOL:

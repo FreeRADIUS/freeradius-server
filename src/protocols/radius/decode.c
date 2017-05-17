@@ -1048,6 +1048,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 	 *	attribute.
 	 */
 	FR_PROTO_TRACE("Type \"%s\" (%u)", fr_int2str(dict_attr_types, parent->type, "?Unknown?"), parent->type);
+
 	switch (parent->type) {
 	case FR_TYPE_STRING:
 	case FR_TYPE_OCTETS:

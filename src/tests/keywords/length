@@ -105,8 +105,8 @@ if (Tmp-Integer-7 != 16) {
 	}
 }
 
-# ipv6addrprefix - bin 0x008000000000000000000000000039383739
-if (Tmp-Integer-8 != 18) {
+# ipv6addrprefix - bin 0x8000000000000000000000000039383739
+if (Tmp-Integer-8 != 17) {
 	update reply {
 		Filter-ID += 'fail 10'
 	}
@@ -147,8 +147,8 @@ if (Tmp-Integer-2 != 8) {
 	}
 }
 
-# ipv4prefix - bin 0x00203938373e
-if (Tmp-Integer-3 != 6) {
+# ipv4prefix - bin 0x203938373e
+if (Tmp-Integer-3 != 5) {
 	update reply {
 		Filter-Id += 'fail 15'
 	}
