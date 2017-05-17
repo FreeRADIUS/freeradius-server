@@ -172,35 +172,34 @@ static const arp_decode_t header_names[] = {
 
 static int arp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
-	int i;
-	arp_over_ether_t const *arp;
-	uint8_t const *p;
+	int			i;
+	uint8_t	const		*p = request->packet->data, *end = p + request->packet->data_len;
+	fr_cursor_t		cursor;
 
-	arp = (arp_over_ether_t const *) request->packet->data;
-	/*
-	 *	arp_socket_recv() takes care of validating it's really
-	 *	our kind of ARP.
-	 */
-	for (i = 0, p = (uint8_t const *) arp; header_names[i].name != NULL; p += header_names[i].len, i++) {
-		ssize_t			len;
+	fr_cursor_init(&cursor, &request->packet->vps);
+
+	for (i = 0; header_names[i].name != NULL; i++) {
+		ssize_t			ret;
+		size_t			len;
 		fr_dict_attr_t const	*da;
-		VALUE_PAIR		*vp = NULL;;
-		vp_cursor_t		cursor;
+		VALUE_PAIR		*vp = NULL;
+
+		len = header_names[i].len;
+
+		rad_assert((size_t)(end - p) < len);	/* Should have been detected in socket_recv */
 
 		da = fr_dict_attr_by_name(NULL, header_names[i].name);
 		if (!da) return 0;
 
-		fr_pair_cursor_init(&cursor, &vp);
-		len = fr_radius_decode_pair_value(request->packet, &cursor, da, p, header_names[i].len,
-						  header_names[i].len, NULL);
-		if (len <= 0) {
-			RDEBUG("Failed decoding %s: %s",
-			       header_names[i].name, fr_strerror());
-			return 0;
+		MEM(vp = fr_pair_afrom_da(request->packet, da));
+		ret = fr_value_box_from_network(vp, &vp->data, p, len, da->type, true);
+		if (ret <= 0) {
+			vp->da = fr_dict_unknown_afrom_fields(vp, vp->da->parent, vp->da->vendor, vp->da->attr);
+			fr_pair_value_memcpy(vp, p, len);
 		}
 
 		debug_pair(vp);
-		fr_pair_add(&request->packet->vps, vp);
+		fr_cursor_insert(&cursor, vp);
 	}
 
 	return 0;
