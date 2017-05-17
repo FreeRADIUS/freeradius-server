@@ -918,14 +918,26 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 	case FR_TYPE_DATE_NANOSECONDS:
 		dst->datum.date_nanoseconds = htonll(src->datum.date_nanoseconds);
 		break;
+	case FR_TYPE_BOOL:
+	case FR_TYPE_UINT8:
+	case FR_TYPE_INT8:
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_IPV6_ADDR:
+	case FR_TYPE_IPV6_PREFIX:
+	case FR_TYPE_IFID:
+	case FR_TYPE_ETHERNET:
+	case FR_TYPE_SIZE:
+	case FR_TYPE_TIMEVAL:
+	case FR_TYPE_ABINARY:
+		fr_value_box_copy(NULL, dst, src);
+		return 0;
+
 
 	case FR_TYPE_OCTETS:
 	case FR_TYPE_STRING:
+	case FR_TYPE_NON_VALUES:
 		if (!fr_cond_assert(0)) return -1; /* shouldn't happen */
-
-	default:
-		fr_value_box_copy(NULL, dst, src);
-		return 0;
 	}
 
 	if (dst != src) fr_value_box_copy_meta(dst, src);
