@@ -297,7 +297,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 	} else if (request->listener) {
 		server_cs = request->listener->server_cs;
 	} else {
-		server_cs = "default"; /* @todo - delete this when we delete the old listeners */
+		return RLM_MODULE_FAIL;
 	}
 
 	c = client_read(buffer, server_cs, true);
