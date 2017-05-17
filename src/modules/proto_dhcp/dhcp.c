@@ -746,57 +746,7 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 	 */
 	if (da->flags.is_unknown) talloc_steal(vp, da);
 
-	switch (da->type) {
-	case FR_TYPE_UINT8:
-		if (data_len != 1) goto raw;
-		vp->vp_uint8 = p[0];
-		p++;
-		break;
-
-	case FR_TYPE_UINT16:
-		if (data_len != 2) goto raw;
-		memcpy(&vp->vp_uint16, p, 2);
-		vp->vp_uint16 = ntohs(vp->vp_uint16);
-		p += 2;
-		break;
-
-	case FR_TYPE_UINT32:
-		if (data_len != 4) goto raw;
-		memcpy(&vp->vp_uint32, p, 4);
-		vp->vp_uint32 = ntohl(vp->vp_uint32);
-		p += 4;
-		break;
-
-	case FR_TYPE_IPV4_ADDR:
-		if (data_len != 4) goto raw;
-		/*
-		 *	Keep value in Network Order!
-		 */
-		vp->vp_ip.af = AF_INET;
-		vp->vp_ip.prefix = 32;
-		vp->vp_ip.scope_id = 0;
-		memcpy(&vp->vp_ipv4addr, p, 4);
-		p += 4;
-		break;
-
-	case FR_TYPE_IPV6_ADDR:
-		if (data_len != 16) goto raw;
-		/*
-		 *	Keep value in Network Order!
-		 */
-		vp->vp_ip.af = AF_INET6;
-		vp->vp_ip.prefix = 128;
-		vp->vp_ip.scope_id = 0;
-		memcpy(&vp->vp_ipv6addr, p, 16);
-		p += 16;
-		break;
-
-	/*
-	 *	In DHCPv4, string options which can also be arrays,
-	 *	have their values '\0' delimited.
-	 */
-	case FR_TYPE_STRING:
-	{
+	if (vp->da->type == FR_TYPE_STRING) {
 		uint8_t const *q, *end;
 
 		q = end = data + data_len;
@@ -807,7 +757,7 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 		if (!vp->da->flags.array) {
 			fr_pair_value_bstrncpy(vp, (char const *)p, end - p);
 			p = end;
-			break;
+			goto finish;
 		}
 
 		for (;;) {
@@ -818,6 +768,7 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 
 			fr_pair_value_bstrncpy(vp, (char const *)p, q - p);
 			p = q + 1;
+			vp->vp_tainted = true;
 
 			/* Need another VP for the next round */
 			if (p < end) {
@@ -829,36 +780,47 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 			}
 			break;
 		}
+		goto finish;
 	}
-		break;
 
-	case FR_TYPE_ETHERNET:
-		memcpy(vp->vp_ether, data, sizeof(vp->vp_ether));
-		p += sizeof(vp->vp_ether);
-		break;
-
+	switch (vp->da->type) {
 	/*
-	 *	Value doesn't match up with attribute type, overwrite the
-	 *	vp's original fr_dict_attr_t with an unknown one.
+	 *	Doesn't include scope, whereas the generic format can
 	 */
-	raw:
-		FR_PROTO_TRACE("decoding as unknown type");
-		if (fr_pair_to_unknown(vp) < 0) return -1;
+	case FR_TYPE_IPV6_ADDR:
+		memcpy(&vp->vp_ipv6addr, p, sizeof(vp->vp_ipv6addr));
+		vp->vp_ip.af = AF_INET6;
+		vp->vp_ip.scope_id = 0;
+		vp->vp_ip.prefix = 128;
+		vp->vp_tainted = true;
+		p += sizeof(vp->vp_ipv6addr);
+		break;
 
-	case FR_TYPE_OCTETS:
-		if (data_len > UINT8_MAX) return -1;
-		fr_pair_value_memcpy(vp, data, data_len);
-		p += data_len;
+	case FR_TYPE_IPV6_PREFIX:
+		memcpy(&vp->vp_ipv6addr, p + 1, sizeof(vp->vp_ipv6addr) + 1);
+		vp->vp_ip.af = AF_INET6;
+		vp->vp_ip.scope_id = 0;
+		vp->vp_ip.prefix = p[0];
+		vp->vp_tainted = true;
+		p += sizeof(vp->vp_ipv6addr) + 1;
 		break;
 
 	default:
-		fr_strerror_printf("Internal sanity check %d %d", vp->vp_type, __LINE__);
-		talloc_free(vp);
-		return -1;
-	} /* switch over type */
+	{
+		ssize_t ret;
 
+		ret = fr_value_box_from_network(vp, &vp->data, vp->da->type, da, p, data_len, true);
+		if (ret < 0) {
+			FR_PROTO_TRACE("decoding as unknown type");
+			if (fr_pair_to_unknown(vp) < 0) return -1;
+			fr_pair_value_memcpy(vp, p, data_len);
+		}
+		p += (size_t) ret;
+	}
+	}
+
+finish:
 	FR_PROTO_TRACE("decoding value complete, adding new pair and returning %zu byte(s)", p - data);
-	vp->vp_tainted = true;
 	fr_pair_cursor_append(cursor, vp);
 
 	return p - data;
@@ -1155,14 +1117,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 			if ((packet->data[1] == 0) || (packet->data[2] == 0)) continue;
 
 			if ((packet->data[1] == 1) && (packet->data[2] != sizeof(vp->vp_ether))) {
-				fr_dict_attr_t const *da;
-
-				da = fr_dict_unknown_afrom_fields(packet, vp->da->parent,
-								  vp->da->vendor, vp->da->attr);
-				if (!da) {
-					return -1;
-				}
-				vp->da = da;
+				fr_pair_to_unknown(vp);
 			}
 		}
 
