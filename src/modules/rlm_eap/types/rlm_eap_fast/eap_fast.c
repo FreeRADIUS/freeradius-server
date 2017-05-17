@@ -977,8 +977,9 @@ PW_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 				t->mode = EAP_FAST_PROVISIONING_AUTH;
 			}
 
-			if (!t->pac.expires || t->pac.expired || t->pac.expires - time(NULL) < t->pac_lifetime * 0.6)
+			if (!t->pac.expires || t->pac.expired || t->pac.expires - time(NULL) < t->pac_lifetime * 0.6) {
 				t->pac.send = true;
+			}
 		}
 
 		eap_fast_init_keys(request, tls_session);
@@ -993,9 +994,7 @@ PW_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 
 	RDEBUG("Got Tunneled FAST TLVs");
 	rdebug_pair_list(L_DBG_LVL_1, request, fast_vps, NULL);
-
 	code = eap_fast_process_tlvs(request, eap_session, tls_session, fast_vps);
-
 	fr_pair_list_free(&fast_vps);
 
 	if (code == PW_CODE_ACCESS_REJECT) return PW_CODE_ACCESS_REJECT;
@@ -1004,6 +1003,7 @@ PW_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	case EAP_FAST_AUTHENTICATION:
 		code = PW_CODE_ACCESS_CHALLENGE;
 		break;
+
 	case EAP_FAST_CRYPTOBIND_CHECK:
 	{
 		if (t->mode != EAP_FAST_PROVISIONING_ANON && !t->pac.send)
