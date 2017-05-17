@@ -146,7 +146,7 @@ ssize_t fr_utf8_str(uint8_t const *str, ssize_t inlen)
 	uint8_t const *p, *end;
 	size_t len;
 
-	len = inlen < 0 ? strlen((char const *)str) : inlen;
+	len = inlen < 0 ? strlen((char const *)str) : (size_t) inlen;
 
 	p = str;
 	end = p + len;
