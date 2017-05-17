@@ -422,75 +422,51 @@ unexpected:
 	return 1;
 }
 
-
-VALUE_PAIR *eap_fast_fast2vp(REQUEST *request, SSL *ssl, uint8_t const *data, size_t data_len,
-                             fr_dict_attr_t const *fast_da, vp_cursor_t *out)
+/**
+ *
+ * FIXME do something with mandatory
+ */
+ssize_t eap_fast_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
+			     uint8_t const *data, size_t data_len,
+			     UNUSED void *decoder_ctx)
 {
-	uint16_t	attr;
-	uint16_t	length;
-	size_t		data_left = data_len;
-	VALUE_PAIR	*first = NULL;
-	fr_dict_attr_t const *da;
-
-	if (!fast_da)
-		fast_da = fr_dict_attr_by_num(NULL, 0, PW_EAP_FAST_TLV);
-	rad_assert(fast_da != NULL);
-
-	if (!out) {
-		out = talloc(request, vp_cursor_t);
-		rad_assert(out != NULL);
-		fr_pair_cursor_init(out, &first);
-	}
+	fr_dict_attr_t const	*da;
+	uint8_t	const		*p = data, *end = p + data_len;
 
 	/*
-	 * Decode the TLVs
+	 *	Decode the TLVs
 	 */
-	while (data_left > 0) {
-		ssize_t decoded;
+	while (p < end) {
+		ssize_t		ret;
+		uint16_t	attr;
+		uint16_t	len;
+		VALUE_PAIR	*vp;
 
-		/* FIXME do something with mandatory */
+		attr = ntohs(*((uint16_t const *)p)) & EAP_FAST_TLV_TYPE;
+		p += 2;
+		len = ntohs(*((uint16_t const *)p));
+		p += 2;
 
-		memcpy(&attr, data, sizeof(attr));
-		attr = ntohs(attr) & EAP_FAST_TLV_TYPE;
-
-		memcpy(&length, data + 2, sizeof(length));
-		length = ntohs(length);
-
-		data += 4;
-		data_left -= 4;
-
-		/*
-		 * Look up the TLV.
-		 *
-		 * For now, if it doesn't exist, ignore it.
-		 */
-		da = fr_dict_attr_child_by_num(fast_da, attr);
-		if (!da) goto next_attr;
-
-		if (da->type == FR_TYPE_TLV) {
-			eap_fast_fast2vp(request, ssl, data, length, da, out);
-			goto next_attr;
+		da = fr_dict_attr_child_by_num(parent, attr);
+		if (!da) {
+			MEM(vp = fr_pair_alloc(ctx));
+			MEM(vp->da = fr_dict_unknown_afrom_fields(vp, parent, parent->vendor, attr));
+		} else if (da->type != FR_TYPE_TLV) {
+			p += (size_t) eap_fast_decode_pair(ctx, cursor, parent, data, data_len, decoder_ctx);
+			continue;
+		} else {
+			MEM(vp = fr_pair_afrom_da(ctx, da));
 		}
 
-		decoded = fr_radius_decode_pair_value(request, out, da, data, length, data_left, NULL);
-		if (decoded < 0) {
-			RERROR("Failed decoding %s: %s", da->name, fr_strerror());
-			goto next_attr;
+		ret = fr_value_box_from_network(vp, &vp->data, vp->vp_type, vp->da, p, len, true);
+		if (ret != len) {
+			fr_pair_to_unknown(vp);
+			fr_pair_value_memcpy(vp, p, len);
 		}
-
-	next_attr:
-		while (fr_pair_cursor_next(out)) {
-			/* nothing */
-		}
-
-		data += length;
-		data_left -= length;
+		p += len;
 	}
 
-	/*
-	 * We got this far.  It looks OK.
-	 */
-	return first;
+	return p - data;
 }
 
 
@@ -937,7 +913,8 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_sessio
 PW_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 {
 	PW_CODE			code;
-	VALUE_PAIR		*fast_vps;
+	VALUE_PAIR		*fast_vps = NULL;
+	vp_cursor_t		cursor;
 	uint8_t const		*data;
 	size_t			data_len;
 	eap_fast_tunnel_t	*t;
@@ -990,7 +967,9 @@ PW_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 		return PW_CODE_ACCESS_CHALLENGE;
 	}
 
-	fast_vps = eap_fast_fast2vp(request, tls_session->ssl, data, data_len, NULL, NULL);
+	fr_pair_cursor_init(&cursor, &fast_vps);
+	if (eap_fast_decode_pair(request, &cursor, fr_dict_attr_by_num(NULL, 0, PW_EAP_FAST_TLV),
+				 data, data_len, NULL) < 0) return PW_CODE_ACCESS_REJECT;
 
 	RDEBUG("Got Tunneled FAST TLVs");
 	rdebug_pair_list(L_DBG_LVL_1, request, fast_vps, NULL);

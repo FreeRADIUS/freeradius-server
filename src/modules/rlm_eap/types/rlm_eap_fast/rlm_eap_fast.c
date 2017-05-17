@@ -210,7 +210,7 @@ static int _session_ticket(SSL *s, uint8_t const *data, int len, void *arg)
 	tls_session_t		*tls_session = arg;
 	REQUEST			*request = (REQUEST *)SSL_get_ex_data(s, FR_TLS_EX_INDEX_REQUEST);
 	eap_fast_tunnel_t	*t;
-	VALUE_PAIR		*fast_vps = NULL;
+	VALUE_PAIR		*fast_vps = NULL, *vp;
 	vp_cursor_t		cursor;
 	fr_dict_attr_t const	*fast_da;
 	char const		*errmsg;
@@ -276,10 +276,12 @@ error:
 	fast_da = fr_dict_attr_by_name(NULL, "EAP-FAST-PAC-Opaque-TLV");
 	rad_assert(fast_da != NULL);
 
-	fast_vps = eap_fast_fast2vp((REQUEST *)tls_session, s, (uint8_t *)&opaque_plaintext, plen, fast_da, NULL);
-	if (!fast_vps) return 0;
+	fr_pair_cursor_init(&cursor, &fast_vps);
+	if (eap_fast_decode_pair(tls_session, &cursor, fast_da, (uint8_t *)&opaque_plaintext, plen, NULL) < 0) {
+		goto error;
+	}
 
-	for (VALUE_PAIR *vp = fr_pair_cursor_init(&cursor, &fast_vps); vp; vp = fr_pair_cursor_next(&cursor)) {
+	for (vp = fr_pair_cursor_first(&cursor); vp; vp = fr_pair_cursor_next(&cursor)) {
 		char *value;
 
 		switch (vp->da->attr) {
@@ -287,11 +289,13 @@ error:
 			rad_assert(t->pac.type == 0);
 			t->pac.type = vp->vp_uint32;
 			break;
+
 		case PAC_INFO_PAC_LIFETIME:
 			rad_assert(t->pac.expires == 0);
 			t->pac.expires = vp->vp_uint32;
 			t->pac.expired = (vp->vp_uint32 <= time(NULL));
 			break;
+
 		case PAC_INFO_PAC_KEY:
 			rad_assert(t->pac.key == NULL);
 			rad_assert(vp->vp_length == PAC_KEY_LENGTH);
@@ -299,6 +303,7 @@ error:
 			rad_assert(t->pac.key != NULL);
 			memcpy(t->pac.key, vp->vp_octets, PAC_KEY_LENGTH);
 			break;
+
 		default:
 			value = fr_pair_asprint(tls_session, vp, '"');
 			RERROR("unknown TLV: %s", value);

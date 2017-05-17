@@ -254,7 +254,8 @@ PW_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 /*
  *	A bunch of EAP-FAST helper functions.
  */
-VALUE_PAIR *eap_fast_fast2vp(REQUEST *request, UNUSED SSL *ssl, uint8_t const *data,
-			     size_t data_len, fr_dict_attr_t const *fast_da, vp_cursor_t *out);
+ssize_t		eap_fast_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
+			     	     uint8_t const *data, size_t data_len,
+			     	     UNUSED void *decoder_ctx);
 
 #endif /* _EAP_FAST_H */
