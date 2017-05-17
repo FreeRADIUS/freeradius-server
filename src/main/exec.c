@@ -86,7 +86,6 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 			   VALUE_PAIR *input_pairs, bool shell_escape)
 {
 #ifndef __MINGW32__
-	char *p;
 	VALUE_PAIR *vp;
 	int n;
 	int to_child[2] = {-1, -1};
@@ -169,6 +168,8 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 			 */
 			snprintf(buffer, sizeof(buffer), "%s=", vp->da->name);
 			if (shell_escape) {
+				char *p;
+
 				for (p = buffer; *p != '='; p++) {
 					if (*p == '-') {
 						*p = '_';
