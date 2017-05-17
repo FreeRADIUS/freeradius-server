@@ -187,7 +187,8 @@ static ssize_t cond_tokenize_string(TALLOC_CTX *ctx, char **out,  char const **e
 			 */
 			if (quote == '/') quote = '\0';
 
-			if (fr_value_box_from_str(ctx, &data, &src_type, NULL, start + 1, p - (start + 1), quote) < 0) {
+			if (fr_value_box_from_str(ctx, &data, &src_type, NULL,
+						  start + 1, p - (start + 1), quote, false) < 0) {
 				*error = "error parsing string";
 				return -1;
 			}

@@ -1977,7 +1977,7 @@ int fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, size_t inlen)
 	 *	We presume that the input data is from a double quoted
 	 *	string, and needs escaping
 	 */
-	if (fr_value_box_from_str(vp, &vp->data, &type, vp->da, value, inlen, '"') < 0) return -1;
+	if (fr_value_box_from_str(vp, &vp->data, &type, vp->da, value, inlen, '"', false) < 0) return -1;
 
 	/*
 	 *	If we parsed to a different type than the DA associated with

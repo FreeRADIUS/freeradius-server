@@ -1013,7 +1013,8 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
 
 	parse:
 		if (do_unescape) {
-			if (fr_value_box_from_str(ctx, &data, &data_type, NULL, in, inlen, quote) < 0) return 0;
+			if (fr_value_box_from_str(ctx, &data, &data_type, NULL,
+						  in, inlen, quote, false) < 0) return 0;
 
 			vpt = tmpl_alloc(ctx, TMPL_TYPE_UNPARSED, data.datum.strvalue,
 					 talloc_array_length(data.datum.strvalue) - 1, type);
@@ -1053,7 +1054,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
 		 */
 		if (do_unescape) {
 			if (fr_value_box_from_str(ctx, &data, &data_type, NULL, in,
-						  inlen, fr_token_quote[type]) < 0) return -1;
+						  inlen, fr_token_quote[type], false) < 0) return -1;
 			if (do_xlat) {
 				vpt = tmpl_alloc(ctx, TMPL_TYPE_XLAT, data.datum.strvalue,
 						 talloc_array_length(data.datum.strvalue) - 1, type);
@@ -1077,7 +1078,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
 	case T_BACK_QUOTED_STRING:
 		if (do_unescape) {
 			if (fr_value_box_from_str(ctx, &data, &data_type, NULL, in,
-						  inlen, fr_token_quote[type]) < 0) return -1;
+						  inlen, fr_token_quote[type], false) < 0) return -1;
 
 			vpt = tmpl_alloc(ctx, TMPL_TYPE_EXEC, data.datum.strvalue,
 					 talloc_array_length(data.datum.strvalue) - 1, type);
@@ -1156,7 +1157,7 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enu
 		 *	Why do we pass a pointer to the tmpl type? Goddamn WiMAX.
 		 */
 		if (fr_value_box_from_str(vpt, &vpt->tmpl_value_box, &vpt->tmpl_fr_value_box_type,
-					  enumv, vpt->name, vpt->len, '\0') < 0) return -1;
+					  enumv, vpt->name, vpt->len, '\0', false) < 0) return -1;
 		vpt->type = TMPL_TYPE_DATA;
 		break;
 
@@ -1773,7 +1774,8 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		 *
 		 *	@fixme We need a way of signalling xlat not to escape things.
 		 */
-		ret = fr_value_box_from_str(tmp_ctx, &tmp, &src_type, NULL, value.datum.strvalue, value.datum.length, '"');
+		ret = fr_value_box_from_str(tmp_ctx, &tmp, &src_type, NULL,
+					    value.datum.strvalue, value.datum.length, '"', false);
 		if (ret < 0) goto error;
 
 		value.datum.strvalue = tmp.datum.strvalue;
@@ -1804,7 +1806,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		 *	@fixme We need a way of signalling xlat not to escape things.
 		 */
 		ret = fr_value_box_from_str(tmp_ctx, &tmp, &src_type, NULL,
-					    value.datum.strvalue, value.datum.length, '"');
+					    value.datum.strvalue, value.datum.length, '"', false);
 		if (ret < 0) goto error;
 
 		value.datum.strvalue = tmp.datum.strvalue;

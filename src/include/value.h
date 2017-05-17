@@ -238,7 +238,7 @@ int		fr_value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, ui
  */
 int		fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				      fr_type_t *src_type, fr_dict_attr_t const *src_enumv,
-				      char const *src, ssize_t src_len, char quote);
+				      char const *src, ssize_t src_len, char quote, bool tainted);
 
 /*
  *	Printing

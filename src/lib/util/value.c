@@ -1444,7 +1444,7 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 
 	case FR_TYPE_STRING:
 		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->datum.strvalue, src->datum.length, '\0') < 0) return -1;
+				          src->datum.strvalue, src->datum.length, '\0', false) < 0) return -1;
 		break;
 
 	case FR_TYPE_OCTETS:
@@ -1545,7 +1545,7 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 
 	case FR_TYPE_STRING:
 		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->datum.strvalue, src->datum.length, '\0') < 0) return -1;
+				          src->datum.strvalue, src->datum.length, '\0', false) < 0) return -1;
 		break;
 
 
@@ -1655,7 +1655,7 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
 
 	case FR_TYPE_STRING:
 		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->datum.strvalue, src->datum.length, '\0') < 0) return -1;
+				          src->datum.strvalue, src->datum.length, '\0', false) < 0) return -1;
 		break;
 
 	case FR_TYPE_OCTETS:
@@ -1738,7 +1738,7 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
 
 	case FR_TYPE_STRING:
 		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->datum.strvalue, src->datum.length, '\0') < 0) return -1;
+				          src->datum.strvalue, src->datum.length, '\0', false) < 0) return -1;
 		break;
 
 	case FR_TYPE_OCTETS:
@@ -1869,7 +1869,8 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	 *	Deserialise a fr_value_box_t
 	 */
 	if (src->type == FR_TYPE_STRING) return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-								      src->datum.strvalue, src->datum.length, '\0');
+								      src->datum.strvalue,
+								      src->datum.length, '\0', false);
 
 	if ((src->type == FR_TYPE_IFID) &&
 	    (dst_type == FR_TYPE_UINT64)) {
@@ -2819,13 +2820,14 @@ static int fr_value_box_integer_str(fr_value_box_t *dst, fr_type_t dst_type, cha
  *				length, else inlen should be the length of the string or
  *				sub string to parse.
  * @param[in] quote		character used set unescape mode.  @see value_str_unescape.
+ * @param[in] tainted		Whether the value came from a trusted source.
  * @return
  *	- 0 on success.
  *	- -1 on parse error.
  */
 int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 			  fr_type_t *dst_type, fr_dict_attr_t const *dst_enumv,
-			  char const *in, ssize_t inlen, char quote)
+			  char const *in, ssize_t inlen, char quote, bool tainted)
 {
 	size_t		len;
 	ssize_t		ret;
@@ -3253,6 +3255,7 @@ parse:
 finish:
 	dst->datum.length = ret;
 	dst->type = *dst_type;
+	dst->tainted = tainted;
 
 	/*
 	 *	Fixup enumv

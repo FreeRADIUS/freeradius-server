@@ -2046,7 +2046,7 @@ static int dict_read_process_value(fr_dict_t *dict, char **argv, int argc)
 	{
 		fr_type_t type = da->type;	/* Might change - Stupid combo IP */
 
-		if (fr_value_box_from_str(NULL, &value, &type, NULL, argv[2], -1, '\0') < 0) {
+		if (fr_value_box_from_str(NULL, &value, &type, NULL, argv[2], -1, '\0', false) < 0) {
 			fr_strerror_printf_push("Invalid VALUE for ATTRIBUTE \"%s\"", da->name);
 			return -1;
 		}
@@ -2829,7 +2829,7 @@ int fr_dict_from_file(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char co
 			type = da->type;
 
 			if (fr_value_box_from_str(this, &value, &type, NULL,
-						  this->value, talloc_array_length(this->value) - 1, '\0') < 0) {
+						  this->value, talloc_array_length(this->value) - 1, '\0', false) < 0) {
 				fr_strerror_printf_push("Invalid VALUE for ATTRIBUTE \"%s\"", da->name);
 				goto error;
 			}
