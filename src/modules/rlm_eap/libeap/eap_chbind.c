@@ -207,9 +207,7 @@ PW_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 	fake->server = "channel_bindings";
 	fake->packet->code = PW_CODE_ACCESS_REQUEST;
 
-	rcode = rad_virtual_server(fake);
-
-	switch (rcode) {
+	switch (rad_virtual_server(fake)) {
 		/* If rad_authenticate succeeded, build a reply */
 	case RLM_MODULE_OK:
 	case RLM_MODULE_HANDLED:
