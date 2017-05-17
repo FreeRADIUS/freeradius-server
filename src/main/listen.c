@@ -168,28 +168,17 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 #endif
 
 	/*
-	 *	Prefer namespace prefixes where available.
-	 */
-	cp = cf_pair_find(server, "namespace");
-
-	/*
 	 *	Anything NOT these types are plugins.
 	 *
 	 *	At some point, we'll move all of these to plugins.
 	 */
-	if (cp || !((strcmp(type, "control") == 0) ||
-		    (strcmp(type, "status") == 0) ||
-		    (strcmp(type, "coa") == 0) ||
-		    (strcmp(type, "auth") == 0) ||
-		    (strcmp(type, "acct") == 0) ||
-		    (strcmp(type, "auth+acct") == 0))) {
+	if (!((strcmp(type, "control") == 0) ||
+	      (strcmp(type, "status") == 0) ||
+	      (strcmp(type, "coa") == 0) ||
+	      (strcmp(type, "auth") == 0) ||
+	      (strcmp(type, "acct") == 0) ||
+	      (strcmp(type, "auth+acct") == 0))) {
 		static uint32_t	max_listener = 256;
-		char		buffer[256];
-
-		if (cp) {
-			snprintf(buffer, sizeof(buffer), "%s_%s", cf_pair_value(cp), type);
-			type = buffer;
-		}
 
 		module = dl_module(cs, NULL, type, DL_TYPE_PROTO);
 		if (!module) return -1;
