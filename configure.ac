@@ -2096,6 +2096,9 @@ if test "x$EXPERIMENTAL" = "xyes"; then
   for foo in `ls -1 "${srcdir}"/src/modules | grep rlm_`; do
     MODULES="$MODULES $foo"
   done
+  for foo in `ls -1 "${srcdir}"/src/modules/rlm_eap/types/ | grep rlm_`; do
+    MODULES="$MODULES $foo"
+  done
 else
    dnl #
    dnl #  make ONLY the stable modules
