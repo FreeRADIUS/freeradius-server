@@ -286,7 +286,7 @@ VALUE_PAIR *eap_chbind_packet2vp(RADIUS_PACKET *packet, chbind_packet_t *chbind)
 
 	if (!chbind) return NULL; /* don't produce garbage */
 
-	vp = fr_pair_afrom_num(packet, PW_UKERNA_CHBIND, VENDORPEC_UKERNA);
+	vp = fr_pair_afrom_num(packet, VENDORPEC_UKERNA, PW_UKERNA_CHBIND);
 	if (!vp) return NULL;
 	fr_pair_value_memcpy(vp, (uint8_t *) chbind, talloc_array_length((uint8_t *)chbind));
 
