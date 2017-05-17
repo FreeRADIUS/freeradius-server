@@ -1157,7 +1157,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 			if ((packet->data[1] == 1) && (packet->data[2] != sizeof(vp->vp_ether))) {
 				fr_dict_attr_t const *da;
 
-				da = fr_dict_unknown_afrom_fields(packet, fr_dict_root(fr_dict_internal),
+				da = fr_dict_unknown_afrom_fields(packet, vp->da->parent,
 								  vp->da->vendor, vp->da->attr);
 				if (!da) {
 					return -1;
