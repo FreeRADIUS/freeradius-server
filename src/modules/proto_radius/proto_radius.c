@@ -63,29 +63,62 @@ static const type2lib_t type2lib[] = {
 	{ NULL, NULL }
 };
 
-
-/** Compile the RADIUS protocol in a particular virtual server.
+/*
+ *	Compile the "listen" section
  *
+ *	- dlopen type
+ *	- add protocol
+ *
+ *	proto_radius_status - many subtypes
+ *	proto_radius_udp - one network thingy
+ *
+ * foreach "listen" section:
+ * - parse multi-valued "type"
+ * - parse single-valued "transport"
+ * - conf_file is hacked to *not* print out final "}"
+ * - foreach type, link to it
+ * - open transport and parse it
+ * - print out final "}" via closing brace...
+ * - foreach type, compile it
+ *
+ *
+ *
+ *
+ *	Probably two passes:
+ *		one - link the types and compile the subtypes
+ *		two - create the network stuff
+ *		three - print out the config items we touched, so that it can handle them?
+ *
+ *	or maybe use the existing CONF_PARSER to do all of the work.. which means that proto_radius
+ *	has to be aware of the subtypes, too.
  */
-static fr_app_io_t *proto_radius_compile(CONF_SECTION *cs)
+
+typedef struct pr_config_t {
+	char const	**types;
+	char const	*transport;
+} pr_config_t;
+
+
+static const CONF_PARSER proto_radius_config[] = {
+	{ FR_CONF_OFFSET("type", FR_TYPE_STRING | FR_TYPE_MULTI, pr_config_t, types), .dflt = "Status-Server" },
+	{ FR_CONF_OFFSET("transport", FR_TYPE_STRING, pr_config_t, transport), .dflt = "udp" },
+
+	CONF_PARSER_TERMINATOR
+};
+
+
+static int compile_packet(CONF_SECTION *server, CONF_SECTION *cs, char const *value)
 {
 	int i;
-	char const *value, *lib;
+	char const *lib;
 	dl_t const *module;
 	fr_app_subtype_t const *app;
-	CONF_PAIR *cp;
 
-	cp = cf_pair_find(cs, "type");
-	if (!cp) {
-		cf_log_err_cs(cs, "Failed to find 'type'");
-		return NULL;
-	}
-
-	value = cf_pair_value(cp);
-	if (!value) {
-		cf_log_err_cs(cs, "Invalid value for 'type'");
-		return NULL;
-	}
+	/*
+	 *	Already loaded the module in this virtual
+	 *	server, don't do anything more.
+	 */
+	if (cf_data_find(server, dl_t, value)) return 0;
 
 	/*
 	 *	Convert "Access-Request" -> "auth"
@@ -99,25 +132,98 @@ static fr_app_io_t *proto_radius_compile(CONF_SECTION *cs)
 	}
 
 	if (!lib) {
-		cf_log_err_cs(cs, "Unknown packet type %s", value);
-		return NULL;
-	}
-
-	module = dl_module(cs, NULL, lib, DL_TYPE_PROTO);
-	if (!module) {
-		cf_log_err_cs(cs, "Failed finding submodule library for %s", value);
-		return NULL;
-	}
-
-	app = (fr_app_subtype_t const *) module->common;
-
-	if (app->compile(cs) < 0) {
-		cf_log_err_cs(cs, "Failed compiling unlang for 'type = %s'", value);
-		return NULL;
+		cf_log_err_cs(cs, "Unknown 'type = %s'", value);
+		return -1;
 	}
 
 	/*
-	 *	cf_data_add?
+	 *	Load the module.
+	 */
+	module = dl_module(cs, NULL, lib, DL_TYPE_PROTO);
+	if (!module) {
+		cf_log_err_cs(cs, "Failed finding submodule library for %s", value);
+		return -1;
+	}
+
+	/*
+	 *	Compile the sections in the server.
+	 */
+	app = (fr_app_subtype_t const *) module->common;
+	if (app->compile(server) < 0) {
+		cf_log_err_cs(server, "Failed compiling unlang for 'type = %s'", value);
+		return -1;
+	}
+
+	/*
+	 *	Remember that we loaded the module in the server.
+	 */
+	cf_data_add(server, module, value, false);
+
+	return 0;
+}
+
+
+static int compile_listen(CONF_SECTION *server, CONF_SECTION *cs)
+{
+	size_t i;
+	pr_config_t config;
+
+	if ((cf_section_parse(cs, &config, cs, proto_radius_config) < 0) ||
+	    (cf_section_parse_pass2(&config, cs, proto_radius_config) < 0)) {
+		cf_log_err_cs(cs, "Failed parsing listen { ...}");
+		return -1;
+	}
+
+	if (!config.types) {
+		cf_log_err_cs(cs, "type MUST be specified");
+		return -1;
+	}
+
+	if (!config.transport) {
+		cf_log_err_cs(cs, "transport MUST be specified");
+		return -1;
+	}
+
+	for (i = 0; i < talloc_array_length(config.types); i++) {
+		if (compile_packet(server, cs, config.types[i]) < 0) {
+			cf_log_err_cs(server, "Failed compiling unlang for 'type = %s'",
+				      config.types[i]);
+			return -1;
+		}
+	}
+
+	/*
+	 *	Call transport-specific things to open the socket.
+	 */
+
+	return 0;
+}
+
+
+/** Compile the RADIUS protocol in a particular virtual server.
+ *
+ */
+static fr_app_io_t *proto_radius_compile(CONF_SECTION *cs)
+{
+//	CONF_PAIR *cp;
+	CONF_SECTION *subcs;
+
+	/*
+	 *	Load all of the listen sections.  They do all of the
+	 *	dirty work.
+	 */
+	for (subcs = cf_subsection_find_next(cs, NULL, "listen");
+	     subcs != NULL;
+	     subcs = cf_subsection_find_next(cs, cs, "listen")) {
+		if (compile_listen(cs, subcs) < 0) {
+			return NULL;
+		}
+	}
+
+	/*
+	 *	@todo - actually get the listeners, and add them to an
+	 *	array. And what to do for virtual servers which don't
+	 *	have a "listen" section?
 	 */
 
 	return NULL;
