@@ -223,7 +223,7 @@ static int status_compile_section(CONF_SECTION *server_cs, char const *name1, ch
 	cs = cf_subsection_find_name2(server_cs, name1, name2);
 	if (!cs) return 0;
 
-	cf_log_module(cs, "Loading %s %s {...}", name1, name2);
+	cf_log_module(cs, "Compiling policies - %s %s {...}", name1, name2);
 
 	/*
 	 *	FIXME: check if it's already compiled?
