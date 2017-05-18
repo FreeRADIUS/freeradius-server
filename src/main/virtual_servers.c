@@ -670,16 +670,22 @@ int virtual_servers_init(CONF_SECTION *config)
 
 			app = (fr_app_t const *) module->common;
 
+			cf_log_info(cs, "server %s { # from file %s",
+				    name2, cf_section_filename(cs));
+			cf_log_info(cs, "  namespace = %s", app->name);
+
 			if (app->compile) {
 				io = app->compile(cs);
 				if (!io) {
 					cf_log_err_cs(cs, "Failed loading virtual server %s", name2);
+					cf_log_err_cs(cs, "Ignoring until the new code works...");
 					continue;
 				}
 
 				DEBUG("Loaded Protocol %s", module->name);
 			}
 
+			cf_log_info(cs, "} # server %s", name2);
 			continue;
 		}
 
