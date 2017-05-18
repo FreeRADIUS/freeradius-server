@@ -363,6 +363,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 		SET_OPTION(CURLOPT_URL, inst->connect_uri);
 		SET_OPTION(CURLOPT_NOSIGNAL, 1);
 		if (inst->connect_proxy) SET_OPTION(CURLOPT_PROXY, inst->connect_proxy);
+		if (inst->src_interface) SET_OPTION(CURLOPT_INTERFACE, inst->src_interface);
 
 		DEBUG("Connecting to \"%s\"", inst->connect_uri);
 

@@ -92,6 +92,7 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("connect_uri", PW_TYPE_STRING, rlm_rest_t, connect_uri) },
 	{ FR_CONF_DEPRECATED("connect_timeout", PW_TYPE_TIMEVAL, rlm_rest_t, connect_timeout) },
 	{ FR_CONF_OFFSET("connect_proxy", PW_TYPE_STRING, rlm_rest_t, connect_proxy) },
+	{ FR_CONF_OFFSET("src_interface", PW_TYPE_STRING, rlm_rest_t, src_interface) },
 	CONF_PARSER_TERMINATOR
 };
 

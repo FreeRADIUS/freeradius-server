@@ -52,6 +52,12 @@ rest {
 #	connect_proxy = "socks://127.0.0.1"
 
 	#
+	#  Set a specific source interface or IP address for outgoing traffic.
+	#  (Refer to libcurl CURLOPT_INTERFACE option.)
+	#
+#	src_interface = ""
+
+	#
 	#  The following config items can be used in each of the sections.
 	#  The sections themselves reflect the sections in the server.
 	#  For example if you list rest in the authorize section of a virtual server,

@@ -151,6 +151,8 @@ typedef struct rlm_rest_t {
 
 	char const		*connect_proxy;	//!< Send request via this proxy.
 
+	char const		*src_interface;	//!< Source interface or IP address.
+
 	fr_connection_pool_t	*pool;		//!< Pointer to the connection pool.
 
 	rlm_rest_section_t	xlat;		//!< Configuration specific to xlat.
