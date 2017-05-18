@@ -198,7 +198,7 @@ moonshot_make_targeted_id.post-auth {
 	}
 }
 
-#  This is the generic generation policy. It requires moonshot_host_tid, moonshot_realm_tid, or moonshot_coi_tid to set variables
+#  This is the generic retrieval policy. It requires moonshot_host_tid, moonshot_realm_tid, or moonshot_coi_tid to set variables
 #
 moonshot_get_targeted_id.post-auth {
 	#  uses variables set in the control list
