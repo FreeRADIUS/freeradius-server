@@ -914,7 +914,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 	uint8_t const		*p = data;
 	uint8_t			buffer[256];
 	fr_radius_ctx_t		*packet_ctx = decoder_ctx;
-	size_t			min, max;
+	size_t			min = 0, max = 0;
 
 	if (!parent || (attr_len > packet_len) || (attr_len > 128 * 1024)) {
 		fr_strerror_printf("%s: Invalid arguments", __FUNCTION__);
@@ -930,7 +930,6 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 	 *	Silently ignore zero-length attributes.
 	 */
 	if (attr_len == 0) return 0;
-
 
 	/*
 	 *	Hacks for tags.  If the attribute is capable of
