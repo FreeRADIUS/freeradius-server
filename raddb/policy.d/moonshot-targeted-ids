@@ -208,7 +208,7 @@ moonshot_get_targeted_id.post-auth {
 		#
 		update control {
 			Moonshot-MSTID-TargetedId := "%{moonshot_tid_sql:\
-				SELECT targeted_id FROM `moonshot-targeted-ids` \
+				SELECT targeted_id FROM moonshot_targeted_ids \
 				WHERE gss_acceptor = '%{control:Moonshot-MSTID-GSS-Acceptor}' \
 				AND namespace = '%{control:Moonshot-MSTID-Namespace}' \
 				AND username = '%{tolower:%{User-Name}}'}"
