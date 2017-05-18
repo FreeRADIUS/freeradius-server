@@ -317,7 +317,14 @@ post-auth {
 
 	#
 	#  Un-comment the following if you want to generate Moonshot (ABFAB) TargetedIds
-	#  IMPORTANT: This requires the UUID package to be installed!
+	#
+	#  IMPORTANT: This requires the UUID package to be installed, and a targeted_id_salt
+	#             to be configured.
+	#
+	#  This functionality also supports SQL backing. To use this functionality, enable
+	#  and configure the moonshot-targeted-ids SQL module in the mods-enabled directory.
+	#  Then remove the comments from the appropriate lines in each of the below
+	#  policies in the policy.d/moonshot-targeted-ids file.
 	#
 #	moonshot_host_tid
 #	moonshot_realm_tid
