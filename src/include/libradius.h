@@ -33,6 +33,8 @@
 #include <freeradius-devel/build.h>
 RCSIDH(libradius_h, "$Id$")
 
+RCSIDH(libradius_h, "$Id$")
+
 /*
  *  Let any external program building against the library know what
  *  features the library was built with.
