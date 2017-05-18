@@ -5,11 +5,11 @@ RCSIDH(eap_leap_h, "$Id$")
 
 #include "eap.h"
 
-#define PW_LEAP_CHALLENGE	1
-#define PW_LEAP_RESPONSE	2
-#define PW_LEAP_SUCCESS		3
-#define PW_LEAP_FAILURE		4
-#define PW_LEAP_MAX_CODES	4
+#define FR_LEAP_CHALLENGE	1
+#define FR_LEAP_RESPONSE	2
+#define FR_LEAP_SUCCESS		3
+#define FR_LEAP_FAILURE		4
+#define FR_LEAP_MAX_CODES	4
 
 /*
  *  Version + unused + count

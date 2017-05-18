@@ -309,7 +309,7 @@ static ssize_t cond_tokenize_cast(char const *start, fr_dict_attr_t const **pda,
 		return -(p - start);
 	}
 
-	*pda = fr_dict_attr_by_num(NULL, 0, PW_CAST_BASE + cast);
+	*pda = fr_dict_attr_by_num(NULL, 0, FR_CAST_BASE + cast);
 	if (!*pda) {
 		*error = "Cannot cast to this data type";
 		return -(p - start);
@@ -526,7 +526,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 				return_P("Empty octet string is invalid");
 			}
 
-			c->cast = fr_dict_attr_by_num(NULL, 0, PW_CAST_BASE + FR_TYPE_OCTETS);
+			c->cast = fr_dict_attr_by_num(NULL, 0, FR_CAST_BASE + FR_TYPE_OCTETS);
 		}
 
 		while (isspace((int)*p)) p++; /* skip spaces after LHS */
@@ -799,7 +799,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 				      (map->lhs->tmpl_da->type == FR_TYPE_UINT16) ||
 				      (map->lhs->tmpl_da->type == FR_TYPE_UINT32) ||
 				      (map->lhs->tmpl_da->type == FR_TYPE_UINT64))) {
-					c->cast = fr_dict_attr_by_num(NULL, 0, PW_CAST_BASE + FR_TYPE_OCTETS);
+					c->cast = fr_dict_attr_by_num(NULL, 0, FR_CAST_BASE + FR_TYPE_OCTETS);
 				}
 			}
 
@@ -1066,14 +1066,14 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 					case FR_TYPE_IPV4_ADDR:
 						if (strchr(c->data.map->rhs->name, '/') != NULL) {
 							type = FR_TYPE_IPV4_PREFIX;
-							c->cast = fr_dict_attr_by_num(NULL, 0, PW_CAST_BASE + type);
+							c->cast = fr_dict_attr_by_num(NULL, 0, FR_CAST_BASE + type);
 						}
 						break;
 
 					case FR_TYPE_IPV6_ADDR:
 						if (strchr(c->data.map->rhs->name, '/') != NULL) {
 							type = FR_TYPE_IPV6_PREFIX;
-							c->cast = fr_dict_attr_by_num(NULL, 0, PW_CAST_BASE + type);
+							c->cast = fr_dict_attr_by_num(NULL, 0, FR_CAST_BASE + type);
 						}
 						break;
 
@@ -1092,16 +1092,16 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 						fr_dict_attr_t const *da = c->data.map->lhs->tmpl_da;
 
 						if ((da->vendor == 0) &&
-						    ((da->attr == PW_AUTH_TYPE) ||
-						     (da->attr == PW_AUTZ_TYPE) ||
-						     (da->attr == PW_ACCT_TYPE) ||
-						     (da->attr == PW_SESSION_TYPE) ||
-						     (da->attr == PW_POST_AUTH_TYPE) ||
-						     (da->attr == PW_PRE_PROXY_TYPE) ||
-						     (da->attr == PW_POST_PROXY_TYPE) ||
-						     (da->attr == PW_PRE_ACCT_TYPE) ||
-						     (da->attr == PW_RECV_COA_TYPE) ||
-						     (da->attr == PW_SEND_COA_TYPE))) {
+						    ((da->attr == FR_AUTH_TYPE) ||
+						     (da->attr == FR_AUTZ_TYPE) ||
+						     (da->attr == FR_ACCT_TYPE) ||
+						     (da->attr == FR_SESSION_TYPE) ||
+						     (da->attr == FR_POST_AUTH_TYPE) ||
+						     (da->attr == FR_PRE_PROXY_TYPE) ||
+						     (da->attr == FR_POST_PROXY_TYPE) ||
+						     (da->attr == FR_PRE_ACCT_TYPE) ||
+						     (da->attr == FR_RECV_COA_TYPE) ||
+						     (da->attr == FR_SEND_COA_TYPE))) {
 							/*
 							 *	The types for these attributes are dynamically allocated
 							 *	by modules.c, so we can't enforce strictness here.
@@ -1140,12 +1140,12 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 				     (c->data.map->rhs->type == TMPL_TYPE_EXEC))) {
 					if (c->data.map->lhs->tmpl_da->type == FR_TYPE_IPV4_ADDR) {
 						c->cast = fr_dict_attr_by_num(NULL, 0,
-									      PW_CAST_BASE + FR_TYPE_IPV4_PREFIX);
+									      FR_CAST_BASE + FR_TYPE_IPV4_PREFIX);
 					}
 
 					if (c->data.map->lhs->tmpl_da->type == FR_TYPE_IPV6_ADDR) {
 						c->cast = fr_dict_attr_by_num(NULL, 0,
-									      PW_CAST_BASE + FR_TYPE_IPV6_PREFIX);
+									      FR_CAST_BASE + FR_TYPE_IPV6_PREFIX);
 					}
 				}
 

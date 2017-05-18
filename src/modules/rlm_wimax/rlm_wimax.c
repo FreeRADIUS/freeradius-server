@@ -59,7 +59,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 	/*
 	 *	Fix Calling-Station-Id.  Damn you, WiMAX!
 	 */
-	vp = fr_pair_find_by_num(request->packet->vps, 0, PW_CALLING_STATION_ID, TAG_ANY);
+	vp = fr_pair_find_by_num(request->packet->vps, 0, FR_CALLING_STATION_ID, TAG_ANY);
 	if (vp && (vp->vp_length == 6)) {
 		int	i;
 		char	*p;
@@ -111,8 +111,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 	uint8_t			mip_rk_1[EVP_MAX_MD_SIZE], mip_rk_2[EVP_MAX_MD_SIZE];
 	uint8_t			mip_rk[2 * EVP_MAX_MD_SIZE];
 
-	msk = fr_pair_find_by_num(request->reply->vps, 0, PW_EAP_MSK, TAG_ANY);
-	emsk = fr_pair_find_by_num(request->reply->vps, 0, PW_EAP_EMSK, TAG_ANY);
+	msk = fr_pair_find_by_num(request->reply->vps, 0, FR_EAP_MSK, TAG_ANY);
+	emsk = fr_pair_find_by_num(request->reply->vps, 0, FR_EAP_EMSK, TAG_ANY);
 	if (!msk || !emsk) {
 		RDEBUG("No EAP-MSK or EAP-EMSK.  Cannot create WiMAX keys");
 		return RLM_MODULE_NOOP;
@@ -123,8 +123,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 	 *	the WiMAX-MSK so that the client has a key available.
 	 */
 	if (inst->delete_mppe_keys) {
-		fr_pair_delete_by_num(&request->reply->vps, VENDORPEC_MICROSOFT, PW_MSCHAP_MPPE_SEND_KEY, TAG_ANY);
-		fr_pair_delete_by_num(&request->reply->vps, VENDORPEC_MICROSOFT, PW_MSCHAP_MPPE_RECV_KEY, TAG_ANY);
+		fr_pair_delete_by_num(&request->reply->vps, VENDORPEC_MICROSOFT, FR_MSCHAP_MPPE_SEND_KEY, TAG_ANY);
+		fr_pair_delete_by_num(&request->reply->vps, VENDORPEC_MICROSOFT, FR_MSCHAP_MPPE_RECV_KEY, TAG_ANY);
 
 		vp = pair_make_reply("WiMAX-MSK", NULL, T_OP_EQ);
 		if (vp) {
@@ -196,8 +196,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 	/*
 	 *	Calculate mobility keys
 	 */
-	mn_nai = fr_pair_find_by_num(request->packet->vps, 0, PW_WIMAX_MN_NAI, TAG_ANY);
-	if (!mn_nai) mn_nai = fr_pair_find_by_num(request->reply->vps, 0, PW_WIMAX_MN_NAI, TAG_ANY);
+	mn_nai = fr_pair_find_by_num(request->packet->vps, 0, FR_WIMAX_MN_NAI, TAG_ANY);
+	if (!mn_nai) mn_nai = fr_pair_find_by_num(request->reply->vps, 0, FR_WIMAX_MN_NAI, TAG_ANY);
 	if (!mn_nai) {
 		RWDEBUG("WiMAX-MN-NAI was not found in the request or in the reply");
 		RWDEBUG("We cannot calculate MN-HA keys");

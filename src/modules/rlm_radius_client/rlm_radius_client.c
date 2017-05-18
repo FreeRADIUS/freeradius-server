@@ -266,9 +266,9 @@ static void mod_action_dup(REQUEST *request, void *instance, UNUSED void *thread
 	/*
 	 *	We retransmit only a few kinds of packets.
 	 */
-	if (!((packet->code == PW_CODE_ACCESS_REQUEST) ||
-	      (packet->code == PW_CODE_COA_REQUEST) ||
-	      (packet->code == PW_CODE_DISCONNECT_REQUEST))) {
+	if (!((packet->code == FR_CODE_ACCESS_REQUEST) ||
+	      (packet->code == FR_CODE_COA_REQUEST) ||
+	      (packet->code == FR_CODE_DISCONNECT_REQUEST))) {
 		return;
 	}
 
@@ -532,7 +532,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 		}
 	}
 
-	vp = fr_pair_afrom_num(packet, 0, PW_PROXY_STATE);
+	vp = fr_pair_afrom_num(packet, 0, FR_PROXY_STATE);
 	rad_assert(vp != NULL);
 	fr_pair_value_snprintf(vp, "%08x", fr_rand());
 	fr_pair_add(&packet->vps, vp);
@@ -548,14 +548,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	/*
 	 *	Access-Requests get special mangling.
 	 */
-	if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
+	if (request->packet->code == FR_CODE_ACCESS_REQUEST) {
 		/*
 		 *	Add CHAP-Challenge if necessary.
 		 */
 		if ((request->packet->code == packet->code) &&
-		    fr_pair_find_by_num(request->packet->vps, 0, PW_CHAP_PASSWORD, TAG_ANY) &&
-		    fr_pair_find_by_num(request->packet->vps, 0, PW_CHAP_CHALLENGE, TAG_ANY) == NULL) {
-			vp = radius_pair_create(packet, &packet->vps, PW_CHAP_CHALLENGE, 0);
+		    fr_pair_find_by_num(request->packet->vps, 0, FR_CHAP_PASSWORD, TAG_ANY) &&
+		    fr_pair_find_by_num(request->packet->vps, 0, FR_CHAP_CHALLENGE, TAG_ANY) == NULL) {
+			vp = radius_pair_create(packet, &packet->vps, FR_CHAP_CHALLENGE, 0);
 			fr_pair_value_memcpy(vp, request->packet->vector, sizeof(request->packet->vector));
 		}
 

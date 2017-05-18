@@ -215,12 +215,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	/*
 	 *	Can't do yubikey auth if there's no password.
 	 */
-	if (!request->password || (request->password->da->attr != PW_USER_PASSWORD)) {
+	if (!request->password || (request->password->da->attr != FR_USER_PASSWORD)) {
 		/*
 		 *	Don't print out debugging messages if we know
 		 *	they're useless.
 		 */
-		if (request->packet->code != PW_CODE_ACCESS_CHALLENGE) {
+		if (request->packet->code != FR_CODE_ACCESS_CHALLENGE) {
 			RDEBUG2("No cleartext password in the request. Can't do Yubikey authentication");
 		}
 
@@ -311,9 +311,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		fr_pair_value_bstrncpy(vp, passcode, inst->id_len);
 	}
 
-	dval = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, PW_AUTH_TYPE), inst->name);
+	dval = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE), inst->name);
 	if (dval) {
-		vp = radius_pair_create(request, &request->control, PW_AUTH_TYPE, 0);
+		vp = radius_pair_create(request, &request->control, FR_AUTH_TYPE, 0);
 		fr_value_box_copy(NULL, &vp->data, dval->value);
 	}
 
@@ -347,7 +347,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		/*
 		 *	Can't do yubikey auth if there's no password.
 		 */
-		if (!request->password || (request->password->da->attr != PW_USER_PASSWORD)) {
+		if (!request->password || (request->password->da->attr != FR_USER_PASSWORD)) {
 			REDEBUG("No User-Password in the request. Can't do Yubikey authentication");
 			return RLM_MODULE_INVALID;
 		}

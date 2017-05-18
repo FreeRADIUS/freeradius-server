@@ -106,7 +106,7 @@ static int check_for_realm(void const *instance, REQUEST *request, REALM **retur
 	 *      it already ( via another rlm_realm instance ) and should return.
 	 */
 
-	if (fr_pair_find_by_num(request->packet->vps, 0, PW_REALM, TAG_ANY) != NULL) {
+	if (fr_pair_find_by_num(request->packet->vps, 0, FR_REALM, TAG_ANY) != NULL) {
 		RDEBUG2("Request already has destination realm set.  Ignoring");
 		return RLM_MODULE_NOOP;
 	}
@@ -201,9 +201,9 @@ static int check_for_realm(void const *instance, REQUEST *request, REALM **retur
 		 *	doesn't exist.
 		 *
 		 */
-		if (request->username->da->attr != PW_STRIPPED_USER_NAME) {
+		if (request->username->da->attr != FR_STRIPPED_USER_NAME) {
 			vp = radius_pair_create(request->packet, &request->packet->vps,
-					       PW_STRIPPED_USER_NAME, 0);
+					       FR_STRIPPED_USER_NAME, 0);
 			RDEBUG2("Adding Stripped-User-Name = \"%s\"", username);
 		} else {
 			vp = request->username;
@@ -247,7 +247,7 @@ static int check_for_realm(void const *instance, REQUEST *request, REALM **retur
 		/*
 		 *	Perhaps accounting proxying was turned off.
 		 */
-	case PW_CODE_ACCOUNTING_REQUEST:
+	case FR_CODE_ACCOUNTING_REQUEST:
 		if (!realm->acct_pool) {
 			RDEBUG2("Accounting realm is LOCAL");
 			return RLM_MODULE_OK;
@@ -257,7 +257,7 @@ static int check_for_realm(void const *instance, REQUEST *request, REALM **retur
 		/*
 		 *	Perhaps authentication proxying was turned off.
 		 */
-	case PW_CODE_ACCESS_REQUEST:
+	case FR_CODE_ACCESS_REQUEST:
 		if (!realm->auth_pool) {
 			RDEBUG2("Authentication realm is LOCAL");
 			return RLM_MODULE_OK;
@@ -273,7 +273,7 @@ static int check_for_realm(void const *instance, REQUEST *request, REALM **retur
 	 *	Skip additional checks if it's not an accounting
 	 *	request.
 	 */
-	if (request->packet->code != PW_CODE_ACCOUNTING_REQUEST) {
+	if (request->packet->code != FR_CODE_ACCOUNTING_REQUEST) {
 		*returnrealm = realm;
 		return RLM_MODULE_UPDATED;
 	}
@@ -291,7 +291,7 @@ static int check_for_realm(void const *instance, REQUEST *request, REALM **retur
 	 *      that has already proxied the request, we don't need to do
 	 *      it again.
 	 */
-	vp = fr_pair_find_by_num(request->packet->vps, 0, PW_FREERADIUS_PROXIED_TO, TAG_ANY);
+	vp = fr_pair_find_by_num(request->packet->vps, 0, FR_FREERADIUS_PROXIED_TO, TAG_ANY);
 	if (vp && (request->packet->src_ipaddr.af == AF_INET)) {
 		int i;
 		fr_ipaddr_t my_ipaddr;
@@ -470,12 +470,12 @@ static rlm_rcode_t mod_realm_recv_coa(UNUSED void *instance, UNUSED void *thread
 	VALUE_PAIR *vp;
 	REALM *realm;
 
-	if (fr_pair_find_by_num(request->packet->vps, 0, PW_REALM, TAG_ANY) != NULL) {
+	if (fr_pair_find_by_num(request->packet->vps, 0, FR_REALM, TAG_ANY) != NULL) {
 		RDEBUG2("Request already has destination realm set.  Ignoring");
 		return RLM_MODULE_NOOP;
 	}
 
-	vp = fr_pair_find_by_num(request->packet->vps, 0, PW_OPERATOR_NAME, TAG_ANY);
+	vp = fr_pair_find_by_num(request->packet->vps, 0, FR_OPERATOR_NAME, TAG_ANY);
 	if (!vp) return RLM_MODULE_NOOP;
 
 	/*

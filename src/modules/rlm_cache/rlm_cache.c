@@ -157,9 +157,9 @@ static rlm_rcode_t cache_merge(rlm_cache_t const *inst, REQUEST *request, rlm_ca
 
 	if (inst->config.stats) {
 		rad_assert(request->packet != NULL);
-		vp = fr_pair_find_by_num(request->packet->vps, 0, PW_CACHE_ENTRY_HITS, TAG_ANY);
+		vp = fr_pair_find_by_num(request->packet->vps, 0, FR_CACHE_ENTRY_HITS, TAG_ANY);
 		if (!vp) {
-			vp = fr_pair_afrom_num(request->packet, 0, PW_CACHE_ENTRY_HITS);
+			vp = fr_pair_afrom_num(request->packet, 0, FR_CACHE_ENTRY_HITS);
 			rad_assert(vp != NULL);
 			fr_pair_add(&request->packet->vps, vp);
 		}
@@ -344,10 +344,10 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 			 *	cache control attributes.
 			 */
 			if (map->rhs->type == TMPL_TYPE_LIST) switch (vp->da->attr) {
-			case PW_CACHE_TTL:
-			case PW_CACHE_STATUS_ONLY:
-			case PW_CACHE_MERGE_NEW:
-			case PW_CACHE_ENTRY_HITS:
+			case FR_CACHE_TTL:
+			case FR_CACHE_STATUS_ONLY:
+			case FR_CACHE_MERGE_NEW:
+			case FR_CACHE_ENTRY_HITS:
 				RDEBUG2("Skipping %s", vp->da->name);
 				continue;
 
@@ -433,7 +433,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 	/*
 	 *	Check to see if we need to merge the entry into the request
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, PW_CACHE_MERGE_NEW, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, FR_CACHE_MERGE_NEW, TAG_ANY);
 	if (vp && (vp->vp_uint32 > 0)) merge = true;
 
 	if (merge) cache_merge(inst, request, c);
@@ -571,7 +571,7 @@ static rlm_rcode_t mod_cache_it(void *instance, UNUSED void *thread, REQUEST *re
 	 *	If Cache-Status-Only == yes, only return whether we found a
 	 *	valid cache entry
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, PW_CACHE_STATUS_ONLY, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, FR_CACHE_STATUS_ONLY, TAG_ANY);
 	if (vp && vp->vp_uint32) {
 		RINDENT();
 		RDEBUG3("status-only: yes");
@@ -591,13 +591,13 @@ static rlm_rcode_t mod_cache_it(void *instance, UNUSED void *thread, REQUEST *re
 	/*
 	 *	Figure out what operation we're doing
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, PW_CACHE_ALLOW_MERGE, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, FR_CACHE_ALLOW_MERGE, TAG_ANY);
 	if (vp) merge = (bool)vp->vp_uint32;
 
-	vp = fr_pair_find_by_num(request->control, 0, PW_CACHE_ALLOW_INSERT, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, FR_CACHE_ALLOW_INSERT, TAG_ANY);
 	if (vp) insert = (bool)vp->vp_uint32;
 
-	vp = fr_pair_find_by_num(request->control, 0, PW_CACHE_TTL, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, FR_CACHE_TTL, TAG_ANY);
 	if (vp) {
 		if (vp->vp_int32 == 0) {
 			expire = true;
@@ -766,11 +766,11 @@ finish:
 	     vp;
 	     vp = fr_pair_cursor_next(&cursor)) {
 		if (vp->da->vendor == 0) switch (vp->da->attr) {
-		case PW_CACHE_TTL:
-		case PW_CACHE_STATUS_ONLY:
-		case PW_CACHE_ALLOW_MERGE:
-		case PW_CACHE_ALLOW_INSERT:
-		case PW_CACHE_MERGE_NEW:
+		case FR_CACHE_TTL:
+		case FR_CACHE_STATUS_ONLY:
+		case FR_CACHE_ALLOW_MERGE:
+		case FR_CACHE_ALLOW_INSERT:
+		case FR_CACHE_MERGE_NEW:
 			RDEBUG2("Removing &control:%s", vp->da->name);
 			vp = fr_pair_cursor_remove(&cursor);
 			talloc_free(vp);

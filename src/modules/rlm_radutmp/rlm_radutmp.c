@@ -172,7 +172,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	/*
 	 *	Which type is this.
 	 */
-	if ((vp = fr_pair_find_by_num(request->packet->vps, 0, PW_ACCT_STATUS_TYPE, TAG_ANY)) == NULL) {
+	if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_ACCT_STATUS_TYPE, TAG_ANY)) == NULL) {
 		RDEBUG2("No Accounting-Status-Type record");
 		return RLM_MODULE_NOOP;
 	}
@@ -182,7 +182,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	 *	Look for weird reboot packets.
 	 *
 	 *	ComOS (up to and including 3.5.1b20) does not send
-	 *	standard PW_STATUS_ACCOUNTING_XXX messages.
+	 *	standard FR_STATUS_ACCOUNTING_XXX messages.
 	 *
 	 *	Check for:  o no Acct-Session-Time, or time of 0
 	 *		    o Acct-Session-Id of "00000000".
@@ -190,15 +190,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	 *	We could also check for NAS-Port, that attribute
 	 *	should NOT be present (but we don't right now).
 	 */
-	if ((status != PW_STATUS_ACCOUNTING_ON) &&
-	    (status != PW_STATUS_ACCOUNTING_OFF)) do {
+	if ((status != FR_STATUS_ACCOUNTING_ON) &&
+	    (status != FR_STATUS_ACCOUNTING_OFF)) do {
 		int check1 = 0;
 		int check2 = 0;
 
-		if ((vp = fr_pair_find_by_num(request->packet->vps, 0, PW_ACCT_SESSION_TIME, TAG_ANY))
+		if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_ACCT_SESSION_TIME, TAG_ANY))
 		     == NULL || vp->vp_date == 0)
 			check1 = 1;
-		if ((vp = fr_pair_find_by_num(request->packet->vps, 0, PW_ACCT_SESSION_ID, TAG_ANY))
+		if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_ACCT_SESSION_ID, TAG_ANY))
 		     != NULL && vp->vp_length == 8 &&
 		     memcmp(vp->vp_strvalue, "00000000", 8) == 0)
 			check2 = 1;
@@ -206,8 +206,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 			break;
 		}
 		RIDEBUG("Converting reboot records");
-		if (status == PW_STATUS_STOP) status = PW_STATUS_ACCOUNTING_OFF;
-		else if (status == PW_STATUS_START) status = PW_STATUS_ACCOUNTING_ON;
+		if (status == FR_STATUS_STOP) status = FR_STATUS_ACCOUNTING_OFF;
+		else if (status == FR_STATUS_START) status = FR_STATUS_ACCOUNTING_ON;
 	} while(0);
 
 	time(&t);
@@ -222,29 +222,29 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	     vp;
 	     vp = fr_pair_cursor_next(&cursor)) {
 		if (!vp->da->vendor) switch (vp->da->attr) {
-		case PW_LOGIN_IP_HOST:
-		case PW_FRAMED_IP_ADDRESS:
+		case FR_LOGIN_IP_HOST:
+		case FR_FRAMED_IP_ADDRESS:
 			ut.framed_address = vp->vp_ipv4addr;
 			break;
 
-		case PW_FRAMED_PROTOCOL:
+		case FR_FRAMED_PROTOCOL:
 			protocol = vp->vp_uint32;
 			break;
 
-		case PW_NAS_IP_ADDRESS:
+		case FR_NAS_IP_ADDRESS:
 			ut.nas_address = vp->vp_ipv4addr;
 			break;
 
-		case PW_NAS_PORT:
+		case FR_NAS_PORT:
 			ut.nas_port = vp->vp_uint32;
 			port_seen = true;
 			break;
 
-		case PW_ACCT_DELAY_TIME:
+		case FR_ACCT_DELAY_TIME:
 			ut.delay = vp->vp_uint32;
 			break;
 
-		case PW_ACCT_SESSION_ID:
+		case FR_ACCT_SESSION_ID:
 			/*
 			 *	If length > 8, only store the
 			 *	last 8 bytes.
@@ -263,12 +263,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 				sizeof(ut.session_id));
 			break;
 
-		case PW_NAS_PORT_TYPE:
+		case FR_NAS_PORT_TYPE:
 			if (vp->vp_uint32 <= 4)
 				ut.porttype = porttypes[vp->vp_uint32];
 			break;
 
-		case PW_CALLING_STATION_ID:
+		case FR_CALLING_STATION_ID:
 			if (inst->caller_id_ok) strlcpy(ut.caller_id, vp->vp_strvalue, sizeof(ut.caller_id));
 			break;
 		}
@@ -297,9 +297,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	/*
 	 *	Set the protocol field.
 	 */
-	if (protocol == PW_PPP) {
+	if (protocol == FR_PPP) {
 		ut.proto = 'P';
-	} else if (protocol == PW_SLIP) {
+	} else if (protocol == FR_SLIP) {
 		ut.proto = 'S';
 	} else {
 		ut.proto = 'T';
@@ -321,14 +321,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	 *	Hmm... we may not want to zap all of the users when the NAS comes up, because of issues with receiving
 	 *	UDP packets out of order.
 	 */
-	if (status == PW_STATUS_ACCOUNTING_ON && (ut.nas_address != htonl(INADDR_NONE))) {
+	if (status == FR_STATUS_ACCOUNTING_ON && (ut.nas_address != htonl(INADDR_NONE))) {
 		RIDEBUG("NAS %s restarted (Accounting-On packet seen)", nas);
 		rcode = radutmp_zap(request, filename, ut.nas_address, ut.time);
 
 		goto finish;
 	}
 
-	if (status == PW_STATUS_ACCOUNTING_OFF && (ut.nas_address != htonl(INADDR_NONE))) {
+	if (status == FR_STATUS_ACCOUNTING_OFF && (ut.nas_address != htonl(INADDR_NONE))) {
 		RIDEBUG("NAS %s rebooted (Accounting-Off packet seen)", nas);
 		rcode = radutmp_zap(request, filename, ut.nas_address, ut.time);
 
@@ -338,7 +338,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	/*
 	 *	If we don't know this type of entry pretend we succeeded.
 	 */
-	if (status != PW_STATUS_START && status != PW_STATUS_STOP && status != PW_STATUS_ALIVE) {
+	if (status != FR_STATUS_START && status != FR_STATUS_STOP && status != FR_STATUS_ALIVE) {
 		REDEBUG("NAS %s port %u unknown packet type %d)", nas, ut.nas_port, status);
 		rcode = RLM_MODULE_NOOP;
 
@@ -419,11 +419,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 		/*
 		 *	Don't compare stop records to unused entries.
 		 */
-		if (status == PW_STATUS_STOP && u.type == P_IDLE) {
+		if (status == FR_STATUS_STOP && u.type == P_IDLE) {
 			continue;
 		}
 
-		if ((status == PW_STATUS_STOP) && strncmp(ut.session_id, u.session_id, sizeof(u.session_id)) != 0) {
+		if ((status == FR_STATUS_STOP) && strncmp(ut.session_id, u.session_id, sizeof(u.session_id)) != 0) {
 			/*
 			 *	Don't complain if this is not a
 			 *	login record (some clients can
@@ -437,7 +437,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 			break;
 		}
 
-		if ((status == PW_STATUS_START) && strncmp(ut.session_id, u.session_id, sizeof(u.session_id)) == 0  &&
+		if ((status == FR_STATUS_START) && strncmp(ut.session_id, u.session_id, sizeof(u.session_id)) == 0  &&
 		    u.time >= ut.time) {
 			if (u.type == P_LOGIN) {
 				RIDEBUG("Login entry for NAS %s port %u duplicate", nas, u.nas_port);
@@ -454,7 +454,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 		 *	FIXME: the ALIVE record could need some more checking, but anyway I'd
 		 *	rather rewrite this mess -- miquels.
 		 */
-		if ((status == PW_STATUS_ALIVE) && strncmp(ut.session_id, u.session_id, sizeof(u.session_id)) == 0  &&
+		if ((status == FR_STATUS_ALIVE) && strncmp(ut.session_id, u.session_id, sizeof(u.session_id)) == 0  &&
 		    u.type == P_LOGIN) {
 			/*
 			 *	Keep the original login time.
@@ -478,7 +478,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	 *	Found the entry, do start/update it with
 	 *	the information from the packet.
 	 */
-	if ((r >= 0) && (status == PW_STATUS_START || status == PW_STATUS_ALIVE)) {
+	if ((r >= 0) && (status == FR_STATUS_START || status == FR_STATUS_ALIVE)) {
 		/*
 		 *	Remember where the entry was, because it's
 		 *	easier than searching through the entire file.
@@ -507,7 +507,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	 *	The user has logged off, delete the entry by
 	 *	re-writing it in place.
 	 */
-	if (status == PW_STATUS_STOP) {
+	if (status == FR_STATUS_STOP) {
 		if (r > 0) {
 			u.type = P_IDLE;
 			u.time = ut.time;
@@ -633,11 +633,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, UNUSED void *
 	/*
 	 *	Setup some stuff, like for MPP detection.
 	 */
-	if ((vp = fr_pair_find_by_num(request->packet->vps, 0, PW_FRAMED_IP_ADDRESS, TAG_ANY)) != NULL) {
+	if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_FRAMED_IP_ADDRESS, TAG_ANY)) != NULL) {
 		ipno = vp->vp_ipv4addr;
 	}
 
-	if ((vp = fr_pair_find_by_num(request->packet->vps, 0, PW_CALLING_STATION_ID, TAG_ANY)) != NULL) {
+	if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_CALLING_STATION_ID, TAG_ANY)) != NULL) {
 		call_num = vp->vp_strvalue;
 	}
 

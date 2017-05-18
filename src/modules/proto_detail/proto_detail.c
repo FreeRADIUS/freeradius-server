@@ -325,12 +325,12 @@ static int detail_recv(rad_listen_t *listener)
 	rad_assert(packet != NULL);
 
 	switch (packet->code) {
-	case PW_CODE_ACCOUNTING_REQUEST:
+	case FR_CODE_ACCOUNTING_REQUEST:
 		fun = rad_accounting;
 		break;
 
-	case PW_CODE_COA_REQUEST:
-	case PW_CODE_DISCONNECT_REQUEST:
+	case FR_CODE_COA_REQUEST:
+	case FR_CODE_DISCONNECT_REQUEST:
 		fun = rad_coa_recv;
 		break;
 
@@ -649,7 +649,7 @@ open_file:
 			data->timestamp = atoi(value);
 			data->timestamp_offset = data->last_offset;
 
-			vp = fr_pair_afrom_num(data, 0, PW_PACKET_ORIGINAL_TIMESTAMP);
+			vp = fr_pair_afrom_num(data, 0, FR_PACKET_ORIGINAL_TIMESTAMP);
 			if (vp) {
 				vp->vp_date = (uint32_t) data->timestamp;
 				vp->type = VT_DATA;
@@ -752,8 +752,8 @@ open_file:
 	 */
 	packet->vps = fr_pair_list_copy(packet, data->vps);
 
-	packet->code = PW_CODE_ACCOUNTING_REQUEST;
-	vp = fr_pair_find_by_num(packet->vps, 0, PW_PACKET_TYPE, TAG_ANY);
+	packet->code = FR_CODE_ACCOUNTING_REQUEST;
+	vp = fr_pair_find_by_num(packet->vps, 0, FR_PACKET_TYPE, TAG_ANY);
 	if (vp) packet->code = vp->vp_uint32;
 
 	gettimeofday(&packet->timestamp, NULL);
@@ -766,13 +766,13 @@ open_file:
 		packet->src_ipaddr = data->client_ip;
 	}
 
-	vp = fr_pair_find_by_num(packet->vps, 0, PW_PACKET_SRC_IP_ADDRESS, TAG_ANY);
+	vp = fr_pair_find_by_num(packet->vps, 0, FR_PACKET_SRC_IP_ADDRESS, TAG_ANY);
 	if (vp) {
 		packet->src_ipaddr.af = AF_INET;
 		packet->src_ipaddr.addr.v4.s_addr = vp->vp_ipv4addr;
 		packet->src_ipaddr.prefix = 32;
 	} else {
-		vp = fr_pair_find_by_num(packet->vps, 0, PW_PACKET_SRC_IPV6_ADDRESS, TAG_ANY);
+		vp = fr_pair_find_by_num(packet->vps, 0, FR_PACKET_SRC_IPV6_ADDRESS, TAG_ANY);
 		if (vp) {
 			packet->src_ipaddr.af = AF_INET6;
 			memcpy(&packet->src_ipaddr.addr.v6,
@@ -781,13 +781,13 @@ open_file:
 		}
 	}
 
-	vp = fr_pair_find_by_num(packet->vps, 0, PW_PACKET_DST_IP_ADDRESS, TAG_ANY);
+	vp = fr_pair_find_by_num(packet->vps, 0, FR_PACKET_DST_IP_ADDRESS, TAG_ANY);
 	if (vp) {
 		packet->dst_ipaddr.af = AF_INET;
 		packet->dst_ipaddr.addr.v4.s_addr = vp->vp_ipv4addr;
 		packet->dst_ipaddr.prefix = 32;
 	} else {
-		vp = fr_pair_find_by_num(packet->vps, 0, PW_PACKET_DST_IPV6_ADDRESS, TAG_ANY);
+		vp = fr_pair_find_by_num(packet->vps, 0, FR_PACKET_DST_IPV6_ADDRESS, TAG_ANY);
 		if (vp) {
 			packet->dst_ipaddr.af = AF_INET6;
 			memcpy(&packet->dst_ipaddr.addr.v6,
@@ -809,14 +809,14 @@ open_file:
 	/*
 	 *	Create / update accounting attributes.
 	 */
-	if (packet->code == PW_CODE_ACCOUNTING_REQUEST) {
+	if (packet->code == FR_CODE_ACCOUNTING_REQUEST) {
 		/*
 		 *	Prefer the Event-Timestamp in the packet, if it
 		 *	exists.  That is when the event occurred, whereas the
 		 *	"Timestamp" field is when we wrote the packet to the
 		 *	detail file, which could have been much later.
 		 */
-		vp = fr_pair_find_by_num(packet->vps, 0, PW_EVENT_TIMESTAMP, TAG_ANY);
+		vp = fr_pair_find_by_num(packet->vps, 0, FR_EVENT_TIMESTAMP, TAG_ANY);
 		if (vp) {
 			data->timestamp = vp->vp_uint32;
 		}
@@ -825,9 +825,9 @@ open_file:
 		 *	Look for Acct-Delay-Time, and update
 		 *	based on Acct-Delay-Time += (time(NULL) - timestamp)
 		 */
-		vp = fr_pair_find_by_num(packet->vps, 0, PW_ACCT_DELAY_TIME, TAG_ANY);
+		vp = fr_pair_find_by_num(packet->vps, 0, FR_ACCT_DELAY_TIME, TAG_ANY);
 		if (!vp) {
-			vp = fr_pair_afrom_num(packet, 0, PW_ACCT_DELAY_TIME);
+			vp = fr_pair_afrom_num(packet, 0, FR_ACCT_DELAY_TIME);
 			rad_assert(vp != NULL);
 			fr_pair_add(&packet->vps, vp);
 		}
@@ -839,9 +839,9 @@ open_file:
 	/*
 	 *	Set the transmission count.
 	 */
-	vp = fr_pair_find_by_num(packet->vps, 0, PW_PACKET_TRANSMIT_COUNTER, TAG_ANY);
+	vp = fr_pair_find_by_num(packet->vps, 0, FR_PACKET_TRANSMIT_COUNTER, TAG_ANY);
 	if (!vp) {
-		vp = fr_pair_afrom_num(packet, 0, PW_PACKET_TRANSMIT_COUNTER);
+		vp = fr_pair_afrom_num(packet, 0, FR_PACKET_TRANSMIT_COUNTER);
 		rad_assert(vp != NULL);
 		fr_pair_add(&packet->vps, vp);
 	}

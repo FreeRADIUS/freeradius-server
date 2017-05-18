@@ -216,8 +216,8 @@ REQUEST *request_alloc_coa(REQUEST *request)
 	/*
 	 *	Originate CoA requests only when necessary.
 	 */
-	if ((request->packet->code != PW_CODE_ACCESS_REQUEST) &&
-	    (request->packet->code != PW_CODE_ACCOUNTING_REQUEST)) return NULL;
+	if ((request->packet->code != FR_CODE_ACCESS_REQUEST) &&
+	    (request->packet->code != FR_CODE_ACCOUNTING_REQUEST)) return NULL;
 
 	request->coa = request_alloc_fake(request);
 	if (!request->coa) return NULL;

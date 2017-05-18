@@ -128,7 +128,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 	VALUE_PAIR *authtype, *challenge, *response, *password;
 	uint8_t buffer[64];
 
-	password = fr_pair_find_by_num(request->control, 0, PW_CLEARTEXT_PASSWORD, TAG_ANY);
+	password = fr_pair_find_by_num(request->control, 0, FR_CLEARTEXT_PASSWORD, TAG_ANY);
 	if (!password) {
 		REDEBUG("&Cleartext-Password is required for authentication");
 		return RLM_MODULE_INVALID;

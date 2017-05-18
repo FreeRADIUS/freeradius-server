@@ -46,7 +46,7 @@ int session_zap(REQUEST *request, uint32_t nasaddr, uint32_t nas_port,
 	stopreq = request_alloc_fake(request);
 	rad_assert(stopreq != NULL);
 	rad_assert(stopreq->packet != NULL);
-	stopreq->packet->code = PW_CODE_ACCOUNTING_REQUEST; /* just to be safe */
+	stopreq->packet->code = FR_CODE_ACCOUNTING_REQUEST; /* just to be safe */
 	stopreq->listener = request->listener;
 
 	/* Hold your breath */
@@ -74,34 +74,34 @@ int session_zap(REQUEST *request, uint32_t nasaddr, uint32_t nas_port,
 	fr_pair_add(&(stopreq->packet->vps), vp); \
 	} while(0)
 
-	INTPAIR(PW_ACCT_STATUS_TYPE, PW_STATUS_STOP);
-	IPPAIR(PW_NAS_IP_ADDRESS, nasaddr);
+	INTPAIR(FR_ACCT_STATUS_TYPE, FR_STATUS_STOP);
+	IPPAIR(FR_NAS_IP_ADDRESS, nasaddr);
 
-	INTPAIR(PW_EVENT_TIMESTAMP, 0);
+	INTPAIR(FR_EVENT_TIMESTAMP, 0);
 	vp->vp_date = time(NULL);
-	INTPAIR(PW_ACCT_DELAY_TIME, 0);
+	INTPAIR(FR_ACCT_DELAY_TIME, 0);
 
-	STRINGPAIR(PW_USER_NAME, user);
+	STRINGPAIR(FR_USER_NAME, user);
 	stopreq->username = vp;
 
-	INTPAIR(PW_NAS_PORT, nas_port);
-	STRINGPAIR(PW_ACCT_SESSION_ID, sessionid);
+	INTPAIR(FR_NAS_PORT, nas_port);
+	STRINGPAIR(FR_ACCT_SESSION_ID, sessionid);
 	if(proto == 'P') {
-		INTPAIR(PW_SERVICE_TYPE, PW_FRAMED_USER);
-		INTPAIR(PW_FRAMED_PROTOCOL, PW_PPP);
+		INTPAIR(FR_SERVICE_TYPE, FR_FRAMED_USER);
+		INTPAIR(FR_FRAMED_PROTOCOL, FR_PPP);
 	} else if(proto == 'S') {
-		INTPAIR(PW_SERVICE_TYPE, PW_FRAMED_USER);
-		INTPAIR(PW_FRAMED_PROTOCOL, PW_SLIP);
+		INTPAIR(FR_SERVICE_TYPE, FR_FRAMED_USER);
+		INTPAIR(FR_FRAMED_PROTOCOL, FR_SLIP);
 	} else {
-		INTPAIR(PW_SERVICE_TYPE, PW_LOGIN_USER); /* A guess, really */
+		INTPAIR(FR_SERVICE_TYPE, FR_LOGIN_USER); /* A guess, really */
 	}
 	if(cliaddr != 0)
-		IPPAIR(PW_FRAMED_IP_ADDRESS, cliaddr);
-	INTPAIR(PW_ACCT_SESSION_TIME, session_time);
-	INTPAIR(PW_ACCT_INPUT_OCTETS, 0);
-	INTPAIR(PW_ACCT_OUTPUT_OCTETS, 0);
-	INTPAIR(PW_ACCT_INPUT_PACKETS, 0);
-	INTPAIR(PW_ACCT_OUTPUT_PACKETS, 0);
+		IPPAIR(FR_FRAMED_IP_ADDRESS, cliaddr);
+	INTPAIR(FR_ACCT_SESSION_TIME, session_time);
+	INTPAIR(FR_ACCT_INPUT_OCTETS, 0);
+	INTPAIR(FR_ACCT_OUTPUT_OCTETS, 0);
+	INTPAIR(FR_ACCT_INPUT_PACKETS, 0);
+	INTPAIR(FR_ACCT_OUTPUT_PACKETS, 0);
 
 	stopreq->password = NULL;
 

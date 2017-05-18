@@ -73,16 +73,16 @@ RCSID("$Id$")
  * @param name to convert.
  * @return
  *	- IANA EAP type.
- *	- #PW_EAP_INVALID if the name doesn't match any known types.
+ *	- #FR_EAP_INVALID if the name doesn't match any known types.
  */
 eap_type_t eap_name2type(char const *name)
 {
 	fr_dict_enum_t	*dv;
 
-	dv = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, PW_EAP_TYPE), name);
-	if (!dv) return PW_EAP_INVALID;
+	dv = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_EAP_TYPE), name);
+	if (!dv) return FR_EAP_INVALID;
 
-	if (fr_unbox_uint32(dv->value) >= PW_EAP_MAX_TYPES) return PW_EAP_INVALID;
+	if (fr_unbox_uint32(dv->value) >= FR_EAP_MAX_TYPES) return FR_EAP_INVALID;
 
 	return fr_unbox_uint32(dv->value);
 }
@@ -95,7 +95,7 @@ char const *eap_type2name(eap_type_t method)
 {
 	fr_dict_enum_t	*dv;
 
-	dv = fr_dict_enum_by_value(NULL, fr_dict_attr_by_num(NULL, 0, PW_EAP_TYPE), fr_box_uint32(method));
+	dv = fr_dict_enum_by_value(NULL, fr_dict_attr_by_num(NULL, 0, FR_EAP_TYPE), fr_box_uint32(method));
 	if (dv) return dv->alias;
 
 	return "unknown";
@@ -151,8 +151,8 @@ int eap_wireformat(eap_packet_t *reply)
 	/*
 	 *	Request and Response packets are special.
 	 */
-	if ((reply->code == PW_EAP_REQUEST) ||
-	    (reply->code == PW_EAP_RESPONSE)) {
+	if ((reply->code == FR_EAP_REQUEST) ||
+	    (reply->code == FR_EAP_RESPONSE)) {
 		header->data[0] = (reply->type.num & 0xFF);
 
 		/*
@@ -187,7 +187,7 @@ int eap_basic_compose(RADIUS_PACKET *packet, eap_packet_t *reply)
 	if (eap_wireformat(reply) < 0) return RLM_MODULE_INVALID;
 	eap_packet = (eap_packet_raw_t *)reply->packet;
 
-	fr_pair_delete_by_num(&(packet->vps), 0, PW_EAP_MESSAGE, TAG_ANY);
+	fr_pair_delete_by_num(&(packet->vps), 0, FR_EAP_MESSAGE, TAG_ANY);
 
 	vp = eap_packet2vp(packet, eap_packet);
 	if (!vp) return RLM_MODULE_INVALID;
@@ -200,9 +200,9 @@ int eap_basic_compose(RADIUS_PACKET *packet, eap_packet_t *reply)
 	 *	Don't add a Message-Authenticator if it's already
 	 *	there.
 	 */
-	vp = fr_pair_find_by_num(packet->vps, 0, PW_MESSAGE_AUTHENTICATOR, TAG_ANY);
+	vp = fr_pair_find_by_num(packet->vps, 0, FR_MESSAGE_AUTHENTICATOR, TAG_ANY);
 	if (!vp) {
-		vp = fr_pair_afrom_num(packet, 0, PW_MESSAGE_AUTHENTICATOR);
+		vp = fr_pair_afrom_num(packet, 0, FR_MESSAGE_AUTHENTICATOR);
 		vp->vp_length = AUTH_VECTOR_LEN;
 		vp->vp_octets = talloc_zero_array(vp, uint8_t, vp->vp_length);
 
@@ -212,26 +212,26 @@ int eap_basic_compose(RADIUS_PACKET *packet, eap_packet_t *reply)
 	/* Set request reply code, but only if it's not already set. */
 	rcode = RLM_MODULE_OK;
 	if (!packet->code) switch (reply->code) {
-	case PW_EAP_RESPONSE:
-	case PW_EAP_SUCCESS:
-		packet->code = PW_CODE_ACCESS_ACCEPT;
+	case FR_EAP_RESPONSE:
+	case FR_EAP_SUCCESS:
+		packet->code = FR_CODE_ACCESS_ACCEPT;
 		rcode = RLM_MODULE_HANDLED;
 		break;
 
-	case PW_EAP_FAILURE:
-		packet->code = PW_CODE_ACCESS_REJECT;
+	case FR_EAP_FAILURE:
+		packet->code = FR_CODE_ACCESS_REJECT;
 		rcode = RLM_MODULE_REJECT;
 		break;
 
-	case PW_EAP_REQUEST:
-		packet->code = PW_CODE_ACCESS_CHALLENGE;
+	case FR_EAP_REQUEST:
+		packet->code = FR_CODE_ACCESS_CHALLENGE;
 		rcode = RLM_MODULE_HANDLED;
 		break;
 
 	default:
 		/* Should never enter here */
 		ERROR("Reply code %d is unknown, Rejecting the request", reply->code);
-		packet->code = PW_CODE_ACCESS_REJECT;
+		packet->code = FR_CODE_ACCESS_REJECT;
 		break;
 	}
 
@@ -261,7 +261,7 @@ VALUE_PAIR *eap_packet2vp(RADIUS_PACKET *packet, eap_packet_raw_t const *eap)
 		size = total;
 		if (size > 253) size = 253;
 
-		vp = fr_pair_afrom_num(packet, 0, PW_EAP_MESSAGE);
+		vp = fr_pair_afrom_num(packet, 0, FR_EAP_MESSAGE);
 		if (!vp) {
 			fr_pair_list_free(&head);
 			return NULL;
@@ -297,7 +297,7 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	/*
 	 *	Get only EAP-Message attribute list
 	 */
-	first = fr_pair_find_by_num(vps, 0, PW_EAP_MESSAGE, TAG_ANY);
+	first = fr_pair_find_by_num(vps, 0, FR_EAP_MESSAGE, TAG_ANY);
 	if (!first) {
 		fr_strerror_printf("EAP-Message not found");
 		return NULL;
@@ -331,7 +331,7 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	 */
 	total_len = 0;
 	fr_pair_cursor_init(&cursor, &first);
-	while ((i = fr_pair_cursor_next_by_num(&cursor, 0, PW_EAP_MESSAGE, TAG_ANY))) {
+	while ((i = fr_pair_cursor_next_by_num(&cursor, 0, FR_EAP_MESSAGE, TAG_ANY))) {
 		total_len += i->vp_length;
 
 		if (total_len > len) {
@@ -363,7 +363,7 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 
 	/* RADIUS ensures order of attrs, so just concatenate all */
 	fr_pair_cursor_first(&cursor);
-	while ((i = fr_pair_cursor_next_by_num(&cursor, 0, PW_EAP_MESSAGE, TAG_ANY))) {
+	while ((i = fr_pair_cursor_next_by_num(&cursor, 0, FR_EAP_MESSAGE, TAG_ANY))) {
 		memcpy(ptr, i->vp_strvalue, i->vp_length);
 		ptr += i->vp_length;
 	}
@@ -414,7 +414,7 @@ rlm_rcode_t eap_virtual_server(REQUEST *request, REQUEST *fake,
 	rlm_rcode_t	rcode;
 	VALUE_PAIR	*vp;
 
-	vp = fr_pair_find_by_num(request->control, 0, PW_VIRTUAL_SERVER, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, FR_VIRTUAL_SERVER, TAG_ANY);
 	fake->server = vp ? vp->vp_strvalue : virtual_server;
 
 	if (fake->server) {

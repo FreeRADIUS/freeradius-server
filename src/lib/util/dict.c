@@ -1344,7 +1344,7 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 		break;
 
 	case FR_TYPE_EVS:
-		if (attr != PW_VENDOR_SPECIFIC) {
+		if (attr != FR_VENDOR_SPECIFIC) {
 			fr_strerror_printf("Attributes of type 'evs' MUST have attribute code 26, got %i", attr);
 			goto error;
 		}
@@ -2575,13 +2575,13 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 				 *	the RFC dictionaries we need to add it in the case
 				 *	it doesn't.
 				 */
-				vsa_da = fr_dict_attr_child_by_num(ctx->parent, PW_VENDOR_SPECIFIC);
+				vsa_da = fr_dict_attr_child_by_num(ctx->parent, FR_VENDOR_SPECIFIC);
 				if (!vsa_da) {
 					memset(&flags, 0, sizeof(flags));
 
 					memcpy(&mutable, &ctx->parent, sizeof(mutable));
 					new = fr_dict_attr_alloc(mutable, fr_dict_root(ctx->dict), "Vendor-Specific", 0,
-								 PW_VENDOR_SPECIFIC, FR_TYPE_VSA, &flags);
+								 FR_VENDOR_SPECIFIC, FR_TYPE_VSA, &flags);
 					fr_dict_attr_child_add(mutable, new);
 					vsa_da = new;
 				}
@@ -2790,7 +2790,7 @@ int fr_dict_from_file(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char co
 			type_name = talloc_asprintf(dict->pool, "Tmp-Cast-%s", p->name);
 
 			n = fr_dict_attr_alloc(dict->pool, dict->root, type_name,
-					       0, PW_CAST_BASE + p->number, p->number, &flags);
+					       0, FR_CAST_BASE + p->number, p->number, &flags);
 			if (!n) goto error;
 
 			if (!fr_hash_table_insert(dict->attributes_by_name, n)) goto error;
@@ -3742,7 +3742,7 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
 	 *	The additional code is because we need at least three components
 	 *	the VSA attribute (26), the vendor ID, and actual attribute.
 	 */
-	if (((*parent)->flags.is_root) && !*vendor && (num == PW_VENDOR_SPECIFIC)) {
+	if (((*parent)->flags.is_root) && !*vendor && (num == FR_VENDOR_SPECIFIC)) {
 		fr_dict_vendor_t const *dv;
 
 		if (p[0] == '\0') {
@@ -4090,7 +4090,7 @@ fr_dict_attr_t const *fr_dict_attr_by_num(fr_dict_t *dict, unsigned int vendor, 
 
 	if (vendor == 0) return fr_dict_attr_child_by_num(dict->root, attr);
 
-	parent = fr_dict_attr_child_by_num(dict->root, PW_VENDOR_SPECIFIC);
+	parent = fr_dict_attr_child_by_num(dict->root, FR_VENDOR_SPECIFIC);
 	if (!parent) return NULL;
 
 	parent = fr_dict_attr_child_by_num(parent, vendor);

@@ -743,7 +743,7 @@ static void request_cleanup_delay_init(REQUEST *request)
 	 *	Only Access-Requests get cleanup_delay.  Everything
 	 *	else gets cleaned up immediately.
 	 */
-	if (request->packet->code != PW_CODE_ACCESS_REQUEST) goto done;
+	if (request->packet->code != FR_CODE_ACCESS_REQUEST) goto done;
 
 	if (!request->root->cleanup_delay) goto done;
 
@@ -1089,8 +1089,8 @@ static int request_pre_handler(REQUEST *request, UNUSED fr_state_action_t action
 	 *	process it.
 	 */
 	if (request->packet->dst_port == 0) {
-		request->username = fr_pair_find_by_num(request->packet->vps, 0, PW_USER_NAME, TAG_ANY);
-		request->password = fr_pair_find_by_num(request->packet->vps, 0, PW_USER_PASSWORD, TAG_ANY);
+		request->username = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_NAME, TAG_ANY);
+		request->password = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_PASSWORD, TAG_ANY);
 		return 1;
 	}
 
@@ -1128,7 +1128,7 @@ static int request_pre_handler(REQUEST *request, UNUSED fr_state_action_t action
 	}
 
 	if (!request->username) {
-		request->username = fr_pair_find_by_num(request->packet->vps, 0, PW_USER_NAME, TAG_ANY);
+		request->username = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_NAME, TAG_ANY);
 	}
 
 	return 1;
@@ -1165,7 +1165,7 @@ static void request_finish(REQUEST *request, fr_state_action_t action)
 	/*
 	 *	Override the response code if a control:Response-Packet-Type attribute is present.
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, PW_RESPONSE_PACKET_TYPE, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, FR_RESPONSE_PACKET_TYPE, TAG_ANY);
 	if (vp) {
 		if (vp->vp_uint32 == 256) {
 			RDEBUG2("Not responding to request");
@@ -1177,30 +1177,30 @@ static void request_finish(REQUEST *request, fr_state_action_t action)
 	/*
 	 *	Catch Auth-Type := Reject BEFORE proxying the packet.
 	 */
-	else if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
+	else if (request->packet->code == FR_CODE_ACCESS_REQUEST) {
 		if (request->reply->code == 0) {
-			vp = fr_pair_find_by_num(request->control, 0, PW_AUTH_TYPE, TAG_ANY);
+			vp = fr_pair_find_by_num(request->control, 0, FR_AUTH_TYPE, TAG_ANY);
 			if (!vp || (vp->vp_uint32 != 5)) {
 				RDEBUG2("There was no response configured: "
 					"rejecting request");
 			}
 
-			request->reply->code = PW_CODE_ACCESS_REJECT;
+			request->reply->code = FR_CODE_ACCESS_REJECT;
 		}
 	}
 
 	/*
 	 *	Copy Proxy-State from the request to the reply.
 	 */
-	vp = fr_pair_list_copy_by_num(request->reply, request->packet->vps, 0, PW_PROXY_STATE, TAG_ANY);
+	vp = fr_pair_list_copy_by_num(request->reply, request->packet->vps, 0, FR_PROXY_STATE, TAG_ANY);
 	if (vp) fr_pair_add(&request->reply->vps, vp);
 
 	switch (request->reply->code) {
-	case PW_CODE_ACCESS_ACCEPT:
+	case FR_CODE_ACCESS_ACCEPT:
 		rad_postauth(request);
 		break;
-	case PW_CODE_ACCESS_CHALLENGE:
-		fr_pair_delete_by_num(&request->control, 0, PW_POST_AUTH_TYPE, TAG_ANY);
+	case FR_CODE_ACCESS_CHALLENGE:
+		fr_pair_delete_by_num(&request->control, 0, FR_POST_AUTH_TYPE, TAG_ANY);
 		vp = pair_make_config("Post-Auth-Type", "Challenge", T_OP_SET);
 		if (vp) rad_postauth(request);
 		break;
@@ -1216,8 +1216,8 @@ static void request_finish(REQUEST *request, fr_state_action_t action)
 	 *	We do this separately so ACK and challenge can change the code
 	 *	to reject if a module returns reject.
 	 */
-	if (request->reply->code == PW_CODE_ACCESS_REJECT) {
-		fr_pair_delete_by_num(&request->control, 0, PW_POST_AUTH_TYPE, TAG_ANY);
+	if (request->reply->code == FR_CODE_ACCESS_REJECT) {
+		fr_pair_delete_by_num(&request->control, 0, FR_POST_AUTH_TYPE, TAG_ANY);
 		vp = pair_make_config("Post-Auth-Type", "Reject", T_OP_SET);
 		if (vp) rad_postauth(request);
 	}
@@ -1302,11 +1302,11 @@ static void request_finish(REQUEST *request, fr_state_action_t action)
 	/*
 	 *	See if we need to delay an Access-Reject packet.
 	 */
-	if ((request->reply->code == PW_CODE_ACCESS_REJECT) &&
+	if ((request->reply->code == FR_CODE_ACCESS_REJECT) &&
 	    (request->root->reject_delay.tv_sec > 0)) {
 		request->response_delay = request->root->reject_delay;
 
-		vp = fr_pair_find_by_num(request->reply->vps, 0, PW_FREERADIUS_RESPONSE_DELAY, TAG_ANY);
+		vp = fr_pair_find_by_num(request->reply->vps, 0, FR_FREERADIUS_RESPONSE_DELAY, TAG_ANY);
 		if (vp) {
 			if (vp->vp_uint32 <= 10) {
 				request->response_delay.tv_sec = vp->vp_uint32;
@@ -1315,7 +1315,7 @@ static void request_finish(REQUEST *request, fr_state_action_t action)
 			}
 			request->response_delay.tv_usec = 0;
 		} else {
-			vp = fr_pair_find_by_num(request->reply->vps, 0, PW_FREERADIUS_RESPONSE_DELAY_USEC, TAG_ANY);
+			vp = fr_pair_find_by_num(request->reply->vps, 0, FR_FREERADIUS_RESPONSE_DELAY_USEC, TAG_ANY);
 			if (vp) {
 				if (vp->vp_uint32 <= 10 * USEC) {
 					request->response_delay.tv_sec = vp->vp_uint32 / USEC;
@@ -1538,21 +1538,21 @@ bool request_dup_received(rad_listen_t *listener, rbtree_t *dup_tree, RADCLIENT 
 
 #ifdef WITH_STATS
 		switch (packet->code) {
-		case PW_CODE_ACCESS_REQUEST:
+		case FR_CODE_ACCESS_REQUEST:
 			FR_STATS_INC(auth, total_dup_requests);
 			break;
 
 #ifdef WITH_ACCOUNTING
-		case PW_CODE_ACCOUNTING_REQUEST:
+		case FR_CODE_ACCOUNTING_REQUEST:
 			FR_STATS_INC(acct, total_dup_requests);
 			break;
 #endif
 #ifdef WITH_COA
-		case PW_CODE_COA_REQUEST:
+		case FR_CODE_COA_REQUEST:
 			FR_STATS_INC(coa, total_dup_requests);
 			break;
 
-		case PW_CODE_DISCONNECT_REQUEST:
+		case FR_CODE_DISCONNECT_REQUEST:
 			FR_STATS_INC(dsc, total_dup_requests);
 			break;
 #endif
@@ -1777,11 +1777,11 @@ REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *p
 
 #ifdef WITH_STATS
 	request->listener->stats.last_packet = request->packet->timestamp.tv_sec;
-	if (packet->code == PW_CODE_ACCESS_REQUEST) {
+	if (packet->code == FR_CODE_ACCESS_REQUEST) {
 		request->client->auth.last_packet = request->packet->timestamp.tv_sec;
 		radius_auth_stats.last_packet = request->packet->timestamp.tv_sec;
 #ifdef WITH_ACCOUNTING
-	} else if (packet->code == PW_CODE_ACCOUNTING_REQUEST) {
+	} else if (packet->code == FR_CODE_ACCOUNTING_REQUEST) {
 		request->client->acct.last_packet = request->packet->timestamp.tv_sec;
 		radius_acct_stats.last_packet = request->packet->timestamp.tv_sec;
 #endif
@@ -1791,7 +1791,7 @@ REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *p
 	/*
 	 *	Status-Server packets go to the head of the queue.
 	 */
-	if (request->packet->code == PW_CODE_STATUS_SERVER) request->priority = 0;
+	if (request->packet->code == FR_CODE_STATUS_SERVER) request->priority = 0;
 
 	/*
 	 *	Set virtual server identity
@@ -1990,7 +1990,7 @@ static int eol_proxy_listener(void *ctx, void *data)
 	 *	Accounting packets should be deleted immediately.
 	 *	They will never be retransmitted by the client.
 	 */
-	if (request->proxy->packet->code == PW_CODE_ACCOUNTING_REQUEST) {
+	if (request->proxy->packet->code == FR_CODE_ACCOUNTING_REQUEST) {
 		RDEBUG("Stopping request due to failed connection to home server");
 		request->master_state = REQUEST_STOP_PROCESSING;
 	}
@@ -2255,7 +2255,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	 *	Run the packet through the post-proxy stage,
 	 *	BEFORE playing games with the attributes.
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, PW_POST_PROXY_TYPE, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, FR_POST_PROXY_TYPE, TAG_ANY);
 
 	/*
 	 *	If we have a proxy_reply, and it was a reject, or a NAK
@@ -2266,16 +2266,16 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	 */
 	if (!vp && reply) {
 		fr_dict_enum_t *dval = NULL;
-		fr_dict_attr_t const *da = fr_dict_attr_by_num(NULL, 0, PW_POST_PROXY_TYPE);
+		fr_dict_attr_t const *da = fr_dict_attr_by_num(NULL, 0, FR_POST_PROXY_TYPE);
 
 		switch (reply->code) {
-		case PW_CODE_ACCESS_REJECT:
-		case PW_CODE_DISCONNECT_NAK:
-		case PW_CODE_COA_NAK:
+		case FR_CODE_ACCESS_REJECT:
+		case FR_CODE_DISCONNECT_NAK:
+		case FR_CODE_COA_NAK:
 			dval = fr_dict_enum_by_alias(NULL, da, fr_packet_codes[reply->code]);
 
 			if (dval) {
-				vp = radius_pair_create(request, &request->control, PW_POST_PROXY_TYPE, 0);
+				vp = radius_pair_create(request, &request->control, FR_POST_PROXY_TYPE, 0);
 				fr_value_box_copy(NULL, &vp->data, dval->value);
 			}
 			break;
@@ -2411,7 +2411,7 @@ int request_proxy_reply(RADIUS_PACKET *reply)
 	/*
 	 *	Status-Server packets don't count as real packets.
 	 */
-	if (proxy->packet->code != PW_CODE_STATUS_SERVER) {
+	if (proxy->packet->code != FR_CODE_STATUS_SERVER) {
 		listen_socket_t *sock = proxy->listener->data;
 
 		proxy->home_server->last_packet_recv = now.tv_sec;
@@ -2440,31 +2440,31 @@ int request_proxy_reply(RADIUS_PACKET *reply)
 	proxy->listener->stats.last_packet = reply->timestamp.tv_sec;
 
 	switch (proxy->packet->code) {
-	case PW_CODE_ACCESS_REQUEST:
-		if (proxy->reply->code == PW_CODE_ACCESS_ACCEPT) {
+	case FR_CODE_ACCESS_REQUEST:
+		if (proxy->reply->code == FR_CODE_ACCESS_ACCEPT) {
 			proxy->listener->stats.total_access_accepts++;
 
-		} else if (proxy->reply->code == PW_CODE_ACCESS_REJECT) {
+		} else if (proxy->reply->code == FR_CODE_ACCESS_REJECT) {
 			proxy->listener->stats.total_access_rejects++;
 
-		} else if (proxy->reply->code == PW_CODE_ACCESS_CHALLENGE) {
+		} else if (proxy->reply->code == FR_CODE_ACCESS_CHALLENGE) {
 			proxy->listener->stats.total_access_challenges++;
 		}
 		break;
 
 #ifdef WITH_ACCOUNTING
-	case PW_CODE_ACCOUNTING_REQUEST:
+	case FR_CODE_ACCOUNTING_REQUEST:
 		proxy->listener->stats.total_responses++;
 		break;
 
 #endif
 
 #ifdef WITH_COA
-	case PW_CODE_COA_REQUEST:
+	case FR_CODE_COA_REQUEST:
 		proxy->listener->stats.total_responses++;
 		break;
 
-	case PW_CODE_DISCONNECT_REQUEST:
+	case FR_CODE_DISCONNECT_REQUEST:
 		proxy->listener->stats.total_responses++;
 		break;
 
@@ -2477,23 +2477,23 @@ global_stats:
 	proxy->home_server->stats.last_packet = reply->timestamp.tv_sec;
 
 	switch (proxy->packet->code) {
-	case PW_CODE_ACCESS_REQUEST:
+	case FR_CODE_ACCESS_REQUEST:
 		proxy_auth_stats.last_packet = reply->timestamp.tv_sec;
 		break;
 
 #ifdef WITH_ACCOUNTING
-	case PW_CODE_ACCOUNTING_REQUEST:
+	case FR_CODE_ACCOUNTING_REQUEST:
 		proxy_acct_stats.last_packet = reply->timestamp.tv_sec;
 		break;
 
 #endif
 
 #ifdef WITH_COA
-	case PW_CODE_COA_REQUEST:
+	case FR_CODE_COA_REQUEST:
 		proxy_coa_stats.last_packet = reply->timestamp.tv_sec;
 		break;
 
-	case PW_CODE_DISCONNECT_REQUEST:
+	case FR_CODE_DISCONNECT_REQUEST:
 		proxy_dsc_stats.last_packet = reply->timestamp.tv_sec;
 		break;
 
@@ -2527,7 +2527,7 @@ global_stats:
 static int setup_post_proxy_fail(REQUEST *request)
 {
 	fr_dict_enum_t const *dval = NULL;
-	fr_dict_attr_t const *da = fr_dict_attr_by_num(NULL, 0, PW_POST_PROXY_TYPE);
+	fr_dict_attr_t const *da = fr_dict_attr_by_num(NULL, 0, FR_POST_PROXY_TYPE);
 	VALUE_PAIR *vp;
 	char buffer[256];
 
@@ -2539,13 +2539,13 @@ static int setup_post_proxy_fail(REQUEST *request)
 	if (!dval) dval = fr_dict_enum_by_alias(NULL, da, "Fail");
 
 	if (!dval) {
-		fr_pair_delete_by_num(&request->control, 0, PW_POST_PROXY_TYPE, TAG_ANY);
+		fr_pair_delete_by_num(&request->control, 0, FR_POST_PROXY_TYPE, TAG_ANY);
 		return 0;
 	}
 
-	vp = fr_pair_find_by_num(request->control, 0, PW_POST_PROXY_TYPE, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, FR_POST_PROXY_TYPE, TAG_ANY);
 	if (!vp) vp = radius_pair_create(request, &request->control,
-					PW_POST_PROXY_TYPE, 0);
+					FR_POST_PROXY_TYPE, 0);
 	fr_value_box_copy(NULL, &vp->data, dval->value);
 
 	return 1;
@@ -2609,8 +2609,8 @@ static void proxy_wait_for_id(REQUEST *request, fr_state_action_t action)
 		when = request->proxy->packet->timestamp;
 
 #ifdef WITH_COA
-		if (((request->proxy->packet->code == PW_CODE_COA_REQUEST) ||
-		     (request->proxy->packet->code == PW_CODE_DISCONNECT_REQUEST)) &&
+		if (((request->proxy->packet->code == FR_CODE_COA_REQUEST) ||
+		     (request->proxy->packet->code == FR_CODE_DISCONNECT_REQUEST)) &&
 		    (request->packet->code != request->proxy->packet->code)) {
 			when.tv_sec += request->proxy->home_server->coa_mrd;
 		} else
@@ -2693,11 +2693,11 @@ static void proxy_no_reply(REQUEST *request, fr_state_action_t action)
 			 *	post-proxy-type FAIL told us to create
 			 *	one.
 			 */
-			vp = fr_pair_find_by_num(request->control, 0, PW_RESPONSE_PACKET_TYPE, TAG_ANY);
+			vp = fr_pair_find_by_num(request->control, 0, FR_RESPONSE_PACKET_TYPE, TAG_ANY);
 			if (vp && (vp->vp_uint32 != 256)) {
 				request->proxy->reply = fr_radius_alloc_reply(request, request->proxy->packet);
 				request->proxy->reply->code = vp->vp_uint32;
-				fr_pair_delete_by_num(&request->control, 0, PW_RESPONSE_PACKET_TYPE, TAG_ANY);
+				fr_pair_delete_by_num(&request->control, 0, FR_RESPONSE_PACKET_TYPE, TAG_ANY);
 			}
 
 			request->handle(request);
@@ -2761,7 +2761,7 @@ static void proxy_running(REQUEST *request, fr_state_action_t action)
 			 *	Except that we don't copy over Proxy-State.
 			 */
 			vp = fr_pair_list_copy(request->reply, request->proxy->reply->vps);
-			fr_pair_delete_by_num(&vp, 0, PW_PROXY_STATE, TAG_ANY);
+			fr_pair_delete_by_num(&vp, 0, FR_PROXY_STATE, TAG_ANY);
 			fr_pair_add(&request->reply->vps, vp);
 
 			request->handle(request);
@@ -2858,12 +2858,12 @@ static void proxy_queued(REQUEST *request, fr_state_action_t action)
  * request may be proxied.
  *
  * The key attributes are:
- *   - PW_PROXY_TO_REALM          - Specifies a realm the request should be proxied to.
- *   - PW_HOME_SERVER_POOL        - Specifies a specific home server pool to proxy to.
- *   - PW_PACKET_DST_IP_ADDRESS   - Specifies a specific IPv4 home server to proxy to.
- *   - PW_PACKET_DST_IPV6_ADDRESS - Specifies a specific IPv6 home server to proxy to.
+ *   - FR_PROXY_TO_REALM          - Specifies a realm the request should be proxied to.
+ *   - FR_HOME_SERVER_POOL        - Specifies a specific home server pool to proxy to.
+ *   - FR_PACKET_DST_IP_ADDRESS   - Specifies a specific IPv4 home server to proxy to.
+ *   - FR_PACKET_DST_IPV6_ADDRESS - Specifies a specific IPv6 home server to proxy to.
  *
- * Certain packet types such as #PW_CODE_STATUS_SERVER will never be proxied.
+ * Certain packet types such as #FR_CODE_STATUS_SERVER will never be proxied.
  *
  * If request should be proxied, will:
  *   - Add request:Proxy-State
@@ -2895,11 +2895,11 @@ static int request_will_proxy(REQUEST *request)
 
 	if (!request->root->proxy_requests) return 0;
 	if (request->packet->dst_port == 0) return 0;
-	if (request->packet->code == PW_CODE_STATUS_SERVER) return 0;
+	if (request->packet->code == FR_CODE_STATUS_SERVER) return 0;
 	if (request->in_proxy_hash) return 0;
 	if (request->reply->code != 0) return 0;
 
-	vp = fr_pair_find_by_num(request->control, 0, PW_PROXY_TO_REALM, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, FR_PROXY_TO_REALM, TAG_ANY);
 	if (vp) {
 		realm = realm_find2(vp->vp_strvalue);
 		if (!realm) {
@@ -2913,17 +2913,17 @@ static int request_will_proxy(REQUEST *request)
 		/*
 		 *	Figure out which pool to use.
 		 */
-		if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
+		if (request->packet->code == FR_CODE_ACCESS_REQUEST) {
 			pool = realm->auth_pool;
 
 #ifdef WITH_ACCOUNTING
-		} else if (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) {
+		} else if (request->packet->code == FR_CODE_ACCOUNTING_REQUEST) {
 			pool = realm->acct_pool;
 #endif
 
 #ifdef WITH_COA
-		} else if ((request->packet->code == PW_CODE_COA_REQUEST) ||
-			   (request->packet->code == PW_CODE_DISCONNECT_REQUEST)) {
+		} else if ((request->packet->code == FR_CODE_COA_REQUEST) ||
+			   (request->packet->code == FR_CODE_DISCONNECT_REQUEST)) {
 			pool = realm->coa_pool;
 #endif
 
@@ -2931,23 +2931,23 @@ static int request_will_proxy(REQUEST *request)
 			return 0;
 		}
 
-	} else if ((vp = fr_pair_find_by_num(request->control, 0, PW_HOME_SERVER_POOL, TAG_ANY)) != NULL) {
+	} else if ((vp = fr_pair_find_by_num(request->control, 0, FR_HOME_SERVER_POOL, TAG_ANY)) != NULL) {
 		int pool_type;
 
 		switch (request->packet->code) {
-		case PW_CODE_ACCESS_REQUEST:
+		case FR_CODE_ACCESS_REQUEST:
 			pool_type = HOME_TYPE_AUTH;
 			break;
 
 #ifdef WITH_ACCOUNTING
-		case PW_CODE_ACCOUNTING_REQUEST:
+		case FR_CODE_ACCOUNTING_REQUEST:
 			pool_type = HOME_TYPE_ACCT;
 			break;
 #endif
 
 #ifdef WITH_COA
-		case PW_CODE_COA_REQUEST:
-		case PW_CODE_DISCONNECT_REQUEST:
+		case FR_CODE_COA_REQUEST:
+		case FR_CODE_DISCONNECT_REQUEST:
 			pool_type = HOME_TYPE_COA;
 			break;
 #endif
@@ -2961,14 +2961,14 @@ static int request_will_proxy(REQUEST *request)
 		/*
 		 *	Send it directly to a home server (i.e. NAS)
 		 */
-	} else if (((vp = fr_pair_find_by_num(request->control, 0, PW_PACKET_DST_IP_ADDRESS, TAG_ANY)) != NULL) ||
-		   ((vp = fr_pair_find_by_num(request->control, 0, PW_PACKET_DST_IPV6_ADDRESS, TAG_ANY)) != NULL)) {
+	} else if (((vp = fr_pair_find_by_num(request->control, 0, FR_PACKET_DST_IP_ADDRESS, TAG_ANY)) != NULL) ||
+		   ((vp = fr_pair_find_by_num(request->control, 0, FR_PACKET_DST_IPV6_ADDRESS, TAG_ANY)) != NULL)) {
 		uint16_t dst_port;
 		fr_ipaddr_t dst_ipaddr;
 
 		memset(&dst_ipaddr, 0, sizeof(dst_ipaddr));
 
-		if (vp->da->attr == PW_PACKET_DST_IP_ADDRESS) {
+		if (vp->da->attr == FR_PACKET_DST_IP_ADDRESS) {
 			dst_ipaddr.af = AF_INET;
 			dst_ipaddr.addr.v4.s_addr = vp->vp_ipv4addr;
 			dst_ipaddr.prefix = 32;
@@ -2978,20 +2978,20 @@ static int request_will_proxy(REQUEST *request)
 			dst_ipaddr.prefix = 128;
 		}
 
-		vp = fr_pair_find_by_num(request->control, 0, PW_PACKET_DST_PORT, TAG_ANY);
+		vp = fr_pair_find_by_num(request->control, 0, FR_PACKET_DST_PORT, TAG_ANY);
 		if (!vp) {
-			if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
-				dst_port = PW_AUTH_UDP_PORT;
+			if (request->packet->code == FR_CODE_ACCESS_REQUEST) {
+				dst_port = FR_AUTH_UDP_PORT;
 
 #ifdef WITH_ACCOUNTING
-			} else if (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) {
-				dst_port = PW_ACCT_UDP_PORT;
+			} else if (request->packet->code == FR_CODE_ACCOUNTING_REQUEST) {
+				dst_port = FR_ACCT_UDP_PORT;
 #endif
 
 #ifdef WITH_COA
-			} else if ((request->packet->code == PW_CODE_COA_REQUEST) ||
-				   (request->packet->code == PW_CODE_DISCONNECT_REQUEST)) {
-				dst_port = PW_COA_UDP_PORT;
+			} else if ((request->packet->code == FR_CODE_COA_REQUEST) ||
+				   (request->packet->code == FR_CODE_DISCONNECT_REQUEST)) {
+				dst_port = FR_COA_UDP_PORT;
 #endif
 			} else { /* shouldn't happen for RADIUS... */
 				return 0;
@@ -3071,7 +3071,7 @@ do_home:
 	 *	requests.
 	 */
 	if (realm && (realm->strip_realm == true) &&
-	    (strippedname = fr_pair_find_by_num(request->proxy->packet->vps, 0, PW_STRIPPED_USER_NAME, TAG_ANY)) != NULL) {
+	    (strippedname = fr_pair_find_by_num(request->proxy->packet->vps, 0, FR_STRIPPED_USER_NAME, TAG_ANY)) != NULL) {
 		/*
 		 *	If there's a Stripped-User-Name attribute in
 		 *	the request, then use THAT as the User-Name
@@ -3085,11 +3085,11 @@ do_home:
 		 *	from the vps list, and making the new
 		 *	User-Name the head of the vps list.
 		 */
-		vp = fr_pair_find_by_num(request->proxy->packet->vps, 0, PW_USER_NAME, TAG_ANY);
+		vp = fr_pair_find_by_num(request->proxy->packet->vps, 0, FR_USER_NAME, TAG_ANY);
 		if (!vp) {
 			vp_cursor_t cursor;
 			vp = radius_pair_create(NULL, NULL,
-					       PW_USER_NAME, 0);
+					       FR_USER_NAME, 0);
 			rad_assert(vp != NULL);	/* handled by above function */
 			/* Insert at the START of the list */
 			/* FIXME: Can't make assumptions about ordering */
@@ -3107,7 +3107,7 @@ do_home:
 	/*
 	 *	Call the pre-proxy routines.
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, PW_PRE_PROXY_TYPE, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, FR_PRE_PROXY_TYPE, TAG_ANY);
 	if (vp) {
 		fr_dict_enum_t const *dval = fr_dict_enum_by_value(NULL, vp->da, &vp->data);
 		/* Must be a validation issue */
@@ -3352,13 +3352,13 @@ static int request_proxy_anew(REQUEST *request)
 	 *	Update the Acct-Delay-Time attribute, since the LAST
 	 *	time we tried to retransmit this packet.
 	 */
-	if (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) {
+	if (request->packet->code == FR_CODE_ACCOUNTING_REQUEST) {
 		VALUE_PAIR *vp;
 
-		vp = fr_pair_find_by_num(request->proxy->packet->vps, 0, PW_ACCT_DELAY_TIME, TAG_ANY);
+		vp = fr_pair_find_by_num(request->proxy->packet->vps, 0, FR_ACCT_DELAY_TIME, TAG_ANY);
 		if (!vp) vp = radius_pair_create(request->proxy->packet,
 						&request->proxy->packet->vps,
-						PW_ACCT_DELAY_TIME, 0);
+						FR_ACCT_DELAY_TIME, 0);
 		if (vp) {
 			struct timeval now;
 
@@ -3550,14 +3550,14 @@ static void ping_home_server(UNUSED fr_event_list_t *eel, struct timeval *now, v
 	rad_assert(request->proxy != NULL);
 
 	if (home->ping_check == HOME_PING_CHECK_STATUS_SERVER) {
-		request->proxy->packet->code = PW_CODE_STATUS_SERVER;
+		request->proxy->packet->code = FR_CODE_STATUS_SERVER;
 
 		fr_pair_make(request->proxy->packet, &request->proxy->packet->vps,
 			 "Message-Authenticator", "0x00", T_OP_SET);
 
 	} else if ((home->type == HOME_TYPE_AUTH) ||
 		   (home->type == HOME_TYPE_AUTH_ACCT)) {
-		request->proxy->packet->code = PW_CODE_ACCESS_REQUEST;
+		request->proxy->packet->code = FR_CODE_ACCESS_REQUEST;
 
 		fr_pair_make(request->proxy->packet, &request->proxy->packet->vps,
 			 "User-Name", home->ping_user_name, T_OP_SET);
@@ -3570,7 +3570,7 @@ static void ping_home_server(UNUSED fr_event_list_t *eel, struct timeval *now, v
 
 #ifdef WITH_ACCOUNTING
 	} else if (home->type == HOME_TYPE_ACCT) {
-		request->proxy->packet->code = PW_CODE_ACCOUNTING_REQUEST;
+		request->proxy->packet->code = FR_CODE_ACCOUNTING_REQUEST;
 
 		fr_pair_make(request->proxy->packet, &request->proxy->packet->vps,
 			 "User-Name", home->ping_user_name, T_OP_SET);
@@ -3906,7 +3906,7 @@ static bool proxy_keep_waiting(REQUEST *request, struct timeval *now)
 	else if (home->type == HOME_TYPE_COA) {
 		if (request->proxy->listener) FR_STATS_TYPE_INC(request->proxy->listener->stats.total_timeouts);
 
-		if (request->packet->code == PW_CODE_COA_REQUEST) {
+		if (request->packet->code == FR_CODE_COA_REQUEST) {
 			FR_STATS_TYPE_INC(proxy_coa_stats.total_timeouts);
 		} else {
 			FR_STATS_TYPE_INC(proxy_dsc_stats.total_timeouts);
@@ -3987,8 +3987,8 @@ static void proxy_retransmit(REQUEST *request, struct timeval *now)
 	 *	If we update the Acct-Delay-Time, we need to
 	 *	get a new ID.
 	 */
-	if ((request->packet->code == PW_CODE_ACCOUNTING_REQUEST) &&
-	    fr_pair_find_by_num(request->proxy->packet->vps, 0, PW_ACCT_DELAY_TIME, TAG_ANY)) {
+	if ((request->packet->code == FR_CODE_ACCOUNTING_REQUEST) &&
+	    fr_pair_find_by_num(request->proxy->packet->vps, 0, FR_ACCT_DELAY_TIME, TAG_ANY)) {
 		request_proxy_anew(request);
 		return;
 	}
@@ -4039,7 +4039,7 @@ static void proxy_wait_for_reply(REQUEST *request, fr_state_action_t action)
 	TRACE_STATE_MACHINE;
 	CHECK_FOR_STOP;
 
-	rad_assert(request->packet->code != PW_CODE_STATUS_SERVER);
+	rad_assert(request->packet->code != FR_CODE_STATUS_SERVER);
 	rad_assert(request->proxy->home_server != NULL);
 
 	fr_event_list_time(&now, el);
@@ -4129,9 +4129,9 @@ static void request_coa_originate(REQUEST *request)
 	/*
 	 *	Check whether we want to originate one, or cancel one.
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, PW_SEND_COA_REQUEST, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, FR_SEND_COA_REQUEST, TAG_ANY);
 	if (!vp) {
-		vp = fr_pair_find_by_num(request->coa->proxy->packet->vps, 0, PW_SEND_COA_REQUEST, TAG_ANY);
+		vp = fr_pair_find_by_num(request->coa->proxy->packet->vps, 0, FR_SEND_COA_REQUEST, TAG_ANY);
 	}
 
 	if (vp) {
@@ -4148,12 +4148,12 @@ static void request_coa_originate(REQUEST *request)
 	 *	src_ipaddr will be set up in proxy_encode.
 	 */
 	memset(&ipaddr, 0, sizeof(ipaddr));
-	vp = fr_pair_find_by_num(coa->proxy->packet->vps, 0, PW_PACKET_DST_IP_ADDRESS, TAG_ANY);
+	vp = fr_pair_find_by_num(coa->proxy->packet->vps, 0, FR_PACKET_DST_IP_ADDRESS, TAG_ANY);
 	if (vp) {
 		memcpy(&ipaddr, &vp->vp_ip, sizeof(ipaddr));
-	} else if ((vp = fr_pair_find_by_num(coa->proxy->packet->vps, 0, PW_PACKET_DST_IPV6_ADDRESS, TAG_ANY)) != NULL) {
+	} else if ((vp = fr_pair_find_by_num(coa->proxy->packet->vps, 0, FR_PACKET_DST_IPV6_ADDRESS, TAG_ANY)) != NULL) {
 		memcpy(&ipaddr, &vp->vp_ip, sizeof(ipaddr));
-	} else if ((vp = fr_pair_find_by_num(coa->proxy->packet->vps, 0, PW_HOME_SERVER_POOL, TAG_ANY)) != NULL) {
+	} else if ((vp = fr_pair_find_by_num(coa->proxy->packet->vps, 0, FR_HOME_SERVER_POOL, TAG_ANY)) != NULL) {
 		coa->home_pool = home_pool_byname(vp->vp_strvalue,
 						  HOME_TYPE_COA);
 		if (!coa->home_pool) {
@@ -4191,10 +4191,10 @@ static void request_coa_originate(REQUEST *request)
 		home_server_update_request(coa->home_server, coa);
 
 	} else if (!coa->home_server) {
-		uint16_t port = PW_COA_UDP_PORT;
+		uint16_t port = FR_COA_UDP_PORT;
 		char buffer[INET6_ADDRSTRLEN];
 
-		vp = fr_pair_find_by_num(coa->proxy->packet->vps, 0, PW_PACKET_DST_PORT, TAG_ANY);
+		vp = fr_pair_find_by_num(coa->proxy->packet->vps, 0, FR_PACKET_DST_PORT, TAG_ANY);
 		if (vp) port = vp->vp_uint32;
 
 		coa->home_server = home_server_find(&ipaddr, port, IPPROTO_UDP);
@@ -4206,11 +4206,11 @@ static void request_coa_originate(REQUEST *request)
 		}
 	}
 
-	vp = fr_pair_find_by_num(coa->proxy->packet->vps, 0, PW_PACKET_TYPE, TAG_ANY);
+	vp = fr_pair_find_by_num(coa->proxy->packet->vps, 0, FR_PACKET_TYPE, TAG_ANY);
 	if (vp) {
 		switch (vp->vp_uint32) {
-		case PW_CODE_COA_REQUEST:
-		case PW_CODE_DISCONNECT_REQUEST:
+		case FR_CODE_COA_REQUEST:
+		case FR_CODE_DISCONNECT_REQUEST:
 			coa->proxy->packet->code = vp->vp_uint32;
 			break;
 
@@ -4221,7 +4221,7 @@ static void request_coa_originate(REQUEST *request)
 		}
 	}
 
-	if (!coa->proxy->packet->code) coa->proxy->packet->code = PW_CODE_COA_REQUEST;
+	if (!coa->proxy->packet->code) coa->proxy->packet->code = FR_CODE_COA_REQUEST;
 
 	/*
 	 *	The rest of the server code assumes that
@@ -4243,7 +4243,7 @@ static void request_coa_originate(REQUEST *request)
 	/*
 	 *	Call the pre-proxy routines.
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, PW_PRE_PROXY_TYPE, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, FR_PRE_PROXY_TYPE, TAG_ANY);
 	if (vp) {
 		fr_dict_enum_t const *dval = fr_dict_enum_by_value(NULL, vp->da, &vp->data);
 		/* Must be a validation issue */

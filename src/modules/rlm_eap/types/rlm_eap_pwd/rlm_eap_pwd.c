@@ -57,8 +57,8 @@ static int send_pwd_request(pwd_session_t *session, eap_round_t *eap_round)
 
 	len = (session->out_len - session->out_pos) + sizeof(pwd_hdr);
 	rad_assert(len > 0);
-	eap_round->request->code = PW_EAP_REQUEST;
-	eap_round->request->type.num = PW_EAP_PWD;
+	eap_round->request->code = FR_EAP_REQUEST;
+	eap_round->request->type.num = FR_EAP_PWD;
 	eap_round->request->type.length = (len > session->mtu) ? session->mtu : len;
 	eap_round->request->type.data = talloc_zero_array(eap_round->request, uint8_t, eap_round->request->type.length);
 	hdr = (pwd_hdr *)eap_round->request->type.data;
@@ -211,8 +211,8 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 		 * send back an ACK for this fragment
 		 */
 		exch = EAP_PWD_GET_EXCHANGE(hdr);
-		eap_round->request->code = PW_EAP_REQUEST;
-		eap_round->request->type.num = PW_EAP_PWD;
+		eap_round->request->code = FR_EAP_REQUEST;
+		eap_round->request->type.num = FR_EAP_PWD;
 		eap_round->request->type.length = sizeof(pwd_hdr);
 
 		MEM(eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, sizeof(pwd_hdr)));
@@ -277,7 +277,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 		memcpy(session->peer_id, packet->identity, session->peer_id_len);
 		session->peer_id[session->peer_id_len] = '\0';
 
-		vp = fr_pair_find_by_num(request->control, 0, PW_CLEARTEXT_PASSWORD, TAG_ANY);
+		vp = fr_pair_find_by_num(request->control, 0, FR_CLEARTEXT_PASSWORD, TAG_ANY);
 		if (!vp) {
 			REDEBUG("Failed to find password for %s to do pwd authentication", session->peer_id);
 			return RLM_MODULE_REJECT;
@@ -394,7 +394,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 			REDEBUG("Failed generating (E)MSK");
 			return RLM_MODULE_FAIL;
 		}
-		eap_round->request->code = PW_EAP_SUCCESS;
+		eap_round->request->code = FR_EAP_SUCCESS;
 
 		/*
 		 *	Return the MSK (in halves).
@@ -455,7 +455,7 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 	 *	The admin can dynamically change the MTU.
 	 */
 	session->mtu = inst->fragment_size;
-	vp = fr_pair_find_by_num(eap_session->request->packet->vps, 0, PW_FRAMED_MTU, TAG_ANY);
+	vp = fr_pair_find_by_num(eap_session->request->packet->vps, 0, FR_FRAMED_MTU, TAG_ANY);
 
 	/*
 	 *	session->mtu is *our* MTU.  We need to subtract off the EAP

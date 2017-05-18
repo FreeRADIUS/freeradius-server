@@ -57,7 +57,7 @@ static fr_transport_final_t acct_process(REQUEST *request)
 
 		request->component = "radius";
 
-		da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_TYPE);
+		da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
 		rad_assert(da != NULL);
 		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->packet->code));
 		if (!dv) {
@@ -94,7 +94,7 @@ static fr_transport_final_t acct_process(REQUEST *request)
 		case RLM_MODULE_NOOP:
 		case RLM_MODULE_OK:
 		case RLM_MODULE_UPDATED:
-			request->reply->code = PW_CODE_ACCOUNTING_RESPONSE;
+			request->reply->code = FR_CODE_ACCOUNTING_RESPONSE;
 			break;
 
 		case RLM_MODULE_HANDLED:
@@ -116,7 +116,7 @@ static fr_transport_final_t acct_process(REQUEST *request)
 		/*
 		 *	Allow for over-ride of reply code.
 		 */
-		vp = fr_pair_find_by_num(request->reply->vps, 0, PW_PACKET_TYPE, TAG_ANY);
+		vp = fr_pair_find_by_num(request->reply->vps, 0, FR_PACKET_TYPE, TAG_ANY);
 		if (vp) {
 			if (vp->vp_uint32 == 256) {
 				request->reply->code = 0;
@@ -125,7 +125,7 @@ static fr_transport_final_t acct_process(REQUEST *request)
 			}
 		}
 
-		if (!da) da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_TYPE);
+		if (!da) da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
 		rad_assert(da != NULL);
 
 		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
@@ -322,7 +322,7 @@ static int acct_socket_recv(rad_listen_t *listener)
 		return 0;
 	}
 
-	if (packet->code != PW_CODE_ACCOUNTING_REQUEST) {
+	if (packet->code != FR_CODE_ACCOUNTING_REQUEST) {
 		if (packet->code < FR_MAX_PACKET_CODE) {
 			DEBUG2("Invalid packet code %s sent to accounting port", fr_packet_codes[packet->code]);
 		} else {
@@ -413,7 +413,7 @@ static int acct_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	if (common_socket_parse(cs, this) < 0) return -1;
 
-	if (!sock->my_port) sock->my_port = PW_ACCT_UDP_PORT;
+	if (!sock->my_port) sock->my_port = FR_ACCT_UDP_PORT;
 
 	return 0;
 }

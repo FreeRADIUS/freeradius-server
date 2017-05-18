@@ -47,7 +47,7 @@ static bool do_output = true;
 static rc_stats_t stats;
 
 static uint16_t server_port = 0;
-static int packet_code = PW_CODE_UNDEFINED;
+static int packet_code = FR_CODE_UNDEFINED;
 static fr_ipaddr_t server_ipaddr;
 static int resend_count = 1;
 static bool done = true;
@@ -144,10 +144,10 @@ static int mschapv1_encode(RADIUS_PACKET *packet, VALUE_PAIR **request,
 	VALUE_PAIR		*challenge, *reply;
 	uint8_t			nthash[16];
 
-	fr_pair_delete_by_num(&packet->vps, VENDORPEC_MICROSOFT, PW_MSCHAP_CHALLENGE, TAG_ANY);
-	fr_pair_delete_by_num(&packet->vps, VENDORPEC_MICROSOFT, PW_MSCHAP_RESPONSE, TAG_ANY);
+	fr_pair_delete_by_num(&packet->vps, VENDORPEC_MICROSOFT, FR_MSCHAP_CHALLENGE, TAG_ANY);
+	fr_pair_delete_by_num(&packet->vps, VENDORPEC_MICROSOFT, FR_MSCHAP_RESPONSE, TAG_ANY);
 
-	challenge = fr_pair_afrom_num(packet, VENDORPEC_MICROSOFT, PW_MSCHAP_CHALLENGE);
+	challenge = fr_pair_afrom_num(packet, VENDORPEC_MICROSOFT, FR_MSCHAP_CHALLENGE);
 	if (!challenge) {
 		return 0;
 	}
@@ -159,7 +159,7 @@ static int mschapv1_encode(RADIUS_PACKET *packet, VALUE_PAIR **request,
 		p[i] = fr_rand();
 	}
 
-	reply = fr_pair_afrom_num(packet, VENDORPEC_MICROSOFT, PW_MSCHAP_RESPONSE);
+	reply = fr_pair_afrom_num(packet, VENDORPEC_MICROSOFT, FR_MSCHAP_RESPONSE);
 	if (!reply) {
 		return 0;
 	}
@@ -193,31 +193,31 @@ static int getport(char const *name)
 /*
  *	Set a port from the request type if we don't already have one
  */
-static void radclient_get_port(PW_CODE type, uint16_t *port)
+static void radclient_get_port(FR_CODE type, uint16_t *port)
 {
 	switch (type) {
 	default:
-	case PW_CODE_ACCESS_REQUEST:
-	case PW_CODE_ACCESS_CHALLENGE:
-	case PW_CODE_STATUS_SERVER:
+	case FR_CODE_ACCESS_REQUEST:
+	case FR_CODE_ACCESS_CHALLENGE:
+	case FR_CODE_STATUS_SERVER:
 		if (*port == 0) *port = getport("radius");
-		if (*port == 0) *port = PW_AUTH_UDP_PORT;
+		if (*port == 0) *port = FR_AUTH_UDP_PORT;
 		return;
 
-	case PW_CODE_ACCOUNTING_REQUEST:
+	case FR_CODE_ACCOUNTING_REQUEST:
 		if (*port == 0) *port = getport("radacct");
-		if (*port == 0) *port = PW_ACCT_UDP_PORT;
+		if (*port == 0) *port = FR_ACCT_UDP_PORT;
 		return;
 
-	case PW_CODE_DISCONNECT_REQUEST:
-		if (*port == 0) *port = PW_POD_UDP_PORT;
+	case FR_CODE_DISCONNECT_REQUEST:
+		if (*port == 0) *port = FR_POD_UDP_PORT;
 		return;
 
-	case PW_CODE_COA_REQUEST:
-		if (*port == 0) *port = PW_COA_UDP_PORT;
+	case FR_CODE_COA_REQUEST:
+		if (*port == 0) *port = FR_COA_UDP_PORT;
 		return;
 
-	case PW_CODE_UNDEFINED:
+	case FR_CODE_UNDEFINED:
 		if (*port == 0) *port = 0;
 		return;
 	}
@@ -226,25 +226,25 @@ static void radclient_get_port(PW_CODE type, uint16_t *port)
 /*
  *	Resolve a port to a request type
  */
-static PW_CODE radclient_get_code(uint16_t port)
+static FR_CODE radclient_get_code(uint16_t port)
 {
 	/*
 	 *	getport returns 0 if the service doesn't exist
 	 *	so we need to return early, to avoid incorrect
 	 *	codes.
 	 */
-	if (port == 0) return PW_CODE_UNDEFINED;
+	if (port == 0) return FR_CODE_UNDEFINED;
 
-	if ((port == getport("radius")) || (port == PW_AUTH_UDP_PORT) || (port == PW_AUTH_UDP_PORT_ALT)) {
-		return PW_CODE_ACCESS_REQUEST;
+	if ((port == getport("radius")) || (port == FR_AUTH_UDP_PORT) || (port == FR_AUTH_UDP_PORT_ALT)) {
+		return FR_CODE_ACCESS_REQUEST;
 	}
-	if ((port == getport("radacct")) || (port == PW_ACCT_UDP_PORT) || (port == PW_ACCT_UDP_PORT_ALT)) {
-		return PW_CODE_ACCOUNTING_REQUEST;
+	if ((port == getport("radacct")) || (port == FR_ACCT_UDP_PORT) || (port == FR_ACCT_UDP_PORT_ALT)) {
+		return FR_CODE_ACCOUNTING_REQUEST;
 	}
-	if (port == PW_COA_UDP_PORT) return PW_CODE_COA_REQUEST;
-	if (port == PW_POD_UDP_PORT) return PW_CODE_DISCONNECT_REQUEST;
+	if (port == FR_COA_UDP_PORT) return FR_CODE_COA_REQUEST;
+	if (port == FR_POD_UDP_PORT) return FR_CODE_DISCONNECT_REQUEST;
 
-	return PW_CODE_UNDEFINED;
+	return FR_CODE_UNDEFINED;
 }
 
 
@@ -404,8 +404,8 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				}
 
 				if (vp->da->vendor == 0 ) switch (vp->da->attr) {
-				case PW_RESPONSE_PACKET_TYPE:
-				case PW_PACKET_TYPE:
+				case FR_RESPONSE_PACKET_TYPE:
+				case FR_PACKET_TYPE:
 					fr_pair_cursor_remove(&cursor);	/* so we don't break the filter */
 					request->filter_code = vp->vp_uint32;
 					talloc_free(vp);
@@ -445,24 +445,24 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			 *	Allow it to set the packet type in
 			 *	the attributes read from the file.
 			 */
-			case PW_PACKET_TYPE:
+			case FR_PACKET_TYPE:
 				request->packet->code = vp->vp_uint32;
 				break;
 
-			case PW_RESPONSE_PACKET_TYPE:
+			case FR_RESPONSE_PACKET_TYPE:
 				request->filter_code = vp->vp_uint32;
 				break;
 
-			case PW_PACKET_DST_PORT:
+			case FR_PACKET_DST_PORT:
 				request->packet->dst_port = (vp->vp_uint32 & 0xffff);
 				break;
 
-			case PW_PACKET_DST_IP_ADDRESS:
-			case PW_PACKET_DST_IPV6_ADDRESS:
+			case FR_PACKET_DST_IP_ADDRESS:
+			case FR_PACKET_DST_IPV6_ADDRESS:
 				memcpy(&request->packet->dst_ipaddr, &vp->vp_ip, sizeof(request->packet->dst_ipaddr));
 				break;
 
-			case PW_PACKET_SRC_PORT:
+			case FR_PACKET_SRC_PORT:
 				if ((vp->vp_uint32 < 1024) ||
 				    (vp->vp_uint32 > 65535)) {
 					ERROR("Invalid value '%u' for Packet-Src-Port", vp->vp_uint32);
@@ -471,12 +471,12 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				request->packet->src_port = (vp->vp_uint32 & 0xffff);
 				break;
 
-			case PW_PACKET_SRC_IP_ADDRESS:
-			case PW_PACKET_SRC_IPV6_ADDRESS:
+			case FR_PACKET_SRC_IP_ADDRESS:
+			case FR_PACKET_SRC_IPV6_ADDRESS:
 				memcpy(&request->packet->src_ipaddr, &vp->vp_ip, sizeof(request->packet->src_ipaddr));
 				break;
 
-			case PW_REQUEST_AUTHENTICATOR:
+			case FR_REQUEST_AUTHENTICATOR:
 				if (vp->vp_length > sizeof(request->packet->vector)) {
 					memcpy(request->packet->vector, vp->vp_octets, sizeof(request->packet->vector));
 				} else {
@@ -485,16 +485,16 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				}
 				break;
 
-			case PW_DIGEST_REALM:
-			case PW_DIGEST_NONCE:
-			case PW_DIGEST_METHOD:
-			case PW_DIGEST_URI:
-			case PW_DIGEST_QOP:
-			case PW_DIGEST_ALGORITHM:
-			case PW_DIGEST_BODY_DIGEST:
-			case PW_DIGEST_CNONCE:
-			case PW_DIGEST_NONCE_COUNT:
-			case PW_DIGEST_USER_NAME:
+			case FR_DIGEST_REALM:
+			case FR_DIGEST_NONCE:
+			case FR_DIGEST_METHOD:
+			case FR_DIGEST_URI:
+			case FR_DIGEST_QOP:
+			case FR_DIGEST_ALGORITHM:
+			case FR_DIGEST_BODY_DIGEST:
+			case FR_DIGEST_CNONCE:
+			case FR_DIGEST_NONCE_COUNT:
+			case FR_DIGEST_USER_NAME:
 			/* overlapping! */
 			{
 				fr_dict_attr_t const *da;
@@ -503,11 +503,11 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				p = talloc_array(vp, uint8_t, vp->vp_length + 2);
 
 				memcpy(p + 2, vp->vp_octets, vp->vp_length);
-				p[0] = vp->da->attr - PW_DIGEST_REALM + 1;
+				p[0] = vp->da->attr - FR_DIGEST_REALM + 1;
 				vp->vp_length += 2;
 				p[1] = vp->vp_length;
 
-				da = fr_dict_attr_by_num(NULL, 0, PW_DIGEST_ATTRIBUTES);
+				da = fr_dict_attr_by_num(NULL, 0, FR_DIGEST_ATTRIBUTES);
 				if (!da) {
 					ERROR("Out of memory");
 					goto error;
@@ -538,14 +538,14 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				/*
 				 *	Cache this for later.
 				 */
-			case PW_CLEARTEXT_PASSWORD:
+			case FR_CLEARTEXT_PASSWORD:
 				request->password = vp;
 				break;
 
 			/*
 			 *	Keep a copy of the the password attribute.
 			 */
-			case PW_CHAP_PASSWORD:
+			case FR_CHAP_PASSWORD:
 				/*
 				 *	If it's already hex, do nothing.
 				 */
@@ -560,13 +560,13 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				fr_pair_value_bstrncpy(request->password, vp->vp_strvalue, vp->vp_length);
 				break;
 
-			case PW_USER_PASSWORD:
-			case PW_MS_CHAP_PASSWORD:
+			case FR_USER_PASSWORD:
+			case FR_MS_CHAP_PASSWORD:
 				request->password = fr_pair_make(request->packet, &request->packet->vps, "Cleartext-Password",
 							     vp->vp_strvalue, T_OP_EQ);
 				break;
 
-			case PW_RADCLIENT_TEST_NAME:
+			case FR_RADCLIENT_TEST_NAME:
 				request->name = vp->vp_strvalue;
 				break;
 			}
@@ -575,7 +575,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		/*
 		 *	Use the default set on the command line
 		 */
-		if (request->packet->code == PW_CODE_UNDEFINED) request->packet->code = packet_code;
+		if (request->packet->code == FR_CODE_UNDEFINED) request->packet->code = packet_code;
 
 		/*
 		 *	Default to the filename
@@ -586,41 +586,41 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		 *	Automatically set the response code from the request code
 		 *	(if one wasn't already set).
 		 */
-		if (request->filter_code == PW_CODE_UNDEFINED) {
+		if (request->filter_code == FR_CODE_UNDEFINED) {
 			switch (request->packet->code) {
-			case PW_CODE_ACCESS_REQUEST:
-				request->filter_code = PW_CODE_ACCESS_ACCEPT;
+			case FR_CODE_ACCESS_REQUEST:
+				request->filter_code = FR_CODE_ACCESS_ACCEPT;
 				break;
 
-			case PW_CODE_ACCOUNTING_REQUEST:
-				request->filter_code = PW_CODE_ACCOUNTING_RESPONSE;
+			case FR_CODE_ACCOUNTING_REQUEST:
+				request->filter_code = FR_CODE_ACCOUNTING_RESPONSE;
 				break;
 
-			case PW_CODE_COA_REQUEST:
-				request->filter_code = PW_CODE_COA_ACK;
+			case FR_CODE_COA_REQUEST:
+				request->filter_code = FR_CODE_COA_ACK;
 				break;
 
-			case PW_CODE_DISCONNECT_REQUEST:
-				request->filter_code = PW_CODE_DISCONNECT_ACK;
+			case FR_CODE_DISCONNECT_REQUEST:
+				request->filter_code = FR_CODE_DISCONNECT_ACK;
 				break;
 
-			case PW_CODE_STATUS_SERVER:
+			case FR_CODE_STATUS_SERVER:
 				switch (radclient_get_code(request->packet->dst_port)) {
-				case PW_CODE_ACCESS_REQUEST:
-					request->filter_code = PW_CODE_ACCESS_ACCEPT;
+				case FR_CODE_ACCESS_REQUEST:
+					request->filter_code = FR_CODE_ACCESS_ACCEPT;
 					break;
 
-				case PW_CODE_ACCOUNTING_REQUEST:
-					request->filter_code = PW_CODE_ACCOUNTING_RESPONSE;
+				case FR_CODE_ACCOUNTING_REQUEST:
+					request->filter_code = FR_CODE_ACCOUNTING_RESPONSE;
 					break;
 
 				default:
-					request->filter_code = PW_CODE_UNDEFINED;
+					request->filter_code = FR_CODE_UNDEFINED;
 					break;
 				}
 				break;
 
-			case PW_CODE_UNDEFINED:
+			case FR_CODE_UNDEFINED:
 				REDEBUG("Both Packet-Type and Response-Packet-Type undefined, specify at least one, "
 					"or a well known RADIUS port");
 				goto error;
@@ -634,25 +634,25 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		 *	Automatically set the request code from the response code
 		 *	(if one wasn't already set).
 		 */
-		} else if (request->packet->code == PW_CODE_UNDEFINED) {
+		} else if (request->packet->code == FR_CODE_UNDEFINED) {
 			switch (request->filter_code) {
-			case PW_CODE_ACCESS_ACCEPT:
-			case PW_CODE_ACCESS_REJECT:
-				request->packet->code = PW_CODE_ACCESS_REQUEST;
+			case FR_CODE_ACCESS_ACCEPT:
+			case FR_CODE_ACCESS_REJECT:
+				request->packet->code = FR_CODE_ACCESS_REQUEST;
 				break;
 
-			case PW_CODE_ACCOUNTING_RESPONSE:
-				request->packet->code = PW_CODE_ACCOUNTING_REQUEST;
+			case FR_CODE_ACCOUNTING_RESPONSE:
+				request->packet->code = FR_CODE_ACCOUNTING_REQUEST;
 				break;
 
-			case PW_CODE_DISCONNECT_ACK:
-			case PW_CODE_DISCONNECT_NAK:
-				request->packet->code = PW_CODE_DISCONNECT_REQUEST;
+			case FR_CODE_DISCONNECT_ACK:
+			case FR_CODE_DISCONNECT_NAK:
+				request->packet->code = FR_CODE_DISCONNECT_REQUEST;
 				break;
 
-			case PW_CODE_COA_ACK:
-			case PW_CODE_COA_NAK:
-				request->packet->code = PW_CODE_COA_REQUEST;
+			case FR_CODE_COA_ACK:
+			case FR_CODE_COA_NAK:
+				request->packet->code = FR_CODE_COA_REQUEST;
 				break;
 
 			default:
@@ -861,16 +861,16 @@ static int send_one_packet(rc_request_t *request)
 		if (request->password) {
 			VALUE_PAIR *vp;
 
-			if ((vp = fr_pair_find_by_num(request->packet->vps, 0, PW_USER_PASSWORD, TAG_ANY)) != NULL) {
+			if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_PASSWORD, TAG_ANY)) != NULL) {
 				fr_pair_value_strcpy(vp, request->password->vp_strvalue);
 
-			} else if ((vp = fr_pair_find_by_num(request->packet->vps, 0, PW_CHAP_PASSWORD, TAG_ANY)) != NULL) {
+			} else if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_CHAP_PASSWORD, TAG_ANY)) != NULL) {
 				uint8_t buffer[17];
 
 				fr_radius_encode_chap_password(buffer, request->packet, fr_rand() & 0xff, request->password);
 				fr_pair_value_memcpy(vp, buffer, 17);
 
-			} else if (fr_pair_find_by_num(request->packet->vps, 0, PW_MS_CHAP_PASSWORD, TAG_ANY) != NULL) {
+			} else if (fr_pair_find_by_num(request->packet->vps, 0, FR_MS_CHAP_PASSWORD, TAG_ANY) != NULL) {
 				mschapv1_encode(request->packet, &request->packet->vps, request->password->vp_strvalue);
 
 			} else {
@@ -1069,14 +1069,14 @@ static int recv_one_packet(int wait_time)
 	 *	Increment counters...
 	 */
 	switch (request->reply->code) {
-	case PW_CODE_ACCESS_ACCEPT:
-	case PW_CODE_ACCOUNTING_RESPONSE:
-	case PW_CODE_COA_ACK:
-	case PW_CODE_DISCONNECT_ACK:
+	case FR_CODE_ACCESS_ACCEPT:
+	case FR_CODE_ACCOUNTING_RESPONSE:
+	case FR_CODE_COA_ACK:
+	case FR_CODE_DISCONNECT_ACK:
 		stats.accepted++;
 		break;
 
-	case PW_CODE_ACCESS_CHALLENGE:
+	case FR_CODE_ACCESS_CHALLENGE:
 		break;
 
 	default:
@@ -1087,7 +1087,7 @@ static int recv_one_packet(int wait_time)
 	 *	If we had an expected response code, check to see if the
 	 *	packet matched that.
 	 */
-	if ((request->filter_code != PW_CODE_UNDEFINED) && (request->reply->code != request->filter_code)) {
+	if ((request->filter_code != FR_CODE_UNDEFINED) && (request->reply->code != request->filter_code)) {
 		if (is_radius_code(request->reply->code)) {
 			REDEBUG("%s: Expected %s got %s", request->name, fr_packet_codes[request->filter_code],
 				fr_packet_codes[request->reply->code]);
@@ -1373,7 +1373,7 @@ int main(int argc, char **argv)
 		/*
 		 *	Work backwards from the port to determine the packet type
 		 */
-		if (packet_code == PW_CODE_UNDEFINED) packet_code = radclient_get_code(server_port);
+		if (packet_code == FR_CODE_UNDEFINED) packet_code = radclient_get_code(server_port);
 	}
 	radclient_get_port(packet_code, &server_port);
 

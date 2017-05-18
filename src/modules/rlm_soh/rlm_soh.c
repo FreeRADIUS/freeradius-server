@@ -48,19 +48,19 @@ static ssize_t soh_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	/*
 	 * There will be no point unless SoH-Supported = yes
 	 */
-	vp[0] = fr_pair_find_by_num(request->packet->vps, 0, PW_SOH_SUPPORTED, TAG_ANY);
+	vp[0] = fr_pair_find_by_num(request->packet->vps, 0, FR_SOH_SUPPORTED, TAG_ANY);
 	if (!vp[0])
 		return 0;
 
 
 	if (strncasecmp(fmt, "OS", 2) == 0) {
 		/* OS vendor */
-		vp[0] = fr_pair_find_by_num(request->packet->vps, 0, PW_SOH_MS_MACHINE_OS_VENDOR, TAG_ANY);
-		vp[1] = fr_pair_find_by_num(request->packet->vps, 0, PW_SOH_MS_MACHINE_OS_VERSION, TAG_ANY);
-		vp[2] = fr_pair_find_by_num(request->packet->vps, 0, PW_SOH_MS_MACHINE_OS_RELEASE, TAG_ANY);
-		vp[3] = fr_pair_find_by_num(request->packet->vps, 0, PW_SOH_MS_MACHINE_OS_BUILD, TAG_ANY);
-		vp[4] = fr_pair_find_by_num(request->packet->vps, 0, PW_SOH_MS_MACHINE_SP_VERSION, TAG_ANY);
-		vp[5] = fr_pair_find_by_num(request->packet->vps, 0, PW_SOH_MS_MACHINE_SP_RELEASE, TAG_ANY);
+		vp[0] = fr_pair_find_by_num(request->packet->vps, 0, FR_SOH_MS_MACHINE_OS_VENDOR, TAG_ANY);
+		vp[1] = fr_pair_find_by_num(request->packet->vps, 0, FR_SOH_MS_MACHINE_OS_VERSION, TAG_ANY);
+		vp[2] = fr_pair_find_by_num(request->packet->vps, 0, FR_SOH_MS_MACHINE_OS_RELEASE, TAG_ANY);
+		vp[3] = fr_pair_find_by_num(request->packet->vps, 0, FR_SOH_MS_MACHINE_OS_BUILD, TAG_ANY);
+		vp[4] = fr_pair_find_by_num(request->packet->vps, 0, FR_SOH_MS_MACHINE_SP_VERSION, TAG_ANY);
+		vp[5] = fr_pair_find_by_num(request->packet->vps, 0, FR_SOH_MS_MACHINE_SP_RELEASE, TAG_ANY);
 
 		if (vp[0] && vp[0]->vp_uint32 == VENDORPEC_MICROSOFT) {
 			if (!vp[1]) {
@@ -192,7 +192,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 	int rv;
 
 	/* try to find the MS-SoH payload */
-	vp = fr_pair_find_by_num(request->packet->vps, VENDORPEC_MICROSOFT, PW_MS_QUARANTINE_SOH, TAG_ANY);
+	vp = fr_pair_find_by_num(request->packet->vps, VENDORPEC_MICROSOFT, FR_MS_QUARANTINE_SOH, TAG_ANY);
 	if (!vp) {
 		RDEBUG("SoH radius VP not found");
 		return RLM_MODULE_NOOP;

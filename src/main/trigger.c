@@ -315,13 +315,13 @@ VALUE_PAIR *trigger_args_afrom_server(TALLOC_CTX *ctx, char const *server, uint1
 	VALUE_PAIR		*out = NULL, *vp;
 	vp_cursor_t		cursor;
 
-	server_da = fr_dict_attr_by_num(NULL, 0, PW_CONNECTION_POOL_SERVER);
+	server_da = fr_dict_attr_by_num(NULL, 0, FR_CONNECTION_POOL_SERVER);
 	if (!server_da) {
 		ERROR("Incomplete dictionary: Missing definition for \"Connection-Pool-Server\"");
 		return NULL;
 	}
 
-	port_da = fr_dict_attr_by_num(NULL, 0, PW_CONNECTION_POOL_PORT);
+	port_da = fr_dict_attr_by_num(NULL, 0, FR_CONNECTION_POOL_PORT);
 	if (!port_da) {
 		ERROR("Incomplete dictionary: Missing definition for \"Connection-Pool-Port\"");
 		return NULL;

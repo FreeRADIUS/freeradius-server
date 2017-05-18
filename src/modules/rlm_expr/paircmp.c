@@ -50,10 +50,10 @@ static int connectcmp(UNUSED void *instance,
  *	Compare prefix/suffix.
  *
  *	If they compare:
- *	- if PW_STRIP_USER_NAME is present in check_pairs,
+ *	- if FR_STRIP_USER_NAME is present in check_pairs,
  *	  strip the username of prefix/suffix.
- *	- if PW_STRIP_USER_NAME is not present in check_pairs,
- *	  add a PW_STRIPPED_USER_NAME to the request.
+ *	- if FR_STRIP_USER_NAME is not present in check_pairs,
+ *	  add a FR_STRIPPED_USER_NAME to the request.
  */
 static int presufcmp(UNUSED void *instance,
 		     REQUEST *request,
@@ -82,12 +82,12 @@ static int presufcmp(UNUSED void *instance,
 
 	len = strlen(check->vp_strvalue);
 	if (check->da->vendor == 0) switch (check->da->attr) {
-	case PW_PREFIX:
+	case FR_PREFIX:
 		ret = strncmp(name, check->vp_strvalue, len);
 		if (ret == 0)
 			strlcpy(rest, name + len, sizeof(rest));
 		break;
-	case PW_SUFFIX:
+	case FR_SUFFIX:
 		namelen = strlen(name);
 		if (namelen < len)
 			break;
@@ -105,19 +105,19 @@ static int presufcmp(UNUSED void *instance,
 	/*
 	 *	If Strip-User-Name == No, then don't do any more.
 	 */
-	vp = fr_pair_find_by_num(check_pairs, 0, PW_STRIP_USER_NAME, TAG_ANY);
+	vp = fr_pair_find_by_num(check_pairs, 0, FR_STRIP_USER_NAME, TAG_ANY);
 	if (vp && !vp->vp_uint32) return ret;
 
 	/*
 	 *	See where to put the stripped user name.
 	 */
-	vp = fr_pair_find_by_num(check_pairs, 0, PW_STRIPPED_USER_NAME, TAG_ANY);
+	vp = fr_pair_find_by_num(check_pairs, 0, FR_STRIPPED_USER_NAME, TAG_ANY);
 	if (!vp) {
 		/*
 		 *	If "request" is NULL, then the memory will be
 		 *	lost!
 		 */
-		vp = radius_pair_create(request->packet, &req, PW_STRIPPED_USER_NAME, 0);
+		vp = radius_pair_create(request->packet, &req, FR_STRIPPED_USER_NAME, 0);
 		if (!vp) return ret;
 		request->username = vp;
 	}
@@ -227,15 +227,15 @@ static int genericcmp(UNUSED void *instance,
 }
 
 static int generic_attrs[] = {
-	PW_CLIENT_IP_ADDRESS,
-	PW_PACKET_SRC_IP_ADDRESS,
-	PW_PACKET_DST_IP_ADDRESS,
-	PW_PACKET_SRC_PORT,
-	PW_PACKET_DST_PORT,
-	PW_REQUEST_PROCESSING_STAGE,
-	PW_PACKET_SRC_IPV6_ADDRESS,
-	PW_PACKET_DST_IPV6_ADDRESS,
-	PW_VIRTUAL_SERVER,
+	FR_CLIENT_IP_ADDRESS,
+	FR_PACKET_SRC_IP_ADDRESS,
+	FR_PACKET_DST_IP_ADDRESS,
+	FR_PACKET_SRC_PORT,
+	FR_PACKET_DST_PORT,
+	FR_REQUEST_PROCESSING_STAGE,
+	FR_PACKET_SRC_IPV6_ADDRESS,
+	FR_PACKET_DST_IPV6_ADDRESS,
+	FR_VIRTUAL_SERVER,
 	0
 };
 
@@ -246,13 +246,13 @@ void pair_builtincompare_add(void *instance)
 {
 	int i;
 
-	paircompare_register(fr_dict_attr_by_num(NULL, 0, PW_PREFIX), fr_dict_attr_by_num(NULL, 0, PW_USER_NAME), false, presufcmp, instance);
-	paircompare_register(fr_dict_attr_by_num(NULL, 0, PW_SUFFIX), fr_dict_attr_by_num(NULL, 0, PW_USER_NAME), false, presufcmp, instance);
-	paircompare_register(fr_dict_attr_by_num(NULL, 0, PW_CONNECT_RATE), fr_dict_attr_by_num(NULL, 0,
-												PW_CONNECT_INFO),
+	paircompare_register(fr_dict_attr_by_num(NULL, 0, FR_PREFIX), fr_dict_attr_by_num(NULL, 0, FR_USER_NAME), false, presufcmp, instance);
+	paircompare_register(fr_dict_attr_by_num(NULL, 0, FR_SUFFIX), fr_dict_attr_by_num(NULL, 0, FR_USER_NAME), false, presufcmp, instance);
+	paircompare_register(fr_dict_attr_by_num(NULL, 0, FR_CONNECT_RATE), fr_dict_attr_by_num(NULL, 0,
+												FR_CONNECT_INFO),
 			     false, connectcmp, instance);
-	paircompare_register(fr_dict_attr_by_num(NULL, 0, PW_PACKET_TYPE), NULL, true, packetcmp, instance);
-	paircompare_register(fr_dict_attr_by_num(NULL, 0, PW_RESPONSE_PACKET_TYPE), NULL, true, responsecmp, instance);
+	paircompare_register(fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE), NULL, true, packetcmp, instance);
+	paircompare_register(fr_dict_attr_by_num(NULL, 0, FR_RESPONSE_PACKET_TYPE), NULL, true, responsecmp, instance);
 
 	for (i = 0; generic_attrs[i] != 0; i++) {
 		paircompare_register(fr_dict_attr_by_num(NULL, 0, generic_attrs[i]), NULL, true, genericcmp, instance);

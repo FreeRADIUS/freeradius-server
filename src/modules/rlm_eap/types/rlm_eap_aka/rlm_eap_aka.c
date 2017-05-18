@@ -49,7 +49,7 @@ static int eap_aka_compose(eap_session_t *eap_session)
 	/* we will set the ID on requests, since we have to HMAC it */
 	eap_session->this_round->set_request_id = true;
 
-	return fr_sim_encode(eap_session->request, dict_aka_root, PW_EAP_AKA,
+	return fr_sim_encode(eap_session->request, dict_aka_root, FR_EAP_AKA,
 			     eap_session->request->reply->vps, eap_session->this_round->request,
 			     NULL, 0);
 }
@@ -58,7 +58,7 @@ static int eap_aka_compose(eap_session_t *eap_session)
  *
  * Challenges will come from one of three places eventually:
  *
- * 1  from attributes like PW_EAP_SIM_RANDx
+ * 1  from attributes like FR_EAP_SIM_RANDx
  *	    (these might be retrieved from a database)
  *
  * 2  from internally implemented SIM authenticators
@@ -93,7 +93,7 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	/*
 	 *	Okay, we got the challenge! Put it into an attribute.
 	 */
-	MEM(vp = fr_pair_afrom_child_num(packet, dict_aka_root, PW_EAP_AKA_RAND));
+	MEM(vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_RAND));
 	MEM(p = rand = talloc_array(vp, uint8_t, 2 + SIM_VECTOR_UMTS_RAND_SIZE));
 	memset(p, 0, 2); /* clear reserved bytes */
 	memcpy(p + 2, eap_aka_session->keys.umts.vector.rand, SIM_VECTOR_UMTS_RAND_SIZE);
@@ -104,7 +104,7 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	 *	Send the AUTN value to the client, so it can authenticate
 	 *	whoever has knowledge of the Ki.
 	 */
-	MEM(vp = fr_pair_afrom_child_num(packet, dict_aka_root, PW_EAP_AKA_AUTN));
+	MEM(vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_AUTN));
 	MEM(p = talloc_array(vp, uint8_t, 2 + SIM_VECTOR_UMTS_AUTN_SIZE));
 	memset(p, 0, 2); /* clear reserved bytes */
 	memcpy(p + 2, eap_aka_session->keys.umts.vector.autn, SIM_VECTOR_UMTS_AUTN_SIZE);
@@ -114,7 +114,7 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	/*
 	 *	Set the EAP_ID - new value
 	 */
-	vp = fr_pair_afrom_child_num(packet, fr_dict_root(fr_dict_internal), PW_EAP_ID);
+	vp = fr_pair_afrom_child_num(packet, fr_dict_root(fr_dict_internal), FR_EAP_ID);
 	vp->vp_uint32 = eap_aka_session->aka_id++;
 	fr_pair_replace(to_client, vp);
 
@@ -140,17 +140,17 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	 *	need to include an AT_MAC attribute so that it will get
 	 *	calculated.
 	 */
-	vp = fr_pair_afrom_child_num(packet, dict_aka_root, PW_EAP_AKA_MAC);
+	vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_MAC);
 	fr_pair_value_memcpy(vp, hmac_zero, sizeof(hmac_zero));
 	fr_pair_replace(to_client, vp);
 
-	vp = fr_pair_afrom_child_num(packet, dict_aka_root, PW_EAP_AKA_KEY);
+	vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_KEY);
 	fr_pair_value_memcpy(vp, eap_aka_session->keys.k_aut, 16);
 	fr_pair_replace(to_client, vp);
 
 	/* the SUBTYPE, set to challenge. */
-	vp = fr_pair_afrom_child_num(packet, dict_aka_root, PW_EAP_AKA_SUBTYPE);
-	vp->vp_uint32 = PW_EAP_AKA_SUBTYPE_VALUE_AKA_CHALLENGE;
+	vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_SUBTYPE);
+	vp->vp_uint32 = FR_EAP_AKA_SUBTYPE_VALUE_AKA_CHALLENGE;
 	fr_pair_replace(to_client, vp);
 
 	return 1;
@@ -168,7 +168,7 @@ static void eap_aka_send_success(eap_session_t *eap_session)
 	VALUE_PAIR		*vp;
 	RADIUS_PACKET		*packet;
 
-	eap_session->this_round->request->code = PW_EAP_SUCCESS;
+	eap_session->this_round->request->code = FR_EAP_SUCCESS;
 	eap_session->finished = true;
 
 	/* to_client is the data to the client. */
@@ -176,7 +176,7 @@ static void eap_aka_send_success(eap_session_t *eap_session)
 	eap_aka_session = talloc_get_type_abort(eap_session->opaque, eap_aka_session_t);
 
 	/* set the EAP_ID - new value */
-	vp = fr_pair_afrom_child_num(packet, fr_dict_root(fr_dict_internal), PW_EAP_ID);
+	vp = fr_pair_afrom_child_num(packet, fr_dict_root(fr_dict_internal), FR_EAP_ID);
 	vp->vp_uint32 = eap_aka_session->aka_id++;
 	fr_pair_replace(&eap_session->request->reply->vps, vp);
 
@@ -259,7 +259,7 @@ static int process_eap_aka_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 		return -1;
 	}
 
-	vp = fr_pair_find_by_child_num(vps, dict_aka_root, PW_EAP_AKA_RES, TAG_ANY);
+	vp = fr_pair_find_by_child_num(vps, dict_aka_root, FR_EAP_AKA_RES, TAG_ANY);
 	if (!vp) {
 		REDEBUG("Missing EAP-AKA-RES from challenge response");
 		return -1;
@@ -322,7 +322,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		rdebug_pair_list(L_DBG_LVL_2, request, vp, NULL);
 	}
 
-	MEM(vp = fr_pair_find_by_child_num(vps, dict_aka_root, PW_EAP_AKA_SUBTYPE, TAG_ANY));
+	MEM(vp = fr_pair_find_by_child_num(vps, dict_aka_root, FR_EAP_AKA_SUBTYPE, TAG_ANY));
 	subtype = vp->vp_uint32;
 
 	switch (eap_aka_session->state) {
@@ -344,7 +344,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		{
 			char buff[20];
 
-			vp = fr_pair_find_by_child_num(vps, dict_aka_root, PW_EAP_AKA_CLIENT_ERROR_CODE, TAG_ANY);
+			vp = fr_pair_find_by_child_num(vps, dict_aka_root, FR_EAP_AKA_CLIENT_ERROR_CODE, TAG_ANY);
 			if (!vp) {
 				REDEBUG("EAP-AKA Peer rejected AKA-Challenge with client-error message but "
 					"has not supplied a client error code");
@@ -403,7 +403,7 @@ static rlm_rcode_t mod_session_init(UNUSED void *instance, eap_session_t *eap_se
 
 static int mod_load(void)
 {
-	dict_aka_root = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), PW_EAP_AKA_ROOT);
+	dict_aka_root = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_EAP_AKA_ROOT);
 	if (!dict_aka_root) {
 		ERROR("Missing EAP-AKA-Root attribute");
 		return -1;

@@ -56,8 +56,8 @@ static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session
 	 *	The password is never sent over the wire.
 	 *	Always get the configured password, for each user.
 	 */
-	password = fr_pair_find_by_num(eap_session->request->control, 0, PW_CLEARTEXT_PASSWORD, TAG_ANY);
-	if (!password) password = fr_pair_find_by_num(eap_session->request->control, 0, PW_NT_PASSWORD, TAG_ANY);
+	password = fr_pair_find_by_num(eap_session->request->control, 0, FR_CLEARTEXT_PASSWORD, TAG_ANY);
+	if (!password) password = fr_pair_find_by_num(eap_session->request->control, 0, FR_NT_PASSWORD, TAG_ANY);
 	if (!password) {
 		REDEBUG("No Cleartext-Password or NT-Password configured for this user");
 		talloc_free(packet);
@@ -79,12 +79,12 @@ static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session
 		 *	any LEAP packet.  So we return here.
 		 */
 		if (!rcode) {
-			eap_session->this_round->request->code = PW_EAP_FAILURE;
+			eap_session->this_round->request->code = FR_EAP_FAILURE;
 			talloc_free(packet);
 			return 0;
 		}
 
-		eap_session->this_round->request->code = PW_EAP_SUCCESS;
+		eap_session->this_round->request->code = FR_EAP_SUCCESS;
 
 		/*
 		 *	Do this only for Success.
@@ -98,7 +98,7 @@ static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session
 		 *	by eap_compose() in eap.c, when the EAP reply code
 		 *	is EAP_SUCCESS.
 		 */
-		eap_session->request->reply->code = PW_CODE_ACCESS_CHALLENGE;
+		eap_session->request->reply->code = FR_CODE_ACCESS_CHALLENGE;
 		talloc_free(packet);
 		return RLM_MODULE_OK;
 

@@ -734,7 +734,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 		 *	Add message authenticator or the stats
 		 *	request will be rejected.
 		 */
-		vp = fr_pair_afrom_num(request, 0, PW_MESSAGE_AUTHENTICATOR);
+		vp = fr_pair_afrom_num(request, 0, FR_MESSAGE_AUTHENTICATOR);
 		if (!vp) {
 			ERROR("Failed allocating Message-Authenticator attribute");
 			return EXIT_FAILURE;
@@ -1073,24 +1073,24 @@ int main(int argc, char **argv)
 	{
 		fr_dict_attr_t const *parent;
 
-		parent = fr_dict_attr_child_by_num(fr_dict_root(conf->dict), PW_EXTENDED_ATTRIBUTE_1);
+		parent = fr_dict_attr_child_by_num(fr_dict_root(conf->dict), FR_EXTENDED_ATTRIBUTE_1);
 		if (!parent) {
 			ERROR("Incomplete dictionary: Missing definition for Extended-Attribute-1");
 		dict_error:
 			talloc_free(conf);
 			exit(1);
 		}
-		parent = fr_dict_attr_child_by_num(parent, PW_VENDOR_SPECIFIC);
+		parent = fr_dict_attr_child_by_num(parent, FR_VENDOR_SPECIFIC);
 		if (!parent) {
 			ERROR("Incomplete dictionary: Missing definition for Extended-Attribute-1(%i)."
-			      "Vendor-Specific(%i)", PW_EXTENDED_ATTRIBUTE_1, PW_VENDOR_SPECIFIC);
+			      "Vendor-Specific(%i)", FR_EXTENDED_ATTRIBUTE_1, FR_VENDOR_SPECIFIC);
 			goto dict_error;
 		}
 
 		parent = fr_dict_attr_child_by_num(parent, VENDORPEC_FREERADIUS);
 		if (!parent) {
 			ERROR("Incomplete dictionary: Missing definition for Extended-Attribute-1(%i)."
-			      "Vendor-Specific(%i).FreeRADIUS(%i)", PW_EXTENDED_ATTRIBUTE_1, PW_VENDOR_SPECIFIC,
+			      "Vendor-Specific(%i).FreeRADIUS(%i)", FR_EXTENDED_ATTRIBUTE_1, FR_VENDOR_SPECIFIC,
 			      VENDORPEC_FREERADIUS);
 			goto dict_error;
 		}
@@ -1100,7 +1100,7 @@ int main(int argc, char **argv)
 		if (!conf->snmp_oid_root) {
 			ERROR("Incomplete dictionary: Missing definition for Extended-Attribute-1(%i)."
 			      "Vendor-Specific(%i).FreeRADIUS(%i).FreeRADIUS-Iso(%i)",
-			      PW_EXTENDED_ATTRIBUTE_1, PW_VENDOR_SPECIFIC,
+			      FR_EXTENDED_ATTRIBUTE_1, FR_VENDOR_SPECIFIC,
 			      VENDORPEC_FREERADIUS, 1);
 			goto dict_error;
 		}

@@ -110,7 +110,7 @@ int fr_radius_encode_chap_password(uint8_t *output, RADIUS_PACKET *packet, int i
 	 *	Use Chap-Challenge pair if present,
 	 *	Request Authenticator otherwise.
 	 */
-	challenge = fr_pair_find_by_num(packet->vps, 0, PW_CHAP_CHALLENGE, TAG_ANY);
+	challenge = fr_pair_find_by_num(packet->vps, 0, FR_CHAP_CHALLENGE, TAG_ANY);
 	if (challenge) {
 		memcpy(ptr, challenge->vp_strvalue, challenge->vp_length);
 		i += challenge->vp_length;
@@ -1348,7 +1348,7 @@ static int encode_wimax_hdr(uint8_t *out, size_t outlen,
 	 */
 	if (outlen < 9) return 0;
 
-	if (tlv_stack[depth++]->attr != PW_VENDOR_SPECIFIC) {
+	if (tlv_stack[depth++]->attr != FR_VENDOR_SPECIFIC) {
 		fr_strerror_printf("%s: level[1] of tlv_stack is incorrect, must be Vendor-Specific (26)",
 				   __FUNCTION__);
 		return -1;
@@ -1366,7 +1366,7 @@ static int encode_wimax_hdr(uint8_t *out, size_t outlen,
 	 *	Build the Vendor-Specific header
 	 */
 	out = start;
-	out[0] = PW_VENDOR_SPECIFIC;
+	out[0] = FR_VENDOR_SPECIFIC;
 	out[1] = 9;
 	lvalue = htonl(vp->da->vendor);
 	memcpy(out + 2, &lvalue, 4);
@@ -1449,7 +1449,7 @@ static int encode_vsa_hdr(uint8_t *out, size_t outlen,
 	/*
 	 *	Build the Vendor-Specific header
 	 */
-	out[0] = PW_VENDOR_SPECIFIC;
+	out[0] = FR_VENDOR_SPECIFIC;
 	out[1] = 6;
 
 	/*
@@ -1523,8 +1523,8 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const **tl
 	 *	Only CUI is allowed to have zero length.
 	 *	Thank you, WiMAX!
 	 */
-	if ((vp->da->attr == PW_CHARGEABLE_USER_IDENTITY) && (vp->vp_length == 0)) {
-		out[0] = PW_CHARGEABLE_USER_IDENTITY;
+	if ((vp->da->attr == FR_CHARGEABLE_USER_IDENTITY) && (vp->vp_length == 0)) {
+		out[0] = FR_CHARGEABLE_USER_IDENTITY;
 		out[1] = 2;
 
 		vp = next_encodable(cursor);
@@ -1535,10 +1535,10 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const **tl
 	/*
 	 *	Message-Authenticator is hard-coded.
 	 */
-	if (!vp->da->vendor && (vp->da->attr == PW_MESSAGE_AUTHENTICATOR)) {
+	if (!vp->da->vendor && (vp->da->attr == FR_MESSAGE_AUTHENTICATOR)) {
 		if (outlen < 18) return -1;
 
-		out[0] = PW_MESSAGE_AUTHENTICATOR;
+		out[0] = FR_MESSAGE_AUTHENTICATOR;
 		out[1] = 18;
 		memset(out + 2, 0, 16);
 #ifndef NDEBUG
@@ -1598,8 +1598,8 @@ ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, 
 	 */
 	if (fr_radius_attr_len(vp) == 0) {
 		if ((vp->da->vendor != 0) ||
-		    ((vp->da->attr != PW_CHARGEABLE_USER_IDENTITY) &&
-		     (vp->da->attr != PW_MESSAGE_AUTHENTICATOR))) {
+		    ((vp->da->attr != FR_CHARGEABLE_USER_IDENTITY) &&
+		     (vp->da->attr != FR_MESSAGE_AUTHENTICATOR))) {
 			next_encodable(cursor);
 			return 0;
 		}

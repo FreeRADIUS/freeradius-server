@@ -122,7 +122,7 @@ static void eap_fast_send_error(tls_session_t *tls_session, int error)
 	eap_fast_tlv_append(tls_session, EAP_FAST_TLV_ERROR, true, sizeof(value), &value);
 }
 
-static void eap_fast_append_result(tls_session_t *tls_session, PW_CODE code)
+static void eap_fast_append_result(tls_session_t *tls_session, FR_CODE code)
 {
 	eap_fast_tunnel_t *t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 
@@ -130,7 +130,7 @@ static void eap_fast_append_result(tls_session_t *tls_session, PW_CODE code)
 			? EAP_FAST_TLV_RESULT
 			: EAP_FAST_TLV_INTERMED_RESULT;
 
-	uint16_t state = (code == PW_CODE_ACCESS_REJECT)
+	uint16_t state = (code == FR_CODE_ACCESS_REJECT)
 			? EAP_FAST_TLV_RESULT_FAILURE
 			: EAP_FAST_TLV_RESULT_SUCCESS;
 	state = htons(state);
@@ -144,11 +144,11 @@ static void eap_fast_send_identity_request(REQUEST *request, tls_session_t *tls_
 
 	RDEBUG("Sending EAP-Identity");
 
-	eap_packet.code = PW_EAP_REQUEST;
+	eap_packet.code = FR_EAP_REQUEST;
 	eap_packet.id = eap_session->this_round->response->id + 1;
 	eap_packet.length[0] = 0;
 	eap_packet.length[1] = EAP_HEADER_LEN + 1;
-	eap_packet.data[0] = PW_EAP_IDENTITY;
+	eap_packet.data[0] = FR_EAP_IDENTITY;
 
 	eap_fast_tlv_append(tls_session, EAP_FAST_TLV_EAP_PAYLOAD, true, sizeof(eap_packet), &eap_packet);
 }
@@ -492,7 +492,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 	 * NOT 'eap start', so we should check for that....
 	 */
 	switch (reply->code) {
-	case PW_CODE_ACCESS_ACCEPT:
+	case FR_CODE_ACCESS_ACCEPT:
 		RDEBUG("Got tunneled Access-Accept");
 
 		rcode = RLM_MODULE_OK;
@@ -506,15 +506,15 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 
 			/* FIXME must be a better way to capture/re-derive this later for ISK */
 			switch (vp->da->attr) {
-			case PW_MSCHAP_MPPE_SEND_KEY:
+			case FR_MSCHAP_MPPE_SEND_KEY:
 				memcpy(t->isk.mppe_send, vp->vp_octets, CHAP_VALUE_LENGTH);
 				break;
 
-			case PW_MSCHAP_MPPE_RECV_KEY:
+			case FR_MSCHAP_MPPE_RECV_KEY:
 				memcpy(t->isk.mppe_recv, vp->vp_octets, CHAP_VALUE_LENGTH);
 				break;
 
-			case PW_MSCHAP2_SUCCESS:
+			case FR_MSCHAP2_SUCCESS:
 				RDEBUG("Got %s, tunneling it to the client in a challenge", vp->da->name);
 				rcode = RLM_MODULE_HANDLED;
 				t->authenticated = true;
@@ -527,12 +527,12 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		RHEXDUMP(L_DBG_LVL_MAX, (uint8_t *)&t->isk, 2 * CHAP_VALUE_LENGTH, "ISK[j]"); /* FIXME (part of above) */
 		break;
 
-	case PW_CODE_ACCESS_REJECT:
+	case FR_CODE_ACCESS_REJECT:
 		RDEBUG("Got tunneled Access-Reject");
 		rcode = RLM_MODULE_REJECT;
 		break;
 
-	case PW_CODE_ACCESS_CHALLENGE:
+	case FR_CODE_ACCESS_CHALLENGE:
 		RDEBUG("Got tunneled Access-Challenge");
 
 		/*
@@ -540,7 +540,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		 */
 		(void) fr_pair_cursor_init(&cursor, &reply->vps);
 
-		while ((vp = fr_pair_cursor_next_by_num(&cursor, 0, PW_EAP_MESSAGE, TAG_ANY)) != NULL) {
+		while ((vp = fr_pair_cursor_next_by_num(&cursor, 0, FR_EAP_MESSAGE, TAG_ANY)) != NULL) {
 			eap_fast_tlv_append(tls_session, EAP_FAST_TLV_EAP_PAYLOAD, true, vp->vp_length, vp->vp_octets);
 		}
 
@@ -556,10 +556,10 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 	return rcode;
 }
 
-static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session,
+static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session,
 				    tls_session_t *tls_session, VALUE_PAIR *tlv_eap_payload)
 {
-	PW_CODE			code = PW_CODE_ACCESS_REJECT;
+	FR_CODE			code = FR_CODE_ACCESS_REJECT;
 	rlm_rcode_t		rcode;
 	VALUE_PAIR		*vp;
 	eap_fast_tunnel_t	*t;
@@ -579,7 +579,7 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 	 * Add the tunneled attributes to the fake request.
 	 */
 
-	fake->packet->vps = fr_pair_afrom_num(fake->packet, 0, PW_EAP_MESSAGE);
+	fake->packet->vps = fr_pair_afrom_num(fake->packet, 0, FR_EAP_MESSAGE);
 	fr_pair_value_memcpy(fake->packet->vps, tlv_eap_payload->vp_octets, tlv_eap_payload->vp_length);
 
 	RDEBUG("Got tunneled request");
@@ -593,8 +593,8 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 	/*
 	 * Update other items in the REQUEST data structure.
 	 */
-	fake->username = fr_pair_find_by_num(fake->packet->vps, 0, PW_USER_NAME, TAG_ANY);
-	fake->password = fr_pair_find_by_num(fake->packet->vps, 0, PW_USER_PASSWORD, TAG_ANY);
+	fake->username = fr_pair_find_by_num(fake->packet->vps, 0, FR_USER_NAME, TAG_ANY);
+	fake->password = fr_pair_find_by_num(fake->packet->vps, 0, FR_USER_PASSWORD, TAG_ANY);
 
 	/*
 	 * No User-Name, try to create one from stored data.
@@ -605,11 +605,11 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 		 * an EAP-Identity, and pull it out of there.
 		 */
 		if (!t->username) {
-			vp = fr_pair_find_by_num(fake->packet->vps, 0, PW_EAP_MESSAGE, TAG_ANY);
+			vp = fr_pair_find_by_num(fake->packet->vps, 0, FR_EAP_MESSAGE, TAG_ANY);
 			if (vp &&
 			    (vp->vp_length >= EAP_HEADER_LEN + 2) &&
-			    (vp->vp_strvalue[0] == PW_EAP_RESPONSE) &&
-			    (vp->vp_strvalue[EAP_HEADER_LEN] == PW_EAP_IDENTITY) &&
+			    (vp->vp_strvalue[0] == FR_EAP_RESPONSE) &&
+			    (vp->vp_strvalue[EAP_HEADER_LEN] == FR_EAP_IDENTITY) &&
 			    (vp->vp_strvalue[EAP_HEADER_LEN + 1] != 0)) {
 				/*
 				 * Create & remember a User-Name
@@ -634,14 +634,14 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 		if (t->username) {
 			vp = fr_pair_list_copy(fake->packet, t->username);
 			fr_pair_add(&fake->packet->vps, vp);
-			fake->username = fr_pair_find_by_num(fake->packet->vps, 0, PW_USER_NAME, TAG_ANY);
+			fake->username = fr_pair_find_by_num(fake->packet->vps, 0, FR_USER_NAME, TAG_ANY);
 		}
 	} /* else the request ALREADY had a User-Name */
 
 	if (t->stage == EAP_FAST_AUTHENTICATION) {	/* FIXME do this only for MSCHAPv2 */
 		VALUE_PAIR *tvp;
 
-		tvp = fr_pair_afrom_num(fake, 0, PW_EAP_TYPE);
+		tvp = fr_pair_afrom_num(fake, 0, FR_EAP_TYPE);
 		tvp->vp_uint32 = t->default_provisioning_method;
 		fr_pair_add(&fake->control, tvp);
 
@@ -649,12 +649,12 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 		 * RFC 5422 section 3.2.3 - Authenticating Using EAP-FAST-MSCHAPv2
 		 */
 		if (t->mode == EAP_FAST_PROVISIONING_ANON) {
-			tvp = fr_pair_afrom_num(fake, VENDORPEC_MICROSOFT, PW_MSCHAP_CHALLENGE);
+			tvp = fr_pair_afrom_num(fake, VENDORPEC_MICROSOFT, FR_MSCHAP_CHALLENGE);
 			fr_pair_value_memcpy(tvp, t->keyblock->server_challenge, CHAP_VALUE_LENGTH);
 			fr_pair_add(&fake->control, tvp);
 			RHEXDUMP(L_DBG_LVL_MAX, t->keyblock->server_challenge, CHAP_VALUE_LENGTH, "MSCHAPv2 auth_challenge");
 
-			tvp = fr_pair_afrom_num(fake, 0, PW_MS_CHAP_PEER_CHALLENGE);
+			tvp = fr_pair_afrom_num(fake, 0, FR_MS_CHAP_PEER_CHALLENGE);
 			fr_pair_value_memcpy(tvp, t->keyblock->client_challenge, CHAP_VALUE_LENGTH);
 			fr_pair_add(&fake->control, tvp);
 			RHEXDUMP(L_DBG_LVL_MAX, t->keyblock->client_challenge, CHAP_VALUE_LENGTH, "MSCHAPv2 peer_challenge");
@@ -673,7 +673,7 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 	switch (fake->reply->code) {
 	case 0:			/* No reply code, must be proxied... */
 #ifdef WITH_PROXY
-		vp = fr_pair_find_by_num(fake->control, 0, PW_PROXY_TO_REALM, TAG_ANY);
+		vp = fr_pair_find_by_num(fake->control, 0, FR_PROXY_TO_REALM, TAG_ANY);
 		if (vp) {
 			int			ret;
 			eap_tunnel_data_t	*tunnel;
@@ -685,7 +685,7 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 			 * to be proxied.
 			 */
 			fr_pair_list_mcopy_by_num(request, &request->control, &fake->control, 0,
-						  PW_PROXY_TO_REALM, TAG_ANY);
+						  FR_PROXY_TO_REALM, TAG_ANY);
 
 			/*
 			 * Seed the proxy packet with the
@@ -736,36 +736,36 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 			 * Didn't authenticate the packet, but
 			 * we're proxying it.
 			 */
-			code = PW_CODE_STATUS_CLIENT;
+			code = FR_CODE_STATUS_CLIENT;
 
 		} else
 #endif	/* WITH_PROXY */
 		  {
 			  RDEBUG("No tunneled reply was found, and the request was not proxied: rejecting the user.");
-			  code = PW_CODE_ACCESS_REJECT;
+			  code = FR_CODE_ACCESS_REJECT;
 		  }
 		break;
 
 	default:
 		/*
-		 * Returns RLM_MODULE_FOO, and we want to return PW_FOO
+		 * Returns RLM_MODULE_FOO, and we want to return FR_FOO
 		 */
 		rcode = process_reply(eap_session, tls_session, request, fake->reply);
 		switch (rcode) {
 		case RLM_MODULE_REJECT:
-			code = PW_CODE_ACCESS_REJECT;
+			code = FR_CODE_ACCESS_REJECT;
 			break;
 
 		case RLM_MODULE_HANDLED:
-			code = PW_CODE_ACCESS_CHALLENGE;
+			code = FR_CODE_ACCESS_CHALLENGE;
 			break;
 
 		case RLM_MODULE_OK:
-			code = PW_CODE_ACCESS_ACCEPT;
+			code = FR_CODE_ACCESS_ACCEPT;
 			break;
 
 		default:
-			code = PW_CODE_ACCESS_REJECT;
+			code = FR_CODE_ACCESS_REJECT;
 			break;
 		}
 		break;
@@ -776,7 +776,7 @@ static PW_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 	return code;
 }
 
-static PW_CODE eap_fast_crypto_binding(REQUEST *request, UNUSED eap_session_t *eap_session,
+static FR_CODE eap_fast_crypto_binding(REQUEST *request, UNUSED eap_session_t *eap_session,
 				       tls_session_t *tls_session, eap_tlv_crypto_binding_tlv_t *binding)
 {
 	uint8_t			cmac[sizeof(binding->compound_mac)];
@@ -793,13 +793,13 @@ static PW_CODE eap_fast_crypto_binding(REQUEST *request, UNUSED eap_session_t *e
 		RDEBUG2("Crypto-Binding TLV mis-match");
 		RHEXDUMP(L_DBG_LVL_MAX, (uint8_t const *) binding->compound_mac,
                 sizeof(binding->compound_mac), "Calculated Compound MAC");
-		return PW_CODE_ACCESS_REJECT;
+		return FR_CODE_ACCESS_REJECT;
 	}
 
-	return PW_CODE_ACCESS_ACCEPT;
+	return FR_CODE_ACCESS_ACCEPT;
 }
 
-static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_session,
+static FR_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_session,
 				     tls_session_t *tls_session, VALUE_PAIR *fast_vps)
 {
 	eap_fast_tunnel_t		*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
@@ -808,20 +808,20 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_sessio
 	eap_tlv_crypto_binding_tlv_t	*binding = NULL;
 
 	for (vp = fr_pair_cursor_init(&cursor, &fast_vps); vp; vp = fr_pair_cursor_next(&cursor)) {
-		PW_CODE code = PW_CODE_ACCESS_REJECT;
+		FR_CODE code = FR_CODE_ACCESS_REJECT;
 		char *value;
 
 		switch (vp->da->parent->attr) {
-		case PW_EAP_FAST_TLV:
+		case FR_EAP_FAST_TLV:
 			switch (vp->da->attr) {
 			case EAP_FAST_TLV_EAP_PAYLOAD:
 				code = eap_fast_eap_payload(request, eap_session, tls_session, vp);
-				if (code == PW_CODE_ACCESS_ACCEPT)
+				if (code == FR_CODE_ACCESS_ACCEPT)
 					t->stage = EAP_FAST_CRYPTOBIND_CHECK;
 				break;
 			case EAP_FAST_TLV_RESULT:
 			case EAP_FAST_TLV_INTERMED_RESULT:
-				code = PW_CODE_ACCESS_ACCEPT;
+				code = FR_CODE_ACCESS_ACCEPT;
 				t->stage = EAP_FAST_PROVISIONING;
 				break;
 			default:
@@ -841,22 +841,22 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_sessio
 			 * fr_radius_encode_pair() does not work for structures
 			 */
 			switch (vp->da->attr) {
-			case 1:	/* PW_EAP_FAST_CRYPTO_BINDING_RESERVED */
+			case 1:	/* FR_EAP_FAST_CRYPTO_BINDING_RESERVED */
 				binding->reserved = vp->vp_uint32;
 				break;
-			case 2:	/* PW_EAP_FAST_CRYPTO_BINDING_VERSION */
+			case 2:	/* FR_EAP_FAST_CRYPTO_BINDING_VERSION */
 				binding->version = vp->vp_uint32;
 				break;
-			case 3:	/* PW_EAP_FAST_CRYPTO_BINDING_RECV_VERSION */
+			case 3:	/* FR_EAP_FAST_CRYPTO_BINDING_RECV_VERSION */
 				binding->received_version = vp->vp_uint32;
 				break;
-			case 4:	/* PW_EAP_FAST_CRYPTO_BINDING_SUB_TYPE */
+			case 4:	/* FR_EAP_FAST_CRYPTO_BINDING_SUB_TYPE */
 				binding->subtype = vp->vp_uint32;
 				break;
-			case 5:	/* PW_EAP_FAST_CRYPTO_BINDING_NONCE */
+			case 5:	/* FR_EAP_FAST_CRYPTO_BINDING_NONCE */
 				memcpy(binding->nonce, vp->vp_octets, vp->vp_length);
 				break;
-			case 6:	/* PW_EAP_FAST_CRYPTO_BINDING_COMPOUND_MAC */
+			case 6:	/* FR_EAP_FAST_CRYPTO_BINDING_COMPOUND_MAC */
 				memcpy(binding->compound_mac, vp->vp_octets, vp->vp_length);
 				break;
 			}
@@ -865,7 +865,7 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_sessio
 			switch (vp->da->attr) {
 			case PAC_INFO_PAC_ACK:
 				if (vp->vp_uint32 == EAP_FAST_TLV_RESULT_SUCCESS) {
-					code = PW_CODE_ACCESS_ACCEPT;
+					code = FR_CODE_ACCESS_ACCEPT;
 					t->pac.expires = UINT32_MAX;
 					t->pac.expired = false;
 					t->stage = EAP_FAST_COMPLETE;
@@ -892,26 +892,26 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_sessio
 			continue;
 		}
 
-		if (code == PW_CODE_ACCESS_REJECT)
-			return PW_CODE_ACCESS_REJECT;
+		if (code == FR_CODE_ACCESS_REJECT)
+			return FR_CODE_ACCESS_REJECT;
 	}
 
 	if (binding) {
-		PW_CODE code = eap_fast_crypto_binding(request, eap_session, tls_session, binding);
-		if (code == PW_CODE_ACCESS_ACCEPT)
+		FR_CODE code = eap_fast_crypto_binding(request, eap_session, tls_session, binding);
+		if (code == FR_CODE_ACCESS_ACCEPT)
 			t->stage = EAP_FAST_PROVISIONING;
 	}
 
-	return PW_CODE_ACCESS_ACCEPT;
+	return FR_CODE_ACCESS_ACCEPT;
 }
 
 
 /*
  * Process the inner tunnel data
  */
-PW_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
+FR_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 {
-	PW_CODE			code;
+	FR_CODE			code;
 	VALUE_PAIR		*fast_vps = NULL;
 	vp_cursor_t		cursor;
 	uint8_t const		*data;
@@ -932,7 +932,7 @@ PW_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	/*
 	 * See if the tunneled data is well formed.
 	 */
-	if (!eap_fast_verify(request, tls_session, data, data_len)) return PW_CODE_ACCESS_REJECT;
+	if (!eap_fast_verify(request, tls_session, data, data_len)) return FR_CODE_ACCESS_REJECT;
 
 	if (t->stage == EAP_FAST_TLS_SESSION_HANDSHAKE) {
 		rad_assert(t->mode == EAP_FAST_UNKNOWN);
@@ -963,23 +963,23 @@ PW_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 		eap_fast_send_identity_request(request, tls_session, eap_session);
 
 		t->stage = EAP_FAST_AUTHENTICATION;
-		return PW_CODE_ACCESS_CHALLENGE;
+		return FR_CODE_ACCESS_CHALLENGE;
 	}
 
 	fr_pair_cursor_init(&cursor, &fast_vps);
-	if (eap_fast_decode_pair(request, &cursor, fr_dict_attr_by_num(NULL, 0, PW_EAP_FAST_TLV),
-				 data, data_len, NULL) < 0) return PW_CODE_ACCESS_REJECT;
+	if (eap_fast_decode_pair(request, &cursor, fr_dict_attr_by_num(NULL, 0, FR_EAP_FAST_TLV),
+				 data, data_len, NULL) < 0) return FR_CODE_ACCESS_REJECT;
 
 	RDEBUG("Got Tunneled FAST TLVs");
 	rdebug_pair_list(L_DBG_LVL_1, request, fast_vps, NULL);
 	code = eap_fast_process_tlvs(request, eap_session, tls_session, fast_vps);
 	fr_pair_list_free(&fast_vps);
 
-	if (code == PW_CODE_ACCESS_REJECT) return PW_CODE_ACCESS_REJECT;
+	if (code == FR_CODE_ACCESS_REJECT) return FR_CODE_ACCESS_REJECT;
 
 	switch (t->stage) {
 	case EAP_FAST_AUTHENTICATION:
-		code = PW_CODE_ACCESS_CHALLENGE;
+		code = FR_CODE_ACCESS_CHALLENGE;
 		break;
 
 	case EAP_FAST_CRYPTOBIND_CHECK:
@@ -992,7 +992,7 @@ PW_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 		eap_fast_update_icmk(request, tls_session, (uint8_t *)&t->isk);
 		eap_fast_append_crypto_binding(request, tls_session);
 
-		code = PW_CODE_ACCESS_CHALLENGE;
+		code = FR_CODE_ACCESS_CHALLENGE;
 		break;
 	}
 	case EAP_FAST_PROVISIONING:
@@ -1000,13 +1000,13 @@ PW_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 
 		eap_fast_append_result(tls_session, code);
 
-		if (code == PW_CODE_ACCESS_REJECT)
+		if (code == FR_CODE_ACCESS_REJECT)
 			break;
 
 		if (t->pac.send) {
 			RDEBUG("Peer requires new PAC");
 			eap_fast_send_pac_tunnel(request, tls_session);
-			code = PW_CODE_ACCESS_CHALLENGE;
+			code = FR_CODE_ACCESS_CHALLENGE;
 			break;
 		}
 
@@ -1018,13 +1018,13 @@ PW_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 		 */
 		if (t->pac.type && t->pac.expired) {
 			REDEBUG("Rejecting expired PAC.");
-			code = PW_CODE_ACCESS_REJECT;
+			code = FR_CODE_ACCESS_REJECT;
 			break;
 		}
 
 		if (t->mode == EAP_FAST_PROVISIONING_ANON) {
 			REDEBUG("Rejecting unauthenticated provisioning");
-			code = PW_CODE_ACCESS_REJECT;
+			code = FR_CODE_ACCESS_REJECT;
 			break;
 		}
 
@@ -1042,7 +1042,7 @@ PW_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 
 	default:
 		RERROR("Internal sanity check failed in EAP-FAST at %d", t->stage);
-		code = PW_CODE_ACCESS_REJECT;
+		code = FR_CODE_ACCESS_REJECT;
 	}
 
 	return code;

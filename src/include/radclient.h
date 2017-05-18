@@ -79,7 +79,7 @@ struct rc_request {
 	RADIUS_PACKET	*packet;	//!< The outgoing request.
 	RADIUS_PACKET	*reply;		//!< The incoming response.
 	VALUE_PAIR	*filter;	//!< If the reply passes the filter, then the request passes.
-	PW_CODE		filter_code;	//!< Expected code of the response packet.
+	FR_CODE		filter_code;	//!< Expected code of the response packet.
 
 	int		resend;
 	int		tries;

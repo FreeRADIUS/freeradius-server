@@ -124,8 +124,8 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 		 *	packet that it is sent in response
 		 *	to.
 		 */
-		case PW_EAP_SUCCESS:
-		case PW_EAP_FAILURE:
+		case FR_EAP_SUCCESS:
+		case FR_EAP_FAILURE:
 			break;
 
 		/*
@@ -145,11 +145,11 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 	 *	that the TTLS and PEAP modules can call it to do most
 	 *	of their dirty work.
 	 */
-	if (((eap_round->request->code == PW_EAP_REQUEST) ||
-	     (eap_round->request->code == PW_EAP_RESPONSE)) &&
+	if (((eap_round->request->code == FR_EAP_REQUEST) ||
+	     (eap_round->request->code == FR_EAP_RESPONSE)) &&
 	    (eap_round->request->type.num == 0)) {
-		rad_assert(eap_session->type >= PW_EAP_MD5);
-		rad_assert(eap_session->type < PW_EAP_MAX_TYPES);
+		rad_assert(eap_session->type >= FR_EAP_MD5);
+		rad_assert(eap_session->type < FR_EAP_MAX_TYPES);
 
 		eap_round->request->type.num = eap_session->type;
 	}
@@ -158,7 +158,7 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 
 	eap_packet = (eap_packet_raw_t *)reply->packet;
 
-	vp = radius_pair_create(request->reply, &request->reply->vps, PW_EAP_MESSAGE, 0);
+	vp = radius_pair_create(request->reply, &request->reply->vps, FR_EAP_MESSAGE, 0);
 	if (!vp) return RLM_MODULE_INVALID;
 
 	vp->vp_length = eap_packet->length[0] * 256 + eap_packet->length[1];
@@ -172,9 +172,9 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 	 *	Don't add a Message-Authenticator if
 	 *	it's already there.
 	 */
-	vp = fr_pair_find_by_num(request->reply->vps, 0, PW_MESSAGE_AUTHENTICATOR, TAG_ANY);
+	vp = fr_pair_find_by_num(request->reply->vps, 0, FR_MESSAGE_AUTHENTICATOR, TAG_ANY);
 	if (!vp) {
-		vp = fr_pair_afrom_num(request->reply, 0, PW_MESSAGE_AUTHENTICATOR);
+		vp = fr_pair_afrom_num(request->reply, 0, FR_MESSAGE_AUTHENTICATOR);
 		fr_pair_value_memsteal(vp, talloc_zero_array(vp, uint8_t, AUTH_VECTOR_LEN));
 		fr_pair_add(&(request->reply->vps), vp);
 	}
@@ -182,23 +182,23 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 	/* Set request reply code, but only if it's not already set. */
 	rcode = RLM_MODULE_OK;
 	if (!request->reply->code) switch (reply->code) {
-	case PW_EAP_RESPONSE:
-		request->reply->code = PW_CODE_ACCESS_ACCEPT;
+	case FR_EAP_RESPONSE:
+		request->reply->code = FR_CODE_ACCESS_ACCEPT;
 		rcode = RLM_MODULE_HANDLED; /* leap weirdness */
 		break;
 
-	case PW_EAP_SUCCESS:
-		request->reply->code = PW_CODE_ACCESS_ACCEPT;
+	case FR_EAP_SUCCESS:
+		request->reply->code = FR_CODE_ACCESS_ACCEPT;
 		rcode = RLM_MODULE_OK;
 		break;
 
-	case PW_EAP_FAILURE:
-		request->reply->code = PW_CODE_ACCESS_REJECT;
+	case FR_EAP_FAILURE:
+		request->reply->code = FR_CODE_ACCESS_REJECT;
 		rcode = RLM_MODULE_REJECT;
 		break;
 
-	case PW_EAP_REQUEST:
-		request->reply->code = PW_CODE_ACCESS_CHALLENGE;
+	case FR_EAP_REQUEST:
+		request->reply->code = FR_CODE_ACCESS_CHALLENGE;
 		rcode = RLM_MODULE_HANDLED;
 		break;
 
@@ -212,8 +212,8 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 
 		/* Should never enter here */
 		REDEBUG("Reply code %d is unknown, rejecting the request", reply->code);
-		request->reply->code = PW_CODE_ACCESS_REJECT;
-		reply->code = PW_EAP_FAILURE;
+		request->reply->code = FR_CODE_ACCESS_REJECT;
+		reply->code = FR_EAP_FAILURE;
 		rcode = RLM_MODULE_REJECT;
 		break;
 	}
@@ -234,7 +234,7 @@ int eap_start(rlm_eap_t const *inst, REQUEST *request)
 	VALUE_PAIR *vp, *proxy;
 	VALUE_PAIR *eap_msg;
 
-	eap_msg = fr_pair_find_by_num(request->packet->vps, 0, PW_EAP_MESSAGE, TAG_ANY);
+	eap_msg = fr_pair_find_by_num(request->packet->vps, 0, FR_EAP_MESSAGE, TAG_ANY);
 	if (!eap_msg) {
 		RDEBUG2("No EAP-Message, not doing EAP");
 		return RLM_MODULE_NOOP;
@@ -244,7 +244,7 @@ int eap_start(rlm_eap_t const *inst, REQUEST *request)
 	 *	Look for EAP-Type = None (FreeRADIUS specific attribute)
 	 *	this allows you to NOT do EAP for some users.
 	 */
-	vp = fr_pair_find_by_num(request->packet->vps, 0, PW_EAP_TYPE, TAG_ANY);
+	vp = fr_pair_find_by_num(request->packet->vps, 0, FR_EAP_TYPE, TAG_ANY);
 	if (vp && vp->vp_uint32 == 0) {
 		RDEBUG2("Found EAP-Message, but EAP-Type = None, so we're not doing EAP");
 		return RLM_MODULE_NOOP;
@@ -260,7 +260,7 @@ int eap_start(rlm_eap_t const *inst, REQUEST *request)
 	 *	Check for a Proxy-To-Realm.  Don't get excited over LOCAL
 	 *	realms (sigh).
 	 */
-	proxy = fr_pair_find_by_num(request->control, 0, PW_PROXY_TO_REALM, TAG_ANY);
+	proxy = fr_pair_find_by_num(request->control, 0, FR_PROXY_TO_REALM, TAG_ANY);
 	if (proxy) {
 		REALM *realm;
 
@@ -299,7 +299,7 @@ int eap_start(rlm_eap_t const *inst, REQUEST *request)
 		}
 
 		RDEBUG2("Got EAP_START message");
-		vp = fr_pair_afrom_num(request->reply, 0, PW_EAP_MESSAGE);
+		vp = fr_pair_afrom_num(request->reply, 0, FR_EAP_MESSAGE);
 		if (!vp) return RLM_MODULE_FAIL;
 		fr_pair_add(&request->reply->vps, vp);
 
@@ -307,11 +307,11 @@ int eap_start(rlm_eap_t const *inst, REQUEST *request)
 		 *	Manually create an EAP Identity request
 		 */
 		p = talloc_array(vp, uint8_t, 5);
-		p[0] = PW_EAP_REQUEST;
+		p[0] = FR_EAP_REQUEST;
 		p[1] = 0; /* ID */
 		p[2] = 0;
 		p[3] = 5; /* length */
-		p[4] = PW_EAP_IDENTITY;
+		p[4] = FR_EAP_IDENTITY;
 		fr_pair_value_memsteal(vp, p);
 
 		return RLM_MODULE_HANDLED;
@@ -322,7 +322,7 @@ int eap_start(rlm_eap_t const *inst, REQUEST *request)
 	 *	server, but they're not forbidden from doing so.
 	 *	This behaviour was observed with a Spirent Avalanche test server.
 	 */
-	if ((eap_msg->vp_length == EAP_HEADER_LEN) && (eap_msg->vp_octets[0] == PW_EAP_FAILURE)) {
+	if ((eap_msg->vp_length == EAP_HEADER_LEN) && (eap_msg->vp_octets[0] == FR_EAP_FAILURE)) {
 		REDEBUG("Peer sent EAP %s (code %i) ID %d length %zu",
 		        eap_codes[eap_msg->vp_octets[0]],
 		        eap_msg->vp_octets[0],
@@ -345,7 +345,7 @@ int eap_start(rlm_eap_t const *inst, REQUEST *request)
 	 *	Create an EAP-Type containing the EAP-type
 	 *	from the packet.
 	 */
-	vp = fr_pair_afrom_num(request->packet, 0, PW_EAP_TYPE);
+	vp = fr_pair_afrom_num(request->packet, 0, FR_EAP_TYPE);
 	if (vp) {
 		vp->vp_uint32 = eap_msg->vp_octets[4];
 		fr_pair_add(&(request->packet->vps), vp);
@@ -370,7 +370,7 @@ int eap_start(rlm_eap_t const *inst, REQUEST *request)
 	 *	Success, or Failure.
 	 */
 	if ((eap_msg->vp_octets[0] == 0) ||
-	    (eap_msg->vp_octets[0] >= PW_EAP_MAX_CODES)) {
+	    (eap_msg->vp_octets[0] >= FR_EAP_MAX_CODES)) {
 		RDEBUG2("Peer sent EAP packet with unknown code %i", eap_msg->vp_octets[0]);
 	} else {
 		RDEBUG2("Peer sent EAP %s (code %i) ID %d length %zu",
@@ -386,8 +386,8 @@ int eap_start(rlm_eap_t const *inst, REQUEST *request)
 	 *	sending success/fail packets to us, as it doesn't make
 	 *	sense.
 	 */
-	if ((eap_msg->vp_octets[0] != PW_EAP_REQUEST) &&
-	    (eap_msg->vp_octets[0] != PW_EAP_RESPONSE)) {
+	if ((eap_msg->vp_octets[0] != FR_EAP_REQUEST) &&
+	    (eap_msg->vp_octets[0] != FR_EAP_RESPONSE)) {
 		RDEBUG2("Ignoring EAP packet which we don't know how to handle");
 		return RLM_MODULE_FAIL;
 	}
@@ -400,10 +400,10 @@ int eap_start(rlm_eap_t const *inst, REQUEST *request)
 	 *	EAP-Identity, Notification, and NAK are all handled
 	 *	internally, so they never have eap_sessions.
 	 */
-	if ((eap_msg->vp_octets[4] >= PW_EAP_MD5) &&
+	if ((eap_msg->vp_octets[4] >= FR_EAP_MD5) &&
 	    inst->config.ignore_unknown_types &&
 	    ((eap_msg->vp_octets[4] == 0) ||
-	     (eap_msg->vp_octets[4] >= PW_EAP_MAX_TYPES) ||
+	     (eap_msg->vp_octets[4] >= FR_EAP_MAX_TYPES) ||
 	     (!inst->methods[eap_msg->vp_octets[4]]))) {
 		RDEBUG2("Ignoring Unknown EAP type");
 		return RLM_MODULE_NOOP;
@@ -424,18 +424,18 @@ int eap_start(rlm_eap_t const *inst, REQUEST *request)
 	 *	returns NOOP, and another module may choose to proxy
 	 *	the request.
 	 */
-	if ((eap_msg->vp_octets[4] == PW_EAP_NAK) &&
+	if ((eap_msg->vp_octets[4] == FR_EAP_NAK) &&
 	    (eap_msg->vp_length >= (EAP_HEADER_LEN + 2)) &&
 	    inst->config.ignore_unknown_types &&
 	    ((eap_msg->vp_octets[5] == 0) ||
-	     (eap_msg->vp_octets[5] >= PW_EAP_MAX_TYPES) ||
+	     (eap_msg->vp_octets[5] >= FR_EAP_MAX_TYPES) ||
 	     (!inst->methods[eap_msg->vp_octets[5]]))) {
 		RDEBUG2("Ignoring NAK with request for unknown EAP type");
 		return RLM_MODULE_NOOP;
 	}
 
-	if ((eap_msg->vp_octets[4] == PW_EAP_TTLS) ||
-	    (eap_msg->vp_octets[4] == PW_EAP_PEAP)) {
+	if ((eap_msg->vp_octets[4] == FR_EAP_TTLS) ||
+	    (eap_msg->vp_octets[4] == FR_EAP_PEAP)) {
 		RDEBUG2("Continuing tunnel setup");
 		return RLM_MODULE_OK;
 	}
@@ -451,7 +451,7 @@ int eap_start(rlm_eap_t const *inst, REQUEST *request)
 	 *
 	 * ...in the inner-tunnel, to avoid expensive and unnecessary SQL/LDAP lookups
 	 */
-	if (eap_msg->vp_octets[4] == PW_EAP_IDENTITY) {
+	if (eap_msg->vp_octets[4] == FR_EAP_IDENTITY) {
 		RDEBUG2("Peer sent EAP-Identity.  Returning 'ok' so we can short-circuit the rest of authorize");
 		return RLM_MODULE_OK;
 	}
@@ -476,12 +476,12 @@ void eap_fail(eap_session_t *eap_session)
 	/*
 	 *	Delete any previous replies.
 	 */
-	fr_pair_delete_by_num(&eap_session->request->reply->vps, 0, PW_EAP_MESSAGE, TAG_ANY);
-	fr_pair_delete_by_num(&eap_session->request->reply->vps, 0, PW_STATE, TAG_ANY);
+	fr_pair_delete_by_num(&eap_session->request->reply->vps, 0, FR_EAP_MESSAGE, TAG_ANY);
+	fr_pair_delete_by_num(&eap_session->request->reply->vps, 0, FR_STATE, TAG_ANY);
 
 	talloc_free(eap_session->this_round->request);
 	eap_session->this_round->request = talloc_zero(eap_session->this_round, eap_packet_t);
-	eap_session->this_round->request->code = PW_EAP_FAILURE;
+	eap_session->this_round->request->code = FR_EAP_FAILURE;
 	eap_session->finished = true;
 	eap_compose(eap_session);
 }
@@ -491,7 +491,7 @@ void eap_fail(eap_session_t *eap_session)
  */
 void eap_success(eap_session_t *eap_session)
 {
-	eap_session->this_round->request->code = PW_EAP_SUCCESS;
+	eap_session->this_round->request->code = FR_EAP_SUCCESS;
 	eap_session->finished = true;
 	eap_compose(eap_session);
 }
@@ -511,19 +511,19 @@ static int eap_validation(REQUEST *request, eap_packet_raw_t **eap_packet_p)
 	 *	High level EAP packet checks
 	 */
 	if ((len <= EAP_HEADER_LEN) ||
-	    ((eap_packet->code != PW_EAP_RESPONSE) &&
-	     (eap_packet->code != PW_EAP_REQUEST))) {
+	    ((eap_packet->code != FR_EAP_RESPONSE) &&
+	     (eap_packet->code != FR_EAP_REQUEST))) {
 		REDEBUG("Badly formatted EAP Message: Ignoring the packet");
 		return -1;
 	}
 
 	if ((eap_packet->data[0] <= 0) ||
-	    (eap_packet->data[0] >= PW_EAP_MAX_TYPES)) {
+	    (eap_packet->data[0] >= FR_EAP_MAX_TYPES)) {
 		/*
 		 *	Handle expanded types by smashing them to
 		 *	normal types.
 		 */
-		if (eap_packet->data[0] == PW_EAP_EXPANDED_TYPE) {
+		if (eap_packet->data[0] == FR_EAP_EXPANDED_TYPE) {
 			uint8_t *p, *q;
 
 			if (len <= (EAP_HEADER_LEN + 1 + 3 + 4)) {
@@ -546,13 +546,13 @@ static int eap_validation(REQUEST *request, eap_packet_raw_t **eap_packet_p)
 			}
 
 			if ((eap_packet->data[7] == 0) ||
-			    (eap_packet->data[7] >= PW_EAP_MAX_TYPES)) {
+			    (eap_packet->data[7] >= FR_EAP_MAX_TYPES)) {
 				REDEBUG("Unsupported Expanded EAP type %s (%u): ignoring the packet",
 					eap_type2name(eap_packet->data[7]), eap_packet->data[7]);
 				return -1;
 			}
 
-			if (eap_packet->data[7] == PW_EAP_NAK) {
+			if (eap_packet->data[7] == FR_EAP_NAK) {
 				REDEBUG("Unsupported Expanded EAP-NAK: ignoring the packet");
 				return -1;
 			}
@@ -587,7 +587,7 @@ static int eap_validation(REQUEST *request, eap_packet_raw_t **eap_packet_p)
 	}
 
 	/* we don't expect notification, but we send it */
-	if (eap_packet->data[0] == PW_EAP_NOTIFICATION) {
+	if (eap_packet->data[0] == FR_EAP_NOTIFICATION) {
 		REDEBUG("Got NOTIFICATION, Ignoring the packet");
 		return -1;
 	}
@@ -609,8 +609,8 @@ static char *eap_identity(REQUEST *request, eap_session_t *eap_session, eap_pack
 	uint16_t 	len;
 
 	if (!eap_packet ||
-	    (eap_packet->code != PW_EAP_RESPONSE) ||
-	    (eap_packet->data[0] != PW_EAP_IDENTITY)) return NULL;
+	    (eap_packet->code != FR_EAP_RESPONSE) ||
+	    (eap_packet->data[0] != FR_EAP_IDENTITY)) return NULL;
 
 	memcpy(&len, eap_packet->length, sizeof(uint16_t));
 	len = ntohs(len);
@@ -836,10 +836,10 @@ eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t c
 	 *	eap_session_t MUST be found in the list if it is not
 	 *	EAP-Identity response
 	 */
-	if (eap_packet->data[0] != PW_EAP_IDENTITY) {
+	if (eap_packet->data[0] != FR_EAP_IDENTITY) {
 		eap_session = eap_session_thaw(request);
 		if (!eap_session) {
-			vp = fr_pair_find_by_num(request->packet->vps, 0, PW_STATE, TAG_ANY);
+			vp = fr_pair_find_by_num(request->packet->vps, 0, FR_STATE, TAG_ANY);
 			if (!vp) {
 				REDEBUG("EAP requires the State attribute to work, but no State exists in the Access-Request packet.");
 				REDEBUG("The RADIUS client is broken.  No amount of changing FreeRADIUS will fix the RADIUS client.");
@@ -866,7 +866,7 @@ eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t c
 		 *	to a request for a particular type, but it's NOT
 		 *	OK to blindly return data for another type.
 		 */
-		if ((eap_packet->data[0] != PW_EAP_NAK) &&
+		if ((eap_packet->data[0] != FR_EAP_NAK) &&
 		    (eap_packet->data[0] != eap_session->type)) {
 			RERROR("Response appears to match a previous request, but the EAP type is wrong");
 			RERROR("We expected EAP type %s, but received type %s",
@@ -907,7 +907,7 @@ eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t c
 		request_data_add(request, NULL, REQUEST_DATA_EAP_SESSION, eap_session, true, true, true);
 	}
 
-	vp = fr_pair_find_by_num(request->packet->vps, 0, PW_USER_NAME, TAG_ANY);
+	vp = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_NAME, TAG_ANY);
 	if (!vp) {
 	       /*
 		*	NAS did not set the User-Name

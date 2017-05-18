@@ -249,7 +249,7 @@ typedef struct eap_fast_tunnel_t {
  */
 void eap_fast_tlv_append(tls_session_t *tls_session, int tlv, bool mandatory,
 			 int length, const void *data) CC_HINT(nonnull);
-PW_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session) CC_HINT(nonnull);
+FR_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session) CC_HINT(nonnull);
 
 /*
  *	A bunch of EAP-FAST helper functions.

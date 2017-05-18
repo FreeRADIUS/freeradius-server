@@ -206,7 +206,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	/*
 	 *	Pull out the cache created date
 	 */
-	if ((head->lhs->tmpl_da->vendor == 0) && (head->lhs->tmpl_da->attr == PW_CACHE_CREATED)) {
+	if ((head->lhs->tmpl_da->vendor == 0) && (head->lhs->tmpl_da->attr == FR_CACHE_CREATED)) {
 		vp_map_t *map;
 
 		c->created = head->rhs->tmpl_fr_value_box_datum.date;
@@ -219,7 +219,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	/*
 	 *	Pull out the cache expires date
 	 */
-	if ((head->lhs->tmpl_da->vendor == 0) && (head->lhs->tmpl_da->attr == PW_CACHE_EXPIRES)) {
+	if ((head->lhs->tmpl_da->vendor == 0) && (head->lhs->tmpl_da->attr == FR_CACHE_EXPIRES)) {
 		vp_map_t *map;
 
 		c->expires = head->rhs->tmpl_fr_value_box_datum.date;

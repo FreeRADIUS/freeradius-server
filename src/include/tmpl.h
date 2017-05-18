@@ -307,7 +307,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt);
    value.strvalue = talloc_strdup(NULL, "my new username");
    value.length = talloc_array_length(value.strvalue) - 1;
 
-   if (fr_pair_update_by_num(ctx, head, PW_USERNAME, 0, TAG_ANY, FR_TYPE_STRING, &value) < 0) return -1; // error
+   if (fr_pair_update_by_num(ctx, head, FR_USERNAME, 0, TAG_ANY, FR_TYPE_STRING, &value) < 0) return -1; // error
  @endcode
  *
  * @param _ctx new #VALUE_PAIR s should be allocated in for the specified list.

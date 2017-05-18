@@ -65,10 +65,10 @@ static int tls_cache_attrs(REQUEST *request,
 {
 	VALUE_PAIR *vp;
 
-	fr_pair_delete_by_num(&request->packet->vps, 0, PW_TLS_SESSION_ID, TAG_ANY);
+	fr_pair_delete_by_num(&request->packet->vps, 0, FR_TLS_SESSION_ID, TAG_ANY);
 
 	RDEBUG2("Setting TLS cache control attributes");
-	vp = fr_pair_afrom_num(request->packet, 0, PW_TLS_SESSION_ID);
+	vp = fr_pair_afrom_num(request->packet, 0, FR_TLS_SESSION_ID);
 	if (!vp) return -1;
 
 	fr_pair_value_memcpy(vp, key, key_len);
@@ -77,7 +77,7 @@ static int tls_cache_attrs(REQUEST *request,
 	rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 	REXDENT();
 
-	vp = fr_pair_afrom_num(request, 0, PW_TLS_CACHE_ACTION);
+	vp = fr_pair_afrom_num(request, 0, FR_TLS_CACHE_ACTION);
 	if (!vp) return -1;
 
 	vp->vp_uint32 = action;
@@ -111,7 +111,7 @@ int tls_cache_process(REQUEST *request, char const *virtual_server, int autz_typ
 	/*
 	 *	Indicate what action we're performing
 	 */
-	vp = fr_pair_afrom_num(request, 0, PW_TLS_CACHE_ACTION);
+	vp = fr_pair_afrom_num(request, 0, FR_TLS_CACHE_ACTION);
 	if (!vp) return -1;
 
 	vp->vp_uint32 = autz_type;
@@ -136,7 +136,7 @@ int tls_cache_process(REQUEST *request, char const *virtual_server, int autz_typ
 	request->module = module;
 	request->component = component;
 
-	fr_pair_delete_by_num(&request->control, 0, PW_TLS_CACHE_ACTION, TAG_ANY);
+	fr_pair_delete_by_num(&request->control, 0, FR_TLS_CACHE_ACTION, TAG_ANY);
 
 	return rcode;
 }
@@ -275,7 +275,7 @@ int tls_cache_write(REQUEST *request, tls_session_t *tls_session)
 	/*
 	 *	Put the SSL data into an attribute.
 	 */
-	vp = fr_pair_afrom_num(request->state_ctx, 0, PW_TLS_SESSION_DATA);
+	vp = fr_pair_afrom_num(request->state_ctx, 0, FR_TLS_SESSION_DATA);
 	if (!vp) {
 		REDEBUG("%s", fr_strerror());
 		return -1;
@@ -304,7 +304,7 @@ int tls_cache_write(REQUEST *request, tls_session_t *tls_session)
 	/*
 	 *	Ensure that the session data can't be used by anyone else.
 	 */
-	fr_pair_delete_by_num(&request->state, 0, PW_TLS_SESSION_DATA, TAG_ANY);
+	fr_pair_delete_by_num(&request->state, 0, FR_TLS_SESSION_DATA, TAG_ANY);
 
 	return ret;
 }
@@ -359,7 +359,7 @@ static SSL_SESSION *tls_cache_read(SSL *ssl,
 		return NULL;
 	}
 
-	vp = fr_pair_find_by_num(request->state, 0, PW_TLS_SESSION_DATA, TAG_ANY);
+	vp = fr_pair_find_by_num(request->state, 0, FR_TLS_SESSION_DATA, TAG_ANY);
 	if (!vp) {
 		RWDEBUG("No cached session found");
 		return NULL;
@@ -405,7 +405,7 @@ static SSL_SESSION *tls_cache_read(SSL *ssl,
 	/*
 	 *	Ensure that the session data can't be used by anyone else.
 	 */
-	fr_pair_delete_by_num(&request->state, 0, PW_TLS_SESSION_DATA, TAG_ANY);
+	fr_pair_delete_by_num(&request->state, 0, FR_TLS_SESSION_DATA, TAG_ANY);
 
 	return sess;
 }
@@ -535,7 +535,7 @@ int tls_cache_disable_cb(SSL *ssl,
 	 */
 	if (!session->allow_session_resumption) goto disable;
 
-	vp = fr_pair_find_by_num(request->control, 0, PW_ALLOW_SESSION_RESUMPTION, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, FR_ALLOW_SESSION_RESUMPTION, TAG_ANY);
 	if (vp && (vp->vp_uint32 == 0)) {
 		RDEBUG2("&control:Allow-Session-Resumption == no, disabling session resumption");
 	disable:

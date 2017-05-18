@@ -56,7 +56,7 @@ typedef struct CHBIND_REQ {
 #define CHBIND_CODE_FAILURE             3
 
 /* Channel binding function prototypes */
-PW_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind_req);
+FR_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind_req);
 
 VALUE_PAIR *eap_chbind_packet2vp(RADIUS_PACKET *packet, chbind_packet_t *chbind);
 chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps);

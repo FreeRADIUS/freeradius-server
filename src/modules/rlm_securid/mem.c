@@ -182,7 +182,7 @@ SECURID_SESSION *securid_sessionlist_find(rlm_securid_t *inst, REQUEST *request)
 	/*
 	 *	We key the sessions off of the 'state' attribute
 	 */
-	state = fr_pair_find_by_num(request->packet->vps, 0, PW_STATE, TAG_ANY);
+	state = fr_pair_find_by_num(request->packet->vps, 0, FR_STATE, TAG_ANY);
 	if (!state) {
 		return NULL;
 	}

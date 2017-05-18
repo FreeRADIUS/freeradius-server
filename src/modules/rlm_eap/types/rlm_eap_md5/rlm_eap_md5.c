@@ -50,7 +50,7 @@ static rlm_rcode_t mod_session_init(UNUSED void *instance, eap_session_t *eap_se
 	/*
 	 *	Fill it with data.
 	 */
-	reply->code = PW_MD5_CHALLENGE;
+	reply->code = FR_MD5_CHALLENGE;
 	reply->length = 1 + MD5_CHALLENGE_LEN; /* one byte of value size */
 	reply->value_size = MD5_CHALLENGE_LEN;
 
@@ -103,7 +103,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	 */
 	rad_assert(eap_session->request != NULL);
 
-	password = fr_pair_find_by_num(eap_session->request->control, 0, PW_CLEARTEXT_PASSWORD, TAG_ANY);
+	password = fr_pair_find_by_num(eap_session->request->control, 0, FR_CLEARTEXT_PASSWORD, TAG_ANY);
 	if (!password) {
 		REDEBUG2("Cleartext-Password is required for EAP-MD5 authentication");
 		return RLM_MODULE_REJECT;
@@ -131,9 +131,9 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	 *	(i.e. challenge) which we sent out.
 	 */
 	if (eap_md5_verify(packet, password, eap_session->opaque)) {
-		reply->code = PW_MD5_SUCCESS;
+		reply->code = FR_MD5_SUCCESS;
 	} else {
-		reply->code = PW_MD5_FAILURE;
+		reply->code = FR_MD5_FAILURE;
 	}
 
 	/*

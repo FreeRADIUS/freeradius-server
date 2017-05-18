@@ -146,7 +146,7 @@ static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 
 	VALUE_PAIR		*vp = NULL;
 	fr_dict_attr_t const	*vendor_root = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal),
-									 PW_VENDOR_SPECIFIC);
+									 FR_VENDOR_SPECIFIC);
 	SSL			*ssl = decoder_ctx;
 
 	while (p < end) {
@@ -183,7 +183,7 @@ static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 			p += 4;
 			value_len -= 4;	/* -= 4 for the vendor ID field */
 
-			our_parent = fr_dict_vendor_attr_by_num(fr_dict_internal, PW_VENDOR_SPECIFIC, vendor);
+			our_parent = fr_dict_vendor_attr_by_num(fr_dict_internal, FR_VENDOR_SPECIFIC, vendor);
 			if (!our_parent) {
 				if (flags & FR_DIAMETER_AVP_FLAG_MANDATORY) {
 					fr_strerror_printf("Mandatory bit set and no vendor %u found", vendor);
@@ -253,8 +253,8 @@ do_value:
 		 *	challenge) But if the client gets the challenge correct,
 		 *	we're not too worried about the Id.
 		 */
-		if (((vp->da->vendor == 0) && (vp->da->attr == PW_CHAP_CHALLENGE)) ||
-		    ((vp->da->vendor == VENDORPEC_MICROSOFT) && (vp->da->attr == PW_MSCHAP_CHALLENGE))) {
+		if (((vp->da->vendor == 0) && (vp->da->attr == FR_CHAP_CHALLENGE)) ||
+		    ((vp->da->vendor == VENDORPEC_MICROSOFT) && (vp->da->attr == FR_MSCHAP_CHALLENGE))) {
 			uint8_t	challenge[16];
 			uint8_t	scratch[16];
 
@@ -470,7 +470,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 	 *	NOT 'eap start', so we should check for that....
 	 */
 	switch (reply->code) {
-	case PW_CODE_ACCESS_ACCEPT:
+	case FR_CODE_ACCESS_ACCEPT:
 	{
 		RDEBUG("Got tunneled Access-Accept");
 
@@ -486,7 +486,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		     vp = fr_pair_cursor_next(&cursor)) {
 		     	switch (vp->da->vendor) {
 			case VENDORPEC_MICROSOFT:
-				if (vp->da->attr == PW_MSCHAP2_SUCCESS) {
+				if (vp->da->attr == FR_MSCHAP2_SUCCESS) {
 					RDEBUG("Got MS-CHAP2-Success, tunneling it to the client in a challenge");
 
 					rcode = RLM_MODULE_HANDLED;
@@ -496,7 +496,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 				break;
 
 			case VENDORPEC_UKERNA:
-				if (vp->da->attr == PW_UKERNA_CHBIND) {
+				if (vp->da->attr == FR_UKERNA_CHBIND) {
 					rcode = RLM_MODULE_HANDLED;
 					t->authenticated = true;
 					fr_pair_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
@@ -511,7 +511,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		break;
 
 
-	case PW_CODE_ACCESS_REJECT:
+	case FR_CODE_ACCESS_REJECT:
 		RDEBUG("Got tunneled Access-Reject");
 		rcode = RLM_MODULE_REJECT;
 		break;
@@ -522,7 +522,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 	 *	an Access-Challenge means that we MUST tunnel
 	 *	a Reply-Message to the client.
 	 */
-	case PW_CODE_ACCESS_CHALLENGE:
+	case FR_CODE_ACCESS_CHALLENGE:
 		RDEBUG("Got tunneled Access-Challenge");
 
 		fr_pair_cursor_init(&to_tunnel, &tunnel_vps);
@@ -536,15 +536,15 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		     vp = fr_pair_cursor_next(&cursor)) {
 		     	switch (vp->da->vendor) {
 			case VENDORPEC_UKERNA:
-				if (vp->da->attr == PW_UKERNA_CHBIND) {
+				if (vp->da->attr == FR_UKERNA_CHBIND) {
 					fr_pair_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
 				}
 				break;
 
 			case 0:
 				switch (vp->da->attr) {
-				case PW_EAP_MESSAGE:
-				case PW_REPLY_MESSAGE:
+				case FR_EAP_MESSAGE:
+				case FR_REPLY_MESSAGE:
 					fr_pair_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
 					break;
 
@@ -606,7 +606,7 @@ static int CC_HINT(nonnull) eap_ttls_postproxy(eap_session_t *eap_session, void 
 	/*
 	 *	Do the callback, if it exists, and if it was a success.
 	 */
-	if (fake && (eap_session->request->proxy->reply->code == PW_CODE_ACCESS_ACCEPT)) {
+	if (fake && (eap_session->request->proxy->reply->code == FR_CODE_ACCESS_ACCEPT)) {
 		/*
 		 *	Terrible hacks.
 		 */
@@ -684,7 +684,7 @@ static int CC_HINT(nonnull) eap_ttls_postproxy(eap_session_t *eap_session, void 
 	case RLM_MODULE_HANDLED:
 		RDEBUG("Reply was handled");
 		eap_tls_request(eap_session);
-		request->proxy->reply->code = PW_CODE_ACCESS_CHALLENGE;
+		request->proxy->reply->code = FR_CODE_ACCESS_CHALLENGE;
 		return 1;
 
 	case RLM_MODULE_OK:
@@ -710,9 +710,9 @@ static int CC_HINT(nonnull) eap_ttls_postproxy(eap_session_t *eap_session, void 
 /*
  *	Process the "diameter" contents of the tunneled data.
  */
-PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
+FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 {
-	PW_CODE			code = PW_CODE_ACCESS_REJECT;
+	FR_CODE			code = FR_CODE_ACCESS_REJECT;
 	rlm_rcode_t		rcode;
 	REQUEST			*fake = NULL;
 	VALUE_PAIR		*vp = NULL;
@@ -740,7 +740,7 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	if (data_len == 0) {
 		if (t->authenticated) {
 			RDEBUG("Got ACK, and the user was already authenticated");
-			code = PW_CODE_ACCESS_ACCEPT;
+			code = FR_CODE_ACCESS_ACCEPT;
 			goto finish;
 		} /* else no session, no data, die. */
 
@@ -749,12 +749,12 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 		 *	wrong.
 		 */
 		RDEBUG2("SSL_read Error");
-		code = PW_CODE_ACCESS_REJECT;
+		code = FR_CODE_ACCESS_REJECT;
 		goto finish;
 	}
 
 	if (!diameter_verify(request, data, data_len)) {
-		code = PW_CODE_ACCESS_REJECT;
+		code = FR_CODE_ACCESS_REJECT;
 		goto finish;
 	}
 
@@ -772,7 +772,7 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	if (eap_ttls_decode_pair(fake->packet, &cursor, fr_dict_root(fr_dict_internal),
 				 data, data_len, tls_session->ssl) < 0) {
 		RPEDEBUG("Decoding TTLS TLVs failed");
-		code = PW_CODE_ACCESS_REJECT;
+		code = FR_CODE_ACCESS_REJECT;
 		goto finish;
 	}
 
@@ -787,8 +787,8 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	/*
 	 *	Update other items in the REQUEST data structure.
 	 */
-	fake->username = fr_pair_find_by_num(fake->packet->vps, 0, PW_USER_NAME, TAG_ANY);
-	fake->password = fr_pair_find_by_num(fake->packet->vps, 0, PW_USER_PASSWORD, TAG_ANY);
+	fake->username = fr_pair_find_by_num(fake->packet->vps, 0, FR_USER_NAME, TAG_ANY);
+	fake->password = fr_pair_find_by_num(fake->packet->vps, 0, FR_USER_PASSWORD, TAG_ANY);
 
 	/*
 	 *	No User-Name, try to create one from stored data.
@@ -799,11 +799,11 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 		 *	an EAP-Identity, and pull it out of there.
 		 */
 		if (!t->username) {
-			vp = fr_pair_find_by_num(fake->packet->vps, 0, PW_EAP_MESSAGE, TAG_ANY);
+			vp = fr_pair_find_by_num(fake->packet->vps, 0, FR_EAP_MESSAGE, TAG_ANY);
 			if (vp &&
 			    (vp->vp_length >= EAP_HEADER_LEN + 2) &&
-			    (vp->vp_strvalue[0] == PW_EAP_RESPONSE) &&
-			    (vp->vp_strvalue[EAP_HEADER_LEN] == PW_EAP_IDENTITY) &&
+			    (vp->vp_strvalue[0] == FR_EAP_RESPONSE) &&
+			    (vp->vp_strvalue[EAP_HEADER_LEN] == FR_EAP_IDENTITY) &&
 			    (vp->vp_strvalue[EAP_HEADER_LEN + 1] != 0)) {
 				/*
 				 *	Create & remember a User-Name
@@ -828,7 +828,7 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 		if (t->username) {
 			vp = fr_pair_list_copy(fake->packet, t->username);
 			fr_pair_add(&fake->packet->vps, vp);
-			fake->username = fr_pair_find_by_num(fake->packet->vps, 0, PW_USER_NAME, TAG_ANY);
+			fake->username = fr_pair_find_by_num(fake->packet->vps, 0, FR_USER_NAME, TAG_ANY);
 		}
 	} /* else the request ALREADY had a User-Name */
 
@@ -837,7 +837,7 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	 */
 	chbind = eap_chbind_vp2packet(fake, fake->packet->vps);
 	if (chbind) {
-		PW_CODE chbind_code;
+		FR_CODE chbind_code;
 		CHBIND_REQ *req = talloc_zero(fake, CHBIND_REQ);
 
 		RDEBUG("received chbind request");
@@ -861,7 +861,7 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 		/* clean up chbind req */
 		talloc_free(req);
 
-		if (chbind_code != PW_CODE_ACCESS_ACCEPT) {
+		if (chbind_code != FR_CODE_ACCESS_ACCEPT) {
 			code = chbind_code;
 			goto finish;
 		}
@@ -879,7 +879,7 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	switch (fake->reply->code) {
 	case 0:			/* No reply code, must be proxied... */
 #ifdef WITH_PROXY
-		vp = fr_pair_find_by_num(fake->control, 0, PW_PROXY_TO_REALM, TAG_ANY);
+		vp = fr_pair_find_by_num(fake->control, 0, FR_PROXY_TO_REALM, TAG_ANY);
 		if (vp) {
 			int			ret;
 			eap_tunnel_data_t	*tunnel;
@@ -890,7 +890,7 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 			 *	Tell the original request that it's going
 			 *	to be proxied.
 			 */
-			fr_pair_list_mcopy_by_num(request, &request->control, &fake->control, 0, PW_PROXY_TO_REALM,
+			fr_pair_list_mcopy_by_num(request, &request->control, &fake->control, 0, FR_PROXY_TO_REALM,
 						  TAG_ANY);
 
 			/*
@@ -943,37 +943,37 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 			 *	Didn't authenticate the packet, but
 			 *	we're proxying it.
 			 */
-			code = PW_CODE_STATUS_CLIENT;
+			code = FR_CODE_STATUS_CLIENT;
 
 		} else
 #endif	/* WITH_PROXY */
 		  {
 			RDEBUG("No tunneled reply was found for request %" PRIu64 ", and the request was not "
 			       "proxied: rejecting the user", request->number);
-			code = PW_CODE_ACCESS_REJECT;
+			code = FR_CODE_ACCESS_REJECT;
 		}
 		break;
 
 	default:
 		/*
-		 *	Returns RLM_MODULE_FOO, and we want to return PW_FOO
+		 *	Returns RLM_MODULE_FOO, and we want to return FR_FOO
 		 */
 		rcode = process_reply(eap_session, tls_session, request, fake->reply);
 		switch (rcode) {
 		case RLM_MODULE_REJECT:
-			code = PW_CODE_ACCESS_REJECT;
+			code = FR_CODE_ACCESS_REJECT;
 			break;
 
 		case RLM_MODULE_HANDLED:
-			code = PW_CODE_ACCESS_CHALLENGE;
+			code = FR_CODE_ACCESS_CHALLENGE;
 			break;
 
 		case RLM_MODULE_OK:
-			code = PW_CODE_ACCESS_ACCEPT;
+			code = FR_CODE_ACCESS_ACCEPT;
 			break;
 
 		default:
-			code = PW_CODE_ACCESS_REJECT;
+			code = FR_CODE_ACCESS_REJECT;
 			break;
 		}
 		break;

@@ -166,7 +166,7 @@ static int client_socket(char const *server)
 
 	p = strchr(buffer, ':');
 	if (!p) {
-		port = PW_RADMIN_PORT;
+		port = FR_RADMIN_PORT;
 	} else {
 		port = atoi(p + 1);
 		*p = '\0';

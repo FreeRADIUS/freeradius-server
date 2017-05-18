@@ -82,20 +82,20 @@ int fr_radius_packet_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original
 	packet_ctx.vector = packet->vector;
 
 	switch (packet->code) {
-	case PW_CODE_ACCESS_REQUEST:
+	case FR_CODE_ACCESS_REQUEST:
 		break;
-		
-	case PW_CODE_ACCESS_ACCEPT:
-	case PW_CODE_ACCESS_REJECT:
-	case PW_CODE_ACCESS_CHALLENGE:
+
+	case FR_CODE_ACCESS_ACCEPT:
+	case FR_CODE_ACCESS_REJECT:
+	case FR_CODE_ACCESS_CHALLENGE:
 #ifdef WITH_ACCOUNTING
-	case PW_CODE_ACCOUNTING_RESPONSE:
+	case FR_CODE_ACCOUNTING_RESPONSE:
 #endif
 #ifdef WITH_COA
-	case PW_CODE_COA_ACK:
-	case PW_CODE_COA_NAK:
-	case PW_CODE_DISCONNECT_ACK:
-	case PW_CODE_DISCONNECT_NAK:
+	case FR_CODE_COA_ACK:
+	case FR_CODE_COA_NAK:
+	case FR_CODE_DISCONNECT_ACK:
+	case FR_CODE_DISCONNECT_NAK:
 #endif
 		if (!original) {
 			fr_strerror_printf("Cannot encode response without request");
@@ -105,14 +105,14 @@ int fr_radius_packet_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original
 		break;
 
 #ifdef WITH_ACCOUNTING
-	case PW_CODE_ACCOUNTING_REQUEST:
+	case FR_CODE_ACCOUNTING_REQUEST:
 		packet_ctx.vector = nullvector;
 		break;
 #endif
 
 #ifdef WITH_COA
-	case PW_CODE_COA_REQUEST:
-	case PW_CODE_DISCONNECT_REQUEST:
+	case FR_CODE_COA_REQUEST:
+	case FR_CODE_DISCONNECT_REQUEST:
 		packet_ctx.vector = nullvector;
 		break;
 #endif
@@ -168,7 +168,7 @@ int fr_radius_packet_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original
 			 *	Permit the admin to send BADLY formatted
 			 *	attributes with a debug build.
 			 */
-			if (vp->da->attr == PW_RAW_ATTRIBUTE) {
+			if (vp->da->attr == FR_RAW_ATTRIBUTE) {
 				if (vp->vp_length > room) {
 					len = room;
 				} else {
@@ -188,7 +188,7 @@ int fr_radius_packet_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original
 		 *	Set the Message-Authenticator to the correct
 		 *	length and initial value.
 		 */
-		if (!vp->da->vendor && (vp->da->attr == PW_MESSAGE_AUTHENTICATOR)) {
+		if (!vp->da->vendor && (vp->da->attr == FR_MESSAGE_AUTHENTICATOR)) {
 			last_len = 16;
 		} else {
 			last_len = vp->vp_length;
@@ -265,20 +265,20 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char
 	packet_ctx.vector = packet->vector;
 
 	switch (packet->code) {
-	case PW_CODE_ACCESS_REQUEST:
+	case FR_CODE_ACCESS_REQUEST:
 		break;
-		
-	case PW_CODE_ACCESS_ACCEPT:
-	case PW_CODE_ACCESS_REJECT:
-	case PW_CODE_ACCESS_CHALLENGE:
+
+	case FR_CODE_ACCESS_ACCEPT:
+	case FR_CODE_ACCESS_REJECT:
+	case FR_CODE_ACCESS_CHALLENGE:
 #ifdef WITH_ACCOUNTING
-	case PW_CODE_ACCOUNTING_RESPONSE:
+	case FR_CODE_ACCOUNTING_RESPONSE:
 #endif
 #ifdef WITH_COA
-	case PW_CODE_COA_ACK:
-	case PW_CODE_COA_NAK:
-	case PW_CODE_DISCONNECT_ACK:
-	case PW_CODE_DISCONNECT_NAK:
+	case FR_CODE_COA_ACK:
+	case FR_CODE_COA_NAK:
+	case FR_CODE_DISCONNECT_ACK:
+	case FR_CODE_DISCONNECT_NAK:
 #endif
 		if (!original) {
 			fr_strerror_printf("Cannot decode response without request");
@@ -288,14 +288,14 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char
 		break;
 
 #ifdef WITH_ACCOUNTING
-	case PW_CODE_ACCOUNTING_REQUEST:
+	case FR_CODE_ACCOUNTING_REQUEST:
 		memset(packet->vector, 0, sizeof(packet->vector));
 		break;
 #endif
 
 #ifdef WITH_COA
-	case PW_CODE_COA_REQUEST:
-	case PW_CODE_DISCONNECT_REQUEST:
+	case FR_CODE_COA_REQUEST:
+	case FR_CODE_DISCONNECT_REQUEST:
 		memset(packet->vector, 0, sizeof(packet->vector));
 		break;
 #endif
@@ -462,8 +462,8 @@ int fr_radius_packet_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	 *	codes have the Request Authenticator be the packet
 	 *	signature.
 	 */
-	if ((packet->code == PW_CODE_ACCESS_REQUEST) ||
-	    (packet->code == PW_CODE_STATUS_SERVER)) {
+	if ((packet->code == FR_CODE_ACCESS_REQUEST) ||
+	    (packet->code == FR_CODE_STATUS_SERVER)) {
 		memcpy(packet->data + 4, packet->vector, sizeof(packet->vector));
 	}
 
@@ -750,7 +750,7 @@ void fr_radius_print_hex(RADIUS_PACKET const *packet)
 			fprintf(fr_log_fp, "%02x  %02x  ", ptr[0], ptr[1]);
 			attrlen = ptr[1] - 2;
 
-			if ((ptr[0] == PW_VENDOR_SPECIFIC) &&
+			if ((ptr[0] == FR_VENDOR_SPECIFIC) &&
 			    (attrlen > 4)) {
 				vendor = (ptr[3] << 16) | (ptr[4] << 8) | ptr[5];
 				fprintf(fr_log_fp, "%02x%02x%02x%02x (%u)  ",

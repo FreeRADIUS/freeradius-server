@@ -31,7 +31,7 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
-#define PW_DHCP_PARAMETER_REQUEST_LIST 55
+#define FR_DHCP_PARAMETER_REQUEST_LIST 55
 
 /*
  *	Define a structure for our module configuration.
@@ -172,7 +172,7 @@ static int mod_bootstrap(UNUSED CONF_SECTION *conf, void *instance)
 	/*
 	 *	Fixup dictionary entry for DHCP-Paramter-Request-List adding all the options
 	 */
-	da = fr_dict_attr_by_num(NULL, DHCP_MAGIC_VENDOR, PW_DHCP_PARAMETER_REQUEST_LIST);
+	da = fr_dict_attr_by_num(NULL, DHCP_MAGIC_VENDOR, FR_DHCP_PARAMETER_REQUEST_LIST);
 	if (da) {
 		fr_value_box_t	value = { .type = FR_TYPE_UINT8 };
 		uint8_t		i;

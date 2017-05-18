@@ -74,7 +74,7 @@ static ssize_t test_encode(void const *packet_ctx, REQUEST *request, uint8_t *bu
 
 	MPRINT1("\t\tENCODE >>> request %zd - data %p %p room %zd\n", request->number, packet_ctx, buffer, buffer_len);
 
-	buffer[0] = PW_CODE_ACCESS_ACCEPT;
+	buffer[0] = FR_CODE_ACCESS_ACCEPT;
 	buffer[1] = pc->id;
 	buffer[2] = 0;
 	buffer[3] = 20;

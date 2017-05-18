@@ -545,7 +545,7 @@ ATTRIBUTE	Tmp-Date-8				1848	date
 ATTRIBUTE	Tmp-Date-9				1849	date
 
 #
-#  Attributes 1850 through 1850 + PW_TYPE_MAX are reserved.
+#  Attributes 1850 through 1850 + FR_TYPE_MAX are reserved.
 #
 
 ATTRIBUTE	Tmp-Integer64-0				1850	integer64

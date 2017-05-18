@@ -67,8 +67,8 @@ leap_packet_t *eap_leap_extract(REQUEST *request, eap_round_t *eap_round)
 	 *	messages sent to it.
 	 */
 	if (!eap_round || !eap_round->response ||
-	    ((eap_round->response->code != PW_EAP_RESPONSE) && (eap_round->response->code != PW_EAP_REQUEST)) ||
-	     (eap_round->response->type.num != PW_EAP_LEAP) || !eap_round->response->type.data ||
+	    ((eap_round->response->code != FR_EAP_RESPONSE) && (eap_round->response->code != FR_EAP_REQUEST)) ||
+	     (eap_round->response->type.num != FR_EAP_LEAP) || !eap_round->response->type.data ||
 	     (eap_round->response->length < LEAP_HEADER_LEN) ||
 	     (eap_round->response->type.data[0] != 0x01)) {	/* version 1 */
 		REDEBUG("Corrupted data");
@@ -87,14 +87,14 @@ leap_packet_t *eap_leap_extract(REQUEST *request, eap_round_t *eap_round)
 	 *	of the stages.
 	 */
 	switch (eap_round->response->code) {
-	case PW_EAP_RESPONSE:
+	case FR_EAP_RESPONSE:
 		if (data->count != 24) {
 			REDEBUG("Bad NTChallengeResponse in LEAP stage 3");
 			return NULL;
 		}
 		break;
 
-	case PW_EAP_REQUEST:
+	case FR_EAP_REQUEST:
 		if (data->count != 8) {
 			REDEBUG("Bad AP Challenge in LEAP stage 5");
 			return NULL;
@@ -160,8 +160,8 @@ leap_packet_t *eap_leap_extract(REQUEST *request, eap_round_t *eap_round)
  */
 static int eap_leap_ntpwdhash(uint8_t *out, REQUEST *request, VALUE_PAIR *password)
 {
-	if ((password->da->attr == PW_USER_PASSWORD) ||
-	    (password->da->attr == PW_CLEARTEXT_PASSWORD)) {
+	if ((password->da->attr == FR_USER_PASSWORD) ||
+	    (password->da->attr == FR_CLEARTEXT_PASSWORD)) {
 		ssize_t len;
 		uint8_t ucs2_password[512];
 
@@ -257,7 +257,7 @@ leap_packet_t *eap_leap_stage6(REQUEST *request, leap_packet_t *packet, VALUE_PA
 	reply = talloc(session, leap_packet_t);
 	if (!reply) return NULL;
 
-	reply->code = PW_EAP_RESPONSE;
+	reply->code = FR_EAP_RESPONSE;
 	reply->length = LEAP_HEADER_LEN + 24 + user_name->vp_length;
 	reply->count = 24;
 
@@ -326,7 +326,7 @@ leap_packet_t *eap_leap_stage6(REQUEST *request, leap_packet_t *packet, VALUE_PA
 	 */
 	fr_md5_calc(hash, buffer, 16 + 8 + 24 + 8 + 24);
 
-	q = talloc_array(vp, char, FR_TUNNEL_PW_ENC_LENGTH(16) + sizeof("leap:session-key="));
+	q = talloc_array(vp, char, FR_TUNNEL_FR_ENC_LENGTH(16) + sizeof("leap:session-key="));
 	strcpy(q, "leap:session-key=");
 
 	memcpy(q + 17, hash, 16);
@@ -353,7 +353,7 @@ leap_packet_t *eap_leap_initiate(REQUEST *request, eap_round_t *eap_round, VALUE
 		return NULL;
 	}
 
-	reply->code = PW_EAP_REQUEST;
+	reply->code = FR_EAP_REQUEST;
 	reply->length = LEAP_HEADER_LEN + 8 + user_name->vp_length;
 	reply->count = 8;	/* random challenge */
 
@@ -404,9 +404,9 @@ int eap_leap_compose(REQUEST *request, eap_round_t *eap_round, leap_packet_t *re
 	 *  We need the name and the challenge.
 	 */
 	switch (reply->code) {
-	case PW_EAP_REQUEST:
-	case PW_EAP_RESPONSE:
-		eap_round->request->type.num = PW_EAP_LEAP;
+	case FR_EAP_REQUEST:
+	case FR_EAP_RESPONSE:
+		eap_round->request->type.num = FR_EAP_LEAP;
 		eap_round->request->type.length = reply->length;
 
 		eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, reply->length);
@@ -430,7 +430,7 @@ int eap_leap_compose(REQUEST *request, eap_round_t *eap_round, leap_packet_t *re
 		 *	EAP-Success packets don't contain any data
 		 *	other than the header.
 		 */
-	case PW_EAP_SUCCESS:
+	case FR_EAP_SUCCESS:
 		eap_round->request->type.length = 0;
 		break;
 

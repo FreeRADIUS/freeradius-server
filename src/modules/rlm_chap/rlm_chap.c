@@ -29,11 +29,11 @@ RCSID("$Id$")
 
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
-	if (!fr_pair_find_by_num(request->packet->vps, 0, PW_CHAP_PASSWORD, TAG_ANY)) {
+	if (!fr_pair_find_by_num(request->packet->vps, 0, FR_CHAP_PASSWORD, TAG_ANY)) {
 		return RLM_MODULE_NOOP;
 	}
 
-	if (fr_pair_find_by_num(request->control, 0, PW_AUTH_TYPE, TAG_ANY) != NULL) {
+	if (fr_pair_find_by_num(request->control, 0, FR_AUTH_TYPE, TAG_ANY) != NULL) {
 		RWDEBUG2("&control:Auth-Type already set.  Not setting to CHAP");
 		return RLM_MODULE_NOOP;
 	}
@@ -63,7 +63,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 		return RLM_MODULE_INVALID;
 	}
 
-	chap = fr_pair_find_by_num(request->packet->vps, 0, PW_CHAP_PASSWORD, TAG_ANY);
+	chap = fr_pair_find_by_num(request->packet->vps, 0, FR_CHAP_PASSWORD, TAG_ANY);
 	if (!chap) {
 		REDEBUG("You set '&control:Auth-Type = CHAP' for a request that "
 			"does not contain a CHAP-Password attribute!");
@@ -80,9 +80,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 		return RLM_MODULE_INVALID;
 	}
 
-	password = fr_pair_find_by_num(request->control, 0, PW_CLEARTEXT_PASSWORD, TAG_ANY);
+	password = fr_pair_find_by_num(request->control, 0, FR_CLEARTEXT_PASSWORD, TAG_ANY);
 	if (password == NULL) {
-		if (fr_pair_find_by_num(request->control, 0, PW_USER_PASSWORD, TAG_ANY) != NULL){
+		if (fr_pair_find_by_num(request->control, 0, FR_USER_PASSWORD, TAG_ANY) != NULL){
 			REDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			REDEBUG("!!! Please update your configuration so that the \"known !!!");
 			REDEBUG("!!! good\" cleartext password is in Cleartext-Password,  !!!");
@@ -107,7 +107,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 		RDEBUG3("Comparing with \"known good\" &control:Cleartext-Password value \"%s\"",
 			password->vp_strvalue);
 
-		vp = fr_pair_find_by_num(request->packet->vps, 0, PW_CHAP_CHALLENGE, TAG_ANY);
+		vp = fr_pair_find_by_num(request->packet->vps, 0, FR_CHAP_CHALLENGE, TAG_ANY);
 		if (vp) {
 			RDEBUG2("Using challenge from &request:CHAP-Challenge");
 			p = vp->vp_octets;
@@ -159,13 +159,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(UNUSED void *instance, UNUSED 
 	 *	For Access-Requests, which have CHAP-Password,
 	 *	and no CHAP-Challenge, copy it over from the request.
 	 */
-	if (request->packet->code != PW_CODE_ACCESS_REQUEST) return RLM_MODULE_NOOP;
+	if (request->packet->code != FR_CODE_ACCESS_REQUEST) return RLM_MODULE_NOOP;
 
-	if (!fr_pair_find_by_num(request->proxy->packet->vps, 0, PW_CHAP_PASSWORD, TAG_ANY)) return RLM_MODULE_NOOP;
+	if (!fr_pair_find_by_num(request->proxy->packet->vps, 0, FR_CHAP_PASSWORD, TAG_ANY)) return RLM_MODULE_NOOP;
 
-	if (fr_pair_find_by_num(request->proxy->packet->vps, 0, PW_CHAP_CHALLENGE, TAG_ANY)) return RLM_MODULE_NOOP;
+	if (fr_pair_find_by_num(request->proxy->packet->vps, 0, FR_CHAP_CHALLENGE, TAG_ANY)) return RLM_MODULE_NOOP;
 
-	vp = radius_pair_create(request->proxy->packet, &request->proxy->packet->vps, PW_CHAP_CHALLENGE, 0);
+	vp = radius_pair_create(request->proxy->packet, &request->proxy->packet->vps, FR_CHAP_CHALLENGE, 0);
 	if (!vp) return RLM_MODULE_FAIL;
 
 	fr_pair_value_memcpy(vp, request->packet->vector, sizeof(request->packet->vector));

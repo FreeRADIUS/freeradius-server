@@ -920,7 +920,7 @@ do { \
 		 *	Add expiration as a time since the epoch
 		 */
 		if ((attr_index == 0) && (tls_utils_asn1time_to_epoch(&expires, asn_time) == 0)) {
-			vp = fr_pair_afrom_num(ctx, 0, PW_TLS_CLIENT_CERT_EXPIRATION_TIME);
+			vp = fr_pair_afrom_num(ctx, 0, FR_TLS_CLIENT_CERT_EXPIRATION_TIME);
 			if (vp) {
 				vp->vp_date = expires;
 				fr_pair_cursor_append(cursor, vp);
@@ -1605,7 +1605,7 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQ
 	/*
 	 *	Add the session certificate to the session.
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, PW_TLS_SESSION_CERT_FILE, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, FR_TLS_SESSION_CERT_FILE, TAG_ANY);
 	if (vp) {
 		RDEBUG2("Loading TLS session certificate \"%s\"", vp->vp_strvalue);
 
@@ -1682,7 +1682,7 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQ
 	 *	just too much.
 	 */
 	session->mtu = conf->fragment_size;
-	vp = fr_pair_find_by_num(request->packet->vps, 0, PW_FRAMED_MTU, TAG_ANY);
+	vp = fr_pair_find_by_num(request->packet->vps, 0, FR_FRAMED_MTU, TAG_ANY);
 	if (vp && (vp->vp_uint32 > 100) && (vp->vp_uint32 < session->mtu)) {
 		RDEBUG2("Setting fragment_len from &Framed-MTU");
 		session->mtu = vp->vp_uint32;

@@ -56,7 +56,7 @@ static fr_transport_final_t status_process(REQUEST *request)
 
 		request->component = "radius";
 
-		da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_TYPE);
+		da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
 		rad_assert(da != NULL);
 		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->packet->code));
 		if (!dv) {
@@ -67,7 +67,7 @@ static fr_transport_final_t status_process(REQUEST *request)
 		unlang = cf_subsection_find_name2(request->server_cs, "recv", dv->alias);
 		if (!unlang) {
 			RWDEBUG("Failed to find 'recv' section");
-			request->reply->code = PW_CODE_ACCESS_REJECT;
+			request->reply->code = FR_CODE_ACCESS_REJECT;
 			goto send_reply;
 		}
 
@@ -89,7 +89,7 @@ static fr_transport_final_t status_process(REQUEST *request)
 		switch (rcode) {
 		case RLM_MODULE_OK:
 		case RLM_MODULE_UPDATED:
-			request->reply->code = PW_CODE_ACCESS_ACCEPT;
+			request->reply->code = FR_CODE_ACCESS_ACCEPT;
 			break;
 
 		case RLM_MODULE_FAIL:
@@ -99,11 +99,11 @@ static fr_transport_final_t status_process(REQUEST *request)
 
 		default:
 		case RLM_MODULE_REJECT:
-			request->reply->code = PW_CODE_ACCESS_REJECT;
+			request->reply->code = FR_CODE_ACCESS_REJECT;
 			break;
 		}
 
-		if (!da) da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_TYPE);
+		if (!da) da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
 		rad_assert(da != NULL);
 
 		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
@@ -143,14 +143,14 @@ static fr_transport_final_t status_process(REQUEST *request)
 			 *	If we over-ride an ACK with a NAK, run
 			 *	the NAK section.
 			 */
-			if (request->reply->code != PW_CODE_ACCESS_REJECT) {
-				if (!da) da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_TYPE);
+			if (request->reply->code != FR_CODE_ACCESS_REJECT) {
+				if (!da) da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
 				rad_assert(da != NULL);
 
 				dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
 				RWDEBUG("Failed running 'send %s', trying 'send Access-Reject'.", dv->alias);
 
-				request->reply->code = PW_CODE_ACCESS_REJECT;
+				request->reply->code = FR_CODE_ACCESS_REJECT;
 
 				dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
 				unlang = NULL;

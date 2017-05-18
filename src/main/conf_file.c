@@ -1458,7 +1458,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs, CONF_PARSER const varia
 		attribute = (type & FR_TYPE_ATTRIBUTE);
 		multi = (type & FR_TYPE_MULTI);
 
-		type = PW_BASE_TYPE(type);		/* normal types are small */
+		type = FR_BASE_TYPE(type);		/* normal types are small */
 
 		/*
 		 *	It's a section, recurse!
@@ -1684,7 +1684,7 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 
 	if (required) cant_be_empty = true;		/* May want to review this in the future... */
 
-	type = PW_BASE_TYPE(type);					/* normal types are small */
+	type = FR_BASE_TYPE(type);					/* normal types are small */
 
 	/*
 	 *	Everything except templates must have a base type.
@@ -1982,7 +1982,7 @@ static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, char const *name,
 
 	rad_assert(dflt);
 
-	type = PW_BASE_TYPE(type);
+	type = FR_BASE_TYPE(type);
 
 	/*
 	 *	Defaults may need their values expanding
@@ -2164,7 +2164,7 @@ int cf_pair_parse(TALLOC_CTX *ctx, CONF_SECTION *cs,
 		 *	We don't NULL terminate.  Consumer must use
 		 *	talloc_array_length().
 		 */
-		} else switch (PW_BASE_TYPE(type)) {
+		} else switch (FR_BASE_TYPE(type)) {
 		case FR_TYPE_BOOL:
 			array = (void **)talloc_zero_array(ctx, bool, count);
 			break;
@@ -2273,7 +2273,7 @@ static int cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER const
 	int i;
 
 	for (i = 0; variables[i].name != NULL; i++) {
-		if ((PW_BASE_TYPE(variables[i].type) == FR_TYPE_SUBSECTION)) {
+		if ((FR_BASE_TYPE(variables[i].type) == FR_TYPE_SUBSECTION)) {
 			CONF_SECTION *subcs;
 
 			if (!variables[i].dflt) continue;
@@ -2312,7 +2312,7 @@ static int cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER const
 			continue;
 		}
 
-		if ((PW_BASE_TYPE(variables[i].type) != FR_TYPE_STRING) &&
+		if ((FR_BASE_TYPE(variables[i].type) != FR_TYPE_STRING) &&
 		    (variables[i].type != FR_TYPE_FILE_INPUT) &&
 		    (variables[i].type != FR_TYPE_FILE_OUTPUT)) {
 			continue;
@@ -2497,7 +2497,7 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs, CONF_PARSER 
 		/*
 		 *	Handle subsections specially
 		 */
-		if (PW_BASE_TYPE(variables[i].type) == FR_TYPE_SUBSECTION) {
+		if (FR_BASE_TYPE(variables[i].type) == FR_TYPE_SUBSECTION) {
 			if (cf_subsection_parse(ctx, (uint8_t *)base + variables[i].offset, cs,
 						variables[i].name, variables[i].type,
 						variables[i].subcs, variables[i].subcs_size) < 0) goto finish;

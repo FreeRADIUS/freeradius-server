@@ -185,7 +185,7 @@ static REQUEST *request_from_file(FILE *fp, RADCLIENT *client)
 	/*
 	 *	Set the defaults for IPs, etc.
 	 */
-	request->packet->code = PW_CODE_ACCESS_REQUEST;
+	request->packet->code = FR_CODE_ACCESS_REQUEST;
 
 	request->packet->src_ipaddr.af = AF_INET;
 	request->packet->src_ipaddr.prefix = 32;
@@ -225,29 +225,29 @@ static REQUEST *request_from_file(FILE *fp, RADCLIENT *client)
 			 *	Allow it to set the packet type in
 			 *	the attributes read from the file.
 			 */
-		case PW_PACKET_TYPE:
+		case FR_PACKET_TYPE:
 			request->packet->code = vp->vp_uint32;
 			break;
 
-		case PW_PACKET_DST_PORT:
+		case FR_PACKET_DST_PORT:
 			request->packet->dst_port = (vp->vp_uint32 & 0xffff);
 			break;
 
-		case PW_PACKET_DST_IP_ADDRESS:
-		case PW_PACKET_DST_IPV6_ADDRESS:
+		case FR_PACKET_DST_IP_ADDRESS:
+		case FR_PACKET_DST_IPV6_ADDRESS:
 			memcpy(&request->packet->dst_ipaddr, &vp->vp_ip, sizeof(request->packet->dst_ipaddr));
 			break;
 
-		case PW_PACKET_SRC_PORT:
+		case FR_PACKET_SRC_PORT:
 			request->packet->src_port = (vp->vp_uint32 & 0xffff);
 			break;
 
-		case PW_PACKET_SRC_IP_ADDRESS:
-		case PW_PACKET_SRC_IPV6_ADDRESS:
+		case FR_PACKET_SRC_IP_ADDRESS:
+		case FR_PACKET_SRC_IPV6_ADDRESS:
 			memcpy(&request->packet->src_ipaddr, &vp->vp_ip, sizeof(request->packet->src_ipaddr));
 			break;
 
-		case PW_CHAP_PASSWORD: {
+		case FR_CHAP_PASSWORD: {
 			int i, already_hex = 0;
 
 			/*
@@ -287,16 +287,16 @@ static REQUEST *request_from_file(FILE *fp, RADCLIENT *client)
 		}
 			break;
 
-		case PW_DIGEST_REALM:
-		case PW_DIGEST_NONCE:
-		case PW_DIGEST_METHOD:
-		case PW_DIGEST_URI:
-		case PW_DIGEST_QOP:
-		case PW_DIGEST_ALGORITHM:
-		case PW_DIGEST_BODY_DIGEST:
-		case PW_DIGEST_CNONCE:
-		case PW_DIGEST_NONCE_COUNT:
-		case PW_DIGEST_USER_NAME:
+		case FR_DIGEST_REALM:
+		case FR_DIGEST_NONCE:
+		case FR_DIGEST_METHOD:
+		case FR_DIGEST_URI:
+		case FR_DIGEST_QOP:
+		case FR_DIGEST_ALGORITHM:
+		case FR_DIGEST_BODY_DIGEST:
+		case FR_DIGEST_CNONCE:
+		case FR_DIGEST_NONCE_COUNT:
+		case FR_DIGEST_USER_NAME:
 			/* overlapping! */
 		{
 			fr_dict_attr_t const *da;
@@ -305,11 +305,11 @@ static REQUEST *request_from_file(FILE *fp, RADCLIENT *client)
 			p = talloc_array(vp, uint8_t, vp->vp_length + 2);
 
 			memcpy(p + 2, vp->vp_octets, vp->vp_length);
-			p[0] = vp->da->attr - PW_DIGEST_REALM + 1;
+			p[0] = vp->da->attr - FR_DIGEST_REALM + 1;
 			vp->vp_length += 2;
 			p[1] = vp->vp_length;
 
-			da = fr_dict_attr_by_num(NULL, 0, PW_DIGEST_ATTRIBUTES);
+			da = fr_dict_attr_by_num(NULL, 0, FR_DIGEST_ATTRIBUTES);
 			rad_assert(da != NULL);
 			vp->da = da;
 
@@ -360,7 +360,7 @@ static REQUEST *request_from_file(FILE *fp, RADCLIENT *client)
 	/*
 	 *	FIXME: set IPs, etc.
 	 */
-	request->packet->code = PW_CODE_ACCESS_REQUEST;
+	request->packet->code = FR_CODE_ACCESS_REQUEST;
 
 	request->packet->src_ipaddr.af = AF_INET;
 	request->packet->src_ipaddr.prefix = 32;
@@ -394,8 +394,8 @@ static REQUEST *request_from_file(FILE *fp, RADCLIENT *client)
 	request->log.lvl = rad_debug_lvl;
 	request->log.func = vradlog_request;
 
-	request->username = fr_pair_find_by_num(request->packet->vps, 0, PW_USER_NAME, TAG_ANY);
-	request->password = fr_pair_find_by_num(request->packet->vps, 0, PW_USER_PASSWORD, TAG_ANY);
+	request->username = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_NAME, TAG_ANY);
+	request->password = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_PASSWORD, TAG_ANY);
 
 	return request;
 }
@@ -515,7 +515,7 @@ static ssize_t xlat_poke(TALLOC_CTX *ctx, char **out, size_t outlen,
 	for (i = 0; variables[i].name != NULL; i++) {
 		int ret;
 
-		if (PW_BASE_TYPE(variables[i].type) == FR_TYPE_SUBSECTION) continue;
+		if (FR_BASE_TYPE(variables[i].type) == FR_TYPE_SUBSECTION) continue;
 		/* else it's a CONF_PAIR */
 
 		/*
@@ -998,7 +998,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Update the list with the response type.
 	 */
-	vp = radius_pair_create(request->reply, &request->reply->vps, PW_RESPONSE_PACKET_TYPE, 0);
+	vp = radius_pair_create(request->reply, &request->reply->vps, FR_RESPONSE_PACKET_TYPE, 0);
 	vp->vp_uint32 = request->reply->code;
 
 	{

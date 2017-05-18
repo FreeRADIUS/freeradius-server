@@ -299,7 +299,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 	 *	Can't do OpenDirectory if there's no password.
 	 */
 	if (!request->password ||
-		(request->password->da->attr != PW_USER_PASSWORD)) {
+		(request->password->da->attr != FR_USER_PASSWORD)) {
 		REDEBUG("You set 'Auth-Type = OpenDirectory' for a request that does not contain a User-Password attribute!");
 		return RLM_MODULE_INVALID;
 	}
@@ -409,7 +409,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 
 	if (uuid_is_null(guid_sacl) && uuid_is_null(guid_nasgroup)) {
 		RDEBUG("No access control groups, all users allowed");
-		if (fr_pair_find_by_num(request->control, 0, PW_AUTH_TYPE, TAG_ANY) == NULL) {
+		if (fr_pair_find_by_num(request->control, 0, FR_AUTH_TYPE, TAG_ANY) == NULL) {
 			pair_make_config("Auth-Type", kAuthType, T_OP_EQ);
 			RDEBUG("Setting Auth-Type = %s", kAuthType);
 		}
@@ -458,7 +458,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 		}
 	}
 
-	if (fr_pair_find_by_num(request->control, 0, PW_AUTH_TYPE, TAG_ANY) == NULL) {
+	if (fr_pair_find_by_num(request->control, 0, FR_AUTH_TYPE, TAG_ANY) == NULL) {
 		pair_make_config("Auth-Type", kAuthType, T_OP_EQ);
 		RDEBUG("Setting Auth-Type = %s", kAuthType);
 	}

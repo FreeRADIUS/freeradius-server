@@ -5,11 +5,11 @@ RCSIDH(eap_md5_h, "$Id$")
 
 #include "eap.h"
 
-#define PW_MD5_CHALLENGE	1
-#define PW_MD5_RESPONSE		2
-#define PW_MD5_SUCCESS		3
-#define PW_MD5_FAILURE		4
-#define PW_MD5_MAX_CODES	4
+#define FR_MD5_CHALLENGE	1
+#define FR_MD5_RESPONSE		2
+#define FR_MD5_SUCCESS		3
+#define FR_MD5_FAILURE		4
+#define FR_MD5_MAX_CODES	4
 
 #define MD5_HEADER_LEN 		4
 #define MD5_CHALLENGE_LEN 	16

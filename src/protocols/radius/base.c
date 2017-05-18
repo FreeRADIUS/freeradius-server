@@ -88,13 +88,13 @@ size_t const fr_radius_attr_sizes[FR_TYPE_MAX + 1][2] = {
 #define FR_DEBUG_STRERROR_PRINTF if (fr_debug_lvl) fr_strerror_printf
 
 FR_NAME_NUMBER const fr_request_types[] = {
-	{ "auth",	PW_CODE_ACCESS_REQUEST },
-	{ "challenge",	PW_CODE_ACCESS_CHALLENGE },
-	{ "acct",	PW_CODE_ACCOUNTING_REQUEST },
-	{ "status",	PW_CODE_STATUS_SERVER },
-	{ "disconnect",	PW_CODE_DISCONNECT_REQUEST },
-	{ "coa",	PW_CODE_COA_REQUEST },
-	{ "auto",	PW_CODE_UNDEFINED },
+	{ "auth",	FR_CODE_ACCESS_REQUEST },
+	{ "challenge",	FR_CODE_ACCESS_CHALLENGE },
+	{ "acct",	FR_CODE_ACCOUNTING_REQUEST },
+	{ "status",	FR_CODE_STATUS_SERVER },
+	{ "disconnect",	FR_CODE_DISCONNECT_REQUEST },
+	{ "coa",	FR_CODE_COA_REQUEST },
+	{ "auto",	FR_CODE_UNDEFINED },
 
 	{ NULL, 0}
 };
@@ -315,7 +315,7 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 	while (msg < end) {
 		if ((end - msg) < 2) goto invalid_attribute;
 
-		if (msg[0] != PW_MESSAGE_AUTHENTICATOR) {
+		if (msg[0] != FR_MESSAGE_AUTHENTICATOR) {
 			if (msg[1] < 2) goto invalid_attribute;
 
 			if ((msg + msg[1]) > end) {
@@ -333,33 +333,33 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 		}
 
 		switch (packet[0]) {
-		case PW_CODE_ACCOUNTING_RESPONSE:
+		case FR_CODE_ACCOUNTING_RESPONSE:
 			if (!original) goto need_original;
-			if (original[0] == PW_CODE_STATUS_SERVER) goto do_ack;
+			if (original[0] == FR_CODE_STATUS_SERVER) goto do_ack;
 			goto do_response;
 
-		case PW_CODE_ACCOUNTING_REQUEST:
-		case PW_CODE_DISCONNECT_REQUEST:
-		case PW_CODE_DISCONNECT_ACK:
-		case PW_CODE_DISCONNECT_NAK:
-		case PW_CODE_COA_REQUEST:
-		case PW_CODE_COA_ACK:
-		case PW_CODE_COA_NAK:
+		case FR_CODE_ACCOUNTING_REQUEST:
+		case FR_CODE_DISCONNECT_REQUEST:
+		case FR_CODE_DISCONNECT_ACK:
+		case FR_CODE_DISCONNECT_NAK:
+		case FR_CODE_COA_REQUEST:
+		case FR_CODE_COA_ACK:
+		case FR_CODE_COA_NAK:
 			if (!original) goto need_original;
 
 		do_response:
 			memset(packet + 4, 0, AUTH_VECTOR_LEN);
 			break;
 
-		case PW_CODE_ACCESS_ACCEPT:
-		case PW_CODE_ACCESS_REJECT:
-		case PW_CODE_ACCESS_CHALLENGE:
+		case FR_CODE_ACCESS_ACCEPT:
+		case FR_CODE_ACCESS_REJECT:
+		case FR_CODE_ACCESS_CHALLENGE:
 		do_ack:
 			memcpy(packet + 4, original + 4, AUTH_VECTOR_LEN);
 			break;
 
-		case PW_CODE_ACCESS_REQUEST:
-		case PW_CODE_STATUS_SERVER:
+		case FR_CODE_ACCESS_REQUEST:
+		case FR_CODE_STATUS_SERVER:
 			/* packet + 4 MUST be the Request Authenticator filled with random data */
 			break;
 
@@ -381,20 +381,20 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 	 *	Initialize the request authenticator.
 	 */
 	switch (packet[0]) {
-	case PW_CODE_ACCOUNTING_REQUEST:
-	case PW_CODE_DISCONNECT_REQUEST:
-	case PW_CODE_COA_REQUEST:
+	case FR_CODE_ACCOUNTING_REQUEST:
+	case FR_CODE_DISCONNECT_REQUEST:
+	case FR_CODE_COA_REQUEST:
 		memset(packet + 4, 0, AUTH_VECTOR_LEN);
 		break;
 
-	case PW_CODE_ACCESS_ACCEPT:
-	case PW_CODE_ACCESS_REJECT:
-	case PW_CODE_ACCESS_CHALLENGE:
-	case PW_CODE_ACCOUNTING_RESPONSE:
-	case PW_CODE_DISCONNECT_ACK:
-	case PW_CODE_DISCONNECT_NAK:
-	case PW_CODE_COA_ACK:
-	case PW_CODE_COA_NAK:
+	case FR_CODE_ACCESS_ACCEPT:
+	case FR_CODE_ACCESS_REJECT:
+	case FR_CODE_ACCESS_CHALLENGE:
+	case FR_CODE_ACCOUNTING_RESPONSE:
+	case FR_CODE_DISCONNECT_ACK:
+	case FR_CODE_DISCONNECT_NAK:
+	case FR_CODE_COA_ACK:
+	case FR_CODE_COA_NAK:
 		if (!original) {
 		need_original:
 			fr_strerror_printf("Cannot sign response packet without a request packet");
@@ -408,8 +408,8 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 		 *	We don't need to sign anything else, so
 		 *	return.
 		 */
-	case PW_CODE_ACCESS_REQUEST:
-	case PW_CODE_STATUS_SERVER:
+	case FR_CODE_ACCESS_REQUEST:
+	case FR_CODE_STATUS_SERVER:
 		return 0;
 
 	default:
@@ -486,7 +486,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p, bool require_ma, 
 	 *	Message-Authenticator is required in Status-Server
 	 *	packets, otherwise they can be trivially forged.
 	 */
-	if (packet[0] == PW_CODE_STATUS_SERVER) require_ma = true;
+	if (packet[0] == FR_CODE_STATUS_SERVER) require_ma = true;
 
 	/*
 	 *	Repeat the length checks.  This time, instead of
@@ -615,7 +615,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p, bool require_ma, 
 			/*
 			 *	Track this for prioritizing ongoing EAP sessions.
 			 */
-		case PW_STATE:
+		case FR_STATE:
 			if (attr[1] > 2) packet->rounds = attr[2];
 			break;
 #endif
@@ -624,11 +624,11 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p, bool require_ma, 
 			 *	If there's an EAP-Message, we require
 			 *	a Message-Authenticator.
 			 */
-		case PW_EAP_MESSAGE:
+		case FR_EAP_MESSAGE:
 			require_ma = true;
 			break;
 
-		case PW_MESSAGE_AUTHENTICATOR:
+		case FR_MESSAGE_AUTHENTICATOR:
 			if (attr[1] != 2 + AUTH_VECTOR_LEN) {
 				FR_DEBUG_STRERROR_PRINTF("Message-Authenticator has invalid length (%d != 18) at offset %zd",
 					   attr[1] - 2, attr - packet);
@@ -734,7 +734,7 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 	while (msg < end) {
 		if ((end - msg) < 2) goto invalid_attribute;
 
-		if (msg[0] != PW_MESSAGE_AUTHENTICATOR) {
+		if (msg[0] != FR_MESSAGE_AUTHENTICATOR) {
 			if (msg[1] < 2) goto invalid_attribute;
 
 			if ((msg + msg[1]) > end) {
@@ -790,7 +790,7 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 	 *	These are random numbers, so there's no point in
 	 *	comparing them.
 	 */
-	if ((packet[0] == PW_CODE_ACCESS_REQUEST) || (packet[0] == PW_CODE_STATUS_SERVER)) {
+	if ((packet[0] == FR_CODE_ACCESS_REQUEST) || (packet[0] == FR_CODE_STATUS_SERVER)) {
 		return 0;
 	}
 

@@ -299,7 +299,7 @@ void eap_tls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header)
 	VALUE_PAIR *vp;
 	uint8_t *p;
 
-	vp = fr_pair_afrom_num(packet, 0, PW_EAP_SESSION_ID);
+	vp = fr_pair_afrom_num(packet, 0, FR_EAP_SESSION_ID);
 	if (!vp) return;
 
 	p = talloc_array(vp, uint8_t, 1 + 2 * SSL3_RANDOM_SIZE);

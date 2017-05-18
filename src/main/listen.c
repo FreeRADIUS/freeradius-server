@@ -187,7 +187,7 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 		/*
 		 *	We need numbers for internal use.
 		 */
-		dv = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, PW_LISTEN_SOCKET_TYPE), type);
+		dv = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_LISTEN_SOCKET_TYPE), type);
 		if (!dv) {
 			fr_dict_attr_t const	*da;
 
@@ -230,7 +230,7 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 	/*
 	 *	The type MUST now be defined in the dictionaries.
 	 */
-	dv = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, PW_LISTEN_SOCKET_TYPE), type);
+	dv = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_LISTEN_SOCKET_TYPE), type);
 	if (!dv) {
 		cf_log_err_cs(cs, "Failed finding dictionary entry for protocol %s", type);
 		talloc_const_free(module);
@@ -616,7 +616,7 @@ rlm_rcode_t rad_status_server(REQUEST *request)
 	case RAD_LISTEN_NONE:
 #endif
 	case RAD_LISTEN_AUTH:
-		dval = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, PW_AUTZ_TYPE), "Status-Server");
+		dval = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_AUTZ_TYPE), "Status-Server");
 		if (dval) {
 			rcode = process_authorize(fr_unbox_uint32(dval->value), request);
 		} else {
@@ -626,7 +626,7 @@ rlm_rcode_t rad_status_server(REQUEST *request)
 		switch (rcode) {
 		case RLM_MODULE_OK:
 		case RLM_MODULE_UPDATED:
-			request->reply->code = PW_CODE_ACCESS_ACCEPT;
+			request->reply->code = FR_CODE_ACCESS_ACCEPT;
 			break;
 
 		case RLM_MODULE_FAIL:
@@ -636,14 +636,14 @@ rlm_rcode_t rad_status_server(REQUEST *request)
 
 		default:
 		case RLM_MODULE_REJECT:
-			request->reply->code = PW_CODE_ACCESS_REJECT;
+			request->reply->code = FR_CODE_ACCESS_REJECT;
 			break;
 		}
 		break;
 
 #ifdef WITH_ACCOUNTING
 	case RAD_LISTEN_ACCT:
-		dval = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, PW_ACCT_TYPE), "Status-Server");
+		dval = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_ACCT_TYPE), "Status-Server");
 		if (dval) {
 			rcode = process_accounting(fr_unbox_uint32(dval->value), request);
 		} else {
@@ -653,7 +653,7 @@ rlm_rcode_t rad_status_server(REQUEST *request)
 		switch (rcode) {
 		case RLM_MODULE_OK:
 		case RLM_MODULE_UPDATED:
-			request->reply->code = PW_CODE_ACCOUNTING_RESPONSE;
+			request->reply->code = FR_CODE_ACCOUNTING_RESPONSE;
 			break;
 
 		default:
@@ -670,7 +670,7 @@ rlm_rcode_t rad_status_server(REQUEST *request)
 		 *	the WG.  We like it, so it goes in here.
 		 */
 	case RAD_LISTEN_COA:
-		dval = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, PW_RECV_COA_TYPE), "Status-Server");
+		dval = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_RECV_COA_TYPE), "Status-Server");
 		if (dval) {
 			rcode = process_recv_coa(fr_unbox_uint32(dval->value), request);
 		} else {
@@ -680,7 +680,7 @@ rlm_rcode_t rad_status_server(REQUEST *request)
 		switch (rcode) {
 		case RLM_MODULE_OK:
 		case RLM_MODULE_UPDATED:
-			request->reply->code = PW_CODE_COA_ACK;
+			request->reply->code = FR_CODE_COA_ACK;
 			break;
 
 		default:
@@ -781,21 +781,21 @@ static int dual_tcp_recv(rad_listen_t *listener)
 	 *	Some sanity checks, based on the packet code.
 	 */
 	switch (packet->code) {
-	case PW_CODE_ACCESS_REQUEST:
+	case FR_CODE_ACCESS_REQUEST:
 		if (listener->type != RAD_LISTEN_AUTH) goto bad_packet;
 		FR_STATS_INC(auth, total_requests);
 		fun = rad_authenticate;
 		break;
 
 #  ifdef WITH_ACCOUNTING
-	case PW_CODE_ACCOUNTING_REQUEST:
+	case FR_CODE_ACCOUNTING_REQUEST:
 		if (listener->type != RAD_LISTEN_ACCT) goto bad_packet;
 		FR_STATS_INC(acct, total_requests);
 		fun = rad_accounting;
 		break;
 #  endif
 
-	case PW_CODE_STATUS_SERVER:
+	case FR_CODE_STATUS_SERVER:
 		if (!main_config.status_server) {
 			FR_STATS_INC(auth, total_unknown_types);
 			WARN("Ignoring Status-Server request due to security configuration");
@@ -1370,7 +1370,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			/*
 			 *	If unset, set to default.
 			 */
-			if (!sock->my_port) sock->my_port = PW_RADIUS_TLS_PORT;
+			if (!sock->my_port) sock->my_port = FR_RADIUS_TLS_PORT;
 
 			this->tls = tls_conf_parse_server(tls);
 			if (!this->tls) {
@@ -1767,7 +1767,7 @@ static int stats_socket_recv(rad_listen_t *listener)
 	/*
 	 *	We only understand Status-Server on this socket.
 	 */
-	if (code != PW_CODE_STATUS_SERVER) {
+	if (code != FR_CODE_STATUS_SERVER) {
 		DEBUG("Ignoring packet code %d sent to Status-Server port",
 		      code);
 		udp_recv_discard(listener->fd);
@@ -1838,11 +1838,11 @@ static int auth_socket_recv(rad_listen_t *listener)
 	 *	Some sanity checks, based on the packet code.
 	 */
 	switch (code) {
-	case PW_CODE_ACCESS_REQUEST:
+	case FR_CODE_ACCESS_REQUEST:
 		fun = rad_authenticate;
 		break;
 
-	case PW_CODE_STATUS_SERVER:
+	case FR_CODE_STATUS_SERVER:
 		if (!main_config.status_server) {
 			udp_recv_discard(listener->fd);
 			FR_STATS_INC(auth, total_unknown_types);
@@ -1952,11 +1952,11 @@ static int acct_socket_recv(rad_listen_t *listener)
 	 *	Some sanity checks, based on the packet code.
 	 */
 	switch (code) {
-	case PW_CODE_ACCOUNTING_REQUEST:
+	case FR_CODE_ACCOUNTING_REQUEST:
 		fun = rad_accounting;
 		break;
 
-	case PW_CODE_STATUS_SERVER:
+	case FR_CODE_STATUS_SERVER:
 		if (!main_config.status_server) {
 			udp_recv_discard(listener->fd);
 			FR_STATS_INC(acct, total_unknown_types);
@@ -2021,7 +2021,7 @@ static int do_proxy(REQUEST *request)
 		return 0;
 	}
 
-	vp = fr_pair_find_by_num(request->control, 0, PW_HOME_SERVER_POOL, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, FR_HOME_SERVER_POOL, TAG_ANY);
 
 	if (vp) {
 		if (!home_pool_byname(vp->vp_strvalue, HOME_TYPE_COA)) {
@@ -2036,8 +2036,8 @@ static int do_proxy(REQUEST *request)
 	/*
 	 *	We have a destination IP address.  It will (later) proxied.
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, PW_PACKET_DST_IP_ADDRESS, TAG_ANY);
-	if (!vp) vp = fr_pair_find_by_num(request->control, 0, PW_PACKET_DST_IPV6_ADDRESS, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, FR_PACKET_DST_IP_ADDRESS, TAG_ANY);
+	if (!vp) vp = fr_pair_find_by_num(request->control, 0, FR_PACKET_DST_IPV6_ADDRESS, TAG_ANY);
 
 	if (!vp) return 0;
 
@@ -2058,14 +2058,14 @@ rlm_rcode_t rad_coa_recv(REQUEST *request)
 	 *	Get the correct response
 	 */
 	switch (request->packet->code) {
-	case PW_CODE_COA_REQUEST:
-		ack = PW_CODE_COA_ACK;
-		nak = PW_CODE_COA_NAK;
+	case FR_CODE_COA_REQUEST:
+		ack = FR_CODE_COA_ACK;
+		nak = FR_CODE_COA_NAK;
 		break;
 
-	case PW_CODE_DISCONNECT_REQUEST:
-		ack = PW_CODE_DISCONNECT_ACK;
-		nak = PW_CODE_DISCONNECT_NAK;
+	case FR_CODE_DISCONNECT_REQUEST:
+		ack = FR_CODE_DISCONNECT_ACK;
+		nak = FR_CODE_DISCONNECT_NAK;
 		break;
 
 	default:		/* shouldn't happen */
@@ -2084,14 +2084,14 @@ rlm_rcode_t rad_coa_recv(REQUEST *request)
 		 *	with Service-Type = Authorize-Only, it MUST
 		 *	have a State attribute in it.
 		 */
-		vp = fr_pair_find_by_num(request->packet->vps, 0, PW_SERVICE_TYPE, TAG_ANY);
-		if (request->packet->code == PW_CODE_COA_REQUEST) {
-			if (vp && (vp->vp_uint32 == PW_AUTHORIZE_ONLY)) {
-				vp = fr_pair_find_by_num(request->packet->vps, 0, PW_STATE, TAG_ANY);
+		vp = fr_pair_find_by_num(request->packet->vps, 0, FR_SERVICE_TYPE, TAG_ANY);
+		if (request->packet->code == FR_CODE_COA_REQUEST) {
+			if (vp && (vp->vp_uint32 == FR_AUTHORIZE_ONLY)) {
+				vp = fr_pair_find_by_num(request->packet->vps, 0, FR_STATE, TAG_ANY);
 				if (!vp || (vp->vp_length == 0)) {
 					REDEBUG("CoA-Request with Service-Type = Authorize-Only MUST "
 						"contain a State attribute");
-					request->reply->code = PW_CODE_COA_NAK;
+					request->reply->code = FR_CODE_COA_NAK;
 					return RLM_MODULE_FAIL;
 				}
 			}
@@ -2100,7 +2100,7 @@ rlm_rcode_t rad_coa_recv(REQUEST *request)
 			 *	RFC 5176, Section 3.2.
 			 */
 			REDEBUG("Disconnect-Request MUST NOT contain a Service-Type attribute");
-			request->reply->code = PW_CODE_DISCONNECT_NAK;
+			request->reply->code = FR_CODE_DISCONNECT_NAK;
 			return RLM_MODULE_FAIL;
 		}
 
@@ -2148,7 +2148,7 @@ rlm_rcode_t rad_coa_recv(REQUEST *request)
 	 *	Copy State from the request to the reply.
 	 *	See RFC 5176 Section 3.3.
 	 */
-	vp = fr_pair_list_copy_by_num(request->reply, request->packet->vps, 0, PW_STATE, TAG_ANY);
+	vp = fr_pair_list_copy_by_num(request->reply, request->packet->vps, 0, FR_STATE, TAG_ANY);
 	if (vp) fr_pair_add(&request->reply->vps, vp);
 
 	/*
@@ -2235,12 +2235,12 @@ static int coa_socket_recv(rad_listen_t *listener)
 	 *	Some sanity checks, based on the packet code.
 	 */
 	switch (code) {
-	case PW_CODE_COA_REQUEST:
+	case FR_CODE_COA_REQUEST:
 		FR_STATS_INC(coa, total_requests);
 		fun = rad_coa_recv;
 		break;
 
-	case PW_CODE_DISCONNECT_REQUEST:
+	case FR_CODE_DISCONNECT_REQUEST:
 		FR_STATS_INC(dsc, total_requests);
 		fun = rad_coa_recv;
 		break;
@@ -2303,21 +2303,21 @@ static int proxy_socket_recv(rad_listen_t *listener)
 	}
 
 	switch (packet->code) {
-	case PW_CODE_ACCESS_ACCEPT:
-	case PW_CODE_ACCESS_CHALLENGE:
-	case PW_CODE_ACCESS_REJECT:
+	case FR_CODE_ACCESS_ACCEPT:
+	case FR_CODE_ACCESS_CHALLENGE:
+	case FR_CODE_ACCESS_REJECT:
 		break;
 
 #  ifdef WITH_ACCOUNTING
-	case PW_CODE_ACCOUNTING_RESPONSE:
+	case FR_CODE_ACCOUNTING_RESPONSE:
 		break;
 #  endif
 
 #  ifdef WITH_COA
-	case PW_CODE_DISCONNECT_ACK:
-	case PW_CODE_DISCONNECT_NAK:
-	case PW_CODE_COA_ACK:
-	case PW_CODE_COA_NAK:
+	case FR_CODE_DISCONNECT_ACK:
+	case FR_CODE_DISCONNECT_NAK:
+	case FR_CODE_COA_ACK:
+	case FR_CODE_COA_NAK:
 		break;
 #  endif
 
@@ -2375,13 +2375,13 @@ static int proxy_socket_tcp_recv(rad_listen_t *listener)
 	 *	FIXME: Client MIB updates?
 	 */
 	switch (packet->code) {
-	case PW_CODE_ACCESS_ACCEPT:
-	case PW_CODE_ACCESS_CHALLENGE:
-	case PW_CODE_ACCESS_REJECT:
+	case FR_CODE_ACCESS_ACCEPT:
+	case FR_CODE_ACCESS_CHALLENGE:
+	case FR_CODE_ACCESS_REJECT:
 		break;
 
 #    ifdef WITH_ACCOUNTING
-	case PW_CODE_ACCOUNTING_RESPONSE:
+	case FR_CODE_ACCOUNTING_RESPONSE:
 		break;
 #    endif
 
@@ -2748,7 +2748,7 @@ static int listen_bind(rad_listen_t *this)
 
 #ifdef WITH_COMMAND_SOCKET
 		case RAD_LISTEN_COMMAND:
-			sock->my_port = PW_RADMIN_PORT;
+			sock->my_port = FR_RADMIN_PORT;
 			break;
 #endif
 

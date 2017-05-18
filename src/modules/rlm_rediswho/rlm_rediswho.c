@@ -174,7 +174,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	CONF_SECTION		*cs;
 	char const		*insert, *trim, *expire;
 
-	vp = fr_pair_find_by_num(request->packet->vps, 0, PW_ACCT_STATUS_TYPE, TAG_ANY);
+	vp = fr_pair_find_by_num(request->packet->vps, 0, FR_ACCT_STATUS_TYPE, TAG_ANY);
 	if (!vp) {
 		RDEBUG("Could not find account status type in packet");
 		return RLM_MODULE_NOOP;

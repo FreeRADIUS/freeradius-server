@@ -684,7 +684,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	}
 
 	if (!request->password ||
-	    (request->password->da->attr != PW_USER_PASSWORD)) {
+	    (request->password->da->attr != FR_USER_PASSWORD)) {
 		RWDEBUG("You have set \"Auth-Type := LDAP\" somewhere");
 		RWDEBUG("*********************************************");
 		RWDEBUG("* THAT CONFIGURATION IS WRONG.  DELETE IT.   ");
@@ -953,7 +953,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 	/*
 	 *	We already have a Cleartext-Password.  Skip edir.
 	 */
-	if (fr_pair_find_by_num(request->control, 0, PW_CLEARTEXT_PASSWORD, TAG_ANY)) {
+	if (fr_pair_find_by_num(request->control, 0, FR_CLEARTEXT_PASSWORD, TAG_ANY)) {
 		goto skip_edir;
 	}
 
@@ -979,7 +979,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 		/*
 		 *	Add Cleartext-Password attribute to the request
 		 */
-		vp = radius_pair_create(request, &request->control, PW_CLEARTEXT_PASSWORD, 0);
+		vp = radius_pair_create(request, &request->control, FR_CLEARTEXT_PASSWORD, 0);
 		fr_pair_value_bstrncpy(vp, password, pass_size);
 
 		if (RDEBUG_ENABLED3) {
@@ -1439,7 +1439,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 		group_attribute = "LDAP-Group";
 	}
 
-	if (paircompare_register_byname(group_attribute, fr_dict_attr_by_num(NULL, 0, PW_USER_NAME),
+	if (paircompare_register_byname(group_attribute, fr_dict_attr_by_num(NULL, 0, FR_USER_NAME),
 					false, rlm_ldap_groupcmp, inst) < 0) {
 		PERROR("Error registering group comparison");
 		goto error;

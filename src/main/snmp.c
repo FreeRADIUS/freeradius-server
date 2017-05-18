@@ -31,7 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/freeradius.snmp.h>
 
-#define PW_FREERADIUS_SNMP_TYPE_OBJECT 0
+#define FR_FREERADIUS_SNMP_TYPE_OBJECT 0
 
 #define SNMP_MAP_TERMINATOR	{ .name = NULL, .da = NULL, .type = 0 }
 
@@ -77,7 +77,7 @@ static fr_dict_attr_t const *fr_snmp_failure;
 
 static struct timeval uptime;
 static struct timeval reset_time;
-static int reset_state = PW_RADIUS_AUTH_SERV_CONFIG_RESET_VALUE_RUNNING;
+static int reset_state = FR_RADIUS_AUTH_SERV_CONFIG_RESET_VALUE_RUNNING;
 
 static int snmp_value_serv_ident_get(TALLOC_CTX *ctx, fr_value_box_t *out, NDEBUG_UNUSED fr_snmp_map_t const *map,
 				     UNUSED void *snmp_ctx)
@@ -138,13 +138,13 @@ static int snmp_config_reset_set(NDEBUG_UNUSED fr_snmp_map_t const *map, UNUSED 
 	rad_assert(map->da->type == FR_TYPE_UINT32);
 
 	switch (in->datum.uint32) {
-	case PW_RADIUS_AUTH_SERV_CONFIG_RESET_VALUE_RESET:
+	case FR_RADIUS_AUTH_SERV_CONFIG_RESET_VALUE_RESET:
 		radius_signal_self(RADIUS_SIGNAL_SELF_HUP);
 		gettimeofday(&reset_time, NULL);
 		return 0;
 
 	default:
-		return -(PW_FREERADIUS_SNMP_FAILURE_VALUE_WRONG_VALUE);
+		return -(FR_FREERADIUS_SNMP_FAILURE_VALUE_WRONG_VALUE);
 	}
 
 }
@@ -240,48 +240,48 @@ static int snmp_auth_client_stats_offset_get(UNUSED TALLOC_CTX *ctx, fr_value_bo
 
 static fr_snmp_map_t snmp_auth_client_entry_counters[] = {
 	{ .name = "Radius-Auth-Client-Index",
-	  .type = PW_FREERADIUS_SNMP_TYPE_VALUE_INTEGER,
+	  .type = FR_FREERADIUS_SNMP_TYPE_VALUE_INTEGER,
 	  .get = snmp_client_index_get },
 	{ .name = "Radius-Auth-Client-Address",
-	  .type = PW_FREERADIUS_SNMP_TYPE_VALUE_IPADDRESS,
+	  .type = FR_FREERADIUS_SNMP_TYPE_VALUE_IPADDRESS,
 	  .get = snmp_client_ipv4addr_get },
 	{ .name = "Radius-Auth-Client-ID",
-	  .type = PW_FREERADIUS_SNMP_TYPE_VALUE_STRING,
+	  .type = FR_FREERADIUS_SNMP_TYPE_VALUE_STRING,
 	  .get = snmp_client_id_get },
 	{ .name = "Radius-Auth-Serv-Access-Requests",
-	  .type = PW_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
+	  .type = FR_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
 	  .offset = offsetof(fr_stats_t, total_requests),
 	  .get = snmp_auth_client_stats_offset_get },
 	{ .name = "Radius-Auth-Serv-Dup-Access-Requests",
-	  .type = PW_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
+	  .type = FR_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
 	  .offset = offsetof(fr_stats_t, total_dup_requests),
 	  .get = snmp_auth_client_stats_offset_get },
 	{ .name = "Radius-Auth-Serv-Access-Accepts",
-	  .type = PW_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
+	  .type = FR_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
 	  .offset = offsetof(fr_stats_t, total_access_accepts),
 	  .get = snmp_auth_client_stats_offset_get },
 	{ .name = "Radius-Auth-Serv-Access-Rejects",
-	  .type = PW_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
+	  .type = FR_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
 	  .offset = offsetof(fr_stats_t, total_access_rejects),
 	  .get = snmp_auth_client_stats_offset_get },
 	{ .name = "Radius-Auth-Serv-Access-Challenges",
-	  .type = PW_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
+	  .type = FR_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
 	  .offset = offsetof(fr_stats_t, total_access_challenges),
 	  .get = snmp_auth_client_stats_offset_get },
 	{ .name = "Radius-Auth-Serv-Malformed-Access-Requests",
-	  .type = PW_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
+	  .type = FR_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
 	  .offset = offsetof(fr_stats_t, total_malformed_requests),
 	  .get = snmp_auth_client_stats_offset_get },
 	{ .name = "Radius-Auth-Serv-Bad-Authenticators",
-	  .type = PW_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
+	  .type = FR_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
 	  .offset = offsetof(fr_stats_t, total_bad_authenticators),
 	  .get = snmp_auth_client_stats_offset_get },
 	{ .name = "Radius-Auth-Serv-Packets-Dropped",
-	  .type = PW_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
+	  .type = FR_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
 	  .offset = offsetof(fr_stats_t, total_packets_dropped),
 	  .get = snmp_auth_client_stats_offset_get },
 	{ .name = "Radius-Auth-Serv-Unknown-Types",
-	  .type = PW_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
+	  .type = FR_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
 	  .offset = offsetof(fr_stats_t, total_unknown_types),
 	  .get = snmp_auth_client_stats_offset_get },
 	SNMP_MAP_TERMINATOR
@@ -289,7 +289,7 @@ static fr_snmp_map_t snmp_auth_client_entry_counters[] = {
 
 static fr_snmp_map_t snmp_auth_client_entry[] = {
 	{ .name = "Radius-Auth-Client-Entry",
-	  .type = PW_FREERADIUS_SNMP_TYPE_OBJECT,
+	  .type = FR_FREERADIUS_SNMP_TYPE_OBJECT,
 	  .index = snmp_client_index,
 	  .child = snmp_auth_client_entry_counters },
 	SNMP_MAP_TERMINATOR
@@ -297,137 +297,137 @@ static fr_snmp_map_t snmp_auth_client_entry[] = {
 
 static fr_snmp_map_t snmp_auth_serv_counters[] = {
 	{ .name = "Radius-Auth-Serv-Ident",
-	  .type = PW_FREERADIUS_SNMP_TYPE_VALUE_STRING,
+	  .type = FR_FREERADIUS_SNMP_TYPE_VALUE_STRING,
 	  .get = snmp_value_serv_ident_get },
 	{ .name = "Radius-Auth-Serv-Up-Time",
-	  .type = PW_FREERADIUS_SNMP_TYPE_VALUE_TIMETICKS,
+	  .type = FR_FREERADIUS_SNMP_TYPE_VALUE_TIMETICKS,
 	  .get = snmp_value_uptime_get },
 	{ .name = "Radius-Auth-Serv-Reset-Time",
-	  .type = PW_FREERADIUS_SNMP_TYPE_VALUE_TIMETICKS,
+	  .type = FR_FREERADIUS_SNMP_TYPE_VALUE_TIMETICKS,
 	  .get = snmp_config_reset_time_get},
 	{ .name = "Radius-Auth-Serv-Config-Reset",
-	  .type = PW_FREERADIUS_SNMP_TYPE_VALUE_INTEGER,
+	  .type = FR_FREERADIUS_SNMP_TYPE_VALUE_INTEGER,
 	  .get = snmp_config_reset_get,
 	  .set = snmp_config_reset_set },
 	{ .name = "Radius-Auth-Serv-Total-Access-Requests",
-	  .type = PW_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
+	  .type = FR_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
 	  .offset = offsetof(fr_stats_t, total_requests),
 	  .get = snmp_auth_stats_offset_get },
 	{ .name = "Radius-Auth-Serv-Total-Invalid-Requests",
-	  .type = PW_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
+	  .type = FR_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
 	  .offset = offsetof(fr_stats_t, total_invalid_requests),
 	  .get = snmp_auth_stats_offset_get },
 	{ .name = "Radius-Auth-Serv-Total-Dup-Access-Requests",
-	  .type = PW_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
+	  .type = FR_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
 	  .offset = offsetof(fr_stats_t, total_dup_requests),
 	  .get = snmp_auth_stats_offset_get },
 	{ .name = "Radius-Auth-Serv-Total-Access-Accepts",
-	  .type = PW_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
+	  .type = FR_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
 	  .offset = offsetof(fr_stats_t, total_access_accepts),
 	  .get = snmp_auth_stats_offset_get },
 	{ .name = "Radius-Auth-Serv-Total-Access-Rejects",
-	  .type = PW_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
+	  .type = FR_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
 	  .offset = offsetof(fr_stats_t, total_access_rejects),
 	  .get = snmp_auth_stats_offset_get },
 	{ .name = "Radius-Auth-Serv-Total-Access-Challenges",
-	  .type = PW_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
+	  .type = FR_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
 	  .offset = offsetof(fr_stats_t, total_access_challenges),
 	  .get = snmp_auth_stats_offset_get },
 	{ .name = "Radius-Auth-Serv-Total-Malformed-Access-Requests",
-	  .type = PW_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
+	  .type = FR_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
 	  .offset = offsetof(fr_stats_t, total_malformed_requests),
 	  .get = snmp_auth_stats_offset_get },
 	{ .name = "Radius-Auth-Serv-Total-Bad-Authenticators",
-	  .type = PW_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
+	  .type = FR_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
 	  .offset = offsetof(fr_stats_t, total_bad_authenticators),
 	  .get = snmp_auth_stats_offset_get },
 	{ .name = "Radius-Auth-Serv-Total-Packets-Dropped",
-	  .type = PW_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
+	  .type = FR_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
 	  .offset = offsetof(fr_stats_t, total_packets_dropped),
 	  .get = snmp_auth_stats_offset_get },
 	{ .name = "Radius-Auth-Serv-Total-Unknown-Types",
-	  .type = PW_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
+	  .type = FR_FREERADIUS_SNMP_TYPE_VALUE_COUNTER,
 	  .offset = offsetof(fr_stats_t, total_unknown_types),
 	  .get = snmp_auth_stats_offset_get },
 	{ .name = "Radius-Auth-Client-table",
-	  .type = PW_FREERADIUS_SNMP_TYPE_OBJECT,
+	  .type = FR_FREERADIUS_SNMP_TYPE_OBJECT,
 	  .child = snmp_auth_client_entry},
 	SNMP_MAP_TERMINATOR
 };
 
 static fr_snmp_map_t snmp_auth_serv[] = {
 	{ .name = "Radius-Auth-Serv",
-	  .type = PW_FREERADIUS_SNMP_TYPE_OBJECT,
+	  .type = FR_FREERADIUS_SNMP_TYPE_OBJECT,
 	  .child = snmp_auth_serv_counters },
 	SNMP_MAP_TERMINATOR
 };
 
 static fr_snmp_map_t snmp_auth_serv_mib_objects[] = {
 	{ .name = "Radius-Auth-Serv-Mib-Objects",
-	  .type = PW_FREERADIUS_SNMP_TYPE_OBJECT,
+	  .type = FR_FREERADIUS_SNMP_TYPE_OBJECT,
 	  .child = snmp_auth_serv },
 	SNMP_MAP_TERMINATOR
 };
 
 static fr_snmp_map_t snmp_auth_serv_mib[] = {
 	{ .name = "Radius-Auth-Serv-Mib",
-	  .type = PW_FREERADIUS_SNMP_TYPE_OBJECT,
+	  .type = FR_FREERADIUS_SNMP_TYPE_OBJECT,
 	  .child = snmp_auth_serv_mib_objects },
 	SNMP_MAP_TERMINATOR
 };
 
 static fr_snmp_map_t snmp_authentication[] = {
 	{ .name = "Radius-Authentication",
-	  .type = PW_FREERADIUS_SNMP_TYPE_OBJECT,
+	  .type = FR_FREERADIUS_SNMP_TYPE_OBJECT,
 	  .child = snmp_auth_serv_mib },
 	SNMP_MAP_TERMINATOR
 };
 
 static fr_snmp_map_t snmp_radius_mib[] = {
 	{ .name = "Radius-Mib",
-	  .type = PW_FREERADIUS_SNMP_TYPE_OBJECT,
+	  .type = FR_FREERADIUS_SNMP_TYPE_OBJECT,
 	  .child = snmp_authentication },
 	SNMP_MAP_TERMINATOR
 };
 
 static fr_snmp_map_t snmp_mib_2[] = {
 	{ .name = "FreeRADIUS-Mib-2",
-	  .type = PW_FREERADIUS_SNMP_TYPE_OBJECT,
+	  .type = FR_FREERADIUS_SNMP_TYPE_OBJECT,
 	  .child = snmp_radius_mib },
 	SNMP_MAP_TERMINATOR
 };
 
 static fr_snmp_map_t snmp_mgmt[] = {
 	{ .name = "FreeRADIUS-Mgmt",
-	  .type = PW_FREERADIUS_SNMP_TYPE_OBJECT,
+	  .type = FR_FREERADIUS_SNMP_TYPE_OBJECT,
 	  .child = snmp_mib_2 },
 	SNMP_MAP_TERMINATOR
 };
 
 static fr_snmp_map_t snmp_internet[] = {
 	{ .name = "FreeRADIUS-Internet",
-	  .type = PW_FREERADIUS_SNMP_TYPE_OBJECT,
+	  .type = FR_FREERADIUS_SNMP_TYPE_OBJECT,
 	  .child = snmp_mgmt },
 	SNMP_MAP_TERMINATOR
 };
 
 static fr_snmp_map_t snmp_dod[] = {
 	{ .name = "FreeRADIUS-Dod",
-	  .type = PW_FREERADIUS_SNMP_TYPE_OBJECT,
+	  .type = FR_FREERADIUS_SNMP_TYPE_OBJECT,
 	  .child = snmp_internet },
 	SNMP_MAP_TERMINATOR
 };
 
 static fr_snmp_map_t snmp_org[] = {
 	{ .name = "FreeRADIUS-Org",
-	  .type = PW_FREERADIUS_SNMP_TYPE_OBJECT,
+	  .type = FR_FREERADIUS_SNMP_TYPE_OBJECT,
 	  .child = snmp_dod },
 	SNMP_MAP_TERMINATOR
 };
 
 static fr_snmp_map_t snmp_iso[] = {
 	{ .name = "FreeRADIUS-Iso",
-	  .type = PW_FREERADIUS_SNMP_TYPE_OBJECT,
+	  .type = FR_FREERADIUS_SNMP_TYPE_OBJECT,
 	  .child = snmp_org },
 	SNMP_MAP_TERMINATOR
 };
@@ -530,7 +530,7 @@ static ssize_t snmp_process_index(vp_cursor_t *out, REQUEST *request,
 		if (ret > 0) {
 			talloc_free(tmp_ctx);
 
-			if (snmp_op != PW_FREERADIUS_SNMP_OPERATION_VALUE_GETNEXT) {
+			if (snmp_op != FR_FREERADIUS_SNMP_OPERATION_VALUE_GETNEXT) {
 			invalid:
 				fr_strerror_printf("Invalid OID: Match stopped here");
 				return -(depth);
@@ -545,7 +545,7 @@ static ssize_t snmp_process_index(vp_cursor_t *out, REQUEST *request,
 
 		if (ret < 0) return ret;	/* error */
 		if (ret > 0) {			/* findNext */
-			if (snmp_op != PW_FREERADIUS_SNMP_OPERATION_VALUE_GETNEXT) goto invalid;
+			if (snmp_op != FR_FREERADIUS_SNMP_OPERATION_VALUE_GETNEXT) goto invalid;
 
 			/*
 			 *	Rebuild the stack to point to the first
@@ -602,7 +602,7 @@ static ssize_t snmp_process_index_attr(vp_cursor_t *out, REQUEST *request,
 		return -(ssize_t)depth;
 	}
 
-	if (map[1].type != PW_FREERADIUS_SNMP_TYPE_OBJECT) {
+	if (map[1].type != FR_FREERADIUS_SNMP_TYPE_OBJECT) {
 		fr_strerror_printf("Invalid OID: Cannot traverse leaf");
 		goto error;
 	}
@@ -688,7 +688,7 @@ static ssize_t snmp_process_tlv(vp_cursor_t *out, REQUEST *request,
 				   snmp_ctx, snmp_op);
 		if (ret < 0) return ret;	/* error */
 		if (ret > 0) {			/* findNext */
-			if (snmp_op != PW_FREERADIUS_SNMP_OPERATION_VALUE_GETNEXT) goto invalid;
+			if (snmp_op != FR_FREERADIUS_SNMP_OPERATION_VALUE_GETNEXT) goto invalid;
 			if (++map_p <= map[0].last) continue;
 			return 1;		/* findNext at lower level */
 		}
@@ -723,7 +723,7 @@ static ssize_t snmp_process_leaf(vp_cursor_t *out, REQUEST *request,
 	 *	It's a leaf attribute, call the correct get/set function
 	 */
 	switch (snmp_op) {
-	case PW_FREERADIUS_SNMP_OPERATION_VALUE_GETNEXT:
+	case FR_FREERADIUS_SNMP_OPERATION_VALUE_GETNEXT:
 		if (map_p == map[0].last) {
 			return 1;	/* findNext at lower level */
 		}
@@ -734,14 +734,14 @@ static ssize_t snmp_process_leaf(vp_cursor_t *out, REQUEST *request,
 			 *	We were called with a leaf map, but advanced
 			 *	to a non-leaf map.
 			 */
-			if (map_p->type == PW_FREERADIUS_SNMP_TYPE_OBJECT) {
+			if (map_p->type == FR_FREERADIUS_SNMP_TYPE_OBJECT) {
 				return snmp_process(out, request, tlv_stack, depth + 1,
 						    cursor, map_p->child, snmp_ctx, snmp_op);
 			}
 		}
 		/* FALL-THROUGH */
 
-	case PW_FREERADIUS_SNMP_OPERATION_VALUE_GET:
+	case FR_FREERADIUS_SNMP_OPERATION_VALUE_GET:
 	{
 		fr_value_box_t data;
 
@@ -750,7 +750,7 @@ static ssize_t snmp_process_leaf(vp_cursor_t *out, REQUEST *request,
 		/*
 		 *	Verify map is a leaf
 		 */
-		if (map_p->type == PW_FREERADIUS_SNMP_TYPE_OBJECT) {
+		if (map_p->type == FR_FREERADIUS_SNMP_TYPE_OBJECT) {
 			fr_strerror_printf("Invalid OID: Is not a leaf node");
 			goto error;
 		}
@@ -780,13 +780,13 @@ static ssize_t snmp_process_leaf(vp_cursor_t *out, REQUEST *request,
 	}
 		return 0;
 
-	case PW_FREERADIUS_SNMP_OPERATION_VALUE_SET:
+	case FR_FREERADIUS_SNMP_OPERATION_VALUE_SET:
 	{
 		ssize_t ret;
 
-		if (!map_p->set || (map_p->type == PW_FREERADIUS_SNMP_TYPE_OBJECT)) {
+		if (!map_p->set || (map_p->type == FR_FREERADIUS_SNMP_TYPE_OBJECT)) {
 			vp = fr_pair_afrom_da(request->reply, fr_snmp_failure);
-			vp->vp_uint32 = PW_FREERADIUS_SNMP_FAILURE_VALUE_NOT_WRITABLE;
+			vp->vp_uint32 = FR_FREERADIUS_SNMP_FAILURE_VALUE_NOT_WRITABLE;
 			fr_pair_cursor_append(out, vp);
 			return 0;
 		}
@@ -794,11 +794,11 @@ static ssize_t snmp_process_leaf(vp_cursor_t *out, REQUEST *request,
 		vp = fr_pair_cursor_current(cursor);
 		ret = map_p->set(map_p, snmp_ctx, &vp->data);
 		if (ret < 0) switch (-(ret)) {
-		case PW_FREERADIUS_SNMP_FAILURE_VALUE_NOT_WRITABLE:
-		case PW_FREERADIUS_SNMP_FAILURE_VALUE_WRONG_TYPE:
-		case PW_FREERADIUS_SNMP_FAILURE_VALUE_WRONG_LENGTH:
-		case PW_FREERADIUS_SNMP_FAILURE_VALUE_WRONG_VALUE:
-		case PW_FREERADIUS_SNMP_FAILURE_VALUE_INCONSISTENT_VALUE:
+		case FR_FREERADIUS_SNMP_FAILURE_VALUE_NOT_WRITABLE:
+		case FR_FREERADIUS_SNMP_FAILURE_VALUE_WRONG_TYPE:
+		case FR_FREERADIUS_SNMP_FAILURE_VALUE_WRONG_LENGTH:
+		case FR_FREERADIUS_SNMP_FAILURE_VALUE_WRONG_VALUE:
+		case FR_FREERADIUS_SNMP_FAILURE_VALUE_INCONSISTENT_VALUE:
 			vp = fr_pair_afrom_da(request->reply, fr_snmp_failure);
 			vp->vp_uint32 = -(ret);
 			fr_pair_cursor_append(out, vp);
@@ -847,7 +847,7 @@ static ssize_t snmp_process(vp_cursor_t *out, REQUEST *request,
 	 *	case we fake the rest of the stack.
 	 */
 	if (!tlv_stack[depth]) {
-		if (snmp_op != PW_FREERADIUS_SNMP_OPERATION_VALUE_GETNEXT) {
+		if (snmp_op != FR_FREERADIUS_SNMP_OPERATION_VALUE_GETNEXT) {
 			fr_strerror_printf("Invalid OID: Not a leaf");
 			return -(ssize_t)(depth - 1);
 		}
@@ -964,10 +964,10 @@ int fr_snmp_process(REQUEST *request)
 		}
 
 		switch (op->vp_uint32) {
-		case PW_FREERADIUS_SNMP_OPERATION_VALUE_PING:
-		case PW_FREERADIUS_SNMP_OPERATION_VALUE_GET:
-		case PW_FREERADIUS_SNMP_OPERATION_VALUE_GETNEXT:
-		case PW_FREERADIUS_SNMP_OPERATION_VALUE_SET:
+		case FR_FREERADIUS_SNMP_OPERATION_VALUE_PING:
+		case FR_FREERADIUS_SNMP_OPERATION_VALUE_GET:
+		case FR_FREERADIUS_SNMP_OPERATION_VALUE_GETNEXT:
+		case FR_FREERADIUS_SNMP_OPERATION_VALUE_SET:
 			break;
 
 		default:
@@ -1012,7 +1012,7 @@ static int _fr_snmp_init(fr_snmp_map_t map[])
 	unsigned int i;
 
 	for (i = 0; map[i].name; i++) {
-		if (map[i].type == PW_FREERADIUS_SNMP_TYPE_OBJECT) {
+		if (map[i].type == FR_FREERADIUS_SNMP_TYPE_OBJECT) {
 			int ret;
 
 			rad_assert(map[i].child);

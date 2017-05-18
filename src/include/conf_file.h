@@ -116,78 +116,78 @@ typedef void conf_type_invalid;		//!< Dummy type used to indicate invalid FR_TYP
  */
 #  define FR_CONF_TYPE_CHECK(_t, _ct, _p) \
 __builtin_choose_expr((_t) & FR_TYPE_SUBSECTION, _p, \
-__builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_SIZE) && !((_t) & FR_TYPE_MULTI), \
+__builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_SIZE) && !((_t) & FR_TYPE_MULTI), \
 	__builtin_choose_expr(is_compatible((_ct), size_t *), _p, (_mismatch_size) 0), \
-__builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_SIZE) && ((_t) & FR_TYPE_MULTI), \
+__builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_SIZE) && ((_t) & FR_TYPE_MULTI), \
 	__builtin_choose_expr(is_compatible((_ct), size_t **), _p, (_mismatch_size_m) 0), \
-__builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_DATE) && !((_t) & FR_TYPE_MULTI), \
+__builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_DATE) && !((_t) & FR_TYPE_MULTI), \
 	__builtin_choose_expr(is_compatible((_ct), time_t *), _p, (_mismatch_time) 0), \
-__builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_DATE) && ((_t) & FR_TYPE_MULTI), \
+__builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_DATE) && ((_t) & FR_TYPE_MULTI), \
 	__builtin_choose_expr(is_compatible((_ct), time_t **), _p, (_mismatch_time_m) 0), \
 _Generic((_ct), \
 	vp_tmpl_t **	: __builtin_choose_expr(((_t) & FR_TYPE_TMPL) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_vp_tmpl) 0), \
 	vp_tmpl_t ***	: __builtin_choose_expr(((_t) & FR_TYPE_TMPL) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_vp_tmpl_m) 0), \
-	char const **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_STRING) && !((_t) & FR_TYPE_MULTI), \
+	char const **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_STRING) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_char) 0), \
-	char const ***	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_STRING) && ((_t) & FR_TYPE_MULTI), \
+	char const ***	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_STRING) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_char_m) 0), \
-	bool *		: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_BOOL) && !((_t) & FR_TYPE_MULTI), \
+	bool *		: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_BOOL) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_bool) 0), \
-	bool **		: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_BOOL) && ((_t) & FR_TYPE_MULTI), \
+	bool **		: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_BOOL) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_bool_m) 0), \
-	uint32_t * 	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_UINT32) && !((_t) & FR_TYPE_MULTI), \
+	uint32_t * 	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_UINT32) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint32) 0), \
-	uint32_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_UINT32) && ((_t) & FR_TYPE_MULTI), \
+	uint32_t **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_UINT32) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint32_m) 0), \
-	fr_ipaddr_t *	: __builtin_choose_expr(((PW_BASE_TYPE(_t) == FR_TYPE_IPV4_ADDR) || \
-						(PW_BASE_TYPE(_t) == FR_TYPE_IPV4_PREFIX) || \
-						(PW_BASE_TYPE(_t) == FR_TYPE_IPV6_ADDR) || \
-						(PW_BASE_TYPE(_t) == FR_TYPE_IPV6_PREFIX) || \
-						(PW_BASE_TYPE(_t) == FR_TYPE_COMBO_IP_ADDR)) || \
+	fr_ipaddr_t *	: __builtin_choose_expr(((FR_BASE_TYPE(_t) == FR_TYPE_IPV4_ADDR) || \
+						(FR_BASE_TYPE(_t) == FR_TYPE_IPV4_PREFIX) || \
+						(FR_BASE_TYPE(_t) == FR_TYPE_IPV6_ADDR) || \
+						(FR_BASE_TYPE(_t) == FR_TYPE_IPV6_PREFIX) || \
+						(FR_BASE_TYPE(_t) == FR_TYPE_COMBO_IP_ADDR)) || \
 						!((_t) & FR_TYPE_MULTI), _p, (_mismatch_fripaddr) 0), \
-	fr_ipaddr_t **	: __builtin_choose_expr(((PW_BASE_TYPE(_t) == FR_TYPE_IPV4_ADDR) || \
-						(PW_BASE_TYPE(_t) == FR_TYPE_IPV4_PREFIX) || \
-						(PW_BASE_TYPE(_t) == FR_TYPE_IPV6_ADDR) || \
-						(PW_BASE_TYPE(_t) == FR_TYPE_IPV6_PREFIX) || \
-						(PW_BASE_TYPE(_t) == FR_TYPE_COMBO_IP_ADDR)) && \
+	fr_ipaddr_t **	: __builtin_choose_expr(((FR_BASE_TYPE(_t) == FR_TYPE_IPV4_ADDR) || \
+						(FR_BASE_TYPE(_t) == FR_TYPE_IPV4_PREFIX) || \
+						(FR_BASE_TYPE(_t) == FR_TYPE_IPV6_ADDR) || \
+						(FR_BASE_TYPE(_t) == FR_TYPE_IPV6_PREFIX) || \
+						(FR_BASE_TYPE(_t) == FR_TYPE_COMBO_IP_ADDR)) && \
 						((_t) & FR_TYPE_MULTI), _p, (_mismatch_fripaddr_m) 0), \
-	size_t[32/sizeof(size_t)] : __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_ABINARY) && !((_t) & FR_TYPE_MULTI), \
+	size_t[32/sizeof(size_t)] : __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_ABINARY) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_abinary) 0), \
-	size_t*[32/sizeof(size_t)] : __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_ABINARY) && ((_t) & FR_TYPE_MULTI), \
+	size_t*[32/sizeof(size_t)] : __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_ABINARY) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_abinary_m) 0), \
-	uint8_t const *	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_OCTETS) && !((_t) & FR_TYPE_MULTI), \
+	uint8_t const *	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_OCTETS) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint8) 0), \
-	uint8_t const **: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_OCTETS) && ((_t) & FR_TYPE_MULTI), \
+	uint8_t const **: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_OCTETS) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint8_m) 0), \
-	uint8_t *	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_UINT8) && !((_t) & FR_TYPE_MULTI), \
+	uint8_t *	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_UINT8) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint8) 0), \
-	uint8_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_UINT8) && ((_t) & FR_TYPE_MULTI), \
+	uint8_t **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_UINT8) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint8_m) 0), \
-	uint8_t[8]	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_IFID) && !(_t & FR_TYPE_MULTI), \
+	uint8_t[8]	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_IFID) && !(_t & FR_TYPE_MULTI), \
 			_p, (_mismatch_ifid) 0), \
-	uint8_t*[8]	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_IFID) && ((_t) & FR_TYPE_MULTI), \
+	uint8_t*[8]	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_IFID) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_ifid_m) 0), \
-	uint16_t *	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_UINT16) && !((_t) & FR_TYPE_MULTI), \
+	uint16_t *	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_UINT16) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint16) 0), \
-	uint16_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_UINT16) && ((_t) & FR_TYPE_MULTI), \
+	uint16_t **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_UINT16) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint16_m) 0), \
-	uint8_t[6]	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_ETHERNET) && !((_t) & FR_TYPE_MULTI), \
+	uint8_t[6]	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_ETHERNET) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_ethernet) 0), \
-	uint8_t*[6]	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_ETHERNET) && ((_t) & FR_TYPE_MULTI), \
+	uint8_t*[6]	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_ETHERNET) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_ethernet_m) 0), \
-	int32_t	*	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_INT32) && !((_t) & FR_TYPE_MULTI), \
+	int32_t	*	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_INT32) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_int32) 0), \
-	int32_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_INT32) && ((_t) & FR_TYPE_MULTI), \
+	int32_t **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_INT32) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_int32_m) 0), \
-	uint64_t *	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_UINT64) && !((_t) & FR_TYPE_MULTI), \
+	uint64_t *	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_UINT64) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint64) 0), \
-	uint64_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_UINT64) && ((_t) & FR_TYPE_MULTI), \
+	uint64_t **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_UINT64) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_uint64_m) 0), \
-	_timeval_t *	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_TIMEVAL) && !((_t) & FR_TYPE_MULTI), \
+	_timeval_t *	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_TIMEVAL) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_timeval) 0), \
-	_timeval_t **	: __builtin_choose_expr((PW_BASE_TYPE(_t) == FR_TYPE_TIMEVAL) && ((_t) & FR_TYPE_MULTI), \
+	_timeval_t **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_TIMEVAL) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_timeval_m) 0), \
 	default: (conf_type_mismatch)0))))))
 
@@ -313,7 +313,7 @@ _Generic((_ct), \
 									//!< left as the default to is_set_offset
 									//!< or is_set_ptr.
 
-#define PW_BASE_TYPE(_t)		(0xff & (_t))
+#define FR_BASE_TYPE(_t)		(0xff & (_t))
 /* @} **/
 
 #define FR_SIZE_COND_CHECK(_name, _var, _cond, _new)\

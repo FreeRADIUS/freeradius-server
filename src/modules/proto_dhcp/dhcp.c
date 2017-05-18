@@ -378,7 +378,7 @@ RADIUS_PACKET *fr_dhcp_packet_ok(uint8_t const *data, ssize_t data_len, fr_ipadd
 	memcpy(&magic, data + 4, 4);
 	pkt_id = ntohl(magic);
 
-	code = dhcp_get_option((dhcp_packet_t const *) data, data_len, PW_DHCP_MESSAGE_TYPE);
+	code = dhcp_get_option((dhcp_packet_t const *) data, data_len, FR_DHCP_MESSAGE_TYPE);
 	if (!code) {
 		fr_strerror_printf("No message-type option was found in the packet");
 		return NULL;
@@ -397,7 +397,7 @@ RADIUS_PACKET *fr_dhcp_packet_ok(uint8_t const *data, ssize_t data_len, fr_ipadd
 	}
 
 	packet->data_len = data_len;
-	packet->code = code[2] | PW_DHCP_OFFSET;
+	packet->code = code[2] | FR_DHCP_OFFSET;
 	packet->id = pkt_id;
 
 	packet->dst_port = dst_port;
@@ -1015,7 +1015,7 @@ ssize_t fr_dhcp_decode_option(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	/*
 	 *	Stupid hacks until we have protocol specific dictionaries
 	 */
-	parent = fr_dict_attr_child_by_num(parent, PW_VENDOR_SPECIFIC);
+	parent = fr_dict_attr_child_by_num(parent, FR_VENDOR_SPECIFIC);
 	if (!parent) {
 		fr_strerror_printf("Can't find Vendor-Specific (26)");
 		return -1;
@@ -1289,10 +1289,10 @@ int8_t fr_dhcp_attr_cmp(void const *a, void const *b)
 	/*
 	 *	DHCP-Message-Type is first, for simplicity.
 	 */
-	if (((my_a->da->parent->type != FR_TYPE_TLV) && (my_a->da->attr == PW_DHCP_MESSAGE_TYPE)) &&
-	    ((my_b->da->parent->type == FR_TYPE_TLV) || (my_b->da->attr != PW_DHCP_MESSAGE_TYPE))) return -1;
-	if (((my_a->da->parent->type == FR_TYPE_TLV) || (my_a->da->attr != PW_DHCP_MESSAGE_TYPE)) &&
-	    ((my_b->da->parent->type != FR_TYPE_TLV) && (my_b->da->attr == PW_DHCP_MESSAGE_TYPE))) return +1;
+	if (((my_a->da->parent->type != FR_TYPE_TLV) && (my_a->da->attr == FR_DHCP_MESSAGE_TYPE)) &&
+	    ((my_b->da->parent->type == FR_TYPE_TLV) || (my_b->da->attr != FR_DHCP_MESSAGE_TYPE))) return -1;
+	if (((my_a->da->parent->type == FR_TYPE_TLV) || (my_a->da->attr != FR_DHCP_MESSAGE_TYPE)) &&
+	    ((my_b->da->parent->type != FR_TYPE_TLV) && (my_b->da->attr == FR_DHCP_MESSAGE_TYPE))) return +1;
 
 	/*
 	 *	Relay-Agent is last.
@@ -1564,8 +1564,8 @@ ssize_t fr_dhcp_encode_option(uint8_t *out, size_t outlen, vp_cursor_t *cursor, 
 	if (!vp) return -1;
 
 	if (vp->da->vendor != DHCP_MAGIC_VENDOR) goto next; /* not a DHCP option */
-	if (vp->da->attr == PW_DHCP_MESSAGE_TYPE) goto next; /* already done */
-	if ((vp->da->attr > 255) && (DHCP_BASE_ATTR(vp->da->attr) != PW_DHCP_OPTION_82)) {
+	if (vp->da->attr == FR_DHCP_MESSAGE_TYPE) goto next; /* already done */
+	if ((vp->da->attr > 255) && (DHCP_BASE_ATTR(vp->da->attr) != FR_DHCP_OPTION_82)) {
 	next:
 		fr_strerror_printf("Attribute \"%s\" is not a DHCP option", vp->da->name);
 		fr_pair_cursor_next(cursor);
@@ -1620,7 +1620,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	packet->data = talloc_zero_array(packet, uint8_t, packet->data_len);
 
 	/* XXX Ugly ... should be set by the caller */
-	if (packet->code == 0) packet->code = PW_DHCP_NAK;
+	if (packet->code == 0) packet->code = FR_DHCP_NAK;
 
 	/* store xid */
 	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 260, TAG_ANY))) {
@@ -1787,7 +1787,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 
 	p[0] = 0x35;		/* DHCP-Message-Type */
 	p[1] = 1;
-	p[2] = packet->code - PW_DHCP_OFFSET;
+	p[2] = packet->code - FR_DHCP_OFFSET;
 	p += 3;
 
 	/*
@@ -2144,7 +2144,7 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *link_laye
 	TALLOC_FREE(raw_packet);
 	packet->id = xid;
 
-	code = dhcp_get_option((dhcp_packet_t const *) packet->data, packet->data_len, PW_DHCP_MESSAGE_TYPE);
+	code = dhcp_get_option((dhcp_packet_t const *) packet->data, packet->data_len, FR_DHCP_MESSAGE_TYPE);
 	if (!code) {
 		fr_strerror_printf("No message-type option was found in the packet");
 		fr_radius_free(&packet);
@@ -2157,7 +2157,7 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *link_laye
 		return NULL;
 	}
 
-	packet->code = code[2] | PW_DHCP_OFFSET;
+	packet->code = code[2] | FR_DHCP_OFFSET;
 
 	/*
 	 *	Create a unique vector from the MAC address and the
@@ -2194,7 +2194,7 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *link_laye
  */
 int dhcp_init(void)
 {
-	dhcp_option_82 = fr_dict_attr_by_num(NULL, DHCP_MAGIC_VENDOR, PW_DHCP_OPTION_82);
+	dhcp_option_82 = fr_dict_attr_by_num(NULL, DHCP_MAGIC_VENDOR, FR_DHCP_OPTION_82);
 	if (!dhcp_option_82) {
 		fr_strerror_printf("Missing dictionary attribute for DHCP-Option-82");
 		return -1;

@@ -71,7 +71,7 @@ typedef struct rlm_files_t {
 static int fall_through(VALUE_PAIR *vp)
 {
 	VALUE_PAIR *tmp;
-	tmp = fr_pair_find_by_num(vp, 0, PW_FALL_THROUGH, TAG_ANY);
+	tmp = fr_pair_find_by_num(vp, 0, FR_FALL_THROUGH, TAG_ANY);
 
 	return tmp ? tmp->vp_uint32 : 0;
 }
@@ -391,7 +391,7 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
 	/*
 	 *	Remove server internal parameters.
 	 */
-	fr_pair_delete_by_num(&reply_packet->vps, 0, PW_FALL_THROUGH, TAG_ANY);
+	fr_pair_delete_by_num(&reply_packet->vps, 0, FR_FALL_THROUGH, TAG_ANY);
 
 	/*
 	 *	See if we succeeded.

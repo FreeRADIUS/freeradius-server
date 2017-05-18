@@ -52,7 +52,7 @@ typedef struct rlm_eap {
 
 	char const			*name;				//!< Name of this instance.
 
-	rlm_eap_method_t 		*methods[PW_EAP_MAX_TYPES];	//!< Array of loaded (or not), submodules.
+	rlm_eap_method_t 		*methods[FR_EAP_MAX_TYPES];	//!< Array of loaded (or not), submodules.
 	fr_randctx			rand_pool;			//!< Pool of random data.
 } rlm_eap_t;
 

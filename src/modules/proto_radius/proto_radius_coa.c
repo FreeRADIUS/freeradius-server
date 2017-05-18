@@ -58,7 +58,7 @@ static fr_transport_final_t coa_process(REQUEST *request)
 
 		request->component = "radius";
 
-		da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_TYPE);
+		da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
 		rad_assert(da != NULL);
 		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->packet->code));
 		if (!dv) {
@@ -112,7 +112,7 @@ static fr_transport_final_t coa_process(REQUEST *request)
 		/*
 		 *	Allow for over-ride of reply code.
 		 */
-		vp = fr_pair_find_by_num(request->reply->vps, 0, PW_PACKET_TYPE, TAG_ANY);
+		vp = fr_pair_find_by_num(request->reply->vps, 0, FR_PACKET_TYPE, TAG_ANY);
 		if (vp) {
 			if (vp->vp_uint32 == 256) {
 				request->reply->code = 0;
@@ -121,7 +121,7 @@ static fr_transport_final_t coa_process(REQUEST *request)
 			}
 		}
 
-		if (!da) da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_TYPE);
+		if (!da) da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
 		rad_assert(da != NULL);
 
 		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
@@ -173,7 +173,7 @@ static fr_transport_final_t coa_process(REQUEST *request)
 			 *	the NAK section.
 			 */
 			if (request->reply->code == request->packet->code + 1) {
-				if (!da) da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_TYPE);
+				if (!da) da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
 				rad_assert(da != NULL);
 
 				dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
@@ -367,8 +367,8 @@ static int coa_socket_recv(rad_listen_t *listener)
 		return 0;
 	}
 
-	if ((packet->code != PW_CODE_COA_REQUEST) &&
-	    (packet->code != PW_CODE_DISCONNECT_REQUEST)) {
+	if ((packet->code != FR_CODE_COA_REQUEST) &&
+	    (packet->code != FR_CODE_DISCONNECT_REQUEST)) {
 		DEBUG2("Invalid packet code %d", packet->code);
 		talloc_free(ctx);
 		return 0;
@@ -481,7 +481,7 @@ static int coa_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	if (common_socket_parse(cs, this) < 0) return -1;
 
-	if (!sock->my_port) sock->my_port = PW_COA_UDP_PORT;
+	if (!sock->my_port) sock->my_port = FR_COA_UDP_PORT;
 
 	return 0;
 }

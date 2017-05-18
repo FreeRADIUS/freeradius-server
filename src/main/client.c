@@ -1270,10 +1270,10 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 
 		switch (dynamic_config[i].type) {
 		case FR_TYPE_IPV4_ADDR:
-			if (da->attr == PW_FREERADIUS_CLIENT_IP_ADDRESS) {
+			if (da->attr == FR_FREERADIUS_CLIENT_IP_ADDRESS) {
 				memcpy(&c->ipaddr, &vp->vp_ip, sizeof(c->ipaddr));
 				cp = cf_pair_alloc(c->cs, "ipv4addr", strvalue, T_OP_SET, T_BARE_WORD, T_BARE_WORD);
-			} else if (da->attr == PW_FREERADIUS_CLIENT_SRC_IP_ADDRESS) {
+			} else if (da->attr == FR_FREERADIUS_CLIENT_SRC_IP_ADDRESS) {
 #ifdef WITH_UDPFROMTO
 				RDEBUG2("src_ipaddr = %s", strvalue);
 				memcpy(&c->src_ipaddr, &vp->vp_ip, sizeof(c->src_ipaddr));
@@ -1286,10 +1286,10 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 			break;
 
 		case FR_TYPE_IPV6_ADDR:
-			if (da->attr == PW_FREERADIUS_CLIENT_IPV6_ADDRESS) {
+			if (da->attr == FR_FREERADIUS_CLIENT_IPV6_ADDRESS) {
 				memcpy(&c->ipaddr, &vp->vp_ip, sizeof(c->ipaddr));
 				cp = cf_pair_alloc(c->cs, "ipv6addr", strvalue, T_OP_SET, T_BARE_WORD, T_BARE_WORD);
-			} else if (da->attr == PW_FREERADIUS_CLIENT_SRC_IPV6_ADDRESS) {
+			} else if (da->attr == FR_FREERADIUS_CLIENT_SRC_IPV6_ADDRESS) {
 #ifdef WITH_UDPFROMTO
 				memcpy(&c->src_ipaddr, &vp->vp_ip, sizeof(c->src_ipaddr));
 				cp = cf_pair_alloc(c->cs, "src_addr", strvalue, T_OP_SET, T_BARE_WORD, T_BARE_WORD);
@@ -1301,7 +1301,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 			break;
 
 		case FR_TYPE_IPV4_PREFIX:
-			if (da->attr == PW_FREERADIUS_CLIENT_IP_PREFIX) {
+			if (da->attr == FR_FREERADIUS_CLIENT_IP_PREFIX) {
 				memcpy(&c->ipaddr, &vp->vp_ip, sizeof(c->ipaddr));
 				cp = cf_pair_alloc(c->cs, "ipv4addr", strvalue, T_OP_SET, T_BARE_WORD, T_BARE_WORD);
 			}
@@ -1309,7 +1309,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 			break;
 
 		case FR_TYPE_IPV6_PREFIX:
-			if (da->attr == PW_FREERADIUS_CLIENT_IPV6_PREFIX) {
+			if (da->attr == FR_FREERADIUS_CLIENT_IPV6_PREFIX) {
 				memcpy(&c->ipaddr, &vp->vp_ip, sizeof(c->ipaddr));;
 				cp = cf_pair_alloc(c->cs, "ipv6addr", strvalue, T_OP_SET, T_BARE_WORD, T_BARE_WORD);
 			}

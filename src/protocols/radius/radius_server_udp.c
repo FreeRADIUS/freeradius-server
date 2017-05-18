@@ -70,7 +70,7 @@ static ssize_t mod_encode(void const *ctx, REQUEST *request, uint8_t *buffer, si
 
 	if (buffer_len < 20) return -1;
 
-	buffer[0] = PW_CODE_ACCESS_ACCEPT;
+	buffer[0] = FR_CODE_ACCESS_ACCEPT;
 	buffer[1] = pc->id;
 	buffer[2] = 0;
 	buffer[3] = 20;

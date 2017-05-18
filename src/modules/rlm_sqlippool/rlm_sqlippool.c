@@ -392,9 +392,9 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	if (!inst->ipv6) {
-		inst->framed_ip_address = PW_FRAMED_IP_ADDRESS;
+		inst->framed_ip_address = FR_FRAMED_IP_ADDRESS;
 	} else {
-		inst->framed_ip_address = PW_FRAMED_IPV6_PREFIX;
+		inst->framed_ip_address = FR_FRAMED_IPV6_PREFIX;
 	}
 
 	inst->sql_inst = (rlm_sql_t *) sql_inst->data;
@@ -452,7 +452,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 		return do_logging(request, inst->log_exists, RLM_MODULE_NOOP);
 	}
 
-	if (fr_pair_find_by_num(request->control, 0, PW_POOL_NAME, TAG_ANY) == NULL) {
+	if (fr_pair_find_by_num(request->control, 0, FR_POOL_NAME, TAG_ANY) == NULL) {
 		RDEBUG("No Pool-Name defined");
 
 		return do_logging(request, inst->log_nopool, RLM_MODULE_NOOP);
@@ -636,7 +636,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	rlm_sqlippool_t		*inst = (rlm_sqlippool_t *) instance;
 	rlm_sql_handle_t	*handle;
 
-	vp = fr_pair_find_by_num(request->packet->vps, 0, PW_ACCT_STATUS_TYPE, TAG_ANY);
+	vp = fr_pair_find_by_num(request->packet->vps, 0, FR_ACCT_STATUS_TYPE, TAG_ANY);
 	if (!vp) {
 		RDEBUG("Could not find account status type in packet");
 		return RLM_MODULE_NOOP;
@@ -644,11 +644,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	acct_status_type = vp->vp_uint32;
 
 	switch (acct_status_type) {
-	case PW_STATUS_START:
-	case PW_STATUS_ALIVE:
-	case PW_STATUS_STOP:
-	case PW_STATUS_ACCOUNTING_ON:
-	case PW_STATUS_ACCOUNTING_OFF:
+	case FR_STATUS_START:
+	case FR_STATUS_ALIVE:
+	case FR_STATUS_STOP:
+	case FR_STATUS_ACCOUNTING_ON:
+	case FR_STATUS_ACCOUNTING_OFF:
 		break;		/* continue through to the next section */
 
 	default:
@@ -665,23 +665,23 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	if (inst->sql_inst->sql_set_user(inst->sql_inst, request, NULL) < 0) return RLM_MODULE_FAIL;
 
 	switch (acct_status_type) {
-	case PW_STATUS_START:
+	case FR_STATUS_START:
 		rcode = mod_accounting_start(&handle, inst, request);
 		break;
 
-	case PW_STATUS_ALIVE:
+	case FR_STATUS_ALIVE:
 		rcode = mod_accounting_alive(&handle, inst, request);
 		break;
 
-	case PW_STATUS_STOP:
+	case FR_STATUS_STOP:
 		rcode = mod_accounting_stop(&handle, inst, request);
 		break;
 
-	case PW_STATUS_ACCOUNTING_ON:
+	case FR_STATUS_ACCOUNTING_ON:
 		rcode = mod_accounting_on(&handle, inst, request);
 		break;
 
-	case PW_STATUS_ACCOUNTING_OFF:
+	case FR_STATUS_ACCOUNTING_OFF:
 		rcode = mod_accounting_off(&handle, inst, request);
 		break;
 	}

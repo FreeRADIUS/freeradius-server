@@ -1562,10 +1562,10 @@ VALUE_PAIR *fr_pair_list_copy_by_num(TALLOC_CTX *ctx, VALUE_PAIR *from,
 		}
 
 		/*
-		 *	vendor=0, attr = PW_VENDOR_SPECIFIC means
+		 *	vendor=0, attr = FR_VENDOR_SPECIFIC means
 		 *	"match any vendor attribute".
 		 */
-		if ((vendor == 0) && (attr == PW_VENDOR_SPECIFIC)) {
+		if ((vendor == 0) && (attr == FR_VENDOR_SPECIFIC)) {
 			/*
 			 *	It's a VSA: copy it over.
 			 */
@@ -1654,7 +1654,7 @@ void fr_pair_list_move(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 		/*
 		 *	We never move Fall-Through.
 		 */
-		if (!i->da->vendor && i->da->attr == PW_FALL_THROUGH && i->da->parent->flags.is_root) {
+		if (!i->da->vendor && i->da->attr == FR_FALL_THROUGH && i->da->parent->flags.is_root) {
 			tail_from = &(i->next);
 			continue;
 		}
@@ -1771,7 +1771,7 @@ void fr_pair_list_move(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
  * @param[in] ctx for talloc
  * @param[in,out] to destination list.
  * @param[in,out] from source list.
- * @param[in] attr to match. If attribute PW_VENDOR_SPECIFIC and vendor 0,
+ * @param[in] attr to match. If attribute FR_VENDOR_SPECIFIC and vendor 0,
  *	will match (and therefore copy) only VSAs.
  *	If attribute 0 and vendor 0  will match (and therefore copy) all
  *	attributes.
@@ -1828,10 +1828,10 @@ static void fr_pair_list_move_by_num_internal(TALLOC_CTX *ctx, VALUE_PAIR **to, 
 		}
 
 		/*
-		 *	vendor=0, attr = PW_VENDOR_SPECIFIC means
+		 *	vendor=0, attr = FR_VENDOR_SPECIFIC means
 		 *	"match any vendor attribute".
 		 */
-		if ((vendor == 0) && (attr == PW_VENDOR_SPECIFIC)) {
+		if ((vendor == 0) && (attr == FR_VENDOR_SPECIFIC)) {
 			/*
 			 *	It's a VSA: move it over.
 			 */
@@ -1913,7 +1913,7 @@ static void fr_pair_list_move_by_num_internal(TALLOC_CTX *ctx, VALUE_PAIR **to, 
  * @param[in] ctx for talloc
  * @param[in,out] to destination list.
  * @param[in,out] from source list.
- * @param[in] attr to match. If attribute PW_VENDOR_SPECIFIC and vendor 0,
+ * @param[in] attr to match. If attribute FR_VENDOR_SPECIFIC and vendor 0,
  *	will match (and therefore copy) only VSAs.
  *	If attribute 0 and vendor 0  will match (and therefore copy) all
  *	attributes.
@@ -1941,7 +1941,7 @@ void fr_pair_list_move_by_num(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **fro
  * @param[in] ctx for talloc
  * @param[in,out] to destination list.
  * @param[in,out] from source list.
- * @param[in] attr to match. If attribute PW_VENDOR_SPECIFIC and vendor 0,
+ * @param[in] attr to match. If attribute FR_VENDOR_SPECIFIC and vendor 0,
  *	will match (and therefore copy) only VSAs.
  *	If attribute 0 and vendor 0  will match (and therefore copy) all
  *	attributes.

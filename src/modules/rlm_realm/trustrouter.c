@@ -356,7 +356,7 @@ REALM *tr_query_realm(REQUEST *request, char const *realm,
 	if (!trust_router) trust_router = "none";
 
 	/* See if the request overrides the community*/
-	vp = fr_pair_find_by_num(request->packet->vps, VENDORPEC_UKERNA, PW_UKERNA_TR_COI, TAG_ANY);
+	vp = fr_pair_find_by_num(request->packet->vps, VENDORPEC_UKERNA, FR_UKERNA_TR_COI, TAG_ANY);
 	if (vp) {
 		community = vp->vp_strvalue;
 	} else if (community) {

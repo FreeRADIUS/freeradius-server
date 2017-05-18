@@ -89,24 +89,24 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 	default:
 		break;		/* ignore them */
 
-	case PW_CLIENT_SHORTNAME:
+	case FR_CLIENT_SHORTNAME:
 		if (vpt->tmpl_num == NUM_COUNT) goto count_virtual;
 		if (request->client && request->client->shortname) {
 			return talloc_typed_strdup(ctx, request->client->shortname);
 		}
 		return talloc_typed_strdup(ctx, "<UNKNOWN-CLIENT>");
 
-	case PW_REQUEST_PROCESSING_STAGE:
+	case FR_REQUEST_PROCESSING_STAGE:
 		if (vpt->tmpl_num == NUM_COUNT) goto count_virtual;
 		if (request->component) return talloc_typed_strdup(ctx, request->component);
 		return talloc_typed_strdup(ctx, "server_core");
 
-	case PW_VIRTUAL_SERVER:
+	case FR_VIRTUAL_SERVER:
 		if (vpt->tmpl_num == NUM_COUNT) goto count_virtual;
 		if (!request->server) return NULL;
 		return talloc_typed_strdup(ctx, request->server);
 
-	case PW_MODULE_RETURN_CODE:
+	case FR_MODULE_RETURN_CODE:
 		if (vpt->tmpl_num == NUM_COUNT) goto count_virtual;
 		if (!request->rcode) return NULL;
 		return talloc_typed_strdup(ctx, fr_int2str(modreturn_table, request->rcode, ""));
@@ -128,7 +128,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 	default:
 		break;
 
-	case PW_PACKET_TYPE:
+	case FR_PACKET_TYPE:
 		if (packet->code > 0) {
 			dv = fr_dict_enum_by_value(NULL, vpt->tmpl_da, fr_box_uint32(packet->code));
 			if (dv) return talloc_typed_strdup(ctx, dv->alias);
@@ -140,7 +140,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 		 */
 		return talloc_strdup(ctx, "");
 
-	case PW_RESPONSE_PACKET_TYPE:
+	case FR_RESPONSE_PACKET_TYPE:
 	{
 		int code = 0;
 
@@ -170,14 +170,14 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 	 *	because of the talloc checks sprinkled throughout the
 	 *	various VP functions.
 	 */
-	case PW_PACKET_AUTHENTICATION_VECTOR:
+	case FR_PACKET_AUTHENTICATION_VECTOR:
 		virtual = fr_pair_afrom_da(ctx, vpt->tmpl_da);
 		fr_pair_value_memcpy(virtual, packet->vector, sizeof(packet->vector));
 		vp = virtual;
 		break;
 
-	case PW_CLIENT_IP_ADDRESS:
-	case PW_PACKET_SRC_IP_ADDRESS:
+	case FR_CLIENT_IP_ADDRESS:
+	case FR_PACKET_SRC_IP_ADDRESS:
 		if (packet->src_ipaddr.af == AF_INET) {
 			virtual = fr_pair_afrom_da(ctx, vpt->tmpl_da);
 			memcpy(&virtual->vp_ip, &packet->src_ipaddr, sizeof(virtual->vp_ip));
@@ -185,7 +185,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 		}
 		break;
 
-	case PW_PACKET_DST_IP_ADDRESS:
+	case FR_PACKET_DST_IP_ADDRESS:
 		if (packet->dst_ipaddr.af == AF_INET) {
 			virtual = fr_pair_afrom_da(ctx, vpt->tmpl_da);
 			memcpy(&virtual->vp_ip, &packet->dst_ipaddr, sizeof(virtual->vp_ip));
@@ -193,7 +193,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 		}
 		break;
 
-	case PW_PACKET_SRC_IPV6_ADDRESS:
+	case FR_PACKET_SRC_IPV6_ADDRESS:
 		if (packet->src_ipaddr.af == AF_INET6) {
 			virtual = fr_pair_afrom_da(ctx, vpt->tmpl_da);
 			memcpy(&virtual->vp_ip, &packet->src_ipaddr, sizeof(virtual->vp_ip));
@@ -201,7 +201,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 		}
 		break;
 
-	case PW_PACKET_DST_IPV6_ADDRESS:
+	case FR_PACKET_DST_IPV6_ADDRESS:
 		if (packet->dst_ipaddr.af == AF_INET6) {
 			virtual = fr_pair_afrom_da(ctx, vpt->tmpl_da);
 			memcpy(&virtual->vp_ip, &packet->dst_ipaddr, sizeof(virtual->vp_ip));
@@ -209,13 +209,13 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 		}
 		break;
 
-	case PW_PACKET_SRC_PORT:
+	case FR_PACKET_SRC_PORT:
 		virtual = fr_pair_afrom_da(ctx, vpt->tmpl_da);
 		virtual->vp_uint32 = packet->src_port;
 		vp = virtual;
 		break;
 
-	case PW_PACKET_DST_PORT:
+	case FR_PACKET_DST_PORT:
 		virtual = fr_pair_afrom_da(ctx, vpt->tmpl_da);
 		virtual->vp_uint32 = packet->dst_port;
 		vp = virtual;

@@ -39,8 +39,8 @@ RCSIDH(rlm_sql_h, "$Id$")
 #include <freeradius-devel/modpriv.h>
 #include <freeradius-devel/exfile.h>
 
-#define PW_ITEM_CHECK 0
-#define PW_ITEM_REPLY 1
+#define FR_ITEM_CHECK 0
+#define FR_ITEM_REPLY 1
 
 
 /* SQL Errors */

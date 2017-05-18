@@ -122,7 +122,7 @@ static int rlm_rest_status_update(REQUEST *request,  void *handle)
 	 *	current request.
 	 */
 	RADIUS_LIST_AND_CTX(ctx, list, request, REQUEST_CURRENT, PAIR_LIST_REQUEST);
-	if (!list || (fr_pair_update_by_num(ctx, list, 0, PW_REST_HTTP_STATUS_CODE, TAG_ANY, &value) < 0)) {
+	if (!list || (fr_pair_update_by_num(ctx, list, 0, FR_REST_HTTP_STATUS_CODE, TAG_ANY, &value) < 0)) {
 		REDEBUG("Failed updating &REST-HTTP-Status-Code");
 		return -1;
 	}
@@ -573,7 +573,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, void *threa
 
 	password = request->password;
 	if (!password ||
-	    (password->da->attr != PW_USER_PASSWORD)) {
+	    (password->da->attr != FR_USER_PASSWORD)) {
 		REDEBUG("You set 'Auth-Type = REST' for a request that does not contain a User-Password attribute!");
 		return RLM_MODULE_INVALID;
 	}

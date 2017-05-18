@@ -647,7 +647,7 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request);
 /*
  *	For radmin over TCP.
  */
-#define PW_RADMIN_PORT 18120
+#define FR_RADMIN_PORT 18120
 
 #ifdef __cplusplus
 }

@@ -892,7 +892,7 @@ void verify_request(char const *file, int line, REQUEST *request)
 
 	if (request->packet) {
 		verify_packet(file, line, request, request->packet, "request");
-		if ((request->packet->code == PW_CODE_ACCESS_REQUEST) &&
+		if ((request->packet->code == FR_CODE_ACCESS_REQUEST) &&
 		    !request->reply->code) {
 			rad_assert(request->state_ctx != NULL);
 		}

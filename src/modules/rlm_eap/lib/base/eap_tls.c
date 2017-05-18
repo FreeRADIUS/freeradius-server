@@ -187,15 +187,15 @@ int eap_tls_compose(eap_session_t *eap_session, eap_tls_status_t status, uint8_t
 	case EAP_TLS_ACK_SEND:
 	case EAP_TLS_START_SEND:
 	case EAP_TLS_RECORD_SEND:
-		eap_round->request->code = PW_EAP_REQUEST;
+		eap_round->request->code = FR_EAP_REQUEST;
 		break;
 
 	case EAP_TLS_ESTABLISHED:
-		eap_round->request->code = PW_EAP_SUCCESS;
+		eap_round->request->code = FR_EAP_SUCCESS;
 		break;
 
 	case EAP_TLS_FAIL:
-		eap_round->request->code = PW_EAP_FAILURE;
+		eap_round->request->code = FR_EAP_FAILURE;
 		break;
 
 	default:

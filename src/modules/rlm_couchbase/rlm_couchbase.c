@@ -189,7 +189,7 @@ static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *
 	rad_assert(request->packet != NULL);
 
 	/* sanity check */
-	if ((vp = fr_pair_find_by_num(request->packet->vps, 0, PW_ACCT_STATUS_TYPE, TAG_ANY)) == NULL) {
+	if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_ACCT_STATUS_TYPE, TAG_ANY)) == NULL) {
 		/* log debug */
 		RDEBUG("could not find status type in packet");
 		/* return */
@@ -200,7 +200,7 @@ static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *
 	status = vp->vp_uint32;
 
 	/* acknowledge the request but take no action */
-	if (status == PW_STATUS_ACCOUNTING_ON || status == PW_STATUS_ACCOUNTING_OFF) {
+	if (status == FR_STATUS_ACCOUNTING_ON || status == FR_STATUS_ACCOUNTING_OFF) {
 		/* log debug */
 		RDEBUG("handling accounting on/off request without action");
 		/* return */
@@ -267,18 +267,18 @@ static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *
 
 	/* status specific replacements for start/stop time */
 	switch (status) {
-	case PW_STATUS_START:
+	case FR_STATUS_START:
 		/* add start time */
-		if ((vp = fr_pair_find_by_num(request->packet->vps, 0, PW_EVENT_TIMESTAMP, TAG_ANY)) != NULL) {
+		if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_EVENT_TIMESTAMP, TAG_ANY)) != NULL) {
 			/* add to json object */
 			json_object_object_add(cookie->jobj, "startTimestamp",
 					       mod_value_pair_to_json_object(request, vp));
 		}
 		break;
 
-	case PW_STATUS_STOP:
+	case FR_STATUS_STOP:
 		/* add stop time */
-		if ((vp = fr_pair_find_by_num(request->packet->vps, 0, PW_EVENT_TIMESTAMP, TAG_ANY)) != NULL) {
+		if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_EVENT_TIMESTAMP, TAG_ANY)) != NULL) {
 			/* add to json object */
 			json_object_object_add(cookie->jobj, "stopTimestamp",
 					       mod_value_pair_to_json_object(request, vp));
@@ -287,7 +287,7 @@ static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *
 		mod_ensure_start_timestamp(cookie->jobj, request->packet->vps);
 		break;
 
-	case PW_STATUS_ALIVE:
+	case FR_STATUS_ALIVE:
 		/* check start timestamp and adjust if needed */
 		mod_ensure_start_timestamp(cookie->jobj, request->packet->vps);
 		break;
@@ -520,12 +520,12 @@ static rlm_rcode_t mod_checksimul(void *instance, UNUSED void *thread, REQUEST *
 	request->simul_count = 0;
 
 	/* get client ip address for MPP detection below */
-	if ((vp = fr_pair_find_by_num(request->packet->vps, 0, PW_FRAMED_IP_ADDRESS, TAG_ANY)) != NULL) {
+	if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_FRAMED_IP_ADDRESS, TAG_ANY)) != NULL) {
 		client_ip_addr = vp->vp_ipv4addr;
 	}
 
 	/* get calling station id for MPP detection below */
-	if ((vp = fr_pair_find_by_num(request->packet->vps, 0, PW_CALLING_STATION_ID, TAG_ANY)) != NULL) {
+	if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_CALLING_STATION_ID, TAG_ANY)) != NULL) {
 		client_cs_id = vp->vp_strvalue;
 	}
 

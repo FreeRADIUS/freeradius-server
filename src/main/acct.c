@@ -84,7 +84,7 @@ rlm_rcode_t rad_accounting(REQUEST *request)
 		 *	Do the data storage before proxying. This is to ensure
 		 *	that we log the packet, even if the proxy never does.
 		 */
-		vp = fr_pair_find_by_num(request->control, 0, PW_ACCT_TYPE, TAG_ANY);
+		vp = fr_pair_find_by_num(request->control, 0, FR_ACCT_TYPE, TAG_ANY);
 		if (vp) DEBUG2("  Found Acct-Type %s", fr_dict_enum_alias_by_value(NULL, vp->da, &vp->data));
 
 		rcode = process_accounting(acct_type, request);
@@ -119,7 +119,7 @@ rlm_rcode_t rad_accounting(REQUEST *request)
 		 *	Maybe one of the preacct modules has decided
 		 *	that a proxy should be used.
 		 */
-		if ((vp = fr_pair_find_by_num(request->control, 0, PW_PROXY_TO_REALM, TAG_ANY))) {
+		if ((vp = fr_pair_find_by_num(request->control, 0, FR_PROXY_TO_REALM, TAG_ANY))) {
 			REALM *realm;
 
 			/*
@@ -129,7 +129,7 @@ rlm_rcode_t rad_accounting(REQUEST *request)
 			realm = realm_find2(vp->vp_strvalue);
 			if (realm && !realm->acct_pool) {
 				DEBUG("rad_accounting: Cancelling proxy to realm %s, as it is a LOCAL realm.", realm->name);
-				fr_pair_delete_by_num(&request->control, 0, PW_PROXY_TO_REALM, TAG_ANY);
+				fr_pair_delete_by_num(&request->control, 0, FR_PROXY_TO_REALM, TAG_ANY);
 			} else {
 				/*
 				 *	Don't reply to the NAS now because
@@ -162,7 +162,7 @@ rlm_rcode_t rad_accounting(REQUEST *request)
 	 */
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
-		request->reply->code = PW_CODE_ACCOUNTING_RESPONSE;
+		request->reply->code = FR_CODE_ACCOUNTING_RESPONSE;
 		break;
 
 	/*

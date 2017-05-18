@@ -423,14 +423,14 @@ static rlm_rcode_t mod_process(void *arg, eap_session_t *eap_session)
 	rcode = eap_fast_process(eap_session, tls_session);
 
 	switch (rcode) {
-	case PW_CODE_ACCESS_REJECT:
+	case FR_CODE_ACCESS_REJECT:
 		eap_tls_fail(eap_session);
 		return RLM_MODULE_FAIL;
 
 		/*
 		 *	Access-Challenge, continue tunneled conversation.
 		 */
-	case PW_CODE_ACCESS_CHALLENGE:
+	case FR_CODE_ACCESS_CHALLENGE:
 		tls_session_send(request, tls_session);
 		eap_tls_request(eap_session);
 		return RLM_MODULE_HANDLED;
@@ -438,7 +438,7 @@ static rlm_rcode_t mod_process(void *arg, eap_session_t *eap_session)
 		/*
 		 *	Success: Automatically return MPPE keys.
 		 */
-	case PW_CODE_ACCESS_ACCEPT:
+	case FR_CODE_ACCESS_ACCEPT:
 		RDEBUG("Note that the 'missing PRF label' message below is harmless. Please ignore it.");
 		if (eap_tls_success(eap_session) < 0) return RLM_MODULE_FAIL;
 		return RLM_MODULE_OK;
@@ -449,7 +449,7 @@ static rlm_rcode_t mod_process(void *arg, eap_session_t *eap_session)
 		 *	that the request now has a "proxy" packet, and
 		 *	will proxy it, rather than returning an EAP packet.
 		 */
-	case PW_CODE_STATUS_CLIENT:
+	case FR_CODE_STATUS_CLIENT:
 #ifdef WITH_PROXY
 		rad_assert(eap_session->request->proxy != NULL);
 #endif
@@ -487,7 +487,7 @@ static rlm_rcode_t mod_session_init(void *type_arg, eap_session_t *eap_session)
 	 *	EAP-TLS-Require-Client-Cert attribute will override
 	 *	the require_client_cert configuration option.
 	 */
-	vp = fr_pair_find_by_num(eap_session->request->control, 0, PW_EAP_TLS_REQUIRE_CLIENT_CERT, TAG_ANY);
+	vp = fr_pair_find_by_num(eap_session->request->control, 0, FR_EAP_TLS_REQUIRE_CLIENT_CERT, TAG_ANY);
 	if (vp) {
 		client_cert = vp->vp_uint32 ? true : false;
 	} else {

@@ -35,75 +35,75 @@ RCSIDH(eap_methods_h, "$Id$")
 #define EAP_HEADER_LEN 		4
 
 typedef enum eap_code {
-	PW_EAP_REQUEST = 1,
-	PW_EAP_RESPONSE,
-	PW_EAP_SUCCESS,
-	PW_EAP_FAILURE,
-	PW_EAP_MAX_CODES
+	FR_EAP_REQUEST = 1,
+	FR_EAP_RESPONSE,
+	FR_EAP_SUCCESS,
+	FR_EAP_FAILURE,
+	FR_EAP_MAX_CODES
 } eap_code_t;
 
 typedef enum eap_method {
-	PW_EAP_INVALID = 0,		/* 0 */
-	PW_EAP_IDENTITY,		/* 1 */
-	PW_EAP_NOTIFICATION,		/* 2 */
-	PW_EAP_NAK,			/* 3 */
-	PW_EAP_MD5,			/* 4 */
-	PW_EAP_OTP,			/* 5 */
-	PW_EAP_GTC,			/* 6 */
-	PW_EAP_7,			/* 7  - unused */
-	PW_EAP_8,			/* 8  - unused */
-	PW_EAP_RSA_PUBLIC_KEY,		/* 9 */
-	PW_EAP_DSS_UNILATERAL,		/* 10 */
-	PW_EAP_KEA,			/* 11 */
-	PW_EAP_KEA_VALIDATE,		/* 12 */
-	PW_EAP_TLS,			/* 13 */
-	PW_EAP_DEFENDER_TOKEN,		/* 14 */
-	PW_EAP_RSA_SECURID,		/* 15 */
-	PW_EAP_ARCOT_SYSTEMS,		/* 16 */
-	PW_EAP_LEAP,			/* 17 */
-	PW_EAP_SIM,			/* 18 */
-	PW_EAP_SRP_SHA1,		/* 19 */
-	PW_EAP_20,			/* 20 - unassigned */
-	PW_EAP_TTLS,			/* 21 */
-	PW_EAP_REMOTE_ACCESS_SERVICE,	/* 22 */
-	PW_EAP_AKA,			/* 23 */
-	PW_EAP_3COM,			/* 24 - should this be EAP-HP now? */
-	PW_EAP_PEAP,			/* 25 */
-	PW_EAP_MSCHAPV2,		/* 26 */
-	PW_EAP_MAKE,			/* 27 */
-	PW_EAP_CRYPTOCARD,		/* 28 */
-	PW_EAP_CISCO_MSCHAPV2,		/* 29 */
-	PW_EAP_DYNAMID,			/* 30 */
-	PW_EAP_ROB,			/* 31 */
-	PW_EAP_POTP,			/* 32 */
-	PW_EAP_MS_ATLV,			/* 33 */
-	PW_EAP_SENTRINET,		/* 34 */
-	PW_EAP_ACTIONTEC,		/* 35 */
-	PW_EAP_COGENT_BIOMETRIC,	/* 36 */
-	PW_EAP_AIRFORTRESS,		/* 37 */
-	PW_EAP_TNC,			/* 38 - fixme conflicts with HTTP DIGEST */
-//	PW_EAP_HTTP_DIGEST,		/* 38 */
-	PW_EAP_SECURISUITE,		/* 39 */
-	PW_EAP_DEVICECONNECT,		/* 40 */
-	PW_EAP_SPEKE,			/* 41 */
-	PW_EAP_MOBAC,			/* 42 */
-	PW_EAP_FAST,			/* 43 */
-	PW_EAP_ZONELABS,		/* 44 */
-	PW_EAP_LINK,			/* 45 */
-	PW_EAP_PAX,			/* 46 */
-	PW_EAP_PSK,			/* 47 */
-	PW_EAP_SAKE,			/* 48 */
-	PW_EAP_IKEV2,			/* 49 */
-	PW_EAP_AKA2,			/* 50 */
-	PW_EAP_GPSK,			/* 51 */
-	PW_EAP_PWD,			/* 52 */
-	PW_EAP_EKE,			/* 53 */
-	PW_EAP_PT,			/* 54 */
-	PW_EAP_TEAP,			/* 55 */
-	PW_EAP_MAX_TYPES		/* 56 - for validation */
+	FR_EAP_INVALID = 0,		/* 0 */
+	FR_EAP_IDENTITY,		/* 1 */
+	FR_EAP_NOTIFICATION,		/* 2 */
+	FR_EAP_NAK,			/* 3 */
+	FR_EAP_MD5,			/* 4 */
+	FR_EAP_OTP,			/* 5 */
+	FR_EAP_GTC,			/* 6 */
+	FR_EAP_7,			/* 7  - unused */
+	FR_EAP_8,			/* 8  - unused */
+	FR_EAP_RSA_PUBLIC_KEY,		/* 9 */
+	FR_EAP_DSS_UNILATERAL,		/* 10 */
+	FR_EAP_KEA,			/* 11 */
+	FR_EAP_KEA_VALIDATE,		/* 12 */
+	FR_EAP_TLS,			/* 13 */
+	FR_EAP_DEFENDER_TOKEN,		/* 14 */
+	FR_EAP_RSA_SECURID,		/* 15 */
+	FR_EAP_ARCOT_SYSTEMS,		/* 16 */
+	FR_EAP_LEAP,			/* 17 */
+	FR_EAP_SIM,			/* 18 */
+	FR_EAP_SRP_SHA1,		/* 19 */
+	FR_EAP_20,			/* 20 - unassigned */
+	FR_EAP_TTLS,			/* 21 */
+	FR_EAP_REMOTE_ACCESS_SERVICE,	/* 22 */
+	FR_EAP_AKA,			/* 23 */
+	FR_EAP_3COM,			/* 24 - should this be EAP-HP now? */
+	FR_EAP_PEAP,			/* 25 */
+	FR_EAP_MSCHAPV2,		/* 26 */
+	FR_EAP_MAKE,			/* 27 */
+	FR_EAP_CRYPTOCARD,		/* 28 */
+	FR_EAP_CISCO_MSCHAPV2,		/* 29 */
+	FR_EAP_DYNAMID,			/* 30 */
+	FR_EAP_ROB,			/* 31 */
+	FR_EAP_POTP,			/* 32 */
+	FR_EAP_MS_ATLV,			/* 33 */
+	FR_EAP_SENTRINET,		/* 34 */
+	FR_EAP_ACTIONTEC,		/* 35 */
+	FR_EAP_COGENT_BIOMETRIC,	/* 36 */
+	FR_EAP_AIRFORTRESS,		/* 37 */
+	FR_EAP_TNC,			/* 38 - fixme conflicts with HTTP DIGEST */
+//	FR_EAP_HTTP_DIGEST,		/* 38 */
+	FR_EAP_SECURISUITE,		/* 39 */
+	FR_EAP_DEVICECONNECT,		/* 40 */
+	FR_EAP_SPEKE,			/* 41 */
+	FR_EAP_MOBAC,			/* 42 */
+	FR_EAP_FAST,			/* 43 */
+	FR_EAP_ZONELABS,		/* 44 */
+	FR_EAP_LINK,			/* 45 */
+	FR_EAP_PAX,			/* 46 */
+	FR_EAP_PSK,			/* 47 */
+	FR_EAP_SAKE,			/* 48 */
+	FR_EAP_IKEV2,			/* 49 */
+	FR_EAP_AKA2,			/* 50 */
+	FR_EAP_GPSK,			/* 51 */
+	FR_EAP_PWD,			/* 52 */
+	FR_EAP_EKE,			/* 53 */
+	FR_EAP_PT,			/* 54 */
+	FR_EAP_TEAP,			/* 55 */
+	FR_EAP_MAX_TYPES		/* 56 - for validation */
 } eap_type_t;
 
-#define PW_EAP_EXPANDED_TYPE	(254)
+#define FR_EAP_EXPANDED_TYPE	(254)
 
 /** EAP-Type specific data
  */

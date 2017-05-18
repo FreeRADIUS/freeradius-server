@@ -160,12 +160,12 @@ static int mod_bootstrap(CONF_SECTION *cs, void *instance)
 		if (!strcmp(name, TLS_CONFIG_SECTION)) continue;
 
 		method = eap_name2type(name);
-		if (method == PW_EAP_INVALID) {
+		if (method == FR_EAP_INVALID) {
 			cf_log_err_cs(cs, "Unknown EAP type %s", name);
 			return -1;
 		}
 
-		if ((method < PW_EAP_MD5) || (method >= PW_EAP_MAX_TYPES)) {
+		if ((method < FR_EAP_MD5) || (method >= FR_EAP_MAX_TYPES)) {
 			cf_log_err_cs(cs, "Invalid EAP method %s (unsupported)", name);
 			return -1;
 		}
@@ -184,10 +184,10 @@ static int mod_bootstrap(CONF_SECTION *cs, void *instance)
 		 *	have EAP without the TLS types.
 		 */
 		switch (method) {
-		case PW_EAP_TLS:
-		case PW_EAP_TTLS:
-		case PW_EAP_PEAP:
-		case PW_EAP_PWD:
+		case FR_EAP_TLS:
+		case FR_EAP_TTLS:
+		case FR_EAP_PEAP:
+		case FR_EAP_PWD:
 			WARN("Ignoring EAP method %s because we don't have OpenSSL support", name);
 			continue;
 
@@ -215,7 +215,7 @@ static int mod_bootstrap(CONF_SECTION *cs, void *instance)
 	 *	Ensure that the default EAP type is loaded.
 	 */
 	method = eap_name2type(inst->config.default_method_name);
-	if (method == PW_EAP_INVALID) {
+	if (method == FR_EAP_INVALID) {
 		cf_log_err_by_name(cs, "default_eap_type", "Unknown EAP type %s",
 				   inst->config.default_method_name);
 		return -1;
@@ -240,7 +240,7 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 {
 	unsigned int i;
 	VALUE_PAIR *vp;
-	eap_type_t method = PW_EAP_INVALID;
+	eap_type_t method = FR_EAP_INVALID;
 
 	/*
 	 *	The NAK data is the preferred EAP type(s) of
@@ -253,14 +253,14 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 	if (!nak->data) {
 		REDEBUG("Peer sent empty (invalid) NAK. Can't select method to continue with");
 
-		return PW_EAP_INVALID;
+		return FR_EAP_INVALID;
 	}
 
 	/*
 	 *	Pick one type out of the one they asked for,
 	 *	as they may have asked for many.
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, PW_EAP_TYPE, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, FR_EAP_TYPE, TAG_ANY);
 	for (i = 0; i < nak->length; i++) {
 		/*
 		 *	Type 0 is valid, and means there are no
@@ -269,20 +269,20 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 		if (nak->data[i] == 0) {
 			RDEBUG("Peer NAK'd indicating it is not willing to continue ");
 
-			return PW_EAP_INVALID;
+			return FR_EAP_INVALID;
 		}
 
 		/*
 		 *	It is invalid to request identity,
 		 *	notification & nak in nak.
 		 */
-		if (nak->data[i] < PW_EAP_MD5) {
+		if (nak->data[i] < FR_EAP_MD5) {
 			REDEBUG("Peer NAK'd asking for bad type %s (%d)", eap_type2name(nak->data[i]), nak->data[i]);
 
-			return PW_EAP_INVALID;
+			return FR_EAP_INVALID;
 		}
 
-		if ((nak->data[i] >= PW_EAP_MAX_TYPES) ||
+		if ((nak->data[i] >= FR_EAP_MAX_TYPES) ||
 		    !inst->methods[nak->data[i]]) {
 			RDEBUG2("Peer NAK'd asking for unsupported EAP type %s (%d), skipping...",
 				eap_type2name(nak->data[i]),
@@ -330,7 +330,7 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 		break;
 	}
 
-	if (method == PW_EAP_INVALID) {
+	if (method == FR_EAP_INVALID) {
 		REDEBUG("No mutually acceptable types found");
 	}
 
@@ -367,7 +367,7 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session
 	/*
 	 *	Don't trust anyone.
 	 */
-	if ((type->num == 0) || (type->num >= PW_EAP_MAX_TYPES)) {
+	if ((type->num == 0) || (type->num >= FR_EAP_MAX_TYPES)) {
 		REDEBUG("Peer sent EAP type number %d, which is outside known range", type->num);
 
 		return RLM_MODULE_INVALID;
@@ -397,11 +397,11 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session
 	 *	Figure out what to do.
 	 */
 	switch (type->num) {
-	case PW_EAP_IDENTITY:
+	case FR_EAP_IDENTITY:
 		/*
 		 *	Allow per-user configuration of EAP types.
 		 */
-		vp = fr_pair_find_by_num(eap_session->request->control, 0, PW_EAP_TYPE, TAG_ANY);
+		vp = fr_pair_find_by_num(eap_session->request->control, 0, FR_EAP_TYPE, TAG_ANY);
 		if (vp) {
 			RDEBUG2("Setting method from &control:EAP-Type");
 			next = vp->vp_uint32;
@@ -410,7 +410,7 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session
 		/*
 		 *	Ensure it's valid.
 		 */
-		if ((next < PW_EAP_MD5) || (next >= PW_EAP_MAX_TYPES) || (!inst->methods[next])) {
+		if ((next < FR_EAP_MD5) || (next >= FR_EAP_MAX_TYPES) || (!inst->methods[next])) {
 			REDEBUG2("Tried to start unsupported EAP type %s (%d)",
 				 eap_type2name(next), next);
 			return RLM_MODULE_INVALID;
@@ -420,15 +420,15 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session
 		/*
 		 *	If any of these fail, we messed badly somewhere
 		 */
-		rad_assert(next >= PW_EAP_MD5);
-		rad_assert(next < PW_EAP_MAX_TYPES);
+		rad_assert(next >= FR_EAP_MD5);
+		rad_assert(next < FR_EAP_MAX_TYPES);
 		rad_assert(inst->methods[next]);
 
 		eap_session->process = inst->methods[next]->submodule->session_init;
 		eap_session->type = next;
 		goto module_call;
 
-	case PW_EAP_NAK:
+	case FR_EAP_NAK:
 		/*
 		 *	Delete old data, if necessary.  If we called a method
 		 *	before, and it initialized itself, we need to free
@@ -493,7 +493,7 @@ static rlm_rcode_t mod_authenticate(void *instance, UNUSED void *thread, REQUEST
 	eap_packet_raw_t	*eap_packet;
 	rlm_rcode_t		rcode;
 
-	if (!fr_pair_find_by_num(request->packet->vps, 0, PW_EAP_MESSAGE, TAG_ANY)) {
+	if (!fr_pair_find_by_num(request->packet->vps, 0, FR_EAP_MESSAGE, TAG_ANY)) {
 		REDEBUG("You set 'Auth-Type = EAP' for a request that does not contain an EAP-Message attribute!");
 		return RLM_MODULE_INVALID;
 	}
@@ -547,8 +547,8 @@ static rlm_rcode_t mod_authenticate(void *instance, UNUSED void *thread, REQUEST
 	 *	Add to the list only if it is EAP-Request, OR if
 	 *	it's LEAP, and a response.
 	 */
-	if (((eap_session->this_round->request->code == PW_EAP_REQUEST) &&
-	    (eap_session->this_round->request->type.num >= PW_EAP_MD5)) ||
+	if (((eap_session->this_round->request->code == FR_EAP_REQUEST) &&
+	    (eap_session->this_round->request->type.num >= FR_EAP_MD5)) ||
 
 		/*
 		 *	LEAP is a little different.  At Stage 4,
@@ -559,9 +559,9 @@ static rlm_rcode_t mod_authenticate(void *instance, UNUSED void *thread, REQUEST
 		 *	At stage 6, LEAP sends an EAP-Response, which
 		 *	isn't put into the list.
 		 */
-	    ((eap_session->this_round->response->code == PW_EAP_RESPONSE) &&
-	     (eap_session->this_round->response->type.num == PW_EAP_LEAP) &&
-	     (eap_session->this_round->request->code == PW_EAP_SUCCESS) &&
+	    ((eap_session->this_round->response->code == FR_EAP_RESPONSE) &&
+	     (eap_session->this_round->response->type.num == FR_EAP_LEAP) &&
+	     (eap_session->this_round->request->code == FR_EAP_SUCCESS) &&
 	     (eap_session->this_round->request->type.num == 0))) {
 		talloc_free(eap_session->prev_round);
 		eap_session->prev_round = eap_session->this_round;
@@ -576,13 +576,13 @@ static rlm_rcode_t mod_authenticate(void *instance, UNUSED void *thread, REQUEST
 	 *	says that we MUST include a User-Name attribute in the
 	 *	Access-Accept.
 	 */
-	if ((request->reply->code == PW_CODE_ACCESS_ACCEPT) && request->username) {
+	if ((request->reply->code == FR_CODE_ACCESS_ACCEPT) && request->username) {
 		VALUE_PAIR *vp;
 
 		/*
 		 *	Doesn't exist, add it in.
 		 */
-		vp = fr_pair_find_by_num(request->reply->vps, 0, PW_USER_NAME, TAG_ANY);
+		vp = fr_pair_find_by_num(request->reply->vps, 0, FR_USER_NAME, TAG_ANY);
 		if (!vp) {
 			vp = fr_pair_copy(request->reply, request->username);
 			fr_pair_add(&request->reply->vps, vp);
@@ -660,8 +660,8 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 	 *	each EAP sub-module to look for eap_session->request->username,
 	 *	and to get excited if it doesn't appear.
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, PW_AUTH_TYPE, TAG_ANY);
-	if ((!vp) || (vp->vp_uint32 != PW_AUTH_TYPE_REJECT)) {
+	vp = fr_pair_find_by_num(request->control, 0, FR_AUTH_TYPE, TAG_ANY);
+	if ((!vp) || (vp->vp_uint32 != FR_AUTH_TYPE_REJECT)) {
 		vp = pair_make_config("Auth-Type", inst->name, T_OP_EQ);
 		if (!vp) {
 			RDEBUG2("Failed to create Auth-Type %s: %s\n",
@@ -746,8 +746,8 @@ static rlm_rcode_t mod_post_proxy(void *instance, UNUSED void *thread, REQUEST *
 		 *	Add to the list only if it is EAP-Request, OR if
 		 *	it's LEAP, and a response.
 		 */
-		if ((eap_session->this_round->request->code == PW_EAP_REQUEST) &&
-		    (eap_session->this_round->request->type.num >= PW_EAP_MD5)) {
+		if ((eap_session->this_round->request->code == FR_EAP_REQUEST) &&
+		    (eap_session->this_round->request->type.num >= FR_EAP_MD5)) {
 			talloc_free(eap_session->prev_round);
 			eap_session->prev_round = eap_session->this_round;
 			eap_session->this_round = NULL;
@@ -761,11 +761,11 @@ static rlm_rcode_t mod_post_proxy(void *instance, UNUSED void *thread, REQUEST *
 		 *	says that we MUST include a User-Name attribute in the
 		 *	Access-Accept.
 		 */
-		if ((request->reply->code == PW_CODE_ACCESS_ACCEPT) && request->username) {
+		if ((request->reply->code == FR_CODE_ACCESS_ACCEPT) && request->username) {
 			/*
 			 *	Doesn't exist, add it in.
 			 */
-			vp = fr_pair_find_by_num(request->reply->vps, 0, PW_USER_NAME, TAG_ANY);
+			vp = fr_pair_find_by_num(request->reply->vps, 0, FR_USER_NAME, TAG_ANY);
 			if (!vp) {
 				pair_make_reply("User-Name", request->username->vp_strvalue, T_OP_EQ);
 			}
@@ -872,16 +872,16 @@ static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *r
 	/*
 	 *	Only build a failure message if something previously rejected the request
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, PW_POST_AUTH_TYPE, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, FR_POST_AUTH_TYPE, TAG_ANY);
 
-	if (!vp || (vp->vp_uint32 != PW_POST_AUTH_TYPE_REJECT)) return RLM_MODULE_NOOP;
+	if (!vp || (vp->vp_uint32 != FR_POST_AUTH_TYPE_REJECT)) return RLM_MODULE_NOOP;
 
-	if (!fr_pair_find_by_num(request->packet->vps, 0, PW_EAP_MESSAGE, TAG_ANY)) {
+	if (!fr_pair_find_by_num(request->packet->vps, 0, FR_EAP_MESSAGE, TAG_ANY)) {
 		RDEBUG3("Request didn't contain an EAP-Message, not inserting EAP-Failure");
 		return RLM_MODULE_NOOP;
 	}
 
-	if (fr_pair_find_by_num(request->reply->vps, 0, PW_EAP_MESSAGE, TAG_ANY)) {
+	if (fr_pair_find_by_num(request->reply->vps, 0, FR_EAP_MESSAGE, TAG_ANY)) {
 		RDEBUG3("Reply already contained an EAP-Message, not inserting EAP-Failure");
 		return RLM_MODULE_NOOP;
 	}
@@ -915,9 +915,9 @@ static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *r
 	 *	Make sure there's a message authenticator attribute in the response
 	 *	RADIUS protocol code will calculate the correct value later...
 	 */
-	vp = fr_pair_find_by_num(request->reply->vps, 0, PW_MESSAGE_AUTHENTICATOR, TAG_ANY);
+	vp = fr_pair_find_by_num(request->reply->vps, 0, FR_MESSAGE_AUTHENTICATOR, TAG_ANY);
 	if (!vp) {
-		vp = fr_pair_afrom_num(request->reply, 0, PW_MESSAGE_AUTHENTICATOR);
+		vp = fr_pair_afrom_num(request->reply, 0, FR_MESSAGE_AUTHENTICATOR);
 		fr_pair_value_memsteal(vp, talloc_zero_array(vp, uint8_t, AUTH_VECTOR_LEN));
 		fr_pair_add(&(request->reply->vps), vp);
 	}

@@ -231,7 +231,7 @@ static rlm_rcode_t mod_session_init(void *type_arg, eap_session_t *eap_session)
 	 *	EAP-TLS-Require-Client-Cert attribute will override
 	 *	the require_client_cert configuration option.
 	 */
-	vp = fr_pair_find_by_num(eap_session->request->control, 0, PW_EAP_TLS_REQUIRE_CLIENT_CERT, TAG_ANY);
+	vp = fr_pair_find_by_num(eap_session->request->control, 0, FR_EAP_TLS_REQUIRE_CLIENT_CERT, TAG_ANY);
 	if (vp) {
 		client_cert = vp->vp_uint32 ? true : false;
 	} else {
@@ -313,7 +313,7 @@ static int mod_instantiate(UNUSED rlm_eap_config_t const *config, void *instance
 	 */
 	if (!inst->inner_eap_module) inst->inner_eap_module = "eap";
 
-	dv = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, PW_AUTH_TYPE), inst->inner_eap_module);
+	dv = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE), inst->inner_eap_module);
 	if (!dv) {
 		WARN("Failed to find 'Auth-Type %s' section in virtual server %s.  "
 		     "The server cannot proxy inner-tunnel EAP packets",

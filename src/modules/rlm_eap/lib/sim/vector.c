@@ -43,7 +43,7 @@ static int vector_gsm_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps,
 	/*
 	 *	Generate a new RAND value, and derive Kc and SRES from Ki
 	 */
-	vp = fr_pair_find_by_child_num(vps, dict_sim_root, PW_SIM_KI, TAG_ANY);
+	vp = fr_pair_find_by_child_num(vps, dict_sim_root, FR_SIM_KI, TAG_ANY);
 	if (!vp) {
 		RDEBUG3("No &control:SIM-KI found, not generating triplets locally");
 		return 1;
@@ -53,7 +53,7 @@ static int vector_gsm_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps,
 	 *	Check to see if have a Ki for the IMSI, this allows us to generate the rest
 	 *	of the triplets.
 	 */
-	version = fr_pair_find_by_child_num(vps, dict_sim_root, PW_SIM_ALGO_VERSION, TAG_ANY);
+	version = fr_pair_find_by_child_num(vps, dict_sim_root, FR_SIM_ALGO_VERSION, TAG_ANY);
 	if (!version) {
 		RDEBUG3("No &control:SIM-ALGO-VERSION found, not generating triplets locally");
 		return 1;
@@ -104,7 +104,7 @@ static int vector_gsm_from_triplets(eap_session_t *eap_session, VALUE_PAIR *vps,
 	int		i;
 
 	for (i = 0, fr_pair_cursor_init(&cursor, &vps);
-	     (i <= idx) && (kc = fr_pair_cursor_next_by_child_num(&cursor, dict_sim_root, PW_EAP_SIM_KC, TAG_ANY)); i++);
+	     (i <= idx) && (kc = fr_pair_cursor_next_by_child_num(&cursor, dict_sim_root, FR_EAP_SIM_KC, TAG_ANY)); i++);
 	if (!kc) {
 		RDEBUG3("No &control:EAP-SIM-KC[%i] attribute found, not using GSM triplets", idx);
 		return 1;
@@ -116,7 +116,7 @@ static int vector_gsm_from_triplets(eap_session_t *eap_session, VALUE_PAIR *vps,
 	}
 
 	for (i = 0, fr_pair_cursor_init(&cursor, &vps);
-	     (i <= idx) && (rand = fr_pair_cursor_next_by_child_num(&cursor, dict_sim_root, PW_EAP_SIM_RAND, TAG_ANY));
+	     (i <= idx) && (rand = fr_pair_cursor_next_by_child_num(&cursor, dict_sim_root, FR_EAP_SIM_RAND, TAG_ANY));
 	     i++);
 	if (!rand) {
 		RDEBUG3("No &control:EAP-SIM-Rand[%i] attribute found, not using GSM triplets", idx);
@@ -129,7 +129,7 @@ static int vector_gsm_from_triplets(eap_session_t *eap_session, VALUE_PAIR *vps,
 	}
 
 	for (i = 0, fr_pair_cursor_init(&cursor, &vps);
-	     (i <= idx) && (sres = fr_pair_cursor_next_by_child_num(&cursor, dict_sim_root, PW_EAP_SIM_SRES, TAG_ANY)); i++);
+	     (i <= idx) && (sres = fr_pair_cursor_next_by_child_num(&cursor, dict_sim_root, FR_EAP_SIM_SRES, TAG_ANY)); i++);
 	if (!sres) {
 		RDEBUG3("No &control:EAP-SIM-SRES[%i] attribute found, not using GSM triplets", idx);
 		return 1;
@@ -174,7 +174,7 @@ static int vector_gsm_from_quintuplets(eap_session_t *eap_session, VALUE_PAIR *v
 	 *	Fetch CK
 	 */
 	for (i = 0, fr_pair_cursor_init(&cursor, &vps);
-	     (i <= idx) && (ck = fr_pair_cursor_next_by_child_num(&cursor, dict_aka_root, PW_EAP_AKA_CK, TAG_ANY)); i++);
+	     (i <= idx) && (ck = fr_pair_cursor_next_by_child_num(&cursor, dict_aka_root, FR_EAP_AKA_CK, TAG_ANY)); i++);
 	if (!ck) {
 		RDEBUG3("No &control:EAP-AKA-CK[%i] attribute found, not using quintuplet derivation", idx);
 		return 1;
@@ -184,7 +184,7 @@ static int vector_gsm_from_quintuplets(eap_session_t *eap_session, VALUE_PAIR *v
 	 *	Fetch IK
 	 */
 	for (i = 0, fr_pair_cursor_init(&cursor, &vps);
-	     (i <= idx) && (ik = fr_pair_cursor_next_by_child_num(&cursor, dict_aka_root, PW_EAP_AKA_IK, TAG_ANY)); i++);
+	     (i <= idx) && (ik = fr_pair_cursor_next_by_child_num(&cursor, dict_aka_root, FR_EAP_AKA_IK, TAG_ANY)); i++);
 	if (!ik) {
 		RDEBUG3("No &control:EAP-AKA-IK[%i] attribute found, not using quintuplet derivation", idx);
 		return 1;
@@ -194,7 +194,7 @@ static int vector_gsm_from_quintuplets(eap_session_t *eap_session, VALUE_PAIR *v
 	 *	Fetch RAND
 	 */
 	for (i = 0, fr_pair_cursor_init(&cursor, &vps); (i <= idx) &&
-	     (rand = fr_pair_cursor_next_by_child_num(&cursor, dict_aka_root, PW_EAP_AKA_RAND, TAG_ANY)); i++);
+	     (rand = fr_pair_cursor_next_by_child_num(&cursor, dict_aka_root, FR_EAP_AKA_RAND, TAG_ANY)); i++);
 	if (!rand) {
 		RDEBUG3("No &control:EAP-AKA-Rand[%i] attribute found, not using quintuplet derivation", idx);
 		return 1;
@@ -211,7 +211,7 @@ static int vector_gsm_from_quintuplets(eap_session_t *eap_session, VALUE_PAIR *v
 	 *	Fetch XRES
 	 */
 	for (i = 0, fr_pair_cursor_init(&cursor, &vps);
-	     (i <= idx) && (xres = fr_pair_cursor_next_by_child_num(&cursor, dict_aka_root, PW_EAP_AKA_XRES, TAG_ANY)); i++);
+	     (i <= idx) && (xres = fr_pair_cursor_next_by_child_num(&cursor, dict_aka_root, FR_EAP_AKA_XRES, TAG_ANY)); i++);
 	if (!xres) {
 		RDEBUG3("No &control:EAP-AKA-XRES[%i] attribute found, not using quintuplet derivation", idx);
 		return 1;
@@ -343,7 +343,7 @@ static int vector_umts_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps,
 	/*
 	 *	Generate a new RAND value, and derive Kc and SRES from Ki
 	 */
-	vp = fr_pair_find_by_num(vps, 0, PW_SIM_KI, TAG_ANY);
+	vp = fr_pair_find_by_num(vps, 0, FR_SIM_KI, TAG_ANY);
 	if (!vp) {
 		RDEBUG3("No &control:aka-KI found, not generating triplets locally");
 		return 1;
@@ -353,7 +353,7 @@ static int vector_umts_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps,
 	 *	Check to see if have a Ki for the IMSI, this allows us to generate the rest
 	 *	of the triplets.
 	 */
-	version = fr_pair_find_by_num(vps, 0, PW_SIM_ALGO_VERSION, TAG_ANY);
+	version = fr_pair_find_by_num(vps, 0, FR_SIM_ALGO_VERSION, TAG_ANY);
 	if (!version) {
 		RDEBUG3("No &control:SIM-ALGO-VERSION found, not generating triplets locally");
 		return 1;
@@ -414,9 +414,9 @@ static int vector_umts_from_quintuplets(eap_session_t *eap_session, VALUE_PAIR *
 	/*
 	 *	Fetch AUTN
 	 */
-	autn = fr_pair_find_by_child_num(vps, dict_aka_root, PW_EAP_AKA_AUTN, TAG_ANY);
+	autn = fr_pair_find_by_child_num(vps, dict_aka_root, FR_EAP_AKA_AUTN, TAG_ANY);
 	if (!autn) {
-		RDEBUG3("No &control:PW_EAP_AKA_AUTN attribute found, not using UMTS quintuplets");
+		RDEBUG3("No &control:FR_EAP_AKA_AUTN attribute found, not using UMTS quintuplets");
 		return 1;
 	}
 
@@ -429,7 +429,7 @@ static int vector_umts_from_quintuplets(eap_session_t *eap_session, VALUE_PAIR *
 	/*
 	 *	Fetch CK
 	 */
-	ck = fr_pair_find_by_child_num(vps, dict_aka_root, PW_EAP_AKA_CK, TAG_ANY);
+	ck = fr_pair_find_by_child_num(vps, dict_aka_root, FR_EAP_AKA_CK, TAG_ANY);
 	if (!ck) {
 		RDEBUG3("No &control:EAP-AKA-CK attribute found, not using UMTS quintuplets");
 		return 1;
@@ -444,7 +444,7 @@ static int vector_umts_from_quintuplets(eap_session_t *eap_session, VALUE_PAIR *
 	/*
 	 *	Fetch IK
 	 */
-	ik = fr_pair_find_by_child_num(vps, dict_aka_root, PW_EAP_AKA_IK, TAG_ANY);
+	ik = fr_pair_find_by_child_num(vps, dict_aka_root, FR_EAP_AKA_IK, TAG_ANY);
 	if (!ik) {
 		RDEBUG3("No &control:EAP-AKA-IK attribute found, not using UMTS quintuplets");
 		return 1;
@@ -459,7 +459,7 @@ static int vector_umts_from_quintuplets(eap_session_t *eap_session, VALUE_PAIR *
 	/*
 	 *	Fetch RAND
 	 */
-	rand = fr_pair_find_by_child_num(vps, dict_aka_root, PW_EAP_AKA_RAND, TAG_ANY);
+	rand = fr_pair_find_by_child_num(vps, dict_aka_root, FR_EAP_AKA_RAND, TAG_ANY);
 	if (!rand) {
 		RDEBUG3("No &control:EAP-AKA-Rand attribute found, not using quintuplet derivation");
 		return 1;
@@ -474,7 +474,7 @@ static int vector_umts_from_quintuplets(eap_session_t *eap_session, VALUE_PAIR *
 	/*
 	 *	Fetch XRES
 	 */
-	xres = fr_pair_find_by_child_num(vps, dict_aka_root, PW_EAP_AKA_XRES, TAG_ANY);
+	xres = fr_pair_find_by_child_num(vps, dict_aka_root, FR_EAP_AKA_XRES, TAG_ANY);
 	if (!xres) {
 		RDEBUG3("No &control:EAP-AKA-XRES attribute found, not using UMTS quintuplets");
 		return 1;

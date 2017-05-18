@@ -54,7 +54,7 @@ static void auth_message(char const *msg, REQUEST *request, int goodpass)
 	 * Get the correct username based on the configured value
 	 */
 	if (!log_stripped_names) {
-		username = fr_pair_find_by_num(request->packet->vps, 0, PW_USER_NAME, TAG_ANY);
+		username = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_NAME, TAG_ANY);
 	} else {
 		username = request->username;
 	}
@@ -75,14 +75,14 @@ static void auth_message(char const *msg, REQUEST *request, int goodpass)
 		if (!request->password) {
 			VALUE_PAIR *auth_type;
 
-			auth_type = fr_pair_find_by_num(request->control, 0, PW_AUTH_TYPE, TAG_ANY);
+			auth_type = fr_pair_find_by_num(request->control, 0, FR_AUTH_TYPE, TAG_ANY);
 			if (auth_type) {
 				snprintf(clean_password, sizeof(clean_password), "<via Auth-Type = %s>",
 					 fr_dict_enum_alias_by_value(NULL, auth_type->da, &auth_type->data));
 			} else {
 				strcpy(clean_password, "<no User-Password attribute>");
 			}
-		} else if (fr_pair_find_by_num(request->packet->vps, 0, PW_CHAP_PASSWORD, TAG_ANY)) {
+		} else if (fr_pair_find_by_num(request->packet->vps, 0, FR_CHAP_PASSWORD, TAG_ANY)) {
 			strcpy(clean_password, "<CHAP-Password>");
 		} else {
 			fr_snprint(clean_password, sizeof(clean_password),
@@ -305,12 +305,12 @@ static fr_transport_final_t auth_process(REQUEST *request)
 
 		request->component = "radius";
 
-		da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_TYPE);
+		da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
 		rad_assert(da != NULL);
 		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->packet->code));
 		if (!dv) {
 			REDEBUG("Failed to find value for &request:Packet-Type");
-			request->reply->code = PW_CODE_ACCESS_REJECT;
+			request->reply->code = FR_CODE_ACCESS_REJECT;
 			goto setup_send;
 		}
 
@@ -318,15 +318,15 @@ static fr_transport_final_t auth_process(REQUEST *request)
 		if (!unlang) unlang = cf_subsection_find_name2(request->server_cs, "recv", "*");
 		if (!unlang) {
 			REDEBUG("Failed to find 'recv' section");
-			request->reply->code = PW_CODE_ACCESS_REJECT;
+			request->reply->code = FR_CODE_ACCESS_REJECT;
 			goto setup_send;
 		}
 
 		/*
 		 *	Do various setups.
 		 */
-		request->username = fr_pair_find_by_num(request->packet->vps, 0, PW_USER_NAME, TAG_ANY);
-		request->password = fr_pair_find_by_num(request->packet->vps, 0, PW_USER_PASSWORD, TAG_ANY);
+		request->username = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_NAME, TAG_ANY);
+		request->password = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_PASSWORD, TAG_ANY);
 
 		/*
 		 *	Grab the VPS and data associated with the State attribute.
@@ -366,7 +366,7 @@ static fr_transport_final_t auth_process(REQUEST *request)
 		case RLM_MODULE_REJECT:
 		case RLM_MODULE_USERLOCK:
 		default:
-			if ((vp = fr_pair_find_by_num(request->packet->vps, 0, PW_MODULE_FAILURE_MESSAGE, TAG_ANY)) != NULL) {
+			if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_MODULE_FAILURE_MESSAGE, TAG_ANY)) != NULL) {
 				char msg[FR_MAX_STRING_LEN + 16];
 
 				snprintf(msg, sizeof(msg), "Invalid user (%s)",
@@ -376,7 +376,7 @@ static fr_transport_final_t auth_process(REQUEST *request)
 				auth_message("Invalid user", request, 0);
 			}
 
-			request->reply->code = PW_CODE_ACCESS_REJECT;
+			request->reply->code = FR_CODE_ACCESS_REJECT;
 			goto setup_send;
 		}
 
@@ -385,7 +385,7 @@ static fr_transport_final_t auth_process(REQUEST *request)
 		 */
 		fr_pair_cursor_init(&cursor, &request->control);
 		auth_type = NULL;
-		while ((vp = fr_pair_cursor_next_by_num(&cursor, 0, PW_AUTH_TYPE, TAG_ANY)) != NULL) {
+		while ((vp = fr_pair_cursor_next_by_num(&cursor, 0, FR_AUTH_TYPE, TAG_ANY)) != NULL) {
 			if (!auth_type) {
 				auth_type = vp;
 				continue;
@@ -400,22 +400,22 @@ static fr_transport_final_t auth_process(REQUEST *request)
 		 */
 		if (!auth_type) {
 			REDEBUG2("No Auth-Type available: rejecting the user.");
-			request->reply->code = PW_CODE_ACCESS_REJECT;
+			request->reply->code = FR_CODE_ACCESS_REJECT;
 			goto setup_send;
 		}
 
 		/*
 		 *	Handle hard-coded Accept and Reject.
 		 */
-		if (auth_type->vp_uint32 == PW_AUTH_TYPE_ACCEPT) {
+		if (auth_type->vp_uint32 == FR_AUTH_TYPE_ACCEPT) {
 			RDEBUG2("Auth-Type = Accept, allowing user");
-			request->reply->code = PW_CODE_ACCESS_ACCEPT;
+			request->reply->code = FR_CODE_ACCESS_ACCEPT;
 			goto setup_send;
 		}
 
-		if (auth_type->vp_uint32 == PW_AUTH_TYPE_REJECT) {
+		if (auth_type->vp_uint32 == FR_AUTH_TYPE_REJECT) {
 			RDEBUG2("Auth-Type = Reject, rejecting user");
-			request->reply->code = PW_CODE_ACCESS_REJECT;
+			request->reply->code = FR_CODE_ACCESS_REJECT;
 			goto setup_send;
 		}
 
@@ -426,14 +426,14 @@ static fr_transport_final_t auth_process(REQUEST *request)
 		dv = fr_dict_enum_by_value(NULL, vp->da, &vp->data);
 		if (!dv) {
 			REDEBUG2("Unknown Auth-Type %d found: rejecting the user", vp->vp_uint32);
-			request->reply->code = PW_CODE_ACCESS_REJECT;
+			request->reply->code = FR_CODE_ACCESS_REJECT;
 			goto setup_send;
 		}
 
 		unlang = cf_subsection_find_name2(request->server_cs, "process", dv->alias);
 		if (!unlang) {
 			REDEBUG2("No 'process %s' section found: rejecting the user", dv->alias);
-			request->reply->code = PW_CODE_ACCESS_REJECT;
+			request->reply->code = FR_CODE_ACCESS_REJECT;
 			goto setup_send;
 		}
 
@@ -468,9 +468,9 @@ static fr_transport_final_t auth_process(REQUEST *request)
 		case RLM_MODULE_USERLOCK:
 		default:
 			RDEBUG2("Failed to authenticate the user");
-			request->reply->code = PW_CODE_ACCESS_REJECT;
+			request->reply->code = FR_CODE_ACCESS_REJECT;
 
-			if ((vp = fr_pair_find_by_num(request->packet->vps, 0, PW_MODULE_FAILURE_MESSAGE, TAG_ANY)) != NULL){
+			if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_MODULE_FAILURE_MESSAGE, TAG_ANY)) != NULL){
 				char msg[FR_MAX_STRING_LEN+19];
 
 				snprintf(msg, sizeof(msg), "Login incorrect (%s)",
@@ -486,7 +486,7 @@ static fr_transport_final_t auth_process(REQUEST *request)
 			if (request->password) {
 				VERIFY_VP(request->password);
 
-				if ((rad_debug_lvl > 1) && (request->password->da->attr == PW_USER_PASSWORD)) {
+				if ((rad_debug_lvl > 1) && (request->password->da->attr == FR_USER_PASSWORD)) {
 					uint8_t const *p;
 
 					p = (uint8_t const *) request->password->vp_strvalue;
@@ -506,7 +506,7 @@ static fr_transport_final_t auth_process(REQUEST *request)
 			goto setup_send;
 
 		case RLM_MODULE_OK:
-			request->reply->code = PW_CODE_ACCESS_ACCEPT;
+			request->reply->code = FR_CODE_ACCESS_ACCEPT;
 			break;
 
 		case RLM_MODULE_HANDLED:
@@ -516,7 +516,7 @@ static fr_transport_final_t auth_process(REQUEST *request)
 		/*
 		 *	Allow for over-ride of reply code.
 		 */
-		vp = fr_pair_find_by_num(request->reply->vps, 0, PW_PACKET_TYPE, TAG_ANY);
+		vp = fr_pair_find_by_num(request->reply->vps, 0, FR_PACKET_TYPE, TAG_ANY);
 		if (vp) {
 			if (vp->vp_uint32 == 256) {
 				request->reply->code = 0;
@@ -525,8 +525,8 @@ static fr_transport_final_t auth_process(REQUEST *request)
 			}
 		}
 
-		if (request->reply->code == PW_CODE_ACCESS_ACCEPT) {
-			if ((vp = fr_pair_find_by_num(request->packet->vps, 0, PW_MODULE_SUCCESS_MESSAGE, TAG_ANY)) != NULL){
+		if (request->reply->code == FR_CODE_ACCESS_ACCEPT) {
+			if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_MODULE_SUCCESS_MESSAGE, TAG_ANY)) != NULL){
 				char msg[FR_MAX_STRING_LEN+12];
 
 				snprintf(msg, sizeof(msg), "Login OK (%s)",
@@ -538,7 +538,7 @@ static fr_transport_final_t auth_process(REQUEST *request)
 		}
 
 	setup_send:
-		if (!da) da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_TYPE);
+		if (!da) da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
 		rad_assert(da != NULL);
 
 		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
@@ -582,14 +582,14 @@ static fr_transport_final_t auth_process(REQUEST *request)
 			 *	If we over-ride an ACK with a NAK, run
 			 *	the NAK section.
 			 */
-			if (request->reply->code != PW_CODE_ACCESS_REJECT) {
-				if (!da) da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_TYPE);
+			if (request->reply->code != FR_CODE_ACCESS_REJECT) {
+				if (!da) da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
 				rad_assert(da != NULL);
 
 				dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
 				RWDEBUG("Failed running 'send %s', trying 'send Access-Reject'.", dv->alias);
 
-				request->reply->code = PW_CODE_ACCESS_REJECT;
+				request->reply->code = FR_CODE_ACCESS_REJECT;
 
 				dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
 				unlang = NULL;
@@ -622,7 +622,7 @@ static fr_transport_final_t auth_process(REQUEST *request)
 		 *	Save session-state list for Access-Challenge,
 		 *	discard it for everything else.
 		 */
-		if (request->reply->code == PW_CODE_ACCESS_CHALLENGE) {
+		if (request->reply->code == FR_CODE_ACCESS_CHALLENGE) {
 			fr_request_to_state(global_state, request, request->packet, request->reply);
 
 		} else {
@@ -630,13 +630,13 @@ static fr_transport_final_t auth_process(REQUEST *request)
 		}
 
 		if (!request->reply->code) {
-			vp = fr_pair_find_by_num(request->control, 0, PW_AUTH_TYPE, TAG_ANY);
+			vp = fr_pair_find_by_num(request->control, 0, FR_AUTH_TYPE, TAG_ANY);
 			if (vp) {
-				if (vp->vp_uint32 == PW_AUTH_TYPE_ACCEPT) {
-					request->reply->code = PW_CODE_ACCESS_ACCEPT;
+				if (vp->vp_uint32 == FR_AUTH_TYPE_ACCEPT) {
+					request->reply->code = FR_CODE_ACCESS_ACCEPT;
 
-				} else if (vp->vp_uint32 == PW_AUTH_TYPE_REJECT) {
-					request->reply->code = PW_CODE_ACCESS_REJECT;
+				} else if (vp->vp_uint32 == FR_AUTH_TYPE_REJECT) {
+					request->reply->code = FR_CODE_ACCESS_REJECT;
 				}
 			}
 		}
@@ -761,7 +761,7 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 		 *	If we delay rejects, then calculate the
 		 *	correct delay.
 		 */
-		if ((request->reply->code == PW_CODE_ACCESS_REJECT) &&
+		if ((request->reply->code == FR_CODE_ACCESS_REJECT) &&
 		    ((request->root->reject_delay.tv_sec > 0) ||
 		     (request->root->reject_delay.tv_usec > 0))) {
 			struct timeval when, delay;
@@ -769,7 +769,7 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 
 			delay = request->root->reject_delay;
 
-			vp = fr_pair_find_by_num(request->reply->vps, 0, PW_FREERADIUS_RESPONSE_DELAY, TAG_ANY);
+			vp = fr_pair_find_by_num(request->reply->vps, 0, FR_FREERADIUS_RESPONSE_DELAY, TAG_ANY);
 			if (vp) {
 				if (vp->vp_uint32 <= 10) {
 					delay.tv_sec = vp->vp_uint32;
@@ -778,7 +778,7 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 				}
 				delay.tv_usec = 0;
 			} else {
-				vp = fr_pair_find_by_num(request->reply->vps, 0, PW_FREERADIUS_RESPONSE_DELAY_USEC, TAG_ANY);
+				vp = fr_pair_find_by_num(request->reply->vps, 0, FR_FREERADIUS_RESPONSE_DELAY_USEC, TAG_ANY);
 				if (vp) {
 					if (vp->vp_uint32 <= 10 * USEC) {
 						delay.tv_sec = vp->vp_uint32 / USEC;
@@ -900,7 +900,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 		return 0;
 	}
 
-	if (packet->code != PW_CODE_ACCESS_REQUEST) {
+	if (packet->code != FR_CODE_ACCESS_REQUEST) {
 		if (packet->code < FR_MAX_PACKET_CODE) {
 			DEBUG2("Invalid packet code %s sent to authentication port", fr_packet_codes[packet->code]);
 		} else {
@@ -1032,7 +1032,7 @@ static int auth_listen_bootstrap(CONF_SECTION *server_cs, UNUSED CONF_SECTION *l
 	CONF_SECTION *subcs;
 	fr_dict_attr_t const *da;
 
-	da = fr_dict_attr_by_num(NULL, 0, PW_AUTH_TYPE);
+	da = fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE);
 	if (!da) {
 		cf_log_err_cs(server_cs, "Failed finding dictionary definition for Auth-Type");
 		return -1;
@@ -1092,7 +1092,7 @@ static int auth_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	if (common_socket_parse(cs, this) < 0) return -1;
 
-	if (!sock->my_port) sock->my_port = PW_AUTH_UDP_PORT;
+	if (!sock->my_port) sock->my_port = FR_AUTH_UDP_PORT;
 
 	sock->dup_tree = rbtree_create(NULL, packet_entry_cmp, NULL, 0);
 

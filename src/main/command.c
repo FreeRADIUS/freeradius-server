@@ -2178,12 +2178,12 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 	packet->id = inject_id++;
 
 	if (fake->type == RAD_LISTEN_AUTH) {
-		packet->code = PW_CODE_ACCESS_REQUEST;
+		packet->code = FR_CODE_ACCESS_REQUEST;
 		fun = rad_authenticate;
 
 	} else {
 #ifdef WITH_ACCOUNTING
-		packet->code = PW_CODE_ACCOUNTING_REQUEST;
+		packet->code = FR_CODE_ACCOUNTING_REQUEST;
 		fun = rad_accounting;
 #else
 		cprintf_error(listener, "This server was built without accounting support.\n");
@@ -2502,7 +2502,7 @@ static int command_set_module_config(rad_listen_t *listener, int argc, char *arg
 		/*
 		 *	FIXME: Recurse into sub-types somehow...
 		 */
-		if (PW_BASE_TYPE(variables[i].type) == FR_TYPE_SUBSECTION) continue;
+		if (FR_BASE_TYPE(variables[i].type) == FR_TYPE_SUBSECTION) continue;
 
 		if (strcmp(variables[i].name, argv[1]) == 0) {
 			rcode = i;

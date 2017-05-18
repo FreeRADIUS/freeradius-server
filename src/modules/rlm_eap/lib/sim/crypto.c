@@ -53,7 +53,7 @@ int fr_sim_crypto_mac_verify(TALLOC_CTX *ctx, fr_dict_attr_t const *root,
 	VALUE_PAIR		*mac;
 	fr_dict_attr_t const	*da;
 
-	da = fr_dict_attr_child_by_num(root, PW_EAP_SIM_MAC);
+	da = fr_dict_attr_child_by_num(root, FR_EAP_SIM_MAC);
 	if (!da) {
 		fr_strerror_printf("Missing definition for EAP-SIM-MAC");
 		return -1;
@@ -97,7 +97,7 @@ int fr_sim_crypto_mac_verify(TALLOC_CTX *ctx, fr_dict_attr_t const *root,
 		 */
 		attr = buffer + 8;
 		while (attr < (buffer + elen)) {
-			if (attr[0] == PW_EAP_SIM_MAC) {
+			if (attr[0] == FR_EAP_SIM_MAC) {
 				/* zero the data portion, after making sure
 				 * the size is >=5. Maybe future versions.
 				 * will use more bytes, so be liberal.

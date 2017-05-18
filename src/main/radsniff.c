@@ -59,20 +59,20 @@ typedef int (*rbcmp)(void const *, void const *);
 static char const *radsniff_version = RADIUSD_VERSION_STRING_BUILD("radsniff");
 
 static int rs_useful_codes[] = {
-	PW_CODE_ACCESS_REQUEST,			//!< RFC2865 - Authentication request
-	PW_CODE_ACCESS_ACCEPT,			//!< RFC2865 - Access-Accept
-	PW_CODE_ACCESS_REJECT,			//!< RFC2865 - Access-Reject
-	PW_CODE_ACCOUNTING_REQUEST,		//!< RFC2866 - Accounting-Request
-	PW_CODE_ACCOUNTING_RESPONSE,		//!< RFC2866 - Accounting-Response
-	PW_CODE_ACCESS_CHALLENGE,		//!< RFC2865 - Access-Challenge
-	PW_CODE_STATUS_SERVER,			//!< RFC2865/RFC5997 - Status Server (request)
-	PW_CODE_STATUS_CLIENT,			//!< RFC2865/RFC5997 - Status Server (response)
-	PW_CODE_DISCONNECT_REQUEST,		//!< RFC3575/RFC5176 - Disconnect-Request
-	PW_CODE_DISCONNECT_ACK,			//!< RFC3575/RFC5176 - Disconnect-Ack (positive)
-	PW_CODE_DISCONNECT_NAK,			//!< RFC3575/RFC5176 - Disconnect-Nak (not willing to perform)
-	PW_CODE_COA_REQUEST,			//!< RFC3575/RFC5176 - CoA-Request
-	PW_CODE_COA_ACK,			//!< RFC3575/RFC5176 - CoA-Ack (positive)
-	PW_CODE_COA_NAK,			//!< RFC3575/RFC5176 - CoA-Nak (not willing to perform)
+	FR_CODE_ACCESS_REQUEST,			//!< RFC2865 - Authentication request
+	FR_CODE_ACCESS_ACCEPT,			//!< RFC2865 - Access-Accept
+	FR_CODE_ACCESS_REJECT,			//!< RFC2865 - Access-Reject
+	FR_CODE_ACCOUNTING_REQUEST,		//!< RFC2866 - Accounting-Request
+	FR_CODE_ACCOUNTING_RESPONSE,		//!< RFC2866 - Accounting-Response
+	FR_CODE_ACCESS_CHALLENGE,		//!< RFC2865 - Access-Challenge
+	FR_CODE_STATUS_SERVER,			//!< RFC2865/RFC5997 - Status Server (request)
+	FR_CODE_STATUS_CLIENT,			//!< RFC2865/RFC5997 - Status Server (response)
+	FR_CODE_DISCONNECT_REQUEST,		//!< RFC3575/RFC5176 - Disconnect-Request
+	FR_CODE_DISCONNECT_ACK,			//!< RFC3575/RFC5176 - Disconnect-Ack (positive)
+	FR_CODE_DISCONNECT_NAK,			//!< RFC3575/RFC5176 - Disconnect-Nak (not willing to perform)
+	FR_CODE_COA_REQUEST,			//!< RFC3575/RFC5176 - CoA-Request
+	FR_CODE_COA_ACK,			//!< RFC3575/RFC5176 - CoA-Ack (positive)
+	FR_CODE_COA_NAK,			//!< RFC3575/RFC5176 - CoA-Nak (not willing to perform)
 };
 
 static const FR_NAME_NUMBER rs_events[] = {
@@ -577,7 +577,7 @@ static void rs_stats_process_counters(rs_latency_t *stats)
 	}
 }
 
-static void rs_stats_print_code_fancy(rs_latency_t *stats, PW_CODE code)
+static void rs_stats_print_code_fancy(rs_latency_t *stats, FR_CODE code)
 {
 	int i;
 	bool have_rt = false;
@@ -1341,15 +1341,15 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	}
 
 	switch (current->code) {
-	case PW_CODE_ACCOUNTING_RESPONSE:
-	case PW_CODE_ACCESS_REJECT:
-	case PW_CODE_ACCESS_ACCEPT:
-	case PW_CODE_ACCESS_CHALLENGE:
-	case PW_CODE_COA_NAK:
-	case PW_CODE_COA_ACK:
-	case PW_CODE_DISCONNECT_NAK:
-	case PW_CODE_DISCONNECT_ACK:
-	case PW_CODE_STATUS_CLIENT:
+	case FR_CODE_ACCOUNTING_RESPONSE:
+	case FR_CODE_ACCESS_REJECT:
+	case FR_CODE_ACCESS_ACCEPT:
+	case FR_CODE_ACCESS_CHALLENGE:
+	case FR_CODE_COA_NAK:
+	case FR_CODE_COA_ACK:
+	case FR_CODE_DISCONNECT_NAK:
+	case FR_CODE_DISCONNECT_ACK:
+	case FR_CODE_STATUS_CLIENT:
 	{
 		/* look for a matching request and use it for decoding */
 		search.expect = current;
@@ -1472,11 +1472,11 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		break;
 	}
 
-	case PW_CODE_ACCOUNTING_REQUEST:
-	case PW_CODE_ACCESS_REQUEST:
-	case PW_CODE_COA_REQUEST:
-	case PW_CODE_DISCONNECT_REQUEST:
-	case PW_CODE_STATUS_SERVER:
+	case FR_CODE_ACCOUNTING_REQUEST:
+	case FR_CODE_ACCESS_REQUEST:
+	case FR_CODE_COA_REQUEST:
+	case FR_CODE_DISCONNECT_REQUEST:
+	case FR_CODE_STATUS_SERVER:
 	{
 		/*
 		 *	Verify this code is allowed
@@ -1708,7 +1708,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		 *	CoA and Disconnect Messages, as we get the average latency across both
 		 *	response types.
 		 *
-		 *	It also justifies allocating PW_CODE_MAX instances of rs_latency_t.
+		 *	It also justifies allocating FR_CODE_MAX instances of rs_latency_t.
 		 */
 		rs_stats_update_latency(&stats->exchange[current->code], &latency);
 		rs_stats_update_latency(&stats->exchange[original->expect->code], &latency);
@@ -2536,7 +2536,7 @@ int main(int argc, char *argv[])
 		}
 
 		fr_pair_cursor_init(&cursor, &conf->filter_request_vps);
-		type = fr_pair_cursor_next_by_num(&cursor, 0, PW_PACKET_TYPE, TAG_ANY);
+		type = fr_pair_cursor_next_by_num(&cursor, 0, FR_PACKET_TYPE, TAG_ANY);
 		if (type) {
 			fr_pair_cursor_remove(&cursor);
 			conf->filter_request_code = type->vp_uint32;
@@ -2553,7 +2553,7 @@ int main(int argc, char *argv[])
 		}
 
 		fr_pair_cursor_init(&cursor, &conf->filter_response_vps);
-		type = fr_pair_cursor_next_by_num(&cursor, 0, PW_PACKET_TYPE, TAG_ANY);
+		type = fr_pair_cursor_next_by_num(&cursor, 0, FR_PACKET_TYPE, TAG_ANY);
 		if (type) {
 			fr_pair_cursor_remove(&cursor);
 			conf->filter_response_code = type->vp_uint32;

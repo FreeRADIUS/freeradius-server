@@ -173,7 +173,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 
 		fr_pair_cursor_init(&cursor, radius_list(request, PAIR_LIST_CONTROL));
 		while ((envlen < ((sizeof(envp) / sizeof(*envp)) - 1)) &&
-		       (vp = fr_pair_cursor_next_by_num(&cursor, 0, PW_EXEC_EXPORT, TAG_ANY))) {
+		       (vp = fr_pair_cursor_next_by_num(&cursor, 0, FR_EXEC_EXPORT, TAG_ANY))) {
 			DEBUG3("export %s", vp->vp_strvalue);
 			memcpy(&envp[envlen++], &vp->vp_strvalue, sizeof(*envp));
 		}

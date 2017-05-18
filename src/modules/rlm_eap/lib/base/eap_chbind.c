@@ -42,7 +42,7 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 		 *	Skip things which shouldn't be in channel bindings.
 		 */
 		if (vp->da->flags.encrypt != FLAG_ENCRYPT_NONE) continue;
-		if (!vp->da->vendor && (vp->da->attr == PW_MESSAGE_AUTHENTICATOR)) continue;
+		if (!vp->da->vendor && (vp->da->attr == FR_MESSAGE_AUTHENTICATOR)) continue;
 
 		total += 2 + vp->vp_length;
 	}
@@ -62,7 +62,7 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 	 *	Set the response code.  Default to "fail" if none was
 	 *	specified.
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, PW_CHBIND_RESPONSE_CODE, TAG_ANY);
+	vp = fr_pair_find_by_num(request->control, 0, FR_CHBIND_RESPONSE_CODE, TAG_ANY);
 	if (vp) {
 		ptr[0] = vp->vp_uint32;
 	} else {
@@ -93,7 +93,7 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 			fr_pair_cursor_next(&cursor);
 			continue;
 		}
-		if (!vp->da->vendor && (vp->da->attr == PW_MESSAGE_AUTHENTICATOR)) goto next;
+		if (!vp->da->vendor && (vp->da->attr == FR_MESSAGE_AUTHENTICATOR)) goto next;
 
 		length = fr_radius_encode_pair(ptr, end - ptr, &cursor, NULL);
 		ptr += length;
@@ -153,9 +153,9 @@ static size_t chbind_get_data(chbind_packet_t const *packet,
 }
 
 
-PW_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
+FR_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 {
-	PW_CODE code;
+	FR_CODE code;
 	rlm_rcode_t rcode;
 	REQUEST *fake = NULL;
 	uint8_t const *attr_data;
@@ -205,7 +205,7 @@ PW_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 				 */
 				talloc_free(fake);
 
-				return PW_CODE_ACCESS_ACCEPT;
+				return FR_CODE_ACCESS_ACCEPT;
 			}
 			attr_data += attr_len;
 			data_len -= attr_len;
@@ -217,7 +217,7 @@ PW_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 	 *	bindings, this is hard-coded for now.
 	 */
 	fake->server = "channel_bindings";
-	fake->packet->code = PW_CODE_ACCESS_REQUEST;
+	fake->packet->code = FR_CODE_ACCESS_REQUEST;
 
 	rcode = rad_virtual_server(fake);
 
@@ -226,14 +226,14 @@ PW_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 	case RLM_MODULE_OK:
 	case RLM_MODULE_HANDLED:
 		if (chbind_build_response(fake, chbind)) {
-			code = PW_CODE_ACCESS_ACCEPT;
+			code = FR_CODE_ACCESS_ACCEPT;
 			break;
 		}
 		/* FALL-THROUGH */
 
 		/* If we got any other response from rad_authenticate, it maps to a reject */
 	default:
-		code = PW_CODE_ACCESS_REJECT;
+		code = FR_CODE_ACCESS_REJECT;
 		break;
 	}
 
@@ -254,7 +254,7 @@ chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	chbind_packet_t		*packet;
 	vp_cursor_t		cursor;
 
-	first = fr_pair_find_by_num(vps, VENDORPEC_UKERNA, PW_UKERNA_CHBIND, TAG_ANY);
+	first = fr_pair_find_by_num(vps, VENDORPEC_UKERNA, FR_UKERNA_CHBIND, TAG_ANY);
 	if (!first) return NULL;
 
 	/*
@@ -263,7 +263,7 @@ chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	length = 0;
 	for (vp =fr_pair_cursor_init(&cursor, &first);
 	     vp != NULL;
-	     vp = fr_pair_cursor_next_by_num(&cursor, VENDORPEC_UKERNA, PW_UKERNA_CHBIND, TAG_ANY)) {
+	     vp = fr_pair_cursor_next_by_num(&cursor, VENDORPEC_UKERNA, FR_UKERNA_CHBIND, TAG_ANY)) {
 		length += vp->vp_length;
 	}
 
@@ -284,7 +284,7 @@ chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	packet = (chbind_packet_t *) ptr;
 	for (vp = fr_pair_cursor_init(&cursor, &first);
 	     vp != NULL;
-	     vp = fr_pair_cursor_next_by_num(&cursor, VENDORPEC_UKERNA, PW_UKERNA_CHBIND, TAG_ANY)) {
+	     vp = fr_pair_cursor_next_by_num(&cursor, VENDORPEC_UKERNA, FR_UKERNA_CHBIND, TAG_ANY)) {
 		memcpy(ptr, vp->vp_octets, vp->vp_length);
 		ptr += vp->vp_length;
 	}
@@ -298,7 +298,7 @@ VALUE_PAIR *eap_chbind_packet2vp(RADIUS_PACKET *packet, chbind_packet_t *chbind)
 
 	if (!chbind) return NULL; /* don't produce garbage */
 
-	vp = fr_pair_afrom_num(packet, VENDORPEC_UKERNA, PW_UKERNA_CHBIND);
+	vp = fr_pair_afrom_num(packet, VENDORPEC_UKERNA, FR_UKERNA_CHBIND);
 	if (!vp) return NULL;
 	fr_pair_value_memcpy(vp, (uint8_t *) chbind, talloc_array_length((uint8_t *)chbind));
 

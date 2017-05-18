@@ -242,7 +242,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	} else {
 		fr_dict_enum_t	*dval;
 
-		dval = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, PW_PACKET_TYPE), inst->packet_type);
+		dval = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE), inst->packet_type);
 		if (!dval) {
 			cf_log_err_cs(conf, "Unknown packet type %s: See list of VALUEs for Packet-Type in "
 				      "share/dictionary", inst->packet_type);
@@ -368,10 +368,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, void *thread, 
 	bool			we_wait = false;
 	VALUE_PAIR		*vp, *tmp;
 
-	vp = fr_pair_find_by_num(request->reply->vps, 0, PW_EXEC_PROGRAM, TAG_ANY);
+	vp = fr_pair_find_by_num(request->reply->vps, 0, FR_EXEC_PROGRAM, TAG_ANY);
 	if (vp) {
 		we_wait = false;
-	} else if ((vp = fr_pair_find_by_num(request->reply->vps, 0, PW_EXEC_PROGRAM_WAIT, TAG_ANY)) != NULL) {
+	} else if ((vp = fr_pair_find_by_num(request->reply->vps, 0, FR_EXEC_PROGRAM_WAIT, TAG_ANY)) != NULL) {
 		we_wait = true;
 	}
 	if (!vp) {
@@ -399,7 +399,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, void *thread, 
 	case RLM_MODULE_FAIL:
 	case RLM_MODULE_INVALID:
 	case RLM_MODULE_REJECT:
-		request->reply->code = PW_CODE_ACCESS_REJECT;
+		request->reply->code = FR_CODE_ACCESS_REJECT;
 		break;
 
 	default:
@@ -431,10 +431,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, void *thread,
 		return mod_exec_dispatch(instance, thread, request);
 	}
 
-	vp = fr_pair_find_by_num(request->reply->vps, 0, PW_EXEC_PROGRAM, TAG_ANY);
+	vp = fr_pair_find_by_num(request->reply->vps, 0, FR_EXEC_PROGRAM, TAG_ANY);
 	if (vp) {
 		we_wait = true;
-	} else if ((vp = fr_pair_find_by_num(request->reply->vps, 0, PW_EXEC_PROGRAM_WAIT, TAG_ANY)) != NULL) {
+	} else if ((vp = fr_pair_find_by_num(request->reply->vps, 0, FR_EXEC_PROGRAM_WAIT, TAG_ANY)) != NULL) {
 		we_wait = false;
 	}
 	if (!vp) {

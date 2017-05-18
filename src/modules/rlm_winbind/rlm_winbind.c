@@ -307,7 +307,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	char const		*group_attribute;
 	char			buffer[256];
 
-	user_name_da = fr_dict_attr_by_num(NULL, 0, PW_USER_NAME);
+	user_name_da = fr_dict_attr_by_num(NULL, 0, FR_USER_NAME);
 	if (!user_name_da) {
 		ERROR("Unable to find User-Name attribute in dictionary");
 		return -1;
@@ -437,12 +437,12 @@ static int mod_detach(UNUSED void *instance)
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
-	if (!request->password || (request->password->da->attr != PW_USER_PASSWORD)) {
+	if (!request->password || (request->password->da->attr != FR_USER_PASSWORD)) {
 		RDEBUG("No User-Password found in the request; not doing winbind authentication.");
 		return RLM_MODULE_NOOP;
 	}
 
-	if (fr_pair_find_by_num(request->control, 0, PW_AUTH_TYPE, TAG_ANY) != NULL) {
+	if (fr_pair_find_by_num(request->control, 0, FR_AUTH_TYPE, TAG_ANY) != NULL) {
 		RWDEBUG2("Auth-type already set, not setting to winbind");
 		return RLM_MODULE_NOOP;
 	}
@@ -471,7 +471,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	 */
 	if (!request->password ||
 	    (request->password->da->vendor != 0) ||
-	    (request->password->da->attr != PW_USER_PASSWORD)) {
+	    (request->password->da->attr != FR_USER_PASSWORD)) {
 		REDEBUG("You set 'Auth-Type = winbind' for a request that does not contain a User-Password attribute!");
 		return RLM_MODULE_INVALID;
 	}

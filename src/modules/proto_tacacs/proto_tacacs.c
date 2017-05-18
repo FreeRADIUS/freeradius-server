@@ -139,7 +139,7 @@ static void state_add(REQUEST *request, RADIUS_PACKET *packet)
 	session_id = tacacs_session_id(request->packet);
 	memcpy(&buf[sizeof(buf) - sizeof(session_id)], &session_id, sizeof(session_id));
 
-	vp = fr_pair_afrom_num(packet, 0, PW_STATE);
+	vp = fr_pair_afrom_num(packet, 0, FR_STATE);
 	rad_assert(vp != NULL);
 	fr_pair_value_memcpy(vp, (uint8_t const *)buf, sizeof(buf));
 	fr_pair_add(&packet->vps, vp);
@@ -240,7 +240,7 @@ stop_processing:
 		 */
 		fr_pair_cursor_init(&cursor, &request->control);
 		auth_type = NULL;
-		while ((vp = fr_pair_cursor_next_by_num(&cursor, 0, PW_AUTH_TYPE, TAG_ANY)) != NULL) {
+		while ((vp = fr_pair_cursor_next_by_num(&cursor, 0, FR_AUTH_TYPE, TAG_ANY)) != NULL) {
 			if (!auth_type) {
 				auth_type = vp;
 				continue;
@@ -262,13 +262,13 @@ stop_processing:
 		/*
 		 *	Handle hard-coded Accept and Reject.
 		 */
-		if (auth_type->vp_uint32 == PW_AUTH_TYPE_ACCEPT) {
+		if (auth_type->vp_uint32 == FR_AUTH_TYPE_ACCEPT) {
 			RDEBUG2("Auth-Type = Accept, allowing user");
 			tacacs_status(request, RLM_MODULE_OK);
 			goto setup_send;
 		}
 
-		if (auth_type->vp_uint32 == PW_AUTH_TYPE_REJECT) {
+		if (auth_type->vp_uint32 == FR_AUTH_TYPE_REJECT) {
 			RDEBUG2("Auth-Type = Reject, rejecting user");
 			tacacs_status(request, RLM_MODULE_REJECT);
 			goto setup_send;
@@ -585,7 +585,7 @@ static int tacacs_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *l
 
 static int tacacs_load(void)
 {
-	dict_tacacs_root = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), PW_TACACS_ROOT);
+	dict_tacacs_root = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_TACACS_ROOT);
 	if (!dict_tacacs_root) {
 		ERROR("Missing TACACS-Root attribute");
 		return -1;

@@ -200,12 +200,12 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 		     check_item;
 		     check_item = fr_pair_cursor_next(&check)) {
 			if (!check_item->da->vendor &&
-			    (check_item->da->attr == PW_FALL_THROUGH) &&
+			    (check_item->da->attr == FR_FALL_THROUGH) &&
 				(check_item->vp_uint32 == 1)) {
 				fall_through = 1;
 				continue;
 			}
-			else if (!check_item->da->vendor && check_item->da->attr == PW_RELAX_FILTER) {
+			else if (!check_item->da->vendor && check_item->da->attr == FR_RELAX_FILTER) {
 				relax_filter = check_item->vp_uint32;
 				continue;
 			}
@@ -247,7 +247,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 				 *  Vendor-Specific is special, and matches any VSA if the
 				 *  comparison is always true.
 				 */
-				if ((check_item->da->attr == PW_VENDOR_SPECIFIC) && (input_item->da->vendor != 0) &&
+				if ((check_item->da->attr == FR_VENDOR_SPECIFIC) && (input_item->da->vendor != 0) &&
 				    (check_item->op == T_OP_CMP_TRUE)) {
 					pass++;
 					continue;
@@ -296,12 +296,12 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 	fr_pair_list_free(&packet->vps);
 	packet->vps = output;
 
-	if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
-		request->username = fr_pair_find_by_num(request->packet->vps, 0, PW_STRIPPED_USER_NAME, TAG_ANY);
+	if (request->packet->code == FR_CODE_ACCESS_REQUEST) {
+		request->username = fr_pair_find_by_num(request->packet->vps, 0, FR_STRIPPED_USER_NAME, TAG_ANY);
 		if (!request->username) {
-			request->username = fr_pair_find_by_num(request->packet->vps, 0, PW_USER_NAME, TAG_ANY);
+			request->username = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_NAME, TAG_ANY);
 		}
-		request->password = fr_pair_find_by_num(request->packet->vps, 0, PW_USER_PASSWORD, TAG_ANY);
+		request->password = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_PASSWORD, TAG_ANY);
 	}
 
 	return RLM_MODULE_UPDATED;

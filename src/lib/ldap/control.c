@@ -190,20 +190,20 @@ int fr_ldap_control_add_session_tracking(fr_ldap_conn_t *conn, REQUEST *request)
 	     vp;
 	     vp = fr_pair_cursor_next(&cursor)) {
 		if (vp->da->vendor == 0) switch (vp->da->attr) {
-		case PW_NAS_IP_ADDRESS:
-		case PW_NAS_IPV6_ADDRESS:
+		case FR_NAS_IP_ADDRESS:
+		case FR_NAS_IPV6_ADDRESS:
 			fr_pair_value_snprint(ipaddress, sizeof(ipaddress), vp, '\0');
 			break;
 
-		case PW_USER_NAME:
+		case FR_USER_NAME:
 			memcpy(&username, &vp->vp_strvalue, sizeof(username));
 			break;
 
-		case PW_ACCT_SESSION_ID:
+		case FR_ACCT_SESSION_ID:
 			memcpy(&acctsessionid, &vp->vp_strvalue, sizeof(acctsessionid));
 			break;
 
-		case PW_ACCT_MULTI_SESSION_ID:
+		case FR_ACCT_MULTI_SESSION_ID:
 			memcpy(&acctmultisessionid, &vp->vp_strvalue, sizeof(acctmultisessionid));
 			break;
 		}

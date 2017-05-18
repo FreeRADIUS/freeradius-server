@@ -32,7 +32,7 @@ RCSID("$Id$")
  *
  * This is done once per request with the same packet being sent to multiple realms.
  */
-static rlm_rcode_t rlm_replicate_alloc(RADIUS_PACKET **out, REQUEST *request, pair_lists_t list, PW_CODE code)
+static rlm_rcode_t rlm_replicate_alloc(RADIUS_PACKET **out, REQUEST *request, pair_lists_t list, FR_CODE code)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
 	RADIUS_PACKET		*packet = NULL;
@@ -72,10 +72,10 @@ static rlm_rcode_t rlm_replicate_alloc(RADIUS_PACKET **out, REQUEST *request, pa
 	/*
 	 *	For CHAP, create the CHAP-Challenge if it doesn't exist.
 	 */
-	if ((code == PW_CODE_ACCESS_REQUEST) &&
-	    (fr_pair_find_by_num(request->packet->vps, 0, PW_CHAP_PASSWORD, TAG_ANY) != NULL) &&
-	    (fr_pair_find_by_num(request->packet->vps, 0, PW_CHAP_CHALLENGE, TAG_ANY) == NULL)) {
-		vp = radius_pair_create(packet, &packet->vps, PW_CHAP_CHALLENGE, 0);
+	if ((code == FR_CODE_ACCESS_REQUEST) &&
+	    (fr_pair_find_by_num(request->packet->vps, 0, FR_CHAP_PASSWORD, TAG_ANY) != NULL) &&
+	    (fr_pair_find_by_num(request->packet->vps, 0, FR_CHAP_CHALLENGE, TAG_ANY) == NULL)) {
+		vp = radius_pair_create(packet, &packet->vps, FR_CHAP_CHALLENGE, 0);
 		fr_pair_value_memcpy(vp, request->packet->vector, AUTH_VECTOR_LEN);
 	}
 
@@ -107,7 +107,7 @@ error:
  *	- #RLM_MODULE_NOOP if no replications succeeded.
  *	- #RLM_MODULE_OK if successful.
  */
-static rlm_rcode_t replicate_packet(UNUSED void const *instance, REQUEST *request, pair_lists_t list, PW_CODE code)
+static rlm_rcode_t replicate_packet(UNUSED void const *instance, REQUEST *request, pair_lists_t list, FR_CODE code)
 {
 	int rcode;
 	bool pass1 = true;
@@ -126,7 +126,7 @@ static rlm_rcode_t replicate_packet(UNUSED void const *instance, REQUEST *reques
 	 *	Send as many packets as necessary to different destinations.
 	 */
 	fr_pair_cursor_init(&cursor, &request->control);
-	while ((vp = fr_pair_cursor_next_by_num(&cursor, 0, PW_REPLICATE_TO_REALM, TAG_ANY))) {
+	while ((vp = fr_pair_cursor_next_by_num(&cursor, 0, FR_REPLICATE_TO_REALM, TAG_ANY))) {
 		home_server_t *home;
 		REALM *realm;
 		home_pool_t *pool;
@@ -146,20 +146,20 @@ static rlm_rcode_t replicate_packet(UNUSED void const *instance, REQUEST *reques
 			rcode = RLM_MODULE_FAIL;
 			goto done;
 
-		case PW_CODE_ACCESS_REQUEST:
+		case FR_CODE_ACCESS_REQUEST:
 			pool = realm->auth_pool;
 			break;
 
 #ifdef WITH_ACCOUNTING
 
-		case PW_CODE_ACCOUNTING_REQUEST:
+		case FR_CODE_ACCOUNTING_REQUEST:
 			pool = realm->acct_pool;
 			break;
 #endif
 
 #ifdef WITH_COA
-		case PW_CODE_COA_REQUEST:
-		case PW_CODE_DISCONNECT_REQUEST:
+		case FR_CODE_COA_REQUEST:
+		case FR_CODE_DISCONNECT_REQUEST:
 			pool = realm->coa_pool;
 			break;
 #endif

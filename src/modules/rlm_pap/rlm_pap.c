@@ -64,37 +64,37 @@ static const CONF_PARSER module_config[] = {
  *	@note Header comparison is case insensitive.
  */
 static const FR_NAME_NUMBER header_names[] = {
-	{ "{clear}",		PW_CLEARTEXT_PASSWORD },
-	{ "{cleartext}",	PW_CLEARTEXT_PASSWORD },
-	{ "{md5}",		PW_MD5_PASSWORD },
-	{ "{base64_md5}",	PW_MD5_PASSWORD },
-	{ "{smd5}",		PW_SMD5_PASSWORD },
-	{ "{crypt}",		PW_CRYPT_PASSWORD },
+	{ "{clear}",		FR_CLEARTEXT_PASSWORD },
+	{ "{cleartext}",	FR_CLEARTEXT_PASSWORD },
+	{ "{md5}",		FR_MD5_PASSWORD },
+	{ "{base64_md5}",	FR_MD5_PASSWORD },
+	{ "{smd5}",		FR_SMD5_PASSWORD },
+	{ "{crypt}",		FR_CRYPT_PASSWORD },
 #ifdef HAVE_OPENSSL_EVP_H
 	/*
 	 *	It'd make more sense for the headers to be
 	 *	ssha2-* with SHA3 coming soon but we're at
 	 *	the mercy of directory implementors.
 	 */
-	{ "{sha2}",		PW_SHA2_PASSWORD },
-	{ "{sha224}",		PW_SHA2_PASSWORD },
-	{ "{sha256}",		PW_SHA2_PASSWORD },
-	{ "{sha384}",		PW_SHA2_PASSWORD },
-	{ "{sha512}",		PW_SHA2_PASSWORD },
-	{ "{ssha224}",		PW_SSHA2_224_PASSWORD },
-	{ "{ssha256}",		PW_SSHA2_256_PASSWORD },
-	{ "{ssha384}",		PW_SSHA2_384_PASSWORD },
-	{ "{ssha512}",		PW_SSHA2_512_PASSWORD },
+	{ "{sha2}",		FR_SHA2_PASSWORD },
+	{ "{sha224}",		FR_SHA2_PASSWORD },
+	{ "{sha256}",		FR_SHA2_PASSWORD },
+	{ "{sha384}",		FR_SHA2_PASSWORD },
+	{ "{sha512}",		FR_SHA2_PASSWORD },
+	{ "{ssha224}",		FR_SSHA2_224_PASSWORD },
+	{ "{ssha256}",		FR_SSHA2_256_PASSWORD },
+	{ "{ssha384}",		FR_SSHA2_384_PASSWORD },
+	{ "{ssha512}",		FR_SSHA2_512_PASSWORD },
 #endif
-	{ "{sha}",		PW_SHA_PASSWORD },
-	{ "{ssha}",		PW_SSHA_PASSWORD },
-	{ "{md4}",		PW_NT_PASSWORD },
-	{ "{nt}",		PW_NT_PASSWORD },
-	{ "{nthash}",		PW_NT_PASSWORD },
-	{ "{x-nthash}",		PW_NT_PASSWORD },
-	{ "{ns-mta-md5}",	PW_NS_MTA_MD5_PASSWORD },
-	{ "{x- orcllmv}",	PW_LM_PASSWORD },
-	{ "{X- orclntv}",	PW_NT_PASSWORD },
+	{ "{sha}",		FR_SHA_PASSWORD },
+	{ "{ssha}",		FR_SSHA_PASSWORD },
+	{ "{md4}",		FR_NT_PASSWORD },
+	{ "{nt}",		FR_NT_PASSWORD },
+	{ "{nthash}",		FR_NT_PASSWORD },
+	{ "{x-nthash}",		FR_NT_PASSWORD },
+	{ "{ns-mta-md5}",	FR_NS_MTA_MD5_PASSWORD },
+	{ "{x- orcllmv}",	FR_LM_PASSWORD },
+	{ "{X- orclntv}",	FR_NT_PASSWORD },
 	{ NULL, 0 }
 };
 
@@ -108,7 +108,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->name = cf_section_name1(conf);
 	}
 
-	dval = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, PW_AUTH_TYPE), inst->name);
+	dval = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE), inst->name);
 	if (dval) {
 		inst->auth_type = fr_unbox_uint32(dval->value);
 	} else {
@@ -304,7 +304,7 @@ redo:
 	}
 
 unknown_header:
-	new = fr_pair_afrom_num(request, 0, PW_CLEARTEXT_PASSWORD);
+	new = fr_pair_afrom_num(request, 0, FR_CLEARTEXT_PASSWORD);
 	fr_pair_value_strcpy(new, vp->vp_strvalue);
 
 	return new;
@@ -330,7 +330,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	     	VERIFY_VP(vp);
 	next:
 		switch (vp->da->attr) {
-		case PW_USER_PASSWORD: /* deprecated */
+		case FR_USER_PASSWORD: /* deprecated */
 			RWDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			RWDEBUG("!!! Ignoring control:User-Password.  Update your        !!!");
 			RWDEBUG("!!! configuration so that the \"known good\" clear text !!!");
@@ -339,14 +339,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 			RWDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			break;
 
-		case PW_PASSWORD_WITH_HEADER:	/* preferred */
+		case FR_PASSWORD_WITH_HEADER:	/* preferred */
 		{
 			VALUE_PAIR *new;
 
 			/*
 			 *	Password already exists: use that instead of this one.
 			 */
-			if (fr_pair_find_by_num(request->control, 0, PW_CLEARTEXT_PASSWORD, TAG_ANY)) {
+			if (fr_pair_find_by_num(request->control, 0, FR_CLEARTEXT_PASSWORD, TAG_ANY)) {
 				RWDEBUG("Config already contains a \"known good\" password "
 					"(&control:Cleartext-Password).  Ignoring &config:Password-With-Header");
 				break;
@@ -366,16 +366,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		}
 			break;
 
-		case PW_CLEARTEXT_PASSWORD:
-		case PW_CRYPT_PASSWORD:
-		case PW_NS_MTA_MD5_PASSWORD:
+		case FR_CLEARTEXT_PASSWORD:
+		case FR_CRYPT_PASSWORD:
+		case FR_NS_MTA_MD5_PASSWORD:
 			found_pw = true;
 			break;	/* don't touch these */
 
-		case PW_MD5_PASSWORD:
-		case PW_SMD5_PASSWORD:
-		case PW_NT_PASSWORD:
-		case PW_LM_PASSWORD:
+		case FR_MD5_PASSWORD:
+		case FR_SMD5_PASSWORD:
+		case FR_NT_PASSWORD:
+		case FR_LM_PASSWORD:
 			if (inst->normify) {
 				normify(request, vp, 16); /* ensure it's in the right format */
 			}
@@ -383,35 +383,35 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 			break;
 
 #ifdef HAVE_OPENSSL_EVP_H
-		case PW_SHA2_PASSWORD:
+		case FR_SHA2_PASSWORD:
 			if (inst->normify) {
 				normify(request, vp, 28); /* ensure it's in the right format */
 			}
 			found_pw = true;
 			break;
 
-		case PW_SSHA2_224_PASSWORD:
+		case FR_SSHA2_224_PASSWORD:
 			if (inst->normify) {
 				normify(request, vp, 28); /* ensure it's in the right format */
 			}
 			found_pw = true;
 			break;
 
-		case PW_SSHA2_256_PASSWORD:
+		case FR_SSHA2_256_PASSWORD:
 			if (inst->normify) {
 				normify(request, vp, 32); /* ensure it's in the right format */
 			}
 			found_pw = true;
 			break;
 
-		case PW_SSHA2_384_PASSWORD:
+		case FR_SSHA2_384_PASSWORD:
 			if (inst->normify) {
 				normify(request, vp, 48); /* ensure it's in the right format */
 			}
 			found_pw = true;
 			break;
 
-		case PW_SSHA2_512_PASSWORD:
+		case FR_SSHA2_512_PASSWORD:
 			if (inst->normify) {
 				normify(request, vp, 64); /* ensure it's in the right format */
 			}
@@ -419,8 +419,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 			break;
 #endif
 
-		case PW_SHA_PASSWORD:
-		case PW_SSHA_PASSWORD:
+		case FR_SHA_PASSWORD:
+		case FR_SSHA_PASSWORD:
 			if (inst->normify) {
 				normify(request, vp, 20); /* ensure it's in the right format */
 			}
@@ -431,7 +431,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 			 *	If it's proxied somewhere, don't complain
 			 *	about not having passwords or Auth-Type.
 			 */
-		case PW_PROXY_TO_REALM:
+		case FR_PROXY_TO_REALM:
 		{
 			REALM *realm = realm_find(vp->vp_strvalue);
 			if (realm && realm->auth_pool) {
@@ -440,7 +440,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 			break;
 		}
 
-		case PW_AUTH_TYPE:
+		case FR_AUTH_TYPE:
 			auth_type = true;
 
 			/*
@@ -467,15 +467,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		 *	Likely going to be proxied.  Avoid printing
 		 *	warning message.
 		 */
-		if (fr_pair_find_by_num(request->control, 0, PW_REALM, TAG_ANY) ||
-		    (fr_pair_find_by_num(request->control, 0, PW_PROXY_TO_REALM, TAG_ANY))) {
+		if (fr_pair_find_by_num(request->control, 0, FR_REALM, TAG_ANY) ||
+		    (fr_pair_find_by_num(request->control, 0, FR_PROXY_TO_REALM, TAG_ANY))) {
 			return RLM_MODULE_NOOP;
 		}
 
 		/*
 		 *	The TLS types don't need passwords.
 		 */
-		vp = fr_pair_find_by_num(request->packet->vps, 0, PW_EAP_TYPE, TAG_ANY);
+		vp = fr_pair_find_by_num(request->packet->vps, 0, FR_EAP_TYPE, TAG_ANY);
 		if (vp &&
 		    ((vp->vp_uint32 == 13) || /* EAP-TLS */
 		     (vp->vp_uint32 == 21) || /* EAP-TTLS */
@@ -500,14 +500,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	 *	Can't do PAP if there's no password.
 	 */
 	if (!request->password ||
-	    (request->password->da->attr != PW_USER_PASSWORD)) {
+	    (request->password->da->attr != FR_USER_PASSWORD)) {
 		RDEBUG2("No User-Password attribute in the request.  Cannot do PAP");
 		return RLM_MODULE_NOOP;
 	}
 
 	if (inst->auth_type) {
 		vp = radius_pair_create(request, &request->control,
-				       PW_AUTH_TYPE, 0);
+				       FR_AUTH_TYPE, 0);
 		vp->vp_uint32 = inst->auth_type;
 	}
 
@@ -744,25 +744,25 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha2(rlm_pap_t const *inst, REQUES
 	unsigned int digest_len, min_len = 0;
 
 	switch (vp->da->attr) {
-	case PW_SSHA2_224_PASSWORD:
+	case FR_SSHA2_224_PASSWORD:
 		name = "SSHA2-224";
 		md = EVP_sha224();
 		min_len = 28;
 		break;
 
-	case PW_SSHA2_256_PASSWORD:
+	case FR_SSHA2_256_PASSWORD:
 		name = "SSHA2-256";
 		md = EVP_sha256();
 		min_len = 32;
 		break;
 
-	case PW_SSHA2_384_PASSWORD:
+	case FR_SSHA2_384_PASSWORD:
 		name = "SSHA2-384";
 		md = EVP_sha384();
 		min_len = 48;
 		break;
 
-	case PW_SSHA2_512_PASSWORD:
+	case FR_SSHA2_512_PASSWORD:
 		name = "SSHA2-512";
 		min_len = 64;
 		md = EVP_sha512();
@@ -817,7 +817,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_nt(rlm_pap_t const *inst, REQUEST *
 	RDEBUG("Comparing with \"known-good\" NT-Password");
 
 	rad_assert(request->password != NULL);
-	rad_assert(request->password->da->attr == PW_USER_PASSWORD);
+	rad_assert(request->password->da->attr == FR_USER_PASSWORD);
 
 	if (inst->normify) {
 		normify(request, vp, 16);
@@ -950,7 +950,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 
 	if (!request->password ||
 	    (request->password->da->vendor != 0) ||
-	    (request->password->da->attr != PW_USER_PASSWORD)) {
+	    (request->password->da->attr != FR_USER_PASSWORD)) {
 		REDEBUG("You set 'Auth-Type = PAP' for a request that does not contain a User-Password attribute!");
 		return RLM_MODULE_INVALID;
 	}
@@ -979,52 +979,52 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	     vp;
 	     vp = fr_pair_cursor_next(&cursor)) {
 		if (!vp->da->vendor) switch (vp->da->attr) {
-		case PW_CLEARTEXT_PASSWORD:
+		case FR_CLEARTEXT_PASSWORD:
 			auth_func = &pap_auth_clear;
 			break;
 
-		case PW_CRYPT_PASSWORD:
+		case FR_CRYPT_PASSWORD:
 			auth_func = &pap_auth_crypt;
 			break;
 
-		case PW_MD5_PASSWORD:
+		case FR_MD5_PASSWORD:
 			auth_func = &pap_auth_md5;
 			break;
 
-		case PW_SMD5_PASSWORD:
+		case FR_SMD5_PASSWORD:
 			auth_func = &pap_auth_smd5;
 			break;
 
 #ifdef HAVE_OPENSSL_EVP_H
-		case PW_SHA2_PASSWORD:
+		case FR_SHA2_PASSWORD:
 			auth_func = &pap_auth_sha2;
 			break;
 
-		case PW_SSHA2_224_PASSWORD:
-		case PW_SSHA2_256_PASSWORD:
-		case PW_SSHA2_384_PASSWORD:
-		case PW_SSHA2_512_PASSWORD:
+		case FR_SSHA2_224_PASSWORD:
+		case FR_SSHA2_256_PASSWORD:
+		case FR_SSHA2_384_PASSWORD:
+		case FR_SSHA2_512_PASSWORD:
 			auth_func = &pap_auth_ssha2;
 			break;
 #endif
 
-		case PW_SHA_PASSWORD:
+		case FR_SHA_PASSWORD:
 			auth_func = &pap_auth_sha;
 			break;
 
-		case PW_SSHA_PASSWORD:
+		case FR_SSHA_PASSWORD:
 			auth_func = &pap_auth_ssha;
 			break;
 
-		case PW_NT_PASSWORD:
+		case FR_NT_PASSWORD:
 			auth_func = &pap_auth_nt;
 			break;
 
-		case PW_LM_PASSWORD:
+		case FR_LM_PASSWORD:
 			auth_func = &pap_auth_lm;
 			break;
 
-		case PW_NS_MTA_MD5_PASSWORD:
+		case FR_NS_MTA_MD5_PASSWORD:
 			auth_func = &pap_auth_ns_mta_md5;
 			break;
 

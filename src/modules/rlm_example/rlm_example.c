@@ -82,7 +82,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
-	paircompare_register_byname("Example-Paircmp", fr_dict_attr_by_num(NULL, 0, PW_USER_NAME), false,
+	paircompare_register_byname("Example-Paircmp", fr_dict_attr_by_num(NULL, 0, FR_USER_NAME), false,
 				    rlm_example_cmp, inst);
 
 	return 0;
@@ -101,7 +101,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 	/*
 	 *  Look for the 'state' attribute.
 	 */
-	state = fr_pair_find_by_num(request->packet->vps, 0, PW_STATE, TAG_ANY);
+	state = fr_pair_find_by_num(request->packet->vps, 0, FR_STATE, TAG_ANY);
 	if (state != NULL) {
 		RDEBUG("Found reply to access challenge");
 		return RLM_MODULE_OK;
@@ -118,7 +118,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 	 *
 	 *  The server will take care of sending it to the user.
 	 */
-	request->reply->code = PW_CODE_ACCESS_CHALLENGE;
+	request->reply->code = FR_CODE_ACCESS_CHALLENGE;
 	RDEBUG("Sending Access-Challenge");
 
 	return RLM_MODULE_HANDLED;

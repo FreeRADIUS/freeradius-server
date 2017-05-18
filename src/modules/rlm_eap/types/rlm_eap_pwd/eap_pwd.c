@@ -649,7 +649,7 @@ int compute_keys(pwd_session_t *session, uint8_t *peer_confirm, uint8_t *msk, ui
 	 * first compute the session-id = TypeCode | H(ciphersuite | scal_p |
 	 *	scal_s)
 	 */
-	session_id[0] = PW_EAP_PWD;
+	session_id[0] = FR_EAP_PWD;
 	HMAC_Init_ex(hmac_ctx, allzero, SHA256_DIGEST_LENGTH, EVP_sha256(), NULL);
 	HMAC_Update(hmac_ctx, (uint8_t *)&session->ciphersuite, sizeof(session->ciphersuite));
 	offset = BN_num_bytes(session->order) - BN_num_bytes(session->peer_scalar);

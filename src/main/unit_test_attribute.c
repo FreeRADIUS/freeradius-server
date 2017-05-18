@@ -74,7 +74,7 @@ static ssize_t xlat_test(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED size_
 static RADIUS_PACKET my_packet = {
 	.sockfd = -1,
 	.id = 0,
-	.code = PW_CODE_ACCESS_ACCEPT,
+	.code = FR_CODE_ACCESS_ACCEPT,
 	.vector = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f },
 };
 

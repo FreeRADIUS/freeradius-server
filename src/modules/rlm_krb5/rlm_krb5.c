@@ -255,7 +255,7 @@ static rlm_rcode_t krb5_parse_user(krb5_principal *client, rlm_krb5_t const *ins
 	 * 	Ensure that we're being passed a plain-text password,
 	 * 	and not anything else.
 	 */
-	if (request->password->da->attr != PW_USER_PASSWORD) {
+	if (request->password->da->attr != FR_USER_PASSWORD) {
 		REDEBUG("Attribute \"User-Password\" is required for authentication.  Cannot use \"%s\".",
 			request->password->da->name);
 

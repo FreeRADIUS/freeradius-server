@@ -173,7 +173,7 @@ int do_auth_wbclient(rlm_mschap_t const *inst, REQUEST *request,
 			if (strcmp(authparams.account_name, normalised_username) != 0) {
 				authparams.account_name = normalised_username;
 
-				/* Set PW_MS_CHAP_USER_NAME */
+				/* Set FR_MS_CHAP_USER_NAME */
 				if (!fr_pair_make(request->packet, &request->packet->vps, "MS-CHAP-User-Name", normalised_username, T_OP_SET)) {
 					RERROR("Failed creating MS-CHAP-User-Name");
 					goto normalised_username_retry_failure;
@@ -183,11 +183,11 @@ int do_auth_wbclient(rlm_mschap_t const *inst, REQUEST *request,
 												authparams.domain_name);
 
 				/* Recalculate hash */
-				if (!(vp_challenge = fr_pair_find_by_num(request->packet->vps, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT, TAG_ANY))) {
+				if (!(vp_challenge = fr_pair_find_by_num(request->packet->vps, FR_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT, TAG_ANY))) {
 					RERROR("Unable to get MS-CHAP-Challenge");
 					goto normalised_username_retry_failure;
 				}
-				if (!(vp_response = fr_pair_find_by_num(request->packet->vps, PW_MSCHAP2_RESPONSE, VENDORPEC_MICROSOFT, TAG_ANY))) {
+				if (!(vp_response = fr_pair_find_by_num(request->packet->vps, FR_MSCHAP2_RESPONSE, VENDORPEC_MICROSOFT, TAG_ANY))) {
 					RERROR("Unable to get MS-CHAP2-Response");
 					goto normalised_username_retry_failure;
 				}

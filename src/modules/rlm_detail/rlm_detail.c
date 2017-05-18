@@ -264,18 +264,18 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 
 		switch (packet->src_ipaddr.af) {
 		case AF_INET:
-			src_vp.da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_SRC_IP_ADDRESS);
+			src_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_SRC_IP_ADDRESS);
 			src_vp.vp_ipv4addr = packet->src_ipaddr.addr.v4.s_addr;
 
-			dst_vp.da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_DST_IP_ADDRESS);
+			dst_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_DST_IP_ADDRESS);
 			dst_vp.vp_ipv4addr = packet->dst_ipaddr.addr.v4.s_addr;
 			break;
 
 		case AF_INET6:
-			src_vp.da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_SRC_IPV6_ADDRESS);
+			src_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_SRC_IPV6_ADDRESS);
 			memcpy(&src_vp.vp_ipv6addr, &packet->src_ipaddr.addr.v6,
 			       sizeof(packet->src_ipaddr.addr.v6));
-			dst_vp.da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_DST_IPV6_ADDRESS);
+			dst_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_DST_IPV6_ADDRESS);
 			memcpy(&dst_vp.vp_ipv6addr, &packet->dst_ipaddr.addr.v6,
 			       sizeof(packet->dst_ipaddr.addr.v6));
 			break;
@@ -287,9 +287,9 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 		detail_fr_pair_fprint(request, out, &src_vp);
 		detail_fr_pair_fprint(request, out, &dst_vp);
 
-		src_vp.da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_SRC_PORT);
+		src_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_SRC_PORT);
 		src_vp.vp_uint32 = packet->src_port;
-		dst_vp.da = fr_dict_attr_by_num(NULL, 0, PW_PACKET_DST_PORT);
+		dst_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_DST_PORT);
 		dst_vp.vp_uint32 = packet->dst_port;
 
 		detail_fr_pair_fprint(request, out, &src_vp);
@@ -309,7 +309,7 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 			/*
 			 *	Don't print passwords in old format...
 			 */
-			if (compat && !vp->da->vendor && (vp->da->attr == PW_USER_PASSWORD)) continue;
+			if (compat && !vp->da->vendor && (vp->da->attr == FR_USER_PASSWORD)) continue;
 
 			/*
 			 *	Print all of the attributes, operator should always be '='.
@@ -512,7 +512,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, void *thread,
 
 		rcode = mod_accounting(instance, thread, request);
 		if (rcode == RLM_MODULE_OK) {
-			request->reply->code = PW_CODE_ACCOUNTING_RESPONSE;
+			request->reply->code = FR_CODE_ACCOUNTING_RESPONSE;
 		}
 		return rcode;
 	}

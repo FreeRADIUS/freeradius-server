@@ -85,13 +85,13 @@ typedef struct dc_offer {
 } dc_offer_t;
 
 static const FR_NAME_NUMBER request_types[] = {
-	{ "discover", PW_DHCP_DISCOVER },
-	{ "request",  PW_DHCP_REQUEST },
-	{ "decline",  PW_DHCP_DECLINE },
-	{ "release",  PW_DHCP_RELEASE },
-	{ "inform",   PW_DHCP_INFORM },
-	{ "lease_query",  PW_DHCP_LEASE_QUERY },
-	{ "auto",     PW_CODE_UNDEFINED },
+	{ "discover", FR_DHCP_DISCOVER },
+	{ "request",  FR_DHCP_REQUEST },
+	{ "decline",  FR_DHCP_DECLINE },
+	{ "release",  FR_DHCP_RELEASE },
+	{ "inform",   FR_DHCP_INFORM },
+	{ "lease_query",  FR_DHCP_LEASE_QUERY },
+	{ "auto",     FR_CODE_UNDEFINED },
 	{ NULL, 0}
 };
 
@@ -157,33 +157,33 @@ static RADIUS_PACKET *request_init(char const *filename)
 		/*
 		 *	Allow to set packet type using DHCP-Message-Type
 		 */
-		if (vp->da->vendor == DHCP_MAGIC_VENDOR && vp->da->attr == PW_DHCP_MESSAGE_TYPE) {
-			request->code = vp->vp_uint32 + PW_DHCP_OFFSET;
+		if (vp->da->vendor == DHCP_MAGIC_VENDOR && vp->da->attr == FR_DHCP_MESSAGE_TYPE) {
+			request->code = vp->vp_uint32 + FR_DHCP_OFFSET;
 		} else if (!vp->da->vendor) switch (vp->da->attr) {
 		/*
 		 *	Allow it to set the packet type in
 		 *	the attributes read from the file.
 		 *	(this takes precedence over the command argument.)
 		 */
-		case PW_PACKET_TYPE:
+		case FR_PACKET_TYPE:
 			request->code = vp->vp_uint32;
 			break;
 
-		case PW_PACKET_DST_PORT:
+		case FR_PACKET_DST_PORT:
 			request->dst_port = (vp->vp_uint32 & 0xffff);
 			break;
 
-		case PW_PACKET_DST_IP_ADDRESS:
-		case PW_PACKET_DST_IPV6_ADDRESS:
+		case FR_PACKET_DST_IP_ADDRESS:
+		case FR_PACKET_DST_IPV6_ADDRESS:
 			memcpy(&request->dst_ipaddr, &vp->vp_ip, sizeof(request->src_ipaddr));
 			break;
 
-		case PW_PACKET_SRC_PORT:
+		case FR_PACKET_SRC_PORT:
 			request->src_port = (vp->vp_uint32 & 0xffff);
 			break;
 
-		case PW_PACKET_SRC_IP_ADDRESS:
-		case PW_PACKET_SRC_IPV6_ADDRESS:
+		case FR_PACKET_SRC_IP_ADDRESS:
+		case FR_PACKET_SRC_IPV6_ADDRESS:
 			memcpy(&request->src_ipaddr, &vp->vp_ip, sizeof(request->src_ipaddr));
 			break;
 
@@ -337,7 +337,7 @@ static RADIUS_PACKET *fr_dhcp_recv_raw_loop(int lsockfd,
 
 			if (!reply_p) reply_p = cur_reply_p;
 
-			if (cur_reply_p->code == PW_DHCP_OFFER) {
+			if (cur_reply_p->code == FR_DHCP_OFFER) {
 				VALUE_PAIR *vp1 = fr_pair_find_by_num(cur_reply_p->vps, DHCP_MAGIC_VENDOR, 54, TAG_ANY); /* DHCP-DHCP-Server-Identifier */
 				VALUE_PAIR *vp2 = fr_pair_find_by_num(cur_reply_p->vps, DHCP_MAGIC_VENDOR, 264, TAG_ANY); /* DHCP-Your-IP-address */
 
@@ -525,7 +525,7 @@ static void dhcp_packet_debug(RADIUS_PACKET *packet, bool received)
 #endif
 	       "length %zu\n",
 	       received ? "Received" : "Sending",
-	       dhcp_message_types[packet->code - PW_DHCP_OFFSET],
+	       dhcp_message_types[packet->code - FR_DHCP_OFFSET],
 	       packet->id,
 	       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
 	       inet_ntop(packet->src_ipaddr.af,
@@ -728,7 +728,7 @@ int main(int argc, char **argv)
 	/*
 	 *	These kind of packets do not get a reply, so don't wait for one.
 	 */
-	if ((request->code == PW_DHCP_RELEASE) || (request->code == PW_DHCP_DECLINE)) {
+	if ((request->code == FR_DHCP_RELEASE) || (request->code == FR_DHCP_DECLINE)) {
 		reply_expected = false;
 	}
 

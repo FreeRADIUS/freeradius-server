@@ -467,7 +467,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	/*
 	 *	Clear-text passwords are the only ones we support.
 	 */
-	if (request->password->da->attr != PW_USER_PASSWORD) {
+	if (request->password->da->attr != FR_USER_PASSWORD) {
 		REDEBUG("Attribute \"User-Password\" is required for authentication. Cannot use \"%s\"",
 			request->password->da->name);
 		return RLM_MODULE_INVALID;
@@ -505,14 +505,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		/* reply with Access-challenge message code (11) */
 
 		/* Generate Prompt attribute */
-		vp = fr_pair_afrom_num(request->reply, 0, PW_PROMPT);
+		vp = fr_pair_afrom_num(request->reply, 0, FR_PROMPT);
 
 		rad_assert(vp != NULL);
 		vp->vp_uint32 = 0; /* no echo */
 		fr_pair_add(&request->reply->vps, vp);
 
 		/* Mark the packet as a Acceess-Challenge Packet */
-		request->reply->code = PW_CODE_ACCESS_CHALLENGE;
+		request->reply->code = FR_CODE_ACCESS_CHALLENGE;
 		RDEBUG("Sending Access-Challenge");
 		rcode = RLM_MODULE_HANDLED;
 		break;

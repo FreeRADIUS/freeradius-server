@@ -707,7 +707,7 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 
 	while (frag < end) {
 		if (last_frag ||
-		    (frag[0] != PW_VENDOR_SPECIFIC) ||
+		    (frag[0] != FR_VENDOR_SPECIFIC) ||
 		    (frag[1] < 9) ||			/* too short for wimax */
 		    ((frag + frag[1]) > end) ||		/* overflow */
 		    (memcmp(frag + 2, data, 4) != 0) || /* not wimax */
@@ -1106,7 +1106,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 
 		child = fr_dict_attr_child_by_num(parent, p[0]);
 		if (!child) {
-			if ((p[0] != PW_VENDOR_SPECIFIC) || (data_len < (3 + 4 + 1))) {
+			if ((p[0] != FR_VENDOR_SPECIFIC) || (data_len < (3 + 4 + 1))) {
 				/* da->attr < 255, da->vendor == 0 */
 				child = fr_dict_unknown_afrom_fields(ctx, parent, 0, p[0]);
 			} else {
@@ -1417,7 +1417,7 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr
 
 		if (!parent->flags.is_root) return 2;
 
-		if (data[0] != PW_CHARGEABLE_USER_IDENTITY) return 2;
+		if (data[0] != FR_CHARGEABLE_USER_IDENTITY) return 2;
 
 		/*
 		 *	Hacks for CUI.  The WiMAX spec says that it can be

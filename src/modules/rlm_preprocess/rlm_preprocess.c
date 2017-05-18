@@ -65,7 +65,7 @@ static const CONF_PARSER module_config[] = {
 static int fall_through(VALUE_PAIR *vp)
 {
 	VALUE_PAIR *tmp;
-	tmp = fr_pair_find_by_num(vp, 0, PW_FALL_THROUGH, TAG_ANY);
+	tmp = fr_pair_find_by_num(vp, 0, FR_FALL_THROUGH, TAG_ANY);
 
 	return tmp ? tmp->vp_uint32 : 0;
 }
@@ -244,7 +244,7 @@ static void rad_mangle(rlm_preprocess_t const *inst, REQUEST *request)
 	 *	If it isn't there, then we can't mangle the request.
 	 */
 	request_pairs = request->packet->vps;
-	namepair = fr_pair_find_by_num(request_pairs, 0, PW_USER_NAME, TAG_ANY);
+	namepair = fr_pair_find_by_num(request_pairs, 0, FR_USER_NAME, TAG_ANY);
 	if (!namepair || (namepair->vp_length == 0)) {
 		return;
 	}
@@ -285,10 +285,10 @@ static void rad_mangle(rlm_preprocess_t const *inst, REQUEST *request)
 	 *	Small check: if Framed-Protocol present but Service-Type
 	 *	is missing, add Service-Type = Framed-User.
 	 */
-	if (fr_pair_find_by_num(request_pairs, 0, PW_FRAMED_PROTOCOL, TAG_ANY) != NULL &&
-	    fr_pair_find_by_num(request_pairs, 0, PW_SERVICE_TYPE, TAG_ANY) == NULL) {
-		tmp = radius_pair_create(request->packet, &request->packet->vps, PW_SERVICE_TYPE, 0);
-		tmp->vp_uint32 = PW_FRAMED_USER;
+	if (fr_pair_find_by_num(request_pairs, 0, FR_FRAMED_PROTOCOL, TAG_ANY) != NULL &&
+	    fr_pair_find_by_num(request_pairs, 0, FR_SERVICE_TYPE, TAG_ANY) == NULL) {
+		tmp = radius_pair_create(request->packet, &request->packet->vps, FR_SERVICE_TYPE, 0);
+		tmp->vp_uint32 = FR_FRAMED_USER;
 	}
 
 	num_proxy_state = 0;
@@ -299,7 +299,7 @@ static void rad_mangle(rlm_preprocess_t const *inst, REQUEST *request)
 			continue;
 		}
 
-		if (tmp->da->attr != PW_PROXY_STATE) {
+		if (tmp->da->attr != FR_PROXY_STATE) {
 			continue;
 		}
 
@@ -361,7 +361,7 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 	/*
 	 *	Check for valid input, zero length names not permitted
 	 */
-	name = (tmp = fr_pair_find_by_num(request_pairs, 0, PW_USER_NAME, TAG_ANY)) ?
+	name = (tmp = fr_pair_find_by_num(request_pairs, 0, FR_USER_NAME, TAG_ANY)) ?
 		tmp->vp_strvalue : NULL;
 	if (!name || name[0] == 0) {
 		/*
@@ -379,14 +379,14 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 			RDEBUG2("hints: Matched %s at %d", i->name, i->lineno);
 			/*
 			 *	Now add all attributes to the request list,
-			 *	except PW_STRIP_USER_NAME and PW_FALL_THROUGH
+			 *	except FR_STRIP_USER_NAME and FR_FALL_THROUGH
 			 *	and xlat them.
 			 */
 			add = fr_pair_list_copy(request->packet, i->reply);
 			ft = fall_through(add);
 
-			fr_pair_delete_by_num(&add, 0, PW_STRIP_USER_NAME, TAG_ANY);
-			fr_pair_delete_by_num(&add, 0, PW_FALL_THROUGH, TAG_ANY);
+			fr_pair_delete_by_num(&add, 0, FR_STRIP_USER_NAME, TAG_ANY);
+			fr_pair_delete_by_num(&add, 0, FR_FALL_THROUGH, TAG_ANY);
 			radius_pairmove(request, &request->packet->vps, add, true);
 
 			updated = 1;
@@ -439,9 +439,9 @@ static int huntgroup_access(REQUEST *request, PAIR_LIST *huntgroups)
 			 *  We've matched the huntgroup, so add it in
 			 *  to the list of request pairs.
 			 */
-			vp = fr_pair_find_by_num(request_pairs, 0, PW_HUNTGROUP_NAME, TAG_ANY);
+			vp = fr_pair_find_by_num(request_pairs, 0, FR_HUNTGROUP_NAME, TAG_ANY);
 			if (!vp) {
-				vp = radius_pair_create(request->packet, &request->packet->vps, PW_HUNTGROUP_NAME, 0);
+				vp = radius_pair_create(request->packet, &request->packet->vps, FR_HUNTGROUP_NAME, 0);
 				fr_pair_value_strcpy(vp, i->name);
 			}
 			r = RLM_MODULE_OK;
@@ -462,17 +462,17 @@ static int add_nas_attr(REQUEST *request)
 
 	switch (request->packet->src_ipaddr.af) {
 	case AF_INET:
-		nas = fr_pair_find_by_num(request->packet->vps, 0, PW_NAS_IP_ADDRESS, TAG_ANY);
+		nas = fr_pair_find_by_num(request->packet->vps, 0, FR_NAS_IP_ADDRESS, TAG_ANY);
 		if (!nas) {
-			nas = radius_pair_create(request->packet, &request->packet->vps, PW_NAS_IP_ADDRESS, 0);
+			nas = radius_pair_create(request->packet, &request->packet->vps, FR_NAS_IP_ADDRESS, 0);
 			nas->vp_ipv4addr = request->packet->src_ipaddr.addr.v4.s_addr;
 		}
 		break;
 
 	case AF_INET6:
-		nas = fr_pair_find_by_num(request->packet->vps, 0, PW_NAS_IPV6_ADDRESS, TAG_ANY);
+		nas = fr_pair_find_by_num(request->packet->vps, 0, FR_NAS_IPV6_ADDRESS, TAG_ANY);
 		if (!nas) {
-			nas = radius_pair_create(request->packet, &request->packet->vps, PW_NAS_IPV6_ADDRESS, 0);
+			nas = radius_pair_create(request->packet, &request->packet->vps, FR_NAS_IPV6_ADDRESS, 0);
 			memcpy(&nas->vp_ipv6addr, &request->packet->src_ipaddr.addr,
 			       sizeof(request->packet->src_ipaddr.addr));
 		}
@@ -544,7 +544,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		 *	in place, to go from Ascend's weird values to something
 		 *	approaching rationality.
 		 */
-		ascend_nasport_hack(fr_pair_find_by_num(request->packet->vps, 0, PW_NAS_PORT, TAG_ANY),
+		ascend_nasport_hack(fr_pair_find_by_num(request->packet->vps, 0, FR_NAS_PORT, TAG_ANY),
 				    inst->ascend_channels_per_line);
 	}
 
@@ -568,9 +568,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	 *	Add an event timestamp. Means Event-Timestamp can be used
 	 *	consistently instead of one letter expansions.
 	 */
-	vp = fr_pair_find_by_num(request->packet->vps, 0, PW_EVENT_TIMESTAMP, TAG_ANY);
+	vp = fr_pair_find_by_num(request->packet->vps, 0, FR_EVENT_TIMESTAMP, TAG_ANY);
 	if (!vp) {
-		vp = radius_pair_create(request->packet, &request->packet->vps, PW_EVENT_TIMESTAMP, 0);
+		vp = radius_pair_create(request->packet, &request->packet->vps, FR_EVENT_TIMESTAMP, 0);
 		vp->vp_date = request->packet->timestamp.tv_sec;
 	}
 
@@ -587,13 +587,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	hints_setup(inst->hints, request);
 
 	/*
-	 *      If there is a PW_CHAP_PASSWORD attribute but there
-	 *      is PW_CHAP_CHALLENGE we need to add it so that other
+	 *      If there is a FR_CHAP_PASSWORD attribute but there
+	 *      is FR_CHAP_CHALLENGE we need to add it so that other
 	 *	modules can use it as a normal attribute.
 	 */
-	if (fr_pair_find_by_num(request->packet->vps, 0, PW_CHAP_PASSWORD, TAG_ANY) &&
-	    fr_pair_find_by_num(request->packet->vps, 0, PW_CHAP_CHALLENGE, TAG_ANY) == NULL) {
-		vp = radius_pair_create(request->packet, &request->packet->vps, PW_CHAP_CHALLENGE, 0);
+	if (fr_pair_find_by_num(request->packet->vps, 0, FR_CHAP_PASSWORD, TAG_ANY) &&
+	    fr_pair_find_by_num(request->packet->vps, 0, FR_CHAP_CHALLENGE, TAG_ANY) == NULL) {
+		vp = radius_pair_create(request->packet, &request->packet->vps, FR_CHAP_CHALLENGE, 0);
 		fr_pair_value_memcpy(vp, request->packet->vector, AUTH_VECTOR_LEN);
 	}
 
@@ -654,14 +654,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_preaccounting(void *instance, UNUSED voi
 	 *	the server can use it, rather than various error-prone
 	 *	manual calculations.
 	 */
-	vp = fr_pair_find_by_num(request->packet->vps, 0, PW_EVENT_TIMESTAMP, TAG_ANY);
+	vp = fr_pair_find_by_num(request->packet->vps, 0, FR_EVENT_TIMESTAMP, TAG_ANY);
 	if (!vp) {
 		VALUE_PAIR *delay;
 
-		vp = radius_pair_create(request->packet, &request->packet->vps, PW_EVENT_TIMESTAMP, 0);
+		vp = radius_pair_create(request->packet, &request->packet->vps, FR_EVENT_TIMESTAMP, 0);
 		vp->vp_date = request->packet->timestamp.tv_sec;
 
-		delay = fr_pair_find_by_num(request->packet->vps, 0, PW_ACCT_DELAY_TIME, TAG_ANY);
+		delay = fr_pair_find_by_num(request->packet->vps, 0, FR_ACCT_DELAY_TIME, TAG_ANY);
 		if (delay) {
 			if ((delay->vp_uint32 >= vp->vp_date) || (delay->vp_uint32 == UINT32_MAX)) {
 				RWARN("Ignoring invalid Acct-Delay-time of %u seconds", delay->vp_uint32);

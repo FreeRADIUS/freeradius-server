@@ -1063,13 +1063,13 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 		for (vp = fixup->packet->vps; vp != NULL; vp = vp->next) {
 			if (vp->da->vendor) continue;
 
-			if ((vp->da->attr == PW_USER_NAME) && !fixup->username) {
+			if ((vp->da->attr == FR_USER_NAME) && !fixup->username) {
 				fixup->username = vp;
 
-			} else if (vp->da->attr == PW_STRIPPED_USER_NAME) {
+			} else if (vp->da->attr == FR_STRIPPED_USER_NAME) {
 				fixup->username = vp;
 
-			} else if (vp->da->attr == PW_USER_PASSWORD) {
+			} else if (vp->da->attr == FR_USER_PASSWORD) {
 				fixup->password = vp;
 			}
 		}

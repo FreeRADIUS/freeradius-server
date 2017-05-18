@@ -264,7 +264,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 	if (packet->data_len < VQP_HDR_LEN) return -1;
 
 	fr_pair_cursor_init(&cursor, &packet->vps);
-	vp = fr_pair_afrom_num(packet, 0, PW_VQP_PACKET_TYPE);
+	vp = fr_pair_afrom_num(packet, 0, FR_VQP_PACKET_TYPE);
 	if (!vp) {
 		fr_strerror_printf("No memory");
 		return -1;
@@ -274,7 +274,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 	debug_pair(vp);
 	fr_pair_cursor_append(&cursor, vp);
 
-	vp = fr_pair_afrom_num(packet, 0, PW_VQP_ERROR_CODE);
+	vp = fr_pair_afrom_num(packet, 0, FR_VQP_ERROR_CODE);
 	if (!vp) {
 		fr_strerror_printf("No memory");
 		return -1;
@@ -284,7 +284,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 	debug_pair(vp);
 	fr_pair_cursor_append(&cursor, vp);
 
-	vp = fr_pair_afrom_num(packet, 0, PW_VQP_SEQUENCE_NUMBER);
+	vp = fr_pair_afrom_num(packet, 0, FR_VQP_SEQUENCE_NUMBER);
 	if (!vp) {
 		fr_strerror_printf("No memory");
 		return -1;
@@ -397,7 +397,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 
 	code = packet->code;
 	if (!code) {
-		vp = fr_pair_find_by_num(packet->vps, 0, PW_VQP_PACKET_TYPE, TAG_ANY);
+		vp = fr_pair_find_by_num(packet->vps, 0, FR_VQP_PACKET_TYPE, TAG_ANY);
 		if (!vp) {
 			fr_strerror_printf("Failed to find VQP-Packet-Type in response packet");
 			return -1;
@@ -412,7 +412,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 
 	length = VQP_HDR_LEN;
 
-	vp = fr_pair_find_by_num(packet->vps, 0, PW_VQP_ERROR_CODE, TAG_ANY);
+	vp = fr_pair_find_by_num(packet->vps, 0, FR_VQP_ERROR_CODE, TAG_ANY);
 	if (vp) {
 		packet->data = talloc_array(packet, uint8_t, length);
 		if (!packet->data) {

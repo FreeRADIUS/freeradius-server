@@ -507,12 +507,12 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 		 *	Attributes we skip during comparison.
 		 *	These are "server" check items.
 		 */
-		case PW_CRYPT_PASSWORD:
-		case PW_AUTH_TYPE:
-		case PW_AUTZ_TYPE:
-		case PW_ACCT_TYPE:
-		case PW_SESSION_TYPE:
-		case PW_STRIP_USER_NAME:
+		case FR_CRYPT_PASSWORD:
+		case FR_AUTH_TYPE:
+		case FR_AUTZ_TYPE:
+		case FR_ACCT_TYPE:
+		case FR_SESSION_TYPE:
+		case FR_STRIP_USER_NAME:
 			continue;
 
 		/*
@@ -524,13 +524,13 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 		 *
 		 *	This hack makes CHAP-Password work..
 		 */
-		case PW_USER_PASSWORD:
+		case FR_USER_PASSWORD:
 			if (check_item->op == T_OP_CMP_EQ) {
 				WARN("Found User-Password == \"...\"");
 				WARN("Are you sure you don't mean Cleartext-Password?");
 				WARN("See \"man rlm_pap\" for more information");
 			}
-			if (fr_pair_find_by_num(req_list, 0, PW_USER_PASSWORD, TAG_ANY) == NULL) {
+			if (fr_pair_find_by_num(req_list, 0, FR_USER_PASSWORD, TAG_ANY) == NULL) {
 				continue;
 			}
 			break;

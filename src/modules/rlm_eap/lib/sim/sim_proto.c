@@ -158,7 +158,7 @@ static ssize_t sim_value_decrypt(TALLOC_CTX *ctx, uint8_t **out,
 			uint8_t	 sim_at = p[0];
 			size_t	 sim_at_len = p[1] * sizeof(uint32_t);
 
-			if (sim_at == PW_SIM_IV) {
+			if (sim_at == FR_SIM_IV) {
 				if (sim_iv_extract(&(this->iv[0]), p, sim_at_len) < 0) return -1;
 				this->have_iv = true;
 				break;
@@ -417,7 +417,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 	 *	to pad out the value to the correct length for the
 	 *	block cipher (16 in the case of AES-128-CBC).
 	 */
-	case PW_SIM_PADDING:
+	case FR_SIM_PADDING:
 		if (!parent->parent || (parent->parent->type != FR_TYPE_TLV) || (!parent->parent->flags.encrypt)) {
 			fr_strerror_printf("%s: Found padding attribute outside of an encrypted TLV", __FUNCTION__);
 			return -1;
@@ -439,7 +439,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 	 *	find it in the rest of the packet after the encrypted
 	 *	attribute.
 	 */
-	case PW_SIM_IV:
+	case FR_SIM_IV:
 		if (sim_iv_extract(&this->iv[0], data, attr_len) < 0) return -1;
 		this->have_iv = true;
 		break;
@@ -721,7 +721,7 @@ int fr_sim_decode(REQUEST *request, vp_cursor_t *decoded, fr_dict_attr_t const *
 	{
 		VALUE_PAIR *vp;
 
-		vp = fr_pair_afrom_child_num(request->packet, parent, PW_SIM_SUBTYPE);
+		vp = fr_pair_afrom_child_num(request->packet, parent, FR_SIM_SUBTYPE);
 		if (!vp) {
 			fr_strerror_printf("Failed allocating subtype attribute");
 			goto error;
@@ -754,25 +754,25 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 	 *	It might be too big for putting into an
 	 *	EAP packet.
 	 */
-	vp = fr_pair_find_by_child_num(to_encode, parent, PW_SIM_SUBTYPE, TAG_ANY);
+	vp = fr_pair_find_by_child_num(to_encode, parent, FR_SIM_SUBTYPE, TAG_ANY);
 	if (!vp) {
 		REDEBUG("Missing subtype attribute");
 		return -1;
 	}
 	subtype = vp->vp_uint16;
 
-	vp = fr_pair_find_by_num(to_encode, 0, PW_EAP_ID, TAG_ANY);
+	vp = fr_pair_find_by_num(to_encode, 0, FR_EAP_ID, TAG_ANY);
 	id = vp ? vp->vp_uint32 : ((int)getpid() & 0xff);
 
-	vp = fr_pair_find_by_num(to_encode, 0, PW_EAP_CODE, TAG_ANY);
-	eap_code = vp ? vp->vp_uint32 : PW_EAP_REQUEST;
+	vp = fr_pair_find_by_num(to_encode, 0, FR_EAP_CODE, TAG_ANY);
+	eap_code = vp ? vp->vp_uint32 : FR_EAP_REQUEST;
 
 	/*
 	 *	Fill in some bits in the EAP packet
 	 *
 	 *	These are needed even if we're sending an almost empty packet.
 	 */
-	if (eap_packet->code != PW_EAP_SUCCESS) eap_packet->code = eap_code;
+	if (eap_packet->code != FR_EAP_SUCCESS) eap_packet->code = eap_code;
 	eap_packet->id = (id & 0xff);
 	eap_packet->type.num = type;
 
@@ -789,7 +789,7 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 		 *
 		 *	At this point, we only care about the size.
 		 */
-		if (vp->da->attr == PW_SIM_MAC) {
+		if (vp->da->attr == FR_SIM_MAC) {
 			vp_len = 18;
 			do_hmac = true;
 		/*
@@ -847,7 +847,7 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 		/*
 		 *	We'll append the HMAC last.
 		 */
-		if (vp->da->attr == PW_EAP_SIM_MAC) continue;
+		if (vp->da->attr == FR_EAP_SIM_MAC) continue;
 
 		/*
 		 *	For strings we have an 'actual' value field.
@@ -961,7 +961,7 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 	if (do_hmac) {
 		ssize_t slen;
 
-		vp = fr_pair_find_by_child_num(to_encode, parent, PW_SIM_KEY, TAG_ANY);
+		vp = fr_pair_find_by_child_num(to_encode, parent, FR_SIM_KEY, TAG_ANY);
 		if (!vp) {
 			fr_strerror_printf("Need to sign packet, but no HMAC key set");
 		error:
@@ -972,7 +972,7 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 		/*
 		 *	We left some room earlier...
 		 */
-		*p++ = PW_SIM_MAC;
+		*p++ = FR_SIM_MAC;
 		*p++ = (SIM_CALC_MAC_SIZE >> 2);
 		*p++ = 0x00;
 		*p++ = 0x00;
@@ -994,13 +994,13 @@ int fr_sim_global_init(void)
 
 	if (done_init) return 0;
 
-	dict_aka_root = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), PW_EAP_AKA_ROOT);
+	dict_aka_root = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_EAP_AKA_ROOT);
 	if (!dict_aka_root) {
 		fr_strerror_printf("Missing AKA root");
 		return -1;
 	}
 
-	dict_sim_root = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), PW_EAP_SIM_ROOT);
+	dict_sim_root = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_EAP_SIM_ROOT);
 	if (!dict_sim_root) {
 		fr_strerror_printf("Missing SIM root");
 		return -1;

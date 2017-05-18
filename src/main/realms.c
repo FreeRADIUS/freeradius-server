@@ -859,7 +859,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 			 */
 #ifdef WITH_TLS
 			if (tls) {
-				home->port = PW_RADIUS_TLS_PORT;
+				home->port = FR_RADIUS_TLS_PORT;
 			} else
 #endif
 			switch (home->type) {
@@ -868,15 +868,15 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 				/* FALL-THROUGH */
 
 			case HOME_TYPE_AUTH:
-				home->port = PW_AUTH_UDP_PORT;
+				home->port = FR_AUTH_UDP_PORT;
 				break;
 
 			case HOME_TYPE_ACCT:
-				home->port = PW_ACCT_UDP_PORT;
+				home->port = FR_ACCT_UDP_PORT;
 				break;
 
 			case HOME_TYPE_COA:
-				home->port = PW_COA_UDP_PORT;
+				home->port = FR_COA_UDP_PORT;
 				break;
 			}
 
@@ -1485,9 +1485,9 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 		p = strchr(name, ':');
 		if (!p) {
 			if (type == HOME_TYPE_AUTH) {
-				home->port = PW_AUTH_UDP_PORT;
+				home->port = FR_AUTH_UDP_PORT;
 			} else {
-				home->port = PW_ACCT_UDP_PORT;
+				home->port = FR_ACCT_UDP_PORT;
 			}
 
 			p = name;
@@ -2375,22 +2375,22 @@ void home_server_update_request(home_server_t *home, REQUEST *request)
 		 *	The RFC's say we have to do this, but FreeRADIUS
 		 *	doesn't need it.
 		 */
-		vp = radius_pair_create(request->proxy->packet, &request->proxy->packet->vps, PW_PROXY_STATE, 0);
+		vp = radius_pair_create(request->proxy->packet, &request->proxy->packet->vps, FR_PROXY_STATE, 0);
 		snprintf(buff, sizeof(buff), "%u", request->packet->id);
 		fr_pair_value_memcpy(vp, (uint8_t *)buff, strlen(buff));
 
 		/*
-		 *	If there is no PW_CHAP_CHALLENGE attribute but
-		 *	there is a PW_CHAP_PASSWORD we need to add it
+		 *	If there is no FR_CHAP_CHALLENGE attribute but
+		 *	there is a FR_CHAP_PASSWORD we need to add it
 		 *	since we can't use the request->packet request
 		 *	authenticator anymore, as the
 		 *	request->proxy->packet authenticator is
 		 *	different.
 		 */
-		if ((request->packet->code == PW_CODE_ACCESS_REQUEST) &&
-		    fr_pair_find_by_num(request->proxy->packet->vps, 0, PW_CHAP_PASSWORD, TAG_ANY) &&
-		    fr_pair_find_by_num(request->proxy->packet->vps, 0, PW_CHAP_CHALLENGE, TAG_ANY) == NULL) {
-			vp = radius_pair_create(request->proxy->packet, &request->proxy->packet->vps, PW_CHAP_CHALLENGE, 0);
+		if ((request->packet->code == FR_CODE_ACCESS_REQUEST) &&
+		    fr_pair_find_by_num(request->proxy->packet->vps, 0, FR_CHAP_PASSWORD, TAG_ANY) &&
+		    fr_pair_find_by_num(request->proxy->packet->vps, 0, FR_CHAP_CHALLENGE, TAG_ANY) == NULL) {
+			vp = radius_pair_create(request->proxy->packet, &request->proxy->packet->vps, FR_CHAP_CHALLENGE, 0);
 			fr_pair_value_memcpy(vp, request->packet->vector, sizeof(request->packet->vector));
 		}
 
@@ -2398,8 +2398,8 @@ void home_server_update_request(home_server_t *home, REQUEST *request)
 		 *	Access-Requests have a Message-Authenticator added,
 		 *	unless one already exists.
 		 */
-		if ((request->packet->code == PW_CODE_ACCESS_REQUEST) &&
-		    !fr_pair_find_by_num(request->proxy->packet->vps, 0, PW_MESSAGE_AUTHENTICATOR, TAG_ANY)) {
+		if ((request->packet->code == FR_CODE_ACCESS_REQUEST) &&
+		    !fr_pair_find_by_num(request->proxy->packet->vps, 0, FR_MESSAGE_AUTHENTICATOR, TAG_ANY)) {
 			fr_pair_make(request->proxy->packet, &request->proxy->packet->vps,
 				     "Message-Authenticator", "0x00", T_OP_SET);
 		}
@@ -2483,7 +2483,7 @@ home_server_t *home_server_ldb(char const *realmname,
 		break;
 
 	case HOME_POOL_KEYED_BALANCE:
-		if ((vp = fr_pair_find_by_num(request->control, 0, PW_LOAD_BALANCE_KEY, TAG_ANY)) != NULL) {
+		if ((vp = fr_pair_find_by_num(request->control, 0, FR_LOAD_BALANCE_KEY, TAG_ANY)) != NULL) {
 			hash = fr_hash(vp->vp_strvalue, vp->vp_length);
 			start = hash % pool->num_home_servers;
 			break;
@@ -2537,7 +2537,7 @@ home_server_t *home_server_ldb(char const *realmname,
 		 *	there.
 		 */
 		if ((request->listener->type == RAD_LISTEN_DETAIL) &&
-		    (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) &&
+		    (request->packet->code == FR_CODE_ACCOUNTING_REQUEST) &&
 		    (fr_ipaddr_cmp(&home->ipaddr, &request->packet->src_ipaddr) == 0)) {
 			continue;
 		}
@@ -2707,10 +2707,10 @@ home_server_t *home_server_ldb(char const *realmname,
 		if (!rd) return NULL;
 
 		pool = NULL;
-		if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
+		if (request->packet->code == FR_CODE_ACCESS_REQUEST) {
 			pool = rd->auth_pool;
 
-		} else if (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) {
+		} else if (request->packet->code == FR_CODE_ACCOUNTING_REQUEST) {
 			pool = rd->acct_pool;
 		}
 		if (!pool) return NULL;

@@ -51,7 +51,7 @@ static int eap_sim_compose(eap_session_t *eap_session)
 	/* we will set the ID on requests, since we have to HMAC it */
 	eap_session->this_round->set_request_id = true;
 
-	return fr_sim_encode(eap_session->request, dict_sim_root, PW_EAP_SIM,
+	return fr_sim_encode(eap_session->request, dict_sim_root, FR_EAP_SIM,
 			     eap_session->request->reply->vps, eap_session->this_round->request,
 			     eap_sim_session->keys.gsm.nonce_mt, sizeof(eap_sim_session->keys.gsm.nonce_mt));
 }
@@ -81,13 +81,13 @@ static int eap_sim_send_state(eap_session_t *eap_session)
 	words[1] = htons(EAP_SIM_VERSION);
 	words[2] = 0;
 
-	newvp = fr_pair_afrom_child_num(packet, dict_sim_root, PW_EAP_SIM_VERSION_LIST);
+	newvp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_VERSION_LIST);
 	fr_pair_value_memcpy(newvp, (uint8_t const *) words, sizeof(words));
 
 	fr_pair_add(vps, newvp);
 
 	/* set the EAP_ID - new value */
-	newvp = fr_pair_afrom_child_num(packet, fr_dict_root(fr_dict_internal), PW_EAP_ID);
+	newvp = fr_pair_afrom_child_num(packet, fr_dict_root(fr_dict_internal), FR_EAP_ID);
 	newvp->vp_uint32 = eap_sim_session->sim_id++;
 	fr_pair_replace(vps, newvp);
 
@@ -96,7 +96,7 @@ static int eap_sim_send_state(eap_session_t *eap_session)
 	memcpy(eap_sim_session->keys.gsm.version_list, words + 1, eap_sim_session->keys.gsm.version_list_len);
 
 	/* the ANY_ID attribute. We do not support re-auth or pseudonym */
-	MEM(newvp = fr_pair_afrom_child_num(packet, dict_sim_root, PW_EAP_SIM_FULLAUTH_ID_REQ));
+	MEM(newvp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_FULLAUTH_ID_REQ));
 	MEM(p = talloc_array(newvp, uint8_t, 2));
 	p[0] = 0;
 	p[1] = 1;
@@ -104,7 +104,7 @@ static int eap_sim_send_state(eap_session_t *eap_session)
 	fr_pair_add(vps, newvp);
 
 	/* the SUBTYPE, set to start. */
-	newvp = fr_pair_afrom_child_num(packet, dict_sim_root, PW_EAP_SIM_SUBTYPE);
+	newvp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_SUBTYPE);
 	newvp->vp_uint32 = EAP_SIM_START;
 	fr_pair_replace(vps, newvp);
 
@@ -115,7 +115,7 @@ static int eap_sim_send_state(eap_session_t *eap_session)
  *
  * Challenges will come from one of three places eventually:
  *
- * 1  from attributes like PW_EAP_SIM_RANDx
+ * 1  from attributes like FR_EAP_SIM_RANDx
  *	    (these might be retrieved from a database)
  *
  * 2  from internally implemented SIM authenticators
@@ -156,7 +156,7 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	/*
 	 *	Okay, we got the challenges! Put them into an attribute.
 	 */
-	MEM(vp = fr_pair_afrom_child_num(packet, dict_sim_root, PW_EAP_SIM_RAND));
+	MEM(vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_RAND));
 	MEM(p = rand = talloc_array(vp, uint8_t, 2 + (SIM_VECTOR_GSM_RAND_SIZE * 3)));
 	memset(p, 0, 2); /* clear reserved bytes */
 	p += 2;
@@ -171,14 +171,14 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	/*
 	 *	Set the EAP_ID - new value
 	 */
-	vp = fr_pair_afrom_child_num(packet, fr_dict_root(fr_dict_internal), PW_EAP_ID);
+	vp = fr_pair_afrom_child_num(packet, fr_dict_root(fr_dict_internal), FR_EAP_ID);
 	vp->vp_uint32 = eap_sim_session->sim_id++;
 	fr_pair_replace(to_client, vp);
 
 	/*
 	 *	Use the SIM identity, if available
 	 */
-	vp = fr_pair_find_by_child_num(*from_client, dict_sim_root, PW_EAP_SIM_IDENTITY, TAG_ANY);
+	vp = fr_pair_find_by_child_num(*from_client, dict_sim_root, FR_EAP_SIM_IDENTITY, TAG_ANY);
 	if (vp) {
 		MEM(eap_sim_session->keys.identity = (uint8_t *)talloc_bstrndup(eap_sim_session,
 										vp->vp_strvalue, vp->vp_length));
@@ -208,18 +208,18 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	 *	Need to include an AT_MAC attribute so that it will get
 	 *	calculated.
 	 */
-	vp = fr_pair_afrom_child_num(packet, dict_sim_root, PW_EAP_SIM_MAC);
+	vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_MAC);
 	fr_pair_value_memcpy(vp, hmac_zero, sizeof(hmac_zero));
 	fr_pair_replace(to_client, vp);
 
-	vp = fr_pair_afrom_child_num(packet, dict_sim_root, PW_EAP_SIM_KEY);
+	vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_KEY);
 	fr_pair_value_memcpy(vp, eap_sim_session->keys.k_aut, 16);
 	fr_pair_replace(to_client, vp);
 
 	/*
 	 *	Set subtype to challenge.
 	 */
-	vp = fr_pair_afrom_child_num(packet, dict_sim_root, PW_EAP_SIM_SUBTYPE);
+	vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_SUBTYPE);
 	vp->vp_uint32 = EAP_SIM_CHALLENGE;
 	fr_pair_replace(to_client, vp);
 
@@ -238,7 +238,7 @@ static int eap_sim_send_success(eap_session_t *eap_session)
 	VALUE_PAIR		*vp;
 	RADIUS_PACKET		*packet;
 
-	eap_session->this_round->request->code = PW_EAP_SUCCESS;
+	eap_session->this_round->request->code = FR_EAP_SUCCESS;
 	eap_session->finished = true;
 
 	/* to_client is the data to the client. */
@@ -246,7 +246,7 @@ static int eap_sim_send_success(eap_session_t *eap_session)
 	eap_sim_session = talloc_get_type_abort(eap_session->opaque, eap_sim_session_t);
 
 	/* set the EAP_ID - new value */
-	vp = fr_pair_afrom_child_num(packet, fr_dict_root(fr_dict_internal), PW_EAP_ID);
+	vp = fr_pair_afrom_child_num(packet, fr_dict_root(fr_dict_internal), FR_EAP_ID);
 	vp->vp_uint32 = eap_sim_session->sim_id++;
 	fr_pair_replace(&eap_session->request->reply->vps, vp);
 
@@ -316,8 +316,8 @@ static int process_eap_sim_start(eap_session_t *eap_session, VALUE_PAIR *vps)
 
 	eap_sim_session = talloc_get_type_abort(eap_session->opaque, eap_sim_session_t);
 
-	nonce_vp = fr_pair_find_by_child_num(vps, dict_sim_root, PW_EAP_SIM_NONCE_MT, TAG_ANY);
-	selected_version_vp = fr_pair_find_by_child_num(vps, dict_sim_root, PW_EAP_SIM_SELECTED_VERSION, TAG_ANY);
+	nonce_vp = fr_pair_find_by_child_num(vps, dict_sim_root, FR_EAP_SIM_NONCE_MT, TAG_ANY);
+	selected_version_vp = fr_pair_find_by_child_num(vps, dict_sim_root, FR_EAP_SIM_SELECTED_VERSION, TAG_ANY);
 	if (!nonce_vp || !selected_version_vp) {
 		RDEBUG2("Client did not select a version and send a NONCE");
 		eap_sim_state_enter(eap_session, eap_sim_session, EAP_SIM_SERVER_START);
@@ -450,7 +450,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	/*
 	 *	See what kind of message we have gotten
 	 */
-	vp = fr_pair_find_by_child_num(vps, dict_sim_root, PW_EAP_SIM_SUBTYPE, TAG_ANY);
+	vp = fr_pair_find_by_child_num(vps, dict_sim_root, FR_EAP_SIM_SUBTYPE, TAG_ANY);
 	if (!vp) {
 		REDEBUG2("No subtype attribute was created, message dropped");
 		return 0;
@@ -550,7 +550,7 @@ static int mod_instantiate(UNUSED rlm_eap_config_t const *config, UNUSED void *i
 	fr_dict_attr_t const *da;
 	CONF_SECTION *subcs;
 
-	da = fr_dict_attr_child_by_num(dict_sim_root, PW_EAP_SIM_SUBTYPE);
+	da = fr_dict_attr_child_by_num(dict_sim_root, FR_EAP_SIM_SUBTYPE);
 	if (!da) {
 		cf_log_err_cs(cs, "Failed to find EAP-Sim-Subtype attribute");
 		return -1;
@@ -587,7 +587,7 @@ static int mod_instantiate(UNUSED rlm_eap_config_t const *config, UNUSED void *i
 
 static int mod_load(void)
 {
-	dict_sim_root = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), PW_EAP_SIM_ROOT);
+	dict_sim_root = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_EAP_SIM_ROOT);
 	if (!dict_sim_root) {
 		ERROR("Missing EAP-SIM-Root attribute");
 		return -1;

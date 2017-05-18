@@ -242,7 +242,7 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	char			*username_string = NULL;
 	char			*shortUserName	 = NULL;
 	VALUE_PAIR		*response	 = fr_pair_find_by_num(request->packet->vps, VENDORPEC_MICROSOFT,
-									  PW_MSCHAP2_RESPONSE, TAG_ANY);
+									  FR_MSCHAP2_RESPONSE, TAG_ANY);
 #ifndef NDEBUG
 	unsigned int t;
 #endif

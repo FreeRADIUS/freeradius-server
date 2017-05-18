@@ -945,10 +945,10 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 			/*
 			 *	Update cached copies
 			 */
-			request->username = fr_pair_find_by_num(request->packet->vps, 0, PW_USER_NAME, TAG_ANY);
-			request->password = fr_pair_find_by_num(request->packet->vps, 0, PW_USER_PASSWORD, TAG_ANY);
+			request->username = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_NAME, TAG_ANY);
+			request->password = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_PASSWORD, TAG_ANY);
 			if (!request->password)
-				request->password = fr_pair_find_by_num(request->packet->vps, 0, PW_CHAP_PASSWORD,
+				request->password = fr_pair_find_by_num(request->packet->vps, 0, FR_CHAP_PASSWORD,
 									TAG_ANY);
 		}
 
@@ -1024,7 +1024,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	VALUE_PAIR	*pair;
 	int 		acctstatustype = 0;
 
-	if ((pair = fr_pair_find_by_num(request->packet->vps, 0, PW_ACCT_STATUS_TYPE, TAG_ANY)) != NULL) {
+	if ((pair = fr_pair_find_by_num(request->packet->vps, 0, FR_ACCT_STATUS_TYPE, TAG_ANY)) != NULL) {
 		acctstatustype = pair->vp_uint32;
 	} else {
 		RDEBUG("Invalid Accounting Packet");
@@ -1032,7 +1032,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	}
 
 	switch (acctstatustype) {
-	case PW_STATUS_START:
+	case FR_STATUS_START:
 		if (((rlm_perl_t const *)instance)->func_start_accounting) {
 			return do_perl(instance, request,
 				       ((rlm_perl_t const *)instance)->func_start_accounting);
@@ -1041,7 +1041,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 				       ((rlm_perl_t const *)instance)->func_accounting);
 		}
 
-	case PW_STATUS_STOP:
+	case FR_STATUS_STOP:
 		if (((rlm_perl_t const *)instance)->func_stop_accounting) {
 			return do_perl(instance, request,
 				       ((rlm_perl_t const *)instance)->func_stop_accounting);

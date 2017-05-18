@@ -396,7 +396,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 	 *	int the reply, we use that in preference to the
 	 *	old state.
 	 */
-	vp = fr_pair_find_by_num(packet->vps, 0, PW_STATE, TAG_ANY);
+	vp = fr_pair_find_by_num(packet->vps, 0, FR_STATE, TAG_ANY);
 	if (vp) {
 		if (DEBUG_ENABLED && (vp->vp_length > sizeof(entry->state))) {
 			WARN("State too long, will be truncated.  Expected <= %zd bytes, got %zu bytes",
@@ -438,7 +438,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 		 */
 		entry->state_comp.server_id = main_config.state_server_id;
 
-		vp = fr_pair_afrom_num(packet, 0, PW_STATE);
+		vp = fr_pair_afrom_num(packet, 0, FR_STATE);
 		fr_pair_value_memcpy(vp, entry->state, sizeof(entry->state));
 		fr_pair_add(&packet->vps, vp);
 	}
@@ -499,7 +499,7 @@ static fr_state_entry_t *state_entry_find(fr_state_tree_t *state, REQUEST *reque
 	VALUE_PAIR *vp;
 	fr_state_entry_t *entry, my_entry;
 
-	vp = fr_pair_find_by_num(packet->vps, 0, PW_STATE, TAG_ANY);
+	vp = fr_pair_find_by_num(packet->vps, 0, FR_STATE, TAG_ANY);
 	if (!vp) return NULL;
 
 	if (vp->vp_length != sizeof(my_entry.state)) return NULL;
@@ -567,7 +567,7 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET
 	/*
 	 *	No State, don't do anything.
 	 */
-	if (!fr_pair_find_by_num(request->packet->vps, 0, PW_STATE, TAG_ANY)) {
+	if (!fr_pair_find_by_num(request->packet->vps, 0, FR_STATE, TAG_ANY)) {
 		RDEBUG3("No &request:State attribute, can't restore &session-state");
 		if (request->seq_start == 0) request->seq_start = request->number;	/* Need check for fake requests */
 		return;

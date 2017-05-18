@@ -1075,8 +1075,8 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 			goto finish;
 		}
 		context->coa->proxy->packet->code = (map->lhs->tmpl_list == PAIR_LIST_COA) ?
-					    PW_CODE_COA_REQUEST :
-					    PW_CODE_DISCONNECT_REQUEST;
+					    FR_CODE_COA_REQUEST :
+					    FR_CODE_DISCONNECT_REQUEST;
 	}
 
 	list = radius_list(context, map->lhs->tmpl_list);
@@ -1400,17 +1400,17 @@ update:
 			if (vp->da->flags.has_tag) continue;
 			if (vp->vp_type != FR_TYPE_STRING) continue;
 
-			if (!context->username && (vp->da->attr == PW_USER_NAME)) {
+			if (!context->username && (vp->da->attr == FR_USER_NAME)) {
 				context->username = vp;
 				continue;
 			}
 
-			if (vp->da->attr == PW_STRIPPED_USER_NAME) {
+			if (vp->da->attr == FR_STRIPPED_USER_NAME) {
 				context->username = vp;
 				continue;
 			}
 
-			if (vp->da->attr == PW_USER_PASSWORD) {
+			if (vp->da->attr == FR_USER_PASSWORD) {
 				context->password = vp;
 				continue;
 			}

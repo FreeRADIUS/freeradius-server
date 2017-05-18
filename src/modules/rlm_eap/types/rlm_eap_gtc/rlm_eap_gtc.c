@@ -66,11 +66,11 @@ static rlm_rcode_t mod_process_auth_type(UNUSED void *instance, eap_session_t *e
 	if (rcode == RLM_MODULE_YIELD) return rcode;
 
 	if (rcode != RLM_MODULE_OK) {
-		eap_round->request->code = PW_EAP_FAILURE;
+		eap_round->request->code = FR_EAP_FAILURE;
 		return rcode;
 	}
 
-	eap_round->request->code = PW_EAP_SUCCESS;
+	eap_round->request->code = FR_EAP_SUCCESS;
 	return RLM_MODULE_OK;
 }
 
@@ -96,7 +96,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 	 */
 	if (eap_round->response->length <= 4) {
 		ERROR("Corrupted data");
-		eap_round->request->code = PW_EAP_FAILURE;
+		eap_round->request->code = FR_EAP_FAILURE;
 		return RLM_MODULE_INVALID;
 	}
 
@@ -106,7 +106,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 	 */
 	if (eap_round->response->type.length > 128) {
 		ERROR("Response is too large to understand");
-		eap_round->request->code = PW_EAP_FAILURE;
+		eap_round->request->code = FR_EAP_FAILURE;
 		return RLM_MODULE_INVALID;
 	}
 
@@ -114,7 +114,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 	 *	If there was a User-Password in the request,
 	 *	why the heck are they using EAP-GTC?
 	 */
-	fr_pair_delete_by_num(&request->packet->vps, 0, PW_USER_PASSWORD, TAG_ANY);
+	fr_pair_delete_by_num(&request->packet->vps, 0, FR_USER_PASSWORD, TAG_ANY);
 
 	MEM(vp = pair_make_request("User-Password", NULL, T_OP_EQ));
 	fr_pair_value_bstrncpy(vp, eap_round->response->type.data, eap_round->response->type.length);
@@ -133,11 +133,11 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 		 */
 		rcode = process_authenticate(inst->auth_type, request);
 		if (rcode != RLM_MODULE_OK) {
-			eap_round->request->code = PW_EAP_FAILURE;
+			eap_round->request->code = FR_EAP_FAILURE;
 			return rcode;
 		}
 
-		eap_round->request->code = PW_EAP_SUCCESS;
+		eap_round->request->code = FR_EAP_SUCCESS;
 		return RLM_MODULE_OK;
 	}
 
@@ -168,7 +168,7 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 	/*
 	 *	We're sending a request...
 	 */
-	eap_round->request->code = PW_EAP_REQUEST;
+	eap_round->request->code = FR_EAP_REQUEST;
 
 	eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, length);
 	if (!eap_round->request->type.data) return RLM_MODULE_FAIL;
@@ -201,7 +201,7 @@ static int mod_instantiate(UNUSED rlm_eap_config_t const *config, void *instance
 		return -1;
 	}
 
-	dval = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, PW_AUTH_TYPE), inst->auth_type_name);
+	dval = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE), inst->auth_type_name);
 	if (!dval) {
 		cf_log_err_by_name(cs, "auth_type", "Unknown Auth-Type %s",
 				   inst->auth_type_name);

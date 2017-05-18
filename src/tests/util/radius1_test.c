@@ -115,7 +115,7 @@ static ssize_t test_encode(void const *packet_ctx, REQUEST *request, uint8_t *bu
 
 	MPRINT1("\t\tENCODE >>> request %zd - data %p %p room %zd\n", request->number, packet_ctx, buffer, buffer_len);
 
-	buffer[0] = PW_CODE_ACCESS_ACCEPT;
+	buffer[0] = FR_CODE_ACCESS_ACCEPT;
 	buffer[1] = pc->id;
 	buffer[2] = 0;
 	buffer[3] = 20;
@@ -362,7 +362,7 @@ static void master_process(TALLOC_CTX *ctx)
 			 *	Verify the packet before doing anything more with it.
 			 */
 			packet = cd->m.data;
-			if (packet[0] != PW_CODE_ACCESS_REQUEST) {
+			if (packet[0] != FR_CODE_ACCESS_REQUEST) {
 				MPRINT1("Master ignoring packet code %u\n", packet[0]);
 				goto discard;
 			}

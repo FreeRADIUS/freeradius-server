@@ -147,7 +147,7 @@ VALUE_PAIR *fr_pair_cursor_last(vp_cursor_t *cursor)
    {
    	fr_pair_cursor_end(cursor);
 
-   	fr_pair_cursor_append(cursor, fr_pair_alloc_by_num(NULL, 0, PW_MESSAGE_AUTHENTICATOR));
+   	fr_pair_cursor_append(cursor, fr_pair_alloc_by_num(NULL, 0, FR_MESSAGE_AUTHENTICATOR));
 
    	if (bad_thing) {
    		fr_pair_cursor_free(cursor);

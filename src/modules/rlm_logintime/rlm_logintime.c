@@ -131,7 +131,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	VALUE_PAIR *ends, *timeout;
 	int left;
 
-	ends = fr_pair_find_by_num(request->control, 0, PW_LOGIN_TIME, TAG_ANY);
+	ends = fr_pair_find_by_num(request->control, 0, FR_LOGIN_TIME, TAG_ANY);
 	if (!ends) {
 		return RLM_MODULE_NOOP;
 	}
@@ -175,13 +175,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	 */
 	RDEBUG("Login within allowed time-slot, %d seconds left in this session", left);
 
-	timeout = fr_pair_find_by_num(request->reply->vps, 0, PW_SESSION_TIMEOUT, TAG_ANY);
+	timeout = fr_pair_find_by_num(request->reply->vps, 0, FR_SESSION_TIMEOUT, TAG_ANY);
 	if (timeout) {	/* just update... */
 		if (timeout->vp_uint32 > (unsigned int) left) {
 			timeout->vp_uint32 = left;
 		}
 	} else {
-		timeout = radius_pair_create(request->reply, &request->reply->vps, PW_SESSION_TIMEOUT, 0);
+		timeout = radius_pair_create(request->reply, &request->reply->vps, FR_SESSION_TIMEOUT, 0);
 		timeout->vp_uint32 = left;
 	}
 
@@ -213,8 +213,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 * Register a Current-Time comparison function
 	 */
-	paircompare_register(fr_dict_attr_by_num(NULL, 0, PW_CURRENT_TIME), NULL, true, timecmp, inst);
-	paircompare_register(fr_dict_attr_by_num(NULL, 0, PW_TIME_OF_DAY), NULL, true, time_of_day, inst);
+	paircompare_register(fr_dict_attr_by_num(NULL, 0, FR_CURRENT_TIME), NULL, true, timecmp, inst);
+	paircompare_register(fr_dict_attr_by_num(NULL, 0, FR_TIME_OF_DAY), NULL, true, time_of_day, inst);
 
 	return 0;
 }

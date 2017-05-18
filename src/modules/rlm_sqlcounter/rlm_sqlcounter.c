@@ -409,7 +409,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	 *      The REAL username, after stripping.
 	 */
 	if ((inst->key_attr->tmpl_list == PAIR_LIST_REQUEST) &&
-	    (inst->key_attr->tmpl_da->vendor == 0) && (inst->key_attr->tmpl_da->attr == PW_USER_NAME)) {
+	    (inst->key_attr->tmpl_da->vendor == 0) && (inst->key_attr->tmpl_da->attr == FR_USER_NAME)) {
 		key_vp = request->username;
 	} else {
 		tmpl_find_vp(&key_vp, request, inst->key_attr);
@@ -483,7 +483,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		 *	again.  Do this only for Session-Timeout.
 		 */
 		if (((inst->reply_attr->tmpl_da->vendor == 0) &&
-		     (inst->reply_attr->tmpl_da->attr == PW_SESSION_TIMEOUT)) &&
+		     (inst->reply_attr->tmpl_da->attr == FR_SESSION_TIMEOUT)) &&
 		    inst->reset_time && (res >= (uint64_t)(inst->reset_time - request->packet->timestamp.tv_sec))) {
 			uint64_t to_reset = inst->reset_time - request->packet->timestamp.tv_sec;
 

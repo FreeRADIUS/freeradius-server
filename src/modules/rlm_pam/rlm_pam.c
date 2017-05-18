@@ -219,7 +219,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	 *  Ensure that we're being passed a plain-text password,
 	 *  and not anything else.
 	 */
-	if (request->password->da->attr != PW_USER_PASSWORD) {
+	if (request->password->da->attr != FR_USER_PASSWORD) {
 		RAUTH("Attribute \"User-Password\" is required for authentication.  Cannot use \"%s\".", request->password->da->name);
 		return RLM_MODULE_INVALID;
 	}
@@ -228,7 +228,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	 *	Let the 'users' file over-ride the PAM auth name string,
 	 *	for backwards compatibility.
 	 */
-	pair = fr_pair_find_by_num(request->control, 0, PW_PAM_AUTH, TAG_ANY);
+	pair = fr_pair_find_by_num(request->control, 0, FR_PAM_AUTH, TAG_ANY);
 	if (pair) pam_auth_string = pair->vp_strvalue;
 
 	ret = do_pam(request, request->username->vp_strvalue, request->password->vp_strvalue, pam_auth_string);

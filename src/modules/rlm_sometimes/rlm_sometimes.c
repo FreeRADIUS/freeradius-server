@@ -118,20 +118,20 @@ static rlm_rcode_t sometimes_return(void const *instance, REQUEST *request, RADI
 	 */
 	if ((inst->rcode == RLM_MODULE_HANDLED) && reply) {
 		switch (packet->code) {
-		case PW_CODE_ACCESS_REQUEST:
-			reply->code = PW_CODE_ACCESS_ACCEPT;
+		case FR_CODE_ACCESS_REQUEST:
+			reply->code = FR_CODE_ACCESS_ACCEPT;
 			break;
 
-		case PW_CODE_ACCOUNTING_REQUEST:
-			reply->code = PW_CODE_ACCOUNTING_RESPONSE;
+		case FR_CODE_ACCOUNTING_REQUEST:
+			reply->code = FR_CODE_ACCOUNTING_RESPONSE;
 			break;
 
-		case PW_CODE_COA_REQUEST:
-			reply->code = PW_CODE_COA_ACK;
+		case FR_CODE_COA_REQUEST:
+			reply->code = FR_CODE_COA_ACK;
 			break;
 
-		case PW_CODE_DISCONNECT_REQUEST:
-			reply->code = PW_CODE_DISCONNECT_ACK;
+		case FR_CODE_DISCONNECT_REQUEST:
+			reply->code = FR_CODE_DISCONNECT_ACK;
 			break;
 
 		default:
