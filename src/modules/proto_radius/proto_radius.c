@@ -103,7 +103,7 @@ static const CONF_PARSER proto_radius_config[] = {
 	{ FR_CONF_OFFSET("type", FR_TYPE_STRING | FR_TYPE_MULTI, pr_config_t, types), .dflt = "Status-Server" },
 	{ FR_CONF_OFFSET("transport", FR_TYPE_STRING, pr_config_t, transport), .dflt = "udp" },
 
-	CONF_PARSER_TERMINATOR
+	CONF_PARSER_PARTIAL_TERMINATOR
 };
 
 
@@ -112,7 +112,6 @@ static int compile_packet(CONF_SECTION *server, CONF_SECTION *cs, char const *va
 	int i;
 	char const *lib;
 	dl_t const *module;
-	fr_app_subtype_t const *app;
 
 	/*
 	 *	Already loaded the module in this virtual
@@ -142,15 +141,6 @@ static int compile_packet(CONF_SECTION *server, CONF_SECTION *cs, char const *va
 	module = dl_module(cs, NULL, lib, DL_TYPE_PROTO);
 	if (!module) {
 		cf_log_err_cs(cs, "Failed finding submodule library for %s", value);
-		return -1;
-	}
-
-	/*
-	 *	Compile the sections in the server.
-	 */
-	app = (fr_app_subtype_t const *) module->common;
-	if (app->compile(server) < 0) {
-		cf_log_err_cs(server, "Failed compiling unlang for 'type = %s'", value);
 		return -1;
 	}
 
@@ -196,6 +186,11 @@ static int compile_listen(CONF_SECTION *server, CONF_SECTION *cs)
 	 *	Call transport-specific things to open the socket.
 	 */
 
+	/*
+	 *	Print out the final "}" for debugging.
+	 */
+	(void) cf_section_parse(cs, &config, cs, NULL);
+
 	return 0;
 }
 
@@ -225,6 +220,38 @@ static fr_app_io_t *proto_radius_compile(CONF_SECTION *cs)
 	 *	array. And what to do for virtual servers which don't
 	 *	have a "listen" section?
 	 */
+
+	/*
+	 *	Compile the sub-sections AFTER parsing all of the
+	 *	listen sections.  This is mainly for nice debugging
+	 *	output.  It's inefficient as heck, but it's pretty.
+	 */
+	for (subcs = cf_subsection_find_next(cs, NULL, "listen");
+	     subcs != NULL;
+	     subcs = cf_subsection_find_next(cs, cs, "listen")) {
+		CONF_PAIR *cp;
+
+		for (cp = cf_pair_find(subcs, "type");
+		     cp != NULL;
+		     cp = cf_pair_find_next(subcs, cp, "type")) {
+			char const *value;
+			dl_t const *module;
+			fr_app_subtype_t const *app;
+
+			value = cf_pair_value(cp);
+
+			module = cf_data_find(cs, dl_t, value);
+			if (cf_data_find(cs, char const *, value)) continue;
+
+			app = (fr_app_subtype_t const *) module->common;
+			if (app->compile(cs) < 0) {
+				cf_log_err_cs(cs, "Failed compiling unlang for 'type = %s'", value);
+				return NULL;
+			}
+
+			cf_data_add(cs, value, value, false);
+		}
+	}
 
 	return NULL;
 }
