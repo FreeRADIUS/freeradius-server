@@ -30,7 +30,7 @@
 #include <freeradius-devel/io/transport.h>
 #include <freeradius-devel/rad_assert.h>
 
-static fr_transport_final_t status_process(REQUEST *request)
+static fr_transport_final_t mod_process(REQUEST *request)
 {
 	rlm_rcode_t rcode;
 	CONF_SECTION *unlang;
@@ -216,7 +216,7 @@ static fr_transport_final_t status_process(REQUEST *request)
 }
 
 
-static int status_compile_section(CONF_SECTION *server_cs, char const *name1, char const *name2, rlm_components_t component)
+static int mod_compile_section(CONF_SECTION *server_cs, char const *name1, char const *name2, rlm_components_t component)
 {
 	CONF_SECTION *cs;
 
@@ -246,11 +246,11 @@ static int status_compile_section(CONF_SECTION *server_cs, char const *name1, ch
 /*
  *	Ensure that the "radius" section is compiled.
  */
-static int status_compile(CONF_SECTION *server_cs)
+static int mod_compile(CONF_SECTION *server_cs)
 {
 	int rcode;
 
-	rcode = status_compile_section(server_cs, "recv", "Status-Server", MOD_AUTHORIZE);
+	rcode = mod_compile_section(server_cs, "recv", "Status-Server", MOD_AUTHORIZE);
 	if (rcode < 0) return rcode;
 	if (rcode == 0) {
 		cf_log_err_cs(server_cs, "Failed finding 'recv Status-Server { ... }' section of virtual server %s",
@@ -258,7 +258,7 @@ static int status_compile(CONF_SECTION *server_cs)
 		return -1;
 	}
 
-	rcode = status_compile_section(server_cs, "send", "Access-Accept", MOD_POST_AUTH);
+	rcode = mod_compile_section(server_cs, "send", "Access-Accept", MOD_POST_AUTH);
 	if (rcode < 0) return rcode;
 	if (rcode == 0) {
 		cf_log_err_cs(server_cs, "Failed finding 'send Access-Accept { ... }' section of virtual server %s",
@@ -266,7 +266,7 @@ static int status_compile(CONF_SECTION *server_cs)
 		return -1;
 	}
 
-	rcode = status_compile_section(server_cs, "send", "Access-Reject", MOD_POST_AUTH);
+	rcode = mod_compile_section(server_cs, "send", "Access-Reject", MOD_POST_AUTH);
 	if (rcode < 0) return rcode;
 	if (rcode == 0) {
 		cf_log_err_cs(server_cs, "Failed finding 'send Access-Reject { ... }' section of virtual server %s",
@@ -282,6 +282,6 @@ extern fr_app_subtype_t proto_radius_status;
 fr_app_subtype_t proto_radius_status = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "radius_status",
-	.compile	= status_compile,
-	.process	= status_process,
+	.compile	= mod_compile,
+	.process	= mod_process,
 };
