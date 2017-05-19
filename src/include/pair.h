@@ -182,6 +182,11 @@ typedef struct value_pair_raw {
 #define NUM_COUNT		(INT_MIN + 2)
 #define NUM_LAST		(INT_MIN + 3)
 
+#  ifdef WITH_VERIFY_PTR
+void		fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp);
+void		fr_pair_list_verify(char const *file, int line, TALLOC_CTX *expected, VALUE_PAIR *vps);
+#  endif
+
 /* Allocation and management */
 VALUE_PAIR	*fr_pair_alloc(TALLOC_CTX *ctx);
 VALUE_PAIR	*fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da);

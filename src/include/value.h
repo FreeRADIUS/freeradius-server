@@ -17,6 +17,7 @@
 #define _FR_VALUE_H
 #include <freeradius-devel/inet.h>
 #include <freeradius-devel/types.h>
+#include <freeradius-devel/debug.h>
 
 /*
  *	Avoid circular type references.
@@ -156,35 +157,171 @@ struct value_box {
  *	These macros will in future do type checking in developer builds,
  *	in addition to getting the box value.
  */
-#define fr_unbox_strvalue(_box)			_box->datum.strvalue
-#define fr_unbox_octets(_box)			_box->datum.octets
+#ifndef NDEBUG
+static inline char const *fr_unbox_strvalue(fr_value_box_t const *value)
+{
+	if (!fr_cond_assert(value->type == FR_TYPE_STRING)) return NULL;
+	return value->datum.strvalue;
+}
+static inline uint8_t const *fr_unbox_octets(fr_value_box_t const *value)
+{
+	if (!fr_cond_assert(value->type == FR_TYPE_OCTETS)) return NULL;
+	return value->datum.octets;
+}
 
-#define fr_unbox_ipv4addr(_box)			_box->datum.ip
-#define fr_unbox_ipv4prefix(_box)		_box->datum.ip
-#define fr_unbox_ipv6addr(_box)			_box->datum.ip
-#define fr_unbox_ipv6prefix(_box)		_box->datum.ip
+static inline fr_ipaddr_t const *fr_unbox_ipv4addr(fr_value_box_t const *value)
+{
+	if (!fr_cond_assert(value->type == FR_TYPE_IPV4_ADDR)) return NULL;
+	if (!fr_cond_assert(value->datum.ip.af == AF_INET)) return NULL;
+	if (!fr_cond_assert(value->datum.ip.prefix == 32)) return NULL;
+	return &value->datum.ip;
+}
+static inline fr_ipaddr_t const *fr_unbox_ipv4prefix(fr_value_box_t const *value)
+{
+	if (!fr_cond_assert(value->type == FR_TYPE_IPV4_ADDR)) return NULL;
+	if (!fr_cond_assert(value->datum.ip.af == AF_INET)) return NULL;
+	if (!fr_cond_assert(value->datum.ip.prefix <= 32)) return NULL;
+	if (!fr_cond_assert(value->datum.ip.prefix >= 0)) return NULL;
+	return &value->datum.ip;
+}
+static inline fr_ipaddr_t const *fr_unbox_ipv6addr(fr_value_box_t const *value)
+{
+	if (!fr_cond_assert(value->type == FR_TYPE_IPV6_ADDR)) return NULL;
+	if (!fr_cond_assert(value->datum.ip.af == AF_INET6)) return NULL;
+	if (!fr_cond_assert(value->datum.ip.prefix == 128)) return NULL;
+	return &value->datum.ip;
+}
+static inline fr_ipaddr_t const *fr_unbox_ipv6prefix(fr_value_box_t const *value)
+{
+	if (!fr_cond_assert(value->type == FR_TYPE_IPV6_PREFIX)) return NULL;
+	if (!fr_cond_assert(value->datum.ip.af == AF_INET6)) return NULL;
+	if (!fr_cond_assert(value->datum.ip.prefix <= 128)) return NULL;
+	if (!fr_cond_assert(value->datum.ip.prefix >= 0)) return NULL;
+	return &value->datum.ip;
+}
 
-#define fr_unbox_ifid(_box)			_box->datum.ifid
-#define fr_unbox_ether(_box)			_box->datum.ether
+static inline uint8_t const *fr_unbox_ifid(fr_value_box_t const *value)
+{
+	if (!fr_cond_assert(value->type == FR_TYPE_IFID)) return NULL;
+	return value->datum.ifid;
+}
+static inline uint8_t const *fr_unbox_ether(fr_value_box_t const *value)
+{
+	if (!fr_cond_assert(value->type == FR_TYPE_ETHERNET)) return NULL;
+	return value->datum.ether;
+}
 
-#define fr_unbox_uint8(_box)			_box->datum.uint8
-#define fr_unbox_uint16(_box)			_box->datum.uint16
-#define fr_unbox_uint32(_box)			_box->datum.uint32
-#define fr_unbox_uint64(_box)			_box->datum.uint64
-#define fr_unbox_uint128(_box)			_box->datum.uint128
+static inline uint8_t fr_unbox_uint8(fr_value_box_t const *value)
+{
+	if (!fr_cond_assert(value->type == FR_TYPE_UINT8)) return 0;
+	return value->datum.uint8;
+}
+static inline uint16_t fr_unbox_uint16(fr_value_box_t const *value)
+{
+	if (!fr_cond_assert(value->type == FR_TYPE_UINT16)) return 0;
+	return value->datum.uint16;
+}
+static inline uint32_t fr_unbox_uint32(fr_value_box_t const *value)
+{
+	if (!fr_cond_assert(value->type == FR_TYPE_UINT32)) return 0;
+	return value->datum.uint32;
+}
+static inline uint64_t fr_unbox_uint64(fr_value_box_t const *value)
+{
+	if (!fr_cond_assert(value->type == FR_TYPE_UINT64)) return 0;
+	return value->datum.uint64;
+}
+/*
+static inline uint128_t fr_unbox_uint128(fr_value_box_t const *value)
+{
+	if (!fr_cond_assert(value->type == FR_TYPE_UINT128)) return 0;
+	return value->datum.uint128;
+}
+*/
 
-#define fr_unbox_int8(_box)			_box->datum.int8
-#define fr_unbox_int16(_box)			_box->datum.int16
-#define fr_unbox_int32(_box)			_box->datum.int32
-#define fr_unbox_int64(_box)			_box->datum.int64
+static inline int8_t fr_unbox_int8(fr_value_box_t const *value)
+{
+	if (!fr_cond_assert(value->type == FR_TYPE_UINT8)) return 0;
+	return value->datum.int8;
+}
+static inline int16_t fr_unbox_int16(fr_value_box_t const *value)
+{
+	if (!fr_cond_assert(value->type == FR_TYPE_UINT16)) return 0;
+	return value->datum.int16;
+}
+static inline int32_t fr_unbox_int32(fr_value_box_t const *value)
+{
+	if (!fr_cond_assert(value->type == FR_TYPE_UINT32)) return 0;
+	return value->datum.int32;
+}
+static inline int64_t fr_unbox_int64(fr_value_box_t const *value)
+{
+	if (!fr_cond_assert(value->type == FR_TYPE_UINT64)) return 0;
+	return value->datum.int64;
+}
 
-#define fr_unbox_float32(_box)			_box->datum.float32
-#define fr_unbox_float64(_box)			_box->datum.float64
+static inline float fr_unbox_float32(fr_value_box_t const *value)
+{
+	if (!fr_cond_assert(value->type == FR_TYPE_FLOAT32)) return 0;
+	return value->datum.float32;
+}
+static inline float fr_unbox_float64(fr_value_box_t const *value)
+{
+	if (!fr_cond_assert(value->type == FR_TYPE_FLOAT64)) return 0;
+	return value->datum.float64;
+}
 
-#define fr_unbox_date(_val)			_box->datum.date
-#define fr_unbox_date_milliseconds(_val)	_box->datum.date_milliseconds
-#define fr_unbox_date_microseconds(_val)	_box->datum.date_microseconds
-#define fr_unbox_date_nanoseconds(_val)		_box->datum.date_nanoseconds
+static inline uint32_t fr_unbox_date(fr_value_box_t const *value)
+{
+	if (!fr_cond_assert(value->type == FR_TYPE_DATE)) return 0;
+	return value->datum.date;
+}
+static inline uint64_t fr_unbox_date_milliseconds(fr_value_box_t const *value)
+{
+	if (!fr_cond_assert(value->type == FR_TYPE_DATE_MILLISECONDS)) return 0;
+	return value->datum.date_milliseconds;
+}
+static inline uint64_t fr_unbox_date_microseconds(fr_value_box_t const *value)
+{
+	if (!fr_cond_assert(value->type == FR_TYPE_DATE_MICROSECONDS)) return 0;
+	return value->datum.date_microseconds;
+}
+static inline uint64_t fr_unbox_date_nanoseconds(fr_value_box_t const *value)
+{
+	if (!fr_cond_assert(value->type == FR_TYPE_DATE_NANOSECONDS)) return 0;
+	return value->datum.date_nanoseconds;
+}
+#else
+#  define fr_unbox_strvalue(_box)		_box->datum.strvalue
+#  define fr_unbox_octets(_box)			_box->datum.octets
+
+#  define fr_unbox_ipv4addr(_box)		&(_box->datum.ip)
+#  define fr_unbox_ipv4prefix(_box)		&(_box->datum.ip)
+#  define fr_unbox_ipv6addr(_box)		&(_box->datum.ip)
+#  define fr_unbox_ipv6prefix(_box)		&(_box->datum.ip)
+
+#  define fr_unbox_ifid(_box)			_box->datum.ifid
+#  define fr_unbox_ether(_box)			_box->datum.ether
+
+#  define fr_unbox_uint8(_box)			_box->datum.uint8
+#  define fr_unbox_uint16(_box)			_box->datum.uint16
+#  define fr_unbox_uint32(_box)			_box->datum.uint32
+#  define fr_unbox_uint64(_box)			_box->datum.uint64
+#  define fr_unbox_uint128(_box)		_box->datum.uint128
+
+#  define fr_unbox_int8(_box)			_box->datum.int8
+#  define fr_unbox_int16(_box)			_box->datum.int16
+#  define fr_unbox_int32(_box)			_box->datum.int32
+#  define fr_unbox_int64(_box)			_box->datum.int64
+
+#  define fr_unbox_float32(_box)		_box->datum.float32
+#  define fr_unbox_float64(_box)		_box->datum.float64
+
+#  define fr_unbox_date(_val)			_box->datum.date
+#  define fr_unbox_date_milliseconds(_val)	_box->datum.date_milliseconds
+#  define fr_unbox_date_microseconds(_val)	_box->datum.date_microseconds
+#  define fr_unbox_date_nanoseconds(_val)	_box->datum.date_nanoseconds
+#endif
 
 /*
  *	Allocation
