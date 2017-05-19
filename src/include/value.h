@@ -181,7 +181,6 @@ static inline fr_ipaddr_t const *fr_unbox_ipv4prefix(fr_value_box_t const *value
 	if (!fr_cond_assert(value->type == FR_TYPE_IPV4_ADDR)) return NULL;
 	if (!fr_cond_assert(value->datum.ip.af == AF_INET)) return NULL;
 	if (!fr_cond_assert(value->datum.ip.prefix <= 32)) return NULL;
-	if (!fr_cond_assert(value->datum.ip.prefix >= 0)) return NULL;
 	return &value->datum.ip;
 }
 static inline fr_ipaddr_t const *fr_unbox_ipv6addr(fr_value_box_t const *value)
@@ -196,7 +195,6 @@ static inline fr_ipaddr_t const *fr_unbox_ipv6prefix(fr_value_box_t const *value
 	if (!fr_cond_assert(value->type == FR_TYPE_IPV6_PREFIX)) return NULL;
 	if (!fr_cond_assert(value->datum.ip.af == AF_INET6)) return NULL;
 	if (!fr_cond_assert(value->datum.ip.prefix <= 128)) return NULL;
-	if (!fr_cond_assert(value->datum.ip.prefix >= 0)) return NULL;
 	return &value->datum.ip;
 }
 
