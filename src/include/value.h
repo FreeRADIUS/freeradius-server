@@ -140,6 +140,9 @@ struct value_box {
 #define vb_date_milliseconds			datum.date_milliseconds
 #define vb_date_microseconds			datum.date_microseconds
 #define vb_date_nanoseconds			datum.date_nanoseconds
+
+#define vb_size					datum.size
+#define vb_timeval				datum.timeval
 /* @} **/
 
 /** @name Argument boxing macros
@@ -172,7 +175,7 @@ struct value_box {
 #define fr_box_uint16(_val)			_fr_box(FR_TYPE_UINT16, .vb_uint16, _val)
 #define fr_box_uint32(_val)			_fr_box(FR_TYPE_UINT32, .vb_uint32, _val)
 #define fr_box_uint64(_val)			_fr_box(FR_TYPE_UINT64, .vb_uint64, _val)
-#define fr_box_uint128(_val)			_fr_box(FR_TYPE_UINT128, .datum.uint128, _val)
+#define fr_box_uint128(_val)			_fr_box(FR_TYPE_UINT128, .vb_uint128, _val)
 
 #define fr_box_int8(_val)			_fr_box(FR_TYPE_INT8, .vb_int8, _val)
 #define fr_box_int16(_val)			_fr_box(FR_TYPE_INT16, .vb_int16, _val)
@@ -182,10 +185,13 @@ struct value_box {
 #define fr_box_float32(_val)			_fr_box(FR_TYPE_FLOAT32, .vb_float32, _val)
 #define fr_box_float64(_val)			_fr_box(FR_TYPE_FLOAT64, .vb_float64, _val)
 
-#define fr_box_date(_val)			_fr_box(FR_TYPE_DATE, date, _val)
-#define fr_box_date_milliseconds(_val)		_fr_box(FR_TYPE_DATE_MILISECONDS, date_milliseconds, _val)
-#define fr_box_date_microseconds(_val)		_fr_box(FR_TYPE_DATE_MICROSECONDS, date_microseconds, _val)
-#define fr_box_date_nanoseconds(_val)		_fr_box(FR_TYPE_DATE_NANOSECONDS, date_nanoseconds, _val)
+#define fr_box_date(_val)			_fr_box(FR_TYPE_DATE, .vb_date, _val)
+#define fr_box_date_milliseconds(_val)		_fr_box(FR_TYPE_DATE_MILISECONDS, .vb_date_milliseconds, _val)
+#define fr_box_date_microseconds(_val)		_fr_box(FR_TYPE_DATE_MICROSECONDS, .vb_date_microseconds, _val)
+#define fr_box_date_nanoseconds(_val)		_fr_box(FR_TYPE_DATE_NANOSECONDS, .vb_date_nanoseconds, _val)
+
+#define fr_box_size(_val)			_fr_box(FR_TYPE_SIZE, .vb_size, _val)
+#define fr_box_timeval(_val)			_fr_box(FR_TYPE_TIMEVAL, .vb_timeval, _val)
 /* @} **/
 
 /*
