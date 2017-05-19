@@ -682,7 +682,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 				continue;
 			}
 
-			slen = radsnmp_pair_from_oid(conf, conf, &cursor, line, fr_unbox_int32(type->value), p + 1);
+			slen = radsnmp_pair_from_oid(conf, conf, &cursor, line, type->value->vb_uint32, p + 1);
 		}
 			break;
 

@@ -195,7 +195,7 @@ static ssize_t xlat_hex(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			goto error;
 		}
 		len = (size_t)dst.datum.length;
-		p = buff = dst.datum.octets;
+		p = buff = dst.vb_octets;
 	}
 
 	rad_assert(p);

@@ -110,7 +110,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	dval = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE), inst->name);
 	if (dval) {
-		inst->auth_type = fr_unbox_uint32(dval->value);
+		inst->auth_type = dval->value->vb_uint32;
 	} else {
 		inst->auth_type = 0;
 	}

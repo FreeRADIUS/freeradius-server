@@ -615,12 +615,12 @@ int tmpl_afrom_value_box(TALLOC_CTX *ctx, vp_tmpl_t **out, fr_value_box_t *data,
 		  (data->type == FR_TYPE_STRING) ? T_SINGLE_QUOTED_STRING : T_BARE_WORD);
 
 	if (steal) {
-		if (fr_value_box_steal(vpt, &vpt->tmpl_value_box, data) < 0) {
+		if (fr_value_box_steal(vpt, &vpt->tmpl_value, data) < 0) {
 			talloc_free(vpt);
 			return -1;
 		}
 	} else {
-		if (fr_value_box_copy(vpt, &vpt->tmpl_value_box, data) < 0) {
+		if (fr_value_box_copy(vpt, &vpt->tmpl_value, data) < 0) {
 			talloc_free(vpt);
 			return -1;
 		}
@@ -983,11 +983,11 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
 			binlen = (inlen - 2) / 2;
 
 			vpt = tmpl_alloc(ctx, TMPL_TYPE_DATA, in, inlen, type);
-			vpt->tmpl_fr_value_box_datum.ptr = talloc_array(vpt, uint8_t, binlen);
-			vpt->tmpl_fr_value_box_length = binlen;
-			vpt->tmpl_fr_value_box_type = FR_TYPE_OCTETS;
+			vpt->tmpl_value.datum.ptr = talloc_array(vpt, uint8_t, binlen);
+			vpt->tmpl_value_length = binlen;
+			vpt->tmpl_value_type = FR_TYPE_OCTETS;
 
-			len = fr_hex2bin(vpt->tmpl_fr_value_box_datum.ptr, binlen, in + 2, inlen - 2);
+			len = fr_hex2bin(vpt->tmpl_value.datum.ptr, binlen, in + 2, inlen - 2);
 			if (len != binlen) {
 				fr_strerror_printf("Hex string contains none hex char");
 				talloc_free(vpt);
@@ -1016,8 +1016,8 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
 			if (fr_value_box_from_str(ctx, &data, &data_type, NULL,
 						  in, inlen, quote, false) < 0) return 0;
 
-			vpt = tmpl_alloc(ctx, TMPL_TYPE_UNPARSED, data.datum.strvalue,
-					 talloc_array_length(data.datum.strvalue) - 1, type);
+			vpt = tmpl_alloc(ctx, TMPL_TYPE_UNPARSED, data.vb_strvalue,
+					 talloc_array_length(data.vb_strvalue) - 1, type);
 			talloc_free(data.datum.ptr);
 		} else {
 			vpt = tmpl_alloc(ctx, TMPL_TYPE_UNPARSED, in, inlen, type);
@@ -1056,11 +1056,11 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
 			if (fr_value_box_from_str(ctx, &data, &data_type, NULL, in,
 						  inlen, fr_token_quote[type], false) < 0) return -1;
 			if (do_xlat) {
-				vpt = tmpl_alloc(ctx, TMPL_TYPE_XLAT, data.datum.strvalue,
-						 talloc_array_length(data.datum.strvalue) - 1, type);
+				vpt = tmpl_alloc(ctx, TMPL_TYPE_XLAT, data.vb_strvalue,
+						 talloc_array_length(data.vb_strvalue) - 1, type);
 			} else {
-				vpt = tmpl_alloc(ctx, TMPL_TYPE_UNPARSED, data.datum.strvalue,
-						 talloc_array_length(data.datum.strvalue) - 1, type);
+				vpt = tmpl_alloc(ctx, TMPL_TYPE_UNPARSED, data.vb_strvalue,
+						 talloc_array_length(data.vb_strvalue) - 1, type);
 				vpt->quote = T_DOUBLE_QUOTED_STRING;
 			}
 			talloc_free(data.datum.ptr);
@@ -1080,8 +1080,8 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
 			if (fr_value_box_from_str(ctx, &data, &data_type, NULL, in,
 						  inlen, fr_token_quote[type], false) < 0) return -1;
 
-			vpt = tmpl_alloc(ctx, TMPL_TYPE_EXEC, data.datum.strvalue,
-					 talloc_array_length(data.datum.strvalue) - 1, type);
+			vpt = tmpl_alloc(ctx, TMPL_TYPE_EXEC, data.vb_strvalue,
+					 talloc_array_length(data.vb_strvalue) - 1, type);
 			talloc_free(data.datum.ptr);
 		} else {
 			vpt = tmpl_alloc(ctx, TMPL_TYPE_EXEC, in, inlen, type);
@@ -1151,12 +1151,12 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enu
 
 	switch (vpt->type) {
 	case TMPL_TYPE_UNPARSED:
-		vpt->tmpl_fr_value_box_type = type;
+		vpt->tmpl_value_type = type;
 
 		/*
 		 *	Why do we pass a pointer to the tmpl type? Goddamn WiMAX.
 		 */
-		if (fr_value_box_from_str(vpt, &vpt->tmpl_value_box, &vpt->tmpl_fr_value_box_type,
+		if (fr_value_box_from_str(vpt, &vpt->tmpl_value, &vpt->tmpl_value_type,
 					  enumv, vpt->name, vpt->len, '\0', false) < 0) return -1;
 		vpt->type = TMPL_TYPE_DATA;
 		break;
@@ -1165,24 +1165,24 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enu
 	{
 		fr_value_box_t new;
 
-		if (type == vpt->tmpl_fr_value_box_type) return 0;	/* noop */
+		if (type == vpt->tmpl_value_type) return 0;	/* noop */
 
-		if (fr_value_box_cast(vpt, &new, type, enumv, &vpt->tmpl_value_box) < 0) return -1;
+		if (fr_value_box_cast(vpt, &new, type, enumv, &vpt->tmpl_value) < 0) return -1;
 
 		/*
 		 *	Free old value buffers
 		 */
-		switch (vpt->tmpl_fr_value_box_type) {
+		switch (vpt->tmpl_value_type) {
 		case FR_TYPE_STRING:
 		case FR_TYPE_OCTETS:
-			talloc_free(vpt->tmpl_fr_value_box_datum.ptr);
+			talloc_free(vpt->tmpl_value.datum.ptr);
 			break;
 
 		default:
 			break;
 		}
 
-		fr_value_box_copy(vpt, &vpt->tmpl_value_box, &new);
+		fr_value_box_copy(vpt, &vpt->tmpl_value, &new);
 	}
 		break;
 
@@ -1206,12 +1206,12 @@ void tmpl_cast_in_place_str(vp_tmpl_t *vpt)
 	rad_assert(vpt != NULL);
 	rad_assert(vpt->type == TMPL_TYPE_UNPARSED);
 
-	vpt->tmpl_fr_value_box_datum.strvalue = talloc_typed_strdup(vpt, vpt->name);
-	rad_assert(vpt->tmpl_fr_value_box_datum.strvalue != NULL);
+	vpt->tmpl_value.vb_strvalue = talloc_typed_strdup(vpt, vpt->name);
+	rad_assert(vpt->tmpl_value.vb_strvalue != NULL);
 
 	vpt->type = TMPL_TYPE_DATA;
-	vpt->tmpl_fr_value_box_type = FR_TYPE_STRING;
-	vpt->tmpl_fr_value_box_length = talloc_array_length(vpt->tmpl_fr_value_box_datum.strvalue) - 1;
+	vpt->tmpl_value_type = FR_TYPE_STRING;
+	vpt->tmpl_value_length = talloc_array_length(vpt->tmpl_value.vb_strvalue) - 1;
 }
 
 /** Expand a #vp_tmpl_t to a string, parse it as an attribute of type cast, create a #VALUE_PAIR from the result
@@ -1249,9 +1249,9 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 
 	if (vpt->type == TMPL_TYPE_DATA) {
 		VERIFY_VP(vp);
-		rad_assert(vp->vp_type == vpt->tmpl_fr_value_box_type);
+		rad_assert(vp->vp_type == vpt->tmpl_value_type);
 
-		fr_value_box_copy(vp, &vp->data, &vpt->tmpl_value_box);
+		fr_value_box_copy(vp, &vp->data, &vpt->tmpl_value);
 		*out = vp;
 		return 0;
 	}
@@ -1261,7 +1261,7 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 		fr_pair_list_free(&vp);
 		return rcode;
 	}
-	data.datum.strvalue = p;
+	data.vb_strvalue = p;
 
 	/*
 	 *	New escapes: strings are in binary form.
@@ -1269,7 +1269,7 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 	if (vp->vp_type == FR_TYPE_STRING) {
 		vp->data.datum.ptr = talloc_steal(vp, data.datum.ptr);
 		vp->vp_length = rcode;
-	} else if (fr_pair_value_from_str(vp, data.datum.strvalue, rcode) < 0) {
+	} else if (fr_pair_value_from_str(vp, data.vb_strvalue, rcode) < 0) {
 		talloc_free(data.datum.ptr);
 		fr_pair_list_free(&vp);
 		return -1;
@@ -1440,7 +1440,7 @@ ssize_t _tmpl_to_type(void *out,
 	switch (vpt->type) {
 	case TMPL_TYPE_UNPARSED:
 		RDEBUG4("EXPAND TMPL UNPARSED");
-		value_to_cast.datum.strvalue = vpt->name;
+		value_to_cast.vb_strvalue = vpt->name;
 		value_to_cast.datum.length = vpt->len;
 		break;
 
@@ -1454,7 +1454,7 @@ ssize_t _tmpl_to_type(void *out,
 
 		if (radius_exec_program(request, (char *)buff, bufflen, NULL, request, vpt->name, NULL,
 					true, false, EXEC_TIMEOUT) != 0) return -1;
-		value_to_cast.datum.strvalue = (char *)buff;
+		value_to_cast.vb_strvalue = (char *)buff;
 		value_to_cast.datum.length = strlen((char *)buff);
 	}
 		break;
@@ -1476,7 +1476,7 @@ ssize_t _tmpl_to_type(void *out,
 		 *	@fixme We need a way of signalling xlat not to escape things.
 		 */
 		value_to_cast.datum.length = value_str_unescape(buff, (char *)buff, slen, '"');
-		value_to_cast.datum.strvalue = (char *)buff;
+		value_to_cast.vb_strvalue = (char *)buff;
 		break;
 
 	case TMPL_TYPE_XLAT_STRUCT:
@@ -1499,7 +1499,7 @@ ssize_t _tmpl_to_type(void *out,
 		 *	@fixme We need a way of signalling xlat not to escape things.
 		 */
 		value_to_cast.datum.length = value_str_unescape(buff, (char *)buff, slen, '"');
-		value_to_cast.datum.strvalue = (char *)buff;
+		value_to_cast.vb_strvalue = (char *)buff;
 
 		break;
 
@@ -1524,8 +1524,8 @@ ssize_t _tmpl_to_type(void *out,
 		ret = tmpl_find_vp(&vp, request, vpt);
 		if (ret < 0) return -2;
 
-		to_cast = &vpt->tmpl_value_box;
-		src_type = vpt->tmpl_fr_value_box_type;
+		to_cast = &vpt->tmpl_value;
+		src_type = vpt->tmpl_value_type;
 	}
 		break;
 
@@ -1575,9 +1575,9 @@ ssize_t _tmpl_to_type(void *out,
 						   to_cast->datum.length + 1);
 				return -1;
 			}
-			memcpy(buff, to_cast->datum.octets, to_cast->datum.length);
+			memcpy(buff, to_cast->vb_octets, to_cast->datum.length);
 			buff[to_cast->datum.length] = '\0';
-			value_from_cast.datum.strvalue = (char *)buff;
+			value_from_cast.vb_strvalue = (char *)buff;
 			value_from_cast.datum.length = to_cast->datum.length;
 			break;
 
@@ -1636,9 +1636,9 @@ ssize_t _tmpl_to_type(void *out,
 						   from_cast->datum.length + 1);
 				goto error;
 			}
-			memcpy(buff, from_cast->datum.strvalue, from_cast->datum.length);
+			memcpy(buff, from_cast->vb_strvalue, from_cast->datum.length);
 			buff[from_cast->datum.length] = '\0';
-			value_from_cast.datum.strvalue = (char *)buff;
+			value_from_cast.vb_strvalue = (char *)buff;
 			break;
 
 		case FR_TYPE_OCTETS:
@@ -1651,8 +1651,8 @@ ssize_t _tmpl_to_type(void *out,
 						   "Have %zu bytes, need %zu bytes", bufflen, from_cast->datum.length);
 				goto error;
 			}
-			memcpy(buff, from_cast->datum.octets, from_cast->datum.length);
-			value_from_cast.datum.octets = buff;
+			memcpy(buff, from_cast->vb_octets, from_cast->datum.length);
+			value_from_cast.vb_octets = buff;
 			break;
 
 		default:
@@ -1733,7 +1733,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		RDEBUG4("EXPAND TMPL UNPARSED");
 
 		value.datum.length = vpt->len;
-		value.datum.strvalue = vpt->name;
+		value.vb_strvalue = vpt->name;
 		value.type = FR_TYPE_STRING;
 		to_cast = &value;
 		needs_dup = true;
@@ -1742,17 +1742,17 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	case TMPL_TYPE_EXEC:
 		RDEBUG4("EXPAND TMPL EXEC");
 
-		MEM(value.datum.strvalue = talloc_array(tmp_ctx, char, 1024));
+		MEM(value.vb_strvalue = talloc_array(tmp_ctx, char, 1024));
 		if (radius_exec_program(request, (char *)value.datum.ptr, 1024, NULL, request, vpt->name, NULL,
 					true, false, EXEC_TIMEOUT) != 0) {
 		error:
 			talloc_free(tmp_ctx);
 			return slen;
 		}
-		value.datum.length = strlen(value.datum.strvalue);
+		value.datum.length = strlen(value.vb_strvalue);
 		value.type = FR_TYPE_STRING;
-		MEM(value.datum.strvalue = talloc_realloc(tmp_ctx, value.datum.ptr, char, value.datum.length + 1));	/* Trim */
-		rad_assert(value.datum.strvalue[value.datum.length] == '\0');
+		MEM(value.vb_strvalue = talloc_realloc(tmp_ctx, value.datum.ptr, char, value.datum.length + 1));	/* Trim */
+		rad_assert(value.vb_strvalue[value.datum.length] == '\0');
 		to_cast = &value;
 		break;
 
@@ -1775,10 +1775,10 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		 *	@fixme We need a way of signalling xlat not to escape things.
 		 */
 		ret = fr_value_box_from_str(tmp_ctx, &tmp, &src_type, NULL,
-					    value.datum.strvalue, value.datum.length, '"', false);
+					    value.vb_strvalue, value.datum.length, '"', false);
 		if (ret < 0) goto error;
 
-		value.datum.strvalue = tmp.datum.strvalue;
+		value.vb_strvalue = tmp.vb_strvalue;
 		value.datum.length = tmp.datum.length;
 		value.type = FR_TYPE_STRING;
 		to_cast = &value;
@@ -1806,15 +1806,15 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		 *	@fixme We need a way of signalling xlat not to escape things.
 		 */
 		ret = fr_value_box_from_str(tmp_ctx, &tmp, &src_type, NULL,
-					    value.datum.strvalue, value.datum.length, '"', false);
+					    value.vb_strvalue, value.datum.length, '"', false);
 		if (ret < 0) goto error;
 
-		value.datum.strvalue = tmp.datum.strvalue;
+		value.vb_strvalue = tmp.vb_strvalue;
 		value.datum.length = tmp.datum.length;
 		value.type = FR_TYPE_STRING;
 		to_cast = &value;
 
-		RDEBUG2("   --> %s", value.datum.strvalue);	/* Print post-unescaping */
+		RDEBUG2("   --> %s", value.vb_strvalue);	/* Print post-unescaping */
 	}
 		break;
 
@@ -1843,7 +1843,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	{
 		RDEBUG4("EXPAND TMPL DATA");
 
-		to_cast = &vpt->tmpl_value_box;
+		to_cast = &vpt->tmpl_value;
 		switch (to_cast->type) {
 		case FR_TYPE_STRING:
 		case FR_TYPE_OCTETS:
@@ -2055,7 +2055,7 @@ do_literal:
 		break;
 
 	case TMPL_TYPE_DATA:
-		return fr_value_box_snprint(out, outlen, &vpt->tmpl_value_box, fr_token_quote[vpt->quote]);
+		return fr_value_box_snprint(out, outlen, &vpt->tmpl_value, fr_token_quote[vpt->quote]);
 
 	default:
 		goto empty;
@@ -2581,24 +2581,24 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 			if (!fr_cond_assert(0)) fr_exit_now(1);
 		}
 
-		if (vpt->tmpl_fr_value_box_type == FR_TYPE_INVALID) {
+		if (vpt->tmpl_value_type == FR_TYPE_INVALID) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA type was "
 				     "FR_TYPE_INVALID (uninitialised)", file, line);
 			if (!fr_cond_assert(0)) fr_exit_now(1);
 		}
 
-		if (vpt->tmpl_fr_value_box_type >= FR_TYPE_MAX) {
+		if (vpt->tmpl_value_type >= FR_TYPE_MAX) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA type was "
-				     "%i (outside the range of fr_type_ts)", file, line, vpt->tmpl_fr_value_box_type);
+				     "%i (outside the range of fr_type_ts)", file, line, vpt->tmpl_value_type);
 			if (!fr_cond_assert(0)) fr_exit_now(1);
 		}
 		/*
 		 *	Unlike VALUE_PAIRs we can't guarantee that VALUE_PAIR_TMPL buffers will
 		 *	be talloced. They may be allocated on the stack or in global variables.
 		 */
-		switch (vpt->tmpl_fr_value_box_type) {
+		switch (vpt->tmpl_value_type) {
 		case FR_TYPE_STRING:
-			if (vpt->tmpl_fr_value_box_datum.strvalue[vpt->tmpl_fr_value_box_length] != '\0') {
+			if (vpt->tmpl_value.vb_strvalue[vpt->tmpl_value_length] != '\0') {
 				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA char buffer not \\0 "
 					     "terminated", file, line);
 				if (!fr_cond_assert(0)) fr_exit_now(1);

@@ -237,7 +237,7 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 		return -1;
 	}
 
-	if (!proto) proto = &master_listen[fr_unbox_uint32(dv->value)];
+	if (!proto) proto = &master_listen[dv->value->vb_uint32];
 
 	/*
 	 *	Check the allowed transport protocols.  For most
@@ -335,7 +335,7 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 	lc->cs = cs;
 	lc->server_name = server_name;
 	lc->handle = module;
-	lc->type = fr_unbox_uint32(dv->value);
+	lc->type = dv->value->vb_uint32;
 	lc->proto = proto;
 
 	lc->listener = listen_parse(lc);
@@ -618,7 +618,7 @@ rlm_rcode_t rad_status_server(REQUEST *request)
 	case RAD_LISTEN_AUTH:
 		dval = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_AUTZ_TYPE), "Status-Server");
 		if (dval) {
-			rcode = process_authorize(fr_unbox_uint32(dval->value), request);
+			rcode = process_authorize(dval->value->vb_uint32, request);
 		} else {
 			rcode = RLM_MODULE_OK;
 		}
@@ -645,7 +645,7 @@ rlm_rcode_t rad_status_server(REQUEST *request)
 	case RAD_LISTEN_ACCT:
 		dval = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_ACCT_TYPE), "Status-Server");
 		if (dval) {
-			rcode = process_accounting(fr_unbox_uint32(dval->value), request);
+			rcode = process_accounting(dval->value->vb_uint32, request);
 		} else {
 			rcode = RLM_MODULE_OK;
 		}
@@ -672,7 +672,7 @@ rlm_rcode_t rad_status_server(REQUEST *request)
 	case RAD_LISTEN_COA:
 		dval = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_RECV_COA_TYPE), "Status-Server");
 		if (dval) {
-			rcode = process_recv_coa(fr_unbox_uint32(dval->value), request);
+			rcode = process_recv_coa(dval->value->vb_uint32, request);
 		} else {
 			rcode = RLM_MODULE_OK;
 		}

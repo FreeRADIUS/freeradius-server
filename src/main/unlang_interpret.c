@@ -669,8 +669,8 @@ static unlang_action_t unlang_switch(REQUEST *request, unlang_stack_t *stack,
 
 		len = tmpl_aexpand(request, &p, request, g->vpt, NULL, NULL);
 		if (len < 0) goto find_null_case;
-		data.datum.strvalue = p;
-		tmpl_init(&vpt, TMPL_TYPE_UNPARSED, data.datum.strvalue, len, T_SINGLE_QUOTED_STRING);
+		data.vb_strvalue = p;
+		tmpl_init(&vpt, TMPL_TYPE_UNPARSED, data.vb_strvalue, len, T_SINGLE_QUOTED_STRING);
 	}
 
 	/*

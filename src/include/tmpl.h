@@ -211,30 +211,29 @@ typedef struct vp_tmpl_t {
  *
  * @{
  */
-#define tmpl_request		data.attribute.request
-#define tmpl_list		data.attribute.list
-#define tmpl_da			data.attribute.da
-#define tmpl_unknown		data.attribute.unknown.da
-#define tmpl_unknown_name      	data.attribute.unknown.name
-#define tmpl_num		data.attribute.num
-#define tmpl_tag		data.attribute.tag
+#define tmpl_request			data.attribute.request
+#define tmpl_list			data.attribute.list
+#define tmpl_da				data.attribute.da
+#define tmpl_unknown			data.attribute.unknown.da
+#define tmpl_unknown_name      		data.attribute.unknown.name
+#define tmpl_num			data.attribute.num
+#define tmpl_tag			data.attribute.tag
 /* @} **/
 
 /** @name Field accessors for #TMPL_TYPE_XLAT_STRUCT
  *
  * @{
  */
-#define tmpl_xlat		data.xlat
+#define tmpl_xlat			data.xlat
 /* @} **/
 
 /** @name Field accessors for #TMPL_TYPE_DATA
  *
  * @{
  */
-#define tmpl_value_box		data.literal
-#define tmpl_fr_value_box_datum	data.literal.datum
-#define tmpl_fr_value_box_length	data.literal.datum.length
-#define tmpl_fr_value_box_type	data.literal.type
+#define tmpl_value			data.literal
+#define tmpl_value_length		data.literal.datum.length
+#define tmpl_value_type			data.literal.type
 /* @} **/
 
 /** @name Field accessors for #TMPL_TYPE_REGEX_STRUCT and #TMPL_TYPE_REGEX
@@ -242,9 +241,9 @@ typedef struct vp_tmpl_t {
  * @{
  */
 #ifdef HAVE_REGEX
-#  define tmpl_preg		data.preg	//!< #TMPL_TYPE_REGEX_STRUCT only.
-#  define tmpl_iflag		iflag
-#  define tmpl_mflag		mflag
+#  define tmpl_preg			data.preg	//!< #TMPL_TYPE_REGEX_STRUCT only.
+#  define tmpl_iflag			iflag
+#  define tmpl_mflag			mflag
 #endif
 /* @} **/
 

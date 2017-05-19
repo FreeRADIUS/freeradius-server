@@ -265,14 +265,14 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 						vpt->name, fr_strerror());
 					return false;
 				}
-				if (value.datum.uint64 > INT64_MAX) {
+				if (value.vb_uint64 > INT64_MAX) {
 				overflow:
 					if (vpt) talloc_free(vpt);
 					REDEBUG("Value of &%.*s (%"PRIu64 ") would overflow a signed 64bit integer "
-						"(our internal arithmetic type)", (int)vpt->len, vpt->name, value.datum.uint64);
+						"(our internal arithmetic type)", (int)vpt->len, vpt->name, value.vb_uint64);
 					return false;
 				}
-				y = (int64_t)value.datum.uint64;
+				y = (int64_t)value.vb_uint64;
 
 				RINDENT();
 				RDEBUG3("&%.*s --> %" PRIu64, (int)vpt->len, vpt->name, y);
@@ -989,7 +989,7 @@ static int fr_value_box_from_fmt(fr_value_box_t *out, REQUEST *request, char con
 	 */
 	if (*fmt != '&') {
 		memset(out, 0, sizeof(*out));
-		out->datum.strvalue = fmt;
+		out->vb_strvalue = fmt;
 		out->datum.length = talloc_array_length(fmt) - 1;
 		out->type = FR_TYPE_STRING;
 		return 0;

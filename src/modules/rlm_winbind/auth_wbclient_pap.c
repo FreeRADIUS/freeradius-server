@@ -96,7 +96,7 @@ int do_auth_wbclient_pap(rlm_winbind_t const *inst, REQUEST *request)
 	 * Build the wbcAuthUserParams structure with what we know
 	 */
 	authparams.level = WBC_AUTH_USER_LEVEL_PLAIN;
-	authparams.password.plaintext = request->password->data.datum.strvalue;
+	authparams.password.plaintext = request->password->data.vb_strvalue;
 
 	/*
 	 * Parameters documented as part of the MSV1_0_SUBAUTH_LOGON structure

@@ -1065,7 +1065,7 @@ static int auth_listen_bootstrap(CONF_SECTION *server_cs, UNUSED CONF_SECTION *l
 		 *	requirement is that it's unique.
 		 */
 		do {
-			value.datum.uint32 = (fr_rand() & 0x00ffffff) + 1;
+			value.vb_uint32 = (fr_rand() & 0x00ffffff) + 1;
 		} while (fr_dict_enum_by_value(NULL, da, &value));
 
 		cf_log_module(subcs, "Creating %s = %s", da->name, name2);

@@ -195,7 +195,7 @@ static ssize_t cond_tokenize_string(TALLOC_CTX *ctx, char **out,  char const **e
 
 			talloc_free(*out);
 			*out = talloc_steal(ctx, data.datum.ptr);
-			data.datum.strvalue = NULL;
+			data.vb_strvalue = NULL;
 
 			p++;
 			return (p - start);
@@ -1122,7 +1122,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 						fr_dict_attr_t const *da;
 
 						da = fr_dict_attr_by_type(c->data.map->lhs->tmpl_da,
-									  c->data.map->rhs->tmpl_fr_value_box_type);
+									  c->data.map->rhs->tmpl_value_type);
 						if (!da) {
 							return_rhs("Cannot find type for attribute");
 						}

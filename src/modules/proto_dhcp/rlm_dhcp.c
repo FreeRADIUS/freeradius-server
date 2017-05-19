@@ -187,7 +187,7 @@ static int mod_bootstrap(UNUSED CONF_SECTION *conf, void *instance)
 				DEBUG3("No DHCP RFC space attribute at %i", i);
 				continue;
 			}
-			value.datum.uint8 = i;
+			value.vb_uint8 = i;
 
 			DEBUG3("Adding %s value %i %s", da->name, i, attr->name);
 			if (fr_dict_enum_add_alias(da, attr->name, &value, true, false) < 0) {

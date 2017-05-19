@@ -919,13 +919,13 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 	switch (json_object_get_type(leaf)) {
 	case json_type_int:
 		if (flags->do_xlat) RWDEBUG("Ignoring do_xlat on 'int', attribute \"%s\"", da->name);
-		src.datum.int32 = json_object_get_int(leaf);
+		src.vb_int32 = json_object_get_int(leaf);
 		src.type = FR_TYPE_INT32;
 		break;
 
 	case json_type_double:
 		if (flags->do_xlat) RWDEBUG("Ignoring do_xlat on 'double', attribute \"%s\"", da->name);
-		src.datum.float64 = json_object_get_double(leaf);
+		src.vb_float64 = json_object_get_double(leaf);
 		src.type = FR_TYPE_FLOAT64;
 		break;
 
@@ -933,10 +933,10 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 		value = json_object_get_string(leaf);
 		if (flags->do_xlat) {
 			if (xlat_aeval(request, &expanded, request, value, NULL, NULL) < 0) return NULL;
-			src.datum.strvalue = expanded;
-			src.datum.length = talloc_array_length(src.datum.strvalue) - 1;
+			src.vb_strvalue = expanded;
+			src.datum.length = talloc_array_length(src.vb_strvalue) - 1;
 		} else {
-			src.datum.strvalue = value;
+			src.vb_strvalue = value;
 			src.datum.length = json_object_get_string_len(leaf);
 		}
 		src.type = FR_TYPE_STRING;
@@ -951,14 +951,14 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 		 *
 		 *	"I knew you liked JSON so I put JSON in your JSON!"
 		 */
-		src.datum.strvalue = json_object_get_string(leaf);
-		if (!src.datum.strvalue) {
+		src.vb_strvalue = json_object_get_string(leaf);
+		if (!src.vb_strvalue) {
 			RWDEBUG("Failed getting string value for attribute \"%s\", skipping...", da->name);
 
 			return NULL;
 		}
 		src.type = FR_TYPE_STRING;
-		src.datum.length = strlen(src.datum.strvalue);
+		src.datum.length = strlen(src.vb_strvalue);
 	}
 
 	ret = fr_value_box_cast(vp, &vp->data, da->type, da, &src);

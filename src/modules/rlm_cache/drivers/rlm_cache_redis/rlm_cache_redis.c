@@ -209,7 +209,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	if ((head->lhs->tmpl_da->vendor == 0) && (head->lhs->tmpl_da->attr == FR_CACHE_CREATED)) {
 		vp_map_t *map;
 
-		c->created = head->rhs->tmpl_fr_value_box_datum.date;
+		c->created = head->rhs->tmpl_value.vb_date;
 
 		map = head;
 		head = head->next;
@@ -222,7 +222,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	if ((head->lhs->tmpl_da->vendor == 0) && (head->lhs->tmpl_da->attr == FR_CACHE_EXPIRES)) {
 		vp_map_t *map;
 
-		c->expires = head->rhs->tmpl_fr_value_box_datum.date;
+		c->expires = head->rhs->tmpl_value.vb_date;
 
 		map = head;
 		head = head->next;
@@ -288,8 +288,8 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	 *	Encode the entry created date
 	 */
 	tmpl_init(&created_value, TMPL_TYPE_DATA, "<TEMP>", 6, T_BARE_WORD);
-	created_value.tmpl_fr_value_box_type = FR_TYPE_DATE;
-	created_value.tmpl_fr_value_box_datum.date = c->created;
+	created_value.tmpl_value_type = FR_TYPE_DATE;
+	created_value.tmpl_value.vb_date = c->created;
 
 	/*
 	 *	Encode the entry expiry time
@@ -298,8 +298,8 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	 *	to ignore entries that were created before the last epoch.
 	 */
 	tmpl_init(&expires_value, TMPL_TYPE_DATA, "<TEMP>", 6, T_BARE_WORD);
-	expires_value.tmpl_fr_value_box_type = FR_TYPE_DATE;
-	expires_value.tmpl_fr_value_box_datum.date = c->expires;
+	expires_value.tmpl_value_type = FR_TYPE_DATE;
+	expires_value.tmpl_value.vb_date = c->expires;
 	expires.next = c->maps;	/* Head of the list */
 
 	for (cnt = 0, map = &created; map; cnt++, map = map->next);

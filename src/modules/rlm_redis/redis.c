@@ -211,23 +211,23 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
 		}
 		if (reply->integer < 0) {		/* 32bit signed (supported) */
 			in.type = FR_TYPE_INT32;
-			in.datum.int32 = (int32_t) reply->integer;
+			in.vb_int32 = (int32_t) reply->integer;
 		}
 		else if (reply->integer > UINT32_MAX) {	/* 64bit unsigned (supported) */
 			in.type = FR_TYPE_UINT64;
-			in.datum.uint64 = (uint64_t) reply->integer;
+			in.vb_uint64 = (uint64_t) reply->integer;
 		}
 		else if (reply->integer > UINT16_MAX) {	/* 32bit unsigned (supported) */
 			in.type = FR_TYPE_UINT32;
-			in.datum.uint32 = (uint32_t) reply->integer;
+			in.vb_uint32 = (uint32_t) reply->integer;
 		}
 		else if (reply->integer > UINT8_MAX) {	/* 16bit unsigned (supported) */
 			in.type = FR_TYPE_UINT16;
-			in.datum.uint16 = (uint16_t) reply->integer;
+			in.vb_uint16 = (uint16_t) reply->integer;
 		}
 		else {		/* 8bit unsigned (supported) */
 			in.type = FR_TYPE_UINT8;
-			in.datum.uint8 = (uint8_t) reply->integer;
+			in.vb_uint8 = (uint8_t) reply->integer;
 		}
 		break;
 
@@ -378,11 +378,11 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 	key = talloc_bstrndup(pool, key_buf, key_len);
 	if (!key) return -1;
 
-	switch (map->rhs->tmpl_fr_value_box_type) {
+	switch (map->rhs->tmpl_value_type) {
 	case FR_TYPE_STRING:
 	case FR_TYPE_OCTETS:
-		out[2] = map->rhs->tmpl_fr_value_box_datum.ptr;
-		out_len[2] = map->rhs->tmpl_fr_value_box_length;
+		out[2] = map->rhs->tmpl_value.datum.ptr;
+		out_len[2] = map->rhs->tmpl_value_length;
 		break;
 
 	/*
@@ -393,7 +393,7 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 		char	value[256];
 		size_t	len;
 
-		len = fr_value_box_snprint(value, sizeof(value), &map->rhs->tmpl_value_box, '\0');
+		len = fr_value_box_snprint(value, sizeof(value), &map->rhs->tmpl_value, '\0');
 		new = talloc_bstrndup(pool, value, len);
 		if (!new) {
 			talloc_free(key);

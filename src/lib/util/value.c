@@ -53,39 +53,39 @@ RCSID("$Id$")
  *
  * There should never be an instance where these fail.
  */
-static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.ip.addr.v4.s_addr) == 4,
+static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_ip.addr.v4.s_addr) == 4,
 	      "in_addr.s_addr has unexpected length");
-static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.ip.addr.v6.s6_addr) == 16,
+static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_ip.addr.v6.s6_addr) == 16,
 	      "in6_addr.s6_addr has unexpected length");
-static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.ifid) == 8,
-	      "datum.ifid has unexpected length");
-static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.ether) == 6,
-	      "datum.ether has unexpected length");
+static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_ifid) == 8,
+	      "vb_ifid has unexpected length");
+static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_ether) == 6,
+	      "vb_ether has unexpected length");
 
 static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.boolean) == 1,
 	      "datum.boolean has unexpected length");
-static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.uint8) == 1,
-	      "datum.uint8 has unexpected length");
-static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.uint16) == 2,
-	      "datum.uint16 has unexpected length");
-static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.uint32) == 4,
-	      "datum.uint32 has unexpected length");
-static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.uint64) == 8,
-	      "datum.uint64 has unexpected length");
+static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_uint8) == 1,
+	      "vb_uint8 has unexpected length");
+static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_uint16) == 2,
+	      "vb_uint16 has unexpected length");
+static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_uint32) == 4,
+	      "vb_uint32 has unexpected length");
+static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_uint64) == 8,
+	      "vb_uint64 has unexpected length");
 
-static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.int8) == 1,
-	      "datum.int16 has unexpected length");
-static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.int16) == 2,
-	      "datum.int16 has unexpected length");
-static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.int32) == 4,
-	      "datum.int32 has unexpected length");
-static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.int64) == 8,
-	      "datum.int64 has unexpected length");
+static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_int8) == 1,
+	      "vb_int16 has unexpected length");
+static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_int16) == 2,
+	      "vb_int16 has unexpected length");
+static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_int32) == 4,
+	      "vb_int32 has unexpected length");
+static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_int64) == 8,
+	      "vb_int64 has unexpected length");
 
-static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.float32) == 4,
-	      "datum.float32 has unexpected length");
-static_assert(SIZEOF_MEMBER(fr_value_box_t, datum.float64) == 8,
-	      "datum.float64 has unexpected length");
+static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_float32) == 4,
+	      "vb_float32 has unexpected length");
+static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_float64) == 8,
+	      "vb_float64 has unexpected length");
 
 /** How many bytes on-the-wire would a #fr_value_box_t value consume
  *
@@ -139,34 +139,34 @@ static size_t const fr_value_box_network_sizes[FR_TYPE_MAX + 1][2] = {
  * location passed as a void *.
  */
 size_t const fr_value_box_field_sizes[] = {
-	[FR_TYPE_STRING]			= SIZEOF_MEMBER(fr_value_box_t, datum.strvalue),
-	[FR_TYPE_OCTETS]			= SIZEOF_MEMBER(fr_value_box_t, datum.octets),
+	[FR_TYPE_STRING]			= SIZEOF_MEMBER(fr_value_box_t, vb_strvalue),
+	[FR_TYPE_OCTETS]			= SIZEOF_MEMBER(fr_value_box_t, vb_octets),
 
-	[FR_TYPE_IPV4_ADDR]			= SIZEOF_MEMBER(fr_value_box_t, datum.ip),
-	[FR_TYPE_IPV4_PREFIX]			= SIZEOF_MEMBER(fr_value_box_t, datum.ip),
-	[FR_TYPE_IPV6_ADDR]			= SIZEOF_MEMBER(fr_value_box_t, datum.ip),
-	[FR_TYPE_IPV6_PREFIX]			= SIZEOF_MEMBER(fr_value_box_t, datum.ip),
-	[FR_TYPE_IFID]				= SIZEOF_MEMBER(fr_value_box_t, datum.ifid),
-	[FR_TYPE_ETHERNET]			= SIZEOF_MEMBER(fr_value_box_t, datum.ether),
+	[FR_TYPE_IPV4_ADDR]			= SIZEOF_MEMBER(fr_value_box_t, vb_ip),
+	[FR_TYPE_IPV4_PREFIX]			= SIZEOF_MEMBER(fr_value_box_t, vb_ip),
+	[FR_TYPE_IPV6_ADDR]			= SIZEOF_MEMBER(fr_value_box_t, vb_ip),
+	[FR_TYPE_IPV6_PREFIX]			= SIZEOF_MEMBER(fr_value_box_t, vb_ip),
+	[FR_TYPE_IFID]				= SIZEOF_MEMBER(fr_value_box_t, vb_ifid),
+	[FR_TYPE_ETHERNET]			= SIZEOF_MEMBER(fr_value_box_t, vb_ether),
 
 	[FR_TYPE_BOOL]				= SIZEOF_MEMBER(fr_value_box_t, datum.boolean),
-	[FR_TYPE_UINT8]				= SIZEOF_MEMBER(fr_value_box_t, datum.uint8),
-	[FR_TYPE_UINT16]			= SIZEOF_MEMBER(fr_value_box_t, datum.uint16),
-	[FR_TYPE_UINT32]			= SIZEOF_MEMBER(fr_value_box_t, datum.uint32),
-	[FR_TYPE_UINT64]			= SIZEOF_MEMBER(fr_value_box_t, datum.uint64),
+	[FR_TYPE_UINT8]				= SIZEOF_MEMBER(fr_value_box_t, vb_uint8),
+	[FR_TYPE_UINT16]			= SIZEOF_MEMBER(fr_value_box_t, vb_uint16),
+	[FR_TYPE_UINT32]			= SIZEOF_MEMBER(fr_value_box_t, vb_uint32),
+	[FR_TYPE_UINT64]			= SIZEOF_MEMBER(fr_value_box_t, vb_uint64),
 
-	[FR_TYPE_INT8]				= SIZEOF_MEMBER(fr_value_box_t, datum.int8),
-	[FR_TYPE_INT16]				= SIZEOF_MEMBER(fr_value_box_t, datum.int16),
-	[FR_TYPE_INT32]				= SIZEOF_MEMBER(fr_value_box_t, datum.int32),
-	[FR_TYPE_INT64]				= SIZEOF_MEMBER(fr_value_box_t, datum.int64),
+	[FR_TYPE_INT8]				= SIZEOF_MEMBER(fr_value_box_t, vb_int8),
+	[FR_TYPE_INT16]				= SIZEOF_MEMBER(fr_value_box_t, vb_int16),
+	[FR_TYPE_INT32]				= SIZEOF_MEMBER(fr_value_box_t, vb_int32),
+	[FR_TYPE_INT64]				= SIZEOF_MEMBER(fr_value_box_t, vb_int64),
 
-	[FR_TYPE_FLOAT32]			= SIZEOF_MEMBER(fr_value_box_t, datum.float32),
-	[FR_TYPE_FLOAT64]			= SIZEOF_MEMBER(fr_value_box_t, datum.float64),
+	[FR_TYPE_FLOAT32]			= SIZEOF_MEMBER(fr_value_box_t, vb_float32),
+	[FR_TYPE_FLOAT64]			= SIZEOF_MEMBER(fr_value_box_t, vb_float64),
 
-	[FR_TYPE_DATE]				= SIZEOF_MEMBER(fr_value_box_t, datum.date),
-	[FR_TYPE_DATE_MILLISECONDS]		= SIZEOF_MEMBER(fr_value_box_t, datum.date_milliseconds),
-	[FR_TYPE_DATE_MICROSECONDS]		= SIZEOF_MEMBER(fr_value_box_t, datum.date_microseconds),
-	[FR_TYPE_DATE_NANOSECONDS]		= SIZEOF_MEMBER(fr_value_box_t, datum.date_nanoseconds),
+	[FR_TYPE_DATE]				= SIZEOF_MEMBER(fr_value_box_t, vb_date),
+	[FR_TYPE_DATE_MILLISECONDS]		= SIZEOF_MEMBER(fr_value_box_t, vb_date_milliseconds),
+	[FR_TYPE_DATE_MICROSECONDS]		= SIZEOF_MEMBER(fr_value_box_t, vb_date_microseconds),
+	[FR_TYPE_DATE_NANOSECONDS]		= SIZEOF_MEMBER(fr_value_box_t, vb_date_nanoseconds),
 
 	[FR_TYPE_TIMEVAL]			= SIZEOF_MEMBER(fr_value_box_t, datum.timeval),
 	[FR_TYPE_SIZE]				= SIZEOF_MEMBER(fr_value_box_t, datum.size),
@@ -179,34 +179,34 @@ size_t const fr_value_box_field_sizes[] = {
  *
  */
 size_t const fr_value_box_offsets[] = {
-	[FR_TYPE_STRING]			= offsetof(fr_value_box_t, datum.strvalue),
-	[FR_TYPE_OCTETS]			= offsetof(fr_value_box_t, datum.octets),
+	[FR_TYPE_STRING]			= offsetof(fr_value_box_t, vb_strvalue),
+	[FR_TYPE_OCTETS]			= offsetof(fr_value_box_t, vb_octets),
 
-	[FR_TYPE_IPV4_ADDR]			= offsetof(fr_value_box_t, datum.ip),
-	[FR_TYPE_IPV4_PREFIX]			= offsetof(fr_value_box_t, datum.ip),
-	[FR_TYPE_IPV6_ADDR]			= offsetof(fr_value_box_t, datum.ip),
-	[FR_TYPE_IPV6_PREFIX]			= offsetof(fr_value_box_t, datum.ip),
-	[FR_TYPE_IFID]				= offsetof(fr_value_box_t, datum.ifid),
-	[FR_TYPE_ETHERNET]			= offsetof(fr_value_box_t, datum.ether),
+	[FR_TYPE_IPV4_ADDR]			= offsetof(fr_value_box_t, vb_ip),
+	[FR_TYPE_IPV4_PREFIX]			= offsetof(fr_value_box_t, vb_ip),
+	[FR_TYPE_IPV6_ADDR]			= offsetof(fr_value_box_t, vb_ip),
+	[FR_TYPE_IPV6_PREFIX]			= offsetof(fr_value_box_t, vb_ip),
+	[FR_TYPE_IFID]				= offsetof(fr_value_box_t, vb_ifid),
+	[FR_TYPE_ETHERNET]			= offsetof(fr_value_box_t, vb_ether),
 
 	[FR_TYPE_BOOL]				= offsetof(fr_value_box_t, datum.boolean),
-	[FR_TYPE_UINT8]				= offsetof(fr_value_box_t, datum.uint8),
-	[FR_TYPE_UINT16]			= offsetof(fr_value_box_t, datum.uint16),
-	[FR_TYPE_UINT32]			= offsetof(fr_value_box_t, datum.uint32),
-	[FR_TYPE_UINT64]			= offsetof(fr_value_box_t, datum.uint64),
+	[FR_TYPE_UINT8]				= offsetof(fr_value_box_t, vb_uint8),
+	[FR_TYPE_UINT16]			= offsetof(fr_value_box_t, vb_uint16),
+	[FR_TYPE_UINT32]			= offsetof(fr_value_box_t, vb_uint32),
+	[FR_TYPE_UINT64]			= offsetof(fr_value_box_t, vb_uint64),
 
-	[FR_TYPE_INT8]				= offsetof(fr_value_box_t, datum.int8),
-	[FR_TYPE_INT16]				= offsetof(fr_value_box_t, datum.int16),
-	[FR_TYPE_INT32]				= offsetof(fr_value_box_t, datum.int32),
-	[FR_TYPE_INT64]				= offsetof(fr_value_box_t, datum.int64),
+	[FR_TYPE_INT8]				= offsetof(fr_value_box_t, vb_int8),
+	[FR_TYPE_INT16]				= offsetof(fr_value_box_t, vb_int16),
+	[FR_TYPE_INT32]				= offsetof(fr_value_box_t, vb_int32),
+	[FR_TYPE_INT64]				= offsetof(fr_value_box_t, vb_int64),
 
-	[FR_TYPE_FLOAT32]			= offsetof(fr_value_box_t, datum.float32),
-	[FR_TYPE_FLOAT64]			= offsetof(fr_value_box_t, datum.float64),
+	[FR_TYPE_FLOAT32]			= offsetof(fr_value_box_t, vb_float32),
+	[FR_TYPE_FLOAT64]			= offsetof(fr_value_box_t, vb_float64),
 
-	[FR_TYPE_DATE]				= offsetof(fr_value_box_t, datum.date),
-	[FR_TYPE_DATE_MILLISECONDS]		= offsetof(fr_value_box_t, datum.date_milliseconds),
-	[FR_TYPE_DATE_MICROSECONDS]		= offsetof(fr_value_box_t, datum.date_microseconds),
-	[FR_TYPE_DATE_NANOSECONDS]		= offsetof(fr_value_box_t, datum.date_nanoseconds),
+	[FR_TYPE_DATE]				= offsetof(fr_value_box_t, vb_date),
+	[FR_TYPE_DATE_MILLISECONDS]		= offsetof(fr_value_box_t, vb_date_milliseconds),
+	[FR_TYPE_DATE_MICROSECONDS]		= offsetof(fr_value_box_t, vb_date_microseconds),
+	[FR_TYPE_DATE_NANOSECONDS]		= offsetof(fr_value_box_t, vb_date_nanoseconds),
 
 	[FR_TYPE_TIMEVAL]			= offsetof(fr_value_box_t, datum.timeval),
 	[FR_TYPE_SIZE]				= offsetof(fr_value_box_t, datum.size),
@@ -326,7 +326,7 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 		}
 
 		if (length) {
-			compare = memcmp(a->datum.octets, b->datum.octets, length);
+			compare = memcmp(a->vb_octets, b->vb_octets, length);
 			if (compare != 0) break;
 		}
 
@@ -415,18 +415,18 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 		break;
 
 	case FR_TYPE_ETHERNET:
-		compare = memcmp(a->datum.ether, b->datum.ether, sizeof(a->datum.ether));
+		compare = memcmp(a->vb_ether, b->vb_ether, sizeof(a->vb_ether));
 		break;
 
 	case FR_TYPE_IPV4_ADDR:
 	case FR_TYPE_IPV4_PREFIX:
 	case FR_TYPE_IPV6_ADDR:
 	case FR_TYPE_IPV6_PREFIX:
-		compare = memcmp(&a->datum.ip, &b->datum.ip, sizeof(a->datum.ip));
+		compare = memcmp(&a->vb_ip, &b->vb_ip, sizeof(a->vb_ip));
 		break;
 
 	case FR_TYPE_IFID:
-		compare = memcmp(a->datum.ifid, b->datum.ifid, sizeof(a->datum.ifid));
+		compare = memcmp(a->vb_ifid, b->vb_ifid, sizeof(a->vb_ifid));
 		break;
 
 	/*
@@ -586,8 +586,8 @@ int fr_value_box_cmp_op(FR_TOKEN op, fr_value_box_t const *a, fr_value_box_t con
 			goto cmp;
 
 		case FR_TYPE_IPV4_PREFIX:	/* IPv4 and IPv4 Prefix */
-			return fr_value_box_cidr_cmp_op(op, 4, 32, (uint8_t const *) &a->datum.ip.addr.v4.s_addr,
-						     b->datum.ip.prefix, (uint8_t const *) &b->datum.ip.addr.v4.s_addr);
+			return fr_value_box_cidr_cmp_op(op, 4, 32, (uint8_t const *) &a->vb_ip.addr.v4.s_addr,
+						     b->vb_ip.prefix, (uint8_t const *) &b->vb_ip.addr.v4.s_addr);
 
 		default:
 			fr_strerror_printf("Cannot compare IPv4 with IPv6 address");
@@ -597,14 +597,14 @@ int fr_value_box_cmp_op(FR_TOKEN op, fr_value_box_t const *a, fr_value_box_t con
 	case FR_TYPE_IPV4_PREFIX:		/* IPv4 and IPv4 Prefix */
 		switch (b->type) {
 		case FR_TYPE_IPV4_ADDR:
-			return fr_value_box_cidr_cmp_op(op, 4, a->datum.ip.prefix,
-						     (uint8_t const *) &a->datum.ip.addr.v4.s_addr,
-						     32, (uint8_t const *) &b->datum.ip.addr.v4);
+			return fr_value_box_cidr_cmp_op(op, 4, a->vb_ip.prefix,
+						     (uint8_t const *) &a->vb_ip.addr.v4.s_addr,
+						     32, (uint8_t const *) &b->vb_ip.addr.v4);
 
 		case FR_TYPE_IPV4_PREFIX:	/* IPv4 Prefix and IPv4 Prefix */
-			return fr_value_box_cidr_cmp_op(op, 4, a->datum.ip.prefix,
-						     (uint8_t const *) &a->datum.ip.addr.v4.s_addr,
-						     b->datum.ip.prefix, (uint8_t const *) &b->datum.ip.addr.v4.s_addr);
+			return fr_value_box_cidr_cmp_op(op, 4, a->vb_ip.prefix,
+						     (uint8_t const *) &a->vb_ip.addr.v4.s_addr,
+						     b->vb_ip.prefix, (uint8_t const *) &b->vb_ip.addr.v4.s_addr);
 
 		default:
 			fr_strerror_printf("Cannot compare IPv4 with IPv6 address");
@@ -617,8 +617,8 @@ int fr_value_box_cmp_op(FR_TOKEN op, fr_value_box_t const *a, fr_value_box_t con
 			goto cmp;
 
 		case FR_TYPE_IPV6_PREFIX:	/* IPv6 and IPv6 Preifx */
-			return fr_value_box_cidr_cmp_op(op, 16, 128, (uint8_t const *) &a->datum.ip.addr.v6,
-						     b->datum.ip.prefix, (uint8_t const *) &b->datum.ip.addr.v6);
+			return fr_value_box_cidr_cmp_op(op, 16, 128, (uint8_t const *) &a->vb_ip.addr.v6,
+						     b->vb_ip.prefix, (uint8_t const *) &b->vb_ip.addr.v6);
 
 		default:
 			fr_strerror_printf("Cannot compare IPv6 with IPv4 address");
@@ -628,14 +628,14 @@ int fr_value_box_cmp_op(FR_TOKEN op, fr_value_box_t const *a, fr_value_box_t con
 	case FR_TYPE_IPV6_PREFIX:
 		switch (b->type) {
 		case FR_TYPE_IPV6_ADDR:		/* IPv6 Prefix and IPv6 */
-			return fr_value_box_cidr_cmp_op(op, 16, a->datum.ip.prefix,
-						     (uint8_t const *) &a->datum.ip.addr.v6,
-						     128, (uint8_t const *) &b->datum.ip.addr.v6);
+			return fr_value_box_cidr_cmp_op(op, 16, a->vb_ip.prefix,
+						     (uint8_t const *) &a->vb_ip.addr.v6,
+						     128, (uint8_t const *) &b->vb_ip.addr.v6);
 
 		case FR_TYPE_IPV6_PREFIX:	/* IPv6 Prefix and IPv6 */
-			return fr_value_box_cidr_cmp_op(op, 16, a->datum.ip.prefix,
-						     (uint8_t const *) &a->datum.ip.addr.v6,
-						     b->datum.ip.prefix, (uint8_t const *) &b->datum.ip.addr.v6);
+			return fr_value_box_cidr_cmp_op(op, 16, a->vb_ip.prefix,
+						     (uint8_t const *) &a->vb_ip.addr.v6,
+						     b->vb_ip.prefix, (uint8_t const *) &b->vb_ip.addr.v6);
 
 		default:
 			fr_strerror_printf("Cannot compare IPv6 with IPv4 address");
@@ -872,51 +872,51 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 
 	switch (src->type) {
 	case FR_TYPE_UINT16:
-		dst->datum.uint16 = htons(src->datum.uint16);
+		dst->vb_uint16 = htons(src->vb_uint16);
 		break;
 
 	case FR_TYPE_UINT32:
-		dst->datum.uint32 = htonl(src->datum.uint32);
+		dst->vb_uint32 = htonl(src->vb_uint32);
 		break;
 
 	case FR_TYPE_UINT64:
-		dst->datum.uint64 = htonll(src->datum.uint64);
+		dst->vb_uint64 = htonll(src->vb_uint64);
 		break;
 
 	case FR_TYPE_INT16:
-		dst->datum.uint16 = htons(src->datum.uint16);	/* Not a typo, uses the union to avoid memcpy */
+		dst->vb_uint16 = htons(src->vb_uint16);	/* Not a typo, uses the union to avoid memcpy */
 		break;
 
 	case FR_TYPE_INT32:
-		dst->datum.uint32 = htonl(src->datum.uint32);	/* Not a typo, uses the union to avoid memcpy */
+		dst->vb_uint32 = htonl(src->vb_uint32);	/* Not a typo, uses the union to avoid memcpy */
 		break;
 
 	case FR_TYPE_INT64:
-		dst->datum.uint64 = htonll(src->datum.uint64);	/* Not a typo, uses the union to avoid memcpy */
+		dst->vb_uint64 = htonll(src->vb_uint64);	/* Not a typo, uses the union to avoid memcpy */
 		break;
 
 	case FR_TYPE_FLOAT32:
-		dst->datum.uint32 = htonl(dst->datum.uint32);	/* Not a typo, uses the union to avoid memcpy */
+		dst->vb_uint32 = htonl(dst->vb_uint32);	/* Not a typo, uses the union to avoid memcpy */
 		break;
 
 	case FR_TYPE_FLOAT64:
-		dst->datum.uint64 = htonll(dst->datum.uint64);	/* Not a typo, uses the union to avoid memcpy */
+		dst->vb_uint64 = htonll(dst->vb_uint64);	/* Not a typo, uses the union to avoid memcpy */
 		break;
 
 	case FR_TYPE_DATE:
-		dst->datum.date = htonl(src->datum.date);
+		dst->vb_date = htonl(src->vb_date);
 		break;
 
 	case FR_TYPE_DATE_MILLISECONDS:
-		dst->datum.date_milliseconds = htonll(src->datum.date_milliseconds);
+		dst->vb_date_milliseconds = htonll(src->vb_date_milliseconds);
 		break;
 
 	case FR_TYPE_DATE_MICROSECONDS:
-		dst->datum.date_microseconds = htonll(src->datum.date_microseconds);
+		dst->vb_date_microseconds = htonll(src->vb_date_microseconds);
 		break;
 
 	case FR_TYPE_DATE_NANOSECONDS:
-		dst->datum.date_nanoseconds = htonll(src->datum.date_nanoseconds);
+		dst->vb_date_nanoseconds = htonll(src->vb_date_nanoseconds);
 		break;
 
 	case FR_TYPE_BOOL:
@@ -1063,20 +1063,20 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 	 *	Needs special mangling
 	 */
 	case FR_TYPE_IPV4_PREFIX:
-	 	dst[0] = value->datum.ip.prefix;
-		memcpy(&dst[1], (uint8_t const *)&value->datum.ip.addr.v4.s_addr,
-				 sizeof(value->datum.ip.addr.v4.s_addr));
+	 	dst[0] = value->vb_ip.prefix;
+		memcpy(&dst[1], (uint8_t const *)&value->vb_ip.addr.v4.s_addr,
+				 sizeof(value->vb_ip.addr.v4.s_addr));
 		break;
 
 	case FR_TYPE_IPV6_ADDR:
-		if (value->datum.ip.scope_id > 0) *p++ = value->datum.ip.scope_id;
-		memcpy(p, value->datum.ip.addr.v6.s6_addr, sizeof(value->datum.ip.addr.v6.s6_addr));
+		if (value->vb_ip.scope_id > 0) *p++ = value->vb_ip.scope_id;
+		memcpy(p, value->vb_ip.addr.v6.s6_addr, sizeof(value->vb_ip.addr.v6.s6_addr));
 		break;
 
 	case FR_TYPE_IPV6_PREFIX:
-		if (value->datum.ip.scope_id > 0) *p++ = value->datum.ip.scope_id;
-		*p++ = value->datum.ip.prefix;
-		memcpy(p, value->datum.ip.addr.v6.s6_addr, sizeof(value->datum.ip.addr.v6.s6_addr));
+		if (value->vb_ip.scope_id > 0) *p++ = value->vb_ip.scope_id;
+		*p++ = value->vb_ip.prefix;
+		memcpy(p, value->vb_ip.addr.v6.s6_addr, sizeof(value->vb_ip.addr.v6.s6_addr));
 		break;
 
 	case FR_TYPE_BOOL:
@@ -1204,32 +1204,32 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 	 *	Already in network byte order
 	 */
 	case FR_TYPE_IPV4_ADDR:
-		memcpy(&dst->datum.ip.addr.v4, src, len);
-		dst->datum.ip.af = AF_INET;
-		dst->datum.ip.prefix = 32;
-		dst->datum.ip.scope_id = 0;	/* init even if it's unused */
+		memcpy(&dst->vb_ip.addr.v4, src, len);
+		dst->vb_ip.af = AF_INET;
+		dst->vb_ip.prefix = 32;
+		dst->vb_ip.scope_id = 0;	/* init even if it's unused */
 		break;
 
 	case FR_TYPE_IPV4_PREFIX:
-		dst->datum.ip.af = AF_INET;
-		dst->datum.ip.prefix = *p++;
-		memcpy(&dst->datum.ip.addr.v4, p, sizeof(dst->datum.ip.addr.v4));
-		dst->datum.ip.scope_id = 0;	/* init even if it's unused */
+		dst->vb_ip.af = AF_INET;
+		dst->vb_ip.prefix = *p++;
+		memcpy(&dst->vb_ip.addr.v4, p, sizeof(dst->vb_ip.addr.v4));
+		dst->vb_ip.scope_id = 0;	/* init even if it's unused */
 
 		break;
 
 	case FR_TYPE_IPV6_ADDR:
-		dst->datum.ip.af = AF_INET6;
-		dst->datum.ip.scope_id = len == max ? *p++ : 0;		/* optional */
-		memcpy(&dst->datum.ip.addr.v6, p, sizeof(dst->datum.ip.addr.v6));
-		dst->datum.ip.prefix = 128;
+		dst->vb_ip.af = AF_INET6;
+		dst->vb_ip.scope_id = len == max ? *p++ : 0;		/* optional */
+		memcpy(&dst->vb_ip.addr.v6, p, sizeof(dst->vb_ip.addr.v6));
+		dst->vb_ip.prefix = 128;
 		break;
 
 	case FR_TYPE_IPV6_PREFIX:
-		dst->datum.ip.af = AF_INET6;
-		dst->datum.ip.scope_id = len == max ? *p++ : 0;		/* optional */
-		dst->datum.ip.prefix = *p++;
-		memcpy(&dst->datum.ip.addr.v6, p, sizeof(dst->datum.ip.addr.v6));
+		dst->vb_ip.af = AF_INET6;
+		dst->vb_ip.scope_id = len == max ? *p++ : 0;		/* optional */
+		dst->vb_ip.prefix = *p++;
+		memcpy(&dst->vb_ip.addr.v6, p, sizeof(dst->vb_ip.addr.v6));
 		break;
 
 	case FR_TYPE_BOOL:
@@ -1308,7 +1308,7 @@ static inline int fr_value_box_cast_to_strvalue(TALLOC_CTX *ctx, fr_value_box_t 
 	 *	What we actually want here is the raw string
 	 */
 	case FR_TYPE_OCTETS:
-		dst->datum.strvalue = talloc_bstrndup(ctx, (char const *)src->datum.octets, src->datum.length);
+		dst->vb_strvalue = talloc_bstrndup(ctx, (char const *)src->vb_octets, src->datum.length);
 		dst->datum.length = src->datum.length;	/* It's the same, even though the buffer is slightly bigger */
 		break;
 
@@ -1316,12 +1316,12 @@ static inline int fr_value_box_cast_to_strvalue(TALLOC_CTX *ctx, fr_value_box_t 
 	 *	Get the presentation format
 	 */
 	default:
-		dst->datum.strvalue = fr_value_box_asprint(ctx, src, '\0');
-		dst->datum.length = talloc_array_length(dst->datum.strvalue) - 1;
+		dst->vb_strvalue = fr_value_box_asprint(ctx, src, '\0');
+		dst->datum.length = talloc_array_length(dst->vb_strvalue) - 1;
 		break;
 	}
 
-	if (!dst->datum.strvalue) return -1;
+	if (!dst->vb_strvalue) return -1;
 	dst->type = FR_TYPE_STRING;
 
 	return 0;
@@ -1350,7 +1350,7 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 	 *	<string> (excluding terminating \0)
 	 */
 	case FR_TYPE_STRING:
-		bin = talloc_memdup(ctx, (uint8_t const *)src->datum.strvalue, src->datum.length);
+		bin = talloc_memdup(ctx, (uint8_t const *)src->vb_strvalue, src->datum.length);
 		break;
 
 	/*
@@ -1358,8 +1358,8 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 	 */
 	case FR_TYPE_IPV4_ADDR:
 	{
-		bin = talloc_memdup(ctx, (uint8_t const *)&src->datum.ip.addr.v4.s_addr,
-				    sizeof(src->datum.ip.addr.v4.s_addr));
+		bin = talloc_memdup(ctx, (uint8_t const *)&src->vb_ip.addr.v4.s_addr,
+				    sizeof(src->vb_ip.addr.v4.s_addr));
 	}
 		break;
 
@@ -1367,27 +1367,27 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 	 *	<1 uint8 prefix> + <4 uint8s address>
 	 */
 	case FR_TYPE_IPV4_PREFIX:
-		bin = talloc_array(ctx, uint8_t, sizeof(src->datum.ip.addr.v4.s_addr) + 1);
-		bin[0] = src->datum.ip.prefix;
-		memcpy(&bin[1], (uint8_t const *)&src->datum.ip.addr.v4.s_addr, sizeof(src->datum.ip.addr.v4.s_addr));
+		bin = talloc_array(ctx, uint8_t, sizeof(src->vb_ip.addr.v4.s_addr) + 1);
+		bin[0] = src->vb_ip.prefix;
+		memcpy(&bin[1], (uint8_t const *)&src->vb_ip.addr.v4.s_addr, sizeof(src->vb_ip.addr.v4.s_addr));
 		break;
 
 	/*
 	 *	<16 uint8s address>
 	 */
 	case FR_TYPE_IPV6_ADDR:
-		bin = talloc_memdup(ctx, (uint8_t const *)src->datum.ip.addr.v6.s6_addr,
-				    sizeof(src->datum.ip.addr.v6.s6_addr));
+		bin = talloc_memdup(ctx, (uint8_t const *)src->vb_ip.addr.v6.s6_addr,
+				    sizeof(src->vb_ip.addr.v6.s6_addr));
 		break;
 
 	/*
 	 *	<1 uint8 prefix> + <1 uint8 scope> + <16 uint8s address>
 	 */
 	case FR_TYPE_IPV6_PREFIX:
-		bin = talloc_array(ctx, uint8_t, sizeof(src->datum.ip.addr.v6.s6_addr) + 2);
-		bin[0] = src->datum.ip.scope_id;
-		bin[1] = src->datum.ip.prefix;
-		memcpy(&bin[2], src->datum.ip.addr.v6.s6_addr, sizeof(src->datum.ip.addr.v6.s6_addr));
+		bin = talloc_array(ctx, uint8_t, sizeof(src->vb_ip.addr.v6.s6_addr) + 2);
+		bin[0] = src->vb_ip.scope_id;
+		bin[1] = src->vb_ip.prefix;
+		memcpy(&bin[2], src->vb_ip.addr.v6.s6_addr, sizeof(src->vb_ip.addr.v6.s6_addr));
 		break;
 	/*
 	 *	Get the raw binary in memory representation
@@ -1431,7 +1431,7 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 
 	switch (src->type) {
 	case FR_TYPE_IPV6_ADDR:
-		if (memcmp(src->datum.ip.addr.v6.s6_addr, v4_v6_map, sizeof(v4_v6_map)) != 0) {
+		if (memcmp(src->vb_ip.addr.v6.s6_addr, v4_v6_map, sizeof(v4_v6_map)) != 0) {
 		bad_v6_prefix_map:
 			fr_strerror_printf("Invalid cast from %s to %s.  No IPv4-IPv6 mapping prefix",
 					   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
@@ -1439,60 +1439,60 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 			return -1;
 		}
 
-		memcpy(&dst->datum.ip.addr.v4, &src->datum.ip.addr.v6.s6_addr[sizeof(v4_v6_map)],
-		       sizeof(dst->datum.ip.addr.v4));
+		memcpy(&dst->vb_ip.addr.v4, &src->vb_ip.addr.v6.s6_addr[sizeof(v4_v6_map)],
+		       sizeof(dst->vb_ip.addr.v4));
 
 		break;
 
 	case FR_TYPE_IPV4_PREFIX:
-		if (src->datum.ip.prefix != 32) {
+		if (src->vb_ip.prefix != 32) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Only /32 (not %i/) prefixes may be "
 					   "cast to IP address types",
 					   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
 					   fr_int2str(dict_attr_types, dst_type, "<INVALID>"),
-					   src->datum.ip.prefix);
+					   src->vb_ip.prefix);
 			return -1;
 		}
-		memcpy(&dst->datum.ip.addr.v4, &src->datum.ip.addr.v4, sizeof(dst->datum.ip.addr.v4));
+		memcpy(&dst->vb_ip.addr.v4, &src->vb_ip.addr.v4, sizeof(dst->vb_ip.addr.v4));
 		break;
 
 	case FR_TYPE_IPV6_PREFIX:
-		if (src->datum.ip.prefix != 128) {
+		if (src->vb_ip.prefix != 128) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Only /128 (not /%i) prefixes may be "
 					   "cast to IP address types",
 					   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
 					   fr_int2str(dict_attr_types, dst_type, "<INVALID>"),
-					   src->datum.ip.prefix);
+					   src->vb_ip.prefix);
 			return -1;
 		}
-		if (memcmp(&src->datum.ip.addr.v6.s6_addr, v4_v6_map, sizeof(v4_v6_map)) != 0) goto bad_v6_prefix_map;
-		memcpy(&dst->datum.ip.addr.v4, &src->datum.ip.addr.v6.s6_addr[sizeof(v4_v6_map)],
-		       sizeof(dst->datum.ip.addr.v4));
+		if (memcmp(&src->vb_ip.addr.v6.s6_addr, v4_v6_map, sizeof(v4_v6_map)) != 0) goto bad_v6_prefix_map;
+		memcpy(&dst->vb_ip.addr.v4, &src->vb_ip.addr.v6.s6_addr[sizeof(v4_v6_map)],
+		       sizeof(dst->vb_ip.addr.v4));
 		break;
 
 	case FR_TYPE_STRING:
 		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->datum.strvalue, src->datum.length, '\0', false) < 0) return -1;
+				          src->vb_strvalue, src->datum.length, '\0', false) < 0) return -1;
 		break;
 
 	case FR_TYPE_OCTETS:
-		if (src->datum.length != sizeof(dst->datum.ip.addr.v4.s_addr)) {
+		if (src->datum.length != sizeof(dst->vb_ip.addr.v4.s_addr)) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Only %zu uint8 octet strings "
 					   "may be cast to IP address types",
 					   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
 					   fr_int2str(dict_attr_types, dst_type, "<INVALID>"),
-					   sizeof(dst->datum.ip.addr.v4.s_addr));
+					   sizeof(dst->vb_ip.addr.v4.s_addr));
 			return -1;
 		}
-		memcpy(&dst->datum.ip.addr.v4, src->datum.octets, sizeof(dst->datum.ip.addr.v4.s_addr));
+		memcpy(&dst->vb_ip.addr.v4, src->vb_octets, sizeof(dst->vb_ip.addr.v4.s_addr));
 		break;
 
 	case FR_TYPE_UINT32:
 	{
 		uint32_t net;
 
-		net = ntohl(src->datum.uint32);
-		memcpy(&dst->datum.ip.addr.v4, (uint8_t *)&net, sizeof(dst->datum.ip.addr.v4.s_addr));
+		net = ntohl(src->vb_uint32);
+		memcpy(&dst->vb_ip.addr.v4, (uint8_t *)&net, sizeof(dst->vb_ip.addr.v4.s_addr));
 	}
 		break;
 
@@ -1503,9 +1503,9 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 		return -1;
 	}
 
-	dst->datum.ip.af = AF_INET;
-	dst->datum.ip.prefix = 32;
-	dst->datum.ip.scope_id = 0;
+	dst->vb_ip.af = AF_INET;
+	dst->vb_ip.prefix = 32;
+	dst->vb_ip.scope_id = 0;
 	dst->type = FR_TYPE_IPV4_ADDR;
 
 	return 0;
@@ -1533,78 +1533,78 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 
 	switch (src->type) {
 	case FR_TYPE_IPV4_ADDR:
-		memcpy(&dst->datum.ip, &src->datum.ip, sizeof(dst->datum.ip));
+		memcpy(&dst->vb_ip, &src->vb_ip, sizeof(dst->vb_ip));
 		break;
 
 	/*
 	 *	Copy the last four uint8s, to make an IPv4prefix
 	 */
 	case FR_TYPE_IPV6_ADDR:
-		if (memcmp(src->datum.ip.addr.v6.s6_addr, v4_v6_map, sizeof(v4_v6_map)) != 0) {
+		if (memcmp(src->vb_ip.addr.v6.s6_addr, v4_v6_map, sizeof(v4_v6_map)) != 0) {
 		bad_v6_prefix_map:
 			fr_strerror_printf("Invalid cast from %s to %s.  No IPv4-IPv6 mapping prefix",
 					   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
 					   fr_int2str(dict_attr_types, dst_type, "<INVALID>"));
 			return -1;
 		}
-		memcpy(&dst->datum.ip.addr.v4.s_addr, &src->datum.ip.addr.v6.s6_addr[sizeof(v4_v6_map)],
-		       sizeof(dst->datum.ip.addr.v4.s_addr));
-		dst->datum.ip.prefix = 32;
+		memcpy(&dst->vb_ip.addr.v4.s_addr, &src->vb_ip.addr.v6.s6_addr[sizeof(v4_v6_map)],
+		       sizeof(dst->vb_ip.addr.v4.s_addr));
+		dst->vb_ip.prefix = 32;
 		break;
 
 	case FR_TYPE_IPV6_PREFIX:
-		if (memcmp(src->datum.ip.addr.v6.s6_addr, v4_v6_map, sizeof(v4_v6_map)) != 0) goto bad_v6_prefix_map;
+		if (memcmp(src->vb_ip.addr.v6.s6_addr, v4_v6_map, sizeof(v4_v6_map)) != 0) goto bad_v6_prefix_map;
 
-		if (src->datum.ip.prefix < (sizeof(v4_v6_map) << 3)) {
+		if (src->vb_ip.prefix < (sizeof(v4_v6_map) << 3)) {
 			fr_strerror_printf("Invalid cast from %s to %s. Expected prefix >= %u bits got %u bits",
 					   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
 					   fr_int2str(dict_attr_types, dst_type, "<INVALID>"),
-					   (unsigned int)(sizeof(v4_v6_map) << 3), src->datum.ip.prefix);
+					   (unsigned int)(sizeof(v4_v6_map) << 3), src->vb_ip.prefix);
 			return -1;
 		}
-		memcpy(&dst->datum.ip.addr.v4.s_addr, &src->datum.ip.addr.v6.s6_addr[sizeof(v4_v6_map)],
-		       sizeof(dst->datum.ip.addr.v4.s_addr));
+		memcpy(&dst->vb_ip.addr.v4.s_addr, &src->vb_ip.addr.v6.s6_addr[sizeof(v4_v6_map)],
+		       sizeof(dst->vb_ip.addr.v4.s_addr));
 
 		/*
 		 *	Subtract the bits used by the v4_v6_map to get the v4 prefix bits
 		 */
-		dst->datum.ip.prefix = src->datum.ip.prefix - (sizeof(v4_v6_map) << 3);
+		dst->vb_ip.prefix = src->vb_ip.prefix - (sizeof(v4_v6_map) << 3);
 		break;
 
 	case FR_TYPE_STRING:
 		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->datum.strvalue, src->datum.length, '\0', false) < 0) return -1;
+				          src->vb_strvalue, src->datum.length, '\0', false) < 0) return -1;
 		break;
 
 
 	case FR_TYPE_OCTETS:
-		if (src->datum.length != sizeof(dst->datum.ip.addr.v4.s_addr) + 1) {
+		if (src->datum.length != sizeof(dst->vb_ip.addr.v4.s_addr) + 1) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Only %zu uint8 octet strings "
 					   "may be cast to IP address types",
 					   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
 					   fr_int2str(dict_attr_types, dst_type, "<INVALID>"),
-					   sizeof(dst->datum.ip.addr.v4.s_addr) + 1);
+					   sizeof(dst->vb_ip.addr.v4.s_addr) + 1);
 			return -1;
 		}
-		dst->datum.ip.prefix = src->datum.octets[0];
-		memcpy(&dst->datum.ip.addr.v4, &src->datum.octets[1], sizeof(dst->datum.ip.addr.v4.s_addr));
+		dst->vb_ip.prefix = src->vb_octets[0];
+		memcpy(&dst->vb_ip.addr.v4, &src->vb_octets[1], sizeof(dst->vb_ip.addr.v4.s_addr));
 		break;
 
 	case FR_TYPE_UINT32:
 	{
 		uint32_t net;
 
-		net = ntohl(src->datum.uint32);
-		memcpy(&dst->datum.ip.addr.v4, (uint8_t *)&net, sizeof(dst->datum.ip.addr.v4.s_addr));
-		dst->datum.ip.prefix = 32;
+		net = ntohl(src->vb_uint32);
+		memcpy(&dst->vb_ip.addr.v4, (uint8_t *)&net, sizeof(dst->vb_ip.addr.v4.s_addr));
+		dst->vb_ip.prefix = 32;
 	}
 
 	default:
 		break;
 	}
 
-	dst->datum.ip.af = AF_INET;
-	dst->datum.ip.scope_id = 0;
+	dst->vb_ip.af = AF_INET;
+	dst->vb_ip.scope_id = 0;
 	dst->type = FR_TYPE_IPV4_PREFIX;
 
 	return 0;
@@ -1630,72 +1630,72 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
 {
 	if (!fr_cond_assert(dst_type == FR_TYPE_IPV6_ADDR)) return -1;
 
-	static_assert((sizeof(v4_v6_map) + sizeof(src->datum.ip.addr.v4)) <=
-		      sizeof(src->datum.ip.addr.v6), "IPv6 storage too small");
+	static_assert((sizeof(v4_v6_map) + sizeof(src->vb_ip.addr.v4)) <=
+		      sizeof(src->vb_ip.addr.v6), "IPv6 storage too small");
 
 	switch (src->type) {
 	case FR_TYPE_IPV4_ADDR:
 	{
-		uint8_t *p = dst->datum.ip.addr.v6.s6_addr;
+		uint8_t *p = dst->vb_ip.addr.v6.s6_addr;
 
 		/* Add the v4/v6 mapping prefix */
 		memcpy(p, v4_v6_map, sizeof(v4_v6_map));
 		p += sizeof(v4_v6_map);
-		memcpy(p, (uint8_t const *)&src->datum.ip.addr.v4.s_addr, sizeof(src->datum.ip.addr.v4.s_addr));
-		dst->datum.ip.scope_id = 0;
+		memcpy(p, (uint8_t const *)&src->vb_ip.addr.v4.s_addr, sizeof(src->vb_ip.addr.v4.s_addr));
+		dst->vb_ip.scope_id = 0;
 	}
 		break;
 
 	case FR_TYPE_IPV4_PREFIX:
 	{
-		uint8_t *p = dst->datum.ip.addr.v6.s6_addr;
+		uint8_t *p = dst->vb_ip.addr.v6.s6_addr;
 
-		if (src->datum.ip.prefix != 32) {
+		if (src->vb_ip.prefix != 32) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Only /32 (not /%i) prefixes may be "
 			   		   "cast to IP address types",
 			   		   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
 					   fr_int2str(dict_attr_types, dst_type, "<INVALID>"),
-					   src->datum.ip.prefix);
+					   src->vb_ip.prefix);
 			return -1;
 		}
 
 		/* Add the v4/v6 mapping prefix */
 		memcpy(p, v4_v6_map, sizeof(v4_v6_map));
 		p += sizeof(v4_v6_map);
-		memcpy(p, (uint8_t const *)&src->datum.ip.addr.v4.s_addr, sizeof(src->datum.ip.addr.v4.s_addr));
-		dst->datum.ip.scope_id = 0;
+		memcpy(p, (uint8_t const *)&src->vb_ip.addr.v4.s_addr, sizeof(src->vb_ip.addr.v4.s_addr));
+		dst->vb_ip.scope_id = 0;
 	}
 		break;
 
 	case FR_TYPE_IPV6_PREFIX:
-		if (src->datum.ip.prefix != 128) {
+		if (src->vb_ip.prefix != 128) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Only /128 (not /%i) prefixes may be "
 			   		   "cast to IP address types",
 			   		   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
 					   fr_int2str(dict_attr_types, dst_type, "<INVALID>"),
-					   src->datum.ip.prefix);
+					   src->vb_ip.prefix);
 			return -1;
 		}
-		memcpy(dst->datum.ip.addr.v6.s6_addr, src->datum.ip.addr.v6.s6_addr,
-		       sizeof(dst->datum.ip.addr.v6.s6_addr));
-		dst->datum.ip.scope_id = src->datum.ip.scope_id;
+		memcpy(dst->vb_ip.addr.v6.s6_addr, src->vb_ip.addr.v6.s6_addr,
+		       sizeof(dst->vb_ip.addr.v6.s6_addr));
+		dst->vb_ip.scope_id = src->vb_ip.scope_id;
 		break;
 
 	case FR_TYPE_STRING:
 		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->datum.strvalue, src->datum.length, '\0', false) < 0) return -1;
+				          src->vb_strvalue, src->datum.length, '\0', false) < 0) return -1;
 		break;
 
 	case FR_TYPE_OCTETS:
-		if (src->datum.length != sizeof(dst->datum.ip.addr.v6.s6_addr)) {
+		if (src->datum.length != sizeof(dst->vb_ip.addr.v6.s6_addr)) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Only %zu uint8 octet strings "
 					   "may be cast to IP address types",
 					   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
 					   fr_int2str(dict_attr_types, dst_type, "<INVALID>"),
-					   sizeof(dst->datum.ip.addr.v6.s6_addr));
+					   sizeof(dst->vb_ip.addr.v6.s6_addr));
 			return -1;
 		}
-		memcpy(&dst->datum.ip.addr.v6.s6_addr, src->datum.octets, sizeof(dst->datum.ip.addr.v6.s6_addr));
+		memcpy(&dst->vb_ip.addr.v6.s6_addr, src->vb_octets, sizeof(dst->vb_ip.addr.v6.s6_addr));
 		break;
 
 	default:
@@ -1705,8 +1705,8 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
 		break;
 	}
 
-	dst->datum.ip.af = AF_INET6;
-	dst->datum.ip.prefix = 128;
+	dst->vb_ip.af = AF_INET6;
+	dst->vb_ip.prefix = 128;
 	dst->type = FR_TYPE_IPV6_ADDR;
 
 	return 0;
@@ -1733,61 +1733,61 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
 	switch (src->type) {
 	case FR_TYPE_IPV4_ADDR:
 	{
-		uint8_t *p = dst->datum.ip.addr.v6.s6_addr;
+		uint8_t *p = dst->vb_ip.addr.v6.s6_addr;
 
 		/* Add the v4/v6 mapping prefix */
 		memcpy(p, v4_v6_map, sizeof(v4_v6_map));
 		p += sizeof(v4_v6_map);
-		memcpy(p, (uint8_t const *)&src->datum.ip.addr.v4.s_addr, sizeof(src->datum.ip.addr.v4.s_addr));
-		dst->datum.ip.prefix = 128;
-		dst->datum.ip.scope_id = 0;
+		memcpy(p, (uint8_t const *)&src->vb_ip.addr.v4.s_addr, sizeof(src->vb_ip.addr.v4.s_addr));
+		dst->vb_ip.prefix = 128;
+		dst->vb_ip.scope_id = 0;
 	}
 		break;
 
 	case FR_TYPE_IPV4_PREFIX:
 	{
-		uint8_t *p = dst->datum.ip.addr.v6.s6_addr;
+		uint8_t *p = dst->vb_ip.addr.v6.s6_addr;
 
 		/* Add the v4/v6 mapping prefix */
 		memcpy(p, v4_v6_map, sizeof(v4_v6_map));
 		p += sizeof(v4_v6_map);
-		memcpy(p, (uint8_t const *)&src->datum.ip.addr.v4.s_addr, sizeof(src->datum.ip.addr.v4.s_addr));
-		dst->datum.ip.prefix = (sizeof(v4_v6_map) << 3) + src->datum.ip.prefix;
-		dst->datum.ip.scope_id = 0;
+		memcpy(p, (uint8_t const *)&src->vb_ip.addr.v4.s_addr, sizeof(src->vb_ip.addr.v4.s_addr));
+		dst->vb_ip.prefix = (sizeof(v4_v6_map) << 3) + src->vb_ip.prefix;
+		dst->vb_ip.scope_id = 0;
 	}
 		break;
 
 	case FR_TYPE_IPV6_ADDR:
-		memcpy(dst->datum.ip.addr.v6.s6_addr, src->datum.ip.addr.v6.s6_addr,
-		       sizeof(dst->datum.ip.addr.v6.s6_addr));
-		dst->datum.ip.prefix = 128;
-		dst->datum.ip.scope_id = src->datum.ip.scope_id;
+		memcpy(dst->vb_ip.addr.v6.s6_addr, src->vb_ip.addr.v6.s6_addr,
+		       sizeof(dst->vb_ip.addr.v6.s6_addr));
+		dst->vb_ip.prefix = 128;
+		dst->vb_ip.scope_id = src->vb_ip.scope_id;
 		break;
 
 	case FR_TYPE_STRING:
 		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-				          src->datum.strvalue, src->datum.length, '\0', false) < 0) return -1;
+				          src->vb_strvalue, src->datum.length, '\0', false) < 0) return -1;
 		break;
 
 	case FR_TYPE_OCTETS:
-		if (src->datum.length != (sizeof(dst->datum.ip.addr.v6.s6_addr) + 2)) {
+		if (src->datum.length != (sizeof(dst->vb_ip.addr.v6.s6_addr) + 2)) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Only %zu uint8 octet strings "
 					   "may be cast to IP address types",
 					   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
 					   fr_int2str(dict_attr_types, dst_type, "<INVALID>"),
-					   sizeof(dst->datum.ip.addr.v6.s6_addr) + 2);
+					   sizeof(dst->vb_ip.addr.v6.s6_addr) + 2);
 			return -1;
 		}
-		dst->datum.ip.scope_id = src->datum.octets[0];
-		dst->datum.ip.prefix = src->datum.octets[1];
-		memcpy(&dst->datum.ip.addr.v6.s6_addr, src->datum.octets, sizeof(dst->datum.ip.addr.v6.s6_addr));
+		dst->vb_ip.scope_id = src->vb_octets[0];
+		dst->vb_ip.prefix = src->vb_octets[1];
+		memcpy(&dst->vb_ip.addr.v6.s6_addr, src->vb_octets, sizeof(dst->vb_ip.addr.v6.s6_addr));
 		break;
 
 	default:
 		break;
 	}
 
-	dst->datum.ip.af = AF_INET6;
+	dst->vb_ip.af = AF_INET6;
 	dst->type = FR_TYPE_IPV6_PREFIX;
 
 	return 0;
@@ -1897,13 +1897,13 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	 *	Deserialise a fr_value_box_t
 	 */
 	if (src->type == FR_TYPE_STRING) return fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
-								      src->datum.strvalue,
+								      src->vb_strvalue,
 								      src->datum.length, '\0', false);
 
 	if ((src->type == FR_TYPE_IFID) &&
 	    (dst_type == FR_TYPE_UINT64)) {
-		memcpy(&dst->datum.uint64, src->datum.ifid, sizeof(src->datum.ifid));
-		dst->datum.uint64 = htonll(dst->datum.uint64);
+		memcpy(&dst->vb_uint64, src->vb_ifid, sizeof(src->vb_ifid));
+		dst->vb_uint64 = htonll(dst->vb_uint64);
 
 	fixed_length:
 		dst->type = dst_type;
@@ -1917,7 +1917,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		uint8_t array[8];
 		uint64_t i;
 
-		i = htonll(src->datum.uint64);
+		i = htonll(src->vb_uint64);
 		memcpy(array, &i, 8);
 
 		/*
@@ -1925,14 +1925,14 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		 */
 		if ((array[0] != 0) || (array[1] != 0)) return -1;
 
-		memcpy(dst->datum.ether, &array[2], 6);
+		memcpy(dst->vb_ether, &array[2], 6);
 		goto fixed_length;
 	}
 
 	if (dst_type == FR_TYPE_UINT16) {
 		switch (src->type) {
 		case FR_TYPE_UINT8:
-			dst->datum.uint16 = src->datum.uint8;
+			dst->vb_uint16 = src->vb_uint8;
 			break;
 
 		case FR_TYPE_OCTETS:
@@ -1951,20 +1951,20 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	if (dst_type == FR_TYPE_UINT32) {
 		switch (src->type) {
 		case FR_TYPE_UINT8:
-			dst->datum.uint32 = src->datum.uint8;
+			dst->vb_uint32 = src->vb_uint8;
 			break;
 
 		case FR_TYPE_UINT16:
-			dst->datum.uint32 = src->datum.uint16;
+			dst->vb_uint32 = src->vb_uint16;
 			break;
 
 		case FR_TYPE_INT32:
-			if (src->datum.int32 < 0 ) {
+			if (src->vb_int32 < 0 ) {
 				fr_strerror_printf("Invalid cast: From signed to uint32.  "
-						   "signed value %d is negative ", src->datum.int32);
+						   "signed value %d is negative ", src->vb_int32);
 				return -1;
 			}
-			dst->datum.uint32 = (uint32_t)src->datum.int32;
+			dst->vb_uint32 = (uint32_t)src->vb_int32;
 			break;
 
 		case FR_TYPE_OCTETS:
@@ -1983,19 +1983,19 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	if (dst_type == FR_TYPE_UINT64) {
 		switch (src->type) {
 		case FR_TYPE_UINT8:
-			dst->datum.uint64 = src->datum.uint8;
+			dst->vb_uint64 = src->vb_uint8;
 			break;
 
 		case FR_TYPE_UINT16:
-			dst->datum.uint64 = src->datum.uint16;
+			dst->vb_uint64 = src->vb_uint16;
 			break;
 
 		case FR_TYPE_UINT32:
-			dst->datum.uint64 = src->datum.uint32;
+			dst->vb_uint64 = src->vb_uint32;
 			break;
 
 		case FR_TYPE_DATE:
-			dst->datum.uint64 = src->datum.date;
+			dst->vb_uint64 = src->vb_date;
 			break;
 
 		case FR_TYPE_OCTETS:
@@ -2018,29 +2018,29 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	if (dst_type == FR_TYPE_INT32) {
 		switch (src->type) {
 		case FR_TYPE_UINT8:
-			dst->datum.int32 = src->datum.uint8;
+			dst->vb_int32 = src->vb_uint8;
 			break;
 
 		case FR_TYPE_UINT16:
-			dst->datum.int32 = src->datum.uint16;
+			dst->vb_int32 = src->vb_uint16;
 			break;
 
 		case FR_TYPE_UINT32:
-			if (src->datum.uint32 > INT_MAX) {
+			if (src->vb_uint32 > INT_MAX) {
 				fr_strerror_printf("Invalid cast: From uint32 to signed.  uint32 value %u is larger "
-						   "than max signed int and would overflow", src->datum.uint32);
+						   "than max signed int and would overflow", src->vb_uint32);
 				return -1;
 			}
-			dst->datum.int32 = (int)src->datum.uint32;
+			dst->vb_int32 = (int)src->vb_uint32;
 			break;
 
 		case FR_TYPE_UINT64:
-			if (src->datum.uint32 > INT_MAX) {
+			if (src->vb_uint32 > INT_MAX) {
 				fr_strerror_printf("Invalid cast: From uint64 to signed.  uint64 value %" PRIu64
-						   " is larger than max signed int and would overflow", src->datum.uint64);
+						   " is larger than max signed int and would overflow", src->vb_uint64);
 				return -1;
 			}
-			dst->datum.int32 = (int)src->datum.uint64;
+			dst->vb_int32 = (int)src->vb_uint64;
 			break;
 
 		case FR_TYPE_OCTETS:
@@ -2055,17 +2055,17 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	if (dst_type == FR_TYPE_TIMEVAL) {
 		switch (src->type) {
 		case FR_TYPE_UINT8:
-			dst->datum.timeval.tv_sec = src->datum.uint8;
+			dst->datum.timeval.tv_sec = src->vb_uint8;
 			dst->datum.timeval.tv_usec = 0;
 			break;
 
 		case FR_TYPE_UINT16:
-			dst->datum.timeval.tv_sec = src->datum.uint16;
+			dst->datum.timeval.tv_sec = src->vb_uint16;
 			dst->datum.timeval.tv_usec = 0;
 			break;
 
 		case FR_TYPE_UINT32:
-			dst->datum.timeval.tv_sec = src->datum.uint32;
+			dst->datum.timeval.tv_sec = src->vb_uint32;
 			dst->datum.timeval.tv_usec = 0;
 			break;
 
@@ -2078,7 +2078,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 			 *	but you never know...
 			 */
 			if (sizeof(uint64_t) > SIZEOF_MEMBER(struct timeval, tv_sec)) goto invalid_cast;
-			dst->datum.timeval.tv_sec = src->datum.uint64;
+			dst->datum.timeval.tv_sec = src->vb_uint64;
 			dst->datum.timeval.tv_usec = 0;
 			break;
 
@@ -2117,7 +2117,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		 *	Copy the raw octets into the datum of a value_box
 		 *	inverting bytesex for uint32s (if LE).
 		 */
-		memcpy(&tmp.datum, src->datum.octets, fr_value_box_field_sizes[dst_type]);
+		memcpy(&tmp.datum, src->vb_octets, fr_value_box_field_sizes[dst_type]);
 		tmp.type = dst_type;
 		dst->enumv = dst_enumv;
 
@@ -2128,15 +2128,15 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		 */
 		switch (dst->type) {
 		case FR_TYPE_IPV4_ADDR:
-			dst->datum.ip.af = AF_INET;
-			dst->datum.ip.prefix = 128;
-			dst->datum.ip.scope_id = 0;
+			dst->vb_ip.af = AF_INET;
+			dst->vb_ip.prefix = 128;
+			dst->vb_ip.scope_id = 0;
 			break;
 
 		case FR_TYPE_IPV6_ADDR:
-			dst->datum.ip.af = AF_INET6;
-			dst->datum.ip.prefix = 128;
-			dst->datum.ip.scope_id = 0;
+			dst->vb_ip.af = AF_INET6;
+			dst->vb_ip.prefix = 128;
+			dst->vb_ip.scope_id = 0;
 			break;
 
 		default:
@@ -2153,16 +2153,16 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	    ((src->type == FR_TYPE_UINT32) ||
 	     (src->type == FR_TYPE_DATE) ||
 	     (src->type == FR_TYPE_INT32))) {
-	     	dst->datum.ip.af = AF_INET;
-	     	dst->datum.ip.prefix = 32;
-	     	dst->datum.ip.scope_id = 0;
-		dst->datum.ip.addr.v4.s_addr = htonl(src->datum.uint32);
+	     	dst->vb_ip.af = AF_INET;
+	     	dst->vb_ip.prefix = 32;
+	     	dst->vb_ip.scope_id = 0;
+		dst->vb_ip.addr.v4.s_addr = htonl(src->vb_uint32);
 
 	} else if ((src->type == FR_TYPE_IPV4_ADDR) &&
 		   ((dst_type == FR_TYPE_UINT32) ||
 		    (dst_type == FR_TYPE_DATE) ||
 		    (dst_type == FR_TYPE_INT32))) {
-		dst->datum.uint32 = htonl(src->datum.ip.addr.v4.s_addr);
+		dst->vb_uint32 = htonl(src->vb_ip.addr.v4.s_addr);
 
 	} else {		/* they're of the same uint8 order */
 		memcpy(&dst->datum, &src->datum, fr_value_box_field_sizes[src->type]);
@@ -2225,7 +2225,7 @@ int fr_value_box_from_ipaddr(fr_value_box_t *dst, fr_dict_attr_t const *enumv, f
 
 	dst->type = type;
 	dst->tainted = tainted;
-	dst->datum.ip = *ipaddr;
+	dst->vb_ip = *ipaddr;
 	dst->enumv = enumv;
 	dst->next = NULL;
 
@@ -2261,12 +2261,12 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
 		/*
 		 *	Zero length strings still have a one uint8 buffer
 		 */
-		str = talloc_bstrndup(ctx, src->datum.strvalue, src->datum.length);
+		str = talloc_bstrndup(ctx, src->vb_strvalue, src->datum.length);
 		if (!str) {
 			fr_strerror_printf("Failed allocating string buffer");
 			return -1;
 		}
-		dst->datum.strvalue = str;
+		dst->vb_strvalue = str;
 	}
 		break;
 
@@ -2275,14 +2275,14 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
 		uint8_t *bin = NULL;
 
 		if (src->datum.length) {
-			bin = talloc_memdup(ctx, src->datum.octets, src->datum.length);
+			bin = talloc_memdup(ctx, src->vb_octets, src->datum.length);
 			if (!bin) {
 				fr_strerror_printf("Failed allocating octets buffer");
 				return -1;
 			}
 			talloc_set_type(bin, uint8_t);
 		}
-		dst->datum.octets = bin;
+		dst->vb_octets = bin;
 	}
 		break;
 	}
@@ -2343,12 +2343,12 @@ int fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 	{
 		char const *str;
 
-		str = talloc_steal(ctx, src->datum.strvalue);
+		str = talloc_steal(ctx, src->vb_strvalue);
 		if (!str) {
 			fr_strerror_printf("Failed stealing string buffer");
 			return -1;
 		}
-		dst->datum.strvalue = str;
+		dst->vb_strvalue = str;
 		fr_value_box_copy_meta(dst, src);
 	}
 		return 0;
@@ -2357,12 +2357,12 @@ int fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 	{
 		uint8_t const *bin;
 
- 		bin = talloc_steal(ctx, src->datum.octets);
+ 		bin = talloc_steal(ctx, src->vb_octets);
 		if (!bin) {
 			fr_strerror_printf("Failed stealing octets buffer");
 			return -1;
 		}
-		dst->datum.octets = bin;
+		dst->vb_octets = bin;
 		fr_value_box_copy_meta(dst, src);
 	}
 		return 0;
@@ -2390,7 +2390,7 @@ int fr_value_box_strdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t con
 
 	dst->type = FR_TYPE_STRING;
 	dst->tainted = tainted;
-	dst->datum.strvalue = str;
+	dst->vb_strvalue = str;
 	dst->datum.length = talloc_array_length(str) - 1;
 	dst->enumv = enumv;
 	dst->next = NULL;
@@ -2420,7 +2420,7 @@ int fr_value_box_bstrndup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t c
 
 	dst->type = FR_TYPE_STRING;
 	dst->tainted = tainted;
-	dst->datum.strvalue = str;
+	dst->vb_strvalue = str;
 	dst->datum.length = len;
 	dst->enumv = enumv;
 	dst->next = NULL;
@@ -2463,7 +2463,7 @@ int fr_value_box_strdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_att
 
 	dst->type = FR_TYPE_STRING;
 	dst->tainted = tainted;
-	dst->datum.strvalue = str;
+	dst->vb_strvalue = str;
 	dst->datum.length = talloc_array_length(str) - 1;
 	dst->enumv = enumv;
 	dst->next = NULL;
@@ -2506,7 +2506,7 @@ int fr_value_box_strsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t c
 
 	dst->type = FR_TYPE_STRING;
 	dst->tainted = tainted;
-	dst->datum.strvalue = str;
+	dst->vb_strvalue = str;
 	dst->datum.length = len - 1;
 	dst->enumv = enumv;
 	dst->next = NULL;
@@ -2529,7 +2529,7 @@ int fr_value_box_strdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv
 {
 	dst->type = FR_TYPE_STRING;
 	dst->tainted = tainted;
-	dst->datum.strvalue = src;
+	dst->vb_strvalue = src;
 	dst->datum.length = strlen(src);
 	dst->enumv = enumv;
 	dst->next = NULL;
@@ -2565,7 +2565,7 @@ int fr_value_box_strdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_
 
 	dst->type = FR_TYPE_STRING;
 	dst->tainted = tainted;
-	dst->datum.strvalue = ctx ? talloc_reference(ctx, src) : src;
+	dst->vb_strvalue = ctx ? talloc_reference(ctx, src) : src;
 	dst->datum.length = len - 1;
 	dst->enumv = enumv;
 	dst->next = NULL;
@@ -2603,7 +2603,7 @@ int fr_value_box_memdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t con
 
 	dst->type = FR_TYPE_OCTETS;
 	dst->tainted = tainted;
-	dst->datum.octets = bin;
+	dst->vb_octets = bin;
 	dst->datum.length = len;
 	dst->enumv = enumv;
 	dst->next = NULL;
@@ -2660,7 +2660,7 @@ int fr_value_box_memsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t c
 
 	dst->type = FR_TYPE_OCTETS;
 	dst->tainted = tainted;
-	dst->datum.octets = bin;
+	dst->vb_octets = bin;
 	dst->datum.length = talloc_array_length(src);
 	dst->enumv = enumv;
 	dst->next = NULL;
@@ -2690,7 +2690,7 @@ int fr_value_box_memdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv
 {
 	dst->type = FR_TYPE_OCTETS;
 	dst->tainted = tainted;
-	dst->datum.octets = src;
+	dst->vb_octets = src;
 	dst->datum.length = len;
 	dst->enumv = enumv;
 	dst->next = NULL;
@@ -2718,7 +2718,7 @@ int fr_value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_
 
 	dst->type = FR_TYPE_OCTETS;
 	dst->tainted = tainted;
-	dst->datum.octets = ctx ? talloc_reference(ctx, src) : src;
+	dst->vb_octets = ctx ? talloc_reference(ctx, src) : src;
 	dst->datum.length = talloc_array_length(src);
 	dst->enumv = enumv;
 	dst->next = NULL;
@@ -2798,57 +2798,57 @@ static int fr_value_box_integer_str(fr_value_box_t *dst, fr_type_t dst_type, cha
 	switch (dst_type) {
 	case FR_TYPE_UINT8:
 		IN_RANGE_UNSIGNED(UINT8);
-		dst->datum.uint8 = (uint8_t)uinteger;
+		dst->vb_uint8 = (uint8_t)uinteger;
 		break;
 
 	case FR_TYPE_UINT16:
 		IN_RANGE_UNSIGNED(UINT16);
-		dst->datum.uint16 = (uint16_t)uinteger;
+		dst->vb_uint16 = (uint16_t)uinteger;
 		break;
 
 	case FR_TYPE_UINT32:
 		IN_RANGE_UNSIGNED(UINT32);
-		dst->datum.uint32 = (uint32_t)uinteger;
+		dst->vb_uint32 = (uint32_t)uinteger;
 		break;
 
 	case FR_TYPE_UINT64:
 		IN_RANGE_UNSIGNED(UINT64);
-		dst->datum.uint64 = (uint64_t)uinteger;
+		dst->vb_uint64 = (uint64_t)uinteger;
 		break;
 
 	case FR_TYPE_INT8:
 		IN_RANGE_SIGNED(INT8);
-		dst->datum.int8 = (int8_t)sinteger;
+		dst->vb_int8 = (int8_t)sinteger;
 		break;
 
 	case FR_TYPE_INT16:
 		IN_RANGE_SIGNED(INT16);
-		dst->datum.int16 = (int16_t)sinteger;
+		dst->vb_int16 = (int16_t)sinteger;
 		break;
 
 	case FR_TYPE_INT32:
 		IN_RANGE_SIGNED(INT32);
-		dst->datum.int32 = (int32_t)sinteger;
+		dst->vb_int32 = (int32_t)sinteger;
 		break;
 
 	case FR_TYPE_INT64:
 		IN_RANGE_SIGNED(INT64);
-		dst->datum.int64 = (int64_t)sinteger;
+		dst->vb_int64 = (int64_t)sinteger;
 		break;
 
 	case FR_TYPE_DATE_MILLISECONDS:
 		IN_RANGE_UNSIGNED(UINT64);
-		dst->datum.date_milliseconds = (uint64_t)uinteger;
+		dst->vb_date_milliseconds = (uint64_t)uinteger;
 		break;
 
 	case FR_TYPE_DATE_MICROSECONDS:
 		IN_RANGE_UNSIGNED(UINT64);
-		dst->datum.date_microseconds = (uint64_t)uinteger;
+		dst->vb_date_microseconds = (uint64_t)uinteger;
 		break;
 
 	case FR_TYPE_DATE_NANOSECONDS:
 		IN_RANGE_UNSIGNED(UINT64);
-		dst->datum.date_nanoseconds = (uint64_t)uinteger;
+		dst->vb_date_nanoseconds = (uint64_t)uinteger;
 		break;
 
 	default:
@@ -2956,7 +2956,7 @@ parse:
 		 */
 		if (!quote) {
 			ret = len;
-			dst->datum.strvalue = buff;
+			dst->vb_strvalue = buff;
 			goto finish;
 		}
 
@@ -2971,7 +2971,7 @@ parse:
 		 *	It's better for the server to print partial
 		 *	strings, instead of SEGV.
 		 */
-		dst->datum.strvalue = p = talloc_realloc(ctx, buff, char, len + 1);
+		dst->vb_strvalue = p = talloc_realloc(ctx, buff, char, len + 1);
 		p[len] = '\0';
 		ret = len;
 	}
@@ -2990,8 +2990,8 @@ parse:
 		 *	No 0x prefix, just copy verbatim.
 		 */
 		if ((len < 2) || (strncasecmp(in, "0x", 2) != 0)) {
-			dst->datum.octets = talloc_memdup(ctx, (uint8_t const *)in, len);
-			talloc_set_type(dst->datum.octets, uint8_t);
+			dst->vb_octets = talloc_memdup(ctx, (uint8_t const *)in, len);
+			talloc_set_type(dst->vb_octets, uint8_t);
 			ret = len;
 			goto finish;
 		}
@@ -3014,7 +3014,7 @@ parse:
 			return -1;
 		}
 
-		dst->datum.octets = p;
+		dst->vb_octets = p;
 	}
 		goto finish;
 
@@ -3066,12 +3066,12 @@ parse:
 			return -1;
 		}
 
-		memcpy(&dst->datum.ip, &addr, sizeof(dst->datum.ip));
+		memcpy(&dst->vb_ip, &addr, sizeof(dst->vb_ip));
 	}
 		goto finish;
 
 	case FR_TYPE_IPV4_PREFIX:
-		if (fr_inet_pton4(&dst->datum.ip, in, inlen, fr_hostname_lookups, false, true) < 0) return -1;
+		if (fr_inet_pton4(&dst->vb_ip, in, inlen, fr_hostname_lookups, false, true) < 0) return -1;
 		goto finish;
 
 	case FR_TYPE_IPV6_ADDR:
@@ -3090,12 +3090,12 @@ parse:
 			return -1;
 		}
 
-		memcpy(&dst->datum.ip, &addr, sizeof(dst->datum.ip));
+		memcpy(&dst->vb_ip, &addr, sizeof(dst->vb_ip));
 	}
 		goto finish;
 
 	case FR_TYPE_IPV6_PREFIX:
-		if (fr_inet_pton6(&dst->datum.ip, in, inlen, fr_hostname_lookups, false, true) < 0) return -1;
+		if (fr_inet_pton6(&dst->vb_ip, in, inlen, fr_hostname_lookups, false, true) < 0) return -1;
 		goto finish;
 
 	/*
@@ -3171,7 +3171,7 @@ parse:
 			fr_strerror_printf("Failed parsing \"%s\" as a float32", in);
 			return -1;
 		}
-		dst->datum.float32 = f;
+		dst->vb_float32 = f;
 	}
 
 	case FR_TYPE_FLOAT64:
@@ -3182,7 +3182,7 @@ parse:
 			fr_strerror_printf("Failed parsing \"%s\" as a float64", in);
 			return -1;
 		}
-		dst->datum.float64 = d;
+		dst->vb_float64 = d;
 	}
 		break;
 
@@ -3199,13 +3199,13 @@ parse:
 			return -1;
 		}
 
-		dst->datum.date = date;
+		dst->vb_date = date;
 	}
 
 		break;
 
 	case FR_TYPE_IFID:
-		if (fr_inet_ifid_pton((void *) dst->datum.ifid, in) == NULL) {
+		if (fr_inet_ifid_pton((void *) dst->vb_ifid, in) == NULL) {
 			fr_strerror_printf("Failed to parse interface-id string \"%s\"", in);
 			return -1;
 		}
@@ -3225,7 +3225,7 @@ parse:
 		if (is_integer(in)) {
 			uint64_t uint32 = htonll(atoll(in));
 
-			memcpy(dst->datum.ether, &uint32, sizeof(dst->datum.ether));
+			memcpy(dst->vb_ether, &uint32, sizeof(dst->vb_ether));
 			break;
 		}
 
@@ -3243,11 +3243,11 @@ parse:
 			} else {
 				c1 = c2 = NULL;
 			}
-			if (!c1 || !c2 || (p_len >= sizeof(dst->datum.ether))) {
+			if (!c1 || !c2 || (p_len >= sizeof(dst->vb_ether))) {
 				fr_strerror_printf("failed to parse Ethernet address \"%s\"", in);
 				return -1;
 			}
-			dst->datum.ether[p_len] = ((c1-hextab)<<4) + (c2-hextab);
+			dst->vb_ether[p_len] = ((c1-hextab)<<4) + (c2-hextab);
 			p_len++;
 		}
 	}
@@ -3264,8 +3264,8 @@ parse:
 	 */
 	case FR_TYPE_COMBO_IP_ADDR:
 	{
-		if (fr_inet_pton(&dst->datum.ip, in, inlen, AF_UNSPEC, fr_hostname_lookups, true) < 0) return -1;
-		switch (dst->datum.ip.af) {
+		if (fr_inet_pton(&dst->vb_ip, in, inlen, AF_UNSPEC, fr_hostname_lookups, true) < 0) return -1;
+		switch (dst->vb_ip.af) {
 		case AF_INET:
 			ret = dict_attr_sizes[FR_TYPE_COMBO_IP_ADDR][0]; /* size of IPv4 address */
 			*dst_type = FR_TYPE_IPV4_ADDR;
@@ -3277,7 +3277,7 @@ parse:
 			break;
 
 		default:
-			fr_strerror_printf("Bad address family %i", dst->datum.ip.af);
+			fr_strerror_printf("Bad address family %i", dst->vb_ip.af);
 			return -1;
 		}
 	}
@@ -3340,18 +3340,18 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 		size_t len, ret;
 
 		if (!quote) {
-			p = talloc_bstrndup(ctx, data->datum.strvalue, data->datum.length);
+			p = talloc_bstrndup(ctx, data->vb_strvalue, data->datum.length);
 			if (!p) return NULL;
 			talloc_set_type(p, char);
 			return p;
 		}
 
 		/* Gets us the size of the buffer we need to alloc */
-		len = fr_snprint_len(data->datum.strvalue, data->datum.length, quote);
+		len = fr_snprint_len(data->vb_strvalue, data->datum.length, quote);
 		p = talloc_array(ctx, char, len);
 		if (!p) return NULL;
 
-		ret = fr_snprint(p, len, data->datum.strvalue, data->datum.length, quote);
+		ret = fr_snprint(p, len, data->vb_strvalue, data->datum.length, quote);
 		if (!fr_cond_assert(ret == (len - 1))) {
 			talloc_free(p);
 			return NULL;
@@ -3365,7 +3365,7 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 		p[0] = '0';
 		p[1] = 'x';
 
-		fr_bin2hex(p + 2, data->datum.octets, data->datum.length);
+		fr_bin2hex(p + 2, data->vb_octets, data->datum.length);
 		p[2 + (data->datum.length * 2)] = '\0';
 		break;
 
@@ -3402,61 +3402,61 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 
 	case FR_TYPE_IFID:
 		p = talloc_typed_asprintf(ctx, "%x:%x:%x:%x",
-					  (data->datum.ifid[0] << 8) | data->datum.ifid[1],
-					  (data->datum.ifid[2] << 8) | data->datum.ifid[3],
-					  (data->datum.ifid[4] << 8) | data->datum.ifid[5],
-					  (data->datum.ifid[6] << 8) | data->datum.ifid[7]);
+					  (data->vb_ifid[0] << 8) | data->vb_ifid[1],
+					  (data->vb_ifid[2] << 8) | data->vb_ifid[3],
+					  (data->vb_ifid[4] << 8) | data->vb_ifid[5],
+					  (data->vb_ifid[6] << 8) | data->vb_ifid[7]);
 		break;
 
 	case FR_TYPE_ETHERNET:
 		p = talloc_typed_asprintf(ctx, "%02x:%02x:%02x:%02x:%02x:%02x",
-					  data->datum.ether[0], data->datum.ether[1],
-					  data->datum.ether[2], data->datum.ether[3],
-					  data->datum.ether[4], data->datum.ether[5]);
+					  data->vb_ether[0], data->vb_ether[1],
+					  data->vb_ether[2], data->vb_ether[3],
+					  data->vb_ether[4], data->vb_ether[5]);
 		break;
 
 	case FR_TYPE_BOOL:
-		p = talloc_typed_strdup(ctx, data->datum.uint8 ? "yes" : "no");
+		p = talloc_typed_strdup(ctx, data->vb_uint8 ? "yes" : "no");
 		break;
 
 	case FR_TYPE_UINT8:
-		p = talloc_typed_asprintf(ctx, "%u", data->datum.uint8);
+		p = talloc_typed_asprintf(ctx, "%u", data->vb_uint8);
 		break;
 
 	case FR_TYPE_UINT16:
-		p = talloc_typed_asprintf(ctx, "%u", data->datum.uint16);
+		p = talloc_typed_asprintf(ctx, "%u", data->vb_uint16);
 		break;
 
 	case FR_TYPE_UINT32:
-		p = talloc_typed_asprintf(ctx, "%u", data->datum.uint32);
+		p = talloc_typed_asprintf(ctx, "%u", data->vb_uint32);
 		break;
 
 	case FR_TYPE_UINT64:
-		p = talloc_typed_asprintf(ctx, "%" PRIu64, data->datum.uint64);
+		p = talloc_typed_asprintf(ctx, "%" PRIu64, data->vb_uint64);
 		break;
 
 	case FR_TYPE_INT8:
-		p = talloc_typed_asprintf(ctx, "%d", data->datum.int8);
+		p = talloc_typed_asprintf(ctx, "%d", data->vb_int8);
 		break;
 
 	case FR_TYPE_INT16:
-		p = talloc_typed_asprintf(ctx, "%d", data->datum.int16);
+		p = talloc_typed_asprintf(ctx, "%d", data->vb_int16);
 		break;
 
 	case FR_TYPE_INT32:
-		p = talloc_typed_asprintf(ctx, "%d", data->datum.int32);
+		p = talloc_typed_asprintf(ctx, "%d", data->vb_int32);
 		break;
 
 	case FR_TYPE_INT64:
-		p = talloc_typed_asprintf(ctx, "%" PRId64, data->datum.int64);
+		p = talloc_typed_asprintf(ctx, "%" PRId64, data->vb_int64);
 		break;
 
 	case FR_TYPE_FLOAT32:
-		p = talloc_typed_asprintf(ctx, "%f", data->datum.float32);
+		p = talloc_typed_asprintf(ctx, "%f", data->vb_float32);
 		break;
 
 	case FR_TYPE_FLOAT64:
-		p = talloc_typed_asprintf(ctx, "%g", data->datum.float64);
+		p = talloc_typed_asprintf(ctx, "%g", data->vb_float64);
 		break;
 
 	case FR_TYPE_DATE:
@@ -3464,7 +3464,7 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 		time_t t;
 		struct tm s_tm;
 
-		t = data->datum.date;
+		t = data->vb_date;
 
 		p = talloc_array(ctx, char, 64);
 		strftime(p, 64, "%b %e %Y %H:%M:%S %Z",
@@ -3473,15 +3473,15 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 	}
 
 	case FR_TYPE_DATE_MILLISECONDS:
-		p = talloc_typed_asprintf(ctx, "%" PRIu64, data->datum.date_milliseconds);
+		p = talloc_typed_asprintf(ctx, "%" PRIu64, data->vb_date_milliseconds);
 		break;
 
 	case FR_TYPE_DATE_MICROSECONDS:
-		p = talloc_typed_asprintf(ctx, "%" PRIu64, data->datum.date_microseconds);
+		p = talloc_typed_asprintf(ctx, "%" PRIu64, data->vb_date_microseconds);
 		break;
 
 	case FR_TYPE_DATE_NANOSECONDS:
-		p = talloc_typed_asprintf(ctx, "%" PRIu64, data->datum.date_nanoseconds);
+		p = talloc_typed_asprintf(ctx, "%" PRIu64, data->vb_date_nanoseconds);
 		break;
 
 	case FR_TYPE_SIZE:
@@ -3569,7 +3569,7 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 			*p++ = quote;
 			freespace--;
 
-			len = fr_snprint(p, freespace, data->datum.strvalue, data->datum.length, quote);
+			len = fr_snprint(p, freespace, data->vb_strvalue, data->datum.length, quote);
 			/* always terminate the quoted string with another quote */
 			if (len >= (freespace - 1)) {
 				/* Use out not p as we're operating on the entire buffer */
@@ -3587,63 +3587,63 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 			return len + 2;
 		}
 
-		return fr_snprint(out, outlen, data->datum.strvalue, data->datum.length, quote);
+		return fr_snprint(out, outlen, data->vb_strvalue, data->datum.length, quote);
 
 	case FR_TYPE_IPV4_ADDR:
 	case FR_TYPE_IPV6_ADDR:
-		a = fr_inet_ntop(buf, sizeof(buf), &data->datum.ip);
+		a = fr_inet_ntop(buf, sizeof(buf), &data->vb_ip);
 		len = strlen(buf);
 		break;
 
 	case FR_TYPE_IPV4_PREFIX:
 	case FR_TYPE_IPV6_PREFIX:
-		a = fr_inet_ntop_prefix(buf, sizeof(buf), &data->datum.ip);
+		a = fr_inet_ntop_prefix(buf, sizeof(buf), &data->vb_ip);
 		len = strlen(buf);
 		break;
 
 	case FR_TYPE_IFID:
-		a = fr_inet_ifid_ntop(buf, sizeof(buf), data->datum.ifid);
+		a = fr_inet_ifid_ntop(buf, sizeof(buf), data->vb_ifid);
 		len = strlen(buf);
 		break;
 
 	case FR_TYPE_ETHERNET:
 		return snprintf(out, outlen, "%02x:%02x:%02x:%02x:%02x:%02x",
-				data->datum.ether[0], data->datum.ether[1],
-				data->datum.ether[2], data->datum.ether[3],
-				data->datum.ether[4], data->datum.ether[5]);
+				data->vb_ether[0], data->vb_ether[1],
+				data->vb_ether[2], data->vb_ether[3],
+				data->vb_ether[4], data->vb_ether[5]);
 
 	case FR_TYPE_UINT8:
-		return snprintf(out, outlen, "%u", data->datum.uint8);
+		return snprintf(out, outlen, "%u", data->vb_uint8);
 
 	case FR_TYPE_UINT16:
-		return snprintf(out, outlen, "%u", data->datum.uint16);
+		return snprintf(out, outlen, "%u", data->vb_uint16);
 
 	case FR_TYPE_UINT32:
-		return snprintf(out, outlen, "%u", data->datum.uint32);
+		return snprintf(out, outlen, "%u", data->vb_uint32);
 
 	case FR_TYPE_UINT64:
-		return snprintf(out, outlen, "%" PRIu64, data->datum.uint64);
+		return snprintf(out, outlen, "%" PRIu64, data->vb_uint64);
 
 	case FR_TYPE_INT8:
-		return snprintf(out, outlen, "%d", data->datum.int8);
+		return snprintf(out, outlen, "%d", data->vb_int8);
 
 	case FR_TYPE_INT16:
-		return snprintf(out, outlen, "%d", data->datum.int16);
+		return snprintf(out, outlen, "%d", data->vb_int16);
 
 	case FR_TYPE_INT32:
-		return snprintf(out, outlen, "%d", data->datum.int32);
+		return snprintf(out, outlen, "%d", data->vb_int32);
 
 	case FR_TYPE_INT64:
-		return snprintf(out, outlen, "%" PRId64, data->datum.int64);
+		return snprintf(out, outlen, "%" PRId64, data->vb_int64);
 
 	case FR_TYPE_FLOAT32:
-		return snprintf(out, outlen, "%f", data->datum.float32);
+		return snprintf(out, outlen, "%f", data->vb_float32);
 
 	case FR_TYPE_FLOAT64:
-		return snprintf(out, outlen, "%g", data->datum.float64);
+		return snprintf(out, outlen, "%g", data->vb_float64);
 
 	case FR_TYPE_DATE:
-		t = data->datum.date;
+		t = data->vb_date;
 		if (quote > 0) {
 			len = strftime(buf, sizeof(buf) - 1, "%%%b %e %Y %H:%M:%S %Z%%", localtime_r(&t, &s_tm));
 			buf[0] = (char) quote;
@@ -3656,13 +3656,13 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 		break;
 
 	case FR_TYPE_DATE_MILLISECONDS:
-		return snprintf(out, outlen, "%" PRIu64, data->datum.date_milliseconds);
+		return snprintf(out, outlen, "%" PRIu64, data->vb_date_milliseconds);
 
 	case FR_TYPE_DATE_MICROSECONDS:
-		return snprintf(out, outlen, "%" PRIu64, data->datum.date_microseconds);
+		return snprintf(out, outlen, "%" PRIu64, data->vb_date_microseconds);
 
 	case FR_TYPE_DATE_NANOSECONDS:
-		return snprintf(out, outlen, "%" PRIu64, data->datum.date_nanoseconds);
+		return snprintf(out, outlen, "%" PRIu64, data->vb_date_nanoseconds);
 
 	case FR_TYPE_ABINARY:
 #ifdef WITH_ASCEND_BINARY
@@ -3701,7 +3701,7 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 
 		/* Get maximum number of uint8s we can encode given freespace */
 		max = ((freespace % 2) ? freespace - 1 : freespace - 2) / 2;
-		fr_bin2hex(out, data->datum.octets,
+		fr_bin2hex(out, data->vb_octets,
 			   ((size_t)data->datum.length > max) ? max : (size_t)data->datum.length);
 	}
 		return len;

@@ -760,7 +760,7 @@ static int mod_instantiate(UNUSED rlm_eap_config_t const *config, void *instance
 		cf_log_err_cs(cs, "Failed to find 'Auth-Type MS-CHAP' section.  Cannot authenticate users.");
 		return -1;
 	}
-	inst->auth_type_mschap = fr_unbox_uint32(dv->value);
+	inst->auth_type_mschap = dv->value->vb_uint32;
 
 	return 0;
 }

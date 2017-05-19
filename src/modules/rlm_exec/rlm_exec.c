@@ -248,7 +248,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 				      "share/dictionary", inst->packet_type);
 			return -1;
 		}
-		inst->packet_code = fr_unbox_uint32(dval->value);
+		inst->packet_code = dval->value->vb_uint32;
 	}
 
 	/*

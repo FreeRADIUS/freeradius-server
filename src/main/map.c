@@ -896,14 +896,14 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		n = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
 		if (!n) return -1;
 
-		if (map->lhs->tmpl_da->type == map->rhs->tmpl_fr_value_box_type) {
-			if (fr_value_box_copy(n, &n->data, &map->rhs->tmpl_value_box) < 0) {
+		if (map->lhs->tmpl_da->type == map->rhs->tmpl_value_type) {
+			if (fr_value_box_copy(n, &n->data, &map->rhs->tmpl_value) < 0) {
 				rcode = -1;
 				goto error;
 			}
 		} else {
 			if (fr_value_box_cast(n, &n->data, n->vp_type, n->da,
-					   &map->rhs->tmpl_value_box) < 0) {
+					   &map->rhs->tmpl_value) < 0) {
 				RPEDEBUG("Implicit cast failed");
 				rcode = -1;
 				goto error;

@@ -49,13 +49,13 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, json_objec
 	switch (fr_json_object_get_type(object)) {
 	case json_type_string:
 		in.type = FR_TYPE_STRING;
-		in.datum.strvalue = json_object_get_string(object);
+		in.vb_strvalue = json_object_get_string(object);
 		in.datum.length = json_object_get_string_len(object);
 		break;
 
 	case json_type_double:
 		in.type = FR_TYPE_FLOAT64;
-		in.datum.float64 = json_object_get_double(object);
+		in.vb_float64 = json_object_get_double(object);
 		break;
 
 	case json_type_int:
@@ -83,21 +83,21 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, json_objec
 		}
 		if (num > UINT32_MAX) {		/* 64bit unsigned (supported) */
 			in.type = FR_TYPE_UINT64;
-			in.datum.uint64 = (uint64_t) num;
+			in.vb_uint64 = (uint64_t) num;
 		} else
 #endif
 		if (num < 0) {			/* 32bit signed (supported) */
 			in.type = FR_TYPE_INT32;
-			in.datum.int32 = num;
+			in.vb_int32 = num;
 		} else if (num > UINT16_MAX) {	/* 32bit unsigned (supported) */
 			in.type = FR_TYPE_UINT32;
-			in.datum.uint32 = (uint32_t) num;
+			in.vb_uint32 = (uint32_t) num;
 		} else if (num > UINT8_MAX) {	/* 16bit unsigned (supported) */
 			in.type = FR_TYPE_UINT16;
-			in.datum.uint16 = (uint16_t) num;
+			in.vb_uint16 = (uint16_t) num;
 		} else {		/* 8bit unsigned (supported) */
 			in.type = FR_TYPE_UINT8;
-			in.datum.uint8 = (uint8_t) num;
+			in.vb_uint8 = (uint8_t) num;
 		}
 	}
 		break;
@@ -111,8 +111,8 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, json_objec
 	case json_type_array:
 	case json_type_object:
 		in.type = FR_TYPE_STRING;
-		in.datum.strvalue = json_object_to_json_string(object);
-		in.datum.length = strlen(in.datum.strvalue);
+		in.vb_strvalue = json_object_to_json_string(object);
+		in.datum.length = strlen(in.vb_strvalue);
 		break;
 	}
 
@@ -145,23 +145,23 @@ json_object *json_object_from_value_box(TALLOC_CTX *ctx, fr_value_box_t const *d
 	}
 
 	case FR_TYPE_BOOL:
-		return json_object_new_boolean(data->datum.uint8);
+		return json_object_new_boolean(data->vb_uint8);
 
 	case FR_TYPE_UINT8:
-		return json_object_new_int(data->datum.uint8);
+		return json_object_new_int(data->vb_uint8);
 
 	case FR_TYPE_UINT16:
-		return json_object_new_int(data->datum.uint16);
+		return json_object_new_int(data->vb_uint16);
 
 	case FR_TYPE_UINT32:
-		return json_object_new_int64((int64_t)data->datum.uint64);	/* uint32_t (max) > int32_t (max) */
+		return json_object_new_int64((int64_t)data->vb_uint64);	/* uint32_t (max) > int32_t (max) */
 
 	case FR_TYPE_UINT64:
-		if (data->datum.uint64 > INT64_MAX) goto do_string;
-		return json_object_new_int64(data->datum.uint64);
+		if (data->vb_uint64 > INT64_MAX) goto do_string;
+		return json_object_new_int64(data->vb_uint64);
 
 	case FR_TYPE_INT32:
-		return json_object_new_int(data->datum.int32);
+		return json_object_new_int(data->vb_int32);
 	}
 }
 

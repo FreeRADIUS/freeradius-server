@@ -84,8 +84,8 @@ static int snmp_value_serv_ident_get(TALLOC_CTX *ctx, fr_value_box_t *out, NDEBU
 {
 	rad_assert(map->da->type == FR_TYPE_STRING);
 
-	out->datum.strvalue = talloc_typed_asprintf(ctx, "FreeRADIUS %s", radiusd_version_short);
-	out->datum.length = talloc_array_length(out->datum.strvalue) - 1;
+	out->vb_strvalue = talloc_typed_asprintf(ctx, "FreeRADIUS %s", radiusd_version_short);
+	out->datum.length = talloc_array_length(out->vb_strvalue) - 1;
 	return 0;
 }
 
@@ -100,8 +100,8 @@ static int snmp_value_uptime_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out, ND
 	gettimeofday(&now, NULL);
 	fr_timeval_subtract(&diff, &now, &uptime);
 
-	out->datum.uint32 = diff.tv_sec * 100;
-	out->datum.uint32 += diff.tv_usec / 10000;
+	out->vb_uint32 = diff.tv_sec * 100;
+	out->vb_uint32 += diff.tv_usec / 10000;
 
 	return 0;
 }
@@ -117,8 +117,8 @@ static int snmp_config_reset_time_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *ou
 	gettimeofday(&now, NULL);
 	fr_timeval_subtract(&diff, &now, &reset_time);
 
-	out->datum.uint32 = diff.tv_sec * 100;
-	out->datum.uint32 += diff.tv_usec / 10000;
+	out->vb_uint32 = diff.tv_sec * 100;
+	out->vb_uint32 += diff.tv_usec / 10000;
 
 	return 0;
 }
@@ -128,7 +128,7 @@ static int snmp_config_reset_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out, ND
 {
 	rad_assert(map->da->type == FR_TYPE_UINT32);
 
-	out->datum.uint32 = reset_state;
+	out->vb_uint32 = reset_state;
 
 	return 0;
 }
@@ -137,7 +137,7 @@ static int snmp_config_reset_set(NDEBUG_UNUSED fr_snmp_map_t const *map, UNUSED 
 {
 	rad_assert(map->da->type == FR_TYPE_UINT32);
 
-	switch (in->datum.uint32) {
+	switch (in->vb_uint32) {
 	case FR_RADIUS_AUTH_SERV_CONFIG_RESET_VALUE_RESET:
 		radius_signal_self(RADIUS_SIGNAL_SELF_HUP);
 		gettimeofday(&reset_time, NULL);
@@ -154,7 +154,7 @@ static int snmp_auth_stats_offset_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *ou
 {
 	rad_assert(map->da->type == FR_TYPE_UINT32);
 
-	out->datum.uint32 = *(uint32_t *)((uint8_t *)(&radius_auth_stats) + map->offset);
+	out->vb_uint32 = *(uint32_t *)((uint8_t *)(&radius_auth_stats) + map->offset);
 
 	return 0;
 }
@@ -182,7 +182,7 @@ static int snmp_client_index_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out,
 
 	rad_assert(client);
 
-	out->datum.uint32 = client->number + 1;		/* Clients indexed from 0 */
+	out->vb_uint32 = client->number + 1;		/* Clients indexed from 0 */
 
 	return 0;
 }
@@ -203,7 +203,7 @@ static int snmp_client_ipv4addr_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out,
 	 *	address.
 	 */
 	if (client->ipaddr.af != AF_INET) return 0;
-	memcpy(&out->datum.ip, &client->ipaddr, sizeof(out->datum.ip));
+	memcpy(&out->vb_ip, &client->ipaddr, sizeof(out->vb_ip));
 
 	return 0;
 }
@@ -219,7 +219,7 @@ static int snmp_client_id_get(TALLOC_CTX *ctx, fr_value_box_t *out,
 
 	len = talloc_array_length(client->longname) - 1;
 
-	out->datum.strvalue = talloc_bstrndup(ctx, client->longname, len);
+	out->vb_strvalue = talloc_bstrndup(ctx, client->longname, len);
 	out->datum.length = len;
 
 	return 0;
@@ -233,7 +233,7 @@ static int snmp_auth_client_stats_offset_get(UNUSED TALLOC_CTX *ctx, fr_value_bo
 	rad_assert(client);
 	rad_assert(map->da->type == FR_TYPE_UINT32);
 
-	out->datum.uint32 = *(uint32_t *)((uint8_t *)(&client->auth) + map->offset);
+	out->vb_uint32 = *(uint32_t *)((uint8_t *)(&client->auth) + map->offset);
 
 	return 0;
 }

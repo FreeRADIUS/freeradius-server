@@ -319,7 +319,7 @@ static int mod_instantiate(UNUSED rlm_eap_config_t const *config, void *instance
 		     "The server cannot proxy inner-tunnel EAP packets",
 		     inst->inner_eap_module, inst->virtual_server);
 	} else {
-		inst->auth_type_eap = fr_unbox_uint32(dv->value);
+		inst->auth_type_eap = dv->value->vb_uint32;
 	}
 
 	return 0;

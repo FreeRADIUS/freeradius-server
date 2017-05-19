@@ -207,7 +207,7 @@ static int mod_instantiate(UNUSED rlm_eap_config_t const *config, void *instance
 				   inst->auth_type_name);
 		return -1;
 	}
-	inst->auth_type = fr_unbox_uint32(dval->value);
+	inst->auth_type = dval->value->vb_uint32;
 
 	return 0;
 }

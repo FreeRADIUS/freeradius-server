@@ -1273,13 +1273,13 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 		 *	Fixup LHS da if it doesn't match the type
 		 *	of the RHS.
 		 */
-		if (map->lhs->tmpl_da->type != map->rhs->tmpl_fr_value_box_type) {
+		if (map->lhs->tmpl_da->type != map->rhs->tmpl_value_type) {
 			fr_dict_attr_t const *da;
 
-			da = fr_dict_attr_by_type(map->lhs->tmpl_da, map->rhs->tmpl_fr_value_box_type);
+			da = fr_dict_attr_by_type(map->lhs->tmpl_da, map->rhs->tmpl_value_type);
 			if (!da) {
 				fr_strerror_printf("Cannot find %s variant of attribute \"%s\"",
-						   fr_int2str(dict_attr_types, map->rhs->tmpl_fr_value_box_type,
+						   fr_int2str(dict_attr_types, map->rhs->tmpl_value_type,
 						   "<INVALID>"), map->lhs->tmpl_da->name);
 				return -1;
 			}

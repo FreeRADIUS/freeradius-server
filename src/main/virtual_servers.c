@@ -263,7 +263,7 @@ static bool define_type(CONF_SECTION *cs, fr_dict_attr_t const *da, char const *
 	 *	is that it's unique.
 	 */
 	do {
-		value.datum.uint32 = (fr_rand() & 0x00ffffff) + 1;
+		value.vb_uint32 = (fr_rand() & 0x00ffffff) + 1;
 	} while (fr_dict_enum_by_value(NULL, da, &value));
 
 	cf_log_module(cs, "Creating %s = %s", da->name, name);

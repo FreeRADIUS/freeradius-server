@@ -375,14 +375,14 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 			do_rhs:
 				MEM(c_map->rhs = tmpl_init(talloc(c_map, vp_tmpl_t),
 							   TMPL_TYPE_DATA, map->rhs->name, map->rhs->len, T_BARE_WORD));
-				if (fr_value_box_copy(c_map->rhs, &c_map->rhs->tmpl_value_box, &vp->data) < 0) {
+				if (fr_value_box_copy(c_map->rhs, &c_map->rhs->tmpl_value, &vp->data) < 0) {
 					REDEBUG("Failed copying attribute value");
 				error:
 					talloc_free(pool);
 					talloc_free(c);
 					return RLM_MODULE_FAIL;
 				}
-				c_map->rhs->tmpl_fr_value_box_type = vp->vp_type;
+				c_map->rhs->tmpl_value_type = vp->vp_type;
 				if (vp->vp_type == FR_TYPE_STRING) {
 					c_map->rhs->quote = is_printable(vp->vp_strvalue, vp->vp_length) ?
 						T_SINGLE_QUOTED_STRING : T_DOUBLE_QUOTED_STRING;
@@ -837,7 +837,7 @@ static ssize_t cache_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t freespace,
 		    (map->lhs->tmpl_tag != target->tmpl_tag) ||
 		    (map->lhs->tmpl_list != target->tmpl_list)) continue;
 
-		*out = fr_value_box_asprint(request, &map->rhs->tmpl_value_box, '\0');
+		*out = fr_value_box_asprint(request, &map->rhs->tmpl_value, '\0');
 		ret = talloc_array_length(*out) - 1;
 		break;
 	}

@@ -82,9 +82,9 @@ eap_type_t eap_name2type(char const *name)
 	dv = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_EAP_TYPE), name);
 	if (!dv) return FR_EAP_INVALID;
 
-	if (fr_unbox_uint32(dv->value) >= FR_EAP_MAX_TYPES) return FR_EAP_INVALID;
+	if (dv->value->vb_uint32 >= FR_EAP_MAX_TYPES) return FR_EAP_INVALID;
 
-	return fr_unbox_uint32(dv->value);
+	return dv->value->vb_uint32;
 }
 
 /** Return an EAP-name for a particular type

@@ -207,7 +207,7 @@ static int fr_dict_enum_from_name_number(fr_dict_attr_t const *da, FR_NAME_NUMBE
 	fr_value_box_t		value = { .type = FR_TYPE_INT32 };
 
 	for (p = table; p->name; p++) {
-		value.datum.int32 = p->number;
+		value.vb_int32 = p->number;
 		if (fr_dict_enum_add_alias(da, p->name, &value, true, false) < 0) return -1;
 	}
 
