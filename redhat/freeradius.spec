@@ -17,18 +17,18 @@
 
 # experimental modules
 %bcond_with rlm_idn
-%bcond_with rlm_ruby
+%bcond_with rlm_mruby
 %bcond_with rlm_sql_oracle
 %{?_with_rlm_idn: %global _with_experimental_modules --with-experimental-modules}
 %{?_with_rlm_opendirectory: %global _with_experimental_modules --with-experimental-modules}
-%{?_with_rlm_ruby: %global _with_experimental_modules --with-experimental-modules}
+%{?_with_rlm_mruby: %global _with_experimental_modules --with-experimental-modules}
 %{?_with_rlm_securid: %global _with_experimental_modules --with-experimental-modules}
 %{?_with_rlm_sql_oracle: %global _with_experimental_modules --with-experimental-modules}
 
 %if %{?_with_experimental_modules:1}%{!?_with_experimental_modules:0}
 %{!?_with_rlm_idn: %global _without_rlm_idn --without-rlm_idn}
 %{!?_with_rlm_opendirectory: %global _without_rlm_opendirectory --without-rlm_opendirectory}
-%{!?_with_rlm_ruby: %global _without_rlm_ruby --without-rlm_ruby}
+%{!?_with_rlm_mruby: %global _without_rlm_mruby --without-rlm_mruby}
 %{!?_with_rlm_securid: %global _without_rlm_securid --without-rlm_securid}
 %{!?_with_rlm_sql_oracle: %global _without_rlm_sql_oracle --without-rlm_sql_oracle}
 %endif
@@ -339,7 +339,7 @@ Requires: freeradius-libfreeradius-json = %{version}
 %description rest
 This plugin provides the ability to interact with REST APIs for the FreeRADIUS server project.
 
-%if %{?_with_rlm_ruby:1}%{!?_with_rlm_ruby:0}
+%if %{?_with_rlm_mruby:1}%{!?_with_rlm_mruby:0}
 %package ruby
 Summary: Ruby support for FreeRADIUS
 Group: System Environment/Daemons
@@ -438,8 +438,8 @@ export LDFLAGS="-Wl,--build-id"
         %{?_without_rlm_securid} \
         %{?_with_rlm_sigtran} \
         %{?_without_rlm_sigtran} \
-        %{?_with_rlm_ruby} \
-        %{?_without_rlm_ruby} \
+        %{?_with_rlm_mruby} \
+        %{?_without_rlm_mruby} \
         %{?_with_rlm_cache_memcached} \
         %{?_without_rlm_cache_memcached} \
 #        --with-modules="rlm_wimax" \
@@ -480,7 +480,7 @@ rm -rf $RPM_BUILD_ROOT/%{_libdir}/freeradius/*.la
 rm -f $RPM_BUILD_ROOT/%{_mandir}/man5/rlm_idn.5.gz
 rm -f $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-available/idn
 %endif
-%if %{?_with_rlm_ruby:0}%{!?_with_rlm_ruby:1}
+%if %{?_with_rlm_mruby:0}%{!?_with_rlm_mruby:1}
 rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/ruby
 %endif
 %if %{?_with_rlm_sql_oracle:0}%{!?_with_rlm_sql_oracle:1}
@@ -794,7 +794,7 @@ fi
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/main/cassandra/*
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/driver/cassandra
 # ruby
-%if %{?_with_rlm_ruby:1}%{!?_with_rlm_ruby:0}
+%if %{?_with_rlm_mruby:1}%{!?_with_rlm_mruby:0}
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/ruby
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/ruby/*
 %endif
@@ -903,10 +903,10 @@ fi
 %{_libdir}/freeradius/rlm_sigtran.so
 %endif
 
-%if %{?_with_rlm_ruby:1}%{!?_with_rlm_ruby:0}
+%if %{?_with_rlm_mruby:1}%{!?_with_rlm_mruby:0}
 %files ruby
 %defattr(-,root,root)
-%{_libdir}/freeradius/rlm_ruby.so
+%{_libdir}/freeradius/rlm_mruby.so
 %endif
 
 %files freetds
