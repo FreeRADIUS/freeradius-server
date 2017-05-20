@@ -485,6 +485,8 @@ static struct timeval *request_response_window(REQUEST *request)
 {
 	VERIFY_REQUEST(request);
 
+	rad_assert(request->home_server != NULL);
+
 	if (request->client) {
 		/*
 		 *	The client hasn't set the response window.  Return
@@ -500,7 +502,6 @@ static struct timeval *request_response_window(REQUEST *request)
 		}
 	}
 
-	rad_assert(request->home_server != NULL);
 	return &request->home_server->response_window;
 }
 
@@ -2570,8 +2571,6 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 
 #ifdef WITH_ACCOUNTING
 	case PW_CODE_ACCOUNTING_REQUEST:
-		proxy_acct_stats.last_packet = packet->timestamp.tv_sec;
-
 		request->proxy_listener->stats.total_responses++;
 		proxy_acct_stats.last_packet = packet->timestamp.tv_sec;
 		break;

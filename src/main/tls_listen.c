@@ -157,7 +157,6 @@ static int tls_socket_recv(rad_listen_t *listener)
 		rad_assert(sock->packet != NULL);
 		request->packet = talloc_steal(request, sock->packet);
 
-		request->component = "<core>";
 		request->component = "<tls-connect>";
 
 		request->reply = rad_alloc(request, false);

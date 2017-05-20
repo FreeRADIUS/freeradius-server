@@ -2,7 +2,7 @@ FreeRADIUS 3.0.14 Mon 06 Mar 2017 13:00:00 EDT urgency=medium
 	Feature improvements
 	* Enforce TLS client certificate expiration on
 	  session resumption, and Session-Timeout.
-	* Updated dictionary.cisco.vpn3000
+	* Updated dictionary.cisco.vpn3000, dictionary.patton
 	* Lowered the log output for failed PEAP sessions.
 	* ALlow utc in rlm_date.  Patch from
 	  Peter Lambrechtsen.
@@ -26,6 +26,7 @@ FreeRADIUS 3.0.14 Mon 06 Mar 2017 13:00:00 EDT urgency=medium
 	* Allow SubjectAltName as first extension in cert.
 	  Fixes #1946.
 	* Fixed talloc issue with TLS session resumption.
+	  Fixes #1980.
 	* "&Attr-26 := 0x01" now produces useful error messages.
 	* Handle connection error in rlm_ldap_cacheable_groupobj.
 	  Fixes #1951.
@@ -36,6 +37,12 @@ FreeRADIUS 3.0.14 Mon 06 Mar 2017 13:00:00 EDT urgency=medium
 	* Fix typos and grammar.  Patches from Alan Buxey.
 	* Fix erroneous VP creation in rlm_preproces.
 	* Fix MIB.  Patch from Jeff Gehlbach.
+	* Trust router updates from Alejandro Perez.
+	* Allow build with LibreSSL.  Fixes #1989
+	* Use correct packet for channel bindings.  Fixes #1990.
+	* Many fixes found by PVS-Studio.  Thanks to PVS-Studio
+	  for giving us a test license.  Please see the git commit
+	  history for more information.
 
 FreeRADIUS 3.0.13 Mon 06 Mar 2017 13:00:00 EDT urgency=medium
 	Feature improvements

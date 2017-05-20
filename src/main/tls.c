@@ -823,10 +823,10 @@ static void session_init(tls_session_t *ssn)
 
 static void session_close(tls_session_t *ssn)
 {
-	SSL_set_quiet_shutdown(ssn->ssl, 1);
-	SSL_shutdown(ssn->ssl);
-
 	if (ssn->ssl) {
+		SSL_set_quiet_shutdown(ssn->ssl, 1);
+		SSL_shutdown(ssn->ssl);
+
 		SSL_free(ssn->ssl);
 		ssn->ssl = NULL;
 	}
@@ -2218,7 +2218,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	}
 
 	if (lookup == 0) {
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
 		ext_list = X509_get0_extensions(client_cert);
 #else
 		X509_CINF	*client_inf;
@@ -2427,7 +2427,8 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 						true, true, EXEC_TIMEOUT) != 0) {
 				AUTH(LOG_PREFIX ": Certificate CN (%s) fails external verification!", common_name);
 				my_ok = 0;
-			} else {
+
+			} else  if (request) {
 				RDEBUG("Client certificate CN %s passed external validation", common_name);
 			}
 
