@@ -1,0 +1,4 @@
+mruby {
+	filename = "${modconfdir}/${.name}/example.rb"
+	module = "Radiusd"
+}
