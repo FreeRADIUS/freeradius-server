@@ -162,6 +162,13 @@ ${SRC_INCLUDE_DIR}/%.h: src/include/%.h | $(SRC_INCLUDE_DIR)
 	${Q}sed -e 's/#\([\\t ]*\)include <freeradius-devel\/\([^>]*\)>/#\1include <freeradius\/\2>/g' < $< > $@
 	${Q}chmod 644 $@
 
+#
+#  Regenerate the headers if we re-run autoconf.
+#  This is to that changes to the build rules (e.g. PW_FOO -> FR_FOO)
+#  result in the headers being rebuilt.
+#
+$(BOOTSTRAP_BUILD): src/include/autoconf.h
+
 install.src.include: $(addprefix ${SRC_INCLUDE_DIR}/,${HEADERS})
 install: install.src.include
 
