@@ -52,8 +52,8 @@ typedef struct rlm_mruby_t {
  *	A mapping of configuration file names to internal variables.
  */
 static const CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("filename", PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED, struct rlm_mruby_t, filename) },
-	{ FR_CONF_OFFSET("module", PW_TYPE_STRING, struct rlm_mruby_t, module_name), .dflt = "Radiusd" },
+	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, struct rlm_mruby_t, filename) },
+	{ FR_CONF_OFFSET("module", FR_TYPE_STRING, struct rlm_mruby_t, module_name), .dflt = "Radiusd" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -63,7 +63,7 @@ static mrb_value mruby_radlog(mrb_state *mrb, UNUSED mrb_value self)
 	char *msg = NULL;
 
 	mrb_get_args(mrb, "iz", &level, &msg);
-	radlog(&default_log, level, "rlm_ruby: %s", msg);
+	fr_log(&default_log, level, "rlm_ruby: %s", msg);
 
 	return mrb_nil_value();
 }
@@ -183,7 +183,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 
 	/* Convert a FreeRADIUS config structure into a mruby hash */
 	inst->mrubyconf_hash = mrb_hash_new(mrb);
-	cs = cf_section_sub_find(conf, "config");
+	cs = cf_subsection_find(conf, "config");
 	if (cs) mruby_parse_config(mrb, cs, 0, inst->mrubyconf_hash);
 
 	/* Define the Request class */
@@ -212,33 +212,103 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	return 0;
 }
 
-#define BUF_SIZE 1024
-static mrb_value mruby_vps_to_ary(mrb_state *mrb, VALUE_PAIR **vps)
+static int mruby_vps_to_array(REQUEST *request, mrb_value *out, mrb_state *mrb, VALUE_PAIR **vps)
 {
-	mrb_value res;
-	VALUE_PAIR *vp;
-	vp_cursor_t cursor;
-	char buf[BUF_SIZE]; /* same size as fr_pair_fprint buffer */
+	mrb_value	res;
+	VALUE_PAIR	*vp;
+	fr_cursor_t	cursor;
 
 	res = mrb_ary_new(mrb);
 	for (vp = fr_cursor_init(&cursor, vps); vp; vp = fr_cursor_next(&cursor)) {
-		mrb_value tmp, key, val;
+		mrb_value	tmp, key, val, to_cast;
+		char		*str;
+
 		tmp = mrb_ary_new_capa(mrb, 2);
 		if (vp->da->flags.has_tag) {
-			snprintf(buf, BUF_SIZE, "%s:%d", vp->da->name, vp->tag);
-			key = mrb_str_new_cstr(mrb, buf);
+			str = talloc_asprintf(request, "%s:%d", vp->da->name, vp->tag);
+			key = mrb_str_new(mrb, str, talloc_array_length(str) - 1);
+			talloc_free(str);
 		} else {
-			key = mrb_str_new_cstr(mrb, vp->da->name);
+			key = mrb_str_new(mrb, vp->da->name, strlen(vp->da->name));
 		}
-		fr_pair_value_snprint(buf, sizeof(buf), vp, '\0');
-		val = mrb_str_new_cstr(mrb, buf);
+
+		/*
+		 *	The only way to create floats, doubles, bools etc,
+		 *	is to feed mruby the string representation and have
+		 *	it convert to its internal types.
+		 */
+		switch (vp->vp_type) {
+		case FR_TYPE_STRING:
+		case FR_TYPE_OCTETS:
+			to_cast = mrb_str_new(mrb, vp->vp_ptr, vp->vp_length);
+			break;
+
+		case FR_TYPE_BOOL:
+			break;
+
+		default:
+		{
+			char *in;
+
+			in = fr_value_box_asprint(request, &vp->data, '\0');
+			to_cast = mrb_str_new(mrb, in, talloc_array_length(in) - 1);
+			talloc_free(in);
+		}
+			break;
+		}
+
+		switch (vp->vp_type) {
+		case FR_TYPE_STRING:
+		case FR_TYPE_OCTETS:
+		case FR_TYPE_IPV4_ADDR:
+		case FR_TYPE_IPV4_PREFIX:
+		case FR_TYPE_IPV6_ADDR:
+		case FR_TYPE_IPV6_PREFIX:
+		case FR_TYPE_IFID:
+		case FR_TYPE_ETHERNET:
+		case FR_TYPE_TIMEVAL:
+		case FR_TYPE_ABINARY:
+			val = to_cast;		/* No conversions required */
+			break;
+
+		case FR_TYPE_BOOL:
+			val = vp->vp_bool ? mrb_obj_value(mrb->true_class) : mrb_obj_value(mrb->false_class);
+			break;
+
+		case FR_TYPE_UINT8:
+		case FR_TYPE_UINT16:
+		case FR_TYPE_UINT32:
+		case FR_TYPE_UINT64:
+		case FR_TYPE_INT8:
+		case FR_TYPE_INT16:
+		case FR_TYPE_INT32:
+		case FR_TYPE_INT64:
+		case FR_TYPE_DATE:
+		case FR_TYPE_DATE_MILLISECONDS:
+		case FR_TYPE_DATE_MICROSECONDS:
+		case FR_TYPE_DATE_NANOSECONDS:
+		case FR_TYPE_SIZE:
+			val = mrb_convert_type(mrb, to_cast, MRB_TT_FIXNUM, "Fixnum", "to_int");
+			break;
+
+		case FR_TYPE_FLOAT32:
+		case FR_TYPE_FLOAT64:
+			val = mrb_convert_type(mrb, to_cast, MRB_TT_FLOAT, "Float", "to_f");
+			break;
+
+		case FR_TYPE_NON_VALUES:
+			rad_assert(0);
+			return -1;
+		}
+
 		mrb_ary_push(mrb, tmp, key);
 		mrb_ary_push(mrb, tmp, val);
-
 		mrb_ary_push(mrb, res, tmp);
+
+		*out = res;
 	}
 
-	return res;
+	return 0;
 }
 
 static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, mrb_state *mrb, mrb_value value, char const *function_name)
@@ -246,12 +316,12 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, mr
 	int i;
 
 	for (i = 0; i < RARRAY_LEN(value); i++) {
-		mrb_value tuple = mrb_ary_entry(value, i);
-		mrb_value key, val;
-		char const *ckey, *cval;
-		VALUE_PAIR *vp;
-		vp_tmpl_t dst;
-		FR_TOKEN op = T_OP_EQ;
+		mrb_value	tuple = mrb_ary_entry(value, i);
+		mrb_value	key, val;
+		char const	*ckey, *cval;
+		VALUE_PAIR	*vp;
+		vp_tmpl_t	*dst;
+		FR_TOKEN	op = T_OP_EQ;
 
 		/* This tuple should be an array of length 2 */
 		if (mrb_type(tuple) != MRB_TT_ARRAY) {
@@ -292,21 +362,24 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, mr
 		}
 		DEBUG("%s: %s %s %s", function_name, ckey, fr_int2str(fr_tokens_table, op, "="), cval);
 
-		memset(&dst, 0, sizeof(dst));
-		if (tmpl_from_attr_str(&dst, ckey, REQUEST_CURRENT, PAIR_LIST_REPLY, false, false) <= 0) {
+		if (tmpl_afrom_attr_str(request, &dst, ckey, REQUEST_CURRENT, PAIR_LIST_REPLY, false, false) <= 0) {
 			ERROR("Failed to find attribute %s", ckey);
 			continue;
 		}
 
-		if (radius_request(&request, dst.tmpl_request) < 0) {
+		if (radius_request(&request, dst->tmpl_request) < 0) {
 			ERROR("Attribute name %s refers to outer request but not in a tunnel, skipping...", ckey);
+			talloc_free(dst);
 			continue;
 		}
 
-		if (!(vp = fr_pair_afrom_da(ctx, dst.tmpl_da))) {
+		if (!(vp = fr_pair_afrom_da(ctx, dst->tmpl_da))) {
 			ERROR("Failed to create attribute %s", ckey);
+			talloc_free(dst);
 			continue;
 		}
+
+		talloc_free(dst);
 
 		vp->op = op;
 		if (fr_pair_value_from_str(vp, cval, -1) < 0) {
@@ -319,9 +392,16 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, mr
 	}
 }
 
-static inline void mruby_set_vps(mrb_state *mrb, mrb_value mruby_request, char const *name, VALUE_PAIR **vps)
+static inline int mruby_set_vps(REQUEST *request, mrb_state *mrb, mrb_value mruby_request,
+				char const *list_name, VALUE_PAIR **vps)
 {
-	mrb_iv_set(mrb, mruby_request, mrb_intern_cstr(mrb, name), mruby_vps_to_ary(mrb, vps));
+	mrb_value res;
+
+	if (mruby_vps_to_array(request, &res, mrb, vps) < 0) return -1;
+
+	mrb_iv_set(mrb, mruby_request, mrb_intern_cstr(mrb, list_name), res);
+
+	return 0;
 }
 
 static rlm_rcode_t CC_HINT(nonnull) do_mruby(REQUEST *request, rlm_mruby_t const *inst, char const *function_name)
@@ -331,14 +411,14 @@ static rlm_rcode_t CC_HINT(nonnull) do_mruby(REQUEST *request, rlm_mruby_t const
 
 	mruby_request = mrb_obj_new(mrb, inst->mruby_request, 0, NULL);
 	mrb_iv_set(mrb, mruby_request, mrb_intern_cstr(mrb, "@frconfig"), inst->mrubyconf_hash);
-	mruby_set_vps(mrb, mruby_request, "@request", &request->packet->vps);
-	mruby_set_vps(mrb, mruby_request, "@reply", &request->reply->vps);
-	mruby_set_vps(mrb, mruby_request, "@control", &request->control);
-	mruby_set_vps(mrb, mruby_request, "@session_state", &request->state);
+	mruby_set_vps(request, mrb, mruby_request, "@request", &request->packet->vps);
+	mruby_set_vps(request, mrb, mruby_request, "@reply", &request->reply->vps);
+	mruby_set_vps(request, mrb, mruby_request, "@control", &request->control);
+	mruby_set_vps(request, mrb, mruby_request, "@session_state", &request->state);
 #ifdef WITH_PROXY
 	if (request->proxy) {
-		mruby_set_vps(mrb, mruby_request, "@proxy_request", &request->proxy->packet->vps);
-		mruby_set_vps(mrb, mruby_request, "@proxy_reply", &request->proxy->reply->vps);
+		mruby_set_vps(request, mrb, mruby_request, "@proxy_request", &request->proxy->packet->vps);
+		mruby_set_vps(request, mrb, mruby_request, "@proxy_reply", &request->proxy->reply->vps);
 	}
 #endif
 	mruby_result = mrb_funcall(mrb, mrb_obj_value(inst->mruby_module), function_name, 1, mruby_request);

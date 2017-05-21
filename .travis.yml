@@ -49,8 +49,7 @@ addons:
       - pbuilder
       - python-dev
       - quilt
-      - libruby
-      - ruby-dev
+      - libmruby-dev
       - libcollectdclient-dev
       - firebird-dev
       - freetds-dev
