@@ -181,7 +181,7 @@ static int tls_cache_serialize(SSL *ssl, SSL_SESSION *sess)
 	size_t			key_len;
 
 	request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
-	tls_session = talloc_get_type_abort(SSL_SESSION_get_ex_data(sess, FR_TLS_EX_INDEX_TLS_SESSION), tls_session_t);
+	tls_session = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TLS_SESSION), tls_session_t);
 
 	/*
 	 *	This functions should only be called once during the lifetime
