@@ -603,10 +603,7 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	 *	Pop the "done" workers, and free their contexts here.
 	 */
 	while ((sw = fr_heap_pop(sc->done_workers)) != NULL) {
-		TALLOC_CTX *ctx;
-
-		ctx = talloc_parent(sw);
-		talloc_free(ctx);
+		talloc_free(sw);
 	}
 
 	/*
