@@ -95,11 +95,19 @@ static void NEVER_RETURNS usage(void)
 	exit(1);
 }
 
+static fr_transport_final_t test_process(REQUEST *request, fr_transport_action_t action)
+{
+	MPRINT1("\t\tPROCESS --- request %zd action %d\n", request->number, action);
+	return FR_TRANSPORT_REPLY;
+}
+
+
 static int test_decode(void const *packet_ctx, uint8_t *const data, size_t data_len, REQUEST *request)
 {
 	fr_packet_ctx_t const *pc = packet_ctx;
 
 	request->number = pc->id;
+	request->process_async = test_process;
 
 	if (!debug_lvl) return 0;
 
@@ -137,12 +145,6 @@ static size_t test_nak(void const *packet_ctx, uint8_t *const packet, size_t pac
 	return 10;
 }
 
-static fr_transport_final_t test_process(REQUEST *request, fr_transport_action_t action)
-{
-	MPRINT1("\t\tPROCESS --- request %zd action %d\n", request->number, action);
-	return FR_TRANSPORT_REPLY;
-}
-
 static fr_transport_t transport = {
 	.name = "worker-test",
 	.id = 1,
@@ -150,7 +152,6 @@ static fr_transport_t transport = {
 	.decode = test_decode,
 	.encode = test_encode,
 	.nak = test_nak,
-	.process = test_process,
 };
 
 static fr_transport_t *transports = &transport;

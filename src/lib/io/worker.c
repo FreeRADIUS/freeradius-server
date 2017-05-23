@@ -705,6 +705,8 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 
 	/*
 	 *	Now that the "request" structure has been initialized, go decode the packet.
+	 *
+	 *	Note that this also sets the "process_async" function.
 	 */
 	rcode = worker->transports[cd->transport]->decode(cd->packet_ctx, cd->m.data, cd->m.data_size, request);
 	if (rcode < 0) {
@@ -767,11 +769,8 @@ nak:
 
 	/*
 	 *	Bootstrap the async state machine with the initial
-	 *	state of the request.  The process_async function will
-	 *	take care of pushing the state machine through it's
-	 *	transitions.
+	 *	state of the request.
 	 */
-	request->process_async = request->transport->process;
 	fr_time_tracking_start(&request->tracking, now);
 
 	return request;

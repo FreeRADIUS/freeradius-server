@@ -30,7 +30,7 @@
 #include <freeradius-devel/io/transport.h>
 #include <freeradius-devel/rad_assert.h>
 
-static fr_transport_final_t mod_process(REQUEST *request)
+static fr_transport_final_t mod_process(REQUEST *request, UNUSED fr_transport_action_t action)
 {
 	rlm_rcode_t rcode;
 	CONF_SECTION *unlang;

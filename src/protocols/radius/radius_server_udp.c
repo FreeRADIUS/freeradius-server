@@ -53,11 +53,21 @@ typedef struct fr_packet_ctx_t {
 } fr_packet_ctx_t;
 
 
+
+static fr_transport_final_t mod_process(REQUEST *request, fr_transport_action_t action)
+{
+	RDEBUG("\t\tPROCESS --- request %zd action %d\n", request->number, action);
+
+	return FR_TRANSPORT_REPLY;
+}
+
 static int mod_decode(void const *ctx, uint8_t *const data, size_t data_len, REQUEST *request)
 {
 	fr_packet_ctx_t const *pc = ctx;
 
 	RDEBUG("\t\tDECODE <<< request %zd - %p data %p size %zd\n", request->number, pc, data, data_len);
+
+	request->process_async = mod_process;
 
 	return 0;
 }
@@ -85,13 +95,6 @@ static size_t mod_nak(void const *ctx, uint8_t *const packet, size_t packet_len,
 	DEBUG("\t\tNAK !!! request %d - data %p %p size %zd\n", packet[1], ctx, packet, packet_len);
 
 	return 10;
-}
-
-static fr_transport_final_t mod_process(REQUEST *request, fr_transport_action_t action)
-{
-	RDEBUG("\t\tPROCESS --- request %zd action %d\n", request->number, action);
-
-	return FR_TRANSPORT_REPLY;
 }
 
 static ssize_t mod_read(int sockfd, void *ctx, uint8_t *buffer, size_t buffer_len)
@@ -159,5 +162,4 @@ fr_transport_t fr_radius_server_udp = {
 	.decode			= mod_decode,
 	.encode			= mod_encode,
 	.nak			= mod_nak,
-	.process		= mod_process
 };

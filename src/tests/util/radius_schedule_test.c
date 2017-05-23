@@ -67,11 +67,18 @@ extern int		fr_socket_server_base(int proto, fr_ipaddr_t *ipaddr, int *port, cha
 extern int		fr_socket_server_bind(int sockfd, fr_ipaddr_t *ipaddr, int *port, char const *interface);
 extern int		fr_fault_setup(char const *cmd, char const *program);
 
+static fr_transport_final_t test_process(REQUEST *request, fr_transport_action_t action)
+{
+	MPRINT1("\t\tPROCESS --- request %zd action %d\n", request->number, action);
+	return FR_TRANSPORT_REPLY;
+}
+
 static int test_decode(void const *ctx, uint8_t *const data, size_t data_len, REQUEST *request)
 {
 	fr_packet_ctx_t const *pc = ctx;
 
 	if (!debug_lvl) return 0;
+	request->process_async = test_process;
 
 	MPRINT1("\t\tDECODE <<< request %zd - %p data %p size %zd\n", request->number, pc, data, data_len);
 
@@ -105,12 +112,6 @@ static size_t test_nak(void const *ctx, uint8_t *const packet, size_t packet_len
 	MPRINT1("\t\tNAK !!! request %d - data %p %p size %zd\n", packet[1], ctx, packet, packet_len);
 
 	return 10;
-}
-
-static fr_transport_final_t test_process(REQUEST *request, fr_transport_action_t action)
-{
-	MPRINT1("\t\tPROCESS --- request %zd action %d\n", request->number, action);
-	return FR_TRANSPORT_REPLY;
 }
 
 static ssize_t test_read(int sockfd, void *ctx, uint8_t *buffer, size_t buffer_len)
@@ -160,7 +161,6 @@ static fr_transport_t transport = {
 	.decode = test_decode,
 	.encode = test_encode,
 	.nak = test_nak,
-	.process = test_process,
 };
 
 static fr_transport_t *transports = &transport;
