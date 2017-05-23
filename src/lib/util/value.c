@@ -2299,8 +2299,6 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
  * For #FR_TYPE_STRING and #FR_TYPE_OCTETS adds a reference from ctx so that the
  * buffer cannot be freed until the ctx is freed.
  *
- * @note Will free any exiting buffers associated with the dst #fr_value_box_t.
- *
  * @param[in] ctx	to add reference from.  If NULL no reference will be added.
  * @param[in] dst	to copy value to.
  * @param[in] src	to copy value from.
@@ -2321,8 +2319,6 @@ void fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
 }
 
 /** Copy value data verbatim moving any buffers to the specified context
- *
- * @note Will free any exiting buffers associated with the dst #fr_value_box_t.
  *
  * @param[in] ctx 	to allocate any new buffers in.
  * @param[in] dst	to copy value to.
