@@ -23,14 +23,13 @@
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/protocol.h>
-#include <freeradius-devel/udp.h>
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/rad_assert.h>
 
 typedef struct proto_radius_ctx_t {
 	int			sockfd;				//!< sanity checks
-	void			*transport_ctx;			//!< for the transport
+	void			*io_ctx;			//!< for the underlying IO layer
 	fr_transport_t		transport;
 	fr_transport_process_t	process[FR_MAX_PACKET_CODE];
 } proto_radius_ctx_t;
@@ -202,7 +201,7 @@ static int open_transport(proto_radius_ctx_t *ctx, fr_schedule_t *handle, CONF_S
 	}
 
 	io = (fr_app_io_t const *) module->common;
-	if (io->open(ctx, &ctx->sockfd, &ctx->transport_ctx, &transport, cs, verify_config) < 0) {
+	if (io->open(ctx, &ctx->sockfd, &ctx->io_ctx, &transport, cs, verify_config) < 0) {
 		cf_log_err_cs(cs, "Failed compiling unlang for 'transport = %s'", value);
 		return -1;
 	}
