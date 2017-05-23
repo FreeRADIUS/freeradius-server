@@ -93,16 +93,12 @@ typedef int (*fr_app_bootstrap_t)(CONF_SECTION *);
  */
 typedef struct fr_transport_t fr_transport_t;
 
-typedef struct fr_app_io_t {
-	int		fd;
-	void		*ctx;
-	fr_transport_t	*transport;
-} fr_app_io_t;
+/*
+ *	src/lib/io/schedule.h
+ */
+typedef struct fr_schedule_t fr_schedule_t;
 
-typedef fr_app_io_t *(*fr_app_compile_t)(CONF_SECTION *);
-
-typedef fr_transport_final_t (*fr_app_process_t)(REQUEST *request);
-
+typedef int (*fr_app_parse_t)(fr_schedule_t *sc, CONF_SECTION *, bool);
 
 /*
  *	Functions for new virtual servers and listeners
@@ -111,9 +107,19 @@ typedef struct fr_app_t {
 	RAD_MODULE_COMMON;				//!< Common fields to all loadable modules.
 
 	fr_app_bootstrap_t	bootstrap;
-	fr_app_compile_t	compile;
-	fr_app_process_t	process;
+	fr_app_parse_t		parse;
 } fr_app_t;
+
+typedef int (*fr_app_io_open_t)(TALLOC_CTX *ctx, int *, void **, fr_transport_t **, CONF_SECTION *, bool);
+
+/*
+ *	Functions for new virtual servers and listeners
+ */
+typedef struct fr_app_io_t {
+	RAD_MODULE_COMMON;				//!< Common fields to all loadable modules.
+
+	fr_app_io_open_t	open;
+} fr_app_io_t;
 
 typedef int (*fr_app_subtype_compile_t)(CONF_SECTION *cs);
 
@@ -124,7 +130,7 @@ typedef struct fr_app_subtype_t {
 	RAD_MODULE_COMMON;				//!< Common fields to all loadable modules.
 
 	fr_app_subtype_compile_t  compile;
-	fr_app_process_t	  process;
+	fr_transport_process_t	  process;
 } fr_app_subtype_t;
 
 #ifdef __cplusplus

@@ -25,8 +25,38 @@
 #include <freeradius-devel/protocol.h>
 #include <freeradius-devel/udp.h>
 #include <freeradius-devel/radius/radius.h>
-#include <freeradius-devel/io/transport.h>
+#include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/rad_assert.h>
+
+typedef struct proto_radius_ctx_t {
+	int			sockfd;				//!< sanity checks
+	void			*transport_ctx;			//!< for the transport
+	fr_transport_t		transport;
+	fr_transport_process_t	process[FR_MAX_PACKET_CODE];
+} proto_radius_ctx_t;
+
+/** Decode the packet, and set the request->process function
+ *
+ */
+static int mod_decode(UNUSED void const *packet_ctx, uint8_t *const data, UNUSED size_t data_len, UNUSED REQUEST *request)
+{
+//	proto_radius_ctx_t *ctx = NULL;
+
+	// verify the signature
+
+	// decode the packet
+
+	rad_assert(data[0] < FR_MAX_PACKET_CODE);
+//	request->async_process = ctx->process[data[0]];
+
+	return 0;
+}
+
+static ssize_t mod_encode(UNUSED void const *packet_ctx, UNUSED REQUEST *request, UNUSED uint8_t *buffer, UNUSED size_t buffer_len)
+{
+	return -1;
+}
+
 
 /** Load the RADIUS protocol
  *
@@ -77,11 +107,12 @@ static const CONF_PARSER mod_config[] = {
 };
 
 
-static int compile_type(CONF_SECTION *server, CONF_SECTION *cs, char const *value, uint8_t *allowed_packets)
+static int compile_type(proto_radius_ctx_t *ctx, CONF_SECTION *server, CONF_SECTION *cs, char const *value)
 {
 	int i, code;
 	char const *lib;
 	dl_t const *module;
+	fr_app_subtype_t const *app;
 
 	if (!value || !*value) {
 		cf_log_err_cs(cs, "Must specify a value for 'type'");
@@ -101,11 +132,10 @@ static int compile_type(CONF_SECTION *server, CONF_SECTION *cs, char const *valu
 		return -1;
 	}
 
-	if (allowed_packets[i]) {
+	if (ctx->process[i]) {
 		cf_log_err_cs(cs, "Duplicate 'type = %s'", value);
 		return -1;
 	}
-	allowed_packets[i] = 1;
 
 	/*
 	 *	Already loaded the module in this virtual
@@ -138,6 +168,9 @@ static int compile_type(CONF_SECTION *server, CONF_SECTION *cs, char const *valu
 		return -1;
 	}
 
+	app = (fr_app_subtype_t const *) module->common;
+	ctx->process[i] = app->process;
+
 	/*
 	 *	Remember that we loaded the module in the server.
 	 */
@@ -147,9 +180,12 @@ static int compile_type(CONF_SECTION *server, CONF_SECTION *cs, char const *valu
 }
 
 
-static int compile_transport(CONF_SECTION *server, CONF_SECTION *cs, char const *value, UNUSED uint8_t *allowed_packets)
+static int open_transport(proto_radius_ctx_t *ctx, fr_schedule_t *handle, CONF_SECTION *server, CONF_SECTION *cs, char const *value,
+			  bool verify_config)
 {
+	fr_transport_t *transport;
 	dl_t const *module;
+	fr_app_io_t const *io;
 	char buffer[256];
 
 	if (!value || !*value) {
@@ -159,61 +195,53 @@ static int compile_transport(CONF_SECTION *server, CONF_SECTION *cs, char const 
 
 	snprintf(buffer, sizeof(buffer), "radius_%s", value);
 
-
 	module = dl_module(server, NULL, buffer, DL_TYPE_PROTO);
 	if (!module) {
 		cf_log_err_cs(cs, "Failed finding submodule library for 'transport = %s'", value);
 		return -1;
 	}
 
+	io = (fr_app_io_t const *) module->common;
+	if (io->open(ctx, &ctx->sockfd, &ctx->transport_ctx, &transport, cs, verify_config) < 0) {
+		cf_log_err_cs(cs, "Failed compiling unlang for 'transport = %s'", value);
+		return -1;
+	}
+
 	/*
-	 *	Remember that we loaded the transport in the server.
+	 *	Set to the function which will decode the packet and
+	 *	set request->process to the correct entry.
+	 *
+	 *	@note - could also do this in the recv_request function?
+	 */
+	ctx->transport = *transport;
+	ctx->transport.decode = mod_decode;
+	ctx->transport.encode = mod_encode;
+
+	/*
+	 *	Add it to the scheduler.  Note that we add our context
+	 *	instead of the transport one, as we need to swap out
+	 *	the process function.
+	 *
+	 *	@todo - more cleanup on error.
+	 */
+	if (fr_schedule_socket_add(handle, ctx->sockfd, ctx, &ctx->transport) < 0) {
+		talloc_free(ctx);
+		return -1;
+	}
+
+	/*
+	 *	Remember that we loaded the transport library in the server.
 	 */
 	cf_data_add(server, module, value, false);
 
-	/*
-	 *	@todo - load proto_radius_udp, and have it parse it's stuff
-	 *
-	 *	- call app->compile, which returns a tuple:
-	 *	  - sockfd, ctx, transport
-	 *
-	 * - the proto_radius code will then take care of replacing
-	 * 	the "process" function with ones specific to the
-	 * 	method? and duplicating the transport for every packet
-	 * 	type.  which then lets us change the transport write()
-	 * 	functions, too.. which gets rid of multiple code paths
-	 *
-	 * - so we have radius udp transport, which has a "process" function
-	 *   the just returns an error
-	 *
-	 * - each proto_radius_foo has it's own transport (so we can
-         *  just use that if necessary, and it's used for testing)
-	 *
-	 *  transport->read needs to take "process" pointer and then
-	 *  update it if needed.
-	 *
-	 *  and get rid of ID, and put "process" into the channel
-	 *  messages
-	 *
-	 *  probably need a generic proto_radius_transport, which contains the generic
-	 *  functions encode / decode, nak, send_reply, etc.
-	 *
-	 *  OR, split up fr_transport_t into multiple things:
-	 *  - IO layer (read/write)
-	 *  - protocol (encode, decode)
-	 *  - management (recv_request, send_reply)
-	 *  - process, which is a thing unto itself
-	 *    - tho IO read/write have some overlap here, too...
-	 */
-
-	return 1;
+	return 0;
 }
 
-static int compile_listen(CONF_SECTION *server, CONF_SECTION *cs)
+static int open_listen(fr_schedule_t *handle, CONF_SECTION *server, CONF_SECTION *cs, bool verify_config)
 {
 	size_t i;
 	pr_config_t config;
-	uint8_t allowed_packets[FR_MAX_PACKET_CODE];
+	proto_radius_ctx_t *ctx;
 
 	if ((cf_section_parse(cs, &config, cs, mod_config) < 0) ||
 	    (cf_section_parse_pass2(&config, cs, mod_config) < 0)) {
@@ -231,10 +259,17 @@ static int compile_listen(CONF_SECTION *server, CONF_SECTION *cs)
 		return -1;
 	}
 
-	memset(allowed_packets, 0, sizeof(allowed_packets));
+	ctx = talloc_zero(NULL, proto_radius_ctx_t);
+	if (!ctx) {
+		cf_log_err_cs(cs, "Failed allocating memory");
+		return -1;
+	}
 
+	/*
+	 *	Compile one or more types.
+	 */
 	for (i = 0; i < talloc_array_length(config.types); i++) {
-		if (compile_type(server, cs, config.types[i], allowed_packets) < 0) {
+		if (compile_type(ctx, server, cs, config.types[i]) < 0) {
 			cf_log_err_cs(server, "Failed compiling unlang for 'type = %s'",
 				      config.types[i]);
 			return -1;
@@ -244,7 +279,7 @@ static int compile_listen(CONF_SECTION *server, CONF_SECTION *cs)
 	/*
 	 *	Call transport-specific library to open the socket.
 	 */
-	if (compile_transport(server, cs, config.transport, allowed_packets) < 0) {
+	if (open_transport(ctx, handle, server, cs, config.transport, verify_config) < 0) {
 		cf_log_err_cs(server, "Failed opening connection for 'transport = %s'",
 				      config.transport);
 		return -1;
@@ -259,12 +294,11 @@ static int compile_listen(CONF_SECTION *server, CONF_SECTION *cs)
 }
 
 
-/** Compile the RADIUS protocol in a particular virtual server.
+/** Open a RADIUS application in a virtual server,
  *
  */
-static fr_app_io_t *mod_compile(CONF_SECTION *cs)
+static int mod_parse(fr_schedule_t *handle, CONF_SECTION *cs, bool verify_config)
 {
-//	CONF_PAIR *cp;
 	CONF_SECTION *subcs;
 
 	/*
@@ -274,16 +308,10 @@ static fr_app_io_t *mod_compile(CONF_SECTION *cs)
 	for (subcs = cf_subsection_find_next(cs, NULL, "listen");
 	     subcs != NULL;
 	     subcs = cf_subsection_find_next(cs, cs, "listen")) {
-		if (compile_listen(cs, subcs) < 0) {
-			return NULL;
+		if (open_listen(handle, cs, subcs, verify_config) < 0) {
+			return -1;
 		}
 	}
-
-	/*
-	 *	@todo - actually get the listeners, and add them to an
-	 *	array. And what to do for virtual servers which don't
-	 *	have a "listen" section?
-	 */
 
 	/*
 	 *	Compile the sub-sections AFTER parsing all of the
@@ -310,14 +338,14 @@ static fr_app_io_t *mod_compile(CONF_SECTION *cs)
 			app = (fr_app_subtype_t const *) module->common;
 			if (app->compile(cs) < 0) {
 				cf_log_err_cs(cs, "Failed compiling unlang for 'type = %s'", value);
-				return NULL;
+				return -1;
 			}
 
 			cf_data_add(cs, value, value, false);
 		}
 	}
 
-	return NULL;
+	return 0;
 }
 
 extern fr_app_t proto_radius;
@@ -326,5 +354,5 @@ fr_app_t proto_radius = {
 	.name		= "radius",
 	.load		= mod_load,
 	.bootstrap	= mod_bootstrap,
-	.compile	= mod_compile,
+	.parse		= mod_parse,
 };

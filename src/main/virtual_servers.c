@@ -599,6 +599,12 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 				return -1;
 			}
 
+			if (!app->parse) {
+				cf_log_err_cs(cs, "Failed to find initialization function for 'transport = %s'",
+					      value);
+				return -1;
+			}
+
 			cf_data_add(cs, module, "app", false);
 			continue;
 		}
@@ -663,27 +669,26 @@ int virtual_servers_init(CONF_SECTION *config)
 		if (cf_pair_find(cs, "namespace")) {
 			dl_t const *module;
 			fr_app_t const *app;
-			fr_app_io_t *io;
 
 			module = cf_data_find(cs, dl_t, "app");
 			if (!module) continue;
 
 			app = (fr_app_t const *) module->common;
 
+			/*
+			 *	@todo - create a scheduler
+			 */
+
 			cf_log_info(cs, "server %s { # from file %s",
 				    name2, cf_section_filename(cs));
 			cf_log_info(cs, "  namespace = %s", app->name);
 
-			if (app->compile) {
-				io = app->compile(cs);
-				if (!io) {
-					cf_log_err_cs(cs, "Failed loading virtual server %s", name2);
-					cf_log_err_cs(cs, "Ignoring until the new code works...");
-					continue;
-				}
-
-				DEBUG("Loaded Protocol %s", module->name);
+			if (app->parse(NULL, cs, check_config) < 0) {
+				cf_log_err_cs(cs, "Failed loading virtual server %s", name2);
+				return -1;
 			}
+
+			DEBUG("  Loaded Protocol %s", module->name);
 
 			cf_log_info(cs, "} # server %s", name2);
 			continue;
