@@ -202,7 +202,7 @@ static void *fr_schedule_worker_thread(void *arg)
 
 	fr_log(sc->log, L_INFO, "Worker %d starting\n", sw->id);
 
-	ctx = talloc_init("worker");
+	ctx = talloc_init("worker %d", sw->id);
 	if (!ctx) {
 		fr_log(sc->log, L_ERR, "Worker %d - Failed allocating memory", sw->id);
 		goto fail;
@@ -303,9 +303,9 @@ static void *fr_schedule_network_thread(void *arg)
 	fr_schedule_t *sc = sn->sc;
 	fr_schedule_child_status_t status = FR_CHILD_FAIL;
 
-	fr_log(sc->log, L_INFO, "Network starting\n");
+	fr_log(sc->log, L_INFO, "Network %d starting\n", sn->id);
 
-	ctx = talloc_init("network");
+	ctx = talloc_init("network %d", sn->id);
 	if (!ctx) {
 		fr_log(sc->log, L_ERR, "Network %d - Failed allocating memory", sn->id);
 		goto fail;
