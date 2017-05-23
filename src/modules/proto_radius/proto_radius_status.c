@@ -41,18 +41,9 @@ static fr_transport_final_t mod_process(REQUEST *request, UNUSED fr_transport_ac
 
 	switch (request->request_state) {
 	case REQUEST_INIT:
-		if (request->packet->data_len != 0) {
-			if (fr_radius_packet_decode(request->packet, NULL, request->client->secret) < 0) {
-				RDEBUG("Failed decoding RADIUS packet: %s", fr_strerror());
-				return FR_TRANSPORT_FAIL;
-			}
-
-			if (RDEBUG_ENABLED) common_packet_debug(request, request->packet, true);
-		} else {
-			radlog_request(L_DBG, L_DBG_LVL_1, request, "Received %s ID %i",
-				       fr_packet_codes[request->packet->code], request->packet->id);
-			rdebug_proto_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
-		}
+		radlog_request(L_DBG, L_DBG_LVL_1, request, "Received %s ID %i",
+			       fr_packet_codes[request->packet->code], request->packet->id);
+		rdebug_proto_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
 
 		request->component = "radius";
 
@@ -196,16 +187,6 @@ static fr_transport_final_t mod_process(REQUEST *request, UNUSED fr_transport_ac
 #endif
 
 		if (RDEBUG_ENABLED) common_packet_debug(request, request->reply, false);
-
-		if (fr_radius_packet_encode(request->reply, request->packet, request->client->secret) < 0) {
-			RDEBUG("Failed encoding RADIUS reply: %s", fr_strerror());
-			return FR_TRANSPORT_FAIL;
-		}
-
-		if (fr_radius_packet_sign(request->reply, request->packet, request->client->secret) < 0) {
-			RDEBUG("Failed signing RADIUS reply: %s", fr_strerror());
-			return FR_TRANSPORT_FAIL;
-		}
 		break;
 
 	default:
