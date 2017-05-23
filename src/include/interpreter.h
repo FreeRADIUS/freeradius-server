@@ -255,7 +255,7 @@ typedef unlang_action_t (*unlang_op_func_t)(REQUEST *request, unlang_stack_t *st
 typedef struct {
 	char const		*name;		//!< Name of the operation.
 	unlang_op_func_t	func;		//!< Function pointer, that we call to perform the operation.
-	bool			children;	//!< Whether the operation can contain children.
+	bool			debug_braces;	//!< Whether the operation needs to print braces in debug mode
 } unlang_op_t;
 
 extern unlang_op_t unlang_ops[];

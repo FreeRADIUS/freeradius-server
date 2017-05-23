@@ -1016,94 +1016,94 @@ unlang_op_t unlang_ops[] = {
 	[UNLANG_TYPE_MODULE_CALL] = {
 		.name = "module-call",
 		.func = unlang_module_call,
-		.children = false
+		.debug_braces = false
 	},
 	[UNLANG_TYPE_GROUP] = {
 		.name = "group",
 		.func = unlang_group,
-		.children = true
+		.debug_braces = true
 	},
 	[UNLANG_TYPE_LOAD_BALANCE] = {
 		.name = "load-balance group",
 		.func = unlang_load_balance,
-		.children = true
+		.debug_braces = true
 	},
 	[UNLANG_TYPE_REDUNDANT_LOAD_BALANCE] = {
 		.name = "redundant-load-balance group",
 		.func = unlang_redundant_load_balance,
-		.children = true
+		.debug_braces = true
 	},
 	[UNLANG_TYPE_PARALLEL] = {
 		.name = "parallel",
 		.func = unlang_parallel,
-		.children = true
+		.debug_braces = true
 	},
 #ifdef WITH_UNLANG
 	[UNLANG_TYPE_IF] = {
 		.name = "if",
 		.func = unlang_if,
-		.children = true
+		.debug_braces = true
 	},
 	[UNLANG_TYPE_ELSE] = {
 		.name = "else",
 		.func = unlang_else,
-		.children = true
+		.debug_braces = true
 	},
 	[UNLANG_TYPE_ELSIF] = {
 		.name = "elsif",
 		.func = unlang_elsif,
-		.children = true
+		.debug_braces = true
 	},
 	[UNLANG_TYPE_UPDATE] = {
 		.name = "update",
 		.func = unlang_update,
-		.children = true
+		.debug_braces = true
 	},
 	[UNLANG_TYPE_SWITCH] = {
 		.name = "switch",
 		.func = unlang_switch,
-		.children = true
+		.debug_braces = true
 	},
 	[UNLANG_TYPE_CASE] = {
 		.name = "case",
 		.func = unlang_case,
-		.children = true
+		.debug_braces = true
 	},
 	[UNLANG_TYPE_FOREACH] = {
 		.name = "foreach",
 		.func = unlang_foreach,
-		.children = true
+		.debug_braces = true
 	},
 	[UNLANG_TYPE_BREAK] = {
 		.name = "break",
 		.func = unlang_break,
-		.children = false
+		.debug_braces = false
 	},
 	[UNLANG_TYPE_RETURN] = {
 		.name = "return",
 		.func = unlang_return,
-		.children = false
+		.debug_braces = false
 	},
 	[UNLANG_TYPE_MAP] = {
 		.name = "map",
 		.func = unlang_map,
-		.children = true
+		.debug_braces = true
 	},
 	[UNLANG_TYPE_POLICY] = {
 		.name = "policy",
 		.func = unlang_policy,
-		.children = true
+		.debug_braces = true
 	},
 #endif
 	[UNLANG_TYPE_XLAT_INLINE] = {
 		.name = "xlat_inline",
 		.func = unlang_xlat_inline,
-		.children = false
+		.debug_braces = false
 	},
 	[UNLANG_TYPE_RESUME] = {
 		.name = "resume",
 		.func = unlang_resumption,
-		.children = false
+		.debug_braces = false
 	},
 	[UNLANG_TYPE_MAX] = { NULL, NULL, false }
 };
@@ -1163,7 +1163,7 @@ redo:
 			break;
 		}
 
-		if ((unlang_ops[instruction->type].children) && !frame->resume) {
+		if ((unlang_ops[instruction->type].debug_braces) && !frame->resume) {
 			RDEBUG2("%s {", instruction->debug_name);
 			RINDENT();
 		}
@@ -1210,7 +1210,7 @@ redo:
 			}
 
 			if (frame->top_frame) {
-				if (unlang_ops[instruction->type].children) {
+				if (unlang_ops[instruction->type].debug_braces) {
 					REXDENT();
 					RDEBUG2("} # %s (%s)", instruction->debug_name,
 						fr_int2str(mod_rcode_table, result, "<invalid>"));
@@ -1236,7 +1236,7 @@ redo:
 			}
 
 			frame->resume = false;
-			if (unlang_ops[instruction->type].children) {
+			if (unlang_ops[instruction->type].debug_braces) {
 				REXDENT();
 				RDEBUG2("} # %s (%s)", instruction->debug_name,
 					fr_int2str(mod_rcode_table, result, "<invalid>"));
@@ -1295,7 +1295,7 @@ redo:
 			/* FALL-THROUGH */
 
 		case UNLANG_ACTION_CONTINUE:
-			if ((action == UNLANG_ACTION_CONTINUE) && unlang_ops[instruction->type].children) {
+			if ((action == UNLANG_ACTION_CONTINUE) && unlang_ops[instruction->type].debug_braces) {
 				REXDENT();
 				RDEBUG2("}");
 			}
@@ -1728,7 +1728,8 @@ rlm_rcode_t unlang_yield(REQUEST *request, fr_unlang_resume_t callback,
 
 	frame = &stack->frame[stack->depth];
 
-	rad_assert(frame->instruction->type == UNLANG_TYPE_MODULE_CALL);
+	rad_assert((frame->instruction->type == UNLANG_TYPE_MODULE_CALL) ||
+		   (frame->instruction->type == UNLANG_TYPE_RESUME));
 	sp = unlang_generic_to_module_call(frame->instruction);
 
 	mr = talloc(request, unlang_resumption_t);
