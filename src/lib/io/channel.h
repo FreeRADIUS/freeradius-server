@@ -44,6 +44,21 @@ extern "C" {
  */
 typedef struct fr_channel_t fr_channel_t;
 
+/*
+ *	Forward declaration until such time as we fix the code so that
+ *	the network threads can push transports to worker threads.
+ */
+typedef struct fr_transport_t fr_transport_t;
+
+typedef struct fr_packet_io_t {
+	int			fd;			//!< the file descriptor
+	uint32_t		priority;		//!< 0 is higher priority than 1
+
+	void			*ctx;			//!< for the transport
+	fr_transport_t		*transport;		//!< the transport structure
+} fr_packet_io_t;
+
+
 typedef enum fr_channel_event_t {
 	FR_CHANNEL_ERROR = 0,
 	FR_CHANNEL_DATA_READY_WORKER,
@@ -85,10 +100,7 @@ typedef struct fr_channel_data_t {
 		} channel;
 	};
 
-	void			*packet_ctx;	//!< packet context, for per-packet information
-	void			*io_ctx; 	//!< context for IO
-	uint32_t		transport;	//!< transport ID for this packet
-	uint32_t		priority;	//!< priority of this packet.  0=high, 65535=low.
+	fr_packet_io_t	io;					//!< for tracking packet transport, etc.
 
 	union {
 		struct {

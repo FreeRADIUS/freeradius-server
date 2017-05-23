@@ -33,7 +33,7 @@ extern "C" {
 
 typedef struct fr_network_t fr_network_t;
 
-fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_log_t *logger, uint32_t num_transports, fr_transport_t **transports);
+fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_log_t *logger);
 void fr_network_exit(fr_network_t *nr);
 int fr_network_destroy(fr_network_t *nr) CC_HINT(nonnull);
 void fr_network(fr_network_t *nr) CC_HINT(nonnull);

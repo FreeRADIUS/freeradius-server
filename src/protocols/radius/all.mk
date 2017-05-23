@@ -10,8 +10,7 @@ SOURCES		:= base.c \
 		   encode.c \
 		   list.c \
 		   packet.c \
-		   tcp.c \
-		   radius_server_udp.c
+		   tcp.c
 
 SRC_CFLAGS	:= -D_LIBRADIUS -I$(top_builddir)/src
 

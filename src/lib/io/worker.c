@@ -117,8 +117,7 @@ struct fr_worker_t {
 
 	fr_time_tracking_t	tracking;	//!< how much time the worker has spent doing things.
 
-	uint32_t       		num_transports;	//!< how many transport layers we have
-	fr_transport_t		**transports;	//!< array of active transports.
+	bool			exiting;	//!< are we exiting?
 
 	fr_channel_t		**channel;	//!< list of channels
 };
@@ -327,6 +326,7 @@ static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t 
 	fr_channel_data_t *reply;
 	fr_channel_t *ch;
 	fr_message_set_t *ms;
+	fr_packet_io_t *io;
 
 	worker->num_timeouts++;
 
@@ -334,6 +334,7 @@ static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t 
 	 *	Cache the outbound channel.  We'll need it later.
 	 */
 	ch = cd->channel.ch;
+	io = &cd->io;
 
 	ms = fr_channel_worker_ctx_get(ch);
 	rad_assert(ms != NULL);
@@ -341,13 +342,13 @@ static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t 
 	/*
 	 *	Allocate a default message size.
 	 */
-	reply = (fr_channel_data_t *) fr_message_reserve(ms, worker->transports[cd->transport]->default_message_size);
+	reply = (fr_channel_data_t *) fr_message_reserve(ms, io->transport->default_message_size);
 	rad_assert(reply != NULL);
 
 	/*
 	 *	Encode a NAK
 	 */
-	size = worker->transports[cd->transport]->nak(cd->packet_ctx, cd->m.data, cd->m.data_size, reply->m.data, reply->m.rb_size);
+	size = io->transport->nak(io->ctx, cd->m.data, cd->m.data_size, reply->m.data, reply->m.rb_size);
 
 	(void) fr_message_alloc(ms, &reply->m, size);
 
@@ -359,10 +360,7 @@ static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t 
 	reply->reply.processing_time = 10; /* @todo - set to something better? */
 	reply->reply.request_time = cd->m.when;
 
-	reply->packet_ctx = cd->packet_ctx;
-	reply->io_ctx = cd->io_ctx;
-	reply->priority = cd->priority;
-	reply->transport = cd->transport;
+	reply->io = cd->io;
 
 	/*
 	 *	Mark the original message as done.
@@ -415,7 +413,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	if (size) {
 		ssize_t encoded;
 
-		encoded = request->transport->encode(request->packet_ctx, request, reply->m.data, reply->m.rb_size);
+		encoded = request->io.transport->encode(request->io.ctx, request, reply->m.data, reply->m.rb_size);
 		if (encoded < 0) {
 			fr_log(worker->log, L_DBG, "\t%sfails encode", worker->name);
 			encoded = 0;
@@ -443,10 +441,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	reply->reply.processing_time = request->tracking.running;
 	reply->reply.request_time = request->recv_time;
 
-	reply->packet_ctx = request->packet_ctx;
-	reply->io_ctx = request->io_ctx;
-	reply->priority = request->priority;
-	reply->transport = request->transport->id;
+	reply->io = request->io;
 
 	fr_log(worker->log, L_DBG, "(%zd) finished, sending reply", request->number);
 
@@ -619,6 +614,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	fr_channel_data_t *cd;
 	REQUEST *request;
 	fr_dlist_t *entry;
+	fr_packet_io_t *io;
 #ifndef HAVE_TALLOC_POOLED_OBJECT
 	TALLOC_CTX *ctx;
 #endif
@@ -675,8 +671,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	 *	Receive a message to the worker queue, and decode it
 	 *	to a request.
 	 */
-	rad_assert(cd->transport <= worker->num_transports);
-	rad_assert(worker->transports[cd->transport] != NULL);
+	rad_assert(cd->io.transport != NULL);
 
 	/*
 	 *	Update the transport-specific fields.
@@ -689,26 +684,21 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	 */
 	memset(request, 0, sizeof(*request));
 	request->channel = cd->channel.ch;
-	request->transport = worker->transports[cd->transport];
 	request->original_recv_time = cd->request.start_time;
 	request->recv_time = cd->m.when;
-	request->priority = cd->priority;
 	request->runnable = worker->runnable;
 	request->el = worker->el;
-	request->packet_ctx = cd->packet_ctx;
-	request->io_ctx = cd->io_ctx;
 	request->number = 0;	/* @todo - assigned by someone intelligent... */
 
-	/*
-	 *	@todo - call worker->transports[cd->transport]->recv_request()
-	 */
+	request->io = cd->io;
+	io = &request->io;
 
 	/*
 	 *	Now that the "request" structure has been initialized, go decode the packet.
 	 *
 	 *	Note that this also sets the "process_async" function.
 	 */
-	rcode = worker->transports[cd->transport]->decode(cd->packet_ctx, cd->m.data, cd->m.data_size, request);
+	rcode = io->transport->decode(io->ctx, cd->m.data, cd->m.data_size, request);
 	if (rcode < 0) {
 		fr_log(worker->log, L_DBG, "\t%sFAILED decode of request %zd", worker->name, request->number);
 		talloc_free(ctx);
@@ -716,6 +706,8 @@ nak:
 		fr_worker_nak(worker, cd, fr_time());
 		return NULL;
 	}
+
+	rad_assert(request->process_async != NULL);
 
 	/*
 	 *	Hoist run-time checks here.
@@ -837,7 +829,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 		return;
 
 	case FR_TRANSPORT_REPLY:
-		size = request->transport->default_message_size;
+		size = request->io.transport->default_message_size;
 		break;
 	}
 
@@ -917,8 +909,8 @@ static int worker_message_cmp(void const *one, void const *two)
 	fr_channel_data_t const *a = one;
 	fr_channel_data_t const *b = two;
 
-	if (a->priority < b->priority) return -1;
-	if (a->priority > b->priority) return +1;
+	if (a->io.priority < b->io.priority) return -1;
+	if (a->io.priority > b->io.priority) return +1;
 
 	if (a->m.when < b->m.when) return -1;
 	if (a->m.when > b->m.when) return +1;
@@ -934,8 +926,8 @@ static int worker_request_cmp(void const *one, void const *two)
 	REQUEST const *a = one;
 	REQUEST const *b = two;
 
-	if (a->priority < b->priority) return -1;
-	if (a->priority > b->priority) return +1;
+	if (a->io.priority < b->io.priority) return -1;
+	if (a->io.priority > b->io.priority) return +1;
 
 	if (a->recv_time < b->recv_time) return -1;
 	if (a->recv_time > b->recv_time) return +1;
@@ -989,21 +981,14 @@ void fr_worker_destroy(fr_worker_t *worker)
  *
  * @param[in] ctx the talloc context
  * @param[in] logger the destination for all logging messages
- * @param[in] num_transports the number of transports in the transport array
- * @param[in] transports the array of transports.
  * @return
  *	- NULL on error
  *	- fr_worker_t on success
  */
-fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, fr_log_t *logger, uint32_t num_transports, fr_transport_t **transports)
+fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, fr_log_t *logger)
 {
 	int max_channels = 64;
 	fr_worker_t *worker;
-
-	if (!num_transports || !transports) {
-		fr_strerror_printf("Must specify a transport");
-		return NULL;
-	}
 
 	worker = talloc_zero(ctx, fr_worker_t);
 	if (!worker) {
@@ -1089,9 +1074,6 @@ nomem:
 	FR_DLIST_INIT(worker->time_order);
 	FR_DLIST_INIT(worker->waiting_to_die);
 
-	worker->num_transports = num_transports;
-	worker->transports = transports;
-
 	return worker;
 }
 
@@ -1114,6 +1096,8 @@ int fr_worker_kq(fr_worker_t *worker)
  */
 void fr_worker_exit(fr_worker_t *worker)
 {
+	worker->exiting = true;
+
 	fr_event_loop_exit(worker->el, 1);
 }
 
@@ -1144,6 +1128,8 @@ void fr_worker(fr_worker_t *worker)
 		num_events = fr_event_corral(worker->el, wait_for_event);
 		fr_log(worker->log, L_DBG, "\t%sGot num_events %d", worker->name, num_events);
 		if (num_events < 0) {
+			if (worker->exiting) break; /* don't complain if we're exiting */
+
 			fr_log(worker->log, L_ERR, "Failed corraling events: %s", fr_strerror());
 			break;
 		}
@@ -1171,6 +1157,9 @@ void fr_worker(fr_worker_t *worker)
 		 */
 		request = fr_worker_get_request(worker, now);
 		if (!request) continue;
+
+		rad_assert(request->process_async != NULL);
+		rad_assert(request->io.transport != NULL);
 
 		/*
 		 *	Run the request, and either track it as

@@ -138,9 +138,6 @@ struct fr_schedule_t {
 	fr_heap_t	*done_workers;		//!< heap of done workers
 
 	fr_schedule_network_t *sn;		//!< pointer to the (one) network thread
-
-	uint32_t	num_transports;		//!< how many transport layers we have
-	fr_transport_t	**transports;		//!< array of active transports.
 };
 
 
@@ -211,7 +208,7 @@ static void *fr_schedule_worker_thread(void *arg)
 		goto fail;
 	}
 
-	sw->worker = fr_worker_create(ctx, sc->log, sc->num_transports, sc->transports);
+	sw->worker = fr_worker_create(ctx, sc->log);
 	if (!sw->worker) {
 		fr_log(sc->log, L_ERR, "Worker %d - Failed creating worker: %s", sw->id, fr_strerror());
 		goto fail;
@@ -314,7 +311,7 @@ static void *fr_schedule_network_thread(void *arg)
 		goto fail;
 	}
 
-	sn->rc = fr_network_create(ctx, sc->log, sc->num_transports, sc->transports);
+	sn->rc = fr_network_create(ctx, sc->log);
 	if (!sn->rc) {
 		fr_log(sc->log, L_ERR, "Network %d - Failed creating network: %s", sn->id, fr_strerror());
 		goto fail;
@@ -366,8 +363,6 @@ fail:
  * @param[in] logger the destination for all logging messages
  * @param[in] max_inputs the number of network threads
  * @param[in] max_workers the number of worker threads
- * @param[in] num_transports the number of transports in the transport array
- * @param[in] transports the array of transports.
  * @param[in] worker_thread_instantiate callback for new worker threads
  * @param[in] worker_thread_ctx context for callback
  * @return
@@ -375,7 +370,6 @@ fail:
  *	- fr_schedule_t new scheduler
  */
 fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *logger, int max_inputs, int max_workers,
-				  uint32_t num_transports, fr_transport_t **transports,
 				  fr_schedule_thread_instantiate_t worker_thread_instantiate,
 				  void *worker_thread_ctx)
 {
@@ -407,8 +401,6 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *logger, int max_inp
 	sc->worker_instantiate_ctx = worker_thread_ctx;
 
 	sc->running = true;
-	sc->num_transports = num_transports;
-	sc->transports = transports;
 
 	/*
 	 *	No inputs or workers, we're single threaded mode.

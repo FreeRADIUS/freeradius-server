@@ -122,14 +122,11 @@ static size_t test_nak(void const *packet_ctx, uint8_t *const packet, size_t pac
 
 static fr_transport_t transport = {
 	.name = "worker-test",
-	.id = 1,
 	.default_message_size = 4096,
 	.decode = test_decode,
 	.encode = test_encode,
 	.nak = test_nak,
 };
-
-static fr_transport_t *transports = &transport;
 
 static void *worker_thread(void *arg)
 {
@@ -144,7 +141,7 @@ static void *worker_thread(void *arg)
 	ctx = talloc_init("worker");
 	if (!ctx) _exit(1);
 
-	worker = sw->worker = fr_worker_create(ctx, &default_log, 1, &transports);
+	worker = sw->worker = fr_worker_create(ctx, &default_log);
 	if (!worker) {
 		fprintf(stderr, "worker_test: Failed to create the worker\n");
 		exit(1);
@@ -260,6 +257,11 @@ static void master_process(void)
 			num_messages++;
 
 			cd->m.when = fr_time();
+
+			cd->io.fd = -1;
+			cd->io.priority = 0;
+			cd->io.ctx = NULL;
+			cd->io.transport = &transport;
 
 			if (touch_memory) {
 				size_t j, k;

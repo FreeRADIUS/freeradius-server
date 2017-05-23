@@ -77,8 +77,9 @@ static int test_decode(void const *ctx, uint8_t *const data, size_t data_len, RE
 {
 	fr_packet_ctx_t const *pc = ctx;
 
-	if (!debug_lvl) return 0;
 	request->process_async = test_process;
+
+	if (!debug_lvl) return 0;
 
 	MPRINT1("\t\tDECODE <<< request %zd - %p data %p size %zd\n", request->number, pc, data, data_len);
 
@@ -154,7 +155,6 @@ static ssize_t test_write(int sockfd, void *ctx, uint8_t *buffer, size_t buffer_
 
 static fr_transport_t transport = {
 	.name = "schedule-test",
-	.id = 1,
 	.default_message_size = 4096,
 	.read = test_read,
 	.write = test_write,
@@ -162,8 +162,6 @@ static fr_transport_t transport = {
 	.encode = test_encode,
 	.nak = test_nak,
 };
-
-static fr_transport_t *transports = &transport;
 
 static void NEVER_RETURNS usage(void)
 {
@@ -235,7 +233,7 @@ int main(int argc, char *argv[])
 	argv += (optind - 1);
 #endif
 
-	sched = fr_schedule_create(autofree, &default_log, num_networks, num_workers, 1, &transports, NULL, NULL);
+	sched = fr_schedule_create(autofree, &default_log, num_networks, num_workers, NULL, NULL);
 	if (!sched) {
 		fprintf(stderr, "schedule_test: Failed to create scheduler\n");
 		exit(1);

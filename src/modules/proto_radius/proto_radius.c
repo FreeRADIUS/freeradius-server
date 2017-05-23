@@ -26,13 +26,7 @@
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/rad_assert.h>
-
-typedef struct proto_radius_ctx_t {
-	int			sockfd;				//!< sanity checks
-	void			*io_ctx;			//!< for the underlying IO layer
-	fr_transport_t		transport;
-	fr_transport_process_t	process[FR_MAX_PACKET_CODE];
-} proto_radius_ctx_t;
+#include "proto_radius.h"
 
 /** Decode the packet, and set the request->process function
  *

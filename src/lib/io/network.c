@@ -75,9 +75,6 @@ struct fr_network_t {
 	uint64_t		num_replies;		//!< number of replies we received
 
 	fr_heap_t		*sockets;		//!< list of sockets we're managing
-
-	uint32_t		num_transports;		//!< how many transport layers we have
-	fr_transport_t		**transports;		//!< array of active transports.
 };
 
 
@@ -108,8 +105,8 @@ static int reply_cmp(void const *one, void const *two)
 	fr_channel_data_t const *a = one;
 	fr_channel_data_t const *b = two;
 
-	if (a->priority < b->priority) return -1;
-	if (a->priority > b->priority) return +1;
+	if (a->io.priority < b->io.priority) return -1;
+	if (a->io.priority > b->io.priority) return +1;
 
 	if (a->m.when < b->m.when) return -1;
 	if (a->m.when > b->m.when) return +1;
@@ -385,10 +382,10 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
 	 *	Initialize the rest of the fields of the channel data.
 	 */
 	cd->m.when = fr_time();
-	cd->packet_ctx = s->ctx;
-	cd->io_ctx = s;
-	cd->transport = 0;	/* @todo - set transport number from the transport */
-	cd->priority = 0;	/* @todo - set priority based on information from the transport layer  */
+	cd->io.fd = sockfd;
+	cd->io.priority = 0;
+	cd->io.ctx = s->ctx;
+	cd->io.transport = s->transport;
 	cd->request.start_time = &start_time; /* @todo - set by transport */
 
 	start_time = cd->m.when;
@@ -511,20 +508,13 @@ static void fr_network_evfilt_user(UNUSED int kq, struct kevent const *kev, void
  *
  * @param[in] ctx the talloc ctx
  * @param[in] logger the destination for all logging messages
- * @param[in] num_transports the number of transports in the transport array
- * @param[in] transports the array of transports.
  * @return
  *	- NULL on error
  *	- fr_network_t on success
  */
-fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_log_t *logger, uint32_t num_transports, fr_transport_t **transports)
+fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_log_t *logger)
 {
 	fr_network_t *nr;
-
-	if (!num_transports || !transports) {
-		fr_strerror_printf("Must specify a transport");
-		return NULL;
-	}
 
 	nr = talloc_zero(ctx, fr_network_t);
 	if (!nr) {
@@ -616,9 +606,6 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_log_t *logger, uint32_t num_
 		goto nomem;
 	}
 
-	nr->num_transports = num_transports;
-	nr->transports = transports;
-
 	return nr;
 }
 
@@ -677,7 +664,7 @@ void fr_network(fr_network_t *nr)
 		int num_events;
 //		fr_time_t now;
 		fr_channel_data_t *cd;
-		fr_network_socket_t *s;
+		fr_packet_io_t *io;
 
 		/*
 		 *	There are runnable requests.  We still service
@@ -707,14 +694,14 @@ void fr_network(fr_network_t *nr)
 		cd = fr_heap_pop(nr->replies);
 		if (!cd) continue;
 
+		io = &cd->io;
+
 		/*
 		 *	@todo - call transport "recv reply"
 		 */
-		s = cd->io_ctx;
+		io->transport->write(io->fd, io->ctx, cd->m.data, cd->m.data_size);
 
-		s->transport->write(s->fd, s->ctx, cd->m.data, cd->m.data_size);
-
-		fr_log(nr->log, L_DBG, "handling reply to socket %p", cd->io_ctx);
+		fr_log(nr->log, L_DBG, "handling reply to socket %d", cd->io.fd);
 		fr_message_done(&cd->m);
 	}
 }

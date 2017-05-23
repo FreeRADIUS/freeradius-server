@@ -27,7 +27,7 @@
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/io/transport.h>
 #include <freeradius-devel/rad_assert.h>
-
+#include "proto_radius.h"
 
 typedef struct fr_packet_ctx_t {
 	int		sockfd;
@@ -103,7 +103,6 @@ static ssize_t mod_write(int sockfd, void *ctx, uint8_t *buffer, size_t buffer_l
  */
 static fr_transport_t proto_radius_udp_transport = {
 	.name			= "radius_udp",
-	.id			= 1,		/* @todo fix me later */
 	.default_message_size	= 4096,
 	.read			= mod_read,
 	.write			= mod_write,

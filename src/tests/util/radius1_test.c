@@ -147,14 +147,11 @@ static size_t test_nak(void const *packet_ctx, uint8_t *const packet, size_t pac
 
 static fr_transport_t transport = {
 	.name = "worker-test",
-	.id = 1,
 	.default_message_size = 4096,
 	.decode = test_decode,
 	.encode = test_encode,
 	.nak = test_nak,
 };
-
-static fr_transport_t *transports = &transport;
 
 static void *worker_thread(void *arg)
 {
@@ -169,7 +166,7 @@ static void *worker_thread(void *arg)
 	ctx = talloc_init("worker");
 	if (!ctx) _exit(1);
 
-	worker = sw->worker = fr_worker_create(ctx, &default_log, 1, &transports);
+	worker = sw->worker = fr_worker_create(ctx, &default_log);
 	if (!worker) {
 		fprintf(stderr, "radius_test: Failed to create the worker\n");
 		exit(1);
@@ -188,7 +185,7 @@ static void *worker_thread(void *arg)
 
 static void send_reply(int sockfd, fr_channel_data_t *reply)
 {
-	fr_packet_ctx_t *pc = reply->packet_ctx;
+	fr_packet_ctx_t *pc = reply->io.ctx;
 
 	MPRINT1("Master got reply %d size %zd\n", pc->id, reply->m.data_size);
 
@@ -347,6 +344,11 @@ static void master_process(TALLOC_CTX *ctx)
 			rad_assert(pc != NULL);
 			pc->salen = sizeof(pc->src);
 
+			cd->io.fd = -1;
+			cd->io.priority = 0;
+			cd->io.ctx = pc;
+			cd->io.transport = &transport;
+
 			data_size = recvfrom(sockfd, cd->m.data, cd->m.rb_size, 0,
 					     (struct sockaddr *) &pc->src, &pc->salen);
 			MPRINT1("Master got packet size %zd\n", data_size);
@@ -396,7 +398,6 @@ static void master_process(TALLOC_CTX *ctx)
 			MPRINT1("Master sending packet size %zd to worker %d\n", cd->m.data_size, which_worker);
 			cd->m.when = fr_time();
 
-			cd->packet_ctx = pc;
 			pc->id = packet[1];
 			memcpy(pc->vector, packet + 4, 16);
 

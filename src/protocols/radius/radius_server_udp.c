@@ -155,7 +155,6 @@ static ssize_t mod_write(int sockfd, void *ctx, uint8_t *buffer, size_t buffer_l
 extern fr_transport_t fr_radius_server_udp;
 fr_transport_t fr_radius_server_udp = {
 	.name			= "radius_server_udp",
-	.id			= 1,		/* @todo fix me later */
 	.default_message_size	= 4096,
 	.read			= mod_read,
 	.write			= mod_write,
