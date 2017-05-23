@@ -70,7 +70,7 @@ typedef enum {
 #endif
 	UNLANG_TYPE_POLICY,			//!< Policy section.
 	UNLANG_TYPE_XLAT_INLINE,		//!< xlat statement, inline in "unlang"
-	UNLANG_TYPE_RESUME,			//!< where to resume something.
+	UNLANG_TYPE_MODULE_RESUME,		//!< where to resume processing within a module.
 	UNLANG_TYPE_MAX
 } unlang_type_t;
 
@@ -97,10 +97,10 @@ typedef enum {
 
 /** A node in a graph of #unlang_op_t (s) that we execute
  *
- * The interpreter acts like a turing machine, with the nodes forming the tape and the
- * #unlang_action_t the instructions.
+ * The interpreter acts like a turing machine, with #unlang_t nodes forming the tape
+ * and the #unlang_action_t the instructions.
  *
- * This is the parent 'class' for multiple unlang node specialisations.
+ * This is the parent 'class' for multiple #unlang_t node specialisations.
  * The #unlang_t struct is listed first in the specialisation so that we can cast between
  * parent/child classes without knowledge of the layout of the structures.
  *
@@ -153,7 +153,7 @@ typedef struct {
  * required for resumption is satisfied, it also specifies the ctx for that function,
  * which represents the internal state of the module at the time of yielding.
  *
- * If you want normal coroutine behaviour... ctx is arbitrary, and could include a state enum,
+ * If you want normal coroutine behaviour... ctx is arbitrary and could include a state enum,
  * in which case the function pointer could be the same as the function that yielded, and something
  * like Duff's device could be used to jump back to the yield point.
  *
@@ -161,15 +161,23 @@ typedef struct {
  * without being straightjacketed.
  */
 typedef struct {
-	unlang_module_call_t	module;		//!< Module call that returned #RLM_MODULE_YIELD.
-	module_thread_instance_t *thread;	//!< thread-local data for this module
-	fr_unlang_resume_t	callback;	//!< Function the yielding module indicated should
-						//!< be called when the request could be resumed.
-	fr_unlang_action_t	action_callback;  //!< Function the yielding module indicated should
-						//!< be called when the request is poked via an action
-	void const		*ctx;		//!< Context data for the callback.  Usually represents
-						//!< the module's internal state at the time of yielding.
-} unlang_resumption_t;
+	unlang_module_call_t		module;		//!< Module call that returned #RLM_MODULE_YIELD.
+							//!< This field must be first, as it includes an
+							//!< #unlang_t field which must be at the start
+							//!< of every unlang_* structure.
+
+	module_thread_instance_t 	*thread;	//!< thread-local data for this module.
+	fr_unlang_module_resume_t	callback;	//!< Function the yielding module indicated should
+							//!< be called when the request could be resumed.
+
+	fr_unlang_action_t		action_callback;  //!< Function the yielding module indicated should
+							//!< be called when the request is poked via an action
+							//!< may be removed in future.
+
+
+	void const			*ctx;		//!< Context data for the callback.  Usually represents
+							//!< the module's internal state at the time of yielding.
+} unlang_module_resumption_t;
 
 /** A naked xlat
  *
@@ -181,6 +189,10 @@ typedef struct {
 	char			*xlat_name;
 } unlang_xlat_inline_t;
 
+/** A module stack entry
+ *
+ * Represents a single module call.
+ */
 typedef struct {
 	module_thread_instance_t *thread;	//!< thread-local data for this module
 } unlang_stack_entry_modcall_t;
@@ -208,7 +220,7 @@ typedef struct {
 
 /** Our interpreter stack, as distinct from the C stack
  *
- * We don't call the modules recursively.  Instead we iterate over a list of unlang_t and
+ * We don't call the modules recursively.  Instead we iterate over a list of #unlang_t and
  * and manage the call stack ourselves.
  *
  * After looking at various green thread implementations, it was decided that using the existing
@@ -221,18 +233,27 @@ typedef struct {
 typedef struct {
 	rlm_rcode_t		result;
 	int			priority;
-	unlang_type_t		unwind;		//!< Unwind to this one if it exists.
+	unlang_type_t		unwind;				//!< Unwind to this one if it exists.
 	bool			do_next_sibling;
 	bool			was_if;
 	bool			if_taken;
 	bool			resume;
 	bool			top_frame;
-	unlang_t		*instruction;
+	unlang_t		*instruction;			//!< The unlang node we're evaluating.
 
+	/** Stack frame specialisations
+	 *
+	 * These store extra (mutable) state data, for the immutable (#unlang_t)
+	 * instruction.  Instructions can't be used to store data because they
+	 * might be shared between multiple threads.
+	 *
+	 * Which stack_entry specialisation to use is determined by the
+	 * instruction->type.
+	 */
 	union {
-		unlang_stack_entry_modcall_t	modcall;
-		unlang_stack_entry_foreach_t	foreach;
-		unlang_stack_entry_redundant_t	redundant;
+		unlang_stack_entry_modcall_t	modcall;	//!< State for a modcall.
+		unlang_stack_entry_foreach_t	foreach;	//!< Foreach iterator state.
+		unlang_stack_entry_redundant_t	redundant;	//!< Redundant section state.
 	};
 } unlang_stack_frame_t;
 
@@ -264,8 +285,13 @@ extern unlang_op_t unlang_ops[];
 
 extern char const *const comp2str[];
 
-/* Simple conversions: unlang_module_call_t and unlang_group_t are subclasses of unlang_t,
- * so we often want to go back and forth between them. */
+/** @name Conversion functions for converting #unlang_t to its specialisations
+ *
+ * Simple conversions: #unlang_module_call_t and #unlang_group_t are subclasses of #unlang_t,
+ * so we often want to go back and forth between them.
+ *
+ * @{
+ */
 static inline unlang_module_call_t *unlang_generic_to_module_call(unlang_t *p)
 {
 	rad_assert(p->type == UNLANG_TYPE_MODULE_CALL);
@@ -300,16 +326,17 @@ static inline unlang_t *unlang_xlat_inline_to_generic(unlang_xlat_inline_t *p)
 	return (unlang_t *)p;
 }
 
-static inline unlang_resumption_t *unlang_generic_to_resumption(unlang_t *p)
+static inline unlang_module_resumption_t *unlang_generic_to_module_resumption(unlang_t *p)
 {
-	rad_assert(p->type == UNLANG_TYPE_RESUME);
-	return talloc_get_type_abort(p, unlang_resumption_t);
+	rad_assert(p->type == UNLANG_TYPE_MODULE_RESUME);
+	return talloc_get_type_abort(p, unlang_module_resumption_t);
 }
 
-static inline unlang_t *unlang_resumption_to_generic(unlang_resumption_t *p)
+static inline unlang_t *unlang_module_resumption_to_generic(unlang_module_resumption_t *p)
 {
 	return (unlang_t *)p;
 }
+/* @} **/
 
 #ifdef __cplusplus
 }

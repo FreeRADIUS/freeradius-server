@@ -154,7 +154,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_delay(void *instance, UNUSED void *threa
 	/*
 	 *	Yield, setting delay_return as the next state
 	 */
-	return unlang_yield(request, delay_return, NULL, NULL);
+	return unlang_module_yield(request, delay_return, NULL, NULL);
 }
 
 extern rad_module_t rlm_delay;
