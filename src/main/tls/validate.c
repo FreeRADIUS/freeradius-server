@@ -93,16 +93,12 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	 *	and the application specific data stored into the SSL object.
 	 */
 	ssl = X509_STORE_CTX_get_ex_data(x509_ctx, SSL_get_ex_data_X509_STORE_CTX_idx());
-	conf = (fr_tls_conf_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
-	rad_assert(conf != NULL);
+	conf = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF), fr_tls_conf_t);
+	tls_session = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TLS_SESSION), tls_session_t);
+	request = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST), REQUEST);
 
-	tls_session = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TLS_SESSION);
-	rad_assert(tls_session != NULL);
-
-	request = (REQUEST *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
-	rad_assert(request != NULL);
-
-	identity = (char **)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_IDENTITY);
+	identity = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_IDENTITY);
+	if (identity) identity = talloc_get_type_abort(identity, char *);
 
 	if (RDEBUG_ENABLED3) {
 		STACK_OF(X509)	*our_chain = X509_STORE_CTX_get_chain(x509_ctx);
