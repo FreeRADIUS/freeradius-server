@@ -178,7 +178,7 @@ static int compile_type(proto_radius_ctx_t *ctx, CONF_SECTION *server, CONF_SECT
 }
 
 
-static int open_transport(proto_radius_ctx_t *ctx, fr_schedule_t *handle, CONF_SECTION *server, CONF_SECTION *cs, char const *value,
+static int open_transport(proto_radius_ctx_t *ctx, UNUSED fr_schedule_t *handle, CONF_SECTION *server, CONF_SECTION *cs, char const *value,
 			  bool verify_config)
 {
 	fr_transport_t *transport;
@@ -215,6 +215,11 @@ static int open_transport(proto_radius_ctx_t *ctx, fr_schedule_t *handle, CONF_S
 	ctx->transport.decode = mod_decode;
 	ctx->transport.encode = mod_encode;
 
+
+	/*
+	 *	Don't do this until we actually have a scheduler
+	 */
+#if 0
 	/*
 	 *	Add it to the scheduler.  Note that we add our context
 	 *	instead of the transport one, as we need to swap out
@@ -226,6 +231,7 @@ static int open_transport(proto_radius_ctx_t *ctx, fr_schedule_t *handle, CONF_S
 		talloc_free(ctx);
 		return -1;
 	}
+#endif
 
 	/*
 	 *	Remember that we loaded the transport library in the server.
