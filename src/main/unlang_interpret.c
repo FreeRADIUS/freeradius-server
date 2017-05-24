@@ -1745,7 +1745,7 @@ void unlang_resumable(REQUEST *request)
  * @param[in] request		The current request.
  * @param[in] action		to signal.
  */
-void unlang_action(REQUEST *request, fr_state_action_t action)
+void unlang_signal(REQUEST *request, fr_state_action_t action)
 {
 	unlang_stack_frame_t		*frame;
 	unlang_stack_t			*stack = request->stack;
@@ -1759,11 +1759,11 @@ void unlang_action(REQUEST *request, fr_state_action_t action)
 	rad_assert(frame->instruction->type == UNLANG_TYPE_MODULE_RESUME);
 
 	mr = unlang_generic_to_module_resumption(frame->instruction);
-	if (!mr->action_callback) return;
+	if (!mr->signal_callback) return;
 
 	memcpy(&mutable, &mr->ctx, sizeof(mutable));
 
-	mr->action_callback(request, mr->module.module_instance->data, mr->thread, mutable, action);
+	mr->signal_callback(request, mr->module.module_instance->data, mr->thread, mutable, action);
 }
 
 /** Yield a request back to the interpreter from within a module
@@ -1778,12 +1778,12 @@ void unlang_action(REQUEST *request, fr_state_action_t action)
  *
  * @param[in] request		The current request.
  * @param[in] callback		to call on unlang_resumable().
- * @param[in] action_callback	to call on unlang_action().
+ * @param[in] signal_callback	to call on unlang_action().
  * @param[in] ctx		to pass to the callbacks.
  * @return always returns RLM_MODULE_YIELD.
  */
 rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_module_resume_t callback,
-				fr_unlang_action_t action_callback, void const *ctx)
+				fr_unlang_action_t signal_callback, void const *ctx)
 {
 	unlang_stack_frame_t		*frame;
 	unlang_stack_t			*stack = request->stack;
@@ -1805,7 +1805,7 @@ rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_module_resume_t call
 	mr->thread = frame->modcall.thread;
 	mr->module.self.type = UNLANG_TYPE_MODULE_RESUME;
 	mr->callback = callback;
-	mr->action_callback = action_callback;
+	mr->signal_callback = signal_callback;
 	mr->thread = module_thread_instance_find(sp->module_instance);
 	mr->ctx = ctx;
 

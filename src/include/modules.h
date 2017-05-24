@@ -292,7 +292,7 @@ int		unlang_event_fd_delete(REQUEST *request, void const *ctx, int fd);
 
 void		unlang_resumable(REQUEST *request);
 
-void		unlang_action(REQUEST *request, fr_state_action_t action);
+void		unlang_signal(REQUEST *request, fr_state_action_t action);
 
 rlm_rcode_t	unlang_module_yield(REQUEST *request, fr_unlang_module_resume_t callback, fr_unlang_action_t action_callback,
 			     void const *ctx);
