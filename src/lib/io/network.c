@@ -413,6 +413,54 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
 	}
 }
 
+
+/** Write packets to the network.
+ *
+ * @param el the event list
+ * @param sockfd the socket which is ready to write
+ * @param ctx the network socket context.
+ */
+static void fr_network_write(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
+{
+	fr_network_socket_t *s = ctx;
+
+	if (s->transport->flush(sockfd, s->ctx) < 0) {
+		s->transport->error(sockfd, s->ctx);
+		talloc_free(s);
+	}
+}
+
+/** Handle errors for a socket.
+ *
+ * @param el the event list
+ * @param sockfd the socket which has a fatal error.
+ * @param ctx the network socket context.
+ */
+static void fr_network_error(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
+{
+	fr_network_socket_t *s = ctx;
+
+	s->transport->error(sockfd, s->ctx);
+	talloc_free(s);
+}
+
+static int _network_socket_free(fr_network_socket_t *s)
+{
+	fr_network_t *nr = talloc_parent(s);
+
+	fr_event_fd_delete(nr->el, s->fd);
+
+	fr_dlist_remove(&s->entry);
+
+	if (s->transport->close) {
+		s->transport->close(s->fd, s->ctx);
+	} else {
+		close(s->fd);
+	}
+
+	return 0;
+}
+
 /** Handle a network control message callback for a new socket
  *
  * @param[in] ctx the network
@@ -424,6 +472,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 {
 	fr_network_t *nr = ctx;
 	fr_network_socket_t *s;
+	fr_event_fd_handler_t write_fn, error_fn;
 
 	rad_assert(data_size == sizeof(*s));
 
@@ -432,6 +481,9 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 	s = talloc(nr, fr_network_socket_t);
 	rad_assert(s != NULL);
 	memcpy(s, data, sizeof(*s));
+
+	FR_DLIST_INIT(s->entry);
+	talloc_set_destructor(s, _network_socket_free);
 
 #define MIN_MESSAGES (8)
 
@@ -450,9 +502,15 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 		_exit(1);
 	}
 
-	if (fr_event_fd_insert(nr->el, s->fd, fr_network_read, NULL, NULL, s) < 0) {
+	write_fn = error_fn = NULL;
+
+	if (s->transport->flush) write_fn = fr_network_write;
+
+	if (s->transport->error) error_fn = fr_network_error;
+
+	if (fr_event_fd_insert(nr->el, s->fd, fr_network_read, write_fn, error_fn, s) < 0) {
 		fr_log(nr->log, L_ERR, "Failed adding new socket to event loop: %s", fr_strerror());
-		close(s->fd);
+		talloc_free(s);
 		return;
 	}
 
@@ -717,10 +775,13 @@ void fr_network(fr_network_t *nr)
 		if (rcode < 0) {
 			fr_dlist_t *entry;
 
-			(void) io->transport->error(io->fd, io->ctx);
-			(void) io->transport->close(io->fd, io->ctx);
-
-			(void) fr_event_fd_delete(nr->el, io->fd);
+			/*
+			 *	Tell the socket that there was an error.
+			 *
+			 *	Don't call close, as that will be done
+			 *	in the destructor.
+			 */
+			if (io->transport->error) io->transport->error(io->fd, io->ctx);
 
 			/*
 			 *	Find the socket which matches this
@@ -738,7 +799,6 @@ void fr_network(fr_network_t *nr)
 
 				s = fr_ptr_to_type(fr_network_socket_t, entry, entry);
 				if (s->fd == io->fd) {
-					fr_dlist_remove(&s->entry);
 					talloc_free(s);
 					break;
 				}
