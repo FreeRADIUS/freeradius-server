@@ -663,6 +663,7 @@ void fr_network(fr_network_t *nr)
 		bool wait_for_event;
 		int num_events;
 //		fr_time_t now;
+		ssize_t rcode;
 		fr_channel_data_t *cd;
 		fr_packet_io_t *io;
 
@@ -697,11 +698,26 @@ void fr_network(fr_network_t *nr)
 		io = &cd->io;
 
 		/*
-		 *	@todo - call transport "recv reply"
+		 *	@todo - call transport "recv reply".  And if
+		 *	the reply is a NAK, don't write it to the
+		 *	network.
 		 */
-		io->transport->write(io->fd, io->ctx, cd->m.data, cd->m.data_size);
+		rcode = io->transport->write(io->fd, io->ctx, cd->m.data, cd->m.data_size);
+		if (rcode < 0) {
+			(void) io->transport->error(io->fd, io->ctx);
+			(void) io->transport->close(io->fd, io->ctx);
 
-		fr_log(nr->log, L_DBG, "handling reply to socket %d", cd->io.fd);
+			(void) fr_event_fd_delete(nr->el, io->fd);
+			// find and delete the socket
+			
+			continue;
+		}
+
+		if ((size_t) rcode < cd->m.data_size) {
+			// call write function again at some later date.
+		}
+
+		fr_log(nr->log, L_DBG, "Sending reply to socket %d", cd->io.fd);
 		fr_message_done(&cd->m);
 	}
 }
