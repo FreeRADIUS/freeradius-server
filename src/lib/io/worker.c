@@ -470,8 +470,6 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 }
 
 
-#define fr_ptr_to_type(TYPE, MEMBER, PTR) (TYPE *) (((char *)PTR) - offsetof(TYPE, MEMBER))
-
 /** Check timeouts on the various queues
  *
  *  This function checks and enforces timeouts on the multiple worker
