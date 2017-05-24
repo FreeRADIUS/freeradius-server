@@ -41,8 +41,6 @@ RCSID("$Id$")
 #include <pthread.h>
 #endif
 
-#define MPRINT1 if (debug_lvl) printf
-
 static int		debug_lvl = 0;
 
 static void NEVER_RETURNS usage(void)
