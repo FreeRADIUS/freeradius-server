@@ -1,7 +1,8 @@
 TARGETNAME	:= @targetname@
 
 ifneq "$(TARGETNAME)" ""
-TARGET		:= $(TARGETNAME).a
+#TARGET		:= $(TARGETNAME).a
+TARGET		:=
 endif
 
 SOURCES		:= $(TARGETNAME).c mruby.c
