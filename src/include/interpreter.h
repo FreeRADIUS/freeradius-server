@@ -228,18 +228,18 @@ typedef struct {
  *
  * Each request as an unlang interpreter stack associated with it, which represents its progress
  * through the server.  Because the interpreter stack is distinct from the C stack, we can have
- * a single system thread, have many thousands of pending requests
+ * a single system thread with many thousands of pending requests
  */
 typedef struct {
+	unlang_t		*instruction;			//!< The unlang node we're evaluating.
 	rlm_rcode_t		result;
 	int			priority;
 	unlang_type_t		unwind;				//!< Unwind to this one if it exists.
-	bool			do_next_sibling;
-	bool			was_if;
-	bool			if_taken;
-	bool			resume;
-	bool			top_frame;
-	unlang_t		*instruction;			//!< The unlang node we're evaluating.
+	bool			do_next_sibling : 1;
+	bool			was_if : 1;
+	bool			if_taken : 1;
+	bool			resume : 1;
+	bool			top_frame : 1;
 
 	/** Stack frame specialisations
 	 *
