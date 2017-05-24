@@ -43,7 +43,7 @@ typedef struct fr_network_worker_t {
 } fr_network_worker_t;
 
 typedef struct fr_network_socket_t {
-	int			heap_id;		//!< for the heap
+	fr_dlist_t		entry;
 
 	int			fd;			//!< the file descriptor
 	void			*ctx;			//!< transport context
@@ -74,20 +74,9 @@ struct fr_network_t {
 	uint64_t		num_requests;		//!< number of requests we sent
 	uint64_t		num_replies;		//!< number of replies we received
 
-	fr_heap_t		*sockets;		//!< list of sockets we're managing
+	fr_dlist_t		sockets;		//!< list of sockets we're managing
 };
 
-
-static int socket_cmp(void const *one, void const *two)
-{
-	fr_network_socket_t const *a = one;
-	fr_network_socket_t const *b = two;
-
-	if (a->fd < b->fd) return -1;
-	if (a->fd > b->fd) return +1;
-
-	return 0;
-}
 
 static int worker_cmp(void const *one, void const *two)
 {
@@ -353,26 +342,52 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
 	rad_assert(cd->m.rb_size >= 256);
 
 	/*
-	 *	@todo - transport->read_request
+	 *	Read data from the network.
+	 *
+	 *	Return of 0 means "no data", which is fine for UDP.
+	 *	For TCP, if an underlying read() on the TCP socket
+	 *	returns 0, (which signals that the FD is no longer
+	 *	usable) this function should return -1, so that the
+	 *	network side knows that it needs to close the
+	 *	connection.
 	 */
 	data_size = s->transport->read(sockfd, s->ctx, cd->m.data, cd->m.rb_size);
 	if (data_size == 0) {
 		fr_log(nr->log, L_DBG_ERR, "got no data from transport read");
 
+		/*
+		 *	Cache the message for later.  This is
+		 *	important for stream sockets, which can do
+		 *	partial reads into the current buffer.  We
+		 *	need to be able to give the same buffer back
+		 *	to the stream socket for subsequent reads.
+		 *
+		 *	The only worry with this approach is that slow
+		 *	stream sockets MAY do "head of line" blocking
+		 *	on the ring buffers.
+		 *
+		 *	i.e. if the transport read returns 0, we MAY
+		 *	want to copy the data somewhere else.  OR, we
+		 *	may want to relax our promises to the
+		 *	transport, and demand that the transport not
+		 *	write to the message buffer until it has an
+		 *	entire packet.
+		 */
 		s->cd = cd;
-
-		// UDP: ignore
-		// TCP: close socket
-		_exit(1);
+		return;
 	}
 
+	/*
+	 *	Error: close the connection, and remove the
+	 *	fr_transport_t.
+	 */
 	if (data_size < 0) {
-		fr_log(nr->log, L_DBG_ERR, "error from transport read");
+		fr_log(nr->log, L_DBG_ERR, "error from transport read on socket %d", s->fd);
 
-		/*
-		 *	@todo - handle errors via transport callback
-		 */
-		_exit(1);
+		(void) fr_event_fd_delete(nr->el, s->fd);
+		fr_dlist_remove(&s->entry);
+		talloc_free(s);
+		return;
 	}
 	s->cd = NULL;
 
@@ -441,7 +456,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 		return;
 	}
 
-	(void) fr_heap_insert(nr->sockets, s);
+	fr_dlist_insert_head(&nr->sockets, &s->entry);
 
 	fr_log(nr->log, L_DBG, "Using new socket with FD %d", s->fd);
 }
@@ -582,11 +597,7 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_log_t *logger)
 	/*
 	 *	Create the various heaps.
 	 */
-	nr->sockets = fr_heap_create(socket_cmp, offsetof(fr_network_socket_t, heap_id));
-	if (!nr->sockets) {
-		talloc_free(nr);
-		goto nomem;
-	}
+	FR_DLIST_INIT(nr->sockets);
 
 	nr->replies = fr_heap_create(reply_cmp, offsetof(fr_channel_data_t, channel.heap_id));
 	if (!nr->replies) {
@@ -704,11 +715,34 @@ void fr_network(fr_network_t *nr)
 		 */
 		rcode = io->transport->write(io->fd, io->ctx, cd->m.data, cd->m.data_size);
 		if (rcode < 0) {
+			fr_dlist_t *entry;
+
 			(void) io->transport->error(io->fd, io->ctx);
 			(void) io->transport->close(io->fd, io->ctx);
 
 			(void) fr_event_fd_delete(nr->el, io->fd);
-			// find and delete the socket
+
+			/*
+			 *	Find the socket which matches this
+			 *	file descriptor.
+			 *
+			 *	@todo - put them into a binary tree
+			 *	based on FD.  That way we can handle
+			 *	tens of thousands without walking a
+			 *	linked list.
+			 */
+			for (entry = FR_DLIST_FIRST(nr->sockets);
+			     entry != NULL;
+			     entry = FR_DLIST_NEXT(nr->sockets, entry)) {
+				fr_network_socket_t *s;
+
+				s = fr_ptr_to_type(fr_network_socket_t, entry, entry);
+				if (s->fd == io->fd) {
+					fr_dlist_remove(&s->entry);
+					talloc_free(s);
+					break;
+				}
+			}
 			
 			continue;
 		}
