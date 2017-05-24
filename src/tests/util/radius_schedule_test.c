@@ -73,7 +73,7 @@ static fr_transport_final_t test_process(REQUEST *request, fr_transport_action_t
 	return FR_TRANSPORT_REPLY;
 }
 
-static int test_decode(void const *ctx, uint8_t *const data, size_t data_len, REQUEST *request)
+static int test_decode(void *ctx, uint8_t *const data, size_t data_len, REQUEST *request)
 {
 	fr_packet_ctx_t const *pc = ctx;
 
@@ -86,7 +86,7 @@ static int test_decode(void const *ctx, uint8_t *const data, size_t data_len, RE
 	return 0;
 }
 
-static ssize_t test_encode(void const *ctx, REQUEST *request, uint8_t *buffer, size_t buffer_len)
+static ssize_t test_encode(void *ctx, REQUEST *request, uint8_t *buffer, size_t buffer_len)
 {
 	FR_MD5_CTX context;
 	fr_packet_ctx_t const *pc = ctx;

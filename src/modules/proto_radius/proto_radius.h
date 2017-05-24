@@ -27,6 +27,10 @@
 typedef struct proto_radius_ctx_t {
 	int			sockfd;				//!< sanity checks
 	void			*io_ctx;			//!< for the underlying IO layer
+
+	char const		*secret;			//!< shared secret
+	size_t			secret_len;			//!< length of the shared secret
+
 	fr_transport_t		transport;
 	fr_transport_process_t	process[FR_MAX_PACKET_CODE];
 } proto_radius_ctx_t;

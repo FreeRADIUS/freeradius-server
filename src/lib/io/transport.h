@@ -85,7 +85,7 @@ typedef struct fr_transport_t fr_transport_t;
  *	- <0 on error
  *	- 0 on success
  */
-typedef int (*fr_transport_decode_t)(void const *transport_ctx, uint8_t *const data, size_t data_len, REQUEST *request);
+typedef int (*fr_transport_decode_t)(void *transport_ctx, uint8_t *const data, size_t data_len, REQUEST *request);
 
 /** Encode data from a REQUEST into a raw packet.
  *
@@ -105,7 +105,7 @@ typedef int (*fr_transport_decode_t)(void const *transport_ctx, uint8_t *const d
  *	- <0 on error
  *	- >=0 length of the encoded data in the buffer, will be <=buffer_len
  */
-typedef ssize_t (*fr_transport_encode_t)(void const *transport_ctx, REQUEST *request, uint8_t *buffer, size_t buffer_len);
+typedef ssize_t (*fr_transport_encode_t)(void *transport_ctx, REQUEST *request, uint8_t *buffer, size_t buffer_len);
 
 /** NAK a packet.
  *

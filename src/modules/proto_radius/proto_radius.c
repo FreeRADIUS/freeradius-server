@@ -31,7 +31,7 @@
 /** Decode the packet, and set the request->process function
  *
  */
-static int mod_decode(UNUSED void const *packet_ctx, uint8_t *const data, UNUSED size_t data_len, UNUSED REQUEST *request)
+static int mod_decode(UNUSED void *transport_ctx, uint8_t *const data, UNUSED size_t data_len, UNUSED REQUEST *request)
 {
 //	proto_radius_ctx_t *ctx = NULL;
 
@@ -45,7 +45,7 @@ static int mod_decode(UNUSED void const *packet_ctx, uint8_t *const data, UNUSED
 	return 0;
 }
 
-static ssize_t mod_encode(UNUSED void const *packet_ctx, UNUSED REQUEST *request, UNUSED uint8_t *buffer, UNUSED size_t buffer_len)
+static ssize_t mod_encode(UNUSED void *transport_ctx, UNUSED REQUEST *request, UNUSED uint8_t *buffer, UNUSED size_t buffer_len)
 {
 	return -1;
 }

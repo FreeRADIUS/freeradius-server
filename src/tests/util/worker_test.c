@@ -82,7 +82,7 @@ static fr_transport_final_t test_process(REQUEST *request, fr_transport_action_t
 	return FR_TRANSPORT_REPLY;
 }
 
-static int test_decode(void const *packet_ctx, uint8_t *const data, size_t data_len, REQUEST *request)
+static int test_decode(void *packet_ctx, uint8_t *const data, size_t data_len, REQUEST *request)
 {
 	uint32_t number;
 
@@ -98,7 +98,7 @@ static int test_decode(void const *packet_ctx, uint8_t *const data, size_t data_
 	return 0;
 }
 
-static ssize_t test_encode(void const *packet_ctx, REQUEST *request, uint8_t *const data, size_t data_len)
+static ssize_t test_encode(void *packet_ctx, REQUEST *request, uint8_t *const data, size_t data_len)
 {
 	MPRINT1("\t\tENCODE >>> request %zd - data %p %p size %zd\n", request->number, packet_ctx, data, data_len);
 
