@@ -362,16 +362,9 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
 		 *	need to be able to give the same buffer back
 		 *	to the stream socket for subsequent reads.
 		 *
-		 *	The only worry with this approach is that slow
-		 *	stream sockets MAY do "head of line" blocking
-		 *	on the ring buffers.
-		 *
-		 *	i.e. if the transport read returns 0, we MAY
-		 *	want to copy the data somewhere else.  OR, we
-		 *	may want to relax our promises to the
-		 *	transport, and demand that the transport not
-		 *	write to the message buffer until it has an
-		 *	entire packet.
+		 *	Since we have a message set for each
+		 *	fr_transport_socket_t, no "head of line"
+		 *	blocking issues can happen for stream sockets.
 		 */
 		s->cd = cd;
 		return;
