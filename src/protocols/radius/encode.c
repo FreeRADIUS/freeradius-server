@@ -689,6 +689,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		len = vp->vp_ip.prefix >> 3;		/* Convert bits to whole bytes */
 		memcpy(buffer, vp->vp_ipv6addr, len);	/* Only copy the minimum number of address bytes required */
 		len += 2;				/* Reserved and prefix bytes */
+		data = buffer;
 		break;
 
 	/*
@@ -698,6 +699,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		buffer[0] = 0;
 		buffer[1] = vp->vp_ip.prefix;
 		memcpy(buffer, &vp->vp_ipv4addr, sizeof(vp->vp_ipv4addr));
+		data = buffer;
 		break;
 
 	/*
