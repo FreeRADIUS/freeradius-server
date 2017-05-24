@@ -117,8 +117,10 @@ static int mod_open(TALLOC_CTX *ctx, int *sockfd_p, void **transport_ctx, fr_tra
 	int rcode;
 	uint16_t port;
 	uint32_t recv_buff;
+#if 0
 	char const *interface;
 	CONF_PAIR *cp;
+#endif
 	CONF_SECTION *cs;
 	fr_ipaddr_t ipaddr;
 
@@ -171,6 +173,7 @@ static int mod_open(TALLOC_CTX *ctx, int *sockfd_p, void **transport_ctx, fr_tra
 		FR_INTEGER_BOUND_CHECK("recv_buff", recv_buff, <=, INT_MAX);
 	}
 
+#if 0
 	/*
 	 *	If we can bind to interfaces, do so,
 	 *	else don't.
@@ -185,6 +188,7 @@ static int mod_open(TALLOC_CTX *ctx, int *sockfd_p, void **transport_ctx, fr_tra
 		}
 		interface = value;
 	}
+#endif
 
 	if (cs != listen) cf_log_info(cs, "    }");
 
