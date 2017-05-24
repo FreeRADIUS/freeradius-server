@@ -123,6 +123,15 @@ data Framed-IP-Address = 0.0.0.127
 attribute Framed-IP-Address = 127.0
 data Framed-IP-Address = 127.0.0.0
 
+#
+#  The encoder should work...
+#
+encode -
+data 08 06 7f 00 00 00
+
+decode -
+data Framed-IP-Address = 127.0.0.0
+
 attribute Framed-IPv6-Prefix = ::1
 data Framed-IPv6-Prefix = ::1/128
 
