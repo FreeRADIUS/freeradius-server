@@ -170,7 +170,7 @@ typedef struct {
 	fr_unlang_module_resume_t	callback;	//!< Function the yielding module indicated should
 							//!< be called when the request could be resumed.
 
-	fr_unlang_action_t		action_callback;  //!< Function the yielding module indicated should
+	fr_unlang_action_t		signal_callback;  //!< Function the yielding module indicated should
 							//!< be called when the request is poked via an action
 							//!< may be removed in future.
 

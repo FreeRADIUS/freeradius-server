@@ -1469,8 +1469,10 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 typedef struct unlang_event_t {
 	REQUEST				*request;			//!< Request this event pertains to.
 	int				fd;				//!< File descriptor to wait on.
-	fr_unlang_timeout_callback_t	timeout_callback;		//!< Function to call on timeout.
-	fr_unlang_fd_callback_t		fd_callback;			//!< Function to call when FD is readable.
+	fr_unlang_timeout_callback_t	timeout;			//!< Function to call on timeout.
+	fr_unlang_fd_callback_t		fd_read;			//!< Function to call when FD is readable.
+	fr_unlang_fd_callback_t		fd_write;			//!< Function to call when FD is writeable.
+	fr_unlang_fd_callback_t		fd_error;			//!< Function to call when FD has errored.
 	void const			*inst;				//!< Module instance to pass to callbacks.
 	void				*thread;			//!< Thread specific module instance.
 	void const			*ctx;				//!< ctx data to pass to callbacks.
@@ -1513,17 +1515,17 @@ static void unlang_event_timeout_handler(UNUSED fr_event_list_t *el, struct time
 	memcpy(&mutable_ctx, &ev->ctx, sizeof(mutable_ctx));
 	memcpy(&mutable_inst, &ev->inst, sizeof(mutable_inst));
 
-	ev->timeout_callback(ev->request, mutable_inst, ev->thread, mutable_ctx, now);
+	ev->timeout(ev->request, mutable_inst, ev->thread, mutable_ctx, now);
 	talloc_free(ev);
 }
 
-/** Call the callback registered for an I/O event
+/** Call the callback registered for a read I/O event
  *
  * @param[in] el	containing the event (not passed to the callback).
  * @param[in] fd	the I/O event occurred on.
  * @param[in] ctx	unlang_event_t structure holding callbacks.
  */
-static void unlang_event_fd_handler(UNUSED fr_event_list_t *el, int fd, void *ctx)
+static void unlang_event_fd_read_handler(UNUSED fr_event_list_t *el, int fd, void *ctx)
 {
 	unlang_event_t *ev = talloc_get_type_abort(ctx, unlang_event_t);
 	void *mutable_ctx;
@@ -1534,7 +1536,47 @@ static void unlang_event_fd_handler(UNUSED fr_event_list_t *el, int fd, void *ct
 	memcpy(&mutable_ctx, &ev->ctx, sizeof(mutable_ctx));
 	memcpy(&mutable_inst, &ev->inst, sizeof(mutable_inst));
 
-	ev->fd_callback(ev->request, mutable_inst, ev->thread, mutable_ctx, fd);
+	ev->fd_read(ev->request, mutable_inst, ev->thread, mutable_ctx, fd);
+}
+
+/** Call the callback registered for a write I/O event
+ *
+ * @param[in] el	containing the event (not passed to the callback).
+ * @param[in] fd	the I/O event occurred on.
+ * @param[in] ctx	unlang_event_t structure holding callbacks.
+ */
+static void unlang_event_fd_write_handler(UNUSED fr_event_list_t *el, int fd, void *ctx)
+{
+	unlang_event_t *ev = talloc_get_type_abort(ctx, unlang_event_t);
+	void *mutable_ctx;
+	void *mutable_inst;
+
+	rad_assert(ev->fd == fd);
+
+	memcpy(&mutable_ctx, &ev->ctx, sizeof(mutable_ctx));
+	memcpy(&mutable_inst, &ev->inst, sizeof(mutable_inst));
+
+	ev->fd_write(ev->request, mutable_inst, ev->thread, mutable_ctx, fd);
+}
+
+/** Call the callback registered for an I/O error event
+ *
+ * @param[in] el	containing the event (not passed to the callback).
+ * @param[in] fd	the I/O event occurred on.
+ * @param[in] ctx	unlang_event_t structure holding callbacks.
+ */
+static void unlang_event_fd_error_handler(UNUSED fr_event_list_t *el, int fd, void *ctx)
+{
+	unlang_event_t *ev = talloc_get_type_abort(ctx, unlang_event_t);
+	void *mutable_ctx;
+	void *mutable_inst;
+
+	rad_assert(ev->fd == fd);
+
+	memcpy(&mutable_ctx, &ev->ctx, sizeof(mutable_ctx));
+	memcpy(&mutable_inst, &ev->inst, sizeof(mutable_inst));
+
+	ev->fd_error(ev->request, mutable_inst, ev->thread, mutable_ctx, fd);
 }
 
 /** Set a timeout for the request.
@@ -1564,7 +1606,8 @@ int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t call
 
 	frame = &stack->frame[stack->depth];
 
-	rad_assert(frame->instruction->type == UNLANG_TYPE_MODULE_CALL);
+	rad_assert((frame->instruction->type == UNLANG_TYPE_MODULE_CALL) ||
+		   (frame->instruction->type == UNLANG_TYPE_MODULE_RESUME));
 	sp = unlang_generic_to_module_call(frame->instruction);
 
 	ev = talloc_zero(request, unlang_event_t);
@@ -1572,7 +1615,7 @@ int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t call
 
 	ev->request = request;
 	ev->fd = -1;
-	ev->timeout_callback = callback;
+	ev->timeout = callback;
 	ev->inst = sp->module_instance->data;
 	ev->thread = frame->modcall.thread;
 	ev->ctx = ctx;
@@ -1590,59 +1633,6 @@ int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t call
 	return 0;
 }
 
-/** Set a callback for the request.
- *
- * Used when a module needs to read from an FD.  Typically the callback is set, and then the
- * module returns unlang_module_yield().
- *
- * @note The callback is automatically removed on unlang_resumable().
- *
- * @param[in] request		The current request.
- * @param[in] callback		to call.
- * @param[in] ctx		for the callback.
- * @param[in] fd		to watch.  When it becomes readable the request is marked as resumable,
- *				with the callback being called by the worker responsible for processing
- *				the request.
- * @return
- *	- 0 on success.
- *	- <0 on error.
- */
-int unlang_event_fd_readable_add(REQUEST *request, fr_unlang_fd_callback_t callback,
-				 void const *ctx, int fd)
-{
-	unlang_stack_frame_t	*frame;
-	unlang_stack_t		*stack = request->stack;
-	unlang_event_t		*ev;
-	unlang_module_call_t	*sp;
-
-	rad_assert(stack->depth > 0);
-
-	frame = &stack->frame[stack->depth];
-
-	rad_assert(frame->instruction->type == UNLANG_TYPE_MODULE_CALL);
-	sp = unlang_generic_to_module_call(frame->instruction);
-
-	ev = talloc_zero(request, unlang_event_t);
-	if (!ev) return -1;
-
-	ev->request = request;
-	ev->fd = fd;
-	ev->fd_callback = callback;
-	ev->inst = sp->module_instance->data;
-	ev->thread = frame->modcall.thread;
-	ev->ctx = ctx;
-
-	if (fr_event_fd_insert(request->el, fd, unlang_event_fd_handler, NULL, NULL, ev) < 0) {
-		talloc_free(ev);
-		return -1;
-	}
-
-	(void) request_data_add(request, ctx, fd, ev, true, false, false);
-
-	talloc_set_destructor(ev, _unlang_event_free);
-	return 0;
-}
-
 /** Delete a previously set timeout callback
  *
  * param[in] request the request
@@ -1656,6 +1646,78 @@ int unlang_event_timeout_delete(REQUEST *request, void const *ctx)
 	if (!ev) return -1;
 
 	talloc_free(ev);
+	return 0;
+}
+
+/** Set a callback for the request.
+ *
+ * Used when a module needs to read from an FD.  Typically the callback is set, and then the
+ * module returns unlang_module_yield().
+ *
+ * @note The callback is automatically removed on unlang_resumable().
+ *
+ * @param[in] request		The current request.
+ * @param[in] read		callback.  Used for receiving and demuxing/decoding data.
+ * @param[in] write		callback.  Used for writing and encoding data.
+ *				Where a 3rd party library is used, this should be the function
+ *				issuing queries, and writing data to the socket.  This should
+ *				not be done in the module itself.
+ *				This allows write operations to be retried in some instances,
+ *				and means if the write buffer is full, the request is kept in
+ *				a suspended state.
+ * @param[in] error		callback.  If the fd enters an error state.  Should cleanup any
+ *				handles wrapping the file descriptor, and any outstanding requests.
+ * @param[in] ctx		for the callback.
+ * @param[in] fd		to watch.
+ * @return
+ *	- 0 on success.
+ *	- <0 on error.
+ */
+int unlang_event_fd_add(REQUEST *request,
+			fr_unlang_fd_callback_t read,
+			fr_unlang_fd_callback_t write,
+			fr_unlang_fd_callback_t error,
+			void const *ctx, int fd)
+{
+	unlang_stack_frame_t	*frame;
+	unlang_stack_t		*stack = request->stack;
+	unlang_event_t		*ev;
+	unlang_module_call_t	*sp;
+
+	rad_assert(stack->depth > 0);
+
+	frame = &stack->frame[stack->depth];
+
+	rad_assert((frame->instruction->type == UNLANG_TYPE_MODULE_CALL) ||
+		   (frame->instruction->type == UNLANG_TYPE_MODULE_RESUME));
+	sp = unlang_generic_to_module_call(frame->instruction);
+
+	ev = talloc_zero(request, unlang_event_t);
+	if (!ev) return -1;
+
+	ev->request = request;
+	ev->fd = fd;
+	ev->fd_read = read;
+	ev->fd_write = write;
+	ev->fd_error = error;
+	ev->inst = sp->module_instance->data;
+	ev->thread = frame->modcall.thread;
+	ev->ctx = ctx;
+
+	/*
+	 *	Register for events on the file descriptor
+	 */
+	if (fr_event_fd_insert(request->el, fd,
+			       ev->fd_read ? unlang_event_fd_read_handler : NULL,
+			       ev->fd_write ? unlang_event_fd_write_handler : NULL,
+			       ev->fd_error ? unlang_event_fd_error_handler: NULL, ev) < 0) {
+		talloc_free(ev);
+		return -1;
+	}
+
+	(void) request_data_add(request, ctx, fd, ev, true, false, false);
+	talloc_set_destructor(ev, _unlang_event_free);
+
 	return 0;
 }
 
