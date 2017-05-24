@@ -81,12 +81,6 @@ post-auth {
 	-sql
 
 	#
-	#  Instead of sending the query to the SQL server,
-	#  write it into a log file.
-	#
-#	sql_log
-
-	#
 	#  Un-comment the following if you want to modify the user's object
 	#  in LDAP after a successful login.
 	#

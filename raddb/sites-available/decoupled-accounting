@@ -119,12 +119,6 @@ accounting {
 	#  See "Accounting queries" in sql.conf
 #	sql
 
-	#
-	#  Instead of sending the query to the SQL server,
-	#  write it into a log file.
-	#
-#	sql_log
-
 	#  Cisco VoIP specific bulk accounting
 #	pgsql-voip
 
