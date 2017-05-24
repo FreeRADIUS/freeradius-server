@@ -409,94 +409,6 @@ static void encode_tunnel_password(uint8_t *out, ssize_t *outlen,
 	}
 }
 
-
-/** Converts vp_data to network byte order
- *
- *  ONLY for simple data types.  Complex data types are not allowed.
- *
- * @param out where to write the pointer to the value.
- * @param outlen length of the output buffer
- * @param vp to get the value from.
- * @return
- *	- The length of the value.
- *	- -1 on failure.
- */
-ssize_t fr_radius_encode_value_hton(uint8_t *out, size_t outlen, VALUE_PAIR const *vp)
-{
-	size_t		len;
-
-	VERIFY_VP(vp);
-
-	len = fr_radius_attr_len(vp);
-
-	/*
-	 *	Mash outlen down to size.
-	 */
-	if (outlen > len) outlen = len;
-
-	switch (vp->vp_type) {
-	case FR_TYPE_STRING:
-	case FR_TYPE_OCTETS:
-		memcpy(out, vp->vp_ptr, outlen);
-		return outlen;
-
-	/*
-	 *	All of these values are at the same location.
-	 */
-	case FR_TYPE_IFID:
-	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_IPV6_ADDR:
-	case FR_TYPE_IPV6_PREFIX:
-	case FR_TYPE_IPV4_PREFIX:
-	case FR_TYPE_ABINARY:
-	case FR_TYPE_ETHERNET:
-		memcpy(out, &vp->data.datum, outlen);
-		break;
-
-	case FR_TYPE_BOOL:
-		out[0] = vp->vp_bool ? 1 : 0;
-		break;
-
-	case FR_TYPE_UINT8:
-		out[0] = vp->vp_uint8;
-		break;
-
-	case FR_TYPE_INT8:
-		out[0] = vp->vp_int8;
-		break;
-
-	case FR_TYPE_UINT16:
-	case FR_TYPE_UINT32:
-	case FR_TYPE_UINT64:
-	case FR_TYPE_INT16:
-	case FR_TYPE_INT32:
-	case FR_TYPE_INT64:
-	case FR_TYPE_DATE:
-	{
-		fr_value_box_t network;
-
-		fr_value_box_hton(&network, &vp->data);
-		memcpy(out, (uint8_t *)&network.datum, len);
-	}
-		break;
-
-	case FR_TYPE_TIMEVAL:
-	case FR_TYPE_FLOAT32:
-	case FR_TYPE_FLOAT64:
-	case FR_TYPE_DATE_MILLISECONDS:
-	case FR_TYPE_DATE_MICROSECONDS:
-	case FR_TYPE_DATE_NANOSECONDS:
-	case FR_TYPE_SIZE:
-	case FR_TYPE_NON_VALUES:
-		fr_strerror_printf("Cannot encode data for VALUE_PAIR type %i", vp->vp_type);
-		return -1;
-
-	/* Don't add default */
-	}
-
-	return outlen;
-}
-
 static ssize_t encode_struct(uint8_t *out, size_t outlen,
 			      fr_dict_attr_t const **tlv_stack, unsigned int depth,
 			      vp_cursor_t *cursor, void *encoder_ctx)
@@ -754,21 +666,45 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 
 	case FR_TYPE_STRING:
 		data = vp->vp_ptr;
-		if (!data) {
-			fr_strerror_printf("ERROR: Cannot encode NULL data");
-			return -1;
-		}
 		break;
 
-		/*
-		 *	Simple data types use the common encoder.
-		 */
-	case FR_TYPE_IFID:
-	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_IPV6_ADDR:
-	case FR_TYPE_IPV6_PREFIX:
-	case FR_TYPE_IPV4_PREFIX:
 	case FR_TYPE_ABINARY:
+		data = vp->vp_filter;
+		break;
+
+	/*
+	 *	Common encoder might add scope byte
+	 */
+	case FR_TYPE_IPV6_ADDR:
+		memcpy(buffer, vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
+		data = buffer;
+		break;
+
+	/*
+	 *	Common encoder doesn't add reserved byte
+	 */
+	case FR_TYPE_IPV6_PREFIX:
+		buffer[0] = 0;
+		buffer[1] = vp->vp_ip.prefix;
+		len = vp->vp_ip.prefix >> 3;		/* Convert bits to whole bytes */
+		memcpy(buffer, vp->vp_ipv6addr, len);	/* Only copy the minimum number of address bytes required */
+		len += 2;				/* Reserved and prefix bytes */
+		break;
+
+	/*
+	 *	Common encoder doesn't add reserved byte
+	 */
+	case FR_TYPE_IPV4_PREFIX:
+		buffer[0] = 0;
+		buffer[1] = vp->vp_ip.prefix;
+		memcpy(buffer, &vp->vp_ipv4addr, sizeof(vp->vp_ipv4addr));
+		break;
+
+	/*
+	 *	Simple data types use the common encoder.
+	 */
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IFID:
 	case FR_TYPE_ETHERNET:	/* just in case */
 	case FR_TYPE_BOOL:
 	case FR_TYPE_UINT8:
@@ -780,7 +716,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case FR_TYPE_INT32:
 	case FR_TYPE_INT64:
 	case FR_TYPE_DATE:
-		len = fr_radius_encode_value_hton(buffer, sizeof(buffer), vp);
+		len = fr_value_box_to_network(NULL, buffer, sizeof(buffer), &vp->data);
 		if (len < 0) return -1;
 		data = buffer;
 		break;

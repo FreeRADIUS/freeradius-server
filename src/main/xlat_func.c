@@ -529,9 +529,9 @@ static ssize_t xlat_string(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			   REQUEST *request, char const *fmt)
 {
-	ssize_t ret;
-	VALUE_PAIR *vp;
-	uint8_t buffer[64];
+	ssize_t		ret;
+	VALUE_PAIR	*vp;
+	uint8_t		buffer[64];
 
 	while (isspace((int) *fmt)) fmt++;
 
@@ -560,10 +560,8 @@ static ssize_t xlat_string(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		break;
 	}
 
-	ret = fr_radius_encode_value_hton(buffer, sizeof(buffer), vp);
-	if (ret < 0) {
-		return ret;
-	}
+	ret = fr_value_box_to_network(NULL, buffer, sizeof(buffer), &vp->data);
+	if (ret < 0) return ret;
 
 	return fr_snprint(*out, outlen, (char const *) buffer, ret, '\0');
 }

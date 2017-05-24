@@ -1059,6 +1059,9 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 	}
 
 	switch (value->type) {
+	case FR_TYPE_IPV4_ADDR:
+		memcpy(dst, (uint8_t const *)&value->vb_ip.addr.v4.s_addr, sizeof(value->vb_ip.addr.v4.s_addr));
+		break;
 	/*
 	 *	Needs special mangling
 	 */
@@ -1086,7 +1089,7 @@ ssize_t fr_value_box_to_network(size_t *need, uint8_t *dst, size_t dst_len, fr_v
 	/*
 	 *	Already in network byte-order
 	 */
-	case FR_TYPE_IPV4_ADDR:
+
 	case FR_TYPE_IFID:
 	case FR_TYPE_ETHERNET:
 	case FR_TYPE_UINT8:
