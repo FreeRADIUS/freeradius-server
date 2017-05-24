@@ -218,6 +218,12 @@ typedef struct {
 	unlang_t		*found;
 } unlang_stack_entry_redundant_t;
 
+typedef union {
+	unlang_stack_entry_modcall_t	modcall;	//!< State for a modcall.
+	unlang_stack_entry_foreach_t	foreach;	//!< Foreach iterator state.
+	unlang_stack_entry_redundant_t	redundant;	//!< Redundant section state.
+} unlang_stack_entry_t;
+
 /** Our interpreter stack, as distinct from the C stack
  *
  * We don't call the modules recursively.  Instead we iterate over a list of #unlang_t and

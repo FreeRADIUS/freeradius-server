@@ -110,7 +110,26 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 
 	request->module = NULL;
 	request->component = "<core>";
+
+#ifdef HAVE_TALLOC_POOLED_OBJECT
+	/*
+	 *	If we have talloc_pooled_object allocate the
+	 *	stack as a combined chunk/pool, with memory
+	 *	to hold at mutable data for at least a quarter
+	 *	of the maximum number of stack frames.
+	 *
+	 *	Having a dedicated pool for mutable stack data
+	 *	means we don't have memory fragmentations issues
+	 *	as we would if request were used as the pool.
+	 *
+	 *	This number is pretty arbitrary, but it seems
+	 *	like too low level to make into a tuneable.
+	 */
+	request->stack = talloc_pooled_object(request, unlang_stack_t, UNLANG_STACK_MAX / 4,
+					      sizeof(unlang_stack_entry_t));
+#else
 	request->stack = talloc_zero(request, unlang_stack_t);
+#endif
 	request->heap_id = -1;
 
 	request->state_ctx = talloc_init("session-state");
