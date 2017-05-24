@@ -31,15 +31,20 @@
 /** Decode the packet, and set the request->process function
  *
  */
-static int mod_decode(UNUSED void *transport_ctx, uint8_t *const data, UNUSED size_t data_len, UNUSED REQUEST *request)
+static int mod_decode(void *transport_ctx, uint8_t *const data, UNUSED size_t data_len, REQUEST *request)
 {
-//	proto_radius_ctx_t *ctx = NULL;
+	proto_radius_ctx_t *ctx = transport_ctx;
 
-	// verify the signature
-
-	// decode the packet
+	if (fr_radius_verify(data, NULL, (uint8_t const *) ctx->secret, ctx->secret_len) < 0) {
+		return -1;
+	}
 
 	rad_assert(data[0] < FR_MAX_PACKET_CODE);
+
+	if (fr_radius_packet_decode(request->packet, NULL, ctx->secret) < 0) {
+		return -1;
+	}
+
 //	request->async_process = ctx->process[data[0]];
 
 	return 0;
