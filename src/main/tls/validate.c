@@ -73,7 +73,8 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	VALUE_PAIR	*cert_vps = NULL;
 	vp_cursor_t	cursor;
 
-	char		**identity;
+	char const	**identity_p;
+	char const	*identity = NULL;
 #ifdef HAVE_OPENSSL_OCSP_H
 	X509		*issuer_cert;
 #endif
@@ -97,8 +98,8 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	tls_session = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TLS_SESSION), tls_session_t);
 	request = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST), REQUEST);
 
-	identity = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_IDENTITY);
-	if (identity) identity = talloc_get_type_abort(identity, char *);
+	identity_p = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_IDENTITY);
+	if (identity_p && *identity_p) identity = talloc_get_type_abort(*identity_p, char);
 
 	if (RDEBUG_ENABLED3) {
 		STACK_OF(X509)	*our_chain = X509_STORE_CTX_get_chain(x509_ctx);
