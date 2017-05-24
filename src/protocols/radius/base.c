@@ -168,6 +168,15 @@ char const *fr_packet_codes[FR_MAX_PACKET_CODE] = {
 	"IP-Address-Release",			//!< 50
 };
 
+/*
+ *	For request packets which have the Request Authenticator being
+ *	all zeros.  We need to decode attributes using a Request
+ *	Authenticator of all zeroes, but the actual Request
+ *	Authenticator contains the signature of the packet, so we
+ *	can't use that.
+ */
+static uint8_t nullvector[AUTH_VECTOR_LEN] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
 /** Return the on-the-wire length of an attribute value
  *
  * @param[in] vp to return the length of.
@@ -807,4 +816,168 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 	}
 
 	return 0;
+}
+
+/** Encode VPS into a raw RADIUS packet.
+ *
+ */
+ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *original,
+			 char const *secret, UNUSED size_t secret_len, int code, int id, VALUE_PAIR *vps)
+{
+	uint8_t			*ptr;
+	int			total_length;
+	int			len;
+	VALUE_PAIR const	*vp;
+	vp_cursor_t		cursor;
+	fr_radius_ctx_t		packet_ctx;
+
+	packet_ctx.secret = secret;
+	packet_ctx.vector = packet + 4;
+
+	/*
+	 *	The RADIUS header can't do more than 64K of data.
+	 */
+	if (packet_len > 65535) packet_len = 65535;
+
+	switch (code) {
+	case FR_CODE_ACCESS_REQUEST:
+		break;
+
+	case FR_CODE_ACCESS_ACCEPT:
+	case FR_CODE_ACCESS_REJECT:
+	case FR_CODE_ACCESS_CHALLENGE:
+#ifdef WITH_ACCOUNTING
+	case FR_CODE_ACCOUNTING_RESPONSE:
+#endif
+#ifdef WITH_COA
+	case FR_CODE_COA_ACK:
+	case FR_CODE_COA_NAK:
+	case FR_CODE_DISCONNECT_ACK:
+	case FR_CODE_DISCONNECT_NAK:
+#endif
+		if (!original) {
+			fr_strerror_printf("Cannot encode response without request");
+			return -1;
+		}
+		packet_ctx.vector = original + 4;
+		break;
+
+#ifdef WITH_ACCOUNTING
+	case FR_CODE_ACCOUNTING_REQUEST:
+		packet_ctx.vector = nullvector;
+		break;
+#endif
+
+#ifdef WITH_COA
+	case FR_CODE_COA_REQUEST:
+	case FR_CODE_DISCONNECT_REQUEST:
+		packet_ctx.vector = nullvector;
+		break;
+#endif
+
+	default:
+		fr_strerror_printf("Cannot encode unknown packet code %d", code);
+		return -1;
+	}
+
+	packet[0] = code;
+	packet[1] = id;
+	packet[2] = 0;
+	packet[3] = total_length = RADIUS_HDR_LEN;
+	memcpy(packet + 4, packet_ctx.vector, AUTH_VECTOR_LEN);
+
+	/*
+	 *	Load up the configuration values for the user
+	 */
+	ptr = packet + RADIUS_HDR_LEN;
+
+	/*
+	 *	Loop over the reply attributes for the packet.
+	 */
+	fr_pair_cursor_init(&cursor, &vps);
+	while ((vp = fr_pair_cursor_current(&cursor))) {
+		size_t		last_len, room;
+		char const	*last_name = NULL;
+
+		VERIFY_VP(vp);
+
+		room = (packet + packet_len) - ptr;
+
+		/*
+		 *	Ignore non-wire attributes, but allow extended
+		 *	attributes.
+		 *
+		 *	@fixme We should be able to get rid of this check
+		 *	and just look at da->flags.internal
+		 */
+		if (vp->da->flags.internal || ((vp->da->vendor == 0) && (vp->da->attr >= 256))) {
+#ifndef NDEBUG
+			/*
+			 *	Permit the admin to send BADLY formatted
+			 *	attributes with a debug build.
+			 */
+			if (vp->da->attr == FR_RAW_ATTRIBUTE) {
+				if (vp->vp_length > room) {
+					len = room;
+				} else {
+					len = vp->vp_length;
+				}
+
+				memcpy(ptr, vp->vp_octets, len);
+				fr_pair_cursor_next(&cursor);
+				goto next;
+			}
+#endif
+			fr_pair_cursor_next(&cursor);
+			continue;
+		}
+
+		/*
+		 *	Set the Message-Authenticator to the correct
+		 *	length and initial value.
+		 */
+		if (!vp->da->vendor && (vp->da->attr == FR_MESSAGE_AUTHENTICATOR)) {
+			last_len = 16;
+		} else {
+			last_len = vp->vp_length;
+		}
+		last_name = vp->da->name;
+
+		if (room <= 2) break;
+
+		len = fr_radius_encode_pair(ptr, room, &cursor, &packet_ctx);
+		if (len < 0) return -1;
+
+		/*
+		 *	Failed to encode the attribute, likely because
+		 *	the packet is full.
+		 */
+		if (len == 0) {
+			if (last_len != 0) {
+				fr_strerror_printf("WARNING: Failed encoding attribute %s\n", last_name);
+				break;
+			} else {
+				fr_strerror_printf("WARNING: Skipping zero-length attribute %s\n", last_name);
+			}
+		}
+
+#ifndef NDEBUG
+	next:			/* Used only for Raw-Attribute */
+#endif
+		ptr += len;
+		total_length += len;
+	} /* done looping over all attributes */
+
+	/*
+	 *	Fill in the rest of the fields, and copy the data over
+	 *	from the local stack to the newly allocated memory.
+	 *
+	 *	Yes, all this 'memcpy' is slow, but it means
+	 *	that we only allocate the minimum amount of
+	 *	memory for a request.
+	 */
+	packet[2] = (total_length >> 8) & 0xff;
+	packet[3] = total_length & 0xff;
+
+	return total_length;
 }

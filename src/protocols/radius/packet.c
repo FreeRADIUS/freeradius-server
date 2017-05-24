@@ -43,15 +43,6 @@ typedef struct radius_packet_t {
 	uint8_t	data[1];
 } radius_packet_t;
 
-/*
- *	For request packets which have the Request Authenticator being
- *	all zeros.  We need to decode attributes using a Request
- *	Authenticator of all zeroes, but the actual Request
- *	Authenticator contains the signature of the packet, so we
- *	can't use that.
- */
-static uint8_t nullvector[AUTH_VECTOR_LEN] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-
 
 /*
  *	Some messages get printed out only in debugging mode.
@@ -63,162 +54,32 @@ static uint8_t nullvector[AUTH_VECTOR_LEN] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
  *
  */
 int fr_radius_packet_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
-		     char const *secret)
+			    char const *secret)
 {
-	radius_packet_t		*hdr;
-	uint8_t			*ptr;
-	uint16_t		total_length;
-	int			len;
-	VALUE_PAIR const	*vp;
-	vp_cursor_t		cursor;
-	fr_radius_ctx_t		packet_ctx;
+	uint8_t const *original_data;
+	ssize_t total_length;
 
 	/*
 	 *	A 4K packet, aligned on 64-bits.
 	 */
-	uint64_t	data[MAX_PACKET_LEN / sizeof(uint64_t)];
+	uint8_t	data[MAX_PACKET_LEN];
 
-	packet_ctx.secret = secret;
-	packet_ctx.vector = packet->vector;
-
-	switch (packet->code) {
-	case FR_CODE_ACCESS_REQUEST:
-		break;
-
-	case FR_CODE_ACCESS_ACCEPT:
-	case FR_CODE_ACCESS_REJECT:
-	case FR_CODE_ACCESS_CHALLENGE:
-#ifdef WITH_ACCOUNTING
-	case FR_CODE_ACCOUNTING_RESPONSE:
-#endif
-#ifdef WITH_COA
-	case FR_CODE_COA_ACK:
-	case FR_CODE_COA_NAK:
-	case FR_CODE_DISCONNECT_ACK:
-	case FR_CODE_DISCONNECT_NAK:
-#endif
-		if (!original) {
-			fr_strerror_printf("Cannot encode response without request");
-			return -1;
-		}
-		packet_ctx.vector = original->vector;
-		break;
-
-#ifdef WITH_ACCOUNTING
-	case FR_CODE_ACCOUNTING_REQUEST:
-		packet_ctx.vector = nullvector;
-		break;
-#endif
-
-#ifdef WITH_COA
-	case FR_CODE_COA_REQUEST:
-	case FR_CODE_DISCONNECT_REQUEST:
-		packet_ctx.vector = nullvector;
-		break;
-#endif
-
-	default:
-		fr_strerror_printf("Cannot decode unknown packet code %d", packet->code);
-		return -1;
+	if (original) {
+		original_data = original->data;
+	} else {
+		original_data = NULL;
 	}
 
 	/*
-	 *	Use memory on the stack, until we know how
-	 *	large the packet will be.
+	 *	This has to be initialized for Access-Request packets
 	 */
-	hdr = (radius_packet_t *) data;
+	memcpy(data + 4, packet->vector, sizeof(packet->vector));
 
-	/*
-	 *	Build standard header
-	 */
-	hdr->code = packet->code;
-	hdr->id = packet->id;
-
-	memcpy(hdr->vector, packet->vector, sizeof(hdr->vector));
-
-	total_length = RADIUS_HDR_LEN;
-
-	/*
-	 *	Load up the configuration values for the user
-	 */
-	ptr = hdr->data;
-
-	/*
-	 *	Loop over the reply attributes for the packet.
-	 */
-	fr_pair_cursor_init(&cursor, &packet->vps);
-	while ((vp = fr_pair_cursor_current(&cursor))) {
-		size_t		last_len, room;
-		char const	*last_name = NULL;
-
-		VERIFY_VP(vp);
-
-		room = ((uint8_t *)data) + sizeof(data) - ptr;
-
-		/*
-		 *	Ignore non-wire attributes, but allow extended
-		 *	attributes.
-		 *
-		 *	@fixme We should be able to get rid of this check
-		 *	and just look at da->flags.internal
-		 */
-		if (vp->da->flags.internal || ((vp->da->vendor == 0) && (vp->da->attr >= 256))) {
-#ifndef NDEBUG
-			/*
-			 *	Permit the admin to send BADLY formatted
-			 *	attributes with a debug build.
-			 */
-			if (vp->da->attr == FR_RAW_ATTRIBUTE) {
-				if (vp->vp_length > room) {
-					len = room;
-				} else {
-					len = vp->vp_length;
-				}
-
-				memcpy(ptr, vp->vp_octets, len);
-				fr_pair_cursor_next(&cursor);
-				goto next;
-			}
-#endif
-			fr_pair_cursor_next(&cursor);
-			continue;
-		}
-
-		/*
-		 *	Set the Message-Authenticator to the correct
-		 *	length and initial value.
-		 */
-		if (!vp->da->vendor && (vp->da->attr == FR_MESSAGE_AUTHENTICATOR)) {
-			last_len = 16;
-		} else {
-			last_len = vp->vp_length;
-		}
-		last_name = vp->da->name;
-
-		if (room <= 2) break;
-
-		len = fr_radius_encode_pair(ptr, room, &cursor, &packet_ctx);
-		if (len < 0) return -1;
-
-		/*
-		 *	Failed to encode the attribute, likely because
-		 *	the packet is full.
-		 */
-		if (len == 0) {
-			if (last_len != 0) {
-				fr_strerror_printf("WARNING: Failed encoding attribute %s\n", last_name);
-				break;
-			} else {
-				fr_strerror_printf("WARNING: Skipping zero-length attribute %s\n", last_name);
-			}
-		}
-
-#ifndef NDEBUG
-	next:			/* Used only for Raw-Attribute */
-#endif
-		ptr += len;
-		total_length += len;
-	} /* done looping over all attributes */
+	total_length = fr_radius_encode(data, sizeof(data), original_data, secret, talloc_array_length(secret) - 1,
+					packet->code, packet->id, packet->vps);
+	if (total_length < 0) {
+		return -1;
+	}
 
 	/*
 	 *	Fill in the rest of the fields, and copy the data over
@@ -228,18 +89,14 @@ int fr_radius_packet_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original
 	 *	that we only allocate the minimum amount of
 	 *	memory for a request.
 	 */
-	packet->data_len = total_length;
+	packet->data_len = (size_t) total_length;
 	packet->data = talloc_array(packet, uint8_t, packet->data_len);
 	if (!packet->data) {
 		fr_strerror_printf("Out of memory");
 		return -1;
 	}
 
-	memcpy(packet->data, hdr, packet->data_len);
-	hdr = (radius_packet_t *) packet->data;
-
-	total_length = htons(total_length);
-	memcpy(hdr->length, &total_length, sizeof(total_length));
+	memcpy(packet->data, data, packet->data_len);
 
 	return 0;
 }
