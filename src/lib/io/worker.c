@@ -587,7 +587,7 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 		final = request->process_async(request, FR_TRANSPORT_ACTION_DONE);
 
 		if (final == FR_TRANSPORT_DONE) {
-			fr_dlist_remove(&worker->waiting_to_die);
+			fr_dlist_remove(&request->time_order);
 
 			fr_log(worker->log, L_DBG, "(%zd) finally finished", request->number);
 
