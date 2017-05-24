@@ -746,9 +746,10 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	}
 
 	/*
-	 *	No data: skip it.
+	 *	No data: don't encode the value.  The type and length should still
+	 *	be written.
 	 */
-	if (len == 0) {
+	if (!data || (len == 0)) {
 		vp = next_encodable(cursor);
 		fr_proto_tlv_stack_build(tlv_stack, vp ? vp->da : NULL);
 		return 0;
