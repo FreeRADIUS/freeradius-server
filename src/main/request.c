@@ -126,7 +126,7 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 	 *	like too low level to make into a tuneable.
 	 */
 	request->stack = talloc_pooled_object(request, unlang_stack_t, UNLANG_STACK_MAX / 4,
-					      sizeof(unlang_stack_entry_t));
+					      sizeof(unlang_stack_state_t));
 #else
 	request->stack = talloc_zero(request, unlang_stack_t);
 #endif

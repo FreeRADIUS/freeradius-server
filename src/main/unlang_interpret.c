@@ -79,6 +79,7 @@ static inline void unlang_push(unlang_stack_t *stack, unlang_t *program, rlm_rco
 	next->was_if = false;
 	next->if_taken = false;
 	next->resume = false;
+	next->state = NULL;
 }
 
 static inline void unlang_pop(unlang_stack_t *stack)
@@ -798,6 +799,7 @@ static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stac
 	unlang_module_call_t		*sp;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
+	unlang_stack_state_modcall_t	*modcall_state;
 
 	/*
 	 *	Process a stand-alone child, and fall through
@@ -811,30 +813,36 @@ static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stac
 	 */
 	if (request->master_state == REQUEST_STOP_PROCESSING) return UNLANG_ACTION_STOP_PROCESSING;
 
-	RDEBUG4("[%i] %s - %s (%s)", stack->depth, __FUNCTION__, sp->module_instance->name, sp->module_instance->module->name);
+	RDEBUG4("[%i] %s - %s (%s)", stack->depth, __FUNCTION__,
+		sp->module_instance->name, sp->module_instance->module->name);
 
+	/*
+	 *	Return administratively configured return code
+	 */
 	if (sp->module_instance->force) {
 		request->rcode = sp->module_instance->code;
 		goto done;
 	}
 
+	frame->state = modcall_state = talloc_zero(stack, unlang_stack_state_modcall_t);
+
 	/*
 	 *	Grab the thread/module specific data if any exists.
 	 */
-	frame->modcall.thread = module_thread_instance_find(sp->module_instance);
-	rad_assert(frame->modcall.thread != NULL);
+	modcall_state->thread = module_thread_instance_find(sp->module_instance);
+	rad_assert(modcall_state->thread != NULL);
 
 	/*
 	 *	For logging unresponsive children.
 	 */
 	request->module = sp->module_instance->name;
-	frame->modcall.thread->total_calls++;
+	modcall_state->thread->total_calls++;
 
 	/*
 	 *	Lock is noop unless instance->mutex is set.
 	 */
 	safe_lock(sp->module_instance);
-	request->rcode = sp->method(sp->module_instance->data, frame->modcall.thread->data, request);
+	request->rcode = sp->method(sp->module_instance->data, modcall_state->thread->data, request);
 	safe_unlock(sp->module_instance);
 
 	request->module = NULL;
@@ -849,7 +857,7 @@ static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stac
 	}
 
 	if (*presult == RLM_MODULE_YIELD) {
-		frame->modcall.thread->active_callers++;
+		modcall_state->thread->active_callers++;
 	} else {
 		*priority = instruction->actions[*presult];
 	}
@@ -969,6 +977,8 @@ static unlang_action_t unlang_module_resumption(REQUEST *request, unlang_stack_t
 	unlang_t			*instruction = frame->instruction;
 	unlang_module_resumption_t	*mr = unlang_generic_to_module_resumption(instruction);
 	unlang_module_call_t		*sp;
+	unlang_stack_state_modcall_t	*modcall_state = talloc_get_type_abort(frame->state,
+									       unlang_stack_state_modcall_t);
 	void 				*mutable;
 
 	sp = &mr->module;
@@ -1003,7 +1013,7 @@ static unlang_action_t unlang_module_resumption(REQUEST *request, unlang_stack_t
 	}
 
 	if (*presult != RLM_MODULE_YIELD) {
-		frame->modcall.thread->active_callers--;
+		modcall_state->thread->active_callers--;
 		*priority = instruction->actions[*presult];
 	}
 
@@ -1600,6 +1610,8 @@ int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t call
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_event_t			*ev;
 	unlang_module_call_t		*sp;
+	unlang_stack_state_modcall_t	*modcall_state = talloc_get_type_abort(frame->state,
+									       unlang_stack_state_modcall_t);
 
 	rad_assert(stack->depth > 0);
 	rad_assert((frame->instruction->type == UNLANG_TYPE_MODULE_CALL) ||
@@ -1613,7 +1625,7 @@ int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t call
 	ev->fd = -1;
 	ev->timeout = callback;
 	ev->inst = sp->module_instance->data;
-	ev->thread = frame->modcall.thread;
+	ev->thread = modcall_state->thread;
 	ev->ctx = ctx;
 
 	if (fr_event_timer_insert(request->el, unlang_event_timeout_handler, ev, when, &(ev->ev)) < 0) {
@@ -1679,6 +1691,8 @@ int unlang_event_fd_add(REQUEST *request,
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_event_t			*ev;
 	unlang_module_call_t		*sp;
+	unlang_stack_state_modcall_t	*modcall_state = talloc_get_type_abort(frame->state,
+									       unlang_stack_state_modcall_t);
 
 	rad_assert(stack->depth > 0);
 
@@ -1695,7 +1709,7 @@ int unlang_event_fd_add(REQUEST *request,
 	ev->fd_write = write;
 	ev->fd_error = error;
 	ev->inst = sp->module_instance->data;
-	ev->thread = frame->modcall.thread;
+	ev->thread = modcall_state->thread;
 	ev->ctx = ctx;
 
 	/*
@@ -1845,6 +1859,8 @@ rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_module_resume_t call
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_module_resumption_t	*mr;
 	unlang_module_call_t		*sp;
+	unlang_stack_state_modcall_t	*modcall_state = talloc_get_type_abort(frame->state,
+									       unlang_stack_state_modcall_t);
 
 	rad_assert(stack->depth > 0);
 
@@ -1856,7 +1872,7 @@ rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_module_resume_t call
 	rad_assert(mr != NULL);
 
 	memcpy(&mr->module, frame->instruction, sizeof(mr->module));
-	mr->thread = frame->modcall.thread;
+	mr->thread = modcall_state->thread;
 	mr->module.self.type = UNLANG_TYPE_MODULE_RESUME;
 	mr->callback = callback;
 	mr->signal_callback = signal_callback;

@@ -195,7 +195,7 @@ typedef struct {
  */
 typedef struct {
 	module_thread_instance_t *thread;	//!< thread-local data for this module
-} unlang_stack_entry_modcall_t;
+} unlang_stack_state_modcall_t;
 
 /** State of a foreach loop
  *
@@ -208,7 +208,7 @@ typedef struct {
 #ifndef NDEBUG
 	int			indent;		//!< for catching indentation issues
 #endif
-} unlang_stack_entry_foreach_t;
+} unlang_stack_state_foreach_t;
 
 /** State of a redundant operation
  *
@@ -216,13 +216,13 @@ typedef struct {
 typedef struct {
 	unlang_t 		*child;
 	unlang_t		*found;
-} unlang_stack_entry_redundant_t;
+} unlang_stack_state_redundant_t;
 
 typedef union {
-	unlang_stack_entry_modcall_t	modcall;	//!< State for a modcall.
-	unlang_stack_entry_foreach_t	foreach;	//!< Foreach iterator state.
-	unlang_stack_entry_redundant_t	redundant;	//!< Redundant section state.
-} unlang_stack_entry_t;
+	unlang_stack_state_modcall_t	modcall;	//!< State for a modcall.
+	unlang_stack_state_foreach_t	foreach;	//!< Foreach iterator state.
+	unlang_stack_state_redundant_t	redundant;	//!< Redundant section state.
+} unlang_stack_state_t;
 
 /** Our interpreter stack, as distinct from the C stack
  *
@@ -238,14 +238,6 @@ typedef union {
  */
 typedef struct {
 	unlang_t		*instruction;			//!< The unlang node we're evaluating.
-	rlm_rcode_t		result;
-	int			priority;
-	unlang_type_t		unwind;				//!< Unwind to this one if it exists.
-	bool			do_next_sibling : 1;
-	bool			was_if : 1;
-	bool			if_taken : 1;
-	bool			resume : 1;
-	bool			top_frame : 1;
 
 	/** Stack frame specialisations
 	 *
@@ -256,10 +248,22 @@ typedef struct {
 	 * Which stack_entry specialisation to use is determined by the
 	 * instruction->type.
 	 */
+	void			*state;
+
+	rlm_rcode_t		result;
+	int			priority;
+	unlang_type_t		unwind;				//!< Unwind to this one if it exists.
+								//!< This is used for break and return.
+
+	bool			do_next_sibling : 1;
+	bool			was_if : 1;
+	bool			if_taken : 1;
+	bool			resume : 1;
+	bool			top_frame : 1;
+
 	union {
-		unlang_stack_entry_modcall_t	modcall;	//!< State for a modcall.
-		unlang_stack_entry_foreach_t	foreach;	//!< Foreach iterator state.
-		unlang_stack_entry_redundant_t	redundant;	//!< Redundant section state.
+		unlang_stack_state_foreach_t	foreach;	//!< Foreach iterator state.
+		unlang_stack_state_redundant_t	redundant;	//!< Redundant section state.
 	};
 } unlang_stack_frame_t;
 
