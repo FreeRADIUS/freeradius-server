@@ -1426,10 +1426,9 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
  */
 static int _tls_session_free(tls_session_t *session)
 {
-	SSL_set_quiet_shutdown(session->ssl, 1);
-	SSL_shutdown(session->ssl);
-
 	if (session->ssl) {
+		SSL_set_quiet_shutdown(session->ssl, 1);
+		SSL_shutdown(session->ssl);
 		SSL_free(session->ssl);
 		session->ssl = NULL;
 	}
