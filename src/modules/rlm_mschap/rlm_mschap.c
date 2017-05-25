@@ -19,7 +19,7 @@
  * @file rlm_mschap.c
  * @brief Implemented mschap authentication.
  *
- * @copyright 2000,2001,2006  The FreeRADIUS server project
+ * @copyright 2000, 2001, 2006  The FreeRADIUS server project
  */
 
 /*  MPPE support from Takahiro Wagatsuma <waga@sic.shibaura-it.ac.jp> */
@@ -729,7 +729,7 @@ static void mppe_add_reply(REQUEST *request, char const* name, uint8_t const * v
 }
 
 static int write_all(int fd, char const *buf, int len) {
-	int rv,done=0;
+	int rv, done=0;
 
 	while (done < len) {
 		rv = write(fd, buf+done, len-done);
@@ -1107,7 +1107,7 @@ ntlm_auth_err:
  *	authentication is in one place, and we can perhaps later replace
  *	it with code to call winbindd, or something similar.
  */
-static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t const *inst, REQUEST *request, VALUE_PAIR *password,
+static int CC_HINT(nonnull (1, 2, 4, 5 , 6)) do_mschap(rlm_mschap_t const *inst, REQUEST *request, VALUE_PAIR *password,
 						      uint8_t const *challenge, uint8_t const *response,
 						      uint8_t nthashhash[NT_DIGEST_LENGTH], MSCHAP_AUTH_METHOD method)
 {
@@ -1284,30 +1284,30 @@ static const uint8_t magic3[84] =
 		 0x6b, 0x65, 0x79, 0x2e };
 
 
-static void mppe_GetMasterKey(uint8_t const *nt_hashhash,uint8_t const *nt_response,
+static void mppe_GetMasterKey(uint8_t const *nt_hashhash, uint8_t const *nt_response,
 			      uint8_t *masterkey)
 {
        uint8_t digest[20];
        fr_sha1_ctx Context;
 
        fr_sha1_init(&Context);
-       fr_sha1_update(&Context,nt_hashhash,NT_DIGEST_LENGTH);
-       fr_sha1_update(&Context,nt_response,24);
-       fr_sha1_update(&Context,magic1,27);
-       fr_sha1_final(digest,&Context);
+       fr_sha1_update(&Context, nt_hashhash, NT_DIGEST_LENGTH);
+       fr_sha1_update(&Context, nt_response, 24);
+       fr_sha1_update(&Context, magic1, 27);
+       fr_sha1_final(digest, &Context);
 
-       memcpy(masterkey,digest,16);
+       memcpy(masterkey, digest, 16);				//-V512
 }
 
 
-static void mppe_GetAsymmetricStartKey(uint8_t *masterkey,uint8_t *sesskey,
-				       int keylen,int issend)
+static void mppe_GetAsymmetricStartKey(uint8_t *masterkey, uint8_t *sesskey,
+				       int keylen, int issend)
 {
        uint8_t digest[20];
        const uint8_t *s;
        fr_sha1_ctx Context;
 
-       memset(digest,0,20);
+       memset(digest, 0, 20);
 
        if(issend) {
 	       s = magic3;
@@ -1316,37 +1316,37 @@ static void mppe_GetAsymmetricStartKey(uint8_t *masterkey,uint8_t *sesskey,
        }
 
        fr_sha1_init(&Context);
-       fr_sha1_update(&Context,masterkey,16);
-       fr_sha1_update(&Context,SHSpad1,40);
-       fr_sha1_update(&Context,s,84);
-       fr_sha1_update(&Context,SHSpad2,40);
-       fr_sha1_final(digest,&Context);
+       fr_sha1_update(&Context, masterkey, 16);
+       fr_sha1_update(&Context, SHSpad1, 40);
+       fr_sha1_update(&Context, s, 84);
+       fr_sha1_update(&Context, SHSpad2, 40);
+       fr_sha1_final(digest, &Context);
 
-       memcpy(sesskey,digest,keylen);
+       memcpy(sesskey, digest, keylen);
 }
 
 
-static void mppe_chap2_get_keys128(uint8_t const *nt_hashhash,uint8_t const *nt_response,
-				   uint8_t *sendkey,uint8_t *recvkey)
+static void mppe_chap2_get_keys128(uint8_t const *nt_hashhash, uint8_t const *nt_response,
+				   uint8_t *sendkey, uint8_t *recvkey)
 {
        uint8_t masterkey[16];
 
-       mppe_GetMasterKey(nt_hashhash,nt_response,masterkey);
+       mppe_GetMasterKey(nt_hashhash, nt_response, masterkey);
 
-       mppe_GetAsymmetricStartKey(masterkey,sendkey,16,1);
-       mppe_GetAsymmetricStartKey(masterkey,recvkey,16,0);
+       mppe_GetAsymmetricStartKey(masterkey, sendkey, 16, 1);
+       mppe_GetAsymmetricStartKey(masterkey, recvkey, 16, 0);
 }
 
 /*
  *	Generate MPPE keys.
  */
-static void mppe_chap2_gen_keys128(uint8_t const *nt_hashhash,uint8_t const *response,
-				   uint8_t *sendkey,uint8_t *recvkey)
+static void mppe_chap2_gen_keys128(uint8_t const *nt_hashhash, uint8_t const *response,
+				   uint8_t *sendkey, uint8_t *recvkey)
 {
 	uint8_t enckey1[16];
 	uint8_t enckey2[16];
 
-	mppe_chap2_get_keys128(nt_hashhash,response,enckey1,enckey2);
+	mppe_chap2_get_keys128(nt_hashhash, response, enckey1, enckey2);
 
 	/*
 	 *	dictionary.microsoft defines these attributes as
@@ -2041,9 +2041,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		 *	MS-CHAPv1 challenge, and then does MS-CHAPv1.
 		 */
 		RDEBUG2("Creating challenge hash with username: %s", username_string);
-		mschap_challenge_hash(response->vp_octets + 2,	/* peer challenge */
-				      challenge->vp_octets,	/* our challenge */
-				      username_string,		/* user name */
+		mschap_challenge_hash(response->vp_octets + 2, 	/* peer challenge */
+				      challenge->vp_octets, 	/* our challenge */
+				      username_string, 		/* user name */
 				      mschapv1_challenge);	/* resulting challenge */
 
 		RDEBUG2("Client is using MS-CHAPv2");
@@ -2068,11 +2068,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		}
 #endif
 
-		mschap_auth_response(username_string,		/* without the domain */
-				     nthashhash,		/* nt-hash-hash */
-				     response->vp_octets + 26,	/* peer response */
-				     response->vp_octets + 2,	/* peer challenge */
-				     challenge->vp_octets,	/* our challenge */
+		mschap_auth_response(username_string, 		/* without the domain */
+				     nthashhash, 		/* nt-hash-hash */
+				     response->vp_octets + 26, 	/* peer response */
+				     response->vp_octets + 2, 	/* peer challenge */
+				     challenge->vp_octets, 	/* our challenge */
 				     msch2resp);		/* calculated MPPE key */
 		mschap_add_reply(request, *response->vp_octets, "MS-CHAP2-Success", msch2resp, 42);
 
@@ -2091,7 +2091,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		case 1:
 			RDEBUG2("Adding MS-CHAPv1 MPPE keys");
 			memset(mppe_sendkey, 0, 32);
-			if (lm_password) memcpy(mppe_sendkey, lm_password->vp_octets, 8);
+			if (lm_password) memcpy(mppe_sendkey, lm_password->vp_octets, 8);	//-V512
 
 			/*
 			 *	According to RFC 2548 we
@@ -2106,7 +2106,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 			 *	is not available.
 			 */
 			memcpy(mppe_sendkey + 8, nthashhash, NT_DIGEST_LENGTH);
-			mppe_add_reply(request, "MS-CHAP-MPPE-Keys", mppe_sendkey, 24);
+			mppe_add_reply(request, "MS-CHAP-MPPE-Keys", mppe_sendkey, 24);	//-V666
 			break;
 
 		case 2:
