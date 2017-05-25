@@ -120,6 +120,8 @@ static rlm_rcode_t replicate_packet(UNUSED void const *instance, REQUEST *reques
 	rcode = rlm_replicate_alloc(&packet, request, list, code);
 	if (rcode != RLM_MODULE_OK) return rcode;
 
+	MEM(packet);
+
 	packet->sockfd = -1;
 
 	/*
@@ -226,12 +228,12 @@ static rlm_rcode_t replicate_packet(UNUSED void const *instance, REQUEST *reques
 	}
 
 done:
-	if (packet) {
-		if ((packet->sockfd >= 0) && (close(packet->sockfd) < 0)) {
-			RWARN("Error closing socket (we may leak file descriptors): %s", fr_syserror(errno));
-		}
-		talloc_free(packet);
+
+	if ((packet->sockfd >= 0) && (close(packet->sockfd) < 0)) {
+		RWARN("Error closing socket (we may leak file descriptors): %s", fr_syserror(errno));
 	}
+	talloc_free(packet);
+
 	return rcode;
 }
 #else
