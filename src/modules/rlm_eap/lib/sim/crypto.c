@@ -116,7 +116,7 @@ int fr_sim_crypto_mac_verify(TALLOC_CTX *ctx, fr_dict_attr_t const *root,
 	/* now, HMAC-SHA1 it with the key. */
 	fr_hmac_sha1(calc_mac, buffer, len, key, 16);
 
-	ret = memcmp(&mac->vp_strvalue[2], calc_mac, 16) == 0 ? 1 : 0;
+	ret = memcmp(&mac->vp_strvalue[2], calc_mac, 16) == 0 ? 1 : 0;		//-V512
  done:
 	talloc_free(e);
 	talloc_free(buffer);
