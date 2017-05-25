@@ -267,7 +267,7 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 				}
 				if (value.vb_uint64 > INT64_MAX) {
 				overflow:
-					if (vpt) talloc_free(vpt);
+					talloc_free(vpt);
 					REDEBUG("Value of &%.*s (%"PRIu64 ") would overflow a signed 64bit integer "
 						"(our internal arithmetic type)", (int)vpt->len, vpt->name, value.vb_uint64);
 					return false;
