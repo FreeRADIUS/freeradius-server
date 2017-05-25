@@ -249,7 +249,7 @@ void comp128v1(uint8_t *sres, uint8_t *kc, uint8_t const *ki, uint8_t const *ran
 	 */
 	for (i=0; i < 7; i++) {
 		/* x[0-15] = Ki */
-		memcpy(x, ki, 16);
+		memcpy(x, ki, 16);	//-V512
 
 		/* Compression */
 		_comp128_compression(x);
@@ -265,7 +265,7 @@ void comp128v1(uint8_t *sres, uint8_t *kc, uint8_t const *ki, uint8_t const *ran
 	 * 	Round 8 (final)
 	 * 	x[0-15] = Ki
 	 */
-	memcpy(x, ki, 16);
+	memcpy(x, ki, 16);		//-V512
 
 	/* Compression */
 	_comp128_compression(x);
