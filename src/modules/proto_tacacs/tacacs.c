@@ -722,7 +722,12 @@ int tacacs_read_packet(RADIUS_PACKET * const packet, char const * const secret)
 
 		packet->data_len = packet_len;
 		packet->partial = sizeof(tacacs_packet_hdr_t);
-		memcpy(packet->data, packet->vector, sizeof(tacacs_packet_hdr_t));
+
+		if (sizeof(packet->vector) > sizeof(tacacs_packet_hdr_t)) {
+			memcpy(packet->data, packet->vector, sizeof(tacacs_packet_hdr_t));
+		} else {
+			memcpy(packet->data, packet->vector, sizeof(packet->vector));
+		}
 	}
 
 	/*
