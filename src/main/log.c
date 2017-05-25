@@ -221,7 +221,7 @@ inline bool radlog_debug_enabled(log_type_t type, log_lvl_t lvl, REQUEST *reques
  */
 void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char const *msg, va_list ap)
 {
-	char const	*filename = request->log.output->file;
+	char const	*filename;
 	FILE		*fp = NULL;
 
 	char		*p;
@@ -234,6 +234,8 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 	char		*msg_exp = NULL;
 
 	rad_assert(request);
+
+	filename =  request->log.output->file;
 
 	/*
 	 *	Debug messages get treated specially.
