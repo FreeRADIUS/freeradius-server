@@ -238,7 +238,7 @@ int recvfromto(int fd, void *buf, size_t len, int flags,
 		return recvfrom(fd, buf, len, flags, from, from_len);
 #else
 		struct sockaddr_in *dst = (struct sockaddr_in *) to;
-		struct sockaddr_in *src = (struct sockaddr_in *) &si;
+		struct sockaddr_in *src = (struct sockaddr_in *) &si;		//-V641
 
 		if (*to_len < sizeof(*dst)) {
 			errno = EINVAL;
@@ -255,7 +255,7 @@ int recvfromto(int fd, void *buf, size_t len, int flags,
 		return recvfrom(fd, buf, len, flags, from, from_len);
 #else
 		struct sockaddr_in6 *dst = (struct sockaddr_in6 *) to;
-		struct sockaddr_in6 *src = (struct sockaddr_in6 *) &si;
+		struct sockaddr_in6 *src = (struct sockaddr_in6 *) &si;		//-V641
 
 		if (*to_len < sizeof(*dst)) {
 			errno = EINVAL;
