@@ -11,6 +11,9 @@ FreeRADIUS 3.0.14 Mon 06 Mar 2017 13:00:00 EDT urgency=medium
 	  disabled.  Please see mods-available/eap
 	* Update detail reader documentation.
 	  Patch from Matthew Newton.  Fixes #1973.
+	* Make outgoing RadSec connections non-blocking.
+	* Add SQL backing to Moonshot-*-TargetedId
+	  generation.  Patch from Stefan Paetow.
 
 	Bug fixes
 	* radtest uses Cleartext-Password for EAP, not
