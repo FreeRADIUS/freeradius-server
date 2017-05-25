@@ -110,7 +110,7 @@ int fr_tcp_read_packet(RADIUS_PACKET *packet, bool require_ma)
 
 		packet->data_len = packet_len;
 		packet->partial = 4;
-		memcpy(packet->data, packet->vector, 4);
+		memcpy(packet->data, packet->vector, 4);	//-V512
 	}
 
 	/*
