@@ -307,7 +307,7 @@ static int data_cmp(void const *a, void const *b)
 	int		ret;
 
 	if (one->type && !two->type) return +1;
-	if (!two->type && one->type) return -1;
+	if (!one->type && two->type) return -1;
 
 	if (one->type && two->type) {
 		ret = strcmp(one->type, two->type);

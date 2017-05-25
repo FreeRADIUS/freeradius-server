@@ -129,7 +129,7 @@ static int dl_symbol_init_cmp(void const *one, void const *two)
 	if ((void *)a->func < (void *)b->func) return -1;
 
 	if (a->symbol && !b->symbol) return +1;
-	if (!b->symbol && a->symbol) return -1;
+	if (!a->symbol && b->symbol) return -1;
 	if (a->symbol && b->symbol) return strcmp(a->symbol, b->symbol);
 
 	return 0;
@@ -146,7 +146,7 @@ static int dl_symbol_free_cmp(void const *one, void const *two)
 	if ((void *)a->func < (void *)b->func) return -1;
 
 	if (a->symbol && !b->symbol) return +1;
-	if (!b->symbol && a->symbol) return -1;
+	if (!a->symbol && b->symbol) return -1;
 	if (a->symbol && b->symbol) return strcmp(a->symbol, b->symbol);
 
 	return 0;
