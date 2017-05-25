@@ -93,7 +93,7 @@ static int eapmschapv2_compose(rlm_eap_mschapv2_t const *inst, eap_session_t *ea
 		 *  |                             Server Name...
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 		 */
-		length = MSCHAPV2_HEADER_LEN + MSCHAPV2_CHALLENGE_LEN + strlen(inst->identity);
+		length = MSCHAPV2_HEADER_LEN + MSCHAPV2_CHALLENGE_LEN + (talloc_array_length(inst->identity) - 1);
 		eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, length);
 
 		/*
@@ -118,7 +118,7 @@ static int eapmschapv2_compose(rlm_eap_mschapv2_t const *inst, eap_session_t *ea
 		 */
 		memcpy(ptr, reply->vp_octets, reply->vp_length);
 
-		memcpy((ptr + reply->vp_length), inst->identity, strlen(inst->identity));
+		memcpy((ptr + reply->vp_length), inst->identity, (talloc_array_length(inst->identity) - 1));
 		break;
 
 	case FR_MSCHAP2_SUCCESS:
