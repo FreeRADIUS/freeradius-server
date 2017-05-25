@@ -387,7 +387,7 @@ static void session_msg_log(REQUEST *request, tls_session_t *tls_session)
 	char const	*str_write_p, *str_version, *str_content_type = "";
 	char const	*str_details1 = "", *str_details2= "";
 	char		buffer[32];
-	char		content_type[20];
+	char		content_type[64];
 
 	/*
 	 *	Don't print this out in the normal course of
