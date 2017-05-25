@@ -657,7 +657,6 @@ NEVER_RETURNS void fr_fault(int sig)
 	if (fr_debug_state == DEBUGGER_STATE_ATTACHED) {
 		FR_FAULT_LOG("RAISING SIGNAL: %s", strsignal(sig));
 		raise(sig);
-		goto finish;
 	}
 
 	/*
