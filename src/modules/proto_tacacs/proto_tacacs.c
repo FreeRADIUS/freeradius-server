@@ -129,12 +129,12 @@ static void state_add(REQUEST *request, RADIUS_PACKET *packet)
 {
 	VALUE_PAIR *vp;
 	uint32_t session_id;
-	uint8_t buf[16] = {0};	/* FIXME state.c:sizeof(struct state_comp) */
+	uint8_t buf[16] = { 0 };	/* FIXME state.c:sizeof(struct state_comp) */
 
-	rad_assert(sizeof(request->listener) + sizeof(vp->vp_uint32) <= sizeof(buf));
+	rad_assert(sizeof(request->listener) + sizeof(vp->vp_uint32) <= sizeof(buf));		//-V568
 
 	/* session_id is per TCP connection */
-	memcpy(&buf[0], &request->listener, sizeof(request->listener));
+	memcpy(&buf[0], &request->listener, sizeof(request->listener));				//-V568
 
 	session_id = tacacs_session_id(request->packet);
 	memcpy(&buf[sizeof(buf) - sizeof(session_id)], &session_id, sizeof(session_id));
