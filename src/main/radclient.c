@@ -65,7 +65,7 @@ static char const *proto = NULL;
 static int ipproto = IPPROTO_UDP;
 
 static rbtree_t *filename_tree = NULL;
-static fr_packet_list_t *pl = NULL;
+static fr_packet_list_t *packet_list = NULL;
 
 static int sleep_time = -1;
 
@@ -787,7 +787,7 @@ static void deallocate_id(rc_request_t *request)
 	/*
 	 *	One more unused RADIUS ID.
 	 */
-	fr_packet_list_id_free(pl, request->packet, true);
+	fr_packet_list_id_free(packet_list, request->packet, true);
 
 	/*
 	 *	If we've already sent a packet, free up the old one,
@@ -826,7 +826,7 @@ static int send_one_packet(rc_request_t *request)
 		 */
 	retry:
 		request->packet->src_ipaddr.af = server_ipaddr.af;
-		rcode = fr_packet_list_id_alloc(pl, ipproto, &request->packet, NULL);
+		rcode = fr_packet_list_id_alloc(packet_list, ipproto, &request->packet, NULL);
 		if (!rcode) {
 			int mysockfd;
 
@@ -842,7 +842,7 @@ static int send_one_packet(rc_request_t *request)
 				ERROR("Failed opening socket");
 				exit(1);
 			}
-			if (!fr_packet_list_socket_add(pl, mysockfd, ipproto,
+			if (!fr_packet_list_socket_add(packet_list, mysockfd, ipproto,
 						       &request->packet->dst_ipaddr,
 						       request->packet->dst_port, NULL)) {
 				ERROR("Can't add new socket");
@@ -918,7 +918,7 @@ static int send_one_packet(rc_request_t *request)
 			 *	Delete the request from the tree of
 			 *	outstanding requests.
 			 */
-			fr_packet_list_yank(pl, request->packet);
+			fr_packet_list_yank(packet_list, request->packet);
 
 			REDEBUG("No reply from server for ID %d socket %d",
 				request->packet->id, request->packet->sockfd);
@@ -972,7 +972,7 @@ static int recv_one_packet(int wait_time)
 	/* And wait for reply, timing out as necessary */
 	FD_ZERO(&set);
 
-	max_fd = fr_packet_list_fd_set(pl, &set);
+	max_fd = fr_packet_list_fd_set(packet_list, &set);
 	if (max_fd < 0) exit(1); /* no sockets to listen on! */
 
 	tv.tv_sec = (wait_time <= 0) ? 0 : wait_time;
@@ -986,7 +986,7 @@ static int recv_one_packet(int wait_time)
 	/*
 	 *	Look for the packet.
 	 */
-	reply = fr_packet_list_recv(pl, &set);
+	reply = fr_packet_list_recv(packet_list, &set);
 	if (!reply) {
 		ERROR("Received bad packet");
 #ifdef WITH_TCP
@@ -1026,7 +1026,7 @@ static int recv_one_packet(int wait_time)
 	}
 #endif
 
-	packet_p = fr_packet_list_find_byreply(pl, reply);
+	packet_p = fr_packet_list_find_byreply(packet_list, reply);
 	if (!packet_p) {
 		ERROR("Received reply to request we did not send. (id=%d socket %d)",
 		      reply->id, reply->sockfd);
@@ -1435,13 +1435,13 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	pl = fr_packet_list_create(1);
-	if (!pl) {
+	packet_list = fr_packet_list_create(1);
+	if (!packet_list) {
 		ERROR("Out of memory");
 		exit(1);
 	}
 
-	if (!fr_packet_list_socket_add(pl, sockfd, ipproto, &server_ipaddr,
+	if (!fr_packet_list_socket_add(packet_list, sockfd, ipproto, &server_ipaddr,
 				       server_port, NULL)) {
 		ERROR("Out of memory");
 		exit(1);
@@ -1579,7 +1579,7 @@ int main(int argc, char **argv)
 		/*
 		 *	Still have outstanding requests.
 		 */
-		if (fr_packet_list_num_elements(pl) > 0) {
+		if (fr_packet_list_num_elements(packet_list) > 0) {
 			done = false;
 		} else {
 			sleep_time = 0;
@@ -1598,7 +1598,7 @@ int main(int argc, char **argv)
 	} while (!done);
 
 	talloc_free(filename_tree);
-	fr_packet_list_free(pl);
+	fr_packet_list_free(packet_list);
 	while (request_head) TALLOC_FREE(request_head);
 	talloc_free(dict);
 	talloc_free(secret);
