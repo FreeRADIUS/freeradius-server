@@ -501,7 +501,7 @@ static void *thread_handler(void *arg)
 			when.tv_sec += main_config.max_request_time;
 
 			pthread_mutex_lock(&thread->backlog_mutex);
-			do {
+			for (;;) {
 				request = fr_heap_peek(thread->backlog);
 				if (!request) break;
 
@@ -532,7 +532,7 @@ static void *thread_handler(void *arg)
 							  request, &when, &request->ev) < 0) {
 					REDEBUG("Failed inserting max_request_time");
 				}
-			} while (request != NULL);
+			}
 
 			pthread_mutex_unlock(&thread->backlog_mutex);
 		}
