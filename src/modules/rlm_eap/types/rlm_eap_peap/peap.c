@@ -242,7 +242,7 @@ static int eap_peap_verify(REQUEST *request, peap_tunnel_t *peap_tunnel,
 	switch (eap_method) {
 	case FR_EAP_IDENTITY:
 		RDEBUG2("Received EAP-Identity-Response");
-		return 1;
+		return 0;
 
 	/*
 	 *	We normally do Microsoft MS-CHAPv2 (26), versus
@@ -251,7 +251,7 @@ static int eap_peap_verify(REQUEST *request, peap_tunnel_t *peap_tunnel,
 	case FR_EAP_MSCHAPV2:
 	default:
 		RDEBUG2("EAP method %s (%d)", eap_type2name(eap_method), eap_method);
-		return 1;
+		return 0;
 	}
 
 }
@@ -640,8 +640,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 
 	RDEBUG2("PEAP state %s", peap_state(t));
 
-	if ((t->status != PEAP_STATUS_TUNNEL_ESTABLISHED) &&
-	    !eap_peap_verify(request, t, data, data_len)) {
+	if ((t->status != PEAP_STATUS_TUNNEL_ESTABLISHED) && (eap_peap_verify(request, t, data, data_len) < 0)) {
 		REDEBUG("Tunneled data is invalid");
 		return RLM_MODULE_REJECT;
 	}
