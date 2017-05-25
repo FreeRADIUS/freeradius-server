@@ -247,7 +247,7 @@ void fr_time_tracking_resume(fr_time_tracking_t *tt, fr_time_t when)
  */
 void fr_time_tracking_debug(fr_time_tracking_t *tt, FILE *fp)
 {
-#define DPRINT(_x) fprintf(fp, "\t" #_x " = %zd\n", tt->_x);
+#define DPRINT(_x) fprintf(fp, "\t" #_x " = %"PRIu64"\n", tt->_x);
 
 	DPRINT(start);
 	DPRINT(end);

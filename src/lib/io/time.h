@@ -32,6 +32,7 @@ RCSIDH(time_h, "$Id$")
 #include <freeradius-devel/rad_assert.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <inttypes.h>
 
 #ifdef __cplusplus
 extern "C" {
