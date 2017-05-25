@@ -1556,9 +1556,6 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQ
 		return NULL;
 	}
 
-	/* We use the SSL's "app_data" to indicate a call-back */
-	SSL_set_app_data(new_tls, NULL);
-
 	session = talloc_zero(ctx, tls_session_t);
 	if (session == NULL) {
 		RERROR("Error allocating memory for TLS session");
