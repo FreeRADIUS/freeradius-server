@@ -144,7 +144,7 @@ static void eap_fast_send_identity_request(REQUEST *request, tls_session_t *tls_
 
 	RDEBUG("Sending EAP-Identity");
 
-	eap_packet.code = FR_EAP_REQUEST;
+	eap_packet.code = FR_EAP_CODE_REQUEST;
 	eap_packet.id = eap_session->this_round->response->id + 1;
 	eap_packet.length[0] = 0;
 	eap_packet.length[1] = EAP_HEADER_LEN + 1;
@@ -608,7 +608,7 @@ static FR_CODE eap_fast_eap_payload(REQUEST *request, eap_session_t *eap_session
 			vp = fr_pair_find_by_num(fake->packet->vps, 0, FR_EAP_MESSAGE, TAG_ANY);
 			if (vp &&
 			    (vp->vp_length >= EAP_HEADER_LEN + 2) &&
-			    (vp->vp_strvalue[0] == FR_EAP_RESPONSE) &&
+			    (vp->vp_strvalue[0] == FR_EAP_CODE_RESPONSE) &&
 			    (vp->vp_strvalue[EAP_HEADER_LEN] == FR_EAP_IDENTITY) &&
 			    (vp->vp_strvalue[EAP_HEADER_LEN + 1] != 0)) {
 				/*

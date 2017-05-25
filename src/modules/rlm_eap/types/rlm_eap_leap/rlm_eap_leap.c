@@ -79,12 +79,12 @@ static rlm_rcode_t mod_process(UNUSED void *instance, eap_session_t *eap_session
 		 *	any LEAP packet.  So we return here.
 		 */
 		if (!rcode) {
-			eap_session->this_round->request->code = FR_EAP_FAILURE;
+			eap_session->this_round->request->code = FR_EAP_CODE_FAILURE;
 			talloc_free(packet);
 			return 0;
 		}
 
-		eap_session->this_round->request->code = FR_EAP_SUCCESS;
+		eap_session->this_round->request->code = FR_EAP_CODE_SUCCESS;
 
 		/*
 		 *	Do this only for Success.

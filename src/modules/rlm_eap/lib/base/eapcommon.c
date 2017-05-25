@@ -151,8 +151,8 @@ int eap_wireformat(eap_packet_t *reply)
 	/*
 	 *	Request and Response packets are special.
 	 */
-	if ((reply->code == FR_EAP_REQUEST) ||
-	    (reply->code == FR_EAP_RESPONSE)) {
+	if ((reply->code == FR_EAP_CODE_REQUEST) ||
+	    (reply->code == FR_EAP_CODE_RESPONSE)) {
 		header->data[0] = (reply->type.num & 0xFF);
 
 		/*
@@ -212,18 +212,18 @@ int eap_basic_compose(RADIUS_PACKET *packet, eap_packet_t *reply)
 	/* Set request reply code, but only if it's not already set. */
 	rcode = RLM_MODULE_OK;
 	if (!packet->code) switch (reply->code) {
-	case FR_EAP_RESPONSE:
-	case FR_EAP_SUCCESS:
+	case FR_EAP_CODE_RESPONSE:
+	case FR_EAP_CODE_SUCCESS:
 		packet->code = FR_CODE_ACCESS_ACCEPT;
 		rcode = RLM_MODULE_HANDLED;
 		break;
 
-	case FR_EAP_FAILURE:
+	case FR_EAP_CODE_FAILURE:
 		packet->code = FR_CODE_ACCESS_REJECT;
 		rcode = RLM_MODULE_REJECT;
 		break;
 
-	case FR_EAP_REQUEST:
+	case FR_EAP_CODE_REQUEST:
 		packet->code = FR_CODE_ACCESS_CHALLENGE;
 		rcode = RLM_MODULE_HANDLED;
 		break;

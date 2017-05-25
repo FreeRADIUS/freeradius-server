@@ -124,8 +124,8 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 		 *	packet that it is sent in response
 		 *	to.
 		 */
-		case FR_EAP_SUCCESS:
-		case FR_EAP_FAILURE:
+		case FR_EAP_CODE_SUCCESS:
+		case FR_EAP_CODE_FAILURE:
 			break;
 
 		/*
@@ -145,8 +145,8 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 	 *	that the TTLS and PEAP modules can call it to do most
 	 *	of their dirty work.
 	 */
-	if (((eap_round->request->code == FR_EAP_REQUEST) ||
-	     (eap_round->request->code == FR_EAP_RESPONSE)) &&
+	if (((eap_round->request->code == FR_EAP_CODE_REQUEST) ||
+	     (eap_round->request->code == FR_EAP_CODE_RESPONSE)) &&
 	    (eap_round->request->type.num == 0)) {
 		rad_assert(eap_session->type >= FR_EAP_MD5);
 		rad_assert(eap_session->type < FR_EAP_MAX_TYPES);
@@ -182,22 +182,22 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 	/* Set request reply code, but only if it's not already set. */
 	rcode = RLM_MODULE_OK;
 	if (!request->reply->code) switch (reply->code) {
-	case FR_EAP_RESPONSE:
+	case FR_EAP_CODE_RESPONSE:
 		request->reply->code = FR_CODE_ACCESS_ACCEPT;
 		rcode = RLM_MODULE_HANDLED; /* leap weirdness */
 		break;
 
-	case FR_EAP_SUCCESS:
+	case FR_EAP_CODE_SUCCESS:
 		request->reply->code = FR_CODE_ACCESS_ACCEPT;
 		rcode = RLM_MODULE_OK;
 		break;
 
-	case FR_EAP_FAILURE:
+	case FR_EAP_CODE_FAILURE:
 		request->reply->code = FR_CODE_ACCESS_REJECT;
 		rcode = RLM_MODULE_REJECT;
 		break;
 
-	case FR_EAP_REQUEST:
+	case FR_EAP_CODE_REQUEST:
 		request->reply->code = FR_CODE_ACCESS_CHALLENGE;
 		rcode = RLM_MODULE_HANDLED;
 		break;
@@ -213,7 +213,7 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 		/* Should never enter here */
 		REDEBUG("Reply code %d is unknown, rejecting the request", reply->code);
 		request->reply->code = FR_CODE_ACCESS_REJECT;
-		reply->code = FR_EAP_FAILURE;
+		reply->code = FR_EAP_CODE_FAILURE;
 		rcode = RLM_MODULE_REJECT;
 		break;
 	}
@@ -307,7 +307,7 @@ int eap_start(rlm_eap_t const *inst, REQUEST *request)
 		 *	Manually create an EAP Identity request
 		 */
 		p = talloc_array(vp, uint8_t, 5);
-		p[0] = FR_EAP_REQUEST;
+		p[0] = FR_EAP_CODE_REQUEST;
 		p[1] = 0; /* ID */
 		p[2] = 0;
 		p[3] = 5; /* length */
@@ -322,7 +322,7 @@ int eap_start(rlm_eap_t const *inst, REQUEST *request)
 	 *	server, but they're not forbidden from doing so.
 	 *	This behaviour was observed with a Spirent Avalanche test server.
 	 */
-	if ((eap_msg->vp_length == EAP_HEADER_LEN) && (eap_msg->vp_octets[0] == FR_EAP_FAILURE)) {
+	if ((eap_msg->vp_length == EAP_HEADER_LEN) && (eap_msg->vp_octets[0] == FR_EAP_CODE_FAILURE)) {
 		REDEBUG("Peer sent EAP %s (code %i) ID %d length %zu",
 		        eap_codes[eap_msg->vp_octets[0]],
 		        eap_msg->vp_octets[0],
@@ -370,7 +370,7 @@ int eap_start(rlm_eap_t const *inst, REQUEST *request)
 	 *	Success, or Failure.
 	 */
 	if ((eap_msg->vp_octets[0] == 0) ||
-	    (eap_msg->vp_octets[0] >= FR_EAP_MAX_CODES)) {
+	    (eap_msg->vp_octets[0] >= FR_EAP_CODE_MAX)) {
 		RDEBUG2("Peer sent EAP packet with unknown code %i", eap_msg->vp_octets[0]);
 	} else {
 		RDEBUG2("Peer sent EAP %s (code %i) ID %d length %zu",
@@ -386,8 +386,8 @@ int eap_start(rlm_eap_t const *inst, REQUEST *request)
 	 *	sending success/fail packets to us, as it doesn't make
 	 *	sense.
 	 */
-	if ((eap_msg->vp_octets[0] != FR_EAP_REQUEST) &&
-	    (eap_msg->vp_octets[0] != FR_EAP_RESPONSE)) {
+	if ((eap_msg->vp_octets[0] != FR_EAP_CODE_REQUEST) &&
+	    (eap_msg->vp_octets[0] != FR_EAP_CODE_RESPONSE)) {
 		RDEBUG2("Ignoring EAP packet which we don't know how to handle");
 		return RLM_MODULE_FAIL;
 	}
@@ -481,7 +481,7 @@ void eap_fail(eap_session_t *eap_session)
 
 	talloc_free(eap_session->this_round->request);
 	eap_session->this_round->request = talloc_zero(eap_session->this_round, eap_packet_t);
-	eap_session->this_round->request->code = FR_EAP_FAILURE;
+	eap_session->this_round->request->code = FR_EAP_CODE_FAILURE;
 	eap_session->finished = true;
 	eap_compose(eap_session);
 }
@@ -491,7 +491,7 @@ void eap_fail(eap_session_t *eap_session)
  */
 void eap_success(eap_session_t *eap_session)
 {
-	eap_session->this_round->request->code = FR_EAP_SUCCESS;
+	eap_session->this_round->request->code = FR_EAP_CODE_SUCCESS;
 	eap_session->finished = true;
 	eap_compose(eap_session);
 }
@@ -511,8 +511,8 @@ static int eap_validation(REQUEST *request, eap_packet_raw_t **eap_packet_p)
 	 *	High level EAP packet checks
 	 */
 	if ((len <= EAP_HEADER_LEN) ||
-	    ((eap_packet->code != FR_EAP_RESPONSE) &&
-	     (eap_packet->code != FR_EAP_REQUEST))) {
+	    ((eap_packet->code != FR_EAP_CODE_RESPONSE) &&
+	     (eap_packet->code != FR_EAP_CODE_REQUEST))) {
 		REDEBUG("Badly formatted EAP Message: Ignoring the packet");
 		return -1;
 	}
@@ -609,7 +609,7 @@ static char *eap_identity(REQUEST *request, eap_session_t *eap_session, eap_pack
 	uint16_t 	len;
 
 	if (!eap_packet ||
-	    (eap_packet->code != FR_EAP_RESPONSE) ||
+	    (eap_packet->code != FR_EAP_CODE_RESPONSE) ||
 	    (eap_packet->data[0] != FR_EAP_IDENTITY)) return NULL;
 
 	memcpy(&len, eap_packet->length, sizeof(uint16_t));

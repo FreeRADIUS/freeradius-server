@@ -57,7 +57,7 @@ static int send_pwd_request(pwd_session_t *session, eap_round_t *eap_round)
 
 	len = (session->out_len - session->out_pos) + sizeof(pwd_hdr);
 	rad_assert(len > 0);
-	eap_round->request->code = FR_EAP_REQUEST;
+	eap_round->request->code = FR_EAP_CODE_REQUEST;
 	eap_round->request->type.num = FR_EAP_PWD;
 	eap_round->request->type.length = (len > session->mtu) ? session->mtu : len;
 	eap_round->request->type.data = talloc_zero_array(eap_round->request, uint8_t, eap_round->request->type.length);
@@ -211,7 +211,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 		 * send back an ACK for this fragment
 		 */
 		exch = EAP_PWD_GET_EXCHANGE(hdr);
-		eap_round->request->code = FR_EAP_REQUEST;
+		eap_round->request->code = FR_EAP_CODE_REQUEST;
 		eap_round->request->type.num = FR_EAP_PWD;
 		eap_round->request->type.length = sizeof(pwd_hdr);
 
@@ -394,7 +394,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 			REDEBUG("Failed generating (E)MSK");
 			return RLM_MODULE_FAIL;
 		}
-		eap_round->request->code = FR_EAP_SUCCESS;
+		eap_round->request->code = FR_EAP_CODE_SUCCESS;
 
 		/*
 		 *	Return the MSK (in halves).

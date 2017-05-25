@@ -765,14 +765,14 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 	id = vp ? vp->vp_uint32 : ((int)getpid() & 0xff);
 
 	vp = fr_pair_find_by_num(to_encode, 0, FR_EAP_CODE, TAG_ANY);
-	eap_code = vp ? vp->vp_uint32 : FR_EAP_REQUEST;
+	eap_code = vp ? vp->vp_uint32 : FR_EAP_CODE_REQUEST;
 
 	/*
 	 *	Fill in some bits in the EAP packet
 	 *
 	 *	These are needed even if we're sending an almost empty packet.
 	 */
-	if (eap_packet->code != FR_EAP_SUCCESS) eap_packet->code = eap_code;
+	if (eap_packet->code != FR_EAP_CODE_SUCCESS) eap_packet->code = eap_code;
 	eap_packet->id = (id & 0xff);
 	eap_packet->type.num = type;
 

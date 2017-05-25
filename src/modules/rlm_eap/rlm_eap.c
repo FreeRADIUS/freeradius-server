@@ -547,7 +547,7 @@ static rlm_rcode_t mod_authenticate(void *instance, UNUSED void *thread, REQUEST
 	 *	Add to the list only if it is EAP-Request, OR if
 	 *	it's LEAP, and a response.
 	 */
-	if (((eap_session->this_round->request->code == FR_EAP_REQUEST) &&
+	if (((eap_session->this_round->request->code == FR_EAP_CODE_REQUEST) &&
 	    (eap_session->this_round->request->type.num >= FR_EAP_MD5)) ||
 
 		/*
@@ -559,9 +559,9 @@ static rlm_rcode_t mod_authenticate(void *instance, UNUSED void *thread, REQUEST
 		 *	At stage 6, LEAP sends an EAP-Response, which
 		 *	isn't put into the list.
 		 */
-	    ((eap_session->this_round->response->code == FR_EAP_RESPONSE) &&
+	    ((eap_session->this_round->response->code == FR_EAP_CODE_RESPONSE) &&
 	     (eap_session->this_round->response->type.num == FR_EAP_LEAP) &&
-	     (eap_session->this_round->request->code == FR_EAP_SUCCESS) &&
+	     (eap_session->this_round->request->code == FR_EAP_CODE_SUCCESS) &&
 	     (eap_session->this_round->request->type.num == 0))) {
 		talloc_free(eap_session->prev_round);
 		eap_session->prev_round = eap_session->this_round;
@@ -746,7 +746,7 @@ static rlm_rcode_t mod_post_proxy(void *instance, UNUSED void *thread, REQUEST *
 		 *	Add to the list only if it is EAP-Request, OR if
 		 *	it's LEAP, and a response.
 		 */
-		if ((eap_session->this_round->request->code == FR_EAP_REQUEST) &&
+		if ((eap_session->this_round->request->code == FR_EAP_CODE_REQUEST) &&
 		    (eap_session->this_round->request->type.num >= FR_EAP_MD5)) {
 			talloc_free(eap_session->prev_round);
 			eap_session->prev_round = eap_session->this_round;

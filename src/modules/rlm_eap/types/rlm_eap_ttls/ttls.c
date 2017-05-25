@@ -802,7 +802,7 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 			vp = fr_pair_find_by_num(fake->packet->vps, 0, FR_EAP_MESSAGE, TAG_ANY);
 			if (vp &&
 			    (vp->vp_length >= EAP_HEADER_LEN + 2) &&
-			    (vp->vp_strvalue[0] == FR_EAP_RESPONSE) &&
+			    (vp->vp_strvalue[0] == FR_EAP_CODE_RESPONSE) &&
 			    (vp->vp_strvalue[EAP_HEADER_LEN] == FR_EAP_IDENTITY) &&
 			    (vp->vp_strvalue[EAP_HEADER_LEN + 1] != 0)) {
 				/*

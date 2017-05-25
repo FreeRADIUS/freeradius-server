@@ -40,7 +40,7 @@ static int eap_peap_failure(eap_session_t *eap_session, tls_session_t *tls_sessi
 
 	RDEBUG2("FAILURE");
 
-	tlv_packet[0] = FR_EAP_REQUEST;
+	tlv_packet[0] = FR_EAP_CODE_REQUEST;
 	tlv_packet[1] = eap_session->this_round->response->id +1;
 	tlv_packet[2] = 0;
 	tlv_packet[3] = 11;	/* length of this packet */
@@ -75,7 +75,7 @@ static int eap_peap_success(eap_session_t *eap_session, tls_session_t *tls_sessi
 
 	RDEBUG2("SUCCESS");
 
-	tlv_packet[0] = FR_EAP_REQUEST;
+	tlv_packet[0] = FR_EAP_CODE_REQUEST;
 	tlv_packet[1] = eap_session->this_round->response->id +1;
 	tlv_packet[2] = 0;
 	tlv_packet[3] = 11;	/* length of this packet */
@@ -102,7 +102,7 @@ static int eap_peap_identity(eap_session_t *eap_session, tls_session_t *tls_sess
 {
 	eap_packet_raw_t eap_packet;
 
-	eap_packet.code = FR_EAP_REQUEST;
+	eap_packet.code = FR_EAP_CODE_REQUEST;
 	eap_packet.id = eap_session->this_round->response->id + 1;
 	eap_packet.length[0] = 0;
 	eap_packet.length[1] = EAP_HEADER_LEN + 1;
@@ -207,25 +207,22 @@ static void eap_peap_soh_verify(REQUEST *request, RADIUS_PACKET *packet,
 static int eap_peap_verify(REQUEST *request,
 			   uint8_t const *data, unsigned int data_len)
 {
-	eap_packet_raw_t const *eap_packet = (eap_packet_raw_t const *) data;
-	eap_type_t eap_method;
+	eap_packet_raw_t const	*eap_packet = (eap_packet_raw_t const *) data;
+	eap_type_t		eap_method;
 
 	/*
 	 *	No data, OR only 1 byte of EAP type.
 	 */
-	if (!data || (data_len == 0) ||
-	    ((data_len <= 1) && (data[0] != FR_EAP_IDENTITY))) {
-		return 0;
-	}
+	if (!data || (data_len == 0) || ((data_len <= 1) && (data[0] != FR_EAP_IDENTITY))) return 0;
 
-	if (eap_packet->code == FR_EAP_RESPONSE) {
+	if (eap_packet->code == FR_EAP_CODE_RESPONSE) {
 		if (eap_packet->data[0] == FR_EAP_TLV) {
 			RDEBUG2("Received EAP-TLV response");
 			return 1;
 		}
 	}
 
-	eap_method = *data;
+	eap_method = data[0];	/* Inner EAP header misses off code and identifier */
 	switch (eap_method) {
 	case FR_EAP_IDENTITY:
 		RDEBUG2("Received EAP-Identity-Response");
@@ -241,7 +238,6 @@ static int eap_peap_verify(REQUEST *request,
 		return 1;
 	}
 
-	return 0;
 }
 
 /*
@@ -270,7 +266,7 @@ static VALUE_PAIR *eap_peap_inner_to_pairs(UNUSED REQUEST *request, RADIUS_PACKE
 	 *	Hand-build an EAP packet from the crap in PEAP version 0.
 	 */
 	p = talloc_array(vp, uint8_t, EAP_HEADER_LEN + total);
-	p[0] = FR_EAP_RESPONSE;
+	p[0] = FR_EAP_CODE_RESPONSE;
 	p[1] = eap_round->response->id;
 	p[2] = (data_len + EAP_HEADER_LEN) >> 8;
 	p[3] = (data_len + EAP_HEADER_LEN) & 0xff;
@@ -342,7 +338,7 @@ static int eap_peap_check_tlv(REQUEST *request, uint8_t const *data, size_t data
 	/*
 	 *	Look for success or failure.
 	 */
-	if ((eap_packet->code == FR_EAP_RESPONSE) &&
+	if ((eap_packet->code == FR_EAP_CODE_RESPONSE) &&
 	    (eap_packet->data[0] == FR_EAP_TLV)) {
 		if (data[10] == EAP_TLV_SUCCESS) {
 			return 1;
@@ -813,7 +809,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 		vp = fr_pair_afrom_num(fake->packet, 0, FR_EAP_MESSAGE);
 
 		q = talloc_array(vp, uint8_t, len);
-		q[0] = FR_EAP_RESPONSE;
+		q[0] = FR_EAP_CODE_RESPONSE;
 		q[1] = eap_round->response->id;
 		q[2] = (len >> 8) & 0xff;
 		q[3] = len & 0xff;

@@ -67,7 +67,7 @@ leap_packet_t *eap_leap_extract(REQUEST *request, eap_round_t *eap_round)
 	 *	messages sent to it.
 	 */
 	if (!eap_round || !eap_round->response ||
-	    ((eap_round->response->code != FR_EAP_RESPONSE) && (eap_round->response->code != FR_EAP_REQUEST)) ||
+	    ((eap_round->response->code != FR_EAP_CODE_RESPONSE) && (eap_round->response->code != FR_EAP_CODE_REQUEST)) ||
 	     (eap_round->response->type.num != FR_EAP_LEAP) || !eap_round->response->type.data ||
 	     (eap_round->response->length < LEAP_HEADER_LEN) ||
 	     (eap_round->response->type.data[0] != 0x01)) {	/* version 1 */
@@ -87,14 +87,14 @@ leap_packet_t *eap_leap_extract(REQUEST *request, eap_round_t *eap_round)
 	 *	of the stages.
 	 */
 	switch (eap_round->response->code) {
-	case FR_EAP_RESPONSE:
+	case FR_EAP_CODE_RESPONSE:
 		if (data->count != 24) {
 			REDEBUG("Bad NTChallengeResponse in LEAP stage 3");
 			return NULL;
 		}
 		break;
 
-	case FR_EAP_REQUEST:
+	case FR_EAP_CODE_REQUEST:
 		if (data->count != 8) {
 			REDEBUG("Bad AP Challenge in LEAP stage 5");
 			return NULL;
@@ -257,7 +257,7 @@ leap_packet_t *eap_leap_stage6(REQUEST *request, leap_packet_t *packet, VALUE_PA
 	reply = talloc(session, leap_packet_t);
 	if (!reply) return NULL;
 
-	reply->code = FR_EAP_RESPONSE;
+	reply->code = FR_EAP_CODE_RESPONSE;
 	reply->length = LEAP_HEADER_LEN + 24 + user_name->vp_length;
 	reply->count = 24;
 
@@ -353,7 +353,7 @@ leap_packet_t *eap_leap_initiate(REQUEST *request, eap_round_t *eap_round, VALUE
 		return NULL;
 	}
 
-	reply->code = FR_EAP_REQUEST;
+	reply->code = FR_EAP_CODE_REQUEST;
 	reply->length = LEAP_HEADER_LEN + 8 + user_name->vp_length;
 	reply->count = 8;	/* random challenge */
 
@@ -404,8 +404,8 @@ int eap_leap_compose(REQUEST *request, eap_round_t *eap_round, leap_packet_t *re
 	 *  We need the name and the challenge.
 	 */
 	switch (reply->code) {
-	case FR_EAP_REQUEST:
-	case FR_EAP_RESPONSE:
+	case FR_EAP_CODE_REQUEST:
+	case FR_EAP_CODE_RESPONSE:
 		eap_round->request->type.num = FR_EAP_LEAP;
 		eap_round->request->type.length = reply->length;
 
@@ -430,7 +430,7 @@ int eap_leap_compose(REQUEST *request, eap_round_t *eap_round, leap_packet_t *re
 		 *	EAP-Success packets don't contain any data
 		 *	other than the header.
 		 */
-	case FR_EAP_SUCCESS:
+	case FR_EAP_CODE_SUCCESS:
 		eap_round->request->type.length = 0;
 		break;
 

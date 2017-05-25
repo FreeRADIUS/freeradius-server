@@ -168,7 +168,7 @@ static void eap_aka_send_success(eap_session_t *eap_session)
 	VALUE_PAIR		*vp;
 	RADIUS_PACKET		*packet;
 
-	eap_session->this_round->request->code = FR_EAP_SUCCESS;
+	eap_session->this_round->request->code = FR_EAP_CODE_SUCCESS;
 	eap_session->finished = true;
 
 	/* to_client is the data to the client. */

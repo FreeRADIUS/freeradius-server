@@ -35,11 +35,11 @@ RCSIDH(eap_methods_h, "$Id$")
 #define EAP_HEADER_LEN 		4
 
 typedef enum eap_code {
-	FR_EAP_REQUEST = 1,
-	FR_EAP_RESPONSE,
-	FR_EAP_SUCCESS,
-	FR_EAP_FAILURE,
-	FR_EAP_MAX_CODES
+	FR_EAP_CODE_REQUEST = 1,
+	FR_EAP_CODE_RESPONSE,
+	FR_EAP_CODE_SUCCESS,
+	FR_EAP_CODE_FAILURE,
+	FR_EAP_CODE_MAX
 } eap_code_t;
 
 typedef enum eap_method {

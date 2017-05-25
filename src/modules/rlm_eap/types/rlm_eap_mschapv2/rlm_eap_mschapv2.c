@@ -70,7 +70,7 @@ static int eapmschapv2_compose(rlm_eap_mschapv2_t const *inst, eap_session_t *ea
 	eap_round_t		*eap_round = eap_session->this_round;
 	REQUEST			*request = eap_session->request;
 
-	eap_round->request->code = FR_EAP_REQUEST;
+	eap_round->request->code = FR_EAP_CODE_REQUEST;
 	eap_round->request->type.num = FR_EAP_MSCHAPV2;
 
 	/*
@@ -365,7 +365,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *arg, eap_session_t *eap_se
 
 failure:
 		request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
-		eap_round->request->code = FR_EAP_FAILURE;
+		eap_round->request->code = FR_EAP_CODE_FAILURE;
 		return RLM_MODULE_REJECT;
 
 	case FR_EAP_MSCHAPV2_SUCCESS:
@@ -377,7 +377,7 @@ failure:
 
 		switch (ccode) {
 		case FR_EAP_MSCHAPV2_SUCCESS:
-			eap_round->request->code = FR_EAP_SUCCESS;
+			eap_round->request->code = FR_EAP_CODE_SUCCESS;
 
 			fr_pair_list_mcopy_by_num(request->reply, &request->reply->vps, &data->mppe_keys, 0, 0, TAG_ANY);
 			/* FALL-THROUGH */
@@ -618,7 +618,7 @@ packet_ready:
 		}
 		data->code = FR_EAP_MSCHAPV2_FAILURE;
 	} else {
-		eap_round->request->code = FR_EAP_FAILURE;
+		eap_round->request->code = FR_EAP_CODE_FAILURE;
 		return RLM_MODULE_REJECT;
 	}
 
