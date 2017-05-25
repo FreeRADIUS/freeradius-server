@@ -2623,18 +2623,11 @@ static int listen_bind(rad_listen_t *this)
 #ifdef WITH_TCP
 	if (sock->proto == IPPROTO_TCP) {
 		/*
-		 *	If there are hard-coded worker threads, OR
-		 *	it's a TLS connection, it's blocking.
+		 *	Woker threads are blocking.
 		 *
 		 *	Otherwise, they're non-blocking.
 		 */
-		if (!this->workers
-#ifdef WITH_PROXY
-#ifdef WITH_TLS
-		    && (this->type == RAD_LISTEN_PROXY) && !this->tls
-#endif
-#endif
-			) {
+		if (!this->workers) {
 			if (fr_nonblock(this->fd) < 0) {
 				close(this->fd);
 				ERROR("Failed setting non-blocking on socket: %s",

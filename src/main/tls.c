@@ -505,6 +505,7 @@ tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
 	talloc_set_destructor(ssn, _tls_session_free);
 
 	ssn->ctx = conf->ctx;
+	ssn->mtu = conf->fragment_size;
 
 	SSL_CTX_set_mode(ssn->ctx, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER | SSL_MODE_AUTO_RETRY);
 
@@ -537,6 +538,21 @@ tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_SSN, (void *)ssn);
 	SSL_set_fd(ssn->ssl, fd);
 	ret = SSL_connect(ssn->ssl);
+
+	if (ret < 0) {
+		switch (SSL_get_error(ssn->ssl, ret)) {
+			default:
+				break;
+
+
+
+		case SSL_ERROR_WANT_READ:
+		case SSL_ERROR_WANT_WRITE:
+			ssn->connected = false;
+			return ssn;
+		}
+	}
+
 	if (ret <= 0) {
 		tls_error_io_log(NULL, ssn, ret, "Failed in " STRINGIFY(__FUNCTION__) " (SSL_connect)");
 		talloc_free(ssn);
@@ -544,8 +560,7 @@ tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
 		return NULL;
 	}
 
-	ssn->mtu = conf->fragment_size;
-
+	ssn->connected = true;
 	return ssn;
 }
 
