@@ -108,13 +108,13 @@ static void calc_sha1_digest(uint8_t *buffer, uint8_t const *challenge,
 	int i;
 	fr_sha1_ctx context;
 
-	memset(buf, 0, 1024);
-	memset(buf, 0x36, 64);
+	memset(buf, 0, 1024);			//-V512
+	memset(buf, 0x36, 64);			//-V512
 	for(i=0; i<64 && password[i]; i++) buf[i]^=password[i];
 	memcpy(buf+64, challenge, challen);
 	fr_sha1_init(&context);
 	fr_sha1_update(&context,buf,64+challen);
-	memset(buf, 0x5c, 64);
+	memset(buf, 0x5c, 64);			//-V512
 	for(i=0; i<64 && password[i]; i++) buf[i]^=password[i];
 	fr_sha1_final(buf+64,&context);
 	fr_sha1_init(&context);
@@ -126,7 +126,7 @@ static void calc_sha1_digest(uint8_t *buffer, uint8_t const *challenge,
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
 	VALUE_PAIR *authtype, *challenge, *response, *password;
-	uint8_t buffer[64];
+
 
 	password = fr_pair_find_by_num(request->control, 0, FR_CLEARTEXT_PASSWORD, TAG_ANY);
 	if (!password) {
@@ -154,36 +154,55 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 
 	switch (authtype->vp_uint32){
 		case 2:				/*	CRAM-MD5	*/
+		{
+			uint8_t buffer[MD5_DIGEST_LENGTH];
+
 			if (challenge->vp_length < 5 || response->vp_length != 16) {
 				REDEBUG("Invalid MD5 challenge/response length");
 				return RLM_MODULE_INVALID;
 			}
 			calc_md5_digest(buffer, challenge->vp_octets, challenge->vp_length, password->vp_strvalue);
-			if (!memcmp(buffer, response->vp_octets, 16)) return RLM_MODULE_OK;
+			if (!memcmp(buffer, response->vp_octets, sizeof(buffer))) return RLM_MODULE_OK;
+		}
 			break;
+
 		case 3:				/*	APOP	*/
+		{
+			uint8_t buffer[16];
+
 			if (challenge->vp_length < 5 || response->vp_length != 16) {
 				REDEBUG("Invalid APOP challenge/response length");
 				return RLM_MODULE_INVALID;
 			}
 			calc_apop_digest(buffer, challenge->vp_octets, challenge->vp_length, password->vp_strvalue);
-			if (!memcmp(buffer, response->vp_octets, 16)) return RLM_MODULE_OK;
+			if (!memcmp(buffer, response->vp_octets, sizeof(buffer))) return RLM_MODULE_OK;
+		}
 			break;
+
 		case 8:				/*	CRAM-MD4	*/
+		{
+			uint8_t buffer[MD4_DIGEST_LENGTH];
+
 			if (challenge->vp_length < 5 || response->vp_length != 16) {
 				REDEBUG("Invalid MD4 challenge/response length");
 				return RLM_MODULE_INVALID;
 			}
 			calc_md4_digest(buffer, challenge->vp_octets, challenge->vp_length, password->vp_strvalue);
-			if (!memcmp(buffer, response->vp_octets, 16)) return RLM_MODULE_OK;
+			if (!memcmp(buffer, response->vp_octets, sizeof(buffer))) return RLM_MODULE_OK;
+		}
 			break;
+
 		case 9:				/*	CRAM-SHA1	*/
+		{
+			uint8_t buffer[SHA1_DIGEST_LENGTH];
+
 			if (challenge->vp_length < 5 || response->vp_length != 20) {
 				REDEBUG("Invalid MD4 challenge/response length");
 				return RLM_MODULE_INVALID;
 			}
 			calc_sha1_digest(buffer, challenge->vp_octets, challenge->vp_length, password->vp_strvalue);
-			if (!memcmp(buffer, response->vp_octets, 20)) return RLM_MODULE_OK;
+			if (!memcmp(buffer, response->vp_octets, sizeof(buffer))) return RLM_MODULE_OK;
+		}
 			break;
 
 		default:
