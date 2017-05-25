@@ -443,7 +443,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 
 	reply->io = request->io;
 
-	fr_log(worker->log, L_DBG, "(%zd) finished, sending reply", request->number);
+	fr_log(worker->log, L_DBG, "(%"PRIu64") finished, sending reply", request->number);
 
 	/*
 	 *	Send the reply, which also polls the request queue.
@@ -563,7 +563,7 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 			continue;
 		}
 
-		fr_log(worker->log, L_DBG, "(%zd) taking too long, stopping it", request->number);
+		fr_log(worker->log, L_DBG, "(%"PRIu64") taking too long, stopping it", request->number);
 
 		/*
 		 *	Tell the network side that this request is done.
@@ -587,7 +587,7 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 		if (final == FR_TRANSPORT_DONE) {
 			fr_dlist_remove(&request->time_order);
 
-			fr_log(worker->log, L_DBG, "(%zd) finally finished", request->number);
+			fr_log(worker->log, L_DBG, "(%"PRIu64") finally finished", request->number);
 
 			/*
 			 *	Tell the network side that this request is done.
@@ -698,7 +698,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	 */
 	rcode = io->transport->decode(io->ctx, cd->m.data, cd->m.data_size, request);
 	if (rcode < 0) {
-		fr_log(worker->log, L_DBG, "\t%sFAILED decode of request %zd", worker->name, request->number);
+		fr_log(worker->log, L_DBG, "\t%sFAILED decode of request %"PRIu64, worker->name, request->number);
 		talloc_free(ctx);
 nak:
 		fr_worker_nak(worker, cd, fr_time());
@@ -782,7 +782,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	ssize_t size = 0;
 	fr_transport_final_t final;
 
-	fr_log(worker->log, L_DBG, "\t%s running request (%zd)", worker->name, request->number);
+	fr_log(worker->log, L_DBG, "\t%s running request (%"PRIu64")", worker->name, request->number);
 
 	/*
 	 *	If we still have the same packet, and the channel is
@@ -831,7 +831,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 		break;
 	}
 
-	fr_log(worker->log, L_DBG, "(%zd) done naturally", request->number);
+	fr_log(worker->log, L_DBG, "(%"PRIu64") done naturally", request->number);
 
 	fr_worker_send_reply(worker, request, size);
 }
@@ -1163,7 +1163,7 @@ void fr_worker(fr_worker_t *worker)
 		 *	Run the request, and either track it as
 		 *	yielded, or send a reply.
 		 */
-		fr_log(worker->log, L_DBG, "\t%srunning request (%zd)", worker->name, request->number);
+		fr_log(worker->log, L_DBG, "\t%srunning request (%"PRIu64")", worker->name, request->number);
 		fr_worker_run_request(worker, request);
 	}
 }
