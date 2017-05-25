@@ -532,7 +532,7 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 		 *	0.01 to 1s.  Localize it.
 		 */
 		WORKER_HEAP_EXTRACT(to_decode, cd, request.list);
-		lm = fr_message_localize(worker, &cd->m, sizeof(cd));
+		lm = fr_message_localize(worker, &cd->m, sizeof(cd->m));
 		if (!lm) goto nak;
 
 		WORKER_HEAP_INSERT(localized, cd, request.list);
