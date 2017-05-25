@@ -61,12 +61,12 @@ static int print_cb(UNUSED void *ctx, void *i)
 
 #define MAXSIZE 1024
 
-static int r = 0;
+static int cb_stored = 0;
 static uint32_t rvals[MAXSIZE];
 
 static int store_cb(UNUSED void *ctx, void  *i)
 {
-	rvals[r++] = *(int const *)i;
+	rvals[cb_stored++] = *(int const *)i;
 	return 0;
 }
 
@@ -216,7 +216,7 @@ again:
 	fprintf(stderr,"After delete rbcount is %i.\n", i);
 	if (i < 0) { return i; }
 
-	r = 0;
+	cb_stored = 0;
 	rbtree_walk(t, RBTREE_IN_ORDER, &store_cb, NULL);
 
 	for (j = i = 0; i < n; i++) {

@@ -78,7 +78,7 @@ static void NEVER_RETURNS usage(void)
 
 static fr_transport_final_t test_process(REQUEST *request, fr_transport_action_t action)
 {
-	MPRINT1("\t\tPROCESS --- request %zd action %d\n", request->number, action);
+	MPRINT1("\t\tPROCESS --- request %"PRIu64" action %d\n", request->number, action);
 	return FR_TRANSPORT_REPLY;
 }
 
@@ -94,13 +94,13 @@ static int test_decode(void *packet_ctx, uint8_t *const data, size_t data_len, R
 
 	request->process_async = test_process;
 
-	MPRINT1("\t\tDECODE <<< request %zd - %p data %p size %zd\n", request->number, packet_ctx, data, data_len);
+	MPRINT1("\t\tDECODE <<< request %"PRIu64" - %p data %p size %zd\n", request->number, packet_ctx, data, data_len);
 	return 0;
 }
 
 static ssize_t test_encode(void *packet_ctx, REQUEST *request, uint8_t *const data, size_t data_len)
 {
-	MPRINT1("\t\tENCODE >>> request %zd - data %p %p size %zd\n", request->number, packet_ctx, data, data_len);
+	MPRINT1("\t\tENCODE >>> request %"PRIu64" - data %p %p size %zd\n", request->number, packet_ctx, data, data_len);
 
 	return data_len;
 }
@@ -115,7 +115,7 @@ static size_t test_nak(void const *packet_ctx, uint8_t *const packet, size_t pac
 	memcpy(&number, packet, sizeof(number));
 	memcpy(reply, packet, sizeof(number));
 
-	MPRINT1("\t\tNAK !!! request %zd - data %p %p size %zd\n", (uint64_t) number, packet_ctx, packet, packet_len);
+	MPRINT1("\t\tNAK !!! request %"PRIu64" - data %p %p size %zd\n", (uint64_t) number, packet_ctx, packet, packet_len);
 
 	return 10;
 }
@@ -152,7 +152,7 @@ static void *worker_thread(void *arg)
 
 	sw->worker = NULL;
 	MPRINT1("\tWorker %d exiting.\n", sw->id);
-	
+
 	talloc_free(ctx);
 	return NULL;
 }
@@ -356,7 +356,7 @@ check_close:
 
 			ce = fr_channel_service_message(now, &ch, data, data_size);
 			MPRINT1("Master got channel event %d\n", ce);
-			
+
 			switch (ce) {
 			case FR_CHANNEL_DATA_READY_NETWORK:
 				MPRINT1("Master got data ready signal\n");
@@ -419,7 +419,7 @@ check_close:
 		fr_time_t now = fr_time();
 
 		num_outstanding = num_workers;
-	
+
 		for (i = 0; i < num_workers; i++) {
 			if (!workers[i].worker) num_outstanding--;
 		}

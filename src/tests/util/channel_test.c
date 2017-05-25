@@ -43,14 +43,14 @@ RCSID("$Id$")
 #define MPRINT1 if (debug_lvl) printf
 #define MPRINT2 if (debug_lvl > 1) printf
 
-static int		debug_lvl = 0;
-static int		kq_master, kq_worker;
-static fr_atomic_queue_t *aq_master, *aq_worker;
-static fr_control_t	*control_master, *control_worker;
-static int		max_messages = 10;
-static int		max_control_plane = 0;
-static int		max_outstanding = 1;
-static bool		touch_memory = false;
+static int			debug_lvl = 0;
+static int			kq_master, kq_worker;
+static fr_atomic_queue_t	*aq_master, *aq_worker;
+static fr_control_t		*control_master, *control_worker;
+static int			max_messages = 10;
+static int			max_control_plane = 0;
+static int			max_outstanding = 1;
+static bool			touch_memory = false;
 
 static void NEVER_RETURNS usage(void)
 {
@@ -66,16 +66,16 @@ static void NEVER_RETURNS usage(void)
 
 static void *channel_master(void *arg)
 {
-	bool running, signaled_close;
-	int rcode, i, num_events;
-	int num_outstanding, num_messages;
-	int num_replies;
-	fr_message_set_t *ms;
-	TALLOC_CTX *ctx;
-	fr_channel_t *channel = arg;
-	fr_channel_t *new_channel;
-	fr_channel_event_t ce;
-	struct kevent events[MAX_KEVENTS];
+	bool			running, signaled_close;
+	int			rcode, i, num_events;
+	int			num_outstanding, num_messages;
+	int			num_replies;
+	fr_message_set_t	*ms;
+	TALLOC_CTX		*ctx;
+	fr_channel_t		*channel = arg;
+	fr_channel_t		*new_channel;
+	fr_channel_event_t	ce;
+	struct kevent		events[MAX_KEVENTS];
 
 	ctx = talloc_init("channel_master");
 	if (!ctx) _exit(1);
@@ -227,7 +227,7 @@ check_close:
 
 			ce = fr_channel_service_message(now, &new_channel, data, data_size);
 			MPRINT1("Master got channel event %d\n", ce);
-			
+
 			switch (ce) {
 			case FR_CHANNEL_DATA_READY_NETWORK:
 				MPRINT1("Master got data ready signal\n");
@@ -376,7 +376,7 @@ static void *channel_worker(void *arg)
 					MPRINT1("\tWorker got message %d\n", worker_messages);
 					fr_message_done(&cd->m);
 				}
-				
+
 				(void) fr_channel_worker_ack_close(channel);
 				break;
 

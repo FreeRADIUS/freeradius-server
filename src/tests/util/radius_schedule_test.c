@@ -69,7 +69,7 @@ extern int		fr_fault_setup(char const *cmd, char const *program);
 
 static fr_transport_final_t test_process(REQUEST *request, fr_transport_action_t action)
 {
-	MPRINT1("\t\tPROCESS --- request %zd action %d\n", request->number, action);
+	MPRINT1("\t\tPROCESS --- request %"PRIu64" action %d\n", request->number, action);
 	return FR_TRANSPORT_REPLY;
 }
 
@@ -81,7 +81,7 @@ static int test_decode(void *ctx, uint8_t *const data, size_t data_len, REQUEST 
 
 	if (!debug_lvl) return 0;
 
-	MPRINT1("\t\tDECODE <<< request %zd - %p data %p size %zd\n", request->number, pc, data, data_len);
+	MPRINT1("\t\tDECODE <<< request %"PRIu64" - %p data %p size %zd\n", request->number, pc, data, data_len);
 
 	return 0;
 }
@@ -91,7 +91,7 @@ static ssize_t test_encode(void *ctx, REQUEST *request, uint8_t *buffer, size_t 
 	FR_MD5_CTX context;
 	fr_packet_ctx_t const *pc = ctx;
 
-	MPRINT1("\t\tENCODE >>> request %zd - data %p %p room %zd\n", request->number, pc, buffer, buffer_len);
+	MPRINT1("\t\tENCODE >>> request %"PRIu64"- data %p %p room %zd\n", request->number, pc, buffer, buffer_len);
 
 	buffer[0] = FR_CODE_ACCESS_ACCEPT;
 	buffer[1] = pc->id;
