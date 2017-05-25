@@ -121,7 +121,11 @@ static void P_hash(EVP_MD const *evp_md,
 
 	HMAC_CTX_free(ctx_a);
 	HMAC_CTX_free(ctx_out);
+#ifdef __STDC_LIB_EXT1__
 	memset_s(a, 0, sizeof(a), sizeof(a));
+#else
+	memset(a, 0, sizeof(a));
+#endif
 }
 
 /*  EAP-FAST Pseudo-Random Function (T-PRF): RFC 4851, Section 5.5 */
