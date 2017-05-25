@@ -653,8 +653,8 @@ bool fr_request_to_state(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET
 
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
-	rad_assert(request->state == NULL);
 	VERIFY_REQUEST(request);
+
 	return true;
 }
 
