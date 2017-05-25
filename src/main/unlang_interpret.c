@@ -41,7 +41,7 @@ static FR_NAME_NUMBER unlang_action_table[] = {
 /*
  *	Lock the mutex for the module
  */
-static void safe_lock(module_instance_t *instance)
+static inline void safe_lock(module_instance_t *instance)
 {
 	if (instance->mutex) pthread_mutex_lock(instance->mutex);
 }
@@ -49,13 +49,12 @@ static void safe_lock(module_instance_t *instance)
 /*
  *	Unlock the mutex for the module
  */
-static void safe_unlock(module_instance_t *instance)
+static inline void safe_unlock(module_instance_t *instance)
 {
-	if (instance->mutex)
-		pthread_mutex_unlock(instance->mutex);
+	if (instance->mutex) pthread_mutex_unlock(instance->mutex);
 }
 
-static void unlang_push(unlang_stack_t *stack, unlang_t *program, rlm_rcode_t result, bool do_next_sibling)
+static inline void unlang_push(unlang_stack_t *stack, unlang_t *program, rlm_rcode_t result, bool do_next_sibling)
 {
 	unlang_stack_frame_t *next;
 
@@ -82,15 +81,16 @@ static void unlang_push(unlang_stack_t *stack, unlang_t *program, rlm_rcode_t re
 	next->resume = false;
 }
 
-static void unlang_pop(unlang_stack_t *stack)
+static inline void unlang_pop(unlang_stack_t *stack)
 {
 	unlang_stack_frame_t *frame, *next;
 
 	rad_assert(stack->depth > 1);
 
-	stack->depth -= 1;
-
 	frame = &stack->frame[stack->depth];
+	if (frame->state) talloc_free(frame->state);
+
+	frame = &stack->frame[--stack->depth];
 	next = frame + 1;
 
 	/*
@@ -150,13 +150,12 @@ static uint64_t unlang_active_callers(unlang_t *instruction)
 	return active_callers;
 }
 
-
 static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *stack,
 					   rlm_rcode_t *presult, int *priority)
 {
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
-	unlang_group_t	*g;
+	unlang_group_t		*g;
 
 	uint32_t count = 0;
 
@@ -1597,15 +1596,12 @@ static void unlang_event_fd_error_handler(UNUSED fr_event_list_t *el, int fd, vo
 int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t callback,
 			     void const *ctx, struct timeval *when)
 {
-	unlang_stack_frame_t	*frame;
-	unlang_stack_t		*stack = request->stack;
-	unlang_event_t		*ev;
-	unlang_module_call_t	*sp;
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_event_t			*ev;
+	unlang_module_call_t		*sp;
 
 	rad_assert(stack->depth > 0);
-
-	frame = &stack->frame[stack->depth];
-
 	rad_assert((frame->instruction->type == UNLANG_TYPE_MODULE_CALL) ||
 		   (frame->instruction->type == UNLANG_TYPE_MODULE_RESUME));
 	sp = unlang_generic_to_module_call(frame->instruction);
@@ -1679,14 +1675,12 @@ int unlang_event_fd_add(REQUEST *request,
 			fr_unlang_fd_callback_t error,
 			void const *ctx, int fd)
 {
-	unlang_stack_frame_t	*frame;
-	unlang_stack_t		*stack = request->stack;
-	unlang_event_t		*ev;
-	unlang_module_call_t	*sp;
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_event_t			*ev;
+	unlang_module_call_t		*sp;
 
 	rad_assert(stack->depth > 0);
-
-	frame = &stack->frame[stack->depth];
 
 	rad_assert((frame->instruction->type == UNLANG_TYPE_MODULE_CALL) ||
 		   (frame->instruction->type == UNLANG_TYPE_MODULE_RESUME));
@@ -1847,14 +1841,12 @@ void unlang_signal(REQUEST *request, fr_state_action_t action)
 rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_module_resume_t callback,
 				fr_unlang_action_t signal_callback, void const *ctx)
 {
-	unlang_stack_frame_t		*frame;
 	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_module_resumption_t	*mr;
 	unlang_module_call_t		*sp;
 
 	rad_assert(stack->depth > 0);
-
-	frame = &stack->frame[stack->depth];
 
 	rad_assert((frame->instruction->type == UNLANG_TYPE_MODULE_CALL) ||
 		   (frame->instruction->type == UNLANG_TYPE_MODULE_RESUME));
