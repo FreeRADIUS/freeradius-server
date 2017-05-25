@@ -44,7 +44,7 @@ static int eap_peap_failure(eap_session_t *eap_session, tls_session_t *tls_sessi
 	tlv_packet[1] = eap_session->this_round->response->id +1;
 	tlv_packet[2] = 0;
 	tlv_packet[3] = 11;	/* length of this packet */
-	tlv_packet[4] = FR_EAP_TLV;
+	tlv_packet[4] = FR_PEAP_EXTENSIONS_TYPE;
 	tlv_packet[5] = 0x80;
 	tlv_packet[6] = EAP_TLV_ACK_RESULT;
 	tlv_packet[7] = 0;
@@ -79,7 +79,7 @@ static int eap_peap_success(eap_session_t *eap_session, tls_session_t *tls_sessi
 	tlv_packet[1] = eap_session->this_round->response->id +1;
 	tlv_packet[2] = 0;
 	tlv_packet[3] = 11;	/* length of this packet */
-	tlv_packet[4] = FR_EAP_TLV;
+	tlv_packet[4] = FR_PEAP_EXTENSIONS_TYPE;
 	tlv_packet[5] = 0x80;	/* mandatory AVP */
 	tlv_packet[6] = EAP_TLV_ACK_RESULT;
 	tlv_packet[7] = 0;
@@ -201,11 +201,12 @@ static void eap_peap_soh_verify(REQUEST *request, RADIUS_PACKET *packet,
 	}
 }
 
+
 /*
  *	Verify the tunneled EAP message.
  */
-static int eap_peap_verify(REQUEST *request,
-			   uint8_t const *data, unsigned int data_len)
+static int eap_peap_verify(REQUEST *request, peap_tunnel_t *peap_tunnel,
+			   uint8_t const *data, size_t data_len)
 {
 	eap_packet_raw_t const	*eap_packet = (eap_packet_raw_t const *) data;
 	eap_type_t		eap_method;
@@ -215,11 +216,26 @@ static int eap_peap_verify(REQUEST *request,
 	 */
 	if (!data || (data_len == 0) || ((data_len <= 1) && (data[0] != FR_EAP_IDENTITY))) return 0;
 
-	if (eap_packet->code == FR_EAP_CODE_RESPONSE) {
-		if (eap_packet->data[0] == FR_EAP_TLV) {
-			RDEBUG2("Received EAP-TLV response");
-			return 1;
+	/*
+	 *  Since the full EAP header is sent for the EAP Extensions type (Type 33),
+	 *  but not for other Types, it is difficult for the implementation to distinguish
+	 *  an Extensions Request (Code 1) from an EAP Type 1 (Identity) Request packet.
+	 *
+	 *  i.e. The only way to validate PEAP inner method packets properly is to know
+	 *  we just send a protected success/failure.
+	 */
+	switch (peap_tunnel->status) {
+	case PEAP_STATUS_SENT_TLV_SUCCESS:
+	case PEAP_STATUS_SENT_TLV_FAILURE:
+		if (eap_packet->data[0] != FR_PEAP_EXTENSIONS_TYPE) {
+			REDEBUG("Invalid inner tunnel data, expected method (%u), got (%u)",
+				FR_PEAP_EXTENSIONS_TYPE, eap_packet->data[0]);
+			return -1;
 		}
+		return 0;
+
+	default:
+		break;
 	}
 
 	eap_method = data[0];	/* Inner EAP header misses off code and identifier */
@@ -339,7 +355,7 @@ static int eap_peap_check_tlv(REQUEST *request, uint8_t const *data, size_t data
 	 *	Look for success or failure.
 	 */
 	if ((eap_packet->code == FR_EAP_CODE_RESPONSE) &&
-	    (eap_packet->data[0] == FR_EAP_TLV)) {
+	    (eap_packet->data[0] == FR_PEAP_EXTENSIONS_TYPE)) {
 		if (data[10] == EAP_TLV_SUCCESS) {
 			return 1;
 		}
@@ -609,7 +625,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 	VALUE_PAIR	*vp;
 	rlm_rcode_t	rcode = RLM_MODULE_REJECT;
 	uint8_t const	*data;
-	unsigned int	data_len;
+	size_t		data_len;
 
 	REQUEST *request = eap_session->request;
 	eap_round_t *eap_round = eap_session->this_round;
@@ -625,7 +641,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 	RDEBUG2("PEAP state %s", peap_state(t));
 
 	if ((t->status != PEAP_STATUS_TUNNEL_ESTABLISHED) &&
-	    !eap_peap_verify(request, data, data_len)) {
+	    !eap_peap_verify(request, t, data, data_len)) {
 		REDEBUG("Tunneled data is invalid");
 		return RLM_MODULE_REJECT;
 	}

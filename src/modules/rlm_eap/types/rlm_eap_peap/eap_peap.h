@@ -63,7 +63,7 @@ typedef struct peap_tunnel_t {
 #define EAP_TLV_FAILURE (2)
 #define EAP_TLV_ACK_RESULT (3)
 
-#define FR_PEAP_EXTENSIONS_METHOD 33
+#define FR_PEAP_EXTENSIONS_TYPE 33
 
 /*
  *	Process the PEAP portion of an EAP-PEAP request.
