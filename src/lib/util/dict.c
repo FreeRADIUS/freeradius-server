@@ -312,7 +312,7 @@ static uint32_t dict_attr_combo_hash(void const *data)
 	uint32_t hash;
 	fr_dict_attr_t const *attr = data;
 
-	hash = fr_hash(&attr->parent, sizeof(attr->parent));
+	hash = fr_hash(&attr->parent, sizeof(attr->parent));			//-V568
 	hash = fr_hash_update(&attr->type, sizeof(attr->type), hash);
 	return fr_hash_update(&attr->attr, sizeof(attr->attr), hash);
 }
@@ -384,7 +384,7 @@ static uint32_t dict_enum_alias_hash(void const *data)
 	fr_dict_enum_t const *enumv = data;
 
 	hash = dict_hash_name(enumv->alias);
-	return fr_hash_update(&enumv->da, sizeof(enumv->da), hash);
+	return fr_hash_update(&enumv->da, sizeof(enumv->da), hash);		//-V568
 }
 
 /** Compare two dictionary attribute enum values
@@ -410,7 +410,7 @@ static uint32_t dict_enum_value_hash(void const *data)
 	uint32_t hash = 0;
 	fr_dict_enum_t const *enumv = data;
 
-	hash = fr_hash_update(&enumv->da, sizeof(enumv->da), hash);
+	hash = fr_hash_update(&enumv->da, sizeof(enumv->da), hash);		//-V568
 	return fr_hash_update(enumv->value, sizeof(enumv->value), hash);
 }
 
@@ -916,11 +916,8 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 	 *	the appropriate flags set for attributes in this
 	 *	space.
 	 */
-	if ((attr > UINT8_MAX) && !flags.internal) {
-		if (parent->flags.is_root && ((attr >= 0x2b00) && (attr < 0x2d00))) { /* @fixme: VMPS */
-			/* ignore it */
-		} else
-
+	if ((attr > UINT8_MAX) && !flags.internal &&
+	    !((strncmp("VMPS", name, 4) == 0) || (strncmp("VQP", name, 3) == 0))) {	/* Fixme */
 		for (v = parent; v != NULL; v = v->parent) {
 			if ((v->type == FR_TYPE_TLV) || (v->type == FR_TYPE_VENDOR)) {
 				if ((v->flags.type_size < 4) &&
