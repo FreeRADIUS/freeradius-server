@@ -45,11 +45,11 @@ static char const *radsnmp_version = RADIUSD_VERSION_STRING_BUILD("radsnmp");
 static bool stop;
 
 #undef DEBUG
-#define DEBUG(fmt, ...)		if (fr_debug_lvl > 0) fprintf(fr_log_fp, "radsnmp (debug): " fmt "\n", ## __VA_ARGS__)
+#define DEBUG(fmt, ...)		if (fr_log_fp && (fr_debug_lvl > 0)) fprintf(fr_log_fp, "radsnmp (debug): " fmt "\n", ## __VA_ARGS__)
 #undef DEBUG2
-#define DEBUG2(fmt, ...)	if (fr_debug_lvl > 1) fprintf(fr_log_fp, "radsnmp (debug): " fmt "\n", ## __VA_ARGS__)
+#define DEBUG2(fmt, ...)	if (fr_log_fp && (fr_debug_lvl > 1)) fprintf(fr_log_fp, "radsnmp (debug): " fmt "\n", ## __VA_ARGS__)
 
-#define ERROR(fmt, ...)		fprintf(fr_log_fp, "radsnmp (error): " fmt "\n", ## __VA_ARGS__)
+#define ERROR(fmt, ...)		if (fr_log_fp) fprintf(fr_log_fp, "radsnmp (error): " fmt "\n", ## __VA_ARGS__)
 
 typedef enum {
 	RADSNMP_UNKNOWN = -1,				//!< Unknown command.
