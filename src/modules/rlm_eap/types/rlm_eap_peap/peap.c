@@ -218,25 +218,18 @@ static int eap_peap_verify(REQUEST *request,
 		return 0;
 	}
 
+	if (eap_packet->code == FR_EAP_RESPONSE) {
+		if (eap_packet->data[0] == FR_EAP_TLV) {
+			RDEBUG2("Received EAP-TLV response");
+			return 1;
+		}
+	}
+
 	eap_method = *data;
 	switch (eap_method) {
 	case FR_EAP_IDENTITY:
 		RDEBUG2("Received EAP-Identity-Response");
 		return 1;
-
-	/*
-	 *	If the first byte of the packet is
-	 *	EAP-Response, and the EAP data is a TLV,
-	 *	then it looks OK...
-	 */
-	case FR_EAP_RESPONSE:
-		if (eap_packet->data[0] == FR_EAP_TLV) {
-			RDEBUG2("Received EAP-TLV response");
-			return 1;
-		}
-		RDEBUG2("Got something weird");
-		break;
-
 
 	/*
 	 *	We normally do Microsoft MS-CHAPv2 (26), versus
