@@ -82,7 +82,7 @@ void mschap_challenge_hash(uint8_t const *peer_challenge,
 	fr_sha1_update(&Context, (uint8_t const *) user_name,
 		      strlen(user_name));
 	fr_sha1_final(hash, &Context);
-	memcpy(challenge, hash, 8);
+	memcpy(challenge, hash, 8);			//-V512
 }
 
 /*
