@@ -79,7 +79,7 @@ static void eap_fast_update_icmk(REQUEST *request, tls_session_t *tls_session, u
 
 	RDEBUG2("Updating ICMK");
 
-	T_PRF(t->s_imck, EAP_FAST_SIMCK_LEN, "Inner Methods Compound Keys", msk, 32, imck, sizeof(imck));
+	T_PRF(t->s_imck, EAP_FAST_SIMCK_LEN, "Inner Methods Compound Keys", msk, 32, imck, sizeof(imck));	//-V512
 
 	memcpy(t->s_imck, imck, EAP_FAST_SIMCK_LEN);
 	RHEXDUMP(L_DBG_LVL_MAX, t->s_imck, EAP_FAST_SIMCK_LEN, "S-IMCK[j]");
