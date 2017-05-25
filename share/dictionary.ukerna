@@ -21,5 +21,8 @@ ATTRIBUTE	Trust-Router-APC			137	string
 ATTRIBUTE	Moonshot-Host-TargetedId		138	string
 ATTRIBUTE	Moonshot-Realm-TargetedId		139	string
 ATTRIBUTE	Moonshot-TR-COI-TargetedId		140	string
+ATTRIBUTE	Moonshot-MSTID-GSS-Acceptor		141	string
+ATTRIBUTE	Moonshot-MSTID-Namespace		142	string
+ATTRIBUTE	Moonshot-MSTID-TargetedId		143	string
 
 END-VENDOR UKERNA
