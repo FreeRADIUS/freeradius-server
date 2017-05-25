@@ -264,7 +264,7 @@ int eap_tls_success(eap_session_t *eap_session)
 	 */
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST, request);
 	tls_cache_disable_cb(tls_session->ssl, -1);
-	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST, NULL);
+	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST, NULL);	//-V575
 #endif
 
 	/*
@@ -1006,7 +1006,7 @@ eap_tls_status_t eap_tls_process(eap_session_t *eap_session)
 	}
 
  done:
-	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST, NULL);
+	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST, NULL);	//-V575
 
 	return status;
 }
