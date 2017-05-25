@@ -457,7 +457,7 @@ open_file:
 
 				goto cleanup;
 			}
-			if (((off_t) ftell(data->fp)) == buf.st_size) {
+			if (((off_t) ftell(data->fp)) == buf.st_size) {	//-V595
 				goto cleanup;
 			}
 		}
