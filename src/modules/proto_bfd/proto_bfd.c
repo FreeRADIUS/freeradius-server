@@ -233,13 +233,13 @@ static int bfd_stop_control(bfd_state_t *session);
 static void bfd_detection_timeout(UNUSED fr_event_list_t *eel, struct timeval *now, void *ctx);
 static int bfd_process(bfd_state_t *session, bfd_packet_t *bfd);
 
-static fr_event_list_t *el = NULL; /* don't ask */
+static fr_event_list_t *event_list = NULL; /* don't ask */
 
 void bfd_init(fr_event_list_t *xel);
 
 void bfd_init(fr_event_list_t *xel)
 {
-	el = xel;
+	event_list = xel;
 }
 
 static void bfd_pthread_free(bfd_state_t *session)
@@ -408,7 +408,7 @@ static void bfd_session_free(void *ctx)
 {
 	bfd_state_t *session = ctx;
 
-	if (el != session->el) {
+	if (event_list != session->el) {
 		/*
 		 *	FIXME: this isn't particularly safe.
 		 */
@@ -573,8 +573,8 @@ static bfd_state_t *bfd_new_session(bfd_socket_t *sock, int sockfd,
 	/*
 	 *	Check for threaded / non-threaded operation.
 	 */
-	if (el) {
-		session->el = el;
+	if (event_list) {
+		session->el = event_list;
 
 		bfd_start_control(session);
 
@@ -1499,7 +1499,7 @@ static int bfd_socket_recv(rad_listen_t *listener)
 		return 0;
 	}
 
-	if (!el) {
+	if (!event_list) {
 		uint8_t *p = (uint8_t *) &bfd;
 		size_t total = bfd.length;
 
