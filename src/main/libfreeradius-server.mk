@@ -3,7 +3,6 @@ TARGET	:= libfreeradius-server.a
 SOURCES	:=	cond_eval.c \
 		cond_tokenize.c \
 		conf_file.c \
-		conf_eval.c \
 		connection.c \
 		dl.c \
 		exec.c \
