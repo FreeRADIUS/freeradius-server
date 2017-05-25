@@ -244,8 +244,8 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 		}
 
 		packet = (pwd_id_packet_t *) in;
-		if (in_len < sizeof(packet)) {
-			REDEBUG("Packet is too small (%zd < %zd).", in_len, sizeof(packet));
+		if (in_len < sizeof(*packet)) {
+			REDEBUG("Packet is too small (%zd < %zd).", in_len, sizeof(*packet));
 			return RLM_MODULE_INVALID;
 		}
 
