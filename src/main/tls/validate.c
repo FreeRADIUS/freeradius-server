@@ -140,7 +140,7 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 		/*
 		 *	Add a copy of the cert_vps to session state.
 		 */
-		if (cert_vps) {
+		if (cert_vps) {			//-V547
 			/*
 			 *	Print out all the pairs we have so far
 			 */
