@@ -61,14 +61,14 @@ static fr_event_timer_t *sd_watchdog_ev;
 static bool spawn_workers = false;
 static bool just_started = true;
 time_t fr_start_time = (time_t)-1;
-static rbtree_t *pl = NULL;
-static fr_event_list_t *el = NULL;
+static rbtree_t *packet_list = NULL;
+static fr_event_list_t *event_list = NULL;
 
 static void mark_home_server_alive(REQUEST *request, home_server_t *home);
 
 fr_event_list_t *process_global_event_list(UNUSED event_corral_t hint) {
 	/* Currently we do not run a second event loop for modules. */
-	return el;
+	return event_list;
 }
 
 static char const *action_codes[] = {
@@ -135,7 +135,7 @@ static void request_timer(fr_event_list_t *eel, struct timeval *now, void *ctx);
 static inline void state_machine_timer(char const *file, int line, REQUEST *request,
 				       struct timeval *when)
 {
-	if (fr_event_timer_insert(el, request_timer, request, when, &request->ev) < 0) {
+	if (fr_event_timer_insert(event_list, request_timer, request, when, &request->ev) < 0) {
 		radlog_fatal("%s[%u]: Failed to insert event: %s", file, line, fr_strerror());
 	}
 }
@@ -383,7 +383,7 @@ static void coa_separate(REQUEST *request) CC_HINT(nonnull);
 #define USEC (1000000)
 
 #define INSERT_EVENT(_function, _ctx) \
-	if (fr_event_timer_insert(el, _function, _ctx, &((_ctx)->when), &((_ctx)->ev)) < 0) { \
+	if (fr_event_timer_insert(event_list, _function, _ctx, &((_ctx)->when), &((_ctx)->ev)) < 0) { \
 		radlog_fatal("%s[%u]: %s", __FILE__, __LINE__, fr_strerror()); \
 	}
 
@@ -513,7 +513,7 @@ static void request_dup_extract(REQUEST *request)
 {
 	if (!request->in_request_hash) return;
 
-	if (!rbtree_deletebydata(pl, &request->packet)) {
+	if (!rbtree_deletebydata(packet_list, &request->packet)) {
 		rad_assert(0 == 1);
 	}
 	request->in_request_hash = false;
@@ -566,7 +566,7 @@ void request_delete(REQUEST *request)
 	if (request->el) {
 		fr_event_timer_delete(request->el, &request->ev);
 	} else {
-		fr_event_timer_delete(el, &request->ev);
+		fr_event_timer_delete(event_list, &request->ev);
 	}
 
 	/*
@@ -819,7 +819,7 @@ bool request_max_time(REQUEST *request)
 	/*
 	 *	The request is still running.  Enforce max_request_time.
 	 */
-	fr_event_list_time(&now, el);
+	fr_event_list_time(&now, event_list);
 	when = request->packet->timestamp;
 	when.tv_sec += request->root->max_request_time;
 
@@ -958,7 +958,7 @@ static void request_cleanup_delay(REQUEST *request, fr_state_action_t action)
 #endif
 
 	case FR_ACTION_TIMER:
-		fr_event_list_time(&now, el);
+		fr_event_list_time(&now, event_list);
 
 		rad_assert(request->root->cleanup_delay > 0);
 
@@ -1030,7 +1030,7 @@ static void request_response_delay(REQUEST *request, fr_state_action_t action)
 #endif
 
 	case FR_ACTION_TIMER:
-		fr_event_list_time(&now, el);
+		fr_event_list_time(&now, event_list);
 
 		/*
 		 *	See if it's time to send the reply.  If not,
@@ -1614,7 +1614,7 @@ bool request_limit(rad_listen_t *listener, RADCLIENT *client, RADIUS_PACKET *pac
 	 *	Quench maximum number of outstanding requests.
 	 */
 	if (main_config.max_requests &&
-	    ((count = rbtree_num_elements(pl)) > main_config.max_requests)) {
+	    ((count = rbtree_num_elements(packet_list)) > main_config.max_requests)) {
 		RATE_LIMIT(ERROR("Dropping request (%d is too many): from client %s port %d - ID: %d", count,
 				 client->shortname,
 				 packet->src_port, packet->id);
@@ -1682,7 +1682,7 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 	/*
 	 *	Check for duplicates.
 	 */
-	if (!listener->nodup && request_dup_received(listener, pl, client, packet)) return 0;
+	if (!listener->nodup && request_dup_received(listener, packet_list, client, packet)) return 0;
 
 	if (request_limit(listener, client, packet)) return 0;
 
@@ -1711,7 +1711,7 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 	 *	Remember the request in the list.
 	 */
 	if (!listener->nodup) {
-		if (!rbtree_insert(pl, &request->packet)) {
+		if (!rbtree_insert(packet_list, &request->packet)) {
 			RERROR("Failed to insert request in the list of live requests: discarding it");
 			request_queued(request, FR_ACTION_DONE);
 			return 1;
@@ -1843,7 +1843,7 @@ static void tcp_socket_timer(UNUSED fr_event_list_t *eel, struct timeval *now, v
 
 	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return;
 
-	fr_event_list_time(now, el);
+	fr_event_list_time(now, event_list);
 
 	switch (listener->type) {
 #ifdef WITH_PROXY
@@ -1900,7 +1900,7 @@ static void tcp_socket_timer(UNUSED fr_event_list_t *eel, struct timeval *now, v
 			 *	FDs.
 			 */
 			listener->status = RAD_LISTEN_STATUS_FROZEN;
-			fr_event_fd_delete(el, listener->fd);
+			fr_event_fd_delete(event_list, listener->fd);
 			event_new_fd(listener); /* mainly set a new timer */
 			return;
 		}
@@ -2605,7 +2605,7 @@ static void proxy_wait_for_id(REQUEST *request, fr_state_action_t action)
 		}
 #endif
 
-		fr_event_list_time(&now, el);
+		fr_event_list_time(&now, event_list);
 		when = request->proxy->packet->timestamp;
 
 #ifdef WITH_COA
@@ -3439,7 +3439,7 @@ static void request_ping(REQUEST *request, fr_state_action_t action)
 		/*
 		 *	Remove the request from any hashes
 		 */
-		fr_event_timer_delete(el, &request->ev);
+		fr_event_timer_delete(event_list, &request->ev);
 		remove_from_proxy_hash(request);
 
 		/*
@@ -3691,7 +3691,7 @@ static void mark_home_server_alive(REQUEST *request, home_server_t *home)
 	home->num_received_pings = 0;
 	gettimeofday(&home->revive_time, NULL);
 
-	fr_event_timer_delete(el, &home->ev);
+	fr_event_timer_delete(event_list, &home->ev);
 
 	if (old_state == HOME_STATE_UNKNOWN) {
 		RPROXY("Home server %s port %d went from idle -> alive",
@@ -3745,7 +3745,7 @@ static void mark_home_server_zombie(home_server_t *home, struct timeval *now, st
 	home->zombie_period_start.tv_sec = start;
 	home->zombie_period_start.tv_usec = USEC / 2;
 
-	fr_event_timer_delete(el, &home->ev);
+	fr_event_timer_delete(event_list, &home->ev);
 
 	home->num_sent_pings = 0;
 	home->num_received_pings = 0;
@@ -3755,7 +3755,7 @@ static void mark_home_server_zombie(home_server_t *home, struct timeval *now, st
 			buffer, sizeof(buffer)),
 	      home->port, (int) response_window->tv_sec, (int) response_window->tv_usec);
 
-	ping_home_server(el, now, home);
+	ping_home_server(event_list, now, home);
 }
 
 
@@ -3782,7 +3782,7 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when)
 			struct timeval now;
 
 			gettimeofday(&now, NULL);
-			ping_home_server(el, &now, home);
+			ping_home_server(event_list, &now, home);
 		} else {
 			DEBUG("PING: Already pinging home server %s", home->log_name);
 		}
@@ -3817,7 +3817,7 @@ void revive_home_server(UNUSED fr_event_list_t *eel, UNUSED struct timeval *now,
 	 *	Delete any outstanding events.
 	 */
 	ASSERT_MASTER;
-	fr_event_timer_delete(el, &home->ev);
+	fr_event_timer_delete(event_list, &home->ev);
 
 	PROXY("Marking home server %s port %d alive again... we have no idea if it really is alive or not.",
 	      inet_ntop(home->ipaddr.af, &home->ipaddr.addr, buffer, sizeof(buffer)),
@@ -4042,7 +4042,7 @@ static void proxy_wait_for_reply(REQUEST *request, fr_state_action_t action)
 	rad_assert(request->packet->code != FR_CODE_STATUS_SERVER);
 	rad_assert(request->proxy->home_server != NULL);
 
-	fr_event_list_time(&now, el);
+	fr_event_list_time(&now, event_list);
 
 	switch (action) {
 	case FR_ACTION_DUP:
@@ -4366,7 +4366,7 @@ static bool coa_keep_waiting(REQUEST *request)
 		return false;
 	}
 
-	fr_event_list_time(&now, el);
+	fr_event_list_time(&now, event_list);
 
 	if (request->delay == 0) {
 		/*
@@ -4748,7 +4748,7 @@ static void event_socket_handler(NDEBUG_UNUSED fr_event_list_t *xel, UNUSED int 
 {
 	rad_listen_t *listener = talloc_get_type_abort(ctx, rad_listen_t);
 
-	rad_assert(xel == el);
+	rad_assert(xel == event_list);
 
 	if (listener->fd < 0) {
 		char buffer[256];
@@ -4765,14 +4765,14 @@ static void event_socket_error(NDEBUG_UNUSED fr_event_list_t *xel, int fd, void 
 {
 	rad_listen_t *listener = talloc_get_type_abort(ctx, rad_listen_t);
 
-	rad_assert(xel == el);
+	rad_assert(xel == event_list);
 
 	/*
 	 *	No error callback.  Just delete the listener.
 	 */
 	if (!listener->error) {
 		listener->status = RAD_LISTEN_STATUS_EOL;
-		fr_event_fd_delete(el, listener->fd);
+		fr_event_fd_delete(event_list, listener->fd);
 		return;
 	}
 
@@ -4895,7 +4895,7 @@ static int event_new_fd(rad_listen_t *this)
 		/*
 		 *	All sockets: add the FD to the event handler.
 		 */
-		if (fr_event_fd_insert(el, this->fd, event_socket_handler, NULL, event_socket_error, this)) {
+		if (fr_event_fd_insert(event_list, this->fd, event_socket_handler, NULL, event_socket_error, this)) {
 			PERROR("Failed adding event handler for socket");
 			fr_exit(1);
 		}
@@ -4938,7 +4938,7 @@ static int event_new_fd(rad_listen_t *this)
 		/*
 		 *	Remove it from the list of live FD's.
 		 */
-		fr_event_fd_delete(el, this->fd);
+		fr_event_fd_delete(event_list, this->fd);
 
 		/*
 		 *      Re-open the socket, pointing it to /dev/null.
@@ -5006,7 +5006,7 @@ static int event_new_fd(rad_listen_t *this)
 			if (this->type != RAD_LISTEN_COMMAND)
 #endif
 
-			rbtree_walk(pl, RBTREE_DELETE_ORDER, eol_listener, this);
+			rbtree_walk(packet_list, RBTREE_DELETE_ORDER, eol_listener, this);
 		}
 
 
@@ -5031,7 +5031,7 @@ static int event_new_fd(rad_listen_t *this)
 	if (this->status == RAD_LISTEN_STATUS_REMOVE_NOW) {
 		if (this->count > 0) goto keep_waiting;
 
-		fr_event_timer_delete(el, &this->ev);
+		fr_event_timer_delete(event_list, &this->ev);
 
 		this->print(this, buffer, sizeof(buffer));
 		DEBUG("... cleaning up socket %s", buffer);
@@ -5074,10 +5074,10 @@ static void handle_signal_self(int flag)
 	if ((flag & (RADIUS_SIGNAL_SELF_EXIT | RADIUS_SIGNAL_SELF_TERM)) != 0) {
 		if ((flag & RADIUS_SIGNAL_SELF_EXIT) != 0) {
 			INFO("Signalled to exit");
-			fr_event_loop_exit(el, 1);
+			fr_event_loop_exit(event_list, 1);
 		} else {
 			INFO("Signalled to terminate");
-			fr_event_loop_exit(el, 2);
+			fr_event_loop_exit(event_list, 2);
 		}
 
 		return;
@@ -5101,7 +5101,7 @@ static void handle_signal_self(int flag)
 		last_hup = when;
 
 		trigger_exec(NULL, NULL, "server.signal.hup", true, NULL);
-		fr_event_loop_exit(el, 0x80);
+		fr_event_loop_exit(event_list, 0x80);
 	}
 
 #if defined(WITH_TCP) && defined(WITH_PROXY)
@@ -5190,15 +5190,15 @@ static void event_signal_handler(UNUSED fr_event_list_t *xel,
  */
 int radius_event_init(TALLOC_CTX *ctx)
 {
-	el = fr_event_list_alloc(ctx, event_status, NULL);
-	if (!el) return 0;
+	event_list = fr_event_list_alloc(ctx, event_status, NULL);
+	if (!event_list) return 0;
 
 #ifdef HAVE_SYSTEMD_WATCHDOG
 	if (sd_watchdog_interval.tv_sec || sd_watchdog_interval.tv_usec) {
 		struct timeval now;
 
-		fr_event_list_time(&now, el);
-		sd_watchdog_event(el, &now, NULL);
+		fr_event_list_time(&now, event_list);
+		sd_watchdog_event(event_list, &now, NULL);
 	}
 #endif
 
@@ -5337,9 +5337,9 @@ int radius_event_start(bool have_children)
 		/*
 		 *  radius_event_init() must be called first
 		 */
-		rad_assert(el);
+		rad_assert(event_list);
 
-		MEM(pl = rbtree_create(NULL, packet_entry_cmp, NULL, RBTREE_FLAG_LOCK));
+		MEM(packet_list = rbtree_create(NULL, packet_entry_cmp, NULL, RBTREE_FLAG_LOCK));
 	}
 
 #ifdef WITH_PROXY
@@ -5388,7 +5388,7 @@ int radius_event_start(bool have_children)
 	 *	Perform thread specific module instantiation for single-threaded mode.
 	 */
 	if (!spawn_workers) {
-		if (modules_thread_instantiate(main_config.config, el) < 0) {
+		if (modules_thread_instantiate(main_config.config, event_list) < 0) {
 			ERROR("Failed to instantiate thread-specific data for modules");
 			return 0;
 		}
@@ -5414,7 +5414,7 @@ int radius_event_start(bool have_children)
 	}
 	DEBUG4("Created signal pipe.  Read end FD %i, write end FD %i", self_pipe[0], self_pipe[1]);
 
-	if (fr_event_fd_insert(el, self_pipe[0], event_signal_handler, NULL, NULL, el) < 0) {
+	if (fr_event_fd_insert(event_list, self_pipe[0], event_signal_handler, NULL, NULL, event_list) < 0) {
 		PERROR("Failed creating signal pipe handler");
 		return -1;
 	}
@@ -5504,7 +5504,7 @@ static int request_delete_cb(UNUSED void *ctx, void *data)
 #endif
 
 	request->in_request_hash = false;
-	fr_event_timer_delete(el, &request->ev);
+	fr_event_timer_delete(event_list, &request->ev);
 
 	if (main_config.talloc_memory_report) {
 		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",
@@ -5541,7 +5541,7 @@ void radius_event_free(void)
 	}
 #endif
 
-	rbtree_walk(pl, RBTREE_DELETE_ORDER,  request_delete_cb, NULL);
+	rbtree_walk(packet_list, RBTREE_DELETE_ORDER,  request_delete_cb, NULL);
 
 	if (spawn_workers) {
 		/*
@@ -5561,16 +5561,16 @@ void radius_event_free(void)
 			}
 #endif
 
-			rbtree_walk(pl, RBTREE_DELETE_ORDER, request_delete_cb, NULL);
-			num = rbtree_num_elements(pl);
+			rbtree_walk(packet_list, RBTREE_DELETE_ORDER, request_delete_cb, NULL);
+			num = rbtree_num_elements(packet_list);
 			if (num > 0) {
 				ERROR("Request list has %d requests still in it.", num);
 			}
 		}
 	}
 
-	talloc_free(pl);
-	pl = NULL;
+	talloc_free(packet_list);
+	packet_list = NULL;
 
 #ifdef WITH_PROXY
 	fr_packet_list_free(proxy_list);
@@ -5579,14 +5579,14 @@ void radius_event_free(void)
 	if (proxy_ctx) talloc_free(proxy_ctx);
 #endif
 
-	TALLOC_FREE(el);
+	TALLOC_FREE(event_list);
 
 	if (debug_condition) talloc_free(debug_condition);
 }
 
 int radius_event_process(void)
 {
-	if (!el) return 0;
+	if (!event_list) return 0;
 
-	return fr_event_loop(el);
+	return fr_event_loop(event_list);
 }
