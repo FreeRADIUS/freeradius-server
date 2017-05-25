@@ -320,8 +320,7 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_
 		 *	Or, there is a reply, and there are more packets outstanding.
 		 *	Skip the signal.
 		 */
-		if (!*p_reply ||
-		    ((*p_reply && (master->num_outstanding > 1)))) {
+		if (!*p_reply || (*p_reply && (master->num_outstanding > 1))) {
 			MPRINT("MASTER SKIPS signal\n");
 			return 0;
 		}
@@ -828,15 +827,15 @@ int fr_channel_signal_open(fr_channel_t *ch)
 void fr_channel_debug(fr_channel_t *ch, FILE *fp)
 {
 	fprintf(fp, "to worker\n");
-	fprintf(fp, "\tnum_signals sent = %zd\n", ch->end[TO_WORKER].num_signals);
-	fprintf(fp, "\tnum_signals re-sent = %zd\n", ch->end[TO_WORKER].num_resignals);
-	fprintf(fp, "\tnum_kevents checked = %zd\n", ch->end[TO_WORKER].num_kevents);
-	fprintf(fp, "\tsequence = %zd\n", ch->end[TO_WORKER].sequence);
-	fprintf(fp, "\tack = %zd\n", ch->end[TO_WORKER].ack);
+	fprintf(fp, "\tnum_signals sent = %zu\n", ch->end[TO_WORKER].num_signals);
+	fprintf(fp, "\tnum_signals re-sent = %zu\n", ch->end[TO_WORKER].num_resignals);
+	fprintf(fp, "\tnum_kevents checked = %zu\n", ch->end[TO_WORKER].num_kevents);
+	fprintf(fp, "\tsequence = %"PRIu64"\n", ch->end[TO_WORKER].sequence);
+	fprintf(fp, "\tack = %"PRIu64"\n", ch->end[TO_WORKER].ack);
 
 	fprintf(fp, "to receive\n");
-	fprintf(fp, "\tnum_signals sent = %zd\n", ch->end[FROM_WORKER].num_signals);
-	fprintf(fp, "\tnum_kevents checked = %zd\n", ch->end[FROM_WORKER].num_kevents);
-	fprintf(fp, "\tsequence = %zd\n", ch->end[FROM_WORKER].sequence);
-	fprintf(fp, "\tack = %zd\n", ch->end[FROM_WORKER].ack);
+	fprintf(fp, "\tnum_signals sent = %zu\n", ch->end[FROM_WORKER].num_signals);
+	fprintf(fp, "\tnum_kevents checked = %zu\n", ch->end[FROM_WORKER].num_kevents);
+	fprintf(fp, "\tsequence = %"PRIu64"\n", ch->end[FROM_WORKER].sequence);
+	fprintf(fp, "\tack = %"PRIu64"\n", ch->end[FROM_WORKER].ack);
 }
