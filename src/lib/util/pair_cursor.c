@@ -646,9 +646,9 @@ VALUE_PAIR *fr_pair_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new)
 {
 	VALUE_PAIR *vp, **last;
 
-	VERIFY_LIST(*(cursor->first));
-
 	if (!fr_cond_assert(cursor->first)) return NULL;	/* cursor must have been initialised */
+
+	VERIFY_LIST(*(cursor->first));
 
 	vp = cursor->current;
 	if (!vp) {
