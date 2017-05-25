@@ -22,7 +22,7 @@ addons:
   coverity_scan:
     project:
       name: FreeRADIUS/freeradius-server
-      version: master
+      version: v4.0.x
       description: The FreeRADIUS server project
     notification_email: freeradius-devel@lists.freeradius.org
     build_command_prepend: ./configure -with-rlm-python-bin=/usr/bin/python2.7
@@ -49,7 +49,6 @@ addons:
       - pbuilder
       - python-dev
       - quilt
-      - libmruby-dev
       - libcollectdclient-dev
       - firebird-dev
       - freetds-dev
