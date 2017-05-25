@@ -25,9 +25,13 @@
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
+#define __STDC_WANT_LIB_EXT1__ 1
+#include <string.h>
+
 #include "eap_tls.h"
 #include <openssl/hmac.h>
 #include <freeradius-devel/sha1.h>
+
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
 /*
@@ -117,7 +121,7 @@ static void P_hash(EVP_MD const *evp_md,
 
 	HMAC_CTX_free(ctx_a);
 	HMAC_CTX_free(ctx_out);
-	memset(a, 0, sizeof(a));
+	memset_s(a, 0, sizeof(a), sizeof(a));
 }
 
 /*  EAP-FAST Pseudo-Random Function (T-PRF): RFC 4851, Section 5.5 */
@@ -187,9 +191,13 @@ static void PRF(unsigned char const *secret, unsigned int secret_len,
  */
 void eap_tls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label)
 {
-	uint8_t out[4 * EAP_TLS_MPPE_KEY_LEN];
-	uint8_t *p;
-	size_t prf_size;
+	uint8_t		out[4 * EAP_TLS_MPPE_KEY_LEN];
+	uint8_t		*p;
+	size_t		prf_size;
+	size_t		master_key_len;
+	uint8_t		seed[64 + (2 * SSL3_RANDOM_SIZE)];
+	uint8_t		buf[4 * EAP_TLS_MPPE_KEY_LEN];
+	uint8_t		master_key[SSL_MAX_MASTER_KEY_LENGTH];
 
 	prf_size = strlen(prf_label);
 
@@ -198,11 +206,6 @@ void eap_tls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label)
 #endif
 
 	{
-		size_t master_key_len;
-		uint8_t seed[64 + (2 * SSL3_RANDOM_SIZE)];
-		uint8_t buf[4 * EAP_TLS_MPPE_KEY_LEN];
-		uint8_t master_key[SSL_MAX_MASTER_KEY_LENGTH];
-
 		p = seed;
 		memcpy(p, prf_label, prf_size);
 		p += prf_size;
