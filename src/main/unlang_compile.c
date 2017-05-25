@@ -720,8 +720,7 @@ static bool pass2_cond_callback(void *ctx, fr_cond_t *c)
 			 *	But now we've just converted "%{Attr}"
 			 *	to &Attr, so we've got to do it again.
 			 */
-			if ((map->lhs->type == TMPL_TYPE_ATTR) &&
-			    (map->rhs->type == TMPL_TYPE_UNPARSED)) {
+			if (map->lhs->type == TMPL_TYPE_ATTR) {
 				if ((map->rhs->len > 0) ||
 				    (map->op != T_OP_CMP_EQ) ||
 				    (map->lhs->tmpl_da->type == FR_TYPE_STRING) ||
