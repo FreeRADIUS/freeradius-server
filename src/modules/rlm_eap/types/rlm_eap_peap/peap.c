@@ -795,17 +795,19 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 	rad_assert(!fake->packet->vps);
 
 	switch (t->status) {
-		/*
-		 *	If we're in PHASE2_INIT, the phase2 method hasn't been
-		 *	sent an Identity packet yet; do so from the stored
-		 *	username and this will kick off the phase2 eap method
-		 */
-
+	/*
+	 *	If we're in PHASE2_INIT, the phase2 method hasn't been
+	 *	sent an Identity packet yet; do so from the stored
+	 *	username and this will kick off the phase2 eap method
+	 */
 	case PEAP_STATUS_PHASE2_INIT:
 	{
-		size_t len = t->username->vp_length + EAP_HEADER_LEN + 1;
+		size_t len;
 		uint8_t *q;
 
+		rad_assert(t->username);
+
+		len = t->username->vp_length + EAP_HEADER_LEN + 1;
 		t->status = PEAP_STATUS_PHASE2;
 
 		vp = fr_pair_afrom_num(fake->packet, 0, FR_EAP_MESSAGE);
