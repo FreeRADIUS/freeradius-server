@@ -189,12 +189,14 @@ static struct hashtable * build_hash_table (char const * file, int nfields,
 	MEM(ht->table = talloc_zero_array(ht, struct mypasswd *, tablesize));
 	while (fgets(buffer, 1024, ht->fp)) {
 		if(*buffer && *buffer!='\n' && (!ignorenis || (*buffer != '+' && *buffer != '-')) ){
-			if(!(hashentry = mypasswd_alloc(buffer, nfields, &len))){
+			hashentry = mypasswd_alloc(buffer, nfields, &len);
+			if (!hashentry){
 				release_hash_table(ht);
 				return ht;
 			}
+
 			len = string_to_entry(buffer, nfields, ht->delimiter, hashentry, len);
-			if(!hashentry->field[keyfield] || *hashentry->field[keyfield] == '\0') {
+			if (!hashentry->field[keyfield] || *hashentry->field[keyfield] == '\0') {
 				talloc_free(hashentry);
 				continue;
 			}
@@ -209,7 +211,7 @@ static struct hashtable * build_hash_table (char const * file, int nfields,
 			hashentry->next = ht->table[h];
 			ht->table[h] = hashentry;
 			if (islist) {
-				for(list=nextlist; nextlist; list = nextlist){
+				for (list=nextlist; nextlist; list = nextlist){
 					for (nextlist = list; *nextlist && *nextlist!=','; nextlist++);
 					if (*nextlist) *nextlist++ = 0;
 					else nextlist = 0;
@@ -431,11 +433,16 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			      inst->format);
 		return -1;
 	}
-	if (! (inst->ht = build_hash_table (inst->filename, nfields, keyfield, listable, inst->hash_size, inst->ignore_nislike, *inst->delimiter)) ){
+
+	inst->ht = build_hash_table(inst->filename, nfields, keyfield, listable,
+				    inst->hash_size, inst->ignore_nislike, *inst->delimiter);
+	if (!inst->ht){
 		ERROR("Can't build hashtable from passwd file");
 		return -1;
 	}
-	if (! (inst->pwdfmt = mypasswd_alloc(inst->format, nfields, &len)) ){
+
+	inst->pwdfmt = mypasswd_alloc(inst->format, nfields, &len);
+	if (!inst->pwdfmt){
 		ERROR("Memory allocation failed");
 		release_ht(inst->ht);
 		inst->ht = NULL;
