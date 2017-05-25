@@ -439,9 +439,6 @@ static count_chars *alloc_countchars(void)
 {
 	count_chars *out;
 	out = lt_malloc(sizeof(count_chars));
-	if (!out) {
-		exit(1);
-	}
 	init_count_chars(out);
 
 	return out;
@@ -1354,10 +1351,8 @@ static void add_rpath_noinstall(count_chars *cc, char const *arg, int pathlen)
 	char const *path;
 
 	path = load_noinstall_path(arg, pathlen);
-	if (path) {
-		add_rpath(cc, path);
-		lt_const_free(path);
-	}
+	add_rpath(cc, path);
+	lt_const_free(path);
 }
 #endif
 
@@ -1656,6 +1651,8 @@ static int parse_input_file_name(char const *arg, command_t *cmd)
 				char *tmp;
 
 				tmp = strdup(arg);
+				if (!tmp) exit(1);
+
 				tmp[pathlen] = '\0';
 				push_count_chars(cmd->arglist, tmp);
 
@@ -2504,7 +2501,7 @@ static void parse_args(int argc, char *argv[], command_t *cmd)
 
 				len = strlen(arg);
 
-				sp = malloc(len + 3);
+				sp = lt_malloc(len + 3);
 				sp[0] = '\'';
 				memcpy(sp + 1, arg, len);
 				sp[len + 1] = '\'';
