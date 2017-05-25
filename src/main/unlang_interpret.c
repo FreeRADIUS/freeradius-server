@@ -420,7 +420,7 @@ static unlang_action_t unlang_parallel(UNUSED REQUEST *request, unlang_stack_t *
 }
 
 static unlang_action_t unlang_case(REQUEST *request, unlang_stack_t *stack,
-				     rlm_rcode_t *presult, int *priority)
+				   rlm_rcode_t *presult, int *priority)
 {
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
@@ -438,7 +438,7 @@ static unlang_action_t unlang_case(REQUEST *request, unlang_stack_t *stack,
 }
 
 static unlang_action_t unlang_return(REQUEST *request, unlang_stack_t *stack,
-				       rlm_rcode_t *presult, int *priority)
+				     rlm_rcode_t *presult, int *priority)
 {
 	int			i;
 	VALUE_PAIR		**copy_p;
@@ -466,7 +466,7 @@ static unlang_action_t unlang_return(REQUEST *request, unlang_stack_t *stack,
 }
 
 static unlang_action_t unlang_foreach(REQUEST *request, unlang_stack_t *stack,
-					rlm_rcode_t *presult, int *priority)
+				      rlm_rcode_t *presult, int *priority)
 {
 	VALUE_PAIR		*vp;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
@@ -758,7 +758,7 @@ static unlang_action_t unlang_update(REQUEST *request, unlang_stack_t *stack,
 	int rcode;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
-	unlang_group_t	*g = unlang_generic_to_group(instruction);
+	unlang_group_t		*g = unlang_generic_to_group(instruction);
 	vp_map_t *map;
 
 	RINDENT();
@@ -781,9 +781,9 @@ static unlang_action_t unlang_update(REQUEST *request, unlang_stack_t *stack,
 static unlang_action_t unlang_map(REQUEST *request, unlang_stack_t *stack,
 				  rlm_rcode_t *presult, int *priority)
 {
-	unlang_stack_frame_t *frame = &stack->frame[stack->depth];
-	unlang_t *instruction = frame->instruction;
-	unlang_group_t *g = unlang_generic_to_group(instruction);
+	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
+	unlang_t		*instruction = frame->instruction;
+	unlang_group_t		*g = unlang_generic_to_group(instruction);
 
 	RINDENT();
 	*presult = map_proc(request, g->proc_inst);
@@ -874,10 +874,10 @@ done:
 static unlang_action_t unlang_if(REQUEST *request, unlang_stack_t *stack,
 				   rlm_rcode_t *presult, int *priority)
 {
-	int condition;
+	int			condition;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
-	unlang_group_t	*g;
+	unlang_group_t		*g;
 
 	g = unlang_generic_to_group(instruction);
 	rad_assert(g->cond != NULL);
@@ -925,6 +925,7 @@ static unlang_action_t unlang_elsif(REQUEST *request, unlang_stack_t *stack,
 {
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
+
 	rad_assert(frame->was_if);
 
 	/*
@@ -948,6 +949,7 @@ static unlang_action_t unlang_else(REQUEST *request, unlang_stack_t *stack,
 {
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
+
 	rad_assert(frame->was_if);
 
 	if (frame->if_taken) {
@@ -1357,8 +1359,8 @@ static unlang_group_t empty_group = {
  */
 void unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
 {
-	unlang_t *instruction = NULL;
-	unlang_stack_t *stack = request->stack;
+	unlang_t	*instruction = NULL;
+	unlang_stack_t	*stack = request->stack;
 
 	/*
 	 *	Interpretable unlang instructions are stored as CONF_DATA
