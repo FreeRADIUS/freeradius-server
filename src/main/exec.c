@@ -75,7 +75,6 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 			   VALUE_PAIR *input_pairs, bool shell_escape)
 {
 #ifndef __MINGW32__
-	char		*p;
 	VALUE_PAIR	*vp;
 	int		n;
 	int		to_child[2] = {-1, -1};
@@ -134,8 +133,9 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 	envp[0] = NULL;
 
 	if (input_pairs) {
-		vp_cursor_t cursor;
-		char buffer[1024];
+		char		*p;
+		vp_cursor_t	cursor;
+		char		buffer[1024];
 
 		input_ctx = talloc_new(request);
 
