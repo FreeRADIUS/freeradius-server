@@ -874,7 +874,9 @@ int fr_time_from_str(time_t *date, char const *date_str)
 	 */
 	tm->tm_mon = 12;
 	for (i = 0; i < 3; i++) {
-		if (isalpha( (int) *f[i])) {
+		if (isalpha((int) *f[i])) {
+			int j;
+
 			/*
 			 *  Bubble the month to the front of the list
 			 */
@@ -882,9 +884,9 @@ int fr_time_from_str(time_t *date, char const *date_str)
 			f[0] = f[i];
 			f[i] = p;
 
-			for (i = 0; i < 12; i++) {
-				if (strncasecmp(months[i], f[0], 3) == 0) {
-					tm->tm_mon = i;
+			for (j = 0; j < 12; j++) {
+				if (strncasecmp(months[j], f[0], 3) == 0) {
+					tm->tm_mon = j;
 					break;
 				}
 			}
