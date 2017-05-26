@@ -3350,8 +3350,6 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 		case '.':
 			da = fr_dict_attr_child_by_num(our_parent, num);
 			if (!da) {	/* Unknown component */
-				if (!our_parent) goto is_root;
-
 				switch (our_parent->type) {
 				case FR_TYPE_EVS:
 				case FR_TYPE_VSA:
