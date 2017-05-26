@@ -60,6 +60,7 @@ static ssize_t xlat_trigger(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t ou
 	}
 
 	head = request_data_reference(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_ARGS);
+
 	/*
 	 *	No arguments available.
 	 */
@@ -291,8 +292,8 @@ int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, boo
 	 */
 	if (!check_config) ret = radius_exec_program(request, NULL, 0, NULL,
 						     request, value, vp, false, true, EXEC_TIMEOUT);
-	request_data_reference(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_NAME);
-	request_data_reference(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_ARGS);
+	(void) request_data_get(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_NAME);
+	(void) request_data_get(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_ARGS);
 
 	if (fake) talloc_free(fake);
 
