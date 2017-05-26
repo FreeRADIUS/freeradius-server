@@ -257,6 +257,16 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 
 		snprintf(filename, sizeof(filename), "%s/%s.client.XXXXXXXX",
 			 conf->verify_tmp_dir, main_config.name);
+
+#ifdef __COVERITY__
+		/*
+		 *	POSIX-2008 requires that mkstemp creates the file
+		 *	with 0600 permissions.  So setting umask is pointless
+		 *	and although it won't cause crashes, will cause
+		 *	race conditions in threaded environments.
+		 */
+		umask(0600);
+#endif
 		fd = mkstemp(filename);
 		if (fd < 0) {
 			RDEBUG("Failed creating file in %s: %s",
