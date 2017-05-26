@@ -784,12 +784,6 @@ void tls_session_msg_cb(int write_p, int msg_version, int content_type,
 	}
 
 	/*
-	 *	Work around bug #298, where we may be called with a NULL
-	 *	argument.  We should really log a serious error
-	 */
-	if (!session) return;
-
-	/*
 	 *	0 - received (from peer)
 	 *	1 - sending (to peer)
 	 */
