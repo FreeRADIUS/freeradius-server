@@ -569,7 +569,7 @@ static eap_tls_status_t eap_tls_verify(eap_session_t *eap_session)
 	 *	is too short.  See eap_validate()., in ../../eap.c
 	 */
 	eap_tls_data = (eap_tls_data_t *)this_round->response->type.data;
-	if (eap_tls_data) {
+	if (!eap_tls_data) {
 		RDEBUG("Invalid EAP-TLS packet; no data");
 		return EAP_TLS_INVALID;
 	}
