@@ -736,7 +736,7 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 	if (!sock->ssn->connected) {
 		PTHREAD_MUTEX_LOCK(&sock->mutex);
 		rcode = try_connect(sock->ssn);
-		PTHREAD_MUTEX_LOCK(&sock->mutex);
+		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 		if (rcode == 0) return 0;
 
 		if (rcode < 0) {
