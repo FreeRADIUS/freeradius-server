@@ -3160,6 +3160,7 @@ parse:
 		}
 		dst->vb_float32 = f;
 	}
+		break;
 
 	case FR_TYPE_FLOAT64:
 	{
@@ -3188,7 +3189,6 @@ parse:
 
 		dst->vb_date = date;
 	}
-
 		break;
 
 	case FR_TYPE_IFID:
