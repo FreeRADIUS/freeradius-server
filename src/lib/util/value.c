@@ -3528,9 +3528,10 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 
 	size_t		len = 0, freespace = outlen;
 
+	if (!data) return 0;
+
 	if (!fr_cond_assert(data->type != FR_TYPE_INVALID)) return -1;
 
-	if (!data) return 0;
 	if (outlen == 0) return data->datum.length;
 
 	*out = '\0';
