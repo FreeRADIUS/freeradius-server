@@ -2811,7 +2811,7 @@ static int fr_value_box_integer_str(fr_value_box_t *dst, fr_type_t dst_type, cha
 		break;
 
 	case FR_TYPE_UINT64:
-		IN_RANGE_UNSIGNED(UINT64);
+		/* IN_RANGE_UNSIGNED doesn't work here */
 		dst->vb_uint64 = (uint64_t)uinteger;
 		break;
 
@@ -2831,7 +2831,7 @@ static int fr_value_box_integer_str(fr_value_box_t *dst, fr_type_t dst_type, cha
 		break;
 
 	case FR_TYPE_INT64:
-		IN_RANGE_SIGNED(INT64);
+		/* IN_RANGE_SIGNED doesn't work here */
 		dst->vb_int64 = (int64_t)sinteger;
 		break;
 
