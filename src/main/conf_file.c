@@ -479,14 +479,13 @@ static bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_per
 		if (conf_check_uid != euid) {
 			if (seteuid(euid) < 0) {
 				ERROR("Failed restoring effective user ID after file check");
-				if (fd >= 0) close(fd);
+
 				goto error;
 			}
 		}
 		if (conf_check_gid != egid) {
 			if (setegid(egid) < 0) {
 				ERROR("Failed restoring effective group ID after file check");
-				if (fd >= 0) close(fd);
 				goto error;
 			}
 		}
