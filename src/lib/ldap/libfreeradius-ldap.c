@@ -184,7 +184,6 @@ fr_ldap_rcode_t fr_ldap_error_check(LDAPControl ***ctrls, fr_ldap_conn_t const *
 	int srv_errno = LDAP_SUCCESS;	/* errno in the result message */
 
 	char *part_dn = NULL;		/* Partial DN match */
-	char *our_err = NULL;		/* Our extended error message */
 	char *srv_err = NULL;		/* Server's extended error message */
 
 	ssize_t len;
@@ -335,7 +334,6 @@ process_error:
 					   ldap_err2string(srv_errno), srv_errno);
 		}
 
-		if (our_err) fr_strerror_printf("%s. %s", fr_strerror(), our_err);
 		if (srv_err) fr_strerror_printf("%s. Server said: %s", fr_strerror(), srv_err);
 
 		break;
