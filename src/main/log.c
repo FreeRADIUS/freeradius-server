@@ -541,8 +541,9 @@ void radlog_request_perror(log_type_t type, log_lvl_t lvl, REQUEST *request, cha
 
 		va_start(ap, msg);
 		tmp = talloc_vasprintf(request, msg, ap);
-		if (!tmp) return;
 		va_end(ap);
+
+		if (!tmp) return;
 
 		radlog_request_error(type, lvl, request, "%s: %s", tmp, strerror);
 		talloc_free(tmp);
