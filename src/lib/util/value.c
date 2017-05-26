@@ -2149,19 +2149,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		return 0;
 	}
 
-	/*
-	 *	Convert host order to network uint8 order.
-	 */
-	if ((dst_type == FR_TYPE_IPV4_ADDR) &&
-	    ((src->type == FR_TYPE_UINT32) ||
-	     (src->type == FR_TYPE_DATE) ||
-	     (src->type == FR_TYPE_INT32))) {
-	     	dst->vb_ip.af = AF_INET;
-	     	dst->vb_ip.prefix = 32;
-	     	dst->vb_ip.scope_id = 0;
-		dst->vb_ip.addr.v4.s_addr = htonl(src->vb_uint32);
-
-	} else if ((src->type == FR_TYPE_IPV4_ADDR) &&
+	if ((src->type == FR_TYPE_IPV4_ADDR) &&
 		   ((dst_type == FR_TYPE_UINT32) ||
 		    (dst_type == FR_TYPE_DATE) ||
 		    (dst_type == FR_TYPE_INT32))) {
