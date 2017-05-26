@@ -2532,7 +2532,7 @@ FR_TOKEN fr_pair_raw_from_str(char const **ptr, VALUE_PAIR_RAW *raw)
 		 *	out which operators come after the attribute
 		 *	name.  Yes, our "lexer" is bad.
 		 */
-		if (!fr_dict_attr_allowed_chars[(unsigned int) *t]) {
+		if (!fr_dict_attr_allowed_chars[*t]) {
 			break;
 		}
 
