@@ -280,7 +280,8 @@ static void mod_action_dup(REQUEST *request, void *instance, UNUSED void *thread
 			 buffer, sizeof(buffer)),
 	       packet->dst_port, packet->id);
 
-	fr_radius_packet_send(packet, NULL, inst->home_server->secret);
+	if (fr_radius_packet_send(packet, NULL, inst->home_server->secret) < 0) return;
+
 	packet->count++;
 }
 
