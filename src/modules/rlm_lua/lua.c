@@ -831,7 +831,7 @@ static lua_State *rlm_lua_get_interp(rlm_lua_t const *inst) {
 		marker = talloc(inst, lua_State *);
 		talloc_set_destructor(marker, _lua_state_free);
 		*marker = L;
-		pthread_setspecific(inst->key, marker);
+		(void) pthread_setspecific(inst->key, marker);
 
 		return L;
 	}
