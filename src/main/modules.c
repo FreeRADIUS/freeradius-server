@@ -1248,7 +1248,8 @@ static int load_component_section(CONF_SECTION *cs,
 
 static int load_byserver(CONF_SECTION *cs)
 {
-	rlm_components_t comp, found;
+	rlm_components_t comp;
+	bool found;
 	char const *name = cf_section_name2(cs);
 	rbtree_t *components;
 	virtual_server_t *server = NULL;
@@ -1286,7 +1287,7 @@ static int load_byserver(CONF_SECTION *cs)
 	 *	Loop over all of the known components, finding their
 	 *	configuration section, and loading it.
 	 */
-	found = 0;
+	found = false;
 	for (comp = 0; comp < MOD_COUNT; ++comp) {
 		CONF_SECTION *subcs;
 
@@ -1346,7 +1347,7 @@ static int load_byserver(CONF_SECTION *cs)
 
 		server->subcs[comp] = subcs;
 
-		found = 1;
+		found = true;
 	} /* loop over components */
 
 	/*
