@@ -797,7 +797,7 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 		break;
 
 	case FR_TYPE_IPV6_PREFIX:
-		memcpy(&vp->vp_ipv6addr, p + 1, sizeof(vp->vp_ipv6addr) + 1);
+		memcpy(&vp->vp_ipv6addr, p + 1, sizeof(vp->vp_ipv6addr));
 		vp->vp_ip.af = AF_INET6;
 		vp->vp_ip.scope_id = 0;
 		vp->vp_ip.prefix = p[0];
