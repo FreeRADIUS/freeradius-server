@@ -235,6 +235,11 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 
 	rad_assert(request);
 
+	/*
+	 *	No output means no output.
+	 */
+	if (!request->log.output) return;
+
 	filename =  request->log.output->file;
 
 	/*
@@ -251,42 +256,40 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 		 *	we don't need to re-open it on every log
 		 *	message.
 		 */
-		if (request->log.output) {
-			switch (request->log.output->dst) {
-			case L_DST_FILES:
-				fp = fopen(request->log.output->file, "a");
-				if (!fp) goto finish;
-				break;
+		switch (request->log.output->dst) {
+		case L_DST_FILES:
+			fp = fopen(request->log.output->file, "a");
+			if (!fp) goto finish;
+			break;
 
 #if defined(HAVE_FOPENCOOKIE) || defined (HAVE_FUNOPEN)
-			case L_DST_EXTRA:
-			{
+		case L_DST_EXTRA:
+		{
 #  ifdef HAVE_FOPENCOOKIE
-				cookie_io_functions_t io;
+			cookie_io_functions_t io;
 
-				/*
-				 *	These must be set separately as they have different prototypes.
-				 */
-				io.read = NULL;
-				io.seek = NULL;
-				io.close = NULL;
-				io.write = request->log.output->cookie_write;
+			/*
+			 *	These must be set separately as they have different prototypes.
+			 */
+			io.read = NULL;
+			io.seek = NULL;
+			io.close = NULL;
+			io.write = request->log.output->cookie_write;
 
-				fp = fopencookie(request->log.output->cookie, "w", io);
+			fp = fopencookie(request->log.output->cookie, "w", io);
 #  else
-				fp = funopen(request->log.output->cookie,
-					     NULL, request->log.output->cookie_write, NULL, NULL);
+			fp = funopen(request->log.output->cookie,
+				     NULL, request->log.output->cookie_write, NULL, NULL);
 
 #  endif
-				if (!fp) goto finish;
-			}
-				break;
-#endif
-			default:
-				break;
-			}
-			goto print_msg;
+			if (!fp) goto finish;
 		}
+		break;
+#endif
+		default:
+			break;
+		}
+		goto print_msg;
 	}
 
 	if (filename) {
