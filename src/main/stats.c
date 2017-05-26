@@ -64,6 +64,7 @@ void request_stats_final(REQUEST *request)
 
 	if (!request->listener) return;
 	if (!request->client) return;
+	if (!request->packet) return;
 
 	if ((request->listener->type != RAD_LISTEN_NONE) &&
 #ifdef WITH_ACCOUNTING
@@ -110,7 +111,7 @@ void request_stats_final(REQUEST *request)
 	 *	deleted, because only the main server thread calls
 	 *	this function, which makes it thread-safe.
 	 */
-	if (request->reply && request->packet && (request->packet->code != FR_CODE_STATUS_SERVER)) switch (request->reply->code) {
+	if (request->reply && (request->packet->code != FR_CODE_STATUS_SERVER)) switch (request->reply->code) {
 	case FR_CODE_ACCESS_ACCEPT:
 		INC_AUTH(total_access_accepts);
 
