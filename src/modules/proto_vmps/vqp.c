@@ -313,9 +313,10 @@ int vqp_decode(RADIUS_PACKET *packet)
 		attr |= 0x2000;
 		vp = fr_pair_afrom_num(packet, 0, attr);
 		if (!vp) {
-			fr_pair_list_free(&packet->vps);
-
 			fr_strerror_printf("No memory");
+
+		error:
+			fr_pair_list_free(&packet->vps);
 			return -1;
 		}
 
@@ -343,10 +344,18 @@ int vqp_decode(RADIUS_PACKET *packet)
 
 		default:
 		case FR_TYPE_OCTETS:
+			if ((ptr + attr_len) >= end) {
+				fr_strerror_printf("Attribute length exceeds received data");
+				goto error;
+			}
 			fr_pair_value_memcpy(vp, ptr, attr_len);
 			break;
 
 		case FR_TYPE_STRING:
+			if ((ptr + attr_len) >= end) {
+				fr_strerror_printf("Attribute length exceeds received data");
+				goto error;
+			}
 			fr_pair_value_bstrncpy(vp, ptr, attr_len);
 			break;
 		}
