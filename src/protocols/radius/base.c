@@ -364,6 +364,7 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 		case FR_CODE_ACCESS_REJECT:
 		case FR_CODE_ACCESS_CHALLENGE:
 		do_ack:
+			if (!original) goto need_original;
 			memcpy(packet + 4, original + 4, AUTH_VECTOR_LEN);
 			break;
 
