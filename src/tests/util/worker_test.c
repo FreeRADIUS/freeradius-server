@@ -323,7 +323,7 @@ check_close:
 		MPRINT1("Master kevent returned %d\n", num_events);
 
 		if (num_events < 0) {
-			if (num_events == EINTR) continue;
+			if (errno == EINTR) continue;
 
 			fprintf(stderr, "Failed waiting for kevent: %s\n", strerror(errno));
 			exit(1);

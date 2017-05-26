@@ -326,7 +326,7 @@ static void *channel_worker(void *arg)
 		MPRINT1("\tWorker kevent returned %d events\n", num_events);
 
 		if (num_events < 0) {
-			if (num_events == EINTR) continue;
+			if (errno == EINTR) continue;
 
 			fprintf(stderr, "Failed waiting for kevent: %s\n", strerror(errno));
 			exit(1);
