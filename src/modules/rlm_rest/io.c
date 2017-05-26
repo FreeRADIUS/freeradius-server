@@ -367,12 +367,15 @@ int rest_io_request_enqueue(rlm_rest_thread_t *t, REQUEST *request, void *handle
 	 *	private data.  This makes it simple to resume
 	 *	the request in the demux function later...
 	 */
-	curl_easy_setopt(candle, CURLOPT_PRIVATE, request);
+	ret = curl_easy_setopt(candle, CURLOPT_PRIVATE, request);
+	if (ret != CURLE_OK) {
+		REDEBUG("Request failed: %i - %s", ret, curl_easy_strerror(ret));
+		return -1;
+	}
 
 	ret = curl_multi_add_handle(t->mandle, candle);
 	if (ret != CURLE_OK) {
 		REDEBUG("Request failed: %i - %s", ret, curl_easy_strerror(ret));
-
 		return -1;
 	}
 	t->transfers++;
