@@ -3348,6 +3348,8 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 		 *	Structural attribute
 		 */
 		case '.':
+			if (!our_parent) goto is_root;
+
 			da = fr_dict_attr_child_by_num(our_parent, num);
 			if (!da) {	/* Unknown component */
 				switch (our_parent->type) {
