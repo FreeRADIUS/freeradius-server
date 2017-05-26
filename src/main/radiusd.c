@@ -144,7 +144,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Setup talloc callbacks so we get useful errors
 	 */
-	fr_talloc_fault_setup();
+	(void) fr_talloc_fault_setup();
 
 	/*
 	 *  We probably don't want to free the talloc autofree context
