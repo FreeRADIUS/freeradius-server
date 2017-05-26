@@ -476,6 +476,8 @@ static REQUEST *proto_ldap_request_setup(rad_listen_t *listen, proto_ldap_inst_t
 	gettimeofday(&packet->timestamp, NULL);
 
 	request = request_setup(ctx, listen, packet, inst->client, NULL);
+	if (!request) return NULL;
+
 	request->process = request_queued;
 
 	return request;
