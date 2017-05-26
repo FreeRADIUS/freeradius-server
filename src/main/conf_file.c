@@ -1473,9 +1473,9 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs, CONF_PARSER const varia
 			 */
 			if (!base) {
 				subcs_base = NULL;
-			} else if (type & FR_TYPE_MULTI) {
-				size_t j, len;
-				uint8_t **array;
+			} else if (multi) {
+				size_t		j, len;
+				uint8_t		**array;
 
 				array = (uint8_t **)((uint8_t *)base) + variables[i].offset;
 				len = talloc_array_length(array);
