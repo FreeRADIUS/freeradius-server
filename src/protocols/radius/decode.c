@@ -1365,6 +1365,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		 */
 		if (memcmp(p + 2, (uint8_t *)&vp->vp_ipv6addr, data_len - 2) != 0) goto raw;
 	}
+		break;
 
 	case FR_TYPE_ABINARY:
 		if (data_len > sizeof(vp->vp_filter)) data_len = sizeof(vp->vp_filter);
