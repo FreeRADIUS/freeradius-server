@@ -569,6 +569,10 @@ static eap_tls_status_t eap_tls_verify(eap_session_t *eap_session)
 	 *	is too short.  See eap_validate()., in ../../eap.c
 	 */
 	eap_tls_data = (eap_tls_data_t *)this_round->response->type.data;
+	if (eap_tls_data) {
+		RDEBUG("Invalid EAP-TLS packet; no data");
+		return EAP_TLS_INVALID;
+	}
 
 	/*
 	 *	First output the flags (for debugging)
@@ -602,9 +606,8 @@ static eap_tls_status_t eap_tls_verify(eap_session_t *eap_session)
 	 *
 	 *	Find if this is a reply to the previous request sent
 	 */
-	if ((!eap_tls_data) ||
-	    ((this_round->response->length == EAP_HEADER_LEN + 2) &&
-	     ((eap_tls_data->flags & 0xc0) == 0x00))) {
+	if ((this_round->response->length == EAP_HEADER_LEN + 2) &&
+	    ((eap_tls_data->flags & 0xc0) == 0x00)) {
 		if (!prev_round || (prev_round->request->id != this_round->response->id)) {
 			REDEBUG("Received Invalid TLS ACK");
 			return EAP_TLS_INVALID;
