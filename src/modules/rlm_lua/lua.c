@@ -275,10 +275,13 @@ static int rlm_lua_unmarshall(VALUE_PAIR **out, REQUEST *request, lua_State *L, 
 			char const *p;
 			p = lua_tostring(L, -1);
 			if (!p) {
-				RDEBUG("Unmarshalling failed: Lua string was NULL");
+				REDEBUG("Unmarshalling failed: Lua string was NULL");
 				return -1;
 			}
-			(void) fr_pair_value_from_str(vp, p, strlen(p));
+			if (fr_pair_value_from_str(vp, p, strlen(p)) < 0) {
+				RPEDEBUG("Unmarshalling failed");
+				return -1;
+			}
 		}
 		break;
 
