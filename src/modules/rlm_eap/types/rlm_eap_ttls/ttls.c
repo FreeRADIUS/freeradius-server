@@ -173,7 +173,7 @@ static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 
 		value_len -= 8;	/* -= 8 for AVP code (4), flags (1), AVP length (3) */
 
-		vp = fr_pair_alloc(ctx);
+		MEM(vp = fr_pair_alloc(ctx));
 
 		/*
 		 *	Do we have a vendor field?
