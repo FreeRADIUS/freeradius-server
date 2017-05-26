@@ -818,6 +818,8 @@ static lua_State *rlm_lua_get_interp(rlm_lua_t const *inst) {
 	 *	and return the instance specific interpreter.
 	 */
 	if (!inst->threads) {
+		if (!inst->interpreter) return NULL;
+
 		pthread_mutex_lock(inst->mutex);
 		return inst->interpreter;
 	}
