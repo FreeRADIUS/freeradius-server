@@ -443,8 +443,9 @@ int fr_log_perror(fr_log_t const *log, log_type_t type, char const *msg, ...)
 
 		va_start(ap, msg);
 		tmp = talloc_vasprintf(NULL, msg, ap);
-		if (!tmp) return -1;
 		va_end(ap);
+
+		if (!tmp) return -1;
 
 		fr_log(log, type, "%s: %s", tmp, strerror);
 		talloc_free(tmp);
