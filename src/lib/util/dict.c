@@ -2852,7 +2852,7 @@ int fr_dict_from_file(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char co
 	fr_hash_table_walk(dict->values_by_da, hash_null_callback, NULL);
 	fr_hash_table_walk(dict->values_by_alias, hash_null_callback, NULL);
 
-	if (out) *out = dict;
+	*out = dict;
 
 	return 0;
 }
