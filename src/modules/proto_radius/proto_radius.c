@@ -337,6 +337,10 @@ static int mod_parse(fr_schedule_t *handle, CONF_SECTION *cs, bool verify_config
 			value = cf_pair_value(cp);
 
 			module = cf_data_find(cs, dl_t, value);
+			if (!module) {
+				cf_log_err_cs(cs, "Section missing module data");
+				return -1;
+			}
 			if (cf_data_find(cs, char const *, value)) continue;
 
 			app = (fr_app_subtype_t const *) module->common;
