@@ -410,7 +410,7 @@ static uint32_t dict_enum_value_hash(void const *data)
 	uint32_t hash = 0;
 	fr_dict_enum_t const *enumv = data;
 
-	hash = fr_hash_update((void const **)&enumv->da, sizeof(void *), hash);	/* Cast to quiet static analysis */
+	hash = fr_hash_update((void const *)&enumv->da, sizeof(void *), hash);	/* Cast to quiet static analysis */
 	return fr_hash_update(enumv->value, sizeof(enumv->value), hash);
 }
 
