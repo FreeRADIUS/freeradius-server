@@ -1679,7 +1679,8 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			  NULL, T_INVALID) < 0) return -1;
 
 	if (!this->server) {
-		cf_pair_parse(sock, cs, "server", FR_ITEM_POINTER(FR_TYPE_STRING, &sock->server), NULL, T_INVALID);
+		if (cf_pair_parse(sock, cs, "server", FR_ITEM_POINTER(FR_TYPE_STRING, &sock->server),
+				  NULL, T_INVALID) < 0) return -1;
 	} else {
 		sock->server = this->server;
 	}
