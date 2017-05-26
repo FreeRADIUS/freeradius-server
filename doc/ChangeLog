@@ -2,6 +2,7 @@ FreeRADIUS 3.0.14 Mon 06 Mar 2017 13:00:00 EDT urgency=medium
 	Feature improvements
 	* Enforce TLS client certificate expiration on
 	  session resumption, and Session-Timeout.
+	  See CVE-2017-9148.
 	* Updated dictionary.cisco.vpn3000, dictionary.patton
 	* Added dictionary.dellemc
 	* Lowered the log output for failed PEAP sessions.
@@ -47,6 +48,8 @@ FreeRADIUS 3.0.14 Mon 06 Mar 2017 13:00:00 EDT urgency=medium
 	* Many fixes found by PVS-Studio.  Thanks to PVS-Studio
 	  for giving us a test license.  Please see the git commit
 	  history for more information.
+	* Fix incorrect length check in EAP-PWD.  This may
+	  be exploitable.
 
 FreeRADIUS 3.0.13 Mon 06 Mar 2017 13:00:00 EDT urgency=medium
 	Feature improvements
