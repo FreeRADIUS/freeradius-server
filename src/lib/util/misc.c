@@ -703,7 +703,8 @@ ssize_t fr_utf8_to_ucs2(uint8_t *out, size_t outlen, char const *in, size_t inle
 
 		/* One-byte encoding */
 		if (c <= 0x7f) {
-			FR_PUT_LE16(out, c);
+			out[0] = (uint8_t)c;
+			out[1] = 0;
 			out += 2;
 			continue;
 		} else if ((i == (inlen - 1)) || ((size_t)(out - start) >= (outlen - 1))) {
