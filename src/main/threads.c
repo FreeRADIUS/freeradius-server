@@ -348,7 +348,9 @@ static void thread_fd_handler(UNUSED fr_event_list_t *el, int fd, void *ctx)
 	char buffer[16];
 	THREAD_HANDLE *thread = (THREAD_HANDLE *) ctx;
 
-	(void) read(fd, buffer, sizeof(buffer));
+	while (read(fd, buffer, sizeof(buffer)) == sizeof(buffer)) {
+		/* do nothing */
+	}
 
 	DEBUG3("Thread %d was sent a new request", thread->thread_num);
 }
