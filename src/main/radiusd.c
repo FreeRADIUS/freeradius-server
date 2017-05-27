@@ -196,7 +196,9 @@ int main(int argc, char *argv[])
 	/*
 	 *  Set the panic action and enable other debugging facilities
 	 */
-	fr_fault_setup(getenv("PANIC_ACTION"), argv[0]);
+	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
+		fr_perror("Failed installing fault handlers... continuing");
+	}
 
 	/*  Process the options.  */
 	while ((argval = getopt(argc, argv, "Cd:D:fhi:l:L:Mn:p:PstTvxX")) != EOF) {
