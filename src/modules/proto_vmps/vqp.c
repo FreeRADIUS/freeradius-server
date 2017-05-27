@@ -344,7 +344,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 
 		default:
 		case FR_TYPE_OCTETS:
-			if (attr_len > (end - ptr)) {
+			if (attr_len > (size_t)(end - ptr)) {
 				fr_strerror_printf("Attribute length exceeds received data");
 				goto error;
 			}
@@ -354,7 +354,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 			break;
 
 		case FR_TYPE_STRING:
-			if (attr_len > (end - ptr)) {
+			if (attr_len > (size_t)(end - ptr)) {
 				fr_strerror_printf("Attribute length exceeds received data");
 				goto error;
 			}
