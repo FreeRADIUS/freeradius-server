@@ -145,7 +145,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 	}
 
 	if (conn->statement_type != isc_info_sql_stmt_select) {
-		if (fb_commit(conn)) goto fail;	/* fb_commit unlocks the mutex */
+		if (fb_commit(conn)) return RLM_SQL_ERROR;	/* fb_commit unlocks the mutex */
 	} else {
 		pthread_mutex_unlock(&conn->mut);
 	}

@@ -460,16 +460,16 @@ void * CC_HINT(hot) fr_cursor_replace(fr_cursor_t *cursor, void *r)
 	 */
 	if (*cursor->head == v) {
 		*cursor->head = r;
-		*NEXT_PTR(r) = *NEXT_PTR(v);
+		if (v) *NEXT_PTR(r) = *NEXT_PTR(v);
 	} else {
 		*NEXT_PTR(p) = r;
-		*NEXT_PTR(r) = *NEXT_PTR(v);
+		if (v) *NEXT_PTR(r) = *NEXT_PTR(v);
 	}
 
 	 /*
 	  *	Fixup current pointer.
 	  */
-	if (cursor->current) {
+	if (v) {
 		cursor->current = p;
 		cursor->prev = NULL;				/* populated on next call to fr_cursor_next */
 	}
