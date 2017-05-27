@@ -2531,10 +2531,10 @@ FR_TOKEN fr_pair_raw_from_str(char const **ptr, VALUE_PAIR_RAW *raw)
 		 *	This is arguably easier than trying to figure
 		 *	out which operators come after the attribute
 		 *	name.  Yes, our "lexer" is bad.
+		 *
+		 *  sizeof() is for coverity.
 		 */
-		if (!fr_dict_attr_allowed_chars[*t]) {
-			break;
-		}
+		if ((*t >= sizeof(fr_dict_attr_allowed_chars)) || !fr_dict_attr_allowed_chars[*t]) break;
 
 		/*
 		 *	Attribute:=value is NOT
@@ -2543,9 +2543,7 @@ FR_TOKEN fr_pair_raw_from_str(char const **ptr, VALUE_PAIR_RAW *raw)
 		 *	=
 		 *	value
 		 */
-		if ((*p == ':') && (!isdigit((int) p[1]))) {
-			break;
-		}
+		if ((*p == ':') && (!isdigit((int) p[1]))) break;
 
 		*(q++) = *(p++);
 	}
