@@ -344,6 +344,7 @@ RADIUS_PACKET *fr_dhcp_packet_ok(uint8_t const *data, ssize_t data_len, fr_ipadd
 	uint8_t const	*code;
 	int		pkt_id;
 	RADIUS_PACKET	*packet;
+	size_t		hlen;
 
 	if (data_len < MIN_PACKET_SIZE) {
 		fr_strerror_printf("DHCP packet is too small (%zu < %d)", data_len, MIN_PACKET_SIZE);
@@ -360,8 +361,9 @@ RADIUS_PACKET *fr_dhcp_packet_ok(uint8_t const *data, ssize_t data_len, fr_ipadd
 		return NULL;
 	}
 
-	if ((data[2] != 0) && (data[2] != 6)) {
-		fr_strerror_printf("Ethernet HW length incorrect.  Expected 6 got %d", data[2]);
+	hlen = data[2];
+	if ((hlen != 0) && (hlen != 6)) {
+		fr_strerror_printf("Ethernet HW length incorrect.  Expected 6 got %zu", hlen);
 		return NULL;
 	}
 
@@ -418,8 +420,8 @@ RADIUS_PACKET *fr_dhcp_packet_ok(uint8_t const *data, ssize_t data_len, fr_ipadd
 	 *      and use that, too?
 	 */
 	memset(packet->vector, 0, sizeof(packet->vector));
-	memcpy(packet->vector, data + 28, data[2]);
-	packet->vector[data[2]] = packet->code & 0xff;
+	memcpy(packet->vector, data + 28, hlen);
+	packet->vector[hlen] = packet->code & 0xff;
 
 	/*
 	 *	FIXME: for DISCOVER / REQUEST: src_port == dst_port + 1
