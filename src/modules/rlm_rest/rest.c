@@ -2123,7 +2123,15 @@ int rest_response_certinfo(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_se
 
 		/*
 		 *	Add a copy of the cert_vps to session state.
+		 *
+		 *	Both PVS studio and Coverity detect the condition
+		 *	below as logically dead code unless we explicitly
+		 *	set cert_vps.  This is because they're too dumb
+		 *	to realise that the cursor argument passed to
+		 *	tls_session_pairs_from_x509_cert contains a
+		 *	reference to cert_vps.
 		 */
+		cert_vps = fr_pair_cursor_current(&cursor);
 		if (cert_vps) {
 			/*
 			 *	Print out all the pairs we have so far
