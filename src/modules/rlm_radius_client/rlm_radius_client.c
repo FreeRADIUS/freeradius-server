@@ -295,6 +295,8 @@ static void mod_conn_free(void *ctx)
 	fd_set fds;
 	rlm_radius_client_conn_t *conn = ctx;
 
+	FD_ZERO(&fds);
+
 	DEBUG("Cleaning up sockets for module %s", conn->inst->name);
 
 	max_fd = fr_packet_list_fd_set(conn->pl, &fds);
