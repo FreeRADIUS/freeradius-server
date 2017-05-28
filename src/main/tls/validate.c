@@ -141,7 +141,7 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 		 *	Add a copy of the cert_vps to session state.
 		 *
 		 *	Both PVS studio and Coverity detect the condition
-		 *	below as logically dead code, unless we explicitly
+		 *	below as logically dead code unless we explicitly
 		 *	set cert_vps.  This is because they're too dumb
 		 *	to realise that the cursor argument passed to
 		 *	tls_session_pairs_from_x509_cert contains a
