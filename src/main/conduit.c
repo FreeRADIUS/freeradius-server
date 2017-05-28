@@ -32,14 +32,14 @@ typedef struct rconduit_t {
 } rconduit_t;
 
 
-static ssize_t lo_read(int fd, void *inbuf, size_t buflen)
+static ssize_t lo_read(int fd, void *out, size_t outlen)
 {
 	size_t total;
 	ssize_t r;
-	uint8_t *p = inbuf;
+	uint8_t *p = out;
 
-	for (total = 0; total < buflen; total += r) {
-		r = read(fd, p + total, buflen - total);
+	for (total = 0; total < outlen; total += r) {
+		r = read(fd, p + total, outlen - total);
 
 		if (r == 0) return 0;
 
@@ -58,18 +58,19 @@ static ssize_t lo_read(int fd, void *inbuf, size_t buflen)
 /*
  *	A non-blocking copy of fr_conduit_read().
  */
-ssize_t fr_conduit_drain(int fd, fr_conduit_type_t *pconduit, void *inbuf, size_t buflen, uint8_t **outbuf, ssize_t *have_read)
+ssize_t fr_conduit_drain(int fd, fr_conduit_type_t *pconduit, void *out, size_t outlen,
+			 uint8_t **outbuf, ssize_t *have_read)
 {
 	ssize_t r;
 	size_t data_len;
-	uint8_t *buffer = inbuf;
+	uint8_t *buffer = out;
 	rconduit_t hdr;
 	size_t offset = *have_read;
 
 	/*
 	 *	If we can't even read a header, die.
 	 */
-	if (buflen <= sizeof(hdr)) {
+	if (outlen <= sizeof(hdr)) {
 		errno = EINVAL;
 		return -1;
 	}
@@ -99,7 +100,7 @@ ssize_t fr_conduit_drain(int fd, fr_conduit_type_t *pconduit, void *inbuf, size_
 	/*
 	 *	The data will overflow the buffer.  Die.
 	 */
-	if ((sizeof(hdr) + data_len) > buflen) {
+	if ((sizeof(hdr) + data_len) > outlen) {
 		errno = EINVAL;
 		return -1;
 	}
@@ -107,14 +108,14 @@ ssize_t fr_conduit_drain(int fd, fr_conduit_type_t *pconduit, void *inbuf, size_
 	/*
 	 *	This is how much we really want.
 	 */
-	buflen = sizeof(hdr) + data_len;
+	outlen = sizeof(hdr) + data_len;
 
-	r = lo_read(fd, buffer + offset, buflen - offset);
+	r = lo_read(fd, buffer + offset, outlen - offset);
 	if (r <= 0) return r;
 
 	offset += r;
 
-	if (offset == buflen) {
+	if (offset == outlen) {
 		*pconduit = ntohl(hdr.conduit);
 		*outbuf = buffer + sizeof(hdr);
 		return data_len;
@@ -125,11 +126,11 @@ ssize_t fr_conduit_drain(int fd, fr_conduit_type_t *pconduit, void *inbuf, size_
 	return offset;
 }
 
-ssize_t fr_conduit_read(int fd, fr_conduit_type_t *pconduit, void *inbuf, size_t buflen)
+ssize_t fr_conduit_read(int fd, fr_conduit_type_t *pconduit, void *out, size_t outlen)
 {
 	ssize_t r;
 	size_t data_len;
-	uint8_t *buffer = inbuf;
+	uint8_t *buffer = out;
 	rconduit_t hdr;
 
 	/*
@@ -142,7 +143,9 @@ ssize_t fr_conduit_read(int fd, fr_conduit_type_t *pconduit, void *inbuf, size_t
 	 *	Read the data into the buffer.
 	 */
 	*pconduit = ntohl(hdr.conduit);
-	data_len = ntohl(hdr.length);
+	data_len = ntohs(hdr.length);
+	if (data_len == 0) return 0;
+	if (data_len > UINT32_MAX) data_len = UINT32_MAX;	/* For Coverity */
 
 #if 0
 	fprintf(stderr, "CONDUIT R %zu length %zu\n", *pconduit, data_len);
@@ -152,20 +155,20 @@ ssize_t fr_conduit_read(int fd, fr_conduit_type_t *pconduit, void *inbuf, size_t
 	 *	Shrink the output buffer to the size of the data we
 	 *	have.
 	 */
-	if (buflen > data_len) buflen = data_len;
+	if (outlen > data_len) outlen = data_len;
 
-	r = lo_read(fd, buffer, buflen);
+	r = lo_read(fd, buffer, outlen);
 	if (r <= 0) return r;
 
 	/*
 	 *	Read and discard any extra data sent to us.  Sorry,
 	 *	caller, you should have used a larger buffer!
 	 */
-	while (data_len > buflen) {
+	while (data_len > outlen) {
 		size_t discard;
 		uint8_t junk[64];
 
-		discard = data_len - buflen;
+		discard = data_len - outlen;
 		if (discard > sizeof(junk)) discard = sizeof(junk);
 
 		r = lo_read(fd, junk, discard);
@@ -174,16 +177,16 @@ ssize_t fr_conduit_read(int fd, fr_conduit_type_t *pconduit, void *inbuf, size_t
 		data_len -= r;
 	}
 
-	return buflen;
+	return outlen;
 }
 
-static ssize_t lo_write(int fd, void const *inbuf, size_t buflen)
+static ssize_t lo_write(int fd, void const *out, size_t outlen)
 {
 	size_t total;
 	ssize_t r;
-	uint8_t const *buffer = inbuf;
+	uint8_t const *buffer = out;
 
-	total = buflen;
+	total = outlen;
 
 	while (total > 0) {
 		r = write(fd, buffer, total);
@@ -202,20 +205,25 @@ static ssize_t lo_write(int fd, void const *inbuf, size_t buflen)
 		total -= r;
 	}
 
-	return buflen;
+	return outlen;
 }
 
-ssize_t fr_conduit_write(int fd, fr_conduit_type_t conduit, void const *inbuf, size_t buflen)
+ssize_t fr_conduit_write(int fd, fr_conduit_type_t conduit, void const *out, size_t outlen)
 {
 	ssize_t r;
 	rconduit_t hdr;
-	uint8_t const *buffer = inbuf;
+	uint8_t const *buffer = out;
+
+	if (outlen > UINT32_MAX) {
+		fr_strerror_printf("Data to write to conduit (%zu bytes) exceeds maximum length", outlen);
+		return -1;
+	}
 
 	hdr.conduit = htonl(conduit);
-	hdr.length = htonl(buflen);
+	hdr.length = htonl(outlen);
 
 #if 0
-	fprintf(stderr, "CONDUIT W %zu length %zu\n", conduit, buflen);
+	fprintf(stderr, "CONDUIT W %zu length %zu\n", conduit, outlen);
 #endif
 
 	/*
@@ -227,8 +235,8 @@ ssize_t fr_conduit_write(int fd, fr_conduit_type_t conduit, void const *inbuf, s
 	/*
 	 *	write the data directly from the buffer
 	 */
-	r = lo_write(fd, buffer, buflen);
+	r = lo_write(fd, buffer, outlen);
 	if (r <= 0) return r;
 
-	return buflen;
+	return outlen;
 }
