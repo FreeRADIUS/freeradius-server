@@ -501,8 +501,9 @@ void eap_success(eap_session_t *eap_session)
  */
 static int eap_validation(REQUEST *request, eap_packet_raw_t **eap_packet_p)
 {
-	uint16_t len;
-	eap_packet_raw_t *eap_packet = *eap_packet_p;
+	uint16_t		len;
+	size_t			packet_len;
+	eap_packet_raw_t	*eap_packet = *eap_packet_p;
 
 	memcpy(&len, eap_packet->length, sizeof(uint16_t));
 	len = ntohs(len);
@@ -510,10 +511,20 @@ static int eap_validation(REQUEST *request, eap_packet_raw_t **eap_packet_p)
 	/*
 	 *	High level EAP packet checks
 	 */
-	if ((len <= EAP_HEADER_LEN) ||
-	    ((eap_packet->code != FR_EAP_CODE_RESPONSE) &&
-	     (eap_packet->code != FR_EAP_CODE_REQUEST))) {
+	switch (eap_packet->code) {
+	case FR_EAP_CODE_RESPONSE:
+	case FR_EAP_CODE_REQUEST:
+		break;
+
+	default:
 		REDEBUG("Badly formatted EAP Message: Ignoring the packet");
+		return -1;
+	}
+
+	packet_len = talloc_array_length(*eap_packet_p);
+	if ((len <= EAP_HEADER_LEN) || (len > packet_len)) {
+		REDEBUG("Invalid EAP length field.  Expected value in range %u-%zu, was %u bytes",
+			EAP_HEADER_LEN, packet_len, len);
 		return -1;
 	}
 
