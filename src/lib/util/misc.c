@@ -755,7 +755,11 @@ size_t fr_snprint_uint128(char *out, size_t outlen, uint128_t const num)
 	const size_t h = 0;
 #endif
 
-	memset(buff, '0', sizeof(buff) - 1);
+	/*
+	 *	We use 0x30, and not '0', because '0' makes Coverity
+	 *	think we screwed up.
+	 */
+	memset(buff, 0x30, sizeof(buff) - 1);
 	buff[sizeof(buff) - 1] = '\0';
 
 	memcpy(n, &num, sizeof(n));
