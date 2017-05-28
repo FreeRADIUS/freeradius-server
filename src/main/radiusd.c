@@ -612,14 +612,15 @@ int main(int argc, char *argv[])
 	 *  immediately.  Use SIGTERM to shut down the server cleanly in
 	 *  that case.
 	 */
-	if ((fr_set_signal(SIGINT, sig_fatal) < 0)
-#ifdef SIGQUIT
-	     || (fr_set_signal(SIGQUIT, sig_fatal) < 0)
-#endif
-	) {
+	if (fr_set_signal(SIGINT, sig_fatal) < 0) {
+	set_signal_error:
 		PERROR("Failed installing signal handler");
 		fr_exit(EXIT_FAILURE);
 	}
+
+#ifdef SIGQUIT
+	if (fr_set_signal(SIGQUIT, sig_fatal) < 0) goto set_signal_error;
+#endif
 
 	/*
 	 *  Everything seems to have loaded OK, exit gracefully.
@@ -639,11 +640,8 @@ int main(int argc, char *argv[])
 	signal(SIGPIPE, SIG_IGN);
 #endif
 
-	if ((fr_set_signal(SIGHUP, sig_hup) < 0) ||
-	    (fr_set_signal(SIGTERM, sig_fatal) < 0)) {
-		PERROR("Failed installing signal handler");
-		fr_exit(EXIT_FAILURE);
-	}
+	if (fr_set_signal(SIGHUP, sig_hup) < 0) goto set_signal_error;
+	if (fr_set_signal(SIGTERM, sig_fatal) < 0) goto set_signal_error;
 
 #ifdef WITH_STATS
 	radius_stats_init(0);
