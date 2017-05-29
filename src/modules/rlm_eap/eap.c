@@ -510,8 +510,9 @@ static int eap_validation(REQUEST *request, eap_packet_raw_t **eap_packet_p)
 	 *	but that's OK.  The static analysis tools aren't smart
 	 *	enough to figure that out.
 	 */
-	packet_len = talloc_array_length(*eap_packet_p);
-	if (packet_len < EAP_HEADER_LEN) {
+	packet_len = talloc_array_length((uint8_t *) eap_packet);
+	if (packet_len <= EAP_HEADER_LEN) {
+		REDEBUG("Invalid EAP data lenth %zd <= 4", packet_len);
 		return -1;
 	}
 
