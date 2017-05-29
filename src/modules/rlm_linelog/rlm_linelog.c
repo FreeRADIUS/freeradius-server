@@ -463,7 +463,6 @@ static size_t linelog_escape_func(UNUSED REQUEST *request,
 static rlm_rcode_t mod_do_linelog(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
 static rlm_rcode_t mod_do_linelog(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	int			fd = -1;
 	linelog_conn_t		*conn;
 	struct timeval		*timeout = NULL;
 
@@ -649,6 +648,7 @@ build_vector:
 	switch (inst->log_dst) {
 	case LINELOG_DST_FILE:
 	{
+		int fd = -1;
 		char path[2048];
 
 		if (xlat_eval(path, sizeof(path), request, inst->file.name, inst->file.escape_func, NULL) < 0) {
