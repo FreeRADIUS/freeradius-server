@@ -561,6 +561,19 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		if (optval && strlen(optval)) {
 			log_dst = L_DST_FILES;
 
+			/*
+			 *	We open log_fd early in the process,
+			 *	so that libunbound doesn't close
+			 *	stdout / stderr on us (grrr, stupid
+			 *	software).  But if the config say to
+			 *	use files, we now have to close the
+			 *	dup'd FD.
+			 */
+			if (log_fd >= 0) {
+				close(log_fd);
+				log_fd = -1;
+			}
+
 		} else if (!rad_debug_lvl) {
 			log_dst = L_DST_NULL;
 		}
