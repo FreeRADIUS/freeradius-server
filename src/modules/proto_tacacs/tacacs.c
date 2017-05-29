@@ -659,8 +659,8 @@ int tacacs_decode(RADIUS_PACKET * const packet)
 		p =  pkt->author.req.body;
 		for (i = 0; i < pkt->author.req.arg_cnt; i++) {
 			if (remaining < p[i]) {
-				fr_strerror_printf("Authorization REQUEST packet argument %d overflows the packet: %zu < %u",
-						   i, remaining, p[i]);
+				fr_strerror_printf("Authorization REQUEST packet argument %d overflows the packet: %u > %zu",
+						   i, p[i], remaining);
 				return -1;
 			}
 			remaining -= p[i];
@@ -738,8 +738,8 @@ int tacacs_decode(RADIUS_PACKET * const packet)
 		p =  pkt->acct.req.body;
 		for (i = 0; i < pkt->acct.req.arg_cnt; i++) {
 			if (remaining < p[i]) {
-				fr_strerror_printf("Accounting REQUEST packet argument %d overflows the packet: %zu < %u",
-						   i, remaining, p[i]);
+				fr_strerror_printf("Accounting REQUEST packet argument %d overflows the packet: %u > %zu",
+						   i, p[i], remaining);
 				return -1;
 			}
 			remaining -= p[i];
