@@ -31,6 +31,8 @@
 #include "trustrouter.h"
 
 #include <trust_router/tr_dh.h>
+
+/* This instance is supposed to be thread-safe as it is always used read-only (except in the initiation) */
 static TIDC_INSTANCE *global_tidc = NULL;
 
 struct resp_opaque {
@@ -62,6 +64,9 @@ static pthread_t rekeyer_thread_id;
 static fr_event_list_t *rekey_evl = NULL;
 static pthread_mutex_t evl_mutex;
 static pthread_mutexattr_t evl_mutex_attr;
+
+/* Simultaneous TIDC connections do not work well. We use this mutext to serialize them */
+static pthread_mutex_t tidc_mutex;
 
 /* Constant declarations */
 static uint MAX_FAILED_REKEYS	= 5;	// Max number of tolerable consecutive rekey errors
@@ -204,8 +209,10 @@ static void _tr_do_rekey(void *ctx){
 	DEBUG2("Rekeying realm %s for the %dth time", rekey_ctx->realm_name, ++rekey_ctx->times);
 
 	/* send the TIDC request and get the response. Use GLOBAL mutext to protect global_tidc and the realm */
+	pthread_mutex_lock(&tidc_mutex);
 	result = tidc_send_recv(rekey_ctx->trustrouter, rekey_ctx->port, rekey_ctx->rprealm,
 			        rekey_ctx->realm_name, rekey_ctx->community, &cookie);
+	pthread_mutex_unlock(&tidc_mutex);
 
 	/* If the rekey failed, schedule a new rekey in REKEY_ERROR_DELAY seconds, unless we have failed more
 	   than MAX_FAILED_REKEYS times in a row. In that case, return without scheduling a rekey */
@@ -247,6 +254,9 @@ bool tr_init(bool cnf_rekey_enabled, uint32_t cnf_realm_lifetime)
 
 	realm_lifetime = cnf_realm_lifetime;
 	rekey_enabled = cnf_rekey_enabled;
+
+	/* create the TIDC mutex */
+	pthread_mutex_init(&tidc_mutex, NULL);
 
 	/* If rekey is enabled, set up and create the rekeyer thread, event list and event mutex (recursive) */
 	if (rekey_enabled) {
@@ -550,19 +560,15 @@ static bool update_required(REALM const *r)
 	return true;
 }
 
-
-
 REALM *tr_query_realm(REQUEST *request, char const *realm,
 		      char const  *community,
 		      char const *rprealm,
 		      char const *trustrouter,
 		      unsigned int port)
 {
-	int conn = 0;
-	int rcode;
 	VALUE_PAIR *vp;
-	gss_ctx_id_t gssctx;
 	struct resp_opaque cookie;
+	bool rv = false;
 
 	if (!realm) return NULL;
 
@@ -577,36 +583,32 @@ REALM *tr_query_realm(REQUEST *request, char const *realm,
 		community = vp->vp_strvalue;
 	else pair_make_request("Trust-Router-COI", community, T_OP_SET);
 
+	/* Check if we already have a valid REALM and return it */
 	cookie.fr_realm_name = talloc_asprintf(NULL,
 					       "%s%%%s",
 					       community, realm);
-
 	cookie.orig_realm = cookie.output_realm = realm_find(cookie.fr_realm_name);
+	if (cookie.orig_realm && !update_required(cookie.orig_realm))
+		goto cleanup;
 
-	if (cookie.orig_realm && !update_required(cookie.orig_realm)) {
-		talloc_free(cookie.fr_realm_name);
-		return cookie.orig_realm;
-	}
+	/*  We use this lock for serializing TIDC requests and protect access to the TIDC calls */
+	pthread_mutex_lock(&tidc_mutex);
 
-	/* Set-up TID connection */
-	DEBUG2("Opening TIDC connection to %s:%u", trustrouter, port);
-
-	conn = tidc_open_connection(global_tidc, (char *)trustrouter, port, &gssctx);
-	if (conn < 0) {
-		/* Handle error */
-		DEBUG2("Error in tidc_open_connection.\n");
+	/* Check again that the realm was not created while we were waiting to acquire the lock. */
+	cookie.orig_realm = cookie.output_realm = realm_find(cookie.fr_realm_name);
+	if (cookie.orig_realm && !update_required(cookie.orig_realm)){
+		pthread_mutex_unlock(&tidc_mutex);
 		goto cleanup;
 	}
 
-	/* Send a TID request */
-	rcode = tidc_send_request(global_tidc, conn, gssctx, (char *)rprealm,
-				  (char *) realm, (char *)community,
-				  &tr_response_func, &cookie);
-	if (rcode < 0) {
-		/* Handle error */
-		DEBUG2("Error in tidc_send_request, rc = %d.\n", rcode);
-		goto cleanup;
-	}
+	/* Perform the request/response exchange with the trust router server */
+	rv = tidc_send_recv(trustrouter, port, (char *) rprealm, (char *) realm, (char *)community, &cookie);
+	pthread_mutex_unlock(&tidc_mutex);
+
+	/* If we weren't able to get a response from the trust router server, goto cleanup (hence return NULL realm) */
+	if (!rv) goto cleanup;
+
+	/* If we got a response but it is an error one, include a Reply-Message and Error-Cause attributes */
 	if (cookie.result != TID_SUCCESS) {
 		DEBUG2("TID response is error, rc = %d: %s.\n", cookie.result,
 		       cookie.err_msg?cookie.err_msg:"(NO ERROR TEXT)");
