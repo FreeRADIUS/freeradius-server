@@ -505,8 +505,24 @@ static int eap_validation(REQUEST *request, eap_packet_raw_t **eap_packet_p)
 	size_t			packet_len;
 	eap_packet_raw_t	*eap_packet = *eap_packet_p;
 
+	/*
+	 *	These length checks are also done by eap_vp2packet(),
+	 *	but that's OK.  The static analysis tools aren't smart
+	 *	enough to figure that out.
+	 */
+	packet_len = talloc_array_length(*eap_packet_p);
+	if (packet_len < EAP_HEADER_LEN) {
+		return -1;
+	}
+
 	memcpy(&len, eap_packet->length, sizeof(uint16_t));
 	len = ntohs(len);
+
+	if ((len <= EAP_HEADER_LEN) || (len > packet_len)) {
+		REDEBUG("Invalid EAP length field.  Expected value in range %u-%zu, was %u bytes",
+			EAP_HEADER_LEN, packet_len, len);
+		return -1;
+	}
 
 	/*
 	 *	High level EAP packet checks
@@ -517,14 +533,7 @@ static int eap_validation(REQUEST *request, eap_packet_raw_t **eap_packet_p)
 		break;
 
 	default:
-		REDEBUG("Badly formatted EAP Message: Ignoring the packet");
-		return -1;
-	}
-
-	packet_len = talloc_array_length(*eap_packet_p);
-	if ((len <= EAP_HEADER_LEN) || (len > packet_len)) {
-		REDEBUG("Invalid EAP length field.  Expected value in range %u-%zu, was %u bytes",
-			EAP_HEADER_LEN, packet_len, len);
+		REDEBUG("Invalid EAP code %d: Ignoring the packet", eap_packet->code);
 		return -1;
 	}
 
