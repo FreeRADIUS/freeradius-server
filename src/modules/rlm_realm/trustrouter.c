@@ -42,7 +42,7 @@ struct resp_opaque {
 };
 
 
-bool tr_init(void) 
+bool tr_init(void)
 {
 	if (global_tidc) return true;
 
@@ -108,7 +108,7 @@ error:
 	if (tls) talloc_free(tls);
 	return NULL;
 }
-  
+
 static char *build_pool_name(TALLOC_CTX *ctx, TID_RESP *resp)
 {
 	size_t index, sa_len, sl;
@@ -155,7 +155,7 @@ static home_server_t *srvr_blk_to_home_server(TALLOC_CTX *ctx,
 	tid_srvr_get_address(blk, &sa, &sa_len);
 
 	fr_sockaddr2ipaddr((struct sockaddr_storage *) sa, sa_len, &home_server_ip, &port);
-  
+
 	if (0 != getnameinfo(sa, sa_len,
 			     nametemp,
 			     sizeof nametemp,
@@ -181,9 +181,9 @@ static home_server_t *srvr_blk_to_home_server(TALLOC_CTX *ctx,
 	hs->secret = talloc_strdup(hs, "radsec");
 	hs->response_window.tv_sec = 30;
 	hs->last_packet_recv = time(NULL);
-	/* 
-	 *  We want sockets using these servers to close as soon as possible, 
-	 *  to make sure that whenever a pool is replaced, sockets using old ones 
+	/*
+	 *  We want sockets using these servers to close as soon as possible,
+	 *  to make sure that whenever a pool is replaced, sockets using old ones
 	 *  will not last long (hopefully less than 300s).
 	 */
 	hs->limit.idle_timeout = 5;
@@ -258,7 +258,7 @@ static void tr_response_func( TIDC_INSTANCE *inst,
 		}
 		return;
 	}
-		
+
 	if (!nr) {
 		nr = talloc_zero(NULL, REALM);
 		if (!nr) goto error;
@@ -285,7 +285,7 @@ static void tr_response_func( TIDC_INSTANCE *inst,
 
 	opaque->output_realm = nr;
 	return;
-		
+
 error:
 	if (nr && !opaque->orig_realm) {
 		talloc_free(nr);
@@ -320,7 +320,7 @@ static bool update_required(REALM const *r)
 		/*
 		 *	These values don't make sense.
 		 */
-		if ((server->last_packet_recv > (now + 5)) || 
+		if ((server->last_packet_recv > (now + 5)) ||
 		    (server->last_failed_open > (now + 5))) {
 			continue;
 		}
@@ -337,7 +337,7 @@ static bool update_required(REALM const *r)
 	return true;
 }
 
-    
+
 
 REALM *tr_query_realm(REQUEST *request, char const *realm,
 		      char const  *community,
@@ -374,7 +374,7 @@ REALM *tr_query_realm(REQUEST *request, char const *realm,
 		talloc_free(cookie.fr_realm_name);
 		return cookie.orig_realm;
 	}
-    
+
 	/* Set-up TID connection */
 	DEBUG2("Opening TIDC connection to %s:%u", trustrouter, port);
 
@@ -386,8 +386,8 @@ REALM *tr_query_realm(REQUEST *request, char const *realm,
 	}
 
 	/* Send a TID request */
-	rcode = tidc_send_request(global_tidc, conn, gssctx, (char *)rprealm, 
-				  (char *) realm, (char *)community, 
+	rcode = tidc_send_request(global_tidc, conn, gssctx, (char *)rprealm,
+				  (char *) realm, (char *)community,
 				  &tr_response_func, &cookie);
 	if (rcode < 0) {
 		/* Handle error */
@@ -397,7 +397,7 @@ REALM *tr_query_realm(REQUEST *request, char const *realm,
 	if (cookie.result != TID_SUCCESS) {
 		DEBUG2("TID response is error, rc = %d: %s.\n", cookie.result,
 		       cookie.err_msg?cookie.err_msg:"(NO ERROR TEXT)");
-		if (cookie.err_msg) 
+		if (cookie.err_msg)
 			pair_make_reply("Reply-Message", cookie.err_msg, T_OP_SET);
 		pair_make_reply("Error-Cause", "502", T_OP_SET); /*proxy unroutable*/
 	}
