@@ -33,6 +33,6 @@ REALM *tr_query_realm(REQUEST *request, char const *realm,
 		      char const *trustrouter,
 		      unsigned int port);
 
-bool tr_init(uint32_t cnf_realm_lifetime);
+bool tr_init(bool cnf_rekey_enabled, uint32_t cnf_realm_lifetime);
 
 #endif

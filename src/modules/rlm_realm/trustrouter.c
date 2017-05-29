@@ -41,10 +41,196 @@ struct resp_opaque {
 	char *fr_realm_name;
 };
 
+/*
+ * This structure represents a rekey context. It is created once a new REALM is added to the REALM rbtree and it
+ * contains the values required to recreate the TIDC request that originated that REALM.
+ */
+struct rekey_ctx {
+	REALM *realm;
+	char const *realm_name;
+	char const *community;
+	char const *rprealm;
+	char const *trustrouter;
+	unsigned int port;
+	unsigned int times;
+	unsigned int failed;
+	fr_event_t *ev;
+};
+
+/* Thread, event list, and mutexes to protect access to the event list */
+static pthread_t rekeyer_thread_id;
+static fr_event_list_t *rekey_evl = NULL;
+static pthread_mutex_t evl_mutex;
+static pthread_mutexattr_t evl_mutex_attr;
+
+/* Constant declarations */
+static uint MAX_FAILED_REKEYS	= 5;	// Max number of tolerable consecutive rekey errors
+static uint REKEY_ERROR_DELAY	= 10;	// Number of seconds we wait until we start a new rekey after a failure
+static uint REKEY_THRESHOLD	= 120;	// Number of seconds before the REALM expires to start a rekey
+
 /* Configuration parameters */
 static uint32_t realm_lifetime	= 0;		// Number of seconds the REALM can be used
+static bool rekey_enabled	= false;	// Is the rekey functionality enabled?
 
-bool tr_init(uint32_t cnf_realm_lifetime)
+/* Forward declarations */
+static void tr_response_func(TIDC_INSTANCE*, TID_REQ*, TID_RESP*, void*);
+static void _tr_do_rekey(void *);
+
+/*
+ * Builds a rekey_ctx context using the given parameters.
+ * Memory context is attached to the REALM object, whereas all the char* fields are copied.
+ */
+static struct rekey_ctx *build_rekey_ctx(REALM *realm, char const *realm_name, char const *community,
+					 char const *rprealm, const char *trustrouter, int port)
+{
+	struct rekey_ctx *ctx = talloc_zero(realm, struct rekey_ctx);
+	ctx->realm = realm;
+	ctx->realm_name = talloc_strdup(ctx, realm_name);
+	ctx->community = talloc_strdup(ctx, community);
+	ctx->rprealm = talloc_strdup(ctx, rprealm);
+	ctx->trustrouter = talloc_strdup(ctx, trustrouter);
+	ctx->port = port;
+	ctx->times = 0;
+	ctx->ev = NULL;
+	return ctx;
+}
+
+/*
+ * Main function for the rekeyer thread, which implements the rekey event loop.
+ * A recursive lock is used to protect access to the event list, which might receive insertions from
+ * other threads (i.e. REQUESTS).
+ * If there are no rekey events to be executed, it sleeps for 1 second.
+ */
+void *rekeyer_thread(UNUSED void* args)
+{
+	struct timeval when;
+	int rv = 0;
+	while (true) {
+		gettimeofday(&when, NULL);
+		pthread_mutex_lock(&evl_mutex);
+		rv = fr_event_run(rekey_evl, &when);
+		// DEBUG2("REALMs to be rekeyed: %d. Next rekey event in %lu seconds",
+		// 	fr_event_list_num_elements(rekey_evl), when.tv_sec - time(NULL));
+		pthread_mutex_unlock(&evl_mutex);
+		if (!rv) sleep(1);
+	}
+	return NULL;
+}
+
+/*
+ * Sends a TIDC request and fills up the provided cookie with the response.
+ * Returns FALSE if a response cannot be obtained for some reason (e.g. cannot connect to the TR)
+ */
+static bool tidc_send_recv(const char *trustrouter, int port, const char *rprealm, const char *realm_name,
+			   const char *community, struct resp_opaque *cookie)
+{
+	gss_ctx_id_t gssctx;
+	int conn = 0;
+	int rcode;
+
+	/* Open TIDC connection */
+	DEBUG2("Opening TIDC connection to %s:%u", trustrouter, port);
+	conn = tidc_open_connection(global_tidc, (char *) trustrouter, port, &gssctx);
+	if (conn < 0) {
+		DEBUG2("Error in tidc_open_connection.");
+		return false;
+	}
+
+	/* Send TIDC request */
+	rcode = tidc_send_request(global_tidc, conn, gssctx, (char *) rprealm, (char *) realm_name,
+				  (char *) community, &tr_response_func, cookie);
+	if (rcode > 0) {
+		DEBUG2("Error in tidc_send_request, rc = %d.", rcode);
+		return false;
+	}
+
+	return true;
+}
+
+/*
+ * Gets the maximum expiration time of the realm's auth pool.
+ */
+static time_t get_realm_expiration(REALM const *realm)
+{
+	time_t expiration = 0;
+	for (int i = 0; i < realm->auth_pool->num_home_servers; i++) {
+		home_server_t *server = realm->auth_pool->servers[i];
+		if (server->expiration > expiration)
+			expiration = server->expiration;
+	}
+	return expiration;
+}
+
+/*
+ * Schedules a rekey event with the indicated context by inserting a new event in the list.
+ * It uses the evl_mutex to make no other thread accesses the event list at the same time.
+ */
+static int schedule_rekey(struct rekey_ctx *rekey_ctx)
+{
+	int rv = 0;
+	struct timeval when;
+	gettimeofday(&when, NULL);
+	pthread_mutex_lock(&evl_mutex);
+	/* If last attempt was a failure, schedule a rekey in REKEY_ERROR_DELAY seconds.
+	 * Else, schedule the rekey for REKEY_THRESHOLD seconds before the actual REALM expiration.
+	 */
+	if (rekey_ctx->failed)
+		when.tv_sec += REKEY_ERROR_DELAY;
+	else
+		when.tv_sec = get_realm_expiration(rekey_ctx->realm) - REKEY_THRESHOLD;
+
+	rv = fr_event_insert(rekey_evl, _tr_do_rekey, rekey_ctx, &when, &rekey_ctx->ev);
+	pthread_mutex_unlock(&evl_mutex);
+	DEBUG2("Scheduled a rekey for realm %s in %lu seconds", rekey_ctx->realm_name, when.tv_sec - time(NULL));
+	return rv;
+}
+
+/*
+ * Callback that performs the actual rekey of a REALM. It receives a rekey_ctx which is used to replicate the
+ * original TIDC query. If the request is sucessful, a new rekey is scheduled based on the expiration lifetime and
+ * the configured threshold (REKEY_THRESHOLD).
+ * When a failure is found, a new rekey is scheduled in a shorter period of time (REKEY_ERROR_DELAY).
+ */
+static void _tr_do_rekey(void *ctx){
+	struct rekey_ctx *rekey_ctx = (struct rekey_ctx *) ctx;
+	bool result;
+	struct resp_opaque cookie;
+
+	/* clear the cookie structure and copy values from the rekey context */
+	memset (&cookie, 0, sizeof(cookie));
+	cookie.fr_realm_name = (char*) rekey_ctx->realm->name;
+	cookie.orig_realm = rekey_ctx->realm;
+
+	DEBUG2("Rekeying realm %s for the %dth time", rekey_ctx->realm_name, ++rekey_ctx->times);
+
+	/* send the TIDC request and get the response. Use GLOBAL mutext to protect global_tidc and the realm */
+	result = tidc_send_recv(rekey_ctx->trustrouter, rekey_ctx->port, rekey_ctx->rprealm,
+			        rekey_ctx->realm_name, rekey_ctx->community, &cookie);
+
+	/* If the rekey failed, schedule a new rekey in REKEY_ERROR_DELAY seconds, unless we have failed more
+	   than MAX_FAILED_REKEYS times in a row. In that case, return without scheduling a rekey */
+	if (!result || cookie.result != TID_SUCCESS) {
+		if (++rekey_ctx->failed >= MAX_FAILED_REKEYS) {
+			DEBUG2("Reached the maximum number of failed rekeys (%d) for realm %s. Giving up.",
+				MAX_FAILED_REKEYS, rekey_ctx->realm_name);
+			talloc_free(rekey_ctx);
+			return;
+		}
+		DEBUG2("Rekey for realm %s failed for the %dth time.", rekey_ctx->realm_name, rekey_ctx->failed);
+	}
+	/* if rekey is successful, reset the failed counter */
+	else {
+		rekey_ctx->failed = 0;
+	}
+
+	/* schedule the new rekey */
+	if (!schedule_rekey(rekey_ctx)){
+		DEBUG2("Error scheduling rekey event for realm %s!", rekey_ctx->realm_name);
+		talloc_free(rekey_ctx);
+	}
+}
+
+bool tr_init(bool cnf_rekey_enabled, uint32_t cnf_realm_lifetime)
 {
 	if (global_tidc) return true;
 
@@ -60,6 +246,17 @@ bool tr_init(uint32_t cnf_realm_lifetime)
 	}
 
 	realm_lifetime = cnf_realm_lifetime;
+	rekey_enabled = cnf_rekey_enabled;
+
+	/* If rekey is enabled, set up and create the rekeyer thread, event list and event mutex (recursive) */
+	if (rekey_enabled) {
+		rekey_evl = fr_event_list_create(NULL, NULL);
+		pthread_mutexattr_init(&evl_mutex_attr);
+		pthread_mutexattr_settype(&evl_mutex_attr, PTHREAD_MUTEX_RECURSIVE);
+		pthread_mutex_init(&evl_mutex, &evl_mutex_attr);
+		pthread_create(&rekeyer_thread_id, NULL, rekeyer_thread, NULL);
+	}
+
 	return true;
 }
 
@@ -416,6 +613,15 @@ REALM *tr_query_realm(REQUEST *request, char const *realm,
 		if (cookie.err_msg)
 			pair_make_reply("Reply-Message", cookie.err_msg, T_OP_SET);
 		pair_make_reply("Error-Cause", "502", T_OP_SET); /*proxy unroutable*/
+	}
+	/* TIDC request was successful. If rekey is enabled, create a rekey event */
+	else if (rekey_enabled) {
+		struct rekey_ctx *rctx = build_rekey_ctx(cookie.output_realm, realm, community,
+							 rprealm, trustrouter, port);
+		if (!schedule_rekey(rctx)){
+			talloc_free(rctx);
+			DEBUG2("Error scheduling rekey event for realm %s!", realm);
+		}
 	}
 
 cleanup:
