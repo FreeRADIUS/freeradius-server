@@ -41,8 +41,10 @@ struct resp_opaque {
 	char *fr_realm_name;
 };
 
+/* Configuration parameters */
+static uint32_t realm_lifetime	= 0;		// Number of seconds the REALM can be used
 
-bool tr_init(void)
+bool tr_init(uint32_t cnf_realm_lifetime)
 {
 	if (global_tidc) return true;
 
@@ -57,6 +59,7 @@ bool tr_init(void)
 		return false;
 	}
 
+	realm_lifetime = cnf_realm_lifetime;
 	return true;
 }
 
@@ -150,6 +153,7 @@ static home_server_t *srvr_blk_to_home_server(TALLOC_CTX *ctx,
 	fr_ipaddr_t home_server_ip;
 	uint16_t port;
 	char nametemp[256];
+	time_t now = time(NULL);
 
 	rad_assert(blk != NULL);
 	tid_srvr_get_address(blk, &sa, &sa_len);
@@ -180,13 +184,20 @@ static home_server_t *srvr_blk_to_home_server(TALLOC_CTX *ctx,
 	hs->proto = IPPROTO_TCP;
 	hs->secret = talloc_strdup(hs, "radsec");
 	hs->response_window.tv_sec = 30;
-	hs->last_packet_recv = time(NULL);
+	hs->last_packet_recv = now;
 	/*
 	 *  We want sockets using these servers to close as soon as possible,
 	 *  to make sure that whenever a pool is replaced, sockets using old ones
 	 *  will not last long (hopefully less than 300s).
 	 */
 	hs->limit.idle_timeout = 5;
+	/*
+	 *  Set the expiration of the server.
+	 *  If a realm_lifetime configuration parameter is provided (i.e. >0), use: now + realm_lifetime
+	 *  Else use the value from the TIDC response.
+	 *  TODO: While the accessor to the TIDC response expiration time is not available use: now + 600
+	 */
+	hs->expiration = realm_lifetime > 0 ? (now + realm_lifetime) : (now + 600);
 	hs->tls = construct_tls(inst, hs, blk);
 	if (!hs->tls) goto error;
 
@@ -325,6 +336,11 @@ static bool update_required(REALM const *r)
 			continue;
 		}
 
+		/*
+		 *  If home server is expired, update
+		 */
+		if (now > server->expiration)
+			continue;
 		/*
 		 *	If we've opened in the last 10 minutes, then
 		 *	open rather than update.
