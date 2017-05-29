@@ -139,8 +139,6 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 		}
 		//   conn->in_use=0;
 
-		pthread_mutex_unlock(&conn->mut);
-
 		return RLM_SQL_ERROR;
 	}
 
