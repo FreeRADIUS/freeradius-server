@@ -1,3 +1,7 @@
+FreeRADIUS 3.0.15 Mon 06 Mar 2017 13:00:00 EDT urgency=medium
+	Feature improvements
+	Bug fixes
+
 FreeRADIUS 3.0.14 Mon 06 Mar 2017 13:00:00 EDT urgency=medium
 	Feature improvements
 	* Enforce TLS client certificate expiration on
