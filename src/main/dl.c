@@ -325,9 +325,16 @@ static void *dl_by_name(char const *name)
 			error = dlerror();
 
 			fr_strerror_printf("%s%s\n", fr_strerror(), error);
+#ifndef __COVERITY__
+			/*
+			 *	There's no version of dlopen() which takes
+			 *	a file descriptor, so no way of fixing
+			 *	this TOCTOU.
+			 */
 			DEBUG4("Loading %s failed: %s - %s", name, error,
 			       (access(path, R_OK) < 0) ? fr_syserror(errno) : "No access errors");
 			talloc_free(path);
+#endif
 		}
 		talloc_free(ctx);
 	}
