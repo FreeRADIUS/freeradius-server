@@ -452,7 +452,16 @@ void * CC_HINT(hot) fr_cursor_replace(fr_cursor_t *cursor, void *r)
 		return NULL;
 	}
 
+	/*
+	 *	If there's a head, but no current,
+	 *	we've iterated off the end of the list,
+	 *	so the replace becomes an append.
+	 */
 	v = cursor->current;
+	if (v) {
+		fr_cursor_append(cursor, r);
+		return NULL;
+	}
 	p = cursor->prev;
 
 	/*
@@ -460,10 +469,10 @@ void * CC_HINT(hot) fr_cursor_replace(fr_cursor_t *cursor, void *r)
 	 */
 	if (*cursor->head == v) {
 		*cursor->head = r;
-		if (v) *NEXT_PTR(r) = *NEXT_PTR(v);
+		*NEXT_PTR(r) = *NEXT_PTR(v);
 	} else {
 		*NEXT_PTR(p) = r;
-		if (v) *NEXT_PTR(r) = *NEXT_PTR(v);
+		*NEXT_PTR(r) = *NEXT_PTR(v);
 	}
 
 	 /*
