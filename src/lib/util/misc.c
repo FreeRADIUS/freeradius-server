@@ -743,7 +743,7 @@ ssize_t fr_utf8_to_ucs2(uint8_t *out, size_t outlen, char const *in, size_t inle
  */
 size_t fr_snprint_uint128(char *out, size_t outlen, uint128_t const num)
 {
-	char buff[128 / 3 + 1 + 1] = { '0' };
+	char buff[] = "00000000000000000000000000000000000000000000";
 	uint64_t n[2];
 	char *p = buff;
 	int i;
@@ -754,8 +754,6 @@ size_t fr_snprint_uint128(char *out, size_t outlen, uint128_t const num)
 	size_t const l = 1;
 	size_t const h = 0;
 #endif
-
-	buff[sizeof(buff) - 1] = '\0';
 
 	memcpy(n, &num, sizeof(n));
 
@@ -773,15 +771,11 @@ size_t fr_snprint_uint128(char *out, size_t outlen, uint128_t const num)
 		for (j = sizeof(buff) - 2; j >= 0; j--) {
 			buff[j] += buff[j] - '0' + carry;
 			carry = (buff[j] > '9');
-			if (carry) {
-				buff[j] -= 10;
-			}
+			if (carry) buff[j] -= 10;
 		}
 	}
 
-	while ((*p == '0') && (p < &buff[sizeof(buff) - 2])) {
-		p++;
-	}
+	while ((*p == '0') && (p < &buff[sizeof(buff) - 2])) p++;
 
 	return strlcpy(out, p, outlen);
 }
