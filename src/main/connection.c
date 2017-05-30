@@ -523,6 +523,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, REQUEST 
 	pthread_cond_broadcast(&pool->done_spawn);
 	if (unlock) pthread_mutex_unlock(&pool->mutex);
 
+	/* coverity[missing_unlock] */
 	return this;
 }
 
