@@ -813,6 +813,14 @@ int tacacs_read_packet(RADIUS_PACKET * const packet, char const * const secret)
 		hdr = (tacacs_packet_hdr_t *)packet->vector;
 
 		packet_len = ntohl(hdr->length);
+
+#ifdef __COVERITY__
+		if (!packet_len) {
+			fr_strerror_printf("Discarding packet: It contains no data");
+			return -1;
+		}
+#endif
+
 		if (packet_len + sizeof(tacacs_packet_hdr_t) > TACACS_MAX_PACKET_SIZE) {
 			fr_strerror_printf("Discarding packet: Larger than limitation of " STRINGIFY(MAX_PACKET_LEN) " bytes");
 			return -1;
