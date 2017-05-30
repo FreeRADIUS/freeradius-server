@@ -1059,8 +1059,18 @@ fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
 		cf_log_err_cs(cs, "Cannot set 'max' to zero");
 		goto error;
 	}
-
+#ifdef __COVERITY__
+	/*
+	 *	Coverity is dumb, and doesn't realise there
+	 *	can only be one thread in this code at a
+	 *	time.
+	 */
+	pthread_mutex_lock(&pool->mutex);
+#endif
 	pool->pending_window = (pool->max_pending > 0) ? pool->max_pending : pool->max;
+#ifdef __COVERITY__
+	pthread_mutex_unlock(&pool->mutex);
+#endif
 
 	if (pool->min > pool->max) {
 		cf_log_err_cs(cs, "Cannot set 'min' to more than 'max'");
