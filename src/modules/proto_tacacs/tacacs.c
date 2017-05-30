@@ -776,12 +776,15 @@ int tacacs_read_packet(RADIUS_PACKET * const packet, char const * const secret)
 	 */
 	if (!packet->data) {
 		tacacs_packet_hdr_t *hdr;
-		int packet_len;
+		size_t packet_len;
 
 		/* borrow vector to bring in the header for later talloc */
 		rad_assert(sizeof(tacacs_packet_hdr_t) <= AUTH_VECTOR_LEN);
 
-		len = recv(packet->sockfd, packet->vector + packet->data_len,
+		/*
+		 *	Only read enough data to get the TACACS+ header.
+		 */
+		 len = recv(packet->sockfd, packet->vector + packet->data_len,
 			   sizeof(tacacs_packet_hdr_t) - packet->data_len, 0);
 		if (len == 0) return -2; /* clean close */
 
@@ -801,21 +804,21 @@ int tacacs_read_packet(RADIUS_PACKET * const packet, char const * const secret)
 			return 0;
 		}
 
+		rad_assert(packet->data_len == sizeof(tacacs_packet_hdr_t));
+
 		/*
 		 *	We now have the full packet header.  Let's go
 		 *	check it.
 		 */
 		hdr = (tacacs_packet_hdr_t *)packet->vector;
-		packet_len = sizeof(tacacs_packet_hdr_t) + ntohl(hdr->length);
 
-		/*
-		 *	If the packet is too big, then the socket is bad.
-		 */
-		if ((packet->data_len > TACACS_MAX_PACKET_SIZE) ||
-		    (packet_len > TACACS_MAX_PACKET_SIZE)) {
+		packet_len = ntohl(hdr->length);
+		if (packet_len + sizeof(tacacs_packet_hdr_t) > TACACS_MAX_PACKET_SIZE) {
 			fr_strerror_printf("Discarding packet: Larger than limitation of " STRINGIFY(MAX_PACKET_LEN) " bytes");
 			return -1;
 		}
+
+		packet_len += sizeof(tacacs_packet_hdr_t);
 
 		packet->data = talloc_array(packet, uint8_t, packet_len);
 		if (!packet->data) {
@@ -823,14 +826,13 @@ int tacacs_read_packet(RADIUS_PACKET * const packet, char const * const secret)
 			return -1;
 		}
 
+		/*
+		 *	We have room for a full packet, but we've only
+		 *	read in th eheader so far.
+		 */
 		packet->data_len = packet_len;
 		packet->partial = sizeof(tacacs_packet_hdr_t);
-
-		if (sizeof(packet->vector) > sizeof(tacacs_packet_hdr_t)) {
-			memcpy(packet->data, packet->vector, sizeof(tacacs_packet_hdr_t));
-		} else {
-			memcpy(packet->data, packet->vector, sizeof(packet->vector));
-		}
+		memcpy(packet->data, packet->vector, sizeof(tacacs_packet_hdr_t));
 	}
 
 	/*
