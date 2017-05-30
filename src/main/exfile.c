@@ -429,6 +429,9 @@ do_return:
 
 	exfile_trigger_exec(ef, request, &ef->entries[i], "reserve");
 
+	rad_assert(ef->entries[i].dup >= 0); /* try to shut up Coverity */
+
+	/* coverity[missing_unlock] */
 	return ef->entries[i].dup;
 }
 
