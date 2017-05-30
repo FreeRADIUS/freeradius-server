@@ -124,7 +124,6 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 		      (long int) conn->sql_code, conn->error, query);
 
 		if (conn->sql_code == DOWN_SQL_CODE) {
-		reconnect:
 			pthread_mutex_unlock(&conn->mut);
 
 			return RLM_SQL_RECONNECT;
@@ -135,7 +134,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 			//assume the network is down if rollback had failed
 			ERROR("Fail to rollback transaction after previous error: %s", conn->error);
 
-			goto reconnect;
+			return RLM_SQL_RECONNECT;
 		}
 		//   conn->in_use=0;
 
