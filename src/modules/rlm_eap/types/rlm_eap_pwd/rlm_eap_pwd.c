@@ -184,6 +184,8 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 		}
 
 		session->in_len = ntohs(in[0] * 256 | in[1]);
+		if (!session->in_len) return RLM_MODULE_FAIL;
+
 		MEM(session->in = talloc_zero_array(session, uint8_t, session->in_len));
 
 		memset(session->in, 0, session->in_len);
