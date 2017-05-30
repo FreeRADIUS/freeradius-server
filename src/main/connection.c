@@ -305,6 +305,7 @@ static fr_connection_t *fr_connection_find(fr_connection_pool_t *pool, void *con
 #endif
 
 			rad_assert(this->in_use == true);
+			/* coverity[missing_unlock] */
 			return this;
 		}
 	}
