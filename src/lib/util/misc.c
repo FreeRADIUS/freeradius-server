@@ -743,23 +743,18 @@ ssize_t fr_utf8_to_ucs2(uint8_t *out, size_t outlen, char const *in, size_t inle
  */
 size_t fr_snprint_uint128(char *out, size_t outlen, uint128_t const num)
 {
-	char buff[128 / 3 + 1 + 1];
+	char buff[128 / 3 + 1 + 1] = { '0' };
 	uint64_t n[2];
 	char *p = buff;
 	int i;
 #ifndef WORDS_BIGENDIAN
-	const size_t l = 0;
-	const size_t h = 1;
+	size_t const l = 0;
+	size_t const h = 1;
 #else
-	const size_t l = 1;
-	const size_t h = 0;
+	size_t const l = 1;
+	size_t const h = 0;
 #endif
 
-	/*
-	 *	We use 0x30, and not '0', because '0' makes Coverity
-	 *	think we screwed up.
-	 */
-	memset(buff, 0x30, sizeof(buff) - 1);
 	buff[sizeof(buff) - 1] = '\0';
 
 	memcpy(n, &num, sizeof(n));
