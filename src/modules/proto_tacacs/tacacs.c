@@ -836,7 +836,7 @@ int tacacs_read_packet(RADIUS_PACKET * const packet, char const * const secret)
 
 		/*
 		 *	We have room for a full packet, but we've only
-		 *	read in th eheader so far.
+		 *	read in the header so far.
 		 */
 		packet->data_len = packet_len;
 		packet->partial = sizeof(tacacs_packet_hdr_t);
