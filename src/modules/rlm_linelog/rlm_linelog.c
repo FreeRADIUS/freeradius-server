@@ -782,6 +782,7 @@ finish:
 	talloc_free(vpt);
 	talloc_free(vector);
 
+	/* coverity[missing_unlock] */
 	return rcode;
 }
 
