@@ -1150,7 +1150,7 @@ static rlm_rcode_t unlang_run(REQUEST *request, unlang_stack_t *stack)
 
 	RDEBUG4("** [%i] %s - entered", stack->depth, __FUNCTION__);
 
-redo:
+start_subsection:
 	priority = -1;
 
 	rad_assert(stack->depth > 0);
@@ -1209,12 +1209,12 @@ redo:
 
 		case UNLANG_ACTION_PUSHED_CHILD:
 			rad_assert(&stack->frame[stack->depth] > frame);
-			goto redo;
+			goto start_subsection;
 
 		case UNLANG_ACTION_BREAK:
 			frame->result = result;
 			frame->priority = priority;
-			goto done;
+			goto done_subsection;
 
 		do_pop:
 			/*
@@ -1243,7 +1243,7 @@ redo:
 				RERROR("Empty instruction.  Hard-coding to reject.");
 				frame->result = result = RLM_MODULE_REJECT;
 				frame->priority = priority;
-				goto done;
+				goto done_subsection;
 			}
 
 			if (frame->top_frame) {
@@ -1316,7 +1316,7 @@ redo:
 					priority);
 				frame->result = result;
 				frame->priority = priority;
-				goto done;
+				goto done_subsection;
 			}
 
 			/*
@@ -1330,7 +1330,7 @@ redo:
 					priority);
 				frame->result = RLM_MODULE_REJECT;
 				frame->priority = priority;
-				goto done;
+				goto done_subsection;
 			}
 
 			/*
@@ -1369,7 +1369,7 @@ redo:
 					stack->depth, __FUNCTION__,
 					fr_int2str(mod_rcode_table, frame->result, "<invalid>"),
 					frame->priority);
-				goto done;
+				goto done_subsection;
 			}
 
 			/* FALL-THROUGH */
@@ -1385,7 +1385,7 @@ redo:
 					stack->depth, __FUNCTION__,
 					fr_int2str(mod_rcode_table, frame->result, "<invalid>"),
 					frame->priority);
-				goto done;
+				goto done_subsection;
 			}
 		} /* switch over return code from the interpreter function */
 
@@ -1397,10 +1397,7 @@ redo:
 		fr_int2str(mod_rcode_table, frame->result, "<invalid>"),
 		frame->priority);
 
-	/*
-	 *	And we're done!
-	 */
-done:
+done_subsection:
 	if (stack->depth == 1) goto top_frame;
 
 	goto do_pop;
