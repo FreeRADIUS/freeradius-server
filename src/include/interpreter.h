@@ -255,11 +255,11 @@ typedef struct {
 	unlang_type_t		unwind;				//!< Unwind to this one if it exists.
 								//!< This is used for break and return.
 
-	bool			do_next_sibling : 1;
-	bool			was_if : 1;
-	bool			if_taken : 1;
-	bool			resume : 1;
-	bool			top_frame : 1;
+	bool			do_next_sibling : 1;		//!< should we do the next item in this section?
+	bool			was_if : 1;			//!< the previous keyword was "if"
+	bool			if_taken : 1;			//!< we took the previous "if", so skip the next "else"
+	bool			resume : 1;			//!< resume the current section after calling a sub-section
+	bool			top_frame : 1;			//!< are we the top frame of the stack?
 
 	union {
 		unlang_stack_state_foreach_t	foreach;	//!< Foreach iterator state.
