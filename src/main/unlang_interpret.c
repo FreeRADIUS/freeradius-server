@@ -1213,10 +1213,25 @@ redo:
 
 		case UNLANG_ACTION_BREAK:
 			frame->result = result;
+			frame->priority = priority;
 			goto done;
 
 		do_pop:
+			/*
+			 *	The result / priority is returned from
+			 *	the sub-section, and made into our
+			 *	current result / priority, as if we
+			 *	had performed a module call.
+			 */
+			result = frame->result;
+			priority = frame->priority;
+
 			unlang_pop(stack);
+
+			RDEBUG4("** [%i] %s - continuing after subsection with (%s %d)",
+				stack->depth, __FUNCTION__,
+				fr_int2str(mod_rcode_table, result, "<invalid>"),
+				priority);
 
 			/*
 			 *	Reset the local variables, and check
@@ -1227,17 +1242,33 @@ redo:
 			if (!instruction) {
 				RERROR("Empty instruction.  Hard-coding to reject.");
 				frame->result = result = RLM_MODULE_REJECT;
+				frame->priority = priority;
 				goto done;
 			}
 
 			if (frame->top_frame) {
+			top_frame:
+				/*
+				 *	One last priority check before we 
+				 */
+				if (priority > frame->priority) {
+					frame->result = result;
+					frame->priority = priority;
+
+					RDEBUG4("** [%i] %s - over-riding result from higher priority to (%s %d)",
+						stack->depth, __FUNCTION__,
+						fr_int2str(mod_rcode_table, result, "<invalid>"),
+						priority);
+				}
+
 				if (unlang_ops[instruction->type].debug_braces) {
 					REXDENT();
 					RDEBUG2("} # %s (%s)", instruction->debug_name,
-						fr_int2str(mod_rcode_table, result, "<invalid>"));
+						fr_int2str(mod_rcode_table, frame->result, "<invalid>"));
 				}
-				RDEBUG4("** [%i] %s - exited (done)", stack->depth, __FUNCTION__);
-				return result;
+				RDEBUG4("** [%i] %s - returning %s", stack->depth, __FUNCTION__,
+					fr_int2str(mod_rcode_table, frame->result, "<invalid>"));
+				return frame->result;
 			}
 
 			/*
@@ -1252,7 +1283,9 @@ redo:
 			if (result == RLM_MODULE_YIELD) {
 				rad_assert(frame->instruction->type == UNLANG_TYPE_MODULE_RESUME);
 				frame->resume = true;
-				RDEBUG4("** [%i] %s - exited (yield)", stack->depth, __FUNCTION__);
+				RDEBUG4("** [%i] %s - yielding with current (%s %d)", stack->depth, __FUNCTION__,
+					fr_int2str(mod_rcode_table, frame->result, "<invalid>"),
+					frame->priority);
 				return RLM_MODULE_YIELD;
 			}
 
@@ -1331,7 +1364,13 @@ redo:
 			 *	If we've been told to stop processing
 			 *	it, do so.
 			 */
-			if (frame->unwind != 0) goto done;
+			if (frame->unwind != 0) {
+				RDEBUG4("** [%i] %s - unwinding current frame with (%s %d)",
+					stack->depth, __FUNCTION__,
+					fr_int2str(mod_rcode_table, frame->result, "<invalid>"),
+					frame->priority);
+				goto done;
+			}
 
 			/* FALL-THROUGH */
 
@@ -1341,23 +1380,28 @@ redo:
 				RDEBUG2("}");
 			}
 
-			if (!frame->do_next_sibling) goto done;
+			if (!frame->do_next_sibling) {
+				RDEBUG4("** [%i] %s - stopping current subsection with (%s %d)",
+					stack->depth, __FUNCTION__,
+					fr_int2str(mod_rcode_table, frame->result, "<invalid>"),
+					frame->priority);
+				goto done;
+			}
 		} /* switch over return code from the interpreter function */
 
 		frame->instruction = frame->instruction->next;
 	}
 
+	RDEBUG4("** [%i] %s - done current subsection with (%s %d)",
+		stack->depth, __FUNCTION__,
+		fr_int2str(mod_rcode_table, frame->result, "<invalid>"),
+		frame->priority);
+
 	/*
 	 *	And we're done!
 	 */
 done:
-	result = frame->result;
-	priority = frame->priority;
-
-	if (stack->depth == 1) {
-		RDEBUG4("** [%i] %s - exited (done)", stack->depth, __FUNCTION__);
-		return result;
-	}
+	if (stack->depth == 1) goto top_frame;
 
 	goto do_pop;
 }
