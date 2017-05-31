@@ -1264,7 +1264,7 @@ redo:
 			}
 			action = UNLANG_ACTION_CALCULATE_RESULT;
 
-			RDEBUG4("** [%i] %s - rcode %s (%d) vs rcode' %s (%d)",
+			RDEBUG4("** [%i] %s - have (%s %d) module returned (%s %d)",
 				stack->depth, __FUNCTION__,
 			        fr_int2str(mod_rcode_table, frame->result, "<invalid>"),
 			        frame->priority,
@@ -1277,7 +1277,12 @@ redo:
 			 *	The child's action says return.  Do so.
 			 */
 			if (instruction->actions[result] == MOD_ACTION_RETURN) {
+				RDEBUG4("** [%i] %s - action says to return with (%s %d)",
+					stack->depth, __FUNCTION__,
+					fr_int2str(mod_rcode_table, result, "<invalid>"),
+					priority);
 				frame->result = result;
+				frame->priority = priority;
 				goto done;
 			}
 
@@ -1286,7 +1291,12 @@ redo:
 			 *	reject.
 			 */
 			if (instruction->actions[result] == MOD_ACTION_REJECT) {
+				RDEBUG4("** [%i] %s - action says to return with (%s %d)",
+					stack->depth, __FUNCTION__,
+					fr_int2str(mod_rcode_table, RLM_MODULE_REJECT, "<invalid>"),
+					priority);
 				frame->result = RLM_MODULE_REJECT;
+				frame->priority = priority;
 				goto done;
 			}
 
@@ -1296,6 +1306,11 @@ redo:
 			 */
 			if (priority < 0) {
 				priority = instruction->actions[result];
+
+				RDEBUG4("** [%i] %s - setting priority to (%s %d)",
+					stack->depth, __FUNCTION__,
+					fr_int2str(mod_rcode_table, result, "<invalid>"),
+					priority);
 			}
 
 			/*
@@ -1303,8 +1318,13 @@ redo:
 			 *	return code and priority.
 			 */
 			if (priority > frame->priority) {
-				frame->priority = priority;
 				frame->result = result;
+				frame->priority = priority;
+
+				RDEBUG4("** [%i] %s - over-riding result from higher priority to (%s %d)",
+					stack->depth, __FUNCTION__,
+					fr_int2str(mod_rcode_table, result, "<invalid>"),
+					priority);
 			}
 
 			/*
@@ -1332,7 +1352,7 @@ redo:
 	 */
 done:
 	result = frame->result;
-
+	priority = frame->priority;
 
 	if (stack->depth == 1) {
 		RDEBUG4("** [%i] %s - exited (done)", stack->depth, __FUNCTION__);
