@@ -1163,6 +1163,7 @@ start_subsection:
 	 *	Loop over all modules in this list.
 	 */
 	while (frame->instruction != NULL) {
+resume_subsection:
 		instruction = frame->instruction;
 
 		rad_assert(instruction->debug_name != NULL); /* if this happens, all bets are off. */
@@ -1216,69 +1217,6 @@ start_subsection:
 			frame->priority = priority;
 			goto done_subsection;
 
-		do_pop:
-			/*
-			 *	The result / priority is returned from
-			 *	the sub-section, and made into our
-			 *	current result / priority, as if we
-			 *	had performed a module call.
-			 */
-			result = frame->result;
-			priority = frame->priority;
-
-			unlang_pop(stack);
-
-			RDEBUG4("** [%i] %s - continuing after subsection with (%s %d)",
-				stack->depth, __FUNCTION__,
-				fr_int2str(mod_rcode_table, result, "<invalid>"),
-				priority);
-
-			/*
-			 *	Reset the local variables, and check
-			 *	for a (local) top frame.
-			 */
-			frame = &stack->frame[stack->depth];
-			instruction = frame->instruction;
-			if (!instruction) {
-				RERROR("Empty instruction.  Hard-coding to reject.");
-				frame->result = result = RLM_MODULE_REJECT;
-				frame->priority = priority;
-				goto done_subsection;
-			}
-
-			if (frame->top_frame) {
-			top_frame:
-				/*
-				 *	One last priority check before we 
-				 */
-				if (priority > frame->priority) {
-					frame->result = result;
-					frame->priority = priority;
-
-					RDEBUG4("** [%i] %s - over-riding result from higher priority to (%s %d)",
-						stack->depth, __FUNCTION__,
-						fr_int2str(mod_rcode_table, result, "<invalid>"),
-						priority);
-				}
-
-				if (unlang_ops[instruction->type].debug_braces) {
-					REXDENT();
-					RDEBUG2("} # %s (%s)", instruction->debug_name,
-						fr_int2str(mod_rcode_table, frame->result, "<invalid>"));
-				}
-				RDEBUG4("** [%i] %s - returning %s", stack->depth, __FUNCTION__,
-					fr_int2str(mod_rcode_table, frame->result, "<invalid>"));
-				return frame->result;
-			}
-
-			/*
-			 *	We need to call the function again, to
-			 *	see if it's done.
-			 */
-			if (frame->resume) continue;
-
-			/* FALL-THROUGH */
-
 		case UNLANG_ACTION_CALCULATE_RESULT:
 			if (result == RLM_MODULE_YIELD) {
 				rad_assert(frame->instruction->type == UNLANG_TYPE_MODULE_RESUME);
@@ -1290,6 +1228,8 @@ start_subsection:
 			}
 
 			frame->resume = false;
+
+		calculate_result:
 			if (unlang_ops[instruction->type].debug_braces) {
 				REXDENT();
 				RDEBUG2("} # %s (%s)", instruction->debug_name,
@@ -1398,9 +1338,53 @@ start_subsection:
 		frame->priority);
 
 done_subsection:
-	if (stack->depth == 1) goto top_frame;
 
-	goto do_pop;
+	/*
+	 *	We're at the top frame, return the result from the stack.
+	 */
+	if ((frame->top_frame) ||
+	    (stack->depth == 1)) {
+		RDEBUG4("** [%i] %s - returning %s", stack->depth, __FUNCTION__,
+			fr_int2str(mod_rcode_table, frame->result, "<invalid>"));
+		return frame->result;
+	}
+
+	/*
+	 *	The result / priority is returned from
+	 *	the sub-section, and made into our
+	 *	current result / priority, as if we
+	 *	had performed a module call.
+	 */
+	result = frame->result;
+	priority = frame->priority;
+
+	unlang_pop(stack);
+
+	RDEBUG4("** [%i] %s - continuing after subsection with (%s %d)",
+		stack->depth, __FUNCTION__,
+		fr_int2str(mod_rcode_table, result, "<invalid>"),
+		priority);
+
+	/*
+	 *	Reset the local variables, and check
+	 *	for a (local) top frame.
+	 */
+	frame = &stack->frame[stack->depth];
+
+	/*
+	 *	Resume a "foreach" loop.
+	 */
+	if (frame->resume) goto resume_subsection;
+
+	instruction = frame->instruction;
+	if (!instruction) {
+		RERROR("Empty instruction.  Hard-coding to reject.");
+		frame->result = result = RLM_MODULE_REJECT;
+		frame->priority = priority;
+		goto done_subsection;
+	}
+
+	goto calculate_result;
 }
 
 static unlang_group_t empty_group = {
