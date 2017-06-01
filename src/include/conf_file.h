@@ -222,7 +222,7 @@ _Generic((_ct), \
  * @param _f	field in instance data struct.
  * @param _sub	CONF_PARSER array to use to parse subsection data.
  */
-#  define FR_CONF_SUBSECTION_MULTI(_n, _t, _s, _f, _sub) \
+#  define FR_CONF_SUBSECTION_ALLOC(_n, _t, _s, _f, _sub) \
 	.name = _n, \
 	.type = (_t), \
 	.offset = FR_CONF_TYPE_CHECK((_t), &(((_s *)NULL)->_f), offsetof(_s, _f)), \
@@ -259,7 +259,7 @@ _Generic((_ct), \
  * @param _f	field in instance data struct.
  * @param _sub	CONF_PARSER array to use to parse subsection data.
  */
-#  define FR_CONF_SUBSECTION_MULTI(_n, _t, _s, _f, _sub) \
+#  define FR_CONF_SUBSECTION_ALLOC(_n, _t, _s, _f, _sub) \
 	.name = _n, \
 	.type = _t, \
 	.offset = offsetof(_s, _f), \

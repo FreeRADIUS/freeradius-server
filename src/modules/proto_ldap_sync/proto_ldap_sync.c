@@ -181,7 +181,7 @@ static const CONF_PARSER module_config[] = {
 	/*
 	 *	Areas of the DIT to listen on
 	 */
-	{ FR_CONF_SUBSECTION_MULTI("sync", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_REQUIRED, proto_ldap_inst_t, sync_config, ldap_sync_search_config) },
+	{ FR_CONF_SUBSECTION_ALLOC("sync", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_REQUIRED, proto_ldap_inst_t, sync_config, ldap_sync_search_config) },
 
 	/*
 	 *	Extra configuration items
