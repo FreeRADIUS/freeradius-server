@@ -1,6 +1,8 @@
 FreeRADIUS 3.0.15 Fri 26 May 2017 13:00:00 EDT urgency=medium
 	Feature improvements
 	Bug fixes
+	* don't crash when reading corrupted data from session
+	  resumption cache.  Fixes #1999.
 
 FreeRADIUS 3.0.14 Fri 26 May 2017 13:00:00 EDT urgency=medium
 	Feature improvements
