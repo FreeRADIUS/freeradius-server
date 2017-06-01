@@ -597,6 +597,18 @@ else
 fi
 AC_SUBST([openssl_version_check_config])
 
+dnl #
+dnl #  extra argument: --disable-openssl-compat-check
+dnl #
+AC_ARG_ENABLE(openssl-compat-check,
+[AS_HELP_STRING([--disable-openssl-compat-check],
+                [disable built/linked OpenSSL compatibility check])]
+)
+if test "x$enable_openssl_compat_check" != "xno"; then
+  AC_DEFINE(ENABLE_OPENSSL_COMPAT_CHECK, [1],
+            [Define to 1 to have built/linked OpenSSL compatibility check enabled])
+fi
+
 
 dnl #############################################################
 dnl #

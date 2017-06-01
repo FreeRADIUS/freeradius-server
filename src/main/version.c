@@ -36,6 +36,7 @@ char const	*radiusd_version_short = RADIUSD_VERSION_STRING;
 
 static long ssl_built = OPENSSL_VERSION_NUMBER;
 
+#ifdef ENABLE_OPENSSL_COMPAT_CHECK
 /** Check built and linked versions of OpenSSL match
  *
  * OpenSSL version number consists of:
@@ -82,6 +83,7 @@ int ssl_check_consistency(void)
 
 	return 0;
 }
+#endif /* ifdef ENABLE_OPENSSL_COMPAT_CHECK */
 
 /** Convert a version number to a text string
  *
@@ -178,9 +180,11 @@ char const *ssl_version(void)
 	return buffer;
 }
 #  else
+#ifdef ENABLE_OPENSSL_COMPAT_CHECK
 int ssl_check_consistency(void) {
 	return 0;
 }
+#endif
 
 char const *ssl_version_num(void)
 {

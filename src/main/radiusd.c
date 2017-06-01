@@ -280,7 +280,9 @@ int main(int argc, char *argv[])
 	 *  here than segfault later.
 	 */
 #ifdef HAVE_OPENSSL_CRYPTO_H
+#ifdef ENABLE_OPENSSL_COMPAT_CHECK
 	if (ssl_check_consistency() < 0) exit(EXIT_FAILURE);
+#endif
 #endif
 
 	if (flag && (flag != 0x03)) {
