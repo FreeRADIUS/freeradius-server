@@ -2036,14 +2036,14 @@ static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, char const *name,
  *	 result in the dflt value being used.
  *
  * **fr_type_t to data type mappings**
- * | fr_type_t                 | Data type          | Dynamically allocated  |
+ * | fr_type_t               | Data type          | Dynamically allocated  |
  * | ----------------------- | ------------------ | ---------------------- |
  * | FR_TYPE_TMPL            | ``vp_tmpl_t``      | Yes                    |
- * | FR_TYPE_BOOL         | ``bool``           | No                     |
- * | FR_TYPE_UINT32         | ``uint32_t``       | No                     |
- * | FR_TYPE_UINT16           | ``uint16_t``       | No                     |
- * | FR_TYPE_UINT64       | ``uint64_t``       | No                     |
- * | FR_TYPE_INT32          | ``int32_t``        | No                     |
+ * | FR_TYPE_BOOL            | ``bool``           | No                     |
+ * | FR_TYPE_UINT32          | ``uint32_t``       | No                     |
+ * | FR_TYPE_UINT16          | ``uint16_t``       | No                     |
+ * | FR_TYPE_UINT64          | ``uint64_t``       | No                     |
+ * | FR_TYPE_INT32           | ``int32_t``        | No                     |
  * | FR_TYPE_STRING          | ``char const *``   | Yes                    |
  * | FR_TYPE_IPV4_ADDR       | ``fr_ipaddr_t``    | No                     |
  * | FR_TYPE_IPV4_PREFIX     | ``fr_ipaddr_t``    | No                     |
