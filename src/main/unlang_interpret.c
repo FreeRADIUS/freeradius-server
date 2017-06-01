@@ -996,7 +996,7 @@ static unlang_action_t unlang_module_resumption(REQUEST *request, unlang_stack_t
 	 *	Lock is noop unless instance->mutex is set.
 	 */
 	safe_lock(sp->module_instance);
-	*presult = mr->callback(request, mr->module.module_instance->data, mr->thread->data, mutable);
+	*presult = request->rcode = mr->callback(request, mr->module.module_instance->data, mr->thread->data, mutable);
 	safe_unlock(sp->module_instance);
 
 	request->module = NULL;
