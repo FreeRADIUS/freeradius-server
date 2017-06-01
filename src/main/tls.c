@@ -1605,6 +1605,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, const unsigned char *data, int l
 			/* not safe to un-persist a session w/o VPs */
 			RWDEBUG("Failed loading persisted VPs for session %s", buffer);
 			SSL_SESSION_free(sess);
+			sess = NULL;
 			goto error;
 		}
 
@@ -1618,12 +1619,14 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, const unsigned char *data, int l
 			if (ocsp_asn1time_to_epoch(&expires, vp->vp_strvalue) < 0) {
 				RDEBUG2("Failed getting certificate expiration, removing cache entry for session %s", buffer);
 				SSL_SESSION_free(sess);
+				sess = NULL;
 				goto error;
 			}
 
 			if (expires <= request->timestamp) {
 				RDEBUG2("Certificate has expired, removing cache entry for session %s", buffer);
 				SSL_SESSION_free(sess);
+				sess = NULL;
 				goto error;
 			}
 
