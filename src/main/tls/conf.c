@@ -79,7 +79,7 @@ static CONF_PARSER ocsp_config[] = {
 };
 #endif
 
-static CONF_PARSER tls_server_config[] = {
+CONF_PARSER tls_server_config[] = {
 	{ FR_CONF_OFFSET("verify_depth", FR_TYPE_UINT32, fr_tls_conf_t, verify_depth), .dflt = "0" },
 	{ FR_CONF_OFFSET("ca_path", FR_TYPE_FILE_INPUT, fr_tls_conf_t, ca_path) },
 	{ FR_CONF_OFFSET("pem_file_type", FR_TYPE_BOOL, fr_tls_conf_t, file_type), .dflt = "yes" },
@@ -141,7 +141,7 @@ static CONF_PARSER tls_server_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static CONF_PARSER tls_client_config[] = {
+CONF_PARSER tls_client_config[] = {
 	{ FR_CONF_OFFSET("verify_depth", FR_TYPE_UINT32, fr_tls_conf_t, verify_depth), .dflt = "0" },
 	{ FR_CONF_OFFSET("ca_path", FR_TYPE_FILE_INPUT, fr_tls_conf_t, ca_path) },
 	{ FR_CONF_OFFSET("pem_file_type", FR_TYPE_BOOL, fr_tls_conf_t, file_type), .dflt = "yes" },

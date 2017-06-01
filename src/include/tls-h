@@ -392,6 +392,9 @@ do {\
 	SSL_DRAIN_LOG_QUEUE(_macro, _prefix, _queue); \
 } while (0)
 
+extern CONF_PARSER tls_server_config[];
+extern CONF_PARSER tls_client_config[];
+
 /*
  *	tls/cache.c
  */
