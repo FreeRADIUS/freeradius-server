@@ -842,7 +842,7 @@ static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stac
 	 *	Lock is noop unless instance->mutex is set.
 	 */
 	safe_lock(sp->module_instance);
-	request->rcode = sp->method(sp->module_instance->data, modcall_state->thread->data, request);
+	*presult = request->rcode = sp->method(sp->module_instance->data, modcall_state->thread->data, request);
 	safe_unlock(sp->module_instance);
 
 	request->module = NULL;
