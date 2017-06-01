@@ -152,9 +152,9 @@ inline static ssize_t tls_cache_id(uint8_t const **out, SSL_SESSION *sess)
 	*out = sess->session_id;
 	return sess->session_id_length;
 #else
-	size_t len;
+	unsigned int len;
 
-	*out = SSL_SESSION_get_id(sess, (unsigned int *)&len);
+	*out = SSL_SESSION_get_id(sess, &len);
 	return len;
 #endif
 }
