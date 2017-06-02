@@ -29,6 +29,6 @@
 typedef struct fr_cbuff fr_cbuff_t;
 
 fr_cbuff_t	*fr_cbuff_alloc(TALLOC_CTX *ctx, uint32_t size, bool lock);
-void		fr_cbuff_rp_insert(fr_cbuff_t *cbuff, void *obj);
-void		*fr_cbuff_rp_next(fr_cbuff_t *cbuff, TALLOC_CTX *ctx);
+void		fr_cbuff_insert(fr_cbuff_t *cbuff, void *obj);
+void		*fr_cbuff_next(fr_cbuff_t *cbuff);
 #endif /* _FR_CBUFF_H */

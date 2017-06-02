@@ -36,18 +36,37 @@ struct fr_cbuff {
 	uint32_t		in;			//!< Write index
 	uint32_t		out;			//!< Read index
 
-	void			**elem;			//!< Ring buffer data
+	void			**data;			//!< Ring buffer data
 
 	bool			lock;			//!< Perform thread synchronisation
 
 	pthread_mutex_t		mutex;			//!< Thread synchronisation mutex
 };
 
+/** Destroy mutex associated with circular buffer
+ *
+ * @param[in] cbuff being freed.
+ * @return 0
+ */
+static int _cbuff_free(fr_cbuff_t *cbuff)
+{
+	void *next;
+
+	if (cbuff->lock) pthread_mutex_destroy(&cbuff->mutex);
+
+	/*
+	 *	Free any data left in the buffer
+	 */
+	while ((next = fr_cbuff_next(cbuff))) talloc_free(next);
+
+	return 0;
+}
+
 /** Initialise a new circular buffer
  *
- * @param ctx to allocate the buffer in.
- * @param size of buffer to allocate.
- * @param lock If true, insert and next operations will lock the buffer.
+ * @param[in] ctx	to allocate the buffer in.
+ * @param[in] size	of buffer to allocate.
+ * @param[in] lock	If true, insert and next operations will lock the buffer.
  * @return
  *	- New cbuff.
  *	- NULL on error.
@@ -68,11 +87,12 @@ fr_cbuff_t *fr_cbuff_alloc(TALLOC_CTX *ctx, uint32_t size, bool lock)
 	size--;
 
 	cbuff = talloc_zero(ctx, fr_cbuff_t);
-	if (!cbuff) {
-		return NULL;
-	}
-	cbuff->elem = talloc_zero_array(cbuff, void *, size);
-	if (!cbuff->elem) {
+	if (!cbuff) return NULL;
+	talloc_set_destructor(cbuff, _cbuff_free);
+
+	cbuff->data = talloc_zero_array(cbuff, void *, size);
+	if (!cbuff->data) {
+		talloc_free(cbuff);
 		return NULL;
 	}
 	cbuff->size = size;
@@ -85,55 +105,50 @@ fr_cbuff_t *fr_cbuff_alloc(TALLOC_CTX *ctx, uint32_t size, bool lock)
 	return cbuff;
 }
 
-/** Insert a new element into the buffer, and steal it from it's original context
+/** Insert a new item into the circular buffer
  *
  * cbuff will steal obj and insert it into it's own context.
  *
- * @param cbuff to insert element into
- * @param obj to insert, must of been allocated with talloc
+ * @param[in] cbuff	to insert item into
+ * @param[in] in	item to insert (must have been allocated with talloc).
  */
-void fr_cbuff_rp_insert(fr_cbuff_t *cbuff, void *obj)
+void fr_cbuff_insert(fr_cbuff_t *cbuff, void *in)
 {
 	if (cbuff->lock) pthread_mutex_lock(&cbuff->mutex);
 
-	if (cbuff->elem[cbuff->in]) {
-		TALLOC_FREE(cbuff->elem[cbuff->in]);
-	}
+	if (cbuff->data[cbuff->in]) talloc_free(cbuff->data[cbuff->in]);
 
-	cbuff->elem[cbuff->in] = talloc_steal(cbuff, obj);
-
+	cbuff->data[cbuff->in] = in;
 	cbuff->in = (cbuff->in + 1) & cbuff->size;
 
 	/* overwrite - out is advanced ahead of in */
-	if (cbuff->in == cbuff->out) {
-		cbuff->out = (cbuff->out + 1) & cbuff->size;
-	}
+	if (cbuff->in == cbuff->out) cbuff->out = (cbuff->out + 1) & cbuff->size;
 
 	if (cbuff->lock) pthread_mutex_unlock(&cbuff->mutex);
 }
 
-/** Remove an item from the buffer, and reparent to ctx
+/** Remove an item from the buffer
  *
- * @param cbuff to remove element from
- * @param ctx to hang obj off.
+ * @param[in] cbuff	to drain data from.
  * @return
- *	- NULL if no elements in the buffer.
- *	- An element from the buffer reparented to ctx.
+ *	- NULL if no dataents in the buffer.
+ *	- An dataent from the buffer reparented to ctx.
  */
-void *fr_cbuff_rp_next(fr_cbuff_t *cbuff, TALLOC_CTX *ctx)
+void *fr_cbuff_next(fr_cbuff_t *cbuff)
 {
-	void *obj = NULL;
+	void *out = NULL;
 
 	if (cbuff->lock) pthread_mutex_lock(&cbuff->mutex);
 
 	/* Buffer is empty */
 	if (cbuff->out == cbuff->in) goto done;
 
-	obj = talloc_steal(ctx, cbuff->elem[cbuff->out]);
+	out = cbuff->data[cbuff->out];
+	cbuff->data[cbuff->out] = NULL;
 	cbuff->out = (cbuff->out + 1) & cbuff->size;
 
 done:
 	if (cbuff->lock) pthread_mutex_unlock(&cbuff->mutex);
 
-	return obj;
+	return out;
 }

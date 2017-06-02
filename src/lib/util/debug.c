@@ -319,7 +319,7 @@ void backtrace_print(fr_cbuff_t *cbuff, void *obj)
 	fr_bt_info_t *p;
 	bool found = false;
 
-	while ((p = fr_cbuff_rp_next(cbuff, NULL))) {
+	while ((p = fr_cbuff_next(cbuff))) {
 		if ((p->obj == obj) || !obj) {
 			found = true;
 
@@ -349,7 +349,7 @@ int fr_backtrace_do(fr_bt_marker_t *marker)
 	bt->obj = marker->obj;
 	bt->count = backtrace(bt->frames, MAX_BT_FRAMES);
 
-	fr_cbuff_rp_insert(marker->cbuff, bt);
+	fr_cbuff_insert(marker->cbuff, bt);
 
 	return 0;
 }
