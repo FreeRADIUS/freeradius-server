@@ -295,7 +295,7 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 	if (filename) {
 		char *exp;
 
-		radlog_func_t log_func = request->log.func;
+		log_func_t log_func = request->log.func;
 
 		/*
 		 *	Prevent infinitely recursive calls if

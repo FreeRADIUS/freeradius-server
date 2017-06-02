@@ -308,7 +308,7 @@ struct rad_request {
 #endif
 
 	struct {
-		radlog_func_t	func;		//!< Function to call to output log messages about this
+		log_func_t	func;		//!< Function to call to output log messages about this
 						//!< request.
 
 		log_lvl_t	lvl;		//!< Controls the verbosity of debug statements regarding

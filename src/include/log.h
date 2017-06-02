@@ -32,7 +32,7 @@ RCSIDH(log_h, "$Id$")
 extern "C" {
 #endif
 
-typedef	void (*radlog_func_t)(log_type_t lvl, log_lvl_t priority, REQUEST *, char const *, va_list ap);
+typedef	void (*log_func_t)(log_type_t lvl, log_lvl_t priority, REQUEST *, char const *, va_list ap);
 
 extern FR_NAME_NUMBER const syslog_facility_table[];
 extern FR_NAME_NUMBER const syslog_severity_table[];
