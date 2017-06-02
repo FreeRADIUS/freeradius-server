@@ -413,10 +413,11 @@ int main(int argc, char **argv)
 	 */
 	server_ipaddr.af = AF_INET;
 	if (strcmp(argv[1], "-") != 0) {
-		if (ip_hton(&server_ipaddr, AF_INET, argv[1], false) < 0) {
-			fr_perror("dhcpclient");
-			fr_exit_now(1);
+		if (fr_pton_port(&server_ipaddr, &server_port, argv[1], -1, AF_INET, true) < 0) {
+			fprintf(stderr, "dhcpclient: Failed parsing IP:port - %s", fr_strerror());
+			exit(1);
 		}
+
 		client_ipaddr.af = server_ipaddr.af;
 	}
 
