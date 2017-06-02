@@ -29,6 +29,7 @@
 RCSIDH(tls_h, "$Id$")
 
 #include <freeradius-devel/conf_file.h>
+#include <freeradius-devel/tmpl.h>
 
 /*
  *	This changed in OpenSSL 1.1.0 (they allow deprecated interfaces)
@@ -247,7 +248,7 @@ struct fr_tls_conf_t {
 #endif
 	char const	*check_cert_issuer;		//!< Verify cert issuer matches the expansion of this string.
 
-	char const	*session_id_name;		//!< Context ID to allow multiple sessions stores to be defined.
+	vp_tmpl_t	*session_id_name;		//!< Context ID to allow multiple sessions stores to be defined.
 	char		session_context_id[SSL_MAX_SSL_SESSION_ID_LENGTH];
 
 	char const	*session_cache_server;		//!< Virtual server to use as an alternative to the
@@ -406,7 +407,7 @@ int		tls_cache_write(REQUEST *request, tls_session_t *tls_session);
 
 int		tls_cache_disable_cb(SSL *ssl, int is_forward_secure);
 
-void		tls_cache_init(SSL_CTX *ctx, bool enabled, char const *session_context, uint32_t lifetime);
+void		tls_cache_init(SSL_CTX *ctx, bool enabled, uint32_t lifetime);
 
 /*
  *	tls/conf.c

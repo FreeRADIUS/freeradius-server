@@ -551,20 +551,15 @@ int tls_cache_disable_cb(SSL *ssl,
  *
  * @param ctx			to modify.
  * @param enabled		Whether session caching should be enabled.
- * @param session_context	under which cache entries should be stored.
- *				Prevents sessions being restored between
- *				different rlm_eap instances.
  * @param lifetime		The maximum period a cached session remains
  *				valid for.
  */
-void tls_cache_init(SSL_CTX *ctx, bool enabled, char const *session_context, uint32_t lifetime)
+void tls_cache_init(SSL_CTX *ctx, bool enabled, uint32_t lifetime)
 {
 	if (!enabled) {
 		SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
 		return;
 	}
-
-	rad_assert(session_context);
 
 	SSL_CTX_sess_set_new_cb(ctx, tls_cache_serialize);
 	SSL_CTX_sess_set_get_cb(ctx, tls_cache_read);
@@ -577,19 +572,5 @@ void tls_cache_init(SSL_CTX *ctx, bool enabled, char const *session_context, uin
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
 	SSL_CTX_set_not_resumable_session_callback(ctx, tls_cache_disable_cb);
 #endif
-
-	/*
-	 *	This sets the context sessions can be resumed in.
-	 *	This is to prevent sessions being created by one application
-	 *	and used by another.  In our case it prevents sessions being
-	 *	reused between modules, or TLS server components such as
-	 *	RADSEC.
-	 *
-	 *	A context must always be set when doing session resumption
-	 *	otherwise session resumption will fail.
-	 */
-	SSL_CTX_set_session_id_context(ctx,
-				       (unsigned char const *) session_context,
-				       (unsigned int) strlen(session_context));
 }
 #endif /* WITH_TLS */

@@ -1593,6 +1593,46 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQ
 	SSL_set_info_callback(new_tls, tls_session_info_cb);
 
 	/*
+	 *	This sets the context sessions can be resumed in.
+	 *	This is to prevent sessions being created by one application
+	 *	and used by another.  In our case it prevents sessions being
+	 *	reused between modules, or TLS server components such as
+	 *	RADSEC.
+	 *
+	 *	A context must always be set when doing session resumption
+	 *	otherwise session resumption will fail.
+	 *
+	 *	As the context ID must be <= 32, we digest the context
+	 *	data with sha256.
+	 */
+	rad_assert(conf->session_id_name);
+	{
+		char		*context_id;
+		EVP_MD_CTX	*md_ctx;
+		uint8_t		digest[SHA256_DIGEST_LENGTH];
+
+		static_assert(sizeof(digest) <= SSL_MAX_SSL_SESSION_ID_LENGTH,
+			      "SSL_MAX_SSL_SESSION_ID_LENGTH must be >= SHA256_DIGEST_LENGTH");
+
+		if (tmpl_aexpand(session, &context_id, request, conf->session_id_name, NULL, NULL) < 0) {
+			RPEDEBUG("Failed expanding session ID");
+			talloc_free(session);
+		}
+
+		MEM(md_ctx = EVP_MD_CTX_create());
+		EVP_DigestInit_ex(md_ctx, EVP_sha256(), NULL);
+		EVP_DigestUpdate(md_ctx, context_id, talloc_array_length(context_id) - 1);
+		EVP_DigestFinal_ex(md_ctx, digest, NULL);
+		EVP_MD_CTX_destroy(md_ctx);
+		talloc_free(context_id);
+
+		if (!fr_cond_assert(SSL_set_session_id_context(session->ssl, digest, sizeof(digest)) == 1)) {
+			talloc_free(session);
+			return NULL;
+		}
+	}
+
+	/*
 	 *	Add the session certificate to the session.
 	 */
 	vp = fr_pair_find_by_num(request->control, 0, FR_TLS_SESSION_CERT_FILE, TAG_ANY);

@@ -387,14 +387,20 @@ eap {
 
 			#
 			#  Name of the context TLS sessions are created under.
-			#  If no value is provided the context is set to the EAP
-			#  module instance.
+			#
+			#  Qualifies TLS sessions so that they can't be used for
+			#  purposes for which they were not intended.
 			#
 			#  If you wish to share session resumption data between
-			#  multiple EAP modules they all must have the same name
-			#  value set.
+			#  multiple EAP modules/virtual servers they all must have
+			#  the same name value set.
 			#
-#			name = 'shared_session_context'
+			#  To disable - set to a zero length string "".
+			#
+			#  Note: OpenSSL only allows 32 bytes of session ctx, so
+			#        the value provided here is digested with SHA256.
+			#
+#			name = "%{EAP-Type}%{Virtual-Server}"
 
 			#
 			#  The period for which a resumable session remains valid.

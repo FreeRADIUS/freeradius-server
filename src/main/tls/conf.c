@@ -41,7 +41,8 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 static CONF_PARSER cache_config[] = {
 	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING, fr_tls_conf_t, session_cache_server) },
-	{ FR_CONF_OFFSET("name", FR_TYPE_STRING, fr_tls_conf_t, session_id_name) },
+	{ FR_CONF_OFFSET("name", FR_TYPE_TMPL, fr_tls_conf_t, session_id_name),
+			 .dflt = "%{EAP-Type}%{Virtual-Server}", .quote = T_DOUBLE_QUOTED_STRING },
 	{ FR_CONF_OFFSET("lifetime", FR_TYPE_UINT32, fr_tls_conf_t, session_cache_lifetime), .dflt = "86400" },
 	{ FR_CONF_OFFSET("verify", FR_TYPE_BOOL, fr_tls_conf_t, session_cache_verify), .dflt = "no" },
 
@@ -318,7 +319,8 @@ fr_tls_conf_t *tls_conf_parse_server(CONF_SECTION *cs)
 
 	conf = tls_conf_alloc(cs);
 
-	if (cf_section_parse(conf, conf, cs, tls_server_config) < 0) {
+	if ((cf_section_parse(conf, conf, cs, tls_server_config) < 0) ||
+	    (cf_section_parse_pass2(conf, cs, tls_server_config) < 0)) {
 	error:
 		talloc_free(conf);
 		return NULL;
@@ -328,22 +330,6 @@ fr_tls_conf_t *tls_conf_parse_server(CONF_SECTION *cs)
 	 *	Save people from their own stupidity.
 	 */
 	if (conf->fragment_size < 100) conf->fragment_size = 100;
-
-	/*
-	 *	Setup session caching
-	 */
-	if (conf->session_cache_server) {
-		/*
-		 *	Create a unique context Id per EAP-TLS configuration.
-		 */
-		if (conf->session_id_name) {
-			snprintf(conf->session_context_id, sizeof(conf->session_context_id),
-				 "FR eap %s", conf->session_id_name);
-		} else {
-			snprintf(conf->session_context_id, sizeof(conf->session_context_id),
-				 "FR eap %p", conf);
-		}
-	}
 
 #ifdef __APPLE__
 	if (conf_cert_admin_password(conf) < 0) goto error;
@@ -450,7 +436,8 @@ fr_tls_conf_t *tls_conf_parse_client(CONF_SECTION *cs)
 
 	conf = tls_conf_alloc(cs);
 
-	if (cf_section_parse(conf, conf, cs, tls_client_config) < 0) {
+	if ((cf_section_parse(conf, conf, cs, tls_client_config) < 0) ||
+	    (cf_section_parse_pass2(conf, cs, tls_client_config) < 0)) {
 	error:
 		talloc_free(conf);
 		return NULL;
