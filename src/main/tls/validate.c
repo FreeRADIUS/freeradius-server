@@ -364,9 +364,14 @@ int tls_validate_client_cert_chain(SSL *ssl)
 
 	request = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST), REQUEST);
 
+	/*
+	 *	If there's no client certificate, we just return OK.
+	 */
+	cert = SSL_get_peer_certificate(ssl);			/* Increases ref count */
+	if (!cert) return 1;
+
 	store_ctx = X509_STORE_CTX_new();
 	chain = SSL_get_peer_cert_chain(ssl);			/* Does not increase ref count */
-	cert = SSL_get_peer_certificate(ssl);			/* Increases ref count */
 	store = SSL_CTX_get_cert_store(SSL_get_SSL_CTX(ssl));	/* Does not increase ref count */
 
 	X509_STORE_CTX_init(store_ctx, store, cert, chain);
