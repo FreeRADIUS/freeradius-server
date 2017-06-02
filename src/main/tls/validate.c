@@ -352,6 +352,11 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 int tls_validate_client_cert_chain(SSL *ssl)
 {
 	int		err;
+
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+	int		lib_err;
+#endif
+
 	int		verify;
 	int		ret = 1;
 
@@ -377,7 +382,14 @@ int tls_validate_client_cert_chain(SSL *ssl)
 	if (verify != 1) {
 		err = X509_STORE_CTX_get_error(store_ctx);
 
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+		lib_err = ERR_peek_last_error();
+
+		/* Not having a client certificate to validate is not an error */
+		if (err != X509_V_OK && !(ERR_GET_LIB(lib_err) == ERR_LIB_X509 && ERR_GET_REASON(lib_err) == X509_R_NO_CERT_SET_FOR_US_TO_VERIFY)) {
+#else
 		if (err != X509_V_OK) {
+#endif
 			REDEBUG("Failed re-validating resumed session: %s", X509_verify_cert_error_string(err));
 			ret = 0;
 		}
