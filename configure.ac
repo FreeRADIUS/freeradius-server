@@ -430,6 +430,7 @@ AC_ARG_WITH(dhcp,
 if test "x$WITH_DHCP" = "xyes"; then
   AC_DEFINE(WITH_DHCP, [1], [define if you want DHCP support])
 fi
+AC_SUBST(WITH_DHCP)
 
 dnl #
 dnl #  Allow the user to specify a list of modules to be linked
