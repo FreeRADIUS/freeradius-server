@@ -5321,7 +5321,9 @@ static void check_proxy(rad_listen_t *head)
 	if (check_config) return;
 	if (!main_config.proxy_requests) return;
 	if (!head) return;
+#ifdef WITH_TCP
 	if (!home_servers_udp) return;
+#endif
 
 	/*
 	 *	We passed "-i" on the command line.  Use that address
