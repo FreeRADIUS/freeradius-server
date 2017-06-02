@@ -1111,9 +1111,11 @@ static int request_pre_handler(REQUEST *request, UNUSED fr_state_action_t action
 		 */
 		if ((debug_log.dst != L_DST_NULL) &&
 		    (!debug_condition || (cond_eval(request, RLM_MODULE_OK, 0, debug_condition) == 1))) {
+		    	request->log.dst = talloc_zero(request, log_dst_t);
+		    	request->log.dst->func = vradlog_request;
+			request->log.dst->uctx = &debug_log;
+
 			request->log.lvl = req_debug_lvl;
-			request->log.func = vradlog_request;
-			request->log.ctx = &debug_log;
 		}
 #endif
 

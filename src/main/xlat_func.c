@@ -633,15 +633,12 @@ static ssize_t xlat_debug(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	level = atoi(fmt);
 	if (level == 0) {
 		request->log.lvl = RAD_REQUEST_LVL_NONE;
-		request->log.func = NULL;
 	} else {
 		if (level > 4) level = 4;
-
 		request->log.lvl = level;
-		request->log.func = vradlog_request;
 	}
 
-	done:
+done:
 	return strlen(*out);
 }
 
@@ -653,9 +650,7 @@ static int xlat_cmp(void const *one, void const *two)
 	xlat_t const *a = one;
 	xlat_t const *b = two;
 
-	if (a->length != b->length) {
-		return a->length - b->length;
-	}
+	if (a->length != b->length) return a->length - b->length;
 
 	return memcmp(a->name, b->name, a->length);
 }

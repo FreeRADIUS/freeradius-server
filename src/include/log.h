@@ -45,7 +45,17 @@ extern "C" {
  * @param[in] ap	Arguments for the fmt string.
  * @param[in] uctx	Context data for the log function.  Usually an #fr_log_t for vradlog_request.
  */
-typedef	void (*log_func_t)(log_type_t type, log_lvl_t lvl, REQUEST *request, char const *fmt, va_list ap, void *uctx);
+typedef	void (*log_func_t)(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char const *fmt, va_list ap, void *uctx);
+
+/** A logging destination, consisting of a function and its context
+ *
+ */
+typedef struct log_dst log_dst_t;
+struct log_dst {
+	log_func_t	func;	//!< Function to call to log to this destination.
+	void		*uctx;	//!< Context to pass to the logging function.
+	log_dst_t	*next;	//!< Next logging destination.
+};
 
 extern FR_NAME_NUMBER const syslog_facility_table[];
 extern FR_NAME_NUMBER const syslog_severity_table[];
@@ -53,30 +63,30 @@ extern FR_NAME_NUMBER const log_str2dst[];
 
 #define debug_enabled(_type, _lvl) ((_type & L_DBG) && (_lvl <= rad_debug_lvl))
 
-bool	radlog_debug_enabled(log_type_t type, log_lvl_t lvl, REQUEST *request)
+bool	radlog_debug_enabled(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request)
 	CC_HINT(nonnull);
 
-void	vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char const *msg, va_list ap, void *uctx)
+void	vradlog_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char const *msg, va_list ap, void *uctx)
 	CC_HINT(format (printf, 4, 0)) CC_HINT(nonnull (3, 4));
 
-void	radlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char const *msg, ...)
+void	radlog_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char const *msg, ...)
 	CC_HINT(format (printf, 4, 5)) CC_HINT(nonnull (3, 4));
 
-void	radlog_request_error(log_type_t type, log_lvl_t lvl, REQUEST *request, char const *msg, ...)
+void	radlog_request_error(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char const *msg, ...)
 	CC_HINT(format (printf, 4, 5)) CC_HINT(nonnull (3, 4));
 
-void	radlog_request_perror(log_type_t type, log_lvl_t lvl, REQUEST *request, char const *msg, ...)
+void	radlog_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char const *msg, ...)
 	CC_HINT(format (printf, 4, 5)) CC_HINT(nonnull (3));
 
-void	radlog_request_marker(log_type_t type, log_lvl_t lvl, REQUEST *request,
+void	radlog_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
 			      char const *fmt, size_t indent, char const *error)
 	CC_HINT(nonnull);
 
-void	radlog_request_hex(log_type_t type, log_lvl_t lvl, REQUEST *request,
+void	radlog_request_hex(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
 			   uint8_t const *data, size_t data_len)
 	CC_HINT(nonnull);
 
-void	radlog_hex(fr_log_t const *log, log_type_t type, log_lvl_t lvl, uint8_t const *data, size_t data_len)
+void	radlog_hex(fr_log_t const *log, fr_log_type_t type, fr_log_lvl_t lvl, uint8_t const *data, size_t data_len)
 	CC_HINT(nonnull);
 
 void	radlog_fatal(char const *fmt, ...) CC_HINT(format (printf, 1, 2)) CC_HINT(nonnull) NEVER_RETURNS;
@@ -318,8 +328,8 @@ void	radlog_fatal(char const *fmt, ...) CC_HINT(format (printf, 1, 2)) CC_HINT(n
  *
  * @warning If a REQUEST * is **NOT** available, or is NULL, this macro must **NOT** be used.
  *
- * @param _l log category, a log_type_t value.
- * @param _p log priority, a log_lvl_t value.
+ * @param _l log category, a fr_log_type_t value.
+ * @param _p log priority, a fr_log_lvl_t value.
  * @param _m string to mark e.g. "my pet kitty".
  * @param _i index e.g. 3 (starts from 0).
  * @param _e error e.g. "kitties are not pets, are nature devouring hell beasts".

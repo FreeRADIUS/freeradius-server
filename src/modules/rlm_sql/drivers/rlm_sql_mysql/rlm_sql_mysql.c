@@ -572,7 +572,7 @@ static size_t sql_warnings(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen
 
 	while ((row = mysql_fetch_row(result))) {
 		char *msg = NULL;
-		log_type_t type;
+		fr_log_type_t type;
 
 		/*
 		 *	Translate the MySQL log level into our internal

@@ -347,7 +347,7 @@ static inline int ippool_wait_check(REQUEST *request, uint32_t wait_num, redisRe
 }
 
 static void ippool_action_print(REQUEST *request, ippool_action_t action,
-				log_lvl_t lvl,
+				fr_log_lvl_t lvl,
 				uint8_t const *key_prefix, size_t key_prefix_len,
 				char const *ip_str,
 				uint8_t const *device_id, size_t device_id_len,

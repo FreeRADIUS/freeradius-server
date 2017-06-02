@@ -176,7 +176,7 @@ fr_log_t default_log = {
  * @param msg	with printf style substitution tokens.
  * @param ap	Substitution arguments.
  */
-int fr_vlog(fr_log_t const *log, log_type_t type, char const *msg, va_list ap)
+int fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *msg, va_list ap)
 {
 	uint8_t		*p;
 	char		buffer[10240];	/* The largest config item size, then extra for prefixes and suffixes */
@@ -385,7 +385,7 @@ int fr_vlog(fr_log_t const *log, log_type_t type, char const *msg, va_list ap)
  * @param msg	with printf style substitution tokens.
  * @param ...	Substitution arguments.
  */
-int fr_log(fr_log_t const *log, log_type_t type, char const *msg, ...)
+int fr_log(fr_log_t const *log, fr_log_type_t type, char const *msg, ...)
 {
 	va_list ap;
 	int ret = 0;
@@ -412,7 +412,7 @@ int fr_log(fr_log_t const *log, log_type_t type, char const *msg, ...)
  * @param msg	with printf style substitution tokens.
  * @param ...	Substitution arguments.
  */
-int fr_log_perror(fr_log_t const *log, log_type_t type, char const *msg, ...)
+int fr_log_perror(fr_log_t const *log, fr_log_type_t type, char const *msg, ...)
 {
 	char const *strerror;
 	int ret;

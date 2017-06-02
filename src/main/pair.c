@@ -737,11 +737,11 @@ void debug_pair(VALUE_PAIR *vp)
  * @param[in] vp to print.
  * @param[in] prefix (optional).
  */
-void rdebug_pair(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char const *prefix)
+void rdebug_pair(fr_log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char const *prefix)
 {
 	char *value;
 
-	if (!vp || !request || !request->log.func) return;
+	if (!vp || !request || !request->log.dst) return;
 	if (!radlog_debug_enabled(L_DBG, level, request)) return;
 
 
@@ -757,12 +757,12 @@ void rdebug_pair(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char const *
  * @param[in] vp to print.
  * @param[in] prefix (optional).
  */
-void rdebug_pair_list(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char const *prefix)
+void rdebug_pair_list(fr_log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char const *prefix)
 {
 	vp_cursor_t cursor;
 	char *value;
 
-	if (!vp || !request || !request->log.func) return;
+	if (!vp || !request || !request->log.dst) return;
 
 	if (!radlog_debug_enabled(L_DBG, level, request)) return;
 
@@ -786,12 +786,12 @@ void rdebug_pair_list(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char co
  * @param[in] vp to print.
  * @param[in] prefix (optional).
  */
-void rdebug_proto_pair_list(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char const *prefix)
+void rdebug_proto_pair_list(fr_log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char const *prefix)
 {
 	vp_cursor_t cursor;
 	char *value;
 
-	if (!vp || !request || !request->log.func) return;
+	if (!vp || !request || !request->log.dst) return;
 
 	if (!radlog_debug_enabled(L_DBG, level, request)) return;
 

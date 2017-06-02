@@ -63,7 +63,7 @@ typedef enum {
 typedef char **rlm_sql_row_t;
 
 typedef struct sql_log_entry {
-	log_type_t	type;		//!< Type of log entry L_ERR, L_WARN, L_INFO, L_DBG etc..
+	fr_log_type_t	type;		//!< Type of log entry L_ERR, L_WARN, L_INFO, L_DBG etc..
 	char const	*msg;		//!< Log message.
 } sql_log_entry_t;
 

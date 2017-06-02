@@ -48,7 +48,7 @@ typedef struct REQUEST REQUEST;
 #include <assert.h>
 
 #include <freeradius-devel/log.h>
-extern log_lvl_t rad_debug_lvl;
+extern fr_log_lvl_t rad_debug_lvl;
 
 #include <sys/wait.h>
 pid_t rad_fork(void);

@@ -145,8 +145,8 @@ int aux_jit_funcs_register(rlm_lua_t const *inst, lua_State *L)
 				L_DBG_ERR = 18,\
 				L_DBG_WARN2 = 19,\
 				L_DBG_ERR2 = 20\
-			} log_type_t;\
-			int fr_log(log_type_t lvl, char const *fmt, ...);\
+			} fr_log_type_t;\
+			int fr_log(fr_log_type_t lvl, char const *fmt, ...);\
 			]]\
 		fr_srv = ffi.load(\"freeradius-server\")\
 		fr = ffi.load(\"freeradius-lua\")\

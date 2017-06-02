@@ -400,7 +400,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	int res;
 	char *optval;
 
-	log_dst_t log_dst;
+	fr_log_dst_t log_dst;
 	int log_level;
 	int log_fd = -1;
 

@@ -391,8 +391,11 @@ static REQUEST *request_from_file(FILE *fp, RADCLIENT *client)
 	/*
 	 *	Debugging
 	 */
+	request->log.dst = talloc_zero(request, log_dst_t);
+	request->log.dst->func = vradlog_request;
+	request->log.dst->uctx = &default_log;
+
 	request->log.lvl = rad_debug_lvl;
-	request->log.func = vradlog_request;
 
 	request->username = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_NAME, TAG_ANY);
 	request->password = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_PASSWORD, TAG_ANY);
@@ -569,9 +572,11 @@ static bool do_xlats(char const *filename, FILE *fp)
 	request = request_alloc(NULL);
 	gettimeofday(&now, NULL);
 
-	request->log.lvl = rad_debug_lvl;
-	request->log.func = vradlog_request;
+	request->log.dst = talloc_zero(request, log_dst_t);
+	request->log.dst->func = vradlog_request;
+	request->log.dst->uctx = &default_log;
 
+	request->log.lvl = rad_debug_lvl;
 	output[0] = '\0';
 
 	while (fgets(input, sizeof(input), fp) != NULL) {

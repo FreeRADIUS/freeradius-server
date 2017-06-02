@@ -289,7 +289,7 @@ struct rad_request {
 #endif
 
 	struct timeval		response_delay;	//!< How long to wait before sending Access-Rejects.
-	fr_event_timer_t		*ev;		//!< Event in event loop tied to this request.
+	fr_event_timer_t	*ev;		//!< Event in event loop tied to this request.
 
 	int			delay;		//!< incrementing delay for various timers
 	int			heap_id;	//!< entry in the queue / heap of incoming packets
@@ -308,12 +308,9 @@ struct rad_request {
 #endif
 
 	struct {
-		log_func_t	func;		//!< Function to call to output log messages about this
-						//!< request.
+		log_dst_t	*dst;		//!< First in a list of log destinations.
 
-		void		*ctx;		//!< Context data to pass to the logging function.
-
-		log_lvl_t	lvl;		//!< Log messages with lvl >= to this should be logged.
+		fr_log_lvl_t	lvl;		//!< Log messages with lvl >= to this should be logged.
 
 		uint8_t		unlang_indent;	//!< By how much to indent log messages. uin8_t so it's obvious
 						//!< when a request has been exdented too much.
@@ -367,8 +364,8 @@ typedef enum request_fail {
  *
  *	We really shouldn't have this many.
  */
-extern log_lvl_t	rad_debug_lvl;
-extern log_lvl_t	req_debug_lvl;
+extern fr_log_lvl_t	rad_debug_lvl;
+extern fr_log_lvl_t	req_debug_lvl;
 extern char const	*radacct_dir;
 extern char const	*radlog_dir;
 extern char const	*radlib_dir;
@@ -405,9 +402,9 @@ int		session_zap(REQUEST *request, uint32_t nasaddr,
 /* radiusd.c */
 #undef debug_pair
 void		debug_pair(VALUE_PAIR *);
-void		rdebug_pair(log_lvl_t level, REQUEST *, VALUE_PAIR *, char const *);
-void 		rdebug_pair_list(log_lvl_t level, REQUEST *, VALUE_PAIR *, char const *);
-void		rdebug_proto_pair_list(log_lvl_t level, REQUEST *, VALUE_PAIR *, char const *);
+void		rdebug_pair(fr_log_lvl_t level, REQUEST *, VALUE_PAIR *, char const *);
+void 		rdebug_pair_list(fr_log_lvl_t level, REQUEST *, VALUE_PAIR *, char const *);
+void		rdebug_proto_pair_list(fr_log_lvl_t level, REQUEST *, VALUE_PAIR *, char const *);
 int		log_err (char *);
 
 /* util.c */

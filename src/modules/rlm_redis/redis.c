@@ -130,7 +130,7 @@ fr_redis_rcode_t fr_redis_command_status(fr_redis_conn_t *conn, redisReply *repl
  * @param request The current request.
  * @param idx Response number.
  */
-void fr_redis_reply_print(log_lvl_t lvl, redisReply *reply, REQUEST *request, int idx)
+void fr_redis_reply_print(fr_log_lvl_t lvl, redisReply *reply, REQUEST *request, int idx)
 {
 	size_t i = 0;
 

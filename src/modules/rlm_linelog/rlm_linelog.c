@@ -56,9 +56,9 @@ typedef enum {
 	LINELOG_DST_UNIX,				//!< Log via Unix socket.
 	LINELOG_DST_UDP,				//!< Log via UDP.
 	LINELOG_DST_TCP,				//!< Log via TCP.
-} linelog_dst_t;
+} linefr_log_dst_t;
 
-static FR_NAME_NUMBER const linelog_dst_table[] = {
+static FR_NAME_NUMBER const linefr_log_dst_table[] = {
 	{ "file",	LINELOG_DST_FILE	},
 	{ "syslog",	LINELOG_DST_SYSLOG	},
 	{ "unix",	LINELOG_DST_UNIX	},
@@ -89,7 +89,7 @@ typedef struct linelog_instance_t {
 	vp_tmpl_t		*log_ref;		//!< Path to a #CONF_PAIR (to use as the source of
 							///< log messages).
 
-	linelog_dst_t		log_dst;		//!< Logging destination.
+	linefr_log_dst_t		log_dst;		//!< Logging destination.
 	char const		*log_dst_str;		//!< Logging destination string.
 
 	struct {
@@ -309,7 +309,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->file.escape_func = rad_filename_make_safe;
 	}
 
-	inst->log_dst = fr_str2int(linelog_dst_table, inst->log_dst_str, LINELOG_DST_INVALID);
+	inst->log_dst = fr_str2int(linefr_log_dst_table, inst->log_dst_str, LINELOG_DST_INVALID);
 	if (inst->log_dst == LINELOG_DST_INVALID) {
 		cf_log_err_cs(conf, "Invalid log destination \"%s\"", inst->log_dst_str);
 		return -1;

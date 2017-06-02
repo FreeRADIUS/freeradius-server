@@ -43,8 +43,8 @@ RCSID("$Id$")
 #include <sys/file.h>
 #include <pthread.h>
 
-log_lvl_t	rad_debug_lvl = 0;		//!< Global debugging level
-log_lvl_t	req_debug_lvl = 0;		//!< Request debugging level
+fr_log_lvl_t	rad_debug_lvl = 0;		//!< Global debugging level
+fr_log_lvl_t	req_debug_lvl = 0;		//!< Request debugging level
 
 /** Syslog facility table
  *
@@ -167,8 +167,8 @@ static char const spaces[] = "                                                  
  * @param msg	with printf style substitution tokens.
  * @param ...	Substitution arguments.
  */
-static int radlog_always(fr_log_t const *log, log_type_t type, char const *msg, ...) CC_HINT(format (printf, 3, 4));
-static int radlog_always(fr_log_t const *log, log_type_t type, char const *msg, ...)
+static int radlog_always(fr_log_t const *log, fr_log_type_t type, char const *msg, ...) CC_HINT(format (printf, 3, 4));
+static int radlog_always(fr_log_t const *log, fr_log_type_t type, char const *msg, ...)
 {
 	va_list ap;
 	int r;
@@ -190,8 +190,10 @@ static int radlog_always(fr_log_t const *log, log_type_t type, char const *msg, 
  *	- true if message should be logged.
  *	- false if message shouldn't be logged.
  */
-inline bool radlog_debug_enabled(log_type_t type, log_lvl_t lvl, REQUEST *request)
+inline bool radlog_debug_enabled(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request)
 {
+	if (!request->log.dst) return false;
+
 	/*
 	 *	It's a debug class message, note this doesn't mean it's a debug type message.
 	 *
@@ -203,7 +205,7 @@ inline bool radlog_debug_enabled(log_type_t type, log_lvl_t lvl, REQUEST *reques
 	 *	then don't log the message.
 	 */
 	if ((type & L_DBG) &&
-	    ((request->log.func && (lvl <= request->log.lvl)) ||
+	    ((lvl <= request->log.lvl) ||
 	     ((rad_debug_lvl != 0) && (lvl <= rad_debug_lvl)))) {
 		return true;
 	}
@@ -220,7 +222,7 @@ inline bool radlog_debug_enabled(log_type_t type, log_lvl_t lvl, REQUEST *reques
  * @param[in] ap	Substitution arguments.
  * @param[in] uctx	The #fr_log_t specifying the destination for log messages.
  */
-void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char const *msg, va_list ap, void *uctx)
+void vradlog_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char const *msg, va_list ap, void *uctx)
 {
 	char const	*filename;
 	FILE		*fp = NULL;
@@ -295,15 +297,16 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 	}
 
 	if (filename) {
-		char *exp;
+		char		*exp;
+		log_dst_t	*dst;
 
-		log_func_t log_func = request->log.func;
+		dst = request->log.dst;
 
 		/*
 		 *	Prevent infinitely recursive calls if
 		 *	xlat_aeval attempts to write to the request log.
 		 */
-		request->log.func = NULL;
+		request->log.dst = NULL;
 
 		/*
 		 *	This is SLOW!  Doing it for every log message
@@ -314,7 +317,7 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 		/*
 		 *	Restore the original logging function
 		 */
-		request->log.func = log_func;
+		request->log.dst = dst;
 
 		/*
 		 *	Ensure the directory structure exists, for
@@ -459,17 +462,19 @@ finish:
  * @param msg with printf style substitution tokens.
  * @param ... Substitution arguments.
  */
-void radlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char const *msg, ...)
+void radlog_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char const *msg, ...)
 {
-	va_list ap;
+	va_list		ap;
+	log_dst_t	*dst_p;
 
 	rad_assert(request);
 
-	if (!request->log.func && !(type & L_DBG)) return;
+	if (!request->log.dst) return;
 
 	va_start(ap, msg);
-	if (request->log.func) request->log.func(type, lvl, request, msg, ap, request->log.ctx);
-	else if (!(type & L_DBG)) vradlog_request(type, lvl, request, msg, ap, request->log.ctx);
+	for (dst_p = request->log.dst; dst_p; dst_p = dst_p->next) {
+		dst_p->func(type, lvl, request, msg, ap, dst_p->uctx);
+	}
 	va_end(ap);
 }
 
@@ -489,15 +494,19 @@ void radlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char const
  * @param msg with printf style substitution tokens.
  * @param ... Substitution arguments.
  */
-void radlog_request_error(log_type_t type, log_lvl_t lvl, REQUEST *request, char const *msg, ...)
+void radlog_request_error(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char const *msg, ...)
 {
-	va_list ap;
+	va_list		ap;
+	log_dst_t	*dst_p;
 
 	rad_assert(request);
 
+	if (!request->log.dst) return;
+
 	va_start(ap, msg);
-	if (request->log.func) request->log.func(type, lvl, request, msg, ap, request->log.ctx);
-	else if (!(type & L_DBG)) vradlog_request(type, lvl, request, msg, ap, request->log.ctx);
+	for (dst_p = request->log.dst; dst_p; dst_p = dst_p->next) {
+		dst_p->func(type, lvl, request, msg, ap, dst_p->uctx);
+	}
 	vmodule_failure_msg(request, msg, ap);
 	va_end(ap);
 }
@@ -513,25 +522,28 @@ void radlog_request_error(log_type_t type, log_lvl_t lvl, REQUEST *request, char
  * @param msg with printf style substitution tokens.
  * @param ... Substitution arguments.
  */
-void radlog_request_perror(log_type_t type, log_lvl_t lvl, REQUEST *request, char const *msg, ...)
+void radlog_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char const *msg, ...)
 {
 	char const *strerror;
 
 	rad_assert(request);
+
+	if (!request->log.dst) return;
 
 	/*
 	 *	No strerror gets us identical behaviour to radlog_request_error
 	 */
 	strerror = fr_strerror_pop();
 	if (!strerror) {
-		va_list ap;
+		va_list		ap;
+		log_dst_t	*dst_p;
 
 		if (!msg) return;	/* NOOP */
 
 		va_start(ap, msg);
-		if (request->log.func) request->log.func(type, lvl, request, msg, ap, request->log.ctx);
-		else if (!(type & L_DBG)) vradlog_request(type, lvl, request, msg, ap, request->log.ctx);
-		vmodule_failure_msg(request, msg, ap);
+		for (dst_p = request->log.dst; dst_p; dst_p = dst_p->next) {
+			dst_p->func(type, lvl, request, msg, ap, dst_p->uctx);
+		}
 		va_end(ap);
 
 		return;			/* DONE */
@@ -573,7 +585,7 @@ void radlog_request_perror(log_type_t type, log_lvl_t lvl, REQUEST *request, cha
  * @param idx The position of the marker relative to the string.
  * @param error What the parse error was.
  */
-void radlog_request_marker(log_type_t type, log_lvl_t lvl, REQUEST *request,
+void radlog_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
 			   char const *msg, size_t idx, char const *error)
 {
 	char const *prefix = "";
@@ -605,7 +617,7 @@ void radlog_request_marker(log_type_t type, log_lvl_t lvl, REQUEST *request,
 	request->log.module_indent = module_indent;
 }
 
-void radlog_request_hex(log_type_t type, log_lvl_t lvl, REQUEST *request,
+void radlog_request_hex(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request,
 			uint8_t const *data, size_t data_len)
 {
 	size_t i, j, len;
@@ -621,7 +633,7 @@ void radlog_request_hex(log_type_t type, log_lvl_t lvl, REQUEST *request,
 	}
 }
 
-void radlog_hex(fr_log_t const *log, log_type_t type, log_lvl_t lvl, uint8_t const *data, size_t data_len)
+void radlog_hex(fr_log_t const *log, fr_log_type_t type, fr_log_lvl_t lvl, uint8_t const *data, size_t data_len)
 {
 	size_t i, j, len;
 	char *p;
