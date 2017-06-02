@@ -425,7 +425,7 @@ eap {
 			#  secret has been created.  This requires client support.
 			#
 			#  Extended Master Secrets (RFC 7627) are required to
-			#  prevent a MITM attack, where the attacker can resume
+			#  prevent MITM attacks, where the attacker can resume
 			#  a session if it can insert itself into the path between
 			#  the TLS client and TLS server.
 			#
@@ -763,9 +763,9 @@ eap {
 		#	}
 		#
 
-		#  
-		#  use_tunneled_reply has been removed in 3.2.0	
-		# 
+		#
+		#  use_tunneled_reply has been removed in 3.2.0
+		#
 		#  Attributes that should be provided in the reply should
 		#  be copied to the outer.session-state list.
 		#
@@ -896,7 +896,7 @@ eap {
 		#
 		#  See notes in the ttls section about emulating this behaviour.
 		#
-			
+
 		#
 		#  When the tunneled session is proxied, the home server may not
 		#  understand EAP-MSCHAP-V2. Set this entry to "no" to proxy the
