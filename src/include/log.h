@@ -32,7 +32,20 @@ RCSIDH(log_h, "$Id$")
 extern "C" {
 #endif
 
-typedef	void (*log_func_t)(log_type_t lvl, log_lvl_t priority, REQUEST *, char const *, va_list ap);
+/** Logging callback to write log messages to a destination
+ *
+ * This allows the logging destination to be customised on a per request basis.
+ *
+ * @note Logging functions must not block waiting on I/O.
+ *
+ * @param[in] type	What type of message this is (error, warn, info, debug).
+ * @param[in] lvl	At what logging level this message should be output.
+ * @param[in] request	The current request.
+ * @param[in] fmt	sprintf style fmt string.
+ * @param[in] ap	Arguments for the fmt string.
+ * @param[in] uctx	Context data for the log function.  Usually an #fr_log_t for vradlog_request.
+ */
+typedef	void (*log_func_t)(log_type_t type, log_lvl_t lvl, REQUEST *request, char const *fmt, va_list ap, void *uctx);
 
 extern FR_NAME_NUMBER const syslog_facility_table[];
 extern FR_NAME_NUMBER const syslog_severity_table[];
@@ -43,7 +56,7 @@ extern FR_NAME_NUMBER const log_str2dst[];
 bool	radlog_debug_enabled(log_type_t type, log_lvl_t lvl, REQUEST *request)
 	CC_HINT(nonnull);
 
-void	vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char const *msg, va_list ap)
+void	vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char const *msg, va_list ap, void *uctx)
 	CC_HINT(format (printf, 4, 0)) CC_HINT(nonnull (3, 4));
 
 void	radlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char const *msg, ...)

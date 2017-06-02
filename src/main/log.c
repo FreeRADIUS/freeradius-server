@@ -213,13 +213,14 @@ inline bool radlog_debug_enabled(log_type_t type, log_lvl_t lvl, REQUEST *reques
 
 /** Send a log message to its destination, possibly including fields from the request
  *
- * @param type of log message, #L_ERR, #L_WARN, #L_INFO, #L_DBG.
- * @param lvl Minimum required server or request level to output this message.
- * @param request The current request.
- * @param msg with printf style substitution tokens.
- * @param ap Substitution arguments.
+ * @param[in] type	of log message, #L_ERR, #L_WARN, #L_INFO, #L_DBG.
+ * @param[in] lvl	Minimum required server or request level to output this message.
+ * @param[in] request	The current request.
+ * @param[in] msg	with printf style substitution tokens.
+ * @param[in] ap	Substitution arguments.
+ * @param[in] uctx	The #fr_log_t specifying the destination for log messages.
  */
-void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char const *msg, va_list ap)
+void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char const *msg, va_list ap, void *uctx)
 {
 	char const	*filename;
 	FILE		*fp = NULL;
@@ -233,14 +234,16 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 	char		*msg_module = NULL;
 	char		*msg_exp = NULL;
 
+	fr_log_t	*log_dst = uctx;
+
 	rad_assert(request);
 
 	/*
 	 *	No output means no output.
 	 */
-	if (!request->log.output) return;
+	if (!log_dst) return;
 
-	filename =  request->log.output->file;
+	filename = log_dst->file;
 
 	/*
 	 *	Debug messages get treated specially.
@@ -256,9 +259,9 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 		 *	we don't need to re-open it on every log
 		 *	message.
 		 */
-		switch (request->log.output->dst) {
+		switch (log_dst->dst) {
 		case L_DST_FILES:
-			fp = fopen(request->log.output->file, "a");
+			fp = fopen(log_dst->file, "a");
 			if (!fp) goto finish;
 			break;
 
@@ -274,12 +277,11 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 			io.read = NULL;
 			io.seek = NULL;
 			io.close = NULL;
-			io.write = request->log.output->cookie_write;
+			io.write = log_dst->cookie_write;
 
-			fp = fopencookie(request->log.output->cookie, "w", io);
+			fp = fopencookie(log_dst->cookie, "w", io);
 #  else
-			fp = funopen(request->log.output->cookie,
-				     NULL, request->log.output->cookie_write, NULL, NULL);
+			fp = funopen(log_dst->cookie, NULL, log_dst->cookie_write, NULL, NULL);
 
 #  endif
 			if (!fp) goto finish;
@@ -433,7 +435,7 @@ print_msg:
 		break;
 	};
 
-	radlog_always(request->log.output,
+	radlog_always(log_dst,
 		      type, "%s" "%.*s" "%s" "%s" "%s",
 		      msg_prefix,
 		      unlang_indent, spaces,
@@ -466,8 +468,8 @@ void radlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char const
 	if (!request->log.func && !(type & L_DBG)) return;
 
 	va_start(ap, msg);
-	if (request->log.func) request->log.func(type, lvl, request, msg, ap);
-	else if (!(type & L_DBG)) vradlog_request(type, lvl, request, msg, ap);
+	if (request->log.func) request->log.func(type, lvl, request, msg, ap, request->log.ctx);
+	else if (!(type & L_DBG)) vradlog_request(type, lvl, request, msg, ap, request->log.ctx);
 	va_end(ap);
 }
 
@@ -494,8 +496,8 @@ void radlog_request_error(log_type_t type, log_lvl_t lvl, REQUEST *request, char
 	rad_assert(request);
 
 	va_start(ap, msg);
-	if (request->log.func) request->log.func(type, lvl, request, msg, ap);
-	else if (!(type & L_DBG)) vradlog_request(type, lvl, request, msg, ap);
+	if (request->log.func) request->log.func(type, lvl, request, msg, ap, request->log.ctx);
+	else if (!(type & L_DBG)) vradlog_request(type, lvl, request, msg, ap, request->log.ctx);
 	vmodule_failure_msg(request, msg, ap);
 	va_end(ap);
 }
@@ -527,8 +529,8 @@ void radlog_request_perror(log_type_t type, log_lvl_t lvl, REQUEST *request, cha
 		if (!msg) return;	/* NOOP */
 
 		va_start(ap, msg);
-		if (request->log.func) request->log.func(type, lvl, request, msg, ap);
-		else if (!(type & L_DBG)) vradlog_request(type, lvl, request, msg, ap);
+		if (request->log.func) request->log.func(type, lvl, request, msg, ap, request->log.ctx);
+		else if (!(type & L_DBG)) vradlog_request(type, lvl, request, msg, ap, request->log.ctx);
 		vmodule_failure_msg(request, msg, ap);
 		va_end(ap);
 

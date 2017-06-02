@@ -311,14 +311,13 @@ struct rad_request {
 		log_func_t	func;		//!< Function to call to output log messages about this
 						//!< request.
 
-		log_lvl_t	lvl;		//!< Controls the verbosity of debug statements regarding
-						//!< the request.
+		void		*ctx;		//!< Context data to pass to the logging function.
+
+		log_lvl_t	lvl;		//!< Log messages with lvl >= to this should be logged.
 
 		uint8_t		unlang_indent;	//!< By how much to indent log messages. uin8_t so it's obvious
 						//!< when a request has been exdented too much.
 		uint8_t		module_indent;	//!< Indentation after the module prefix name.
-
-		fr_log_t	*output;	//!< Output log destination.  Over-rides the global one.
 	} log;
 
 	uint32_t		options;	//!< mainly for proxying EAP-MSCHAPv2.

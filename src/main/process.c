@@ -1113,7 +1113,7 @@ static int request_pre_handler(REQUEST *request, UNUSED fr_state_action_t action
 		    (!debug_condition || (cond_eval(request, RLM_MODULE_OK, 0, debug_condition) == 1))) {
 			request->log.lvl = req_debug_lvl;
 			request->log.func = vradlog_request;
-			request->log.output = &debug_log;
+			request->log.ctx = &debug_log;
 		}
 #endif
 
