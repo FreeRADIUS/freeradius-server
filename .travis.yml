@@ -19,6 +19,9 @@ env:
     -O2 -g3"
   - TEST_CERTS=yes DO_BUILD=yes LIBS_OPTIONAL=yes LIBS_SHARED=yes BUILD_CFLAGS="-DNDEBUG"
   - DO_BUILD=no
+notifications:
+  slack:
+    secure: DNYZ31leOmSYXFtHD/bERl4uwI1cZvDgBQQFsoH0/7/pXac2I293RhRS4TVo/ortlL1OCmilb4Hx8iwFLd+/7Pj9AHkxq6JlnVKKp2yhWLEwIYwYY5xPqO/lglzl5les6FIToSsU0dHusoYsNLYnRhQEnuIs+wy4tUp8eq/CvTs=
 addons:
   coverity_scan:
     project:
