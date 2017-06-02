@@ -434,7 +434,7 @@ static rlm_rcode_t CC_HINT(nonnull) do_mruby(REQUEST *request, rlm_mruby_t const
 	switch (mrb_type(mruby_result)) {
 		/* If it is a Fixnum: return that value */
 		case MRB_TT_FIXNUM:
-			return (rlm_rcode_t)mrb_int(mrb, mruby_result);
+			return (rlm_rcode_t)mrb_fixnum(mruby_result);
 			break;
 		case MRB_TT_ARRAY:
 			/* Must have exactly three items */
@@ -460,7 +460,7 @@ static rlm_rcode_t CC_HINT(nonnull) do_mruby(REQUEST *request, rlm_mruby_t const
 
 			add_vp_tuple(request->reply, request, &request->reply->vps, mrb, mrb_ary_entry(mruby_result, 1), function_name);
 			add_vp_tuple(request, request, &request->control, mrb, mrb_ary_entry(mruby_result, 2), function_name);
-			return (rlm_rcode_t)mrb_int(mrb, mrb_ary_entry(mruby_result, 0));
+			return (rlm_rcode_t)mrb_fixnum(mrb_ary_entry(mruby_result, 0));
 			break;
 		default:
 			/* Invalid return type */

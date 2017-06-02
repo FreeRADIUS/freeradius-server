@@ -66,6 +66,7 @@ addons:
       - libldap2-dev
       - libluajit-5.1-dev
       - libmemcached-dev
+      - libmruby-dev
       - libmysqlclient-dev
       - libnl-genl-3-dev
       - libpam0g-dev
