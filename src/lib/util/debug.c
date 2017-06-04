@@ -77,7 +77,7 @@ typedef struct fr_bt_info {
 struct fr_bt_marker {
 	void 		*obj;				//!< Pointer to the parent object, this is our needle
 							//!< when we iterate over the contents of the circular buffer.
-	fr_cbuff_t 	*cbuff;				//!< Where we temporarily store the backtraces
+	fr_fring_t 	*fring;				//!< Where we temporarily store the backtraces
 };
 #endif
 
@@ -311,15 +311,15 @@ void fr_debug_break(bool always)
 #ifdef HAVE_EXECINFO
 /** Print backtrace entry for a given object
  *
- * @param cbuff to search in.
+ * @param fring to search in.
  * @param obj pointer to original object
  */
-void backtrace_print(fr_cbuff_t *cbuff, void *obj)
+void backtrace_print(fr_fring_t *fring, void *obj)
 {
 	fr_bt_info_t *p;
 	bool found = false;
 
-	while ((p = fr_cbuff_next(cbuff))) {
+	while ((p = fr_fring_next(fring))) {
 		if ((p->obj == obj) || !obj) {
 			found = true;
 
@@ -341,7 +341,7 @@ int fr_backtrace_do(fr_bt_marker_t *marker)
 {
 	fr_bt_info_t *bt;
 
-	if (!fr_cond_assert(marker->obj) || !fr_cond_assert(marker->cbuff)) return -1;
+	if (!fr_cond_assert(marker->obj) || !fr_cond_assert(marker->fring)) return -1;
 
 	bt = talloc_zero(NULL, fr_bt_info_t);
 	if (!bt) return -1;
@@ -349,7 +349,7 @@ int fr_backtrace_do(fr_bt_marker_t *marker)
 	bt->obj = marker->obj;
 	bt->count = backtrace(bt->frames, MAX_BT_FRAMES);
 
-	fr_cbuff_insert(marker->cbuff, bt);
+	fr_fring_overwrite(marker->fring, bt);
 
 	return 0;
 }
@@ -360,8 +360,8 @@ int fr_backtrace_do(fr_bt_marker_t *marker)
  *
  * Code augmentation should look something like:
 @verbatim
-	// Create a static cbuffer pointer, the first call to backtrace_attach will initialise it
-	static fr_cbuff_t *my_obj_bt;
+	// Create a static fringer pointer, the first call to backtrace_attach will initialise it
+	static fr_fring_t *my_obj_bt;
 
 	my_obj_t *alloc_my_obj(TALLOC_CTX *ctx) {
 		my_obj_t *this;
@@ -383,17 +383,17 @@ int fr_backtrace_do(fr_bt_marker_t *marker)
  * which should print a limited backtrace to stderr. Note, this backtrace will not include any argument
  * values, but should at least show the code path taken.
  *
- * @param cbuff this should be a pointer to a static *fr_cbuff.
+ * @param fring this should be a pointer to a static *fr_fring_buffer.
  * @param obj we want to generate a backtrace for.
  */
-fr_bt_marker_t *fr_backtrace_attach(fr_cbuff_t **cbuff, TALLOC_CTX *obj)
+fr_bt_marker_t *fr_backtrace_attach(fr_fring_t **fring, TALLOC_CTX *obj)
 {
 	fr_bt_marker_t *marker;
 
-	if (*cbuff == NULL) {
+	if (*fring == NULL) {
 		pthread_mutex_lock(&fr_debug_init);
 		/* Check again now we hold the mutex - eww*/
-		if (*cbuff == NULL) *cbuff = fr_cbuff_alloc(NULL, MAX_BT_CBUFF, true);
+		if (*fring == NULL) *fring = fr_fring_alloc(NULL, MAX_BT_CBUFF, true);
 		pthread_mutex_unlock(&fr_debug_init);
 	}
 
@@ -403,7 +403,7 @@ fr_bt_marker_t *fr_backtrace_attach(fr_cbuff_t **cbuff, TALLOC_CTX *obj)
 	}
 
 	marker->obj = (void *) obj;
-	marker->cbuff = *cbuff;
+	marker->fring = *fring;
 
 	fprintf(stderr, "Backtrace attached to %s %p\n", talloc_get_name(obj), obj);
 	/*
@@ -415,11 +415,11 @@ fr_bt_marker_t *fr_backtrace_attach(fr_cbuff_t **cbuff, TALLOC_CTX *obj)
 	return marker;
 }
 #else
-void backtrace_print(UNUSED fr_cbuff_t *cbuff, UNUSED void *obj)
+void backtrace_print(UNUSED fr_fring_t *fring, UNUSED void *obj)
 {
 	fprintf(stderr, "Server built without fr_backtrace_* support, requires execinfo.h and possibly -lexecinfo\n");
 }
-fr_bt_marker_t *fr_backtrace_attach(UNUSED fr_cbuff_t **cbuff, UNUSED TALLOC_CTX *obj)
+fr_bt_marker_t *fr_backtrace_attach(UNUSED fr_fring_t **fring, UNUSED TALLOC_CTX *obj)
 {
 	fprintf(stderr, "Server built without fr_backtrace_* support, requires execinfo.h and possibly -lexecinfo\n");
 	abort();

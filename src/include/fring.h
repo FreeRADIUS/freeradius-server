@@ -18,17 +18,18 @@
 /*
  * $Id$
  *
- * @file include/cbuff.h
- * @brief Simple circular buffer for debugging purposes.
+ * @file include/fring_buffer.h
+ * @brief Simple ring buffer with fixed element sizes.
  *
  * @copyright 2015-2017 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 #include <stdbool.h>
 #include <stdint.h>
 
-typedef struct fr_cbuff fr_cbuff_t;
+typedef struct fr_fring_buffer fr_fring_t;
 
-fr_cbuff_t	*fr_cbuff_alloc(TALLOC_CTX *ctx, uint32_t size, bool lock);
-void		fr_cbuff_insert(fr_cbuff_t *cbuff, void *obj);
-void		*fr_cbuff_next(fr_cbuff_t *cbuff);
+fr_fring_t	*fr_fring_alloc(TALLOC_CTX *ctx, uint32_t size, bool lock);
+int			fr_fring_overwrite(fr_fring_t *fring, void *obj);
+int			fr_fring_insert(fr_fring_t *fring, void *obj);
+void			*fr_fring_next(fr_fring_t *fring);
 #endif /* _FR_CBUFF_H */

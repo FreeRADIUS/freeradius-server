@@ -23,7 +23,7 @@
  *
  * @copyright 2015-2017 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
-#include <freeradius-devel/cbuff.h>
+#include <freeradius-devel/fring.h>
 
 typedef enum {
 	DEBUGGER_STATE_UNKNOWN_NO_PTRACE	= -3,	//!< We don't have ptrace so can't check.
@@ -55,9 +55,9 @@ typedef struct fr_bt_marker fr_bt_marker_t;
 void		fr_debug_state_store(void);
 char const	*fr_debug_state_to_msg(fr_debug_state_t state);
 void		fr_debug_break(bool always);
-void		backtrace_print(fr_cbuff_t *cbuff, void *obj);
+void		backtrace_print(fr_fring_t *fring, void *obj);
 int		fr_backtrace_do(fr_bt_marker_t *marker);
-fr_bt_marker_t	*fr_backtrace_attach(fr_cbuff_t **cbuff, TALLOC_CTX *obj);
+fr_bt_marker_t	*fr_backtrace_attach(fr_fring_t **fring, TALLOC_CTX *obj);
 
 void		fr_panic_on_free(TALLOC_CTX *ctx);
 int		fr_set_dumpable_init(void);

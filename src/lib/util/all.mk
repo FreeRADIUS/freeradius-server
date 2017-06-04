@@ -6,13 +6,13 @@
 TARGET		:= libfreeradius-util.a
 
 SOURCES		:= base64.c \
-		   cbuff.c \
 		   cursor.c \
 		   debug.c \
 		   dict.c \
 		   event.c \
 		   fifo.c \
 		   filters.c \
+		   fring.c \
 		   getaddrinfo.c \
 		   hash.c \
 		   heap.c \
