@@ -1527,7 +1527,7 @@ typedef struct unlang_event_t {
 	int				fd;				//!< File descriptor to wait on.
 	fr_unlang_timeout_callback_t	timeout;			//!< Function to call on timeout.
 	fr_unlang_fd_callback_t		fd_read;			//!< Function to call when FD is readable.
-	fr_unlang_fd_callback_t		fd_write;			//!< Function to call when FD is writeable.
+	fr_unlang_fd_callback_t		fd_write;			//!< Function to call when FD is writable.
 	fr_unlang_fd_callback_t		fd_error;			//!< Function to call when FD has errored.
 	void const			*inst;				//!< Module instance to pass to callbacks.
 	void				*thread;			//!< Thread specific module instance.

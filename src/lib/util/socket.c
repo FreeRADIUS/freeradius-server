@@ -361,7 +361,7 @@ int fr_socket_wait_for_connect(int sockfd, struct timeval const *timeout)
 	int	ret;
 	struct	timeval tv = *timeout;
 	fd_set	error_set;
-	fd_set	write_set;	/* POSIX says sockets are open when they become writeable */
+	fd_set	write_set;	/* POSIX says sockets are open when they become writable */
 
 	FD_ZERO(&error_set);
 	FD_ZERO(&write_set);

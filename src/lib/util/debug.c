@@ -586,11 +586,11 @@ int fr_reset_dumpable(void)
 	return fr_set_dumpable(dump_core);
 }
 
-/** Check to see if panic_action file is world writeable
+/** Check to see if panic_action file is world writable
  *
  * @return
  *	- 0 if file is OK.
- *	- -1 if the file is world writeable.
+ *	- -1 if the file is world writable.
  */
 static int fr_fault_check_permissions(void)
 {
@@ -601,7 +601,7 @@ static int fr_fault_check_permissions(void)
 
 	/*
 	 *	Try and guess which part of the command is the binary, and check to see if
-	 *	it's world writeable, to try and save the admin from their own stupidity.
+	 *	it's world writable, to try and save the admin from their own stupidity.
 	 *
 	 *	@fixme we should do this properly and take into account single and double
 	 *	quotes.

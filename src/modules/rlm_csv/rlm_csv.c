@@ -312,7 +312,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	}
 
 	/*
-	 *	Get a writeable copy of the header
+	 *	Get a writable copy of the header
 	 */
 	header = talloc_strdup(inst, inst->header);
 	if (!header) goto oom;

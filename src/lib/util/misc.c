@@ -594,7 +594,7 @@ int fr_blocking(UNUSED int fd)
  * @param fd to write to.
  * @param vector to write.
  * @param iovcnt number of elements in iovec.
- * @param timeout how long to wait for fd to become writeable before timing out.
+ * @param timeout how long to wait for fd to become writable before timing out.
  * @return
  *	- Number of bytes written.
  *	- -1 on failure.

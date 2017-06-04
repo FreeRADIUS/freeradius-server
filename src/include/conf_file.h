@@ -299,7 +299,7 @@ _Generic((_ct), \
 #define FR_TYPE_FILE_INPUT		((1 << 14) | FR_TYPE_STRING)	//!< File matching value must exist,
 								     	//!< and must be readable.
 #define FR_TYPE_FILE_OUTPUT		((1 << 15) | FR_TYPE_STRING)	//!< File matching value must exist,
-									//!< and must be writeable.
+									//!< and must be writable.
 
 #define FR_TYPE_XLAT			(1 << 16) 			//!< string will be dynamically expanded.
 #define FR_TYPE_TMPL			(1 << 17) 			//!< CONF_PAIR should be parsed as a template.
