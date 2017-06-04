@@ -578,6 +578,10 @@ ATTRIBUTE	Tmp-Signed-9				1869	signed
 ATTRIBUTE	Tmp-String-Tagged-0			1891	string has_tag
 ATTRIBUTE	Tmp-String-Tagged-1			1892	string has_tag
 
+ATTRIBUTE	Log-Message				1893	string
+ATTRIBUTE	Log-Level				1894	integer
+ATTRIBUTE	Log-Type				1895	integer
+
 #	Range:	1900-1909
 #	WiMAX server-side attributes.
 #

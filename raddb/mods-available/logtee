@@ -1,0 +1,117 @@
+# -*- text -*-
+#
+#  $Id$
+
+#
+#  The "logtee" module tees the logging output for requests it's run for
+#  sending the log message and any configured meta-data to a socket or
+#  file for additional processing.
+#
+#  Multiple logtees may be added for any given request, they will not
+#  affect normal logging output (-X/command socket).
+#
+logtee {
+	#
+	#  Custom line delimiters. Defaults to \n (newline) but may be
+	#  any UTF8 multichar string.
+	#
+#	delimiter = "\n"
+
+	#  The default format string.
+	#
+	#  Additional expansions are available:
+	#  - %{Log-Message}	- The log message
+	#  - %{Log-Level}	- Debugging level
+	#  - %{Log-Type}	- Error, Warn, Info, Debug etc...
+	#
+	#  Format could contain markup (JSON for example), but it's up
+	#  to the user to call the appropriate escaping function.
+	#
+	format = "%{Log-Type} - %{Log-Level} - %{Log-Message}"
+
+	#
+	#  The number of log messages we buffer before discarding.
+	#
+	#  The module writes log messages to a ring buffer between
+	#  processing requests and checking whether the output socket is
+	#  writable, so this should be not set to < 1000.
+	#
+	#  If an error occurs (connection failed, out of disk space
+	#  etc...) the ring buffer will be used to temporarily buffer
+	#  log data until the error is cleared.
+	#
+	#  This limit is applied per worker thread.
+	#
+#	buffer_depth = 1000000
+
+	#
+	#  What should be done with log messages
+	#
+	#  May be one of:
+	#  - file      - Write to a file - NYI
+	#  - tcp       - Write to a TCP socket
+	#  - udp       - Write to a UDP socket
+	#  - unix      - Write to a UNIX socket
+	#
+	#  Syslog ouput via syslog() is not explicitly supported, but you
+	#  may use one of the other transports to talk directly to a
+	#  syslog daemon.
+	#
+	destination = 'file'
+
+	#
+	#  How long we wait for a connection or file to open.
+	#
+	connection_timeout = 1.0
+
+	#
+	#  How long to wait after a connection or file has become
+	#  unusable, to try and re-open the connection or file.
+	#
+	reconnection_delay = 1.0
+
+	file {
+		#  The file where the logs will go.
+		filename = ${logdir}/linelog
+
+		#  The Unix-style permissions on the log file.
+		#
+		#  Depending on format string, the log file may contain secret or
+		#  private information about users.  Keep the file permissions as
+		#  restrictive as possible.
+		permissions = 0600
+
+		#  The Unix group which owns the log file.
+		#
+		#  The user that freeradius runs as must be in the specified
+		#  group, otherwise it will not be possible to set the group.
+#		group = ${security.group}
+
+		#
+		#  Most file systems can handly nearly the full range of UTF-8
+		#  characters.  Ones that can deal with a limited range should
+		#  set this to "yes".
+		#
+		escape_filenames = no
+	}
+
+	unix {
+		filename = /path/to/unix.socket
+	}
+
+	tcp {
+		#  Server to connect to
+		server = "example.org"
+
+		#  Port to connect to
+		port = 514
+	}
+
+	udp {
+		#  Server to connect to
+		server = "example.org"
+
+		#  Port to connect to
+		port = 514
+	}
+}
