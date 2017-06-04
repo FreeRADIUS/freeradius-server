@@ -350,27 +350,21 @@ static fr_conn_state_t _logtee_conn_init(int *fd_out, void *uctx)
 
 	switch (inst->log_dst) {
 	case LOGTEE_DST_UNIX:
-	/*
 		DEBUG2("Opening UNIX socket at \"%s\"", inst->unix_sock.path);
-	*/
 		fd = fr_socket_client_unix(inst->unix_sock.path, true);
 		if (fd < 0) return FR_CONNECTION_STATE_FAILED;
 		break;
 
 	case LOGTEE_DST_TCP:
-	/*
 		DEBUG2("Opening TCP connection to %pV:%u",
-		       fr_box_ipaddr(&inst->tcp.dst_ipaddr), inst->tcp.port);
-	*/
+		       fr_box_ipaddr(inst->tcp.dst_ipaddr), inst->tcp.port);
 		fd = fr_socket_client_tcp(NULL, &inst->tcp.dst_ipaddr, inst->tcp.port, true);
 		if (fd < 0) return FR_CONNECTION_STATE_FAILED;
 		break;
 
 	case LOGTEE_DST_UDP:
-	/*
 		DEBUG2("Opening UDP connection to %pV:%u",
-		       fr_box_ipaddr(&inst->udp.dst_ipaddr), inst->udp.port);
-	*/
+		       fr_box_ipaddr(inst->udp.dst_ipaddr), inst->udp.port);
 		fd = fr_socket_client_udp(NULL, &inst->udp.dst_ipaddr, inst->udp.port, true);
 		if (fd < 0) return FR_CONNECTION_STATE_FAILED;
 		break;

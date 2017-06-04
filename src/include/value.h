@@ -163,11 +163,11 @@ struct value_box {
 
 #define _fr_box(_type, _field, _val) &(fr_value_box_t){ .type = _type, _field = (_val) }
 
-#define fr_box_ipaddr(_val)			_fr_box(((_val->af == AF_INET) ? \
-							((_val->prefix == 32) ? FR_TYPE_IPV4_ADDR : \
+#define fr_box_ipaddr(_val)			_fr_box(((_val.af == AF_INET) ? \
+							((_val.prefix == 32) ?	FR_TYPE_IPV4_ADDR : \
 										FR_TYPE_IPV4_PREFIX) : \
-							((_val->prefix == 128) ? FR_TYPE_IPV6_ADDR : \
-										 FR_TYPE_IPV6_PREFIX)), \
+							((_val.prefix == 128) ?	FR_TYPE_IPV6_ADDR : \
+										FR_TYPE_IPV6_PREFIX)), \
 						.vb_ip, _val)
 #define fr_box_ipv4addr(_val)			_fr_box(FR_TYPE_IPV4_ADDR, .vb_ip, _val)
 #define fr_box_ipv4prefix(_val)			_fr_box(FR_TYPE_IPV4_PREFIX, .vb_ip, _val)
