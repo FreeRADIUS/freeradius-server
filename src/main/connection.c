@@ -24,7 +24,11 @@
 #define LOG_PREFIX "(%" PRIu64 ") %s - "
 #define LOG_PREFIX_ARGS conn->id, conn->log_prefix
 
-#include <stdatomic.h>
+#ifdef HAVE_STDATOMIC_H
+#  include <stdatomic.h>
+#else
+#  include <freeradius-devel/stdatomic.h>
+#endif
 #include <talloc.h>
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/event.h>
