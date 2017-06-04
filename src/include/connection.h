@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file conn.h
+ * @file include/connection.h
  * @brief Simple state machine for managing connection states.
  *
  * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
@@ -28,10 +28,10 @@ typedef struct fr_conn fr_conn_t;
 
 typedef enum {
 	FR_CONNECTION_STATE_INIT = 0,		//!< Init state, sets up connection.
-	FR_CONNECTION_STATE_CONNECTING,		//!< Waiting for file descriptor to open.
+	FR_CONNECTION_STATE_CONNECTING,		//!< Waiting for connection to establish.
 	FR_CONNECTION_STATE_TIMEOUT,		//!< Timeout during #FR_CONNECTION_STATE_CONNECTING.
 	FR_CONNECTION_STATE_CONNECTED,		//!< File descriptor is open (ready for writing).
-	FR_CONNECTION_STATE_FAILED		//!< File descriptor errored, and is waiting to reconnect.
+	FR_CONNECTION_STATE_FAILED		//!< Connection failed and is waiting to reconnect.
 } fr_conn_state_t;
 
 /** Callback for the initialise state

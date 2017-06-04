@@ -75,8 +75,6 @@ typedef struct logtee_net {
 	uint16_t		port;			//!< Network port.
 } logtee_net_t;
 
-#define LOGTEE_IOVCNT		100;			//!< Maximum number of vectors passed in call to writev.
-
 /** logtee module instance
  */
 typedef struct logtee_instance_t {
@@ -103,16 +101,14 @@ typedef struct logtee_instance_t {
 	} file;
 
 	struct {
-		char const		*path;			//!< Where the UNIX socket lives.
+		char const		*path;		//!< Where the UNIX socket lives.
 	} unix_sock;					// Lowercase unix is a macro on some systems?!
 
 	logtee_net_t		tcp;			//!< TCP server.
 	logtee_net_t		udp;			//!< UDP server.
 
-	struct timeval		connection_timeout;		//!< How long to wait to open a socket.
-	struct timeval		reconnection_delay;		//!< How long to wait to retry.
-
-	CONF_SECTION		*cs;			//!< #CONF_SECTION to use as the root for #log_ref lookups.
+	struct timeval		connection_timeout;	//!< How long to wait to open a socket.
+	struct timeval		reconnection_delay;	//!< How long to wait to retry.
 
 	fr_dict_attr_t const	*msg_da;		//!< Log-Message attribute.
 	fr_dict_attr_t const	*type_da;		//!< Log-Type attribute.
@@ -519,7 +515,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instanc
 	 */
 	if (fr_conn_alloc(t, el, &inst->connection_timeout, &inst->reconnection_delay,
 			  _logtee_conn_init, _logtee_conn_open, _logtee_conn_close,
-			  inst->name, t) < 0) return -1;
+			  inst->name, t) == NULL) return -1;
 
 	return 0;
 }
@@ -599,7 +595,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	inst->delimiter_len = talloc_array_length(inst->delimiter) - 1;
-	inst->cs = conf;
 
 	return 0;
 }
