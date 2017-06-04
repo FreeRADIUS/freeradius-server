@@ -122,7 +122,7 @@ typedef struct logtee_instance_t {
 typedef struct {
 	logtee_instance_t const	*inst;			//!< Instance of logtee.
 	fr_event_list_t		*el;			//!< This thread's event list.
-	fr_conn_t		*conn;			//!< Connection to our log destination.
+	fr_connection_t		*conn;			//!< Connection to our log destination.
 
 	fr_fring_t		*fring;			//!< Circular buffer used to batch up messages.
 
@@ -293,7 +293,7 @@ static void _logtee_conn_writable(UNUSED fr_event_list_t *el, int sock, void *uc
  */
 static void logtee_fd_idle(logtee_thread_instance_t *t)
 {
-	fr_event_fd_insert(t->el, fr_conn_get_fd(t->conn),
+	fr_event_fd_insert(t->el, fr_connection_get_fd(t->conn),
 			   _logtee_conn_read, NULL, _logtee_conn_error, t);
 }
 
@@ -305,7 +305,7 @@ static void logtee_fd_idle(logtee_thread_instance_t *t)
  */
 static void logtee_fd_active(logtee_thread_instance_t *t)
 {
-	fr_event_fd_insert(t->el, fr_conn_get_fd(t->conn),
+	fr_event_fd_insert(t->el, fr_connection_get_fd(t->conn),
 			   _logtee_conn_read, _logtee_conn_writable, _logtee_conn_error, t);
 }
 
@@ -321,7 +321,7 @@ static void _logtee_conn_close(int fd, UNUSED void *uctx)
 /** Process notification that fd is open
  *
  */
-static fr_conn_state_t _logtee_conn_open(UNUSED int fd, UNUSED fr_event_list_t *el, void *uctx)
+static fr_connection_state_t _logtee_conn_open(UNUSED int fd, UNUSED fr_event_list_t *el, void *uctx)
 {
 	logtee_thread_instance_t	*t = talloc_get_type_abort(uctx, logtee_thread_instance_t);
 
@@ -342,7 +342,7 @@ static fr_conn_state_t _logtee_conn_open(UNUSED int fd, UNUSED fr_event_list_t *
  * @param[out] fd_out	Where to write the new file descriptor.
  * @param[in] uctx	A #logtee_thread_instance_t.
  */
-static fr_conn_state_t _logtee_conn_init(int *fd_out, void *uctx)
+static fr_connection_state_t _logtee_conn_init(int *fd_out, void *uctx)
 {
 	logtee_thread_instance_t	*t = talloc_get_type_abort(uctx, logtee_thread_instance_t);
 	logtee_instance_t const		*inst = t->inst;
@@ -507,7 +507,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instanc
 	/*
 	 *	This opens the outbound connection
 	 */
-	if (fr_conn_alloc(t, el, &inst->connection_timeout, &inst->reconnection_delay,
+	if (fr_connection_alloc(t, el, &inst->connection_timeout, &inst->reconnection_delay,
 			  _logtee_conn_init, _logtee_conn_open, _logtee_conn_close,
 			  inst->name, t) == NULL) return -1;
 

@@ -23,8 +23,9 @@
  */
 #include <talloc.h>
 #include <freeradius-devel/event.h>
+#include <freeradius-devel/token.h>
 
-typedef struct fr_conn fr_conn_t;
+typedef struct fr_conn fr_connection_t;
 
 typedef enum {
 	FR_CONNECTION_STATE_INIT = 0,		//!< Init state, sets up connection.
@@ -32,7 +33,9 @@ typedef enum {
 	FR_CONNECTION_STATE_TIMEOUT,		//!< Timeout during #FR_CONNECTION_STATE_CONNECTING.
 	FR_CONNECTION_STATE_CONNECTED,		//!< File descriptor is open (ready for writing).
 	FR_CONNECTION_STATE_FAILED		//!< Connection failed and is waiting to reconnect.
-} fr_conn_state_t;
+} fr_connection_state_t;
+
+extern FR_NAME_NUMBER const fr_connection_states[];
 
 /** Callback for the initialise state
  *
@@ -44,7 +47,7 @@ typedef enum {
  *	- FR_CONNECTION_STATE_CONNECTING	if a file descriptor was successfully created.
  *	- FR_CONNECTION_STATE_FAILED	if we could not open a file descriptor.
  */
-typedef fr_conn_state_t (*fr_conn_init_t)(int *fd_out, void *uctx);
+typedef fr_connection_state_t (*fr_connection_init_t)(int *fd_out, void *uctx);
 
 /** Notification that the connection is now open
  *
@@ -58,7 +61,7 @@ typedef fr_conn_state_t (*fr_conn_init_t)(int *fd_out, void *uctx);
  *	- FR_CONNECTION_STATE_CONNECTED		if the file descriptor is useable.
  *	- FR_CONNECTION_STATE_FAILED	if the file descriptor is unusable.
  */
-typedef fr_conn_state_t (*fr_conn_open_t)(int fd, fr_event_list_t *el, void *uctx);
+typedef fr_connection_state_t (*fr_connection_open_t)(int fd, fr_event_list_t *el, void *uctx);
 
 /** Notification that the connection has errored and must be closed
  *
@@ -71,13 +74,14 @@ typedef fr_conn_state_t (*fr_conn_open_t)(int fd, fr_event_list_t *el, void *uct
  * @param[in] fd	to close.
  * @param[in] uctx	User context.
  */
-typedef void (*fr_conn_close_t)(int fd, void *uctx);
+typedef void (*fr_connection_close_t)(int fd, void *uctx);
 
 
-fr_conn_t const		*fr_conn_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
-			       	       struct timeval *open_time, struct timeval *wait_time,
-				       fr_conn_init_t init, fr_conn_open_t open, fr_conn_close_t close,
-				       char const *log_prefix,
-				       void *uctx);
-int			fr_conn_get_fd(fr_conn_t const *conn);
-void			fr_conn_reconnect(fr_conn_t *conn);
+fr_connection_t const	*fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
+			       	       	     struct timeval *open_time, struct timeval *wait_time,
+					     fr_connection_init_t init, fr_connection_open_t open,
+					     fr_connection_close_t close,
+					     char const *log_prefix,
+					     void *uctx);
+int			fr_connection_get_fd(fr_connection_t const *conn);
+void			fr_conn_reconnect(fr_connection_t *conn);
