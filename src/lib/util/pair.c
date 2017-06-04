@@ -73,8 +73,8 @@ VALUE_PAIR *fr_pair_alloc(TALLOC_CTX *ctx)
  *
  * @note Doesn't require qualification with a dictionary as fr_dict_attr_t are unique.
  *
- * @param[in] ctx for allocated memory, usually a pointer to a #RADIUS_PACKET
- * @param[in] da Specifies the dictionary attribute to build the #VALUE_PAIR from.
+ * @param[in] ctx	for allocated memory, usually a pointer to a #RADIUS_PACKET
+ * @param[in] da	Specifies the dictionary attribute to build the #VALUE_PAIR from.
  * @return
  *	- A new #VALUE_PAIR.
  *	- NULL if an error occurred.
