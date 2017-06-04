@@ -364,7 +364,7 @@ fr_connection_t const	*fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
  *
  * @param[in] conn		to reconnect.
  */
-void fr_conn_reconnect(fr_connection_t *conn)
+void fr_connection_reconnect(fr_connection_t *conn)
 {
 	switch (conn->state) {
 	case FR_CONNECTION_STATE_FAILED:	/* Don't circumvent reconnection_delay */

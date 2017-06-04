@@ -202,7 +202,7 @@ static void _logtee_conn_error(UNUSED fr_event_list_t *el, UNUSED int sock, void
 	/*
 	 *	Something bad happened... Fix it...
 	 */
-	fr_conn_reconnect(t->conn);
+	fr_connection_reconnect(t->conn);
 }
 
 /** Drain any data we received
@@ -227,7 +227,7 @@ static void _logtee_conn_read(UNUSED fr_event_list_t *el, int sock, void *uctx)
 		case ETIMEDOUT:
 		case EIO:
 		case ENXIO:
-			fr_conn_reconnect(t->conn);
+			fr_connection_reconnect(t->conn);
 			return;
 
 		/*
@@ -268,7 +268,7 @@ static void _logtee_conn_writable(UNUSED fr_event_list_t *el, int sock, void *uc
 			case ENXIO:
 			case EPIPE:
 			case ENETDOWN:
-				fr_conn_reconnect(t->conn);
+				fr_connection_reconnect(t->conn);
 				return;
 
 			/*

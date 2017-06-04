@@ -84,4 +84,4 @@ fr_connection_t const	*fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 					     char const *log_prefix,
 					     void *uctx);
 int			fr_connection_get_fd(fr_connection_t const *conn);
-void			fr_conn_reconnect(fr_connection_t *conn);
+void			fr_connection_reconnect(fr_connection_t *conn);
