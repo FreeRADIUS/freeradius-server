@@ -49,34 +49,34 @@ typedef struct fr_event_timer_t fr_event_timer_t;
 /** Called when a timer event fires
  *
  * @param[in] now	The current time.
- * @param[in] ctx	User ctx passed to #fr_event_timer_insert.
+ * @param[in] uctx	User ctx passed to #fr_event_timer_insert.
  */
-typedef	void (*fr_event_callback_t)(fr_event_list_t *el, struct timeval *now, void *ctx);
+typedef	void (*fr_event_callback_t)(fr_event_list_t *el, struct timeval *now, void *uctx);
 
 /** Called after each event loop cycle
  *
  * Called before calling kqueue to put the thread in a sleeping state.
  *
  * @param[in] now	The current time.
- * @param[in] ctx	User ctx passed to #fr_event_list_alloc.
+ * @param[in] uctx	User ctx passed to #fr_event_list_alloc.
  */
-typedef	int (*fr_event_status_t)(void *ctx, struct timeval *now);
+typedef	int (*fr_event_status_t)(void *uctx, struct timeval *now);
 
 /** Called when an IO event occurs on a file descriptor
  *
  * @param[in] el	Event list the file descriptor was inserted into.
  * @param[in] sock	That experienced the IO event.
- * @param[in] ctx	User ctx passed to #fr_event_fd_insert.
+ * @param[in] uctx	User ctx passed to #fr_event_fd_insert.
  */
-typedef void (*fr_event_fd_handler_t)(fr_event_list_t *el, int sock, void *ctx);
+typedef void (*fr_event_fd_handler_t)(fr_event_list_t *el, int sock, void *uctx);
 
 /** Called when a user kevent occurs
  *
  * @param[in] kq	that received the user kevent.
  * @param[in] kev	The kevent.
- * @param[in] ctx	User ctx passed to #fr_event_user_insert.
+ * @param[in] uctx	User ctx passed to #fr_event_user_insert.
  */
-typedef void (*fr_event_user_handler_t)(int kq, struct kevent const *kev, void *ctx);
+typedef void (*fr_event_user_handler_t)(int kq, struct kevent const *kev, void *uctx);
 
 int		fr_event_list_num_fds(fr_event_list_t *el);
 int		fr_event_list_num_elements(fr_event_list_t *el);
