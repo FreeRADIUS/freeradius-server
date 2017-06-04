@@ -341,7 +341,7 @@ sql_rcode_t rlm_sql_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handl
 	/*
 	 *  inst->pool may be NULL is this function is called by mod_conn_create.
 	 */
-	count = inst->pool ? fr_connection_pool_state(inst->pool)->num : 0;
+	count = inst->pool ? fr_pool_state(inst->pool)->num : 0;
 
 	/*
 	 *  Here we try with each of the existing connections, then try to create
@@ -360,7 +360,7 @@ sql_rcode_t rlm_sql_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handl
 		 *	sockets in the pool and fail to establish a *new* connection.
 		 */
 		case RLM_SQL_RECONNECT:
-			*handle = fr_connection_reconnect(inst->pool, request, *handle);
+			*handle = fr_pool_connection_reconnect(inst->pool, request, *handle);
 			/* Reconnection failed */
 			if (!*handle) return RLM_SQL_RECONNECT;
 			/* Reconnection succeeded, try again with the new handle */
@@ -443,7 +443,7 @@ sql_rcode_t rlm_sql_select_query(rlm_sql_t const *inst, REQUEST *request, rlm_sq
 	/*
 	 *  inst->pool may be NULL is this function is called by mod_conn_create.
 	 */
-	count = inst->pool ? fr_connection_pool_state(inst->pool)->num : 0;
+	count = inst->pool ? fr_pool_state(inst->pool)->num : 0;
 
 	/*
 	 *  For sanity, for when no connections are viable, and we can't make a new one
@@ -461,7 +461,7 @@ sql_rcode_t rlm_sql_select_query(rlm_sql_t const *inst, REQUEST *request, rlm_sq
 		 *	sockets in the pool and fail to establish a *new* connection.
 		 */
 		case RLM_SQL_RECONNECT:
-			*handle = fr_connection_reconnect(inst->pool, request, *handle);
+			*handle = fr_pool_connection_reconnect(inst->pool, request, *handle);
 			/* Reconnection failed */
 			if (!*handle) return RLM_SQL_RECONNECT;
 			/* Reconnection succeeded, try again with the new handle */

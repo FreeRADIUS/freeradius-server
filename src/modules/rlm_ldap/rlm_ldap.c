@@ -1364,7 +1364,7 @@ static int mod_detach(void *instance)
 	if (inst->userobj_sort_ctrl) ldap_control_free(inst->userobj_sort_ctrl);
 #endif
 
-	fr_connection_pool_free(inst->pool);
+	fr_pool_free(inst->pool);
 	talloc_free(inst->user_map);
 
 	return 0;

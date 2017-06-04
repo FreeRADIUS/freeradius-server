@@ -59,7 +59,7 @@ struct fr_conn {
 	fr_event_list_t		*el;			//!< Event list for timers and I/O events.
 
 	fr_event_timer_t	*connection_timer;	//!< Timer to prevent connections going on indefinitely.
-	fr_event_timer_t	*reconnection_delay;	//!< Timer to delay retries.
+	fr_event_timer_t	*reconnection_timer;	//!< Timer to delay retries.
 
 	struct timeval		connection_timeout;	//!< How long to wait in the
 							//!< #FR_CONNECTION_STATE_CONNECTING state.
@@ -127,7 +127,7 @@ static void connection_state_failed(fr_connection_t *conn, struct timeval *now)
 		struct timeval when;
 
 		fr_timeval_add(&when, now, &conn->reconnection_delay);
-		fr_event_timer_insert(conn->el, _reconnect_delay_done, conn, &when, &conn->reconnection_delay);
+		fr_event_timer_insert(conn->el, _reconnect_delay_done, conn, &when, &conn->reconnection_timer);
 	}
 		break;
 

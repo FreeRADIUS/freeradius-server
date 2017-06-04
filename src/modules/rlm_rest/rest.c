@@ -255,8 +255,8 @@ static int _mod_conn_free(rlm_rest_handle_t *randle)
 
 /** Creates a new connection handle for use by the FR connection API.
  *
- * Matches the fr_connection_create_t function prototype, is passed to
- * fr_connection_pool_init, and called when a new connection is required by the
+ * Matches the fr_pool_connection_create_t function prototype, is passed to
+ * fr_pool_init, and called when a new connection is required by the
  * connection pool API.
  *
  * Creates an instances of rlm_rest_handle_t, and rlm_rest_curl_context_t
@@ -268,8 +268,8 @@ static int _mod_conn_free(rlm_rest_handle_t *randle)
  * socket is first used, there will already be a cached TCP connection to the
  * REST server associated with the curl handle.
  *
- * @see fr_connection_pool_init
- * @see fr_connection_create_t
+ * @see fr_pool_init
+ * @see fr_pool_connection_create_t
  * @see connection.c
  */
 void *mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED struct timeval const *timeout)
@@ -1740,7 +1740,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 		if (!ctx->headers) goto error_header;
 	}
 
-	timeout = fr_connection_pool_timeout(t->pool);
+	timeout = fr_pool_timeout(t->pool);
 	ERROR("CONNECT TIMEOUT IS %" PRIu64", REQUEST TIMEOUT IS %" PRIu64,
 	      FR_TIMEVAL_TO_MS(&timeout), FR_TIMEVAL_TO_MS(&section->timeout_tv));
 	SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, FR_TIMEVAL_TO_MS(&timeout));

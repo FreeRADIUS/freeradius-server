@@ -158,7 +158,7 @@ static ssize_t sql_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen
 	ssize_t			ret = 0;
 	char const		*p;
 
-	handle = fr_connection_get(inst->pool, request);	/* connection pool should produce error */
+	handle = fr_pool_connection_get(inst->pool, request);	/* connection pool should produce error */
 	if (!handle) return 0;
 
 	rlm_sql_query_log(inst, request, NULL, fmt);
@@ -234,7 +234,7 @@ static ssize_t sql_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen
 	(inst->driver->sql_finish_select_query)(handle, inst->config);
 
 finish:
-	fr_connection_release(inst->pool, request, handle);
+	fr_pool_connection_release(inst->pool, request, handle);
 
 	return ret;
 }
@@ -346,7 +346,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	 */
 	sql_set_user(inst, request, NULL);
 
-	handle = fr_connection_get(inst->pool, request);		/* connection pool should produce error */
+	handle = fr_pool_connection_get(inst->pool, request);		/* connection pool should produce error */
 	if (!handle) {
 		rcode = RLM_MODULE_FAIL;
 		goto finish;
@@ -459,7 +459,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 finish:
 	talloc_free(query_str);
 	talloc_free(fields);
-	fr_connection_release(inst->pool, request, handle);
+	fr_pool_connection_release(inst->pool, request, handle);
 
 	return rcode;
 }
@@ -475,7 +475,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
 	DEBUG("Processing generate_sql_clients");
 	DEBUG("Query is: %s", inst->config->client_query);
 
-	handle = fr_connection_get(inst->pool, NULL);
+	handle = fr_pool_connection_get(inst->pool, NULL);
 	if (!handle) return -1;
 
 	if (rlm_sql_select_query(inst, NULL, &handle, inst->config->client_query) != RLM_SQL_OK) return -1;
@@ -542,7 +542,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
 	}
 
 	(inst->driver->sql_finish_select_query)(handle, inst->config);
-	fr_connection_release(inst->pool, NULL, handle);
+	fr_pool_connection_release(inst->pool, NULL, handle);
 
 	return ret;
 }
@@ -667,13 +667,13 @@ static size_t sql_escape_for_xlat_func(REQUEST *request, char *out, size_t outle
 	rlm_sql_t		*inst = talloc_get_type_abort(arg, rlm_sql_t);
 	rlm_sql_handle_t	*handle;
 
-	handle = fr_connection_get(inst->pool, request);
+	handle = fr_pool_connection_get(inst->pool, request);
 	if (!handle) {
 		out[0] = '\0';
 		return 0;
 	}
 	ret = inst->sql_escape_func(request, out, outlen, in, handle);
-	fr_connection_release(inst->pool, request, handle);
+	fr_pool_connection_release(inst->pool, request, handle);
 
 	return ret;
 }
@@ -822,7 +822,7 @@ static int sql_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req
 	/*
 	 *	Get a socket for this lookup
 	 */
-	handle = fr_connection_get(inst->pool, request);
+	handle = fr_pool_connection_get(inst->pool, request);
 	if (!handle) {
 		return 1;
 	}
@@ -832,7 +832,7 @@ static int sql_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req
 	 */
 	if (sql_get_grouplist(inst, &handle, request, &head) < 0) {
 		REDEBUG("Error getting group membership");
-		fr_connection_release(inst->pool, request, handle);
+		fr_pool_connection_release(inst->pool, request, handle);
 		return 1;
 	}
 
@@ -841,14 +841,14 @@ static int sql_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req
 			RDEBUG("sql_groupcmp finished: User is a member of group %s",
 			       check->vp_strvalue);
 			talloc_free(head);
-			fr_connection_release(inst->pool, request, handle);
+			fr_pool_connection_release(inst->pool, request, handle);
 			return 0;
 		}
 	}
 
 	/* Free the grouplist */
 	talloc_free(head);
-	fr_connection_release(inst->pool, request, handle);
+	fr_pool_connection_release(inst->pool, request, handle);
 
 	RDEBUG("sql_groupcmp finished: User is NOT a member of group %s", check->vp_strvalue);
 
@@ -1025,7 +1025,7 @@ static int mod_detach(void *instance)
 {
 	rlm_sql_t	*inst = instance;
 
-	if (inst->pool) fr_connection_pool_free(inst->pool);
+	if (inst->pool) fr_pool_free(inst->pool);
 
 	/*
 	 *	We need to explicitly free all children, so if the driver
@@ -1301,7 +1301,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 	 *	After this point use goto error or goto release to cleanup socket temporary pairlists and
 	 *	temporary attributes.
 	 */
-	handle = fr_connection_get(inst->pool, request);
+	handle = fr_pool_connection_get(inst->pool, request);
 	if (!handle) {
 		rcode = RLM_MODULE_FAIL;
 		goto error;
@@ -1494,7 +1494,7 @@ release:
 		rcode = RLM_MODULE_NOTFOUND;
 	}
 
-	fr_connection_release(inst->pool, request, handle);
+	fr_pool_connection_release(inst->pool, request, handle);
 	sql_unset_user(inst, request);
 
 	return rcode;
@@ -1504,7 +1504,7 @@ error:
 	fr_pair_list_free(&reply_tmp);
 	sql_unset_user(inst, request);
 
-	fr_connection_release(inst->pool, request, handle);
+	fr_pool_connection_release(inst->pool, request, handle);
 
 	return rcode;
 }
@@ -1571,7 +1571,7 @@ static int acct_redundant(rlm_sql_t const *inst, REQUEST *request, sql_acct_sect
 
 	RDEBUG2("Using query template '%s'", attr);
 
-	handle = fr_connection_get(inst->pool, request);
+	handle = fr_pool_connection_get(inst->pool, request);
 	if (!handle) {
 		rcode = RLM_MODULE_FAIL;
 
@@ -1623,7 +1623,7 @@ static int acct_redundant(rlm_sql_t const *inst, REQUEST *request, sql_acct_sect
 		/*
 		 *  If we get RLM_SQL_RECONNECT it means all connections in the pool
 		 *  were exhausted, and we couldn't create a new connection,
-		 *  so we do not need to call fr_connection_release.
+		 *  so we do not need to call fr_pool_connection_release.
 		 */
 		case RLM_SQL_RECONNECT:
 			rcode = RLM_MODULE_FAIL;
@@ -1675,7 +1675,7 @@ static int acct_redundant(rlm_sql_t const *inst, REQUEST *request, sql_acct_sect
 
 finish:
 	talloc_free(expanded);
-	fr_connection_release(inst->pool, request, handle);
+	fr_pool_connection_release(inst->pool, request, handle);
 	sql_unset_user(inst, request);
 
 	return rcode;
@@ -1743,7 +1743,7 @@ static rlm_rcode_t mod_checksimul(void *instance, UNUSED void *thread, REQUEST *
 	}
 
 	/* initialize the sql socket */
-	handle = fr_connection_get(inst->pool, request);
+	handle = fr_pool_connection_get(inst->pool, request);
 	if (!handle) {
 		sql_unset_user(inst, request);
 		return RLM_MODULE_FAIL;
@@ -1751,7 +1751,7 @@ static rlm_rcode_t mod_checksimul(void *instance, UNUSED void *thread, REQUEST *
 
 	if (xlat_aeval(request, &expanded, request, inst->config->simul_count_query,
 			 inst->sql_escape_func, handle) < 0) {
-		fr_connection_release(inst->pool, request, handle);
+		fr_pool_connection_release(inst->pool, request, handle);
 		sql_unset_user(inst, request);
 		return RLM_MODULE_FAIL;
 	}
@@ -1885,7 +1885,7 @@ static rlm_rcode_t mod_checksimul(void *instance, UNUSED void *thread, REQUEST *
 finish:
 	(inst->driver->sql_finish_select_query)(handle, inst->config);
 release:
-	fr_connection_release(inst->pool, request, handle);
+	fr_pool_connection_release(inst->pool, request, handle);
 	talloc_free(expanded);
 	sql_unset_user(inst, request);
 

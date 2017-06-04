@@ -148,7 +148,7 @@ struct ldap_inst_s {
 							//!< to perform additional authorisation checks.
 #endif
 
-	fr_connection_pool_t *pool;			//!< Connection pool instance.
+	fr_pool_t *pool;			//!< Connection pool instance.
 	fr_ldap_handle_config_t handle_config;		//!< Connection configuration instance.
 
 	/*

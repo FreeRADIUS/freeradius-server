@@ -222,7 +222,7 @@ typedef struct rlm_sql_driver_t {
 
 struct sql_inst {
 	rlm_sql_config_t	myconfig; /* HACK */
-	fr_connection_pool_t	*pool;
+	fr_pool_t	*pool;
 	rlm_sql_config_t	*config;
 	CONF_SECTION		*cs;
 

@@ -67,7 +67,7 @@ typedef struct rlm_couchbase_t {
 	bool			delete_stale_sessions;	//!< Toggle to trigger zapping of stale sessions.
 
 	json_object		*map;           	//!< Json object to hold user defined attribute map.
-	fr_connection_pool_t	*pool;			//!< Connection pool.
+	fr_pool_t	*pool;			//!< Connection pool.
 } rlm_couchbase_t;
 
 /** Couchbase instance specific information

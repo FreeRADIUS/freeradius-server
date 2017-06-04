@@ -147,7 +147,7 @@ typedef struct {
 
 	char const		*connect_proxy;	//!< Send request via this proxy.
 
-	fr_connection_pool_t	*pool;		//!< Pointer to the connection pool.
+	fr_pool_t	*pool;		//!< Pointer to the connection pool.
 
 	rlm_rest_section_t	xlat;		//!< Configuration specific to xlat.
 	rlm_rest_section_t	authorize;	//!< Configuration specific to authorisation.
@@ -163,7 +163,7 @@ typedef struct {
  */
 typedef struct {
 	rlm_rest_t const	*inst;		//!< Instance of rlm_rest.
-	fr_connection_pool_t	*pool;		//!< Thread specific connection pool.
+	fr_pool_t	*pool;		//!< Thread specific connection pool.
 	CURLM			*mandle;	//!< Thread specific multi handle.  Serves as the dispatch
 						//!< and coralling structure for REST requests.
 	fr_event_list_t		*el;		//!< This thread's event list.

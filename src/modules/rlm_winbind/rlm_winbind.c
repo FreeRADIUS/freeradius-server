@@ -139,7 +139,7 @@ static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr,
 	/*
 	 *	Get a libwbclient connection from the pool
 	 */
-	wb_ctx = fr_connection_get(inst->wb_pool, request);
+	wb_ctx = fr_pool_connection_get(inst->wb_pool, request);
 	if (wb_ctx == NULL) {
 		RERROR("Unable to get winbind connection from the pool");
 		goto error;
@@ -237,7 +237,7 @@ static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr,
 
 finish:
 	wbcFreeMemory(wb_groups);
-	fr_connection_release(inst->wb_pool, request, wb_ctx);
+	fr_pool_connection_release(inst->wb_pool, request, wb_ctx);
 
 error:
 	talloc_free(user_buff);
@@ -417,7 +417,7 @@ static int mod_detach(UNUSED void *instance)
 {
 	rlm_winbind_t *inst = instance;
 
-	fr_connection_pool_free(inst->wb_pool);
+	fr_pool_free(inst->wb_pool);
 	return 0;
 }
 

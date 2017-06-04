@@ -109,7 +109,7 @@ int do_auth_wbclient_pap(rlm_winbind_t const *inst, REQUEST *request)
 	/*
 	 * Send auth request across to winbind
 	 */
-	wb_ctx = fr_connection_get(inst->wb_pool, request);
+	wb_ctx = fr_pool_connection_get(inst->wb_pool, request);
 	if (wb_ctx == NULL) {
 		RERROR("Unable to get winbind connection from pool");
 		goto done;
@@ -120,7 +120,7 @@ int do_auth_wbclient_pap(rlm_winbind_t const *inst, REQUEST *request)
 
 	err = wbcCtxAuthenticateUserEx(wb_ctx, &authparams, &info, &error);
 
-	fr_connection_release(inst->wb_pool, request, wb_ctx);
+	fr_pool_connection_release(inst->wb_pool, request, wb_ctx);
 
 
 	/*

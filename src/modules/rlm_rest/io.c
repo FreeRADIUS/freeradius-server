@@ -339,7 +339,7 @@ void rest_io_action(REQUEST *request, void *instance, void *thread, void *ctx, f
 	t->transfers--;
 
 	rest_request_cleanup(instance, randle);
-	fr_connection_release(t->pool, request, randle);
+	fr_pool_connection_release(t->pool, request, randle);
 }
 
 /** Sends a REST (HTTP) request.

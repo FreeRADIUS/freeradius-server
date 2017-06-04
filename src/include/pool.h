@@ -33,9 +33,9 @@ RCSIDH(connection_h, "$Id$")
 extern "C" {
 #endif
 
-typedef struct fr_connection_pool_t fr_connection_pool_t;
+typedef struct fr_pool fr_pool_t;
 
-typedef struct fr_connection_pool_state {
+typedef struct fr_pool_state {
 	uint32_t	pending;		//!< Number of pending open connections.
 	time_t		last_checked;		//!< Last time we pruned the connection pool.
 	time_t		last_spawned;		//!< Last time we spawned a connection.
@@ -64,7 +64,7 @@ typedef struct fr_connection_pool_state {
 	uint32_t	active;	 		//!< Number of currently reserved connections.
 
 	bool		reconnecting;		//!< We are currently reconnecting the pool.
-} fr_connection_pool_state_t;
+} fr_pool_state_t;
 
 /** Alter the opaque data of a connection pool during reconnection event
  *
@@ -76,9 +76,9 @@ typedef struct fr_connection_pool_state {
  * memory associated with the opaque data.
  *
  * @param[in] pool being reconnected.
- * @param[in] opaque pointer passed to fr_connection_pool_init.
+ * @param[in] opaque pointer passed to fr_pool_init.
  */
-typedef void (*fr_connection_pool_reconnect_t)(fr_connection_pool_t *pool, void *opaque);
+typedef void (*fr_pool_reconnect_t)(fr_pool_t *pool, void *opaque);
 
 /** Create a new connection handle
  *
@@ -87,86 +87,86 @@ typedef void (*fr_connection_pool_reconnect_t)(fr_connection_pool_t *pool, void 
  *
  * Memory should be talloced in the provided context to hold the module's
  * connection structure. The context is allocated in the NULL context,
- * but will be freed when fr_connection_t is freed via some internal magic.
+ * but will be freed when fr_pool_t is freed via some internal magic.
  *
  * There is no delete callback, so operations such as closing sockets and
  * freeing library connection handles should be done by a destructor attached
  * to memory allocated beneath the provided ctx.
  *
  * @note A function pointer matching this prototype must be passed
- *	to fr_connection_pool_init.
+ *	to fr_pool_init.
  *
  * @param[in,out] ctx to allocate memory in.
- * @param[in] opaque pointer passed to fr_connection_pool_init.
+ * @param[in] opaque pointer passed to fr_pool_init.
  * @param[in] timeout The maximum time in ms the function has to complete
  *	the connection.  Should be enforced by the function.
  * @return
  *	- NULL on error.
  *	- A connection handle on success.
  */
-typedef void *(*fr_connection_create_t)(TALLOC_CTX *ctx, void *opaque, struct timeval const *timeout);
+typedef void *(*fr_pool_connection_create_t)(TALLOC_CTX *ctx, void *opaque, struct timeval const *timeout);
 
 /** Check a connection handle is still viable
  *
  * Should check the state  of a connection handle.
  *
- * @note NULL may be passed to fr_connection_pool_init, if there is no way to check
+ * @note NULL may be passed to fr_pool_init, if there is no way to check
  * the state of a connection handle.
  * @note Not currently use by connection pool manager.
- * @param[in] opaque pointer passed to fr_connection_pool_init.
- * @param[in] connection handle returned by fr_connection_create_t.
+ * @param[in] opaque pointer passed to fr_pool_init.
+ * @param[in] connection handle returned by fr_pool_connection_create_t.
  * @return
  *	- 0 on success.
  *	- < 0 on error or if the connection is unusable.
  */
-typedef int (*fr_connection_alive_t)(void *opaque, void *connection);
+typedef int (*fr_pool_connection_alive_t)(void *opaque, void *connection);
 
 /*
  *	Pool allocation/initialisation
  */
-fr_connection_pool_t	*fr_connection_pool_init(TALLOC_CTX *ctx,
+fr_pool_t	*fr_pool_init(TALLOC_CTX *ctx,
 						 CONF_SECTION const *cs,
 						 void *opaque,
-						 fr_connection_create_t c,
-						 fr_connection_alive_t a,
+						 fr_pool_connection_create_t c,
+						 fr_pool_connection_alive_t a,
 						 char const *log_prefix);
 
-fr_connection_pool_t	*fr_connection_pool_copy(TALLOC_CTX *ctx, fr_connection_pool_t *pool, void *opaque);
+fr_pool_t	*fr_pool_copy(TALLOC_CTX *ctx, fr_pool_t *pool, void *opaque);
 
 
 /*
  *	Pool get/set
  */
-void	fr_connection_pool_enable_triggers(fr_connection_pool_t *pool,
+void	fr_pool_enable_triggers(fr_pool_t *pool,
 					   char const *trigger_prefix, VALUE_PAIR *vp);
 
-struct timeval fr_connection_pool_timeout(fr_connection_pool_t *pool);
+struct timeval fr_pool_timeout(fr_pool_t *pool);
 
-void const *fr_connection_pool_opaque(fr_connection_pool_t *pool);
+void const *fr_pool_connection_opaque(fr_pool_t *pool);
 
-void	fr_connection_pool_ref(fr_connection_pool_t *pool);
+void	fr_pool_connection_ref(fr_pool_t *pool);
 
-fr_connection_pool_state_t const *fr_connection_pool_state(fr_connection_pool_t *pool);
+fr_pool_state_t const *fr_pool_state(fr_pool_t *pool);
 
-void	fr_connection_pool_reconnect_func(fr_connection_pool_t *pool, fr_connection_pool_reconnect_t reconnect);
+void	fr_pool_reconnect_func(fr_pool_t *pool, fr_pool_reconnect_t reconnect);
 
 /*
  *	Pool management
  */
-int	fr_connection_pool_reconnect(fr_connection_pool_t *pool, REQUEST *request);
+int	fr_pool_reconnect(fr_pool_t *pool, REQUEST *request);
 
-void	fr_connection_pool_free(fr_connection_pool_t *pool);
+void	fr_pool_free(fr_pool_t *pool);
 
 /*
  *	Connection lifecycle
  */
-void	*fr_connection_get(fr_connection_pool_t *pool, REQUEST *request);
+void	*fr_pool_connection_get(fr_pool_t *pool, REQUEST *request);
 
-void	fr_connection_release(fr_connection_pool_t *pool, REQUEST *request, void *conn);
+void	fr_pool_connection_release(fr_pool_t *pool, REQUEST *request, void *conn);
 
-void	*fr_connection_reconnect(fr_connection_pool_t *pool, REQUEST *request, void *conn);
+void	*fr_pool_connection_reconnect(fr_pool_t *pool, REQUEST *request, void *conn);
 
-int	fr_connection_close(fr_connection_pool_t *pool, REQUEST *request, void *conn);
+int	fr_pool_connection_close(fr_pool_t *pool, REQUEST *request, void *conn);
 
 #ifdef __cplusplus
 }

@@ -208,7 +208,7 @@ static int nvp_cleanup(rlm_sqlhpwippool_t *data)
 	rlm_sql_handle_t *sqlsock;
 
 	/* initialize the SQL socket */
-	sqlsock = fr_connection_get(data->sql_inst->pool, NULL);
+	sqlsock = fr_pool_connection_get(data->sql_inst->pool, NULL);
 	if (!sqlsock) {
 		ERROR("nvp_cleanup(): error while requesting new SQL connection");
 		return 0;
@@ -216,7 +216,7 @@ static int nvp_cleanup(rlm_sqlhpwippool_t *data)
 
 	/* free IPs of closed sessions */
 	if (!nvp_freeclosed(data, sqlsock)) {
-		fr_connection_release(data->sql_inst->pool, NULL, sqlsock);
+		fr_pool_connection_release(data->sql_inst->pool, NULL, sqlsock);
 		return 0;
 	}
 
@@ -237,7 +237,7 @@ static int nvp_cleanup(rlm_sqlhpwippool_t *data)
 				"`ips`.`rsv_until` != 0"   /* no acct pkt received yet */
 			")",
 	    data->db_name)) {
-		fr_connection_release(data->sql_inst->pool, NULL, sqlsock);
+		fr_pool_connection_release(data->sql_inst->pool, NULL, sqlsock);
 		return 0;
 	}
 	else {
@@ -246,11 +246,11 @@ static int nvp_cleanup(rlm_sqlhpwippool_t *data)
 
 	/* count number of free IP addresses in IP pools */
 	if (!nvp_syncfree(data, sqlsock)) {
-		fr_connection_release(data->sql_inst->pool, NULL, sqlsock);
+		fr_pool_connection_release(data->sql_inst->pool, NULL, sqlsock);
 		return 0;
 	}
 
-	fr_connection_release(data->sql_inst->pool, NULL, sqlsock);
+	fr_pool_connection_release(data->sql_inst->pool, NULL, sqlsock);
 	return 1;
 }
 
@@ -338,7 +338,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 	}
 
 	/* get our database connection */
-	sqlsock = fr_connection_get(inst->sql_inst->pool, request);
+	sqlsock = fr_pool_connection_get(inst->sql_inst->pool, request);
 	if (!sqlsock) {
 		RERROR("Error while requesting an SQL socket");
 		return RLM_MODULE_FAIL;
@@ -348,7 +348,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 	if (nvp_select(&row, inst, sqlsock, "SELECT CONNECTION_ID()") < 1) {
 		REDEBUG("Failed getting connection ID");
 		nvp_select_finish(inst, sqlsock);
-		fr_connection_release(inst->sql_inst->pool, request, sqlsock);
+		fr_pool_connection_release(inst->sql_inst->pool, request, sqlsock);
 		return RLM_MODULE_FAIL;
 	}
 
@@ -375,7 +375,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 
 		if (!r) {
 			RERROR("Synchronization failed");
-			fr_connection_release(inst->sql_inst->pool, request, sqlsock);
+			fr_pool_connection_release(inst->sql_inst->pool, request, sqlsock);
 			return RLM_MODULE_FAIL;
 		}
 	}
@@ -403,7 +403,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 			goto end_gid;		  /* exit the main loop */
 
 		case 0:
-			fr_connection_release(inst->sql_inst->pool, request, sqlsock);
+			fr_pool_connection_release(inst->sql_inst->pool, request, sqlsock);
 			return RLM_MODULE_FAIL;
 		}
 
@@ -441,7 +441,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 				goto end_prio;	       /* select next gid */
 
 			case 0:
-				fr_connection_release(inst->sql_inst->pool, request, sqlsock);
+				fr_pool_connection_release(inst->sql_inst->pool, request, sqlsock);
 				return RLM_MODULE_FAIL;
 			}
 
@@ -484,7 +484,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 					goto end_pid;	      /* select next prio */
 
 				case 0:
-					fr_connection_release(inst->sql_inst->pool, request, sqlsock);
+					fr_pool_connection_release(inst->sql_inst->pool, request, sqlsock);
 					return RLM_MODULE_FAIL;
 				}
 
@@ -511,7 +511,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 					"ORDER BY RAND() "
 					"LIMIT 1",
 				    inst->db_name, pid, connid, inst->free_after, ip_start, ip_stop)) {
-					fr_connection_release(inst->sql_inst->pool, request, sqlsock);
+					fr_pool_connection_release(inst->sql_inst->pool, request, sqlsock);
 					return RLM_MODULE_FAIL;
 				}
 				else {
@@ -532,7 +532,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 					continue;			    /* select next pid */
 
 				case 0:
-					fr_connection_release(inst->sql_inst->pool, request, sqlsock);
+					fr_pool_connection_release(inst->sql_inst->pool, request, sqlsock);
 					return RLM_MODULE_FAIL;
 				}
 
@@ -545,7 +545,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 						"`pid` = %lu "
 				"LIMIT 1",
 				    inst->db_name, pid)) {
-					fr_connection_release(inst->sql_inst->pool, request, sqlsock);
+					fr_pool_connection_release(inst->sql_inst->pool, request, sqlsock);
 					return RLM_MODULE_FAIL;
 				}
 				else {
@@ -563,7 +563,7 @@ end_prio: continue;	  /* stupid */
 end_gid:
 
 	/* release SQL socket */
-fr_connection_release(inst->sql_inst->pool, request, sqlsock);
+fr_pool_connection_release(inst->sql_inst->pool, request, sqlsock);
 
 	/* no free IP address found */
 	if (!ip.s_addr) {
@@ -627,7 +627,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	}
 
 	/* connect to database */
-	sqlsock = fr_connection_get(inst->sql_inst->pool, request);
+	sqlsock = fr_pool_connection_get(inst->sql_inst->pool, request);
 	if (!sqlsock) {
 		REDEBUG("Couldn't connect to database");
 		return RLM_MODULE_FAIL;
@@ -640,7 +640,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 		vp = fr_pair_find_by_num(request->packet->vps, 0, FR_FRAMED_IP_ADDRESS, TAG_ANY);
 		if (!vp) {
 			REDEBUG("No framed IP");
-			fr_connection_release(inst->sql_inst->pool, request, sqlsock);
+			fr_pool_connection_release(inst->sql_inst->pool, request, sqlsock);
 			return RLM_MODULE_FAIL;
 		}
 
@@ -653,7 +653,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 				"`rsv_by` = '%s' "
 			"WHERE `ip` = %lu",
 		    inst->db_name, sessid, framedip)) {
-			fr_connection_release(inst->sql_inst->pool, request, sqlsock);
+			fr_pool_connection_release(inst->sql_inst->pool, request, sqlsock);
 			return RLM_MODULE_FAIL;
 		}
 		nvp_finish(inst, sqlsock);
@@ -669,7 +669,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 				"`ips`.`rsv_by` = '%s' AND "
 				"`ips`.`ip` BETWEEN `ip_pools`.`ip_start` AND `ip_pools`.`ip_stop`",
 		    inst->db_name, inst->free_after, sessid)) {
-			fr_connection_release(inst->sql_inst->pool, request, sqlsock);
+			fr_pool_connection_release(inst->sql_inst->pool, request, sqlsock);
 			return RLM_MODULE_FAIL;
 		}
 		nvp_finish(inst, sqlsock);
@@ -680,7 +680,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 		vp = fr_pair_find_by_num(request->packet->vps, 0, FR_NAS_IP_ADDRESS, TAG_ANY);
 		if (!vp) {
 			REDEBUG("No NAS IP");
-			fr_connection_release(inst->sql_inst->pool, request, sqlsock);
+			fr_pool_connection_release(inst->sql_inst->pool, request, sqlsock);
 			return RLM_MODULE_FAIL;
 		}
 
@@ -694,7 +694,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 				"`radacct`.`nasipaddress` = '%s' AND "
 				"`ips`.`rsv_by` = `radacct`.`acctuniqueid`",
 		    inst->db_name, inst->free_after, nasipstr)) {
-			fr_connection_release(inst->sql_inst->pool, request, sqlsock);
+			fr_pool_connection_release(inst->sql_inst->pool, request, sqlsock);
 			return RLM_MODULE_FAIL;
 		}
 		nvp_finish(inst, sqlsock);
@@ -702,7 +702,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 		break;
 	}
 
-	fr_connection_release(inst->sql_inst->pool, request, sqlsock);
+	fr_pool_connection_release(inst->sql_inst->pool, request, sqlsock);
 	return RLM_MODULE_OK;
 }
 

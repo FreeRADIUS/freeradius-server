@@ -43,7 +43,7 @@ fr_ldap_conn_t *mod_conn_get(rlm_ldap_t const *inst, REQUEST *request)
 {
 	fr_ldap_conn_t *conn;
 
-	conn = fr_connection_get(inst->pool, request);
+	conn = fr_pool_connection_get(inst->pool, request);
 
 	rad_assert(!conn || conn->config);
 
@@ -55,7 +55,7 @@ fr_ldap_conn_t *mod_conn_get(rlm_ldap_t const *inst, REQUEST *request)
 	 */
 	if ((conn != NULL) && (request != NULL) && inst->session_tracking) {
 		if (fr_ldap_control_add_session_tracking(conn, request) < 0) {
-			fr_connection_release(inst->pool, request, conn);
+			fr_pool_connection_release(inst->pool, request, conn);
 			return NULL;
 		}
 	}
@@ -95,11 +95,11 @@ void mod_conn_release(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_conn_t *
 	 *	Instead, we let the next caller do the rebind.
 	 */
 	if (conn->referred) {
-		fr_connection_close(inst->pool, request, conn);
+		fr_pool_connection_close(inst->pool, request, conn);
 		return;
 	}
 
-	fr_connection_release(inst->pool, request, conn);
+	fr_pool_connection_release(inst->pool, request, conn);
 	return;
 }
 

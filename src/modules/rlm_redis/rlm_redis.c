@@ -177,7 +177,7 @@ static ssize_t redis_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	 */
 	if (p[0] == '@') {
 		fr_socket_addr_t	node_addr;
-		fr_connection_pool_t	*pool;
+		fr_pool_t	*pool;
 
 		RDEBUG3("Overriding node selection");
 
@@ -200,7 +200,7 @@ static ssize_t redis_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			return -1;
 		}
 
-		conn = fr_connection_get(pool, request);
+		conn = fr_pool_connection_get(pool, request);
 		if (!conn) {
 			REDEBUG("No connections available for cluster node");
 			return -1;
@@ -209,7 +209,7 @@ static ssize_t redis_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		argc = rad_expand_xlat(request, p, MAX_REDIS_ARGS, argv, false, sizeof(argv_buf), argv_buf);
 		if (argc <= 0) {
 			REDEBUG("Invalid command: %s", p);
-			fr_connection_release(pool, request, conn);
+			fr_pool_connection_release(pool, request, conn);
 			return -1;
 		}
 
@@ -236,13 +236,13 @@ static ssize_t redis_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 		case REDIS_RCODE_RECONNECT:
 		close_conn:
-			fr_connection_close(pool, request, conn);
+			fr_pool_connection_close(pool, request, conn);
 			ret = -1;
 			goto finish;
 
 		default:
 		fail:
-			fr_connection_release(pool, request, conn);
+			fr_pool_connection_release(pool, request, conn);
 			ret = -1;
 			goto finish;
 		}

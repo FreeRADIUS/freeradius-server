@@ -232,7 +232,7 @@ static ssize_t rest_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outle
 	while (isspace(*p) && p++);
 
 #if 0
-	handle = fr_connection_get(t->pool, request);
+	handle = fr_pool_connection_get(t->pool, request);
 
 	if (!handle) return -1;
 #endif
@@ -344,7 +344,7 @@ error:
 finish:
 	rest_request_cleanup(mod_inst, handle);
 
-	fr_connection_release(t->pool, request, handle);
+	fr_pool_connection_release(t->pool, request, handle);
 
 	talloc_free(section);
 
@@ -429,7 +429,7 @@ static rlm_rcode_t mod_authorize_result(REQUEST *request, void *instance, void *
 finish:
 	rest_request_cleanup(instance, handle);
 
-	fr_connection_release(t->pool, request, handle);
+	fr_pool_connection_release(t->pool, request, handle);
 
 	return rcode;
 }
@@ -451,13 +451,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, void *thread, 
 
 	if (!section->name) return RLM_MODULE_NOOP;
 
-	handle = fr_connection_get(t->pool, request);
+	handle = fr_pool_connection_get(t->pool, request);
 	if (!handle) return RLM_MODULE_FAIL;
 
 	ret = rlm_rest_perform(instance, thread, section, handle, request, NULL, NULL);
 	if (ret < 0) {
 		rest_request_cleanup(instance, handle);
-		fr_connection_release(t->pool, request, handle);
+		fr_pool_connection_release(t->pool, request, handle);
 
 		return RLM_MODULE_FAIL;
 	}
@@ -542,7 +542,7 @@ static rlm_rcode_t mod_authenticate_result(REQUEST *request, void *instance, voi
 finish:
 	rest_request_cleanup(instance, handle);
 
-	fr_connection_release(t->pool, request, handle);
+	fr_pool_connection_release(t->pool, request, handle);
 
 	return rcode;
 }
@@ -578,14 +578,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, void *threa
 		return RLM_MODULE_INVALID;
 	}
 
-	handle = fr_connection_get(t->pool, request);
+	handle = fr_pool_connection_get(t->pool, request);
 	if (!handle) return RLM_MODULE_FAIL;
 
 	ret = rlm_rest_perform(instance, thread, section,
 			       handle, request, username->vp_strvalue, password->vp_strvalue);
 	if (ret < 0) {
 		rest_request_cleanup(instance, handle);
-		fr_connection_release(t->pool, request, handle);
+		fr_pool_connection_release(t->pool, request, handle);
 
 		return RLM_MODULE_FAIL;
 	}
@@ -638,7 +638,7 @@ static rlm_rcode_t mod_accounting_result(REQUEST *request, void *instance, void 
 finish:
 	rest_request_cleanup(instance, handle);
 
-	fr_connection_release(t->pool, request, handle);
+	fr_pool_connection_release(t->pool, request, handle);
 
 	return rcode;
 }
@@ -657,13 +657,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, void *thread,
 
 	if (!section->name) return RLM_MODULE_NOOP;
 
-	handle = fr_connection_get(t->pool, request);
+	handle = fr_pool_connection_get(t->pool, request);
 	if (!handle) return RLM_MODULE_FAIL;
 
 	ret = rlm_rest_perform(inst, thread, section, handle, request, NULL, NULL);
 	if (ret < 0) {
 		rest_request_cleanup(instance, handle);
-		fr_connection_release(t->pool, request, handle);
+		fr_pool_connection_release(t->pool, request, handle);
 
 		return RLM_MODULE_FAIL;
 	}
@@ -716,7 +716,7 @@ static rlm_rcode_t mod_post_auth_result(REQUEST *request, void *instance, void *
 finish:
 	rest_request_cleanup(inst, handle);
 
-	fr_connection_release(t->pool, request, handle);
+	fr_pool_connection_release(t->pool, request, handle);
 
 	return rcode;
 }
@@ -735,14 +735,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, void *thread, 
 
 	if (!section->name) return RLM_MODULE_NOOP;
 
-	handle = fr_connection_get(t->pool, request);
+	handle = fr_pool_connection_get(t->pool, request);
 	if (!handle) return RLM_MODULE_FAIL;
 
 	ret = rlm_rest_perform(inst, thread, section, handle, request, NULL, NULL);
 	if (ret < 0) {
 		rest_request_cleanup(instance, handle);
 
-		fr_connection_release(t->pool, request, handle);
+		fr_pool_connection_release(t->pool, request, handle);
 
 		return RLM_MODULE_FAIL;
 	}
@@ -907,7 +907,7 @@ static int mod_thread_instantiate(CONF_SECTION const *conf, void *instance, fr_e
 	 *	thread safe.
 	 */
 	my_conf = cf_section_dup(NULL, conf, cf_section_name1(conf), cf_section_name2(conf), true);
-	t->pool = fr_connection_pool_init(NULL, my_conf, instance, mod_conn_create, NULL, inst->xlat_name);
+	t->pool = fr_pool_init(NULL, my_conf, instance, mod_conn_create, NULL, inst->xlat_name);
 	talloc_free(my_conf);
 
 	if (!t->pool) {
@@ -931,7 +931,7 @@ static int mod_thread_detach(void *thread)
 	rlm_rest_thread_t	*t = thread;
 
 	curl_multi_cleanup(t->mandle);
-	fr_connection_pool_free(t->pool);
+	fr_pool_free(t->pool);
 
 	return 0;
 }

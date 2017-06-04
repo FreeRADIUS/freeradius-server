@@ -12,7 +12,7 @@
  */
 typedef struct rlm_winbind_t {
 	char const		*name;
-	fr_connection_pool_t    *wb_pool;
+	fr_pool_t    *wb_pool;
 
 	/* main config */
 	vp_tmpl_t		*wb_username;

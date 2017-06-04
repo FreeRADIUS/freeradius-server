@@ -48,7 +48,7 @@ typedef struct rlm_krb5_handle {
  */
 typedef struct rlm_krb5_t {
 #ifdef KRB5_IS_THREAD_SAFE
-	fr_connection_pool_t	*pool;		//!< Connection pool instance.
+	fr_pool_t	*pool;		//!< Connection pool instance.
 #else
 	rlm_krb5_handle_t	*conn;
 #endif

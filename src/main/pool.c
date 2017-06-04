@@ -33,20 +33,20 @@ RCSID("$Id$")
 #include <freeradius-devel/modpriv.h>
 #include <freeradius-devel/rad_assert.h>
 
-typedef struct fr_connection fr_connection_t;
+typedef struct fr_pool_connection fr_pool_connection_t;
 
-static int fr_connection_pool_check(fr_connection_pool_t *pool, REQUEST *request);
+static int connection_check(fr_pool_t *pool, REQUEST *request);
 
 /** An individual connection within the connection pool
  *
  * Defines connection counters, timestamps, and holds a pointer to the
  * connection handle itself.
  *
- * @see fr_connection_pool_t
+ * @see fr_pool_t
  */
-struct fr_connection {
-	fr_connection_t	*prev;			//!< Previous connection in list.
-	fr_connection_t	*next;			//!< Next connection in list.
+struct fr_pool_connection {
+	fr_pool_connection_t	*prev;			//!< Previous connection in list.
+	fr_pool_connection_t	*next;			//!< Next connection in list.
 
 	time_t		created;		//!< Time connection was created.
 	struct timeval 	last_reserved;		//!< Last time the connection was reserved.
@@ -79,7 +79,7 @@ struct fr_connection {
  *
  * @see fr_connection
  */
-struct fr_connection_pool_t {
+struct fr_pool {
 	int		ref;			//!< Reference counter to prevent connection
 						//!< pool being freed multiple times.
 	uint32_t	start;			//!< Number of initial connections.
@@ -108,8 +108,8 @@ struct fr_connection_pool_t {
 
 	fr_heap_t	*heap;			//!< For the next connection heap
 
-	fr_connection_t	*head;			//!< Start of the connection list.
-	fr_connection_t	*tail;			//!< End of the connection list.
+	fr_pool_connection_t	*head;		//!< Start of the connection list.
+	fr_pool_connection_t	*tail;		//!< End of the connection list.
 
 	pthread_mutex_t	mutex;			//!< Mutex used to keep consistent state when making
 						//!< modifications in threaded mode.
@@ -134,29 +134,30 @@ struct fr_connection_pool_t {
 	struct timeval	held_trigger_max;	//!< If a connection is held for longer than the specified
 						//!< period, fire a trigger.
 
-	fr_connection_create_t		create;	//!< Function used to create new connections.
-	fr_connection_alive_t		alive;	//!< Function used to check status of connections.
-	fr_connection_pool_reconnect_t	reconnect;	//!< Called during connection pool reconnect.
+	fr_pool_connection_create_t	create;	//!< Function used to create new connections.
+	fr_pool_connection_alive_t	alive;	//!< Function used to check status of connections.
 
-	fr_connection_pool_state_t	state;	//!< Stats and state of the connection pool.
+	fr_pool_reconnect_t	reconnect;	//!< Called during connection pool reconnect.
+
+	fr_pool_state_t	state;			//!< Stats and state of the connection pool.
 };
 
-static const CONF_PARSER connection_config[] = {
-	{ FR_CONF_OFFSET("start", FR_TYPE_UINT32, fr_connection_pool_t, start), .dflt = "5" },
-	{ FR_CONF_OFFSET("min", FR_TYPE_UINT32, fr_connection_pool_t, min), .dflt = "5" },
-	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, fr_connection_pool_t, max), .dflt = "10" },
-	{ FR_CONF_OFFSET("max_pending", FR_TYPE_UINT32, fr_connection_pool_t, max_pending), .dflt = "0" },
-	{ FR_CONF_OFFSET("spare", FR_TYPE_UINT32, fr_connection_pool_t, spare), .dflt = "3" },
-	{ FR_CONF_OFFSET("uses", FR_TYPE_UINT64, fr_connection_pool_t, max_uses), .dflt = "0" },
-	{ FR_CONF_OFFSET("lifetime", FR_TYPE_UINT32, fr_connection_pool_t, lifetime), .dflt = "0" },
-	{ FR_CONF_OFFSET("cleanup_delay", FR_TYPE_UINT32, fr_connection_pool_t, cleanup_interval) },
-	{ FR_CONF_OFFSET("cleanup_interval", FR_TYPE_UINT32, fr_connection_pool_t, cleanup_interval), .dflt = "30" },
-	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_UINT32, fr_connection_pool_t, idle_timeout), .dflt = "60" },
-	{ FR_CONF_OFFSET("connect_timeout", FR_TYPE_TIMEVAL, fr_connection_pool_t, connect_timeout), .dflt = "3.0" },
-	{ FR_CONF_OFFSET("held_trigger_min", FR_TYPE_TIMEVAL, fr_connection_pool_t, held_trigger_min), .dflt = "0.0" },
-	{ FR_CONF_OFFSET("held_trigger_max", FR_TYPE_TIMEVAL, fr_connection_pool_t, held_trigger_max), .dflt = "0.5" },
-	{ FR_CONF_OFFSET("retry_delay", FR_TYPE_UINT32, fr_connection_pool_t, retry_delay), .dflt = "1" },
-	{ FR_CONF_OFFSET("spread", FR_TYPE_BOOL, fr_connection_pool_t, spread), .dflt = "no" },
+static const CONF_PARSER pool_config[] = {
+	{ FR_CONF_OFFSET("start", FR_TYPE_UINT32, fr_pool_t, start), .dflt = "5" },
+	{ FR_CONF_OFFSET("min", FR_TYPE_UINT32, fr_pool_t, min), .dflt = "5" },
+	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, fr_pool_t, max), .dflt = "10" },
+	{ FR_CONF_OFFSET("max_pending", FR_TYPE_UINT32, fr_pool_t, max_pending), .dflt = "0" },
+	{ FR_CONF_OFFSET("spare", FR_TYPE_UINT32, fr_pool_t, spare), .dflt = "3" },
+	{ FR_CONF_OFFSET("uses", FR_TYPE_UINT64, fr_pool_t, max_uses), .dflt = "0" },
+	{ FR_CONF_OFFSET("lifetime", FR_TYPE_UINT32, fr_pool_t, lifetime), .dflt = "0" },
+	{ FR_CONF_OFFSET("cleanup_delay", FR_TYPE_UINT32, fr_pool_t, cleanup_interval) },
+	{ FR_CONF_OFFSET("cleanup_interval", FR_TYPE_UINT32, fr_pool_t, cleanup_interval), .dflt = "30" },
+	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_UINT32, fr_pool_t, idle_timeout), .dflt = "60" },
+	{ FR_CONF_OFFSET("connect_timeout", FR_TYPE_TIMEVAL, fr_pool_t, connect_timeout), .dflt = "3.0" },
+	{ FR_CONF_OFFSET("held_trigger_min", FR_TYPE_TIMEVAL, fr_pool_t, held_trigger_min), .dflt = "0.0" },
+	{ FR_CONF_OFFSET("held_trigger_max", FR_TYPE_TIMEVAL, fr_pool_t, held_trigger_max), .dflt = "0.5" },
+	{ FR_CONF_OFFSET("retry_delay", FR_TYPE_UINT32, fr_pool_t, retry_delay), .dflt = "1" },
+	{ FR_CONF_OFFSET("spread", FR_TYPE_BOOL, fr_pool_t, spread), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -164,8 +165,8 @@ static const CONF_PARSER connection_config[] = {
  */
 static int last_reserved_cmp(void const *one, void const *two)
 {
-	fr_connection_t const *a = one;
-	fr_connection_t const *b = two;
+	fr_pool_connection_t const *a = one;
+	fr_pool_connection_t const *b = two;
 
 	if (a->last_reserved.tv_sec < b->last_reserved.tv_sec) return -1;
 	if (a->last_reserved.tv_sec > b->last_reserved.tv_sec) return +1;
@@ -180,8 +181,8 @@ static int last_reserved_cmp(void const *one, void const *two)
  */
 static int last_released_cmp(void const *one, void const *two)
 {
-	fr_connection_t const *a = one;
-	fr_connection_t const *b = two;
+	fr_pool_connection_t const *a = one;
+	fr_pool_connection_t const *b = two;
 
 	if (b->last_released.tv_sec < a->last_released.tv_sec) return -1;
 	if (b->last_released.tv_sec > a->last_released.tv_sec) return +1;
@@ -199,7 +200,7 @@ static int last_released_cmp(void const *one, void const *two)
  * @param[in] pool	to modify.
  * @param[in] this	Connection to delete.
  */
-static void fr_connection_unlink(fr_connection_pool_t *pool, fr_connection_t *this)
+static void connection_unlink(fr_pool_t *pool, fr_pool_connection_t *this)
 {
 	if (this->prev) {
 		rad_assert(pool->head != this);
@@ -226,7 +227,7 @@ static void fr_connection_unlink(fr_connection_pool_t *pool, fr_connection_t *th
  * @param[in] pool	to modify.
  * @param[in] this	Connection to add.
  */
-static void fr_connection_link_head(fr_connection_pool_t *pool, fr_connection_t *this)
+static void connection_link_head(fr_pool_t *pool, fr_pool_connection_t *this)
 {
 	rad_assert(pool != NULL);
 	rad_assert(this != NULL);
@@ -254,7 +255,7 @@ static void fr_connection_link_head(fr_connection_pool_t *pool, fr_connection_t 
  * @param[in] request	The current request (may be NULL).
  * @param[in] event	trigger name suffix.
  */
-static inline void fr_connection_trigger_exec(fr_connection_pool_t *pool, REQUEST *request, char const *event)
+static inline void fr_pool_trigger_exec(fr_pool_t *pool, REQUEST *request, char const *event)
 {
 	char	name[128];
 
@@ -282,9 +283,9 @@ static inline void fr_connection_trigger_exec(fr_connection_pool_t *pool, REQUES
  *	- Connection containing the specified handle.
  *	- NULL if non if connection was found.
  */
-static fr_connection_t *fr_connection_find(fr_connection_pool_t *pool, void *conn)
+static fr_pool_connection_t *connection_find(fr_pool_t *pool, void *conn)
 {
-	fr_connection_t *this;
+	fr_pool_connection_t *this;
 
 	if (!pool || !conn) return NULL;
 
@@ -331,14 +332,14 @@ static fr_connection_t *fr_connection_find(fr_connection_pool_t *pool, void *con
  *	- New connection struct.
  *	- NULL on error.
  */
-static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, REQUEST *request, time_t now, bool in_use, bool unlock)
+static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, REQUEST *request, time_t now, bool in_use, bool unlock)
 {
-	uint64_t	number;
-	uint32_t	pending_window;
-	TALLOC_CTX	*ctx;
+	uint64_t		number;
+	uint32_t		pending_window;
+	TALLOC_CTX		*ctx;
 
-	fr_connection_t	*this;
-	void		*conn;
+	fr_pool_connection_t	*this;
+	void			*conn;
 
 	rad_assert(pool != NULL);
 
@@ -448,7 +449,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, REQUEST 
 		 *	Must be done inside the mutex, reconnect callback
 		 *	may modify args.
 		 */
-		fr_connection_trigger_exec(pool, request, "fail");
+		fr_pool_trigger_exec(pool, request, "fail");
 		pthread_cond_broadcast(&pool->done_spawn);
 		pthread_mutex_unlock(&pool->mutex);
 
@@ -463,7 +464,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, REQUEST 
 	 */
 	pthread_mutex_lock(&pool->mutex);
 
-	this = talloc_zero(pool, fr_connection_t);
+	this = talloc_zero(pool, fr_pool_connection_t);
 	if (!this) {
 		pthread_cond_broadcast(&pool->done_spawn);
 		pthread_mutex_unlock(&pool->mutex);
@@ -488,7 +489,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, REQUEST 
 	 */
 	if (!in_use) fr_heap_insert(pool->heap, this);
 
-	fr_connection_link_head(pool, this);
+	connection_link_head(pool, this);
 
 	/*
 	 *	Do NOT insert the connection into the heap.  That's
@@ -518,7 +519,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, REQUEST 
 	 *	Must be done inside the mutex, reconnect callback
 	 *	may modify args.
 	 */
-	fr_connection_trigger_exec(pool, request, "open");
+	fr_pool_trigger_exec(pool, request, "open");
 
 	pthread_cond_broadcast(&pool->done_spawn);
 	if (unlock) pthread_mutex_unlock(&pool->mutex);
@@ -539,7 +540,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, REQUEST 
  * @param[in] request	The current request.
  * @param[in] this	Connection to delete.
  */
-static void fr_connection_close_internal(fr_connection_pool_t *pool, REQUEST *request, fr_connection_t *this)
+static void connection_close_internal(fr_pool_t *pool, REQUEST *request, fr_pool_connection_t *this)
 {
 	/*
 	 *	If it's in use, release it.
@@ -562,9 +563,9 @@ static void fr_connection_close_internal(fr_connection_pool_t *pool, REQUEST *re
 		fr_heap_extract(pool->heap, this);
 	}
 
-	fr_connection_trigger_exec(pool, request, "close");
+	fr_pool_trigger_exec(pool, request, "close");
 
-	fr_connection_unlink(pool, this);
+	connection_unlink(pool, this);
 
 	rad_assert(pool->state.num > 0);
 	pool->state.num--;
@@ -587,10 +588,7 @@ static void fr_connection_close_internal(fr_connection_pool_t *pool, REQUEST *re
  *	- 0 if connection was closed.
  *	- 1 if connection handle was left open.
  */
-static int fr_connection_manage(fr_connection_pool_t *pool,
-				REQUEST *request,
-				fr_connection_t *this,
-				time_t now)
+static int connection_manage(fr_pool_t *pool, REQUEST *request, fr_pool_connection_t *this, time_t now)
 {
 	rad_assert(pool != NULL);
 	rad_assert(this != NULL);
@@ -607,7 +605,7 @@ static int fr_connection_manage(fr_connection_pool_t *pool,
 		if (pool->state.num <= pool->min) {
 			ROPTIONAL(RDEBUG2, DEBUG2, "You probably need to lower \"min\"");
 		}
-		fr_connection_close_internal(pool, request, this);
+		connection_close_internal(pool, request, this);
 		return 0;
 	}
 
@@ -650,11 +648,11 @@ static int fr_connection_manage(fr_connection_pool_t *pool,
  * @param[in] request	The current request.
  * @return 1
  */
-static int fr_connection_pool_check(fr_connection_pool_t *pool, REQUEST *request)
+static int connection_check(fr_pool_t *pool, REQUEST *request)
 {
 	uint32_t spawn, idle, extra;
 	time_t now = time(NULL);
-	fr_connection_t *this, *next;
+	fr_pool_connection_t *this, *next;
 
 	if (pool->state.last_checked == now) {
 		pthread_mutex_unlock(&pool->mutex);
@@ -752,7 +750,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool, REQUEST *request
 	 */
 	if (spawn) {
 		pthread_mutex_unlock(&pool->mutex);
-		(void) fr_connection_spawn(pool, request, now, false, true);
+		(void) connection_spawn(pool, request, now, false, true);
 		pthread_mutex_lock(&pool->mutex);
 	}
 
@@ -762,7 +760,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool, REQUEST *request
 	 *	unused for the longest.
 	 */
 	if (extra && (now >= (pool->state.last_spawned + pool->delay_interval))) {
-		fr_connection_t *found = NULL;
+		fr_pool_connection_t *found = NULL;
 
 		for (this = pool->tail; this != NULL; this = this->prev) {
 			if (this->in_use) continue;
@@ -776,7 +774,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool, REQUEST *request
 
 		ROPTIONAL(RDEBUG, DEBUG, "Closing connection (%" PRIu64 "), from %d unused connections",
 			  found->number, extra);
-		fr_connection_close_internal(pool, request, found);
+		connection_close_internal(pool, request, found);
 
 		/*
 		 *	Decrease the delay for the next time we clean up.
@@ -792,7 +790,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool, REQUEST *request
 	 */
 	for (this = pool->head; this != NULL; this = next) {
 		next = this->next;
-		fr_connection_manage(pool, request, this, now);
+		connection_manage(pool, request, this, now);
 	}
 
 	pool->state.last_checked = now;
@@ -813,10 +811,10 @@ done:
  *	- A pointer to the connection handle.
  *	- NULL on error.
  */
-static void *fr_connection_get_internal(fr_connection_pool_t *pool, REQUEST *request, bool spawn)
+static void *connection_get_internal(fr_pool_t *pool, REQUEST *request, bool spawn)
 {
 	time_t now;
-	fr_connection_t *this;
+	fr_pool_connection_t *this;
 
 	if (!pool) return NULL;
 
@@ -832,7 +830,7 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, REQUEST *req
 	do {
 		this = fr_heap_peek(pool->heap);
 		if (!this) break;
-	} while (!fr_connection_manage(pool, request, this, now));
+	} while (!connection_manage(pool, request, this, now));
 
 	/*
 	 *	We have a working connection.  Extract it from the
@@ -861,7 +859,7 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, REQUEST *req
 			 *	Must be done inside the mutex, reconnect callback
 			 *	may modify args.
 			 */
-			fr_connection_trigger_exec(pool, request, "none");
+			fr_pool_trigger_exec(pool, request, "none");
 		}
 
 		return NULL;
@@ -877,7 +875,7 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, REQUEST *req
 	/*
 	 *	Returns unlocked on failure, or locked on success
 	 */
-	this = fr_connection_spawn(pool, request, now, true, false);
+	this = connection_spawn(pool, request, now, true, false);
 	if (!this) return NULL;
 
 do_return:
@@ -910,8 +908,7 @@ do_return:
  *				Trigger args will be copied, input trigger_args should be freed
  *				if necessary.
  */
-void fr_connection_pool_enable_triggers(fr_connection_pool_t *pool,
-					char const *trigger_prefix, VALUE_PAIR *trigger_args)
+void fr_pool_enable_triggers(fr_pool_t *pool, char const *trigger_prefix, VALUE_PAIR *trigger_args)
 {
 	talloc_const_free(pool->trigger_prefix);
 	MEM(pool->trigger_prefix = trigger_prefix ? talloc_typed_strdup(pool, trigger_prefix) : "");
@@ -943,16 +940,15 @@ void fr_connection_pool_enable_triggers(fr_connection_pool_t *pool,
  *	- New connection pool.
  *	- NULL on error.
  */
-fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
-					      CONF_SECTION const *cs,
-					      void *opaque,
-					      fr_connection_create_t c,
-					      fr_connection_alive_t a,
-					      char const *log_prefix)
+fr_pool_t *fr_pool_init(TALLOC_CTX *ctx,
+			CONF_SECTION const *cs,
+			void *opaque,
+			fr_pool_connection_create_t c, fr_pool_connection_alive_t a,
+			char const *log_prefix)
 {
 	uint32_t i;
-	fr_connection_pool_t *pool = NULL;
-	fr_connection_t *this;
+	fr_pool_t *pool = NULL;
+	fr_pool_connection_t *this;
 	time_t now;
 
 	if (!cs || !opaque || !c) return NULL;
@@ -964,7 +960,7 @@ fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
 	 *	threads are likely to allocate memory
 	 *	beneath the pool.
 	 */
-	pool = talloc_zero(NULL, fr_connection_pool_t);
+	pool = talloc_zero(NULL, fr_pool_t);
 	if (!pool) {
 		/* Simply using ERROR here results in a null pointer dereference */
 		fr_log(&default_log, L_ERR, "%s: Out of memory", __FUNCTION__);
@@ -1008,7 +1004,7 @@ fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
 	 *	https://code.facebook.com/posts/1499322996995183/solving-the-mystery-of-link-imbalance-a-metastable-failure-state-at-scale/
 	 */
 	if (!pool->spread) {
-		pool->heap = fr_heap_create(last_reserved_cmp, offsetof(fr_connection_t, heap));
+		pool->heap = fr_heap_create(last_reserved_cmp, offsetof(fr_pool_t, heap));
 	/*
 	 *	For some types of connections we need to used a different
 	 *	algorithm, because load balancing benefits are secondary
@@ -1028,7 +1024,7 @@ fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
 	 *	That way we maximise time between connection use.
 	 */
 	} else {
-		pool->heap = fr_heap_create(last_released_cmp, offsetof(fr_connection_t, heap));
+		pool->heap = fr_heap_create(last_released_cmp, offsetof(fr_pool_t, heap));
 	}
 	if (!pool->heap) {
 		ERROR("%s: Failed creating connection heap", __FUNCTION__);
@@ -1048,7 +1044,7 @@ fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
 
 		memcpy(&mutable, &cs, sizeof(mutable));
 
-		if (cf_section_parse(pool, pool, mutable, connection_config) < 0) {
+		if (cf_section_parse(pool, pool, mutable, pool_config) < 0) {
 			PERROR("Configuration parsing failed");
 			goto error;
 		}
@@ -1104,17 +1100,17 @@ fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
 	 *	not to.
 	 */
 	for (i = 0; i < pool->start; i++) {
-		this = fr_connection_spawn(pool, NULL, now, false, true);
+		this = connection_spawn(pool, NULL, now, false, true);
 		if (!this) {
 			ERROR("Failed spawning initial connections");
 		error:
 			/* coverity[missing_unlock] */
-			fr_connection_pool_free(pool);
+			fr_pool_free(pool);
 			return NULL;
 		}
 	}
 
-	fr_connection_trigger_exec(pool, NULL, "start");
+	fr_pool_trigger_exec(pool, NULL, "start");
 
 	return pool;
 }
@@ -1128,14 +1124,14 @@ fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
  *	- New connection pool.
  *	- NULL on error.
  */
-fr_connection_pool_t *fr_connection_pool_copy(TALLOC_CTX *ctx, fr_connection_pool_t *pool, void *opaque)
+fr_pool_t *fr_pool_copy(TALLOC_CTX *ctx, fr_pool_t *pool, void *opaque)
 {
-	fr_connection_pool_t *copy;
+	fr_pool_t *copy;
 
-	copy = fr_connection_pool_init(ctx, pool->cs, opaque, pool->create, pool->alive, pool->log_prefix);
+	copy = fr_pool_init(ctx, pool->cs, opaque, pool->create, pool->alive, pool->log_prefix);
 	if (!copy) return NULL;
 
-	if (pool->trigger_prefix) fr_connection_pool_enable_triggers(copy, pool->trigger_prefix, pool->trigger_args);
+	if (pool->trigger_prefix) fr_pool_enable_triggers(copy, pool->trigger_prefix, pool->trigger_args);
 
 	return copy;
 }
@@ -1145,7 +1141,7 @@ fr_connection_pool_t *fr_connection_pool_copy(TALLOC_CTX *ctx, fr_connection_poo
  * @param[in] pool to count connections for.
  * @return the number of connections in the pool
  */
-fr_connection_pool_state_t const *fr_connection_pool_state(fr_connection_pool_t *pool)
+fr_pool_state_t const *fr_pool_state(fr_pool_t *pool)
 {
 	return &pool->state;
 }
@@ -1155,7 +1151,7 @@ fr_connection_pool_state_t const *fr_connection_pool_state(fr_connection_pool_t 
  * @param[in] pool to get connection timeout for.
  * @return the connection timeout configured for the pool.
  */
-struct timeval fr_connection_pool_timeout(fr_connection_pool_t *pool)
+struct timeval fr_pool_timeout(fr_pool_t *pool)
 {
 	return pool->connect_timeout;
 }
@@ -1165,7 +1161,7 @@ struct timeval fr_connection_pool_timeout(fr_connection_pool_t *pool)
  * @param pool to return data for.
  * @return opaque data associated with pool.
  */
-void const *fr_connection_pool_opaque(fr_connection_pool_t *pool)
+void const *fr_pool_connection_opaque(fr_pool_t *pool)
 {
 	return pool->opaque;
 }
@@ -1174,7 +1170,7 @@ void const *fr_connection_pool_opaque(fr_connection_pool_t *pool)
  *
  * @param[in] pool to increment reference counter for.
  */
-void fr_connection_pool_ref(fr_connection_pool_t *pool)
+void fr_pool_connection_ref(fr_pool_t *pool)
 {
 	pool->ref++;
 }
@@ -1186,7 +1182,7 @@ void fr_connection_pool_ref(fr_connection_pool_t *pool)
  * @param[in] pool to set reconnect callback for.
  * @param reconnect callback to call when reconnecting pool's connections.
  */
-void fr_connection_pool_reconnect_func(fr_connection_pool_t *pool, fr_connection_pool_reconnect_t reconnect)
+void fr_pool_reconnect_func(fr_pool_t *pool, fr_pool_reconnect_t reconnect)
 {
 	pool->reconnect = reconnect;
 }
@@ -1206,11 +1202,11 @@ void fr_connection_pool_reconnect_func(fr_connection_pool_t *pool, fr_connection
  *	- -1 If we couldn't create start connections, this may be ignored
  *	     depending on the context in which this function is being called.
  */
-int fr_connection_pool_reconnect(fr_connection_pool_t *pool, REQUEST *request)
+int fr_pool_reconnect(fr_pool_t *pool, REQUEST *request)
 {
-	uint32_t	i;
-	fr_connection_t	*this;
-	time_t		now;
+	uint32_t		i;
+	fr_pool_connection_t	*this;
+	time_t			now;
 
 	pthread_mutex_lock(&pool->mutex);
 
@@ -1238,7 +1234,7 @@ int fr_connection_pool_reconnect(fr_connection_pool_t *pool, REQUEST *request)
 		this = fr_heap_peek(pool->heap);
 		if (!this) break;	/* There wasn't 'start' connections available */
 
-		fr_connection_close_internal(pool, request, this);
+		connection_close_internal(pool, request, this);
 	}
 
 	/*
@@ -1258,7 +1254,7 @@ int fr_connection_pool_reconnect(fr_connection_pool_t *pool, REQUEST *request)
 	 *	Must be done inside the mutex, reconnect callback
 	 *	may modify args.
 	 */
-	fr_connection_trigger_exec(pool, request, "reconnect");
+	fr_pool_trigger_exec(pool, request, "reconnect");
 
 	/*
 	 *	Allow new spawn attempts, and wakeup any threads
@@ -1274,7 +1270,7 @@ int fr_connection_pool_reconnect(fr_connection_pool_t *pool, REQUEST *request)
 	 *	Now attempt to spawn 'start' connections.
 	 */
 	for (i = 0; i < pool->start; i++) {
-		this = fr_connection_spawn(pool, request, now, false, true);
+		this = connection_spawn(pool, request, now, false, true);
 		if (!this) return -1;
 	}
 
@@ -1291,9 +1287,9 @@ int fr_connection_pool_reconnect(fr_connection_pool_t *pool, REQUEST *request)
  *
  * @param[in,out] pool to delete.
  */
-void fr_connection_pool_free(fr_connection_pool_t *pool)
+void fr_pool_free(fr_pool_t *pool)
 {
-	fr_connection_t *this;
+	fr_pool_connection_t *this;
 
 	if (!pool) return;
 
@@ -1317,12 +1313,12 @@ void fr_connection_pool_free(fr_connection_pool_t *pool)
 	while ((this = pool->head) != NULL) {
 		INFO("Closing connection (%" PRIu64 ")", this->number);
 
-		fr_connection_close_internal(pool, NULL, this);
+		connection_close_internal(pool, NULL, this);
 	}
 
 	fr_heap_delete(pool->heap);
 
-	fr_connection_trigger_exec(pool, NULL, "stop");
+	fr_pool_trigger_exec(pool, NULL, "stop");
 
 	rad_assert(pool->head == NULL);
 	rad_assert(pool->tail == NULL);
@@ -1345,19 +1341,19 @@ void fr_connection_pool_free(fr_connection_pool_t *pool)
  * on a connection spawning not already being in progress, and not being at the
  * 'max' connection limit.
  *
- * @note fr_connection_release must be called once the caller has finished
+ * @note fr_pool_connection_release must be called once the caller has finished
  * using the connection.
  *
- * @see fr_connection_release
+ * @see fr_pool_connection_release
  * @param[in] pool	to reserve the connection from.
  * @param[in] request	The current request.
  * @return
  *	- A pointer to the connection handle.
  *	- NULL on error.
  */
-void *fr_connection_get(fr_connection_pool_t *pool, REQUEST *request)
+void *fr_pool_connection_get(fr_pool_t *pool, REQUEST *request)
 {
-	return fr_connection_get_internal(pool, request, true);
+	return connection_get_internal(pool, request, true);
 }
 
 /** Release a connection
@@ -1365,18 +1361,18 @@ void *fr_connection_get(fr_connection_pool_t *pool, REQUEST *request)
  * Will mark a connection as unused and decrement the number of active
  * connections.
  *
- * @see fr_connection_get
+ * @see fr_pool_connection_get
  * @param[in] pool	to release the connection in.
  * @param[in] request	The current request.
  * @param[in] conn	to release.
  */
-void fr_connection_release(fr_connection_pool_t *pool, REQUEST *request, void *conn)
+void fr_pool_connection_release(fr_pool_t *pool, REQUEST *request, void *conn)
 {
-	fr_connection_t *this;
+	fr_pool_connection_t *this;
 	struct timeval	held;
 	bool trigger_min = false, trigger_max = false;
 
-	this = fr_connection_find(pool, conn);
+	this = connection_find(pool, conn);
 	if (!this) return;
 
 	this->in_use = false;
@@ -1432,10 +1428,10 @@ void fr_connection_release(fr_connection_pool_t *pool, REQUEST *request, void *c
 	 *	"delete on release".  If there are too many spare
 	 *	connections, go manage the pool && clean some up.
 	 */
-	fr_connection_pool_check(pool, request);
+	connection_check(pool, request);
 
-	if (trigger_min) fr_connection_trigger_exec(pool, request, "min");
-	if (trigger_max) fr_connection_trigger_exec(pool, request, "max");
+	if (trigger_min) fr_pool_trigger_exec(pool, request, "min");
+	if (trigger_max) fr_pool_trigger_exec(pool, request, "max");
 }
 
 /** Reconnect a suspected inviable connection
@@ -1457,33 +1453,33 @@ void fr_connection_release(fr_connection_pool_t *pool, REQUEST *request, void *c
  *	the old handle in any other operations, as its memory will have been
  *	freed.
  *
- * @see fr_connection_get
+ * @see fr_pool_connection_get
  * @param[in] pool	to reconnect the connection in.
  * @param[in] request	The current request.
  * @param[in] conn	to reconnect.
  * @return new connection handle if successful else NULL.
  */
-void *fr_connection_reconnect(fr_connection_pool_t *pool, REQUEST *request, void *conn)
+void *fr_pool_connection_reconnect(fr_pool_t *pool, REQUEST *request, void *conn)
 {
-	fr_connection_t	*this;
+	fr_pool_connection_t	*this;
 
 	if (!pool || !conn) return NULL;
 
 	/*
-	 *	If fr_connection_find is successful the pool is now locked
+	 *	If connection_find is successful the pool is now locked
 	 */
-	this = fr_connection_find(pool, conn);
+	this = connection_find(pool, conn);
 	if (!this) return NULL;
 
 	ROPTIONAL(RINFO, INFO, "Deleting inviable connection (%" PRIu64 ")", this->number);
 
-	fr_connection_close_internal(pool, request, this);
-	fr_connection_pool_check(pool, request);			/* Whilst we still have the lock (will release the lock) */
+	connection_close_internal(pool, request, this);
+	connection_check(pool, request);			/* Whilst we still have the lock (will release the lock) */
 
 	/*
 	 *	Return an existing connection or spawn a new one.
 	 */
-	return fr_connection_get_internal(pool, request, true);
+	return connection_get_internal(pool, request, true);
 }
 
 /** Delete a connection from the connection pool.
@@ -1500,11 +1496,11 @@ void *fr_connection_reconnect(fr_connection_pool_t *pool, REQUEST *request, void
  *	- 0 If the connection could not be found.
  *	- 1 if the connection was deleted.
  */
-int fr_connection_close(fr_connection_pool_t *pool, REQUEST *request, void *conn)
+int fr_pool_connection_close(fr_pool_t *pool, REQUEST *request, void *conn)
 {
-	fr_connection_t *this;
+	fr_pool_connection_t *this;
 
-	this = fr_connection_find(pool, conn);
+	this = connection_find(pool, conn);
 	if (!this) return 0;
 
 	/*
@@ -1514,7 +1510,7 @@ int fr_connection_close(fr_connection_pool_t *pool, REQUEST *request, void *conn
 
 	ROPTIONAL(RINFO, INFO, "Deleting connection (%" PRIu64 ")", this->number);
 
-	fr_connection_close_internal(pool, request, this);
-	fr_connection_pool_check(pool, request);
+	connection_close_internal(pool, request, this);
+	connection_check(pool, request);
 	return 1;
 }

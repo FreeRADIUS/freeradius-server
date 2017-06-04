@@ -29,12 +29,12 @@ static int _mod_conn_free(ykclient_handle_t **yandle)
 
 /** Creates a new connection handle for use by the FR connection API.
  *
- * Matches the fr_connection_create_t function prototype, is passed to
- * fr_connection_pool_init, and called when a new connection is required by the
+ * Matches the fr_pool_connection_create_t function prototype, is passed to
+ * fr_pool_init, and called when a new connection is required by the
  * connection pool API.
  *
- * @see fr_connection_pool_init
- * @see fr_connection_create_t
+ * @see fr_pool_init
+ * @see fr_pool_connection_create_t
  * @see connection.c
  */
 static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED struct timeval const *timeout)
@@ -140,7 +140,7 @@ init:
 
 int rlm_yubikey_ykclient_detach(rlm_yubikey_t *inst)
 {
-	fr_connection_pool_free(inst->pool);
+	fr_pool_free(inst->pool);
 	ykclient_done(&inst->ykc);
 	ykclient_global_done();
 
@@ -153,7 +153,7 @@ rlm_rcode_t rlm_yubikey_validate(rlm_yubikey_t const *inst, REQUEST *request,  c
 	ykclient_rc status;
 	ykclient_handle_t *yandle;
 
-	yandle = fr_connection_get(inst->pool, request);
+	yandle = fr_pool_connection_get(inst->pool, request);
 	if (!yandle) return RLM_MODULE_FAIL;
 
 	/*
@@ -190,7 +190,7 @@ rlm_rcode_t rlm_yubikey_validate(rlm_yubikey_t const *inst, REQUEST *request,  c
 		}
 	}
 
-	fr_connection_release(inst->pool, request, yandle);
+	fr_pool_connection_release(inst->pool, request, yandle);
 
 	return rcode;
 }

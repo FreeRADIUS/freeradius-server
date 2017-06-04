@@ -79,7 +79,7 @@ typedef struct linelog_net {
  */
 typedef struct linelog_instance_t {
 	char const		*name;			//!< Module instance name.
-	fr_connection_pool_t	*pool;			//!< Connection pool instance.
+	fr_pool_t	*pool;			//!< Connection pool instance.
 
 	char const		*delimiter;		//!< Line termination string (usually \n).
 	size_t			delimiter_len;		//!< Length of line termination string.
@@ -286,7 +286,7 @@ static int mod_detach(void *instance)
 {
 	linelog_instance_t *inst = instance;
 
-	fr_connection_pool_free(inst->pool);
+	fr_pool_free(inst->pool);
 
 	return 0;
 }
@@ -708,8 +708,8 @@ build_vector:
 		if (inst->tcp.timeout.tv_sec || inst->tcp.timeout.tv_usec) timeout = &inst->tcp.timeout;
 
 	do_write:
-		num = fr_connection_pool_state(inst->pool)->num;
-		conn = fr_connection_get(inst->pool, request);
+		num = fr_pool_state(inst->pool)->num;
+		conn = fr_pool_connection_get(inst->pool, request);
 		if (!conn) {
 			rcode = RLM_MODULE_FAIL;
 			goto finish;
@@ -731,7 +731,7 @@ build_vector:
 			case EADDRNOTAVAIL: /* Which is OSX for outbound interface is down? */
 				RWARN("Failed writing to socket: %s.  Will reconnect and try again...",
 				      fr_syserror(errno));
-				conn = fr_connection_reconnect(inst->pool, request, conn);
+				conn = fr_pool_connection_reconnect(inst->pool, request, conn);
 				if (!conn) {
 					rcode = RLM_MODULE_FAIL;
 					goto done;
@@ -757,7 +757,7 @@ build_vector:
 			break;
 		}
 	done:
-	fr_connection_release(inst->pool, request, conn);
+	fr_pool_connection_release(inst->pool, request, conn);
 	}
 		break;
 

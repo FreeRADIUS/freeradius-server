@@ -228,7 +228,7 @@ int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char c
 
 /** Initialise a module specific connection pool
  *
- * @see fr_connection_pool_init
+ * @see fr_pool_init
  *
  * @param[in] module		section.
  * @param[in] opaque		data pointer to pass to callbacks.
@@ -241,10 +241,10 @@ int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char c
  *	- New connection pool.
  *	- NULL on error.
  */
-fr_connection_pool_t *module_connection_pool_init(CONF_SECTION *module,
+fr_pool_t *module_connection_pool_init(CONF_SECTION *module,
 						  void *opaque,
-						  fr_connection_create_t c,
-						  fr_connection_alive_t a,
+						  fr_pool_connection_create_t c,
+						  fr_pool_connection_alive_t a,
 						  char const *log_prefix,
 						  char const *trigger_prefix,
 						  VALUE_PAIR *trigger_args)
@@ -253,7 +253,7 @@ fr_connection_pool_t *module_connection_pool_init(CONF_SECTION *module,
 	char log_prefix_buff[128];
 	char trigger_prefix_buff[128];
 
-	fr_connection_pool_t *pool;
+	fr_pool_t *pool;
 	char const *cs_name1, *cs_name2;
 
 	int ret;
@@ -314,25 +314,25 @@ fr_connection_pool_t *module_connection_pool_init(CONF_SECTION *module,
 	}
 
 	/*
-	 *	If fr_connection_pool_init has already been called
+	 *	If fr_pool_init has already been called
 	 *	for this config section, reuse the previous instance.
 	 *
 	 *	This allows modules to pass in the config sections
 	 *	they would like to use the connection pool from.
 	 */
-	pool = cf_data_find(cs, fr_connection_pool_t, NULL);
+	pool = cf_data_find(cs, fr_pool_t, NULL);
 	if (!pool) {
 		DEBUG4("%s: No pool reference found for config item \"%s.pool\"", log_prefix, parent_name(cs));
-		pool = fr_connection_pool_init(cs, cs, opaque, c, a, log_prefix);
+		pool = fr_pool_init(cs, cs, opaque, c, a, log_prefix);
 		if (!pool) return NULL;
 
-		fr_connection_pool_enable_triggers(pool, trigger_prefix, trigger_args);
+		fr_pool_enable_triggers(pool, trigger_prefix, trigger_args);
 
 		DEBUG4("%s: Adding pool reference %p to config item \"%s.pool\"", log_prefix, pool, parent_name(cs));
 		cf_data_add(cs, pool, NULL, false);
 		return pool;
 	}
-	fr_connection_pool_ref(pool);
+	fr_pool_connection_ref(pool);
 
 	DEBUG4("%s: Found pool reference %p in config item \"%s.pool\"", log_prefix, pool, parent_name(cs));
 

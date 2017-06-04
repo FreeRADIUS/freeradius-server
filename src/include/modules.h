@@ -160,10 +160,10 @@ typedef struct rad_module_t {
 /*
  *	Share connection pool instances between modules
  */
-fr_connection_pool_t	*module_connection_pool_init(CONF_SECTION *module,
+fr_pool_t	*module_connection_pool_init(CONF_SECTION *module,
 						     void *opaque,
-						     fr_connection_create_t c,
-						     fr_connection_alive_t a,
+						     fr_pool_connection_create_t c,
+						     fr_pool_connection_alive_t a,
 						     char const *log_prefix,
 						     char const *trigger_prefix,
 						     VALUE_PAIR *trigger_args);

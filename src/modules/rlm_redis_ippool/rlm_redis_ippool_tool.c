@@ -892,7 +892,7 @@ static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance
 	 *	Iterate over the masters, getting the pools on each
 	 */
 	for (i = 0; i < ret; i++) {
-		fr_connection_pool_t	*pool;
+		fr_pool_t	*pool;
 		redisReply		*reply;
 		char const		*p;
 		size_t			len;
@@ -907,7 +907,7 @@ static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance
 			return -1;
 		}
 
-		conn = fr_connection_get(pool, request);
+		conn = fr_pool_connection_get(pool, request);
 		if (!conn) goto error;
 		do {
 			/*
@@ -917,7 +917,7 @@ static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance
 			reply = redisCommand(conn->handle, "SCAN %s MATCH %b COUNT 20", cursor, key, key_p - key);
 			if (!reply) {
 				ERROR("Failed reading reply");
-				fr_connection_release(pool, request, conn);
+				fr_pool_connection_release(pool, request, conn);
 				goto error;
 			}
 			fr_redis_reply_print(L_DBG_LVL_3, reply, request, 0);
@@ -925,7 +925,7 @@ static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance
 				ERROR("Error retrieving keys %s: %s", cursor, fr_strerror());
 
 			reply_error:
-				fr_connection_release(pool, request, conn);
+				fr_pool_connection_release(pool, request, conn);
 				fr_redis_reply_free(reply);
 				goto error;
 			}
@@ -997,7 +997,7 @@ static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance
 			fr_redis_reply_free(reply);
 		} while (!((cursor[0] == '0') && (cursor[1] == '\0')));	/* Cursor value of 0 means no more results */
 
-		fr_connection_release(pool, request, conn);
+		fr_pool_connection_release(pool, request, conn);
 	}
 
 	if (used == 0) {

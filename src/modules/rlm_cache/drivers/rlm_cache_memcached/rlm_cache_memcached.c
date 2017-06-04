@@ -39,7 +39,7 @@ typedef struct rlm_cache_memcached_handle {
 
 typedef struct rlm_cache_memcached {
 	char const 		*options;	//!< Connection options
-	fr_connection_pool_t	*pool;
+	fr_pool_t	*pool;
 } rlm_cache_memcached_t;
 
 static const CONF_PARSER driver_config[] = {
@@ -264,7 +264,7 @@ static int mod_conn_get(void **handle, UNUSED rlm_cache_config_t const *config, 
 
 	*handle = NULL;
 
-	mandle = fr_connection_get(driver->pool, request);
+	mandle = fr_pool_connection_get(driver->pool, request);
 	if (!mandle) {
 		*handle = NULL;
 		return -1;
@@ -283,7 +283,7 @@ static void mod_conn_release(UNUSED rlm_cache_config_t const *config, void *inst
 {
 	rlm_cache_memcached_t *driver = instance;
 
-	fr_connection_release(driver->pool, request, handle);
+	fr_pool_connection_release(driver->pool, request, handle);
 }
 
 /** Reconnect a memcached handle
@@ -296,7 +296,7 @@ static int mod_conn_reconnect(void **handle, UNUSED rlm_cache_config_t const *co
 	rlm_cache_memcached_t *driver = instance;
 	rlm_cache_handle_t *mandle;
 
-	mandle = fr_connection_reconnect(driver->pool, request, *handle);
+	mandle = fr_pool_connection_reconnect(driver->pool, request, *handle);
 	if (!mandle) {
 		*handle = NULL;
 		return -1;
