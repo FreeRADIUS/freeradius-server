@@ -30,7 +30,7 @@
 RCSIDH(mod_h, "$Id$")
 
 #include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/connection.h>
+#include <freeradius-devel/pool.h>
 #include <libcouchbase/couchbase.h>
 #include "../rlm_json/json.h"
 

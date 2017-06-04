@@ -5,7 +5,7 @@
 
 #include "config.h"
 #include <wbclient.h>
-#include <freeradius-devel/connection.h>
+#include <freeradius-devel/pool.h>
 
 /*
  *      Structure for the module configuration.

@@ -35,7 +35,7 @@ RCSIDH(rlm_sql_h, "$Id$")
 #endif
 
 #include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/connection.h>
+#include <freeradius-devel/pool.h>
 #include <freeradius-devel/modpriv.h>
 #include <freeradius-devel/exfile.h>
 

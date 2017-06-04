@@ -13,7 +13,7 @@
 #include "rlm_yubikey.h"
 
 #ifdef HAVE_YKCLIENT
-#include <freeradius-devel/connection.h>
+#include <freeradius-devel/pool.h>
 
 /** Frees a ykclient handle
  *

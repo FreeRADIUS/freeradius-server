@@ -29,7 +29,7 @@ USES_APPLE_DEPRECATED_API
 #include <krb5.h>
 
 #ifdef KRB5_IS_THREAD_SAFE
-#  include <freeradius-devel/connection.h>
+#  include <freeradius-devel/pool.h>
 #endif
 
 typedef struct rlm_krb5_handle {

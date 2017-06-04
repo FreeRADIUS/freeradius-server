@@ -3,7 +3,6 @@ TARGET	:= libfreeradius-server.a
 SOURCES	:=	cond_eval.c \
 		cond_tokenize.c \
 		conf_file.c \
-		connection.c \
 		dl.c \
 		exec.c \
 		exfile.c \
@@ -17,6 +16,7 @@ SOURCES	:=	cond_eval.c \
 		util.c \
 		version.c \
 		pair.c \
+		pool.c \
 		xlat_eval.c \
 		xlat_func.c \
 		xlat_tokenize.c

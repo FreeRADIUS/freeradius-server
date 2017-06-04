@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file include/connection.h
+ * @file include/pool.h
  * @brief API to manage pools of persistent connections to external resources.
  *
  * @copyright 2012  The FreeRADIUS server project

@@ -15,7 +15,7 @@
  */
 
 /**
- * @file connection.c
+ * @file pool.c
  * @brief Handle pools of connections (threads, sockets, etc.)
  * @note This API must be used by all modules in the public distribution that
  * maintain pools of connections.
