@@ -119,8 +119,8 @@ VALUE	Pool-Action			Release			3
 VALUE	Pool-Action			Bulk-Release		4
 
 # LDAP-Group is now dynamically created
-ATTRIBUTE	Module-Success-Message			1075	string
-ATTRIBUTE	Module-Failure-Message			1076	string
+ATTRIBUTE	Module-Success-Message			1076	string
+ATTRIBUTE	Module-Failure-Message			1077	string
 #		X99-Fast		1077	integer
 ATTRIBUTE	Rewrite-Rule				1078	string
 # SQL-Group is now dynamically created
