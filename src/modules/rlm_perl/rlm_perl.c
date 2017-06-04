@@ -667,6 +667,8 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 	     	VALUE_PAIR *next;
 
 	     	char const *name;
+		size_t tbufflen;
+		char *tbuff;
 		char namebuf[256];
 		char buffer[1024];
 
@@ -715,11 +717,20 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 			break;
 
 		default:
-			len = vp_prints_value(buffer, sizeof(buffer), vp, 0);
+			if (vp->vp_length < ((sizeof(buffer) / 2) + 3)) {
+				tbuff = buffer;
+				tbufflen = sizeof(buffer);
+			} else {
+				tbufflen = (vp->vp_length / 2) + 3;
+				tbuff = talloc_array(request, char, tbufflen);
+			}
+
+			len = vp_prints_value(tbuff, tbufflen, vp, 0);
 			RDEBUG("$%s{'%s'} = &%s:%s -> '%s'", hash_name, vp->da->name,
-			       list_name, vp->da->name, buffer);
+			       list_name, vp->da->name, tbuff);
 			(void)hv_store(rad_hv, name, strlen(name),
 				       newSVpvn(buffer, truncate_len(len, sizeof(buffer))), 0);
+			if (tbuff != buffer) talloc_free(tbuff);
 			break;
 		}
 	}
