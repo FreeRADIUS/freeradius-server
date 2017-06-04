@@ -45,23 +45,26 @@ struct fr_ring_buffer_t {
 	bool		closed;		//!< whether allocations are closed
 };
 
-
 /** Create a ring buffer.
  *
- *  The ring buffer should be a power of two in size.
+ *  The size provided will be rounded up to the next highest power of
+ *  2, if it's not already a power of 2.
  *
  *  The ring buffer manages how much room is reserved (i.e. available
  *  to write to), and used.  The application is responsible for
  *  tracking the start of the reservation, *and* it's write offset
  *  within that reservation.
  *
- * @param[in] ctx a talloc context
- * @param[in] size of the raw ring buffer array to allocate.
- * @return a ring buffer, or NULL on failure.
+ * @param[in] ctx	a talloc context
+ * @param[in] size	of the raw ring buffer array to allocate.
+ * @return
+ *	- A new ring buffer on success.
+ *	- NULL on failure.
  */
 fr_ring_buffer_t *fr_ring_buffer_create(TALLOC_CTX *ctx, size_t size)
 {
-	fr_ring_buffer_t *rb;
+	fr_ring_buffer_t	*rb;
+	size_t			pow;
 
 	rb = talloc_zero(ctx, fr_ring_buffer_t);
 	if (!rb) {
@@ -70,13 +73,22 @@ fr_ring_buffer_t *fr_ring_buffer_create(TALLOC_CTX *ctx, size_t size)
 		return NULL;
 	}
 
+	/*
+	 *	Find the nearest power of 2 (rounding up)
+	 */
+	for (pow = 0x00000001;
+	     pow < size;
+	     pow <<= 1);
+	size = pow;
+	size--;
+
 	rb->buffer = talloc_array(rb, uint8_t, size);
 	if (!rb->buffer) {
 		talloc_free(rb);
 		goto fail;
 	}
-
 	rb->size = size;
+
 	return rb;
 }
 
