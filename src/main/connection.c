@@ -210,7 +210,6 @@ static void _connection_writable(UNUSED fr_event_list_t *el, UNUSED int sock, vo
 	}
 }
 
-
 /** Enter the initialising state
  *
  * @param[in] conn	being initialised.

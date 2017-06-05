@@ -29,19 +29,47 @@
 #include <freeradius-devel/rad_assert.h>
 #include "proto_radius.h"
 
-typedef struct fr_packet_ctx_t {
-	int		sockfd;
+typedef struct {
+	int			sockfd;		//!< Socket the packet was received on.
 
-	uint8_t const	*secret;
-	size_t		secret_len;
+	uint8_t const		*secret;
+	size_t			secret_len;
 
-	uint8_t		original[20];
-	uint8_t		id;
+	uint8_t			original[20];
+	uint8_t			id;
 
-	struct sockaddr_storage src;
-	socklen_t	salen;
+	struct sockaddr_storage	src;
+	socklen_t		salen;
 } fr_packet_ctx_t;
 
+/** Basic config for a UDP listen socket
+ *
+ */
+typedef struct {
+	fr_ipaddr_t		ipaddr;			//!< Ipaddr to listen on.
+
+	bool			ipaddr_is_set;		//!< ipaddr config item is set.
+	bool			ipv4addr_is_set;	//!< ipv4addr config item is set.
+	bool			ipv6addr_is_set;	//!< ipv6addr config item is set.
+
+	char const		*interface;		//!< Interface to bind to.
+
+	uint16_t		port;			//!< Port to listen on.
+	uint32_t		recv_buff;		//!< How big the kernel's receive buffer should be.
+	bool			recv_buff_is_set;	//!< Whether we were provided with a receive buffer value.
+} fr_proto_radius_udp_conf_t;
+
+static const CONF_PARSER udp_listen_conf[] = {
+	{ FR_CONF_IS_SET_OFFSET("ipaddr", FR_TYPE_COMBO_IP_ADDR, fr_proto_radius_udp_conf_t, ipaddr) },
+	{ FR_CONF_IS_SET_OFFSET("ipv4addr", FR_TYPE_IPV4_ADDR, fr_proto_radius_udp_conf_t, ipaddr) },
+	{ FR_CONF_IS_SET_OFFSET("ipv6addr", FR_TYPE_IPV6_ADDR, fr_proto_radius_udp_conf_t, ipaddr) },
+
+	{ FR_CONF_OFFSET("interface", FR_TYPE_STRING, fr_proto_radius_udp_conf_t, interface) },
+
+	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, fr_proto_radius_udp_conf_t, port) },
+	{ FR_CONF_IS_SET_OFFSET("recv_buff", FR_TYPE_UINT32, fr_proto_radius_udp_conf_t, recv_buff) },
+	CONF_PARSER_TERMINATOR
+};
 
 static ssize_t mod_read(int sockfd, void *ctx, uint8_t *buffer, size_t buffer_len)
 {
@@ -112,17 +140,11 @@ static fr_transport_t proto_radius_udp_transport = {
 /** Open a UDP listener for RADIUS
  *
  */
-static int mod_open(TALLOC_CTX *ctx, int *sockfd_p, void **transport_ctx, fr_transport_t **transport_p, CONF_SECTION *listen, bool verify_config)
+static int mod_open(TALLOC_CTX *ctx, int *sockfd_p, void **transport_ctx,
+		    fr_transport_t **transport_p, CONF_SECTION *listen, bool verify_config)
 {
-	int rcode;
-	uint16_t port;
-	uint32_t recv_buff;
-#if 0
-	char const *interface;
-	CONF_PAIR *cp;
-#endif
-	CONF_SECTION *cs;
-	fr_ipaddr_t ipaddr;
+	CONF_SECTION 			*cs;
+	fr_proto_radius_udp_conf_t	*config;
 
 	/*
 	 *	We know our name, so we don't need to re-parse the
@@ -139,56 +161,22 @@ static int mod_open(TALLOC_CTX *ctx, int *sockfd_p, void **transport_ctx, fr_tra
 		cf_log_info(cs, "    udp {");
 	}
 
-	/*
-	 *	Try IPv4 first
-	 */
-	memset(&ipaddr, 0, sizeof(ipaddr));
-	ipaddr.addr.v4.s_addr = htonl(INADDR_NONE);
+	config = talloc_zero(ctx, fr_proto_radius_udp_conf_t);
+	if (cf_section_parse(config, config, cs, udp_listen_conf) < 0) return -1;
 
-	rcode = cf_pair_parse(NULL, cs, "ipaddr", FR_ITEM_POINTER(FR_TYPE_COMBO_IP_ADDR, &ipaddr), NULL, T_INVALID);
-	if (rcode < 0) return -1;
-	if (rcode != 0) rcode = cf_pair_parse(NULL, cs, "ipv4addr",
-					      FR_ITEM_POINTER(FR_TYPE_IPV4_ADDR, &ipaddr), NULL, T_INVALID);
-	if (rcode < 0) return -1;
-	if (rcode != 0) rcode = cf_pair_parse(NULL, cs, "ipv6addr",
-					      FR_ITEM_POINTER(FR_TYPE_IPV6_ADDR, &ipaddr), NULL, T_INVALID);
-	if (rcode < 0) return -1;
 	/*
 	 *	Default to all IPv6 interfaces (it's the future)
 	 */
-	if (rcode != 0) {
-		memset(&ipaddr, 0, sizeof(ipaddr));
-		ipaddr.af = AF_INET6;
-		ipaddr.prefix = 128;
-		ipaddr.addr.v6 = in6addr_any;	/* in6addr_any binds to all addresses */
+	if (!config->ipaddr_is_set && !config->ipv4addr_is_set && !config->ipv6addr_is_set) {
+		config->ipaddr.af = AF_INET6;
+		config->ipaddr.prefix = 128;
+		config->ipaddr.addr.v6 = in6addr_any;	/* in6addr_any binds to all addresses */
 	}
 
-	rcode = cf_pair_parse(NULL, cs, "port", FR_ITEM_POINTER(FR_TYPE_UINT16, &port), "0", T_BARE_WORD);
-	if (rcode < 0) return -1;
-
-	rcode = cf_pair_parse(NULL, cs, "recv_buff", FR_ITEM_POINTER(FR_TYPE_UINT32, &recv_buff), "0", T_BARE_WORD);
-	if (rcode < 0) return -1;
-	if (recv_buff) {
-		FR_INTEGER_BOUND_CHECK("recv_buff", recv_buff, >=, 32);
-		FR_INTEGER_BOUND_CHECK("recv_buff", recv_buff, <=, INT_MAX);
+	if (config->recv_buff_is_set) {
+		FR_INTEGER_BOUND_CHECK("recv_buff", config->recv_buff, >=, 32);
+		FR_INTEGER_BOUND_CHECK("recv_buff", config->recv_buff, <=, INT_MAX);
 	}
-
-#if 0
-	/*
-	 *	If we can bind to interfaces, do so,
-	 *	else don't.
-	 */
-	cp = cf_pair_find(cs, "interface");
-	interface = NULL;
-	if (cp) {
-		char const *value = cf_pair_value(cp);
-		if (!value) {
-			cf_log_err_cp(cp, "Must specify a value for 'interface'");
-			return -1;
-		}
-		interface = value;
-	}
-#endif
 
 	if (cs != listen) cf_log_info(cs, "    }");
 
@@ -203,6 +191,7 @@ static int mod_open(TALLOC_CTX *ctx, int *sockfd_p, void **transport_ctx, fr_tra
 	*transport_ctx = talloc_strdup(ctx, "testing");
 	if (!*transport_ctx) {
 		cf_log_err_cs(cs, "Failed allocating memory");
+		talloc_free(config);
 		return -1;
 	}
 

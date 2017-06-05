@@ -330,9 +330,9 @@ static int mod_parse(fr_schedule_t *handle, CONF_SECTION *cs, bool verify_config
 		for (cp = cf_pair_find(subcs, "type");
 		     cp != NULL;
 		     cp = cf_pair_find_next(subcs, cp, "type")) {
-			char const *value;
-			dl_t const *module;
-			fr_app_subtype_t const *app;
+			char const		*value;
+			dl_t const		*module;
+			fr_app_subtype_t	const *app;
 
 			value = cf_pair_value(cp);
 
