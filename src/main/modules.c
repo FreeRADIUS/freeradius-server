@@ -332,7 +332,7 @@ fr_pool_t *module_connection_pool_init(CONF_SECTION *module,
 		cf_data_add(cs, pool, NULL, false);
 		return pool;
 	}
-	fr_pool_connection_ref(pool);
+	fr_pool_ref(pool);
 
 	DEBUG4("%s: Found pool reference %p in config item \"%s.pool\"", log_prefix, pool, parent_name(cs));
 

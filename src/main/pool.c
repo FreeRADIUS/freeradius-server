@@ -1161,7 +1161,7 @@ struct timeval fr_pool_timeout(fr_pool_t *pool)
  * @param pool to return data for.
  * @return opaque data associated with pool.
  */
-void const *fr_pool_connection_opaque(fr_pool_t *pool)
+void const *fr_pool_opaque(fr_pool_t *pool)
 {
 	return pool->opaque;
 }
@@ -1170,7 +1170,7 @@ void const *fr_pool_connection_opaque(fr_pool_t *pool)
  *
  * @param[in] pool to increment reference counter for.
  */
-void fr_pool_connection_ref(fr_pool_t *pool)
+void fr_pool_ref(fr_pool_t *pool)
 {
 	pool->ref++;
 }

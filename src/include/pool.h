@@ -142,9 +142,9 @@ void	fr_pool_enable_triggers(fr_pool_t *pool,
 
 struct timeval fr_pool_timeout(fr_pool_t *pool);
 
-void const *fr_pool_connection_opaque(fr_pool_t *pool);
+void const *fr_pool_opaque(fr_pool_t *pool);
 
-void	fr_pool_connection_ref(fr_pool_t *pool);
+void	fr_pool_ref(fr_pool_t *pool);
 
 fr_pool_state_t const *fr_pool_state(fr_pool_t *pool);
 
