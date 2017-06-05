@@ -143,7 +143,7 @@ ssize_t fr_conduit_read(int fd, fr_conduit_type_t *pconduit, void *out, size_t o
 	 *	Read the data into the buffer.
 	 */
 	*pconduit = ntohl(hdr.conduit);
-	data_len = ntohs(hdr.length);
+	data_len = ntohl(hdr.length);
 	if (data_len == 0) return 0;
 	if (data_len > UINT32_MAX) data_len = UINT32_MAX;	/* For Coverity */
 
