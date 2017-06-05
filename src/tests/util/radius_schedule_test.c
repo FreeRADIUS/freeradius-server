@@ -64,7 +64,7 @@ static fr_packet_ctx_t  packet_ctx = { 0 };
  *	Declare these here until we move all of the new field to the REQUEST.
  */
 extern int		fr_socket_server_udp(fr_ipaddr_t *ipaddr, int *port, char const *port_name, bool async);
-extern int		fr_socket_server_bind(int sockfd, fr_ipaddr_t *ipaddr, int *port, char const *interface);
+extern int		fr_socket_bind(int sockfd, fr_ipaddr_t *ipaddr, int *port, char const *interface);
 extern int		fr_fault_setup(char const *cmd, char const *program);
 
 static fr_transport_final_t test_process(REQUEST *request, fr_transport_action_t action)
@@ -245,7 +245,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (fr_socket_server_bind(sockfd, &my_ipaddr, &my_port, NULL) < 0) {
+	if (fr_socket_bind(sockfd, &my_ipaddr, &my_port, NULL) < 0) {
 		fprintf(stderr, "radius_test: Failed binding to socket: %s\n", fr_strerror());
 		exit(1);
 	}

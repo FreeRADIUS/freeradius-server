@@ -348,16 +348,16 @@ static int mod_fd_add(fr_event_list_t *el, rlm_radius_client_conn_t *conn, rlm_r
 		return -1;
 	}
 
-	sockfd = fr_socket(server_ipaddr, server_port);
+	sockfd = fr_socket_server_udp(server_ipaddr, &server_port, NULL, true);
 	if (sockfd < 0) {
-		ERROR("Error opening socket");
+		PERROR("Error opening socket");
 		return 0;
 	}
 
-	/*
-	 *	Always set the socket as non-blocking.
-	 */
-	fr_nonblock(sockfd);
+	if (fr_socket_bind(sockfd, server_ipaddr, &server_port, NULL) < 0) {
+		PERROR("Error binding socket");
+		return 0;
+	}
 
 	/*
 	 *	The default destination is anywhere.

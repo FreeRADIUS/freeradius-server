@@ -829,6 +829,7 @@ static int send_one_packet(rc_request_t *request)
 		rcode = fr_packet_list_id_alloc(packet_list, ipproto, &request->packet, NULL);
 		if (!rcode) {
 			int mysockfd;
+			uint16_t port = 0;
 
 #ifdef WITH_TCP
 			if (proto) {
@@ -837,11 +838,17 @@ static int send_one_packet(rc_request_t *request)
 								request->packet->dst_port, false);
 			} else
 #endif
-			mysockfd = fr_socket(&client_ipaddr, 0);
-			if (mysockfd < 0) {
-				ERROR("Failed opening socket");
-				exit(1);
+			sockfd = fr_socket_server_udp(&client_ipaddr, &port, NULL, true);
+			if (sockfd < 0) {
+				ERROR("Error opening socket: %s", fr_strerror());
+				return 0;
 			}
+
+			if (fr_socket_bind(sockfd, &client_ipaddr, &port, NULL) < 0) {
+				ERROR("Error binding socket: %s", fr_strerror());
+				return 0;
+			}
+
 			if (!fr_packet_list_socket_add(packet_list, mysockfd, ipproto,
 						       &request->packet->dst_ipaddr,
 						       request->packet->dst_port, NULL)) {
@@ -1429,10 +1436,16 @@ int main(int argc, char **argv)
 		sockfd = fr_socket_client_tcp(NULL, &server_ipaddr, server_port, false);
 	} else
 #endif
-	sockfd = fr_socket(&client_ipaddr, client_port);
+
+	sockfd = fr_socket_server_udp(&client_ipaddr, &client_port, NULL, false);
 	if (sockfd < 0) {
-		ERROR("Error opening socket");
-		exit(1);
+		ERROR("Error opening socket: %s", fr_strerror());
+		return -1;
+	}
+
+	if (fr_socket_bind(sockfd, &client_ipaddr, &client_port, NULL) < 0) {
+		ERROR("Error binding socket: %s", fr_strerror());
+		return -1;
 	}
 
 	packet_list = fr_packet_list_create(1);

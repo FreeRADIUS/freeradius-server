@@ -184,12 +184,18 @@ static rlm_rcode_t replicate_packet(UNUSED void const *instance, REQUEST *reques
 		 */
 		if (pass1) {
 			packet->id = fr_rand() & 0xff;
-			packet->sockfd = fr_socket(&home->src_ipaddr, 0);
+			packet->sockfd = fr_socket_server_udp(&home->src_ipaddr, NULL, NULL, false);
 			if (packet->sockfd < 0) {
 				RPEDEBUG("Failed opening socket");
 				rcode = RLM_MODULE_FAIL;
 				goto done;
 			}
+			if (fr_socket_bind(packet->sockfd, &home->src_ipaddr, NULL, NULL) < 0) {
+				RPEDEBUG("Failed binding socket");
+				rcode = RLM_MODULE_FAIL;
+				goto done;
+			}
+
 			pass1 = false;
 		} else {
 			size_t i;

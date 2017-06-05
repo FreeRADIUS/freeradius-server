@@ -24,7 +24,6 @@
  *
  * @copyright 2015 The FreeRADIUS project
  */
-
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/udpfromto.h>
 
@@ -59,7 +58,7 @@ static int socket_type_from_proto(int proto)
  *	- > 0 the port port_name resolves to.
  *	- < 0 on error.
  */
-static int socket_port_from_service(int proto, char const *port_name)
+static uint16_t socket_port_from_service(int proto, char const *port_name)
 {
 	struct servent	*service;
 	char const	*proto_name;
@@ -220,9 +219,9 @@ bool fr_socket_is_valid_proto(int proto)
    if (fr_blocking(sockfd) < 0) goto error;
  @endcode
  *
- * @param path to the file bound to the unix socket.
- * @param async Whether to set the socket to nonblocking, allowing use of
- *	#fr_socket_wait_for_connect.
+ * @param path		to the file bound to the unix socket.
+ * @param async		Whether to set the socket to nonblocking, allowing use of
+ *			#fr_socket_wait_for_connect.
  * @return
  *	- Socket FD on success.
  *	- -1 on failure.
@@ -298,11 +297,14 @@ int fr_socket_client_unix(UNUSED char const *path, UNUSED bool async)
 }
 #endif /* WITH_SYS_UN_H */
 
-/** Establish a connected TCP socket
+/** Establish a connected UDP socket
+ *
+ * Connected UDP sockets can be used with write(), unlike unconnected sockets
+ * which must be used with sendto and recvfrom.
  *
  * The following code demonstrates using this function with a connection timeout:
  @code {.c}
-   sockfd = fr_socket_client_tcp(NULL, ipaddr, port, true);
+   sockfd = fr_socket_client_udp(NULL, ipaddr, port, true);
    if (sockfd < 0) {
    	fr_perror();
    	exit(1);
@@ -317,27 +319,27 @@ int fr_socket_client_unix(UNUSED char const *path, UNUSED bool async)
    if (fr_blocking(sockfd) < 0) goto error;
  @endcode
  *
- * @param src_ipaddr to bind socket to, may be NULL if socket is not bound to any specific
- *	address.
- * @param dst_ipaddr Where to connect to.
- * @param dst_port Where to connect to.
- * @param async Whether to set the socket to nonblocking, allowing use of
- *	#fr_socket_wait_for_connect.
+ * @param src_ipaddr	to bind socket to, may be NULL if socket is not bound to any specific
+ *			address.
+ * @param dst_ipaddr	Where to send datagrams.
+ * @param dst_port	Where to send datagrams.
+ * @param async		Whether to set the socket to nonblocking, allowing use of
+ *			#fr_socket_wait_for_connect.
  * @return
- *	- FD on success
+ *	- FD on success.
  *	- -1 on failure.
  */
-int fr_socket_client_tcp(fr_ipaddr_t const *src_ipaddr, fr_ipaddr_t const *dst_ipaddr, uint16_t dst_port, bool async)
+int fr_socket_client_udp(fr_ipaddr_t const *src_ipaddr, fr_ipaddr_t const *dst_ipaddr, uint16_t dst_port, bool async)
 {
 	int			sockfd;
-	struct sockaddr_storage	salocal;
+	struct sockaddr_storage salocal;
 	socklen_t		salen;
 
 	if (!dst_ipaddr) return -1;
 
-	sockfd = socket(dst_ipaddr->af, SOCK_STREAM, 0);
+	sockfd = socket(dst_ipaddr->af, SOCK_DGRAM, 0);
 	if (sockfd < 0) {
-		fr_strerror_printf("Error creating TCP socket: %s", fr_syserror(errno));
+		fr_strerror_printf("Error creating UDP socket: %s", fr_syserror(errno));
 		return sockfd;
 	}
 
@@ -401,49 +403,46 @@ int fr_socket_client_tcp(fr_ipaddr_t const *src_ipaddr, fr_ipaddr_t const *dst_i
 	return sockfd;
 }
 
-/** Establish a connected UDP socket
- *
- * Connected UDP sockets can be used with write(), unlike unconnected sockets
- * which must be used with sendto and recvfrom.
+/** Establish a connected TCP socket
  *
  * The following code demonstrates using this function with a connection timeout:
  @code {.c}
-   sockfd = fr_socket_client_udp(NULL, ipaddr, port, true);
+   sockfd = fr_socket_client_tcp(NULL, ipaddr, port, true);
    if (sockfd < 0) {
    	fr_perror();
    	exit(1);
-}
+   }
    if ((errno == EINPROGRESS) && (fr_socket_wait_for_connect(sockfd, timeout) < 0)) {
    error:
    	fr_perror();
    	close(sockfd);
    	goto error;
-}
-//Optionally, if blocking operation is required
+   }
+   //Optionally, if blocking operation is required
    if (fr_blocking(sockfd) < 0) goto error;
  @endcode
  *
- * @param src_ipaddr to bind socket to, may be NULL if socket is not bound to any specific
- *	address.
- * @param dst_ipaddr Where to send datagrams.
- * @param dst_port Where to send datagrams.
- * @param async Whether to set the socket to nonblocking, allowing use of
- *	#fr_socket_wait_for_connect.
+ * @param src_ipaddr	to bind socket to, may be NULL if socket is not bound to any specific
+ *			address.
+ * @param dst_ipaddr	Where to connect to.
+ * @param dst_port	Where to connect to.
+ * @param async		Whether to set the socket to nonblocking, allowing use of
+ *			#fr_socket_wait_for_connect.
  * @return
- *	- FD on success.
+ *	- FD on success
  *	- -1 on failure.
  */
-int fr_socket_client_udp(fr_ipaddr_t const *src_ipaddr, fr_ipaddr_t const *dst_ipaddr, uint16_t dst_port, bool async)
+int fr_socket_client_tcp(fr_ipaddr_t const *src_ipaddr, fr_ipaddr_t const *dst_ipaddr, uint16_t dst_port, bool async)
 {
 	int			sockfd;
-	struct sockaddr_storage salocal;
+	struct sockaddr_storage	salocal;
 	socklen_t		salen;
 
 	if (!dst_ipaddr) return -1;
 
-	sockfd = socket(dst_ipaddr->af, SOCK_DGRAM, 0);
+	sockfd = socket(dst_ipaddr->af, SOCK_STREAM, 0);
 	if (sockfd < 0) {
-		fr_strerror_printf("Error creating UDP socket: %s", fr_syserror(errno));
+		fr_strerror_printf("Error creating TCP socket: %s", fr_syserror(errno));
 		return sockfd;
 	}
 
@@ -571,10 +570,13 @@ int fr_socket_wait_for_connect(int sockfd, struct timeval const *timeout)
 	}
 }
 
-/** Open an IPv4/IPv6 UDP socket
+/** Open an IPv4/IPv6 unconnected UDP socket
  *
- * @param[in] ipaddr		The IP address to listen on
- * @param[in,out] port		the port to listen on.  If *port == 0, the resolved
+ * Function name is a bit of a misnomer as it can also be used to create client sockets too,
+ * such is the nature of UDP.
+ *
+ * @param[in] src_ipaddr		The IP address to listen on
+ * @param[in,out] src_port	the port to listen on.  If *port == 0, the resolved
  *				service port will be written here.
  * @param[in] port_name		if *port == 0, the name of the port
  * @param[in] async		whether we block or not on reads and writes
@@ -582,14 +584,17 @@ int fr_socket_wait_for_connect(int sockfd, struct timeval const *timeout)
  *	- Socket FD on success.
  *	- -1 on failure.
  */
-int fr_socket_server_udp(fr_ipaddr_t *ipaddr, int *port, char const *port_name, bool async)
+int fr_socket_server_udp(fr_ipaddr_t const *src_ipaddr, uint16_t *src_port, char const *port_name, bool async)
 {
-	int sockfd;
+	int		sockfd;
+	uint16_t	my_port = 0;
+
+	if (src_port) my_port = *src_port;
 
 	/*
 	 *	Check IP looks OK
 	 */
-	if (!ipaddr || ((ipaddr->af != AF_INET) && (ipaddr->af != AF_INET6))) {
+	if (!src_ipaddr || ((src_ipaddr->af != AF_INET) && (src_ipaddr->af != AF_INET6))) {
 		fr_strerror_printf("No address specified");
 		return -1;
 	}
@@ -597,24 +602,19 @@ int fr_socket_server_udp(fr_ipaddr_t *ipaddr, int *port, char const *port_name, 
 	/*
 	 *	Check we have a port value or stuff we can resolve to a port
 	 */
-	if (!*port) {
+	if (!my_port && port_name) {
 		int ret;
-
-		if (!port_name) {
-		 	fr_strerror_printf("No port or port_name specified");
-			return -1;
-		}
 
 		ret = socket_port_from_service(IPPROTO_UDP, port_name);
 		if (ret < 0) return -1;
 
-		*port = ret;
+		my_port = ret;
 	}
 
 	/*
 	 *	Open the socket
 	 */
-	sockfd = socket(ipaddr->af, socket_type_from_proto(IPPROTO_UDP), IPPROTO_UDP);
+	sockfd = socket(src_ipaddr->af, socket_type_from_proto(IPPROTO_UDP), IPPROTO_UDP);
 	if (sockfd < 0) {
 		fr_strerror_printf("Failed creating UNIX socket: %s", fr_syserror(errno));
 		return -1;
@@ -647,7 +647,7 @@ int fr_socket_server_udp(fr_ipaddr_t *ipaddr, int *port, char const *port_name, 
 	/*
 	 *	Make sure we don't get v4 and v6 packets on inaddr_any sockets.
 	 */
-	if (socket_inaddr_any_v6only(sockfd, ipaddr)) goto error;
+	if (socket_inaddr_any_v6only(sockfd, src_ipaddr)) goto error;
 
 #if (defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)) || defined(IP_DONTFRAG)
 	/*
@@ -655,7 +655,7 @@ int fr_socket_server_udp(fr_ipaddr_t *ipaddr, int *port, char const *port_name, 
 	 *	routers don't have good support for fragmented UDP
 	 *	packets.
 	 */
-	if ((proto == IPPROTO_UDP) && (ipaddr->af == AF_INET)) {
+	if (src_ipaddr->af == AF_INET) {
 		int flag;
 
 #  if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)
@@ -706,28 +706,34 @@ int fr_socket_server_udp(fr_ipaddr_t *ipaddr, int *port, char const *port_name, 
 	}
 #endif
 
+	*src_port = my_port;
+
 	return sockfd;
 }
 
 /** Open an IPv4/IPv6 TCP socket
  *
- * @param[in] ipaddr		The IP address to listen on
- * @param[in,out] port		the port to listen on.  If *port == 0, the resolved
+ * @param[in] src_ipaddr	The IP address to listen on
+ * @param[in,out] src_port	the port to listen on.  If *port == 0, the resolved
  *				service port will be written here.
+ *				NULL if any port is allowed.
  * @param[in] port_name		if *port == 0, the name of the port
  * @param[in] async		whether we block or not on reads and writes
  * @return
  *	- Socket FD on success.
  *	- -1 on failure.
  */
-int fr_socket_server_tcp(fr_ipaddr_t *ipaddr, int *port, char const *port_name, bool async)
+int fr_socket_server_tcp(fr_ipaddr_t const *src_ipaddr, uint16_t *src_port, char const *port_name, bool async)
 {
-	int sockfd;
+	int		sockfd;
+	uint16_t	my_port = 0;
+
+	if (src_port) my_port = *src_port;
 
 	/*
 	 *	Check IP looks OK
 	 */
-	if (!ipaddr || ((ipaddr->af != AF_INET) && (ipaddr->af != AF_INET6))) {
+	if (!src_ipaddr || ((src_ipaddr->af != AF_INET) && (src_ipaddr->af != AF_INET6))) {
 		fr_strerror_printf("No address specified");
 		return -1;
 	}
@@ -735,24 +741,19 @@ int fr_socket_server_tcp(fr_ipaddr_t *ipaddr, int *port, char const *port_name, 
 	/*
 	 *	Check we have a port value or stuff we can resolve to a port
 	 */
-	if (!*port) {
+	if (!my_port && port_name) {
 		int ret;
-
-		if (!port_name) {
-		 	fr_strerror_printf("No port or port_name specified");
-			return -1;
-		}
 
 		ret = socket_port_from_service(IPPROTO_TCP, port_name);
 		if (ret < 0) return -1;
 
-		*port = ret;
+		my_port = ret;
 	}
 
 	/*
 	 *	Open the socket
 	 */
-	sockfd = socket(ipaddr->af, socket_type_from_proto(IPPROTO_TCP), IPPROTO_TCP);
+	sockfd = socket(src_ipaddr->af, socket_type_from_proto(IPPROTO_TCP), IPPROTO_TCP);
 	if (sockfd < 0) {
 		fr_strerror_printf("Failed creating UNIX socket: %s", fr_syserror(errno));
 		return -1;
@@ -775,7 +776,7 @@ int fr_socket_server_tcp(fr_ipaddr_t *ipaddr, int *port, char const *port_name, 
 	/*
 	 *	Make sure we don't get v4 and v6 packets on inaddr_any sockets.
 	 */
-	if (socket_inaddr_any_v6only(sockfd, ipaddr)) goto error;
+	if (socket_inaddr_any_v6only(sockfd, src_ipaddr)) goto error;
 
 	{
 		int on = 1;
@@ -787,31 +788,36 @@ int fr_socket_server_tcp(fr_ipaddr_t *ipaddr, int *port, char const *port_name, 
 		}
 	}
 
+	if (src_port) *src_port = my_port;
+
 	return sockfd;
 }
 
-/** Bind to an IPv4/IPv6, UDP/TCP socket
+/** Bind a UDP/TCP v4/v6 socket to a given ipaddr src port, and interface.
  *
- * Use one of
- * - fr_socket_server_udp
+ * Use one of:
+ * - fr_socket_client_udp - for a connected socket.
+ * - fr_socket_server_udp - for non-connected socket.
  * - fr_socket_server_tcp
- *
- * To open a file descriptor, then call this function to bind the socket to an IP address.
+ * ...to open a file descriptor, then call this function to bind the socket to an IP address.
  *
  * @param[in] sockfd		the socket which opened by fr_socket_server_*.
- * @param[in,out] ipaddr	The IP address to bind to
- * @param[in] port		the port to bind to
+ * @param[in,out] src_ipaddr	The IP address to bind to.
+ * @param[in] src_port		the port to bind to.  NULL if any port is allowed.
  * @param[in] interface		to bind to.
  * @return
  *	- 0 on success
  *	- -1 on failure.
  */
-int fr_socket_server_bind(int sockfd, fr_ipaddr_t *ipaddr, int *port, char const *interface)
+int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port, char const *interface)
 {
 	int			rcode;
-	uint16_t		my_port;
+	uint16_t		my_port = 0;
+	fr_ipaddr_t		my_ipaddr = *src_ipaddr;
 	struct sockaddr_storage	salocal;
 	socklen_t		salen;
+
+	if (src_port) my_port = *src_port;
 
 	/*
 	 *	Bind to a device BEFORE touching IP addresses.
@@ -842,10 +848,10 @@ int fr_socket_server_bind(int sockfd, fr_ipaddr_t *ipaddr, int *port, char const
 		 *	been defined, set the scope to the scope of
 		 *	the interface.
 		 */
-		if (ipaddr->af == AF_INET6) {
-			if (ipaddr->scope_id == 0) {
-				ipaddr->scope_id = if_nametoindex(interface);
-				if (ipaddr->scope_id == 0) {
+		if (my_ipaddr.af == AF_INET6) {
+			if (my_ipaddr.scope_id == 0) {
+				my_ipaddr.scope_id = if_nametoindex(interface);
+				if (my_ipaddr.scope_id == 0) {
 					fr_strerror_printf("Failed finding interface %s: %s",
 							   interface, fr_syserror(errno));
 					return -1;
@@ -866,15 +872,10 @@ int fr_socket_server_bind(int sockfd, fr_ipaddr_t *ipaddr, int *port, char const
 #endif
 	} /* else no interface */
 
-	if (!port) return 0;
-
 	/*
 	 *	Set up sockaddr stuff.
 	 */
-	my_port = *port;
-	if (!fr_ipaddr_to_sockaddr(ipaddr, my_port, &salocal, &salen)) {
-		return -1;
-	}
+	if (!fr_ipaddr_to_sockaddr(&my_ipaddr, my_port, &salocal, &salen)) return -1;
 
 	rcode = bind(sockfd, (struct sockaddr *) &salocal, salen);
 	if (rcode < 0) return rcode;
@@ -891,111 +892,8 @@ int fr_socket_server_bind(int sockfd, fr_ipaddr_t *ipaddr, int *port, char const
 		return -1;
 	}
 
-	if (!fr_ipaddr_from_sockaddr(&salocal, salen, ipaddr, &my_port)) return -1;
-
-	*port = my_port;
+	if (!fr_ipaddr_from_sockaddr(&salocal, salen, &my_ipaddr, &my_port)) return -1;
+	if (src_port) *src_port = my_port;
 
 	return 0;
-}
-
-/*
- *	Open a socket on the given IP and port.
- */
-int fr_socket(fr_ipaddr_t const *ipaddr, uint16_t port)
-{
-	int			sockfd;
-	struct sockaddr_storage	salocal;
-	socklen_t		salen;
-
-	sockfd = socket(ipaddr->af, SOCK_DGRAM, 0);
-	if (sockfd < 0) {
-		fr_strerror_printf("cannot open socket: %s", fr_syserror(errno));
-		return sockfd;
-	}
-
-#ifdef WITH_UDPFROMTO
-	/*
-	 *	Initialize udpfromto for all sockets.
-	 */
-	if (udpfromto_init(sockfd) != 0) {
-		close(sockfd);
-		fr_strerror_printf("cannot initialize udpfromto: %s", fr_syserror(errno));
-		return -1;
-	}
-#endif
-
-	if (!fr_ipaddr_to_sockaddr(ipaddr, port, &salocal, &salen)) {
-		return sockfd;
-	}
-
-#ifdef HAVE_STRUCT_SOCKADDR_IN6
-	if (ipaddr->af == AF_INET6) {
-		/*
-		 *	Listening on '::' does NOT get you IPv4 to
-		 *	IPv6 mapping.  You've got to listen on an IPv4
-		 *	address, too.  This makes the rest of the server
-		 *	design a little simpler.
-		 */
-#ifdef IPV6_V6ONLY
-
-		if (IN6_IS_ADDR_UNSPECIFIED(&ipaddr->addr.v6)) {
-			int on = 1;
-
-			if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY,
-				       (char *)&on, sizeof(on)) < 0) {
-				close(sockfd);
-				fr_strerror_printf("Failed setting sockopt "
-						   "IPPROTO_IPV6 - IPV6_V6ONLY"
-						   ": %s", fr_syserror(errno));
-				return -1;
-			}
-		}
-#endif /* IPV6_V6ONLY */
-	}
-#endif /* HAVE_STRUCT_SOCKADDR_IN6 */
-
-#if (defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)) || defined(IP_DONTFRAG)
-	if (ipaddr->af == AF_INET) {
-		int flag;
-
-#if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)
-
-		/*
-		 *	Disable PMTU discovery.  On Linux, this
-		 *	also makes sure that the "don't fragment"
-		 *	flag is zero.
-		 */
-		flag = IP_PMTUDISC_DONT;
-		if (setsockopt(sockfd, IPPROTO_IP, IP_MTU_DISCOVER, &flag, sizeof(flag)) < 0) {
-			close(sockfd);
-			fr_strerror_printf("Failed setting sockopt "
-					   "IPPROTO_IP - IP_MTU_DISCOVER: %s",
-					   fr_syserror(errno));
-			return -1;
-		}
-#endif
-
-#if defined(IP_DONTFRAG)
-		/*
-		 *	Ensure that the "don't fragment" flag is zero.
-		 */
-		flag = 0;
-		if (setsockopt(sockfd, IPPROTO_IP, IP_DONTFRAG, &flag, sizeof(flag)) < 0) {
-			close(sockfd);
-			fr_strerror_printf("Failed setting sockopt "
-					   "IPPROTO_IP - IP_DONTFRAG: %s",
-					   fr_syserror(errno));
-			return -1;
-		}
-#endif
-	}
-#endif
-
-	if (bind(sockfd, (struct sockaddr *) &salocal, salen) < 0) {
-		close(sockfd);
-		fr_strerror_printf("Cannot bind socket: %s", fr_syserror(errno));
-		return -1;
-	}
-
-	return sockfd;
 }

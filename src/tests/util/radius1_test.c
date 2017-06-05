@@ -53,7 +53,7 @@ RCSID("$Id$")
  *	Declare these here until we move all of the new field to the REQUEST.
  */
 extern int		fr_socket_server_udp(fr_ipaddr_t *ipaddr, int *port, char const *port_name, bool async);
-extern int		fr_socket_server_bind(int sockfd, fr_ipaddr_t *ipaddr, int *port, char const *interface);
+extern int		fr_socket_bind(int sockfd, fr_ipaddr_t *ipaddr, int *port, char const *interface);
 
 
 typedef struct fr_schedule_worker_t {
@@ -242,7 +242,7 @@ static void master_process(TALLOC_CTX *ctx)
 		exit(1);
 	}
 
-	if (fr_socket_server_bind(sockfd, &my_ipaddr, &my_port, NULL) < 0) {
+	if (fr_socket_bind(sockfd, &my_ipaddr, &my_port, NULL) < 0) {
 		fprintf(stderr, "radius_test: Failed binding to socket: %s\n", fr_strerror());
 		exit(1);
 	}

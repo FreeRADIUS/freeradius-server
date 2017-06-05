@@ -2714,7 +2714,8 @@ static int init_pcap(rad_listen_t *this)
  */
 static int listen_bind(rad_listen_t *this)
 {
-	int			rcode, port;
+	int			rcode;
+	uint16_t		port = 0;
 	listen_socket_t		*sock = this->data;
 	char const		*port_name = NULL;
 
@@ -2822,7 +2823,7 @@ static int listen_bind(rad_listen_t *this)
 	 */
 	port = sock->my_port;
 	rad_suid_up();
-	rcode = fr_socket_server_bind(this->fd, &sock->my_ipaddr, &port, sock->interface);
+	rcode = fr_socket_bind(this->fd, &sock->my_ipaddr, &port, sock->interface);
 	rad_suid_down();
 	sock->my_port = port;
 
@@ -3011,14 +3012,15 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 	} else
 #endif
 	{
-		this->fd = fr_socket(&home->src_ipaddr, src_port);
-		if (this->fd >= 0) fr_nonblock(this->fd);
+		this->fd = fr_socket_server_udp(&home->src_ipaddr, &src_port, NULL, true);
+		if ((this->fd >= 0) && (fr_socket_bind(this->fd, &home->src_ipaddr, &src_port, NULL) < 0)) {
+			this->fd = -1;
+		}
 	}
 
 	if (this->fd < 0) {
 		this->print(this, buffer,sizeof(buffer));
-		ERROR("Failed opening new proxy socket '%s' : %s",
-		      buffer, fr_strerror());
+		PERROR("Failed opening new proxy socket '%s'", buffer);
 		home->last_failed_open = now;
 		listen_free(&this);
 		return NULL;

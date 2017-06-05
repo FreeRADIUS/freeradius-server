@@ -1742,7 +1742,7 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 static int bfd_socket_open(CONF_SECTION *cs, rad_listen_t *this)
 {
 	int rcode;
-	int port;
+	uint16_t port;
 	bfd_socket_t *sock = this->data;
 
 	port = sock->my_port;
@@ -1758,7 +1758,7 @@ static int bfd_socket_open(CONF_SECTION *cs, rad_listen_t *this)
 	}
 
 	rad_suid_up();
-	rcode = fr_socket_server_bind(this->fd, &sock->my_ipaddr, &port, sock->interface);
+	rcode = fr_socket_bind(this->fd, &sock->my_ipaddr, &port, sock->interface);
 	rad_suid_down();
 	sock->my_port = port;
 

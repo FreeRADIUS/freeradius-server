@@ -384,16 +384,25 @@ static int send_with_socket(RADIUS_PACKET **reply, RADIUS_PACKET *request)
 #ifdef HAVE_LINUX_IF_PACKET_H
 	if (raw_mode) {
 		sockfd = fr_socket_packet(iface_ind, &ll);
+		if (sockfd < 0) {
+			ERROR("Error opening socket");
+			return -1;
+		}
 	} else
 #endif
 	{
-		sockfd = fr_socket(&request->src_ipaddr, request->src_port);
+		sockfd = fr_socket_server_udp(&request->src_ipaddr, &request->src_port, NULL, false);
+		if (sockfd < 0) {
+			ERROR("Error opening socket: %s", fr_strerror());
+			return -1;
+		}
+
+		if (fr_socket_bind(sockfd, &request->src_ipaddr, &request->src_port, NULL) < 0) {
+			ERROR("Error binding socket: %s", fr_strerror());
+			return -1;
+		}
 	}
 
-	if (sockfd < 0) {
-		ERROR("Error opening socket");
-		return -1;
-	}
 
 	/*
 	 *	Set option 'receive timeout' on socket.
