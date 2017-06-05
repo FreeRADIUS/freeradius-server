@@ -29,27 +29,6 @@
 
 #include <fcntl.h>
 
-/** Get the correct SOCK_* value from an IPPROTO_*
- *
- */
-static int socket_type_from_proto(int proto)
-{
-	switch (proto) {
-	case IPPROTO_TCP:
-#ifdef IPPROTO_SCTP
-	case IPPROTO_SCTP:	/* SCTP uses SOCK_STREAM too */
-#endif
-		return SOCK_STREAM;
-
-	case IPPROTO_UDP:
-		return SOCK_DGRAM;
-
-	default:
-		fr_strerror_printf("Unrecognised protocol %i", proto);
-		return -1;
-	}
-}
-
 /** Resolve a named service to a port
  *
  * @param[in] proto	The protocol. Either IPPROTO_TCP or IPPROTO_UDP.
@@ -675,7 +654,7 @@ int fr_socket_server_udp(fr_ipaddr_t const *src_ipaddr, uint16_t *src_port, char
 	/*
 	 *	Open the socket
 	 */
-	sockfd = socket(src_ipaddr->af, socket_type_from_proto(IPPROTO_UDP), IPPROTO_UDP);
+	sockfd = socket(src_ipaddr->af, SOCK_DGRAM, IPPROTO_UDP);
 	if (sockfd < 0) {
 		fr_strerror_printf("Failed creating UNIX socket: %s", fr_syserror(errno));
 		return -1;
@@ -779,9 +758,9 @@ int fr_socket_server_tcp(fr_ipaddr_t const *src_ipaddr, uint16_t *src_port, char
 	/*
 	 *	Open the socket
 	 */
-	sockfd = socket(src_ipaddr->af, socket_type_from_proto(IPPROTO_TCP), IPPROTO_TCP);
+	sockfd = socket(src_ipaddr->af, SOCK_STREAM, IPPROTO_TCP);
 	if (sockfd < 0) {
-		fr_strerror_printf("Failed creating UNIX socket: %s", fr_syserror(errno));
+		fr_strerror_printf("Failed creating TCP socket: %s", fr_syserror(errno));
 		return -1;
 	}
 
