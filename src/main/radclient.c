@@ -838,15 +838,17 @@ static int send_one_packet(rc_request_t *request)
 								request->packet->dst_port, false);
 			} else
 #endif
-			sockfd = fr_socket_server_udp(&client_ipaddr, &port, NULL, true);
-			if (sockfd < 0) {
-				ERROR("Error opening socket: %s", fr_strerror());
-				return 0;
-			}
+			{
+				mysockfd = fr_socket_server_udp(&client_ipaddr, &port, NULL, true);
+				if (mysockfd < 0) {
+					ERROR("Error opening socket: %s", fr_strerror());
+					return 0;
+				}
 
-			if (fr_socket_bind(sockfd, &client_ipaddr, &port, NULL) < 0) {
-				ERROR("Error binding socket: %s", fr_strerror());
-				return 0;
+				if (fr_socket_bind(mysockfd, &client_ipaddr, &port, NULL) < 0) {
+					ERROR("Error binding socket: %s", fr_strerror());
+					return 0;
+				}
 			}
 
 			if (!fr_packet_list_socket_add(packet_list, mysockfd, ipproto,
