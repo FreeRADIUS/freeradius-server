@@ -732,7 +732,7 @@ int fr_socket_server_udp(fr_ipaddr_t const *src_ipaddr, uint16_t *src_port, char
 	}
 #endif
 
-	*src_port = my_port;
+	if (src_port) *src_port = my_port;
 
 	return sockfd;
 }
