@@ -647,7 +647,7 @@ int fr_socket_server_udp(fr_ipaddr_t const *src_ipaddr, uint16_t *src_port, char
 	/*
 	 *	Make sure we don't get v4 and v6 packets on inaddr_any sockets.
 	 */
-	if (socket_inaddr_any_v6only(sockfd, src_ipaddr)) goto error;
+	if (socket_inaddr_any_v6only(sockfd, src_ipaddr) < 0) goto error;
 
 #if (defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)) || defined(IP_DONTFRAG)
 	/*
@@ -776,7 +776,7 @@ int fr_socket_server_tcp(fr_ipaddr_t const *src_ipaddr, uint16_t *src_port, char
 	/*
 	 *	Make sure we don't get v4 and v6 packets on inaddr_any sockets.
 	 */
-	if (socket_inaddr_any_v6only(sockfd, src_ipaddr)) goto error;
+	if (socket_inaddr_any_v6only(sockfd, src_ipaddr) < 0) goto error;
 
 	{
 		int on = 1;
