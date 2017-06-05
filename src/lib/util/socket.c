@@ -166,6 +166,61 @@ static int socket_inaddr_any_v6only(UNUSED int sockfd, UNUSED fr_ipaddr_t const 
 }
 #endif
 
+#if (defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)) || defined(IP_DONTFRAG)
+/** Set the don't fragment bit
+ *
+ * @param[in] sockfd	to set don't fragment bit for.
+ * @param[in] af	of the socket.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int socket_dont_fragment(int sockfd, int af)
+{
+	/*
+	 *	Set the "don't fragment" flag on UDP sockets.  Most
+	 *	routers don't have good support for fragmented UDP
+	 *	packets.
+	 */
+	if (af == AF_INET) {
+		int flag;
+
+#  if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)
+		/*
+		 *	Disable PMTU discovery.  On Linux, this
+		 *	also makes sure that the "don't fragment"
+		 *	flag is zero.
+		 */
+		flag = IP_PMTUDISC_DONT;
+
+		if (setsockopt(sockfd, IPPROTO_IP, IP_MTU_DISCOVER, &flag, sizeof(flag)) < 0) {
+			fr_strerror_printf("Failed disabling PMTU discovery: %s", fr_syserror(errno));
+			return -1;
+		}
+#  endif
+
+#  if defined(IP_DONTFRAG)
+		/*
+		 *	Ensure that the "don't fragment" flag is zero.
+		 */
+		flag = 0;
+
+		if (setsockopt(sockfd, IPPROTO_IP, IP_DONTFRAG, &flag, sizeof(flag)) < 0) {
+			fr_strerror_printf("Failed setting don't fragment flag: %s", fr_syserror(errno));
+			return -1;
+		}
+#  endif
+	}
+
+	return 0;
+}
+#else
+static int socket_dont_fragment(UNUSED int sockfd, UNUSED int af)
+{
+	return 0;
+}
+#endif	/* lots of things */
+
 /** Check the proto value is sane/supported
  *
  * @param[in] proto to check
@@ -340,13 +395,19 @@ int fr_socket_client_udp(fr_ipaddr_t const *src_ipaddr, fr_ipaddr_t const *dst_i
 	sockfd = socket(dst_ipaddr->af, SOCK_DGRAM, 0);
 	if (sockfd < 0) {
 		fr_strerror_printf("Error creating UDP socket: %s", fr_syserror(errno));
-		return sockfd;
+		return -1;
 	}
 
 	if (async && (fr_nonblock(sockfd) < 0)) {
+	error:
 		close(sockfd);
 		return -1;
 	}
+
+	/*
+	 *	Ensure don't fragment bit is set
+	 */
+	if (socket_dont_fragment(sockfd, src_ipaddr->af) < 0) goto error;
 
 	/*
 	 *	Allow the caller to bind us to a specific source IP.
@@ -649,45 +710,10 @@ int fr_socket_server_udp(fr_ipaddr_t const *src_ipaddr, uint16_t *src_port, char
 	 */
 	if (socket_inaddr_any_v6only(sockfd, src_ipaddr) < 0) goto error;
 
-#if (defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)) || defined(IP_DONTFRAG)
 	/*
-	 *	Set the "don't fragment" flag on UDP sockets.  Most
-	 *	routers don't have good support for fragmented UDP
-	 *	packets.
+	 *	Ensure don't fragment bit is set
 	 */
-	if (src_ipaddr->af == AF_INET) {
-		int flag;
-
-#  if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)
-
-		/*
-		 *	Disable PMTU discovery.  On Linux, this
-		 *	also makes sure that the "don't fragment"
-		 *	flag is zero.
-		 */
-		flag = IP_PMTUDISC_DONT;
-
-		if (setsockopt(sockfd, IPPROTO_IP, IP_MTU_DISCOVER, &flag, sizeof(flag)) < 0) {
-			fr_strerror_printf("Failed disabling PMTU discovery: %s", fr_syserror(errno));
-			close(sockfd);
-			return -1;
-		}
-#  endif
-
-#  if defined(IP_DONTFRAG)
-		/*
-		 *	Ensure that the "don't fragment" flag is zero.
-		 */
-		flag = 0;
-
-		if (setsockopt(sockfd, IPPROTO_IP, IP_DONTFRAG, &flag, sizeof(flag)) < 0) {
-			fr_strerror_printf("Failed setting don't fragment flag: %s", fr_syserror(errno));
-			close(sockfd);
-			return -1;
-		}
-#  endif
-	}
-#endif	/* lots of things */
+	if (socket_dont_fragment(sockfd, src_ipaddr->af) < 0) goto error;
 
 #ifdef SO_TIMESTAMP
 	{
