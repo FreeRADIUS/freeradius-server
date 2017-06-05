@@ -1747,7 +1747,7 @@ static int bfd_socket_open(CONF_SECTION *cs, rad_listen_t *this)
 
 	port = sock->my_port;
 
-	this->fd = fr_socket_server_base(IPPROTO_UDP, &sock->my_ipaddr, &port, "bfd-control", true);
+	this->fd = fr_socket_server_udp(&sock->my_ipaddr, &port, "bfd-control", true);
 	if (this->fd < 0) {
 		char buffer[256];
 

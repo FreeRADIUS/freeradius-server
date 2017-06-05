@@ -63,7 +63,7 @@ static fr_packet_ctx_t  packet_ctx = { 0 };
  *
  *	Declare these here until we move all of the new field to the REQUEST.
  */
-extern int		fr_socket_server_base(int proto, fr_ipaddr_t *ipaddr, int *port, char const *port_name, bool async);
+extern int		fr_socket_server_udp(fr_ipaddr_t *ipaddr, int *port, char const *port_name, bool async);
 extern int		fr_socket_server_bind(int sockfd, fr_ipaddr_t *ipaddr, int *port, char const *interface);
 extern int		fr_fault_setup(char const *cmd, char const *program);
 
@@ -239,7 +239,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	sockfd = fr_socket_server_base(IPPROTO_UDP, &my_ipaddr, &my_port, NULL, true);
+	sockfd = fr_socket_server_udp(&my_ipaddr, &my_port, NULL, true);
 	if (sockfd < 0) {
 		fprintf(stderr, "radius_test: Failed creating socket: %s\n", fr_strerror());
 		exit(1);

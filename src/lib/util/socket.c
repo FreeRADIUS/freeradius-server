@@ -30,6 +30,169 @@
 
 #include <fcntl.h>
 
+/** Get the correct SOCK_* value from an IPPROTO_*
+ *
+ */
+static int socket_type_from_proto(int proto)
+{
+	switch (proto) {
+	case IPPROTO_TCP:
+#ifdef IPPROTO_SCTP
+	case IPPROTO_SCTP:	/* SCTP uses SOCK_STREAM too */
+#endif
+		return SOCK_STREAM;
+
+	case IPPROTO_UDP:
+		return SOCK_DGRAM;
+
+	default:
+		fr_strerror_printf("Unrecognised protocol %i", proto);
+		return -1;
+	}
+}
+
+/** Resolve a named service to a port
+ *
+ * @param[in] proto	The protocol. Either IPPROTO_TCP or IPPROTO_UDP.
+ * @param[in] port_name	The service name, i.e. "radius".
+ * @return
+ *	- > 0 the port port_name resolves to.
+ *	- < 0 on error.
+ */
+static int socket_port_from_service(int proto, char const *port_name)
+{
+	struct servent	*service;
+	char const	*proto_name;
+
+	if (!port_name) {
+		fr_strerror_printf("No port specified");
+		return -1;
+	}
+
+	switch (proto) {
+	case IPPROTO_UDP:
+		proto_name = "udp";
+		break;
+
+	case IPPROTO_TCP:
+		proto_name = "tcp";
+		break;
+
+#ifdef IPPROTO_SCTP
+	case IPPROTO_SCTP:
+		proto_name = "sctp";
+		break;
+#endif
+
+	default:
+		fr_strerror_printf("Unrecognised proto %i", proto);
+		return -1;
+	}
+
+	service = getservbyname(port_name, proto_name);
+	if (!service) {
+		fr_strerror_printf("Unknown service %s", port_name);
+		return -1;
+	}
+
+	return ntohs(service->s_port);
+}
+
+#ifdef FD_CLOEXEC
+static int socket_dont_inherit(int sockfd)
+{
+	int rcode;
+
+	/*
+	 *	We don't want child processes inheriting these
+	 *	file descriptors.
+	 */
+	rcode = fcntl(sockfd, F_GETFD);
+	if (rcode >= 0) {
+		if (fcntl(sockfd, F_SETFD, rcode | FD_CLOEXEC) < 0) {
+			fr_strerror_printf("Failed setting close on exec: %s", fr_syserror(errno));
+			return -1;
+		}
+	}
+
+	return 0;
+}
+#else
+static socket_dont_inherit(UNUSED int sockfd)
+{
+	return 0;
+}
+#endif
+
+#ifdef HAVE_STRUCT_SOCKADDR_IN6
+/** Restrict wildcard sockets to v6 only
+ *
+ * If we don't do this we get v4 and v6 packets coming in on the same
+ * socket, which is weird.
+ *
+ * @param[in] sockfd to modify.
+ * @param[in] ipaddr we will be binding to.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int socket_inaddr_any_v6only(int sockfd, fr_ipaddr_t const *ipaddr)
+{
+	/*
+	 *	Listening on '::' does NOT get you IPv4 to
+	 *	IPv6 mapping.  You've got to listen on an IPv4
+	 *	address, too.  This makes the rest of the server
+	 *	design a little simpler.
+	 */
+	if (ipaddr->af == AF_INET6) {
+#  ifdef IPV6_V6ONLY
+		if (IN6_IS_ADDR_UNSPECIFIED(&ipaddr->addr.v6)) {
+			int on = 1;
+
+			if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY,
+				       (char *)&on, sizeof(on)) < 0) {
+				fr_strerror_printf("Failed setting socket to IPv6 only: %s", fr_syserror(errno));
+				close(sockfd);
+				return -1;
+			}
+		}
+#  endif /* IPV6_V6ONLY */
+	}
+	return 0;
+}
+#else
+static int socket_inaddr_any_v6only(UNUSED int sockfd, UNUSED fr_ipaddr_t const *ipaddr)
+{
+	return 0;
+}
+#endif
+
+/** Check the proto value is sane/supported
+ *
+ * @param[in] proto to check
+ * @return
+ *	- true if it is.
+ *	- false if it's not.
+ */
+bool fr_socket_is_valid_proto(int proto)
+{
+	/*
+	 *	Check the protocol is sane
+	 */
+	switch (proto) {
+	case IPPROTO_UDP:
+	case IPPROTO_TCP:
+#ifdef IPPROTO_SCTP
+	case IPPROTO_SCTP:
+#endif
+		return true;
+
+	default:
+		fr_strerror_printf("Unknown IP protocol %d", proto);
+		return false;
+	}
+}
+
 #ifdef HAVE_SYS_UN_H
 #  include <sys/un.h>
 #  ifndef SUN_LEN
@@ -408,127 +571,83 @@ int fr_socket_wait_for_connect(int sockfd, struct timeval const *timeout)
 	}
 }
 
-/** Open an IPv4 / IPv6, and UDP / TCP socket, server side.
+/** Open an IPv4/IPv6 UDP socket
  *
- * @param[in] proto IPPROTO_UDP or IPPROTO_TCP
- * @param[in] ipaddr The IP address to listen on
- * @param[in,out] port the port to listen on
- * @param[in] port_name if port==0, the name of the port
- * @param[in] async whether we block or not on reads and writes
+ * @param[in] ipaddr		The IP address to listen on
+ * @param[in,out] port		the port to listen on.  If *port == 0, the resolved
+ *				service port will be written here.
+ * @param[in] port_name		if *port == 0, the name of the port
+ * @param[in] async		whether we block or not on reads and writes
  * @return
  *	- Socket FD on success.
  *	- -1 on failure.
  */
-int fr_socket_server_base(int proto, fr_ipaddr_t *ipaddr, int *port, char const *port_name, bool async)
+int fr_socket_server_udp(fr_ipaddr_t *ipaddr, int *port, char const *port_name, bool async)
 {
-#ifdef FD_CLOEXEC
-	int rcode;
-#endif
 	int sockfd;
-	int sock_type;
 
-	if (!proto) proto = IPPROTO_UDP;
-
-	if ((proto != IPPROTO_UDP) && (proto != IPPROTO_TCP)) {
-		fr_strerror_printf("Unknown IP protocol %d", proto);
-		return -1;
-	}
-
+	/*
+	 *	Check IP looks OK
+	 */
 	if (!ipaddr || ((ipaddr->af != AF_INET) && (ipaddr->af != AF_INET6))) {
 		fr_strerror_printf("No address specified");
 		return -1;
 	}
 
+	/*
+	 *	Check we have a port value or stuff we can resolve to a port
+	 */
 	if (!*port) {
-		struct servent	*svp;
-		char const *proto_name;
+		int ret;
 
 		if (!port_name) {
-			fr_strerror_printf("No port specified");
+		 	fr_strerror_printf("No port or port_name specified");
 			return -1;
 		}
 
-		if (proto == IPPROTO_UDP) {
-			proto_name = "udp";
-		} else {
-			proto_name = "tcp";
-		}
+		ret = socket_port_from_service(IPPROTO_UDP, port_name);
+		if (ret < 0) return -1;
 
-		svp = getservbyname(port_name, proto_name);
-		if (!svp) {
-			fr_strerror_printf("Unknown port %s", port_name);
-			return -1;
-		}
-
-
-		*port = ntohs(svp->s_port);
+		*port = ret;
 	}
 
-	if (proto == IPPROTO_UDP) {
-		sock_type = SOCK_DGRAM;
-	} else {
-		sock_type = SOCK_STREAM;
-	}
-
-	sockfd = socket(ipaddr->af, sock_type, proto);
+	/*
+	 *	Open the socket
+	 */
+	sockfd = socket(ipaddr->af, socket_type_from_proto(IPPROTO_UDP), IPPROTO_UDP);
 	if (sockfd < 0) {
 		fr_strerror_printf("Failed creating UNIX socket: %s", fr_syserror(errno));
 		return -1;
 	}
 
-#ifdef FD_CLOEXEC
 	/*
-	 *	We don't want child processes inheriting these
-	 *	file descriptors.
+	 *	Make it non-blocking if asked
 	 */
-	rcode = fcntl(sockfd, F_GETFD);
-	if (rcode >= 0) {
-		if (fcntl(sockfd, F_SETFD, rcode | FD_CLOEXEC) < 0) {
-			close(sockfd);
-			fr_strerror_printf("Failed setting close on exec: %s", fr_syserror(errno));
-			return -1;
-		}
-	}
-#endif
-
 	if (async && (fr_nonblock(sockfd) < 0)) {
+	error:
 		close(sockfd);
 		return -1;
 	}
+
+	/*
+	 *	Don't allow child processes to inherit the socket
+	 */
+	if (socket_dont_inherit(sockfd) < 0) goto error;
 
 #ifdef WITH_UDPFROMTO
 	/*
 	 *	Initialize udpfromto for UDP sockets.
 	 */
-	if ((proto == IPPROTO_UDP) && (udpfromto_init(sockfd) != 0)) {
+	if (udpfromto_init(sockfd) != 0) {
 		fr_strerror_printf("Failed initializing udpfromto: %s", fr_syserror(errno));
-		close(sockfd);
-		return -1;
+		goto error;
 	}
 #endif
 
-#ifdef HAVE_STRUCT_SOCKADDR_IN6
 	/*
-	 *	Listening on '::' does NOT get you IPv4 to
-	 *	IPv6 mapping.  You've got to listen on an IPv4
-	 *	address, too.  This makes the rest of the server
-	 *	design a little simpler.
+	 *	Make sure we don't get v4 and v6 packets on inaddr_any sockets.
 	 */
-	if (ipaddr->af == AF_INET6) {
-#  ifdef IPV6_V6ONLY
-		if (IN6_IS_ADDR_UNSPECIFIED(&ipaddr->addr.v6)) {
-			int on = 1;
-
-			if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY,
-				       (char *)&on, sizeof(on)) < 0) {
-				fr_strerror_printf("Failed setting socket to IPv6 only: %s", fr_syserror(errno));
-				close(sockfd);
-				return -1;
-			}
-		}
-#  endif /* IPV6_V6ONLY */
-	}
-#endif /* HAVE_STRUCT_SOCKADDR_IN6 */
+	if (socket_inaddr_any_v6only(sockfd, ipaddr)) goto error;
 
 #if (defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)) || defined(IP_DONTFRAG)
 	/*
@@ -539,7 +658,7 @@ int fr_socket_server_base(int proto, fr_ipaddr_t *ipaddr, int *port, char const 
 	if ((proto == IPPROTO_UDP) && (ipaddr->af == AF_INET)) {
 		int flag;
 
-#if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)
+#  if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)
 
 		/*
 		 *	Disable PMTU discovery.  On Linux, this
@@ -553,9 +672,9 @@ int fr_socket_server_base(int proto, fr_ipaddr_t *ipaddr, int *port, char const 
 			close(sockfd);
 			return -1;
 		}
-#endif
+#  endif
 
-#if defined(IP_DONTFRAG)
+#  if defined(IP_DONTFRAG)
 		/*
 		 *	Ensure that the "don't fragment" flag is zero.
 		 */
@@ -566,24 +685,12 @@ int fr_socket_server_base(int proto, fr_ipaddr_t *ipaddr, int *port, char const 
 			close(sockfd);
 			return -1;
 		}
-#endif
+#  endif
 	}
 #endif	/* lots of things */
 
-#if defined(WITH_TCP)
-	if (proto == IPPROTO_TCP) {
-		int on = 1;
-
-		if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
-			close(sockfd);
-			fr_strerror_printf("Failed to reuse address: %s", fr_syserror(errno));
-			return -1;
-		}
-	}
-#endif
-
 #ifdef SO_TIMESTAMP
-	if (proto == IPPROTO_UDP) {
+	{
 		int on = 1;
 
 		/*
@@ -602,12 +709,99 @@ int fr_socket_server_base(int proto, fr_ipaddr_t *ipaddr, int *port, char const 
 	return sockfd;
 }
 
-/** Bind to an IPv4 / IPv6, and UDP / TCP socket, server side.
+/** Open an IPv4/IPv6 TCP socket
  *
- * @param[in] sockfd the socket which was opened via fr_socket_server_base()
- * @param[in,out] ipaddr The IP address to bind to
- * @param[in] port the port to bind to
- * @param[in] interface the interface name to bind to
+ * @param[in] ipaddr		The IP address to listen on
+ * @param[in,out] port		the port to listen on.  If *port == 0, the resolved
+ *				service port will be written here.
+ * @param[in] port_name		if *port == 0, the name of the port
+ * @param[in] async		whether we block or not on reads and writes
+ * @return
+ *	- Socket FD on success.
+ *	- -1 on failure.
+ */
+int fr_socket_server_tcp(fr_ipaddr_t *ipaddr, int *port, char const *port_name, bool async)
+{
+	int sockfd;
+
+	/*
+	 *	Check IP looks OK
+	 */
+	if (!ipaddr || ((ipaddr->af != AF_INET) && (ipaddr->af != AF_INET6))) {
+		fr_strerror_printf("No address specified");
+		return -1;
+	}
+
+	/*
+	 *	Check we have a port value or stuff we can resolve to a port
+	 */
+	if (!*port) {
+		int ret;
+
+		if (!port_name) {
+		 	fr_strerror_printf("No port or port_name specified");
+			return -1;
+		}
+
+		ret = socket_port_from_service(IPPROTO_TCP, port_name);
+		if (ret < 0) return -1;
+
+		*port = ret;
+	}
+
+	/*
+	 *	Open the socket
+	 */
+	sockfd = socket(ipaddr->af, socket_type_from_proto(IPPROTO_TCP), IPPROTO_TCP);
+	if (sockfd < 0) {
+		fr_strerror_printf("Failed creating UNIX socket: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	/*
+	 *	Make it non-blocking if asked
+	 */
+	if (async && (fr_nonblock(sockfd) < 0)) {
+	error:
+		close(sockfd);
+		return -1;
+	}
+
+	/*
+	 *	Don't allow child processes to inherit the socket
+	 */
+	if (socket_dont_inherit(sockfd) < 0) goto error;
+
+	/*
+	 *	Make sure we don't get v4 and v6 packets on inaddr_any sockets.
+	 */
+	if (socket_inaddr_any_v6only(sockfd, ipaddr)) goto error;
+
+	{
+		int on = 1;
+
+		if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
+			close(sockfd);
+			fr_strerror_printf("Failed to reuse address: %s", fr_syserror(errno));
+			return -1;
+		}
+	}
+
+	return sockfd;
+}
+
+/** Bind to an IPv4/IPv6, UDP/TCP socket
+ *
+ * Use one of
+ * - fr_socket_server_udp
+ * - fr_socket_server_tcp
+ *
+ * To open a file descriptor, then call this function to bind the socket to an IP address.
+ *
+ * @param[in] sockfd		the socket which opened by fr_socket_server_*.
+ * @param[in,out] ipaddr	The IP address to bind to
+ * @param[in] port		the port to bind to
+ * @param[in] interface		to bind to.
  * @return
  *	- 0 on success
  *	- -1 on failure.
@@ -652,7 +846,8 @@ int fr_socket_server_bind(int sockfd, fr_ipaddr_t *ipaddr, int *port, char const
 			if (ipaddr->scope_id == 0) {
 				ipaddr->scope_id = if_nametoindex(interface);
 				if (ipaddr->scope_id == 0) {
-					fr_strerror_printf("Failed finding interface %s: %s", interface, fr_syserror(errno));
+					fr_strerror_printf("Failed finding interface %s: %s",
+							   interface, fr_syserror(errno));
 					return -1;
 				}
 			} /* else scope was defined: we're OK. */
@@ -664,7 +859,8 @@ int fr_socket_server_bind(int sockfd, fr_ipaddr_t *ipaddr, int *port, char const
 			 *	IPv4: no link local addresses,
 			 *	and no bind to device.
 			 */
-			fr_strerror_printf("Failed binding to interface %s: \"bind to device\" is unsupported", interface);
+			fr_strerror_printf("Failed binding to interface %s: \"bind to device\" is unsupported",
+					   interface);
 			return -1;
 		}
 #endif
@@ -695,9 +891,7 @@ int fr_socket_server_bind(int sockfd, fr_ipaddr_t *ipaddr, int *port, char const
 		return -1;
 	}
 
-	if (!fr_ipaddr_from_sockaddr(&salocal, salen, ipaddr, &my_port)) {
-		return -1;
-	}
+	if (!fr_ipaddr_from_sockaddr(&salocal, salen, ipaddr, &my_port)) return -1;
 
 	*port = my_port;
 
@@ -772,8 +966,7 @@ int fr_socket(fr_ipaddr_t const *ipaddr, uint16_t port)
 		 *	flag is zero.
 		 */
 		flag = IP_PMTUDISC_DONT;
-		if (setsockopt(sockfd, IPPROTO_IP, IP_MTU_DISCOVER,
-			       &flag, sizeof(flag)) < 0) {
+		if (setsockopt(sockfd, IPPROTO_IP, IP_MTU_DISCOVER, &flag, sizeof(flag)) < 0) {
 			close(sockfd);
 			fr_strerror_printf("Failed setting sockopt "
 					   "IPPROTO_IP - IP_MTU_DISCOVER: %s",
@@ -787,8 +980,7 @@ int fr_socket(fr_ipaddr_t const *ipaddr, uint16_t port)
 		 *	Ensure that the "don't fragment" flag is zero.
 		 */
 		flag = 0;
-		if (setsockopt(sockfd, IPPROTO_IP, IP_DONTFRAG,
-			   &flag, sizeof(flag)) < 0) {
+		if (setsockopt(sockfd, IPPROTO_IP, IP_DONTFRAG, &flag, sizeof(flag)) < 0) {
 			close(sockfd);
 			fr_strerror_printf("Failed setting sockopt "
 					   "IPPROTO_IP - IP_DONTFRAG: %s",
@@ -806,36 +998,4 @@ int fr_socket(fr_ipaddr_t const *ipaddr, uint16_t port)
 	}
 
 	return sockfd;
-}
-
-
-/** Determine if an address is the INADDR_ANY address for its address family
- *
- * @param ipaddr to check.
- * @return
- *	- 0 if it's not.
- *	- 1 if it is.
- *	- -1 on error.
- */
-int fr_is_inaddr_any(fr_ipaddr_t *ipaddr)
-{
-
-	if (ipaddr->af == AF_INET) {
-		if (ipaddr->addr.v4.s_addr == INADDR_ANY) {
-			return 1;
-		}
-
-#ifdef HAVE_STRUCT_SOCKADDR_IN6
-	} else if (ipaddr->af == AF_INET6) {
-		if (IN6_IS_ADDR_UNSPECIFIED(&(ipaddr->addr.v6))) {
-			return 1;
-		}
-#endif
-
-	} else {
-		fr_strerror_printf("Unknown address family");
-		return -1;
-	}
-
-	return 0;
 }

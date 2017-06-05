@@ -87,6 +87,11 @@ extern struct in6_addr fr_inet_link_local6;
 #define FR_IPADDR_PREFIX_STRLEN (FR_IPADDR_STRLEN + 1 + 3)
 
 /*
+ *	Utility functions
+ */
+int	fr_ipaddr_is_inaddr_any(fr_ipaddr_t *ipaddr);
+
+/*
  *	IP address masking
  */
 void	fr_ipaddr_mask(fr_ipaddr_t *addr, uint8_t prefix);

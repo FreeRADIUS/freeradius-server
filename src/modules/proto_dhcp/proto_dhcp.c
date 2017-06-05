@@ -691,7 +691,7 @@ static const char *dhcp_pcap_filter_build(rad_listen_t *this)
 		filter = talloc_strdup_append_buffer(filter, "bootps)");
 	}
 
-	if (!fr_is_inaddr_any(&sock->lsock.my_ipaddr)) {
+	if (!fr_ipaddr_is_inaddr_any(&sock->lsock.my_ipaddr)) {
 		char buffer[INET_ADDRSTRLEN];
 		fr_inet_ntoh(&sock->lsock.my_ipaddr, buffer, sizeof(buffer));
 
@@ -774,7 +774,7 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	} else {
 		char buffer[INET_ADDRSTRLEN];
 
-		if (fr_is_inaddr_any(&sock->lsock.my_ipaddr) && sock->src_interface) {
+		if (fr_ipaddr_is_inaddr_any(&sock->lsock.my_ipaddr) && sock->src_interface) {
 			if (fr_ipaddr_from_ifname(&sock->src_ipaddr, AF_INET, sock->src_interface) < 0) {
 				WARN("Failed resolving interface %s to IP address: %s", sock->src_interface,
 				     fr_strerror());
@@ -791,7 +791,7 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		/*
 		 *	If src is not INADDR_ANY add a configuration item
 		 */
-		if (!fr_is_inaddr_any(&sock->src_ipaddr)) {
+		if (!fr_ipaddr_is_inaddr_any(&sock->src_ipaddr)) {
 			/*
 			 *	Magic defaults FTW.
 			 *

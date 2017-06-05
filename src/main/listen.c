@@ -2780,7 +2780,20 @@ static int listen_bind(rad_listen_t *this)
 	 *	Open the socket and set a whack of flags.
 	 */
 	port = sock->my_port;
-	this->fd = fr_socket_server_base(sock->proto, &sock->my_ipaddr, &port, port_name, true);
+	switch (sock->proto) {
+	case IPPROTO_UDP:
+		this->fd = fr_socket_server_udp(&sock->my_ipaddr, &port, port_name, true);
+		break;
+
+	case IPPROTO_TCP:
+		this->fd = fr_socket_server_tcp(&sock->my_ipaddr, &port, port_name, true);
+		break;
+
+	default:
+		rad_assert(0);
+		return -1;
+	}
+
 	if (this->fd < 0) {
 		char buffer[256];
 
@@ -3307,7 +3320,7 @@ rad_listen_t *listener_find_byipaddr(fr_ipaddr_t const *ipaddr, uint16_t port, i
 
 		if (sock->my_port != port) continue;
 		if (sock->proto != proto) continue;
-		if (!fr_is_inaddr_any(&sock->my_ipaddr)) continue;
+		if (!fr_ipaddr_is_inaddr_any(&sock->my_ipaddr)) continue;
 
 		return this;
 	}

@@ -52,7 +52,7 @@ RCSID("$Id$")
  *
  *	Declare these here until we move all of the new field to the REQUEST.
  */
-extern int		fr_socket_server_base(int proto, fr_ipaddr_t *ipaddr, int *port, char const *port_name, bool async);
+extern int		fr_socket_server_udp(fr_ipaddr_t *ipaddr, int *port, char const *port_name, bool async);
 extern int		fr_socket_server_bind(int sockfd, fr_ipaddr_t *ipaddr, int *port, char const *interface);
 
 
@@ -236,7 +236,7 @@ static void master_process(TALLOC_CTX *ctx)
 	control_master = fr_control_create(ctx, kq_master, aq_master);
 	rad_assert(control_master != NULL);
 
-	sockfd = fr_socket_server_base(IPPROTO_UDP, &my_ipaddr, &my_port, NULL, true);
+	sockfd = fr_socket_server_udp(&my_ipaddr, &my_port, NULL, true);
 	if (sockfd < 0) {
 		fprintf(stderr, "radius_test: Failed creating socket: %s\n", fr_strerror());
 		exit(1);
