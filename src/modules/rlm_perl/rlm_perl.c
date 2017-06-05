@@ -654,10 +654,24 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 			   const char *hash_name, const char *list_name)
 {
 	VALUE_PAIR *vp;
+	char *tbuff;
+	size_t tbufflen = 1024;
 
 	hv_undef(rad_hv);
 
 	vp_cursor_t cursor;
+
+	/*
+	 *	Find out how much room to allocate.
+	 */
+	for (vp = fr_cursor_init(&cursor, vps);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
+		if (((vp->length * 2) + 3) > tbufflen) {
+			tbufflen = (vp->vp_length * 2) + 3;
+		}
+	}
+	tbuff = talloc_array(request, char, tbufflen);
 
 	RINDENT();
 	fr_pair_list_sort(vps, fr_pair_cmp_by_da_tag);
@@ -665,14 +679,9 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 	     	VALUE_PAIR *next;
-
 	     	char const *name;
-		size_t tbufflen;
-		char *tbuff;
-		char namebuf[256];
-		char buffer[1024];
-
 		size_t len;
+		char namebuf[256];
 
 		/*
 		 *	Tagged attributes are added to the hash with name
@@ -717,24 +726,17 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 			break;
 
 		default:
-			if (vp->vp_length < ((sizeof(buffer) / 2) + 3)) {
-				tbuff = buffer;
-				tbufflen = sizeof(buffer);
-			} else {
-				tbufflen = (vp->vp_length / 2) + 3;
-				tbuff = talloc_array(request, char, tbufflen);
-			}
-
 			len = vp_prints_value(tbuff, tbufflen, vp, 0);
 			RDEBUG("$%s{'%s'} = &%s:%s -> '%s'", hash_name, vp->da->name,
 			       list_name, vp->da->name, tbuff);
 			(void)hv_store(rad_hv, name, strlen(name),
-				       newSVpvn(buffer, truncate_len(len, sizeof(buffer))), 0);
-			if (tbuff != buffer) talloc_free(tbuff);
+				       newSVpvn(tbuff, truncate_len(len, tbufflen)), 0);
 			break;
 		}
 	}
 	REXDENT();
+
+	talloc_free(tbuff);
 }
 
 /*
