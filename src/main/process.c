@@ -3227,6 +3227,7 @@ static int proxy_to_virtual_server(REQUEST *request)
 
 static int request_proxy_send(REQUEST *request)
 {
+	struct timeval *response_window;
 	char buffer[INET6_ADDRSTRLEN];
 
 	VERIFY_REQUEST(request);
@@ -3258,30 +3259,26 @@ static int request_proxy_send(REQUEST *request)
 
 	rad_assert(request->proxy->packet->id >= 0);
 
-	if (rad_debug_lvl) {
-		struct timeval *response_window;
-
-		response_window = request_response_window(request);
+	response_window = request_response_window(request);
 
 #ifdef WITH_TLS
-		if (request->proxy->home_server->tls) {
-			RDEBUG2("Proxying request to home server %s port %d (TLS) timeout %d.%06d",
-				inet_ntop(request->proxy->packet->dst_ipaddr.af,
-					  &request->proxy->packet->dst_ipaddr.addr,
-					  buffer, sizeof(buffer)),
-				request->proxy->packet->dst_port,
-				(int) response_window->tv_sec, (int) response_window->tv_usec);
-		} else
+	if (request->proxy->home_server->tls) {
+		RDEBUG2("Proxying request to home server %s port %d (TLS) timeout %d.%06d",
+			inet_ntop(request->proxy->packet->dst_ipaddr.af,
+				  &request->proxy->packet->dst_ipaddr.addr,
+				  buffer, sizeof(buffer)),
+			request->proxy->packet->dst_port,
+			(int) response_window->tv_sec, (int) response_window->tv_usec);
+	} else
 #endif
-			RDEBUG2("Proxying request to home server %s port %d timeout %d.%06d",
-				inet_ntop(request->proxy->packet->dst_ipaddr.af,
-					  &request->proxy->packet->dst_ipaddr.addr,
-					  buffer, sizeof(buffer)),
-				request->proxy->packet->dst_port,
-				(int) response_window->tv_sec, (int) response_window->tv_usec);
+		RDEBUG2("Proxying request to home server %s port %d timeout %d.%06d",
+			inet_ntop(request->proxy->packet->dst_ipaddr.af,
+				  &request->proxy->packet->dst_ipaddr.addr,
+				  buffer, sizeof(buffer)),
+			request->proxy->packet->dst_port,
+			(int) response_window->tv_sec, (int) response_window->tv_usec);
 
-		request->proxy->response_delay = *response_window;
-	}
+	request->proxy->response_delay = *response_window;
 
 	gettimeofday(&request->proxy->packet->timestamp, NULL);
 	request->proxy->home_server->last_packet_sent = request->proxy->packet->timestamp.tv_sec;
