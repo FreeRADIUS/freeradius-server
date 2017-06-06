@@ -450,10 +450,13 @@ eap {
 			#
 #			require_perfect_forward_secrecy = no
 
-			#  As of 3.1 OpenSSL's internal cache has been disabled due to
+			#  As of 4.0 OpenSSL's internal cache has been disabled due to
 			#  scoping/threading issues.
 			#
-			#  The following configuration options are deprecated:
+			#  The following configuration options are deprecated.  TLS
+			#  session caching is now handled by the "cache" module.
+			#  That module is more configurable, and has more back-ends
+			#  than the simple configurations below.
 			#
 			#    enable
 			#    persist_dir
