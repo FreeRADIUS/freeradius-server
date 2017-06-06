@@ -421,6 +421,11 @@ eap {
 			#  state and the cached VPs. This will persist session
 			#  across server restarts.
 			#
+			#  The default directory is ${logdir}, for historical
+			#  reasons.  You should ${db_dir} instead.  And check
+			#  the value of db_dir in the main radiusd.conf file.
+			#  It should not point to ${raddb}
+			#
 			#  The server will need write perms, and the directory
 			#  should be secured from anyone else. You might want
 			#  a script to remove old files from here periodically:
