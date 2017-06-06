@@ -724,7 +724,7 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 
 		case FR_TYPE_OCTETS:
 			if (RDEBUG_ENABLED) {
-				RDEBUG("$%s{'%s'} = &%s:%s -> 0x%pV", hash_name, vp->da->name,
+				RDEBUG("$%s{'%s'} = &%s:%s -> %pV", hash_name, vp->da->name,
 				       list_name, vp->da->name, &vp->data);
 			}
 			(void)hv_store(rad_hv, name, strlen(name),
