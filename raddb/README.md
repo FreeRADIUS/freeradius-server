@@ -192,6 +192,10 @@ Note that `%{expr:1 * &Attr-Name[*]}` does *not* mean repeated
 multiplication.  Instead, the sum of the attributes is taken as
 before, and then the result is multiplied by one.
 
+### rlm_perl
+
+Attributes of type `octets` are now passed directly to Perl as binary
+data, instead of as hex strings.
 
 ### rlm_rest
 
