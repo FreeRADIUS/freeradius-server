@@ -717,19 +717,15 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 		 */
 		switch (vp->vp_type) {
 		case FR_TYPE_STRING:
-			RDEBUG("$%s{'%s'} = &%s:%s -> '%s'", hash_name, vp->da->name, list_name,
-			       vp->da->name, vp->vp_strvalue);
+			RDEBUG("$%s{'%s'} = &%s:%s -> '%pV'", hash_name, vp->da->name, list_name,
+			       vp->da->name, &vp->data);
 			(void)hv_store(rad_hv, name, strlen(name), newSVpvn(vp->vp_strvalue, vp->vp_length), 0);
 			break;
 
 		case FR_TYPE_OCTETS:
 			if (RDEBUG_ENABLED) {
-				char *hex;
-
-				hex = fr_abin2hex(request, vp->vp_octets, vp->vp_length);
-				RDEBUG("$%s{'%s'} = &%s:%s -> 0x%s", hash_name, vp->da->name,
-				       list_name, vp->da->name, hex);
-				talloc_free(hex);
+				RDEBUG("$%s{'%s'} = &%s:%s -> 0x%pV", hash_name, vp->da->name,
+				       list_name, vp->da->name, &vp->data);
 			}
 			(void)hv_store(rad_hv, name, strlen(name),
 				       newSVpvn((char const *)vp->vp_octets, vp->vp_length), 0);
