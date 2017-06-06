@@ -615,7 +615,7 @@ int fr_socket_wait_for_connect(int sockfd, struct timeval const *timeout)
  * Function name is a bit of a misnomer as it can also be used to create client sockets too,
  * such is the nature of UDP.
  *
- * @param[in] src_ipaddr		The IP address to listen on
+ * @param[in] src_ipaddr	The IP address to listen on
  * @param[in,out] src_port	the port to listen on.  If *port == 0, the resolved
  *				service port will be written here.
  * @param[in] port_name		if *port == 0, the name of the port
@@ -656,7 +656,7 @@ int fr_socket_server_udp(fr_ipaddr_t const *src_ipaddr, uint16_t *src_port, char
 	 */
 	sockfd = socket(src_ipaddr->af, SOCK_DGRAM, IPPROTO_UDP);
 	if (sockfd < 0) {
-		fr_strerror_printf("Failed creating UNIX socket: %s", fr_syserror(errno));
+		fr_strerror_printf("Failed creating UDP socket: %s", fr_syserror(errno));
 		return -1;
 	}
 

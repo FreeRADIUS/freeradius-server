@@ -42,7 +42,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *log, int max_inputs
 int fr_schedule_destroy(fr_schedule_t *sc);
 int fr_schedule_get_worker_kq(fr_schedule_t *sc);
 
-int fr_schedule_socket_add(fr_schedule_t *sc, int fd, void *ctx, fr_transport_t *transport) CC_HINT(nonnull);
+int fr_schedule_socket_add(fr_schedule_t *sc, int fd, void *ctx, fr_io_op_t *transport) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }

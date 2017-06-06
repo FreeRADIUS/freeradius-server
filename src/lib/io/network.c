@@ -47,7 +47,7 @@ typedef struct fr_network_socket_t {
 
 	int			fd;			//!< the file descriptor
 	void			*ctx;			//!< transport context
-	fr_transport_t		*transport;		//!< the transport
+	fr_io_op_t		*transport;		//!< the transport
 
 	fr_message_set_t	*ms;			//!< message buffers for this socket.
 	fr_channel_data_t	*cd;			//!< cached in case of allocation & read error
@@ -94,8 +94,8 @@ static int reply_cmp(void const *one, void const *two)
 	fr_channel_data_t const *a = one;
 	fr_channel_data_t const *b = two;
 
-	if (a->io.priority < b->io.priority) return -1;
-	if (a->io.priority > b->io.priority) return +1;
+	if (a->priority < b->priority) return -1;
+	if (a->priority > b->priority) return +1;
 
 	if (a->m.when < b->m.when) return -1;
 	if (a->m.when > b->m.when) return +1;
@@ -363,7 +363,7 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
 		 *	to the stream socket for subsequent reads.
 		 *
 		 *	Since we have a message set for each
-		 *	fr_transport_socket_t, no "head of line"
+		 *	fr_io_socket_t, no "head of line"
 		 *	blocking issues can happen for stream sockets.
 		 */
 		s->cd = cd;
@@ -372,7 +372,7 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
 
 	/*
 	 *	Error: close the connection, and remove the
-	 *	fr_transport_t.
+	 *	fr_io_op_t.
 	 */
 	if (data_size < 0) {
 		fr_log(nr->log, L_DBG_ERR, "error from transport read on socket %d", s->fd);
@@ -390,10 +390,10 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
 	 *	Initialize the rest of the fields of the channel data.
 	 */
 	cd->m.when = fr_time();
-	cd->io.fd = sockfd;
-	cd->io.priority = 0;
-	cd->io.ctx = s->ctx;
-	cd->io.transport = s->transport;
+	cd->io->fd = sockfd;
+	cd->priority = 0;
+	cd->io->ctx = s->ctx;
+	cd->io->op = s->transport;
 	cd->request.start_time = &start_time; /* @todo - set by transport */
 
 	start_time = cd->m.when;
@@ -727,7 +727,7 @@ void fr_network(fr_network_t *nr)
 //		fr_time_t now;
 		ssize_t rcode;
 		fr_channel_data_t *cd;
-		fr_packet_io_t *io;
+		fr_io_t *io;
 
 		/*
 		 *	There are runnable requests.  We still service
@@ -757,14 +757,14 @@ void fr_network(fr_network_t *nr)
 		cd = fr_heap_pop(nr->replies);
 		if (!cd) continue;
 
-		io = &cd->io;
+		io = cd->io;
 
 		/*
 		 *	@todo - call transport "recv reply".  And if
 		 *	the reply is a NAK, don't write it to the
 		 *	network.
 		 */
-		rcode = io->transport->write(io->fd, io->ctx, cd->m.data, cd->m.data_size);
+		rcode = io->op->write(io->fd, io->ctx, cd->m.data, cd->m.data_size);
 		if (rcode < 0) {
 			fr_dlist_t *entry;
 
@@ -774,7 +774,7 @@ void fr_network(fr_network_t *nr)
 			 *	Don't call close, as that will be done
 			 *	in the destructor.
 			 */
-			if (io->transport->error) io->transport->error(io->fd, io->ctx);
+			if (io->op->error) io->op->error(io->fd, io->ctx);
 
 			/*
 			 *	Find the socket which matches this
@@ -796,7 +796,7 @@ void fr_network(fr_network_t *nr)
 					break;
 				}
 			}
-			
+
 			continue;
 		}
 
@@ -804,7 +804,7 @@ void fr_network(fr_network_t *nr)
 			// call write function again at some later date.
 		}
 
-		fr_log(nr->log, L_DBG, "Sending reply to socket %d", cd->io.fd);
+		fr_log(nr->log, L_DBG, "Sending reply to socket %d", cd->io->fd);
 		fr_message_done(&cd->m);
 	}
 }
@@ -827,7 +827,7 @@ void fr_network_exit(fr_network_t *nr)
  * @param ctx the context for the transport
  * @param transport the transport
  */
-int fr_network_socket_add(fr_network_t *nr, int fd, void *ctx, fr_transport_t *transport)
+int fr_network_socket_add(fr_network_t *nr, int fd, void *ctx, fr_io_op_t *transport)
 {
 	fr_network_socket_t m;
 

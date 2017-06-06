@@ -599,7 +599,7 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 				return -1;
 			}
 
-			if (!app->parse) {
+			if (!app->instantiate) {
 				cf_log_err_cs(cs, "Failed to find initialization function for 'transport = %s'",
 					      value);
 				return -1;
@@ -683,7 +683,7 @@ int virtual_servers_init(CONF_SECTION *config)
 				    name2, cf_section_filename(cs));
 			cf_log_info(cs, "  namespace = %s", app->name);
 
-			if (app->parse(NULL, cs, check_config) < 0) {
+			if (app->instantiate(NULL, cs, check_config) < 0) {
 				cf_log_err_cs(cs, "Failed loading virtual server %s", name2);
 				return -1;
 			}

@@ -27,10 +27,10 @@
 #include <freeradius-devel/process.h>
 #include <freeradius-devel/udp.h>
 #include <freeradius-devel/radius/radius.h>
-#include <freeradius-devel/io/transport.h>
+#include <freeradius-devel/io/io.h>
 #include <freeradius-devel/rad_assert.h>
 
-static fr_transport_final_t acct_process(REQUEST *request)
+static fr_io_final_t acct_process(REQUEST *request)
 {
 	VALUE_PAIR *vp;
 	rlm_rcode_t rcode;
@@ -45,7 +45,7 @@ static fr_transport_final_t acct_process(REQUEST *request)
 		if (request->packet->data_len != 0) {
 			if (fr_radius_packet_decode(request->packet, NULL, request->client->secret) < 0) {
 				RDEBUG("Failed decoding RADIUS packet: %s", fr_strerror());
-				return FR_TRANSPORT_FAIL;
+				return FR_IO_FAIL;
 			}
 
 			if (RDEBUG_ENABLED) common_packet_debug(request, request->packet, true);
@@ -62,14 +62,14 @@ static fr_transport_final_t acct_process(REQUEST *request)
 		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->packet->code));
 		if (!dv) {
 			REDEBUG("Failed to find value for &request:Packet-Type");
-			return FR_TRANSPORT_FAIL;
+			return FR_IO_FAIL;
 		}
 
 		unlang = cf_subsection_find_name2(request->server_cs, "recv", dv->alias);
 		if (!unlang) unlang = cf_subsection_find_name2(request->server_cs, "recv", "*");
 		if (!unlang) {
 			REDEBUG("Failed to find 'recv' section");
-			return FR_TRANSPORT_FAIL;
+			return FR_IO_FAIL;
 		}
 
 		RDEBUG("Running 'recv %s' from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
@@ -81,9 +81,9 @@ static fr_transport_final_t acct_process(REQUEST *request)
 	case REQUEST_RECV:
 		rcode = unlang_interpret_continue(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) return FR_TRANSPORT_DONE;
+		if (request->master_state == REQUEST_STOP_PROCESSING) return FR_IO_DONE;
 
-		if (rcode == RLM_MODULE_YIELD) return FR_TRANSPORT_YIELD;
+		if (rcode == RLM_MODULE_YIELD) return FR_IO_YIELD;
 
 		request->log.unlang_indent = 0;
 
@@ -110,7 +110,7 @@ static fr_transport_final_t acct_process(REQUEST *request)
 		case RLM_MODULE_REJECT:
 		case RLM_MODULE_USERLOCK:
 		default:
-			return FR_TRANSPORT_FAIL;
+			return FR_IO_FAIL;
 		}
 
 		/*
@@ -145,9 +145,9 @@ static fr_transport_final_t acct_process(REQUEST *request)
 	case REQUEST_SEND:
 		rcode = unlang_interpret_continue(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) return FR_TRANSPORT_DONE;
+		if (request->master_state == REQUEST_STOP_PROCESSING) return FR_IO_DONE;
 
-		if (rcode == RLM_MODULE_YIELD) return FR_TRANSPORT_YIELD;
+		if (rcode == RLM_MODULE_YIELD) return FR_IO_YIELD;
 
 		request->log.unlang_indent = 0;
 
@@ -170,7 +170,7 @@ static fr_transport_final_t acct_process(REQUEST *request)
 		 */
 		if (!request->reply->code) {
 			RDEBUG("Not sending reply to client.");
-			return FR_TRANSPORT_DONE;
+			return FR_IO_DONE;
 		}
 
 		/*
@@ -180,7 +180,7 @@ static fr_transport_final_t acct_process(REQUEST *request)
 			radlog_request(L_DBG, L_DBG_LVL_1, request, "Sent %s ID %i",
 				       fr_packet_codes[request->reply->code], request->reply->id);
 			rdebug_proto_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
-			return FR_TRANSPORT_DONE;
+			return FR_IO_DONE;
 		}
 
 #ifdef WITH_UDPFROMTO
@@ -199,26 +199,26 @@ static fr_transport_final_t acct_process(REQUEST *request)
 
 		if (fr_radius_packet_encode(request->reply, request->packet, request->client->secret) < 0) {
 			RDEBUG("Failed encoding RADIUS reply: %s", fr_strerror());
-			return FR_TRANSPORT_FAIL;
+			return FR_IO_FAIL;
 		}
 
 		if (fr_radius_packet_sign(request->reply, request->packet, request->client->secret) < 0) {
 			RDEBUG("Failed signing RADIUS reply: %s", fr_strerror());
-			return FR_TRANSPORT_FAIL;
+			return FR_IO_FAIL;
 		}
 		break;
 
 	default:
-		return FR_TRANSPORT_FAIL;
+		return FR_IO_FAIL;
 	}
 
-	return FR_TRANSPORT_REPLY;
+	return FR_IO_REPLY;
 }
 
 
 static void acct_running(REQUEST *request, fr_state_action_t action)
 {
-	fr_transport_final_t rcode;
+	fr_io_final_t rcode;
 
 	TRACE_STATE_MACHINE;
 
@@ -241,9 +241,9 @@ static void acct_running(REQUEST *request, fr_state_action_t action)
 	case REQUEST_RECV:
 	case REQUEST_SEND:
 		rcode = acct_process(request);
-		if (rcode == FR_TRANSPORT_YIELD) return;
+		if (rcode == FR_IO_YIELD) return;
 
-		if (rcode == FR_TRANSPORT_REPLY) {
+		if (rcode == FR_IO_REPLY) {
 			if (fr_radius_packet_send(request->reply, request->packet, request->client->secret) < 0) {
 				RDEBUG("Failed sending RADIUS reply: %s", fr_strerror());
 			}

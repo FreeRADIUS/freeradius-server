@@ -31,9 +31,9 @@
 /** Decode the packet, and set the request->process function
  *
  */
-static int mod_decode(void *transport_ctx, uint8_t *const data, UNUSED size_t data_len, REQUEST *request)
+static int mod_decode(void *io_ctx, uint8_t *const data, UNUSED size_t data_len, REQUEST *request)
 {
-	proto_radius_ctx_t *ctx = transport_ctx;
+	proto_radius_ctx_t *ctx = io_ctx;
 
 	if (fr_radius_verify(data, NULL, (uint8_t const *) ctx->secret, ctx->secret_len) < 0) {
 		return -1;
@@ -50,7 +50,7 @@ static int mod_decode(void *transport_ctx, uint8_t *const data, UNUSED size_t da
 	return 0;
 }
 
-static ssize_t mod_encode(UNUSED void *transport_ctx, UNUSED REQUEST *request, UNUSED uint8_t *buffer, UNUSED size_t buffer_len)
+static ssize_t mod_encode(UNUSED void *io_ctx, UNUSED REQUEST *request, UNUSED uint8_t *buffer, UNUSED size_t buffer_len)
 {
 	return -1;
 }
@@ -178,12 +178,14 @@ static int compile_type(proto_radius_ctx_t *ctx, CONF_SECTION *server, CONF_SECT
 }
 
 
-static int open_transport(proto_radius_ctx_t *ctx, UNUSED fr_schedule_t *handle, CONF_SECTION *server, CONF_SECTION *cs, char const *value,
+static int open_transport(proto_radius_ctx_t *ctx, UNUSED fr_schedule_t *handle,
+			  CONF_SECTION *server, CONF_SECTION *cs, char const *value,
 			  bool verify_config)
 {
-	fr_transport_t *transport;
-	dl_t const *module;
-	fr_app_io_t const *io;
+	dl_t const		*module;
+	fr_app_io_t const	*app_io;
+	CONF_SECTION		*io_cs;
+	void			*io_ctx;
 	char buffer[256];
 
 	if (!value || !*value) {
@@ -199,8 +201,30 @@ static int open_transport(proto_radius_ctx_t *ctx, UNUSED fr_schedule_t *handle,
 		return -1;
 	}
 
-	io = (fr_app_io_t const *) module->common;
-	if (io->open(ctx, &ctx->sockfd, &ctx->io_ctx, &transport, cs, verify_config) < 0) {
+	/*
+	 *	Lookup io section.
+	 */
+	io_cs = cf_subsection_find(cs, value);
+	if (!io_cs) {
+		cf_log_err_cs(cs, "Must contain a '%s' section", value);
+		return -1;
+	}
+
+	if (dl_instance_data_alloc(&io_ctx, NULL, module, io_cs) < 0) {
+		PERROR("Failed io_ctx data");
+		return -1;
+	}
+
+	app_io = (fr_app_io_t const *) module->common;
+	if (app_io->instantiate(io_cs, io_ctx) < 0) {
+		cf_log_err_cs(cs, "Failed instantiating 'transport = %s'", value);
+		talloc_free(io_ctx);
+		return -1;
+	}
+
+	if (!verify_config) return 0;
+
+	if (app_io->op.open(io_ctx) < 0) {
 		cf_log_err_cs(cs, "Failed compiling unlang for 'transport = %s'", value);
 		return -1;
 	}
@@ -211,7 +235,7 @@ static int open_transport(proto_radius_ctx_t *ctx, UNUSED fr_schedule_t *handle,
 	 *
 	 *	@note - could also do this in the recv_request function?
 	 */
-	ctx->transport = *transport;
+	ctx->transport = app_io->op;
 	ctx->transport.decode = mod_decode;
 	ctx->transport.encode = mod_encode;
 
@@ -344,7 +368,7 @@ static int mod_parse(fr_schedule_t *handle, CONF_SECTION *cs, bool verify_config
 			if (cf_data_find(cs, char const *, value)) continue;
 
 			app = (fr_app_subtype_t const *) module->common;
-			if (app->compile(cs) < 0) {
+			if (app->instantiate(cs) < 0) {
 				cf_log_err_cs(cs, "Failed compiling unlang for 'type = %s'", value);
 				return -1;
 			}
@@ -362,5 +386,5 @@ fr_app_t proto_radius = {
 	.name		= "radius",
 	.load		= mod_load,
 	.bootstrap	= mod_bootstrap,
-	.parse		= mod_parse,
+	.instantiate	= mod_parse,
 };

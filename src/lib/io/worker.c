@@ -52,8 +52,8 @@
  *  the "time_order" list, and ages out requests which have been
  *  running for "too long".
  *
- *  A request may return one of FR_TRANSPORT_YIELD,
- *  FR_TRANSPORT_REPLY, or FR_TRANSPORT_DONE.  If a request is
+ *  A request may return one of FR_IO_YIELD,
+ *  FR_IO_REPLY, or FR_IO_DONE.  If a request is
  *  yeilded, it is placed onto the yielded list in the worker
  *  "tracking" data structure.
  *
@@ -322,11 +322,11 @@ static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void 
  */
 static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now)
 {
-	size_t size;
-	fr_channel_data_t *reply;
-	fr_channel_t *ch;
-	fr_message_set_t *ms;
-	fr_packet_io_t *io;
+	size_t			size;
+	fr_channel_data_t	*reply;
+	fr_channel_t		*ch;
+	fr_message_set_t	*ms;
+	fr_io_t		*io;
 
 	worker->num_timeouts++;
 
@@ -334,7 +334,7 @@ static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t 
 	 *	Cache the outbound channel.  We'll need it later.
 	 */
 	ch = cd->channel.ch;
-	io = &cd->io;
+	io = cd->io;
 
 	ms = fr_channel_worker_ctx_get(ch);
 	rad_assert(ms != NULL);
@@ -342,13 +342,13 @@ static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t 
 	/*
 	 *	Allocate a default message size.
 	 */
-	reply = (fr_channel_data_t *) fr_message_reserve(ms, io->transport->default_message_size);
+	reply = (fr_channel_data_t *) fr_message_reserve(ms, io->op->default_message_size);
 	rad_assert(reply != NULL);
 
 	/*
 	 *	Encode a NAK
 	 */
-	size = io->transport->nak(io->ctx, cd->m.data, cd->m.data_size, reply->m.data, reply->m.rb_size);
+	size = io->op->nak(io->ctx, cd->m.data, cd->m.data_size, reply->m.data, reply->m.rb_size);
 
 	(void) fr_message_alloc(ms, &reply->m, size);
 
@@ -413,7 +413,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	if (size) {
 		ssize_t encoded;
 
-		encoded = request->io.transport->encode(request->io.ctx, request, reply->m.data, reply->m.rb_size);
+		encoded = request->io->op->encode(request->io->ctx, request, reply->m.data, reply->m.rb_size);
 		if (encoded < 0) {
 			fr_log(worker->log, L_DBG, "\t%sfails encode", worker->name);
 			encoded = 0;
@@ -468,7 +468,6 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	fr_dlist_remove(&request->time_order);
 	talloc_free(request);
 }
-
 
 /** Check timeouts on the various queues
  *
@@ -543,7 +542,7 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 	 */
 	while ((entry = FR_DLIST_TAIL(worker->time_order)) != NULL) {
 		REQUEST *request;
-		fr_transport_final_t final;
+		fr_io_final_t final;
 
 		request = fr_ptr_to_type(REQUEST, time_order, entry);
 		waiting = now - request->recv_time;
@@ -556,9 +555,9 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 		fr_dlist_remove(&request->time_order);
 		(void) fr_heap_extract(worker->runnable, request);
 
-		final = request->process_async(request, FR_TRANSPORT_ACTION_DONE);
+		final = request->process_async(request, FR_IO_ACTION_DONE);
 
-		if (final != FR_TRANSPORT_DONE) {
+		if (final != FR_IO_DONE) {
 			fr_dlist_insert_tail(&worker->waiting_to_die, &request->time_order);
 			continue;
 		}
@@ -578,13 +577,13 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 	     entry != NULL;
 	     entry = FR_DLIST_NEXT(worker->waiting_to_die, entry)) {
 		REQUEST *request;
-		fr_transport_final_t final;
+		fr_io_final_t final;
 
 		request = fr_ptr_to_type(REQUEST, time_order, entry);
 
-		final = request->process_async(request, FR_TRANSPORT_ACTION_DONE);
+		final = request->process_async(request, FR_IO_ACTION_DONE);
 
-		if (final == FR_TRANSPORT_DONE) {
+		if (final == FR_IO_DONE) {
 			fr_dlist_remove(&request->time_order);
 
 			fr_log(worker->log, L_DBG, "(%"PRIu64") finally finished", request->number);
@@ -608,13 +607,13 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
  */
 static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 {
-	int rcode;
-	fr_channel_data_t *cd;
-	REQUEST *request;
-	fr_dlist_t *entry;
-	fr_packet_io_t *io;
+	int			rcode;
+	fr_channel_data_t	*cd;
+	REQUEST			*request;
+	fr_dlist_t		*entry;
+	fr_io_t		*io;
 #ifndef HAVE_TALLOC_POOLED_OBJECT
-	TALLOC_CTX *ctx;
+	TALLOC_CTX		*ctx;
 #endif
 
 	/*
@@ -669,7 +668,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	 *	Receive a message to the worker queue, and decode it
 	 *	to a request.
 	 */
-	rad_assert(cd->io.transport != NULL);
+	rad_assert(cd->io->op != NULL);
 
 	/*
 	 *	Update the transport-specific fields.
@@ -689,14 +688,14 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	request->number = 0;	/* @todo - assigned by someone intelligent... */
 
 	request->io = cd->io;
-	io = &request->io;
+	io = request->io;
 
 	/*
 	 *	Now that the "request" structure has been initialized, go decode the packet.
 	 *
 	 *	Note that this also sets the "process_async" function.
 	 */
-	rcode = io->transport->decode(io->ctx, cd->m.data, cd->m.data_size, request);
+	rcode = io->op->decode(io->ctx, cd->m.data, cd->m.data_size, request);
 	if (rcode < 0) {
 		fr_log(worker->log, L_DBG, "\t%sFAILED decode of request %"PRIu64, worker->name, request->number);
 		talloc_free(ctx);
@@ -780,7 +779,7 @@ nak:
 static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 {
 	ssize_t size = 0;
-	fr_transport_final_t final;
+	fr_io_final_t final;
 
 	fr_log(worker->log, L_DBG, "\t%s running request (%"PRIu64")", worker->name, request->number);
 
@@ -790,16 +789,16 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	 */
 	if ((*request->original_recv_time == request->recv_time) &&
 	    fr_channel_active(request->channel)) {
-		final = request->process_async(request, FR_TRANSPORT_ACTION_RUN);
+		final = request->process_async(request, FR_IO_ACTION_RUN);
 
 	} else {
-		final = request->process_async(request, FR_TRANSPORT_ACTION_DONE);
+		final = request->process_async(request, FR_IO_ACTION_DONE);
 
 		/*
 		 *	If the request isn't done, put it into the
 		 *	async cleanup queue.
 		 */
-		if (final != FR_TRANSPORT_DONE) {
+		if (final != FR_IO_DONE) {
 			fr_dlist_remove(&request->time_order);
 			fr_dlist_insert_tail(&worker->waiting_to_die, &request->time_order);
 			return;
@@ -810,24 +809,24 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	 *	Figure out what to do next.
 	 */
 	switch (final) {
-	case FR_TRANSPORT_DONE:
+	case FR_IO_DONE:
 		/*
 		 *	Done: don't send a reply.
 		 */
 		break;
 
-	case FR_TRANSPORT_FAIL:
+	case FR_IO_FAIL:
 		/*
 		 *	Something went wrong.  It's done, but we don't send a reply.
 		 */
 		break;
 
-	case FR_TRANSPORT_YIELD:
+	case FR_IO_YIELD:
 		fr_time_tracking_yield(&request->tracking, fr_time(), &worker->tracking);
 		return;
 
-	case FR_TRANSPORT_REPLY:
-		size = request->io.transport->default_message_size;
+	case FR_IO_REPLY:
+		size = request->io->op->default_message_size;
 		break;
 	}
 
@@ -907,8 +906,8 @@ static int worker_message_cmp(void const *one, void const *two)
 	fr_channel_data_t const *a = one;
 	fr_channel_data_t const *b = two;
 
-	if (a->io.priority < b->io.priority) return -1;
-	if (a->io.priority > b->io.priority) return +1;
+	if (a->priority < b->priority) return -1;
+	if (a->priority > b->priority) return +1;
 
 	if (a->m.when < b->m.when) return -1;
 	if (a->m.when > b->m.when) return +1;
@@ -924,8 +923,8 @@ static int worker_request_cmp(void const *one, void const *two)
 	REQUEST const *a = one;
 	REQUEST const *b = two;
 
-	if (a->io.priority < b->io.priority) return -1;
-	if (a->io.priority > b->io.priority) return +1;
+	if (a->priority < b->priority) return -1;
+	if (a->priority > b->priority) return +1;
 
 	if (a->recv_time < b->recv_time) return -1;
 	if (a->recv_time > b->recv_time) return +1;
@@ -1157,7 +1156,7 @@ void fr_worker(fr_worker_t *worker)
 		if (!request) continue;
 
 		rad_assert(request->process_async != NULL);
-		rad_assert(request->io.transport != NULL);
+		rad_assert(request->io->op != NULL);
 
 		/*
 		 *	Run the request, and either track it as

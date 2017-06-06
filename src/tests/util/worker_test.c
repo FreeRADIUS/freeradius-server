@@ -76,10 +76,10 @@ static void NEVER_RETURNS usage(void)
 	exit(1);
 }
 
-static fr_transport_final_t test_process(REQUEST *request, fr_transport_action_t action)
+static fr_io_final_t test_process(REQUEST *request, fr_io_action_t action)
 {
 	MPRINT1("\t\tPROCESS --- request %"PRIu64" action %d\n", request->number, action);
-	return FR_TRANSPORT_REPLY;
+	return FR_IO_REPLY;
 }
 
 static int test_decode(void *packet_ctx, uint8_t *const data, size_t data_len, REQUEST *request)
@@ -120,7 +120,7 @@ static size_t test_nak(void const *packet_ctx, uint8_t *const packet, size_t pac
 	return 10;
 }
 
-static fr_transport_t transport = {
+static fr_io_op_t transport = {
 	.name = "worker-test",
 	.default_message_size = 4096,
 	.decode = test_decode,
@@ -258,10 +258,10 @@ static void master_process(void)
 
 			cd->m.when = fr_time();
 
-			cd->io.fd = -1;
-			cd->io.priority = 0;
-			cd->io.ctx = NULL;
-			cd->io.transport = &transport;
+			cd->io->fd = -1;
+			cd->priority = 0;
+			cd->io->ctx = NULL;
+			cd->io->op = &transport;
 
 			if (touch_memory) {
 				size_t j, k;

@@ -567,7 +567,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *logger, int max_inp
  */
 int fr_schedule_destroy(fr_schedule_t *sc)
 {
-	int i, num;		
+	int i, num;
 	fr_schedule_worker_t *sw;
 
 	sc->running = false;
@@ -635,7 +635,7 @@ int fr_schedule_destroy(fr_schedule_t *sc)
  * @param ctx the context for the transport
  * @param transport the transport
  */
-int fr_schedule_socket_add(fr_schedule_t *sc, int fd, void *ctx, fr_transport_t *transport)
+int fr_schedule_socket_add(fr_schedule_t *sc, int fd, void *ctx, fr_io_op_t *transport)
 {
 	return fr_network_socket_add(sc->sn->rc, fd, ctx, transport);
 }

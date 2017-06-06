@@ -31,7 +31,7 @@ RCSIDH(worker_h, "$Id$")
 #include <freeradius-devel/event.h>
 #include <freeradius-devel/fr_log.h>
 
-#include <freeradius-devel/io/transport.h>
+#include <freeradius-devel/io/io.h>
 
 #ifdef __cplusplus
 extern "C" {

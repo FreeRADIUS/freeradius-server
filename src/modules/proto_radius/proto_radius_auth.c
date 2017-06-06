@@ -28,7 +28,7 @@
 #include <freeradius-devel/state.h>
 #include <freeradius-devel/udp.h>
 #include <freeradius-devel/radius/radius.h>
-#include <freeradius-devel/io/transport.h>
+#include <freeradius-devel/io/io.h>
 #include <freeradius-devel/rad_assert.h>
 
 #ifndef USEC
@@ -277,7 +277,7 @@ static void auth_reject_delay(REQUEST *request, fr_state_action_t action)
 }
 
 
-static fr_transport_final_t auth_process(REQUEST *request)
+static fr_io_final_t auth_process(REQUEST *request)
 {
 	VALUE_PAIR *vp, *auth_type;
 	rlm_rcode_t rcode;
@@ -293,7 +293,7 @@ static fr_transport_final_t auth_process(REQUEST *request)
 		if (request->packet->data_len != 0) {
 			if (fr_radius_packet_decode(request->packet, NULL, request->client->secret) < 0) {
 				RDEBUG("Failed decoding RADIUS packet: %s", fr_strerror());
-				return FR_TRANSPORT_FAIL;
+				return FR_IO_FAIL;
 			}
 
 			if (RDEBUG_ENABLED) common_packet_debug(request, request->packet, true);
@@ -345,9 +345,9 @@ static fr_transport_final_t auth_process(REQUEST *request)
 	case REQUEST_RECV:
 		rcode = unlang_interpret_continue(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) return FR_TRANSPORT_DONE;
+		if (request->master_state == REQUEST_STOP_PROCESSING) return FR_IO_DONE;
 
-		if (rcode == RLM_MODULE_YIELD) return FR_TRANSPORT_YIELD;
+		if (rcode == RLM_MODULE_YIELD) return FR_IO_YIELD;
 
 		request->log.unlang_indent = 0;
 
@@ -446,9 +446,9 @@ static fr_transport_final_t auth_process(REQUEST *request)
 	case REQUEST_PROCESS:
 		rcode = unlang_interpret_continue(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) return FR_TRANSPORT_DONE;
+		if (request->master_state == REQUEST_STOP_PROCESSING) return FR_IO_DONE;
 
-		if (rcode == RLM_MODULE_YIELD) return FR_TRANSPORT_YIELD;
+		if (rcode == RLM_MODULE_YIELD) return FR_IO_YIELD;
 
 		request->log.unlang_indent = 0;
 
@@ -560,9 +560,9 @@ static fr_transport_final_t auth_process(REQUEST *request)
 	case REQUEST_SEND:
 		rcode = unlang_interpret_continue(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) return FR_TRANSPORT_DONE;
+		if (request->master_state == REQUEST_STOP_PROCESSING) return FR_IO_DONE;
 
-		if (rcode == RLM_MODULE_YIELD) return FR_TRANSPORT_YIELD;
+		if (rcode == RLM_MODULE_YIELD) return FR_IO_YIELD;
 
 		request->log.unlang_indent = 0;
 
@@ -648,7 +648,7 @@ static fr_transport_final_t auth_process(REQUEST *request)
 		 */
 		if (!request->reply->code) {
 			RDEBUG("Not sending reply to client.");
-			return FR_TRANSPORT_REPLY;
+			return FR_IO_REPLY;
 		}
 
 		/*
@@ -660,7 +660,7 @@ static fr_transport_final_t auth_process(REQUEST *request)
 			radlog_request(L_DBG, L_DBG_LVL_1, request, "Sent %s ID %i",
 				       fr_packet_codes[request->reply->code], request->reply->id);
 			rdebug_proto_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
-			return FR_TRANSPORT_REPLY;
+			return FR_IO_REPLY;
 		}
 
 #ifdef WITH_UDPFROMTO
@@ -679,26 +679,26 @@ static fr_transport_final_t auth_process(REQUEST *request)
 
 		if (fr_radius_packet_encode(request->reply, request->packet, request->client->secret) < 0) {
 			RDEBUG("Failed encoding RADIUS reply: %s", fr_strerror());
-			return FR_TRANSPORT_FAIL;
+			return FR_IO_FAIL;
 		}
 
 		if (fr_radius_packet_sign(request->reply, request->packet, request->client->secret) < 0) {
 			RDEBUG("Failed signing RADIUS reply: %s", fr_strerror());
-			return FR_TRANSPORT_FAIL;
+			return FR_IO_FAIL;
 		}
 		break;
 
 	default:
-		return FR_TRANSPORT_FAIL;
+		return FR_IO_FAIL;
 	}
 
-	return FR_TRANSPORT_REPLY;
+	return FR_IO_REPLY;
 }
 
 
 static void auth_running(REQUEST *request, fr_state_action_t action)
 {
-	fr_transport_final_t rcode;
+	fr_io_final_t rcode;
 
 	TRACE_STATE_MACHINE;
 
@@ -721,7 +721,7 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 	case REQUEST_RECV:
 	case REQUEST_SEND:
 		rcode = auth_process(request);
-		if (rcode == FR_TRANSPORT_YIELD) return;
+		if (rcode == FR_IO_YIELD) return;
 
 		/*
 		 *	We can't do anything with the packet.
@@ -729,7 +729,7 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 		 *	state we have, and clean up the packet
 		 *	immediately.
 		 */
-		if (rcode == FR_TRANSPORT_FAIL) {
+		if (rcode == FR_IO_FAIL) {
 			request->reply->code = 0;
 			fr_state_discard(global_state, request, request->packet);
 			goto done;
@@ -738,13 +738,13 @@ static void auth_running(REQUEST *request, fr_state_action_t action)
 		/*
 		 *	Forcibly done, don't do anything else.
 		 */
-		if (rcode == FR_TRANSPORT_DONE) {
+		if (rcode == FR_IO_DONE) {
 			request->reply->code = 0;
 			fr_state_discard(global_state, request, request->packet);
 			goto done;
 		}
 
-		rad_assert(rcode == FR_TRANSPORT_REPLY);
+		rad_assert(rcode == FR_IO_REPLY);
 
 		/*
 		 *	Internally generated request: clean it

@@ -27,6 +27,7 @@ RCSIDH(channel_h, "$Id$")
 
 #include <freeradius-devel/io/message.h>
 #include <freeradius-devel/io/control.h>
+#include <freeradius-devel/io/io.h>
 
 #include <sys/types.h>
 #include <sys/event.h>
@@ -48,16 +49,7 @@ typedef struct fr_channel_t fr_channel_t;
  *	Forward declaration until such time as we fix the code so that
  *	the network threads can push transports to worker threads.
  */
-typedef struct fr_transport_t fr_transport_t;
-
-typedef struct fr_packet_io_t {
-	int			fd;			//!< the file descriptor
-	uint32_t		priority;		//!< 0 is higher priority than 1
-
-	void			*ctx;			//!< for the transport
-	fr_transport_t		*transport;		//!< the transport structure
-} fr_packet_io_t;
-
+typedef struct fr_io fr_io_t;
 
 typedef enum fr_channel_event_t {
 	FR_CHANNEL_ERROR = 0,
@@ -100,8 +92,6 @@ typedef struct fr_channel_data_t {
 		} channel;
 	};
 
-	fr_packet_io_t	io;					//!< for tracking packet transport, etc.
-
 	union {
 		struct {
 			fr_time_t		*start_time;	//!< time original request started (network -> worker)
@@ -115,6 +105,9 @@ typedef struct fr_channel_data_t {
 	        } reply;
 	};
 
+	uint32_t	priority;				//!< Priority of this packet.
+
+	fr_io_t	*io;				//!< for tracking packet transport, etc.
 } fr_channel_data_t;
 
 fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, fr_control_t *master, fr_control_t *worker) CC_HINT(nonnull);

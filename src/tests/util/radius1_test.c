@@ -95,10 +95,10 @@ static void NEVER_RETURNS usage(void)
 	exit(1);
 }
 
-static fr_transport_final_t test_process(REQUEST *request, fr_transport_action_t action)
+static fr_io_final_t test_process(REQUEST *request, fr_io_action_t action)
 {
 	MPRINT1("\t\tPROCESS --- request %"PRIu64" action %d\n", request->number, action);
-	return FR_TRANSPORT_REPLY;
+	return FR_IO_REPLY;
 }
 
 
@@ -145,7 +145,7 @@ static size_t test_nak(void const *packet_ctx, uint8_t *const packet, size_t pac
 	return 10;
 }
 
-static fr_transport_t transport = {
+static fr_io_op_t transport = {
 	.name = "worker-test",
 	.default_message_size = 4096,
 	.decode = test_decode,
@@ -185,7 +185,7 @@ static void *worker_thread(void *arg)
 
 static void send_reply(int sockfd, fr_channel_data_t *reply)
 {
-	fr_packet_ctx_t *pc = reply->io.ctx;
+	fr_packet_ctx_t *pc = reply->io->ctx;
 
 	MPRINT1("Master got reply %d size %zd\n", pc->id, reply->m.data_size);
 
@@ -344,10 +344,10 @@ static void master_process(TALLOC_CTX *ctx)
 			rad_assert(pc != NULL);
 			pc->salen = sizeof(pc->src);
 
-			cd->io.fd = -1;
-			cd->io.priority = 0;
-			cd->io.ctx = pc;
-			cd->io.transport = &transport;
+			cd->io->fd = -1;
+			cd->priority = 0;
+			cd->io->ctx = pc;
+			cd->io->op = &transport;
 
 			data_size = recvfrom(sockfd, cd->m.data, cd->m.rb_size, 0,
 					     (struct sockaddr *) &pc->src, &pc->salen);

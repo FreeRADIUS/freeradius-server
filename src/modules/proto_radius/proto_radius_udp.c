@@ -25,49 +25,49 @@
 #include <freeradius-devel/protocol.h>
 #include <freeradius-devel/udp.h>
 #include <freeradius-devel/radius/radius.h>
-#include <freeradius-devel/io/transport.h>
+#include <freeradius-devel/io/io.h>
 #include <freeradius-devel/rad_assert.h>
 #include "proto_radius.h"
 
 typedef struct {
-	int			sockfd;		//!< Socket the packet was received on.
+	int				sockfd;		//!< Socket the packet was received on.
 
-	uint8_t const		*secret;
-	size_t			secret_len;
+	uint8_t const			*secret;
+	size_t				secret_len;
 
-	uint8_t			original[20];
-	uint8_t			id;
+	uint8_t				original[20];
+	uint8_t				id;
 
-	struct sockaddr_storage	src;
-	socklen_t		salen;
+	struct sockaddr_storage		src;
+	socklen_t			salen;
 } fr_packet_ctx_t;
 
-/** Basic config for a UDP listen socket
- *
- */
 typedef struct {
-	fr_ipaddr_t		ipaddr;			//!< Ipaddr to listen on.
+	int				sockfd;
 
-	bool			ipaddr_is_set;		//!< ipaddr config item is set.
-	bool			ipv4addr_is_set;	//!< ipv4addr config item is set.
-	bool			ipv6addr_is_set;	//!< ipv6addr config item is set.
+	fr_ipaddr_t			ipaddr;			//!< Ipaddr to listen on.
 
-	char const		*interface;		//!< Interface to bind to.
+	bool				ipaddr_is_set;		//!< ipaddr config item is set.
+	bool				ipv4addr_is_set;	//!< ipv4addr config item is set.
+	bool				ipv6addr_is_set;	//!< ipv6addr config item is set.
 
-	uint16_t		port;			//!< Port to listen on.
-	uint32_t		recv_buff;		//!< How big the kernel's receive buffer should be.
-	bool			recv_buff_is_set;	//!< Whether we were provided with a receive buffer value.
-} fr_proto_radius_udp_conf_t;
+	char const			*interface;		//!< Interface to bind to.
+
+	uint16_t			port;			//!< Port to listen on.
+	uint32_t			recv_buff;		//!< How big the kernel's receive buffer should be.
+	bool				recv_buff_is_set;	//!< Whether we were provided with a receive
+								//!< buffer value.
+} fr_proto_radius_udp_ctx_t;
 
 static const CONF_PARSER udp_listen_conf[] = {
-	{ FR_CONF_IS_SET_OFFSET("ipaddr", FR_TYPE_COMBO_IP_ADDR, fr_proto_radius_udp_conf_t, ipaddr) },
-	{ FR_CONF_IS_SET_OFFSET("ipv4addr", FR_TYPE_IPV4_ADDR, fr_proto_radius_udp_conf_t, ipaddr) },
-	{ FR_CONF_IS_SET_OFFSET("ipv6addr", FR_TYPE_IPV6_ADDR, fr_proto_radius_udp_conf_t, ipaddr) },
+	{ FR_CONF_IS_SET_OFFSET("ipaddr", FR_TYPE_COMBO_IP_ADDR, fr_proto_radius_udp_ctx_t, ipaddr) },
+	{ FR_CONF_IS_SET_OFFSET("ipv4addr", FR_TYPE_IPV4_ADDR, fr_proto_radius_udp_ctx_t, ipaddr) },
+	{ FR_CONF_IS_SET_OFFSET("ipv6addr", FR_TYPE_IPV6_ADDR, fr_proto_radius_udp_ctx_t, ipaddr) },
 
-	{ FR_CONF_OFFSET("interface", FR_TYPE_STRING, fr_proto_radius_udp_conf_t, interface) },
+	{ FR_CONF_OFFSET("interface", FR_TYPE_STRING, fr_proto_radius_udp_ctx_t, interface) },
 
-	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, fr_proto_radius_udp_conf_t, port) },
-	{ FR_CONF_IS_SET_OFFSET("recv_buff", FR_TYPE_UINT32, fr_proto_radius_udp_conf_t, recv_buff) },
+	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, fr_proto_radius_udp_ctx_t, port) },
+	{ FR_CONF_IS_SET_OFFSET("recv_buff", FR_TYPE_UINT32, fr_proto_radius_udp_ctx_t, recv_buff) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -126,87 +126,66 @@ static ssize_t mod_write(int sockfd, void *ctx, uint8_t *buffer, size_t buffer_l
 	return data_size;
 }
 
-/*
- *	We'll figure out how to fix this later...
- */
-static fr_transport_t proto_radius_udp_transport = {
-	.name			= "radius_udp",
-	.default_message_size	= 4096,
-	.read			= mod_read,
-	.write			= mod_write,
-};
-
-
-/** Open a UDP listener for RADIUS
- *
- */
-static int mod_open(TALLOC_CTX *ctx, int *sockfd_p, void **transport_ctx,
-		    fr_transport_t **transport_p, CONF_SECTION *listen, bool verify_config)
+static int mod_instantiate(UNUSED CONF_SECTION *cs, void *instance)
 {
-	CONF_SECTION 			*cs;
-	fr_proto_radius_udp_conf_t	*config;
-
-	/*
-	 *	We know our name, so we don't need to re-parse the
-	 *	"transport" config item
-	 */
-	cs = cf_subsection_find_next(listen, NULL, "udp");
-
-	/*
-	 *	Be gentle...
-	 */
-	if (!cs) {
-		cs = listen;
-	} else {
-		cf_log_info(cs, "    udp {");
-	}
-
-	config = talloc_zero(ctx, fr_proto_radius_udp_conf_t);
-	if (cf_section_parse(config, config, cs, udp_listen_conf) < 0) return -1;
+	fr_proto_radius_udp_ctx_t	*inst = instance;
 
 	/*
 	 *	Default to all IPv6 interfaces (it's the future)
 	 */
-	if (!config->ipaddr_is_set && !config->ipv4addr_is_set && !config->ipv6addr_is_set) {
-		config->ipaddr.af = AF_INET6;
-		config->ipaddr.prefix = 128;
-		config->ipaddr.addr.v6 = in6addr_any;	/* in6addr_any binds to all addresses */
+	if (!inst->ipaddr_is_set && !inst->ipv4addr_is_set && !inst->ipv6addr_is_set) {
+		inst->ipaddr.af = AF_INET6;
+		inst->ipaddr.prefix = 128;
+		inst->ipaddr.addr.v6 = in6addr_any;	/* in6addr_any binds to all addresses */
 	}
 
-	if (config->recv_buff_is_set) {
-		FR_INTEGER_BOUND_CHECK("recv_buff", config->recv_buff, >=, 32);
-		FR_INTEGER_BOUND_CHECK("recv_buff", config->recv_buff, <=, INT_MAX);
+	if (inst->recv_buff_is_set) {
+		FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, >=, 32);
+		FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, <=, INT_MAX);
 	}
 
-	if (cs != listen) cf_log_info(cs, "    }");
+	return 0;
+}
 
-	/*
-	 *	If we're only checking the configuration, don't open
-	 *	sockets.
-	 */
-	if (verify_config) return 0;
+/** Open a UDP listener for RADIUS
+ *
+ * @param[in] instance	of the RADIUS UDP I/O path.
+ */
+static int mod_open(void *instance)
+{
+	fr_proto_radius_udp_ctx_t	*inst = instance;
 
-	*transport_p = &proto_radius_udp_transport;
-	*sockfd_p = -1;
-	*transport_ctx = talloc_strdup(ctx, "testing");
-	if (!*transport_ctx) {
-		cf_log_err_cs(cs, "Failed allocating memory");
-		talloc_free(config);
+	int				sockfd = 0;
+
+	sockfd = fr_socket_server_udp(&inst->ipaddr, &inst->port, NULL, true);
+	if (sockfd < 0) {
+		ERROR("%s", fr_strerror());
+	error:
 		return -1;
 	}
 
-	/*
-	 *	Allocate fr_app_t
-	 *	open sockets
-	 *	create transport structure.
-	 */
+	if (fr_socket_bind(sockfd, &inst->ipaddr, &inst->port, inst->interface) < 0) {
+		ERROR("Failed binding socket: %s", fr_strerror());
+		goto error;
+	}
+
+	inst->sockfd = sockfd;
 
 	return 0;
 }
 
 extern fr_app_io_t proto_radius_udp;
 fr_app_io_t proto_radius_udp = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "radius_udp",
-	.open		= mod_open,
+	.magic			= RLM_MODULE_INIT,
+	.name			= "radius_udp",
+	.config			= udp_listen_conf,
+	.inst_size		= sizeof(fr_proto_radius_udp_ctx_t),
+	.instantiate		= mod_instantiate,
+	.op 			= {
+		.name			= "radius_udp",
+		.default_message_size	= 4096,
+		.open			= mod_open,
+		.read			= mod_read,
+		.write			= mod_write,
+	}
 };

@@ -27,10 +27,10 @@
 #include <freeradius-devel/process.h>
 #include <freeradius-devel/udp.h>
 #include <freeradius-devel/radius/radius.h>
-#include <freeradius-devel/io/transport.h>
+#include <freeradius-devel/io/io.h>
 #include <freeradius-devel/rad_assert.h>
 
-static fr_transport_final_t mod_process(REQUEST *request, UNUSED fr_transport_action_t action)
+static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 {
 	rlm_rcode_t rcode;
 	CONF_SECTION *unlang;
@@ -52,7 +52,7 @@ static fr_transport_final_t mod_process(REQUEST *request, UNUSED fr_transport_ac
 		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->packet->code));
 		if (!dv) {
 			REDEBUG("Failed to find value for &request:Packet-Type");
-			return FR_TRANSPORT_FAIL;
+			return FR_IO_FAIL;
 		}
 
 		unlang = cf_subsection_find_name2(request->server_cs, "recv", dv->alias);
@@ -71,9 +71,9 @@ static fr_transport_final_t mod_process(REQUEST *request, UNUSED fr_transport_ac
 	case REQUEST_RECV:
 		rcode = unlang_interpret_continue(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) return FR_TRANSPORT_DONE;
+		if (request->master_state == REQUEST_STOP_PROCESSING) return FR_IO_DONE;
 
-		if (rcode == RLM_MODULE_YIELD) return FR_TRANSPORT_YIELD;
+		if (rcode == RLM_MODULE_YIELD) return FR_IO_YIELD;
 
 		request->log.unlang_indent = 0;
 
@@ -115,9 +115,9 @@ static fr_transport_final_t mod_process(REQUEST *request, UNUSED fr_transport_ac
 	case REQUEST_SEND:
 		rcode = unlang_interpret_continue(request);
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) return FR_TRANSPORT_DONE;
+		if (request->master_state == REQUEST_STOP_PROCESSING) return FR_IO_DONE;
 
-		if (rcode == RLM_MODULE_YIELD) return FR_TRANSPORT_YIELD;
+		if (rcode == RLM_MODULE_YIELD) return FR_IO_YIELD;
 
 		request->log.unlang_indent = 0;
 
@@ -161,7 +161,7 @@ static fr_transport_final_t mod_process(REQUEST *request, UNUSED fr_transport_ac
 		 */
 		if (!request->reply->code) {
 			RDEBUG("Not sending reply to client.");
-			return FR_TRANSPORT_DONE;
+			return FR_IO_DONE;
 		}
 
 		/*
@@ -171,7 +171,7 @@ static fr_transport_final_t mod_process(REQUEST *request, UNUSED fr_transport_ac
 			radlog_request(L_DBG, L_DBG_LVL_1, request, "Sent %s ID %i",
 				       fr_packet_codes[request->reply->code], request->reply->id);
 			rdebug_proto_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
-			return FR_TRANSPORT_DONE;
+			return FR_IO_DONE;
 		}
 
 #ifdef WITH_UDPFROMTO
@@ -190,10 +190,10 @@ static fr_transport_final_t mod_process(REQUEST *request, UNUSED fr_transport_ac
 		break;
 
 	default:
-		return FR_TRANSPORT_FAIL;
+		return FR_IO_FAIL;
 	}
 
-	return FR_TRANSPORT_REPLY;
+	return FR_IO_REPLY;
 }
 
 
@@ -263,6 +263,6 @@ extern fr_app_subtype_t proto_radius_status;
 fr_app_subtype_t proto_radius_status = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "radius_status",
-	.compile	= mod_compile,
+	.instantiate	= mod_compile,
 	.process	= mod_process,
 };

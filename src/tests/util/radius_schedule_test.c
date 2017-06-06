@@ -67,10 +67,10 @@ extern int		fr_socket_server_udp(fr_ipaddr_t *ipaddr, int *port, char const *por
 extern int		fr_socket_bind(int sockfd, fr_ipaddr_t *ipaddr, int *port, char const *interface);
 extern int		fr_fault_setup(char const *cmd, char const *program);
 
-static fr_transport_final_t test_process(REQUEST *request, fr_transport_action_t action)
+static fr_io_final_t test_process(REQUEST *request, fr_io_action_t action)
 {
 	MPRINT1("\t\tPROCESS --- request %"PRIu64" action %d\n", request->number, action);
-	return FR_TRANSPORT_REPLY;
+	return FR_IO_REPLY;
 }
 
 static int test_decode(void *ctx, uint8_t *const data, size_t data_len, REQUEST *request)
@@ -153,7 +153,7 @@ static ssize_t test_write(int sockfd, void *ctx, uint8_t *buffer, size_t buffer_
 }
 
 
-static fr_transport_t transport = {
+static fr_io_op_t transport = {
 	.name = "schedule-test",
 	.default_message_size = 4096,
 	.read = test_read,

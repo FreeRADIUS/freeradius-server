@@ -24,7 +24,7 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/io/transport.h>
+#include <freeradius-devel/io/io.h>
 #include <freeradius-devel/md5.h>
 #include <freeradius-devel/radius.h>
 #include <freeradius-devel/token.h>
@@ -54,11 +54,11 @@ typedef struct fr_packet_ctx_t {
 
 
 
-static fr_transport_final_t mod_process(REQUEST *request, fr_transport_action_t action)
+static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 {
 	RDEBUG("\t\tPROCESS --- request %zd action %d\n", request->number, action);
 
-	return FR_TRANSPORT_REPLY;
+	return FR_IO_REPLY;
 }
 
 static int mod_decode(void const *ctx, uint8_t *const data, size_t data_len, REQUEST *request)
@@ -152,8 +152,8 @@ static ssize_t mod_write(int sockfd, void *ctx, uint8_t *buffer, size_t buffer_l
 	return data_size;
 }
 
-extern fr_transport_t fr_radius_server_udp;
-fr_transport_t fr_radius_server_udp = {
+extern fr_io_op_t fr_radius_server_udp;
+fr_io_op_t fr_radius_server_udp = {
 	.name			= "radius_server_udp",
 	.default_message_size	= 4096,
 	.read			= mod_read,
