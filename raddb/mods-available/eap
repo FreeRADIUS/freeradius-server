@@ -363,7 +363,10 @@ eap {
 		#
 		#  Note: You must ensure any attributes required for policy
 		#  decisions are cached at the same time as the TLS session
-		#  data.  If using the default tls-cache virtual server and
+		#  data. See sites-available/tls-cache for documentation on
+		#  how TLS cache now works.
+		#
+		#  If using the default tls-cache virtual server and
 		#  cache module config, policy attributes may be stored in the
 		#  &session-state: list.
 		#
