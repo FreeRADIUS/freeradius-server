@@ -42,30 +42,33 @@ RCSID("$Id$")
 
 #define MPRINT1 if (debug_lvl) printf
 
-typedef struct fr_packet_ctx_t {
-	int		sockfd;
+typedef struct {
+	uint8_t			vector[16];
+	uint8_t			id;
+	struct			sockaddr_storage src;
+	socklen_t		salen;
+} fr_test_packet_ctx_t;
 
-	uint8_t		vector[16];
-	uint8_t		id;
+typedef struct fr_io_test_ctx_t {
+	int			sockfd;
+	fr_ipaddr_t		ipaddr;
+	uint16_t		port;
+} fr_io_test_ctx_t;
 
-	struct sockaddr_storage src;
-	socklen_t	salen;
-} fr_packet_ctx_t;
-
-static int		debug_lvl = 0;
-static fr_ipaddr_t	my_ipaddr;
-static int		my_port;
-static char const	*secret = "testing123";
-static fr_packet_ctx_t  packet_ctx = { 0 };
+static int			debug_lvl = 0;
+static fr_ipaddr_t		my_ipaddr;
+static int			my_port;
+static char const		*secret = "testing123";
+static fr_test_packet_ctx_t	tpc;
 
 /*
  *	@todo fix this...
  *
  *	Declare these here until we move all of the new field to the REQUEST.
  */
-extern int		fr_socket_server_udp(fr_ipaddr_t *ipaddr, int *port, char const *port_name, bool async);
-extern int		fr_socket_bind(int sockfd, fr_ipaddr_t *ipaddr, int *port, char const *interface);
-extern int		fr_fault_setup(char const *cmd, char const *program);
+extern int fr_socket_server_udp(fr_ipaddr_t *ipaddr, uint16_t *port, char const *port_name, bool async);
+extern int fr_socket_bind(int sockfd, fr_ipaddr_t *ipaddr, uint16_t *port, char const *interface);
+extern int fr_fault_setup(char const *cmd, char const *program);
 
 static fr_io_final_t test_process(REQUEST *request, fr_io_action_t action)
 {
@@ -75,7 +78,7 @@ static fr_io_final_t test_process(REQUEST *request, fr_io_action_t action)
 
 static int test_decode(void *ctx, uint8_t *const data, size_t data_len, REQUEST *request)
 {
-	fr_packet_ctx_t const *pc = ctx;
+	fr_io_test_ctx_t const *pc = ctx;
 
 	request->process_async = test_process;
 
@@ -89,16 +92,16 @@ static int test_decode(void *ctx, uint8_t *const data, size_t data_len, REQUEST 
 static ssize_t test_encode(void *ctx, REQUEST *request, uint8_t *buffer, size_t buffer_len)
 {
 	FR_MD5_CTX context;
-	fr_packet_ctx_t const *pc = ctx;
+	fr_io_test_ctx_t const *pc = ctx;
 
 	MPRINT1("\t\tENCODE >>> request %"PRIu64"- data %p %p room %zd\n", request->number, pc, buffer, buffer_len);
 
 	buffer[0] = FR_CODE_ACCESS_ACCEPT;
-	buffer[1] = pc->id;
+	buffer[1] = tpc.id;
 	buffer[2] = 0;
 	buffer[3] = 20;
 
-	memcpy(buffer + 4, pc->vector, 16);
+	memcpy(buffer + 4, tpc.vector, 16);
 
 	fr_md5_init(&context);
 	fr_md5_update(&context, buffer, 20);
@@ -115,21 +118,39 @@ static size_t test_nak(void const *ctx, uint8_t *const packet, size_t packet_len
 	return 10;
 }
 
+static int test_open(void *ctx)
+{
+	fr_io_test_ctx_t	*io_ctx = talloc_get_type_abort(ctx, fr_io_test_ctx_t);
+
+	io_ctx->sockfd = fr_socket_server_udp(&io_ctx->ipaddr, &io_ctx->port, NULL, true);
+	if (io_ctx->sockfd < 0) {
+		fprintf(stderr, "radius_test: Failed creating socket: %s\n", fr_strerror());
+		exit(1);
+	}
+
+	if (fr_socket_bind(io_ctx->sockfd, &io_ctx->ipaddr, &io_ctx->port, NULL) < 0) {
+		fprintf(stderr, "radius_test: Failed binding to socket: %s\n", fr_strerror());
+		exit(1);
+	}
+
+	return 0;
+}
+
 static ssize_t test_read(void *ctx, uint8_t *buffer, size_t buffer_len)
 {
-	ssize_t data_size;
-	fr_packet_ctx_t *pc = ctx;
+	ssize_t			data_size;
+	fr_io_test_ctx_t	*io_ctx = talloc_get_type_abort(ctx, fr_io_test_ctx_t);
 
-	pc->salen = sizeof(pc->src);
+	tpc.salen = sizeof(tpc.src);
 
-	data_size = recvfrom(pc->sockfd, buffer, buffer_len, 0, (struct sockaddr *) &pc->src, &pc->salen);
+	data_size = recvfrom(io_ctx->sockfd, buffer, buffer_len, 0, (struct sockaddr *) &tpc.src, &tpc.salen);
 	if (data_size <= 0) return data_size;
 
 	/*
 	 *	@todo - check if it's RADIUS.
 	 */
-	pc->id = buffer[1];
-	memcpy(pc->vector, buffer + 4, sizeof(pc->vector));
+	tpc.id = buffer[1];
+	memcpy(tpc.vector, buffer + 4, sizeof(tpc.vector));
 
 	return data_size;
 }
@@ -137,12 +158,12 @@ static ssize_t test_read(void *ctx, uint8_t *buffer, size_t buffer_len)
 
 static ssize_t test_write(void *ctx, uint8_t *buffer, size_t buffer_len)
 {
-	ssize_t data_size;
-	fr_packet_ctx_t *pc = ctx;
+	ssize_t			data_size;
+	fr_io_test_ctx_t	*io_ctx = talloc_get_type_abort(ctx, fr_io_test_ctx_t);
 
-	pc->salen = sizeof(pc->src);
+	tpc.salen = sizeof(tpc.src);
 
-	data_size = sendto(pc->sockfd, buffer, buffer_len, 0, (struct sockaddr *) &pc->src, pc->salen);
+	data_size = sendto(io_ctx->sockfd, buffer, buffer_len, 0, (struct sockaddr *)&tpc.src, tpc.salen);
 	if (data_size <= 0) return data_size;
 
 	/*
@@ -154,21 +175,21 @@ static ssize_t test_write(void *ctx, uint8_t *buffer, size_t buffer_len)
 
 static int test_fd(void *ctx)
 {
-	fr_packet_ctx_t *pc = ctx;
+	fr_io_test_ctx_t	*io_ctx = talloc_get_type_abort(ctx, fr_io_test_ctx_t);
 
-	return pc->sockfd;
+	return io_ctx->sockfd;
 }
 
-
-static fr_io_op_t transport = {
+static fr_io_op_t op = {
 	.name = "schedule-test",
 	.default_message_size = 4096,
+	.open = test_open,
 	.read = test_read,
 	.write = test_write,
 	.decode = test_decode,
 	.encode = test_encode,
-	.nak = test_nak,
 	.fd = test_fd,
+	.nak = test_nak
 };
 
 static void NEVER_RETURNS usage(void)
@@ -190,6 +211,10 @@ int main(int argc, char *argv[])
 	uint16_t		port16 = 0;
 	TALLOC_CTX		*autofree = talloc_init("main");
 	fr_schedule_t		*sched;
+	fr_io_t			io = { .op = &op };
+	fr_io_test_ctx_t	*io_ctx;
+
+	io.ctx = io_ctx = talloc_zero(autofree, fr_io_test_ctx_t);
 
 	fr_time_start();
 
@@ -240,22 +265,16 @@ int main(int argc, char *argv[])
 	argv += (optind - 1);
 #endif
 
+	io_ctx->ipaddr = my_ipaddr;
+	io_ctx->port = my_port;
+
 	sched = fr_schedule_create(autofree, &default_log, num_networks, num_workers, NULL, NULL);
 	if (!sched) {
 		fprintf(stderr, "schedule_test: Failed to create scheduler\n");
 		exit(1);
 	}
 
-	sockfd = fr_socket_server_udp(&my_ipaddr, &my_port, NULL, true);
-	if (sockfd < 0) {
-		fprintf(stderr, "radius_test: Failed creating socket: %s\n", fr_strerror());
-		exit(1);
-	}
-
-	if (fr_socket_bind(sockfd, &my_ipaddr, &my_port, NULL) < 0) {
-		fprintf(stderr, "radius_test: Failed binding to socket: %s\n", fr_strerror());
-		exit(1);
-	}
+	if (io.op->open(io.ctx) < 0) exit(1);
 
 #if 0
 	/*
@@ -269,10 +288,7 @@ int main(int argc, char *argv[])
 #endif
 
 	fr_fault_setup(NULL, argv[0]);
-
-	packet_ctx.sockfd = sockfd;
-
-	(void) fr_schedule_socket_add(sched, &packet_ctx, &transport);
+	(void) fr_schedule_socket_add(sched, &io);
 
 	sleep(10);
 

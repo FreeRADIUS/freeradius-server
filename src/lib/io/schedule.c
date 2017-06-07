@@ -296,10 +296,10 @@ fail:
  */
 static void *fr_schedule_network_thread(void *arg)
 {
-	TALLOC_CTX *ctx;
-	fr_schedule_network_t *sn = arg;
-	fr_schedule_t *sc = sn->sc;
-	fr_schedule_child_status_t status = FR_CHILD_FAIL;
+	TALLOC_CTX			*ctx;
+	fr_schedule_network_t		*sn = arg;
+	fr_schedule_t			*sc = sn->sc;
+	fr_schedule_child_status_t	status = FR_CHILD_FAIL;
 
 	fr_log(sc->log, L_INFO, "Network %d starting\n", sn->id);
 
@@ -628,18 +628,15 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 
 /** Add a socket to a scheduler.
  *
- * @param sc the scheduler
- * @param ctx the context for the transport
- * @param transport the transport
+ * @param[in] sc the scheduler
+ * @param[in] io the ctx and callbacks for the transport.
  * @return
  *	- NULL on error
  *	- the fr_network_t that the socket was added to.
  */
-fr_network_t *fr_schedule_socket_add(fr_schedule_t *sc, void *ctx, fr_io_op_t *transport)
+fr_network_t *fr_schedule_socket_add(fr_schedule_t *sc, fr_io_t const *io)
 {
-	if (fr_network_socket_add(sc->sn->rc, ctx, transport) < 0) {
-		return NULL;
-	}
+	if (fr_network_socket_add(sc->sn->rc, io) < 0) return NULL;
 
 	return sc->sn->rc;
 }
