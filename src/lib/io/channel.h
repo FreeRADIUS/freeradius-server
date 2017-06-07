@@ -107,7 +107,11 @@ typedef struct fr_channel_data_t {
 
 	uint32_t	priority;				//!< Priority of this packet.
 
-	fr_io_t	*io;				//!< for tracking packet transport, etc.
+	void		*packet_ctx;				//!< Packet specific context for holding client
+								//!< information, and other proto_* specific information
+								//!< that needs to be passed to the request.
+
+	fr_io_t		*io;					//!< for tracking packet transport, etc.
 } fr_channel_data_t;
 
 fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, fr_control_t *master, fr_control_t *worker) CC_HINT(nonnull);
