@@ -647,7 +647,7 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 /*
  *	Load all of the virtual servers.
  */
-int virtual_servers_init(CONF_SECTION *config)
+int virtual_servers_init(fr_schedule_t *sc, CONF_SECTION *config)
 {
 	CONF_SECTION *cs;
 
@@ -683,7 +683,7 @@ int virtual_servers_init(CONF_SECTION *config)
 				    name2, cf_section_filename(cs));
 			cf_log_info(cs, "  namespace = %s", app->name);
 
-			if (app->instantiate(NULL, cs, check_config) < 0) {
+			if (app->instantiate(sc, cs, check_config) < 0) {
 				cf_log_err_cs(cs, "Failed loading virtual server %s", name2);
 				return -1;
 			}

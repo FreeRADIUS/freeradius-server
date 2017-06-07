@@ -30,6 +30,7 @@ RCSIDH(modules_h, "$Id$")
 #include <freeradius-devel/features.h>
 #include <freeradius-devel/pool.h>
 #include <freeradius-devel/exfile.h>
+#include <freeradius-devel/io/schedule.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -205,7 +206,7 @@ rlm_rcode_t	process_send_coa(int type, REQUEST *request);
 #endif
 
 int virtual_servers_bootstrap(CONF_SECTION *config);
-int virtual_servers_init(CONF_SECTION *config);
+int virtual_servers_init(fr_schedule_t *sc, CONF_SECTION *config);
 
 /*
  *	In unlang_interpret.c, but here for public consumption.

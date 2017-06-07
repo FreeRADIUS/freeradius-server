@@ -712,6 +712,7 @@ int main(int argc, char *argv[])
 
 	rad_debug_lvl = 0;
 	set_radius_dir(NULL, RADIUS_DIR);
+	fr_time_start();
 
 	/*
 	 *	Ensure that the configuration is initialized.
@@ -889,7 +890,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	And then load the virtual servers.
 	 */
-	if (virtual_servers_init(main_config.config) < 0) goto exit_failure;
+	if (virtual_servers_init(NULL, main_config.config) < 0) goto exit_failure;
 
 	state = fr_state_tree_init(NULL, main_config.max_requests * 2, 10);
 
