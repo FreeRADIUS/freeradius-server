@@ -410,7 +410,11 @@ int dl_instance_data_alloc(void **data, TALLOC_CTX *ctx, dl_t const *module, CON
 	 */
 	MEM(*data = talloc_zero_array(ctx, uint8_t, module->common->inst_size));
 
-	talloc_set_name(*data, "%s_t", module->name ? module->name : "config");
+	if (!module->common->inst_type) {
+		talloc_set_name(*data, "%s_t", module->name ? module->name : "config");
+	} else {
+		talloc_set_name(*data, "%s", module->common->inst_type);
+	}
 	if (module->common->config && (cf_section_parse(*data, *data, cs, module->common->config) < 0)) {
 		cf_log_err_cs(cs, "Invalid configuration for module \"%s\"", module->name);
 		talloc_free(*data);

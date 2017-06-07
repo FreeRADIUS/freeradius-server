@@ -74,10 +74,10 @@ static const CONF_PARSER udp_listen_conf[] = {
 
 static ssize_t mod_read(void *ctx, uint8_t *buffer, size_t buffer_len)
 {
-	ssize_t data_size;
-	size_t packet_len;
-	fr_proto_radius_udp_ctx_t *pc = ctx;
-	decode_fail_t reason;
+	ssize_t				data_size;
+	size_t				packet_len;
+	fr_proto_radius_udp_ctx_t	*pc = ctx;
+	decode_fail_t			reason;
 
 	pc->salen = sizeof(pc->src);
 
@@ -216,6 +216,7 @@ fr_app_io_t proto_radius_udp = {
 	.name			= "radius_udp",
 	.config			= udp_listen_conf,
 	.inst_size		= sizeof(fr_proto_radius_udp_ctx_t),
+	.inst_type		= "fr_proto_radius_udp_ctx_t",
 	.instantiate		= mod_instantiate,
 	.op 			= {
 		.name			= "radius_udp",

@@ -118,6 +118,7 @@ typedef void (*dl_free_t)(dl_t const *module, void *symbol, void *user_ctx);
 		uint64_t 			magic;		\
 		char const			*name;		\
 		size_t				inst_size;	\
+		char const			*inst_type;	\
 		CONF_PARSER const		*config;        \
 		module_load_t			load;           \
 		module_unload_t			unload;		\
