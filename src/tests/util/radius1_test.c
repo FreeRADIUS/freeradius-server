@@ -56,20 +56,20 @@ extern int		fr_socket_server_udp(fr_ipaddr_t *ipaddr, int *port, char const *por
 extern int		fr_socket_bind(int sockfd, fr_ipaddr_t *ipaddr, int *port, char const *interface);
 
 
-typedef struct fr_schedule_worker_t {
+typedef struct fr_schedule_worker {
 	int		id;			//!< ID of the worker 0..N
 	pthread_t	pthread_id;		//!< pthread ID of the worker
 	fr_worker_t	*worker;		//!< pointer to the worker
 	fr_channel_t	*ch;			//!< channel for communicating with the worker
 } fr_schedule_worker_t;
 
-typedef struct fr_packet_ctx_t {
+typedef struct fr_packet_ctx {
 	uint8_t		vector[16];
 	uint8_t		id;
 
 	struct sockaddr_storage src;
 	socklen_t	salen;
-} fr_packet_ctx_t;
+} fr_radius_packet_ctx_t;
 
 static int		debug_lvl = 0;
 static int		max_control_plane = 0;
@@ -104,14 +104,14 @@ static fr_io_final_t test_process(REQUEST *request, fr_io_action_t action)
 
 static int test_decode(void *packet_ctx, uint8_t *const data, size_t data_len, REQUEST *request)
 {
-	fr_packet_ctx_t const *pc = packet_ctx;
+	fr_radius_packet_ctx_t const *pc = talloc_get_type_abort(packet_ctx, fr_radius_packet_ctx_t);
 
 	request->number = pc->id;
 	request->process_async = test_process;
 
 	if (!debug_lvl) return 0;
 
-	MPRINT1("\t\tDECODE <<< request %"PRIu64" - %p data %p size %zd\n", request->number, packet_ctx, data, data_len);
+	MPRINT1("\t\tDECODE <<< request %"PRIu64" - %p data %p size %zd\n", request->number, pc, data, data_len);
 
 	return 0;
 }
@@ -119,9 +119,10 @@ static int test_decode(void *packet_ctx, uint8_t *const data, size_t data_len, R
 static ssize_t test_encode(void *packet_ctx, REQUEST *request, uint8_t *buffer, size_t buffer_len)
 {
 	FR_MD5_CTX context;
-	fr_packet_ctx_t const *pc = packet_ctx;
+	fr_radius_packet_ctx_t const *pc = talloc_get_type_abort(packet_ctx, fr_radius_packet_ctx_t);
 
-	MPRINT1("\t\tENCODE >>> request %"PRIu64" - data %p %p room %zd\n", request->number, packet_ctx, buffer, buffer_len);
+	MPRINT1("\t\tENCODE >>> request %"PRIu64" - data %p %p room %zd\n",
+		request->number, pc, buffer, buffer_len);
 
 	buffer[0] = FR_CODE_ACCESS_ACCEPT;
 	buffer[1] = pc->id;
@@ -145,7 +146,7 @@ static size_t test_nak(void const *packet_ctx, uint8_t *const packet, size_t pac
 	return 10;
 }
 
-static fr_io_op_t transport = {
+static fr_io_op_t op = {
 	.name = "worker-test",
 	.default_message_size = 4096,
 	.decode = test_decode,
@@ -155,9 +156,9 @@ static fr_io_op_t transport = {
 
 static void *worker_thread(void *arg)
 {
-	TALLOC_CTX *ctx;
-	fr_worker_t *worker;
-	fr_schedule_worker_t *sw;
+	TALLOC_CTX		*ctx;
+	fr_worker_t		*worker;
+	fr_schedule_worker_t	*sw;
 
 	sw = (fr_schedule_worker_t *) arg;
 
@@ -185,7 +186,7 @@ static void *worker_thread(void *arg)
 
 static void send_reply(int sockfd, fr_channel_data_t *reply)
 {
-	fr_packet_ctx_t *pc = reply->io->ctx;
+	fr_radius_packet_ctx_t *pc = talloc_get_type_abort(reply->packet_ctx, fr_radius_packet_ctx_t);
 
 	MPRINT1("Master got reply %d size %zd\n", pc->id, reply->m.data_size);
 
@@ -214,6 +215,7 @@ static void master_process(TALLOC_CTX *ctx)
 	int			kq_master;
 	fr_atomic_queue_t	*aq_master;
 	fr_control_t		*control_master;
+	fr_io_t			io = { .ctx = NULL, .op = &op };
 	int			sockfd;
 
 	MPRINT1("Master started.\n");
@@ -324,10 +326,10 @@ static void master_process(TALLOC_CTX *ctx)
 		 *	@todo this should NOT take a channel pointer
 		 */
 		for (i = 0; i < num_events; i++) {
-			uint8_t *packet, *attr, *end;
-			size_t total_len;
-			ssize_t data_size;
-			fr_packet_ctx_t *pc;
+			uint8_t			*packet, *attr, *end;
+			size_t			total_len;
+			ssize_t			data_size;
+			fr_radius_packet_ctx_t	*packet_ctx;
 
 			if (events[i].filter == EVFILT_USER) {
 				(void) fr_channel_service_kevent(workers[0].ch, control_master, &events[i]);
@@ -340,16 +342,16 @@ static void master_process(TALLOC_CTX *ctx)
 			cd = (fr_channel_data_t *) fr_message_reserve(ms, 4096);
 			rad_assert(cd != NULL);
 
-			pc = talloc(ctx, fr_packet_ctx_t);
-			rad_assert(pc != NULL);
-			pc->salen = sizeof(pc->src);
+			packet_ctx = talloc(ctx, fr_radius_packet_ctx_t);
+			rad_assert(packet_ctx != NULL);
+			packet_ctx->salen = sizeof(packet_ctx->src);
 
 			cd->priority = 0;
-			cd->io->ctx = pc;
-			cd->io->op = &transport;
+			cd->packet_ctx = packet_ctx;
+			cd->io = &io;
 
 			data_size = recvfrom(sockfd, cd->m.data, cd->m.rb_size, 0,
-					     (struct sockaddr *) &pc->src, &pc->salen);
+					     (struct sockaddr *) &packet_ctx->src, &packet_ctx->salen);
 			MPRINT1("Master got packet size %zd\n", data_size);
 			if (data_size <= 20) {
 				MPRINT1("Master ignoring packet (data length %zd)\n", data_size);
@@ -395,8 +397,8 @@ static void master_process(TALLOC_CTX *ctx)
 			MPRINT1("Master sending packet size %zd to worker %d\n", cd->m.data_size, which_worker);
 			cd->m.when = fr_time();
 
-			pc->id = packet[1];
-			memcpy(pc->vector, packet + 4, 16);
+			packet_ctx->id = packet[1];
+			memcpy(packet_ctx->vector, packet + 4, 16);
 
 			rcode = fr_channel_send_request(workers[which_worker].ch, cd, &reply);
 			if (rcode < 0) {
