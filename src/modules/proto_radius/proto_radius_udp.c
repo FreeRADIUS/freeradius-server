@@ -31,19 +31,6 @@
 #include "proto_radius.h"
 
 typedef struct {
-	int				sockfd;		//!< Socket the packet was received on.
-
-	uint8_t const			*secret;
-	size_t				secret_len;
-
-	uint8_t				original[20];
-	uint8_t				id;
-
-	struct sockaddr_storage		src;
-	socklen_t			salen;
-} fr_packet_ctx_t;
-
-typedef struct {
 	int				sockfd;
 
 	fr_ipaddr_t			ipaddr;			//!< Ipaddr to listen on.
@@ -59,6 +46,17 @@ typedef struct {
 	uint32_t			recv_buff;		//!< How big the kernel's receive buffer should be.
 	bool				recv_buff_is_set;	//!< Whether we were provided with a receive
 								//!< buffer value.
+	/*
+	 *	SHIT
+	 */
+	uint8_t const			*secret;
+	size_t				secret_len;
+
+	uint8_t				original[20];
+	uint8_t				id;
+
+	struct sockaddr_storage		src;
+	socklen_t			salen;
 } fr_proto_radius_udp_ctx_t;
 
 static const CONF_PARSER udp_listen_conf[] = {
@@ -78,7 +76,7 @@ static ssize_t mod_read(void *ctx, uint8_t *buffer, size_t buffer_len)
 {
 	ssize_t data_size;
 	size_t packet_len;
-	fr_packet_ctx_t *pc = ctx;
+	fr_proto_radius_udp_ctx_t *pc = ctx;
 	decode_fail_t reason;
 
 	pc->salen = sizeof(pc->src);
@@ -112,7 +110,7 @@ static ssize_t mod_read(void *ctx, uint8_t *buffer, size_t buffer_len)
 static ssize_t mod_write(void *ctx, uint8_t *buffer, size_t buffer_len)
 {
 	ssize_t data_size;
-	fr_packet_ctx_t *pc = ctx;
+	fr_proto_radius_udp_ctx_t *pc = ctx;
 
 	pc->salen = sizeof(pc->src);
 
@@ -163,6 +161,9 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 
 		inst->port = ntohl(s->s_port);
 	}
+
+	inst->secret = (uint8_t const *) "testing123";
+	inst->secret_len = 10;
 
 	return 0;
 }
