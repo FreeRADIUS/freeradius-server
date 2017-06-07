@@ -202,19 +202,19 @@ static void send_reply(int sockfd, fr_channel_data_t *reply)
 
 static void master_process(TALLOC_CTX *ctx)
 {
-	bool running;
-	int rcode, i, num_events, which_worker;
-	int num_outstanding;
-	fr_message_set_t *ms;
-	fr_channel_t *ch;
-	fr_channel_event_t ce;
-	pthread_attr_t	pthread_attr;
-	fr_schedule_worker_t *sw;
-	struct kevent events[MAX_KEVENTS];
-	int kq_master;
-	fr_atomic_queue_t *aq_master;
-	fr_control_t *control_master;
-	int sockfd;
+	bool			running;
+	int			rcode, i, num_events, which_worker;
+	int			num_outstanding;
+	fr_message_set_t	*ms;
+	fr_channel_t		*ch;
+	fr_channel_event_t	ce;
+	pthread_attr_t		pthread_attr;
+	fr_schedule_worker_t	*sw;
+	struct kevent		events[MAX_KEVENTS];
+	int			kq_master;
+	fr_atomic_queue_t	*aq_master;
+	fr_control_t		*control_master;
+	int			sockfd;
 
 	MPRINT1("Master started.\n");
 
@@ -352,8 +352,7 @@ static void master_process(TALLOC_CTX *ctx)
 					     (struct sockaddr *) &pc->src, &pc->salen);
 			MPRINT1("Master got packet size %zd\n", data_size);
 			if (data_size <= 20) {
-				MPRINT1("Master ignoring packet (data length %zd)\n",
-					data_size);
+				MPRINT1("Master ignoring packet (data length %zd)\n", data_size);
 
 			discard:
 				fr_message_done(&cd->m); /* yeah, re-use it for the next packet... */
@@ -371,8 +370,7 @@ static void master_process(TALLOC_CTX *ctx)
 
 			total_len = (packet[2] << 8) | packet[3];
 			if (total_len < 20) {
-				MPRINT1("Master ignoring packet (header length %zu)\n",
-					total_len);
+				MPRINT1("Master ignoring packet (header length %zu)\n", total_len);
 				goto discard;
 			}
 			if (total_len > (size_t) data_size) {

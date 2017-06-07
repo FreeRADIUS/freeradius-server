@@ -160,17 +160,17 @@ static void *worker_thread(void *arg)
 
 static void master_process(void)
 {
-	bool running, signaled_close;
-	int rcode, i, num_events, which_worker;
-	int num_outstanding, num_messages;
-	int num_replies;
-	fr_message_set_t *ms;
-	TALLOC_CTX *ctx;
-	fr_channel_t *ch;
-	fr_channel_event_t ce;
-	pthread_attr_t	attr;
-	fr_schedule_worker_t *sw;
-	struct kevent events[MAX_KEVENTS];
+	bool			running, signaled_close;
+	int			rcode, i, num_events, which_worker;
+	int			num_outstanding, num_messages;
+	int			num_replies;
+	fr_message_set_t	*ms;
+	TALLOC_CTX		*ctx;
+	fr_channel_t		*ch;
+	fr_channel_event_t	ce;
+	pthread_attr_t		attr;
+	fr_schedule_worker_t	*sw;
+	struct kevent		events[MAX_KEVENTS];
 
 	ctx = talloc_init("master");
 	if (!ctx) _exit(1);
