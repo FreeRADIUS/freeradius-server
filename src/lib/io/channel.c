@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @brief Two-way thread-safe channels
+ * @brief Two-way thread-safe channels.
  * @file io/channel.c
  *
  * @copyright 2016 Alan DeKok <aland@freeradius.org>
@@ -43,22 +43,18 @@ RCSID("$Id$")
 #define TO_WORKER (0)
 #define FROM_WORKER (1)
 
-/**
- *	The minimum interval between worker signals.
- */
-#define SIGNAL_INTERVAL (1000000)
+#define SIGNAL_INTERVAL (1000000)	//!< The minimum interval between worker signals.
 
-/**
- *	Size of the atomic queues.
+/** Size of the atomic queues
  *
- *	The queue reader MUST service the queue occasionally,
- *	otherwise the writer will not be able to write.  If it's too
- *	low, the writer will fail.  If it's too high, it will
- *	unnecessarily use memory.  So we're better off putting it on
- *	the high side.
+ * The queue reader MUST service the queue occasionally,
+ * otherwise the writer will not be able to write.  If it's too
+ * low, the writer will fail.  If it's too high, it will
+ * unnecessarily use memory.  So we're better off putting it on
+ * the high side.
  *
- *	The reader SHOULD service the queues at inter-packet latency.
- *	i.e. at 1M pps, the queue will get serviced every microsecond.
+ * The reader SHOULD service the queues at inter-packet latency.
+ * i.e. at 1M pps, the queue will get serviced every microsecond.
  */
 #define ATOMIC_QUEUE_SIZE (1024)
 
@@ -83,62 +79,64 @@ typedef struct fr_channel_control_t {
 	fr_channel_t		*ch;		//!< the channel
 } fr_channel_control_t;
 
-/**
- *  One end of a channel, which consists of a kqueue descriptor, and
- *  an atomic queue.  The atomic queue is there to get bulk data
- *  through, because it's more efficient than pushing 1M+ events per
- *  second through a kqueue.
+/** One end of a channel
+ *
+ * Consists of a kqueue descriptor, and an atomic queue.
+ * The atomic queue is there to get bulk data through, because it's more efficient
+ * than pushing 1M+ events per second through a kqueue.
  */
 typedef struct fr_channel_end_t {
-	fr_control_t		*control;	//!< the control plane
+	fr_control_t		*control;	//!< The control plane, consisting of an atomic queue and kqueue.
 
-	fr_ring_buffer_t	*rb;	//!< ring buffer for control-plane messages
+	fr_ring_buffer_t	*rb;		//!< Ring buffer for control-plane messages.
 
-	void			*ctx;		//!< worker context
+	void			*ctx;		//!< Worker context.
 
-	int			num_outstanding; //!< number of outstanding requests with no reply
+	int			num_outstanding; //!< Number of outstanding requests with no reply.
 
-	size_t			num_signals;	//!< number of kevent signals we've sent
+	size_t			num_signals;	//!< Number of kevent signals we've sent.
 
-	size_t			num_resignals;	//!< number of signals resent
+	size_t			num_resignals;	//!< Number of signals resent.
 
-	size_t			num_kevents;	//!< number of times we've looked at kevents
+	size_t			num_kevents;	//!< Number of times we've looked at kevents.
 
-	uint64_t		sequence;	//!< sequence number for this channel.
-	uint64_t		ack;		//!< sequence number of the other end
-	uint64_t		their_view_of_my_sequence;	//!< should be clear
+	uint64_t		sequence;	//!< Sequence number for this channel.
+	uint64_t		ack;		//!< Sequence number of the other end.
+	uint64_t		their_view_of_my_sequence;	//!< Should be clear.
 
-	uint64_t		sequence_at_last_signal; //!< when we last signaled
+	uint64_t		sequence_at_last_signal;	//!< When we last signaled.
 
-	uint64_t		num_packets;	//!< number of actual data packets
+	uint64_t		num_packets;	//!< Number of actual data packets.
 
-	fr_time_t		last_write;	//!< last write to the channel
-	fr_time_t		last_read_other; //!< last time we successfully read a message from the other the channel
-	fr_time_t		message_interval; //!< interval between messages
+	fr_time_t		last_write;	//!< Last write to the channel.
+	fr_time_t		last_read_other; //!< Last time we successfully read a message from the other the channe;
+	fr_time_t		message_interval; //!< Interval between messages.
 
-	fr_time_t		last_sent_signal; //!< the last time when we signaled the other end
+	fr_time_t		last_sent_signal; //!< The last time when we signaled the other end.
 
-	fr_atomic_queue_t	*aq;		//!< the queue of messages - visible only to this channel
+	fr_atomic_queue_t	*aq;		//!< The queue of messages - visible only to this channel.
 } fr_channel_end_t;
 
-/**
- *  A full channel, which consists of two ends.
+/** A full channel, which consists of two ends
+ *
+ * A channel consists of the kqueue identifiers and an atomic queue in each
+ * direction to allow for bidirectional communication.
  */
 typedef struct fr_channel_t {
-	fr_time_t		cpu_time;	//!< total time used by the worker for this channel
-	fr_time_t		processing_time; //!< time spent by the worker processing requests
+	fr_time_t		cpu_time;	//!< Total time used by the worker for this channel.
+	fr_time_t		processing_time; //!< Time spent by the worker processing requests.
 
-	bool			active;		//!< is this channel active?
+	bool			active;		//!< Whether the channel is active.
 
-	fr_channel_end_t	end[2];		//!< two ends of the channel
+	fr_channel_end_t	end[2];		//!< Two ends of the channel.
 } fr_channel_t;
 
 
 /** Create a new channel
  *
- * @param[in] ctx the talloc_ctx for the channel
- * @param[in] master the control plane of the master
- * @param[in] worker the control plane of the worker
+ * @param[in] ctx	The talloc_ctx to allocate channel data in.
+ * @param[in] master	control plane.
+ * @param[in] worker	control plane.
  * @return
  *	- NULL on error
  *	- channel on success
@@ -209,20 +207,20 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, fr_control_t *master, fr_contro
 
 /** Send a message via a kq user signal
  *
- *  Note that the caller doesn't care about data in the event, that is
- *  sent via the atomic queue.  The kevent code takes care of
- *  delivering the signal once, even if it's sent by multiple master
- *  threads.
+ * Note that the caller doesn't care about data in the event, that is
+ * sent via the atomic queue.  The kevent code takes care of
+ * delivering the signal once, even if it's sent by multiple master
+ * threads.
  *
- *  The thread watching the KQ knows which end it is.  So when it gets
- *  the signal (and the channel pointer) it knows to look at end[0] or
- *  end[1].  We also send which end in 'which' (0, 1) to further help
- *  the recipient.
+ * The thread watching the KQ knows which end it is.  So when it gets
+ * the signal (and the channel pointer) it knows to look at end[0] or
+ * end[1].  We also send which end in 'which' (0, 1) to further help
+ * the recipient.
  *
- * @param[in] ch the channel
- * @param[in] when the time when the data is ready.  Typically taken from the message.
- * @param[in] end the end of the channel that the message was written to
- * @param[in] which end of the channel (0/1)
+ * @param[in] ch	the channel.
+ * @param[in] when	the data was ready.  Typically taken from the message.
+ * @param[in] end	of the channel that the message was written to.
+ * @param[in] which	end of the channel (0/1).
  * @return
  *	- <0 on error
  *	- 0 on success
@@ -246,16 +244,16 @@ static int fr_channel_data_ready(fr_channel_t *ch, fr_time_t when, fr_channel_en
 
 /** Send a request message into the channel
  *
- *  The message should be initialized, other than "sequence" and "ack".
+ * The message should be initialized, other than "sequence" and "ack".
  *
- *  No matter what the function returns, the caller should check the
- *  reply pointer.  If the reply pointer is not NULL, the caller
- *  should call fr_channel_recv_reply() until that function returns
- *  NULL.
+ * No matter what the function returns, the caller should check the
+ * reply pointer.  If the reply pointer is not NULL, the caller
+ * should call #fr_channel_recv_reply until that function returns
+ * NULL.
  *
- * @param[in] ch the channel
- * @param[in] cd the message to send
- * @param[out] p_reply a pointer to a reply message
+ * @param[in] ch	the channel to send the request on.
+ * @param[in] cd	the message to send.
+ * @param[out] p_reply	a pointer to a reply message.
  * @return
  *	- <0 on error
  *	- 0 on success
@@ -336,10 +334,10 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_
 
 /** Receive a reply message from the channel
  *
- * @param[in] ch the channel
+ * @param[in] ch	the channel to read data from.
  * @return
- *	- NULL on no data to receive
- *	- the message on success
+ *	- NULL on no data to receive.
+ *	- The message we received (on success).
  */
 fr_channel_data_t *fr_channel_recv_reply(fr_channel_t *ch)
 {
@@ -430,16 +428,16 @@ fr_channel_data_t *fr_channel_recv_request(fr_channel_t *ch)
 
 /** Send a reply message into the channel
  *
- *  The message should be initialized, other than "sequence" and "ack".
+ * The message should be initialized, other than "sequence" and "ack".
  *
- *  No matter what the function returns, the caller should check the
- *  request pointer.  If the reply pointer is not NULL, the caller
- *  should call fr_channel_recv_request() until that function returns
- *  NULL.
+ * No matter what the function returns, the caller should check the
+ * request pointer.  If the reply pointer is not NULL, the caller
+ * should call fr_channel_recv_request() until that function returns
+ * NULL.
  *
- * @param[in] ch the channel
- * @param[in] cd the message to send
- * @param[out] p_request a pointer to a request message
+ * @param[in] ch		the channel to send the reply on.
+ * @param[in] cd		the message to send
+ * @param[out] p_request	a pointer to a request message.
  * @return
  *	- <0 on error
  *	- 0 on success
@@ -532,12 +530,12 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 }
 
 
-/** Signal a channel that the worker is sleeping.
+/** Signal a channel that the worker is sleeping
  *
- *  This function should be called from the workers idle loop.
- *  i.e. only when it has nothing else to do.
+ * This function should be called from the workers idle loop.
+ * i.e. only when it has nothing else to do.
  *
- * @param[in] ch the channel
+ * @param[in] ch	the channel to signal we're no longer listening on.
  * @return
  *	- <0 on error
  *	- 0 on success
@@ -570,10 +568,10 @@ int fr_channel_worker_sleeping(fr_channel_t *ch)
 
 /** Service a control-plane message
  *
- * @param[in] when the current time
- * @param[out] p_channel the channel which should be serviced.
- * @param[in] data the control message
- * @param[in] data_size the size of the control message
+ * @param[in] when		The current time.
+ * @param[out] p_channel	The channel which should be serviced.
+ * @param[in] data		The control message.
+ * @param[in] data_size		The size of the control message.
  * @return
  *	- FR_CHANNEL_ERROR on error
  *	- FR_CHANNEL_NOOP, on do nothing
@@ -599,11 +597,11 @@ fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_c
 	*p_channel = ch = cc.ch;
 
 	switch (cs) {
-		/*
-		 *	These all have the same numbers as the channel
-		 *	events, and have no extra processing.  We just
-		 *	return them as-is.
-		 */
+	/*
+	 *	These all have the same numbers as the channel
+	 *	events, and have no extra processing.  We just
+	 *	return them as-is.
+	 */
 	case FR_CHANNEL_SIGNAL_ERROR:
 	case FR_CHANNEL_SIGNAL_DATA_TO_WORKER:
 	case FR_CHANNEL_SIGNAL_DATA_FROM_WORKER:
@@ -612,11 +610,11 @@ fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_c
 		MPRINT("channel got %d\n", cs);
 		return (fr_channel_event_t) cs;
 
-		/*
-		 *	Only sent by the worker.  Both of these
-		 *	situations are largely the same, except for
-		 *	return codes.
-		 */
+	/*
+	 *	Only sent by the worker.  Both of these
+	 *	situations are largely the same, except for
+	 *	return codes.
+	 */
 	case FR_CHANNEL_SIGNAL_DATA_DONE_WORKER:
 		MPRINT("channel got data_done_worker\n");
 		ce = FR_CHANNEL_DATA_READY_NETWORK;
@@ -667,14 +665,14 @@ fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_c
 
 /** Service an EVFILT_USER event.
  *
- *  The channels use EVFILT_USER events for internal signaling.  A
- *  master / worker should call this function for every EVFILT_USER
- *  event.  Note that the caller does NOT pass the channel into this
- *  function.  Instead, the channel is taken from the kevent.
+ * The channels use EVFILT_USER events for internal signaling.  A
+ * master / worker should call this function for every EVFILT_USER
+ * event.  Note that the caller does NOT pass the channel into this
+ * function.  Instead, the channel is taken from the kevent.
  *
- * @param[in] ch the channel to service
- * @param[in] c the control plane on which we received the kev
- * @param[in] kev the event of type EVFILT_USER
+ * @param[in] ch	The channel to service.
+ * @param[in] c		The control plane on which we received the kev.
+ * @param[in] kev	The event of type EVFILT_USER.
  * @return
  *	- <0 on error
  *	- 0 on success
@@ -699,8 +697,8 @@ int fr_channel_service_kevent(fr_channel_t *ch, fr_control_t *c, struct kevent c
 
 /** Check if a channel is active.
  *
- *  A channel may be closed by either end.  If so, it stays alive (but
- *  inactive) until both ends acknowledge the close.
+ * A channel may be closed by either end.  If so, it stays alive (but
+ * inactive) until both ends acknowledge the close.
  *
  * @param[in] ch the channel
  * @return
@@ -758,8 +756,8 @@ int fr_channel_worker_ack_close(fr_channel_t *ch)
 
 /** Add worker-specific data to a channel
  *
- * @param[in] ch the channel
- * @param[in] ctx the context to add.
+ * @param[in] ch	The channel.
+ * @param[in] ctx	The context to add.
  */
 void fr_channel_worker_ctx_add(fr_channel_t *ch, void *ctx)
 {
@@ -771,7 +769,7 @@ void fr_channel_worker_ctx_add(fr_channel_t *ch, void *ctx)
 
 /** Get worker-specific data from a channel
  *
- * @param[in] ch the channel
+ * @param[in] ch	The channel.
  */
 void *fr_channel_worker_ctx_get(fr_channel_t *ch)
 {
@@ -783,8 +781,8 @@ void *fr_channel_worker_ctx_get(fr_channel_t *ch)
 
 /** Add master-specific data to a channel
  *
- * @param[in] ch the channel
- * @param[in] ctx the context to add.
+ * @param[in] ch	The channel.
+ * @param[in] ctx	The context to add.
  */
 void fr_channel_master_ctx_add(fr_channel_t *ch, void *ctx)
 {
@@ -796,7 +794,7 @@ void fr_channel_master_ctx_add(fr_channel_t *ch, void *ctx)
 
 /** Get master-specific data from a channel
  *
- * @param[in] ch the channel
+ * @param[in] ch	The channel.
  */
 void *fr_channel_master_ctx_get(fr_channel_t *ch)
 {
@@ -808,7 +806,7 @@ void *fr_channel_master_ctx_get(fr_channel_t *ch)
 
 /** Send a channel to a worker
  *
- * @param[in] ch the channel
+ * @param[in] ch	The channel.
  * @return
  *	- <0 on error
  *	- 0 on success

@@ -64,13 +64,13 @@ struct fr_atomic_queue_t {
 	fr_atomic_queue_entry_t entry[1];
 };
 
-/** Create fixed-size atomic queue.
+/** Create fixed-size atomic queue
  *
- * @param[in] ctx the talloc ctx
- * @param[in] size the number of entries in the queue
+ * @param[in] ctx	The talloc ctx to allocate the queue in.
+ * @param[in] size	The number of entries in the queue.
  * @return
- *     - NULL on error
- *     - fr_atomic_queue_t *, a pointer to the allocated and initialized queue
+ *     - NULL on error.
+ *     - fr_atomic_queue_t *, a pointer to the allocated and initialized queue.
  */
 fr_atomic_queue_t *fr_atomic_queue_create(TALLOC_CTX *ctx, int size)
 {
@@ -119,8 +119,8 @@ fr_atomic_queue_t *fr_atomic_queue_create(TALLOC_CTX *ctx, int size)
 
 /** Push a pointer into the atomic queue
  *
- * @param[in] aq the queue
- * @param[in] data the data to push
+ * @param[in] aq	The atomic queue to add data to.
+ * @param[in] data	to push.
  * @return
  *	- true on successful push
  *	- false on queue full
@@ -186,8 +186,8 @@ bool fr_atomic_queue_push(fr_atomic_queue_t *aq, void *data)
 
 /** Pop a pointer from the atomic queue
  *
- * @param[in] aq the queue
- * @param[in] p_data where to write the data
+ * @param[in] aq	the atomic queue to retrieve data from.
+ * @param[out] p_data	where to write the data.
  * @return
  *	- true on successful pop
  *	- false on queue empty
@@ -258,10 +258,10 @@ typedef struct fr_control_message_t {
 
 /**  Dump an atomic queue.
  *
- *  Absolutely NOT thread-safe.
+ * Absolutely NOT thread-safe.
  *
- * @param[in] aq the queue
- * @param[in] fp where the debugging information will be printed.
+ * @param[in] aq	The atomic queue to debug.
+ * @param[in] fp	where the debugging information will be printed.
  */
 void fr_atomic_queue_debug(fr_atomic_queue_t *aq, FILE *fp)
 {
