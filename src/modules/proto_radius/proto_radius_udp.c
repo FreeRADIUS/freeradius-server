@@ -21,6 +21,7 @@
  * Copyright 2016 Alan DeKok <aland@deployingradius.com>
  */
 
+#include <netdb.h>
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/protocol.h>
 #include <freeradius-devel/udp.h>
@@ -128,7 +129,7 @@ static ssize_t mod_write(void *ctx, uint8_t *buffer, size_t buffer_len)
 	return data_size;
 }
 
-static int mod_instantiate(UNUSED CONF_SECTION *cs, void *instance)
+static int mod_instantiate(CONF_SECTION *cs, void *instance)
 {
 	fr_proto_radius_udp_ctx_t	*inst = instance;
 
@@ -144,6 +145,23 @@ static int mod_instantiate(UNUSED CONF_SECTION *cs, void *instance)
 	if (inst->recv_buff_is_set) {
 		FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, >=, 32);
 		FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, <=, INT_MAX);
+	}
+
+	if (!inst->port) {
+		struct servent *s;
+
+		if (!inst->port_name) {
+			cf_log_err_cs(cs, "No 'port' specified in 'udp' section");
+			return -1;
+		}
+
+		s = getservbyname(inst->port_name, "udp");
+		if (!s) {
+			cf_log_err_cs(cs, "Unknown value for 'port_name = %s", inst->port_name);
+			return -1;
+		}
+
+		inst->port = ntohl(s->s_port);
 	}
 
 	return 0;
