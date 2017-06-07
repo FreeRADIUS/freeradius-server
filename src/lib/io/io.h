@@ -259,7 +259,7 @@ struct rad_request {
 	fr_channel_t		*channel;
 
 	uint32_t		priority;
-	fr_io_t			*io;		//!< How we received this request,
+	fr_io_t	const		*io;		//!< How we received this request,
 						//!< and how we'll send the reply.
 };
 #endif
