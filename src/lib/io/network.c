@@ -27,6 +27,7 @@ RCSID("$Id$")
 #include <talloc.h>
 
 #include <freeradius-devel/event.h>
+#include <freeradius-devel/rbtree.h>
 #include <freeradius-devel/io/queue.h>
 #include <freeradius-devel/io/channel.h>
 #include <freeradius-devel/io/control.h>
@@ -43,8 +44,6 @@ typedef struct fr_network_worker_t {
 } fr_network_worker_t;
 
 typedef struct fr_network_socket_t {
-	fr_dlist_t		entry;
-
 	void			*ctx;			//!< transport context
 	fr_io_op_t		*transport;		//!< the transport
 
@@ -73,7 +72,7 @@ struct fr_network_t {
 	uint64_t		num_requests;		//!< number of requests we sent
 	uint64_t		num_replies;		//!< number of replies we received
 
-	fr_dlist_t		sockets;		//!< list of sockets we're managing
+	rbtree_t		*sockets;		//!< list of sockets we're managing
 };
 
 
@@ -101,6 +100,19 @@ static int reply_cmp(void const *one, void const *two)
 
 	return 0;
 }
+
+static int socket_cmp(void const *one, void const *two)
+{
+	fr_network_socket_t const *a = one;
+	fr_network_socket_t const *b = two;
+
+	if (a->ctx < b->ctx) return -1;
+	if (a->ctx > b->ctx) return +1;
+
+	return 0;
+}
+
+
 
 #define IALPHA (8)
 #define RTT(_old, _new) ((_new + ((IALPHA - 1) * _old)) / IALPHA)
@@ -375,9 +387,6 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
 	 */
 	if (data_size < 0) {
 		fr_log(nr->log, L_DBG_ERR, "error from transport read on socket %d", sockfd);
-
-		(void) fr_event_fd_delete(nr->el, sockfd);
-		fr_dlist_remove(&s->entry);
 		talloc_free(s);
 		return;
 	}
@@ -441,7 +450,7 @@ static int _network_socket_free(fr_network_socket_t *s)
 
 	fr_event_fd_delete(nr->el, s->transport->fd(s->ctx));
 
-	fr_dlist_remove(&s->entry);
+	rbtree_deletebydata(nr->sockets, s);
 
 	if (s->transport->close) {
 		s->transport->close(s->ctx);
@@ -474,7 +483,6 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 	rad_assert(s != NULL);
 	memcpy(s, data, sizeof(*s));
 
-	FR_DLIST_INIT(s->entry);
 	talloc_set_destructor(s, _network_socket_free);
 
 #define MIN_MESSAGES (8)
@@ -508,7 +516,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 		return;
 	}
 
-	fr_dlist_insert_head(&nr->sockets, &s->entry);
+	(void) rbtree_insert(nr->sockets, s);
 
 	fr_log(nr->log, L_DBG, "Using new socket with FD %d", fd);
 }
@@ -649,7 +657,11 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_log_t *logger)
 	/*
 	 *	Create the various heaps.
 	 */
-	FR_DLIST_INIT(nr->sockets);
+	nr->sockets = rbtree_create(nr, socket_cmp, NULL, RBTREE_FLAG_NONE);
+	if (!nr->sockets) {
+		talloc_free(nr);
+		goto nomem;
+	}
 
 	nr->replies = fr_heap_create(reply_cmp, offsetof(fr_channel_data_t, channel.heap_id));
 	if (!nr->replies) {
@@ -767,7 +779,7 @@ void fr_network(fr_network_t *nr)
 		 */
 		rcode = io->op->write(io->ctx, cd->m.data, cd->m.data_size);
 		if (rcode < 0) {
-			fr_dlist_t *entry;
+			fr_network_socket_t my_socket, *s;
 
 			/*
 			 *	Tell the socket that there was an error.
@@ -777,27 +789,9 @@ void fr_network(fr_network_t *nr)
 			 */
 			if (io->op->error) io->op->error(io->ctx);
 
-			/*
-			 *	Find the fr_network_socket_t which
-			 *	matches this message.
-			 *
-			 *	@todo - put them into a binary tree.
-			 *	That way we can handle tens of
-			 *	thousands without walking a linked
-			 *	list.
-			 */
-			for (entry = FR_DLIST_FIRST(nr->sockets);
-			     entry != NULL;
-			     entry = FR_DLIST_NEXT(nr->sockets, entry)) {
-				fr_network_socket_t *s;
-
-				s = fr_ptr_to_type(fr_network_socket_t, entry, entry);
-				if (s->ctx == io->ctx) {
-					talloc_free(s);
-					break;
-				}
-			}
-
+			my_socket.ctx = io->ctx;
+			s = rbtree_finddata(nr->sockets, &my_socket);
+			if (s) talloc_free(s);
 			continue;
 		}
 
