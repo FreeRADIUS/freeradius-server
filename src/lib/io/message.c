@@ -366,73 +366,63 @@ static void fr_message_gc(fr_message_set_t *ms, int max_to_clean)
 	int i;
 	int arrays_freed, arrays_used, empty_slot;
 	int largest_free_slot;
+	int total_cleaned;
 	size_t largest_free_size;
 
 	/*
 	 *	Clean up "done" messages.
 	 */
-	arrays_freed = 0;
-	empty_slot = -1;
+	total_cleaned = 0;
 
+	/*
+	 *	Garbage collect the smaller buffers first.
+	 */
 	for (i = 0; i <= ms->mr_max; i++) {
+		int cleaned;
 
-		fr_ring_buffer_t *mr = ms->mr_array[i];
+		cleaned = fr_message_ring_gc(ms, ms->mr_array[i], max_to_clean - total_cleaned);
+		total_cleaned += cleaned;
+		rad_assert(total_cleaned <= max_to_clean);
 
-		(void) fr_message_ring_gc(ms, mr, max_to_clean);
+		/*
+		 *	Stop when we've reached our GC limit.
+		 */
+		if (total_cleaned == max_to_clean) break;
+	}
+
+	/*
+	 *	Couldn't GC anything.  Don't do more work.
+	 */
+	if (total_cleaned == 0) return;
+
+	arrays_freed = 0;
+	arrays_used = 0;
+
+	/*
+	 *	Keep the two largest message buffers (used or not),
+	 *	and free all smaller ones which are empty.
+	 */
+	for (i = ms->mr_max; i >= 0; i--) {
+		rad_assert(ms->mr_array[i] != NULL);
+
+		if (arrays_used < 2) {
+			MPRINT("\tleaving entry %d alone\n", i);
+			arrays_used++;
+			continue;
+		}
 
 		/*
 		 *	If the message ring buffer is empty, check if
 		 *	we should perhaps delete it.
 		 */
-		if (fr_ring_buffer_used(mr) == 0) {
-			/*
-			 *	Try to ensure that at least one array
-			 *	is empty.
-			 */
-			if (empty_slot < 0) {
-				empty_slot = i;
-				continue;
-			}
-
-			/*
-			 *	Don't ever free the largest array, but
-			 *	do set the empty slot here.
-			 */
-			if (i == ms->mr_max) {
-				empty_slot = i;
-				continue;
-			}
-
-			/*
-			 *	We now have at least two arrays which
-			 *	are free.  Free the old one, and keep
-			 *	the new one.
-			 */
-			TALLOC_FREE(ms->mr_array[empty_slot]);
+		if (fr_ring_buffer_used(ms->mr_array[i]) == 0) {
+			MPRINT("\tfreeing entry %d\n", i);
+			TALLOC_FREE(ms->mr_array[i]);
 			arrays_freed++;
-			empty_slot = i;
-		}
-
-		/*
-		 *	If we're cleaning up small array entries, do
-		 *	so aggressively.  This allows for smaller
-		 *	arrays to be cleaned up and freed, so that we
-		 *	can keep using large arrays.
-		 */
-		if ((i + 2) < ms->mr_max) {
 			continue;
 		}
 
-		/*
-		 *	We're cleaning up the large arrays, i.e. ones
-		 *	with recent packets.  Limit latency to only a
-		 *	few cleanups at a time.  We DON'T want to
-		 *	clean up 1M packets at once, but instead
-		 *	amortize that work over incoming packets.
-		 */
-		if (max_to_clean == 0) {
-			break;
-		}
+		MPRINT("\tstill in use entry %d\n", i);
 	}
 
 	/*
@@ -440,42 +430,66 @@ static void fr_message_gc(fr_message_set_t *ms, int max_to_clean)
 	 *	remaining entries.
 	 */
 	if (arrays_freed) {
-		for (i = 0; i < ms->mr_max; i++) {
-			if (ms->mr_array[i] != NULL) continue;
+		MPRINT("TRYING TO PACK from %d free arrays out of %d\n", arrays_freed, ms->rb_max + 1);
 
+		empty_slot = -1;
 
-			memmove(&ms->mr_array[i], &ms->mr_array[i + 1],
-				sizeof(ms->mr_array[i]) * (ms->mr_max - i + 1));
+		/*
+		 *	Pack the rb array by moving used entries to
+		 *	the bottom of the array.
+		 */
+		for (i = 0; i <= ms->mr_max; i++) {
+			int j;
 
-			if (empty_slot > i) empty_slot--;
-			if (ms->mr_current > i) ms->mr_current--;
+			/*
+			 *	Skip over empty entries, but set
+			 *	"empty_slot" to the first empty on we
+			 *	found.
+			 */
+			if (!ms->mr_array[i]) {
+				if (empty_slot < 0) empty_slot = i;
+
+				continue;
+			}
+
+			/*
+			 *	This array entry is used, but there is
+			 *	no empty slot to put it into.  Ignore
+			 *	it, and continue
+			 */
+			if (empty_slot < 0) continue;
+
+			rad_assert(ms->mr_array[empty_slot] == NULL);
+
+			ms->mr_array[empty_slot] = ms->mr_array[i];
+			ms->mr_array[i] = NULL;
+
+			/*
+			 *	Find the next empty slot which is
+			 *	greater than the one we just used.
+			 */
+			for (j = empty_slot + 1; j <= i; j++) {
+				if (!ms->mr_array[j]) {
+					empty_slot = j;
+					break;
+				}
+			}
 		}
 
 		/*
-		 *	Reset the max, and current to the lowest
-		 *	array entry.
+		 *	Lower max, and set current to the largest
+		 *	array, whether or not it's used.
 		 */
 		ms->mr_max -= arrays_freed;
-		rad_assert(ms->mr_current <= ms->mr_max);
+		ms->mr_current = ms->mr_max;
 
 #ifndef NDEBUG
+		MPRINT("NUM RB ARRAYS NOW %d\n", ms->mr_max + 1);
 		for (i = 0; i <= ms->mr_max; i++) {
+			MPRINT("\t%d %p\n", i, ms->mr_array[i]);
 			rad_assert(ms->mr_array[i] != NULL);
 		}
 #endif
-	}
-
-	/*
-	 *	If there's no array which is completely empty, Reset
-	 *	the index to the largest array, which means
-	 *	allocations are more likely to be from the largest
-	 *	array.  This make it more likely that entries in the
-	 *	smaller arrays will age out, meaning we can free the
-	 *	smaller arrays.
-	 */
-	if (empty_slot < 0) {
-		ms->mr_current = ms->mr_max;
-		MPRINT("SET MR to %d\n", ms->mr_current);
 	}
 
 	/*
@@ -485,8 +499,8 @@ static void fr_message_gc(fr_message_set_t *ms, int max_to_clean)
 	 *	is find the largest empty ring buffer.
 	 *
 	 *	We do this by keeping the two largest ring buffers
-	 *	(used or not), and then freeing all smaller empty
-	 *	ones.
+	 *	(used or not), and then freeing all smaller ones which
+	 *	are empty.
 	 */
 	arrays_used = 0;
 	arrays_freed = 0;
