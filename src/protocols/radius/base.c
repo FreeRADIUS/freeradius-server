@@ -842,6 +842,7 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 
 	switch (code) {
 	case FR_CODE_ACCESS_REQUEST:
+	case FR_CODE_STATUS_SERVER:
 		break;
 
 	case FR_CODE_ACCESS_ACCEPT:
