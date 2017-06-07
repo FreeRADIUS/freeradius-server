@@ -151,7 +151,10 @@ static int mod_instantiate(UNUSED CONF_SECTION *cs, void *instance)
 
 /** Open a UDP listener for RADIUS
  *
- * @param[in] instance	of the RADIUS UDP I/O path.
+ * @param[in] instance of the RADIUS UDP I/O path.
+ * @return
+ *	- <0 on error
+ *	- 0 on success
  */
 static int mod_open(void *instance)
 {
@@ -176,6 +179,18 @@ static int mod_open(void *instance)
 	return 0;
 }
 
+/** Get the file descriptor for this socket.
+ *
+ * @param[in] instance of the RADIUS UDP I/O path.
+ * @return the file descriptor
+ */
+static int mod_fd(void *instance)
+{
+	fr_proto_radius_udp_ctx_t	*inst = instance;
+
+	return inst->sockfd;
+}
+
 extern fr_app_io_t proto_radius_udp;
 fr_app_io_t proto_radius_udp = {
 	.magic			= RLM_MODULE_INIT,
@@ -189,5 +204,6 @@ fr_app_io_t proto_radius_udp = {
 		.open			= mod_open,
 		.read			= mod_read,
 		.write			= mod_write,
+		.fd			= mod_fd,
 	}
 };
