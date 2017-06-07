@@ -98,7 +98,7 @@ static ssize_t mod_read(void *ctx, uint8_t *buffer, size_t buffer_len)
 	/*
 	 *	If the signature fails validation, ignore it.
 	 */
-	if (!fr_radius_verify(buffer, NULL, pc->secret, pc->secret_len)) {
+	if (fr_radius_verify(buffer, NULL, pc->secret, pc->secret_len) < 0) {
 		return 0;
 	}
 
