@@ -251,7 +251,7 @@ static int open_transport(proto_radius_ctx_t *ctx, UNUSED fr_schedule_t *handle,
 	 *
 	 *	@todo - more cleanup on error.
 	 */
-	if (fr_schedule_socket_add(handle, ctx->sockfd, ctx, &ctx->transport) < 0) {
+	if (!fr_schedule_socket_add(handle, ctx->sockfd, ctx, &ctx->transport)) {
 		talloc_free(ctx);
 		return -1;
 	}
