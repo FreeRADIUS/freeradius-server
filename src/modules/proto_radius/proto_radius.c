@@ -145,7 +145,7 @@ static int compile_type(proto_radius_ctx_t *ctx, CONF_SECTION *server, CONF_SECT
 	/*
 	 *	Convert "Access-Request" -> "auth"
 	 */
-	lib = NULL;
+	port_name = lib = NULL;
 	for (i = 0; type2lib[i].type != NULL; i++) {
 		if (strcmp(type2lib[i].type, value) == 0) {
 			lib = type2lib[i].lib;
