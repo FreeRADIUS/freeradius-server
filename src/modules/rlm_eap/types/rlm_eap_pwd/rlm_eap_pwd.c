@@ -172,7 +172,6 @@ static int mod_session_init (void *instance, eap_handler_t *handler)
 {
 	pwd_session_t *session;
 	eap_pwd_t *inst = (eap_pwd_t *)instance;
-	VALUE_PAIR *vp;
 	pwd_id_packet_t *packet;
 
 	if (!inst || !handler) {
@@ -220,21 +219,7 @@ static int mod_session_init (void *instance, eap_handler_t *handler)
 	/*
 	 *	The admin can dynamically change the MTU.
 	 */
-	session->mtu = inst->fragment_size;
-	vp = fr_pair_find_by_num(handler->request->packet->vps, PW_FRAMED_MTU, 0, TAG_ANY);
-
-	/*
-	 *	session->mtu is *our* MTU.  We need to subtract off the EAP
-	 *	overhead.
-	 *
-	 *	9 = 4 (EAPOL header) + 4 (EAP header) + 1 (EAP type)
-	 *
-	 *	The fragmentation code deals with the included length
-	 *	so we don't need to subtract that here.
-	 */
-	if (vp && (vp->vp_integer > 100) && (vp->vp_integer < session->mtu)) {
-		session->mtu = vp->vp_integer - 9;
-	}
+	session->mtu = rad_eap_calculate_mtu(inst->fragment_size, handler->request);
 
 	session->state = PWD_STATE_ID_REQ;
 	session->in = NULL;

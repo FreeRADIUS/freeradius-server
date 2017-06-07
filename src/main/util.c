@@ -1700,3 +1700,46 @@ int rad_segid(gid_t gid)
 	}
 	return 0;
 }
+
+/** Calculate fragment-free EAP-Message payload
+ * Calculate payload length based on fragment_size and Framed-MTU received from NAS.
+ *
+ * @param fragment_size fragment size configured for instance
+ * @param request The current #REQUEST.
+ * @return correct mtu value to use
+ */
+size_t rad_eap_calculate_mtu(size_t fragment_size, REQUEST *request)
+{
+	size_t		mtu = fragment_size;
+	VALUE_PAIR	*vp;
+
+	vp = fr_pair_find_by_num(request->packet->vps, PW_FRAMED_MTU, 0, TAG_ANY);
+	if (vp == NULL || vp->vp_integer < 100 + 96 /* min possible offset */) return mtu;
+
+	/*
+	 *	Framed-MTU means total size of a packet so we need to
+	 *	take into account so actual EAP message will be smaller than
+	 *	Framed-MTU value.
+	 *	This offset includes:
+	 *	    - IP/IPv6 header, 20/40 bytes
+	 *	    - UDP/TCP header, 8/20 bytes
+	 *	    - RADIUS:
+	 *		* RADIUS header, 4 bytes
+	 *		* Authenticator, 16 bytes
+	 *		* Message-Authenticator, 2 + 16 bytes
+	 *		* State, 2 + 16 bytes
+	 *		* Header for each EAP-Message chunk, 2 bytes
+	 *		* EAP header, 4 bytes + upto 6 bytes for:
+	 *		    o EAP-TLS header (type + flags + tls message length), 6 bytes
+	 *		    o EAP-PWD header, 4 bytes
+	 */
+	mtu =	vp->vp_integer - \
+		(request->client->ipaddr.af == AF_INET ? 20 : 40) - \
+		(((listen_socket_t *)request->listener->data)->proto == IPPROTO_UDP ? 8 : 20) - \
+		(4 + 16 + 18 + 18 + 4 + 6);
+	/* calculate number of EAP-Message chunks and reserve space for header of each chunk */
+	mtu -= 2 * (1 + (mtu/255));
+	/* fallback to value in configuration */
+	if (mtu < 100 || mtu > fragment_size) return fragment_size;
+	return mtu;
+}
