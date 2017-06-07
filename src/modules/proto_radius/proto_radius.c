@@ -80,14 +80,15 @@ static int mod_bootstrap(UNUSED CONF_SECTION *cs)
 typedef struct type2lib_t {
 	char const *type;
 	char const *lib;
+	char const *port_name;
 } type2lib_t;
 
 static const type2lib_t type2lib[] = {
-	{ "Access-Request", "radius_auth" },
-	{ "Accounting-Request", "radius_acct" },
-	{ "CoA-Request", "coa" },
-	{ "Disconnect-Request", "radius_coa" },
-	{ "Status-Server", "radius_status" },
+	{ "Access-Request", "radius_auth", "radius" },
+	{ "Accounting-Request", "radius_acct", "radius-acct" },
+	{ "CoA-Request", "coa", "radius-dynauth" },
+	{ "Disconnect-Request", "radius_coa", "radius-dynauth" },
+	{ "Status-Server", "radius_status", NULL },
 	{ NULL, NULL }
 };
 
@@ -108,7 +109,7 @@ static const CONF_PARSER mod_config[] = {
 static int compile_type(proto_radius_ctx_t *ctx, CONF_SECTION *server, CONF_SECTION *cs, char const *value)
 {
 	int i, code;
-	char const *lib;
+	char const *lib, *port_name;
 	dl_t const *module;
 	fr_app_subtype_t const *app;
 
@@ -148,6 +149,7 @@ static int compile_type(proto_radius_ctx_t *ctx, CONF_SECTION *server, CONF_SECT
 	for (i = 0; type2lib[i].type != NULL; i++) {
 		if (strcmp(type2lib[i].type, value) == 0) {
 			lib = type2lib[i].lib;
+			port_name = type2lib[i].port_name;
 			break;
 		}
 	}
@@ -156,6 +158,26 @@ static int compile_type(proto_radius_ctx_t *ctx, CONF_SECTION *server, CONF_SECT
 		cf_log_err_cs(cs, "Unknown 'type = %s'", value);
 		return -1;
 	}
+
+	/*
+	 *	Add the default port name, if it exists.
+	 */
+	if (port_name) {
+		CONF_PAIR *cp;
+
+		cp = cf_pair_find(cs, "port_name");
+		if (!cp) {
+			cp = cf_pair_alloc(cs, "port_name", port_name,
+					   T_OP_SET, T_BARE_WORD, T_BARE_WORD);
+			if (!cp) {
+				cf_log_err_cs(cs, "Out of memory");
+				return -1;
+			}
+
+			(void) cf_pair_add(cs, cp);
+		}
+	}
+
 
 	/*
 	 *	Load the module.
@@ -186,7 +208,8 @@ static int open_transport(proto_radius_ctx_t *ctx, UNUSED fr_schedule_t *handle,
 	fr_app_io_t const	*app_io;
 	CONF_SECTION		*io_cs;
 	void			*io_ctx;
-	char buffer[256];
+	CONF_PAIR		*cp;
+	char			buffer[256];
 
 	if (!value || !*value) {
 		cf_log_err_cs(cs, "Must specify a value for 'transport'");
@@ -215,9 +238,17 @@ static int open_transport(proto_radius_ctx_t *ctx, UNUSED fr_schedule_t *handle,
 		return -1;
 	}
 
-	/*
-	 *	Add port_name
-	 */
+	cp = cf_pair_find(cs, "port_name");
+	if (cp) {
+		cp = cf_pair_alloc(io_cs, "port_name", cf_pair_value(cp),
+				   T_OP_SET, T_BARE_WORD, T_BARE_WORD);
+		if (!cp) {
+			cf_log_err_cs(cs, "Out of memory");
+			return -1;
+		}
+
+		(void) cf_pair_add(io_cs, cp);
+	}
 
 	app_io = (fr_app_io_t const *) module->common;
 	if (app_io->instantiate(io_cs, io_ctx) < 0) {
