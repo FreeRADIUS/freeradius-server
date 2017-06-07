@@ -642,10 +642,12 @@ static void request_done(REQUEST *request, int action)
 	/*
 	 *	Move the CoA request to its own handler.
 	 */
-	if (request->coa) {
-		coa_separate(request->coa);
-	} else if (request->parent && (request->parent->coa == request)) {
-		coa_separate(request);
+	if (request->root->originate_coa_requests) {
+		if (request->coa) {
+			coa_separate(request->coa);
+		} else if (request->parent && (request->parent->coa == request)) {
+			coa_separate(request);
+		}
 	}
 #endif
 
@@ -1337,7 +1339,7 @@ static void request_finish(REQUEST *request, int action)
 	/*
 	 *	Maybe originate a CoA request.
 	 */
-	if ((action == FR_ACTION_RUN) && !request->proxy && request->coa) {
+	if ((action == FR_ACTION_RUN) && request->root->originate_coa_requests && !request->proxy && request->coa) {
 		request_coa_originate(request);
 	}
 #endif
@@ -5424,6 +5426,13 @@ int radius_event_start(CONF_SECTION *cs, bool have_children)
 		main_config.init_delay.tv_sec >>= 1;
 
 		proxy_ctx = talloc_init("proxy");
+	}
+#endif
+
+#ifdef WITH_COA
+	if (main_config.originate_coa_requests && !proxy_list && !check_config) {
+		proxy_list = fr_packet_list_create(1);
+		if (!proxy_list) return 0;
 	}
 #endif
 

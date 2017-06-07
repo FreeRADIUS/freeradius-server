@@ -129,6 +129,9 @@ typedef struct main_config {
 #ifdef WITH_PROXY
 	bool		proxy_requests;			//!< Toggle to enable/disable proxying globally.
 #endif
+#ifdef WITH_COA
+	bool            originate_coa_requests;         //!< Toggle to enable/disable originating COA requests globally.
+#endif
 	struct timeval	reject_delay;			//!< How long to wait before sending an Access-Reject.
 	bool		status_server;			//!< Whether to respond to status-server messages.
 
