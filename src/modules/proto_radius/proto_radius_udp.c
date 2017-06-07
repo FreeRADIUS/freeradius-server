@@ -52,6 +52,7 @@ typedef struct {
 	bool				ipv6addr_is_set;	//!< ipv6addr config item is set.
 
 	char const			*interface;		//!< Interface to bind to.
+	char const			*port_name;		//!< Name of the port for getservent().
 
 	uint16_t			port;			//!< Port to listen on.
 	uint32_t			recv_buff;		//!< How big the kernel's receive buffer should be.
@@ -65,6 +66,7 @@ static const CONF_PARSER udp_listen_conf[] = {
 	{ FR_CONF_IS_SET_OFFSET("ipv6addr", FR_TYPE_IPV6_ADDR, fr_proto_radius_udp_ctx_t, ipaddr) },
 
 	{ FR_CONF_OFFSET("interface", FR_TYPE_STRING, fr_proto_radius_udp_ctx_t, interface) },
+	{ FR_CONF_OFFSET("port_name", FR_TYPE_STRING, fr_proto_radius_udp_ctx_t, port_name) },
 
 	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, fr_proto_radius_udp_ctx_t, port) },
 	{ FR_CONF_IS_SET_OFFSET("recv_buff", FR_TYPE_UINT32, fr_proto_radius_udp_ctx_t, recv_buff) },
@@ -157,7 +159,7 @@ static int mod_open(void *instance)
 
 	int				sockfd = 0;
 
-	sockfd = fr_socket_server_udp(&inst->ipaddr, &inst->port, NULL, true);
+	sockfd = fr_socket_server_udp(&inst->ipaddr, &inst->port, inst->port_name, true);
 	if (sockfd < 0) {
 		ERROR("%s", fr_strerror());
 	error:
