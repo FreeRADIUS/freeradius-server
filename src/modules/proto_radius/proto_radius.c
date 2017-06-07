@@ -33,7 +33,7 @@
  */
 static int mod_decode(UNUSED void *io_ctx, uint8_t *const data, UNUSED size_t data_len, REQUEST *request)
 {
-	proto_radius_ctx_t *ctx = io_ctx;
+//	proto_radius_ctx_t *ctx = io_ctx;
 
 	if (fr_radius_verify(data, NULL, (uint8_t const *) "testing123", 10) < 0) {
 		return -1;
@@ -234,7 +234,7 @@ static int open_transport(proto_radius_ctx_t *ctx, UNUSED fr_schedule_t *handle,
 	}
 
 	if (dl_instance_data_alloc(&io_ctx, NULL, module, io_cs) < 0) {
-		PERROR("Failed io_ctx data");
+		cf_log_perr_cs(cs, "Failed io_ctx data");
 		return -1;
 	}
 
@@ -260,7 +260,7 @@ static int open_transport(proto_radius_ctx_t *ctx, UNUSED fr_schedule_t *handle,
 	if (verify_config) return 0;
 
 	if (app_io->op.open(io_ctx) < 0) {
-		cf_log_err_cs(cs, "Failed compiling unlang for 'transport = %s'", value);
+		cf_log_err_cs(cs, "Failed opening I/O interface", value);
 		return -1;
 	}
 
@@ -282,7 +282,7 @@ static int open_transport(proto_radius_ctx_t *ctx, UNUSED fr_schedule_t *handle,
 	 *
 	 *	@todo - more cleanup on error.
 	 */
-	if (!fr_schedule_socket_add(handle, io_ctx, &ctx->transport)) {
+	if (!fr_schedule_socket_add(handle, io_ctx)) {
 		talloc_free(ctx);
 		return -1;
 	}
