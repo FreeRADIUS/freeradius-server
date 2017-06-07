@@ -233,20 +233,11 @@ typedef struct fr_io_op_t {
 	fr_io_nak_t		nak;		//!< Function to send a NAK.
 } fr_io_op_t;
 
-typedef enum fr_io_status_t {
-	FR_IO_STATUS_INIT = 0,			//!< Initialing I/O path.
-	FR_IO_STATUS_ESTABLISHED,
-	FR_IO_STATUS_FAILED
-} fr_io_status_t;
-
 typedef struct fr_io fr_io_t;
 struct fr_io {
-	fr_io_status_t		status;		//!< Status of I/O path.
-
-	int			fd;
 	void			*ctx;		//!< I/O path specific context.
 	fr_io_op_t const	*op;		//!< I/O path functions.
-	fr_io_t			*parent;	//!< Parent (if applicable)
+	void			*parent;	//!< Parent usually the proto_* ctx.
 };
 
 #ifndef _FR_RADIUSD_H

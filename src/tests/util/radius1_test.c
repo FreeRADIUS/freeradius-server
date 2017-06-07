@@ -344,7 +344,6 @@ static void master_process(TALLOC_CTX *ctx)
 			rad_assert(pc != NULL);
 			pc->salen = sizeof(pc->src);
 
-			cd->io->fd = -1;
 			cd->priority = 0;
 			cd->io->ctx = pc;
 			cd->io->op = &transport;

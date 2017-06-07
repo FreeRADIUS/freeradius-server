@@ -799,7 +799,7 @@ void fr_network(fr_network_t *nr)
 			// call write function again at some later date.
 		}
 
-		fr_log(nr->log, L_DBG, "Sending reply to socket %d", cd->io->fd);
+		fr_log(nr->log, L_DBG, "Sending reply to socket %d", cd->io->op->fd(cd->io->ctx));
 		fr_message_done(&cd->m);
 	}
 }

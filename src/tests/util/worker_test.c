@@ -258,7 +258,6 @@ static void master_process(void)
 
 			cd->m.when = fr_time();
 
-			cd->io->fd = -1;
 			cd->priority = 0;
 			cd->io->ctx = NULL;
 			cd->io->op = &transport;
