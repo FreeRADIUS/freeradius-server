@@ -257,7 +257,7 @@ static int open_transport(proto_radius_ctx_t *ctx, UNUSED fr_schedule_t *handle,
 		return -1;
 	}
 
-	if (!verify_config) return 0;
+	if (verify_config) return 0;
 
 	if (app_io->op.open(io_ctx) < 0) {
 		cf_log_err_cs(cs, "Failed compiling unlang for 'transport = %s'", value);
