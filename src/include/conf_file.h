@@ -511,7 +511,9 @@ CONF_ITEM	*cf_section_to_item(CONF_SECTION const *cs);
  */
 void		cf_log_err(CONF_ITEM const *ci, char const *fmt, ...)		CC_HINT(format (printf, 2, 3));
 void		cf_log_err_cs(CONF_SECTION const *cs, char const *fmt, ...)	CC_HINT(format (printf, 2, 3));
+void		cf_log_perr_cs(CONF_SECTION const *cs, char const *fmt, ...)	CC_HINT(format (printf, 2, 3));
 void		cf_log_err_cp(CONF_PAIR const *cp, char const *fmt, ...)	CC_HINT(format (printf, 2, 3));
+void		cf_log_perr_cp(CONF_PAIR const *cp, char const *fmt, ...)	CC_HINT(format (printf, 2, 3));
 void		cf_log_err_by_name(CONF_SECTION const *parent,
 				   char const *name, char const *fmt, ...) CC_HINT(format (printf, 3, 4));
 void		cf_log_warn_cp(CONF_PAIR const *cp, char const *fmt, ...)	CC_HINT(format (printf, 2, 3));

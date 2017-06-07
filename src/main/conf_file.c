@@ -4418,6 +4418,20 @@ void cf_log_err_cs(CONF_SECTION const *cs, char const *fmt, ...)
 	       buffer);
 }
 
+void cf_log_perr_cs(CONF_SECTION const *cs, char const *fmt, ...)
+{
+	va_list ap;
+	char buffer[256];
+
+	va_start(ap, fmt);
+	vsnprintf(buffer, sizeof(buffer), fmt, ap);
+	va_end(ap);
+
+	rad_assert(cs != NULL);
+
+	PERROR("%s[%d]: %s", cs->item.filename, cs->item.lineno, buffer);
+}
+
 void cf_log_err_cp(CONF_PAIR const *cp, char const *fmt, ...)
 {
 	va_list ap;
@@ -4429,9 +4443,21 @@ void cf_log_err_cp(CONF_PAIR const *cp, char const *fmt, ...)
 
 	rad_assert(cp != NULL);
 
-	ERROR("%s[%d]: %s",
-	      cp->item.filename, cp->item.lineno,
-	      buffer);
+	ERROR("%s[%d]: %s", cp->item.filename, cp->item.lineno, buffer);
+}
+
+void cf_log_perr_cp(CONF_PAIR const *cp, char const *fmt, ...)
+{
+	va_list ap;
+	char buffer[256];
+
+	va_start(ap, fmt);
+	vsnprintf(buffer, sizeof(buffer), fmt, ap);
+	va_end(ap);
+
+	rad_assert(cp != NULL);
+
+	PERROR("%s[%d]: %s", cp->item.filename, cp->item.lineno, buffer);
 }
 
 void cf_log_err_by_name(CONF_SECTION const *parent, char const *name, char const *fmt, ...)
