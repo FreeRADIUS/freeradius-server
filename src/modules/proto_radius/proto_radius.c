@@ -31,17 +31,17 @@
 /** Decode the packet, and set the request->process function
  *
  */
-static int mod_decode(void *io_ctx, uint8_t *const data, UNUSED size_t data_len, REQUEST *request)
+static int mod_decode(UNUSED void *io_ctx, uint8_t *const data, UNUSED size_t data_len, REQUEST *request)
 {
 	proto_radius_ctx_t *ctx = io_ctx;
 
-	if (fr_radius_verify(data, NULL, (uint8_t const *) ctx->secret, ctx->secret_len) < 0) {
+	if (fr_radius_verify(data, NULL, (uint8_t const *) "testing123", 10) < 0) {
 		return -1;
 	}
 
 	rad_assert(data[0] < FR_MAX_PACKET_CODE);
 
-	if (fr_radius_packet_decode(request->packet, NULL, ctx->secret) < 0) {
+	if (fr_radius_packet_decode(request->packet, NULL, "testing123") < 0) {
 		return -1;
 	}
 
@@ -276,21 +276,16 @@ static int open_transport(proto_radius_ctx_t *ctx, UNUSED fr_schedule_t *handle,
 
 
 	/*
-	 *	Don't do this until we actually have a scheduler
-	 */
-#if 0
-	/*
 	 *	Add it to the scheduler.  Note that we add our context
 	 *	instead of the transport one, as we need to swap out
 	 *	the process function.
 	 *
 	 *	@todo - more cleanup on error.
 	 */
-	if (!fr_schedule_socket_add(handle, ctx->sockfd, ctx, &ctx->transport)) {
+	if (!fr_schedule_socket_add(handle, io_ctx, &ctx->transport)) {
 		talloc_free(ctx);
 		return -1;
 	}
-#endif
 
 	/*
 	 *	Remember that we loaded the transport library in the server.
