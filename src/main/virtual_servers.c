@@ -534,7 +534,10 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 	for (cs = cf_subsection_find_next(config, NULL, "listen");
 	     cs != NULL;
 	     cs = cf_subsection_find_next(config, cs, "listen")) {
-		if (cf_pair_find(cs, "namespace") != NULL) continue;
+		if (cf_pair_find(cs, "namespace") != NULL) {
+			main_config.namespace = true;
+			continue;
+		}
 
 		if (listen_bootstrap(config, cs, NULL) < 0) return -1;
 	}
@@ -669,6 +672,8 @@ int virtual_servers_init(fr_schedule_t *sc, CONF_SECTION *config)
 		if (cf_pair_find(cs, "namespace")) {
 			dl_t const *module;
 			fr_app_t const *app;
+
+			if (!sc) continue;
 
 			module = cf_data_find(cs, dl_t, "app");
 			if (!module) continue;

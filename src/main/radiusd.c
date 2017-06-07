@@ -140,7 +140,7 @@ int main(int argc, char *argv[])
 	bool		display_version = false;
 	int		from_child[2] = {-1, -1};
 	char		*p;
-	fr_schedule_t	*sc;
+	fr_schedule_t	*sc = NULL;
 
 	/*
 	 *	Setup talloc callbacks so we get useful errors
@@ -550,11 +550,12 @@ int main(int argc, char *argv[])
 	 */
 	if (modules_instantiate(main_config.config) < 0) exit(EXIT_FAILURE);
 
-	sc = fr_schedule_create(NULL, &default_log, 1, 4, NULL, NULL);
-	if (!sc) {
-		exit(EXIT_FAILURE);
+	if (main_config.namespace) {
+		sc = fr_schedule_create(NULL, &default_log, 1, 4, NULL, NULL);
+		if (!sc) {
+			exit(EXIT_FAILURE);
+		}
 	}
-
 
 	/*
 	 *	And then load the virtual servers.
