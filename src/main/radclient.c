@@ -364,6 +364,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		 *	Skip empty entries
 		 */
 		if (!request->packet->vps) {
+			WARN("Skpping \"%s\": No Attributes", files->packets);
 			talloc_free(request);
 			continue;
 		}

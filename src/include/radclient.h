@@ -41,6 +41,7 @@ extern "C" {
 
 
 #define ERROR(fmt, ...)		if (do_output) fr_perror("radclient: " fmt, ## __VA_ARGS__)
+#define WARN(fmt, ...)		if (do_output) fprintf(stderr, fmt "\n", ## __VA_ARGS__)
 
 #define RDEBUG_ENABLED()	(do_output && (fr_debug_lvl > 0))
 #define RDEBUG_ENABLED2()	(do_output && (fr_debug_lvl > 1))
