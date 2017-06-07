@@ -184,13 +184,12 @@ static void NEVER_RETURNS usage(void)
 
 int main(int argc, char *argv[])
 {
-	int c;
-	int num_networks = 1;
-	int num_workers = 2;
-	uint16_t	port16 = 0;
-	int sockfd;
-	TALLOC_CTX	*autofree = talloc_init("main");
-	fr_schedule_t	*sched;
+	int			c;
+	int			num_networks = 1;
+	int			num_workers = 2;
+	uint16_t		port16 = 0;
+	TALLOC_CTX		*autofree = talloc_init("main");
+	fr_schedule_t		*sched;
 
 	fr_time_start();
 
