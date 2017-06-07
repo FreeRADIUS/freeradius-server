@@ -271,12 +271,11 @@ void fr_perror(char const *fmt, ...)
 	if (error && (error[0] != '\0')) {
 		fprintf(stderr, "%s: %s\n", prefix, error);
 	} else {
-		fputs("\n", stderr);
+		fprintf(stderr, "%s\n", prefix, stderr);
+		talloc_free(prefix);
+		return;
 	}
 
-	/*
-	 *	Only the first line is prefixed
-	 */
 	while ((error = fr_strerror_pop())) {
 		if (error && (error[0] != '\0')) {
 			fprintf(stderr, "%s: %s\n", prefix, error);
