@@ -215,6 +215,10 @@ static int open_transport(proto_radius_ctx_t *ctx, UNUSED fr_schedule_t *handle,
 		return -1;
 	}
 
+	/*
+	 *	Add port_name
+	 */
+
 	app_io = (fr_app_io_t const *) module->common;
 	if (app_io->instantiate(io_cs, io_ctx) < 0) {
 		cf_log_err_cs(cs, "Failed instantiating 'transport = %s'", value);

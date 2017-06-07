@@ -45,7 +45,6 @@ typedef struct fr_network_worker_t {
 typedef struct fr_network_socket_t {
 	fr_dlist_t		entry;
 
-	int			fd;			//!< the file descriptor
 	void			*ctx;			//!< transport context
 	fr_io_op_t		*transport;		//!< the transport
 
@@ -320,7 +319,7 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
 	ssize_t data_size;
 	fr_channel_data_t *cd;
 
-	rad_assert(s->fd == sockfd);
+	rad_assert(s->transport->fd(s->ctx) == sockfd);
 
 	fr_log(nr->log, L_DBG, "network read");
 
@@ -351,7 +350,7 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
 	 *	network side knows that it needs to close the
 	 *	connection.
 	 */
-	data_size = s->transport->read(sockfd, s->ctx, cd->m.data, cd->m.rb_size);
+	data_size = s->transport->read(s->ctx, cd->m.data, cd->m.rb_size);
 	if (data_size == 0) {
 		fr_log(nr->log, L_DBG_ERR, "got no data from transport read");
 
@@ -375,9 +374,9 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
 	 *	fr_io_op_t.
 	 */
 	if (data_size < 0) {
-		fr_log(nr->log, L_DBG_ERR, "error from transport read on socket %d", s->fd);
+		fr_log(nr->log, L_DBG_ERR, "error from transport read on socket %d", sockfd);
 
-		(void) fr_event_fd_delete(nr->el, s->fd);
+		(void) fr_event_fd_delete(nr->el, sockfd);
 		fr_dlist_remove(&s->entry);
 		talloc_free(s);
 		return;
@@ -390,7 +389,6 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
 	 *	Initialize the rest of the fields of the channel data.
 	 */
 	cd->m.when = fr_time();
-	cd->io->fd = sockfd;
 	cd->priority = 0;
 	cd->io->ctx = s->ctx;
 	cd->io->op = s->transport;
@@ -413,12 +411,12 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
  * @param sockfd the socket which is ready to write
  * @param ctx the network socket context.
  */
-static void fr_network_write(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
+static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, void *ctx)
 {
 	fr_network_socket_t *s = ctx;
 
-	if (s->transport->flush(sockfd, s->ctx) < 0) {
-		s->transport->error(sockfd, s->ctx);
+	if (s->transport->flush(s->ctx) < 0) {
+		s->transport->error(s->ctx);
 		talloc_free(s);
 	}
 }
@@ -429,11 +427,11 @@ static void fr_network_write(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
  * @param sockfd the socket which has a fatal error.
  * @param ctx the network socket context.
  */
-static void fr_network_error(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
+static void fr_network_error(UNUSED fr_event_list_t *el, UNUSED int sockfd, void *ctx)
 {
 	fr_network_socket_t *s = ctx;
 
-	s->transport->error(sockfd, s->ctx);
+	s->transport->error(s->ctx);
 	talloc_free(s);
 }
 
@@ -441,14 +439,14 @@ static int _network_socket_free(fr_network_socket_t *s)
 {
 	fr_network_t *nr = talloc_parent(s);
 
-	fr_event_fd_delete(nr->el, s->fd);
+	fr_event_fd_delete(nr->el, s->transport->fd(s->ctx));
 
 	fr_dlist_remove(&s->entry);
 
 	if (s->transport->close) {
-		s->transport->close(s->fd, s->ctx);
+		s->transport->close(s->ctx);
 	} else {
-		close(s->fd);
+		close(s->transport->fd(s->ctx));
 	}
 
 	return 0;
@@ -463,6 +461,7 @@ static int _network_socket_free(fr_network_socket_t *s)
  */
 static void fr_network_socket_callback(void *ctx, void const *data, size_t data_size, UNUSED fr_time_t now)
 {
+	int fd;
 	fr_network_t *nr = ctx;
 	fr_network_socket_t *s;
 	fr_event_fd_handler_t write_fn, error_fn;
@@ -501,7 +500,9 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 
 	if (s->transport->error) error_fn = fr_network_error;
 
-	if (fr_event_fd_insert(nr->el, s->fd, fr_network_read, write_fn, error_fn, s) < 0) {
+	fd = s->transport->fd(s->ctx);
+
+	if (fr_event_fd_insert(nr->el, fd, fr_network_read, write_fn, error_fn, s) < 0) {
 		fr_log(nr->log, L_ERR, "Failed adding new socket to event loop: %s", fr_strerror());
 		talloc_free(s);
 		return;
@@ -509,7 +510,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 
 	fr_dlist_insert_head(&nr->sockets, &s->entry);
 
-	fr_log(nr->log, L_DBG, "Using new socket with FD %d", s->fd);
+	fr_log(nr->log, L_DBG, "Using new socket with FD %d", fd);
 }
 
 
@@ -764,7 +765,7 @@ void fr_network(fr_network_t *nr)
 		 *	the reply is a NAK, don't write it to the
 		 *	network.
 		 */
-		rcode = io->op->write(io->fd, io->ctx, cd->m.data, cd->m.data_size);
+		rcode = io->op->write(io->ctx, cd->m.data, cd->m.data_size);
 		if (rcode < 0) {
 			fr_dlist_t *entry;
 
@@ -774,16 +775,16 @@ void fr_network(fr_network_t *nr)
 			 *	Don't call close, as that will be done
 			 *	in the destructor.
 			 */
-			if (io->op->error) io->op->error(io->fd, io->ctx);
+			if (io->op->error) io->op->error(io->ctx);
 
 			/*
-			 *	Find the socket which matches this
-			 *	file descriptor.
+			 *	Find the fr_network_socket_t which
+			 *	matches this message.
 			 *
-			 *	@todo - put them into a binary tree
-			 *	based on FD.  That way we can handle
-			 *	tens of thousands without walking a
-			 *	linked list.
+			 *	@todo - put them into a binary tree.
+			 *	That way we can handle tens of
+			 *	thousands without walking a linked
+			 *	list.
 			 */
 			for (entry = FR_DLIST_FIRST(nr->sockets);
 			     entry != NULL;
@@ -791,7 +792,7 @@ void fr_network(fr_network_t *nr)
 				fr_network_socket_t *s;
 
 				s = fr_ptr_to_type(fr_network_socket_t, entry, entry);
-				if (s->fd == io->fd) {
+				if (s->ctx == io->ctx) {
 					talloc_free(s);
 					break;
 				}
@@ -823,16 +824,14 @@ void fr_network_exit(fr_network_t *nr)
 /** Add a socket to a network
  *
  * @param nr the network
- * @param fd the file descriptor for the socket
  * @param ctx the context for the transport
  * @param transport the transport
  */
-int fr_network_socket_add(fr_network_t *nr, int fd, void *ctx, fr_io_op_t *transport)
+int fr_network_socket_add(fr_network_t *nr, void *ctx, fr_io_op_t *transport)
 {
 	fr_network_socket_t m;
 
 	memset(&m, 0, sizeof(m));
-	m.fd = fd;
 	m.ctx = ctx;
 	m.transport = transport;
 

@@ -629,16 +629,15 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 /** Add a socket to a scheduler.
  *
  * @param sc the scheduler
- * @param fd the file descriptor for the socket
  * @param ctx the context for the transport
  * @param transport the transport
  * @return
  *	- NULL on error
  *	- the fr_network_t that the socket was added to.
  */
-fr_network_t *fr_schedule_socket_add(fr_schedule_t *sc, int fd, void *ctx, fr_io_op_t *transport)
+fr_network_t *fr_schedule_socket_add(fr_schedule_t *sc, void *ctx, fr_io_op_t *transport)
 {
-	if (fr_network_socket_add(sc->sn->rc, fd, ctx, transport) < 0) {
+	if (fr_network_socket_add(sc->sn->rc, ctx, transport) < 0) {
 		return NULL;
 	}
 

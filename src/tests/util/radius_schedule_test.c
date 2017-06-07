@@ -115,14 +115,14 @@ static size_t test_nak(void const *ctx, uint8_t *const packet, size_t packet_len
 	return 10;
 }
 
-static ssize_t test_read(int sockfd, void *ctx, uint8_t *buffer, size_t buffer_len)
+static ssize_t test_read(void *ctx, uint8_t *buffer, size_t buffer_len)
 {
 	ssize_t data_size;
 	fr_packet_ctx_t *pc = ctx;
 
 	pc->salen = sizeof(pc->src);
 
-	data_size = recvfrom(sockfd, buffer, buffer_len, 0, (struct sockaddr *) &pc->src, &pc->salen);
+	data_size = recvfrom(pc->sockfd, buffer, buffer_len, 0, (struct sockaddr *) &pc->src, &pc->salen);
 	if (data_size <= 0) return data_size;
 
 	/*
@@ -135,14 +135,14 @@ static ssize_t test_read(int sockfd, void *ctx, uint8_t *buffer, size_t buffer_l
 }
 
 
-static ssize_t test_write(int sockfd, void *ctx, uint8_t *buffer, size_t buffer_len)
+static ssize_t test_write(void *ctx, uint8_t *buffer, size_t buffer_len)
 {
 	ssize_t data_size;
 	fr_packet_ctx_t *pc = ctx;
 
 	pc->salen = sizeof(pc->src);
 
-	data_size = sendto(sockfd, buffer, buffer_len, 0, (struct sockaddr *) &pc->src, pc->salen);
+	data_size = sendto(pc->sockfd, buffer, buffer_len, 0, (struct sockaddr *) &pc->src, pc->salen);
 	if (data_size <= 0) return data_size;
 
 	/*
@@ -150,6 +150,13 @@ static ssize_t test_write(int sockfd, void *ctx, uint8_t *buffer, size_t buffer_
 	 */
 
 	return data_size;
+}
+
+static int test_fd(void *ctx)
+{
+	fr_packet_ctx_t *pc = ctx;
+
+	return pc->sockfd;
 }
 
 
@@ -161,6 +168,7 @@ static fr_io_op_t transport = {
 	.decode = test_decode,
 	.encode = test_encode,
 	.nak = test_nak,
+	.fd = test_fd,
 };
 
 static void NEVER_RETURNS usage(void)
@@ -265,7 +273,7 @@ int main(int argc, char *argv[])
 
 	packet_ctx.sockfd = sockfd;
 
-	(void) fr_schedule_socket_add(sched, sockfd, &packet_ctx, &transport);
+	(void) fr_schedule_socket_add(sched, &packet_ctx, &transport);
 
 	sleep(10);
 

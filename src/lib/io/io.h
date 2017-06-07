@@ -183,7 +183,6 @@ typedef size_t (*fr_io_nak_t)(void const *io_ctx, uint8_t *const packet, size_t 
  *  saying "I took saved the data, but the socket wasn't ready, so you
  *  need to call me again at a later point".
  *
- * @param[in] sockfd		the file descriptor to use
  * @param[in] io_ctx		the context for this function
  * @param[in,out] buffer	the buffer where the raw packet will be written to (or read from)
  * @param[in] buffer_len	the length of the buffer
@@ -191,7 +190,7 @@ typedef size_t (*fr_io_nak_t)(void const *io_ctx, uint8_t *const packet, size_t 
  *	- <0 on error
  *	- >=0 length of the data read or written.
  */
-typedef ssize_t (*fr_io_data_t)(int sockfd, void *io_ctx, uint8_t *buffer, size_t buffer_len);
+typedef ssize_t (*fr_io_data_t)(void *io_ctx, uint8_t *buffer, size_t buffer_len);
 
 /**  Handle a close or error on the socket.
  *
@@ -200,13 +199,12 @@ typedef ssize_t (*fr_io_data_t)(int sockfd, void *io_ctx, uint8_t *buffer, size_
  *  before "close".  On normal finish, the "close" function will be
  *  called.
  *
- * @param[in] sockfd		the file descriptor to use
  * @param[in] io_ctx		the context for this function
  * @return
  *	- 0 on success
  *	- <0 on error
  */
-typedef int (*fr_io_signal_t)(int sockfd, void *io_ctx);
+typedef int (*fr_io_signal_t)(void *io_ctx);
 
 /** Process a request through the transport async state machine.
  *

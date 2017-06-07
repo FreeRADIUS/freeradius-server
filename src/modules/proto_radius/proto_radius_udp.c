@@ -73,7 +73,7 @@ static const CONF_PARSER udp_listen_conf[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static ssize_t mod_read(int sockfd, void *ctx, uint8_t *buffer, size_t buffer_len)
+static ssize_t mod_read(void *ctx, uint8_t *buffer, size_t buffer_len)
 {
 	ssize_t data_size;
 	size_t packet_len;
@@ -82,7 +82,7 @@ static ssize_t mod_read(int sockfd, void *ctx, uint8_t *buffer, size_t buffer_le
 
 	pc->salen = sizeof(pc->src);
 
-	data_size = recvfrom(sockfd, buffer, buffer_len, 0, (struct sockaddr *) &pc->src, &pc->salen);
+	data_size = recvfrom(pc->sockfd, buffer, buffer_len, 0, (struct sockaddr *) &pc->src, &pc->salen);
 	if (data_size <= 0) return data_size;
 
 	packet_len = data_size;
@@ -108,7 +108,7 @@ static ssize_t mod_read(int sockfd, void *ctx, uint8_t *buffer, size_t buffer_le
 }
 
 
-static ssize_t mod_write(int sockfd, void *ctx, uint8_t *buffer, size_t buffer_len)
+static ssize_t mod_write(void *ctx, uint8_t *buffer, size_t buffer_len)
 {
 	ssize_t data_size;
 	fr_packet_ctx_t *pc = ctx;
@@ -118,7 +118,7 @@ static ssize_t mod_write(int sockfd, void *ctx, uint8_t *buffer, size_t buffer_l
 	/*
 	 *	@todo - do more stuff
 	 */
-	data_size = sendto(sockfd, buffer, buffer_len, 0, (struct sockaddr *) &pc->src, pc->salen);
+	data_size = sendto(pc->sockfd, buffer, buffer_len, 0, (struct sockaddr *) &pc->src, pc->salen);
 	if (data_size <= 0) return data_size;
 
 	/*
