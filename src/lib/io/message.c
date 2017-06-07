@@ -175,6 +175,7 @@ fr_message_set_t *fr_message_set_create(TALLOC_CTX *ctx, int num_messages, size_
 		talloc_free(ms);
 		goto nomem;
 	}
+	ms->rb_max = 0;
 
 	ms->mr_array[0] = fr_ring_buffer_create(ms, num_messages * message_size);
 	if (!ms->mr_array[0]) {
@@ -363,7 +364,7 @@ static int fr_message_ring_gc(fr_message_set_t *ms, fr_ring_buffer_t *mr, int ma
 static void fr_message_gc(fr_message_set_t *ms, int max_to_clean)
 {
 	int i;
-	int arrays_freed, empty_slot;
+	int arrays_freed, arrays_used, empty_slot;
 	int largest_free_slot;
 	size_t largest_free_size;
 
@@ -482,58 +483,94 @@ static void fr_message_gc(fr_message_set_t *ms, int max_to_clean)
 	 *	Except that freeing the messages above also cleaned up
 	 *	the contents of each ring buffer, so all we need to do
 	 *	is find the largest empty ring buffer.
+	 *
+	 *	We do this by keeping the two largest ring buffers
+	 *	(used or not), and then freeing all smaller empty
+	 *	ones.
 	 */
+	arrays_used = 0;
 	arrays_freed = 0;
-	empty_slot = -1;
-	for (i = 0; i <= ms->rb_max; i++) {
+	MPRINT("TRYING TO FREE ARRAYS %d\n", ms->rb_max);
+	for (i = ms->rb_max; i >= 0; i--) {
+		rad_assert(ms->rb_array[i] != NULL);
+
+		if (arrays_used < 2) {
+			MPRINT("\tleaving entry %d alone\n", i);
+			arrays_used++;
+			continue;
+		}
+
 		if (fr_ring_buffer_used(ms->rb_array[i]) == 0) {
-			if (empty_slot < 0) {
-				empty_slot = i;
+			MPRINT("\tfreeing entry %d\n", i);
+			TALLOC_FREE(ms->rb_array[i]);
+			arrays_freed++;
+			continue;
+		}
+
+		MPRINT("\tstill in use entry %d\n", i);
+	}
+
+	/*
+	 *	Pack the array entries back down.
+	 */
+	if (arrays_freed > 0) {
+		MPRINT("TRYING TO PACK from %d free arrays out of %d\n", arrays_freed, ms->rb_max + 1);
+
+		empty_slot = -1;
+
+		/*
+		 *	Pack the rb array by moving used entries to
+		 *	the bottom of the array.
+		 */
+		for (i = 0; i <= ms->rb_max; i++) {
+			int j;
+
+			/*
+			 *	Skip over empty entries, but set
+			 *	"empty_slot" to the first empty on we
+			 *	found.
+			 */
+			if (!ms->rb_array[i]) {
+				if (empty_slot < 0) empty_slot = i;
+
 				continue;
 			}
 
 			/*
-			 *	Don't ever free the largest array, but
-			 *	do set the empty slot here.
+			 *	This array entry is used, but there is
+			 *	no empty slot to put it into.  Ignore
+			 *	it, and continue
 			 */
-			if (i == ms->rb_max) {
-				empty_slot = i;
-				break;
+			if (empty_slot < 0) continue;
+
+			rad_assert(ms->rb_array[empty_slot] == NULL);
+
+			ms->rb_array[empty_slot] = ms->rb_array[i];
+			ms->rb_array[i] = NULL;
+
+			/*
+			 *	Find the next empty slot which is
+			 *	greater than the one we just used.
+			 */
+			for (j = empty_slot + 1; j <= i; j++) {
+				if (!ms->rb_array[j]) {
+					empty_slot = j;
+					break;
+				}
 			}
-
-			TALLOC_FREE(ms->rb_array[empty_slot]);
-			empty_slot = i;
-			arrays_freed++;
-		}
-	}
-
-	/*
-	 *	This code is the same as above, except with s/m_/rb_/.
-	 *	We could arguably turn this into a function...
-	 */
-	if (arrays_freed) {
-		MPRINT("TRYING TO FREE %d arrays out of %d empty %d\n", arrays_freed, ms->rb_max + 1, empty_slot);
-
-		for (i = 0; i < ms->rb_max; i++) {
-			if (ms->rb_array[i] != NULL) continue;
-
-			memmove(&ms->rb_array[i], &ms->rb_array[i + 1],
-				sizeof(ms->rb_array[i]) * (ms->rb_max - i + 1));
-
-			if (empty_slot > i) empty_slot--;
-			if (ms->rb_current > i) ms->rb_current--;
 		}
 
 		/*
-		 *	Reset the max, and current to the lowest
-		 *	array entry.
+		 *	Lower max, and set current to the largest
+		 *	array, whether or not it's used.
 		 */
 		ms->rb_max -= arrays_freed;
-		rad_assert(ms->rb_current <= ms->rb_max);
+		ms->rb_current = ms->rb_max;
 
 #ifndef NDEBUG
-		MPRINT("NUM ARRAYS NOW %d\n", ms->rb_max + 1);
+		MPRINT("NUM RB ARRAYS NOW %d\n", ms->rb_max + 1);
 		for (i = 0; i <= ms->rb_max; i++) {
+			MPRINT("\t%d %p\n", i, ms->rb_array[i]);
 			rad_assert(ms->rb_array[i] != NULL);
 		}
 #endif
