@@ -1104,7 +1104,7 @@ ntlm_auth_err:
  */
 static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUEST *request, VALUE_PAIR *password,
 						      uint8_t const *challenge, uint8_t const *response,
-						      uint8_t nthashhash[NT_DIGEST_LENGTH], MSCHAP_AUTH_METHOD method)
+						      uint8_t *nthashhash, MSCHAP_AUTH_METHOD method)
 {
 	uint8_t	calculated[24];
 

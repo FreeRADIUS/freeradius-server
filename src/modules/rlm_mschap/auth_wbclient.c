@@ -82,7 +82,7 @@ static char *wbclient_normalise_username(TALLOC_CTX *tctx, struct wbcContext *ct
  */
 int do_auth_wbclient(rlm_mschap_t *inst, REQUEST *request,
 		     uint8_t const *challenge, uint8_t const *response,
-		     uint8_t nthashhash[NT_DIGEST_LENGTH])
+		     uint8_t *nthashhash)
 {
 	int rcode = -1;
 	struct wbcContext *wb_ctx = NULL;
