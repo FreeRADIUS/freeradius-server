@@ -2143,8 +2143,18 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		when = request->timestamp;
 		usec = 0;
 		if (request->packet) {
+#ifdef WITH_PROXY
+			if (request->proxy && request->proxy_reply) {
+				when = request->proxy_reply->timestamp.tv_sec;
+				usec = request->proxy_reply->timestamp.tv_usec;
+			} else {
+				when = request->packet->timestamp.tv_sec;
+				usec = request->packet->timestamp.tv_usec;
+			}
+#else
 			when = request->packet->timestamp.tv_sec;
 			usec = request->packet->timestamp.tv_usec;
+#endif
 		}
 
 		switch (*p) {
