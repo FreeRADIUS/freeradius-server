@@ -41,11 +41,11 @@ extern "C" {
 /*
  * Export the minimum amount of information about these structs
  */
-typedef struct conf_item CONF_ITEM;	//!< Generic configuration element, extended to become
+typedef struct cf_item CONF_ITEM;	//!< Generic configuration element, extended to become
 					///< a #CONF_PAIR, a #CONF_SECTION or #CONF_DATA.
-typedef struct conf_pair CONF_PAIR;	//!< #CONF_ITEM with an attribute, an operator and a value.
-typedef struct conf_part CONF_SECTION;	//!< #CONF_ITEM used to group multiple #CONF_PAIR and #CONF_SECTION, together.
-typedef struct conf_data CONF_DATA;	//!< #CONF_ITEM used to associate arbitrary data
+typedef struct cf_pair CONF_PAIR;	//!< #CONF_ITEM with an attribute, an operator and a value.
+typedef struct cf_section CONF_SECTION;	//!< #CONF_ITEM used to group multiple #CONF_PAIR and #CONF_SECTION, together.
+typedef struct cf_data CONF_DATA;	//!< #CONF_ITEM used to associate arbitrary data
 					///< with a #CONF_PAIR or #CONF_SECTION.
 
 /*
@@ -496,7 +496,9 @@ char const	*cf_section_filename(CONF_SECTION const *section);
 CONF_ITEM	*cf_item_find_next(CONF_SECTION const *section, CONF_ITEM const *item);
 int		cf_pair_count(CONF_SECTION const *cs);
 
-CONF_SECTION	*cf_item_parent(CONF_ITEM const *ci);
+CONF_ITEM	*cf_item_parent(CONF_ITEM const *ci);
+CONF_SECTION	*cf_section_parent(CONF_SECTION const *cs);
+CONF_SECTION	*cf_pair_parent(CONF_PAIR const *cp);
 CONF_SECTION	*cf_item_root(CONF_ITEM const *ci);
 
 bool		cf_item_is_section(CONF_ITEM const *item);

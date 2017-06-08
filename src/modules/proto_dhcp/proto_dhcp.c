@@ -322,7 +322,7 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 
 			RDEBUG("Trying sub-section dhcp %s {...}", dv->alias);
 
-			server = cf_item_parent(cf_section_to_item(request->listener->cs));
+			server = cf_section_parent(request->listener->cs);
 
 			unlang = cf_subsection_find_name2(server, "dhcp", dv->alias);
 			rcode = unlang_interpret(request, unlang, RLM_MODULE_NOOP);

@@ -2425,7 +2425,7 @@ static unlang_t *compile_redundant(unlang_t *parent, unlang_compile_t *unlang_ct
 	 *	For backwards compatibility.
 	 */
 	if (name2 &&
-	    (strcmp(cf_section_name1(cf_item_parent(cf_section_to_item(cs))), "instantiate") != 0)) {
+	    (strcmp(cf_section_name1(cf_section_parent(cs)), "instantiate") != 0)) {
 		cf_log_err_cs(cs, "%s sections cannot have a name", unlang_ops[mod_type].name);
 		return NULL;
 	}
@@ -2469,7 +2469,7 @@ static unlang_t *compile_load_balance(unlang_t *parent, unlang_compile_t *unlang
 	 *	Inside of the "instantiate" section, the name is a name, not a key.
 	 */
 	if (name2) {
-		if (strcmp(cf_section_name1(cf_item_parent(cf_section_to_item(cs))), "instantiate") == 0) name2 = NULL;
+		if (strcmp(cf_section_name1(cf_section_parent(cs)), "instantiate") == 0) name2 = NULL;
 	}
 
 	if (name2) {
@@ -2743,7 +2743,7 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	unlang_t *c;
 	module_instance_t *this;
 	CONF_SECTION *cs, *subcs, *modules;
-	CONF_SECTION *loop;
+	CONF_ITEM *loop;
 	char const *realname;
 	rlm_components_t component = unlang_ctx->component;
 	unlang_compile_t unlang_ctx2;
@@ -2894,8 +2894,8 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	 */
 	for (loop = cf_item_parent(ci);
 	     loop && subcs;
-	     loop = cf_item_parent(cf_section_to_item(loop))) {
-		if (loop == subcs) {
+	     loop = cf_item_parent(loop)) {
+		if (loop == cf_section_to_item(subcs)) {
 			subcs = NULL;
 		}
 	}

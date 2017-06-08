@@ -1097,7 +1097,7 @@ fr_tls_conf_t *eap_tls_conf_parse(CONF_SECTION *cs, char const *attr)
 	CONF_SECTION		*tls_cs;
 	fr_tls_conf_t		*tls_conf;
 
-	parent = cf_item_parent(cf_section_to_item(cs));
+	parent = cf_section_parent(cs);
 
 	cp = cf_pair_find(cs, attr);
 	if (cp) {

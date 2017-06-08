@@ -1733,7 +1733,7 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	/*
 	 *	Find the sibling "bfd" section of the "listen" section.
 	 */
-	server = cf_item_parent(cf_section_to_item(cs));
+	server = cf_section_parent(cs);
 	sock->unlang = cf_subsection_find(server, "bfd");
 
 	return 0;

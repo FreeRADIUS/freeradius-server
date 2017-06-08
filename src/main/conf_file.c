@@ -72,69 +72,75 @@ typedef enum conf_type {
 #endif
 } CONF_ITEM_TYPE;
 
-struct conf_item {
-	struct conf_item *next;		//!< Sibling.
-	struct conf_part *parent;	//!< Parent.
-	int lineno;			//!< The line number the config item began on.
-	char const *filename;		//!< The file the config item was parsed from.
-	CONF_ITEM_TYPE type;		//!< Whether the config item is a config_pair, conf_section or conf_data.
+struct cf_item {
+	struct cf_item		*next;		//!< Sibling.
+	struct cf_item		*parent;	//!< Parent.
+	int			lineno;		//!< The line number the config item began on.
+	char const		*filename;	//!< The file the config item was parsed from.
+	CONF_ITEM_TYPE		type;		//!< Whether the config item is a config_pair, conf_section or cf_data.
 };
 
 /** Configuration AVP similar to a VALUE_PAIR
  *
  */
-struct conf_pair {
-	CONF_ITEM	item;
-	char const	*attr;		//!< Attribute name
+struct cf_pair {
+	CONF_ITEM		item;		//!< Common set of fields.
+
+	char const		*attr;		//!< Attribute name
 #ifdef WITH_CONF_WRITE
-	char const	*orig_value;	/* original value */
+	char const		*orig_value;	/* original value */
 #endif
-	char const	*value;		//!< Attribute value
-	FR_TOKEN	op;		//!< Operator e.g. =, :=
-	FR_TOKEN	lhs_type;	//!< Name quoting style T_(DOUBLE|SINGLE|BACK)_QUOTE_STRING or T_BARE_WORD.
-	FR_TOKEN	rhs_type;	//!< Value Quoting style T_(DOUBLE|SINGLE|BACK)_QUOTE_STRING or T_BARE_WORD.
-	bool		pass2;		//!< do expansion in pass2.
-	bool		parsed;		//!< Was this item used during parsing?
+	char const		*value;		//!< Attribute value
+	FR_TOKEN		op;		//!< Operator e.g. =, :=
+	FR_TOKEN		lhs_type;	//!< Name quoting style T_(DOUBLE|SINGLE|BACK)_QUOTE_STRING or T_BARE_WORD.
+	FR_TOKEN		rhs_type;	//!< Value Quoting style T_(DOUBLE|SINGLE|BACK)_QUOTE_STRING or T_BARE_WORD.
+	bool			pass2;		//!< do expansion in pass2.
+	bool			parsed;		//!< Was this item used during parsing?
+};
+
+/** A section grouping multiple #CONF_PAIR
+ *
+ */
+struct cf_section {
+	CONF_ITEM		item;		//!< Common set of fields.
+
+	char const		*name1;		//!< First name token.  Given ``foo bar {}`` would be ``foo``.
+	char const		*name2;		//!< Second name token. Given ``foo bar {}`` would be ``bar``.
+
+	FR_TOKEN		name2_type;	//!< The type of quoting around name2.
+
+	int			argc;		//!< number of additional arguments
+	char const		**argv;		//!< additional arguments
+	FR_TOKEN		*argv_type;
+
+	CONF_ITEM		*children;
+	CONF_ITEM		*tail;		//!< For speed.
+	CONF_SECTION		*template;
+
+	rbtree_t		*pair_tree;	//!< and a partridge..
+	rbtree_t		*section_tree;	//!< no jokes here.
+	rbtree_t		*name2_tree;	//!< for sections of the same name2
+	rbtree_t		*data_tree;
+
+	void			*base;
+	int			depth;
+
+	CONF_PARSER const	*variables;	//!< the section was parsed with.
 };
 
 /** Internal data that is associated with a configuration section
  *
  */
-struct conf_data {
-	CONF_ITEM  	item;
-	char const	*type;		//!< C type of data being stored.
-	char const 	*name;		//!< Additional qualification of type.
-	void const   	*data;		//!< User data.
-	bool		free;		//!< Free user data function.
+struct cf_data {
+	CONF_ITEM  		item;		//!< Common set of fields.
+
+	char const		*type;		//!< C type of data being stored.
+	char const 		*name;		//!< Additional qualification of type.
+	void const   		*data;		//!< User data.
+	bool			free;		//!< Free user data function.
 };
 
-struct conf_part {
-	CONF_ITEM	item;
-	char const	*name1;		//!< First name token.  Given ``foo bar {}`` would be ``foo``.
-	char const	*name2;		//!< Second name token. Given ``foo bar {}`` would be ``bar``.
-
-	FR_TOKEN	name2_type;	//!< The type of quoting around name2.
-
-	int		argc;		//!< number of additional arguments
-	char const	**argv;		//!< additional arguments
-	FR_TOKEN	*argv_type;
-
-	CONF_ITEM	*children;
-	CONF_ITEM	*tail;		//!< For speed.
-	CONF_SECTION	*template;
-
-	rbtree_t	*pair_tree;	//!< and a partridge..
-	rbtree_t	*section_tree;	//!< no jokes here.
-	rbtree_t	*name2_tree;	//!< for sections of the same name2
-	rbtree_t	*data_tree;
-
-	void		*base;
-	int		depth;
-
-	CONF_PARSER const *variables;
-};
-
-typedef enum conf_include_type {
+typedef enum cf_include_type {
 	CONF_INCLUDE_FILE,
 	CONF_INCLUDE_DIR,
 	CONF_INCLUDE_FROMDIR,
@@ -628,7 +634,7 @@ CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *val
 	if (!cp) return NULL;
 
 	cp->item.type = CONF_ITEM_PAIR;
-	cp->item.parent = parent;
+	cp->item.parent = cf_section_to_item(parent);
 	cp->lhs_type = lhs_type;
 	cp->rhs_type = rhs_type;
 	cp->op = op;
@@ -721,7 +727,7 @@ CONF_SECTION *cf_section_alloc(CONF_SECTION *parent, char const *name1, char con
 	if (!cs) return NULL;
 
 	cs->item.type = CONF_ITEM_SECTION;
-	cs->item.parent = parent;
+	cs->item.parent = cf_section_to_item(parent);
 	cs->item.filename = "<internal>"; /* will be over-written if necessary */
 
 	cs->name1 = talloc_typed_strdup(cs, name1);
@@ -1012,7 +1018,7 @@ CONF_ITEM *cf_reference_item(CONF_SECTION const *parentcs,
 		 */
 		while (*p == '.') {
 			if (cs->item.parent) {
-				cs = cs->item.parent;
+				cs = cf_item_to_section(cs->item.parent);
 			}
 
 			/*
@@ -1117,9 +1123,7 @@ CONF_SECTION *cf_top_section(CONF_SECTION *cs)
 {
 	if (!cs) return NULL;
 
-	while (cs->item.parent != NULL) {
-		cs = cs->item.parent;
-	}
+	while (cs->item.parent != NULL) cs = cf_item_to_section(cs->item.parent);
 
 	return cs;
 }
@@ -1275,7 +1279,7 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 				 *	section is wrong.  We don't
 				 *	want an infinite loop.
 				 */
-				if (ci->parent == outercs) {
+				if (cf_item_to_section(ci->parent) == outercs) {
 					ERROR("%s[%d]: Cannot reference different item in same section", cf, *lineno);
 					return NULL;
 				}
@@ -2700,11 +2704,11 @@ static bool invalid_location(CONF_SECTION *this, char const *name, char const *f
 	/*
 	 *	Can only have "if" in 3 named sections.
 	 */
-	this = this->item.parent;
+	this = cf_item_to_section(this->item.parent);
 	while ((strcmp(this->name1, "server") != 0) &&
 	       (strcmp(this->name1, "policy") != 0) &&
 	       (strcmp(this->name1, "instantiate") != 0)) {
-		this = this->item.parent;
+		this = cf_item_to_section(this->item.parent);
 		if (!this) goto invalid_location;
 	}
 
@@ -2924,7 +2928,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			*/
 		       if (!cf_template_merge(this, this->template)) goto error;
 
-		       this = this->item.parent;
+		       this = cf_item_to_section(this->item.parent);
 		       goto check_for_more;
 	       }
 
@@ -4057,7 +4061,7 @@ CONF_SECTION *cf_section_find_next(CONF_SECTION const *section,
 
 	if (!section->item.parent) return NULL;
 
-	return cf_subsection_find_next(section->item.parent, subsection, name1);
+	return cf_subsection_find_next(cf_item_to_section(section->item.parent), subsection, name1);
 }
 
 /** Return the next item after a CONF_ITEM.
@@ -4109,22 +4113,36 @@ int cf_pair_count(CONF_SECTION const *cs)
 	return count;
 }
 
-CONF_SECTION *cf_item_parent(CONF_ITEM const *ci)
+CONF_ITEM *cf_item_parent(CONF_ITEM const *ci)
 {
 	if (!ci) return NULL;
 
 	return ci->parent;
 }
 
+CONF_SECTION *cf_section_parent(CONF_SECTION const *cs)
+{
+	if (!cs) return NULL;
+
+	return cf_item_to_section(cs->item.parent);
+}
+
+CONF_SECTION *cf_pair_parent(CONF_PAIR const *cp)
+{
+	if (!cp) return NULL;
+
+	return cf_item_to_section(cp->item.parent);
+}
+
 CONF_SECTION *cf_item_root(CONF_ITEM const *ci)
 {
-	CONF_SECTION *cs;
+	CONF_ITEM *ci_p;
 
 	if (!ci) return NULL;
 
-	for (cs = ci->parent; cs->item.parent; cs = cs->item.parent);
+	for (ci_p = ci->parent; ci_p->parent; ci_p = ci_p->parent);
 
-	return (CONF_SECTION *)cs;
+	return cf_item_to_section(ci_p);
 }
 
 int cf_section_lineno(CONF_SECTION const *section)
@@ -4159,15 +4177,15 @@ bool cf_item_is_pair(CONF_ITEM const *item)
 
 /** Allocate a new user data container
  *
- * @param[in] parent	conf section.
+ * @param[in] parent	#CONF_PAIR, or #CONF_SECTION to hang CONF_DATA off of.
  * @param[in] name	String identifier of the user data.
  * @param[in] data	being added.
- * @param[in] do_free	function, called when the parent CONF_SECTION is being freed.
+ * @param[in] do_free	function, called when the parent #CONF_SECTION is being freed.
  * @return
  *	- CONF_DATA on success.
  *	- NULL on error.
  */
-static CONF_DATA *cf_data_alloc(CONF_SECTION *parent, void const *data, char const *name, bool do_free)
+static CONF_DATA *cf_data_alloc(CONF_ITEM *parent, void const *data, char const *name, bool do_free)
 {
 	CONF_DATA *cd;
 
@@ -4263,7 +4281,7 @@ int _cf_data_add(CONF_SECTION *cs, void const *data, char const *name, bool do_f
 		return -1;
 	}
 
-	cd = cf_data_alloc(cs, data, name, do_free);
+	cd = cf_data_alloc(cf_section_to_item(cs), data, name, do_free);
 	if (!cd) {
 		cf_log_err_cs(cs, "Failed allocating data");
 		return -1;

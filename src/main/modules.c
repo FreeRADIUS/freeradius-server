@@ -180,7 +180,7 @@ int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char c
 	 *	instantiation order issues.
 	 */
 	inst_name = cf_pair_value(cp);
-	inst = module_find(cf_item_parent(cf_section_to_item(module)), inst_name);
+	inst = module_find(cf_section_parent(module), inst_name);
 	if (!inst) {
 		cf_log_err_cp(cp, "Unknown module instance \"%s\"", inst_name);
 
@@ -196,7 +196,7 @@ int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char c
 		do {
 			CONF_SECTION *tmp;
 
-			tmp = cf_item_parent(cf_section_to_item(parent));
+			tmp = cf_section_parent(parent);
 			if (!tmp) break;
 
 			parent = tmp;
@@ -258,7 +258,7 @@ fr_pool_t *module_connection_pool_init(CONF_SECTION *module,
 
 	int ret;
 
-#define parent_name(_x) cf_section_name(cf_item_parent(cf_section_to_item(_x)))
+#define parent_name(_x) cf_section_name(cf_section_parent(_x))
 
 	cs_name1 = cf_section_name1(module);
 	cs_name2 = cf_section_name2(module);
