@@ -604,7 +604,7 @@ static void rs_stats_print_code_fancy(rs_latency_t *stats, FR_CODE code)
 	}
 
 	if (have_rt || stats->interval.lost || stats->interval.reused) {
-		INFO("%s retransmits & loss:",  fr_packet_codes[code]);
+		INFO("%s retransmits & loss:", fr_packet_codes[code]);
 
 		if (stats->interval.lost)	INFO("\tLost      : %.3lf/s", stats->interval.lost);
 		if (stats->interval.reused)	INFO("\tID Reused : %.3lf/s", stats->interval.reused);

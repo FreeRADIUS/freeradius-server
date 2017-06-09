@@ -3700,7 +3700,7 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 		return snprintf(out, outlen, "%zu", data->datum.size);
 
 	case FR_TYPE_TIMEVAL:
-		len = snprintf(buf, sizeof(buf),  "%" PRIu64 ".%06" PRIu64,
+		len = snprintf(buf, sizeof(buf), "%" PRIu64 ".%06" PRIu64,
 			       (uint64_t)data->datum.timeval.tv_sec, (uint64_t)data->datum.timeval.tv_usec);
 		a = buf;
 		break;

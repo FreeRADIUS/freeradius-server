@@ -176,7 +176,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	RDEBUG2("Retrieved %zu bytes from memcached", len);
 	RDEBUG2("%s", from_store);
 
-	c = talloc_zero(NULL,  rlm_cache_entry_t);
+	c = talloc_zero(NULL, rlm_cache_entry_t);
 	ret = cache_deserialize(c, from_store, len);
 	free(from_store);
 	if (ret < 0) {

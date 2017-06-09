@@ -147,7 +147,7 @@ static ssize_t xlat_tokenize_alternation(TALLOC_CTX *ctx, char *fmt, xlat_exp_t 
 		*(p++) = '\0';
 
 	} else {
-		slen = xlat_tokenize_literal(node, p,  &node->alternate, true, error);
+		slen = xlat_tokenize_literal(node, p, &node->alternate, true, error);
 		if (slen <= 0) {
 			talloc_free(node);
 			return slen - (p - fmt);

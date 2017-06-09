@@ -746,7 +746,7 @@ void rdebug_pair(fr_log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char cons
 
 
 	value = fr_pair_asprint(request, vp, '"');
-	RDEBUGX(level, "%s%s", prefix ? prefix : "&",  value);
+	RDEBUGX(level, "%s%s", prefix ? prefix : "&", value);
 	talloc_free(value);
 }
 
@@ -773,7 +773,7 @@ void rdebug_pair_list(fr_log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char
 		VERIFY_VP(vp);
 
 		value = fr_pair_asprint(request, vp, '"');
-		RDEBUGX(level, "%s%s", prefix ? prefix : "&",  value);
+		RDEBUGX(level, "%s%s", prefix ? prefix : "&", value);
 		talloc_free(value);
 	}
 	REXDENT();
@@ -803,7 +803,7 @@ void rdebug_proto_pair_list(fr_log_lvl_t level, REQUEST *request, VALUE_PAIR *vp
 		if (vp->da->flags.internal) continue;
 
 		value = fr_pair_asprint(request, vp, '"');
-		RDEBUGX(level, "%s%s", prefix ? prefix : "",  value);
+		RDEBUGX(level, "%s%s", prefix ? prefix : "", value);
 		talloc_free(value);
 	}
 	REXDENT();

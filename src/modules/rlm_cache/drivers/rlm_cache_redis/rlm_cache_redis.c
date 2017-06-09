@@ -184,7 +184,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	 *	are three chunks per map
 	 */
 
-	c = talloc_pooled_object(NULL,  rlm_cache_entry_t, reply->elements, pool_size);
+	c = talloc_pooled_object(NULL, rlm_cache_entry_t, reply->elements, pool_size);
 	memset(&pool, 0, sizeof(rlm_cache_entry_t));
 #else
 	c = talloc_zero(NULL, rlm_cache_entry_t);
@@ -422,7 +422,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
  * @copydetails cache_entry_expire_t
  */
 static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config, void *instance,
-					 REQUEST *request, UNUSED void *handle,  uint8_t const *key, size_t key_len)
+					 REQUEST *request, UNUSED void *handle, uint8_t const *key, size_t key_len)
 {
 	rlm_cache_redis_t		*driver = instance;
 	fr_redis_cluster_state_t	state;

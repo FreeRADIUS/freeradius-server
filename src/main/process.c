@@ -5540,7 +5540,7 @@ void radius_event_free(void)
 	}
 #endif
 
-	rbtree_walk(packet_list, RBTREE_DELETE_ORDER,  request_delete_cb, NULL);
+	rbtree_walk(packet_list, RBTREE_DELETE_ORDER, request_delete_cb, NULL);
 
 	if (spawn_workers) {
 		/*

@@ -68,7 +68,7 @@ void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, struct timev
  *	connections implement retry delays.
  */
 fr_redis_rcode_t fr_redis_cluster_state_init(fr_redis_cluster_state_t *state, fr_redis_conn_t **conn,
-					     fr_redis_cluster_t *cluster,  REQUEST *request,
+					     fr_redis_cluster_t *cluster, REQUEST *request,
 					     uint8_t const *key, size_t key_len, bool read_only);
 
 fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr_redis_conn_t **conn,

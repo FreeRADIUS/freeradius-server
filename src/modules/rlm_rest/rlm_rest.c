@@ -102,7 +102,7 @@ static const CONF_PARSER module_config[] = {
  *	- 0 if status was updated successfully.
  *	- -1 if status was not updated successfully.
  */
-static int rlm_rest_status_update(REQUEST *request,  void *handle)
+static int rlm_rest_status_update(REQUEST *request, void *handle)
 {
 	TALLOC_CTX	*ctx;
 	VALUE_PAIR	**list;

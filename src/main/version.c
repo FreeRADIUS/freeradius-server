@@ -562,7 +562,7 @@ void version_print(void)
 			attr = cf_pair_attr(cp);
 
 			DEBUG2("  %s%.*s : %s", attr,
-			       (int)(max - talloc_array_length(attr)), spaces,  cf_pair_value(cp));
+			       (int)(max - talloc_array_length(attr)), spaces, cf_pair_value(cp));
 		}
 
 		talloc_free(features);
@@ -578,7 +578,7 @@ void version_print(void)
 			attr = cf_pair_attr(cp);
 
 			DEBUG2("  %s%.*s : %s", attr,
-			       (int)(max - talloc_array_length(attr)), spaces,  cf_pair_value(cp));
+			       (int)(max - talloc_array_length(attr)), spaces, cf_pair_value(cp));
 		}
 
 #ifdef WITH_TLS

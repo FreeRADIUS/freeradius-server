@@ -141,7 +141,7 @@ next:
 }
 
 
-static ssize_t cond_tokenize_string(TALLOC_CTX *ctx, char **out,  char const **error, char const *start, FR_TOKEN *op)
+static ssize_t cond_tokenize_string(TALLOC_CTX *ctx, char **out, char const **error, char const *start, FR_TOKEN *op)
 {
 	char const *p = start;
 	char *q;

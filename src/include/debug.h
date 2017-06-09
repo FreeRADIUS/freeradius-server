@@ -85,11 +85,11 @@ bool		fr_cond_assert_fail(char const *file, int line, char const *expr);
  *
  * @param _x expression to test (should evaluate to true)
  */
-#define		fr_cond_assert(_x) (bool)((_x) ? true : (fr_cond_assert_fail(__FILE__,  __LINE__, #_x) && false))
+#define		fr_cond_assert(_x) (bool)((_x) ? true : (fr_cond_assert_fail(__FILE__, __LINE__, #_x) && false))
 
 void		NEVER_RETURNS _fr_exit(char const *file, int line, int status);
-#  define	fr_exit(_x) _fr_exit(__FILE__,  __LINE__, (_x))
+#  define	fr_exit(_x) _fr_exit(__FILE__, __LINE__, (_x))
 
 void		NEVER_RETURNS _fr_exit_now(char const *file, int line, int status);
-#  define	fr_exit_now(_x) _fr_exit_now(__FILE__,  __LINE__, (_x))
+#  define	fr_exit_now(_x) _fr_exit_now(__FILE__, __LINE__, (_x))
 #endif /* _FR_DEBUG_H */

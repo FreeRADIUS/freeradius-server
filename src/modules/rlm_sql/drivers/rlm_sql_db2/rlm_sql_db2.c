@@ -100,7 +100,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		 */
 		row = SQLConnect(conn->dbc_handle,
 				    server, SQL_NTS,
-				    login,  SQL_NTS,
+				    login, SQL_NTS,
 				    password, SQL_NTS);
 	}
 

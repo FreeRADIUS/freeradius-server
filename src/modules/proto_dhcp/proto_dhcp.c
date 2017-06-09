@@ -686,7 +686,7 @@ static const char *dhcp_pcap_filter_build(rad_listen_t *this)
 	 */
 	filter = talloc_strdup(this, "(udp and dst port ");
 	if (sock->lsock.my_port) {
-		filter = talloc_asprintf_append_buffer(filter, "%u)",  sock->lsock.my_port);
+		filter = talloc_asprintf_append_buffer(filter, "%u)", sock->lsock.my_port);
 	} else {
 		filter = talloc_strdup_append_buffer(filter, "bootps)");
 	}

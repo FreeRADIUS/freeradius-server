@@ -425,7 +425,7 @@ sql_rcode_t rlm_sql_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handl
  *	- #RLM_SQL_RECONNECT if a new handle is required (also sets *handle = NULL).
  *	- #RLM_SQL_QUERY_INVALID, #RLM_SQL_ERROR on invalid query or connection error.
  */
-sql_rcode_t rlm_sql_select_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle,  char const *query)
+sql_rcode_t rlm_sql_select_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query)
 {
 	int ret = RLM_SQL_ERROR;
 	int i, count;

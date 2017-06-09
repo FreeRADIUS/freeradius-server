@@ -32,8 +32,8 @@ extern "C" {
 #endif
 
 #ifdef WITH_VERIFY_PTR
-#  define VERIFY_VP(_x)		fr_pair_verify(__FILE__,  __LINE__, _x)
-#  define VERIFY_LIST(_x)	fr_pair_list_verify(__FILE__,  __LINE__, NULL, _x)
+#  define VERIFY_VP(_x)		fr_pair_verify(__FILE__, __LINE__, _x)
+#  define VERIFY_LIST(_x)	fr_pair_list_verify(__FILE__, __LINE__, NULL, _x)
 #  define VERIFY_PACKET(_x)	(void) talloc_get_type_abort(_x, RADIUS_PACKET)
 #else
 /*

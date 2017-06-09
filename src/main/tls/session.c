@@ -355,7 +355,7 @@ void tls_session_info_cb(SSL const *ssl, int where, int ret)
 				break;
 			}
 		} else {
-			REDEBUG("Sending client %s TLS alert: %s %i",  SSL_alert_type_string_long(ret),
+			REDEBUG("Sending client %s TLS alert: %s %i", SSL_alert_type_string_long(ret),
 			       SSL_alert_desc_string_long(ret), ret & 0xff);
 		}
 		return;

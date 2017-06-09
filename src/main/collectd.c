@@ -249,10 +249,10 @@ rs_stats_tmpl_t *rs_stats_collectd_init_latency(TALLOC_CTX *ctx, rs_stats_tmpl_t
 
 	/* not static so were thread safe */
 	rs_stats_value_tmpl_t const _packet_count[] = {
-		{ &stats->interval.received, LCC_TYPE_GAUGE,  _copy_double_to_double, NULL },
-		{ &stats->interval.linked, LCC_TYPE_GAUGE,  _copy_double_to_double, NULL },
-		{ &stats->interval.unlinked, LCC_TYPE_GAUGE,  _copy_double_to_double, NULL },
-		{ &stats->interval.reused, LCC_TYPE_GAUGE,  _copy_double_to_double, NULL },
+		{ &stats->interval.received, LCC_TYPE_GAUGE, _copy_double_to_double, NULL },
+		{ &stats->interval.linked, LCC_TYPE_GAUGE, _copy_double_to_double, NULL },
+		{ &stats->interval.unlinked, LCC_TYPE_GAUGE, _copy_double_to_double, NULL },
+		{ &stats->interval.reused, LCC_TYPE_GAUGE, _copy_double_to_double, NULL },
 		{ NULL, 0, NULL, NULL }
 	};
 

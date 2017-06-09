@@ -170,7 +170,7 @@ static rlm_rcode_t map_proc_client(UNUSED void *mod_inst, UNUSED void *proc_inst
 		 *	Pass the raw data to the callback, which will
 		 *	create the VP and add it to the map.
 		 */
-		if (map_to_request(request, map,  _map_proc_client_get_vp, &uctx) < 0) {
+		if (map_to_request(request, map, _map_proc_client_get_vp, &uctx) < 0) {
 			rcode = RLM_MODULE_FAIL;
 			talloc_free(field);
 			break;

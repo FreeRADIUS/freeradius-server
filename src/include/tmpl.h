@@ -250,7 +250,7 @@ typedef struct vp_tmpl_t {
 #ifndef WITH_VERIFY_PTR
 #  define VERIFY_TMPL(_x)
 #else
-#  define VERIFY_TMPL(_x) tmpl_verify(__FILE__,  __LINE__, _x)
+#  define VERIFY_TMPL(_x) tmpl_verify(__FILE__, __LINE__, _x)
 void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt);
 #endif
 

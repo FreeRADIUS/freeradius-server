@@ -112,7 +112,7 @@ void fr_sim_fips186_2prf(uint8_t out[160], uint8_t mk[20])
 	memcpy(&xkey, mk, sizeof(xkey));
 
 	/* make the value 1 */
-	memset(&one,  0, sizeof(one));
+	memset(&one, 0, sizeof(one));
 	one.p[19]=1;
 
 	f = out;
@@ -134,8 +134,8 @@ void fr_sim_fips186_2prf(uint8_t out[160], uint8_t mk[20])
 		fr_sha1_final_no_len(w_0.p, &context);
 
 		/*   c. XKEY = (1 + XKEY + w_0) mod 2^160 */
-		onesixty_add_mod(&sum,  &xkey, &w_0);
-		onesixty_add_mod(&xkey, &sum,  &one);
+		onesixty_add_mod(&sum, &xkey, &w_0);
+		onesixty_add_mod(&xkey, &sum, &one);
 
 		/*   d. XVAL = XKEY  */
 		xval = xkey;
@@ -153,8 +153,8 @@ void fr_sim_fips186_2prf(uint8_t out[160], uint8_t mk[20])
 		fr_sha1_final_no_len(w_1.p, &context);
 
 		/*   f. XKEY = (1 + XKEY + w_1) mod 2^160 */
-		onesixty_add_mod(&sum,  &xkey, &w_1);
-		onesixty_add_mod(&xkey, &sum,  &one);
+		onesixty_add_mod(&sum, &xkey, &w_1);
+		onesixty_add_mod(&xkey, &sum, &one);
 
 		/* now store it away */
 		memcpy(f, &w_0, 20);

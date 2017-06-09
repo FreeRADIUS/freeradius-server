@@ -65,7 +65,7 @@ static const CONF_PARSER module_config[] = {
 #ifdef WITH_SESSION_MGMT
 	{ FR_CONF_OFFSET("check_simul", FR_TYPE_BOOL, rlm_couchbase_t, check_simul) }, /* NULL defaults to "no" */
 	{ FR_CONF_OFFSET("simul_view", FR_TYPE_STRING, rlm_couchbase_t, simul_view), .dflt = "_design/acct/_view/by_user" },
-	{ FR_CONF_OFFSET("simul_vkey", FR_TYPE_TMPL, rlm_couchbase_t, simul_vkey), .dflt = "%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}",  .quote = T_DOUBLE_QUOTED_STRING },
+	{ FR_CONF_OFFSET("simul_vkey", FR_TYPE_TMPL, rlm_couchbase_t, simul_vkey), .dflt = "%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}", .quote = T_DOUBLE_QUOTED_STRING },
 	{ FR_CONF_OFFSET("verify_simul", FR_TYPE_BOOL, rlm_couchbase_t, verify_simul) }, /* NULL defaults to "no" */
 #endif
 	CONF_PARSER_TERMINATOR

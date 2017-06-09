@@ -42,7 +42,7 @@ typedef struct rlm_eap_tls {
 
 	bool			req_client_cert;	//!< Whether we require the client to provide
 							//!< a certificate or not.  RFC 5216 says it's
-							//!< not mandatory,  and there are some situations
+							//!< not mandatory, and there are some situations
 							//!< where it's useful to allow client access without
 							//!< a certificate.
 

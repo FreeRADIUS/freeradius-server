@@ -1684,7 +1684,7 @@ static int old_realm_config(realm_config_t *rc, CONF_SECTION *cs, REALM *r)
 			}
 		}
 
-		cf_log_info(cs, "\tauthhost = %s",  host);
+		cf_log_info(cs, "\tauthhost = %s", host);
 
 		if (!old_server_add(rc, cs, r->name, host, secret, ldflag,
 				    &r->auth_pool, HOME_TYPE_AUTH, NULL)) {

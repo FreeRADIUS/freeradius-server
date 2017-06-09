@@ -134,7 +134,7 @@ void	radlog_fatal(char const *fmt, ...) CC_HINT(format (printf, 1, 2)) CC_HINT(n
 #define ACCT(fmt, ...)		_FR_LOG(L_ACCT, fmt, ## __VA_ARGS__)
 #define PROXY(fmt, ...)		_FR_LOG(L_PROXY, fmt, ## __VA_ARGS__)
 
-#define INFO(fmt, ...)		_FR_LOG(L_INFO,  fmt, ## __VA_ARGS__)
+#define INFO(fmt, ...)		_FR_LOG(L_INFO, fmt, ## __VA_ARGS__)
 #define WARN(fmt, ...)		_FR_LOG(L_WARN, fmt, ## __VA_ARGS__)
 #define ERROR(fmt, ...)		_FR_LOG(L_ERR, fmt, ## __VA_ARGS__)
 #define PERROR(fmt, ...)	_FR_LOG_PERROR(L_ERR, fmt, ## __VA_ARGS__)

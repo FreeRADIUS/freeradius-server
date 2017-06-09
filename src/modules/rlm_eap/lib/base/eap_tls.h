@@ -172,7 +172,7 @@ size_t SSL_get_client_random(const SSL *ssl, unsigned char *out, size_t outlen);
 size_t SSL_get_server_random(const SSL *ssl, unsigned char *out, size_t outlen);
 #endif
 
-void			T_PRF(unsigned char const *secret, unsigned int secret_len, char const *prf_label, unsigned char const *seed,  unsigned int seed_len, unsigned char *out, unsigned int out_len) CC_HINT(nonnull(1,3,6));
+void			T_PRF(unsigned char const *secret, unsigned int secret_len, char const *prf_label, unsigned char const *seed, unsigned int seed_len, unsigned char *out, unsigned int out_len) CC_HINT(nonnull(1,3,6));
 
 void			eap_tls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label) CC_HINT(nonnull);
 

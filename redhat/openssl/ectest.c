@@ -419,7 +419,7 @@ static void prime_field_tests(void)
 		if (!BN_add(y, z, BN_value_one())) ABORT;
 		if (BN_is_odd(y)) ABORT;
 		if (!BN_rshift1(y, y)) ABORT;
-		scalars[0] = y; /* (group order + 1)/2,  so  y*Q + y*Q = Q */
+		scalars[0] = y; /* (group order + 1)/2, so  y*Q + y*Q = Q */
 		scalars[1] = y;
 
 		fprintf(stdout, "combined multiplication ...");

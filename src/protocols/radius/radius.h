@@ -151,7 +151,7 @@ ssize_t		fr_radius_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr
 				     uint8_t const *data, size_t data_len,
 				     void *decoder_ctx);
 
-ssize_t		fr_radius_decode_pair(TALLOC_CTX *ctx,  vp_cursor_t *cursor, fr_dict_attr_t const *parent,
+ssize_t		fr_radius_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
 				      uint8_t const *data, size_t data_len,
 				      void *decoder_ctx);
 

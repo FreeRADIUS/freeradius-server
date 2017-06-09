@@ -298,7 +298,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 	struct in_addr ip = {0};    /* reserved IP for client (net. byte order) */
 	rlm_sql_handle_t *sqlsock;
 	unsigned long s_gid,	/* _s_elected in sql result set */
-		      s_prio,       /* as above */
+		      s_prio,      /* as above */
 		      s_pid,	/* as above */
 		      gid,	  /* real integer value */
 		      pid,	  /* as above */

@@ -100,7 +100,7 @@ static const CONF_PARSER command_config[] = {
 	{ FR_CONF_OFFSET("gid", FR_TYPE_STRING, fr_command_socket_t, gid_name) },
 	{ FR_CONF_OFFSET("mode", FR_TYPE_STRING, fr_command_socket_t, mode_name) },
 	{ FR_CONF_OFFSET("peercred", FR_TYPE_BOOL, fr_command_socket_t, peercred), .dflt = "yes" },
-	{ FR_CONF_OFFSET("blocking", FR_TYPE_BOOL, fr_command_socket_t, blocking),  },
+	{ FR_CONF_OFFSET("blocking", FR_TYPE_BOOL, fr_command_socket_t, blocking), },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -3139,9 +3139,9 @@ static fr_command_table_t command_table[] = {
 	  "terminate - terminates the server, and cause it to exit",
 	  command_terminate, NULL },
 	{ "set", FR_WRITE, NULL, NULL, command_table_set },
-	{ "show",  FR_READ, NULL, NULL, command_table_show },
+	{ "show", FR_READ, NULL, NULL, command_table_show },
 #ifdef WITH_STATS
-	{ "stats",  FR_READ, NULL, NULL, command_table_stats },
+	{ "stats", FR_READ, NULL, NULL, command_table_stats },
 #endif
 
 	{ NULL, 0, NULL, NULL, NULL }

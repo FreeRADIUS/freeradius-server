@@ -551,7 +551,7 @@ int main(int argc, char **argv)
 	in.sin_port = htons(port);
 	fl = tl = sizeof(struct sockaddr_in);
 	memset(&from, 0, sizeof(from));
-	memset(&to,   0, sizeof(to));
+	memset(&to,  0, sizeof(to));
 
 	switch (pid = fork()) {
 		case -1:

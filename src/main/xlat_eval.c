@@ -429,7 +429,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			if (!localtime_r(&when, &ts)) goto error;
 			nl = str + strftime(str, freespace, "%Y-%m-%d-%H.%M.%S", &ts);
 			rad_assert(((str + freespace) - nl) >= 8);
-			snprintf(nl, (str + freespace) - nl, ".%06d",  (int) microseconds);
+			snprintf(nl, (str + freespace) - nl, ".%06d", (int) microseconds);
 			break;
 
 		case 'Y': /* request year */

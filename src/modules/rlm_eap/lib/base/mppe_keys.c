@@ -73,7 +73,7 @@ static size_t SSL_SESSION_get_master_key(const SSL_SESSION *s, unsigned char *ou
  */
 static void P_hash(EVP_MD const *evp_md,
 		   unsigned char const *secret, unsigned int secret_len,
-		   unsigned char const *seed,   unsigned int seed_len,
+		   unsigned char const *seed,  unsigned int seed_len,
 		   unsigned char *out, unsigned int out_len)
 {
 	HMAC_CTX *ctx_a, *ctx_out;
@@ -131,7 +131,7 @@ static void P_hash(EVP_MD const *evp_md,
 /*  EAP-FAST Pseudo-Random Function (T-PRF): RFC 4851, Section 5.5 */
 void T_PRF(unsigned char const *secret, unsigned int secret_len,
 	   char const *prf_label,
-	   unsigned char const *seed,  unsigned int seed_len,
+	   unsigned char const *seed, unsigned int seed_len,
 	   unsigned char *out, unsigned int out_len)
 {
 	size_t prf_size = strlen(prf_label);
@@ -172,7 +172,7 @@ void T_PRF(unsigned char const *secret, unsigned int secret_len,
 }
 
 static void PRF(unsigned char const *secret, unsigned int secret_len,
-		unsigned char const *seed,   unsigned int seed_len,
+		unsigned char const *seed,  unsigned int seed_len,
 		unsigned char *out, unsigned char *buf, unsigned int out_len)
 {
 	unsigned int i;
@@ -180,7 +180,7 @@ static void PRF(unsigned char const *secret, unsigned int secret_len,
 	uint8_t const *s1 = secret;
 	uint8_t const *s2 = secret + (secret_len - len);
 
-	P_hash(EVP_md5(),  s1, len, seed, seed_len, out, out_len);
+	P_hash(EVP_md5(), s1, len, seed, seed_len, out, out_len);
 	P_hash(EVP_sha1(), s2, len, seed, seed_len, buf, out_len);
 
 	for (i=0; i < out_len; i++) {

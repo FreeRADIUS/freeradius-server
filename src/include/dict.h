@@ -39,7 +39,7 @@ extern "C" {
 #endif
 
 #ifdef WITH_VERIFY_PTR
-#  define VERIFY_DA(_x)		fr_dict_verify(__FILE__,  __LINE__, _x)
+#  define VERIFY_DA(_x)		fr_dict_verify(__FILE__, __LINE__, _x)
 #else
 #  define VERIFY_DA(_x)		fr_cond_assert(_x)
 #endif

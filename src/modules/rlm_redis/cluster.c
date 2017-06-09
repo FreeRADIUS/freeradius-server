@@ -1460,7 +1460,7 @@ void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, struct timev
 	redisReply		*reply = NULL;
 	char const		*log_prefix = node->cluster->log_prefix;
 
-	DEBUG2("%s [%i]: Connecting node to %s:%i",  log_prefix, node->id, node->name, node->addr.port);
+	DEBUG2("%s [%i]: Connecting node to %s:%i", log_prefix, node->id, node->name, node->addr.port);
 
 	handle = redisConnectWithTimeout(node->name, node->addr.port, *timeout);
 	if ((handle != NULL) && handle->err) {

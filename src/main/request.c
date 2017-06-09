@@ -71,7 +71,7 @@ static int _request_free(REQUEST *request)
 	 *	This is parented separately.
 	 *
 	 *	The reason why it's OK to do this, is if the state attributes
-	 *	need to persist across requests,  they will already have been
+	 *	need to persist across requests, they will already have been
 	 *	moved to a fr_state_entry_t, with the state pointers in the
 	 *	request being set to NULL, before the request is freed.
 	 */

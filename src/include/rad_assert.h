@@ -58,7 +58,7 @@ bool fr_assert_fail(char const *file, unsigned int line, char const *expr);
 /** Use for conditions that should result in an assert in dev builds, and return in non-dev builds
  *
  */
-#define rad_cond_assert(_x) (bool)((_x) ? true : (fr_assert_fail(__FILE__,  __LINE__, #_x) && false))
+#define rad_cond_assert(_x) (bool)((_x) ? true : (fr_assert_fail(__FILE__, __LINE__, #_x) && false))
 
 #ifdef __cplusplus
 }
