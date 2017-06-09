@@ -42,8 +42,9 @@ typedef struct fr_tracking_t fr_tracking_t;
  */
 typedef struct fr_tracking_entry_t {
 	fr_time_t		timestamp;	//!< when the request was received
-	fr_channel_data_t	*reply;		//!< the reply (if any)
-	uint8_t			data[18];	//!< 2 byte length + authentication vector
+	uint8_t const		*reply;		//!< the response (if any);
+	size_t			reply_len;	//!< the length of the response
+	uint8_t			data[20];	//!< the full RADIUS packet header
 } fr_tracking_entry_t;
 
 /**
@@ -57,11 +58,12 @@ typedef enum fr_tracking_status_t {
 } fr_tracking_status_t;
 
 fr_tracking_t *fr_radius_tracking_create(TALLOC_CTX *ctx);
-int fr_radius_tracking_entry_delete(fr_tracking_t *ft, uint8_t id) CC_HINT(nonnull);
+int fr_radius_tracking_entry_delete(fr_tracking_t *ft, uint8_t const *packet) CC_HINT(nonnull);
 fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_t *ft, uint8_t *packet, fr_time_t timestamp,
-						     fr_tracking_entry_t **p_entry) CC_HINT(nonnull);
-int fr_radius_tracking_entry_reply(fr_tracking_t *ft, uint8_t id,
-				   fr_channel_data_t *cd) CC_HINT(nonnull);
+						     fr_tracking_entry_t **p_entry);
+int fr_radius_tracking_entry_reply(fr_tracking_t *ft, fr_tracking_entry_t *entry,
+				   fr_time_t timestamp,
+				   uint8_t const *reply, size_t reply_len);
 
 #ifdef __cplusplus
 }

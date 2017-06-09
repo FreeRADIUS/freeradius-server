@@ -27,6 +27,20 @@ RCSID("$Id$")
 #include <freeradius-devel/io/track.h>
 #include <freeradius-devel/rad_assert.h>
 
+
+/*
+ *	Copied here for simplicity...
+ */
+static void talloc_const_free(void const *ptr)
+{
+	void *tmp;
+	if (!ptr) return;
+
+	memcpy(&tmp, &ptr, sizeof(tmp));
+	talloc_free(tmp);
+}
+
+
 /**
  *  RADIUS-specific tracking table.
  *
@@ -72,18 +86,18 @@ fr_tracking_t *fr_radius_tracking_create(TALLOC_CTX *ctx)
 /** Delete an entry from the tracking table.
  *
  * @param[in] ft the tracking table
- * @param[in] id the ID of the entry to delete
+ * @param[in] packet the header of the packet to delete.
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-int fr_radius_tracking_entry_delete(fr_tracking_t *ft, uint8_t id)
+int fr_radius_tracking_entry_delete(fr_tracking_t *ft, uint8_t const *packet)
 {
 	fr_tracking_entry_t *entry;
 
 	(void) talloc_get_type_abort(ft, fr_tracking_t);
 
-	entry = &ft->packet[id];
+	entry = &ft->packet[packet[1]];
 	if (entry->timestamp == 0) return -1;
 
 	entry->timestamp = 0;
@@ -93,8 +107,9 @@ int fr_radius_tracking_entry_delete(fr_tracking_t *ft, uint8_t id)
 	 *	Mark the reply (if any) as done.
 	 */
 	if (entry->reply) {
-		fr_message_done(&entry->reply->m);
+		talloc_const_free(entry->reply);
 		entry->reply = NULL;
+		entry->reply_len = 0;
 	}
 
 	return 0;
@@ -126,7 +141,7 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_t *ft, uint8_t 
 	 */
 	if (entry->timestamp == 0) {
 		entry->timestamp = timestamp;
-		memcpy(&entry->data[0], packet + 2, 18);
+		memcpy(&entry->data[0], packet, sizeof(entry->data));
 		*p_entry = entry;
 
 		ft->num_entries++;
@@ -136,7 +151,7 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_t *ft, uint8_t 
 	/*
 	 *	Is it the same packet?  If so, return that.
 	 */
-	if (memcmp(packet + 2, &entry->data[0], 18) == 0) {
+	if (memcmp(&entry->data[0], packet, sizeof(entry->data)) == 0) {
 		*p_entry = entry;
 		return FR_TRACKING_SAME;
 	}
@@ -148,10 +163,15 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_t *ft, uint8_t 
 	 */
 	entry->timestamp = timestamp;
 
+	if (entry->reply) {
+		talloc_const_free(entry->reply);
+		entry->reply_len = 0;
+	}
+
 	/*
 	 *	Copy the new packet over top of the old one.
 	 */
-	memcpy(&entry->data[0], packet + 2, 18);
+	memcpy(&entry->data[0], packet, sizeof(entry->data));
 	*p_entry = entry;
 
 	return FR_TRACKING_DIFFERENT;
@@ -160,29 +180,26 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_t *ft, uint8_t 
 /** Insert a (possibly new) packet and a timestamp
  *
  * @param[in] ft the tracking table
- * @param[in] id the ID of the entry which this reply is for
- * @param[in] cd the reply message
+ * @param[in] entry the original entry for the request packet
+ * @param[in] timestamp when the caller thinks the original entry was created
+ * @param[in] reply the reply packet
+ * @param[in] reply_len the length of the reply message
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-int fr_radius_tracking_entry_reply(fr_tracking_t *ft, uint8_t id,
-				   fr_channel_data_t *cd)
+int fr_radius_tracking_entry_reply(fr_tracking_t *ft, fr_tracking_entry_t *entry,
+				   fr_time_t timestamp,
+				   uint8_t const *reply, size_t reply_len)
 {
-	fr_tracking_entry_t *entry;
-
 	(void) talloc_get_type_abort(ft, fr_tracking_t);
 
-	entry = &ft->packet[id];
-
-	if (entry->timestamp != cd->reply.request_time) {
-		fr_message_done(&cd->m);
+	if (entry->timestamp != timestamp) {
 		return 0;
 	}
 
-	rad_assert(entry->reply == NULL);
-
-	entry->reply = cd;
+	entry->reply = talloc_memdup(ft, reply, reply_len);
+	entry->reply_len = reply_len;
 
 	return 0;
 }
