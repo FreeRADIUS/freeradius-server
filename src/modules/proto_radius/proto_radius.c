@@ -200,7 +200,7 @@ static int compile_type(proto_radius_ctx_t *ctx, CONF_SECTION *server, CONF_SECT
 }
 
 
-static int open_transport(proto_radius_ctx_t *ctx, UNUSED fr_schedule_t *handle,
+static int open_transport(proto_radius_ctx_t *ctx, fr_schedule_t *handle,
 			  CONF_SECTION *server, CONF_SECTION *cs, char const *value,
 			  bool verify_config)
 {
@@ -260,7 +260,7 @@ static int open_transport(proto_radius_ctx_t *ctx, UNUSED fr_schedule_t *handle,
 	if (verify_config) return 0;
 
 	if (app_io->op.open(io_ctx) < 0) {
-		cf_log_err_cs(cs, "Failed opening I/O interface", value);
+		cf_log_err_cs(cs, "Failed opening I/O interface '%s'", value);
 		return -1;
 	}
 
