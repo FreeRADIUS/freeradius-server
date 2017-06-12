@@ -44,23 +44,21 @@ static void talloc_const_free(void const *ptr)
 /**
  *  RADIUS-specific tracking table.
  *
- *  It's a fixed-size array of 256 entries, indexed by ID.  Which
- *  means we don't need to store ID in the table.  We also don't
- *  need to store the packet type, as we assume that we have a
- *  unique tracking table per packet type.
+ *  It's a fixed-size array of 256 entries, indexed by ID.
  *
  *  @todo add a "reply" heap / list, ordered by when we need to
  *  clean up the replies.  The heap should contain nothing more than
  *  the time and the ID of the packet which needs cleaning up.
  *
- *  @todo add an "allocation" heap, ordered by when the entry was
- *  freed.  This is so that new allocations are O(1), and use the
- *  oldest unused ID.
+ *  @todo allow for Request Authenticator to be used as part of the
+ *  identifier.  With provisions for which attribute is used, and a
+ *  slab allocator, as we can now have more than 256 packets
+ *  outstanding.
  */
 struct fr_tracking_t {
 	int		num_entries;	//!< number of used entries.
 
-	fr_tracking_entry_t packet[256];
+	fr_tracking_entry_t *codes[FR_MAX_PACKET_CODE];
 };
 
 /** Create a tracking table for one type of RADIUS packets.
@@ -70,8 +68,9 @@ struct fr_tracking_t {
  *	- NULL on error
  *	- fr_tracking_t * on success
  */
-fr_tracking_t *fr_radius_tracking_create(TALLOC_CTX *ctx)
+fr_tracking_t *fr_radius_tracking_create(TALLOC_CTX *ctx, void *allowed_packets[FR_MAX_PACKET_CODE])
 {
+	int i;
 	fr_tracking_t *ft;
 
 	if (!ctx) return NULL;
@@ -80,6 +79,17 @@ fr_tracking_t *fr_radius_tracking_create(TALLOC_CTX *ctx)
 	if (!ft) return NULL;
 
 	ft->num_entries = 0;
+
+	for (i = 0; i < FR_MAX_PACKET_CODE; i++) {
+		if (!allowed_packets[i]) continue;
+
+		ft->codes[i] = talloc_zero_array(ft, fr_tracking_entry_t, 256);
+		if (!ft->codes[i]) {
+			talloc_free(ft);
+			return NULL;
+		}
+	}
+
 	return ft;
 }
 
@@ -97,7 +107,11 @@ int fr_radius_tracking_entry_delete(fr_tracking_t *ft, uint8_t const *packet)
 
 	(void) talloc_get_type_abort(ft, fr_tracking_t);
 
-	entry = &ft->packet[packet[1]];
+	if (!packet[0] || (packet[0] > FR_MAX_PACKET_CODE)) return -1;
+
+	if (!ft->codes[packet[0]]) return -1;
+
+	entry = &ft->codes[packet[0]][packet[1]];
 	if (entry->timestamp == 0) return -1;
 
 	entry->timestamp = 0;
@@ -134,7 +148,11 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_t *ft, uint8_t 
 
 	(void) talloc_get_type_abort(ft, fr_tracking_t);
 
-	entry = &ft->packet[packet[1]];
+	if (!packet[0] || (packet[0] > FR_MAX_PACKET_CODE)) return -1;
+
+	if (!ft->codes[packet[0]]) return -1;
+
+	entry = &ft->codes[packet[0]][packet[1]];
 
 	/*
 	 *	The entry is unused, insert it.
