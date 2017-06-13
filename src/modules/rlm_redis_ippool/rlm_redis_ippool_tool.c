@@ -26,6 +26,7 @@
  */
 RCSID("$Id$")
 #include <freeradius-devel/libradius.h>
+#include <freeradius-devel/cf_parse.h>
 #include <freeradius-devel/rad_assert.h>
 
 #include "redis.h"

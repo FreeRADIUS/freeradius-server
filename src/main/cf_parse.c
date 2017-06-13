@@ -923,7 +923,6 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs, CONF_PARSER 
 		return 0;
 	}
 
-
 	cs->variables = variables; /* this doesn't hurt anything */
 
 	if (!cs->name2) {
