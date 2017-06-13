@@ -109,12 +109,9 @@ RUNDIR		= ${localstatedir}/run/radiusd
 SBINDIR		= ${sbindir}
 RADIR		= ${radacctdir}
 
-USE_SHARED_LIBS = @USE_SHARED_LIBS@
-bm_shared_libs  = @USE_SHARED_LIBS@
-USE_STATIC_LIBS = @USE_STATIC_LIBS@
-bm_static_libs  = @USE_STATIC_LIBS@
+bm_shared_libs  = yes
+bm_static_libs  = yes
 
-STATIC_MODULES	= @STATIC_MODULES@
 LIBREADLINE	= @LIBREADLINE@
 
 #
@@ -164,13 +161,7 @@ endif
 ANALYZE.c       := @clang_path@
 
 #
-#  With shared libs, the test binaries are in a different place
-#  AND the method we use to run those binaries changes.
+#  Have wrappers for the test tools, so that they run.
 #
-ifeq "$(USE_SHARED_LIBS)" "yes"
-	TESTBINDIR = ./$(BUILD_DIR)/bin/local
-	TESTBIN    =  $(JLIBTOOL) --quiet --mode=execute $(TESTBINDIR)
-else
-	TESTBINDIR = ./$(BUILD_DIR)/bin
-	TESTBIN    = ./$(BUILD_DIR)/bin
-endif
+TESTBINDIR = ./$(BUILD_DIR)/bin/local
+TESTBIN    =  $(JLIBTOOL) --quiet --mode=execute $(TESTBINDIR)

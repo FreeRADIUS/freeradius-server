@@ -625,9 +625,6 @@ ac_includes_default="\
 enable_option_checking=no
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-STATIC_MODULES
-USE_STATIC_LIBS
-USE_SHARED_LIBS
 INSTALLSTRIP
 MODULES
 subdirs
@@ -5614,34 +5611,6 @@ $as_echo "#define WITH_UDPFROMTO 1" >>confdefs.h
 $as_echo "#define WITH_UDPFROMTO /**/" >>confdefs.h
 
     fi
-
-
-STATIC_MODULES=
-
-# Check whether --with-static_modules was given.
-if test "${with_static_modules+set}" = set; then :
-  withval=$with_static_modules;
-  for i in $withval; do
-    STATIC_MODULES="$STATIC_MODULES -dlpreopen ../modules/rlm_$i/rlm_$i.la"
-  done
-
-fi
-
-
-USE_SHARED_LIBS=yes
-
-# Check whether --with-shared-libs was given.
-if test "${with_shared_libs+set}" = set; then :
-  withval=$with_shared_libs;  case "$withval" in
-  no)
-    USE_SHARED_LIBS=no
-    ;;
-  *)
-  esac
-
-fi
-
-
 
 
     WITH_CAP=yes
@@ -14726,13 +14695,6 @@ ac_config_commands="$ac_config_commands build-radpaths-h"
 ac_config_commands="$ac_config_commands main-chmod"
 
 ac_config_commands="$ac_config_commands scripts-chmod"
-
-
-
-
-
-
-USE_STATIC_LIBS="yes"
 
 
 

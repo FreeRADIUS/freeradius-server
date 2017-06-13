@@ -486,30 +486,6 @@ AX_WITH_FEATURE_ARGS([dhcp],[yes])
 AX_WITH_FEATURE_ARGS([tacacs],[yes])
 AX_WITH_FEATURE_ARGS([udpfromto],[yes])
 
-dnl #
-dnl #  Allow the user to specify a list of modules to be linked
-dnl #  statically to the server.
-dnl #
-STATIC_MODULES=
-AC_ARG_WITH(static_modules,
-[  --with-static-modules=QUOTED-MODULE-LIST],[
-  for i in $withval; do
-    STATIC_MODULES="$STATIC_MODULES -dlpreopen ../modules/rlm_$i/rlm_$i.la"
-  done
-])
-
-USE_SHARED_LIBS=yes
-AC_ARG_WITH(shared-libs,
-[AS_HELP_STRING([--with-shared-libs ],
-[build dynamic libraries and link against them. (default=yes)])],
-[ case "$withval" in
-  no)
-    USE_SHARED_LIBS=no
-    ;;
-  *)
-  esac
-])
-
 dnl #############################################################
 dnl #
 dnl #  0e. Library/include paths
@@ -2158,11 +2134,6 @@ dnl #  Substitute whatever libraries we found to be necessary
 dnl #
 AC_SUBST(LIBS)
 AC_SUBST(INSTALLSTRIP)
-
-AC_SUBST(USE_SHARED_LIBS)
-USE_STATIC_LIBS="yes"
-AC_SUBST(USE_STATIC_LIBS)
-AC_SUBST(STATIC_MODULES)
 
 AC_OUTPUT(\
   ./Make.inc \
