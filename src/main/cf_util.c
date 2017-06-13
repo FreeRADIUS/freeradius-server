@@ -1253,14 +1253,15 @@ static int _cd_free(CONF_DATA *cd)
 /** Allocate a new user data container
  *
  * @param[in] parent	#CONF_PAIR, or #CONF_SECTION to hang CONF_DATA off of.
- * @param[in] name	String identifier of the user data.
  * @param[in] data	being added.
+ * @param[in] type	of data being added.
+ * @param[in] name	String identifier of the user data.
  * @param[in] do_free	function, called when the parent #CONF_SECTION is being freed.
  * @return
  *	- CONF_DATA on success.
  *	- NULL on error.
  */
-static CONF_DATA *cf_data_alloc(CONF_ITEM *parent, void const *data, char const *name, bool do_free)
+static CONF_DATA *cf_data_alloc(CONF_ITEM *parent, void const *data, char const *type, char const *name, bool do_free)
 {
 	CONF_DATA *cd;
 
@@ -1277,7 +1278,7 @@ static CONF_DATA *cf_data_alloc(CONF_ITEM *parent, void const *data, char const 
 	 *	explosions.
 	 */
 	if (data) {
-		cd->type = talloc_typed_strdup(cd, talloc_get_name(data));
+		cd->type = talloc_typed_strdup(cd, type);
 		cd->data = data;
 	}
 	if (name) cd->name = talloc_typed_strdup(cd, name);
@@ -1340,7 +1341,7 @@ void *cf_data_value(CONF_DATA const *cd)
 	return to_return;
 }
 
-/** Add user data to a config section
+/** Add talloced user data to a config section
  *
  * @param[in] ci	to add data to.
  * @param[in] data	to add.
@@ -1367,13 +1368,47 @@ CONF_DATA const *_cf_data_add(CONF_ITEM *ci, void const *data, char const *name,
 		return NULL;
 	}
 
-	cd = cf_data_alloc(ci, data, name, do_free);
+	cd = cf_data_alloc(ci, data, type, name, do_free);
 	if (!cd) {
 		cf_log_err(ci, "Failed allocating data");
 		return NULL;
 	}
+	cd->is_talloced = true;
 
-	cf_item_add(ci, cf_data_to_item(cd));
+	cf_item_add(ci, cd);
+
+	return cd;
+}
+
+/** Add non-talloced user data to a config section
+ *
+ * @param[in] ci	to add data to.
+ * @param[in] data	to add.
+ * @param[in] type	identifier of the user data.
+ * @param[in] name	String identifier of the user data.
+ *	- #CONF_DATA  - opaque handle to the stored data - on success.
+ *	- NULL error.
+ */
+CONF_DATA const *_cf_data_add_static(CONF_ITEM *ci, void const *data, char const *type, char const *name)
+{
+	CONF_DATA *cd;
+
+	/*
+	 *	Already exists.  Can't add it.
+	 */
+	if (_cf_data_find(ci, type, name)) {
+		cf_log_err(ci, "Data of type %s with name %s already exists", type, name);
+		return NULL;
+	}
+
+	cd = cf_data_alloc(ci, data, type, name, false);
+	if (!cd) {
+		cf_log_err(ci, "Failed allocating data");
+		return NULL;
+	}
+	cd->is_talloced = false;
+
+	cf_item_add(ci, cd);
 
 	return cd;
 }

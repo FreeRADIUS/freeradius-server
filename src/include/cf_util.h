@@ -166,6 +166,9 @@ void		*cf_data_value(CONF_DATA const *cd);
 #define		cf_data_add(_cf, _data, _name, _free) _cf_data_add(CF_TO_ITEM(_cf), _data, _name, _free)
 CONF_DATA const *_cf_data_add(CONF_ITEM *ci, void const *data, char const *name, bool free);
 
+#define		cf_data_add_static(_cf, _data, _type, _name) _cf_data_add(CF_TO_ITEM(_cf), _data, #_type, _name)
+CONF_DATA const *_cf_data_add_static(CONF_ITEM *ci, void const *data, char const *type, char const *name);
+
 #define		cf_data_remove(_cf, _cd) _cf_data_remove(CF_TO_ITEM(_cf), _cd);
 void		*_cf_data_remove(CONF_ITEM *ci, CONF_DATA const *_cd);
 
