@@ -279,7 +279,7 @@ static inline int _cf_ident1_cmp(void const *a, void const *b)
 	}
 
 	default:
-		rad_assert(0);
+		if (!rad_cond_assert(0)) return 0;
 	}
 }
 
@@ -328,7 +328,7 @@ static inline int cf_ident2_cmp(void const *a, void const *b)
 	}
 
 	default:
-		rad_assert(0);
+		if (!rad_cond_assert(0)) return 0;
 	}
 }
 
