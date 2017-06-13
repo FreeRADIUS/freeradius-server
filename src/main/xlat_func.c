@@ -847,9 +847,9 @@ typedef enum xlat_redundant_type_t {
 } xlat_redundant_type_t;
 
 typedef struct xlat_redundant_t {
-	xlat_redundant_type_t type;
-	uint32_t	count;
-	CONF_SECTION *cs;
+	xlat_redundant_type_t		type;
+	uint32_t			count;
+	CONF_SECTION const		*cs;
 } xlat_redundant_t;
 
 
