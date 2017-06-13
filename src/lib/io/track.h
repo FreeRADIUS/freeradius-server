@@ -60,7 +60,7 @@ typedef enum fr_tracking_status_t {
 } fr_tracking_status_t;
 
 fr_tracking_t *fr_radius_tracking_create(TALLOC_CTX *ctx, void *allowed_packets[FR_MAX_PACKET_CODE]);
-int fr_radius_tracking_entry_delete(fr_tracking_t *ft, uint8_t const *packet) CC_HINT(nonnull);
+int fr_radius_tracking_entry_delete(fr_tracking_t *ft, fr_tracking_entry_t *entry) CC_HINT(nonnull);
 fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_t *ft, uint8_t *packet, fr_time_t timestamp,
 						     fr_tracking_entry_t **p_entry);
 int fr_radius_tracking_entry_reply(fr_tracking_t *ft, fr_tracking_entry_t *entry,

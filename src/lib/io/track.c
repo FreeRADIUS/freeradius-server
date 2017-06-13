@@ -97,22 +97,15 @@ fr_tracking_t *fr_radius_tracking_create(TALLOC_CTX *ctx, void *allowed_packets[
 /** Delete an entry from the tracking table.
  *
  * @param[in] ft the tracking table
- * @param[in] packet the header of the packet to delete.
+ * @param[in] entry the entry to delete.
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-int fr_radius_tracking_entry_delete(fr_tracking_t *ft, uint8_t const *packet)
+int fr_radius_tracking_entry_delete(fr_tracking_t *ft, fr_tracking_entry_t *entry)
 {
-	fr_tracking_entry_t *entry;
-
 	(void) talloc_get_type_abort(ft, fr_tracking_t);
 
-	if (!packet[0] || (packet[0] > FR_MAX_PACKET_CODE)) return -1;
-
-	if (!ft->codes[packet[0]]) return -1;
-
-	entry = &ft->codes[packet[0]][packet[1]];
 	if (entry->timestamp == 0) return -1;
 
 	entry->timestamp = 0;
@@ -137,7 +130,7 @@ int fr_radius_tracking_entry_delete(fr_tracking_t *ft, uint8_t const *packet)
  * @param[in] timestamp when this packet was received
  * @param[out] p_entry pointer to newly inserted entry.
  * @return
- *	- FR_TRACKING_UNUSED, there was an error inserting the element
+ *	- FR_TRACKING_ERROR, gthere was an error in the function parameters
  *	- FR_TRACKING_NEW, a new entry was created
  *	- FR_TRACKING_SAME, the packet is the same as one already in the tracking table
  *	- FR_TRACKING_DIFFERENT, the old packet was deleted, and the newer packet inserted
