@@ -910,10 +910,10 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs,
  */
 int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs, CONF_PARSER const *variables)
 {
-	int	ret = 0;
-	int	i;
-	void	*data;
-	bool	*is_set = NULL;
+	int		ret = 0;
+	int		i;
+	void		*data;
+	bool		*is_set = NULL;
 
 	/*
 	 *	Hack for partially parsed sections.
@@ -923,6 +923,7 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs, CONF_PARSER 
 		return 0;
 	}
 
+
 	cs->variables = variables; /* this doesn't hurt anything */
 
 	if (!cs->name2) {
@@ -931,6 +932,9 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs, CONF_PARSER 
 		cf_log_info(cs, "%.*s%s %s {", cs->depth, parse_spaces, cs->name1, cs->name2);
 	}
 
+	/*
+	 *	Pre-allocate the config structure to hold default values
+	 */
 	if (cf_section_parse_init(cs, base, variables) < 0) return -1;
 
 	/*
