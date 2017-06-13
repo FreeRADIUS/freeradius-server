@@ -25,7 +25,7 @@
  */
 RCSIDH(modules_h, "$Id$")
 
-#include <freeradius-devel/conf_file.h>
+#include <freeradius-devel/cf_parse.h>
 #include <freeradius-devel/dl.h>
 #include <freeradius-devel/features.h>
 #include <freeradius-devel/pool.h>

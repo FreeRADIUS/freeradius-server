@@ -32,7 +32,7 @@ RCSIDH(dl_h, "$Id$")
 #endif
 
 #include <freeradius-devel/version.h>
-#include <freeradius-devel/conf_file.h>
+#include <freeradius-devel/cf_parse.h>
 
 #ifdef __cplusplus
 extern "C" {

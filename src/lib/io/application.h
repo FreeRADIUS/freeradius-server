@@ -16,7 +16,7 @@
 #ifndef _FR_APPLICATION_H
 #define _FR_APPLICATION_H
 
-#include <freeradius-devel/conf_file.h>
+#include <freeradius-devel/cf_util.h>
 #include <freeradius-devel/dl.h>
 #include <freeradius-devel/io/io.h>
 

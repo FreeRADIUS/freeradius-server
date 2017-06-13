@@ -28,7 +28,7 @@
  */
 RCSIDH(tls_h, "$Id$")
 
-#include <freeradius-devel/conf_file.h>
+#include <freeradius-devel/cf_parse.h>
 #include <freeradius-devel/tmpl.h>
 
 /*
