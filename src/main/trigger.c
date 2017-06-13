@@ -26,6 +26,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/cf_parse.h>
 #include <freeradius-devel/rad_assert.h>
 
 static CONF_SECTION const	*trigger_exec_main, *trigger_exec_subcs;
