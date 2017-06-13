@@ -1091,7 +1091,6 @@ static int proto_ldap_socket_parse(CONF_SECTION *cs, rad_listen_t *listen)
 			cf_log_err(cs, "Invalid 'user.scope' value \"%s\", expected 'sub', 'one'"
 				   " or 'base'", inst->sync_config[i]->scope_str)
 #endif
-				 );
 			return -1;
 		}
 		inst->sync_config[i]->scope = scope;
