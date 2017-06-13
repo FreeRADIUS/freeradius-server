@@ -149,8 +149,7 @@
 #include "cluster.h"
 #include "crc16.h"
 #include <freeradius-devel/rad_assert.h>
-
-extern bool check_config;
+#include <freeradius-devel/cf_parse.h>
 
 #define KEY_SLOTS		16384			//!< Maximum number of keyslots (should not change).
 
