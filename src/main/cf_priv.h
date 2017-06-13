@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file include/cf_priv.h
+ * @file cf_priv.h
  * @brief Private data structures and types for cf_*.c
  *
  * @copyright 2017  The FreeRADIUS server project

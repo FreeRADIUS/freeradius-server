@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file conf_parse.c
+ * @file cf_parse.c
  * @brief Covert internal format configuration values into native C types.
  *
  * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)

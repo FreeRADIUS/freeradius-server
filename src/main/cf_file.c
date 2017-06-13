@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file conf_file.c
+ * @file cf_file.c
  * @brief Read the radiusd.conf file.
  *
  * @note  Yep I should learn to use lex & yacc, or at least
