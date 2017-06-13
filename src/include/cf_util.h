@@ -81,7 +81,7 @@ extern char const *CF_IDENT_ANY;
 /*
  *	Generic functions that apply to all types of #CONF_ITEM
  */
-#define		cf_item_add(_parent, _child) _cf_item_add(CF_TO_ITEM(_parent), _child)
+#define		cf_item_add(_parent, _child) _cf_item_add(CF_TO_ITEM(_parent), CF_TO_ITEM(_child))
 void		_cf_item_add(CONF_ITEM *parent, CONF_ITEM *child);
 
 #define		cf_item_next(_ci, _prev) _cf_item_next(CF_TO_ITEM(_ci), _prev)
