@@ -150,6 +150,8 @@
 #include "crc16.h"
 #include <freeradius-devel/rad_assert.h>
 
+extern bool check_config;
+
 #define KEY_SLOTS		16384			//!< Maximum number of keyslots (should not change).
 
 #define MAX_SLAVES		5			//!< Maximum number of slaves associated
