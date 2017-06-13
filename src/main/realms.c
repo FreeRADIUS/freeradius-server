@@ -536,8 +536,12 @@ bool realm_home_server_add(home_server_t *home)
 	}
 
 	if (!home->server && (rbtree_finddata(home_servers_byaddr, home) != NULL)) {
+		char const *with_tls = "";
 		char buffer[INET6_ADDRSTRLEN];
 
+#ifdef WITH_TLS
+		if (home->tls) with_tls = "+tls";
+#endif
 		inet_ntop(home->ipaddr.af, &home->ipaddr.addr, buffer, sizeof(buffer));
 
 		cf_log_err(home->cs, "Duplicate home server address%s%s%s: %s:%s%s/%i",
@@ -546,11 +550,7 @@ bool realm_home_server_add(home_server_t *home)
 			      home->name ? ")" : "",
 			      buffer,
 			      fr_int2str(fr_net_ip_proto_table, home->proto, "<INVALID>"),
-#ifdef WITH_TLS
-			      home->tls ? "+tls" : "",
-#else
-			      "",
-#endif
+			      with_tls,
 			      home->port);
 
 		return false;
