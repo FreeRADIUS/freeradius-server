@@ -52,6 +52,7 @@ typedef struct fr_tracking_entry_t {
  *  The status of an insert.
  */
 typedef enum fr_tracking_status_t {
+	FR_TRACKING_ERROR = -1,
 	FR_TRACKING_UNUSED = 0,
 	FR_TRACKING_NEW,
 	FR_TRACKING_SAME,

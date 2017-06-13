@@ -64,6 +64,7 @@ struct fr_tracking_t {
 /** Create a tracking table for one type of RADIUS packets.
  *
  * @param[in] ctx the talloc ctx
+ * @param[in] allowed_packets the array of packet codes which are tracked in this table.
  * @return
  *	- NULL on error
  *	- fr_tracking_t * on success
@@ -148,9 +149,9 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_t *ft, uint8_t 
 
 	(void) talloc_get_type_abort(ft, fr_tracking_t);
 
-	if (!packet[0] || (packet[0] > FR_MAX_PACKET_CODE)) return -1;
+	if (!packet[0] || (packet[0] > FR_MAX_PACKET_CODE)) return FR_TRACKING_ERROR;
 
-	if (!ft->codes[packet[0]]) return -1;
+	if (!ft->codes[packet[0]]) return FR_TRACKING_ERROR;
 
 	entry = &ft->codes[packet[0]][packet[1]];
 
