@@ -384,9 +384,9 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	} else {
 		inst->pool_name = talloc_typed_strdup(inst, "ippool");
 	}
-	sql_inst = module_find(cf_subsection_find(main_config.config, "modules"), inst->sql_instance_name);
+	sql_inst = module_find(cf_section_find(main_config.config, "modules", NULL), inst->sql_instance_name);
 	if (!sql_inst) {
-		cf_log_err_cs(conf, "failed to find sql instance named %s",
+		cf_log_err(conf, "failed to find sql instance named %s",
 			   inst->sql_instance_name);
 		return -1;
 	}
@@ -400,7 +400,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	inst->sql_inst = (rlm_sql_t *) sql_inst->data;
 
 	if (strcmp(inst->sql_inst->driver->name, "sql") != 0) {
-		cf_log_err_cs(conf, "Module \"%s\" is not an instance of the rlm_sql module",
+		cf_log_err(conf, "Module \"%s\" is not an instance of the rlm_sql module",
 			      inst->sql_instance_name);
 		return -1;
 	}

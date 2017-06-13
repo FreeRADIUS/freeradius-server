@@ -748,7 +748,7 @@ static int mod_instantiate(UNUSED rlm_eap_config_t const *config, void *instance
 	fr_dict_enum_t const *dv;
 
 	if (inst->identity && (strlen(inst->identity) > 255)) {
-		cf_log_err_cs(cs, "identity is too long");
+		cf_log_err(cs, "identity is too long");
 		return -1;
 	}
 
@@ -757,7 +757,7 @@ static int mod_instantiate(UNUSED rlm_eap_config_t const *config, void *instance
 	dv = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE), "MS-CHAP");
 	if (!dv) dv = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE), "MSCHAP");
 	if (!dv) {
-		cf_log_err_cs(cs, "Failed to find 'Auth-Type MS-CHAP' section.  Cannot authenticate users.");
+		cf_log_err(cs, "Failed to find 'Auth-Type MS-CHAP' section.  Cannot authenticate users.");
 		return -1;
 	}
 	inst->auth_type_mschap = dv->value->vb_uint32;

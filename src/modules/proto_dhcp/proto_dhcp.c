@@ -322,9 +322,9 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 
 			RDEBUG("Trying sub-section dhcp %s {...}", dv->alias);
 
-			server = cf_section_parent(request->listener->cs);
+			server = cf_item_to_section(cf_parent(request->listener->cs));
 
-			unlang = cf_subsection_find_name2(server, "dhcp", dv->alias);
+			unlang = cf_section_find(server, "dhcp", dv->alias);
 			rcode = unlang_interpret(request, unlang, RLM_MODULE_NOOP);
 		} else {
 			REDEBUG("Unknown DHCP-Message-Type %d", vp->vp_uint8);
@@ -1006,37 +1006,35 @@ static int dhcp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
  */
 static int dhcp_listen_compile(CONF_SECTION *server_cs, CONF_SECTION *listen_cs)
 {
-	CONF_SECTION *cs;
+	CONF_SECTION *subcs = NULL;
 	fr_dict_attr_t const *da;
 	fr_dict_enum_t const *dv;
 
 	da = fr_dict_attr_by_name(NULL, "DHCP-Message-Type");
 	if (!da) {
-		cf_log_err_cs(listen_cs, "No DHCP-Message-Type attribute found");
+		cf_log_err(listen_cs, "No DHCP-Message-Type attribute found");
 		return -1;
 	}
 
-	for (cs = cf_subsection_find_next(server_cs, NULL, "dhcp");
-	     cs != NULL;
-	     cs = cf_subsection_find_next(server_cs, cs, "dhcp")) {
-		char const *name2 = cf_section_name2(cs);
+	while ((subcs = cf_section_find_next(server_cs, subcs, "dhcp", NULL))) {
+		char const *name2 = cf_section_name2(subcs);
 
 
 		if (name2) {
-			cf_log_module(cs, "Loading dhcp %s {...}", name2);
+			cf_log_debug(subcs, "Loading dhcp %s {...}", name2);
 		} else {
-			cf_log_module(cs, "Loading dhcp {...}");
+			cf_log_debug(subcs, "Loading dhcp {...}");
 		}
 
 		dv = fr_dict_enum_by_alias(NULL, da, name2);
 		if (!dv) {
-			cf_log_err_cs(cs, "Server contains 'dhcp %s {...}, but there is no such value for DHCP-Message-Type",
-				      name2);
+			cf_log_err(subcs, "Server contains 'dhcp %s {...}, but there is no such value for "
+				   "DHCP-Message-Type", name2);
 			return -1;
 		}
 
-		if (unlang_compile(cs, MOD_POST_AUTH) < 0) {
-			cf_log_err_cs(cs, "Failed compiling 'dhcp %s' section", name2);
+		if (unlang_compile(subcs, MOD_POST_AUTH) < 0) {
+			cf_log_err(subcs, "Failed compiling 'dhcp %s' section", name2);
 			return -1;
 		}
 	}

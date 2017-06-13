@@ -49,7 +49,7 @@ typedef struct fr_cursor_s {
 	char const		*type;		//!< If set, used for explicit runtime type safety checks.
 } fr_cursor_t;
 
-void fr_cursor_copy(fr_cursor_t *out, fr_cursor_t *in) CC_HINT(nonnull);
+void fr_cursor_copy(fr_cursor_t *out, fr_cursor_t const *in) CC_HINT(nonnull);
 
 void *fr_cursor_head(fr_cursor_t *cursor) CC_HINT(nonnull);
 

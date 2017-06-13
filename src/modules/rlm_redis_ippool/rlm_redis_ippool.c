@@ -1292,7 +1292,7 @@ static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *r
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	static bool			done_hash = false;
-	CONF_SECTION			*subcs = cf_subsection_find_next(conf, NULL, "redis");
+	CONF_SECTION			*subcs = cf_section_find(conf, "redis", NULL);
 
 	rlm_redis_ippool_t		*inst = instance;
 

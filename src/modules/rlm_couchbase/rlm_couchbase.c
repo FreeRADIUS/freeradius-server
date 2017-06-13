@@ -823,7 +823,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		CONF_SECTION *cs, *map, *tmpl; /* conf section */
 
 		/* attempt to find client section */
-		cs = cf_subsection_find(conf, "client");
+		cs = cf_section_find(conf, "client", NULL);
 		if (!cs) {
 			ERROR("failed to find client section while loading clients");
 			/* fail */
@@ -831,14 +831,14 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		}
 
 		/* attempt to find attribute subsection */
-		map = cf_subsection_find(cs, "attribute");
+		map = cf_section_find(cs, "attribute", NULL);
 		if (!map) {
 			ERROR("failed to find attribute subsection while loading clients");
 			/* fail */
 			return -1;
 		}
 
-		tmpl = cf_subsection_find(cs, "template");
+		tmpl = cf_section_find(cs, "template", NULL);
 
 		/* debugging */
 		DEBUG("preparing to load client documents");

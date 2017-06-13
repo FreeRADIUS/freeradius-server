@@ -44,7 +44,7 @@ static int default_component_results[MOD_COUNT] = {
 	RLM_MODULE_NOOP       	/* POST_AUTH */
 #ifdef WITH_COA
 	,
-	RLM_MODULE_NOOP,       	/* RECV_COA_TYPE */
+	RLM_MODULE_NOOP,      	/* RECV_COA_TYPE */
 	RLM_MODULE_NOOP		/* SEND_COA_TYPE */
 #endif
 };
@@ -71,10 +71,10 @@ static rlm_rcode_t module_method_call(rlm_components_t comp, int idx, REQUEST *r
 	 */
 	server_cs = request->server_cs;
 	if (!server_cs || (strcmp(request->server, cf_section_name2(server_cs)) != 0)) {
-		request->server_cs = cf_subsection_find_name2(main_config.config, "server", request->server);
+		request->server_cs = cf_section_find(main_config.config, "server", request->server);
 	}
 
-	cs = cf_subsection_find(request->server_cs, section_type_value[comp].section);
+	cs = cf_section_find(request->server_cs, section_type_value[comp].section, NULL);
 	if (!cs) {
 		RDEBUG2("Empty %s section in virtual server \"%s\".  Using default return value %s.",
 			section_type_value[comp].section, request->server,
@@ -87,7 +87,7 @@ static rlm_rcode_t module_method_call(rlm_components_t comp, int idx, REQUEST *r
 	 */
 	if (!idx) {
 		RDEBUG("Running section %s from file %s",
-		       section_type_value[comp].section, cf_section_filename(cs));
+		       section_type_value[comp].section, cf_filename(cs));
 
 	} else {
 		fr_dict_attr_t const *da;
@@ -100,7 +100,7 @@ static rlm_rcode_t module_method_call(rlm_components_t comp, int idx, REQUEST *r
 		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32((uint32_t)idx));
 		if (!dv) return RLM_MODULE_FAIL;
 
-		subcs = cf_subsection_find_name2(cs, da->name, dv->alias);
+		subcs = cf_section_find(cs, da->name, dv->alias);
 		if (!subcs) {
 			RDEBUG2("%s %s sub-section not found.  Using default return values.",
 				da->name, dv->alias);
@@ -108,7 +108,7 @@ static rlm_rcode_t module_method_call(rlm_components_t comp, int idx, REQUEST *r
 		}
 
 		RDEBUG("Running %s %s from file %s",
-		       da->name, dv->alias, cf_section_filename(subcs));
+		       da->name, dv->alias, cf_filename(subcs));
 		cs = subcs;
 	}
 
@@ -236,7 +236,7 @@ rlm_rcode_t process_send_coa(int send_coa_type, REQUEST *request)
 }
 #endif
 
-static bool define_type(CONF_SECTION *cs, fr_dict_attr_t const *da, char const *name)
+static int define_type(CONF_SECTION *cs, fr_dict_attr_t const *da, char const *name)
 {
 	fr_value_box_t	value = { .type = FR_TYPE_UINT32 };
 	fr_dict_enum_t	*dval;
@@ -248,11 +248,10 @@ static bool define_type(CONF_SECTION *cs, fr_dict_attr_t const *da, char const *
 	dval = fr_dict_enum_by_alias(NULL, da, name);
 	if (dval) {
 		if (dval->value == 0) {
-			ERROR("The dictionaries must not define VALUE %s %s 0",
-			      da->name, name);
-			return false;
+			ERROR("The dictionaries must not define VALUE %s %s 0", da->name, name);
+			return -1;
 		}
-		return true;
+		return 0;
 	}
 
 	/*
@@ -266,13 +265,13 @@ static bool define_type(CONF_SECTION *cs, fr_dict_attr_t const *da, char const *
 		value.vb_uint32 = (fr_rand() & 0x00ffffff) + 1;
 	} while (fr_dict_enum_by_value(NULL, da, &value));
 
-	cf_log_module(cs, "Creating %s = %s", da->name, name);
+	cf_log_debug(cs, "Creating %s = %s", da->name, name);
 	if (fr_dict_enum_add_alias(da, name, &value, true, false) < 0) {
 		ERROR("%s", fr_strerror());
-		return false;
+		return -1;
 	}
 
-	return true;
+	return 0;
 }
 
 /*
@@ -298,25 +297,23 @@ static bool load_subcomponent_section(CONF_SECTION *cs,
 	 */
 	dval = fr_dict_enum_by_alias(NULL, da, name2);
 	if (!dval) {
-		cf_log_err_cs(cs,
-			      "The %s attribute has no VALUE defined for %s",
-			      section_type_value[comp].typename, name2);
+		cf_log_err(cs,
+			   "The %s attribute has no VALUE defined for %s",
+			    section_type_value[comp].typename, name2);
 		return false;
 	}
 
 	/*
 	 *	Compile the group.
 	 */
-	if (unlang_compile(cs, comp) < 0) {
-		return false;
-	}
+	if (unlang_compile(cs, comp) < 0) return false;
 
 	return true;
 }
 
 static int load_component_section(CONF_SECTION *cs, rlm_components_t comp)
 {
-	CONF_SECTION *subcs;
+	CONF_SECTION *subcs = NULL;
 	fr_dict_attr_t const *da;
 
 	/*
@@ -324,9 +321,9 @@ static int load_component_section(CONF_SECTION *cs, rlm_components_t comp)
 	 */
 	da = fr_dict_attr_by_num(NULL, 0, section_type_value[comp].attr);
 	if (!da) {
-		cf_log_err_cs(cs,
-			      "No such attribute %s",
-			      section_type_value[comp].typename);
+		cf_log_err(cs,
+			   "No such attribute %s",
+			   section_type_value[comp].typename);
 		return -1;
 	}
 
@@ -336,9 +333,7 @@ static int load_component_section(CONF_SECTION *cs, rlm_components_t comp)
 	 *	The results will be cached, so that the next
 	 *	compilation will skip these sections.
 	 */
-	for (subcs = cf_subsection_find_next(cs, NULL, section_type_value[comp].typename);
-	     subcs != NULL;
-	     subcs = cf_subsection_find_next(cs, subcs, section_type_value[comp].typename)) {
+	while ((subcs = cf_section_find_next(cs, subcs, section_type_value[comp].typename, CF_IDENT_ANY))) {
 		if (!load_subcomponent_section(subcs, da, comp)) {
 			return -1; /* FIXME: memleak? */
 		}
@@ -348,7 +343,7 @@ static int load_component_section(CONF_SECTION *cs, rlm_components_t comp)
 	 *	Compile the section.
 	 */
 	if (unlang_compile(cs, comp) < 0) {
-		cf_log_err_cs(cs, "Errors parsing %s section.\n",
+		cf_log_err(cs, "Errors parsing %s section.\n",
 			      cf_section_name1(cs));
 		return -1;
 	}
@@ -364,7 +359,7 @@ static int virtual_servers_compile(CONF_SECTION *cs)
 	CONF_PAIR *cp;
 
 	cf_log_info(cs, "server %s { # from file %s",
-		    name, cf_section_filename(cs));
+		    name, cf_filename(cs));
 
 	cp = cf_pair_find(cs, "namespace");
 	if (cp) {
@@ -380,8 +375,7 @@ static int virtual_servers_compile(CONF_SECTION *cs)
 	for (comp = 0; comp < MOD_COUNT; ++comp) {
 		CONF_SECTION *subcs;
 
-		subcs = cf_subsection_find(cs,
-					    section_type_value[comp].section);
+		subcs = cf_section_find(cs, section_type_value[comp].section, NULL);
 		if (!subcs) continue;
 
 		if (cp) {
@@ -390,7 +384,7 @@ static int virtual_servers_compile(CONF_SECTION *cs)
 			return -1;
 		}
 
-		if (cf_item_find_next(subcs, NULL) == NULL) continue;
+		if (cf_item_next(subcs, NULL) == NULL) continue;
 
 		/*
 		 *	Skip pre/post-proxy sections if we're not
@@ -429,14 +423,12 @@ static int virtual_servers_compile(CONF_SECTION *cs)
 	 */
 	if (!found)
 		do {
-			CONF_SECTION *subcs;
+			CONF_SECTION *subcs = NULL;
 
 			/*
 			 *	Compile the listeners.
 			 */
-			for (subcs = cf_subsection_find_next(cs, NULL, "listen");
-			     subcs != NULL;
-			     subcs = cf_subsection_find_next(cs, subcs, "listen")) {
+			while ((subcs = cf_section_find_next(cs, subcs, "listen", NULL))) {
 				if (listen_compile(cs, subcs) < 0) return -1;
 			}
 
@@ -462,9 +454,9 @@ static bool virtual_server_define_types(CONF_SECTION *cs, rlm_components_t comp)
 	 */
 	da = fr_dict_attr_by_num(NULL, 0, section_type_value[comp].attr);
 	if (!da) {
-		cf_log_err_cs(cs,
-			      "No such attribute %s",
-			      section_type_value[comp].typename);
+		cf_log_err(cs,
+			   "No such attribute %s",
+			   section_type_value[comp].typename);
 		return false;
 	}
 
@@ -473,9 +465,9 @@ static bool virtual_server_define_types(CONF_SECTION *cs, rlm_components_t comp)
 	 *	bare words in them.  Fix those up to be sections.
 	 */
 	if (comp == MOD_AUTHENTICATE) {
-		for (ci = cf_item_find_next(cs, NULL);
+		for (ci = cf_item_next(cs, NULL);
 		     ci != NULL;
-		     ci = cf_item_find_next(cs, ci)) {
+		     ci = cf_item_next(cs, ci)) {
 			CONF_PAIR *cp;
 
 			if (!cf_item_is_pair(ci)) continue;
@@ -492,23 +484,20 @@ static bool virtual_server_define_types(CONF_SECTION *cs, rlm_components_t comp)
 	/*
 	 *	Define the Autz-Type, etc. based on the subsections.
 	 */
-	for (subcs = cf_subsection_find_next(cs, NULL, section_type_value[comp].typename);
-	     subcs != NULL;
-	     subcs = cf_subsection_find_next(cs, subcs, section_type_value[comp].typename)) {
+	subcs = NULL;
+	while ((subcs = cf_section_find_next(cs, subcs, section_type_value[comp].typename, CF_IDENT_ANY))) {
 		char const *name2;
 		CONF_SECTION *cs2;
 
 		name2 = cf_section_name2(subcs);
-		cs2 = cf_subsection_find_name2(cs, section_type_value[comp].typename, name2);
+		cs2 = cf_section_find(cs, section_type_value[comp].typename, name2);
 		if (cs2 != subcs) {
-			cf_log_err_cs(cs2, "Duplicate configuration section %s %s",
-				      section_type_value[comp].typename, name2);
+			cf_log_err(cs2, "Duplicate configuration section %s %s",
+				   section_type_value[comp].typename, name2);
 			return false;
 		}
 
-		if (!define_type(cs, da, name2)) {
-			return false;
-		}
+		if (define_type(cs, da, name2) < 0) return false;
 	}
 
 	return true;
@@ -520,10 +509,10 @@ static bool virtual_server_define_types(CONF_SECTION *cs, rlm_components_t comp)
  */
 int virtual_servers_bootstrap(CONF_SECTION *config)
 {
-	CONF_SECTION *cs;
+	CONF_SECTION *cs = NULL;
 	char const *server_name;
 
-	if (!cf_subsection_find_next(config, NULL, "server")) {
+	if (!cf_section_find(config, "server", CF_IDENT_ANY)) {
 		ERROR("No virtual servers found");
 		return -1;
 	}
@@ -531,9 +520,7 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 	/*
 	 *	Bootstrap global listeners.
 	 */
-	for (cs = cf_subsection_find_next(config, NULL, "listen");
-	     cs != NULL;
-	     cs = cf_subsection_find_next(config, cs, "listen")) {
+	while ((cs = cf_section_find_next(config, cs, "listen", NULL))) {
 		if (cf_pair_find(cs, "namespace") != NULL) {
 			main_config.namespace = true;
 			continue;
@@ -542,30 +529,29 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 		if (listen_bootstrap(config, cs, NULL) < 0) return -1;
 	}
 
-	for (cs = cf_subsection_find_next(config, NULL, "server");
-	     cs != NULL;
-	     cs = cf_subsection_find_next(config, cs, "server")) {
+	cs = NULL;
+	while ((cs = cf_section_find_next(config, cs, "server", CF_IDENT_ANY))) {
 		CONF_ITEM *ci;
 		CONF_SECTION *subcs;
 		CONF_PAIR *cp;
 
 		server_name = cf_section_name2(cs);
 		if (!server_name) {
-			cf_log_err_cs(cs, "server sections must have a name");
+			cf_log_err(cs, "server sections must have a name");
 			return -1;
 		}
 
 		/*
 		 *	Check for duplicates.
 		 */
-		subcs = cf_subsection_find_name2(config, "server", server_name);
+		subcs = cf_section_find(config, "server", server_name);
 		if (subcs && (subcs != cs)) {
 			ERROR("Duplicate virtual server \"%s\", in file %s:%d and file %s:%d",
 			      server_name,
-			      cf_section_filename(cs),
-			      cf_section_lineno(cs),
-			      cf_section_filename(subcs),
-			      cf_section_lineno(subcs));
+			      cf_filename(cs),
+			      cf_lineno(cs),
+			      cf_filename(subcs),
+			      cf_lineno(subcs));
 			return -1;
 		}
 
@@ -580,30 +566,30 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 
 			value = cf_pair_value(cp);
 			if (!value) {
-				cf_log_err_cs(cs, "Cannot have empty namespace");
+				cf_log_err(cs, "Cannot have empty namespace");
 				return -1;
 			}
 
 			if (strcmp(value, "radius") != 0) {
-				cf_log_err_cs(cs, "Unknown namespace '%s'", value);
+				cf_log_err(cs, "Unknown namespace '%s'", value);
 				return -1;
 			}
 
 			module = dl_module(cs, NULL, value, DL_TYPE_PROTO);
 			if (!module) {
-				cf_log_err_cs(cs, "Failed to find library for 'namespace = %s'", value);
+				cf_log_err(cs, "Failed to find library for 'namespace = %s'", value);
 				return -1;
 			}
 
 			app = (fr_app_t const *) module->common;
 
 			if (app->bootstrap && (app->bootstrap(cs) < 0)) {
-				cf_log_err_cs(cs, "Failed to bootstrap library for 'namespace = %s'", value);
+				cf_log_err(cs, "Failed to bootstrap library for 'namespace = %s'", value);
 				return -1;
 			}
 
 			if (!app->instantiate) {
-				cf_log_err_cs(cs, "Failed to find initialization function for 'transport = %s'",
+				cf_log_err(cs, "Failed to find initialization function for 'transport = %s'",
 					      value);
 				return -1;
 			}
@@ -612,9 +598,9 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 			continue;
 		}
 
-		for (ci = cf_item_find_next(cs, NULL);
+		for (ci = cf_item_next(cs, NULL);
 		     ci != NULL;
-		     ci = cf_item_find_next(cs, ci)) {
+		     ci = cf_item_next(cs, ci)) {
 			rlm_components_t comp;
 			char const *name1;
 
@@ -652,16 +638,14 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
  */
 int virtual_servers_init(fr_schedule_t *sc, CONF_SECTION *config)
 {
-	CONF_SECTION *cs;
+	CONF_SECTION *cs = NULL;
 
 	DEBUG2("%s: #### Loading Virtual Servers ####", main_config.name);
 
 	/*
 	 *	Load all of the virtual servers.
 	 */
-	for (cs = cf_subsection_find_next(config, NULL, "server");
-	     cs != NULL;
-	     cs = cf_subsection_find_next(config, cs, "server")) {
+	while ((cs = cf_section_find_next(config, cs, "server", CF_IDENT_ANY))) {
 		char const *name2;
 
 		name2 = cf_section_name2(cs);
@@ -675,7 +659,7 @@ int virtual_servers_init(fr_schedule_t *sc, CONF_SECTION *config)
 
 			if (!sc) continue;
 
-			module = cf_data_find(cs, dl_t, "app");
+			module = cf_data_value(cf_data_find(cs, dl_t, "app"));
 			if (!module) continue;
 
 			app = (fr_app_t const *) module->common;
@@ -685,11 +669,11 @@ int virtual_servers_init(fr_schedule_t *sc, CONF_SECTION *config)
 			 */
 
 			cf_log_info(cs, "server %s { # from file %s",
-				    name2, cf_section_filename(cs));
+				    name2, cf_filename(cs));
 			cf_log_info(cs, "  namespace = %s", app->name);
 
 			if (app->instantiate(sc, cs, check_config) < 0) {
-				cf_log_err_cs(cs, "Failed loading virtual server %s", name2);
+				cf_log_err(cs, "Failed loading virtual server %s", name2);
 				return -1;
 			}
 

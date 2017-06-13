@@ -140,6 +140,22 @@ static rlm_rcode_t map_proc_client(UNUSED void *mod_inst, UNUSED void *proc_inst
 			RDEBUG("No client found with IP \"%s\"", client_str);
 			return 0;
 		}
+
+		if (client->cs) {
+			char const *filename;
+			int line;
+
+			filename = cf_filename(client->cs);
+			line = cf_lineno(client->cs);
+
+			if (filename) {
+				RDEBUG2("Found client matching \"%s\".  Defined in \"%s\" line %i",
+					client_str, filename, line);
+			} else {
+				RDEBUG2("Found client matching \"%s\"", client_str);
+			}
+		}
+
 		talloc_free(client_str);
 	} else {
 		client = request->client;

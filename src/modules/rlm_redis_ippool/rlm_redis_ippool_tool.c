@@ -1515,7 +1515,7 @@ do { \
 	/*
 	 *	Set some alternative default pool settings
 	 */
-	pool_cs = cf_subsection_find(conf->cs, "pool");
+	pool_cs = cf_section_find(conf->cs, "pool", NULL);
 	if (!pool_cs) {
 		pool_cs = cf_section_alloc(conf->cs, "pool", NULL);
 		cf_section_add(conf->cs, pool_cs);

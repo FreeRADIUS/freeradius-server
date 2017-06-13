@@ -755,7 +755,7 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, CONF_PARSER
 {
 	CONF_SECTION *cs;
 
-	cs = cf_subsection_find(parent, name);
+	cs = cf_section_find(parent, name, NULL);
 	if (!cs) {
 		config->name = NULL;
 		return 0;
@@ -775,7 +775,7 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, CONF_PARSER
 	 *  Sanity check
 	 */
 	 if ((config->username && !config->password) || (!config->username && config->password)) {
-		cf_log_err_cs(cs, "'username' and 'password' must both be set or both be absent");
+		cf_log_err(cs, "'username' and 'password' must both be set or both be absent");
 
 		return -1;
 	 }
@@ -785,11 +785,11 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, CONF_PARSER
 	 */
 	config->auth = fr_str2int(http_auth_table, config->auth_str, HTTP_AUTH_UNKNOWN);
 	if (config->auth == HTTP_AUTH_UNKNOWN) {
-		cf_log_err_cs(cs, "Unknown HTTP auth type '%s'", config->auth_str);
+		cf_log_err(cs, "Unknown HTTP auth type '%s'", config->auth_str);
 
 		return -1;
 	} else if ((config->auth != HTTP_AUTH_NONE) && !http_curl_auth[config->auth]) {
-		cf_log_err_cs(cs, "Unsupported HTTP auth type \"%s\", check libcurl version, OpenSSL build "
+		cf_log_err(cs, "Unsupported HTTP auth type \"%s\", check libcurl version, OpenSSL build "
 			      "configuration, then recompile this module", config->auth_str);
 
 		return -1;
@@ -811,23 +811,23 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, CONF_PARSER
 		}
 
 		if (config->body == HTTP_BODY_UNKNOWN) {
-			cf_log_err_cs(cs, "Unknown HTTP body type '%s'", config->body_str);
+			cf_log_err(cs, "Unknown HTTP body type '%s'", config->body_str);
 			return -1;
 		}
 
 		switch (http_body_type_supported[config->body]) {
 		case HTTP_BODY_UNSUPPORTED:
-			cf_log_err_cs(cs, "Unsupported HTTP body type \"%s\", please submit patches",
+			cf_log_err(cs, "Unsupported HTTP body type \"%s\", please submit patches",
 				      config->body_str);
 			return -1;
 
 		case HTTP_BODY_INVALID:
-			cf_log_err_cs(cs, "Invalid HTTP body type.  \"%s\" is not a valid web API data "
+			cf_log_err(cs, "Invalid HTTP body type.  \"%s\" is not a valid web API data "
 				      "markup format", config->body_str);
 			return -1;
 
 		case HTTP_BODY_UNAVAILABLE:
-			cf_log_err_cs(cs, "Unavailable HTTP body type.  \"%s\" is not available in this "
+			cf_log_err(cs, "Unavailable HTTP body type.  \"%s\" is not available in this "
 				      "build", config->body_str);
 			return -1;
 
@@ -857,18 +857,18 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, CONF_PARSER
 		}
 
 		if (config->force_to == HTTP_BODY_UNKNOWN) {
-			cf_log_err_cs(cs, "Unknown forced response body type '%s'", config->force_to_str);
+			cf_log_err(cs, "Unknown forced response body type '%s'", config->force_to_str);
 			return -1;
 		}
 
 		switch (http_body_type_supported[config->force_to]) {
 		case HTTP_BODY_UNSUPPORTED:
-			cf_log_err_cs(cs, "Unsupported forced response body type \"%s\", please submit patches",
+			cf_log_err(cs, "Unsupported forced response body type \"%s\", please submit patches",
 				      config->force_to_str);
 			return -1;
 
 		case HTTP_BODY_INVALID:
-			cf_log_err_cs(cs, "Invalid HTTP forced response body type.  \"%s\" is not a valid web API data "
+			cf_log_err(cs, "Invalid HTTP forced response body type.  \"%s\" is not a valid web API data "
 				      "markup format", config->force_to_str);
 			return -1;
 

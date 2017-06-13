@@ -512,7 +512,7 @@ static int mod_instantiate(UNUSED rlm_eap_config_t const *config, void *instance
 	rlm_eap_pwd_t *inst = talloc_get_type_abort(instance, rlm_eap_pwd_t);
 
 	if (inst->fragment_size < 100) {
-		cf_log_err_cs(cs, "Fragment size is too small");
+		cf_log_err(cs, "Fragment size is too small");
 		return -1;
 	}
 

@@ -443,7 +443,7 @@ static void perl_parse_config(CONF_SECTION *cs, int lvl, HV *rad_hv)
 
 	CONF_ITEM *ci = NULL;
 
-	while ((ci = cf_item_find_next(cs, ci))) {
+	while ((ci = cf_item_next(cs, ci))) {
 		/*
 		 *  This is a section.
 		 *  Create a new HV, store it as a reference in current HV,
@@ -603,7 +603,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	/* parse perl configuration sub-section */
-	cs = cf_subsection_find(conf, "config");
+	cs = cf_section_find(conf, "config", NULL);
 	if (cs) {
 		inst->rad_perlconf_hv = get_hv("RAD_PERLCONF", 1);
 		perl_parse_config(cs, 0, inst->rad_perlconf_hv);

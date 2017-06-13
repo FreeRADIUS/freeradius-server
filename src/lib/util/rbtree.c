@@ -279,7 +279,6 @@ rbnode_t *rbtree_insert_node(rbtree_t *tree, void *data)
 	rbnode_t *current, *parent, *x;
 
 	if (!tree->root) return NULL;
-
 	if (tree->lock) pthread_mutex_lock(&tree->mutex);
 
 	/* find where node belongs */
@@ -347,11 +346,15 @@ rbnode_t *rbtree_insert_node(rbtree_t *tree, void *data)
 	return x;
 }
 
-bool rbtree_insert(rbtree_t *tree, void *data)
+bool rbtree_insert(rbtree_t *tree, void const *data)
 {
+	void *mutable;
+
 	if (!tree->root) return NULL;
 
-	if (rbtree_insert_node(tree, data)) return true;
+	memcpy(&mutable, &data, sizeof(mutable));
+
+	if (rbtree_insert_node(tree, mutable)) return true;
 	return false;
 }
 

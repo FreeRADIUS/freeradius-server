@@ -126,7 +126,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 
 #ifndef HAVE_YUBIKEY
 	if (inst->decrypt) {
-		cf_log_err_cs(conf, "Requires libyubikey for OTP decryption");
+		cf_log_err(conf, "Requires libyubikey for OTP decryption");
 		return -1;
 	}
 #endif
@@ -156,9 +156,9 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 #ifdef HAVE_YKCLIENT
 		CONF_SECTION *cs;
 
-		cs = cf_subsection_find(conf, "validation");
+		cs = cf_section_find(conf, "validation", CF_IDENT_ANY);
 		if (!cs) {
-			cf_log_err_cs(conf, "Missing validation section");
+			cf_log_err(conf, "Missing validation section");
 			return -1;
 		}
 
@@ -166,7 +166,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			return -1;
 		}
 #else
-		cf_log_err_cs(conf, "Requires libykclient for OTP validation against Yubicloud servers");
+		cf_log_err(conf, "Requires libykclient for OTP validation against Yubicloud servers");
 		return -1;
 #endif
 	}

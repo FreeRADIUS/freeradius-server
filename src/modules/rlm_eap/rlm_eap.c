@@ -133,7 +133,7 @@ static int mod_bootstrap(CONF_SECTION *cs, void *instance)
 	int		i, ret;
 	eap_type_t	method;
 	int		num_methods;
-	CONF_SECTION 	*scs;
+	CONF_SECTION 	*scs = NULL;
 	rlm_eap_t	*inst = instance;
 
 	/*
@@ -148,10 +148,7 @@ static int mod_bootstrap(CONF_SECTION *cs, void *instance)
 
 	/* Load all the configured EAP-Types */
 	num_methods = 0;
-	for (scs = cf_subsection_find_next(cs, NULL, NULL);
-	     scs != NULL;
-	     scs = cf_subsection_find_next(cs, scs, NULL)) {
-
+	while ((scs = cf_section_next(cs, scs))) {
 		char const *name;
 
 		name = cf_section_name1(scs);
@@ -161,12 +158,12 @@ static int mod_bootstrap(CONF_SECTION *cs, void *instance)
 
 		method = eap_name2type(name);
 		if (method == FR_EAP_INVALID) {
-			cf_log_err_cs(cs, "Unknown EAP type %s", name);
+			cf_log_err(cs, "Unknown EAP type %s", name);
 			return -1;
 		}
 
 		if ((method < FR_EAP_MD5) || (method >= FR_EAP_MAX_TYPES)) {
-			cf_log_err_cs(cs, "Invalid EAP method %s (unsupported)", name);
+			cf_log_err(cs, "Invalid EAP method %s (unsupported)", name);
 			return -1;
 		}
 
@@ -207,7 +204,7 @@ static int mod_bootstrap(CONF_SECTION *cs, void *instance)
 	}
 
 	if (num_methods == 0) {
-		cf_log_err_cs(cs, "No EAP method configured, module cannot do anything");
+		cf_log_err(cs, "No EAP method configured, module cannot do anything");
 		return -1;
 	}
 
@@ -222,7 +219,7 @@ static int mod_bootstrap(CONF_SECTION *cs, void *instance)
 	}
 
 	if (!inst->methods[method]) {
-		cf_log_err_cs(cs, "No such sub-type for default EAP method %s",
+		cf_log_err(cs, "No such sub-type for default EAP method %s",
 			      inst->config.default_method_name);
 		return -1;
 	}

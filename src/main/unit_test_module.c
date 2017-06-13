@@ -444,15 +444,15 @@ static ssize_t xlat_poke(TALLOC_CTX *ctx, char **out, size_t outlen,
 			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			 REQUEST *request, char const *fmt)
 {
-	int i;
-	void *data, *base;
-	char *p, *q;
-	module_instance_t *instance;
-	char *buffer;
-	CONF_SECTION *modules;
-	CONF_PAIR *cp;
-	CONF_PARSER const *variables;
-	size_t len;
+	int			i;
+	void			*data, *base;
+	char			*p, *q;
+	module_instance_t	*instance;
+	char			*buffer;
+	CONF_SECTION		*modules;
+	CONF_PAIR		*cp;
+	CONF_PARSER const	*variables;
+	size_t			len;
 
 	rad_assert(outlen > 1);
 	rad_assert(request != NULL);
@@ -460,7 +460,7 @@ static ssize_t xlat_poke(TALLOC_CTX *ctx, char **out, size_t outlen,
 	rad_assert(out != NULL);
 	rad_assert(*out);
 
-	modules = cf_subsection_find(request->root->config, "modules");
+	modules = cf_section_find(request->root->config, "modules", NULL);
 	if (!modules) return 0;
 
 	buffer = talloc_strdup(request, fmt);
@@ -516,7 +516,8 @@ static ssize_t xlat_poke(TALLOC_CTX *ctx, char **out, size_t outlen,
 	 *	Handle the known configuration parameters.
 	 */
 	for (i = 0; variables[i].name != NULL; i++) {
-		int ret;
+		int		ret;
+		char const	*quote;
 
 		if (FR_BASE_TYPE(variables[i].type) == FR_TYPE_SUBSECTION) continue;
 		/* else it's a CONF_PAIR */
@@ -544,6 +545,11 @@ static ssize_t xlat_poke(TALLOC_CTX *ctx, char **out, size_t outlen,
 			DEBUG2("Failed inserting new value into module instance data");
 			goto fail;
 		}
+
+		quote = fr_int2str(fr_token_quotes_table, variables[i].quote, "<INVALID>");
+
+		DEBUG2("Setting config item to %s = %s%s%s", variables[i].name, quote, q, quote);
+
 		break;		/* we found it, don't do any more */
 	}
 
@@ -664,7 +670,7 @@ static int map_proc_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void 
 			   vp_tmpl_t const *src, UNUSED vp_map_t const *maps)
 {
 	if (!src) {
-		cf_log_err_cs(cs, "Missing source");
+		cf_log_err(cs, "Missing source");
 
 		return -1;
 	}

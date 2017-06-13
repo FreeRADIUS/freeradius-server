@@ -556,7 +556,7 @@ int main(int argc, char **argv)
 		gid = getgid();
 
 		subcs = NULL;
-		while ((subcs = cf_subsection_find_next(cs, subcs, "listen")) != NULL) {
+		while ((subcs = cf_section_find_next(cs, subcs, "listen", NULL)) != NULL) {
 			char const *value;
 			CONF_PAIR *cp = cf_pair_find(subcs, "type");
 
@@ -637,7 +637,7 @@ int main(int argc, char **argv)
 		 *	Log the commands we've run.
 		 */
 		if (!radmin_log.file) {
-			subcs = cf_subsection_find(cs, "log");
+			subcs = cf_section_find(cs, "log", NULL);
 			if (subcs) {
 				CONF_PAIR *cp = cf_pair_find(subcs, "radmin");
 				if (cp) {

@@ -842,7 +842,7 @@ static int command_hup(rad_listen_t *listener, int argc, char *argv[])
 		return CMD_OK;
 	}
 
-	cs = cf_subsection_find(main_config.config, "modules");
+	cs = cf_section_find(main_config.config, "modules", NULL);
 	if (!cs) return CMD_FAIL;
 
 	instance = module_find(cs, argv[0]);
@@ -1009,7 +1009,7 @@ static int command_show_module_config(rad_listen_t *listener, int argc, char *ar
 		return CMD_FAIL;
 	}
 
-	cs = cf_subsection_find(main_config.config, "modules");
+	cs = cf_section_find(main_config.config, "modules", NULL);
 	if (!cs) return CMD_FAIL;
 
 	instance = module_find(cs, argv[0]);
@@ -1046,7 +1046,7 @@ static int command_show_module_methods(rad_listen_t *listener, int argc, char *a
 		return CMD_FAIL;
 	}
 
-	cs = cf_subsection_find(main_config.config, "modules");
+	cs = cf_section_find(main_config.config, "modules", NULL);
 	if (!cs) return CMD_FAIL;
 
 	instance = module_find(cs, argv[0]);
@@ -1073,7 +1073,7 @@ static int command_show_module_flags(rad_listen_t *listener, int argc, char *arg
 		return CMD_FAIL;
 	}
 
-	cs = cf_subsection_find(main_config.config, "modules");
+	cs = cf_section_find(main_config.config, "modules", NULL);
 	if (!cs) return CMD_FAIL;
 
 	instance = module_find(cs, argv[0]);
@@ -1097,7 +1097,7 @@ static int command_show_module_status(rad_listen_t *listener, int argc, char *ar
 		return CMD_FAIL;
 	}
 
-	cs = cf_subsection_find(main_config.config, "modules");
+	cs = cf_section_find(main_config.config, "modules", NULL);
 	if (!cs) return CMD_FAIL;
 
 	instance = module_find(cs, argv[0]);
@@ -1124,11 +1124,11 @@ static int command_show_modules(rad_listen_t *listener, UNUSED int argc, UNUSED 
 {
 	CONF_SECTION *cs, *subcs;
 
-	cs = cf_subsection_find(main_config.config, "modules");
+	cs = cf_section_find(main_config.config, "modules", NULL);
 	if (!cs) return CMD_FAIL;
 
 	subcs = NULL;
-	while ((subcs = cf_subsection_find_next(cs, subcs, NULL)) != NULL) {
+	while ((subcs = cf_section_next(cs, subcs)) != NULL) {
 		char const *name1 = cf_section_name1(subcs);
 		char const *name2 = cf_section_name2(subcs);
 
@@ -2482,7 +2482,7 @@ static int command_set_module_config(rad_listen_t *listener, int argc, char *arg
 		return 0;
 	}
 
-	cs = cf_subsection_find(main_config.config, "modules");
+	cs = cf_section_find(main_config.config, "modules", NULL);
 	if (!cs) return 0;
 
 	instance = module_find(cs, argv[0]);
@@ -2560,7 +2560,7 @@ static int command_set_module_status(rad_listen_t *listener, int argc, char *arg
 		return 0;
 	}
 
-	cs = cf_subsection_find(main_config.config, "modules");
+	cs = cf_section_find(main_config.config, "modules", NULL);
 	if (!cs) return 0;
 
 	instance = module_find(cs, argv[0]);
@@ -3243,7 +3243,7 @@ static int command_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 #ifdef WITH_TLS
 	if (this->tls) {
-		cf_log_err_cs(cs,
+		cf_log_err(cs,
 			   "TLS is not supported for control sockets");
 		return -1;
 	}
@@ -3251,7 +3251,7 @@ static int command_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	sock = this->data;
 	if (sock->proto != IPPROTO_TCP) {
-		cf_log_err_cs(cs,
+		cf_log_err(cs,
 			   "UDP is not supported for control sockets");
 		return -1;
 	}

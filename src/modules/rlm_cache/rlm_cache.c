@@ -921,7 +921,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Sanity check for crazy people.
 	 */
 	if (strncmp(inst->config.driver_name, "rlm_cache_", 8) != 0) {
-		cf_log_err_cs(conf, "\"%s\" is NOT an Cache driver!", inst->config.driver_name);
+		cf_log_err(conf, "\"%s\" is NOT an Cache driver!", inst->config.driver_name);
 		return -1;
 	}
 
@@ -932,7 +932,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		name++;
 	}
 
-	driver_cs = cf_subsection_find(conf, name);
+	driver_cs = cf_section_find(conf, name, NULL);
 	if (!driver_cs) {
 		driver_cs = cf_section_alloc(conf, name, NULL);
 		if (!driver_cs) return -1;
@@ -964,18 +964,18 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 #endif
 
 	if (inst->config.ttl == 0) {
-		cf_log_err_cs(conf, "Must set 'ttl' to non-zero");
+		cf_log_err(conf, "Must set 'ttl' to non-zero");
 		return -1;
 	}
 
 	if (inst->config.epoch != 0) {
-		cf_log_err_cs(conf, "Must not set 'epoch' in the configuration files");
+		cf_log_err(conf, "Must not set 'epoch' in the configuration files");
 		return -1;
 	}
 
-	update = cf_subsection_find(inst->cs, "update");
+	update = cf_section_find(inst->cs, "update", CF_IDENT_ANY);
 	if (!update) {
-		cf_log_err_cs(conf, "Must have an 'update' section in order to cache anything");
+		cf_log_err(conf, "Must have an 'update' section in order to cache anything");
 		return -1;
 	}
 
@@ -988,7 +988,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	if (!inst->maps) {
-		cf_log_err_cs(inst->cs, "Cache config must contain an update section, and "
+		cf_log_err(inst->cs, "Cache config must contain an update section, and "
 			      "that section must not be empty");
 		return -1;
 	}

@@ -796,7 +796,7 @@ static void python_parse_config(CONF_SECTION *cs, int lvl, PyObject *dict)
 
 	DEBUG("%*s%s {", indent_section, " ", cf_section_name1(cs));
 
-	while ((ci = cf_item_find_next(cs, ci))) {
+	while ((ci = cf_item_next(cs, ci))) {
 		/*
 		 *  This is a section.
 		 *  Create a new dict, store it in current dict,
@@ -984,7 +984,7 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 		 */
 		if (PyModule_AddObject(inst->module, "config", inst->pythonconf_dict) < 0) goto error;
 
-		cs = cf_subsection_find(conf, "config");
+		cs = cf_section_find(conf, "config", NULL);
 		if (cs) python_parse_config(cs, 0, inst->pythonconf_dict);
 	} else {
 		inst->module = main_module;

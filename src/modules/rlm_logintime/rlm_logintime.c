@@ -206,7 +206,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	rlm_logintime_t *inst = instance;
 
 	if (inst->min_time == 0) {
-		cf_log_err_cs(conf, "Invalid value '0' for minimum_timeout");
+		cf_log_err(conf, "Invalid value '0' for minimum_timeout");
 		return -1;
 	}
 

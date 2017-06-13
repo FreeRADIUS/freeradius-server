@@ -358,7 +358,7 @@ static int ldap_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void 
 			   vp_tmpl_t const *src, UNUSED vp_map_t const *maps)
 {
 	if (!src) {
-		cf_log_err_cs(cs, "Missing LDAP URI");
+		cf_log_err(cs, "Missing LDAP URI");
 
 		return -1;
 	}
@@ -1165,7 +1165,7 @@ static rlm_rcode_t user_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_ac
 		goto error;
 	}
 
-	cs = cf_subsection_find(cf_item_to_section(ci), "update");
+	cs = cf_section_find(cf_item_to_section(ci), "update", NULL);
 	if (!cs) {
 		REDEBUG("Section must contain 'update' subsection");
 
@@ -1175,7 +1175,7 @@ static rlm_rcode_t user_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_ac
 	/*
 	 *	Iterate over all the pairs, building our mods array
 	 */
-	for (ci = cf_item_find_next(cs, NULL); ci != NULL; ci = cf_item_find_next(cs, ci)) {
+	for (ci = cf_item_next(cs, NULL); ci != NULL; ci = cf_item_next(cs, ci)) {
 		bool do_xlat = false;
 
 		if (total == LDAP_MAX_ATTRMAP) {
@@ -1204,7 +1204,7 @@ static rlm_rcode_t user_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_ac
 			continue;
 		}
 
-		switch (cf_pair_value_type(cp)) {
+		switch (cf_pair_value_quote(cp)) {
 		case T_BARE_WORD:
 		case T_SINGLE_QUOTED_STRING:
 			break;
@@ -1389,7 +1389,7 @@ static int parse_sub_section(rlm_ldap_t *inst, CONF_SECTION *parent, ldap_acct_s
 
 	char const *name = section_type_value[comp].section;
 
-	cs = cf_subsection_find(parent, name);
+	cs = cf_section_find(parent, name, NULL);
 	if (!cs) {
 		DEBUG2("rlm_ldap (%s) - Couldn't find configuration for %s, will return NOOP for calls "
 		       "from this section", inst->name, name);
@@ -1493,7 +1493,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	inst->cs = conf;
 
-	options = cf_subsection_find(conf, "options");
+	options = cf_section_find(conf, "options", NULL);
 	if (!options || !cf_pair_find(options, "chase_referrals")) {
 		inst->handle_config.chase_referrals_unset = true;	 /* use OpenLDAP defaults */
 	}
@@ -1503,7 +1503,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	if ((parse_sub_section(inst, conf, &inst->accounting, MOD_ACCOUNTING) < 0) ||
 	    (parse_sub_section(inst, conf, &inst->postauth, MOD_POST_AUTH) < 0)) {
-		cf_log_err_cs(conf, "Failed parsing configuration");
+		cf_log_err(conf, "Failed parsing configuration");
 
 		goto error;
 	}
@@ -1513,7 +1513,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	if (inst->cacheable_group_name && inst->groupobj_membership_filter) {
 		if (!inst->groupobj_name_attr) {
-			cf_log_err_cs(conf, "Configuration item 'group.name_attribute' must be set if cacheable "
+			cf_log_err(conf, "Configuration item 'group.name_attribute' must be set if cacheable "
 				      "group names are enabled");
 
 			goto error;
@@ -1527,20 +1527,20 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	if (!cf_pair_find(conf, "pool")) {
 		if (!inst->handle_config.server_str) {
-			cf_log_err_cs(conf, "Configuration item 'server' must have a value");
+			cf_log_err(conf, "Configuration item 'server' must have a value");
 			goto error;
 		}
 	}
 
 #ifndef WITH_SASL
 	if (inst->user_sasl.mech) {
-		cf_log_err_cs(conf, "Configuration item 'user.sasl.mech' not supported.  "
+		cf_log_err(conf, "Configuration item 'user.sasl.mech' not supported.  "
 			      "Linked libldap does not provide fr_ldap_sasl_bind( function");
 		goto error;
 	}
 
 	if (inst->handle_config.admin_sasl.mech) {
-		cf_log_err_cs(conf, "Configuration item 'sasl.mech' not supported.  "
+		cf_log_err(conf, "Configuration item 'sasl.mech' not supported.  "
 			      "Linked libldap does not provide  fr_ldap_sasl_interactive_bind function");
 		goto error;
 	}
@@ -1548,7 +1548,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 #ifndef HAVE_LDAP_CREATE_SORT_CONTROL
 	if (inst->userobj_sort_by) {
-		cf_log_err_cs(conf, "Configuration item 'sort_by' not supported.  "
+		cf_log_err(conf, "Configuration item 'sort_by' not supported.  "
 			      "Linked libldap does not provide ldap_create_sort_control function");
 		goto error;
 	}
@@ -1556,7 +1556,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 #ifndef HAVE_LDAP_URL_PARSE
 	if (inst->use_referral_credentials) {
-		cf_log_err_cs(conf, "Configuration item 'use_referral_credentials' not supported.  "
+		cf_log_err(conf, "Configuration item 'use_referral_credentials' not supported.  "
 			      "Linked libldap does not support URL parsing");
 		goto error;
 	}
@@ -1578,7 +1578,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			case ' ':
 			case ',':
 			case ';':
-				cf_log_err_cs(conf, "Invalid character '%c' found in 'server' configuration item",
+				cf_log_err(conf, "Invalid character '%c' found in 'server' configuration item",
 					      value[j]);
 				goto error;
 
@@ -1600,19 +1600,19 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			char		*p;
 
 			if (ldap_url_parse(value, &ldap_url)){
-				cf_log_err_cs(conf, "Parsing LDAP URL \"%s\" failed", value);
+				cf_log_err(conf, "Parsing LDAP URL \"%s\" failed", value);
 			ldap_url_error:
 				ldap_free_urldesc(ldap_url);
 				return -1;
 			}
 
 			if (ldap_url->lud_dn && (ldap_url->lud_dn[0] != '\0')) {
-				cf_log_err_cs(conf, "Base DN cannot be specified via server URL");
+				cf_log_err(conf, "Base DN cannot be specified via server URL");
 				goto ldap_url_error;
 			}
 
 			if (ldap_url->lud_attrs && ldap_url->lud_attrs[0]) {
-				cf_log_err_cs(conf, "Attribute list cannot be specified via server URL");
+				cf_log_err(conf, "Attribute list cannot be specified via server URL");
 				goto ldap_url_error;
 			}
 
@@ -1620,7 +1620,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			 *	ldap_url_parse sets this to base by default.
 			 */
 			if (ldap_url->lud_scope != LDAP_SCOPE_BASE) {
-				cf_log_err_cs(conf, "Scope cannot be specified via server URL");
+				cf_log_err(conf, "Scope cannot be specified via server URL");
 				goto ldap_url_error;
 			}
 			ldap_url->lud_scope = -1;	/* Otherwise LDAP adds ?base */
@@ -1648,7 +1648,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 				if (ldap_url->lud_scheme) {
 					if (strcmp(ldap_url->lud_scheme, "ldaps") == 0) {
 						if (inst->handle_config.start_tls == true) {
-							cf_log_err_cs(conf, "ldaps:// scheme is not compatible "
+							cf_log_err(conf, "ldaps:// scheme is not compatible "
 								      "with 'start_tls'");
 							goto ldap_url_error;
 						}
@@ -1675,7 +1675,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 				url = ldap_url_desc2str(ldap_url);
 				if (!url) {
-					cf_log_err_cs(conf, "Failed recombining URL components");
+					cf_log_err(conf, "Failed recombining URL components");
 					goto ldap_url_error;
 				}
 				inst->handle_config.server = talloc_asprintf_append(inst->handle_config.server, "%s ", url);
@@ -1689,7 +1689,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			    ((strcmp(ldap_url->lud_scheme, "ldaps") == 0) ||
 			    (strcmp(ldap_url->lud_scheme, "ldapi") == 0) ||
 			    (strcmp(ldap_url->lud_scheme, "cldap") == 0))) {
-				cf_log_err_cs(conf, "%s is not supported by linked libldap",
+				cf_log_err(conf, "%s is not supported by linked libldap",
 					      ldap_url->lud_scheme);
 				return -1;
 			}
@@ -1740,10 +1740,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			if (strchr(value, '/')) {
 			bad_server_fmt:
 #ifdef LDAP_CAN_PARSE_URLS
-				cf_log_err_cs(conf, "Invalid 'server' entry, must be in format <server>[:<port>] or "
+				cf_log_err(conf, "Invalid 'server' entry, must be in format <server>[:<port>] or "
 					      "an ldap URI (ldap|cldap|ldaps|ldapi)://<server>:<port>");
 #else
-				cf_log_err_cs(conf, "Invalid 'server' entry, must be in format <server>[:<port>]");
+				cf_log_err(conf, "Invalid 'server' entry, must be in format <server>[:<port>]");
 #endif
 				return -1;
 			}
@@ -1795,7 +1795,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->handle_config.dereference = fr_str2int(fr_ldap_dereference,
 							     inst->handle_config.dereference_str, -1);
 		if (inst->handle_config.dereference < 0) {
-			cf_log_err_cs(conf, "Invalid 'dereference' value \"%s\", expected 'never', 'searching', "
+			cf_log_err(conf, "Invalid 'dereference' value \"%s\", expected 'never', 'searching', "
 				      "'finding' or 'always'", inst->handle_config.dereference_str);
 			goto error;
 		}
@@ -1807,7 +1807,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	variable for the username, password, etc.
 	 */
 	if (inst->rebind == true) {
-		cf_log_err_cs(conf, "Cannot use 'rebind' configuration item as this version of libldap "
+		cf_log_err(conf, "Cannot use 'rebind' configuration item as this version of libldap "
 			      "does not support the API that we need");
 
 		goto error;
@@ -1819,7 +1819,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	inst->userobj_scope = fr_str2int(fr_ldap_scope, inst->userobj_scope_str, -1);
 	if (inst->userobj_scope < 0) {
-		cf_log_err_cs(conf, "Invalid 'user.scope' value \"%s\", expected 'sub', 'one'"
+		cf_log_err(conf, "Invalid 'user.scope' value \"%s\", expected 'sub', 'one'"
 #ifdef LDAP_SCOPE_CHILDREN
 			      ", 'base' or 'children'"
 #else
@@ -1831,7 +1831,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	inst->groupobj_scope = fr_str2int(fr_ldap_scope, inst->groupobj_scope_str, -1);
 	if (inst->groupobj_scope < 0) {
-		cf_log_err_cs(conf, "Invalid 'group.scope' value \"%s\", expected 'sub', 'one'"
+		cf_log_err(conf, "Invalid 'group.scope' value \"%s\", expected 'sub', 'one'"
 #ifdef LDAP_SCOPE_CHILDREN
 			      ", 'base' or 'children'"
 #else
@@ -1843,7 +1843,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	inst->clientobj_scope = fr_str2int(fr_ldap_scope, inst->clientobj_scope_str, -1);
 	if (inst->clientobj_scope < 0) {
-		cf_log_err_cs(conf, "Invalid 'client.scope' value \"%s\", expected 'sub', 'one'"
+		cf_log_err(conf, "Invalid 'client.scope' value \"%s\", expected 'sub', 'one'"
 #ifdef LDAP_SCOPE_CHILDREN
 			      ", 'base' or 'children'"
 #else
@@ -1866,7 +1866,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 		ret = ldap_create_sort_keylist(&keys, p);
 		if (ret != LDAP_SUCCESS) {
-			cf_log_err_cs(conf, "Invalid user.sort_by value \"%s\": %s",
+			cf_log_err(conf, "Invalid user.sort_by value \"%s\": %s",
 				      inst->userobj_sort_by, ldap_err2string(ret));
 			goto error;
 		}
@@ -1892,12 +1892,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->handle_config.tls_require_cert = fr_str2int(fr_ldap_tls_require_cert,
 							      inst->handle_config.tls_require_cert_str, -1);
 		if (inst->handle_config.tls_require_cert < 0) {
-			cf_log_err_cs(conf, "Invalid 'tls.require_cert' value \"%s\", expected 'never', "
+			cf_log_err(conf, "Invalid 'tls.require_cert' value \"%s\", expected 'never', "
 				      "'demand', 'allow', 'try' or 'hard'", inst->handle_config.tls_require_cert_str);
 			goto error;
 		}
 #else
-		cf_log_err_cs(conf, "Modifying 'tls.require_cert' is not supported by current "
+		cf_log_err(conf, "Modifying 'tls.require_cert' is not supported by current "
 			      "version of libldap. Please upgrade or substitute current libldap and "
 			      "rebuild this module");
 
@@ -1908,7 +1908,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Build the attribute map
 	 */
-	update = cf_subsection_find(inst->cs, "update");
+	update = cf_section_find(inst->cs, "update", NULL);
 	if (update && (map_afrom_cs(&inst->user_map, update,
 				    PAIR_LIST_REPLY, PAIR_LIST_REQUEST, fr_ldap_map_verify, NULL,
 				    LDAP_MAX_ATTRMAP) < 0)) {
@@ -1933,22 +1933,22 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (inst->do_clients) {
 		CONF_SECTION *cs, *map, *tmpl;
 
-		cs = cf_subsection_find(inst->cs, "client");
+		cs = cf_section_find(inst->cs, "client", NULL);
 		if (!cs) {
-			cf_log_err_cs(conf, "Told to load clients but no client section found");
+			cf_log_err(conf, "Told to load clients but no client section found");
 			goto error;
 		}
 
-		map = cf_subsection_find(cs, "attribute");
+		map = cf_section_find(cs, "attribute", NULL);
 		if (!map) {
-			cf_log_err_cs(cs, "Told to load clients but no attribute section found");
+			cf_log_err(cs, "Told to load clients but no attribute section found");
 			goto error;
 		}
 
-		tmpl = cf_subsection_find(cs, "template");
+		tmpl = cf_section_find(cs, "template", NULL);
 
 		if (rlm_ldap_client_load(inst, tmpl, map) < 0) {
-			cf_log_err_cs(cs, "Error loading clients");
+			cf_log_err(cs, "Error loading clients");
 
 			return -1;
 		}

@@ -78,7 +78,7 @@ static void mruby_parse_config(mrb_state *mrb, CONF_SECTION *cs, int lvl, mrb_va
 
 	DEBUG("%*s%s {", indent_section, " ", cf_section_name1(cs));
 
-	while ((ci = cf_item_find_next(cs, ci))) {
+	while ((ci = cf_item_next(cs, ci))) {
 		if (cf_item_is_section(ci)) {
 			CONF_SECTION *sub_cs = cf_item_to_section(ci);
 			char const *key = cf_section_name1(sub_cs);
@@ -183,7 +183,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	/* Convert a FreeRADIUS config structure into a mruby hash */
 	inst->mrubyconf_hash = mrb_hash_new(mrb);
-	cs = cf_subsection_find(conf, "config");
+	cs = cf_section_find(conf, "config", NULL);
 	if (cs) mruby_parse_config(mrb, cs, 0, inst->mrubyconf_hash);
 
 	/* Define the Request class */

@@ -149,13 +149,13 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 		struct servent *s;
 
 		if (!inst->port_name) {
-			cf_log_err_cs(cs, "No 'port' specified in 'udp' section");
+			cf_log_err(cs, "No 'port' specified in 'udp' section");
 			return -1;
 		}
 
 		s = getservbyname(inst->port_name, "udp");
 		if (!s) {
-			cf_log_err_cs(cs, "Unknown value for 'port_name = %s", inst->port_name);
+			cf_log_err(cs, "Unknown value for 'port_name = %s", inst->port_name);
 			return -1;
 		}
 

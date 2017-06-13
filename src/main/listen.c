@@ -100,14 +100,14 @@ int listen_compile(CONF_SECTION *server, CONF_SECTION *cs)
 	rad_protocol_t const *proto;
 	dl_t *module;
 
-	module = cf_data_find(cs, dl_t, "proto");
+	module = cf_data_value(cf_data_find(cs, dl_t, "proto"));
 	if (!module) return 0;
 
 	proto = (rad_protocol_t const *)module->common;
 	if (!proto->compile) return 0;
 
 	if (proto->compile(server, cs) < 0) {
-		cf_log_err_cs(server, "Failed compiling unlang policies for listen type '%s'", proto->name);
+		cf_log_err(server, "Failed compiling unlang policies for listen type '%s'", proto->name);
 		return -1;
 	}
 
@@ -137,13 +137,13 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 
 	cp = cf_pair_find(cs, "type");
 	if (!cp) {
-		cf_log_err_cs(cs, "No 'type' specified in listen section");
+		cf_log_err(cs, "No 'type' specified in listen section");
 		return -1;
 	}
 
 	type = cf_pair_value(cp);
 	if (!type) {
-		cf_log_err_cs(cs, "Invalid 'type' specified in listen section");
+		cf_log_err(cs, "Invalid 'type' specified in listen section");
 		return -1;
 	}
 
@@ -154,14 +154,14 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 	if (!server_name) {
 		if ((strcmp(type, "control") != 0) &&
 		    (strcmp(type, "proxy") != 0)) {
-			cf_log_err_cs(cs, "Listeners of type '%s' MUST be defined in a server", type);
+			cf_log_err(cs, "Listeners of type '%s' MUST be defined in a server", type);
 			return -1;
 		}
 
 	} else {
 		if ((strcmp(type, "control") == 0) ||
 		    (strcmp(type, "proxy") == 0)) {
-			cf_log_err_cs(cs, "Listeners of type '%s' MUST NOT be defined in a server", type);
+			cf_log_err(cs, "Listeners of type '%s' MUST NOT be defined in a server", type);
 			return -1;
 		}
 	}
@@ -199,7 +199,7 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 			}
 
 			if (fr_dict_enum_add_alias(da, type, fr_box_uint32(max_listener), true, false) < 0) {
-				cf_log_err_cs(cs,
+				cf_log_err(cs,
 					      "Failed adding dictionary entry for protocol %s: %s",
 					      type, fr_strerror());
 				talloc_const_free(module);
@@ -213,13 +213,13 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 		 *	the protocol-specific processing sections.
 		 */
 		if (proto->bootstrap && (proto->bootstrap(server, cs) < 0)) {
-			cf_log_err_cs(cs, "Failed loading protocol %s", type);
+			cf_log_err(cs, "Failed loading protocol %s", type);
 			talloc_const_free(module);
 			return -1;
 		}
 
 		if (cf_data_find(cs, dl_t, "proto") != NULL) {
-			cf_log_err_cs(cs, "Virtual server cannot have two protocols");
+			cf_log_err(cs, "Virtual server cannot have two protocols");
 			talloc_const_free(module);
 			return -1;
 		}
@@ -232,7 +232,7 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 	 */
 	dv = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_LISTEN_SOCKET_TYPE), type);
 	if (!dv) {
-		cf_log_err_cs(cs, "Failed finding dictionary entry for protocol %s", type);
+		cf_log_err(cs, "Failed finding dictionary entry for protocol %s", type);
 		talloc_const_free(module);
 		return -1;
 	}
@@ -254,7 +254,7 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 		} else {
 			type = cf_pair_value(cp);
 			if (!type) {
-				cf_log_err_cs(cs, "No value for 'proto'");
+				cf_log_err(cs, "No value for 'proto'");
 				return -1;
 			}
 
@@ -265,7 +265,7 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 				transports = TRANSPORT_TCP;
 
 			} else {
-				cf_log_err_cs(cs, "Unknown transport protocol 'proto = %s'", type);
+				cf_log_err(cs, "Unknown transport protocol 'proto = %s'", type);
 				return -1;
 			}
 		}
@@ -274,7 +274,7 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 		 *	Asked for UDP and required TCP, or require UDP and asked for TCP.
 		 */
 		if ((transports & proto->transports) == 0) {
-			cf_log_err_cs(cs, "Invalid transport 'proto = %s' for listeners of 'type = %s'",
+			cf_log_err(cs, "Invalid transport 'proto = %s' for listeners of 'type = %s'",
 				      type, proto->name);
 				return -1;
 		}
@@ -287,7 +287,7 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 		 *	address unless we know the destination.
 		 */
 		if ((strcmp(proto->name, "proxy") == 0) && (transports == TRANSPORT_TCP)) {
-			cf_log_err_cs(cs, "Invalid transport 'proto = %s' for listeners of 'type = %s'",
+			cf_log_err(cs, "Invalid transport 'proto = %s' for listeners of 'type = %s'",
 				      type, proto->name);
 				return -1;
 		}
@@ -300,23 +300,23 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 	 *
 	 *	If there's no "tls" section, that's fine, too.
 	 */
-	tls = cf_subsection_find(cs, "tls");
+	tls = cf_section_find(cs, "tls", NULL);
 #ifndef WITH_TCP
 	if (tls) {
-		cf_log_err_cs(cs, "TLS transport is not available in this executable");
+		cf_log_err(cs, "TLS transport is not available in this executable");
 		return -1;
 	}
 
 #else
 	if (tls) {
 		if (!proto->tls) {
-			cf_log_err_cs(cs, "TLS transport is not available for listeners with 'type = %s",
+			cf_log_err(cs, "TLS transport is not available for listeners with 'type = %s",
 				      proto->name);
 			return -1;
 		}
 
 		if (transports == TRANSPORT_UDP) {
-			cf_log_err_cs(cs, "TLS transport is not available for listeners with 'proto = udp'");
+			cf_log_err(cs, "TLS transport is not available for listeners with 'proto = udp'");
 			return -1;
 		}
 	}
@@ -457,7 +457,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 		 *	We don't need to re-load the same information.
 		 */
 		if (client->cs &&
-		    (filename = cf_section_filename(client->cs)) != NULL) {
+		    (filename = cf_filename(client->cs)) != NULL) {
 			struct stat buf;
 
 			if ((stat(filename, &buf) >= 0) &&
@@ -1328,7 +1328,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	if (cf_pair_find(cs, "proto")) {
 #ifndef WITH_TCP
-		cf_log_err_cs(cs, "System does not support the TCP protocol.  "
+		cf_log_err(cs, "System does not support the TCP protocol.  "
 			      "Delete this line from the configuration file");
 		return -1;
 #else
@@ -1354,18 +1354,18 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			 */
 			if ((this->type == RAD_LISTEN_PROXY) &&
 			    (sock->my_port != 0)) {
-				cf_log_err_cs(this->cs, "You must not specify a source port for proxy sockets over TCP");
+				cf_log_err(this->cs, "You must not specify a source port for proxy sockets over TCP");
 				return -1;
 			}
 #endif
 
 		} else {
-			cf_log_err_cs(cs, "Unknown proto name \"%s\"", proto);
+			cf_log_err(cs, "Unknown proto name \"%s\"", proto);
 			return -1;
 		}
 
 #  ifdef WITH_TLS
-		tls = cf_subsection_find(cs, "tls");
+		tls = cf_section_find(cs, "tls", NULL);
 		if (tls) {
 			/*
 			 *	If unset, set to default.
@@ -1393,19 +1393,19 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	/*
 	 *	Magical tuning methods!
 	 */
-	subcs = cf_subsection_find(cs, "performance");
+	subcs = cf_section_find(cs, "performance", NULL);
 	if (subcs) {
 		rcode = cf_section_parse(this, this, subcs, performance_config);
 		if (rcode < 0) return -1;
 	}
 
-	subcs = cf_subsection_find(cs, "limit");
+	subcs = cf_section_find(cs, "limit", NULL);
 	if (subcs) {
 		rcode = cf_section_parse(sock, sock, subcs, limit_config);
 		if (rcode < 0) return -1;
 
 		if (sock->max_rate && ((sock->max_rate < 10) || (sock->max_rate > 1000000))) {
-			cf_log_err_cs(cs,
+			cf_log_err(cs,
 				      "Invalid value for \"max_pps\"");
 			return -1;
 		}
@@ -1472,7 +1472,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	if (cp) {
 		char const *value = cf_pair_value(cp);
 		if (!value) {
-			cf_log_err_cs(cs,
+			cf_log_err(cs,
 				   "No interface name given");
 			return -1;
 		}
@@ -1491,19 +1491,19 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 *	(i.e. if SO_BINDTODEVICE is available).
 	 */
 #  if defined(SO_BINDTODEVICE) && !defined(SO_BROADCAST)
-		cf_log_err_cs(cs,
+		cf_log_err(cs,
 			   "System does not support broadcast sockets.  Delete this line from the configuration file");
 		return -1;
 #  else
 		if (this->type != RAD_LISTEN_DHCP) {
-			cf_log_err_cp(cp,
+			cf_log_err(cp,
 				   "Broadcast can only be set for DHCP listeners.  Delete this line from the configuration file");
 			return -1;
 		}
 
 		char const *value = cf_pair_value(cp);
 		if (!value) {
-			cf_log_err_cs(cs,
+			cf_log_err(cs,
 				   "No broadcast value given");
 			return -1;
 		}
@@ -1528,17 +1528,17 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 *	generic ones.
 	 */
 	clients_cs = NULL;
-	parent_cs = cf_top_section(cs);
+	parent_cs = cf_root(cs);
 	rcode = cf_pair_parse(NULL, cs, "clients", FR_ITEM_POINTER(FR_TYPE_STRING, &section_name), NULL, T_INVALID);
 	if (rcode < 0) return -1; /* bad string */
 	if (rcode == 0) {
 		/*
 		 *	Explicit list given: use it.
 		 */
-		clients_cs = cf_subsection_find_name2(parent_cs, "clients", section_name);
-		if (!clients_cs) clients_cs = cf_subsection_find(main_config.config, section_name);
+		clients_cs = cf_section_find(parent_cs, "clients", section_name);
+		if (!clients_cs) clients_cs = cf_section_find(main_config.config, section_name, NULL);
 		if (!clients_cs) {
-			cf_log_err_cs(cs, "Failed to find clients %s {...}", section_name);
+			cf_log_err(cs, "Failed to find clients %s {...}", section_name);
 			return -1;
 		}
 	} /* else there was no "clients = " entry. */
@@ -1547,9 +1547,9 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	/*
 	 *	Always cache the CONF_SECTION of the server.
 	 */
-	this->server_cs = cf_subsection_find_name2(parent_cs, "server", this->server);
+	this->server_cs = cf_section_find(parent_cs, "server", this->server);
 	if (!this->server_cs) {
-		cf_log_err_cs(cs, "Failed to find virtual server '%s'", this->server);
+		cf_log_err(cs, "Failed to find virtual server '%s'", this->server);
 		return -1;
 	}
 
@@ -1560,7 +1560,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 *	choose the global list of clients.
 	 */
 	if (!clients_cs) {
-		if (cf_subsection_find(this->server_cs, "client") != NULL) {
+		if (cf_section_find(this->server_cs, "client", NULL) != NULL) {
 			clients_cs = this->server_cs;
 		} else {
 			clients_cs = parent_cs;
@@ -1573,7 +1573,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	sock->clients = client_list_parse_section(clients_cs, false);
 #endif
 	if (!sock->clients) {
-		cf_log_err_cs(cs,
+		cf_log_err(cs,
 			   "Failed to load clients for this listen section");
 		return -1;
 	}
@@ -1588,7 +1588,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 		this->children = rbtree_create(this, listener_cmp, NULL, 0);
 		if (!this->children) {
-			cf_log_err_cs(cs, "Failed to create child list for TCP socket.");
+			cf_log_err(cs, "Failed to create child list for TCP socket.");
 			return -1;
 		}
 	}
@@ -1609,7 +1609,7 @@ int common_socket_open(CONF_SECTION *cs, rad_listen_t *this)
 	/* Only use libpcap if pcap_type has a value. Otherwise, use socket with SO_BINDTODEVICE */
 	if (sock->interface && sock->pcap_type) {
 		if (init_pcap(this) < 0) {
-			cf_log_err_cs(cs,
+			cf_log_err(cs,
 				   "Error initializing pcap.");
 			return -1;
 		}
@@ -1623,7 +1623,7 @@ int common_socket_open(CONF_SECTION *cs, rad_listen_t *this)
 	 */
 	if (listen_bind(this) < 0) {
 		char buffer[128];
-		cf_log_err_cs(cs,
+		cf_log_err(cs,
 			      "Error binding to port for %s port %d",
 			      fr_inet_ntoh(&sock->my_ipaddr, buffer, sizeof(buffer)),
 			      sock->my_port);
@@ -3211,8 +3211,8 @@ int listen_init(rad_listen_t **head,
 	for (this = *head; this != NULL; this = this->next) {
 #ifdef WITH_TLS
 		if (!spawn_workers && this->tls) {
-			cf_log_err_cs(this->cs, "Threading must be enabled for TLS sockets to function properly");
-			cf_log_err_cs(this->cs, "You probably need to do '%s -fxx -l stdout' for debugging",
+			cf_log_err(this->cs, "Threading must be enabled for TLS sockets to function properly");
+			cf_log_err(this->cs, "You probably need to do '%s -fxx -l stdout' for debugging",
 				      main_config.name);
 			return -1;
 		}

@@ -284,7 +284,7 @@ static int sql_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void *
 			  vp_tmpl_t const *src, UNUSED vp_map_t const *maps)
 {
 	if (!src) {
-		cf_log_err_cs(cs, "Missing SQL query");
+		cf_log_err(cs, "Missing SQL query");
 
 		return -1;
 	}
@@ -1074,7 +1074,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Get the module's subsection or allocate one
 	 */
-	driver_cs = cf_subsection_find(conf, name);
+	driver_cs = cf_section_find(conf, name, NULL);
 	if (!driver_cs) {
 		driver_cs = cf_section_alloc(conf, name, NULL);
 		if (!driver_cs) return -1;
@@ -1203,10 +1203,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	configuration.  So if that doesn't exist, we ignore
 	 *	the whole subsection.
 	 */
-	inst->config->accounting.cs = cf_subsection_find(conf, "accounting");
+	inst->config->accounting.cs = cf_section_find(conf, "accounting", NULL);
 	inst->config->accounting.reference_cp = (cf_pair_find(inst->config->accounting.cs, "reference") != NULL);
 
-	inst->config->postauth.cs = cf_subsection_find(conf, "post-auth");
+	inst->config->postauth.cs = cf_section_find(conf, "post-auth", NULL);
 	inst->config->postauth.reference_cp = (cf_pair_find(inst->config->postauth.cs, "reference") != NULL);
 
 	/*
@@ -1236,7 +1236,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	inst->ef = module_exfile_init(inst, conf, 256, 30, true, NULL, NULL);
 	if (!inst->ef) {
-		cf_log_err_cs(conf, "Failed creating log file context");
+		cf_log_err(conf, "Failed creating log file context");
 		return -1;
 	}
 

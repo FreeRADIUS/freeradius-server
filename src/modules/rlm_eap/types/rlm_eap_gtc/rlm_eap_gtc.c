@@ -126,7 +126,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 	 */
 	request->password = vp;
 
-	unlang = cf_subsection_find_name2(request->server_cs, "process", inst->auth_type_name);
+	unlang = cf_section_find(request->server_cs, "process", inst->auth_type_name);
 	if (!unlang) {
 		/*
 		 *	Call the authenticate section of the *current* virtual server.

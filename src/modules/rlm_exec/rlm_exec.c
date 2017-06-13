@@ -211,7 +211,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 		p = inst->input;
 		p += radius_list_name(&inst->input_list, p, PAIR_LIST_UNKNOWN);
 		if ((inst->input_list == PAIR_LIST_UNKNOWN) || (*p != '\0')) {
-			cf_log_err_cs(conf, "Invalid input list '%s'", inst->input);
+			cf_log_err(conf, "Invalid input list '%s'", inst->input);
 			return -1;
 		}
 	}
@@ -220,7 +220,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 		p = inst->output;
 		p += radius_list_name(&inst->output_list, p, PAIR_LIST_UNKNOWN);
 		if ((inst->output_list == PAIR_LIST_UNKNOWN) || (*p != '\0')) {
-			cf_log_err_cs(conf, "Invalid output list '%s'", inst->output);
+			cf_log_err(conf, "Invalid output list '%s'", inst->output);
 			return -1;
 		}
 	}
@@ -230,7 +230,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	 *	then the output pairs must not be defined.
 	 */
 	if (!inst->wait && (inst->output != NULL)) {
-		cf_log_err_cs(conf, "Cannot read output pairs if wait = no");
+		cf_log_err(conf, "Cannot read output pairs if wait = no");
 		return -1;
 	}
 
@@ -244,7 +244,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 
 		dval = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE), inst->packet_type);
 		if (!dval) {
-			cf_log_err_cs(conf, "Unknown packet type %s: See list of VALUEs for Packet-Type in "
+			cf_log_err(conf, "Unknown packet type %s: See list of VALUEs for Packet-Type in "
 				      "share/dictionary", inst->packet_type);
 			return -1;
 		}
@@ -258,14 +258,14 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 		inst->timeout = EXEC_TIMEOUT;
 	}
 	if (inst->timeout < 1) {
-		cf_log_err_cs(conf, "Timeout '%d' is too small (minimum: 1)", inst->timeout);
+		cf_log_err(conf, "Timeout '%d' is too small (minimum: 1)", inst->timeout);
 		return -1;
 	}
 	/*
 	 *	Blocking a request longer than max_request_time isn't going to help anyone.
 	 */
 	if (inst->timeout > main_config.max_request_time) {
-		cf_log_err_cs(conf, "Timeout '%d' is too large (maximum: %d)", inst->timeout, main_config.max_request_time);
+		cf_log_err(conf, "Timeout '%d' is too large (maximum: %d)", inst->timeout, main_config.max_request_time);
 		return -1;
 	}
 

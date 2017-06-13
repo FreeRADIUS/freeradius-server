@@ -1097,13 +1097,13 @@ fr_tls_conf_t *eap_tls_conf_parse(CONF_SECTION *cs, char const *attr)
 	CONF_SECTION		*tls_cs;
 	fr_tls_conf_t		*tls_conf;
 
-	parent = cf_section_parent(cs);
+	parent = cf_item_to_section(cf_parent(cs));
 
 	cp = cf_pair_find(cs, attr);
 	if (cp) {
 		tls_conf_name = cf_pair_value(cp);
 
-		tls_cs = cf_subsection_find_name2(parent, TLS_CONFIG_SECTION, tls_conf_name);
+		tls_cs = cf_section_find(parent, TLS_CONFIG_SECTION, tls_conf_name);
 		if (!tls_cs) {
 			ERROR("Cannot find tls config \"%s\"", tls_conf_name);
 			return NULL;
@@ -1118,7 +1118,7 @@ fr_tls_conf_t *eap_tls_conf_parse(CONF_SECTION *cs, char const *attr)
 		 *	find the section - that is just a config error.
 		 */
 		INFO("TLS section \"%s\" missing, trying to use legacy configuration", attr);
-		tls_cs = cf_subsection_find(parent, "tls");
+		tls_cs = cf_section_find(parent, "tls", NULL);
 	}
 
 	if (!tls_cs) return NULL;

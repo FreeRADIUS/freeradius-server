@@ -470,7 +470,7 @@ void realm_home_server_sanitize(home_server_t *home, CONF_SECTION *cs)
 		home->src_ipaddr.af = home->ipaddr.af;
 	}
 
-	parent = cf_section_parent(cs);
+	parent = cf_item_to_section(cf_parent(cs));
 	if (parent && strcmp(cf_section_name1(parent), "server") == 0) {
 		home->parent_server = cf_section_name2(parent);
 	}
@@ -487,13 +487,13 @@ void realm_home_server_sanitize(home_server_t *home, CONF_SECTION *cs)
 static bool home_server_insert(home_server_t *home, CONF_SECTION *cs)
 {
 	if (home->name && !rbtree_insert(home_servers_byname, home)) {
-		cf_log_err_cs(cs, "Internal error %d adding home server %s", __LINE__, home->log_name);
+		cf_log_err(cs, "Internal error %d adding home server %s", __LINE__, home->log_name);
 		return false;
 	}
 
 	if (!home->server && !rbtree_insert(home_servers_byaddr, home)) {
 		rbtree_deletebydata(home_servers_byname, home);
-		cf_log_err_cs(cs, "Internal error %d adding home server %s", __LINE__, home->log_name);
+		cf_log_err(cs, "Internal error %d adding home server %s", __LINE__, home->log_name);
 		return false;
 	}
 
@@ -504,7 +504,7 @@ static bool home_server_insert(home_server_t *home, CONF_SECTION *cs)
 		if (home->ipaddr.af != AF_UNSPEC) {
 			rbtree_deletebydata(home_servers_byname, home);
 		}
-		cf_log_err_cs(cs, "Internal error %d adding home server %s", __LINE__, home->log_name);
+		cf_log_err(cs, "Internal error %d adding home server %s", __LINE__, home->log_name);
 		return false;
 	}
 #endif
@@ -531,7 +531,7 @@ bool realm_home_server_add(home_server_t *home)
 	}
 
 	if (home->name && (rbtree_finddata(home_servers_byname, home) != NULL)) {
-		cf_log_err_cs(home->cs, "Duplicate home server name %s", home->name);
+		cf_log_err(home->cs, "Duplicate home server name %s", home->name);
 		return false;
 	}
 
@@ -540,7 +540,7 @@ bool realm_home_server_add(home_server_t *home)
 
 		inet_ntop(home->ipaddr.af, &home->ipaddr.addr, buffer, sizeof(buffer));
 
-		cf_log_err_cs(home->cs, "Duplicate home server address%s%s%s: %s:%s%s/%i",
+		cf_log_err(home->cs, "Duplicate home server address%s%s%s: %s:%s%s/%i",
 			      home->name ? " (already in use by " : "",
 			      home->name ? home->name : "",
 			      home->name ? ")" : "",
@@ -630,7 +630,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 	 */
 	if (cf_pair_find(cs, "ipaddr") || cf_pair_find(cs, "ipv4addr") || cf_pair_find(cs, "ipv6addr")) {
 		if (fr_ipaddr_is_inaddr_any(&home->ipaddr) == 1) {
-			cf_log_err_cs(cs, "Wildcard '*' addresses are not permitted for home servers");
+			cf_log_err(cs, "Wildcard '*' addresses are not permitted for home servers");
 			goto error;
 		}
 
@@ -649,7 +649,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 		home->ipaddr.af = AF_UNSPEC;	/* mark ipaddr as unused */
 
 		if (!home->server) {
-			cf_log_err_cs(cs, "Invalid value for virtual_server");
+			cf_log_err(cs, "Invalid value for virtual_server");
 			goto error;
 		}
 
@@ -658,8 +658,8 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 		 *	the config with a name that matches the
 		 *	virtual_server.
 		 */
-		if (!cf_subsection_find_name2(rc->cs, "server", home->server)) {
-			cf_log_err_cs(cs, "No such server %s", home->server);
+		if (!cf_section_find(rc->cs, "server", home->server)) {
+			cf_log_err(cs, "No such server %s", home->server);
 			goto error;
 		}
 
@@ -670,7 +670,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 	 *	raise an error.
 	 */
 	} else {
-		cf_log_err_cs(cs, "No ipaddr, ipv4addr, ipv6addr, or virtual_server defined "
+		cf_log_err(cs, "No ipaddr, ipv4addr, ipv6addr, or virtual_server defined "
 			      "for home server");
 	error:
 		talloc_free(home);
@@ -680,15 +680,15 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 	/*
 	 *	Check the TLS configuration.
 	 */
-	tls = cf_subsection_find(cs, "tls");
+	tls = cf_section_find(cs, "tls", NULL);
 	if (tls && home->ipaddr.af == AF_UNSPEC) {
-		cf_log_err_cs(cs, "TLS transport cannot be used for home servers with 'virtual_server' set");
+		cf_log_err(cs, "TLS transport cannot be used for home servers with 'virtual_server' set");
 		goto error;
 	}
 
 #ifndef WITH_TLS
 	if (tls) {
-		cf_log_err_cs(cs, "TLS transport is not available in this executable");
+		cf_log_err(cs, "TLS transport is not available in this executable");
 		goto error;
 	}
 #endif
@@ -710,20 +710,20 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 
 		case HOME_PING_CHECK_REQUEST:
 			if (!home->ping_user_name) {
-				cf_log_err_cs(cs, "You must supply a 'username' to enable status_check=request");
+				cf_log_err(cs, "You must supply a 'username' to enable status_check=request");
 				goto error;
 			}
 
 			if (((home->type == HOME_TYPE_AUTH) ||
 			     (home->type == HOME_TYPE_AUTH_ACCT)) && !home->ping_user_password) {
-				cf_log_err_cs(cs, "You must supply a 'password' to enable status_check=request");
+				cf_log_err(cs, "You must supply a 'password' to enable status_check=request");
 				goto error;
 			}
 
 			break;
 
 		case HOME_PING_CHECK_INVALID:
-			cf_log_err_cs(cs, "Invalid status_check \"%s\" for home server %s",
+			cf_log_err(cs, "Invalid status_check \"%s\" for home server %s",
 				      home->ping_check_str, home->log_name);
 			goto error;
 		}
@@ -733,7 +733,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 
 	if (home->ipaddr.af == AF_UNSPEC) {
 		if (home->proto_str) {
-			cf_log_err_cs(cs, "The 'proto' configuration cannot be used for home servers with "
+			cf_log_err(cs, "The 'proto' configuration cannot be used for home servers with "
 				      "'virtual_server' set");
 			goto error;
 		}
@@ -750,18 +750,18 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 
 		case IPPROTO_TCP:
 #ifndef WITH_TCP
-			cf_log_err_cs(cs, "Server not built with support for RADIUS over TCP");
+			cf_log_err(cs, "Server not built with support for RADIUS over TCP");
 			goto error;
 #endif
 			if (home->ping_check != HOME_PING_CHECK_NONE) {
-				cf_log_err_cs(cs, "Only 'status_check = none' is allowed for home "
+				cf_log_err(cs, "Only 'status_check = none' is allowed for home "
 					      "servers with 'proto = tcp'");
 				goto error;
 			}
 			break;
 
 		default:
-			cf_log_err_cs(cs, "Unknown proto \"%s\"", home->proto_str);
+			cf_log_err(cs, "Unknown proto \"%s\"", home->proto_str);
 			goto error;
 		}
 
@@ -790,20 +790,20 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 #ifdef WITH_COA
 		case HOME_TYPE_COA:
 			if (home->server != NULL) {
-				cf_log_err_cs(cs, "Home servers of type \"coa\" cannot point to a virtual server");
+				cf_log_err(cs, "Home servers of type \"coa\" cannot point to a virtual server");
 				goto error;
 			}
 			break;
 #endif
 
 		case HOME_TYPE_INVALID:
-			cf_log_err_cs(cs, "Invalid type \"%s\" for home server %s", home->type_str, home->log_name);
+			cf_log_err(cs, "Invalid type \"%s\" for home server %s", home->type_str, home->log_name);
 			goto error;
 		}
 	}
 
 	if (!home->server && rbtree_finddata(home_servers_byaddr, home)) {
-		cf_log_err_cs(cs, "Duplicate home server");
+		cf_log_err(cs, "Duplicate home server");
 		goto error;
 	}
 
@@ -818,7 +818,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 		} else
 #endif
 		{
-			cf_log_err_cs(cs, "No shared secret defined for home server %s", home->log_name);
+			cf_log_err(cs, "No shared secret defined for home server %s", home->log_name);
 			goto error;
 		}
 	}
@@ -828,7 +828,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 	 */
 	if (home->server) {
 		if (tls) {
-			cf_log_err_cs(cs, "Virtual home_servers cannot have a \"tls\" subsection");
+			cf_log_err(cs, "Virtual home_servers cannot have a \"tls\" subsection");
 			goto error;
 		}
 	} else {
@@ -840,7 +840,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 
 #ifdef WITH_TLS
 		if (tls && (home->proto != IPPROTO_TCP)) {
-			cf_log_err_cs(cs, "TLS transport is not available for UDP sockets");
+			cf_log_err(cs, "TLS transport is not available for UDP sockets");
 			goto error;
 		}
 #endif
@@ -897,7 +897,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 		 */
 		if (home->src_ipaddr_str) {
 			if (fr_inet_hton(&home->src_ipaddr, home->ipaddr.af, home->src_ipaddr_str, false) < 0) {
-				cf_log_err_cs(cs, "Failed parsing src_ipaddr");
+				cf_log_err(cs, "Failed parsing src_ipaddr");
 				goto error;
 			}
 		/*
@@ -963,7 +963,7 @@ CONF_SECTION *home_server_cs_afrom_client(CONF_SECTION *client)
 	 *	Duplicate the server section, so we don't mangle
 	 *	the client CONF_SECTION we were passed.
 	 */
-	cs = cf_subsection_find(client, "coa_server");
+	cs = cf_section_find(client, "coa_server", CF_IDENT_ANY);
 	if (cs) {
 		server = cf_section_dup(client, cs, "home_server", NULL, true);
 	} else {
@@ -993,7 +993,7 @@ CONF_SECTION *home_server_cs_afrom_client(CONF_SECTION *client)
 		if (cp) cf_pair_add(server, cf_pair_dup(server, cp));
 	} else if (strcmp(cf_pair_value(cp), "coa") != 0) {
 		talloc_free(server);
-		cf_log_err_cs(server, "server.type must be \"coa\"");
+		cf_log_err(server, "server.type must be \"coa\"");
 		return NULL;
 	}
 
@@ -1035,7 +1035,7 @@ static int pool_check_home_server(UNUSED realm_config_t *rc, CONF_PAIR *cp,
 	home_server_t myhome, *home;
 
 	if (!name) {
-		cf_log_err_cp(cp,
+		cf_log_err(cp,
 			   "No value given for home_server");
 		return 0;
 	}
@@ -1063,7 +1063,7 @@ static int pool_check_home_server(UNUSED realm_config_t *rc, CONF_PAIR *cp,
 		break;
 	}
 
-	cf_log_err_cp(cp, "Unknown home_server \"%s\".", name);
+	cf_log_err(cp, "Unknown home_server \"%s\".", name);
 	return 0;
 }
 
@@ -1191,14 +1191,14 @@ static int server_pool_add(realm_config_t *rc,
 	name2 = cf_section_name1(cs);
 	if (!name2 || ((strcasecmp(name2, "server_pool") != 0) &&
 		       (strcasecmp(name2, "home_server_pool") != 0))) {
-		cf_log_err_cs(cs,
+		cf_log_err(cs,
 			   "Section is not a home_server_pool");
 		return 0;
 	}
 
 	name2 = cf_section_name2(cs);
 	if (!name2) {
-		cf_log_err_cs(cs,
+		cf_log_err(cs,
 			   "Server pool section is missing a name");
 		return 0;
 	}
@@ -1219,7 +1219,7 @@ static int server_pool_add(realm_config_t *rc,
 	}
 
 	if (num_home_servers == 0) {
-		cf_log_err_cs(cs,
+		cf_log_err(cs,
 			   "No home servers defined in pool %s",
 			   name2);
 		goto error;
@@ -1238,7 +1238,7 @@ static int server_pool_add(realm_config_t *rc,
 	if (cp) {
 #ifdef WITH_COA
 		if (server_type == HOME_TYPE_COA) {
-			cf_log_err_cs(cs, "Home server pools of type \"coa\" cannot have a fallback virtual server");
+			cf_log_err(cs, "Home server pools of type \"coa\" cannot have a fallback virtual server");
 			goto error;
 		}
 #endif
@@ -1248,7 +1248,7 @@ static int server_pool_add(realm_config_t *rc,
 		}
 
 		if (!pool->fallback->server) {
-			cf_log_err_cs(cs, "Fallback home_server %s does NOT contain a virtual_server directive",
+			cf_log_err(cs, "Fallback home_server %s does NOT contain a virtual_server directive",
 				      pool->fallback->log_name);
 			goto error;
 		}
@@ -1275,14 +1275,14 @@ static int server_pool_add(realm_config_t *rc,
 
 		value = cf_pair_value(cp);
 		if (!value) {
-			cf_log_err_cp(cp,
+			cf_log_err(cp,
 				   "No value given for type");
 			goto error;
 		}
 
 		pool->type = fr_str2int(pool_types, value, 0);
 		if (!pool->type) {
-			cf_log_err_cp(cp,
+			cf_log_err(cp,
 				   "Unknown type \"%s\".",
 				   value);
 			goto error;
@@ -1295,7 +1295,7 @@ static int server_pool_add(realm_config_t *rc,
 	if (cp) {
 		pool->virtual_server = cf_pair_value(cp);
 		if (!pool->virtual_server) {
-			cf_log_err_cp(cp, "No value given for virtual_server");
+			cf_log_err(cp, "No value given for virtual_server");
 			goto error;
 		}
 
@@ -1303,8 +1303,8 @@ static int server_pool_add(realm_config_t *rc,
 			cf_log_info(cs, "\tvirtual_server = %s", pool->virtual_server);
 		}
 
-		if (!cf_subsection_find_name2(rc->cs, "server", pool->virtual_server)) {
-			cf_log_err_cp(cp, "No such server %s", pool->virtual_server);
+		if (!cf_section_find(rc->cs, "server", pool->virtual_server)) {
+			cf_log_err(cp, "No such server %s", pool->virtual_server);
 			goto error;
 		}
 
@@ -1377,7 +1377,7 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 	int i, insert_point, num_home_servers;
 	home_server_t myhome, *home;
 	home_pool_t mypool, *pool;
-	CONF_SECTION *subcs;
+	CONF_SECTION *subcs = NULL;
 #else
 	(void) rc;		/* -Wunused */
 	(void) realm;
@@ -1392,7 +1392,7 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 	 */
 	if (strcmp(name, "LOCAL") == 0) {
 		if (*pool_p) {
-			cf_log_err_cs(cs, "Realm \"%s\" cannot be both LOCAL and remote", name);
+			cf_log_err(cs, "Realm \"%s\" cannot be both LOCAL and remote", name);
 			return 0;
 		}
 		return 1;
@@ -1407,12 +1407,12 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 	pool = rbtree_finddata(home_pools_byname, &mypool);
 	if (pool) {
 		if (pool->type != ldflag) {
-			cf_log_err_cs(cs, "Inconsistent ldflag for server pool \"%s\"", name);
+			cf_log_err(cs, "Inconsistent ldflag for server pool \"%s\"", name);
 			return 0;
 		}
 
 		if (pool->server_type != type) {
-			cf_log_err_cs(cs, "Inconsistent home server type for server pool \"%s\"", name);
+			cf_log_err(cs, "Inconsistent home server type for server pool \"%s\"", name);
 			return 0;
 		}
 	}
@@ -1422,12 +1422,12 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 	home = rbtree_finddata(home_servers_byname, &myhome);
 	if (home) {
 		if (secret && (strcmp(home->secret, secret) != 0)) {
-			cf_log_err_cs(cs, "Inconsistent shared secret for home server \"%s\"", name);
+			cf_log_err(cs, "Inconsistent shared secret for home server \"%s\"", name);
 			return 0;
 		}
 
 		if (home->type != type) {
-			cf_log_err_cs(cs, "Inconsistent type for home server \"%s\"", name);
+			cf_log_err(cs, "Inconsistent type for home server \"%s\"", name);
 			return 0;
 		}
 
@@ -1436,9 +1436,7 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 		 *	in the pool.  If so, do nothing else.
 		 */
 		if (pool) for (i = 0; i < pool->num_home_servers; i++) {
-			if (pool->servers[i] == home) {
-				return 1;
-			}
+			if (pool->servers[i] == home) return 1;
 		}
 	}
 
@@ -1462,7 +1460,7 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 		}
 
 		if (insert_point < 0) {
-			cf_log_err_cs(cs, "No room in pool to add home server \"%s\".  Please update the realm configuration to use the new-style home servers and server pools.", name);
+			cf_log_err(cs, "No room in pool to add home server \"%s\".  Please update the realm configuration to use the new-style home servers and server pools.", name);
 			return 0;
 		}
 	}
@@ -1494,14 +1492,14 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 			q = NULL;
 
 		} else if (p == name) {
-				cf_log_err_cs(cs, "Invalid hostname %s", name);
+				cf_log_err(cs, "Invalid hostname %s", name);
 				talloc_free(home);
 				return 0;
 
 		} else {
 			unsigned long port = strtoul(p + 1, NULL, 0);
 			if ((port == 0) || (port > 65535)) {
-				cf_log_err_cs(cs, "Invalid port %s", p + 1);
+				cf_log_err(cs, "Invalid port %s", p + 1);
 				talloc_free(home);
 				return 0;
 			}
@@ -1515,7 +1513,7 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 
 		if (!server) {
 			if (fr_inet_hton(&home->ipaddr, AF_UNSPEC, p, false) < 0) {
-				cf_log_err_cs(cs,
+				cf_log_err(cs,
 					   "Failed looking up hostname %s.",
 					   p);
 				talloc_free(home);
@@ -1542,20 +1540,20 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 		home->revive_interval = rc->dead_time;
 
 		if (rbtree_finddata(home_servers_byaddr, home)) {
-			cf_log_err_cs(cs, "Home server %s has the same IP address and/or port as another home server.", name);
+			cf_log_err(cs, "Home server %s has the same IP address and/or port as another home server.", name);
 			talloc_free(home);
 			return 0;
 		}
 
 		if (!rbtree_insert(home_servers_byname, home)) {
-			cf_log_err_cs(cs, "Internal error %d adding home server %s.", __LINE__, name);
+			cf_log_err(cs, "Internal error %d adding home server %s.", __LINE__, name);
 			talloc_free(home);
 			return 0;
 		}
 
 		if (!rbtree_insert(home_servers_byaddr, home)) {
 			rbtree_deletebydata(home_servers_byname, home);
-			cf_log_err_cs(cs, "Internal error %d adding home server %s.", __LINE__, name);
+			cf_log_err(cs, "Internal error %d adding home server %s.", __LINE__, name);
 			talloc_free(home);
 			return 0;
 		}
@@ -1567,7 +1565,7 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 			if (home->ipaddr.af != AF_UNSPEC) {
 				rbtree_deletebydata(home_servers_byname, home);
 			}
-			cf_log_err_cs(cs,
+			cf_log_err(cs,
 				   "Internal error %d adding home server %s.",
 				   __LINE__, name);
 			talloc_free(home);
@@ -1593,9 +1591,7 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 	 *	Count the old-style realms of this name.
 	 */
 	num_home_servers = 0;
-	for (subcs = cf_section_find_next(cs, NULL, "realm");
-	     subcs != NULL;
-	     subcs = cf_section_find_next(cs, subcs, "realm")) {
+	while ((subcs = cf_section_find_next(cs, subcs, "realm", CF_IDENT_ANY))) {
 		char const *this = cf_section_name2(subcs);
 
 		if (!this || (strcmp(this, realm) != 0)) continue;
@@ -1603,14 +1599,14 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 	}
 
 	if (num_home_servers == 0) {
-		cf_log_err_cs(cs, "Internal error counting pools for home server %s.", name);
+		cf_log_err(cs, "Internal error counting pools for home server %s.", name);
 		talloc_free(home);
 		return 0;
 	}
 
 	pool = server_pool_alloc(rc, realm, ldflag, type, num_home_servers);
 	if (!pool) {
-		cf_log_err_cs(cs, "Out of memory");
+		cf_log_err(cs, "Out of memory");
 		return 0;
 	}
 
@@ -1641,7 +1637,7 @@ static int old_realm_config(realm_config_t *rc, CONF_SECTION *cs, REALM *r)
 	if (cp) {
 		host = cf_pair_value(cp);
 		if (!host) {
-			cf_log_err_cp(cp, "No value specified for ldflag");
+			cf_log_err(cp, "No value specified for ldflag");
 			return 0;
 		}
 
@@ -1653,7 +1649,7 @@ static int old_realm_config(realm_config_t *rc, CONF_SECTION *cs, REALM *r)
 			cf_log_info(cs, "\tldflag = round_robin");
 
 		} else {
-			cf_log_err_cs(cs, "Unknown value \"%s\" for ldflag", host);
+			cf_log_err(cs, "Unknown value \"%s\" for ldflag", host);
 			return 0;
 		}
 	} /* else don't print it. */
@@ -1666,20 +1662,20 @@ static int old_realm_config(realm_config_t *rc, CONF_SECTION *cs, REALM *r)
 	if (cp) {
 		host = cf_pair_value(cp);
 		if (!host) {
-			cf_log_err_cp(cp, "No value specified for authhost");
+			cf_log_err(cp, "No value specified for authhost");
 			return 0;
 		}
 
 		if (strcmp(host, "LOCAL") != 0) {
 			cp = cf_pair_find(cs, "secret");
 			if (!cp) {
-				cf_log_err_cs(cs, "No shared secret supplied for realm: %s", r->name);
+				cf_log_err(cs, "No shared secret supplied for realm: %s", r->name);
 				return 0;
 			}
 
 			secret = cf_pair_value(cp);
 			if (!secret) {
-				cf_log_err_cp(cp, "No value specified for secret");
+				cf_log_err(cp, "No value specified for secret");
 				return 0;
 			}
 		}
@@ -1696,7 +1692,7 @@ static int old_realm_config(realm_config_t *rc, CONF_SECTION *cs, REALM *r)
 	if (cp) {
 		host = cf_pair_value(cp);
 		if (!host) {
-			cf_log_err_cp(cp, "No value specified for accthost");
+			cf_log_err(cp, "No value specified for accthost");
 			return 0;
 		}
 
@@ -1707,13 +1703,13 @@ static int old_realm_config(realm_config_t *rc, CONF_SECTION *cs, REALM *r)
 		if ((strcmp(host, "LOCAL") != 0) && !secret) {
 			cp = cf_pair_find(cs, "secret");
 			if (!cp) {
-				cf_log_err_cs(cs, "No shared secret supplied for realm: %s", r->name);
+				cf_log_err(cs, "No shared secret supplied for realm: %s", r->name);
 				return 0;
 			}
 
 			secret = cf_pair_value(cp);
 			if (!secret) {
-				cf_log_err_cp(cp, "No value specified for secret");
+				cf_log_err(cp, "No value specified for secret");
 				return 0;
 			}
 		}
@@ -1730,7 +1726,7 @@ static int old_realm_config(realm_config_t *rc, CONF_SECTION *cs, REALM *r)
 	if (cp) {
 		host = cf_pair_value(cp);
 		if (!host) {
-			cf_log_err_cp(cp, "No value specified for virtual_server");
+			cf_log_err(cp, "No value specified for virtual_server");
 			return 0;
 		}
 
@@ -1773,16 +1769,10 @@ static int add_pool_to_realm(realm_config_t *rc, CONF_SECTION *cs,
 	if (!pool) {
 		CONF_SECTION *pool_cs;
 
-		pool_cs = cf_subsection_find_name2(rc->cs,
-						    "home_server_pool",
-						    name);
+		pool_cs = cf_section_find(rc->cs, "home_server_pool", name);
+		if (!pool_cs) pool_cs = cf_section_find(rc->cs, "server_pool", name);
 		if (!pool_cs) {
-			pool_cs = cf_subsection_find_name2(rc->cs,
-							    "server_pool",
-							    name);
-		}
-		if (!pool_cs) {
-			cf_log_err_cs(cs, "Failed to find home_server_pool \"%s\"", name);
+			cf_log_err(cs, "Failed to find home_server_pool \"%s\"", name);
 			return 0;
 		}
 
@@ -1798,7 +1788,7 @@ static int add_pool_to_realm(realm_config_t *rc, CONF_SECTION *cs,
 	}
 
 	if (pool->server_type != server_type) {
-		cf_log_err_cs(cs, "Incompatible home_server_pool \"%s\" (mixed auth_pool / acct_pool)", name);
+		cf_log_err(cs, "Incompatible home_server_pool \"%s\" (mixed auth_pool / acct_pool)", name);
 		return 0;
 	}
 
@@ -1825,13 +1815,13 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 
 	name2 = cf_section_name1(cs);
 	if (!name2 || (strcasecmp(name2, "realm") != 0)) {
-		cf_log_err_cs(cs, "Section is not a realm");
+		cf_log_err(cs, "Section is not a realm");
 		return 0;
 	}
 
 	name2 = cf_section_name2(cs);
 	if (!name2) {
-		cf_log_err_cs(cs, "Realm section is missing the realm name");
+		cf_log_err(cs, "Realm section is missing the realm name");
 		return 0;
 	}
 
@@ -1867,7 +1857,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 	if (cp) auth_pool_name = cf_pair_value(cp);
 	if (cp && auth_pool_name) {
 		if (auth_pool) {
-			cf_log_err_cs(cs, "Cannot use \"pool\" and \"auth_pool\" at the same time");
+			cf_log_err(cs, "Cannot use \"pool\" and \"auth_pool\" at the same time");
 			return 0;
 		}
 		if (!add_pool_to_realm(rc, cs,
@@ -1883,7 +1873,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 		bool do_print = true;
 
 		if (acct_pool) {
-			cf_log_err_cs(cs, "Cannot use \"pool\" and \"acct_pool\" at the same time");
+			cf_log_err(cs, "Cannot use \"pool\" and \"acct_pool\" at the same time");
 			return 0;
 		}
 
@@ -1926,7 +1916,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 	if (r && (strcmp(r->name, name2) == 0)) {
 		if (cf_pair_find(cs, "auth_pool") ||
 		    cf_pair_find(cs, "acct_pool")) {
-			cf_log_err_cs(cs, "Duplicate realm \"%s\"", name2);
+			cf_log_err(cs, "Duplicate realm \"%s\"", name2);
 			goto error;
 		}
 
@@ -1991,9 +1981,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 		goto error;
 	}
 
-	if (!realm_realm_add(r, cs)) {
-		goto error;
-	}
+	if (!realm_realm_add(r, cs)) goto error;
 
 	cf_log_info(cs, " }");
 
@@ -2039,9 +2027,9 @@ int realm_realm_add(REALM *r, UNUSED CONF_SECTION *cs)
 
 			fr_canonicalize_error(r, &spaces, &text, slen, r->name + 1);
 
-			cf_log_err_cs(cs, "Invalid regular expression:");
-			cf_log_err_cs(cs, "%s", text);
-			cf_log_err_cs(cs, "%s^ %s", spaces, fr_strerror());
+			cf_log_err(cs, "Invalid regular expression:");
+			cf_log_err(cs, "%s", text);
+			cf_log_err(cs, "%s^ %s", spaces, fr_strerror());
 
 			talloc_free(spaces);
 			talloc_free(text);
@@ -2080,37 +2068,37 @@ static int pool_peek_type(CONF_SECTION *config, CONF_SECTION *cs)
 
 	cp = cf_pair_find(cs, "home_server");
 	if (!cp) {
-		cf_log_err_cs(cs, "Pool does not contain a \"home_server\" entry");
+		cf_log_err(cs, "Pool does not contain a \"home_server\" entry");
 		return HOME_TYPE_INVALID;
 	}
 
 	name = cf_pair_value(cp);
 	if (!name) {
-		cf_log_err_cp(cp, "home_server entry does not reference a home server");
+		cf_log_err(cp, "home_server entry does not reference a home server");
 		return HOME_TYPE_INVALID;
 	}
 
-	server_cs = cf_subsection_find_name2(config, "home_server", name);
+	server_cs = cf_section_find(config, "home_server", name);
 	if (!server_cs) {
-		cf_log_err_cp(cp, "home_server \"%s\" does not exist", name);
+		cf_log_err(cp, "home_server \"%s\" does not exist", name);
 		return HOME_TYPE_INVALID;
 	}
 
 	cp = cf_pair_find(server_cs, "type");
 	if (!cp) {
-		cf_log_err_cs(server_cs, "home_server %s does not contain a \"type\" entry", name);
+		cf_log_err(server_cs, "home_server %s does not contain a \"type\" entry", name);
 		return HOME_TYPE_INVALID;
 	}
 
 	type = cf_pair_value(cp);
 	if (!type) {
-		cf_log_err_cs(server_cs, "home_server %s contains an empty \"type\" entry", name);
+		cf_log_err(server_cs, "home_server %s contains an empty \"type\" entry", name);
 		return HOME_TYPE_INVALID;
 	}
 
 	home = fr_str2int(home_server_types, type, HOME_TYPE_INVALID);
 	if (home == HOME_TYPE_INVALID) {
-		cf_log_err_cs(server_cs, "home_server %s contains an invalid \"type\" entry of value \"%s\"", name, type);
+		cf_log_err(server_cs, "home_server %s contains an invalid \"type\" entry of value \"%s\"", name, type);
 		return HOME_TYPE_INVALID;
 	}
 
@@ -2123,7 +2111,7 @@ int realms_init(CONF_SECTION *config)
 	CONF_SECTION *cs;
 	int flags = 0;
 #ifdef WITH_PROXY
-	CONF_SECTION *server_cs;
+	CONF_SECTION *server_cs = NULL;
 #endif
 	realm_config_t *rc;
 
@@ -2133,7 +2121,7 @@ int realms_init(CONF_SECTION *config)
 	rc->cs = config;
 
 #ifdef WITH_PROXY
-	cs = cf_subsection_find_next(config, NULL, "proxy");
+	cs = cf_section_find(config, "proxy", NULL);
 	if (cs) {
 		if (cf_section_parse(rc, rc, cs, proxy_config) < 0) {
 			ERROR("Failed parsing proxy section");
@@ -2166,9 +2154,8 @@ int realms_init(CONF_SECTION *config)
 	home_pools_byname = rbtree_create(NULL, home_pool_name_cmp, NULL, flags);
 	if (!home_pools_byname) goto error;
 
-	for (cs = cf_subsection_find_next(config, NULL, "home_server");
-	     cs != NULL;
-	     cs = cf_subsection_find_next(config, cs, "home_server")) {
+	cs = NULL;
+	while ((cs = cf_section_find_next(config, cs, "home_server", CF_IDENT_ANY))) {
 		home_server_t *home;
 
 		home = home_server_afrom_cs(rc, rc, cs);
@@ -2180,12 +2167,9 @@ int realms_init(CONF_SECTION *config)
 	 *	Loop over virtual servers to find home servers which
 	 *	are defined in them.
 	 */
-	for (server_cs = cf_subsection_find_next(config, NULL, "server");
-	     server_cs != NULL;
-	     server_cs = cf_subsection_find_next(config, server_cs, "server")) {
-		for (cs = cf_subsection_find_next(server_cs, NULL, "home_server");
-		     cs != NULL;
-		     cs = cf_subsection_find_next(server_cs, cs, "home_server")) {
+	 while ((server_cs = cf_section_find_next(config, server_cs, "server", CF_IDENT_ANY))) {
+	 	cs = NULL;
+		while ((cs = cf_section_find_next(server_cs, cs, "home_server", CF_IDENT_ANY))) {
 			home_server_t *home;
 
 			home = home_server_afrom_cs(rc, rc, cs);
@@ -2202,9 +2186,8 @@ int realms_init(CONF_SECTION *config)
 	realms_byname = rbtree_create(NULL, realm_name_cmp, NULL, flags);
 	if (!realms_byname) goto error;
 
-	for (cs = cf_subsection_find_next(config, NULL, "realm");
-	     cs != NULL;
-	     cs = cf_subsection_find_next(config, cs, "realm")) {
+	cs = NULL;
+	while ((cs = cf_section_find_next(config, cs, "realm", CF_IDENT_ANY))) {
 		if (!realm_add(rc, cs)) {
 		error:
 			realms_free();
@@ -2221,9 +2204,8 @@ int realms_init(CONF_SECTION *config)
 	/*
 	 *	CoA pools aren't necessarily tied to realms.
 	 */
-	for (cs = cf_subsection_find_next(config, NULL, "home_server_pool");
-	     cs != NULL;
-	     cs = cf_subsection_find_next(config, cs, "home_server_pool")) {
+	 cs = NULL;
+	 while ((cs = cf_section_find_next(config, cs, "home_server_pool", CF_IDENT_ANY))) {
 		int type;
 
 		/*

@@ -55,14 +55,14 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 			return FR_IO_FAIL;
 		}
 
-		unlang = cf_subsection_find_name2(request->server_cs, "recv", dv->alias);
+		unlang = cf_section_find(request->server_cs, "recv", dv->alias);
 		if (!unlang) {
 			RWDEBUG("Failed to find 'recv' section");
 			request->reply->code = FR_CODE_ACCESS_REJECT;
 			goto send_reply;
 		}
 
-		RDEBUG("Running 'recv %s' from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
+		RDEBUG("Running 'recv %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
 		unlang_push_section(request, unlang, RLM_MODULE_NOOP);
 
 		request->request_state = REQUEST_RECV;
@@ -100,13 +100,13 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
 		unlang = NULL;
 		if (dv) {
-			unlang = cf_subsection_find_name2(request->server_cs, "send", dv->alias);
+			unlang = cf_section_find(request->server_cs, "send", dv->alias);
 		}
-		if (!unlang) unlang = cf_subsection_find_name2(request->server_cs, "send", "*");
+		if (!unlang) unlang = cf_section_find(request->server_cs, "send", "*");
 		if (!unlang) goto send_reply;
 
 	rerun_nak:
-		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
+		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
 		unlang_push_section(request, unlang, RLM_MODULE_NOOP);
 
 		request->request_state = REQUEST_SEND;
@@ -147,7 +147,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 				unlang = NULL;
 				if (!dv) goto send_reply;
 
-				unlang = cf_subsection_find_name2(request->server_cs, "send", dv->alias);
+				unlang = cf_section_find(request->server_cs, "send", dv->alias);
 				if (unlang) goto rerun_nak;
 
 				RWDEBUG("Not running 'send %s' section as it does not exist", dv->alias);
@@ -201,10 +201,10 @@ static int mod_compile_section(CONF_SECTION *server_cs, char const *name1, char 
 {
 	CONF_SECTION *cs;
 
-	cs = cf_subsection_find_name2(server_cs, name1, name2);
+	cs = cf_section_find(server_cs, name1, name2);
 	if (!cs) return 0;
 
-	cf_log_module(cs, "Compiling policies - %s %s {...}", name1, name2);
+	cf_log_debug(cs, "Compiling policies - %s %s {...}", name1, name2);
 
 	/*
 	 *	FIXME: check if it's already compiled?
@@ -216,7 +216,7 @@ static int mod_compile_section(CONF_SECTION *server_cs, char const *name1, char 
 	 */
 
 	if (unlang_compile(cs, component) < 0) {
-		cf_log_err_cs(cs, "Failed compiling '%s %s { ... }' section", name1, name2);
+		cf_log_err(cs, "Failed compiling '%s %s { ... }' section", name1, name2);
 		return -1;
 	}
 
@@ -234,7 +234,7 @@ static int mod_compile(CONF_SECTION *server_cs)
 	rcode = mod_compile_section(server_cs, "recv", "Status-Server", MOD_AUTHORIZE);
 	if (rcode < 0) return rcode;
 	if (rcode == 0) {
-		cf_log_err_cs(server_cs, "Failed finding 'recv Status-Server { ... }' section of virtual server %s",
+		cf_log_err(server_cs, "Failed finding 'recv Status-Server { ... }' section of virtual server %s",
 			      cf_section_name2(server_cs));
 		return -1;
 	}
@@ -242,7 +242,7 @@ static int mod_compile(CONF_SECTION *server_cs)
 	rcode = mod_compile_section(server_cs, "send", "Access-Accept", MOD_POST_AUTH);
 	if (rcode < 0) return rcode;
 	if (rcode == 0) {
-		cf_log_err_cs(server_cs, "Failed finding 'send Access-Accept { ... }' section of virtual server %s",
+		cf_log_err(server_cs, "Failed finding 'send Access-Accept { ... }' section of virtual server %s",
 			      cf_section_name2(server_cs));
 		return -1;
 	}
@@ -250,7 +250,7 @@ static int mod_compile(CONF_SECTION *server_cs)
 	rcode = mod_compile_section(server_cs, "send", "Access-Reject", MOD_POST_AUTH);
 	if (rcode < 0) return rcode;
 	if (rcode == 0) {
-		cf_log_err_cs(server_cs, "Failed finding 'send Access-Reject { ... }' section of virtual server %s",
+		cf_log_err(server_cs, "Failed finding 'send Access-Reject { ... }' section of virtual server %s",
 			      cf_section_name2(server_cs));
 		return -1;
 	}

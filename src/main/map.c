@@ -209,7 +209,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 	attr = cf_pair_attr(cp);
 	value = cf_pair_value(cp);
 	if (!value) {
-		cf_log_err_cp(cp, "Missing attribute value");
+		cf_log_err(cp, "Missing attribute value");
 		goto error;
 	}
 
@@ -217,7 +217,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 	 *	LHS may be an expansion (that expands to an attribute reference)
 	 *	or an attribute reference. Quoting determines which it is.
 	 */
-	type = cf_pair_attr_type(cp);
+	type = cf_pair_attr_quote(cp);
 	switch (type) {
 	case T_DOUBLE_QUOTED_STRING:
 	case T_BACK_QUOTED_STRING:
@@ -228,8 +228,8 @@ int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 
 		marker:
 			fr_canonicalize_error(ctx, &spaces, &text, slen, attr);
-			cf_log_err_cp(cp, "%s", text);
-			cf_log_err_cp(cp, "%s^ %s", spaces, fr_strerror());
+			cf_log_err(cp, "%s", text);
+			cf_log_err(cp, "%s^ %s", spaces, fr_strerror());
 
 			talloc_free(spaces);
 			talloc_free(text);
@@ -240,13 +240,13 @@ int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 	default:
 		slen = tmpl_afrom_attr_str(ctx, &map->lhs, attr, dst_request_def, dst_list_def, true, true);
 		if (slen <= 0) {
-			cf_log_err_cp(cp, "Failed parsing attribute reference");
+			cf_log_err(cp, "Failed parsing attribute reference");
 
 			goto marker;
 		}
 
 		if (tmpl_define_unknown_attr(map->lhs) < 0) {
-			cf_log_err_cp(cp, "Failed creating attribute %s: %s",
+			cf_log_err(cp, "Failed creating attribute %s: %s",
 				      map->lhs->name, fr_strerror());
 			goto error;
 		}
@@ -257,7 +257,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 	/*
 	 *	RHS might be an attribute reference.
 	 */
-	type = cf_pair_value_type(cp);
+	type = cf_pair_value_quote(cp);
 
 	if ((type == T_BARE_WORD) && (value[0] == '0') && (tolower((int)value[1]) == 'x') &&
 	    (map->lhs->type == TMPL_TYPE_ATTR) &&
@@ -267,12 +267,12 @@ int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 		slen = tmpl_afrom_str(map, &map->rhs, value, strlen(value), type, src_request_def, src_list_def, true);
 		if (slen < 0) goto marker;
 		if (tmpl_define_unknown_attr(map->rhs) < 0) {
-			cf_log_err_cp(cp, "Failed creating attribute %s: %s", map->rhs->name, fr_strerror());
+			cf_log_err(cp, "Failed creating attribute %s: %s", map->rhs->name, fr_strerror());
 			goto error;
 		}
 	}
 	if (!map->rhs) {
-		cf_log_err_cp(cp, "%s", fr_strerror());
+		cf_log_err(cp, "%s", fr_strerror());
 		goto error;
 	}
 
@@ -282,7 +282,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 	 */
 	if ((map->rhs->type == TMPL_TYPE_ATTR) &&
 	    (map->rhs->tmpl_num == NUM_COUNT)) {
-		cf_log_err_cp(cp, "Cannot assign from a count");
+		cf_log_err(cp, "Cannot assign from a count");
 		goto error;
 	}
 
@@ -360,9 +360,9 @@ int map_afrom_cs(vp_map_t **out, CONF_SECTION *cs,
 		}
 	}
 
-	for (ci = cf_item_find_next(cs, NULL);
+	for (ci = cf_item_next(cs, NULL);
 	     ci != NULL;
-	     ci = cf_item_find_next(cs, ci)) {
+	     ci = cf_item_next(cs, ci)) {
 		if (total++ == max) {
 			cf_log_err(ci, "Map size exceeded");
 		error:

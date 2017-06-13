@@ -617,11 +617,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 		inst->wb_pool = module_connection_pool_init(conf, inst, mod_conn_create, NULL, NULL, NULL, NULL);
 		if (!inst->wb_pool) {
-			cf_log_err_cs(conf, "Unable to initialise winbind connection pool");
+			cf_log_err(conf, "Unable to initialise winbind connection pool");
 			return -1;
 		}
 #else
-		cf_log_err_cs(conf, "'winbind' auth not enabled at compiled time");
+		cf_log_err(conf, "'winbind' auth not enabled at compiled time");
 		return -1;
 #endif
 	}
@@ -652,12 +652,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->ntlm_auth_timeout = EXEC_TIMEOUT;
 	}
 	if (inst->ntlm_auth_timeout < 1) {
-		cf_log_err_cs(conf, "ntml_auth_timeout '%d' is too small (minimum: 1)",
+		cf_log_err(conf, "ntml_auth_timeout '%d' is too small (minimum: 1)",
 			      inst->ntlm_auth_timeout);
 		return -1;
 	}
 	if (inst->ntlm_auth_timeout > 10) {
-		cf_log_err_cs(conf, "ntlm_auth_timeout '%d' is too large (maximum: 10)",
+		cf_log_err(conf, "ntlm_auth_timeout '%d' is too large (maximum: 10)",
 			      inst->ntlm_auth_timeout);
 		return -1;
 	}

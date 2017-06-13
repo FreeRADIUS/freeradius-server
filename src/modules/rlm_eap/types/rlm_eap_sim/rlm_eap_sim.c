@@ -548,36 +548,34 @@ static rlm_rcode_t mod_session_init(UNUSED void *instance, eap_session_t *eap_se
 static int mod_instantiate(UNUSED rlm_eap_config_t const *config, UNUSED void *instance, CONF_SECTION *cs)
 {
 	fr_dict_attr_t const *da;
-	CONF_SECTION *subcs;
+	CONF_SECTION *subcs = NULL;
 
 	da = fr_dict_attr_child_by_num(dict_sim_root, FR_EAP_SIM_SUBTYPE);
 	if (!da) {
-		cf_log_err_cs(cs, "Failed to find EAP-Sim-Subtype attribute");
+		cf_log_err(cs, "Failed to find EAP-Sim-Subtype attribute");
 		return -1;
 	}
 
-	for (subcs = cf_subsection_find_next(cs, NULL, "process");
-	     subcs != NULL;
-	     subcs = cf_subsection_find_next(cs, subcs, "process")) {
+	while ((subcs = cf_section_find_next(cs, subcs, "process", NULL))) {
 		char const *name2;
 		fr_dict_enum_t *dv;
 
 		name2 = cf_section_name2(subcs);
 		if (!name2) {
-			cf_log_err_cs(subcs, "Cannot compile 'process { ... }' section");
+			cf_log_err(subcs, "Cannot compile 'process { ... }' section");
 			return -1;
 		}
 
 		dv = fr_dict_enum_by_alias(NULL, da, name2);
 		if (!dv) {
-			cf_log_err_cs(subcs, "Unknown EAP-SIM-Subtype %s", name2);
+			cf_log_err(subcs, "Unknown EAP-SIM-Subtype %s", name2);
 			return -1;
 		}
 
-		cf_log_module(subcs, "Loading process %s {...}", name2);
+		cf_log_debug(subcs, "Loading process %s {...}", name2);
 
 		if (unlang_compile(subcs, MOD_AUTHORIZE) < 0) {
-			cf_log_err_cs(subcs, "Failed compiling 'process %s { ... }' section", name2);
+			cf_log_err(subcs, "Failed compiling 'process %s { ... }' section", name2);
 			return -1;
 		}
 	}

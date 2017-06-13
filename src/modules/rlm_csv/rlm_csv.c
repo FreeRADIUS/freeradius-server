@@ -166,14 +166,14 @@ static rlm_csv_entry_t *file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno
 
 	for (p = buffer, i = 0; p != NULL; p = q, i++) {
 		if (!buf2entry(inst, p, &q)) {
-			cf_log_err_cs(conf, "Malformed entry in file %s line %d", inst->filename, lineno);
+			cf_log_err(conf, "Malformed entry in file %s line %d", inst->filename, lineno);
 			return NULL;
 		}
 
 		if (q) *(q++) = '\0';
 
 		if (i >= inst->num_fields) {
-			cf_log_err_cs(conf, "Too many fields at file %s line %d", inst->filename, lineno);
+			cf_log_err(conf, "Too many fields at file %s line %d", inst->filename, lineno);
 			return NULL;
 		}
 
@@ -194,7 +194,7 @@ static rlm_csv_entry_t *file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno
 	}
 
 	if (i < inst->num_fields) {
-		cf_log_err_cs(conf, "Too few fields at file %s line %d (%d < %d)", inst->filename, lineno, i, inst->num_fields);
+		cf_log_err(conf, "Too few fields at file %s line %d (%d < %d)", inst->filename, lineno, i, inst->num_fields);
 		return NULL;
 	}
 
@@ -202,7 +202,7 @@ static rlm_csv_entry_t *file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno
 	 *	FIXME: Allow duplicate keys later.
 	 */
 	if (!rbtree_insert(inst->tree, e)) {
-		cf_log_err_cs(conf, "Failed inserting entry for filename %s line %d: duplicate entry",
+		cf_log_err(conf, "Failed inserting entry for filename %s line %d: duplicate entry",
 			      inst->filename, lineno);
 		return NULL;
 	}
@@ -240,7 +240,7 @@ static int csv_map_verify(CONF_SECTION *cs, void *mod_inst, UNUSED void *proc_in
 	vp_map_t const	*map;
 
 	if (!src) {
-		cf_log_err_cs(cs, "Missing file name");
+		cf_log_err(cs, "Missing file name");
 
 		return -1;
 	}
@@ -284,7 +284,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
 	if (inst->delimiter[1]) {
-		cf_log_err_cs(conf, "'delimiter' must be one character long");
+		cf_log_err(conf, "'delimiter' must be one character long");
 		return -1;
 	}
 
@@ -293,14 +293,14 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	}
 
 	if (inst->num_fields < 2) {
-		cf_log_err_cs(conf, "Must have at least a key field and data field");
+		cf_log_err(conf, "Must have at least a key field and data field");
 		return -1;
 	}
 
 	inst->field_names = talloc_array(inst, const char *, inst->num_fields);
 	if (!inst->field_names) {
 	oom:
-		cf_log_err_cs(conf, "Out of memory");
+		cf_log_err(conf, "Out of memory");
 		return -1;
 	}
 
@@ -361,7 +361,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	}
 
 	if (inst->key_field < 0) {
-		cf_log_err_cs(conf, "Key field '%s' does not appear in header", inst->key);
+		cf_log_err(conf, "Key field '%s' does not appear in header", inst->key);
 		return -1;
 	}
 
@@ -373,7 +373,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	 */
 	fp = fopen(inst->filename, "r");
 	if (!fp) {
-		cf_log_err_cs(conf, "Error opening filename %s: %s", inst->filename, strerror(errno));
+		cf_log_err(conf, "Error opening filename %s: %s", inst->filename, strerror(errno));
 		return -1;
 	}
 

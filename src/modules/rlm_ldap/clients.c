@@ -49,9 +49,9 @@ static int rlm_ldap_client_get_attrs(char const **values, int *idx, CONF_SECTION
 {
 	CONF_ITEM const *ci;
 
-	for (ci = cf_item_find_next(cs, NULL);
+	for (ci = cf_item_next(cs, NULL);
 	     ci != NULL;
-	     ci = cf_item_find_next(cs, ci)) {
+	     ci = cf_item_next(cs, ci)) {
 	     	char const *value;
 
 		if (cf_item_is_section(ci)) {

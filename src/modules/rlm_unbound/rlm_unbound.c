@@ -376,7 +376,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
 	if (inst->timeout > 10000) {
-		cf_log_err_cs(conf, "timeout must be 0 to 10000");
+		cf_log_err(conf, "timeout must be 0 to 10000");
 		return -1;
 	}
 
@@ -387,7 +387,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	if (xlat_register(inst, inst->xlat_a_name, xlat_a, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN) ||
 	    xlat_register(inst, inst->xlat_aaaa_name, xlat_aaaa, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN) ||
 	    xlat_register(inst, inst->xlat_ptr_name, xlat_ptr, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN)) {
-		cf_log_err_cs(conf, "Failed registering xlats");
+		cf_log_err(conf, "Failed registering xlats");
 		return -1;
 	}
 
@@ -414,7 +414,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	inst->ub = ub_ctx_create();
 	if (!inst->ub) {
-		cf_log_err_cs(conf, "ub_ctx_create failed");
+		cf_log_err(conf, "ub_ctx_create failed");
 		return -1;
 	}
 
@@ -588,13 +588,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		 * dup it so libunbound doesn't close it on us.
 		 */
 		if (log_fd == -1) {
-			cf_log_err_cs(conf, "Could not dup fd");
+			cf_log_err(conf, "Could not dup fd");
 			goto error_nores;
 		}
 
 		inst->log_stream = fdopen(log_fd, "w");
 		if (!inst->log_stream) {
-			cf_log_err_cs(conf, "error setting up log stream");
+			cf_log_err(conf, "error setting up log stream");
 			goto error_nores;
 		}
 
@@ -639,7 +639,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	inst->log_fd = ub_fd(inst->ub);
 	if (inst->log_fd >= 0) {
 		if (fr_event_fd_insert(inst->el, inst->log_fd, ub_fd_handler, NULL, NULL, inst) < 0) {
-			cf_log_err_cs(conf, "could not insert async fd");
+			cf_log_err(conf, "could not insert async fd");
 			inst->log_fd = -1;
 			goto error_nores;
 		}
@@ -649,7 +649,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	return 0;
 
  error:
-	cf_log_err_cs(conf, "%s", ub_strerror(res));
+	cf_log_err(conf, "%s", ub_strerror(res));
 
  error_nores:
 	if (log_fd > -1) close(log_fd);

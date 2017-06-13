@@ -51,7 +51,7 @@ typedef void (*rb_free_t)(void *data);
 
 rbtree_t	*rbtree_create(TALLOC_CTX *ctx, rb_comparator_t compare, rb_free_t node_free, int flags);
 void		rbtree_node_talloc_free(void *data);
-bool		rbtree_insert(rbtree_t *tree, void *data);
+bool		rbtree_insert(rbtree_t *tree, void const *data);
 rbnode_t	*rbtree_insert_node(rbtree_t *tree, void *data);
 void		rbtree_delete(rbtree_t *tree, rbnode_t *z);
 bool		rbtree_deletebydata(rbtree_t *tree, void const *data);

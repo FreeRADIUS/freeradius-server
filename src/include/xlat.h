@@ -97,7 +97,7 @@ int		xlat_register(void *mod_inst, char const *name,
 
 void		xlat_unregister(void *mod_inst, char const *name, xlat_func_t func);
 void		xlat_unregister_module(void *instance);
-bool		xlat_register_redundant(CONF_SECTION *cs);
+int		xlat_register_redundant(CONF_SECTION *cs);
 void		xlat_free(void);
 
 #ifdef __cplusplus

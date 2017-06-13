@@ -551,7 +551,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	inst->log_dst = fr_str2int(logtee_dst_table, inst->log_dst_str, LOGTEE_DST_INVALID);
 	if (inst->log_dst == LOGTEE_DST_INVALID) {
-		cf_log_err_cs(conf, "Invalid log destination \"%s\"", inst->log_dst_str);
+		cf_log_err(conf, "Invalid log destination \"%s\"", inst->log_dst_str);
 		return -1;
 	}
 
@@ -568,12 +568,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	switch (inst->log_dst) {
 	case LOGTEE_DST_FILE:
-		cf_log_err_cs(conf, "Teeing to files NYI");
+		cf_log_err(conf, "Teeing to files NYI");
 		return -1;
 
 	case LOGTEE_DST_UNIX:
 #ifndef HAVE_SYS_UN_H
-		cf_log_err_cs(conf, "Unix sockets are not supported on this sytem");
+		cf_log_err(conf, "Unix sockets are not supported on this sytem");
 		return -1;
 #endif
 

@@ -53,6 +53,13 @@ const FR_NAME_NUMBER fr_tokens_table[] = {
 	{ NULL, 0,		},
 };
 
+const FR_NAME_NUMBER fr_token_quotes_table[] = {
+	{ "",	T_BARE_WORD		},
+	{ "'",	T_SINGLE_QUOTED_STRING	},
+	{ "\"", T_DOUBLE_QUOTED_STRING	},
+	{ "`",	T_BACK_QUOTED_STRING	},
+	{ NULL, 0			},
+};
 
 /*
  *  This is a hack, and has to be kept in sync with tokens.h

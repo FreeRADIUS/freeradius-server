@@ -394,7 +394,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	rad_assert(inst->format && *inst->format);
 
 	if (inst->hash_size == 0) {
-		cf_log_err_cs(conf, "Invalid value '0' for hash_size");
+		cf_log_err(conf, "Invalid value '0' for hash_size");
 		return -1;
 	}
 
@@ -429,7 +429,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		s++;
 	}while(*s);
 	if(keyfield < 0) {
-		cf_log_err_cs(conf, "no field marked as key in format: %s",
+		cf_log_err(conf, "no field marked as key in format: %s",
 			      inst->format);
 		return -1;
 	}
@@ -465,7 +465,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		if (*inst->pwdfmt->field[i] == '~') inst->pwdfmt->field[i]++;
 	}
 	if (!*inst->pwdfmt->field[keyfield]) {
-		cf_log_err_cs(conf, "key field is empty");
+		cf_log_err(conf, "key field is empty");
 		release_ht(inst->ht);
 		inst->ht = NULL;
 		return -1;

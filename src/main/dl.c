@@ -224,9 +224,9 @@ static int dl_magic_verify(CONF_SECTION const *cs, dl_common_t const *module)
 
 	if (MAGIC_PREFIX(module->magic) != MAGIC_PREFIX(RADIUSD_MAGIC_NUMBER)) {
 #ifdef HAVE_DLADDR
-		cf_log_err_cs(cs, "Failed loading module rlm_%s from file %s", module->name, dl_info.dli_fname);
+		cf_log_err(cs, "Failed loading module rlm_%s from file %s", module->name, dl_info.dli_fname);
 #endif
-		cf_log_err_cs(cs, "Application and rlm_%s magic number (prefix) mismatch."
+		cf_log_err(cs, "Application and rlm_%s magic number (prefix) mismatch."
 			      "  application: %x module: %x", module->name,
 			      MAGIC_PREFIX(RADIUSD_MAGIC_NUMBER),
 			      MAGIC_PREFIX(module->magic));
@@ -235,9 +235,9 @@ static int dl_magic_verify(CONF_SECTION const *cs, dl_common_t const *module)
 
 	if (MAGIC_VERSION(module->magic) != MAGIC_VERSION(RADIUSD_MAGIC_NUMBER)) {
 #ifdef HAVE_DLADDR
-		cf_log_err_cs(cs, "Failed loading module rlm_%s from file %s", module->name, dl_info.dli_fname);
+		cf_log_err(cs, "Failed loading module rlm_%s from file %s", module->name, dl_info.dli_fname);
 #endif
-		cf_log_err_cs(cs, "Application and rlm_%s magic number (version) mismatch."
+		cf_log_err(cs, "Application and rlm_%s magic number (version) mismatch."
 			      "  application: %lx module: %lx", module->name,
 			      (unsigned long) MAGIC_VERSION(RADIUSD_MAGIC_NUMBER),
 			      (unsigned long) MAGIC_VERSION(module->magic));
@@ -246,9 +246,9 @@ static int dl_magic_verify(CONF_SECTION const *cs, dl_common_t const *module)
 
 	if (MAGIC_COMMIT(module->magic) != MAGIC_COMMIT(RADIUSD_MAGIC_NUMBER)) {
 #ifdef HAVE_DLADDR
-		cf_log_err_cs(cs, "Failed loading module rlm_%s from file %s", module->name, dl_info.dli_fname);
+		cf_log_err(cs, "Failed loading module rlm_%s from file %s", module->name, dl_info.dli_fname);
 #endif
-		cf_log_err_cs(cs, "Application and rlm_%s magic number (commit) mismatch."
+		cf_log_err(cs, "Application and rlm_%s magic number (commit) mismatch."
 			      "  application: %lx module: %lx", module->name,
 			      (unsigned long) MAGIC_COMMIT(RADIUSD_MAGIC_NUMBER),
 			      (unsigned long) MAGIC_COMMIT(module->magic));
@@ -416,7 +416,7 @@ int dl_instance_data_alloc(void **data, TALLOC_CTX *ctx, dl_t const *module, CON
 		talloc_set_name(*data, "%s", module->common->inst_type);
 	}
 	if (module->common->config && (cf_section_parse(*data, *data, cs, module->common->config) < 0)) {
-		cf_log_err_cs(cs, "Invalid configuration for module \"%s\"", module->name);
+		cf_log_err(cs, "Invalid configuration for module \"%s\"", module->name);
 		talloc_free(*data);
 		return -1;
 	}
@@ -707,8 +707,8 @@ dl_t const *dl_module(CONF_SECTION *conf, dl_t const *parent, char const *name, 
 	 */
 	handle = dl_by_name(module_name);
 	if (!handle) {
-		cf_log_err_cs(conf, "Failed to link to module \"%s\": %s", module_name, fr_strerror());
-		cf_log_err_cs(conf, "Make sure it (and all its dependent libraries!) are in the search path"
+		cf_log_err(conf, "Failed to link to module \"%s\": %s", module_name, fr_strerror());
+		cf_log_err(conf, "Make sure it (and all its dependent libraries!) are in the search path"
 			      " of your system's ld");
 	error:
 		talloc_free(module_name);
@@ -721,7 +721,7 @@ dl_t const *dl_module(CONF_SECTION *conf, dl_t const *parent, char const *name, 
 
 	module = dlsym(handle, module_name);
 	if (!module) {
-		cf_log_err_cs(conf, "Failed linking to \"%s\" structure: %s", module_name, dlerror());
+		cf_log_err(conf, "Failed linking to \"%s\" structure: %s", module_name, dlerror());
 		goto error;
 	}
 
@@ -744,17 +744,17 @@ dl_t const *dl_module(CONF_SECTION *conf, dl_t const *parent, char const *name, 
 	 *	Call initialisation functions
 	 */
 	if (dl_symbol_init_walk(dl_module) < 0) {
-		cf_log_err_cs(conf, "Module initialisation failed \"%s\"", module_name);
+		cf_log_err(conf, "Module initialisation failed \"%s\"", module_name);
 		goto error;
 	}
 
-	cf_log_module(conf, "Loaded module \"%s\"", module_name);
+	cf_log_debug(conf, "Loaded module \"%s\"", module_name);
 
 	/*
 	 *	Add the module to the dlhandle cache
 	 */
 	if (!rbtree_insert(dl->tree, dl_module) || !rbtree_insert(dl->sym_tree, dl_module)) {
-		cf_log_err_cs(conf, "Failed to cache module \"%s\"", module_name);
+		cf_log_err(conf, "Failed to cache module \"%s\"", module_name);
 		goto error;
 	}
 

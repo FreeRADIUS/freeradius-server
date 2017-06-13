@@ -311,7 +311,7 @@ fr_tls_conf_t *tls_conf_parse_server(CONF_SECTION *cs)
 	 *	If cs has already been parsed there should be a cached copy
 	 *	of conf already stored, so just return that.
 	 */
-	conf = cf_data_find(cs, fr_tls_conf_t, NULL);
+	conf = cf_data_value(cf_data_find(cs, fr_tls_conf_t, NULL));
 	if (conf) {
 		DEBUG("Using cached TLS configuration from previous invocation");
 		return conf;
@@ -387,19 +387,19 @@ fr_tls_conf_t *tls_conf_parse_server(CONF_SECTION *cs)
 	}
 
 	if (conf->session_cache_server &&
-	    !cf_subsection_find_name2(main_config.config, "server", conf->session_cache_server)) {
+	    !cf_section_find(main_config.config, "server", conf->session_cache_server)) {
 		ERROR("No such virtual server '%s'", conf->session_cache_server);
 		goto error;
 	}
 
 	if (conf->ocsp.cache_server &&
-	    !cf_subsection_find_name2(main_config.config, "server", conf->ocsp.cache_server)) {
+	    !cf_section_find(main_config.config, "server", conf->ocsp.cache_server)) {
 		ERROR("No such virtual server '%s'", conf->ocsp.cache_server);
 		goto error;
 	}
 
 	if (conf->staple.cache_server &&
-	    !cf_subsection_find_name2(main_config.config, "server", conf->staple.cache_server)) {
+	    !cf_section_find(main_config.config, "server", conf->staple.cache_server)) {
 		ERROR("No such virtual server '%s'", conf->staple.cache_server);
 		goto error;
 	}
@@ -428,7 +428,7 @@ fr_tls_conf_t *tls_conf_parse_client(CONF_SECTION *cs)
 	fr_tls_conf_t *conf;
 	uint32_t i;
 
-	conf = cf_data_find(cs, fr_tls_conf_t, NULL);
+	conf = cf_data_value(cf_data_find(cs, fr_tls_conf_t, NULL));
 	if (conf) {
 		DEBUG2("Using cached TLS configuration from previous invocation");
 		return conf;

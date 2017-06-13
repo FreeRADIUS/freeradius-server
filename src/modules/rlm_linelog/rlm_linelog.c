@@ -311,12 +311,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	inst->log_dst = fr_str2int(linefr_log_dst_table, inst->log_dst_str, LINELOG_DST_INVALID);
 	if (inst->log_dst == LINELOG_DST_INVALID) {
-		cf_log_err_cs(conf, "Invalid log destination \"%s\"", inst->log_dst_str);
+		cf_log_err(conf, "Invalid log destination \"%s\"", inst->log_dst_str);
 		return -1;
 	}
 
 	if (!inst->log_src && !inst->log_ref) {
-		cf_log_err_cs(conf, "Must specify a log format, or reference");
+		cf_log_err(conf, "Must specify a log format, or reference");
 		return -1;
 	}
 
@@ -332,13 +332,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	case LINELOG_DST_FILE:
 	{
 		if (!inst->file.name) {
-			cf_log_err_cs(conf, "No value provided for 'filename'");
+			cf_log_err(conf, "No value provided for 'filename'");
 			return -1;
 		}
 
 		inst->file.ef = module_exfile_init(inst, conf, 256, 30, true, NULL, NULL);
 		if (!inst->file.ef) {
-			cf_log_err_cs(conf, "Failed creating log file context");
+			cf_log_err(conf, "Failed creating log file context");
 			return -1;
 		}
 
@@ -348,7 +348,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			inst->file.group = strtol(inst->file.group_str, &endptr, 10);
 			if (*endptr != '\0') {
 				if (rad_getgid(inst, &(inst->file.group), inst->file.group_str) < 0) {
-					cf_log_err_cs(conf, "Unable to find system group \"%s\"",
+					cf_log_err(conf, "Unable to find system group \"%s\"",
 						      inst->file.group_str);
 					return -1;
 				}
@@ -362,13 +362,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		int num;
 
 #ifndef HAVE_SYSLOG_H
-		cf_log_err_cs(conf, "Syslog output is not supported on this system");
+		cf_log_err(conf, "Syslog output is not supported on this system");
 		return -1;
 #else
 		if (inst->syslog.facility) {
 			num = fr_str2int(syslog_facility_table, inst->syslog.facility, -1);
 			if (num < 0) {
-				cf_log_err_cs(conf, "Invalid syslog facility \"%s\"", inst->syslog.facility);
+				cf_log_err(conf, "Invalid syslog facility \"%s\"", inst->syslog.facility);
 				return -1;
 			}
 			inst->syslog.priority |= num;
@@ -376,7 +376,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 		num = fr_str2int(syslog_severity_table, inst->syslog.severity, -1);
 		if (num < 0) {
-			cf_log_err_cs(conf, "Invalid syslog severity \"%s\"", inst->syslog.severity);
+			cf_log_err(conf, "Invalid syslog severity \"%s\"", inst->syslog.severity);
 			return -1;
 		}
 		inst->syslog.priority |= num;
@@ -386,23 +386,23 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	case LINELOG_DST_UNIX:
 #ifndef HAVE_SYS_UN_H
-		cf_log_err_cs(conf, "Unix sockets are not supported on this sytem");
+		cf_log_err(conf, "Unix sockets are not supported on this sytem");
 		return -1;
 #else
-		inst->pool = module_connection_pool_init(cf_subsection_find(conf, "unix"),
+		inst->pool = module_connection_pool_init(cf_section_find(conf, "unix", NULL),
 							 inst, mod_conn_create, NULL, prefix, NULL, NULL);
 		if (!inst->pool) return -1;
 #endif
 		break;
 
 	case LINELOG_DST_UDP:
-		inst->pool = module_connection_pool_init(cf_subsection_find(conf, "udp"),
+		inst->pool = module_connection_pool_init(cf_section_find(conf, "udp", NULL),
 							 inst, mod_conn_create, NULL, prefix, NULL, NULL);
 		if (!inst->pool) return -1;
 		break;
 
 	case LINELOG_DST_TCP:
-		inst->pool = module_connection_pool_init(cf_subsection_find(conf, "tcp"),
+		inst->pool = module_connection_pool_init(cf_section_find(conf, "tcp", NULL),
 							 inst, mod_conn_create, NULL, prefix, NULL, NULL);
 		if (!inst->pool) return -1;
 		break;
@@ -535,7 +535,7 @@ static rlm_rcode_t mod_do_linelog(void *instance, UNUSED void *thread, REQUEST *
 		 *	using request as the context (which will hopefully avoid an alloc).
 		 */
 		slen = tmpl_afrom_str(request, &vpt, tmpl_str, talloc_array_length(tmpl_str) - 1,
-				      cf_pair_value_type(cp), REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
+				      cf_pair_value_quote(cp), REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
 		if (slen <= 0) {
 			REMARKER(tmpl_str, -slen, fr_strerror());
 			return RLM_MODULE_FAIL;

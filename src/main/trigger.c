@@ -123,7 +123,7 @@ static int _trigger_last_fired_cmp(void const *a, void const *b)
 void trigger_exec_init(CONF_SECTION const *cs)
 {
 	trigger_exec_main = cs;
-	trigger_exec_subcs = cf_subsection_find(cs, "trigger");
+	trigger_exec_subcs = cf_section_find(cs, "trigger", NULL);
 
 	MEM(trigger_last_fired_tree = rbtree_create(talloc_null_ctx(),
 						    _trigger_last_fired_cmp, _trigger_last_fired_free, 0));
@@ -196,7 +196,7 @@ int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, boo
 	 *	try using the global "trigger" section, and reset the
 	 *	reference to the full path, rather than the sub-path.
 	 */
-	subcs = cf_subsection_find(cs, "trigger");
+	subcs = cf_section_find(cs, "trigger", NULL);
 	if (!subcs && trigger_exec_main && (cs != trigger_exec_main)) {
 		subcs = trigger_exec_subcs;
 		attr = name;

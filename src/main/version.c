@@ -530,16 +530,16 @@ void version_print(void)
 
 		DEBUG2("Server was built with: ");
 
-		for (ci = cf_item_find_next(features, NULL);
+		for (ci = cf_item_next(features, NULL);
 		     ci;
-		     ci = cf_item_find_next(features, ci)) {
+		     ci = cf_item_next(features, ci)) {
 			len = talloc_array_length(cf_pair_attr(cf_item_to_pair(ci)));
 			if (max < len) max = len;
 		}
 
-		for (ci = cf_item_find_next(versions, NULL);
+		for (ci = cf_item_next(versions, NULL);
 		     ci;
-		     ci = cf_item_find_next(versions, ci)) {
+		     ci = cf_item_next(versions, ci)) {
 			len = talloc_array_length(cf_pair_attr(cf_item_to_pair(ci)));
 			if (max < len) max = len;
 		}
@@ -553,9 +553,9 @@ void version_print(void)
 		}
 #endif
 
-		for (ci = cf_item_find_next(features, NULL);
+		for (ci = cf_item_next(features, NULL);
 		     ci;
-		     ci = cf_item_find_next(features, ci)) {
+		     ci = cf_item_next(features, ci)) {
 		     	char const *attr;
 
 			cp = cf_item_to_pair(ci);
@@ -569,9 +569,9 @@ void version_print(void)
 
 		DEBUG2("Server core libs:");
 
-		for (ci = cf_item_find_next(versions, NULL);
+		for (ci = cf_item_next(versions, NULL);
 		     ci;
-		     ci = cf_item_find_next(versions, ci)) {
+		     ci = cf_item_next(versions, ci)) {
 		     	char const *attr;
 
 			cp = cf_item_to_pair(ci);

@@ -117,7 +117,7 @@ static inline void *cursor_tail(void **prev, fr_cursor_t *cursor, void *current)
  * @param[out] out	Where to copy the cursor to.
  * @param[in] in	cursor to copy.
  */
-void fr_cursor_copy(fr_cursor_t *out, fr_cursor_t *in)
+void fr_cursor_copy(fr_cursor_t *out, fr_cursor_t const *in)
 {
 	memcpy(out, in, sizeof(*out));
 }

@@ -1039,7 +1039,7 @@ static int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	rcode = cf_section_parse(data, data, cs, detail_config);
 	if (rcode < 0) {
-		cf_log_err_cs(cs, "Failed parsing listen section");
+		cf_log_err(cs, "Failed parsing listen section");
 		return -1;
 	}
 
@@ -1052,7 +1052,7 @@ static int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	this->nodup = true;
 
 	if (!data->filename) {
-		cf_log_err_cs(cs, "No detail file specified in listen section");
+		cf_log_err(cs, "No detail file specified in listen section");
 		return -1;
 	}
 
@@ -1095,7 +1095,7 @@ static int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 		 */
 		if ((strchr(buffer, '*') != NULL) ||
 		    (strchr(buffer, '[') != NULL)) {
-			cf_log_err_cs(cs, "Wildcard directories are not supported");
+			cf_log_err(cs, "Wildcard directories are not supported");
 			return -1;
 		}
 
@@ -1128,7 +1128,7 @@ static int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	client->secret = client->shortname;
 	client->nas_type = talloc_strdup(data, "none");	/* Part of 'data' not dynamically allocated */
 
-	this->server_cs = cf_section_parent(this->cs);
+	this->server_cs = cf_item_to_section(cf_parent(this->cs));
 	client->server_cs = this->server_cs;
 
 	return 0;

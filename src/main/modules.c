@@ -41,18 +41,18 @@ static TALLOC_CTX *instance_ctx = NULL;
  *	Ordered by component
  */
 const section_type_value_t section_type_value[MOD_COUNT] = {
-	{ "authenticate", "Auth-Type",       FR_AUTH_TYPE },
-	{ "authorize",    "Autz-Type",       FR_AUTZ_TYPE },
-	{ "preacct",      "Pre-Acct-Type",   FR_PRE_ACCT_TYPE },
-	{ "accounting",   "Acct-Type",       FR_ACCT_TYPE },
-	{ "session",      "Session-Type",    FR_SESSION_TYPE },
-	{ "pre-proxy",    "Pre-Proxy-Type",  FR_PRE_PROXY_TYPE },
-	{ "post-proxy",   "Post-Proxy-Type", FR_POST_PROXY_TYPE },
-	{ "post-auth",    "Post-Auth-Type",  FR_POST_AUTH_TYPE }
+	{ "authenticate", "Auth-Type",      FR_AUTH_TYPE },
+	{ "authorize",   "Autz-Type",      FR_AUTZ_TYPE },
+	{ "preacct",     "Pre-Acct-Type",  FR_PRE_ACCT_TYPE },
+	{ "accounting",  "Acct-Type",      FR_ACCT_TYPE },
+	{ "session",     "Session-Type",   FR_SESSION_TYPE },
+	{ "pre-proxy",   "Pre-Proxy-Type", FR_PRE_PROXY_TYPE },
+	{ "post-proxy",  "Post-Proxy-Type", FR_POST_PROXY_TYPE },
+	{ "post-auth",   "Post-Auth-Type", FR_POST_AUTH_TYPE }
 #ifdef WITH_COA
 	,
-	{ "recv-coa",     "Recv-CoA-Type",   FR_RECV_COA_TYPE },
-	{ "send-coa",     "Send-CoA-Type",   FR_SEND_COA_TYPE }
+	{ "recv-coa",    "Recv-CoA-Type",  FR_RECV_COA_TYPE },
+	{ "send-coa",    "Send-CoA-Type",  FR_SEND_COA_TYPE }
 #endif
 };
 
@@ -105,7 +105,7 @@ exfile_t *module_exfile_init(TALLOC_CTX *ctx,
 	handle = exfile_init(ctx, max_entries, max_idle, locking);
 	if (!handle) return NULL;
 
-	exfile_enable_triggers(handle, cf_subsection_find(module, "file"), trigger_prefix, trigger_args);
+	exfile_enable_triggers(handle, cf_section_find(module, "file", NULL), trigger_prefix, trigger_args);
 
 	return handle;
 }
@@ -142,6 +142,7 @@ int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char c
 {
 	CONF_PAIR		*cp;
 	CONF_SECTION		*cs;
+	CONF_DATA const		*cd;
 
 
 	module_instance_t	*inst;
@@ -154,7 +155,7 @@ int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char c
 	/*
 	 *	Is a real section (not referencing sibling module).
 	 */
-	cs = cf_subsection_find(module, name);
+	cs = cf_section_find(module, name, NULL);
 	if (cs) {
 		*out = cs;
 
@@ -168,11 +169,11 @@ int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char c
 	if (!cp) return 0;
 
 	if (cf_data_find(module, CONF_SECTION, FIND_SIBLING_CF_KEY)) {
-		cf_log_err_cp(cp, "Module reference loop found");
+		cf_log_err(cp, "Module reference loop found");
 
 		return -1;
 	}
-	cf_data_add(module, module, FIND_SIBLING_CF_KEY, false);
+	cd = cf_data_add(module, module, FIND_SIBLING_CF_KEY, false);
 
 	/*
 	 *	Item found, resolve it to a module instance.
@@ -180,9 +181,9 @@ int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char c
 	 *	instantiation order issues.
 	 */
 	inst_name = cf_pair_value(cp);
-	inst = module_find(cf_section_parent(module), inst_name);
+	inst = module_find(cf_item_to_section(cf_parent(module)), inst_name);
 	if (!inst) {
-		cf_log_err_cp(cp, "Unknown module instance \"%s\"", inst_name);
+		cf_log_err(cp, "Unknown module instance \"%s\"", inst_name);
 
 		return -1;
 	}
@@ -196,7 +197,7 @@ int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char c
 		do {
 			CONF_SECTION *tmp;
 
-			tmp = cf_section_parent(parent);
+			tmp = cf_item_to_section(cf_parent(parent));
 			if (!tmp) break;
 
 			parent = tmp;
@@ -209,19 +210,19 @@ int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char c
 	 *	Remove the config data we added for loop
 	 *	detection.
 	 */
-	cf_data_remove(module, CONF_SECTION, FIND_SIBLING_CF_KEY);
+	cf_data_remove(module, cd);
 
 	/*
 	 *	Check the module instances are of the same type.
 	 */
 	if (strcmp(cf_section_name1(inst->cs), cf_section_name1(module)) != 0) {
-		cf_log_err_cp(cp, "Referenced module is a rlm_%s instance, must be a rlm_%s instance",
+		cf_log_err(cp, "Referenced module is a rlm_%s instance, must be a rlm_%s instance",
 			      cf_section_name1(inst->cs), cf_section_name1(module));
 
 		return -1;
 	}
 
-	*out = cf_subsection_find(inst->cs, name);
+	*out = cf_section_find(inst->cs, name, NULL);
 
 	return 1;
 }
@@ -242,12 +243,12 @@ int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char c
  *	- NULL on error.
  */
 fr_pool_t *module_connection_pool_init(CONF_SECTION *module,
-						  void *opaque,
-						  fr_pool_connection_create_t c,
-						  fr_pool_connection_alive_t a,
-						  char const *log_prefix,
-						  char const *trigger_prefix,
-						  VALUE_PAIR *trigger_args)
+				       void *opaque,
+				       fr_pool_connection_create_t c,
+				       fr_pool_connection_alive_t a,
+				       char const *log_prefix,
+				       char const *trigger_prefix,
+				       VALUE_PAIR *trigger_args)
 {
 	CONF_SECTION *cs, *mycs;
 	char log_prefix_buff[128];
@@ -258,7 +259,7 @@ fr_pool_t *module_connection_pool_init(CONF_SECTION *module,
 
 	int ret;
 
-#define parent_name(_x) cf_section_name(cf_section_parent(_x))
+#define parent_name(_x) cf_section_name(cf_item_to_section(cf_parent(_x)))
 
 	cs_name1 = cf_section_name1(module);
 	cs_name2 = cf_section_name2(module);
@@ -294,7 +295,7 @@ fr_pool_t *module_connection_pool_init(CONF_SECTION *module,
 	/*
 	 *	Get our pool config section
 	 */
-	mycs = cf_subsection_find(module, "pool");
+	mycs = cf_section_find(module, "pool", NULL);
 	if (!mycs) {
 		DEBUG4("%s: Adding pool section to config item \"%s\" to store pool references", log_prefix,
 		       cf_section_name(module));
@@ -320,7 +321,7 @@ fr_pool_t *module_connection_pool_init(CONF_SECTION *module,
 	 *	This allows modules to pass in the config sections
 	 *	they would like to use the connection pool from.
 	 */
-	pool = cf_data_find(cs, fr_pool_t, NULL);
+	pool = cf_data_value(cf_data_find(cs, fr_pool_t, NULL));
 	if (!pool) {
 		DEBUG4("%s: No pool reference found for config item \"%s.pool\"", log_prefix, parent_name(cs));
 		pool = fr_pool_init(cs, cs, opaque, c, a, log_prefix);
@@ -396,7 +397,7 @@ module_instance_t *module_find(CONF_SECTION *modules, char const *asked_name)
 	instance_name = asked_name;
 	if (instance_name[0] == '-') instance_name++;
 
-	inst = cf_data_find(modules, module_instance_t, instance_name);
+	inst = cf_data_value(cf_data_find(modules, module_instance_t, instance_name));
 	if (!inst) return NULL;
 
 	return talloc_get_type_abort(inst, module_instance_t);
@@ -466,7 +467,7 @@ module_instance_t *module_find_with_method(rlm_components_t *method, CONF_SECTIO
 			 *	the specified method.
 			 */
 			if (!inst->module->methods[i]) {
-				cf_log_module(modules, "%s does not implement method \"%s\"", inst->name, p + 1);
+				cf_log_debug(modules, "%s does not implement method \"%s\"", inst->name, p + 1);
 				return NULL;
 			}
 			if (method) *method = i;
@@ -611,7 +612,7 @@ int modules_thread_instantiate(CONF_SECTION *root, fr_event_list_t *el)
 	rbtree_t			*thread_inst_tree;
 	_thread_intantiate_ctx_t	ctx;
 
-	modules = cf_subsection_find(root, "modules");
+	modules = cf_section_find(root, "modules", NULL);
 	if (!modules) return 0;
 
 	thread_inst_tree = module_thread_inst_tree;
@@ -661,14 +662,14 @@ static int _module_instantiate(void *instance, UNUSED void *ctx)
 	 *	Call the instantiate method, if any.
 	 */
 	if (inst->module->instantiate) {
-		cf_log_module(inst->cs, "Instantiating module \"%s\" from file %s", inst->name,
-			      cf_section_filename(inst->cs));
+		cf_log_debug(inst->cs, "Instantiating module \"%s\" from file %s", inst->name,
+			      cf_filename(inst->cs));
 
 		/*
 		 *	Call the module's instantiation routine.
 		 */
 		if ((inst->module->instantiate)(inst->cs, inst->data) < 0) {
-			cf_log_err_cs(inst->cs, "Instantiation failed for module \"%s\"", inst->name);
+			cf_log_err(inst->cs, "Instantiation failed for module \"%s\"", inst->name);
 
 			return -1;
 		}
@@ -718,10 +719,10 @@ static int module_instantiate(CONF_SECTION *root, char const *name)
 	module_instance_t *inst;
 	CONF_SECTION		*modules;
 
-	modules = cf_subsection_find(root, "modules");
+	modules = cf_section_find(root, "modules", NULL);
 	if (!modules) return 0;
 
-	inst = cf_data_find(modules, module_instance_t, name);
+	inst = cf_data_value(cf_data_find(modules, module_instance_t, name));
 	if (!inst) return -1;
 
 	return _module_instantiate(inst, NULL);
@@ -741,7 +742,7 @@ int modules_instantiate(CONF_SECTION *root)
 {
 	CONF_SECTION *modules;
 
-	modules = cf_subsection_find(root, "modules");
+	modules = cf_section_find(root, "modules", NULL);
 	if (!modules) return 0;
 
 	if (cf_data_walk(modules, module_instance_t, _module_instantiate, NULL) < 0) return -1;
@@ -831,7 +832,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	int			i;
 	char const		*name1, *instance_name;
 	module_instance_t	*instance;
-	dl_t const	*module;
+	dl_t const		*module;
 
 	/*
 	 *	Figure out which module we want to load.
@@ -858,10 +859,10 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	if (instance) {
 		ERROR("Duplicate module \"%s\", in file %s:%d and file %s:%d",
 		      instance_name,
-		      cf_section_filename(cs),
-		      cf_section_lineno(cs),
-		      cf_section_filename(instance->cs),
-		      cf_section_lineno(instance->cs));
+		      cf_filename(cs),
+		      cf_lineno(cs),
+		      cf_filename(instance->cs),
+		      cf_lineno(instance->cs));
 		return NULL;
 	}
 
@@ -887,8 +888,8 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 		return NULL;
 	}
 
-	cf_log_module(cs, "Loading module \"%s\" from file %s", instance->name,
-		      cf_section_filename(cs));
+	cf_log_debug(cs, "Loading module \"%s\" from file %s", instance->name,
+		      cf_filename(cs));
 
 	/*
 	 *	Parse the modules configuration.
@@ -903,7 +904,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	 */
 	if (instance->module->bootstrap &&
 	    ((instance->module->bootstrap)(cs, instance->data) < 0)) {
-		cf_log_err_cs(cs, "Instantiation failed for module \"%s\"", instance->name);
+		cf_log_err(cs, "Instantiation failed for module \"%s\"", instance->name);
 		talloc_free(instance);
 		return NULL;
 	}
@@ -929,7 +930,7 @@ static int virtual_module_bootstrap(CONF_SECTION *modules, CONF_SECTION *vm_cs)
 	char const		*name;
 	bool			all_same = true;
 	rad_module_t const 	*last = NULL;
-	CONF_ITEM 		*sub_ci;
+	CONF_ITEM 		*sub_ci = NULL;
 	CONF_PAIR		*cp;
 	module_instance_t	*instance;
 
@@ -944,13 +945,13 @@ static int virtual_module_bootstrap(CONF_SECTION *modules, CONF_SECTION *vm_cs)
 	    (strcmp(name, "load-balance") == 0)) {
 		name = cf_section_name2(vm_cs);
 		if (!name) {
-			cf_log_err_cs(vm_cs, "Subsection must have a name");
+			cf_log_err(vm_cs, "Subsection must have a name");
 			return -1;
 		}
 
 		if (is_reserved_word(name)) {
 		is_reserved:
-			cf_log_err_cs(vm_cs, "Virtual modules cannot overload unlang keywords");
+			cf_log_err(vm_cs, "Virtual modules cannot overload unlang keywords");
 			return -1;
 		}
 	} else {
@@ -960,9 +961,7 @@ static int virtual_module_bootstrap(CONF_SECTION *modules, CONF_SECTION *vm_cs)
 	/*
 	 *	Ensure that the modules we reference here exist.
 	 */
-	for (sub_ci = cf_item_find_next(vm_cs, NULL);
-	     sub_ci != NULL;
-	     sub_ci = cf_item_find_next(vm_cs, sub_ci)) {
+	while ((sub_ci = cf_item_next(vm_cs, sub_ci))) {
 		if (cf_item_is_pair(sub_ci)) {
 			cp = cf_item_to_pair(sub_ci);
 			if (cf_pair_value(cp)) {
@@ -1000,13 +999,7 @@ static int virtual_module_bootstrap(CONF_SECTION *modules, CONF_SECTION *vm_cs)
 	/*
 	 *	Register a redundant xlat
 	 */
-	if (all_same) {
-		if (!xlat_register_redundant(vm_cs)) {
-			WARN("%s[%d] Not registering expansions for %s",
-			     cf_section_filename(vm_cs), cf_section_lineno(vm_cs),
-			     cf_section_name2(vm_cs));
-		}
-	}
+	if (all_same && (xlat_register_redundant(vm_cs) < 0)) return -1;
 
 	return 0;
 }
@@ -1030,8 +1023,11 @@ int modules_bootstrap(CONF_SECTION *root)
 	/*
 	 *	Remember where the modules were stored.
 	 */
-	modules = cf_subsection_find(root, "modules");
-	if (!modules) WARN("Cannot find a \"modules\" section in the rooturation file!");
+	modules = cf_section_find(root, "modules", NULL);
+	if (!modules) {
+		WARN("Cannot find a \"modules\" section in the configuration file!");
+		return 0;
+	}
 
 	DEBUG2("%s: #### Loading modules ####", main_config.name);
 
@@ -1043,14 +1039,14 @@ int modules_bootstrap(CONF_SECTION *root)
 	 *	This is O(N^2) in the number of modules, but most
 	 *	systems should have less than 100 modules.
 	 */
-	for (ci = cf_item_find_next(modules, NULL);
+	for (ci = cf_item_next(modules, NULL);
 	     ci != NULL;
 	     ci = next) {
 		char const *name1;
 		CONF_SECTION *subcs;
 		module_instance_t *instance;
 
-		next = cf_item_find_next(modules, ci);
+		next = cf_item_next(modules, ci);
 
 		if (!cf_item_is_section(ci)) continue;
 
@@ -1064,7 +1060,7 @@ int modules_bootstrap(CONF_SECTION *root)
 		name1 = cf_section_name1(subcs);
 
 		if (is_reserved_word(name1)) {
-			cf_log_err_cs(subcs, "Modules cannot overload unlang keywords");
+			cf_log_err(subcs, "Modules cannot overload unlang keywords");
 			return -1;
 		}
 	}
@@ -1075,34 +1071,43 @@ int modules_bootstrap(CONF_SECTION *root)
 	 *	us to load modules with no authorize/authenticate/etc.
 	 *	sections.
 	 */
-	cs = cf_subsection_find(root, "instantiate");
+	cs = cf_section_find(root, "instantiate", NULL);
 	if (cs) {
 		cf_log_info(cs, "  instantiate {");
+		ci = NULL;
 
 		/*
 		 *  Loop over the items in the 'instantiate' section.
 		 */
-		for (ci = cf_item_find_next(cs, NULL);
-		     ci != NULL;
-		     ci = cf_item_find_next(cs, ci)) {
+		while ((ci = cf_item_next(cs, ci))) {
+			CONF_SECTION *vm_cs;
+
 			/*
 			 *	Skip sections and "other" stuff.
 			 *	Sections will be handled later, if
 			 *	they're referenced at all...
 			 */
 			if (cf_item_is_pair(ci)) {
-				cf_log_warn_cp(cf_item_to_pair(ci), "Only virtual modules can be instantiated "
-					       "with the instantiate section");
+				cf_log_warn(ci, "Only virtual modules can be instantiated "
+					    "with the instantiate section");
 				continue;
 			}
+
+			/*
+			 *	Skip section
+			 */
+			if (!cf_item_is_section(ci)) continue;
+
+			vm_cs = cf_item_to_section(ci);
+			cf_log_debug(ci, "Instantiating virtual module \"%s %s\"",
+				     cf_section_name1(vm_cs), cf_section_name2(vm_cs));
 
 			/*
 			 *	Can only be "redundant" or
 			 *	"load-balance" or
 			 *	"redundant-load-balance"
 			 */
-			if (cf_item_is_section(ci) &&
-			    (virtual_module_bootstrap(modules, cf_item_to_section(ci)) < 0)) return -1;
+			if (virtual_module_bootstrap(modules, cf_item_to_section(ci)) < 0) return -1;
 		}
 
 		cf_log_info(cs, "  }");

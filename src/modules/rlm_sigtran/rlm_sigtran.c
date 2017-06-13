@@ -213,14 +213,14 @@ static int sigtran_sccp_sockaddr_from_conf(TALLOC_CTX *ctx, rlm_sigtran_t *inst,
 	 *	Fixme should be conf->gt_is_set
 	 */
 	if (!conf->ssn_is_set && !conf->pc_is_set && !conf->gt.address) {
-		cf_log_err_cs(cs, "At least one of 'pc', 'ssn', or 'gt', must be set");
+		cf_log_err(cs, "At least one of 'pc', 'ssn', or 'gt', must be set");
 		return -1;
 	}
 
 	if (conf->ssn_is_set) out->ssn = conf->ssn;
 	if (conf->pc_is_set) {
 		if (conf->pc > 16777215) {
-			cf_log_err_cs(cs, "Invalid value \"%d\" for 'pc', must be between 0-"
+			cf_log_err(cs, "Invalid value \"%d\" for 'pc', must be between 0-"
 				      STRINGIFY(16777215), conf->pc);
 			return -1;
 		}
@@ -239,25 +239,25 @@ static int sigtran_sccp_sockaddr_from_conf(TALLOC_CTX *ctx, rlm_sigtran_t *inst,
 		size_t	len = talloc_array_length(conf->gt.address) - 1;
 
 		if (conf->gt.nai_is_set && (conf->gt.nai & 0x80)) {
-			cf_log_err_cs(cs, "Global title 'nai' must be between 0-127");
+			cf_log_err(cs, "Global title 'nai' must be between 0-127");
 			return -1;
 		}
 
 		if (conf->gt.tt_is_set) {
 			if ((conf->gt.np_is_set && !conf->gt.es_is_set) ||
 			    (!conf->gt.np_is_set && conf->gt.np_is_set)) {
-				cf_log_err_cs(cs, "Global title 'np' and 'es' must be "
+				cf_log_err(cs, "Global title 'np' and 'es' must be "
 					      "specified together");
 				return -1;
 			}
 
 			if (conf->gt.np) {
-				cf_log_err_cs(cs, "Global title 'np' must be between 0-15");
+				cf_log_err(cs, "Global title 'np' must be between 0-15");
 				return -1;
 			}
 
 			if (conf->gt.es > 0x0f) {
-				cf_log_err_cs(cs, "Global title 'es' must be between 0-15");
+				cf_log_err(cs, "Global title 'es' must be between 0-15");
 				return -1;
 			}
 
@@ -273,7 +273,7 @@ static int sigtran_sccp_sockaddr_from_conf(TALLOC_CTX *ctx, rlm_sigtran_t *inst,
 
 		for (i = 0; i < len; i++) {
 			if (!is_char_tbcd[(uint8_t)conf->gt.address[i]]) {
-				cf_log_err_cs(cs, "Global title address contains invalid digit \"%c\".  "
+				cf_log_err(cs, "Global title address contains invalid digit \"%c\".  "
 					      "Valid digits are [0-9#*a-c]", conf->gt.address[i]);
 				return -1;
 			}
@@ -313,7 +313,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	inst->conn_conf.m3ua_traffic_mode = fr_str2int(m3ua_traffic_mode_table,
 						       inst->conn_conf.m3ua_traffic_mode_str, -1);
 	if (inst->conn_conf.m3ua_traffic_mode < 0) {
-		cf_log_err_cs(conf, "Invalid 'm3ua_traffic_mode' value \"%s\", expected 'override', "
+		cf_log_err(conf, "Invalid 'm3ua_traffic_mode' value \"%s\", expected 'override', "
 			      "'loadshare' or 'broadcast'", inst->conn_conf.m3ua_traffic_mode_str);
 		return -1;
 	}
@@ -321,7 +321,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 #define MTP3_PC_CHECK(_x) \
 	do { \
 		if (inst->conn_conf.mtp3_##_x > 16777215) { \
-			cf_log_err_cs(conf, "Invalid value \"%d\" for '#_x', must be between 0-16777215", \
+			cf_log_err(conf, "Invalid value \"%d\" for '#_x', must be between 0-16777215", \
 				      inst->conn_conf.mtp3_##_x); \
 			return -1; \
 		} \

@@ -157,11 +157,11 @@ int mod_build_attribute_element_map(CONF_SECTION *conf, void *instance)
 	const char *attribute, *element;    /* attribute and element names */
 
 	/* find update section */
-	cs = cf_subsection_find(conf, "update");
+	cs = cf_section_find(conf, "update", NULL);
 
 	/* backwards compatibility */
 	if (!cs) {
-		cs = cf_subsection_find(conf, "map");
+		cs = cf_section_find(conf, "map", NULL);
 		WARN("found deprecated 'map' section - please change to 'update'");
 	}
 
@@ -176,7 +176,7 @@ int mod_build_attribute_element_map(CONF_SECTION *conf, void *instance)
 	inst->map = json_object_new_object();
 
 	/* parse update section */
-	for (ci = cf_item_find_next(cs, NULL); ci != NULL; ci = cf_item_find_next(cs, ci)) {
+	for (ci = cf_item_next(cs, NULL); ci != NULL; ci = cf_item_next(cs, ci)) {
 		/* validate item */
 		if (!cf_item_is_pair(ci)) {
 			ERROR("failed to parse invalid item in 'update' section");

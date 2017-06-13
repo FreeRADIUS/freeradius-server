@@ -219,7 +219,7 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 			CONF_SECTION *cs;
 			CONF_SECTION *subcs;
 
-			cs = cf_subsection_find_name2(main_config.config, "server", client->server);
+			cs = cf_section_find(main_config.config, "server", client->server);
 			if (!cs) {
 				ERROR("Failed to find virtual server %s", client->server);
 				return false;
@@ -229,14 +229,14 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 			 *	If this server has no "listen" section, add the clients
 			 *	to the global client list.
 			 */
-			subcs = cf_subsection_find(cs, "listen");
+			subcs = cf_section_find(cs, "listen", NULL);
 			if (!subcs) goto global_clients;
 
 			/*
 			 *	If the client list already exists, use that.
 			 *	Otherwise, create a new client list.
 			 */
-			clients = cf_data_find(cs, RADCLIENT_LIST, NULL);
+			clients = cf_data_value(cf_data_find(cs, RADCLIENT_LIST, NULL));
 			if (!clients) {
 				clients = client_list_init(cs);
 				if (!clients) {
@@ -519,7 +519,7 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 #endif
 {
 	bool		global = false;
-	CONF_SECTION	*cs;
+	CONF_SECTION	*cs = NULL;
 	RADCLIENT	*c = NULL;
 	RADCLIENT_LIST	*clients = NULL;
 	CONF_SECTION	*server_cs = NULL;
@@ -528,7 +528,7 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 	 *	Be forgiving.  If there's already a clients, return
 	 *	it.  Otherwise create a new one.
 	 */
-	clients = cf_data_find(section, RADCLIENT_LIST, NULL);
+	clients = cf_data_value(cf_data_find(section, RADCLIENT_LIST, NULL));
 	if (clients) return clients;
 
 	/*
@@ -542,7 +542,7 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 	 *	the global client list, else it's virtual server
 	 *	specific client list.
 	 */
-	if (cf_top_section(section) == section) global = true;
+	if (cf_root(section) == section) global = true;
 
 	if (strcmp("server", cf_section_name1(section)) == 0) server_cs = section;
 
@@ -550,9 +550,7 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 	 *	Iterate over all the clients in the section, adding
 	 *	them to the client list.
 	 */
-	for (cs = cf_subsection_find_next(section, NULL, "client");
-	     cs;
-	     cs = cf_subsection_find_next(section, cs, "client")) {
+	while ((cs = cf_section_find_next(section, cs, "client", CF_IDENT_ANY))) {
 		c = client_afrom_cs(cs, cs, server_cs, false);
 		if (!c) {
 		error:
@@ -567,7 +565,7 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 		 *	non-TLS clients CANNOT use TLS listeners.
 		 */
 		if (tls_required != c->tls_required) {
-			cf_log_err_cs(cs, "Client does not have the same TLS configuration as the listener");
+			cf_log_err(cs, "Client does not have the same TLS configuration as the listener");
 			goto error;
 		}
 #endif
@@ -596,7 +594,7 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 
 			value = cf_pair_value(cp);
 			if (!value) {
-				cf_log_err_cs(cs, "The \"directory\" entry must not be empty");
+				cf_log_err(cs, "The \"directory\" entry must not be empty");
 				goto error;
 			}
 
@@ -604,7 +602,7 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 
 			dir = opendir(value);
 			if (!dir) {
-				cf_log_err_cs(cs, "Error reading directory %s: %s", value, fr_syserror(errno));
+				cf_log_err(cs, "Error reading directory %s: %s", value, fr_syserror(errno));
 				goto error;
 			}
 
@@ -635,7 +633,7 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 
 				dc = client_read(buf2, server_cs, true);
 				if (!dc) {
-					cf_log_err_cs(cs, "Failed reading client file \"%s\"", buf2);
+					cf_log_err(cs, "Failed reading client file \"%s\"", buf2);
 					closedir(dir);
 					goto error;
 				}
@@ -655,7 +653,7 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 	add_client:
 #endif /* WITH_DYNAMIC_CLIENTS */
 		if (!client_add(clients, c)) {
-			cf_log_err_cs(cs, "Failed to add client %s", cf_section_name2(cs));
+			cf_log_err(cs, "Failed to add client %s", cf_section_name2(cs));
 			goto error;
 		}
 
@@ -665,7 +663,7 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 	 *	Associate the clients structure with the section.
 	 */
 	if (cf_data_add(section, clients, NULL, false) < 0) {
-		cf_log_err_cs(section, "Failed to associate clients with section %s", cf_section_name1(section));
+		cf_log_err(section, "Failed to associate clients with section %s", cf_section_name1(section));
 		talloc_free(clients);
 		return NULL;
 	}
@@ -734,7 +732,7 @@ bool client_add_dynamic(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c
 		c->server_cs = master->server_cs;
 
 	} else if (c->server) {
-		c->server_cs = cf_subsection_find_name2(main_config.config, "server", c->server);
+		c->server_cs = cf_section_find(main_config.config, "server", c->server);
 		if (!c->server_cs) {
 			ERROR("Failed to find virtual server %s", c->server);
 			goto error;
@@ -788,9 +786,9 @@ int client_map_section(CONF_SECTION *out, CONF_SECTION const *map, client_value_
 {
 	CONF_ITEM const *ci;
 
-	for (ci = cf_item_find_next(map, NULL);
+	for (ci = cf_item_next(map, NULL);
 	     ci != NULL;
-	     ci = cf_item_find_next(map, ci)) {
+	     ci = cf_item_next(map, ci)) {
 	     	CONF_PAIR const *cp;
 	     	CONF_PAIR *old;
 	     	char *value;
@@ -806,7 +804,7 @@ int client_map_section(CONF_SECTION *out, CONF_SECTION const *map, client_value_
 			/*
 			 *	Use pre-existing section or alloc a new one
 			 */
-			cc = cf_subsection_find_name2(out, cf_section_name1(cs), cf_section_name2(cs));
+			cc = cf_section_find(out, cf_section_name1(cs), cf_section_name2(cs));
 			if (!cc) {
 				cc = cf_section_alloc(out, cf_section_name1(cs), cf_section_name2(cs));
 				cf_section_add(out, cc);
@@ -827,7 +825,7 @@ int client_map_section(CONF_SECTION *out, CONF_SECTION const *map, client_value_
 		 *	Or return -1 in which case we error out.
 		 */
 		if (func(&value, cp, data) < 0) {
-			cf_log_err_cs(out, "Failed performing mapping \"%s\" = \"%s\"", attr, cf_pair_value(cp));
+			cf_log_err(out, "Failed performing mapping \"%s\" = \"%s\"", attr, cf_pair_value(cp));
 			return -1;
 		}
 		if (!value) continue;
@@ -847,7 +845,7 @@ int client_map_section(CONF_SECTION *out, CONF_SECTION const *map, client_value_
 		 */
 		cp = cf_pair_alloc(out, attr, value, T_OP_SET, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
 		if (!cp) {
-			cf_log_err_cs(out, "Failed allocing pair \"%s\" = \"%s\"", attr, value);
+			cf_log_err(out, "Failed allocing pair \"%s\" = \"%s\"", attr, value);
 			talloc_free(value);
 			return -1;
 		}
@@ -874,7 +872,7 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 
 	name2 = cf_section_name2(cs);
 	if (!name2) {
-		cf_log_err_cs(cs, "Missing client name");
+		cf_log_err(cs, "Missing client name");
 		return NULL;
 	}
 
@@ -886,7 +884,7 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 
 	memset(&cl_ipaddr, 0, sizeof(cl_ipaddr));
 	if (cf_section_parse(c, c, cs, client_config) < 0) {
-		cf_log_err_cs(cs, "Error parsing client section");
+		cf_log_err(cs, "Error parsing client section");
 	error:
 		client_free(c);
 #ifdef WITH_TCP
@@ -902,13 +900,13 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 	 */
 	if (c->server) {
 		if (server_cs) {
-			cf_log_err_cs(cs, "Clients inside of a 'server' section cannot point to a server");
+			cf_log_err(cs, "Clients inside of a 'server' section cannot point to a server");
 			goto error;
 		}
 
-		c->server_cs = cf_subsection_find_name2(main_config.config, "server", c->server);
+		c->server_cs = cf_section_find(main_config.config, "server", c->server);
 		if (!c->server_cs) {
-			cf_log_err_cs(cs, "Failed to find virtual server %s", c->server);
+			cf_log_err(cs, "Failed to find virtual server %s", c->server);
 			goto error;
 		}
 
@@ -944,7 +942,7 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 	 *	No "ipaddr" or "ipv6addr", use old-style "client <ipaddr> {" syntax.
 	 */
 	} else {
-		cf_log_err_cs(cs, "No 'ipaddr' or 'ipv4addr' or 'ipv6addr' configuration "
+		cf_log_err(cs, "No 'ipaddr' or 'ipv4addr' or 'ipv6addr' configuration "
 			      "directive found in client %s", name2);
 		goto error;
 	}
@@ -974,7 +972,7 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 			c->proto = IPPROTO_IP; /* fake for dual */
 #endif
 		} else {
-			cf_log_err_cs(cs, "Unknown proto \"%s\".", hs_proto);
+			cf_log_err(cs, "Unknown proto \"%s\".", hs_proto);
 			goto error;
 		}
 	}
@@ -989,14 +987,14 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 		switch (c->ipaddr.af) {
 		case AF_INET:
 			if (fr_inet_pton4(&c->src_ipaddr, cl_srcipaddr, -1, true, false, true) < 0) {
-				cf_log_err_cs(cs, "Failed parsing src_ipaddr: %s", fr_strerror());
+				cf_log_err(cs, "Failed parsing src_ipaddr: %s", fr_strerror());
 				goto error;
 			}
 			break;
 
 		case AF_INET6:
 			if (fr_inet_pton6(&c->src_ipaddr, cl_srcipaddr, -1, true, false, true) < 0) {
-				cf_log_err_cs(cs, "Failed parsing src_ipaddr: %s", fr_strerror());
+				cf_log_err(cs, "Failed parsing src_ipaddr: %s", fr_strerror());
 				goto error;
 			}
 			break;
@@ -1029,13 +1027,13 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 
 		if (((c->ipaddr.af == AF_INET) && (c->ipaddr.prefix == 32)) ||
 		    ((c->ipaddr.af == AF_INET6) && (c->ipaddr.prefix == 128))) {
-			cf_log_err_cs(cs, "Dynamic clients MUST be a network, not a single IP address");
+			cf_log_err(cs, "Dynamic clients MUST be a network, not a single IP address");
 			goto error;
 		}
 
-		c->client_server_cs = cf_subsection_find_name2(main_config.config, "server", c->client_server);
+		c->client_server_cs = cf_section_find(main_config.config, "server", c->client_server);
 		if (!c->client_server_cs) {
-			cf_log_err_cs(cs, "Unknown virtual server '%s'", c->client_server);
+			cf_log_err(cs, "Unknown virtual server '%s'", c->client_server);
 			goto error;
 		}
 
@@ -1068,7 +1066,7 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 #endif
 
 		{
-			cf_log_err_cs(cs, "secret must be at least 1 character long");
+			cf_log_err(cs, "secret must be at least 1 character long");
 			goto error;
 		}
 	}
@@ -1090,7 +1088,7 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 				c->coa_server = home_server_byname(c->coa_name, HOME_TYPE_COA);
 			}
 			if (!c->coa_pool && !c->coa_server) {
-				cf_log_err_cs(cs, "No such home_server or home_server_pool \"%s\"", c->coa_name);
+				cf_log_err(cs, "No such home_server or home_server_pool \"%s\"", c->coa_name);
 				goto error;
 			}
 		/*
@@ -1099,7 +1097,7 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 		 *	create a home server CONF_SECTION and then parse
 		 *	it into a home_server_t.
 		 */
-		} else if (with_coa || cf_subsection_find(cs, "coa_server")) {
+		} else if (with_coa || cf_section_find(cs, "coa_server", NULL), NULL) {
 			CONF_SECTION *server;
 			home_server_t *home;
 
@@ -1379,7 +1377,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 			goto error;
 		}
 
-		if (cf_pair_attr_type(cp) == T_SINGLE_QUOTED_STRING) {
+		if (cf_pair_attr_quote(cp) == T_SINGLE_QUOTED_STRING) {
 			RDEBUG2("%s = '%s'", cf_pair_attr(cp), cf_pair_value(cp));
 		} else {
 			RDEBUG2("%s = %s", cf_pair_attr(cp), cf_pair_value(cp));
@@ -1492,7 +1490,7 @@ RADCLIENT *client_read(char const *filename, CONF_SECTION *server_cs, bool check
 		return NULL;
 	}
 
-	cs = cf_subsection_find(cs, "client");
+	cs = cf_section_find(cs, "client", NULL);
 	if (!cs) {
 		ERROR("No \"client\" section found in client file");
 		return NULL;

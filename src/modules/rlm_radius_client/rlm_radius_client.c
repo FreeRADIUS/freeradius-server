@@ -235,14 +235,14 @@ static rlm_rcode_t mod_resume_continue(REQUEST *request, void *instance, void *t
 	}
 
 	if (child->reply) {
-		unlang = cf_subsection_find_name2(inst->server_cs, "recv", fr_packet_codes[child->reply->code]);
+		unlang = cf_section_find(inst->server_cs, "recv", fr_packet_codes[child->reply->code]);
 	} else {
-		unlang = cf_subsection_find_name2(inst->server_cs, "recv", "timeout");
+		unlang = cf_section_find(inst->server_cs, "recv", "timeout");
 	}
 
 	if (!unlang) goto done;
 
-	RDEBUG("Running 'recv %s' from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
+	RDEBUG("Running 'recv %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
 	unlang_push_section(child, unlang, RLM_MODULE_NOOP);
 
 	child->request_state = REQUEST_RECV;
@@ -592,11 +592,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	 */
 	if (!inst->server_cs) return mod_wait_for_reply(request, inst, ccr);
 
-	unlang = cf_subsection_find_name2(inst->server_cs, "send", fr_packet_codes[packet->code]);
+	unlang = cf_section_find(inst->server_cs, "send", fr_packet_codes[packet->code]);
 
 	if (!unlang) return mod_wait_for_reply(request, inst, ccr);
 
-	RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
+	RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
 	unlang_push_section(child, unlang, RLM_MODULE_NOOP);
 
 	child->request_state = REQUEST_SEND;
@@ -634,13 +634,13 @@ static int mod_compile_section(CONF_SECTION *server_cs, char const *name1, char 
 {
 	CONF_SECTION *cs;
 
-	cs = cf_subsection_find_name2(server_cs, name1, name2);
+	cs = cf_section_find(server_cs, name1, name2);
 	if (!cs) return 0;
 
-	cf_log_module(cs, "Loading %s %s {...}", name1, name2);
+	cf_log_debug(cs, "Loading %s %s {...}", name1, name2);
 
 	if (unlang_compile(cs, MOD_AUTHORIZE) < 0) {
-		cf_log_err_cs(cs, "Failed compiling '%s %s { ... }' section", name1, name2);
+		cf_log_err(cs, "Failed compiling '%s %s { ... }' section", name1, name2);
 		return -1;
 	}
 
@@ -657,32 +657,32 @@ static int mod_bootstrap(CONF_SECTION *config, void *instance)
 	inst->name = cf_section_name2(config);
 	if (!inst->name) inst->name = cf_section_name1(config);
 
-	cs = cf_subsection_find_next(config, NULL, "home_server");
+	cs = cf_section_find(config, "home_server", NULL);
 	if (!cs) {
-		cf_log_err_cs(config, "You must specify at least one home server");
+		cf_log_err(config, "You must specify at least one home server");
 		return -1;
 	}
 
-	if (cf_subsection_find_next(config, cs, "home_server") != NULL) {
-		cf_log_err_cs(config, "Too many home servers were given.");
+	if (cf_section_find_next(config, cs, "home_server", NULL) != NULL) {
+		cf_log_err(config, "Too many home servers were given.");
 		return -1;
 	}
 
 	home = home_server_afrom_cs(config, NULL, cs);
 	if (!home) {
-		cf_log_err_cs(config, "Failed parsing home server");
+		cf_log_err(config, "Failed parsing home server");
 		return -1;
 	}
 
 #ifdef WITH_TCP
 	if (home->proto != IPPROTO_UDP) {
-		cf_log_err_cs(config, "Only home servers of 'proto = udp' are allowed.");
+		cf_log_err(config, "Only home servers of 'proto = udp' are allowed.");
 		return -1;
 	}
 #endif
 
 	if (home->ping_check != HOME_PING_CHECK_NONE) {
-		cf_log_err_cs(config, "Only home servers of 'status_check = none' is allowed.");
+		cf_log_err(config, "Only home servers of 'status_check = none' is allowed.");
 		return -1;
 	}
 
@@ -692,9 +692,9 @@ static int mod_bootstrap(CONF_SECTION *config, void *instance)
 
 	if (!inst->virtual_server) return RLM_MODULE_OK;
 
-	cs = cf_subsection_find_name2(main_config.config, "server", inst->virtual_server);
+	cs = cf_section_find(main_config.config, "server", inst->virtual_server);
 	if (!cs) {
-		cf_log_err_cs(config, "Unknown virtual server '%s'.", inst->virtual_server);
+		cf_log_err(config, "Unknown virtual server '%s'.", inst->virtual_server);
 		return RLM_MODULE_FAIL;
 	}
 
@@ -730,7 +730,7 @@ static int mod_bootstrap(CONF_SECTION *config, void *instance)
 		break;
 
 	default:
-		cf_log_err_cs(config, "Internal sanity check error");
+		cf_log_err(config, "Internal sanity check error");
 		return -1;
 	}
 

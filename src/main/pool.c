@@ -1054,7 +1054,7 @@ fr_pool_t *fr_pool_init(TALLOC_CTX *ctx,
 	 *	Some simple limits
 	 */
 	if (pool->max == 0) {
-		cf_log_err_cs(cs, "Cannot set 'max' to zero");
+		cf_log_err(cs, "Cannot set 'max' to zero");
 		goto error;
 	}
 
@@ -1062,7 +1062,7 @@ fr_pool_t *fr_pool_init(TALLOC_CTX *ctx,
 	pool->pending_window = (pool->max_pending > 0) ? pool->max_pending : pool->max;
 
 	if (pool->min > pool->max) {
-		cf_log_err_cs(cs, "Cannot set 'min' to more than 'max'");
+		cf_log_err(cs, "Cannot set 'min' to more than 'max'");
 		goto error;
 	}
 

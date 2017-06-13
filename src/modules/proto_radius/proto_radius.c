@@ -114,7 +114,7 @@ static int compile_type(proto_radius_ctx_t *ctx, CONF_SECTION *server, CONF_SECT
 	fr_app_subtype_t const *app;
 
 	if (!value || !*value) {
-		cf_log_err_cs(cs, "Must specify a value for 'type'");
+		cf_log_err(cs, "Must specify a value for 'type'");
 		return -1;
 	}
 
@@ -127,12 +127,12 @@ static int compile_type(proto_radius_ctx_t *ctx, CONF_SECTION *server, CONF_SECT
 	}
 
 	if (!code) {
-		cf_log_err_cs(cs, "Unknown 'type = %s'", value);
+		cf_log_err(cs, "Unknown 'type = %s'", value);
 		return -1;
 	}
 
 	if (ctx->process[i]) {
-		cf_log_err_cs(cs, "Duplicate 'type = %s'", value);
+		cf_log_err(cs, "Duplicate 'type = %s'", value);
 		return -1;
 	}
 
@@ -155,7 +155,7 @@ static int compile_type(proto_radius_ctx_t *ctx, CONF_SECTION *server, CONF_SECT
 	}
 
 	if (!lib) {
-		cf_log_err_cs(cs, "Unknown 'type = %s'", value);
+		cf_log_err(cs, "Unknown 'type = %s'", value);
 		return -1;
 	}
 
@@ -170,7 +170,7 @@ static int compile_type(proto_radius_ctx_t *ctx, CONF_SECTION *server, CONF_SECT
 			cp = cf_pair_alloc(cs, "port_name", port_name,
 					   T_OP_SET, T_BARE_WORD, T_BARE_WORD);
 			if (!cp) {
-				cf_log_err_cs(cs, "Out of memory");
+				cf_log_err(cs, "Out of memory");
 				return -1;
 			}
 
@@ -184,7 +184,7 @@ static int compile_type(proto_radius_ctx_t *ctx, CONF_SECTION *server, CONF_SECT
 	 */
 	module = dl_module(server, NULL, lib, DL_TYPE_PROTO);
 	if (!module) {
-		cf_log_err_cs(cs, "Failed finding submodule library for 'type = %s'", value);
+		cf_log_err(cs, "Failed finding submodule library for 'type = %s'", value);
 		return -1;
 	}
 
@@ -212,7 +212,7 @@ static int open_transport(proto_radius_ctx_t *ctx, fr_schedule_t *handle,
 	char			buffer[256];
 
 	if (!value || !*value) {
-		cf_log_err_cs(cs, "Must specify a value for 'transport'");
+		cf_log_err(cs, "Must specify a value for 'transport'");
 		return -1;
 	}
 
@@ -220,21 +220,21 @@ static int open_transport(proto_radius_ctx_t *ctx, fr_schedule_t *handle,
 
 	module = dl_module(server, NULL, buffer, DL_TYPE_PROTO);
 	if (!module) {
-		cf_log_err_cs(cs, "Failed finding submodule library for 'transport = %s'", value);
+		cf_log_err(cs, "Failed finding submodule library for 'transport = %s'", value);
 		return -1;
 	}
 
 	/*
 	 *	Lookup io section.
 	 */
-	io_cs = cf_subsection_find(cs, value);
+	io_cs = cf_section_find(cs, value, NULL);
 	if (!io_cs) {
-		cf_log_err_cs(cs, "Must contain a '%s' section", value);
+		cf_log_err(cs, "Must contain a '%s' section", value);
 		return -1;
 	}
 
 	if (dl_instance_data_alloc(&io_ctx, NULL, module, io_cs) < 0) {
-		cf_log_perr_cs(cs, "Failed io_ctx data");
+		cf_log_perr(cs, "Failed io_ctx data");
 		return -1;
 	}
 
@@ -243,7 +243,7 @@ static int open_transport(proto_radius_ctx_t *ctx, fr_schedule_t *handle,
 		cp = cf_pair_alloc(io_cs, "port_name", cf_pair_value(cp),
 				   T_OP_SET, T_BARE_WORD, T_BARE_WORD);
 		if (!cp) {
-			cf_log_err_cs(cs, "Out of memory");
+			cf_log_err(cs, "Out of memory");
 			return -1;
 		}
 
@@ -252,7 +252,7 @@ static int open_transport(proto_radius_ctx_t *ctx, fr_schedule_t *handle,
 
 	app_io = (fr_app_io_t const *) module->common;
 	if (app_io->instantiate(io_cs, io_ctx) < 0) {
-		cf_log_err_cs(cs, "Failed instantiating 'transport = %s'", value);
+		cf_log_err(cs, "Failed instantiating 'transport = %s'", value);
 		talloc_free(io_ctx);
 		return -1;
 	}
@@ -260,7 +260,7 @@ static int open_transport(proto_radius_ctx_t *ctx, fr_schedule_t *handle,
 	if (verify_config) return 0;
 
 	if (app_io->op.open(io_ctx) < 0) {
-		cf_log_err_cs(cs, "Failed opening I/O interface '%s'", value);
+		cf_log_err(cs, "Failed opening I/O interface '%s'", value);
 		return -1;
 	}
 
@@ -303,23 +303,23 @@ static int open_listen(fr_schedule_t *handle, CONF_SECTION *server, CONF_SECTION
 
 	if ((cf_section_parse(cs, &config, cs, mod_config) < 0) ||
 	    (cf_section_parse_pass2(&config, cs, mod_config) < 0)) {
-		cf_log_err_cs(cs, "Failed parsing listen { ...}");
+		cf_log_err(cs, "Failed parsing listen { ...}");
 		return -1;
 	}
 
 	if (!config.types) {
-		cf_log_err_cs(cs, "type MUST be specified");
+		cf_log_err(cs, "type MUST be specified");
 		return -1;
 	}
 
 	if (!config.transport) {
-		cf_log_err_cs(cs, "transport MUST be specified");
+		cf_log_err(cs, "transport MUST be specified");
 		return -1;
 	}
 
 	ctx = talloc_zero(NULL, proto_radius_ctx_t);
 	if (!ctx) {
-		cf_log_err_cs(cs, "Failed allocating memory");
+		cf_log_err(cs, "Failed allocating memory");
 		return -1;
 	}
 
@@ -328,7 +328,7 @@ static int open_listen(fr_schedule_t *handle, CONF_SECTION *server, CONF_SECTION
 	 */
 	for (i = 0; i < talloc_array_length(config.types); i++) {
 		if (compile_type(ctx, server, cs, config.types[i]) < 0) {
-			cf_log_err_cs(server, "Failed compiling unlang for 'type = %s'",
+			cf_log_err(server, "Failed compiling unlang for 'type = %s'",
 				      config.types[i]);
 			return -1;
 		}
@@ -338,7 +338,7 @@ static int open_listen(fr_schedule_t *handle, CONF_SECTION *server, CONF_SECTION
 	 *	Call transport-specific library to open the socket.
 	 */
 	if (open_transport(ctx, handle, server, cs, config.transport, verify_config) < 0) {
-		cf_log_err_cs(server, "Failed opening connection for 'transport = %s'",
+		cf_log_err(server, "Failed opening connection for 'transport = %s'",
 				      config.transport);
 		return -1;
 	}
@@ -357,28 +357,26 @@ static int open_listen(fr_schedule_t *handle, CONF_SECTION *server, CONF_SECTION
  */
 static int mod_parse(fr_schedule_t *handle, CONF_SECTION *cs, bool verify_config)
 {
-	CONF_SECTION *subcs;
+	CONF_SECTION *subcs = NULL;
 
 	/*
 	 *	Load all of the listen sections.  They do all of the
 	 *	dirty work.
 	 */
-	for (subcs = cf_subsection_find_next(cs, NULL, "listen");
-	     subcs != NULL;
-	     subcs = cf_subsection_find_next(cs, cs, "listen")) {
+	while ((subcs = cf_section_find_next(cs, subcs, "listen", NULL))) {
 		if (open_listen(handle, cs, subcs, verify_config) < 0) {
 			return -1;
 		}
 	}
+
+	subcs = NULL;
 
 	/*
 	 *	Compile the sub-sections AFTER parsing all of the
 	 *	listen sections.  This is mainly for nice debugging
 	 *	output.  It's inefficient as heck, but it's pretty.
 	 */
-	for (subcs = cf_subsection_find_next(cs, NULL, "listen");
-	     subcs != NULL;
-	     subcs = cf_subsection_find_next(cs, cs, "listen")) {
+	while ((subcs = cf_section_find_next(cs, subcs, "listen", NULL))) {
 		CONF_PAIR *cp;
 
 		for (cp = cf_pair_find(subcs, "type");
@@ -390,16 +388,16 @@ static int mod_parse(fr_schedule_t *handle, CONF_SECTION *cs, bool verify_config
 
 			value = cf_pair_value(cp);
 
-			module = cf_data_find(cs, dl_t, value);
+			module = cf_data_value(cf_data_find(cs, dl_t, value));
 			if (!module) {
-				cf_log_err_cs(cs, "Section missing module data");
+				cf_log_err(cs, "Section missing module data");
 				return -1;
 			}
 			if (cf_data_find(cs, char const *, value)) continue;
 
 			app = (fr_app_subtype_t const *) module->common;
 			if (app->instantiate(cs) < 0) {
-				cf_log_err_cs(cs, "Failed compiling unlang for 'type = %s'", value);
+				cf_log_err(cs, "Failed compiling unlang for 'type = %s'", value);
 				return -1;
 			}
 

@@ -314,8 +314,8 @@ static fr_io_final_t auth_process(REQUEST *request)
 			goto setup_send;
 		}
 
-		unlang = cf_subsection_find_name2(request->server_cs, "recv", dv->alias);
-		if (!unlang) unlang = cf_subsection_find_name2(request->server_cs, "recv", "*");
+		unlang = cf_section_find(request->server_cs, "recv", dv->alias);
+		if (!unlang) unlang = cf_section_find(request->server_cs, "recv", "*");
 		if (!unlang) {
 			REDEBUG("Failed to find 'recv' section");
 			request->reply->code = FR_CODE_ACCESS_REJECT;
@@ -336,7 +336,7 @@ static fr_io_final_t auth_process(REQUEST *request)
 		/*
 		 *	Push the conf section into the unlang stack.
 		 */
-		RDEBUG("Running 'recv %s' from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
+		RDEBUG("Running 'recv %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
 		unlang_push_section(request, unlang, RLM_MODULE_REJECT);
 
 		request->request_state = REQUEST_RECV;
@@ -430,14 +430,14 @@ static fr_io_final_t auth_process(REQUEST *request)
 			goto setup_send;
 		}
 
-		unlang = cf_subsection_find_name2(request->server_cs, "process", dv->alias);
+		unlang = cf_section_find(request->server_cs, "process", dv->alias);
 		if (!unlang) {
 			REDEBUG2("No 'process %s' section found: rejecting the user", dv->alias);
 			request->reply->code = FR_CODE_ACCESS_REJECT;
 			goto setup_send;
 		}
 
-		RDEBUG("Running 'process %s' from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
+		RDEBUG("Running 'process %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
 		unlang_push_section(request, unlang, RLM_MODULE_NOTFOUND);
 
 		request->request_state = REQUEST_PROCESS;
@@ -544,14 +544,14 @@ static fr_io_final_t auth_process(REQUEST *request)
 		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
 		unlang = NULL;
 		if (dv) {
-			unlang = cf_subsection_find_name2(request->server_cs, "send", dv->alias);
+			unlang = cf_section_find(request->server_cs, "send", dv->alias);
 		}
-		if (!unlang) unlang = cf_subsection_find_name2(request->server_cs, "send", "*");
+		if (!unlang) unlang = cf_section_find(request->server_cs, "send", "*");
 
 		if (!unlang) goto send_reply;
 
 	rerun_nak:
-		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_section_filename(unlang));
+		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
 		unlang_push_section(request, unlang, RLM_MODULE_NOOP);
 
 		request->request_state = REQUEST_SEND;
@@ -595,7 +595,7 @@ static fr_io_final_t auth_process(REQUEST *request)
 				unlang = NULL;
 				if (!dv) goto send_reply;
 
-				unlang = cf_subsection_find_name2(request->server_cs, "send", dv->alias);
+				unlang = cf_section_find(request->server_cs, "send", dv->alias);
 				if (unlang) goto rerun_nak;
 
 				RWDEBUG("Not running 'send %s' section as it does not exist", dv->alias);
@@ -952,13 +952,13 @@ static int auth_compile_section(CONF_SECTION *server_cs, char const *name1, char
 {
 	CONF_SECTION *cs;
 
-	cs = cf_subsection_find_name2(server_cs, name1, name2);
+	cs = cf_section_find(server_cs, name1, name2);
 	if (!cs) return 0;
 
-	cf_log_module(cs, "Loading %s %s {...}", name1, name2);
+	cf_log_debug(cs, "Loading %s %s {...}", name1, name2);
 
 	if (unlang_compile(cs, component) < 0) {
-		cf_log_err_cs(cs, "Failed compiling '%s %s { ... }' section", name1, name2);
+		cf_log_err(cs, "Failed compiling '%s %s { ... }' section", name1, name2);
 		return -1;
 	}
 
@@ -972,13 +972,13 @@ static int auth_compile_section(CONF_SECTION *server_cs, char const *name1, char
 static int auth_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *listen_cs)
 {
 	int rcode;
-	CONF_SECTION *subcs;
+	CONF_SECTION *subcs = NULL;
 
 	rcode = auth_compile_section(server_cs, "recv", "Access-Request", MOD_AUTHORIZE);
 	if (rcode < 0) return rcode;
 
 	if (rcode == 0) {
-		cf_log_err_cs(server_cs, "Failed finding 'recv Access-Request { ... }' section of virtual server %s",
+		cf_log_err(server_cs, "Failed finding 'recv Access-Request { ... }' section of virtual server %s",
 			      cf_section_name2(server_cs));
 		return -1;
 	}
@@ -986,7 +986,7 @@ static int auth_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *lis
 	rcode = auth_compile_section(server_cs, "send", "Access-Accept", MOD_POST_AUTH);
 	if (rcode < 0) return rcode;
 	if (rcode == 0) {
-		cf_log_err_cs(server_cs, "Failed finding 'send Access-Accept { ... }' section of virtual server %s",
+		cf_log_err(server_cs, "Failed finding 'send Access-Accept { ... }' section of virtual server %s",
 			      cf_section_name2(server_cs));
 		return -1;
 	}
@@ -994,7 +994,7 @@ static int auth_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *lis
 	rcode = auth_compile_section(server_cs, "send", "Access-Reject", MOD_POST_AUTH);
 	if (rcode < 0) return rcode;
 	if (rcode == 0) {
-		cf_log_err_cs(server_cs, "Failed finding 'send Access-Reject { ... }' section of virtual server %s",
+		cf_log_err(server_cs, "Failed finding 'send Access-Reject { ... }' section of virtual server %s",
 			      cf_section_name2(server_cs));
 		return -1;
 	}
@@ -1005,21 +1005,19 @@ static int auth_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *lis
 	rcode = auth_compile_section(server_cs, "send", "Access-Challenge", MOD_POST_AUTH);
 	if (rcode < 0) return rcode;
 
-	for (subcs = cf_subsection_find_next(server_cs, NULL, "process");
-	     subcs != NULL;
-	     subcs = cf_subsection_find_next(server_cs, subcs, "process")) {
+	while ((subcs = cf_section_find_next(server_cs, subcs, "process", NULL))) {
 		char const *name2;
 
 		name2 = cf_section_name2(subcs);
 		if (!name2) {
-			cf_log_err_cs(subcs, "Cannot compile 'process { ... }' section");
+			cf_log_err(subcs, "Cannot compile 'process { ... }' section");
 			return -1;
 		}
 
-		cf_log_module(subcs, "Loading process %s {...}", name2);
+		cf_log_debug(subcs, "Loading process %s {...}", name2);
 
 		if (unlang_compile(subcs, MOD_AUTHENTICATE) < 0) {
-			cf_log_err_cs(subcs, "Failed compiling 'process %s { ... }' section", name2);
+			cf_log_err(subcs, "Failed compiling 'process %s { ... }' section", name2);
 			return -1;
 		}
 	}
@@ -1029,25 +1027,23 @@ static int auth_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *lis
 
 static int auth_listen_bootstrap(CONF_SECTION *server_cs, UNUSED CONF_SECTION *listen_cs)
 {
-	CONF_SECTION *subcs;
-	fr_dict_attr_t const *da;
+	CONF_SECTION		*subcs = NULL;;
+	fr_dict_attr_t const	*da;
 
 	da = fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE);
 	if (!da) {
-		cf_log_err_cs(server_cs, "Failed finding dictionary definition for Auth-Type");
+		cf_log_err(server_cs, "Failed finding dictionary definition for Auth-Type");
 		return -1;
 	}
 
-	for (subcs = cf_subsection_find_next(server_cs, NULL, "process");
-	     subcs != NULL;
-	     subcs = cf_subsection_find_next(server_cs, subcs, "process")) {
+	while ((subcs = cf_section_find_next(server_cs, subcs, "process", NULL))) {
 		char const	*name2;
 		fr_value_box_t	value = { .type = FR_TYPE_UINT32 };
 		fr_dict_enum_t	*dv;
 
 		name2 = cf_section_name2(subcs);
 		if (!name2) {
-			cf_log_err_cs(subcs, "Invalid 'process { ... }' section, it must have a name");
+			cf_log_err(subcs, "Invalid 'process { ... }' section, it must have a name");
 			return -1;
 		}
 
@@ -1068,7 +1064,7 @@ static int auth_listen_bootstrap(CONF_SECTION *server_cs, UNUSED CONF_SECTION *l
 			value.vb_uint32 = (fr_rand() & 0x00ffffff) + 1;
 		} while (fr_dict_enum_by_value(NULL, da, &value));
 
-		cf_log_module(subcs, "Creating %s = %s", da->name, name2);
+		cf_log_debug(subcs, "Creating %s = %s", da->name, name2);
 		if (fr_dict_enum_add_alias(da, name2, &value, true, false) < 0) {
 			ERROR("%s", fr_strerror());
 			return -1;

@@ -370,7 +370,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->format = REALM_FORMAT_PREFIX;
 
 	} else {
-		cf_log_err_cs(conf, "Invalid value \"%s\" for format",
+		cf_log_err(conf, "Invalid value \"%s\" for format",
 			      inst->format_string);
 		return -1;
 	}
@@ -378,7 +378,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (strcmp(inst->delim, "\\\\") == 0) {
 		/* it's OK */
 	} else if (strlen(inst->delim) != 1) {
-		cf_log_err_cs(conf, "Invalid value \"%s\" for delimiter",
+		cf_log_err(conf, "Invalid value \"%s\" for delimiter",
 			      inst->delim);
 		return -1;
 	}

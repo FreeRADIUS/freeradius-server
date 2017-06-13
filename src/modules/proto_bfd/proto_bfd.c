@@ -1581,9 +1581,9 @@ static int bfd_init_sessions(CONF_SECTION *cs, bfd_socket_t *sock, int sockfd)
 	uint16_t port;
 	fr_ipaddr_t ipaddr;
 
-	for (ci=cf_item_find_next(cs, NULL);
+	for (ci=cf_item_next(cs, NULL);
 	     ci != NULL;
-	     ci=cf_item_find_next(cs, ci)) {
+	     ci=cf_item_next(cs, ci)) {
 		bfd_state_t *session, my_session;
 
 	       if (!cf_item_is_section(ci)) continue;
@@ -1733,8 +1733,8 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	/*
 	 *	Find the sibling "bfd" section of the "listen" section.
 	 */
-	server = cf_section_parent(cs);
-	sock->unlang = cf_subsection_find(server, "bfd");
+	server = cf_item_to_section(cf_parent(cs));
+	sock->unlang = cf_section_find(server, "bfd", NULL);
 
 	return 0;
 }
@@ -1815,9 +1815,9 @@ static int bfd_socket_bootstrap(CONF_SECTION *server_cs, UNUSED CONF_SECTION *li
 {
 	CONF_SECTION *cs;
 
-	cs = cf_subsection_find(server_cs, "bfd");
+	cs = cf_section_find(server_cs, "bfd", NULL);
 	if (!cs) {
-		cf_log_err_cs(server_cs, "No 'bfd' sub-section found");
+		cf_log_err(server_cs, "No 'bfd' sub-section found");
 		return -1;
 	}
 
@@ -1831,16 +1831,16 @@ static int bfd_socket_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *list
 {
 	CONF_SECTION *cs;
 
-	cs = cf_subsection_find(server_cs, "bfd");
+	cs = cf_section_find(server_cs, "bfd", NULL);
 	if (!cs) {
-		cf_log_err_cs(server_cs, "No 'bfd' sub-section found");
+		cf_log_err(server_cs, "No 'bfd' sub-section found");
 		return -1;
 	}
 
-	cf_log_module(cs, "Loading bfd {...}");
+	cf_log_debug(cs, "Loading bfd {...}");
 
 	if (unlang_compile(cs, MOD_AUTHORIZE) < 0) {
-		cf_log_err_cs(cs, "Failed compiling 'bfd' section");
+		cf_log_err(cs, "Failed compiling 'bfd' section");
 		return -1;
 	}
 

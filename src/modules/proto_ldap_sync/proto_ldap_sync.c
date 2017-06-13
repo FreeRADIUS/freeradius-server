@@ -363,8 +363,8 @@ static void request_running(REQUEST *request, fr_state_action_t action)
 			rad_assert(0);
 			return;
 		}
-		unlang = cf_subsection_find_name2(request->server_cs, verb, state);
-		if (!unlang) unlang = cf_subsection_find_name2(request->server_cs, "recv", "*");
+		unlang = cf_section_find(request->server_cs, verb, state);
+		if (!unlang) unlang = cf_section_find(request->server_cs, "recv", "*");
 		if (!unlang) {
 			RDEBUG2("Ignoring %s operation.  Add \"%s %s {}\" to virtual-server \"%s\""
 				" to handle", fr_int2str(ldap_sync_code_table, request->packet->code, "<INVALID>"),
@@ -374,7 +374,7 @@ static void request_running(REQUEST *request, fr_state_action_t action)
 		}
 
 		RDEBUG("Running '%s %s' from file %s", cf_section_name1(unlang),
-		       cf_section_name2(unlang), cf_section_filename(unlang));
+		       cf_section_name2(unlang), cf_filename(unlang));
 		unlang_push_section(request, unlang, RLM_MODULE_NOOP);
 
 		request->request_state = REQUEST_RECV;
@@ -607,7 +607,7 @@ static int _proto_ldap_present(fr_ldap_conn_t *conn, sync_config_t const *config
 {
 	rad_listen_t		*listen = talloc_get_type_abort(user_ctx, rad_listen_t);
 
-	if (!cf_subsection_find_name2(listen->server_cs, "recv", "Present")) {
+	if (!cf_section_find(listen->server_cs, "recv", "Present")) {
 		DEBUG2("Present phase is not supported, reinitialising sync");
 
 		return _proto_ldap_refresh_required(conn, config, sync_id, phase, user_ctx);
@@ -784,7 +784,7 @@ static int proto_ldap_cookie_load(TALLOC_CTX *ctx, uint8_t **cookie, rad_listen_
 	proto_ldap_attributes_add(request, config);
 	request->packet->code = LDAP_SYNC_CODE_COOKIE_STORE;
 
-	unlang = cf_subsection_find_name2(request->server_cs, "load", "Cookie");
+	unlang = cf_section_find(request->server_cs, "load", "Cookie");
 	if (!unlang) {
 		RDEBUG2("Ignoring %s operation.  Add \"load Cookie {}\" to virtual-server \"%s\""
 			" to handle", fr_int2str(ldap_sync_code_table, request->packet->code, "<INVALID>"),
@@ -1053,10 +1053,10 @@ static int proto_ldap_socket_parse(CONF_SECTION *cs, rad_listen_t *listen)
 	/*
 	 *	Always cache the CONF_SECTION of the server.
 	 */
-	parent_cs = cf_top_section(cs);
-	listen->server_cs = cf_subsection_find_name2(parent_cs, "server", listen->server);
+	parent_cs = cf_root(cs);
+	listen->server_cs = cf_section_find(parent_cs, "server", listen->server);
 	if (!listen->server_cs) {
-		cf_log_err_cs(cs, "Failed to find virtual server '%s'", listen->server);
+		cf_log_err(cs, "Failed to find virtual server '%s'", listen->server);
 		return -1;
 	}
 
@@ -1073,9 +1073,9 @@ static int proto_ldap_socket_parse(CONF_SECTION *cs, rad_listen_t *listen)
 	/*
 	 *	Convert scope strings to enumerated constants
 	 */
-	for (sync_cs = cf_subsection_find(cs, "sync"), i = 0;
+	for (sync_cs = cf_section_find(cs, "sync", NULL), i = 0;
 	     sync_cs;
-	     sync_cs = cf_subsection_find_next(cs, sync_cs, "sync"), i++) {
+	     sync_cs = cf_section_find_next(cs, sync_cs, "sync", NULL), i++) {
 		int		scope;
 		void		**tmp;
 		CONF_SECTION	*map_cs;
@@ -1084,7 +1084,7 @@ static int proto_ldap_socket_parse(CONF_SECTION *cs, rad_listen_t *listen)
 
 		scope = fr_str2int(fr_ldap_scope, inst->sync_config[i]->scope_str, -1);
 		if (scope < 0) {
-			cf_log_err_cs(cs, "Invalid 'user.scope' value \"%s\", expected 'sub', 'one'"
+			cf_log_err(cs, "Invalid 'user.scope' value \"%s\", expected 'sub', 'one'"
 #ifdef LDAP_SCOPE_CHILDREN
 				      ", 'base' or 'children'"
 #else
@@ -1114,7 +1114,7 @@ static int proto_ldap_socket_parse(CONF_SECTION *cs, rad_listen_t *listen)
 		/*
 		 *	Parse and validate any maps
 		 */
-		map_cs = cf_subsection_find(sync_cs, "update");
+		map_cs = cf_section_find(sync_cs, "update", NULL);
 		if (map_cs && map_afrom_cs(&inst->sync_config[i]->entry_map, map_cs,
 					   PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, fr_ldap_map_verify, NULL,
 					   LDAP_MAX_ATTRMAP) < 0) {
@@ -1145,13 +1145,13 @@ static int ldap_compile_section(CONF_SECTION *server_cs, char const *name1, char
 {
 	CONF_SECTION *cs;
 
-	cs = cf_subsection_find_name2(server_cs, name1, name2);
+	cs = cf_section_find(server_cs, name1, name2);
 	if (!cs) return 0;
 
-	cf_log_module(cs, "Loading %s %s {...}", name1, name2);
+	cf_log_debug(cs, "Loading %s %s {...}", name1, name2);
 
 	if (unlang_compile(cs, component) < 0) {
-		cf_log_err_cs(cs, "Failed compiling '%s %s { ... }' section", name1, name2);
+		cf_log_err(cs, "Failed compiling '%s %s { ... }' section", name1, name2);
 		return -1;
 	}
 
@@ -1193,7 +1193,7 @@ static int proto_ldap_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTIO
 	if (rcode > 0) found++;
 
 	if (found == 0) {
-		cf_log_err_cs(server_cs, "At least one of 'recv [Present|Add|Delete|Modify] { ... }' "
+		cf_log_err(server_cs, "At least one of 'recv [Present|Add|Delete|Modify] { ... }' "
 			      "sections must be present in virtual server %s", cf_section_name2(server_cs));
 
 		return -1;

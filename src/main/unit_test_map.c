@@ -91,7 +91,7 @@ static int process_file(char const *filename)
 	/*
 	 *	Always has to be an "update" section.
 	 */
-	cs = cf_subsection_find(main_config.config, "update");
+	cs = cf_section_find(main_config.config, "update", CF_IDENT_ANY);
 	if (!cs) {
 		talloc_free(main_config.config);
 		return -1;
@@ -103,7 +103,7 @@ static int process_file(char const *filename)
 	rcode = map_afrom_cs(&head, cs, PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, unlang_fixup_update, NULL, 128);
 	if (rcode < 0) return -1; /* message already printed */
 	if (!head) {
-		cf_log_err_cs(cs, "'update' sections cannot be empty");
+		cf_log_err(cs, "'update' sections cannot be empty");
 		return -1;
 	}
 

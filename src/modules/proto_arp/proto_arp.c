@@ -55,7 +55,7 @@ static rlm_rcode_t arp_process(REQUEST *request)
 
 	request->server = request->listener->server;
 	request->server_cs = request->listener->server_cs;
-	unlang = cf_subsection_find(request->server_cs, "arp");
+	unlang = cf_section_find(request->server_cs, "arp", NULL);
 
 	request->component = "arp";
 
@@ -236,7 +236,7 @@ static int arp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	if (rcode != 0) return rcode;
 
 	if (!sock->lsock.interface) {
-		cf_log_err_cs(cs, "'interface' is required for arp");
+		cf_log_err(cs, "'interface' is required for arp");
 		return -1;
 	}
 
@@ -272,9 +272,9 @@ static int arp_socket_bootstrap(CONF_SECTION *server_cs, UNUSED CONF_SECTION *li
 {
 	CONF_SECTION *cs;
 
-	cs = cf_subsection_find(server_cs, "arp");
+	cs = cf_section_find(server_cs, "arp", NULL);
 	if (!cs) {
-		cf_log_err_cs(server_cs, "No 'arp' sub-section found");
+		cf_log_err(server_cs, "No 'arp' sub-section found");
 		return -1;
 	}
 
@@ -288,16 +288,16 @@ static int arp_socket_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *list
 {
 	CONF_SECTION *cs;
 
-	cs = cf_subsection_find(server_cs, "arp");
+	cs = cf_section_find(server_cs, "arp", NULL);
 	if (!cs) {
-		cf_log_err_cs(server_cs, "No 'arp' sub-section found");
+		cf_log_err(server_cs, "No 'arp' sub-section found");
 		return -1;
 	}
 
-	cf_log_module(cs, "Loading arp {...}");
+	cf_log_debug(cs, "Loading arp {...}");
 
 	if (unlang_compile(cs, MOD_POST_AUTH) < 0) {
-		cf_log_err_cs(cs, "Failed compiling 'arp' section");
+		cf_log_err(cs, "Failed compiling 'arp' section");
 		return -1;
 	}
 

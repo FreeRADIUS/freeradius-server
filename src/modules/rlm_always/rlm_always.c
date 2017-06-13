@@ -65,7 +65,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	inst->rcode = fr_str2int(mod_rcode_table, inst->rcode_str, RLM_MODULE_UNKNOWN);
 	if (inst->rcode == RLM_MODULE_UNKNOWN) {
-		cf_log_err_cs(conf, "rcode value \"%s\" is invalid", inst->rcode_str);
+		cf_log_err(conf, "rcode value \"%s\" is invalid", inst->rcode_str);
 		return -1;
 	}
 	inst->rcode_old = NULL;	/* Hack - forces the compiler not to optimise away rcode_old */

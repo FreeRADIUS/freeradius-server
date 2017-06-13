@@ -693,7 +693,7 @@ int xlat_register(void *mod_inst, char const *name,
 	rbnode_t *node;
 
 	if (!name || !*name) {
-		DEBUG("xlat_register: Invalid xlat name");
+		ERROR("%s: Invalid xlat name", __FUNCTION__);
 		return -1;
 	}
 
@@ -710,7 +710,7 @@ int xlat_register(void *mod_inst, char const *name,
 
 		xlat_root = rbtree_create(NULL, xlat_cmp, NULL, RBTREE_FLAG_REPLACE);
 		if (!xlat_root) {
-			DEBUG("xlat_register: Failed to create tree");
+			ERROR("%s: Failed to create tree", __FUNCTION__);
 			return -1;
 		}
 
@@ -760,7 +760,7 @@ int xlat_register(void *mod_inst, char const *name,
 	c = rbtree_finddata(xlat_root, &my_xlat);
 	if (c) {
 		if (c->internal) {
-			DEBUG("xlat_register: Cannot re-define internal xlat");
+			ERROR("%s: Cannot re-define internal xlat", __FUNCTION__);
 			return -1;
 		}
 
@@ -786,13 +786,9 @@ int xlat_register(void *mod_inst, char const *name,
 	c->instantiate = instantiate;
 	c->inst_size = inst_size;
 
-	DEBUG3("xlat_register: %s", c->name);
+	DEBUG3("%s: %s", c->name, __FUNCTION__);
 
-	node = rbtree_insert_node(xlat_root, c);
-	if (!node) {
-		talloc_free(c);
-		return -1;
-	}
+	MEM(node = rbtree_insert_node(xlat_root, c));
 
 	return 0;
 }
@@ -872,9 +868,9 @@ static ssize_t xlat_redundant(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size_t 
 	/*
 	 *	Pick the first xlat which succeeds
 	 */
-	for (ci = cf_item_find_next(xr->cs, NULL);
+	for (ci = cf_item_next(xr->cs, NULL);
 	     ci != NULL;
-	     ci = cf_item_find_next(xr->cs, ci)) {
+	     ci = cf_item_next(xr->cs, ci)) {
 		ssize_t rcode;
 
 		if (!cf_item_is_pair(ci)) continue;
@@ -924,9 +920,9 @@ static ssize_t xlat_load_balance(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size
 	/*
 	 *	Choose a child at random.
 	 */
-	for (ci = cf_item_find_next(xr->cs, NULL);
+	for (ci = cf_item_next(xr->cs, NULL);
 	     ci != NULL;
-	     ci = cf_item_find_next(xr->cs, ci)) {
+	     ci = cf_item_next(xr->cs, ci)) {
 		if (!cf_item_is_pair(ci)) continue;
 		count++;
 
@@ -991,15 +987,24 @@ static ssize_t xlat_load_balance(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size
 		/*
 		 *	Go to the next one, wrapping around at the end.
 		 */
-		ci = cf_item_find_next(xr->cs, ci);
-		if (!ci) ci = cf_item_find_next(xr->cs, NULL);
+		ci = cf_item_next(xr->cs, ci);
+		if (!ci) ci = cf_item_next(xr->cs, NULL);
 	} while (ci != found);
 
 	return -1;
 }
 
-
-bool xlat_register_redundant(CONF_SECTION *cs)
+/** Registers a redundant xlat
+ *
+ * These xlats wrap the xlat methods of the modules in a redundant section,
+ * emulating the behaviour of a redundant section, but over xlats.
+ *
+ * @return
+ *	- 0 on success.
+ *	- -1 on error.
+ *	- 1 if the modules in the section do not have an xlat method.
+ */
+int xlat_register_redundant(CONF_SECTION *cs)
 {
 	char const *name1, *name2;
 	xlat_redundant_t *xr;
@@ -1008,24 +1013,20 @@ bool xlat_register_redundant(CONF_SECTION *cs)
 	name2 = cf_section_name2(cs);
 
 	if (xlat_find(name2)) {
-		cf_log_err_cs(cs, "An expansion is already registered for this name");
-		return false;
+		cf_log_err(cs, "An expansion is already registered for this name");
+		return -1;
 	}
 
-	xr = talloc_zero(cs, xlat_redundant_t);
-	if (!xr) return false;
+	MEM(xr = talloc_zero(cs, xlat_redundant_t));
 
 	if (strcmp(name1, "redundant") == 0) {
 		xr->type = XLAT_REDUNDANT;
-
 	} else if (strcmp(name1, "redundant-load-balance") == 0) {
 		xr->type = XLAT_REDUNDANT_LOAD_BALANCE;
-
 	} else if (strcmp(name1, "load-balance") == 0) {
 		xr->type = XLAT_LOAD_BALANCE;
-
 	} else {
-		return false;
+		rad_assert(0);
 	}
 
 	xr->cs = cs;
@@ -1035,33 +1036,41 @@ bool xlat_register_redundant(CONF_SECTION *cs)
 	 */
 	if (xr->type == XLAT_REDUNDANT) {
 		if (xlat_register(xr, name2, xlat_redundant, NULL, NULL, 0, 0) < 0) {
+			ERROR("Registering xlat for redundant section failed");
 			talloc_free(xr);
-			return false;
+			return -1;
 		}
 
 	} else {
-		CONF_ITEM *ci;
+		CONF_ITEM *ci = NULL;
 
-		for (ci = cf_item_find_next(cs, NULL);
-		     ci != NULL;
-		     ci = cf_item_find_next(cs, ci)) {
+		while ((ci = cf_item_next(cs, ci))) {
+			char const *attr;
+
 			if (!cf_item_is_pair(ci)) continue;
 
-			if (!xlat_find(cf_pair_attr(cf_item_to_pair(ci)))) {
+			attr = cf_pair_attr(cf_item_to_pair(ci));
+
+			/*
+			 *	This is ok, it just means the module
+			 *	doesn't have an xlat method.
+			 */
+			if (!xlat_find(attr)) {
 				talloc_free(xr);
-				return false;
+				return 1;
 			}
 
 			xr->count++;
 		}
 
 		if (xlat_register(xr, name2, xlat_load_balance, NULL, NULL, 0, 0) < 0) {
+			ERROR("Registering xlat for load-balance section failed");
 			talloc_free(xr);
-			return false;
+			return -1;
 		}
 	}
 
-	return true;
+	return 0;
 }
 
 

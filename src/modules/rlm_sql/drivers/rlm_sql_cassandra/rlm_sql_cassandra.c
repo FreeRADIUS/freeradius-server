@@ -714,8 +714,8 @@ do {\
 	 *	This has to be done before we call cf_section_parse
 	 *	as it sets default values, and creates the section.
 	 */
-	if (cf_subsection_find(cs, "tls")) do_tls = true;
-	if (cf_subsection_find(cs, "latency_aware_routing")) do_latency_aware_routing = true;
+	if (cf_section_find(cs, "tls"), NULL) do_tls = true;
+	if (cf_section_find(cs, "latency_aware_routing"), NULL) do_latency_aware_routing = true;
 
 	DEBUG4("Configuring CassCluster structure");
 	cluster = inst->cluster = cass_cluster_new();

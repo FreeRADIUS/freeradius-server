@@ -440,7 +440,7 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 		CONF_SECTION	*cs;
 		char const	*name;
 
-		cs = cf_section_parent(conf);
+		cs = cf_item_to_section(cf_parent(conf));
 
 		name = cf_section_name2(cs);
 		if (!name) name = cf_section_name1(cs);

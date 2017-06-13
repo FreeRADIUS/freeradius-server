@@ -134,22 +134,22 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	inst->ef = module_exfile_init(inst, conf, 256, 30, inst->locking, NULL, NULL);
 	if (!inst->ef) {
-		cf_log_err_cs(conf, "Failed creating log file context");
+		cf_log_err(conf, "Failed creating log file context");
 		return -1;
 	}
 
 	/*
 	 *	Suppress certain attributes.
 	 */
-	cs = cf_subsection_find(conf, "suppress");
+	cs = cf_section_find(conf, "suppress", NULL);
 	if (cs) {
 		CONF_ITEM	*ci;
 
 		inst->ht = fr_hash_table_create(NULL, detail_hash, detail_cmp, NULL);
 
-		for (ci = cf_item_find_next(cs, NULL);
+		for (ci = cf_item_next(cs, NULL);
 		     ci != NULL;
-		     ci = cf_item_find_next(cs, ci)) {
+		     ci = cf_item_next(cs, ci)) {
 			char const	*attr;
 			fr_dict_attr_t const	*da;
 
@@ -160,7 +160,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 			da = fr_dict_attr_by_name(NULL, attr);
 			if (!da) {
-				cf_log_err_cs(conf, "No such attribute '%s'", attr);
+				cf_log_err(conf, "No such attribute '%s'", attr);
 				return -1;
 			}
 

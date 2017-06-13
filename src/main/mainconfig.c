@@ -729,7 +729,7 @@ int main_config_init(void)
 	 *	Read the distribution dictionaries first, then
 	 *	the ones in raddb.
 	 */
-	DEBUG2("including dictionary file %s/%s", main_config.dictionary_dir, FR_DICTIONARY_FILE);
+	DEBUG2("Including dictionary file \"%s/%s\"", main_config.dictionary_dir, FR_DICTIONARY_FILE);
 	if (fr_dict_from_file(NULL, &main_config.dict, main_config.dictionary_dir, FR_DICTIONARY_FILE, "radius") != 0) {
 		ERROR("Errors reading dictionary: %s",
 		      fr_strerror());
@@ -743,7 +743,7 @@ do {\
 		ERROR("Error reading %s/%s: %s", _d, _n, fr_strerror());\
 		return -1;\
 	case 0:\
-		DEBUG2("including dictionary file %s/%s", _d,_n);\
+		DEBUG2("Including dictionary file \"%s/%s\"", _d,_n);\
 		break;\
 	default:\
 		break;\
@@ -765,7 +765,7 @@ do {\
 	 *	to manually override the ones set by modules
 	 *	or the server.
 	 */
-	subcs = cf_subsection_find(cs, "feature");
+	subcs = cf_section_find(cs, "feature", NULL);
 	if (!subcs) {
 		subcs = cf_section_alloc(cs, "feature", NULL);
 		if (!subcs) return -1;
@@ -779,7 +779,7 @@ do {\
 	 *	We check if it's defined first, this is for
 	 *	backwards compatibility.
 	 */
-	subcs = cf_subsection_find(cs, "version");
+	subcs = cf_section_find(cs, "version", NULL);
 	if (!subcs) {
 		subcs = cf_section_alloc(cs, "version", NULL);
 		if (!subcs) return -1;

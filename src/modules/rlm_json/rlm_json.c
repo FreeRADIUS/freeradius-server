@@ -125,7 +125,7 @@ static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, voi
 	rlm_json_jpath_cache_t	*cache = cache_inst, **tail = &cache->next;
 
 	if (!src) {
-		cf_log_err_cs(cs, "Missing JSON source");
+		cf_log_err(cs, "Missing JSON source");
 
 		return -1;
 	}
@@ -136,7 +136,7 @@ static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, voi
 
 #ifndef HAVE_JSON_OBJECT_GET_INT64
 		if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->lhs->tmpl_da->type == FR_TYPE_UINT64)) {
-			cf_log_err_cp(cp, "64bit integers are not supported by linked json-c.  "
+			cf_log_err(cp, "64bit integers are not supported by linked json-c.  "
 				      "Upgrade to json-c >= 0.10 to use this feature");
 			return -1;
 		}
@@ -152,9 +152,9 @@ static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, voi
 			error:
 				fr_canonicalize_error(cache, &spaces, &text, slen, fr_strerror());
 
-				cf_log_err_cp(cp, "Syntax error");
-				cf_log_err_cp(cp, "%s", p);
-				cf_log_err_cp(cp, "%s^ %s", spaces, text);
+				cf_log_err(cp, "Syntax error");
+				cf_log_err(cp, "%s", p);
+				cf_log_err(cp, "%s^ %s", spaces, text);
 
 				talloc_free(spaces);
 				talloc_free(text);
@@ -164,7 +164,7 @@ static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, voi
 
 		case TMPL_TYPE_DATA:
 			if (map->rhs->tmpl_value_type != FR_TYPE_STRING) {
-				cf_log_err_cp(cp, "Right side of map must be a string");
+				cf_log_err(cp, "Right side of map must be a string");
 				return -1;
 			}
 			p = map->rhs->tmpl_value.vb_strvalue;

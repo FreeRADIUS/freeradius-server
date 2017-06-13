@@ -78,7 +78,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Do more work here
 	 */
 	if (!inst->boolean) {
-		cf_log_err_cs(conf, "Boolean is false: forcing error!");
+		cf_log_err(conf, "Boolean is false: forcing error!");
 		return -1;
 	}
 

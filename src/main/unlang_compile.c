@@ -498,13 +498,13 @@ static bool pass2_fixup_xlat(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert
 				CONF_PAIR *cp = cf_item_to_pair(ci);
 
 				WARN("%s[%d]: Please change \"%%{%s}\" to &%s",
-				       cf_pair_filename(cp), cf_pair_lineno(cp),
+				       cf_filename(cp), cf_lineno(cp),
 				       attr->name, attr->name);
 			} else {
 				CONF_SECTION *cs = cf_item_to_section(ci);
 
 				WARN("%s[%d]: Please change \"%%{%s}\" to &%s",
-				       cf_section_filename(cs), cf_section_lineno(cs),
+				       cf_filename(cs), cf_lineno(cs),
 				       attr->name, attr->name);
 			}
 			TALLOC_FREE(*pvpt);
@@ -747,8 +747,8 @@ static bool pass2_cond_callback(void *ctx, fr_cond_t *c)
 					c->negate = !c->negate;
 
 					WARN("%s[%d]: Please change (\"%%{%s}\" %s '') to %c&%s",
-					     cf_section_filename(cf_item_to_section(c->ci)),
-					     cf_section_lineno(cf_item_to_section(c->ci)),
+					     cf_filename(cf_item_to_section(c->ci)),
+					     cf_lineno(cf_item_to_section(c->ci)),
 					     vpt->name, c->negate ? "==" : "!=",
 					     c->negate ? '!' : ' ', vpt->name);
 
@@ -1068,13 +1068,13 @@ static int modcall_fixup_map(vp_map_t *map, UNUSED void *ctx)
 	if (DEBUG_ENABLED3) {
 		if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->lhs->name[0] != '&')) {
 			WARN("%s[%d]: Please change attribute reference to '&%s %s ...'",
-			     cf_pair_filename(cp), cf_pair_lineno(cp),
+			     cf_filename(cp), cf_lineno(cp),
 			     map->lhs->name, fr_int2str(fr_tokens_table, map->op, "<INVALID>"));
 		}
 
 		if ((map->rhs->type == TMPL_TYPE_ATTR) && (map->rhs->name[0] != '&')) {
 			WARN("%s[%d]: Please change attribute reference to '... %s &%s'",
-			     cf_pair_filename(cp), cf_pair_lineno(cp),
+			     cf_filename(cp), cf_lineno(cp),
 			     fr_int2str(fr_tokens_table, map->op, "<INVALID>"), map->rhs->name);
 		}
 	}
@@ -1134,13 +1134,13 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 	if (DEBUG_ENABLED3) {
 		if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->lhs->name[0] != '&')) {
 			WARN("%s[%d]: Please change attribute reference to '&%s %s ...'",
-			     cf_pair_filename(cp), cf_pair_lineno(cp),
+			     cf_filename(cp), cf_lineno(cp),
 			     map->lhs->name, fr_int2str(fr_tokens_table, map->op, "<INVALID>"));
 		}
 
 		if ((map->rhs->type == TMPL_TYPE_ATTR) && (map->rhs->name[0] != '&')) {
 			WARN("%s[%d]: Please change attribute reference to '... %s &%s'",
-			     cf_pair_filename(cp), cf_pair_lineno(cp),
+			     cf_filename(cp), cf_lineno(cp),
 			     fr_int2str(fr_tokens_table, map->op, "<INVALID>"), map->rhs->name);
 		}
 	}
@@ -1153,7 +1153,7 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 	if (map->op == T_OP_CMP_FALSE) {
 		if ((map->rhs->type != TMPL_TYPE_UNPARSED) || (strcmp(map->rhs->name, "ANY") != 0)) {
 			WARN("%s[%d] Wildcard deletion MUST use '!* ANY'",
-			     cf_pair_filename(cp), cf_pair_lineno(cp));
+			     cf_filename(cp), cf_lineno(cp));
 		}
 
 		TALLOC_FREE(map->rhs);
@@ -1222,7 +1222,7 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 		case T_OP_SET:
 			if (map->rhs->type == TMPL_TYPE_EXEC) {
 				WARN("%s[%d]: Please change ':=' to '=' for list assignment",
-				     cf_pair_filename(cp), cf_pair_lineno(cp));
+				     cf_filename(cp), cf_lineno(cp));
 			}
 
 			if (map->rhs->type != TMPL_TYPE_LIST) {
@@ -1349,7 +1349,7 @@ static int compile_map_name(unlang_group_t *g)
 		size_t	quoted_len;
 		char	*quoted_str;
 
-		switch (cf_section_argv_type(g->cs, 0)) {
+		switch (cf_section_argv_quote(g->cs, 0)) {
 		case T_DOUBLE_QUOTED_STRING:
 			quote = '"';
 			break;
@@ -1403,15 +1403,15 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 	char const	*name2 = cf_section_name2(cs);
 
-	modules = cf_subsection_find(main_config.config, "modules");
+	modules = cf_section_find(main_config.config, "modules", NULL);
 	if (!modules) {
-		cf_log_err_cs(cs, "'map' sections require a 'modules' section");
+		cf_log_err(cs, "'map' sections require a 'modules' section");
 		return NULL;
 	}
 
 	proc = map_proc_find(name2);
 	if (!proc) {
-		cf_log_err_cs(cs, "Failed to find map processor '%s'", name2);
+		cf_log_err(cs, "Failed to find map processor '%s'", name2);
 		return NULL;
 	}
 
@@ -1424,7 +1424,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	if (tmpl_str) {
 		FR_TOKEN type;
 
-		type = cf_section_argv_type(cs, 0);
+		type = cf_section_argv_quote(cs, 0);
 
 		/*
 		 *	Try to parse the template.
@@ -1432,7 +1432,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		slen = tmpl_afrom_str(cs, &vpt, tmpl_str, talloc_array_length(tmpl_str) - 1,
 				      type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
 		if (slen < 0) {
-			cf_log_err_cs(cs, "Failed parsing map: %s", fr_strerror());
+			cf_log_err(cs, "Failed parsing map: %s", fr_strerror());
 			return NULL;
 		}
 
@@ -1449,7 +1449,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 		default:
 			talloc_free(vpt);
-			cf_log_err_cs(cs, "Invalid third argument for map");
+			cf_log_err(cs, "Invalid third argument for map");
 			return NULL;
 		}
 	}
@@ -1460,7 +1460,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	rcode = map_afrom_cs(&head, cs, PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, modcall_fixup_map, NULL, 256);
 	if (rcode < 0) return NULL; /* message already printed */
 	if (!head) {
-		cf_log_err_cs(cs, "'map' sections cannot be empty");
+		cf_log_err(cs, "'map' sections cannot be empty");
 		return NULL;
 	}
 
@@ -1474,7 +1474,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	proc_inst = map_proc_instantiate(g, proc, cs, vpt, head);
 	if (!proc_inst) {
 		talloc_free(g);
-		cf_log_err_cs(cs, "Failed instantiating map function '%s'", name2);
+		cf_log_err(cs, "Failed instantiating map function '%s'", name2);
 		return NULL;
 	}
 	c = unlang_group_to_generic(g);
@@ -1519,7 +1519,7 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	rcode = map_afrom_cs(&head, cs, PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, unlang_fixup_update, NULL, 128);
 	if (rcode < 0) return NULL; /* message already printed */
 	if (!head) {
-		cf_log_err_cs(cs, "'update' sections cannot be empty");
+		cf_log_err(cs, "'update' sections cannot be empty");
 		return NULL;
 	}
 
@@ -1577,12 +1577,12 @@ static int compile_action_pair(unlang_t *c, CONF_PAIR *cp)
 		action = atoi(value);
 
 		if (!action || (action > MOD_PRIORITY_MAX)) {
-			cf_log_err_cp(cp, "Priorities MUST be between 1 and 64.");
+			cf_log_err(cp, "Priorities MUST be between 1 and 64.");
 			return 0;
 		}
 
 	} else {
-		cf_log_err_cp(cp, "Unknown action '%s'.\n",
+		cf_log_err(cp, "Unknown action '%s'.\n",
 			   value);
 		return 0;
 	}
@@ -1592,7 +1592,7 @@ static int compile_action_pair(unlang_t *c, CONF_PAIR *cp)
 
 		rcode = fr_str2int(mod_rcode_table, attr, -1);
 		if (rcode < 0) {
-			cf_log_err_cp(cp,
+			cf_log_err(cp,
 				   "Unknown module rcode '%s'.",
 				   attr);
 			return 0;
@@ -1621,9 +1621,9 @@ static bool compile_action_section(unlang_t *c, CONF_ITEM *ci)
 	 *	Over-ride the default return codes of the module.
 	 */
 	cs = cf_item_to_section(ci);
-	for (csi=cf_item_find_next(cs, NULL);
+	for (csi=cf_item_next(cs, NULL);
 	     csi != NULL;
-	     csi=cf_item_find_next(cs, csi)) {
+	     csi=cf_item_next(cs, csi)) {
 
 		if (cf_item_is_section(csi)) {
 			cf_log_err(csi, "Invalid subsection.  Expected 'action = value'");
@@ -1709,7 +1709,7 @@ static bool compile_action_subsection(unlang_t *c, CONF_SECTION *cs, CONF_SECTIO
 
 	ci = cf_section_to_item(subcs);
 
-	next = cf_item_find_next(cs, ci);
+	next = cf_item_next(cs, ci);
 	if (next && (cf_item_is_pair(next) || cf_item_is_section(next))) {
 		cf_log_err(ci, "'actions' MUST be the last block in a section");
 		return false;
@@ -1735,9 +1735,9 @@ static bool compile_action_subsection(unlang_t *c, CONF_SECTION *cs, CONF_SECTIO
 
 
 static unlang_t *compile_children(unlang_group_t *g, UNUSED unlang_t *parent, unlang_compile_t *unlang_ctx,
-				     unlang_group_type_t group_type, unlang_group_type_t parentgroup_type)
+				  unlang_group_type_t group_type, unlang_group_type_t parentgroup_type)
 {
-	CONF_ITEM *ci;
+	CONF_ITEM *ci = NULL;
 	unlang_t *c;
 
 	c = unlang_group_to_generic(g);
@@ -1745,10 +1745,7 @@ static unlang_t *compile_children(unlang_group_t *g, UNUSED unlang_t *parent, un
 	/*
 	 *	Loop over the children of this group.
 	 */
-	for (ci = cf_item_find_next(g->cs, NULL);
-	     ci != NULL;
-	     ci = cf_item_find_next(g->cs, ci)) {
-
+	while ((ci = cf_item_next(g->cs, ci))) {
 		/*
 		 *	Sections are references to other groups, or
 		 *	to modules with updated return codes.
@@ -1782,17 +1779,12 @@ static unlang_t *compile_children(unlang_group_t *g, UNUSED unlang_t *parent, un
 			 */
 			single = compile_item(c, unlang_ctx, ci, group_type, &name1);
 			if (!single) {
-				cf_log_err(ci, "Failed to parse \"%s\" subsection.",
-				       cf_section_name1(subcs));
+				cf_log_err(ci, "Failed to parse \"%s\" subsection", cf_section_name1(subcs));
 				talloc_free(c);
 				return NULL;
 			}
 			add_child(g, single);
-
-		} else if (!cf_item_is_pair(ci)) { /* CONF_DATA */
-			continue;
-
-		} else {
+		} else if (cf_item_is_pair(ci)) {
 			char const *attr, *value;
 			CONF_PAIR *cp = cf_item_to_pair(ci);
 
@@ -1816,7 +1808,7 @@ static unlang_t *compile_children(unlang_group_t *g, UNUSED unlang_t *parent, un
 					name = cf_pair_attr(cp);
 					if (name[0] == '-') {
 						WARN("%s[%d]: Ignoring \"%s\" (see raddb/mods-available/README.rst)",
-						     cf_pair_filename(cp), cf_pair_lineno(cp), name + 1);
+						     cf_filename(cp), cf_lineno(cp), name + 1);
 						continue;
 					}
 
@@ -1835,6 +1827,10 @@ static unlang_t *compile_children(unlang_group_t *g, UNUSED unlang_t *parent, un
 				talloc_free(c);
 				return NULL;
 			} /* else it worked */
+		} else if (cf_item_is_data(ci)) {
+			continue;
+		} else {
+			rad_assert(0);
 		}
 	}
 
@@ -1881,7 +1877,7 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 
 	name2 = cf_section_name2(cs);
 	if (!name2) {
-		cf_log_err_cs(cs, "You must specify a variable to switch over for 'switch'");
+		cf_log_err(cs, "You must specify a variable to switch over for 'switch'");
 		return NULL;
 	}
 
@@ -1892,16 +1888,16 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	 *	Create the template.  All attributes and xlats are
 	 *	defined by now.
 	 */
-	type = cf_section_name2_type(cs);
+	type = cf_section_name2_quote(cs);
 	slen = tmpl_afrom_str(g, &g->vpt, name2, strlen(name2), type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
 	if (slen < 0) {
 		char *spaces, *text;
 
 		fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
 
-		cf_log_err_cs(cs, "Syntax error");
-		cf_log_err_cs(cs, "%s", name2);
-		cf_log_err_cs(cs, "%s^ %s", spaces, text);
+		cf_log_err(cs, "Syntax error");
+		cf_log_err(cs, "%s", name2);
+		cf_log_err(cs, "%s^ %s", spaces, text);
 
 		talloc_free(g);
 		talloc_free(spaces);
@@ -1914,9 +1910,9 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	 *	Walk through the children of the switch section,
 	 *	ensuring that they're all 'case' statements
 	 */
-	for (ci = cf_item_find_next(cs, NULL);
+	for (ci = cf_item_next(cs, NULL);
 	     ci != NULL;
-	     ci = cf_item_find_next(cs, ci)) {
+	     ci = cf_item_next(cs, ci)) {
 		CONF_SECTION *subcs;
 		char const *name1;
 
@@ -1977,7 +1973,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	vp_tmpl_t *vpt = NULL;
 
 	if (!parent || (parent->type != UNLANG_TYPE_SWITCH)) {
-		cf_log_err_cs(cs, "\"case\" statements may only appear within a \"switch\" section");
+		cf_log_err(cs, "\"case\" statements may only appear within a \"switch\" section");
 		return NULL;
 	}
 
@@ -1991,7 +1987,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		FR_TOKEN type;
 		unlang_group_t *f;
 
-		type = cf_section_name2_type(cs);
+		type = cf_section_name2_quote(cs);
 
 		slen = tmpl_afrom_str(cs, &vpt, name2, strlen(name2), type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
 		if (slen < 0) {
@@ -1999,9 +1995,9 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 
 			fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
 
-			cf_log_err_cs(cs, "Syntax error");
-			cf_log_err_cs(cs, "%s", name2);
-			cf_log_err_cs(cs, "%s^ %s", spaces, text);
+			cf_log_err(cs, "Syntax error");
+			cf_log_err(cs, "%s", name2);
+			cf_log_err(cs, "%s^ %s", spaces, text);
 
 			talloc_free(spaces);
 			talloc_free(text);
@@ -2033,7 +2029,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			rad_assert(f->vpt->tmpl_da != NULL);
 
 			if (tmpl_cast_in_place(vpt, f->vpt->tmpl_da->type, f->vpt->tmpl_da) < 0) {
-				cf_log_err_cs(cs, "Invalid argument for case statement: %s",
+				cf_log_err(cs, "Invalid argument for case statement: %s",
 					      fr_strerror());
 				talloc_free(vpt);
 				return NULL;
@@ -2105,7 +2101,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 	name2 = cf_section_name2(cs);
 	if (!name2) {
-		cf_log_err_cs(cs,
+		cf_log_err(cs,
 			   "You must specify an attribute to loop over in 'foreach'");
 		return NULL;
 	}
@@ -2116,16 +2112,16 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 *	module.  Allow it for now.  The pass2 checks below
 	 *	will fix it up.
 	 */
-	type = cf_section_name2_type(cs);
+	type = cf_section_name2_quote(cs);
 	slen = tmpl_afrom_str(cs, &vpt, name2, strlen(name2), type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
 	if ((slen < 0) && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
 		char *spaces, *text;
 
 		fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
 
-		cf_log_err_cs(cs, "Syntax error");
-		cf_log_err_cs(cs, "%s", name2);
-		cf_log_err_cs(cs, "%s^ %s", spaces, text);
+		cf_log_err(cs, "Syntax error");
+		cf_log_err(cs, "%s", name2);
+		cf_log_err(cs, "%s^ %s", spaces, text);
 
 		talloc_free(spaces);
 		talloc_free(text);
@@ -2140,13 +2136,13 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	rad_assert(vpt);
 
 	if ((vpt->type != TMPL_TYPE_ATTR) && (vpt->type != TMPL_TYPE_LIST)) {
-		cf_log_err_cs(cs, "MUST use attribute or list reference in 'foreach'");
+		cf_log_err(cs, "MUST use attribute or list reference in 'foreach'");
 		talloc_free(vpt);
 		return NULL;
 	}
 
 	if ((vpt->tmpl_num != NUM_ALL) && (vpt->tmpl_num != NUM_ANY)) {
-		cf_log_err_cs(cs, "MUST NOT use instance selectors in 'foreach'");
+		cf_log_err(cs, "MUST NOT use instance selectors in 'foreach'");
 		talloc_free(vpt);
 		return NULL;
 	}
@@ -2231,17 +2227,17 @@ static unlang_t *compile_if(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF
 	fr_cond_t *cond;
 
 	if (!cf_section_name2(cs)) {
-		cf_log_err_cs(cs, "'%s' without condition", unlang_ops[mod_type].name);
+		cf_log_err(cs, "'%s' without condition", unlang_ops[mod_type].name);
 		return NULL;
 	}
 
-	cond = cf_data_find(cs, fr_cond_t, NULL);
+	cond = cf_data_value(cf_data_find(cs, fr_cond_t, NULL));
 	rad_assert(cond != NULL);
 
 	if (cond->type == COND_TYPE_FALSE) {
 		INFO(" # Skipping contents of '%s' as it is always 'false' -- %s:%d",
 		     unlang_ops[mod_type].name,
-		     cf_section_filename(cs), cf_section_lineno(cs));
+		     cf_filename(cs), cf_lineno(cs));
 		return compile_empty(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type, COND_TYPE_FALSE);
 	}
 
@@ -2277,7 +2273,7 @@ static int previous_if(CONF_SECTION *cs, unlang_t *parent, unlang_type_t mod_typ
 	f = unlang_generic_to_group(p->tail);
 	if ((f->self.type != UNLANG_TYPE_IF) && (f->self.type != UNLANG_TYPE_ELSIF)) {
 	else_fail:
-		cf_log_err_cs(cs, "Invalid location for '%s'.  There is no preceding 'if' or 'elsif' statement",
+		cf_log_err(cs, "Invalid location for '%s'.  There is no preceding 'if' or 'elsif' statement",
 			      unlang_ops[mod_type].name);
 		return -1;
 	}
@@ -2286,7 +2282,7 @@ static int previous_if(CONF_SECTION *cs, unlang_t *parent, unlang_type_t mod_typ
 		INFO(" # Skipping contents of '%s' as previous '%s' is always 'true' -- %s:%d",
 		     unlang_ops[mod_type].name,
 		     unlang_ops[f->self.type].name,
-		     cf_section_filename(cs), cf_section_lineno(cs));
+		     cf_filename(cs), cf_lineno(cs));
 		return 0;
 	}
 
@@ -2302,7 +2298,7 @@ static unlang_t *compile_elsif(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	 *	This is always a syntax error.
 	 */
 	if (!cf_section_name2(cs)) {
-		cf_log_err_cs(cs, "'%s' without condition", unlang_ops[mod_type].name);
+		cf_log_err(cs, "'%s' without condition", unlang_ops[mod_type].name);
 		return NULL;
 	}
 
@@ -2322,7 +2318,7 @@ static unlang_t *compile_else(unlang_t *parent,
 	unlang_t *c;
 
 	if (cf_section_name2(cs)) {
-		cf_log_err_cs(cs, "'%s' cannot have a condition", unlang_ops[mod_type].name);
+		cf_log_err(cs, "'%s' cannot have a condition", unlang_ops[mod_type].name);
 		return NULL;
 	}
 
@@ -2350,9 +2346,9 @@ static int all_children_are_modules(CONF_SECTION *cs, char const *name)
 {
 	CONF_ITEM *ci;
 
-	for (ci=cf_item_find_next(cs, NULL);
+	for (ci=cf_item_next(cs, NULL);
 	     ci != NULL;
-	     ci=cf_item_find_next(cs, ci)) {
+	     ci=cf_item_next(cs, ci)) {
 		/*
 		 *	If we're a redundant, etc. group, then the
 		 *	intention is to call modules, rather than
@@ -2400,8 +2396,8 @@ static unlang_t *compile_redundant(unlang_t *parent, unlang_compile_t *unlang_ct
 	/*
 	 *	No children?  Die!
 	 */
-	if (!cf_item_find_next(cs, NULL)) {
-		cf_log_err_cs(cs, "%s sections cannot be empty", unlang_ops[mod_type].name);
+	if (!cf_item_next(cs, NULL)) {
+		cf_log_err(cs, "%s sections cannot be empty", unlang_ops[mod_type].name);
 		return NULL;
 	}
 
@@ -2425,8 +2421,8 @@ static unlang_t *compile_redundant(unlang_t *parent, unlang_compile_t *unlang_ct
 	 *	For backwards compatibility.
 	 */
 	if (name2 &&
-	    (strcmp(cf_section_name1(cf_section_parent(cs)), "instantiate") != 0)) {
-		cf_log_err_cs(cs, "%s sections cannot have a name", unlang_ops[mod_type].name);
+	    (strcmp(cf_section_name1(cf_item_to_section(cf_parent(cs))), "instantiate") != 0)) {
+		cf_log_err(cs, "%s sections cannot have a name", unlang_ops[mod_type].name);
 		return NULL;
 	}
 
@@ -2446,8 +2442,8 @@ static unlang_t *compile_load_balance(unlang_t *parent, unlang_compile_t *unlang
 	/*
 	 *	No children?  Die!
 	 */
-	if (!cf_item_find_next(cs, NULL)) {
-		cf_log_err_cs(cs, "%s sections cannot be empty", unlang_ops[mod_type].name);
+	if (!cf_item_next(cs, NULL)) {
+		cf_log_err(cs, "%s sections cannot be empty", unlang_ops[mod_type].name);
 		return NULL;
 	}
 
@@ -2469,7 +2465,7 @@ static unlang_t *compile_load_balance(unlang_t *parent, unlang_compile_t *unlang
 	 *	Inside of the "instantiate" section, the name is a name, not a key.
 	 */
 	if (name2) {
-		if (strcmp(cf_section_name1(cf_section_parent(cs)), "instantiate") == 0) name2 = NULL;
+		if (strcmp(cf_section_name1(cf_item_to_section(cf_parent(cs))), "instantiate") == 0) name2 = NULL;
 	}
 
 	if (name2) {
@@ -2480,16 +2476,16 @@ static unlang_t *compile_load_balance(unlang_t *parent, unlang_compile_t *unlang
 		 *	Create the template.  All attributes and xlats are
 		 *	defined by now.
 		 */
-		type = cf_section_name2_type(cs);
+		type = cf_section_name2_quote(cs);
 		slen = tmpl_afrom_str(g, &g->vpt, name2, strlen(name2), type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
 		if (slen < 0) {
 			char *spaces, *text;
 
 			fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
 
-			cf_log_err_cs(cs, "Syntax error");
-			cf_log_err_cs(cs, "%s", name2);
-			cf_log_err_cs(cs, "%s^ %s", spaces, text);
+			cf_log_err(cs, "Syntax error");
+			cf_log_err(cs, "%s", name2);
+			cf_log_err(cs, "%s^ %s", spaces, text);
 
 			talloc_free(g);
 			talloc_free(spaces);
@@ -2511,7 +2507,7 @@ static unlang_t *compile_load_balance(unlang_t *parent, unlang_compile_t *unlang
 
 		switch (g->vpt->type) {
 		default:
-			cf_log_err_cs(cs, "Invalid type in '%s': data will not result in a load-balance key", name2);
+			cf_log_err(cs, "Invalid type in '%s': data will not result in a load-balance key", name2);
 			talloc_free(g);
 			return NULL;
 
@@ -2541,13 +2537,13 @@ static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx
 	/*
 	 *	No children?  Die!
 	 */
-	if (!cf_item_find_next(cs, NULL)) {
-		cf_log_err_cs(cs, "%s sections cannot be empty", unlang_ops[mod_type].name);
+	if (!cf_item_next(cs, NULL)) {
+		cf_log_err(cs, "%s sections cannot be empty", unlang_ops[mod_type].name);
 		return NULL;
 	}
 
 	if (cf_section_name2(cs) != NULL) {
-		cf_log_err_cs(cs, "%s sections cannot have an argument", unlang_ops[mod_type].name);
+		cf_log_err(cs, "%s sections cannot have an argument", unlang_ops[mod_type].name);
 		return NULL;
 	}
 
@@ -2603,12 +2599,12 @@ static CONF_SECTION *virtual_module_find_cs(rlm_components_t *pcomponent,
 	 *
 	 *	Return it to the caller, with the updated method.
 	 */
-	cs = cf_subsection_find(main_config.config, "instantiate");
+	cs = cf_section_find(main_config.config, "instantiate", NULL);
 	if (cs) {
 		/*
 		 *	Found "foo".  Load it as "foo", or "foo.method".
 		 */
-		subcs = cf_subsection_find_name2(cs, NULL, virtual_name);
+		subcs = cf_section_find(cs, CF_IDENT_ANY, virtual_name);
 		if (subcs) {
 			*pcomponent = method;
 			return subcs;
@@ -2620,7 +2616,7 @@ static CONF_SECTION *virtual_module_find_cs(rlm_components_t *pcomponent,
 	 *
 	 *	If there's no policy section, we can't do anything else.
 	 */
-	cs = cf_subsection_find(main_config.config, "policy");
+	cs = cf_section_find(main_config.config, "policy", NULL);
 	if (!cs) return NULL;
 
 	/*
@@ -2629,7 +2625,7 @@ static CONF_SECTION *virtual_module_find_cs(rlm_components_t *pcomponent,
 	 *	And bail out if there's no policy "foo".
 	 */
 	if (method_name) {
-		subcs = cf_subsection_find_name2(cs, NULL, virtual_name);
+		subcs = cf_section_find(cs, virtual_name, NULL);
 		if (subcs) *pcomponent = method;
 
 		return subcs;
@@ -2641,12 +2637,11 @@ static CONF_SECTION *virtual_module_find_cs(rlm_components_t *pcomponent,
 	 *	a policy "foo".
 	 *
 	 */
-	snprintf(buffer, sizeof(buffer), "%s.%s",
-		 virtual_name, comp2str[method]);
-	subcs = cf_subsection_find_name2(cs, NULL, buffer);
+	snprintf(buffer, sizeof(buffer), "%s.%s", virtual_name, comp2str[method]);
+	subcs = cf_section_find(cs, buffer, NULL);
 	if (subcs) return subcs;
 
-	return cf_subsection_find_name2(cs, NULL, virtual_name);
+	return cf_section_find(cs, virtual_name, NULL);
 }
 
 
@@ -2737,16 +2732,16 @@ static modcall_compile_t compile_table[] = {
  *	Compile one entry of a module call.
  */
 static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci,
-				 unlang_group_type_t parent_group_type, char const **modname)
+			      unlang_group_type_t parent_group_type, char const **modname)
 {
-	char const *modrefname, *p;
-	unlang_t *c;
-	module_instance_t *this;
-	CONF_SECTION *cs, *subcs, *modules;
-	CONF_ITEM *loop;
-	char const *realname;
-	rlm_components_t component = unlang_ctx->component;
-	unlang_compile_t unlang_ctx2;
+	char const		*modrefname, *p;
+	unlang_t		*c;
+	module_instance_t	*this;
+	CONF_SECTION		*cs, *subcs, *modules;
+	CONF_ITEM		*loop;
+	char const		*realname;
+	rlm_components_t	component = unlang_ctx->component;
+	unlang_compile_t	unlang_ctx2;
 
 	if (cf_item_is_section(ci)) {
 		int i;
@@ -2765,7 +2760,7 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 				 *	Some blocks can be empty.  The rest need
 				 *	to have contents.
 				 */
-				if (!cf_item_find_next(cs, NULL) &&
+				if (!cf_item_next(cs, NULL) &&
 				    !((compile_table[i].mod_type == UNLANG_TYPE_CASE) ||
 				      (compile_table[i].mod_type == UNLANG_TYPE_IF) ||
 				      (compile_table[i].mod_type == UNLANG_TYPE_ELSIF))) {
@@ -2892,9 +2887,9 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	 *	of an "sql" policy.  If so, we allow the
 	 *	second "sql" to refer to the module.
 	 */
-	for (loop = cf_item_parent(ci);
+	for (loop = cf_parent(ci);
 	     loop && subcs;
-	     loop = cf_item_parent(loop)) {
+	     loop = cf_parent(loop)) {
 		if (loop == cf_section_to_item(subcs)) {
 			subcs = NULL;
 		}
@@ -2963,7 +2958,7 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	/*
 	 *	Not a virtual module.  It must be a real module.
 	 */
-	modules = cf_subsection_find(main_config.config, "modules");
+	modules = cf_section_find(main_config.config, "modules", NULL);
 	if (!modules) goto fail;
 
 	this = NULL;

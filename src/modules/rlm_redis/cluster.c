@@ -381,7 +381,7 @@ static cluster_rcode_t cluster_node_connect(fr_redis_cluster_t *cluster, cluster
 		snprintf(buffer, sizeof(buffer), "%s [%i]", cluster->log_prefix, node->id);
 
 		node->addr = node->pending_addr;
-		node->pool = fr_pool_init(cluster, cf_subsection_find(cluster->module, "pool"), node,
+		node->pool = fr_pool_init(cluster, cf_section_find(cluster->module, "pool", NULL), node,
 						     fr_redis_cluster_conn_create, NULL, buffer);
 		if (!node->pool) return CLUSTER_OP_FAILED;
 		fr_pool_reconnect_func(node->pool, _cluster_node_conf_apply);
@@ -2240,7 +2240,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 	/*
 	 *	Ensure we always have a pool section (even if it's empty)
 	 */
-	mycs = cf_subsection_find(module, "pool");
+	mycs = cf_section_find(module, "pool", NULL);
 	if (!mycs) {
 		mycs = cf_section_alloc(module, "pool", NULL);
 		cf_section_add(module, mycs);

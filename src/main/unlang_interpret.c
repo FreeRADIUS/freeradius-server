@@ -1412,7 +1412,7 @@ void unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
 	 *	associated with sections.
 	 */
 	if (cs) {
-		instruction = (unlang_t *)cf_data_find(cs, unlang_group_t, NULL);
+		instruction = (unlang_t *)cf_data_value(cf_data_find(cs, unlang_group_t, NULL));
 		if (!instruction) {
 			RPEDEBUG("Failed to find pre-compiled unlang for section %s %s { ... }",
 				cf_section_name1(cs), cf_section_name2(cs));
