@@ -244,7 +244,7 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 					return false;
 				}
 
-				if (cf_data_add(cs, clients, NULL, true) < 0) {
+				if (!cf_data_add(cs, clients, NULL, true)) {
 					ERROR("Failed to associate clients with virtual server %s", client->server);
 					talloc_free(clients);
 					return false;
@@ -662,7 +662,7 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 	/*
 	 *	Associate the clients structure with the section.
 	 */
-	if (cf_data_add(section, clients, NULL, false) < 0) {
+	if (!cf_data_add(section, clients, NULL, false)) {
 		cf_log_err(section, "Failed to associate clients with section %s", cf_section_name1(section));
 		talloc_free(clients);
 		return NULL;
@@ -1490,7 +1490,7 @@ RADCLIENT *client_read(char const *filename, CONF_SECTION *server_cs, bool check
 		return NULL;
 	}
 
-	cs = cf_section_find(cs, "client", NULL);
+	cs = cf_section_find(cs, "client", CF_IDENT_ANY);
 	if (!cs) {
 		ERROR("No \"client\" section found in client file");
 		return NULL;

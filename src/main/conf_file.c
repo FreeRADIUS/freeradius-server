@@ -2123,8 +2123,6 @@ static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, fr
 	}
 }
 
-
-
 /** Parses a #CONF_PAIR into a C data type
  *
  * @copybrief cf_pair_value
@@ -3516,6 +3514,7 @@ static CONF_ITEM *cf_find(CONF_ITEM const *parent, CONF_ITEM_TYPE type, char con
 /** Return the next child that's of the specified type with the specified identifiers
  *
  * @param[in] parent	The section we're searching in.
+ * @param[in] prev	item we found, or NULL to start from the beginning.
  * @param[in] type	of #CONF_ITEM we're searching for.
  * @param[in] ident1	The first identifier.
  * @param[in] ident2	The second identifier. Special value CF_IDENT_ANY

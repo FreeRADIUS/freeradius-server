@@ -1084,13 +1084,14 @@ static int proto_ldap_socket_parse(CONF_SECTION *cs, rad_listen_t *listen)
 
 		scope = fr_str2int(fr_ldap_scope, inst->sync_config[i]->scope_str, -1);
 		if (scope < 0) {
-			cf_log_err(cs, "Invalid 'user.scope' value \"%s\", expected 'sub', 'one'"
 #ifdef LDAP_SCOPE_CHILDREN
-				      ", 'base' or 'children'"
+			cf_log_err(cs, "Invalid 'user.scope' value \"%s\", expected 'sub', 'one'"
+				   ", 'base' or 'children'", inst->sync_config[i]->scope_str);
 #else
-				      " or 'base'"
+			cf_log_err(cs, "Invalid 'user.scope' value \"%s\", expected 'sub', 'one'"
+				   " or 'base'", inst->sync_config[i]->scope_str)
 #endif
-				 , inst->sync_config[i]->scope_str);
+				 );
 			return -1;
 		}
 		inst->sync_config[i]->scope = scope;
