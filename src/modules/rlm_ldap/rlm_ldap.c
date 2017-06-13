@@ -1819,37 +1819,38 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	inst->userobj_scope = fr_str2int(fr_ldap_scope, inst->userobj_scope_str, -1);
 	if (inst->userobj_scope < 0) {
-		cf_log_err(conf, "Invalid 'user.scope' value \"%s\", expected 'sub', 'one'"
 #ifdef LDAP_SCOPE_CHILDREN
-			      ", 'base' or 'children'"
+		cf_log_err(conf, "Invalid 'user.scope' value \"%s\", expected 'sub', 'one', 'base' or 'children'",
+			   inst->userobj_scope_str);
 #else
-			      " or 'base'"
+		cf_log_err(conf, "Invalid 'user.scope' value \"%s\", expected 'sub', 'one' or 'children'",
+			   inst->userobj_scope_str);
 #endif
-			 , inst->userobj_scope_str);
 		goto error;
 	}
 
 	inst->groupobj_scope = fr_str2int(fr_ldap_scope, inst->groupobj_scope_str, -1);
 	if (inst->groupobj_scope < 0) {
-		cf_log_err(conf, "Invalid 'group.scope' value \"%s\", expected 'sub', 'one'"
 #ifdef LDAP_SCOPE_CHILDREN
-			      ", 'base' or 'children'"
+		cf_log_err(conf, "Invalid 'group.scope' value \"%s\", expected 'sub', 'one', 'base' or 'children'",
+			   inst->groupobj_scope_str);
 #else
-			      " or 'base'"
+		cf_log_err(conf, "Invalid 'group.scope' value \"%s\", expected 'sub', 'one' or 'children'",
+			   inst->groupobj_scope_str);
 #endif
-			 , inst->groupobj_scope_str);
+
 		goto error;
 	}
 
 	inst->clientobj_scope = fr_str2int(fr_ldap_scope, inst->clientobj_scope_str, -1);
 	if (inst->clientobj_scope < 0) {
-		cf_log_err(conf, "Invalid 'client.scope' value \"%s\", expected 'sub', 'one'"
 #ifdef LDAP_SCOPE_CHILDREN
-			      ", 'base' or 'children'"
+		cf_log_err(conf, "Invalid 'client.scope' value \"%s\", expected 'sub', 'one', 'base' or 'children'",
+			   inst->clientobj_scope_str);
 #else
-			      " or 'base'"
+		cf_log_err(conf, "Invalid 'client.scope' value \"%s\", expected 'sub', 'one' or 'children'",
+			   inst->clientobj_scope_str);
 #endif
-			 , inst->clientobj_scope_str);
 		goto error;
 	}
 
