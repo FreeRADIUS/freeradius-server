@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file include/conf_file.h
+ * @file include/cf_file.h
  * @brief Parse on-disk text based config files into the FreeRADIUS internal format.
  *
  * @copyright 2017  The FreeRADIUS server project
