@@ -1097,7 +1097,7 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 		 *	create a home server CONF_SECTION and then parse
 		 *	it into a home_server_t.
 		 */
-		} else if (with_coa || cf_section_find(cs, "coa_server", NULL), NULL) {
+		} else if (with_coa || cf_section_find(cs, "coa_server", NULL)) {
 			CONF_SECTION *server;
 			home_server_t *home;
 
