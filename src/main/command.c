@@ -3174,7 +3174,8 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 	sock = this->data;
 	talloc_set_destructor(sock, _command_socket_free);
 
-	if (cf_section_parse(sock, sock, cs, command_config) < 0) return -1;
+	if (cf_section_rules_push(cs, command_config) < 0) return -1;
+	if (cf_section_parse(sock, sock, cs) < 0) return -1;
 
 	/*
 	 *	Can't get uid or gid of connecting user, so can't do

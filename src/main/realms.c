@@ -623,7 +623,8 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 	 *	Parse the configuration into the home server
 	 *	struct.
 	 */
-	if (cf_section_parse(home, home, cs, home_server_config) < 0) goto error;
+	if (cf_section_rules_push(cs, home_server_config) < 0) goto error;
+	if (cf_section_parse(home, home, cs) < 0) goto error;
 
 	/*
 	 *	It has an IP address, it must be a remote server.
@@ -2123,7 +2124,8 @@ int realms_init(CONF_SECTION *config)
 #ifdef WITH_PROXY
 	cs = cf_section_find(config, "proxy", NULL);
 	if (cs) {
-		if (cf_section_parse(rc, rc, cs, proxy_config) < 0) {
+		if (cf_section_rules_push(cs, proxy_config) < 0) goto error;
+		if (cf_section_parse(rc, rc, cs) < 0) {
 			ERROR("Failed parsing proxy section");
 			goto error;
 		}

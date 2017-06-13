@@ -415,10 +415,14 @@ int dl_instance_data_alloc(void **data, TALLOC_CTX *ctx, dl_t const *module, CON
 	} else {
 		talloc_set_name(*data, "%s", module->common->inst_type);
 	}
-	if (module->common->config && (cf_section_parse(*data, *data, cs, module->common->config) < 0)) {
-		cf_log_err(cs, "Invalid configuration for module \"%s\"", module->name);
-		talloc_free(*data);
-		return -1;
+
+	if (module->common->config) {
+		if ((cf_section_rules_push(cs, module->common->config)) < 0 ||
+		    (cf_section_parse(*data, *data, cs) < 0)) {
+			cf_log_err(cs, "Invalid configuration for module \"%s\"", module->name);
+			talloc_free(*data);
+			return -1;
+		}
 	}
 
 	/*

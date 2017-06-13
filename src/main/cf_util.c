@@ -1347,13 +1347,17 @@ void *cf_data_value(CONF_DATA const *cd)
  * @param[in] data	to add.
  * @param[in] name	String identifier of the user data.
  * @param[in] do_free	Function to free user data when the CONF_SECTION is freed.
+ * @param[in] filename	Source file the #CONF_DATA was added in.
+ * @param[in] lineno	the #CONF_DATA was added at.
  * @return
  *	- #CONF_DATA  - opaque handle to the stored data - on success.
  *	- NULL error.
  */
-CONF_DATA const *_cf_data_add(CONF_ITEM *ci, void const *data, char const *name, bool do_free)
+CONF_DATA const *_cf_data_add(CONF_ITEM *ci, void const *data, char const *name, bool do_free,
+			      char const *filename, int lineno)
 {
 	CONF_DATA	*cd;
+	CONF_DATA const *found;
 	char const	*type = NULL;
 
 	if (!ci) return NULL;
@@ -1363,8 +1367,10 @@ CONF_DATA const *_cf_data_add(CONF_ITEM *ci, void const *data, char const *name,
 	/*
 	 *	Already exists.  Can't add it.
 	 */
-	if (_cf_data_find(ci, type, name)) {
-		cf_log_err(ci, "Data of type %s with name %s already exists", type, name);
+	found = _cf_data_find(ci, type, name);
+	if (found) {
+		cf_log_err(ci, "Data of type %s with name \"%s\" already exists.  Existing data added %s[%i]", type,
+			   name, found->item.filename, found->item.lineno);
 		return NULL;
 	}
 
@@ -1374,6 +1380,8 @@ CONF_DATA const *_cf_data_add(CONF_ITEM *ci, void const *data, char const *name,
 		return NULL;
 	}
 	cd->is_talloced = true;
+	cd->item.filename = filename;
+	cd->item.lineno = lineno;
 
 	cf_item_add(ci, cd);
 
@@ -1386,18 +1394,24 @@ CONF_DATA const *_cf_data_add(CONF_ITEM *ci, void const *data, char const *name,
  * @param[in] data	to add.
  * @param[in] type	identifier of the user data.
  * @param[in] name	String identifier of the user data.
+ * @param[in] filename	Source file the #CONF_DATA was added in.
+ * @param[in] lineno	the #CONF_DATA was added at.
  *	- #CONF_DATA  - opaque handle to the stored data - on success.
  *	- NULL error.
  */
-CONF_DATA const *_cf_data_add_static(CONF_ITEM *ci, void const *data, char const *type, char const *name)
+CONF_DATA const *_cf_data_add_static(CONF_ITEM *ci, void const *data, char const *type, char const *name,
+				     char const *filename, int lineno)
 {
 	CONF_DATA *cd;
+	CONF_DATA const *found;
 
 	/*
 	 *	Already exists.  Can't add it.
 	 */
-	if (_cf_data_find(ci, type, name)) {
-		cf_log_err(ci, "Data of type %s with name %s already exists", type, name);
+	found = _cf_data_find(ci, type, name);
+	if (found) {
+		cf_log_err(ci, "Data of type %s with name \"%s\" already exists.  Existing data added %s[%i]", type,
+			   name, found->item.filename, found->item.lineno);
 		return NULL;
 	}
 
@@ -1407,6 +1421,8 @@ CONF_DATA const *_cf_data_add_static(CONF_ITEM *ci, void const *data, char const
 		return NULL;
 	}
 	cd->is_talloced = false;
+	cd->item.filename = filename;
+	cd->item.lineno = lineno;
 
 	cf_item_add(ci, cd);
 
@@ -1587,7 +1603,7 @@ void _cf_log_info(CONF_ITEM const *ci, char const *fmt, ...)
 	msg = talloc_vasprintf(NULL, fmt, ap);
 	va_end(ap);
 
-	if (!ci || !ci->filename || !DEBUG_ENABLED3) {
+	if (!ci || !ci->filename || !DEBUG_ENABLED4) {
 		INFO("%s", msg);
 	} else {
 		INFO("%s[%d]: %s", ci->filename, ci->lineno, msg);

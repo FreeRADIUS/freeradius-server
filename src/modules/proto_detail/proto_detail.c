@@ -1037,7 +1037,9 @@ static int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	data = this->data;
 
-	rcode = cf_section_parse(data, data, cs, detail_config);
+	if (cf_section_rules_push(cs, detail_config) < 0) return -1;
+
+	rcode = cf_section_parse(data, data, cs);
 	if (rcode < 0) {
 		cf_log_err(cs, "Failed parsing listen section");
 		return -1;

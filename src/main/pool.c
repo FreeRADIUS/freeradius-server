@@ -1044,7 +1044,8 @@ fr_pool_t *fr_pool_init(TALLOC_CTX *ctx,
 
 		memcpy(&mutable, &cs, sizeof(mutable));
 
-		if (cf_section_parse(pool, pool, mutable, pool_config) < 0) {
+		if (cf_section_rules_push(mutable, pool_config) < 0) goto error;
+		if (cf_section_parse(pool, pool, mutable) < 0) {
 			PERROR("Configuration parsing failed");
 			goto error;
 		}

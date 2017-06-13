@@ -1149,10 +1149,12 @@ static int driver_init(TALLOC_CTX *ctx, CONF_SECTION *conf, void **instance)
 
 	*instance = NULL;
 
+	if (cf_section_rules_push(conf, redis_config) < 0) return -1;
+
 	this = talloc_zero(ctx, redis_driver_conf_t);
 	if (!this) return -1;
 
-	ret = cf_section_parse(this, &this->conf, conf, redis_config);
+	ret = cf_section_parse(this, &this->conf, conf);
 	if (ret < 0) {
 		talloc_free(this);
 		return -1;

@@ -56,7 +56,8 @@ static int mod_instantiate(rlm_cache_config_t const *config, void *instance, CON
 
 	buffer[0] = '\0';
 
-	if (cf_section_parse(driver, driver, conf, driver_config) < 0) return -1;
+	if (cf_section_rules_push(conf, driver_config) < 0) return -1;
+	if (cf_section_parse(driver, driver, conf) < 0) return -1;
 
 	snprintf(buffer, sizeof(buffer), "rlm_cache (%s)", config->name);
 

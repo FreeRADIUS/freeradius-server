@@ -1395,13 +1395,16 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 */
 	subcs = cf_section_find(cs, "performance", NULL);
 	if (subcs) {
-		rcode = cf_section_parse(this, this, subcs, performance_config);
+		if (cf_section_rules_push(subcs, performance_config) < 0) return -1;
+		rcode = cf_section_parse(this, this, subcs);
 		if (rcode < 0) return -1;
 	}
 
 	subcs = cf_section_find(cs, "limit", NULL);
 	if (subcs) {
-		rcode = cf_section_parse(sock, sock, subcs, limit_config);
+		if (cf_section_rules_push(subcs, limit_config) < 0) return -1;
+
+		rcode = cf_section_parse(sock, sock, subcs);
 		if (rcode < 0) return -1;
 
 		if (sock->max_rate && ((sock->max_rate < 10) || (sock->max_rate > 1000000))) {

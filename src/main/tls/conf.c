@@ -317,10 +317,12 @@ fr_tls_conf_t *tls_conf_parse_server(CONF_SECTION *cs)
 		return conf;
 	}
 
+	if (cf_section_rules_push(cs, tls_server_config) < 0) return NULL;
+
 	conf = tls_conf_alloc(cs);
 
-	if ((cf_section_parse(conf, conf, cs, tls_server_config) < 0) ||
-	    (cf_section_parse_pass2(conf, cs, tls_server_config) < 0)) {
+	if ((cf_section_parse(conf, conf, cs) < 0) ||
+	    (cf_section_parse_pass2(conf, cs) < 0)) {
 	error:
 		talloc_free(conf);
 		return NULL;
@@ -434,10 +436,12 @@ fr_tls_conf_t *tls_conf_parse_client(CONF_SECTION *cs)
 		return conf;
 	}
 
+	if (cf_section_rules_push(cs, tls_client_config) < 0) return NULL;
+
 	conf = tls_conf_alloc(cs);
 
-	if ((cf_section_parse(conf, conf, cs, tls_client_config) < 0) ||
-	    (cf_section_parse_pass2(conf, cs, tls_client_config) < 0)) {
+	if ((cf_section_parse(conf, conf, cs) < 0) ||
+	    (cf_section_parse_pass2(conf, cs) < 0)) {
 	error:
 		talloc_free(conf);
 		return NULL;

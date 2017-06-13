@@ -78,19 +78,19 @@ typedef struct linelog_net {
 /** linelog module instance
  */
 typedef struct linelog_instance_t {
-	char const		*name;			//!< Module instance name.
-	fr_pool_t	*pool;			//!< Connection pool instance.
+	char const			*name;			//!< Module instance name.
+	fr_pool_t			*pool;			//!< Connection pool instance.
 
-	char const		*delimiter;		//!< Line termination string (usually \n).
-	size_t			delimiter_len;		//!< Length of line termination string.
+	char const			*delimiter;		//!< Line termination string (usually \n).
+	size_t				delimiter_len;		//!< Length of line termination string.
 
-	vp_tmpl_t		*log_src;		//!< Source of log messages.
+	vp_tmpl_t			*log_src;		//!< Source of log messages.
 
-	vp_tmpl_t		*log_ref;		//!< Path to a #CONF_PAIR (to use as the source of
-							///< log messages).
+	vp_tmpl_t			*log_ref;		//!< Path to a #CONF_PAIR (to use as the source of
+								///< log messages).
 
 	linefr_log_dst_t		log_dst;		//!< Logging destination.
-	char const		*log_dst_str;		//!< Logging destination string.
+	char const			*log_dst_str;		//!< Logging destination string.
 
 	struct {
 		char const		*facility;		//!< Syslog facility string.

@@ -884,7 +884,9 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 	c->cs = cs;
 
 	memset(&cl_ipaddr, 0, sizeof(cl_ipaddr));
-	if (cf_section_parse(c, c, cs, client_config) < 0) {
+	if (cf_section_rules_push(cs, client_config) < 0) return NULL;
+
+	if (cf_section_parse(c, c, cs) < 0) {
 		cf_log_err(cs, "Error parsing client section");
 	error:
 		client_free(c);

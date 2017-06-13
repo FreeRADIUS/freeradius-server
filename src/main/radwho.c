@@ -345,7 +345,8 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	cf_section_parse(maincs, NULL, cs, module_config);
+	if (cf_section_rules_push(cs, module_config) < 0) exit(1);
+	cf_section_parse(maincs, NULL, cs);
 
 	/* Assign the correct path for the radutmp file */
 	radutmp_file = radutmpconfig.radutmp_fn;

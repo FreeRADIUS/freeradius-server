@@ -1397,8 +1397,10 @@ static int parse_sub_section(rlm_ldap_t *inst, CONF_SECTION *parent, ldap_acct_s
 		return 0;
 	}
 
+	if (cf_section_rules_push(cs, acct_section_config) < 0) return -1;
+
 	*config = talloc_zero(inst, ldap_acct_section_t);
-	if (cf_section_parse(*config, *config, cs, acct_section_config) < 0) {
+	if (cf_section_parse(*config, *config, cs) < 0) {
 		PERROR("rlm_ldap (%s) - Failed parsing configuration for section %s", inst->name, name);
 
 		return -1;

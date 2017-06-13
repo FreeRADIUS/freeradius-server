@@ -787,7 +787,8 @@ int thread_pool_bootstrap(CONF_SECTION *cs, bool *spawn_workers)
 		return 0;
 	}
 
-	if (cf_section_parse(NULL, NULL, pool_cf, thread_config) < 0) return -1;
+	if (cf_section_rules_push(pool_cf, thread_config) < 0) return -1;
+	if (cf_section_parse(NULL, NULL, pool_cf) < 0) return -1;
 
 	/*
 	 *	Catch corner cases.

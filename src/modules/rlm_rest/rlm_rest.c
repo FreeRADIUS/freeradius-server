@@ -761,7 +761,8 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, CONF_PARSER
 		return 0;
 	}
 
-	if (cf_section_parse(inst, config, cs, config_items) < 0) {
+	if (cf_section_rules_push(cs, config_items) < 0) return -1;
+	if (cf_section_parse(inst, config, cs) < 0) {
 		config->name = NULL;
 		return -1;
 	}

@@ -1060,7 +1060,8 @@ static int proto_ldap_socket_parse(CONF_SECTION *cs, rad_listen_t *listen)
 		return -1;
 	}
 
-	ret = cf_section_parse(inst, inst, cs, module_config);
+	if (cf_section_rules_push(cs, module_config) < 0) return -1;
+	ret = cf_section_parse(inst, inst, cs);
 	if (ret < 0) return ret;
 
 	talloc_set_type(inst, proto_ldap_inst_t);

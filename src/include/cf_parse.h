@@ -439,9 +439,18 @@ struct CONF_PARSER {
  */
 int		cf_pair_parse(TALLOC_CTX *ctx, CONF_SECTION *cs, char const *name,
 			      unsigned int type, void *data, char const *dflt, FR_TOKEN dflt_quote);
-int		cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs, CONF_PARSER const *variables);
-int		cf_section_parse_pass2(void *base, CONF_SECTION *cs, CONF_PARSER const *variables);
+int		cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs);
+int		cf_section_parse_pass2(void *base, CONF_SECTION *cs);
 CONF_PARSER const	*cf_section_parse_table(CONF_SECTION *cs);
+
+/*
+ *	Runtime parse rules
+ */
+#define		cf_section_rule_push(_cs, _rule) _cf_section_rule_push(_cs, _rule, __FILE__, __LINE__)
+int		_cf_section_rule_push(CONF_SECTION *cs, CONF_PARSER const *rule, char const *filename, int lineno);
+#define		cf_section_rules_push(_cs, _rule) _cf_section_rules_push(_cs, _rule, __FILE__, __LINE__)
+int		_cf_section_rules_push(CONF_SECTION *cs, CONF_PARSER const *rules, char const *filename, int lineno);
+
 #ifdef __cplusplus
 }
 #endif

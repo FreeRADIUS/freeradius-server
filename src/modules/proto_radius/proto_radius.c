@@ -301,8 +301,9 @@ static int open_listen(fr_schedule_t *handle, CONF_SECTION *server, CONF_SECTION
 	pr_config_t config;
 	proto_radius_ctx_t *ctx;
 
-	if ((cf_section_parse(cs, &config, cs, mod_config) < 0) ||
-	    (cf_section_parse_pass2(&config, cs, mod_config) < 0)) {
+	if (cf_section_rules_push(cs, mod_config) < 0) return -1;
+
+	if ((cf_section_parse(cs, &config, cs) < 0) || (cf_section_parse_pass2(&config, cs) < 0)) {
 		cf_log_err(cs, "Failed parsing listen { ...}");
 		return -1;
 	}
@@ -342,11 +343,6 @@ static int open_listen(fr_schedule_t *handle, CONF_SECTION *server, CONF_SECTION
 				      config.transport);
 		return -1;
 	}
-
-	/*
-	 *	Print out the final "}" for debugging.
-	 */
-	(void) cf_section_parse(cs, &config, cs, NULL);
 
 	return 0;
 }

@@ -436,7 +436,13 @@ static int switch_users(CONF_SECTION *cs)
 	 */
 	if (rad_debug_lvl && (getuid() != 0)) return 1;
 
-	if (cf_section_parse(NULL, NULL, cs, bootstrap_config) < 0) {
+	if (cf_section_rules_push(cs, bootstrap_config) < 0) {
+		fprintf(stderr, "%s: Error: Failed pushing parse rules for user/group information.\n",
+			main_config.name);
+		return 0;
+	}
+
+	if (cf_section_parse(NULL, NULL, cs) < 0) {
 		fprintf(stderr, "%s: Error: Failed to parse user/group information.\n",
 			main_config.name);
 		return 0;
@@ -800,7 +806,14 @@ do {\
 	 *	set it now.
 	 */
 	if (default_log.dst == L_DST_NULL) {
-		if (cf_section_parse(NULL, NULL, cs, startup_server_config) < 0) {
+		if (cf_section_rules_push(cs, startup_server_config) < 0) {
+			fprintf(stderr, "%s: Error: Failed pushing rules for log {} section.\n",
+				main_config.name);
+			cf_file_free(cs);
+			return -1;
+		}
+
+		if (cf_section_parse(NULL, NULL, cs) < 0) {
 			fprintf(stderr, "%s: Error: Failed to parse log{} section.\n",
 				main_config.name);
 			cf_file_free(cs);
@@ -879,7 +892,8 @@ do {\
 	 *	This allows us to figure out where, relative to
 	 *	radiusd.conf, the other configuration files exist.
 	 */
-	if (cf_section_parse(NULL, NULL, cs, server_config) < 0) return -1;
+	if (cf_section_rules_push(cs, server_config) < 0) return -1;
+	if (cf_section_parse(NULL, NULL, cs) < 0) return -1;
 
 	/*
 	 *	We ignore colourization of output until after the

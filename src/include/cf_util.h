@@ -158,16 +158,16 @@ FR_TOKEN	cf_pair_value_quote(CONF_PAIR const *pair);
 #define		cf_data_find(_cf, _type, _name) _cf_data_find(CF_TO_ITEM(_cf), #_type, _name)
 CONF_DATA const	*_cf_data_find(CONF_ITEM const *ci, char const *type, char const *name);
 
-#define		cf_data_find_next(_cf, _prev, _type, _name) _cf_data_find(CF_TO_ITEM(_cf), CF_TO_ITEM(_prev), #_type, _name)
+#define		cf_data_find_next(_cf, _prev, _type, _name) _cf_data_find_next(CF_TO_ITEM(_cf), CF_TO_ITEM(_prev), #_type, _name)
 CONF_DATA const	*_cf_data_find_next(CONF_ITEM const *ci, CONF_ITEM const *prev, char const *type, char const *name);
 
 void		*cf_data_value(CONF_DATA const *cd);
 
-#define		cf_data_add(_cf, _data, _name, _free) _cf_data_add(CF_TO_ITEM(_cf), _data, _name, _free)
-CONF_DATA const *_cf_data_add(CONF_ITEM *ci, void const *data, char const *name, bool free);
+#define		cf_data_add(_cf, _data, _name, _free) _cf_data_add(CF_TO_ITEM(_cf), _data, _name, _free, __FILE__, __LINE__)
+CONF_DATA const *_cf_data_add(CONF_ITEM *ci, void const *data, char const *name, bool free, char const *filename, int lineno);
 
-#define		cf_data_add_static(_cf, _data, _type, _name) _cf_data_add(CF_TO_ITEM(_cf), _data, #_type, _name)
-CONF_DATA const *_cf_data_add_static(CONF_ITEM *ci, void const *data, char const *type, char const *name);
+#define		cf_data_add_static(_cf, _data, _type, _name) _cf_data_add_static(CF_TO_ITEM(_cf), _data, #_type, _name, __FILE__, __LINE__)
+CONF_DATA const *_cf_data_add_static(CONF_ITEM *ci, void const *data, char const *type, char const *name, char const *filename, int lineno);
 
 #define		cf_data_remove(_cf, _cd) _cf_data_remove(CF_TO_ITEM(_cf), _cd);
 void		*_cf_data_remove(CONF_ITEM *ci, CONF_DATA const *_cd);

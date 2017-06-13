@@ -653,10 +653,7 @@ static int _module_instantiate(void *instance, UNUSED void *ctx)
 	 *	Now that ALL modules are instantiated, and ALL xlats
 	 *	are defined, go compile the config items marked as XLAT.
 	 */
-	if (inst->module->config &&
-	    (cf_section_parse_pass2(inst->data, inst->cs, inst->module->config) < 0)) {
-		return -1;
-	}
+	if (inst->module->config && (cf_section_parse_pass2(inst->data, inst->cs) < 0)) return -1;
 
 	/*
 	 *	Call the instantiate method, if any.
