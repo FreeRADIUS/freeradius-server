@@ -338,6 +338,19 @@ do {\
 
 extern bool check_config;
 
+typedef struct CONF_PARSER CONF_PARSER;
+
+/** Callback for performing custom parsing of a #CONF_SECTION or CONF_PAIR
+ *
+ * @param[out] out	Where to write the result of parsing.
+ * @param[in] ci	The #CONF_SECTION or #CONF_PAIR to parse.
+ * @param[in] rules	Parse rules - How the #CONF_PAIR or #CONF_SECTION should be converted.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+typedef int (* cf_parse_t)(void *out, CONF_ITEM *ci, CONF_PARSER const *rules);
+
 /** Defines a #CONF_PAIR to C data type mapping
  *
  * Is typically used to define mappings between module sections, and module instance structs.
@@ -366,7 +379,7 @@ extern bool check_config;
  * @see cf_section_parse
  * @see cf_pair_parse
  */
-typedef struct CONF_PARSER {
+struct CONF_PARSER {
 	char const	*name;			//!< Name of the #CONF_ITEM to parse.
 	uint32_t	type;			//!< A #fr_type_t value, may be or'd with one or more FR_TYPE_* flags.
 						//!< @see cf_pair_parse.
@@ -379,6 +392,9 @@ typedef struct CONF_PARSER {
 
 	void		*data;			//!< Pointer to a static variable to write the parsed value to.
 						//!< @note Must be used exclusively to #offset.
+
+	cf_parse_t	func;			//!< Override default parsing behaviour for the specified type with
+						//!< a custom parsing function.
 
 	/** Where to write status if FR_TYPE_IS_DEFAULT is set
 	 *
@@ -405,7 +421,7 @@ typedef struct CONF_PARSER {
 	};
 
 	FR_TOKEN	quote;			//!< Quoting around the default value.  Only used for templates.
-} CONF_PARSER;
+};
 
 #define CONF_PARSER_TERMINATOR	{ .name = NULL, .type = ~(UINT32_MAX - 1), \
 				  .offset = 0, .data = NULL, .dflt = NULL, .quote = T_INVALID }
