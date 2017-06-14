@@ -474,80 +474,26 @@ static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, char const *name,
 
 /** Parses a #CONF_PAIR into a C data type, with a default value.
  *
- * Takes fields from a #CONF_PARSER struct and uses them to parse the string value
- * of a #CONF_PAIR into a C data type matching the type argument.
- *
- * The format of the types are the same as #fr_value_box_t types.
- *
- * @note The dflt value will only be used if no matching #CONF_PAIR is found. Empty strings will not
- *	 result in the dflt value being used.
- *
- * **fr_type_t to data type mappings**
- * | fr_type_t               | Data type          | Dynamically allocated  |
- * | ----------------------- | ------------------ | ---------------------- |
- * | FR_TYPE_TMPL            | ``vp_tmpl_t``      | Yes                    |
- * | FR_TYPE_BOOL            | ``bool``           | No                     |
- * | FR_TYPE_UINT32          | ``uint32_t``       | No                     |
- * | FR_TYPE_UINT16          | ``uint16_t``       | No                     |
- * | FR_TYPE_UINT64          | ``uint64_t``       | No                     |
- * | FR_TYPE_INT32           | ``int32_t``        | No                     |
- * | FR_TYPE_STRING          | ``char const *``   | Yes                    |
- * | FR_TYPE_IPV4_ADDR       | ``fr_ipaddr_t``    | No                     |
- * | FR_TYPE_IPV4_PREFIX     | ``fr_ipaddr_t``    | No                     |
- * | FR_TYPE_IPV6_ADDR       | ``fr_ipaddr_t``    | No                     |
- * | FR_TYPE_IPV6_PREFIX     | ``fr_ipaddr_t``    | No                     |
- * | FR_TYPE_COMBO_IP_ADDR   | ``fr_ipaddr_t``    | No                     |
- * | FR_TYPE_COMBO_IP_PREFIX | ``fr_ipaddr_t``    | No                     |
- * | FR_TYPE_TIMEVAL         | ``struct timeval`` | No                     |
- *
  * @param[in] ctx	To allocate arrays and values in.
+ * @param[out] out	Where to write the result.
  * @param[in] cs	to search for matching #CONF_PAIR in.
- * @param[in] name	of #CONF_PAIR to search for.
- * @param[in] type	Data type to parse #CONF_PAIR value as.
- *			Should be one of the following ``data`` types,
- *			and one or more of the following ``flag`` types or'd together:
- *	- ``data`` #FR_TYPE_TMPL 		- @copybrief FR_TYPE_TMPL
- *					  	  Feeds the value into #tmpl_afrom_str. Value can be
- *					  	  obtained when processing requests, with #tmpl_expand or #tmpl_aexpand.
- *	- ``data`` #FR_TYPE_BOOL		- @copybrief FR_TYPE_BOOL
- *	- ``data`` #FR_TYPE_UINT32		- @copybrief FR_TYPE_UINT32
- *	- ``data`` #FR_TYPE_UINT16		- @copybrief FR_TYPE_UINT16
- *	- ``data`` #FR_TYPE_UINT64		- @copybrief FR_TYPE_UINT64
- *	- ``data`` #FR_TYPE_INT32		- @copybrief FR_TYPE_INT32
- *	- ``data`` #FR_TYPE_STRING		- @copybrief FR_TYPE_STRING
- *	- ``data`` #FR_TYPE_IPV4_ADDR		- @copybrief FR_TYPE_IPV4_ADDR (IPv4 address with prefix 32).
- *	- ``data`` #FR_TYPE_IPV4_PREFIX		- @copybrief FR_TYPE_IPV4_PREFIX (IPv4 address with variable prefix).
- *	- ``data`` #FR_TYPE_IPV6_ADDR		- @copybrief FR_TYPE_IPV6_ADDR (IPv6 address with prefix 128).
- *	- ``data`` #FR_TYPE_IPV6_PREFIX		- @copybrief FR_TYPE_IPV6_PREFIX (IPv6 address with variable prefix).
- *	- ``data`` #FR_TYPE_COMBO_IP_ADDR 	- @copybrief FR_TYPE_COMBO_IP_ADDR (IPv4/IPv6 address with
- *						  prefix 32/128).
- *	- ``data`` #FR_TYPE_COMBO_IP_PREFIX	- @copybrief FR_TYPE_COMBO_IP_PREFIX (IPv4/IPv6 address with
- *						  variable prefix).
- *	- ``data`` #FR_TYPE_TIMEVAL		- @copybrief FR_TYPE_TIMEVAL
- *	- ``flag`` #FR_TYPE_DEPRECATED		- @copybrief FR_TYPE_DEPRECATED
- *	- ``flag`` #FR_TYPE_REQUIRED		- @copybrief FR_TYPE_REQUIRED
- *	- ``flag`` #FR_TYPE_ATTRIBUTE		- @copybrief FR_TYPE_ATTRIBUTE
- *	- ``flag`` #FR_TYPE_SECRET		- @copybrief FR_TYPE_SECRET
- *	- ``flag`` #FR_TYPE_FILE_INPUT		- @copybrief FR_TYPE_FILE_INPUT
- *	- ``flag`` #FR_TYPE_NOT_EMPTY		- @copybrief FR_TYPE_NOT_EMPTY
- *	- ``flag`` #FR_TYPE_MULTI		- @copybrief FR_TYPE_MULTI
- *	- ``flag`` #FR_TYPE_IS_SET		- @copybrief FR_TYPE_IS_SET
- * @param[out] out	Pointer to a global variable, or pointer to a field in the struct being populated with values.
- * @param[in] dflt		value to use, if no #CONF_PAIR is found.
- * @param[in] dflt_quote	around the dflt value.
+ * @param[in] rule	to parse #CONF_PAIR with.
  * @return
  *	- 1 if default value was used, or if there was no CONF_PAIR or dflt.
  *	- 0 on success.
  *	- -1 on error.
  *	- -2 if deprecated.
  */
-int cf_pair_parse(TALLOC_CTX *ctx, CONF_SECTION *cs,
-		  char const *name, unsigned int type, void *out,
-		  char const *dflt, FR_TOKEN dflt_quote)
+static int cf_pair_parse_internal(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CONF_PARSER const *rule)
 {
 	bool		multi, required, deprecated;
 	size_t		count = 0;
 	CONF_PAIR	*cp, *dflt_cp = NULL;
+
+	char const	*name = rule->name;
+	unsigned int	type = rule->type;
+	char const	*dflt = rule->dflt;
+	FR_TOKEN	dflt_quote = rule->quote;
 
 	rad_assert(!(type & FR_TYPE_TMPL) || !dflt || (dflt_quote != T_INVALID)); /* We ALWAYS need a quoting type for templates */
 
@@ -654,11 +600,17 @@ int cf_pair_parse(TALLOC_CTX *ctx, CONF_SECTION *cs,
 		}
 
 		for (i = 0; i < count; i++, cp = cf_pair_find_next(cs, cp, name)) {
-			if (cf_pair_parse_value(array, &array[i], cs, cp, type) < 0) {
-				talloc_free(array);
-				talloc_free(dflt_cp);
-				return -1;
-			}
+			/*
+			 *	Call custom parser
+			 */
+			if (rule->func) {
+				if (rule->func(ctx, &array[i], cf_pair_to_item(cp), rule) < 0) {
+				merror:
+					talloc_free(array);
+					talloc_free(dflt_cp);
+					return -1;
+				}
+			} else if (cf_pair_parse_value(array, &array[i], cs, cp, type) < 0) goto merror;
 		}
 
 		*(void **)out = array;
@@ -689,10 +641,16 @@ int cf_pair_parse(TALLOC_CTX *ctx, CONF_SECTION *cs,
 
 		if (deprecated) goto deprecated;
 
-		if (cf_pair_parse_value(ctx, out, cs, cp, type) < 0) {
-			talloc_free(dflt_cp);
-			return -1;
-		}
+		/*
+		 *	Call custom parser
+		 */
+		if (rule->func) {
+			if (rule->func(ctx, out, cf_pair_to_item(cp), rule) < 0) {
+			serror:
+				talloc_free(dflt_cp);
+				return -1;
+			}
+		} else if (cf_pair_parse_value(ctx, out, cs, cp, type) < 0) goto serror;
 	}
 
 	/*
@@ -706,6 +664,88 @@ int cf_pair_parse(TALLOC_CTX *ctx, CONF_SECTION *cs,
 	}
 
 	return 0;
+}
+
+/** Parses a #CONF_PAIR into a C data type, with a default value.
+ *
+ * Takes fields from a #CONF_PARSER struct and uses them to parse the string value
+ * of a #CONF_PAIR into a C data type matching the type argument.
+ *
+ * The format of the types are the same as #fr_value_box_t types.
+ *
+ * @note The dflt value will only be used if no matching #CONF_PAIR is found. Empty strings will not
+ *	 result in the dflt value being used.
+ *
+ * **fr_type_t to data type mappings**
+ * | fr_type_t               | Data type          | Dynamically allocated  |
+ * | ----------------------- | ------------------ | ---------------------- |
+ * | FR_TYPE_TMPL            | ``vp_tmpl_t``      | Yes                    |
+ * | FR_TYPE_BOOL            | ``bool``           | No                     |
+ * | FR_TYPE_UINT32          | ``uint32_t``       | No                     |
+ * | FR_TYPE_UINT16          | ``uint16_t``       | No                     |
+ * | FR_TYPE_UINT64          | ``uint64_t``       | No                     |
+ * | FR_TYPE_INT32           | ``int32_t``        | No                     |
+ * | FR_TYPE_STRING          | ``char const *``   | Yes                    |
+ * | FR_TYPE_IPV4_ADDR       | ``fr_ipaddr_t``    | No                     |
+ * | FR_TYPE_IPV4_PREFIX     | ``fr_ipaddr_t``    | No                     |
+ * | FR_TYPE_IPV6_ADDR       | ``fr_ipaddr_t``    | No                     |
+ * | FR_TYPE_IPV6_PREFIX     | ``fr_ipaddr_t``    | No                     |
+ * | FR_TYPE_COMBO_IP_ADDR   | ``fr_ipaddr_t``    | No                     |
+ * | FR_TYPE_COMBO_IP_PREFIX | ``fr_ipaddr_t``    | No                     |
+ * | FR_TYPE_TIMEVAL         | ``struct timeval`` | No                     |
+ *
+ * @param[in] ctx	To allocate arrays and values in.
+ * @param[in] cs	to search for matching #CONF_PAIR in.
+ * @param[in] name	of #CONF_PAIR to search for.
+ * @param[in] type	Data type to parse #CONF_PAIR value as.
+ *			Should be one of the following ``data`` types,
+ *			and one or more of the following ``flag`` types or'd together:
+ *	- ``data`` #FR_TYPE_TMPL 		- @copybrief FR_TYPE_TMPL
+ *					  	  Feeds the value into #tmpl_afrom_str. Value can be
+ *					  	  obtained when processing requests, with #tmpl_expand or #tmpl_aexpand.
+ *	- ``data`` #FR_TYPE_BOOL		- @copybrief FR_TYPE_BOOL
+ *	- ``data`` #FR_TYPE_UINT32		- @copybrief FR_TYPE_UINT32
+ *	- ``data`` #FR_TYPE_UINT16		- @copybrief FR_TYPE_UINT16
+ *	- ``data`` #FR_TYPE_UINT64		- @copybrief FR_TYPE_UINT64
+ *	- ``data`` #FR_TYPE_INT32		- @copybrief FR_TYPE_INT32
+ *	- ``data`` #FR_TYPE_STRING		- @copybrief FR_TYPE_STRING
+ *	- ``data`` #FR_TYPE_IPV4_ADDR		- @copybrief FR_TYPE_IPV4_ADDR (IPv4 address with prefix 32).
+ *	- ``data`` #FR_TYPE_IPV4_PREFIX		- @copybrief FR_TYPE_IPV4_PREFIX (IPv4 address with variable prefix).
+ *	- ``data`` #FR_TYPE_IPV6_ADDR		- @copybrief FR_TYPE_IPV6_ADDR (IPv6 address with prefix 128).
+ *	- ``data`` #FR_TYPE_IPV6_PREFIX		- @copybrief FR_TYPE_IPV6_PREFIX (IPv6 address with variable prefix).
+ *	- ``data`` #FR_TYPE_COMBO_IP_ADDR 	- @copybrief FR_TYPE_COMBO_IP_ADDR (IPv4/IPv6 address with
+ *						  prefix 32/128).
+ *	- ``data`` #FR_TYPE_COMBO_IP_PREFIX	- @copybrief FR_TYPE_COMBO_IP_PREFIX (IPv4/IPv6 address with
+ *						  variable prefix).
+ *	- ``data`` #FR_TYPE_TIMEVAL		- @copybrief FR_TYPE_TIMEVAL
+ *	- ``flag`` #FR_TYPE_DEPRECATED		- @copybrief FR_TYPE_DEPRECATED
+ *	- ``flag`` #FR_TYPE_REQUIRED		- @copybrief FR_TYPE_REQUIRED
+ *	- ``flag`` #FR_TYPE_ATTRIBUTE		- @copybrief FR_TYPE_ATTRIBUTE
+ *	- ``flag`` #FR_TYPE_SECRET		- @copybrief FR_TYPE_SECRET
+ *	- ``flag`` #FR_TYPE_FILE_INPUT		- @copybrief FR_TYPE_FILE_INPUT
+ *	- ``flag`` #FR_TYPE_NOT_EMPTY		- @copybrief FR_TYPE_NOT_EMPTY
+ *	- ``flag`` #FR_TYPE_MULTI		- @copybrief FR_TYPE_MULTI
+ *	- ``flag`` #FR_TYPE_IS_SET		- @copybrief FR_TYPE_IS_SET
+ * @param[out] data		Pointer to a global variable, or pointer to a field in the struct being populated with values.
+ * @param[in] dflt		value to use, if no #CONF_PAIR is found.
+ * @param[in] dflt_quote	around the dflt value.
+ * @return
+ *	- 1 if default value was used, or if there was no CONF_PAIR or dflt.
+ *	- 0 on success.
+ *	- -1 on error.
+ *	- -2 if deprecated.
+ */
+int cf_pair_parse(TALLOC_CTX *ctx, CONF_SECTION *cs, char const *name,
+		  unsigned int type, void *data, char const *dflt, FR_TOKEN dflt_quote)
+{
+	CONF_PARSER rule = {
+		.name = name,
+		.type = type,
+		.dflt = dflt,
+		.quote = dflt_quote
+	};
+
+	return cf_pair_parse_internal(ctx, data, cs, &rule);
 }
 
 /** Pre-allocate a config section structure to allow defaults to be set
@@ -968,7 +1008,7 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs)
 		/*
 		 *	Parse the pair we found, or a default value.
 		 */
-		ret = cf_pair_parse(ctx, cs, rule->name, rule->type, data, rule->dflt, rule->quote);
+		ret = cf_pair_parse_internal(ctx, data, cs, rule);
 		switch (ret) {
 		case 1:		/* Used default (or not present) */
 			if (is_set) *is_set = false;

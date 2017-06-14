@@ -342,14 +342,15 @@ typedef struct CONF_PARSER CONF_PARSER;
 
 /** Callback for performing custom parsing of a #CONF_SECTION or CONF_PAIR
  *
+ * @param[in] ctx	to allocate any data in.
  * @param[out] out	Where to write the result of parsing.
  * @param[in] ci	The #CONF_SECTION or #CONF_PAIR to parse.
- * @param[in] rules	Parse rules - How the #CONF_PAIR or #CONF_SECTION should be converted.
+ * @param[in] rule	Parse rules - How the #CONF_PAIR or #CONF_SECTION should be converted.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-typedef int (* cf_parse_t)(void *out, CONF_ITEM *ci, CONF_PARSER const *rules);
+typedef int (* cf_parse_t)(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
 
 /** Defines a #CONF_PAIR to C data type mapping
  *
