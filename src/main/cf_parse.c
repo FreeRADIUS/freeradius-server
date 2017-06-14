@@ -862,7 +862,7 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 	size_t			subcs_size = rule->subcs_size;
 	CONF_PARSER const	*rules = rule->subcs;
 
-	uint8_t			**array;
+	uint8_t			**array = NULL;
 
 	rad_assert(type & FR_TYPE_SUBSECTION);
 
