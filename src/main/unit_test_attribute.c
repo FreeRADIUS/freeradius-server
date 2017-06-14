@@ -34,6 +34,7 @@ typedef struct REQUEST REQUEST;
 #include <freeradius-devel/conf.h>
 #include <freeradius-devel/radpaths.h>
 #include <freeradius-devel/dhcp.h>
+#include <freeradius-devel/cf_parse.h>
 
 #ifdef WITH_TACACS
 #include "../modules/proto_tacacs/tacacs.h"
