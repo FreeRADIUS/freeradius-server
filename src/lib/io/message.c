@@ -597,6 +597,8 @@ static void fr_message_gc(fr_message_set_t *ms, int max_to_clean)
 	 *	This is different from the allocation strategy for
 	 *	messages.
 	 */
+	if (!rad_cond_assert(ms->rb_array[ms->rb_max] != NULL)) return;
+
 	largest_free_slot = ms->rb_max;
 	largest_free_size = (fr_ring_buffer_size(ms->rb_array[ms->rb_max]) -
 			     fr_ring_buffer_used(ms->rb_array[ms->rb_max]));
