@@ -873,7 +873,7 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 	 *	Handle the single subsection case (which is simple)
 	 */
 	if (!(type & FR_TYPE_MULTI)) {
-		uint8_t *buff;
+		uint8_t *buff = NULL;
 
 		/*
 		 *	Add any rules, so the func can just call cf_section_parse
@@ -889,7 +889,7 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 		 */
 	 	if (!subcs_size) return cf_section_parse(ctx, out, subcs);
 
-		MEM(buff = talloc_array(ctx, uint8_t, subcs_size));
+		if (out) MEM(buff = talloc_array(ctx, uint8_t, subcs_size));
 
 		ret = cf_section_parse(buff, buff, subcs);
 		if (ret < 0) {
@@ -897,7 +897,7 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 			return ret;
 		}
 
-		*((uint8_t **)out) = buff;
+		if (out) *((uint8_t **)out) = buff;
 	}
 
 	rad_assert(subcs_size);
@@ -910,7 +910,7 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 	/*
 	 *	Allocate an array to hold the subsections
 	 */
-	MEM(array = talloc_array(ctx, uint8_t *, count));
+	if (out) MEM(array = talloc_array(ctx, uint8_t *, count));
 
 	/*
 	 *	Start parsing...
@@ -922,10 +922,12 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 	for (subcs = cf_section_find(cs, name, NULL), i = 0;
 	     subcs;
 	     subcs = cf_section_find_next(cs, subcs, name, NULL), i++) {
-		uint8_t *buff;
+		uint8_t *buff = NULL;
 
-		MEM(buff = talloc_zero_array(array, uint8_t, subcs_size));
-		array[i] = buff;
+		if (out) {
+			MEM(buff = talloc_zero_array(array, uint8_t, subcs_size));
+			array[i] = buff;
+		}
 
 		/*
 		 *	Add any rules, so the func can just call cf_section_parse
