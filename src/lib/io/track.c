@@ -25,6 +25,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/io/track.h>
+#include <freeradius-devel/rbtree.h>
 #include <freeradius-devel/rad_assert.h>
 
 
@@ -58,18 +59,59 @@ static void talloc_const_free(void const *ptr)
 struct fr_tracking_t {
 	int		num_entries;	//!< number of used entries.
 
+	size_t		src_dst_size;	//!< size of per-packet src/dst information
+
+	rbtree_t	*tree;		//!< for unconnected sockets
+
 	fr_tracking_entry_t *codes[FR_MAX_PACKET_CODE];
 };
 
+
+static int entry_cmp(void const *one, void const *two)
+{
+	fr_tracking_entry_t const *a = one;
+	fr_tracking_entry_t const *b = two;
+
+	/*
+	 *	Check Code and Identifier.
+	 *
+	 *	But NOT the Request Authenticator.
+	 */
+	if (a->data[0] < b->data[0]) return -1;
+	if (a->data[0] > b->data[0]) return +1;
+
+	if (a->data[1] < b->data[1]) return -1;
+	if (a->data[1] > b->data[1]) return +1;
+
+	return memcmp(a->src_dst, b->src_dst, a->src_dst_size);
+}
+
+
+/** Free one entry.
+ *
+ *  @todo - use a slab allocator.
+ */
+static void entry_free(void *data)
+{
+	fr_tracking_entry_t *entry = data;
+
+	talloc_free(entry);
+}
+
+
 /** Create a tracking table for one type of RADIUS packets.
  *
+ *  For connected sockets, it just tracks packets by ID.
+ *  For unconnected sockets, the caller has to provide a context for each packet...
+ *
  * @param[in] ctx the talloc ctx
+ * @param[in] src_dst_size size of src/dst information for a packet on this socket.  Use 0 for connected sockets.
  * @param[in] allowed_packets the array of packet codes which are tracked in this table.
  * @return
  *	- NULL on error
  *	- fr_tracking_t * on success
  */
-fr_tracking_t *fr_radius_tracking_create(TALLOC_CTX *ctx, void *allowed_packets[FR_MAX_PACKET_CODE])
+fr_tracking_t *fr_radius_tracking_create(TALLOC_CTX *ctx, size_t src_dst_size, void *allowed_packets[FR_MAX_PACKET_CODE])
 {
 	int i;
 	fr_tracking_t *ft;
@@ -80,7 +122,20 @@ fr_tracking_t *fr_radius_tracking_create(TALLOC_CTX *ctx, void *allowed_packets[
 	if (!ft) return NULL;
 
 	ft->num_entries = 0;
+	ft->src_dst_size = src_dst_size;
 
+	/*
+	 *	The socket is unconnected.  We need to track entries by src/dst ip/port.
+	 */
+	if (src_dst_size > 0) {
+		ft->tree = rbtree_create(ft, entry_cmp, entry_free, RBTREE_FLAG_NONE);
+		return ft;
+	}
+
+	/*
+	 *	The socket is connected.  We don't need per-packet
+	 *	src/dst information.
+	 */
 	for (i = 0; i < FR_MAX_PACKET_CODE; i++) {
 		if (!allowed_packets[i]) continue;
 
@@ -109,6 +164,7 @@ int fr_radius_tracking_entry_delete(fr_tracking_t *ft, fr_tracking_entry_t *entr
 	if (entry->timestamp == 0) return -1;
 
 	entry->timestamp = 0;
+	entry->src_dst = NULL;
 	ft->num_entries--;
 
 	/*
@@ -119,6 +175,17 @@ int fr_radius_tracking_entry_delete(fr_tracking_t *ft, fr_tracking_entry_t *entr
 		entry->reply = NULL;
 		entry->reply_len = 0;
 	}
+
+	/*
+	 *	If we're not tracking src/dst ip/port, just return.
+	 */
+	if (!ft->src_dst_size) return 0;
+
+	/*
+	 *	We are tracking src/dst ip/port, we have to remove
+	 *	this entry from the tracking tree, and then free it.
+	 */
+	rbtree_deletebydata(ft->tree, entry);
 
 	return 0;
 }
@@ -136,55 +203,121 @@ int fr_radius_tracking_entry_delete(fr_tracking_t *ft, fr_tracking_entry_t *entr
  *	- FR_TRACKING_DIFFERENT, the old packet was deleted, and the newer packet inserted
  */
 fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_t *ft, uint8_t *packet, fr_time_t timestamp,
-						     fr_tracking_entry_t **p_entry)
+						     uint8_t const *src_dst, fr_tracking_entry_t **p_entry)
 {
+	bool insert = false;
 	fr_tracking_entry_t *entry;
 
 	(void) talloc_get_type_abort(ft, fr_tracking_t);
 
 	if (!packet[0] || (packet[0] > FR_MAX_PACKET_CODE)) return FR_TRACKING_ERROR;
 
-	if (!ft->codes[packet[0]]) return FR_TRACKING_ERROR;
-
-	entry = &ft->codes[packet[0]][packet[1]];
-
 	/*
-	 *	The entry is unused, insert it.
+	 *	Connected socket: just look in the array.
 	 */
-	if (entry->timestamp == 0) {
+	if (ft->src_dst_size) {
+		if (!ft->codes[packet[0]]) return FR_TRACKING_ERROR;
+
+		entry = &ft->codes[packet[0]][packet[1]];
+
+		/*
+		 *	The entry is unused, insert it.
+		 */
+		if (entry->timestamp == 0) {
+			entry->timestamp = timestamp;
+			entry->src_dst = src_dst;
+			entry->src_dst_size = ft->src_dst_size;
+
+			memcpy(&entry->data[0], packet, sizeof(entry->data));
+			*p_entry = entry;
+
+			ft->num_entries++;
+			return FR_TRACKING_NEW;
+		}
+
+		/*
+		 *	Is it the same packet?  If so, return that.
+		 */
+		if (memcmp(&entry->data[0], packet, sizeof(entry->data)) == 0) {
+			*p_entry = entry;
+			return FR_TRACKING_SAME;
+		}
+
+		/*
+		 *	It's in use, but the new packet is different.  update
+		 *	the timestamp, so that anyone checking it knows it's
+		 *	no longer relevant.
+		 */
 		entry->timestamp = timestamp;
-		memcpy(&entry->data[0], packet, sizeof(entry->data));
-		*p_entry = entry;
 
-		ft->num_entries++;
-		return FR_TRACKING_NEW;
+		if (entry->reply) {
+			talloc_const_free(entry->reply);
+			entry->reply_len = 0;
+		}
+		entry->src_dst = NULL;
+
+	} else {
+		fr_tracking_entry_t my_entry;
+
+		/*
+		 *	Unconnected socket: we have to allocate the
+		 *	entry ourselves.
+		 *
+		 *	@todo - use a slab allocator
+		 */
+		my_entry.src_dst = src_dst;
+		my_entry.src_dst_size = ft->src_dst_size;
+		memcpy(my_entry.data, packet, sizeof(my_entry.data));
+
+		/*
+		 *	See if we're adding a duplicate, or
+		 *	over-writing an existing one.
+		 */
+		entry = rbtree_finddata(ft->tree, &my_entry);
+		if (entry) {
+			/*
+			 *	Duplicate, tell the caller so.
+			 */
+			if (memcmp(&entry->data[0], packet, sizeof(entry->data)) == 0) {
+				*p_entry = entry;
+				return FR_TRACKING_SAME;
+			}			
+
+			/*
+			 *	Over-write an existing one.
+			 */
+			entry->timestamp = timestamp;
+
+			if (entry->reply) {
+				talloc_const_free(entry->reply);
+				entry->reply_len = 0;
+			}
+
+		} else {
+			/*
+			 *	No existing entry, create a new one.
+			 */
+			entry = talloc_zero(ft->tree, fr_tracking_entry_t);
+			if (!entry) return FR_TRACKING_ERROR;
+
+			entry->timestamp = timestamp;
+			insert = true;
+		}
 	}
 
 	/*
-	 *	Is it the same packet?  If so, return that.
+	 *	Set up src/dst stuff.
 	 */
-	if (memcmp(&entry->data[0], packet, sizeof(entry->data)) == 0) {
-		*p_entry = entry;
-		return FR_TRACKING_SAME;
-	}
-
-	/*
-	 *	It's in use, but the new packet is different.  update
-	 *	the timestamp, so that anyone checking it knows it's
-	 *	no longer relevant.
-	 */
-	entry->timestamp = timestamp;
-
-	if (entry->reply) {
-		talloc_const_free(entry->reply);
-		entry->reply_len = 0;
-	}
+	entry->src_dst = src_dst;
+	entry->src_dst_size = ft->src_dst_size;
 
 	/*
 	 *	Copy the new packet over top of the old one.
 	 */
 	memcpy(&entry->data[0], packet, sizeof(entry->data));
 	*p_entry = entry;
+
+	if (insert) rbtree_insert(ft->tree, entry);
 
 	return FR_TRACKING_DIFFERENT;
 }
