@@ -436,7 +436,7 @@ static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, char const *name,
 	 */
 	expanded = cf_expand_variables("<internal>", &lineno, cs, buffer, sizeof(buffer), dflt, NULL);
 	if (!expanded) {
-		cf_log_err(&(cs->item), "Failed expanding variable %s", name);
+		cf_log_err(cs, "Failed expanding variable %s", name);
 		return -1;
 	}
 
@@ -1019,7 +1019,7 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs)
 		case -2:	/* Deprecated CONF ITEM */
 			if (((rule + 1)->offset && ((rule + 1)->offset == rule->offset)) ||
 			    ((rule + 1)->data && ((rule + 1)->data == rule->data))) {
-				cf_log_err(&(cs->item), "Replace \"%s\" with \"%s\"", rule->name,
+				cf_log_err(cs, "Replace \"%s\" with \"%s\"", rule->name,
 					   (rule + 1)->name);
 			}
 			goto finish;
