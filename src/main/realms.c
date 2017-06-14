@@ -27,6 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/realms.h>
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/net.h>
+#include <freeradius-devel/cf_parse.h>
 
 #include <sys/stat.h>
 

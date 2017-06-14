@@ -889,7 +889,7 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs,
 
 		if (cf_section_rules_push(subcs, rules) < 0) {
 			talloc_free(array);
-			return ret;
+			return -1;
 		}
 
 		ret = cf_section_parse(buff, buff, subcs);
@@ -1237,6 +1237,8 @@ const CONF_PARSER *cf_section_parse_table(CONF_SECTION *cs)
  *
  * @param[in] cs	to add rules to.
  * @param[in] rule	to add.
+ * @param[in] filename	where the rule was pushed.
+ * @param[in] lineno	where the rule was pushed.
  * @return
  *	- 0 on success.
  *	- -1 if the rules added conflict.
@@ -1266,6 +1268,8 @@ int _cf_section_rule_push(CONF_SECTION *cs, CONF_PARSER const *rule, char const 
  *
  * @param[in] cs	to add rules to.
  * @param[in] rules	to add.  Last element should have NULL name field.
+ * @param[in] filename	where the rule was pushed.
+ * @param[in] lineno	where the rule was pushed.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
