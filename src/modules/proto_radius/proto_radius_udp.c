@@ -27,8 +27,21 @@
 #include <freeradius-devel/udp.h>
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/io/io.h>
+#include <freeradius-devel/io/application.h>
 #include <freeradius-devel/rad_assert.h>
 #include "proto_radius.h"
+
+typedef struct {
+	uint8_t			header[20];
+	uint8_t			id;
+
+	fr_ipaddr_t		src_ipaddr;
+	fr_ipaddr_t		dst_ipaddr;
+	uint16_t		src_port;
+	uint16_t 		dst_port;
+
+	RADCLIENT		*client;
+} fr_proto_radius_packet_ctx_t;
 
 typedef struct {
 	int				sockfd;
@@ -46,20 +59,11 @@ typedef struct {
 	uint32_t			recv_buff;		//!< How big the kernel's receive buffer should be.
 	bool				recv_buff_is_set;	//!< Whether we were provided with a receive
 								//!< buffer value.
-	/*
-	 *	SHIT
-	 */
-	uint8_t const			*secret;
-	size_t				secret_len;
 
-	uint8_t				original[20];
-	uint8_t				id;
-
-	struct sockaddr_storage		src;
-	socklen_t			salen;
+	RADCLIENT			*dummy_client;
 } fr_proto_radius_udp_ctx_t;
 
-static const CONF_PARSER udp_listen_conf[] = {
+static const CONF_PARSER udp_listen_config[] = {
 	{ FR_CONF_IS_SET_OFFSET("ipaddr", FR_TYPE_COMBO_IP_ADDR, fr_proto_radius_udp_ctx_t, ipaddr) },
 	{ FR_CONF_IS_SET_OFFSET("ipv4addr", FR_TYPE_IPV4_ADDR, fr_proto_radius_udp_ctx_t, ipaddr) },
 	{ FR_CONF_IS_SET_OFFSET("ipv6addr", FR_TYPE_IPV6_ADDR, fr_proto_radius_udp_ctx_t, ipaddr) },
@@ -72,16 +76,22 @@ static const CONF_PARSER udp_listen_conf[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static ssize_t mod_read(void *ctx, uint8_t *buffer, size_t buffer_len)
+static ssize_t mod_read(void const *instance, void **packet_ctx, uint8_t *buffer, size_t buffer_len)
 {
+	fr_proto_radius_udp_ctx_t const	*inst = talloc_get_type_abort(instance, fr_proto_radius_udp_ctx_t);
+	fr_proto_radius_packet_ctx_t	*pctx;
+
 	ssize_t				data_size;
 	size_t				packet_len;
-	fr_proto_radius_udp_ctx_t	*pc = ctx;
 	decode_fail_t			reason;
 
-	pc->salen = sizeof(pc->src);
+	struct sockaddr_storage		sockaddr;
+	socklen_t			salen = sizeof(sockaddr);
 
-	data_size = recvfrom(pc->sockfd, buffer, buffer_len, 0, (struct sockaddr *) &pc->src, &pc->salen);
+
+	memset(&sockaddr, 0, sizeof(sockaddr));
+
+	data_size = recvfrom(inst->sockfd, buffer, buffer_len, 0, (struct sockaddr *)&sockaddr, &salen);
 	if (data_size <= 0) return data_size;
 
 	packet_len = data_size;
@@ -89,47 +99,97 @@ static ssize_t mod_read(void *ctx, uint8_t *buffer, size_t buffer_len)
 	/*
 	 *	If it's not a RADIUS packet, ignore it.
 	 */
-	if (!fr_radius_ok(buffer, &packet_len, false, &reason)) {
-		return 0;
-	}
+	if (!fr_radius_ok(buffer, &packet_len, false, &reason)) return -1;
 
 	/*
 	 *	If the signature fails validation, ignore it.
 	 */
-	if (fr_radius_verify(buffer, NULL, pc->secret, pc->secret_len) < 0) {
-		return 0;
-	}
+	if (fr_radius_verify(buffer, NULL,
+			     (uint8_t const *)inst->dummy_client->secret,
+			     talloc_array_length(inst->dummy_client->secret)) < 0) return -1;
 
-	pc->id = buffer[1];
-	memcpy(pc->original, buffer, sizeof(pc->original));
+	/*
+	 *	Populate the packet context
+	 */
+	pctx = talloc_zero(NULL, fr_proto_radius_packet_ctx_t);
+	pctx->client = inst->dummy_client;
+	if (fr_ipaddr_from_sockaddr(&sockaddr, salen, &pctx->src_ipaddr, &pctx->src_port) < 0) {
+		PERROR("Read failed");
+		talloc_free(pctx);
+		return -1;
+	}
+	pctx->id = buffer[1];
+	memcpy(pctx->header, buffer, sizeof(pctx->header));
+
+	*packet_ctx = pctx;
 
 	return packet_len;
 }
 
 
-static ssize_t mod_write(void *ctx, uint8_t *buffer, size_t buffer_len)
+static ssize_t mod_write(void const *instance, void *packet_ctx, uint8_t *buffer, size_t buffer_len)
 {
-	ssize_t data_size;
-	fr_proto_radius_udp_ctx_t *pc = ctx;
+	fr_proto_radius_udp_ctx_t const	*inst = talloc_get_type_abort(instance, fr_proto_radius_udp_ctx_t);
+	fr_proto_radius_packet_ctx_t	*pctx = talloc_get_type_abort(packet_ctx, fr_proto_radius_packet_ctx_t);
 
-	pc->salen = sizeof(pc->src);
+	ssize_t				data_size;
+	struct sockaddr_storage		sockaddr;
+	socklen_t			salen;
+
+	if (fr_ipaddr_to_sockaddr(&pctx->src_ipaddr, pctx->src_port, &sockaddr, &salen) < 0) {
+		PERROR("Write failed");
+		talloc_free(packet_ctx);
+		return -1;
+	}
 
 	/*
 	 *	@todo - do more stuff
 	 */
-	data_size = sendto(pc->sockfd, buffer, buffer_len, 0, (struct sockaddr *) &pc->src, pc->salen);
+	data_size = sendto(inst->sockfd, buffer, buffer_len, 0, (struct sockaddr *) &sockaddr, salen);
 	if (data_size <= 0) return data_size;
+
+	talloc_free(packet_ctx);	/* Probably a bad idea */
 
 	/*
 	 *	@todo - post-write cleanups
 	 */
-
 	return data_size;
 }
 
-static int mod_instantiate(CONF_SECTION *cs, void *instance)
+/** Open a UDP listener for RADIUS
+ *
+ * @param[in] instance of the RADIUS UDP I/O path.
+ * @return
+ *	- <0 on error
+ *	- 0 on success
+ */
+static int mod_open(void *instance)
 {
-	fr_proto_radius_udp_ctx_t	*inst = instance;
+	fr_proto_radius_udp_ctx_t *inst = instance;
+
+	int				sockfd = 0;
+	uint16_t			port = inst->port;
+
+	sockfd = fr_socket_server_udp(&inst->ipaddr, &port, inst->port_name, true);
+	if (sockfd < 0) {
+		ERROR("%s", fr_strerror());
+	error:
+		return -1;
+	}
+
+	if (fr_socket_bind(sockfd, &inst->ipaddr, &port, inst->interface) < 0) {
+		ERROR("Failed binding socket: %s", fr_strerror());
+		goto error;
+	}
+
+	inst->sockfd = sockfd;
+
+	return 0;
+}
+
+static int mod_instantiate(void *instance, CONF_SECTION *cs)
+{
+	fr_proto_radius_udp_ctx_t *inst = instance;
 
 	/*
 	 *	Default to all IPv6 interfaces (it's the future)
@@ -162,38 +222,7 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 		inst->port = ntohl(s->s_port);
 	}
 
-	inst->secret = (uint8_t const *) "testing123";
-	inst->secret_len = 10;
-
-	return 0;
-}
-
-/** Open a UDP listener for RADIUS
- *
- * @param[in] instance of the RADIUS UDP I/O path.
- * @return
- *	- <0 on error
- *	- 0 on success
- */
-static int mod_open(void *instance)
-{
-	fr_proto_radius_udp_ctx_t	*inst = instance;
-
-	int				sockfd = 0;
-
-	sockfd = fr_socket_server_udp(&inst->ipaddr, &inst->port, inst->port_name, true);
-	if (sockfd < 0) {
-		ERROR("%s", fr_strerror());
-	error:
-		return -1;
-	}
-
-	if (fr_socket_bind(sockfd, &inst->ipaddr, &inst->port, inst->interface) < 0) {
-		ERROR("Failed binding socket: %s", fr_strerror());
-		goto error;
-	}
-
-	inst->sockfd = sockfd;
+	inst->dummy_client = client_afrom_query(inst, "127.0.0.1", "testing123", "test", "test", NULL, false);
 
 	return 0;
 }
@@ -203,9 +232,9 @@ static int mod_open(void *instance)
  * @param[in] instance of the RADIUS UDP I/O path.
  * @return the file descriptor
  */
-static int mod_fd(void *instance)
+static int mod_fd(void const *instance)
 {
-	fr_proto_radius_udp_ctx_t	*inst = instance;
+	fr_proto_radius_udp_ctx_t const *inst = instance;
 
 	return inst->sockfd;
 }
@@ -214,7 +243,7 @@ extern fr_app_io_t proto_radius_udp;
 fr_app_io_t proto_radius_udp = {
 	.magic			= RLM_MODULE_INIT,
 	.name			= "radius_udp",
-	.config			= udp_listen_conf,
+	.config			= udp_listen_config,
 	.inst_size		= sizeof(fr_proto_radius_udp_ctx_t),
 	.inst_type		= "fr_proto_radius_udp_ctx_t",
 	.instantiate		= mod_instantiate,

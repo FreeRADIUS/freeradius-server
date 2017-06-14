@@ -142,11 +142,22 @@ struct dl_module {
 	dl_common_t const	*common;	//!< Symbol exported by the module, containing its public
 						//!< functions, name and behaviour control flags.
 
-	CONF_SECTION		*conf;		//!< The module's configuration (as opposed to the instance,
+	CONF_SECTION		*conf;		//!< The module's global configuration (as opposed to the instance,
 						//!< configuration).  May be NULL.
 
 	void			*handle;	//!< Handle returned by dlopen.
 };
+
+/** A module/inst tuple
+ *
+ * Used to pass data back from dl_submodule_parse_func
+ */
+typedef struct {
+	dl_t const		*module;
+	void			*inst;
+	CONF_SECTION		*conf;		//!< Module's instance configuration.
+} dl_submodule_t;
+
 
 int		dl_symbol_init_cb_register(char const *symbol, dl_init_t func, void *ctx);
 
@@ -156,11 +167,14 @@ int		dl_symbol_free_cb_register(char const *symbol, dl_free_t func, void *ctx);
 
 void		dl_symbol_free_cb_unregister(char const *symbol, dl_free_t func);
 
-int		dl_instance_data_alloc(void **out, TALLOC_CTX *ctx, dl_t const *module, CONF_SECTION *cs);
+int		dl_instance_data_alloc(TALLOC_CTX *ctx, void **out, dl_t const *module, CONF_SECTION *cs);
 
 dl_t const	*dl_by_symbol(void *sym);
 
 dl_t const	*dl_module(CONF_SECTION *conf, dl_t const *parent, char const *name, dl_type_t type);
+
+int		dl_submodule(TALLOC_CTX *ctx, dl_submodule_t **out,
+			     CONF_SECTION *conf, dl_t const *parent, char const *name);
 
 #ifdef __cplusplus
 }

@@ -560,7 +560,12 @@ int main(int argc, char *argv[])
 	/*
 	 *	And then load the virtual servers.
 	 */
-	if (virtual_servers_init(sc, main_config.config) < 0) exit(EXIT_FAILURE);
+	if (virtual_servers_instantiate(main_config.config) < 0) exit(EXIT_FAILURE);
+
+	/*
+	 *	If this isn't just a config check, open the sockets
+	 */
+	if (!check_config && virtual_servers_open(sc) < 0) exit(EXIT_FAILURE);
 
 	/*
 	 *	Initialise the SNMP stats structures

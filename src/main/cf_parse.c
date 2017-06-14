@@ -846,22 +846,23 @@ static void cf_section_parse_warn(CONF_SECTION *cs)
  * @param[in] ctx		to allocate any additional structures under.
  * @param[out] out		pointer to a struct/pointer to fill with data.
  * @param[in] cs		to parse.
- * @param[in] name		of subsection to parse.
- * @param[in] type		flags.
- * @param[in] rules		to push for subsections.
- * @param[in] subcs_size	size of subsection structures to allocate.
+ * @param[in] rule		to parse the subcs with.
  * @return
  *	- 0 on success.
  *	- -1 on general error.
  *	- -2 if a deprecated #CONF_ITEM was found.
  */
-static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs,
-			       char const *name, fr_type_t type,
-			       CONF_PARSER const *rules, size_t subcs_size)
+static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CONF_PARSER const *rule)
 {
-	CONF_SECTION	*subcs = NULL;
-	int		count = 0, i, ret;
-	uint8_t		**array;
+	CONF_SECTION		*subcs = NULL;
+	int			count = 0, i, ret;
+
+	char const		*name = rule->name;
+	fr_type_t		type = rule->type;
+	size_t			subcs_size = rule->subcs_size;
+	CONF_PARSER const	*rules = rule->subcs;
+
+	uint8_t			**array;
 
 	rad_assert(type & FR_TYPE_SUBSECTION);
 
@@ -874,7 +875,12 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs,
 	if (!(type & FR_TYPE_MULTI)) {
 		uint8_t *buff;
 
+		/*
+		 *	Add any rules, so the func can just call cf_section_parse
+		 *	if it wants to continue after doing its stuff.
+		 */
 		if (cf_section_rules_push(subcs, rules) < 0) return -1;
+		if (rule->func) return rule->func(ctx, out, cf_section_to_item(cs), rule);
 
 		/*
 		 *	FIXME: We shouldn't allow nested structures like this.
@@ -921,9 +927,21 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs,
 		MEM(buff = talloc_zero_array(array, uint8_t, subcs_size));
 		array[i] = buff;
 
+		/*
+		 *	Add any rules, so the func can just call cf_section_parse
+		 *	if it wants to continue after doing its stuff.
+		 */
 		if (cf_section_rules_push(subcs, rules) < 0) {
 			talloc_free(array);
 			return -1;
+		}
+		if (rule->func) {
+			ret = rule->func(ctx, buff, cf_section_to_item(cs), rule);
+			if (ret < 0) {
+				talloc_free(array);
+				return ret;
+			}
+			continue;
 		}
 
 		ret = cf_section_parse(buff, buff, subcs);
@@ -972,24 +990,22 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs)
 		 */
 		if (cf_section_parse_init(cs, base, rule) < 0) return -1;
 
-		/*
-		 *	Handle subsections specially
-		 */
-		if (FR_BASE_TYPE(rule->type) == FR_TYPE_SUBSECTION) {
-			if (cf_subsection_parse(ctx, (uint8_t *)base + rule->offset, cs,
-						rule->name, rule->type,
-						rule->subcs, rule->subcs_size) < 0) goto finish;
-			continue;
-		} /* else it's a CONF_PAIR */
-
 		if (rule->data) {
 			data = rule->data; /* prefer this. */
 		} else if (base) {
 			data = ((uint8_t *)base) + rule->offset;
-		} else if (!rad_cond_assert(0)) {
-			ret = -1;
-			goto finish;
+		} else {
+			data = NULL;
 		}
+
+		/*
+		 *	Handle subsections specially
+		 */
+		if (FR_BASE_TYPE(rule->type) == FR_TYPE_SUBSECTION) {
+			if (cf_subsection_parse(ctx, data, cs, rule) < 0) goto finish;
+			continue;
+		} /* else it's a CONF_PAIR */
+
 
 		/*
 		 *	Get pointer to where we need to write out

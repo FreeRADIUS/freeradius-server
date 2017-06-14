@@ -24,6 +24,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/io/control.h>
 #include <freeradius-devel/io/worker.h>
+#include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/inet.h>
 #include <freeradius-devel/fr_log.h>
 #include <freeradius-devel/radius.h>
@@ -102,9 +103,9 @@ static fr_io_final_t test_process(REQUEST *request, fr_io_action_t action)
 }
 
 
-static int test_decode(void *packet_ctx, uint8_t *const data, size_t data_len, REQUEST *request)
+static int test_decode(void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
 {
-	fr_radius_packet_ctx_t const *pc = talloc_get_type_abort(packet_ctx, fr_radius_packet_ctx_t);
+	fr_radius_packet_ctx_t const *pc = talloc_get_type_abort(instance, fr_radius_packet_ctx_t);
 
 	request->number = pc->id;
 	request->process_async = test_process;
@@ -116,10 +117,10 @@ static int test_decode(void *packet_ctx, uint8_t *const data, size_t data_len, R
 	return 0;
 }
 
-static ssize_t test_encode(void *packet_ctx, REQUEST *request, uint8_t *buffer, size_t buffer_len)
+static ssize_t test_encode(void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
 {
 	FR_MD5_CTX context;
-	fr_radius_packet_ctx_t const *pc = talloc_get_type_abort(packet_ctx, fr_radius_packet_ctx_t);
+	fr_radius_packet_ctx_t const *pc = talloc_get_type_abort(instance, fr_radius_packet_ctx_t);
 
 	MPRINT1("\t\tENCODE >>> request %"PRIu64" - data %p %p room %zd\n",
 		request->number, pc, buffer, buffer_len);
@@ -139,9 +140,9 @@ static ssize_t test_encode(void *packet_ctx, REQUEST *request, uint8_t *buffer, 
 	return 20;
 }
 
-static size_t test_nak(void const *packet_ctx, uint8_t *const packet, size_t packet_len, UNUSED uint8_t *reply, UNUSED size_t reply_len)
+static size_t test_nak(void const *instance, uint8_t *const packet, size_t packet_len, UNUSED uint8_t *reply, UNUSED size_t reply_len)
 {
-	MPRINT1("\t\tNAK !!! request %d - data %p %p size %zd\n", packet[1], packet_ctx, packet, packet_len);
+	MPRINT1("\t\tNAK !!! request %d - data %p %p size %zd\n", packet[1], instance, packet, packet_len);
 
 	return 10;
 }
@@ -149,8 +150,6 @@ static size_t test_nak(void const *packet_ctx, uint8_t *const packet, size_t pac
 static fr_io_op_t op = {
 	.name = "worker-test",
 	.default_message_size = 4096,
-	.decode = test_decode,
-	.encode = test_encode,
 	.nak = test_nak,
 };
 
@@ -215,7 +214,7 @@ static void master_process(TALLOC_CTX *ctx)
 	int			kq_master;
 	fr_atomic_queue_t	*aq_master;
 	fr_control_t		*control_master;
-	fr_io_t			io = { .ctx = NULL, .op = &op };
+	fr_io_t			io = { .ctx = NULL, .op = &op, .encode = test_encode, .decode = test_decode };
 	int			sockfd;
 
 	MPRINT1("Master started.\n");

@@ -24,6 +24,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/io/control.h>
 #include <freeradius-devel/io/worker.h>
+#include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/rad_assert.h>
 
 #ifdef HAVE_GETOPT_H
@@ -82,7 +83,7 @@ static fr_io_final_t test_process(REQUEST *request, fr_io_action_t action)
 	return FR_IO_REPLY;
 }
 
-static int test_decode(void *packet_ctx, uint8_t *const data, size_t data_len, REQUEST *request)
+static int test_decode(UNUSED void const *packet_ctx, REQUEST *request, uint8_t *const data, size_t data_len)
 {
 	uint32_t number;
 
@@ -98,9 +99,9 @@ static int test_decode(void *packet_ctx, uint8_t *const data, size_t data_len, R
 	return 0;
 }
 
-static ssize_t test_encode(void *packet_ctx, REQUEST *request, uint8_t *const data, size_t data_len)
+static ssize_t test_encode(void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
 {
-	MPRINT1("\t\tENCODE >>> request %"PRIu64" - data %p %p size %zd\n", request->number, packet_ctx, data, data_len);
+	MPRINT1("\t\tENCODE >>> request %"PRIu64" - data %p %p size %zd\n", request->number, instance, data, data_len);
 
 	return data_len;
 }
@@ -123,8 +124,6 @@ static size_t test_nak(void const *packet_ctx, uint8_t *const packet, size_t pac
 static fr_io_op_t transport = {
 	.name = "worker-test",
 	.default_message_size = 4096,
-	.decode = test_decode,
-	.encode = test_encode,
 	.nak = test_nak,
 };
 
@@ -170,7 +169,7 @@ static void master_process(void)
 	fr_channel_event_t	ce;
 	pthread_attr_t		attr;
 	fr_schedule_worker_t	*sw;
-	fr_io_t			io = { .ctx = NULL, .op = &transport };
+	fr_io_t			io = { .ctx = NULL, .op = &transport, .encode = test_encode, .decode = test_decode };
 	struct kevent		events[MAX_KEVENTS];
 
 	ctx = talloc_init("master");

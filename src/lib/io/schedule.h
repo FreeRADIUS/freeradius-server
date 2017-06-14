@@ -36,14 +36,14 @@ extern "C" {
 typedef struct fr_schedule_t fr_schedule_t;
 typedef int (*fr_schedule_thread_instantiate_t)(void *ctx);
 
-fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *log, int max_inputs, int max_workers,
-				  fr_schedule_thread_instantiate_t worker_thread_instantiate,
-				  void *worker_thread_ctx);
+fr_schedule_t		*fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *log, int max_inputs, int max_workers,
+					    fr_schedule_thread_instantiate_t worker_thread_instantiate,
+					    void *worker_thread_ctx);
 /* schedulers are async, so there's no fr_schedule_run() */
-int fr_schedule_destroy(fr_schedule_t *sc);
-int fr_schedule_get_worker_kq(fr_schedule_t *sc);
+int			fr_schedule_destroy(fr_schedule_t *sc);
+int			fr_schedule_get_worker_kq(fr_schedule_t *sc);
 
-fr_network_t *fr_schedule_socket_add(fr_schedule_t *sc, fr_io_t const *io) CC_HINT(nonnull);
+fr_network_t		*fr_schedule_socket_add(fr_schedule_t *sc, fr_io_t const *io) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }

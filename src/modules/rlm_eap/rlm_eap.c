@@ -105,7 +105,7 @@ int eap_method_instantiate(rlm_eap_method_t **out, rlm_eap_t *inst, eap_type_t n
 	 *	Allocate submodule instance data and parse the method's
 	 *	configuration.
 	 */
-	if (dl_instance_data_alloc(&method->submodule_inst, method, method->submodule_handle, cs) < 0) {
+	if (dl_instance_data_alloc(method, &method->submodule_inst, method->submodule_handle, cs) < 0) {
 		talloc_free(method);
 		return -1;
 	}

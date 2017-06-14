@@ -64,6 +64,7 @@ RCSID("$Id$")
 #include <freeradius-devel/io/worker.h>
 #include <freeradius-devel/io/channel.h>
 #include <freeradius-devel/io/message.h>
+#include <freeradius-devel/io/listen.h>
 
 /**
  *  Track things by priority and time.
@@ -413,7 +414,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	if (size) {
 		ssize_t encoded;
 
-		encoded = request->io->op->encode(request->io->ctx, request, reply->m.data, reply->m.rb_size);
+		encoded = request->io->encode(request->io->ctx, request, reply->m.data, reply->m.rb_size);
 		if (encoded < 0) {
 			fr_log(worker->log, L_DBG, "\t%sfails encode", worker->name);
 			encoded = 0;
@@ -695,7 +696,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	 *
 	 *	Note that this also sets the "process_async" function.
 	 */
-	rcode = io->op->decode(io->ctx, cd->m.data, cd->m.data_size, request);
+	rcode = io->decode(io->ctx, request, cd->m.data, cd->m.data_size);
 	if (rcode < 0) {
 		fr_log(worker->log, L_DBG, "\t%sFAILED decode of request %"PRIu64, worker->name, request->number);
 		talloc_free(ctx);

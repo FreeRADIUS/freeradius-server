@@ -390,15 +390,15 @@ static void *dl_by_name(char const *name)
 
 /** Allocate module instance data, and parse the module's configuration
  *
- * @param[out] data	Module's private data, the result of parsing the config.
  * @param[in] ctx	to allocate this instance data in.
+ * @param[out] data	Module's private data, the result of parsing the config.
  * @param[in] module	to alloc instance data for.
  * @param[in] cs	module's config section.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int dl_instance_data_alloc(void **data, TALLOC_CTX *ctx, dl_t const *module, CONF_SECTION *cs)
+int dl_instance_data_alloc(TALLOC_CTX *ctx, void **data, dl_t const *module, CONF_SECTION *cs)
 {
 	*data = NULL;
 
@@ -765,6 +765,49 @@ dl_t const *dl_module(CONF_SECTION *conf, dl_t const *parent, char const *name, 
 	talloc_set_destructor(dl_module, _dl_free);	/* Do this late */
 
 	return dl_module;
+}
+
+/** Load a submodule and parse its #CONF_SECTION in one operation
+ *
+ * @note This is here as a convenience function for wrapping by #cf_parse_t callbacks.
+ *
+ * @param[in] ctx	to allocate structures in.
+ * @param[out] out	where to write our #dl_submodule_t containing the module
+ *			handle and instance.
+ * @param[in] conf	section to parse.
+ * @param[in] parent	module.
+ * @param[in] name	of the submodule to load .e.g. 'udp' for 'proto_radius_udp'
+ *			if the parent were 'proto_radius'.
+
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int dl_submodule(TALLOC_CTX *ctx, dl_submodule_t **out,
+		 CONF_SECTION *conf, dl_t const *parent, char const *name)
+{
+	dl_submodule_t	*submodule = talloc_zero(ctx, dl_submodule_t);
+
+	/*
+	 *	Find a section with the same name as the submodule
+	 */
+	submodule->module = dl_module(conf, parent, name, DL_TYPE_SUBMODULE);
+	if (!submodule->module) {
+		cf_log_err(conf, "Failed finding submodule library for '%s_%s'", parent->name, name);
+		return -1;
+	}
+
+	/*
+	 *	ctx here is the main module's instance data
+	 */
+	if (dl_instance_data_alloc(submodule, &submodule->inst, submodule->module, conf) < 0) {
+		cf_log_perr(conf, "Failed allocating instance data for '%s_%s'", parent->name, name);
+		return -1;
+	}
+
+	*out = submodule;
+
+	return 0;
 }
 
 /** Initialise structures needed by the dynamic linker

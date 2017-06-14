@@ -31,7 +31,6 @@ RCSIDH(transport_h, "$Id$")
 #include <freeradius-devel/event.h>
 #include <freeradius-devel/io/time.h>
 #include <freeradius-devel/io/channel.h>
-//#include <freeradius-devel/io/io.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -78,20 +77,20 @@ typedef struct fr_channel_t fr_channel_t;
  *
  * No data will be read from or written to the fd, except by the io_data callbacks here.
  *
- * @param[in] io_ctx the context for this function
+ * @param[in] instance the context for this function
  * @return
  *	- 0 on success
  *	- <0 on error
  */
-typedef int (*fr_io_open_t)(void *io_ctx);
+typedef int (*fr_io_open_t)(void *instance);
 
 /** Return a selectable file descriptor for this I/O path
  *
  * Return the file descriptor associated with this I/O path.
  *
- * @param[in] io_ctx	containing the file descriptor (amongst other things).
+ * @param[in] instance	containing the file descriptor (amongst other things).
  */
-typedef int (*fr_io_get_fd_t)(void *io_ctx);
+typedef int (*fr_io_get_fd_t)(void const *instance);
 
 /** Decode a raw packet and convert it into a request.
  *
@@ -103,15 +102,16 @@ typedef int (*fr_io_get_fd_t)(void *io_ctx);
  *  know anything about how the data will be used (e.g. authorize,
  *  authenticate, etc. for Access-Request)
  *
- * @param[in] io_ctx		the context for this function.
+ *
  * @param[in] data		the raw packet data
  * @param[in] data_len		the length of the raw data
  * @param[in,out] request	where the decoded VPs should be placed.
+ * @param[in] instance		the context for this function.
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-typedef int (*fr_io_decode_t)(void *io_ctx, uint8_t *const data, size_t data_len, REQUEST *request);
+typedef int (*fr_io_decode_t)(void const *instance, REQUEST *request, uint8_t *const data, size_t data_len);
 
 /** Encode data from a REQUEST into a raw packet.
  *
@@ -123,15 +123,16 @@ typedef int (*fr_io_decode_t)(void *io_ctx, uint8_t *const data, size_t data_len
  *  know anything about how the data will be used (e.g. reject delay
  *  on Access-Reject)
  *
- * @param[in] io_ctx		the context for this function.
+
  * @param[in,out]		request where the VPs to be encoded are located
  * @param[in] buffer		the buffer where the raw packet will be written
  * @param[in] buffer_len	the length of the buffer
+ * @param[in] instance		the context for this function.
  * @return
  *	- <0 on error
  *	- >=0 length of the encoded data in the buffer, will be <=buffer_len
  */
-typedef ssize_t (*fr_io_encode_t)(void *io_ctx, REQUEST *request, uint8_t *buffer, size_t buffer_len);
+typedef ssize_t (*fr_io_encode_t)(void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len);
 
 /** NAK a packet.
  *
@@ -148,17 +149,17 @@ typedef ssize_t (*fr_io_encode_t)(void *io_ctx, REQUEST *request, uint8_t *buffe
  *  take the appropriate action.  e.g. for RADIUS, mark a request as
  *  "do not respond", even if duplicates come in.
  *
- * @param[in] io_ctx		the context for this function.
+ * @param[in] instance		the context for this function.
  * @param[in] packet		the packet to NAK
  * @param[in] packet_len	length of the packet to NAK
  * @param[in] reply		the NAK reply
  * @param[in] reply_len		length of the buffer where the reply should be placed.
  * @return length of the data in the reply buffer.
  */
-typedef size_t (*fr_io_nak_t)(void const *io_ctx, uint8_t *const packet, size_t packet_len,
+typedef size_t (*fr_io_nak_t)(void const *instance, uint8_t *const packet, size_t packet_len,
 			      uint8_t *reply, size_t reply_len);
 
-/** Read/write from a socket.
+/** Read from a socket.
  *
  *  If the socket is a datagram socket, then the function can read or
  *  write directly into the buffer.  Stream sockets are a bit more complicated.
@@ -170,7 +171,7 @@ typedef size_t (*fr_io_nak_t)(void const *io_ctx, uint8_t *const packet, size_t 
  *  A stream writer MUST be prepared for the caller to delete the data
  *  immediately after calling the write routine.  This means that if
  *  the socket is not ready, the writer MUST copy the data to an
- *  internal buffer, usually in io_ctx.  It MUST then have a
+ *  internal buffer, usually in instance.  It MUST then have a
  *  write callback on the socket, which is called when the socket is
  *  ready for writing.  That callback can then write the internal
  *  buffer to the socket.
@@ -183,14 +184,50 @@ typedef size_t (*fr_io_nak_t)(void const *io_ctx, uint8_t *const packet, size_t 
  *  saying "I took saved the data, but the socket wasn't ready, so you
  *  need to call me again at a later point".
  *
- * @param[in] io_ctx		the context for this function
+ * @param[in] instance		the context for this function
+ * @param[out] packet_ctx	Where to write a newly allocated packet_ctx struct containing request specific data.
  * @param[in,out] buffer	the buffer where the raw packet will be written to (or read from)
  * @param[in] buffer_len	the length of the buffer
  * @return
  *	- <0 on error
  *	- >=0 length of the data read or written.
  */
-typedef ssize_t (*fr_io_data_t)(void *io_ctx, uint8_t *buffer, size_t buffer_len);
+typedef ssize_t (*fr_io_data_read_t)(void const *instance, void **packet_ctx, uint8_t *buffer, size_t buffer_len);
+
+/** Write a socket.
+ *
+ *  If the socket is a datagram socket, then the function can read or
+ *  write directly into the buffer.  Stream sockets are a bit more complicated.
+ *
+ *  A stream reader can read data into the buffer, and be guaranteed
+ *  that the data will not change in between subsequent calls to the
+ *  read routine.
+ *
+ *  A stream writer MUST be prepared for the caller to delete the data
+ *  immediately after calling the write routine.  This means that if
+ *  the socket is not ready, the writer MUST copy the data to an
+ *  internal buffer, usually in instance.  It MUST then have a
+ *  write callback on the socket, which is called when the socket is
+ *  ready for writing.  That callback can then write the internal
+ *  buffer to the socket.
+ *
+ *  i.e. this write() function is a way for the network thread to
+ *  write packets to the transport context.  The data may or may not
+ *  go out to the network right away.
+ *
+ *  If the writer returns LESS THAN buffer_len, that's a special case
+ *  saying "I took saved the data, but the socket wasn't ready, so you
+ *  need to call me again at a later point".
+ *
+ * @param[in,out] buffer	the buffer where the raw packet will be written to (or read from)
+ * @param[in] buffer_len	the length of the buffer
+ * @param[in] instance		the context for this function
+ * @param[in] packet_ctx	Request specific data.
+ * @return
+ *	- <0 on error
+ *	- >=0 length of the data read or written.
+ */
+typedef ssize_t (*fr_io_data_write_t)(void const *instance, void *packet_ctx, uint8_t *buffer, size_t buffer_len);
 
 /**  Handle a close or error on the socket.
  *
@@ -199,12 +236,12 @@ typedef ssize_t (*fr_io_data_t)(void *io_ctx, uint8_t *buffer, size_t buffer_len
  *  before "close".  On normal finish, the "close" function will be
  *  called.
  *
- * @param[in] io_ctx		the context for this function
+ * @param[in] instance		the context for this function
  * @return
  *	- 0 on success
  *	- <0 on error
  */
-typedef int (*fr_io_signal_t)(void *io_ctx);
+typedef int (*fr_io_signal_t)(void const *instance);
 
 /** Process a request through the transport async state machine.
  *
@@ -219,50 +256,16 @@ typedef struct fr_io_op_t {
 	char const		*name;		//!< Name of this transport
 	size_t			default_message_size; // Usually minimum message size
 
-	fr_io_decode_t		decode;		//!< Function to decode packet to request (worker)
-	fr_io_encode_t		encode;		//!< Function to encode request to packet (worker)
-
 	fr_io_open_t		open;		//!< Open a new socket for listening, or accept/connect a new
 						//!< connection.
-	fr_io_get_fd_t		fd;		//!< Return the file descriptor from the io_ctx.
-	fr_io_data_t		read;		//!< Read from a socket to a data buffer
-	fr_io_data_t		write;		//!< Write from a data buffer to a socket
+	fr_io_get_fd_t		fd;		//!< Return the file descriptor from the instance.
+	fr_io_data_read_t	read;		//!< Read from a socket to a data buffer
+	fr_io_data_write_t	write;		//!< Write from a data buffer to a socket
 	fr_io_signal_t		flush;		//!< Flush the data when the socket is ready for writing.
 	fr_io_signal_t		error;		//!< There was an error on the socket.
 	fr_io_signal_t		close;		//!< Close the transport.
 	fr_io_nak_t		nak;		//!< Function to send a NAK.
 } fr_io_op_t;
-
-typedef struct fr_io fr_io_t;
-struct fr_io {
-	void			*ctx;		//!< I/O path specific context.
-	fr_io_op_t const	*op;		//!< I/O path functions.
-	void			*parent;	//!< Parent usually the proto_* ctx.
-};
-
-#ifndef _FR_RADIUSD_H
-/**
- *	Minimal data structure to use the new code.
- */
-struct rad_request {
-	uint64_t		number;
-	int			heap_id;
-
-	fr_dlist_t		time_order;	//!< tracking requests by time order
-	fr_heap_t		*runnable;	//!< heap of runnable requests
-
-	fr_time_t		recv_time;
-	fr_time_t		*original_recv_time;
-	fr_event_list_t		*el;
-	fr_io_process_t		process_async;
-	fr_time_tracking_t	tracking;
-	fr_channel_t		*channel;
-
-	uint32_t		priority;
-	fr_io_t	const		*io;		//!< How we received this request,
-						//!< and how we'll send the reply.
-};
-#endif
 
 #ifdef __cplusplus
 }

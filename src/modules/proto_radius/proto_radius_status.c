@@ -28,6 +28,7 @@
 #include <freeradius-devel/udp.h>
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/io/io.h>
+#include <freeradius-devel/io/application.h>
 #include <freeradius-devel/rad_assert.h>
 
 static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
@@ -227,7 +228,7 @@ static int mod_compile_section(CONF_SECTION *server_cs, char const *name1, char 
 /*
  *	Ensure that the "radius" section is compiled.
  */
-static int mod_compile(CONF_SECTION *server_cs)
+static int mod_compile(UNUSED void *instance, CONF_SECTION *server_cs)
 {
 	int rcode;
 

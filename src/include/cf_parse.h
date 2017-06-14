@@ -75,6 +75,8 @@ typedef void _mismatch_size;		//!< Dummy type used to indicate FR_TYPE_*/C type 
 typedef void _mismatch_size_m;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 typedef void _mismatch_timeval;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 typedef void _mismatch_timeval_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_void;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_void_m;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 typedef void _mismatch_default;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 
 typedef void conf_type_mismatch;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
@@ -178,6 +180,10 @@ _Generic((_ct), \
 			_p, (_mismatch_timeval) 0), \
 	_timeval_t **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_TIMEVAL) && ((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_timeval_m) 0), \
+	void *		: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_VOID) && !((_t) & FR_TYPE_MULTI), \
+			_p, (_mismatch_void) 0), \
+	void **		: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_VOID) && ((_t) & FR_TYPE_MULTI), \
+			_p, (_mismatch_void_m) 0), \
 	default: (conf_type_mismatch)0))))))
 
 #  define FR_CONF_OFFSET(_n, _t, _s, _f) \
@@ -267,6 +273,7 @@ _Generic((_ct), \
  *  user-supplied variables.
  */
 #define FR_TYPE_SUBSECTION	102
+#define FR_TYPE_VOID		103
 
 /** @name #CONF_PARSER type flags
  *

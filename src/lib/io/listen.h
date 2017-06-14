@@ -13,8 +13,8 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_LISTEN_H
-#define _FR_LISTEN_H
+#ifndef _FR_IO_LISTEN_H
+#define _FR_IO_LISTEN_H
 #include <freeradius-devel/io/io.h>
 #include <freeradius-devel/io/application.h>
 
@@ -25,13 +25,13 @@
 typedef struct fr_io fr_io_t;
 struct fr_io {
 	fr_io_op_t const	*op;		//!< I/O path functions.
-	void const		*ctx;		//!< I/O path specific context.
-
-	fr_app_op_t const	*app_op;	//!< Application functions.
-	void const		*app_ctx;	//!< Application context.
+	void			*ctx;		//!< I/O path specific context.
 
 	fr_io_decode_t		decode;		//!< Function to decode packet to request (worker)
 	fr_io_encode_t		encode;		//!< Function to encode request to packet (worker)
+
+	fr_app_set_process_t	set_process;	//!< Set the state machine entry point for a request.
+	void const		*app_ctx;
 };
 
 #ifndef _FR_RADIUSD_H

@@ -39,21 +39,21 @@ typedef struct fr_schedule_t fr_schedule_t;
  */
 typedef struct fr_io_op_t fr_io_op_t;
 
+typedef int (*fr_app_open_t)(void *instance, fr_schedule_t *sc, CONF_SECTION *cs);
+typedef int (*fr_app_instantiate_t)(void *instance, CONF_SECTION *cs);
+typedef int (*fr_app_bootstrap_t)( void *instance, CONF_SECTION *cs);
 /** Set the next state executed by the request to be one of the application subtype's entry points
  *
  * @param[in] request	To set the next state function for.
  */
-typedef void (*fr_app_op_set_process_t)(REQUEST *request);
+typedef void (*fr_app_set_process_t)(REQUEST *request, void const *uctx);
 
-/** Public functions exported by the application
+/** Allows submodules to receive uctx data (a structure provided by their parent)
  *
+ * @param[in] instance	of #fr_app_subtype_t or #fr_app_io_t.
+ * @param[in] uctx	provided by caller.
  */
- typedef struct {
-	fr_app_op_set_process_t		set_process;
- } fr_app_op_t;
-
-typedef int (*fr_app_instantiate_t)(fr_schedule_t *sc, fr_conf_section_t *cs, bool validate_config);
-typedef int (*fr_app_bootstrap_t)(fr_conf_section_t *cs);
+typedef void (*fr_app_set_uctx_t)(void *instance, void *uctx);
 
 /** Describes a new application (protocol)
  *
@@ -63,11 +63,9 @@ typedef struct {
 
 	fr_app_bootstrap_t		bootstrap;
 	fr_app_instantiate_t		instantiate;
-
-	fr_app_op_t			op;		//!< Public functions for apps.
+	fr_app_open_t			open;		//!< Open listen sockets.
+	fr_app_set_process_t		set_process;
 } fr_app_t;
-
-typedef int (*fr_app_subtype_instantiate_t)(fr_conf_section_t *cs);
 
 /** Public structure describing an application (protocol) specialisation
  *
@@ -77,19 +75,11 @@ typedef int (*fr_app_subtype_instantiate_t)(fr_conf_section_t *cs);
 typedef struct fr_app_subtype_t {
 	RAD_MODULE_COMMON;				//!< Common fields to all loadable modules.
 
-	fr_app_subtype_instantiate_t	instantiate;	//!< Perform any config validation, and per-instance work.
+	fr_app_bootstrap_t		bootstrap;
+	fr_app_instantiate_t		instantiate;
+	fr_app_set_uctx_t		set_uctx;	//!< Allow the submodule to receive data from the main module.
 	fr_io_process_t			process;	//!< Entry point into the protocol subtype's state machine.
 } fr_app_subtype_t;
-
-/** Validate configurable elements of an fr_ctx_t
- *
- * @param[in] io_cs		Configuration describing the I/O mechanism.
- * @param[in] instance		data.  Pre-populated by parsing io_cs.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-typedef int (*fr_app_io_instantiate_t)(fr_conf_section_t *io_cs, void *instance);
 
 /** Public structure describing an I/O path for a protocol
  *
@@ -98,7 +88,9 @@ typedef int (*fr_app_io_instantiate_t)(fr_conf_section_t *io_cs, void *instance)
 typedef struct fr_app_io_t {
 	RAD_MODULE_COMMON;				//!< Common fields to all loadable modules.
 
-	fr_app_io_instantiate_t		instantiate;	//!< Perform any config validation, and per-instance work.
+	fr_app_bootstrap_t		bootstrap;
+	fr_app_instantiate_t		instantiate;
+	fr_app_set_uctx_t		set_uctx;	//!< Allow the submodule to receive data from the main module.
 	fr_io_op_t			op;		//!< Open/close/read/write functions for sending/receiving
 							//!< protocol data.
 } fr_app_io_t;

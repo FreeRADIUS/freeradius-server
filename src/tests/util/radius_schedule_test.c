@@ -23,6 +23,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/io/schedule.h>
+#include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/inet.h>
 #include <freeradius-devel/radius.h>
 #include <freeradius-devel/md5.h>
@@ -76,9 +77,9 @@ static fr_io_final_t test_process(REQUEST *request, fr_io_action_t action)
 	return FR_IO_REPLY;
 }
 
-static int test_decode(void *ctx, uint8_t *const data, size_t data_len, REQUEST *request)
+static int test_decode(void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
 {
-	fr_io_test_ctx_t const *pc = ctx;
+	fr_io_test_ctx_t const *pc = instance;
 
 	request->process_async = test_process;
 
@@ -89,10 +90,10 @@ static int test_decode(void *ctx, uint8_t *const data, size_t data_len, REQUEST 
 	return 0;
 }
 
-static ssize_t test_encode(void *ctx, REQUEST *request, uint8_t *buffer, size_t buffer_len)
+static ssize_t test_encode(void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
 {
 	FR_MD5_CTX context;
-	fr_io_test_ctx_t const *pc = ctx;
+	fr_io_test_ctx_t const *pc = instance;
 
 	MPRINT1("\t\tENCODE >>> request %"PRIu64"- data %p %p room %zd\n", request->number, pc, buffer, buffer_len);
 
@@ -136,7 +137,7 @@ static int test_open(void *ctx)
 	return 0;
 }
 
-static ssize_t test_read(void *ctx, uint8_t *buffer, size_t buffer_len)
+static ssize_t test_read(void const *ctx, UNUSED void **packet_ctx, uint8_t *buffer, size_t buffer_len)
 {
 	ssize_t			data_size;
 	fr_io_test_ctx_t	*io_ctx = talloc_get_type_abort(ctx, fr_io_test_ctx_t);
@@ -156,7 +157,7 @@ static ssize_t test_read(void *ctx, uint8_t *buffer, size_t buffer_len)
 }
 
 
-static ssize_t test_write(void *ctx, uint8_t *buffer, size_t buffer_len)
+static ssize_t test_write(void const *ctx, UNUSED void *packet_ctx, uint8_t *buffer, size_t buffer_len)
 {
 	ssize_t			data_size;
 	fr_io_test_ctx_t	*io_ctx = talloc_get_type_abort(ctx, fr_io_test_ctx_t);
@@ -173,7 +174,7 @@ static ssize_t test_write(void *ctx, uint8_t *buffer, size_t buffer_len)
 	return data_size;
 }
 
-static int test_fd(void *ctx)
+static int test_fd(void const *ctx)
 {
 	fr_io_test_ctx_t	*io_ctx = talloc_get_type_abort(ctx, fr_io_test_ctx_t);
 
@@ -186,8 +187,6 @@ static fr_io_op_t op = {
 	.open = test_open,
 	.read = test_read,
 	.write = test_write,
-	.decode = test_decode,
-	.encode = test_encode,
 	.fd = test_fd,
 	.nak = test_nak
 };
@@ -211,7 +210,7 @@ int main(int argc, char *argv[])
 	uint16_t		port16 = 0;
 	TALLOC_CTX		*autofree = talloc_init("main");
 	fr_schedule_t		*sched;
-	fr_io_t			io = { .op = &op };
+	fr_io_t			io = { .op = &op, .decode = test_decode, .encode = test_encode };
 	fr_io_test_ctx_t	*io_ctx;
 
 	io.ctx = io_ctx = talloc_zero(autofree, fr_io_test_ctx_t);

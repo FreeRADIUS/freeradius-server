@@ -32,6 +32,8 @@ RCSID("$Id$")
 #include <freeradius-devel/interpreter.h>
 #include <freeradius-devel/parser.h>
 #include <freeradius-devel/protocol.h>
+#include <freeradius-devel/dl.h>
+#include <freeradius-devel/io/application.h>
 
 static int default_component_results[MOD_COUNT] = {
 	RLM_MODULE_REJECT,	/* AUTH */
@@ -48,6 +50,87 @@ static int default_component_results[MOD_COUNT] = {
 	RLM_MODULE_NOOP		/* SEND_COA_TYPE */
 #endif
 };
+
+typedef struct {
+	dl_submodule_t		*proto_module;	//!< The proto_* module for a listen section.
+	fr_app_t const		*app;		//!< Easy access to the exported struct.
+} fr_virtual_listen_t;
+
+typedef struct {
+	char const		*namespace;	//!< Protocol namespace
+	fr_virtual_listen_t	**listener;	//!< Listeners in this virtual server.
+} fr_virtual_server_t;
+
+typedef struct {
+	fr_virtual_server_t	**server;	//!< All the servers in the server.
+} fr_virtual_t;
+
+/** Top level structure holding all virtual servers
+ *
+ * Blame LLDB for forcing the stupid name
+ */
+static fr_virtual_t *virtual_root;
+static int listen_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
+
+static const CONF_PARSER server_config[] = {
+	{ FR_CONF_OFFSET("namespace", FR_TYPE_STRING, fr_virtual_server_t, namespace) },
+	{ FR_CONF_OFFSET("listen", FR_TYPE_SUBSECTION | FR_TYPE_MULTI, fr_virtual_server_t, listener), \
+			 .subcs_size = sizeof(fr_virtual_listen_t), .func = listen_parse},
+
+	CONF_PARSER_TERMINATOR
+};
+
+const CONF_PARSER virtual_servers_config[] = {
+	{ FR_CONF_POINTER("server", FR_TYPE_SUBSECTION | FR_TYPE_MULTI, &virtual_root), \
+			  .subcs_size = sizeof(virtual_root), .subcs = (void const *) server_config},
+
+	CONF_PARSER_TERMINATOR
+};
+
+/** dl_open a proto_* module
+ *
+ * @param[in] ctx	to allocate data in (instance of proto_radius).
+ * @param[out] out	Where to our listen configuration.  Is a #fr_virtual_listen_t structure.
+ * @param[in] ci	#CONF_PAIR specifying the name of the type module.
+ * @param[in] rule	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int listen_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+	fr_virtual_listen_t	*listen = out;	/* Pre-allocated for us */
+	CONF_SECTION		*listen_cs = cf_item_to_section(ci);
+	CONF_SECTION		*server = cf_item_to_section(cf_parent(ci));
+	CONF_PAIR		*namespace;
+	dl_t const		*module;
+
+	talloc_set_type(listen, fr_virtual_listen_t);
+
+	namespace = cf_pair_find(server, "namespace");
+	if (!namespace) return 0;	/* Old style server, skip */
+
+	module = dl_module(listen_cs, NULL, cf_pair_value(namespace), DL_TYPE_PROTO);
+	if (!module) {
+		cf_log_perr(listen_cs, "Failed loading proto module");
+		return -1;
+	}
+
+	MEM(listen->proto_module = talloc_zero(listen, dl_submodule_t));
+
+	if (dl_instance_data_alloc(listen, &listen->proto_module->inst, module, listen_cs) < 0) {
+		cf_log_perr(listen_cs, "Failed parsing config");
+		talloc_free(listen);
+		return -1;
+	}
+
+	listen->proto_module->module = module;
+	listen->proto_module->conf = listen_cs;
+
+	*(void **)out = listen;
+
+	return 0;
+}
 
 /**
  */
@@ -236,44 +319,6 @@ rlm_rcode_t process_send_coa(int send_coa_type, REQUEST *request)
 }
 #endif
 
-static int define_type(CONF_SECTION *cs, fr_dict_attr_t const *da, char const *name)
-{
-	fr_value_box_t	value = { .type = FR_TYPE_UINT32 };
-	fr_dict_enum_t	*dval;
-
-	/*
-	 *	If the value already exists, don't
-	 *	create it again.
-	 */
-	dval = fr_dict_enum_by_alias(NULL, da, name);
-	if (dval) {
-		if (dval->value == 0) {
-			ERROR("The dictionaries must not define VALUE %s %s 0", da->name, name);
-			return -1;
-		}
-		return 0;
-	}
-
-	/*
-	 *	Create a new unique value with a
-	 *	meaningless number.  You can't look at
-	 *	it from outside of this code, so it
-	 *	doesn't matter.  The only requirement
-	 *	is that it's unique.
-	 */
-	do {
-		value.vb_uint32 = (fr_rand() & 0x00ffffff) + 1;
-	} while (fr_dict_enum_by_value(NULL, da, &value));
-
-	cf_log_debug(cs, "Creating %s = %s", da->name, name);
-	if (fr_dict_enum_add_alias(da, name, &value, true, false) < 0) {
-		ERROR("%s", fr_strerror());
-		return -1;
-	}
-
-	return 0;
-}
-
 /*
  *	Load a sub-module list, as found inside an Auth-Type foo {}
  *	block
@@ -358,8 +403,7 @@ static int virtual_servers_compile(CONF_SECTION *cs)
 	char const *name = cf_section_name2(cs);
 	CONF_PAIR *cp;
 
-	cf_log_info(cs, "server %s { # from file %s",
-		    name, cf_filename(cs));
+	cf_log_info(cs, "server %s { # from file %s", name, cf_filename(cs));
 
 	cp = cf_pair_find(cs, "namespace");
 	if (cp) {
@@ -443,6 +487,44 @@ static int virtual_servers_compile(CONF_SECTION *cs)
 	return 0;
 }
 
+static int define_type(CONF_SECTION *cs, fr_dict_attr_t const *da, char const *name)
+{
+	fr_value_box_t	value = { .type = FR_TYPE_UINT32 };
+	fr_dict_enum_t	*dval;
+
+	/*
+	 *	If the value already exists, don't
+	 *	create it again.
+	 */
+	dval = fr_dict_enum_by_alias(NULL, da, name);
+	if (dval) {
+		if (dval->value == 0) {
+			ERROR("The dictionaries must not define VALUE %s %s 0", da->name, name);
+			return -1;
+		}
+		return 0;
+	}
+
+	/*
+	 *	Create a new unique value with a
+	 *	meaningless number.  You can't look at
+	 *	it from outside of this code, so it
+	 *	doesn't matter.  The only requirement
+	 *	is that it's unique.
+	 */
+	do {
+		value.vb_uint32 = (fr_rand() & 0x00ffffff) + 1;
+	} while (fr_dict_enum_by_value(NULL, da, &value));
+
+	cf_log_debug(cs, "Creating %s = %s", da->name, name);
+	if (fr_dict_enum_add_alias(da, name, &value, true, false) < 0) {
+		ERROR("%s", fr_strerror());
+		return -1;
+	}
+
+	return 0;
+}
+
 static bool virtual_server_define_types(CONF_SECTION *cs, rlm_components_t comp)
 {
 	fr_dict_attr_t const *da;
@@ -503,37 +585,114 @@ static bool virtual_server_define_types(CONF_SECTION *cs, rlm_components_t comp)
 	return true;
 }
 
+/** Open all the listen sockets
+ *
+ * @param[in] sc	Scheduler to add I/O paths to.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int virtual_servers_open(fr_schedule_t *sc)
+{
+	size_t i, server_cnt = virtual_root ? talloc_array_length(virtual_root->server) : 0;
 
-/*
- *	Bootstrap Auth-Type, etc.
+	DEBUG2("%s: #### Opening listener interfaces ####", main_config.name);
+
+	for (i = 0; i < server_cnt; i++) {
+		fr_virtual_listen_t	**listener;
+		size_t			j, listen_cnt;
+
+		if (!virtual_root->server[i]) continue;	/* Skip old style */
+
+ 		listener = virtual_root->server[i]->listener;
+ 		listen_cnt = talloc_array_length(listener);
+
+		for (j = 0; j < listen_cnt; j++) {
+			fr_virtual_listen_t *listen = listener[j];
+
+			if (listen->app->open &&
+			    listen->app->open(listen->proto_module->inst, sc, listen->proto_module->conf) < 0) {
+				cf_log_err(listen->proto_module->conf, "Opening I/O interface failed");
+				return -1;
+			}
+		}
+
+	}
+
+	return 0;
+}
+
+/** Instantiate all the virtual servers
+ *
+ * @param[in] config	section containing all the virtual servers.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int virtual_servers_instantiate(CONF_SECTION *config)
+{
+	size_t i, server_cnt = virtual_root ? talloc_array_length(virtual_root->server) : 0;
+
+	CONF_SECTION *cs = NULL;
+
+	DEBUG2("%s: #### Instantiating listeners ####", main_config.name);
+
+	/*
+	 *	Load all of the virtual servers.
+	 */
+	while ((cs = cf_section_find_next(config, cs, "server", CF_IDENT_ANY))) {
+		/*
+		 *	Skip old-style virtual servers.
+		 */
+		if (cf_pair_find(cs, "namespace")) continue;
+
+		if (virtual_servers_compile(cs) < 0) return -1;
+	}
+
+	for (i = 0; i < server_cnt; i++) {
+		fr_virtual_listen_t	**listener;
+		size_t			j, listen_cnt;
+
+		if (!virtual_root->server[i]) continue;	/* Skip old style */
+
+ 		listener = virtual_root->server[i]->listener;
+ 		listen_cnt = talloc_array_length(listener);
+
+		for (j = 0; j < listen_cnt; j++) {
+			fr_virtual_listen_t *listen = listener[j];
+
+			if (listen->app->instantiate &&
+			    listen->app->instantiate(listen->proto_module->inst, listen->proto_module->conf) < 0) {
+				cf_log_err(listen->proto_module->conf, "Instantiate failed");
+				return -1;
+			}
+		}
+
+	}
+
+	return 0;
+}
+
+/** Load protocol modules and call their bootstrap methods
+ *
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int virtual_servers_bootstrap(CONF_SECTION *config)
 {
-	CONF_SECTION *cs = NULL;
-	char const *server_name;
+	size_t i, server_cnt = virtual_root ? talloc_array_length(virtual_root->server) : 0;
 
-	if (!cf_section_find(config, "server", CF_IDENT_ANY)) {
-		ERROR("No virtual servers found");
-		return -1;
-	}
+	CONF_SECTION *cs = NULL;
+
+	DEBUG2("%s: #### Bootstrapping listeners ####", main_config.name);
 
 	/*
-	 *	Bootstrap global listeners.
+	 *	Load all of the virtual servers.
 	 */
-	while ((cs = cf_section_find_next(config, cs, "listen", NULL))) {
-		if (cf_pair_find(cs, "namespace") != NULL) {
-			main_config.namespace = true;
-			continue;
-		}
-
-		if (listen_bootstrap(config, cs, NULL) < 0) return -1;
-	}
-
-	cs = NULL;
 	while ((cs = cf_section_find_next(config, cs, "server", CF_IDENT_ANY))) {
-		CONF_ITEM *ci;
-		CONF_SECTION *subcs;
-		CONF_PAIR *cp;
+		CONF_SECTION *subcs = NULL;
+		char const *server_name;
 
 		server_name = cf_section_name2(cs);
 		if (!server_name) {
@@ -542,79 +701,14 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 		}
 
 		/*
-		 *	Check for duplicates.
+		 *	Skip old-style virtual servers.
 		 */
-		subcs = cf_section_find(config, "server", server_name);
-		if (subcs && (subcs != cs)) {
-			ERROR("Duplicate virtual server \"%s\", in file %s:%d and file %s:%d",
-			      server_name,
-			      cf_filename(cs),
-			      cf_lineno(cs),
-			      cf_filename(subcs),
-			      cf_lineno(subcs));
-			return -1;
-		}
+		if (cf_pair_find(cs, "namespace")) continue;
 
-		/*
-		 *	New-style virtual servers are special.
-		 */
-		cp = cf_pair_find(cs, "namespace");
-		if (cp) {
-			char const *value;
-			dl_t const *module;
-			fr_app_t const *app;
-
-			value = cf_pair_value(cp);
-			if (!value) {
-				cf_log_err(cs, "Cannot have empty namespace");
-				return -1;
-			}
-
-			if (strcmp(value, "radius") != 0) {
-				cf_log_err(cs, "Unknown namespace '%s'", value);
-				return -1;
-			}
-
-			module = dl_module(cs, NULL, value, DL_TYPE_PROTO);
-			if (!module) {
-				cf_log_err(cs, "Failed to find library for 'namespace = %s'", value);
-				return -1;
-			}
-
-			app = (fr_app_t const *) module->common;
-
-			if (app->bootstrap && (app->bootstrap(cs) < 0)) {
-				cf_log_err(cs, "Failed to bootstrap library for 'namespace = %s'", value);
-				return -1;
-			}
-
-			if (!app->instantiate) {
-				cf_log_err(cs, "Failed to find initialization function for 'transport = %s'",
-					      value);
-				return -1;
-			}
-
-			cf_data_add(cs, module, "app", false);
-			continue;
-		}
-
-		for (ci = cf_item_next(cs, NULL);
-		     ci != NULL;
-		     ci = cf_item_next(cs, ci)) {
+		while ((subcs = cf_section_next(cs, subcs))) {
 			rlm_components_t comp;
-			char const *name1;
 
-			if (cf_item_is_pair(ci)) {
-				cf_log_err(ci, "Cannot set variables inside of a virtual server.");
-				return -1;
-			}
-
-			if (!cf_item_is_section(ci)) continue;
-
-			subcs = cf_item_to_section(ci);
-			name1 = cf_section_name1(subcs);
-
-			if (strcmp(name1, "listen") == 0) {
+			if (strcmp(cf_section_name1(subcs), "listen") == 0) {
 				if (listen_bootstrap(cs, subcs, server_name) < 0) return -1;
 				continue;
 			}
@@ -623,69 +717,34 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 			 *	See if it's a RADIUS section.
 			 */
 			for (comp = 0; comp < MOD_COUNT; ++comp) {
-				if (strcmp(name1, section_type_value[comp].section) == 0) {
+				if (strcmp(cf_section_name1(subcs), section_type_value[comp].section) == 0) {
 					if (!virtual_server_define_types(subcs, comp)) return -1;
 				}
 			}
-		} /* loop over things inside of a virtual server */
-	} /* loop over virtual servers */
+		}
+	}
 
-	return 0;
-}
+	for (i = 0; i < server_cnt; i++) {
+		fr_virtual_listen_t	**listener;
+		size_t			j, listen_cnt;
 
-/*
- *	Load all of the virtual servers.
- */
-int virtual_servers_init(fr_schedule_t *sc, CONF_SECTION *config)
-{
-	CONF_SECTION *cs = NULL;
+		if (!virtual_root->server[i]) continue;	/* Skip old style */
 
-	DEBUG2("%s: #### Loading Virtual Servers ####", main_config.name);
+ 		listener = virtual_root->server[i]->listener;
+ 		listen_cnt = talloc_array_length(listener);
 
-	/*
-	 *	Load all of the virtual servers.
-	 */
-	while ((cs = cf_section_find_next(config, cs, "server", CF_IDENT_ANY))) {
-		char const *name2;
+		for (j = 0; j < listen_cnt; j++) {
+			fr_virtual_listen_t *listen = listener[j];
 
-		name2 = cf_section_name2(cs);
+			listen->app = (fr_app_t const *)listen->proto_module->module->common;	/* For laziness */
 
-		/*
-		 *	Skip new-style virtual servers.
-		 */
-		if (cf_pair_find(cs, "namespace")) {
-			dl_t const *module;
-			fr_app_t const *app;
-
-			if (!sc) continue;
-
-			module = cf_data_value(cf_data_find(cs, dl_t, "app"));
-			if (!module) continue;
-
-			app = (fr_app_t const *) module->common;
-
-			/*
-			 *	@todo - create a scheduler
-			 */
-
-			cf_log_info(cs, "server %s { # from file %s",
-				    name2, cf_filename(cs));
-			cf_log_info(cs, "  namespace = %s", app->name);
-
-			if (app->instantiate(sc, cs, check_config) < 0) {
-				cf_log_err(cs, "Failed loading virtual server %s", name2);
+			if (listen->app->bootstrap &&
+			    listen->app->bootstrap(listen->proto_module->inst, listen->proto_module->conf) < 0) {
+				cf_log_err(listen->proto_module->conf, "Bootstrap failed");
 				return -1;
 			}
-
-			DEBUG("  Loaded Protocol %s", module->name);
-
-			cf_log_info(cs, "} # server %s", name2);
-			continue;
 		}
 
-		if (virtual_servers_compile(cs) < 0) {
-			return -1;
-		}
 	}
 
 	return 0;

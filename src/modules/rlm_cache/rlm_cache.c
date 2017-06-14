@@ -954,7 +954,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	rad_assert(inst->driver->insert);
 	rad_assert(inst->driver->expire);
 
-	if (dl_instance_data_alloc(&inst->driver_inst, inst, inst->driver_handle, driver_cs) < 0) return -1;
+	if (dl_instance_data_alloc(inst, &inst->driver_inst, inst->driver_handle, driver_cs) < 0) return -1;
 
 	if (inst->driver->instantiate &&
 	    (inst->driver->instantiate(&inst->config, inst->driver_inst, driver_cs) < 0)) return -1;

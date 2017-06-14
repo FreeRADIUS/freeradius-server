@@ -33,6 +33,7 @@ RCSID("$Id$")
 #include <freeradius-devel/io/control.h>
 #include <freeradius-devel/io/worker.h>
 #include <freeradius-devel/io/network.h>
+#include <freeradius-devel/io/listen.h>
 
 typedef struct fr_network_worker_t {
 	int			heap_id;		//!< workers are in a heap
@@ -361,7 +362,7 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
 	 *	network side knows that it needs to close the
 	 *	connection.
 	 */
-	data_size = s->io->op->read(s->io->ctx, cd->m.data, cd->m.rb_size);
+	data_size = s->io->op->read(s->io->ctx, &cd->packet_ctx, cd->m.data, cd->m.rb_size);
 	if (data_size == 0) {
 		fr_log(nr->log, L_DBG_ERR, "got no data from transport read");
 
@@ -776,7 +777,7 @@ void fr_network(fr_network_t *nr)
 		 *	the reply is a NAK, don't write it to the
 		 *	network.
 		 */
-		rcode = io->op->write(io->ctx, cd->m.data, cd->m.data_size);
+		rcode = io->op->write(io->ctx, cd->packet_ctx, cd->m.data, cd->m.data_size);
 		if (rcode < 0) {
 			fr_network_socket_t my_socket, *s;
 

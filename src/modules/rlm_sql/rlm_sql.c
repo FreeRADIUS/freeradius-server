@@ -1091,7 +1091,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	 *	Pre-allocate the driver's instance data,
 	 *	and parse the driver's configuration.
 	 */
-	if (dl_instance_data_alloc(&inst->driver_inst, inst, inst->driver_handle, driver_cs) < 0) {
+	if (dl_instance_data_alloc(inst, &inst->driver_inst, inst->driver_handle, driver_cs) < 0) {
 	error:
 		talloc_decrease_ref_count(inst->driver_handle);
 		return -1;

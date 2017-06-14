@@ -891,7 +891,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	/*
 	 *	Parse the modules configuration.
 	 */
-	if (dl_instance_data_alloc(&instance->data, instance, instance->handle, cs) < 0) {
+	if (dl_instance_data_alloc(instance, &instance->data, instance->handle, cs) < 0) {
 		talloc_free(instance);
 		return NULL;
 	}
