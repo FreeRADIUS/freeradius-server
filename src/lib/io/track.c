@@ -195,6 +195,7 @@ int fr_radius_tracking_entry_delete(fr_tracking_t *ft, fr_tracking_entry_t *entr
  * @param[in] ft the tracking table
  * @param[in] packet the packet to insert
  * @param[in] timestamp when this packet was received
+ * @param[in] src_dst the data structure holding src/dst ip/port information for this packet.
  * @param[out] p_entry pointer to newly inserted entry.
  * @return
  *	- FR_TRACKING_ERROR, gthere was an error in the function parameters
