@@ -100,14 +100,13 @@ static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, fr
  *
  * @param[out] out	Where to write the parsed value.
  * @param[in] ctx	to allocate any dynamic buffers in.
- * @param[in] cs	containing the cp.
- * @param[in] cp	to parse.
- * @param[in] type	to parse to.  May contain flags.
+ * @param[in] ci	to parse.
+ * @param[in] rule	to parse to.  May contain flags.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CONF_PAIR *cp, unsigned int type)
+static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule)
 {
 	int		rcode = 0;
 	bool		attribute, required, secret, file_input, cant_be_empty, tmpl, file_exists;
@@ -115,7 +114,9 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 	fr_ipaddr_t	*ipaddr;
 	ssize_t		slen;
 
-	if (!cs) return -1;
+	int		type = rule->type;
+	CONF_PAIR	*cp = cf_item_to_pair(ci);
+	CONF_SECTION	*cs = cf_item_to_section(cf_parent(ci));
 
 	attribute = (type & FR_TYPE_ATTRIBUTE);
 	required = (type & FR_TYPE_REQUIRED);
@@ -173,9 +174,9 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 
 				fr_canonicalize_error(ctx, &spaces, &text, slen, cp->value);
 
-				cf_log_err(&cp->item, "Failed parsing attribute reference:");
-				cf_log_err(&cp->item, "%s", text);
-				cf_log_err(&cp->item, "%s^ %s", spaces, fr_strerror());
+				cf_log_err(cp, "Failed parsing attribute reference:");
+				cf_log_err(cp, "%s", text);
+				cf_log_err(cp, "%s^ %s", spaces, fr_strerror());
 
 				talloc_free(spaces);
 				talloc_free(text);
@@ -200,7 +201,7 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 			   (strcasecmp(cp->value, "off") == 0)) {
 			*(bool *)out = false;
 		} else {
-			cf_log_err(&(cs->item), "Invalid value \"%s\" for boolean variable %s",
+			cf_log_err(cs, "Invalid value \"%s\" for boolean variable %s",
 				   cp->value, cf_pair_attr(cp));
 			rcode = -1;
 			goto error;
@@ -220,7 +221,7 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 		 *	represent config item integers.
 		 */
 		if (v > INT32_MAX) {
-			cf_log_err(&(cs->item), "Invalid value \"%s\" for variable %s, must be between 0-%u", cp->value,
+			cf_log_err(cs, "Invalid value \"%s\" for variable %s, must be between 0-%u", cp->value,
 				   cf_pair_attr(cp), INT32_MAX);
 			rcode = -1;
 			goto error;
@@ -236,7 +237,7 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 		unsigned long v = strtoul(cp->value, 0, 0);
 
 		if (v > UINT8_MAX) {
-			cf_log_err(&(cs->item), "Invalid value \"%s\" for variable %s, must be between 0-%u", cp->value,
+			cf_log_err(cs, "Invalid value \"%s\" for variable %s, must be between 0-%u", cp->value,
 				   cf_pair_attr(cp), UINT8_MAX);
 			rcode = -1;
 			goto error;
@@ -251,7 +252,7 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 		unsigned long v = strtoul(cp->value, 0, 0);
 
 		if (v > UINT16_MAX) {
-			cf_log_err(&(cs->item), "Invalid value \"%s\" for variable %s, must be between 0-%u", cp->value,
+			cf_log_err(cs, "Invalid value \"%s\" for variable %s, must be between 0-%u", cp->value,
 				   cf_pair_attr(cp), UINT16_MAX);
 			rcode = -1;
 			goto error;
@@ -269,7 +270,7 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 	case FR_TYPE_SIZE:
 	{
 		if (fr_size_from_str((size_t *)out, cp->value) < 0) {
-			cf_log_err(&(cs->item), "Invalid value \"%s\" for variable %s: %s", cp->value,
+			cf_log_err(cs, "Invalid value \"%s\" for variable %s: %s", cp->value,
 				   cf_pair_attr(cp), fr_strerror());
 			rcode = -1;
 			goto error;
@@ -325,7 +326,7 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 		ipaddr = out;
 
 		if (fr_inet_pton4(ipaddr, cp->value, -1, true, false, true) < 0) {
-			cf_log_err(&(cp->item), "%s", fr_strerror());
+			cf_log_err(cp, "%s", fr_strerror());
 			rcode = -1;
 			goto error;
 		}
@@ -341,7 +342,7 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 		ipaddr = out;
 
 		if (fr_inet_pton6(ipaddr, cp->value, -1, true, false, true) < 0) {
-			cf_log_err(&(cp->item), "%s", fr_strerror());
+			cf_log_err(cp, "%s", fr_strerror());
 			rcode = -1;
 			goto error;
 		}
@@ -357,7 +358,7 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 		ipaddr = out;
 
 		if (fr_inet_pton(ipaddr, cp->value, -1, AF_UNSPEC, true, true) < 0) {
-			cf_log_err(&(cp->item), "%s", fr_strerror());
+			cf_log_err(cp, "%s", fr_strerror());
 			rcode = -1;
 			goto error;
 		}
@@ -373,7 +374,7 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 		struct timeval tv;
 
 		if (fr_timeval_from_str(&tv, cp->value) < 0) {
-			cf_log_err(&(cp->item), "%s", fr_strerror());
+			cf_log_err(cp, "%s", fr_strerror());
 			rcode = -1;
 			goto error;
 		}
@@ -392,7 +393,7 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 		rad_assert(type > FR_TYPE_INVALID);
 		rad_assert(type < FR_TYPE_MAX);
 
-		cf_log_err(&(cp->item), "type '%s' (%i) is not supported in the configuration files",
+		cf_log_err(cp, "type '%s' (%i) is not supported in the configuration files",
 			   fr_int2str(dict_attr_types, type, "?Unknown?"), type);
 		rcode = -1;
 		goto error;
@@ -600,17 +601,14 @@ static int cf_pair_parse_internal(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, 
 		}
 
 		for (i = 0; i < count; i++, cp = cf_pair_find_next(cs, cp, name)) {
-			/*
-			 *	Call custom parser
-			 */
-			if (rule->func) {
-				if (rule->func(ctx, &array[i], cf_pair_to_item(cp), rule) < 0) {
-				merror:
-					talloc_free(array);
-					talloc_free(dflt_cp);
-					return -1;
-				}
-			} else if (cf_pair_parse_value(array, &array[i], cs, cp, type) < 0) goto merror;
+			cf_parse_t func = cf_pair_parse_value;
+
+			if (rule->func) func = rule->func;
+			if (func(ctx, &array[i], cf_pair_to_item(cp), rule) < 0) {
+				talloc_free(array);
+				talloc_free(dflt_cp);
+				return -1;
+			}
 		}
 
 		*(void **)out = array;
@@ -620,6 +618,7 @@ static int cf_pair_parse_internal(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, 
 	 */
 	} else {
 		CONF_PAIR *next;
+		cf_parse_t func = cf_pair_parse_value;
 
 		cp = cf_pair_find(cs, name);
 		if (!cp) {
@@ -641,16 +640,11 @@ static int cf_pair_parse_internal(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, 
 
 		if (deprecated) goto deprecated;
 
-		/*
-		 *	Call custom parser
-		 */
-		if (rule->func) {
-			if (rule->func(ctx, out, cf_pair_to_item(cp), rule) < 0) {
-			serror:
-				talloc_free(dflt_cp);
-				return -1;
-			}
-		} else if (cf_pair_parse_value(ctx, out, cs, cp, type) < 0) goto serror;
+		if (rule->func) func = rule->func;
+		if (func(ctx, out, cf_pair_to_item(cp), rule) < 0) {
+			talloc_free(dflt_cp);
+			return -1;
+		}
 	}
 
 	/*
