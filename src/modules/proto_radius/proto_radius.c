@@ -194,7 +194,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	}
 
 	fd = inst->app_io->op.fd(inst->io_submodule->inst);
-	rad_assert(fd >= 0);
+	if (!rad_cond_assert(fd >= 0)) return -1;
 
 	/*
 	 *	Build the fr_io_t from the op array of the transport and its
