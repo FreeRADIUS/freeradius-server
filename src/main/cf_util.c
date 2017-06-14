@@ -114,7 +114,7 @@ static CONF_ITEM *cf_find(CONF_ITEM const *parent, CONF_ITEM_TYPE type, char con
 		break;
 
 	default:
-		rad_assert(0);
+		if (!rad_cond_assert(0)) return NULL;
 	}
 
 	/*
@@ -200,7 +200,7 @@ static CONF_ITEM *cf_find_next(CONF_ITEM const *parent, CONF_ITEM const *prev,
 		break;
 
 	default:
-		rad_assert(0);
+		if (!rad_cond_assert(0)) return NULL;
 	}
 
 	if (ident1 == CF_IDENT_ANY) {
