@@ -1066,7 +1066,7 @@ int cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value)
 	 *	Remove the old CONF_PAIR
 	 */
 	ci = cf_remove(cf_section_to_item(cs), cf_pair_to_item(cp));
-	if (!rad_cond_assert(!ci || (ci == cf_pair_to_item(cp)))) return NULL;
+	if (!rad_cond_assert(!ci || (ci == cf_pair_to_item(cp)))) return -1;
 
 	/*
 	 *	Add the new CONF_PAIR
