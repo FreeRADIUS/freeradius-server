@@ -411,7 +411,7 @@ static CONF_ITEM *cf_remove(CONF_ITEM *parent, CONF_ITEM *child)
 	 *	Fixup the linked list
 	 */
 	found = fr_cursor_remove(&parent->cursor);
-	rad_assert(found == child);
+	if (!rad_cond_assert(found == child)) return NULL;
 
 	in_ident1 = (rbtree_finddata(parent->ident1, child) == child);
 	if (in_ident1 && (!rbtree_deletebydata(parent->ident1, child))) {
@@ -1073,11 +1073,6 @@ int cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value)
 	 */
 	cf_item_add(cf_section_to_item(cs), cf_pair_to_item(new_cp));
 
-	cp = cf_pair_find(cs, cp->attr);
-	rad_assert(cp == new_cp);
-
-	talloc_free(ci);
-
 	return 0;
 }
 
@@ -1445,8 +1440,10 @@ void *_cf_data_remove(CONF_ITEM *parent, CONF_DATA const *cd)
 	void *data;
 	CONF_ITEM *ci;
 
+	if (!cd) return NULL;
+
 	ci = cf_remove(parent, cf_data_to_item(cd));
-	rad_assert(!ci || (ci == cf_data_to_item(cd)));
+	if (!rad_cond_assert(!ci || (ci == cf_data_to_item(cd)))) return NULL;
 	if (!ci) return NULL;
 
 	talloc_set_destructor(cd, NULL);	/* Disarm the destructor */
