@@ -211,7 +211,7 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_t *ft, uint8_t 
 
 	(void) talloc_get_type_abort(ft, fr_tracking_t);
 
-	if (!packet[0] || (packet[0] > FR_MAX_PACKET_CODE)) return FR_TRACKING_ERROR;
+	if (!packet[0] || (packet[0] >= FR_MAX_PACKET_CODE)) return FR_TRACKING_ERROR;
 
 	/*
 	 *	Connected socket: just look in the array.
