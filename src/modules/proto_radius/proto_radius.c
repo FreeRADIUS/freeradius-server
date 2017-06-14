@@ -134,7 +134,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
  *
  */
 static int mod_decode(UNUSED void const *io_ctx, REQUEST *request,
-		      UNUSED uint8_t *const data, UNUSED size_t data_len)
+		      uint8_t *const data, UNUSED size_t data_len)
 {
 //	proto_radius_ctx_t *ctx = io_ctx;
 
