@@ -924,7 +924,7 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 	     subcs = cf_section_find_next(cs, subcs, name, NULL), i++) {
 		uint8_t *buff = NULL;
 
-		if (out) {
+		if (array) {
 			MEM(buff = talloc_zero_array(array, uint8_t, subcs_size));
 			array[i] = buff;
 		}
@@ -953,7 +953,7 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 		}
 	}
 
-	*((uint8_t ***)out) = array;
+	if (out) *((uint8_t ***)out) = array;
 
 	return 0;
 }
