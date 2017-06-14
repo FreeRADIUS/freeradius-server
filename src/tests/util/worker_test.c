@@ -83,7 +83,7 @@ static fr_io_final_t test_process(REQUEST *request, fr_io_action_t action)
 	return FR_IO_REPLY;
 }
 
-static int test_decode(UNUSED void const *packet_ctx, REQUEST *request, uint8_t *const data, size_t data_len)
+static int test_decode(void const *packet_ctx, REQUEST *request, uint8_t *const data, size_t data_len)
 {
 	uint32_t number;
 
