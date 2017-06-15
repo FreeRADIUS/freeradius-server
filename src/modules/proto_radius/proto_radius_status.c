@@ -228,9 +228,15 @@ static int mod_compile_section(CONF_SECTION *server_cs, char const *name1, char 
 /*
  *	Ensure that the "radius" section is compiled.
  */
-static int mod_compile(UNUSED void *instance, CONF_SECTION *server_cs)
+static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 {
 	int rcode;
+	CONF_SECTION *server_cs;
+
+	rad_assert(listen_cs);
+
+	server_cs = cf_item_to_section(cf_parent(listen_cs));
+	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
 
 	rcode = mod_compile_section(server_cs, "recv", "Status-Server", MOD_AUTHORIZE);
 	if (rcode < 0) return rcode;
@@ -259,11 +265,10 @@ static int mod_compile(UNUSED void *instance, CONF_SECTION *server_cs)
 	return 0;
 }
 
-
 extern fr_app_subtype_t proto_radius_status;
 fr_app_subtype_t proto_radius_status = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "radius_status",
-	.instantiate	= mod_compile,
+	.instantiate	= mod_instantiate,
 	.process	= mod_process,
 };
