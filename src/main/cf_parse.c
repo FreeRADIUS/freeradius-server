@@ -910,6 +910,7 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 	 *	Handle the multi subsection case (which is harder)
 	 */
 	while ((subcs = cf_section_find_next(cs, subcs, name, NULL))) count++;
+	subcs = NULL;
 
 	/*
 	 *	Allocate an array to hold the subsections
@@ -926,6 +927,7 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 	for (subcs = cf_section_find(cs, name, NULL), i = 0;
 	     subcs;
 	     subcs = cf_section_find_next(cs, subcs, name, NULL), i++) {
+	subcs = NULL;
 		uint8_t *buff = NULL;
 
 		if (DEBUG_ENABLED4) cf_log_debug(cs, "Evaluating rules for %s[%i] section.  Output %p",
