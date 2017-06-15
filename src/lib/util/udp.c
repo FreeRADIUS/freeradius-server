@@ -67,9 +67,7 @@ ssize_t udp_send(int sockfd, void *data, size_t data_len, int flags,
 		 *	@fixme: We shoul probably just move to sockaddr_storage for
 		 *	all IP address things.
 		 */
-		if (!fr_ipaddr_to_sockaddr(dst_ipaddr, dst_port, &dst, &sizeof_dst)) {
-			return -1;
-		}
+		if (fr_ipaddr_to_sockaddr(dst_ipaddr, dst_port, &dst, &sizeof_dst) < 0) return -1;
 
 #ifdef WITH_UDPFROMTO
 		/*
@@ -147,7 +145,7 @@ ssize_t udp_recv_peek(int sockfd, void *data, size_t data_len, int flags, fr_ipa
 	/*
 	 *	Convert AF.  If unknown, discard packet.
 	 */
-	if (!fr_ipaddr_from_sockaddr(&src, sizeof_src, src_ipaddr, src_port)) {
+	if (fr_ipaddr_from_sockaddr(&src, sizeof_src, src_ipaddr, src_port) < 0) {
 		FR_DEBUG_STRERROR_PRINTF("Unknown address family");
 		(void) udp_recv_discard(sockfd);
 
@@ -227,7 +225,7 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 
 	if (received < 0) return received;
 
-	if (!fr_ipaddr_from_sockaddr(&src, sizeof_src, src_ipaddr, &port)) return -1;
+	if (fr_ipaddr_from_sockaddr(&src, sizeof_src, src_ipaddr, &port) < 0) return -1;
 	*src_port = port;
 
 	if (when && !when->tv_sec) gettimeofday(when, NULL);

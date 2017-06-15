@@ -240,7 +240,7 @@ int fr_inet_hton(fr_ipaddr_t *out, int af, char const *hostname, bool fallback)
 
 	rcode = fr_ipaddr_from_sockaddr((struct sockaddr_storage *)ai->ai_addr, ai->ai_addrlen, out, NULL);
 	freeaddrinfo(res);
-	if (!rcode) {
+	if (rcode < 0) {
 		fr_strerror_printf("Failed converting sockaddr to ipaddr");
 		return -1;
 	}
@@ -269,9 +269,7 @@ char const *fr_inet_ntoh(fr_ipaddr_t const *src, char *out, size_t outlen)
 		return inet_ntop(src->af, &(src->addr), out, outlen);
 	}
 
-	if (!fr_ipaddr_to_sockaddr(src, 0, &ss, &salen)) {
-		return NULL;
-	}
+	if (fr_ipaddr_to_sockaddr(src, 0, &ss, &salen) < 0) return NULL;
 
 	if ((error = getnameinfo((struct sockaddr *)&ss, salen, out, outlen, NULL, 0,
 				 NI_NUMERICHOST | NI_NUMERICSERV)) != 0) {
@@ -944,7 +942,7 @@ int fr_ipaddr_from_ifname(fr_ipaddr_t *out, int af, char const *name)
 	 *	be OK.
 	 */
 	if (fr_ipaddr_from_sockaddr((struct sockaddr_storage *)&if_req.ifr_addr,
-			       sizeof(if_req.ifr_addr), &ipaddr, NULL) == 0) goto error;
+				    sizeof(if_req.ifr_addr), &ipaddr, NULL) < 0) goto error;
 	*out = ipaddr;
 
 	close(fd);
@@ -1071,7 +1069,7 @@ int fr_ipaddr_from_ifindex(fr_ipaddr_t *out, int fd, int af, int if_index)
 	 *	be OK.
 	 */
 	if (fr_ipaddr_from_sockaddr((struct sockaddr_storage *)&if_req.ifr_addr,
-				    sizeof(if_req.ifr_addr), &ipaddr, NULL) == 0) return -1;
+				    sizeof(if_req.ifr_addr), &ipaddr, NULL) < 0) return -1;
 	*out = ipaddr;
 
 	return 0;
@@ -1144,10 +1142,11 @@ int fr_ipaddr_to_sockaddr(fr_ipaddr_t const *ipaddr, uint16_t port,
 		memcpy(sa, &s6, sizeof(s6));
 #endif
 	} else {
-		return 0;
+		fr_strerror_printf("Unsupported address famility %d", ipaddr->af);
+		return -1;
 	}
 
-	return 1;
+	return 0;
 }
 
 int fr_ipaddr_from_sockaddr(struct sockaddr_storage const *sa, socklen_t salen,
@@ -1189,8 +1188,8 @@ int fr_ipaddr_from_sockaddr(struct sockaddr_storage const *sa, socklen_t salen,
 
 	} else {
 		fr_strerror_printf("Unsupported address famility %d", sa->ss_family);
-		return 0;
+		return -1;
 	}
 
-	return 1;
+	return 0;
 }

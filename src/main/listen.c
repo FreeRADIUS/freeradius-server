@@ -880,7 +880,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		return -1;
 	}
 
-	if (!fr_ipaddr_from_sockaddr(&src, salen, &src_ipaddr, &src_port)) {
+	if (fr_ipaddr_from_sockaddr(&src, salen, &src_ipaddr, &src_port) < 0) {
 		close(newfd);
 		DEBUG2(" ... unknown address family");
 		return 0;
@@ -3062,8 +3062,7 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 			return NULL;
 		}
 
-		if (!fr_ipaddr_from_sockaddr(&src, sizeof_src,
-					&sock->my_ipaddr, &sock->my_port)) {
+		if (fr_ipaddr_from_sockaddr(&src, sizeof_src, &sock->my_ipaddr, &sock->my_port) < 0) {
 			ERROR("Socket has unsupported address family for '%s'", buffer);
 			home->last_failed_open = now;
 			listen_free(&this);

@@ -280,8 +280,7 @@ bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 		return false;
 	}
 
-	if (!fr_ipaddr_from_sockaddr(&src, sizeof_src, &ps->src_ipaddr,
-				&ps->src_port)) {
+	if (fr_ipaddr_from_sockaddr(&src, sizeof_src, &ps->src_ipaddr, &ps->src_port) < 0) {
 		fr_strerror_printf("Failed to get IP");
 		return false;
 	}

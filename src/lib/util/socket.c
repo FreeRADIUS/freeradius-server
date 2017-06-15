@@ -392,7 +392,7 @@ int fr_socket_client_udp(fr_ipaddr_t const *src_ipaddr, fr_ipaddr_t const *dst_i
 	 *	Allow the caller to bind us to a specific source IP.
 	 */
 	if (src_ipaddr && (src_ipaddr->af != AF_UNSPEC)) {
-		if (!fr_ipaddr_to_sockaddr(src_ipaddr, 0, &salocal, &salen)) {
+		if (fr_ipaddr_to_sockaddr(src_ipaddr, 0, &salocal, &salen) < 0) {
 			close(sockfd);
 			return -1;
 		}
@@ -404,7 +404,7 @@ int fr_socket_client_udp(fr_ipaddr_t const *src_ipaddr, fr_ipaddr_t const *dst_i
 		}
 	}
 
-	if (!fr_ipaddr_to_sockaddr(dst_ipaddr, dst_port, &salocal, &salen)) {
+	if (fr_ipaddr_to_sockaddr(dst_ipaddr, dst_port, &salocal, &salen) < 0) {
 		close(sockfd);
 		return -1;
 	}
@@ -495,7 +495,7 @@ int fr_socket_client_tcp(fr_ipaddr_t const *src_ipaddr, fr_ipaddr_t const *dst_i
 	 *	Allow the caller to bind us to a specific source IP.
 	 */
 	if (src_ipaddr && (src_ipaddr->af != AF_UNSPEC)) {
-		if (!fr_ipaddr_to_sockaddr(src_ipaddr, 0, &salocal, &salen)) {
+		if (fr_ipaddr_to_sockaddr(src_ipaddr, 0, &salocal, &salen) < 0) {
 			close(sockfd);
 			return -1;
 		}
@@ -507,7 +507,7 @@ int fr_socket_client_tcp(fr_ipaddr_t const *src_ipaddr, fr_ipaddr_t const *dst_i
 		}
 	}
 
-	if (!fr_ipaddr_to_sockaddr(dst_ipaddr, dst_port, &salocal, &salen)) {
+	if (fr_ipaddr_to_sockaddr(dst_ipaddr, dst_port, &salocal, &salen) < 0) {
 		close(sockfd);
 		return -1;
 	}
@@ -880,7 +880,7 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 	/*
 	 *	Set up sockaddr stuff.
 	 */
-	if (!fr_ipaddr_to_sockaddr(&my_ipaddr, my_port, &salocal, &salen)) return -1;
+	if (fr_ipaddr_to_sockaddr(&my_ipaddr, my_port, &salocal, &salen) < 0) return -1;
 
 	rcode = bind(sockfd, (struct sockaddr *) &salocal, salen);
 	if (rcode < 0) return rcode;
@@ -897,7 +897,7 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 		return -1;
 	}
 
-	if (!fr_ipaddr_from_sockaddr(&salocal, salen, &my_ipaddr, &my_port)) return -1;
+	if (fr_ipaddr_from_sockaddr(&salocal, salen, &my_ipaddr, &my_port) < 0) return -1;
 	if (src_port) *src_port = my_port;
 
 	return 0;
