@@ -1142,7 +1142,7 @@ int fr_ipaddr_to_sockaddr(fr_ipaddr_t const *ipaddr, uint16_t port,
 		memcpy(sa, &s6, sizeof(s6));
 #endif
 	} else {
-		fr_strerror_printf("Unsupported address famility %d", ipaddr->af);
+		fr_strerror_printf("Unsupported address family %d", ipaddr->af);
 		return -1;
 	}
 

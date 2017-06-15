@@ -883,7 +883,10 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 	if (fr_ipaddr_to_sockaddr(&my_ipaddr, my_port, &salocal, &salen) < 0) return -1;
 
 	rcode = bind(sockfd, (struct sockaddr *) &salocal, salen);
-	if (rcode < 0) return rcode;
+	if (rcode < 0) {
+		fr_strerror_printf("bind() failed; %s", fr_syserror(errno));
+		return rcode;
+	}
 
 	/*
 	 *	FreeBSD jail issues.  We bind to 0.0.0.0, but the
