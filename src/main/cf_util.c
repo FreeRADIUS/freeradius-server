@@ -33,8 +33,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 
-char const *CF_IDENT_ANY = "<any>";
-
 static inline int cf_ident2_cmp(void const *a, void const *b);
 static int _cf_ident1_cmp(void const *a, void const *b);
 static int _cf_ident2_cmp(void const *a, void const *b);
@@ -60,6 +58,8 @@ static CONF_ITEM *cf_next(CONF_ITEM const *parent, CONF_ITEM const *prev, CONF_I
 
 	return NULL;
 }
+
+#define IS_WILDCARD(_ident) ((_ident) && ((_ident == CF_IDENT_ANY) || (strcmp(_ident, CF_IDENT_ANY) == 0)))
 
 /** Return the next child that's of the specified type with the specified identifiers
  *
@@ -89,13 +89,13 @@ static CONF_ITEM *cf_find(CONF_ITEM const *parent, CONF_ITEM_TYPE type, char con
 		memset(&cs_find, 0, sizeof(cs_find));
 		cs_find.item.type = CONF_ITEM_SECTION;
 		cs_find.name1 = ident1;
-		if (ident2 != CF_IDENT_ANY) cs_find.name2 = ident2;
+		if (!IS_WILDCARD(ident2)) cs_find.name2 = ident2;
 
 		find = (CONF_ITEM *)&cs_find;
 		break;
 
 	case CONF_ITEM_PAIR:
-		rad_assert((ident2 == NULL) || (ident2 == CF_IDENT_ANY));
+		rad_assert((ident2 == NULL) || IS_WILDCARD(ident2));
 
 		memset(&cp_find, 0, sizeof(cp_find));
 		cp_find.item.type = CONF_ITEM_PAIR;
@@ -108,7 +108,7 @@ static CONF_ITEM *cf_find(CONF_ITEM const *parent, CONF_ITEM_TYPE type, char con
 		memset(&cd_find, 0, sizeof(cd_find));
 		cd_find.item.type = CONF_ITEM_DATA;
 		cd_find.type = ident1;
-		if (ident2 != CF_IDENT_ANY) cd_find.name = ident2;
+		if (!IS_WILDCARD(ident2)) cd_find.name = ident2;
 
 		find = (CONF_ITEM *)&cd_find;
 		break;
@@ -120,7 +120,7 @@ static CONF_ITEM *cf_find(CONF_ITEM const *parent, CONF_ITEM_TYPE type, char con
 	/*
 	 *	No ident1, iterate over the child list
 	 */
-	if (ident1 == CF_IDENT_ANY) {
+	if (IS_WILDCARD(ident1)) {
 		CONF_ITEM *ci;
 
 		for (ci = parent->child;
@@ -133,7 +133,7 @@ static CONF_ITEM *cf_find(CONF_ITEM const *parent, CONF_ITEM_TYPE type, char con
 	/*
 	 *	No ident2, use the ident1 tree.
 	 */
-	if (ident2 == CF_IDENT_ANY) return rbtree_finddata(parent->ident1, find);
+	if (IS_WILDCARD(ident2)) return rbtree_finddata(parent->ident1, find);
 
 	/*
 	 *	Both ident1 and ident2 use the ident2 tree.
@@ -175,13 +175,13 @@ static CONF_ITEM *cf_find_next(CONF_ITEM const *parent, CONF_ITEM const *prev,
 		memset(&cs_find, 0, sizeof(cs_find));
 		cs_find.item.type = CONF_ITEM_SECTION;
 		cs_find.name1 = ident1;
-		if (ident2 != CF_IDENT_ANY) cs_find.name2 = ident2;
+		if (!IS_WILDCARD(ident2)) cs_find.name2 = ident2;
 
 		find = (CONF_ITEM *)&cs_find;
 		break;
 
 	case CONF_ITEM_PAIR:
-		rad_assert((ident2 == NULL) || (ident2 == CF_IDENT_ANY));
+		rad_assert((ident2 == NULL) || IS_WILDCARD(ident2));
 
 		memset(&cp_find, 0, sizeof(cp_find));
 		cp_find.item.type = CONF_ITEM_PAIR;
@@ -194,7 +194,7 @@ static CONF_ITEM *cf_find_next(CONF_ITEM const *parent, CONF_ITEM const *prev,
 		memset(&cd_find, 0, sizeof(cd_find));
 		cd_find.item.type = CONF_ITEM_DATA;
 		cd_find.type = ident1;
-		if (ident2 != CF_IDENT_ANY) cd_find.name = ident2;
+		if (!IS_WILDCARD(ident2)) cd_find.name = ident2;
 
 		find = (CONF_ITEM *)&cd_find;
 		break;
@@ -203,7 +203,7 @@ static CONF_ITEM *cf_find_next(CONF_ITEM const *parent, CONF_ITEM const *prev,
 		if (!rad_cond_assert(0)) return NULL;
 	}
 
-	if (ident1 == CF_IDENT_ANY) {
+	if (IS_WILDCARD(ident1)) {
 		for (ci = prev->next;
 		     ci && (cf_ident2_cmp(ci, find) != 0);
 		     ci = ci->next);
@@ -211,7 +211,7 @@ static CONF_ITEM *cf_find_next(CONF_ITEM const *parent, CONF_ITEM const *prev,
 		return ci;
 	}
 
-	if (ident2 == CF_IDENT_ANY) {
+	if (IS_WILDCARD(ident2)) {
 		for (ci = prev->next;
 		     ci && (_cf_ident1_cmp(ci, find) != 0);
 		     ci = ci->next);
