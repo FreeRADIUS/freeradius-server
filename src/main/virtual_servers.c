@@ -608,13 +608,13 @@ int virtual_servers_open(fr_schedule_t *sc)
 		fr_virtual_listen_t	**listener;
 		size_t			j, listen_cnt;
 
-		if (!virtual_servers[i]) continue;	/* Skip old style */
-
  		listener = virtual_servers[i]->listener;
  		listen_cnt = talloc_array_length(listener);
 
 		for (j = 0; j < listen_cnt; j++) {
 			fr_virtual_listen_t *listen = listener[j];
+
+			if (!listen->proto_module) continue;	/* Skip old style */
 
 			if (listen->app->open &&
 			    listen->app->open(listen->proto_module->inst, sc, listen->proto_module->conf) < 0) {
@@ -661,13 +661,13 @@ int virtual_servers_instantiate(CONF_SECTION *config)
 		fr_virtual_listen_t	**listener;
 		size_t			j, listen_cnt;
 
-		if (!virtual_servers[i]) continue;	/* Skip old style */
-
  		listener = virtual_servers[i]->listener;
  		listen_cnt = talloc_array_length(listener);
 
 		for (j = 0; j < listen_cnt; j++) {
 			fr_virtual_listen_t *listen = listener[j];
+
+			if (!listen->proto_module) continue;	/* Skip old style */
 
 			if (listen->app->instantiate &&
 			    listen->app->instantiate(listen->proto_module->inst, listen->proto_module->conf) < 0) {
@@ -743,13 +743,15 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 		fr_virtual_listen_t	**listener;
 		size_t			j, listen_cnt;
 
-		if (!virtual_servers[i] || !virtual_servers[i]->listener) continue;	/* Skip old style */
+		if (!virtual_servers[i] || !virtual_servers[i]->listener) continue;
 
  		listener = talloc_get_type_abort(virtual_servers[i]->listener, fr_virtual_listen_t *);
  		listen_cnt = talloc_array_length(listener);
 
 		for (j = 0; j < listen_cnt; j++) {
 			fr_virtual_listen_t *listen = talloc_get_type_abort(listener[j], fr_virtual_listen_t);
+
+			if (!listen->proto_module) continue;	/* Skip old style */
 
 			talloc_get_type_abort(listen->proto_module, dl_submodule_t);
 			listen->app = (fr_app_t const *)listen->proto_module->module->common;
