@@ -594,9 +594,14 @@ static int cf_pair_parse_internal(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, 
 			array = (void **)talloc_zero_array(ctx, struct timeval, count);
 			break;
 
+		case FR_TYPE_VOID:
+			rad_assert(rule->func);
+			array = (void **)talloc_zero_array(ctx, void *, count);
+			break;
+
 		default:
-			rad_assert(0);	/* Unsupported type */
-			return -1;
+			cf_log_err(cp, "Unsupported type %i (%i)", type, FR_BASE_TYPE(type));
+			if (!rad_cond_assert(0)) return -1;	/* Unsupported type */
 		}
 
 		for (i = 0; i < count; i++, cp = cf_pair_find_next(cs, cp, rule->name)) {
