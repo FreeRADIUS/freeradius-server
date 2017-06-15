@@ -893,7 +893,7 @@ do {\
 	 *	radiusd.conf, the other configuration files exist.
 	 */
 	if (cf_section_rules_push(cs, server_config) < 0) return -1;
-//	if (cf_section_rules_push(cs, virtual_servers_config) < 0) return -1;
+	if (cf_section_rules_push(cs, virtual_servers_config) < 0) return -1;
 	if (cf_section_parse(NULL, NULL, cs) < 0) return -1;
 
 	/*

@@ -1302,6 +1302,8 @@ const CONF_PARSER *cf_section_parse_table(CONF_SECTION *cs)
  */
 int _cf_section_rule_push(CONF_SECTION *cs, CONF_PARSER const *rule, char const *filename, int lineno)
 {
+	if (!cs || !rule) return 0;
+
 	if (DEBUG_ENABLED4) {
 		cf_log_debug(cs, "Pushed parse rule to %s section: %s %s",
 			     cf_section_name1(cs),
@@ -1334,6 +1336,8 @@ int _cf_section_rule_push(CONF_SECTION *cs, CONF_PARSER const *rule, char const 
 int _cf_section_rules_push(CONF_SECTION *cs, CONF_PARSER const *rules, char const *filename, int lineno)
 {
 	CONF_PARSER const *rule_p;
+
+	if (!cs || !rules) return 0;
 
 	for (rule_p = rules; rule_p->name; rule_p++) {
 		if (rule_p->type & FR_TYPE_DEPRECATED) continue;	/* Skip deprecated */

@@ -82,7 +82,8 @@ static const CONF_PARSER server_config[] = {
 
 const CONF_PARSER virtual_servers_config[] = {
 	{ FR_CONF_POINTER("server", FR_TYPE_SUBSECTION | FR_TYPE_MULTI, &virtual_root), \
-			  .subcs_size = sizeof(virtual_root), .subcs = (void const *) server_config},
+			  .subcs_size = sizeof(virtual_root), .subcs = (void const *) server_config,
+			  .ident2 = CF_IDENT_ANY},
 
 	CONF_PARSER_TERMINATOR
 };
