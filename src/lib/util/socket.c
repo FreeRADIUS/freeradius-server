@@ -884,7 +884,7 @@ int fr_socket_bind(int sockfd, fr_ipaddr_t const *src_ipaddr, uint16_t *src_port
 
 	rcode = bind(sockfd, (struct sockaddr *) &salocal, salen);
 	if (rcode < 0) {
-		fr_strerror_printf("bind() failed; %s", fr_syserror(errno));
+		fr_strerror_printf("Bind failed: %s", fr_syserror(errno));
 		return rcode;
 	}
 
