@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/md5.h>
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/debug.h>
 
 #include <sys/event.h>
 #include <stdio.h>
@@ -62,8 +63,6 @@ static fr_ipaddr_t		my_ipaddr;
 static int			my_port;
 static char const		*secret = "testing123";
 static fr_test_packet_ctx_t	tpc;
-
-extern int fr_fault_setup(char const *cmd, char const *program);
 
 static fr_io_final_t test_process(REQUEST *request, fr_io_action_t action)
 {
