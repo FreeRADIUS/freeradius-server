@@ -103,7 +103,7 @@ ATTRIBUTE	Cisco-VPN3000-WebVPN-File-Server-Entry-Enable 95	integer
 ATTRIBUTE	Cisco-VPN3000-WebVPN-File-Server-Browsing-Enable 96	integer
 ATTRIBUTE	Cisco-VPN3000-WebVPN-Port-Forwarding-Enable 97	integer
 ATTRIBUTE	Cisco-VPN3000-WebVPN-Outlook-Exchange-Proxy-Enable 98	integer
-ATTRIBUTE	Cisco-VPN3000-WebVPN-Outlook-Exchange-Proxy-Enable 99	integer
+ATTRIBUTE	Cisco-VPN3000-WebVPN-HTTP-Proxy-Enable 99	integer
 ATTRIBUTE	Cisco-VPN3000-WebVPN-Auto-Applet-Download-Enable 100	integer
 ATTRIBUTE	Cisco-VPN3000-WebVPN-Citrix-MetaFrame-Enable 101	integer
 ATTRIBUTE	Cisco-VPN3000-WebVPN-Apply-ACL		102	integer
