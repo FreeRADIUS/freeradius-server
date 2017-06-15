@@ -613,8 +613,7 @@ int virtual_servers_open(fr_schedule_t *sc)
 		for (j = 0; j < listen_cnt; j++) {
 			fr_virtual_listen_t *listen = listener[j];
 
-			if (!listen->proto_module) continue;	/* Skip old style */
-
+			if (!listen || !listen->proto_module) continue; 		/* Skip old style */
 			if (listen->app->open &&
 			    listen->app->open(listen->proto_module->inst, sc, listen->proto_module->conf) < 0) {
 				cf_log_err(listen->proto_module->conf, "Opening I/O interface failed");
@@ -666,8 +665,7 @@ int virtual_servers_instantiate(CONF_SECTION *config)
 		for (j = 0; j < listen_cnt; j++) {
 			fr_virtual_listen_t *listen = listener[j];
 
-			if (!listen->proto_module) continue;	/* Skip old style */
-
+			if (!listen || !listen->proto_module) continue; 		/* Skip old style */
 			if (listen->app->instantiate &&
 			    listen->app->instantiate(listen->proto_module->inst, listen->proto_module->conf) < 0) {
 				cf_log_err(listen->proto_module->conf, "Instantiate failed");
@@ -748,10 +746,11 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
  		listen_cnt = talloc_array_length(listener);
 
 		for (j = 0; j < listen_cnt; j++) {
-			fr_virtual_listen_t *listen = talloc_get_type_abort(listener[j], fr_virtual_listen_t);
+			fr_virtual_listen_t *listen;
 
-			if (!listen->proto_module) continue;	/* Skip old style */
+			if (!listener[j] || !listener[j]->proto_module) continue; 		/* Skip old style */
 
+			listen = talloc_get_type_abort(listener[j], fr_virtual_listen_t);
 			talloc_get_type_abort(listen->proto_module, dl_submodule_t);
 			listen->app = (fr_app_t const *)listen->proto_module->module->common;
 
