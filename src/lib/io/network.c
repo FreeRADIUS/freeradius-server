@@ -668,13 +668,13 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_log_t *logger)
 		goto nomem;
 	}
 
-	nr->workers = fr_heap_create(worker_cmp, offsetof(fr_channel_data_t, channel.heap_id));
+	nr->workers = fr_heap_create(worker_cmp, offsetof(fr_network_worker_t, heap_id));
 	if (!nr->workers) {
 		talloc_free(nr);
 		goto nomem;
 	}
 
-	nr->closing = fr_heap_create(worker_cmp, offsetof(fr_channel_data_t, channel.heap_id));
+	nr->closing = fr_heap_create(worker_cmp, offsetof(fr_network_worker_t, heap_id));
 	if (!nr->closing) {
 		talloc_free(nr);
 		goto nomem;
