@@ -317,7 +317,7 @@ static fr_io_final_t auth_process(REQUEST *request)
 		unlang = cf_section_find(request->server_cs, "recv", dv->alias);
 		if (!unlang) unlang = cf_section_find(request->server_cs, "recv", "*");
 		if (!unlang) {
-			REDEBUG("Failed to find 'recv' section");
+			REDEBUG("Failed to find 'recv %s' section", dv->alias);
 			request->reply->code = FR_CODE_ACCESS_REJECT;
 			goto setup_send;
 		}

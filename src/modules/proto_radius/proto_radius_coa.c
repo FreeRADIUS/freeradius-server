@@ -69,7 +69,7 @@ static fr_io_final_t coa_process(REQUEST *request)
 		unlang = cf_section_find(request->server_cs, "recv", dv->alias);
 		if (!unlang) unlang = cf_section_find(request->server_cs, "recv", "*");
 		if (!unlang) {
-			REDEBUG("Failed to find 'recv' section");
+			REDEBUG("Failed to find 'recv %s' section", dv->alias);
 			return FR_IO_FAIL;
 		}
 

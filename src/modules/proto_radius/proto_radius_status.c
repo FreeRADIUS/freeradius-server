@@ -58,7 +58,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 
 		unlang = cf_section_find(request->server_cs, "recv", dv->alias);
 		if (!unlang) {
-			RWDEBUG("Failed to find 'recv' section");
+			RWDEBUG("Failed to find 'recv %s' section", dv->alias);
 			request->reply->code = FR_CODE_ACCESS_REJECT;
 			goto send_reply;
 		}
