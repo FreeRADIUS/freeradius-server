@@ -82,7 +82,7 @@ static int subtype_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_
 	};
 
 	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
-	CONF_SECTION		*parent_cs = cf_item_to_section(cf_parent(ci));
+	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(ci));
 	char const		*name;
 	fr_dict_attr_t const	*da;
 	fr_dict_enum_t const	*type_enum;
@@ -108,8 +108,12 @@ static int subtype_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_
 	if (code >= FR_CODE_MAX) goto invalid_type;
 
 	name = type_lib_table[code];
+	if (!name) {
+		cf_log_err(ci, "No module associated with Packet-Type = '%s'", type_str);
+		return -1;
+	}
 
-	return dl_submodule(ctx, out, cf_section_find(parent_cs, name, NULL), dl_by_symbol(&proto_radius), name);
+	return dl_submodule(ctx, out, listen_cs, dl_by_symbol(&proto_radius), name);
 }
 
 /** Wrapper around dl_submodule
@@ -126,8 +130,17 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
 {
 	char const		*name = cf_pair_value(cf_item_to_pair(ci));
 	CONF_SECTION		*parent_cs = cf_item_to_section(cf_parent(ci));
+	CONF_SECTION		*transport_cs;
 
-	return dl_submodule(ctx, out, cf_section_find(parent_cs, name, NULL), dl_by_symbol(&proto_radius), name);
+	transport_cs = cf_section_find(parent_cs, name, NULL);
+
+	/*
+	 *	Allocate an empty section if one doesn't exist
+	 *	this is so defaults get parsed.
+	 */
+	if (!transport_cs) transport_cs = cf_section_alloc(parent_cs, name, NULL);
+
+	return dl_submodule(ctx, out, transport_cs, dl_by_symbol(&proto_radius), name);
 }
 
 /** Decode the packet, and set the request->process function
