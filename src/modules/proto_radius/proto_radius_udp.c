@@ -165,7 +165,7 @@ static ssize_t mod_write(void const *instance, void *packet_ctx, uint8_t *buffer
  */
 static int mod_open(void *instance)
 {
-	fr_proto_radius_udp_ctx_t *inst = instance;
+	fr_proto_radius_udp_ctx_t *inst = talloc_get_type_abort(instance, fr_proto_radius_udp_ctx_t);
 
 	int				sockfd = 0;
 	uint16_t			port = inst->port;
@@ -189,7 +189,7 @@ static int mod_open(void *instance)
 
 static int mod_instantiate(void *instance, CONF_SECTION *cs)
 {
-	fr_proto_radius_udp_ctx_t *inst = instance;
+	fr_proto_radius_udp_ctx_t *inst = talloc_get_type_abort(instance, fr_proto_radius_udp_ctx_t);
 
 	/*
 	 *	Default to all IPv6 interfaces (it's the future)
@@ -234,7 +234,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
  */
 static int mod_fd(void const *instance)
 {
-	fr_proto_radius_udp_ctx_t const *inst = instance;
+	fr_proto_radius_udp_ctx_t *inst = talloc_get_type_abort(instance, fr_proto_radius_udp_ctx_t);
 
 	return inst->sockfd;
 }
