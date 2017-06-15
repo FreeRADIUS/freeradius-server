@@ -54,11 +54,11 @@ static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, fr
 	char ipbuf[128];
 
 	if (strcmp(value, "*") == 0) {
-		cf_log_info(cs, "%.*s%s = *", PAIR_SPACE(cs), parse_spaces, name);
+		cf_log_debug(cs, "%.*s%s = *", PAIR_SPACE(cs), parse_spaces, name);
 	} else if (strspn(value, ".0123456789abdefABCDEF:%[]/") == strlen(value)) {
-		cf_log_info(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, name, value);
+		cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, name, value);
 	} else {
-		cf_log_info(cs, "%.*s%s = %s IPv%s address [%s]", PAIR_SPACE(cs), parse_spaces, name, value,
+		cf_log_debug(cs, "%.*s%s = %s IPv%s address [%s]", PAIR_SPACE(cs), parse_spaces, name, value,
 			    (ipaddr->af == AF_INET ? "4" : " 6"), fr_inet_ntoh(ipaddr, ipbuf, sizeof(ipbuf)));
 	}
 
@@ -206,7 +206,7 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_P
 			rcode = -1;
 			goto error;
 		}
-		cf_log_info(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), cp->value);
+		cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), cp->value);
 		break;
 
 	case FR_TYPE_UINT32:
@@ -228,7 +228,7 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_P
 		}
 
 		*(uint32_t *)out = v;
-		cf_log_info(cs, "%.*s%s = %u", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(uint32_t *)out);
+		cf_log_debug(cs, "%.*s%s = %u", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(uint32_t *)out);
 	}
 		break;
 
@@ -243,7 +243,7 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_P
 			goto error;
 		}
 		*(uint8_t *)out = (uint8_t) v;
-		cf_log_info(cs, "%.*s%s = %u", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(uint8_t *)out);
+		cf_log_debug(cs, "%.*s%s = %u", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(uint8_t *)out);
 	}
 		break;
 
@@ -258,13 +258,13 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_P
 			goto error;
 		}
 		*(uint16_t *)out = (uint16_t) v;
-		cf_log_info(cs, "%.*s%s = %u", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(uint16_t *)out);
+		cf_log_debug(cs, "%.*s%s = %u", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(uint16_t *)out);
 	}
 		break;
 
 	case FR_TYPE_UINT64:
 		*(uint64_t *)out = strtoull(cp->value, NULL, 10);
-		cf_log_info(cs, "%.*s%s = %" PRIu64, PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(uint64_t *)out);
+		cf_log_debug(cs, "%.*s%s = %" PRIu64, PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(uint64_t *)out);
 		break;
 
 	case FR_TYPE_SIZE:
@@ -275,13 +275,13 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_P
 			rcode = -1;
 			goto error;
 		}
-		cf_log_info(cs, "%.*s%s = %zu", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(size_t *)out);
+		cf_log_debug(cs, "%.*s%s = %zu", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(size_t *)out);
 		break;
 	}
 
 	case FR_TYPE_INT32:
 		*(int32_t *)out = strtol(cp->value, NULL, 10);
-		cf_log_info(cs, "%.*s%s = %d", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(int32_t *)out);
+		cf_log_debug(cs, "%.*s%s = %d", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), *(int32_t *)out);
 		break;
 
 	case FR_TYPE_STRING:
@@ -292,9 +292,9 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_P
 		 *	Hide secrets when using "radiusd -X".
 		 */
 		if (secret && (rad_debug_lvl < L_DBG_LVL_3)) {
-			cf_log_info(cs, "%.*s%s = <<< secret >>>", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp));
+			cf_log_debug(cs, "%.*s%s = <<< secret >>>", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp));
 		} else {
-			cf_log_info(cs, "%.*s%s = \"%s\"", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), cp->value);
+			cf_log_debug(cs, "%.*s%s = \"%s\"", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), cp->value);
 		}
 
 		/*
@@ -378,7 +378,7 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_P
 			rcode = -1;
 			goto error;
 		}
-		cf_log_info(cs, "%.*s%s = %d.%06d", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp),
+		cf_log_debug(cs, "%.*s%s = %d.%06d", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp),
 			    (int)tv.tv_sec, (int)tv.tv_usec);
 		memcpy(out, &tv, sizeof(tv));
 	}
@@ -996,9 +996,9 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs)
 	CONF_DATA const	*rule_cd = NULL;
 
 	if (!cs->name2) {
-		cf_log_info(cs, "%.*s%s {", SECTION_SPACE(cs), parse_spaces, cs->name1);
+		cf_log_debug(cs, "%.*s%s {", SECTION_SPACE(cs), parse_spaces, cs->name1);
 	} else {
-		cf_log_info(cs, "%.*s%s %s {", SECTION_SPACE(cs), parse_spaces, cs->name1, cs->name2);
+		cf_log_debug(cs, "%.*s%s %s {", SECTION_SPACE(cs), parse_spaces, cs->name1, cs->name2);
 	}
 
 	while ((rule_cd = cf_data_find_next(cs, rule_cd, CONF_PARSER, CF_IDENT_ANY))) {
@@ -1071,7 +1071,7 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs)
 	 */
 	if (rad_debug_lvl >= 3) cf_section_parse_warn(cs);
 
-	cf_log_info(cs, "%.*s}", SECTION_SPACE(cs), parse_spaces);
+	cf_log_debug(cs, "%.*s}", SECTION_SPACE(cs), parse_spaces);
 
 finish:
 	return ret;

@@ -406,7 +406,7 @@ static int virtual_servers_compile(CONF_SECTION *cs)
 	char const *name = cf_section_name2(cs);
 	CONF_PAIR *cp;
 
-	cf_log_info(cs, "server %s { # from file %s", name, cf_filename(cs));
+	cf_log_debug(cs, "server %s { # from file %s", name, cf_filename(cs));
 
 	cp = cf_pair_find(cs, "namespace");
 	if (cp) {
@@ -481,7 +481,7 @@ static int virtual_servers_compile(CONF_SECTION *cs)
 
 		} while (0);
 
-	cf_log_info(cs, "} # server %s", name);
+	cf_log_debug(cs, "} # server %s", name);
 
 	if (rad_debug_lvl == 0) {
 		INFO("Loaded virtual server %s", name);

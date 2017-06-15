@@ -3093,7 +3093,7 @@ static rad_listen_t *listen_parse(listen_config_t *lc)
 	rad_listen_t	*this;
 	CONF_SECTION	*cs = lc->cs;
 
-	cf_log_info(cs, "listen {");
+	cf_log_debug(cs, "listen {");
 
 	listen_type = NULL;
 
@@ -3130,7 +3130,7 @@ static rad_listen_t *listen_parse(listen_config_t *lc)
 		return NULL;
 	}
 
-	cf_log_info(cs, "}");
+	cf_log_debug(cs, "}");
 
 	return this;
 }

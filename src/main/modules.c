@@ -1028,7 +1028,7 @@ int modules_bootstrap(CONF_SECTION *root)
 
 	DEBUG2("%s: #### Loading modules ####", main_config.name);
 
-	cf_log_info(modules, " modules {");
+	cf_log_debug(modules, " modules {");
 
 	/*
 	 *	Loop over module definitions, looking for duplicates.
@@ -1070,7 +1070,7 @@ int modules_bootstrap(CONF_SECTION *root)
 	 */
 	cs = cf_section_find(root, "instantiate", NULL);
 	if (cs) {
-		cf_log_info(cs, "  instantiate {");
+		cf_log_debug(cs, "  instantiate {");
 		ci = NULL;
 
 		/*
@@ -1107,10 +1107,10 @@ int modules_bootstrap(CONF_SECTION *root)
 			if (virtual_module_bootstrap(modules, cf_item_to_section(ci)) < 0) return -1;
 		}
 
-		cf_log_info(cs, "  }");
+		cf_log_debug(cs, "  }");
 	}
 
-	cf_log_info(modules, " } # modules");
+	cf_log_debug(modules, " } # modules");
 
 	return 0;
 }

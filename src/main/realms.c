@@ -1256,7 +1256,7 @@ static int server_pool_add(realm_config_t *rc,
 		}
 	}
 
-	if (do_print) cf_log_info(cs, " home_server_pool %s {", name2);
+	if (do_print) cf_log_debug(cs, " home_server_pool %s {", name2);
 
 	cp = cf_pair_find(cs, "type");
 	if (cp) {
@@ -1290,7 +1290,7 @@ static int server_pool_add(realm_config_t *rc,
 			goto error;
 		}
 
-		if (do_print) cf_log_info(cs, "\ttype = %s", value);
+		if (do_print) cf_log_debug(cs, "\ttype = %s", value);
 	}
 
 	cp = cf_pair_find(cs, "virtual_server");
@@ -1302,7 +1302,7 @@ static int server_pool_add(realm_config_t *rc,
 		}
 
 		if (do_print) {
-			cf_log_info(cs, "\tvirtual_server = %s", pool->virtual_server);
+			cf_log_debug(cs, "\tvirtual_server = %s", pool->virtual_server);
 		}
 
 		if (!cf_section_find(rc->cs, "server", pool->virtual_server)) {
@@ -1343,17 +1343,17 @@ static int server_pool_add(realm_config_t *rc,
 			goto error;
 		}
 
-		if (do_print) cf_log_info(cs, "\thome_server = %s", home->name);
+		if (do_print) cf_log_debug(cs, "\thome_server = %s", home->name);
 		pool->servers[num_home_servers++] = home;
 	} /* loop over home_server's */
 
 	if (pool->fallback && do_print) {
-		cf_log_info(cs, "\tfallback = %s", pool->fallback->name);
+		cf_log_debug(cs, "\tfallback = %s", pool->fallback->name);
 	}
 
 	if (!realm_pool_add(pool, cs)) goto error;
 
-	if (do_print) cf_log_info(cs, " }");
+	if (do_print) cf_log_debug(cs, " }");
 
 	cf_data_add(cs, pool, NULL, false);
 	(void) talloc_steal(cs, pool);
@@ -1363,7 +1363,7 @@ static int server_pool_add(realm_config_t *rc,
 	return 1;
 
  error:
-	if (do_print) cf_log_info(cs, " }");
+	if (do_print) cf_log_debug(cs, " }");
 	talloc_free(pool);
 	return 0;
 }
@@ -1644,11 +1644,11 @@ static int old_realm_config(realm_config_t *rc, CONF_SECTION *cs, REALM *r)
 		}
 
 		if (strcasecmp(host, "fail_over") == 0) {
-			cf_log_info(cs, "\tldflag = fail_over");
+			cf_log_debug(cs, "\tldflag = fail_over");
 
 		} else if (strcasecmp(host, "round_robin") == 0) {
 			ldflag = HOME_POOL_LOAD_BALANCE;
-			cf_log_info(cs, "\tldflag = round_robin");
+			cf_log_debug(cs, "\tldflag = round_robin");
 
 		} else {
 			cf_log_err(cs, "Unknown value \"%s\" for ldflag", host);
@@ -1682,7 +1682,7 @@ static int old_realm_config(realm_config_t *rc, CONF_SECTION *cs, REALM *r)
 			}
 		}
 
-		cf_log_info(cs, "\tauthhost = %s", host);
+		cf_log_debug(cs, "\tauthhost = %s", host);
 
 		if (!old_server_add(rc, cs, r->name, host, secret, ldflag,
 				    &r->auth_pool, HOME_TYPE_AUTH, NULL)) {
@@ -1716,7 +1716,7 @@ static int old_realm_config(realm_config_t *rc, CONF_SECTION *cs, REALM *r)
 			}
 		}
 
-		cf_log_info(cs, "\taccthost = %s", host);
+		cf_log_debug(cs, "\taccthost = %s", host);
 
 		if (!old_server_add(rc, cs, r->name, host, secret, ldflag,
 				    &r->acct_pool, HOME_TYPE_ACCT, NULL)) {
@@ -1732,7 +1732,7 @@ static int old_realm_config(realm_config_t *rc, CONF_SECTION *cs, REALM *r)
 			return 0;
 		}
 
-		cf_log_info(cs, "\tvirtual_server = %s", host);
+		cf_log_debug(cs, "\tvirtual_server = %s", host);
 
 		if (!old_server_add(rc, cs, r->name, host, "", ldflag,
 				    &r->auth_pool, HOME_TYPE_AUTH, host)) {
@@ -1746,9 +1746,9 @@ static int old_realm_config(realm_config_t *rc, CONF_SECTION *cs, REALM *r)
 
 	if (secret) {
 		if (rad_debug_lvl <= 2) {
-			cf_log_info(cs, "\tsecret = <<< secret >>>");
+			cf_log_debug(cs, "\tsecret = <<< secret >>>");
 		} else {
-			cf_log_info(cs, "\tsecret = %s", secret);
+			cf_log_debug(cs, "\tsecret = %s", secret);
 		}
 	}
 
@@ -1907,7 +1907,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 #endif
 #endif
 
-	cf_log_info(cs, " realm %s {", name2);
+	cf_log_debug(cs, " realm %s {", name2);
 
 #ifdef WITH_PROXY
 	/*
@@ -1926,7 +1926,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 			goto error;
 		}
 
-		cf_log_info(cs, " } # realm %s", name2);
+		cf_log_debug(cs, " } # realm %s", name2);
 		return 1;
 	}
 #endif
@@ -1945,12 +1945,12 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 
 	if (auth_pool_name &&
 	    (auth_pool_name == acct_pool_name)) { /* yes, ptr comparison */
-		cf_log_info(cs, "\tpool = %s", auth_pool_name);
+		cf_log_debug(cs, "\tpool = %s", auth_pool_name);
 	} else {
-		if (auth_pool_name) cf_log_info(cs, "\tauth_pool = %s", auth_pool_name);
-		if (acct_pool_name) cf_log_info(cs, "\tacct_pool = %s", acct_pool_name);
+		if (auth_pool_name) cf_log_debug(cs, "\tauth_pool = %s", auth_pool_name);
+		if (acct_pool_name) cf_log_debug(cs, "\tacct_pool = %s", acct_pool_name);
 #ifdef WITH_COA
-		if (coa_pool_name) cf_log_info(cs, "\tcoa_pool = %s", coa_pool_name);
+		if (coa_pool_name) cf_log_debug(cs, "\tcoa_pool = %s", coa_pool_name);
 #endif
 	}
 #endif
@@ -1958,7 +1958,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 	cp = cf_pair_find(cs, "nostrip");
 	if (cp && (cf_pair_value(cp) == NULL)) {
 		r->strip_realm = false;
-		cf_log_info(cs, "\tnostrip");
+		cf_log_debug(cs, "\tnostrip");
 	}
 
 	/*
@@ -1985,12 +1985,12 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 
 	if (!realm_realm_add(r, cs)) goto error;
 
-	cf_log_info(cs, " }");
+	cf_log_debug(cs, " }");
 
 	return 1;
 
  error:
-	cf_log_info(cs, " } # realm %s", name2);
+	cf_log_debug(cs, " } # realm %s", name2);
 	return 0;
 }
 
