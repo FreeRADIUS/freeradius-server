@@ -63,7 +63,7 @@ struct fr_tracking_t {
 
 	rbtree_t	*tree;		//!< for unconnected sockets
 
-	fr_tracking_entry_t *codes[0];
+	fr_tracking_entry_t *codes[];
 };
 
 
