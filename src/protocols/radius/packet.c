@@ -123,6 +123,7 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char
 
 	switch (packet->code) {
 	case FR_CODE_ACCESS_REQUEST:
+	case FR_CODE_STATUS_SERVER:
 		break;
 
 	case FR_CODE_ACCESS_ACCEPT:
