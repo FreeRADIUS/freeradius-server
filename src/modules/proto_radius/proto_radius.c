@@ -183,18 +183,36 @@ static int mod_decode(UNUSED void const *io_ctx, REQUEST *request,
 static ssize_t mod_encode(UNUSED void const *io_ctx, UNUSED REQUEST *request,
 			  UNUSED uint8_t *buffer, UNUSED size_t buffer_len)
 {
-	return -1;
+	char *secret = talloc_strdup(request, "testing123");
+
+	if (fr_radius_packet_encode(request->reply, request->packet, secret) < 0) {
+		RDEBUG("Failed encoding RADIUS reply: %s", fr_strerror());
+		return -1;
+	}
+
+	if (fr_radius_packet_sign(request->reply, request->packet, secret) < 0) {
+		RDEBUG("Failed signing RADIUS reply: %s", fr_strerror());
+		return -1;
+	}
+
+	return 0;
 }
 
-static void mod_set_process(UNUSED REQUEST *request, UNUSED void const *uctx)
+static void mod_set_process(REQUEST *request, void const *instance)
 {
-//	proto_radius_ctx_t const *inst = talloc_get_type_abort(uctx, proto_radius_ctx_t);
+	proto_radius_ctx_t const *inst = talloc_get_type_abort(instance, proto_radius_ctx_t);
+	fr_app_subtype_t const *subtype;
 
-	/*
-	 *	- Figure out the request code
-	 *	- Look it up in the app_by_code array
-	 *	- Set the state machine entry point to the one provided by the subtype
-	 */
+	rad_assert(request->packet->code != 0);
+	rad_assert(request->packet->code < FR_CODE_MAX);
+
+	subtype = inst->subtype_by_code[request->packet->code];
+	if (!subtype) {
+		REDEBUG("No module available to handle packet code %i", request->packet->code);
+		return;
+	}
+
+	request->async->process = subtype->process;
 }
 
 /** Open listen sockets/connect to external event source
