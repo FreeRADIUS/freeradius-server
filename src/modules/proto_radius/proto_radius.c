@@ -327,7 +327,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	Bootstrap the subtypes
 	 */
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
-		fr_app_subtype_t const *subtype = (fr_app_subtype_t const *)inst->type_submodule[i]->module->common;
+		dl_t const	       *module = talloc_get_type_abort(inst->type_submodule[i]->module, dl_t);
+		fr_app_subtype_t const *subtype = (fr_app_subtype_t const *)module->common;
 
 		if (subtype->bootstrap && (subtype->bootstrap(inst->type_submodule[i]->conf,
 							      inst->type_submodule[i]->inst) < 0)) {
