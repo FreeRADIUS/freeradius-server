@@ -149,9 +149,10 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
  *
  */
 static int mod_decode(UNUSED void const *io_ctx, REQUEST *request,
-		      uint8_t *const data, UNUSED size_t data_len)
+		      uint8_t *const data, size_t data_len)
 {
 //	proto_radius_ctx_t *ctx = io_ctx;
+	char *secret;
 
 	if (fr_radius_verify(data, NULL, (uint8_t const *) "testing123", 10) < 0) {
 		return -1;
@@ -159,7 +160,18 @@ static int mod_decode(UNUSED void const *io_ctx, REQUEST *request,
 
 	rad_assert(data[0] < FR_MAX_PACKET_CODE);
 
-	if (fr_radius_packet_decode(request->packet, NULL, "testing123") < 0) {
+	/*
+	 *	Hacks for now until we have a lower-level decode routine.
+	 */
+	request->packet->code = data[0];
+	request->packet->id = data[1];
+	request->packet->data = data;
+	request->packet->data_len = data_len;
+
+	secret = talloc_strdup(request, "testing123");
+
+	if (fr_radius_packet_decode(request->packet, NULL, secret) < 0) {
+		RDEBUG("Failed decoding packet: %s", fr_strerror());
 		return -1;
 	}
 
