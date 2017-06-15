@@ -782,6 +782,7 @@ static int cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER const
 		 *	etc. allocated in the subsection.
 		 */
 		if (!subcs) {
+			if (DEBUG_ENABLED4) cf_log_debug(cs, "Allocating fake section \"%s\"", rule->name);
 			subcs = cf_section_alloc(cs, rule->name, NULL);
 			if (!subcs) return -1;
 
@@ -855,7 +856,7 @@ static void cf_section_parse_warn(CONF_SECTION *cs)
 static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CONF_PARSER const *rule)
 {
 	CONF_SECTION		*subcs = NULL;
-	int			count = 0, i, ret;
+	int			count = 0, i = 0, ret;
 
 	char const		*name = rule->name;
 	fr_type_t		type = rule->type;
@@ -958,6 +959,8 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 			talloc_free(array);
 			return ret;
 		}
+
+		i++;
 	}
 
 	if (out) *((uint8_t ***)out) = array;
