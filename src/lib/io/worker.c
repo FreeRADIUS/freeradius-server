@@ -689,6 +689,12 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	io = request->async->io;
 
 	/*
+	 *	Call the main protocol handlr to set the right async
+	 *	process function.
+	 */
+	io->set_process(request, io->app_ctx);
+
+	/*
 	 *	Now that the "request" structure has been initialized, go decode the packet.
 	 *
 	 *	Note that this also sets the "async process" function.
