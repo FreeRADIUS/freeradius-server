@@ -584,7 +584,7 @@ static int _module_thread_instantiate(void *instance, void *ctx)
 	}
 
 	if (inst->module->thread_instantiate) {
-		ret = inst->module->thread_instantiate(inst->cs, inst, thread_inst_ctx->el, thread_inst->data);
+		ret = inst->module->thread_instantiate(inst->cs, inst->data, thread_inst_ctx->el, thread_inst->data);
 		if (ret < 0) {
 			ERROR("Thread instantiation failed for module \"%s\"", inst->name);
 			return -1;
