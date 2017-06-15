@@ -1511,6 +1511,34 @@ int _cf_data_walk(CONF_ITEM *ci, char const *type, cf_walker_t cb, void *ctx)
 	return rbtree_walk(ci->ident2, RBTREE_IN_ORDER, _cf_data_walk_cb, &cd_ctx);
 }
 
+static inline void truncate_filename(char const **e, char const **p, int *len, char const *filename)
+{
+	size_t flen = talloc_array_length(filename) - 1;
+	char const *q;
+
+	#define FILENAME_TRUNCATE	30
+
+	*p = filename;
+
+	if (flen <= FILENAME_TRUNCATE) {
+		*len = (int)flen;
+		*e = "";
+		return;
+	}
+
+	*p += flen - FILENAME_TRUNCATE;
+	*len = FILENAME_TRUNCATE;
+
+	q = strchr(*p, FR_DIR_SEP);
+	q++;
+	if (q) {
+		*p += (q - *p);
+		*len -= (q - *p);
+	}
+
+	*e = "...";
+}
+
 /** Log an error message relating to a #CONF_ITEM
  *
  * @param[in] ci	#CONF_ITEM to print file/lineno for.
@@ -1529,7 +1557,10 @@ void _cf_log_err(CONF_ITEM const *ci, char const *fmt, ...)
 	if (!ci || !ci->filename) {
 		ERROR("%s", msg);
 	} else {
-		ERROR("%s[%d]: %s", ci->filename, ci->lineno, msg);
+		char const *e, *p;
+		int len;
+		truncate_filename(&e, &p, &len, ci->filename);
+		ERROR("%s%.*s[%d]: %s", e, len, p, ci->lineno, msg);
 	}
 
 	talloc_free(msg);
@@ -1555,7 +1586,10 @@ void _cf_log_perr(CONF_ITEM const *ci, char const *fmt, ...)
 	if (!ci || !ci->filename) {
 		PERROR("%s", msg);
 	} else {
-		PERROR("%s[%d]: %s", ci->filename, ci->lineno, msg);
+		char const *e, *p;
+		int len;
+		truncate_filename(&e, &p, &len, ci->filename);
+		PERROR("%s%.*s[%d]: %s", e, len, p, ci->lineno, msg);
 	}
 
 	talloc_free(msg);
@@ -1579,7 +1613,10 @@ void _cf_log_warn(CONF_ITEM const *ci, char const *fmt, ...)
 	if (!ci || !ci->filename) {
 		WARN("%s", msg);
 	} else {
-		WARN("%s[%d]: %s", ci->filename, ci->lineno, msg);
+		char const *e, *p;
+		int len;
+		truncate_filename(&e, &p, &len, ci->filename);
+		WARN("%s%.*s[%d]: %s", e, len, p, ci->lineno, msg);
 	}
 
 	talloc_free(msg);
@@ -1603,7 +1640,10 @@ void _cf_log_info(CONF_ITEM const *ci, char const *fmt, ...)
 	if (!ci || !ci->filename || !DEBUG_ENABLED4) {
 		INFO("%s", msg);
 	} else {
-		INFO("%s[%d]: %s", ci->filename, ci->lineno, msg);
+		char const *e, *p;
+		int len;
+		truncate_filename(&e, &p, &len, ci->filename);
+		INFO("%s%.*s[%d]: %s", e, len, p, ci->lineno, msg);
 	}
 
 	talloc_free(msg);
@@ -1631,7 +1671,10 @@ void _cf_log_debug(CONF_ITEM const *ci, char const *fmt, ...)
 	if (!ci || !ci->filename || !DEBUG_ENABLED4) {
 		DEBUG("%s", msg);
 	} else {
-		DEBUG("%s[%d]: %s", ci->filename, ci->lineno, msg);
+		char const *e, *p;
+		int len;
+		truncate_filename(&e, &p, &len, ci->filename);
+		DEBUG("%s%.*s[%d]: %s", e, len, p, ci->lineno, msg);
 	}
 
 	talloc_free(msg);
@@ -1649,6 +1692,8 @@ void cf_log_err_by_name(CONF_SECTION const *parent, char const *name, char const
 	va_list		ap;
 	char		*msg;
 	CONF_PAIR const	*cp;
+	char const *e, *p;
+	int len;
 
 	va_start(ap, fmt);
 	msg = talloc_vasprintf(NULL, fmt, ap);
@@ -1656,12 +1701,14 @@ void cf_log_err_by_name(CONF_SECTION const *parent, char const *name, char const
 
 	cp = cf_pair_find(parent, name);
 	if (cp) {
-		ERROR("%s[%d]: %s", cp->item.filename, cp->item.lineno, msg);
+		truncate_filename(&e, &p, &len, cp->item.filename);
+		ERROR("%s%.*s[%d]: %s", e, len, p, cp->item.lineno, msg);
 	} else {
 		CONF_ITEM const *ci;
 
 		ci = cf_section_to_item(parent);
-		ERROR("%s[%d]: %s", ci->filename, ci->lineno, msg);
+		truncate_filename(&e, &p, &len, ci->filename);
+		ERROR("%s%.*s[%d]: %s", e, len, p, ci->lineno, msg);
 	}
 	talloc_free(msg);
 }
