@@ -88,6 +88,8 @@ static int subtype_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_
 	fr_dict_enum_t const	*type_enum;
 	uint32_t		code;
 
+	rad_assert(listen_cs);
+
 	da = fr_dict_attr_by_name(NULL, "Packet-Type");
 	if (!da) {
 		ERROR("Missing definiton for Packet-Type");
@@ -259,8 +261,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Instantiate the IO module
 	 */
-	if (inst->app_io->instantiate && (inst->app_io->instantiate(inst->io_submodule->conf,
-								    inst->io_submodule->inst) < 0)) {
+	if (inst->app_io->instantiate && (inst->app_io->instantiate(inst->io_submodule->inst,
+								    inst->io_submodule->conf) < 0)) {
 		cf_log_err(conf, "I/O instantiation failed");
 		return -1;
 	}
@@ -280,8 +282,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
 		fr_app_subtype_t const *subtype = (fr_app_subtype_t const *)inst->type_submodule[i]->module->common;
 
-		if (subtype->instantiate && (subtype->instantiate(inst->type_submodule[i]->conf,
-								  inst->type_submodule[i]->inst) < 0)) {
+		if (subtype->instantiate && (subtype->instantiate(inst->type_submodule[i]->inst,
+								  inst->type_submodule[i]->conf) < 0)) {
 			cf_log_err(conf, "Subtype instantiation failed");
 			return -1;
 		}
@@ -316,9 +318,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Bootstrap the IO module
 	 */
-	inst->app_io = (fr_app_io_t const *) inst->io_submodule->module->common;
-	if (inst->app_io->bootstrap && (inst->app_io->bootstrap(inst->io_submodule->conf,
-					inst->io_submodule->inst) < 0)) {
+	inst->app_io = (fr_app_io_t const *) inst->io_submodule	->module->common;
+	if (inst->app_io->bootstrap && (inst->app_io->bootstrap(inst->io_submodule->inst,
+								inst->io_submodule->conf) < 0)) {
 		cf_log_err(inst->io_submodule->conf, "I/O bootstrap failed");
 		return -1;
 	}
@@ -330,8 +332,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		dl_t const	       *module = talloc_get_type_abort(inst->type_submodule[i]->module, dl_t);
 		fr_app_subtype_t const *subtype = (fr_app_subtype_t const *)module->common;
 
-		if (subtype->bootstrap && (subtype->bootstrap(inst->type_submodule[i]->conf,
-							      inst->type_submodule[i]->inst) < 0)) {
+		if (subtype->bootstrap && (subtype->bootstrap(inst->type_submodule[i]->inst,
+							      inst->type_submodule[i]->conf) < 0)) {
 			cf_log_err(inst->type_submodule[i]->conf, "Subtype bootstrap failed");
 			return -1;
 		}
