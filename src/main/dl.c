@@ -805,6 +805,8 @@ int dl_submodule(TALLOC_CTX *ctx, dl_submodule_t **out,
 		return -1;
 	}
 
+	submodule->conf = conf;
+
 	*out = submodule;
 
 	return 0;
