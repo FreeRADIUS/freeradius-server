@@ -109,8 +109,7 @@ static int listen_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED
 
 		servercs = cf_item_to_section(cf_parent(ci));
 
-		cf_log_warn(ci, "Skipping old style server %s %s",
-			    cf_section_name1(servercs), cf_section_name2(servercs));
+		cf_log_warn(ci, "Skipping listener in old style server %s", cf_section_name2(servercs));
 		return 0;	/* Old style server, skip */
 	}
 
