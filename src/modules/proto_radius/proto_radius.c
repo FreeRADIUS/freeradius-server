@@ -185,9 +185,10 @@ static int mod_decode(UNUSED void const *io_ctx, REQUEST *request,
 	return 0;
 }
 
-static ssize_t mod_encode(UNUSED void const *io_ctx, UNUSED REQUEST *request,
-			  UNUSED uint8_t *buffer, UNUSED size_t buffer_len)
+static ssize_t mod_encode(UNUSED void const *io_ctx, REQUEST *request,
+			  uint8_t *buffer, size_t buffer_len)
 {
+	size_t len;
 	char *secret = talloc_strdup(request, "testing123");
 
 	if (fr_radius_packet_encode(request->reply, request->packet, secret) < 0) {
@@ -200,7 +201,14 @@ static ssize_t mod_encode(UNUSED void const *io_ctx, UNUSED REQUEST *request,
 		return -1;
 	}
 
-	return 0;
+	len = request->repy->data_len
+	if (buffer_len < len) {
+		len = buffer_len;
+	}
+
+	memcpy(buffer, request->reply->data, len);
+
+	return len;
 }
 
 static void mod_set_process(REQUEST *request, void const *instance)
