@@ -165,8 +165,11 @@ static int mod_decode(UNUSED void const *io_ctx, REQUEST *request,
 	 */
 	request->packet->code = data[0];
 	request->packet->id = data[1];
+	memcpy(request->packet->vector, data + 4, sizeof(request->packet->vector));
+
 	request->packet->data = talloc_memdup(request->packet, data, data_len);
 	request->packet->data_len = data_len;
+
 
 	secret = talloc_strdup(request, "testing123");
 
