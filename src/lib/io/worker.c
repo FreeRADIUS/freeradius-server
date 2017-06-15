@@ -660,6 +660,8 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 
 	request->packet = fr_radius_alloc(request, false);
 	rad_assert(request->packet != NULL);
+	request->reply = fr_radius_alloc(request, false);
+	rad_assert(request->reply != NULL);
 
 	request->async = talloc_zero(request, fr_async_t);
 
