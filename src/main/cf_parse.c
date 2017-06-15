@@ -875,6 +875,9 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 	if (!(type & FR_TYPE_MULTI)) {
 		uint8_t *buff = NULL;
 
+		if (DEBUG_ENABLED4) cf_log_debug(cs, "Evaluating rules for %s section.  Output %p",
+						 cf_section_name1(subcs), out);
+
 		/*
 		 *	Add any rules, so the func can just call cf_section_parse
 		 *	if it wants to continue after doing its stuff.
@@ -923,6 +926,10 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 	     subcs;
 	     subcs = cf_section_find_next(cs, subcs, name, NULL), i++) {
 		uint8_t *buff = NULL;
+
+		if (DEBUG_ENABLED4) cf_log_debug(cs, "Evaluating rules for %s[%i] section.  Output %p",
+						 cf_section_name1(subcs),
+						 i, out);
 
 		if (array) {
 			MEM(buff = talloc_zero_array(array, uint8_t, subcs_size));
@@ -1298,7 +1305,7 @@ const CONF_PARSER *cf_section_parse_table(CONF_SECTION *cs)
 int _cf_section_rule_push(CONF_SECTION *cs, CONF_PARSER const *rule, char const *filename, int lineno)
 {
 	if (DEBUG_ENABLED4) {
-		cf_log_debug(cs, "Pushed parse rule to %s: %s %s",
+		cf_log_debug(cs, "Pushed parse rule to %s section: %s %s",
 			     cf_section_name1(cs),
 			     rule->name, FR_BASE_TYPE(rule->type) & FR_TYPE_SUBSECTION ? "{}": "");
 	}
