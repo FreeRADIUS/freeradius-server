@@ -550,11 +550,9 @@ int main(int argc, char *argv[])
 	 */
 	if (modules_instantiate(main_config.config) < 0) exit(EXIT_FAILURE);
 
-	if (main_config.namespace) {
-		sc = fr_schedule_create(NULL, &default_log, 1, 4, NULL, NULL);
-		if (!sc) {
-			exit(EXIT_FAILURE);
-		}
+	sc = fr_schedule_create(NULL, &default_log, 1, 4, NULL, NULL);
+	if (!sc) {
+		exit(EXIT_FAILURE);
 	}
 
 	/*
