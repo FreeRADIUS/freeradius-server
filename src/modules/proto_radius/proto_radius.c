@@ -34,14 +34,14 @@
  *
  */
 typedef struct {
-	dl_submodule_t		*io_submodule;		//!< I/O module's instance.
-	dl_submodule_t		**type_submodule;	//!< Instance of the various types
-							//!< only one instance per type allowed.
+	dl_submodule_t		*io_submodule;			//!< I/O module's instance.
+	dl_submodule_t		**subtype_submodule;		//!< Instance of the various types
+								//!< only one instance per type allowed.
 
 	fr_io_t const		*io;
 
-	fr_app_io_t const	*app_io;		//!< Easy access to the app_io handle.
-	fr_app_subtype_t const	*app_by_code[FR_CODE_MAX];	//!< Lookup submodule by code.
+	fr_app_io_t const	*app_io;			//!< Easy access to the app_io handle.
+	fr_app_subtype_t const	*subtype_by_code[FR_CODE_MAX];	//!< Lookup submodule by code.
 } proto_radius_ctx_t;
 
 extern fr_app_t proto_radius;
@@ -52,8 +52,8 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSE
  *
  */
 static CONF_PARSER const proto_radius_config[] = {
-	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY, proto_radius_ctx_t, type_submodule),
-			 .dflt = "Status-Server", .func = subtype_parse },
+	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY, proto_radius_ctx_t,
+			  subtype_submodule), .dflt = "Status-Server", .func = subtype_parse },
 	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID | FR_TYPE_NOT_EMPTY, proto_radius_ctx_t, io_submodule),
 			 .dflt = "udp", .func = transport_parse },
 
@@ -292,10 +292,10 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 *	Instantiate the subtypes
 	 */
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
-		fr_app_subtype_t const *subtype = (fr_app_subtype_t const *)inst->type_submodule[i]->module->common;
+		fr_app_subtype_t const *subtype = (fr_app_subtype_t const *)inst->subtype_submodule[i]->module->common;
 
-		if (subtype->instantiate && (subtype->instantiate(inst->type_submodule[i]->inst,
-								  inst->type_submodule[i]->conf) < 0)) {
+		if (subtype->instantiate && (subtype->instantiate(inst->subtype_submodule[i]->inst,
+								  inst->subtype_submodule[i]->conf) < 0)) {
 			cf_log_err(conf, "Subtype instantiation failed");
 			return -1;
 		}
@@ -303,7 +303,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		/*
 		 *	We've already done bounds checking in the subtype_parse function
 		 */
-		inst->app_by_code[fr_dict_enum_by_alias(NULL, da, cf_pair_value(cp))->value->vb_uint32] = subtype;
+		inst->subtype_by_code[fr_dict_enum_by_alias(NULL, da, cf_pair_value(cp))->value->vb_uint32] = subtype;
 
 		i++;
 	}
@@ -341,12 +341,12 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	Bootstrap the subtypes
 	 */
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
-		dl_t const	       *module = talloc_get_type_abort(inst->type_submodule[i]->module, dl_t);
+		dl_t const	       *module = talloc_get_type_abort(inst->subtype_submodule[i]->module, dl_t);
 		fr_app_subtype_t const *subtype = (fr_app_subtype_t const *)module->common;
 
-		if (subtype->bootstrap && (subtype->bootstrap(inst->type_submodule[i]->inst,
-							      inst->type_submodule[i]->conf) < 0)) {
-			cf_log_err(inst->type_submodule[i]->conf, "Subtype bootstrap failed");
+		if (subtype->bootstrap && (subtype->bootstrap(inst->subtype_submodule[i]->inst,
+							      inst->subtype_submodule[i]->conf) < 0)) {
+			cf_log_err(inst->subtype_submodule[i]->conf, "Subtype bootstrap failed");
 			return -1;
 		}
 		i++;
