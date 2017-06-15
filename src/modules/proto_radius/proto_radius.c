@@ -201,10 +201,8 @@ static ssize_t mod_encode(UNUSED void const *io_ctx, REQUEST *request,
 		return -1;
 	}
 
-	len = request->repy->data_len
-	if (buffer_len < len) {
-		len = buffer_len;
-	}
+	len = request->reply->data_len;
+	if (buffer_len < len) len = buffer_len;
 
 	memcpy(buffer, request->reply->data, len);
 
