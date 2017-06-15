@@ -164,7 +164,6 @@ int fr_radius_tracking_entry_delete(fr_tracking_t *ft, fr_tracking_entry_t *entr
 	if (entry->timestamp == 0) return -1;
 
 	entry->timestamp = 0;
-	entry->src_dst = NULL;
 	ft->num_entries--;
 
 	/*
@@ -216,7 +215,7 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_t *ft, uint8_t 
 	/*
 	 *	Connected socket: just look in the array.
 	 */
-	if (ft->src_dst_size) {
+	if (!ft->src_dst_size) {
 		if (!ft->codes[packet[0]]) return FR_TRACKING_ERROR;
 
 		entry = &ft->codes[packet[0]][packet[1]];
@@ -226,8 +225,6 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_t *ft, uint8_t 
 		 */
 		if (entry->timestamp == 0) {
 			entry->timestamp = timestamp;
-			entry->src_dst = src_dst;
-			entry->src_dst_size = ft->src_dst_size;
 
 			memcpy(&entry->data[0], packet, sizeof(entry->data));
 			*p_entry = entry;
@@ -255,7 +252,6 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_t *ft, uint8_t 
 			talloc_const_free(entry->reply);
 			entry->reply_len = 0;
 		}
-		entry->src_dst = NULL;
 
 	} else {
 		fr_tracking_entry_t my_entry;
@@ -285,7 +281,7 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_t *ft, uint8_t 
 			}			
 
 			/*
-			 *	Over-write an existing one.
+			 *	Over-write an existing entry.
 			 */
 			entry->timestamp = timestamp;
 
@@ -294,23 +290,39 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_t *ft, uint8_t 
 				entry->reply_len = 0;
 			}
 
+			/*
+			 *	Don't change src_dst.  It MUST have
+			 *	the same data as the previous entry.
+			 */
+
 		} else {
+			size_t align;
+			uint8_t *p;
+
+			/*
+			 *	Ensure that structures are aligned.
+			 */
+			align = sizeof(fr_tracking_entry_t);
+			align += 15;
+			align &= ~(15);
+
 			/*
 			 *	No existing entry, create a new one.
 			 */
-			entry = talloc_zero(ft->tree, fr_tracking_entry_t);
+			entry = talloc_size(ft->tree, align + ft->src_dst_size);
 			if (!entry) return FR_TRACKING_ERROR;
 
 			entry->timestamp = timestamp;
 			insert = true;
+
+			/*
+			 *	Copy the src_dst information over to the entry.
+			 */
+			entry->src_dst = p = ((uint8_t *) entry) + align;
+			entry->src_dst_size = ft->src_dst_size;
+			memcpy(p, src_dst, entry->src_dst_size);
 		}
 	}
-
-	/*
-	 *	Set up src/dst stuff.
-	 */
-	entry->src_dst = src_dst;
-	entry->src_dst_size = ft->src_dst_size;
 
 	/*
 	 *	Copy the new packet over top of the old one.

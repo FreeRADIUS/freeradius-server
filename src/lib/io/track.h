@@ -43,7 +43,7 @@ typedef struct fr_tracking_t fr_tracking_t;
  */
 typedef struct fr_tracking_entry_t {
 	fr_time_t		timestamp;	//!< when the request was received
-	uint8_t const		*src_dst;	//!< information about src/dst ip/port
+	uint8_t const		*src_dst;	//!< information about src/dst IP/port
 	size_t			src_dst_size;	//!< size of the data in src_dst
 	uint8_t const		*reply;		//!< the response (if any);
 	size_t			reply_len;	//!< the length of the response
