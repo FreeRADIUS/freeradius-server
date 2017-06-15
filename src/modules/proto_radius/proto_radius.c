@@ -34,6 +34,8 @@
  *
  */
 typedef struct {
+	CONF_SECTION		*server_cs;			//!< server CS for this listener
+
 	dl_submodule_t		*io_submodule;			//!< I/O module's instance.
 	dl_submodule_t		**subtype_submodule;		//!< Instance of the various types
 								//!< only one instance per type allowed.
@@ -209,6 +211,8 @@ static void mod_set_process(REQUEST *request, void const *instance)
 	rad_assert(request->packet->code != 0);
 	rad_assert(request->packet->code < FR_CODE_MAX);
 
+	request->server_cs = inst->server_cs;
+
 	subtype = inst->subtype_by_code[request->packet->code];
 	if (!subtype) {
 		REDEBUG("No module available to handle packet code %i", request->packet->code);
@@ -291,6 +295,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	fr_dict_attr_t const	*da;
 	CONF_PAIR		*cp = NULL;
 
+	inst->server_cs = conf;
+
 	/*
 	 *	Instantiate the IO module
 	 */
@@ -337,7 +343,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
  * Bootstrap I/O and type submodules.
  *
  * @param[in] instance	Ctx data for this application.
- * @param[in] conf	Listen section parsed to give us isntance.
+ * @param[in] conf	Listen section parsed to give us instance.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
