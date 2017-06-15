@@ -63,7 +63,7 @@ struct fr_tracking_t {
 
 	rbtree_t	*tree;		//!< for unconnected sockets
 
-	fr_tracking_entry_t *codes[FR_MAX_PACKET_CODE];
+	fr_tracking_entry_t *codes[0];
 };
 
 
@@ -114,12 +114,23 @@ static void entry_free(void *data)
 fr_tracking_t *fr_radius_tracking_create(TALLOC_CTX *ctx, size_t src_dst_size, void *allowed_packets[FR_MAX_PACKET_CODE])
 {
 	int i;
+	size_t ft_size;
 	fr_tracking_t *ft;
 
 	if (!ctx) return NULL;
 
-	ft = talloc_zero(ctx, fr_tracking_t);
+	/*
+	 *	Connected sockets need an array of codes.
+	 *	Unconnected ones do not.
+	 */
+	ft_size = sizeof(fr_tracking_t);
+	if (!src_dst_size) ft_size += sizeof(ft->codes[0]) * FR_MAX_PACKET_CODE;
+
+	ft = talloc_size(ctx, ft_size);
 	if (!ft) return NULL;
+
+	memset(ft, 0, ft_size);
+	talloc_set_type(ft, fr_tracking_t);
 
 	ft->num_entries = 0;
 	ft->src_dst_size = src_dst_size;
