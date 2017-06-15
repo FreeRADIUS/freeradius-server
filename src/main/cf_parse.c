@@ -491,7 +491,6 @@ static int cf_pair_parse_internal(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, 
 	size_t		count = 0;
 	CONF_PAIR	*cp, *dflt_cp = NULL;
 
-	char const	*name = rule->name;
 	unsigned int	type = rule->type;
 	char const	*dflt = rule->dflt;
 	FR_TOKEN	dflt_quote = rule->quote;
@@ -514,9 +513,9 @@ static int cf_pair_parse_internal(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, 
 		/*
 		 *	Easier than re-allocing
 		 */
-		for (cp = first = cf_pair_find(cs, name);
+		for (cp = first = cf_pair_find(cs, rule->name);
 		     cp;
-		     cp = cf_pair_find_next(cs, cp, name)) count++;
+		     cp = cf_pair_find_next(cs, cp, rule->name)) count++;
 
 		/*
 		 *	Multivalued, but there's no value, create a
@@ -527,13 +526,13 @@ static int cf_pair_parse_internal(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, 
 			if (!dflt) {
 				if (required) {
 			need_value:
-					cf_log_err(cs, "Configuration item \"%s\" must have a value", name);
+					cf_log_err(cs, "Configuration item \"%s\" must have a value", rule->name);
 					return -1;
 				}
 				return 1;
 			}
 
-			if (cf_pair_default(&dflt_cp, cs, name, type, dflt, dflt_quote) < 0) return -1;
+			if (cf_pair_default(&dflt_cp, cs, rule->name, type, dflt, dflt_quote) < 0) return -1;
 			cp = dflt_cp;
 			count = 1;	/* Need one to hold the default */
 		} else {
@@ -600,7 +599,7 @@ static int cf_pair_parse_internal(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, 
 			return -1;
 		}
 
-		for (i = 0; i < count; i++, cp = cf_pair_find_next(cs, cp, name)) {
+		for (i = 0; i < count; i++, cp = cf_pair_find_next(cs, cp, rule->name)) {
 			cf_parse_t func = cf_pair_parse_value;
 
 			if (rule->func) func = rule->func;
@@ -620,7 +619,7 @@ static int cf_pair_parse_internal(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, 
 		CONF_PAIR *next;
 		cf_parse_t func = cf_pair_parse_value;
 
-		cp = cf_pair_find(cs, name);
+		cp = cf_pair_find(cs, rule->name);
 		if (!cp) {
 			if (deprecated) return 0;
 			if (!dflt) {
@@ -628,13 +627,13 @@ static int cf_pair_parse_internal(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, 
 				return 1;
 			}
 
-			if (cf_pair_default(&dflt_cp, cs, name, type, dflt, dflt_quote) < 0) return -1;
+			if (cf_pair_default(&dflt_cp, cs, rule->name, type, dflt, dflt_quote) < 0) return -1;
 			cp = dflt_cp;
 		}
 
-		next = cf_pair_find_next(cs, cp, name);
+		next = cf_pair_find_next(cs, cp, rule->name);
 		if (next) {
-			cf_log_err(&(next->item), "Invalid duplicate configuration item '%s'", name);
+			cf_log_err(&(next->item), "Invalid duplicate configuration item '%s'", rule->name);
 			return -1;
 		}
 
@@ -758,7 +757,7 @@ static int cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER const
 
 		if (!rule->dflt) return 0;
 
-		subcs = cf_section_find(cs, rule->name, NULL);
+		subcs = cf_section_find(cs, rule->name, rule->ident2);
 		if (!subcs && (rule->type & FR_TYPE_REQUIRED)) {
 			cf_log_err(cs, "Missing %s {} subsection", rule->name);
 			return -1;
@@ -783,7 +782,7 @@ static int cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER const
 		 */
 		if (!subcs) {
 			if (DEBUG_ENABLED4) cf_log_debug(cs, "Allocating fake section \"%s\"", rule->name);
-			subcs = cf_section_alloc(cs, rule->name, NULL);
+			subcs = cf_section_alloc(cs, rule->name, rule->ident2);
 			if (!subcs) return -1;
 
 			cf_item_add(cs, &(subcs->item));
@@ -858,7 +857,6 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 	CONF_SECTION		*subcs = NULL;
 	int			count = 0, i = 0, ret;
 
-	char const		*name = rule->name;
 	fr_type_t		type = rule->type;
 	size_t			subcs_size = rule->subcs_size;
 	CONF_PARSER const	*rules = rule->subcs;
@@ -867,7 +865,7 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 
 	rad_assert(type & FR_TYPE_SUBSECTION);
 
-	subcs = cf_section_find(cs, name, NULL);
+	subcs = cf_section_find(cs, rule->name, rule->ident2);
 	if (!subcs) return 0;
 
 	/*
@@ -909,8 +907,8 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 	/*
 	 *	Handle the multi subsection case (which is harder)
 	 */
-	while ((subcs = cf_section_find_next(cs, subcs, name, NULL))) count++;
 	subcs = NULL;
+	while ((subcs = cf_section_find_next(cs, subcs, rule->name, rule->ident2))) count++;
 
 	/*
 	 *	Allocate an array to hold the subsections
@@ -924,10 +922,8 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 	 *	so that they can be used as talloc contexts and we can
 	 *	keep the talloc hierarchy clean.
 	 */
-	for (subcs = cf_section_find(cs, name, NULL), i = 0;
-	     subcs;
-	     subcs = cf_section_find_next(cs, subcs, name, NULL), i++) {
 	subcs = NULL;
+	while ((subcs = cf_section_find_next(cs, subcs, rule->name, rule->ident2))) {
 		uint8_t *buff = NULL;
 
 		if (DEBUG_ENABLED4) cf_log_debug(cs, "Evaluating rules for %s[%i] section.  Output %p",
@@ -1087,13 +1083,10 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 		CONF_PAIR	*cp;
 		CONF_PARSER	*rule;
 		void		*data;
-
-		char const	*name;
 		int		type;
 
 		rule = cf_data_value(rule_cd);
 
-		name = rule->name;
 		type = rule->type;
 		is_tmpl = (type & FR_TYPE_TMPL);
 		is_xlat = (type & FR_TYPE_XLAT);
@@ -1107,7 +1100,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 		 */
 		if (type == FR_TYPE_SUBSECTION) {
 			uint8_t		*subcs_base;
-			CONF_SECTION	*subcs = cf_section_find(cs, name, NULL);
+			CONF_SECTION	*subcs = cf_section_find(cs, rule->name, rule->ident2);
 
 			/*
 			 *	Select base by whether this is a nested struct,
@@ -1143,7 +1136,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 		 *	Find the CONF_PAIR, may still not exist if there was
 		 *	no default set for the CONF_PARSER.
 		 */
-		cp = cf_pair_find(cs, name);
+		cp = cf_pair_find(cs, rule->name);
 		if (!cp) continue;
 
 		/*

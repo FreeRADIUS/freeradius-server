@@ -389,6 +389,8 @@ typedef int (* cf_parse_t)(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSE
  */
 struct CONF_PARSER {
 	char const	*name;			//!< Name of the #CONF_ITEM to parse.
+	char const	*ident2;		//!< Second identifier for #CONF_SECTION.
+
 	uint32_t	type;			//!< A #fr_type_t value, may be or'd with one or more FR_TYPE_* flags.
 						//!< @see cf_pair_parse.
 
