@@ -659,8 +659,7 @@ static int _module_instantiate(void *instance, UNUSED void *ctx)
 	 *	Call the instantiate method, if any.
 	 */
 	if (inst->module->instantiate) {
-		cf_log_debug(inst->cs, "Instantiating module \"%s\" from file %s", inst->name,
-			      cf_filename(inst->cs));
+		cf_log_debug(inst->cs, "Instantiating module \"%s\"", inst->name);
 
 		/*
 		 *	Call the module's instantiation routine.
@@ -884,9 +883,6 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 		talloc_free(instance);
 		return NULL;
 	}
-
-	cf_log_debug(cs, "Loading module \"%s\" from file %s", instance->name,
-		      cf_filename(cs));
 
 	/*
 	 *	Parse the modules configuration.

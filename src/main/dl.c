@@ -752,7 +752,7 @@ dl_t const *dl_module(CONF_SECTION *conf, dl_t const *parent, char const *name, 
 		goto error;
 	}
 
-	cf_log_debug(conf, "Loaded module \"%s\"", module_name);
+	cf_log_info(conf, "Loaded module \"%s\"", module_name);
 
 	/*
 	 *	Add the module to the dlhandle cache

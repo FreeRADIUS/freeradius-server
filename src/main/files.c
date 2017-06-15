@@ -97,7 +97,7 @@ int pairlist_read(TALLOC_CTX *ctx, char const *file, PAIR_LIST **list, int compl
 #endif
 	char newfile[8192];
 
-	DEBUG2("      reading file %s", file);
+	DEBUG2("Reading file %s", file);
 
 	/*
 	 *	Open the file.  The error message should be a little

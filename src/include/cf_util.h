@@ -193,6 +193,9 @@ void		_cf_log_info(CONF_ITEM const *ci, char const *fmt, ...)	CC_HINT(format (pr
 #define		cf_log_debug(_cf, _fmt, ...) _cf_log_debug(CF_TO_ITEM(_cf), _fmt, ## __VA_ARGS__)
 void		_cf_log_debug(CONF_ITEM const *ci, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
 
+#define		cf_log_debug_prefix(_cf, _fmt, ...) _cf_log_debug_prefix(CF_TO_ITEM(_cf), _fmt, ## __VA_ARGS__)
+void		_cf_log_debug_prefix(CONF_ITEM const *ci, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
+
 void		cf_log_err_by_name(CONF_SECTION const *parent,
 				   char const *name, char const *fmt, ...) CC_HINT(format (printf, 3, 4));
 

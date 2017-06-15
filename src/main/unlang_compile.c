@@ -1067,15 +1067,13 @@ static int modcall_fixup_map(vp_map_t *map, UNUSED void *ctx)
 	 */
 	if (DEBUG_ENABLED3) {
 		if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->lhs->name[0] != '&')) {
-			WARN("%s[%d]: Please change attribute reference to '&%s %s ...'",
-			     cf_filename(cp), cf_lineno(cp),
-			     map->lhs->name, fr_int2str(fr_tokens_table, map->op, "<INVALID>"));
+			cf_log_warn(cp, "Please change attribute reference to '&%s %s ...'",
+				    map->lhs->name, fr_int2str(fr_tokens_table, map->op, "<INVALID>"));
 		}
 
 		if ((map->rhs->type == TMPL_TYPE_ATTR) && (map->rhs->name[0] != '&')) {
-			WARN("%s[%d]: Please change attribute reference to '... %s &%s'",
-			     cf_filename(cp), cf_lineno(cp),
-			     fr_int2str(fr_tokens_table, map->op, "<INVALID>"), map->rhs->name);
+			cf_log_warn(cp, "Please change attribute reference to '... %s &%s'",
+				    fr_int2str(fr_tokens_table, map->op, "<INVALID>"), map->rhs->name);
 		}
 	}
 
@@ -1133,15 +1131,13 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 	 */
 	if (DEBUG_ENABLED3) {
 		if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->lhs->name[0] != '&')) {
-			WARN("%s[%d]: Please change attribute reference to '&%s %s ...'",
-			     cf_filename(cp), cf_lineno(cp),
-			     map->lhs->name, fr_int2str(fr_tokens_table, map->op, "<INVALID>"));
+			cf_log_warn(cp, "Please change attribute reference to '&%s %s ...'",
+				    map->lhs->name, fr_int2str(fr_tokens_table, map->op, "<INVALID>"));
 		}
 
 		if ((map->rhs->type == TMPL_TYPE_ATTR) && (map->rhs->name[0] != '&')) {
-			WARN("%s[%d]: Please change attribute reference to '... %s &%s'",
-			     cf_filename(cp), cf_lineno(cp),
-			     fr_int2str(fr_tokens_table, map->op, "<INVALID>"), map->rhs->name);
+			cf_log_warn(cp, "Please change attribute reference to '... %s &%s'",
+				    fr_int2str(fr_tokens_table, map->op, "<INVALID>"), map->rhs->name);
 		}
 	}
 
@@ -1807,8 +1803,8 @@ static unlang_t *compile_children(unlang_group_t *g, UNUSED unlang_t *parent, un
 					 */
 					name = cf_pair_attr(cp);
 					if (name[0] == '-') {
-						WARN("%s[%d]: Ignoring \"%s\" (see raddb/mods-available/README.rst)",
-						     cf_filename(cp), cf_lineno(cp), name + 1);
+						cf_log_warn(cp, "Ignoring \"%s\" "
+							    "(see raddb/mods-available/README.rst)", name + 1);
 						continue;
 					}
 
@@ -2235,9 +2231,8 @@ static unlang_t *compile_if(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF
 	rad_assert(cond != NULL);
 
 	if (cond->type == COND_TYPE_FALSE) {
-		INFO(" # Skipping contents of '%s' as it is always 'false' -- %s:%d",
-		     unlang_ops[mod_type].name,
-		     cf_filename(cs), cf_lineno(cs));
+		cf_log_debug_prefix(cs, "Skipping contents of '%s' as it is always 'false'",
+				    unlang_ops[mod_type].name);
 		return compile_empty(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type, COND_TYPE_FALSE);
 	}
 
@@ -2279,10 +2274,9 @@ static int previous_if(CONF_SECTION *cs, unlang_t *parent, unlang_type_t mod_typ
 	}
 
 	if (f->cond->type == COND_TYPE_TRUE) {
-		INFO(" # Skipping contents of '%s' as previous '%s' is always 'true' -- %s:%d",
-		     unlang_ops[mod_type].name,
-		     unlang_ops[f->self.type].name,
-		     cf_filename(cs), cf_lineno(cs));
+		cf_log_debug_prefix(cs, "Skipping contents of '%s' as previous '%s' is always 'true'",
+				    unlang_ops[mod_type].name,
+				    unlang_ops[f->self.type].name);
 		return 0;
 	}
 

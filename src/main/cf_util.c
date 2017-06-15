@@ -1680,6 +1680,37 @@ void _cf_log_debug(CONF_ITEM const *ci, char const *fmt, ...)
 	talloc_free(msg);
 }
 
+/** Log a debug message relating to a #CONF_ITEM
+ *
+ * Always emits a filename/lineno prefix is available
+ *
+ * @param[in] ci	#CONF_ITEM to print file/lineno for.
+ * @param[in] fmt	of the message.
+ * @param[in] ...	Message args.
+ */
+void _cf_log_debug_prefix(CONF_ITEM const *ci, char const *fmt, ...)
+{
+	va_list	ap;
+	char	*msg;
+
+	if (rad_debug_lvl < 1) return;
+
+	va_start(ap, fmt);
+	msg = talloc_vasprintf(NULL, fmt, ap);
+	va_end(ap);
+
+	if (!ci || !ci->filename) {
+		DEBUG("%s", msg);
+	} else {
+		char const *e, *p;
+		int len;
+		truncate_filename(&e, &p, &len, ci->filename);
+		DEBUG("%s%.*s[%d]: %s", e, len, p, ci->lineno, msg);
+	}
+
+	talloc_free(msg);
+}
+
 /** Log an error message in the context of a child pair of the specified parent
  *
  * @param[in] parent	containing the pair.
