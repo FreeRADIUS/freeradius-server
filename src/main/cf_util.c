@@ -59,7 +59,7 @@ static CONF_ITEM *cf_next(CONF_ITEM const *parent, CONF_ITEM const *prev, CONF_I
 	return NULL;
 }
 
-#define IS_WILDCARD(_ident) ((_ident) && ((_ident == CF_IDENT_ANY) || (strcmp(_ident, CF_IDENT_ANY) == 0)))
+#define IS_WILDCARD(_ident) ((_ident) && (strcmp(_ident, CF_IDENT_ANY) == 0))
 
 /** Return the next child that's of the specified type with the specified identifiers
  *
