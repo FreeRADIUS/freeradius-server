@@ -61,29 +61,26 @@ typedef struct {
 	fr_virtual_listen_t	**listener;	//!< Listeners in this virtual server.
 } fr_virtual_server_t;
 
-typedef struct {
-	fr_virtual_server_t	**server;	//!< All the servers in the server.
-} fr_virtual_t;
-
 /** Top level structure holding all virtual servers
  *
- * Blame LLDB for forcing the stupid name
  */
-static fr_virtual_t *virtual_root;
-static int listen_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
+static fr_virtual_server_t **virtual_servers;
 
+static int listen_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
 static const CONF_PARSER server_config[] = {
 	{ FR_CONF_OFFSET("namespace", FR_TYPE_STRING, fr_virtual_server_t, namespace) },
+
 	{ FR_CONF_OFFSET("listen", FR_TYPE_SUBSECTION | FR_TYPE_MULTI, fr_virtual_server_t, listener), \
-			 .subcs_size = sizeof(fr_virtual_listen_t), .func = listen_parse},
+			 .subcs_size = sizeof(fr_virtual_listen_t), .subcs_type = "fr_virtual_listen_t",
+			 .func = listen_parse},
 
 	CONF_PARSER_TERMINATOR
 };
 
 const CONF_PARSER virtual_servers_config[] = {
-	{ FR_CONF_POINTER("server", FR_TYPE_SUBSECTION | FR_TYPE_MULTI, &virtual_root), \
-			  .subcs_size = sizeof(virtual_root), .subcs = (void const *) server_config,
-			  .ident2 = CF_IDENT_ANY},
+	{ FR_CONF_POINTER("server", FR_TYPE_SUBSECTION | FR_TYPE_MULTI, &virtual_servers), \
+			  .subcs_size = sizeof(fr_virtual_server_t), .subcs_type = "fr_virtual_server_t",
+			  .subcs = (void const *) server_config, .ident2 = CF_IDENT_ANY},
 
 	CONF_PARSER_TERMINATOR
 };
@@ -92,7 +89,7 @@ const CONF_PARSER virtual_servers_config[] = {
  *
  * @param[in] ctx	to allocate data in (instance of proto_radius).
  * @param[out] out	Where to our listen configuration.  Is a #fr_virtual_listen_t structure.
- * @param[in] ci	#CONF_PAIR specifying the name of the type module.
+ * @param[in] ci	#CONF_SECTION containing the listen section.
  * @param[in] rule	unused.
  * @return
  *	- 0 on success.
@@ -106,10 +103,18 @@ static int listen_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED
 	CONF_PAIR		*namespace;
 	dl_t const		*module;
 
-	talloc_set_type(listen, fr_virtual_listen_t);
-
 	namespace = cf_pair_find(server, "namespace");
-	if (!namespace) return 0;	/* Old style server, skip */
+	if (!namespace) {
+		CONF_SECTION *servercs;
+
+		servercs = cf_item_to_section(cf_parent(ci));
+
+		cf_log_warn(ci, "Skipping old style server %s %s",
+			    cf_section_name1(servercs), cf_section_name2(servercs));
+		return 0;	/* Old style server, skip */
+	}
+
+	if (DEBUG_ENABLED4) cf_log_debug(ci, "Loading %s listener into %p", cf_pair_value(namespace), out);
 
 	module = dl_module(listen_cs, NULL, cf_pair_value(namespace), DL_TYPE_PROTO);
 	if (!module) {
@@ -127,8 +132,6 @@ static int listen_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED
 
 	listen->proto_module->module = module;
 	listen->proto_module->conf = listen_cs;
-
-	*(void **)out = listen;
 
 	return 0;
 }
@@ -595,7 +598,9 @@ static bool virtual_server_define_types(CONF_SECTION *cs, rlm_components_t comp)
  */
 int virtual_servers_open(fr_schedule_t *sc)
 {
-	size_t i, server_cnt = virtual_root ? talloc_array_length(virtual_root->server) : 0;
+	size_t i, server_cnt = virtual_servers ? talloc_array_length(virtual_servers) : 0;
+
+	rad_assert(virtual_servers);
 
 	DEBUG2("%s: #### Opening listener interfaces ####", main_config.name);
 
@@ -603,9 +608,9 @@ int virtual_servers_open(fr_schedule_t *sc)
 		fr_virtual_listen_t	**listener;
 		size_t			j, listen_cnt;
 
-		if (!virtual_root->server[i]) continue;	/* Skip old style */
+		if (!virtual_servers[i]) continue;	/* Skip old style */
 
- 		listener = virtual_root->server[i]->listener;
+ 		listener = virtual_servers[i]->listener;
  		listen_cnt = talloc_array_length(listener);
 
 		for (j = 0; j < listen_cnt; j++) {
@@ -632,7 +637,9 @@ int virtual_servers_open(fr_schedule_t *sc)
  */
 int virtual_servers_instantiate(CONF_SECTION *config)
 {
-	size_t i, server_cnt = virtual_root ? talloc_array_length(virtual_root->server) : 0;
+	size_t i, server_cnt = virtual_servers ? talloc_array_length(virtual_servers) : 0;
+
+	rad_assert(virtual_servers);
 
 	CONF_SECTION *cs = NULL;
 
@@ -654,9 +661,9 @@ int virtual_servers_instantiate(CONF_SECTION *config)
 		fr_virtual_listen_t	**listener;
 		size_t			j, listen_cnt;
 
-		if (!virtual_root->server[i]) continue;	/* Skip old style */
+		if (!virtual_servers[i]) continue;	/* Skip old style */
 
- 		listener = virtual_root->server[i]->listener;
+ 		listener = virtual_servers[i]->listener;
  		listen_cnt = talloc_array_length(listener);
 
 		for (j = 0; j < listen_cnt; j++) {
@@ -682,9 +689,16 @@ int virtual_servers_instantiate(CONF_SECTION *config)
  */
 int virtual_servers_bootstrap(CONF_SECTION *config)
 {
-	size_t i, server_cnt = virtual_root ? talloc_array_length(virtual_root->server) : 0;
-
+	size_t i, server_cnt = 0;
 	CONF_SECTION *cs = NULL;
+
+	if (virtual_servers) {
+		/*
+		 *	Check the talloc hierarchy is sane
+		 */
+		talloc_get_type_abort(virtual_servers, fr_virtual_server_t *);
+		server_cnt = talloc_array_length(virtual_servers);
+	}
 
 	DEBUG2("%s: #### Bootstrapping listeners ####", main_config.name);
 
@@ -729,15 +743,16 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 		fr_virtual_listen_t	**listener;
 		size_t			j, listen_cnt;
 
-		if (!virtual_root->server[i]) continue;	/* Skip old style */
+		if (!virtual_servers[i] || !virtual_servers[i]->listener) continue;	/* Skip old style */
 
- 		listener = virtual_root->server[i]->listener;
+ 		listener = talloc_get_type_abort(virtual_servers[i]->listener, fr_virtual_listen_t *);
  		listen_cnt = talloc_array_length(listener);
 
 		for (j = 0; j < listen_cnt; j++) {
-			fr_virtual_listen_t *listen = listener[j];
+			fr_virtual_listen_t *listen = talloc_get_type_abort(listener[j], fr_virtual_listen_t);
 
-			listen->app = (fr_app_t const *)listen->proto_module->module->common;	/* For laziness */
+			talloc_get_type_abort(listen->proto_module, dl_submodule_t);
+			listen->app = (fr_app_t const *)listen->proto_module->module->common;
 
 			if (listen->app->bootstrap &&
 			    listen->app->bootstrap(listen->proto_module->inst, listen->proto_module->conf) < 0) {
@@ -745,7 +760,6 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 				return -1;
 			}
 		}
-
 	}
 
 	return 0;
