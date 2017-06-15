@@ -896,7 +896,10 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 		 */
 	 	if (!subcs_size) return cf_section_parse(ctx, out, subcs);
 
-		if (out) MEM(buff = talloc_array(ctx, uint8_t, subcs_size));
+		if (out) {
+			MEM(buff = talloc_array(ctx, uint8_t, subcs_size));
+			if (rule->subcs_type) talloc_set_name_const(buff, rule->subcs_type);
+		}
 
 		ret = cf_section_parse(buff, buff, subcs);
 		if (ret < 0) {
@@ -918,8 +921,10 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 	/*
 	 *	Allocate an array to hold the subsections
 	 */
-	if (out) MEM(array = talloc_array(ctx, uint8_t *, count));
-
+	if (out) {
+		MEM(array = talloc_array(ctx, uint8_t *, count));
+		if (rule->subcs_type) talloc_set_name(array, "%s *", rule->subcs_type);
+	}
 	/*
 	 *	Start parsing...
 	 *
@@ -937,6 +942,7 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 
 		if (array) {
 			MEM(buff = talloc_zero_array(array, uint8_t, subcs_size));
+			if (rule->subcs_type) talloc_set_name_const(buff, rule->subcs_type);
 			array[i] = buff;
 		}
 

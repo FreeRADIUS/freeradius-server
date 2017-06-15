@@ -427,6 +427,7 @@ struct CONF_PARSER {
 							//!< #CONF_PARSER structs, forming the subsection.
 			size_t		subcs_size;	//!< If non-zero, allocate structs of this size to hold
 							//!< the parsed data.
+			char const	*subcs_type;	//!< Set a specific talloc type for subcs structures.
 		};
 	};
 
