@@ -93,7 +93,7 @@ static int test_decode(void const *packet_ctx, REQUEST *request, uint8_t *const 
 	memcpy(&number, data, sizeof(number));
 	request->number = number;
 
-	request->process_async = test_process;
+	request->async->process = test_process;
 
 	MPRINT1("\t\tDECODE <<< request %"PRIu64" - %p data %p size %zd\n", request->number, packet_ctx, data, data_len);
 	return 0;

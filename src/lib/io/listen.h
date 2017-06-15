@@ -34,21 +34,17 @@ struct fr_io {
 	void const		*app_ctx;
 };
 
-#ifndef _FR_RADIUSD_H
 /**
  *	Minimal data structure to use the new code.
  */
-struct rad_request {
-	uint64_t		number;
-	int			heap_id;
-
+struct fr_async_t {
 	fr_dlist_t		time_order;	//!< tracking requests by time order
 	fr_heap_t		*runnable;	//!< heap of runnable requests
 
 	fr_time_t		recv_time;
 	fr_time_t		*original_recv_time;
 	fr_event_list_t		*el;
-	fr_io_process_t		process_async;
+	fr_io_process_t		process;
 	fr_time_tracking_t	tracking;
 	fr_channel_t		*channel;
 
@@ -56,5 +52,4 @@ struct rad_request {
 	fr_io_t	const		*io;		//!< How we received this request,
 						//!< and how we'll send the reply.
 };
-#endif
 #endif

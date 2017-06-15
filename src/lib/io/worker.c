@@ -399,7 +399,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	/*
 	 *	Allocate and send the reply.
 	 */
-	ch = request->channel;
+	ch = request->async->channel;
 	rad_assert(ch != NULL);
 
 	ms = fr_channel_worker_ctx_get(ch);
@@ -414,7 +414,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	if (size) {
 		ssize_t encoded;
 
-		encoded = request->io->encode(request->io->ctx, request, reply->m.data, reply->m.rb_size);
+		encoded = request->async->io->encode(request->async->io->ctx, request, reply->m.data, reply->m.rb_size);
 		if (encoded < 0) {
 			fr_log(worker->log, L_DBG, "\t%sfails encode", worker->name);
 			encoded = 0;
@@ -430,19 +430,19 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	/*
 	 *	The request is done.  Track that.
 	 */
-	fr_time_tracking_end(&request->tracking, fr_time(), &worker->tracking);
+	fr_time_tracking_end(&request->async->tracking, fr_time(), &worker->tracking);
 
 	/*
 	 *	Fill in the rest of the fields in the channel message.
 	 *
 	 *	sequence / ack will be filled in by fr_channel_send_reply()
 	 */
-	reply->m.when = request->tracking.when;
+	reply->m.when = request->async->tracking.when;
 	reply->reply.cpu_time = worker->tracking.running;
-	reply->reply.processing_time = request->tracking.running;
-	reply->reply.request_time = request->recv_time;
+	reply->reply.processing_time = request->async->tracking.running;
+	reply->reply.request_time = request->async->recv_time;
 
-	reply->io = request->io;
+	reply->io = request->async->io;
 
 	fr_log(worker->log, L_DBG, "(%"PRIu64") finished, sending reply", request->number);
 
@@ -466,7 +466,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	 *	@todo Use a talloc pool for the request.  Clean it up,
 	 *	and insert it back into a slab allocator.
 	 */
-	fr_dlist_remove(&request->time_order);
+	fr_dlist_remove(&request->async->time_order);
 	talloc_free(request);
 }
 
@@ -543,23 +543,25 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 	 */
 	while ((entry = FR_DLIST_TAIL(worker->time_order)) != NULL) {
 		REQUEST *request;
+		fr_async_t *async;
 		fr_io_final_t final;
 
-		request = fr_ptr_to_type(REQUEST, time_order, entry);
-		waiting = now - request->recv_time;
+		async = fr_ptr_to_type(fr_async_t, time_order, entry);
+		request = talloc_parent(async);
+		waiting = now - request->async->recv_time;
 
 		if (waiting < NANOSEC) break;
 
 		/*
 		 *	Waiting too long, delete it.
 		 */
-		fr_dlist_remove(&request->time_order);
+		fr_dlist_remove(&request->async->time_order);
 		(void) fr_heap_extract(worker->runnable, request);
 
-		final = request->process_async(request, FR_IO_ACTION_DONE);
+		final = request->async->process(request, FR_IO_ACTION_DONE);
 
 		if (final != FR_IO_DONE) {
-			fr_dlist_insert_tail(&worker->waiting_to_die, &request->time_order);
+			fr_dlist_insert_tail(&worker->waiting_to_die, &request->async->time_order);
 			continue;
 		}
 
@@ -578,14 +580,16 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 	     entry != NULL;
 	     entry = FR_DLIST_NEXT(worker->waiting_to_die, entry)) {
 		REQUEST *request;
+		fr_async_t *async;
 		fr_io_final_t final;
 
-		request = fr_ptr_to_type(REQUEST, time_order, entry);
+		async = fr_ptr_to_type(fr_async_t, time_order, entry);
+		request = talloc_parent(async);
 
-		final = request->process_async(request, FR_IO_ACTION_DONE);
+		final = request->async->process(request, FR_IO_ACTION_DONE);
 
 		if (final == FR_IO_DONE) {
-			fr_dlist_remove(&request->time_order);
+			fr_dlist_remove(&request->async->time_order);
 
 			fr_log(worker->log, L_DBG, "(%"PRIu64") finally finished", request->number);
 
@@ -622,7 +626,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	 */
 	request = fr_heap_pop(worker->runnable);
 	if (request) {
-		fr_time_tracking_resume(&request->tracking, now);
+		fr_time_tracking_resume(&request->async->tracking, now);
 		return request;
 	}
 
@@ -650,20 +654,10 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 		}
 	} while (!cd);
 
-#ifndef HAVE_TALLOC_POOLED_OBJECT
-	/*
-	 *	Get a talloc pool specifically for this packet.
-	 */
-	ctx = talloc_pool(worker, worker->talloc_pool_size);
-	if (!ctx) goto nak;
-
-	talloc_set_name_const(ctx, "REQUEST");
-
-	request = (REQUEST *) ctx;
-#else
-	request = ctx = talloc_pooled_object(worker, REQUEST, 1, worker->talloc_pool_size);
+	ctx = request = request_alloc(NULL);
 	if (!request) goto nak;
-#endif
+
+	request->async = talloc_zero(request, fr_async_t);
 
 	/*
 	 *	Receive a message to the worker queue, and decode it
@@ -680,21 +674,20 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	 *	new packet arrived while we were getting around to
 	 *	processing this message.
 	 */
-	memset(request, 0, sizeof(*request));
-	request->channel = cd->channel.ch;
-	request->original_recv_time = cd->request.start_time;
-	request->recv_time = cd->m.when;
-	request->runnable = worker->runnable;
-	request->el = worker->el;
+	request->async->channel = cd->channel.ch;
+	request->async->original_recv_time = cd->request.start_time;
+	request->async->recv_time = cd->m.when;
+	request->async->runnable = worker->runnable;
+	request->async->el = worker->el;
 	request->number = 0;	/* @todo - assigned by someone intelligent... */
 
-	request->io = cd->io;
-	io = request->io;
+	request->async->io = cd->io;
+	io = request->async->io;
 
 	/*
 	 *	Now that the "request" structure has been initialized, go decode the packet.
 	 *
-	 *	Note that this also sets the "process_async" function.
+	 *	Note that this also sets the "async process" function.
 	 */
 	rcode = io->decode(io->ctx, request, cd->m.data, cd->m.data_size);
 	if (rcode < 0) {
@@ -705,12 +698,12 @@ nak:
 		return NULL;
 	}
 
-	rad_assert(request->process_async != NULL);
+	rad_assert(request->async->process != NULL);
 
 	/*
 	 *	Hoist run-time checks here.
 	 */
-	if (!cd->request.start_time) request->original_recv_time = &request->recv_time;
+	if (!cd->request.start_time) request->async->original_recv_time = &request->async->recv_time;
 
 	/*
 	 *	We're done with this message.
@@ -728,7 +721,7 @@ nak:
 	 */
 	entry = FR_DLIST_FIRST(worker->time_order);
 	if (!entry) {
-		fr_dlist_insert_head(&worker->time_order, &request->time_order);
+		fr_dlist_insert_head(&worker->time_order, &request->async->time_order);
 	} else {
 		REQUEST *old;
 		fr_dlist_t *prev = &worker->time_order;
@@ -739,14 +732,17 @@ nak:
 		 *	time) are at the tail of the list.
 		 */
 		while (entry) {
-			old = fr_ptr_to_type(REQUEST, time_order, entry);
+			fr_async_t *async;
+
+			async = fr_ptr_to_type(fr_async_t, time_order, entry);
+			old = talloc_parent(async);
 
 			/*
 			 *	If entry is older than the new packet,
 			 *	insert the new packet *before* the
 			 *	current entry.
 			 */
-			if (old->recv_time < request->recv_time) {
+			if (old->async->recv_time < request->async->recv_time) {
 				break;
 			}
 
@@ -754,14 +750,14 @@ nak:
 			entry = FR_DLIST_NEXT(worker->time_order, entry);
 		}
 
-		fr_dlist_insert_head(prev, &request->time_order);
+		fr_dlist_insert_head(prev, &request->async->time_order);
 	}
 
 	/*
 	 *	Bootstrap the async state machine with the initial
 	 *	state of the request.
 	 */
-	fr_time_tracking_start(&request->tracking, now);
+	fr_time_tracking_start(&request->async->tracking, now);
 
 	return request;
 }
@@ -788,20 +784,20 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	 *	If we still have the same packet, and the channel is
 	 *	active, run it.  Otherwise, tell it that it's done.
 	 */
-	if ((*request->original_recv_time == request->recv_time) &&
-	    fr_channel_active(request->channel)) {
-		final = request->process_async(request, FR_IO_ACTION_RUN);
+	if ((*request->async->original_recv_time == request->async->recv_time) &&
+	    fr_channel_active(request->async->channel)) {
+		final = request->async->process(request, FR_IO_ACTION_RUN);
 
 	} else {
-		final = request->process_async(request, FR_IO_ACTION_DONE);
+		final = request->async->process(request, FR_IO_ACTION_DONE);
 
 		/*
 		 *	If the request isn't done, put it into the
 		 *	async cleanup queue.
 		 */
 		if (final != FR_IO_DONE) {
-			fr_dlist_remove(&request->time_order);
-			fr_dlist_insert_tail(&worker->waiting_to_die, &request->time_order);
+			fr_dlist_remove(&request->async->time_order);
+			fr_dlist_insert_tail(&worker->waiting_to_die, &request->async->time_order);
 			return;
 		}
 	}
@@ -823,11 +819,11 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 		break;
 
 	case FR_IO_YIELD:
-		fr_time_tracking_yield(&request->tracking, fr_time(), &worker->tracking);
+		fr_time_tracking_yield(&request->async->tracking, fr_time(), &worker->tracking);
 		return;
 
 	case FR_IO_REPLY:
-		size = request->io->op->default_message_size;
+		size = request->async->io->op->default_message_size;
 		break;
 	}
 
@@ -924,11 +920,11 @@ static int worker_request_cmp(void const *one, void const *two)
 	REQUEST const *a = one;
 	REQUEST const *b = two;
 
-	if (a->priority < b->priority) return -1;
-	if (a->priority > b->priority) return +1;
+	if (a->async->priority < b->async->priority) return -1;
+	if (a->async->priority > b->async->priority) return +1;
 
-	if (a->recv_time < b->recv_time) return -1;
-	if (a->recv_time > b->recv_time) return +1;
+	if (a->async->recv_time < b->async->recv_time) return -1;
+	if (a->async->recv_time > b->async->recv_time) return +1;
 
 	return 0;
 }
@@ -1156,8 +1152,8 @@ void fr_worker(fr_worker_t *worker)
 		request = fr_worker_get_request(worker, now);
 		if (!request) continue;
 
-		rad_assert(request->process_async != NULL);
-		rad_assert(request->io->op != NULL);
+		rad_assert(request->async->process != NULL);
+		rad_assert(request->async->io->op != NULL);
 
 		/*
 		 *	Run the request, and either track it as
@@ -1179,12 +1175,12 @@ void worker_resume_request(REQUEST *request)
 	 *	it isn't resumed (yet) so we don't add CPU time for
 	 *	it.
 	 */
-	fr_dlist_remove(&request->tracking.list);
+	fr_dlist_remove(&request->async->tracking.list);
 
 	/*
 	 *	It's runnable again.
 	 */
-	(void) fr_heap_insert(request->runnable, request);
+	(void) fr_heap_insert(request->async->runnable, request);
 }
 #endif
 

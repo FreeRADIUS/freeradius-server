@@ -226,6 +226,11 @@ typedef enum fr_request_state_t {
 	REQUEST_OTHER_4,
 } fr_request_state_t;
 
+/*
+ *	Forward declaration for new async listeners.
+ */
+typedef struct fr_async_t fr_async_t;
+
 struct rad_request {
 #ifndef NDEBUG
 	uint32_t		magic; 		//!< Magic number used to detect memory corruption,
@@ -324,6 +329,8 @@ struct rad_request {
 #ifdef WITH_COA
 	REQUEST			*coa;		//!< CoA request originated by this request.
 #endif
+
+	fr_async_t		*async;		//!< for new async listeners
 };				/* REQUEST typedef */
 
 #define RAD_REQUEST_LVL_NONE	(0)		//!< No debug messages should be printed.

@@ -27,22 +27,12 @@ RCSIDH(transport_h, "$Id$")
 
 #include <talloc.h>
 
-#include <freeradius-devel/heap.h>
-#include <freeradius-devel/event.h>
+#include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/io/time.h>
 #include <freeradius-devel/io/channel.h>
 
 #ifdef __cplusplus
 extern "C" {
-#endif
-
-/*
- *	Hack to get it to build in the short term
- *
- *	@todo fix this!
- */
-#ifndef _FR_RADIUSD_H
-typedef struct rad_request REQUEST;
 #endif
 
 /**

@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/fr_log.h>
 #include <freeradius-devel/radius.h>
 #include <freeradius-devel/md5.h>
+#include <freeradius-devel/libradius.h>
 #include <freeradius-devel/rad_assert.h>
 
 #ifdef HAVE_GETOPT_H
@@ -47,14 +48,6 @@ RCSID("$Id$")
 
 #define MPRINT1 if (debug_lvl) printf
 #define MPRINT2 if (debug_lvl > 1) printf
-
-/*
- *	@todo fix this...
- *
- *	Declare these here until we move all of the new field to the REQUEST.
- */
-extern int		fr_socket_server_udp(fr_ipaddr_t *ipaddr, int *port, char const *port_name, bool async);
-extern int		fr_socket_bind(int sockfd, fr_ipaddr_t *ipaddr, int *port, char const *interface);
 
 
 typedef struct fr_schedule_worker {
@@ -78,7 +71,7 @@ static int		num_workers = 1;
 static bool		quiet = false;
 
 static fr_ipaddr_t	my_ipaddr;
-static int		my_port;
+static uint16_t		my_port;
 static char const	*secret = "testing123";
 
 static fr_schedule_worker_t workers[MAX_WORKERS];
@@ -108,7 +101,7 @@ static int test_decode(void const *instance, REQUEST *request, uint8_t *const da
 	fr_radius_packet_ctx_t const *pc = talloc_get_type_abort(instance, fr_radius_packet_ctx_t);
 
 	request->number = pc->id;
-	request->process_async = test_process;
+	request->async->process = test_process;
 
 	if (!debug_lvl) return 0;
 
