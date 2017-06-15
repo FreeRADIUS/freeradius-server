@@ -882,7 +882,7 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 		 *	if it wants to continue after doing its stuff.
 		 */
 		if (cf_section_rules_push(subcs, rules) < 0) return -1;
-		if (rule->func) return rule->func(ctx, out, cf_section_to_item(cs), rule);
+		if (rule->func) return rule->func(ctx, out, cf_section_to_item(subcs), rule);
 
 		/*
 		 *	FIXME: We shouldn't allow nested structures like this.
@@ -944,7 +944,7 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 			return -1;
 		}
 		if (rule->func) {
-			ret = rule->func(ctx, buff, cf_section_to_item(cs), rule);
+			ret = rule->func(ctx, buff, cf_section_to_item(subcs), rule);
 			if (ret < 0) {
 				talloc_free(array);
 				return ret;
