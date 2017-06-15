@@ -322,13 +322,13 @@ static int _connection_free(fr_connection_t *conn)
  *	- A new #fr_connection_t on success.
  *	- NULL on failure.
  */
-fr_connection_t const	*fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
-					     struct timeval *connection_timeout, struct timeval *reconnection_delay,
-					     fr_connection_init_t init, fr_connection_open_t open, fr_connection_close_t close,
-					     char const *log_prefix,
-					     void *uctx)
+fr_connection_t *fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
+				     struct timeval *connection_timeout, struct timeval *reconnection_delay,
+				     fr_connection_init_t init, fr_connection_open_t open, fr_connection_close_t close,
+				     char const *log_prefix,
+				     void *uctx)
 {
-	struct timeval now;
+
 	fr_connection_t *conn;
 
 	rad_assert(el);
@@ -349,11 +349,16 @@ fr_connection_t const	*fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	conn->log_prefix = talloc_typed_strdup(conn, log_prefix);
 	conn->uctx = uctx;
 
+	return conn;
+}
+
+void fr_connection_start(fr_connection_t *conn)
+{
+	struct timeval now;
+
 	gettimeofday(&now, NULL);
 
 	connection_state_init(conn, &now);
-
-	return conn;
 }
 
 /** Asynchronously signal the connection should be reconnected

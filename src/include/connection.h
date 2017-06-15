@@ -77,11 +77,12 @@ typedef fr_connection_state_t (*fr_connection_open_t)(int fd, fr_event_list_t *e
 typedef void (*fr_connection_close_t)(int fd, void *uctx);
 
 
-fr_connection_t const	*fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
+fr_connection_t		*fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 			       	       	     struct timeval *open_time, struct timeval *wait_time,
 					     fr_connection_init_t init, fr_connection_open_t open,
 					     fr_connection_close_t close,
 					     char const *log_prefix,
 					     void *uctx);
+void			fr_connection_start(fr_connection_t *conn);
 int			fr_connection_get_fd(fr_connection_t const *conn);
 void			fr_connection_reconnect(fr_connection_t *conn);
