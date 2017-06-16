@@ -49,8 +49,9 @@ typedef struct {
 								//!< only one instance per type allowed.
 	fr_io_process_t		process_by_code[FR_CODE_MAX];	//!< Lookup process entry point by code.
 
-	fr_listen_t const	*listen;
-} proto_radius_ctx_t;
+	fr_listen_t const	*listen;			//!< The listener structure which describes
+								//!< the I/O path.
+} proto_radius_t;
 
 extern fr_app_t proto_radius;
 static int process_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
@@ -60,9 +61,9 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSE
  *
  */
 static CONF_PARSER const proto_radius_config[] = {
-	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY, proto_radius_ctx_t,
+	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY, proto_radius_t,
 			  process_submodule), .dflt = "Status-Server", .func = process_parse },
-	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID | FR_TYPE_NOT_EMPTY, proto_radius_ctx_t, io_submodule),
+	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID | FR_TYPE_NOT_EMPTY, proto_radius_t, io_submodule),
 			 .dflt = "udp", .func = transport_parse },
 
 	CONF_PARSER_TERMINATOR
@@ -138,9 +139,9 @@ static int process_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_
  */
 static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
-	char const		*name = cf_pair_value(cf_item_to_pair(ci));
-	CONF_SECTION		*parent_cs = cf_item_to_section(cf_parent(ci));
-	CONF_SECTION		*transport_cs;
+	char const	*name = cf_pair_value(cf_item_to_pair(ci));
+	CONF_SECTION	*parent_cs = cf_item_to_section(cf_parent(ci));
+	CONF_SECTION	*transport_cs;
 
 	transport_cs = cf_section_find(parent_cs, name, NULL);
 
@@ -156,15 +157,13 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
 /** Decode the packet, and set the request->process function
  *
  */
-static int mod_decode(UNUSED void const *io_ctx, REQUEST *request,
+static int mod_decode(UNUSED void const *instance, REQUEST *request,
 		      uint8_t *const data, size_t data_len)
 {
-//	proto_radius_ctx_t *ctx = io_ctx;
+//	proto_radius_t *ctx = instance;
 	char *secret;
 
-	if (fr_radius_verify(data, NULL, (uint8_t const *) "testing123", 10) < 0) {
-		return -1;
-	}
+	if (fr_radius_verify(data, NULL, (uint8_t const *) "testing123", 10) < 0) return -1;
 
 	rad_assert(data[0] < FR_MAX_PACKET_CODE);
 
@@ -191,7 +190,7 @@ static int mod_decode(UNUSED void const *io_ctx, REQUEST *request,
 	return 0;
 }
 
-static ssize_t mod_encode(UNUSED void const *io_ctx, REQUEST *request,
+static ssize_t mod_encode(UNUSED void const *instance, REQUEST *request,
 			  uint8_t *buffer, size_t buffer_len)
 {
 	size_t len;
@@ -217,7 +216,7 @@ static ssize_t mod_encode(UNUSED void const *io_ctx, REQUEST *request,
 
 static void mod_set_process(void const *instance, REQUEST *request)
 {
-	proto_radius_ctx_t const *inst = talloc_get_type_abort(instance, proto_radius_ctx_t);
+	proto_radius_t const *inst = talloc_get_type_abort(instance, proto_radius_t);
 	fr_io_process_t process;
 
 	rad_assert(request->packet->code != 0);
@@ -245,15 +244,15 @@ static void mod_set_process(void const *instance, REQUEST *request)
  */
 static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 {
-	int			fd;
-	fr_listen_t		*listen;
-	proto_radius_ctx_t 	*inst = talloc_get_type_abort(instance, proto_radius_ctx_t);
+	int		fd;
+	fr_listen_t	*listen;
+	proto_radius_t 	*inst = talloc_get_type_abort(instance, proto_radius_t);
 
 	/*
 	 *	Open the listen socket
 	 */
 	if (inst->app_io->open(inst->app_io_instance) < 0) {
-		cf_log_err(conf, "Failed opening I/O interface");
+		cf_log_err(conf, "Failed opening %s interface", inst->app_io->name);
 		return -1;
 	}
 
@@ -261,8 +260,9 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	if (!rad_cond_assert(fd >= 0)) return -1;
 
 	/*
-	 *	Build the fr_listen_t from the op array of the transport and its
-	 *	instance data.
+	 *	Build the #fr_listen_t.  This describes the complete
+	 *	path, data takes from the socket to the decoder and
+	 *	back again.
 	 */
 	listen = talloc_zero(inst, fr_listen_t);
 
@@ -271,13 +271,12 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 
 	listen->app = &proto_radius;
 	listen->app_instance = instance;
+
 	listen->encode = mod_encode;
 	listen->decode = mod_decode;
 
 	/*
-	 *	Add it to the scheduler.  Note that we add our context
-	 *	instead of the transport one, as we need to swap out
-	 *	the process function.
+	 *	Add the listener to the scheduler.
 	 */
 	if (!fr_schedule_socket_add(sc, listen)) {
 		talloc_free(listen);
@@ -301,7 +300,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
  */
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
-	proto_radius_ctx_t 	*inst = talloc_get_type_abort(instance, proto_radius_ctx_t);
+	proto_radius_t		*inst = talloc_get_type_abort(instance, proto_radius_t);
 	size_t			i = 0;
 
 	fr_dict_attr_t const	*da;
@@ -310,11 +309,11 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	inst->server_cs = conf;
 
 	/*
-	 *	Instantiate the IO module
+	 *	Instantiate the I/O module
 	 */
 	if (inst->app_io->instantiate && (inst->app_io->instantiate(inst->app_io_instance,
 								    inst->app_io_conf) < 0)) {
-		cf_log_err(conf, "I/O instantiation failed");
+		cf_log_err(conf, "Instantiation failed for \"%s\"", inst->app_io->name);
 		return -1;
 	}
 
@@ -328,22 +327,24 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	}
 
 	/*
-	 *	Instantiate the processs
+	 *	Instantiate the process modules
 	 */
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
-		fr_app_process_t const *process = (fr_app_process_t const *)inst->process_submodule[i]->module->common;
+		fr_app_process_t const *app_process;
+		int code;
 
-		if (process->instantiate && (process->instantiate(inst->process_submodule[i]->inst,
-								  inst->process_submodule[i]->conf) < 0)) {
-			cf_log_err(conf, "process instantiation failed");
+		app_process = (fr_app_process_t const *)inst->process_submodule[i]->module->common;
+		if (app_process->instantiate && (app_process->instantiate(inst->process_submodule[i]->inst,
+									  inst->process_submodule[i]->conf) < 0)) {
+			cf_log_err(conf, "Instantiation failed for \"%s\"", app_process->name);
 			return -1;
 		}
 
 		/*
 		 *	We've already done bounds checking in the process_parse function
 		 */
-		inst->process_by_code[fr_dict_enum_by_alias(NULL, da,
-							    cf_pair_value(cp))->value->vb_uint32] = process->process;
+		code = fr_dict_enum_by_alias(NULL, da, cf_pair_value(cp))->value->vb_uint32;
+		inst->process_by_code[code] = app_process->process;	/* Store the process function */
 
 		i++;
 	}
@@ -363,32 +364,32 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
  */
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
-	proto_radius_ctx_t 	*inst = talloc_get_type_abort(instance, proto_radius_ctx_t);
+	proto_radius_t 	*inst = talloc_get_type_abort(instance, proto_radius_t);
 	size_t			i = 0;
 	CONF_PAIR		*cp = NULL;
 
 	/*
-	 *	Bootstrap the IO module
+	 *	Bootstrap the I/O module
 	 */
 	inst->app_io = (fr_app_io_t const *) inst->io_submodule->module->common;
 	inst->app_io_instance = inst->io_submodule->inst;
 	inst->app_io_conf = inst->io_submodule->conf;
 	if (inst->app_io->bootstrap && (inst->app_io->bootstrap(inst->app_io_instance,
 								inst->app_io_conf) < 0)) {
-		cf_log_err(inst->app_io_conf, "I/O bootstrap failed");
+		cf_log_err(inst->app_io_conf, "Bootstrap failed for \"%s\"", inst->app_io->name);
 		return -1;
 	}
 
 	/*
-	 *	Bootstrap the processs
+	 *	Bootstrap the process modules
 	 */
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
 		dl_t const	       *module = talloc_get_type_abort(inst->process_submodule[i]->module, dl_t);
-		fr_app_process_t const *process = (fr_app_process_t const *)module->common;
+		fr_app_process_t const *app_process = (fr_app_process_t const *)module->common;
 
-		if (process->bootstrap && (process->bootstrap(inst->process_submodule[i]->inst,
-							      inst->process_submodule[i]->conf) < 0)) {
-			cf_log_err(inst->process_submodule[i]->conf, "process bootstrap failed");
+		if (app_process->bootstrap && (app_process->bootstrap(inst->process_submodule[i]->inst,
+								      inst->process_submodule[i]->conf) < 0)) {
+			cf_log_err(conf, "Bootstrap failed for \"%s\"", app_process->name);
 			return -1;
 		}
 		i++;
@@ -401,8 +402,8 @@ fr_app_t proto_radius = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "radius",
 	.config		= proto_radius_config,
-	.inst_size	= sizeof(proto_radius_ctx_t),
-	.inst_type	= "proto_radius_ctx_t",
+	.inst_size	= sizeof(proto_radius_t),
+	.inst_type	= "proto_radius_t",
 
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,

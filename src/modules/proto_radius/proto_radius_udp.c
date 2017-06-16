@@ -61,24 +61,24 @@ typedef struct {
 								//!< buffer value.
 
 	RADCLIENT			*dummy_client;
-} fr_proto_radius_udp_ctx_t;
+} fr_proto_radius_udp_t;
 
 static const CONF_PARSER udp_listen_config[] = {
-	{ FR_CONF_IS_SET_OFFSET("ipaddr", FR_TYPE_COMBO_IP_ADDR, fr_proto_radius_udp_ctx_t, ipaddr) },
-	{ FR_CONF_IS_SET_OFFSET("ipv4addr", FR_TYPE_IPV4_ADDR, fr_proto_radius_udp_ctx_t, ipaddr) },
-	{ FR_CONF_IS_SET_OFFSET("ipv6addr", FR_TYPE_IPV6_ADDR, fr_proto_radius_udp_ctx_t, ipaddr) },
+	{ FR_CONF_IS_SET_OFFSET("ipaddr", FR_TYPE_COMBO_IP_ADDR, fr_proto_radius_udp_t, ipaddr) },
+	{ FR_CONF_IS_SET_OFFSET("ipv4addr", FR_TYPE_IPV4_ADDR, fr_proto_radius_udp_t, ipaddr) },
+	{ FR_CONF_IS_SET_OFFSET("ipv6addr", FR_TYPE_IPV6_ADDR, fr_proto_radius_udp_t, ipaddr) },
 
-	{ FR_CONF_OFFSET("interface", FR_TYPE_STRING, fr_proto_radius_udp_ctx_t, interface) },
-	{ FR_CONF_OFFSET("port_name", FR_TYPE_STRING, fr_proto_radius_udp_ctx_t, port_name) },
+	{ FR_CONF_OFFSET("interface", FR_TYPE_STRING, fr_proto_radius_udp_t, interface) },
+	{ FR_CONF_OFFSET("port_name", FR_TYPE_STRING, fr_proto_radius_udp_t, port_name) },
 
-	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, fr_proto_radius_udp_ctx_t, port) },
-	{ FR_CONF_IS_SET_OFFSET("recv_buff", FR_TYPE_UINT32, fr_proto_radius_udp_ctx_t, recv_buff) },
+	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, fr_proto_radius_udp_t, port) },
+	{ FR_CONF_IS_SET_OFFSET("recv_buff", FR_TYPE_UINT32, fr_proto_radius_udp_t, recv_buff) },
 	CONF_PARSER_TERMINATOR
 };
 
 static ssize_t mod_read(void const *instance, void **packet_ctx, uint8_t *buffer, size_t buffer_len)
 {
-	fr_proto_radius_udp_ctx_t const	*inst = talloc_get_type_abort(instance, fr_proto_radius_udp_ctx_t);
+	fr_proto_radius_udp_t const	*inst = talloc_get_type_abort(instance, fr_proto_radius_udp_t);
 	fr_proto_radius_packet_ctx_t	*pctx;
 
 	ssize_t				data_size;
@@ -129,7 +129,7 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, uint8_t *buffer
 
 static ssize_t mod_write(void const *instance, void *packet_ctx, uint8_t *buffer, size_t buffer_len)
 {
-	fr_proto_radius_udp_ctx_t const	*inst = talloc_get_type_abort(instance, fr_proto_radius_udp_ctx_t);
+	fr_proto_radius_udp_t const	*inst = talloc_get_type_abort(instance, fr_proto_radius_udp_t);
 	fr_proto_radius_packet_ctx_t	*pctx = talloc_get_type_abort(packet_ctx, fr_proto_radius_packet_ctx_t);
 
 	ssize_t				data_size;
@@ -165,7 +165,7 @@ static ssize_t mod_write(void const *instance, void *packet_ctx, uint8_t *buffer
  */
 static int mod_open(void *instance)
 {
-	fr_proto_radius_udp_ctx_t *inst = talloc_get_type_abort(instance, fr_proto_radius_udp_ctx_t);
+	fr_proto_radius_udp_t *inst = talloc_get_type_abort(instance, fr_proto_radius_udp_t);
 
 	int				sockfd = 0;
 	uint16_t			port = inst->port;
@@ -189,7 +189,7 @@ static int mod_open(void *instance)
 
 static int mod_instantiate(void *instance, CONF_SECTION *cs)
 {
-	fr_proto_radius_udp_ctx_t *inst = talloc_get_type_abort(instance, fr_proto_radius_udp_ctx_t);
+	fr_proto_radius_udp_t *inst = talloc_get_type_abort(instance, fr_proto_radius_udp_t);
 
 	/*
 	 *	Default to all IPv6 interfaces (it's the future)
@@ -234,7 +234,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
  */
 static int mod_fd(void const *instance)
 {
-	fr_proto_radius_udp_ctx_t *inst = talloc_get_type_abort(instance, fr_proto_radius_udp_ctx_t);
+	fr_proto_radius_udp_t *inst = talloc_get_type_abort(instance, fr_proto_radius_udp_t);
 
 	return inst->sockfd;
 }
@@ -244,8 +244,8 @@ fr_app_io_t proto_radius_udp = {
 	.magic			= RLM_MODULE_INIT,
 	.name			= "radius_udp",
 	.config			= udp_listen_config,
-	.inst_size		= sizeof(fr_proto_radius_udp_ctx_t),
-	.inst_type		= "fr_proto_radius_udp_ctx_t",
+	.inst_size		= sizeof(fr_proto_radius_udp_t),
+	.inst_type		= "fr_proto_radius_udp_t",
 	.instantiate		= mod_instantiate,
 
 	.default_message_size	= 4096,
