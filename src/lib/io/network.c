@@ -55,7 +55,7 @@ typedef struct fr_network_worker_t {
 } fr_network_worker_t;
 
 typedef struct fr_network_socket_t {
-	fr_listen_t	const		*io;			//!< I/O ctx and functions.
+	fr_listen_t const	*listen;		//!< I/O ctx and functions.
 
 	fr_message_set_t	*ms;			//!< message buffers for this socket.
 	fr_channel_data_t	*cd;			//!< cached in case of allocation & read error
@@ -120,8 +120,8 @@ static int socket_cmp(void const *one, void const *two)
 	fr_network_socket_t const *a = one;
 	fr_network_socket_t const *b = two;
 
-	if (a->io < b->io) return -1;
-	if (a->io > b->io) return +1;
+	if (a->listen < b->listen) return -1;
+	if (a->listen > b->listen) return +1;
 
 	return 0;
 }
@@ -345,14 +345,14 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
 	ssize_t data_size;
 	fr_channel_data_t *cd;
 
-	rad_assert(s->io->op->fd(s->io->ctx) == sockfd);
+	rad_assert(s->listen->app_io->fd(s->listen->app_io_instance) == sockfd);
 
 	fr_log(nr->log, L_DBG, "network read");
 
 	if (!s->cd) {
-		cd = (fr_channel_data_t *) fr_message_reserve(s->ms, s->io->op->default_message_size);
+		cd = (fr_channel_data_t *) fr_message_reserve(s->ms, s->listen->app_io->default_message_size);
 		if (!cd) {
-			fr_log(nr->log, L_ERR, "Failed allocating message size %zd!", s->io->op->default_message_size);
+			fr_log(nr->log, L_ERR, "Failed allocating message size %zd!", s->listen->app_io->default_message_size);
 
 			/*
 			 *	@todo - handle errors via transport callback
@@ -376,7 +376,7 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
 	 *	network side knows that it needs to close the
 	 *	connection.
 	 */
-	data_size = s->io->op->read(s->io->ctx, &cd->packet_ctx, cd->m.data, cd->m.rb_size);
+	data_size = s->listen->app_io->read(s->listen->app_io_instance, &cd->packet_ctx, cd->m.data, cd->m.rb_size);
 	if (data_size == 0) {
 		fr_log(nr->log, L_DBG_ERR, "got no data from transport read");
 
@@ -396,8 +396,7 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
 	}
 
 	/*
-	 *	Error: close the connection, and remove the
-	 *	fr_io_op_t.
+	 *	Error: close the connection, and remove the fr_listen_t
 	 */
 	if (data_size < 0) {
 		fr_log(nr->log, L_DBG_ERR, "error from transport read on socket %d", sockfd);
@@ -413,7 +412,7 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
 	 */
 	cd->m.when = fr_time();
 	cd->priority = 0;
-	cd->io = s->io;
+	cd->listen = s->listen;
 	cd->request.start_time = &start_time; /* @todo - set by transport */
 
 	start_time = cd->m.when;
@@ -437,8 +436,8 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, void
 {
 	fr_network_socket_t *s = ctx;
 
-	if (s->io->op->flush(s->io->ctx) < 0) {
-		s->io->op->error(s->io->ctx);
+	if (s->listen->app_io->flush(s->listen->app_io_instance) < 0) {
+		s->listen->app_io->error(s->listen->app_io_instance);
 		talloc_free(s);
 	}
 }
@@ -453,7 +452,7 @@ static void fr_network_error(UNUSED fr_event_list_t *el, UNUSED int sockfd, void
 {
 	fr_network_socket_t *s = ctx;
 
-	s->io->op->error(s->io->ctx);
+	s->listen->app_io->error(s->listen->app_io_instance);
 	talloc_free(s);
 }
 
@@ -461,14 +460,14 @@ static int _network_socket_free(fr_network_socket_t *s)
 {
 	fr_network_t *nr = talloc_parent(s);
 
-	fr_event_fd_delete(nr->el, s->io->op->fd(s->io->ctx));
+	fr_event_fd_delete(nr->el, s->listen->app_io->fd(s->listen->app_io_instance));
 
 	rbtree_deletebydata(nr->sockets, s);
 
-	if (s->io->op->close) {
-		s->io->op->close(s->io->ctx);
+	if (s->listen->app_io->close) {
+		s->listen->app_io->close(s->listen->app_io_instance);
 	} else {
-		close(s->io->op->fd(s->io->ctx));
+		close(s->listen->app_io->fd(s->listen->app_io_instance));
 	}
 
 	return 0;
@@ -505,7 +504,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 	 */
 	s->ms = fr_message_set_create(s, MIN_MESSAGES,
 				      sizeof(fr_channel_data_t),
-				      s->io->op->default_message_size * MIN_MESSAGES);
+				      s->listen->app_io->default_message_size * MIN_MESSAGES);
 	if (!s->ms) {
 		fr_log(nr->log, L_ERR, "Failed creating message buffers for network IO.");
 
@@ -517,11 +516,11 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 
 	write_fn = error_fn = NULL;
 
-	if (s->io->op->flush) write_fn = fr_network_write;
+	if (s->listen->app_io->flush) write_fn = fr_network_write;
 
-	if (s->io->op->error) error_fn = fr_network_error;
+	if (s->listen->app_io->error) error_fn = fr_network_error;
 
-	fd = s->io->op->fd(s->io->ctx);
+	fd = s->listen->app_io->fd(s->listen->app_io_instance);
 
 	if (fr_event_fd_insert(nr->el, fd, fr_network_read, write_fn, error_fn, s) < 0) {
 		fr_log(nr->log, L_ERR, "Failed adding new socket to event loop: %s", fr_strerror());
@@ -762,7 +761,7 @@ void fr_network(fr_network_t *nr)
 //		fr_time_t now;
 		ssize_t rcode;
 		fr_channel_data_t *cd;
-		fr_listen_t const *io;
+		fr_listen_t const *listen;
 
 		/*
 		 *	There are runnable requests.  We still service
@@ -792,14 +791,14 @@ void fr_network(fr_network_t *nr)
 		cd = fr_heap_pop(nr->replies);
 		if (!cd) continue;
 
-		io = cd->io;
+		listen = cd->listen;
 
 		/*
 		 *	@todo - call transport "recv reply".  And if
 		 *	the reply is a NAK, don't write it to the
 		 *	network.
 		 */
-		rcode = io->op->write(io->ctx, cd->packet_ctx, cd->m.data, cd->m.data_size);
+		rcode = listen->app_io->write(listen->app_io_instance, cd->packet_ctx, cd->m.data, cd->m.data_size);
 		if (rcode < 0) {
 			fr_network_socket_t my_socket, *s;
 
@@ -809,9 +808,9 @@ void fr_network(fr_network_t *nr)
 			 *	Don't call close, as that will be done
 			 *	in the destructor.
 			 */
-			if (io->op->error) io->op->error(io->ctx);
+			if (listen->app_io->error) listen->app_io->error(listen->app_io_instance);
 
-			my_socket.io = io;
+			my_socket.listen = listen;
 			s = rbtree_finddata(nr->sockets, &my_socket);
 			if (s) talloc_free(s);
 			continue;
@@ -821,7 +820,8 @@ void fr_network(fr_network_t *nr)
 			// call write function again at some later date.
 		}
 
-		fr_log(nr->log, L_DBG, "Sending reply to socket %d", cd->io->op->fd(cd->io->ctx));
+		fr_log(nr->log, L_DBG, "Sending reply to socket %d",
+		       cd->listen->app_io->fd(cd->listen->app_io_instance));
 		fr_message_done(&cd->m);
 	}
 }
@@ -839,16 +839,16 @@ void fr_network_exit(fr_network_t *nr)
 
 /** Add a socket to a network
  *
- * @param nr	the network
- * @param io	Functions and context.
+ * @param nr		the network
+ * @param listen	Functions and context.
  */
-int fr_network_socket_add(fr_network_t *nr, fr_listen_t const *io)
+int fr_network_socket_add(fr_network_t *nr, fr_listen_t const *listen)
 {
 	int rcode;
 	fr_network_socket_t m;
 
 	memset(&m, 0, sizeof(m));
-	m.io = io;
+	m.listen = listen;
 
 	PTHREAD_MUTEX_LOCK(&nr->mutex);
 	rcode = fr_control_message_send(nr->control, nr->rb, FR_CONTROL_ID_SOCKET, &m, sizeof(m));

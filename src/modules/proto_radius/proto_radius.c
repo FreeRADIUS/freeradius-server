@@ -246,12 +246,12 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	/*
 	 *	Open the listen socket
 	 */
-	if (inst->app_io->op.open(inst->io_submodule->inst) < 0) {
+	if (inst->app_io->open(inst->io_submodule->inst) < 0) {
 		cf_log_err(conf, "Failed opening I/O interface");
 		return -1;
 	}
 
-	fd = inst->app_io->op.fd(inst->io_submodule->inst);
+	fd = inst->app_io->fd(inst->io_submodule->inst);
 	if (!rad_cond_assert(fd >= 0)) return -1;
 
 	/*
@@ -260,8 +260,8 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	 */
 	listen = talloc_zero(inst, fr_listen_t);
 
-	listen->ctx = inst->io_submodule->inst;
-	listen->op = &inst->app_io->op;
+	listen->app_io = inst->app_io;
+	listen->app_io_instance = inst->io_submodule->inst;
 
 	listen->set_process = mod_set_process;
 	listen->app_ctx = instance;

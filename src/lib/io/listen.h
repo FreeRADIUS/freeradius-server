@@ -22,15 +22,15 @@
 /** Describes a path data takes to/from the wire to/from VALUE_PAIRs
  *
  */
-typedef struct fr_io fr_listen_t;
-struct fr_io {
-	fr_io_op_t const	*op;		//!< I/O path functions.
-	void			*ctx;		//!< I/O path specific context.
+typedef struct fr_listen fr_listen_t;
+struct fr_listen {
+	fr_app_io_t const	*app_io;		//!< I/O path functions.
+	void			*app_io_instance;	//!< I/O path specific context.
 
-	fr_io_decode_t		decode;		//!< Function to decode packet to request (worker)
-	fr_io_encode_t		encode;		//!< Function to encode request to packet (worker)
+	fr_io_decode_t		decode;			//!< Function to decode packet to request (worker)
+	fr_io_encode_t		encode;			//!< Function to encode request to packet (worker)
 
-	fr_app_set_process_t	set_process;	//!< Set the state machine entry point for a request.
+	fr_app_set_process_t	set_process;		//!< Set the state machine entry point for a request.
 	void const		*app_ctx;
 };
 

@@ -237,26 +237,6 @@ typedef int (*fr_io_signal_t)(void const *instance);
  *
  */
 typedef	fr_io_final_t (*fr_io_process_t)(REQUEST *request, fr_io_action_t action);
-
-/**  Data structure containing functions for performing I/O
- *
- *  @todo add conf parser, open socket, send_request, recv_reply, send_nak, etc.
- */
-typedef struct fr_io_op_t {
-	char const		*name;		//!< Name of this transport
-	size_t			default_message_size; // Usually minimum message size
-
-	fr_io_open_t		open;		//!< Open a new socket for listening, or accept/connect a new
-						//!< connection.
-	fr_io_get_fd_t		fd;		//!< Return the file descriptor from the instance.
-	fr_io_data_read_t	read;		//!< Read from a socket to a data buffer
-	fr_io_data_write_t	write;		//!< Write from a data buffer to a socket
-	fr_io_signal_t		flush;		//!< Flush the data when the socket is ready for writing.
-	fr_io_signal_t		error;		//!< There was an error on the socket.
-	fr_io_signal_t		close;		//!< Close the transport.
-	fr_io_nak_t		nak;		//!< Function to send a NAK.
-} fr_io_op_t;
-
 #ifdef __cplusplus
 }
 #endif

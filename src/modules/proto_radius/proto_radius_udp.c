@@ -247,12 +247,10 @@ fr_app_io_t proto_radius_udp = {
 	.inst_size		= sizeof(fr_proto_radius_udp_ctx_t),
 	.inst_type		= "fr_proto_radius_udp_ctx_t",
 	.instantiate		= mod_instantiate,
-	.op 			= {
-		.name			= "radius_udp",
-		.default_message_size	= 4096,
-		.open			= mod_open,
-		.read			= mod_read,
-		.write			= mod_write,
-		.fd			= mod_fd,
-	}
+
+	.default_message_size	= 4096,
+	.open			= mod_open,
+	.read			= mod_read,
+	.write			= mod_write,
+	.fd			= mod_fd
 };

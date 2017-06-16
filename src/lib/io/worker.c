@@ -327,7 +327,7 @@ static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t 
 	fr_channel_data_t	*reply;
 	fr_channel_t		*ch;
 	fr_message_set_t	*ms;
-	fr_listen_t	const		*io;
+	fr_listen_t const	*listen;
 
 	worker->num_timeouts++;
 
@@ -335,7 +335,7 @@ static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t 
 	 *	Cache the outbound channel.  We'll need it later.
 	 */
 	ch = cd->channel.ch;
-	io = cd->io;
+	listen = cd->listen;
 
 	ms = fr_channel_worker_ctx_get(ch);
 	rad_assert(ms != NULL);
@@ -343,13 +343,14 @@ static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t 
 	/*
 	 *	Allocate a default message size.
 	 */
-	reply = (fr_channel_data_t *) fr_message_reserve(ms, io->op->default_message_size);
+	reply = (fr_channel_data_t *) fr_message_reserve(ms, listen->app_io->default_message_size);
 	rad_assert(reply != NULL);
 
 	/*
 	 *	Encode a NAK
 	 */
-	size = io->op->nak(io->ctx, cd->m.data, cd->m.data_size, reply->m.data, reply->m.rb_size);
+	size = listen->app_io->nak(listen->app_io_instance, cd->m.data,
+				   cd->m.data_size, reply->m.data, reply->m.rb_size);
 
 	(void) fr_message_alloc(ms, &reply->m, size);
 
@@ -361,7 +362,7 @@ static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t 
 	reply->reply.processing_time = 10; /* @todo - set to something better? */
 	reply->reply.request_time = cd->m.when;
 
-	reply->io = cd->io;
+	reply->listen = cd->listen;
 
 	/*
 	 *	Mark the original message as done.
@@ -414,7 +415,8 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	if (size) {
 		ssize_t encoded;
 
-		encoded = request->async->io->encode(request->async->io->ctx, request, reply->m.data, reply->m.rb_size);
+		encoded = request->async->io->encode(request->async->io->app_io_instance,
+						     request, reply->m.data, reply->m.rb_size);
 		if (encoded < 0) {
 			fr_log(worker->log, L_DBG, "\t%sfails encode", worker->name);
 			encoded = 0;
@@ -442,7 +444,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	reply->reply.processing_time = request->async->tracking.running;
 	reply->reply.request_time = request->async->recv_time;
 
-	reply->io = request->async->io;
+	reply->listen = request->async->io;
 
 	fr_log(worker->log, L_DBG, "(%"PRIu64") finished, sending reply", request->number);
 
@@ -616,7 +618,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	fr_channel_data_t	*cd;
 	REQUEST			*request;
 	fr_dlist_t		*entry;
-	fr_listen_t	const		*io;
+	fr_listen_t const	*listen;
 #ifndef HAVE_TALLOC_POOLED_OBJECT
 	TALLOC_CTX		*ctx;
 #endif
@@ -669,7 +671,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	 *	Receive a message to the worker queue, and decode it
 	 *	to a request.
 	 */
-	rad_assert(cd->io->op != NULL);
+	rad_assert(cd->listen != NULL);
 
 	/*
 	 *	Update the transport-specific fields.
@@ -687,15 +689,15 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	request->async->el = worker->el;
 	request->number = 0;	/* @todo - assigned by someone intelligent... */
 
-	request->async->io = cd->io;
-	io = request->async->io;
+	request->async->io = cd->listen;
+	listen = request->async->io;
 
 	/*
 	 *	Now that the "request" structure has been initialized, go decode the packet.
 	 *
 	 *	Note that this also sets the "async process" function.
 	 */
-	rcode = io->decode(io->ctx, request, cd->m.data, cd->m.data_size);
+	rcode = listen->decode(listen->app_io_instance, request, cd->m.data, cd->m.data_size);
 	if (rcode < 0) {
 		fr_log(worker->log, L_DBG, "\t%sFAILED decode of request %"PRIu64, worker->name, request->number);
 		talloc_free(ctx);
@@ -708,7 +710,7 @@ nak:
 	 *	Call the main protocol handlr to set the right async
 	 *	process function.
 	 */
-	io->set_process(request, io->app_ctx);
+	listen->set_process(request, listen->app_ctx);
 
 	rad_assert(request->async->process != NULL);
 
@@ -835,7 +837,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 		return;
 
 	case FR_IO_REPLY:
-		size = request->async->io->op->default_message_size;
+		size = request->async->io->app_io->default_message_size;
 		break;
 	}
 
@@ -1165,7 +1167,7 @@ void fr_worker(fr_worker_t *worker)
 		if (!request) continue;
 
 		rad_assert(request->async->process != NULL);
-		rad_assert(request->async->io->op != NULL);
+		rad_assert(request->async->io != NULL);
 
 		/*
 		 *	Run the request, and either track it as

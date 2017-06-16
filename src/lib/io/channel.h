@@ -49,7 +49,7 @@ typedef struct fr_channel_t fr_channel_t;
  *	Forward declaration until such time as we fix the code so that
  *	the network threads can push transports to worker threads.
  */
-typedef struct fr_io fr_listen_t;
+typedef struct fr_listen fr_listen_t;
 
 typedef enum fr_channel_event_t {
 	FR_CHANNEL_ERROR = 0,
@@ -111,7 +111,7 @@ typedef struct fr_channel_data_t {
 								//!< information, and other proto_* specific information
 								//!< that needs to be passed to the request.
 
-	fr_listen_t	const	*io;					//!< for tracking packet transport, etc.
+	fr_listen_t const *listen;				//!< for tracking packet transport, etc.
 } fr_channel_data_t;
 
 fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, fr_control_t *master, fr_control_t *worker) CC_HINT(nonnull);

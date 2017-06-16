@@ -140,7 +140,7 @@ static size_t test_nak(void const *instance, uint8_t *const packet, size_t packe
 	return 10;
 }
 
-static fr_io_op_t op = {
+static fr_app_io_t app_io = {
 	.name = "worker-test",
 	.default_message_size = 4096,
 	.nak = test_nak,
@@ -207,7 +207,7 @@ static void master_process(TALLOC_CTX *ctx)
 	int			kq_master;
 	fr_atomic_queue_t	*aq_master;
 	fr_control_t		*control_master;
-	fr_listen_t			io = { .ctx = NULL, .op = &op, .encode = test_encode, .decode = test_decode };
+	fr_listen_t		listen = { .app_io = &app_io, .encode = test_encode, .decode = test_decode };
 	int			sockfd;
 
 	MPRINT1("Master started.\n");
@@ -340,7 +340,7 @@ static void master_process(TALLOC_CTX *ctx)
 
 			cd->priority = 0;
 			cd->packet_ctx = packet_ctx;
-			cd->io = &io;
+			cd->listen = &listen;
 
 			data_size = recvfrom(sockfd, cd->m.data, cd->m.rb_size, 0,
 					     (struct sockaddr *) &packet_ctx->src, &packet_ctx->salen);

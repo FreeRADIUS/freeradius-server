@@ -34,11 +34,6 @@
  */
 typedef struct fr_schedule_t fr_schedule_t;
 
-/*
- *	src/lib/io/io.h
- */
-typedef struct fr_io_op_t fr_io_op_t;
-
 typedef int (*fr_app_open_t)(void *instance, fr_schedule_t *sc, CONF_SECTION *cs);
 typedef int (*fr_app_instantiate_t)(void *instance, CONF_SECTION *cs);
 typedef int (*fr_app_bootstrap_t)( void *instance, CONF_SECTION *cs);
@@ -91,7 +86,17 @@ typedef struct fr_app_io_t {
 	fr_app_bootstrap_t		bootstrap;
 	fr_app_instantiate_t		instantiate;
 	fr_app_set_uctx_t		set_uctx;	//!< Allow the submodule to receive data from the main module.
-	fr_io_op_t			op;		//!< Open/close/read/write functions for sending/receiving
-							//!< protocol data.
+
+	size_t				default_message_size; // Usually minimum message size
+
+	fr_io_open_t			open;		//!< Open a new socket for listening, or accept/connect a new
+							//!< connection.
+	fr_io_get_fd_t			fd;		//!< Return the file descriptor from the instance.
+	fr_io_data_read_t		read;		//!< Read from a socket to a data buffer
+	fr_io_data_write_t		write;		//!< Write from a data buffer to a socket
+	fr_io_signal_t			flush;		//!< Flush the data when the socket is ready for writing.
+	fr_io_signal_t			error;		//!< There was an error on the socket.
+	fr_io_signal_t			close;		//!< Close the transport.
+	fr_io_nak_t			nak;		//!< Function to send a NAK.
 } fr_app_io_t;
 #endif

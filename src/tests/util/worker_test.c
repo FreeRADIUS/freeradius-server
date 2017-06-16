@@ -143,7 +143,7 @@ static size_t test_nak(void const *packet_ctx, uint8_t *const packet, size_t pac
 	return 10;
 }
 
-static fr_io_op_t transport = {
+static fr_app_io_t app_io = {
 	.name = "worker-test",
 	.default_message_size = 4096,
 	.nak = test_nak,
@@ -191,7 +191,7 @@ static void master_process(void)
 	fr_channel_event_t	ce;
 	pthread_attr_t		attr;
 	fr_schedule_worker_t	*sw;
-	fr_listen_t			io = { .ctx = NULL, .op = &transport, .encode = test_encode, .decode = test_decode };
+	fr_listen_t		listen = { .app_io = &app_io, .encode = test_encode, .decode = test_decode };
 	struct kevent		events[MAX_KEVENTS];
 
 	ctx = talloc_init("master");
@@ -281,7 +281,7 @@ static void master_process(void)
 			cd->m.when = fr_time();
 
 			cd->priority = 0;
-			cd->io = &io;
+			cd->listen = &listen;
 
 			if (touch_memory) {
 				size_t j, k;
