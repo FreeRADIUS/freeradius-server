@@ -35,6 +35,16 @@ RCSID("$Id$")
 #include <freeradius-devel/io/network.h>
 #include <freeradius-devel/io/listen.h>
 
+#ifdef HAVE_PTHREAD_H
+#include <pthread.h>
+#define PTHREAD_MUTEX_LOCK   pthread_mutex_lock
+#define PTHREAD_MUTEX_UNLOCK pthread_mutex_unlock
+
+#else
+#define PTHREAD_MUTEX_LOCK
+#define PTHREAD_MUTEX_UNLOCK
+#endif
+
 typedef struct fr_network_worker_t {
 	int			heap_id;		//!< workers are in a heap
 	fr_time_t		cpu_time;		//!< how much CPU time this worker has spent
@@ -73,6 +83,10 @@ struct fr_network_t {
 	uint64_t		num_replies;		//!< number of replies we received
 
 	rbtree_t		*sockets;		//!< list of sockets we're managing
+
+#ifdef HAVE_PTHREAD_H
+	pthread_mutex_t		mutex;			//!< for sending us control messages
+#endif
 };
 
 
@@ -680,6 +694,14 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_log_t *logger)
 		goto nomem;
 	}
 
+#ifdef HAVE_PTHREAD_H
+	if (pthread_mutex_init(&nr->mutex, NULL) != 0) {
+		fr_strerror_printf("Failed initializing mutex");
+		talloc_free(nr);
+		return NULL;
+	}
+#endif
+
 	return nr;
 }
 
@@ -822,12 +844,17 @@ void fr_network_exit(fr_network_t *nr)
  */
 int fr_network_socket_add(fr_network_t *nr, fr_io_t const *io)
 {
+	int rcode;
 	fr_network_socket_t m;
 
 	memset(&m, 0, sizeof(m));
 	m.io = io;
 
-	return fr_control_message_send(nr->control, nr->rb, FR_CONTROL_ID_SOCKET, &m, sizeof(m));
+	PTHREAD_MUTEX_LOCK(&nr->mutex);
+	rcode = fr_control_message_send(nr->control, nr->rb, FR_CONTROL_ID_SOCKET, &m, sizeof(m));
+	PTHREAD_MUTEX_UNLOCK(&nr->mutex);
+
+	return rcode;
 }
 
 /** Add a worker to a network
@@ -837,8 +864,14 @@ int fr_network_socket_add(fr_network_t *nr, fr_io_t const *io)
  */
 int fr_network_worker_add(fr_network_t *nr, fr_worker_t *worker)
 {
+	int rcode;
+
 	(void) talloc_get_type_abort(nr, fr_network_t);
 	(void) talloc_get_type_abort(worker, fr_worker_t);
 
-	return fr_control_message_send(nr->control, nr->rb, FR_CONTROL_ID_WORKER, &worker, sizeof(worker));
+	PTHREAD_MUTEX_LOCK(&nr->mutex);
+	rcode = fr_control_message_send(nr->control, nr->rb, FR_CONTROL_ID_WORKER, &worker, sizeof(worker));
+	PTHREAD_MUTEX_UNLOCK(&nr->mutex);
+
+	return rcode;
 }
