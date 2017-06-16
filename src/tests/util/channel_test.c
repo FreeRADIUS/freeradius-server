@@ -54,9 +54,6 @@ static bool			touch_memory = false;
 
 /**********************************************************************/
 typedef struct rad_request REQUEST;
-REQUEST *request_alloc(UNUSED TALLOC_CTX *ctx);
-void verify_request(UNUSED char const *file, UNUSED int line, UNUSED REQUEST *request);
-void talloc_const_free(void const *ptr);
 
 REQUEST *request_alloc(UNUSED TALLOC_CTX *ctx)
 {
