@@ -22,8 +22,8 @@
  *
  *  The "worker" thread is the one responsible for the bulk of the
  *  work done when processing a request.  Workers are spawned by the
- *  scheduler, and create a KQ and control-plane AQ for control-plane
- *  communication.
+ *  scheduler, and create a kqueue (KQ) and control-plane
+ *  Atomic Queue (AQ) for control-plane communication.
  *
  *  When a network thread discovers that it needs more workers, it
  *  asks the scheduler for a KQ/AQ combination.  The network thread
