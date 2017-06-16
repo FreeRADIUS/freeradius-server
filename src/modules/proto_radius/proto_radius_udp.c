@@ -105,7 +105,7 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, uint8_t *buffer
 	 *	If it's not a RADIUS packet, ignore it.
 	 */
 	if (!fr_radius_ok(buffer, &packet_len, false, &reason)) {
-		return -1;
+		return 0;
 	}
 
 	src_dst.timestamp = fr_time();
@@ -116,7 +116,7 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, uint8_t *buffer
 	if (fr_radius_verify(buffer, NULL,
 			     (uint8_t const *)inst->dummy_client->secret,
 			     talloc_array_length(inst->dummy_client->secret)) < 0) {
-		return -1;
+		return 0;
 	}
 
 	src_dst.client = inst->dummy_client;
