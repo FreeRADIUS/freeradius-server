@@ -1095,6 +1095,16 @@ int fr_worker_kq(fr_worker_t *worker)
 	return worker->kq;
 }
 
+/** Get the event loop for the worker
+ *
+ * @param[in] worker the worker data structure
+ * @return kq
+ */
+fr_event_list_t *fr_worker_el(fr_worker_t *worker)
+{
+	return worker->el;
+}
+
 
 /** Signal a worker to exit
  *
