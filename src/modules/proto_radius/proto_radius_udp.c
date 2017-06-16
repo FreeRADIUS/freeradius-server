@@ -28,20 +28,22 @@
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/io/io.h>
 #include <freeradius-devel/io/application.h>
+#include <freeradius-devel/io/track.h>
 #include <freeradius-devel/rad_assert.h>
 #include "proto_radius.h"
 
 typedef struct {
-	uint8_t			header[20];
-	uint8_t			id;
+	int			if_index;
 
 	fr_ipaddr_t		src_ipaddr;
 	fr_ipaddr_t		dst_ipaddr;
 	uint16_t		src_port;
 	uint16_t 		dst_port;
 
+	fr_time_t		timestamp;
+
 	RADCLIENT		*client;
-} fr_proto_radius_packet_ctx_t;
+} fr_udp_src_dst_t;
 
 typedef struct {
 	int				sockfd;
@@ -59,6 +61,8 @@ typedef struct {
 	uint32_t			recv_buff;		//!< How big the kernel's receive buffer should be.
 	bool				recv_buff_is_set;	//!< Whether we were provided with a receive
 								//!< buffer value.
+
+	fr_tracking_t			*ft;			//!< tracking table
 
 	RADCLIENT			*dummy_client;
 } fr_proto_radius_udp_t;
@@ -79,19 +83,20 @@ static const CONF_PARSER udp_listen_config[] = {
 static ssize_t mod_read(void const *instance, void **packet_ctx, uint8_t *buffer, size_t buffer_len)
 {
 	fr_proto_radius_udp_t const	*inst = talloc_get_type_abort(instance, fr_proto_radius_udp_t);
-	fr_proto_radius_packet_ctx_t	*pctx;
 
 	ssize_t				data_size;
 	size_t				packet_len;
 	decode_fail_t			reason;
 
-	struct sockaddr_storage		sockaddr;
-	socklen_t			salen = sizeof(sockaddr);
+	struct timeval			timestamp;
+	fr_tracking_status_t		tracking_status;
+	fr_tracking_entry_t		*track;
+	fr_udp_src_dst_t		src_dst;
 
-
-	memset(&sockaddr, 0, sizeof(sockaddr));
-
-	data_size = recvfrom(inst->sockfd, buffer, buffer_len, 0, (struct sockaddr *)&sockaddr, &salen);
+	data_size = udp_recv(inst->sockfd, buffer, buffer_len, 0,
+			     &src_dst.src_ipaddr, &src_dst.src_port,
+			     &src_dst.dst_ipaddr, &src_dst.dst_port,
+			     &src_dst.if_index, &timestamp);
 	if (data_size <= 0) return data_size;
 
 	packet_len = data_size;
@@ -99,29 +104,39 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, uint8_t *buffer
 	/*
 	 *	If it's not a RADIUS packet, ignore it.
 	 */
-	if (!fr_radius_ok(buffer, &packet_len, false, &reason)) return -1;
+	if (!fr_radius_ok(buffer, &packet_len, false, &reason)) {
+		return -1;
+	}
+
+	src_dst.timestamp = fr_time();
 
 	/*
 	 *	If the signature fails validation, ignore it.
 	 */
 	if (fr_radius_verify(buffer, NULL,
 			     (uint8_t const *)inst->dummy_client->secret,
-			     talloc_array_length(inst->dummy_client->secret)) < 0) return -1;
-
-	/*
-	 *	Populate the packet context
-	 */
-	pctx = talloc_zero(NULL, fr_proto_radius_packet_ctx_t);
-	pctx->client = inst->dummy_client;
-	if (fr_ipaddr_from_sockaddr(&sockaddr, salen, &pctx->src_ipaddr, &pctx->src_port) < 0) {
-		PERROR("Read failed");
-		talloc_free(pctx);
+			     talloc_array_length(inst->dummy_client->secret)) < 0) {
 		return -1;
 	}
-	pctx->id = buffer[1];
-	memcpy(pctx->header, buffer, sizeof(pctx->header));
 
-	*packet_ctx = pctx;
+	src_dst.client = inst->dummy_client;
+
+	tracking_status = fr_radius_tracking_entry_insert(inst->ft, buffer, src_dst.timestamp, &src_dst, &track);
+
+	switch (tracking_status) {
+	case FR_TRACKING_ERROR:
+	case FR_TRACKING_UNUSED:
+		return -1;
+
+	case FR_TRACKING_SAME:
+		return 0;
+
+	case FR_TRACKING_NEW:
+	case FR_TRACKING_DIFFERENT:
+		break;
+	}
+
+	*packet_ctx = track;
 
 	return packet_len;
 }
@@ -130,29 +145,18 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, uint8_t *buffer
 static ssize_t mod_write(void const *instance, void *packet_ctx, uint8_t *buffer, size_t buffer_len)
 {
 	fr_proto_radius_udp_t const	*inst = talloc_get_type_abort(instance, fr_proto_radius_udp_t);
-	fr_proto_radius_packet_ctx_t	*pctx = talloc_get_type_abort(packet_ctx, fr_proto_radius_packet_ctx_t);
+	fr_tracking_entry_t		*track = packet_ctx;
+	fr_udp_src_dst_t		*src_dst = track->src_dst;
 
 	ssize_t				data_size;
-	struct sockaddr_storage		sockaddr;
-	socklen_t			salen;
 
-	if (fr_ipaddr_to_sockaddr(&pctx->src_ipaddr, pctx->src_port, &sockaddr, &salen) < 0) {
-		PERROR("Write failed");
-		talloc_free(packet_ctx);
-		return -1;
-	}
+	data_size = udp_send(inst->sockfd, buffer, buffer_len, 0,
+			     &src_dst->src_ipaddr, src_dst->src_port,
+			     src_dst->if_index,
+			     &src_dst->dst_ipaddr, src_dst->dst_port);
 
-	/*
-	 *	@todo - do more stuff
-	 */
-	data_size = sendto(inst->sockfd, buffer, buffer_len, 0, (struct sockaddr *) &sockaddr, salen);
-	if (data_size <= 0) return data_size;
+	(void) fr_radius_tracking_entry_delete(inst->ft, track);
 
-	talloc_free(packet_ctx);	/* Probably a bad idea */
-
-	/*
-	 *	@todo - post-write cleanups
-	 */
 	return data_size;
 }
 
@@ -186,6 +190,11 @@ static int mod_open(void *instance)
 
 	return 0;
 }
+
+static void *allowed_packets[FR_MAX_PACKET_CODE] = {
+	[FR_CODE_STATUS_SERVER] = mod_open,
+};
+
 
 static int mod_instantiate(void *instance, CONF_SECTION *cs)
 {
@@ -223,6 +232,11 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	}
 
 	inst->dummy_client = client_afrom_query(inst, "127.0.0.1", "testing123", "test", "test", NULL, false);
+
+	inst->ft = fr_radius_tracking_create(inst, sizeof(fr_udp_src_dst_t), allowed_packets);
+	if (!inst->ft) {
+		cf_log_err(cs, "Failed to create tracking table: %s", fr_strerror());
+	}
 
 	return 0;
 }
