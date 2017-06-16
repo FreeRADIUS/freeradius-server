@@ -1,0 +1,16 @@
+static rlm_rcode_t eap_trampoline_function(void *instance, REQUEST *request)
+{
+	rlm_eap_t		*inst;
+	eap_session_t		*eap_session;
+
+	/*
+	 *	Hold onto your hats...
+	 */
+	eap_session = talloc_get_type_abort(instance, eap_session_t);
+	inst = talloc_get_type_abort(eap_session->inst, rlm_eap_t);
+
+	(void) eap_method_select(inst, eap_session);
+
+	return RLM_MODULE_FAIL;
+}
+

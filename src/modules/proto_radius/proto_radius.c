@@ -193,6 +193,7 @@ static int mod_decode(UNUSED void const *instance, REQUEST *request,
 static ssize_t mod_encode(UNUSED void const *instance, REQUEST *request,
 			  uint8_t *buffer, size_t buffer_len)
 {
+//	proto_radius_ctx_t *inst = instance;
 	size_t len;
 	char *secret = talloc_strdup(request, "testing123");
 
