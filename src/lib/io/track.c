@@ -214,7 +214,7 @@ int fr_radius_tracking_entry_delete(fr_tracking_t *ft, fr_tracking_entry_t *entr
  *	- FR_TRACKING_DIFFERENT, the old packet was deleted, and the newer packet inserted
  */
 fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_t *ft, uint8_t *packet, fr_time_t timestamp,
-						     uint8_t const *src_dst, fr_tracking_entry_t **p_entry)
+						     void *src_dst, fr_tracking_entry_t **p_entry)
 {
 	bool insert = false;
 	fr_tracking_entry_t *entry;
