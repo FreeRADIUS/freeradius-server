@@ -63,6 +63,31 @@ static int		num_workers = 1;
 static bool		quiet = false;
 static fr_schedule_worker_t workers[MAX_WORKERS];
 
+/**********************************************************************/
+typedef struct rad_request REQUEST;
+REQUEST *request_alloc(UNUSED TALLOC_CTX *ctx);
+void verify_request(UNUSED char const *file, UNUSED int line, UNUSED REQUEST *request);
+void talloc_const_free(void const *ptr);
+
+REQUEST *request_alloc(UNUSED TALLOC_CTX *ctx)
+{
+	return NULL;
+}
+
+void verify_request(UNUSED char const *file, UNUSED int line, UNUSED REQUEST *request)
+{
+}
+
+void talloc_const_free(void const *ptr)
+{
+	void *tmp;
+	if (!ptr) return;
+
+	memcpy(&tmp, &ptr, sizeof(tmp));
+	talloc_free(tmp);
+}
+/**********************************************************************/
+
 static void NEVER_RETURNS usage(void)
 {
 	fprintf(stderr, "usage: worker_test [OPTS]\n");
