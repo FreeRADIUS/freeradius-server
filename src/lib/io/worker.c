@@ -363,6 +363,7 @@ static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t 
 	reply->reply.request_time = cd->m.when;
 
 	reply->listen = cd->listen;
+	reply->packet_ctx = cd->packet_ctx;
 
 	/*
 	 *	Mark the original message as done.
@@ -445,6 +446,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	reply->reply.request_time = request->async->recv_time;
 
 	reply->listen = request->async->io;
+	reply->packet_ctx = request->async->packet_ctx;
 
 	fr_log(worker->log, L_DBG, "(%"PRIu64") finished, sending reply", request->number);
 
@@ -690,6 +692,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	request->number = 0;	/* @todo - assigned by someone intelligent... */
 
 	request->async->io = cd->listen;
+	request->async->packet_ctx = cd->packet_ctx;
 	listen = request->async->io;
 
 	/*
