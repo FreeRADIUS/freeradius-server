@@ -40,10 +40,10 @@ typedef struct {
 	dl_submodule_t		**process_submodule;		//!< Instance of the various types
 								//!< only one instance per type allowed.
 
-	fr_listen_t const		*io;
-
 	fr_app_io_t const	*app_io;			//!< Easy access to the app_io handle.
 	fr_app_subtype_t const	*subtype_by_code[FR_CODE_MAX];	//!< Lookup submodule by code.
+
+	fr_listen_t const	*listen;
 } proto_radius_ctx_t;
 
 extern fr_app_t proto_radius;
@@ -240,7 +240,7 @@ static void mod_set_process(REQUEST *request, void const *instance)
 static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 {
 	int			fd;
-	fr_listen_t			*io;
+	fr_listen_t		*listen;
 	proto_radius_ctx_t 	*inst = talloc_get_type_abort(instance, proto_radius_ctx_t);
 
 	/*
@@ -258,27 +258,27 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	 *	Build the fr_listen_t from the op array of the transport and its
 	 *	instance data.
 	 */
-	io = talloc_zero(inst, fr_listen_t);
+	listen = talloc_zero(inst, fr_listen_t);
 
-	io->ctx = inst->io_submodule->inst;
-	io->op = &inst->app_io->op;
+	listen->ctx = inst->io_submodule->inst;
+	listen->op = &inst->app_io->op;
 
-	io->set_process = mod_set_process;
-	io->app_ctx = instance;
-	io->encode = mod_encode;
-	io->decode = mod_decode;
+	listen->set_process = mod_set_process;
+	listen->app_ctx = instance;
+	listen->encode = mod_encode;
+	listen->decode = mod_decode;
 
 	/*
 	 *	Add it to the scheduler.  Note that we add our context
 	 *	instead of the transport one, as we need to swap out
 	 *	the process function.
 	 */
-	if (!fr_schedule_socket_add(sc, io)) {
-		talloc_free(io);
+	if (!fr_schedule_socket_add(sc, listen)) {
+		talloc_free(listen);
 		return -1;
 	}
 
-	inst->io = io;	/* Probably won't need it, but doesn't hurt */
+	inst->listen = listen;	/* Probably won't need it, but doesn't hurt */
 
 	return 0;
 }
