@@ -37,6 +37,32 @@ RCSID("$Id$")
 static int		debug_lvl = 0;
 
 
+/**********************************************************************/
+typedef struct rad_request REQUEST;
+REQUEST *request_alloc(UNUSED TALLOC_CTX *ctx);
+void verify_request(UNUSED char const *file, UNUSED int line, UNUSED REQUEST *request);
+void talloc_const_free(void const *ptr);
+
+REQUEST *request_alloc(UNUSED TALLOC_CTX *ctx)
+{
+	return NULL;
+}
+
+void verify_request(UNUSED char const *file, UNUSED int line, UNUSED REQUEST *request)
+{
+}
+
+void talloc_const_free(void const *ptr)
+{
+	void *tmp;
+	if (!ptr) return;
+
+	memcpy(&tmp, &ptr, sizeof(tmp));
+	talloc_free(tmp);
+}
+/**********************************************************************/
+
+
 static void NEVER_RETURNS usage(void)
 {
 	fprintf(stderr, "usage: atomic_queue_test [OPTS]\n");

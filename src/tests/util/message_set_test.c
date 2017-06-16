@@ -59,6 +59,32 @@ static size_t		seed_string_len = 3;
 static size_t		reserve_size = 2048;
 static size_t		allocation_mask = 0x3ff;
 
+/**********************************************************************/
+typedef struct rad_request REQUEST;
+REQUEST *request_alloc(UNUSED TALLOC_CTX *ctx);
+void verify_request(UNUSED char const *file, UNUSED int line, UNUSED REQUEST *request);
+void talloc_const_free(void const *ptr);
+
+REQUEST *request_alloc(UNUSED TALLOC_CTX *ctx)
+{
+	return NULL;
+}
+
+void verify_request(UNUSED char const *file, UNUSED int line, UNUSED REQUEST *request)
+{
+}
+
+void talloc_const_free(void const *ptr)
+{
+	void *tmp;
+	if (!ptr) return;
+
+	memcpy(&tmp, &ptr, sizeof(tmp));
+	talloc_free(tmp);
+}
+/**********************************************************************/
+
+
 static void  alloc_blocks(fr_message_set_t *ms, uint32_t *seed, UNUSED int *start, int *end)
 {
 	int i;
