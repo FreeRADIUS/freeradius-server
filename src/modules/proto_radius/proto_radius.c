@@ -307,7 +307,10 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	fr_dict_attr_t const	*da;
 	CONF_PAIR		*cp = NULL;
 
-	inst->server_cs = conf;
+	/*
+	 *	The listener is inside of a virtual server.
+	 */
+	inst->server_cs = cf_parent(conf);
 
 	/*
 	 *	Instantiate the I/O module
