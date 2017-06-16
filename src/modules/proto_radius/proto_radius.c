@@ -36,11 +36,17 @@
 typedef struct {
 	CONF_SECTION		*server_cs;			//!< server CS for this listener
 
-	dl_submodule_t		*io_submodule;			//!< I/O module's instance.
-	dl_submodule_t		**process_submodule;		//!< Instance of the various types
-								//!< only one instance per type allowed.
+	dl_submodule_t		*io_submodule;			//!< As provided by the transport_parse callback.
+								///< Broken out into the app_io_* fields below for
+								//!< convenience.
 
 	fr_app_io_t const	*app_io;			//!< Easy access to the app_io handle.
+	void			*app_io_instance;		//!< Easy access to the app_io instance.
+	CONF_SECTION		*app_io_conf;			//!< Easy access to the app_io's config section.
+
+
+	dl_submodule_t		**process_submodule;		//!< Instance of the various types
+								//!< only one instance per type allowed.
 	fr_io_process_t		process_by_code[FR_CODE_MAX];	//!< Lookup process entry point by code.
 
 	fr_listen_t const	*listen;
@@ -246,12 +252,12 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	/*
 	 *	Open the listen socket
 	 */
-	if (inst->app_io->open(inst->io_submodule->inst) < 0) {
+	if (inst->app_io->open(inst->app_io_instance) < 0) {
 		cf_log_err(conf, "Failed opening I/O interface");
 		return -1;
 	}
 
-	fd = inst->app_io->fd(inst->io_submodule->inst);
+	fd = inst->app_io->fd(inst->app_io_instance);
 	if (!rad_cond_assert(fd >= 0)) return -1;
 
 	/*
@@ -261,7 +267,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	listen = talloc_zero(inst, fr_listen_t);
 
 	listen->app_io = inst->app_io;
-	listen->app_io_instance = inst->io_submodule->inst;
+	listen->app_io_instance = inst->app_io_instance;
 
 	listen->app = &proto_radius;
 	listen->app_instance = instance;
@@ -306,8 +312,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Instantiate the IO module
 	 */
-	if (inst->app_io->instantiate && (inst->app_io->instantiate(inst->io_submodule->inst,
-								    inst->io_submodule->conf) < 0)) {
+	if (inst->app_io->instantiate && (inst->app_io->instantiate(inst->app_io_instance,
+								    inst->app_io_conf) < 0)) {
 		cf_log_err(conf, "I/O instantiation failed");
 		return -1;
 	}
@@ -364,10 +370,12 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Bootstrap the IO module
 	 */
-	inst->app_io = (fr_app_io_t const *) inst->io_submodule	->module->common;
-	if (inst->app_io->bootstrap && (inst->app_io->bootstrap(inst->io_submodule->inst,
-								inst->io_submodule->conf) < 0)) {
-		cf_log_err(inst->io_submodule->conf, "I/O bootstrap failed");
+	inst->app_io = (fr_app_io_t const *) inst->io_submodule->module->common;
+	inst->app_io_instance = inst->io_submodule->inst;
+	inst->app_io_conf = inst->io_submodule->conf;
+	if (inst->app_io->bootstrap && (inst->app_io->bootstrap(inst->app_io_instance,
+								inst->app_io_conf) < 0)) {
+		cf_log_err(inst->app_io_conf, "I/O bootstrap failed");
 		return -1;
 	}
 
