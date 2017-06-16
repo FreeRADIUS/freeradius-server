@@ -28,20 +28,6 @@ RCSID("$Id$")
 #include <freeradius-devel/rbtree.h>
 #include <freeradius-devel/rad_assert.h>
 
-#if 0
-/*
- *	Copied here for simplicity...
- */
-static void talloc_const_free(void const *ptr)
-{
-	void *tmp;
-	if (!ptr) return;
-
-	memcpy(&tmp, &ptr, sizeof(tmp));
-	talloc_free(tmp);
-}
-#endif
-
 /**
  *  RADIUS-specific tracking table.
  *
