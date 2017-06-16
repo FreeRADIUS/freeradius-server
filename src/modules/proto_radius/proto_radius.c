@@ -209,7 +209,7 @@ static ssize_t mod_encode(UNUSED void const *io_ctx, REQUEST *request,
 	return len;
 }
 
-static void mod_set_process(REQUEST *request, void const *instance)
+static void mod_set_process(void const *instance, REQUEST *request)
 {
 	proto_radius_ctx_t const *inst = talloc_get_type_abort(instance, proto_radius_ctx_t);
 	fr_app_process_t const *process;
@@ -263,8 +263,8 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	listen->app_io = inst->app_io;
 	listen->app_io_instance = inst->io_submodule->inst;
 
-	listen->set_process = mod_set_process;
-	listen->app_ctx = instance;
+	listen->app = &proto_radius;
+	listen->app_instance = instance;
 	listen->encode = mod_encode;
 	listen->decode = mod_decode;
 

@@ -39,9 +39,10 @@ typedef int (*fr_app_instantiate_t)(void *instance, CONF_SECTION *cs);
 typedef int (*fr_app_bootstrap_t)( void *instance, CONF_SECTION *cs);
 /** Set the next state executed by the request to be one of the application subtype's entry points
  *
+ * @param[in] instance	of the #fr_app_t.
  * @param[in] request	To set the next state function for.
  */
-typedef void (*fr_app_set_process_t)(REQUEST *request, void const *uctx);
+typedef void (*fr_app_set_process_t)(void const *instance, REQUEST *request);
 
 /** Allows submodules to receive uctx data (a structure provided by their parent)
  *

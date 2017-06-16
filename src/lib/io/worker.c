@@ -710,7 +710,7 @@ nak:
 	 *	Call the main protocol handlr to set the right async
 	 *	process function.
 	 */
-	listen->set_process(request, listen->app_ctx);
+	listen->app->set_process(listen->app_instance, request);
 
 	rad_assert(request->async->process != NULL);
 
