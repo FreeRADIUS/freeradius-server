@@ -40,7 +40,7 @@ typedef struct {
 	dl_submodule_t		**process_submodule;		//!< Instance of the various types
 								//!< only one instance per type allowed.
 
-	fr_io_t const		*io;
+	fr_listen_t const		*io;
 
 	fr_app_io_t const	*app_io;			//!< Easy access to the app_io handle.
 	fr_app_subtype_t const	*subtype_by_code[FR_CODE_MAX];	//!< Lookup submodule by code.
@@ -240,7 +240,7 @@ static void mod_set_process(REQUEST *request, void const *instance)
 static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 {
 	int			fd;
-	fr_io_t			*io;
+	fr_listen_t			*io;
 	proto_radius_ctx_t 	*inst = talloc_get_type_abort(instance, proto_radius_ctx_t);
 
 	/*
@@ -255,10 +255,10 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	if (!rad_cond_assert(fd >= 0)) return -1;
 
 	/*
-	 *	Build the fr_io_t from the op array of the transport and its
+	 *	Build the fr_listen_t from the op array of the transport and its
 	 *	instance data.
 	 */
-	io = talloc_zero(inst, fr_io_t);
+	io = talloc_zero(inst, fr_listen_t);
 
 	io->ctx = inst->io_submodule->inst;
 	io->op = &inst->app_io->op;

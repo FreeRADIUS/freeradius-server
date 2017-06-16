@@ -55,7 +55,7 @@ typedef struct fr_network_worker_t {
 } fr_network_worker_t;
 
 typedef struct fr_network_socket_t {
-	fr_io_t	const		*io;			//!< I/O ctx and functions.
+	fr_listen_t	const		*io;			//!< I/O ctx and functions.
 
 	fr_message_set_t	*ms;			//!< message buffers for this socket.
 	fr_channel_data_t	*cd;			//!< cached in case of allocation & read error
@@ -762,7 +762,7 @@ void fr_network(fr_network_t *nr)
 //		fr_time_t now;
 		ssize_t rcode;
 		fr_channel_data_t *cd;
-		fr_io_t const *io;
+		fr_listen_t const *io;
 
 		/*
 		 *	There are runnable requests.  We still service
@@ -842,7 +842,7 @@ void fr_network_exit(fr_network_t *nr)
  * @param nr	the network
  * @param io	Functions and context.
  */
-int fr_network_socket_add(fr_network_t *nr, fr_io_t const *io)
+int fr_network_socket_add(fr_network_t *nr, fr_listen_t const *io)
 {
 	int rcode;
 	fr_network_socket_t m;

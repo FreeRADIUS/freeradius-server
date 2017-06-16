@@ -38,7 +38,7 @@ void fr_network_exit(fr_network_t *nr);
 int fr_network_destroy(fr_network_t *nr) CC_HINT(nonnull);
 void fr_network(fr_network_t *nr) CC_HINT(nonnull);
 
-int fr_network_socket_add(fr_network_t *nr, fr_io_t const *io) CC_HINT(nonnull);
+int fr_network_socket_add(fr_network_t *nr, fr_listen_t const *io) CC_HINT(nonnull);
 int fr_network_worker_add(fr_network_t *nr, fr_worker_t *worker) CC_HINT(nonnull);
 
 #ifdef __cplusplus

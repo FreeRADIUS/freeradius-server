@@ -327,7 +327,7 @@ static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t 
 	fr_channel_data_t	*reply;
 	fr_channel_t		*ch;
 	fr_message_set_t	*ms;
-	fr_io_t	const		*io;
+	fr_listen_t	const		*io;
 
 	worker->num_timeouts++;
 
@@ -616,7 +616,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	fr_channel_data_t	*cd;
 	REQUEST			*request;
 	fr_dlist_t		*entry;
-	fr_io_t	const		*io;
+	fr_listen_t	const		*io;
 #ifndef HAVE_TALLOC_POOLED_OBJECT
 	TALLOC_CTX		*ctx;
 #endif

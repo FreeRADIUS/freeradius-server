@@ -22,7 +22,7 @@
 /** Describes a path data takes to/from the wire to/from VALUE_PAIRs
  *
  */
-typedef struct fr_io fr_io_t;
+typedef struct fr_io fr_listen_t;
 struct fr_io {
 	fr_io_op_t const	*op;		//!< I/O path functions.
 	void			*ctx;		//!< I/O path specific context.
@@ -49,7 +49,7 @@ struct fr_async_t {
 	fr_channel_t		*channel;
 
 	uint32_t		priority;
-	fr_io_t	const		*io;		//!< How we received this request,
+	fr_listen_t	const		*io;		//!< How we received this request,
 						//!< and how we'll send the reply.
 };
 #endif

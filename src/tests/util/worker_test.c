@@ -191,7 +191,7 @@ static void master_process(void)
 	fr_channel_event_t	ce;
 	pthread_attr_t		attr;
 	fr_schedule_worker_t	*sw;
-	fr_io_t			io = { .ctx = NULL, .op = &transport, .encode = test_encode, .decode = test_decode };
+	fr_listen_t			io = { .ctx = NULL, .op = &transport, .encode = test_encode, .decode = test_decode };
 	struct kevent		events[MAX_KEVENTS];
 
 	ctx = talloc_init("master");

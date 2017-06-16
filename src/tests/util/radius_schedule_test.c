@@ -52,11 +52,11 @@ typedef struct {
 	socklen_t		salen;
 } fr_test_packet_ctx_t;
 
-typedef struct fr_io_test_ctx_t {
+typedef struct fr_listen_test_ctx_t {
 	int			sockfd;
 	fr_ipaddr_t		ipaddr;
 	uint16_t		port;
-} fr_io_test_ctx_t;
+} fr_listen_test_ctx_t;
 
 static int			debug_lvl = 0;
 static fr_ipaddr_t		my_ipaddr;
@@ -72,7 +72,7 @@ static fr_io_final_t test_process(REQUEST *request, fr_io_action_t action)
 
 static int test_decode(void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
 {
-	fr_io_test_ctx_t const *pc = instance;
+	fr_listen_test_ctx_t const *pc = instance;
 
 	request->async->process = test_process;
 
@@ -86,7 +86,7 @@ static int test_decode(void const *instance, REQUEST *request, uint8_t *const da
 static ssize_t test_encode(void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
 {
 	FR_MD5_CTX context;
-	fr_io_test_ctx_t const *pc = instance;
+	fr_listen_test_ctx_t const *pc = instance;
 
 	MPRINT1("\t\tENCODE >>> request %"PRIu64"- data %p %p room %zd\n", request->number, pc, buffer, buffer_len);
 
@@ -114,7 +114,7 @@ static size_t test_nak(void const *ctx, uint8_t *const packet, size_t packet_len
 
 static int test_open(void *ctx)
 {
-	fr_io_test_ctx_t	*io_ctx = talloc_get_type_abort(ctx, fr_io_test_ctx_t);
+	fr_listen_test_ctx_t	*io_ctx = talloc_get_type_abort(ctx, fr_listen_test_ctx_t);
 
 	io_ctx->sockfd = fr_socket_server_udp(&io_ctx->ipaddr, &io_ctx->port, NULL, true);
 	if (io_ctx->sockfd < 0) {
@@ -133,7 +133,7 @@ static int test_open(void *ctx)
 static ssize_t test_read(void const *ctx, UNUSED void **packet_ctx, uint8_t *buffer, size_t buffer_len)
 {
 	ssize_t			data_size;
-	fr_io_test_ctx_t	*io_ctx = talloc_get_type_abort(ctx, fr_io_test_ctx_t);
+	fr_listen_test_ctx_t	*io_ctx = talloc_get_type_abort(ctx, fr_listen_test_ctx_t);
 
 	tpc.salen = sizeof(tpc.src);
 
@@ -153,7 +153,7 @@ static ssize_t test_read(void const *ctx, UNUSED void **packet_ctx, uint8_t *buf
 static ssize_t test_write(void const *ctx, UNUSED void *packet_ctx, uint8_t *buffer, size_t buffer_len)
 {
 	ssize_t			data_size;
-	fr_io_test_ctx_t	*io_ctx = talloc_get_type_abort(ctx, fr_io_test_ctx_t);
+	fr_listen_test_ctx_t	*io_ctx = talloc_get_type_abort(ctx, fr_listen_test_ctx_t);
 
 	tpc.salen = sizeof(tpc.src);
 
@@ -169,7 +169,7 @@ static ssize_t test_write(void const *ctx, UNUSED void *packet_ctx, uint8_t *buf
 
 static int test_fd(void const *ctx)
 {
-	fr_io_test_ctx_t	*io_ctx = talloc_get_type_abort(ctx, fr_io_test_ctx_t);
+	fr_listen_test_ctx_t	*io_ctx = talloc_get_type_abort(ctx, fr_listen_test_ctx_t);
 
 	return io_ctx->sockfd;
 }
@@ -203,10 +203,10 @@ int main(int argc, char *argv[])
 	uint16_t		port16 = 0;
 	TALLOC_CTX		*autofree = talloc_init("main");
 	fr_schedule_t		*sched;
-	fr_io_t			io = { .op = &op, .decode = test_decode, .encode = test_encode };
-	fr_io_test_ctx_t	*io_ctx;
+	fr_listen_t			io = { .op = &op, .decode = test_decode, .encode = test_encode };
+	fr_listen_test_ctx_t	*io_ctx;
 
-	io.ctx = io_ctx = talloc_zero(autofree, fr_io_test_ctx_t);
+	io.ctx = io_ctx = talloc_zero(autofree, fr_listen_test_ctx_t);
 
 	fr_time_start();
 

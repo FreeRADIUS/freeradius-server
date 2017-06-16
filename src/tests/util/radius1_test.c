@@ -207,7 +207,7 @@ static void master_process(TALLOC_CTX *ctx)
 	int			kq_master;
 	fr_atomic_queue_t	*aq_master;
 	fr_control_t		*control_master;
-	fr_io_t			io = { .ctx = NULL, .op = &op, .encode = test_encode, .decode = test_decode };
+	fr_listen_t			io = { .ctx = NULL, .op = &op, .encode = test_encode, .decode = test_decode };
 	int			sockfd;
 
 	MPRINT1("Master started.\n");

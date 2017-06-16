@@ -634,7 +634,7 @@ int fr_schedule_destroy(fr_schedule_t *sc)
  *	- NULL on error
  *	- the fr_network_t that the socket was added to.
  */
-fr_network_t *fr_schedule_socket_add(fr_schedule_t *sc, fr_io_t const *io)
+fr_network_t *fr_schedule_socket_add(fr_schedule_t *sc, fr_listen_t const *io)
 {
 	if (fr_network_socket_add(sc->sn->rc, io) < 0) return NULL;
 
