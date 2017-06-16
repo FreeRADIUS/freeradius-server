@@ -37,7 +37,7 @@ typedef struct {
 	CONF_SECTION		*server_cs;			//!< server CS for this listener
 
 	dl_submodule_t		*io_submodule;			//!< I/O module's instance.
-	dl_submodule_t		**subtype_submodule;		//!< Instance of the various types
+	dl_submodule_t		**process_submodule;		//!< Instance of the various types
 								//!< only one instance per type allowed.
 
 	fr_io_t const		*io;
@@ -55,7 +55,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSE
  */
 static CONF_PARSER const proto_radius_config[] = {
 	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY, proto_radius_ctx_t,
-			  subtype_submodule), .dflt = "Status-Server", .func = subtype_parse },
+			  process_submodule), .dflt = "Status-Server", .func = subtype_parse },
 	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID | FR_TYPE_NOT_EMPTY, proto_radius_ctx_t, io_submodule),
 			 .dflt = "udp", .func = transport_parse },
 
@@ -325,10 +325,10 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 *	Instantiate the subtypes
 	 */
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
-		fr_app_subtype_t const *subtype = (fr_app_subtype_t const *)inst->subtype_submodule[i]->module->common;
+		fr_app_subtype_t const *subtype = (fr_app_subtype_t const *)inst->process_submodule[i]->module->common;
 
-		if (subtype->instantiate && (subtype->instantiate(inst->subtype_submodule[i]->inst,
-								  inst->subtype_submodule[i]->conf) < 0)) {
+		if (subtype->instantiate && (subtype->instantiate(inst->process_submodule[i]->inst,
+								  inst->process_submodule[i]->conf) < 0)) {
 			cf_log_err(conf, "Subtype instantiation failed");
 			return -1;
 		}
@@ -374,12 +374,12 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	Bootstrap the subtypes
 	 */
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
-		dl_t const	       *module = talloc_get_type_abort(inst->subtype_submodule[i]->module, dl_t);
+		dl_t const	       *module = talloc_get_type_abort(inst->process_submodule[i]->module, dl_t);
 		fr_app_subtype_t const *subtype = (fr_app_subtype_t const *)module->common;
 
-		if (subtype->bootstrap && (subtype->bootstrap(inst->subtype_submodule[i]->inst,
-							      inst->subtype_submodule[i]->conf) < 0)) {
-			cf_log_err(inst->subtype_submodule[i]->conf, "Subtype bootstrap failed");
+		if (subtype->bootstrap && (subtype->bootstrap(inst->process_submodule[i]->inst,
+							      inst->process_submodule[i]->conf) < 0)) {
+			cf_log_err(inst->process_submodule[i]->conf, "Subtype bootstrap failed");
 			return -1;
 		}
 		i++;
