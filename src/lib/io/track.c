@@ -236,6 +236,8 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_t *ft, uint8_t 
 		 */
 		if (entry->timestamp == 0) {
 			entry->timestamp = timestamp;
+			entry->reply = NULL;
+			entry->reply_len = 0;
 
 			memcpy(&entry->data[0], packet, sizeof(entry->data));
 			*p_entry = entry;
@@ -323,6 +325,7 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_t *ft, uint8_t 
 			entry = talloc_size(ft->tree, align + ft->src_dst_size);
 			if (!entry) return FR_TRACKING_ERROR;
 
+			memset(entry, 0, align + ft->src_dst_size);
 			entry->timestamp = timestamp;
 			insert = true;
 
