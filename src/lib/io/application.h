@@ -45,7 +45,7 @@ typedef void (*fr_app_set_process_t)(REQUEST *request, void const *uctx);
 
 /** Allows submodules to receive uctx data (a structure provided by their parent)
  *
- * @param[in] instance	of #fr_app_subtype_t or #fr_app_io_t.
+ * @param[in] instance	of #fr_app_process_t or #fr_app_io_t.
  * @param[in] uctx	provided by caller.
  */
 typedef void (*fr_app_set_uctx_t)(void *instance, void *uctx);
@@ -67,14 +67,14 @@ typedef struct {
  * Some protocols perform multiple distinct functions, and use
  * different state machines to perform those functions.
  */
-typedef struct fr_app_subtype_t {
+typedef struct fr_app_process_t {
 	RAD_MODULE_COMMON;				//!< Common fields to all loadable modules.
 
 	fr_app_bootstrap_t		bootstrap;
 	fr_app_instantiate_t		instantiate;
 	fr_app_set_uctx_t		set_uctx;	//!< Allow the submodule to receive data from the main module.
 	fr_io_process_t			process;	//!< Entry point into the protocol subtype's state machine.
-} fr_app_subtype_t;
+} fr_app_process_t;
 
 /** Public structure describing an I/O path for a protocol
  *

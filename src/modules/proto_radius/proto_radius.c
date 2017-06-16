@@ -41,13 +41,13 @@ typedef struct {
 								//!< only one instance per type allowed.
 
 	fr_app_io_t const	*app_io;			//!< Easy access to the app_io handle.
-	fr_app_subtype_t const	*subtype_by_code[FR_CODE_MAX];	//!< Lookup submodule by code.
+	fr_app_process_t const	*process_by_code[FR_CODE_MAX];	//!< Lookup submodule by code.
 
 	fr_listen_t const	*listen;
 } proto_radius_ctx_t;
 
 extern fr_app_t proto_radius;
-static int subtype_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int process_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
 
 /** How to parse a RADIUS listen section
@@ -55,7 +55,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSE
  */
 static CONF_PARSER const proto_radius_config[] = {
 	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY, proto_radius_ctx_t,
-			  process_submodule), .dflt = "Status-Server", .func = subtype_parse },
+			  process_submodule), .dflt = "Status-Server", .func = process_parse },
 	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID | FR_TYPE_NOT_EMPTY, proto_radius_ctx_t, io_submodule),
 			 .dflt = "udp", .func = transport_parse },
 
@@ -72,7 +72,7 @@ static CONF_PARSER const proto_radius_config[] = {
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int subtype_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int process_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	static char const *type_lib_table[] = {
 		[FR_CODE_ACCESS_REQUEST]	= "auth",
@@ -212,20 +212,20 @@ static ssize_t mod_encode(UNUSED void const *io_ctx, REQUEST *request,
 static void mod_set_process(REQUEST *request, void const *instance)
 {
 	proto_radius_ctx_t const *inst = talloc_get_type_abort(instance, proto_radius_ctx_t);
-	fr_app_subtype_t const *subtype;
+	fr_app_process_t const *process;
 
 	rad_assert(request->packet->code != 0);
 	rad_assert(request->packet->code < FR_CODE_MAX);
 
 	request->server_cs = inst->server_cs;
 
-	subtype = inst->subtype_by_code[request->packet->code];
-	if (!subtype) {
+	process = inst->process_by_code[request->packet->code];
+	if (!process) {
 		REDEBUG("No module available to handle packet code %i", request->packet->code);
 		return;
 	}
 
-	request->async->process = subtype->process;
+	request->async->process = process->process;
 }
 
 /** Open listen sockets/connect to external event source
@@ -322,21 +322,21 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	}
 
 	/*
-	 *	Instantiate the subtypes
+	 *	Instantiate the processs
 	 */
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
-		fr_app_subtype_t const *subtype = (fr_app_subtype_t const *)inst->process_submodule[i]->module->common;
+		fr_app_process_t const *process = (fr_app_process_t const *)inst->process_submodule[i]->module->common;
 
-		if (subtype->instantiate && (subtype->instantiate(inst->process_submodule[i]->inst,
+		if (process->instantiate && (process->instantiate(inst->process_submodule[i]->inst,
 								  inst->process_submodule[i]->conf) < 0)) {
-			cf_log_err(conf, "Subtype instantiation failed");
+			cf_log_err(conf, "process instantiation failed");
 			return -1;
 		}
 
 		/*
-		 *	We've already done bounds checking in the subtype_parse function
+		 *	We've already done bounds checking in the process_parse function
 		 */
-		inst->subtype_by_code[fr_dict_enum_by_alias(NULL, da, cf_pair_value(cp))->value->vb_uint32] = subtype;
+		inst->process_by_code[fr_dict_enum_by_alias(NULL, da, cf_pair_value(cp))->value->vb_uint32] = process;
 
 		i++;
 	}
@@ -371,15 +371,15 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	}
 
 	/*
-	 *	Bootstrap the subtypes
+	 *	Bootstrap the processs
 	 */
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
 		dl_t const	       *module = talloc_get_type_abort(inst->process_submodule[i]->module, dl_t);
-		fr_app_subtype_t const *subtype = (fr_app_subtype_t const *)module->common;
+		fr_app_process_t const *process = (fr_app_process_t const *)module->common;
 
-		if (subtype->bootstrap && (subtype->bootstrap(inst->process_submodule[i]->inst,
+		if (process->bootstrap && (process->bootstrap(inst->process_submodule[i]->inst,
 							      inst->process_submodule[i]->conf) < 0)) {
-			cf_log_err(inst->process_submodule[i]->conf, "Subtype bootstrap failed");
+			cf_log_err(inst->process_submodule[i]->conf, "process bootstrap failed");
 			return -1;
 		}
 		i++;

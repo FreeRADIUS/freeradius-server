@@ -265,8 +265,8 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 	return 0;
 }
 
-extern fr_app_subtype_t proto_radius_status;
-fr_app_subtype_t proto_radius_status = {
+extern fr_app_process_t proto_radius_status;
+fr_app_process_t proto_radius_status = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "radius_status",
 	.instantiate	= mod_instantiate,
