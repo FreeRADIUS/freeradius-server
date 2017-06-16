@@ -310,7 +310,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	The listener is inside of a virtual server.
 	 */
-	inst->server_cs = cf_parent(conf);
+	inst->server_cs = cf_item_to_section(cf_parent(conf));
 
 	/*
 	 *	Instantiate the I/O module
