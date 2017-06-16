@@ -151,9 +151,9 @@ static ssize_t mod_write(void const *instance, void *packet_ctx, uint8_t *buffer
 	ssize_t				data_size;
 
 	data_size = udp_send(inst->sockfd, buffer, buffer_len, 0,
-			     &src_dst->src_ipaddr, src_dst->src_port,
+			     &src_dst->dst_ipaddr, src_dst->dst_port,
 			     src_dst->if_index,
-			     &src_dst->dst_ipaddr, src_dst->dst_port);
+			     &src_dst->src_ipaddr, src_dst->src_port);
 
 	(void) fr_radius_tracking_entry_delete(inst->ft, track);
 
