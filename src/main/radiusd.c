@@ -550,7 +550,8 @@ int main(int argc, char *argv[])
 	 */
 	if (modules_instantiate(main_config.config) < 0) exit(EXIT_FAILURE);
 
-	sc = fr_schedule_create(NULL, &default_log, 1, 4, NULL, NULL);
+	sc = fr_schedule_create(NULL, &default_log, 1, 4, (fr_schedule_thread_instantiate_t) modules_thread_instantiate,
+				main_config.config);
 	if (!sc) {
 		exit(EXIT_FAILURE);
 	}
