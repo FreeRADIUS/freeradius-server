@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 typedef struct fr_schedule_t fr_schedule_t;
-typedef int (*fr_schedule_thread_instantiate_t)(void *ctx);
+typedef int (*fr_schedule_thread_instantiate_t)(void *ctx, fr_event_list_t *el);
 
 fr_schedule_t		*fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *log, int max_inputs, int max_workers,
 					    fr_schedule_thread_instantiate_t worker_thread_instantiate,

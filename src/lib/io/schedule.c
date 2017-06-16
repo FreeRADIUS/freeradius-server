@@ -219,7 +219,7 @@ static void *fr_schedule_worker_thread(void *arg)
 	 *	@todo make this a registry
 	 */
 	if (sc->worker_thread_instantiate &&
-	    (sc->worker_thread_instantiate(sc->worker_instantiate_ctx) < 0)) {
+	    (sc->worker_thread_instantiate(sc->worker_instantiate_ctx, fr_worker_el(sw->worker)) < 0)) {
 		fr_log(sc->log, L_ERR, "Worker %d - Failed calling thread instantiate: %s", sw->id, fr_strerror());
 		goto fail;
 	}
