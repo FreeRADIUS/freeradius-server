@@ -41,7 +41,7 @@ typedef struct {
 								//!< only one instance per type allowed.
 
 	fr_app_io_t const	*app_io;			//!< Easy access to the app_io handle.
-	fr_app_process_t const	*process_by_code[FR_CODE_MAX];	//!< Lookup submodule by code.
+	fr_io_process_t		process_by_code[FR_CODE_MAX];	//!< Lookup process entry point by code.
 
 	fr_listen_t const	*listen;
 } proto_radius_ctx_t;
@@ -212,7 +212,7 @@ static ssize_t mod_encode(UNUSED void const *io_ctx, REQUEST *request,
 static void mod_set_process(void const *instance, REQUEST *request)
 {
 	proto_radius_ctx_t const *inst = talloc_get_type_abort(instance, proto_radius_ctx_t);
-	fr_app_process_t const *process;
+	fr_io_process_t process;
 
 	rad_assert(request->packet->code != 0);
 	rad_assert(request->packet->code < FR_CODE_MAX);
@@ -225,7 +225,7 @@ static void mod_set_process(void const *instance, REQUEST *request)
 		return;
 	}
 
-	request->async->process = process->process;
+	request->async->process = process;
 }
 
 /** Open listen sockets/connect to external event source
@@ -336,7 +336,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		/*
 		 *	We've already done bounds checking in the process_parse function
 		 */
-		inst->process_by_code[fr_dict_enum_by_alias(NULL, da, cf_pair_value(cp))->value->vb_uint32] = process;
+		inst->process_by_code[fr_dict_enum_by_alias(NULL, da,
+							    cf_pair_value(cp))->value->vb_uint32] = process->process;
 
 		i++;
 	}
