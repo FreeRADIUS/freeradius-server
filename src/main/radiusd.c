@@ -550,21 +550,24 @@ int main(int argc, char *argv[])
 	 */
 	if (modules_instantiate(main_config.config) < 0) exit(EXIT_FAILURE);
 
-	sc = fr_schedule_create(NULL, &default_log, 1, 4, (fr_schedule_thread_instantiate_t) modules_thread_instantiate,
-				main_config.config);
-	if (!sc) {
-		exit(EXIT_FAILURE);
-	}
-
 	/*
 	 *	And then load the virtual servers.
 	 */
 	if (virtual_servers_instantiate(main_config.config) < 0) exit(EXIT_FAILURE);
 
 	/*
-	 *	If this isn't just a config check, open the sockets
+	 *	If this isn't just a config check, AND we have new
+	 *	async listeners, then we open the sockets.
 	 */
-	if (!check_config && virtual_servers_open(sc) < 0) exit(EXIT_FAILURE);
+	if (!check_config && main_config.namespace) {
+		sc = fr_schedule_create(NULL, &default_log, 1, 4, (fr_schedule_thread_instantiate_t) modules_thread_instantiate,
+					main_config.config);
+		if (!sc) {
+			exit(EXIT_FAILURE);
+		}
+
+		if (virtual_servers_open(sc) < 0) exit(EXIT_FAILURE);
+	}
 
 	/*
 	 *	Initialise the SNMP stats structures

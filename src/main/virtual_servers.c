@@ -132,6 +132,11 @@ static int listen_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED
 	listen->proto_module->module = module;
 	listen->proto_module->conf = listen_cs;
 
+	/*
+	 *	Hack for now: tell the server core we have new listeners.
+	 */
+	main_config.namespace = true;
+
 	return 0;
 }
 
