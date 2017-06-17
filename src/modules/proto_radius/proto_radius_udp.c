@@ -192,7 +192,7 @@ static int mod_open(void *instance)
 }
 
 static void *allowed_packets[FR_MAX_PACKET_CODE] = {
-	[FR_CODE_STATUS_SERVER] = mod_open,
+	[FR_CODE_STATUS_SERVER] = (void *) mod_open,
 };
 
 
