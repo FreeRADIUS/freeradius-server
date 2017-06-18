@@ -95,6 +95,8 @@ struct fr_worker_t {
 
 	fr_event_list_t		*el;		//!< our event list
 
+	uint64_t		number;		//!< for requests
+
 	int			num_channels;	//!< actual number of channels
 	int			max_channels;	//!< maximum number of channels
 
@@ -691,7 +693,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	request->async->recv_time = cd->m.when;
 	request->async->runnable = worker->runnable;
 	request->async->el = worker->el;
-	request->number = 0;	/* @todo - assigned by someone intelligent... */
+	request->number = worker->number++;
 
 	request->async->io = cd->listen;
 	request->async->packet_ctx = cd->packet_ctx;
