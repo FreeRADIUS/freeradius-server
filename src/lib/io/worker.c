@@ -81,6 +81,8 @@ typedef struct fr_worker_heap_t {
 struct fr_worker_t {
 	char const		*name;		//!< name of this worker
 
+	uint32_t		flags;		//!< various debugging options, etc.
+
 	int			kq;		//!< my kq
 
 	fr_log_t		*log;			//!< log destination
@@ -996,7 +998,7 @@ void fr_worker_destroy(fr_worker_t *worker)
  *	- NULL on error
  *	- fr_worker_t on success
  */
-fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, fr_log_t *logger)
+fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, fr_log_t *logger, uint32_t flags)
 {
 	int max_channels = 64;
 	fr_worker_t *worker;
@@ -1009,6 +1011,7 @@ nomem:
 	}
 
 	worker->name = "";
+	worker->flags = flags;
 
 	worker->channel = talloc_zero_array(worker, fr_channel_t *, max_channels);
 	if (!worker->channel) {

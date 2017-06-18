@@ -132,6 +132,8 @@ struct fr_schedule_t {
 	fr_schedule_thread_instantiate_t	worker_thread_instantiate;	//!< thread instantiation callback
 	void					*worker_instantiate_ctx;	//!< thread instantiation context
 
+	uint32_t	worker_flags;		//!< for debugging the worker
+
 	fr_heap_t	*workers;		//!< heap of workers
 	fr_heap_t	*done_workers;		//!< heap of done workers
 
@@ -206,7 +208,7 @@ static void *fr_schedule_worker_thread(void *arg)
 		goto fail;
 	}
 
-	sw->worker = fr_worker_create(ctx, sc->log);
+	sw->worker = fr_worker_create(ctx, sc->log, sc->worker_flags);
 	if (!sw->worker) {
 		fr_log(sc->log, L_ERR, "Worker %d - Failed creating worker: %s", sw->id, fr_strerror());
 		goto fail;
