@@ -161,9 +161,10 @@ static void _connection_timeout(UNUSED fr_event_list_t *el, struct timeval *now,
  *
  * @param[in] el	event list the I/O event occurred on.
  * @param[in] sock	the I/O even occurred for.
+ * @param[in] flags	from kevent.
  * @param[in] uctx	The #fr_connection_t this fd is associated with.
  */
-static void _connection_error(UNUSED fr_event_list_t *el, UNUSED int sock, void *uctx)
+static void _connection_error(UNUSED fr_event_list_t *el, UNUSED int sock, UNUSED int flags, void *uctx)
 {
 	fr_connection_t *conn = talloc_get_type_abort(uctx, fr_connection_t);
 	struct timeval	now;
@@ -178,9 +179,10 @@ static void _connection_error(UNUSED fr_event_list_t *el, UNUSED int sock, void 
  *
  * @param[in] el	event list the I/O event occurred on.
  * @param[in] sock	the I/O even occurred for.
+ * @param[in] flags	from kevent.
  * @param[in] uctx	The #fr_connection_t this fd is associated with.
  */
-static void _connection_writable(UNUSED fr_event_list_t *el, UNUSED int sock, void *uctx)
+static void _connection_writable(UNUSED fr_event_list_t *el, UNUSED int sock, UNUSED int flags, void *uctx)
 {
 	fr_connection_t *conn = talloc_get_type_abort(uctx, fr_connection_t);
 	fr_connection_state_t ret;

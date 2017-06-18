@@ -260,7 +260,7 @@ static void bfd_pthread_free(bfd_state_t *session)
 /*
  *	A child thread reads the packet from a pipe, and processes it.
  */
-static void bfd_pipe_recv(UNUSED fr_event_list_t *xel, int fd, void *ctx)
+static void bfd_pipe_recv(UNUSED fr_event_list_t *xel, int fd, UNUSED int flags, void *ctx)
 {
 	ssize_t num;
 	bfd_state_t *session = ctx;

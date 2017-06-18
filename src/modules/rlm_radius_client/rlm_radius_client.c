@@ -103,7 +103,7 @@ static void mod_cleanup(REQUEST *request, rlm_radius_client_request_t *ccr)
 	TALLOC_FREE(ccr);
 }
 
-static void mod_event_fd(UNUSED fr_event_list_t *el, int fd, void *ctx)
+static void mod_event_fd(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *ctx)
 {
 	rlm_radius_client_conn_t *conn = ctx;
 	rlm_radius_client_request_t *ccr;

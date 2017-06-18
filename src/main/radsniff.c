@@ -1759,7 +1759,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	}
 }
 
-static void rs_got_packet(fr_event_list_t *el, int fd, void *ctx)
+static void rs_got_packet(fr_event_list_t *el, int fd, UNUSED int flags, void *ctx)
 {
 	static uint64_t	count = 0;	/* Packets seen */
 	rs_event_t	*event = ctx;
@@ -2039,7 +2039,7 @@ static void rs_signal_action(
 #ifndef HAVE_COLLECTDC_H
 UNUSED
 #endif
-fr_event_list_t *list, int fd, UNUSED void *ctx)
+fr_event_list_t *list, int fd, int UNUSED flags, UNUSED void *ctx)
 {
 	int sig;
 	ssize_t ret;

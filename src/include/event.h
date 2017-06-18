@@ -66,9 +66,10 @@ typedef	int (*fr_event_status_t)(void *uctx, struct timeval *now);
  *
  * @param[in] el	Event list the file descriptor was inserted into.
  * @param[in] sock	That experienced the IO event.
+ * @param[in] flags	field as returned by kevent.
  * @param[in] uctx	User ctx passed to #fr_event_fd_insert.
  */
-typedef void (*fr_event_fd_handler_t)(fr_event_list_t *el, int sock, void *uctx);
+typedef void (*fr_event_fd_handler_t)(fr_event_list_t *el, int sock, int flags, void *uctx);
 
 /** Called when a user kevent occurs
  *

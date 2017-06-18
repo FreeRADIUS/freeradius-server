@@ -4743,7 +4743,7 @@ static void coa_queued(REQUEST *request, fr_state_action_t action)
  *	Event handlers.
  *
  ***********************************************************************/
-static void event_socket_handler(NDEBUG_UNUSED fr_event_list_t *xel, UNUSED int fd, void *ctx)
+static void event_socket_handler(NDEBUG_UNUSED fr_event_list_t *xel, UNUSED int fd, UNUSED int flags, void *ctx)
 {
 	rad_listen_t *listener = talloc_get_type_abort(ctx, rad_listen_t);
 
@@ -4760,7 +4760,7 @@ static void event_socket_handler(NDEBUG_UNUSED fr_event_list_t *xel, UNUSED int 
 	listener->recv(listener);
 }
 
-static void event_socket_error(NDEBUG_UNUSED fr_event_list_t *xel, int fd, void *ctx)
+static void event_socket_error(NDEBUG_UNUSED fr_event_list_t *xel, int fd, UNUSED int flags, void *ctx)
 {
 	rad_listen_t *listener = talloc_get_type_abort(ctx, rad_listen_t);
 
@@ -5160,7 +5160,7 @@ void radius_signal_self(int flag)
 }
 
 static void event_signal_handler(UNUSED fr_event_list_t *xel,
-				 UNUSED int fd, UNUSED void *ctx)
+				 UNUSED int fd, UNUSED int flags, UNUSED void *ctx)
 {
 	ssize_t i, rcode;
 	uint8_t buffer[32];

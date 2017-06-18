@@ -336,9 +336,10 @@ static fr_time_t start_time = 0;
  *
  * @param[in] el	the event list.
  * @param[in] sockfd	the socket which is ready to read.
+ * @param[in] flags	from kevent.
  * @param[in] ctx	the network socket context.
  */
-static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
+static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int flags, void *ctx)
 {
 	fr_network_socket_t *s = ctx;
 	fr_network_t *nr = talloc_parent(s);
@@ -430,9 +431,10 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, void *ctx)
  *
  * @param el the event list
  * @param sockfd the socket which is ready to write
+ * @param flags returned by kevent.
  * @param ctx the network socket context.
  */
-static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, void *ctx)
+static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED int flags, void *ctx)
 {
 	fr_network_socket_t *s = ctx;
 
@@ -446,9 +448,10 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, void
  *
  * @param el the event list
  * @param sockfd the socket which has a fatal error.
+ * @param flags returned by kevent.
  * @param ctx the network socket context.
  */
-static void fr_network_error(UNUSED fr_event_list_t *el, UNUSED int sockfd, void *ctx)
+static void fr_network_error(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED int flags, void *ctx)
 {
 	fr_network_socket_t *s = ctx;
 

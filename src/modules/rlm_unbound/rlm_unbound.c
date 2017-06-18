@@ -357,7 +357,7 @@ error0:
  *	embedded client modes.  This callback function lets an event loop call
  *	ub_process when the instance's file descriptor becomes ready.
  */
-static void ub_fd_handler(UNUSED fr_event_list_t *el, UNUSED int sock, void *ctx)
+static void ub_fd_handler(UNUSED fr_event_list_t *el, UNUSED int sock, UNUSED int flags, void *ctx)
 {
 	rlm_unbound_t *inst = ctx;
 	int err;

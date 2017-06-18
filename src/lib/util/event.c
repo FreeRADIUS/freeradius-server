@@ -36,6 +36,10 @@ RCSID("$Id$")
 #undef USEC
 #define USEC (1000000)
 
+#if !defined(SO_GET_FILTER) && defined(SO_ATTACH_FILTER)
+#  define SO_GET_FILTER SO_ATTACH_FILTER
+#endif
+
 /** A timer event
  *
  */
@@ -53,6 +57,13 @@ struct fr_event_timer_t {
  */
 typedef struct fr_event_fd_t {
 	int			fd;			//!< File descriptor we're listening for events on.
+
+	int                     sock_type;              //!< The type of socket SOCK_STREAM, SOCK_RAW etc...
+	bool                    is_file;                //!< Is a file, not a socket.
+
+#ifdef SO_GET_FILTER
+	bool                    pf_attached;            //!< Has an attached packet filter (PF) program.
+#endif
 
 	fr_event_fd_handler_t	read;			//!< Callback for when data is available.
 	fr_event_fd_handler_t	write;			//!< Callback for when we can write data.
@@ -322,6 +333,9 @@ int fr_event_fd_insert(fr_event_list_t *el, int fd,
 	find.fd = fd;
 	ef = rbtree_finddata(el->fds, &find);
 	if (!ef) {
+		int             sock_type;
+		socklen_t       opt_len = sizeof(sock_type);
+
 		pre_existing = false;
 
 		ef = talloc_zero(el, fr_event_fd_t);
@@ -334,6 +348,28 @@ int fr_event_fd_insert(fr_event_list_t *el, int fd,
 		el->num_fds++;
 
 		ef->fd = fd;
+
+                /*
+                 *      Retrieve file descriptor metadata
+                 */
+                if (getsockopt(fd, SOL_SOCKET, SO_TYPE, &sock_type, &opt_len) < 0) {
+                        if (errno != ENOTSOCK) {
+                                fr_strerror_printf("Failed retrieving socket type: %s", fr_syserror(errno));
+                                return -1;
+                        }
+                        ef->is_file = true;
+                }
+#ifdef SO_GET_FILTER
+                else {
+                        opt_len = 0;
+                        if (getsockopt(fd, SOL_SOCKET, SO_ATTACH_FILTER, NULL, &opt_len) < 0) {
+                                fr_strerror_printf("Failed determining PF status: %s", fr_syserror(errno));
+                                return -1;
+                        }
+                        if (opt_len) ef->pf_attached = true;
+                        ef->sock_type = sock_type;
+                }
+#endif
 
 		rbtree_insert(el->fds, ef);
 
@@ -712,6 +748,7 @@ void fr_event_service(fr_event_list_t *el)
 	 */
 	for (i = 0; i < el->num_fd_events; i++) {
 		fr_event_fd_t *ev;
+		int flags = el->events[i].flags;
 
 		/*
 		 *	Process any user events
@@ -731,23 +768,58 @@ void fr_event_service(fr_event_list_t *el)
 
 		if (!fr_cond_assert(ev->is_registered)) continue;
 
-		if ((el->events[i].flags & EV_EOF) || (el->events[i].flags & EV_ERROR)) {
-			/*
-			 *	FIXME: delete the handler
-			 *	here, and fix process.c to not
-			 *	call fr_event_fd_delete().
-			 *	It's cleaner.
-			 *
-			 *	Call the error handler which should
-			 *	tear down the connection.
-			 */
-			if (ev->error) ev->error(el, ev->fd, ev->ctx);
-			continue;
-		}
+                if (flags & EV_ERROR) {
+                ev_error:
+                        /*
+                         *      Call the error handler which should
+                         *      tear down the connection.
+                         */
+                        if (ev->error) {
+                                ev->error(el, ev->fd, flags, ev->ctx);
+                                continue;
+                        }
+                        fr_event_fd_delete(el, ev->fd);
+                }
 
+                /*
+                 *      EOF can indicate we've actually reached
+                 *      the end of a file, but for sockets it usually
+                 *      indicates the other end of the connection
+                 *      has gone away.
+                 */
+                if (flags & EV_EOF) {
+			/*
+			 *	This is fine, the callback will get notified
+			 *	via the flags field.
+			 */
+			if (ev->is_file) goto service;
+#if defined(__linux__) && defined(SO_GET_FILTER)
+			/*
+			 *      There seems to be an issue with the
+			 *      ioctl(...SIOCNQ...) call libkqueue
+			 *      uses to determine the number of bytes
+			 *	readable.  When ioctl returns, the number
+			 *	of bytes available is set to zero, which
+			 *	libkqueue interprets as EOF.
+			 *
+			 *      As a workaround, if we're not reading
+			 *	a file, and are operating on a raw socket
+			 *	with a packet filter attached, we ignore
+			 *	the EOF flag and continue.
+			 */
+			if ((ev->sock_type == SOCK_RAW) && ev->pf_attached) goto service;
+#endif
+			goto ev_error;
+                }
+
+service:
 		ev->in_handler = true;
-		if (ev->read && (el->events[i].filter == EVFILT_READ)) ev->read(el, ev->fd, ev->ctx);
-		if (ev->write && (el->events[i].filter == EVFILT_WRITE) && !ev->do_delete) ev->write(el, ev->fd, ev->ctx);
+		if (ev->read && (el->events[i].filter == EVFILT_READ)) {
+			ev->read(el, ev->fd, flags, ev->ctx);
+		}
+		if (ev->write && (el->events[i].filter == EVFILT_WRITE) && !ev->do_delete) {
+			ev->write(el, ev->fd, flags, ev->ctx);
+		}
 		ev->in_handler = false;
 
 		/*

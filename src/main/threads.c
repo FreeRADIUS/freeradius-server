@@ -343,7 +343,7 @@ void request_queue_extract(REQUEST *request)
 /*
  *	Drain the socket, but don't do anything else.
  */
-static void thread_fd_handler(UNUSED fr_event_list_t *el, int fd, void *ctx)
+static void thread_fd_handler(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *ctx)
 {
 	char buffer[16];
 	THREAD_HANDLE *thread = (THREAD_HANDLE *) ctx;

@@ -1579,9 +1579,10 @@ static void unlang_event_timeout_handler(UNUSED fr_event_list_t *el, struct time
  *
  * @param[in] el	containing the event (not passed to the callback).
  * @param[in] fd	the I/O event occurred on.
+ * @param[in] flags	from kevent.
  * @param[in] ctx	unlang_event_t structure holding callbacks.
  */
-static void unlang_event_fd_read_handler(UNUSED fr_event_list_t *el, int fd, void *ctx)
+static void unlang_event_fd_read_handler(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *ctx)
 {
 	unlang_event_t *ev = talloc_get_type_abort(ctx, unlang_event_t);
 	void *mutable_ctx;
@@ -1599,9 +1600,10 @@ static void unlang_event_fd_read_handler(UNUSED fr_event_list_t *el, int fd, voi
  *
  * @param[in] el	containing the event (not passed to the callback).
  * @param[in] fd	the I/O event occurred on.
+ * @param[in] flags	from kevent.
  * @param[in] ctx	unlang_event_t structure holding callbacks.
  */
-static void unlang_event_fd_write_handler(UNUSED fr_event_list_t *el, int fd, void *ctx)
+static void unlang_event_fd_write_handler(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *ctx)
 {
 	unlang_event_t *ev = talloc_get_type_abort(ctx, unlang_event_t);
 	void *mutable_ctx;
@@ -1619,9 +1621,10 @@ static void unlang_event_fd_write_handler(UNUSED fr_event_list_t *el, int fd, vo
  *
  * @param[in] el	containing the event (not passed to the callback).
  * @param[in] fd	the I/O event occurred on.
+ * @param[in] flags	from kevent.
  * @param[in] ctx	unlang_event_t structure holding callbacks.
  */
-static void unlang_event_fd_error_handler(UNUSED fr_event_list_t *el, int fd, void *ctx)
+static void unlang_event_fd_error_handler(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *ctx)
 {
 	unlang_event_t *ev = talloc_get_type_abort(ctx, unlang_event_t);
 	void *mutable_ctx;

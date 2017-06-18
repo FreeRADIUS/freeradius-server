@@ -195,7 +195,7 @@ static rlm_rcode_t mod_insert_logtee(void *instance, UNUSED void *thread, REQUES
 /** Connection errored
  *
  */
-static void _logtee_conn_error(UNUSED fr_event_list_t *el, UNUSED int sock, void *uctx)
+static void _logtee_conn_error(UNUSED fr_event_list_t *el, UNUSED int sock, UNUSED int flags, void *uctx)
 {
 	rlm_logtee_thread_t	*t = talloc_get_type_abort(uctx, rlm_logtee_thread_t);
 
@@ -210,7 +210,7 @@ static void _logtee_conn_error(UNUSED fr_event_list_t *el, UNUSED int sock, void
  * We don't care about this data, we just don't want the kernel to
  * signal the other side that our read buffer's full.
  */
-static void _logtee_conn_read(UNUSED fr_event_list_t *el, int sock, void *uctx)
+static void _logtee_conn_read(UNUSED fr_event_list_t *el, int sock, UNUSED int flags, void *uctx)
 {
 	rlm_logtee_thread_t	*t = talloc_get_type_abort(uctx, rlm_logtee_thread_t);
 	ssize_t				slen;
@@ -243,7 +243,7 @@ static void _logtee_conn_read(UNUSED fr_event_list_t *el, int sock, void *uctx)
 /** There's space available to write data, so do that...
  *
  */
-static void _logtee_conn_writable(UNUSED fr_event_list_t *el, int sock, void *uctx)
+static void _logtee_conn_writable(UNUSED fr_event_list_t *el, int sock, UNUSED int flags, void *uctx)
 {
 	rlm_logtee_thread_t	*t = talloc_get_type_abort(uctx, rlm_logtee_thread_t);
 	char			*msg;

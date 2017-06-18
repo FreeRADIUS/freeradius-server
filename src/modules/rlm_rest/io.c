@@ -138,9 +138,10 @@ static void _rest_io_timer_expired(UNUSED fr_event_list_t *el, UNUSED struct tim
  *
  * @param[in] el	fd was registered with.
  * @param[in] fd	that errored.
+ * @param[in] flags	from kevent.
  * @param[in] ctx	The rlm_rest_thread_t specific to this thread.
  */
-static void _rest_io_service_errored(UNUSED fr_event_list_t *el, int fd, void *ctx)
+static void _rest_io_service_errored(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *ctx)
 {
 	rlm_rest_thread_t *t;
 
@@ -155,9 +156,10 @@ static void _rest_io_service_errored(UNUSED fr_event_list_t *el, int fd, void *c
  *
  * @param[in] el	fd was registered with.
  * @param[in] fd	that became writable.
+ * @param[in] flags	from kevent.
  * @param[in] ctx	The rlm_rest_thread_t specific to this thread.
  */
-static void _rest_io_service_writable(UNUSED fr_event_list_t *el, int fd, void *ctx)
+static void _rest_io_service_writable(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *ctx)
 {
 	rlm_rest_thread_t *t;
 
@@ -172,9 +174,10 @@ static void _rest_io_service_writable(UNUSED fr_event_list_t *el, int fd, void *
  *
  * @param[in] el	fd was registered with.
  * @param[in] fd	that became readable.
+ * @param[in] flags	from kevent.
  * @param[in] ctx	The rlm_rest_thread_t specific to this thread.
  */
-static void _rest_io_service_readable(UNUSED fr_event_list_t *el, int fd, void *ctx)
+static void _rest_io_service_readable(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *ctx)
 {
 	rlm_rest_thread_t *t;
 
