@@ -295,7 +295,7 @@ static void fr_worker_channel_callback(void *ctx, void const *data, size_t data_
 }
 
 
-/** Service an EVFILT_USER event
+/** Service a control-plane event.
  *
  * @param[in] kq the kq to service
  * @param[in] kev the kevent to service

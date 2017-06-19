@@ -663,16 +663,15 @@ fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_c
 }
 
 
-/** Service an EVFILT_USER event.
+/** Service a control-plane event.
  *
- * The channels use EVFILT_USER events for internal signaling.  A
- * master / worker should call this function for every EVFILT_USER
- * event.  Note that the caller does NOT pass the channel into this
- * function.  Instead, the channel is taken from the kevent.
+ * The channels use control planes for internal signaling.  Note that
+ * the caller does NOT pass the channel into this function.  Instead,
+ * the channel is taken from the kevent.
  *
  * @param[in] ch	The channel to service.
  * @param[in] c		The control plane on which we received the kev.
- * @param[in] kev	The event of type EVFILT_USER.
+ * @param[in] kev	The kevent data, should get passed to the control plane.
  * @return
  *	- <0 on error
  *	- 0 on success
