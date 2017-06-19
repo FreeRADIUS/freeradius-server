@@ -89,6 +89,7 @@ struct fr_network_t {
 #endif
 };
 
+static void fr_network_post_event(fr_event_list_t *el, struct timeval *now, void *uctx);
 
 static int worker_cmp(void const *one, void const *two)
 {
@@ -620,6 +621,12 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_log_t *logger)
 		return NULL;
 	}
 
+	if (fr_event_post_insert(nr->el, fr_network_post_event, nr) < 0) {
+		fr_strerror_printf("Failed inserting post-processing event");
+		talloc_free(nr);
+		return NULL;
+	}
+
 	nr->log = logger;
 
 	nr->kq = fr_event_list_kq(nr->el);
@@ -752,47 +759,20 @@ int fr_network_destroy(fr_network_t *nr)
 	return 0;
 }
 
-/** The main network worker function.
+/** Handle replies after all FD and timer events have been serviced
  *
- * @param[in] nr the network data structure to run.
+ * @param el	the event loop
+ * @param now	the current time (mostly)
+ * @param uctx	the fr_network_t
  */
-void fr_network(fr_network_t *nr)
+static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
 {
-	while (true) {
-		bool wait_for_event;
-		int num_events;
-//		fr_time_t now;
+	fr_channel_data_t *cd;
+	fr_network_t *nr = talloc_get_type_abort(uctx, fr_network_t);
+
+	while ((cd = fr_heap_pop(nr->replies)) != NULL) {
 		ssize_t rcode;
-		fr_channel_data_t *cd;
 		fr_listen_t const *listen;
-
-		/*
-		 *	There are runnable requests.  We still service
-		 *	the event loop, but we don't wait for events.
-		 */
-		wait_for_event = (fr_heap_num_elements(nr->replies) == 0);
-		fr_log(nr->log, L_DBG, "Waiting for events %d", wait_for_event);
-
-		/*
-		 *	Check the event list.  If there's an error
-		 *	(e.g. exit), we stop looping and clean up.
-		 */
-		num_events = fr_event_corral(nr->el, wait_for_event);
-		fr_log(nr->log, L_DBG, "Got num_events %d", num_events);
-		if (num_events < 0) break;
-
-		/*
-		 *	Service outstanding events.
-		 */
-		if (num_events > 0) {
-			fr_log(nr->log, L_DBG, "servicing events");
-			fr_event_service(nr->el);
-		}
-
-//		now = fr_time();
-
-		cd = fr_heap_pop(nr->replies);
-		if (!cd) continue;
 
 		listen = cd->listen;
 
@@ -826,6 +806,42 @@ void fr_network(fr_network_t *nr)
 		fr_log(nr->log, L_DBG, "Sending reply to socket %d",
 		       cd->listen->app_io->fd(cd->listen->app_io_instance));
 		fr_message_done(&cd->m);
+	}
+}
+
+
+/** The main network worker function.
+ *
+ * @param[in] nr the network data structure to run.
+ */
+void fr_network(fr_network_t *nr)
+{
+	while (true) {
+		bool wait_for_event;
+		int num_events;
+
+		/*
+		 *	There are runnable requests.  We still service
+		 *	the event loop, but we don't wait for events.
+		 */
+		wait_for_event = (fr_heap_num_elements(nr->replies) == 0);
+		fr_log(nr->log, L_DBG, "Waiting for events %d", wait_for_event);
+
+		/*
+		 *	Check the event list.  If there's an error
+		 *	(e.g. exit), we stop looping and clean up.
+		 */
+		num_events = fr_event_corral(nr->el, wait_for_event);
+		fr_log(nr->log, L_DBG, "Got num_events %d", num_events);
+		if (num_events < 0) break;
+
+		/*
+		 *	Service outstanding events.
+		 */
+		if (num_events > 0) {
+			fr_log(nr->log, L_DBG, "servicing events");
+			fr_event_service(nr->el);
+		}
 	}
 }
 
