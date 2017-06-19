@@ -88,6 +88,7 @@ struct fr_control_t {
  * @param[in] ctx the talloc context
  * @param[in] kq the KQ descriptor where we will be sending signals
  * @param[in] aq the atomic queue where we will be pushing message data
+ * @param[in] ident the identifier to use for EVFILT_USER signals.
  * @return
  *	- NULL on error
  *	- fr_control_t on success
