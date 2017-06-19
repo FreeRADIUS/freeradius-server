@@ -339,7 +339,8 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_t *ft, uint8_t 
  *
  * @param[in] ft the tracking table
  * @param[in] entry the original entry for the request packet
- * @param[in] timestamp when the caller thinks the original entry was created
+ * @param[in] request_timestamp when the caller thinks the original entry was created
+ * @param[in] reply_timestamp when the caller thinks the original entry was created
  * @param[in] reply the reply packet
  * @param[in] reply_len the length of the reply message
  * @return
@@ -347,7 +348,7 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_t *ft, uint8_t 
  *	- 0 on success
  */
 int fr_radius_tracking_entry_reply(fr_tracking_t *ft, fr_tracking_entry_t *entry,
-				   fr_time_t timestamp,
+				   fr_time_t request_timestamp, UNUSED fr_time_t reply_timestamp,
 				   uint8_t const *reply, size_t reply_len)
 {
 	(void) talloc_get_type_abort(ft, fr_tracking_t);
