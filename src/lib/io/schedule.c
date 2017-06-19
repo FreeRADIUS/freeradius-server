@@ -437,7 +437,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *logger, int max_inp
 	}
 #endif
 
-	fr_log(sc->log, L_INFO, "Scheduler created successfully\n");
+	if (sc) fr_log(sc->log, L_INFO, "Scheduler created successfully\n");
 
 	return sc;
 }
