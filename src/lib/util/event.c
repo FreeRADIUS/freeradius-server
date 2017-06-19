@@ -613,6 +613,9 @@ int fr_event_user_delete(fr_event_list_t *el, fr_event_user_handler_t user, void
 
 /** Add a post-event callback to the event list.
  *
+ *  Events are serviced in insert order.  i.e. insert A, B, we then
+ *  have A running before B.
+ *
  * @param[in] el	containing the timer events.
  * @param[in] callback	the post-processing callback;
  * @param[in] uctx	user context for the callback
@@ -628,7 +631,7 @@ int fr_event_post_insert(fr_event_list_t *el, fr_event_callback_t callback, void
 	post->callback = callback;
 	post->ctx = uctx;
 
-	fr_dlist_insert_head(&el->post_callbacks, &post->entry);
+	fr_dlist_insert_tail(&el->post_callbacks, &post->entry);
 
 	return 0;
 }
