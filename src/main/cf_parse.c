@@ -1327,6 +1327,18 @@ int _cf_section_rule_push(CONF_SECTION *cs, CONF_PARSER const *rule, char const 
 	 *	Fixme maybe?.. Can't have a section and pair with the same name.
 	 */
 	if (!_cf_data_add_static(CF_TO_ITEM(cs), rule, "CONF_PARSER", rule->name, filename, lineno)) {
+		CONF_PARSER const *old;
+
+		old = cf_data_value(cf_data_find(CF_TO_ITEM(cs), CONF_PARSER, rule->name));
+		rad_assert(old != NULL);
+
+		/*
+		 *	Shut up about duplicates.
+		 */
+		if (memcmp(rule, old, sizeof(*rule)) == 0) {
+			return 0;
+		}
+
 		cf_debug(cs);
 		return -1;
 	}
@@ -1363,3 +1375,4 @@ int _cf_section_rules_push(CONF_SECTION *cs, CONF_PARSER const *rules, char cons
 
 	return 0;
 }
+
