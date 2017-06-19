@@ -77,6 +77,8 @@ typedef struct fr_worker_heap_t {
 #ifndef NDEBUG
 static void fr_worker_verify(fr_worker_t *worker);
 #define WORKER_VERIFY fr_worker_verify(worker)
+#else
+#define WORKER_VERIFY
 #endif
 
 /**
