@@ -632,7 +632,7 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_log_t *logger)
 		goto nomem;
 	}
 
-	nr->control = fr_control_create(nr, nr->kq, nr->aq_control);
+	nr->control = fr_control_create(nr, nr->kq, nr->aq_control, 1024);
 	if (!nr->control) {
 		fr_strerror_printf("Failed creating control queue: %s", fr_strerror());
 		talloc_free(nr);

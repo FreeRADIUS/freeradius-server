@@ -57,8 +57,8 @@ typedef	void (*fr_control_callback_t)(void *ctx, void const *data, size_t data_s
 #define FR_CONTROL_ID_SOCKET  (2)
 #define FR_CONTROL_ID_WORKER  (3)
 
-fr_control_t *fr_control_create(TALLOC_CTX *ctx, int kq, fr_atomic_queue_t *aq);
-void fr_control_free(fr_control_t *c);
+fr_control_t *fr_control_create(TALLOC_CTX *ctx, int kq, fr_atomic_queue_t *aq, uintptr_t ident) CC_HINT(nonnull(3));
+void fr_control_free(fr_control_t *c) CC_HINT(nonnull);
 
 int fr_control_gc(fr_control_t *c, fr_ring_buffer_t *rb) CC_HINT(nonnull);
 

@@ -227,7 +227,7 @@ static void master_process(TALLOC_CTX *ctx)
 	aq_master = fr_atomic_queue_create(ctx, max_control_plane);
 	rad_assert(aq_master != NULL);
 
-	control_master = fr_control_create(ctx, kq_master, aq_master);
+	control_master = fr_control_create(ctx, kq_master, aq_master, 1024);
 	rad_assert(control_master != NULL);
 
 	sockfd = fr_socket_server_udp(&my_ipaddr, &my_port, NULL, true);

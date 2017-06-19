@@ -31,8 +31,7 @@ RCSID("$Id$")
 #include <string.h>
 #include <sys/event.h>
 
-#define FR_CONTROL_SIGNAL	(1024)
-#define FR_CONTROL_MAX_IDENT	(32)
+#define FR_CONTROL_MAX_TYPES	(32)
 
 /*
  *	Debugging, mainly for channel_test
@@ -78,7 +77,9 @@ struct fr_control_t {
 
 	fr_atomic_queue_t	*aq;			//!< destination AQ
 
-	fr_control_ctx_t 	ident[FR_CONTROL_MAX_IDENT];	//!< callbacks
+	uintptr_t		ident;			//!< our ident for kqueue.
+
+	fr_control_ctx_t 	type[FR_CONTROL_MAX_TYPES];	//!< callbacks
 };
 
 
@@ -91,7 +92,7 @@ struct fr_control_t {
  *	- NULL on error
  *	- fr_control_t on success
  */
-fr_control_t *fr_control_create(TALLOC_CTX *ctx, int kq, fr_atomic_queue_t *aq)
+fr_control_t *fr_control_create(TALLOC_CTX *ctx, int kq, fr_atomic_queue_t *aq, uintptr_t ident)
 {
 	fr_control_t *c;
 	struct kevent kev;
@@ -104,6 +105,7 @@ fr_control_t *fr_control_create(TALLOC_CTX *ctx, int kq, fr_atomic_queue_t *aq)
 
 	c->kq = kq;
 	c->aq = aq;
+	c->ident = ident;
 
 	/*
 	 *	Tell the KQ to listen on our events.
@@ -117,7 +119,7 @@ fr_control_t *fr_control_create(TALLOC_CTX *ctx, int kq, fr_atomic_queue_t *aq)
 	 *	The implementation here is perhaps a bit less optimal,
 	 *	but it's clean, and it works.
 	 */
-	EV_SET(&kev, FR_CONTROL_SIGNAL, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFNOP, 0, NULL);
+	EV_SET(&kev, ident, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFNOP, 0, NULL);
 	if (kevent(kq, &kev, 1, NULL, 0, NULL) < 0) {
 		talloc_free(c);
 		fr_strerror_printf("Failed opening KQ for control socket: %s", fr_syserror(errno));
@@ -306,7 +308,7 @@ int fr_control_message_send(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
 		return -1;
 	}
 
-	EV_SET(&kev, FR_CONTROL_SIGNAL, EVFILT_USER, 0, NOTE_TRIGGER | NOTE_FFNOP, 0, NULL);
+	EV_SET(&kev, c->ident, EVFILT_USER, 0, NOTE_TRIGGER | NOTE_FFNOP, 0, NULL);
 	rcode = kevent(c->kq, &kev, 1, NULL, 0, NULL);
 	if (rcode >= 0) return rcode;
 
@@ -368,9 +370,9 @@ ssize_t fr_control_message_pop(fr_atomic_queue_t *aq, uint32_t *p_id, void *data
  *	- 0 this kevent is not for us.
  *	- >0 this kevent is for us
  */
-int fr_control_message_service_kevent(UNUSED fr_control_t *c, struct kevent const *kev)
+int fr_control_message_service_kevent(fr_control_t *c, struct kevent const *kev)
 {
-	if (kev->ident != FR_CONTROL_SIGNAL) return 0;
+	if (kev->ident != c->ident) return 0;
 
 	return 1;
 }
@@ -390,7 +392,7 @@ int fr_control_callback_add(fr_control_t *c, uint32_t id, void *ctx, fr_control_
 {
 	(void) talloc_get_type_abort(c, fr_control_t);
 
-	if (id >= FR_CONTROL_MAX_IDENT) {
+	if (id >= FR_CONTROL_MAX_TYPES) {
 		fr_strerror_printf("Failed adding unknown ID %d", id);
 		return -1;
 	}
@@ -398,19 +400,19 @@ int fr_control_callback_add(fr_control_t *c, uint32_t id, void *ctx, fr_control_
 	/*
 	 *	Re-registering the same thing is OK.
 	 */
-	if ((c->ident[id].ctx == ctx) &&
-	    (c->ident[id].callback == callback)) {
+	if ((c->type[id].ctx == ctx) &&
+	    (c->type[id].callback == callback)) {
 		return 0;
 	}
 
-	if (c->ident[id].callback != NULL) {
+	if (c->type[id].callback != NULL) {
 		fr_strerror_printf("Callback is already set");
 		return -1;
 	}
 
-	c->ident[id].id = id;
-	c->ident[id].ctx = ctx;
-	c->ident[id].callback = callback;
+	c->type[id].id = id;
+	c->type[id].ctx = ctx;
+	c->type[id].callback = callback;
 
 	return 0;
 }
@@ -427,16 +429,16 @@ int fr_control_callback_delete(fr_control_t *c, uint32_t id)
 {
 	(void) talloc_get_type_abort(c, fr_control_t);
 
-	if (id >= FR_CONTROL_MAX_IDENT) {
+	if (id >= FR_CONTROL_MAX_TYPES) {
 		fr_strerror_printf("Failed adding unknown ID %d", id);
 		return -1;
 	}
 
-	if (c->ident[id].callback == NULL) return 0;
+	if (c->type[id].callback == NULL) return 0;
 
-	c->ident[id].id = 0;
-	c->ident[id].ctx = NULL;
-	c->ident[id].callback = NULL;
+	c->type[id].id = 0;
+	c->type[id].ctx = NULL;
+	c->type[id].callback = NULL;
 
 	return 0;
 }
@@ -450,10 +452,10 @@ void fr_control_service(fr_control_t *c, void *data, size_t data_size, fr_time_t
 		message_size = fr_control_message_pop(c->aq, &id, data, data_size);
 		if (!message_size) return;
 
-		if (id >= FR_CONTROL_MAX_IDENT) continue;
+		if (id >= FR_CONTROL_MAX_TYPES) continue;
 
-		if (!c->ident[id].callback) continue;
+		if (!c->type[id].callback) continue;
 
-		c->ident[id].callback(c->ident[id].ctx, data, message_size, now);
+		c->type[id].callback(c->type[id].ctx, data, message_size, now);
 	}
 }

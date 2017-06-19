@@ -552,10 +552,10 @@ int main(int argc, char *argv[])
 	aq_worker = fr_atomic_queue_create(autofree, max_control_plane);
 	rad_assert(aq_worker != NULL);
 
-	control_master = fr_control_create(autofree, kq_master, aq_master);
+	control_master = fr_control_create(autofree, kq_master, aq_master, 1024);
 	rad_assert(control_master != NULL);
 
-	control_worker = fr_control_create(autofree, kq_worker, aq_worker);
+	control_worker = fr_control_create(autofree, kq_worker, aq_worker, 1025);
 	rad_assert(control_worker != NULL);
 
 	channel = fr_channel_create(autofree, control_master, control_worker);

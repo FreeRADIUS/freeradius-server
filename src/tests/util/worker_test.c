@@ -540,7 +540,7 @@ int main(int argc, char *argv[])
 	aq_master = fr_atomic_queue_create(autofree, max_control_plane);
 	rad_assert(aq_master != NULL);
 
-	control_master = fr_control_create(autofree, kq_master, aq_master);
+	control_master = fr_control_create(autofree, kq_master, aq_master, 1024);
 	rad_assert(control_master != NULL);
 
 	signal(SIGTERM, sig_ignore);

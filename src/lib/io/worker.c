@@ -1068,7 +1068,7 @@ nomem:
 		goto nomem;
 	}
 
-	worker->control = fr_control_create(worker, worker->kq, worker->aq_control);
+	worker->control = fr_control_create(worker, worker->kq, worker->aq_control, 1024);
 	if (!worker->control) {
 		talloc_free(worker);
 		goto nomem;;

@@ -216,7 +216,7 @@ int main(int argc, char *argv[])
 	aq = fr_atomic_queue_create(autofree, aq_size);
 	rad_assert(aq != NULL);
 
-	control = fr_control_create(autofree, kq, aq);
+	control = fr_control_create(autofree, kq, aq, 1024);
 	if (!control) {
 		fprintf(stderr, "control_test: Failed to create control plane\n");
 		exit(1);
