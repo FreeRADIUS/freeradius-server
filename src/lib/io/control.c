@@ -120,7 +120,7 @@ fr_control_t *fr_control_create(TALLOC_CTX *ctx, int kq, fr_atomic_queue_t *aq, 
 	 *	but it's clean, and it works.
 	 */
 	EV_SET(&kev, ident, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFNOP, 0, NULL);
-	if (kevent(kq, &kev, 1, NULL, 0, NULL) < 0) {
+	if (kevent(c->kq, &kev, 1, NULL, 0, NULL) < 0) {
 		talloc_free(c);
 		fr_strerror_printf("Failed opening KQ for control socket: %s", fr_syserror(errno));
 		return NULL;
@@ -189,7 +189,15 @@ int fr_control_gc(UNUSED fr_control_t *c, fr_ring_buffer_t *rb)
  */
 void fr_control_free(fr_control_t *c)
 {
+	struct kevent kev;
+
 	(void) talloc_get_type_abort(c, fr_control_t);
+
+	EV_SET(&kev, c->ident, EVFILT_USER, EV_DELETE, NOTE_FFNOP, 0, NULL);
+	if (kevent(c->kq, &kev, 1, NULL, 0, NULL) < 0) {
+		talloc_free(c);
+		fr_strerror_printf("Failed opening KQ for control socket: %s", fr_syserror(errno));
+	}
 
 	talloc_free(c);
 }
