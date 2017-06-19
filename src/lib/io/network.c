@@ -172,39 +172,6 @@ static void fr_network_drain_input(fr_network_t *nr, fr_channel_t *ch, fr_channe
 	} while ((cd = fr_channel_recv_reply(ch)) != NULL);
 }
 
-/** Run the event loop 'idle' callback
- *
- *  This function MUST DO NO WORK.  All it does is check if there's
- *  work, and tell the event code to return to the main loop if
- *  there's work to do.
- *
- * @param[in] ctx the network
- * @param[in] wake the time when the event loop will wake up.
- */
-static int fr_network_idle(void *ctx, struct timeval *wake)
-{
-	fr_network_t *nr = talloc_get_type_abort(ctx, fr_network_t);
-
-	rad_cond_assert(nr->el != NULL); /* temporary until we actually use nr here */
-
-	if (!wake) {
-		// ready to process requests
-		return 0;
-	}
-
-	if ((wake->tv_sec != 0) ||
-	    (wake->tv_usec >= 100000)) {
-#if 0
-		DEBUG("Waking up in %d.%01u seconds.",
-		      (int) wake->tv_sec, (unsigned int) wake->tv_usec / 100000);
-#endif
-		return 0;
-	}
-
-	return 0;
-}
-
-
 /** Handle a network control message callback for a channel
  *
  * @param[in] ctx the network
@@ -610,7 +577,7 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_log_t *logger)
 		return NULL;
 	}
 
-	nr->el = fr_event_list_alloc(nr, fr_network_idle, nr);
+	nr->el = fr_event_list_alloc(nr, NULL, NULL);
 	if (!nr->el) {
 		fr_strerror_printf("Failed creating event list: %s", fr_strerror());
 		talloc_free(nr);
