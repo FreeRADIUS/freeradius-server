@@ -33,10 +33,15 @@ Group: System Environment/Daemons
 URL: http://www.freeradius.org/
 
 Source0: ftp://ftp.freeradius.org/pub/radius/freeradius-server-%{version}.tar.bz2
+%if %{?_unitdir:1}%{!?_unitdir:0}
+Source100: radiusd.service
+%else
 Source100: freeradius-radiusd-init
+%define initddir %{?_initddir:%{_initddir}}%{!?_initddir:%{_initrddir}}
+%endif
+
 Source102: freeradius-logrotate
 Source103: freeradius-pam-conf
-Source104: radiusd.service
 
 Obsoletes: freeradius-devel
 Obsoletes: freeradius-libs
@@ -473,10 +478,12 @@ fi
 
 %preun
 if [ $1 = 0 ]; then
-  /sbin/service radiusd stop > /dev/null 2>&1
+%if %{?_unitdir:1}%{!?_unitdir:0}
+  /bin/systemctl disable radiusd
+%else
   /sbin/chkconfig --del radiusd
+%endif
 fi
-
 
 %postun
 if [ $1 -ge 1 ]; then
