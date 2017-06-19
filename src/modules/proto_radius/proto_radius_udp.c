@@ -1,8 +1,4 @@
 /*
- * proto_radius_udp.c	RADIUS handler for UDP
- *
- * Version:	$Id$
- *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -16,11 +12,16 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * Copyright 2016 The FreeRADIUS server project
- * Copyright 2016 Alan DeKok <aland@deployingradius.com>
  */
 
+/**
+ * $Id$
+ * @file proto_radius_udp.c
+ * @brief RADIUS handler for UDP.
+ *
+ * @copyright 2016 The FreeRADIUS server project.
+ * @copyright 2016 Alan DeKok (aland@deployingradius.com)
+ */
 #include <netdb.h>
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/protocol.h>
@@ -140,7 +141,6 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, uint8_t *buffer
 
 	return packet_len;
 }
-
 
 static ssize_t mod_write(void const *instance, void *packet_ctx, uint8_t *buffer, size_t buffer_len)
 {

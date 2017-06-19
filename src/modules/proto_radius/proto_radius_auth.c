@@ -115,7 +115,6 @@ static void auth_message(char const *msg, REQUEST *request, int goodpass)
 		       extra);
 }
 
-
 static void auth_dup_extract(REQUEST *request)
 {
 	listen_socket_t *sock = request->listener->data;
@@ -200,7 +199,6 @@ static void auth_cleanup_delay(REQUEST *request, fr_state_action_t action)
 	}
 }
 
-
 /** Sit on a request until it's time to respond to it.
  *
  *  For security reasons, rejects (and maybe some other) packets are
@@ -273,7 +271,6 @@ static void auth_reject_delay(REQUEST *request, fr_state_action_t action)
 		break;
 	}
 }
-
 
 static fr_io_final_t auth_process(REQUEST *request)
 {
@@ -855,7 +852,6 @@ static int auth_compile_section(CONF_SECTION *server_cs, char const *name1, char
 
 	return 1;
 }
-
 
 /*
  *	Ensure that the "radius" section is compiled.
