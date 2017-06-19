@@ -664,12 +664,6 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_log_t *logger)
 		return NULL;
 	}
 
-	if (fr_event_user_insert(nr->el, fr_network_evfilt_user, nr) < 0) {
-		fr_strerror_printf("Failed updating event list: %s", fr_strerror());
-		talloc_free(nr);
-		return NULL;
-	}
-
 	/*
 	 *	Create the various heaps.
 	 */
@@ -704,6 +698,12 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_log_t *logger)
 		return NULL;
 	}
 #endif
+
+	if (fr_event_user_insert(nr->el, fr_network_evfilt_user, nr) < 0) {
+		fr_strerror_printf("Failed updating event list: %s", fr_strerror());
+		talloc_free(nr);
+		return NULL;
+	}
 
 	if (fr_event_post_insert(nr->el, fr_network_post_event, nr) < 0) {
 		fr_strerror_printf("Failed inserting post-processing event");
