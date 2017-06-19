@@ -100,6 +100,9 @@ int		fr_event_timer_run(fr_event_list_t *el, struct timeval *when);
 int		fr_event_user_insert(fr_event_list_t *el, fr_event_user_handler_t user, void *ctx) CC_HINT(nonnull(1,2));
 int		fr_event_user_delete(fr_event_list_t *el, fr_event_user_handler_t user, void *ctx) CC_HINT(nonnull(1,2));
 
+int		fr_event_post_insert(fr_event_list_t *el, fr_event_callback_t callback, void *uctx) CC_HINT(nonnull(1,2));
+int		fr_event_post_delete(fr_event_list_t *el, fr_event_callback_t callback, void *uctx) CC_HINT(nonnull(1,2));
+
 int		fr_event_corral(fr_event_list_t *el, bool wait);
 void		fr_event_service(fr_event_list_t *el);
 

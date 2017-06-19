@@ -30,6 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/heap.h>
 #include <freeradius-devel/event.h>
+#include <freeradius-devel/io/time.h>
 
 #define FR_EV_BATCH_FDS (256)
 
@@ -81,6 +82,15 @@ typedef struct fr_event_fd_t {
 	void			*ctx;			//!< Context pointer to pass to each file descriptor callback.
 } fr_event_fd_t;
 
+/** Callbacks to perform after all timers and FDs have been checked
+ *
+ */
+typedef struct fr_event_post_t {
+	fr_dlist_t		entry;			//!< linked list of callback
+	fr_event_callback_t	callback;		//!< the callback to call
+	void			*ctx;			//!< context for the callback.
+} fr_event_post_t;
+
 /** Stores all information relating to an event list
  *
  */
@@ -104,6 +114,8 @@ struct fr_event_list_t {
 
 	fr_event_user_handler_t user;			//!< callback for EVFILT_USER events
 	void			*user_ctx;		//!< Context pointer to pass to the user callback.
+
+	fr_dlist_t		post_callbacks;		//!< post-processing callbacks
 
 	struct kevent		events[FR_EV_BATCH_FDS]; /* so it doesn't go on the stack every time */
 };
@@ -599,6 +611,61 @@ int fr_event_user_delete(fr_event_list_t *el, fr_event_user_handler_t user, void
 	return 0;
 }
 
+/** Add a post-event callback to the event list.
+ *
+ * @param[in] el	containing the timer events.
+ * @param[in] callback	the post-processing callback;
+ * @param[in] uctx	user context for the callback
+ * @return
+ *	- < 0 on error
+ *	- 0 on success
+ */
+int fr_event_post_insert(fr_event_list_t *el, fr_event_callback_t callback, void *uctx)
+{
+	fr_event_post_t *post;
+
+	post = talloc(el, fr_event_post_t);
+	post->callback = callback;
+	post->ctx = uctx;
+
+	fr_dlist_insert_head(&el->post_callbacks, &post->entry);
+
+	return 0;
+}
+
+
+/** Delete a post-even callback from the event list.
+ *
+ * @param[in] el	containing the timer events.
+ * @param[in] callback	the post-processing callback
+ * @param[in] uctx	user context for the callback
+ * @return
+ *	- < 0 on error
+ *	- 0 on success
+ */
+int fr_event_post_delete(fr_event_list_t *el, fr_event_callback_t callback, void *uctx)
+{
+	fr_dlist_t *entry, *next;
+
+	for (entry = FR_DLIST_FIRST(el->post_callbacks);
+	     entry != NULL;
+	     entry = next) {
+		fr_event_post_t *post;
+
+		next = FR_DLIST_NEXT(el->post_callbacks, entry);
+
+		post = fr_ptr_to_type(fr_event_post_t, entry, entry);
+		if ((post->callback == callback) &&
+		    (post->ctx == uctx)) {
+			fr_dlist_remove(entry);
+			talloc_free(post);
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
 
 /** Run a single scheduled timer event
  *
@@ -740,11 +807,13 @@ int fr_event_corral(fr_event_list_t *el, bool wait)
 void fr_event_service(fr_event_list_t *el)
 {
 	int i;
+	fr_dlist_t *entry;
+	struct timeval when;
 
 	if (el->exit) return;
 
 	/*
-	 *	Loop over all of the events, servicing them.
+	 *	Run all of the file descriptor events.
 	 */
 	for (i = 0; i < el->num_fd_events; i++) {
 		fr_event_fd_t *ev;
@@ -829,13 +898,27 @@ service:
 		if (ev->do_delete) fr_event_fd_delete(el, ev->fd);
 	}
 
-	if (fr_heap_num_elements(el->times) > 0) {
-		struct timeval when;
+	gettimeofday(&el->now, NULL);
 
-		do {
-			gettimeofday(&el->now, NULL);
-			when = el->now;
-		} while (fr_event_timer_run(el, &when) == 1);
+	/*
+	 *	Run all of the timer events.
+	 */
+	if (fr_heap_num_elements(el->times) > 0) {
+		when = el->now;
+	} while (fr_event_timer_run(el, &when) == 1);
+
+	/*
+	 *	Run all of the post-processing events.
+	 */
+	for (entry = FR_DLIST_FIRST(el->post_callbacks);
+	     entry != NULL;
+	     entry = FR_DLIST_NEXT(el->post_callbacks, entry)) {
+		fr_event_post_t *post;
+
+		when = el->now;
+
+		post = fr_ptr_to_type(fr_event_post_t, entry, entry);
+		post->callback(el, &when, post->ctx);
 	}
 }
 
@@ -947,6 +1030,8 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_t status, 
 
 	el->status = status;
 	el->status_ctx = status_ctx;
+
+	FR_DLIST_INIT(el->post_callbacks);
 
 	/*
 	 *	Set our "exit" callback as ident 0.
