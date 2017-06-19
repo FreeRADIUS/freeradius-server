@@ -609,12 +609,11 @@ dl_instance_t const *dl_instance_find(void *data)
  * @param[in] ctx	to allocate this instance data in.
  * @param[out] data	Module's private data, the result of parsing the config.
  * @param[in] module	to alloc instance data for.
- * @param[in] cs	module's config section.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int dl_instance_data_alloc(TALLOC_CTX *ctx, void **data, dl_t const *module, CONF_SECTION *cs)
+static int dl_instance_data_alloc(TALLOC_CTX *ctx, void **data, dl_t const *module)
 {
 	*data = NULL;
 
@@ -630,15 +629,6 @@ static int dl_instance_data_alloc(TALLOC_CTX *ctx, void **data, dl_t const *modu
 		talloc_set_name(*data, "%s_t", module->name ? module->name : "config");
 	} else {
 		talloc_set_name(*data, "%s", module->common->inst_type);
-	}
-
-	if (module->common->config) {
-		if ((cf_section_rules_push(cs, module->common->config)) < 0 ||
-		    (cf_section_parse(*data, *data, cs) < 0)) {
-			cf_log_err(cs, "Invalid configuration for module \"%s\"", module->name);
-			talloc_free(*data);
-			return -1;
-		}
 	}
 
 	return 0;
@@ -840,7 +830,7 @@ int dl_instance(TALLOC_CTX *ctx, dl_instance_t **out,
 	/*
 	 *	ctx here is the main module's instance data
 	 */
-	if (dl_instance_data_alloc(dl_inst, &dl_inst->data, dl_inst->module, conf) < 0) {
+	if (dl_instance_data_alloc(dl_inst, &dl_inst->data, dl_inst->module) < 0) {
 		if (parent) {
 			cf_log_perr(conf, "Failed allocating instance data for '%s_%s'",
 				    parent->module->common->name, name);
@@ -849,6 +839,21 @@ int dl_instance(TALLOC_CTX *ctx, dl_instance_t **out,
 				   fr_int2str(dl_type_prefix, type, "<INVALID>"), name);
 		}
 		return -1;
+	}
+
+	/*
+	 *	Associate the module instance with the conf section
+	 *	*before* executing any parse rules that might need it.
+	 */
+	cf_data_add(conf, dl_inst, dl_inst->module->name, false);
+
+	if (dl_inst->module->common->config) {
+		if ((cf_section_rules_push(conf, dl_inst->module->common->config)) < 0 ||
+		    (cf_section_parse(dl_inst->data, dl_inst->data, conf) < 0)) {
+			cf_log_err(conf, "Invalid configuration for module \"%s\"", dl_inst->module->name);
+			talloc_free(dl_inst);
+			return -1;
+		}
 	}
 
 	dl_inst->conf = conf;

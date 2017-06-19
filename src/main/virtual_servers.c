@@ -118,7 +118,6 @@ static int listen_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_P
 		cf_log_err(listen_cs, "Failed loading proto module");
 		return -1;
 	}
-	cf_data_add(listen_cs, listen->proto_module, "proto", false);
 
 	/*
 	 *	Hack for now: tell the server core we have new listeners.

@@ -94,12 +94,13 @@ static int process_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_
 
 	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
 	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(ci));
+	dl_instance_t		*parent_inst;
 	char const		*name;
 	fr_dict_attr_t const	*da;
 	fr_dict_enum_t const	*type_enum;
 	uint32_t		code;
 
-	rad_assert(listen_cs);
+	rad_assert(listen_cs && (strcmp(cf_section_name1(listen_cs), "listen") == 0));
 
 	da = fr_dict_attr_by_name(NULL, "Packet-Type");
 	if (!da) {
@@ -126,12 +127,13 @@ static int process_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_
 		return -1;
 	}
 
+	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_instance_t, "proto_radius"));
+	rad_assert(parent_inst);
+
 	/*
 	 *	Parent dl_instance_t added in virtual_servers.c (listen_parse)
 	 */
-	return dl_instance(ctx, out, listen_cs,
-			   cf_data_value(cf_data_find(listen_cs, dl_instance_t, "proto")),
-			   name, DL_TYPE_SUBMODULE);
+	return dl_instance(ctx, out, listen_cs,	parent_inst, name, DL_TYPE_SUBMODULE);
 }
 
 /** Wrapper around dl_instance
@@ -147,6 +149,7 @@ static int process_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_
 static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	char const	*name = cf_pair_value(cf_item_to_pair(ci));
+	dl_instance_t	*parent_inst;
 	CONF_SECTION	*listen_cs = cf_item_to_section(cf_parent(ci));
 	CONF_SECTION	*transport_cs;
 
@@ -158,9 +161,10 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
 	 */
 	if (!transport_cs) transport_cs = cf_section_alloc(listen_cs, name, NULL);
 
-	return dl_instance(ctx, out, transport_cs,
-			   cf_data_value(cf_data_find(listen_cs, dl_instance_t, "proto")),
-			   name, DL_TYPE_SUBMODULE);
+	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_instance_t, "proto_radius"));
+	rad_assert(parent_inst);
+
+	return dl_instance(ctx, out, transport_cs, parent_inst, name, DL_TYPE_SUBMODULE);
 }
 
 /** Decode the packet, and set the request->process function
