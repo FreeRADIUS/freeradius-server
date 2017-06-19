@@ -907,8 +907,10 @@ service:
 	 *	Run all of the timer events.
 	 */
 	if (fr_heap_num_elements(el->times) > 0) {
-		when = el->now;
-	} while (fr_event_timer_run(el, &when) == 1);
+		do {
+			when = el->now;
+		} while (fr_event_timer_run(el, &when) == 1);
+	}
 
 	/*
 	 *	Run all of the post-processing events.
