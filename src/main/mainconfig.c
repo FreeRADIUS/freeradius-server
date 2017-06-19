@@ -157,26 +157,6 @@ static const CONF_PARSER log_config[] = {
 };
 
 
-/*
- *  Security configuration for the server.
- */
-static const CONF_PARSER security_config[] = {
-	{ FR_CONF_POINTER("max_attributes", FR_TYPE_UINT32, &fr_max_attributes), .dflt = STRINGIFY(0) },
-	{ FR_CONF_POINTER("reject_delay", FR_TYPE_TIMEVAL, &main_config.reject_delay), .dflt = STRINGIFY(0) },
-	{ FR_CONF_POINTER("status_server", FR_TYPE_BOOL, &main_config.status_server), .dflt = "no" },
-
-	/*
-	 *	No default, so it isn't printed in debug mode.
-	 */
-	{ FR_CONF_POINTER("tunnel_password_zeros", FR_TYPE_BOOL, &fr_tunnel_password_zeros) },
-
-#ifdef ENABLE_OPENSSL_VERSION_CHECK
-	{ FR_CONF_POINTER("allow_vulnerable_openssl", FR_TYPE_STRING, &main_config.allow_vulnerable_openssl), .dflt = "no" },
-#endif
-	{ FR_CONF_POINTER("server_id", FR_TYPE_UINT8, &main_config.state_server_id) },
-	CONF_PARSER_TERMINATOR
-};
-
 static const CONF_PARSER resources[] = {
 	/*
 	 *	Don't set a default here.  It's set in the code, below.  This means that
@@ -235,7 +215,6 @@ static const CONF_PARSER server_config[] = {
 	{ FR_CONF_POINTER("log_auth_goodpass", FR_TYPE_BOOL | FR_TYPE_DEPRECATED, &main_config.log_auth_goodpass) },
 	{ FR_CONF_POINTER("log_stripped_names", FR_TYPE_BOOL | FR_TYPE_DEPRECATED, &log_stripped_names) },
 
-	{ FR_CONF_POINTER("security", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) security_config },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -260,6 +239,21 @@ static const CONF_PARSER bootstrap_security_config[] = {
 #endif
 	{ FR_CONF_POINTER("chroot", FR_TYPE_STRING, &chroot_dir) },
 	{ FR_CONF_POINTER("allow_core_dumps", FR_TYPE_BOOL, &allow_core_dumps), .dflt = "no" },
+
+	{ FR_CONF_POINTER("max_attributes", FR_TYPE_UINT32, &fr_max_attributes), .dflt = STRINGIFY(0) },
+	{ FR_CONF_POINTER("reject_delay", FR_TYPE_TIMEVAL, &main_config.reject_delay), .dflt = STRINGIFY(0) },
+	{ FR_CONF_POINTER("status_server", FR_TYPE_BOOL, &main_config.status_server), .dflt = "no" },
+
+	/*
+	 *	No default, so it isn't printed in debug mode.
+	 */
+	{ FR_CONF_POINTER("tunnel_password_zeros", FR_TYPE_BOOL, &fr_tunnel_password_zeros) },
+
+#ifdef ENABLE_OPENSSL_VERSION_CHECK
+	{ FR_CONF_POINTER("allow_vulnerable_openssl", FR_TYPE_STRING, &main_config.allow_vulnerable_openssl), .dflt = "no" },
+#endif
+	{ FR_CONF_POINTER("server_id", FR_TYPE_UINT8, &main_config.state_server_id) },
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -425,12 +419,6 @@ static int switch_users(CONF_SECTION *cs)
 		return 0;
 	}
 
-	/*
-	 *	Don't do chroot/setuid/setgid if we're in debugging
-	 *	as non-root.
-	 */
-	if (rad_debug_lvl && (getuid() != 0)) return 1;
-
 	if (cf_section_rules_push(cs, bootstrap_config) < 0) {
 		fprintf(stderr, "%s: Error: Failed pushing parse rules for user/group information.\n",
 			main_config.name);
@@ -442,6 +430,12 @@ static int switch_users(CONF_SECTION *cs)
 			main_config.name);
 		return 0;
 	}
+
+	/*
+	 *	Don't do chroot/setuid/setgid if we're in debugging
+	 *	as non-root.
+	 */
+	if (rad_debug_lvl && (getuid() != 0)) return 1;
 
 #ifdef HAVE_GRP_H
 	/*
