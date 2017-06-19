@@ -23,6 +23,9 @@
  *
  * @copyright 2015  The FreeRADIUS server project
  */
+#include <talloc.h>
+#include <stdint.h>
+#include <stdbool.h>
 #include <freeradius-devel/token.h>
 #include <freeradius-devel/types.h>
 
