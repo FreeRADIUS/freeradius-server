@@ -870,7 +870,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 
 	mod_inst->module = (rad_module_t const *)mod_inst->dl_inst->module->common;
 	if (!mod_inst->module) {
-		cf_log_err(cs, "Missing module public structure for \"%s\"", mod_inst->module->name);
+		cf_log_err(cs, "Missing module public structure for \"%s\"", mod_inst->name);
 		talloc_free(mod_inst);
 		return NULL;
 	}

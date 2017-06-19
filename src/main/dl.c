@@ -826,7 +826,13 @@ int dl_instance(TALLOC_CTX *ctx, dl_instance_t **out,
 	 */
 	dl_inst->module = dl_module(conf, parent ? parent->module : NULL, name, type);
 	if (!dl_inst->module) {
-		cf_log_err(conf, "Failed finding dl_instance library for '%s_%s'", parent->module->common->name, name);
+		if (parent) {
+			cf_log_err(conf, "Failed loding module for '%s_%s'",
+				   parent->module->common->name, name);
+		} else {
+			cf_log_err(conf, "Failed loading module for '%s_%s'",
+				   fr_int2str(dl_type_prefix, type, "<INVALID>"), name);
+		}
 		talloc_free(dl_inst);
 		return -1;
 	}
@@ -835,7 +841,13 @@ int dl_instance(TALLOC_CTX *ctx, dl_instance_t **out,
 	 *	ctx here is the main module's instance data
 	 */
 	if (dl_instance_data_alloc(dl_inst, &dl_inst->data, dl_inst->module, conf) < 0) {
-		cf_log_perr(conf, "Failed allocating instance data for '%s_%s'", parent->module->common->name, name);
+		if (parent) {
+			cf_log_perr(conf, "Failed allocating instance data for '%s_%s'",
+				    parent->module->common->name, name);
+		} else {
+			cf_log_err(conf, "Failed allocating instance data for '%s_%s'",
+				   fr_int2str(dl_type_prefix, type, "<INVALID>"), name);
+		}
 		return -1;
 	}
 
