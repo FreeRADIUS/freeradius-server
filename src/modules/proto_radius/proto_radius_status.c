@@ -1,8 +1,4 @@
 /*
- * proto_radius_status.c	RADIUS Status-Server processing.
- *
- * Version:	$Id$
- *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -16,19 +12,20 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * Copyright 2016 The FreeRADIUS server project
- * Copyright 2016 Alan DeKok <aland@deployingradius.com>
  */
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/protocol.h>
-#include <freeradius-devel/process.h>
-#include <freeradius-devel/udp.h>
-#include <freeradius-devel/radius/radius.h>
-#include <freeradius-devel/io/io.h>
+/**
+ * $Id$
+ * @file proto_radius.c
+ * @brief RADIUS Status-Server processing.
+ *
+ * @copyright 2016 The FreeRADIUS server project.
+ * @copyright 2016 Alan DeKok (aland@deployingradius.com)
+ */
 #include <freeradius-devel/io/application.h>
+#include <freeradius-devel/protocol.h>
+#include <freeradius-devel/modules.h>
+#include <freeradius-devel/dict.h>
 #include <freeradius-devel/rad_assert.h>
 
 static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
