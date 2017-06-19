@@ -58,7 +58,7 @@ static int cache_acquire(rlm_cache_handle_t **out, rlm_cache_t const *inst, REQU
 		return 0;
 	}
 
-	return inst->driver->acquire(out, &inst->config, inst->driver_inst, request);
+	return inst->driver->acquire(out, &inst->config, inst->driver_inst->data, request);
 }
 
 /** Release a handle we previously acquired
@@ -69,7 +69,7 @@ static void cache_release(rlm_cache_t const *inst, REQUEST *request, rlm_cache_h
 	if (!inst->driver->release) return;
 	if (!handle || !*handle) return;
 
-	inst->driver->release(&inst->config, inst->driver_inst, request, *handle);
+	inst->driver->release(&inst->config, inst->driver_inst->data, request, *handle);
 	*handle = NULL;
 }
 
@@ -80,7 +80,7 @@ static int cache_reconnect(rlm_cache_handle_t **handle, rlm_cache_t const *inst,
 {
 	rad_assert(inst->driver->reconnect);
 
-	return inst->driver->reconnect(handle, &inst->config, inst->driver_inst, request);
+	return inst->driver->reconnect(handle, &inst->config, inst->driver_inst->data, request);
 }
 
 /** Allocate a cache entry
@@ -93,7 +93,7 @@ static int cache_reconnect(rlm_cache_handle_t **handle, rlm_cache_t const *inst,
  */
 static rlm_cache_entry_t *cache_alloc(rlm_cache_t const *inst, REQUEST *request)
 {
-	if (inst->driver->alloc) return inst->driver->alloc(&inst->config, inst->driver_inst, request);
+	if (inst->driver->alloc) return inst->driver->alloc(&inst->config, inst->driver_inst->data, request);
 
 	return talloc_zero(NULL, rlm_cache_entry_t);
 }
@@ -188,7 +188,7 @@ static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t const *inst, 
 	*out = NULL;
 
 	for (;;) {
-		ret = inst->driver->find(&c, &inst->config, inst->driver_inst, request, *handle, key, key_len);
+		ret = inst->driver->find(&c, &inst->config, inst->driver_inst->data, request, *handle, key, key_len);
 		switch (ret) {
 		case CACHE_RECONNECT:
 			RDEBUG("Reconnecting...");
@@ -231,7 +231,7 @@ static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t const *inst, 
 			talloc_free(p);
 		}
 
-		inst->driver->expire(&inst->config, inst->driver_inst, request, handle, c->key, c->key_len);
+		inst->driver->expire(&inst->config, inst->driver_inst->data, request, handle, c->key, c->key_len);
 		cache_free(inst, &c);
 		return RLM_MODULE_NOTFOUND;	/* Couldn't find a non-expired entry */
 	}
@@ -261,7 +261,7 @@ static rlm_rcode_t cache_expire(rlm_cache_t const *inst, REQUEST *request,
 				rlm_cache_handle_t **handle, uint8_t const *key, size_t key_len)
 {
 	RDEBUG("Expiring cache entry");
-	for (;;) switch (inst->driver->expire(&inst->config, inst->driver_inst, request,
+	for (;;) switch (inst->driver->expire(&inst->config, inst->driver_inst->data, request,
 					      *handle, key, key_len)) {
 	case CACHE_RECONNECT:
 		if (cache_reconnect(handle, inst, request) == 0) continue;
@@ -299,7 +299,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 	TALLOC_CTX		*pool;
 
 	if ((inst->config.max_entries > 0) && inst->driver->count &&
-	    (inst->driver->count(&inst->config, inst->driver_inst, request, handle) > inst->config.max_entries)) {
+	    (inst->driver->count(&inst->config, inst->driver_inst->data, request, handle) > inst->config.max_entries)) {
 		RWDEBUG("Cache is full: %d entries", inst->config.max_entries);
 		return RLM_MODULE_FAIL;
 	}
@@ -441,7 +441,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 	for (;;) {
 		cache_status_t ret;
 
-		ret = inst->driver->insert(&inst->config, inst->driver_inst, request, *handle, c);
+		ret = inst->driver->insert(&inst->config, inst->driver_inst->data, request, *handle, c);
 		switch (ret) {
 		case CACHE_RECONNECT:
 			if (cache_reconnect(handle, inst, request) == 0) continue;
@@ -475,7 +475,7 @@ static rlm_rcode_t cache_set_ttl(rlm_cache_t const *inst, REQUEST *request,
 	if (!inst->driver->set_ttl) for (;;) {
 		cache_status_t ret;
 
-		ret = inst->driver->insert(&inst->config, inst->driver_inst, request, *handle, c);
+		ret = inst->driver->insert(&inst->config, inst->driver_inst->data, request, *handle, c);
 		switch (ret) {
 		case CACHE_RECONNECT:
 			if (cache_reconnect(handle, inst, request) == 0) continue;
@@ -497,7 +497,7 @@ static rlm_rcode_t cache_set_ttl(rlm_cache_t const *inst, REQUEST *request,
 	for (;;) {
 		cache_status_t ret;
 
-		ret = inst->driver->set_ttl(&inst->config, inst->driver_inst, request, *handle, c);
+		ret = inst->driver->set_ttl(&inst->config, inst->driver_inst->data, request, *handle, c);
 		switch (ret) {
 		case CACHE_RECONNECT:
 			if (cache_reconnect(handle, inst, request) == 0) continue;
@@ -874,12 +874,6 @@ static int mod_detach(void *instance)
 	 */
 	talloc_free_children(inst);
 
-	/*
-	 *	Decrements the reference count. The driver object won't be unloaded
-	 *	until all instances of rlm_cache that use it have been destroyed.
-	 */
-	talloc_decrease_ref_count(inst->driver_handle);
-
 	return 0;
 }
 
@@ -941,10 +935,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Load the appropriate driver for our backend
 	 */
-	inst->driver_handle = dl_module(driver_cs, dl_by_symbol(&rlm_cache), name, DL_TYPE_SUBMODULE);
-	if (!inst->driver_handle) return -1;
-
-	inst->driver = (cache_driver_t const *)inst->driver_handle->common;
+	if (dl_instance(inst, &inst->driver_inst, driver_cs, dl_instance_find(inst), name, DL_TYPE_SUBMODULE) < 0) {
+		cf_log_err(driver_cs, "Failed loading driver");
+		return -1;
+	}
+	inst->driver = (cache_driver_t const *)inst->driver_inst->module->common;
 
 	/*
 	 *	Non optional fields and callbacks
@@ -954,13 +949,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	rad_assert(inst->driver->insert);
 	rad_assert(inst->driver->expire);
 
-	if (dl_instance_data_alloc(inst, &inst->driver_inst, inst->driver_handle, driver_cs) < 0) return -1;
-
 	if (inst->driver->instantiate &&
-	    (inst->driver->instantiate(&inst->config, inst->driver_inst, driver_cs) < 0)) return -1;
+	    (inst->driver->instantiate(&inst->config, inst->driver_inst->data, driver_cs) < 0)) return -1;
 
 #ifndef NDEBUG
-	if (inst->driver_inst) module_instance_read_only(inst->driver_inst, inst->driver->name);
+	if (inst->driver_inst) module_instance_read_only(inst->driver_inst->data, inst->driver->name);
 #endif
 
 	if (inst->config.ttl == 0) {

@@ -36,10 +36,7 @@ RCSIDH(rlm_eap_h, "$Id$")
  *
  */
 typedef struct rlm_eap_method {
-	CONF_SECTION			*cs;
-
-	dl_t const		*submodule_handle;		//!< Submodule's dl_handle.
-	void				*submodule_inst;		//!< Submodule's instance data
+	dl_instance_t			*submodule_inst;		//!< Submodule's instance data
 	rlm_eap_submodule_t const	*submodule;			//!< Submodule's exported interface.
 } rlm_eap_method_t;
 

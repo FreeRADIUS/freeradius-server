@@ -145,7 +145,7 @@ int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char c
 	CONF_DATA const		*cd;
 
 
-	module_instance_t	*inst;
+	module_instance_t	*mod_inst;
 	char const		*inst_name;
 
 #define FIND_SIBLING_CF_KEY "find_sibling"
@@ -181,14 +181,14 @@ int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char c
 	 *	instantiation order issues.
 	 */
 	inst_name = cf_pair_value(cp);
-	inst = module_find(cf_item_to_section(cf_parent(module)), inst_name);
-	if (!inst) {
+	mod_inst = module_find(cf_item_to_section(cf_parent(module)), inst_name);
+	if (!mod_inst) {
 		cf_log_err(cp, "Unknown module instance \"%s\"", inst_name);
 
 		return -1;
 	}
 
-	if (!inst->instantiated) {
+	if (!mod_inst->instantiated) {
 		CONF_SECTION *parent = module;
 
 		/*
@@ -215,14 +215,14 @@ int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char c
 	/*
 	 *	Check the module instances are of the same type.
 	 */
-	if (strcmp(cf_section_name1(inst->cs), cf_section_name1(module)) != 0) {
+	if (strcmp(cf_section_name1(mod_inst->dl_inst->conf), cf_section_name1(module)) != 0) {
 		cf_log_err(cp, "Referenced module is a rlm_%s instance, must be a rlm_%s instance",
-			      cf_section_name1(inst->cs), cf_section_name1(module));
+			      cf_section_name1(mod_inst->dl_inst->conf), cf_section_name1(module));
 
 		return -1;
 	}
 
-	*out = cf_section_find(inst->cs, name, NULL);
+	*out = cf_section_find(mod_inst->dl_inst->conf, name, NULL);
 
 	return 1;
 }
@@ -384,7 +384,7 @@ int module_instance_read_only(TALLOC_CTX *ctx, char const *name)
  */
 module_instance_t *module_find(CONF_SECTION *modules, char const *asked_name)
 {
-	char const *instance_name;
+	char const *inst_name;
 	void *inst;
 
 	if (!modules) return NULL;
@@ -394,10 +394,10 @@ module_instance_t *module_find(CONF_SECTION *modules, char const *asked_name)
 	 *	which tells the server "it's OK for this module to not
 	 *	exist."
 	 */
-	instance_name = asked_name;
-	if (instance_name[0] == '-') instance_name++;
+	inst_name = asked_name;
+	if (inst_name[0] == '-') inst_name++;
 
-	inst = cf_data_value(cf_data_find(modules, module_instance_t, instance_name));
+	inst = cf_data_value(cf_data_find(modules, module_instance_t, inst_name));
 	if (!inst) return NULL;
 
 	return talloc_get_type_abort(inst, module_instance_t);
@@ -434,14 +434,14 @@ module_instance_t *module_find_with_method(rlm_components_t *method, CONF_SECTIO
 {
 	char			*p;
 	rlm_components_t	i;
-	module_instance_t	*inst;
+	module_instance_t	*mod_inst;
 
 	/*
 	 *	Module names are allowed to contain '.'
 	 *	so we search for the bare module name first.
 	 */
-	inst = module_find(modules, name);
-	if (inst) return inst;
+	mod_inst = module_find(modules, name);
+	if (mod_inst) return mod_inst;
 
 	/*
 	 *	Find out if the instance name contains
@@ -459,24 +459,25 @@ module_instance_t *module_find_with_method(rlm_components_t *method, CONF_SECTIO
 			char *inst_name;
 
 			inst_name = talloc_bstrndup(NULL, name, p - name);
-			inst = module_find(modules, inst_name);
-			if (!inst) return NULL;
+			mod_inst = module_find(modules, inst_name);
+			if (!mod_inst) return NULL;
 
 			/*
 			 *	Verify the module actually implements
 			 *	the specified method.
 			 */
-			if (!inst->module->methods[i]) {
-				cf_log_debug(modules, "%s does not implement method \"%s\"", inst->name, p + 1);
+			if (!mod_inst->module->methods[i]) {
+				cf_log_debug(modules, "%s does not implement method \"%s\"",
+					     mod_inst->module->name, p + 1);
 				return NULL;
 			}
 			if (method) *method = i;
 
-			return inst;
+			return mod_inst;
 		}
 	}
 
-	return inst;
+	return mod_inst;
 }
 
 /** Retrieve module/thread specific instance data for a module
@@ -488,12 +489,12 @@ module_instance_t *module_find_with_method(rlm_components_t *method, CONF_SECTIO
  */
 void *module_thread_instance_find(void *instance)
 {
-	module_instance_t		*inst = instance;
+	module_instance_t		*mod_inst = talloc_get_type_abort(instance, module_instance_t);
 	rbtree_t			*tree = module_thread_inst_tree;
 	module_thread_instance_t	find;
 
 	memset(&find, 0, sizeof(find));
-	find.inst = inst;
+	find.inst = mod_inst;
 
 	return rbtree_finddata(tree, &find);
 }
@@ -560,33 +561,35 @@ typedef struct {
  */
 static int _module_thread_instantiate(void *instance, void *ctx)
 {
-	module_instance_t		*inst = talloc_get_type_abort(instance, module_instance_t);
+	module_instance_t		*mod_inst = talloc_get_type_abort(instance, module_instance_t);
 	module_thread_instance_t	*thread_inst;
 	_thread_intantiate_ctx_t	*thread_inst_ctx = ctx;
 	int				ret;
 
 	MEM(thread_inst = talloc_zero(NULL, module_thread_instance_t));
-	thread_inst->inst = inst;
+	thread_inst->inst = mod_inst;
 
-	if (inst->module->thread_inst_size) {
+	if (mod_inst->module->thread_inst_size) {
 		char *type_name;
 
-		MEM(thread_inst->data = talloc_zero_array(thread_inst, uint8_t, inst->module->thread_inst_size));
+		MEM(thread_inst->data = talloc_zero_array(thread_inst, uint8_t, mod_inst->module->thread_inst_size));
 
 		/*
 		 *	Fixup the type name, incase something calls
 		 *	talloc_get_type_abort() on it...
 		 */
-		MEM(type_name = talloc_asprintf(NULL, "rlm_%s_thread_t", inst->name));
+		MEM(type_name = talloc_asprintf(NULL, "rlm_%s_thread_t", mod_inst->module->name));
 		talloc_set_name(thread_inst->data, "%s", type_name);
 		talloc_free(type_name);
 
 	}
 
-	if (inst->module->thread_instantiate) {
-		ret = inst->module->thread_instantiate(inst->cs, inst->data, thread_inst_ctx->el, thread_inst->data);
+	if (mod_inst->module->thread_instantiate) {
+		ret = mod_inst->module->thread_instantiate(mod_inst->dl_inst->conf, mod_inst->dl_inst->data,
+							   thread_inst_ctx->el, thread_inst->data);
 		if (ret < 0) {
-			ERROR("Thread instantiation failed for module \"%s\"", inst->name);
+			ERROR("Thread instantiation failed for module \"%s\"",
+			      mod_inst->name);
 			return -1;
 		}
 	}
@@ -645,27 +648,29 @@ int modules_thread_instantiate(CONF_SECTION *root, fr_event_list_t *el)
  */
 static int _module_instantiate(void *instance, UNUSED void *ctx)
 {
-	module_instance_t *inst = talloc_get_type_abort(instance, module_instance_t);
+	module_instance_t *mod_inst = talloc_get_type_abort(instance, module_instance_t);
 
-	if (inst->instantiated) return 0;
+	if (mod_inst->instantiated) return 0;
 
 	/*
 	 *	Now that ALL modules are instantiated, and ALL xlats
 	 *	are defined, go compile the config items marked as XLAT.
 	 */
-	if (inst->module->config && (cf_section_parse_pass2(inst->data, inst->cs) < 0)) return -1;
+	if (mod_inst->module->config && (cf_section_parse_pass2(mod_inst->dl_inst->data,
+								mod_inst->dl_inst->conf) < 0)) return -1;
 
 	/*
 	 *	Call the instantiate method, if any.
 	 */
-	if (inst->module->instantiate) {
-		cf_log_debug(inst->cs, "Instantiating module \"%s\"", inst->name);
+	if (mod_inst->module->instantiate) {
+		cf_log_debug(mod_inst->dl_inst->conf, "Instantiating module \"%s\"", mod_inst->name);
 
 		/*
 		 *	Call the module's instantiation routine.
 		 */
-		if ((inst->module->instantiate)(inst->cs, inst->data) < 0) {
-			cf_log_err(inst->cs, "Instantiation failed for module \"%s\"", inst->name);
+		if ((mod_inst->module->instantiate)(mod_inst->dl_inst->conf, mod_inst->dl_inst->data) < 0) {
+			cf_log_err(mod_inst->dl_inst->conf, "Instantiation failed for module \"%s\"",
+				   mod_inst->name);
 
 			return -1;
 		}
@@ -676,20 +681,20 @@ static int _module_instantiate(void *instance, UNUSED void *ctx)
 	 *
 	 *	If it isn't, we create a mutex.
 	 */
-	if ((inst->module->type & RLM_TYPE_THREAD_UNSAFE) != 0) {
-		inst->mutex = talloc_zero(inst, pthread_mutex_t);
+	if ((mod_inst->module->type & RLM_TYPE_THREAD_UNSAFE) != 0) {
+		mod_inst->mutex = talloc_zero(mod_inst, pthread_mutex_t);
 
 		/*
 		 *	Initialize the mutex.
 		 */
-		pthread_mutex_init(inst->mutex, NULL);
+		pthread_mutex_init(mod_inst->mutex, NULL);
 	}
 
 #ifndef NDEBUG
-	if (inst->data) module_instance_read_only(inst->data, inst->name);
+	if (mod_inst->dl_inst->data) module_instance_read_only(mod_inst->dl_inst->data, mod_inst->name);
 #endif
 
-	inst->instantiated = true;
+	mod_inst->instantiated = true;
 
 	return 0;
 }
@@ -712,16 +717,16 @@ static int _module_instantiate(void *instance, UNUSED void *ctx)
  */
 static int module_instantiate(CONF_SECTION *root, char const *name)
 {
-	module_instance_t *inst;
+	module_instance_t	*mod_inst;
 	CONF_SECTION		*modules;
 
 	modules = cf_section_find(root, "modules", NULL);
 	if (!modules) return 0;
 
-	inst = cf_data_value(cf_data_find(modules, module_instance_t, name));
-	if (!inst) return -1;
+	mod_inst = cf_data_value(cf_data_find(modules, module_instance_t, name));
+	if (!mod_inst) return -1;
 
-	return _module_instantiate(inst, NULL);
+	return _module_instantiate(mod_inst, NULL);
 }
 
 /** Completes instantiation of modules
@@ -762,31 +767,31 @@ int modules_instantiate(CONF_SECTION *root)
 
 /** Free module's instance data, and any xlats or paircompares
  *
- * @param[in] instance to free.
+ * @param[in] mod_inst to free.
  * @return 0
  */
-static int _module_instance_free(module_instance_t *instance)
+static int _module_instance_free(module_instance_t *mod_inst)
 {
-	if (instance->mutex) {
+	if (mod_inst->mutex) {
 		/*
 		 *	FIXME
 		 *	The mutex MIGHT be locked...
 		 *	we'll check for that later, I guess.
 		 */
-		pthread_mutex_destroy(instance->mutex);
+		pthread_mutex_destroy(mod_inst->mutex);
 	}
 
-	xlat_unregister(instance->data, instance->name, NULL);
+	xlat_unregister(mod_inst->dl_inst->data, mod_inst->name, NULL);
 
 	/*
 	 *	Remove all xlat's registered to module instance.
 	 */
-	if (instance->data) {
+	if (mod_inst->dl_inst->data) {
 		/*
 		 *	Remove any registered paircompares.
 		 */
-		paircompare_unregister_instance(instance->data);
-		xlat_unregister_module(instance->data);
+		paircompare_unregister_instance(mod_inst->dl_inst->data);
+		xlat_unregister_module(mod_inst->dl_inst->data);
 	}
 
 	/*
@@ -797,13 +802,7 @@ static int _module_instance_free(module_instance_t *instance)
 	 *	If we don't do this, we get a SEGV deep inside the talloc code
 	 *	when it tries to call a destructor that no longer exists.
 	 */
-	talloc_free_children(instance);
-
-	/*
-	 *	Decrements the reference count. The module object won't be unloaded
-	 *	until all instances of that module have been destroyed.
-	 */
-	talloc_decrease_ref_count(instance->handle);
+	talloc_free_children(mod_inst);
 
 	return 0;
 }
@@ -826,22 +825,21 @@ static int _module_instance_free(module_instance_t *instance)
 static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *cs)
 {
 	int			i;
-	char const		*name1, *instance_name;
-	module_instance_t	*instance;
-	dl_t const		*module;
+	char const		*name1, *inst_name;
+	module_instance_t	*mod_inst;
 
 	/*
 	 *	Figure out which module we want to load.
 	 */
 	name1 = cf_section_name1(cs);
-	instance_name = cf_section_name2(cs);
-	if (!instance_name) instance_name = name1;
+	inst_name = cf_section_name2(cs);
+	if (!inst_name) inst_name = name1;
 
 	/*
 	 *	Don't allow modules to use reserved words.
 	 */
 	for (i = 1; unlang_ops[i].name != NULL; i++) {
-		if (strcmp(instance_name, unlang_ops[i].name) == 0) {
+		if (strcmp(inst_name, unlang_ops[i].name) == 0) {
 			ERROR("Module names cannot use a reserved word \"%s\"",
 			      unlang_ops[i].name);
 			return NULL;
@@ -851,63 +849,48 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	/*
 	 *	See if the module already exists.
 	 */
-	instance = module_find(modules, instance_name);
-	if (instance) {
+	mod_inst = module_find(modules, inst_name);
+	if (mod_inst) {
 		ERROR("Duplicate module \"%s\", in file %s:%d and file %s:%d",
-		      instance_name,
+		      inst_name,
 		      cf_filename(cs),
 		      cf_lineno(cs),
-		      cf_filename(instance->cs),
-		      cf_lineno(instance->cs));
+		      cf_filename(mod_inst->dl_inst->conf),
+		      cf_lineno(mod_inst->dl_inst->conf));
 		return NULL;
 	}
 
-	/*
-	 *	Load the module shared library.
-	 */
-	module = dl_module(cs, NULL, name1, DL_TYPE_MODULE);
-	if (!module) {
-		talloc_free(instance);
+	MEM(mod_inst = talloc_zero(instance_ctx, module_instance_t));
+	talloc_set_destructor(mod_inst, _module_instance_free);
+
+	if (dl_instance(mod_inst, &mod_inst->dl_inst, cs, NULL, name1, DL_TYPE_MODULE) < 0) {
+		talloc_free(mod_inst);
 		return NULL;
 	}
 
-	instance = talloc_zero(instance_ctx, module_instance_t);
-	instance->cs = cs;
-	instance->name = instance_name;
-	instance->handle = module;
-
-	talloc_set_destructor(instance, _module_instance_free);
-
-	instance->module = (rad_module_t const *)module->common;
-	if (!instance->module) {
-		talloc_free(instance);
-		return NULL;
-	}
-
-	/*
-	 *	Parse the modules configuration.
-	 */
-	if (dl_instance_data_alloc(instance, &instance->data, instance->handle, cs) < 0) {
-		talloc_free(instance);
+	mod_inst->module = (rad_module_t const *)mod_inst->dl_inst->module->common;
+	if (!mod_inst->module) {
+		cf_log_err(cs, "Missing module public structure for \"%s\"", mod_inst->module->name);
+		talloc_free(mod_inst);
 		return NULL;
 	}
 
 	/*
 	 *	Bootstrap the module.
 	 */
-	if (instance->module->bootstrap &&
-	    ((instance->module->bootstrap)(cs, instance->data) < 0)) {
-		cf_log_err(cs, "Instantiation failed for module \"%s\"", instance->name);
-		talloc_free(instance);
+	if (mod_inst->module->bootstrap &&
+	    ((mod_inst->module->bootstrap)(cs, mod_inst->dl_inst->data) < 0)) {
+		cf_log_err(cs, "Instantiation failed for module \"%s\"", mod_inst->name);
+		talloc_free(mod_inst);
 		return NULL;
 	}
-
+	mod_inst->name = talloc_strdup(mod_inst, inst_name);
 	/*
 	 *	Remember the module for later.
 	 */
-	cf_data_add(modules, instance, instance->name, false);
+	cf_data_add(modules, mod_inst, mod_inst->name, false);
 
-	return instance;
+	return mod_inst;
 }
 
 /** Bootstrap a virtual module from an instantiate section

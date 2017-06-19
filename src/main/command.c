@@ -1018,7 +1018,7 @@ static int command_show_module_config(rad_listen_t *listener, int argc, char *ar
 		return CMD_FAIL;
 	}
 
-	cprint_conf_parser(listener, 0, instance->cs, instance->data);
+	cprint_conf_parser(listener, 0, instance->dl_inst->conf, instance->dl_inst->data);
 
 	return CMD_OK;
 }
@@ -2491,7 +2491,7 @@ static int command_set_module_config(rad_listen_t *listener, int argc, char *arg
 		return 0;
 	}
 
-	variables = cf_section_parse_table(instance->cs);
+	variables = cf_section_parse_table(instance->dl_inst->conf);
 	if (!variables) {
 		cprintf_error(listener, "Cannot find configuration for module\n");
 		return 0;
@@ -2526,9 +2526,9 @@ static int command_set_module_config(rad_listen_t *listener, int argc, char *arg
 		return 0;
 	}
 
-	data = ((char *) instance->data) + variables[i].offset;
+	data = ((char *) instance->dl_inst->data) + variables[i].offset;
 
-	cp = cf_pair_find(instance->cs, argv[1]);
+	cp = cf_pair_find(instance->dl_inst->conf, argv[1]);
 	if (!cp) return 0;
 
 	/*
@@ -2539,9 +2539,9 @@ static int command_set_module_config(rad_listen_t *listener, int argc, char *arg
 	 *	If it's a string, look for leading single/double quotes,
 	 *	end then call tokenize functions???
 	 */
-	cf_pair_replace(instance->cs, cp, argv[2]);
+	cf_pair_replace(instance->dl_inst->conf, cp, argv[2]);
 
-	rcode = cf_pair_parse(NULL, instance->cs, argv[1], variables[i].type, data, argv[2], T_DOUBLE_QUOTED_STRING);
+	rcode = cf_pair_parse(NULL, instance->dl_inst->conf, argv[1], variables[i].type, data, argv[2], T_DOUBLE_QUOTED_STRING);
 	if (rcode < 0) {
 		cprintf_error(listener, "Failed to parse value\n");
 		return 0;

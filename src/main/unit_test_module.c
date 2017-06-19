@@ -441,13 +441,13 @@ static void print_packet(FILE *fp, RADIUS_PACKET *packet)
  *	%{poke:sql.foo=bar}
  */
 static ssize_t xlat_poke(TALLOC_CTX *ctx, char **out, size_t outlen,
-			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			 UNUSED void const *inst, UNUSED void const *xlat_inst,
 			 REQUEST *request, char const *fmt)
 {
 	int			i;
 	void			*data, *base;
 	char			*p, *q;
-	module_instance_t	*instance;
+	module_instance_t	*mod_inst;
 	char			*buffer;
 	CONF_SECTION		*modules;
 	CONF_PAIR		*cp;
@@ -471,8 +471,8 @@ static ssize_t xlat_poke(TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	*(p++) = '\0';
 
-	instance = module_find(modules, buffer);
-	if (!instance) {
+	mod_inst = module_find(modules, buffer);
+	if (!mod_inst) {
 		RDEBUG("Failed finding module '%s'", buffer);
 	fail:
 		talloc_free(buffer);
@@ -492,7 +492,7 @@ static ssize_t xlat_poke(TALLOC_CTX *ctx, char **out, size_t outlen,
 		goto fail;
 	}
 
-	cp = cf_pair_find(instance->cs, p);
+	cp = cf_pair_find(mod_inst->dl_inst->conf, p);
 	if (!cp) {
 		RDEBUG("No such item '%s'", p);
 		goto fail;
@@ -504,13 +504,13 @@ static ssize_t xlat_poke(TALLOC_CTX *ctx, char **out, size_t outlen,
 	 */
 	len = strlcpy(*out, cf_pair_value(cp), outlen);
 
-	if (cf_pair_replace(instance->cs, cp, q) < 0) {
+	if (cf_pair_replace(mod_inst->dl_inst->conf, cp, q) < 0) {
 		RDEBUG("Failed replacing pair");
 		goto fail;
 	}
 
-	base = instance->data;
-	variables = instance->module->config;
+	base = mod_inst->dl_inst->data;
+	variables = mod_inst->dl_inst->module->common->config;
 
 	/*
 	 *	Handle the known configuration parameters.
@@ -539,7 +539,7 @@ static ssize_t xlat_poke(TALLOC_CTX *ctx, char **out, size_t outlen,
 		/*
 		 *	Parse the pair we found, or a default value.
 		 */
-		ret = cf_pair_parse(ctx, instance->cs, variables[i].name, variables[i].type,
+		ret = cf_pair_parse(ctx, mod_inst->dl_inst->conf, variables[i].name, variables[i].type,
 				    data, variables[i].dflt, variables[i].quote);
 		if (ret < 0) {
 			DEBUG2("Failed inserting new value into module instance data");

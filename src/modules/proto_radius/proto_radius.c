@@ -36,7 +36,7 @@
 typedef struct {
 	CONF_SECTION		*server_cs;			//!< server CS for this listener
 
-	dl_submodule_t		*io_submodule;			//!< As provided by the transport_parse callback.
+	dl_instance_t		*io_submodule;			//!< As provided by the transport_parse callback.
 								///< Broken out into the app_io_* fields below for
 								//!< convenience.
 
@@ -45,9 +45,11 @@ typedef struct {
 	CONF_SECTION		*app_io_conf;			//!< Easy access to the app_io's config section.
 
 
-	dl_submodule_t		**process_submodule;		//!< Instance of the various types
+	dl_instance_t		**process_submodule;		//!< Instance of the various types
 								//!< only one instance per type allowed.
 	fr_io_process_t		process_by_code[FR_CODE_MAX];	//!< Lookup process entry point by code.
+
+	bool			code_allowed[FR_CODE_MAX];	//!< Lookup allowed packet codes.
 
 	fr_listen_t const	*listen;			//!< The listener structure which describes
 								//!< the I/O path.
@@ -69,10 +71,10 @@ static CONF_PARSER const proto_radius_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-/** Wrapper around dl_submodule which translates the packet-type into a submodule name
+/** Wrapper around dl_instance which translates the packet-type into a submodule name
  *
  * @param[in] ctx	to allocate data in (instance of proto_radius).
- * @param[out] out	Where to write a dl_submodule_t containing the module handle and instance.
+ * @param[out] out	Where to write a dl_instance_t containing the module handle and instance.
  * @param[in] ci	#CONF_PAIR specifying the name of the type module.
  * @param[in] rule	unused.
  * @return
@@ -124,13 +126,18 @@ static int process_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_
 		return -1;
 	}
 
-	return dl_submodule(ctx, out, listen_cs, dl_by_symbol(&proto_radius), name);
+	/*
+	 *	Parent dl_instance_t added in virtual_servers.c (listen_parse)
+	 */
+	return dl_instance(ctx, out, listen_cs,
+			   cf_data_value(cf_data_find(listen_cs, dl_instance_t, "proto")),
+			   name, DL_TYPE_SUBMODULE);
 }
 
-/** Wrapper around dl_submodule
+/** Wrapper around dl_instance
  *
  * @param[in] ctx	to allocate data in (instance of proto_radius).
- * @param[out] out	Where to write a dl_submodule_t containing the module handle and instance.
+ * @param[out] out	Where to write a dl_instance_t containing the module handle and instance.
  * @param[in] ci	#CONF_PAIR specifying the name of the type module.
  * @param[in] rule	unused.
  * @return
@@ -140,18 +147,20 @@ static int process_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_
 static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	char const	*name = cf_pair_value(cf_item_to_pair(ci));
-	CONF_SECTION	*parent_cs = cf_item_to_section(cf_parent(ci));
+	CONF_SECTION	*listen_cs = cf_item_to_section(cf_parent(ci));
 	CONF_SECTION	*transport_cs;
 
-	transport_cs = cf_section_find(parent_cs, name, NULL);
+	transport_cs = cf_section_find(listen_cs, name, NULL);
 
 	/*
 	 *	Allocate an empty section if one doesn't exist
 	 *	this is so defaults get parsed.
 	 */
-	if (!transport_cs) transport_cs = cf_section_alloc(parent_cs, name, NULL);
+	if (!transport_cs) transport_cs = cf_section_alloc(listen_cs, name, NULL);
 
-	return dl_submodule(ctx, out, transport_cs, dl_by_symbol(&proto_radius), name);
+	return dl_instance(ctx, out, transport_cs,
+			   cf_data_value(cf_data_find(listen_cs, dl_instance_t, "proto")),
+			   name, DL_TYPE_SUBMODULE);
 }
 
 /** Decode the packet, and set the request->process function
@@ -339,7 +348,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		int code;
 
 		app_process = (fr_app_process_t const *)inst->process_submodule[i]->module->common;
-		if (app_process->instantiate && (app_process->instantiate(inst->process_submodule[i]->inst,
+		if (app_process->instantiate && (app_process->instantiate(inst->process_submodule[i]->data,
 									  inst->process_submodule[i]->conf) < 0)) {
 			cf_log_err(conf, "Instantiation failed for \"%s\"", app_process->name);
 			return -1;
@@ -350,6 +359,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		 */
 		code = fr_dict_enum_by_alias(NULL, da, cf_pair_value(cp))->value->vb_uint32;
 		inst->process_by_code[code] = app_process->process;	/* Store the process function */
+		inst->code_allowed[code] = true;
 
 		i++;
 	}
@@ -377,7 +387,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	Bootstrap the I/O module
 	 */
 	inst->app_io = (fr_app_io_t const *) inst->io_submodule->module->common;
-	inst->app_io_instance = inst->io_submodule->inst;
+	inst->app_io_instance = inst->io_submodule->data;
 	inst->app_io_conf = inst->io_submodule->conf;
 	if (inst->app_io->bootstrap && (inst->app_io->bootstrap(inst->app_io_instance,
 								inst->app_io_conf) < 0)) {
@@ -392,7 +402,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		dl_t const	       *module = talloc_get_type_abort(inst->process_submodule[i]->module, dl_t);
 		fr_app_process_t const *app_process = (fr_app_process_t const *)module->common;
 
-		if (app_process->bootstrap && (app_process->bootstrap(inst->process_submodule[i]->inst,
+		if (app_process->bootstrap && (app_process->bootstrap(inst->process_submodule[i]->data,
 								      inst->process_submodule[i]->conf) < 0)) {
 			cf_log_err(conf, "Bootstrap failed for \"%s\"", app_process->name);
 			return -1;

@@ -49,7 +49,7 @@ typedef void (*fr_app_set_process_t)(void const *instance, REQUEST *request);
  * @param[in] instance	of #fr_app_process_t or #fr_app_io_t.
  * @param[in] uctx	provided by caller.
  */
-typedef void (*fr_app_set_uctx_t)(void *instance, void *uctx);
+typedef void (*fr_app_set_parent_inst_t)(void *instance, void *uctx);
 
 /** Describes a new application (protocol)
  *
@@ -73,7 +73,7 @@ typedef struct fr_app_process_t {
 
 	fr_app_bootstrap_t		bootstrap;
 	fr_app_instantiate_t		instantiate;
-	fr_app_set_uctx_t		set_uctx;	//!< Allow the submodule to receive data from the main module.
+	fr_app_set_parent_inst_t	set_parent_inst;//!< Allow the submodule to receive data from the main module.
 	fr_io_process_t			process;	//!< Entry point into the protocol subtype's state machine.
 } fr_app_process_t;
 
@@ -86,9 +86,9 @@ typedef struct fr_app_io_t {
 
 	fr_app_bootstrap_t		bootstrap;
 	fr_app_instantiate_t		instantiate;
-	fr_app_set_uctx_t		set_uctx;	//!< Allow the submodule to receive data from the main module.
+	fr_app_set_parent_inst_t	set_parent_inst;	//!< Allow the submodule to receive data from the main module.
 
-	size_t				default_message_size; // Usually minimum message size
+	size_t				default_message_size;	// Usually minimum message size
 
 	fr_io_open_t			open;		//!< Open a new socket for listening, or accept/connect a new
 							//!< connection.

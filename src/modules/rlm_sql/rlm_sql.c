@@ -553,7 +553,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
 static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, void *arg)
 {
 	rlm_sql_handle_t	*handle = arg;
-	rlm_sql_t const		*inst = handle->inst;
+	rlm_sql_t const		*inst = talloc_get_type_abort(handle->inst, rlm_sql_t);
 	size_t			len = 0;
 
 	while (in[0]) {
@@ -795,7 +795,7 @@ static int sql_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req
 			UNUSED VALUE_PAIR **reply_pairs)
 {
 	rlm_sql_handle_t	*handle;
-	rlm_sql_t const		*inst = instance;
+	rlm_sql_t const		*inst = talloc_get_type_abort(instance, rlm_sql_t);
 	rlm_sql_grouplist_t	*head, *entry;
 
 	/*
@@ -1023,7 +1023,7 @@ finish:
 
 static int mod_detach(void *instance)
 {
-	rlm_sql_t	*inst = instance;
+	rlm_sql_t	*inst = talloc_get_type_abort(instance, rlm_sql_t);
 
 	if (inst->pool) fr_pool_free(inst->pool);
 
@@ -1037,18 +1037,12 @@ static int mod_detach(void *instance)
 	 */
 	talloc_free_children(inst);
 
-	/*
-	 *	Decrements the reference count. The driver object won't be unloaded
-	 *	until all instances of rlm_sql that use it have been destroyed.
-	 */
-	talloc_decrease_ref_count(inst->driver_handle);
-
 	return 0;
 }
 
 static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
-	rlm_sql_t	*inst = instance;
+	rlm_sql_t	*inst = talloc_get_type_abort(instance, rlm_sql_t);
 	CONF_SECTION	*driver_cs;
 	char const	*name;
 
@@ -1083,28 +1077,23 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Load the driver
 	 */
-	inst->driver_handle = dl_module(driver_cs, dl_by_symbol(&rlm_sql), name, DL_TYPE_SUBMODULE);
-	if (!inst->driver_handle) return -1;
-	inst->driver = (rlm_sql_driver_t const *)inst->driver_handle->common;
-
-	/*
-	 *	Pre-allocate the driver's instance data,
-	 *	and parse the driver's configuration.
-	 */
-	if (dl_instance_data_alloc(inst, &inst->driver_inst, inst->driver_handle, driver_cs) < 0) {
-	error:
-		talloc_decrease_ref_count(inst->driver_handle);
+	if (dl_instance(inst, &inst->driver_inst, driver_cs, dl_instance_find(inst), name, DL_TYPE_SUBMODULE) < 0) {
 		return -1;
 	}
+	inst->driver = (rlm_sql_driver_t const *)inst->driver_inst->module->common;
 
-	rad_assert(!inst->driver_handle->common->inst_size || inst->driver_inst);
+	rad_assert(!inst->driver->inst_size || inst->driver_inst->data);
 
 	/*
 	 *	Call the driver's instantiate function (if set)
 	 */
 	if (inst->driver->mod_instantiate && (inst->driver->mod_instantiate(inst->config,
-									    inst->driver_inst,
-									    driver_cs)) < 0) return -1;
+									    inst->driver_inst->data,
+									    driver_cs)) < 0) {
+	error:
+		TALLOC_FREE(inst->driver_inst);
+		return -1;
+	}
 #ifndef NDEBUG
 	if (inst->driver_inst) module_instance_read_only(inst->driver_inst, inst->driver->name);
 #endif
@@ -1113,7 +1102,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	 *	@fixme Inst should be passed to all driver callbacks
 	 *	instead of being stored here.
 	 */
-	inst->config->driver = inst->driver_inst;
+	inst->config->driver = inst->driver_inst->data;
 
 	/*
 	 *	Register the group comparison attribute
@@ -1904,7 +1893,7 @@ release:
 static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
 static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_sql_t const *inst = instance;
+	rlm_sql_t const *inst = talloc_get_type_abort(instance, rlm_sql_t);
 
 	if (inst->config->postauth.reference_cp) {
 		return acct_redundant(inst, request, &inst->config->postauth);

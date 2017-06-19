@@ -150,31 +150,31 @@ struct dl_module {
 
 /** A module/inst tuple
  *
- * Used to pass data back from dl_submodule_parse_func
+ * Used to pass data back from dl_instance_parse_func
  */
-typedef struct {
+typedef struct dl_instance dl_instance_t;
+struct dl_instance {
+	char const		*name;		//!< Instance name.
 	dl_t const		*module;
-	void			*inst;
+	void			*data;		//!< Module instance's parsed configuration.
 	CONF_SECTION		*conf;		//!< Module's instance configuration.
-} dl_submodule_t;
+	dl_instance_t const	*parent;	//!< Parent module's instance (if any).
+};
 
+int			dl_symbol_init_cb_register(char const *symbol, dl_init_t func, void *ctx);
 
-int		dl_symbol_init_cb_register(char const *symbol, dl_init_t func, void *ctx);
+void			dl_symbol_init_cb_unregister(char const *symbol, dl_init_t func);
 
-void		dl_symbol_init_cb_unregister(char const *symbol, dl_init_t func);
+int			dl_symbol_free_cb_register(char const *symbol, dl_free_t func, void *ctx);
 
-int		dl_symbol_free_cb_register(char const *symbol, dl_free_t func, void *ctx);
+void			dl_symbol_free_cb_unregister(char const *symbol, dl_free_t func);
 
-void		dl_symbol_free_cb_unregister(char const *symbol, dl_free_t func);
+dl_instance_t const	*dl_instance_find(void *data);
 
-int		dl_instance_data_alloc(TALLOC_CTX *ctx, void **out, dl_t const *module, CONF_SECTION *cs);
+dl_t const		*dl_module(CONF_SECTION *conf, dl_t const *parent, char const *name, dl_type_t type);	/* DEPRECATED */
 
-dl_t const	*dl_by_symbol(void *sym);
-
-dl_t const	*dl_module(CONF_SECTION *conf, dl_t const *parent, char const *name, dl_type_t type);
-
-int		dl_submodule(TALLOC_CTX *ctx, dl_submodule_t **out,
-			     CONF_SECTION *conf, dl_t const *parent, char const *name);
+int			dl_instance(TALLOC_CTX *ctx, dl_instance_t **out,
+				    CONF_SECTION *conf, dl_instance_t const *parent, char const *name, dl_type_t type);
 
 #ifdef __cplusplus
 }

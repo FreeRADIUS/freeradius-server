@@ -276,7 +276,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	/* save pointers to useful "objects" */
-	inst->sql_inst = (rlm_sql_t *) sql_inst->data;
+	inst->sql_inst = (rlm_sql_t *) sql_inst->dl_inst->data;
 	inst->db = (rlm_sql_driver_t const *) inst->sql_inst->driver;
 
 	/* check if the given instance is really a rlm_sql instance */

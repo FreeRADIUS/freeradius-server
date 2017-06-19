@@ -615,7 +615,7 @@ done:
 	FR_TLS_REMOVE_THREAD_STATE();
 #endif
 
-	fr_heap_delete(local_backlog);
+	talloc_free(local_backlog);
 
 	trigger_exec(NULL, NULL, "server.thread.stop", true, NULL);
 	thread->status = THREAD_EXITED;

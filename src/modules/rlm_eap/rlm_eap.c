@@ -64,13 +64,6 @@ static int _eap_method_free(rlm_eap_method_t *method)
 	 */
 	talloc_free_children(method);
 
-	/*
-	 *	Decrements the reference count. The submodule won't be
-	 *	unloaded until all instances of rlm_eap that use it have been
-	 *	destroyed.
-	 */
-	talloc_decrease_ref_count(method->submodule_handle);
-
 	return 0;
 }
 
@@ -92,35 +85,27 @@ int eap_method_instantiate(rlm_eap_method_t **out, rlm_eap_t *inst, eap_type_t n
 	 */
 	MEM(method = talloc_zero(inst, rlm_eap_method_t));
 	talloc_set_destructor(method, _eap_method_free);
-	method->cs = cs;
 
 	/*
 	 *	Load the submodule for the specified EAP method
 	 */
-	method->submodule_handle = dl_module(cs, dl_by_symbol(&rlm_eap), eap_type2name(num), DL_TYPE_SUBMODULE);
-	if (!method->submodule_handle) return -1;
-	method->submodule = (rlm_eap_submodule_t const *)method->submodule_handle->common;
-
-	/*
-	 *	Allocate submodule instance data and parse the method's
-	 *	configuration.
-	 */
-	if (dl_instance_data_alloc(method, &method->submodule_inst, method->submodule_handle, cs) < 0) {
-		talloc_free(method);
+	if (dl_instance(method, &method->submodule_inst, cs, dl_instance_find(inst),
+			eap_type2name(num), DL_TYPE_SUBMODULE) < 0) {
 		return -1;
 	}
+	method->submodule = (rlm_eap_submodule_t const *)method->submodule_inst->module->common;
 
 	/*
 	 *	Call the instantiated function in the submodule
 	 */
 	if ((method->submodule->instantiate) &&
-	    ((method->submodule->instantiate)(&inst->config, method->submodule_inst, cs) < 0)) {
+	    ((method->submodule->instantiate)(&inst->config, method->submodule_inst->data, cs) < 0)) {
 	 	talloc_free(method);
 	    	return -1;
 	}
 
 #ifndef NDEBUG
-	if (method->submodule_inst) module_instance_read_only(method->submodule_inst, method->submodule->name);
+	if (method->submodule_inst->data) module_instance_read_only(method->submodule_inst->data, eap_type2name(num));
 #endif
 
 	*out = method;
@@ -462,7 +447,7 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session
 
 		caller = request->module;
 		request->module = method->submodule->name;
-		rcode = eap_session->process(method->submodule_inst, eap_session);
+		rcode = eap_session->process(method->submodule_inst->data, eap_session);
 		request->module = caller;
 
 		switch (rcode) {

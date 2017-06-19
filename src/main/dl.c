@@ -52,7 +52,6 @@ RCSID("$Id$")
 
 char const	*radlib_dir;
 
-
 /** Symbol dependent initialisation callback
  *
  * Call this function when the module is loaded for the first time.
@@ -95,11 +94,11 @@ typedef struct dl_loader {
 	 */
 	dl_symbol_free_t	*sym_free;
 
-	/** Tree to map main symbol to dl_handle_t
+	/** Tree to map instance to dl_handle_t
 	 *
 	 * Used by modules to get their own dl_handle_t for loading submodules.
 	 */
-	rbtree_t		*sym_tree;
+	rbtree_t		*inst_tree;
 
 	/** Tree of shared objects loaded
 	 */
@@ -152,13 +151,13 @@ static int dl_symbol_free_cmp(void const *one, void const *two)
 	return 0;
 }
 
-static int dl_symbol_cmp(void const *one, void const *two)
+static int dl_inst_cmp(void const *one, void const *two)
 {
-	dl_t const *a = one;
-	dl_t const *b = two;
+	dl_instance_t const *a = one;
+	dl_instance_t const *b = two;
 
-	if (a->common > b->common) return +1;
-	if (a->common < b->common) return -1;
+	if (a->data > b->data) return +1;
+	if (a->data < b->data) return -1;
 
 	return 0;
 }
@@ -388,51 +387,6 @@ static void *dl_by_name(char const *name)
 	return handle;
 }
 
-/** Allocate module instance data, and parse the module's configuration
- *
- * @param[in] ctx	to allocate this instance data in.
- * @param[out] data	Module's private data, the result of parsing the config.
- * @param[in] module	to alloc instance data for.
- * @param[in] cs	module's config section.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int dl_instance_data_alloc(TALLOC_CTX *ctx, void **data, dl_t const *module, CONF_SECTION *cs)
-{
-	*data = NULL;
-
-	if (module->common->inst_size == 0) return 0;
-
-	/*
-	 *	If there is supposed to be instance data, allocate it now.
-	 *	Also parse the configuration data, if required.
-	 */
-	MEM(*data = talloc_zero_array(ctx, uint8_t, module->common->inst_size));
-
-	if (!module->common->inst_type) {
-		talloc_set_name(*data, "%s_t", module->name ? module->name : "config");
-	} else {
-		talloc_set_name(*data, "%s", module->common->inst_type);
-	}
-
-	if (module->common->config) {
-		if ((cf_section_rules_push(cs, module->common->config)) < 0 ||
-		    (cf_section_parse(*data, *data, cs) < 0)) {
-			cf_log_err(cs, "Invalid configuration for module \"%s\"", module->name);
-			talloc_free(*data);
-			return -1;
-		}
-	}
-
-	/*
-	 *	Set the destructor.
-	 */
-	if (module->common->detach) talloc_set_destructor((void *)*data, module->common->detach);
-
-	return 0;
-}
-
 /** Walk over the registered init callbacks, searching for the symbols they depend on
  *
  * Allows code outside of the dl API to register initialisation functions that get
@@ -530,8 +484,6 @@ static int _dl_free(dl_t *module)
 	module->handle = NULL;
 
 	rbtree_deletebydata(dl->tree, module);
-	rbtree_deletebydata(dl->sym_tree, module);
-
 	if (rbtree_num_elements(dl->tree) == 0) talloc_free(dl);
 
 	return 0;
@@ -642,16 +594,54 @@ void dl_symbol_free_cb_unregister(char const *symbol, dl_free_t func)
 	if (found) talloc_free(fr_cursor_remove(&cursor));
 }
 
-/** Lookup a dl_t via its public symbol
+/** Lookup a dl_instance_t via instance data
  *
  */
-dl_t const *dl_by_symbol(void *sym)
+dl_instance_t const *dl_instance_find(void *data)
 {
-	dl_t find;
+	dl_instance_t find = { .data = data };
 
-	find.common = sym;
+	return rbtree_finddata(dl->inst_tree, &find);
+}
 
-	return rbtree_finddata(dl->sym_tree, &find);
+/** Allocate module instance data, and parse the module's configuration
+ *
+ * @param[in] ctx	to allocate this instance data in.
+ * @param[out] data	Module's private data, the result of parsing the config.
+ * @param[in] module	to alloc instance data for.
+ * @param[in] cs	module's config section.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int dl_instance_data_alloc(TALLOC_CTX *ctx, void **data, dl_t const *module, CONF_SECTION *cs)
+{
+	*data = NULL;
+
+	if (module->common->inst_size == 0) return 0;
+
+	/*
+	 *	If there is supposed to be instance data, allocate it now.
+	 *	Also parse the configuration data, if required.
+	 */
+	MEM(*data = talloc_zero_array(ctx, uint8_t, module->common->inst_size));
+
+	if (!module->common->inst_type) {
+		talloc_set_name(*data, "%s_t", module->name ? module->name : "config");
+	} else {
+		talloc_set_name(*data, "%s", module->common->inst_type);
+	}
+
+	if (module->common->config) {
+		if ((cf_section_rules_push(cs, module->common->config)) < 0 ||
+		    (cf_section_parse(*data, *data, cs) < 0)) {
+			cf_log_err(cs, "Invalid configuration for module \"%s\"", module->name);
+			talloc_free(*data);
+			return -1;
+		}
+	}
+
+	return 0;
 }
 
 /** Load a module library using dlopen() or return a previously loaded module from the cache
@@ -757,7 +747,7 @@ dl_t const *dl_module(CONF_SECTION *conf, dl_t const *parent, char const *name, 
 	/*
 	 *	Add the module to the dlhandle cache
 	 */
-	if (!rbtree_insert(dl->tree, dl_module) || !rbtree_insert(dl->sym_tree, dl_module)) {
+	if (!rbtree_insert(dl->tree, dl_module)) {
 		cf_log_err(conf, "Failed to cache module \"%s\"", module_name);
 		goto error;
 	}
@@ -767,47 +757,94 @@ dl_t const *dl_module(CONF_SECTION *conf, dl_t const *parent, char const *name, 
 	return dl_module;
 }
 
-/** Load a submodule and parse its #CONF_SECTION in one operation
+
+/** Free a module instance, removing it from the instance tree
  *
- * @note This is here as a convenience function for wrapping by #cf_parse_t callbacks.
+ * Also decrements the reference count of the module potentially unloading it.
+ *
+ * @param[in] dl_inst to free.
+ * @return 0.
+ */
+static int _dl_instance_free(dl_instance_t *dl_inst)
+{
+	if (dl_inst->module && dl_inst->module->common->detach) {
+		dl_inst->module->common->detach(dl_inst->data);
+	}
+
+	/*
+	 *	Remove this instance from the tracking tree.
+	 */
+	rbtree_deletebydata(dl->inst_tree, dl_inst);
+
+	/*
+	 *	Ensure sane free order, and that all destructors
+	 *	run before the .so/.dylib is unloaded.
+	 */
+	talloc_free_children(dl_inst);
+
+	/*
+	 *	Decrements the reference count. The module object
+	 *	won't be unloaded until all instances of that module
+	 *	have been destroyed.
+	 */
+	talloc_decrease_ref_count(dl_inst->module);
+
+	return 0;
+}
+
+/** Load a module and parse its #CONF_SECTION in one operation
+ *
+ *
+ * When this instance is no longer needed, it should be freed with talloc_free().
+ * When all instances of a particular module are unloaded, the dl handle will be closed,
+ * unloading the module.
  *
  * @param[in] ctx	to allocate structures in.
- * @param[out] out	where to write our #dl_submodule_t containing the module
+ * @param[out] out	where to write our #dl_instance_t containing the module
  *			handle and instance.
  * @param[in] conf	section to parse.
- * @param[in] parent	module.
- * @param[in] name	of the submodule to load .e.g. 'udp' for 'proto_radius_udp'
+ * @param[in] parent	of module instance.
+ * @param[in] name	of the module to load .e.g. 'udp' for 'proto_radius_udp'
  *			if the parent were 'proto_radius'.
-
+ * @param[in] type	of module to load.
+ *
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int dl_submodule(TALLOC_CTX *ctx, dl_submodule_t **out,
-		 CONF_SECTION *conf, dl_t const *parent, char const *name)
+int dl_instance(TALLOC_CTX *ctx, dl_instance_t **out,
+		CONF_SECTION *conf, dl_instance_t const *parent,
+		char const *name, dl_type_t type)
 {
-	dl_submodule_t	*submodule = talloc_zero(ctx, dl_submodule_t);
+	dl_instance_t	*dl_inst;
+
+	MEM(dl_inst = talloc_zero(ctx, dl_instance_t));
+	talloc_set_destructor(dl_inst, _dl_instance_free);
 
 	/*
-	 *	Find a section with the same name as the submodule
+	 *	Find a section with the same name as the module
 	 */
-	submodule->module = dl_module(conf, parent, name, DL_TYPE_SUBMODULE);
-	if (!submodule->module) {
-		cf_log_err(conf, "Failed finding submodule library for '%s_%s'", parent->name, name);
+	dl_inst->module = dl_module(conf, parent ? parent->module : NULL, name, type);
+	if (!dl_inst->module) {
+		cf_log_err(conf, "Failed finding dl_instance library for '%s_%s'", parent->module->common->name, name);
+		talloc_free(dl_inst);
 		return -1;
 	}
 
 	/*
 	 *	ctx here is the main module's instance data
 	 */
-	if (dl_instance_data_alloc(submodule, &submodule->inst, submodule->module, conf) < 0) {
-		cf_log_perr(conf, "Failed allocating instance data for '%s_%s'", parent->name, name);
+	if (dl_instance_data_alloc(dl_inst, &dl_inst->data, dl_inst->module, conf) < 0) {
+		cf_log_perr(conf, "Failed allocating instance data for '%s_%s'", parent->module->common->name, name);
 		return -1;
 	}
 
-	submodule->conf = conf;
+	dl_inst->conf = conf;
+	dl_inst->parent = parent;
 
-	*out = submodule;
+	rbtree_insert(dl->inst_tree, dl_inst);	/* Duplicates not possible */
+
+	*out = dl_inst;
 
 	return 0;
 }
@@ -826,9 +863,9 @@ static int dl_init(void)
 		return -1;
 	}
 
-	dl->sym_tree = rbtree_create(dl, dl_symbol_cmp, NULL, 0);
-	if (!dl->sym_tree) {
-		ERROR("Failed initialising dl->sym_tree");
+	dl->inst_tree = rbtree_create(dl, dl_inst_cmp, NULL, 0);
+	if (!dl->inst_tree) {
+		ERROR("Failed initialising dl->inst_tree");
 		return -1;
 	}
 

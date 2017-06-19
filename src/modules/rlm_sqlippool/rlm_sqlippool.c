@@ -397,7 +397,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->framed_ip_address = FR_FRAMED_IPV6_PREFIX;
 	}
 
-	inst->sql_inst = (rlm_sql_t *) sql_inst->data;
+	inst->sql_inst = (rlm_sql_t *) sql_inst->dl_inst->data;
 
 	if (strcmp(inst->sql_inst->driver->name, "sql") != 0) {
 		cf_log_err(conf, "Module \"%s\" is not an instance of the rlm_sql module",

@@ -42,14 +42,12 @@ extern "C" {
 typedef struct {
 	char const			*name;		//!< Instance name e.g. user_database.
 
-	rad_module_t const		*module;	//!< Module this is an instance of.
-	dl_t const			*handle;	//!< dlhandle of module.
+	dl_instance_t			*dl_inst;	//!< Structure containing the module's instance data,
+							//!< configuration, and dl handle.
 
-	void				*data;		//!< The module's private instance data, containing.
-							//!< its parsed configuration and static state.
+	rad_module_t const		*module;	//!< Public module structure.  Cached for convenience.
+
 	pthread_mutex_t			*mutex;
-
-	CONF_SECTION			*cs;		//!< Configuration section in modules {}.
 
 	bool				instantiated;	//!< Whether the module has been instantiated yet.
 

@@ -842,7 +842,7 @@ static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stac
 	 *	Lock is noop unless instance->mutex is set.
 	 */
 	safe_lock(sp->module_instance);
-	*presult = request->rcode = sp->method(sp->module_instance->data, modcall_state->thread->data, request);
+	*presult = request->rcode = sp->method(sp->module_instance->dl_inst->data, modcall_state->thread->data, request);
 	safe_unlock(sp->module_instance);
 
 	request->module = NULL;
@@ -996,7 +996,7 @@ static unlang_action_t unlang_module_resumption(REQUEST *request, unlang_stack_t
 	 *	Lock is noop unless instance->mutex is set.
 	 */
 	safe_lock(sp->module_instance);
-	*presult = request->rcode = mr->callback(request, mr->module.module_instance->data, mr->thread->data, mutable);
+	*presult = request->rcode = mr->callback(request, mr->module.module_instance->dl_inst->data, mr->thread->data, mutable);
 	safe_unlock(sp->module_instance);
 
 	request->module = NULL;
@@ -1674,7 +1674,7 @@ int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t call
 	ev->request = request;
 	ev->fd = -1;
 	ev->timeout = callback;
-	ev->inst = sp->module_instance->data;
+	ev->inst = sp->module_instance->dl_inst->data;
 	ev->thread = modcall_state->thread;
 	ev->ctx = ctx;
 
@@ -1758,7 +1758,7 @@ int unlang_event_fd_add(REQUEST *request,
 	ev->fd_read = read;
 	ev->fd_write = write;
 	ev->fd_error = error;
-	ev->inst = sp->module_instance->data;
+	ev->inst = sp->module_instance->dl_inst->data;
 	ev->thread = modcall_state->thread;
 	ev->ctx = ctx;
 
@@ -1883,7 +1883,7 @@ void unlang_signal(REQUEST *request, fr_state_action_t action)
 
 	memcpy(&mutable, &mr->ctx, sizeof(mutable));
 
-	mr->signal_callback(request, mr->module.module_instance->data, mr->thread, mutable, action);
+	mr->signal_callback(request, mr->module.module_instance->dl_inst->data, mr->thread, mutable, action);
 }
 
 /** Yield a request back to the interpreter from within a module

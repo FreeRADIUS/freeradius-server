@@ -52,7 +52,7 @@ static int default_component_results[MOD_COUNT] = {
 };
 
 typedef struct {
-	dl_submodule_t		*proto_module;	//!< The proto_* module for a listen section.
+	dl_instance_t		*proto_module;	//!< The proto_* module for a listen section.
 	fr_app_t const		*app;		//!< Easy access to the exported struct.
 } fr_virtual_listen_t;
 
@@ -95,13 +95,12 @@ const CONF_PARSER virtual_servers_config[] = {
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int listen_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int listen_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	fr_virtual_listen_t	*listen = out;	/* Pre-allocated for us */
 	CONF_SECTION		*listen_cs = cf_item_to_section(ci);
 	CONF_SECTION		*server = cf_item_to_section(cf_parent(ci));
 	CONF_PAIR		*namespace;
-	dl_t const		*module;
 
 	namespace = cf_pair_find(server, "namespace");
 	if (!namespace) {
@@ -115,22 +114,11 @@ static int listen_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED
 
 	if (DEBUG_ENABLED4) cf_log_debug(ci, "Loading %s listener into %p", cf_pair_value(namespace), out);
 
-	module = dl_module(listen_cs, NULL, cf_pair_value(namespace), DL_TYPE_PROTO);
-	if (!module) {
-		cf_log_perr(listen_cs, "Failed loading proto module");
+	if (dl_instance(ctx, &listen->proto_module, listen_cs, NULL, cf_pair_value(namespace), DL_TYPE_PROTO) < 0) {
+		cf_log_err(listen_cs, "Failed loading proto module");
 		return -1;
 	}
-
-	MEM(listen->proto_module = talloc_zero(listen, dl_submodule_t));
-
-	if (dl_instance_data_alloc(listen, &listen->proto_module->inst, module, listen_cs) < 0) {
-		cf_log_perr(listen_cs, "Failed parsing config");
-		talloc_free(listen);
-		return -1;
-	}
-
-	listen->proto_module->module = module;
-	listen->proto_module->conf = listen_cs;
+	cf_data_add(listen_cs, listen->proto_module, "proto", false);
 
 	/*
 	 *	Hack for now: tell the server core we have new listeners.
@@ -620,7 +608,7 @@ int virtual_servers_open(fr_schedule_t *sc)
 
 			if (!listen || !listen->proto_module) continue; 		/* Skip old style */
 			if (listen->app->open &&
-			    listen->app->open(listen->proto_module->inst, sc, listen->proto_module->conf) < 0) {
+			    listen->app->open(listen->proto_module->data, sc, listen->proto_module->conf) < 0) {
 				cf_log_err(listen->proto_module->conf, "Opening I/O interface failed");
 				return -1;
 			}
@@ -672,7 +660,7 @@ int virtual_servers_instantiate(CONF_SECTION *config)
 
 			if (!listen || !listen->proto_module) continue; 		/* Skip old style */
 			if (listen->app->instantiate &&
-			    listen->app->instantiate(listen->proto_module->inst, listen->proto_module->conf) < 0) {
+			    listen->app->instantiate(listen->proto_module->data, listen->proto_module->conf) < 0) {
 				cf_log_err(listen->proto_module->conf, "Instantiate failed");
 				return -1;
 			}
@@ -756,11 +744,11 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 			if (!listener[j] || !listener[j]->proto_module) continue; 		/* Skip old style */
 
 			listen = talloc_get_type_abort(listener[j], fr_virtual_listen_t);
-			talloc_get_type_abort(listen->proto_module, dl_submodule_t);
+			talloc_get_type_abort(listen->proto_module, dl_instance_t);
 			listen->app = (fr_app_t const *)listen->proto_module->module->common;
 
 			if (listen->app->bootstrap &&
-			    listen->app->bootstrap(listen->proto_module->inst, listen->proto_module->conf) < 0) {
+			    listen->app->bootstrap(listen->proto_module->data, listen->proto_module->conf) < 0) {
 				cf_log_err(listen->proto_module->conf, "Bootstrap failed");
 				return -1;
 			}

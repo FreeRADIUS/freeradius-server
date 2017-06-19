@@ -65,8 +65,7 @@ typedef struct rlm_cache_config_t {
 typedef struct rlm_cache_t {
 	rlm_cache_config_t	config;			//!< Must come first because of icky hacks.
 
-	dl_t const	*driver_handle;		//!< Driver's dl_handle.
-	void			*driver_inst;		//!< Driver's instance data.
+	dl_instance_t		*driver_inst;		//!< Driver's instance data.
 	cache_driver_t const	*driver;		//!< Driver's exported interface.
 
 	vp_map_t		*maps;			//!< Attribute map applied to users.

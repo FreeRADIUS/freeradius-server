@@ -1317,7 +1317,7 @@ void fr_pool_free(fr_pool_t *pool)
 		connection_close_internal(pool, NULL, this);
 	}
 
-	fr_heap_delete(pool->heap);
+	talloc_free(pool->heap);
 
 	fr_pool_trigger_exec(pool, NULL, "stop");
 

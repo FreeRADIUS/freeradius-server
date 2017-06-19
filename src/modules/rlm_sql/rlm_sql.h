@@ -222,7 +222,7 @@ typedef struct rlm_sql_driver_t {
 
 struct sql_inst {
 	rlm_sql_config_t	myconfig; /* HACK */
-	fr_pool_t	*pool;
+	fr_pool_t		*pool;
 	rlm_sql_config_t	*config;
 	CONF_SECTION		*cs;
 
@@ -230,8 +230,7 @@ struct sql_inst {
 							//!< dictionary attribute.
 	exfile_t		*ef;
 
-	dl_t const	*driver_handle;		//!< Driver's dl_handle.
-	void			*driver_inst;		//!< Driver's instance data.
+	dl_instance_t		*driver_inst;		//!< Driver's instance data.
 	rlm_sql_driver_t const	*driver;		//!< Driver's exported interface.
 
 	int (*sql_set_user)(rlm_sql_t const *inst, REQUEST *request, char const *username);

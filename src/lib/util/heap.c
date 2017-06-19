@@ -54,13 +54,6 @@ struct fr_heap_t {
 
 static int fr_heap_bubble(fr_heap_t *hp, size_t child);
 
-void fr_heap_delete(fr_heap_t *hp)
-{
-	if (!hp) return;
-
-	talloc_free(hp);
-}
-
 fr_heap_t *fr_heap_create(fr_heap_cmp_t cmp, size_t offset)
 {
 	fr_heap_t *fh;
@@ -383,7 +376,7 @@ int main(int argc, char **argv)
 		fr_exit(1);
 	}
 
-	fr_heap_delete(hp);
+	talloc_free(hp);
 
 	return 0;
 }

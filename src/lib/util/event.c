@@ -993,7 +993,7 @@ static int _event_list_free(fr_event_list_t *el)
 		fr_event_timer_delete(el, &ev);
 	}
 
-	fr_heap_delete(el->times);
+	talloc_free(el->times);
 
 	close(el->kq);
 
