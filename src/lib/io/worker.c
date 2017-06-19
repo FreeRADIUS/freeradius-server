@@ -1051,12 +1051,6 @@ nomem:
 		return NULL;
 	}
 
-	if (fr_event_user_insert(worker->el, fr_worker_evfilt_user, worker) < 0) {
-		fr_strerror_printf("Failed updating event list: %s", fr_strerror());
-		talloc_free(worker);
-		return NULL;
-	}
-
 	/*
 	 *	The worker thread starts now.  Manually initialize it,
 	 *	because we're tracking request time, not the time that
@@ -1086,12 +1080,6 @@ nomem:
 		return NULL;
 	}
 
-	if (fr_event_user_insert(worker->el, fr_worker_evfilt_user, worker) < 0) {
-		fr_strerror_printf("Failed updating event list: %s", fr_strerror());
-		talloc_free(worker);
-		return NULL;
-	}
-
 	WORKER_HEAP_INIT(to_decode, worker_message_cmp, fr_channel_data_t, channel.heap_id);
 	WORKER_HEAP_INIT(localized, worker_message_cmp, fr_channel_data_t, channel.heap_id);
 
@@ -1102,6 +1090,12 @@ nomem:
 	}
 	FR_DLIST_INIT(worker->time_order);
 	FR_DLIST_INIT(worker->waiting_to_die);
+
+	if (fr_event_user_insert(worker->el, fr_worker_evfilt_user, worker) < 0) {
+		fr_strerror_printf("Failed updating event list: %s", fr_strerror());
+		talloc_free(worker);
+		return NULL;
+	}
 
 	if (fr_event_post_insert(worker->el, fr_worker_post_event, worker) < 0) {
 		fr_strerror_printf("Failed inserting post-processing event");
