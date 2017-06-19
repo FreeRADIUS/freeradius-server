@@ -69,6 +69,8 @@ struct fr_network_t {
 
 	fr_atomic_queue_t	*aq_control;		//!< atomic queue for control messages sent to me
 
+	uintptr_t		aq_ident;		//!< identifier for control-plane events
+
 	fr_control_t		*control;		//!< the control plane
 
 	fr_ring_buffer_t	*rb;			//!< ring buffer for my control-plane messages
@@ -609,7 +611,6 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_log_t *logger)
 
 	nr = talloc_zero(ctx, fr_network_t);
 	if (!nr) {
-	nomem:
 		fr_strerror_printf("Failed allocating memory");
 		return NULL;
 	}
@@ -629,12 +630,22 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_log_t *logger)
 	nr->aq_control = fr_atomic_queue_create(nr, 1024);
 	if (!nr->aq_control) {
 		talloc_free(nr);
-		goto nomem;
+		return NULL;
 	}
 
-	nr->control = fr_control_create(nr, nr->kq, nr->aq_control, 1024);
+	nr->aq_ident = fr_event_user_insert(nr->el, fr_network_evfilt_user, nr);
+	if (!nr->aq_ident) {
+		fr_strerror_printf("Failed updating event list: %s", fr_strerror());
+		talloc_free(nr);
+		return NULL;
+	}
+
+
+	nr->control = fr_control_create(nr, nr->kq, nr->aq_control, nr->aq_ident);
 	if (!nr->control) {
 		fr_strerror_printf("Failed creating control queue: %s", fr_strerror());
+	fail:
+		(void) fr_event_user_delete(nr->el, fr_network_evfilt_user, nr);
 		talloc_free(nr);
 		return NULL;
 	}
@@ -642,26 +653,24 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_log_t *logger)
 	nr->rb = fr_ring_buffer_create(nr, FR_CONTROL_MAX_MESSAGES * FR_CONTROL_MAX_SIZE);
 	if (!nr->rb) {
 		fr_strerror_printf("Failed creating ring buffer: %s", fr_strerror());
-		talloc_free(nr);
-		return NULL;
+	fail2:
+		fr_control_free(nr->control);
+		goto fail;
 	}
 
 	if (fr_control_callback_add(nr->control, FR_CONTROL_ID_CHANNEL, nr, fr_network_channel_callback) < 0) {
 		fr_strerror_printf("Failed adding channel callback: %s", fr_strerror());
-		talloc_free(nr);
-		return NULL;
+		goto fail2;
 	}
 
 	if (fr_control_callback_add(nr->control, FR_CONTROL_ID_SOCKET, nr, fr_network_socket_callback) < 0) {
 		fr_strerror_printf("Failed adding socket callback: %s", fr_strerror());
-		talloc_free(nr);
-		return NULL;
+		goto fail2;
 	}
 
 	if (fr_control_callback_add(nr->control, FR_CONTROL_ID_WORKER, nr, fr_network_worker_callback) < 0) {
 		fr_strerror_printf("Failed adding worker callback: %s", fr_strerror());
-		talloc_free(nr);
-		return NULL;
+		goto fail2;
 	}
 
 	/*
@@ -669,46 +678,42 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_log_t *logger)
 	 */
 	nr->sockets = rbtree_create(nr, socket_cmp, NULL, RBTREE_FLAG_NONE);
 	if (!nr->sockets) {
-		talloc_free(nr);
-		goto nomem;
+		fr_strerror_printf("Failed creating tree for sockets: %s", fr_strerror());
+		goto fail2;
 	}
 
 	nr->replies = fr_heap_create(reply_cmp, offsetof(fr_channel_data_t, channel.heap_id));
 	if (!nr->replies) {
-		talloc_free(nr);
-		goto nomem;
+		fr_strerror_printf("Failed creating heap for replies: %s", fr_strerror());
+		goto fail2;
 	}
 
 	nr->workers = fr_heap_create(worker_cmp, offsetof(fr_network_worker_t, heap_id));
 	if (!nr->workers) {
-		talloc_free(nr);
-		goto nomem;
+		fr_strerror_printf("Failed creating heap for workers: %s", fr_strerror());
+	fail3:
+		fr_heap_delete(nr->replies);
+		goto fail2;
 	}
 
 	nr->closing = fr_heap_create(worker_cmp, offsetof(fr_network_worker_t, heap_id));
 	if (!nr->closing) {
-		talloc_free(nr);
-		goto nomem;
+		fr_strerror_printf("Failed creating heap for exiting workers: %s", fr_strerror());
+		goto fail3;
 	}
 
 #ifdef HAVE_PTHREAD_H
 	if (pthread_mutex_init(&nr->mutex, NULL) != 0) {
 		fr_strerror_printf("Failed initializing mutex");
-		talloc_free(nr);
-		return NULL;
+	fail4:
+		fr_heap_delete(nr->closing);
+		goto fail3;
 	}
 #endif
 
-	if (fr_event_user_insert(nr->el, fr_network_evfilt_user, nr) < 0) {
-		fr_strerror_printf("Failed updating event list: %s", fr_strerror());
-		talloc_free(nr);
-		return NULL;
-	}
-
 	if (fr_event_post_insert(nr->el, fr_network_post_event, nr) < 0) {
 		fr_strerror_printf("Failed inserting post-processing event");
-		talloc_free(nr);
-		return NULL;
+		goto fail4;
 	}
 
 	return nr;

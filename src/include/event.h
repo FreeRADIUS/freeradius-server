@@ -97,7 +97,7 @@ int		fr_event_timer_insert(fr_event_list_t *el,
 				      void const *ctx, struct timeval *when, fr_event_timer_t **parent);
 int		fr_event_timer_run(fr_event_list_t *el, struct timeval *when);
 
-int		fr_event_user_insert(fr_event_list_t *el, fr_event_user_handler_t user, void *ctx) CC_HINT(nonnull(1,2));
+uintptr_t      	fr_event_user_insert(fr_event_list_t *el, fr_event_user_handler_t user, void *ctx) CC_HINT(nonnull(1,2));
 int		fr_event_user_delete(fr_event_list_t *el, fr_event_user_handler_t user, void *ctx) CC_HINT(nonnull(1,2));
 
 int		fr_event_post_insert(fr_event_list_t *el, fr_event_callback_t callback, void *uctx) CC_HINT(nonnull(1,2));

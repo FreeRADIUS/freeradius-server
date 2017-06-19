@@ -91,6 +91,18 @@ typedef struct fr_event_post_t {
 	void			*ctx;			//!< context for the callback.
 } fr_event_post_t;
 
+
+/** Callbacks for user events
+ *
+ */
+typedef struct fr_event_user_t {
+	fr_dlist_t		entry;			//!< linked list of callback
+	uintptr_t		ident;			//!< the identifier of this event
+	fr_event_user_handler_t callback;		//!< the callback to call
+	void			*ctx;			//!< context for the callback.
+} fr_event_user_t;
+
+
 /** Stores all information relating to an event list
  *
  */
@@ -112,9 +124,7 @@ struct fr_event_list_t {
 
 	int			kq;			//!< instance associated with this event list.
 
-	fr_event_user_handler_t user;			//!< callback for EVFILT_USER events
-	void			*user_ctx;		//!< Context pointer to pass to the user callback.
-
+	fr_dlist_t		user_callbacks;		//!< EVFILT_USER callbacks
 	fr_dlist_t		post_callbacks;		//!< post-processing callbacks
 
 	struct kevent		events[FR_EV_BATCH_FDS]; /* so it doesn't go on the stack every time */
@@ -577,38 +587,57 @@ int fr_event_timer_insert(fr_event_list_t *el, fr_event_callback_t callback, voi
 /** Add a user callback to the event list.
  *
  * @param[in] el	containing the timer events.
- * @param[in] user	the callback for EVFILT_USER
- * @param[in] ctx	user context for the callback
+ * @param[in] callback	the callback for EVFILT_USER
+ * @param[in] uctx	user context for the callback
  * @return
- *	- < 0 on error
- *	- 0 on success
+ *	- 0 on error
+ *	- uintptr_t ident for EVFILT_USER signaling
  */
-int fr_event_user_insert(fr_event_list_t *el, fr_event_user_handler_t user, void *ctx)
+uintptr_t fr_event_user_insert(fr_event_list_t *el, fr_event_user_handler_t callback, void *uctx)
 {
-	el->user = user;
-	el->user_ctx = ctx;
+	fr_event_user_t *user;
 
-	return 0;
+	user = talloc(el, fr_event_user_t);
+	user->callback = callback;
+	user->ctx = uctx;
+	user->ident = (uintptr_t) user;
+
+	fr_dlist_insert_tail(&el->user_callbacks, &user->entry);
+
+	return user->ident;;
 }
 
 
 /** Delete a user callback to the event list.
  *
  * @param[in] el	containing the timer events.
- * @param[in] user	the callback for EVFILT_USER
- * @param[in] ctx	user context for the callback
+ * @param[in] callback	the callback for EVFILT_USER
+ * @param[in] uctx	user context for the callback
  * @return
  *	- < 0 on error
  *	- 0 on success
  */
-int fr_event_user_delete(fr_event_list_t *el, fr_event_user_handler_t user, void *ctx)
+int fr_event_user_delete(fr_event_list_t *el, fr_event_user_handler_t callback, void *uctx)
 {
-	if ((el->user != user) || (el->user_ctx != ctx)) return -1;
+	fr_dlist_t *entry, *next;
 
-	el->user = NULL;
-	el->user_ctx = NULL;
+	for (entry = FR_DLIST_FIRST(el->user_callbacks);
+	     entry != NULL;
+	     entry = next) {
+		fr_event_user_t *user;
 
-	return 0;
+		next = FR_DLIST_NEXT(el->user_callbacks, entry);
+
+		user = fr_ptr_to_type(fr_event_user_t, entry, entry);
+		if ((user->callback == callback) &&
+		    (user->ctx == uctx)) {
+			fr_dlist_remove(entry);
+			talloc_free(user);
+			return 0;
+		}
+	}
+
+	return -1;
 }
 
 /** Add a post-event callback to the event list.
@@ -825,14 +854,26 @@ void fr_event_service(fr_event_list_t *el)
 		/*
 		 *	Process any user events
 		 */
-		if (el->user && (el->events[i].filter == EVFILT_USER)) {
+		if (el->events[i].filter == EVFILT_USER) {
 			/*
 			 *	This is just a "wakeup" event, which
 			 *	is always ignored.
 			 */
 			if (el->events[i].ident == 0) continue;
 
-			el->user(el->kq, &el->events[i], el->user_ctx);
+			for (entry = FR_DLIST_FIRST(el->user_callbacks);
+			     entry != NULL;
+			     entry = FR_DLIST_NEXT(el->user_callbacks, entry)) {
+				fr_event_user_t *user;
+
+				user = fr_ptr_to_type(fr_event_user_t, entry, entry);
+
+				if (user->ident != el->events[i].ident) continue;
+
+				user->callback(el->kq, &el->events[i], user->ctx);
+				break;
+			}
+
 			continue;
 		}
 
@@ -1037,6 +1078,7 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_t status, 
 	el->status_ctx = status_ctx;
 
 	FR_DLIST_INIT(el->post_callbacks);
+	FR_DLIST_INIT(el->user_callbacks);
 
 	/*
 	 *	Set our "exit" callback as ident 0.

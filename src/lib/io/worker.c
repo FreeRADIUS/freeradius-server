@@ -91,9 +91,11 @@ struct fr_worker_t {
 
 	int			kq;		//!< my kq
 
-	fr_log_t		*log;			//!< log destination
+	fr_log_t		*log;		//!< log destination
 
 	fr_atomic_queue_t	*aq_control;	//!< atomic queue for control messages sent to me
+
+	uintptr_t		aq_ident;	//!< identifier for control-plane events
 
 	fr_control_t		*control;	//!< the control plane
 
@@ -141,6 +143,7 @@ static void fr_worker_post_event(fr_event_list_t *el, struct timeval *now, void 
 		FR_DLIST_INIT(worker->_name.list); \
 		worker->_name.heap = fr_heap_create(_func, offsetof(_type, _member)); \
 		if (!worker->_name.heap) { \
+			(void) fr_event_user_delete(worker->el, fr_worker_evfilt_user, worker); \
 			talloc_free(worker); \
 			goto nomem; \
 		} \
@@ -1064,20 +1067,29 @@ nomem:
 
 	worker->aq_control = fr_atomic_queue_create(worker, 1024);
 	if (!worker->aq_control) {
+		fr_strerror_printf("Failed creating atomic queue");
+	fail:
 		talloc_free(worker);
-		goto nomem;
+		return NULL;
 	}
 
-	worker->control = fr_control_create(worker, worker->kq, worker->aq_control, 1024);
+	worker->aq_ident = fr_event_user_insert(worker->el, fr_worker_evfilt_user, worker);
+	if (!worker->aq_ident) {
+		fr_strerror_printf("Failed updating event list: %s", fr_strerror());
+		goto fail;
+	}
+
+	worker->control = fr_control_create(worker, worker->kq, worker->aq_control, worker->aq_ident);
 	if (!worker->control) {
-		talloc_free(worker);
-		goto nomem;;
+		fr_strerror_printf("Failed creating control plane: %s", fr_strerror());
+	fail2:
+		(void) fr_event_user_delete(worker->el, fr_worker_evfilt_user, worker);
+		goto fail;
 	}
 
 	if (fr_control_callback_add(worker->control, FR_CONTROL_ID_CHANNEL, worker, fr_worker_channel_callback) < 0) {
 		fr_strerror_printf("Failed adding control channel: %s", fr_strerror());
-		talloc_free(worker);
-		return NULL;
+		goto fail2;
 	}
 
 	WORKER_HEAP_INIT(to_decode, worker_message_cmp, fr_channel_data_t, channel.heap_id);
@@ -1085,22 +1097,16 @@ nomem:
 
 	worker->runnable = fr_heap_create(worker_request_cmp, offsetof(REQUEST, heap_id));
 	if (!worker->runnable) {
-		talloc_free(worker);
-		goto nomem;;
+		fr_strerror_printf("Failed creating runnable heap");
+		goto fail;
 	}
 	FR_DLIST_INIT(worker->time_order);
 	FR_DLIST_INIT(worker->waiting_to_die);
 
-	if (fr_event_user_insert(worker->el, fr_worker_evfilt_user, worker) < 0) {
-		fr_strerror_printf("Failed updating event list: %s", fr_strerror());
-		talloc_free(worker);
-		return NULL;
-	}
-
 	if (fr_event_post_insert(worker->el, fr_worker_post_event, worker) < 0) {
 		fr_strerror_printf("Failed inserting post-processing event");
-		talloc_free(worker);
-		return NULL;
+		fr_heap_delerte(worker->runnable);
+		goto fail2;
 	}
 
 	return worker;
