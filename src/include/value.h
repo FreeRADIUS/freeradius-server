@@ -15,6 +15,7 @@
  */
 #ifndef _FR_VALUE_H
 #define _FR_VALUE_H
+#include <freeradius-devel/missing.h>		/* For uint128_t */
 #include <freeradius-devel/inet.h>
 #include <freeradius-devel/types.h>
 #include <freeradius-devel/debug.h>
