@@ -80,7 +80,6 @@ static char const *radlog_dest = NULL;
  */
 static char const	*localstatedir = NULL;
 static char const	*prefix = NULL;
-static char const	*my_name = NULL;
 static char const	*sbindir = NULL;
 static char const	*run_dir = NULL;
 static char const	*syslog_facility = NULL;
@@ -106,7 +105,7 @@ static char const	*radius_dir = NULL;	//!< Path to raddb directory
 /*
  *	Log destinations
  */
-static const CONF_PARSER startup_log_config[] = {
+static const CONF_PARSER initial_log_subsection_config[] = {
 	{ FR_CONF_POINTER("destination", FR_TYPE_STRING, &radlog_dest), .dflt = "files" },
 	{ FR_CONF_POINTER("syslog_facility", FR_TYPE_STRING, &syslog_facility), .dflt = STRINGIFY(0) },
 
@@ -121,10 +120,9 @@ static const CONF_PARSER startup_log_config[] = {
 /*
  *	Basic configuration for the server.
  */
-static const CONF_PARSER startup_server_config[] = {
-	{ FR_CONF_POINTER("log", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) startup_log_config },
+static const CONF_PARSER initial_logging_config[] = {
+	{ FR_CONF_POINTER("log", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) initial_log_subsection_config },
 
-	{ FR_CONF_POINTER("name", FR_TYPE_STRING, &my_name), .dflt = "radiusd" },
 	{ FR_CONF_POINTER("prefix", FR_TYPE_STRING, &prefix), .dflt = "/usr/local" },
 
 	{ FR_CONF_POINTER("log_file", FR_TYPE_STRING, &main_config.log_file) },
@@ -199,7 +197,6 @@ static const CONF_PARSER server_config[] = {
 	 *	hard-coded defines for the locations of the various
 	 *	files.
 	 */
-	{ FR_CONF_POINTER("name", FR_TYPE_STRING, &my_name), .dflt = "radiusd" },
 	{ FR_CONF_POINTER("prefix", FR_TYPE_STRING, &prefix), .dflt = "/usr/local" },
 	{ FR_CONF_POINTER("localstatedir", FR_TYPE_STRING, &localstatedir), .dflt = "${prefix}/var"},
 	{ FR_CONF_POINTER("sbindir", FR_TYPE_STRING, &sbindir), .dflt = "${prefix}/sbin"},
@@ -269,11 +266,9 @@ static const CONF_PARSER bootstrap_security_config[] = {
 static const CONF_PARSER bootstrap_config[] = {
 	{ FR_CONF_POINTER("security", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) bootstrap_security_config },
 
-	{ FR_CONF_POINTER("name", FR_TYPE_STRING, &my_name), .dflt = "radiusd" },
 	{ FR_CONF_POINTER("prefix", FR_TYPE_STRING, &prefix), .dflt = "/usr/local" },
 	{ FR_CONF_POINTER("localstatedir", FR_TYPE_STRING, &localstatedir), .dflt = "${prefix}/var"},
 
-	{ FR_CONF_POINTER("logdir", FR_TYPE_STRING, &radlog_dir), .dflt = "${localstatedir}/log"},
 	{ FR_CONF_POINTER("run_dir", FR_TYPE_STRING, &run_dir), .dflt = "${localstatedir}/run/${name}"},
 
 	/*
@@ -579,7 +574,7 @@ static int switch_users(CONF_SECTION *cs)
 		talloc_free(my_dir);
 	}
 
-	if (default_log.dst == L_DST_FILES) {
+	if ((default_log.dst == L_DST_FILES) && radlog_dir) {
 		char *my_dir;
 
 		/*
@@ -806,7 +801,7 @@ do {\
 	 *	set it now.
 	 */
 	if (default_log.dst == L_DST_NULL) {
-		if (cf_section_rules_push(cs, startup_server_config) < 0) {
+		if (cf_section_rules_push(cs, initial_logging_config) < 0) {
 			fprintf(stderr, "%s: Error: Failed pushing rules for log {} section.\n",
 				main_config.name);
 			cf_file_free(cs);
