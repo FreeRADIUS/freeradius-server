@@ -1042,9 +1042,15 @@ nomem:
 	worker->message_set_size = 1024;
 	worker->ring_buffer_size = (1 << 16);
 
-	worker->el = fr_event_list_alloc(worker, fr_worker_idle, worker);
+	worker->el = fr_event_list_alloc(worker, NULL, NULL);
 	if (!worker->el) {
 		fr_strerror_printf("Failed creating event list: %s", fr_strerror());
+		talloc_free(worker);
+		return NULL;
+	}
+
+	if (fr_event_pre_insert(worker->el, fr_worker_idle, worker) < 0) {
+		fr_strerror_printf("Failed adding pre-check to event list");
 		talloc_free(worker);
 		return NULL;
 	}
