@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file proto_radius.c
+ * @file proto_radius_status.c
  * @brief RADIUS Status-Server processing.
  *
  * @copyright 2016 The FreeRADIUS server project.
