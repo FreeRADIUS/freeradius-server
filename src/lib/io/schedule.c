@@ -535,14 +535,3 @@ fr_network_t *fr_schedule_socket_add(fr_schedule_t *sc, fr_listen_t const *io)
 
 	return sc->sn->rc;
 }
-
-
-/*
- *	@todo single threaded mode.  Instead of having function
- *	specific to single threaded mode, just fix the event loop.
- *
- *	Allow for it to have multiple EVFILT_USER callbacks.  They are
- *	called in sequence.  A function which "consumes" the event
- *	sets it's type to EVFILT_SYSCOUNT, which is ignored by
- *	everything else.
- */
