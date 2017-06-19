@@ -304,18 +304,13 @@ static void fr_worker_channel_callback(void *ctx, void const *data, size_t data_
  * @param[in] kev the kevent to service
  * @param[in] ctx the fr_worker_t
  */
-static void fr_worker_evfilt_user(UNUSED int kq, struct kevent const *kev, void *ctx)
+static void fr_worker_evfilt_user(UNUSED int kq, UNUSED struct kevent const *kev, void *ctx)
 {
 	fr_time_t now;
 	fr_worker_t *worker = ctx;
 	char data[256];
 
 	talloc_get_type_abort(worker, fr_worker_t);
-
-	if (!fr_control_message_service_kevent(worker->control, kev)) {
-		fr_log(worker->log, L_DBG, "\t%skevent not for us!", worker->name);
-		return;
-	}
 
 	now = fr_time();
 

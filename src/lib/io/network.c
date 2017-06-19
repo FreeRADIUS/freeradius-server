@@ -577,16 +577,11 @@ static void fr_network_worker_callback(void *ctx, void const *data, size_t data_
  * @param[in] kev the kevent to service
  * @param[in] ctx the fr_worker_t
  */
-static void fr_network_evfilt_user(UNUSED int kq, struct kevent const *kev, void *ctx)
+static void fr_network_evfilt_user(UNUSED int kq, UNUSED struct kevent const *kev, void *ctx)
 {
 	fr_time_t now;
 	fr_network_t *nr = talloc_get_type_abort(ctx, fr_network_t);
 	uint8_t data[256];
-
-	if (!fr_control_message_service_kevent(nr->control, kev)) {
-		fr_log(nr->log, L_DBG, "kevent not for us: ignoring");
-		return;
-	}
 
 	now = fr_time();
 

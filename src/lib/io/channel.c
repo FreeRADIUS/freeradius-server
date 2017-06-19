@@ -676,13 +676,9 @@ fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_c
  *	- <0 on error
  *	- 0 on success
  */
-int fr_channel_service_kevent(fr_channel_t *ch, fr_control_t *c, struct kevent const *kev)
+int fr_channel_service_kevent(fr_channel_t *ch, fr_control_t *c, UNUSED struct kevent const *kev)
 {
 	(void) talloc_get_type_abort(ch, fr_channel_t);
-
-	if (fr_control_message_service_kevent(c, kev) == 0) {
-		return 0;
-	}
 
 	if (c == ch->end[TO_WORKER].control) {
 		ch->end[TO_WORKER].num_kevents++;
