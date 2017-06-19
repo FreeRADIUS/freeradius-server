@@ -131,6 +131,8 @@ struct fr_worker_t {
 	fr_channel_t		**channel;	//!< list of channels
 };
 
+static void fr_worker_post_event(fr_event_list_t *el, struct timeval *now, void *uctx);
+
 /*
  *	We need wrapper macros because we have multiple instances of
  *	the same code.
@@ -995,6 +997,10 @@ void fr_worker_destroy(fr_worker_t *worker)
 	for (i = 0; i < worker->num_channels; i++) {
 		fr_channel_worker_ack_close(worker->channel[i]);
 	}
+
+	(void) fr_event_post_delete(worker->el, fr_worker_post_event, worker);
+
+	talloc_free(worker);
 }
 
 
@@ -1097,6 +1103,12 @@ nomem:
 	FR_DLIST_INIT(worker->time_order);
 	FR_DLIST_INIT(worker->waiting_to_die);
 
+	if (fr_event_post_insert(worker->el, fr_worker_post_event, worker) < 0) {
+		fr_strerror_printf("Failed inserting post-processing event");
+		talloc_free(worker);
+		return NULL;
+	}
+
 	return worker;
 }
 
@@ -1139,6 +1151,48 @@ void fr_worker_exit(fr_worker_t *worker)
 }
 
 
+static void fr_worker_post_event(UNUSED fr_event_list_t *el, UNUSED struct timeval *when, void *uctx)
+{
+	fr_time_t now;
+	REQUEST *request;
+	fr_worker_t *worker = uctx;
+
+	WORKER_VERIFY;
+
+	now = fr_time();
+
+	/*
+	 *	Ten times a second, check for timeouts on incoming packets.
+	 *
+	 *	@todo - move this to a separate timeout.
+	 */
+	if ((now - worker->checked_timeout) > (NANOSEC / 10)) {
+		fr_log(worker->log, L_DBG, "\t%schecking timeouts", worker->name);
+		fr_worker_check_timeouts(worker, now);
+	}
+
+	/*
+	 *	Get a runnable request.  If there isn't one, continue.
+	 *
+	 *	@todo - check for multiple requests, and go process
+	 *	many, so long as we haven't ignored the network side
+	 *	for too long.
+	 */
+	request = fr_worker_get_request(worker, now);
+	if (!request) return;
+
+	rad_assert(request->async->process != NULL);
+	rad_assert(request->async->io != NULL);
+
+	/*
+	 *	Run the request, and either track it as
+	 *	yielded, or send a reply.
+	 */
+	fr_log(worker->log, L_DBG, "\t%srunning request (%"PRIu64")", worker->name, request->number);
+	fr_worker_run_request(worker, request);
+}
+
+
 /** The main worker function.
  *
  * @param[in] worker the worker data structure to manage
@@ -1150,8 +1204,6 @@ void fr_worker(fr_worker_t *worker)
 	while (true) {
 		bool wait_for_event;
 		int num_events;
-		fr_time_t now;
-		REQUEST *request;
 
 		WORKER_VERIFY;
 
@@ -1182,32 +1234,6 @@ void fr_worker(fr_worker_t *worker)
 			fr_log(worker->log, L_DBG, "\t%sservicing events", worker->name);
 			fr_event_service(worker->el);
 		}
-
-		now = fr_time();
-
-		/*
-		 *	Ten times a second, check for timeouts on incoming packets.
-		 */
-		if ((now - worker->checked_timeout) > (NANOSEC / 10)) {
-			fr_log(worker->log, L_DBG, "\t%schecking timeouts", worker->name);
-			fr_worker_check_timeouts(worker, now);
-		}
-
-		/*
-		 *	Get a runnable request.  If there isn't one, continue.
-		 */
-		request = fr_worker_get_request(worker, now);
-		if (!request) continue;
-
-		rad_assert(request->async->process != NULL);
-		rad_assert(request->async->io != NULL);
-
-		/*
-		 *	Run the request, and either track it as
-		 *	yielded, or send a reply.
-		 */
-		fr_log(worker->log, L_DBG, "\t%srunning request (%"PRIu64")", worker->name, request->number);
-		fr_worker_run_request(worker, request);
 	}
 }
 
