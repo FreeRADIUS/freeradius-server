@@ -82,6 +82,16 @@ typedef struct fr_event_fd_t {
 	void			*ctx;			//!< Context pointer to pass to each file descriptor callback.
 } fr_event_fd_t;
 
+/** Callbacks to perform when the event handler is about to check the events.
+ *
+ */
+typedef struct fr_event_pre_t {
+	fr_dlist_t		entry;			//!< linked list of callback
+	fr_event_status_t	callback;		//!< the callback to call
+	void			*ctx;			//!< context for the callback.
+} fr_event_pre_t;
+
+
 /** Callbacks to perform after all timers and FDs have been checked
  *
  */
@@ -113,9 +123,6 @@ struct fr_event_list_t {
 	int			exit;
 
 
-	fr_event_status_t	status;			//!< Function to call on each iteration of the event loop.
-	void			*status_ctx;		//!< Context for status function.
-
 	struct timeval  	now;			//!< The last time the event list was serviced.
 	bool			dispatch;		//!< Whether the event list is currently dispatching events.
 
@@ -124,6 +131,7 @@ struct fr_event_list_t {
 
 	int			kq;			//!< instance associated with this event list.
 
+	fr_dlist_t		pre_callbacks;		//!< callbacks when we may be idle...
 	fr_dlist_t		user_callbacks;		//!< EVFILT_USER callbacks
 	fr_dlist_t		post_callbacks;		//!< post-processing callbacks
 
@@ -640,6 +648,66 @@ int fr_event_user_delete(fr_event_list_t *el, fr_event_user_handler_t callback, 
 	return -1;
 }
 
+
+/** Add a pre-event callback to the event list.
+ *
+ *  Events are serviced in insert order.  i.e. insert A, B, we then
+ *  have A running before B.
+ *
+ * @param[in] el	containing the timer events.
+ * @param[in] callback	the pre-processing callback;
+ * @param[in] uctx	user context for the callback
+ * @return
+ *	- < 0 on error
+ *	- 0 on success
+ */
+int fr_event_pre_insert(fr_event_list_t *el, fr_event_status_t callback, void *uctx)
+{
+	fr_event_pre_t *pre;
+
+	pre = talloc(el, fr_event_pre_t);
+	pre->callback = callback;
+	pre->ctx = uctx;
+
+	fr_dlist_insert_tail(&el->pre_callbacks, &pre->entry);
+
+	return 0;
+}
+
+
+/** Delete a pre-event callback from the event list.
+ *
+ * @param[in] el	containing the timer events.
+ * @param[in] callback	the pre-processing callback
+ * @param[in] uctx	user context for the callback
+ * @return
+ *	- < 0 on error
+ *	- 0 on success
+ */
+int fr_event_pre_delete(fr_event_list_t *el, fr_event_status_t callback, void *uctx)
+{
+	fr_dlist_t *entry, *next;
+
+	for (entry = FR_DLIST_FIRST(el->pre_callbacks);
+	     entry != NULL;
+	     entry = next) {
+		fr_event_pre_t *pre;
+
+		next = FR_DLIST_NEXT(el->pre_callbacks, entry);
+
+		pre = fr_ptr_to_type(fr_event_pre_t, entry, entry);
+		if ((pre->callback == callback) &&
+		    (pre->ctx == uctx)) {
+			fr_dlist_remove(entry);
+			talloc_free(pre);
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+
 /** Add a post-event callback to the event list.
  *
  *  Events are serviced in insert order.  i.e. insert A, B, we then
@@ -666,7 +734,7 @@ int fr_event_post_insert(fr_event_list_t *el, fr_event_callback_t callback, void
 }
 
 
-/** Delete a post-even callback from the event list.
+/** Delete a post-event callback from the event list.
  *
  * @param[in] el	containing the timer events.
  * @param[in] callback	the post-processing callback
@@ -763,6 +831,7 @@ int fr_event_corral(fr_event_list_t *el, bool wait)
 {
 	struct timeval when, *wake;
 	struct timespec ts_when, *ts_wake;
+	fr_dlist_t *entry;
 
 	if (el->exit) {
 		fr_strerror_printf("Event loop exiting");
@@ -797,12 +866,19 @@ int fr_event_corral(fr_event_list_t *el, bool wait)
 	}
 
 	/*
-	 *	Run the status callback.  It may tell us that the
+	 *	Run the status callbacks.  It may tell us that the
 	 *	application has more work to do, in which case we
 	 *	re-set the timeout to be instant.
 	 */
-	if (el->status) {
-		if (el->status(el->status_ctx, wake) > 0) {
+	for (entry = FR_DLIST_FIRST(el->pre_callbacks);
+	     entry != NULL;
+	     entry = FR_DLIST_NEXT(el->pre_callbacks, entry)) {
+		fr_event_pre_t *pre;
+
+		when = el->now;
+
+		pre = fr_ptr_to_type(fr_event_pre_t, entry, entry);
+		if (pre->callback(pre->ctx, wake) > 0) {
 			wake = &when;
 			when.tv_sec = 0;
 			when.tv_usec = 0;
@@ -1069,11 +1145,11 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_t status, 
 		return NULL;
 	}
 
-	el->status = status;
-	el->status_ctx = status_ctx;
-
+	FR_DLIST_INIT(el->pre_callbacks);
 	FR_DLIST_INIT(el->post_callbacks);
 	FR_DLIST_INIT(el->user_callbacks);
+	
+	if (status) (void) fr_event_pre_insert(el, status, status_ctx);
 
 	/*
 	 *	Set our "exit" callback as ident 0.
