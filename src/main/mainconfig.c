@@ -80,6 +80,7 @@ static char const *radlog_dest = NULL;
  */
 static char const	*localstatedir = NULL;
 static char const	*prefix = NULL;
+static char const	*my_name = NULL;
 static char const	*sbindir = NULL;
 static char const	*run_dir = NULL;
 static char const	*syslog_facility = NULL;
@@ -221,18 +222,19 @@ static const CONF_PARSER server_config[] = {
 
 /**********************************************************************
  *
- *	The next few items are here as a "bootstrap" for security.
- *	They allow the server to switch users, chroot, while still
- *	opening the various output files with the correct permission.
+ *	The next few items are here to allow for switching of users
+ *	while still opening the various output files with the correct
+ *	permission.
  *
- *	It's rare (or impossible) to have parse errors here, so we
- *	don't worry too much about that.  In contrast, when we parse
- *	the rest of the configuration, we CAN get parse errors.  We
- *	want THOSE parse errors to go to the log file, and we want the
- *	log file to have the correct permissions.
+ *	It's rare (or impossible) to have parse errors for these
+ *	configuration items, so we don't worry too much about that.
+ *	In contrast, when we parse the rest of the configuration, we
+ *	CAN get parse errors.  We want THOSE parse errors to go to the
+ *	log file, and we want the log file to have the correct
+ *	permissions.
  *
  **********************************************************************/
-static const CONF_PARSER bootstrap_security_config[] = {
+static const CONF_PARSER security_config[] = {
 #ifdef HAVE_SETUID
 	{ FR_CONF_POINTER("user", FR_TYPE_STRING, &uid_name) },
 	{ FR_CONF_POINTER("group", FR_TYPE_STRING, &gid_name) },
@@ -257,8 +259,10 @@ static const CONF_PARSER bootstrap_security_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const CONF_PARSER bootstrap_config[] = {
-	{ FR_CONF_POINTER("security", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) bootstrap_security_config },
+static const CONF_PARSER switch_users_config[] = {
+	{ FR_CONF_POINTER("security", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) security_config },
+
+	{ FR_CONF_POINTER("name", FR_TYPE_STRING, &my_name), .dflt = "radiusd" },
 
 	{ FR_CONF_POINTER("prefix", FR_TYPE_STRING, &prefix), .dflt = "/usr/local" },
 	{ FR_CONF_POINTER("localstatedir", FR_TYPE_STRING, &localstatedir), .dflt = "${prefix}/var"},
@@ -419,7 +423,7 @@ static int switch_users(CONF_SECTION *cs)
 		return 0;
 	}
 
-	if (cf_section_rules_push(cs, bootstrap_config) < 0) {
+	if (cf_section_rules_push(cs, switch_users_config) < 0) {
 		fprintf(stderr, "%s: Error: Failed pushing parse rules for user/group information.\n",
 			main_config.name);
 		return 0;
