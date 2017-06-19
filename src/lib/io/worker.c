@@ -1105,7 +1105,7 @@ nomem:
 
 	if (fr_event_post_insert(worker->el, fr_worker_post_event, worker) < 0) {
 		fr_strerror_printf("Failed inserting post-processing event");
-		fr_heap_delerte(worker->runnable);
+		talloc_free(worker->runnable);
 		goto fail2;
 	}
 

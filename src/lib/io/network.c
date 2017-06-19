@@ -692,7 +692,7 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_log_t *logger)
 	if (!nr->workers) {
 		fr_strerror_printf("Failed creating heap for workers: %s", fr_strerror());
 	fail3:
-		fr_heap_delete(nr->replies);
+		talloc_free(nr->replies);
 		goto fail2;
 	}
 
@@ -706,7 +706,7 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_log_t *logger)
 	if (pthread_mutex_init(&nr->mutex, NULL) != 0) {
 		fr_strerror_printf("Failed initializing mutex");
 	fail4:
-		fr_heap_delete(nr->closing);
+		talloc_free(nr->closing);
 		goto fail3;
 	}
 #endif
