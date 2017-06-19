@@ -74,6 +74,10 @@ typedef struct fr_worker_heap_t {
 	fr_heap_t	*heap;			//!< heap, ordered by priority
 } fr_worker_heap_t;
 
+#ifndef NDEBUG
+static void fr_worker_verify(fr_worker_t *worker);
+#define WORKER_VERIFY fr_worker_verify(worker)
+#endif
 
 /**
  *  A worker which takes packets from a master, and processes them.
@@ -90,8 +94,6 @@ struct fr_worker_t {
 	fr_atomic_queue_t	*aq_control;	//!< atomic queue for control messages sent to me
 
 	fr_control_t		*control;	//!< the control plane
-
-	fr_message_set_t	*ms;		//!< replies are allocated from here.
 
 	fr_event_list_t		*el;		//!< our event list
 
@@ -799,6 +801,8 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	ssize_t size = 0;
 	fr_io_final_t final;
 
+	WORKER_VERIFY;
+
 	fr_log(worker->log, L_DBG, "\t%s running request (%"PRIu64")", worker->name, request->number);
 
 	/*
@@ -866,11 +870,9 @@ static int fr_worker_idle(void *ctx, struct timeval *wake)
 {
 	bool sleeping;
 	int i;
-	fr_worker_t *worker = talloc_get_type_abort(ctx, fr_worker_t);
+	fr_worker_t *worker = ctx;
 
-	rad_assert(worker->runnable != NULL);
-	rad_assert(worker->to_decode.heap != NULL);
-	rad_assert(worker->localized.heap != NULL);
+	WORKER_VERIFY;
 
 	/*
 	 *	The application is polling the event loop, but has
@@ -960,6 +962,8 @@ void fr_worker_destroy(fr_worker_t *worker)
 {
 	int i;
 	fr_channel_data_t *cd;
+
+	WORKER_VERIFY;
 
 	/*
 	 *	These messages aren't in the channel, so we have to
@@ -1100,6 +1104,8 @@ nomem:
  */
 int fr_worker_kq(fr_worker_t *worker)
 {
+	WORKER_VERIFY;
+
 	return worker->kq;
 }
 
@@ -1110,6 +1116,8 @@ int fr_worker_kq(fr_worker_t *worker)
  */
 fr_event_list_t *fr_worker_el(fr_worker_t *worker)
 {
+	WORKER_VERIFY;
+
 	return worker->el;
 }
 
@@ -1134,11 +1142,15 @@ void fr_worker_exit(fr_worker_t *worker)
  */
 void fr_worker(fr_worker_t *worker)
 {
+	WORKER_VERIFY;
+
 	while (true) {
 		bool wait_for_event;
 		int num_events;
 		fr_time_t now;
 		REQUEST *request;
+
+		WORKER_VERIFY;
 
 		/*
 		 *	There are runnable requests.  We still service
@@ -1223,6 +1235,8 @@ void worker_resume_request(REQUEST *request)
  */
 void fr_worker_debug(fr_worker_t *worker, FILE *fp)
 {
+	WORKER_VERIFY;
+
 	fprintf(fp, "\tkq = %d\n", worker->kq);
 	fprintf(fp, "\tnum_channels = %d\n", worker->num_channels);
 	fprintf(fp, "\tnum_requests = %d\n", worker->num_requests);
@@ -1243,13 +1257,11 @@ void fr_worker_debug(fr_worker_t *worker, FILE *fp)
  * @param[in] master the control plane of the master
  * @param[in] ctx the context in which the channel will be created
  */
-fr_channel_t *fr_worker_channel_create(fr_worker_t const *worker, TALLOC_CTX *ctx, fr_control_t *master)
+fr_channel_t *fr_worker_channel_create(fr_worker_t *worker, TALLOC_CTX *ctx, fr_control_t *master)
 {
 	fr_channel_t *ch;
 
-	(void) talloc_get_type_abort(worker, fr_worker_t);
-
-	rad_assert(worker->control != NULL);
+	WORKER_VERIFY;
 
 	ch = fr_channel_create(ctx, master, worker->control);
 	if (!ch) return NULL;
@@ -1277,7 +1289,43 @@ fr_channel_t *fr_worker_channel_create(fr_worker_t const *worker, TALLOC_CTX *ct
  */
 void fr_worker_name(fr_worker_t *worker, char const *name)
 {
-	(void) talloc_get_type_abort(worker, fr_worker_t);
+	WORKER_VERIFY;
 
 	worker->name = talloc_strdup(worker, name);
 }
+
+
+#ifndef NDEBUG
+/** Verify the worker data structures.
+ *
+ * @param[in] worker the worker
+ */
+static void fr_worker_verify(fr_worker_t *worker)
+{
+	int i;
+
+	(void) talloc_get_type_abort(worker, fr_worker_t);
+	(void) talloc_get_type_abort(worker->aq_control, fr_atomic_queue_t);
+
+	rad_assert(worker->control != NULL);
+	(void) talloc_get_type_abort(worker->control, fr_control_t);
+
+	rad_assert(worker->el != NULL);
+	(void) talloc_get_type_abort(worker->el, fr_event_list_t);
+
+	rad_assert(worker->to_decode.heap != NULL);
+	(void) talloc_get_type_abort(worker->to_decode.heap, fr_heap_t);
+
+	rad_assert(worker->localized.heap != NULL);
+	(void) talloc_get_type_abort(worker->localized.heap, fr_heap_t);
+
+	rad_assert(worker->runnable != NULL);
+	(void) talloc_get_type_abort(worker->runnable, fr_heap_t);
+
+	for (i = 0; i < worker->max_channels; i++) {
+		if (!worker->channel[i]) continue;
+
+		(void) talloc_get_type_abort(worker->channel[i], fr_channel_t);
+	}
+}
+#endif
