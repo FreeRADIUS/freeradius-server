@@ -194,7 +194,6 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 	return FR_IO_REPLY;
 }
 
-
 static int mod_compile_section(CONF_SECTION *server_cs, char const *name1, char const *name2, rlm_components_t component)
 {
 	CONF_SECTION *cs;
@@ -220,7 +219,6 @@ static int mod_compile_section(CONF_SECTION *server_cs, char const *name1, char 
 
 	return 1;
 }
-
 
 /*
  *	Ensure that the "radius" section is compiled.
