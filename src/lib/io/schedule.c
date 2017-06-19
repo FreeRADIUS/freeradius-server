@@ -194,7 +194,6 @@ int fr_schedule_get_worker_kq(fr_schedule_t *sc)
  */
 static void *fr_schedule_worker_thread(void *arg)
 {
-	TALLOC_CTX *ctx;
 	fr_schedule_worker_t *sw = arg;
 	fr_schedule_t *sc = sw->sc;
 	fr_schedule_child_status_t status = FR_CHILD_FAIL;
@@ -202,13 +201,7 @@ static void *fr_schedule_worker_thread(void *arg)
 
 	fr_log(sc->log, L_INFO, "Worker %d starting\n", sw->id);
 
-	ctx = talloc_init("worker %d", sw->id);
-	if (!ctx) {
-		fr_log(sc->log, L_ERR, "Worker %d - Failed allocating memory", sw->id);
-		goto fail;
-	}
-
-	sw->worker = fr_worker_create(ctx, sc->log, sc->worker_flags);
+	sw->worker = fr_worker_create(sw, sc->log, sc->worker_flags);
 	if (!sw->worker) {
 		fr_log(sc->log, L_ERR, "Worker %d - Failed creating worker: %s", sw->id, fr_strerror());
 		goto fail;
@@ -473,8 +466,11 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *logger, int max_inp
 		/*
 		 *	Create a worker "glue" structure
 		 */
-		sw = talloc_zero(sc, fr_schedule_worker_t);
-		if (!sw) break;
+		sw = talloc(NULL, fr_schedule_worker_t);
+		if (!sw) {
+			fr_log(sc->log, L_ERR, "Worker %d - Failed allocating memory", i);
+			break;
+		}
 
 		sw->id = i;
 		sw->sc = sc;
@@ -537,13 +533,28 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *logger, int max_inp
 		}
 
 		/*
-		 *	Clean up the workers which have no exited, and
+		 *	Clean up the workers which have now exited, and
 		 *	signaled us that they've exited.
 		 */
 		for (i = 0; i < num_workers; i++) {
 			fr_log(sc->log, L_DBG, "Wait for semaphore indicating exit %d/%d\n", i, num_workers);
 
 			SEM_WAIT_INTR(&sc->semaphore);
+		}
+
+		/*
+		 *	Clean up the dead ones which caused the
+		 *	error(s).
+		 */
+		for (i = 0; i < num_workers_exited; i++) {
+			fr_log(sc->log, L_DBG, "Pop exited %d/%d\n", i, num_workers_exited);
+
+			PTHREAD_MUTEX_LOCK(&sc->mutex);
+			sw = fr_heap_pop(sc->done_workers);
+			PTHREAD_MUTEX_UNLOCK(&sc->mutex);
+			rad_assert(sw != NULL);
+
+			talloc_free(sw);
 		}
 
 		talloc_free(sc);
