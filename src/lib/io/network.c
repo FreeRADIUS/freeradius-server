@@ -621,12 +621,6 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_log_t *logger)
 		return NULL;
 	}
 
-	if (fr_event_post_insert(nr->el, fr_network_post_event, nr) < 0) {
-		fr_strerror_printf("Failed inserting post-processing event");
-		talloc_free(nr);
-		return NULL;
-	}
-
 	nr->log = logger;
 
 	nr->kq = fr_event_list_kq(nr->el);
@@ -710,6 +704,12 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_log_t *logger)
 		return NULL;
 	}
 #endif
+
+	if (fr_event_post_insert(nr->el, fr_network_post_event, nr) < 0) {
+		fr_strerror_printf("Failed inserting post-processing event");
+		talloc_free(nr);
+		return NULL;
+	}
 
 	return nr;
 }
