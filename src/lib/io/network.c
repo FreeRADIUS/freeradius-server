@@ -754,6 +754,8 @@ int fr_network_destroy(fr_network_t *nr)
 		fr_message_done(&cd->m);
 	}
 
+	(void) fr_event_post_delete(nr->el, fr_network_post_event, nr);
+
 	talloc_free(nr);
 
 	return 0;
