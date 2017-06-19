@@ -1000,6 +1000,7 @@ void fr_worker_destroy(fr_worker_t *worker)
  *
  * @param[in] ctx the talloc context
  * @param[in] logger the destination for all logging messages
+ * @param[in] flags debug flags
  * @return
  *	- NULL on error
  *	- fr_worker_t on success
