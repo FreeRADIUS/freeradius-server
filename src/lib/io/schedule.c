@@ -31,12 +31,6 @@ RCSID("$Id$")
 
 #ifdef HAVE_PTHREAD_H
 #include <pthread.h>
-#define PTHREAD_MUTEX_LOCK   pthread_mutex_lock
-#define PTHREAD_MUTEX_UNLOCK pthread_mutex_unlock
-
-#else
-#define PTHREAD_MUTEX_LOCK
-#define PTHREAD_MUTEX_UNLOCK
 #endif
 
 /*
@@ -87,7 +81,8 @@ typedef struct fr_schedule_worker_t {
 	int		id;			//!< a unique ID
 	int		uses;			//!< how many network threads are using it
 	fr_time_t	cpu_time;		//!< how much CPU time this worker has used
-	int		heap_id;		//!< for the heap of workers
+
+	fr_dlist_t	entry;			//!< our entry into the linked list of workers
 
 	fr_schedule_t	*sc;			//!< the scheduler we are running under
 
@@ -124,8 +119,6 @@ struct fr_schedule_t {
 	int		num_workers_exited;	//!< number of exited workers
 
 #ifdef HAVE_PTHREAD_H
-	pthread_mutex_t	mutex;			//!< for thread safey
-
 	sem_t		semaphore;		//!< for inter-thread signaling
 #endif
 
@@ -134,57 +127,10 @@ struct fr_schedule_t {
 
 	uint32_t	worker_flags;		//!< for debugging the worker
 
-	fr_heap_t	*workers;		//!< heap of workers
-	fr_heap_t	*done_workers;		//!< heap of done workers
+	fr_dlist_t	workers;		//!< list of workers
 
 	fr_schedule_network_t *sn;		//!< pointer to the (one) network thread
 };
-
-
-static int worker_cmp(void const *one, void const *two)
-{
-	fr_schedule_worker_t const *a = one;
-	fr_schedule_worker_t const *b = two;
-
-	if (a->uses < b->uses) return -1;
-	if (a->uses > b->uses) return +1;
-
-	if (a->cpu_time < b->cpu_time) return -1;
-	if (a->cpu_time > b->cpu_time) return +1;
-
-	return 0;
-}
-
-
-/** Get a workers KQ
- *
- * @param[in] sc the scheduler
- * @return
- *	- <0 on error, or no free worker
- *	- the kq of the worker thread
- */
-int fr_schedule_get_worker_kq(fr_schedule_t *sc)
-{
-	int kq;
-	fr_schedule_worker_t *sw;
-
-	PTHREAD_MUTEX_LOCK(&sc->mutex);
-
-	sw = fr_heap_pop(sc->workers);
-	if (!sw) {
-		PTHREAD_MUTEX_UNLOCK(&sc->mutex);
-		return -1;
-	}
-
-	kq = fr_worker_kq(sw->worker);
-	rad_assert(kq >= 0);
-	sw->uses++;
-	(void) fr_heap_insert(sc->workers, sw);
-
-	PTHREAD_MUTEX_UNLOCK(&sc->mutex);
-
-	return kq;
-}
 
 
 /** Initialize and run the worker thread.
@@ -221,11 +167,6 @@ static void *fr_schedule_worker_thread(void *arg)
 
 	sw->status = FR_CHILD_RUNNING;
 
-	PTHREAD_MUTEX_LOCK(&sc->mutex);
-	(void) fr_heap_insert(sc->workers, sw);
-	sc->num_workers++;
-	PTHREAD_MUTEX_UNLOCK(&sc->mutex);
-
 	(void) fr_network_worker_add(sc->sn->rc, sw->worker);
 
 	fr_log(sc->log, L_INFO, "Worker %d running\n", sw->id);
@@ -252,26 +193,11 @@ static void *fr_schedule_worker_thread(void *arg)
 	fr_worker_destroy(sw->worker);
 	sw->worker = NULL;
 
-	/*
-	 *	Remove ourselves from the list of live workers.
-	 */
-	PTHREAD_MUTEX_LOCK(&sc->mutex);
-	(void) fr_heap_extract(sc->workers, sw);
-	sc->num_workers--;
-	PTHREAD_MUTEX_UNLOCK(&sc->mutex);
-
 	status = FR_CHILD_EXITED;
 
 fail:
 
-	/*
-	 *	Add outselves to the list of dead workers.
-	 */
-	PTHREAD_MUTEX_LOCK(&sc->mutex);
 	sw->status = status;
-	(void) fr_heap_insert(sc->done_workers, sw);
-	sc->num_workers_exited++;
-	PTHREAD_MUTEX_UNLOCK(&sc->mutex);
 
 	fr_log(sc->log, L_INFO, "Worker %d exiting\n", sw->id);
 
@@ -367,10 +293,10 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *logger, int max_inp
 				  void *worker_thread_ctx)
 {
 #ifdef HAVE_PTHREAD_H
-	int i, num_workers;
+	int i;
 	int rcode;
 	pthread_attr_t attr;
-
+	fr_dlist_t *entry, *next;
 #endif
 	fr_schedule_t *sc;
 
@@ -381,13 +307,13 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *logger, int max_inp
 
 	sc = talloc_zero(ctx, fr_schedule_t);
 	if (!sc) {
-	nomem:
 		fr_strerror_printf("Failed allocating memory");
 		return NULL;
 	}
 
 	sc->max_inputs = max_inputs;
 	sc->max_workers = max_workers;
+	sc->num_workers = 0;
 	sc->log = logger;
 
 	sc->worker_thread_instantiate = worker_thread_instantiate;
@@ -397,6 +323,8 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *logger, int max_inp
 
 	/*
 	 *	No inputs or workers, we're single threaded mode.
+	 *
+	 *	@todo - do something intelligent with the workers here?
 	 */
 	if (!sc->max_inputs && !sc->max_workers) return sc;
 
@@ -404,27 +332,10 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *logger, int max_inp
 	(void) pthread_attr_init(&attr);
 	(void) pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
-	rcode = pthread_mutex_init(&sc->mutex, NULL);
-	if (rcode != 0) {
-		fr_strerror_printf("Failed initializing mutex");
-		talloc_free(sc);
-		return NULL;
-	}
-
 	/*
-	 *	Create the heap which holds the workers.
+	 *	Create the list which holds the workers.
 	 */
-	sc->workers = fr_heap_create(worker_cmp, offsetof(fr_schedule_worker_t, heap_id));
-	if (!sc->workers) {
-		talloc_free(sc);
-		goto nomem;
-	}
-
-	sc->done_workers = fr_heap_create(worker_cmp, offsetof(fr_schedule_worker_t, heap_id));
-	if (!sc->done_workers) {
-		talloc_free(sc);
-		goto nomem;
-	}
+	FR_DLIST_INIT(sc->workers);
 
 	memset(&sc->semaphore, 0, sizeof(sc->semaphore));
 	if (sem_init(&sc->semaphore, 0, SEMAPHORE_LOCKED) != 0) {
@@ -435,6 +346,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *logger, int max_inp
 
 	/*
 	 *	Create the network thread first.
+	 *	@todo - create multiple network threads
 	 */
 	sc->sn = talloc_zero(sc, fr_schedule_network_t);
 	sc->sn->sc = sc;
@@ -457,7 +369,6 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *logger, int max_inp
 	/*
 	 *	Create all of the workers.
 	 */
-	num_workers = 0;
 	for (i = 0; i < sc->max_workers; i++) {
 		fr_schedule_worker_t *sw;
 
@@ -475,6 +386,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *logger, int max_inp
 		sw->id = i;
 		sw->sc = sc;
 		sw->status = FR_CHILD_INITIALIZING;
+		fr_dlist_insert_head(&sc->workers, &sw->entry);
 
 		rcode = pthread_create(&sw->pthread_id, &attr, fr_schedule_worker_thread, sw);
 		if (rcode != 0) {
@@ -483,85 +395,46 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *logger, int max_inp
 			break;
 		}
 
-		num_workers++;
+		sc->num_workers++;
 	}
 
 	/*
-	 *	Wait for all of the workers to start.
+	 *	Wait for all of the workers to signal us that either
+	 *	they've started, OR there's been a problem and they
+	 *	can't start.
 	 */
-	for (i = 0; i < num_workers; i++) {
-		fr_log(sc->log, L_DBG, "Waiting for semaphore from worker %d/%d\n", i, num_workers);
+	for (i = 0; i < sc->num_workers; i++) {
+		fr_log(sc->log, L_DBG, "Waiting for semaphore from worker %d/%d\n", i, sc->num_workers);
 		SEM_WAIT_INTR(&sc->semaphore);
 	}
-
-	PTHREAD_MUTEX_LOCK(&sc->mutex);
-	if (sc->num_workers != sc->max_workers) {
-		int num_workers_exited = sc->num_workers_exited;
+	
+	/*
+	 *	See if all of the workers have started.
+	 */
+	for (entry = FR_DLIST_FIRST(sc->workers);
+	     entry != NULL;
+	     entry = next) {
 		fr_schedule_worker_t *sw;
 
-		fr_log(sc->log, L_ERR, "Failed to create some workers\n");
+		next = FR_DLIST_NEXT(sc->workers, entry);
 
-		PTHREAD_MUTEX_UNLOCK(&sc->mutex);
+		sw = fr_ptr_to_type(fr_schedule_worker_t, entry, entry);
 
-		/*
-		 *	Clean up the dead ones which caused the
-		 *	error(s).
-		 */
-		for (i = 0; i < num_workers_exited; i++) {
-			fr_log(sc->log, L_DBG, "Pop exited %d/%d\n", i, num_workers_exited);
-
-			PTHREAD_MUTEX_LOCK(&sc->mutex);
-			sw = fr_heap_pop(sc->done_workers);
-			PTHREAD_MUTEX_UNLOCK(&sc->mutex);
-			rad_assert(sw != NULL);
-
+		if (sw->status != FR_CHILD_RUNNING) {
+			sc->num_workers--;
+			fr_dlist_remove(entry);
 			talloc_free(sw);
+			continue;
 		}
-
-		/*
-		 *	Tell the active workers to exit.
-		 */
-		for (i = 0; i < num_workers; i++) {
-			fr_log(sc->log, L_DBG, "Signal to exit %d/%d\n", i, num_workers);
-
-			PTHREAD_MUTEX_LOCK(&sc->mutex);
-			sw = fr_heap_pop(sc->workers);
-			PTHREAD_MUTEX_UNLOCK(&sc->mutex);
-			rad_assert(sw != NULL);
-
-			fr_worker_exit(sw->worker);
-		}
-
-		/*
-		 *	Clean up the workers which have now exited, and
-		 *	signaled us that they've exited.
-		 */
-		for (i = 0; i < num_workers; i++) {
-			fr_log(sc->log, L_DBG, "Wait for semaphore indicating exit %d/%d\n", i, num_workers);
-
-			SEM_WAIT_INTR(&sc->semaphore);
-		}
-
-		/*
-		 *	Clean up the dead ones which caused the
-		 *	error(s).
-		 */
-		for (i = 0; i < num_workers_exited; i++) {
-			fr_log(sc->log, L_DBG, "Pop exited %d/%d\n", i, num_workers_exited);
-
-			PTHREAD_MUTEX_LOCK(&sc->mutex);
-			sw = fr_heap_pop(sc->done_workers);
-			PTHREAD_MUTEX_UNLOCK(&sc->mutex);
-			rad_assert(sw != NULL);
-
-			talloc_free(sw);
-		}
-
-		talloc_free(sc);
-		return NULL;
-
 	}
-	PTHREAD_MUTEX_UNLOCK(&sc->mutex);
+
+	/*
+	 *	Failed to start some workers, refuse to do anything!
+	 */
+	if (sc->num_workers < sc->max_workers) {
+		fr_schedule_destroy(sc);
+		sc = NULL;
+	}
 #endif
 
 	fr_log(sc->log, L_INFO, "Scheduler created successfully\n");
@@ -578,42 +451,51 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *logger, int max_inp
  */
 int fr_schedule_destroy(fr_schedule_t *sc)
 {
-	int i, num;
+	int i;
 	fr_schedule_worker_t *sw;
 
 	sc->running = false;
 
 #ifdef HAVE_PTHREAD_H
+	fr_dlist_t	*entry, *next;
+
 	rad_assert(sc->num_workers > 0);
 
 	fr_log(sc->log, L_DBG, "Destroying scheduler\n");
 
 	/*
-	 *	Signal the workers to exit.  They will push themselves
-	 *	onto the "exited" stack when they're done.
+	 *	Signal all of the workers to exit.
 	 */
-	num = sc->num_workers;
+	for (entry = FR_DLIST_FIRST(sc->workers);
+	     entry != NULL;
+	     entry = next) {
+		next = FR_DLIST_NEXT(sc->workers, entry);
 
-	PTHREAD_MUTEX_LOCK(&sc->mutex);
-	while ((sw = fr_heap_pop(sc->workers)) != NULL) {
+		sw = fr_ptr_to_type(fr_schedule_worker_t, entry, entry);
 		fr_worker_exit(sw->worker);
 	}
-	PTHREAD_MUTEX_UNLOCK(&sc->mutex);
 
 	/*
 	 *	Wait for all worker threads to finish.  THEN clean up
 	 *	modules.  Otherwise, the modules will be removed from
 	 *	underneath the workers!
 	 */
-	for (i = 0; i < num; i++) {
-		fr_log(sc->log, L_DBG, "Wait for semaphore indicating exit %d/%d\n", i, num);
+	for (i = 0; i < sc->num_workers; i++) {
+		fr_log(sc->log, L_DBG, "Wait for semaphore indicating exit %d/%d\n", i, sc->num_workers);
 		SEM_WAIT_INTR(&sc->semaphore);
 	}
 
 	/*
-	 *	Pop the "done" workers, and free their contexts here.
+	 *	Clean up the exited workers.
 	 */
-	while ((sw = fr_heap_pop(sc->done_workers)) != NULL) {
+	for (entry = FR_DLIST_FIRST(sc->workers);
+	     entry != NULL;
+	     entry = next) {
+		next = FR_DLIST_NEXT(sc->workers, entry);
+
+		sw = fr_ptr_to_type(fr_schedule_worker_t, entry, entry);
+		sc->num_workers--;
+		fr_dlist_remove(entry);
 		talloc_free(sw);
 	}
 
