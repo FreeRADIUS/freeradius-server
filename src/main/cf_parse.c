@@ -1327,9 +1327,11 @@ int _cf_section_rule_push(CONF_SECTION *cs, CONF_PARSER const *rule, char const 
 	 *	Fixme maybe?.. Can't have a section and pair with the same name.
 	 */
 	if (!_cf_data_add_static(CF_TO_ITEM(cs), rule, "CONF_PARSER", rule->name, filename, lineno)) {
+		CONF_DATA const *cd;
 		CONF_PARSER const *old;
 
-		old = cf_data_value(cf_data_find(CF_TO_ITEM(cs), CONF_PARSER, rule->name));
+		cd = cf_data_find(CF_TO_ITEM(cs), CONF_PARSER, rule->name);
+		old = cf_data_value(cd);
 		rad_assert(old != NULL);
 
 		/*
@@ -1338,6 +1340,9 @@ int _cf_section_rule_push(CONF_SECTION *cs, CONF_PARSER const *rule, char const 
 		if (memcmp(rule, old, sizeof(*rule)) == 0) {
 			return 0;
 		}
+
+		cf_log_err(cs, "Data of type %s with name \"%s\" already exists.  Existing data added %s[%i]", "CONF_PARSER",
+			   rule->name, cd->item.filename, cd->item.lineno);
 
 		cf_debug(cs);
 		return -1;
