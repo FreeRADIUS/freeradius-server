@@ -221,6 +221,7 @@ static void *fr_schedule_network_thread(void *arg)
 	fr_schedule_network_t		*sn = arg;
 	fr_schedule_t			*sc = sn->sc;
 	fr_schedule_child_status_t	status = FR_CHILD_FAIL;
+	fr_event_list_t			*el;
 
 	fr_log(sc->log, L_INFO, "Network %d starting\n", sn->id);
 
@@ -230,7 +231,14 @@ static void *fr_schedule_network_thread(void *arg)
 		goto fail;
 	}
 
-	sn->rc = fr_network_create(ctx, sc->log);
+	el = fr_event_list_alloc(ctx, NULL, NULL);
+	if (!el) {
+		fr_log(sc->log, L_ERR, "Network %d - Failed creating event list: %s",
+		       sn->id, fr_strerror());
+		goto fail;
+	}
+
+	sn->rc = fr_network_create(ctx, el, sc->log);
 	if (!sn->rc) {
 		fr_log(sc->log, L_ERR, "Network %d - Failed creating network: %s", sn->id, fr_strerror());
 		goto fail;

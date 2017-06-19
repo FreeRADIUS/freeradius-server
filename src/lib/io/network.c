@@ -562,12 +562,13 @@ static void fr_network_evfilt_user(UNUSED int kq, UNUSED struct kevent const *ke
 /** Create a network
  *
  * @param[in] ctx the talloc ctx
+ * @param[in] el the event list
  * @param[in] logger the destination for all logging messages
  * @return
  *	- NULL on error
  *	- fr_network_t on success
  */
-fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_log_t *logger)
+fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t *logger)
 {
 	fr_network_t *nr;
 
@@ -577,13 +578,7 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_log_t *logger)
 		return NULL;
 	}
 
-	nr->el = fr_event_list_alloc(nr, NULL, NULL);
-	if (!nr->el) {
-		fr_strerror_printf("Failed creating event list: %s", fr_strerror());
-		talloc_free(nr);
-		return NULL;
-	}
-
+	nr->el = el;
 	nr->log = logger;
 
 	nr->kq = fr_event_list_kq(nr->el);
