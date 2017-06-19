@@ -855,25 +855,20 @@ void fr_event_service(fr_event_list_t *el)
 		 *	Process any user events
 		 */
 		if (el->events[i].filter == EVFILT_USER) {
+			fr_event_user_t *user;
+
 			/*
 			 *	This is just a "wakeup" event, which
 			 *	is always ignored.
 			 */
 			if (el->events[i].ident == 0) continue;
 
-			for (entry = FR_DLIST_FIRST(el->user_callbacks);
-			     entry != NULL;
-			     entry = FR_DLIST_NEXT(el->user_callbacks, entry)) {
-				fr_event_user_t *user;
+			user = (fr_event_user_t *) el->events[i].ident;
 
-				user = fr_ptr_to_type(fr_event_user_t, entry, entry);
+			(void) talloc_get_type_abort(user, fr_event_user_t);
+			rad_assert(user->ident == el->events[i].ident);
 
-				if (user->ident != el->events[i].ident) continue;
-
-				user->callback(el->kq, &el->events[i], user->ctx);
-				break;
-			}
-
+			user->callback(el->kq, &el->events[i], user->ctx);
 			continue;
 		}
 
