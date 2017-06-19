@@ -353,7 +353,7 @@ int fr_radius_tracking_entry_reply(fr_tracking_t *ft, fr_tracking_entry_t *entry
 {
 	(void) talloc_get_type_abort(ft, fr_tracking_t);
 
-	if (entry->timestamp != timestamp) {
+	if (entry->timestamp != request_timestamp) {
 		return 0;
 	}
 
