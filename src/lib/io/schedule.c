@@ -182,7 +182,7 @@ static void *fr_schedule_worker_thread(void *arg)
 
 	(void) fr_network_worker_add(sc->sn->rc, sw->worker);
 
-	fr_log(sc->log, L_INFO, "Worker %d running\n", sw->id);
+	fr_log(sc->log, L_INFO, "Spawned async worker %d", sw->id);
 
 	/*
 	 *	Tell the originator that the thread has started.
@@ -264,7 +264,7 @@ static void *fr_schedule_network_thread(void *arg)
 	 */
 	sem_post(&sc->semaphore);
 
-	fr_log(sc->log, L_INFO, "Network running");
+	fr_log(sc->log, L_INFO, "Spawned asycn network 0");
 
 	/*
 	 *	Do all of the work.
@@ -377,6 +377,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t
 		}
 
 		(void) fr_network_worker_add(sc->single_network, sc->single_worker);
+		fr_log(sc->log, L_DBG, "Scheduler created in single-threaded mode");
 		return sc;
 	}
 
@@ -489,7 +490,8 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t
 	}
 #endif
 
-	if (sc) fr_log(sc->log, L_INFO, "Scheduler created successfully\n");
+	if (sc) fr_log(sc->log, L_INFO, "Scheduler created successfully with %d networks and %d workers",
+		       sc->max_networks, sc->num_workers);
 
 	return sc;
 }
