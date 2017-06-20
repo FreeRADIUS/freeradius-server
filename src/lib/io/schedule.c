@@ -114,7 +114,7 @@ struct fr_schedule_t {
 
 	fr_log_t	*log;			//!< log destination
 
-	int		max_inputs;		//!< number of network threads
+	int		max_networks;		//!< number of network threads
 	int		max_workers;		//!< max number of worker threads
 
 	int		num_workers;		//!< number of worker threads
@@ -130,6 +130,9 @@ struct fr_schedule_t {
 	uint32_t	worker_flags;		//!< for debugging the worker
 
 	fr_dlist_t	workers;		//!< list of workers
+
+	fr_network_t	*single_network;	//!< for single-threaded mode
+	fr_worker_t	*single_worker;		//!< for single-threaded mode
 
 	fr_schedule_network_t *sn;		//!< pointer to the (one) network thread
 };
@@ -299,7 +302,7 @@ fail:
  * @param[in] ctx the talloc context
  * @param[in] el the event list, only for single-threaded mode.
  * @param[in] logger the destination for all logging messages
- * @param[in] max_inputs the number of network threads
+ * @param[in] max_networks the number of network threads
  * @param[in] max_workers the number of worker threads
  * @param[in] worker_thread_instantiate callback for new worker threads
  * @param[in] worker_thread_ctx context for callback
@@ -308,7 +311,7 @@ fail:
  *	- fr_schedule_t new scheduler
  */
 fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t *logger,
-				  int max_inputs, int max_workers,
+				  int max_networks, int max_workers,
 				  fr_schedule_thread_instantiate_t worker_thread_instantiate,
 				  void *worker_thread_ctx)
 {
@@ -321,9 +324,22 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t
 	fr_schedule_t *sc;
 
 	/*
-	 *	We require inputs and workers.
+	 *	Single-threaded mode MUST have event list, and zero
+	 *	networks or workers
 	 */
-	if ((!max_inputs && max_workers) || (max_workers && !max_inputs)) return NULL;
+	if (el && (max_networks || max_workers)) {
+		fr_strerror_printf("Cannot specify event list and networks or workers");
+		return NULL;
+	}
+
+	/*
+	 *	Multi-threaded mode must NOT have an event list, and
+	 *	non-zero networks and workers.
+	 */
+	if (!el && (!max_networks || !max_workers)) {
+		fr_strerror_printf("Must specify the number of networks and workers");
+		return NULL;
+	}
 
 	sc = talloc_zero(ctx, fr_schedule_t);
 	if (!sc) {
@@ -332,7 +348,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t
 	}
 
 	sc->el = el;
-	sc->max_inputs = max_inputs;
+	sc->max_networks = max_networks;
 	sc->max_workers = max_workers;
 	sc->num_workers = 0;
 	sc->log = logger;
@@ -343,11 +359,26 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t
 	sc->running = true;
 
 	/*
-	 *	No inputs or workers, we're single threaded mode.
-	 *
-	 *	@todo - do something intelligent with the workers here?
+	 *	If we're single-threaded, create network / worker, and insert them into the event loop.
 	 */
-	if (!sc->max_inputs && !sc->max_workers) return sc;
+	if (el) {
+		sc->single_network = fr_network_create(sc, el, sc->log);
+		if (!sc->single_network) {
+			fr_log(sc->log, L_ERR, "Failed creating network: %s", fr_strerror());
+			talloc_free(sc);
+			return NULL;
+		}
+
+		sc->single_worker = fr_worker_create(sc, el, sc->log, sc->worker_flags);
+		if (!sc->single_worker) {
+			fr_log(sc->log, L_ERR, "Failed creating worker: %s", fr_strerror());
+			talloc_free(sc);
+			return NULL;
+		}
+
+		(void) fr_network_worker_add(sc->single_network, sc->single_worker);
+		return sc;
+	}
 
 #ifdef HAVE_PTHREAD_H
 	(void) pthread_attr_init(&attr);
@@ -480,9 +511,18 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 #ifdef HAVE_PTHREAD_H
 	fr_dlist_t	*entry, *next;
 
-	rad_assert(sc->num_workers > 0);
-
 	fr_log(sc->log, L_DBG, "Destroying scheduler\n");
+
+	/*
+	 *	Single threaded mode: kill the only network / worker we have.
+	 */
+	if (sc->el) {
+		fr_worker_destroy(sc->single_worker);
+		fr_network_destroy(sc->single_network);
+		goto done;
+	}
+
+	rad_assert(sc->num_workers > 0);
 
 	/*
 	 *	Signal all of the workers to exit.
@@ -531,6 +571,8 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	sem_destroy(&sc->semaphore);
 #endif	/* HAVE_PTHREAD_H */
 
+
+done:
 	fr_log(sc->log, L_INFO, "Destroyed scheduler\n");
 
 	/*
@@ -552,7 +594,17 @@ int fr_schedule_destroy(fr_schedule_t *sc)
  */
 fr_network_t *fr_schedule_socket_add(fr_schedule_t *sc, fr_listen_t const *io)
 {
-	if (fr_network_socket_add(sc->sn->rc, io) < 0) return NULL;
+	fr_network_t *nr;
 
-	return sc->sn->rc;
+	(void) talloc_get_type_abort(sc, fr_schedule_t);
+
+	if (sc->el) {
+		nr = sc->single_network;
+	} else {
+		nr = sc->sn->rc;
+	}
+
+	if (fr_network_socket_add(nr, io) < 0) return NULL;
+
+	return nr;
 }

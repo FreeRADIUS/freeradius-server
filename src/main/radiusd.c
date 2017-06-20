@@ -595,10 +595,7 @@ int main(int argc, char *argv[])
 			el = process_global_event_list(EVENT_CORRAL_MAIN);
 		}
 
-		/*
-		 *	@todo - fix this once the scheduler supports single-threaded mode
-		 */
-		sc = fr_schedule_create(NULL, NULL, &default_log, 1, 4,
+		sc = fr_schedule_create(NULL, el, &default_log, networks, workers,
 					(fr_schedule_thread_instantiate_t) modules_thread_instantiate,
 					main_config.config);
 		if (!sc) {
