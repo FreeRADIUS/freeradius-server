@@ -269,7 +269,7 @@ int main(int argc, char *argv[])
 	app_io_inst->ipaddr = my_ipaddr;
 	app_io_inst->port = my_port;
 
-	sched = fr_schedule_create(autofree, &default_log, num_networks, num_workers, NULL, NULL);
+	sched = fr_schedule_create(autofree, NULL, &default_log, num_networks, num_workers, NULL, NULL);
 	if (!sched) {
 		fprintf(stderr, "schedule_test: Failed to create scheduler\n");
 		exit(1);

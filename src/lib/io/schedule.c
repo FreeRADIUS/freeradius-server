@@ -110,6 +110,8 @@ typedef struct fr_schedule_network_t {
 struct fr_schedule_t {
 	bool		running;		//!< is the scheduler running?
 
+	fr_event_list_t	*el;			//!< event list for single-threaded mode.
+
 	fr_log_t	*log;			//!< log destination
 
 	int		max_inputs;		//!< number of network threads
@@ -295,6 +297,7 @@ fail:
 /** Create a scheduler and spawn the child threads.
  *
  * @param[in] ctx the talloc context
+ * @param[in] el the event list, only for single-threaded mode.
  * @param[in] logger the destination for all logging messages
  * @param[in] max_inputs the number of network threads
  * @param[in] max_workers the number of worker threads
@@ -304,7 +307,8 @@ fail:
  *	- NULL on error
  *	- fr_schedule_t new scheduler
  */
-fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *logger, int max_inputs, int max_workers,
+fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t *logger,
+				  int max_inputs, int max_workers,
 				  fr_schedule_thread_instantiate_t worker_thread_instantiate,
 				  void *worker_thread_ctx)
 {
@@ -327,6 +331,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_log_t *logger, int max_inp
 		return NULL;
 	}
 
+	sc->el = el;
 	sc->max_inputs = max_inputs;
 	sc->max_workers = max_workers;
 	sc->num_workers = 0;
