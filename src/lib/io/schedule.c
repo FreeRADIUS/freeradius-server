@@ -143,11 +143,19 @@ static void *fr_schedule_worker_thread(void *arg)
 	fr_schedule_worker_t *sw = arg;
 	fr_schedule_t *sc = sw->sc;
 	fr_schedule_child_status_t status = FR_CHILD_FAIL;
+	fr_event_list_t *el;
 	char buffer[32];
 
 	fr_log(sc->log, L_INFO, "Worker %d starting\n", sw->id);
 
-	sw->worker = fr_worker_create(sw, sc->log, sc->worker_flags);
+	el = fr_event_list_alloc(sw, NULL, NULL);
+	if (!el) {
+		fr_log(sc->log, L_ERR, "Worker %d - Failed creating event list: %s",
+		       sw->id, fr_strerror());
+		goto fail;
+	}
+
+	sw->worker = fr_worker_create(sw, el, sc->log, sc->worker_flags);
 	if (!sw->worker) {
 		fr_log(sc->log, L_ERR, "Worker %d - Failed creating worker: %s", sw->id, fr_strerror());
 		goto fail;

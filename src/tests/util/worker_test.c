@@ -154,6 +154,7 @@ static void *worker_thread(void *arg)
 	TALLOC_CTX *ctx;
 	fr_worker_t *worker;
 	fr_schedule_worker_t *sw;
+	fr_event_list_t *el;
 
 	sw = (fr_schedule_worker_t *) arg;
 
@@ -162,7 +163,13 @@ static void *worker_thread(void *arg)
 	ctx = talloc_init("worker");
 	if (!ctx) _exit(1);
 
-	worker = sw->worker = fr_worker_create(ctx, &default_log, ~0);
+	el = fr_event_list_alloc(ctx, NULL, NULL);
+	if (!el) {
+		fprintf(stderr, "worker_test: Failed to create the event list\n");
+		exit(1);
+	}
+
+	worker = sw->worker = fr_worker_create(ctx, el, &default_log, ~0);
 	if (!worker) {
 		fprintf(stderr, "worker_test: Failed to create the worker\n");
 		exit(1);

@@ -1006,13 +1006,14 @@ void fr_worker_destroy(fr_worker_t *worker)
 /** Create a worker
  *
  * @param[in] ctx the talloc context
+ * @param[in] el the event list
  * @param[in] logger the destination for all logging messages
  * @param[in] flags debug flags
  * @return
  *	- NULL on error
  *	- fr_worker_t on success
  */
-fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, fr_log_t *logger, uint32_t flags)
+fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t *logger, uint32_t flags)
 {
 	int max_channels = 64;
 	fr_worker_t *worker;
@@ -1033,6 +1034,7 @@ nomem:
 		goto nomem;
 	}
 
+	worker->el = el;
 	worker->log = logger;
 
 	/*
@@ -1042,13 +1044,6 @@ nomem:
 	worker->talloc_pool_size = 4096; /* at least enough for a REQUEST */
 	worker->message_set_size = 1024;
 	worker->ring_buffer_size = (1 << 16);
-
-	worker->el = fr_event_list_alloc(worker, NULL, NULL);
-	if (!worker->el) {
-		fr_strerror_printf("Failed creating event list: %s", fr_strerror());
-		talloc_free(worker);
-		return NULL;
-	}
 
 	if (fr_event_pre_insert(worker->el, fr_worker_pre_event, worker) < 0) {
 		fr_strerror_printf("Failed adding pre-check to event list");
