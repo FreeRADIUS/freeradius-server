@@ -91,7 +91,7 @@ struct fr_worker_t {
 
 	int			kq;		//!< my kq
 
-	fr_log_t		*log;		//!< log destination
+	fr_log_t const		*log;		//!< log destination
 
 	fr_atomic_queue_t	*aq_control;	//!< atomic queue for control messages sent to me
 
@@ -1013,7 +1013,7 @@ void fr_worker_destroy(fr_worker_t *worker)
  *	- NULL on error
  *	- fr_worker_t on success
  */
-fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t *logger, uint32_t flags)
+fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t const *logger, uint32_t flags)
 {
 	int max_channels = 64;
 	fr_worker_t *worker;

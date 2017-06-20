@@ -65,7 +65,7 @@ typedef struct fr_network_socket_t {
 struct fr_network_t {
 	int			kq;			//!< our KQ
 
-	fr_log_t		*log;			//!< log destination
+	fr_log_t const		*log;			//!< log destination
 
 	fr_atomic_queue_t	*aq_control;		//!< atomic queue for control messages sent to me
 
@@ -568,7 +568,7 @@ static void fr_network_evfilt_user(UNUSED int kq, UNUSED struct kevent const *ke
  *	- NULL on error
  *	- fr_network_t on success
  */
-fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t *logger)
+fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t const *logger)
 {
 	fr_network_t *nr;
 
