@@ -455,10 +455,10 @@ static int _network_socket_free(fr_network_socket_t *s)
  */
 static void fr_network_socket_callback(void *ctx, void const *data, size_t data_size, UNUSED fr_time_t now)
 {
-	int fd;
-	fr_network_t *nr = ctx;
-	fr_network_socket_t *s;
-	fr_event_fd_handler_t write_fn, error_fn;
+	int			fd;
+	fr_network_t		*nr = ctx;
+	fr_network_socket_t	*s;
+	fr_app_io_t const	*app_io;
 
 	rad_assert(data_size == sizeof(*s));
 
@@ -487,15 +487,18 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 		_exit(1);
 	}
 
-	write_fn = error_fn = NULL;
+	app_io = s->listen->app_io;
 
-	if (s->listen->app_io->flush) write_fn = fr_network_write;
+	if (app_io->event_list_set) app_io->event_list_set(nr->el);
 
-	if (s->listen->app_io->error) error_fn = fr_network_error;
+	rad_assert(app_io->fd);
+	fd = app_io->fd(s->listen->app_io_instance);
 
-	fd = s->listen->app_io->fd(s->listen->app_io_instance);
-
-	if (fr_event_fd_insert(nr->el, fd, fr_network_read, write_fn, error_fn, s) < 0) {
+	if (fr_event_fd_insert(nr->el, fd,
+			       fr_network_read,
+			       app_io->write ? fr_network_write : NULL,
+			       app_io->error ? fr_network_error : NULL,
+			       s) < 0) {
 		fr_log(nr->log, L_ERR, "Failed adding new socket to event loop: %s", fr_strerror());
 		talloc_free(s);
 		return;

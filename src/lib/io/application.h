@@ -37,6 +37,7 @@ typedef struct fr_schedule_t fr_schedule_t;
 typedef int (*fr_app_open_t)(void *instance, fr_schedule_t *sc, CONF_SECTION *cs);
 typedef int (*fr_app_instantiate_t)(void *instance, CONF_SECTION *cs);
 typedef int (*fr_app_bootstrap_t)( void *instance, CONF_SECTION *cs);
+
 /** Set the next state executed by the request to be one of the application subtype's entry points
  *
  * @param[in] instance	of the #fr_app_t.
@@ -44,12 +45,9 @@ typedef int (*fr_app_bootstrap_t)( void *instance, CONF_SECTION *cs);
  */
 typedef void (*fr_app_process_set_t)(void const *instance, REQUEST *request);
 
-/** Allows submodules to receive uctx data (a structure provided by their parent)
- *
- * @param[in] instance	of #fr_app_process_t or #fr_app_io_t.
- * @param[in] uctx	provided by caller.
+/** Called by the network thread to pass an event list for the module to use for timer events
  */
-typedef void (*fr_app_set_parent_inst_t)(void *instance, void *uctx);
+typedef void (*fr_app_event_list_set_t)(fr_event_list_t *el);
 
 /** Describes a new application (protocol)
  *
@@ -73,7 +71,6 @@ typedef struct fr_app_process_t {
 
 	fr_app_bootstrap_t		bootstrap;
 	fr_app_instantiate_t		instantiate;
-	fr_app_set_parent_inst_t	set_parent_inst;//!< Allow the submodule to receive data from the main module.
 	fr_io_process_t			process;	//!< Entry point into the protocol subtype's state machine.
 } fr_app_process_t;
 
@@ -86,7 +83,8 @@ typedef struct fr_app_io_t {
 
 	fr_app_bootstrap_t		bootstrap;
 	fr_app_instantiate_t		instantiate;
-	fr_app_set_parent_inst_t	set_parent_inst;	//!< Allow the submodule to receive data from the main module.
+	fr_app_event_list_set_t		event_list_set;	//!< Called by the network thread to pass an event list
+							//!< for use by the app_io_t.
 
 	size_t				default_message_size;	// Usually minimum message size
 
