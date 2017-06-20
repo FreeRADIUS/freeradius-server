@@ -184,13 +184,13 @@ static fr_app_io_t app_io = {
 	.nak = test_nak
 };
 
-static void set_process(UNUSED void const *ctx, REQUEST *request)
+static void process_set(UNUSED void const *ctx, REQUEST *request)
 {
 	request->async->process = test_process;
 }
 
 static fr_app_t test_app = {
-	.set_process = set_process,
+	.process_set = process_set,
 };
 
 static void NEVER_RETURNS usage(void)

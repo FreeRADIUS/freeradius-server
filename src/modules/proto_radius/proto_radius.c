@@ -204,7 +204,7 @@ static ssize_t mod_encode(UNUSED void const *instance, REQUEST *request,
 	return len;
 }
 
-static void mod_set_process(void const *instance, REQUEST *request)
+static void mod_process_set(void const *instance, REQUEST *request)
 {
 	proto_radius_t const *inst = talloc_get_type_abort(instance, proto_radius_t);
 	fr_io_process_t process;
@@ -401,5 +401,5 @@ fr_app_t proto_radius = {
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.open		= mod_open,
-	.set_process	= mod_set_process
+	.process_set	= mod_process_set
 };

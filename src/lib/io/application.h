@@ -42,7 +42,7 @@ typedef int (*fr_app_bootstrap_t)( void *instance, CONF_SECTION *cs);
  * @param[in] instance	of the #fr_app_t.
  * @param[in] request	To set the next state function for.
  */
-typedef void (*fr_app_set_process_t)(void const *instance, REQUEST *request);
+typedef void (*fr_app_process_set_t)(void const *instance, REQUEST *request);
 
 /** Allows submodules to receive uctx data (a structure provided by their parent)
  *
@@ -60,7 +60,7 @@ typedef struct {
 	fr_app_bootstrap_t		bootstrap;
 	fr_app_instantiate_t		instantiate;
 	fr_app_open_t			open;		//!< Open listen sockets.
-	fr_app_set_process_t		set_process;
+	fr_app_process_set_t		process_set;
 } fr_app_t;
 
 /** Public structure describing an application (protocol) specialisation
