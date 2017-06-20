@@ -184,6 +184,15 @@ static fr_app_io_t app_io = {
 	.nak = test_nak
 };
 
+static void set_process(UNUSED void const *ctx, REQUEST *request)
+{
+	request->async->process = test_process;
+}
+
+static fr_app_t test_app = {
+	.set_process = set_process,
+};
+
 static void NEVER_RETURNS usage(void)
 {
 	fprintf(stderr, "usage: schedule_test [OPTS]\n");
@@ -203,7 +212,7 @@ int main(int argc, char *argv[])
 	uint16_t		port16 = 0;
 	TALLOC_CTX		*autofree = talloc_init("main");
 	fr_schedule_t		*sched;
-	fr_listen_t		listen = { .app_io = &app_io, .decode = test_decode, .encode = test_encode };
+	fr_listen_t		listen = { .app_io = &app_io, .decode = test_decode, .encode = test_encode, .app = &test_app };
 	fr_listen_test_t	*app_io_inst;
 
 	listen.app_io_instance = app_io_inst = talloc_zero(autofree, fr_listen_test_t);
