@@ -859,7 +859,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	fr_worker_send_reply(worker, request, size);
 }
 
-/** Run the event loop 'idle' callback
+/** Run the event loop 'pre' callback
  *
  *  This function MUST DO NO WORK.  All it does is check if there's
  *  work, and tell the event code to return to the main loop if
@@ -868,7 +868,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
  * @param[in] ctx the worker
  * @param[in] wake the time when the event loop will wake up.
  */
-static int fr_worker_idle(void *ctx, struct timeval *wake)
+static int fr_worker_pre_event(void *ctx, struct timeval *wake)
 {
 	bool sleeping;
 	int i;
@@ -996,6 +996,7 @@ void fr_worker_destroy(fr_worker_t *worker)
 		fr_channel_worker_ack_close(worker->channel[i]);
 	}
 
+	(void) fr_event_pre_delete(worker->el, fr_worker_pre_event, worker);
 	(void) fr_event_post_delete(worker->el, fr_worker_post_event, worker);
 
 	talloc_free(worker);
@@ -1049,7 +1050,7 @@ nomem:
 		return NULL;
 	}
 
-	if (fr_event_pre_insert(worker->el, fr_worker_idle, worker) < 0) {
+	if (fr_event_pre_insert(worker->el, fr_worker_pre_event, worker) < 0) {
 		fr_strerror_printf("Failed adding pre-check to event list");
 		talloc_free(worker);
 		return NULL;
