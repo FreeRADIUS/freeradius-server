@@ -556,20 +556,6 @@ int main(int argc, char *argv[])
 	if (virtual_servers_instantiate(main_config.config) < 0) exit(EXIT_FAILURE);
 
 	/*
-	 *	If this isn't just a config check, AND we have new
-	 *	async listeners, then we open the sockets.
-	 */
-	if (!check_config && main_config.namespace) {
-		sc = fr_schedule_create(NULL, &default_log, 1, 4, (fr_schedule_thread_instantiate_t) modules_thread_instantiate,
-					main_config.config);
-		if (!sc) {
-			exit(EXIT_FAILURE);
-		}
-
-		if (virtual_servers_open(sc) < 0) exit(EXIT_FAILURE);
-	}
-
-	/*
 	 *	Initialise the SNMP stats structures
 	 */
 	if (fr_snmp_init() < 0) {
@@ -592,6 +578,20 @@ int main(int argc, char *argv[])
 	if (fr_log_init(&default_log, main_config.daemonize) < 0) {
 		PERROR("Failed initialising log");
 		fr_exit(EXIT_FAILURE);
+	}
+
+	/*
+	 *	If this isn't just a config check, AND we have new
+	 *	async listeners, then we open the sockets.
+	 */
+	if (!check_config && main_config.namespace) {
+		sc = fr_schedule_create(NULL, &default_log, 1, 4, (fr_schedule_thread_instantiate_t) modules_thread_instantiate,
+					main_config.config);
+		if (!sc) {
+			exit(EXIT_FAILURE);
+		}
+
+		if (virtual_servers_open(sc) < 0) exit(EXIT_FAILURE);
 	}
 
 	/*
