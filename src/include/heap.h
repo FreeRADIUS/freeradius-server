@@ -34,7 +34,7 @@ extern "C" {
 typedef int (*fr_heap_cmp_t)(void const *, void const *);
 
 typedef struct fr_heap_t fr_heap_t;
-fr_heap_t *fr_heap_create(fr_heap_cmp_t cmp, size_t offset);
+fr_heap_t *fr_heap_create(fr_heap_cmp_t cmp, ssize_t offset);
 
 int fr_heap_insert(fr_heap_t *hp, void *data);
 int fr_heap_extract(fr_heap_t *hp, void *data);

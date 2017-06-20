@@ -37,7 +37,7 @@ RCSID("$Id$")
 struct fr_heap_t {
 	size_t size;
 	size_t num_elements;
-	size_t offset;
+	ssize_t offset;
 	fr_heap_cmp_t cmp;
 	void **p;
 };
@@ -54,7 +54,7 @@ struct fr_heap_t {
 
 static int fr_heap_bubble(fr_heap_t *hp, size_t child);
 
-fr_heap_t *fr_heap_create(fr_heap_cmp_t cmp, size_t offset)
+fr_heap_t *fr_heap_create(fr_heap_cmp_t cmp, ssize_t offset)
 {
 	fr_heap_t *fh;
 
@@ -89,7 +89,7 @@ fr_heap_t *fr_heap_create(fr_heap_cmp_t cmp, size_t offset)
  *	in bytes.
  */
 #define SET_OFFSET(heap, node) \
-    if (heap->offset) \
+    if (heap->offset >= 0) \
 	    *((int *)(((uint8_t *)heap->p[node]) + heap->offset)) = node
 
 /*
@@ -97,7 +97,7 @@ fr_heap_t *fr_heap_create(fr_heap_cmp_t cmp, size_t offset)
  *	invalid value.
  */
 #define RESET_OFFSET(heap, node) \
-    if (heap->offset) \
+    if (heap->offset >= 0) \
 	    *((int *)(((uint8_t *)heap->p[node]) + heap->offset)) = -1
 
 int fr_heap_insert(fr_heap_t *hp, void *data)
@@ -163,7 +163,7 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 		parent = 0;
 
 	} else {		/* extract from the middle */
-		if (!hp->offset) return 0;
+		if (hp->offset < 0) return 0;
 
 		parent = *((int *)(((uint8_t *)data) + hp->offset));
 
