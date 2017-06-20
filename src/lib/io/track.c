@@ -97,7 +97,7 @@ static void entry_free(void *data)
  *	- NULL on error
  *	- fr_tracking_t * on success
  */
-fr_tracking_t *fr_radius_tracking_create(TALLOC_CTX *ctx, size_t src_dst_size, void *allowed_packets[FR_MAX_PACKET_CODE])
+fr_tracking_t *fr_radius_tracking_create(TALLOC_CTX *ctx, size_t src_dst_size, bool const allowed_packets[FR_MAX_PACKET_CODE])
 {
 	int i;
 	size_t ft_size;
@@ -277,7 +277,7 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_t *ft, uint8_t 
 			if (memcmp(&entry->data[0], packet, sizeof(entry->data)) == 0) {
 				*p_entry = entry;
 				return FR_TRACKING_SAME;
-			}			
+			}
 
 			/*
 			 *	Over-write an existing entry.

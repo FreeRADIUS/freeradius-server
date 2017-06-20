@@ -47,6 +47,8 @@ typedef struct {
 } fr_udp_src_dst_t;
 
 typedef struct {
+	proto_radius_t	const		*parent;		//!< The module that spawned us!
+
 	int				sockfd;
 
 	fr_ipaddr_t			ipaddr;			//!< Ipaddr to listen on.
@@ -191,10 +193,17 @@ static int mod_open(void *instance)
 	return 0;
 }
 
-static void *allowed_packets[FR_MAX_PACKET_CODE] = {
-	[FR_CODE_STATUS_SERVER] = (void *) mod_open,
-};
+/** Get the file descriptor for this socket.
+ *
+ * @param[in] instance of the RADIUS UDP I/O path.
+ * @return the file descriptor
+ */
+static int mod_fd(void const *instance)
+{
+	fr_proto_radius_udp_t *inst = talloc_get_type_abort(instance, fr_proto_radius_udp_t);
 
+	return inst->sockfd;
+}
 
 static int mod_instantiate(void *instance, CONF_SECTION *cs)
 {
@@ -233,7 +242,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 
 	inst->dummy_client = client_afrom_query(inst, "127.0.0.1", "testing123", "test", "test", NULL, false);
 
-	inst->ft = fr_radius_tracking_create(inst, sizeof(fr_udp_src_dst_t), allowed_packets);
+	inst->ft = fr_radius_tracking_create(inst, sizeof(fr_udp_src_dst_t), inst->parent->code_allowed);
 	if (!inst->ft) {
 		cf_log_err(cs, "Failed to create tracking table: %s", fr_strerror());
 	}
@@ -241,16 +250,22 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	return 0;
 }
 
-/** Get the file descriptor for this socket.
- *
- * @param[in] instance of the RADIUS UDP I/O path.
- * @return the file descriptor
- */
-static int mod_fd(void const *instance)
+static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *cs)
 {
-	fr_proto_radius_udp_t *inst = talloc_get_type_abort(instance, fr_proto_radius_udp_t);
+	fr_proto_radius_udp_t	*inst = talloc_get_type_abort(instance, fr_proto_radius_udp_t);
+	dl_instance_t const	*dl_inst;
 
-	return inst->sockfd;
+	/*
+	 *	Find the dl_instance_t holding our instance data
+	 *	so we can find out what the parent of our instance
+	 *	was.
+	 */
+	dl_inst = dl_instance_find(instance);
+	rad_assert(dl_inst);
+
+	inst->parent = talloc_get_type_abort(dl_inst->parent->data, proto_radius_t);
+
+	return 0;
 }
 
 extern fr_app_io_t proto_radius_udp;
@@ -260,6 +275,7 @@ fr_app_io_t proto_radius_udp = {
 	.config			= udp_listen_config,
 	.inst_size		= sizeof(fr_proto_radius_udp_t),
 	.inst_type		= "fr_proto_radius_udp_t",
+	.bootstrap		= mod_bootstrap,
 	.instantiate		= mod_instantiate,
 
 	.default_message_size	= 4096,

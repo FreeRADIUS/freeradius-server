@@ -23,5 +23,29 @@
  *
  * @copyright 2017 Alan DeKok <aland@freeradius.org>
  */
+/** An instance of a proto_radius listen section
+ *
+ */
+typedef struct {
+	CONF_SECTION		*server_cs;			//!< server CS for this listener
+
+	dl_instance_t		*io_submodule;			//!< As provided by the transport_parse callback.
+								///< Broken out into the app_io_* fields below for
+								//!< convenience.
+
+	fr_app_io_t const	*app_io;			//!< Easy access to the app_io handle.
+	void			*app_io_instance;		//!< Easy access to the app_io instance.
+	CONF_SECTION		*app_io_conf;			//!< Easy access to the app_io's config section.
+
+
+	dl_instance_t		**process_submodule;		//!< Instance of the various types
+								//!< only one instance per type allowed.
+	fr_io_process_t		process_by_code[FR_CODE_MAX];	//!< Lookup process entry point by code.
+
+	bool			code_allowed[FR_CODE_MAX];	//!< Lookup allowed packet codes.
+
+	fr_listen_t const	*listen;			//!< The listener structure which describes
+								//!< the I/O path.
+} proto_radius_t;
 
 #endif	/* _PROTO_RADIUS_H */
