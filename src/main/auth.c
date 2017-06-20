@@ -376,6 +376,18 @@ int rad_postauth(REQUEST *request)
 		request->reply->code = PW_CODE_ACCESS_REJECT;
 	}
 
+	if (request->reply->code == PW_CODE_ACCESS_REJECT) {
+		if ((vp = fr_pair_find_by_num(request->packet->vps, PW_MODULE_FAILURE_MESSAGE, 0, TAG_ANY)) != NULL) {
+			char msg[MAX_STRING_LEN+19];
+
+			snprintf(msg, sizeof(msg), "Login incorrect (%s)",
+				 vp->vp_strvalue);
+			rad_authlog(msg, request, 0);
+		} else {
+			rad_authlog("Login incorrect", request, 0);
+		}
+	}
+
 	/*
 	 *	If we're still accepting the user, say so.
 	 */
@@ -585,16 +597,6 @@ authenticate:
 	if (result < 0) {
 		RDEBUG2("Failed to authenticate the user");
 		request->reply->code = PW_CODE_ACCESS_REJECT;
-
-		if ((module_msg = fr_pair_find_by_num(request->packet->vps, PW_MODULE_FAILURE_MESSAGE, 0, TAG_ANY)) != NULL){
-			char msg[MAX_STRING_LEN+19];
-
-			snprintf(msg, sizeof(msg), "Login incorrect (%s)",
-				 module_msg->vp_strvalue);
-			rad_authlog(msg, request, 0);
-		} else {
-			rad_authlog("Login incorrect", request, 0);
-		}
 
 		if (request->password) {
 			VERIFY_VP(request->password);
