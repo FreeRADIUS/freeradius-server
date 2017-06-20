@@ -762,7 +762,7 @@ int thread_pool_bootstrap(CONF_SECTION *cs, bool *spawn_workers)
 	memset(&thread_pool, 0, sizeof(THREAD_POOL));
 	thread_pool.spawn_workers = *spawn_workers;
 
-	pool_cf = cf_section_find(cs, "thread", NULL);
+	pool_cf = cf_section_find(cs, "thread", CF_IDENT_ANY);
 #ifdef WITH_GCD
 	if (pool_cf) {
 		WARN("Built with Grand Central Dispatch.  Ignoring 'thread' subsection");
