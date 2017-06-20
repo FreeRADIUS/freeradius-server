@@ -1871,7 +1871,7 @@ static char *mystrtok(char **ptr, char const *sep)
  */
 int fr_get_time(char const *date_str, time_t *date)
 {
-	int		i;
+	int		i, j;
 	time_t		t;
 	struct tm	*tm, s_tm;
 	char		buf[64];
@@ -1928,9 +1928,9 @@ int fr_get_time(char const *date_str, time_t *date)
 			f[0] = f[i];
 			f[i] = p;
 
-			for (i = 0; i < 12; i++) {
-				if (strncasecmp(months[i], f[0], 3) == 0) {
-					tm->tm_mon = i;
+			for (j = 0; j < 12; j++) {
+				if (strncasecmp(months[j], f[0], 3) == 0) {
+					tm->tm_mon = j;
 					break;
 				}
 			}

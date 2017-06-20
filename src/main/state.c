@@ -479,7 +479,6 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
 
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
-	rad_assert(request->state == NULL);
 	VERIFY_REQUEST(request);
 	return true;
 }

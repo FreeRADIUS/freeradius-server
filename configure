@@ -654,6 +654,7 @@ SNMPWALK
 SNMPGET
 PERL
 openssl_version_check_config
+WITH_DHCP
 modconfdir
 dictdir
 raddbdir
@@ -5303,6 +5304,7 @@ if test "x$WITH_DHCP" = "xyes"; then
 $as_echo "#define WITH_DHCP 1" >>confdefs.h
 
 fi
+
 
 STATIC_MODULES=
 

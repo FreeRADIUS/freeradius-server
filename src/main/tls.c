@@ -505,6 +505,7 @@ tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
 	talloc_set_destructor(ssn, _tls_session_free);
 
 	ssn->ctx = conf->ctx;
+	ssn->mtu = conf->fragment_size;
 
 	SSL_CTX_set_mode(ssn->ctx, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER | SSL_MODE_AUTO_RETRY);
 
@@ -537,6 +538,21 @@ tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_SSN, (void *)ssn);
 	SSL_set_fd(ssn->ssl, fd);
 	ret = SSL_connect(ssn->ssl);
+
+	if (ret < 0) {
+		switch (SSL_get_error(ssn->ssl, ret)) {
+			default:
+				break;
+
+
+
+		case SSL_ERROR_WANT_READ:
+		case SSL_ERROR_WANT_WRITE:
+			ssn->connected = false;
+			return ssn;
+		}
+	}
+
 	if (ret <= 0) {
 		tls_error_io_log(NULL, ssn, ret, "Failed in " STRINGIFY(__FUNCTION__) " (SSL_connect)");
 		talloc_free(ssn);
@@ -544,8 +560,7 @@ tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
 		return NULL;
 	}
 
-	ssn->mtu = conf->fragment_size;
-
+	ssn->connected = true;
 	return ssn;
 }
 
@@ -823,10 +838,10 @@ static void session_init(tls_session_t *ssn)
 
 static void session_close(tls_session_t *ssn)
 {
-	SSL_set_quiet_shutdown(ssn->ssl, 1);
-	SSL_shutdown(ssn->ssl);
-
 	if (ssn->ssl) {
+		SSL_set_quiet_shutdown(ssn->ssl, 1);
+		SSL_shutdown(ssn->ssl);
+
 		SSL_free(ssn->ssl);
 		ssn->ssl = NULL;
 	}
@@ -1590,6 +1605,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, const unsigned char *data, int l
 			/* not safe to un-persist a session w/o VPs */
 			RWDEBUG("Failed loading persisted VPs for session %s", buffer);
 			SSL_SESSION_free(sess);
+			sess = NULL;
 			goto error;
 		}
 
@@ -1603,12 +1619,14 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, const unsigned char *data, int l
 			if (ocsp_asn1time_to_epoch(&expires, vp->vp_strvalue) < 0) {
 				RDEBUG2("Failed getting certificate expiration, removing cache entry for session %s", buffer);
 				SSL_SESSION_free(sess);
+				sess = NULL;
 				goto error;
 			}
 
 			if (expires <= request->timestamp) {
 				RDEBUG2("Certificate has expired, removing cache entry for session %s", buffer);
 				SSL_SESSION_free(sess);
+				sess = NULL;
 				goto error;
 			}
 
@@ -2218,7 +2236,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	}
 
 	if (lookup == 0) {
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
 		ext_list = X509_get0_extensions(client_cert);
 #else
 		X509_CINF	*client_inf;
@@ -2427,7 +2445,8 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 						true, true, EXEC_TIMEOUT) != 0) {
 				AUTH(LOG_PREFIX ": Certificate CN (%s) fails external verification!", common_name);
 				my_ok = 0;
-			} else {
+
+			} else  if (request) {
 				RDEBUG("Client certificate CN %s passed external validation", common_name);
 			}
 

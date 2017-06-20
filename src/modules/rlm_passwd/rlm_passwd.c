@@ -134,10 +134,11 @@ static void release_hash_table(struct hashtable * ht){
 	int i;
 
 	if (!ht) return;
-	for (i = 0; i < ht->tablesize; i++)
-		if (ht->table[i])
-			destroy_password(ht->table[i]);
 	if (ht->table) {
+		for (i = 0; i < ht->tablesize; i++) {
+			if (ht->table[i])
+				destroy_password(ht->table[i]);
+		}
 		free(ht->table);
 		ht->table = NULL;
 	}

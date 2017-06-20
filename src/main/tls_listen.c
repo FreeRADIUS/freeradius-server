@@ -157,7 +157,6 @@ static int tls_socket_recv(rad_listen_t *listener)
 		rad_assert(sock->packet != NULL);
 		request->packet = talloc_steal(request, sock->packet);
 
-		request->component = "<core>";
 		request->component = "<tls-connect>";
 
 		request->reply = rad_alloc(request, false);
@@ -480,6 +479,34 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	return 0;
 }
 
+static int try_connect(tls_session_t *ssn)
+{
+	int ret;
+	ret = SSL_connect(ssn->ssl);
+	if (ret < 0) {
+		switch (SSL_get_error(ssn->ssl, ret)) {
+			default:
+				break;
+
+
+
+		case SSL_ERROR_WANT_READ:
+		case SSL_ERROR_WANT_WRITE:
+			ssn->connected = false;
+			return 0;
+		}
+	}
+
+	if (ret <= 0) {
+		tls_error_io_log(NULL, ssn, ret, "Failed in " STRINGIFY(__FUNCTION__) " (SSL_connect)");
+		talloc_free(ssn);
+
+		return -1;
+	}
+
+	return 1;
+}
+
 
 #ifdef WITH_PROXY
 /*
@@ -500,6 +527,18 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 	size_t length;
 	uint8_t *data;
 	listen_socket_t *sock = listener->data;
+
+	if (!sock->ssn->connected) {
+		rcode = try_connect(sock->ssn);
+		if (rcode == 0) return 0;
+
+		if (rcode < 0) {
+			SSL_shutdown(sock->ssn->ssl);
+			return -1;
+		}
+
+		sock->ssn->connected = true;
+	}
 
 	/*
 	 *	Get the maximum size of data to receive.
@@ -692,6 +731,20 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 	if (!request->proxy->data) {
 		request->proxy_listener->encode(request->proxy_listener,
 						request);
+	}
+
+	if (!sock->ssn->connected) {
+		PTHREAD_MUTEX_LOCK(&sock->mutex);
+		rcode = try_connect(sock->ssn);
+		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
+		if (rcode == 0) return 0;
+
+		if (rcode < 0) {
+			SSL_shutdown(sock->ssn->ssl);
+			return -1;
+		}
+
+		sock->ssn->connected = true;
 	}
 
 	DEBUG3("Proxy is writing %u bytes to SSL",

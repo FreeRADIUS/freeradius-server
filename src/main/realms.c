@@ -767,7 +767,9 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 
 		switch (proto) {
 		case IPPROTO_UDP:
+#ifdef WITH_TCP
 			home_servers_udp = true;
+#endif
 			break;
 
 		case IPPROTO_TCP:

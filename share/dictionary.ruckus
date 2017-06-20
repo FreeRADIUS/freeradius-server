@@ -63,6 +63,12 @@ ATTRIBUTE       Ruckus-Eth-Profile-Id              133    integer
 ATTRIBUTE       Ruckus-Zone-Name                   134    string
 ATTRIBUTE       Ruckus-Wlan-Name                   135    string
 
+ATTRIBUTE       Ruckus-Read-Preference             137    octets
+ATTRIBUTE       Ruckus-Client-Host-Name            138    string
+ATTRIBUTE       Ruckus-Client-Os-Type              139    string
+ATTRIBUTE       Ruckus-Client-Os-Class             140    string
+ATTRIBUTE       Ruckus-Vlan-Pool                   141    string
+
 #
 #  Integer Translations
 #

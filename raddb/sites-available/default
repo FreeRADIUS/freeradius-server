@@ -653,12 +653,6 @@ accounting {
 #		ok
 #	}
 
-	#
-	#  Instead of sending the query to the SQL server,
-	#  write it into a log file.
-	#
-#	sql_log
-
 	#  Cisco VoIP specific bulk accounting
 #	pgsql-voip
 
@@ -736,12 +730,6 @@ post-auth {
 	#
 	#  See "Authentication Logging Queries" in mods-available/sql
 	-sql
-
-	#
-	#  Instead of sending the query to the SQL server,
-	#  write it into a log file.
-	#
-#	sql_log
 
 	#
 	#  Un-comment the following if you want to modify the user's object

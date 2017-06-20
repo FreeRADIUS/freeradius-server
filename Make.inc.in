@@ -108,6 +108,8 @@ bm_static_libs  = @USE_STATIC_LIBS@
 STATIC_MODULES	= @STATIC_MODULES@
 LIBREADLINE	= @LIBREADLINE@
 
+WITH_DHCP	= @WITH_DHCP@
+
 #
 #  Version to use for packaging and other Make related things
 #

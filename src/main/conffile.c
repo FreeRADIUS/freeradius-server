@@ -1393,9 +1393,11 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	CONF_PAIR *cp = NULL;
 	fr_ipaddr_t *ipaddr;
 	char buffer[8192];
-	CONF_ITEM *c_item = &cs->item;
+	CONF_ITEM *c_item;
 
 	if (!cs) return -1;
+
+	c_item = &cs->item;
 
 	deprecated = (type & PW_TYPE_DEPRECATED);
 	required = (type & PW_TYPE_REQUIRED);

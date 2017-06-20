@@ -120,9 +120,9 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	return 0;
 }
 
+#ifdef WITH_DHCP
 static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *request)
 {
-#ifdef WITH_DHCP
 	int rcode;
 	VALUE_PAIR *vp;
 	rlm_soh_t *inst = instance;
@@ -183,9 +183,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 		}
 		return RLM_MODULE_OK;
 	}
-#endif
 	return RLM_MODULE_NOOP;
 }
+#endif
 
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void * instance, REQUEST *request)
 {
@@ -219,6 +219,8 @@ module_t rlm_soh = {
 	.bootstrap	= mod_bootstrap,
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize,
+#ifdef WITH_DHCP
 		[MOD_POST_AUTH]		= mod_post_auth
+#endif
 	},
 };

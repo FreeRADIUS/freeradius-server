@@ -2095,7 +2095,12 @@ static modcallable *do_compile_modxlat(modcallable *parent,
 	memcpy(csingle->actions, defaultactions[component][GROUPTYPE_SIMPLE],
 	       sizeof(csingle->actions));
 
-	mx->xlat_name = strdup(fmt);
+	mx->xlat_name = talloc_strdup(mx, fmt);
+	if (!mx->xlat_name) {
+		talloc_free(mx);
+		return NULL;
+	}
+
 	if (fmt[0] != '%') {
 		char *p;
 		mx->exec = true;

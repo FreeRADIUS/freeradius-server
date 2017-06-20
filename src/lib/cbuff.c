@@ -104,7 +104,7 @@ fr_cbuff_t *fr_cbuff_alloc(TALLOC_CTX *ctx, uint32_t size, UNUSED bool lock)
 void fr_cbuff_rp_insert(fr_cbuff_t *cbuff, void *obj)
 {
 #ifdef HAVE_PTHREAD_H
-	if (cbuff->lock) PTHREAD_MUTEX_LOCK(cbuff);
+	PTHREAD_MUTEX_LOCK(cbuff);
 #endif
 
 	if (cbuff->elem[cbuff->in]) {
@@ -121,7 +121,7 @@ void fr_cbuff_rp_insert(fr_cbuff_t *cbuff, void *obj)
 	}
 
 #ifdef HAVE_PTHREAD_H
-	if (cbuff->lock) PTHREAD_MUTEX_UNLOCK(cbuff);
+	PTHREAD_MUTEX_UNLOCK(cbuff);
 #endif
 }
 
@@ -136,7 +136,7 @@ void *fr_cbuff_rp_next(fr_cbuff_t *cbuff, TALLOC_CTX *ctx)
 	void *obj = NULL;
 
 #ifdef HAVE_PTHREAD_H
-	if (cbuff->lock) PTHREAD_MUTEX_LOCK(cbuff);
+	PTHREAD_MUTEX_LOCK(cbuff);
 #endif
 
 	/* Buffer is empty */
@@ -147,7 +147,7 @@ void *fr_cbuff_rp_next(fr_cbuff_t *cbuff, TALLOC_CTX *ctx)
 
 done:
 #ifdef HAVE_PTHREAD_H
-	if (cbuff->lock) PTHREAD_MUTEX_UNLOCK(cbuff);
+	PTHREAD_MUTEX_UNLOCK(cbuff);
 #endif
 	return obj;
 }

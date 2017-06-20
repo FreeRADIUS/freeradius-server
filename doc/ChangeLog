@@ -1,8 +1,19 @@
-FreeRADIUS 3.0.14 Mon 06 Mar 2017 13:00:00 EDT urgency=medium
+FreeRADIUS 3.0.15 Fri 26 May 2017 13:00:00 EDT urgency=medium
+	Feature improvements
+
+	Bug fixes
+	* don't crash when reading corrupted data from session
+	  resumption cache.  Fixes #1999.
+	* Parse port in dhcpclient.  Fixes #2000.
+	* Updated dictionary.starent
+
+FreeRADIUS 3.0.14 Fri 26 May 2017 13:00:00 EDT urgency=medium
 	Feature improvements
 	* Enforce TLS client certificate expiration on
 	  session resumption, and Session-Timeout.
-	* Updated dictionary.cisco.vpn3000
+	  See CVE-2017-9148.
+	* Updated dictionary.cisco.vpn3000, dictionary.patton
+	* Added dictionary.dellemc
 	* Lowered the log output for failed PEAP sessions.
 	* ALlow utc in rlm_date.  Patch from
 	  Peter Lambrechtsen.
@@ -10,6 +21,9 @@ FreeRADIUS 3.0.14 Mon 06 Mar 2017 13:00:00 EDT urgency=medium
 	  disabled.  Please see mods-available/eap
 	* Update detail reader documentation.
 	  Patch from Matthew Newton.  Fixes #1973.
+	* Make outgoing RadSec connections non-blocking.
+	* Add SQL backing to Moonshot-*-TargetedId
+	  generation.  Patch from Stefan Paetow.
 
 	Bug fixes
 	* radtest uses Cleartext-Password for EAP, not
@@ -26,6 +40,7 @@ FreeRADIUS 3.0.14 Mon 06 Mar 2017 13:00:00 EDT urgency=medium
 	* Allow SubjectAltName as first extension in cert.
 	  Fixes #1946.
 	* Fixed talloc issue with TLS session resumption.
+	  Fixes #1980.
 	* "&Attr-26 := 0x01" now produces useful error messages.
 	* Handle connection error in rlm_ldap_cacheable_groupobj.
 	  Fixes #1951.
@@ -36,6 +51,14 @@ FreeRADIUS 3.0.14 Mon 06 Mar 2017 13:00:00 EDT urgency=medium
 	* Fix typos and grammar.  Patches from Alan Buxey.
 	* Fix erroneous VP creation in rlm_preproces.
 	* Fix MIB.  Patch from Jeff Gehlbach.
+	* Trust router updates from Alejandro Perez.
+	* Allow build with LibreSSL.  Fixes #1989
+	* Use correct packet for channel bindings.  Fixes #1990.
+	* Many fixes found by PVS-Studio.  Thanks to PVS-Studio
+	  for giving us a test license.  Please see the git commit
+	  history for more information.
+	* Fix incorrect length check in EAP-PWD.  This may
+	  be exploitable.
 
 FreeRADIUS 3.0.13 Mon 06 Mar 2017 13:00:00 EDT urgency=medium
 	Feature improvements
