@@ -58,7 +58,7 @@ You may also give your containers explicit container IDs by passing ``--name <na
 By default if you try to use GDB in a docker container, the pattach call will fail, and you will not be able to
 trace processes.
 
-In order to allow tracing, the ``--privilledged`` flag must be passed to ``docker run``, this restores any Linux
+In order to allow tracing, the ``--privileged`` flag must be passed to ``docker run``, this restores any Linux
 ``cap`` privileges that would not ordinarily be given.
 
 ### Networking
