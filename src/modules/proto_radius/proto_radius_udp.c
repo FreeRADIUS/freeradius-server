@@ -89,6 +89,16 @@ static const CONF_PARSER udp_listen_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+
+static void mod_cleanup_delay(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
+{
+	fr_tracking_entry_t *track = uctx;
+	// proto_radius_udp_t const *inst = talloc_parent(track->ft);
+
+	(void) fr_radius_tracking_entry_delete(track->ft, track);
+}
+
+
 static ssize_t mod_read(void const *instance, void **packet_ctx, uint8_t *buffer, size_t buffer_len)
 {
 	proto_radius_udp_t const	*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
@@ -137,7 +147,21 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, uint8_t *buffer
 	case FR_TRACKING_UNUSED:
 		return -1;
 
+		/*
+		 *	If the entry already has a cleanup delay, we
+		 *	extend the cleanup delay.  i.e. the cleanup
+		 *	delay is from the last reply we sent, not from
+		 *	the first one.
+		 */
 	case FR_TRACKING_SAME:
+		if (track->ev) {
+			struct timeval tv;
+
+			gettimeofday(&tv, NULL);
+			tv.tv_sec += inst->cleanup_delay;
+
+			(void) fr_event_timer_insert(inst->el, mod_cleanup_delay, track, &tv, &track->ev);
+		}
 		return 0;
 
 		/*
@@ -155,15 +179,6 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, uint8_t *buffer
 
 	return packet_len;
 }
-
-static void mod_cleanup_delay(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
-{
-	fr_tracking_entry_t *track = uctx;
-	// proto_radius_udp_t const *inst = talloc_parent(track->ft);
-
-	(void) fr_radius_tracking_entry_delete(track->ft, track);
-}
-
 
 static ssize_t mod_write(void const *instance, fr_time_t request_time, void *packet_ctx, uint8_t *buffer, size_t buffer_len)
 {
