@@ -870,7 +870,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 
 	mod_inst->module = (rad_module_t const *)mod_inst->dl_inst->module->common;
 	if (!mod_inst->module) {
-		cf_log_err(cs, "Missing module public structure for \"%s\"", mod_inst->name);
+		cf_log_err(cs, "Missing module public structure for \"%s\"", inst_name);
 		talloc_free(mod_inst);
 		return NULL;
 	}
@@ -880,11 +880,13 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	 */
 	if (mod_inst->module->bootstrap &&
 	    ((mod_inst->module->bootstrap)(cs, mod_inst->dl_inst->data) < 0)) {
-		cf_log_err(cs, "Instantiation failed for module \"%s\"", mod_inst->name);
+		cf_log_err(cs, "Instantiation failed for module \"%s\"", inst_name);
 		talloc_free(mod_inst);
 		return NULL;
 	}
+
 	mod_inst->name = talloc_strdup(mod_inst, inst_name);
+
 	/*
 	 *	Remember the module for later.
 	 */
