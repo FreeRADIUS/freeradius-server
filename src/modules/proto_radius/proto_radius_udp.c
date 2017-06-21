@@ -66,6 +66,7 @@ typedef struct {
 								//!< buffer value.
 
 	fr_tracking_t			*ft;			//!< tracking table
+	uint32_t			cleanup_delay;		//!< cleanup delay for Access-Request packets
 
 	RADCLIENT			*dummy_client;
 } proto_radius_udp_t;
@@ -80,6 +81,9 @@ static const CONF_PARSER udp_listen_config[] = {
 
 	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, proto_radius_udp_t, port) },
 	{ FR_CONF_IS_SET_OFFSET("recv_buff", FR_TYPE_UINT32, proto_radius_udp_t, recv_buff) },
+
+	{ FR_CONF_OFFSET("cleanup_delay", FR_TYPE_UINT32, proto_radius_udp_t, cleanup_delay), .dflt = "5" },
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -239,6 +243,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 
 		inst->port = ntohl(s->s_port);
 	}
+
+	FR_INTEGER_BOUND_CHECK("cleanup_delay", inst->cleanup_delay, <=, 30);
 
 	inst->dummy_client = client_afrom_query(inst, "127.0.0.1", "testing123", "test", "test", NULL, false);
 
