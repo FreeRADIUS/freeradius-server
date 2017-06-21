@@ -301,6 +301,7 @@ static int mod_fd(void const *instance)
 /** Set the event list for a new socket
  *
  * @param[in] instance of the RADIUS UDP I/O path.
+ * @param[in] el the event list
  */
 static void mod_event_list_set(void const *instance, fr_event_list_t *el)
 {
