@@ -74,7 +74,7 @@ static CONF_PARSER submodule_config[] = {
 /*
  *	Attach the module.
  */
-static int mod_instantiate(UNUSED rlm_eap_config_t const *config, void *instance, CONF_SECTION *cs)
+static int mod_instantiate(void *instance, CONF_SECTION *cs)
 {
 	rlm_eap_fast_t		*inst = talloc_get_type_abort(instance, rlm_eap_fast_t);
 

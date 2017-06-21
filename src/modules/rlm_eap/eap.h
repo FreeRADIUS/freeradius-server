@@ -99,28 +99,15 @@ typedef struct rlm_eap_config {
 	bool			cisco_accounting_username_bug;
 } rlm_eap_config_t;
 
-/** Instantiate an EAP submodule
- *
- * Function to handle any submodule specific instantiation.
- *
- * @param config	of the rlm_eap instance.  Should not be modified.
- * @param instance	A uint8_t array of inst_size if inst_size > 0, else NULL,
- *			this should contain the result of parsing the submodule's
- *			CONF_PARSER array that it specified in the interface struct.
- * @param cs		section holding driver specific #CONF_PAIR (s).
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-typedef int		(*eap_instantiate_t)(rlm_eap_config_t const *config, void *instance, CONF_SECTION *cs);
-
 /** Interface exported by EAP submodules
  *
  */
 typedef struct rlm_eap_submodule {
 	RAD_MODULE_COMMON;					//!< Common fields to all loadable modules.
 
-	eap_instantiate_t	instantiate;			//!< Create a new submodule instance.
+	module_instantiate_t	bootstrap;			//!< Register any attributes required for the module
+								//!< to function, and perform library intit.
+	module_instantiate_t	instantiate;			//!< Create a new submodule instance.
 	eap_process_t		session_init;			//!< Callback for creating a new #eap_session_t.
 	eap_process_t		process;			//!< Callback for processing the next #eap_round_t of an
 								//!< #eap_session_t.

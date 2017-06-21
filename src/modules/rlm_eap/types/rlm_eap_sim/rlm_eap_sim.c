@@ -545,7 +545,7 @@ static rlm_rcode_t mod_session_init(UNUSED void *instance, eap_session_t *eap_se
 /*
  *	Attach the module.
  */
-static int mod_instantiate(UNUSED rlm_eap_config_t const *config, UNUSED void *instance, CONF_SECTION *cs)
+static int mod_instantiate(UNUSED void *instance, CONF_SECTION *cs)
 {
 	fr_dict_attr_t const *da;
 	CONF_SECTION *subcs = NULL;

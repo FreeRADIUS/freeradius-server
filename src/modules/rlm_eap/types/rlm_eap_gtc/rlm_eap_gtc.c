@@ -191,7 +191,7 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 /*
  *	Attach the module.
  */
-static int mod_instantiate(UNUSED rlm_eap_config_t const *config, void *instance, CONF_SECTION *cs)
+static int mod_instantiate(void *instance, CONF_SECTION *cs)
 {
 	rlm_eap_gtc_t	*inst = talloc_get_type_abort(instance, rlm_eap_gtc_t);
 	fr_dict_enum_t	*dval;

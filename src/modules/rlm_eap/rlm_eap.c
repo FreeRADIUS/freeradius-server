@@ -99,7 +99,7 @@ int eap_method_instantiate(rlm_eap_method_t **out, rlm_eap_t *inst, eap_type_t n
 	 *	Call the instantiated function in the submodule
 	 */
 	if ((method->submodule->instantiate) &&
-	    ((method->submodule->instantiate)(&inst->config, method->submodule_inst->data, cs) < 0)) {
+	    ((method->submodule->instantiate)(method->submodule_inst->data, cs) < 0)) {
 	 	talloc_free(method);
 	    	return -1;
 	}
