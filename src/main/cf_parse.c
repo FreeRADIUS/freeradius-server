@@ -1023,7 +1023,8 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs)
 		 *	Handle subsections specially
 		 */
 		if (FR_BASE_TYPE(rule->type) == FR_TYPE_SUBSECTION) {
-			if (cf_subsection_parse(ctx, data, cs, rule) < 0) goto finish;
+			ret = cf_subsection_parse(ctx, data, cs, rule);
+			if (ret < 0) goto finish;
 			continue;
 		} /* else it's a CONF_PAIR */
 
