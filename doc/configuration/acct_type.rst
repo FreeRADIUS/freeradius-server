@@ -8,7 +8,7 @@ syntax as Auth-Type and Autz-Type. The main difference in configuration
 between Acct-Type and Auth/Autz-Type lies in where the Acct-Type
 method is assigned. With Auth/Autz-Type, the method is typically
 assigned in the 'users' file. The 'users' file, naturally, is not
-processed during the handling of the accounting {} section. However,
+processed during the handling of the process Accounting-Request {} section. However,
 part of the default files {} module is the 'acct_users' file, which
 serves the same purpose as the 'users' file, but applies to accounting
 packets.
@@ -38,12 +38,12 @@ And in radiusd.conf::
         filename = ${radacctdir}/10.0.0.1/detail-%Y%m%d
   }
 
-  preacct {
+  recv Accounting-Request {
         suffix # Add the Realm A/V pair.
         files  # Add the Acct-Type A/V pair based on the Realm A/V pair.
   }
 
-  accounting {
+  process Accounting-Request {
 
         # If Acct-Type is SQLFOO use the 'sql1' instance of the SQL module.
 

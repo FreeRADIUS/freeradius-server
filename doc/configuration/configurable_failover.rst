@@ -7,7 +7,7 @@ Before configurable module failover, we had this kind of entry in
 ::
 
   #---
-  authorize {
+  recv Access-Request {
     preprocess
     files
   }
@@ -49,7 +49,7 @@ For example:
   }
 
   #  Handle accounting packets
-  accounting {
+  process Accounting-Request {
       detail			# always log to detail, stopping if it fails
       redundant {
         sql1			# try module sql1
@@ -89,7 +89,7 @@ even if the ``detail`` module fails.  The following example shows how:
 
   #--
   #  Handle accounting packets
-  accounting {
+  process Accounting-Request {
       detail {
         fail = 1
       }
@@ -182,7 +182,7 @@ to fail, so long as one of them succeeds.
 
   #--
   #  Handle accounting packets
-  accounting {
+  process Accounting-Request {
       group {
         detail1 {
           fail = 1		# remember ``fail`` with priority 1
@@ -290,7 +290,7 @@ We can see the exact rules by writing them out the long way:
 
 ::
 
-  authorize {
+  recv Access-Request {
     preprocess {
       notfound = 1
       noop     = 2
@@ -395,7 +395,7 @@ It would look like this:
 
 ::
 
-  authorize {
+  recv Access-Request {
     preprocess
     redundant {
       sql1

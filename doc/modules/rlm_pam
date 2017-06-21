@@ -36,7 +36,7 @@
 
    In the 'authenticate' section, do the same:
 
-   authenticate {
+   process Access-Request {
     # Uncomment this if you want to use PAM (Auth-Type = PAM)
         pam
 	...

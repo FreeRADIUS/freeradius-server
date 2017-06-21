@@ -16,7 +16,7 @@ be chosen at random, evenly spread over the modules in the list.
 
 An example is below::
 
-    accounting {
+    process Accounting-Request {
             load-balance {
                     sql1
                     sql2
@@ -30,7 +30,7 @@ In this case, 1/3 of the RADIUS requests will be processed by
 The "load-balance" section can be nested in a "redundant" section,
 or vice-versa::
 
-    accounting {
+    process Accounting-Request {
             load-balance {		# between two redundant sections below
                     redundant {
                             sql1
@@ -48,7 +48,7 @@ use sql2, and if sql2 is down, use sql1".  That way, you can guarantee
 both that load balancing occurs, and that the requests are *always*
 logged to one of the databases::
 
-    accounting {
+    process Accounting-Request {
             redundant {
                     load-balance {
                             sql1
@@ -63,7 +63,7 @@ used is down, then log to detail".
 
 And finally::
 
-    accounting {
+    process Accounting-Request {
             redundant {			# between load-balance & detail
                     load-balance {		# between two redundant sections
                             redundant {

@@ -193,13 +193,13 @@ HOW DO I USE IT (FAQ/Examples)
 	}
 
 	# eap sets the authenticate type as EAP
-	authorize {
+	recv Access-Request {
 		...
 		eap
 	}
 
 	# eap authentication takes place.
-	authenticate {
+	process Access-Request {
 		eap
 	}
 
@@ -226,7 +226,7 @@ HOW DO I USE IT (FAQ/Examples)
 
 	# ldap gets the Configured password.
 	# eap sets the authenticate type as EAP
-	authorize {
+	recv Access-Request {
 		...
 		ldap
 		eap
@@ -234,7 +234,7 @@ HOW DO I USE IT (FAQ/Examples)
 	}
 
 	# eap authentication takes place.
-	authenticate {
+	process Access-Request {
 		...
 		eap
 		...
@@ -253,7 +253,7 @@ HOW DO I USE IT (FAQ/Examples)
    # eap module should be configured as the First module in
    # the authorize stanza
 
-	authorize {
+	recv Access-Request {
 		eap
 		...  other modules.
 	}
@@ -269,7 +269,7 @@ HOW DO I USE IT (FAQ/Examples)
 
    Only if it is required then, in radiusd.conf
 
-	authorize {
+	recv Access-Request {
 		eap
 		...  other modules.
 	}

@@ -114,7 +114,7 @@ server dhcp {
 The "soh" module decodes the radius & DHCP payloads. It also makes some dynamic
 variables available, for example:
 
-authorize {
+recv Access-Request {
   soh
   update request {
     Tmp-String-0 = "%{soh:OS}"

@@ -138,7 +138,7 @@ ldap {
 
 	#  Note: set_auth_type was removed in v3.x.x
 	#  Equivalent functionality can be achieved by adding the following
-	#  stanza to the authorize {} section of your virtual server.
+	#  stanza to the recv Access-Request {} section of your virtual server.
 	#
 	#    ldap
 	#    if ((ok || updated) && User-Password) {

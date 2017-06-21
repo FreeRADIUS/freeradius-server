@@ -804,8 +804,8 @@ $INCLUDE sites-enabled/
 
 ######################################################################
 #
-#	All of the other configuration sections like "authorize {}",
-#	"authenticate {}", "accounting {}", have been moved to the
+#	All of the other configuration sections like "recv Access-Request {}",
+#	"process Access-Request {}", "process Accounting-Request {}", have been moved to the
 #	the file:
 #
 #		raddb/sites-available/default

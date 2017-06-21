@@ -157,7 +157,7 @@ server radrelay {
 	#  See also raddb/sites-available/copy-acct-to-home-server
 	#  for additional description.
 	#
-	preacct {
+	recv Accounting-Request {
 		#
 		#  Proxy the packet using the given realm.
 		#  Note that we do not use the realm for anything else such

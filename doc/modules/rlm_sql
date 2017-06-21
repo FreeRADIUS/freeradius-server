@@ -270,12 +270,12 @@
 
   And then you can use a specific instance in radiusd.conf, like
   so:
-  authorize {
+  recv Access-Request {
     ...
     sql_instance1
     ...
   }
-  accounting {
+  process Accounting-Request {
     ...
     sql_instance1
     sql_instance2

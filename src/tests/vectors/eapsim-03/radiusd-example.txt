@@ -1275,7 +1275,7 @@ instantiate {
 #
 #  Make *sure* that 'preprocess' comes before any realm if you
 #  need to setup hints for the remote radius server
-authorize {
+recv Access-Request {
 	#
 	#  The preprocess module takes care of sanitizing some bizarre
 	#  attributes in the request, and turning them into attributes
@@ -1352,7 +1352,7 @@ authorize {
 #   For example, the chap module will set Auth-Type to CHAP, ldap to LDAP, etc.
 # - After that create corresponding authtype sections in the
 #   authenticate section below and call the appropriate modules.
-authenticate {
+process Access-Request {
 	#
 	#  PAP authentication, when a back-end database listed
 	#  in the 'authorize' section supplies a password.  The
@@ -1408,7 +1408,7 @@ authenticate {
 #
 #  Pre-accounting.  Decide which accounting type to use.
 #
-preacct {
+recv Accounting-Request {
 	preprocess
 
 	#
@@ -1429,7 +1429,7 @@ preacct {
 #
 #  Accounting.  Log the accounting data.
 #
-accounting {
+process Accounting-Request {
 	#
 	#  Ensure that we have a semi-unique identifier for every
 	#  request, and many NAS boxes are broken.

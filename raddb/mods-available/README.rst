@@ -35,7 +35,7 @@ Modules are conditionally enabled by adding a "-" before their name in
 a virtual server.  For example, you can do::
 
   server {
-    authorize {
+    recv Access-Request {
       ...
       ldap
       -sql
