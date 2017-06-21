@@ -9,6 +9,15 @@ WatchdogSec=60
 NotifyAccess=all
 PIDFile=/var/run/radiusd/radiusd.pid
 EnvironmentFile=-/etc/sysconfig/radiusd
+
+# FreeRADIUS can do static evaluation of policy language rules based
+# on environmental variables which is very useful for doing per-host
+# customization.
+# Unfortunately systemd does not allow variable substitutions such
+# as %H or $(hostname) in the EnvironmentFile.
+# We provide HOSTNAME here for convenience.
+Environment=HOSTNAME=%H
+
 RuntimeDirectory=/var/run/radiusd
 RuntimeDirectoryMode=0775
 ExecStartPre=/usr/sbin/radiusd $FREERADIUS_OPTIONS -Cx -lstdout
