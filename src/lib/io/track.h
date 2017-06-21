@@ -64,15 +64,19 @@ typedef enum fr_tracking_status_t {
 	FR_TRACKING_DIFFERENT,
 } fr_tracking_status_t;
 
-fr_tracking_t *fr_radius_tracking_create(TALLOC_CTX *ctx, size_t src_dst_size, bool const allowed_packets[FR_MAX_PACKET_CODE]);
-int fr_radius_tracking_entry_delete(fr_tracking_t *ft, fr_tracking_entry_t *entry) CC_HINT(nonnull);
-fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_t *ft, uint8_t *packet,
-						     fr_time_t timestamp, void *src_dst,
-						     fr_tracking_entry_t **p_entry);
-int fr_radius_tracking_entry_reply(fr_tracking_t *ft, fr_tracking_entry_t *entry,
-				   fr_time_t reply_time,
-				   uint8_t const *reply, size_t reply_len);
+fr_tracking_t			*fr_radius_tracking_create(TALLOC_CTX *ctx, size_t src_dst_size,
+							   bool const allowed_packets[FR_MAX_PACKET_CODE]);
 
+int				fr_radius_tracking_entry_delete(fr_tracking_t *ft,
+								fr_tracking_entry_t *entry) CC_HINT(nonnull);
+
+fr_tracking_status_t		fr_radius_tracking_entry_insert(fr_tracking_entry_t **p_entry,
+								fr_tracking_t *ft, uint8_t *packet, fr_time_t timestamp,
+								void *src_dst);
+
+int				fr_radius_tracking_entry_reply(fr_tracking_t *ft, fr_tracking_entry_t *entry,
+							       fr_time_t reply_time,
+							       uint8_t const *reply, size_t reply_len);
 #ifdef __cplusplus
 }
 #endif

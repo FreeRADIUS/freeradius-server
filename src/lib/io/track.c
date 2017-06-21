@@ -43,13 +43,13 @@ RCSID("$Id$")
  *  outstanding.
  */
 struct fr_tracking_t {
-	int		num_entries;	//!< number of used entries.
+	int			num_entries;	//!< number of used entries.
 
-	size_t		src_dst_size;	//!< size of per-packet src/dst information
+	size_t			src_dst_size;	//!< size of per-packet src/dst information
 
-	rbtree_t	*tree;		//!< for unconnected sockets
+	rbtree_t		*tree;		//!< for unconnected sockets
 
-	fr_tracking_entry_t *codes[];
+	fr_tracking_entry_t	*codes[];
 };
 
 
@@ -72,7 +72,6 @@ static int entry_cmp(void const *one, void const *two)
 	return memcmp(a->src_dst, b->src_dst, a->src_dst_size);
 }
 
-
 /** Free one entry.
  *
  *  @todo - use a slab allocator.
@@ -85,19 +84,23 @@ static void entry_free(void *data)
 }
 
 
-/** Create a tracking table for one type of RADIUS packets.
+/** Create a tracking table for one type of RADIUS packets
  *
- *  For connected sockets, it just tracks packets by ID.
- *  For unconnected sockets, the caller has to provide a context for each packet...
+ * For connected sockets, it just tracks packets by ID.
+ * For unconnected sockets, the caller has to provide a context for each packet...
  *
- * @param[in] ctx the talloc ctx
- * @param[in] src_dst_size size of src/dst information for a packet on this socket.  Use 0 for connected sockets.
- * @param[in] allowed_packets the array of packet codes which are tracked in this table.
+ * @param[in] ctx			the talloc ctx.
+ * @param[in] src_dst_size		size of src/dst information for a packet on this socket.
+ *					Use 0 for connected sockets.
+ * @param[in] allowed_packets		the array of packet codes which are tracked in this table.
+ *					We use this so we don't have to allocate arrays of tracking
+ *					entries for unused codes.
  * @return
  *	- NULL on error
  *	- fr_tracking_t * on success
  */
-fr_tracking_t *fr_radius_tracking_create(TALLOC_CTX *ctx, size_t src_dst_size, bool const allowed_packets[FR_MAX_PACKET_CODE])
+fr_tracking_t *fr_radius_tracking_create(TALLOC_CTX *ctx, size_t src_dst_size,
+					 bool const allowed_packets[FR_MAX_PACKET_CODE])
 {
 	int i;
 	size_t ft_size;
@@ -146,10 +149,10 @@ fr_tracking_t *fr_radius_tracking_create(TALLOC_CTX *ctx, size_t src_dst_size, b
 	return ft;
 }
 
-/** Delete an entry from the tracking table.
+/** Delete an entry from the tracking table
  *
- * @param[in] ft the tracking table
- * @param[in] entry the entry to delete.
+ * @param[in] ft	The tracking table.
+ * @param[in] entry	to delete.
  * @return
  *	- <0 on error
  *	- 0 on success
@@ -188,22 +191,23 @@ int fr_radius_tracking_entry_delete(fr_tracking_t *ft, fr_tracking_entry_t *entr
 
 /** Insert a (possibly new) packet and a timestamp
  *
- * @param[in] ft the tracking table
- * @param[in] packet the packet to insert
- * @param[in] timestamp when this packet was received
- * @param[in] src_dst the data structure holding src/dst ip/port information for this packet.
- * @param[out] p_entry pointer to newly inserted entry.
+ * @param[out] p_entry		pointer to newly inserted entry.
+ * @param[in] ft		The tracking table.
+ * @param[in] packet		to insert.
+ * @param[in] timestamp		When this packet was received.
+ * @param[in] src_dst		the data structure holding src/dst ip/port information for this packet.
  * @return
- *	- FR_TRACKING_ERROR, gthere was an error in the function parameters
- *	- FR_TRACKING_NEW, a new entry was created
- *	- FR_TRACKING_SAME, the packet is the same as one already in the tracking table
- *	- FR_TRACKING_DIFFERENT, the old packet was deleted, and the newer packet inserted
+ *	- FR_TRACKING_ERROR, there was an error in the function parameters.
+ *	- FR_TRACKING_NEW, a new entry was created.
+ *	- FR_TRACKING_SAME, the packet is the same as one already in the tracking table.
+ *	- FR_TRACKING_DIFFERENT, the old packet was deleted, and the newer packet inserted.
  */
-fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_t *ft, uint8_t *packet, fr_time_t timestamp,
-						     void *src_dst, fr_tracking_entry_t **p_entry)
+fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_entry_t **p_entry,
+						     fr_tracking_t *ft, uint8_t *packet, fr_time_t timestamp,
+						     void *src_dst)
 {
-	bool insert = false;
-	fr_tracking_entry_t *entry;
+	bool			insert = false;
+	fr_tracking_entry_t	*entry;
 
 	(void) talloc_get_type_abort(ft, fr_tracking_t);
 
@@ -290,11 +294,10 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_t *ft, uint8_t 
 				entry->reply_len = 0;
 			}
 
-			/*
-			 *	Don't change src_dst.  It MUST have
-			 *	the same data as the previous entry.
-			 */
-
+		/*
+		 *	Don't change src_dst.  It MUST have
+		 *	the same data as the previous entry.
+		 */
 		} else {
 			size_t align;
 			uint8_t *p;
@@ -339,11 +342,11 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_t *ft, uint8_t 
 
 /** Insert a (possibly new) packet and a timestamp
  *
- * @param[in] ft the tracking table
- * @param[in] entry the original entry for the request packet
- * @param[in] reply_time when the reply was sent.
- * @param[in] reply the reply packet
- * @param[in] reply_len the length of the reply message
+ * @param[in] ft		the tracking table.
+ * @param[in] entry the		original entry for the request packet
+ * @param[in] reply_time	when the reply was sent.
+ * @param[in] reply the		reply packet.
+ * @param[in] reply_len		the length of the reply message.
  * @return
  *	- <0 on error
  *	- 0 on success
