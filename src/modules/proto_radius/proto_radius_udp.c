@@ -140,8 +140,14 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, uint8_t *buffer
 	case FR_TRACKING_SAME:
 		return 0;
 
-	case FR_TRACKING_NEW:
+		/*
+		 *	Delete any pre-existing cleanup_delay timers.
+		 */
 	case FR_TRACKING_DIFFERENT:
+		if (track->ev) (void) fr_event_timer_delete(inst->el, &track->ev);
+		break;
+
+	case FR_TRACKING_NEW:
 		break;
 	}
 
@@ -149,6 +155,15 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, uint8_t *buffer
 
 	return packet_len;
 }
+
+static void mod_cleanup_delay(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
+{
+	fr_tracking_entry_t *track = uctx;
+	// proto_radius_udp_t const *inst = talloc_parent(track->ft);
+
+	(void) fr_radius_tracking_entry_delete(track->ft, track);
+}
+
 
 static ssize_t mod_write(void const *instance, fr_time_t request_time, void *packet_ctx, uint8_t *buffer, size_t buffer_len)
 {
@@ -158,6 +173,7 @@ static ssize_t mod_write(void const *instance, fr_time_t request_time, void *pac
 
 	ssize_t				data_size;
 	fr_time_t			reply_time;
+	struct timeval			tv;
 
 	/*
 	 *	The original packet has changed.  Suppress the write,
@@ -206,8 +222,19 @@ static ssize_t mod_write(void const *instance, fr_time_t request_time, void *pac
 	 }
 
 	 /*
-	  *	@todo - set cleanup_delay
+	  *	@todo - Move event timers to fr_time_t
 	  */
+	 gettimeofday(&tv, NULL);
+
+	 tv.tv_sec += inst->cleanup_delay;
+
+	 /*
+	  *	Clean up after a while.
+	  */
+	 if (fr_event_timer_insert(inst->el, mod_cleanup_delay, track, &tv, &track->ev) < 0) {
+		(void) fr_radius_tracking_entry_delete(inst->ft, track);
+		return data_size;
+	 }
 
 	return data_size;
 }

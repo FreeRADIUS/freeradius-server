@@ -221,6 +221,7 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_t *ft, uint8_t 
 		 *	The entry is unused, insert it.
 		 */
 		if (entry->timestamp == 0) {
+			entry->ft = ft;
 			entry->timestamp = timestamp;
 			entry->reply = NULL;
 			entry->reply_len = 0;
@@ -312,6 +313,7 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_t *ft, uint8_t 
 			if (!entry) return FR_TRACKING_ERROR;
 
 			memset(entry, 0, align + ft->src_dst_size);
+			entry->ft = ft;
 			entry->timestamp = timestamp;
 			insert = true;
 
