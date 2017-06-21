@@ -615,15 +615,12 @@ dl_instance_t const *dl_instance_find(void *data)
  * @param[in] ctx	to allocate this instance data in.
  * @param[out] data	Module's private data, the result of parsing the config.
  * @param[in] module	to alloc instance data for.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
  */
-static int dl_instance_data_alloc(TALLOC_CTX *ctx, void **data, dl_t const *module)
+static void dl_instance_data_alloc(TALLOC_CTX *ctx, void **data, dl_t const *module)
 {
 	*data = NULL;
 
-	if (module->common->inst_size == 0) return 0;
+	if (module->common->inst_size == 0) return;
 
 	/*
 	 *	If there is supposed to be instance data, allocate it now.
@@ -636,8 +633,6 @@ static int dl_instance_data_alloc(TALLOC_CTX *ctx, void **data, dl_t const *modu
 	} else {
 		talloc_set_name(*data, "%s", module->common->inst_type);
 	}
-
-	return 0;
 }
 
 /** Load a module library using dlopen() or return a previously loaded module from the cache
@@ -840,13 +835,6 @@ int dl_instance(TALLOC_CTX *ctx, dl_instance_t **out,
 	 */
 	dl_inst->module = dl_module(conf, parent ? parent->module : NULL, name, type);
 	if (!dl_inst->module) {
-		if (parent) {
-			cf_log_err(conf, "Failed loding module for \"%s_%s\"",
-				   parent->module->common->name, name);
-		} else {
-			cf_log_err(conf, "Failed loading module for \"%s_%s\"",
-				   fr_int2str(dl_type_prefix, type, "<INVALID>"), name);
-		}
 		talloc_free(dl_inst);
 		return -1;
 	}
@@ -854,16 +842,7 @@ int dl_instance(TALLOC_CTX *ctx, dl_instance_t **out,
 	/*
 	 *	ctx here is the main module's instance data
 	 */
-	if (dl_instance_data_alloc(dl_inst, &dl_inst->data, dl_inst->module) < 0) {
-		if (parent) {
-			cf_log_perr(conf, "Failed allocating instance data for \"%s_%s\"",
-				    parent->module->common->name, name);
-		} else {
-			cf_log_err(conf, "Failed allocating instance data for \"%s_%s\"",
-				   fr_int2str(dl_type_prefix, type, "<INVALID>"), name);
-		}
-		return -1;
-	}
+	dl_instance_data_alloc(dl_inst, &dl_inst->data, dl_inst->module);
 
 	/*
 	 *	Associate the module instance with the conf section
