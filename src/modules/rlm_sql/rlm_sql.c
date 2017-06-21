@@ -1040,7 +1040,7 @@ static int mod_detach(void *instance)
 	return 0;
 }
 
-static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	rlm_sql_t	*inst = talloc_get_type_abort(instance, rlm_sql_t);
 	CONF_SECTION	*driver_cs;
@@ -1151,7 +1151,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 }
 
 
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_sql_t *inst = instance;
 

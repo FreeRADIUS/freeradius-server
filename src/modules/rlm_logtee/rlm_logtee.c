@@ -521,7 +521,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instanc
 /*
  *	Instantiate the module.
  */
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_logtee_t	*inst = instance;
 	char			prefix[100];

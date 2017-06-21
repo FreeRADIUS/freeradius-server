@@ -295,7 +295,7 @@ static int mod_detach(void *instance)
 /*
  *	Instantiate the module.
  */
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	linelog_instance_t	*inst = instance;
 	char			prefix[100];

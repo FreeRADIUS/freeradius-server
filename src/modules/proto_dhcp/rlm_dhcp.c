@@ -161,7 +161,7 @@ static ssize_t dhcp_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 /*
  *	Instantiate the module.
  */
-static int mod_bootstrap(UNUSED CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
 {
 	rlm_dhcp_t *inst = instance;
 	fr_dict_attr_t const *da;

@@ -98,7 +98,7 @@ static const FR_NAME_NUMBER header_names[] = {
 	{ NULL, 0 }
 };
 
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_pap_t		*inst = instance;
 	fr_dict_enum_t		*dval;

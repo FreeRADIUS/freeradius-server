@@ -255,7 +255,7 @@ static int nvp_cleanup(rlm_sqlhpwippool_t *data)
 }
 
 /* standard foobar code */
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_sqlhpwippool_t	*inst = instance;
 	module_instance_t	*sql_inst;

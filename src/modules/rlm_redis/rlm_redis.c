@@ -322,7 +322,7 @@ finish:
 	return ret;
 }
 
-static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	rlm_redis_t *inst = instance;
 
@@ -334,7 +334,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	return 0;
 }
 
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_redis_t *inst = instance;
 

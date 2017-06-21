@@ -128,7 +128,7 @@ static void mruby_parse_config(mrb_state *mrb, CONF_SECTION *cs, int lvl, mrb_va
  *	to external databases, read configuration files, set up
  *	dictionary entries, etc.
  */
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_mruby_t *inst = instance;
 	mrb_state *mrb;

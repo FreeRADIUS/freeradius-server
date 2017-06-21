@@ -1009,7 +1009,7 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
  *	in *instance otherwise put a null pointer there.
  *
  */
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_python_t	*inst = instance;
 	int		code = 0;

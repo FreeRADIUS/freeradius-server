@@ -768,7 +768,7 @@ static int mod_detach(void *instance)
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_couchbase_t *inst = instance;   /* our module instance */
 

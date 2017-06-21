@@ -368,7 +368,7 @@ static void ub_fd_handler(UNUSED fr_event_list_t *el, UNUSED int sock, UNUSED in
 	}
 }
 
-static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	rlm_unbound_t *inst = instance;
 
@@ -394,7 +394,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	return 0;
 }
 
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_unbound_t *inst = instance;
 	int res;

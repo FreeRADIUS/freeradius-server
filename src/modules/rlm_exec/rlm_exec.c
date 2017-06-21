@@ -194,7 +194,7 @@ static ssize_t exec_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	char const *p;
 	rlm_exec_t	*inst = instance;

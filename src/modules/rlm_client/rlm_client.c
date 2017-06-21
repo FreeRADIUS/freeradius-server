@@ -338,7 +338,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_bootstrap(UNUSED CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
 {
 	xlat_register(instance, "client", xlat_client, NULL, NULL, 0, 0);
 	map_proc_register(instance, "client", map_proc_client, NULL, 0);

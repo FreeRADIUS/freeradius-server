@@ -132,7 +132,7 @@ static ssize_t xlat_idna(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	return len;
 }
 
-static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	rlm_idn_t *inst = instance;
 	char const *xlat_name;

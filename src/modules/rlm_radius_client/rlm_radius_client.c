@@ -647,7 +647,7 @@ static int mod_compile_section(CONF_SECTION *server_cs, char const *name1, char 
 	return 1;
 }
 
-static int mod_bootstrap(CONF_SECTION *config, void *instance)
+static int mod_bootstrap(void *instance, CONF_SECTION *config)
 {
 	int				i;
 	rlm_radius_client_instance_t	*inst = instance;
@@ -745,7 +745,7 @@ static int mod_bootstrap(CONF_SECTION *config, void *instance)
 }
 
 
-static int mod_instantiate(UNUSED CONF_SECTION *config, void *instance)
+static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 {
 	int				rcode;
 	rlm_radius_client_instance_t	*inst = instance;

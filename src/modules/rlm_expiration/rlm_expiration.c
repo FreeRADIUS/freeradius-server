@@ -102,7 +102,7 @@ static int expirecmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *req
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
+static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 {
 	/*
 	 *	Register the expiration comparison operation.

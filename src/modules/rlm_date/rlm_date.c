@@ -101,7 +101,7 @@ error:
 }
 DIAG_ON(format-nonliteral)
 
-static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	rlm_date_t *inst = instance;
 

@@ -668,7 +668,7 @@ static int _module_instantiate(void *instance, UNUSED void *ctx)
 		/*
 		 *	Call the module's instantiation routine.
 		 */
-		if ((mod_inst->module->instantiate)(mod_inst->dl_inst->conf, mod_inst->dl_inst->data) < 0) {
+		if ((mod_inst->module->instantiate)(mod_inst->dl_inst->data, mod_inst->dl_inst->conf) < 0) {
 			cf_log_err(mod_inst->dl_inst->conf, "Instantiation failed for module \"%s\"",
 				   mod_inst->name);
 
@@ -879,7 +879,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	 *	Bootstrap the module.
 	 */
 	if (mod_inst->module->bootstrap &&
-	    ((mod_inst->module->bootstrap)(cs, mod_inst->dl_inst->data) < 0)) {
+	    ((mod_inst->module->bootstrap)(mod_inst->dl_inst->data, cs) < 0)) {
 		cf_log_err(cs, "Bootstrap failed for module \"%s\"", inst_name);
 		talloc_free(mod_inst);
 		return NULL;

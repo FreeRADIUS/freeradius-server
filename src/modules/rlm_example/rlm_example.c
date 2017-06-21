@@ -70,7 +70,7 @@ static int rlm_example_cmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE
  *	to external databases, read configuration files, set up
  *	dictionary entries, etc.
  */
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_example_t	*inst = instance;
 

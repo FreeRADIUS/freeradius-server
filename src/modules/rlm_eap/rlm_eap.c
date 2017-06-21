@@ -113,7 +113,7 @@ int eap_method_instantiate(rlm_eap_method_t **out, rlm_eap_t *inst, eap_type_t n
 	return 0;
 }
 
-static int mod_bootstrap(CONF_SECTION *cs, void *instance)
+static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 {
 	int		i, ret;
 	eap_type_t	method;

@@ -117,7 +117,7 @@ static ssize_t modhex_to_hex_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t out
 }
 
 
-static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	rlm_yubikey_t *inst = instance;
 
@@ -148,7 +148,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_yubikey_t *inst = instance;
 

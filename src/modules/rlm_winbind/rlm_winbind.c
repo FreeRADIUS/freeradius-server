@@ -300,7 +300,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, UNUSED void *instance, UNUSED stru
  *	- 0	success
  *	- -1	failure
  */
-static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	rlm_winbind_t		*inst = instance;
 	fr_dict_attr_t const	*user_name_da;
@@ -344,7 +344,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
  *	- 0	instantiation succeeded
  *	- -1	instantiation failed
  */
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_winbind_t			*inst = instance;
 	struct wbcInterfaceDetails	*wb_info = NULL;

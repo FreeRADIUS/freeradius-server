@@ -201,7 +201,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	return rcode;
 }
 
-static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	rlm_rediswho_t *inst = instance;
 
@@ -212,7 +212,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	return 0;
 }
 
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_rediswho_t *inst = instance;
 

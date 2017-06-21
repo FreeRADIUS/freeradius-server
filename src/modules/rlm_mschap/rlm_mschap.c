@@ -573,7 +573,7 @@ static const CONF_PARSER module_config[] = {
 };
 
 
-static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	char const		*name;
 	rlm_mschap_t		*inst = instance;
@@ -593,7 +593,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
  *	Create instance for our module. Allocate space for
  *	instance structure and read configuration parameters
  */
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_mschap_t		*inst = instance;
 

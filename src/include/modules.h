@@ -108,7 +108,7 @@ typedef rlm_rcode_t (*module_method_t)(void *instance, void *thread, REQUEST *re
  *	- 0 on success.
  *	- -1 if instantiation failed.
  */
-typedef int (*module_instantiate_t)(CONF_SECTION *mod_cs, void *instance);
+typedef int (*module_instantiate_t)(void *instance, CONF_SECTION *mod_cs);
 
 /** Module thread creation callback
  *

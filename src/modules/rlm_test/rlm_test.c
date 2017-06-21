@@ -209,7 +209,7 @@ static int mod_thread_detach(void *thread)
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
+static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 {
 	rlm_test_t *inst = instance;
 

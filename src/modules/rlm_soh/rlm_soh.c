@@ -106,7 +106,7 @@ static const CONF_PARSER module_config[] = {
 };
 
 
-static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	char const	*name;
 	rlm_soh_t	*inst = instance;

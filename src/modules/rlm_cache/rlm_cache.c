@@ -880,7 +880,7 @@ static int mod_detach(void *instance)
 /** Register module xlats
  *
  */
-static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	rlm_cache_t *inst = instance;
 
@@ -900,7 +900,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 /** Create a new rlm_cache_instance
  *
  */
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_cache_t	*inst = instance;
 	CONF_SECTION	*update;

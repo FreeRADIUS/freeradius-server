@@ -1790,7 +1790,7 @@ static ssize_t rpad_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	rlm_expr_t *inst = instance;
 

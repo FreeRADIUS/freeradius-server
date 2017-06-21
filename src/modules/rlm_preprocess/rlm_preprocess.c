@@ -490,7 +490,7 @@ static int add_nas_attr(REQUEST *request)
 /*
  *	Initialize.
  */
-static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
+static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 {
 	int ret;
 	rlm_preprocess_t *inst = instance;

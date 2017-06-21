@@ -70,7 +70,7 @@ static ssize_t xlat_dict_attr_by_num(TALLOC_CTX *ctx, char **out, UNUSED size_t 
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_bootstrap(UNUSED CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
 {
 	xlat_register(instance, "attr_by_num", xlat_dict_attr_by_num, NULL, NULL, 0, 0);
 

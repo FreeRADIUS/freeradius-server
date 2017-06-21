@@ -341,7 +341,7 @@ finish:
 	return rcode;
 }
 
-static int mod_bootstrap(UNUSED CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
 {
 	xlat_register(instance, "jsonquote", jsonquote_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 	xlat_register(instance, "jpathvalidate", jpath_validate_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);

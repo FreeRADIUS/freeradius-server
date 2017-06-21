@@ -128,7 +128,7 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, char const *filename, PAIR_LIST 
 /*
  *	(Re-)read the "attrs" file into memory.
  */
-static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
+static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 {
 	rlm_attr_filter_t *inst = instance;
 	int rcode;

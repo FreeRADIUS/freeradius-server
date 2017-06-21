@@ -372,7 +372,7 @@ finish:
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	module_instance_t	*sql_inst;
 	rlm_sqlippool_t		*inst = instance;

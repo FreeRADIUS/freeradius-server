@@ -189,7 +189,7 @@ static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 /*
  *	Register the xlats
  */
-static int mod_bootstrap(CONF_SECTION *conf, UNUSED void *instance)
+static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *conf)
 {
 	if (cf_section_name2(conf)) return 0;
 

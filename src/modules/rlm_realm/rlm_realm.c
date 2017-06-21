@@ -359,7 +359,7 @@ static int check_for_realm(void const *instance, REQUEST *request, REALM **retur
  *  stored in *instance for later use.
  */
 
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	struct rlm_realm_t *inst = instance;
 

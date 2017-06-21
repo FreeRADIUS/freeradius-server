@@ -420,7 +420,7 @@ static int mod_detach(void *instance)
 }
 
 
-static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
+static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 {
 	rlm_securid_t *inst = instance;
 

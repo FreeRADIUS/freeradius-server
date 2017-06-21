@@ -115,7 +115,7 @@ static int detail_cmp(void const *a, void const *b)
 /*
  *	(Re-)read radiusd.conf into memory.
  */
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_detail_t *inst = instance;
 	CONF_SECTION	*cs;

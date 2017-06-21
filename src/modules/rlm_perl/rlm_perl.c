@@ -493,7 +493,7 @@ static void perl_parse_config(CONF_SECTION *cs, int lvl, HV *rad_hv)
 	DEBUG("%*s}", indent_section, " ");
 }
 
-static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	rlm_perl_t	*inst = instance;
 
@@ -521,7 +521,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
  *	parse a module and give him a chance to live
  *
  */
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_perl_t	*inst = instance;
 	AV		*end_AV;

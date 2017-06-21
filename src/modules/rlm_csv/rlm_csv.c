@@ -269,7 +269,7 @@ static int csv_map_verify(CONF_SECTION *cs, void *mod_inst, UNUSED void *proc_in
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	rlm_csv_t *inst = instance;
 	int i;

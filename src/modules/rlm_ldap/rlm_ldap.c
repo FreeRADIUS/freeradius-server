@@ -1421,7 +1421,7 @@ static int parse_sub_section(rlm_ldap_t *inst, CONF_SECTION *parent, ldap_acct_s
  *	- 0 on success.
  *	- < 0 on failure.
  */
-static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	rlm_ldap_t	*inst = instance;
 	char		buffer[256];
@@ -1486,7 +1486,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
  *	- 0 on success.
  *	- < 0 on failure.
  */
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	size_t		i;
 

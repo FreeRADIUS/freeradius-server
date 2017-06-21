@@ -92,7 +92,7 @@ static void _tls_interp_destroy(void *ctx)
 	pthread_mutex_unlock(inst->mutex);
 }
 
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_lua_t *inst = instance;
 

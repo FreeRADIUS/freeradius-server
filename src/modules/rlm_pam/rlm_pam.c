@@ -63,7 +63,7 @@ typedef struct rlm_pam_data_t {
 	bool		error;		//!< True if pam_conv failed.
 } rlm_pam_data_t;
 
-static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
+static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 {
 	rlm_pam_t *inst = instance;
 

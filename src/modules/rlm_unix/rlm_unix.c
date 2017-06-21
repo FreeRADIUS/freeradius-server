@@ -126,7 +126,7 @@ static int groupcmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE_PAIR *
 /*
  *	Read the config
  */
-static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	rlm_unix_t		*inst = instance;
 	fr_dict_attr_t const	*group_da, *user_name_da;

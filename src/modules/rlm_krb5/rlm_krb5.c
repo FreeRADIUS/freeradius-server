@@ -62,7 +62,7 @@ static int mod_detach(void *instance)
 	return 0;
 }
 
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_krb5_t *inst = instance;
 	krb5_error_code ret;
