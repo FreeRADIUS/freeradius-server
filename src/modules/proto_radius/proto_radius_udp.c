@@ -150,20 +150,62 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, uint8_t *buffer
 	return packet_len;
 }
 
-static ssize_t mod_write(void const *instance, void *packet_ctx, uint8_t *buffer, size_t buffer_len)
+static ssize_t mod_write(void const *instance, fr_time_t request_time, void *packet_ctx, uint8_t *buffer, size_t buffer_len)
 {
 	proto_radius_udp_t const	*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
 	fr_tracking_entry_t		*track = packet_ctx;
 	fr_udp_src_dst_t		*src_dst = track->src_dst;
 
 	ssize_t				data_size;
+	fr_time_t			reply_time;
 
-	data_size = udp_send(inst->sockfd, buffer, buffer_len, 0,
-			     &src_dst->dst_ipaddr, src_dst->dst_port,
-			     src_dst->if_index,
-			     &src_dst->src_ipaddr, src_dst->src_port);
+	/*
+	 *	The original packet has changed.  Suppress the write,
+	 *	as the client will never accept the response.
+	 */
+	if (track->timestamp != request_time) return buffer_len;
 
-	(void) fr_radius_tracking_entry_delete(inst->ft, track);
+	/*
+	 *	Figure out when we've sent the reply.
+	 */
+	 reply_time = fr_time();
+
+	/*
+	 *	Only write replies if they're RADIUS packets.
+	 *	sometimes we want to NOT send a reply...
+	 */
+	if (buffer_len >= 20) {
+		data_size = udp_send(inst->sockfd, buffer, buffer_len, 0,
+				     &src_dst->dst_ipaddr, src_dst->dst_port,
+				     src_dst->if_index,
+				     &src_dst->src_ipaddr, src_dst->src_port);
+	} else {
+		/*
+		 *	Otherwise lie, and say we've written it all...
+		 */
+		data_size = buffer_len;
+	}
+
+	/*
+	 *	Most packets are cleaned up immediately.
+	 */
+	 if ((track->data[0] != FR_CODE_ACCESS_REQUEST) || !inst->el) {
+		(void) fr_radius_tracking_entry_delete(inst->ft, track);
+		return data_size;
+	}
+
+	 /*
+	  *	Add the reply to the tracking entry.
+	  */
+	 if (fr_radius_tracking_entry_reply(inst->ft, track, request_time, reply_time,
+					    buffer, buffer_len) < 0) {
+		(void) fr_radius_tracking_entry_delete(inst->ft, track);
+		return data_size;
+	 }
+
+	 /*
+	  *	@todo - set cleanup_delay
+	  */
 
 	return data_size;
 }

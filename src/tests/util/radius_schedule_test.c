@@ -150,7 +150,7 @@ static ssize_t test_read(void const *ctx, UNUSED void **packet_ctx, uint8_t *buf
 }
 
 
-static ssize_t test_write(void const *ctx, UNUSED void *packet_ctx, uint8_t *buffer, size_t buffer_len)
+static ssize_t test_write(void const *ctx, UNUSED fr_time_t request_time, UNUSED void *packet_ctx, uint8_t *buffer, size_t buffer_len)
 {
 	ssize_t			data_size;
 	fr_listen_test_t	*io_ctx = talloc_get_type_abort(ctx, fr_listen_test_t);

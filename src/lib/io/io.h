@@ -209,15 +209,16 @@ typedef ssize_t (*fr_io_data_read_t)(void const *instance, void **packet_ctx, ui
  *  saying "I took saved the data, but the socket wasn't ready, so you
  *  need to call me again at a later point".
  *
- * @param[in,out] buffer	the buffer where the raw packet will be written to (or read from)
- * @param[in] buffer_len	the length of the buffer
  * @param[in] instance		the context for this function
+ * @param[in] request_time	when the original request was received
  * @param[in] packet_ctx	Request specific data.
+ * @param[in] buffer	the buffer where the raw packet will be written from
+ * @param[in] buffer_len	the length of the buffer
  * @return
  *	- <0 on error
  *	- >=0 length of the data read or written.
  */
-typedef ssize_t (*fr_io_data_write_t)(void const *instance, void *packet_ctx, uint8_t *buffer, size_t buffer_len);
+typedef ssize_t (*fr_io_data_write_t)(void const *instance, fr_time_t request_time, void *packet_ctx, uint8_t *buffer, size_t buffer_len);
 
 /**  Handle a close or error on the socket.
  *
