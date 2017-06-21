@@ -192,8 +192,6 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, uint8_t *buffer
 		return 0;
 	}
 
-
-
 	tracking_status = fr_radius_tracking_entry_insert(&track, inst->ft, buffer, address.timestamp, &address);
 	switch (tracking_status) {
 	case FR_TRACKING_ERROR:
@@ -233,7 +231,8 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, uint8_t *buffer
 	return packet_len;
 }
 
-static ssize_t mod_write(void const *instance, fr_time_t request_time, void *packet_ctx, uint8_t *buffer, size_t buffer_len)
+static ssize_t mod_write(void const *instance, void *packet_ctx,
+			 fr_time_t request_time, uint8_t *buffer, size_t buffer_len)
 {
 	proto_radius_udp_t const	*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
 	fr_tracking_entry_t		*track = packet_ctx;

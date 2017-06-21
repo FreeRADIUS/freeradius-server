@@ -424,8 +424,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	if (size) {
 		ssize_t encoded;
 
-		encoded = request->async->io->encode(request->async->io->app_io_instance,
-						     request, reply->m.data, reply->m.rb_size);
+		encoded = request->async->listen->encode(request, reply->m.data, reply->m.rb_size);
 		if (encoded < 0) {
 			fr_log(worker->log, L_DBG, "\t%sfails encode", worker->name);
 			encoded = 0;
@@ -453,7 +452,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	reply->reply.processing_time = request->async->tracking.running;
 	reply->reply.request_time = request->async->recv_time;
 
-	reply->listen = request->async->io;
+	reply->listen = request->async->listen;
 	reply->packet_ctx = request->async->packet_ctx;
 
 	fr_log(worker->log, L_DBG, "(%"PRIu64") finished, sending reply", request->number);
@@ -699,16 +698,16 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	request->async->el = worker->el;
 	request->number = worker->number++;
 
-	request->async->io = cd->listen;
+	request->async->listen = cd->listen;
 	request->async->packet_ctx = cd->packet_ctx;
-	listen = request->async->io;
+	listen = request->async->listen;
 
 	/*
 	 *	Now that the "request" structure has been initialized, go decode the packet.
 	 *
 	 *	Note that this also sets the "async process" function.
 	 */
-	rcode = listen->decode(listen->app_io_instance, request, cd->m.data, cd->m.data_size);
+	rcode = listen->decode(request, cd->m.data, cd->m.data_size);
 	if (rcode < 0) {
 		fr_log(worker->log, L_DBG, "\t%sFAILED decode of request %"PRIu64, worker->name, request->number);
 		talloc_free(ctx);
@@ -850,7 +849,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 		return;
 
 	case FR_IO_REPLY:
-		size = request->async->io->app_io->default_message_size;
+		size = request->async->listen->app_io->default_message_size;
 		break;
 	}
 
@@ -1179,7 +1178,7 @@ static void fr_worker_post_event(UNUSED fr_event_list_t *el, UNUSED struct timev
 	if (!request) return;
 
 	rad_assert(request->async->process != NULL);
-	rad_assert(request->async->io != NULL);
+	rad_assert(request->async->listen != NULL);
 
 	/*
 	 *	Run the request, and either track it as

@@ -35,6 +35,8 @@ RCSIDH(transport_h, "$Id$")
 extern "C" {
 #endif
 
+typedef struct fr_listen fr_listen_t;
+
 /**
  *  Tell an async process function if it should run or exit.
  */
@@ -92,16 +94,14 @@ typedef int (*fr_io_get_fd_t)(void const *instance);
  *  know anything about how the data will be used (e.g. authorize,
  *  authenticate, etc. for Access-Request)
  *
- *
  * @param[in] data		the raw packet data
  * @param[in] data_len		the length of the raw data
- * @param[in,out] request	where the decoded VPs should be placed.
- * @param[in] instance		the context for this function.
+ * @param[in] request		where the decoded VPs should be placed.
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-typedef int (*fr_io_decode_t)(void const *instance, REQUEST *request, uint8_t *const data, size_t data_len);
+typedef int (*fr_io_decode_t)(REQUEST *request, uint8_t *const data, size_t data_len);
 
 /** Encode data from a REQUEST into a raw packet.
  *
@@ -113,16 +113,14 @@ typedef int (*fr_io_decode_t)(void const *instance, REQUEST *request, uint8_t *c
  *  know anything about how the data will be used (e.g. reject delay
  *  on Access-Reject)
  *
-
- * @param[in,out]		request where the VPs to be encoded are located
- * @param[in] buffer		the buffer where the raw packet will be written
+ * @param[in] request		request where the VPs to be encoded are located
+ * @param[out] buffer		the buffer where the raw packet will be written
  * @param[in] buffer_len	the length of the buffer
- * @param[in] instance		the context for this function.
  * @return
  *	- <0 on error
  *	- >=0 length of the encoded data in the buffer, will be <=buffer_len
  */
-typedef ssize_t (*fr_io_encode_t)(void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len);
+typedef ssize_t (*fr_io_encode_t)(REQUEST *request, uint8_t *buffer, size_t buffer_len);
 
 /** NAK a packet.
  *
@@ -210,15 +208,16 @@ typedef ssize_t (*fr_io_data_read_t)(void const *instance, void **packet_ctx, ui
  *  need to call me again at a later point".
  *
  * @param[in] instance		the context for this function
- * @param[in] request_time	when the original request was received
  * @param[in] packet_ctx	Request specific data.
- * @param[in] buffer	the buffer where the raw packet will be written from
+ * @param[in] request_time	when the original request was received
+ * @param[in] buffer		the buffer where the raw packet will be written from
  * @param[in] buffer_len	the length of the buffer
  * @return
  *	- <0 on error
  *	- >=0 length of the data read or written.
  */
-typedef ssize_t (*fr_io_data_write_t)(void const *instance, fr_time_t request_time, void *packet_ctx, uint8_t *buffer, size_t buffer_len);
+typedef ssize_t (*fr_io_data_write_t)(void const *instance, void *packet_ctx, fr_time_t request_time,
+				      uint8_t *buffer, size_t buffer_len);
 
 /**  Handle a close or error on the socket.
  *

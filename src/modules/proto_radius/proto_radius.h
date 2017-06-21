@@ -49,8 +49,7 @@ typedef int (*proto_radius_addr_get_t)(fr_socket_addr_t *sockaddr,
  */
 typedef struct {
 	proto_radius_client_get_t	client;				//!< Retrieve the client the packet was
-									///< received from if any.
-									///< NULL field indicates unsupported.
+									///< received from.
 
 	proto_radius_addr_get_t		src;				//!< Retrieve the src address of the packet.
 	proto_radius_addr_get_t		dst;				//!< Retrieve the dst address of the packet.

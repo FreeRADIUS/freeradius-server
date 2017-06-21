@@ -748,8 +748,8 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 		 *	the reply is a NAK, don't write it to the
 		 *	network.
 		 */
-		rcode = listen->app_io->write(listen->app_io_instance, cd->reply.request_time,
-					      cd->packet_ctx, cd->m.data, cd->m.data_size);
+		rcode = listen->app_io->write(listen->app_io_instance, cd->packet_ctx,
+					      cd->reply.request_time, cd->m.data, cd->m.data_size);
 		if (rcode < 0) {
 			fr_network_socket_t my_socket, *s;
 

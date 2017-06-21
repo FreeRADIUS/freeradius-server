@@ -50,7 +50,7 @@ struct fr_async_t {
 
 	uint32_t		priority;
 	void			*packet_ctx;
-	fr_listen_t const	*io;		//!< How we received this request,
+	fr_listen_t const	*listen;	//!< How we received this request,
 						//!< and how we'll send the reply.
 };
 #endif

@@ -70,9 +70,9 @@ static fr_io_final_t test_process(REQUEST *request, fr_io_action_t action)
 	return FR_IO_REPLY;
 }
 
-static int test_decode(void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
+static int test_decode(REQUEST *request, uint8_t *const data, size_t data_len)
 {
-	fr_listen_test_t const *pc = instance;
+	fr_listen_test_t const *pc = request->async->listen->app_instance;
 
 	request->async->process = test_process;
 
@@ -83,10 +83,10 @@ static int test_decode(void const *instance, REQUEST *request, uint8_t *const da
 	return 0;
 }
 
-static ssize_t test_encode(void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
+static ssize_t test_encode(REQUEST *request, uint8_t *buffer, size_t buffer_len)
 {
 	FR_MD5_CTX context;
-	fr_listen_test_t const *pc = instance;
+	fr_listen_test_t const *pc = request->async->listen->app_instance;
 
 	MPRINT1("\t\tENCODE >>> request %"PRIu64"- data %p %p room %zd\n", request->number, pc, buffer, buffer_len);
 
@@ -150,7 +150,8 @@ static ssize_t test_read(void const *ctx, UNUSED void **packet_ctx, uint8_t *buf
 }
 
 
-static ssize_t test_write(void const *ctx, UNUSED fr_time_t request_time, UNUSED void *packet_ctx, uint8_t *buffer, size_t buffer_len)
+static ssize_t test_write(void const *ctx, UNUSED void *packet_ctx,  UNUSED fr_time_t request_time,
+			  uint8_t *buffer, size_t buffer_len)
 {
 	ssize_t			data_size;
 	fr_listen_test_t	*io_ctx = talloc_get_type_abort(ctx, fr_listen_test_t);

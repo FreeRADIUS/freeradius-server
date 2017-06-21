@@ -105,7 +105,7 @@ static fr_io_final_t test_process(REQUEST *request, fr_io_action_t action)
 	return FR_IO_REPLY;
 }
 
-static int test_decode(void const *packet_ctx, REQUEST *request, uint8_t *const data, size_t data_len)
+static int test_decode(REQUEST *request, uint8_t *const data, size_t data_len)
 {
 	uint32_t number;
 
@@ -117,13 +117,15 @@ static int test_decode(void const *packet_ctx, REQUEST *request, uint8_t *const 
 
 	request->async->process = test_process;
 
-	MPRINT1("\t\tDECODE <<< request %"PRIu64" - %p data %p size %zd\n", request->number, packet_ctx, data, data_len);
+	MPRINT1("\t\tDECODE <<< request %"PRIu64" - %p data %p size %zd\n", request->number,
+		request->async->packet_ctx, data, data_len);
 	return 0;
 }
 
-static ssize_t test_encode(void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
+static ssize_t test_encode(REQUEST *request, uint8_t *const data, size_t data_len)
 {
-	MPRINT1("\t\tENCODE >>> request %"PRIu64" - data %p %p size %zd\n", request->number, instance, data, data_len);
+	MPRINT1("\t\tENCODE >>> request %"PRIu64" - data %p %p size %zd\n", request->number,
+		request->async->listen->app_instance, data, data_len);
 
 	return data_len;
 }
