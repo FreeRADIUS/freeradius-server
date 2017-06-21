@@ -34,17 +34,17 @@
 #include "proto_radius.h"
 
 typedef struct {
-	int			if_index;
+	int				if_index;
 
-	fr_ipaddr_t		src_ipaddr;
-	fr_ipaddr_t		dst_ipaddr;
-	uint16_t		src_port;
-	uint16_t 		dst_port;
+	fr_ipaddr_t			src_ipaddr;
+	fr_ipaddr_t			dst_ipaddr;
+	uint16_t			src_port;
+	uint16_t 			dst_port;
 
-	fr_time_t		timestamp;
+	fr_time_t			timestamp;
 
-	RADCLIENT		*client;
-} fr_udp_src_dst_t;
+	RADCLIENT			*client;
+} proto_radius_udp_address_t;
 
 typedef struct {
 	proto_radius_t	const		*parent;		//!< The module that spawned us!
@@ -69,8 +69,6 @@ typedef struct {
 
 	fr_tracking_t			*ft;			//!< tracking table
 	uint32_t			cleanup_delay;		//!< cleanup delay for Access-Request packets
-
-	RADCLIENT			*dummy_client;
 } proto_radius_udp_t;
 
 static const CONF_PARSER udp_listen_config[] = {
@@ -89,7 +87,6 @@ static const CONF_PARSER udp_listen_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-
 static void mod_cleanup_delay(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
 {
 	fr_tracking_entry_t *track = uctx;
@@ -98,6 +95,54 @@ static void mod_cleanup_delay(UNUSED fr_event_list_t *el, UNUSED struct timeval 
 	(void) fr_radius_tracking_entry_delete(track->ft, track);
 }
 
+/** Return the src address associated with the packet_ctx
+ *
+ */
+static int mod_src_address(fr_socket_addr_t *src, UNUSED void const *instance, void const *packet_ctx)
+{
+	fr_tracking_entry_t const		*track = packet_ctx;
+	proto_radius_udp_address_t const	*address = track->src_dst;
+
+	rad_assert(track->src_dst_size == sizeof(proto_radius_udp_address_t));
+
+	memset(src, 0, sizeof(*src));
+
+	src->proto = IPPROTO_UDP;
+	memcpy(&src->ipaddr, &address->src_ipaddr, sizeof(src->ipaddr));
+
+	return 0;
+}
+
+/** Return the dst address associated with the packet_ctx
+ *
+ */
+static int mod_dst_address(fr_socket_addr_t *dst, UNUSED void const *instance, void const *packet_ctx)
+{
+	fr_tracking_entry_t const		*track = packet_ctx;
+	proto_radius_udp_address_t const	*address = track->src_dst;
+
+	rad_assert(track->src_dst_size == sizeof(proto_radius_udp_address_t));
+
+	memset(dst, 0, sizeof(*dst));
+
+	dst->proto = IPPROTO_UDP;
+	memcpy(&dst->ipaddr, &address->dst_ipaddr, sizeof(dst->ipaddr));
+
+	return 0;
+}
+
+/** Return the client associated with the packet_ctx
+ *
+ */
+static RADCLIENT *mod_client(UNUSED void const *instance, void const *packet_ctx)
+{
+	fr_tracking_entry_t const		*track = packet_ctx;
+	proto_radius_udp_address_t const	*address = track->src_dst;
+
+	rad_assert(track->src_dst_size == sizeof(proto_radius_udp_address_t));
+
+	return address->client;
+}
 
 static ssize_t mod_read(void const *instance, void **packet_ctx, uint8_t *buffer, size_t buffer_len)
 {
@@ -110,12 +155,12 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, uint8_t *buffer
 	struct timeval			timestamp;
 	fr_tracking_status_t		tracking_status;
 	fr_tracking_entry_t		*track;
-	fr_udp_src_dst_t		src_dst;
+	proto_radius_udp_address_t	address;
 
 	data_size = udp_recv(inst->sockfd, buffer, buffer_len, 0,
-			     &src_dst.src_ipaddr, &src_dst.src_port,
-			     &src_dst.dst_ipaddr, &src_dst.dst_port,
-			     &src_dst.if_index, &timestamp);
+			     &address.src_ipaddr, &address.src_port,
+			     &address.dst_ipaddr, &address.dst_port,
+			     &address.if_index, &timestamp);
 	if (data_size <= 0) return data_size;
 
 	packet_len = data_size;
@@ -123,29 +168,37 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, uint8_t *buffer
 	/*
 	 *	If it's not a RADIUS packet, ignore it.
 	 */
-	if (!fr_radius_ok(buffer, &packet_len, false, &reason)) {
+	if (!fr_radius_ok(buffer, &packet_len, false, &reason)) return 0;
+
+	address.timestamp = fr_time();
+
+	/*
+	 *	Lookup the client - Must exist to continue.
+	 */
+	address.client = client_find(NULL, &address.src_ipaddr, IPPROTO_UDP);
+	if (!address.client) {
+		ERROR("Unknown client at address %pV:%u.  Ignoring...",
+		      fr_box_ipaddr(address.src_ipaddr), address.src_port);
+
 		return 0;
 	}
-
-	src_dst.timestamp = fr_time();
 
 	/*
 	 *	If the signature fails validation, ignore it.
 	 */
 	if (fr_radius_verify(buffer, NULL,
-			     (uint8_t const *)inst->dummy_client->secret,
-			     talloc_array_length(inst->dummy_client->secret)) < 0) {
+			     (uint8_t const *)address.client->secret,
+			     talloc_array_length(address.client->secret)) < 0) {
 		return 0;
 	}
 
-	src_dst.client = inst->dummy_client;
 
-	tracking_status = fr_radius_tracking_entry_insert(inst->ft, buffer, src_dst.timestamp, &src_dst, &track);
 
+	tracking_status = fr_radius_tracking_entry_insert(&track, inst->ft, buffer, address.timestamp, &address);
 	switch (tracking_status) {
 	case FR_TRACKING_ERROR:
 	case FR_TRACKING_UNUSED:
-		return -1;
+		return -1;	/* Fatal */
 
 		/*
 		 *	If the entry already has a cleanup delay, we
@@ -164,9 +217,9 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, uint8_t *buffer
 		}
 		return 0;
 
-		/*
-		 *	Delete any pre-existing cleanup_delay timers.
-		 */
+	/*
+	 *	Delete any pre-existing cleanup_delay timers.
+	 */
 	case FR_TRACKING_DIFFERENT:
 		if (track->ev) (void) fr_event_timer_delete(inst->el, &track->ev);
 		break;
@@ -184,7 +237,7 @@ static ssize_t mod_write(void const *instance, fr_time_t request_time, void *pac
 {
 	proto_radius_udp_t const	*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
 	fr_tracking_entry_t		*track = packet_ctx;
-	fr_udp_src_dst_t		*src_dst = track->src_dst;
+	proto_radius_udp_address_t	*address = track->src_dst;
 
 	ssize_t				data_size;
 	fr_time_t			reply_time;
@@ -207,9 +260,9 @@ static ssize_t mod_write(void const *instance, fr_time_t request_time, void *pac
 	 */
 	if (buffer_len >= 20) {
 		data_size = udp_send(inst->sockfd, buffer, buffer_len, 0,
-				     &src_dst->dst_ipaddr, src_dst->dst_port,
-				     src_dst->if_index,
-				     &src_dst->src_ipaddr, src_dst->src_port);
+				     &address->dst_ipaddr, address->dst_port,
+				     address->if_index,
+				     &address->src_ipaddr, address->src_port);
 	} else {
 		/*
 		 *	Otherwise lie, and say we've written it all...
@@ -362,9 +415,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 
 	FR_INTEGER_BOUND_CHECK("cleanup_delay", inst->cleanup_delay, <=, 30);
 
-	inst->dummy_client = client_afrom_query(inst, "127.0.0.1", "testing123", "test", "test", NULL, false);
-
-	inst->ft = fr_radius_tracking_create(inst, sizeof(fr_udp_src_dst_t), inst->parent->code_allowed);
+	inst->ft = fr_radius_tracking_create(inst, sizeof(proto_radius_udp_address_t), inst->parent->code_allowed);
 	if (!inst->ft) {
 		cf_log_err(cs, "Failed to create tracking table: %s", fr_strerror());
 	}
@@ -389,6 +440,16 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *cs)
 
 	return 0;
 }
+
+/** Private interface for use by proto_radius
+ *
+ */
+extern proto_radius_app_io_t proto_radius_app_io_private;
+proto_radius_app_io_t proto_radius_app_io_private = {
+	.client			= mod_client,
+	.src			= mod_src_address,
+	.dst			= mod_dst_address
+};
 
 extern fr_app_io_t proto_radius_udp;
 fr_app_io_t proto_radius_udp = {

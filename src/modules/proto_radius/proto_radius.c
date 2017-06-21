@@ -358,7 +358,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
  */
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
-	proto_radius_t 	*inst = talloc_get_type_abort(instance, proto_radius_t);
+	proto_radius_t 		*inst = talloc_get_type_abort(instance, proto_radius_t);
 	size_t			i = 0;
 	CONF_PAIR		*cp = NULL;
 
@@ -368,6 +368,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->app_io = (fr_app_io_t const *) inst->io_submodule->module->common;
 	inst->app_io_instance = inst->io_submodule->data;
 	inst->app_io_conf = inst->io_submodule->conf;
+	inst->app_io_private = dl_instance_symbol(inst->app_io_instance, "proto_radius_app_io_private");
+	rad_assert(inst->app_io_private);
+
 	if (inst->app_io->bootstrap && (inst->app_io->bootstrap(inst->app_io_instance,
 								inst->app_io_conf) < 0)) {
 		cf_log_err(inst->app_io_conf, "Bootstrap failed for \"%s\"", inst->app_io->name);
