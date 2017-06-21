@@ -880,7 +880,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	 */
 	if (mod_inst->module->bootstrap &&
 	    ((mod_inst->module->bootstrap)(cs, mod_inst->dl_inst->data) < 0)) {
-		cf_log_err(cs, "Instantiation failed for module \"%s\"", inst_name);
+		cf_log_err(cs, "Bootstrap failed for module \"%s\"", inst_name);
 		talloc_free(mod_inst);
 		return NULL;
 	}
