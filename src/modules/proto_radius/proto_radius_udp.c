@@ -51,6 +51,8 @@ typedef struct {
 
 	int				sockfd;
 
+	fr_event_list_t			*el;			//!< for cleanup timers on Access-Request
+
 	fr_ipaddr_t			ipaddr;			//!< Ipaddr to listen on.
 
 	bool				ipaddr_is_set;		//!< ipaddr config item is set.
@@ -209,6 +211,33 @@ static int mod_fd(void const *instance)
 	return inst->sockfd;
 }
 
+
+/** Set the event list for a new socket
+ *
+ * @param[in] instance of the RADIUS UDP I/O path.
+ */
+static void mod_event_list_set(void const *instance, fr_event_list_t *el)
+{
+	proto_radius_udp_t *inst;
+
+	memcpy(&inst, &instance, sizeof(inst)); /* const issues */
+
+	inst = talloc_get_type_abort(instance, proto_radius_udp_t);
+
+	/*
+	 *	Only Access-Request gets a cleanup delay.
+	 */
+	if (!inst->parent->code_allowed[FR_CODE_ACCESS_REQUEST]) return;
+
+	/*
+	 *	And then, only if it is non-zero.
+	 */
+	if (!inst->cleanup_delay) return;
+
+	inst->el = el;
+}
+
+
 static int mod_instantiate(void *instance, CONF_SECTION *cs)
 {
 	proto_radius_udp_t *inst = talloc_get_type_abort(instance, proto_radius_udp_t);
@@ -287,5 +316,6 @@ fr_app_io_t proto_radius_udp = {
 	.open			= mod_open,
 	.read			= mod_read,
 	.write			= mod_write,
-	.fd			= mod_fd
+	.fd			= mod_fd,
+	.event_list_set		= mod_event_list_set,
 };
