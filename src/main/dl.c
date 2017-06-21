@@ -484,7 +484,13 @@ static int _dl_free(dl_t *module)
 	module->handle = NULL;
 
 	rbtree_deletebydata(dl->tree, module);
-	if (rbtree_num_elements(dl->tree) == 0) talloc_free(dl);
+
+	/*
+	 *	If everything has been freed, autofree the tree.
+	 *	dl *MUST* be set to NULL, so that if the server decides to
+	 *	load more modules, the tree is recreated.
+	 */
+	if (rbtree_num_elements(dl->tree) == 0) TALLOC_FREE(dl);
 
 	return 0;
 }
