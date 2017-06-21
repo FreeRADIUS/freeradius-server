@@ -67,7 +67,7 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_t *ft, uint8_t 
 						     fr_time_t timestamp, void *src_dst,
 						     fr_tracking_entry_t **p_entry);
 int fr_radius_tracking_entry_reply(fr_tracking_t *ft, fr_tracking_entry_t *entry,
-				   fr_time_t request_timestamp, fr_time_t reply_timestamp,
+				   fr_time_t reply_time,
 				   uint8_t const *reply, size_t reply_len);
 
 #ifdef __cplusplus

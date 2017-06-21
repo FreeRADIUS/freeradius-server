@@ -187,7 +187,9 @@ static ssize_t mod_write(void const *instance, fr_time_t request_time, void *pac
 	}
 
 	/*
-	 *	Most packets are cleaned up immediately.
+	 *	Most packets are cleaned up immediately.  Also, if
+	 *	cleanup_delay = 0, then we even clean up
+	 *	Access-Request packets immediately.
 	 */
 	 if ((track->data[0] != FR_CODE_ACCESS_REQUEST) || !inst->el) {
 		(void) fr_radius_tracking_entry_delete(inst->ft, track);
@@ -197,7 +199,7 @@ static ssize_t mod_write(void const *instance, fr_time_t request_time, void *pac
 	 /*
 	  *	Add the reply to the tracking entry.
 	  */
-	 if (fr_radius_tracking_entry_reply(inst->ft, track, request_time, reply_time,
+	 if (fr_radius_tracking_entry_reply(inst->ft, track, reply_time,
 					    buffer, buffer_len) < 0) {
 		(void) fr_radius_tracking_entry_delete(inst->ft, track);
 		return data_size;
