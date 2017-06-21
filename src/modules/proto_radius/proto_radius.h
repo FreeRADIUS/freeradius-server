@@ -26,7 +26,7 @@
 
 /** Return the RADIUS client associated with the request
  *
- * @param[in] instance		#app_io_t instance.
+ * @param[in] instance		#fr_app_io_t instance.
  * @param[in] packet_ctx	as allocated/returned by the #fr_app_io_t.
  */
 typedef RADCLIENT *(*proto_radius_client_get_t)(void const *instance, void const *packet_ctx);
@@ -34,7 +34,7 @@ typedef RADCLIENT *(*proto_radius_client_get_t)(void const *instance, void const
 /** Get src/dst address from the #fr_app_io_t module
  *
  * @param[out] sockaddr		structure to populate.  If UNIX socket, path will be a shallow copy.
- * @param[in] instance		#app_io_t instance.
+ * @param[in] instance		#fr_app_io_t instance.
  * @param[in] packet_ctx	as allocated/returned by the #fr_app_io_t.
  * @return
  *	- 0 on success.
