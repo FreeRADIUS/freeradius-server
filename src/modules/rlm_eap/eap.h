@@ -65,20 +65,20 @@ struct _eap_session {
 	eap_type_t	type;				//!< EAP method number.
 
 	REQUEST		*request;			//!< Current request.  Only used by OpenSSL callbacks to
-							//!< access the current request.  Must be NULL if eap_session
-							//!< is not being processed by rlm_eap.
+							///< access the current request.  Must be NULL if eap_session
+							///< is not being processed by rlm_eap.
 
 	char		*identity;			//!< NAI (User-Name) from EAP-Identity
 
 	eap_round_t 	*prev_round;			//!< Previous response/request pair. #this_round should contain
-							//!< the response to the request in #prev_round.
+							///< the response to the request in #prev_round.
 	eap_round_t 	*this_round;			//!< The EAP response we're processing, and the EAP request
-							//!< we're building.
+							///< we're building.
 
 	void 		*opaque;			//!< Opaque data used by EAP methods.
 
 	eap_process_t	process;			//!< Callback that should be used to process the next round.
-							//!< Usually set to the process functino of an EAP submodule.
+							///< Usually set to the process functino of an EAP submodule.
 	int		rounds;				//!< How many roundtrips have occurred this session.
 
 	time_t		updated;			//!< The last time we received a packet for this EAP session.
