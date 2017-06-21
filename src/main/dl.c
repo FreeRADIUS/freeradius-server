@@ -782,6 +782,24 @@ static int _dl_instance_free(dl_instance_t *dl_inst)
 	return 0;
 }
 
+/** Retrieve a public symbol from a module using dlsym
+ *
+ * Convenience function to lookup/return public symbols from modules loaded
+ * with #dl_instance.
+ *
+ * @param[in] dl_inst	Instance who's module we're looking for the symbol in.
+ * @param[in] sym_name	to lookup.
+ * @return
+ *	- Pointer to the public data structure.
+ * 	- NULL if no matching symbol was found.
+ */
+void *dl_instance_symbol(dl_instance_t const *dl_inst, char const *sym_name)
+{
+	if (!sym_name) return NULL;
+
+ 	return dlsym(dl_inst->module->handle, sym_name);
+}
+
 /** Load a module and parse its #CONF_SECTION in one operation
  *
  *

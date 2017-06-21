@@ -169,9 +169,11 @@ int			dl_symbol_free_cb_register(char const *symbol, dl_free_t func, void *ctx);
 
 void			dl_symbol_free_cb_unregister(char const *symbol, dl_free_t func);
 
+dl_t const		*dl_module(CONF_SECTION *conf, dl_t const *parent, char const *name, dl_type_t type);	/* DEPRECATED */
+
 dl_instance_t const	*dl_instance_find(void *data);
 
-dl_t const		*dl_module(CONF_SECTION *conf, dl_t const *parent, char const *name, dl_type_t type);	/* DEPRECATED */
+void			*dl_instance_symbol(dl_instance_t const *instance, char const *sym_name);
 
 int			dl_instance(TALLOC_CTX *ctx, dl_instance_t **out,
 				    CONF_SECTION *conf, dl_instance_t const *parent, char const *name, dl_type_t type);
