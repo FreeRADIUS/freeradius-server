@@ -366,7 +366,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->app_io = (fr_app_io_t const *) inst->io_submodule->module->common;
 	inst->app_io_instance = inst->io_submodule->data;
 	inst->app_io_conf = inst->io_submodule->conf;
-	inst->app_io_private = dl_instance_symbol(inst->app_io_instance, "proto_radius_app_io_private");
+	inst->app_io_private = dl_instance_symbol(dl_instance_find(inst->app_io_instance),
+						  "proto_radius_app_io_private");
 	rad_assert(inst->app_io_private);
 
 	if (inst->app_io->bootstrap && (inst->app_io->bootstrap(inst->app_io_instance,
