@@ -10,28 +10,34 @@
 
 server vmps {
 	listen {
-		# VMPS sockets only support IPv4 addresses.
-		ipaddr = *
+		transport = udp
 
-		#  Port on which to listen.
-		#  Allowed values are:
-		#	integer port number
-		#	1589 is the default VMPS port.
-		port = 1589
+		udp {
+			# VMPS sockets only support IPv4 addresses.
+			ipaddr = *
 
-		#  Type of packets to listen for.  Here, it is VMPS.
-		type = vmps
+			#  Port on which to listen.
+			#  Allowed values are:
+			#	integer port number
+			#	1589 is the default VMPS port.
+			port = 1589
 
-		#  Some systems support binding to an interface, in addition
-		#  to the IP address.  This feature isn't strictly necessary,
-		#  but for sites with many IP addresses on one interface,
-		#  it's useful to say "listen on all addresses for
-		#  eth0".
-		#
-		#  If your system does not support this feature, you will
-		#  get an error if you try to use it.
-		#
-		#	interface = eth0
+			#  Type of packets to listen for.  Here, it is VMPS.
+			type = vmps
+
+			#  Some systems support binding to an interface, in addition
+			#  to the IP address.  This feature isn't strictly necessary,
+			#  but for sites with many IP addresses on one interface,
+			#  it's useful to say "listen on all addresses for
+			#  eth0".
+			#
+			#  If your system does not support this feature, you will
+			#  get an error if you try to use it.
+			#
+			#	interface = eth0
+		}
+
+		type = VMPS-Join-Request
 	}
 
 	#  If you have switches that are allowed to send VMPS, but NOT

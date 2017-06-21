@@ -23,7 +23,7 @@
 #  Any "listen" section that listens on an accounting port should
 #  set "virtual_server = write-detail.example.com
 server write_detail.example.com {
-	accounting {
+	process Accounting-Request {
 		#
 		#  Write the "detail" files.
 		#
@@ -54,7 +54,7 @@ server read-detail.example.com {
 #
 #  Pre-accounting.  Decide which accounting type to use.
 #
-preacct {
+recv Accounting-Request {
 	preprocess
 
 	#
@@ -81,7 +81,7 @@ preacct {
 #
 #  Accounting.  Log the accounting data.
 #
-accounting {
+process Accounting-Request {
 	#
 	#  Create a 'detail'ed log of the packets.
 	#  Note that accounting requests which are proxied

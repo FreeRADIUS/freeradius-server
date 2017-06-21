@@ -45,7 +45,7 @@ listen {
 #
 #  Make *sure* that 'preprocess' comes before any realm if you
 #  need to setup hints for the remote radius server
-authorize {
+recv Access-Request {
 	#
 	#  Take a User-Name, and perform some checks on it, for spaces and other
 	#  invalid characters.  If the User-Name appears invalid, reject the
@@ -199,7 +199,7 @@ authorize {
 #
 #  NB You cannot forcibly accept an EAP authentication!
 
-authenticate {
+process Access-Request {
 	#
 	#  PAP authentication, when a back-end database listed
 	#  in the 'authorize' section supplies a password.  The

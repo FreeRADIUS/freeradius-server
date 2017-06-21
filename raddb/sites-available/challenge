@@ -17,7 +17,7 @@ listen {
 }
 
 server challenge {
-authorize {
+recv Access-Request {
 
 	#
 	#  If ther's no State attribute, then this is the request from
@@ -42,7 +42,7 @@ authorize {
 	}
 }
 
-authenticate {
+process Access-Request {
 	Auth-Type Step1 {
 		#  If the password doesn't match, the user is rejected
 		#  immediately.

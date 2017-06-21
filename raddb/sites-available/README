@@ -9,10 +9,10 @@ one "radiusd.conf" file, and put the server configuration there:
 
 	...
 	server {
-		authorize {
+		recv Access-Request {
 			...
 		}
-		authenticate {
+		process Access-Request {
 			...
 		}
 		...
@@ -55,14 +55,14 @@ the request processing sections from radius.conf, ("authorize" ,
 			type = auth
 		}
 
-		authorize {
+		recv Access-Request {
 			update control {
 				Cleartext-Password := "bob"
 			}
 			pap
 		}
 
-		authenticate {
+		process Access-Request {
 			pap
 		}
 	}
@@ -211,13 +211,13 @@ two different servers.
 		virtual_server = server_two
 	}
 	server server_one {
-		authorize {
+		recv Access-Request {
 			...
 		}
 		...
 	}
 	server server_two {
-		authorize {
+		recv Access-Request {
 			...
 		}
 		...
@@ -238,13 +238,13 @@ two different servers.
 		virtual_server = server_two
 	}
 	server server_one {
-		authorize {
+		recv Access-Request {
 			...
 		}
 		...
 	}
 	server server_two {
-		authorize {
+		recv Access-Request {
 			...
 		}
 		...
@@ -265,7 +265,7 @@ setting for the socket.
 		...
 	}
 	server server_one {
-		authorize {
+		recv Access-Request {
 			...
 		}
 		...
@@ -274,7 +274,7 @@ setting for the socket.
 		client two {
 			...
 		}
-		authorize {
+		recv Access-Request {
 			...
 		}
 		...

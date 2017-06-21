@@ -28,13 +28,15 @@
 ######################################################################
 
 server status {
+	namespace = radius
 	listen {
-		#  ONLY Status-Server is allowed to this port.
-		#  ALL other packets are ignored.
-		type = status
+		transport = udp
+		udp {
+			ipaddr = 127.0.0.1
+			port = 18121
+		}
 
-		ipaddr = 127.0.0.1
-		port = 18121
+		type = Status-Server
 	}
 
 	#
@@ -58,13 +60,8 @@ server status {
 	#
 	#  Simple authorize section.  The "Autz-Type Status-Server"
 	#  section will work here, too.  See "raddb/sites-available/default".
-	authorize {
+	recv Status-Server {
 		ok
-
-		# respond to the Status-Server request.
-		Autz-Type Status-Server {
-			ok
-		}
 	}
 }
 

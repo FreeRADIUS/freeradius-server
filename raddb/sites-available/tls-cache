@@ -38,7 +38,7 @@ server tls-cache {
 #  of the session to read / write / delete from the cache.  This
 #  identity is an opaque blob.
 #
-authorize {
+recv Access-Request {
 
 	#
 	#  This section is run whenever the server needs to read an

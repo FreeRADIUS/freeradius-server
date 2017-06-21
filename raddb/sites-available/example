@@ -88,7 +88,7 @@ server example {
 		secret		= testing123
 	}
 
-	authorize {
+	recv Access-Request {
 		#
 		#  Some example policies.  See "man unlang" for more.
 		#
@@ -106,7 +106,7 @@ server example {
 		reject
 	}
 
-	authenticate {
+	process Access-Request {
 
 	}
 

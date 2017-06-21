@@ -78,7 +78,7 @@ server dynamic_clients {
 
 	#
 	#  The only contents of the virtual server is the "authorize" section.
-	authorize {
+	recv Access-Request {
 
 		#
 		#  Put any modules you want here.  SQL, LDAP, "exec",

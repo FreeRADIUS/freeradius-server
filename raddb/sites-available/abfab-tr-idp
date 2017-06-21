@@ -11,7 +11,7 @@
 #
 
 server abfab-idp {
-authorize {
+recv Access-Request {
         psk_authorize
 	abfab_client_check
 	filter_username
@@ -42,7 +42,7 @@ authorize {
 	logintime
 }
 
-authenticate {
+process Access-Request {
 	#
 	#  Allow EAP authentication.
 	eap

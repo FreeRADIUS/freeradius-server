@@ -20,11 +20,11 @@
 #  See "man unlang" for more details.
 #
 server virtual.example.com {
-authorize {
+recv Access-Request {
 	# insert policies here
 }
 
-authenticate {
+process Access-Request {
 	# insert policies here
 }
 

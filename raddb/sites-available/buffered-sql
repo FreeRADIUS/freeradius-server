@@ -126,7 +126,7 @@ server buffered-sql {
 	#
 	#  Pre-accounting.  Decide which accounting type to use.
 	#
-	preacct {
+	recv Accounting-Request {
 		preprocess
 
 		#
@@ -143,7 +143,7 @@ server buffered-sql {
 	#
 	#  Accounting.  Log the accounting data.
 	#
-	accounting {
+	process Accounting-Request {
 		#
 		#  Log traffic to an SQL database.
 		#

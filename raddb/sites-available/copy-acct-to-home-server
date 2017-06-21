@@ -113,7 +113,7 @@ server copy-acct-to-home-server {
 	#
 	#  Pre-accounting.  Decide which accounting type to use.
 	#
-	preacct {
+	recv Accounting-Request {
 		preprocess
 
 		# Since we're just proxying, we don't need acct_unique.
@@ -138,7 +138,7 @@ server copy-acct-to-home-server {
 	#
 	#  Accounting.  Log the accounting data.
 	#
-	accounting {
+	process Accounting-Request {
 		   #
 		   # Since we're proxying, we don't log anything
 		   # locally.  Ensure that the accounting section

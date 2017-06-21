@@ -36,7 +36,7 @@ server check-eap-tls {
 # To accept the access request, set Auth-Type = Accept, otherwise
 # set it to Reject.
 
-authorize {
+recv Access-Request {
 
 	#
 	# By default, we just accept the request:

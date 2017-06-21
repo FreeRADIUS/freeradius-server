@@ -6,7 +6,7 @@
 # internal).
 
 server soh-server {
-	authorize {
+	recv Access-Request {
 		if (&SoH-Supported == no) {
 			# client NAKed our request for SoH - not supported, or turned off
 			update config {
