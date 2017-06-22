@@ -863,6 +863,9 @@ int fr_event_corral(fr_event_list_t *el, bool wait)
 			 *	between now and that event.
 			 */
 			if (fr_timeval_cmp(&ev->when, &el->now) > 0) fr_timeval_subtract(&when, &ev->when, &el->now);
+
+			wake = &when;
+
 		} else {
 			wake = NULL;
 		}
@@ -877,8 +880,6 @@ int fr_event_corral(fr_event_list_t *el, bool wait)
 	     entry != NULL;
 	     entry = FR_DLIST_NEXT(el->pre_callbacks, entry)) {
 		fr_event_pre_t *pre;
-
-		when = el->now;
 
 		pre = fr_ptr_to_type(fr_event_pre_t, entry, entry);
 		if (pre->callback(pre->ctx, wake) > 0) {
