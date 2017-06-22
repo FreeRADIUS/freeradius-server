@@ -246,7 +246,7 @@ static ssize_t mod_write(void const *instance, void *packet_ctx,
 	 *	The original packet has changed.  Suppress the write,
 	 *	as the client will never accept the response.
 	 */
-	if (track->timestamp != request_time) return buffer_len;
+	if (track->timestamp > request_time) return buffer_len;
 
 	/*
 	 *	Figure out when we've sent the reply.
