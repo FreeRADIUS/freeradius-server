@@ -1,3 +1,5 @@
+type = peap
+
 peap {
 	#  Which tls-config section the TLS negotiation parameters
 	#  are in - see EAP-TLS above for an explanation.
