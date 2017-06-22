@@ -1425,6 +1425,11 @@ CONF_DATA const *_cf_data_add_static(CONF_ITEM *ci, void const *data, char const
 	 */
 	found = _cf_data_find(ci, type, name);
 	if (found) {
+		/*
+		 *	Suppress these, as it's OK for the CONF_PARSER in mainconfig.c
+       		 */
+		if (strcmp(type, "CONF_PARSER") == 0) return NULL;
+
 		cf_log_err(ci, "Data of type %s with name \"%s\" already exists.  Existing data added %s[%i]", type,
 			   name, found->item.filename, found->item.lineno);
 		return NULL;
