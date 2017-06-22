@@ -2215,7 +2215,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			}
 		}
 		if (names != NULL)
-			sk_GENERAL_NAME_free(names);
+			GENERAL_NAME_free(names);
 	}
 
 	/*
