@@ -368,7 +368,7 @@ static void request_running(REQUEST *request, fr_state_action_t action)
 		if (!unlang) {
 			RDEBUG2("Ignoring %s operation.  Add \"%s %s {}\" to virtual-server \"%s\""
 				" to handle", fr_int2str(ldap_sync_code_table, request->packet->code, "<INVALID>"),
-				verb, state, request->server);
+				verb, state, cf_section_name2(request->server));
 			rcode = RLM_MODULE_NOOP;
 			goto done;
 		}
@@ -788,7 +788,7 @@ static int proto_ldap_cookie_load(TALLOC_CTX *ctx, uint8_t **cookie, rad_listen_
 	if (!unlang) {
 		RDEBUG2("Ignoring %s operation.  Add \"load Cookie {}\" to virtual-server \"%s\""
 			" to handle", fr_int2str(ldap_sync_code_table, request->packet->code, "<INVALID>"),
-			request->server);
+			cf_section_name2(request->server_cs));
 	}
 
 	*cookie = NULL;
