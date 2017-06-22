@@ -607,7 +607,7 @@ static int auth_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *lis
 	return 0;
 }
 
-static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
+static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *listen_cs)
 {
 	CONF_SECTION		*subcs = NULL;;
 	CONF_SECTION		*server_cs;
@@ -617,8 +617,6 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 
 	server_cs = cf_item_to_section(cf_parent(listen_cs));
 	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
-
-	if (auth_listen_compile(server_cs, listen_cs) < 0) return -1;
 
 	da = fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE);
 	if (!da) {
@@ -664,10 +662,43 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 	return 0;
 }
 
+static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
+{
+	CONF_SECTION		*subcs = NULL;;
+	CONF_SECTION		*server_cs;
+
+	rad_assert(listen_cs);
+
+	server_cs = cf_item_to_section(cf_parent(listen_cs));
+	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
+
+	if (auth_listen_compile(server_cs, listen_cs) < 0) return -1;
+
+	while ((subcs = cf_section_find_next(server_cs, subcs, "process", CF_IDENT_ANY))) {
+		int rcode;
+		char const	*name2;
+
+		name2 = cf_section_name2(subcs);
+		if (!name2) {
+			cf_log_err(subcs, "Invalid 'process { ... }' section, it must have a name");
+			return -1;
+		}
+
+		rcode = auth_compile_section(server_cs, "process", name2, MOD_AUTHENTICATE);
+		if (rcode < 0) {
+			cf_log_err(subcs, "Failed compiling 'process %s { ... }' section", name2);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
 extern fr_app_process_t proto_radius_auth;
 fr_app_process_t proto_radius_auth = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "radius_auth",
+	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.process	= mod_process,
 };
