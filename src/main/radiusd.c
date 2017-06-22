@@ -314,6 +314,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	fr_debug_lvl = req_debug_lvl = main_config.debug_level = rad_debug_lvl;
+
 	/*
 	 *  Mismatch between the binary and the libraries it depends on.
 	 */
