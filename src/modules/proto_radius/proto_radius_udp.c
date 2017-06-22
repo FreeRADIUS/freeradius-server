@@ -30,6 +30,7 @@
 #include <freeradius-devel/io/io.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/track.h>
+#include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/rad_assert.h>
 #include "proto_radius.h"
 
@@ -142,6 +143,33 @@ static RADCLIENT *mod_client(UNUSED void const *instance, void const *packet_ctx
 	rad_assert(track->src_dst_size == sizeof(proto_radius_udp_address_t));
 
 	return address->client;
+}
+
+static int mod_decode(UNUSED void const *instance, REQUEST *request, UNUSED uint8_t *const data, UNUSED size_t data_len)
+{
+
+	fr_tracking_entry_t const		*track = request->async->packet_ctx;
+	proto_radius_udp_address_t const	*address = track->src_dst;
+
+	rad_assert(track->src_dst_size == sizeof(proto_radius_udp_address_t));
+
+	request->client = address->client;
+	request->packet->if_index = address->if_index;
+	request->packet->src_ipaddr = address->src_ipaddr;
+	request->packet->src_port = address->src_port;
+	request->packet->dst_ipaddr = address->dst_ipaddr;
+	request->packet->dst_port = address->dst_port;
+
+	request->reply->if_index = address->if_index;
+	request->reply->src_ipaddr = address->dst_ipaddr;
+	request->reply->src_port = address->dst_port;
+	request->reply->dst_ipaddr = address->src_ipaddr;
+	request->reply->dst_port = address->dst_port;
+
+	request->root = &main_config;
+	request->server = cf_section_name2(request->server_cs);
+
+	return 0;
 }
 
 static ssize_t mod_read(void const *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len)
@@ -463,6 +491,7 @@ fr_app_io_t proto_radius_udp = {
 	.default_message_size	= 4096,
 	.open			= mod_open,
 	.read			= mod_read,
+	.decode			= mod_decode,
 	.write			= mod_write,
 	.fd			= mod_fd,
 	.event_list_set		= mod_event_list_set,

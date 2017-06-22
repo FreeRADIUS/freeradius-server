@@ -177,7 +177,10 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 		return -1;
 	}
 
-	return 0;
+	/*
+	 *	Let the app_io take care of populating additional fields in the request
+	 */
+	return inst->app_io->decode(inst->app_io_instance, request, data, data_len);
 }
 
 static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
