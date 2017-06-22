@@ -321,9 +321,9 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int f
 	fr_log(nr->log, L_DBG, "network read");
 
 	if (!s->cd) {
-		cd = (fr_channel_data_t *) fr_message_reserve(s->ms, s->listen->app_io->default_message_size);
+		cd = (fr_channel_data_t *) fr_message_reserve(s->ms, s->listen->default_message_size);
 		if (!cd) {
-			fr_log(nr->log, L_ERR, "Failed allocating message size %zd!", s->listen->app_io->default_message_size);
+			fr_log(nr->log, L_ERR, "Failed allocating message size %zd!", s->listen->default_message_size);
 
 			/*
 			 *	@todo - handle errors via transport callback
@@ -477,7 +477,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 	 */
 	s->ms = fr_message_set_create(s, MIN_MESSAGES,
 				      sizeof(fr_channel_data_t),
-				      s->listen->app_io->default_message_size * MIN_MESSAGES);
+				      s->listen->default_message_size * MIN_MESSAGES);
 	if (!s->ms) {
 		fr_log(nr->log, L_ERR, "Failed creating message buffers for network IO.");
 

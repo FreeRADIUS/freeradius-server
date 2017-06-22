@@ -30,6 +30,8 @@ struct fr_listen {
 	fr_app_t const		*app;
 	void const		*app_instance;
 
+	size_t			default_message_size;	//!< copied from app_io, but may be changed
+
 	fr_io_decode_t		decode;			//!< Function to decode packet to request (worker)
 	fr_io_encode_t		encode;			//!< Function to encode request to packet (worker)
 };

@@ -260,6 +260,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	listen->app = &proto_radius;
 	listen->app_instance = instance;
 
+	listen->default_message_size = listen->app_io->default_message_size;
 	listen->encode = mod_encode;
 	listen->decode = mod_decode;
 
