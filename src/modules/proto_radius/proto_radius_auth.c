@@ -799,10 +799,6 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 			}
 		} /* else send the response immediately */
 
-		if (fr_radius_packet_send(request->reply, request->packet, request->client->secret) < 0) {
-			RDEBUG("Failed sending RADIUS reply: %s", fr_strerror());
-		}
-
 		/*
 		 *	And do any necessary cleanup delay.
 		 */
