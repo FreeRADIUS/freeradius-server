@@ -626,7 +626,7 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 		return -1;
 	}
 
-	while ((subcs = cf_section_find_next(server_cs, subcs, "process", NULL))) {
+	while ((subcs = cf_section_find_next(server_cs, subcs, "process", CF_IDENT_ANY))) {
 		char const	*name2;
 		fr_value_box_t	value = { .type = FR_TYPE_UINT32 };
 		fr_dict_enum_t	*dv;
@@ -667,7 +667,7 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 extern fr_app_process_t proto_radius_auth;
 fr_app_process_t proto_radius_auth = {
 	.magic		= RLM_MODULE_INIT,
-	.name		= "radius_coa",
+	.name		= "radius_auth",
 	.instantiate	= mod_instantiate,
 	.process	= mod_process,
 };
