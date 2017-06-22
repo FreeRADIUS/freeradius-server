@@ -1,4 +1,4 @@
 type = gtc
 gtc {
-	auth_type = PAP
+	auth_type = pap
 }
