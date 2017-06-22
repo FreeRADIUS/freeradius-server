@@ -364,7 +364,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	FR_INTEGER_BOUND_CHECK("num_messages", inst->num_messages, >=, 32);
 	FR_INTEGER_BOUND_CHECK("num_messages", inst->num_messages, <=, 65535);
 
-	FR_INTEGER_BOUND_CHECK("default_message_size", inst->default_message_size, >=, 20);
+	FR_INTEGER_BOUND_CHECK("default_message_size", inst->default_message_size, >=, 1024);
 	FR_INTEGER_BOUND_CHECK("default_message_size", inst->default_message_size, <=, 65535);
 
 	return 0;
