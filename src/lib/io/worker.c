@@ -669,6 +669,8 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	ctx = request = request_alloc(NULL);
 	if (!request) goto nak;
 
+	request->el = worker->el;
+	request->backlog = worker->runnable;
 	request->packet = fr_radius_alloc(request, false);
 	rad_assert(request->packet != NULL);
 	request->reply = fr_radius_alloc(request, false);
@@ -694,7 +696,6 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	request->async->channel = cd->channel.ch;
 	request->async->original_recv_time = cd->request.start_time;
 	request->async->recv_time = cd->m.when;
-	request->async->runnable = worker->runnable;
 	request->async->el = worker->el;
 	request->number = worker->number++;
 
@@ -1233,25 +1234,6 @@ void fr_worker(fr_worker_t *worker)
 	}
 }
 
-#if 0
-/*
- *	A local copy of unlang_resume(), so we know what we're supposed to do.
- */
-void worker_resume_request(REQUEST *request)
-{
-	/*
-	 *	The request is no longer in the "yielded" list.  But
-	 *	it isn't resumed (yet) so we don't add CPU time for
-	 *	it.
-	 */
-	fr_dlist_remove(&request->async->tracking.list);
-
-	/*
-	 *	It's runnable again.
-	 */
-	(void) fr_heap_insert(request->async->runnable, request);
-}
-#endif
 
 /** Print debug information about the worker structure
  *
