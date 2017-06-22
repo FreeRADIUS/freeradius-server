@@ -241,6 +241,16 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, fr_time_t **rec
 
 			(void) fr_event_timer_insert(inst->el, mod_cleanup_delay, track, &tv, &track->ev);
 		}
+
+		/*
+		 *	@todo - if track->reply_len == 1, then we are
+		 *	INTENTIONALLY not replying.  In that case,
+		 *	return 0.  Otherwise, it's a duplicate packet.
+		 *	We MAY want to go poke the worker and say it's
+		 *	a duplicate packet.  BUT all of that tracking
+		 *	is very hard, so we might as well just ignore
+		 *	it.
+		 */
 		return 0;
 
 	/*

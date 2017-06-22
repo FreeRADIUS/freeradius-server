@@ -357,6 +357,14 @@ int fr_radius_tracking_entry_reply(fr_tracking_t *ft, fr_tracking_entry_t *entry
 {
 	(void) talloc_get_type_abort(ft, fr_tracking_t);
 
+	/*
+	 *	Bad packets are "don't reply"
+	 */
+	if (reply_len < 20) {
+		entry->reply_len = 1;
+		return 0;
+	}
+
 	entry->reply = talloc_memdup(ft, reply, reply_len);
 	entry->reply_len = reply_len;
 
