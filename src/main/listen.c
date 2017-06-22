@@ -3154,10 +3154,7 @@ int listen_init(rad_listen_t **head,
 	listen_config_t	*lc;
 	bool		incoming_sockets = false;
 
-	if (!listen_config) {
-		ERROR("The server is not configured to listen on any ports.  Cannot start");
-		return -1;
-	}
+	if (!listen_config) return 0;
 
 	for (lc = listen_config; lc != NULL; lc = lc->next) {
 		if (lc->type == RAD_LISTEN_COMMAND) continue;
@@ -3173,10 +3170,7 @@ int listen_init(rad_listen_t **head,
 	 *	one listener, because listeners can be located in
 	 *	multiple places.  So for now, we put it here.
 	 */
-	if (!incoming_sockets) {
-		ERROR("The server is not configured to listen on any ports.  Cannot start");
-		return -1;
-	}
+	if (!incoming_sockets) return 0;
 
 	/*
 	 *	We shouldn't be called with a pre-existing list.
