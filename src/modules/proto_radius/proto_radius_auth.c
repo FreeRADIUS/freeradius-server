@@ -274,14 +274,12 @@ static void auth_reject_delay(REQUEST *request, fr_state_action_t action)
 
 static fr_io_final_t auth_process(REQUEST *request)
 {
-	VALUE_PAIR *vp, *auth_type;
-	rlm_rcode_t rcode;
-	CONF_SECTION *unlang;
-	fr_dict_enum_t const *dv = NULL;
-	fr_dict_attr_t const *da = NULL;
-	vp_cursor_t cursor;
-
-	VERIFY_REQUEST(request);
+	VALUE_PAIR		*vp, *auth_type;
+	rlm_rcode_t		rcode;
+	CONF_SECTION		*unlang;
+	fr_dict_enum_t const	*dv = NULL;
+	fr_dict_attr_t const 	*da = NULL;
+	vp_cursor_t		cursor;
 
 	switch (request->request_state) {
 	case REQUEST_INIT:
