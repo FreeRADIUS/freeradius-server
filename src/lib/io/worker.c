@@ -422,7 +422,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	 *	Encode it, if required.
 	 */
 	if (size) {
-		ssize_t encoded = 0, slen = 0;
+		ssize_t slen = 0;
 		fr_listen_t const *listen = request->async->listen;
 
 		if (listen->app->encode) {
@@ -432,12 +432,15 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 			slen = listen->app_io->encode(listen->app_io_instance, request,
 						      reply->m.data, reply->m.rb_size);
 		}
-		if (slen < 0) fr_log(worker->log, L_DBG, "\t%sfails encode", worker->name);
+		if (slen < 0) {
+			fr_log(worker->log, L_DBG, "\t%sfails encode", worker->name);
+			slen = 0;
+		}
 
 		/*
 		 *	Resize the buffer to the actual packet size.
 		 */
-		cd = (fr_channel_data_t *) fr_message_alloc(ms, &reply->m, encoded);
+		cd = (fr_channel_data_t *) fr_message_alloc(ms, &reply->m, slen);
 		rad_assert(cd == reply);
 	}
 
