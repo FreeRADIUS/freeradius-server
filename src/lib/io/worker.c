@@ -1162,7 +1162,7 @@ static void fr_worker_post_event(UNUSED fr_event_list_t *el, UNUSED struct timev
 	/*
 	 *	Ten times a second, check for timeouts on incoming packets.
 	 *
-	 *	@todo - move this to a separate timeout.
+	 *	@todo - move this to an event list timer.
 	 */
 	if ((now - worker->checked_timeout) > (NANOSEC / 10)) {
 		fr_log(worker->log, L_DBG, "\t%schecking timeouts", worker->name);

@@ -321,12 +321,9 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int f
 	if (!s->cd) {
 		cd = (fr_channel_data_t *) fr_message_reserve(s->ms, s->listen->default_message_size);
 		if (!cd) {
-			fr_log(nr->log, L_ERR, "Failed allocating message size %zd!", s->listen->default_message_size);
-
-			/*
-			 *	@todo - handle errors via transport callback
-			 */
-			_exit(1);
+			fr_log(nr->log, L_ERR, "Failed allocating message size %zd! - Closing socket", s->listen->default_message_size);
+			talloc_free(s);
+			return;
 		}
 	} else {
 		cd = s->cd;
@@ -477,12 +474,9 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 				      sizeof(fr_channel_data_t),
 				      s->listen->default_message_size * s->listen->num_messages);
 	if (!s->ms) {
-		fr_log(nr->log, L_ERR, "Failed creating message buffers for network IO.");
-
-		/*
-		 *	@todo - handle errors via transport callback
-		 */
-		_exit(1);
+		fr_log(nr->log, L_ERR, "Failed creating message buffers for network IO.  Closing socket.");
+		talloc_free(s);
+		return;
 	}
 
 	app_io = s->listen->app_io;
@@ -742,9 +736,8 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 		listen = cd->listen;
 
 		/*
-		 *	@todo - call transport "recv reply".  And if
-		 *	the reply is a NAK, don't write it to the
-		 *	network.
+		 *	The write function is responsible for ensuring
+		 *	that NAKs are not written to the network.
 		 */
 		rcode = listen->app_io->write(listen->app_io_instance, cd->packet_ctx,
 					      cd->reply.request_time, cd->m.data, cd->m.data_size);
