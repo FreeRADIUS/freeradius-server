@@ -50,8 +50,21 @@ eap {
 	cisco_accounting_username_bug = no
 
 	#
-	#  Supported EAP-types
+	#  Allowed EAP-types
 	#
+	#  Only EAP types listed below with a 'type = <EAP-Type>' pair will be allowed.
+	#
+	type = md5
+#	type = pwd
+#	type = leap
+	type = gtc
+	type = tls
+	type = ttls
+	type = mschapv2
+	type = peap
+#	type = fast
+	type = aka
+	type = sim
 
 	#
 	#  We do NOT recommend using EAP-MD5 authentication for wireless

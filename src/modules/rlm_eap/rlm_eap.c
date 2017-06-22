@@ -35,13 +35,21 @@ RCSID("$Id$")
 
 extern rad_module_t rlm_eap;
 
+static int submodule_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+static int eap_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+
 static const CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("default_eap_type", FR_TYPE_STRING, rlm_eap_config_t, default_method_name), .dflt = "md5" },
-	{ FR_CONF_DEPRECATED("timer_expire", FR_TYPE_UINT32, rlm_eap_config_t, timer_limit), .dflt = "60" },
-	{ FR_CONF_OFFSET("ignore_unknown_eap_types", FR_TYPE_BOOL, rlm_eap_config_t, ignore_unknown_types), .dflt = "no" },
-	{ FR_CONF_OFFSET("cisco_accounting_username_bug", FR_TYPE_BOOL, rlm_eap_config_t,
+	{ FR_CONF_OFFSET("default_eap_type", FR_TYPE_VOID, rlm_eap_t, default_method),
+			 .dflt = "md5", .func = eap_type_parse },
+
+	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY, rlm_eap_t, submodule_instances),
+			 .func = submodule_parse },
+
+	{ FR_CONF_DEPRECATED("timer_expire", FR_TYPE_UINT32, rlm_eap_t, timer_limit), .dflt = "60" },
+	{ FR_CONF_OFFSET("ignore_unknown_eap_types", FR_TYPE_BOOL, rlm_eap_t, ignore_unknown_types), .dflt = "no" },
+	{ FR_CONF_OFFSET("cisco_accounting_username_bug", FR_TYPE_BOOL, rlm_eap_t,
 			 cisco_accounting_username_bug), .dflt = "no" },
-	{ FR_CONF_DEPRECATED("max_sessions", FR_TYPE_UINT32, rlm_eap_config_t, max_sessions), .dflt = "2048" },
+	{ FR_CONF_DEPRECATED("max_sessions", FR_TYPE_UINT32, rlm_eap_t, max_sessions), .dflt = "2048" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -49,166 +57,121 @@ static rlm_rcode_t mod_post_proxy(void *instance, UNUSED void *thread, REQUEST *
 static rlm_rcode_t mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
 static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
 
-/** Frees the memory allocated to hold method submodule handles and interfaces
+/** Wrapper around dl_instance which loads submodules based on type = foo pairs
  *
+ * @param[in] ctx	to allocate data in (instance of rlm_eap_t).
+ * @param[out] out	Where to write a dl_instance_t containing the module handle and instance.
+ * @param[in] ci	#CONF_PAIR specifying the name of the type module.
+ * @param[in] rule	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-static int _eap_method_free(rlm_eap_method_t *method)
+static int submodule_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
-	/*
-	 *	We need to explicitly free all children, so if the submodule
-	 *	parented any memory off the instance, their destructors
-	 *	run before we unload the bytecode for them.
-	 *
-	 *	If we don't do this, we get a SEGV deep inside the talloc code
-	 *	when it tries to call a destructor that no longer exists.
-	 */
-	talloc_free_children(method);
+	char const		*name = cf_pair_value(cf_item_to_pair(ci));
+	CONF_SECTION		*eap_cs = cf_item_to_section(cf_parent(ci));
+	CONF_SECTION		*submodule_cs;
+	eap_type_t		method;
+	dl_instance_t		*parent_inst;
+	dl_instance_t		*dl_inst;
+	rlm_eap_t		*inst;
+	int			ret;
 
-	return 0;
-}
-
-/** Load required EAP sub-module (method)
- *
- * @param[out] out	A new instance of the specified EAP method.
- * @param[in] inst	of rlm_eap that this method is being instantiated for.
- * @param[in] num	EAP method number.
- * @param[in] cs	Config section for this instance of the EAP method.
- */
-int eap_method_instantiate(rlm_eap_method_t **out, rlm_eap_t *inst, eap_type_t num, CONF_SECTION *cs)
-{
-	rlm_eap_method_t *method;
-
-	*out = NULL;
-
-	/*
-	 *	Allocate structure to hold method handles and interface
-	 */
-	MEM(method = talloc_zero(inst, rlm_eap_method_t));
-	talloc_set_destructor(method, _eap_method_free);
-
-	/*
-	 *	Load the submodule for the specified EAP method
-	 */
-	if (dl_instance(method, &method->submodule_inst, cs, dl_instance_find(inst),
-			eap_type2name(num), DL_TYPE_SUBMODULE) < 0) {
+	method = eap_name2type(name);
+	if (method == FR_EAP_INVALID) {
+		cf_log_err(ci, "Unknown EAP type %s", name);
 		return -1;
 	}
-	method->submodule = (rlm_eap_submodule_t const *)method->submodule_inst->module->common;
 
 	/*
-	 *	Call the instantiated function in the submodule
+	 *	Helpfully stored for us by dl_instance()
 	 */
-	if ((method->submodule->instantiate) &&
-	    ((method->submodule->instantiate)(method->submodule_inst->data, cs) < 0)) {
-	 	talloc_free(method);
-	    	return -1;
+	parent_inst = cf_data_value(cf_data_find(eap_cs, dl_instance_t, "rlm_eap"));
+	rad_assert(parent_inst);
+	inst = talloc_get_type_abort(parent_inst->data, rlm_eap_t);
+
+	/*
+	 *	Check for duplicates
+	 */
+	if (inst->methods[method].submodule) {
+		cf_log_err(ci, "Duplicate EAP type %s", name);
+		return -1;
 	}
-
-#ifndef NDEBUG
-	if (method->submodule_inst->data) module_instance_read_only(method->submodule_inst->data, eap_type2name(num));
-#endif
-
-	*out = method;
-
-	return 0;
-}
-
-static int mod_bootstrap(void *instance, CONF_SECTION *cs)
-{
-	int		i, ret;
-	eap_type_t	method;
-	int		num_methods;
-	CONF_SECTION 	*scs = NULL;
-	rlm_eap_t	*inst = instance;
-
-	/*
-	 *	Create our own random pool.
-	 */
-	for (i = 0; i < 256; i++) inst->rand_pool.randrsl[i] = fr_rand();
-	fr_randinit(&inst->rand_pool, 1);
-	inst->rand_pool.randcnt = 0;
-
-	inst->name = cf_section_name2(cs);
-	if (!inst->name) inst->name = "EAP";
-
-	/* Load all the configured EAP-Types */
-	num_methods = 0;
-	while ((scs = cf_section_next(cs, scs))) {
-		char const *name;
-
-		name = cf_section_name1(scs);
-		if (!name) continue;
-
-		if (!strcmp(name, TLS_CONFIG_SECTION)) continue;
-
-		method = eap_name2type(name);
-		if (method == FR_EAP_INVALID) {
-			cf_log_err(cs, "Unknown EAP type %s", name);
-			return -1;
-		}
-
-		if ((method < FR_EAP_MD5) || (method >= FR_EAP_MAX_TYPES)) {
-			cf_log_err(cs, "Invalid EAP method %s (unsupported)", name);
-			return -1;
-		}
 
 #if !defined(HAVE_OPENSSL_SSL_H) || !defined(HAVE_LIBSSL)
-		/*
-		 *	This allows the default configuration to be
-		 *	shipped with EAP-TLS, etc. enabled.  If the
-		 *	system doesn't have OpenSSL, they will be
-		 *	ignored.
-		 *
-		 *	If the system does have OpenSSL, then this
-		 *	code will not be used.  The administrator will
-		 *	then have to delete the tls,
-		 *	etc. configurations from eap.conf in order to
-		 *	have EAP without the TLS types.
-		 */
-		switch (method) {
-		case FR_EAP_TLS:
-		case FR_EAP_TTLS:
-		case FR_EAP_PEAP:
-		case FR_EAP_PWD:
-			WARN("Ignoring EAP method %s because we don't have OpenSSL support", name);
-			continue;
+	/*
+	 *	This allows the default configuration to be
+	 *	shipped with EAP-TLS, etc. enabled.  If the
+	 *	system doesn't have OpenSSL, they will be
+	 *	ignored.
+	 *
+	 *	If the system does have OpenSSL, then this
+	 *	code will not be used.  The administrator will
+	 *	then have to delete the tls,
+	 *	etc. configurations from eap.conf in order to
+	 *	have EAP without the TLS types.
+	 */
+	switch (method) {
+	case FR_EAP_TLS:
+	case FR_EAP_TTLS:
+	case FR_EAP_PEAP:
+	case FR_EAP_PWD:
+		WARN("Ignoring EAP method %s because we don't have OpenSSL support", name);
+		continue;
 
-		default:
-			break;
-		}
+	default:
+		break;
+	}
 #endif
 
-		/*
-		 *	Instantiate the EAP method, possibly
-		 *	loading a submodule.
-		 */
-		ret = eap_method_instantiate(&inst->methods[method], inst, method, scs);
-		if (ret < 0) return -1;
-
-		num_methods++;        /* successfully loaded one more methods */
+	/*
+	 *	A bit hacky, we should really figure out a better way
+	 *	of handling missing sections.
+	 */
+	submodule_cs = cf_section_find(eap_cs, name, NULL);
+	if (!submodule_cs) {
+		submodule_cs = cf_section_alloc(eap_cs, name, NULL);
+		cf_item_add(eap_cs, submodule_cs);
 	}
 
-	if (num_methods == 0) {
-		cf_log_err(cs, "No EAP method configured, module cannot do anything");
-		return -1;
-	}
+	ret = dl_instance(ctx, &dl_inst, submodule_cs, parent_inst, name, DL_TYPE_SUBMODULE);
+	if (ret < 0) return -1;
+
+
+	inst->methods[method].submodule_inst = dl_inst;
+	inst->methods[method].submodule = (rlm_eap_submodule_t const *)dl_inst->module->common;
+
+	*(void **)out = dl_inst;
+
+	return 0;
+}
+
+/** Convert EAP type strings to eap_type_t values
+ *
+ * @param[in] ctx	unused.
+ * @param[out] out	Where to write the #eap_type_t value we found.
+ * @param[in] ci	#CONF_PAIR specifying the name of the EAP method.
+ * @param[in] rule	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int eap_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+	char const	*default_method_name = cf_pair_value(cf_item_to_pair(ci));
+	eap_type_t	method;
 
 	/*
 	 *	Ensure that the default EAP type is loaded.
 	 */
-	method = eap_name2type(inst->config.default_method_name);
+	method = eap_name2type(default_method_name);
 	if (method == FR_EAP_INVALID) {
-		cf_log_err_by_name(cs, "default_eap_type", "Unknown EAP type %s",
-				   inst->config.default_method_name);
+		cf_log_err(ci, "Unknown EAP type %s", default_method_name);
 		return -1;
 	}
 
-	if (!inst->methods[method]) {
-		cf_log_err(cs, "No such sub-type for default EAP method %s",
-			      inst->config.default_method_name);
-		return -1;
-	}
-	inst->config.default_method = method; /* save the numerical method */
+	*(eap_type_t *)out = method;
 
 	return 0;
 }
@@ -265,7 +228,7 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 		}
 
 		if ((nak->data[i] >= FR_EAP_MAX_TYPES) ||
-		    !inst->methods[nak->data[i]]) {
+		    !inst->methods[nak->data[i]].submodule) {
 			RDEBUG2("Peer NAK'd asking for unsupported EAP type %s (%d), skipping...",
 				eap_type2name(nak->data[i]),
 				nak->data[i]);
@@ -338,7 +301,7 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session
 	eap_type_data_t		*type = &eap_session->this_round->response->type;
 	REQUEST			*request = eap_session->request;
 
-	eap_type_t		next = inst->config.default_method;
+	eap_type_t		next = inst->default_method;
 	VALUE_PAIR		*vp;
 
 	/*
@@ -392,7 +355,7 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session
 		/*
 		 *	Ensure it's valid.
 		 */
-		if ((next < FR_EAP_MD5) || (next >= FR_EAP_MAX_TYPES) || (!inst->methods[next])) {
+		if ((next < FR_EAP_MD5) || (next >= FR_EAP_MAX_TYPES) || (!inst->methods[next].submodule)) {
 			REDEBUG2("Tried to start unsupported EAP type %s (%d)",
 				 eap_type2name(next), next);
 			return RLM_MODULE_INVALID;
@@ -404,9 +367,9 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session
 		 */
 		rad_assert(next >= FR_EAP_MD5);
 		rad_assert(next < FR_EAP_MAX_TYPES);
-		rad_assert(inst->methods[next]);
+		rad_assert(inst->methods[next].submodule);
 
-		eap_session->process = inst->methods[next]->submodule->session_init;
+		eap_session->process = inst->methods[next].submodule->session_init;
 		eap_session->type = next;
 		goto module_call;
 
@@ -432,7 +395,7 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session
 		/*
 		 *	We haven't configured it, it doesn't exit.
 		 */
-		if (!inst->methods[type->num]) {
+		if (!inst->methods[type->num].submodule) {
 			REDEBUG2("Client asked for unsupported EAP type %s (%d)", eap_type2name(type->num), type->num);
 
 			return RLM_MODULE_INVALID;
@@ -441,7 +404,7 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session
 		eap_session->type = type->num;
 
 	module_call:
-		method = inst->methods[eap_session->type];
+		method = &inst->methods[eap_session->type];
 
 		RDEBUG2("Calling submodule %s", method->submodule->name);
 
@@ -574,7 +537,7 @@ static rlm_rcode_t mod_authenticate(void *instance, UNUSED void *thread, REQUEST
 		 *	Cisco AP1230 has a bug and needs a zero
 		 *	terminated string in Access-Accept.
 		 */
-		if (inst->config.cisco_accounting_username_bug) {
+		if (inst->cisco_accounting_username_bug) {
 			char *new;
 
 			new = talloc_zero_array(vp, char, vp->vp_length + 1 + 1);	/* \0 + \0 */
@@ -907,6 +870,71 @@ static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *r
 	return RLM_MODULE_UPDATED;
 }
 
+static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
+{
+	rlm_eap_t	*inst = talloc_get_type_abort(instance, rlm_eap_t);
+
+	size_t		i, loaded;
+
+	/*
+	 *	Create our own random pool.
+	 */
+	for (i = 0; i < 256; i++) inst->rand_pool.randrsl[i] = fr_rand();
+	fr_randinit(&inst->rand_pool, 1);
+	inst->rand_pool.randcnt = 0;
+
+	loaded = talloc_array_length(inst->submodule_instances);
+	for (i = 0; i < loaded; i++) {
+		rlm_eap_submodule_t const	*method;
+		dl_instance_t			*dl_inst = inst->submodule_instances[i];
+
+		if (!dl_inst) continue;	/* Skipped as we don't have SSL support */
+
+		method = (rlm_eap_submodule_t const *)dl_inst->module->common;
+		if ((method->instantiate) &&
+		    ((method->instantiate)(dl_inst->data, dl_inst->conf) < 0)) {
+			return -1;
+		}
+
+#ifndef NDEBUG
+		if (dl_inst->data) module_instance_read_only(dl_inst->data, dl_inst->name);
+#endif
+	}
+
+	return 0;
+}
+
+static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *cs)
+{
+	rlm_eap_t	*inst = talloc_get_type_abort(instance, rlm_eap_t);
+	size_t		i, loaded, count = 0;
+
+	inst->name = cf_section_name2(cs);
+	if (!inst->name) inst->name = "eap";
+
+	loaded = talloc_array_length(inst->submodule_instances);
+
+	for (i = 0; i < loaded; i++) {
+		rlm_eap_submodule_t const	*method;
+		dl_instance_t			*dl_inst = inst->submodule_instances[i];
+
+		if (!dl_inst) continue;	/* Skipped as we don't have SSL support */
+
+		method = (rlm_eap_submodule_t const *)dl_inst->module->common;
+		if ((method->bootstrap) &&
+		    ((method->bootstrap)(dl_inst->data, dl_inst->conf) < 0)) return -1;
+
+		count++;
+	}
+
+	if (count == 0) {
+		cf_log_err(cs, "No EAP method configured, module cannot do anything");
+		return -1;
+	}
+
+	return 0;
+}
+
 /*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
@@ -917,6 +945,7 @@ rad_module_t rlm_eap = {
 	.inst_size	= sizeof(rlm_eap_t),
 	.config		= module_config,
 	.bootstrap	= mod_bootstrap,
+	.instantiate	= mod_instantiate,
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,

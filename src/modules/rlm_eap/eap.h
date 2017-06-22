@@ -87,18 +87,6 @@ struct _eap_session {
 	bool		finished;			//!< Whether we consider this session complete.
 };
 
-/** Configuration for an instance of rlm_eap
- *
- * @note Is declared here instead of rlm_eap.h because it's passed to submodules
- */
-typedef struct rlm_eap_config {
-	char const		*default_method_name;		//!< Default method to attempt to start.
-	eap_type_t		default_method;			//!< Resolved default_method_name.
-
-	bool			ignore_unknown_types;		//!< Ignore unknown types (for later proxying).
-	bool			cisco_accounting_username_bug;
-} rlm_eap_config_t;
-
 /** Interface exported by EAP submodules
  *
  */

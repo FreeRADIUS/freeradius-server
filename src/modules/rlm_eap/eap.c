@@ -401,10 +401,10 @@ int eap_start(rlm_eap_t const *inst, REQUEST *request)
 	 *	internally, so they never have eap_sessions.
 	 */
 	if ((eap_msg->vp_octets[4] >= FR_EAP_MD5) &&
-	    inst->config.ignore_unknown_types &&
+	    inst->ignore_unknown_types &&
 	    ((eap_msg->vp_octets[4] == 0) ||
 	     (eap_msg->vp_octets[4] >= FR_EAP_MAX_TYPES) ||
-	     (!inst->methods[eap_msg->vp_octets[4]]))) {
+	     (!inst->methods[eap_msg->vp_octets[4]].submodule))) {
 		RDEBUG2("Ignoring Unknown EAP type");
 		return RLM_MODULE_NOOP;
 	}
@@ -426,10 +426,10 @@ int eap_start(rlm_eap_t const *inst, REQUEST *request)
 	 */
 	if ((eap_msg->vp_octets[4] == FR_EAP_NAK) &&
 	    (eap_msg->vp_length >= (EAP_HEADER_LEN + 2)) &&
-	    inst->config.ignore_unknown_types &&
+	    inst->ignore_unknown_types &&
 	    ((eap_msg->vp_octets[5] == 0) ||
 	     (eap_msg->vp_octets[5] >= FR_EAP_MAX_TYPES) ||
-	     (!inst->methods[eap_msg->vp_octets[5]]))) {
+	     (!inst->methods[eap_msg->vp_octets[5]].submodule))) {
 		RDEBUG2("Ignoring NAK with request for unknown EAP type");
 		return RLM_MODULE_NOOP;
 	}

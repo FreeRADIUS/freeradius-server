@@ -44,12 +44,17 @@ typedef struct rlm_eap_method {
  *
  */
 typedef struct rlm_eap {
-	rlm_eap_config_t		config;				//!< Configuration for this instance of
-									//!< rlm_eap. Must be first in this struct.
+	dl_instance_t			**submodule_instances;		//!< All the submodules we loaded.
+	rlm_eap_method_t 		methods[FR_EAP_MAX_TYPES];	//!< Array of loaded (or not), submodules.
+
+	char const			*default_method_name;		//!< Default method to attempt to start.
+	eap_type_t			default_method;			//!< Resolved default_method_name.
+
+	bool				ignore_unknown_types;		//!< Ignore unknown types (for later proxying).
+	bool				cisco_accounting_username_bug;
 
 	char const			*name;				//!< Name of this instance.
 
-	rlm_eap_method_t 		*methods[FR_EAP_MAX_TYPES];	//!< Array of loaded (or not), submodules.
 	fr_randctx			rand_pool;			//!< Pool of random data.
 } rlm_eap_t;
 

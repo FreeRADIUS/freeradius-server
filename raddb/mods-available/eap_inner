@@ -26,8 +26,14 @@ eap inner-eap {
 	default_eap_type = mschapv2
 
 	#
-	#  Supported EAP-types
+	#  Allowed EAP-types
 	#
+	#  Only EAP types listed below with a 'type = <EAP-Type>' pair will be allowed.
+	#
+	type = md5
+	type = gtc
+	type = mschapv2
+	type = tls
 
 	#
 	#  MD5 is OK to use the inner tunnel, as keying material is provided by
