@@ -9,33 +9,36 @@
 ######################################################################
 
 server tacacs {
-#	namespace = tacacs
+	namespace = tacacs
 
 	listen {
 		ipaddr = *
+		transport = tcp
 
-		# TACACS+ runs over TCP only
-		proto = tcp
+		tcp {
+			#  Port on which to listen.
+			#  Allowed values are:
+			#	integer port number
+			#	49 is the default TACACS+ port.
+			port = 49
 
-		#  Port on which to listen.
-		#  Allowed values are:
-		#	integer port number
-		#	49 is the default TACACS+ port.
-		port = 49
+			#  Type of packets to listen for.  Here, it is TACACS+.
+			type = tacacs
 
-		#  Type of packets to listen for.  Here, it is TACACS+.
-		type = tacacs
+			#  Some systems support binding to an interface, in addition
+			#  to the IP address.  This feature isn't strictly necessary,
+			#  but for sites with many IP addresses on one interface,
+			#  it's useful to say "listen on all addresses for
+			#  eth0".
+			#
+			#  If your system does not support this feature, you will
+			#  get an error if you try to use it.
+			#
+			#	interface = eth0
+		}
 
-		#  Some systems support binding to an interface, in addition
-		#  to the IP address.  This feature isn't strictly necessary,
-		#  but for sites with many IP addresses on one interface,
-		#  it's useful to say "listen on all addresses for
-		#  eth0".
-		#
-		#  If your system does not support this feature, you will
-		#  get an error if you try to use it.
-		#
-		#	interface = eth0
+		type = Authentication
+		type = Authorization
 	}
 
 	#
@@ -238,13 +241,13 @@ server tacacs {
 	send Authorization {
 	}
 
-	recv Accounting {
+	recv process Accounting-Request {
 		update config {
 			&Auth-Type = Accept
 		}
 	}
 
-	send Accounting {
+	send process Accounting-Request {
 	}
 
 	# Proxying of TACACS+ requests is NOT supported.
