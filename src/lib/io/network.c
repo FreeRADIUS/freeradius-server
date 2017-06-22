@@ -470,14 +470,12 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 
 	talloc_set_destructor(s, _network_socket_free);
 
-#define MIN_MESSAGES (8)
-
 	/*
-	 *	@todo - make the default number of messages configurable?
+	 *	Allocate the ring buffer for messages and packets.
 	 */
-	s->ms = fr_message_set_create(s, MIN_MESSAGES,
+	s->ms = fr_message_set_create(s, s->listen->num_messages,
 				      sizeof(fr_channel_data_t),
-				      s->listen->default_message_size * MIN_MESSAGES);
+				      s->listen->default_message_size * s->listen->num_messages);
 	if (!s->ms) {
 		fr_log(nr->log, L_ERR, "Failed creating message buffers for network IO.");
 

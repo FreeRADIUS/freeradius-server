@@ -74,6 +74,9 @@ typedef struct {
 									//!< only one instance per type allowed.
 	fr_io_process_t			process_by_code[FR_CODE_MAX];	//!< Lookup process entry point by code.
 
+	uint32_t			default_message_size;		//!< for message ring buffer
+	uint32_t			num_messages;			//!< for message ring buffer
+
 	bool				code_allowed[FR_CODE_MAX];	//!< Lookup allowed packet codes.
 
 	fr_listen_t const		*listen;			//!< The listener structure which describes
