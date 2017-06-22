@@ -706,8 +706,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 
 	switch (request->request_state) {
 	case REQUEST_INIT:
-		request->server = request->listener->server;
-		request->server_cs = request->listener->server_cs;
+		request->server = cf_section_name2(request->server_cs);
 		/* FALL-THROUGH */
 
 	case REQUEST_RECV:
