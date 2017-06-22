@@ -607,7 +607,10 @@ static int cf_pair_parse_internal(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, 
 		for (i = 0; i < count; i++, cp = cf_pair_find_next(cs, cp, rule->name)) {
 			cf_parse_t func = cf_pair_parse_value;
 
-			if (rule->func) func = rule->func;
+			if (rule->func) {
+				func = rule->func;
+				cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), cp->value);
+			}
 			if (func(ctx, &array[i], cf_pair_to_item(cp), rule) < 0) {
 				talloc_free(array);
 				talloc_free(dflt_cp);
@@ -644,7 +647,10 @@ static int cf_pair_parse_internal(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, 
 
 		if (deprecated) goto deprecated;
 
-		if (rule->func) func = rule->func;
+		if (rule->func) {
+			func = rule->func;
+			cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp), cp->value);
+		}
 		if (func(ctx, out, cf_pair_to_item(cp), rule) < 0) {
 			talloc_free(dflt_cp);
 			return -1;
