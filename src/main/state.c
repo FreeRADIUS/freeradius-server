@@ -464,7 +464,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 	 *	only succeed in the virtual server that created the state
 	 *	value.
 	 */
-	*((uint32_t *)(&entry->state_comp.server_hash)) ^= fr_hash_string(request->server);
+	*((uint32_t *)(&entry->state_comp.server_hash)) ^= fr_hash_string(cf_section_name2(request->server_cs));
 
 	if (!rbtree_insert(state->tree, entry)) {
 		talloc_free(entry);
@@ -509,7 +509,7 @@ static fr_state_entry_t *state_entry_find(fr_state_tree_t *state, REQUEST *reque
 	/*
 	 *	Make it unique for different virtual servers handling the same request
 	 */
-	my_entry.state_comp.server_hash ^= fr_hash_string(request->server);
+	my_entry.state_comp.server_hash ^= fr_hash_string(cf_section_name2(request->server_cs));
 
 	entry = rbtree_finddata(state->tree, &my_entry);
 
