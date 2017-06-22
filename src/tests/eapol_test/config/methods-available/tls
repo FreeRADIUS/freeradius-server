@@ -1,3 +1,5 @@
+type = tls
+
 tls {
 	# Point to the common TLS configuration
 	tls = tls-common

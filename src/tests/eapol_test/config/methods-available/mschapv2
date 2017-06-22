@@ -1,3 +1,5 @@
+type = mschapv2
+
 #
 #  This takes no configuration.
 #

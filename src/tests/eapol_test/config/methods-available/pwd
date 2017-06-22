@@ -1,3 +1,5 @@
+type = pwd
+
 pwd {
 	group = 19
 

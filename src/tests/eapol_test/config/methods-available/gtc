@@ -1,3 +1,4 @@
+type = gtc
 gtc {
 	auth_type = PAP
 }
