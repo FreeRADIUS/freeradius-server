@@ -111,6 +111,12 @@ CONF_ITEM	*cf_pair_to_item(CONF_PAIR const *cp);
 CONF_ITEM	*cf_section_to_item(CONF_SECTION const *cs);
 CONF_ITEM	*cf_data_to_item(CONF_DATA const *cs);
 
+#define		cf_filename_set(_ci, _filename) _cf_filename_set(CF_TO_ITEM(_ci), _filename)
+void		_cf_filename_set(CONF_ITEM *cs, char const *filename);
+
+#define		cf_lineno_set(_ci, _lineno) _cf_lineno_set(CF_TO_ITEM(_ci), _lineno)
+void		_cf_lineno_set(CONF_ITEM *cs, int lineno);
+
 /*
  *	Section manipulation and searching
  */

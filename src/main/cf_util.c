@@ -726,6 +726,28 @@ CONF_SECTION *cf_section_alloc(CONF_SECTION *parent, char const *name1, char con
 	return cs;
 }
 
+/** Set the filename of a #CONF_ITEM
+ *
+ * @param[in] ci	to set filename on.
+ * @param[in] filename	to set.
+ */
+void _cf_filename_set(CONF_ITEM *ci, char const *filename)
+{
+	talloc_const_free(ci->filename);
+
+	ci->filename = talloc_strdup(ci, filename);
+}
+
+/** Set the line number of a #CONF_ITEM
+ *
+ * @param[in] ci	to set the lineno for.
+ * @param[in] lineno	to set.
+ */
+void _cf_lineno_set(CONF_ITEM *ci, int lineno)
+{
+	ci->lineno = lineno;
+}
+
 /** Duplicate a configuration section
  *
  * @note recursively duplicates any child sections.

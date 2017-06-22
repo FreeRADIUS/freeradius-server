@@ -95,7 +95,10 @@ static int submodule_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
 	 *	Check for duplicates
 	 */
 	if (inst->methods[method].submodule) {
-		cf_log_err(ci, "Duplicate EAP type %s", name);
+		CONF_SECTION *conf = inst->methods[method].submodule_inst->conf;
+
+		cf_log_err(ci, "Duplicate EAP-Type %s.  Conflicting entry %s[%u]", name,
+			   cf_filename(conf), cf_lineno(conf));
 		return -1;
 	}
 
@@ -132,6 +135,8 @@ static int submodule_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
 	submodule_cs = cf_section_find(eap_cs, name, NULL);
 	if (!submodule_cs) {
 		submodule_cs = cf_section_alloc(eap_cs, name, NULL);
+		cf_filename_set(submodule_cs, cf_filename(ci));
+		cf_lineno_set(submodule_cs, cf_lineno(ci));
 		cf_item_add(eap_cs, submodule_cs);
 	}
 
