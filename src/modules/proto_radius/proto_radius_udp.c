@@ -164,7 +164,7 @@ static int mod_decode(UNUSED void const *instance, REQUEST *request, UNUSED uint
 	request->reply->src_ipaddr = address->dst_ipaddr;
 	request->reply->src_port = address->dst_port;
 	request->reply->dst_ipaddr = address->src_ipaddr;
-	request->reply->dst_port = address->dst_port;
+	request->reply->dst_port = address->src_port;
 
 	request->root = &main_config;
 	request->server = cf_section_name2(request->server_cs);
