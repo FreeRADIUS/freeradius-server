@@ -144,7 +144,7 @@ static RADCLIENT *mod_client(UNUSED void const *instance, void const *packet_ctx
 	return address->client;
 }
 
-static ssize_t mod_read(void const *instance, void **packet_ctx, uint8_t *buffer, size_t buffer_len)
+static ssize_t mod_read(void const *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len)
 {
 	proto_radius_udp_t const	*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
 
@@ -227,6 +227,7 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, uint8_t *buffer
 	}
 
 	*packet_ctx = track;
+	*recv_time = &track->timestamp;
 
 	return packet_len;
 }
@@ -246,7 +247,7 @@ static ssize_t mod_write(void const *instance, void *packet_ctx,
 	 *	The original packet has changed.  Suppress the write,
 	 *	as the client will never accept the response.
 	 */
-	if (track->timestamp > request_time) return buffer_len;
+	if (track->timestamp != request_time) return buffer_len;
 
 	/*
 	 *	Figure out when we've sent the reply.

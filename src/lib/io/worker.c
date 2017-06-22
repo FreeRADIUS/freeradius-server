@@ -659,8 +659,9 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 		 *	This message has asynchronously aged out while it was
 		 *	in the queue.  Delete it, and go get another one.
 		 */
-		if (cd->request.start_time && (cd->m.when != *cd->request.start_time)) {
-			fr_log(worker->log, L_DBG, "\t%sIGNORING old message", worker->name);
+		if (cd->request.recv_time && (cd->m.when != *cd->request.recv_time)) {
+			fr_log(worker->log, L_DBG, "\t%sIGNORING old message: was %zd now %zd", worker->name,
+				*cd->request.recv_time, cd->m.when);
 			fr_worker_nak(worker, cd, fr_time());
 			cd = NULL;
 		}
@@ -694,7 +695,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	 *	processing this message.
 	 */
 	request->async->channel = cd->channel.ch;
-	request->async->original_recv_time = cd->request.start_time;
+	request->async->original_recv_time = cd->request.recv_time;
 	request->async->recv_time = cd->m.when;
 	request->async->el = worker->el;
 	request->number = worker->number++;
@@ -728,7 +729,7 @@ nak:
 	/*
 	 *	Hoist run-time checks here.
 	 */
-	if (!cd->request.start_time) request->async->original_recv_time = &request->async->recv_time;
+	if (!cd->request.recv_time) request->async->original_recv_time = &request->async->recv_time;
 
 	/*
 	 *	We're done with this message.

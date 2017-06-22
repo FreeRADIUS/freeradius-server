@@ -299,9 +299,6 @@ static int fr_network_send_request(fr_network_t *nr, fr_channel_data_t *cd)
 }
 
 
-static fr_time_t start_time = 0;
-
-
 /** Read a packet from the network.
  *
  * @param[in] el	the event list.
@@ -315,6 +312,7 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int f
 	fr_network_t *nr = talloc_parent(s);
 	ssize_t data_size;
 	fr_channel_data_t *cd;
+	fr_time_t *recv_time;
 
 	rad_assert(s->listen->app_io->fd(s->listen->app_io_instance) == sockfd);
 
@@ -347,7 +345,7 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int f
 	 *	network side knows that it needs to close the
 	 *	connection.
 	 */
-	data_size = s->listen->app_io->read(s->listen->app_io_instance, &cd->packet_ctx, cd->m.data, cd->m.rb_size);
+	data_size = s->listen->app_io->read(s->listen->app_io_instance, &cd->packet_ctx, &recv_time, cd->m.data, cd->m.rb_size);
 	if (data_size == 0) {
 		fr_log(nr->log, L_DBG_ERR, "got no data from transport read");
 
@@ -381,12 +379,14 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int f
 	/*
 	 *	Initialize the rest of the fields of the channel data.
 	 */
-	cd->m.when = fr_time();
+	if (recv_time) {
+		cd->m.when = *recv_time;
+	} else {
+		cd->m.when = fr_time();
+	}
 	cd->priority = 0;
 	cd->listen = s->listen;
-	cd->request.start_time = &start_time; /* @todo - set by transport */
-
-	start_time = cd->m.when;
+	cd->request.recv_time = recv_time;
 
 	(void) fr_message_alloc(s->ms, &cd->m, data_size);
 
