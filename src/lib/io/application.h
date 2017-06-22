@@ -58,6 +58,16 @@ typedef struct {
 	fr_app_bootstrap_t		bootstrap;
 	fr_app_instantiate_t		instantiate;
 	fr_app_open_t			open;		//!< Open listen sockets.
+
+	fr_io_decode_t			decode;		//!< Translate raw bytes into VALUE_PAIRs and metadata.
+							///< May be NULL.
+							///< Here for convenience, so that decode operations common
+							///< to all #fr_app_io_t can be performed by the #fr_app_t.
+
+	fr_io_encode_t			encode;		//!< Pack VALUE_PAIRs back into a byte array.
+							///< May be NULL.
+							///< Here for convenience, so that encode operations common
+							///< to all #fr_app_io_t can be performed by the #fr_app_t.
 	fr_app_process_set_t		process_set;
 } fr_app_t;
 
@@ -93,6 +103,8 @@ typedef struct fr_app_io_t {
 	fr_io_get_fd_t			fd;		//!< Return the file descriptor from the instance.
 	fr_io_data_read_t		read;		//!< Read from a socket to a data buffer
 	fr_io_data_write_t		write;		//!< Write from a data buffer to a socket
+	fr_io_decode_t			decode;		//!< Translate raw bytes into VALUE_PAIRs and metadata.
+	fr_io_encode_t			encode;		//!< Pack VALUE_PAIRs back into a byte array.
 	fr_io_signal_t			flush;		//!< Flush the data when the socket is ready for writing.
 	fr_io_signal_t			error;		//!< There was an error on the socket.
 	fr_io_signal_t			close;		//!< Close the transport.

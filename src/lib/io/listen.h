@@ -32,9 +32,6 @@ struct fr_listen {
 
 	size_t			default_message_size;	//!< copied from app_io, but may be changed
 	size_t			num_messages;		//!< for the message ring buffer
-
-	fr_io_decode_t		decode;			//!< Function to decode packet to request (worker)
-	fr_io_encode_t		encode;			//!< Function to encode request to packet (worker)
 };
 
 /**

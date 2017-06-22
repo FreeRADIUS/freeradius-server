@@ -151,9 +151,9 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
 /** Decode the packet, and set the request->process function
  *
  */
-static int mod_decode(REQUEST *request, uint8_t *const data, size_t data_len)
+static int mod_decode(void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
 {
-	proto_radius_t const *inst = talloc_get_type_abort(request->async->listen->app_instance, proto_radius_t);
+	proto_radius_t const *inst = talloc_get_type_abort(instance, proto_radius_t);
 	RADCLIENT *client;
 
 	rad_assert(data[0] < FR_MAX_PACKET_CODE);
@@ -180,11 +180,11 @@ static int mod_decode(REQUEST *request, uint8_t *const data, size_t data_len)
 	return 0;
 }
 
-static ssize_t mod_encode(REQUEST *request, uint8_t *buffer, size_t buffer_len)
+static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
 {
 	size_t len;
 
-	proto_radius_t const *inst = talloc_get_type_abort(request->async->listen->app_instance, proto_radius_t);
+	proto_radius_t const *inst = talloc_get_type_abort(instance, proto_radius_t);
 	RADCLIENT *client;
 
 	client = inst->app_io_private->client(inst->app_io, request->async->packet_ctx);
@@ -271,9 +271,6 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	 */
 	listen->default_message_size = inst->default_message_size;
 	listen->num_messages = inst->default_message_size;
-
-	listen->encode = mod_encode;
-	listen->decode = mod_decode;
 
 	/*
 	 *	Add the listener to the scheduler.
@@ -429,5 +426,7 @@ fr_app_t proto_radius = {
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.open		= mod_open,
+	.decode		= mod_decode,
+	.encode		= mod_encode,
 	.process_set	= mod_process_set
 };

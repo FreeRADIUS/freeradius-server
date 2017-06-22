@@ -422,13 +422,17 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	 *	Encode it, if required.
 	 */
 	if (size) {
-		ssize_t encoded;
+		ssize_t encoded = 0, slen = 0;
+		fr_listen_t const *listen = request->async->listen;
 
-		encoded = request->async->listen->encode(request, reply->m.data, reply->m.rb_size);
-		if (encoded < 0) {
-			fr_log(worker->log, L_DBG, "\t%sfails encode", worker->name);
-			encoded = 0;
+		if (listen->app->encode) {
+			slen = listen->app->encode(listen->app_instance, request,
+						   reply->m.data, reply->m.rb_size);
+		} else if (listen->app_io->encode) {
+			slen = listen->app_io->encode(listen->app_io_instance, request,
+						      reply->m.data, reply->m.rb_size);
 		}
+		if (slen < 0) fr_log(worker->log, L_DBG, "\t%sfails encode", worker->name);
 
 		/*
 		 *	Resize the buffer to the actual packet size.
@@ -623,7 +627,7 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
  */
 static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 {
-	int			rcode;
+	int			ret = -1;
 	fr_channel_data_t	*cd;
 	REQUEST			*request;
 	fr_dlist_t		*entry;
@@ -709,8 +713,13 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	 *
 	 *	Note that this also sets the "async process" function.
 	 */
-	rcode = listen->decode(request, cd->m.data, cd->m.data_size);
-	if (rcode < 0) {
+	if (listen->app->decode) {
+		ret = listen->app->decode(listen->app_instance, request, cd->m.data, cd->m.data_size);
+	} else if (listen->app_io->decode) {
+		ret = listen->app_io->decode(listen->app_io_instance, request, cd->m.data, cd->m.data_size);
+	}
+
+	if (ret < 0) {
 		fr_log(worker->log, L_DBG, "\t%sFAILED decode of request %"PRIu64, worker->name, request->number);
 		talloc_free(ctx);
 nak:

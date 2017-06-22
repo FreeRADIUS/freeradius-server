@@ -94,6 +94,7 @@ typedef int (*fr_io_get_fd_t)(void const *instance);
  *  know anything about how the data will be used (e.g. authorize,
  *  authenticate, etc. for Access-Request)
  *
+ * @param[in] instance		of the #fr_app_t or #fr_app_io_t.
  * @param[in] data		the raw packet data
  * @param[in] data_len		the length of the raw data
  * @param[in] request		where the decoded VPs should be placed.
@@ -101,7 +102,7 @@ typedef int (*fr_io_get_fd_t)(void const *instance);
  *	- <0 on error
  *	- 0 on success
  */
-typedef int (*fr_io_decode_t)(REQUEST *request, uint8_t *const data, size_t data_len);
+typedef int (*fr_io_decode_t)(void const *instance, REQUEST *request, uint8_t *const data, size_t data_len);
 
 /** Encode data from a REQUEST into a raw packet.
  *
@@ -113,6 +114,7 @@ typedef int (*fr_io_decode_t)(REQUEST *request, uint8_t *const data, size_t data
  *  know anything about how the data will be used (e.g. reject delay
  *  on Access-Reject)
  *
+ * @param[in] instance		of the #fr_app_t or #fr_app_io_t.
  * @param[in] request		request where the VPs to be encoded are located
  * @param[out] buffer		the buffer where the raw packet will be written
  * @param[in] buffer_len	the length of the buffer
@@ -120,7 +122,7 @@ typedef int (*fr_io_decode_t)(REQUEST *request, uint8_t *const data, size_t data
  *	- <0 on error
  *	- >=0 length of the encoded data in the buffer, will be <=buffer_len
  */
-typedef ssize_t (*fr_io_encode_t)(REQUEST *request, uint8_t *buffer, size_t buffer_len);
+typedef ssize_t (*fr_io_encode_t)(void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len);
 
 /** NAK a packet.
  *

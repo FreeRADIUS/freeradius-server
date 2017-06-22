@@ -105,7 +105,7 @@ static fr_io_final_t test_process(REQUEST *request, fr_io_action_t action)
 	return FR_IO_REPLY;
 }
 
-static int test_decode(REQUEST *request, uint8_t *const data, size_t data_len)
+static int test_decode(UNUSED void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
 {
 	uint32_t number;
 
@@ -122,10 +122,10 @@ static int test_decode(REQUEST *request, uint8_t *const data, size_t data_len)
 	return 0;
 }
 
-static ssize_t test_encode(REQUEST *request, uint8_t *const data, size_t data_len)
+static ssize_t test_encode(void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
 {
 	MPRINT1("\t\tENCODE >>> request %"PRIu64" - data %p %p size %zd\n", request->number,
-		request->async->listen->app_instance, data, data_len);
+		instance, data, data_len);
 
 	return data_len;
 }
@@ -149,6 +149,8 @@ static fr_app_io_t app_io = {
 	.name = "worker-test",
 	.default_message_size = 4096,
 	.nak = test_nak,
+	.encode = test_encode,
+	.decode = test_decode
 };
 
 static void *worker_thread(void *arg)
@@ -200,7 +202,7 @@ static void master_process(void)
 	fr_channel_event_t	ce;
 	pthread_attr_t		attr;
 	fr_schedule_worker_t	*sw;
-	fr_listen_t		listen = { .app_io = &app_io, .encode = test_encode, .decode = test_decode };
+	fr_listen_t		listen = { .app_io = &app_io };
 	struct kevent		events[MAX_KEVENTS];
 
 	ctx = talloc_init("master");

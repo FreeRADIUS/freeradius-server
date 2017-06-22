@@ -96,7 +96,7 @@ static fr_io_final_t test_process(REQUEST *request, fr_io_action_t action)
 }
 
 
-static int test_decode(REQUEST *request, uint8_t *const data, size_t data_len)
+static int test_decode(UNUSED void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
 {
 	fr_radius_packet_ctx_t const *pc = talloc_get_type_abort(request->async->listen->app_instance,
 								 fr_radius_packet_ctx_t);
@@ -111,7 +111,7 @@ static int test_decode(REQUEST *request, uint8_t *const data, size_t data_len)
 	return 0;
 }
 
-static ssize_t test_encode(REQUEST *request, uint8_t *buffer, size_t buffer_len)
+static ssize_t test_encode(UNUSED void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
 {
 	FR_MD5_CTX context;
 	fr_radius_packet_ctx_t const *pc = talloc_get_type_abort(request->async->listen->app_instance,
@@ -146,6 +146,8 @@ static fr_app_io_t app_io = {
 	.name = "worker-test",
 	.default_message_size = 4096,
 	.nak = test_nak,
+	.encode = test_encode,
+	.decode = test_decode
 };
 
 static void *worker_thread(void *arg)
@@ -216,7 +218,7 @@ static void master_process(TALLOC_CTX *ctx)
 	int			kq_master;
 	fr_atomic_queue_t	*aq_master;
 	fr_control_t		*control_master;
-	fr_listen_t		listen = { .app_io = &app_io, .encode = test_encode, .decode = test_decode };
+	fr_listen_t		listen = { .app_io = &app_io };
 	int			sockfd;
 
 	MPRINT1("Master started.\n");
