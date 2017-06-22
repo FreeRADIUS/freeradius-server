@@ -904,7 +904,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
 	return 0;
 }
 
-static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *cs)
+static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 {
 	rlm_eap_t	*inst = talloc_get_type_abort(instance, rlm_eap_t);
 	size_t		i, loaded, count = 0;
