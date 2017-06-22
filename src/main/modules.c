@@ -746,6 +746,8 @@ int modules_instantiate(CONF_SECTION *root)
 	modules = cf_section_find(root, "modules", NULL);
 	if (!modules) return 0;
 
+	DEBUG2("%s: #### Instantiating modules ####", main_config.name);
+
 	if (cf_data_walk(modules, module_instance_t, _module_instantiate, NULL) < 0) return -1;
 
 #ifndef NDEBUG
@@ -781,12 +783,11 @@ static int _module_instance_free(module_instance_t *mod_inst)
 		pthread_mutex_destroy(mod_inst->mutex);
 	}
 
-	xlat_unregister(mod_inst->dl_inst->data, mod_inst->name, NULL);
-
 	/*
 	 *	Remove all xlat's registered to module instance.
 	 */
-	if (mod_inst->dl_inst->data) {
+	if (mod_inst->dl_inst && mod_inst->dl_inst->data) {
+		xlat_unregister(mod_inst->dl_inst->data, mod_inst->name, NULL);
 		/*
 		 *	Remove any registered paircompares.
 		 */
@@ -1007,7 +1008,7 @@ int modules_bootstrap(CONF_SECTION *root)
 		return 0;
 	}
 
-	DEBUG2("%s: #### Loading modules ####", main_config.name);
+	DEBUG2("%s: #### Bootstrapping modules ####", main_config.name);
 
 	cf_log_debug(modules, " modules {");
 
