@@ -851,7 +851,10 @@ int fr_event_corral(fr_event_list_t *el, bool wait)
 			fr_event_timer_t *ev;
 
 			ev = fr_heap_peek(el->times);
-			if (!fr_cond_assert(ev)) return -1;
+			if (!fr_cond_assert(ev)) {
+				fr_strerror_printf("Timer heap says it is non-empty, but there are no entries in it.");
+				return -1;
+			}
 
 			gettimeofday(&el->now, NULL);
 
@@ -903,7 +906,13 @@ int fr_event_corral(fr_event_list_t *el, bool wait)
 	/*
 	 *	Interrupt is different from timeout / FD events.
 	 */
-	if ((el->num_fd_events < 0) && (errno == EINTR)) el->num_fd_events = 0;
+	if (el->num_fd_events < 0) {
+		if (errno == EINTR) {
+			el->num_fd_events = 0;
+		} else {
+			fr_strerror_printf("Failed calling kevent: %s", fr_syserror(errno));
+		}
+	}
 
 	return el->num_fd_events;
 }
@@ -1082,7 +1091,9 @@ int fr_event_loop(fr_event_list_t *el)
 
 	el->dispatch = true;
 	while (!el->exit) {
-		if (fr_event_corral(el, true) < 0) break;
+		if (fr_event_corral(el, true) < 0) {
+			break;
+		}
 
 		fr_event_service(el);
 	}
