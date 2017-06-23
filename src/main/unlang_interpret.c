@@ -1190,6 +1190,14 @@ static rlm_rcode_t unlang_run(REQUEST *request, unlang_stack_t *stack)
 	frame = &stack->frame[stack->depth];
 
 	/*
+	 *	If we're called from a module, re-set this so that the
+	 *	indentation works correctly...
+	 *
+	 *	@todo - save / restore this across frames?
+	 */
+	request->module = NULL;
+
+	/*
 	 *	Our entry point *MUST* be a frame where we previously
 	 *	yielded, or a new substack.
 	 */
