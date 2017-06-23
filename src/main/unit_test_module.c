@@ -170,7 +170,7 @@ static REQUEST *request_from_file(FILE *fp, RADCLIENT *client)
 	request->master_state = REQUEST_ACTIVE;
 	request->child_state = REQUEST_RUNNING;
 	request->handle = NULL;
-	request->server_cs = cf_section_alloc(request, NULL, "default", NULL);
+	request->server_cs = virtual_server_find("default");
 
 	request->root = &main_config;
 
