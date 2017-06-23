@@ -334,7 +334,14 @@ void	radlog_fatal(char const *fmt, ...) CC_HINT(format (printf, 1, 2)) CC_HINT(n
  * @param _i index e.g. 3 (starts from 0).
  * @param _e error e.g. "kitties are not pets, are nature devouring hell beasts".
  */
+#ifndef DEBUG_INDENT
 #define RMARKER(_l, _p, _m, _i, _e)	radlog_request_marker(_l, _p, request, _m, _i, _e)
+#else
+#define RMARKER(_l, _p, _m, _i, _e) do { \
+		RDEBUG4("== (0) at %s[%u]", __FILE__, __LINE__); \
+		radlog_request_marker(_l, _p, request, _m, _i, _e); \
+	} while (0)
+#endif
 
 /** Output string with error marker, showing where format error occurred
  *
