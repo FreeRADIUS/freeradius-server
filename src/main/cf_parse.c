@@ -802,7 +802,7 @@ static int cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER const
 		 */
 		if (!subcs) {
 			if (DEBUG_ENABLED4) cf_log_debug(cs, "Allocating fake section \"%s\"", rule->name);
-			subcs = cf_section_alloc(cs, rule->name, rule->ident2);
+			subcs = cf_section_alloc(cs, cs, rule->name, rule->ident2);
 			if (!subcs) return -1;
 
 			cf_item_add(cs, &(subcs->item));

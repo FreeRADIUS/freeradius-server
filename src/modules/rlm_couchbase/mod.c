@@ -723,7 +723,7 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 
 		/* allocate conf section */
 		client = tmpl ? cf_section_dup(NULL, tmpl, "client", vkey, true) :
-				cf_section_alloc(NULL, "client", vkey);
+				cf_section_alloc(NULL, NULL, "client", vkey);
 
 		if (client_map_section(client, map, _get_client_value, cookie->jobj) < 0) {
 			/* free config setion */

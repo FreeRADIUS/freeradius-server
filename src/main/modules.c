@@ -300,7 +300,7 @@ fr_pool_t *module_connection_pool_init(CONF_SECTION *module,
 		DEBUG4("%s: Adding pool section to config item \"%s\" to store pool references", log_prefix,
 		       cf_section_name(module));
 
-		mycs = cf_section_alloc(module, "pool", NULL);
+		mycs = cf_section_alloc(module, module, "pool", NULL);
 		cf_section_add(module, mycs);
 	}
 

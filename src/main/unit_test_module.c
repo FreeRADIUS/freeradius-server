@@ -95,13 +95,13 @@ static rad_listen_t *listen_alloc(void *ctx)
 	return this;
 }
 
-static RADCLIENT *client_alloc(void *ctx, char const *ip, char const *name)
+static RADCLIENT *client_alloc(TALLOC_CTX *ctx, char const *ip, char const *name)
 {
 	CONF_SECTION *cs;
 	CONF_PAIR *cp;
 	RADCLIENT *client;
 
-	cs = cf_section_alloc(NULL, "client", name);
+	cs = cf_section_alloc(ctx, NULL, "client", name);
 	cp = cf_pair_alloc(cs, "ipaddr", ip, T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
 	cf_pair_add(cs, cp);
 
@@ -128,6 +128,7 @@ static RADCLIENT *client_alloc(void *ctx, char const *ip, char const *name)
 		PERROR("Failed creating test client");
 		rad_assert(0);
 	}
+	talloc_steal(client, cs);
 	rad_assert(client);
 
 	return client;
@@ -860,7 +861,8 @@ int main(int argc, char *argv[])
 	/*
 	 *	Setup dummy virtual server
 	 */
-	cf_section_add(main_config.config, cf_section_alloc(main_config.config, "server", "unit_test"));
+	cf_section_add(main_config.config, cf_section_alloc(main_config.config,
+							    main_config.config, "server", "unit_test"));
 
 	/*
 	 *	Initialize Auth-Type, etc. in the virtual servers

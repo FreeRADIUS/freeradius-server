@@ -1366,7 +1366,7 @@ int main(int argc, char *argv[])
 	name = argv[0];
 
 	conf = talloc_zero(NULL, ippool_tool_t);
-	conf->cs = cf_section_alloc(NULL, "main", NULL);
+	conf->cs = cf_section_alloc(NULL, NULL, "main", NULL);
 	if (!conf->cs) exit(1);
 
 	trigger_exec_init(conf->cs);
@@ -1520,7 +1520,7 @@ do { \
 	 */
 	pool_cs = cf_section_find(conf->cs, "pool", NULL);
 	if (!pool_cs) {
-		pool_cs = cf_section_alloc(conf->cs, "pool", NULL);
+		pool_cs = cf_section_alloc(conf->cs, conf->cs, "pool", NULL);
 		cf_section_add(conf->cs, pool_cs);
 	}
 	cp = cf_pair_find(pool_cs, "start");

@@ -679,14 +679,16 @@ static int _cf_section_free(CONF_SECTION *cs)
 
 /** Allocate a #CONF_SECTION
  *
+ * @param[in] ctx	to allocate
  * @param[in] parent	#CONF_SECTION to hang this #CONF_SECTION off of.
+ *			If parent is not NULL, the new section will be added as a child.
  * @param[in] name1	Primary name.
  * @param[in] name2	Secondary name.
  * @return
  *	- NULL on error.
  *	- A new #CONF_SECTION parented by parent.
  */
-CONF_SECTION *cf_section_alloc(CONF_SECTION *parent, char const *name1, char const *name2)
+CONF_SECTION *cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent, char const *name1, char const *name2)
 {
 	CONF_SECTION *cs;
 
@@ -707,7 +709,7 @@ CONF_SECTION *cf_section_alloc(CONF_SECTION *parent, char const *name1, char con
 		}
 	}
 
-	cs = talloc_zero(parent, CONF_SECTION);
+	cs = talloc_zero(ctx, CONF_SECTION);
 	if (!cs) return NULL;
 
 	cs->item.type = CONF_ITEM_SECTION;
@@ -771,7 +773,7 @@ CONF_SECTION *cf_section_dup(CONF_SECTION *parent, CONF_SECTION const *cs,
 	CONF_ITEM	*ci;
 	fr_cursor_t	cursor;
 
-	new = cf_section_alloc(parent, name1, name2);
+	new = cf_section_alloc(parent, parent, name1, name2);
 
 	if (copy_meta) {
 		new->template = cs->template;

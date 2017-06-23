@@ -140,7 +140,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
 	 *	Allocate an empty section if one doesn't exist
 	 *	this is so defaults get parsed.
 	 */
-	if (!transport_cs) transport_cs = cf_section_alloc(listen_cs, name, NULL);
+	if (!transport_cs) transport_cs = cf_section_alloc(listen_cs, listen_cs, name, NULL);
 
 	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_instance_t, "proto_radius"));
 	rad_assert(parent_inst);

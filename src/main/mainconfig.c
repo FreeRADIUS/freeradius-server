@@ -754,7 +754,7 @@ do {\
 	 */
 	DICT_READ_OPTIONAL(radius_dir, FR_DICTIONARY_FILE);
 
-	cs = cf_section_alloc(NULL, "main", NULL);
+	cs = cf_section_alloc(NULL, NULL, "main", NULL);
 	if (!cs) return -1;
 
 	/*
@@ -766,7 +766,7 @@ do {\
 	 */
 	subcs = cf_section_find(cs, "feature", NULL);
 	if (!subcs) {
-		subcs = cf_section_alloc(cs, "feature", NULL);
+		subcs = cf_section_alloc(cs, cs, "feature", NULL);
 		if (!subcs) return -1;
 
 		cf_section_add(cs, subcs);
@@ -780,7 +780,7 @@ do {\
 	 */
 	subcs = cf_section_find(cs, "version", NULL);
 	if (!subcs) {
-		subcs = cf_section_alloc(cs, "version", NULL);
+		subcs = cf_section_alloc(cs, cs, "version", NULL);
 		if (!subcs) return -1;
 		cf_section_add(cs, subcs);
 	}

@@ -928,7 +928,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 	driver_cs = cf_section_find(conf, name, NULL);
 	if (!driver_cs) {
-		driver_cs = cf_section_alloc(conf, name, NULL);
+		driver_cs = cf_section_alloc(conf, conf, name, NULL);
 		if (!driver_cs) return -1;
 	}
 

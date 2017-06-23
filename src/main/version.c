@@ -522,10 +522,10 @@ void version_print(void)
 #endif
 		int max = 0, len;
 
-		MEM(features = cf_section_alloc(NULL, "feature", NULL));
+		MEM(features = cf_section_alloc(NULL, NULL, "feature", NULL));
 		version_init_features(features);
 
-		MEM(versions = cf_section_alloc(NULL, "version", NULL));
+		MEM(versions = cf_section_alloc(NULL, NULL, "version", NULL));
 		version_numbers_init(versions);
 
 		DEBUG2("Server was built with: ");

@@ -551,7 +551,7 @@ static bool virtual_server_define_types(CONF_SECTION *cs, rlm_components_t comp)
 
 			cp = cf_item_to_pair(ci);
 
-			subcs = cf_section_alloc(cs, section_type_value[comp].typename, cf_pair_attr(cp));
+			subcs = cf_section_alloc(cs, cs, section_type_value[comp].typename, cf_pair_attr(cp));
 			rad_assert(subcs != NULL);
 			cf_section_add(cs, subcs);
 			cf_pair_add(subcs, cf_pair_dup(subcs, cp));

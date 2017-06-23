@@ -1176,7 +1176,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				}
 			} /* else leave it alone */
 
-			css = cf_section_alloc(this, buff[1], ptr);
+			css = cf_section_alloc(this, this, buff[1], ptr);
 			if (!css) {
 				ERROR("%s[%d]: Failed allocating memory for section", filename, *lineno);
 				goto error;
@@ -1310,7 +1310,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			/*
 			 *	Allocate the section
 			 */
-			css = cf_section_alloc(this, buff[1], mod);
+			css = cf_section_alloc(this, this, buff[1], mod);
 			if (!css) {
 				ERROR("%s[%d]: Failed allocating memory for section", filename, *lineno);
 				goto error;
@@ -1510,7 +1510,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 		alloc_section:
 		case T_LCBRACE:
-			css = cf_section_alloc(this, buff[1],
+			css = cf_section_alloc(this, this, buff[1],
 					       t2 == T_LCBRACE ? NULL : buff[2]);
 			if (!css) {
 				ERROR("%s[%d]: Failed allocating memory for section",

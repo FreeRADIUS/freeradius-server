@@ -807,7 +807,7 @@ int client_map_section(CONF_SECTION *out, CONF_SECTION const *map, client_value_
 			 */
 			cc = cf_section_find(out, cf_section_name1(cs), cf_section_name2(cs));
 			if (!cc) {
-				cc = cf_section_alloc(out, cf_section_name1(cs), cf_section_name2(cs));
+				cc = cf_section_alloc(out, out, cf_section_name1(cs), cf_section_name2(cs));
 				cf_section_add(out, cc);
 				if (!cc) return -1;
 			}
@@ -1225,7 +1225,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 	snprintf(buffer, sizeof(buffer), "dynamic%i", cnt++);
 
 	c = talloc_zero(clients, RADCLIENT);
-	c->cs = cf_section_alloc(NULL, "client", buffer);
+	c->cs = cf_section_alloc(c, NULL, "client", buffer);
 	talloc_steal(c, c->cs);
 	c->ipaddr.af = AF_UNSPEC;
 	c->src_ipaddr.af = AF_UNSPEC;
@@ -1478,14 +1478,14 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
  */
 RADCLIENT *client_read(char const *filename, CONF_SECTION *server_cs, bool check_dns)
 {
-	char const *p;
-	RADCLIENT *c;
-	CONF_SECTION *cs;
+	char const	*p;
+	RADCLIENT	*c;
+	CONF_SECTION	*cs;
 	char buffer[256];
 
 	if (!filename) return NULL;
 
-	cs = cf_section_alloc(NULL, "main", NULL);
+	cs = cf_section_alloc(NULL, NULL, "main", NULL);
 	if (!cs) return NULL;
 
 	if (cf_file_read(cs, filename) < 0) {
@@ -1501,6 +1501,7 @@ RADCLIENT *client_read(char const *filename, CONF_SECTION *server_cs, bool check
 
 	c = client_afrom_cs(cs, cs, server_cs, false);
 	if (!c) return NULL;
+	talloc_steal(cs, c);
 
 	p = strrchr(filename, FR_DIR_SEP);
 	if (p) {

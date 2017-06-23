@@ -134,7 +134,7 @@ static int submodule_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
 	 */
 	submodule_cs = cf_section_find(eap_cs, name, NULL);
 	if (!submodule_cs) {
-		submodule_cs = cf_section_alloc(eap_cs, name, NULL);
+		submodule_cs = cf_section_alloc(eap_cs, eap_cs, name, NULL);
 		cf_filename_set(submodule_cs, cf_filename(ci));
 		cf_lineno_set(submodule_cs, cf_lineno(ci));
 		cf_item_add(eap_cs, submodule_cs);

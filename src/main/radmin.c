@@ -544,7 +544,7 @@ int main(int argc, char **argv)
 			exit(64);
 		}
 
-		cs = cf_section_alloc(NULL, "main", NULL);
+		cs = cf_section_alloc(NULL, NULL, "main", NULL);
 		if (!cs) exit(1);
 
 		if (cf_file_read(cs, buffer) < 0) {

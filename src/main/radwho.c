@@ -324,7 +324,7 @@ int main(int argc, char **argv)
 	memset(&main_config, 0, sizeof(main_config));
 
 	/* Read radiusd.conf */
-	maincs = cf_section_alloc(NULL, "main", NULL);
+	maincs = cf_section_alloc(NULL, NULL, "main", NULL);
 	if (!maincs) exit(1);
 
 	snprintf(buffer, sizeof(buffer), "%.200s/radiusd.conf", raddb_dir);

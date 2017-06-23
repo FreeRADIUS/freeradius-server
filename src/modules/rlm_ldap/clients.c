@@ -218,7 +218,7 @@ int rlm_ldap_client_load(rlm_ldap_t const *inst, CONF_SECTION *tmpl, CONF_SECTIO
 		 *	Iterate over mapping sections
 		 */
 		client = tmpl ? cf_section_dup(NULL, tmpl, "client", id, true) :
-				cf_section_alloc(NULL, "client", id);
+				cf_section_alloc(NULL, NULL, "client", id);
 
 		data.conn = conn;
 		data.entry = entry;

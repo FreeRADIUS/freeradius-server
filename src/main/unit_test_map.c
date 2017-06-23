@@ -73,15 +73,15 @@ static void NEVER_RETURNS usage(void)
 
 static int process_file(char const *filename)
 {
-	int rcode;
-	char const *name1, *name2;
-	CONF_SECTION *cs;
-	vp_map_t *head, *map;
-	char buffer[8192];
+	int		rcode;
+	char const	*name1, *name2;
+	CONF_SECTION	*cs;
+	vp_map_t	*head, *map;
+	char		buffer[8192];
 
 	memset(&main_config, 0, sizeof(main_config));
 
-	main_config.config = cf_section_alloc(NULL, "main", NULL);
+	main_config.config = cf_section_alloc(NULL, NULL, "main", NULL);
 	if (cf_file_read(main_config.config, filename) < 0) {
 		fprintf(stderr, "unit_test_map: Failed parsing %s\n",
 			filename);
