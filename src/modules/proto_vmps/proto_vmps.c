@@ -50,8 +50,6 @@ static void vmps_running(REQUEST *request, fr_state_action_t action)
 			RDEBUG("Failed decoding VMPS packet: %s", fr_strerror());
 			goto done;
 		}
-
-		request->server = request->listener->server;
 		request->server_cs = request->listener->server_cs;
 		request->component = "vmps";
 

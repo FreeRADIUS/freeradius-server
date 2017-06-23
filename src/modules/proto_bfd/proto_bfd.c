@@ -66,7 +66,7 @@ typedef struct bfd_state_t {
 	int		sockfd;
 
 	fr_event_list_t *el;
-	const char	*server;
+	CONF_SECTION	*server_cs;
 	CONF_SECTION	*unlang;
 
 	bool		blocked;
@@ -212,7 +212,7 @@ typedef struct bfd_socket_t {
 	char		const *interface;
 
 	int		number;
-	const char	*server;
+	CONF_SECTION	*server_cs;
 	CONF_SECTION	*unlang;
 
 	uint32_t	min_tx_interval;
@@ -380,7 +380,7 @@ static void bfd_request(bfd_state_t *session, REQUEST *request,
 	memset(packet, 0, sizeof(*packet));
 
 	request->packet = packet;
-	request->server = session->server;
+	request->server_cs = session->server_cs;
 	packet->src_ipaddr = session->local_ipaddr;
 	packet->src_port = session->local_port;
 	packet->dst_ipaddr = session->remote_ipaddr;
@@ -476,7 +476,7 @@ static bfd_state_t *bfd_new_session(bfd_socket_t *sock, int sockfd,
 	session->number = sock->number++;
 	session->sockfd = sockfd;
 	session->session_state = BFD_STATE_DOWN;
-	session->server = sock->server;
+	session->server_cs = sock->server_cs;
 	session->unlang = sock->unlang;
 	session->local_disc = fr_rand();
 	session->remote_disc = 0;
@@ -1346,7 +1346,7 @@ static int bfd_process(bfd_state_t *session, bfd_packet_t *bfd)
 		bfd_start_control(session);
 	}
 
-	if (session->server) {
+	if (session->server_cs) {
 		REQUEST *request;
 		RADIUS_PACKET *packet, *reply;
 
@@ -1659,7 +1659,6 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	char const *auth_type_str = NULL;
 	uint16_t listen_port;
 	fr_ipaddr_t ipaddr;
-	CONF_SECTION *server;
 
 	rad_assert(sock != NULL);
 
@@ -1682,10 +1681,12 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			  NULL, T_INVALID) < 0) return -1;
 
 	if (!this->server) {
-		if (cf_pair_parse(sock, cs, "server", FR_ITEM_POINTER(FR_TYPE_STRING, &sock->server),
+		char const *server;
+		if (cf_pair_parse(sock, cs, "server", FR_ITEM_POINTER(FR_TYPE_STRING, &server),
 				  NULL, T_INVALID) < 0) return -1;
+		sock->server_cs = virtual_server_find(server);
 	} else {
-		sock->server = this->server;
+		sock->server_cs = this->server_cs;
 	}
 
 	if (sock->min_tx_interval < 100) sock->min_tx_interval = 100;
@@ -1733,8 +1734,7 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	/*
 	 *	Find the sibling "bfd" section of the "listen" section.
 	 */
-	server = cf_item_to_section(cf_parent(cs));
-	sock->unlang = cf_section_find(server, "bfd", NULL);
+	sock->unlang = cf_section_find(cf_item_to_section(cf_parent(cs)), "bfd", NULL);
 
 	return 0;
 }

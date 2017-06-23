@@ -389,19 +389,19 @@ fr_tls_conf_t *tls_conf_parse_server(CONF_SECTION *cs)
 	}
 
 	if (conf->session_cache_server &&
-	    !cf_section_find(main_config.config, "server", conf->session_cache_server)) {
+	    !virtual_server_find(conf->session_cache_server)) {
 		ERROR("No such virtual server '%s'", conf->session_cache_server);
 		goto error;
 	}
 
 	if (conf->ocsp.cache_server &&
-	    !cf_section_find(main_config.config, "server", conf->ocsp.cache_server)) {
+	    !virtual_server_find(conf->ocsp.cache_server)) {
 		ERROR("No such virtual server '%s'", conf->ocsp.cache_server);
 		goto error;
 	}
 
 	if (conf->staple.cache_server &&
-	    !cf_section_find(main_config.config, "server", conf->staple.cache_server)) {
+	    !virtual_server_find(conf->staple.cache_server)) {
 		ERROR("No such virtual server '%s'", conf->staple.cache_server);
 		goto error;
 	}

@@ -136,26 +136,22 @@ static rlm_rcode_t module_method_call(rlm_components_t comp, int idx, REQUEST *r
 	char const	*module;
 	char const	*component;
 
-	rad_assert(request->server != NULL);
+	rad_assert(request->server_cs != NULL);
 
 	/*
 	 *	Cache the old server_cs in case it was changed.
 	 *
-	 *	FIXME: request->server should NOT be changed.
+	 *	FIXME: request->server_cs should NOT be changed.
 	 *	Instead, we should always create a child REQUEST when
 	 *	we need to use a different virtual server.
 	 *
 	 *	This is mainly for things like proxying
 	 */
 	server_cs = request->server_cs;
-	if (!server_cs || (strcmp(request->server, cf_section_name2(server_cs)) != 0)) {
-		request->server_cs = cf_section_find(main_config.config, "server", request->server);
-	}
-
 	cs = cf_section_find(request->server_cs, section_type_value[comp].section, NULL);
 	if (!cs) {
 		RDEBUG2("Empty %s section in virtual server \"%s\".  Using default return value %s.",
-			section_type_value[comp].section, request->server,
+			section_type_value[comp].section, cf_section_name2(request->server_cs),
 			fr_int2str(mod_rcode_table, default_component_results[comp], "<invalid>"));
 		return default_component_results[comp];
 	}
@@ -755,4 +751,18 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 	}
 
 	return 0;
+}
+
+/** Return virtual server matching the specified name
+ *
+ * @note May be called in bootstrap or instantiate as all servers should be present.
+ *
+ * @param[in] name of virtual server.
+ * @return
+ *	- NULL if no virtual server was found.
+ *	- The CONF_SECTION of the named virtual server.
+ */
+CONF_SECTION *virtual_server_find(char const *name)
+{
+	return cf_section_find(main_config.config, "server", name);
 }

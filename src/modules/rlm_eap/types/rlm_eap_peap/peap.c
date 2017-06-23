@@ -484,7 +484,7 @@ static int CC_HINT(nonnull) eap_peap_postproxy(eap_session_t *eap_session, void 
 		request->proxy->reply = NULL;
 
 		if ((rad_debug_lvl > 0) && fr_log_fp) {
-			fprintf(fr_log_fp, "server %s {\n", fake->server);
+			fprintf(fr_log_fp, "server %s {\n", cf_section_name2(fake->server_cs));
 		}
 
 		/*
@@ -502,7 +502,7 @@ static int CC_HINT(nonnull) eap_peap_postproxy(eap_session_t *eap_session, void 
 		rcode = rad_postauth(fake);
 
 		if ((rad_debug_lvl > 0) && fr_log_fp) {
-			fprintf(fr_log_fp, "} # server %s\n", fake->server);
+			fprintf(fr_log_fp, "} # server %s\n", cf_section_name2(fake->server_cs));
 
 			RDEBUG("Final reply from tunneled session code %d", fake->reply->code);
 			rdebug_pair_list(L_DBG_LVL_1, request, fake->reply->vps, NULL);
@@ -708,9 +708,10 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 		setup_fake_request(request, fake, t);
 
 		if (t->soh_virtual_server) {
-			fake->server = t->soh_virtual_server;
+			fake->server_cs = virtual_server_find(t->soh_virtual_server);
 		}
-		RDEBUG("Sending SoH request to server %s", fake->server ? fake->server : "NULL");
+		RDEBUG("Sending SoH request to server %s",
+		       fake->server_cs ? cf_section_name2(fake->server_cs) : "NULL");
 		rad_virtual_server(fake);
 
 		if (fake->reply->code != FR_CODE_ACCESS_ACCEPT) {

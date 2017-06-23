@@ -53,7 +53,6 @@ static rlm_rcode_t arp_process(REQUEST *request)
 {
 	CONF_SECTION *unlang;
 
-	request->server = request->listener->server;
 	request->server_cs = request->listener->server_cs;
 	unlang = cf_section_find(request->server_cs, "arp", NULL);
 

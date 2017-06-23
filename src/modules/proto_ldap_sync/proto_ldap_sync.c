@@ -324,7 +324,6 @@ static void request_running(REQUEST *request, fr_state_action_t action)
 		if (RDEBUG_ENABLED) proto_ldap_packet_debug(request, request->packet, true);
 		rdebug_proto_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
 
-		request->server = request->listener->server;
 		request->server_cs = request->listener->server_cs;
 		request->component = "ldap";
 
@@ -1054,7 +1053,7 @@ static int proto_ldap_socket_parse(CONF_SECTION *cs, rad_listen_t *listen)
 	 *	Always cache the CONF_SECTION of the server.
 	 */
 	parent_cs = cf_root(cs);
-	listen->server_cs = cf_section_find(parent_cs, "server", listen->server);
+	listen->server_cs = virtual_server_find(listen->server);
 	if (!listen->server_cs) {
 		cf_log_err(cs, "Failed to find virtual server '%s'", listen->server);
 		return -1;

@@ -98,15 +98,15 @@ static int tls_cache_attrs(REQUEST *request,
  */
 int tls_cache_process(REQUEST *request, char const *virtual_server, int autz_type)
 {
-	rlm_rcode_t rcode;
-	VALUE_PAIR *vp;
+	rlm_rcode_t	rcode;
+	VALUE_PAIR	*vp;
 
 	/*
 	 *	Save the current status of the request.
 	 */
-	char const *server = request->server;
-	char const *module = request->module;
-	char const *component = request->component;
+	CONF_SECTION	*server_cs = request->server_cs;
+	char const	*module = request->module;
+	char const	*component = request->component;
 
 	/*
 	 *	Indicate what action we're performing
@@ -124,7 +124,7 @@ int tls_cache_process(REQUEST *request, char const *virtual_server, int autz_typ
 	/*
 	 *	Run it through the appropriate virtual server.
 	 */
-	request->server = virtual_server;
+	request->server_cs = virtual_server_find(virtual_server);
 	request->module = NULL;
 
 	rcode = process_authorize(autz_type + 1000, request);
@@ -132,7 +132,7 @@ int tls_cache_process(REQUEST *request, char const *virtual_server, int autz_typ
 	/*
 	 *	Restore the original status of the request.
 	 */
-	request->server = server;
+	request->server_cs = server_cs;
 	request->module = module;
 	request->component = component;
 

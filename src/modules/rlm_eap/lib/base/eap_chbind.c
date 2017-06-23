@@ -216,7 +216,7 @@ FR_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 	 *	Set virtual server based on configuration for channel
 	 *	bindings, this is hard-coded for now.
 	 */
-	fake->server = "channel_bindings";
+	fake->server_cs = virtual_server_find("channel_bindings");
 	fake->packet->code = FR_CODE_ACCESS_REQUEST;
 
 	rcode = rad_virtual_server(fake);

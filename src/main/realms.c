@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/net.h>
 #include <freeradius-devel/cf_parse.h>
+#include <freeradius-devel/modules.h>
 
 #include <sys/stat.h>
 
@@ -660,7 +661,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 		 *	the config with a name that matches the
 		 *	virtual_server.
 		 */
-		if (!cf_section_find(rc->cs, "server", home->server)) {
+		if (!virtual_server_find(home->server)) {
 			cf_log_err(cs, "No such server %s", home->server);
 			goto error;
 		}
@@ -1305,7 +1306,7 @@ static int server_pool_add(realm_config_t *rc,
 			cf_log_debug(cs, "\tvirtual_server = %s", pool->virtual_server);
 		}
 
-		if (!cf_section_find(rc->cs, "server", pool->virtual_server)) {
+		if (!virtual_server_find(pool->virtual_server)) {
 			cf_log_err(cp, "No such server %s", pool->virtual_server);
 			goto error;
 		}
@@ -2532,7 +2533,7 @@ home_server_t *home_server_ldb(char const *realmname,
 		 *	Default virtual: ignore homes tied to a
 		 *	virtual.
 		 */
-		if (!request->server && home->parent_server) {
+		if (!request->server_cs && home->parent_server) {
 			continue;
 		}
 
@@ -2540,13 +2541,13 @@ home_server_t *home_server_ldb(char const *realmname,
 		 *	A virtual AND home is tied to virtual,
 		 *	ignore ones which don't match.
 		 */
-		if (request->server && home->parent_server &&
-		    strcmp(request->server, home->parent_server) != 0) {
+		if (request->server_cs && home->parent_server &&
+		    strcmp(cf_section_name2(request->server_cs), home->parent_server) != 0) {
 			continue;
 		}
 
 		/*
-		 *	Allow request->server && !home->parent_server
+		 *	Allow request->server_cs && !home->parent_server
 		 *
 		 *	i.e. virtuals can proxy to globally defined
 		 *	homes.

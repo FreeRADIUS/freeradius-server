@@ -524,7 +524,6 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 	}
 	request->number = 0;
 	request->priority = listener->type;
-	request->server = client->client_server;
 	request->server_cs = client->client_server_cs;
 	request->root = &main_config;
 
@@ -536,11 +535,11 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 	 *
 	 *	and create the RADCLIENT structure from that.
 	 */
-	RDEBUG("server %s {", request->server);
+	RDEBUG("server %s {", cf_section_name2(request->server_cs));
 
 	rcode = process_authorize(0, request);
 
-	RDEBUG("} # server %s", request->server);
+	RDEBUG("} # server %s", cf_section_name2(request->server_cs));
 
 	switch (rcode) {
 	case RLM_MODULE_OK:
@@ -552,7 +551,8 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 	 */
 	case RLM_MODULE_INVALID:
 	case RLM_MODULE_FAIL:
-		ERROR("Virtual-Server %s returned %s, creating dynamic client failed", request->server,
+		ERROR("Virtual-Server %s returned %s, creating dynamic client failed",
+		      cf_section_name2(request->server_cs),
 		      fr_int2str(mod_rcode_table, rcode, "<INVALID>"));
 		talloc_free(request);
 		goto unknown;
@@ -561,7 +561,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 	 *	Probably the result of policy, or the client not existing.
 	 */
 	default:
-		DEBUG("Virtual-Server %s returned %s, ignoring client", request->server,
+		DEBUG("Virtual-Server %s returned %s, ignoring client", cf_section_name2(request->server_cs),
 		      fr_int2str(mod_rcode_table, rcode, "<INVALID>"));
 		talloc_free(request);
 		goto unknown;
@@ -582,7 +582,6 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 		if (!client_add_dynamic(clients, client, created)) goto unknown;
 	}
 
-	request->server = client->server;
 	request->server_cs = client->server_cs;
 
 	trigger_exec(request, NULL, "server.client.add", false, NULL);
@@ -1550,7 +1549,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	/*
 	 *	Always cache the CONF_SECTION of the server.
 	 */
-	this->server_cs = cf_section_find(parent_cs, "server", this->server);
+	this->server_cs = virtual_server_find(this->server);
 	if (!this->server_cs) {
 		cf_log_err(cs, "Failed to find virtual server '%s'", this->server);
 		return -1;

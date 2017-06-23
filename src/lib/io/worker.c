@@ -686,7 +686,6 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 
 	request->async = talloc_zero(request, fr_async_t);
 	request->server_cs = cd->listen->server_cs;
-	request->server = cf_section_name2(request->server_cs);
 
 	/*
 	 *	Receive a message to the worker queue, and decode it

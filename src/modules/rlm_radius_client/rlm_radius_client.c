@@ -692,7 +692,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *config)
 
 	if (!inst->virtual_server) return RLM_MODULE_OK;
 
-	cs = cf_section_find(main_config.config, "server", inst->virtual_server);
+	cs = virtual_server_find(inst->virtual_server);
 	if (!cs) {
 		cf_log_err(config, "Unknown virtual server '%s'.", inst->virtual_server);
 		return RLM_MODULE_FAIL;

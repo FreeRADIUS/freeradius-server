@@ -663,7 +663,7 @@ rlm_rcode_t rad_virtual_server(REQUEST *request)
 	VALUE_PAIR *vp;
 	int rcode;
 
-	RDEBUG("Virtual server %s received request", request->server);
+	RDEBUG("Virtual server %s received request", cf_section_name2(request->server_cs));
 	rdebug_pair_list(L_DBG_LVL_1, request, request->packet->vps, NULL);
 
 	if (!request->username) {
@@ -761,7 +761,7 @@ rlm_rcode_t rad_virtual_server(REQUEST *request)
 	}
 
 skip:
-	RDEBUG("server %s {", request->server);
+	RDEBUG("server %s {", cf_section_name2(request->server_cs));
 
 	RINDENT();
 
@@ -784,7 +784,7 @@ skip:
 	}
 
 	REXDENT();
-	RDEBUG("} # server %s", request->server);
+	RDEBUG("} # server %s", cf_section_name2(request->server_cs));
 
 	RDEBUG("Virtual server sending reply");
 	rdebug_pair_list(L_DBG_LVL_1, request, request->reply->vps, NULL);

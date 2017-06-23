@@ -891,7 +891,6 @@ void verify_request(char const *file, int line, REQUEST *request)
 #endif
 
 	rad_assert(request->server_cs != NULL);
-	rad_assert(request->server != NULL);
 
 	if (request->packet) {
 		verify_packet(file, line, request, request->packet, "request");

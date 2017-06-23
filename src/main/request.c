@@ -167,7 +167,7 @@ REQUEST *request_alloc_fake(REQUEST *request)
 	 *
 	 *	FIXME: Permit different servers for inner && outer sessions?
 	 */
-	fake->server = request->server;
+	fake->server_cs = request->server_cs;
 
 	fake->packet = fr_radius_alloc(fake, true);
 	if (!fake->packet) {

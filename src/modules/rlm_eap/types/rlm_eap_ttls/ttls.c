@@ -620,7 +620,7 @@ static int CC_HINT(nonnull) eap_ttls_postproxy(eap_session_t *eap_session, void 
 		request->proxy->reply = NULL;
 
 		if ((rad_debug_lvl > 0) && fr_log_fp) {
-			fprintf(fr_log_fp, "server %s {\n", fake->server);
+			fprintf(fr_log_fp, "server %s {\n", cf_section_name2(fake->server_cs));
 		}
 
 		/*
@@ -632,7 +632,7 @@ static int CC_HINT(nonnull) eap_ttls_postproxy(eap_session_t *eap_session, void 
 		RDEBUG2("post-auth returns %d", rcode);
 
 		if ((rad_debug_lvl > 0) && fr_log_fp) {
-			fprintf(fr_log_fp, "} # server %s\n", fake->server);
+			fprintf(fr_log_fp, "} # server %s\n", cf_section_name2(fake->server_cs));
 
 			RDEBUG("Final reply from tunneled session code %d", fake->reply->code);
 			rdebug_pair_list(L_DBG_LVL_1, request, fake->reply->vps, NULL);

@@ -415,10 +415,10 @@ rlm_rcode_t eap_virtual_server(REQUEST *request, REQUEST *fake,
 	VALUE_PAIR	*vp;
 
 	vp = fr_pair_find_by_num(request->control, 0, FR_VIRTUAL_SERVER, TAG_ANY);
-	fake->server = vp ? vp->vp_strvalue : virtual_server;
+	fake->server_cs = vp ? virtual_server_find(vp->vp_strvalue) : virtual_server_find(virtual_server);
 
-	if (fake->server) {
-		RDEBUG2("Proxying tunneled request to virtual server \"%s\"", fake->server);
+	if (fake->server_cs) {
+		RDEBUG2("Proxying tunneled request to virtual server \"%s\"", cf_section_name2(fake->server_cs));
 	} else {
 		RDEBUG2("Proxying tunneled request");
 	}

@@ -92,9 +92,16 @@ static rlm_rcode_t mod_process(void *type_arg, eap_session_t *eap_session)
 
 			/* set the virtual server to use */
 			if ((vp = fr_pair_find_by_num(request->control, 0, FR_VIRTUAL_SERVER, TAG_ANY)) != NULL) {
-				fake->server = vp->vp_strvalue;
+				fake->server_cs = virtual_server_find(vp->vp_strvalue);
+				if (!fake->server_cs) {
+					REDEBUG2("Virtual server \"%s\" not found", vp->vp_strvalue);
+					talloc_free(fake);
+					eap_tls_fail(eap_session);
+					return RLM_MODULE_INVALID;
+				}
 			} else {
-				fake->server = inst->virtual_server;
+				fake->server_cs = virtual_server_find(inst->virtual_server);
+				rad_assert(fake->server_cs);
 			}
 
 			RDEBUG2("Validating certificate");

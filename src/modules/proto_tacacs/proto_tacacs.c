@@ -179,7 +179,6 @@ static void tacacs_running(REQUEST *request, fr_state_action_t action)
 
 		if (RDEBUG_ENABLED) tacacs_packet_debug(request, request->packet, true);
 
-		request->server = request->listener->server;
 		request->server_cs = request->listener->server_cs;
 		request->component = "tacacs";
 

@@ -206,9 +206,10 @@ rlm_rcode_t	process_send_coa(int type, REQUEST *request);
 #endif
 extern const CONF_PARSER virtual_servers_config[];
 
-int virtual_servers_open(fr_schedule_t *sc);
-int virtual_servers_instantiate(CONF_SECTION *config);
-int virtual_servers_bootstrap(CONF_SECTION *config);
+int		virtual_servers_open(fr_schedule_t *sc);
+int		virtual_servers_instantiate(CONF_SECTION *config);
+int		virtual_servers_bootstrap(CONF_SECTION *config);
+CONF_SECTION	*virtual_server_find(char const *name);
 
 /*
  *	In unlang_interpret.c, but here for public consumption.

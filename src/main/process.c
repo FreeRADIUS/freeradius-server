@@ -1799,11 +1799,8 @@ REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *p
 	 *	Set virtual server identity
 	 */
 	if (client->server) {
-		request->server = client->server;
 		request->server_cs = client->server_cs;
-
 	} else {
-		request->server = listener->server;
 		request->server_cs = listener->server_cs;
 	}
 	rad_assert(request->server_cs != NULL);
@@ -2299,17 +2296,16 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	}
 
 	if (request->home_pool && request->home_pool->virtual_server) {
-		char const *old_server = request->server;
+		CONF_SECTION *old_server = request->server_cs;
 
-		request->server = request->home_pool->virtual_server; /* @fixme 4.0 this shouldn't be necessary! */
-		rad_assert(strcmp(request->proxy->server, request->server) == 0);
+		request->server_cs = virtual_server_find(request->home_pool->virtual_server); /* @fixme 4.0 this shouldn't be necessary! */
 
-		RDEBUG2("server %s {", request->server);
+		RDEBUG2("server %s {", cf_section_name2(request->server_cs));
 		RINDENT();
 		rcode = process_post_proxy(vp ? vp->vp_uint32 : 0, request);
 		REXDENT();
 		RDEBUG2("}");
-		request->server = old_server;
+		request->server_cs = old_server;
 	} else {
 		rcode = process_post_proxy(vp ? vp->vp_uint32 : 0, request);
 	}
@@ -3123,18 +3119,18 @@ do_home:
 	 *	because they go directly to an IP address.
 	 */
 	if (request->home_pool && request->home_pool->virtual_server) {
-		char const *old_server = request->server;
+		CONF_SECTION *old_server = request->server_cs;
 
-		request->proxy->server = request->home_pool->virtual_server;
-		request->server = request->proxy->server; /* @fixme 4.0 this shouldn't be necessary! */
+		request->proxy->server_cs = virtual_server_find(request->home_pool->virtual_server);
+		request->server_cs = request->proxy->server_cs; /* @fixme 4.0 this shouldn't be necessary! */
 
-		RDEBUG2("server %s {", request->server);
+		RDEBUG2("server %s {", cf_section_name2(request->server_cs));
 		RINDENT();
 		rcode = process_pre_proxy(pre_proxy_type, request);
 		REXDENT();
 		RDEBUG2("}");
 
-		request->server = old_server;
+		request->server_cs = old_server;
 	} else {
 		rcode = process_pre_proxy(pre_proxy_type, request);
 	}
@@ -3187,7 +3183,7 @@ static int proxy_to_virtual_server(REQUEST *request)
 	fake->packet->vps = fr_pair_list_copy(fake->packet, request->packet->vps);
 	TALLOC_FREE(request->proxy->packet);
 
-	fake->server = request->proxy->home_server->server;
+	fake->server_cs = virtual_server_find(request->proxy->home_server->server);
 	fake->handle = request->handle;
 	fake->process = NULL; /* should never be run for anything */
 
@@ -4252,17 +4248,17 @@ static void request_coa_originate(REQUEST *request)
 	}
 
 	if (coa->home_pool && coa->home_pool->virtual_server) {
-		char const *old_server = coa->server;
+		CONF_SECTION *old_server = coa->server_cs;
 
-		coa->proxy->server = coa->home_pool->virtual_server;
-		coa->server = coa->proxy->server; /* @fixme 4.0 this shouldn't be necessary! */
+		coa->proxy->server_cs = virtual_server_find(coa->home_pool->virtual_server);
+		coa->server_cs = coa->proxy->server_cs; /* @fixme 4.0 this shouldn't be necessary! */
 
-		RDEBUG2("server %s {", coa->server);
+		RDEBUG2("server %s {", cf_section_name2(coa->server_cs));
 		RINDENT();
 		rcode = process_pre_proxy(pre_proxy_type, coa);
 		REXDENT();
 		RDEBUG2("}");
-		coa->server = old_server;
+		coa->server_cs = old_server;
 	} else {
 		rcode = process_pre_proxy(pre_proxy_type, coa);
 	}

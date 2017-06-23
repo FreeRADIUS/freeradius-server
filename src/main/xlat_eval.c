@@ -103,8 +103,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 
 	case FR_VIRTUAL_SERVER:
 		if (vpt->tmpl_num == NUM_COUNT) goto count_virtual;
-		if (!request->server) return NULL;
-		return talloc_typed_strdup(ctx, request->server);
+		return talloc_typed_strdup(ctx, cf_section_name2(request->server_cs));
 
 	case FR_MODULE_RETURN_CODE:
 		if (vpt->tmpl_num == NUM_COUNT) goto count_virtual;

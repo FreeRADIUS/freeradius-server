@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/cf_parse.h>
 #include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/modules.h>
 
 #include <sys/stat.h>
 
@@ -220,7 +221,7 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 			CONF_SECTION *cs;
 			CONF_SECTION *subcs;
 
-			cs = cf_section_find(main_config.config, "server", client->server);
+			cs = virtual_server_find(client->server);
 			if (!cs) {
 				ERROR("Failed to find virtual server %s", client->server);
 				return false;
@@ -733,7 +734,7 @@ bool client_add_dynamic(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c
 		c->server_cs = master->server_cs;
 
 	} else if (c->server) {
-		c->server_cs = cf_section_find(main_config.config, "server", c->server);
+		c->server_cs = virtual_server_find(c->server);
 		if (!c->server_cs) {
 			ERROR("Failed to find virtual server %s", c->server);
 			goto error;
@@ -907,7 +908,7 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 			goto error;
 		}
 
-		c->server_cs = cf_section_find(main_config.config, "server", c->server);
+		c->server_cs = virtual_server_find(c->server);
 		if (!c->server_cs) {
 			cf_log_err(cs, "Failed to find virtual server %s", c->server);
 			goto error;
@@ -1034,7 +1035,7 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 			goto error;
 		}
 
-		c->client_server_cs = cf_section_find(main_config.config, "server", c->client_server);
+		c->client_server_cs = virtual_server_find(c->client_server);
 		if (!c->client_server_cs) {
 			cf_log_err(cs, "Unknown virtual server '%s'", c->client_server);
 			goto error;
