@@ -400,7 +400,7 @@ static void request_running(REQUEST *request, fr_state_action_t action)
 		default:
 			break;
 		}
-		request->log.unlang_indent = 0;
+		rad_assert(request->log.unlang_indent == 0);
 		request_thread_done(request);
 		request_delete(request);
 		break;

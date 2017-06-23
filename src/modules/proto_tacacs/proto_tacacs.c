@@ -214,7 +214,7 @@ stop_processing:
 
 		if (rcode == RLM_MODULE_YIELD) return;
 
-		request->log.unlang_indent = 0;
+		rad_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
 		case RLM_MODULE_NOOP:
@@ -305,7 +305,7 @@ stop_processing:
 
 		if (rcode == RLM_MODULE_YIELD) return;
 
-		request->log.unlang_indent = 0;
+		rad_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
 			/*
@@ -355,7 +355,7 @@ setup_send:
 
 		if (rcode == RLM_MODULE_YIELD) return;
 
-		request->log.unlang_indent = 0;
+		rad_assert(request->log.unlang_indent == 0);
 
 send_reply:
 		gettimeofday(&request->reply->timestamp, NULL);

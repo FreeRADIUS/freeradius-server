@@ -73,7 +73,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 
 		if (rcode == RLM_MODULE_YIELD) return FR_IO_YIELD;
 
-		request->log.unlang_indent = 0;
+		rad_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
 		case RLM_MODULE_OK:
@@ -117,7 +117,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 
 		if (rcode == RLM_MODULE_YIELD) return FR_IO_YIELD;
 
-		request->log.unlang_indent = 0;
+		rad_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
 		case RLM_MODULE_NOOP:

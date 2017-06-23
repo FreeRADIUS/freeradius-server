@@ -74,7 +74,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 
 		if (rcode == RLM_MODULE_YIELD) return FR_IO_YIELD;
 
-		request->log.unlang_indent = 0;
+		rad_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
 		case RLM_MODULE_NOOP:
@@ -130,7 +130,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 	rerun_nak:
 		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
 		unlang_push_section(request, unlang, RLM_MODULE_NOOP);
-		request->log.unlang_indent = 0;
+		rad_assert(request->log.unlang_indent == 0);
 
 		request->request_state = REQUEST_SEND;
 		/* FALL-THROUGH */
@@ -142,7 +142,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 
 		if (rcode == RLM_MODULE_YIELD) return FR_IO_YIELD;
 
-		request->log.unlang_indent = 0;
+		rad_assert(request->log.unlang_indent == 0);
 
 		switch (rcode) {
 			/*
