@@ -54,6 +54,50 @@ static inline void safe_unlock(module_instance_t *instance)
 	if (instance->mutex) pthread_mutex_unlock(instance->mutex);
 }
 
+#ifndef NDEBUG
+unlang_op_t unlang_ops[];
+
+static void unlang_dump_instruction(REQUEST *request, unlang_t *instruction)
+{
+	if (!instruction) {
+		DEBUG("  instruction = NULL");
+		return;
+	}
+
+	RDEBUG("  type           %s", unlang_ops[instruction->type].name);
+	RDEBUG("  name           %s", instruction->name);
+	RDEBUG("  debug_name     %s", instruction->debug_name);
+}
+
+static void unlang_dump_frame(REQUEST *request, unlang_stack_frame_t *frame)
+{
+	unlang_dump_instruction(request, frame->instruction);
+
+	RDEBUG("  top_frame      %s", frame->top_frame ? "yes" : "no");
+	RDEBUG("  result         %s", fr_int2str(mod_rcode_table, frame->result, "<invalid>"));
+	RDEBUG("  priority       %d", frame->priority);
+	RDEBUG("  unwind         %d", frame->unwind);
+	RDEBUG("  do_next_sib    %s", frame->do_next_sibling ? "yes" : "no");
+	RDEBUG("  was_if         %s", frame->was_if ? "yes" : "no");
+	RDEBUG("  resume         %s", frame->resume ? "yes" : "no");
+}
+
+
+static void unlang_dump_stack(REQUEST *request, unlang_stack_t *stack)
+{
+	int i;
+
+	for (i = 0; i <= stack->depth; i++) {
+		unlang_stack_frame_t *frame = &stack->frame[i];
+
+		RDEBUG("Frame %d/%d ----------", i, stack->depth);
+		unlang_dump_frame(request, frame);
+	}
+}
+#endif
+
+
+
 static inline void unlang_push(unlang_stack_t *stack, unlang_t *program, rlm_rcode_t result, bool do_next_sibling)
 {
 	unlang_stack_frame_t *next;
@@ -1166,6 +1210,10 @@ start_subsection:
 resume_subsection:
 		instruction = frame->instruction;
 
+#ifndef NDEBUG
+		if (fr_debug_lvl >= 5) unlang_dump_stack(request, stack);
+#endif
+
 		rad_assert(instruction->debug_name != NULL); /* if this happens, all bets are off. */
 
 		if (fr_debug_lvl >= 3) {
@@ -1378,7 +1426,7 @@ done_subsection:
 
 	instruction = frame->instruction;
 	if (!instruction) {
-		RERROR("Empty instruction.  Hard-coding to reject.");
+		RERROR("Empty instruction.  Hard-coding to reject");
 		frame->result = result = RLM_MODULE_REJECT;
 		frame->priority = priority;
 		goto done_subsection;
