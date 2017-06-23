@@ -74,8 +74,10 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	SQLAllocHandle(SQL_HANDLE_DBC, conn->env_handle, &(conn->dbc_handle));
 
 	/* Set the connection timeout */
+#if 0
+	/* Not suported ? */
 	SQLSetConnectAttr(conn->dbc_handle, SQL_ATTR_LOGIN_TIMEOUT, &timeout_ms, SQL_IS_UINTEGER);
-
+#endif
 	/*
 	 *	The db2 API doesn't qualify arguments as const even when they should be.
 	 */
