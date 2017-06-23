@@ -40,8 +40,8 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSE
 static CONF_PARSER const proto_radius_config[] = {
 	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY, proto_radius_t,
 			  process_submodule), .dflt = "Status-Server", .func = process_parse },
-	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID | FR_TYPE_NOT_EMPTY, proto_radius_t, io_submodule),
-			 .dflt = "udp", .func = transport_parse },
+	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, proto_radius_t, io_submodule),
+	  .dflt = "udp", .func = transport_parse },
 
 	/*
 	 *	For performance tweaking.  NOT for normal humans.
@@ -241,20 +241,8 @@ static void mod_process_set(void const *instance, REQUEST *request)
  */
 static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 {
-	int		fd;
 	fr_listen_t	*listen;
 	proto_radius_t 	*inst = talloc_get_type_abort(instance, proto_radius_t);
-
-	/*
-	 *	Open the listen socket
-	 */
-	if (inst->app_io->open(inst->app_io_instance) < 0) {
-		cf_log_err(conf, "Failed opening %s interface", inst->app_io->name);
-		return -1;
-	}
-
-	fd = inst->app_io->fd(inst->app_io_instance);
-	if (!rad_cond_assert(fd >= 0)) return -1;
 
 	/*
 	 *	Build the #fr_listen_t.  This describes the complete
@@ -277,11 +265,19 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	listen->num_messages = inst->default_message_size;
 
 	/*
-	 *	Add the listener to the scheduler.
+	 *	Open the socket, and add it to the scheduler.
 	 */
-	if (!fr_schedule_socket_add(sc, listen)) {
-		talloc_free(listen);
-		return -1;
+	if (inst->app_io) {
+		if (inst->app_io->open(inst->app_io_instance) < 0) {
+			cf_log_err(conf, "Failed opening %s interface", inst->app_io->name);
+			talloc_free(listen);
+			return -1;
+		}
+		
+		if (!fr_schedule_socket_add(sc, listen)) {
+			talloc_free(listen);
+			return -1;
+		}
 	}
 
 	inst->listen = listen;	/* Probably won't need it, but doesn't hurt */
@@ -315,8 +311,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Instantiate the I/O module
 	 */
-	if (inst->app_io->instantiate && (inst->app_io->instantiate(inst->app_io_instance,
-								    inst->app_io_conf) < 0)) {
+	if (inst->app_io && inst->app_io->instantiate &&
+	    (inst->app_io->instantiate(inst->app_io_instance,
+				       inst->app_io_conf) < 0)) {
 		cf_log_err(conf, "Instantiation failed for \"%s\"", inst->app_io->name);
 		return -1;
 	}
@@ -358,7 +355,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 *	These configuration items are not printed by default,
 	 *	because normal people shouldn't be touching them.
 	 */
-	if (!inst->default_message_size) inst->default_message_size = inst->app_io->default_message_size;
+	if (!inst->default_message_size && inst->app_io) inst->default_message_size = inst->app_io->default_message_size;
 
 	if (!inst->num_messages) inst->num_messages = 256;
 
@@ -388,6 +385,23 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	CONF_PAIR		*cp = NULL;
 
 	/*
+	 *	Bootstrap the process modules
+	 */
+	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
+		dl_t const	       *module = talloc_get_type_abort(inst->process_submodule[i]->module, dl_t);
+		fr_app_process_t const *app_process = (fr_app_process_t const *)module->common;
+
+		if (app_process->bootstrap && (app_process->bootstrap(inst->process_submodule[i]->data,
+								      inst->process_submodule[i]->conf) < 0)) {
+			cf_log_err(conf, "Bootstrap failed for \"%s\"", app_process->name);
+			return -1;
+		}
+		i++;
+	}
+
+	if (!inst->app_io) return 0;
+
+	/*
 	 *	Bootstrap the I/O module
 	 */
 	inst->app_io = (fr_app_io_t const *) inst->io_submodule->module->common;
@@ -401,21 +415,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 								inst->app_io_conf) < 0)) {
 		cf_log_err(inst->app_io_conf, "Bootstrap failed for \"%s\"", inst->app_io->name);
 		return -1;
-	}
-
-	/*
-	 *	Bootstrap the process modules
-	 */
-	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
-		dl_t const	       *module = talloc_get_type_abort(inst->process_submodule[i]->module, dl_t);
-		fr_app_process_t const *app_process = (fr_app_process_t const *)module->common;
-
-		if (app_process->bootstrap && (app_process->bootstrap(inst->process_submodule[i]->data,
-								      inst->process_submodule[i]->conf) < 0)) {
-			cf_log_err(conf, "Bootstrap failed for \"%s\"", app_process->name);
-			return -1;
-		}
-		i++;
 	}
 
 	return 0;
