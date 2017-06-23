@@ -67,6 +67,7 @@ typedef enum {
 	UNLANG_TYPE_RETURN,			//!< Return statement.
 	UNLANG_TYPE_MAP,			//!< Mapping section (like #UNLANG_TYPE_UPDATE, but uses
 						//!< values from a #map_proc_t call).
+	UNLANG_TYPE_FORK,      			//!< fork a child
 #endif
 	UNLANG_TYPE_POLICY,			//!< Policy section.
 	UNLANG_TYPE_XLAT_INLINE,		//!< xlat statement, inline in "unlang"

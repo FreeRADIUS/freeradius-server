@@ -2706,6 +2706,7 @@ static modcall_compile_t compile_table[] = {
 	{ "map",		compile_map, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_MAP },
 	{ "switch",		compile_switch, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_SWITCH },
 	{ "parallel",		compile_parallel, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_PARALLEL },
+	{ "fork",		compile_group, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_FORK },
 
 	{ NULL, NULL, 0, UNLANG_TYPE_NULL }
 };

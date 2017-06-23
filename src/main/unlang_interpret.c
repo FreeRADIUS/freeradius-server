@@ -415,7 +415,7 @@ static unlang_action_t unlang_group(REQUEST *request, unlang_stack_t *stack,
 {
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
-	unlang_group_t	*g;
+	unlang_group_t		*g;
 
 	g = unlang_generic_to_group(instruction);
 
@@ -433,6 +433,62 @@ static unlang_action_t unlang_group(REQUEST *request, unlang_stack_t *stack,
 
 	unlang_push(stack, g->children, frame->result, true);
 	return UNLANG_ACTION_PUSHED_CHILD;
+}
+
+static rlm_rcode_t unlang_run(REQUEST *request, unlang_stack_t *stack);
+
+static unlang_action_t unlang_fork(REQUEST *request, unlang_stack_t *stack,
+				    rlm_rcode_t *result, UNUSED int *priority)
+{
+	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
+	unlang_t		*instruction = frame->instruction;
+	unlang_group_t		*g;
+	REQUEST			*child;
+	rlm_rcode_t		rcode;
+	unlang_stack_t		*child_stack;
+
+	g = unlang_generic_to_group(instruction);
+
+	/*
+	 *	This should really have been caught in the
+	 *	compiler, and the program never generated.  But
+	 *	doing that requires changing it's API so that
+	 *	it returns a flag instead of the compiled
+	 *	UNLANG_TYPE_GROUP.
+	 */
+	if (!g->children) {
+		RDEBUG2("} # %s ... <ignoring empty subsection>", instruction->debug_name);
+		return UNLANG_ACTION_CONTINUE;
+	}
+
+	child = request_alloc_fake(request);
+	if (!child) {
+		*result = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	child->packet->code = request->packet->code;
+
+	/*
+	 *	Push the children, and set it's top frame to be true.
+	 */
+	child_stack = child->stack;
+	child->log.unlang_indent = request->log.unlang_indent;
+	unlang_push(child_stack, g->children, frame->result, true);
+	child_stack->frame[child_stack->depth].top_frame = true;
+
+	rcode = unlang_run(child, child->stack);
+	if (rcode != RLM_MODULE_YIELD) {
+		talloc_free(child);
+		*result = rcode;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	/*
+	 *	@todo - actually do yeild, probably by hacking up unlang_module_resumption_t ???
+	 */
+	*result = RLM_MODULE_FAIL;
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 typedef struct unlang_parallel_t {
@@ -1160,6 +1216,11 @@ unlang_op_t unlang_ops[] = {
 	[UNLANG_TYPE_POLICY] = {
 		.name = "policy",
 		.func = unlang_policy,
+		.debug_braces = true
+	},
+	[UNLANG_TYPE_FORK] = {
+		.name = "fork",
+		.func = unlang_fork,
 		.debug_braces = true
 	},
 #endif
