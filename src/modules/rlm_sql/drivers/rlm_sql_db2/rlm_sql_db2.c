@@ -60,7 +60,7 @@ static int _sql_socket_destructor(rlm_sql_db2_conn_t *conn)
 	return RLM_SQL_OK;
 }
 
-static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config, struct timeval const *timeout)
+static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config, UNUSED struct timeval const *timeout)
 {
 	SQLRETURN row;
 #if 0
