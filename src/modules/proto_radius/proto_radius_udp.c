@@ -479,6 +479,21 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *cs)
 	return 0;
 }
 
+static int mod_detach(void *instance)
+{
+	proto_radius_udp_t	*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
+
+	/*
+	 *	@todo - have our OWN event loop for timers, and a
+	 *	"copy timer from -> to, which means we only have to
+	 *	delete our child event loop from the parent on close.
+	 */
+
+	close(inst->sockfd);
+	return 0;
+}
+
+
 /** Private interface for use by proto_radius
  *
  */
@@ -495,6 +510,7 @@ fr_app_io_t proto_radius_udp = {
 	.name			= "radius_udp",
 	.config			= udp_listen_config,
 	.inst_size		= sizeof(proto_radius_udp_t),
+	.detach			= mod_detach,
 	.bootstrap		= mod_bootstrap,
 	.instantiate		= mod_instantiate,
 
