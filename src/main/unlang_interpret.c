@@ -94,6 +94,9 @@ static void unlang_dump_stack(REQUEST *request, unlang_stack_t *stack)
 		unlang_dump_frame(request, frame);
 	}
 }
+#define DUMP_STACK if (fr_debug_lvl >= 5) unlang_dump_stack(request, stack)
+#else
+#define DUMP_STACK
 #endif
 
 
@@ -1210,9 +1213,7 @@ start_subsection:
 resume_subsection:
 		instruction = frame->instruction;
 
-#ifndef NDEBUG
-		if (fr_debug_lvl >= 5) unlang_dump_stack(request, stack);
-#endif
+		DUMP_STACK;
 
 		rad_assert(instruction->debug_name != NULL); /* if this happens, all bets are off. */
 
@@ -1272,6 +1273,7 @@ resume_subsection:
 				RDEBUG4("** [%i] %s - yielding with current (%s %d)", stack->depth, __FUNCTION__,
 					fr_int2str(mod_rcode_table, frame->result, "<invalid>"),
 					frame->priority);
+				DUMP_STACK;
 				return RLM_MODULE_YIELD;
 			}
 
@@ -1388,13 +1390,17 @@ resume_subsection:
 done_subsection:
 
 	/*
-	 *	We're at the top frame, return the result from the stack.
+	 *	We're at the top frame, return the result from the
+	 *	stack, and get rid of the top frame.
 	 */
 	if ((frame->top_frame) ||
 	    (stack->depth == 1)) {
 		RDEBUG4("** [%i] %s - returning %s", stack->depth, __FUNCTION__,
 			fr_int2str(mod_rcode_table, frame->result, "<invalid>"));
-		return frame->result;
+		result = frame->result;
+		stack->depth--;
+		DUMP_STACK;
+		return result;
 	}
 
 	/*
@@ -1427,6 +1433,7 @@ done_subsection:
 	instruction = frame->instruction;
 	if (!instruction) {
 		RERROR("Empty instruction.  Hard-coding to reject");
+		DUMP_STACK;
 		frame->result = result = RLM_MODULE_REJECT;
 		frame->priority = priority;
 		goto done_subsection;
