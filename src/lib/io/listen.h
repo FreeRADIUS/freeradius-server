@@ -30,6 +30,8 @@ struct fr_listen {
 	fr_app_t const		*app;
 	void const		*app_instance;
 
+	CONF_SECTION		*server_cs;		//!< CONF_SECTION of the server
+
 	size_t			default_message_size;	//!< copied from app_io, but may be changed
 	size_t			num_messages;		//!< for the message ring buffer
 };

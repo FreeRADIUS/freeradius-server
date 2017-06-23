@@ -268,6 +268,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 
 	listen->app = &proto_radius;
 	listen->app_instance = instance;
+	listen->server_cs = inst->server_cs;
 
 	/*
 	 *	Set configurable parameters for message ring buffer.
