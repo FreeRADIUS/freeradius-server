@@ -63,7 +63,9 @@ static int _sql_socket_destructor(rlm_sql_db2_conn_t *conn)
 static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config, struct timeval const *timeout)
 {
 	SQLRETURN row;
+#if 0
 	uint32_t timeout_ms = FR_TIMEVAL_TO_MS(timeout);
+#endif
 	rlm_sql_db2_conn_t *conn;
 
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_db2_conn_t));
