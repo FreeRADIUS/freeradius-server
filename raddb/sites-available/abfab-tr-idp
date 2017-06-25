@@ -42,16 +42,16 @@ recv Access-Request {
 	logintime
 }
 
-process Access-Request {
+authenticate eap {
 	#
 	#  Allow EAP authentication.
 	eap
 }
 
-#  Post-Authentication
-#  Once we KNOW that the user has been authenticated, there are
-#  additional steps we can take.
-post-auth {
+#
+#  Run these rules when sending an Access-Accept
+#
+send Access-Accept {
 	#
 	#  For EAP-TTLS and PEAP, add the cached attributes to the reply.
 	#  The "session-state" attributes are automatically cached when
@@ -94,31 +94,34 @@ post-auth {
 
 	# For Exec-Program and Exec-Program-Wait
 	exec
+
 	#  Remove reply message if the response contains an EAP-Message
 	remove_reply_message_if_eap
-	#  Access-Reject packets are sent through the REJECT sub-section of the
-	#  post-auth section.
-	#
-	#  Add the ldap module name (or instance) if you have set
-	#  'edir_account_policy_check = yes' in the ldap module configuration
-	#
-	Post-Auth-Type REJECT {
-		# log failed authentications in SQL, too.
-		-sql
-		attr_filter.access_reject
+}
 
-		# Insert EAP-Failure message if the request was
-		# rejected by policy instead of because of an
-		# authentication failure And already has an EAP message
-		# For non-ABFAB, we insert the failure all the time, but for ABFAB
-		# It's more desirable to preserve reply-message when we can
-		if (&reply:Eap-Message) {
-			eap
-		}
+#
+#  Run these rules for sending an Access-Reject
+#
+#  Add the ldap module name (or instance) if you have set
+#  'edir_account_policy_check = yes' in the ldap module configuration
+#
+send Access-Reject {
+	# log failed authentications in SQL, too.
+	-sql
+	attr_filter.access_reject
 
-		#  Remove reply message if the response contains an EAP-Message
-		remove_reply_message_if_eap
+	# Insert EAP-Failure message if the request was
+	# rejected by policy instead of because of an
+	# authentication failure And already has an EAP message
+	# For non-ABFAB, we insert the failure all the time, but for ABFAB
+	# It's more desirable to preserve reply-message when we can
+	if (&reply:Eap-Message) {
+		eap
 	}
+
+	#  Remove reply message if the response contains an EAP-Message
+	remove_reply_message_if_eap
+
 }
 #
 #  When the server decides to proxy a request to a home server,

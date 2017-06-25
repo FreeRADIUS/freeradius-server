@@ -106,16 +106,13 @@ server example {
 		reject
 	}
 
-	process Access-Request {
+	send Access-Accept {
 
 	}
 
-	post-auth {
-
-		Post-Auth-Type Reject {
-			update reply {
-				&Reply-Message = 'This is only an example.'
-			}
+	send Access-Reject {
+		update reply {
+			&Reply-Message = 'This is only an example.'
 		}
 	}
 

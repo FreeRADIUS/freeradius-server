@@ -146,7 +146,7 @@ server home.example.com {
 	#
 	#  When the home servers come back up, the packets are forwarded,
 	#  and the detail file processed as normal.
-	process Accounting-Request {
+	recv Accounting-Request {
 		# You may want accounting policies here...
 
 		update control {

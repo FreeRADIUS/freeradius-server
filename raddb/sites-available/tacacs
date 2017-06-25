@@ -241,26 +241,26 @@ server tacacs {
 	send Authorization {
 	}
 
-	recv process Accounting-Request {
+	recv Accounting-Request {
 		update config {
 			&Auth-Type = Accept
 		}
 	}
 
-	send process Accounting-Request {
+	send Accounting-Response {
 	}
 
 	# Proxying of TACACS+ requests is NOT supported.
 
-	process MSCHAP {
+	authenticate MSCHAP {
 		mschap
 	}
 
-	process CHAP {
+	authenticate CHAP {
 		chap
 	}
 
-	process PAP {
+	authenticate PAP {
 		pap
 	}
 }

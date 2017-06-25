@@ -138,7 +138,7 @@ server copy-acct-to-home-server {
 	#
 	#  Accounting.  Log the accounting data.
 	#
-	process Accounting-Request {
+	send Accounting-Response {
 		   #
 		   # Since we're proxying, we don't log anything
 		   # locally.  Ensure that the accounting section

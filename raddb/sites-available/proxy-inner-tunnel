@@ -28,7 +28,7 @@ recv Access-Request {
 	}
 }
 
-process Access-Request {
+authenticate eap {
 	#
 	#  This is necessary so that the inner tunnel EAP-MSCHAPv2
 	#  method can be called.  That method takes care of turning

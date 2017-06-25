@@ -199,52 +199,54 @@ recv Access-Request {
 #
 #  NB You cannot forcibly accept an EAP authentication!
 
-process Access-Request {
-	#
-	#  PAP authentication, when a back-end database listed
-	#  in the 'authorize' section supplies a password.  The
-	#  password can be clear-text, or encrypted.
-	Auth-Type PAP {
-		pap
-	}
+#
+#  PAP authentication, when a back-end database listed
+#  in the 'authorize' section supplies a password.  The
+#  password can be clear-text, or encrypted.
+authenticate PAP {
+	pap
+}
 
-	#
-	#  Most people want CHAP authentication
-	#  A back-end database listed in the 'authorize' section
-	#  MUST supply a CLEAR TEXT password.  Encrypted passwords
-	#  won't work.
-	Auth-Type CHAP {
-		chap
-	}
+#
+#  Most people want CHAP authentication
+#  A back-end database listed in the 'authorize' section
+#  MUST supply a CLEAR TEXT password.  Encrypted passwords
+#  won't work.
+authenticate CHAP {
+	chap
+}
 
-	#
-	#  MSCHAP authentication.
-	Auth-Type MS-CHAP {
-		mschap
-	}
+#
+#  MSCHAP authentication.
+authenticate MS-CHAP {
+	mschap
+}
 
-	#
-	#  Pluggable Authentication Modules.
-#	pam
+#
+#  Pluggable Authentication Modules.
+authenticate pam {
+	pam
+}
 
-	#  Uncomment it if you want to use ldap for authentication
-	#
-	#  Note that this means "check plain-text password against
-	#  the ldap database", which means that EAP won't work,
-	#  as it does not supply a plain-text password.
-	#
-	#  We do NOT recommend using this.  LDAP servers are databases.
-	#  They are NOT authentication servers.  FreeRADIUS is an
-	#  authentication server, and knows what to do with authentication.
-	#  LDAP servers do not.
-	#
-#	Auth-Type LDAP {
-#		ldap
-#	}
+#  Uncomment it if you want to use ldap for authentication
+#
+#  Note that this means "check plain-text password against
+#  the ldap database", which means that EAP won't work,
+#  as it does not supply a plain-text password.
+#
+#  We do NOT recommend using this.  LDAP servers are databases.
+#  They are NOT authentication servers.  FreeRADIUS is an
+#  authentication server, and knows what to do with authentication.
+#  LDAP servers do not.
+#
+authenticate LDAP {
+	ldap
+}
 
-	#
-	#  Allow EAP authentication.
-	eap
+#
+#  Allow EAP authentication.
+authenticate eap {
+	     eap
 }
 
 ######################################################################
@@ -280,7 +282,7 @@ session {
 #  If you need to send a reply attribute in the outer session,
 #  the ONLY safe way is to set "use_tunneled_reply = yes", and
 #  then update the inner-tunnel reply.
-post-auth {
+send Access-Accept {
 	#  If you want privacy to remain, see the
 	#  Chargeable-User-Identity attribute from RFC 4372.
 	#  If you want to use it just uncomment the line below.
@@ -341,6 +343,7 @@ post-auth {
 			&outer.session-state: += &reply:
 		}
 	}
+}
 
 	#
 	#  Access-Reject packets are sent through the REJECT sub-section of the
@@ -349,17 +352,16 @@ post-auth {
 	#  Add the ldap module name (or instance) if you have set
 	#  'edir_account_policy_check = yes' in the ldap module configuration
 	#
-	Post-Auth-Type REJECT {
-		# log failed authentications in SQL, too.
-		-sql
-		attr_filter.access_reject
+send Access-Reject {
+	# log failed authentications in SQL, too.
+	-sql
+	attr_filter.access_reject
 
-		#
-		#  Let the outer session know which module failed, and why.
-		#
-		update outer.session-state {
-			&Module-Failure-Message := &request:Module-Failure-Message
-		}
+	#
+	#  Let the outer session know which module failed, and why.
+	#
+	update outer.session-state {
+		&Module-Failure-Message := &request:Module-Failure-Message
 	}
 }
 

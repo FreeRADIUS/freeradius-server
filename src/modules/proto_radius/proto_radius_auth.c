@@ -257,14 +257,14 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 			goto setup_send;
 		}
 
-		unlang = cf_section_find(request->server_cs, "process", dv->alias);
+		unlang = cf_section_find(request->server_cs, "authenticate", dv->alias);
 		if (!unlang) {
-			REDEBUG2("No 'process %s' section found: rejecting the user", dv->alias);
+			REDEBUG2("No 'authenticate %s' section found: rejecting the user", dv->alias);
 			request->reply->code = FR_CODE_ACCESS_REJECT;
 			goto setup_send;
 		}
 
-		RDEBUG("Running 'process %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
+		RDEBUG("Running 'authenticate %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
 		unlang_push_section(request, unlang, RLM_MODULE_NOTFOUND);
 
 		request->request_state = REQUEST_PROCESS;
@@ -568,19 +568,19 @@ static int auth_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *lis
 	rcode = auth_compile_section(server_cs, "send", "Access-Challenge", MOD_POST_AUTH);
 	if (rcode < 0) return rcode;
 
-	while ((subcs = cf_section_find_next(server_cs, subcs, "process", NULL))) {
+	while ((subcs = cf_section_find_next(server_cs, subcs, "authenticate", NULL))) {
 		char const *name2;
 
 		name2 = cf_section_name2(subcs);
 		if (!name2) {
-			cf_log_err(subcs, "Cannot compile 'process { ... }' section");
+			cf_log_err(subcs, "An name is required for the 'authenticate { ... }' section");
 			return -1;
 		}
 
-		cf_log_debug(subcs, "Loading process %s {...}", name2);
+		cf_log_debug(subcs, "Loading authenticate %s {...}", name2);
 
 		if (unlang_compile(subcs, MOD_AUTHENTICATE) < 0) {
-			cf_log_err(subcs, "Failed compiling 'process %s { ... }' section", name2);
+			cf_log_err(subcs, "Failed compiling 'authenticate %s { ... }' section", name2);
 			return -1;
 		}
 	}
@@ -605,14 +605,14 @@ static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *listen_cs)
 		return -1;
 	}
 
-	while ((subcs = cf_section_find_next(server_cs, subcs, "process", CF_IDENT_ANY))) {
+	while ((subcs = cf_section_find_next(server_cs, subcs, "authenticate", CF_IDENT_ANY))) {
 		char const	*name2;
 		fr_value_box_t	value = { .type = FR_TYPE_UINT32 };
 		fr_dict_enum_t	*dv;
 
 		name2 = cf_section_name2(subcs);
 		if (!name2) {
-			cf_log_err(subcs, "Invalid 'process { ... }' section, it must have a name");
+			cf_log_err(subcs, "Invalid 'authenticate { ... }' section, it must have a name");
 			return -1;
 		}
 
@@ -655,19 +655,19 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 
 	if (auth_listen_compile(server_cs, listen_cs) < 0) return -1;
 
-	while ((subcs = cf_section_find_next(server_cs, subcs, "process", CF_IDENT_ANY))) {
+	while ((subcs = cf_section_find_next(server_cs, subcs, "authenticate", CF_IDENT_ANY))) {
 		int rcode;
 		char const	*name2;
 
 		name2 = cf_section_name2(subcs);
 		if (!name2) {
-			cf_log_err(subcs, "Invalid 'process { ... }' section, it must have a name");
+			cf_log_err(subcs, "Invalid 'authenticate { ... }' section, it must have a name");
 			return -1;
 		}
 
-		rcode = auth_compile_section(server_cs, "process", name2, MOD_AUTHENTICATE);
+		rcode = auth_compile_section(server_cs, "authenticate", name2, MOD_AUTHENTICATE);
 		if (rcode < 0) {
-			cf_log_err(subcs, "Failed compiling 'process %s { ... }' section", name2);
+			cf_log_err(subcs, "Failed compiling 'authenticate %s { ... }' section", name2);
 			return -1;
 		}
 	}

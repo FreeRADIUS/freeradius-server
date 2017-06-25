@@ -1,6 +1,6 @@
 1.  Virtual Servers.
 
-  FreeRADIUS 2.0 supports virtual servers.  This is probably the
+  FreeRADIUS 4.0 supports virtual servers.  This is probably the
 single largest change that is NOT backwards compatible with 1.x.
 
   The virtual servers do NOT have to be set up with the
@@ -12,7 +12,7 @@ one "radiusd.conf" file, and put the server configuration there:
 		recv Access-Request {
 			...
 		}
-		process Access-Request {
+		authenticate pap {
 			...
 		}
 		...
@@ -62,7 +62,7 @@ the request processing sections from radius.conf, ("authorize" ,
 			pap
 		}
 
-		process Access-Request {
+		authenticate pap {
 			pap
 		}
 	}

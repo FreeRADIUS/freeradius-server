@@ -24,7 +24,7 @@ recv Access-Request {
 	# insert policies here
 }
 
-process Access-Request {
+send Access-Accept {
 	# insert policies here
 }
 

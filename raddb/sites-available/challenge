@@ -42,35 +42,34 @@ recv Access-Request {
 	}
 }
 
-process Access-Request {
-	Auth-Type Step1 {
-		#  If the password doesn't match, the user is rejected
-		#  immediately.
-		pap
 
-		#
-		#  Set the random number to save.
-		#
-		update session-state {
-			Tmp-Integer-0 := "%{randstr:n}"
-		}
-		update reply {
-			Reply-Message := &session-state:Tmp-Integer-0
-		}
+authenticate Step1 {
+	#  If the password doesn't match, the user is rejected
+	#  immediately.
+	pap
 
-		#
-		#  Send an Access-Challenge.
-		#  See raddb/policy.d/control for the definition
-		#  of "challenge"
-		#
-		challenge
+	#
+	#  Set the random number to save.
+	#
+	update session-state {
+		Tmp-Integer-0 := "%{randstr:n}"
+	}
+	update reply {
+		Reply-Message := &session-state:Tmp-Integer-0
 	}
 
-	Auth-Type Step2 {
-		#
-		#  Do PAP authentication with the password.
-		#
-		pap
-	}
+	#
+	#  Send an Access-Challenge.
+	#  See raddb/policy.d/control for the definition
+	#  of "challenge"
+	#
+	challenge
+}
+
+authenticate Step2 {
+	#
+	#  Do PAP authentication with the password.
+	#
+	pap
 }
 }
