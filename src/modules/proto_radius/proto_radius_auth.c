@@ -573,7 +573,6 @@ static int auth_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *lis
 
 static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *listen_cs)
 {
-	CONF_SECTION		*subcs = NULL;;
 	CONF_SECTION		*server_cs;
 	fr_dict_attr_t const	*da;
 
@@ -588,40 +587,7 @@ static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *listen_cs)
 		return -1;
 	}
 
-	while ((subcs = cf_section_find_next(server_cs, subcs, "authenticate", CF_IDENT_ANY))) {
-		char const	*name2;
-		fr_value_box_t	value = { .type = FR_TYPE_UINT32 };
-		fr_dict_enum_t	*dv;
-
-		name2 = cf_section_name2(subcs);
-		if (!name2) {
-			cf_log_err(subcs, "Invalid 'authenticate { ... }' section, it must have a name");
-			return -1;
-		}
-
-		/*
-		 *	If the value already exists, don't
-		 *	create it again.
-		 */
-		dv = fr_dict_enum_by_alias(NULL, da, name2);
-		if (dv) continue;
-
-		/*
-		 *	Create a new unique value with a meaningless
-		 *	number.  You can't look at it from outside of
-		 *	this code, so it doesn't matter.  The only
-		 *	requirement is that it's unique.
-		 */
-		do {
-			value.vb_uint32 = (fr_rand() & 0x00ffffff) + 1;
-		} while (fr_dict_enum_by_value(NULL, da, &value));
-
-		cf_log_debug(subcs, "Creating %s = %s", da->name, name2);
-		if (fr_dict_enum_add_alias(da, name2, &value, true, false) < 0) {
-			ERROR("%s", fr_strerror());
-			return -1;
-		}
-	}
+	if (virtual_server_section_attribute_define(server_cs, "authenticate", da) < 0) return -1;
 
 	return 0;
 }

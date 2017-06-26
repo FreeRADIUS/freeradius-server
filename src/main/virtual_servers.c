@@ -516,7 +516,7 @@ static int define_type(CONF_SECTION *cs, fr_dict_attr_t const *da, char const *n
 	return 0;
 }
 
-static bool virtual_server_define_types(CONF_SECTION *cs, rlm_components_t comp)
+static bool virtual_server_define_types_deprecated(CONF_SECTION *cs, rlm_components_t comp)
 {
 	fr_dict_attr_t const *da;
 	CONF_SECTION *subcs;
@@ -574,6 +574,61 @@ static bool virtual_server_define_types(CONF_SECTION *cs, rlm_components_t comp)
 	}
 
 	return true;
+}
+
+/** Define a values for Auth-Type attributes by the sections present in a virtual-server
+ *
+ * The ident2 value of any sections found will be converted into values of the specified da.
+ *
+ * @param[in] server_cs		The virtual server containing the sections.
+ * @param[in] subcs_name	of the subsection to search for.
+ * @param[in] da		to add enumeration values for.
+ * @return
+ *	- 0 all values added successfully.
+ *	- -1 an error occurred.
+ */
+int virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const *subcs_name, fr_dict_attr_t const *da)
+{
+	CONF_SECTION		*subcs;
+
+	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
+
+	while ((subcs = cf_section_find_next(server_cs, subcs, subcs_name, CF_IDENT_ANY))) {
+		char const	*name2;
+		fr_value_box_t	value = { .type = FR_TYPE_UINT32 };
+		fr_dict_enum_t	*dv;
+
+		name2 = cf_section_name2(subcs);
+		if (!name2) {
+			cf_log_err(subcs, "Invalid '%s { ... }' section, it must have a name", subcs_name);
+			return -1;
+		}
+
+		/*
+		 *	If the value already exists, don't
+		 *	create it again.
+		 */
+		dv = fr_dict_enum_by_alias(NULL, da, name2);
+		if (dv) continue;
+
+		/*
+		 *	Create a new unique value with a meaningless
+		 *	number.  You can't look at it from outside of
+		 *	this code, so it doesn't matter.  The only
+		 *	requirement is that it's unique.
+		 */
+		do {
+			value.vb_uint32 = (fr_rand() & 0x00ffffff) + 1;
+		} while (fr_dict_enum_by_value(NULL, da, &value));
+
+		cf_log_debug(subcs, "Creating %s = %s", da->name, name2);
+		if (fr_dict_enum_add_alias(da, name2, &value, true, false) < 0) {
+			ERROR("%s", fr_strerror());
+			return -1;
+		}
+	}
+
+	return 0;
 }
 
 /** Open all the listen sockets
@@ -718,7 +773,7 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 			 */
 			for (comp = 0; comp < MOD_COUNT; ++comp) {
 				if (strcmp(cf_section_name1(subcs), section_type_value[comp].section) == 0) {
-					if (!virtual_server_define_types(subcs, comp)) return -1;
+					if (!virtual_server_define_types_deprecated(subcs, comp)) return -1;
 				}
 			}
 		}

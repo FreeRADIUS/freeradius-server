@@ -206,6 +206,8 @@ rlm_rcode_t	process_send_coa(int type, REQUEST *request);
 #endif
 extern const CONF_PARSER virtual_servers_config[];
 
+int		virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const *subcs_name,
+							fr_dict_attr_t const *da);
 int		virtual_servers_open(fr_schedule_t *sc);
 int		virtual_servers_instantiate(CONF_SECTION *config);
 int		virtual_servers_bootstrap(CONF_SECTION *config);
