@@ -136,7 +136,6 @@ static inline void unlang_push(unlang_stack_t *stack, unlang_t *program, rlm_rco
 	frame->result = result;
 	frame->priority = -1;
 	frame->unwind = UNLANG_TYPE_NULL;
-	frame->if_taken = false;
 	frame->resume = false;
 	frame->state = NULL;
 }
@@ -1022,7 +1021,6 @@ static unlang_action_t unlang_if(REQUEST *request, unlang_stack_t *stack,
 	 */
 	if (!condition) {
 		RDEBUG2("  ...");
-		frame->if_taken = false;
 
 		if (*presult != RLM_MODULE_UNKNOWN) *priority = instruction->actions[*presult];
 
@@ -1030,58 +1028,21 @@ static unlang_action_t unlang_if(REQUEST *request, unlang_stack_t *stack,
 	}
 
 	/*
+	 *	Tell the main interpreter to skip over the else /
+	 *	elsif blocks, as this "if" condition was taken.
+	 */
+	while (frame->next &&
+	       ((frame->next->type == UNLANG_TYPE_ELSE) ||
+		(frame->next->type == UNLANG_TYPE_ELSIF))) {
+		frame->next = frame->next->next;
+	}
+
+	/*
 	 *	We took the "if".  Go recurse into its' children.
 	 */
-	frame->if_taken = true;
-
 	return unlang_group(request, stack, presult, priority);
 }
 
-static unlang_action_t unlang_elsif(REQUEST *request, unlang_stack_t *stack,
-				    rlm_rcode_t *presult, int *priority)
-{
-	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*instruction = frame->instruction;
-
-	/*
-	 *	Like UNLANG_TYPE_ELSE, but allow for a later "else"
-	 */
-	if (frame->if_taken) {
-		RDEBUG2("... skipping %s for request %" PRIu64 ": Preceding \"if\" was taken",
-			unlang_ops[instruction->type].name, request->number);
-		frame->if_taken = true;
-		return UNLANG_ACTION_CONTINUE;
-	}
-
-	/*
-	 *	Check the "if" condition.
-	 */
-	return unlang_if(request, stack, presult, priority);
-}
-
-static unlang_action_t unlang_else(REQUEST *request, unlang_stack_t *stack,
-				   rlm_rcode_t *presult, int *priority)
-{
-	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*instruction = frame->instruction;
-
-	if (frame->if_taken) {
-		RDEBUG2("... skipping %s for request %" PRIu64 ": Preceding \"if\" was taken",
-			unlang_ops[instruction->type].name, request->number);
-		frame->if_taken = false;
-
-		*presult = RLM_MODULE_NOOP;
-		*priority = instruction->actions[RLM_MODULE_NOOP];
-		return UNLANG_ACTION_CONTINUE;
-	}
-
-	/*
-	 *	We need to process it.  Go do that.
-	 */
-	frame->if_taken = false;
-
-	return unlang_group(request, stack, presult, priority);
-}
 
 static unlang_action_t unlang_module_resumption(REQUEST *request, unlang_stack_t *stack,
 						rlm_rcode_t *presult, int *priority)
@@ -1181,12 +1142,12 @@ unlang_op_t unlang_ops[] = {
 	},
 	[UNLANG_TYPE_ELSE] = {
 		.name = "else",
-		.func = unlang_else,
+		.func = unlang_group,
 		.debug_braces = true
 	},
 	[UNLANG_TYPE_ELSIF] = {
 		.name = "elsif",
-		.func = unlang_elsif,
+		.func = unlang_if,
 		.debug_braces = true
 	},
 	[UNLANG_TYPE_UPDATE] = {
@@ -1294,6 +1255,7 @@ start_subsection:
 	 */
 	while (frame->instruction != NULL) {
 resume_subsection:
+		frame->next = frame->instruction->next;
 		instruction = frame->instruction;
 
 		DUMP_STACK;
@@ -1463,7 +1425,6 @@ resume_subsection:
 		} /* switch over return code from the interpreter function */
 
 		frame->instruction = frame->next;
-		if (frame->instruction) frame->next = frame->instruction->next;
 	}
 
 	RDEBUG4("** [%i] %s - done current subsection with (%s %d)",
