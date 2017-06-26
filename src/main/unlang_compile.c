@@ -2554,7 +2554,6 @@ static unlang_t *compile_fork(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 				   unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
 {
 	unlang_t *c;
-	FR_TOKEN type;
 	char const *name2;
 
 	name2 = cf_section_name2(cs);
