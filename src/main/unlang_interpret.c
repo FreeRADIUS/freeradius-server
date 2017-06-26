@@ -108,11 +108,11 @@ static void unlang_dump_stack(REQUEST *request, unlang_stack_t *stack)
 
 
 
-static inline void unlang_push(unlang_stack_t *stack, unlang_t *program, rlm_rcode_t result, bool do_next_sibling)
+static inline void unlang_push(unlang_stack_t *stack, unlang_t *program, rlm_rcode_t result, bool do_next_sibling, bool top_frame)
 {
 	unlang_stack_frame_t *next;
 
-	rad_assert(program);
+	rad_assert(program || top_frame);
 
 	if (stack->depth >= (UNLANG_STACK_MAX - 1)) {
 		ERROR("Internal sanity check failed: module stack is too deep");
@@ -125,6 +125,7 @@ static inline void unlang_push(unlang_stack_t *stack, unlang_t *program, rlm_rco
 	 *	Initialize the next stack frame.
 	 */
 	next = &stack->frame[stack->depth];
+	next->top_frame = top_frame;
 	next->instruction = program;
 	next->result = result;
 	next->priority = 0;
@@ -217,7 +218,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 	g = unlang_generic_to_group(instruction);
 	if (!g->children) {
 		*presult = RLM_MODULE_NOOP;
-		*priority = instruction->actions[*presult];
+		*priority = instruction->actions[RLM_MODULE_NOOP];
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
@@ -366,7 +367,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 		}
 
 		if (instruction->type == UNLANG_TYPE_LOAD_BALANCE) {
-			unlang_push(stack, frame->redundant.found, frame->result, false);
+			unlang_push(stack, frame->redundant.found, frame->result, false, false);
 			return UNLANG_ACTION_PUSHED_CHILD;
 		}
 
@@ -411,7 +412,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 	/*
 	 *	Push the child, and yield for a later return.
 	 */
-	unlang_push(stack, frame->redundant.child, frame->result, false);
+	unlang_push(stack, frame->redundant.child, frame->result, false, false);
 	frame->resume = true;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
@@ -438,7 +439,7 @@ static unlang_action_t unlang_group(REQUEST *request, unlang_stack_t *stack,
 		return UNLANG_ACTION_CONTINUE;
 	}
 
-	unlang_push(stack, g->children, frame->result, true);
+	unlang_push(stack, g->children, frame->result, true, false);
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
@@ -481,7 +482,7 @@ static unlang_action_t unlang_fork(REQUEST *request, unlang_stack_t *stack,
 	 */
 	child_stack = child->stack;
 	child->log.unlang_indent = request->log.unlang_indent;
-	unlang_push(child_stack, g->children, frame->result, true);
+	unlang_push(child_stack, g->children, frame->result, true, true);
 	child_stack->frame[child_stack->depth].top_frame = true;
 
 	rcode = unlang_run(child, child->stack);
@@ -524,7 +525,10 @@ static unlang_action_t unlang_parallel(UNUSED REQUEST *request, unlang_stack_t *
 		 */
 	}
 
-	unlang_push(stack, g->children, frame->result, true);
+	/*
+	 *	@todo fork child requests and make them top frames
+	 */
+	unlang_push(stack, g->children, frame->result, true, false);
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
@@ -666,7 +670,7 @@ static unlang_action_t unlang_foreach(REQUEST *request, unlang_stack_t *stack,
 			request_data_get(request, (void *)radius_get_vp, frame->foreach.depth);
 
 			*presult = frame->result;
-			*priority = instruction->actions[*presult];
+			if (*presult != RLM_MODULE_UNKNOWN) *priority = instruction->actions[*presult];
 #ifndef NDEBUG
 			rad_assert(frame->foreach.indent == request->log.unlang_indent);
 #endif
@@ -695,7 +699,7 @@ static unlang_action_t unlang_foreach(REQUEST *request, unlang_stack_t *stack,
 	/*
 	 *	Push the child, and yield for a later return.
 	 */
-	unlang_push(stack, g->children, frame->result, true);
+	unlang_push(stack, g->children, frame->result, true, false);
 	frame->resume = true;
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
@@ -857,7 +861,7 @@ do_null_case:
 	 */
 	if (!found) return UNLANG_ACTION_CONTINUE;
 
-	unlang_push(stack, found, frame->result, false);
+	unlang_push(stack, found, frame->result, false, false);
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
@@ -889,7 +893,7 @@ static unlang_action_t unlang_update(REQUEST *request, unlang_stack_t *stack,
 
 
 static unlang_action_t unlang_map(REQUEST *request, unlang_stack_t *stack,
-				  rlm_rcode_t *presult, int *priority)
+				  UNUSED rlm_rcode_t *presult, UNUSED int *priority)
 {
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
@@ -899,7 +903,6 @@ static unlang_action_t unlang_map(REQUEST *request, unlang_stack_t *stack,
 	*presult = map_proc(request, g->proc_inst);
 	REXDENT();
 
-	*priority = instruction->actions[*presult];
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
@@ -969,6 +972,8 @@ static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stac
 	if (*presult == RLM_MODULE_YIELD) {
 		modcall_state->thread->active_callers++;
 	} else {
+		rad_assert(*presult >= RLM_MODULE_REJECT);
+		rad_assert(*presult < RLM_MODULE_NUMCODES);
 		*priority = instruction->actions[*presult];
 	}
 
@@ -1016,7 +1021,7 @@ static unlang_action_t unlang_if(REQUEST *request, unlang_stack_t *stack,
 		frame->was_if = true;
 		frame->if_taken = false;
 
-		*priority = instruction->actions[*presult];
+		if (*presult != RLM_MODULE_UNKNOWN) *priority = instruction->actions[*presult];
 
 		return UNLANG_ACTION_CONTINUE;
 	}
@@ -1069,7 +1074,7 @@ static unlang_action_t unlang_else(REQUEST *request, unlang_stack_t *stack,
 		frame->if_taken = false;
 
 		*presult = RLM_MODULE_NOOP;
-		*priority = instruction->actions[*presult];
+		*priority = instruction->actions[RLM_MODULE_NOOP];
 		return UNLANG_ACTION_CONTINUE;
 	}
 
@@ -1126,6 +1131,9 @@ static unlang_action_t unlang_module_resumption(REQUEST *request, unlang_stack_t
 
 	if (*presult != RLM_MODULE_YIELD) {
 		modcall_state->thread->active_callers--;
+
+		rad_assert(*presult >= RLM_MODULE_REJECT);
+		rad_assert(*presult < RLM_MODULE_NUMCODES);
 		*priority = instruction->actions[*presult];
 	}
 
@@ -1273,6 +1281,11 @@ static rlm_rcode_t unlang_run(REQUEST *request, unlang_stack_t *stack)
 
 	RDEBUG4("** [%i] %s - entered", stack->depth, __FUNCTION__);
 
+	/*
+	 *	We don't have a return code yet.
+	 */
+	result = RLM_MODULE_UNKNOWN;
+
 start_subsection:
 	priority = -1;
 
@@ -1280,7 +1293,6 @@ start_subsection:
 	rad_assert(stack->depth < UNLANG_STACK_MAX);
 
 	frame = &stack->frame[stack->depth];
-	result = frame->result;
 
 	/*
 	 *	Loop over all modules in this list.
@@ -1333,6 +1345,7 @@ resume_subsection:
 
 		case UNLANG_ACTION_PUSHED_CHILD:
 			rad_assert(&stack->frame[stack->depth] > frame);
+			result = frame->result;
 			goto start_subsection;
 
 		case UNLANG_ACTION_BREAK:
@@ -1368,7 +1381,10 @@ resume_subsection:
 			        fr_int2str(mod_rcode_table, result, "<invalid>"),
 			        priority);
 
-			rad_assert(result != RLM_MODULE_UNKNOWN);
+			/*
+			 *	Don't set action or priority if we don't have one.
+			 */
+			if (result == RLM_MODULE_UNKNOWN) goto keep_going;
 
 			/*
 			 *	The child's action says return.  Do so.
@@ -1439,6 +1455,7 @@ resume_subsection:
 			/* FALL-THROUGH */
 
 		case UNLANG_ACTION_CONTINUE:
+		keep_going:
 			if ((action == UNLANG_ACTION_CONTINUE) && unlang_ops[instruction->type].debug_braces) {
 				REXDENT();
 				RDEBUG2("}");
@@ -1550,7 +1567,12 @@ void unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
 
 	if (!instruction) instruction = unlang_group_to_generic(&empty_group);
 
-	unlang_push(stack, instruction, action, true);
+	/*
+	 *	Push the default action, and the instruction which has
+	 *	no action.
+	 */
+	unlang_push(stack, NULL, action, false, true);
+	if (instruction) unlang_push(stack, instruction, RLM_MODULE_UNKNOWN, true, false);
 
 	RDEBUG4("** [%i] %s - substack begins", stack->depth, __FUNCTION__);
 
