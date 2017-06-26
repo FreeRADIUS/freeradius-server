@@ -513,7 +513,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 
 
 /*
- *	Ensure that the "radius" section is compiled.
+ *	Ensure that the "recv Access-Request" etc. sections are compiled.
  */
 static int auth_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *listen_cs)
 {
@@ -556,7 +556,7 @@ static int auth_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *lis
 
 		name2 = cf_section_name2(subcs);
 		if (!name2) {
-			cf_log_err(subcs, "An name is required for the 'authenticate { ... }' section");
+			cf_log_err(subcs, "A second name is required for the 'authenticate { ... }' section");
 			return -1;
 		}
 
