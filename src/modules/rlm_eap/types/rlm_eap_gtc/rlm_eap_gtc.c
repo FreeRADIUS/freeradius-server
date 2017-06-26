@@ -40,6 +40,7 @@ typedef struct rlm_eap_gtc_t {
 	char const	*challenge;
 	char const	*auth_type_name;
 	int		auth_type;
+	fr_dict_enum_t const *dval;
 } rlm_eap_gtc_t;
 
 static CONF_PARSER submodule_config[] = {
@@ -126,12 +127,12 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 	 */
 	request->password = vp;
 
-	unlang = cf_section_find(request->server_cs, "authenticate", inst->auth_type_name);
+	unlang = cf_section_find(request->server_cs, "authenticate", inst->dval->alias);
 	if (!unlang) {
 		/*
 		 *	Call the authenticate section of the *current* virtual server.
 		 */
-		rcode = process_authenticate(inst->auth_type, request);
+		rcode = process_authenticate(inst->dval->value->vb_uint32, request);
 		if (rcode != RLM_MODULE_OK) {
 			eap_round->request->code = FR_EAP_CODE_FAILURE;
 			return rcode;
@@ -207,7 +208,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 				   inst->auth_type_name);
 		return -1;
 	}
-	inst->auth_type = dval->value->vb_uint32;
+	inst->dval = dval;
 
 	return 0;
 }
