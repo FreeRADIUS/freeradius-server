@@ -1253,6 +1253,11 @@ static rlm_rcode_t unlang_run(REQUEST *request, unlang_stack_t *stack)
 	unlang_stack_frame_t	*frame;
 	unlang_action_t		action = UNLANG_ACTION_BREAK;
 
+#ifndef NDEBUG
+	if (DEBUG_ENABLED5) DEBUG("###### unlang_run is starting");
+	DUMP_STACK;
+#endif
+
 	frame = &stack->frame[stack->depth];
 
 	/*
@@ -1499,6 +1504,8 @@ done_subsection:
 		fr_int2str(mod_rcode_table, result, "<invalid>"),
 		priority);
 
+	DUMP_STACK;
+
 	/*
 	 *	Reset the local variables, and check
 	 *	for a (local) top frame.
@@ -1573,6 +1580,8 @@ void unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
 	 *	stack into segments.
 	 */
 	stack->frame[stack->depth].top_frame = true;
+
+	DUMP_STACK;
 }
 
 /** Continue interpreting after a previous push or yield.
