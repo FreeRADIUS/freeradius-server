@@ -2549,6 +2549,37 @@ static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx
 	return c;
 }
 
+
+static unlang_t *compile_fork(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
+				   unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
+{
+	unlang_t *c;
+	FR_TOKEN type;
+	char const *name2;
+
+	name2 = cf_section_name2(cs);
+	if (!name2) {
+		cf_log_err(cs, "You must specify a packet type for 'fork'");
+		return NULL;
+	}
+
+	/*
+	 *	@todo - figure out what protocol we're running, and
+	 *	ensure that the packet types are allowed for that.
+	 *
+	 *	@ todo - after that, allow for different protocols to be specified.
+	 */
+
+	c = compile_group(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type);
+	if (!c) return NULL;
+
+	c->name = unlang_ops[c->type].name;
+	c->debug_name = talloc_asprintf(c, "%s %s", unlang_ops[c->type].name, cf_section_name2(cs));
+
+	return c;
+}
+
+
 /** Load a named module from "instantiate" or "policy".
  *
  * If it's "foo.method", look for "foo", and return "method" as the method
@@ -2706,7 +2737,7 @@ static modcall_compile_t compile_table[] = {
 	{ "map",		compile_map, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_MAP },
 	{ "switch",		compile_switch, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_SWITCH },
 	{ "parallel",		compile_parallel, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_PARALLEL },
-	{ "fork",		compile_group, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_FORK },
+	{ "fork",		compile_fork, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_FORK },
 
 	{ NULL, NULL, 0, UNLANG_TYPE_NULL }
 };
