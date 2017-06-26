@@ -80,7 +80,6 @@ static void unlang_dump_frame(REQUEST *request, unlang_stack_frame_t *frame)
 	RDEBUG("result         %s", fr_int2str(mod_rcode_table, frame->result, "<invalid>"));
 	RDEBUG("priority       %d", frame->priority);
 	RDEBUG("unwind         %d", frame->unwind);
-	RDEBUG("do_next_sib    %s", frame->do_next_sibling ? "yes" : "no");
 	RDEBUG("resume         %s", frame->resume ? "yes" : "no");
 	REXDENT();
 }
@@ -109,7 +108,7 @@ static void unlang_dump_stack(REQUEST *request, unlang_stack_t *stack)
 
 static inline void unlang_push(unlang_stack_t *stack, unlang_t *program, rlm_rcode_t result, bool do_next_sibling, bool top_frame)
 {
-	unlang_stack_frame_t *next;
+	unlang_stack_frame_t *frame;
 
 	rad_assert(program || top_frame);
 
@@ -123,16 +122,23 @@ static inline void unlang_push(unlang_stack_t *stack, unlang_t *program, rlm_rco
 	/*
 	 *	Initialize the next stack frame.
 	 */
-	next = &stack->frame[stack->depth];
-	next->top_frame = top_frame;
-	next->instruction = program;
-	next->result = result;
-	next->priority = -1;
-	next->unwind = UNLANG_TYPE_NULL;
-	next->do_next_sibling = do_next_sibling;
-	next->if_taken = false;
-	next->resume = false;
-	next->state = NULL;
+	frame = &stack->frame[stack->depth];
+
+	if (do_next_sibling) {
+		rad_assert(program != NULL);
+		frame->next = program->next;
+	} else {
+		frame->next = NULL;
+	}
+
+	frame->top_frame = top_frame;
+	frame->instruction = program;
+	frame->result = result;
+	frame->priority = -1;
+	frame->unwind = UNLANG_TYPE_NULL;
+	frame->if_taken = false;
+	frame->resume = false;
+	frame->state = NULL;
 }
 
 static inline void unlang_pop(unlang_stack_t *stack)
@@ -1454,17 +1460,10 @@ resume_subsection:
 				REXDENT();
 				RDEBUG2("}");
 			}
-
-			if (!frame->do_next_sibling) {
-				RDEBUG4("** [%i] %s - stopping current subsection with (%s %d)",
-					stack->depth, __FUNCTION__,
-					fr_int2str(mod_rcode_table, frame->result, "<invalid>"),
-					frame->priority);
-				goto done_subsection;
-			}
 		} /* switch over return code from the interpreter function */
 
-		frame->instruction = frame->instruction->next;
+		frame->instruction = frame->next;
+		if (frame->instruction) frame->next = frame->instruction->next;
 	}
 
 	RDEBUG4("** [%i] %s - done current subsection with (%s %d)",

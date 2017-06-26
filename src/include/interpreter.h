@@ -239,6 +239,7 @@ typedef union {
  */
 typedef struct {
 	unlang_t		*instruction;			//!< The unlang node we're evaluating.
+	unlang_t		*next;				//!< The next unlang node we will evaluate
 
 	/** Stack frame specialisations
 	 *
@@ -261,7 +262,6 @@ typedef struct {
 	unlang_type_t		unwind;				//!< Unwind to this one if it exists.
 								///< This is used for break and return.
 
-	bool			do_next_sibling : 1;		//!< should we do the next item in this section?
 	bool			if_taken : 1;			//!< we took the previous "if", so skip the next "else"
 	bool			resume : 1;			//!< resume the current section after calling a sub-section
 	bool			top_frame : 1;			//!< are we the top frame of the stack?
