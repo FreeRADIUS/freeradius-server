@@ -1,12 +1,8 @@
 /*
- * rlm_eap_gtc.c    Handles that are called from eap
- *
- * Version:     $Id$
- *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
+ *   the Free Software Foundation; either version 2 of the License, or (at
+ *   your option) any later version.
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,10 +12,15 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * Copyright 2003,2006  The FreeRADIUS server project
  */
 
+/**
+ * $Id$
+ * @file rlm_eap_gtc.c
+ * @brief EAP-GTC inner authentication method.
+ *
+ * @copyright 2000,2006 The FreeRADIUS server project
+ */
 RCSID("$Id$")
 
 #define LOG_PREFIX "rlm_eap_gtc - "
@@ -83,7 +84,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 	int		rcode;
 	VALUE_PAIR	*vp;
 	eap_round_t	*eap_round = eap_session->this_round;
-	rlm_eap_gtc_t	*inst = (rlm_eap_gtc_t *)instance;
+	rlm_eap_gtc_t	*inst = talloc_get_type_abort(instance, rlm_eap_gtc_t);
 	REQUEST		*request = eap_session->request;
 	CONF_SECTION	*unlang;
 
@@ -204,8 +205,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 
 	dval = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE), inst->auth_type_name);
 	if (!dval) {
-		cf_log_err_by_name(cs, "auth_type", "Unknown Auth-Type %s",
-				   inst->auth_type_name);
+		cf_log_err_by_name(cs, "auth_type", "Unknown Auth-Type %s", inst->auth_type_name);
 		return -1;
 	}
 	inst->dval = dval;
