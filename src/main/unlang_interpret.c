@@ -1584,8 +1584,7 @@ rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t act
 
 	rcode = unlang_run(request, stack);
 	if (rcode != RLM_MODULE_YIELD) {
-		rad_assert(stack->depth >= 0);
-		rad_assert(stack->frame[stack->depth].top_frame);
+		rad_assert((stack->depth == 0) || stack->frame[stack->depth].top_frame);
 		rad_assert(!stack->frame[stack->depth].instruction || /* processed the whole section */
 			    stack->frame[stack->depth].instruction->type == UNLANG_TYPE_GROUP); /* sections are groups */
 	}
