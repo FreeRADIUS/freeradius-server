@@ -59,27 +59,31 @@ unlang_op_t unlang_ops[];
 
 static void unlang_dump_instruction(REQUEST *request, unlang_t *instruction)
 {
+	RINDENT();
 	if (!instruction) {
-		DEBUG("  instruction = NULL");
+		RDEBUG("instruction = NULL");
+		REXDENT();
 		return;
 	}
-
-	RDEBUG("  type           %s", unlang_ops[instruction->type].name);
-	RDEBUG("  name           %s", instruction->name);
-	RDEBUG("  debug_name     %s", instruction->debug_name);
+	RDEBUG("type           %s", unlang_ops[instruction->type].name);
+	RDEBUG("name           %s", instruction->name);
+	RDEBUG("debug_name     %s", instruction->debug_name);
+	REXDENT();
 }
 
 static void unlang_dump_frame(REQUEST *request, unlang_stack_frame_t *frame)
 {
 	unlang_dump_instruction(request, frame->instruction);
 
-	RDEBUG("  top_frame      %s", frame->top_frame ? "yes" : "no");
-	RDEBUG("  result         %s", fr_int2str(mod_rcode_table, frame->result, "<invalid>"));
-	RDEBUG("  priority       %d", frame->priority);
-	RDEBUG("  unwind         %d", frame->unwind);
-	RDEBUG("  do_next_sib    %s", frame->do_next_sibling ? "yes" : "no");
-	RDEBUG("  was_if         %s", frame->was_if ? "yes" : "no");
-	RDEBUG("  resume         %s", frame->resume ? "yes" : "no");
+	RINDENT();
+	RDEBUG("top_frame      %s", frame->top_frame ? "yes" : "no");
+	RDEBUG("result         %s", fr_int2str(mod_rcode_table, frame->result, "<invalid>"));
+	RDEBUG("priority       %d", frame->priority);
+	RDEBUG("unwind         %d", frame->unwind);
+	RDEBUG("do_next_sib    %s", frame->do_next_sibling ? "yes" : "no");
+	RDEBUG("was_if         %s", frame->was_if ? "yes" : "no");
+	RDEBUG("resume         %s", frame->resume ? "yes" : "no");
+	REXDENT();
 }
 
 
@@ -87,12 +91,15 @@ static void unlang_dump_stack(REQUEST *request, unlang_stack_t *stack)
 {
 	int i;
 
-	for (i = 0; i <= stack->depth; i++) {
+	RDEBUG("----- Begin stack debug [depth %i] -----", stack->depth);
+	for (i = stack->depth; i >= 0; i--) {
 		unlang_stack_frame_t *frame = &stack->frame[i];
 
-		RDEBUG("Frame %d/%d ----------", i, stack->depth);
+		RDEBUG("[%d] Frame contents", i);
 		unlang_dump_frame(request, frame);
 	}
+
+	RDEBUG("----- End stack debug [depth %i] -------", stack->depth);
 }
 #define DUMP_STACK if (fr_debug_lvl >= 5) unlang_dump_stack(request, stack)
 #else
