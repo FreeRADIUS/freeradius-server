@@ -1600,7 +1600,6 @@ rlm_rcode_t unlang_interpret_continue(REQUEST *request)
  */
 rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
 {
-	rlm_rcode_t	rcode;
 	unlang_stack_t	*stack = request->stack;
 
 	/*
@@ -1609,16 +1608,7 @@ rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t act
 	 */
 	unlang_push_section(request, cs, action);
 
-	rcode = unlang_run(request, stack);
-#if 0
-	if (rcode != RLM_MODULE_YIELD) {
-		rad_assert((stack->depth == 0) || stack->frame[stack->depth].top_frame);
-		rad_assert(!stack->frame[stack->depth].instruction || /* processed the whole section */
-			    stack->frame[stack->depth].instruction->type == UNLANG_TYPE_GROUP); /* sections are groups */
-	}
-#endif
-
-	return rcode;
+	return unlang_run(request, stack);
 }
 
 /** Execute an unlang section synchronously
