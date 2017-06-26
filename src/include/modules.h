@@ -223,6 +223,7 @@ rlm_rcode_t	unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t def
 rlm_rcode_t	unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action);
 
 int		unlang_compile(CONF_SECTION *cs, rlm_components_t component);
+int		unlang_compile_subsection(CONF_SECTION *server_cs, char const *name1, char const *name2, rlm_components_t component);
 
 /** A callback when the the timeout occurs
  *

@@ -3043,3 +3043,32 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component)
 	dump_tree(c, c->debug_name);
 	return 0;
 }
+
+/** Compile a named subsection
+ *
+ * @param server_cs the server CONF_SECTION
+ * @param name1 the first name of the subsection to compile
+ * @param name2 the second name of the subsection to compile.
+ * @param component the component to compile
+ * @return
+ *	- <0 on error
+ *	- 0 on section was not found
+ *	- 1 on successfully compiled
+ *
+ */
+int unlang_compile_subsection(CONF_SECTION *server_cs, char const *name1, char const *name2, rlm_components_t component)
+{
+	CONF_SECTION *cs;
+
+	cs = cf_section_find(server_cs, name1, name2);
+	if (!cs) return 0;
+
+	cf_log_debug(cs, "Compiling policies - %s %s {...}", name1, name2);
+
+	if (unlang_compile(cs, component) < 0) {
+		cf_log_err(cs, "Failed compiling '%s %s { ... }' section", name1, name2);
+		return -1;
+	}
+
+	return 1;
+}
