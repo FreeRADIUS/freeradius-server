@@ -30,10 +30,11 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 
 typedef struct rlm_eap_mschapv2_t {
-	bool with_ntdomain_hack;
-	bool send_error;
-	char const *identity;
-	int auth_type_mschap;
+	bool			with_ntdomain_hack;
+	bool			send_error;
+	char const		*identity;
+	int			auth_type_mschap;
+	char			const *auth_type_mschap_name;
 } rlm_eap_mschapv2_t;
 
 static CONF_PARSER submodule_config[] = {
@@ -280,6 +281,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *arg, eap_session_t *eap_se
 	VALUE_PAIR		*auth_challenge, *response, *name;
 	rlm_eap_mschapv2_t	*inst = (rlm_eap_mschapv2_t *) arg;
 	REQUEST			*request = eap_session->request;
+	CONF_SECTION		*unlang;
 
 	if (!rad_cond_assert(eap_session->inst)) return 0;
 
@@ -573,7 +575,14 @@ packet_ready:
 	/*
 	 *	This is a wild & crazy hack.
 	 */
-	rcode = process_authenticate(inst->auth_type_mschap, request);
+
+	unlang = cf_section_find(request->server_cs, "authenticate", inst->auth_type_mschap_name);
+	if (!unlang) {
+		rcode = process_authenticate(inst->auth_type_mschap, request);
+	} else {
+		unlang_push_section(request, unlang, RLM_MODULE_FAIL);
+		rcode = unlang_interpret_continue(request);
+	}
 
 	/*
 	 *	Delete MPPE keys & encryption policy.  We don't
@@ -745,7 +754,7 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 static int mod_instantiate(void *instance, CONF_SECTION *cs)
 {
 	rlm_eap_mschapv2_t *inst = talloc_get_type_abort(instance, rlm_eap_mschapv2_t);
-	fr_dict_enum_t const *dv;
+	fr_dict_enum_t const *enumv;
 
 	if (inst->identity && (strlen(inst->identity) > 255)) {
 		cf_log_err(cs, "identity is too long");
@@ -754,13 +763,14 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 
 	if (!inst->identity) inst->identity = talloc_asprintf(inst, "freeradius-%s", RADIUSD_VERSION_STRING);
 
-	dv = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE), "MS-CHAP");
-	if (!dv) dv = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE), "MSCHAP");
-	if (!dv) {
+	enumv = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE), "MS-CHAP");
+	if (!enumv) enumv = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE), "MSCHAP");
+	if (!enumv) {
 		cf_log_err(cs, "Failed to find 'Auth-Type MS-CHAP' section.  Cannot authenticate users.");
 		return -1;
 	}
-	inst->auth_type_mschap = dv->value->vb_uint32;
+	inst->auth_type_mschap = enumv->value->vb_uint32;
+	inst->auth_type_mschap_name = enumv->alias;
 
 	return 0;
 }

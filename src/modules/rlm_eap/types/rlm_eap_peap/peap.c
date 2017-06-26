@@ -618,7 +618,7 @@ static char const *peap_state(peap_tunnel_t *t)
 /*
  *	Process the pseudo-EAP contents of the tunneled data.
  */
-rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_session, int auth_type_eap)
+rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_session, fr_dict_enum_t const *enumv)
 {
 	peap_tunnel_t	*t = tls_session->opaque;
 	REQUEST		*fake = NULL;
@@ -914,6 +914,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 			 *	done, THEN we proxy it...
 			 */
 			if (!t->proxy_tunneled_request_as_eap) {
+				CONF_SECTION *unlang;
 				fake->options |= RAD_REQUEST_OPTION_PROXY_EAP;
 
 				/*
@@ -921,7 +922,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 				 *	Auth-Type & EAP-Message here?
 				 */
 
-				if (!auth_type_eap) {
+				if (!enumv) {
 					RERROR("You must set 'inner_eap_module' in the 'peap' configuration");
 					RERROR("This is required in order to proxy the inner EAP session.");
 					rcode = RLM_MODULE_REJECT;
@@ -932,7 +933,15 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 				 *	Run the EAP authentication.
 				 */
 				RDEBUG2("Calling authenticate in order to initiate tunneled EAP session");
-				rcode = process_authenticate(auth_type_eap, fake);
+
+				unlang = cf_section_find(request->server_cs, "authenticate", enumv->alias);
+				if (!unlang) {
+					rcode = process_authenticate(enumv->value->vb_uint32, fake);
+				} else {
+					unlang_push_section(request, unlang, RLM_MODULE_FAIL);
+					rcode = unlang_interpret_continue(request);
+				}
+
 				if (rcode == RLM_MODULE_OK) {
 					/*
 					 *	Authentication succeeded! Rah!

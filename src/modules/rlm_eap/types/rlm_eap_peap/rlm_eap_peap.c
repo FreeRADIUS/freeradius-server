@@ -31,7 +31,7 @@ typedef struct rlm_eap_peap_t {
 	fr_tls_conf_t	*tls_conf;
 
 	char const		*inner_eap_module;	//!< module name for inner EAP
-	int			auth_type_eap;
+	fr_dict_enum_t		*auth_type_eap;
 	bool			use_tunneled_reply;	//!< Use the reply attributes from the tunneled session in
 							//!< the non-tunneled reply to the client.
 
@@ -319,7 +319,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 		     "The server cannot proxy inner-tunnel EAP packets",
 		     inst->inner_eap_module, inst->virtual_server);
 	} else {
-		inst->auth_type_eap = dv->value->vb_uint32;
+		inst->auth_type_eap = dv;
 	}
 
 	return 0;
