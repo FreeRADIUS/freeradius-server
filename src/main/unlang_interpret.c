@@ -127,7 +127,7 @@ static inline void unlang_push(unlang_stack_t *stack, unlang_t *program, rlm_rco
 	next->top_frame = top_frame;
 	next->instruction = program;
 	next->result = result;
-	next->priority = 0;
+	next->priority = -1;
 	next->unwind = UNLANG_TYPE_NULL;
 	next->do_next_sibling = do_next_sibling;
 	next->if_taken = false;
@@ -1268,12 +1268,6 @@ static rlm_rcode_t unlang_run(REQUEST *request, unlang_stack_t *stack)
 	 */
 	request->module = NULL;
 
-	/*
-	 *	Our entry point *MUST* be a frame where we previously
-	 *	yielded, or a new substack.
-	 */
-	if (!rad_cond_assert(frame->top_frame || frame->resume)) return RLM_MODULE_FAIL;
-
 	RDEBUG4("** [%i] %s - entered", stack->depth, __FUNCTION__);
 
 	/*
@@ -1344,6 +1338,7 @@ resume_subsection:
 			goto start_subsection;
 
 		case UNLANG_ACTION_BREAK:
+			if (priority < 0) priority = 0;
 			frame->result = result;
 			frame->priority = priority;
 			goto done_subsection;
@@ -1385,6 +1380,8 @@ resume_subsection:
 			 *	The child's action says return.  Do so.
 			 */
 			if (instruction->actions[result] == MOD_ACTION_RETURN) {
+				if (priority < 0) priority = 0;
+
 				RDEBUG4("** [%i] %s - action says to return with (%s %d)",
 					stack->depth, __FUNCTION__,
 					fr_int2str(mod_rcode_table, result, "<invalid>"),
@@ -1399,6 +1396,8 @@ resume_subsection:
 			 *	reject.
 			 */
 			if (instruction->actions[result] == MOD_ACTION_REJECT) {
+				if (priority < 0) priority = 0;
+
 				RDEBUG4("** [%i] %s - action says to return with (%s %d)",
 					stack->depth, __FUNCTION__,
 					fr_int2str(mod_rcode_table, RLM_MODULE_REJECT, "<invalid>"),
@@ -1480,6 +1479,7 @@ done_subsection:
 	 *	stack, and get rid of the top frame.
 	 */
 	if (frame->top_frame) {
+	top_frame:
 		RDEBUG4("** [%i] %s - returning %s", stack->depth, __FUNCTION__,
 			fr_int2str(mod_rcode_table, frame->result, "<invalid>"));
 		result = frame->result;
@@ -1496,6 +1496,13 @@ done_subsection:
 	 */
 	result = frame->result;
 	priority = frame->priority;
+
+	/*
+	 *	We're done everything: return.
+	 */
+	if (stack->depth == 0) {
+		return result;
+	}
 
 	unlang_pop(stack);
 
@@ -1517,12 +1524,27 @@ done_subsection:
 	 */
 	if (frame->resume) goto resume_subsection;
 
+	if (frame->top_frame) {
+		rad_assert(priority >= 0);
+
+		if (priority > frame->priority) {
+			frame->result = result;
+			frame->priority = priority;
+
+			RDEBUG4("** [%i] %s - over-riding result from higher priority to (%s %d)",
+				stack->depth, __FUNCTION__,
+				fr_int2str(mod_rcode_table, result, "<invalid>"),
+				priority);
+		}
+		goto top_frame;
+	}
+
 	instruction = frame->instruction;
 	if (!instruction) {
 		RERROR("Empty instruction.  Hard-coding to reject");
 		DUMP_STACK;
 		frame->result = result = RLM_MODULE_REJECT;
-		frame->priority = priority;
+		frame->priority = 0;
 		goto done_subsection;
 	}
 
@@ -1571,15 +1593,6 @@ void unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
 	if (instruction) unlang_push(stack, instruction, RLM_MODULE_UNKNOWN, true, false);
 
 	RDEBUG4("** [%i] %s - substack begins", stack->depth, __FUNCTION__);
-
-	/*
-	 *	Mark our entry point into the stack.  This ensures
-	 *	We don't ever rewind past our first frame.
-	 *
-	 *	This allows multiple calls to unlang_run, dividing the
-	 *	stack into segments.
-	 */
-	stack->frame[stack->depth].top_frame = true;
 
 	DUMP_STACK;
 }
