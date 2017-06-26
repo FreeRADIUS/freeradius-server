@@ -42,7 +42,7 @@ const FR_NAME_NUMBER mod_rcode_table[] = {
 	{ "noop",       RLM_MODULE_NOOP	 },
 	{ "updated",    RLM_MODULE_UPDATED      },
 	{ "yield",      RLM_MODULE_YIELD      },
-	{ "<unknown>",  RLM_MODULE_UNKNOWN      },
+	{ "...",        RLM_MODULE_UNKNOWN      },
 	{ NULL, 0 }
 };
 
