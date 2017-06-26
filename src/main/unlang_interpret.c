@@ -81,7 +81,6 @@ static void unlang_dump_frame(REQUEST *request, unlang_stack_frame_t *frame)
 	RDEBUG("priority       %d", frame->priority);
 	RDEBUG("unwind         %d", frame->unwind);
 	RDEBUG("do_next_sib    %s", frame->do_next_sibling ? "yes" : "no");
-	RDEBUG("was_if         %s", frame->was_if ? "yes" : "no");
 	RDEBUG("resume         %s", frame->resume ? "yes" : "no");
 	REXDENT();
 }
@@ -131,7 +130,6 @@ static inline void unlang_push(unlang_stack_t *stack, unlang_t *program, rlm_rco
 	next->priority = 0;
 	next->unwind = UNLANG_TYPE_NULL;
 	next->do_next_sibling = do_next_sibling;
-	next->was_if = false;
 	next->if_taken = false;
 	next->resume = false;
 	next->state = NULL;
@@ -1018,7 +1016,6 @@ static unlang_action_t unlang_if(REQUEST *request, unlang_stack_t *stack,
 	 */
 	if (!condition) {
 		RDEBUG2("  ...");
-		frame->was_if = true;
 		frame->if_taken = false;
 
 		if (*presult != RLM_MODULE_UNKNOWN) *priority = instruction->actions[*presult];
@@ -1029,7 +1026,6 @@ static unlang_action_t unlang_if(REQUEST *request, unlang_stack_t *stack,
 	/*
 	 *	We took the "if".  Go recurse into its' children.
 	 */
-	frame->was_if = true;
 	frame->if_taken = true;
 
 	return unlang_group(request, stack, presult, priority);
@@ -1040,8 +1036,6 @@ static unlang_action_t unlang_elsif(REQUEST *request, unlang_stack_t *stack,
 {
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
-
-	rad_assert(frame->was_if);
 
 	/*
 	 *	Like UNLANG_TYPE_ELSE, but allow for a later "else"
@@ -1065,12 +1059,9 @@ static unlang_action_t unlang_else(REQUEST *request, unlang_stack_t *stack,
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
 
-	rad_assert(frame->was_if);
-
 	if (frame->if_taken) {
 		RDEBUG2("... skipping %s for request %" PRIu64 ": Preceding \"if\" was taken",
 			unlang_ops[instruction->type].name, request->number);
-		frame->was_if = false;
 		frame->if_taken = false;
 
 		*presult = RLM_MODULE_NOOP;
@@ -1081,7 +1072,6 @@ static unlang_action_t unlang_else(REQUEST *request, unlang_stack_t *stack,
 	/*
 	 *	We need to process it.  Go do that.
 	 */
-	frame->was_if = false;
 	frame->if_taken = false;
 
 	return unlang_group(request, stack, presult, priority);

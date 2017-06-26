@@ -257,7 +257,6 @@ typedef struct {
 								//!< This is used for break and return.
 
 	bool			do_next_sibling : 1;		//!< should we do the next item in this section?
-	bool			was_if : 1;			//!< the previous keyword was "if"
 	bool			if_taken : 1;			//!< we took the previous "if", so skip the next "else"
 	bool			resume : 1;			//!< resume the current section after calling a sub-section
 	bool			top_frame : 1;			//!< are we the top frame of the stack?
