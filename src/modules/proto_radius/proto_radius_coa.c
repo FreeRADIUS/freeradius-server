@@ -233,22 +233,6 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 	return FR_IO_REPLY;
 }
 
-static int coa_compile_section(CONF_SECTION *server_cs, char const *name1, char const *name2, rlm_components_t component)
-{
-	CONF_SECTION *cs;
-
-	cs = cf_section_find(server_cs, name1, name2);
-	if (!cs) return 0;
-
-	cf_log_debug(cs, "Loading %s %s {...}", name1, name2);
-
-	if (unlang_compile(cs, component) < 0) {
-		cf_log_err(cs, "Failed compiling '%s %s { ... }' section", name1, name2);
-		return -1;
-	}
-
-	return 1;
-}
 
 static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 {
@@ -262,16 +246,16 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 	server_cs = cf_item_to_section(cf_parent(listen_cs));
 	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
 
-	rcode = coa_compile_section(server_cs, "recv", "CoA-Request", MOD_RECV_COA);
+	rcode = unlang_compile_subsection(server_cs, "recv", "CoA-Request", MOD_RECV_COA);
 	if (rcode < 0) return rcode;
 	if (rcode == 1) coa_found = true;
 
-	rcode = coa_compile_section(server_cs, "recv", "Disconnect-Request", MOD_RECV_COA);
+	rcode = unlang_compile_subsection(server_cs, "recv", "Disconnect-Request", MOD_RECV_COA);
 	if (rcode < 0) return rcode;
 	if (rcode == 1) dm_found = true;
 
 	if (!coa_found || !dm_found) {
-		rcode = coa_compile_section(server_cs, "recv", "*", MOD_RECV_COA);
+		rcode = unlang_compile_subsection(server_cs, "recv", "*", MOD_RECV_COA);
 		if (rcode < 0) return rcode;
 		if (rcode == 1) coa_found = dm_found = true;
 	}
@@ -289,22 +273,22 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 	}
 
 	if (coa_found) {
-		rcode = coa_compile_section(server_cs, "send", "CoA-ACK", MOD_SEND_COA);
+		rcode = unlang_compile_subsection(server_cs, "send", "CoA-ACK", MOD_SEND_COA);
 		if (rcode < 0) return rcode;
 
-		rcode = coa_compile_section(server_cs, "send", "CoA-NAK", MOD_SEND_COA);
+		rcode = unlang_compile_subsection(server_cs, "send", "CoA-NAK", MOD_SEND_COA);
 		if (rcode < 0) return rcode;
 	}
 
 	if (dm_found) {
-		rcode = coa_compile_section(server_cs, "send", "Disconnect-ACK", MOD_SEND_COA);
+		rcode = unlang_compile_subsection(server_cs, "send", "Disconnect-ACK", MOD_SEND_COA);
 		if (rcode < 0) return rcode;
 
-		rcode = coa_compile_section(server_cs, "send", "Disconnect-NAK", MOD_SEND_COA);
+		rcode = unlang_compile_subsection(server_cs, "send", "Disconnect-NAK", MOD_SEND_COA);
 		if (rcode < 0) return rcode;
 	}
 
-	rcode = coa_compile_section(server_cs, "send", "*", MOD_PREACCT);
+	rcode = unlang_compile_subsection(server_cs, "send", "*", MOD_PREACCT);
 	if (rcode < 0) return rcode;
 
 	return 0;

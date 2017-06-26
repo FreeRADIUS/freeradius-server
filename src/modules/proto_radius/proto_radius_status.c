@@ -194,34 +194,9 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 	return FR_IO_REPLY;
 }
 
-static int mod_compile_section(CONF_SECTION *server_cs, char const *name1, char const *name2, rlm_components_t component)
-{
-	CONF_SECTION *cs;
-
-	cs = cf_section_find(server_cs, name1, name2);
-	if (!cs) return 0;
-
-	cf_log_debug(cs, "Compiling policies - %s %s {...}", name1, name2);
-
-	/*
-	 *	FIXME: check if it's already compiled?
-	 *
-	 *	What happens when we have Access-Accept in response to Status-Server,
-	 *	versus Access-Accept in response to Access-Request?
-	 *
-	 *	Damn...
-	 */
-
-	if (unlang_compile(cs, component) < 0) {
-		cf_log_err(cs, "Failed compiling '%s %s { ... }' section", name1, name2);
-		return -1;
-	}
-
-	return 1;
-}
 
 /*
- *	Ensure that the "radius" section is compiled.
+ *	Ensure that the "recv foo" etc. sections are compiled.
  */
 static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 {
@@ -233,7 +208,7 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 	server_cs = cf_item_to_section(cf_parent(listen_cs));
 	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
 
-	rcode = mod_compile_section(server_cs, "recv", "Status-Server", MOD_AUTHORIZE);
+	rcode = unlang_compile_subsection(server_cs, "recv", "Status-Server", MOD_AUTHORIZE);
 	if (rcode < 0) return rcode;
 	if (rcode == 0) {
 		cf_log_err(server_cs, "Failed finding 'recv Status-Server { ... }' section of virtual server %s",
@@ -241,7 +216,7 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 		return -1;
 	}
 
-	rcode = mod_compile_section(server_cs, "send", "Access-Accept", MOD_POST_AUTH);
+	rcode = unlang_compile_subsection(server_cs, "send", "Access-Accept", MOD_POST_AUTH);
 	if (rcode < 0) return rcode;
 	if (rcode == 0) {
 		cf_log_err(server_cs, "Failed finding 'send Access-Accept { ... }' section of virtual server %s",
@@ -249,7 +224,7 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 		return -1;
 	}
 
-	rcode = mod_compile_section(server_cs, "send", "Access-Reject", MOD_POST_AUTH);
+	rcode = unlang_compile_subsection(server_cs, "send", "Access-Reject", MOD_POST_AUTH);
 	if (rcode < 0) return rcode;
 	if (rcode == 0) {
 		cf_log_err(server_cs, "Failed finding 'send Access-Reject { ... }' section of virtual server %s",

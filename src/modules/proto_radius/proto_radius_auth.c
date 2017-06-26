@@ -512,23 +512,6 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 }
 
 
-static int auth_compile_section(CONF_SECTION *server_cs, char const *name1, char const *name2, rlm_components_t component)
-{
-	CONF_SECTION *cs;
-
-	cs = cf_section_find(server_cs, name1, name2);
-	if (!cs) return 0;
-
-	cf_log_debug(cs, "Loading %s %s {...}", name1, name2);
-
-	if (unlang_compile(cs, component) < 0) {
-		cf_log_err(cs, "Failed compiling '%s %s { ... }' section", name1, name2);
-		return -1;
-	}
-
-	return 1;
-}
-
 /*
  *	Ensure that the "radius" section is compiled.
  */
@@ -537,7 +520,7 @@ static int auth_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *lis
 	int rcode;
 	CONF_SECTION *subcs = NULL;
 
-	rcode = auth_compile_section(server_cs, "recv", "Access-Request", MOD_AUTHORIZE);
+	rcode = unlang_compile_subsection(server_cs, "recv", "Access-Request", MOD_AUTHORIZE);
 	if (rcode < 0) return rcode;
 
 	if (rcode == 0) {
@@ -546,7 +529,7 @@ static int auth_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *lis
 		return -1;
 	}
 
-	rcode = auth_compile_section(server_cs, "send", "Access-Accept", MOD_POST_AUTH);
+	rcode = unlang_compile_subsection(server_cs, "send", "Access-Accept", MOD_POST_AUTH);
 	if (rcode < 0) return rcode;
 	if (rcode == 0) {
 		cf_log_err(server_cs, "Failed finding 'send Access-Accept { ... }' section of virtual server %s",
@@ -554,7 +537,7 @@ static int auth_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *lis
 		return -1;
 	}
 
-	rcode = auth_compile_section(server_cs, "send", "Access-Reject", MOD_POST_AUTH);
+	rcode = unlang_compile_subsection(server_cs, "send", "Access-Reject", MOD_POST_AUTH);
 	if (rcode < 0) return rcode;
 	if (rcode == 0) {
 		cf_log_err(server_cs, "Failed finding 'send Access-Reject { ... }' section of virtual server %s",
@@ -565,7 +548,7 @@ static int auth_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *lis
 	/*
 	 *	It's OK to not have an Access-Challenge section.
 	 */
-	rcode = auth_compile_section(server_cs, "send", "Access-Challenge", MOD_POST_AUTH);
+	rcode = unlang_compile_subsection(server_cs, "send", "Access-Challenge", MOD_POST_AUTH);
 	if (rcode < 0) return rcode;
 
 	while ((subcs = cf_section_find_next(server_cs, subcs, "authenticate", NULL))) {
@@ -665,7 +648,7 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 			return -1;
 		}
 
-		rcode = auth_compile_section(server_cs, "authenticate", name2, MOD_AUTHENTICATE);
+		rcode = unlang_compile_subsection(server_cs, "authenticate", name2, MOD_AUTHENTICATE);
 		if (rcode < 0) {
 			cf_log_err(subcs, "Failed compiling 'authenticate %s { ... }' section", name2);
 			return -1;
