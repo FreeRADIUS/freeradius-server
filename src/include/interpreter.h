@@ -251,10 +251,15 @@ typedef struct {
 	 */
 	void			*state;
 
-	rlm_rcode_t		result;
-	int			priority;
+	rlm_rcode_t		result;				//!< The result from executing the instruction.
+	int			priority;			//!< Result priority.  When we pop this stack frame
+								///< this priority will be compared with the one of the
+								///< frame lower in the stack to determine if the
+								///< result stored in the lower stack frame should
+								///< be replaced.
+
 	unlang_type_t		unwind;				//!< Unwind to this one if it exists.
-								//!< This is used for break and return.
+								///< This is used for break and return.
 
 	bool			do_next_sibling : 1;		//!< should we do the next item in this section?
 	bool			if_taken : 1;			//!< we took the previous "if", so skip the next "else"
