@@ -399,7 +399,10 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		i++;
 	}
 
-	if (!inst->app_io) return 0;
+	/*
+	 *	No IO module, it's an empty listener.
+	 */
+	if (!inst->io_submodule) return 0;
 
 	/*
 	 *	Bootstrap the I/O module
