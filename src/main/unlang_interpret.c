@@ -1484,8 +1484,7 @@ done_subsection:
 	 *	We're at the top frame, return the result from the
 	 *	stack, and get rid of the top frame.
 	 */
-	if ((frame->top_frame) ||
-	    (stack->depth == 1)) {
+	if (frame->top_frame) {
 		RDEBUG4("** [%i] %s - returning %s", stack->depth, __FUNCTION__,
 			fr_int2str(mod_rcode_table, frame->result, "<invalid>"));
 		result = frame->result;
