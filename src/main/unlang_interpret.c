@@ -101,7 +101,7 @@ static void unlang_dump_stack(REQUEST *request, unlang_stack_t *stack)
 
 	RDEBUG("----- End stack debug [depth %i] -------", stack->depth);
 }
-#define DUMP_STACK if (fr_debug_lvl >= 5) unlang_dump_stack(request, stack)
+#define DUMP_STACK if (DEBUG_ENABLED5) unlang_dump_stack(request, stack)
 #else
 #define DUMP_STACK
 #endif
@@ -675,7 +675,7 @@ static unlang_action_t unlang_foreach(REQUEST *request, unlang_stack_t *stack,
 	}
 
 #ifndef NDEBUG
-	if (fr_debug_lvl >= 2) {
+	if (DEBUG_ENABLED2) {
 		char buffer[1024];
 
 			fr_pair_value_snprint(buffer, sizeof(buffer), vp, '"');
@@ -1293,9 +1293,7 @@ resume_subsection:
 
 		rad_assert(instruction->debug_name != NULL); /* if this happens, all bets are off. */
 
-		if (fr_debug_lvl >= 3) {
-			VERIFY_REQUEST(request);
-		}
+		VERIFY_REQUEST(request);
 
 		/*
 		 *	We've been asked to stop.  Do so.

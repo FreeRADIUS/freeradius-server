@@ -152,19 +152,21 @@ void	radlog_fatal(char const *fmt, ...) CC_HINT(format (printf, 1, 2)) CC_HINT(n
  * DEBUG    | LOG_DEBUG               | Regular      | Normal debug output
  *
  * **Debug levels**
- * Level    | Debug arguments         | Macro(s) enabled              | When to use
- * -------- | ----------------------- | ----------------------------- | -----------
- * 1        | ``-x``                  | DEBUG                         | Never - Deprecated
- * 2        | ``-xx`` or ``-X``       | DEBUG, DEBUG2                 | Interactions with external entities. Connection management, control socket, triggers, etc...
- * 3        | ``-xxx`` or ``-Xx``     | DEBUG, DEBUG2, DEBUG3         | Lower priority events. Polling for detail files, cleanups, etc...
- * 4        | ``-xxxx`` or ``-Xxx``   | DEBUG, DEBUG2, DEBUG3, DEBUG4 | Internal server state debugging.
+ * Level    | Debug arguments         | Macro(s) enabled   | When to use
+ * -------- | ----------------------- | ------------------ | -----------
+ * 1        | ``-x``                  | DEBUG              | Never - Deprecated
+ * 2        | ``-xx`` or ``-X``       | DEBUG, DEBUG2      | Interactions with external entities. Connection management, control socket, triggers, etc...
+ * 3        | ``-xxx`` or ``-Xx``     | DEBUG, DEBUG[2-3]  | Lower priority events. Polling for detail files, cleanups, etc...
+ * 4        | ``-xxxx`` or ``-Xxx``   | DEBUG, DEBUG[2-4]  | Internal server state debugging.
+ * 5        | ``-xxxxx`` or ``-Xxxx`` | DEBUG, DEBUG[2-5]  | Low level internal server state debugging.
  *
  * @{
  */
 #define DEBUG_ENABLED		debug_enabled(L_DBG, L_DBG_LVL_1)			//!< True if global debug level 1 messages are enabled
 #define DEBUG_ENABLED2		debug_enabled(L_DBG, L_DBG_LVL_2)			//!< True if global debug level 1-2 messages are enabled
 #define DEBUG_ENABLED3		debug_enabled(L_DBG, L_DBG_LVL_3)			//!< True if global debug level 1-3 messages are enabled
-#define DEBUG_ENABLED4		debug_enabled(L_DBG, L_DBG_LVL_MAX)			//!< True if global debug level 1-4 messages are enabled
+#define DEBUG_ENABLED4		debug_enabled(L_DBG, L_DBG_LVL_4)			//!< True if global debug level 1-3 messages are enabled
+#define DEBUG_ENABLED5		debug_enabled(L_DBG, L_DBG_LVL_MAX)			//!< True if global debug level 1-5 messages are enabled
 
 #define _DEBUG_LOG(_l, _p, _f, ...)	if (rad_debug_lvl >= _p) _FR_LOG(_l, _f, ## __VA_ARGS__)
 #define DEBUG(fmt, ...)		_DEBUG_LOG(L_DBG, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
@@ -222,19 +224,21 @@ void	radlog_fatal(char const *fmt, ...) CC_HINT(format (printf, 1, 2)) CC_HINT(n
  * REDEBUG* | LOG_DEBUG               | Red/Bold         | Errors. Reject messages, bad values etc...
  *
  * **Debug levels**
- * Level    | Debug arguments         | Macro(s) enabled                       | When to use
- * -------- | ----------------------- | -------------------------------------- | -----------
- * 1        | ``-x``                  | R*DEBUG                                | Never - Deprecated
- * 2        | ``-xx`` or ``-X``       | R*DEBUG, R*DEBUG2                      | Normal request flow. Operations, Results of queries, or execs, etc...
- * 3        | ``-xxx`` or ``-Xx``     | R*DEBUG, R*DEBUG2, R*DEBUG3            | Internal server state or packet input. State machine changes, extra attribute info, etc...
- * 4        | ``-xxxx`` or ``-Xxx``   | R*DEBUG, R*DEBUG2, R*DEBUG3, R*DEBUG4  | Verbose internal server state messages or packet input. Hex dumps, structure dumps, pointer values.
+ * Level    | Debug arguments         | Macro(s) enabled      | When to use
+ * -------- | ----------------------- | --------------------- | -----------
+ * 1        | ``-x``                  | R*DEBUG               | Never - Deprecated
+ * 2        | ``-xx`` or ``-X``       | R*DEBUG, R*DEBUG2     | Normal request flow. Operations, Results of queries, or execs, etc...
+ * 3        | ``-xxx`` or ``-Xx``     | R*DEBUG, R*DEBUG[2-3] | Internal server state or packet input. State machine changes, extra attribute info, etc...
+ * 4        | ``-xxxx`` or ``-Xxx``   | R*DEBUG, R*DEBUG[2-4] | Verbose internal server state messages or packet input. Hex dumps, structure dumps, pointer values.
+ * 5        | ``-xxxxx`` or ``-Xxxx`` | R*DEBUG, R*DEBUG[2-5] | Low level internal server state messages.
  *
  * @{
  */
 #define RDEBUG_ENABLED		radlog_debug_enabled(L_DBG, L_DBG_LVL_1, request)	//!< True if request debug level 1 messages are enabled
 #define RDEBUG_ENABLED2		radlog_debug_enabled(L_DBG, L_DBG_LVL_2, request)	//!< True if request debug level 1-2 messages are enabled
 #define RDEBUG_ENABLED3		radlog_debug_enabled(L_DBG, L_DBG_LVL_3, request)	//!< True if request debug level 1-3 messages are enabled
-#define RDEBUG_ENABLED4		radlog_debug_enabled(L_DBG, L_DBG_LVL_MAX, request)	//!< True if request debug level 1-4 messages are enabled
+#define RDEBUG_ENABLED4		radlog_debug_enabled(L_DBG, L_DBG_LVL_4, request)	//!< True if request debug level 1-4 messages are enabled
+#define RDEBUG_ENABLED5		radlog_debug_enabled(L_DBG, L_DBG_LVL_MAX, request)	//!< True if request debug level 1-5 messages are enabled
 
 #define RDEBUGX(_l, fmt, ...)	do { if (rad_debug_lvl || request->log.lvl) radlog_request(L_DBG, _l, request, fmt, ## __VA_ARGS__); } while(0)
 #define RDEBUG(fmt, ...)	do { if (rad_debug_lvl || request->log.lvl) radlog_request(L_DBG, L_DBG_LVL_1, request, fmt, ## __VA_ARGS__); } while(0)

@@ -77,7 +77,8 @@ typedef enum fr_log_lvl {
 	L_DBG_LVL_1,			//!< Highest priority debug messages (-x).
 	L_DBG_LVL_2,			//!< 2nd highest priority debug messages (-xx | -X).
 	L_DBG_LVL_3,			//!< 3rd highest priority debug messages (-xxx | -Xx).
-	L_DBG_LVL_MAX			//!< Lowest priority debug messages (-xxxx | -Xxx).
+	L_DBG_LVL_4,			//!< 4th highest priority debug messages (-xxxx | -Xxx).
+	L_DBG_LVL_MAX			//!< Lowest priority debug messages (-xxxxx | -Xxxx).
 } fr_log_lvl_t;
 
 typedef enum fr_log_dst {
