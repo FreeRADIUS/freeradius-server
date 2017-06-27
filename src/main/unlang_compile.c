@@ -2553,13 +2553,82 @@ static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx
 static unlang_t *compile_fork(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
 				   unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
 {
-	unlang_t *c;
 	char const *name2;
+	unlang_t *c;
+	unlang_group_t *g;
 
+	g = group_allocate(parent, cs, group_type, mod_type);
+	if (!g) return NULL;
+
+	c = unlang_group_to_generic(g);
+	c->name = unlang_ops[c->type].name;
+
+	/*
+	 *	Create the template.  All attributes and xlats are
+	 *	defined by now.
+	 */
 	name2 = cf_section_name2(cs);
-	if (!name2) {
-		cf_log_err(cs, "You must specify a packet type for 'fork'");
-		return NULL;
+	if (name2) {
+		FR_TOKEN type;
+		ssize_t slen;
+		fr_dict_attr_t const *da;
+		fr_dict_enum_t const *dval;
+
+		type = cf_section_name2_quote(cs);
+		if (type != T_BARE_WORD) {
+			cf_log_err(cs, "The packet type for 'fork' must be an un-quoted string.");
+			talloc_free(g);
+			return NULL;
+		}
+
+		da = fr_dict_attr_by_name(NULL, "Packet-Type");
+		if (!da) {
+			cf_log_err(cs, "Failed finding Packet-Type attribute for 'fork'");
+			talloc_free(g);
+			return NULL;
+		}
+
+		dval = fr_dict_enum_by_alias(NULL, da, name2);
+		if (!dval) {
+			cf_log_err(cs, "Unknown Packet-Type %s", name2);
+			talloc_free(g);
+			return NULL;
+		}
+
+		/*
+		 *	@fixme - make it a simple integer.  That way
+		 *	we don't need to do lookups at run-time.
+		 */
+		slen = tmpl_afrom_str(g, &g->vpt, name2, strlen(name2), type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
+		if (slen < 0) {
+			char *spaces, *text;
+
+			fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
+
+			cf_log_err(cs, "Syntax error");
+			cf_log_err(cs, "%s", name2);
+			cf_log_err(cs, "%s^ %s", spaces, text);
+
+			talloc_free(g);
+			talloc_free(spaces);
+			talloc_free(text);
+
+			return NULL;
+		}
+
+		/*
+		 *	Fixup the template before compiling the children.
+		 *	This is so that compile_case() can do attribute type
+		 *	checks / casts against us.
+		 */
+		if (!pass2_fixup_tmpl(cf_section_to_item(g->cs), &g->vpt, true)) {
+			talloc_free(g);
+			return NULL;
+		}
+
+		c->debug_name = talloc_asprintf(c, "%s %s", unlang_ops[c->type].name, cf_section_name2(cs));
+	} else {
+		c->debug_name = c->name;
 	}
 
 	/*
@@ -2569,13 +2638,7 @@ static unlang_t *compile_fork(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	 *	@ todo - after that, allow for different protocols to be specified.
 	 */
 
-	c = compile_group(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type);
-	if (!c) return NULL;
-
-	c->name = unlang_ops[c->type].name;
-	c->debug_name = talloc_asprintf(c, "%s %s", unlang_ops[c->type].name, cf_section_name2(cs));
-
-	return c;
+	return compile_children(g, parent, unlang_ctx, group_type, parentgroup_type);
 }
 
 
