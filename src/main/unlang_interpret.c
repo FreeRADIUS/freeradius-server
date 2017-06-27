@@ -918,7 +918,7 @@ static unlang_action_t unlang_update(REQUEST *request, unlang_stack_t *stack,
 
 
 static unlang_action_t unlang_map(REQUEST *request, unlang_stack_t *stack,
-				  UNUSED rlm_rcode_t *presult, UNUSED int *priority)
+				  rlm_rcode_t *presult, UNUSED int *priority)
 {
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
