@@ -40,30 +40,37 @@ redundant {
 	ok
 }
 
+if (!ok) {
+	update reply {
+		Filter-Id := "did not return OK"
+	}
+	return
+}
+
 if (&Tmp-Integer-2 != 1) {
 	update reply {
-		Filter-Id += 'Fail 3a'
+		Filter-Id += "Fail 3a - expected 1 got %{Tmp-Integer-2}"
 	}
 	return
 }
 
 if (&Tmp-Integer-3 != 1) {
 	update reply {
-		Filter-Id += 'Fail 3b'
+		Filter-Id += "'Fail 3b - expected 1 got %{Tmp-Integer-3}"
 	}
 	return
 }
 
 if (&Tmp-Integer-4 != 1) {
 	update reply {
-		Filter-Id += 'Fail 3c'
+		Filter-Id += "Fail 3c - expected 1 got %{Tmp-Integer-4}"
 	}
 	return
 }
 
 if (&Tmp-Integer-5 != 1) {
 	update reply {
-		Filter-Id += 'Fail 3d'
+		Filter-Id += "Fail 3d - expected 1 got %{Tmp-Integer-5}"
 	}
 	return
 }
