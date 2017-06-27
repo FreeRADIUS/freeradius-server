@@ -38,6 +38,12 @@ static FR_NAME_NUMBER unlang_action_table[] = {
 	{ NULL, -1 }
 };
 
+#define UNLANG_NEXT_STOP (false)
+#define UNLANG_NEXT_CONTINUE (true)
+
+#define UNLANG_TOP_FRAME (true)
+#define UNLANG_SUB_FRAME (false)
+
 /*
  *	Lock the mutex for the module
  */
@@ -76,6 +82,11 @@ static void unlang_dump_frame(REQUEST *request, unlang_stack_frame_t *frame)
 	unlang_dump_instruction(request, frame->instruction);
 
 	RINDENT();
+	if (frame->next) {
+		RDEBUG("next           %s", frame->next->debug_name);
+	} else {
+		RDEBUG("next           <none>");
+	}
 	RDEBUG("top_frame      %s", frame->top_frame ? "yes" : "no");
 	RDEBUG("result         %s", fr_int2str(mod_rcode_table, frame->result, "<invalid>"));
 	RDEBUG("priority       %d", frame->priority);
@@ -370,7 +381,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 		}
 
 		if (instruction->type == UNLANG_TYPE_LOAD_BALANCE) {
-			unlang_push(stack, frame->redundant.found, frame->result, false, false);
+			unlang_push(stack, frame->redundant.found, frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME);
 			return UNLANG_ACTION_PUSHED_CHILD;
 		}
 
@@ -415,7 +426,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 	/*
 	 *	Push the child, and yield for a later return.
 	 */
-	unlang_push(stack, frame->redundant.child, frame->result, false, false);
+	unlang_push(stack, frame->redundant.child, frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME);
 	frame->resume = true;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
@@ -442,7 +453,7 @@ static unlang_action_t unlang_group(REQUEST *request, unlang_stack_t *stack,
 		return UNLANG_ACTION_CONTINUE;
 	}
 
-	unlang_push(stack, g->children, frame->result, true, false);
+	unlang_push(stack, g->children, frame->result, UNLANG_NEXT_CONTINUE, UNLANG_SUB_FRAME);
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
@@ -485,7 +496,7 @@ static unlang_action_t unlang_fork(REQUEST *request, unlang_stack_t *stack,
 	 */
 	child_stack = child->stack;
 	child->log.unlang_indent = request->log.unlang_indent;
-	unlang_push(child_stack, g->children, frame->result, true, true);
+	unlang_push(child_stack, g->children, frame->result, UNLANG_NEXT_CONTINUE, UNLANG_SUB_FRAME);
 	child_stack->frame[child_stack->depth].top_frame = true;
 
 	rcode = unlang_run(child, child->stack);
@@ -531,7 +542,7 @@ static unlang_action_t unlang_parallel(UNUSED REQUEST *request, unlang_stack_t *
 	/*
 	 *	@todo fork child requests and make them top frames
 	 */
-	unlang_push(stack, g->children, frame->result, true, false);
+	unlang_push(stack, g->children, frame->result, UNLANG_NEXT_CONTINUE, UNLANG_SUB_FRAME);
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
@@ -702,7 +713,7 @@ static unlang_action_t unlang_foreach(REQUEST *request, unlang_stack_t *stack,
 	/*
 	 *	Push the child, and yield for a later return.
 	 */
-	unlang_push(stack, g->children, frame->result, true, false);
+	unlang_push(stack, g->children, frame->result, UNLANG_NEXT_CONTINUE, UNLANG_SUB_FRAME);
 	frame->resume = true;
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
@@ -864,7 +875,7 @@ do_null_case:
 	 */
 	if (!found) return UNLANG_ACTION_CONTINUE;
 
-	unlang_push(stack, found, frame->result, false, false);
+	unlang_push(stack, found, frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME);
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
@@ -1309,6 +1320,7 @@ resume_subsection:
 			if (priority < 0) priority = 0;
 			frame->result = result;
 			frame->priority = priority;
+			frame->next = NULL;
 			goto done_subsection;
 
 		case UNLANG_ACTION_CALCULATE_RESULT:
@@ -1549,8 +1561,8 @@ void unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
 	 *	Push the default action, and the instruction which has
 	 *	no action.
 	 */
-	unlang_push(stack, NULL, action, false, true);
-	if (instruction) unlang_push(stack, instruction, RLM_MODULE_UNKNOWN, true, false);
+	unlang_push(stack, NULL, action, UNLANG_NEXT_STOP, UNLANG_TOP_FRAME);
+	if (instruction) unlang_push(stack, instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_CONTINUE, UNLANG_SUB_FRAME);
 
 	RDEBUG4("** [%i] %s - substack begins", stack->depth, __FUNCTION__);
 
