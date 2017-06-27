@@ -10,32 +10,38 @@
 
 server inner-tunnel {
 
+	namespace = radius
+
 #
 #  This next section is here to allow testing of the "inner-tunnel"
 #  authentication methods, independently from the "default" server.
 #  It is listening on "localhost", so that it can only be used from
 #  the same machine.
 #
-#	$ radtest USER PASSWORD 127.0.0.1:18120 0 testing123
+#      $ radtest USER PASSWORD 127.0.0.1:18120 0 testing123
 #
 #  If it works, you have configured the inner tunnel correctly.  To check
 #  if PEAP will work, use:
 #
-#	$ radtest -t mschap USER PASSWORD 127.0.0.1:18120 0 testing123
+#      $ radtest -t mschap USER PASSWORD 127.0.0.1:18120 0 testing123
 #
 #  If that works, PEAP should work.  If that command doesn't work, then
 #
-#	FIX THE INNER TUNNEL CONFIGURATION SO THAT IT WORKS.
+#      FIX THE INNER TUNNEL CONFIGURATION SO THAT IT WORKS.
 #
 #  Do NOT do any PEAP tests.  It won't help.  Instead, concentrate
 #  on fixing the inner tunnel configuration.  DO NOTHING ELSE.
 #
 listen {
-       ipaddr = 127.0.0.1
-       port = 18120
-       type = auth
-}
+	type = Status-Server
+	type = Access-Request
+	transport = udp
 
+	udp {
+		ipaddr = 127.0.0.1
+		port = 18120
+	}
+}
 
 #  Authorization. First preprocess (hints and huntgroups files),
 #  then realms, and finally look in the "users" file.
