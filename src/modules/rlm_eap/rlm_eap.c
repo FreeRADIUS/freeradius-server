@@ -120,6 +120,7 @@ static int submodule_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
 	case FR_EAP_TTLS:
 	case FR_EAP_PEAP:
 	case FR_EAP_PWD:
+	case FR_EAP_AKA:
 		WARN("Ignoring EAP method %s because we don't have OpenSSL support", name);
 		return 0;
 
