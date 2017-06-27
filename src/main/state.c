@@ -547,6 +547,8 @@ void fr_state_discard(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET *o
 	request->state = NULL;
 	TALLOC_FREE(entry);
 
+	RDEBUG3("RADIUS State - discarded");
+
 	return;
 }
 
@@ -594,14 +596,14 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET
 	if (request->state) {
 		RDEBUG2("Restored &session-state");
 		rdebug_pair_list(L_DBG_LVL_2, request, request->state, "&session-state:");
-	} else {
-		RDEBUG3("No &session-state attributes to restore");
 	}
 
 	/*
 	 *	Free this outside of the mutex for less contention.
 	 */
 	if (old_ctx) talloc_free(old_ctx);
+
+	RDEBUG3("RADIUS State - restored");
 
 	VERIFY_REQUEST(request);
 	return;
@@ -653,6 +655,7 @@ bool fr_request_to_state(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET
 
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
+	RDEBUG3("RADIUS State - saved");
 	VERIFY_REQUEST(request);
 
 	return true;
