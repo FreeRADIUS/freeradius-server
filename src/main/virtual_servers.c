@@ -589,7 +589,7 @@ static bool virtual_server_define_types_deprecated(CONF_SECTION *cs, rlm_compone
  */
 int virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const *subcs_name, fr_dict_attr_t const *da)
 {
-	CONF_SECTION		*subcs;
+	CONF_SECTION		*subcs = NULL;
 
 	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
 
