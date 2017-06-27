@@ -1277,7 +1277,6 @@ start_subsection:
 	 */
 	while (frame->instruction != NULL) {
 resume_subsection:
-		frame->next = frame->instruction->next;
 		instruction = frame->instruction;
 
 		DUMP_STACK;
@@ -1448,6 +1447,7 @@ resume_subsection:
 		} /* switch over return code from the interpreter function */
 
 		frame->instruction = frame->next;
+		if (frame->instruction) frame->next = frame->instruction->next;
 	}
 
 	RDEBUG4("** [%i] %s - done current subsection with (%s %d)",
