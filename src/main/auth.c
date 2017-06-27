@@ -789,8 +789,7 @@ rlm_rcode_t rad_virtual_server(REQUEST *request)
 	}
 
 skip:
-	rad_assert(request->parent != NULL);
-	if (request->parent->async) return virtual_server_async(request);
+	if (request->parent && request->parent->async) return virtual_server_async(request);
 
 	RDEBUG("server %s {", cf_section_name2(request->server_cs));
 
