@@ -654,6 +654,34 @@ authenticate:
 	return rcode;
 }
 
+#include <freeradius-devel/io/listen.h>
+
+static rlm_rcode_t virtual_server_async(REQUEST *request)
+{
+	fr_io_final_t final;
+
+	request->async = talloc_memdup(request, request->parent->async,
+				       sizeof(fr_async_t));
+
+	RDEBUG("server %s (async) {", cf_section_name2(request->server_cs));
+	final = request->async->process(request, FR_IO_ACTION_RUN);
+	RDEBUG("} # server %s (async) ", cf_section_name2(request->server_cs));
+
+	rad_assert(final == FR_IO_REPLY);
+
+	if (!request->reply->code ||
+	    (request->reply->code == FR_CODE_ACCESS_REJECT)) {
+		return RLM_MODULE_REJECT;
+	}
+
+	if (request->reply->code == FR_CODE_ACCESS_CHALLENGE) {
+		return RLM_MODULE_HANDLED;
+	}
+
+	return RLM_MODULE_OK;
+}
+
+
 /*
  *	Run a virtual server auth and postauth
  *
@@ -662,6 +690,9 @@ rlm_rcode_t rad_virtual_server(REQUEST *request)
 {
 	VALUE_PAIR *vp;
 	int rcode;
+
+	rad_assert(request->parent != NULL);
+	if (request->parent->async) return virtual_server_async(request);
 
 	RDEBUG("Virtual server %s received request", cf_section_name2(request->server_cs));
 	rdebug_pair_list(L_DBG_LVL_1, request, request->packet->vps, NULL);
