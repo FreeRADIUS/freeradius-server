@@ -1045,14 +1045,13 @@ static int proto_ldap_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *listen)
 static int proto_ldap_socket_parse(CONF_SECTION *cs, rad_listen_t *listen)
 {
 	proto_ldap_inst_t 	*inst = listen->data;
-	CONF_SECTION		*parent_cs, *sync_cs;
+	CONF_SECTION		*sync_cs;
 	size_t		 	i;
 	int			ret;
 
 	/*
 	 *	Always cache the CONF_SECTION of the server.
 	 */
-	parent_cs = cf_root(cs);
 	listen->server_cs = virtual_server_find(listen->server);
 	if (!listen->server_cs) {
 		cf_log_err(cs, "Failed to find virtual server '%s'", listen->server);
