@@ -667,7 +667,7 @@ static rlm_rcode_t virtual_server_async(REQUEST *request)
 	final = request->async->process(request, FR_IO_ACTION_RUN);
 	RDEBUG("} # server %s (async) ", cf_section_name2(request->server_cs));
 
-	rad_assert(final == FR_IO_REPLY);
+	rad_cond_assert(final == FR_IO_REPLY);
 
 	if (!request->reply->code ||
 	    (request->reply->code == FR_CODE_ACCESS_REJECT)) {
