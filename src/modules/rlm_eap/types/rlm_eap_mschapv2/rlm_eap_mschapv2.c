@@ -340,6 +340,23 @@ static rlm_rcode_t mschap_finalize(REQUEST *request, rlm_eap_mschapv2_t *inst, e
 
 
 /*
+ *	Keep processing the Auth-Type until it doesn't return YIELD.
+ */
+static rlm_rcode_t mod_process_auth_type(void *instance, eap_session_t *eap_session)
+{
+	rlm_rcode_t	rcode;
+	rlm_eap_mschapv2_t	*inst = instance;
+	REQUEST		*request = eap_session->request;
+
+	rcode = unlang_interpret_continue(request);
+
+	if (request->master_state == REQUEST_STOP_PROCESSING) return RLM_MODULE_REJECT;
+
+	if (rcode == RLM_MODULE_YIELD) return rcode;
+
+	return mschap_finalize(request, inst, eap_session, rcode);}
+
+/*
  *	Authenticate a previously sent challenge.
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_process(void *arg, eap_session_t *eap_session)
@@ -654,6 +671,15 @@ packet_ready:
 	} else {
 		unlang_push_section(request, unlang, RLM_MODULE_FAIL);
 		rcode = unlang_interpret_continue(request);
+
+		/*
+		 *	If it's yielding, set up the process function
+		 *	to continue after resume.
+		 */
+		if (rcode == RLM_MODULE_YIELD) {
+			eap_session->process = mod_process_auth_type;
+			return rcode;
+		}
 	}
 
 	return mschap_finalize(request, inst, eap_session, rcode);
