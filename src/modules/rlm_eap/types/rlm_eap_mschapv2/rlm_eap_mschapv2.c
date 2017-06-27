@@ -266,6 +266,79 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED 
 }
 #endif
 
+
+static rlm_rcode_t mschap_finalize(REQUEST *request, rlm_eap_mschapv2_t *inst, eap_session_t *eap_session, rlm_rcode_t rcode)
+{
+	mschapv2_opaque_t	*data = talloc_get_type_abort(eap_session->opaque, mschapv2_opaque_t);
+	eap_round_t		*eap_round = eap_session->this_round;
+	VALUE_PAIR		*response;
+
+	/*
+	 *	Delete MPPE keys & encryption policy.  We don't
+	 *	want these here.
+	 */
+	fix_mppe_keys(eap_session, data);
+
+	/*
+	 *	Take the response from the mschap module, and
+	 *	return success or failure, depending on the result.
+	 */
+	response = NULL;
+	if (rcode == RLM_MODULE_OK) {
+		fr_pair_list_mcopy_by_num(data, &response, &request->reply->vps, VENDORPEC_MICROSOFT,
+					  FR_MSCHAP2_SUCCESS, TAG_ANY);
+		data->code = FR_EAP_MSCHAPV2_SUCCESS;
+	} else if (inst->send_error) {
+		fr_pair_list_mcopy_by_num(data, &response, &request->reply->vps, VENDORPEC_MICROSOFT, FR_MSCHAP_ERROR,
+					  TAG_ANY);
+		if (response) {
+			int n,err,retry;
+			char buf[34];
+
+			VERIFY_VP(response);
+
+			RDEBUG2("MSCHAP-Error: %s", response->vp_strvalue);
+
+			/*
+			 *	Parse the new challenge out of the
+			 *	MS-CHAP-Error, so that if the client
+			 *	issues a re-try, we will know which
+			 *	challenge value that they used.
+			 */
+			n = sscanf(response->vp_strvalue, "%*cE=%d R=%d C=%32s", &err, &retry, &buf[0]);
+			if (n == 3) {
+				RDEBUG2("Found new challenge from MS-CHAP-Error: err=%d retry=%d challenge=%s",
+					err, retry, buf);
+				fr_hex2bin(data->auth_challenge, 16, buf, strlen(buf));
+			} else {
+				RDEBUG2("Could not parse new challenge from MS-CHAP-Error: %d", n);
+			}
+		}
+		data->code = FR_EAP_MSCHAPV2_FAILURE;
+	} else {
+		eap_round->request->code = FR_EAP_CODE_FAILURE;
+		return RLM_MODULE_REJECT;
+	}
+
+	/*
+	 *	No response, die.
+	 */
+	if (!response) {
+		REDEBUG("No MS-CHAP2-Success or MS-CHAP-Error was found");
+		return RLM_MODULE_INVALID;
+	}
+
+	/*
+	 *	Compose the response (whatever it is),
+	 *	and return it to the over-lying EAP module.
+	 */
+	eapmschapv2_compose(eap_session->inst, eap_session, response);
+	fr_pair_list_free(&response);
+
+	return RLM_MODULE_OK;
+}
+
+
 /*
  *	Authenticate a previously sent challenge.
  */
@@ -575,7 +648,6 @@ packet_ready:
 	/*
 	 *	This is a wild & crazy hack.
 	 */
-
 	unlang = cf_section_find(request->server_cs, "authenticate", inst->auth_type_mschap_name);
 	if (!unlang) {
 		rcode = process_authenticate(inst->auth_type_mschap, request);
@@ -584,69 +656,7 @@ packet_ready:
 		rcode = unlang_interpret_continue(request);
 	}
 
-	/*
-	 *	Delete MPPE keys & encryption policy.  We don't
-	 *	want these here.
-	 */
-	fix_mppe_keys(eap_session, data);
-
-	/*
-	 *	Take the response from the mschap module, and
-	 *	return success or failure, depending on the result.
-	 */
-	response = NULL;
-	if (rcode == RLM_MODULE_OK) {
-		fr_pair_list_mcopy_by_num(data, &response, &request->reply->vps, VENDORPEC_MICROSOFT,
-					  FR_MSCHAP2_SUCCESS, TAG_ANY);
-		data->code = FR_EAP_MSCHAPV2_SUCCESS;
-	} else if (inst->send_error) {
-		fr_pair_list_mcopy_by_num(data, &response, &request->reply->vps, VENDORPEC_MICROSOFT, FR_MSCHAP_ERROR,
-					  TAG_ANY);
-		if (response) {
-			int n,err,retry;
-			char buf[34];
-
-			VERIFY_VP(response);
-
-			RDEBUG2("MSCHAP-Error: %s", response->vp_strvalue);
-
-			/*
-			 *	Parse the new challenge out of the
-			 *	MS-CHAP-Error, so that if the client
-			 *	issues a re-try, we will know which
-			 *	challenge value that they used.
-			 */
-			n = sscanf(response->vp_strvalue, "%*cE=%d R=%d C=%32s", &err, &retry, &buf[0]);
-			if (n == 3) {
-				RDEBUG2("Found new challenge from MS-CHAP-Error: err=%d retry=%d challenge=%s",
-					err, retry, buf);
-				fr_hex2bin(data->auth_challenge, 16, buf, strlen(buf));
-			} else {
-				RDEBUG2("Could not parse new challenge from MS-CHAP-Error: %d", n);
-			}
-		}
-		data->code = FR_EAP_MSCHAPV2_FAILURE;
-	} else {
-		eap_round->request->code = FR_EAP_CODE_FAILURE;
-		return RLM_MODULE_REJECT;
-	}
-
-	/*
-	 *	No response, die.
-	 */
-	if (!response) {
-		REDEBUG("No MS-CHAP2-Success or MS-CHAP-Error was found");
-		return RLM_MODULE_INVALID;
-	}
-
-	/*
-	 *	Compose the response (whatever it is),
-	 *	and return it to the over-lying EAP module.
-	 */
-	eapmschapv2_compose(eap_session->inst, eap_session, response);
-	fr_pair_list_free(&response);
-
-	return RLM_MODULE_OK;
+	return mschap_finalize(request, inst, eap_session, rcode);
 }
 
 /*
