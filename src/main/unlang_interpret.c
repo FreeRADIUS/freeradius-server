@@ -1503,10 +1503,13 @@ done_subsection:
 	frame = &stack->frame[stack->depth];
 
 	/*
-	 *	Resume a "foreach" loop.
+	 *	Resume a "foreach" loop, or a "load-balance" section.
 	 */
 	if (frame->resume) goto resume_subsection;
 
+	/*
+	 *	If we're done, merge the last result / priority in.
+	 */
 	if (frame->top_frame) {
 		rad_assert(priority >= 0);
 
