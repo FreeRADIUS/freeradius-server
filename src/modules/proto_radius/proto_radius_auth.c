@@ -158,7 +158,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 		/*
 		 *	Grab the VPS and data associated with the State attribute.
 		 */
-		fr_state_to_request(global_state, request, request->packet);
+		if (!request->parent) fr_state_to_request(global_state, request, request->packet);
 
 		/*
 		 *	Push the conf section into the unlang stack.
@@ -450,10 +450,10 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 		 *	discard it for everything else.
 		 */
 		if (request->reply->code == FR_CODE_ACCESS_CHALLENGE) {
-			fr_request_to_state(global_state, request, request->packet, request->reply);
+			if (!request->parent) fr_request_to_state(global_state, request, request->packet, request->reply);
 
 		} else {
-			fr_state_discard(global_state, request, request->packet);
+			if (!request->parent) fr_state_discard(global_state, request, request->packet);
 		}
 
 		if (!request->reply->code) {
