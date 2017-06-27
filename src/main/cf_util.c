@@ -214,7 +214,9 @@ static CONF_ITEM *cf_find_next(CONF_ITEM const *parent, CONF_ITEM const *prev,
 	if (IS_WILDCARD(ident2)) {
 		for (ci = prev->next;
 		     ci && (_cf_ident1_cmp(ci, find) != 0);
-		     ci = ci->next);
+		     ci = ci->next) {
+			rad_assert(ci->next != ci);
+		}
 
 		return ci;
 	}
