@@ -41,7 +41,7 @@ static CONF_PARSER const proto_radius_config[] = {
 	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY, proto_radius_t,
 			  process_submodule), .dflt = "Status-Server", .func = process_parse },
 	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, proto_radius_t, io_submodule),
-	  .dflt = "udp", .func = transport_parse },
+	  .func = transport_parse },
 
 	/*
 	 *	For performance tweaking.  NOT for normal humans.
