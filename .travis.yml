@@ -4,6 +4,7 @@ compiler:
 - gcc
 sudo: true
 dist: trusty
+group: deprecated-2017Q2
 env:
   global:
   - PANIC_ACTION="gdb -batch -x raddb/panic.gdb %e %p 1>&0 2>&0"
