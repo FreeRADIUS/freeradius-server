@@ -1247,8 +1247,6 @@ static rlm_rcode_t unlang_run(REQUEST *request, unlang_stack_t *stack)
 	DUMP_STACK;
 #endif
 
-	frame = &stack->frame[stack->depth];
-
 	/*
 	 *	If we're called from a module, re-set this so that the
 	 *	indentation works correctly...
