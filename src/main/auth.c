@@ -691,9 +691,6 @@ rlm_rcode_t rad_virtual_server(REQUEST *request)
 	VALUE_PAIR *vp;
 	int rcode;
 
-	rad_assert(request->parent != NULL);
-	if (request->parent->async) return virtual_server_async(request);
-
 	RDEBUG("Virtual server %s received request", cf_section_name2(request->server_cs));
 	rdebug_pair_list(L_DBG_LVL_1, request, request->packet->vps, NULL);
 
@@ -792,6 +789,9 @@ rlm_rcode_t rad_virtual_server(REQUEST *request)
 	}
 
 skip:
+	rad_assert(request->parent != NULL);
+	if (request->parent->async) return virtual_server_async(request);
+
 	RDEBUG("server %s {", cf_section_name2(request->server_cs));
 
 	RINDENT();
