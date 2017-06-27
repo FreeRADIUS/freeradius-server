@@ -239,33 +239,14 @@ authenticate pam {
 #  authentication server, and knows what to do with authentication.
 #  LDAP servers do not.
 #
-authenticate LDAP {
-	ldap
-}
+#authenticate LDAP {
+#	ldap
+#}
 
 #
 #  Allow EAP authentication.
 authenticate eap {
 	     eap
-}
-
-######################################################################
-#
-#	There are no accounting requests inside of EAP-TTLS or PEAP
-#	tunnels.
-#
-######################################################################
-
-
-#  Session database, used for checking Simultaneous-Use. Either the radutmp
-#  or rlm_sql module can handle this.
-#  The rlm_sql module is *much* faster
-session {
-	radutmp
-
-	#
-	#  See "Simultaneous Use Checking Queries" in sql.conf
-#	sql
 }
 
 
@@ -345,13 +326,13 @@ send Access-Accept {
 	}
 }
 
-	#
-	#  Access-Reject packets are sent through the REJECT sub-section of the
-	#  post-auth section.
-	#
-	#  Add the ldap module name (or instance) if you have set
-	#  'edir_account_policy_check = yes' in the ldap module configuration
-	#
+#
+#  Access-Reject packets are sent through the REJECT sub-section of the
+#  post-auth section.
+#
+#  Add the ldap module name (or instance) if you have set
+#  'edir_account_policy_check = yes' in the ldap module configuration
+#
 send Access-Reject {
 	# log failed authentications in SQL, too.
 	-sql
@@ -364,59 +345,4 @@ send Access-Reject {
 		&Module-Failure-Message := &request:Module-Failure-Message
 	}
 }
-
-#
-#  When the server decides to proxy a request to a home server,
-#  the proxied request is first passed through the pre-proxy
-#  stage.  This stage can re-write the request, or decide to
-#  cancel the proxy.
-#
-#  Only a few modules currently have this method.
-#
-pre-proxy {
-	#  Uncomment the following line if you want to change attributes
-	#  as defined in the preproxy_users file.
-#	files
-
-	#  Uncomment the following line if you want to filter requests
-	#  sent to remote servers based on the rules defined in the
-	#  'attrs.pre-proxy' file.
-#	attr_filter.pre-proxy
-
-	#  If you want to have a log of packets proxied to a home
-	#  server, un-comment the following line, and the
-	#  'detail pre_proxy_log' section, above.
-#	pre_proxy_log
-}
-
-#
-#  When the server receives a reply to a request it proxied
-#  to a home server, the request may be massaged here, in the
-#  post-proxy stage.
-#
-post-proxy {
-
-	#  If you want to have a log of replies from a home server,
-	#  un-comment the following line, and the 'detail post_proxy_log'
-	#  section, above.
-#	post_proxy_log
-
-	#  Uncomment the following line if you want to filter replies from
-	#  remote proxies based on the rules defined in the 'attrs' file.
-#	attr_filter.post-proxy
-
-	#
-	#  If you are proxying LEAP, you MUST configure the EAP
-	#  module, and you MUST list it here, in the post-proxy
-	#  stage.
-	#
-	#  You MUST also use the 'nostrip' option in the 'realm'
-	#  configuration.  Otherwise, the User-Name attribute
-	#  in the proxied request will not match the user name
-	#  hidden inside of the EAP packet, and the end server will
-	#  reject the EAP request.
-	#
-	eap
-}
-
 } # inner-tunnel server block
