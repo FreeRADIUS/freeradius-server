@@ -607,12 +607,10 @@ bool realm_home_server_add(home_server_t *home)
  *	- New #home_server_t alloced in the context of the realm_config.
  *	- NULL on error.
  */
-home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SECTION *cs)
+home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, UNUSED realm_config_t *rc, CONF_SECTION *cs)
 {
 	home_server_t	*home;
 	CONF_SECTION	*tls;
-
-	if (!rc) rc = realm_config; /* Use the global config */
 
 	home = talloc_zero(ctx, home_server_t);
 	home->name = cf_section_name2(cs);
