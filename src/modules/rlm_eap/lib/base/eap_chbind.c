@@ -122,7 +122,7 @@ static size_t chbind_get_data(chbind_packet_t const *packet,
 	}
 
 	ptr = (uint8_t const *) packet;
-	end = ptr + talloc_array_length(packet);
+	end = ptr + talloc_array_length((uint8_t const *) packet);
 
 	ptr++;			/* skip the code at the start of the packet */
 	while (ptr < end) {
@@ -189,7 +189,7 @@ FR_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 	if (data_len) {
 		vp_cursor_t cursor;
 
-		rad_assert(data_len <= talloc_array_length(chbind->request));
+		rad_assert(data_len <= talloc_array_length((uint8_t const *) chbind->request));
 
 		fr_pair_cursor_init(&cursor, &fake->packet->vps);
 		while (data_len > 0) {
