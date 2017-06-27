@@ -471,7 +471,7 @@ static unlang_action_t unlang_group(REQUEST *request, unlang_stack_t *stack,
 static rlm_rcode_t unlang_run(REQUEST *request, unlang_stack_t *stack);
 
 static unlang_action_t unlang_fork(REQUEST *request, unlang_stack_t *stack,
-				    rlm_rcode_t *result, UNUSED int *priority)
+				   rlm_rcode_t *result, UNUSED int *priority)
 {
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
@@ -501,6 +501,25 @@ static unlang_action_t unlang_fork(REQUEST *request, unlang_stack_t *stack,
 	}
 
 	child->packet->code = request->packet->code;
+
+	if (g->vpt) {
+		fr_dict_attr_t const *da;
+		fr_dict_enum_t const *dval;
+
+		da = fr_dict_attr_by_name(NULL, "Packet-Type");
+		if (!da) {
+			*result = RLM_MODULE_FAIL;
+			return UNLANG_ACTION_CALCULATE_RESULT;			
+		}
+
+		dval = fr_dict_enum_by_alias(NULL, da, g->vpt->name);
+		if (!dval) {
+			*result = RLM_MODULE_FAIL;
+			return UNLANG_ACTION_CALCULATE_RESULT;			
+		}
+
+		child->packet->code = dval->value->vb_uint32;
+	}
 
 	/*
 	 *	Push the children, and set it's top frame to be true.
