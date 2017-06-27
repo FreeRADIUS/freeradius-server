@@ -333,7 +333,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 			goto setup_send;
 
 		case RLM_MODULE_OK:
-			request->reply->code = FR_CODE_ACCESS_ACCEPT;
+			if (!request->reply->code) request->reply->code = FR_CODE_ACCESS_ACCEPT;
 			break;
 
 		case RLM_MODULE_HANDLED:
