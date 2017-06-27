@@ -123,6 +123,13 @@ static inline void unlang_push(unlang_stack_t *stack, unlang_t *program, rlm_rco
 
 	rad_assert(program || top_frame);
 
+#ifndef NDEBUG
+	if (DEBUG_ENABLED5) DEBUG("unlang_push called with instruction %s - args %s %s",
+				  program ? program->debug_name : "<none>",
+				  do_next_sibling ? "UNLANG_NEXT_CONTINUE" : "UNLANG_NEXT_STOP",
+				  top_frame ? "UNLANG_TOP_FRAME" : "UNLANG_SUB_FRAME");
+#endif
+
 	if (stack->depth >= (UNLANG_STACK_MAX - 1)) {
 		ERROR("Internal sanity check failed: module stack is too deep");
 		fr_exit(1);
@@ -241,6 +248,8 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 	 *	Go find one.
 	 */
 	if (!frame->resume) {
+		RDEBUG4("%s setting up", frame->instruction->debug_name);
+
 		if (g->vpt) {
 			uint32_t hash, start;
 			ssize_t slen;
@@ -391,6 +400,8 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 		frame->redundant.child = frame->redundant.found;
 
 	} else {
+		RDEBUG4("%s resuming", frame->instruction->debug_name);
+
 		/*
 		 *	We are in a resumed frame.  The module we
 		 *	chose failed, so we have to go through the
