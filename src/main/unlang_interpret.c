@@ -1511,7 +1511,13 @@ done_subsection:
 	 *	If we're done, merge the last result / priority in.
 	 */
 	if (frame->top_frame) {
-		rad_assert(priority >= 0);
+		/*
+		 *	Nothing in this section, use the top frame result.
+		 */
+		if ((priority < 0) || (result == RLM_MODULE_UNKNOWN)) {
+			result = frame->result;
+			priority = frame->priority;
+		}
 
 		if (priority > frame->priority) {
 			frame->result = result;
