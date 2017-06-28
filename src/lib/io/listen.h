@@ -54,4 +54,15 @@ struct fr_async_t {
 	fr_listen_t const	*listen;	//!< How we received this request,
 						//!< and how we'll send the reply.
 };
+
+/** Information to track src/dst ip/port
+ */
+typedef struct fr_ip_srcdst_t {
+	int				if_index;
+
+	fr_ipaddr_t			src_ipaddr;
+	fr_ipaddr_t			dst_ipaddr;
+	uint16_t			src_port;
+	uint16_t 			dst_port;
+} fr_ip_srcdst_t;
 #endif
