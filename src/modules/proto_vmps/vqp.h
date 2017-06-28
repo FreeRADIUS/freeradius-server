@@ -33,6 +33,7 @@ extern "C" {
 #endif
 
 RADIUS_PACKET *vqp_recv(TALLOC_CTX *ctx, int sockfd);
+bool fr_vqp_ok(uint8_t const *packet, size_t *packet_len);
 int vqp_send(RADIUS_PACKET *packet);
 int vqp_decode(RADIUS_PACKET *packet);
 int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original);

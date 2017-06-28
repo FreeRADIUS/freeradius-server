@@ -122,12 +122,68 @@ static ssize_t vqp_recv_header(int sockfd)
 	return (12 * (4 + 4 + MAX_VMPS_LEN));
 }
 
+bool fr_vqp_ok(uint8_t const *packet, size_t *packet_len)
+{
+	uint8_t	const	*ptr;
+	ssize_t		data_len;
+	int		attrlen;
+
+	if (*packet_len == VQP_HDR_LEN) return true;
+
+	/*
+	 *	Skip the header.
+	 */
+	ptr = packet + VQP_HDR_LEN;
+	data_len = *packet_len - VQP_HDR_LEN;
+
+	while (data_len > 0) {
+		if (data_len < 7) {
+			fr_strerror_printf("Packet contains malformed attribute");
+			false;
+		}
+
+		/*
+		 *	Attributes are 4 bytes
+		 *	0x00000c01 ... 0x00000c08
+		 */
+		if ((ptr[0] != 0) || (ptr[1] != 0) ||
+		    (ptr[2] != 0x0c) || (ptr[3] < 1) || (ptr[3] > 8)) {
+			fr_strerror_printf("Packet contains invalid attribute");
+			return false;
+		}
+
+		/*
+		 *	Length is 2 bytes
+		 *
+		 *	We support short lengths, as there's no reason
+		 *	for bigger lengths to exist... admins won't be
+		 *	typing in a 32K vlan name.
+		 *
+		 *	It's OK for ethernet frames to be longer.
+		 */
+		if ((ptr[3] != 5) &&
+		    ((ptr[4] != 0) || (ptr[5] > MAX_VMPS_LEN))) {
+			fr_strerror_printf("Packet contains attribute with invalid length %02x %02x", ptr[4], ptr[5]);
+			return false;
+		}
+
+		attrlen = (ptr[4] << 8) | ptr[5];
+		ptr += 6 + attrlen;
+		data_len -= (6 + attrlen);
+	}
+
+	/*
+	 *	UDP reads may return too much data, so we truncate it.
+	 */
+	*packet_len = ptr - packet;
+
+	return true;
+}
+
 RADIUS_PACKET *vqp_recv(TALLOC_CTX *ctx, int sockfd)
 {
-	uint8_t		*ptr;
 	ssize_t		data_len;
 	uint32_t	id;
-	int		attrlen;
 	RADIUS_PACKET	*packet;
 
 	data_len = vqp_recv_header(sockfd);
@@ -176,53 +232,9 @@ RADIUS_PACKET *vqp_recv(TALLOC_CTX *ctx, int sockfd)
 	memcpy(&id, packet->data + 4, 4);
 	packet->id = ntohl(id);
 
-	if (packet->data_len == VQP_HDR_LEN) {
-		return packet;
-	}
-
-	/*
-	 *	Skip the header.
-	 */
-	ptr = packet->data + VQP_HDR_LEN;
-	data_len = packet->data_len - VQP_HDR_LEN;
-
-	while (data_len > 0) {
-		if (data_len < 7) {
-			fr_strerror_printf("Packet contains malformed attribute");
-			fr_radius_free(&packet);
-			return NULL;
-		}
-
-		/*
-		 *	Attributes are 4 bytes
-		 *	0x00000c01 ... 0x00000c08
-		 */
-		if ((ptr[0] != 0) || (ptr[1] != 0) ||
-		    (ptr[2] != 0x0c) || (ptr[3] < 1) || (ptr[3] > 8)) {
-			fr_strerror_printf("Packet contains invalid attribute");
-			fr_radius_free(&packet);
-			return NULL;
-		}
-
-		/*
-		 *	Length is 2 bytes
-		 *
-		 *	We support short lengths, as there's no reason
-		 *	for bigger lengths to exist... admins won't be
-		 *	typing in a 32K vlan name.
-		 *
-		 *	It's OK for ethernet frames to be longer.
-		 */
-		if ((ptr[3] != 5) &&
-		    ((ptr[4] != 0) || (ptr[5] > MAX_VMPS_LEN))) {
-			fr_strerror_printf("Packet contains attribute with invalid length %02x %02x", ptr[4], ptr[5]);
-			fr_radius_free(&packet);
-			return NULL;
-		}
-
-		attrlen = (ptr[4] << 8) | ptr[5];
-		ptr += 6 + attrlen;
-		data_len -= (6 + attrlen);
+	if (!fr_vqp_ok(packet->data, &packet->data_len)) {
+		fr_radius_free(&packet);
+		return NULL;
 	}
 
 	return packet;
