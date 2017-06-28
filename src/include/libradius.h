@@ -145,7 +145,7 @@ do { \
 } while (0)
 
 extern uint32_t	fr_max_attributes; /* per incoming packet */
-#define	FR_MAX_PACKET_CODE (52)
+#define	FR_MAX_PACKET_CODE (53)
 extern char const *fr_packet_codes[FR_MAX_PACKET_CODE];
 #define is_radius_code(_x) ((_x > 0) && (_x < FR_MAX_PACKET_CODE))
 

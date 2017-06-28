@@ -49,6 +49,7 @@ typedef enum {
 	FR_CODE_COA_REQUEST		= 43,	//!< RFC3575/RFC5176 - CoA-Request
 	FR_CODE_COA_ACK			= 44,	//!< RFC3575/RFC5176 - CoA-Ack (positive)
 	FR_CODE_COA_NAK			= 45,	//!< RFC3575/RFC5176 - CoA-Nak (not willing to perform)
+	FR_CODE_PROTOCOL_ERROR		= 52,	//!< RFC7930 - Protocol-Error (generic NAK)
 	FR_CODE_MAX			= 255,	//!< Maximum possible code
 } FR_CODE;
 

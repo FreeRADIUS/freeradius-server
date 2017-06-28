@@ -164,8 +164,9 @@ char const *fr_packet_codes[FR_MAX_PACKET_CODE] = {
 	"47",
 	"48",
 	"49",
-	"IP-Address-Allocate",
-	"IP-Address-Release",			//!< 50
+	"IP-Address-Allocate",			//!< 50
+	"IP-Address-Release",
+	"Protocol-Error",
 };
 
 /*
