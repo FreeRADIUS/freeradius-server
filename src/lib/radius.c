@@ -3153,70 +3153,143 @@ static ssize_t data2vp_extended(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 				VALUE_PAIR **pvp)
 {
 	ssize_t rcode;
-	size_t fraglen;
+	size_t ext_len;
+	bool more;
 	uint8_t *head, *tail;
-	uint8_t const *frag, *end;
-	uint8_t const *attr;
-	int fragments;
-	bool last_frag;
+	uint8_t const *attr, *end;
+	DICT_ATTR const *child;
 
-	if (attrlen < 3) return -1;
+	/*
+	 *	data = Ext-Attr Flag ...
+	 */
+
+	/*
+	 *	Not enough room for Ext-Attr + Flag + data, it's a bad
+	 *	attribute.
+	 */
+	if (attrlen < 3) {
+	raw:
+		/*
+		 *	It's not an Extended attribute, it's unknown...
+		 */
+		child = dict_unknown_afrom_fields(ctx, (da->vendor/ FR_MAX_VENDOR) & 0xff, 0);
+		if (!child) {
+			fr_strerror_printf("Internal sanity check %d", __LINE__);
+			return -1;
+		}
+
+		rcode = data2vp(ctx, packet, original, secret, child,
+				data, attrlen, attrlen, pvp);
+		if (rcode < 0) return rcode;
+		return attrlen;
+	}
+
+	/*
+	 *	No continued data, just decode the attribute in place.
+	 */
+	if ((data[1] & 0x80) == 0) {
+		rcode = data2vp(ctx, packet, original, secret, da,
+				data + 2, attrlen - 2, attrlen - 2,
+				pvp);
+
+		if ((rcode < 0) || (((size_t) rcode + 2) != attrlen)) goto raw; /* didn't decode all of the data */
+		return attrlen;
+	}
+
+	/*
+	 *	It's continued, but there are no subsequent fragments,
+	 *	it's bad.
+	 */
+	if (attrlen >= packetlen) goto raw;
 
 	/*
 	 *	Calculate the length of all of the fragments.  For
 	 *	now, they MUST be contiguous in the packet, and they
-	 *	MUST be all of the same TYPE and EXTENDED-TYPE
+	 *	MUST be all of the same Type and Ext-Type
+	 *
+	 *	We skip the first fragment, which doesn't have a
+	 *	RADIUS attribute header.
 	 */
-	attr = data - 2;
-	fraglen = attrlen - 2;
-	frag = data + attrlen;
+	ext_len = attrlen - 2;
+	attr = data + attrlen;
 	end = data + packetlen;
-	fragments = 1;
-	last_frag = false;
 
-	while (frag < end) {
-		if (last_frag ||
-		    (frag[0] != attr[0]) ||
-		    (frag[1] < 4) ||		       /* too short for long-extended */
-		    (frag[2] != attr[2]) ||
-		    ((frag + frag[1]) > end)) {		/* overflow */
-			end = frag;
-			break;
-		}
+	while (attr < end) {
+		/*
+		 *	Not enough room for Attr + length + Ext-Attr
+		 *	continuation, it's bad.
+		 */
+		if ((end - attr) < 4) goto raw;
 
-		last_frag = ((frag[3] & 0x80) == 0);
+		if (attr[1] < 4) goto raw;
 
-		fraglen += frag[1] - 4;
-		frag += frag[1];
-		fragments++;
+		/*
+		 *	If the attribute overflows the packet, it's
+		 *	bad.
+		 */
+		if ((attr + attr[1]) > end) goto raw;
+
+		if (attr[0] != ((da->vendor / FR_MAX_VENDOR) & 0xff)) goto raw; /* not the same Extended-Attribute-X */
+
+		if (attr[2] != data[0]) goto raw; /* Not the same Ext-Attr */
+
+		/*
+		 *	Check the continuation flag.
+		 */
+		more = ((attr[2] & 0x80) != 0);
+
+		/*
+		 *	Or, there's no more data, in which case we
+		 *	shorten "end" to finish at this attribute.
+		 */
+		if (!more) end = attr + attr[1];
+
+		/*
+		 *	There's more data, but we're at the end of the
+		 *	packet.  The attribute is malformed!
+		 */
+		if (more && ((attr + attr[1]) == end)) goto raw;
+
+		/*
+		 *	Add in the length of the data we need to
+		 *	concatenate together.
+		 */
+		ext_len += attr[1] - 4;
+
+		/*
+		 *	Go to the next attribute, and stop if there's
+		 *	no more.
+		 */
+		attr += attr[1];
+		if (!more) break;
 	}
 
-	head = tail = malloc(fraglen);
-	if (!head) return -1;
+	if (!ext_len) goto raw;
 
-	VP_TRACE("Fragments %d, total length %d\n", fragments, (int) fraglen);
+	head = tail = malloc(ext_len);
+	if (!head) goto raw;
 
 	/*
-	 *	And again, but faster and looser.
-	 *
-	 *	We copy the first fragment, followed by the rest of
-	 *	the fragments.
+	 *	Copy the data over, this time trusting the attribute
+	 *	contents.
 	 */
-	frag = attr;
+	attr = data;
+	memcpy(tail, attr + 2, attrlen - 2);
+	tail += attrlen - 2;
+	attr += attrlen;
 
-	while (fragments >  0) {
-		memcpy(tail, frag + 4, frag[1] - 4);
-		tail += frag[1] - 4;
-		frag += frag[1];
-		fragments--;
+	while (attr < end) {
+		memcpy(tail, attr + 4, attr[1] - 4);
+		tail += attr[1] - 4;
+		attr += attr[1]; /* skip VID+WiMax header */
 	}
 
-	VP_HEXDUMP("long-extended fragments", head, fraglen);
+	VP_HEXDUMP("long-extended fragments", head, ext_len);
 
 	rcode = data2vp(ctx, packet, original, secret, da,
-			head, fraglen, fraglen, pvp);
+			head, ext_len, ext_len, pvp);
 	free(head);
-	if (rcode < 0) return rcode;
+	if (rcode < 0) goto raw;
 
 	return end - data;
 }
@@ -3821,19 +3894,6 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 				fr_strerror_printf("Internal sanity check %d", __LINE__);
 				return -1;
 			}
-		}
-
-		/*
-		 *	If there no more fragments, then the contents
-		 *	have to be a well-known data type.
-		 *
-		 */
-		if ((data[1] & 0x80) == 0) {
-			rcode = data2vp(ctx, packet, original, secret, child,
-					data + 2, attrlen - 2, attrlen - 2,
-					pvp);
-			if (rcode < 0) goto raw;
-			return 2 + rcode;
 		}
 
 		/*
