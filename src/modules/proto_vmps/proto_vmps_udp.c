@@ -167,122 +167,69 @@ static int mod_decode(UNUSED void const *instance, REQUEST *request, UNUSED uint
 static ssize_t mod_read(void const *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len)
 {
 	proto_vmps_udp_t const	*inst = talloc_get_type_abort(instance, proto_vmps_udp_t);
-
-	ssize_t				data_size;
+	fr_ip_srcdst_t			*ip;
+	uint8_t				*packet;
 	size_t				packet_len;
-
-#if 0
-	decode_fail_t			reason;
-
-	fr_tracking_status_t		tracking_status;
-	fr_tracking_entry_t		*track;
-#endif
+	ssize_t				data_size;
 	struct timeval			timestamp;
-	proto_vmps_udp_address_t	address;
 
-	data_size = udp_recv(inst->sockfd, buffer, buffer_len, 0,
-			     &address.src_ipaddr, &address.src_port,
-			     &address.dst_ipaddr, &address.dst_port,
-			     &address.if_index, &timestamp);
+	ip = (fr_ip_srcdst_t *) buffer; /* @todo - should be aligned */
+	packet = buffer + sizeof(*ip);
+	packet_len = buffer_len - sizeof(*ip);
+
+	data_size = udp_recv(inst->sockfd, packet, packet_len, 0,
+			     &ip->src_ipaddr, &ip->src_port,
+			     &ip->dst_ipaddr, &ip->dst_port,
+			     &ip->if_index, &timestamp);
 	if (data_size <= 0) return data_size;
 
 	packet_len = data_size;
 
-#if 0
 	/*
 	 *	If it's not a VMPS packet, ignore it.
 	 */
-	if (!fr_vmps_ok(buffer, &packet_len, false, &reason)) return 0;
+	if (!fr_vqp_ok(packet, &packet_len)) return 0;
 
-	address.timestamp = fr_time();
-
-	/*
-	 *	Lookup the client - Must exist to continue.
-	 */
-	address.client = client_find(NULL, &address.src_ipaddr, IPPROTO_UDP);
-	if (!address.client) {
-		ERROR("Unknown client at address %pV:%u.  Ignoring...",
-		      fr_box_ipaddr(address.src_ipaddr), address.src_port);
-
-		return 0;
-	}
-
-	/*
-	 *	If the signature fails validation, ignore it.
-	 */
-	if (fr_vmps_verify(buffer, NULL,
-			     (uint8_t const *)address.client->secret,
-			     talloc_array_length(address.client->secret)) < 0) {
-		return 0;
-	}
-
-	tracking_status = fr_vmps_tracking_entry_insert(&track, inst->ft, buffer, address.timestamp, &address);
-	switch (tracking_status) {
-	case FR_TRACKING_ERROR:
-	case FR_TRACKING_UNUSED:
-		return -1;	/* Fatal */
-
-		/*
-		 *	If the entry already has a cleanup delay, we
-		 *	extend the cleanup delay.  i.e. the cleanup
-		 *	delay is from the last reply we sent, not from
-		 *	the first one.
-		 */
-	case FR_TRACKING_SAME:
-		return 0;
-
-	/*
-	 *	Delete any pre-existing cleanup_delay timers.
-	 */
-	case FR_TRACKING_DIFFERENT:
-		if (track->ev) (void) fr_event_timer_delete(inst->el, &track->ev);
-		break;
-
-	case FR_TRACKING_NEW:
-		break;
-	}
-
-	*packet_ctx = track;
-	*recv_time = &track->timestamp;
-#endif
-
-	*packet_ctx = NULL;
+	*packet_ctx = ip;
 	*recv_time = NULL;
 
-	return packet_len;
+	return packet_len + sizeof(*ip);
 }
 
-static ssize_t mod_write(UNUSED void const *instance, UNUSED void *packet_ctx,
-			 UNUSED fr_time_t request_time, UNUSED uint8_t *buffer, size_t buffer_len)
+static ssize_t mod_write(void const *instance, void *packet_ctx,
+			 UNUSED fr_time_t request_time, uint8_t *buffer, size_t buffer_len)
 {
-	return buffer_len;
-
-#if 0
 	proto_vmps_udp_t const	*inst = talloc_get_type_abort(instance, proto_vmps_udp_t);
-	fr_tracking_entry_t		*track = packet_ctx;
-	proto_vmps_udp_address_t	*address = track->src_dst;
+	fr_ip_srcdst_t		*ip = packet_ctx;
+	uint8_t			*packet;
+	size_t			packet_len;
+	ssize_t			data_size;
 
-	ssize_t				data_size;
+	rad_assert(packet_ctx == buffer);
+
+	/*
+	 *	Don't reply.
+	 */
+	if (buffer_len == 1) return buffer_len;
+
+	packet = buffer + sizeof(*ip);
+	packet_len = buffer_len - sizeof(*ip);
 
 
 	/*
 	 *	Only write replies if they're VMPS packets.
 	 *	sometimes we want to NOT send a reply...
 	 */
-	if (buffer_len >= 20) {
-		data_size = udp_send(inst->sockfd, buffer, buffer_len, 0,
-				     &address->dst_ipaddr, address->dst_port,
-				     address->if_index,
-				     &address->src_ipaddr, address->src_port);
-	} else {
-		/*
-		 *	Otherwise lie, and say we've written it all...
-		 */
-		data_size = buffer_len;
-	}
+	data_size = udp_send(inst->sockfd, packet, packet_len, 0,
+			     &ip->dst_ipaddr, ip->dst_port,
+			     ip->if_index,
+			     &ip->src_ipaddr, ip->src_port);
+	if (data_size < 0) return data_size;
 
-	return data_size;
-#endif
+	/*
+	 *	Tell the caller we've written it all.
+	 */
+	return buffer_len;
 }
 
 /** Open a UDP listener for VMPS
