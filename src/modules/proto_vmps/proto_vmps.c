@@ -1,8 +1,4 @@
 /*
- * proto_vmps.c	Handle VMPS traffic.
- *
- * Version:	$Id$
- *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -16,302 +12,397 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * Copyright 2007  The FreeRADIUS server project
- * Copyright 2007  Alan DeKok <aland@deployingradius.com>
  */
 
-RCSID("$Id$")
-
+/**
+ * $Id$
+ * @file proto_vmps.c
+ * @brief VMPS master protocol handler.
+ *
+ * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2016 Alan DeKok (aland@freeradius.org)
+ */
 #include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/protocol.h>
-#include <freeradius-devel/process.h>
-#include <freeradius-devel/udp.h>
-#include <freeradius-devel/modules.h>
+#include <freeradius-devel/io/listen.h>
+#include <freeradius-devel/io/schedule.h>
+#include <freeradius-devel/io/application.h>
 #include <freeradius-devel/rad_assert.h>
+#include "proto_vmps.h"
 
-#include "vqp.h"
+extern fr_app_t proto_vmps;
+static int process_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
 
-static void vmps_running(REQUEST *request, fr_state_action_t action)
+/** How to parse a RADIUS listen section
+ *
+ */
+static CONF_PARSER const proto_vmps_config[] = {
+	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_NOT_EMPTY, proto_vmps_t,
+			  process_submodule), .dflt = "all", .func = process_parse },
+	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, proto_vmps_t, io_submodule),
+	  .func = transport_parse },
+
+	/*
+	 *	For performance tweaking.  NOT for normal humans.
+	 */
+	{ FR_CONF_OFFSET("default_message_size", FR_TYPE_UINT32, proto_vmps_t, default_message_size) } ,
+	{ FR_CONF_OFFSET("num_messages", FR_TYPE_UINT32, proto_vmps_t, num_messages) } ,
+
+	CONF_PARSER_TERMINATOR
+};
+
+/** Wrapper around dl_instance which translates the packet-type into a submodule name
+ *
+ * @param[in] ctx	to allocate data in (instance of proto_vmps).
+ * @param[out] out	Where to write a dl_instance_t containing the module handle and instance.
+ * @param[in] ci	#CONF_PAIR specifying the name of the type module.
+ * @param[in] rule	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int process_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
-	VALUE_PAIR *vp;
-	rlm_rcode_t rcode;
-	CONF_SECTION *unlang;
-	fr_dict_enum_t const *dv;
-	fr_dict_attr_t const *da = NULL;
+	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
+	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(ci));
+	dl_instance_t		*parent_inst;
 
-	VERIFY_REQUEST(request);
+	if (strcmp(type_str, "all") != 0) {
+		ERROR("VMPS only supports 'type = all'");
+		return -1;
+	}
 
-	TRACE_STATE_MACHINE;
+	rad_assert(listen_cs && (strcmp(cf_section_name1(listen_cs), "listen") == 0));
 
-	switch (action) {
-	case FR_ACTION_RUN:
-		if (vqp_decode(request->packet) < 0) {
-			RDEBUG("Failed decoding VMPS packet: %s", fr_strerror());
-			goto done;
+	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_instance_t, "proto_vmps"));
+	rad_assert(parent_inst);
+
+	/*
+	 *	Parent dl_instance_t added in virtual_servers.c (listen_parse)
+	 */
+	return dl_instance(ctx, out, listen_cs,	parent_inst, type_str, DL_TYPE_SUBMODULE);
+}
+
+/** Wrapper around dl_instance
+ *
+ * @param[in] ctx	to allocate data in (instance of proto_vmps).
+ * @param[out] out	Where to write a dl_instance_t containing the module handle and instance.
+ * @param[in] ci	#CONF_PAIR specifying the name of the type module.
+ * @param[in] rule	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+	char const	*name = cf_pair_value(cf_item_to_pair(ci));
+	dl_instance_t	*parent_inst;
+	CONF_SECTION	*listen_cs = cf_item_to_section(cf_parent(ci));
+	CONF_SECTION	*transport_cs;
+
+	transport_cs = cf_section_find(listen_cs, name, NULL);
+
+	/*
+	 *	Allocate an empty section if one doesn't exist
+	 *	this is so defaults get parsed.
+	 */
+	if (!transport_cs) transport_cs = cf_section_alloc(listen_cs, listen_cs, name, NULL);
+
+	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_instance_t, "proto_vmps"));
+	rad_assert(parent_inst);
+
+	return dl_instance(ctx, out, transport_cs, parent_inst, name, DL_TYPE_SUBMODULE);
+}
+
+/** Decode the packet, and set the request->process function
+ *
+ */
+static int mod_decode(void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
+{
+	proto_vmps_t const *inst = talloc_get_type_abort(instance, proto_vmps_t);
+
+#if 0
+	rad_assert(data[0] < FR_MAX_PACKET_CODE);
+
+	client = inst->app_io_private->client(inst->app_io, request->async->packet_ctx);
+	rad_assert(client);
+
+	/*
+	 *	Hacks for now until we have a lower-level decode routine.
+	 */
+	request->packet->code = data[0];
+	request->packet->id = data[1];
+	request->reply->id = data[1];
+	memcpy(request->packet->vector, data + 4, sizeof(request->packet->vector));
+
+	request->packet->data = talloc_memdup(request->packet, data, data_len);
+	request->packet->data_len = data_len;
+
+	if (fr_vmps_packet_decode(request->packet, NULL, client->secret) < 0) {
+		RDEBUG("Failed decoding packet: %s", fr_strerror());
+		return -1;
+	}
+#endif
+
+	/*
+	 *	Let the app_io take care of populating additional fields in the request
+	 */
+	return inst->app_io->decode(inst->app_io_instance, request, data, data_len);
+}
+
+static ssize_t mod_encode(UNUSED void const *instance, UNUSED REQUEST *request, UNUSED uint8_t *buffer, UNUSED size_t buffer_len)
+{
+#if 0
+	size_t len;
+
+	proto_vmps_t const *inst = talloc_get_type_abort(instance, proto_vmps_t);
+	RADCLIENT *client;
+
+	client = inst->app_io_private->client(inst->app_io, request->async->packet_ctx);
+	rad_assert(client);
+
+	if (fr_vmps_packet_encode(request->reply, request->packet, client->secret) < 0) {
+		RDEBUG("Failed encoding VMPS reply: %s", fr_strerror());
+		return -1;
+	}
+
+	if (fr_vmps_packet_sign(request->reply, request->packet, client->secret) < 0) {
+		RDEBUG("Failed signing VMPS reply: %s", fr_strerror());
+		return -1;
+	}
+
+	len = request->reply->data_len;
+	if (buffer_len < len) len = buffer_len;
+
+	memcpy(buffer, request->reply->data, len);
+
+	return len;
+#endif
+
+	return -1;
+}
+
+static void mod_process_set(void const *instance, REQUEST *request)
+{
+	proto_vmps_t const *inst = talloc_get_type_abort(instance, proto_vmps_t);
+	fr_io_process_t process;
+
+	rad_assert(request->packet->code != 0);
+	rad_assert(request->packet->code < FR_CODE_MAX);
+
+	request->server_cs = inst->server_cs;
+
+	process = inst->process;
+	if (!process) {
+		REDEBUG("No module available to handle packet code %i", request->packet->code);
+		return;
+	}
+
+	request->async->process = process;
+}
+
+/** Open listen sockets/connect to external event source
+ *
+ * @param[in] instance	Ctx data for this application.
+ * @param[in] sc	to add our file descriptor to.
+ * @param[in] conf	Listen section parsed to give us isntance.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
+{
+	fr_listen_t	*listen;
+	proto_vmps_t 	*inst = talloc_get_type_abort(instance, proto_vmps_t);
+
+	/*
+	 *	Build the #fr_listen_t.  This describes the complete
+	 *	path, data takes from the socket to the decoder and
+	 *	back again.
+	 */
+	listen = talloc_zero(inst, fr_listen_t);
+
+	listen->app_io = inst->app_io;
+	listen->app_io_instance = inst->app_io_instance;
+
+	listen->app = &proto_vmps;
+	listen->app_instance = instance;
+	listen->server_cs = inst->server_cs;
+
+	/*
+	 *	Set configurable parameters for message ring buffer.
+	 */
+	listen->default_message_size = inst->default_message_size;
+	listen->num_messages = inst->default_message_size;
+
+	/*
+	 *	Open the socket, and add it to the scheduler.
+	 */
+	if (inst->app_io) {
+		if (inst->app_io->open(inst->app_io_instance) < 0) {
+			cf_log_err(conf, "Failed opening %s interface", inst->app_io->name);
+			talloc_free(listen);
+			return -1;
 		}
-		request->server_cs = request->listener->server_cs;
-		request->component = "vmps";
 
-		vp = fr_pair_find_by_num(request->packet->vps, 0, 0x2b00, TAG_ANY);
-		if (!vp) {
-			REDEBUG("Failed to find &request:VMPS-Packet-Type");
-			goto done;
+		if (!fr_schedule_socket_add(sc, listen)) {
+			talloc_free(listen);
+			return -1;
 		}
+	}
 
-		dv = fr_dict_enum_by_value(NULL, vp->da, &vp->data);
-		if (!dv) {
-			REDEBUG("Failed to find value for &request:VMPS-Packet-Type");
-			goto done;
-		}
+	inst->listen = listen;	/* Probably won't need it, but doesn't hurt */
 
-		unlang = cf_section_find(request->server_cs, "recv", dv->alias);
-		if (!unlang) unlang = cf_section_find(request->server_cs, "recv", "*");
-		if (!unlang) {
-			RPEDEBUG("Failed to find 'recv' section");
-			goto done;
-		}
+	return 0;
+}
 
-		RDEBUG("Running recv %s from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		rcode = unlang_interpret(request, unlang, RLM_MODULE_NOOP);
+/** Instantiate the application
+ *
+ * Instantiate I/O and type submodules.
+ *
+ * @param[in] instance	Ctx data for this application.
+ * @param[in] conf	Listen section parsed to give us isntance.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
+{
+	proto_vmps_t		*inst = talloc_get_type_abort(instance, proto_vmps_t);
+	size_t			i = 0;
 
-		if (request->master_state == REQUEST_STOP_PROCESSING) goto done;
+	fr_dict_attr_t const	*da;
+	CONF_PAIR		*cp = NULL;
 
-		vp = fr_pair_find_by_num(request->reply->vps, 0, 0x2b00, TAG_ANY);
-		if (vp) {
-			da = vp->da;
+	/*
+	 *	The listener is inside of a virtual server.
+	 */
+	inst->server_cs = cf_item_to_section(cf_parent(conf));
 
-			if (vp->vp_uint32 == 256) {
-				request->reply->code = 0;
-			} else {
-				request->reply->code = vp->vp_uint32;
-			}
+	/*
+	 *	Instantiate the I/O module
+	 */
+	if (inst->app_io && inst->app_io->instantiate &&
+	    (inst->app_io->instantiate(inst->app_io_instance,
+				       inst->app_io_conf) < 0)) {
+		cf_log_err(conf, "Instantiation failed for \"%s\"", inst->app_io->name);
+		return -1;
+	}
 
-		} else if (rcode != RLM_MODULE_HANDLED) {
-			da = fr_dict_attr_by_num(NULL, 0, 0x2b00);
-			rad_assert(da != NULL);
+	/*
+	 *	Needed to populate the code array
+	 */
+	da = fr_dict_attr_by_name(NULL, "Packet-Type");
+	if (!da) {
+		ERROR("Missing definiton for Packet-Type");
+		return -1;
+	}
 
-			if (request->packet->code == 1) {
-				request->reply->code = 2;
+	/*
+	 *	Instantiate the process modules
+	 */
+	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
+		fr_app_process_t const *app_process;
+		int code;
 
-			} else if (request->packet->code == 3) {
-				request->reply->code = 4;
-			}
-		}
-
-		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
-		unlang = NULL;
-		if (dv) {
-			unlang = cf_section_find(request->server_cs, "send", dv->alias);
-		}
-		if (!unlang) unlang = cf_section_find(request->server_cs, "send", "*");
-
-		if (unlang) {
-			RDEBUG("Running send %s from file %s", cf_section_name2(unlang), cf_filename(unlang));
-			(void) unlang_interpret(request, unlang, RLM_MODULE_NOOP);
-
-			if (request->master_state == REQUEST_STOP_PROCESSING) goto done;
+		app_process = (fr_app_process_t const *)inst->process_submodule[i]->module->common;
+		if (app_process->instantiate && (app_process->instantiate(inst->process_submodule[i]->data,
+									  inst->process_submodule[i]->conf) < 0)) {
+			cf_log_err(conf, "Instantiation failed for \"%s\"", app_process->name);
+			return -1;
 		}
 
 		/*
-		 *	Check for "do not respond".
+		 *	We've already done bounds checking in the process_parse function
 		 */
-		if (!request->reply->code) {
-			RDEBUG("Not sending reply to client.");
+		code = fr_dict_enum_by_alias(NULL, da, cf_pair_value(cp))->value->vb_uint32;
+		inst->process = app_process->process;	/* Store the process function */
 
-		} else if (vqp_encode(request->reply, request->packet) < 0) {
-			RDEBUG("Failed encoding VMPS reply: %s", fr_strerror());
+		i++;
+	}
 
-		} else if (udp_send(request->reply->sockfd, request->reply->data, request->reply->data_len, 0,
-				    &request->reply->src_ipaddr, request->reply->src_port, request->reply->if_index,
-				    &request->reply->dst_ipaddr, request->reply->dst_port) < 0) {
-			RDEBUG("Failed sending VMPS reply: %s", fr_strerror());
+	/*
+	 *	These configuration items are not printed by default,
+	 *	because normal people shouldn't be touching them.
+	 */
+	if (!inst->default_message_size && inst->app_io) inst->default_message_size = inst->app_io->default_message_size;
+
+	if (!inst->num_messages) inst->num_messages = 256;
+
+	FR_INTEGER_BOUND_CHECK("num_messages", inst->num_messages, >=, 32);
+	FR_INTEGER_BOUND_CHECK("num_messages", inst->num_messages, <=, 65535);
+
+	FR_INTEGER_BOUND_CHECK("default_message_size", inst->default_message_size, >=, 1024);
+	FR_INTEGER_BOUND_CHECK("default_message_size", inst->default_message_size, <=, 65535);
+
+	return 0;
+}
+
+/** Bootstrap the application
+ *
+ * Bootstrap I/O and type submodules.
+ *
+ * @param[in] instance	Ctx data for this application.
+ * @param[in] conf	Listen section parsed to give us instance.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+{
+	proto_vmps_t 		*inst = talloc_get_type_abort(instance, proto_vmps_t);
+	size_t			i = 0;
+	CONF_PAIR		*cp = NULL;
+
+	/*
+	 *	Bootstrap the process modules
+	 */
+	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
+		dl_t const	       *module = talloc_get_type_abort(inst->process_submodule[i]->module, dl_t);
+		fr_app_process_t const *app_process = (fr_app_process_t const *)module->common;
+
+		if (app_process->bootstrap && (app_process->bootstrap(inst->process_submodule[i]->data,
+								      inst->process_submodule[i]->conf) < 0)) {
+			cf_log_err(conf, "Bootstrap failed for \"%s\"", app_process->name);
+			return -1;
 		}
-
-	done:
-		request_thread_done(request);
-		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",
-			request->packet->id,
-			(unsigned int) (request->packet->timestamp.tv_sec - fr_start_time));
-		request_free(request);
-		break;
-
-	default:
-		break;
-	}
-}
-
-
-/** Process events while the request is queued.
- *
- *  We give different messages on DUP, and on DONE,
- *  remove the request from the queue
- *
- *  \dot
- *	digraph vmps_queued {
- *		vmps_queued -> done [ label = "TIMER >= max_request_time" ];
- *		vmps_queued -> running [ label = "RUNNING" ];
- *	}
- *  \enddot
- */
-static void vmps_queued(REQUEST *request, fr_state_action_t action)
-{
-	VERIFY_REQUEST(request);
-
-	TRACE_STATE_MACHINE;
-
-	switch (action) {
-	case FR_ACTION_RUN:
-		request->process = vmps_running;
-		request->process(request, action);
-		break;
-
-	case FR_ACTION_DONE:
-		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",
-			request->packet->id,
-			(unsigned int) (request->packet->timestamp.tv_sec - fr_start_time));
-		request_delete(request);
-		break;
-
-	default:
-		break;
-	}
-}
-
-
-/*
- *	Check if an incoming request is "ok"
- *
- *	It takes packets, not requests.  It sees if the packet looks
- *	OK.  If so, it does a number of sanity checks on it.
- */
-static int vqp_socket_recv(rad_listen_t *listener)
-{
-	RADIUS_PACKET	*packet;
-	RADCLIENT	*client;
-	TALLOC_CTX	*ctx;
-	REQUEST		*request;
-
-	ctx = talloc_pool(NULL, main_config.talloc_pool_size);
-	if (!ctx) {
-		(void) udp_recv_discard(listener->fd);
-		return 0;
-	}
-	talloc_set_name_const(ctx, "vmps_listener_pool");
-
-	packet = vqp_recv(ctx, listener->fd);
-	if (!packet) {
-		ERROR("%s", fr_strerror());
-		talloc_free(ctx);
-		return 0;
+		i++;
 	}
 
-	if ((packet->code != 1) && (packet->code != 3)) {
-		DEBUG2("Invalid packet code %d", packet->code);
-		talloc_free(ctx);
-		return 0;
-	}
+	/*
+	 *	No IO module, it's an empty listener.
+	 */
+	if (!inst->io_submodule) return 0;
 
-	if ((client = client_listener_find(listener,
-					   &packet->src_ipaddr,
-					   packet->src_port)) == NULL) {
-		talloc_free(ctx);
-		return 0;
-	}
+	/*
+	 *	Bootstrap the I/O module
+	 */
+	inst->app_io = (fr_app_io_t const *) inst->io_submodule->module->common;
+	inst->app_io_instance = inst->io_submodule->data;
+	inst->app_io_conf = inst->io_submodule->conf;
+	inst->app_io_private = dl_instance_symbol(dl_instance_find(inst->app_io_instance),
+						  "proto_vmps_app_io_private");
+	rad_assert(inst->app_io_private);
 
-	if (request_limit(listener, client, packet)) {
-		talloc_free(ctx);
-		return 0;
-	}
-
-	request = request_setup(ctx, listener, packet, client, NULL);
-	if (!request) {
-		talloc_free(ctx);
-		return 0;
-	}
-
-	request->process = vmps_queued;
-	request_enqueue(request);
-
-	return 1;
-}
-
-
-static int vqp_compile_section(CONF_SECTION *server_cs, char const *name1, char const *name2)
-{
-	CONF_SECTION *cs;
-
-	cs = cf_section_find(server_cs, name1, name2);
-	if (!cs) return 0;
-
-	cf_log_debug(cs, "Loading %s %s {...}", name1, name2);
-
-	if (unlang_compile(cs, MOD_POST_AUTH) < 0) {
-		cf_log_err(cs, "Failed compiling '%s %s { ... }' section", name1, name2);
+	if (inst->app_io->bootstrap && (inst->app_io->bootstrap(inst->app_io_instance,
+								inst->app_io_conf) < 0)) {
+		cf_log_err(inst->app_io_conf, "Bootstrap failed for \"%s\"", inst->app_io->name);
 		return -1;
-	}
-
-	return 1;
-}
-
-
-/*
- *	Ensure that the "vmps" section is compiled.
- */
-static int vqp_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *listen_cs)
-{
-	int rcode;
-
-	rcode = vqp_compile_section(server_cs, "recv", "VMPS-Join-Request");
-	if (rcode < 0) return rcode;
-
-	if (rcode == 0) {
-		rcode = vqp_compile_section(server_cs, "recv", "*");
-		if (rcode < 0) return rcode;
-	}
-
-	if (rcode == 0) {
-		cf_log_err(server_cs, "Failed finding 'recv VMPS-Join-Request { ... }' section of virtual server %s",
-			      cf_section_name2(server_cs));
-		return -1;
-	}
-
-	rcode = vqp_compile_section(server_cs, "recv", "VMPS-Reconfirm-Request");
-	if (rcode < 0) return rcode;
-
-	rcode = vqp_compile_section(server_cs, "send", "VMPS-Join-Response");
-	if (rcode < 0) return rcode;
-
-	if (rcode == 0) {
-		rcode = vqp_compile_section(server_cs, "send", "*");
-		if (rcode < 0) return rcode;
-	} else {
-		rcode = vqp_compile_section(server_cs, "send", "VMPS-Reconfirm-Response");
-		if (rcode < 0) return rcode;
 	}
 
 	return 0;
 }
 
-static int vmps_load(void)
-{
-	return fr_dict_read(main_config.dict, main_config.dictionary_dir, "dictionary.vqp");
-}
-
-
-extern rad_protocol_t proto_vmps;
-rad_protocol_t proto_vmps = {
+fr_app_t proto_vmps = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "vmps",
-	.inst_size	= sizeof(listen_socket_t),
-	.transports	= TRANSPORT_UDP,
-	.tls		= false,
+	.config		= proto_vmps_config,
+	.inst_size	= sizeof(proto_vmps_t),
 
-	.load		= vmps_load,
-	.compile	= vqp_listen_compile,
-	.parse		= common_socket_parse,
-	.open		= common_socket_open,
-	.recv		= vqp_socket_recv,
-	.print		= common_socket_print,
-	.debug		= common_packet_debug,
+	.bootstrap	= mod_bootstrap,
+	.instantiate	= mod_instantiate,
+	.open		= mod_open,
+	.decode		= mod_decode,
+	.encode		= mod_encode,
+	.process_set	= mod_process_set
 };

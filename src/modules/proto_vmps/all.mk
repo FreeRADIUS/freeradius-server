@@ -1,8 +1,1 @@
-TARGETNAME	:= proto_vmps
-
-ifneq "$(TARGETNAME)" ""
-TARGET		:= $(TARGETNAME).a
-endif
-
-SOURCES		:= proto_vmps.c vqp.c
-
+SUBMAKEFILES := proto_vmps.mk proto_vmps_udp.mk proto_vmps_all.mk libfreeradius-vqp.mk
