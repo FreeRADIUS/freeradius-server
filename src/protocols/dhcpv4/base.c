@@ -30,26 +30,6 @@ RCSID("$Id$")
 #include <freeradius-devel/net.h>
 #include <freeradius-devel/pcap.h>
 
-#ifndef __MINGW32__
-#  include <sys/ioctl.h>
-#endif
-
-#ifdef HAVE_SYS_SOCKET_H
-#  include <sys/socket.h>
-#endif
-#ifdef HAVE_SYS_TYPES_H
-#  include <sys/types.h>
-#endif
-
-#ifdef HAVE_LINUX_IF_PACKET_H
-#  include <linux/if_packet.h>
-#  include <linux/if_ether.h>
-#endif
-
-#ifndef __MINGW32__
-#  include <net/if_arp.h>
-#endif
-
 typedef struct dhcp_option_t {
 	uint8_t		code;
 	uint8_t		length;
@@ -120,24 +100,7 @@ int dhcp_header_sizes[] = {
 
 fr_dict_attr_t const *dhcp_option_82;
 
-/** Resolve/cache attributes in the DHCP dictionary
- *
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int fr_dhcpv4_init(void)
-{
-	dhcp_option_82 = fr_dict_attr_by_num(NULL, DHCP_MAGIC_VENDOR, FR_DHCP_OPTION_82);
-	if (!dhcp_option_82) {
-		fr_strerror_printf("Missing dictionary attribute for DHCP-Option-82");
-		return -1;
-	}
-
-	return 0;
-}
-
-int8_t fr_dhcp_attr_cmp(void const *a, void const *b)
+int8_t fr_dhcpv4_attr_cmp(void const *a, void const *b)
 {
 	VALUE_PAIR const *my_a = a;
 	VALUE_PAIR const *my_b = b;
@@ -158,10 +121,10 @@ int8_t fr_dhcp_attr_cmp(void const *a, void const *b)
 	/*
 	 *	DHCP-Message-Type is first, for simplicity.
 	 */
-	if (((my_a->da->parent->type != FR_TYPE_TLV) && (my_a->da->attr == FR_DHCP_MESSAGE_TYPE)) &&
-	    ((my_b->da->parent->type == FR_TYPE_TLV) || (my_b->da->attr != FR_DHCP_MESSAGE_TYPE))) return -1;
-	if (((my_a->da->parent->type == FR_TYPE_TLV) || (my_a->da->attr != FR_DHCP_MESSAGE_TYPE)) &&
-	    ((my_b->da->parent->type != FR_TYPE_TLV) && (my_b->da->attr == FR_DHCP_MESSAGE_TYPE))) return +1;
+	if (((my_a->da->parent->type != FR_TYPE_TLV) && (my_a->da->attr == FR_DHCPV4_MESSAGE_TYPE)) &&
+	    ((my_b->da->parent->type == FR_TYPE_TLV) || (my_b->da->attr != FR_DHCPV4_MESSAGE_TYPE))) return -1;
+	if (((my_a->da->parent->type == FR_TYPE_TLV) || (my_a->da->attr != FR_DHCPV4_MESSAGE_TYPE)) &&
+	    ((my_b->da->parent->type != FR_TYPE_TLV) && (my_b->da->attr == FR_DHCPV4_MESSAGE_TYPE))) return +1;
 
 	/*
 	 *	Relay-Agent is last.
@@ -176,7 +139,6 @@ int8_t fr_dhcp_attr_cmp(void const *a, void const *b)
 	return fr_pair_cmp_by_parent_num_tag(my_a, my_b);
 }
 
-
 /** Check reveived DHCP request is valid and build RADIUS_PACKET structure if it is
  *
  * @param data pointer to received packet.
@@ -190,8 +152,8 @@ int8_t fr_dhcp_attr_cmp(void const *a, void const *b)
  *	- RADIUS_PACKET pointer if valid
  *	- NULL if invalid
  */
-RADIUS_PACKET *fr_dhcp_packet_ok(uint8_t const *data, ssize_t data_len, fr_ipaddr_t src_ipaddr,
-				 uint16_t src_port, fr_ipaddr_t dst_ipaddr, uint16_t dst_port)
+RADIUS_PACKET *fr_dhcpv4_packet_ok(uint8_t const *data, ssize_t data_len, fr_ipaddr_t src_ipaddr,
+				   uint16_t src_port, fr_ipaddr_t dst_ipaddr, uint16_t dst_port)
 {
 	uint32_t	magic;
 	uint8_t const	*code;
@@ -233,7 +195,7 @@ RADIUS_PACKET *fr_dhcp_packet_ok(uint8_t const *data, ssize_t data_len, fr_ipadd
 	memcpy(&magic, data + 4, 4);
 	pkt_id = ntohl(magic);
 
-	code = fr_dhcpv4_packet_get_option((dhcp_packet_t const *) data, data_len, FR_DHCP_MESSAGE_TYPE);
+	code = fr_dhcpv4_packet_get_option((dhcp_packet_t const *) data, data_len, FR_DHCPV4_MESSAGE_TYPE);
 	if (!code) {
 		fr_strerror_printf("No message-type option was found in the packet");
 		return NULL;
@@ -252,7 +214,7 @@ RADIUS_PACKET *fr_dhcp_packet_ok(uint8_t const *data, ssize_t data_len, fr_ipadd
 	}
 
 	packet->data_len = data_len;
-	packet->code = code[2] | FR_DHCP_OFFSET;
+	packet->code = code[2] | FR_DHCPV4_OFFSET;
 	packet->id = pkt_id;
 
 	packet->dst_port = dst_port;
@@ -287,3 +249,19 @@ RADIUS_PACKET *fr_dhcp_packet_ok(uint8_t const *data, ssize_t data_len, fr_ipadd
 	return packet;
 }
 
+/** Resolve/cache attributes in the DHCP dictionary
+ *
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_dhcpv4_init(void)
+{
+	dhcp_option_82 = fr_dict_attr_by_num(NULL, DHCP_MAGIC_VENDOR, FR_DHCPV4_OPTION_82);
+	if (!dhcp_option_82) {
+		fr_strerror_printf("Missing dictionary attribute for DHCP-Option-82");
+		return -1;
+	}
+
+	return 0;
+}

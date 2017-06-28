@@ -289,8 +289,8 @@ ssize_t fr_dhcpv4_encode_option(uint8_t *out, size_t outlen, vp_cursor_t *cursor
 	if (!vp) return -1;
 
 	if (vp->da->vendor != DHCP_MAGIC_VENDOR) goto next; /* not a DHCP option */
-	if (vp->da->attr == FR_DHCP_MESSAGE_TYPE) goto next; /* already done */
-	if ((vp->da->attr > 255) && (DHCP_BASE_ATTR(vp->da->attr) != FR_DHCP_OPTION_82)) {
+	if (vp->da->attr == FR_DHCPV4_MESSAGE_TYPE) goto next; /* already done */
+	if ((vp->da->attr > 255) && (DHCP_BASE_ATTR(vp->da->attr) != FR_DHCPV4_OPTION_82)) {
 	next:
 		fr_strerror_printf("Attribute \"%s\" is not a DHCP option", vp->da->name);
 		fr_pair_cursor_next(cursor);

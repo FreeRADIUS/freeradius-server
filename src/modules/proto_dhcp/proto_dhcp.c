@@ -145,7 +145,7 @@ static int dhcprelay_process_client_request(REQUEST *request)
 		return -1;
 	}
 
-	return fr_dhcp_send_socket(request->packet);
+	return fr_dhcpv4_send_socket(request->packet);
 }
 
 
@@ -192,7 +192,7 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 	request->reply->dst_ipaddr.addr.v4.s_addr = giaddr->vp_ipv4addr;
 	request->reply->dst_port = request->packet->dst_port;		/* server port */
 
-	if ((request->packet->code == FR_DHCP_NAK) ||
+	if ((request->packet->code == FR_DHCPV4_NAK) ||
 	    !sock->src_interface ||
 	    ((vp = fr_pair_find_by_num(request->packet->vps, DHCP_MAGIC_VENDOR, 262, TAG_ANY)) /* DHCP-Flags */ &&
 	     (vp->vp_uint32 & 0x8000) &&
@@ -235,7 +235,7 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 			 * packet may not be forwarded if it was the first time
 			 * the client was requesting an IP address.
 			 */
-			if (request->packet->code == FR_DHCP_OFFER) {
+			if (request->packet->code == FR_DHCPV4_OFFER) {
 				VALUE_PAIR *hwvp = fr_pair_find_by_num(request->packet->vps, DHCP_MAGIC_VENDOR, 267,
 								       TAG_ANY); /* DHCP-Client-Hardware-Address */
 				if (hwvp == NULL) {
@@ -243,7 +243,7 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 						"Discarding packet");
 					return 1;
 				}
-				if (fr_dhcp_add_arp_entry(request->packet->sockfd, sock->src_interface, hwvp, vp) < 0) {
+				if (fr_dhcpv4_add_arp_entry(request->packet->sockfd, sock->src_interface, hwvp, vp) < 0) {
 					REDEBUG("Failed adding ARP entry");
 					return -1;
 				}
@@ -261,7 +261,7 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 		return -1;
 	}
 
-	return fr_dhcp_send_socket(request->packet);
+	return fr_dhcpv4_send_socket(request->packet);
 }
 #else  /* WITH_UDPFROMTO */
 static int dhcprelay_process_server_reply(UNUSED REQUEST *request)
@@ -339,22 +339,22 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 	if (vp) {
 		request->reply->code = vp->vp_uint8;
 		if ((request->reply->code != 0) &&
-		    (request->reply->code < FR_DHCP_OFFSET)) {
-			request->reply->code += FR_DHCP_OFFSET;
+		    (request->reply->code < FR_DHCPV4_OFFSET)) {
+			request->reply->code += FR_DHCPV4_OFFSET;
 		}
 	}
 	else switch (rcode) {
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
-		if (request->packet->code == FR_DHCP_DISCOVER) {
-			request->reply->code = FR_DHCP_OFFER;
+		if (request->packet->code == FR_DHCPV4_DISCOVER) {
+			request->reply->code = FR_DHCPV4_OFFER;
 			break;
 
-		} else if (request->packet->code == FR_DHCP_REQUEST) {
-			request->reply->code = FR_DHCP_ACK;
+		} else if (request->packet->code == FR_DHCPV4_REQUEST) {
+			request->reply->code = FR_DHCPV4_ACK;
 			break;
 		}
-		request->reply->code = FR_DHCP_NAK;
+		request->reply->code = FR_DHCPV4_NAK;
 		break;
 
 	default:
@@ -363,10 +363,10 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 	case RLM_MODULE_INVALID:
 	case RLM_MODULE_NOOP:
 	case RLM_MODULE_NOTFOUND:
-		if (request->packet->code == FR_DHCP_DISCOVER) {
+		if (request->packet->code == FR_DHCPV4_DISCOVER) {
 			request->reply->code = 0; /* ignore the packet */
 		} else {
-			request->reply->code = FR_DHCP_NAK;
+			request->reply->code = FR_DHCPV4_NAK;
 		}
 		break;
 
@@ -412,7 +412,7 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 	/*
 	 *	Releases don't get replies.
 	 */
-	if (request->packet->code == FR_DHCP_RELEASE) {
+	if (request->packet->code == FR_DHCPV4_RELEASE) {
 		request->reply->code = 0;
 	}
 
@@ -444,7 +444,7 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 	/*
 	 *	Allow NAKs to be delayed for a short period of time.
 	 */
-	if (request->reply->code == FR_DHCP_NAK) {
+	if (request->reply->code == FR_DHCPV4_NAK) {
 		vp = fr_pair_find_by_num(request->reply->vps, 0, FR_FREERADIUS_RESPONSE_DELAY, TAG_ANY);
 		if (vp) {
 			if (vp->vp_uint32 <= 10) {
@@ -566,7 +566,7 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 	 *	If it's a NAK, or the broadcast flag was set, ond
 	 *	there's no client-ip-address, send a broadcast.
 	 */
-	if ((request->reply->code == FR_DHCP_NAK) ||
+	if ((request->reply->code == FR_DHCPV4_NAK) ||
 	    ((vp = fr_pair_find_by_num(request->reply->vps, DHCP_MAGIC_VENDOR, 262, TAG_ANY)) && /* DHCP-Flags */
 	     (vp->vp_uint32 & 0x8000) &&
 	     ((vp = fr_pair_find_by_num(request->reply->vps, DHCP_MAGIC_VENDOR, 263, TAG_ANY)) && /* DHCP-Client-IP-Address */
@@ -637,12 +637,12 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 	 *	This is a cute hack to avoid us having to create a raw
 	 *	socket to send DHCP packets.
 	 */
-	if (request->reply->code == FR_DHCP_OFFER) {
+	if (request->reply->code == FR_DHCPV4_OFFER) {
 		VALUE_PAIR *hwvp = fr_pair_find_by_num(request->reply->vps, DHCP_MAGIC_VENDOR, 267, TAG_ANY); /* DHCP-Client-Hardware-Address */
 
 		if (!hwvp) return RLM_MODULE_FAIL;
 
-		if (fr_dhcp_add_arp_entry(request->reply->sockfd, sock->src_interface, hwvp, vp) < 0) {
+		if (fr_dhcpv4_add_arp_entry(request->reply->sockfd, sock->src_interface, hwvp, vp) < 0) {
 			RPEDEBUG("Failed adding arp entry");
 			return RLM_MODULE_FAIL;
 		}
@@ -845,7 +845,7 @@ static int dhcp_socket_recv(rad_listen_t *listener)
 	} else
 #endif
 	{
-		packet = fr_dhcp_recv_socket(listener->fd);
+		packet = fr_dhcpv4_recv_socket(listener->fd);
 	}
 
 	if (!packet) {
@@ -901,7 +901,7 @@ static int dhcp_socket_send(rad_listen_t *listener, REQUEST *request)
 	} else
 #endif
 	{
-		return fr_dhcp_send_socket(request->reply);
+		return fr_dhcpv4_send_socket(request->reply);
 	}
 }
 
@@ -925,14 +925,14 @@ static void dhcp_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool rece
 	 *
 	 *	This really belongs in a utility library
 	 */
-	if ((packet->code > FR_DHCP_OFFSET) && (packet->code < FR_DHCP_MAX)) {
+	if ((packet->code > FR_DHCPV4_OFFSET) && (packet->code < FR_DHCPV4_MAX)) {
 		radlog_request(L_DBG, L_DBG_LVL_1, request, "%s %s Id %08x from %s%s%s:%i to %s%s%s:%i "
 #if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
 			       "%s%s%s"
 #endif
 			       "length %zu",
 			       received ? "Received" : "Sent",
-			       dhcp_message_types[packet->code - FR_DHCP_OFFSET],
+			       dhcp_message_types[packet->code - FR_DHCPV4_OFFSET],
 			       packet->id,
 			       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
 			       inet_ntop(packet->src_ipaddr.af,

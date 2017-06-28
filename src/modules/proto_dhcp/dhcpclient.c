@@ -85,12 +85,12 @@ typedef struct dc_offer {
 } dc_offer_t;
 
 static const FR_NAME_NUMBER request_types[] = {
-	{ "discover", FR_DHCP_DISCOVER },
-	{ "request",  FR_DHCP_REQUEST },
-	{ "decline",  FR_DHCP_DECLINE },
-	{ "release",  FR_DHCP_RELEASE },
-	{ "inform",   FR_DHCP_INFORM },
-	{ "lease_query",  FR_DHCP_LEASE_QUERY },
+	{ "discover", FR_DHCPV4_DISCOVER },
+	{ "request",  FR_DHCPV4_REQUEST },
+	{ "decline",  FR_DHCPV4_DECLINE },
+	{ "release",  FR_DHCPV4_RELEASE },
+	{ "inform",   FR_DHCPV4_INFORM },
+	{ "lease_query",  FR_DHCPV4_LEASE_QUERY },
 	{ "auto",     FR_CODE_UNDEFINED },
 	{ NULL, 0}
 };
@@ -157,8 +157,8 @@ static RADIUS_PACKET *request_init(char const *filename)
 		/*
 		 *	Allow to set packet type using DHCP-Message-Type
 		 */
-		if (vp->da->vendor == DHCP_MAGIC_VENDOR && vp->da->attr == FR_DHCP_MESSAGE_TYPE) {
-			request->code = vp->vp_uint32 + FR_DHCP_OFFSET;
+		if (vp->da->vendor == DHCP_MAGIC_VENDOR && vp->da->attr == FR_DHCPV4_MESSAGE_TYPE) {
+			request->code = vp->vp_uint32 + FR_DHCPV4_OFFSET;
 		} else if (!vp->da->vendor) switch (vp->da->attr) {
 		/*
 		 *	Allow it to set the packet type in
@@ -265,7 +265,7 @@ static void print_hex(RADIUS_PACKET *packet)
  *	We'll just return the first eligible reply, and display the others.
  */
 #if defined(HAVE_LINUX_IF_PACKET_H) || defined (HAVE_LIBPCAP)
-static RADIUS_PACKET *fr_dhcp_recv_raw_loop(int lsockfd,
+static RADIUS_PACKET *fr_dhcpv4_recv_raw_loop(int lsockfd,
 #ifdef HAVE_LINUX_IF_PACKET_H
 					    struct sockaddr_ll *p_ll,
 #endif
@@ -327,7 +327,7 @@ static RADIUS_PACKET *fr_dhcp_recv_raw_loop(int lsockfd,
 
 			if (!reply_p) reply_p = cur_reply_p;
 
-			if (cur_reply_p->code == FR_DHCP_OFFER) {
+			if (cur_reply_p->code == FR_DHCPV4_OFFER) {
 				VALUE_PAIR *vp1 = fr_pair_find_by_num(cur_reply_p->vps, DHCP_MAGIC_VENDOR, 54, TAG_ANY); /* DHCP-DHCP-Server-Identifier */
 				VALUE_PAIR *vp2 = fr_pair_find_by_num(cur_reply_p->vps, DHCP_MAGIC_VENDOR, 264, TAG_ANY); /* DHCP-Your-IP-address */
 
@@ -417,21 +417,21 @@ static int send_with_socket(RADIUS_PACKET **reply, RADIUS_PACKET *request)
 		}
 		if (!reply_expected) return 0;
 
-		*reply = fr_dhcp_recv_raw_loop(sockfd, &ll, request);
+		*reply = fr_dhcpv4_recv_raw_loop(sockfd, &ll, request);
 		if (!*reply) {
-			ERROR("Error receiving reply (fr_dhcp_recv_raw_loop)");
+			ERROR("Error receiving reply (fr_dhcpv4_recv_raw_loop)");
 			return -1;
 		}
 	} else
 #endif
 	{
-		if (fr_dhcp_send_socket(request) < 0) {
+		if (fr_dhcpv4_send_socket(request) < 0) {
 			ERROR("Failed sending: %s", fr_syserror(errno));
 			return -1;
 		}
 		if (!reply_expected) return 0;
 
-		*reply = fr_dhcp_recv_socket(sockfd);
+		*reply = fr_dhcpv4_recv_socket(sockfd);
 		if (!*reply) {
 			if (errno == EAGAIN) {
 				fr_strerror(); /* clear error */
@@ -481,7 +481,7 @@ static int send_with_pcap(RADIUS_PACKET **reply, RADIUS_PACKET *request)
 
 	if (!reply_expected) return 0;
 
-	*reply = fr_dhcp_recv_raw_loop(pcap->fd,
+	*reply = fr_dhcpv4_recv_raw_loop(pcap->fd,
 #ifdef HAVE_LINUX_IF_PACKET_H
 				      &ll,
 #endif
@@ -524,7 +524,7 @@ static void dhcp_packet_debug(RADIUS_PACKET *packet, bool received)
 #endif
 	       "length %zu\n",
 	       received ? "Received" : "Sending",
-	       dhcp_message_types[packet->code - FR_DHCP_OFFSET],
+	       dhcp_message_types[packet->code - FR_DHCPV4_OFFSET],
 	       packet->id,
 	       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
 	       inet_ntop(packet->src_ipaddr.af,
@@ -727,7 +727,7 @@ int main(int argc, char **argv)
 	/*
 	 *	These kind of packets do not get a reply, so don't wait for one.
 	 */
-	if ((request->code == FR_DHCP_RELEASE) || (request->code == FR_DHCP_DECLINE)) {
+	if ((request->code == FR_DHCPV4_RELEASE) || (request->code == FR_DHCPV4_DECLINE)) {
 		reply_expected = false;
 	}
 

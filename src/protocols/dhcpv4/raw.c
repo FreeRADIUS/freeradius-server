@@ -33,8 +33,28 @@
 #include <freeradius-devel/udpfromto.h>
 #include <freeradius-devel/dhcpv4/dhcpv4.h>
 
+#ifndef __MINGW32__
+#  include <sys/ioctl.h>
+#endif
+
+#ifdef HAVE_SYS_SOCKET_H
+#  include <sys/socket.h>
+#endif
+#ifdef HAVE_SYS_TYPES_H
+#  include <sys/types.h>
+#endif
+
+#ifdef HAVE_LINUX_IF_PACKET_H
+#  include <linux/if_packet.h>
+#  include <linux/if_ether.h>
+#endif
+
+#ifndef __MINGW32__
+#  include <net/if_arp.h>
+#endif
+
 #ifdef SIOCSARP
-int fr_dhcp_add_arp_entry(int fd, char const *interface,
+int fr_dhcpv4_add_arp_entry(int fd, char const *interface,
 			  VALUE_PAIR *macaddr, VALUE_PAIR *ip)
 {
 	struct sockaddr_in *sin;
@@ -82,7 +102,7 @@ int fr_dhcp_add_arp_entry(int fd, char const *interface,
 	return 0;
 }
 #else
-int fr_dhcp_add_arp_entry(UNUSED int fd, UNUSED char const *interface,
+int fr_dhcpv4_add_arp_entry(UNUSED int fd, UNUSED char const *interface,
 			  UNUSED VALUE_PAIR *macaddr, UNUSED VALUE_PAIR *ip)
 {
 	fr_strerror_printf("Adding ARP entry is unsupported on this system");
@@ -322,7 +342,7 @@ RADIUS_PACKET *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *link_lay
 	TALLOC_FREE(raw_packet);
 	packet->id = xid;
 
-	code = fr_dhcpv4_packet_get_option((dhcp_packet_t const *) packet->data, packet->data_len, FR_DHCP_MESSAGE_TYPE);
+	code = fr_dhcpv4_packet_get_option((dhcp_packet_t const *) packet->data, packet->data_len, FR_DHCPV4_MESSAGE_TYPE);
 	if (!code) {
 		fr_strerror_printf("No message-type option was found in the packet");
 		fr_radius_free(&packet);
@@ -335,7 +355,7 @@ RADIUS_PACKET *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *link_lay
 		return NULL;
 	}
 
-	packet->code = code[2] | FR_DHCP_OFFSET;
+	packet->code = code[2] | FR_DHCPV4_OFFSET;
 
 	/*
 	 *	Create a unique vector from the MAC address and the
@@ -372,7 +392,7 @@ RADIUS_PACKET *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *link_lay
  *	- >= 0 if successful.
  *	- < 0 if failed.
  */
-int fr_dhcp_send_socket(RADIUS_PACKET *packet)
+int fr_dhcpv4_send_socket(RADIUS_PACKET *packet)
 {
 	int ret;
 	struct sockaddr_storage	dst;
@@ -415,7 +435,7 @@ int fr_dhcp_send_socket(RADIUS_PACKET *packet)
  *	- pointer to RADIUS_PACKET if successful.
  *	- NULL if failed.
  */
-RADIUS_PACKET *fr_dhcp_recv_socket(int sockfd)
+RADIUS_PACKET *fr_dhcpv4_recv_socket(int sockfd)
 {
 	struct sockaddr_storage	src;
 	struct sockaddr_storage	dst;
@@ -472,7 +492,7 @@ RADIUS_PACKET *fr_dhcp_recv_socket(int sockfd)
 	fr_ipaddr_from_sockaddr(&dst, sizeof_dst, &dst_ipaddr, &dst_port);
 	fr_ipaddr_from_sockaddr(&src, sizeof_src, &src_ipaddr, &src_port);
 
-	packet = fr_dhcp_packet_ok(data, data_len, src_ipaddr, src_port, dst_ipaddr, dst_port);
+	packet = fr_dhcpv4_packet_ok(data, data_len, src_ipaddr, src_port, dst_ipaddr, dst_port);
 	if (packet) {
 		talloc_steal(packet, data);
 		packet->data = data;

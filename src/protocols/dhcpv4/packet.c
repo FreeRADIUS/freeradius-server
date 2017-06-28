@@ -308,7 +308,7 @@ int fr_dhcpv4_packet_encode(RADIUS_PACKET *packet)
 	packet->data = talloc_zero_array(packet, uint8_t, packet->data_len);
 
 	/* XXX Ugly ... should be set by the caller */
-	if (packet->code == 0) packet->code = FR_DHCP_NAK;
+	if (packet->code == 0) packet->code = FR_DHCPV4_NAK;
 
 	/* store xid */
 	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 260, TAG_ANY))) {
@@ -475,14 +475,14 @@ int fr_dhcpv4_packet_encode(RADIUS_PACKET *packet)
 
 	p[0] = 0x35;		/* DHCP-Message-Type */
 	p[1] = 1;
-	p[2] = packet->code - FR_DHCP_OFFSET;
+	p[2] = packet->code - FR_DHCPV4_OFFSET;
 	p += 3;
 
 	/*
 	 *  Pre-sort attributes into contiguous blocks so that fr_dhcpv4_encode_option
 	 *  operates correctly. This changes the order of the list, but never mind...
 	 */
-	fr_pair_list_sort(&packet->vps, fr_dhcp_attr_cmp);
+	fr_pair_list_sort(&packet->vps, fr_dhcpv4_attr_cmp);
 	fr_pair_cursor_init(&cursor, &packet->vps);
 
 	/*

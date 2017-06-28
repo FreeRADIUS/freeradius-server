@@ -41,7 +41,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 /** Returns the number of array members for arrays with fixed element sizes
  *
  */
-static int fr_dhcp_array_members(size_t *out, size_t len, fr_dict_attr_t const *da)
+static int fr_dhcpv4_array_members(size_t *out, size_t len, fr_dict_attr_t const *da)
 {
 	int num_entries = 1;
 
@@ -318,7 +318,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	/*
 	 *	Values with a fixed length may be coalesced into a single option
 	 */
-	values = fr_dhcp_array_members(&value_len, data_len, parent);
+	values = fr_dhcpv4_array_members(&value_len, data_len, parent);
 	if (values) {
 		FR_PROTO_TRACE("found %u coalesced values (%zu bytes each)", values, value_len);
 
@@ -356,8 +356,8 @@ static ssize_t decode_value(TALLOC_CTX *ctx, vp_cursor_t *cursor,
  * @param[in] decoder_ctx Unused.
  */
 ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, vp_cursor_t *cursor,
-			      fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len,
-			      UNUSED void *decoder_ctx)
+			        fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len,
+			        UNUSED void *decoder_ctx)
 {
 	ssize_t			ret;
 	uint8_t const		*p = data;
