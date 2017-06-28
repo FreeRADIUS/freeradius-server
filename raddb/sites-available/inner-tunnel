@@ -33,7 +33,6 @@ server inner-tunnel {
 #  on fixing the inner tunnel configuration.  DO NOTHING ELSE.
 #
 listen {
-	type = Status-Server
 	type = Access-Request
 	transport = udp
 
