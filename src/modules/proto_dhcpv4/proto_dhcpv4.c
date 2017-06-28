@@ -145,7 +145,7 @@ static int dhcprelay_process_client_request(REQUEST *request)
 		return -1;
 	}
 
-	return fr_dhcpv4_send_socket(request->packet);
+	return fr_dhcpv4_udp_packet_send(request->packet);
 }
 
 
@@ -243,7 +243,8 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 						"Discarding packet");
 					return 1;
 				}
-				if (fr_dhcpv4_add_arp_entry(request->packet->sockfd, sock->src_interface, hwvp, vp) < 0) {
+				if (fr_dhcpv4_udp_add_arp_entry(request->packet->sockfd, sock->src_interface,
+								&vp->vp_ip, hwvp->vp_ether) < 0) {
 					REDEBUG("Failed adding ARP entry");
 					return -1;
 				}
@@ -261,7 +262,7 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 		return -1;
 	}
 
-	return fr_dhcpv4_send_socket(request->packet);
+	return fr_dhcpv4_udp_packet_send(request->packet);
 }
 #else  /* WITH_UDPFROMTO */
 static int dhcprelay_process_server_reply(UNUSED REQUEST *request)
@@ -642,7 +643,8 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 
 		if (!hwvp) return RLM_MODULE_FAIL;
 
-		if (fr_dhcpv4_add_arp_entry(request->reply->sockfd, sock->src_interface, hwvp, vp) < 0) {
+		if (fr_dhcpv4_udp_add_arp_entry(request->reply->sockfd, sock->src_interface,
+						&vp->vp_ip, hwvp->vp_ether) < 0) {
 			RPEDEBUG("Failed adding arp entry");
 			return RLM_MODULE_FAIL;
 		}
@@ -845,7 +847,7 @@ static int dhcp_socket_recv(rad_listen_t *listener)
 	} else
 #endif
 	{
-		packet = fr_dhcpv4_recv_socket(listener->fd);
+		packet = fr_dhcpv4_udp_packet_recv(listener->fd);
 	}
 
 	if (!packet) {
@@ -901,7 +903,7 @@ static int dhcp_socket_send(rad_listen_t *listener, REQUEST *request)
 	} else
 #endif
 	{
-		return fr_dhcpv4_send_socket(request->reply);
+		return fr_dhcpv4_udp_packet_send(request->reply);
 	}
 }
 

@@ -425,13 +425,13 @@ static int send_with_socket(RADIUS_PACKET **reply, RADIUS_PACKET *request)
 	} else
 #endif
 	{
-		if (fr_dhcpv4_send_socket(request) < 0) {
+		if (fr_dhcpv4_udp_packet_send(request) < 0) {
 			ERROR("Failed sending: %s", fr_syserror(errno));
 			return -1;
 		}
 		if (!reply_expected) return 0;
 
-		*reply = fr_dhcpv4_recv_socket(sockfd);
+		*reply = fr_dhcpv4_udp_packet_recv(sockfd);
 		if (!*reply) {
 			if (errno == EAGAIN) {
 				fr_strerror(); /* clear error */

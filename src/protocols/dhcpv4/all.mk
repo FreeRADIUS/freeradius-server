@@ -10,7 +10,8 @@ SOURCES		:= base.c \
 		   encode.c \
 		   packet.c \
 		   pcap.c \
-		   raw.c
+		   raw.c \
+		   udp.c
 
 SRC_CFLAGS	:= -I$(top_builddir)/src
 

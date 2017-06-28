@@ -53,81 +53,28 @@
 #  include <net/if_arp.h>
 #endif
 
-#ifdef SIOCSARP
-int fr_dhcpv4_add_arp_entry(int fd, char const *interface,
-			  VALUE_PAIR *macaddr, VALUE_PAIR *ip)
-{
-	struct sockaddr_in *sin;
-	struct arpreq req;
-
-	if (!interface) {
-		fr_strerror_printf("No interface specified.  Cannot update ARP table");
-		return -1;
-	}
-
-	if (!fr_cond_assert(macaddr) ||
-	    !fr_cond_assert((macaddr->vp_type == FR_TYPE_ETHERNET) || (macaddr->vp_type == FR_TYPE_OCTETS))) {
-		fr_strerror_printf("Wrong VP type (%s) for chaddr",
-				   fr_int2str(dict_attr_types, macaddr->vp_type, "<invalid>"));
-		return -1;
-	}
-
-	if (macaddr->vp_type == FR_TYPE_OCTETS) {
-		if (macaddr->vp_length > sizeof(req.arp_ha.sa_data)) {
-			fr_strerror_printf("arp sa_data field too small (%zu octets) to contain chaddr (%zu octets)",
-					   sizeof(req.arp_ha.sa_data), macaddr->vp_length);
-			return -1;
-		}
-	}
-
-	memset(&req, 0, sizeof(req));
-	sin = (struct sockaddr_in *) &req.arp_pa;
-	sin->sin_family = AF_INET;
-	sin->sin_addr.s_addr = ip->vp_ipv4addr;
-
-	strlcpy(req.arp_dev, interface, sizeof(req.arp_dev));
-
-	if (macaddr->vp_type == FR_TYPE_ETHERNET) {
-		memcpy(&req.arp_ha.sa_data, macaddr->vp_ether, sizeof(macaddr->vp_ether));
-	} else {
-		memcpy(&req.arp_ha.sa_data, macaddr->vp_octets, macaddr->vp_length);
-	}
-
-	req.arp_flags = ATF_COM;
-	if (ioctl(fd, SIOCSARP, &req) < 0) {
-		fr_strerror_printf("Failed to add entry in ARP cache: %s (%d)", fr_syserror(errno), errno);
-		return -1;
-	}
-
-	return 0;
-}
-#else
-int fr_dhcpv4_add_arp_entry(UNUSED int fd, UNUSED char const *interface,
-			  UNUSED VALUE_PAIR *macaddr, UNUSED VALUE_PAIR *ip)
-{
-	fr_strerror_printf("Adding ARP entry is unsupported on this system");
-	return -1;
-}
-#endif
-
-
 #ifdef HAVE_LINUX_IF_PACKET_H
-/*
- *	Open a packet interface raw socket.
- *	Bind it to the specified interface using a device independent physical layer address.
+/** Open a raw socket to read/write packets from/to
+ *
+ * @param[out] link_layer	A sockaddr_ll struct to populate.  Must be passed to other raw
+ *				functions.
+ * @param[in] if_index		of the interface we're binding to.
+ * @return
+ *	- >= 0 a file descriptor to read/write packets on.
+ *	- <0 an error ocurred.
  */
-int fr_dhcpv4_raw_socket_open(int if_index, struct sockaddr_ll *link_layer)
+int fr_dhcpv4_raw_socket_open(struct sockaddr_ll *link_layer, int if_index)
 {
-	int lsock_fd;
+	int fd;
 
 	/*
 	 * PF_PACKET - packet interface on device level.
 	 * using a raw socket allows packet data to be unchanged by the device driver.
 	 */
-	lsock_fd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
-	if (lsock_fd < 0) {
-		fr_strerror_printf("cannot open socket: %s", fr_syserror(errno));
-		return lsock_fd;
+	fd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+	if (fd < 0) {
+		fr_strerror_printf("Cannot open socket: %s", fr_syserror(errno));
+		return fd;
 	}
 
 	/* Set link layer parameters */
@@ -140,17 +87,23 @@ int fr_dhcpv4_raw_socket_open(int if_index, struct sockaddr_ll *link_layer)
 	link_layer->sll_pkttype = PACKET_OTHERHOST;
 	link_layer->sll_halen = 6;
 
-	if (bind(lsock_fd, (struct sockaddr *)link_layer, sizeof(struct sockaddr_ll)) < 0) {
-		close(lsock_fd);
-		fr_strerror_printf("cannot bind raw socket: %s", fr_syserror(errno));
+	if (bind(fd, (struct sockaddr *)link_layer, sizeof(struct sockaddr_ll)) < 0) {
+		close(fd);
+		fr_strerror_printf("Cannot bind raw socket: %s", fr_syserror(errno));
 		return -1;
 	}
 
-	return lsock_fd;
+	return fd;
 }
 
-/*
- *	Encode and send a DHCP packet on a raw packet socket.
+/** Create the requisite L2/L3 headers, and write a DHCPv4 packet to a raw socket
+ *
+ * @param[in] sockfd		to write to.
+ * @param[in] link_layer	information, as returned by fr_dhcpv4_raw_socket_open.
+ * @param[in] packet		to write.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int fr_dhcpv4_raw_packet_send(int sockfd, struct sockaddr_ll *link_layer, RADIUS_PACKET *packet)
 {
@@ -383,124 +336,3 @@ RADIUS_PACKET *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *link_lay
 	return packet;
 }
 #endif
-
-
-/** Send DHCP packet using socket
- *
- * @param packet to send
- * @return
- *	- >= 0 if successful.
- *	- < 0 if failed.
- */
-int fr_dhcpv4_send_socket(RADIUS_PACKET *packet)
-{
-	int ret;
-	struct sockaddr_storage	dst;
-	socklen_t		sizeof_dst;
-#ifdef WITH_UDPFROMTO
-	struct sockaddr_storage	src;
-	socklen_t		sizeof_src;
-
-	fr_ipaddr_to_sockaddr(&packet->src_ipaddr, packet->src_port, &src, &sizeof_src);
-#endif
-
-	fr_ipaddr_to_sockaddr(&packet->dst_ipaddr, packet->dst_port, &dst, &sizeof_dst);
-	if (packet->data_len == 0) {
-		fr_strerror_printf("No data to send");
-		return -1;
-	}
-
-	errno = 0;
-
-#ifndef WITH_UDPFROMTO
-	/*
-	 *	Assume that the packet is encoded before sending it.
-	 */
-	ret = sendto(packet->sockfd, packet->data, packet->data_len, 0, (struct sockaddr *)&dst, sizeof_dst);
-#else
-
-	ret = sendfromto(packet->sockfd, packet->data, packet->data_len, 0, (struct sockaddr *)&src, sizeof_src,
-			 (struct sockaddr *)&dst, sizeof_dst, packet->if_index);
-#endif
-	if ((ret < 0) && errno) fr_strerror_printf("dhcp_send_socket: %s", fr_syserror(errno));
-
-	return ret;
-}
-
-
-/** Receive DHCP packet using socket
- *
- * @param sockfd handle.
- * @return
- *	- pointer to RADIUS_PACKET if successful.
- *	- NULL if failed.
- */
-RADIUS_PACKET *fr_dhcpv4_recv_socket(int sockfd)
-{
-	struct sockaddr_storage	src;
-	struct sockaddr_storage	dst;
-	socklen_t		sizeof_src;
-	socklen_t		sizeof_dst;
-	RADIUS_PACKET		*packet;
-	uint8_t			*data;
-	ssize_t			data_len;
-	fr_ipaddr_t		src_ipaddr, dst_ipaddr;
-	uint16_t		src_port, dst_port;
-	int			if_index = 0;
-	struct timeval		when;
-
-	data = talloc_zero_array(NULL, uint8_t, MAX_PACKET_SIZE);
-	if (!data) {
-		fr_strerror_printf("Out of memory");
-		return NULL;
-	}
-
-	sizeof_src = sizeof(src);
-#ifdef WITH_UDPFROMTO
-	sizeof_dst = sizeof(dst);
-	data_len = recvfromto(sockfd, data, MAX_PACKET_SIZE, 0,
-			      (struct sockaddr *)&src, &sizeof_src,
-			      (struct sockaddr *)&dst, &sizeof_dst, &if_index, &when);
-#else
-	data_len = recvfrom(sockfd, data, MAX_PACKET_SIZE, 0,
-			    (struct sockaddr *)&src, &sizeof_src);
-#endif
-
-	if (data_len <= 0) {
-		fr_strerror_printf("Failed reading data from DHCP socket: %s", fr_syserror(errno));
-		talloc_free(data);
-		return NULL;
-	}
-
-	if (!fr_cond_assert(data_len <= (ssize_t)talloc_array_length(data))) {
-		talloc_free(data);	/* Bounds check for tainted scalar (Coverity) */
-		return NULL;
-	}
-	sizeof_dst = sizeof(dst);
-
-#ifndef WITH_UDPFROMTO
-	/*
-	*	This should never fail...
-	*/
-	if (getsockname(sockfd, (struct sockaddr *) &dst, &sizeof_dst) < 0) {
-		fr_strerror_printf("getsockname failed: %s", fr_syserror(errno));
-		talloc_free(data);
-		return NULL;
-	}
-#endif
-
-	fr_ipaddr_from_sockaddr(&dst, sizeof_dst, &dst_ipaddr, &dst_port);
-	fr_ipaddr_from_sockaddr(&src, sizeof_src, &src_ipaddr, &src_port);
-
-	packet = fr_dhcpv4_packet_ok(data, data_len, src_ipaddr, src_port, dst_ipaddr, dst_port);
-	if (packet) {
-		talloc_steal(packet, data);
-		packet->data = data;
-		packet->sockfd = sockfd;
-		packet->if_index = if_index;
-		packet->timestamp = when;
-		return packet;
-	}
-
-	return NULL;
-}

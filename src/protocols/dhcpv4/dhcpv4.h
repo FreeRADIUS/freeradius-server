@@ -136,10 +136,8 @@ static uint8_t eth_bcast[ETH_ADDR_LEN] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 }
 #endif
 
-RADIUS_PACKET *fr_dhcpv4_recv_socket(int sockfd);
-int fr_dhcpv4_send_socket(RADIUS_PACKET *packet);
-
-int		fr_dhcpv4_add_arp_entry(int fd, char const *interface, VALUE_PAIR *hwvp, VALUE_PAIR *clvp);
+RADIUS_PACKET *fr_dhcpv4_udp_packet_recv(int sockfd);
+int fr_dhcpv4_udp_packet_send(RADIUS_PACKET *packet);
 
 /*
  *	base.c
@@ -174,6 +172,9 @@ int		fr_dhcpv4_packet_decode(RADIUS_PACKET *packet);
 int		fr_dhcpv4_packet_encode(RADIUS_PACKET *packet);
 
 #ifdef HAVE_LINUX_IF_PACKET_H
+/*
+ *	raw.c
+ */
 #include <linux/if_packet.h>
 int		fr_dhcpv4_raw_socket_open(int iface_index, struct sockaddr_ll *p_ll);
 
@@ -194,7 +195,10 @@ RADIUS_PACKET	*fr_dhcpv4_pcap_recv(fr_pcap_t *pcap);
 int		fr_dhcpv4_pcap_send(fr_pcap_t *pcap, uint8_t *dst_ether_addr, RADIUS_PACKET *packet);
 #endif
 
-
+/*
+ *	udp.c
+ */
+int		fr_dhcpv4_udp_add_arp_entry(int fd, char const *interface, fr_ipaddr_t const *ip, uint8_t macaddr[6]);
 #ifdef __cplusplus
 }
 #endif
