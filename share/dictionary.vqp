@@ -104,6 +104,8 @@ VALUE	VMPS-Packet-Type		VMPS-Join-Response	2
 VALUE	VMPS-Packet-Type		VMPS-Reconfirm-Request	3
 VALUE	VMPS-Packet-Type		VMPS-Reconfirm-Response	4
 
+VALUE	VMPS-Packet-Type		Do-Not-Respond		256
+
 VALUE	VMPS-Error-Code			VMPS-No-Error		0
 VALUE	VMPS-Error-Code			VMPS-Wrong-Version	1
 VALUE	VMPS-Error-Code			VMPS-Insufficient-Resources 2
