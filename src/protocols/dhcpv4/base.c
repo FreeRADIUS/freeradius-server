@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file dhcp/dhcp.c
+ * @file dhcpv4/base.c
  * @brief Functions to send/receive dhcp packets.
  *
  * @copyright 2008 The FreeRADIUS server project

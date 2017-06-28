@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file protocols/dhcp/dhcpv4.h
+ * @file dhcpv4/dhcpv4.h
  * @brief Implementation of the DHCPv4 protocol.
  *
  * @copyright 2008  The FreeRADIUS server project

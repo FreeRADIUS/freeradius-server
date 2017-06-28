@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file dhcp/raw.c
+ * @file dhcpv4/raw.c
  * @brief Send/recv DHCP packets using raw sockets.
  *
  * @copyright 2008,2017 The FreeRADIUS server project
