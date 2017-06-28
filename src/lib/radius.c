@@ -2952,15 +2952,22 @@ static ssize_t data2vp_concat(TALLOC_CTX *ctx,
 	 *	don't care about walking off of the end of it.
 	 */
 	while (ptr < end) {
+		if (ptr[1] < 2) return -1;
+		if ((ptr + ptr[1]) > end) return -1;
+
 		total += ptr[1] - 2;
 
 		ptr += ptr[1];
+
+		if (ptr == end) break;
 
 		/*
 		 *	Attributes MUST be consecutive.
 		 */
 		if (ptr[0] != attr) break;
 	}
+
+	end = ptr;
 
 	vp = fr_pair_afrom_da(ctx, da);
 	if (!vp) return -1;
@@ -2974,7 +2981,7 @@ static ssize_t data2vp_concat(TALLOC_CTX *ctx,
 
 	total = 0;
 	ptr = start;
-	while (total < vp->vp_length) {
+	while (ptr < end) {
 		memcpy(p, ptr + 2, ptr[1] - 2);
 		p += ptr[1] - 2;
 		total += ptr[1] - 2;
@@ -2982,6 +2989,7 @@ static ssize_t data2vp_concat(TALLOC_CTX *ctx,
 	}
 
 	*pvp = vp;
+
 	return ptr - start;
 }
 

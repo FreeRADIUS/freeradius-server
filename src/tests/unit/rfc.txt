@@ -178,6 +178,18 @@ data Failed to parse IPv4 address string "256/8"
 attribute PMIP6-Home-IPv4-HoA = bob/8
 data Failed to parse IPv4 address string "bob/8"
 
+#
+#  A "concat" attribute, with no data
+#
+decode 89 02
+data PKM-SS-Cert = 0x
+
+#
+#  Or with weirdly formatted data
+#
+decode 89 03 ff 89 02 89 03 fe
+data PKM-SS-Cert = 0xfffe
+
 $INCLUDE tunnel.txt
 $INCLUDE errors.txt
 $INCLUDE extended.txt
