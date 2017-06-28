@@ -36,7 +36,7 @@ bool		fr_hostname_lookups = true; //!< hostname -> IP lookups?
  *	- 1 if it is.
  *	- -1 on error.
  */
-int fr_ipaddr_is_inaddr_any(fr_ipaddr_t *ipaddr)
+int fr_ipaddr_is_inaddr_any(fr_ipaddr_t const *ipaddr)
 {
 
 	if (ipaddr->af == AF_INET) {
