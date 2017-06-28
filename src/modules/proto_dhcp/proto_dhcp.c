@@ -49,7 +49,7 @@
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/protocol.h>
 #include <freeradius-devel/process.h>
-#include <freeradius-devel/dhcp.h>
+#include <freeradius-devel/dhcpv4/dhcpv4.h>
 #include <freeradius-devel/rad_assert.h>
 
 #ifndef __MINGW32__
@@ -140,7 +140,7 @@ static int dhcprelay_process_client_request(REQUEST *request)
 	 */
 	dhcp_packet_debug(request, request->packet, false);
 
-	if (fr_dhcp_encode(request->packet) < 0) {
+	if (fr_dhcpv4_packet_encode(request->packet) < 0) {
 		RPERROR("Failed encoding DHCP packet");
 		return -1;
 	}
@@ -256,7 +256,7 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 	 */
 	dhcp_packet_debug(request, request->packet, false);
 
-	if (fr_dhcp_encode(request->packet) < 0) {
+	if (fr_dhcpv4_packet_encode(request->packet) < 0) {
 		RPERROR("Failed encoding DHCP packet");
 		return -1;
 	}
@@ -841,7 +841,7 @@ static int dhcp_socket_recv(rad_listen_t *listener)
 
 #ifdef PCAP_RAW_SOCKETS
 	if (sock->lsock.pcap) {
-		packet = fr_dhcp_recv_pcap(sock->lsock.pcap);
+		packet = fr_dhcpv4_pcap_recv(sock->lsock.pcap);
 	} else
 #endif
 	{
@@ -876,7 +876,7 @@ static int dhcp_socket_send(rad_listen_t *listener, REQUEST *request)
 
 	if (request->reply->code == 0) return 0; /* don't reply */
 
-	if (fr_dhcp_encode(request->reply) < 0) {
+	if (fr_dhcpv4_packet_encode(request->reply) < 0) {
 		RPERROR("Failed encoding DHCP packet");
 		return -1;
 	}
@@ -897,7 +897,7 @@ static int dhcp_socket_send(rad_listen_t *listener, REQUEST *request)
 			return -1;
 		}
 
-		return fr_dhcp_send_pcap(sock->lsock.pcap, dhmac, request->reply);
+		return fr_dhcpv4_pcap_send(sock->lsock.pcap, dhmac, request->reply);
 	} else
 #endif
 	{
@@ -997,7 +997,7 @@ static int dhcp_socket_encode(UNUSED rad_listen_t *listener, UNUSED REQUEST *req
 
 static int dhcp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
-	return fr_dhcp_decode(request->packet);
+	return fr_dhcpv4_packet_decode(request->packet);
 }
 
 
@@ -1047,7 +1047,7 @@ static int dhcp_load(void)
 	int ret;
 
 	ret = fr_dict_read(main_config.dict, main_config.dictionary_dir, "dictionary.dhcp");
-	if (dhcp_init() < 0) {
+	if (fr_dhcpv4_init() < 0) {
 		ERROR("%s", fr_strerror());
 		return -1;
 	}

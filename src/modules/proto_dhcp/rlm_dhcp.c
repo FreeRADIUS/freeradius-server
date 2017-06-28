@@ -27,7 +27,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
-#include <freeradius-devel/dhcp.h>
+#include <freeradius-devel/dhcpv4/dhcpv4.h>
 
 #include <ctype.h>
 
@@ -94,7 +94,7 @@ static ssize_t dhcp_options_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 		 *	Loop over all the options data
 		 */
 		while (p < end) {
-			len = fr_dhcp_decode_option(request->packet, &options_cursor,
+			len = fr_dhcpv4_decode_option(request->packet, &options_cursor,
 						    fr_dict_root(fr_dict_internal), p, end - p, NULL);
 			if (len <= 0) {
 				RWDEBUG("DHCP option decoding failed: %s", fr_strerror());
@@ -139,7 +139,7 @@ static ssize_t dhcp_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	if ((radius_copy_vp(request, &vp, request, fmt) < 0) || !vp) return 0;
 	fr_pair_cursor_init(&cursor, &vp);
 
-	len = fr_dhcp_encode_option(binbuf, sizeof(binbuf), &cursor, NULL);
+	len = fr_dhcpv4_encode_option(binbuf, sizeof(binbuf), &cursor, NULL);
 	talloc_free(vp);
 	if (len <= 0) {
 		RPEDEBUG("DHCP option encoding failed");
@@ -204,7 +204,7 @@ static int dhcp_load(void)
 	int ret;
 
 	ret = fr_dict_read(main_config.dict, main_config.dictionary_dir, "dictionary.dhcp");
-	if (dhcp_init() < 0) {
+	if (fr_dhcpv4_init() < 0) {
 		ERROR("%s", fr_strerror());
 		return -1;
 	}

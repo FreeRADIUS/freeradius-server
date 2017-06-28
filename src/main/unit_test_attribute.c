@@ -33,7 +33,7 @@ typedef struct REQUEST REQUEST;
 #include <freeradius-devel/xlat.h>
 #include <freeradius-devel/conf.h>
 #include <freeradius-devel/radpaths.h>
-#include <freeradius-devel/dhcp.h>
+#include <freeradius-devel/dhcpv4/dhcpv4.h>
 #include <freeradius-devel/cf_parse.h>
 
 #ifdef WITH_TACACS
@@ -800,7 +800,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 
 			attr = data;
 			while ((vp = fr_pair_cursor_current(&cursor))) {
-				len = fr_dhcp_encode_option(attr, sizeof(data) - (data -attr), &cursor, NULL);
+				len = fr_dhcpv4_encode_option(attr, sizeof(data) - (data -attr), &cursor, NULL);
 				if (len < 0) {
 					fprintf(stderr, "Failed encoding %s: %s\n",
 						vp->da->name, fr_strerror());
@@ -843,7 +843,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 				 */
 				while (option_p < end) {
 					vp = NULL;
-					my_len = fr_dhcp_decode_option(NULL, &cursor,
+					my_len = fr_dhcpv4_decode_option(NULL, &cursor,
 								       fr_dict_root(fr_dict_internal), option_p,
 								       end - option_p, NULL);
 					if (my_len <= 0) {

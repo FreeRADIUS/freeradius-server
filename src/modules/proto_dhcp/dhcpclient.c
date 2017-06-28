@@ -26,7 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/conf.h>
-#include <freeradius-devel/dhcp.h>
+#include <freeradius-devel/dhcpv4/dhcpv4.h>
 #include <freeradius-devel/pcap.h>
 
 /*
@@ -201,16 +201,6 @@ static RADIUS_PACKET *request_init(char const *filename)
 	return request;
 }
 
-static int dhcp_header_sizes[] = {
-	1, 1, 1, 1,
-	4, 2, 2, 4,
-	4, 4, 4,
-	DHCP_CHADDR_LEN,
-	DHCP_SNAME_LEN,
-	DHCP_FILE_LEN
-};
-
-
 static void print_hex(RADIUS_PACKET *packet)
 {
 	int i, j;
@@ -312,10 +302,10 @@ static RADIUS_PACKET *fr_dhcp_recv_raw_loop(int lsockfd,
 			/* There is something to read on our socket */
 
 #ifdef HAVE_LINUX_IF_PACKET_H
-			cur_reply_p = fr_dhcp_recv_raw_packet(lsockfd, p_ll, request_p);
+			cur_reply_p = fr_dhcv4_raw_packet_recv(lsockfd, p_ll, request_p);
 #else
 #  ifdef HAVE_LIBPCAP
-			cur_reply_p = fr_dhcp_recv_pcap(pcap);
+			cur_reply_p = fr_dhcpv4_pcap_recv(pcap);
 #  else
 #    error Need <if/packet.h> or <pcap.h>
 #  endif
@@ -330,7 +320,7 @@ static RADIUS_PACKET *fr_dhcp_recv_raw_loop(int lsockfd,
 
 			if (fr_debug_lvl) print_hex(cur_reply_p);
 
-			if (fr_dhcp_decode(cur_reply_p) < 0) {
+			if (fr_dhcpv4_packet_decode(cur_reply_p) < 0) {
 				ERROR("Failed decoding reply");
 				return NULL;
 			}
@@ -383,7 +373,7 @@ static int send_with_socket(RADIUS_PACKET **reply, RADIUS_PACKET *request)
 
 #ifdef HAVE_LINUX_IF_PACKET_H
 	if (raw_mode) {
-		sockfd = fr_socket_packet(iface_ind, &ll);
+		sockfd = fr_dhcpv4_raw_socket_open(iface_ind, &ll);
 		if (sockfd < 0) {
 			ERROR("Error opening socket");
 			return -1;
@@ -421,8 +411,8 @@ static int send_with_socket(RADIUS_PACKET **reply, RADIUS_PACKET *request)
 
 #ifdef HAVE_LINUX_IF_PACKET_H
 	if (raw_mode) {
-		if (fr_dhcp_send_raw_packet(sockfd, &ll, request) < 0) {
-			ERROR("Failed sending (fr_dhcp_send_raw_packet): %s", fr_syserror(errno));
+		if (fr_dhcpv4_raw_packet_send(sockfd, &ll, request) < 0) {
+			ERROR("Failed sending (fr_dhcpv4_raw_packet_send): %s", fr_syserror(errno));
 			return -1;
 		}
 		if (!reply_expected) return 0;
@@ -483,7 +473,7 @@ static int send_with_pcap(RADIUS_PACKET **reply, RADIUS_PACKET *request)
 		return -1;
 	}
 
-	if (fr_dhcp_send_pcap(pcap, eth_bcast, request) < 0) {
+	if (fr_dhcpv4_pcap_send(pcap, eth_bcast, request) < 0) {
 		ERROR("Failed sending packet via PCAP: %s", pcap_geterr(pcap->handle));
 		talloc_free(pcap);
 		return -1;
@@ -744,7 +734,7 @@ int main(int argc, char **argv)
 	/*
 	 *	Encode the packet
 	 */
-	if (fr_dhcp_encode(request) < 0) {
+	if (fr_dhcpv4_packet_encode(request) < 0) {
 		ERROR("Failed encoding packet");
 		exit(1);
 	}
@@ -753,7 +743,7 @@ int main(int argc, char **argv)
 	 *	Decode to produce VALUE_PAIRs from the default field
 	 */
 	if (fr_debug_lvl) {
-		fr_dhcp_decode(request);
+		fr_dhcpv4_packet_decode(request);
 		dhcp_packet_debug(request, false);
 	}
 
@@ -767,7 +757,7 @@ int main(int argc, char **argv)
 	}
 
 	if (reply) {
-		if (fr_dhcp_decode(reply) < 0) {
+		if (fr_dhcpv4_packet_decode(reply) < 0) {
 			ERROR("Failed decoding packet");
 			ret = -1;
 		}

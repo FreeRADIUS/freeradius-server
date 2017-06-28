@@ -6,4 +6,4 @@ endif
 
 SOURCES		:= proto_dhcp.c
 
-TGT_PREREQS	:= libfreeradius-dhcp.a
+TGT_PREREQS	:= libfreeradius-dhcpv4.a
