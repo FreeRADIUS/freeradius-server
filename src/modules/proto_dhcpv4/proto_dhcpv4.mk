@@ -1,9 +1,9 @@
-TARGETNAME	:= proto_dhcp
+TARGETNAME	:= proto_dhcpv4
 
 ifneq "$(TARGETNAME)" ""
 TARGET		:= $(TARGETNAME).a
 endif
 
-SOURCES		:= proto_dhcp.c
+SOURCES		:= proto_dhcpv4.c
 
 TGT_PREREQS	:= libfreeradius-dhcpv4.a
