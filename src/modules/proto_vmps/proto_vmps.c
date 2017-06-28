@@ -114,72 +114,21 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
 	return dl_instance(ctx, out, transport_cs, parent_inst, name, DL_TYPE_SUBMODULE);
 }
 
-/** Decode the packet, and set the request->process function
+/** Decode the packet.
  *
  */
 static int mod_decode(void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
 {
 	proto_vmps_t const *inst = talloc_get_type_abort(instance, proto_vmps_t);
 
-#if 0
-	rad_assert(data[0] < FR_MAX_PACKET_CODE);
-
-	client = inst->app_io_private->client(inst->app_io, request->async->packet_ctx);
-	rad_assert(client);
-
-	/*
-	 *	Hacks for now until we have a lower-level decode routine.
-	 */
-	request->packet->code = data[0];
-	request->packet->id = data[1];
-	request->reply->id = data[1];
-	memcpy(request->packet->vector, data + 4, sizeof(request->packet->vector));
-
-	request->packet->data = talloc_memdup(request->packet, data, data_len);
-	request->packet->data_len = data_len;
-
-	if (fr_vmps_packet_decode(request->packet, NULL, client->secret) < 0) {
-		RDEBUG("Failed decoding packet: %s", fr_strerror());
-		return -1;
-	}
-#endif
-
-	/*
-	 *	Let the app_io take care of populating additional fields in the request
-	 */
 	return inst->app_io->decode(inst->app_io_instance, request, data, data_len);
 }
 
-static ssize_t mod_encode(UNUSED void const *instance, UNUSED REQUEST *request, UNUSED uint8_t *buffer, UNUSED size_t buffer_len)
+static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
 {
-#if 0
-	size_t len;
-
 	proto_vmps_t const *inst = talloc_get_type_abort(instance, proto_vmps_t);
-	RADCLIENT *client;
 
-	client = inst->app_io_private->client(inst->app_io, request->async->packet_ctx);
-	rad_assert(client);
-
-	if (fr_vmps_packet_encode(request->reply, request->packet, client->secret) < 0) {
-		RDEBUG("Failed encoding VMPS reply: %s", fr_strerror());
-		return -1;
-	}
-
-	if (fr_vmps_packet_sign(request->reply, request->packet, client->secret) < 0) {
-		RDEBUG("Failed signing VMPS reply: %s", fr_strerror());
-		return -1;
-	}
-
-	len = request->reply->data_len;
-	if (buffer_len < len) len = buffer_len;
-
-	memcpy(buffer, request->reply->data, len);
-
-	return len;
-#endif
-
-	return -1;
+	return inst->app_io->encode(inst->app_io_instance, request, buffer, buffer_len);
 }
 
 static void mod_process_set(void const *instance, REQUEST *request)

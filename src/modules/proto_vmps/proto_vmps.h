@@ -51,9 +51,6 @@ typedef int (*proto_vmps_addr_get_t)(fr_socket_addr_t *sockaddr,
  * Should only be used by the proto_vmps module, and submodules.
  */
 typedef struct {
-	proto_vmps_client_get_t	client;				//!< Retrieve the client the packet was
-									///< received from.
-
 	proto_vmps_addr_get_t		src;				//!< Retrieve the src address of the packet.
 	proto_vmps_addr_get_t		dst;				//!< Retrieve the dst address of the packet.
 } proto_vmps_app_io_t;

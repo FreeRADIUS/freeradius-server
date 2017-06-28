@@ -34,24 +34,9 @@
 #include "proto_vmps.h"
 
 typedef struct {
-	int				if_index;
-
-	fr_ipaddr_t			src_ipaddr;
-	fr_ipaddr_t			dst_ipaddr;
-	uint16_t			src_port;
-	uint16_t 			dst_port;
-
-	fr_time_t			timestamp;
-
-	RADCLIENT			*client;
-} proto_vmps_udp_address_t;
-
-typedef struct {
 	proto_vmps_t	const		*parent;		//!< The module that spawned us!
 
 	int				sockfd;
-
-	fr_event_list_t			*el;			//!< for cleanup timers on Access-Request
 
 	fr_ipaddr_t			ipaddr;			//!< Ipaddr to listen on.
 
@@ -66,9 +51,6 @@ typedef struct {
 	uint32_t			recv_buff;		//!< How big the kernel's receive buffer should be.
 	bool				recv_buff_is_set;	//!< Whether we were provided with a receive
 								//!< buffer value.
-
-//	fr_tracking_t			*ft;			//!< tracking table
-	uint32_t			cleanup_delay;		//!< cleanup delay for Access-Request packets
 } proto_vmps_udp_t;
 
 static const CONF_PARSER udp_listen_config[] = {
@@ -82,8 +64,6 @@ static const CONF_PARSER udp_listen_config[] = {
 	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, proto_vmps_udp_t, port) },
 	{ FR_CONF_IS_SET_OFFSET("recv_buff", FR_TYPE_UINT32, proto_vmps_udp_t, recv_buff) },
 
-	{ FR_CONF_OFFSET("cleanup_delay", FR_TYPE_UINT32, proto_vmps_udp_t, cleanup_delay), .dflt = "5" },
-
 	CONF_PARSER_TERMINATOR
 };
 
@@ -93,15 +73,12 @@ static const CONF_PARSER udp_listen_config[] = {
  */
 static int mod_src_address(fr_socket_addr_t *src, UNUSED void const *instance, void const *packet_ctx)
 {
-	fr_tracking_entry_t const		*track = packet_ctx;
-	proto_vmps_udp_address_t const	*address = track->src_dst;
-
-	rad_assert(track->src_dst_size == sizeof(proto_vmps_udp_address_t));
+	fr_ip_srcdst_t const *ip = packet_ctx;
 
 	memset(src, 0, sizeof(*src));
 
 	src->proto = IPPROTO_UDP;
-	memcpy(&src->ipaddr, &address->src_ipaddr, sizeof(src->ipaddr));
+	memcpy(&src->ipaddr, &ip->src_ipaddr, sizeof(src->ipaddr));
 
 	return 0;
 }
@@ -111,55 +88,54 @@ static int mod_src_address(fr_socket_addr_t *src, UNUSED void const *instance, v
  */
 static int mod_dst_address(fr_socket_addr_t *dst, UNUSED void const *instance, void const *packet_ctx)
 {
-	fr_tracking_entry_t const		*track = packet_ctx;
-	proto_vmps_udp_address_t const	*address = track->src_dst;
-
-	rad_assert(track->src_dst_size == sizeof(proto_vmps_udp_address_t));
+	fr_ip_srcdst_t const *ip = packet_ctx;
 
 	memset(dst, 0, sizeof(*dst));
 
 	dst->proto = IPPROTO_UDP;
-	memcpy(&dst->ipaddr, &address->dst_ipaddr, sizeof(dst->ipaddr));
+	memcpy(&dst->ipaddr, &ip->dst_ipaddr, sizeof(dst->ipaddr));
 
 	return 0;
 }
 
-/** Return the client associated with the packet_ctx
+
+/** Decode the packet.
  *
  */
-static RADCLIENT *mod_client(UNUSED void const *instance, void const *packet_ctx)
+static int mod_decode(UNUSED void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
 {
-	fr_tracking_entry_t const		*track = packet_ctx;
-	proto_vmps_udp_address_t const	*address = track->src_dst;
+//	proto_vmps_udp_t const *inst = talloc_get_type_abort(instance, proto_vmps_udp_t);
+	fr_ip_srcdst_t *ip;
+	uint8_t *packet;
+	size_t packet_len;
 
-	rad_assert(track->src_dst_size == sizeof(proto_vmps_udp_address_t));
+	ip = talloc_memdup(request, request->async->packet_ctx, sizeof(*ip));
+	if (!ip) return -1;
 
-	return address->client;
+	request->async->packet_ctx = ip;
+
+	packet = data + sizeof(*ip);
+	packet_len = data_len - sizeof(*ip);
+
+	// decode the packet into attributes.
+
+	return 0;
 }
 
-static int mod_decode(UNUSED void const *instance, REQUEST *request, UNUSED uint8_t *const data, UNUSED size_t data_len)
+static ssize_t mod_encode(UNUSED void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
 {
+//	proto_vmps_udp_t const *inst = talloc_get_type_abort(instance, proto_vmps_udp_t);
+	fr_ip_srcdst_t *ip;
+	uint8_t *packet;
+	size_t packet_len;
 
-	fr_tracking_entry_t const		*track = request->async->packet_ctx;
-	proto_vmps_udp_address_t const	*address = track->src_dst;
+	ip = request->async->packet_ctx;
+	packet = buffer + sizeof(*ip);
+	packet_len = buffer_len - sizeof(*ip);
 
-	rad_assert(track->src_dst_size == sizeof(proto_vmps_udp_address_t));
+	memcpy(buffer, ip, sizeof(*ip));
 
-	request->client = address->client;
-	request->packet->if_index = address->if_index;
-	request->packet->src_ipaddr = address->src_ipaddr;
-	request->packet->src_port = address->src_port;
-	request->packet->dst_ipaddr = address->dst_ipaddr;
-	request->packet->dst_port = address->dst_port;
-
-	request->reply->if_index = address->if_index;
-	request->reply->src_ipaddr = address->dst_ipaddr;
-	request->reply->src_port = address->dst_port;
-	request->reply->dst_ipaddr = address->src_ipaddr;
-	request->reply->dst_port = address->src_port;
-
-	request->root = &main_config;
-	VERIFY_REQUEST(request);
+	// encode packet in buffer
 
 	return 0;
 }
@@ -311,15 +287,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 		inst->port = ntohl(s->s_port);
 	}
 
-	FR_INTEGER_BOUND_CHECK("cleanup_delay", inst->cleanup_delay, <=, 30);
-
-#if 0
-	inst->ft = fr_vmps_tracking_create(inst, sizeof(proto_vmps_udp_address_t), inst->parent->code_allowed);
-	if (!inst->ft) {
-		cf_log_err(cs, "Failed to create tracking table: %s", fr_strerror());
-	}
-#endif
-
 	return 0;
 }
 
@@ -361,7 +328,6 @@ static int mod_detach(void *instance)
  */
 extern proto_vmps_app_io_t proto_vmps_app_io_private;
 proto_vmps_app_io_t proto_vmps_app_io_private = {
-	.client			= mod_client,
 	.src			= mod_src_address,
 	.dst			= mod_dst_address
 };
@@ -380,6 +346,7 @@ fr_app_io_t proto_vmps_udp = {
 	.open			= mod_open,
 	.read			= mod_read,
 	.decode			= mod_decode,
+	.encode			= mod_encode,
 	.write			= mod_write,
 	.fd			= mod_fd,
 };
