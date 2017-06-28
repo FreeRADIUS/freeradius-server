@@ -37,7 +37,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSE
  *
  */
 static CONF_PARSER const proto_vmps_config[] = {
-	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_NOT_EMPTY, proto_vmps_t,
+	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY, proto_vmps_t,
 			  process_submodule), .dflt = "all", .func = process_parse },
 	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, proto_vmps_t, io_submodule),
 	  .func = transport_parse },
@@ -303,7 +303,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 */
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
 		fr_app_process_t const *app_process;
-		int code;
 
 		app_process = (fr_app_process_t const *)inst->process_submodule[i]->module->common;
 		if (app_process->instantiate && (app_process->instantiate(inst->process_submodule[i]->data,
@@ -315,7 +314,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		/*
 		 *	We've already done bounds checking in the process_parse function
 		 */
-		code = fr_dict_enum_by_alias(NULL, da, cf_pair_value(cp))->value->vb_uint32;
 		inst->process = app_process->process;	/* Store the process function */
 
 		i++;
