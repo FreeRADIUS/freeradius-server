@@ -34,6 +34,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 	CONF_SECTION *unlang;
 	fr_dict_enum_t const *dv;
 	fr_dict_attr_t const *da = NULL;
+	VALUE_PAIR *vp;
 
 	VERIFY_REQUEST(request);
 
@@ -83,6 +84,12 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 			request->reply->code = FR_CODE_ACCESS_REJECT;
 			break;
 		}
+
+		/*
+		 *	Allow for over-ride of reply code.
+		 */
+		vp = fr_pair_find_by_num(request->reply->vps, 0, FR_PACKET_TYPE, TAG_ANY);
+		if (vp) request->reply->code = vp->vp_uint32;
 
 		if (!da) da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
 		rad_assert(da != NULL);

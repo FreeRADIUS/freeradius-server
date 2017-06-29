@@ -230,6 +230,16 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 				goto setup_send;
 			}
 
+			/*
+			 *	Allow for over-ride of reply code.
+			 */
+			vp = fr_pair_find_by_num(request->reply->vps, 0, FR_PACKET_TYPE, TAG_ANY);
+			if (vp) {
+				request->reply->code = vp->vp_uint32;
+				goto setup_send;
+			}
+
+
 			REDEBUG2("No Auth-Type available: rejecting the user.");
 			request->reply->code = FR_CODE_ACCESS_REJECT;
 			goto setup_send;
@@ -348,13 +358,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 		 *	Allow for over-ride of reply code.
 		 */
 		vp = fr_pair_find_by_num(request->reply->vps, 0, FR_PACKET_TYPE, TAG_ANY);
-		if (vp) {
-			if (vp->vp_uint32 == 256) {
-				request->reply->code = 0;
-			} else {
-				request->reply->code = vp->vp_uint32;
-			}
-		}
+		if (vp) request->reply->code = vp->vp_uint32;
 
 		if (request->reply->code == FR_CODE_ACCESS_ACCEPT) {
 			if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_MODULE_SUCCESS_MESSAGE, TAG_ANY)) != NULL){
