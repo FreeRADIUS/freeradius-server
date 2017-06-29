@@ -461,24 +461,10 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 			if (!request->parent) fr_state_discard(global_state, request, request->packet);
 		}
 
-		if (!request->reply->code) {
-			vp = fr_pair_find_by_num(request->control, 0, FR_AUTH_TYPE, TAG_ANY);
-			if (vp) {
-				if (vp->vp_uint32 == FR_AUTH_TYPE_ACCEPT) {
-					request->reply->code = FR_CODE_ACCESS_ACCEPT;
-
-				} else if (vp->vp_uint32 == FR_AUTH_TYPE_REJECT) {
-					request->reply->code = FR_CODE_ACCESS_REJECT;
-				}
-			}
-		}
-
 		/*
 		 *	Check for "do not respond".
-		 *
-		 *	@todo - create fake reply
 		 */
-		if (!request->reply->code) {
+		if (request->reply->code == FR_CODE_DO_NOT_RESPOND) {
 			RDEBUG("Not sending reply to client.");
 			return FR_IO_REPLY;
 		}
@@ -487,7 +473,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 		 *	This is an internally generated request.
 		 *	Don't print IP addresses.
 		 */
-		if (request->packet->data_len == 0) {
+		if (request->parent) {
 			radlog_request(L_DBG, L_DBG_LVL_1, request, "Sent %s ID %i",
 				       fr_packet_codes[request->reply->code], request->reply->id);
 			rdebug_proto_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");

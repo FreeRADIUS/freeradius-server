@@ -154,7 +154,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 		/*
 		 *	Check for "do not respond".
 		 */
-		if (!request->reply->code || (request->reply->code == FR_CODE_DO_NOT_RESPOND)) {
+		if (request->reply->code == FR_CODE_DO_NOT_RESPOND) {
 			RDEBUG("Not sending reply to client.");
 			return FR_IO_DONE;
 		}
