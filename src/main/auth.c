@@ -348,9 +348,6 @@ rlm_rcode_t rad_postauth(REQUEST *request)
  */
 rlm_rcode_t rad_authenticate(REQUEST *request)
 {
-#ifdef WITH_SESSION_MGMT
-	VALUE_PAIR	*check_item;
-#endif
 	VALUE_PAIR	*module_msg;
 	VALUE_PAIR	*tmp = NULL;
 	int		result;
@@ -565,67 +562,6 @@ authenticate:
 			}
 		}
 	}
-
-#ifdef WITH_SESSION_MGMT
-	if (result >= 0 &&
-	    (check_item = fr_pair_find_by_num(request->control, 0, FR_SIMULTANEOUS_USE, TAG_ANY)) != NULL) {
-		int	r, session_type = 0;
-		char	logstr[1024];
-		char	umsg[FR_MAX_STRING_LEN + 1];
-
-		tmp = fr_pair_find_by_num(request->control, 0, FR_SESSION_TYPE, TAG_ANY);
-		if (tmp) {
-			session_type = tmp->vp_uint32;
-			RDEBUG2("Using Session-Type %s",
-				fr_dict_enum_alias_by_value(NULL, tmp->da, fr_box_uint32(session_type)));
-		}
-
-		/*
-		 *	User authenticated O.K. Now we have to check
-		 *	for the Simultaneous-Use parameter.
-		 */
-		if (request->username &&
-		    (r = process_checksimul(session_type, request, check_item->vp_uint32)) != 0) {
-			char mpp_ok = 0;
-
-			if (r == 2){
-				/* Multilink attempt. Check if port-limit > simultaneous-use */
-				VALUE_PAIR *port_limit;
-
-				if ((port_limit = fr_pair_find_by_num(request->reply->vps, 0, FR_PORT_LIMIT,
-								      TAG_ANY)) != NULL &&
-					port_limit->vp_uint32 > check_item->vp_uint32){
-					RDEBUG2("MPP is OK");
-					mpp_ok = 1;
-				}
-			}
-			if (!mpp_ok){
-				if (check_item->vp_uint32 > 1) {
-					snprintf(umsg, sizeof(umsg), "%s (%u)", main_config.denied_msg,
-						 check_item->vp_uint32);
-				} else {
-					strlcpy(umsg, main_config.denied_msg, sizeof(umsg));
-				}
-
-				request->reply->code = FR_CODE_ACCESS_REJECT;
-
-				/*
-				 *	They're trying to log in too many times.
-				 *	Remove ALL reply attributes.
-				 */
-				fr_pair_list_free(&request->reply->vps);
-				pair_make_reply("Reply-Message", umsg, T_OP_SET);
-
-				snprintf(logstr, sizeof(logstr), "Multiple logins (max %d) %s",
-					check_item->vp_uint32,
-					r == 2 ? "[MPP attempt]" : "");
-				rad_authlog(logstr, request, 1);
-
-				result = -1;
-			}
-		}
-	}
-#endif
 
 	/*
 	 *	Result should be >= 0 here - if not, it means the user
