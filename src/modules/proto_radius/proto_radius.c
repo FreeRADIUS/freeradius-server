@@ -273,8 +273,9 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 			talloc_free(listen);
 			return -1;
 		}
-		
+
 		if (!fr_schedule_socket_add(sc, listen)) {
+			cf_log_perr(conf, "Failed adding socket to scheduler");
 			talloc_free(listen);
 			return -1;
 		}
