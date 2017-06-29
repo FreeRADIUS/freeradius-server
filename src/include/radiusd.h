@@ -302,12 +302,6 @@ struct rad_request {
 
 	main_config_t		*root;		//!< Pointer to the main config hack to try and deal with hup.
 
-	int			simul_max;	//!< Maximum number of concurrent sessions for this user.
-#ifdef WITH_SESSION_MGMT
-	int			simul_count;	//!< The current number of sessions for this user.
-	int			simul_mpp; 	//!< WEIRD: 1 is false, 2 is true.
-#endif
-
 	bool			in_request_hash;
 #ifdef WITH_PROXY
 	bool			in_proxy_hash;
@@ -340,6 +334,7 @@ struct rad_request {
 
 #define RAD_REQUEST_OPTION_COA	(1 << 0)
 #define RAD_REQUEST_OPTION_CTX	(1 << 1)
+#define RAD_REQUEST_OPTION_DETAIL (1 << 2)
 
 #define SECONDS_PER_DAY		86400
 #define MAX_REQUEST_TIME	30

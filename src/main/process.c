@@ -632,8 +632,8 @@ static void request_done(REQUEST *request, fr_state_action_t action)
 	 */
 	if (request->listener &&
 	    (request->listener->type == RAD_LISTEN_DETAIL) &&
-	    (request->simul_max != 1)) {
-		request->simul_max = 1;
+	    ((request->options & RAD_REQUEST_OPTION_DETAIL) == 0)) {
+		request->options |= RAD_REQUEST_OPTION_DETAIL;
 		request->listener->send(request->listener,
 					request);
 	}
@@ -1254,7 +1254,7 @@ static void request_finish(REQUEST *request, fr_state_action_t action)
 	 *	Always send the reply to the detail listener.
 	 */
 	if (request->listener->type == RAD_LISTEN_DETAIL) {
-		request->simul_max = 1;
+		request->options |= RAD_REQUEST_OPTION_DETAIL;
 
 		/*
 		 *	But only print the reply if there is one.

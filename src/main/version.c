@@ -410,14 +410,6 @@ void version_init_features(CONF_SECTION *cs)
 	version_feature_add(cs, "regex-posix-extended", false);
 #endif
 
-	version_feature_add(cs, "session-management",
-#ifdef WITH_SESSION_MGMT
-				true
-#else
-				false
-#endif
-				);
-
 	version_feature_add(cs, "stats",
 #ifdef WITH_STATS
 				true

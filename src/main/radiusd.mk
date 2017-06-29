@@ -13,7 +13,6 @@ SOURCES := acct.c \
     state.c \
     stats.c \
     soh.c \
-    session.c \
     snmp.c \
     threads.c \
     unlang_compile.c \
