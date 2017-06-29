@@ -47,22 +47,13 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 
 		request->component = "radius";
 
-		da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
-		rad_assert(da != NULL);
-		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->packet->code));
-		if (!dv) {
-			REDEBUG("Failed to find value for &request:Packet-Type");
-			return FR_IO_FAIL;
-		}
-
-		unlang = cf_section_find(request->server_cs, "recv", dv->alias);
-		if (!unlang) unlang = cf_section_find(request->server_cs, "recv", "*");
+		unlang = cf_section_find(request->server_cs, "recv", "Accounting-Request");
 		if (!unlang) {
-			REDEBUG("Failed to find 'recv %s' section", dv->alias);
+			REDEBUG("Failed to find 'recv Accounting-Request' section");
 			return FR_IO_FAIL;
 		}
 
-		RDEBUG("Running 'recv %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
+		RDEBUG("Running 'recv Accounting-Request' from file %s", cf_filename(unlang));
 		unlang_push_section(request, unlang, RLM_MODULE_NOOP);
 
 		request->request_state = REQUEST_RECV;
@@ -107,23 +98,15 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 		 *	Allow for over-ride of reply code.
 		 */
 		vp = fr_pair_find_by_num(request->reply->vps, 0, FR_PACKET_TYPE, TAG_ANY);
-		if (vp) {
-			if (vp->vp_uint32 == 256) {
-				request->reply->code = 0;
-			} else {
-				request->reply->code = vp->vp_uint32;
-			}
-		}
+		if (vp) request->reply->code = vp->vp_uint32;
 
 		if (!da) da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
 		rad_assert(da != NULL);
 
 		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
 		unlang = NULL;
-		if (dv) {
-			unlang = cf_section_find(request->server_cs, "send", dv->alias);
-		}
-		if (!unlang) unlang = cf_section_find(request->server_cs, "send", "*");
+		if (dv) unlang = cf_section_find(request->server_cs, "send", dv->alias);
+
 		if (!unlang) goto send_reply;
 
 		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
@@ -158,7 +141,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 		/*
 		 *	Check for "do not respond".
 		 */
-		if (!request->reply->code) {
+		if (request->reply->code == FR_CODE_DO_NOT_RESPOND) {
 			RDEBUG("Not sending reply to client.");
 			return FR_IO_DONE;
 		}
@@ -166,7 +149,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 		/*
 		 *	This is an internally generated request.  Don't print IP addresses.
 		 */
-		if (request->packet->data_len == 0) {
+		if (request->parent) {
 			radlog_request(L_DBG, L_DBG_LVL_1, request, "Sent %s ID %i",
 				       fr_packet_codes[request->reply->code], request->reply->id);
 			rdebug_proto_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
@@ -208,12 +191,6 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 
 	rcode = unlang_compile_subsection(server_cs, "recv", "Accounting-Request", MOD_PREACCT);
 	if (rcode < 0) return rcode;
-
-	if (rcode == 0) {
-		rcode = unlang_compile_subsection(server_cs, "recv", "*", MOD_PREACCT);
-		if (rcode < 0) return rcode;
-	}
-
 	if (rcode == 0) {
 		cf_log_err(server_cs, "Failed finding 'recv Accounting-Request { ... }' section of virtual server %s",
 			      cf_section_name2(server_cs));
@@ -223,10 +200,11 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 	rcode = unlang_compile_subsection(server_cs, "send", "Accounting-Response", MOD_ACCOUNTING);
 	if (rcode < 0) return rcode;
 
-	if (rcode == 0) {
-		rcode = unlang_compile_subsection(server_cs, "send", "*", MOD_ACCOUNTING);
-		if (rcode < 0) return rcode;
-	}
+	rcode = unlang_compile_subsection(server_cs, "send", "Do-Not-Respond", MOD_POST_AUTH);
+	if (rcode < 0) return rcode;
+
+	rcode = unlang_compile_subsection(server_cs, "send", "Protocol-Error", MOD_POST_AUTH);
+	if (rcode < 0) return rcode;
 
 	return 0;
 }
