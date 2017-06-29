@@ -686,7 +686,6 @@ void request_stats_reply(REQUEST *request)
 	    ((flag->vp_uint32 & 0x03) != 0)) {
 		home_server_t *home;
 		VALUE_PAIR *server_ip, *server_port;
-		fr_ipaddr_t ipaddr;
 
 		/*
 		 *	See if we need to look up the server by socket
@@ -699,12 +698,6 @@ void request_stats_reply(REQUEST *request)
 		server_port = fr_pair_find_by_num(request->packet->vps, VENDORPEC_FREERADIUS,
 						  FR_FREERADIUS_STATS_SERVER_PORT, TAG_ANY);
 		if (!server_port) return;
-
-#ifndef NDEBUG
-		memset(&ipaddr, 0, sizeof(ipaddr));
-#endif
-		ipaddr.af = AF_INET;
-		ipaddr.addr.v4.s_addr = server_ip->vp_ipv4addr;
 
 		/*
 		 *	Not found: don't do anything
