@@ -427,19 +427,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 			found_pw = true;
 			break;
 
-			/*
-			 *	If it's proxied somewhere, don't complain
-			 *	about not having passwords or Auth-Type.
-			 */
-		case FR_PROXY_TO_REALM:
-		{
-			REALM *realm = realm_find(vp->vp_strvalue);
-			if (realm && realm->auth_pool) {
-				return RLM_MODULE_NOOP;
-			}
-			break;
-		}
-
 		case FR_AUTH_TYPE:
 			auth_type = true;
 
