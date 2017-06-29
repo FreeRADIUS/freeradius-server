@@ -1087,7 +1087,7 @@ void realm_pool_free(home_pool_t *pool)
 	pool_list_t *this, **last;
 
 	if (!event_loop_started) return;
-	if (!realm_config->dynamic) return;
+	if (!realm_config || realm_config->dynamic) return;
 
 	if (pool) {
 		/*
