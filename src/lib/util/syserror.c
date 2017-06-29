@@ -217,7 +217,7 @@ char const *fr_syserror(int num)
 			return buffer;
 		}
 
-		return p;
+		return buffer;
 	}
 #endif
 
