@@ -337,12 +337,6 @@ ldap {
 #			password			= 'test'
 #			proto	 			= tcp
 #			require_message_authenticator	= yes
-
-			# Uncomment to add a home_server with the same
-			# attributes as the client.
-#			coa_server {
-#				response_window = 2.0
-#			}
 		}
 
 		#
