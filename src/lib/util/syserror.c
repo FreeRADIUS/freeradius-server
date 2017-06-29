@@ -226,7 +226,7 @@ char const *fr_syserror(int num)
 			size_t len;
 
 			len = strlen(q) + 1;
-			if (len >= (end - p)) len = end - p;
+			if (len >= (size_t)(end - p)) len = end - p;
 
 			strlcpy(p, q, len);
 		}
