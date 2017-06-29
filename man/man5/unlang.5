@@ -10,7 +10,7 @@
 .RE
 .sp
 ..
-.TH unlang 5 "04 January 2016" "" "FreeRADIUS Processing un-language"
+.TH unlang 5 "29 June 2017" "" "FreeRADIUS Processing un-language"
 .SH NAME
 unlang \- FreeRADIUS Processing un\-language
 .SH DESCRIPTION
@@ -25,7 +25,7 @@ with minimal effort.  Those policies are then applied when a request
 is being processed.  Requests are processed through virtual servers
 (including the default one), in the sections titled "authorize",
 "authenticate", "post-auth", "preacct", "accounting", "pre-proxy",
-"post-proxy", and "session".
+and "post-proxy".
 
 These policies cannot be used in any other part of the configuration
 files, such as module or client configuration.
@@ -216,7 +216,7 @@ the current block.
 .DE
 
 The <list> can be one of "request", "reply", "proxy-request",
-"proxy-reply", "coa", "disconnect", "session-state", or "control".  As
+"proxy-reply", "session-state", or "control".  As
 of Version 3, the <list> can be omitted, in which case "request" is
 assumed.
 
@@ -229,17 +229,6 @@ For EAP methods with tunneled authentication sessions (i.e. PEAP and
 EAP-TTLS), the inner tunnel session can also reference
 "outer.request", "outer.reply", and "outer.control".  Those references
 allow you to address the relevant list in the outer tunnel session.
-
-The "coa" and "disconnect" sections can only be used when the server
-receives an Access-Request or Accounting-Request.  Use "request" and
-"reply" instead of "coa" when the server receives a CoA-Request or
-Disconnect-Request packet.
-
-Adding one or more attributes to either of the "coa" or "disconnect"
-list causes server to originate a CoA-Request or Disconnect-Request
-packet.  That packet is sent when the current Access-Request or
-Accounting-Request has been finished, and a reply sent to the NAS.
-See raddb/sites-available/originate-coa for additional information.
 
 The "session-state" list is primarily used for EAP.  Attributes put
 into the "session-state" list are saved for the next packet in the
