@@ -3,8 +3,8 @@
 #  then use the "do_not_respond" policy.
 #
 do_not_respond {
-	update control {
-		&Response-Packet-Type := Do-Not-Respond
+	update reply {
+		&Packet-Type := Do-Not-Respond
 	}
 	handled
 }
@@ -13,8 +13,8 @@ do_not_respond {
 #  Send Access-Accept immediately
 #
 accept {
-	update control {
-		&Response-Packet-Type = Access-Accept
+	update reply {
+		&Packet-Type := Access-Accept
 	}
 	handled
 }
@@ -23,8 +23,8 @@ accept {
 #  Send Access-Challenge immediately
 #
 challenge {
-	update control {
-		&Response-Packet-Type = Access-Challenge
+	update reply {
+		&Packet-Type := Access-Challenge
 	}
 	handled
 }
@@ -33,8 +33,22 @@ challenge {
 #  Send an Accounting-Response immediately
 #
 acct_response {
-	update control {
-		&Response-Packet-Type = Accounting-Response
+	update reply {
+		&Packet-Type := Accounting-Response
+	}
+	handled
+}
+
+#
+#  Send a Protocol-Error in response to a packet.
+#
+#  Note that because Protocol-Error is a generic NAK, it has to
+#  include the original packet code in the reply.
+#
+protocol_error {
+	update reply {
+		&Packet-Type := Accounting-Response
+		&Original-Packet-Code := "%{Packet-Type}"
 	}
 	handled
 }
