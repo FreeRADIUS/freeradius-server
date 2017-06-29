@@ -76,7 +76,7 @@ static int process_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_
 	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
 	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(ci));
 	dl_instance_t		*parent_inst;
-	char const		*name;
+	char const		*name = NULL;
 	fr_dict_attr_t const	*da;
 	fr_dict_enum_t const	*type_enum;
 	uint32_t		code;
