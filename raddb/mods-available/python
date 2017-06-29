@@ -57,7 +57,6 @@ python {
 #	func_authenticate = authenticate
 #	func_preacct = preacct
 #	func_accounting = accounting
-#	func_checksimul = checksimul
 #	func_pre_proxy = pre_proxy
 #	func_post_proxy = post_proxy
 #	func_post_auth = post_auth

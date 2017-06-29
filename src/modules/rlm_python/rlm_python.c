@@ -71,7 +71,6 @@ typedef struct rlm_python_t {
 	authenticate,
 	preacct,
 	accounting,
-	checksimul,
 	pre_proxy,
 	post_proxy,
 	post_auth,
@@ -108,7 +107,6 @@ static CONF_PARSER module_config[] = {
 	A(authenticate)
 	A(preacct)
 	A(accounting)
-	A(checksimul)
 	A(pre_proxy)
 	A(post_proxy)
 	A(post_auth)
@@ -721,7 +719,6 @@ MOD_FUNC(authenticate)
 MOD_FUNC(authorize)
 MOD_FUNC(preacct)
 MOD_FUNC(accounting)
-MOD_FUNC(checksimul)
 MOD_FUNC(pre_proxy)
 MOD_FUNC(post_proxy)
 MOD_FUNC(post_auth)
@@ -1036,7 +1033,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	PYTHON_FUNC_LOAD(authorize);
 	PYTHON_FUNC_LOAD(preacct);
 	PYTHON_FUNC_LOAD(accounting);
-	PYTHON_FUNC_LOAD(checksimul);
 	PYTHON_FUNC_LOAD(pre_proxy);
 	PYTHON_FUNC_LOAD(post_proxy);
 	PYTHON_FUNC_LOAD(post_auth);
@@ -1079,7 +1075,6 @@ static int mod_detach(void *instance)
 	PYTHON_FUNC_DESTROY(authenticate);
 	PYTHON_FUNC_DESTROY(preacct);
 	PYTHON_FUNC_DESTROY(accounting);
-	PYTHON_FUNC_DESTROY(checksimul);
 	PYTHON_FUNC_DESTROY(detach);
 
 	Py_DecRef(inst->pythonconf_dict);
@@ -1133,7 +1128,6 @@ rad_module_t rlm_python = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_PREACCT]		= mod_preacct,
 		[MOD_ACCOUNTING]	= mod_accounting,
-		[MOD_SESSION]		= mod_checksimul,
 		[MOD_PRE_PROXY]		= mod_pre_proxy,
 		[MOD_POST_PROXY]	= mod_post_proxy,
 		[MOD_POST_AUTH]		= mod_post_auth,
