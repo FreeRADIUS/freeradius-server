@@ -959,11 +959,6 @@ do {\
 	rad_assert(main_config.config == NULL);
 	main_config.config = cs;
 
-	DEBUG2("%s: #### Loading Realms and Home Servers ####", main_config.name);
-	if (!realms_init(cs)) {
-		return -1;
-	}
-
 	DEBUG2("%s: #### Loading Clients ####", main_config.name);
 	if (!client_list_parse_section(cs, false)) {
 		return -1;
@@ -1020,7 +1015,6 @@ int main_config_free(void)
 	 *	structures.
 	 */
 	client_list_free();
-	realms_free();
 	listen_free(&main_config.listen);
 
 	/*

@@ -2899,7 +2899,7 @@ static int request_will_proxy(REQUEST *request)
 
 	vp = fr_pair_find_by_num(request->control, 0, FR_PROXY_TO_REALM, TAG_ANY);
 	if (vp) {
-		realm = realm_find2(vp->vp_strvalue);
+		realm = NULL;
 		if (!realm) {
 			REDEBUG2("Cannot proxy to unknown realm %s",
 				vp->vp_strvalue);
@@ -5269,7 +5269,6 @@ static void check_proxy(rad_listen_t *head)
 	if (check_config) return;
 	if (!main_config.proxy_requests) return;
 	if (!head) return;
-	if (!home_servers_udp) return;
 
 	defined_proxy = has_v4 = has_v6 = false;
 

@@ -13,8 +13,7 @@ SOURCES := \
 	version.c  \
 	virtual_servers.c \
 	unlang_compile.c \
-	unlang_interpret.c \
-	realms.c
+	unlang_interpret.c
 
 ifneq ($(OPENSSL_LIBS),)
 include ${top_srcdir}/src/main/tls.mk

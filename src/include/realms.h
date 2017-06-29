@@ -29,8 +29,6 @@ RCSIDH(realms_h, "$Id$")
 extern "C" {
 #endif
 
-extern bool home_servers_udp;	//!< Whether there are any UDP home servers
-
 typedef enum {
 	HOME_TYPE_INVALID = 0,
 	HOME_TYPE_AUTH,		//!< Authentication server

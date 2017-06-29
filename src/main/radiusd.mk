@@ -9,7 +9,6 @@ SOURCES := acct.c \
     mainconfig.c \
     modules.c \
     radiusd.c \
-    realms.c \
     state.c \
     stats.c \
     soh.c \
