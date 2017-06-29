@@ -221,7 +221,7 @@ static int dhcp_load(void)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern rad_module_t rlm_dhcp;
+extern rad_module_t rlm_dhcpv4;
 rad_module_t rlm_dhcpv4 = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "dhcpv4",

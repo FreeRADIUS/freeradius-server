@@ -54,8 +54,6 @@ static float timeout = 5.0;
 static struct timeval tv_timeout;
 
 static int sockfd;
-#define ETH_ADDR_LEN   6
-
 #ifdef HAVE_LIBPCAP
 static fr_pcap_t	*pcap;
 #endif
@@ -68,12 +66,7 @@ static struct sockaddr_ll ll;	/* Socket address structure */
 #endif
 
 static bool raw_mode = false;
-
 static bool reply_expected = true;
-
-#define DHCP_CHADDR_LEN	(16)
-#define DHCP_SNAME_LEN	(64)
-#define DHCP_FILE_LEN	(128)
 
 static char const *dhcpclient_version = RADIUSD_VERSION_STRING_BUILD("dhcpclient");
 
