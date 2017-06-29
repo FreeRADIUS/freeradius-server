@@ -683,7 +683,6 @@ fi
 %{_libdir}/freeradius/rlm_radius_client.so
 %{_libdir}/freeradius/rlm_radutmp.so
 %{_libdir}/freeradius/rlm_realm.so
-%{_libdir}/freeradius/rlm_replicate.so
 %{_libdir}/freeradius/rlm_soh.so
 %{_libdir}/freeradius/rlm_sometimes.so
 %{_libdir}/freeradius/rlm_sql.so

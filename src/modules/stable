@@ -28,7 +28,6 @@ rlm_radutmp
 rlm_realm
 rlm_redis
 rlm_rest
-rlm_replicate
 rlm_soh
 rlm_sql
 rlm_sqlcounter
