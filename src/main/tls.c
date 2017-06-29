@@ -2034,7 +2034,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	char		cn_str[1024];
 	char		buf[64];
 	X509		*client_cert;
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
 	const STACK_OF(X509_EXTENSION) *ext_list;
 #else
 	STACK_OF(X509_EXTENSION) *ext_list;
@@ -3041,6 +3041,7 @@ post_ca:
 		SSL_CTX_set_verify_depth(ctx, conf->verify_depth);
 	}
 
+#ifndef LIBRESSL_VERSION_NUMBER
 	/* Load randomness */
 	if (conf->random_file) {
 		if (!(RAND_load_file(conf->random_file, 1024*10))) {
@@ -3048,6 +3049,7 @@ post_ca:
 			return NULL;
 		}
 	}
+#endif
 
 	/*
 	 * Set the cipher list if we were told to
@@ -3169,6 +3171,7 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 	 *	Only check for certificate things if we don't have a
 	 *	PSK query.
 	 */
+#ifdef PSK_MAX_IDENTITY_LEN
 	if (conf->psk_identity) {
 		if (conf->private_key_file) {
 			WARN(LOG_PREFIX ": Ignoring private key file due to psk_identity being used");
@@ -3178,7 +3181,9 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 			WARN(LOG_PREFIX ": Ignoring certificate file due to psk_identity being used");
 		}
 
-	} else {
+	} else
+#endif
+	{
 		if (!conf->private_key_file) {
 			ERROR(LOG_PREFIX ": TLS Server requires a private key file");
 			goto error;
