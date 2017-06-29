@@ -46,6 +46,9 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 
 		request->component = "radius";
 
+		/*
+		 *	We can run CoA-Request or Disconnect-Request sections here
+		 */
 		da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
 		rad_assert(da != NULL);
 		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->packet->code));
@@ -55,13 +58,12 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 		}
 
 		unlang = cf_section_find(request->server_cs, "recv", dv->alias);
-		if (!unlang) unlang = cf_section_find(request->server_cs, "recv", "*");
 		if (!unlang) {
 			REDEBUG("Failed to find 'recv %s' section", dv->alias);
 			return FR_IO_FAIL;
 		}
 
-		RDEBUG("Running 'recv %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
+		RDEBUG("Running 'recv %s' from file %s", dv->alias, cf_filename(unlang));
 		unlang_push_section(request, unlang, RLM_MODULE_NOOP);
 
 		request->request_state = REQUEST_RECV;
@@ -101,23 +103,14 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 		 *	Allow for over-ride of reply code.
 		 */
 		vp = fr_pair_find_by_num(request->reply->vps, 0, FR_PACKET_TYPE, TAG_ANY);
-		if (vp) {
-			if (vp->vp_uint32 == 256) {
-				request->reply->code = 0;
-			} else {
-				request->reply->code = vp->vp_uint32;
-			}
-		}
+		if (vp) request->reply->code = vp->vp_uint32;
 
 		if (!da) da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
 		rad_assert(da != NULL);
 
 		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
 		unlang = NULL;
-		if (dv) {
-			unlang = cf_section_find(request->server_cs, "send", dv->alias);
-		}
-		if (!unlang) unlang = cf_section_find(request->server_cs, "send", "*");
+		if (dv) unlang = cf_section_find(request->server_cs, "send", dv->alias);
 
 		if (!unlang) goto send_reply;
 
@@ -239,8 +232,6 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 	int rcode;
 	CONF_SECTION *server_cs;
 
-	bool coa_found = false, dm_found = false;
-
 	rad_assert(listen_cs);
 
 	server_cs = cf_item_to_section(cf_parent(listen_cs));
@@ -248,31 +239,7 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 
 	rcode = unlang_compile_subsection(server_cs, "recv", "CoA-Request", MOD_RECV_COA);
 	if (rcode < 0) return rcode;
-	if (rcode == 1) coa_found = true;
-
-	rcode = unlang_compile_subsection(server_cs, "recv", "Disconnect-Request", MOD_RECV_COA);
-	if (rcode < 0) return rcode;
-	if (rcode == 1) dm_found = true;
-
-	if (!coa_found || !dm_found) {
-		rcode = unlang_compile_subsection(server_cs, "recv", "*", MOD_RECV_COA);
-		if (rcode < 0) return rcode;
-		if (rcode == 1) coa_found = dm_found = true;
-	}
-
-	if (rcode == 0) {
-		if (!coa_found) {
-			cf_log_err(server_cs, "Failed finding 'recv CoA-Request { ... }' section of virtual server %s",
-				      cf_section_name2(server_cs));
-			return -1;
-		}
-
-		cf_log_err(server_cs, "Failed finding 'recv Disconnect-Request { ... }' section of virtual server %s",
-			      cf_section_name2(server_cs));
-		return -1;
-	}
-
-	if (coa_found) {
+	if (rcode == 1) {
 		rcode = unlang_compile_subsection(server_cs, "send", "CoA-ACK", MOD_SEND_COA);
 		if (rcode < 0) return rcode;
 
@@ -280,7 +247,9 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 		if (rcode < 0) return rcode;
 	}
 
-	if (dm_found) {
+	rcode = unlang_compile_subsection(server_cs, "recv", "Disconnect-Request", MOD_RECV_COA);
+	if (rcode < 0) return rcode;
+	if (rcode == 1) {
 		rcode = unlang_compile_subsection(server_cs, "send", "Disconnect-ACK", MOD_SEND_COA);
 		if (rcode < 0) return rcode;
 
@@ -288,7 +257,10 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 		if (rcode < 0) return rcode;
 	}
 
-	rcode = unlang_compile_subsection(server_cs, "send", "*", MOD_PREACCT);
+	rcode = unlang_compile_subsection(server_cs, "send", "Do-Not-Respond", MOD_SEND_COA);
+	if (rcode < 0) return rcode;
+
+	rcode = unlang_compile_subsection(server_cs, "send", "Protocol-Error", MOD_SEND_COA);
 	if (rcode < 0) return rcode;
 
 	return 0;
