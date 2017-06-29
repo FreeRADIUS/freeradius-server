@@ -126,7 +126,7 @@ rlm_rcode_t rad_accounting(REQUEST *request)
 			 *	Check whether Proxy-To-Realm is
 			 *	a LOCAL realm.
 			 */
-			realm = realm_find2(vp->vp_strvalue);
+			realm = NULL;
 			if (realm && !realm->acct_pool) {
 				DEBUG("rad_accounting: Cancelling proxy to realm %s, as it is a LOCAL realm.", realm->name);
 				fr_pair_delete_by_num(&request->control, 0, FR_PROXY_TO_REALM, TAG_ANY);

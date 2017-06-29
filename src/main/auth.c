@@ -481,7 +481,7 @@ autz_redo:
 	    ((tmp = fr_pair_find_by_num(request->control, 0, FR_PROXY_TO_REALM, TAG_ANY)) != NULL)) {
 		REALM *realm;
 
-		realm = realm_find2(tmp->vp_strvalue);
+		realm = NULL;
 
 		/*
 		 *	Don't authenticate, as the request is going to
