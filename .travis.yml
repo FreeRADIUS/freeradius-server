@@ -6,6 +6,8 @@ sudo: true
 dist: trusty
 env:
   global:
+  - KQUEUE_DEBUG="yes"
+  - M_PERTURB=0x42
   - PANIC_ACTION="gdb -batch -x raddb/panic.gdb %e %p 1>&0 2>&0"
   - SQL_MYSQL_TEST_SERVER="127.0.0.1"
   - SQL_POSTGRESQL_TEST_SERVER="127.0.0.1"
