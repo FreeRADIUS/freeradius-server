@@ -59,13 +59,6 @@ typedef struct rlm_couchbase_t {
 	bool			read_clients;		//!< Toggle for loading client records.
 	const char		*client_view;    	//!< Couchbase view that returns client documents.
 
-	bool			check_simul;		//!< Toggle to enable simultaneous use checking.
-	const char		*simul_view;     	//!< Couchbase view that returns accounting documents.
-
-	bool			verify_simul;		//!< Toggle to enable user login state verification.
-	vp_tmpl_t		*simul_vkey;		//!< The query key to be used with simul_view.
-	bool			delete_stale_sessions;	//!< Toggle to trigger zapping of stale sessions.
-
 	json_object		*map;           	//!< Json object to hold user defined attribute map.
 	fr_pool_t	*pool;			//!< Connection pool.
 } rlm_couchbase_t;
