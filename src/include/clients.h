@@ -90,15 +90,6 @@ typedef struct radclient {
 
 	bool			rate_limit;		//!< Where addition of clients should be rate limited.
 #endif
-
-#ifdef WITH_COA
-	char const		*coa_name;		//!< Name of the CoA home server or pool.
-	home_server_t		*coa_server;		//!< The CoA home_server_t the client is associated with.
-							//!< Must be used exclusively from coa_pool.
-	home_pool_t		*coa_pool;		//!< The CoA home_pool_t the client is associated with.
-							//!< Must be used exclusively from coa_server.
-	bool			defines_coa_server;	//!< Client also defines a home_server.
-#endif
 } RADCLIENT;
 
 typedef struct radclient_list RADCLIENT_LIST;
@@ -153,7 +144,7 @@ RADCLIENT	*client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request);
 
 int		client_map_section(CONF_SECTION *out, CONF_SECTION const *map, client_value_cb_t func, void *data);
 
-RADCLIENT	*client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *server_cs, bool with_coa);
+RADCLIENT	*client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *server_cs);
 
 RADCLIENT	*client_afrom_query(TALLOC_CTX *ctx, char const *identifier, char const *secret, char const *shortname,
 				    char const *type, char const *server, bool require_ma)

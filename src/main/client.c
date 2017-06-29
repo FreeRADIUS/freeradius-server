@@ -208,11 +208,6 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	DEBUG3("Adding client %s (%s) to prefix tree %i", buffer, client->longname, client->ipaddr.prefix);
 
 	/*
-	 *	If the client also defines a server, do that now.
-	 */
-	if (client->defines_coa_server) if (!realm_home_server_add(client->coa_server)) return false;
-
-	/*
 	 *	If "clients" is NULL, it means add to the global list,
 	 *	unless we're trying to add it to a virtual server...
 	 */
@@ -295,11 +290,6 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 #ifdef WITH_DYNAMIC_CLIENTS
 		    (old->lifetime == client->lifetime) &&
 		    namecmp(client_server) &&
-#endif
-#ifdef WITH_COA
-		    namecmp(coa_name) &&
-		    (old->coa_server == client->coa_server) &&
-		    (old->coa_pool == client->coa_pool) &&
 #endif
 		    (old->message_authenticator == client->message_authenticator)) {
 			WARN("Ignoring duplicate client %s", client->longname);
@@ -553,7 +543,7 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 	 *	them to the client list.
 	 */
 	while ((cs = cf_section_find_next(section, cs, "client", CF_IDENT_ANY))) {
-		c = client_afrom_cs(cs, cs, server_cs, false);
+		c = client_afrom_cs(cs, cs, server_cs);
 		if (!c) {
 		error:
 			client_free(c);
@@ -863,11 +853,9 @@ int client_map_section(CONF_SECTION *out, CONF_SECTION const *map, client_value_
  * @param ctx to allocate new clients in.
  * @param cs to process as a client.
  * @param server_cs The virtual server that this client belongs to.
- * @param with_coa If true and coa_server or coa_pool aren't specified automatically,
- *	create a coa home_server section and add it to the client CONF_SECTION.
  * @return new RADCLIENT struct.
  */
-RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *server_cs, bool with_coa)
+RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *server_cs)
 {
 	RADCLIENT	*c;
 	char const	*name2;
@@ -1074,67 +1062,6 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 			goto error;
 		}
 	}
-
-#ifdef WITH_COA
-	{
-		CONF_PAIR *cp;
-
-		/*
-		 *	Point the client to the home server pool, OR to the
-		 *	home server.  This gets around the problem of figuring
-		 *	out which port to use.
-		 */
-		cp = cf_pair_find(cs, "coa_server");
-		if (cp) {
-			c->coa_name = cf_pair_value(cp);
-			c->coa_pool = home_pool_byname(c->coa_name, HOME_TYPE_COA);
-			if (!c->coa_pool) {
-				c->coa_server = home_server_byname(c->coa_name, HOME_TYPE_COA);
-			}
-			if (!c->coa_pool && !c->coa_server) {
-				cf_log_err(cs, "No such home_server or home_server_pool \"%s\"", c->coa_name);
-				goto error;
-			}
-		/*
-		 *	If we're implicitly adding a CoA home server for
-		 *	every client, or there's a server subsection,
-		 *	create a home server CONF_SECTION and then parse
-		 *	it into a home_server_t.
-		 */
-		} else if (with_coa || cf_section_find(cs, "coa_server", NULL)) {
-			CONF_SECTION *server;
-			home_server_t *home;
-
-			if (((c->ipaddr.af == AF_INET) && (c->ipaddr.prefix != 32)) ||
-			    ((c->ipaddr.af == AF_INET6) && (c->ipaddr.prefix != 128))) {
-			 	WARN("Subnets not supported for home servers.  "
-			 	     "Not adding client %s as home_server", name2);
-				goto done_coa;
-			}
-
-			server = home_server_cs_afrom_client(cs);
-			if (!server) goto error;
-
-			/*
-			 *	Must be allocated in the context of the client,
-			 *	as allocating using the context of the
-			 *	realm_config_t without a mutex, by one of the
-			 *	workers, would be bad.
-			 */
-			home = home_server_afrom_cs(NULL, NULL, server);
-			if (!home) {
-				talloc_free(server);
-				goto error;
-			}
-
-			rad_assert(home->type == HOME_TYPE_COA);
-
-			c->coa_server = home;
-			c->defines_coa_server = true;
-		}
-	}
-done_coa:
-#endif
 
 #ifdef WITH_TCP
 	if ((c->proto == IPPROTO_TCP) || (c->proto == IPPROTO_IP)) {
@@ -1500,7 +1427,7 @@ RADCLIENT *client_read(char const *filename, CONF_SECTION *server_cs, bool check
 		return NULL;
 	}
 
-	c = client_afrom_cs(cs, cs, server_cs, false);
+	c = client_afrom_cs(cs, cs, server_cs);
 	if (!c) return NULL;
 	talloc_steal(cs, c);
 

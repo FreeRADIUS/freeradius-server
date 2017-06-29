@@ -743,7 +743,7 @@ static RADCLIENT *proto_ldap_fake_client_alloc(proto_ldap_inst_t *inst)
 	cp = cf_pair_alloc(cs, "secret", "fake", T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
 	cf_pair_add(cs, cp);
 
-	client = client_afrom_cs(inst, cs, NULL, false);
+	client = client_afrom_cs(inst, cs, NULL);
 	if (!client) {
 		PERROR("Failed creating fake LDAP client");
 		talloc_free(cs);

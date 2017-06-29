@@ -4157,15 +4157,6 @@ static void request_coa_originate(REQUEST *request)
 			goto fail;
 		}
 
-		/*
-		 *	Prefer the pool to one server
-		 */
-	} else if (request->client->coa_pool) {
-		coa->home_pool = request->client->coa_pool;
-
-	} else if (request->client->coa_server) {
-		coa->home_server = request->client->coa_server;
-
 	} else {
 		/*
 		 *	If all else fails, send it to the client that

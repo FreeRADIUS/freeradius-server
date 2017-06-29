@@ -123,7 +123,7 @@ static RADCLIENT *client_alloc(TALLOC_CTX *ctx, char const *ip, char const *name
 	cp = cf_pair_alloc(cs, "groups", "baz", T_OP_EQ, T_BARE_WORD, T_DOUBLE_QUOTED_STRING);
 	cf_pair_add(cs, cp);
 
-	client = client_afrom_cs(ctx, cs, NULL, false);
+	client = client_afrom_cs(ctx, cs, NULL);
 	if (!client) {
 		PERROR("Failed creating test client");
 		rad_assert(0);
