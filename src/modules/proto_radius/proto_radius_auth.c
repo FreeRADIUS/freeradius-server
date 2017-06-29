@@ -132,17 +132,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 
 		request->component = "radius";
 
-		da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
-		rad_assert(da != NULL);
-		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->packet->code));
-		if (!dv) {
-			REDEBUG("Failed to find value for &request:Packet-Type");
-			request->reply->code = FR_CODE_ACCESS_REJECT;
-			goto setup_send;
-		}
-
-		unlang = cf_section_find(request->server_cs, "recv", dv->alias);
-		if (!unlang) unlang = cf_section_find(request->server_cs, "recv", "*");
+		unlang = cf_section_find(request->server_cs, "recv", "Access-Request");
 		if (!unlang) {
 			REDEBUG("Failed to find 'recv %s' section", dv->alias);
 			request->reply->code = FR_CODE_ACCESS_REJECT;
@@ -163,7 +153,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 		/*
 		 *	Push the conf section into the unlang stack.
 		 */
-		RDEBUG("Running 'recv %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
+		RDEBUG("Running 'recv Access-Request' from file %s", cf_filename(unlang));
 		unlang_push_section(request, unlang, RLM_MODULE_REJECT);
 
 		request->request_state = REQUEST_RECV;
@@ -226,6 +216,20 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 		 *	No Auth-Type, force it to reject.
 		 */
 		if (!auth_type) {
+			/*
+			 *	Handle Service-Type = Authorize-Only
+			 *
+			 *	If they want to reject the request,
+			 *	the "recv Access-Request" section
+			 *	should have returned reject.
+			 */
+			vp = fr_pair_find_by_num(request->packet->vps, 0, FR_SERVICE_TYPE, TAG_ANY);
+			if (vp && (vp->vp_uint32 == FR_SERVICE_TYPE_VALUE_AUTHORIZE_ONLY)) {
+				RDEBUG("Skipping authenticate as we have found Service-Type = Authorize-Only");
+				request->reply->code = FR_CODE_ACCESS_ACCEPT;
+				goto setup_send;
+			}
+
 			REDEBUG2("No Auth-Type available: rejecting the user.");
 			request->reply->code = FR_CODE_ACCESS_REJECT;
 			goto setup_send;
@@ -370,10 +374,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 
 		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
 		unlang = NULL;
-		if (dv) {
-			unlang = cf_section_find(request->server_cs, "send", dv->alias);
-		}
-		if (!unlang) unlang = cf_section_find(request->server_cs, "send", "*");
+		if (dv) unlang = cf_section_find(request->server_cs, "send", dv->alias);
 
 		if (!unlang) goto send_reply;
 
@@ -531,19 +532,15 @@ static int auth_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *lis
 
 	rcode = unlang_compile_subsection(server_cs, "send", "Access-Accept", MOD_POST_AUTH);
 	if (rcode < 0) return rcode;
-	if (rcode == 0) {
-		cf_log_err(server_cs, "Failed finding 'send Access-Accept { ... }' section of virtual server %s",
-			      cf_section_name2(server_cs));
-		return -1;
-	}
 
 	rcode = unlang_compile_subsection(server_cs, "send", "Access-Reject", MOD_POST_AUTH);
 	if (rcode < 0) return rcode;
-	if (rcode == 0) {
-		cf_log_err(server_cs, "Failed finding 'send Access-Reject { ... }' section of virtual server %s",
-			      cf_section_name2(server_cs));
-		return -1;
-	}
+
+	rcode = unlang_compile_subsection(server_cs, "send", "Do-Not-Respond", MOD_POST_AUTH);
+	if (rcode < 0) return rcode;
+
+	rcode = unlang_compile_subsection(server_cs, "send", "Protocol-Error", MOD_POST_AUTH);
+	if (rcode < 0) return rcode;
 
 	/*
 	 *	It's OK to not have an Access-Challenge section.
