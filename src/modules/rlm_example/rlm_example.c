@@ -148,23 +148,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(UNUSED void *instance, UNUSED
 {
 	return RLM_MODULE_OK;
 }
-
-/*
- *	See if a user is already logged in. Sets request->simul_count to the
- *	current session count for this user and sets request->simul_mpp to 2
- *	if it looks like a multilink attempt based on the requested IP
- *	address, otherwise leaves request->simul_mpp alone.
- *
- *	Check twice. If on the first pass the user exceeds his
- *	max. number of logins, do a second pass and validate all
- *	logins by querying the terminal server (using eg. SNMP).
- */
-static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
-{
-	request->simul_count = 0;
-
-	return RLM_MODULE_OK;
-}
 #endif
 
 
@@ -202,7 +185,6 @@ rad_module_t rlm_example = {
 #ifdef WITH_ACCOUNTING
 		[MOD_PREACCT]		= mod_preacct,
 		[MOD_ACCOUNTING]	= mod_accounting,
-		[MOD_SESSION]		= mod_checksimul
 #endif
 	},
 };
