@@ -53,6 +53,8 @@ typedef enum {
 	FR_CODE_MAX			= 255,	//!< Maximum possible code
 } FR_CODE;
 
+#define FR_CODE_DO_NOT_RESPOND		(256)
+
 #define FR_AUTH_UDP_PORT		1812
 #define FR_AUTH_UDP_PORT_ALT		1645
 #define FR_ACCT_UDP_PORT		1813
