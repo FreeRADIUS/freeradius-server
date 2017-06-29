@@ -207,14 +207,28 @@ char const *fr_syserror(int num)
 	 */
 #else
 	{
-		p = strerror_r(num, p, end - p);
-		if (!p) {
+		char *q;
+
+		q = strerror_r(num, p, end - p);
+		if (!q) {
 #  ifndef NDEBUG
 			fprintf(stderr, "strerror_r() failed to write error for errno %i to buffer %p "
 				"(%zu bytes): %s\n", num, buffer, (size_t)FR_SYSERROR_BUFSIZE, strerror(errno));
 #  endif
 			buffer[0] = '\0';
 			return buffer;
+		}
+
+		/*
+		 *	If strerror_r used a static string, copy it to the buffer
+		 */
+		if (q != p) {
+			size_t len;
+
+			len = strlen(q) + 1;
+			if (len >= (end - p)) len = end - p;
+
+			strlcpy(p, q, len);
 		}
 
 		return buffer;
