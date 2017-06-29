@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file dhcpv4/encode.c
+ * @file protocols/dhcpv4/encode.c
  * @brief Functions to encode DHCP options.
  *
  * @copyright 2008,2017 The FreeRADIUS server project

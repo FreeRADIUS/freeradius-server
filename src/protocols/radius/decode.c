@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file decode.c
+ * @file protocols/radius/decode.c
  * @brief Functions to decode RADIUS attributes
  *
  * @copyright 2000-2003,2006-2015  The FreeRADIUS server project

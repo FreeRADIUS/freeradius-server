@@ -40,9 +40,9 @@ RCSID("$Id$")
  *	a lot cleaner to do so, and a pointer to the structure can
  *	be used as the instance handle.
  */
-typedef struct rlm_dhcp_t {
+typedef struct rlm_dhcpv4_t {
 	int nothing;
-} rlm_dhcp_t;
+} rlm_dhcpv4_t;
 
 
 /*
@@ -163,7 +163,7 @@ static ssize_t dhcp_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
  */
 static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
 {
-	rlm_dhcp_t *inst = instance;
+	rlm_dhcpv4_t *inst = instance;
 	fr_dict_attr_t const *da;
 
 	xlat_register(inst, "dhcp_options", dhcp_options_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
@@ -222,10 +222,10 @@ static int dhcp_load(void)
  *	is single-threaded.
  */
 extern rad_module_t rlm_dhcp;
-rad_module_t rlm_dhcp = {
+rad_module_t rlm_dhcpv4 = {
 	.magic		= RLM_MODULE_INIT,
-	.name		= "dhcp",
-	.inst_size	= sizeof(rlm_dhcp_t),
+	.name		= "dhcpv4",
+	.inst_size	= sizeof(rlm_dhcpv4_t),
 
 	.load		= dhcp_load,
 	.bootstrap	= mod_bootstrap,

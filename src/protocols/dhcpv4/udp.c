@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file dhcpv4/udp.c
+ * @file protocols/dhcpv4/udp.c
  * @brief Send/recv DHCP packets using udp sockets.
  *
  * @copyright 2008,2017 The FreeRADIUS server project

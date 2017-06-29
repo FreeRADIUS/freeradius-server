@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file dhcpv4/packet.c
+ * @file protocols/dhcpv4/packet.c
  * @brief Functions to encode/decode DHCP packets.
  *
  * @copyright 2008,2017 The FreeRADIUS server project

@@ -58,7 +58,6 @@ static int sockfd;
 
 #ifdef HAVE_LIBPCAP
 static fr_pcap_t	*pcap;
-static uint8_t		eth_bcast[ETH_ADDR_LEN] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 #endif
 
 static char *iface = NULL;
@@ -373,7 +372,7 @@ static int send_with_socket(RADIUS_PACKET **reply, RADIUS_PACKET *request)
 
 #ifdef HAVE_LINUX_IF_PACKET_H
 	if (raw_mode) {
-		sockfd = fr_dhcpv4_raw_socket_open(iface_ind, &ll);
+		sockfd = fr_dhcpv4_raw_socket_open(&ll, iface_ind);
 		if (sockfd < 0) {
 			ERROR("Error opening socket");
 			return -1;
@@ -468,13 +467,13 @@ static int send_with_pcap(RADIUS_PACKET **reply, RADIUS_PACKET *request)
 	sprintf(pcap_filter, "udp and dst port %d", request->src_port);
 
 	if (fr_pcap_apply_filter(pcap, pcap_filter) < 0) {
-		ERROR("dhcoclient: Failed setting filter for interface");
+		ERROR("Failing setting filter");
 		talloc_free(pcap);
 		return -1;
 	}
 
 	if (fr_dhcpv4_pcap_send(pcap, eth_bcast, request) < 0) {
-		ERROR("Failed sending packet via PCAP: %s", pcap_geterr(pcap->handle));
+		ERROR("Failed sending packet");
 		talloc_free(pcap);
 		return -1;
 	}

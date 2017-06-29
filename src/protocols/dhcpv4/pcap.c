@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file dhcpv4/pcap.c
+ * @file protocols/dhcpv4/pcap.c
  * @brief Alternative mechanism to send/recv DHCP packets using libpcap.
  *
  * @copyright 2008,2017 The FreeRADIUS server project

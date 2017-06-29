@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file dhcpv4/base.c
+ * @file protocols/dhcpv4/base.c
  * @brief Functions to send/receive dhcp packets.
  *
  * @copyright 2008 The FreeRADIUS server project
@@ -97,6 +97,8 @@ int dhcp_header_sizes[] = {
 	DHCP_SNAME_LEN,		/* sname */
 	DHCP_FILE_LEN		/* file */
 };
+
+uint8_t	eth_bcast[ETH_ADDR_LEN] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 
 fr_dict_attr_t const *dhcp_option_82;
 

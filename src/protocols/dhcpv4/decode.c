@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file dhcpv4/decode.c
+ * @file protocols/dhcpv4/decode.c
  * @brief Functions to decode DHCP options.
  *
  * @copyright 2008,2017 The FreeRADIUS server project

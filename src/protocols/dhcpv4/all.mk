@@ -14,5 +14,6 @@ SOURCES		:= base.c \
 		   udp.c
 
 SRC_CFLAGS	:= -I$(top_builddir)/src
-
+TGT_LDLIBS	:= $(PCAP_LIBS)
+TGT_LDFLAGS     := $(PCAP_LDFLAGS)
 TGT_PREREQS	:= libfreeradius-util.a

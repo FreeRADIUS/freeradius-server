@@ -15,5 +15,5 @@
 #	* Alcatel lucent SR	- Alc-ToServer-Dhcp-Options
 #				- Alc-ToClient-Dhcp-Options
 #
-dhcp {
+dhcpv4 {
 }

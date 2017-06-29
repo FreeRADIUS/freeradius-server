@@ -18,7 +18,7 @@
 /*
  * $Id$
  *
- * @file radius/radius.h
+ * @file protocols/radius/radius.h
  * @brief Structures and prototypes for base RADIUS functionality.
  *
  * @copyright 1999-2017 The FreeRADIUS server project

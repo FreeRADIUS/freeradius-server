@@ -17,12 +17,11 @@
 /**
  * $Id$
  *
- * @file packet.c
+ * @file protocols/radius/packet.c
  * @brief Functions to deal with RADIUS_PACKET data structures.
  *
  * @copyright 2000-2017  The FreeRADIUS server project
  */
-
 RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>

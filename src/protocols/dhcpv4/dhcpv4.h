@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file dhcpv4/dhcpv4.h
+ * @file protocols/dhcpv4/dhcpv4.h
  * @brief Implementation of the DHCPv4 protocol.
  *
  * @copyright 2008  The FreeRADIUS server project
@@ -118,12 +118,11 @@ typedef struct dhcp_packet_t {
 extern char const *dhcp_header_names[];
 extern char const *dhcp_message_types[];
 extern int dhcp_header_sizes[];
+extern uint8_t eth_bcast[ETH_ADDR_LEN];
 extern fr_dict_attr_t const *dhcp_option_82;
 
 #ifdef HAVE_LINUX_IF_PACKET_H
 #  define ETH_HDR_SIZE   14
-static uint8_t eth_bcast[ETH_ADDR_LEN] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
-
 /* Discard raw packets which we are not interested in. Allow to trace why we discard. */
 #  define DISCARD_RP(...) { \
 	if (fr_debug_lvl > 2) { \
@@ -176,7 +175,7 @@ int		fr_dhcpv4_packet_encode(RADIUS_PACKET *packet);
  *	raw.c
  */
 #include <linux/if_packet.h>
-int		fr_dhcpv4_raw_socket_open(int iface_index, struct sockaddr_ll *p_ll);
+int		fr_dhcpv4_raw_socket_open(struct sockaddr_ll *p_ll, int iface_index);
 
 int		fr_dhcpv4_raw_packet_send(int sockfd, struct sockaddr_ll *p_ll, RADIUS_PACKET *packet);
 
