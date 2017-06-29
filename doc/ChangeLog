@@ -6,6 +6,9 @@ FreeRADIUS 3.0.15 Fri 26 May 2017 13:00:00 EDT urgency=medium
 	  resumption cache.  Fixes #1999.
 	* Parse port in dhcpclient.  Fixes #2000.
 	* Updated dictionary.starent
+	* Don't leak memory for OpenSSL.
+	  Patch from Guido Vranken.
+	* Portability fixes taken from OpenBSD port collection.
 
 FreeRADIUS 3.0.14 Fri 26 May 2017 13:00:00 EDT urgency=medium
 	Feature improvements
