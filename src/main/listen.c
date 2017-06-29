@@ -2023,18 +2023,6 @@ static int do_proxy(REQUEST *request)
 		return 0;
 	}
 
-	vp = fr_pair_find_by_num(request->control, 0, FR_HOME_SERVER_POOL, TAG_ANY);
-
-	if (vp) {
-		if (!home_pool_byname(vp->vp_strvalue, HOME_TYPE_COA)) {
-			REDEBUG2("Cannot proxy to unknown pool %s",
-				 vp->vp_strvalue);
-			return -1;
-		}
-
-		return 1;
-	}
-
 	/*
 	 *	We have a destination IP address.  It will (later) proxied.
 	 */
