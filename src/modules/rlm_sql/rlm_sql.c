@@ -91,7 +91,6 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("read_groups", FR_TYPE_BOOL, rlm_sql_config_t, read_groups), .dflt = "yes" },
 	{ FR_CONF_OFFSET("read_profiles", FR_TYPE_BOOL, rlm_sql_config_t, read_profiles), .dflt = "yes" },
 	{ FR_CONF_OFFSET("read_clients", FR_TYPE_BOOL, rlm_sql_config_t, do_clients), .dflt = "no" },
-	{ FR_CONF_OFFSET("delete_stale_sessions", FR_TYPE_BOOL, rlm_sql_config_t, delete_stale_sessions), .dflt = "yes" },
 	{ FR_CONF_OFFSET("sql_user_name", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sql_config_t, query_user), .dflt = "" },
 	{ FR_CONF_OFFSET("group_attribute", FR_TYPE_STRING, rlm_sql_config_t, group_attribute) },
 	{ FR_CONF_OFFSET("logfile", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sql_config_t, logfile) },
@@ -105,10 +104,6 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("authorize_group_check_query", FR_TYPE_STRING | FR_TYPE_XLAT | FR_TYPE_NOT_EMPTY, rlm_sql_config_t, authorize_group_check_query) },
 	{ FR_CONF_OFFSET("authorize_group_reply_query", FR_TYPE_STRING | FR_TYPE_XLAT | FR_TYPE_NOT_EMPTY, rlm_sql_config_t, authorize_group_reply_query) },
 	{ FR_CONF_OFFSET("group_membership_query", FR_TYPE_STRING | FR_TYPE_XLAT | FR_TYPE_NOT_EMPTY, rlm_sql_config_t, groupmemb_query) },
-#ifdef WITH_SESSION_MGMT
-	{ FR_CONF_OFFSET("simul_count_query", FR_TYPE_STRING | FR_TYPE_XLAT | FR_TYPE_NOT_EMPTY, rlm_sql_config_t, simul_count_query) },
-	{ FR_CONF_OFFSET("simul_verify_query", FR_TYPE_STRING | FR_TYPE_XLAT | FR_TYPE_NOT_EMPTY, rlm_sql_config_t, simul_verify_query) },
-#endif
 	{ FR_CONF_OFFSET("safe_characters", FR_TYPE_STRING, rlm_sql_config_t, allowed_chars), .dflt = "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /" },
 
 	/*
@@ -1689,204 +1684,6 @@ static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *
 
 #endif
 
-#ifdef WITH_SESSION_MGMT
-/*
- *	See if a user is already logged in. Sets request->simul_count to the
- *	current session count for this user.
- *
- *	Check twice. If on the first pass the user exceeds his
- *	max. number of logins, do a second pass and validate all
- *	logins by querying the terminal server (using eg. SNMP).
- */
-static rlm_rcode_t mod_checksimul(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
-static rlm_rcode_t mod_checksimul(void *instance, UNUSED void *thread, REQUEST *request)
-{
-	rlm_rcode_t		rcode = RLM_MODULE_OK;
-	rlm_sql_handle_t 	*handle = NULL;
-	rlm_sql_t const		*inst = instance;
-	rlm_sql_row_t		row;
-	int			check = 0;
-	uint32_t		ipno = 0;
-	char const     		*call_num = NULL;
-	VALUE_PAIR		*vp;
-	int			ret;
-	uint32_t		nas_addr = 0;
-	uint32_t		nas_port = 0;
-
-	char 			*expanded = NULL;
-
-	/* If simul_count_query is not defined, we don't do any checking */
-	if (!inst->config->simul_count_query) {
-		RWDEBUG("Simultaneous-Use checking requires 'simul_count_query' to be configured");
-		return RLM_MODULE_NOOP;
-	}
-
-	if ((!request->username) || (request->username->vp_length == 0)) {
-		REDEBUG("Zero Length username not permitted");
-
-		return RLM_MODULE_INVALID;
-	}
-
-	if (sql_set_user(inst, request, NULL) < 0) {
-		return RLM_MODULE_FAIL;
-	}
-
-	/* initialize the sql socket */
-	handle = fr_pool_connection_get(inst->pool, request);
-	if (!handle) {
-		sql_unset_user(inst, request);
-		return RLM_MODULE_FAIL;
-	}
-
-	if (xlat_aeval(request, &expanded, request, inst->config->simul_count_query,
-			 inst->sql_escape_func, handle) < 0) {
-		fr_pool_connection_release(inst->pool, request, handle);
-		sql_unset_user(inst, request);
-		return RLM_MODULE_FAIL;
-	}
-
-	if (rlm_sql_select_query(inst, request, &handle, expanded) != RLM_SQL_OK) {
-		rcode = RLM_MODULE_FAIL;
-		goto release;	/* handle may no longer be valid */
-	}
-
-	ret = rlm_sql_fetch_row(&row, inst, request, &handle);
-	if (ret != RLM_SQL_OK) {
-		rcode = RLM_MODULE_FAIL;
-		goto finish;
-	}
-	request->simul_count = atoi(row[0]);
-
-	(inst->driver->sql_finish_select_query)(handle, inst->config);
-	TALLOC_FREE(expanded);
-
-	if (request->simul_count < request->simul_max) {
-		rcode = RLM_MODULE_OK;
-		goto finish;
-	}
-
-	/*
-	 *	Looks like too many sessions, so let's start verifying
-	 *	them, unless told to rely on count query only.
-	 */
-	if (!inst->config->simul_verify_query) {
-		rcode = RLM_MODULE_OK;
-
-		goto finish;
-	}
-
-	if (xlat_aeval(request, &expanded, request, inst->config->simul_verify_query,
-			 inst->sql_escape_func, handle) < 0) {
-		rcode = RLM_MODULE_FAIL;
-
-		goto finish;
-	}
-
-	if (rlm_sql_select_query(inst, request, &handle, expanded) != RLM_SQL_OK) goto release;
-
-	/*
-	 *      Setup some stuff, like for MPP detection.
-	 */
-	request->simul_count = 0;
-
-	if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_FRAMED_IP_ADDRESS, TAG_ANY)) != NULL) {
-		ipno = vp->vp_ipv4addr;
-	}
-
-	if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_CALLING_STATION_ID, TAG_ANY)) != NULL) {
-		call_num = vp->vp_strvalue;
-	}
-
-	while (rlm_sql_fetch_row(&row, inst, request, &handle) == RLM_SQL_OK) {
-		if (!row[2]){
-			RDEBUG("Cannot zap stale entry. No username present in entry");
-			rcode = RLM_MODULE_FAIL;
-
-			goto finish;
-		}
-
-		if (!row[1]){
-			RDEBUG("Cannot zap stale entry. No session id in entry");
-			rcode = RLM_MODULE_FAIL;
-
-			goto finish;
-		}
-
-		if (row[3]) {
-			nas_addr = inet_addr(row[3]);
-		}
-
-		if (row[4]) {
-			nas_port = atoi(row[4]);
-		}
-
-		check = rad_check_ts(nas_addr, nas_port, row[2], row[1]);
-		if (check == 0) {
-			/*
-			 *	Stale record - zap it.
-			 */
-			if (inst->config->delete_stale_sessions == true) {
-				uint32_t framed_addr = 0;
-				char proto = 0;
-				int sess_time = 0;
-
-				if (row[5])
-					framed_addr = inet_addr(row[5]);
-				if (row[7]){
-					if (strcmp(row[7], "PPP") == 0)
-						proto = 'P';
-					else if (strcmp(row[7], "SLIP") == 0)
-						proto = 'S';
-				}
-				if (row[8])
-					sess_time = atoi(row[8]);
-				session_zap(request, nas_addr, nas_port,
-					    row[2], row[1], framed_addr,
-					    proto, sess_time);
-			}
-		}
-		else if (check == 1) {
-			/*
-			 *	User is still logged in.
-			 */
-			++request->simul_count;
-
-			/*
-			 *      Does it look like a MPP attempt?
-			 */
-			if (row[5] && ipno && inet_addr(row[5]) == ipno) {
-				request->simul_mpp = 2;
-			} else if (row[6] && call_num && !strncmp(row[6],call_num,16)) {
-				request->simul_mpp = 2;
-			}
-		} else {
-			/*
-			 *      Failed to check the terminal server for
-			 *      duplicate logins: return an error.
-			 */
-			REDEBUG("Failed to check the terminal server for user '%s'.", row[2]);
-
-			rcode = RLM_MODULE_FAIL;
-			goto finish;
-		}
-	}
-
-finish:
-	(inst->driver->sql_finish_select_query)(handle, inst->config);
-release:
-	fr_pool_connection_release(inst->pool, request, handle);
-	talloc_free(expanded);
-	sql_unset_user(inst, request);
-
-	/*
-	 *	The Auth module apparently looks at request->simul_count,
-	 *	not the return value of this module when deciding to deny
-	 *	a call for too many sessions.
-	 */
-	return rcode;
-}
-#endif
-
 /*
  *	Postauth: Write a record of the authentication attempt
  */
@@ -1921,9 +1718,6 @@ rad_module_t rlm_sql = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 #ifdef WITH_ACCOUNTING
 		[MOD_ACCOUNTING]	= mod_accounting,
-#endif
-#ifdef WITH_SESSION_MGMT
-		[MOD_SESSION]		= mod_checksimul,
 #endif
 		[MOD_POST_AUTH]		= mod_post_auth
 	},

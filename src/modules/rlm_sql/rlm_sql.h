@@ -107,10 +107,6 @@ typedef struct sql_config {
 	char const 		*authorize_reply_query;		//!< Query used get reply VPs for a user.
 	char const		*authorize_group_check_query;	//!< Query used get check VPs for a group.
 	char const		*authorize_group_reply_query;	//!< Query used get reply VPs for a group.
-	char const		*simul_count_query;		//!< Query used get number of active sessions
-								//!< for a user (basic simultaneous use check).
-	char const		*simul_verify_query;		//!< Query to get active sessions for a user
-								//!< the result is fed to session_zap.
 	char const 		*groupmemb_query;		//!< Query to determine group membership.
 
 	bool			do_clients;			//!< Read clients from SQL database.
@@ -125,10 +121,6 @@ typedef struct sql_config {
 	char const		*logfile;			//!< Keep a log of all SQL queries executed
 								//!< Useful for batch insertion with the
 								//!< NULL drivers.
-
-	bool			delete_stale_sessions;		//!< Whether we should use session_zap to create
-								//!< a fake stop packet, to terminate any
-								//!< stale sessions.
 
 	char const		*allowed_chars;			//!< Chars which done need escaping..
 	uint32_t		query_timeout;			//!< How long to allow queries to run for.

@@ -95,9 +95,6 @@ sql {
 	# If set to 'no' we do not read profiles unless Fall-Through = yes in the groupreply table.
 #	read_profiles = yes
 
-	# Remove stale session if checkrad does not see a double login
-	delete_stale_sessions = yes
-
 	# Write SQL queries to a logfile. This is potentially useful for tracing
 	# issues with authorization queries.  See also "logfile" directives in
 	# mods-config/sql/main/*/queries.conf.  You can enable per-section logging
