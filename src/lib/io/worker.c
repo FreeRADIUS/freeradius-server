@@ -927,7 +927,9 @@ static int fr_worker_pre_event(void *ctx, struct timeval *wake)
 	 *	will take care of skipping the signal if there are no
 	 *	outstanding requests for it.
 	 */
-	for (i = 0; i < worker->num_channels; i++) {
+	for (i = 0; i < worker->max_channels; i++) {
+		if (!worker->channel[i]) continue;
+
 		(void) fr_channel_worker_sleeping(worker->channel[i]);
 	}
 
@@ -1006,7 +1008,9 @@ void fr_worker_destroy(fr_worker_t *worker)
 	 *	the FROM_WORKER queue, as we own those.  They will be
 	 *	automatically freed when our talloc context is freed.
 	 */
-	for (i = 0; i < worker->num_channels; i++) {
+	for (i = 0; i < worker->max_channels; i++) {
+		if (!worker->channel[i]) continue;
+
 		fr_channel_worker_ack_close(worker->channel[i]);
 	}
 
