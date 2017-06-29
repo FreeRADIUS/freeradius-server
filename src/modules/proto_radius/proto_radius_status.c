@@ -45,22 +45,14 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 
 		request->component = "radius";
 
-		da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
-		rad_assert(da != NULL);
-		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->packet->code));
-		if (!dv) {
-			REDEBUG("Failed to find value for &request:Packet-Type");
-			return FR_IO_FAIL;
-		}
-
-		unlang = cf_section_find(request->server_cs, "recv", dv->alias);
+		unlang = cf_section_find(request->server_cs, "recv", "Status-Server");
 		if (!unlang) {
-			RWDEBUG("Failed to find 'recv %s' section", dv->alias);
+			RWDEBUG("Failed to find 'recv Status-Server' section");
 			request->reply->code = FR_CODE_ACCESS_REJECT;
 			goto send_reply;
 		}
 
-		RDEBUG("Running 'recv %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
+		RDEBUG("Running 'recv Status-Server' from file %s", cf_filename(unlang));
 		unlang_push_section(request, unlang, RLM_MODULE_NOOP);
 
 		request->request_state = REQUEST_RECV;
@@ -97,10 +89,8 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 
 		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
 		unlang = NULL;
-		if (dv) {
-			unlang = cf_section_find(request->server_cs, "send", dv->alias);
-		}
-		if (!unlang) unlang = cf_section_find(request->server_cs, "send", "*");
+		if (dv) unlang = cf_section_find(request->server_cs, "send", dv->alias);
+
 		if (!unlang) goto send_reply;
 
 	rerun_nak:
@@ -157,7 +147,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 		/*
 		 *	Check for "do not respond".
 		 */
-		if (!request->reply->code) {
+		if (!request->reply->code || (request->reply->code == FR_CODE_DO_NOT_RESPOND)) {
 			RDEBUG("Not sending reply to client.");
 			return FR_IO_DONE;
 		}
@@ -165,7 +155,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 		/*
 		 *	This is an internally generated request.  Don't print IP addresses.
 		 */
-		if (request->packet->data_len == 0) {
+		if (request->parent) {
 			radlog_request(L_DBG, L_DBG_LVL_1, request, "Sent %s ID %i",
 				       fr_packet_codes[request->reply->code], request->reply->id);
 			rdebug_proto_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
@@ -218,19 +208,15 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 
 	rcode = unlang_compile_subsection(server_cs, "send", "Access-Accept", MOD_POST_AUTH);
 	if (rcode < 0) return rcode;
-	if (rcode == 0) {
-		cf_log_err(server_cs, "Failed finding 'send Access-Accept { ... }' section of virtual server %s",
-			      cf_section_name2(server_cs));
-		return -1;
-	}
 
 	rcode = unlang_compile_subsection(server_cs, "send", "Access-Reject", MOD_POST_AUTH);
 	if (rcode < 0) return rcode;
-	if (rcode == 0) {
-		cf_log_err(server_cs, "Failed finding 'send Access-Reject { ... }' section of virtual server %s",
-			      cf_section_name2(server_cs));
-		return -1;
-	}
+
+	rcode = unlang_compile_subsection(server_cs, "send", "Protocol-Error", MOD_POST_AUTH);
+	if (rcode < 0) return rcode;
+
+	rcode = unlang_compile_subsection(server_cs, "send", "Do-Not-Respond", MOD_POST_AUTH);
+	if (rcode < 0) return rcode;
 
 	return 0;
 }
