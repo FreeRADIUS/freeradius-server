@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 : ${BIN_PATH=./}
 : ${PORT=12340}
