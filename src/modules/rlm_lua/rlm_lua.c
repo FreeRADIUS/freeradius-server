@@ -156,7 +156,6 @@ DO_LUA(authorize)
 DO_LUA(authenticate)
 DO_LUA(preacct)
 DO_LUA(accounting)
-DO_LUA(checksimul)
 DO_LUA(pre_proxy)
 DO_LUA(post_proxy)
 DO_LUA(post_auth)
@@ -187,7 +186,6 @@ rad_module_t rlm_lua = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_PREACCT]		= mod_preacct,
 		[MOD_ACCOUNTING]	= mod_accounting,
-		[MOD_SESSION]		= mod_checksimul,
 		[MOD_PRE_PROXY]		= mod_pre_proxy,
 		[MOD_POST_PROXY]	= mod_post_proxy,
 		[MOD_POST_AUTH]		= mod_post_auth
