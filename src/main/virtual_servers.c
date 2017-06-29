@@ -240,34 +240,6 @@ rlm_rcode_t process_accounting(int acct_type, REQUEST *request)
 }
 #endif
 
-#ifdef WITH_SESSION_MGMT
-/*
- *	See if a user is already logged in.
- *
- *	Returns: 0 == OK, 1 == double logins, 2 == multilink attempt
- */
-int process_checksimul(int sess_type, REQUEST *request, int maxsimul)
-{
-	rlm_rcode_t rcode;
-
-	if (!request->username)
-		return 0;
-
-	request->simul_count = 0;
-	request->simul_max = maxsimul;
-	request->simul_mpp = 1;
-
-	rcode = module_method_call(MOD_SESSION, sess_type, request);
-
-	if (rcode != RLM_MODULE_OK) {
-		/* FIXME: Good spot for a *rate-limited* warning to the log */
-		return 0;
-	}
-
-	return (request->simul_count < maxsimul) ? 0 : request->simul_mpp;
-}
-#endif
-
 #ifdef WITH_PROXY
 /*
  *	Do pre-proxying for ALL configured sessions
@@ -436,10 +408,6 @@ static int virtual_servers_compile(CONF_SECTION *cs)
 
 #ifndef WITH_ACCOUNTING
 		if (comp == MOD_ACCOUNTING) continue;
-#endif
-
-#ifndef WITH_SESSION_MGMT
-		if (comp == MOD_SESSION) continue;
 #endif
 
 		if (load_component_section(subcs, comp) < 0) {
