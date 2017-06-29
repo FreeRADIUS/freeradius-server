@@ -38,6 +38,8 @@ addons:
   apt:
     sources:
     - couchbase-precise
+    # For newer libkqueue
+    - sourceline: ppa:rjvbertin/misc
     packages:
     - autoconf
     - build-essential
