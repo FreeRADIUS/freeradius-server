@@ -557,10 +557,10 @@ static int tacacs_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *l
 	rcode = tacacs_compile_section(server_cs, "send", "Authentication", MOD_POST_AUTH);
 	if (rcode < 0) return rcode;
 
-	rcode = tacacs_compile_section(server_cs, "recv", "Authorization", MOD_SESSION);
+	rcode = tacacs_compile_section(server_cs, "recv", "Authorization", MOD_AUTHORIZE);
 	if (rcode < 0) return rcode;
 
-	rcode = tacacs_compile_section(server_cs, "send", "Authorization", MOD_SESSION);
+	rcode = tacacs_compile_section(server_cs, "send", "Authorization", MOD_POST_AUTH);
 	if (rcode < 0) return rcode;
 
 	rcode = tacacs_compile_section(server_cs, "recv", "Accounting", MOD_PREACCT);
