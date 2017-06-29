@@ -315,12 +315,11 @@ int fr_control_message_send(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, 
 
 	if (fr_control_message_push(c, rb, id, data, data_size) < 0) return -1;
 
-	errno = 0;	/* Clear any old error numbers */
 	EV_SET(&kev, c->ident, EVFILT_USER, 0, NOTE_TRIGGER | NOTE_FFNOP, 0, NULL);
 	rcode = kevent(c->kq, &kev, 1, NULL, 0, NULL);
 	if (rcode >= 0) return rcode;
 
-	fr_strerror_printf("Failed updating KQ: %s", fr_syserror(errno));
+	fr_strerror_printf("Failed sending user event to kqueue (%i): %s", c->kq, fr_syserror(errno));
 	return rcode;
 }
 
