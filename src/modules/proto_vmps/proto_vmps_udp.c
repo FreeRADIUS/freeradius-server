@@ -102,8 +102,9 @@ static int mod_dst_address(fr_socket_addr_t *dst, UNUSED void const *instance, v
 /** Decode the packet.
  *
  */
-static int mod_decode(UNUSED void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
+static int mod_decode(UNUSED void const *instance, UNUSED REQUEST *request, UNUSED uint8_t *const data, UNUSED size_t data_len)
 {
+#if 0
 //	proto_vmps_udp_t const *inst = talloc_get_type_abort(instance, proto_vmps_udp_t);
 	fr_ip_srcdst_t *ip;
 	uint8_t *packet;
@@ -118,12 +119,14 @@ static int mod_decode(UNUSED void const *instance, REQUEST *request, uint8_t *co
 	packet_len = data_len - sizeof(*ip);
 
 	// decode the packet into attributes.
+#endif
 
 	return 0;
 }
 
-static ssize_t mod_encode(UNUSED void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
+static ssize_t mod_encode(UNUSED void const *instance, UNUSED REQUEST *request, UNUSED uint8_t *buffer, UNUSED size_t buffer_len)
 {
+#if 0
 //	proto_vmps_udp_t const *inst = talloc_get_type_abort(instance, proto_vmps_udp_t);
 	fr_ip_srcdst_t *ip;
 	uint8_t *packet;
@@ -136,6 +139,7 @@ static ssize_t mod_encode(UNUSED void const *instance, REQUEST *request, uint8_t
 	memcpy(buffer, ip, sizeof(*ip));
 
 	// encode packet in buffer
+#endif
 
 	return 0;
 }
