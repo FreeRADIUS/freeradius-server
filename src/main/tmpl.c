@@ -60,12 +60,6 @@ const FR_NAME_NUMBER pair_lists[] = {
 	{ "proxy-request",	PAIR_LIST_PROXY_REQUEST },
 	{ "proxy-reply",	PAIR_LIST_PROXY_REPLY },
 #endif
-#ifdef WITH_COA
-	{ "coa",		PAIR_LIST_COA },
-	{ "coa-reply",		PAIR_LIST_COA_REPLY },
-	{ "disconnect",		PAIR_LIST_DM },
-	{ "disconnect-reply",	PAIR_LIST_DM_REPLY },
-#endif
 	{  NULL , -1 }
 };
 
@@ -225,37 +219,6 @@ VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list)
 		if (!request->proxy || !request->proxy->reply) break;
 		return &request->proxy->reply->vps;
 #endif
-#ifdef WITH_COA
-	case PAIR_LIST_COA:
-		if (request->coa &&
-		    (request->coa->proxy->packet->code == FR_CODE_COA_REQUEST)) {
-			return &request->coa->proxy->packet->vps;
-		}
-		break;
-
-	case PAIR_LIST_COA_REPLY:
-		if (request->coa && /* match reply with request */
-		    (request->coa->proxy->packet->code == FR_CODE_COA_REQUEST) &&
-		    request->coa->proxy->reply) {
-			return &request->coa->proxy->reply->vps;
-		}
-		break;
-
-	case PAIR_LIST_DM:
-		if (request->coa &&
-		    (request->coa->proxy->packet->code == FR_CODE_DISCONNECT_REQUEST)) {
-			return &request->coa->proxy->packet->vps;
-		}
-		break;
-
-	case PAIR_LIST_DM_REPLY:
-		if (request->coa && /* match reply with request */
-		    (request->coa->proxy->packet->code == FR_CODE_DISCONNECT_REQUEST) &&
-		    request->coa->proxy->reply) {
-			return &request->coa->proxy->reply->vps;
-		}
-		break;
-#endif
 	}
 
 	RWDEBUG2("List \"%s\" is not available",
@@ -300,18 +263,6 @@ RADIUS_PACKET *radius_packet(REQUEST *request, pair_lists_t list)
 	case PAIR_LIST_PROXY_REPLY:
 		if (!request->proxy) return NULL;
 		return request->proxy->reply;
-#endif
-
-#ifdef WITH_COA
-	case PAIR_LIST_COA:
-	case PAIR_LIST_DM:
-		if (!request->coa) return NULL;
-		return request->coa->proxy->packet;
-
-	case PAIR_LIST_COA_REPLY:
-	case PAIR_LIST_DM_REPLY:
-		if (!request->coa) return NULL;
-		return request->coa->proxy->reply;
 #endif
 	}
 
@@ -360,31 +311,6 @@ TALLOC_CTX *radius_list_ctx(REQUEST *request, pair_lists_t list)
 		return request->proxy->reply;
 #endif
 
-#ifdef WITH_COA
-	case PAIR_LIST_COA:
-		if (!request->coa) return NULL;
-		rad_assert(request->coa->proxy != NULL);
-		if (request->coa->proxy->packet->code != FR_CODE_COA_REQUEST) return NULL;
-		return request->coa->proxy->packet;
-
-	case PAIR_LIST_COA_REPLY:
-		if (!request->coa) return NULL;
-		rad_assert(request->coa->proxy != NULL);
-		if (request->coa->proxy->packet->code != FR_CODE_COA_REQUEST) return NULL;
-		return request->coa->proxy->reply;
-
-	case PAIR_LIST_DM:
-		if (!request->coa) return NULL;
-		rad_assert(request->coa->proxy != NULL);
-		if (request->coa->proxy->packet->code != FR_CODE_DISCONNECT_REQUEST) return NULL;
-		return request->coa->proxy->packet;
-
-	case PAIR_LIST_DM_REPLY:
-		if (!request->coa) return NULL;
-		rad_assert(request->coa->proxy != NULL);
-		if (request->coa->proxy->packet->code != FR_CODE_DISCONNECT_REQUEST) return NULL;
-		return request->coa->proxy->reply;
-#endif
 	/* Don't add default */
 	case PAIR_LIST_UNKNOWN:
 		break;

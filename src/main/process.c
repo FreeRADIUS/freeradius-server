@@ -363,18 +363,6 @@ static int insert_into_proxy_hash(REQUEST *request) CC_HINT(nonnull);
 
 static int request_pre_handler(REQUEST *request, UNUSED fr_state_action_t action) CC_HINT(nonnull);
 
-#ifdef WITH_COA
-static void request_coa_originate(REQUEST *request) CC_HINT(nonnull);
-STATE_MACHINE_DECL(coa_wait_for_reply) CC_HINT(nonnull);
-STATE_MACHINE_DECL(coa_queued) CC_HINT(nonnull);
-STATE_MACHINE_DECL(coa_no_reply) CC_HINT(nonnull);
-STATE_MACHINE_DECL(coa_running) CC_HINT(nonnull);
-static void coa_separate(REQUEST *request) CC_HINT(nonnull);
-#  define COA_SEPARATE if (request->coa) coa_separate(request->coa);
-#else
-#  define COA_SEPARATE
-#endif
-
 #define CHECK_FOR_STOP do { if (request->master_state == REQUEST_STOP_PROCESSING) {action = FR_ACTION_DONE;}} while (0)
 #define CHECK_FOR_PROXY_CANCELLED do { if (!request->proxy->listener) {action = FR_ACTION_DONE;}} while (0)
 
@@ -648,17 +636,6 @@ static void request_done(REQUEST *request, fr_state_action_t action)
 		return;
 	}
 
-#ifdef WITH_COA
-	/*
-	 *	Move the CoA request to its own handler.
-	 */
-	if (request->coa) {
-		coa_separate(request->coa);
-	} else if (request->parent && (request->parent->coa == request)) {
-		coa_separate(request);
-	}
-#endif
-
 	switch (action) {
 	case FR_ACTION_DUP:
 #ifdef WITH_DETAIL
@@ -930,7 +907,6 @@ static void request_cleanup_delay(REQUEST *request, fr_state_action_t action)
 
 	TRACE_STATE_MACHINE;
 	ASSERT_MASTER;
-	COA_SEPARATE;
 	CHECK_FOR_STOP;
 
 	switch (action) {
@@ -1012,7 +988,6 @@ static void request_response_delay(REQUEST *request, fr_state_action_t action)
 
 	TRACE_STATE_MACHINE;
 	ASSERT_MASTER;
-	COA_SEPARATE;
 	CHECK_FOR_STOP;
 
 	switch (action) {
@@ -1142,7 +1117,7 @@ static int request_pre_handler(REQUEST *request, UNUSED fr_state_action_t action
  *  Various cleanups, suppress responses, copy Proxy-State, and set
  *  response_delay or cleanup_delay;
  */
-static void request_finish(REQUEST *request, fr_state_action_t action)
+static void request_finish(REQUEST *request, UNUSED fr_state_action_t action)
 {
 	VALUE_PAIR *vp;
 
@@ -1154,15 +1129,6 @@ static void request_finish(REQUEST *request, fr_state_action_t action)
 		request->process(request, FR_ACTION_DONE);
 		return;
 	}
-
-#ifdef WITH_COA
-	/*
-	 *	Don't do post-auth if we're a CoA request originated
-	 *	from an Access-Request.  See request_alloc_coa() for
-	 *	details.
-	 */
-	if ((request->options & RAD_REQUEST_OPTION_COA) != 0) goto done;
-#endif
 
 	/*
 	 *	Override the response code if a control:Response-Packet-Type attribute is present.
@@ -1223,15 +1189,6 @@ static void request_finish(REQUEST *request, fr_state_action_t action)
 		vp = pair_make_config("Post-Auth-Type", "Reject", T_OP_SET);
 		if (vp) rad_postauth(request);
 	}
-
-#ifdef WITH_COA
-	/*
-	 *	Maybe originate a CoA request.
-	 */
-	if ((action == FR_ACTION_RUN) && !request->proxy && request->coa) {
-		request_coa_originate(request);
-	}
-#endif
 
 	/*
 	 *	Clean up.  These are no longer needed.
@@ -1398,7 +1355,6 @@ static void request_running(REQUEST *request, fr_state_action_t action)
 
 	switch (action) {
 	case FR_ACTION_TIMER:
-		COA_SEPARATE;
 		(void) request_max_time(request);
 		break;
 
@@ -3047,16 +3003,6 @@ static int request_will_proxy(REQUEST *request)
 do_home:
 	home_server_update_request(home, request);
 
-#ifdef WITH_COA
-	if (request->coa) {
-		REQUEST *coa = request->coa;
-
-		request->coa = NULL;
-		coa->parent = NULL;
-		request_free(coa);
-	}
-#endif
-
 	/*
 	 *	Remember that we sent the request to a Realm.
 	 */
@@ -4096,631 +4042,6 @@ static void proxy_wait_for_reply(REQUEST *request, fr_state_action_t action)
 
 /***********************************************************************
  *
- *  CoA code
- *
- ***********************************************************************/
-#ifdef WITH_COA
-static rlm_rcode_t null_handler(UNUSED REQUEST *request)
-{
-	return 0;
-}
-
-/*
- *	See if we need to originate a CoA request.
- */
-static void request_coa_originate(REQUEST *request)
-{
-	int rcode, pre_proxy_type = 0;
-	VALUE_PAIR *vp;
-	REQUEST *coa;
-	fr_ipaddr_t ipaddr;
-
-	VERIFY_REQUEST(request);
-
-	rad_assert(request->coa != NULL);
-	rad_assert(request->proxy == NULL);
-	rad_assert(!request->in_proxy_hash);
-
-	/*
-	 *	Check whether we want to originate one, or cancel one.
-	 */
-	vp = fr_pair_find_by_num(request->control, 0, FR_SEND_COA_REQUEST, TAG_ANY);
-	if (!vp) {
-		vp = fr_pair_find_by_num(request->coa->proxy->packet->vps, 0, FR_SEND_COA_REQUEST, TAG_ANY);
-	}
-
-	if (vp) {
-		if (vp->vp_uint32 == 0) {
-		fail:
-			TALLOC_FREE(request->coa);
-			return;
-		}
-	}
-
-	coa = request->coa;
-
-	/*
-	 *	src_ipaddr will be set up in proxy_encode.
-	 */
-	memset(&ipaddr, 0, sizeof(ipaddr));
-	vp = fr_pair_find_by_num(coa->proxy->packet->vps, 0, FR_PACKET_DST_IP_ADDRESS, TAG_ANY);
-	if (vp) {
-		memcpy(&ipaddr, &vp->vp_ip, sizeof(ipaddr));
-	} else if ((vp = fr_pair_find_by_num(coa->proxy->packet->vps, 0, FR_PACKET_DST_IPV6_ADDRESS, TAG_ANY)) != NULL) {
-		memcpy(&ipaddr, &vp->vp_ip, sizeof(ipaddr));
-	} else if ((vp = fr_pair_find_by_num(coa->proxy->packet->vps, 0, FR_HOME_SERVER_POOL, TAG_ANY)) != NULL) {
-		coa->home_pool = home_pool_byname(vp->vp_strvalue,
-						  HOME_TYPE_COA);
-		if (!coa->home_pool) {
-			RWDEBUG2("No such home_server_pool %s",
-			       vp->vp_strvalue);
-			goto fail;
-		}
-
-	} else {
-		/*
-		 *	If all else fails, send it to the client that
-		 *	originated this request.
-		 */
-		memcpy(&ipaddr, &request->packet->src_ipaddr, sizeof(ipaddr));
-	}
-
-	/*
-	 *	Use the pool, if it exists.
-	 */
-	if (coa->home_pool) {
-		coa->home_server = home_server_ldb(NULL, coa->home_pool, coa);
-		if (!coa->home_server) {
-			RWDEBUG("No live home server for home_server_pool %s", coa->home_pool->name);
-			goto fail;
-		}
-		home_server_update_request(coa->home_server, coa);
-
-	} else if (!coa->home_server) {
-		uint16_t port = FR_COA_UDP_PORT;
-		char buffer[INET6_ADDRSTRLEN];
-
-		vp = fr_pair_find_by_num(coa->proxy->packet->vps, 0, FR_PACKET_DST_PORT, TAG_ANY);
-		if (vp) port = vp->vp_uint32;
-
-		coa->home_server = home_server_find(&ipaddr, port, IPPROTO_UDP);
-		if (!coa->home_server) {
-			RWDEBUG2("Unknown destination %s:%d for CoA request",
-				 inet_ntop(ipaddr.af, &ipaddr.addr,
-					   buffer, sizeof(buffer)), port);
-			goto fail;
-		}
-	}
-
-	vp = fr_pair_find_by_num(coa->proxy->packet->vps, 0, FR_PACKET_TYPE, TAG_ANY);
-	if (vp) {
-		switch (vp->vp_uint32) {
-		case FR_CODE_COA_REQUEST:
-		case FR_CODE_DISCONNECT_REQUEST:
-			coa->proxy->packet->code = vp->vp_uint32;
-			break;
-
-		default:
-			DEBUG("Cannot set CoA Packet-Type to code %d",
-			      vp->vp_uint32);
-			goto fail;
-		}
-	}
-
-	if (!coa->proxy->packet->code) coa->proxy->packet->code = FR_CODE_COA_REQUEST;
-
-	/*
-	 *	The rest of the server code assumes that
-	 *	request->packet && request->reply exist.  Copy them
-	 *	from the original request.
-	 */
-	rad_assert(coa->packet != NULL);
-	rad_assert(coa->packet->vps == NULL);
-
-	coa->packet = fr_radius_copy(coa, request->packet);
-	coa->reply = fr_radius_copy(coa, request->reply);
-
-	coa->control = fr_pair_list_copy(coa, request->control);
-	coa->proxy->packet->count = 0;
-	coa->handle = null_handler;
-	coa->number = request->number; /* it's associated with the same request */
-	coa->seq_start = request->seq_start;
-
-	/*
-	 *	Call the pre-proxy routines.
-	 */
-	vp = fr_pair_find_by_num(request->control, 0, FR_PRE_PROXY_TYPE, TAG_ANY);
-	if (vp) {
-		fr_dict_enum_t const *dval = fr_dict_enum_by_value(NULL, vp->da, &vp->data);
-		/* Must be a validation issue */
-		rad_assert(dval);
-		RDEBUG2("Found Pre-Proxy-Type %s", dval->alias);
-		pre_proxy_type = vp->vp_uint32;
-	}
-
-	if (coa->home_pool && coa->home_pool->virtual_server) {
-		CONF_SECTION *old_server = coa->server_cs;
-
-		coa->proxy->server_cs = virtual_server_find(coa->home_pool->virtual_server);
-		coa->server_cs = coa->proxy->server_cs; /* @fixme 4.0 this shouldn't be necessary! */
-
-		RDEBUG2("server %s {", cf_section_name2(coa->server_cs));
-		RINDENT();
-		rcode = process_pre_proxy(pre_proxy_type, coa);
-		REXDENT();
-		RDEBUG2("}");
-		coa->server_cs = old_server;
-	} else {
-		rcode = process_pre_proxy(pre_proxy_type, coa);
-	}
-	switch (rcode) {
-	default:
-		goto fail;
-
-	/*
-	 *	Only send the CoA packet if the pre-proxy code succeeded.
-	 */
-	case RLM_MODULE_NOOP:
-	case RLM_MODULE_OK:
-	case RLM_MODULE_UPDATED:
-		break;
-	}
-
-	/*
-	 *	Source IP / port is set when the proxy socket
-	 *	is chosen.
-	 */
-	coa->proxy->packet->dst_ipaddr = coa->home_server->ipaddr;
-	coa->proxy->packet->dst_port = coa->home_server->port;
-
-	if (!insert_into_proxy_hash(coa)) {
-		radlog_request(L_PROXY, 0, coa, "Failed to insert CoA request into proxy list");
-		goto fail;
-	}
-
-	/*
-	 *	We CANNOT divorce the CoA request from the parent
-	 *	request.  This function is running in a child thread,
-	 *	and we need access to the main event loop in order to
-	 *	to add the timers for the CoA packet.
-	 *
-	 *	Instead, we wait for the timer on the parent request
-	 *	to fire.
-	 */
-	gettimeofday(&coa->proxy->packet->timestamp, NULL);
-	coa->packet->timestamp = coa->proxy->packet->timestamp; /* for max_request_time */
-	coa->home_server->last_packet_sent = coa->proxy->packet->timestamp.tv_sec;
-	coa->delay = 0;		/* need to calculate a new delay */
-
-	/*
-	 *	If requested, put a State attribute into the packet,
-	 *	and cache the VPS.
-	 */
-	fr_request_to_state(global_state, coa, NULL, coa->packet);
-
-	/*
-	 *	Encode the packet before we do anything else.
-	 */
-	coa->proxy->listener->encode(coa->proxy->listener, coa);
-	coa->proxy->listener->debug(coa, coa->proxy->packet, false);
-
-#ifdef DEBUG_STATE_MACHINE
-	if (rad_debug_lvl) printf("(%" PRIu64 ") ********\tSTATE %s C-%s -> C-%s\t********\n",
-				  request->number, __FUNCTION__,
-				  child_state_names[request->child_state],
-				  child_state_names[REQUEST_PROXIED]);
-#endif
-
-	/*
-	 *	Set the state function, then the state, no child, and
-	 *	send the packet.
-	 */
-	coa->process = coa_wait_for_reply;
-	coa->child_state = REQUEST_PROXIED;
-
-	coa->child_pid = NO_SUCH_CHILD_PID;
-
-	if (we_are_master()) coa_separate(request->coa);
-
-	/*
-	 *	And send the packet.
-	 */
-	coa->proxy->listener->send(coa->proxy->listener, coa);
-}
-
-
-static bool coa_keep_waiting(REQUEST *request)
-{
-	uint32_t delay, frac;
-	struct timeval now, when, mrd;
-	home_server_t *home = request->proxy->home_server;
-	char buffer[INET6_ADDRSTRLEN];
-
-	VERIFY_REQUEST(request);
-
-	/*
-	 *	Use a new connection when the home server is
-	 *	dead, or when there's no proxy listener, or
-	 *	when the listener is failed or dead.
-	 *
-	 *	If the listener is known or frozen, use it for
-	 *	retransmits.
-	 */
-	if ((home->state == HOME_STATE_IS_DEAD) ||
-	    !request->proxy->listener ||
-	    (request->proxy->listener->status >= RAD_LISTEN_STATUS_EOL)) {
-		return false;
-	}
-
-	fr_event_list_time(&now, event_list);
-
-	if (request->delay == 0) {
-		/*
-		 *	Implement re-transmit algorithm as per RFC 5080
-		 *	Section 2.2.1.
-		 *
-		 *	We want IRT + RAND*IRT
-		 *	or 0.9 IRT + rand(0,.2) IRT
-		 *
-		 *	2^20 ~ USEC, and we want 2.
-		 *	rand(0,0.2) USEC ~ (rand(0,2^21) / 10)
-		 */
-		delay = (fr_rand() & ((1 << 22) - 1)) / 10;
-		request->delay = delay * home->coa_irt;
-		delay = home->coa_irt * USEC;
-		delay -= delay / 10;
-		delay += request->delay;
-		request->delay = delay;
-
-		when = request->proxy->packet->timestamp;
-		tv_add(&when, delay);
-
-		if (fr_timeval_cmp(&when, &now) > 0) {
-			STATE_MACHINE_TIMER;
-			return true;
-		}
-	}
-
-	/*
-	 *	Retransmit CoA request.
-	 */
-
-	/*
-	 *	Cap count at MRC, if it is non-zero.
-	 */
-	if (home->coa_mrc &&
-	    (request->proxy->packet->count >= home->coa_mrc)) {
-		RERROR("Failing request - originate-coa ID %u, due to lack of any response from coa server %s port %d",
-		       request->proxy->packet->id,
-		       inet_ntop(request->proxy->packet->dst_ipaddr.af,
-				 &request->proxy->packet->dst_ipaddr.addr,
-				 buffer, sizeof(buffer)),
-		       request->proxy->packet->dst_port);
-		return false;
-	}
-
-	/*
-	 *	RFC 5080 Section 2.2.1
-	 *
-	 *	RT = 2*RTprev + RAND*RTprev
-	 *	   = 1.9 * RTprev + rand(0,.2) * RTprev
-	 *	   = 1.9 * RTprev + rand(0,1) * (RTprev / 5)
-	 */
-	delay = fr_rand();
-	delay ^= (delay >> 16);
-	delay &= 0xffff;
-	frac = request->delay / 5;
-	delay = ((frac >> 16) * delay) + (((frac & 0xffff) * delay) >> 16);
-
-	delay += (2 * request->delay) - (request->delay / 10);
-
-	/*
-	 *	Cap delay at MRT, if MRT is non-zero.
-	 */
-	if (home->coa_mrt &&
-	    (delay > (home->coa_mrt * USEC))) {
-		int mrt_usec = home->coa_mrt * USEC;
-
-		/*
-		 *	delay = MRT + RAND * MRT
-		 *	      = 0.9 MRT + rand(0,.2)  * MRT
-		 */
-		delay = fr_rand();
-		delay ^= (delay >> 15);
-		delay &= 0x1ffff;
-		delay = ((mrt_usec >> 16) * delay) + (((mrt_usec & 0xffff) * delay) >> 16);
-		delay += mrt_usec - (mrt_usec / 10);
-	}
-
-	request->delay = delay;
-	when = now;
-	tv_add(&when, request->delay);
-	mrd = request->proxy->packet->timestamp;
-	mrd.tv_sec += home->coa_mrd;
-
-	/*
-	 *	Cap duration at MRD.
-	 */
-	if (fr_timeval_cmp(&mrd, &when) < 0) {
-		when = mrd;
-	}
-	STATE_MACHINE_TIMER;
-
-	request->proxy->packet->count++;
-
-	FR_STATS_TYPE_INC(home->stats.total_requests);
-
-	RDEBUG2("Sending duplicate CoA request to home server %s port %d - ID: %d",
-		inet_ntop(request->proxy->packet->dst_ipaddr.af,
-			  &request->proxy->packet->dst_ipaddr.addr,
-			  buffer, sizeof(buffer)),
-		request->proxy->packet->dst_port,
-		request->proxy->packet->id);
-
-	request->proxy->listener->send(request->proxy->listener,
-				      request);
-	return true;
-}
-
-
-/** Wait for a reply after originating a CoA a request.
- *
- *  Retransmit the proxied packet, or time out and go to
- *  coa_no_reply.  Mark the home server unresponsive, etc.
- *
- *  If we do receive a reply, we transition to coa_running.
- *
- *  \dot
- *	digraph coa_wait_for_reply {
- *		coa_wait_for_reply;
- *
- *		coa_wait_for_reply -> coa_no_reply [ label = "TIMER >= response_delay" ];
- *		coa_wait_for_reply -> timer [ label = "TIMER < max_request_time" ];
- *		coa_wait_for_reply -> coa_queued [ label = "PROXY_REPLY" arrowhead = "none"];
- *		coa_wait_for_reply -> done [ label = "TIMER >= max_request_time" ];
- *	}
- *  \enddot
- */
-static void coa_wait_for_reply(REQUEST *request, fr_state_action_t action)
-{
-	VERIFY_REQUEST(request);
-
-	TRACE_STATE_MACHINE;
-	ASSERT_MASTER;
-	CHECK_FOR_STOP;
-
-	if (request->parent) coa_separate(request);
-
-	switch (action) {
-	case FR_ACTION_TIMER:
-		if (request_max_time(request)) goto done;
-
-		/*
-		 *	@fixme: for TCP, the socket may go away.
-		 *	we probably want to do the checks for proxy_keep_waiting() ??
-		 *
-		 *	And maybe do fail-over, which would be nice!
-		 */
-		if (coa_keep_waiting(request)) break;
-
-		/* FALL-THROUGH */
-
-	case FR_ACTION_PROXY_REPLY:
-		request_thread(request, coa_queued);
-		break;
-
-	case FR_ACTION_DONE:
-	done:
-		request->process = proxy_wait_for_id;
-		request->process(request, action);
-		break;
-
-	default:
-		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
-		break;
-	}
-}
-
-static void coa_separate(REQUEST *request)
-{
-	VERIFY_REQUEST(request);
-#ifdef DEBUG_STATE_MACHINE
-	fr_state_action_t action = FR_ACTION_TIMER;
-#endif
-
-	TRACE_STATE_MACHINE;
-	ASSERT_MASTER;
-
-	rad_assert(request->parent != NULL);
-	rad_assert(request->parent->coa == request);
-	rad_assert(request->ev == NULL);
-	rad_assert(!request->in_request_hash);
-	rad_assert(request->coa == NULL);
-
-	rad_assert(request->proxy->reply || request->proxy->listener);
-
-	(void) talloc_steal(NULL, request);
-	request->parent->coa = NULL;
-	request->parent = NULL;
-
-	if (we_are_master()) {
-		request->delay = 0;
-		(void) coa_keep_waiting(request);
-	}
-}
-
-
-/** Process a request after the CoA has timed out.
- *
- *  Run the packet through Post-Proxy-Type Fail
- *
- *  \dot
- *	digraph coa_no_reply {
- *		coa_no_reply;
- *
- *		coa_no_reply -> dup [ label = "DUP", arrowhead = "none" ];
- *		coa_no_reply -> timer [ label = "TIMER < max_request_time" ];
- *		coa_no_reply -> coa_reply_too_late [ label = "PROXY_REPLY" arrowhead = "none"];
- *		coa_no_reply -> process_proxy_reply [ label = "RUN" ];
- *		coa_no_reply -> done [ label = "TIMER >= timeout" ];
- *	}
- *  \enddot
- */
-static void coa_no_reply(REQUEST *request, fr_state_action_t action)
-{
-	char buffer[INET6_ADDRSTRLEN];
-
-	VERIFY_REQUEST(request);
-
-	TRACE_STATE_MACHINE;
-	CHECK_FOR_STOP;
-	CHECK_FOR_PROXY_CANCELLED;
-
-	switch (action) {
-	case FR_ACTION_TIMER:
-		(void) request_max_time(request);
-		break;
-
-	case FR_ACTION_PROXY_REPLY: /* too late! */
-		RDEBUG2("Reply from CoA server %s port %d  - ID: %d arrived too late.",
-			inet_ntop(request->proxy->packet->src_ipaddr.af,
-				  &request->proxy->packet->src_ipaddr.addr,
-				  buffer, sizeof(buffer)),
-			request->proxy->packet->dst_port, request->proxy->packet->id);
-		break;
-
-	case FR_ACTION_RUN:
-		if (process_proxy_reply(request, NULL)) {
-			request->handle(request);
-		}
-		/* FALL-THROUGH */
-
-	case FR_ACTION_DONE:
-		request->process = proxy_wait_for_id;
-		request->process(request, action);
-		break;
-
-	default:
-		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
-		break;
-	}
-}
-
-
-/** Process the request after receiving a coa reply.
- *
- *  Throught the post-proxy section, and the through the handler
- *  function.
- *
- *  \dot
- *	digraph coa_running {
- *		coa_running;
- *
- *		coa_running -> timer [ label = "TIMER < max_request_time" ];
- *		coa_running -> process_proxy_reply [ label = "RUN" ];
- *		coa_running -> done [ label = "TIMER >= timeout" ];
- *	}
- *  \enddot
- */
-static void coa_running(REQUEST *request, fr_state_action_t action)
-{
-	VERIFY_REQUEST(request);
-
-	TRACE_STATE_MACHINE;
-	CHECK_FOR_STOP;
-	CHECK_FOR_PROXY_CANCELLED;
-
-	switch (action) {
-	case FR_ACTION_TIMER:
-		(void) request_max_time(request);
-		break;
-
-	case FR_ACTION_RUN:
-		if (request->proxy->listener->decode(request->proxy->listener, request) < 0) goto done;
-		request->proxy->listener->debug(request, request->proxy->reply, true);
-
-		if (process_proxy_reply(request, request->proxy->reply)) {
-			request->handle(request);
-		}
-		/* FALL-THROUGH */
-
-	done:
-	case FR_ACTION_DONE:
-		request->process = proxy_wait_for_id;
-		request->process(request, action);
-		break;
-
-	default:
-		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
-		break;
-	}
-}
-
-/** Handle events while a CoA packet is in the queue.
- *
- *  \dot
- *	digraph coa_queued {
- *		coa_queued;
- *
- *		coa_queued -> timer [ label = "TIMER < max_request_time" ];
- *		coa_queued -> coa_queued [ label = "PROXY_REPLY" ];
- *		coa_queued -> coa_running [ label = "RUN with reply" ];
- *		coa_queued -> coa_no_reply [ label = "RUN without reply" ];
- *		coa_queued -> done [ label = "TIMER >= timeout" ];
- *	}
- *  \enddot
- */
-static void coa_queued(REQUEST *request, fr_state_action_t action)
-{
-	VERIFY_REQUEST(request);
-
-	TRACE_STATE_MACHINE;
-	CHECK_FOR_STOP;
-	CHECK_FOR_PROXY_CANCELLED;
-
-	switch (action) {
-	case FR_ACTION_TIMER:
-		(void) request_max_time(request);
-		break;
-
-		/*
-		 *	We have a proxy reply, but wait for it to be
-		 *	de-queued before doing anything.
-		 */
-	case FR_ACTION_PROXY_REPLY:
-		break;
-
-	case FR_ACTION_RUN:
-		if (request->proxy->reply) {
-			request->process = coa_running;
-			request->process(request, FR_ACTION_RUN);
-			break;
-
-		} else if (setup_post_proxy_fail(request)) {
-			request->process = coa_no_reply;
-			request->process(request, FR_ACTION_RUN);
-			break;
-
-		} else {	/* no Post-Proxy-Type fail */
-			goto done;
-		}
-
-	case FR_ACTION_DONE:
-		request_queue_extract(request);
-	done:
-		request->process = proxy_wait_for_id;
-                request->process(request, action);
-		break;
-
-	default:
-		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
-		break;
-	}
-}
-#endif	/* WITH_COA */
-
-/***********************************************************************
- *
  *  End of the State machine.  Start of additional helper code.
  *
  ***********************************************************************/
@@ -5496,12 +4817,6 @@ static int request_delete_cb(UNUSED void *ctx, void *data)
 			request->packet->id,
 			(unsigned int) (request->packet->timestamp.tv_sec - fr_start_time));
 	}
-
-#ifdef WITH_COA
-	if (request->coa) {
-		rad_assert(!request->coa->in_proxy_hash);
-	}
-#endif
 
 	request_free(request);
 

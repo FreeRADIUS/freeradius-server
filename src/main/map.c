@@ -1063,22 +1063,6 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 		goto finish;
 	}
 
-	/*
-	 *	If there's no CoA packet and we're updating it,
-	 *	auto-allocate it.
-	 */
-	if (((map->lhs->tmpl_list == PAIR_LIST_COA) ||
-	     (map->lhs->tmpl_list == PAIR_LIST_DM)) && !request->coa) {
-		if (!request_alloc_coa(context)) {
-			REDEBUG("Failed to create a CoA/Disconnect Request message");
-			rcode = -2;
-			goto finish;
-		}
-		context->coa->proxy->packet->code = (map->lhs->tmpl_list == PAIR_LIST_COA) ?
-					    FR_CODE_COA_REQUEST :
-					    FR_CODE_DISCONNECT_REQUEST;
-	}
-
 	list = radius_list(context, map->lhs->tmpl_list);
 	if (!list) {
 		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" invalid in this context",

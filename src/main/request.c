@@ -55,10 +55,6 @@ static int _request_free(REQUEST *request)
 #endif
 	rad_assert(!request->ev);
 
-#ifdef WITH_COA
-	rad_assert(request->coa == NULL);
-#endif
-
 #ifndef NDEBUG
 	request->magic = 0x01020304;	/* set the request to be nonsense */
 #endif
@@ -227,40 +223,6 @@ REQUEST *request_alloc_fake(REQUEST *request)
 
 	return fake;
 }
-
-#ifdef WITH_COA
-REQUEST *request_alloc_coa(REQUEST *request)
-{
-	if (!request || request->coa) return NULL;
-
-	/*
-	 *	Originate CoA requests only when necessary.
-	 */
-	if ((request->packet->code != FR_CODE_ACCESS_REQUEST) &&
-	    (request->packet->code != FR_CODE_ACCOUNTING_REQUEST)) return NULL;
-
-	request->coa = request_alloc_fake(request);
-	if (!request->coa) return NULL;
-
-	request->coa->parent = request;
-	request->coa->options = RAD_REQUEST_OPTION_COA;	/* is a CoA packet */
-	request->coa->packet->code = 0; /* unknown, as of yet */
-	request->coa->child_state = REQUEST_RUNNING;
-	request->coa->proxy = request_alloc(request->coa);
-	if (!request->coa->proxy) {
-		TALLOC_FREE(request->coa);
-		return NULL;
-	}
-
-	request->coa->proxy->packet = fr_radius_alloc(request->coa->proxy, false);
-	if (!request->coa->proxy->packet) {
-		TALLOC_FREE(request->coa);
-		return NULL;
-	}
-
-	return request->coa;
-}
-#endif
 
 REQUEST *request_alloc_proxy(REQUEST *request)
 {

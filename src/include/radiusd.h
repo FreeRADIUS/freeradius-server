@@ -319,10 +319,6 @@ struct rad_request {
 
 	uint32_t		options;	//!< mainly for proxying EAP-MSCHAPv2.
 
-#ifdef WITH_COA
-	REQUEST			*coa;		//!< CoA request originated by this request.
-#endif
-
 	fr_async_t		*async;		//!< for new async listeners
 };				/* REQUEST typedef */
 
@@ -332,7 +328,6 @@ struct rad_request {
 #define RAD_REQUEST_LVL_DEBUG3	(3)
 #define RAD_REQUEST_LVL_DEBUG4	(4)
 
-#define RAD_REQUEST_OPTION_COA	(1 << 0)
 #define RAD_REQUEST_OPTION_CTX	(1 << 1)
 #define RAD_REQUEST_OPTION_DETAIL (1 << 2)
 
@@ -423,7 +418,6 @@ void		talloc_const_free(void const *ptr);
 char		*rad_ajoin(TALLOC_CTX *ctx, char const **argv, int argc, char c);
 REQUEST		*request_alloc(TALLOC_CTX *ctx);
 REQUEST		*request_alloc_fake(REQUEST *oldreq);
-REQUEST		*request_alloc_coa(REQUEST *request);
 REQUEST		*request_alloc_proxy(REQUEST *request);
 int		request_data_add(REQUEST *request, void const *unique_ptr, int unique_int, void *opaque,
 				 bool free_on_replace, bool free_on_parent, bool persist);

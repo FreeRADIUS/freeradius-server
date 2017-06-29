@@ -77,12 +77,6 @@ data %{User-Name[*]}
 xlat %{request:User-Name[#]}
 data %{User-Name[#]}
 
-xlat %{coa:User-Name[#]}
-data %{coa:User-Name[#]}
-
-xlat %{coaX:User-Name[#]}
-data ERROR offset 2 'Unknown module'
-
 xlat %{3GPP-SGSN-Address}
 data %{3GPP-SGSN-Address}
 

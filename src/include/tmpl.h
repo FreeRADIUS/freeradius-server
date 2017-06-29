@@ -91,14 +91,6 @@ typedef enum pair_lists {
 	PAIR_LIST_PROXY_REPLY,		//!< Attributes sent in response to the proxied
 					///< request.
 #endif
-#ifdef WITH_COA
-	PAIR_LIST_COA,			//!< Attributes to send in a forked CoA-Request.
-	PAIR_LIST_COA_REPLY,		//!< Attributes sent in response to the forked
-					///< CoA-Request.
-	PAIR_LIST_DM,			//!< Attributes to send in a forked Disconnect-Request.
-	PAIR_LIST_DM_REPLY		//!< Attributes sent in response to the forked
-					//!< Disconnect-Request.
-#endif
 } pair_lists_t;
 
 extern const FR_NAME_NUMBER pair_lists[];

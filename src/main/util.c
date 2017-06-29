@@ -911,15 +911,6 @@ void verify_request(char const *file, int line, REQUEST *request)
 	}
 #endif
 
-#ifdef WITH_COA
-	if (request->coa) {
-		(void) talloc_get_type_abort(request->coa, REQUEST);
-
-		rad_assert(request == talloc_parent(request->coa));
-
-		verify_request(file, line, request->coa);
-	}
-#endif
 }
 #endif
 
