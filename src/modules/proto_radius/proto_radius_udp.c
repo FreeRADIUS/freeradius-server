@@ -361,7 +361,7 @@ static int mod_open(void *instance)
 
 	sockfd = fr_socket_server_udp(&inst->ipaddr, &port, inst->port_name, true);
 	if (sockfd < 0) {
-		ERROR("%s", fr_strerror());
+		ERROR("Failed opening UDP socket: %s", fr_strerror());
 	error:
 		return -1;
 	}
