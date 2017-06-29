@@ -257,10 +257,10 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 		if (rcode < 0) return rcode;
 	}
 
-	rcode = unlang_compile_subsection(server_cs, "send", "Do-Not-Respond", MOD_SEND_COA);
+	rcode = unlang_compile_subsection(server_cs, "send", "Do-Not-Respond", MOD_POST_AUTH);
 	if (rcode < 0) return rcode;
 
-	rcode = unlang_compile_subsection(server_cs, "send", "Protocol-Error", MOD_SEND_COA);
+	rcode = unlang_compile_subsection(server_cs, "send", "Protocol-Error", MOD_POST_AUTH);
 	if (rcode < 0) return rcode;
 
 	return 0;
