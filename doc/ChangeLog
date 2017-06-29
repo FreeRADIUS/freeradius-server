@@ -1,14 +1,19 @@
 FreeRADIUS 3.0.15 Fri 26 May 2017 13:00:00 EDT urgency=medium
 	Feature improvements
+	* Provide HOSTNAME in default systemd files.
+	* Incorporate RedHat specific files
+	* Update dictionary.starent, dictionary.ruckus
+	* Allow builds without TCP or DHCP
 
 	Bug fixes
 	* don't crash when reading corrupted data from session
 	  resumption cache.  Fixes #1999.
 	* Parse port in dhcpclient.  Fixes #2000.
-	* Updated dictionary.starent
 	* Don't leak memory for OpenSSL.
 	  Patch from Guido Vranken.
 	* Portability fixes taken from OpenBSD port collection.
+	* run rad_authlog after post-auth for Access-Reject.
+	* Don't process VMPS packets twice.
 
 FreeRADIUS 3.0.14 Fri 26 May 2017 13:00:00 EDT urgency=medium
 	Feature improvements
