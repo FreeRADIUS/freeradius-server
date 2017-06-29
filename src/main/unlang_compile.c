@@ -53,7 +53,6 @@ char const * const comp2str[] = {
 	"authorize",
 	"preacct",
 	"accounting",
-	"session",
 	"pre-proxy",
 	"post-proxy",
 	"post-auth"
@@ -239,33 +238,6 @@ defaultactions[MOD_COUNT][UNLANG_GROUP_TYPE_MAX][RLM_MODULE_NUMCODES] =
 			1,			/* notfound */
 			2,			/* noop     */
 			4			/* updated  */
-		}
-	},
-	/* checksimul */
-	{
-		/* group */
-		{
-			MOD_ACTION_RETURN,	/* reject   */
-			1,			/* fail     */
-			MOD_ACTION_RETURN,	/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* userlock */
-			MOD_ACTION_RETURN,	/* notfound */
-			MOD_ACTION_RETURN,	/* noop     */
-			MOD_ACTION_RETURN	/* updated  */
-		},
-		/* redundant */
-		{
-			MOD_ACTION_RETURN,	/* reject   */
-			1,			/* fail     */
-			MOD_ACTION_RETURN,	/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* userlock */
-			MOD_ACTION_RETURN,	/* notfound */
-			MOD_ACTION_RETURN,	/* noop     */
-			MOD_ACTION_RETURN	/* updated  */
 		}
 	},
 	/* pre-proxy */

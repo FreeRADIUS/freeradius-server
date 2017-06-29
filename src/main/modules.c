@@ -45,7 +45,6 @@ const section_type_value_t section_type_value[MOD_COUNT] = {
 	{ "authorize",   "Autz-Type",      FR_AUTZ_TYPE },
 	{ "preacct",     "Pre-Acct-Type",  FR_PRE_ACCT_TYPE },
 	{ "accounting",  "Acct-Type",      FR_ACCT_TYPE },
-	{ "session",     "Session-Type",   FR_SESSION_TYPE },
 	{ "pre-proxy",   "Pre-Proxy-Type", FR_PRE_PROXY_TYPE },
 	{ "post-proxy",  "Post-Proxy-Type", FR_POST_PROXY_TYPE },
 	{ "post-auth",   "Post-Auth-Type", FR_POST_AUTH_TYPE }

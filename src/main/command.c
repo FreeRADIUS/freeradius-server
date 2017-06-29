@@ -1028,7 +1028,6 @@ static char const *method_names[MOD_COUNT] = {
 	"authorize",
 	"preacct",
 	"accounting",
-	"session",
 	"pre-proxy",
 	"post-proxy",
 	"post-auth"
