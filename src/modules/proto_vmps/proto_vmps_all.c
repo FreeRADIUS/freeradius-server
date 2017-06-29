@@ -102,10 +102,8 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 
 		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
 		unlang = NULL;
-		if (dv) {
-			unlang = cf_section_find(request->server_cs, "send", dv->alias);
-		}
-		if (!unlang) unlang = cf_section_find(request->server_cs, "send", "*");
+		if (dv) unlang = cf_section_find(request->server_cs, "send", dv->alias);
+
 		if (!unlang) goto send_reply;
 
 	rerun_nak:
@@ -215,11 +213,6 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 
 	rcode = unlang_compile_subsection(server_cs, "send", "VMPS-Join-Response", MOD_POST_AUTH);
 	if (rcode < 0) return rcode;
-	if (rcode == 0) {
-		cf_log_err(server_cs, "Failed finding 'send VMPS-Join-Response { ... }' section of virtual server %s",
-			      cf_section_name2(server_cs));
-		return -1;
-	}
 
 	rcode = unlang_compile_subsection(server_cs, "recv", "VMPS-Reconfirm-Request", MOD_AUTHORIZE);
 	if (rcode < 0) return rcode;
@@ -231,19 +224,9 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 
 	rcode = unlang_compile_subsection(server_cs, "send", "VMPS-Reconfirm-Response", MOD_POST_AUTH);
 	if (rcode < 0) return rcode;
-	if (rcode == 0) {
-		cf_log_err(server_cs, "Failed finding 'send VMPS-Reconfirm-Response { ... }' section of virtual server %s",
-			      cf_section_name2(server_cs));
-		return -1;
-	}
 
 	rcode = unlang_compile_subsection(server_cs, "send", "Do-Not-Respond", MOD_POST_AUTH);
 	if (rcode < 0) return rcode;
-	if (rcode == 0) {
-		cf_log_err(server_cs, "Failed finding 'send Do-Not-Respond { ... }' section of virtual server %s",
-			      cf_section_name2(server_cs));
-		return -1;
-	}
 
 	return 0;
 }
