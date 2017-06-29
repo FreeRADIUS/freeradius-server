@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file rlm_dhcp.c
+ * @file proto_dhcpv4/rlm_dhcpv4.c
  * @brief Will contain dhcp listener code.
  *
  * @copyright 2012  The FreeRADIUS server project
