@@ -659,7 +659,8 @@ int virtual_servers_open(fr_schedule_t *sc)
 			if (!listen || !listen->proto_module) continue; 		/* Skip old style */
 			if (listen->app->open &&
 			    listen->app->open(listen->proto_module->data, sc, listen->proto_module->conf) < 0) {
-				cf_log_err(listen->proto_module->conf, "Opening I/O interface failed");
+				cf_log_err(listen->proto_module->conf, "Opening %s I/O interface failed",
+					   listen->app->name);
 				return -1;
 			}
 		}
