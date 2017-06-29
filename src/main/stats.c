@@ -705,12 +705,11 @@ void request_stats_reply(REQUEST *request)
 #endif
 		ipaddr.af = AF_INET;
 		ipaddr.addr.v4.s_addr = server_ip->vp_ipv4addr;
-		home = home_server_find(&ipaddr, server_port->vp_uint32,
-					IPPROTO_UDP);
 
 		/*
 		 *	Not found: don't do anything
 		 */
+		home = NULL;
 		if (!home) return;
 
 		fr_pair_add(&request->reply->vps,

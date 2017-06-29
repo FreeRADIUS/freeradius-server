@@ -1159,7 +1159,7 @@ static int command_show_home_servers(rad_listen_t *listener, UNUSED int argc, UN
 	char buffer[INET6_ADDRSTRLEN];
 
 	for (i = 0; i < 256; i++) {
-		home = home_server_bynumber(i);
+		home = NULL;
 		if (!home) break;
 
 		/*
@@ -1864,7 +1864,7 @@ static home_server_t *get_home_server(rad_listen_t *listener, int argc,
 		break;
 	}
 
-	home = home_server_find(&ipaddr, port, proto);
+	home = NULL;
 	if (!home) {
 		cprintf_error(listener, "No such home server\n");
 		return NULL;

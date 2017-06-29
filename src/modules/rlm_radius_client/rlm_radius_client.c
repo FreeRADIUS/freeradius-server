@@ -668,7 +668,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *config)
 		return -1;
 	}
 
-	home = home_server_afrom_cs(config, NULL, cs);
+//	home = home_server_afrom_cs(config, NULL, cs);
+	home = NULL;
 	if (!home) {
 		cf_log_err(config, "Failed parsing home server");
 		return -1;

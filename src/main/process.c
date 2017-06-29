@@ -2910,7 +2910,7 @@ static int request_will_proxy(REQUEST *request)
 			return 0;
 		}
 
-		pool = home_pool_byname(vp->vp_strvalue, pool_type);
+		pool = NULL;
 
 		/*
 		 *	Send it directly to a home server (i.e. NAS)
@@ -2958,7 +2958,7 @@ static int request_will_proxy(REQUEST *request)
 		/*
 		 *	Nothing does CoA over TCP.
 		 */
-		home = home_server_find(&dst_ipaddr, dst_port, IPPROTO_UDP);
+		home = NULL;
 		if (!home) {
 			char buffer[INET6_ADDRSTRLEN];
 
@@ -2993,7 +2993,7 @@ static int request_will_proxy(REQUEST *request)
 
 	request->home_pool = pool;
 
-	home = home_server_ldb(realmname, pool, request);
+	home = NULL;
 
 	if (!home) {
 		REDEBUG2("Failed to find live home server: Cancelling proxy");
@@ -3001,8 +3001,6 @@ static int request_will_proxy(REQUEST *request)
 	}
 
 do_home:
-	home_server_update_request(home, request);
-
 	/*
 	 *	Remember that we sent the request to a Realm.
 	 */
@@ -3275,7 +3273,7 @@ static int request_proxy_anew(REQUEST *request)
 	/*
 	 *	Find a live home server for the request.
 	 */
-	home = home_server_ldb(NULL, request->home_pool, request);
+	home = NULL;
 	if (!home) {
 		REDEBUG2("Failed to find live home server for request");
 	post_proxy_fail:
@@ -3321,8 +3319,6 @@ static int request_proxy_anew(REQUEST *request)
 		(void) proxy_to_virtual_server(request);
 		return 0;
 	}
-
-	home_server_update_request(home, request);
 
 	if (!insert_into_proxy_hash(request)) {
 		RPROXY("Failed to insert retransmission into the proxy list");
@@ -3677,7 +3673,6 @@ static void mark_home_server_zombie(home_server_t *home, struct timeval *now, st
 	}
 
 	home->state = HOME_STATE_ZOMBIE;
-	home_trigger(home, "home_server.zombie");
 
 	/*
 	 *	Set the home server to "zombie", as of the time
