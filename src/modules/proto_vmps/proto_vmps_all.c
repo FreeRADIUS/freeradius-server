@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file proto_vmps_status.c
+ * @file proto_vmps/proto_vmps_all.c
  * @brief VMPS processing.
  *
  * @copyright 2016 The Freeradius server project.
