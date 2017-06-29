@@ -74,21 +74,6 @@ int fr_dhcpv4_udp_add_arp_entry(int fd, char const *interface, fr_ipaddr_t const
 		return -1;
 	}
 
-	if (!fr_cond_assert(macaddr) ||
-	    !fr_cond_assert((macaddr->vp_type == FR_TYPE_ETHERNET) || (macaddr->vp_type == FR_TYPE_OCTETS))) {
-		fr_strerror_printf("Wrong VP type (%s) for chaddr",
-				   fr_int2str(dict_attr_types, macaddr->vp_type, "<invalid>"));
-		return -1;
-	}
-
-	if (macaddr->vp_type == FR_TYPE_OCTETS) {
-		if (macaddr->vp_length > sizeof(req.arp_ha.sa_data)) {
-			fr_strerror_printf("arp sa_data field too small (%zu octets) to contain chaddr (%zu octets)",
-					   sizeof(req.arp_ha.sa_data), macaddr->vp_length);
-			return -1;
-		}
-	}
-
 	memset(&req, 0, sizeof(req));
 	sin = (struct sockaddr_in *) &req.arp_pa;
 	sin->sin_family = AF_INET;
@@ -96,11 +81,7 @@ int fr_dhcpv4_udp_add_arp_entry(int fd, char const *interface, fr_ipaddr_t const
 
 	strlcpy(req.arp_dev, interface, sizeof(req.arp_dev));
 
-	if (macaddr->vp_type == FR_TYPE_ETHERNET) {
-		memcpy(&req.arp_ha.sa_data, macaddr->vp_ether, sizeof(macaddr->vp_ether));
-	} else {
-		memcpy(&req.arp_ha.sa_data, macaddr->vp_octets, macaddr->vp_length);
-	}
+	memcpy(&req.arp_ha.sa_data, macaddr, 6);
 
 	req.arp_flags = ATF_COM;
 	if (ioctl(fd, SIOCSARP, &req) < 0) {
