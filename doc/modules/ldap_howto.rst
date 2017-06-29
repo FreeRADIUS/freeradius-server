@@ -979,9 +979,8 @@ will process the modules in the order specified in the authorization section of
 radiusd.conf.  Currently, they are in the following order.
 
 1) preprocess
-2) suffix
-3) files
-4) ldap
+2) files
+3) ldap
 
 The first module will be preprocess.  This will first check the huntgroups of
 the user coming in.  The huntgroups are defined in the file huntgroups and they
@@ -1000,45 +999,6 @@ The preprocess module may also use the hints file, to load hints to the radius
 server, and add additional hacks that are based on the type of request that
 comes in.  This is to help with certain NAS's that don't conform to radius
 RFC's.  Check the comments in radiusd.conf for an explanation on those.
-
-The second module is suffix.  This event will determine which realm the user is
-in, based on the User-Name attribute.  It is currently setup to split the
-username at the occurence of the @symbol.  For example, the username of
-example@mydomain.com, will be split into example and mydomain.com.  The realm
-is then checked against the file proxy.conf, which will determine what actions
-should be taken for that realm.  Certain realms can be setup to be proxied to a
-different radius server or set to authenticate locally.  Also, the username can
-be setup to be stripped from the realm or left intact.  An example of
-proxy.conf, is listed below.  If the realm is to be proxied, then a secret is
-needed, which is the secret of the radius server it is to be proxied to.
-By default the User-Name will be stripped, unless the nostrip option is set.
-
-Currently we will not be using realms with our users, but adding this ability
-in the future will be much easier with already incorporating proxy.conf into the
-setup::
-
-    proxy server {
-            synchronous = no
-            retry_delay = 5
-            retry_count = 3
-            dead_time = 120
-            servers_per_realm = 15
-            default_fallback = yes
-    }
-
-    realm NULL {
-            type            = radius
-            authhost        = LOCAL
-            accthost        = LOCAL
-            #secret         = testing123
-    }
-
-    realm DEFAULT {
-            type            = radius
-            authhost        = LOCAL
-            accthost        = LOCAL
-            #secret         = testing123
-    }
 
 The next module is files, which is commonly know as the users file.  The users
 file will start with either a username to determine how to authorize a specific
@@ -1423,33 +1383,6 @@ edit huntgroups to specify a NAS to a huntgroup::
     dialup		NAS-IP-Address == 10.10.10.2
     dialup		NAS-IP-Address == 10.10.10.3
     ----End huntgroups----
-
-* edit proxy.conf to setup the different realms::
-
-    ----Begin proxy.conf----
-    proxy server {
-            synchronous = no
-            retry_delay = 5
-            retry_count = 3
-            dead_time = 120
-            servers_per_realm = 15
-            default_fallback = yes
-    }
-
-    realm NULL {
-            type		= radius
-            authhost        = LOCAL
-            accthost        = LOCAL
-            #secret		= testing123
-    }
-
-    realm DEFAULT {
-            type		= radius
-            authhost        = LOCAL
-            accthost        = LOCAL
-            #secret		= testing123
-    }
-    ----End proxy.conf----
 
     -edit clients.conf to setup the NAS's that can talk to it
 

@@ -72,18 +72,6 @@ listen {
 	#
 	type = auth
 
-	#  Note: "type = proxy" lets you control the source IP used for
-	#        proxying packets, with some limitations:
-	#
-	#    * A proxy listener CANNOT be used in a virtual server section.
-	#    * You should probably set "port = 0".
-	#    * Any "clients" configuration will be ignored.
-	#
-	#  See also proxy.conf, and the "src_ipaddr" configuration entry
-	#  in the sample "home_server" section.  When you specify the
-	#  source IP address for packets sent to a home server, the
-	#  proxy listeners are automatically created.
-
 	#  ipaddr/ipv4addr/ipv6addr - IP address on which to listen.
 	#  Out of several options the first one will be used.
 	#

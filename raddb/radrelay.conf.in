@@ -96,7 +96,7 @@ instantiate {
 proxy_requests  = yes
 
 #
-#  See proxy.conf for additional home server configuration.
+#  See v3 for what this is...
 #
 home_server home1 {
 	type = acct

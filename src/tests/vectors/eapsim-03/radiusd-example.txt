@@ -334,26 +334,6 @@ security {
 	status_server = no
 }
 
-# PROXY CONFIGURATION
-#
-#  proxy_requests: Turns proxying of RADIUS requests on or off.
-#
-#  The server has proxying turned on by default.  If your system is NOT
-#  set up to proxy requests to another server, then you can turn proxying
-#  off here.  This will save a small amount of resources on the server.
-#
-#  If you have proxying turned off, and your configuration files say
-#  to proxy a request, then an error message will be logged.
-#
-#  To disable proxying, change the "yes" to "no", and comment the
-#  $INCLUDE line.
-#
-#  allowed values: {no, yes}
-#
-proxy_requests  = yes
-$INCLUDE  ${confdir}/proxy.conf
-
-
 # CLIENTS CONFIGURATION
 #
 #  Client configuration is defined in "clients.conf".
