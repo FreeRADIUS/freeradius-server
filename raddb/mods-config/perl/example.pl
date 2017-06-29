@@ -155,14 +155,6 @@ sub accounting {
 	return RLM_MODULE_OK;
 }
 
-# Function to handle checksimul
-sub checksimul {
-	# For debugging purposes only
-#	log_request_attributes();
-
-	return RLM_MODULE_OK;
-}
-
 # Function to handle pre_proxy
 sub pre_proxy {
 	# For debugging purposes only

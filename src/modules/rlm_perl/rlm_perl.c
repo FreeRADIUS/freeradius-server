@@ -61,7 +61,6 @@ typedef struct rlm_perl_t {
 	char const	*func_start_accounting;
 	char const	*func_stop_accounting;
 	char const	*func_preacct;
-	char const	*func_checksimul;
 	char const	*func_detach;
 	char const	*func_xlat;
 #ifdef WITH_PROXY
@@ -100,7 +99,6 @@ static const CONF_PARSER module_config[] = {
 	RLM_PERL_CONF(post_auth),
 	RLM_PERL_CONF(accounting),
 	RLM_PERL_CONF(preacct),
-	RLM_PERL_CONF(checksimul),
 	RLM_PERL_CONF(detach),
 	RLM_PERL_CONF(xlat),
 
@@ -998,8 +996,6 @@ RLM_PERL_FUNC(authorize)
 RLM_PERL_FUNC(authenticate)
 RLM_PERL_FUNC(post_auth)
 
-RLM_PERL_FUNC(checksimul)
-
 #ifdef WITH_PROXY
 RLM_PERL_FUNC(pre_proxy)
 RLM_PERL_FUNC(post_proxy)
@@ -1133,7 +1129,6 @@ rad_module_t rlm_perl = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_PREACCT]		= mod_preacct,
 		[MOD_ACCOUNTING]	= mod_accounting,
-		[MOD_SESSION]		= mod_checksimul,
 #ifdef WITH_PROXY
 		[MOD_PRE_PROXY]		= mod_pre_proxy,
 		[MOD_POST_PROXY]	= mod_post_proxy,
