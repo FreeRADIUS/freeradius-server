@@ -2000,7 +2000,7 @@ static void remove_from_proxy_hash_nl(REQUEST *request, bool yank)
 {
 	VERIFY_REQUEST(request);
 
-	if (!request->in_proxy_hash) return;
+	if (!request->in_proxy_hash || !request->proxy->listener) return;
 
 	fr_packet_list_id_free(proxy_list, request->proxy->packet, yank);
 	request->in_proxy_hash = false;
@@ -2046,7 +2046,6 @@ static void remove_from_proxy_hash_nl(REQUEST *request, bool yank)
 	}
 
 #ifdef WITH_TCP
-	rad_assert(request->proxy->listener != NULL);
 	request->proxy->listener->count--;
 #endif
 	request->proxy->listener = NULL;
