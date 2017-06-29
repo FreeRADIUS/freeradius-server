@@ -25,7 +25,6 @@ rlm_perl
 rlm_preprocess
 rlm_python
 rlm_radutmp
-rlm_realm
 rlm_redis
 rlm_rest
 rlm_soh
