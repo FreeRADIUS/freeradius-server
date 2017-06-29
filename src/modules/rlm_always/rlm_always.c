@@ -106,24 +106,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_always_return(void *instance, UNUSED voi
 	return inst->rcode;
 }
 
-#ifdef WITH_SESSION_MGMT
-/*
- *	checksimul fakes some other variables besides the rcode...
- */
-static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, UNUSED void *thread, REQUEST *request)
-{
-	struct rlm_always_t *inst = instance;
-
-	if (inst->rcode_old != inst->rcode_str) reparse_rcode(inst);
-
-	request->simul_count = inst->simulcount;
-
-	if (inst->mpp) request->simul_mpp = 2;
-
-	return inst->rcode;
-}
-#endif
-
 extern rad_module_t rlm_always;
 rad_module_t rlm_always = {
 	.magic		= RLM_MODULE_INIT,
@@ -136,9 +118,6 @@ rad_module_t rlm_always = {
 		[MOD_AUTHORIZE]		= mod_always_return,
 		[MOD_PREACCT]		= mod_always_return,
 		[MOD_ACCOUNTING]	= mod_always_return,
-#ifdef WITH_SESSION_MGMT
-		[MOD_SESSION]		= mod_checksimul,
-#endif
 		[MOD_PRE_PROXY]		= mod_always_return,
 		[MOD_POST_PROXY]	= mod_always_return,
 		[MOD_POST_AUTH]		= mod_always_return,
