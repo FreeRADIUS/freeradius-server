@@ -708,7 +708,6 @@ fi
 %config(noreplace) /etc/raddb/huntgroups
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/panic.gdb
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/README.md
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/proxy.conf
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/radiusd.conf
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/trigger.conf
 #%dir %attr(750,root,radiusd) /etc/raddb/sql

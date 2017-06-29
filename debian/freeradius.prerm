@@ -15,7 +15,6 @@ case "$1" in
           /etc/freeradius/mods-config/preprocess/hints \
           /etc/freeradius/mods-config/files/accounting \
           /etc/freeradius/experimental.conf \
-          /etc/freeradius/proxy.conf \
           /etc/freeradius/clients.conf
         do
           if dpkg-statoverride --list | grep -qw $file$; then
