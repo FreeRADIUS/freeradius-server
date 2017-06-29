@@ -231,7 +231,7 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
  */
 int eap_start(rlm_eap_t const *inst, REQUEST *request)
 {
-	VALUE_PAIR *vp, *proxy;
+	VALUE_PAIR *vp;
 	VALUE_PAIR *eap_msg;
 
 	eap_msg = fr_pair_find_by_num(request->packet->vps, 0, FR_EAP_MESSAGE, TAG_ANY);
@@ -257,24 +257,6 @@ int eap_start(rlm_eap_t const *inst, REQUEST *request)
 	 */
 
 	/*
-	 *	Check for a Proxy-To-Realm.  Don't get excited over LOCAL
-	 *	realms (sigh).
-	 */
-	proxy = fr_pair_find_by_num(request->control, 0, FR_PROXY_TO_REALM, TAG_ANY);
-	if (proxy) {
-		REALM *realm;
-
-		/*
-		 *	If it's a LOCAL realm, then we're not proxying
-		 *	to it.
-		 */
-		realm = realm_find(proxy->vp_strvalue);
-		if (!realm || (realm && (!realm->auth_pool))) {
-			proxy = NULL;
-		}
-	}
-
-	/*
 	 *	Check the length before de-referencing the contents.
 	 *
 	 *	Lengths of zero are required by the RFC for EAP-Start,
@@ -285,18 +267,6 @@ int eap_start(rlm_eap_t const *inst, REQUEST *request)
 	 */
 	if ((eap_msg->vp_length == 0) || (eap_msg->vp_length == 2)) {
 		uint8_t *p;
-
-		/*
-		 *	It's a valid EAP-Start, but the request
-		 *	was marked as being proxied.  So we don't
-		 *	do EAP, as the home server will do it.
-		 */
-		if (proxy) {
-		do_proxy:
-			RDEBUG2("Request is supposed to be proxied to "
-				"Realm %s. Not doing EAP.", proxy->vp_strvalue);
-			return RLM_MODULE_NOOP;
-		}
 
 		RDEBUG2("Got EAP_START message");
 		vp = fr_pair_afrom_num(request->reply, 0, FR_EAP_MESSAGE);
@@ -331,12 +301,9 @@ int eap_start(rlm_eap_t const *inst, REQUEST *request)
 		return RLM_MODULE_FAIL;
 	/*
 	 *	The EAP packet header is 4 bytes, plus one byte of
-	 *	EAP sub-type.  Short packets are discarded, unless
-	 *	we're proxying.
+	 *	EAP sub-type.  Short packets are discarded.
 	 */
 	} else if (eap_msg->vp_length < (EAP_HEADER_LEN + 1)) {
-		if (proxy) goto do_proxy;
-
 		RDEBUG2("Ignoring EAP-Message which is too short to be meaningful");
 		return RLM_MODULE_FAIL;
 	}
@@ -350,15 +317,6 @@ int eap_start(rlm_eap_t const *inst, REQUEST *request)
 		vp->vp_uint32 = eap_msg->vp_octets[4];
 		fr_pair_add(&(request->packet->vps), vp);
 	}
-
-	/*
-	 *	If the request was marked to be proxied, do it now.
-	 *	This is done after checking for a valid length
-	 *	(which may not be good), and after adding the EAP-Type
-	 *	attribute.  This lets other modules selectively cancel
-	 *	proxying based on EAP-Type.
-	 */
-	if (proxy) goto do_proxy;
 
 	/*
 	 *	From now on, we're supposed to be handling the
