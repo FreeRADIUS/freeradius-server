@@ -1062,7 +1062,7 @@ static unlang_action_t unlang_if(REQUEST *request, unlang_stack_t *stack,
 	 *	Didn't pass.  Remember that.
 	 */
 	if (!condition) {
-		RDEBUG2("  ...");
+		RDEBUG2("...");
 
 		if (*presult != RLM_MODULE_UNKNOWN) *priority = instruction->actions[*presult];
 
