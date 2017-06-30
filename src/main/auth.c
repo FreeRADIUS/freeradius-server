@@ -757,3 +757,80 @@ skip:
 
 	return rcode;
 }
+
+void common_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received);
+
+/*
+ *	Debug the packet if requested.
+ */
+void common_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received)
+{
+	char src_ipaddr[FR_IPADDR_STRLEN];
+	char dst_ipaddr[FR_IPADDR_STRLEN];
+#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
+	char if_name[IFNAMSIZ];
+#endif
+
+	if (!packet) return;
+	if (!RDEBUG_ENABLED) return;
+
+	/*
+	 *	Client-specific debugging re-prints the input
+	 *	packet into the client log.
+	 *
+	 *	This really belongs in a utility library
+	 */
+	if (is_radius_code(packet->code)) {
+		radlog_request(L_DBG, L_DBG_LVL_1, request, "%s %s Id %i from %s%s%s:%i to %s%s%s:%i "
+#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
+			       "%s%s%s"
+#endif
+			       "length %zu",
+			       received ? "Received" : "Sent",
+			       fr_packet_codes[packet->code],
+			       packet->id,
+			       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
+			       fr_inet_ntop(src_ipaddr, sizeof(src_ipaddr), &packet->src_ipaddr),
+			       packet->src_ipaddr.af == AF_INET6 ? "]" : "",
+			       packet->src_port,
+			       packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
+			       fr_inet_ntop(dst_ipaddr, sizeof(dst_ipaddr), &packet->dst_ipaddr),
+			       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
+			       packet->dst_port,
+#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
+			       packet->if_index ? "via " : "",
+			       packet->if_index ? fr_ifname_from_ifindex(if_name, packet->if_index) : "",
+			       packet->if_index ? " " : "",
+#endif
+			       packet->data_len);
+	} else {
+		radlog_request(L_DBG, L_DBG_LVL_1, request, "%s code %u Id %i from %s%s%s:%i to %s%s%s:%i "
+#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
+			       "%s%s%s"
+#endif
+			       "length %zu",
+			       received ? "Received" : "Sent",
+			       packet->code,
+			       packet->id,
+			       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
+			       fr_inet_ntop(src_ipaddr, sizeof(src_ipaddr), &packet->src_ipaddr),
+			       packet->src_ipaddr.af == AF_INET6 ? "]" : "",
+			       packet->src_port,
+			       packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
+			       fr_inet_ntop(dst_ipaddr, sizeof(dst_ipaddr), &packet->dst_ipaddr),
+			       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
+			       packet->dst_port,
+#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
+			       packet->if_index ? "via " : "",
+			       packet->if_index ? fr_ifname_from_ifindex(if_name, packet->if_index) : "",
+			       packet->if_index ? " " : "",
+#endif
+			       packet->data_len);
+	}
+
+	if (received) {
+		rdebug_pair_list(L_DBG_LVL_1, request, packet->vps, NULL);
+	} else {
+		rdebug_proto_pair_list(L_DBG_LVL_1, request, packet->vps, NULL);
+	}
+}
