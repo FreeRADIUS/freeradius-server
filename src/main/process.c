@@ -62,13 +62,11 @@ fr_event_list_t *process_global_event_list(UNUSED event_corral_t hint) {
 	return event_list;
 }
 
-#define rad_panic(_x, ...) radlog_fatal("%s[%u]: " _x, __FILE__, __LINE__, ## __VA_ARGS__)
-
 
 /*
  *	Delete a request.
  */
-void request_delete(UNUSED REQUEST *request)
+NEVER_RETURNS void request_delete(UNUSED REQUEST *request)
 {
 	rad_assert(0 == 1);
 }
@@ -211,6 +209,8 @@ void radius_update_listener(rad_listen_t *this)
  *	Emit a systemd watchdog notification and reschedule the event.
  */
 #ifdef HAVE_SYSTEMD_WATCHDOG
+#define rad_panic(_x, ...) radlog_fatal("%s[%u]: " _x, __FILE__, __LINE__, ## __VA_ARGS__)
+
 static void sd_watchdog_event(fr_event_list_t *our_el, struct timeval *now, void *ctx)
 {
 	struct timeval when;
