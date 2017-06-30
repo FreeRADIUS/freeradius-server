@@ -953,6 +953,10 @@ static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stac
 	unlang_t			*instruction = frame->instruction;
 	unlang_stack_state_modcall_t	*modcall_state;
 
+#ifndef NDEBUG
+	int unlang_indent		= request->log.unlang_indent;
+#endif
+
 	/*
 	 *	Process a stand-alone child, and fall through
 	 *	to dealing with it's parent.
@@ -1011,6 +1015,8 @@ static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stac
 	if (*presult == RLM_MODULE_YIELD) {
 		modcall_state->thread->active_callers++;
 	} else {
+		rad_assert(unlang_indent == request->log.unlang_indent);
+
 		rad_assert(*presult >= RLM_MODULE_REJECT);
 		rad_assert(*presult < RLM_MODULE_NUMCODES);
 		*priority = instruction->actions[*presult];
