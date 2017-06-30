@@ -422,6 +422,8 @@ static ssize_t xlat_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED
 			type++;
 		}
 	}
+	REXDENT();
+
 	talloc_free(vpt);
 
 	return 0;
