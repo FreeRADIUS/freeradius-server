@@ -134,12 +134,14 @@ static RADCLIENT *client_alloc(TALLOC_CTX *ctx, char const *ip, char const *name
 	return client;
 }
 
-static REQUEST *request_from_file(FILE *fp, RADCLIENT *client)
+static REQUEST *request_from_file(FILE *fp, fr_event_list_t *el, RADCLIENT *client)
 {
 	VALUE_PAIR	*vp;
 	REQUEST		*request;
 	vp_cursor_t	cursor;
 	struct timeval	now;
+
+	static int	number = 0;
 
 	/*
 	 *	Create and initialize the new request.
@@ -165,7 +167,7 @@ static REQUEST *request_from_file(FILE *fp, RADCLIENT *client)
 	request->listener = listen_alloc(request);
 	request->client = client;
 
-	request->number = 0;
+	request->number = number++;
 
 	request->master_state = REQUEST_ACTIVE;
 	request->child_state = REQUEST_RUNNING;
@@ -400,6 +402,8 @@ static REQUEST *request_from_file(FILE *fp, RADCLIENT *client)
 
 	request->username = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_NAME, TAG_ANY);
 	request->password = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_PASSWORD, TAG_ANY);
+
+	fr_request_async_bootstrap(request, el);
 
 	return request;
 }
@@ -943,7 +947,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Grab the VPs from stdin, or from the file.
 	 */
-	request = request_from_file(fp, client);
+	request = request_from_file(fp, el, client);
 	if (!request) {
 		fprintf(stderr, "Failed reading input: %s\n", fr_strerror());
 		rcode = EXIT_FAILURE;
@@ -992,6 +996,9 @@ int main(int argc, char *argv[])
 		fclose(fp);
 	}
 
+	/*
+	 *	FIXME: create scheduler and inject packets into that!!!
+	 */
 	rad_virtual_server(request);
 
 	if (!output_file || (strcmp(output_file, "-") == 0)) {

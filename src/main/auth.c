@@ -592,12 +592,14 @@ authenticate:
 
 #include <freeradius-devel/io/listen.h>
 
-static rlm_rcode_t virtual_server_async(REQUEST *request)
+static rlm_rcode_t virtual_server_async(REQUEST *request, bool parent)
 {
 	fr_io_final_t final;
 
-	request->async = talloc_memdup(request, request->parent->async,
-				       sizeof(fr_async_t));
+	if (parent) {
+		request->async = talloc_memdup(request, request->parent->async,
+					       sizeof(fr_async_t));
+	}
 
 	RDEBUG("server %s (async) {", cf_section_name2(request->server_cs));
 	final = request->async->process(request, FR_IO_ACTION_RUN);
@@ -725,7 +727,9 @@ rlm_rcode_t rad_virtual_server(REQUEST *request)
 	}
 
 skip:
-	if (request->parent && request->parent->async) return virtual_server_async(request);
+	if (request->async) return virtual_server_async(request, false);
+
+	if (request->parent && request->parent->async) return virtual_server_async(request, true);
 
 	RDEBUG("server %s {", cf_section_name2(request->server_cs));
 

@@ -104,12 +104,9 @@ static int listen_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_P
 
 	namespace = cf_pair_find(server, "namespace");
 	if (!namespace) {
-		CONF_SECTION *servercs;
-
-		servercs = cf_item_to_section(cf_parent(ci));
-
-		cf_log_warn(ci, "Skipping listener in old style server %s", cf_section_name2(servercs));
-		return 0;	/* Old style server, skip */
+		cf_log_err(server, "virtual server %s MUST contain a 'namespace' option",
+			   cf_section_name2(server));
+		return -1;
 	}
 
 	if (DEBUG_ENABLED4) cf_log_debug(ci, "Loading %s listener into %p", cf_pair_value(namespace), out);
@@ -282,268 +279,6 @@ rlm_rcode_t process_send_coa(int send_coa_type, REQUEST *request)
 }
 #endif
 
-/*
- *	Load a sub-module list, as found inside an Auth-Type foo {}
- *	block
- */
-static bool load_subcomponent_section(CONF_SECTION *cs,
-				      fr_dict_attr_t const *da, rlm_components_t comp)
-{
-	fr_dict_enum_t *dval;
-	char const *name2 = cf_section_name2(cs);
-
-	/*
-	 *	Sanity check.
-	 */
-	if (!name2) return false;
-
-	/*
-	 *	We must assign a numeric index to this subcomponent.
-	 *	It is generated and placed in the dictionary
-	 *	automatically.  If it isn't found, it's a serious
-	 *	error.
-	 */
-	dval = fr_dict_enum_by_alias(NULL, da, name2);
-	if (!dval) {
-		cf_log_err(cs,
-			   "The %s attribute has no VALUE defined for %s",
-			    section_type_value[comp].typename, name2);
-		return false;
-	}
-
-	/*
-	 *	Compile the group.
-	 */
-	if (unlang_compile(cs, comp) < 0) return false;
-
-	return true;
-}
-
-static int load_component_section(CONF_SECTION *cs, rlm_components_t comp)
-{
-	CONF_SECTION *subcs = NULL;
-	fr_dict_attr_t const *da;
-
-	/*
-	 *	Find the attribute used to store VALUEs for this section.
-	 */
-	da = fr_dict_attr_by_num(NULL, 0, section_type_value[comp].attr);
-	if (!da) {
-		cf_log_err(cs,
-			   "No such attribute %s",
-			   section_type_value[comp].typename);
-		return -1;
-	}
-
-	/*
-	 *	Compile the Autz-Type, Auth-Type, etc. first.
-	 *
-	 *	The results will be cached, so that the next
-	 *	compilation will skip these sections.
-	 */
-	while ((subcs = cf_section_find_next(cs, subcs, section_type_value[comp].typename, CF_IDENT_ANY))) {
-		if (!load_subcomponent_section(subcs, da, comp)) {
-			return -1; /* FIXME: memleak? */
-		}
-	}
-
-	/*
-	 *	Compile the section.
-	 */
-	if (unlang_compile(cs, comp) < 0) {
-		cf_log_err(cs, "Errors parsing %s section.\n",
-			      cf_section_name1(cs));
-		return -1;
-	}
-
-	return 0;
-}
-
-static int virtual_servers_compile(CONF_SECTION *cs)
-{
-	rlm_components_t comp;
-	bool found;
-	char const *name = cf_section_name2(cs);
-	CONF_PAIR *cp;
-
-	cf_log_debug(cs, "server %s {", name);
-
-	cp = cf_pair_find(cs, "namespace");
-	if (cp) {
-		WARN("Virtual server %s uses new namespace.  Skipping old-stype configuration",
-		     cf_section_name2(cs));
-	}
-
-	/*
-	 *	Loop over all of the known components, finding their
-	 *	configuration section, and loading it.
-	 */
-	found = false;
-	for (comp = 0; comp < MOD_COUNT; ++comp) {
-		CONF_SECTION *subcs;
-
-		subcs = cf_section_find(cs, section_type_value[comp].section, NULL);
-		if (!subcs) continue;
-
-		if (cp) {
-			ERROR("Old-style configuration section '%s' found in new namespace.",
-			      section_type_value[comp].section);
-			return -1;
-		}
-
-		if (cf_item_next(subcs, NULL) == NULL) continue;
-
-		/*
-		 *	Skip pre/post-proxy sections if we're not
-		 *	proxying.
-		 */
-		if (
-#ifdef WITH_PROXY
-!main_config.proxy_requests &&
-#endif
-((comp == MOD_PRE_PROXY) ||
- (comp == MOD_POST_PROXY))) {
-			continue;
-		}
-
-#ifndef WITH_ACCOUNTING
-		if (comp == MOD_ACCOUNTING) continue;
-#endif
-
-		if (load_component_section(subcs, comp) < 0) {
-			if (rad_debug_lvl == 0) {
-				ERROR("Failed to load virtual server \"%s\"", name);
-			}
-			return -1;
-		}
-
-		found = true;
-	} /* loop over components */
-
-	/*
-	 *	We haven't loaded any of the RADIUS sections.  Maybe we're
-	 *	supposed to load a non-RADIUS section.
-	 */
-	if (!found)
-		do {
-			CONF_SECTION *subcs = NULL;
-
-			/*
-			 *	Compile the listeners.
-			 */
-			while ((subcs = cf_section_find_next(cs, subcs, "listen", NULL))) {
-				if (listen_compile(cs, subcs) < 0) return -1;
-			}
-
-		} while (0);
-
-	cf_log_debug(cs, "} # server %s", name);
-
-	if (rad_debug_lvl == 0) {
-		INFO("Loaded virtual server %s", name);
-	}
-
-	return 0;
-}
-
-static int define_type(CONF_SECTION *cs, fr_dict_attr_t const *da, char const *name)
-{
-	fr_value_box_t	value = { .type = FR_TYPE_UINT32 };
-	fr_dict_enum_t	*dval;
-
-	/*
-	 *	If the value already exists, don't
-	 *	create it again.
-	 */
-	dval = fr_dict_enum_by_alias(NULL, da, name);
-	if (dval) {
-		if (dval->value == 0) {
-			ERROR("The dictionaries must not define VALUE %s %s 0", da->name, name);
-			return -1;
-		}
-		return 0;
-	}
-
-	/*
-	 *	Create a new unique value with a
-	 *	meaningless number.  You can't look at
-	 *	it from outside of this code, so it
-	 *	doesn't matter.  The only requirement
-	 *	is that it's unique.
-	 */
-	do {
-		value.vb_uint32 = (fr_rand() & 0x00ffffff) + 1;
-	} while (fr_dict_enum_by_value(NULL, da, &value));
-
-	cf_log_debug(cs, "Creating %s = %s", da->name, name);
-	if (fr_dict_enum_add_alias(da, name, &value, true, false) < 0) {
-		ERROR("%s", fr_strerror());
-		return -1;
-	}
-
-	return 0;
-}
-
-static bool virtual_server_define_types_deprecated(CONF_SECTION *cs, rlm_components_t comp)
-{
-	fr_dict_attr_t const *da;
-	CONF_SECTION *subcs;
-	CONF_ITEM *ci;
-
-	/*
-	 *	Find the attribute used to store VALUEs for this section.
-	 */
-	da = fr_dict_attr_by_num(NULL, 0, section_type_value[comp].attr);
-	if (!da) {
-		cf_log_err(cs,
-			   "No such attribute %s",
-			   section_type_value[comp].typename);
-		return false;
-	}
-
-	/*
-	 *	Compatibility hacks: "authenticate" sections can have
-	 *	bare words in them.  Fix those up to be sections.
-	 */
-	if (comp == MOD_AUTHENTICATE) {
-		for (ci = cf_item_next(cs, NULL);
-		     ci != NULL;
-		     ci = cf_item_next(cs, ci)) {
-			CONF_PAIR *cp;
-
-			if (!cf_item_is_pair(ci)) continue;
-
-			cp = cf_item_to_pair(ci);
-
-			subcs = cf_section_alloc(cs, cs, section_type_value[comp].typename, cf_pair_attr(cp));
-			rad_assert(subcs != NULL);
-			cf_section_add(cs, subcs);
-			cf_pair_add(subcs, cf_pair_dup(subcs, cp));
-		}
-	}
-
-	/*
-	 *	Define the Autz-Type, etc. based on the subsections.
-	 */
-	subcs = NULL;
-	while ((subcs = cf_section_find_next(cs, subcs, section_type_value[comp].typename, CF_IDENT_ANY))) {
-		char const *name2;
-		CONF_SECTION *cs2;
-
-		name2 = cf_section_name2(subcs);
-		cs2 = cf_section_find(cs, section_type_value[comp].typename, name2);
-		if (cs2 != subcs) {
-			cf_log_err(cs2, "Duplicate configuration section %s %s",
-				   section_type_value[comp].typename, name2);
-			return false;
-		}
-
-		if (define_type(cs, da, name2) < 0) return false;
-	}
-
-	return true;
-}
-
 /** Define a values for Auth-Type attributes by the sections present in a virtual-server
  *
  * The ident2 value of any sections found will be converted into values of the specified da.
@@ -645,27 +380,13 @@ int virtual_servers_open(fr_schedule_t *sc)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int virtual_servers_instantiate(CONF_SECTION *config)
+int virtual_servers_instantiate(UNUSED CONF_SECTION *config)
 {
 	size_t i, server_cnt = virtual_servers ? talloc_array_length(virtual_servers) : 0;
 
 	rad_assert(virtual_servers);
 
-	CONF_SECTION *cs = NULL;
-
 	DEBUG2("%s: #### Instantiating listeners ####", main_config.name);
-
-	/*
-	 *	Load all of the virtual servers.
-	 */
-	while ((cs = cf_section_find_next(config, cs, "server", CF_IDENT_ANY))) {
-		/*
-		 *	Skip old-style virtual servers.
-		 */
-		if (cf_pair_find(cs, "namespace")) continue;
-
-		if (virtual_servers_compile(cs) < 0) return -1;
-	}
 
 	for (i = 0; i < server_cnt; i++) {
 		fr_virtual_listen_t	**listener;
@@ -715,7 +436,6 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 	 *	Load all of the virtual servers.
 	 */
 	while ((cs = cf_section_find_next(config, cs, "server", CF_IDENT_ANY))) {
-		CONF_SECTION *subcs = NULL;
 		char const *server_name;
 
 		server_name = cf_section_name2(cs);
@@ -727,24 +447,8 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 		/*
 		 *	Skip old-style virtual servers.
 		 */
-		if (cf_pair_find(cs, "namespace")) continue;
-
-		while ((subcs = cf_section_next(cs, subcs))) {
-			rlm_components_t comp;
-
-			if (strcmp(cf_section_name1(subcs), "listen") == 0) {
-				if (listen_bootstrap(cs, subcs, server_name) < 0) return -1;
-				continue;
-			}
-
-			/*
-			 *	See if it's a RADIUS section.
-			 */
-			for (comp = 0; comp < MOD_COUNT; ++comp) {
-				if (strcmp(cf_section_name1(subcs), section_type_value[comp].section) == 0) {
-					if (!virtual_server_define_types_deprecated(subcs, comp)) return -1;
-				}
-			}
+		if (!cf_pair_find(cs, "namespace")) {
+			WARN("Skipping old-style server %s", cf_section_name2(cs));
 		}
 	}
 

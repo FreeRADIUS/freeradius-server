@@ -12,12 +12,6 @@ if ("%{Client-Shortname}" != 'test') {
 	}
 }
 
-if ("%{Request-Processing-Stage}" != 'authorize') {
-	update reply {
-		Filter-Id += "fail 1"
-	}
-}
-
 if ("%{Virtual-Server}" != 'default') {
 	update reply {
 		Filter-Id += "fail 2"
