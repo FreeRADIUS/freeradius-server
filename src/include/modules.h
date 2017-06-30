@@ -210,6 +210,7 @@ int		virtual_servers_open(fr_schedule_t *sc);
 int		virtual_servers_instantiate(CONF_SECTION *config);
 int		virtual_servers_bootstrap(CONF_SECTION *config);
 CONF_SECTION	*virtual_server_find(char const *name);
+void		fr_request_async_bootstrap(REQUEST *request, fr_event_list_t *el); /* for unit_test_module */
 
 /*
  *	In unlang_interpret.c, but here for public consumption.

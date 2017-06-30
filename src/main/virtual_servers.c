@@ -32,6 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/interpreter.h>
 #include <freeradius-devel/parser.h>
 #include <freeradius-devel/protocol.h>
+#include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/dl.h>
 #include <freeradius-devel/io/application.h>
 
@@ -788,4 +789,36 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 CONF_SECTION *virtual_server_find(char const *name)
 {
 	return cf_section_find(main_config.config, "server", name);
+}
+
+/*
+ *	Hack for unit_test_module.c
+ */
+void fr_request_async_bootstrap(REQUEST *request, fr_event_list_t *el)
+{
+	size_t server_cnt, listen_cnt;
+	fr_virtual_listen_t	**listener;
+
+	if (!virtual_servers) return; /* let it crash! */
+
+	server_cnt = talloc_array_length(virtual_servers);
+
+	listener = virtual_servers[0]->listener;
+	listen_cnt = talloc_array_length(listener);
+
+	if (!listen_cnt) return;
+
+	/*
+	 *	New async listeners
+	 */
+	request->async = talloc_zero(request, fr_async_t);
+
+	request->async->channel = NULL;
+	request->async->original_recv_time = NULL;
+	request->async->recv_time = fr_time();
+	request->async->el = el;
+
+	request->async->listen = NULL;
+	request->async->packet_ctx = NULL;
+	listener[0]->app->process_set(listener[0]->proto_module->data, request);
 }
