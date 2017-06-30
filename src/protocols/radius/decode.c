@@ -322,10 +322,12 @@ static ssize_t decode_concat(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	attr = ptr[0];
 
 	/*
-	 *	The packet has already been sanity checked, so we
-	 *	don't care about walking off of the end of it.
+	 *	See how many consecutive attributes there are.
 	 */
 	while (ptr < end) {
+		if (ptr[1] <= 2) return -1;
+		if ((ptr + ptr[1]) > end) return -1;
+
 		total += ptr[1] - 2;
 
 		ptr += ptr[1];
