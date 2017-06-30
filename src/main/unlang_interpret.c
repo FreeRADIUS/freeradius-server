@@ -919,16 +919,13 @@ static unlang_action_t unlang_update(REQUEST *request, unlang_stack_t *stack,
 	unlang_group_t		*g = unlang_generic_to_group(instruction);
 	vp_map_t *map;
 
-	RINDENT();
 	for (map = g->map; map != NULL; map = map->next) {
 		rcode = map_to_request(request, map, map_to_vp, NULL);
 		if (rcode < 0) {
 			*presult = (rcode == -2) ? RLM_MODULE_INVALID : RLM_MODULE_FAIL;
-			REXDENT();
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 	}
-	REXDENT();
 
 	*presult = RLM_MODULE_NOOP;
 	*priority = instruction->actions[RLM_MODULE_NOOP];
@@ -943,9 +940,7 @@ static unlang_action_t unlang_map(REQUEST *request, unlang_stack_t *stack,
 	unlang_t		*instruction = frame->instruction;
 	unlang_group_t		*g = unlang_generic_to_group(instruction);
 
-	RINDENT();
 	*presult = map_proc(request, g->proc_inst);
-	REXDENT();
 
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
