@@ -66,9 +66,8 @@ fr_event_list_t *process_global_event_list(UNUSED event_corral_t hint) {
 /*
  *	Delete a request.
  */
-NEVER_RETURNS void request_delete(UNUSED REQUEST *request)
+void request_delete(UNUSED REQUEST *request)
 {
-	rad_assert(0 == 1);
 }
 
 int request_receive(UNUSED TALLOC_CTX *ctx, UNUSED rad_listen_t *listener, UNUSED RADIUS_PACKET *packet,
