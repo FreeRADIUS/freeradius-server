@@ -500,6 +500,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 		 */
 		if (map->rhs->type != TMPL_TYPE_UNPARSED) {
 			if (tmpl_aexpand(request, &field_name, request, map->rhs, NULL, NULL) < 0) {
+				REXDENT();
 				RDEBUG("Failed expanding RHS at %s", map->lhs->name);
 				rcode = RLM_MODULE_FAIL;
 				goto finish;
@@ -513,6 +514,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 		if (field_name != map->rhs->name) talloc_free(field_name);
 
 		if (field < 0) {
+			REXDENT();
 			RDEBUG("No such field name %s", map->rhs->name);
 			rcode = RLM_MODULE_FAIL;
 			goto finish;
@@ -523,10 +525,13 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 		 *	create the VP and add it to the map.
 		 */
 		if (map_to_request(request, map, csv_map_getvalue, e->data[field]) < 0) {
+			REXDENT();
 			rcode = RLM_MODULE_FAIL;
 			goto finish;
 		}
 	}
+
+	REXDENT();
 
 finish:
 	talloc_free(key_str);
