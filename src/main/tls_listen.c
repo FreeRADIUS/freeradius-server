@@ -625,12 +625,8 @@ int proxy_tls_recv(rad_listen_t *listener)
 		return 0;
 	}
 
-	if (!request_proxy_reply(packet)) {
-		fr_radius_free(&packet);
-		return 0;
-	}
-
-	return 1;
+	fr_radius_free(&packet);
+	return 0;
 }
 
 int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
