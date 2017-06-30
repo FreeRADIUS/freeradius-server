@@ -1390,6 +1390,7 @@ resume_subsection:
 					priority);
 				frame->result = result;
 				frame->priority = priority;
+				/* @todo - REXDENT? */
 				goto done_subsection;
 			}
 
@@ -1406,6 +1407,7 @@ resume_subsection:
 					priority);
 				frame->result = RLM_MODULE_REJECT;
 				frame->priority = priority;
+				/* @todo - REXDENT? */
 				goto done_subsection;
 			}
 
@@ -1445,6 +1447,7 @@ resume_subsection:
 					stack->depth, __FUNCTION__,
 					fr_int2str(mod_rcode_table, frame->result, "<invalid>"),
 					frame->priority);
+				/* @todo - REXDENT? */
 				goto done_subsection;
 			}
 
