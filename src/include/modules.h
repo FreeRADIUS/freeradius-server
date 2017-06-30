@@ -306,8 +306,6 @@ void		unlang_signal(REQUEST *request, fr_state_action_t action);
 rlm_rcode_t	unlang_module_yield(REQUEST *request, fr_unlang_module_resume_t callback, fr_unlang_action_t signal_callback,
 			     void const *ctx);
 
-int		unlang_delay(REQUEST *request, struct timeval *delay, fr_request_process_t process);
-
 #ifdef __cplusplus
 }
 #endif

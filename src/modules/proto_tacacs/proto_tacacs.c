@@ -157,8 +157,6 @@ static void tacacs_running(REQUEST *request, fr_state_action_t action)
 
 	VERIFY_REQUEST(request);
 
-	TRACE_STATE_MACHINE;
-
 	switch (action) {
 	case FR_ACTION_DONE:
 		goto done;
@@ -413,7 +411,6 @@ send_reply:
 done:
 	default:
 		(void) fr_heap_extract(request->backlog, request);
-		request_thread_done(request);
 		request_delete(request);
 		break;
 	}
@@ -422,8 +419,6 @@ done:
 static void tacacs_queued(REQUEST *request, fr_state_action_t action)
 {
 	VERIFY_REQUEST(request);
-
-	TRACE_STATE_MACHINE;
 
 	switch (action) {
 	case FR_ACTION_RUN:

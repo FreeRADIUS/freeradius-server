@@ -52,27 +52,10 @@ typedef	void (*fr_request_process_t)(REQUEST *, fr_state_action_t);
 
 extern time_t fr_start_time;
 
-#ifdef WITH_PROXY
-int request_proxy_reply(RADIUS_PACKET *packet);
-#endif
-
-#ifdef DEBUG_STATE_MACHINE
-void request_trace_state_machine(REQUEST *request);
-# define TRACE_STATE_MACHINE if (rad_debug_lvl) request_trace_state_machine(request)
-#else
-#  define TRACE_STATE_MACHINE {}
-#endif
-
 /*
  *	More state machine helper functions.
  */
-bool request_max_time(REQUEST *request);
-void request_thread(REQUEST *request, fr_request_process_t process);
-bool request_thread_active(REQUEST *request);
 void request_delete(REQUEST *request);
-void request_free(REQUEST *request);
-void request_thread_done(REQUEST *request);
-bool request_dup_received(rad_listen_t *listener, rbtree_t *dup_tree, RADCLIENT *client, RADIUS_PACKET *packet);
 
 
 #ifdef __cplusplus

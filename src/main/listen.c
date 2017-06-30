@@ -2257,15 +2257,8 @@ static int proxy_socket_recv(rad_listen_t *listener)
 	packet->proto = sock->proto;
 #  endif
 
-	if (!request_proxy_reply(packet)) {
-#  ifdef WITH_STATS
-		listener->stats.total_packets_dropped++;
-#  endif
-		fr_radius_free(&packet);
-		return 0;
-	}
-
-	return 1;
+	fr_radius_free(&packet);
+	return 0;
 }
 
 #  ifdef WITH_TCP
@@ -2326,14 +2319,8 @@ static int proxy_socket_tcp_recv(rad_listen_t *listener)
 	 *
 	 *	Close the socket on bad packets...
 	 */
-	if (!request_proxy_reply(packet)) {
-		fr_radius_free(&packet);
-		return 0;
-	}
-
-	sock->opened = sock->last_packet = time(NULL);
-
-	return 1;
+	fr_radius_free(&packet);
+	return 0;
 }
 #  endif
 #endif

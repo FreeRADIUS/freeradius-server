@@ -64,20 +64,6 @@ fr_event_list_t *process_global_event_list(UNUSED event_corral_t hint) {
 
 #define rad_panic(_x, ...) radlog_fatal("%s[%u]: " _x, __FILE__, __LINE__, ## __VA_ARGS__)
 
-/*
- *	If the child is still running, wait for it to be finished.
- */
-bool request_thread_active(UNUSED REQUEST *request)
-{
-	rad_assert(0 == 1);
-	return false;
-}
-
-
-void request_thread_done(UNUSED REQUEST *request)
-{
-	rad_assert(0 == 1);
-}
 
 /*
  *	Delete a request.

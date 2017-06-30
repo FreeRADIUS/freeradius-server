@@ -307,8 +307,6 @@ static void request_running(REQUEST *request, fr_state_action_t action)
 
 	VERIFY_REQUEST(request);
 
-	TRACE_STATE_MACHINE;
-
 	/*
 	 *	Async (in the same thread, tho) signal to be done.
 	 */
@@ -400,7 +398,6 @@ static void request_running(REQUEST *request, fr_state_action_t action)
 			break;
 		}
 		rad_assert(request->log.unlang_indent == 0);
-		request_thread_done(request);
 		request_delete(request);
 		break;
 	}
@@ -422,8 +419,6 @@ static void request_running(REQUEST *request, fr_state_action_t action)
 static void request_queued(REQUEST *request, fr_state_action_t action)
 {
 	VERIFY_REQUEST(request);
-
-	TRACE_STATE_MACHINE;
 
 	switch (action) {
 	case FR_ACTION_RUN:

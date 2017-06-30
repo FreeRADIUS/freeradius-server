@@ -403,8 +403,6 @@ static void max_request_time_hook(UNUSED fr_event_list_t *el, UNUSED struct time
 	fr_state_action_t action = FR_ACTION_DONE;
 #endif
 
-	TRACE_STATE_MACHINE;
-
 	request->process(request, FR_ACTION_DONE);
 }
 

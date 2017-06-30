@@ -1960,47 +1960,6 @@ int unlang_event_fd_delete(REQUEST *request, void const *ctx, int fd)
 	return 0;
 }
 
-static void _unlang_timer_hook(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *ctx)
-{
-	REQUEST *request = talloc_get_type_abort(ctx, REQUEST);
-#ifdef DEBUG_STATE_MACHINE
-	fr_state_action_t action = FR_ACTION_TIMER;
-#endif
-
-	TRACE_STATE_MACHINE;
-
-	request->process(request, FR_ACTION_TIMER);
-}
-
-/** Delay processing of a request for a period
- *
- * Adds a timer event to resume processing the module after a specified period has elapsed.
- *
- * @param[in] request		The current request.
- * @param[in] delay 		processing by.
- * @param[in] process		The function to call when the delay expires.
- * @return
- *	- 0 on success.
- *	- <0 on error.
- */
-int unlang_delay(REQUEST *request, struct timeval *delay, fr_request_process_t process)
-{
-	struct timeval when;
-
-	fr_timeval_add(&when, &request->reply->timestamp, delay);
-
-	RDEBUG2("Waiting for %d.%06d seconds",
-		(int) delay->tv_sec, (int) delay->tv_usec);
-
-	if (fr_event_timer_insert(request->el, _unlang_timer_hook, request, &when, &request->ev) < 0) {
-		RDEBUG("Failed inserting delay event: %s", fr_strerror());
-		return -1;
-	}
-
-	request->process = process;
-
-	return 0;
-}
 
 /** Mark a request as resumable.
  *
