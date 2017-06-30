@@ -500,12 +500,10 @@ CONF_SECTION *virtual_server_find(char const *name)
  */
 void fr_request_async_bootstrap(REQUEST *request, fr_event_list_t *el)
 {
-	size_t server_cnt, listen_cnt;
-	fr_virtual_listen_t	**listener;
+	size_t listen_cnt;
+	fr_virtual_listen_t	**listener;	
 
 	if (!virtual_servers) return; /* let it crash! */
-
-	server_cnt = talloc_array_length(virtual_servers);
 
 	listener = virtual_servers[0]->listener;
 	listen_cnt = talloc_array_length(listener);
