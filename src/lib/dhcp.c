@@ -792,6 +792,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	 */
 	if (fr_dhcp_decode_options(packet->data + 240, packet->data_len - 240,
 				   tail) < 0) {
+		pairfree(&head);
 		return -1;
 	}
 
@@ -1451,6 +1452,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 			 *	limitations: sizeof(vp->vp_octets) < 255
 			 */
 			if (length > 255) {
+				pairfree(&vp);
 				fr_strerror_printf("WARNING Ignoring too long attribute %s!", vp->name);
 				break;
 			}
