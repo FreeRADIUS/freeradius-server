@@ -10,8 +10,7 @@
 #	253 characters in length.  This is followed (on the same line) with
 #	the list of authentication requirements for that user.  This can
 #	include password, comm server name, comm server port number, protocol
-#	type (perhaps set by the "hints" file), and huntgroup name (set by
-#	the "huntgroups" file).
+#	type.
 #
 #	If you are not sure why a particular reply is being sent by the
 #	server, then run the server in debugging mode (radiusd -X), and
@@ -122,7 +121,7 @@
 
 #
 # user "swilson" will only get a static IP number if he logs in with
-# a framed protocol on a terminal server in Alphen (see the huntgroups file).
+# a framed protocol on a terminal server in Alphen.
 #
 # Note that by setting "Fall-Through", other attributes will be added from
 # the following DEFAULT entries

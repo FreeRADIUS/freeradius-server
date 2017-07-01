@@ -74,8 +74,7 @@ void pairlist_free(PAIR_LIST **pl)
 #define FIND_MODE_HAVE_REPLY 2
 
 /*
- *	Read the users, huntgroups or hints file.
- *	Return a PAIR_LIST.
+ *	Read the users file. Return a PAIR_LIST.
  */
 int pairlist_read(TALLOC_CTX *ctx, char const *file, PAIR_LIST **list, int complain)
 {

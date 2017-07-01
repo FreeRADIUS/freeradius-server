@@ -70,14 +70,9 @@ server default {
 		}
 	}
 
-#  Authorization. First preprocess (hints and huntgroups files),
-#  then realms, and finally look in the "users" file.
 #
-#  Any changes made here should also be made to the "inner-tunnel"
-#  virtual server.
+#  Authorization.
 #
-#  The order of the realm modules will determine the order that
-#  we try to find a matching realm
 recv Access-Request {
 	#
 	#  Take a User-Name, and perform some checks on it, for spaces and other

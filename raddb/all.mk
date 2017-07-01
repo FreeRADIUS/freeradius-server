@@ -29,7 +29,7 @@ ifeq ("$(TEST_CERTS)","yes")
 INSTALL_CERT_PRODUCTS += $(addprefix $(R)$(raddbdir)/certs/,$(LOCAL_CERT_FILES))
 endif
 
-LEGACY_LINKS :=		$(addprefix $(R)$(raddbdir)/,users huntgroups hints)
+LEGACY_LINKS :=		$(addprefix $(R)$(raddbdir)/,users)
 
 RADDB_DIRS :=		certs mods-available mods-enabled policy.d \
 			sites-available sites-enabled \
@@ -106,15 +106,6 @@ endif
 $(R)$(raddbdir)/%: | raddb/%
 	${Q}echo INSTALL $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
 	${Q}$(INSTALL) -m 640 $(patsubst $(R)$(raddbdir)/%,raddb/%,$@) $@
-
-# Create symbolic links for legacy files
-$(R)$(raddbdir)/huntgroups: $(R)$(modconfdir)/preprocess/huntgroups
-	${Q}[ -e $@ ] || echo LN-S $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
-	${Q}[ -e $@ ] || ln -s $(patsubst $(R)$(raddbdir)/%,./%,$<) $@
-
-$(R)$(raddbdir)/hints: $(R)$(modconfdir)/preprocess/hints
-	${Q}[ -e $@ ] || echo LN-S $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
-	${Q}[ -e $@ ] || ln -s $(patsubst $(R)$(raddbdir)/%,./%,$<) $@
 
 $(R)$(raddbdir)/users: $(R)$(modconfdir)/files/authorize
 	${Q}[ -e $@ ] || echo LN-S $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)

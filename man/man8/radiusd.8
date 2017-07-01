@@ -186,17 +186,6 @@ items.
 This file is usually static. It defines all the possible RADIUS attributes
 used in the other configuration files.  You don't have to modify it.
 It includes other dictionary files in the same directory.
-.IP hints
-Defines certain hints to the radius server based on the users's loginname
-or other attributes sent by the access server. It also provides for
-mapping user names (such as Pusername -> username). This provides the
-functionality that the \fILivingston 2.0\fP server has as "Prefix" and
-"Suffix" support in the \fIusers\fP file, but is more general. Ofcourse
-the Livingston way of doing things is also supported, and you can even use
-both at the same time (within certain limits).
-.IP huntgroups
-Defines the huntgroups that you have, and makes it possible to restrict
-access to certain huntgroups to certain (groups of) users.
 .IP users
 Here the users are defined. On a typical setup, this file mainly contains
 DEFAULT entries to process the different types of logins, based on hints
@@ -204,7 +193,7 @@ from the hints file. Authentication is then based on the contents of
 the UNIX \fI/etc/passwd\fP file. However it is also possible to define all
 users, and their passwords, in this file.
 .SH SEE ALSO
-radiusd.conf(5), users(5), huntgroups(5), hints(5),
+radiusd.conf(5), users(5)
 dictionary(5), raddebug(8)
 .SH AUTHOR
 The FreeRADIUS Server Project (http://www.freeradius.org)
