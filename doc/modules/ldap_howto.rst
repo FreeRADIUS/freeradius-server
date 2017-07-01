@@ -978,9 +978,8 @@ The first thing that is done is authorization of the user.  The radius server
 will process the modules in the order specified in the authorization section of
 radiusd.conf.  Currently, they are in the following order.
 
-1) preprocess
-2) files
-3) ldap
+1) files
+2) ldap
 
 The first module will be preprocess.  This will first check the huntgroups of
 the user coming in.  The huntgroups are defined in the file huntgroups and they

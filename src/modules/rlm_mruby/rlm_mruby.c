@@ -484,7 +484,6 @@ RLM_MRUBY_FUNC(post_auth)
 #ifdef WITH_ACCOUNTING
 RLM_MRUBY_FUNC(preacct)
 RLM_MRUBY_FUNC(accounting)
-RLM_MRUBY_FUNC(session)
 #endif
 #ifdef WITH_PROXY
 RLM_MRUBY_FUNC(pre_proxy)
@@ -534,7 +533,6 @@ rad_module_t rlm_mruby = {
 #ifdef WITH_ACCOUNTING
 		[MOD_PREACCT]		= mod_preacct,
 		[MOD_ACCOUNTING]	= mod_accounting,
-		[MOD_SESSION]		= mod_session,
 #endif
 #ifdef WITH_PROXY
 		[MOD_PRE_PROXY]		= mod_pre_proxy,

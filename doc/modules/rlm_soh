@@ -73,7 +73,6 @@ case presumably FreeRadius. To take advantage of this you will need to add
 the "soh" module to the "authorize" section of your virtual server, like so:
 
 server tsgateway {
-  preprocess
   soh
   if () {
     ... policy goes here

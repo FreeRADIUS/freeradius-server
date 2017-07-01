@@ -114,21 +114,6 @@ server copy-acct-to-home-server {
 	#  Pre-accounting.  Decide which accounting type to use.
 	#
 	recv Accounting-Request {
-		preprocess
-
-		# Since we're just proxying, we don't need acct_unique.
-
-		#
-		#  Look for IPASS-style 'realm/', and if not found, look for
-		#  '@realm', and decide whether or not to proxy, based on
-		#  that.
-		#
-		#  Accounting requests are generally proxied to the same
-		#  home server as authentication requests.
-	#	IPASS
-		suffix
-	#	ntdomain
-
 		#
 		#  Read the 'acct_users' file.  This isn't always
 		#  necessary, and can be deleted if you do not use it.

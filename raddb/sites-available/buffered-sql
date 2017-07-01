@@ -127,8 +127,6 @@ server buffered-sql {
 	#  Pre-accounting.  Decide which accounting type to use.
 	#
 	recv Accounting-Request {
-		preprocess
-
 		#
 		#  Ensure that we have a semi-unique identifier for every
 		#  request, and many NAS boxes are broken.

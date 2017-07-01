@@ -967,10 +967,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 				   section_type_value[MOD_AUTHENTICATE].section) < 0) ||
 		(parse_sub_section(inst, conf, section_config, &inst->accounting,
 				   section_type_value[MOD_ACCOUNTING].section) < 0) ||
-
-/* @todo add behaviour for checksimul */
-/*		(parse_sub_section(conf, section_config, &inst->checksimul,
-				   section_type_value[MOD_SESSION].section) < 0) || */
 		(parse_sub_section(inst, conf, section_config, &inst->post_auth,
 				   section_type_value[MOD_POST_AUTH].section) < 0))
 	{

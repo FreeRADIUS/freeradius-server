@@ -15,7 +15,6 @@ recv Access-Request {
         psk_authorize
 	abfab_client_check
 	filter_username
-	preprocess
 
 	#  If you intend to use CUI and you require that the Operator-Name
 	#  be set for CUI generation and you want to generate CUI also
@@ -29,10 +28,6 @@ recv Access-Request {
 	#  cui below and set "add_cui = yes" for these clients in clients.conf
 #	cui
 
-	suffix {
-	        updated = 1
-		noop = reject
-        }
 	eap {
 		ok = return
 	}

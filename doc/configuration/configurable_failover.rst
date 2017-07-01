@@ -8,14 +8,12 @@ Before configurable module failover, we had this kind of entry in
 
   #---
   recv Access-Request {
-    preprocess
     files
   }
   #---
 
 This entry instructed the ``authorize`` section to first process the
-request through the ``preprocess`` module, and if that returned success,
-to process it through ``files`` module.  If that sequence returned
+request through the ``files`` module.  If that sequence returned
 success, then the ``authorize`` stage itself would then return success.
 Processing was strictly linear and if one module failed, the whole
 section would fail immediately.
@@ -267,7 +265,7 @@ radiusd.conf are functions. There are two kinds of MODCALLABLEs: GROUPs and
 SINGLEs.
 
 A SINGLE is a reference to a module instance that was set up in the modules{}
-section of radiusd.conf, like ``preprocess`` or ``sql1``. When a SINGLE is
+section of radiusd.conf, like ``sql1``. When a SINGLE is
 called, the corresponding function in the rlm is invoked, and whichever
 RLM_MODULE_* it returns becomes the RESULT of the SINGLE.
 

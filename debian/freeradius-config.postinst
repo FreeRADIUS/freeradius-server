@@ -26,7 +26,7 @@ case "$1" in
           for mod in always attr_filter cache_eap chap \
               detail detail.log digest dynamic_clients eap \
               eap_inner echo exec expiration expr files linelog logintime \
-              mschap ntlm_auth pap passwd preprocess radutmp realm \
+              mschap ntlm_auth pap passwd radutmp realm \
               replicate soh sradutmp unix unpack utf8 ; do
             if test ! -h /etc/freeradius/mods-enabled/$mod && \
                test ! -e /etc/freeradius/mods-enabled/$mod; then

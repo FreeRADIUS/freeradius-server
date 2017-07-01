@@ -77,10 +77,7 @@ server default {
 #  virtual server.
 #
 #  The order of the realm modules will determine the order that
-#  we try to find a matching realm.
-#
-#  Make *sure* that 'preprocess' comes before any realm if you
-#  need to setup hints for the remote radius server
+#  we try to find a matching realm
 recv Access-Request {
 	#
 	#  Take a User-Name, and perform some checks on it, for spaces and other
@@ -100,15 +97,6 @@ recv Access-Request {
 	#  This policy will fix it to just be "password".
 	#
 #	filter_password
-
-	#
-	#  The preprocess module takes care of sanitizing some bizarre
-	#  attributes in the request, and turning them into attributes
-	#  which are more standard.
-	#
-	#  It takes care of processing the 'raddb/mods-config/preprocess/hints' 
-	#  and the 'raddb/mods-config/preprocess/huntgroups' files.
-	preprocess
 
 	#  If you intend to use CUI and you require that the Operator-Name
 	#  be set for CUI generation and you want to generate CUI also
@@ -494,8 +482,6 @@ send Access-Reject {
 #  Pre-accounting.  Decide which accounting type to use.
 #
 recv Accounting-Request {
-	preprocess
-
 	#
 	#  Merge Acct-[Input|Output]-Gigawords and Acct-[Input-Output]-Octets
 	#  into a single 64bit counter Acct-[Input|Output]-Octets64.

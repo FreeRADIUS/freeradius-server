@@ -678,7 +678,6 @@ fi
 %{_libdir}/freeradius/rlm_pam.so
 %{_libdir}/freeradius/rlm_pap.so
 %{_libdir}/freeradius/rlm_passwd.so
-%{_libdir}/freeradius/rlm_preprocess.so
 %{_libdir}/freeradius/rlm_radius_client.so
 %{_libdir}/freeradius/rlm_radutmp.so
 %{_libdir}/freeradius/rlm_soh.so
@@ -704,8 +703,6 @@ fi
 #%attr(640,root,radiusd) %config(noreplace) /etc/raddb/filter/*
 %attr(644,root,radiusd) %config(noreplace) /etc/raddb/dictionary
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/clients.conf
-%config(noreplace) /etc/raddb/hints
-%config(noreplace) /etc/raddb/huntgroups
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/panic.gdb
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/README.md
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/radiusd.conf
@@ -735,8 +732,6 @@ fi
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/lua/*
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/perl
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/perl/*
-%dir %attr(750,root,radiusd) /etc/raddb/mods-config/preprocess
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/preprocess/*
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/python
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/python/*
 %dir %attr(750,root,radiusd) /etc/raddb/mods-enabled

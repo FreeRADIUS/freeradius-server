@@ -42,14 +42,9 @@ listen {
 	}
 }
 
-#  Authorization. First preprocess (hints and huntgroups files),
-#  then realms, and finally look in the "users" file.
 #
-#  The order of the realm modules will determine the order that
-#  we try to find a matching realm.
+#  Authorization
 #
-#  Make *sure* that 'preprocess' comes before any realm if you
-#  need to setup hints for the remote radius server
 recv Access-Request {
 	#
 	#  Take a User-Name, and perform some checks on it, for spaces and other
