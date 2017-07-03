@@ -596,11 +596,6 @@ int main_config_free(void);
 void main_config_hup(void);
 void hup_logfile(void);
 
-#ifdef WITH_STATS
-RADCLIENT_LIST *listener_find_client_list(fr_ipaddr_t const *ipaddr, uint16_t port, int proto);
-#endif
-rad_listen_t *listener_find_byipaddr(fr_ipaddr_t const *ipaddr, uint16_t port, int proto);
-rlm_rcode_t rad_status_server(REQUEST *request);
 
 /* event.c */
 typedef enum event_corral_t {

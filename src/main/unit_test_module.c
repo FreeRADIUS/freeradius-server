@@ -52,48 +52,6 @@ char const *radiusd_version = RADIUSD_VERSION_STRING_BUILD("unittest");
  */
 static void usage(int);
 
-int listen_compile(UNUSED CONF_SECTION *server, UNUSED CONF_SECTION *cs)
-{
-	return 0;
-}
-
-int listen_bootstrap(UNUSED CONF_SECTION *server, UNUSED CONF_SECTION *cs, UNUSED char const *server_name)
-{
-	return -1;
-}
-
-void listen_free(UNUSED rad_listen_t **head)
-{
-	/* do nothing */
-}
-
-
-static rad_listen_t *listen_alloc(void *ctx)
-{
-	rad_listen_t *this;
-
-	this = talloc_zero(ctx, rad_listen_t);
-	if (!this) return NULL;
-
-	this->type = RAD_LISTEN_AUTH;
-	this->recv = NULL;
-	this->send = NULL;
-	this->print = NULL;
-	this->encode = NULL;
-	this->decode = NULL;
-
-	/*
-	 *	We probably don't care about this.  We can always add
-	 *	fields later.
-	 */
-	this->data = talloc_zero(this, listen_socket_t);
-	if (!this->data) {
-		talloc_free(this);
-		return NULL;
-	}
-
-	return this;
-}
 
 static RADCLIENT *client_alloc(TALLOC_CTX *ctx, char const *ip, char const *name)
 {
@@ -164,7 +122,6 @@ static REQUEST *request_from_file(FILE *fp, fr_event_list_t *el, RADCLIENT *clie
 		return NULL;
 	}
 
-	request->listener = listen_alloc(request);
 	request->client = client;
 
 	request->number = number++;

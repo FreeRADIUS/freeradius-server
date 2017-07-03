@@ -1015,7 +1015,6 @@ int main_config_free(void)
 	 *	structures.
 	 */
 	client_list_free();
-	listen_free(&main_config.listen);
 
 	/*
 	 *	Frees current config and any previous configs.

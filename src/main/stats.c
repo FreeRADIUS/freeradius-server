@@ -341,6 +341,7 @@ void request_stats_final(REQUEST *request)
 	request->master_state = REQUEST_COUNTED;
 }
 
+#if 0				/* OLD LISTENERS */
 typedef struct fr_stats2vp {
 	int	attribute;
 	size_t	offset;
@@ -456,7 +457,6 @@ static void request_stats_addvp(REQUEST *request,
 		vp->vp_uint32 = counter;
 	}
 }
-
 
 void request_stats_reply(REQUEST *request)
 {
@@ -777,6 +777,7 @@ void request_stats_reply(REQUEST *request)
 	}
 #endif	/* WITH_PROXY */
 }
+#endif	/* OLD LISTENERS */
 
 void radius_stats_init(int flag)
 {

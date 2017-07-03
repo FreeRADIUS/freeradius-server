@@ -82,7 +82,6 @@ extern fr_stats_t	proxy_dsc_stats;
 
 void radius_stats_init(int flag);
 void request_stats_final(REQUEST *request);
-void request_stats_reply(REQUEST *request);
 void radius_stats_ema(fr_stats_ema_t *ema,
 		      struct timeval *start, struct timeval *end);
 void fr_stats_bins(fr_stats_t *stats, struct timeval *start, struct timeval *end);

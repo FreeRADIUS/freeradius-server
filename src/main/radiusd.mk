@@ -5,7 +5,6 @@ SOURCES := acct.c \
     client.c \
     crypt.c \
     files.c \
-    listen.c \
     mainconfig.c \
     modules.c \
     radiusd.c \
@@ -21,7 +20,6 @@ SOURCES := acct.c \
 
 ifneq ($(OPENSSL_LIBS),)
 include ${top_srcdir}/src/main/tls.mk
-SOURCES += tls_listen.c
 endif
 
 SRC_CFLAGS	:=
