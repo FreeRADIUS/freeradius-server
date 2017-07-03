@@ -599,6 +599,12 @@ ssize_t fr_dhcp_decode_options(uint8_t *data, size_t len, VALUE_PAIR **head)
 			continue;
 		}
 
+		/*
+		 *	End of this attribute past the end of the
+		 *	packet: ignore it.
+		 */
+		if (next > (data + len)) break;
+
 		da = dict_attrbyvalue(DHCP2ATTR(p[0]));
 		if (!da) {
 			fr_strerror_printf("Attribute not in our dictionary: %u",
