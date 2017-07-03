@@ -2444,13 +2444,15 @@ static VALUE_PAIR *data2vp(const RADIUS_PACKET *packet,
 
 	case PW_TYPE_TLV:
 		vp->length = length;
-		vp->vp_tlv = malloc(length);
+
+		vp->vp_tlv = malloc(length ? length : 1);
 		if (!vp->vp_tlv) {
 			pairfree(&vp);
 			fr_strerror_printf("No memory");
 			return NULL;
 		}
-		memcpy(vp->vp_tlv, data, length);
+
+		if (length) memcpy(vp->vp_tlv, data, length);
 		break;
 
 	case PW_TYPE_COMBO_IP:
