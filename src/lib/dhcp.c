@@ -820,7 +820,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 			/*
 			 *	Vendor is "MSFT 98"
 			 */
-			vp = pairfind(head, DHCP2ATTR(63));
+			vp = pairfind(head, DHCP2ATTR(60));
 			if (vp && (strcmp(vp->vp_strvalue, "MSFT 98") == 0)) {
 				vp = pairfind(head, DHCP2ATTR(262));
 
