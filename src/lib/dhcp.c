@@ -478,12 +478,13 @@ static int decode_tlv(VALUE_PAIR *tlv, const uint8_t *data, size_t data_len)
 		}
 
 		if (fr_dhcp_attr2vp(vp, p + 2, p[1]) < 0) {
+			pairfree(&vp);
 			pairfree(&head);
 			goto make_tlv;
 		}
 
 		*tail = vp;
-		tail = &(vp->next);
+		while (*tail) tail = &((*tail)->next);
 		p += 2 + p[1];
 	}
 
