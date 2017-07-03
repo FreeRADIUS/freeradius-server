@@ -1229,11 +1229,16 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 	 *	Callbacks, etc. for session resumption.
 	 */
 	if (conf->session_cache_enable) {
+#if 1
+		DEBUG("WARNING: TLS Session cache is disabled");
+		conf->session_cache_enable = 0;
+#else
 		SSL_CTX_sess_set_new_cb(ctx, cbtls_new_session);
 		SSL_CTX_sess_set_get_cb(ctx, cbtls_get_session);
 		SSL_CTX_sess_set_remove_cb(ctx, cbtls_remove_session);
 
 		SSL_CTX_set_quiet_shutdown(ctx, 1);
+#endif
 	}
 
 	/*
@@ -1291,6 +1296,11 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 	 *	Setup session caching
 	 */
 	if (conf->session_cache_enable) {
+#if 1
+		DEBUG("WARNING: TLS Session cache is disabled");
+		conf->session_cache_enable = 0;
+		SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
+#else
 		/*
 		 *	Create a unique context Id per EAP-TLS configuration.
 		 */
@@ -1324,7 +1334,7 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 		 *	session cache.
 		 */
 		SSL_CTX_sess_set_cache_size(ctx, conf->session_cache_size);
-
+#endif
 	} else {
 		SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
 	}
@@ -1549,6 +1559,7 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	handler->tls = TRUE;
 	handler->finished = FALSE;
 
+#if 0
 	/*
 	 *	Manually flush the sessions every so often.  If HALF
 	 *	of the session lifetime has passed since we last
@@ -1564,6 +1575,7 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 		SSL_CTX_flush_sessions(inst->ctx, request->timestamp);
 		inst->conf.session_last_flushed = request->timestamp;
 	}
+#endif
 
 	/*
 	 *	If we're TTLS or PEAP, then do NOT require a client
@@ -1694,9 +1706,11 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 		break;
 	}
 
+#if 0
 	if (inst->conf.session_cache_enable) {
 		ssn->allow_session_resumption = 1; /* otherwise it's zero */
 	}
+#endif
 
 	/*
 	 *	TLS session initialization is over.  Now handle TLS
@@ -1823,10 +1837,12 @@ static int eaptls_authenticate(void *arg, EAP_HANDLER *handler)
 		 *	the client can't re-use it.
 		 */
 	default:
+#if 0
 		if (inst->conf.session_cache_enable) {
 			SSL_CTX_remove_session(inst->ctx,
 					       tls_session->ssl->session);
 		}
+#endif
 
 		return 0;
 	}
