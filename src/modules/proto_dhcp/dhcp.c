@@ -774,25 +774,23 @@ static int fr_dhcp_attr2vp(TALLOC_CTX *ctx, VALUE_PAIR **vp_p, uint8_t const *da
 		 *	multiple additional VPs
 		 */
 		fr_cursor_init(&cursor, vp_p);
-		for (;;) {
-			q = memchr(p, '\0', q - p);
+		while (p < end) {
+			q = memchr(p, '\0', end - p);
 			/* Malformed but recoverable */
 			if (!q) q = end;
 
 			fr_pair_value_bstrncpy(vp, (char const *)p, q - p);
 			p = q + 1;
 
+			if (p >= end) break;
+
 			/* Need another VP for the next round */
-			if (p < end) {
-				vp = fr_pair_afrom_da(ctx, vp->da);
-				if (!vp) {
-					fr_pair_list_free(vp_p);
-					return -1;
-				}
-				fr_cursor_insert(&cursor, vp);
-				continue;
+			vp = fr_pair_afrom_da(ctx, vp->da);
+			if (!vp) {
+				fr_pair_list_free(vp_p);
+				return -1;
 			}
-			break;
+			fr_cursor_insert(&cursor, vp);
 		}
 	}
 		break;
