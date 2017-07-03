@@ -155,3 +155,9 @@ data WiMAX-Release = "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
 decode 1a 0b 00 00 60 b5 31 05 80 00 00
 data Attr-26 = 0x000060b53105800000
 
+encode WiMAX-GMT-Timezone-offset = -1
+data 1a 0d 00 00 60 b5 03 07 00 ff ff ff ff
+
+decode -
+data WiMAX-GMT-Timezone-offset = -1
+

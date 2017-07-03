@@ -4086,7 +4086,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		break;
 
 	case PW_TYPE_SIGNED:	/* overloaded with vp_integer */
-		memcpy(&vp->vp_integer, buffer, 4);
+		memcpy(&vp->vp_integer, data, 4);
 		vp->vp_integer = ntohl(vp->vp_integer);
 		break;
 
