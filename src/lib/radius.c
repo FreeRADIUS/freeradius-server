@@ -2552,8 +2552,10 @@ static uint8_t *rad_coalesce(unsigned int attribute, size_t length,
 	uint8_t *ptr, *tlv, *tlv_data;
 
 	for (ptr = data + length;
-	     ptr != (data + packet_length);
+	     ptr < (data + packet_length);
 	     ptr += ptr[1]) {
+		if ((ptr + 2) > (data + length)) return NULL;
+
 		if ((ptr[0] != PW_VENDOR_SPECIFIC) ||
 		    (ptr[1] < (2 + 4 + 3)) || /* WiMAX VSA with continuation */
 		    (ptr[2] != 0) || (ptr[3] != 0)) { /* our requirement */
@@ -2570,7 +2572,14 @@ static uint8_t *rad_coalesce(unsigned int attribute, size_t length,
 		 *	If the vendor-length is too small, it's badly
 		 *	formed, so we stop.
 		 */
-		if ((ptr[2 + 4 + 1]) < 3) break;
+		if ((ptr[2 + 4 + 1]) < 3) return NULL;
+
+		/*
+		 *	If it overflows the packet, it's bad.
+		 */
+		if ((ptr + ptr[2 + 4 + 1]) > (data + packet_length)) {
+			return NULL;
+		}
 
 		tlv_length += ptr[2 + 4 + 1] - 3;
 		if ((ptr[2 + 4 + 1 + 1] & 0x80) == 0) break;
@@ -2587,7 +2596,7 @@ static uint8_t *rad_coalesce(unsigned int attribute, size_t length,
 	 *	our newly created memory.
 	 */
 	for (ptr = data + length;
-	     ptr != (data + packet_length);
+	     ptr < (data + packet_length);
 	     ptr += ptr[1]) {
 		int this_length;
 
