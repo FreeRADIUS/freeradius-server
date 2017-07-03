@@ -629,6 +629,24 @@ static int fr_dhcp_decode_suboption(TALLOC_CTX *ctx, VALUE_PAIR **tlv, uint8_t c
 		uint32_t	attr;
 
 		/*
+		 *	Not enough room for the option header, it's a
+		 *	bad packet.
+		 */
+		if ((p + 2) > (data + len)) {
+			fr_pair_list_free(&head);
+			return -1;
+		}
+
+		/*
+		 *	Not enough room for the option header + data,
+		 *	it's a bad packet.
+		 */
+		if ((p + 2 + p[1]) > (data + len)) {
+			fr_pair_list_free(&head);
+			return -1;
+		}
+
+		/*
 		 *	The initial OID string looks like:
 		 *	<iana>.0
 		 *
