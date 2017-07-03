@@ -64,9 +64,9 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildRequires: autoconf
 BuildRequires: gdbm-devel
 %if %{?_with_freeradius_openssl:1}%{!?_with_freeradius_openssl:0}
-BuildRequires: freeradius-openssl-devel
+BuildRequires: freeradius-openssl, freeradius-openssl-devel
 %else
-BuildRequires: openssl-devel
+BuildRequires: openssl, openssl-devel
 %endif
 
 BuildRequires: libcurl-devel
