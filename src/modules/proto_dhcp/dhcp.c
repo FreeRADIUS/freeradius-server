@@ -1097,8 +1097,8 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 			/*
 			 *	Vendor is "MSFT 98"
 			 */
-			vp = fr_pair_find_by_num(head, 63, DHCP_MAGIC_VENDOR, TAG_ANY);
-			if (vp && (strcmp(vp->vp_strvalue, "MSFT 98") == 0)) {
+			vp = fr_pair_find_by_num(head, 60, DHCP_MAGIC_VENDOR, TAG_ANY);
+			if (vp && (vp->vp_length >= 7) && (memcmp(vp->vp_octets, "MSFT 98", 7) == 0)) {
 				vp = fr_pair_find_by_num(head, 262, DHCP_MAGIC_VENDOR, TAG_ANY);
 
 				/*
