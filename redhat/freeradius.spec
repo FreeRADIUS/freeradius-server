@@ -55,7 +55,7 @@ BuildRequires: autoconf
 BuildRequires: gdbm-devel
 BuildRequires: libtool
 BuildRequires: libtool-ltdl-devel
-BuildRequires: openssl-devel
+BuildRequires: openssl, openssl-devel
 BuildRequires: pam-devel
 BuildRequires: zlib-devel
 BuildRequires: net-snmp-devel
