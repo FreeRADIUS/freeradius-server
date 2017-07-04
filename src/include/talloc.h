@@ -27,6 +27,8 @@ char		*talloc_typed_strdup(void const *t, char const *p);
 
 char		*talloc_typed_asprintf(void const *t, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
 
+char		*talloc_typed_vasprintf(void const *t, char const *fmt, va_list ap) CC_HINT(format (printf, 2, 0)) CC_HINT(nonnull (2));
+
 char		*talloc_bstrndup(void const *t, char const *in, size_t inlen);
 
 int		talloc_memcmp_array(uint8_t const *a, uint8_t const *b);
