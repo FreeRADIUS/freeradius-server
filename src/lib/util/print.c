@@ -571,15 +571,15 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 				}
 				break;
 
-			case 'L':
+			case 'l':
 				if ((*p == 'i') || (*p == 'd')) {
-					if (len [1] == 'L') {
+					if (len[1] == 'l') {
 						(void) va_arg(ap_q, long);		/* long */
 					} else {
 						(void) va_arg(ap_q, long long);		/* long long */
 					}
 				} else {
-					if (len [1] == 'L') {
+					if (len[1] == 'l') {
 						(void) va_arg(ap_q, unsigned long);	/* unsigned long */
 					} else {
 						(void) va_arg(ap_q, unsigned long long);/* unsigned long long */
