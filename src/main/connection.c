@@ -241,6 +241,7 @@ static void connection_state_init(fr_connection_t *conn, struct timeval *now)
 		 *	assume it's open.
 		 */
 		if (fr_event_fd_insert(conn->el, fd, NULL, _connection_writable, _connection_error, conn) < 0) {
+			PERROR("Failed inserting file descriptor (%i) into event loop %p", fd, conn->el);
 			connection_state_failed(conn, now);
 			return;
 		}
