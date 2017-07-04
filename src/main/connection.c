@@ -152,8 +152,8 @@ static void _connection_timeout(UNUSED fr_event_list_t *el, struct timeval *now,
 {
 	fr_connection_t *conn = talloc_get_type_abort(uctx, fr_connection_t);
 
-	STATE_TRANSITION(FR_CONNECTION_STATE_TIMEOUT);
 	ERROR("Connection failed - timed out after %pVs", fr_box_timeval(conn->connection_timeout));
+	STATE_TRANSITION(FR_CONNECTION_STATE_TIMEOUT);
 	connection_state_failed(conn, now);
 }
 
@@ -170,7 +170,6 @@ static void _connection_error(UNUSED fr_event_list_t *el, UNUSED int sock, UNUSE
 	struct timeval	now;
 
 	ERROR("Connection failed");
-
 	gettimeofday(&now, NULL);
 	connection_state_failed(conn, &now);
 }
@@ -190,8 +189,8 @@ static void _connection_writable(UNUSED fr_event_list_t *el, UNUSED int sock, UN
 	ret = conn->open(conn->fd, conn->el, conn->uctx);
 	switch (ret) {
 	case FR_CONNECTION_STATE_CONNECTED:
-		STATE_TRANSITION(FR_CONNECTION_STATE_CONNECTED);
 		DEBUG2("Connection established");
+		STATE_TRANSITION(FR_CONNECTION_STATE_CONNECTED);
 		return;
 
 	/*
@@ -224,8 +223,8 @@ static void connection_state_init(fr_connection_t *conn, struct timeval *now)
 
 	rad_assert((conn->state == FR_CONNECTION_STATE_INIT) || (conn->state == FR_CONNECTION_STATE_FAILED));
 
-	STATE_TRANSITION(FR_CONNECTION_STATE_INIT);
 	DEBUG2("Connection initialising");
+	STATE_TRANSITION(FR_CONNECTION_STATE_INIT);
 
 	ret = conn->open(fd, conn->el, conn->uctx);
 	switch (ret) {
@@ -233,9 +232,8 @@ static void connection_state_init(fr_connection_t *conn, struct timeval *now)
 	{
 		struct timeval when = { 0, 0 };
 
-		STATE_TRANSITION(FR_CONNECTION_STATE_CONNECTING);
 		DEBUG2("Connection initialised");
-
+		STATE_TRANSITION(FR_CONNECTION_STATE_CONNECTING);
 		fr_timeval_add(&when, now, &conn->connection_timeout);
 
 		/*
