@@ -420,7 +420,7 @@ static void logtee_it(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, ch
 	/*
 	 *	None of this should involve mallocs unless msg > 1k
 	 */
-	msg = talloc_vasprintf(t->msg, fmt, ap);
+	msg = talloc_typed_vasprintf(t->msg, fmt, ap);
 	fr_value_box_strdup_buffer_shallow(NULL, &t->msg->data, inst->msg_da, msg, true);
 
 	t->type->vp_uint32 = (uint32_t) type;
