@@ -35,13 +35,32 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSE
  *	Define a structure for our module configuration.
  */
 typedef struct radius_instance {
-	char const		*name;			//!< Module instance name.
+	char const		*name;		//!< Module instance name.
 
-	dl_instance_t			*io_submodule;	//!< As provided by the transport_parse
-	fr_client_io_t			*client_io;	//!< Easy access to the client_io handle
-	void				*client_io_instance; //!< Easy access to the client_io instance
-	CONF_SECTION			*client_io_conf;  //!< Easy access to the client_io's config section
+	struct timeval		connection_timeout;
+	struct timeval		reconnect_delay;
+	struct timeval		idle_timeout;
+
+	dl_instance_t		*io_submodule;	//!< As provided by the transport_parse
+	fr_client_io_t		*client_io;	//!< Easy access to the client_io handle
+	void			*client_io_instance; //!< Easy access to the client_io instance
+	CONF_SECTION		*client_io_conf;  //!< Easy access to the client_io's config section
 } rlm_radius_t;
+
+static CONF_PARSER const timer_config[] = {
+	{ FR_CONF_OFFSET("connection", FR_TYPE_TIMEVAL, rlm_radius_t, connection_timeout),
+	  .dflt = STRINGIFY(5) },
+
+	{ FR_CONF_OFFSET("reconnect", FR_TYPE_TIMEVAL, rlm_radius_t, reconnect_delay),
+	  .dflt = STRINGIFY(5) },
+
+	{ FR_CONF_OFFSET("idle", FR_TYPE_TIMEVAL, rlm_radius_t, idle_timeout),
+	  .dflt = STRINGIFY(300) },
+
+	CONF_PARSER_TERMINATOR
+};
+
+
 
 /*
  *	A mapping of configuration file names to internal variables.
@@ -49,6 +68,8 @@ typedef struct radius_instance {
 static CONF_PARSER const module_config[] = {
 	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, rlm_radius_t, io_submodule),
 	  .func = transport_parse },
+
+	{ FR_CONF_POINTER("timers", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) timer_config },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -105,9 +126,21 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	rlm_radius_t *inst = instance;
+
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) inst->name = cf_section_name1(conf);
+
+	FR_TIMEVAL_BOUND_CHECK("timers.connection", &inst->connection_timeout, >=, 1, 0);
+	FR_TIMEVAL_BOUND_CHECK("timers.connection", &inst->connection_timeout, <=, 30, 0);
+
+	FR_TIMEVAL_BOUND_CHECK("timers.reconnect", &inst->reconnect_delay, >=, 5, 0);
+	FR_TIMEVAL_BOUND_CHECK("timers.reconned", &inst->reconnect_delay, <=, 300, 0);
+
+	FR_TIMEVAL_BOUND_CHECK("timers.idle", &inst->connection_timeout, >=, 30, 0);
+	FR_TIMEVAL_BOUND_CHECK("timers.idle", &inst->connection_timeout, <=, 600, 0);
 
 	rad_assert(inst->client_io->process != NULL);
 
