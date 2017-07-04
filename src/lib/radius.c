@@ -542,17 +542,17 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags,
  * encrypting passwords to RADIUS.
  */
 static void make_secret(uint8_t *digest, uint8_t const *vector,
-			char const *secret, uint8_t const *value)
+			char const *secret, uint8_t const *value, size_t length)
 {
 	FR_MD5_CTX context;
-	int	     i;
+	size_t	     i;
 
 	fr_md5_init(&context);
 	fr_md5_update(&context, vector, AUTH_VECTOR_LEN);
 	fr_md5_update(&context, (uint8_t const *) secret, strlen(secret));
 	fr_md5_final(digest, &context);
 
-	for ( i = 0; i < AUTH_VECTOR_LEN; i++ ) {
+	for ( i = 0; i < length; i++ ) {
 		digest[i] ^= value[i];
 	}
 }
@@ -1010,8 +1010,8 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 		 *	always fits.
 		 */
 	case FLAG_ENCRYPT_ASCEND_SECRET:
-		if (len != 16) return 0;
-		make_secret(ptr, packet->vector, secret, data);
+		if (len > AUTH_VECTOR_LEN) len = AUTH_VECTOR_LEN;
+		make_secret(ptr, packet->vector, secret, data, len);
 		len = AUTH_VECTOR_LEN;
 		break;
 
@@ -3605,9 +3605,14 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 				goto raw;
 			} else {
 				uint8_t my_digest[AUTH_VECTOR_LEN];
+				size_t secret_len;
+
+				secret_len = datalen;
+				if (secret_len > AUTH_VECTOR_LEN) secret_len = AUTH_VECTOR_LEN;
+
 				make_secret(my_digest,
 					    original->vector,
-					    secret, data);
+					    secret, data, secret_len);
 				memcpy(buffer, my_digest,
 				       AUTH_VECTOR_LEN );
 				buffer[AUTH_VECTOR_LEN] = '\0';
