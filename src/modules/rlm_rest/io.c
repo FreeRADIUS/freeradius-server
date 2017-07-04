@@ -139,15 +139,16 @@ static void _rest_io_timer_expired(UNUSED fr_event_list_t *el, UNUSED struct tim
  * @param[in] el	fd was registered with.
  * @param[in] fd	that errored.
  * @param[in] flags	from kevent.
+ * @param[in] fd_errno	from kevent.
  * @param[in] ctx	The rlm_rest_thread_t specific to this thread.
  */
-static void _rest_io_service_errored(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *ctx)
+static void _rest_io_service_errored(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, int fd_errno, void *ctx)
 {
 	rlm_rest_thread_t *t;
 
 	t = talloc_get_type_abort(ctx, rlm_rest_thread_t);
 
-	DEBUG4("libcurl fd %i errored", fd);
+	DEBUG4("libcurl fd %i errored: %s", fd, fr_syserror(fd_errno));
 
 	_rest_io_service(t, fd, CURL_CSELECT_ERR);
 }

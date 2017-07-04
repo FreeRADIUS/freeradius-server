@@ -413,12 +413,14 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 
 /** Handle errors for a socket.
  *
- * @param el the event list
- * @param sockfd the socket which has a fatal error.
- * @param flags returned by kevent.
- * @param ctx the network socket context.
+ * @param[in] el		the event list
+ * @param[in] sockfd		the socket which has a fatal error.
+ * @param[in] flags		returned by kevent.
+ * @param[in] fd_errno		returned by kevent.
+ * @param[in] ctx		the network socket context.
  */
-static void fr_network_error(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED int flags, void *ctx)
+static void fr_network_error(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED int flags,
+			     UNUSED int fd_errno, void *ctx)
 {
 	fr_network_socket_t *s = ctx;
 

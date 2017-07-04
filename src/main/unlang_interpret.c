@@ -509,13 +509,13 @@ static unlang_action_t unlang_fork(REQUEST *request, unlang_stack_t *stack,
 		da = fr_dict_attr_by_name(NULL, "Packet-Type");
 		if (!da) {
 			*result = RLM_MODULE_FAIL;
-			return UNLANG_ACTION_CALCULATE_RESULT;			
+			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 
 		dval = fr_dict_enum_by_alias(NULL, da, g->vpt->name);
 		if (!dval) {
 			*result = RLM_MODULE_FAIL;
-			return UNLANG_ACTION_CALCULATE_RESULT;			
+			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 
 		child->packet->code = dval->value->vb_uint32;
@@ -1784,9 +1784,11 @@ static void unlang_event_fd_write_handler(UNUSED fr_event_list_t *el, int fd, UN
  * @param[in] el	containing the event (not passed to the callback).
  * @param[in] fd	the I/O event occurred on.
  * @param[in] flags	from kevent.
+ * @param[in] fd_errno	from kevent.
  * @param[in] ctx	unlang_event_t structure holding callbacks.
  */
-static void unlang_event_fd_error_handler(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *ctx)
+static void unlang_event_fd_error_handler(UNUSED fr_event_list_t *el, int fd,
+					  UNUSED int flags, UNUSED int fd_errno, void *ctx)
 {
 	unlang_event_t *ev = talloc_get_type_abort(ctx, unlang_event_t);
 	void *mutable_ctx;

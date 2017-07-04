@@ -71,6 +71,16 @@ typedef	int (*fr_event_status_t)(void *uctx, struct timeval *now);
  */
 typedef void (*fr_event_fd_handler_t)(fr_event_list_t *el, int sock, int flags, void *uctx);
 
+/** Called when an IO error event occurs on a file descriptor
+ *
+ * @param[in] el	Event list the file descriptor was inserted into.
+ * @param[in] sock	That experienced the IO event.
+ * @param[in] flags	field as returned by kevent.
+ * @param[in] fd_errno	File descriptor error.
+ * @param[in] uctx	User ctx passed to #fr_event_fd_insert.
+ */
+typedef void (*fr_event_fd_error_handler_t)(fr_event_list_t *el, int sock, int flags, int fd_errno, void *uctx);
+
 /** Called when a user kevent occurs
  *
  * @param[in] kq	that received the user kevent.
@@ -88,7 +98,7 @@ int		fr_event_fd_delete(fr_event_list_t *el, int fd);
 int		fr_event_fd_insert(fr_event_list_t *el, int fd,
 				   fr_event_fd_handler_t read_fn,
 				   fr_event_fd_handler_t write_fn,
-				   fr_event_fd_handler_t error,
+				   fr_event_fd_error_handler_t error,
 				   void *ctx);
 
 int		fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t **parent);

@@ -195,9 +195,11 @@ static rlm_rcode_t mod_insert_logtee(void *instance, UNUSED void *thread, REQUES
 /** Connection errored
  *
  */
-static void _logtee_conn_error(UNUSED fr_event_list_t *el, UNUSED int sock, UNUSED int flags, void *uctx)
+static void _logtee_conn_error(UNUSED fr_event_list_t *el, int sock, UNUSED int flags, int fd_errno, void *uctx)
 {
 	rlm_logtee_thread_t	*t = talloc_get_type_abort(uctx, rlm_logtee_thread_t);
+
+	ERROR("Connection failed (%i): %s", sock, fr_syserror(fd_errno));
 
 	/*
 	 *	Something bad happened... Fix it...

@@ -68,7 +68,7 @@ typedef struct fr_event_fd_t {
 
 	fr_event_fd_handler_t	read;			//!< Callback for when data is available.
 	fr_event_fd_handler_t	write;			//!< Callback for when we can write data.
-	fr_event_fd_handler_t	error;			//!< Callback for when an error occurs on the FD.
+	fr_event_fd_error_handler_t	error;		//!< Callback for when an error occurs on the FD.
 
 	bool			is_registered;		//!< Whether this fr_event_fd_t's FD has been registered with
 							//!< kevent.  Mostly for debugging.
@@ -327,7 +327,7 @@ static int _fr_event_fd_free(fr_event_fd_t *ef)
 int fr_event_fd_insert(fr_event_list_t *el, int fd,
 		       fr_event_fd_handler_t read_fn,
 		       fr_event_fd_handler_t write_fn,
-		       fr_event_fd_handler_t error,
+		       fr_event_fd_error_handler_t error,
 		       void *ctx)
 {
 	int	      	filter = 0;
@@ -935,6 +935,7 @@ void fr_event_service(fr_event_list_t *el)
 	 */
 	for (i = 0; i < el->num_fd_events; i++) {
 		fr_event_fd_t *ev;
+		int fd_errno = 0;
 		int flags = el->events[i].flags;
 
 		/*
@@ -963,16 +964,15 @@ void fr_event_service(fr_event_list_t *el)
 		if (!fr_cond_assert(ev->is_registered)) continue;
 
                 if (flags & EV_ERROR) {
+                	fd_errno = el->events[i].data;
                 ev_error:
                         /*
                          *      Call the error handler which should
                          *      tear down the connection.
                          */
-                        if (ev->error) {
-                                ev->error(el, ev->fd, flags, ev->ctx);
-                                continue;
-                        }
+                        if (ev->error) ev->error(el, ev->fd, flags, fd_errno, ev->ctx);
                         fr_event_fd_delete(el, ev->fd);
+                        continue;
                 }
 
                 /*
@@ -1003,6 +1003,8 @@ void fr_event_service(fr_event_list_t *el)
 			 */
 			if ((ev->sock_type == SOCK_RAW) && ev->pf_attached) goto service;
 #endif
+			fd_errno = el->events[i].fflags;
+
 			goto ev_error;
                 }
 
@@ -1160,7 +1162,7 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_t status, 
 	FR_DLIST_INIT(el->pre_callbacks);
 	FR_DLIST_INIT(el->post_callbacks);
 	FR_DLIST_INIT(el->user_callbacks);
-	
+
 	if (status) (void) fr_event_pre_insert(el, status, status_ctx);
 
 	/*
