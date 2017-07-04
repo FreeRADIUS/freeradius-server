@@ -292,6 +292,7 @@ static int _connection_free(fr_connection_t *conn)
 	case FR_CONNECTION_STATE_FAILED:
 	case FR_CONNECTION_STATE_TIMEOUT:
 		if (conn->fd >= 0) {
+			DEBUG2("Closing connection (%i)", conn->fd);
 			fr_event_fd_delete(conn->el, conn->fd);
 			conn->close(conn->fd, conn->uctx);
 			conn->fd = -1;

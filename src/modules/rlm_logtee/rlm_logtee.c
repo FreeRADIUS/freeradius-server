@@ -293,6 +293,7 @@ static void _logtee_conn_writable(UNUSED fr_event_list_t *el, int sock, UNUSED i
  */
 static void logtee_fd_idle(rlm_logtee_thread_t *t)
 {
+	DEBUG4("Marking socket (%i) as idle", fr_connection_get_fd(t->conn));
 	fr_event_fd_insert(t->el, fr_connection_get_fd(t->conn),
 			   _logtee_conn_read, NULL, _logtee_conn_error, t);
 }
@@ -305,6 +306,7 @@ static void logtee_fd_idle(rlm_logtee_thread_t *t)
  */
 static void logtee_fd_active(rlm_logtee_thread_t *t)
 {
+	DEBUG4("Marking socket (%i) as active - Draining requests", fr_connection_get_fd(t->conn));
 	fr_event_fd_insert(t->el, fr_connection_get_fd(t->conn),
 			   _logtee_conn_read, _logtee_conn_writable, _logtee_conn_error, t);
 }
@@ -314,6 +316,7 @@ static void logtee_fd_active(rlm_logtee_thread_t *t)
  */
 static void _logtee_conn_close(int fd, UNUSED void *uctx)
 {
+	DEBUG3("Closing socket (%i)", fd);
 	if (shutdown(fd, SHUT_RDWR) < 0) DEBUG3("Shutdown on socket (%i) failed: %s", fd, fr_syserror(errno));
 	if (close(fd) < 0) DEBUG3("Closing socket (%i) failed: %s", fd, fr_syserror(errno));
 }
@@ -325,6 +328,8 @@ static fr_connection_state_t _logtee_conn_open(UNUSED int fd, UNUSED fr_event_li
 {
 	rlm_logtee_thread_t	*t = talloc_get_type_abort(uctx, rlm_logtee_thread_t);
 
+	DEBUG2("Socket connected");
+
 	/*
 	 *	If we have data pending, add the writable event immediately
 	 */
@@ -334,7 +339,6 @@ static fr_connection_state_t _logtee_conn_open(UNUSED int fd, UNUSED fr_event_li
 		logtee_fd_idle(t);
 	}
 
-	return FR_CONNECTION_STATE_CONNECTING;
 	return FR_CONNECTION_STATE_CONNECTED;
 }
 
