@@ -414,6 +414,7 @@ static void logtee_it(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, ch
 	char			*msg, *exp;
 	fr_cursor_t		cursor;
 	VALUE_PAIR		*vp;
+	log_dst_t		*dst;
 
 	rad_assert(t->msg->vp_length == 0);	/* Should have been cleared before returning */
 
@@ -438,7 +439,10 @@ static void logtee_it(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, ch
 	 *	Fixme: Would be better to call tmpl_expand
 	 *	into a variable length ring buffer.
 	 */
+	dst = request->log.dst;
+	request->log.dst = NULL;
 	if (tmpl_aexpand(t, &exp, request, inst->log_fmt, NULL, NULL) < 0) goto finish;
+	request->log.dst = dst;
 
 	fr_fring_overwrite(t->fring, exp);	/* Insert it into the buffer */
 
