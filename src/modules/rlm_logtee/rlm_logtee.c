@@ -470,21 +470,21 @@ finish:
  *	- #RLM_MODULE_NOOP	if log destination already exists.
  *	- #RLM_MODULE_OK	if we added a new destination.
  */
-static rlm_rcode_t mod_insert_logtee(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t mod_insert_logtee(UNUSED void *instance, void *thread, REQUEST *request)
 {
 	fr_cursor_t	cursor;
 	log_dst_t	*dst;
 	bool		exists = false;
 
 	for (dst = fr_cursor_init(&cursor, &request->log.dst); dst; dst = fr_cursor_next(&cursor)) {
-		if (dst->uctx == instance) exists = true;
+		if (dst->uctx == thread) exists = true;
 	}
 
 	if (exists) return RLM_MODULE_NOOP;
 
 	dst = talloc_zero(request, log_dst_t);
 	dst->func = logtee_it;
-	dst->uctx = instance;
+	dst->uctx = thread;
 
 	fr_cursor_append(&cursor, dst);
 
@@ -504,7 +504,7 @@ static rlm_rcode_t mod_insert_logtee(void *instance, UNUSED void *thread, REQUES
 static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instance, fr_event_list_t *el, void *thread)
 {
 	rlm_logtee_t		*inst = talloc_get_type_abort(instance, rlm_logtee_t);
-	rlm_logtee_thread_t	*t = thread;
+	rlm_logtee_thread_t	*t = talloc_get_type_abort(thread, rlm_logtee_thread_t);
 
 	MEM(t->fring = fr_fring_alloc(t, inst->buffer_depth, false));
 
