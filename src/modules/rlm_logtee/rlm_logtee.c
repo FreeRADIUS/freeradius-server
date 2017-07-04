@@ -431,6 +431,7 @@ static void logtee_it(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, ch
 	fr_cursor_prepend(&cursor, t->msg);
 	fr_cursor_prepend(&cursor, t->type);
 	fr_cursor_prepend(&cursor, t->lvl);
+	fr_cursor_head(&cursor);
 
 	/*
 	 *	Now expand our fmt string to encapsulate the
@@ -450,15 +451,20 @@ static void logtee_it(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, ch
 		t->pending = true;
 		logtee_fd_active(t);		/* Listen for when the fd is writable */
 	}
+
 finish:
 	/*
 	 *	Don't free, we re-use the VALUE_PAIRs for the next message
 	 */
-	fr_cursor_remove(&cursor);
-	fr_cursor_remove(&cursor);
+	vp = fr_cursor_remove(&cursor);
+	rad_assert(vp == t->lvl);
+
+	vp = fr_cursor_remove(&cursor);
+	rad_assert(vp == t->type);
+
 	vp = fr_cursor_remove(&cursor);
 	rad_assert(vp == t->msg);
-	fr_value_box_clear(&vp->data);		/* Clear message data */
+	fr_value_box_clear(&t->msg->data);		/* Clear message data */
 }
 
 /** Add our logging destination to the linked list of logging destinations (if it doesn't already exist)
