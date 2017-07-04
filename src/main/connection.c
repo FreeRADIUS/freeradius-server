@@ -226,7 +226,7 @@ static void connection_state_init(fr_connection_t *conn, struct timeval *now)
 	DEBUG2("Connection initialising");
 	STATE_TRANSITION(FR_CONNECTION_STATE_INIT);
 
-	ret = conn->open(fd, conn->el, conn->uctx);
+	ret = conn->init(&fd, conn->uctx);
 	switch (ret) {
 	case FR_CONNECTION_STATE_CONNECTING:
 	{
@@ -246,6 +246,7 @@ static void connection_state_init(fr_connection_t *conn, struct timeval *now)
 			return;
 		}
 		fr_event_timer_insert(conn->el, _connection_timeout, conn, &when, &conn->connection_timer);
+		conn->fd = fd;
 	}
 		break;
 
