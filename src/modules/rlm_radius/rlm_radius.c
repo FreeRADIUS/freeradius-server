@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file rlm_radius_client.c
+ * @file rlm_radius.c
  * @brief A RADIUS client library.
  *
  * @copyright 2016  The FreeRADIUS server project
@@ -29,7 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/udp.h>
 #include <freeradius-devel/rad_assert.h>
 
-typedef struct radius_client_instance {
+typedef struct radius_instance {
 	char const		*name;			//!< Module instance name.
 
 	char const		*virtual_server;       	//!< virtual server to run proxied packets through
@@ -39,45 +39,45 @@ typedef struct radius_client_instance {
 
 	home_server_t		*home_server;		// home servers to send packets to
 	pthread_key_t		key;
-} rlm_radius_client_instance_t;
+} rlm_radius_instance_t;
 
 static const CONF_PARSER listen_config[] = {
-	{ FR_CONF_OFFSET("ipaddr", FR_TYPE_IPV4_ADDR, rlm_radius_client_instance_t, src_ipaddr) },
+	{ FR_CONF_OFFSET("ipaddr", FR_TYPE_IPV4_ADDR, rlm_radius_instance_t, src_ipaddr) },
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_POINTER("listen", FR_TYPE_SUBSECTION, NULL), .dflt = (void const *) listen_config },
 
-	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING, rlm_radius_client_instance_t, virtual_server) },
+	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING, rlm_radius_instance_t, virtual_server) },
 	CONF_PARSER_TERMINATOR
 };
 
-typedef struct radius_client_conn {
-	rlm_radius_client_instance_t const	*inst;
+typedef struct radius_conn {
+	rlm_radius_instance_t const	*inst;
 	int					num_fds;
 	int					sockfd;
 	fr_packet_list_t			*pl;
 	fr_event_list_t				*el;
-} rlm_radius_client_conn_t;
+} rlm_radius_conn_t;
 
-typedef struct rlm_radius_client_request {
-	rlm_radius_client_instance_t const	*inst;
+typedef struct rlm_radius_request {
+	rlm_radius_instance_t const	*inst;
 	REQUEST					*request;
 	rlm_rcode_t				rcode;
 
-	rlm_radius_client_conn_t		*conn;
+	rlm_radius_conn_t		*conn;
 
 	RADIUS_PACKET				*packet;	/* the packet we sent */
 	RADIUS_PACKET				*reply;		/* the reply from the home server */
 
 	REQUEST					*child;		/* the child request */
-} rlm_radius_client_request_t;
+} rlm_radius_request_t;
 
 /** Clean up whatever intermediate state we're in.
  *
  */
-static void mod_cleanup(REQUEST *request, rlm_radius_client_request_t *ccr)
+static void mod_cleanup(REQUEST *request, rlm_radius_request_t *ccr)
 {
 	if (ccr->child->in_request_hash) {
 		(void) fr_packet_list_yank(ccr->conn->pl, ccr->packet);
@@ -105,8 +105,8 @@ static void mod_cleanup(REQUEST *request, rlm_radius_client_request_t *ccr)
 
 static void mod_event_fd(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *ctx)
 {
-	rlm_radius_client_conn_t *conn = ctx;
-	rlm_radius_client_request_t *ccr;
+	rlm_radius_conn_t *conn = ctx;
+	rlm_radius_request_t *ccr;
 	RADIUS_PACKET *reply, **packet_p;
 	REQUEST *request;
 	char buffer[INET6_ADDRSTRLEN];
@@ -137,7 +137,7 @@ static void mod_event_fd(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, v
 	/*
 	 *	Walk back up the chain of structs.
 	 */
-	ccr = fr_packet2myptr(rlm_radius_client_request_t, packet, packet_p);
+	ccr = fr_packet2myptr(rlm_radius_request_t, packet, packet_p);
 	request = ccr->request;
 
 	RDEBUG("Received reply %s packet from home server %s port %d - ID %u",
@@ -179,7 +179,7 @@ static void mod_event_fd(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, v
 static void mod_proxy_no_reply(REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *ctx,
 			       UNUSED struct timeval *now)
 {
-	rlm_radius_client_request_t *ccr = ctx;
+	rlm_radius_request_t *ccr = ctx;
 
 	mod_cleanup(request, ccr);
 
@@ -190,8 +190,8 @@ static void mod_proxy_no_reply(REQUEST *request, UNUSED void *instance, UNUSED v
 static rlm_rcode_t mod_resume_recv(REQUEST *request, void *instance, UNUSED void *thread, void *ctx)
 {
 	rlm_rcode_t			rcode;
-	rlm_radius_client_instance_t	*inst = instance;
-	rlm_radius_client_request_t	*ccr = ctx;
+	rlm_radius_instance_t	*inst = instance;
+	rlm_radius_request_t	*ccr = ctx;
 	REQUEST				*child = ccr->child;
 
 	if (!rad_cond_assert(inst == ccr->inst)) return RLM_MODULE_FAIL;
@@ -217,8 +217,8 @@ static rlm_rcode_t mod_resume_continue(REQUEST *request, void *instance, void *t
 {
 	rlm_rcode_t rcode;
 	CONF_SECTION *unlang;
-	rlm_radius_client_instance_t const *inst = instance;
-	rlm_radius_client_request_t *ccr = ctx;
+	rlm_radius_instance_t const *inst = instance;
+	rlm_radius_request_t *ccr = ctx;
 	REQUEST *child = ccr->child;
 
 	rad_assert(inst == ccr->inst);
@@ -253,8 +253,8 @@ static rlm_rcode_t mod_resume_continue(REQUEST *request, void *instance, void *t
 
 static void mod_action_dup(REQUEST *request, void *instance, UNUSED void *thread, void *ctx, fr_state_action_t action)
 {
-	rlm_radius_client_instance_t const *inst = instance;
-	rlm_radius_client_request_t *ccr = ctx;
+	rlm_radius_instance_t const *inst = instance;
+	rlm_radius_request_t *ccr = ctx;
 	REQUEST *child = ccr->child;
 	RADIUS_PACKET *packet = child->packet;
 	char buffer[INET6_ADDRSTRLEN];
@@ -293,7 +293,7 @@ static void mod_conn_free(void *ctx)
 {
 	int i, max_fd;
 	fd_set fds;
-	rlm_radius_client_conn_t *conn = ctx;
+	rlm_radius_conn_t *conn = ctx;
 
 	FD_ZERO(&fds);
 
@@ -314,7 +314,7 @@ static void mod_conn_free(void *ctx)
 /** Clean up an association between a child and parent request.
  *
  */
-static int mod_ccr_free(rlm_radius_client_request_t *ccr)
+static int mod_ccr_free(rlm_radius_request_t *ccr)
 {
 	(void) request_data_get(ccr->request, ccr, 0);
 
@@ -333,7 +333,7 @@ static int mod_ccr_free(rlm_radius_client_request_t *ccr)
 /** Create and add a new socket to the connecton handle.
  *
  */
-static int mod_fd_add(fr_event_list_t *el, rlm_radius_client_conn_t *conn, rlm_radius_client_instance_t const *inst)
+static int mod_fd_add(fr_event_list_t *el, rlm_radius_conn_t *conn, rlm_radius_instance_t const *inst)
 {
 	int			sockfd;
 	fr_ipaddr_t const	*server_ipaddr = &inst->src_ipaddr;
@@ -385,11 +385,11 @@ static int mod_fd_add(fr_event_list_t *el, rlm_radius_client_conn_t *conn, rlm_r
 /*
  *	Create a new connection handle.
  */
-static void *mod_conn_create(fr_event_list_t *el, rlm_radius_client_instance_t  const *inst)
+static void *mod_conn_create(fr_event_list_t *el, rlm_radius_instance_t  const *inst)
 {
-	rlm_radius_client_conn_t *conn;
+	rlm_radius_conn_t *conn;
 
-	conn = talloc(NULL, rlm_radius_client_conn_t);
+	conn = talloc(NULL, rlm_radius_conn_t);
 	conn->inst = inst;
 	conn->pl = fr_packet_list_create(1);
 	conn->num_fds = 0;
@@ -405,8 +405,8 @@ static void *mod_conn_create(fr_event_list_t *el, rlm_radius_client_instance_t  
 }
 
 
-static rlm_rcode_t mod_wait_for_reply(REQUEST *request, rlm_radius_client_instance_t const *inst,
-				      rlm_radius_client_request_t *ccr)
+static rlm_rcode_t mod_wait_for_reply(REQUEST *request, rlm_radius_instance_t const *inst,
+				      rlm_radius_request_t *ccr)
 {
 	struct timeval now, timeout;
 	RADIUS_PACKET *packet = ccr->child->packet;
@@ -435,8 +435,8 @@ static rlm_rcode_t mod_wait_for_reply(REQUEST *request, rlm_radius_client_instan
 static rlm_rcode_t mod_resume_send(REQUEST *request, void *instance, UNUSED void *thread, void *ctx)
 {
 	rlm_rcode_t rcode;
-	rlm_radius_client_instance_t const *inst = instance;
-	rlm_radius_client_request_t *ccr = ctx;
+	rlm_radius_instance_t const *inst = instance;
+	rlm_radius_request_t *ccr = ctx;
 	REQUEST *child = ccr->child;
 
 	rad_assert(inst == ccr->inst);
@@ -460,9 +460,9 @@ static rlm_rcode_t mod_resume_send(REQUEST *request, void *instance, UNUSED void
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, REQUEST *request)
 {
-	rlm_radius_client_instance_t const *inst = instance;
-	rlm_radius_client_conn_t *conn;
-	rlm_radius_client_request_t *ccr;
+	rlm_radius_instance_t const *inst = instance;
+	rlm_radius_conn_t *conn;
+	rlm_radius_request_t *ccr;
 	RADIUS_PACKET *packet;
 	VALUE_PAIR *vp;
 	REQUEST *child;
@@ -487,7 +487,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	 *	We need to tie the child to both the parent, to the
 	 *	module instance, and to the connection it's using.
 	 */
-	MEM(ccr = talloc(request, rlm_radius_client_request_t));
+	MEM(ccr = talloc(request, rlm_radius_request_t));
 
 	ccr->inst = inst;
 	ccr->request = request;
@@ -650,7 +650,7 @@ static int mod_compile_section(CONF_SECTION *server_cs, char const *name1, char 
 static int mod_bootstrap(void *instance, CONF_SECTION *config)
 {
 	int				i;
-	rlm_radius_client_instance_t	*inst = instance;
+	rlm_radius_instance_t	*inst = instance;
 	CONF_SECTION			*cs;
 	home_server_t			*home;
 
@@ -749,7 +749,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *config)
 static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 {
 	int				rcode;
-	rlm_radius_client_instance_t	*inst = instance;
+	rlm_radius_instance_t	*inst = instance;
 
 	rcode = pthread_key_create(&inst->key, mod_conn_free);
 	if (rcode != 0) {
@@ -769,12 +769,12 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern rad_module_t rlm_radius_client;
-rad_module_t rlm_radius_client = {
+extern rad_module_t rlm_radius;
+rad_module_t rlm_radius = {
 	.magic		= RLM_MODULE_INIT,
-	.name		= "radius_client",
+	.name		= "radius",
 	.type		= RLM_TYPE_THREAD_SAFE | RLM_TYPE_RESUMABLE,
-	.inst_size	= sizeof(rlm_radius_client_instance_t),
+	.inst_size	= sizeof(rlm_radius_instance_t),
 	.config		= module_config,
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
