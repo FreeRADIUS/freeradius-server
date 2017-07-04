@@ -191,6 +191,7 @@ static void _connection_writable(UNUSED fr_event_list_t *el, UNUSED int sock, UN
 	case FR_CONNECTION_STATE_CONNECTED:
 		DEBUG2("Connection established");
 		STATE_TRANSITION(FR_CONNECTION_STATE_CONNECTED);
+		fr_event_timer_delete(conn->el, &conn->connection_timer);
 		return;
 
 	/*
