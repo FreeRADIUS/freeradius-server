@@ -335,6 +335,7 @@ static fr_connection_state_t _logtee_conn_open(UNUSED int fd, UNUSED fr_event_li
 	}
 
 	return FR_CONNECTION_STATE_CONNECTING;
+	return FR_CONNECTION_STATE_CONNECTED;
 }
 
 /** Initialise a new outbound connection
