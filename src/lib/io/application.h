@@ -110,4 +110,25 @@ typedef struct fr_app_io_t {
 	fr_io_signal_t			close;		//!< Close the transport.
 	fr_io_nak_t			nak;		//!< Function to send a NAK.
 } fr_app_io_t;
+
+#ifndef _FR_MODULES_H
+/*
+ *	Hackity hack hack
+ */
+typedef int (*module_thread_t)(CONF_SECTION const *mod_cs, void *instance, fr_event_list_t *el, void *thread);
+#endif
+typedef	rlm_rcode_t (*fr_client_io_process_t)(void *instance, void *thread, REQUEST *request);
+
+/** Public structure describing an I/O path for an outgoing socket.
+ *
+ * This structure is exported by client I/O modules e.g. rlm_radius_udp.
+ */
+typedef struct fr_client_io_t {
+	RAD_MODULE_COMMON;				//!< Common fields to all loadable modules.
+
+	fr_app_bootstrap_t		bootstrap;
+	fr_app_instantiate_t		instantiate;
+	module_thread_t			thread_instantiate;	//!< Callback to configure a module's instance for this thread
+	fr_client_io_process_t		process;		//!< send the packet
+} fr_client_io_t;
 #endif
