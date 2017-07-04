@@ -134,7 +134,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 
 		unlang = cf_section_find(request->server_cs, "recv", "Access-Request");
 		if (!unlang) {
-			REDEBUG("Failed to find 'recv %s' section", dv->alias);
+			REDEBUG("Failed to find 'recv Access-Request' section");
 			request->reply->code = FR_CODE_ACCESS_REJECT;
 			goto setup_send;
 		}
