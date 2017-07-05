@@ -693,13 +693,17 @@ static int _cf_section_free(CONF_SECTION *cs)
 CONF_SECTION *cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent, char const *name1, char const *name2)
 {
 	CONF_SECTION *cs;
+	char buffer[1024];
 
 	if (!name1) return NULL;
 
 	if (name2 && parent) {
-		char buffer[1024];
+		char const *p;
 
-		if (strchr(name2, '$')) {
+		p = strchr(name2, '$');
+		if (p && (p[1] != '{')) p = NULL;
+
+		if (p) {
 			name2 = cf_expand_variables(parent->item.filename,
 						    &parent->item.lineno,
 						    parent,
