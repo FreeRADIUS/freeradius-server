@@ -428,12 +428,12 @@ int fr_event_fd_insert(fr_event_list_t *el, int fd,
 	if (ef->read) {
 		if (!read_fn) EV_SET(&evset[count++], ef->fd, EVFILT_READ, EV_DELETE, 0, 0, 0);
 	} else {
-		if (read_fn) EV_SET(&evset[count++], ef->fd, EVFILT_READ, EV_ADD, 0, 0, ef);
+		if (read_fn) EV_SET(&evset[count++], ef->fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, ef);
 	}
 	if (ef->write) {
 		if (!write_fn) EV_SET(&evset[count++], ef->fd, EVFILT_WRITE, EV_DELETE, 0, 0, 0);
 	} else {
-		if (write_fn) EV_SET(&evset[count++], ef->fd, EVFILT_WRITE, EV_ADD, 0, 0, ef);
+		if (write_fn) EV_SET(&evset[count++], ef->fd, EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, ef);
 	}
 
 	if (count) {
