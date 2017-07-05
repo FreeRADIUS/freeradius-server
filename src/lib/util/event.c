@@ -76,7 +76,7 @@ typedef struct fr_event_fd_t {
 	bool			in_handler;		//!< Event is currently being serviced.  Deletes should be
 							//!< deferred until after the handlers complete.
 
-	bool			do_delete;		//!< Deferred deletion flag.  Delete this event *after*
+	bool			deferred_delete;	//!< Deferred deletion flag.  Delete this event *after*
 							//!< the handlers complete.
 
 	void			*ctx;			//!< Context pointer to pass to each file descriptor callback.
@@ -268,7 +268,7 @@ int fr_event_fd_delete(fr_event_list_t *el, int fd)
 	 *	in use within fr_event_service.
 	 */
 	if (ef->in_handler) {
-		ef->do_delete = true;
+		ef->deferred_delete = true;
 
 		return 0;
 	}
@@ -289,7 +289,7 @@ int fr_event_fd_delete(fr_event_list_t *el, int fd)
  */
 static int _fr_event_fd_free(fr_event_fd_t *ef)
 {
-	int		filter = 0;
+	int16_t		filter = 0;
 	struct kevent	evset;
 
 	fr_event_list_t	*el = talloc_parent(ef);
@@ -305,7 +305,7 @@ static int _fr_event_fd_free(fr_event_fd_t *ef)
 		}
 	}
 	rbtree_deletebydata(el->fds, ef);
-	ef->is_registered = false;
+	ef->is_registered = false;		/* For debugging */
 
 	el->num_fds--;
 
@@ -330,7 +330,7 @@ int fr_event_fd_insert(fr_event_list_t *el, int fd,
 		       fr_event_fd_error_handler_t error,
 		       void *ctx)
 {
-	int	      	filter = 0;
+	int16_t      	filter = 0;
 	struct kevent	evset;
 	fr_event_fd_t	*ef, find;
 	bool		pre_existing;
@@ -434,22 +434,16 @@ int fr_event_fd_insert(fr_event_list_t *el, int fd,
 		/*
 		 *	I/O handler may delete an event, then
 		 *	re-add it.  To avoid deleting modified
-		 *	events we unset the do_delete flag.
+		 *	events we unset the deferred_delete flag.
 		 */
-		ef->do_delete = false;
+		ef->deferred_delete = false;
 	}
 
 	ef->ctx = ctx;
-
-	if (read_fn) {
-		ef->read = read_fn;
-		filter |= EVFILT_READ;
-	}
-
-	if (write_fn) {
-		ef->write = write_fn;
-		filter |= EVFILT_WRITE;
-	}
+	ef->read = read_fn;
+	if (read_fn) filter |= EVFILT_READ;
+	ef->write = write_fn;
+	if (write_fn) filter |= EVFILT_WRITE;
 	ef->error = error;
 
 	EV_SET(&evset, fd, filter, EV_ADD | EV_ENABLE, 0, 0, ef);
@@ -1013,7 +1007,7 @@ service:
 		if (ev->read && (el->events[i].filter == EVFILT_READ)) {
 			ev->read(el, ev->fd, flags, ev->ctx);
 		}
-		if (ev->write && (el->events[i].filter == EVFILT_WRITE) && !ev->do_delete) {
+		if (ev->write && (el->events[i].filter == EVFILT_WRITE) && !ev->deferred_delete) {
 			ev->write(el, ev->fd, flags, ev->ctx);
 		}
 		ev->in_handler = false;
@@ -1022,7 +1016,7 @@ service:
 		 *	Process any deferred deletes performed
 		 *	by the I/O handler.
 		 */
-		if (ev->do_delete) fr_event_fd_delete(el, ev->fd);
+		if (ev->deferred_delete) fr_event_fd_delete(el, ev->fd);
 	}
 
 	gettimeofday(&el->now, NULL);
