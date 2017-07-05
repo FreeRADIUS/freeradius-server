@@ -333,7 +333,6 @@ int fr_event_fd_insert(fr_event_list_t *el, int fd,
 	int		count = 0;
 	struct kevent	evset[2];
 	fr_event_fd_t	*ef, find;
-	bool		pre_existing;
 
 	if (!el) {
 		fr_strerror_printf("Invalid argument: NULL event list");
@@ -357,16 +356,17 @@ int fr_event_fd_insert(fr_event_list_t *el, int fd,
 
 	memset(&find, 0, sizeof(find));
 
-	/*
-	 *	Get the existing fr_event_fd_t if it exists.
-	 */
 	find.fd = fd;
 	ef = rbtree_finddata(el->fds, &find);
+
+	/*
+	 *	No pre-existing event.  Allocate an entry
+	 *	for insertion into the rbtree, and call
+	 *	kevent to register read/write callbacks.
+	 */
 	if (!ef) {
 		int             sock_type;
 		socklen_t       opt_len = sizeof(sock_type);
-
-		pre_existing = false;
 
 		ef = talloc_zero(el, fr_event_fd_t);
 		if (!ef) {
@@ -403,54 +403,56 @@ int fr_event_fd_insert(fr_event_list_t *el, int fd,
 
 		rbtree_insert(el->fds, ef);
 
-	/*
-	 *	Existing filters will be overwritten if there's
-	 *	a new filter which takes their place.  If there
-	 *	is no new filter however, we need to delete the
-	 *	existing one.
-	 */
-	} else {
-		pre_existing = true;
+		if (read_fn) EV_SET(&evset[count++], fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, ef);
+		if (write_fn) EV_SET(&evset[count++], fd, EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, ef);
 
-		if (ef->read && !read_fn) EV_SET(&evset[count++], ef->fd, EVFILT_READ, EV_DELETE, 0, 0, 0);
-		if (ef->write && !write_fn) EV_SET(&evset[count++], ef->fd, EVFILT_WRITE, EV_DELETE, 0, 0, 0);
-
-		if (count) {
-			/*
-			 *	kevent on macOS sierra (and possibly others)
-			 *	is broken, and doesn't allow us to perform
-			 *	an EVILT_* add and delete in the same
-			 *	call.
-			 */
-			if (kevent(el->kq, evset, count, NULL, 0, NULL) < 0) {
-				fr_strerror_printf("Failed deleting filter for FD %i: %s", fd, fr_syserror(errno));
-				return -1;
-			}
+		if (kevent(el->kq, evset, count, NULL, 0, NULL) < 0) {
+			fr_strerror_printf("Failed adding filter for FD %i: %s", fd, fr_syserror(errno));
+			talloc_free(ef);
+			return -1;
 		}
 
-		/*
-		 *	I/O handler may delete an event, then
-		 *	re-add it.  To avoid deleting modified
-		 *	events we unset the deferred_delete flag.
-		 */
-		ef->deferred_delete = false;
-		count = 0;
+		ef->ctx = ctx;
+		ef->read = read_fn;
+		ef->write = write_fn;
+		ef->error = error;
+		ef->is_registered = true;
+
+		return 0;
 	}
 
+	/*
+	 *	Calculate the diff between the filters that
+	 *	should be registered and the filters we need.
+	 */
+	if (ef->read) {
+		if (!read_fn) EV_SET(&evset[count++], ef->fd, EVFILT_READ, EV_DELETE, 0, 0, 0);
+	} else {
+		if (read_fn) EV_SET(&evset[count++], ef->fd, EVFILT_READ, EV_ADD, 0, 0, ef);
+	}
+	if (ef->write) {
+		if (!write_fn) EV_SET(&evset[count++], ef->fd, EVFILT_WRITE, EV_DELETE, 0, 0, 0);
+	} else {
+		if (write_fn) EV_SET(&evset[count++], ef->fd, EVFILT_WRITE, EV_ADD, 0, 0, ef);
+	}
+
+	if (count) {
+		if (kevent(el->kq, evset, count, NULL, 0, NULL) < 0) {
+			fr_strerror_printf("Failed modifying filters for FD %i: %s", fd, fr_syserror(errno));
+			return -1;
+		}
+	}
+
+	/*
+	 *	I/O handler may delete an event, then re-add it.
+	 *	To avoid deleting modified events we unset the
+	 *	deferred_delete flag.
+	 */
+	ef->deferred_delete = false;
 	ef->ctx = ctx;
 	ef->read = read_fn;
 	ef->write = write_fn;
 	ef->error = error;
-
-	if (read_fn) EV_SET(&evset[count++], fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, ef);
-	if (write_fn) EV_SET(&evset[count++], fd, EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, ef);
-
-	if (kevent(el->kq, evset, count, NULL, 0, NULL) < 0) {
-		fr_strerror_printf("Failed adding filter for FD %i: %s", fd, fr_syserror(errno));
-		if (!pre_existing) talloc_free(ef);
-		return -1;
-	}
-	ef->is_registered = true;
 
 	return 0;
 }
