@@ -39,8 +39,6 @@ RCSID("$Id$")
 #  define EAP_TLS_MPPE_KEY_LEN     32
 #endif
 
-fr_dict_attr_t const *dict_sim_root;
-
 /*
  *	build a reply to be sent.
  */
