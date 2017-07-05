@@ -239,6 +239,22 @@ AC_ARG_ENABLE(werror,
 )
 
 dnl #
+dnl #  Enable the -fsanitize=address and link in the address sanitizer
+dnl #  libraries.
+dnl #
+AC_ARG_ENABLE(llvm-address-sanitizer,
+[AS_HELP_STRING([--enable-llvm-address-sanitizer],
+                [build with support for LLVM's address sanitizer (if building with clang).])],
+[ case "$enableval" in
+  no)
+    llvm_address_sanitizer=no
+    ;;
+  *)
+    llvm_address_sanitizer=yes
+  esac ]
+)
+
+dnl #
 dnl #  extra argument: --disable-openssl-version-check
 dnl #
 AC_ARG_ENABLE(openssl-version-check,
@@ -1535,10 +1551,20 @@ if test "x$developer" = "xyes"; then
     fi
   fi
 
+  dnl #
+  dnl #  If running with clang, add in ASAN
+  dnl #
+  if test "x$llvm_address_sanitizer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
+    devcflags="$devcflags -fsanitize=address -fno-omit-frame-pointer"
+    devldflags="$devldflags -fsanitize=address"
+  fi
+
   AC_MSG_NOTICE([Developer CFLAGS are "$devcflags"])
   AC_MSG_NOTICE([Developer LDFLAGS are "$devldflags"])
 
   CFLAGS="$CFLAGS $devcflags"
+  LDFLAGS="$LDFLAGS $devldflags"
+
   dnl #
   dnl #  Enable experimental modules (we want to know if code changes breaks one of them)
   dnl #

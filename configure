@@ -739,6 +739,7 @@ enable_developer
 enable_largefile
 enable_strict_dependencies
 enable_werror
+enable_llvm_address_sanitizer
 enable_openssl_version_check
 with_rlm_FOO_lib_dir
 with_rlm_FOO_include_dir
@@ -1415,6 +1416,9 @@ Optional Features:
   --disable-largefile     omit support for large files
   --enable-strict-dependencies  fail configure on lack of module dependancy.
   --enable-werror         causes the build to fail if any warnings are generated.
+  --enable-llvm-address-sanitizer
+                          build with support for LLVM's address sanitizer (if
+                          building with clang).
   --disable-openssl-version-check
                           disable vulnerable OpenSSL version check
 
@@ -5227,6 +5231,19 @@ if test "${enable_werror+set}" = set; then :
     ;;
     *)
       werror=yes
+  esac
+
+fi
+
+
+# Check whether --enable-llvm-address-sanitizer was given.
+if test "${enable_llvm_address_sanitizer+set}" = set; then :
+  enableval=$enable_llvm_address_sanitizer;  case "$enableval" in
+  no)
+    llvm_address_sanitizer=no
+    ;;
+  *)
+    llvm_address_sanitizer=yes
   esac
 
 fi
@@ -12442,12 +12459,19 @@ $as_echo "$ax_cv_cc_weverything_flag" >&6; }
     fi
   fi
 
+        if test "x$llvm_address_sanitizer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
+    devcflags="$devcflags -fsanitize=address -fno-omit-frame-pointer"
+    devldflags="$devldflags -fsanitize=address"
+  fi
+
   { $as_echo "$as_me:${as_lineno-$LINENO}: Developer CFLAGS are \"$devcflags\"" >&5
 $as_echo "$as_me: Developer CFLAGS are \"$devcflags\"" >&6;}
   { $as_echo "$as_me:${as_lineno-$LINENO}: Developer LDFLAGS are \"$devldflags\"" >&5
 $as_echo "$as_me: Developer LDFLAGS are \"$devldflags\"" >&6;}
 
   CFLAGS="$CFLAGS $devcflags"
+  LDFLAGS="$LDFLAGS $devldflags"
+
         if test "x$EXPERIMENTAL" != "xno"; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: is developer build, enabling experimental modules implicitly, disable with --without-experimental-modules" >&5
 $as_echo "$as_me: is developer build, enabling experimental modules implicitly, disable with --without-experimental-modules" >&6;}
