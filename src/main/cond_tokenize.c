@@ -163,8 +163,14 @@ static ssize_t cond_tokenize_string(TALLOC_CTX *ctx, char **out, char const **er
 		break;
 
 	case '/':
+#ifdef HAVE_REGEX
 		*op = T_OP_REG_EQ; /* a bit of a hack. */
 		break;
+#else
+		p--;
+		*error = "Regular expressions are not supported";
+		return -(p - start);
+#endif
 
 	}
 
