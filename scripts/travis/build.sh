@@ -18,6 +18,9 @@ fi
 #
 if $CC -v 2>&1 | grep clang > /dev/null; then
     enable_address_sanitizer="--enable-llvm-address-sanitizer"
+    ASAN_OPTIONS=symbolize=1
+    ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
+    export ASAN_OPTIONS ASAN_SYMBOLIZER_PATH
 else
     enable_address_sanitizer=""
 fi
