@@ -393,7 +393,7 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int f
 	}
 }
 
-
+#if 0
 /** Write packets to the network.
  *
  * @param el the event list
@@ -410,6 +410,7 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 		talloc_free(s);
 	}
 }
+#endif
 
 /** Handle errors for a socket.
  *
@@ -490,7 +491,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 
 	if (fr_event_fd_insert(nr->el, fd,
 			       fr_network_read,
-			       app_io->write ? fr_network_write : NULL,
+			       NULL,			/* app_io->write ? fr_network_write : NULL - FIXME */
 			       app_io->error ? fr_network_error : NULL,
 			       s) < 0) {
 		fr_log(nr->log, L_ERR, "Failed adding new socket to event loop: %s", fr_strerror());
