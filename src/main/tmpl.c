@@ -470,6 +470,12 @@ vp_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name, ssize
 	rad_assert(type != TMPL_TYPE_UNKNOWN);
 	rad_assert(type <= TMPL_TYPE_NULL);
 
+#ifndef HAVE_REGEX
+	if ((type == TMPL_TYPE_REGEX) || (type == TMPL_TYPE_REGEX_STRUCT)) {
+		return NULL;
+	}
+#endif
+
 	vpt = talloc_zero(ctx, vp_tmpl_t);
 	if (!vpt) return NULL;
 	vpt->type = type;
@@ -2543,6 +2549,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 		break;
 
 	case TMPL_TYPE_REGEX:
+#ifdef HAVE_REGEX
 		/*
 		 *	iflag field is used for non compiled regexes too.
 		 */
@@ -2569,10 +2576,13 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 				     "mflag field was neither true or false", file, line);
 			if (!fr_cond_assert(0)) fr_exit_now(1);
 		}
-
+#else
+		if (!fr_cond_assert(0)) fr_exit_now(1);
+#endif
 		break;
 
 	case TMPL_TYPE_REGEX_STRUCT:
+#ifdef HAVE_REGEX
 		if (CHECK_ZEROED(vpt->data.preg)) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_REGEX_STRUCT "
 				     "has non-zero bytes after the data.preg struct in the union", file, line);
@@ -2596,6 +2606,9 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 				     "mflag field was neither true or false", file, line);
 			if (!fr_cond_assert(0)) fr_exit_now(1);
 		}
+#else
+		if (!fr_cond_assert(0)) fr_exit_now(1);
+#endif
 		break;
 
 	case TMPL_TYPE_UNKNOWN:
