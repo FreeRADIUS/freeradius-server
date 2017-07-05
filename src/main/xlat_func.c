@@ -820,6 +820,8 @@ void xlat_unregister(void *mod_inst, char const *name, UNUSED xlat_func_t func)
 	if (c->mod_inst != mod_inst) return;
 
 	rbtree_deletebydata(xlat_root, c);
+
+	if (rbtree_num_elements(xlat_root) == 0) TALLOC_FREE(xlat_root);
 }
 
 static int xlat_unregister_callback(void *mod_inst, void *data)
@@ -836,6 +838,8 @@ void xlat_unregister_module(void *instance)
 	if (!xlat_root) return;	/* All xlats have already been freed */
 
 	rbtree_walk(xlat_root, RBTREE_DELETE_ORDER, xlat_unregister_callback, instance);
+
+	if (rbtree_num_elements(xlat_root) == 0) TALLOC_FREE(xlat_root);
 }
 
 /*
