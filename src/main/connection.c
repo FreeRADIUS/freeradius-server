@@ -196,6 +196,7 @@ static void _connection_writable(UNUSED fr_event_list_t *el, UNUSED int sock, UN
 	 *	Connection is writable, delete the connection timer
 	 */
 	fr_event_timer_delete(conn->el, &conn->connection_timer);
+	fr_event_fd_delete(conn->el, conn->fd);
 
 	ret = conn->open(conn->fd, conn->el, conn->uctx);
 	switch (ret) {
@@ -342,7 +343,6 @@ fr_connection_t *fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 				     char const *log_prefix,
 				     void *uctx)
 {
-
 	fr_connection_t *conn;
 
 	rad_assert(el);
