@@ -811,7 +811,7 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 			p += strlen(p);
 			ptr = end + 1;
 
-		} else if (memcmp(ptr, "$ENV{", 5) == 0) {
+		} else if (strncmp(ptr, "$ENV{", 5) == 0) {
 			char *env;
 
 			ptr += 5;
