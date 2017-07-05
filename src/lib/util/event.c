@@ -330,7 +330,6 @@ int fr_event_fd_insert(fr_event_list_t *el, int fd,
 		       fr_event_fd_error_handler_t error,
 		       void *ctx)
 {
-	int16_t      	filter = 0;
 	int		count = 0;
 	struct kevent	evset[2];
 	fr_event_fd_t	*ef, find;
@@ -427,7 +426,6 @@ int fr_event_fd_insert(fr_event_list_t *el, int fd,
 				fr_strerror_printf("Failed deleting filter for FD %i: %s", fd, fr_syserror(errno));
 				return -1;
 			}
-			filter = 0;
 		}
 
 		/*
