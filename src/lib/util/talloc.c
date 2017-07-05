@@ -103,6 +103,7 @@ char *talloc_typed_asprintf(void const *t, char const *fmt, ...)
  *
  * @param[in] t The talloc context to hang the result off.
  * @param[in] fmt The format string.
+ * @param[in] ap varadic arguments.
  * @return
  *	- Formatted string.
  *	- NULL on error.

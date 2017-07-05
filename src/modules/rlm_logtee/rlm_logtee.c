@@ -457,13 +457,14 @@ finish:
 	 *	Don't free, we re-use the VALUE_PAIRs for the next message
 	 */
 	vp = fr_cursor_remove(&cursor);
-	rad_assert(vp == t->lvl);
+	if (!rad_cond_assert(vp == t->lvl)) fr_cursor_append(&cursor, vp);
 
 	vp = fr_cursor_remove(&cursor);
-	rad_assert(vp == t->type);
+	if (!rad_cond_assert(vp == t->type)) fr_cursor_append(&cursor, vp);
 
 	vp = fr_cursor_remove(&cursor);
-	rad_assert(vp == t->msg);
+	if (!rad_cond_assert(vp == t->msg)) fr_cursor_append(&cursor, vp);
+
 	fr_value_box_clear(&t->msg->data);		/* Clear message data */
 }
 
