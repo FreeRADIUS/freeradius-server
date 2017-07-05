@@ -755,8 +755,6 @@ with_vmps
 with_dhcp
 with_tacacs
 with_udpfromto
-with_static_modules
-with_shared_libs
 with_cap
 with_cap_lib_dir
 with_cap_include_dir
@@ -1445,9 +1443,6 @@ Optional Packages:
   --with-dhcp             compile in support for dhcp (default=yes)
   --with-tacacs           compile in support for tacacs (default=yes)
   --with-udpfromto        compile in support for udpfromto (default=yes)
-  --with-static-modules=QUOTED-MODULE-LIST
-  --with-shared-libs      build dynamic libraries and link against them.
-                          (default=yes)
   --with-cap              build with cap if available (default=yes)
   --with-cap-lib-dir=DIR  directory in which to look for cap library files
   --with-cap-include-dir=DIR
