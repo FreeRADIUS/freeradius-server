@@ -8,12 +8,6 @@ data ERROR offset 2 'Unknown module'
 xlat %{test:bar}
 data %{test:bar}
 
-xlat %{1}
-data %{1}
-
-xlat %{33}
-data ERROR offset 2 'Invalid regex reference.  Must be in range 0-32'
-
 xlat %{%{foo}:-%{bar}}
 data ERROR offset 4 'Unknown attribute'
 

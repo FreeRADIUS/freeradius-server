@@ -46,12 +46,6 @@ data ERROR offset 4 Invalid operator
 condition (ok =x handled)
 data ERROR offset 4 Invalid operator
 
-condition (ok =~ handled)
-data ERROR offset 7 Expected regular expression
-
-condition (ok == /foo/)
-data ERROR offset 7 Unexpected regular expression
-
 condition (ok == handled"foo")
 data ERROR offset 14 Unexpected start of string
 
@@ -112,9 +106,6 @@ data handled && &Response-Packet-Type == Access-Challenge
 condition handled &&&Response-Packet-Type == Access-Challenge
 data handled && &Response-Packet-Type == Access-Challenge
 
-condition /foo/ =~ bar
-data ERROR offset 0 Conditional check cannot begin with a regular expression
-
 condition reply == request
 data ERROR offset 0 Cannot use list references in condition
 
@@ -126,18 +117,6 @@ data ERROR offset 0 Cannot use list references in condition
 
 condition request:User-Name == reply:User-Name
 data &User-Name == &reply:User-Name
-
-#
-#  Convert !~ to !(COND) for regex
-#
-condition foo =~ /bar/
-data foo =~ /bar/
-
-condition foo !~ /bar/
-data !foo =~ /bar/
-
-condition !foo !~ /bar/
-data foo =~ /bar/
 
 #
 #  Convert != to !(COND) for normal checks
@@ -628,23 +607,14 @@ data &FreeRADIUS-Proxied-To == 127.0.0.1
 #  Escape the backslashes correctly
 #  And print them correctly
 #
-condition &User-Name =~ /@|\\/
-data &User-Name =~ /@|\\/
-
 condition &User-Name == '\\'
 data &User-Name == '\\'
-
-condition &User-Name !~ /^foo\nbar$/
-data !&User-Name =~ /^foo\nbar$/
 
 condition &User-Name == "@|\\"
 data &User-Name == "@|\\"
 
 condition &User-Name != "foo\nbar"
 data !&User-Name == "foo\nbar"
-
-condition User-Name =~ /^([^\\]*)\\(.*)$/
-data &User-Name =~ /^([^\\]*)\\(.*)$/
 
 #
 #  We require explicit casts

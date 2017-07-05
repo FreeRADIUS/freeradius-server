@@ -8,7 +8,7 @@
 #
 FILES  := rfc.txt errors.txt extended.txt lucent.txt wimax.txt \
 	escape.txt condition.txt xlat.txt vendor.txt dhcp.txt \
-	tlv.txt tunnel.txt dict.txt
+	tlv.txt tunnel.txt dict.txt regex.txt
 
 #
 #  Create the output directory
