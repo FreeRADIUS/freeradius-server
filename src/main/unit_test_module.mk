@@ -10,7 +10,6 @@ SOURCES := \
 	unit_test_module.c \
 	soh.c \
 	state.c \
-	version.c  \
 	virtual_servers.c \
 	unlang_compile.c \
 	unlang_interpret.c
