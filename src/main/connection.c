@@ -170,6 +170,11 @@ static void _connection_error(UNUSED fr_event_list_t *el, UNUSED int sock, UNUSE
 	fr_connection_t *conn = talloc_get_type_abort(uctx, fr_connection_t);
 	struct timeval	now;
 
+	/*
+	 *	Explicit error occurred, delete the connection timer
+	 */
+	fr_event_timer_delete(conn->el, &conn->connection_timer);
+
 	ERROR("Connection failed: %s", fr_syserror(fd_errno));
 	gettimeofday(&now, NULL);
 	connection_state_failed(conn, &now);
@@ -187,12 +192,16 @@ static void _connection_writable(UNUSED fr_event_list_t *el, UNUSED int sock, UN
 	fr_connection_t *conn = talloc_get_type_abort(uctx, fr_connection_t);
 	fr_connection_state_t ret;
 
+	/*
+	 *	Connection is writable, delete the connection timer
+	 */
+	fr_event_timer_delete(conn->el, &conn->connection_timer);
+
 	ret = conn->open(conn->fd, conn->el, conn->uctx);
 	switch (ret) {
 	case FR_CONNECTION_STATE_CONNECTED:
 		DEBUG2("Connection established");
 		STATE_TRANSITION(FR_CONNECTION_STATE_CONNECTED);
-		fr_event_timer_delete(conn->el, &conn->connection_timer);
 		return;
 
 	/*
