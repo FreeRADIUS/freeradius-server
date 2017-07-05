@@ -29,6 +29,8 @@ RCSID("$Id$")
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/rad_assert.h>
 
+#include "rlm_radius.h"
+
 static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
 
 /*
@@ -42,7 +44,7 @@ typedef struct radius_instance {
 	struct timeval		idle_timeout;
 
 	dl_instance_t		*io_submodule;	//!< As provided by the transport_parse
-	fr_client_io_t		*client_io;	//!< Easy access to the client_io handle
+	fr_radius_client_io_t	*client_io;	//!< Easy access to the client_io handle
 	void			*client_io_instance; //!< Easy access to the client_io instance
 	CONF_SECTION		*client_io_conf;  //!< Easy access to the client_io's config section
 } rlm_radius_t;
@@ -108,11 +110,11 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
 /** Send packets outbound.
  *
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_process(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request)
 {
-	rlm_radius_t *inst = instance;
+//	rlm_radius_t *inst = instance;
 
-	return inst->client_io->process(inst->client_io_instance, thread, request);
+	return RLM_MODULE_FAIL;
 }
 
 
@@ -141,8 +143,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 	FR_TIMEVAL_BOUND_CHECK("timers.idle", &inst->connection_timeout, >=, 30, 0);
 	FR_TIMEVAL_BOUND_CHECK("timers.idle", &inst->connection_timeout, <=, 600, 0);
-
-	rad_assert(inst->client_io->process != NULL);
 
 	if (!inst->client_io->bootstrap) return 0;
 
@@ -181,18 +181,20 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 	return 0;
 }
 
-static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance, fr_event_list_t *el,
-				  void *thread)
+static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, UNUSED void *instance, UNUSED fr_event_list_t *el,
+				  UNUSED void *thread)
 {
 	rlm_radius_t *inst = instance;
-
-	if (!inst->client_io->thread_instantiate) return 0;
 
 	if (inst->client_io->thread_instantiate(inst->client_io_conf, inst->client_io_instance, el, thread) < 0) {
 		cf_log_err(inst->client_io_conf, "Thread instantiate failed for \"%s\"",
 			   inst->client_io->name);
 		return -1;
-	}
+       }
+
+	// start up one connection
+	//
+	// add to per-thread data
 
 	return 0;
 }
