@@ -1035,7 +1035,6 @@ static void NEVER_RETURNS usage(void)
 int main(int argc, char *argv[])
 {
 	int		c;
-	bool		report = false;
 	char const	*radius_dir = RADDBDIR;
 	char const	*dict_dir = DICTDIR;
 	int		*inst = &c;
@@ -1066,7 +1065,7 @@ int main(int argc, char *argv[])
 			default_log.fd = STDOUT_FILENO;
 			break;
 		case 'M':
-			report = true;
+			talloc_enable_leak_report();
 			break;
 		case 'h':
 		default:
@@ -1105,12 +1104,6 @@ int main(int argc, char *argv[])
 
 	} else {
 		process_file(dict, NULL, argv[1]);
-	}
-
-	if (report) {
-		talloc_free(dict);
-		talloc_free(my_secret);
-		fr_log_talloc_report(NULL);
 	}
 
 	fr_strerror_free();
