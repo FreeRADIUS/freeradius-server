@@ -273,7 +273,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 	}
 
 	MEM(buffer = talloc_array(ctx, char, finfo.st_size + 1));
-	len = fread(buffer, sizeof(char), finfo.st_size + 1, f);
+	len = fread(buffer, sizeof(char), finfo.st_size, f);
 	if (len > finfo.st_size) {
 		talloc_free(buffer);
 		goto too_big;
