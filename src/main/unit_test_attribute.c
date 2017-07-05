@@ -1083,7 +1083,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	if (fr_dict_from_file(NULL, &dict, dict_dir, FR_DICTIONARY_FILE, "radius") < 0) {
+	if (fr_dict_from_file(autofree, &dict, dict_dir, FR_DICTIONARY_FILE, "radius") < 0) {
 		fr_perror("unit_test_attribute");
 		return 1;
 	}
@@ -1098,7 +1098,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	my_secret = talloc_strdup(NULL, "testing123");
+	my_secret = talloc_strdup(autofree, "testing123");
 
 	if (argc < 2) {
 		process_file(dict, NULL, "-");
@@ -1113,6 +1113,7 @@ int main(int argc, char *argv[])
 		fr_log_talloc_report(NULL);
 	}
 
+	fr_strerror_free();
 	talloc_free(autofree);
 
 	return 0;
