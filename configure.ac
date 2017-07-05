@@ -1555,7 +1555,13 @@ if test "x$developer" = "xyes"; then
   dnl #  If running with clang, add in ASAN
   dnl #
   if test "x$llvm_address_sanitizer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
-    devcflags="$devcflags -fsanitize=address -fsanitize-address-use-after-scope -fno-omit-frame-pointer"
+    devcflags="$devcflags -fsanitize=address -fno-omit-frame-pointer"
+
+    AX_CC_SANITZE_ADDRESS_USE_AFTER_SCOPE_FLAG
+    if test "x$ax_cv_cc_sanitize_address_use_after_scope" = "xyes"; then
+      devcflags="$devcflags -fsanitize-address-use-after-scope"
+    fi
+
     devldflags="$devldflags -fsanitize=address"
   fi
 

@@ -155,6 +155,25 @@ AC_DEFUN([AX_CC_PTHREAD_FLAG],[
   ])
 ])
 
+AC_DEFUN([AX_CC_SANITZE_ADDRESS_USE_AFTER_SCOPE_FLAG],[
+  AC_CACHE_CHECK([for the compiler flag "-fsanitize-address-use-after-scope"], [ax_cv_cc_sanitize_address_use_after_scope],[
+
+    dnl # Need -fsanitize=address else we get an unused argument error
+    CFLAGS_SAVED=$CFLAGS
+    CFLAGS="$CFLAGS -Werror -fsanitize=address -fsanitize-address-use-after-scope"
+
+    AC_LANG_PUSH(C)
+    AC_TRY_COMPILE(
+      [],
+      [return 0;],
+      [ax_cv_cc_sanitize_address_use_after_scope="yes"],
+      [ax_cv_cc_sanitize_address_use_after_scope="no"])
+    AC_LANG_POP
+
+    CFLAGS="$CFLAGS_SAVED"
+  ])
+])
+
 dnl #
 dnl #  Check if we have the choose expr builtin
 dnl #
