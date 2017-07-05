@@ -171,7 +171,9 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 	ssize_t slen;
 	char *p, *q;
 	xlat_exp_t *node;
+#ifdef HAVE_REGEX
 	long num;
+#endif
 
 	rad_assert(fmt[0] == '%');
 	rad_assert(fmt[1] == '{');
