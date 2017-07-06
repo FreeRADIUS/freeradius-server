@@ -9,6 +9,7 @@ env:
   - ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
   - ASAN_OPTIONS="symbolize=1 detect_stack_use_after_return=1"
   - LSAN_OPTIONS="exitcode=0"
+  - CC="clang-5.0"
   - KQUEUE_DEBUG="yes"
   - M_PERTURB=0x42
   - PANIC_ACTION="gdb -batch -x raddb/panic.gdb %e %p 1>&0 2>&0"
@@ -40,12 +41,13 @@ addons:
   apt:
     sources:
     - couchbase-precise
+    - llvm-toolchain-precise
     # For newer libkqueue
     - sourceline: ppa:rjvbertin/misc
     packages:
     - autoconf
     - build-essential
-    - clang-4.0
+    - clang-5.0
     - debhelper
     - devscripts
     - dh-make
@@ -94,7 +96,7 @@ addons:
     - libwbclient-dev
     - libykclient-dev
     - libyubikey-dev
-    - llvm-4.0   # Needed for llvm-symbolizer
+    - llvm-5.0   # Needed for llvm-symbolizer
     - slapd
     - ldap-utils
 services:
