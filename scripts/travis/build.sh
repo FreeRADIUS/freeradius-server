@@ -17,10 +17,12 @@ fi
 #  Enable address sanitizer for the clang builds
 #
 if $CC -v 2>&1 | grep clang > /dev/null; then
+    echo "Enabling address sanitizer"
     enable_address_sanitizer="--enable-llvm-address-sanitizer"
-    ASAN_OPTIONS="detect_leaks=0 symbolize=1 detect_stack_use_after_return=1"
+    ASAN_OPTIONS="symbolize=1 detect_stack_use_after_return=1"
+    LSAN_OPTIONS="exitcode=0"
     ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
-    export ASAN_OPTIONS ASAN_SYMBOLIZER_PATH
+    export ASAN_OPTIONS LSAN_OPTIONS ASAN_SYMBOLIZER_PATH
 else
     enable_address_sanitizer=""
 fi
