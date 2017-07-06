@@ -1842,7 +1842,8 @@ int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t call
 	ev->thread = modcall_state->thread;
 	ev->ctx = ctx;
 
-	if (fr_event_timer_insert(request->el, unlang_event_timeout_handler, ev, when, &(ev->ev)) < 0) {
+	if (fr_event_timer_insert(request, request->el, &ev->ev,
+				  when, unlang_event_timeout_handler, ev) < 0) {
 		RPEDEBUG("Failed inserting event");
 		talloc_free(ev);
 		return -1;

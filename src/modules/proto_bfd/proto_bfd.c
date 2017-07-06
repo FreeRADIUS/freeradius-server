@@ -924,8 +924,8 @@ static int bfd_start_packets(bfd_state_t *session)
 		now.tv_usec -= USEC;
 	}
 
-	if (fr_event_timer_insert(session->el, bfd_send_packet, session, &now,
-			    &session->ev_packet) < 0) {
+	if (fr_event_timer_insert(session, session->el, &session->ev_packet,
+				  &now, bfd_send_packet, session) < 0) {
 		rad_assert("Failed to insert event" == NULL);
 	}
 
@@ -965,8 +965,8 @@ static void bfd_set_timeout(bfd_state_t *session, struct timeval *when)
 		}
 	}
 
-	if (fr_event_timer_insert(session->el, bfd_detection_timeout, session, &now,
-			     &session->ev_timeout) < 0) {
+	if (fr_event_timer_insert(session, session->el, &session->ev_timeout,
+				  &now, bfd_detection_timeout, session) < 0) {
 		rad_assert("Failed to insert event" == NULL);
 	}
 }

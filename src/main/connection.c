@@ -127,7 +127,8 @@ static void connection_state_failed(fr_connection_t *conn, struct timeval *now)
 		struct timeval when;
 
 		fr_timeval_add(&when, now, &conn->reconnection_delay);
-		fr_event_timer_insert(conn->el, _reconnect_delay_done, conn, &when, &conn->reconnection_timer);
+		fr_event_timer_insert(conn, conn->el, &conn->reconnection_timer,
+				      &when, _reconnect_delay_done, conn);
 	}
 		break;
 
@@ -257,7 +258,8 @@ static void connection_state_init(fr_connection_t *conn, struct timeval *now)
 			connection_state_failed(conn, now);
 			return;
 		}
-		fr_event_timer_insert(conn->el, _connection_timeout, conn, &when, &conn->connection_timer);
+		fr_event_timer_insert(conn, conn->el, &conn->connection_timer,
+				      &when, _connection_timeout, conn);
 		conn->fd = fd;
 	}
 		break;

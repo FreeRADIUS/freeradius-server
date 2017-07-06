@@ -850,7 +850,8 @@ clear:
 		now->tv_sec += conf->stats.interval;
 		now->tv_usec = 0;
 
-		if (fr_event_timer_insert(el, rs_stats_process, ctx, now, &event) < 0) {
+		if (fr_event_timer_insert(NULL, el, &event,
+					  now, rs_stats_process, ctx) < 0) {
 			ERROR("Failed inserting stats interval event");
 		}
 	}
@@ -919,7 +920,8 @@ static int rs_install_stats_processor(rs_stats_t *stats, fr_event_list_t *el,
 		rs_tv_add_ms(now, conf->stats.timeout, &(stats->quiet));
 	}
 
-	if (fr_event_timer_insert(events, rs_stats_process, (void *) &update, now, &event) < 0) {
+	if (fr_event_timer_insert(NULL, events, (void *) &update,
+				  now, rs_stats_process, &event) < 0) {
 		ERROR("Failed inserting stats event");
 		return -1;
 	}
@@ -1439,7 +1441,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 */
 			original->linked = talloc_steal(original, current);
 			rs_tv_add_ms(&header->ts, conf->stats.timeout, &original->when);
-			if (fr_event_timer_insert(event->list, _rs_event, original, &original->when, &original->event) < 0) {
+			if (fr_event_timer_insert(NULL, event->list, &original->event,
+						  &original->when, _rs_event, original) < 0) {
 				REDEBUG("Failed inserting new event");
 				/*
 				 *	Delete the original request/event, it's no longer valid
@@ -1669,8 +1672,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		 */
 		original->packet->timestamp = header->ts;
 		rs_tv_add_ms(&header->ts, conf->stats.timeout, &original->when);
-		if (fr_event_timer_insert(event->list, _rs_event, original,
-					  &original->when, &original->event) < 0) {
+		if (fr_event_timer_insert(NULL, event->list, &original->event,
+					  &original->when, _rs_event, original) < 0) {
 			REDEBUG("Failed inserting new event");
 
 			talloc_free(original);
@@ -2013,7 +2016,8 @@ static void rs_collectd_reopen(fr_event_list_t *el, struct timeval *now, UNUSED 
 	ERROR("Will attempt to re-establish connection in %i ms", RS_SOCKET_REOPEN_DELAY);
 
 	rs_tv_add_ms(now, RS_SOCKET_REOPEN_DELAY, &when);
-	if (fr_event_timer_insert(el, rs_collectd_reopen, el, &when, &event) < 0) {
+	if (fr_event_timer_insert(NULL, el, &event,
+				  &when, rs_collectd_reopen, el) < 0) {
 		ERROR("Failed inserting re-open event");
 		RS_ASSERT(0);
 	}

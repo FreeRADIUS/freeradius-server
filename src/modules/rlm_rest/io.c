@@ -238,7 +238,8 @@ static int _rest_io_timer_modify(CURLM *mandle, long timeout_ms, void *ctx)
 	fr_timeval_from_ms(&to_add, (uint64_t)timeout_ms);
 	fr_timeval_add(&when, &now, &to_add);
 
-	(void) fr_event_timer_insert(t->el, _rest_io_timer_expired, t, &when, &t->ev);
+	(void) fr_event_timer_insert(NULL, t->el, &t->ev,
+				     &when, _rest_io_timer_expired, t);
 
 	return 0;
 }

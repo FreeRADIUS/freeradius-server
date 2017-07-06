@@ -218,7 +218,8 @@ static void sd_watchdog_event(fr_event_list_t *our_el, struct timeval *now, void
 	sd_notify(0, "WATCHDOG=1");
 
 	fr_timeval_add(&when, &sd_watchdog_interval, now);
-	if (fr_event_timer_insert(our_el, sd_watchdog_event, ctx, &when, &sd_watchdog_ev) < 0) {
+	if (fr_event_timer_insert(NULL, our_el, &sd_watchdog_ev,
+				  &when, sd_watchdog_event, ctx) < 0) {
 		rad_panic("Failed to insert watchdog event");
 	}
 }

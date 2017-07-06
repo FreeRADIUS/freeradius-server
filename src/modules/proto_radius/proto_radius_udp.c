@@ -239,7 +239,8 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, fr_time_t **rec
 			gettimeofday(&tv, NULL);
 			tv.tv_sec += inst->cleanup_delay;
 
-			(void) fr_event_timer_insert(inst->el, mod_cleanup_delay, track, &tv, &track->ev);
+			(void) fr_event_timer_insert(NULL, inst->el, &track->ev,
+						     &tv, mod_cleanup_delay, track);
 		}
 
 		/*
@@ -337,7 +338,8 @@ static ssize_t mod_write(void const *instance, void *packet_ctx,
 	 /*
 	  *	Clean up after a while.
 	  */
-	 if (fr_event_timer_insert(inst->el, mod_cleanup_delay, track, &tv, &track->ev) < 0) {
+	 if (fr_event_timer_insert(NULL, inst->el, &track->ev,
+	 			   &tv, mod_cleanup_delay, track) < 0) {
 		(void) fr_radius_tracking_entry_delete(inst->ft, track);
 		return data_size;
 	 }

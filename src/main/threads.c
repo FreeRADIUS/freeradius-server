@@ -528,8 +528,8 @@ static void *thread_handler(void *arg)
 				request->thread_ctx = NULL;
 
 				request->el = el;
-				if (fr_event_timer_insert(request->el, max_request_time_hook,
-							  request, &when, &request->ev) < 0) {
+				if (fr_event_timer_insert(request, request->el, &request->ev,
+							  &when, max_request_time_hook, request) < 0) {
 					REDEBUG("Failed inserting max_request_time");
 				}
 			}

@@ -99,16 +99,15 @@ int		fr_event_fd_insert(fr_event_list_t *el, int fd,
 				   fr_event_fd_handler_t read_fn,
 				   fr_event_fd_handler_t write_fn,
 				   fr_event_fd_error_handler_t error,
-				   void *ctx);
+				   void *uctx);
 
-int		fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t **parent);
-int		fr_event_timer_insert(fr_event_list_t *el,
-				      fr_event_callback_t callback,
-				      void const *ctx, struct timeval *when, fr_event_timer_t **parent);
+int		fr_event_timer_insert(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t **ev,
+				      struct timeval *when, fr_event_callback_t callback, void const *uctx);
+int		fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t **ev);
 int		fr_event_timer_run(fr_event_list_t *el, struct timeval *when);
 
-uintptr_t      	fr_event_user_insert(fr_event_list_t *el, fr_event_user_handler_t user, void *ctx) CC_HINT(nonnull(1,2));
-int		fr_event_user_delete(fr_event_list_t *el, fr_event_user_handler_t user, void *ctx) CC_HINT(nonnull(1,2));
+uintptr_t      	fr_event_user_insert(fr_event_list_t *el, fr_event_user_handler_t user, void *uctx) CC_HINT(nonnull(1,2));
+int		fr_event_user_delete(fr_event_list_t *el, fr_event_user_handler_t user, void *uctx) CC_HINT(nonnull(1,2));
 
 int		fr_event_pre_insert(fr_event_list_t *el, fr_event_status_t callback, void *uctx) CC_HINT(nonnull(1,2));
 int		fr_event_pre_delete(fr_event_list_t *el, fr_event_status_t callback, void *uctx) CC_HINT(nonnull(1,2));
