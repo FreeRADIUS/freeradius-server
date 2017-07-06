@@ -45,6 +45,7 @@ addons:
     packages:
     - autoconf
     - build-essential
+    - clang-5.0
     - debhelper
     - devscripts
     - dh-make
@@ -93,6 +94,7 @@ addons:
     - libwbclient-dev
     - libykclient-dev
     - libyubikey-dev
+    - llvm-5.0   # Needed for llvm-symbolizer
     - slapd
     - ldap-utils
 services:
