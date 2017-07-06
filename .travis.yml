@@ -6,7 +6,7 @@ sudo: true
 dist: trusty
 env:
   global:
-  - ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
+  - ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer-3.9
   - ASAN_OPTIONS="symbolize=1 detect_stack_use_after_return=1"
   - LSAN_OPTIONS="exitcode=0"
   - KQUEUE_DEBUG="yes"
