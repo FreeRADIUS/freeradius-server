@@ -42,7 +42,6 @@ char const *radacct_dir = NULL;
 char const *radlog_dir = NULL;
 bool log_stripped_names = false;
 
-static bool talloc_memory_report = false;
 static bool filedone = false;
 
 char const *radiusd_version = RADIUSD_VERSION_STRING_BUILD("unittest");
@@ -725,7 +724,7 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'M':
-				talloc_memory_report = true;
+				talloc_enable_leak_report();
 				break;
 
 			case 'n':
@@ -1025,10 +1024,10 @@ finish:
 	 */
 	main_config_free();
 
-	if (talloc_memory_report) {
-		INFO("Allocated memory at time of report:");
-		fr_log_talloc_report(NULL);
-	}
+	/*
+	 *	Free the strerror buffer.
+	 */
+	fr_strerror_free();
 
 	return rcode;
 }

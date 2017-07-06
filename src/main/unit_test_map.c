@@ -134,7 +134,6 @@ static int process_file(char const *filename)
 int main(int argc, char *argv[])
 {
 	int			c, rcode = 0;
-	bool			report = false;
 	char const		*radius_dir = RADDBDIR;
 	char const		*dict_dir = DICTDIR;
 	fr_dict_t		*dict = NULL;
@@ -152,16 +151,20 @@ int main(int argc, char *argv[])
 		case 'd':
 			radius_dir = optarg;
 			break;
+
 		case 'D':
 			dict_dir = optarg;
 			break;
+
 		case 'x':
 			fr_debug_lvl++;
 			rad_debug_lvl = fr_debug_lvl;
 			break;
+
 		case 'M':
-			report = true;
+			talloc_enable_leak_report();
 			break;
+
 		case 'h':
 		default:
 			usage();
@@ -177,7 +180,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (fr_dict_from_file(NULL, &dict, dict_dir, FR_DICTIONARY_FILE, "radius") < 0) {
+	if (fr_dict_from_file(autofree, &dict, dict_dir, FR_DICTIONARY_FILE, "radius") < 0) {
 		fr_perror("unit_test_attribute");
 		exit(1);
 	}
@@ -194,13 +197,14 @@ int main(int argc, char *argv[])
 		rcode = process_file(argv[1]);
 	}
 
-	if (report) {
-		talloc_free(dict);
-		fr_log_talloc_report(NULL);
-	}
-
 	if (rcode < 0) rcode = 1; /* internal to Unix process return code */
 
+	/*
+	 *	Try really hard to free any allocated
+	 *	memory, so we get clean talloc reports.
+	 */
+	xlat_free();
+	fr_strerror_free();
 	talloc_free(autofree);
 
 	return rcode;

@@ -1106,6 +1106,11 @@ int main(int argc, char *argv[])
 		process_file(dict, NULL, argv[1]);
 	}
 
+	/*
+	 *	Try really hard to free any allocated
+	 *	memory, so we get clean talloc reports.
+	 */
+	xlat_free();
 	fr_strerror_free();
 	talloc_free(autofree);
 
