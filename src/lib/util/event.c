@@ -473,7 +473,7 @@ int fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t **ev_p)
 
 	if (!*ev_p) return 0;
 
-	rad_assert(talloc_parent(*ev_p) == el);
+	if (!fr_cond_assert(talloc_parent(*ev_p) == el)) return -1;
 
 	ret = talloc_free(*ev_p);
 	if (ret == 0) *ev_p = NULL;
