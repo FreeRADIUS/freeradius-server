@@ -72,25 +72,25 @@ typedef struct fr_event_fd_t {
 	fr_event_fd_error_handler_t	error;		//!< Callback for when an error occurs on the FD.
 
 	bool			is_registered;		//!< Whether this fr_event_fd_t's FD has been registered with
-							//!< kevent.  Mostly for debugging.
+							///< kevent.  Mostly for debugging.
 
 	bool			in_handler;		//!< Event is currently being serviced.  Deletes should be
-							//!< deferred until after the handlers complete.
+							///< deferred until after the handlers complete.
 
 	bool			deferred_delete;	//!< Deferred deletion flag.  Delete this event *after*
-							//!< the handlers complete.
+							///< the handlers complete.
 
 	void			*uctx;			//!< Context pointer to pass to each file descriptor callback.
 	TALLOC_CTX		*linked_ctx;		//!< talloc ctx this event was bound to.
 } fr_event_fd_t;
 
-/** Callbacks to perform when the event handler is about to check the events.
+/** Callbacks to perform when the event handler is about to check the events
  *
  */
 typedef struct fr_event_pre_t {
-	fr_dlist_t		entry;			//!< linked list of callback
-	fr_event_status_t	callback;		//!< the callback to call
-	void			*uctx;			//!< context for the callback.
+	fr_dlist_t		entry;			//!< Linked list of callback.
+	fr_event_status_t	callback;		//!< The callback to call.
+	void			*uctx;			//!< Context for the callback.
 } fr_event_pre_t;
 
 
@@ -98,20 +98,20 @@ typedef struct fr_event_pre_t {
  *
  */
 typedef struct fr_event_post_t {
-	fr_dlist_t		entry;			//!< linked list of callback
-	fr_event_callback_t	callback;		//!< the callback to call
-	void			*uctx;			//!< context for the callback.
+	fr_dlist_t		entry;			//!< Linked list of callback.
+	fr_event_callback_t	callback;		//!< The callback to call.
+	void			*uctx;			//!< Context for the callback.
 } fr_event_post_t;
 
 
-/** Callbacks for user events
+/** Callbacks for kevent() user events
  *
  */
 typedef struct fr_event_user_t {
-	fr_dlist_t		entry;			//!< linked list of callback
-	uintptr_t		ident;			//!< the identifier of this event
-	fr_event_user_handler_t callback;		//!< the callback to call
-	void			*uctx;			//!< context for the callback.
+	fr_dlist_t		entry;			//!< Linked list of callback.
+	uintptr_t		ident;			//!< The identifier of this event.
+	fr_event_user_handler_t callback;		//!< The callback to call.
+	void			*uctx;			//!< Context for the callback.
 } fr_event_user_t;
 
 
@@ -122,8 +122,8 @@ struct fr_event_list_t {
 	fr_heap_t		*times;			//!< of timer events to be executed.
 	rbtree_t		*fds;			//!< Tree used to track FDs with filters in kqueue.
 
-	int			exit;
-
+	int			exit;			//!< If non-zero, the event loop will exit after its current
+							///< iteration, returning this value.
 
 	struct timeval  	now;			//!< The last time the event list was serviced.
 	bool			dispatch;		//!< Whether the event list is currently dispatching events.
@@ -176,6 +176,7 @@ static int fr_event_fd_cmp(void const *a, void const *b)
 {
 	fr_event_fd_t const *ev_a = a;
 	fr_event_fd_t const *ev_b = b;
+
 	if (ev_a->fd < ev_b->fd) return -1;
 	if (ev_a->fd > ev_b->fd) return +1;
 
@@ -879,7 +880,7 @@ int fr_event_corral(fr_event_list_t *el, bool wait)
 
 			ev = fr_heap_peek(el->times);
 			if (!fr_cond_assert(ev)) {
-				fr_strerror_printf("Timer heap says it is non-empty, but there are no entries in it.");
+				fr_strerror_printf("Timer heap says it is non-empty, but there are no entries in it");
 				return -1;
 			}
 
