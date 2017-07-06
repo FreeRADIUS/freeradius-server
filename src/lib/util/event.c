@@ -151,16 +151,13 @@ struct fr_event_list_t {
  */
 static int fr_event_timer_cmp(void const *a, void const *b)
 {
-	fr_event_timer_t const *ev_a = a;
-	fr_event_timer_t const *ev_b = b;
+	int			ret;
+	fr_event_timer_t const	*ev_a = a;
+	fr_event_timer_t const	*ev_b = b;
 
-	if (ev_a->when.tv_sec < ev_b->when.tv_sec) return -1;
-	if (ev_a->when.tv_sec > ev_b->when.tv_sec) return +1;
-
-	if (ev_a->when.tv_usec < ev_b->when.tv_usec) return -1;
-	if (ev_a->when.tv_usec > ev_b->when.tv_usec) return +1;
-
-	return 0;
+	return (ret = ((ev_a->when.tv_sec < ev_b->when.tv_sec) - (ev_a->when.tv_sec > ev_b->when.tv_sec))) ?
+	        ret :
+	       (ev_a->when.tv_usec < ev_b->when.tv_usec) - (ev_a->when.tv_usec > ev_b->when.tv_usec);
 }
 
 /** Compare two file descriptor handles
@@ -177,10 +174,7 @@ static int fr_event_fd_cmp(void const *a, void const *b)
 	fr_event_fd_t const *ev_a = a;
 	fr_event_fd_t const *ev_b = b;
 
-	if (ev_a->fd < ev_b->fd) return -1;
-	if (ev_a->fd > ev_b->fd) return +1;
-
-	return 0;
+	return (ev_a->fd < ev_b->fd) - (ev_a->fd > ev_b->fd);
 }
 
 /** Return the number of file descriptors is_registered with this event loop
