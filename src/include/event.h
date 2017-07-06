@@ -101,9 +101,9 @@ int		fr_event_fd_insert(fr_event_list_t *el, int fd,
 				   fr_event_fd_error_handler_t error,
 				   void *uctx);
 
-int		fr_event_timer_insert(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t **ev,
+int		fr_event_timer_insert(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t const **ev,
 				      struct timeval *when, fr_event_callback_t callback, void const *uctx);
-int		fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t **ev);
+int		fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t const **ev);
 int		fr_event_timer_run(fr_event_list_t *el, struct timeval *when);
 
 uintptr_t      	fr_event_user_insert(fr_event_list_t *el, fr_event_user_handler_t user, void *uctx) CC_HINT(nonnull(1,2));

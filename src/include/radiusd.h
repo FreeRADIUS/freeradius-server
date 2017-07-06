@@ -295,7 +295,7 @@ struct rad_request {
 #endif
 
 	struct timeval		response_delay;	//!< How long to wait before sending Access-Rejects.
-	fr_event_timer_t	*ev;		//!< Event in event loop tied to this request.
+	fr_event_timer_t const	*ev;		//!< Event in event loop tied to this request.
 
 	int			delay;		//!< incrementing delay for various timers
 	int			heap_id;	//!< entry in the queue / heap of incoming packets

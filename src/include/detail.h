@@ -45,7 +45,7 @@ typedef enum detail_entry_state_t {
 } detail_entry_state_t;
 
 typedef struct listen_detail_t {
-	fr_event_timer_t	*ev;	/* has to be first entry (ugh) */
+	fr_event_timer_t const	*ev;	/* has to be first entry (ugh) */
 	char const 	*name;			//!< Identifier used in log messages
 	int		delay_time;
 	char const	*filename;

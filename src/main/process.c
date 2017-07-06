@@ -49,7 +49,7 @@ extern fr_cond_t *debug_condition;
 
 #ifdef HAVE_SYSTEMD_WATCHDOG
 extern struct timeval sd_watchdog_interval;
-static fr_event_timer_t *sd_watchdog_ev;
+static fr_event_timer_t const *sd_watchdog_ev;
 #endif
 
 static bool spawn_workers = false;

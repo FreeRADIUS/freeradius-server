@@ -845,7 +845,7 @@ clear:
 	}
 
 	{
-		static fr_event_timer_t *event;
+		static fr_event_timer_t const *event;
 
 		now->tv_sec += conf->stats.interval;
 		now->tv_usec = 0;
@@ -881,7 +881,7 @@ static void rs_stats_update_latency(rs_latency_t *stats, struct timeval *latency
 static int rs_install_stats_processor(rs_stats_t *stats, fr_event_list_t *el,
 				      fr_pcap_t *in, struct timeval *now, bool live)
 {
-	static fr_event_timer_t	*event;
+	static fr_event_timer_t	const *event;
 	static rs_update_t	update;
 
 	memset(&update, 0, sizeof(update));
@@ -2005,7 +2005,7 @@ static void _unmark_link(void *request)
  */
 static void rs_collectd_reopen(fr_event_list_t *el, struct timeval *now, UNUSED void *ctx)
 {
-	static fr_event_timer_t *event;
+	static fr_event_timer_t const *event;
 	struct timeval when;
 
 	if (rs_stats_collectd_open(conf) == 0) {

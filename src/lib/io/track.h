@@ -43,7 +43,7 @@ typedef struct fr_tracking_t fr_tracking_t;
  */
 typedef struct fr_tracking_entry_t {
 	fr_tracking_t		*ft;		//!< for cleanup_delay
-	fr_event_timer_t	*ev;		//!< for cleanup_delay
+	fr_event_timer_t const	*ev;		//!< for cleanup_delay
 
 	fr_time_t		timestamp;	//!< when the request was received
 	void			*src_dst;	//!< information about src/dst IP/port

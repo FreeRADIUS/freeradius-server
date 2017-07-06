@@ -42,9 +42,9 @@ typedef struct {
 
 	fr_event_list_t			*el;			//!< Network side event list.
 
-	fr_event_timer_t		*sync_retry_ev;		//!< When to retry re-establishing the sync.
+	fr_event_timer_t const		*sync_retry_ev;		//!< When to retry re-establishing the sync.
 
-	fr_event_timer_t		*conn_retry_ev;		//!< When to retry re-establishing the conn.
+	fr_event_timer_t const		*conn_retry_ev;		//!< When to retry re-establishing the conn.
 
 	/*
 	 *	Connection

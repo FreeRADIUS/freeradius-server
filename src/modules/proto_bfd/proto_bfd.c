@@ -88,8 +88,8 @@ typedef struct bfd_state_t {
 	struct sockaddr_storage remote_sockaddr;
 	socklen_t	salen;
 
-	fr_event_timer_t	*ev_timeout;
-	fr_event_timer_t	*ev_packet;
+	fr_event_timer_t const	*ev_timeout;
+	fr_event_timer_t const	*ev_packet;
 	struct timeval	last_recv;
 	struct timeval	next_recv;
 	struct timeval	last_sent;

@@ -1694,7 +1694,7 @@ typedef struct unlang_event_t {
 	void const			*inst;				//!< Module instance to pass to callbacks.
 	void				*thread;			//!< Thread specific module instance.
 	void const			*ctx;				//!< ctx data to pass to callbacks.
-	fr_event_timer_t		*ev;				//!< Event in this worker's event heap.
+	fr_event_timer_t const		*ev;				//!< Event in this worker's event heap.
 } unlang_event_t;
 
 /** Frees an unlang event, removing it from the request's event loop

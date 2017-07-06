@@ -58,8 +58,8 @@ struct fr_conn {
 	int			fd;			//!< File descriptor.
 	fr_event_list_t		*el;			//!< Event list for timers and I/O events.
 
-	fr_event_timer_t	*connection_timer;	//!< Timer to prevent connections going on indefinitely.
-	fr_event_timer_t	*reconnection_timer;	//!< Timer to delay retries.
+	fr_event_timer_t const	*connection_timer;	//!< Timer to prevent connections going on indefinitely.
+	fr_event_timer_t const	*reconnection_timer;	//!< Timer to delay retries.
 
 	struct timeval		connection_timeout;	//!< How long to wait in the
 							//!< #FR_CONNECTION_STATE_CONNECTING state.

@@ -50,7 +50,7 @@ struct fr_event_timer_t {
 	void const		*uctx;			//!< Context pointer to pass to the callback.
 	TALLOC_CTX		*linked_ctx;		//!< talloc ctx this event was bound to.
 
-	fr_event_timer_t	**parent;		//!< Previous timer.
+	fr_event_timer_t const	**parent;		//!< Previous timer.
 	int			heap;			//!< Where to store opaque heap data.
 };
 
@@ -467,15 +467,17 @@ int fr_event_fd_insert(fr_event_list_t *el, int fd,
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t **ev_p)
+int fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t const **ev_p)
 {
 	int ret;
+	fr_event_timer_t *ev;
 
 	if (!*ev_p) return 0;
 
 	if (!fr_cond_assert(talloc_parent(*ev_p) == el)) return -1;
 
-	ret = talloc_free(*ev_p);
+	memcpy(&ev, ev_p, sizeof(ev));
+	ret = talloc_free(ev);
 	if (ret == 0) *ev_p = NULL;
 
 	return ret;
@@ -508,6 +510,11 @@ static int _event_timer_free(fr_event_timer_t *ev)
 
 /** Insert a timer event into an event list
  *
+ * @note The talloc parent of the memory returned in ev_p must not be changed.
+ *	 If the lifetime of the event needs to be bound to another context
+ *	 this function should be called with the existing event pointed to by
+ *	 ev_p.
+ *
  * @param[in] ctx		to bind lifetime of the event to.
  * @param[in] el		to insert event into.
  * @param[in,out] ev_p		If not NULL modify this event instead of creating a new one.  This is a parent
@@ -519,7 +526,7 @@ static int _event_timer_free(fr_event_timer_t *ev)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_event_timer_insert(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t **ev_p,
+int fr_event_timer_insert(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t const **ev_p,
 			  struct timeval *when, fr_event_callback_t callback, void const *uctx)
 {
 	fr_event_timer_t *ev;
@@ -551,7 +558,8 @@ int fr_event_timer_insert(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t
 
 	/*
 	 *	If there is an event, re-use it instead of freeing it
-	 *	and allocating a new one.
+	 *	and allocating a new one.  This is to reduce memory
+	 *	churn for repeat events.
 	 */
 	if (!*ev_p) {
 	new_event:
@@ -567,9 +575,7 @@ int fr_event_timer_insert(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t
 
 		talloc_set_destructor(ev, _event_timer_free);
 	} else {
-		int ret;
-
-		ev = talloc_get_type_abort(*ev_p, fr_event_timer_t);
+		memcpy(&ev, ev_p, sizeof(ev));	/* Not const to us */
 
 		/*
 		 *	We can't disarm the linking context due to
@@ -584,8 +590,11 @@ int fr_event_timer_insert(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t
 			goto new_event;
 		}
 
-		ret = fr_heap_extract(el->times, ev);
-		if (!fr_cond_assert(ret == 1)) return -1;	/* events MUST be in the heap */
+		/*
+		 *	Event may have fired, in which case the
+		 *	event will no longer be in the event loop.
+		 */
+		(void) fr_heap_extract(el->times, ev);
 	}
 
 	ev->when = *when;
@@ -608,9 +617,9 @@ int fr_event_timer_insert(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t
 
 /** Add a user callback to the event list.
  *
- * @param[in] el	containing the timer events.
- * @param[in] callback	the callback for EVFILT_USER
- * @param[in] uctx	user context for the callback
+ * @param[in] el	Containing the timer events.
+ * @param[in] callback	for EVFILT_USER.
+ * @param[in] uctx	for the callback.
  * @return
  *	- 0 on error
  *	- uintptr_t ident for EVFILT_USER signaling
@@ -632,9 +641,9 @@ uintptr_t fr_event_user_insert(fr_event_list_t *el, fr_event_user_handler_t call
 
 /** Delete a user callback to the event list.
  *
- * @param[in] el	containing the timer events.
- * @param[in] callback	the callback for EVFILT_USER
- * @param[in] uctx	user context for the callback
+ * @param[in] el	Containing the timer events.
+ * @param[in] callback	for EVFILT_USER.
+ * @param[in] uctx	for the callback.
  * @return
  *	- < 0 on error
  *	- 0 on success
@@ -667,9 +676,9 @@ int fr_event_user_delete(fr_event_list_t *el, fr_event_user_handler_t callback, 
  *  Events are serviced in insert order.  i.e. insert A, B, we then
  *  have A running before B.
  *
- * @param[in] el	containing the timer events.
- * @param[in] callback	the pre-processing callback;
- * @param[in] uctx	user context for the callback
+ * @param[in] el	Containing the timer events.
+ * @param[in] callback	The pre-processing callback.
+ * @param[in] uctx	for the callback.
  * @return
  *	- < 0 on error
  *	- 0 on success
@@ -689,9 +698,9 @@ int fr_event_pre_insert(fr_event_list_t *el, fr_event_status_t callback, void *u
 
 /** Delete a pre-event callback from the event list.
  *
- * @param[in] el	containing the timer events.
- * @param[in] callback	the pre-processing callback
- * @param[in] uctx	user context for the callback
+ * @param[in] el	Containing the timer events.
+ * @param[in] callback	The pre-processing callback.
+ * @param[in] uctx	for the callback.
  * @return
  *	- < 0 on error
  *	- 0 on success
@@ -724,9 +733,9 @@ int fr_event_pre_delete(fr_event_list_t *el, fr_event_status_t callback, void *u
  *  Events are serviced in insert order.  i.e. insert A, B, we then
  *  have A running before B.
  *
- * @param[in] el	containing the timer events.
- * @param[in] callback	the post-processing callback;
- * @param[in] uctx	user context for the callback
+ * @param[in] el	Containing the timer events.
+ * @param[in] callback	The post-processing callback.
+ * @param[in] uctx	for the callback.
  * @return
  *	- < 0 on error
  *	- 0 on success
@@ -746,9 +755,9 @@ int fr_event_post_insert(fr_event_list_t *el, fr_event_callback_t callback, void
 
 /** Delete a post-event callback from the event list.
  *
- * @param[in] el	containing the timer events.
- * @param[in] callback	the post-processing callback
- * @param[in] uctx	user context for the callback
+ * @param[in] el	Containing the timer events.
+ * @param[in] callback	The post-processing callback.
+ * @param[in] uctx	for the callback.
  * @return
  *	- < 0 on error
  *	- 0 on success
@@ -1122,7 +1131,7 @@ int fr_event_loop(fr_event_list_t *el)
  */
 static int _event_list_free(fr_event_list_t *el)
 {
-	fr_event_timer_t *ev;
+	fr_event_timer_t const *ev;
 
 	while ((ev = fr_heap_peek(el->times)) != NULL) {
 		fr_event_timer_delete(el, &ev);

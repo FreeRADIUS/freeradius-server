@@ -163,11 +163,11 @@ typedef struct {
  */
 typedef struct {
 	rlm_rest_t const	*inst;		//!< Instance of rlm_rest.
-	fr_pool_t	*pool;		//!< Thread specific connection pool.
+	fr_pool_t		*pool;		//!< Thread specific connection pool.
 	CURLM			*mandle;	//!< Thread specific multi handle.  Serves as the dispatch
 						//!< and coralling structure for REST requests.
 	fr_event_list_t		*el;		//!< This thread's event list.
-	fr_event_timer_t	*ev;		//!< Used to manage IO timers for libcurl.
+	fr_event_timer_t const	*ev;		//!< Used to manage IO timers for libcurl.
 	unsigned int		transfers;	//!< Keep track of how many outstanding transfers
 						//!< we think there are.
 } rlm_rest_thread_t;

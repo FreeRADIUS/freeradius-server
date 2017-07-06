@@ -106,7 +106,7 @@ struct rad_listen {
 	 *	Events associated with this listener
 	 */
 	struct timeval		when;
-	fr_event_timer_t	*ev;
+	fr_event_timer_t const	*ev;
 
 	CONF_SECTION const	*cs;
 	void			*data;

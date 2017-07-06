@@ -174,7 +174,7 @@ typedef struct rs_capture {
  */
 typedef struct rs_request {
 	uint64_t		id;			//!< Monotonically increasing packet counter.
-	fr_event_timer_t		*event;			//!< Event created when we received the original request.
+	fr_event_timer_t const	*event;			//!< Event created when we received the original request.
 
 	bool			logged;			//!< Whether any messages regarding this request were logged.
 
