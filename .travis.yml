@@ -95,7 +95,8 @@ addons:
     - libwbclient-dev
     - libykclient-dev
     - libyubikey-dev
-    - llvm-3.9	 Needed for llvm-symbolizer
+    # Needed for llvm-symbolizer
+    - llvm-3.9
     - slapd
     - ldap-utils
 services:
