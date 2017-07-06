@@ -130,7 +130,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(UNUSED void *instance, UNUSED vo
  */
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
-	rlm_radius_t *inst = instance;
+	rlm_radius_t *inst = talloc_get_type_abort(instance, rlm_radius_t);
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
@@ -168,7 +168,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
  */
 static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 {
-	rlm_radius_t *inst = instance;
+	rlm_radius_t *inst = talloc_get_type_abort(instance, rlm_radius_t);
 
 	if (!inst->client_io->instantiate) return 0;
 
@@ -181,10 +181,9 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 	return 0;
 }
 
-static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, UNUSED void *instance, UNUSED fr_event_list_t *el,
-				  UNUSED void *thread)
+static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance, fr_event_list_t *el, void *thread)
 {
-	rlm_radius_t *inst = instance;
+	rlm_radius_t *inst = talloc_get_type_abort(instance, rlm_radius_t);
 
 	if (inst->client_io->thread_instantiate(inst->client_io_conf, inst->client_io_instance, el, thread) < 0) {
 		cf_log_err(inst->client_io_conf, "Thread instantiate failed for \"%s\"",
