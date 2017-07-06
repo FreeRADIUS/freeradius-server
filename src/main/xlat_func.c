@@ -665,6 +665,8 @@ xlat_t *xlat_find(char const *name)
 {
 	xlat_t my_xlat;
 
+	if (!xlat_root) return NULL;
+
 	strlcpy(my_xlat.name, name, sizeof(my_xlat.name));
 	my_xlat.length = strlen(my_xlat.name);
 
