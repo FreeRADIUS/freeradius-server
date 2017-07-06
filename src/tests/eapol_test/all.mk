@@ -167,8 +167,18 @@ $(OUTPUT_DIR)/%.ok: $(DIR)/%.conf | radiusd.kill $(CONFIG_PATH)/radiusd.pid
 tests.eap: $(EAPOL_OK_FILES)
 	${Q}$(MAKE) radiusd.kill
 else
+#
+#  Build rules and the make file get evaluated at different times
+#  if we don't touch the test skipped file immediately, users can
+#  cntrl-c out of the build process, and the skip file never gets
+#  created as the tests.eap target is evaluated much later in the
+#  build process.2
+#
+ifneq (,$(findstring test,$(MAKECMDGOALS)))
+$(shell touch "$(OUTPUT_DIR)/eapol_test.skip")
+endif
+
 tests.eap: $(OUTPUT_DIR)
 	${Q}echo "Skipping EAP tests due to previous build error"
 	${Q}echo "Retry with: $(MAKE) clean.$@ && $(MAKE) $@"
-	${Q}touch "$(OUTPUT_DIR)/eapol_test.skip"
 endif
