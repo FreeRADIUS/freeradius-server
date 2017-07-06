@@ -38,8 +38,7 @@ struct request_data_t {
 	int		unique_int;		//!< Alternative key to lookup request data.
 	void		*opaque;		//!< Opaque data.
 	bool		free_on_replace;	//!< Whether to talloc_free(opaque) when the request data is removed.
-	bool		free_on_parent;		//!< Whether to talloc_free(opaque) when the parent of the request
-						//!< data is freed.
+	bool		free_on_parent;		//!< Whether to talloc_free(opaque) when the request is freed
 	bool		persist;		//!< Whether this data should be transfered to a session_entry_t
 						//!< after we're done processing this request.
 };
