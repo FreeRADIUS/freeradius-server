@@ -638,7 +638,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 	inst->log_fd = ub_fd(inst->ub);
 	if (inst->log_fd >= 0) {
-		if (fr_event_fd_insert(inst->el, inst->log_fd, ub_fd_handler, NULL, NULL, inst) < 0) {
+		if (fr_event_fd_insert(inst, inst->el, inst->log_fd, ub_fd_handler, NULL, NULL, inst) < 0) {
 			cf_log_err(conf, "could not insert async fd");
 			inst->log_fd = -1;
 			goto error_nores;

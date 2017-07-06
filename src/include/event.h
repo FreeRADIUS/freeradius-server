@@ -95,7 +95,7 @@ int		fr_event_list_kq(fr_event_list_t *el);
 int		fr_event_list_time(struct timeval *when, fr_event_list_t *el);
 
 int		fr_event_fd_delete(fr_event_list_t *el, int fd);
-int		fr_event_fd_insert(fr_event_list_t *el, int fd,
+int		fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 				   fr_event_fd_handler_t read_fn,
 				   fr_event_fd_handler_t write_fn,
 				   fr_event_fd_error_handler_t error,

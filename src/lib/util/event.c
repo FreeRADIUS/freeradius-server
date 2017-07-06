@@ -81,6 +81,7 @@ typedef struct fr_event_fd_t {
 							//!< the handlers complete.
 
 	void			*uctx;			//!< Context pointer to pass to each file descriptor callback.
+	TALLOC_CTX		*linked_ctx;		//!< talloc ctx this event was bound to.
 } fr_event_fd_t;
 
 /** Callbacks to perform when the event handler is about to check the events.
@@ -315,6 +316,7 @@ static int _fr_event_fd_free(fr_event_fd_t *ef)
 
 /** Associate a callback with an file descriptor
  *
+ * @param[in] ctx	to bind lifetime of the event to.
  * @param[in] el	to insert fd callback into.
  * @param[in] fd	to read from.
  * @param[in] read_fn	function to call when fd is readable.
@@ -325,7 +327,7 @@ static int _fr_event_fd_free(fr_event_fd_t *ef)
  *	- 0 on succes.
  *	- -1 on failure.
  */
-int fr_event_fd_insert(fr_event_list_t *el, int fd,
+int fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 		       fr_event_fd_handler_t read_fn,
 		       fr_event_fd_handler_t write_fn,
 		       fr_event_fd_error_handler_t error,
@@ -359,6 +361,12 @@ int fr_event_fd_insert(fr_event_list_t *el, int fd,
 
 	find.fd = fd;
 	ef = rbtree_finddata(el->fds, &find);
+
+	/*
+	 *	Need to free the event to change the
+	 *	talloc link.
+	 */
+	if (ef && (ef->linked_ctx != ctx)) TALLOC_FREE(ef);	/* Also cleans up kevent filters */
 
 	/*
 	 *	No pre-existing event.  Allocate an entry
@@ -418,6 +426,7 @@ int fr_event_fd_insert(fr_event_list_t *el, int fd,
 		ef->write = write_fn;
 		ef->error = error;
 		ef->is_registered = true;
+		ef->linked_ctx = ctx;
 
 		return 0;
 	}

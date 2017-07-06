@@ -489,7 +489,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 	rad_assert(app_io->fd);
 	fd = app_io->fd(s->listen->app_io_instance);
 
-	if (fr_event_fd_insert(nr->el, fd,
+	if (fr_event_fd_insert(nr, nr->el, fd,
 			       fr_network_read,
 			       NULL,			/* app_io->write ? fr_network_write : NULL - FIXME */
 			       app_io->error ? fr_network_error : NULL,

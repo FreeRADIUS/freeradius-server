@@ -461,7 +461,7 @@ static void *thread_handler(void *arg)
 	local_backlog = fr_heap_create(timestamp_cmp, offsetof(REQUEST, heap_id));
 	rad_assert(local_backlog != NULL);
 
-	if (fr_event_fd_insert(el, thread->pipe_fd[0], thread_fd_handler, NULL, NULL, thread) < 0) {
+	if (fr_event_fd_insert(thread, el, thread->pipe_fd[0], thread_fd_handler, NULL, NULL, thread) < 0) {
 		ERROR("Failed inserting event for self");
 		goto done;
 	}
