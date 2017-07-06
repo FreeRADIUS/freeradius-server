@@ -93,7 +93,6 @@ typedef struct fr_event_pre_t {
 	void			*uctx;			//!< Context for the callback.
 } fr_event_pre_t;
 
-
 /** Callbacks to perform after all timers and FDs have been checked
  *
  */
@@ -102,7 +101,6 @@ typedef struct fr_event_post_t {
 	fr_event_callback_t	callback;		//!< The callback to call.
 	void			*uctx;			//!< Context for the callback.
 } fr_event_post_t;
-
 
 /** Callbacks for kevent() user events
  *
@@ -113,7 +111,6 @@ typedef struct fr_event_user_t {
 	fr_event_user_handler_t callback;		//!< The callback to call.
 	void			*uctx;			//!< Context for the callback.
 } fr_event_user_t;
-
 
 /** Stores all information relating to an event list
  *
@@ -989,8 +986,7 @@ void fr_event_service(fr_event_list_t *el)
                 	fd_errno = el->events[i].data;
                 ev_error:
                         /*
-                         *      Call the error handler which should
-                         *      tear down the connection.
+                         *      Call the error handler
                          */
                         if (ev->error) ev->error(el, ev->fd, flags, fd_errno, ev->uctx);
                         fr_event_fd_delete(el, ev->fd);
