@@ -140,11 +140,12 @@ static void connection_state_failed(fr_connection_t *conn, struct timeval *now)
 		ret = conn->failed(conn->fd, prev, conn->uctx);
 		switch (ret) {
 		case FR_CONNECTION_STATE_INIT:
+			conn->state FR_CONNECTION_STATE_FAILED;	/* so init function prints the correct transition */
 			connection_state_init(conn, now);
 			break;
 
-		case FR_CONNECTION_STATE_HALTED:	/* Do nothing */
-			DEBUG4("Changed state %s -> %s", \
+		case FR_CONNECTION_STATE_HALTED:		/* Do nothing */
+			DEBUG4("Changed state %s -> %s",
 			       fr_int2str(fr_connection_states, prev, "<INVALID>"),
 			       fr_int2str(fr_connection_states, FR_CONNECTION_STATE_HALTED, "<INVALID>"));
 			return;
