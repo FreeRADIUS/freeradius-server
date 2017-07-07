@@ -95,38 +95,27 @@ static void fr_network_post_event(fr_event_list_t *el, struct timeval *now, void
 
 static int worker_cmp(void const *one, void const *two)
 {
-	fr_network_worker_t const *a = one;
-	fr_network_worker_t const *b = two;
+	fr_network_worker_t const *a = one, *b = two;
 
-	if (a->cpu_time < b->cpu_time) return -1;
-	if (a->cpu_time > b->cpu_time) return +1;
-
-	return 0;
+	return (a->cpu_time < b->cpu_time) - (a->cpu_time > b->cpu_time);
 }
 
 static int reply_cmp(void const *one, void const *two)
 {
-	fr_channel_data_t const *a = one;
-	fr_channel_data_t const *b = two;
+	fr_channel_data_t const *a = one, *b = two;
+	int ret;
 
-	if (a->priority < b->priority) return -1;
-	if (a->priority > b->priority) return +1;
+	ret = (a->priority > b->priority) - (a->priority < b->priority);
+	if (ret != 0) return ret;
 
-	if (a->m.when < b->m.when) return -1;
-	if (a->m.when > b->m.when) return +1;
-
-	return 0;
+	return (a->m.when > b->m.when) - (a->m.when < b->m.when);
 }
 
 static int socket_cmp(void const *one, void const *two)
 {
-	fr_network_socket_t const *a = one;
-	fr_network_socket_t const *b = two;
+	fr_network_socket_t const *a = one, *b = two;
 
-	if (a->listen < b->listen) return -1;
-	if (a->listen > b->listen) return +1;
-
-	return 0;
+	return (a->listen > b->listen) - (a->listen < b->listen);
 }
 
 

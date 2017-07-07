@@ -539,10 +539,7 @@ static int _module_thread_inst_tree_cmp(void const *a, void const *b)
 {
 	module_thread_instance_t const *my_a = a, *my_b = b;
 
-	if (my_a->inst > my_b->inst) return +1;
-	if (my_a->inst < my_b->inst) return -1;
-
-	return 0;
+	return (my_a->inst > my_b->inst) - (my_a->inst < my_b->inst);
 }
 
 typedef struct {

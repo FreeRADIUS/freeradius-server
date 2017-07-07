@@ -642,9 +642,7 @@ static int _python_inst_cmp(const void *a, const void *b)
 {
 	python_thread_state_t const *a_p = a, *b_p = b;
 
-	if (a_p->inst < b_p->inst) return -1;
-	if (a_p->inst > b_p->inst) return +1;
-	return 0;
+	return (a_p->inst < b_p->inst) - (a_p->inst > b_p->inst);
 }
 
 /** Thread safe call to a python function

@@ -106,10 +106,7 @@ static uint32_t detail_hash(void const *data)
 
 static int detail_cmp(void const *a, void const *b)
 {
-	fr_dict_attr_t const *one = a;
-	fr_dict_attr_t const *two = b;
-
-	return one - two;
+	return (a < b) - (a > b);
 }
 
 /*

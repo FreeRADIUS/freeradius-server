@@ -104,8 +104,7 @@ fr_dict_attr_t const *dhcp_option_82;
 
 int8_t fr_dhcpv4_attr_cmp(void const *a, void const *b)
 {
-	VALUE_PAIR const *my_a = a;
-	VALUE_PAIR const *my_b = b;
+	VALUE_PAIR const *my_a = a, *my_b = b;
 	fr_dict_attr_t const *a_82, *b_82;
 
 	VERIFY_VP(my_a);

@@ -141,8 +141,7 @@ static int client_ipaddr_cmp(void const *one, void const *two)
  */
 static int client_num_cmp(void const *one, void const *two)
 {
-	RADCLIENT const *a = one;
-	RADCLIENT const *b = two;
+	RADCLIENT const *a = one, *b = two;
 
 	return (a->number - b->number);
 }

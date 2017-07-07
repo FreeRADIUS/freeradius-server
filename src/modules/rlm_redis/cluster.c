@@ -305,18 +305,13 @@ static uint16_t cluster_key_hash(uint8_t const *key, size_t key_len)
  */
 static int _cluster_node_cmp(void const *a, void const *b)
 {
+	cluster_node_t const *my_a = a, *my_b = b;
 	int ret;
-
-	cluster_node_t const *my_a = a;
-	cluster_node_t const *my_b = b;
 
 	ret = fr_ipaddr_cmp(&my_a->addr.ipaddr, &my_b->addr.ipaddr);
 	if (ret != 0) return ret;
 
-	if (my_a->addr.port < my_b->addr.port) return -1;
-	if (my_a->addr.port > my_b->addr.port) return +1;
-
-	return 0;
+	return my_a->addr.port - my_b->addr.port;
 }
 
 /** Reconnect callback to apply new pool config

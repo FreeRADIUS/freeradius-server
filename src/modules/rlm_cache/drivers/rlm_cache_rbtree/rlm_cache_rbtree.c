@@ -44,11 +44,11 @@ typedef struct rlm_cache_rbtree_entry {
  */
 static int cache_entry_cmp(void const *one, void const *two)
 {
-	rlm_cache_entry_t const *a = one;
-	rlm_cache_entry_t const *b = two;
+	rlm_cache_entry_t const *a = one, *b = two;
+	int ret;
 
-	if (a->key_len < b->key_len) return -1;
-	if (a->key_len > b->key_len) return +1;
+	ret = (a->key_len > b->key_len) - (a->key_len < b->key_len);
+	if (ret != 0) return ret;
 
 	return memcmp(a->key, b->key, a->key_len);
 }
@@ -59,13 +59,9 @@ static int cache_entry_cmp(void const *one, void const *two)
  */
 static int cache_heap_cmp(void const *one, void const *two)
 {
-	rlm_cache_entry_t const *a = one;
-	rlm_cache_entry_t const *b = two;
+	rlm_cache_entry_t const *a = one, *b = two;
 
-	if (a->expires < b->expires) return -1;
-	if (a->expires > b->expires) return +1;
-
-	return 0;
+	return (a->expires > b->expires) - (a->expires < b->expires);
 }
 
 /** Walk over the cache rbtree

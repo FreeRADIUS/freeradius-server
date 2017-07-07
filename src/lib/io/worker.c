@@ -941,16 +941,13 @@ static int fr_worker_pre_event(void *ctx, struct timeval *wake)
  */
 static int worker_message_cmp(void const *one, void const *two)
 {
-	fr_channel_data_t const *a = one;
-	fr_channel_data_t const *b = two;
+	fr_channel_data_t const *a = one, *b = two;
+	int ret;
 
-	if (a->priority < b->priority) return -1;
-	if (a->priority > b->priority) return +1;
+	ret = (a->priority > b->priority) - (a->priority < b->priority);
+	if (ret != 0) return ret;
 
-	if (a->m.when < b->m.when) return -1;
-	if (a->m.when > b->m.when) return +1;
-
-	return 0;
+	return (a->m.when > b->m.when) - (a->m.when < b->m.when);
 }
 
 /**
@@ -958,16 +955,13 @@ static int worker_message_cmp(void const *one, void const *two)
  */
 static int worker_request_cmp(void const *one, void const *two)
 {
-	REQUEST const *a = one;
-	REQUEST const *b = two;
+	REQUEST const *a = one, *b = two;
+	int ret;
 
-	if (a->async->priority < b->async->priority) return -1;
-	if (a->async->priority > b->async->priority) return +1;
+	ret = (a->async->priority > b->async->priority) - (a->async->priority < b->async->priority);
+	if (ret != 0) return ret;
 
-	if (a->async->recv_time < b->async->recv_time) return -1;
-	if (a->async->recv_time > b->async->recv_time) return +1;
-
-	return 0;
+	return (a->async->recv_time > b->async->recv_time) - (a->async->recv_time < b->async->recv_time);
 }
 
 /** Destroy a worker.

@@ -298,8 +298,7 @@ static uint32_t dict_attr_name_hash(void const *data)
  */
 static int dict_attr_name_cmp(void const *one, void const *two)
 {
-	fr_dict_attr_t const *a = one;
-	fr_dict_attr_t const *b = two;
+	fr_dict_attr_t const *a = one, *b = two;
 
 	return strcasecmp(a->name, b->name);
 }
@@ -322,16 +321,16 @@ static uint32_t dict_attr_combo_hash(void const *data)
  */
 static int dict_attr_combo_cmp(void const *one, void const *two)
 {
-	fr_dict_attr_t const *a = one;
-	fr_dict_attr_t const *b = two;
+	fr_dict_attr_t const *a = one, *b = two;
+	int ret;
 
-	if (a->parent < b->parent) return -1;
-	if (a->parent > b->parent) return +1;
+	ret = (a->parent < b->parent) - (a->parent > b->parent);
+	if (ret != 0) return ret;
 
-	if (a->type < b->type) return -1;
-	if (a->type > b->type) return +1;
+	ret = (a->type < b->type) - (a->type > b->type);
+	if (ret != 0) return ret;
 
-	return a->attr - b->attr;
+	return (a->attr > b->attr) - (a->attr < b->attr);
 }
 
 /** Wrap name hash function for fr_dict_vendor_t

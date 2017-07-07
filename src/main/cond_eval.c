@@ -372,7 +372,7 @@ static int cond_normalise_and_cmp(REQUEST *request, fr_cond_t const *c, fr_value
 	fr_value_box_t		*rhs = NULL;
 
 	fr_dict_attr_t const	*cast = NULL;
-	fr_type_t			cast_type = FR_TYPE_INVALID;
+	fr_type_t		cast_type = FR_TYPE_INVALID;
 
 	fr_value_box_t		lhs_cast, rhs_cast;
 	void			*lhs_cast_buff = NULL, *rhs_cast_buff = NULL;

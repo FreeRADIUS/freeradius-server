@@ -107,10 +107,7 @@ static int _trigger_last_fired_cmp(void const *a, void const *b)
 {
 	trigger_last_fired_t const *lf_a = a, *lf_b = b;
 
-	if (lf_a->ci < lf_b->ci) return -1;
-	if (lf_a->ci == lf_b->ci) return 0;
-
-	return 1;
+	return (lf_a->ci < lf_b->ci) - (lf_a->ci > lf_b->ci);
 }
 
 /** Set the global trigger section trigger_exec will search in, and register xlats

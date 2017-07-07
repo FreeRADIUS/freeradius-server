@@ -877,8 +877,7 @@ static int _sync_state_free(sync_state_t *sync)
  */
 static int _sync_cmp(void const *one, void const *two)
 {
-	sync_state_t const *a = one;
-	sync_state_t const *b = two;
+	sync_state_t const *a = one, *b = two;
 
 	return a->msgid - b->msgid;
 }

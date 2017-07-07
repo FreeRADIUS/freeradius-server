@@ -716,11 +716,11 @@ static int pid_cmp(void const *one, void const *two)
  */
 static int default_cmp(void const *one, void const *two)
 {
-	REQUEST const *a = one;
-	REQUEST const *b = two;
+	REQUEST const *a = one, *b = two;
+	int ret;
 
-	if (a->priority < b->priority) return -1;
-	if (a->priority > b->priority) return +1;
+	ret = (a->priority < b->priority) - (a->priority > b->priority);
+	if (ret != 0) return ret;
 
 	return timestamp_cmp(one, two);
 }
@@ -731,14 +731,14 @@ static int default_cmp(void const *one, void const *two)
  */
 static int state_cmp(void const *one, void const *two)
 {
-	REQUEST const *a = one;
-	REQUEST const *b = two;
+	REQUEST const *a = one, *b = two;
+	int ret;
 
 	/*
 	 *	Rounds which are further along go higher in the heap.
 	 */
-	if (a->packet->rounds > b->packet->rounds) return -1;
-	if (a->packet->rounds < b->packet->rounds) return +1;
+	ret = (a->packet->rounds > b->packet->rounds) - (a->packet->rounds < b->packet->rounds);
+	if (ret != 0) return ret;
 
 	return default_cmp(one, two);
 }

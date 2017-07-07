@@ -751,10 +751,8 @@ static int radclient_sane(rc_request_t *request)
  */
 static int filename_cmp(void const *one, void const *two)
 {
+	rc_file_pair_t const *a = one, *b = two;
 	int cmp;
-
-	rc_file_pair_t const *a = one;
-	rc_file_pair_t const *b = two;
 
 	cmp = strcmp(a->packets, b->packets);
 	if (cmp != 0) return cmp;

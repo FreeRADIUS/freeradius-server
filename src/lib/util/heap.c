@@ -278,14 +278,9 @@ typedef struct heap_thing {
  */
 static int heap_cmp(void const *one, void const *two)
 {
-	heap_thing const *a;
-	heap_thing const *b;
-
-	a = (heap_thing const *) one;
-	b = (heap_thing const *) two;
+	heap_thing const *a = one, *b = two;
 
 	return a->data - b->data;
-
 }
 
 #define ARRAY_SIZE (1024)

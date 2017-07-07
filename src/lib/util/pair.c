@@ -863,11 +863,7 @@ int8_t fr_pair_cmp_by_da_tag(void const *a, void const *b)
 	cmp = fr_pointer_cmp(my_a->da, my_b->da);
 	if (cmp != 0) return cmp;
 
-	if (my_a->tag < my_b->tag) return -1;
-
-	if (my_a->tag > my_b->tag) return 1;
-
-	return 0;
+	return (my_a->tag > my_b->tag) - (my_a->tag < my_b->tag);
 }
 
 /** Order attributes by their attribute number, and tag
@@ -1042,29 +1038,20 @@ int fr_pair_list_cmp(VALUE_PAIR *a, VALUE_PAIR *b)
 {
 	vp_cursor_t a_cursor, b_cursor;
 	VALUE_PAIR *a_p, *b_p;
-	int ret;
 
 	for (a_p = fr_pair_cursor_init(&a_cursor, &a), b_p = fr_pair_cursor_init(&b_cursor, &b);
 	     a_p && b_p;
 	     a_p = fr_pair_cursor_next(&a_cursor), b_p = fr_pair_cursor_next(&b_cursor)) {
+		int ret;
+
 		/* Same VP, no point doing expensive checks */
-		if (a_p == b_p) {
-			continue;
-		}
+		if (a_p == b_p) continue;
 
-		if (a_p->da < b_p->da) {
-			return -1;
-		}
-		if (a_p->da > b_p->da) {
-			return 1;
-		}
+		ret = (a_p->da < b_p->da) - (a_p->da > b_p->da);
+		if (ret != 0) return ret;
 
-		if (a_p->tag < b_p->tag) {
-			return -1;
-		}
-		if (a_p->tag > b_p->tag) {
-			return 1;
-		}
+		ret = (a_p->tag < b_p->tag) - (a_p->tag > b_p->tag);
+		if (ret != 0) return ret;
 
 		ret = fr_value_box_cmp(&a_p->data, &b_p->data);
 		if (ret != 0) {

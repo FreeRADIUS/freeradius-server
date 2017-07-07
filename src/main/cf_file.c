@@ -409,16 +409,13 @@ static bool cf_template_merge(CONF_SECTION *cs, CONF_SECTION const *template)
  */
 static int _filename_cmp(void const *a, void const *b)
 {
-	cf_file_t const *one = a;
-	cf_file_t const *two = b;
+	cf_file_t const *one = a, *two = b;
+	int ret;
 
-	if (one->buf.st_dev < two->buf.st_dev) return -1;
-	if (one->buf.st_dev > two->buf.st_dev) return +1;
+	ret = (one->buf.st_dev < two->buf.st_dev) - (one->buf.st_dev > two->buf.st_dev);
+	if (ret != 0) return ret;
 
-	if (one->buf.st_ino < two->buf.st_ino) return -1;
-	if (one->buf.st_ino > two->buf.st_ino) return +1;
-
-	return 0;
+	return (one->buf.st_ino < two->buf.st_ino) - (one->buf.st_ino > two->buf.st_ino);
 }
 
 static FILE *cf_file_open(CONF_SECTION *cs, char const *filename)

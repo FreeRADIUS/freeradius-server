@@ -61,8 +61,7 @@ struct map_proc_inst {
  */
 static int map_proc_cmp(void const *one, void const *two)
 {
-	map_proc_t const *a = one;
-	map_proc_t const *b = two;
+	map_proc_t const *a = one, *b = two;
 
 	if (a->length != b->length) return a->length - b->length;
 

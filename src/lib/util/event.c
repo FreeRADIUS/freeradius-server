@@ -149,8 +149,7 @@ struct fr_event_list_t {
 static int fr_event_timer_cmp(void const *a, void const *b)
 {
 	int			ret;
-	fr_event_timer_t const	*ev_a = a;
-	fr_event_timer_t const	*ev_b = b;
+	fr_event_timer_t const	*ev_a = a, *ev_b = b;
 
 	return (ret = ((ev_a->when.tv_sec < ev_b->when.tv_sec) - (ev_a->when.tv_sec > ev_b->when.tv_sec))) ?
 	        ret :
@@ -168,8 +167,7 @@ static int fr_event_timer_cmp(void const *a, void const *b)
  */
 static int fr_event_fd_cmp(void const *a, void const *b)
 {
-	fr_event_fd_t const *ev_a = a;
-	fr_event_fd_t const *ev_b = b;
+	fr_event_fd_t const *ev_a = a, *ev_b = b;
 
 	return (ev_a->fd < ev_b->fd) - (ev_a->fd > ev_b->fd);
 }

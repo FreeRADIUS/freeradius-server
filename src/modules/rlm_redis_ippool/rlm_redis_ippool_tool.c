@@ -834,20 +834,16 @@ static int8_t pool_cmp(void const *a, void const *b)
 {
 	size_t len_a;
 	size_t len_b;
-
 	int ret;
 
 	len_a = talloc_array_length((uint8_t const *)a);
 	len_b = talloc_array_length((uint8_t const *)b);
 
-	if (len_a > len_b) return 1;
-	if (len_a < len_b) return -1;
+	ret = (len_a > len_b) - (len_a < len_b);
+	if (ret != 0) return ret;
 
 	ret = memcmp(a, b, len_a);
-	if (ret > 0) return 1;
-	if (ret < 0) return -1;
-
-	return 0;
+	return (ret > 0) - (ret < 0);
 }
 
 /** Return the pools available across the cluster

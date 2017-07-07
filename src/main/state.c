@@ -130,8 +130,7 @@ static void state_entry_unlink(fr_state_tree_t *state, fr_state_entry_t *entry);
  */
 static int state_entry_cmp(void const *one, void const *two)
 {
-	fr_state_entry_t const *a = one;
-	fr_state_entry_t const *b = two;
+	fr_state_entry_t const *a = one, *b = two;
 
 	return memcmp(a->state, b->state, sizeof(a->state));
 }

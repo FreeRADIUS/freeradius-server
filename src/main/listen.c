@@ -1189,9 +1189,7 @@ static CONF_PARSER limit_config[] = {
  */
 static int listener_cmp(void const *one, void const *two)
 {
-	if (one < two) return -1;
-	if (one > two) return +1;
-	return 0;
+	return (one < two) - (one > two);
 }
 
 static int listener_unlink(UNUSED void *ctx, UNUSED void *data)

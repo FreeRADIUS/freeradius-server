@@ -119,47 +119,45 @@ static int dl_init(void);
 
 static int dl_symbol_init_cmp(void const *one, void const *two)
 {
-	dl_symbol_init_t const *a = one;
-	dl_symbol_init_t const *b = two;
+	dl_symbol_init_t const *a = one, *b = two;
+	int ret;
 
 	rad_assert(a && b);
 
-	if ((void *)a->func > (void *)b->func) return +1;
-	if ((void *)a->func < (void *)b->func) return -1;
+	ret = ((void *)a->func > (void *)b->func) - ((void *)a->func < (void *)b->func);
+	if (ret != 0) return ret;
 
-	if (a->symbol && !b->symbol) return +1;
-	if (!a->symbol && b->symbol) return -1;
-	if (a->symbol && b->symbol) return strcmp(a->symbol, b->symbol);
+	ret = (a->symbol && !b->symbol) - (!a->symbol && b->symbol);
+	if (ret != 0) return ret;
 
-	return 0;
+	if (!a->symbol && !b->symbol) return 0;
+
+	return strcmp(a->symbol, b->symbol);
 }
 
 static int dl_symbol_free_cmp(void const *one, void const *two)
 {
-	dl_symbol_free_t const *a = one;
-	dl_symbol_free_t const *b = two;
+	dl_symbol_free_t const *a = one, *b = two;
+	int ret;
 
 	rad_assert(a && b);
 
-	if ((void *)a->func > (void *)b->func) return +1;
-	if ((void *)a->func < (void *)b->func) return -1;
+	ret = ((void *)a->func > (void *)b->func) - ((void *)a->func < (void *)b->func);
+	if (ret != 0) return ret;
 
-	if (a->symbol && !b->symbol) return +1;
-	if (!a->symbol && b->symbol) return -1;
-	if (a->symbol && b->symbol) return strcmp(a->symbol, b->symbol);
+	ret = (a->symbol && !b->symbol) - (!a->symbol && b->symbol);
+	if (ret != 0) return ret;
 
-	return 0;
+	if (!a->symbol && !b->symbol) return 0;
+
+	return strcmp(a->symbol, b->symbol);
 }
 
 static int dl_inst_cmp(void const *one, void const *two)
 {
-	dl_instance_t const *a = one;
-	dl_instance_t const *b = two;
+	dl_instance_t const *a = one, *b = two;
 
-	if (a->data > b->data) return +1;
-	if (a->data < b->data) return -1;
-
-	return 0;
+	return (a->data > b->data) - (a->data < b->data);
 }
 
 /** Compare the name of two dl_t

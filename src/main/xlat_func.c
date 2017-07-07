@@ -649,10 +649,11 @@ done:
  */
 static int xlat_cmp(void const *one, void const *two)
 {
-	xlat_t const *a = one;
-	xlat_t const *b = two;
+	xlat_t const *a = one, *b = two;
+	int ret;
 
-	if (a->length != b->length) return a->length - b->length;
+	ret = (a->length > b->length) - (a->length < b->length);
+	if (ret != 0) return ret;
 
 	return memcmp(a->name, b->name, a->length);
 }

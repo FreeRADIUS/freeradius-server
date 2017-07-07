@@ -165,32 +165,29 @@ static const CONF_PARSER pool_config[] = {
  */
 static int last_reserved_cmp(void const *one, void const *two)
 {
-	fr_pool_connection_t const *a = one;
-	fr_pool_connection_t const *b = two;
+	fr_pool_connection_t const *a = one, *b = two;
+	int ret;
 
-	if (a->last_reserved.tv_sec < b->last_reserved.tv_sec) return -1;
-	if (a->last_reserved.tv_sec > b->last_reserved.tv_sec) return +1;
+	ret = (a->last_reserved.tv_sec < b->last_reserved.tv_sec) - (a->last_reserved.tv_sec > b->last_reserved.tv_sec);
+	if (ret != 0) return ret;
 
-	if (a->last_reserved.tv_usec < b->last_reserved.tv_usec) return -1;
-	if (a->last_reserved.tv_usec > b->last_reserved.tv_usec) return +1;
-
-	return 0;
+	return (a->last_reserved.tv_usec < b->last_reserved.tv_usec) -
+	       (a->last_reserved.tv_usec > b->last_reserved.tv_usec);
 }
 
 /** Order connections by released longest ago
  */
 static int last_released_cmp(void const *one, void const *two)
 {
-	fr_pool_connection_t const *a = one;
-	fr_pool_connection_t const *b = two;
+	fr_pool_connection_t const *a = one, *b = two;
+	int ret;
 
-	if (b->last_released.tv_sec < a->last_released.tv_sec) return -1;
-	if (b->last_released.tv_sec > a->last_released.tv_sec) return +1;
+	ret = (b->last_released.tv_sec < a->last_released.tv_sec) -
+	      (b->last_released.tv_sec > a->last_released.tv_sec);
+	if (ret != 0) return ret;
 
-	if (b->last_released.tv_usec < a->last_released.tv_usec) return -1;
-	if (b->last_released.tv_usec > a->last_released.tv_usec) return +1;
-
-	return 0;
+	return (b->last_released.tv_usec < a->last_released.tv_usec) -
+	       (b->last_released.tv_usec > a->last_released.tv_usec);
 }
 
 /** Removes a connection from the connection list

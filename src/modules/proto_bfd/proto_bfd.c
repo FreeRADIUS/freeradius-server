@@ -1636,8 +1636,7 @@ static int bfd_socket_decode(UNUSED rad_listen_t *listener, UNUSED REQUEST *requ
 
 static int bfd_session_cmp(const void *one, const void *two)
 {
-	const bfd_state_t *a = one;
-	const bfd_state_t *b = two;
+	const bfd_state_t *a = one, *b = two;
 
 	return fr_ipaddr_cmp(&a->remote_ipaddr, &b->remote_ipaddr);
 }
