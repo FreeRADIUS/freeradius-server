@@ -291,7 +291,7 @@ static int _fr_event_fd_free(fr_event_fd_t *ef)
 		if (ef->read) EV_SET(&evset[count++], ef->fd, EVFILT_READ, EV_DELETE, 0, 0, 0);
 		if (ef->write) EV_SET(&evset[count++], ef->fd, EVFILT_WRITE, EV_DELETE, 0, 0, 0);
 
-		if (kevent(el->kq, evset, count, NULL, 0, NULL) < 0) {
+		if (unlikely(kevent(el->kq, evset, count, NULL, 0, NULL) < 0)) {
 			fr_strerror_printf("Failed removing filters for FD %i: %s", ef->fd, fr_syserror(errno));
 			return -1;
 		}
@@ -947,7 +947,7 @@ void fr_event_service(fr_event_list_t *el)
 	fr_dlist_t	*entry;
 	struct timeval	when;
 
-	if (el->exit) return;
+	if (unlikely(el->exit)) return;
 
 	/*
 	 *	Run all of the file descriptor events.
@@ -982,7 +982,7 @@ void fr_event_service(fr_event_list_t *el)
 
 		if (!fr_cond_assert(ev->is_registered)) continue;
 
-                if (flags & EV_ERROR) {
+                if (unlikely(flags & EV_ERROR)) {
                 	fd_errno = el->events[i].data;
                 ev_error:
                         /*
@@ -1080,7 +1080,7 @@ void fr_event_loop_exit(fr_event_list_t *el, int code)
 {
 	struct kevent kev;
 
-	if (!el) return;
+	if (unlikely(!el)) return;
 
 	el->exit = code;
 
