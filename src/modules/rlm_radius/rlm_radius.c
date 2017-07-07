@@ -63,10 +63,8 @@ typedef struct {
 	bool			pending;		//!< We have pending messages to write.
 	fr_dlist_t		queued;			//!< re-queued when a connection fails
 
-	rlm_radius_connection_t *connection;   		//!< @todo - should be list
-
-	fr_dlist_t		connected;		//!< list of connected sockets
-	fr_dlist_t		opening;		//!< list of sockets not yet connected
+	fr_dlist_t		active;			//!< list of connected sockets
+	fr_dlist_t		frozen;			//!< list of zombie sockets... not quite dead
 	fr_dlist_t		closed;			//!< list of closed sockets
 } rlm_radius_thread_t;
 
@@ -90,21 +88,13 @@ struct rlm_radius_connection_t {
 };
 
 typedef struct rlm_radius_link_t {
-	bool			queued;			//!< queued or live
+	bool			waiting;       		//!< queued or live
 	REQUEST			*request;		//!< the request we are for
 	fr_dlist_t		entry;			//!< linked list of queued or sent
 	rlm_radius_connection_t	*c;			//!< which connection we're queued or sent
 	void			*request_io_ctx;
 } rlm_radius_link_t;
 
-#if 0
-#define REQUEST_WALK(list) for (entry = FR_DLIST_FIRST(list); \
-				entry != NULL; \
-				entry = FR_DLIST_NEXT(list, entry)) { \
-					REQUEST *request; \
-					request = fr_ptr_to_type(fr_radius_link_t, entry, entry); \
-				}
-#endif
 
 static CONF_PARSER const timer_config[] = {
 	{ FR_CONF_OFFSET("connection", FR_TYPE_TIMEVAL, rlm_radius_t, connection_timeout),
@@ -169,22 +159,17 @@ static void mod_radius_fd_idle(rlm_radius_connection_t *c);
 
 static void mod_radius_fd_active(rlm_radius_connection_t *c);
 
+static void mod_radius_conn_error(UNUSED fr_event_list_t *el, int sock, UNUSED int flags, int fd_errno, void *uctx);
 
-/** Connection errored
+static int CC_HINT(nonnull) mod_add(rlm_radius_t *inst, rlm_radius_connection_t *c, REQUEST *request);
+
+/** Clear the backlog of t->queued
  *
  */
-static void mod_radius_conn_error(UNUSED fr_event_list_t *el, int sock, UNUSED int flags, int fd_errno, void *uctx)
+static void mod_clear_backlog(UNUSED rlm_radius_thread_t *t)
 {
-	rlm_radius_connection_t	*c = talloc_get_type_abort(uctx, rlm_radius_connection_t);
-
-	ERROR("Connection failed (%i): %s", sock, fr_syserror(fd_errno));
-
-	/*
-	 *	Something bad happened... Fix it.  The connection API
-	 *	will take care of deleting the FD from the event list,
-	 *	and will call our mod_radius_conn_close() routine.
-	 */
-	fr_connection_reconnect(c->conn);
+	//@ todo - move t->queued to new connections
+	// call mod_add() with the request
 }
 
 /** Drain any data we received
@@ -248,6 +233,23 @@ static void mod_radius_fd_active(rlm_radius_connection_t *c)
 	}
 }
 
+/** Connection errored
+ *
+ */
+static void mod_radius_conn_error(UNUSED fr_event_list_t *el, int sock, UNUSED int flags, int fd_errno, void *uctx)
+{
+	rlm_radius_connection_t	*c = talloc_get_type_abort(uctx, rlm_radius_connection_t);
+
+	ERROR("Connection failed (%i): %s", sock, fr_syserror(fd_errno));
+
+	/*
+	 *	Something bad happened... Fix it.  The connection API
+	 *	will take care of deleting the FD from the event list,
+	 *	and will call our mod_radius_conn_close() routine.
+	 */
+	fr_connection_reconnect(c->conn);
+}
+
 /** Shutdown/close a file descriptor
  *
  */
@@ -256,10 +258,14 @@ static void mod_radius_conn_close(int fd, UNUSED void *uctx)
 	rlm_radius_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_connection_t);
 	rlm_radius_thread_t *t = c->thread;
 	rlm_radius_t const *inst = t->inst;
+	fr_dlist_t *entry, *next;
 
 	/*
-	 *	Tell the IO handler to get rid of any pending requests
-	 *	for this socket.
+	 *	Tell the IO handler that the socket is closed.  This
+	 *	handler should just nuke any data structures it has to
+	 *	manage multiple requests (e.g. rbtrees, per-request
+	 *	timers), and assume that we will take care of managing
+	 *	the REQUESTs
 	 */
 	inst->client_io->close(c->client_io_ctx);
 
@@ -268,20 +274,49 @@ static void mod_radius_conn_close(int fd, UNUSED void *uctx)
 	if (close(fd) < 0) DEBUG3("Closing socket (%i) failed: %s", fd, fr_syserror(errno));
 
 	/*
-	 *	Remove it from whatever list it's in, and add it to
-	 *	the "closed" list.
+	 *	Remove the connection from whatever list it's in, and
+	 *	add it to the "closed" list.
 	 */
 	fr_dlist_remove(&c->entry);
 	fr_dlist_insert_tail(&t->closed, &c->entry);
 
+	 /*
+	  *	Move any requests from the "sent" back to the
+	  *	"queued" list.
+	  */
+	for (entry = FR_DLIST_FIRST(c->sent);
+	     entry != NULL;
+	     entry = next) {
+		rlm_radius_link_t *link;
+
+		link = fr_ptr_to_type(rlm_radius_link_t, entry, entry);
+
+		next = FR_DLIST_NEXT(c->sent, entry);
+
+		rad_assert(link->waiting = true);
+		link->waiting = false;
+		c->waiting--;
+
+		fr_dlist_remove(&link->entry);
+
+		// @todo - insert into the list by when we first sent
+		// the packet, so that earlier packets are handled
+		// before later packets
+		fr_dlist_insert_tail(&c->queued, &link->entry);
+
+		c->pending = true;
+	}
+
 	/*
-	 *	Nothing to be written or waiting for replies.  Return.
+	 *	Once the connection is open again, the pending queue
+	 *	will be automatically cleared.
+	 *
+	 *	If the connection DOESN'T open within
+	 *	connection_timeout, it will automatically be free'd.
+	 *
+	 *	If the connection is free'd, the queued packets will
+	 *	be moved back to t->queued.
 	 */
-	 if (!c->pending && !c->waiting) return;
-
-	// loop over 'sent', and insert into 'queued'
-
-	// if 'queued', set c->pending again
 }
 
 /** Process notification that fd is open
@@ -307,11 +342,11 @@ static fr_connection_state_t mod_radius_conn_open(UNUSED int fd, UNUSED fr_event
 	}
 
 	/*
-	 *	Remove the connection from the "opening" list, and add
+	 *	Remove the connection from the "frozen" list, and add
 	 *	it to the "connected" list.
 	 */
 	fr_dlist_remove(&c->entry);
-	fr_dlist_insert_tail(&t->connected, &c->entry);
+	fr_dlist_insert_tail(&t->active, &c->entry);
 
 	return FR_CONNECTION_STATE_CONNECTED;
 }
@@ -332,13 +367,85 @@ static fr_connection_state_t mod_radius_conn_init(int *fd_out, void *uctx)
 	return inst->client_io->init(fd_out, c->client_io_ctx);
 }
 
+
+/** Unlink the connection from the thread list.
+ *
+ *  The connection API will take care of calling our 'close' routine.
+ */
+static int mod_radius_conn_free(rlm_radius_connection_t *c)
+{
+	fr_dlist_t *entry, *next;
+	rlm_radius_thread_t *t = c->thread;
+
+	/*
+	 *	Remove us from whatever list we're in.
+	 */
+	fr_dlist_remove(&c->entry);
+
+	 /*
+	  *	Move any requests from the connection "waiting" back to the
+	  *	thread "queued" list.
+	  */
+	for (entry = FR_DLIST_FIRST(c->sent);
+	     entry != NULL;
+	     entry = next) {
+		rlm_radius_link_t *link;
+
+		link = fr_ptr_to_type(rlm_radius_link_t, entry, entry);
+
+		next = FR_DLIST_NEXT(c->sent, entry);
+
+		rad_assert(link->waiting = true);
+		link->waiting = false;
+		c->waiting--;
+
+		fr_dlist_remove(&link->entry);
+
+		// @todo - insert into the list by when we first sent
+		// the packet, so that earlier packets are handled
+		// before later packets
+		fr_dlist_insert_tail(&t->queued, &link->entry);
+
+		t->pending = true;
+	}
+
+	 /*
+	  *	Move any requests from the connection "queued" back to the
+	  *	thread "queued" list.
+	  */
+	for (entry = FR_DLIST_FIRST(c->queued);
+	     entry != NULL;
+	     entry = next) {
+		rlm_radius_link_t *link;
+
+		link = fr_ptr_to_type(rlm_radius_link_t, entry, entry);
+
+		next = FR_DLIST_NEXT(c->queued, entry);
+
+		rad_assert(link->waiting = false);
+
+		fr_dlist_remove(&link->entry);
+
+		// @todo - insert into the list by when we first sent
+		// the packet, so that earlier packets are handled
+		// before later packets
+		fr_dlist_insert_tail(&t->queued, &link->entry);
+
+		t->pending = true;
+	}
+
+	if (t->pending) mod_clear_backlog(t);
+
+	return 0;
+}
+
 /** Unlink a request from wherever it is
  *
  */
-static int mod_remove_link(rlm_radius_link_t *link)
+static int mod_link_free(rlm_radius_link_t *link)
 {
 	fr_dlist_remove(&link->entry);
-	if (link->queued) return 0;
+	if (!link->waiting) return 0;
 
 	// remove it from the client IO
 
@@ -348,7 +455,7 @@ static int mod_remove_link(rlm_radius_link_t *link)
 }
 
 
-static int CC_HINT(nonnull) mod_add(rlm_radius_t *inst, rlm_radius_connection_t *c, REQUEST *request, rlm_rcode_t *rcode)
+static int CC_HINT(nonnull) mod_add(rlm_radius_t *inst, rlm_radius_connection_t *c, REQUEST *request)
 {
 	rlm_radius_link_t *link;
 	size_t size;
@@ -380,9 +487,9 @@ static int CC_HINT(nonnull) mod_add(rlm_radius_t *inst, rlm_radius_connection_t 
 	fr_dlist_insert_tail(&c->queued, &link->entry);
 	link->request = request;
 	link->c = c;
-	link->queued = true;
+	link->waiting = false;
 
-	talloc_set_destructor(link, mod_remove_link);
+	talloc_set_destructor(link, mod_link_free);
 
 	(void) request_data_add(request, c, 0, link, true, true, false);
 
@@ -403,8 +510,6 @@ static int CC_HINT(nonnull) mod_add(rlm_radius_t *inst, rlm_radius_connection_t 
 		mod_radius_fd_active(c);
 	}
 
-	*rcode = RLM_MODULE_FAIL;
-
 	return 0;
 }
 
@@ -413,11 +518,11 @@ static int CC_HINT(nonnull) mod_add(rlm_radius_t *inst, rlm_radius_connection_t 
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, REQUEST *request)
 {
-	int result;
-	rlm_rcode_t rcode;
+	int rcode;
 	rlm_radius_t *inst = instance;
 	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
-	rlm_radius_connection_t *c = t->connection;
+	rlm_radius_connection_t *c;
+	fr_dlist_t *entry;
 
 	/*
 	 *	Another connection has closed and moved it's requests
@@ -425,14 +530,28 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	 *	other connections.
 	 */
 	if (t->pending) {
-
+		mod_clear_backlog(t);
 	}
+
+	entry = FR_DLIST_FIRST(t->active);
+	if (!entry) {
+		REDEBUG("No active connections");
+		return RLM_MODULE_FAIL;
+	}
+
+	/*
+	 *	Pick the first one for now.
+	 */
+	c = fr_ptr_to_type(rlm_radius_connection_t, entry, entry);
 
 	// @todo - find the "most recently started" connection which has a response
 	// @todo - check the connection busy-ness before calling mod_add()
 
-	result = mod_add(inst, c, request, &rcode);
-	if (result == 0) return rcode;
+	rcode = mod_add(inst, c, request);
+	if (rcode < 0) return RLM_MODULE_FAIL;
+
+	// @todo otherwise return RLM_MODULE_YIELD
+	// i.e. we always yield, and rely on the event loop to wake up the request
 
 	// @todo - create or add another connection
 
@@ -505,27 +624,71 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 	return 0;
 }
 
-/** Unlink the connection from the thread list.
+/** Detach thread-specific data
  *
- *  The connection API will take care of calling out 'close' routine.
+ *  Which gives us a chance to clean up.
  */
-static int mod_connection_free(rlm_radius_connection_t *c)
-{
-	fr_dlist_remove(&c->entry);
-	return 0;
-}
-
-
 static int mod_thread_detach(void *thread)
 {
 	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
 //	rlm_radius_t *inst = t->inst;
+	fr_dlist_t *entry, *next;
 
-	// @todo - multiple connections
-	// walk over all connections, freeing them
-	// once that's done, all of the requests should be in t->queued
-	// walk over t->queued, resuming requests
-	talloc_free(t->connection);
+	/*
+	 *	Free up all of the connections.
+	 */
+	for (entry = FR_DLIST_FIRST(t->frozen);
+	     entry != NULL;
+	     entry = next) {
+		rlm_radius_connection_t *c;
+
+		c = fr_ptr_to_type(rlm_radius_connection_t, entry, entry);
+
+		next = FR_DLIST_NEXT(t->frozen, entry);
+		talloc_free(c);
+	}
+
+	for (entry = FR_DLIST_FIRST(t->active);
+	     entry != NULL;
+	     entry = next) {
+		rlm_radius_connection_t *c;
+
+		c = fr_ptr_to_type(rlm_radius_connection_t, entry, entry);
+
+		next = FR_DLIST_NEXT(t->active, entry);
+		talloc_free(c);
+	}
+
+	for (entry = FR_DLIST_FIRST(t->closed);
+	     entry != NULL;
+	     entry = next) {
+		rlm_radius_connection_t *c;
+
+		c = fr_ptr_to_type(rlm_radius_connection_t, entry, entry);
+
+		next = FR_DLIST_NEXT(t->closed, entry);
+		talloc_free(c);
+	}
+
+	/*
+	 *	Now that all of the connections are closed, all of the
+	 *	requests we manage should be in t->queued.
+	 */
+	for (entry = FR_DLIST_FIRST(t->queued);
+	     entry != NULL;
+	     entry = next) {
+		REQUEST *request;
+		rlm_radius_link_t *link;
+
+		link = fr_ptr_to_type(rlm_radius_link_t, entry, entry);
+
+		next = FR_DLIST_NEXT(t->queued, entry);
+
+		request = link->request;
+		talloc_free(link);
+
+		unlang_resumable(request);
+	}
 
 	return 0;
 }
@@ -546,19 +709,20 @@ static int mod_thread_instantiate(CONF_SECTION const *cs, void *instance, fr_eve
 	FR_DLIST_INIT(c->queued);
 	FR_DLIST_INIT(c->sent);
 
-	c->client_io_ctx = talloc_zero_array(t, uint8_t, inst->client_io->io_inst_size);
+	/*
+	 *	Open ONE connection.  mod_process() will open more if necessary.
+	 */
+	 c->client_io_ctx = talloc_zero_array(t, uint8_t, inst->client_io->io_inst_size);
 	if (!c->client_io_ctx) {
 		cf_log_err(cs, "Failed allocating IO instance");
 		return -1;
 	}
 
-	talloc_set_destructor(c, mod_connection_free);
+	talloc_set_destructor(c, mod_radius_conn_free);
 
-	 // @todo - allow for multiple connections
-	t->connection = c;
 	FR_DLIST_INIT(t->queued);
-	FR_DLIST_INIT(t->connected);
-	FR_DLIST_INIT(t->opening);
+	FR_DLIST_INIT(t->active);
+	FR_DLIST_INIT(t->frozen);
 	FR_DLIST_INIT(t->closed);
 
 	/*
@@ -569,7 +733,7 @@ static int mod_thread_instantiate(CONF_SECTION const *cs, void *instance, fr_eve
 				      inst->name, c);
 	if (c->conn == NULL) return -1;
 
-	fr_dlist_insert_tail(&t->opening, &c->entry);
+	fr_dlist_insert_tail(&t->frozen, &c->entry);
 
 	fr_connection_start(c->conn);
 
