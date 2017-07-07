@@ -132,6 +132,10 @@ static int dl_symbol_init_cmp(void const *one, void const *two)
 
 	if (!a->symbol && !b->symbol) return 0;
 
+#ifdef __clang_analyzer__
+	if (!fr_cond_assert(a->symbol && b->symbol)) return 0;	/* Bug in clang scan ? */
+#endif
+
 	return strcmp(a->symbol, b->symbol);
 }
 
@@ -149,6 +153,10 @@ static int dl_symbol_free_cmp(void const *one, void const *two)
 	if (ret != 0) return ret;
 
 	if (!a->symbol && !b->symbol) return 0;
+
+#ifdef __clang_analyzer__
+	if (!fr_cond_assert(a->symbol && b->symbol)) return 0;	/* Bug in clang scan ? */
+#endif
 
 	return strcmp(a->symbol, b->symbol);
 }
