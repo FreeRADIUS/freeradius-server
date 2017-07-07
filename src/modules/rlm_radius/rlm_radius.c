@@ -250,28 +250,23 @@ static void mod_radius_conn_error(UNUSED fr_event_list_t *el, int sock, UNUSED i
 	fr_connection_reconnect(c->conn);
 }
 
-/** Shutdown/close a file descriptor
+/** Deal with a failure case.
  *
  */
-static void mod_radius_conn_close(int fd, void *uctx)
+static fr_connection_state_t mod_radius_conn_failed(UNUSED int fd, fr_connection_state_t prev, void *uctx)
 {
 	rlm_radius_connection_t	*c = talloc_get_type_abort(uctx, rlm_radius_connection_t);
 	rlm_radius_thread_t	*t = c->thread;
-	rlm_radius_t const	*inst = talloc_get_type_abort(t->inst, rlm_radius_t);
 	fr_dlist_t		*entry, *next;
 
 	/*
-	 *	Tell the IO handler that the socket is closed.  This
-	 *	handler should just nuke any data structures it has to
-	 *	manage multiple requests (e.g. rbtrees, per-request
-	 *	timers), and assume that we will take care of managing
-	 *	the REQUESTs
+	 *	If it's not trying to reconnect, trash the entire
+	 *	connection.
 	 */
-	inst->client_io->close(c->client_io_ctx);
-
-	DEBUG3("Closing socket (%i)", fd);
-	if (shutdown(fd, SHUT_RDWR) < 0) DEBUG3("Shutdown on socket (%i) failed: %s", fd, fr_syserror(errno));
-	if (close(fd) < 0) DEBUG3("Closing socket (%i) failed: %s", fd, fr_syserror(errno));
+	if (prev != FR_CONNECTION_STATE_CONNECTED) {
+		talloc_free(c);
+		return FR_CONNECTION_STATE_HALTED;
+	}
 
 	/*
 	 *	Remove the connection from whatever list it's in, and
@@ -280,10 +275,10 @@ static void mod_radius_conn_close(int fd, void *uctx)
 	fr_dlist_remove(&c->entry);
 	fr_dlist_insert_tail(&t->closed, &c->entry);
 
-	 /*
-	  *	Move any requests from the "sent" back to the
-	  *	"queued" list.
-	  */
+	/*
+	 *	Move any requests from the "sent" back to the
+	 *	"queued" list.
+	 */
 	for (entry = FR_DLIST_FIRST(c->sent);
 	     entry != NULL;
 	     entry = next) {
@@ -309,14 +304,10 @@ static void mod_radius_conn_close(int fd, void *uctx)
 
 	/*
 	 *	Once the connection is open again, the pending queue
-	 *	will be automatically cleared.
-	 *
-	 *	If the connection DOESN'T open within
-	 *	connection_timeout, it will automatically be free'd.
-	 *
-	 *	If the connection is free'd, the queued packets will
-	 *	be moved back to t->queued.
+	 *	will be automatically cleared by the "open" callback.
 	 */
+
+	return FR_CONNECTION_STATE_INIT;
 }
 
 /** Process notification that fd is open
@@ -333,6 +324,13 @@ static fr_connection_state_t mod_radius_conn_open(UNUSED int fd, UNUSED fr_event
 	DEBUG2("Connected - %s", c->name);
 
 	/*
+	 *	Remove the connection from the "frozen" list, and add
+	 *	it to the "active" list.
+	 */
+	fr_dlist_remove(&c->entry);
+	fr_dlist_insert_tail(&t->active, &c->entry);
+
+	/*
 	 *	If we have data pending, add the writable event immediately
 	 */
 	if (c->pending) {
@@ -340,13 +338,6 @@ static fr_connection_state_t mod_radius_conn_open(UNUSED int fd, UNUSED fr_event
 	} else {
 		mod_radius_fd_idle(c);
 	}
-
-	/*
-	 *	Remove the connection from the "frozen" list, and add
-	 *	it to the "connected" list.
-	 */
-	fr_dlist_remove(&c->entry);
-	fr_dlist_insert_tail(&t->active, &c->entry);
 
 	return FR_CONNECTION_STATE_CONNECTED;
 }
@@ -368,9 +359,7 @@ static fr_connection_state_t mod_radius_conn_init(int *fd_out, void *uctx)
 }
 
 
-/** Unlink the connection from the thread list.
- *
- *  The connection API will take care of calling our 'close' routine.
+/** The connection is beign free'd
  */
 static int mod_radius_conn_free(rlm_radius_connection_t *c)
 {
@@ -383,7 +372,7 @@ static int mod_radius_conn_free(rlm_radius_connection_t *c)
 	fr_dlist_remove(&c->entry);
 
 	 /*
-	  *	Move any requests from the connection "waiting" back to the
+	  *	Move any requests from the connection "sent" back to the
 	  *	thread "queued" list.
 	  */
 	for (entry = FR_DLIST_FIRST(c->sent);
@@ -729,11 +718,20 @@ static int mod_thread_instantiate(CONF_SECTION const *cs, void *instance, fr_eve
 	 *	This opens the outbound connection
 	 */
 	c->conn = fr_connection_alloc(c, el, &inst->connection_timeout, &inst->reconnection_delay,
-				      mod_radius_conn_init, mod_radius_conn_open, mod_radius_conn_close,
+				      mod_radius_conn_init, mod_radius_conn_open, inst->client_io->close,
 				      inst->name, c);
 	if (c->conn == NULL) return -1;
 
-	fr_dlist_insert_tail(&t->frozen, &c->entry);
+	/*
+	 *	We have to catch errors on failed.
+	 */
+	fr_connection_failed_func(c->conn, mod_radius_conn_failed);
+
+	/*
+	 *	Add the connection to the "closed" list, because it's
+	 *	not open, and there are no requests outstanding on it.
+	 */
+	fr_dlist_insert_tail(&t->closed, &c->entry);
 
 	fr_connection_start(c->conn);
 

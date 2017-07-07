@@ -31,11 +31,6 @@
  */
 typedef int (*fr_radius_client_process_t)(void *thread, REQUEST *request);
 
-/** Close a client IO socket
- *
- */
-typedef int (*fr_radius_client_close_t)(void *uctx);
-
 /** Get a printable name for a socket.
  *
  */
@@ -57,7 +52,7 @@ typedef struct fr_radius_client_io_t {
 
 	fr_connection_init_t		init;			//!< initialize a socket using thread instance data
 	fr_connection_open_t		open;			//!< open a socket using thread instance data
-	fr_radius_client_close_t       	close;			//!< close a socket using thread instance data
+	fr_connection_close_t       	close;			//!< close a socket using thread instance data
 	fr_radius_client_name_t		get_name;			//!< get the name of this socket.
 	// get name
 	// write
