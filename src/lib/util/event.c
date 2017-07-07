@@ -151,9 +151,10 @@ static int fr_event_timer_cmp(void const *a, void const *b)
 	int			ret;
 	fr_event_timer_t const	*ev_a = a, *ev_b = b;
 
-	return (ret = ((ev_a->when.tv_sec < ev_b->when.tv_sec) - (ev_a->when.tv_sec > ev_b->when.tv_sec))) ?
-	        ret :
-	       (ev_a->when.tv_usec < ev_b->when.tv_usec) - (ev_a->when.tv_usec > ev_b->when.tv_usec);
+	ret = (ev_a->when.tv_sec < ev_b->when.tv_sec) - (ev_a->when.tv_sec > ev_b->when.tv_sec);
+	if (ret != 0) return ret;
+
+	return (ev_a->when.tv_usec < ev_b->when.tv_usec) - (ev_a->when.tv_usec > ev_b->when.tv_usec);
 }
 
 /** Compare two file descriptor handles
