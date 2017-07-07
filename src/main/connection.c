@@ -429,7 +429,10 @@ void fr_connection_reconnect(fr_connection_t *conn)
 	switch (conn->state) {
 	case FR_CONNECTION_STATE_FAILED:	/* Don't circumvent reconnection_delay */
 	case FR_CONNECTION_STATE_INIT:		/* Already initialising */
-	case FR_CONNECTION_STATE_HALTED:	/* Should have used fr_connection_start */
+		break;
+
+	case FR_CONNECTION_STATE_HALTED:
+		fr_connection_start(conn);
 		return;
 
 	case FR_CONNECTION_STATE_CONNECTING:
