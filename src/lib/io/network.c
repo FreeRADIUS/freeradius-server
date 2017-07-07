@@ -61,7 +61,18 @@ typedef struct fr_network_socket_t {
 	fr_channel_data_t	*cd;			//!< cached in case of allocation & read error
 } fr_network_socket_t;
 
-
+/*
+ *	@todo - have an array of workers, so we can index the workers in O(1) time.
+ *	remove the heap of "workers ordered by CPU time"
+ *	when we send a packet to a worker, just update the predicted CPU time in place.
+ *	when we receive a reply from a worker, just update the predicted CPU time in place.
+ *
+ *	when we need to choose a worker, pick 2 at random, and then
+ *	choose the one with the lowe cpu time.  For background, see
+ *	"Power of Two-Choices" and
+ *	https://www.eecs.harvard.edu/~michaelm/postscripts/mythesis.pdf
+ *	https://www.eecs.harvard.edu/~michaelm/postscripts/tpds2001.pdf
+ */
 struct fr_network_t {
 	int			kq;			//!< our KQ
 
