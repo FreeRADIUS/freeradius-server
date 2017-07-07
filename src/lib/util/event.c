@@ -848,6 +848,9 @@ int fr_event_corral(fr_event_list_t *el, bool wait)
 	struct timeval		when, *wake;
 	struct timespec		ts_when, *ts_wake;
 	fr_dlist_t		*entry;
+	int			num_fd_events;
+
+	el->num_fd_events = 0;
 
 	if (el->exit) {
 		fr_strerror_printf("Event loop exiting");
@@ -917,20 +920,21 @@ int fr_event_corral(fr_event_list_t *el, bool wait)
 	 *	that occurred since this function was last called
 	 *	or wait for the next timer event.
 	 */
-	el->num_fd_events = kevent(el->kq, NULL, 0, el->events, FR_EV_BATCH_FDS, ts_wake);
+	num_fd_events = kevent(el->kq, NULL, 0, el->events, FR_EV_BATCH_FDS, ts_wake);
 
 	/*
 	 *	Interrupt is different from timeout / FD events.
 	 */
-	if (el->num_fd_events < 0) {
+	if (unlikely(num_fd_events < 0)) {
 		if (errno == EINTR) {
-			el->num_fd_events = 0;
+			return 0;
 		} else {
 			fr_strerror_printf("Failed calling kevent: %s", fr_syserror(errno));
+			return -1;
 		}
 	}
 
-	return el->num_fd_events;
+	return el->num_fd_events = num_fd_events;
 }
 
 /** Service any outstanding timer or file descriptor events
@@ -949,9 +953,9 @@ void fr_event_service(fr_event_list_t *el)
 	 *	Run all of the file descriptor events.
 	 */
 	for (i = 0; i < el->num_fd_events; i++) {
-		fr_event_fd_t *ev;
-		int fd_errno = 0;
-		int flags = el->events[i].flags;
+		fr_event_fd_t	*ev;
+		int		fd_errno = 0;
+		int		flags = el->events[i].flags;
 
 		/*
 		 *	Process any user events
@@ -965,7 +969,7 @@ void fr_event_service(fr_event_list_t *el)
 			 */
 			if (el->events[i].ident == 0) continue;
 
-			user = (fr_event_user_t *) el->events[i].ident;
+			user = (fr_event_user_t *)el->events[i].ident;
 
 			(void) talloc_get_type_abort(user, fr_event_user_t);
 			rad_assert(user->ident == el->events[i].ident);
