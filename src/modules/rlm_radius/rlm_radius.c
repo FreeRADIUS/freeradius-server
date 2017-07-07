@@ -253,12 +253,12 @@ static void mod_radius_conn_error(UNUSED fr_event_list_t *el, int sock, UNUSED i
 /** Shutdown/close a file descriptor
  *
  */
-static void mod_radius_conn_close(int fd, UNUSED void *uctx)
+static void mod_radius_conn_close(int fd, void *uctx)
 {
-	rlm_radius_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_connection_t);
-	rlm_radius_thread_t *t = c->thread;
-	rlm_radius_t const *inst = t->inst;
-	fr_dlist_t *entry, *next;
+	rlm_radius_connection_t	*c = talloc_get_type_abort(uctx, rlm_radius_connection_t);
+	rlm_radius_thread_t	*t = c->thread;
+	rlm_radius_t const	*inst = talloc_get_type_abort(t->inst, rlm_radius_t);
+	fr_dlist_t		*entry, *next;
 
 	/*
 	 *	Tell the IO handler that the socket is closed.  This
@@ -325,8 +325,8 @@ static void mod_radius_conn_close(int fd, UNUSED void *uctx)
 static fr_connection_state_t mod_radius_conn_open(UNUSED int fd, UNUSED fr_event_list_t *el, void *uctx)
 {
 	rlm_radius_connection_t	*c = talloc_get_type_abort(uctx, rlm_radius_connection_t);
-	rlm_radius_thread_t *t = c->thread;
-	rlm_radius_t const *inst = t->inst;
+	rlm_radius_thread_t	*t = c->thread;
+	rlm_radius_t const	*inst = talloc_get_type_abort(t->inst, rlm_radius_t);
 
 	c->name = inst->client_io->get_name(c, c->client_io_ctx);
 
