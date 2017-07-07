@@ -205,14 +205,14 @@ static void mod_radius_conn_writable(UNUSED fr_event_list_t *el, UNUSED int sock
 /** Set the socket to idle
  *
  *  But keep the read event open, just in case the other end sends us
- *  garbage.  That way we can drain it.
+ *  data  That way we can process it.
  *
  * @param[in] c		Connection data structure
  */
 static void mod_radius_fd_idle(rlm_radius_connection_t *c)
 {
 	DEBUG3("Marking socket (%i) as idle", fr_connection_get_fd(c->conn));
-	if (fr_event_fd_insert(c->el, fr_connection_get_fd(c->conn),
+	if (fr_event_fd_insert(c, c->el, fr_connection_get_fd(c->conn),
 			       mod_radius_conn_read, NULL, mod_radius_conn_error, c) < 0) {
 		PERROR("Failed inserting FD event");
 	}
@@ -227,7 +227,7 @@ static void mod_radius_fd_idle(rlm_radius_connection_t *c)
 static void mod_radius_fd_active(rlm_radius_connection_t *c)
 {
 	DEBUG3("Marking socket (%i) as active - Draining requests", fr_connection_get_fd(c->conn));
-	if (fr_event_fd_insert(c->el, fr_connection_get_fd(c->conn),
+	if (fr_event_fd_insert(c, c->el, fr_connection_get_fd(c->conn),
 			       mod_radius_conn_read, mod_radius_conn_writable, mod_radius_conn_error, c) < 0) {
 		PERROR("Failed inserting FD event");
 	}
