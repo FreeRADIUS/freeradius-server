@@ -56,7 +56,7 @@ struct fr_conn {
 	fr_connection_init_t	init;			//!< Callback for initialising a connection.
 	fr_connection_open_t	open;			//!< Callback for 'open' notification.
 	fr_connection_close_t	close;			//!< Callback to close a connection.
-	fr_connection_timeout_t	timeout;		//!< Callback for 'timeout' notification.
+	fr_connection_failed_t	failed;			//!< Callback for 'failed' notification.
 
 	int			fd;			//!< File descriptor.
 	fr_event_list_t		*el;			//!< Event list for timers and I/O events.
@@ -122,6 +122,36 @@ static void connection_state_failed(fr_connection_t *conn, struct timeval *now)
 	prev = conn->state;
 	STATE_TRANSITION(FR_CONNECTION_STATE_FAILED);
 
+	/*
+	 *	If there's a failed callback, give it the
+	 *	opportunity to suspend/destroy the
+	 *	connection.
+	 */
+	if (conn->failed) {
+		fr_connection_state_t ret;
+
+		/*
+		 *	Callback may free the connection, so we
+		 *	set this before calling the callback, so
+		 *	if the connection isn't freed it's in the
+		 *	correct state, without us needing to check.
+		 */
+		conn->state = FR_CONNECTION_STATE_HALTED;
+		ret = conn->failed(conn->fd, prev, conn->uctx);
+		switch (ret) {
+		case FR_CONNECTION_STATE_INIT:
+			connection_state_init(conn, now);
+			break;
+
+		case FR_CONNECTION_STATE_HALTED:	/* Do nothing */
+			STATE_TRANSITION(FR_CONNECTION_STATE_HALTED);
+			return;
+
+		default:
+			rad_assert(0);
+		}
+	}
+
 	switch (prev) {
 	case FR_CONNECTION_STATE_INIT:				/* Failed during initialisation */
 	case FR_CONNECTION_STATE_CONNECTED:			/* Failed after connecting */
@@ -136,29 +166,7 @@ static void connection_state_failed(fr_connection_t *conn, struct timeval *now)
 		break;
 
 	case FR_CONNECTION_STATE_TIMEOUT:			/* Failed during connecting */
-		if (conn->timeout) {
-			fr_connection_state_t ret;
-
-			/*
-			 *	Callback may free the connection, so we
-			 *	set this before calling the callback, so
-			 *	if the connection isn't freed it's in the
-			 *	correct state, without us needing to check.
-			 */
-			STATE_TRANSITION(FR_CONNECTION_STATE_HALTED);
-			ret = conn->timeout(conn->fd, conn->uctx);
-			switch (ret) {
-			case FR_CONNECTION_STATE_FAILED:
-				connection_state_init(conn, now);
-				break;
-
-			case FR_CONNECTION_STATE_HALTED:	/* Do nothing */
-				break;
-
-			default:
-				rad_assert(0);
-			}
-		}
+		connection_state_init(conn, now);
 		break;
 
 	default:
@@ -390,12 +398,12 @@ fr_connection_t *fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	return conn;
 }
 
-/** Set an (optional) callback to be called on connection timeout
+/** Set an (optional) callback to be called on connection timeout/failure
  *
  */
-void fr_connection_timeout_func(fr_connection_t *conn, fr_connection_timeout_t func)
+void fr_connection_failed_func(fr_connection_t *conn, fr_connection_failed_t func)
 {
-	conn->timeout = func;
+	conn->failed = func;
 }
 
 /** Start a new or halted connection

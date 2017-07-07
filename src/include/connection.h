@@ -66,21 +66,23 @@ typedef fr_connection_state_t (*fr_connection_init_t)(int *fd_out, void *uctx);
  */
 typedef fr_connection_state_t (*fr_connection_open_t)(int fd, fr_event_list_t *el, void *uctx);
 
-/** Notification that a connection attempt has timed out
+/** Notification that a connection attempt has failed
  *
  * @note If the callback frees the connection, it must return #FR_CONNECTION_STATE_HALTED.
  *
  * @param[in] fd	That was successfully opened.
- * @param[in] el	to use for inserting I/O events.
+ * @param[in] state	the connection was in when it failed. Usually one of:
+ *			- #FR_CONNECTION_STATE_CONNECTING	the connection attempt explicitly failed.
+ *			- #FR_CONNECTION_STATE_CONNECTED	something called #fr_connection_reconnect.
+ *			- #FR_CONNECTION_STATE_TIMEOUT		the connection attempt timed out.
  * @param[in] uctx	User context.
  * @return
- *	- #FR_CONNECTION_STATE_FAILED		to reattempt the connection after
- *						the configured delay period.
+ *	- #FR_CONNECTION_STATE_INIT		to transition to the init state.
  *	- #FR_CONNECTION_STATE_HALTED		To prevent further reconnection
  *						attempts Can be restarted with
  *	  					#fr_connection_start().
  */
-typedef fr_connection_state_t (*fr_connection_timeout_t)(int fd, void *uctx);
+typedef fr_connection_state_t (*fr_connection_failed_t)(int fd, fr_connection_state_t state, void *uctx);
 
 /** Notification that the connection has errored and must be closed
  *
@@ -102,7 +104,7 @@ fr_connection_t		*fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 					     fr_connection_close_t close,
 					     char const *log_prefix,
 					     void *uctx);
-void			fr_connection_timeout_func(fr_connection_t *conn, fr_connection_timeout_t func);
+void			fr_connection_failed_func(fr_connection_t *conn, fr_connection_failed_t func);
 void			fr_connection_start(fr_connection_t *conn);
 int			fr_connection_get_fd(fr_connection_t const *conn);
 void			fr_connection_reconnect(fr_connection_t *conn);
