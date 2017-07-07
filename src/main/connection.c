@@ -144,7 +144,9 @@ static void connection_state_failed(fr_connection_t *conn, struct timeval *now)
 			break;
 
 		case FR_CONNECTION_STATE_HALTED:	/* Do nothing */
-			STATE_TRANSITION(FR_CONNECTION_STATE_HALTED);
+			DEBUG4("Changed state %s -> %s", \
+			       fr_int2str(fr_connection_states, prev, "<INVALID>"),
+			       fr_int2str(fr_connection_states, FR_CONNECTION_STATE_HALTED, "<INVALID>"));
 			return;
 
 		default:
