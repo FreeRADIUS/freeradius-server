@@ -28,11 +28,19 @@
 
 /** Process a request through a client socket.
  *
- *  This function typically encodes the packet, writes it to a socket,
- *  inserts itself into event list with a read / timeout, and returns
- *  RLM_MODULE_YIELD.
  */
-typedef rlm_rcode_t (*fr_radius_client_process)(void *instance, REQUEST *request);
+typedef int (*fr_radius_client_process_t)(void *thread, REQUEST *request);
+
+/** Close a client IO socket
+ *
+ */
+typedef int (*fr_radius_client_close_t)(void *uctx);
+
+/** Get a printable name for a socket.
+ *
+ */
+typedef char *(*fr_radius_client_name_t)(TALLOC_CTX *ctx, void *uctx);
+
 
 /** Public structure describing an I/O path for an outgoing socket.
  *
@@ -43,12 +51,18 @@ typedef struct fr_radius_client_io_t {
 
 	fr_app_bootstrap_t		bootstrap;
 	fr_app_instantiate_t		instantiate;
-	module_thread_t			thread_instantiate;	//!< Callback to configure a module's instance for
-								//!< a new worker thread.
+	size_t				io_inst_size;		//!< Size of data to allocate to the IO handler
+	size_t				request_inst_size;	//!< size of the data to allocate per-request.
+
+
 	fr_connection_init_t		init;			//!< initialize a socket using thread instance data
 	fr_connection_open_t		open;			//!< open a socket using thread instance data
-	fr_connection_close_t		close;			//!< close a socket using thread instance data
-	fr_radius_client_process	process;	       	//!< process a packet through a socket using thread instance data
+	fr_radius_client_close_t       	close;			//!< close a socket using thread instance data
+	fr_radius_client_name_t		get_name;			//!< get the name of this socket.
+	// get name
+	// write
+	// read
+	// error
 } fr_radius_client_io_t;
 
 #endif	/* _RLM_RADIUS_H */
