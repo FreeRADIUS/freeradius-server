@@ -85,7 +85,7 @@ bool		fr_cond_assert_fail(char const *file, int line, char const *expr);
  *
  * @param _x expression to test (should evaluate to true)
  */
-#define		fr_cond_assert(_x) (bool)((_x) ? true : (fr_cond_assert_fail(__FILE__, __LINE__, #_x) && false))
+#define		fr_cond_assert(_x) likely((bool)((_x) ? true : (fr_cond_assert_fail(__FILE__, __LINE__, #_x) && false)))
 
 void		NEVER_RETURNS _fr_exit(char const *file, int line, int status);
 #  define	fr_exit(_x) _fr_exit(__FILE__, __LINE__, (_x))

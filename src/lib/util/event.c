@@ -178,7 +178,7 @@ static int fr_event_fd_cmp(void const *a, void const *b)
  */
 int fr_event_list_num_fds(fr_event_list_t *el)
 {
-	if (!el) return -1;
+	if (unlikely(!el)) return -1;
 
 	return el->num_fds;
 }
@@ -190,7 +190,7 @@ int fr_event_list_num_fds(fr_event_list_t *el)
  */
 int fr_event_list_num_elements(fr_event_list_t *el)
 {
-	if (!el) return -1;
+	if (unlikely(!el)) return -1;
 
 	return fr_heap_num_elements(el->times);
 }
@@ -202,7 +202,7 @@ int fr_event_list_num_elements(fr_event_list_t *el)
  */
 int fr_event_list_kq(fr_event_list_t *el)
 {
-	if (!el) return -1;
+	if (unlikely(!el)) return -1;
 
 	return el->kq;
 }
@@ -250,7 +250,7 @@ int fr_event_fd_delete(fr_event_list_t *el, int fd)
 	find.fd = fd;
 
 	ef = rbtree_finddata(el->fds, &find);
-	if (!ef) {
+	if (unlikely(!ef)) {
 		fr_strerror_printf("No events is_registered for fd %i", fd);
 		return -1;
 	}
@@ -262,7 +262,6 @@ int fr_event_fd_delete(fr_event_list_t *el, int fd)
 	 */
 	if (ef->in_handler) {
 		ef->deferred_delete = true;
-
 		return 0;
 	}
 
@@ -270,7 +269,7 @@ int fr_event_fd_delete(fr_event_list_t *el, int fd)
 	 *	Destructor may prevent ef from being
 	 *	freed if kevent de-registration fails.
 	 */
-	if (talloc_free(ef) < 0) return -1;
+	if (unlikely(talloc_free(ef) < 0)) return -1;
 
 	return 0;
 }
@@ -286,7 +285,7 @@ static int _fr_event_fd_free(fr_event_fd_t *ef)
 
 	fr_event_list_t	*el = talloc_parent(ef);
 
-	if (ef->is_registered) {
+	if (likely(ef->is_registered)) {
 		int count = 0;
 
 		if (ef->read) EV_SET(&evset[count++], ef->fd, EVFILT_READ, EV_DELETE, 0, 0, 0);
@@ -328,22 +327,22 @@ int fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 	struct kevent	evset[2];
 	fr_event_fd_t	*ef, find;
 
-	if (!el) {
+	if (unlikely(!el)) {
 		fr_strerror_printf("Invalid argument: NULL event list");
 		return -1;
 	}
 
-	if (!read_fn && !write_fn) {
+	if (unlikely(!read_fn && !write_fn)) {
 		fr_strerror_printf("Invalid arguments: NULL read and write callbacks");
 		return -1;
 	}
 
-	if (fd < 0) {
+	if (unlikely(fd < 0)) {
 		fr_strerror_printf("Invalid arguments: Bad FD %i", fd);
 		return -1;
 	}
 
-	if (el->exit) {
+	if (unlikely(el->exit)) {
 		fr_strerror_printf("Event loop exiting");
 		return -1;
 	}
@@ -357,7 +356,7 @@ int fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 	 *	Need to free the event to change the
 	 *	talloc link.
 	 */
-	if (ef && (ef->linked_ctx != ctx)) TALLOC_FREE(ef);	/* Also cleans up kevent filters */
+	if (unlikely(ef && (ef->linked_ctx != ctx))) TALLOC_FREE(ef);	/* Also cleans up kevent filters */
 
 	/*
 	 *	No pre-existing event.  Allocate an entry
@@ -369,7 +368,7 @@ int fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 		socklen_t       opt_len = sizeof(sock_type);
 
 		ef = talloc_zero(el, fr_event_fd_t);
-		if (!ef) {
+		if (unlikely(!ef)) {
 			fr_strerror_printf("Out of memory");
 			return -1;
 		}
@@ -382,7 +381,7 @@ int fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
                 /*
                  *      Retrieve file descriptor metadata
                  */
-                if (getsockopt(fd, SOL_SOCKET, SO_TYPE, &sock_type, &opt_len) < 0) {
+                if (unlikely(getsockopt(fd, SOL_SOCKET, SO_TYPE, &sock_type, &opt_len) < 0)) {
                         if (errno != ENOTSOCK) {
                                 fr_strerror_printf("Failed retrieving socket type: %s", fr_syserror(errno));
                                 return -1;
@@ -392,7 +391,7 @@ int fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 #ifdef SO_GET_FILTER
                 else {
                         opt_len = 0;
-                        if (getsockopt(fd, SOL_SOCKET, SO_ATTACH_FILTER, NULL, &opt_len) < 0) {
+                        if (unlikely(getsockopt(fd, SOL_SOCKET, SO_ATTACH_FILTER, NULL, &opt_len) < 0)) {
                                 fr_strerror_printf("Failed determining PF status: %s", fr_syserror(errno));
                                 return -1;
                         }
@@ -406,7 +405,7 @@ int fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 		if (read_fn) EV_SET(&evset[count++], fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, ef);
 		if (write_fn) EV_SET(&evset[count++], fd, EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, ef);
 
-		if (kevent(el->kq, evset, count, NULL, 0, NULL) < 0) {
+		if (unlikely(kevent(el->kq, evset, count, NULL, 0, NULL) < 0)) {
 			fr_strerror_printf("Failed adding filter for FD %i: %s", fd, fr_syserror(errno));
 			talloc_free(ef);
 			return -1;
@@ -438,7 +437,7 @@ int fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 	}
 
 	if (count) {
-		if (kevent(el->kq, evset, count, NULL, 0, NULL) < 0) {
+		if (unlikely(kevent(el->kq, evset, count, NULL, 0, NULL) < 0)) {
 			fr_strerror_printf("Failed modifying filters for FD %i: %s", fd, fr_syserror(errno));
 			return -1;
 		}
@@ -469,11 +468,10 @@ int fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
  */
 int fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t const **ev_p)
 {
-	int ret;
 	fr_event_timer_t *ev;
+	int ret;
 
-	if (!*ev_p) return 0;
-
+	if (unlikely(!*ev_p)) return 0;
 	if (!fr_cond_assert(talloc_parent(*ev_p) == el)) return -1;
 
 	memcpy(&ev, ev_p, sizeof(ev));
@@ -492,8 +490,8 @@ int fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t const **ev_p)
  */
 static int _event_timer_free(fr_event_timer_t *ev)
 {
-	int		ret;
 	fr_event_list_t	*el = talloc_parent(ev);
+	int		ret;
 
 	ret = fr_heap_extract(el->times, ev);
 
@@ -531,27 +529,27 @@ int fr_event_timer_insert(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t
 {
 	fr_event_timer_t *ev;
 
-	if (!el) {
+	if (unlikely(!el)) {
 		fr_strerror_printf("Invalid arguments: NULL event list");
 		return -1;
 	}
 
-	if (!callback) {
+	if (unlikely(!callback)) {
 		fr_strerror_printf("Invalid arguments: NULL callback");
 		return -1;
 	}
 
-	if (!when || (when->tv_usec >= USEC)) {
+	if (unlikely(!when || (when->tv_usec >= USEC))) {
 		fr_strerror_printf("Invalid arguments: time");
 		return -1;
 	}
 
-	if (!ev_p) {
+	if (unlikely(!ev_p)) {
 		fr_strerror_printf("Invalid arguments: NULL ev_p");
 		return -1;
 	}
 
-	if (el->exit) {
+	if (unlikely(el->exit)) {
 		fr_strerror_printf("Event loop exiting");
 		return -1;
 	}
@@ -564,7 +562,7 @@ int fr_event_timer_insert(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t
 	if (!*ev_p) {
 	new_event:
 		ev = talloc_zero(el, fr_event_timer_t);
-		if (!ev) return -1;
+		if (unlikely(!ev)) return -1;
 
 		/*
 		 *	Bind the lifetime of the event to the specified
@@ -585,7 +583,7 @@ int fr_event_timer_insert(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t
 		 *
 		 *	Freeing the event also removes it from the heap.
 		 */
-		if (ev->linked_ctx != ctx) {
+		if (unlikely(ev->linked_ctx != ctx)) {
 			talloc_free(ev);
 			goto new_event;
 		}
@@ -603,7 +601,7 @@ int fr_event_timer_insert(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t
 	ev->linked_ctx = ctx;
 	ev->parent = ev_p;
 
-	if (!fr_heap_insert(el->times, ev)) {
+	if (unlikely(!fr_heap_insert(el->times, ev))) {
 		fr_strerror_printf("Failed inserting event into heap");
 		talloc_free(ev);
 		return -1;
@@ -795,11 +793,11 @@ int fr_event_post_delete(fr_event_list_t *el, fr_event_callback_t callback, void
  */
 int fr_event_timer_run(fr_event_list_t *el, struct timeval *when)
 {
-	fr_event_callback_t callback;
-	void *uctx;
-	fr_event_timer_t *ev;
+	fr_event_callback_t	callback;
+	void			*uctx;
+	fr_event_timer_t	*ev;
 
-	if (!el) return 0;
+	if (unlikely(!el)) return 0;
 
 	if (fr_heap_num_elements(el->times) == 0) {
 		when->tv_sec = 0;
@@ -847,9 +845,9 @@ int fr_event_timer_run(fr_event_list_t *el, struct timeval *when)
  */
 int fr_event_corral(fr_event_list_t *el, bool wait)
 {
-	struct timeval when, *wake;
-	struct timespec ts_when, *ts_wake;
-	fr_dlist_t *entry;
+	struct timeval		when, *wake;
+	struct timespec		ts_when, *ts_wake;
+	fr_dlist_t		*entry;
 
 	if (el->exit) {
 		fr_strerror_printf("Event loop exiting");
@@ -883,7 +881,6 @@ int fr_event_corral(fr_event_list_t *el, bool wait)
 			if (fr_timeval_cmp(&ev->when, &el->now) > 0) fr_timeval_subtract(&when, &ev->when, &el->now);
 
 			wake = &when;
-
 		} else {
 			wake = NULL;
 		}
@@ -942,9 +939,9 @@ int fr_event_corral(fr_event_list_t *el, bool wait)
  */
 void fr_event_service(fr_event_list_t *el)
 {
-	int i;
-	fr_dlist_t *entry;
-	struct timeval when;
+	int		i;
+	fr_dlist_t	*entry;
+	struct timeval	when;
 
 	if (el->exit) return;
 
@@ -1111,10 +1108,7 @@ int fr_event_loop(fr_event_list_t *el)
 
 	el->dispatch = true;
 	while (!el->exit) {
-		if (fr_event_corral(el, true) < 0) {
-			break;
-		}
-
+		if (unlikely(fr_event_corral(el, true)) < 0) break;
 		fr_event_service(el);
 	}
 	el->dispatch = false;
@@ -1132,9 +1126,7 @@ static int _event_list_free(fr_event_list_t *el)
 {
 	fr_event_timer_t const *ev;
 
-	while ((ev = fr_heap_peek(el->times)) != NULL) {
-		fr_event_timer_delete(el, &ev);
-	}
+	while ((ev = fr_heap_peek(el->times)) != NULL) fr_event_timer_delete(el, &ev);
 
 	talloc_free(el->times);
 
