@@ -28,7 +28,10 @@
 typedef struct fr_conn fr_connection_t;
 
 typedef enum {
-	FR_CONNECTION_STATE_INIT = 0,		//!< Init state, sets up connection.
+	FR_CONNECTION_STATE_HALTED = 0,		//!< The connection is in a halted stat.  It does not have
+						///< a valid file descriptor, and it will not try and
+						///< and create one.
+	FR_CONNECTION_STATE_INIT,		//!< Init state, sets up connection.
 	FR_CONNECTION_STATE_CONNECTING,		//!< Waiting for connection to establish.
 	FR_CONNECTION_STATE_TIMEOUT,		//!< Timeout during #FR_CONNECTION_STATE_CONNECTING.
 	FR_CONNECTION_STATE_CONNECTED,		//!< File descriptor is open (ready for writing).
@@ -44,8 +47,8 @@ extern FR_NAME_NUMBER const fr_connection_states[];
  * @param[out] fd_out	Where to write the new file descriptor.
  * @param[in] uctx	User context.
  * @return
- *	- FR_CONNECTION_STATE_CONNECTING	if a file descriptor was successfully created.
- *	- FR_CONNECTION_STATE_FAILED	if we could not open a file descriptor.
+ *	- #FR_CONNECTION_STATE_CONNECTING	if a file descriptor was successfully created.
+ *	- #FR_CONNECTION_STATE_FAILED		if we could not open a file descriptor.
  */
 typedef fr_connection_state_t (*fr_connection_init_t)(int *fd_out, void *uctx);
 
@@ -58,10 +61,26 @@ typedef fr_connection_state_t (*fr_connection_init_t)(int *fd_out, void *uctx);
  * @param[in] el	to use for inserting I/O events.
  * @param[in] uctx	User context.
  * @return
- *	- FR_CONNECTION_STATE_CONNECTED		if the file descriptor is useable.
- *	- FR_CONNECTION_STATE_FAILED	if the file descriptor is unusable.
+ *	- #FR_CONNECTION_STATE_CONNECTED	if the file descriptor is useable.
+ *	- #FR_CONNECTION_STATE_FAILED		if the file descriptor is unusable.
  */
 typedef fr_connection_state_t (*fr_connection_open_t)(int fd, fr_event_list_t *el, void *uctx);
+
+/** Notification that a connection attempt has timed out
+ *
+ * @note If the callback frees the connection, it must return #FR_CONNECTION_STATE_HALTED.
+ *
+ * @param[in] fd	That was successfully opened.
+ * @param[in] el	to use for inserting I/O events.
+ * @param[in] uctx	User context.
+ * @return
+ *	- #FR_CONNECTION_STATE_FAILED		to reattempt the connection after
+ *						the configured delay period.
+ *	- #FR_CONNECTION_STATE_HALTED		To prevent further reconnection
+ *						attempts Can be restarted with
+ *	  					#fr_connection_start().
+ */
+typedef fr_connection_state_t (*fr_connection_timeout_t)(int fd, void *uctx);
 
 /** Notification that the connection has errored and must be closed
  *
@@ -83,6 +102,7 @@ fr_connection_t		*fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 					     fr_connection_close_t close,
 					     char const *log_prefix,
 					     void *uctx);
+void			fr_connection_timeout_func(fr_connection_t *conn, fr_connection_timeout_t func);
 void			fr_connection_start(fr_connection_t *conn);
 int			fr_connection_get_fd(fr_connection_t const *conn);
 void			fr_connection_reconnect(fr_connection_t *conn);
