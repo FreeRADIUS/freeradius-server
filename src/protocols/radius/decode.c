@@ -29,6 +29,26 @@ RCSID("$Id$")
 
 bool fr_tunnel_password_zeros = true;
 
+static void memcpy_bounded(void * restrict dst, const void * restrict src, size_t n, const void * restrict end)
+{
+	size_t len = n;
+
+	if (!fr_cond_assert(n <= 65535)) {
+		return;
+	}
+
+	if (!fr_cond_assert(src < end)) {
+		return;
+	}
+
+	if (!fr_cond_assert(((uint8_t const * restrict) src + len) < (uint8_t const * restrict) end)) {
+		len = (uint8_t const * restrict) end - (uint8_t const * restrict) src;
+	}
+
+	memcpy(dst, src, len);
+}
+
+
 /** Decode Tunnel-Password encrypted attributes
  *
  * Defined in RFC-2868, this uses a two char SALT along with the
@@ -357,7 +377,7 @@ static ssize_t decode_concat(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	total = 0;
 	ptr = data;
 	while (total < fr_radius_attr_len(vp)) {
-		memcpy(p, ptr + 2, ptr[1] - 2);
+		memcpy_bounded(p, ptr + 2, ptr[1] - 2, end);
 		p += ptr[1] - 2;
 		total += ptr[1] - 2;
 		ptr += ptr[1];
@@ -649,7 +669,7 @@ static ssize_t decode_extended(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	frag = attr;
 
 	while (fragments >  0) {
-		memcpy(tail, frag + 4, frag[1] - 4);
+		memcpy_bounded(tail, frag + 4, frag[1] - 4, end);
 		tail += frag[1] - 4;
 		frag += frag[1];
 		fragments--;
@@ -736,7 +756,7 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	 */
 	frag = data;
 
-	memcpy(tail, frag + 4 + 3, frag[4 + 1] - 3);
+	memcpy_bounded(tail, frag + 4 + 3, frag[4 + 1] - 3, end);
 	tail += frag[4 + 1] - 3;
 	frag += attr_len;	/* should be frag[1] - 7 */
 
@@ -744,7 +764,7 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	 *	frag now points to RADIUS attributes
 	 */
 	do {
-		memcpy(tail, frag + 2 + 4 + 3, frag[2 + 4 + 1] - 3);
+		memcpy_bounded(tail, frag + 2 + 4 + 3, frag[2 + 4 + 1] - 3, end);
 		tail += frag[2 + 4 + 1] - 3;
 		frag += frag[1];
 	} while (frag < end);
@@ -928,6 +948,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 	FR_PROTO_TRACE("Parent %s len %zu ... %zu", parent->name, attr_len, packet_len);
 
 	data_len = attr_len;
+
 	/*
 	 *	Silently ignore zero-length attributes.
 	 */
