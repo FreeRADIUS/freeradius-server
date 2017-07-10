@@ -51,6 +51,10 @@ typedef int (*fr_radius_client_read_t)(REQUEST **p_request, rlm_rcode_t *p_rcode
  */
 typedef int (*fr_radius_client_write_t)(REQUEST *request, void *request_ctx, void *uctx);
 
+/** Flush a socket for writing
+ *
+ */
+typedef int (*fr_radius_client_flush_t)(void *uctx);
 
 
 /** Public structure describing an I/O path for an outgoing socket.
@@ -77,6 +81,7 @@ typedef struct fr_radius_client_io_t {
 	fr_radius_client_write_t	write;			//!< write a REQUEST to a socket
 	fr_radius_client_write_t	remove;			//!< remove a written request from a socket
 	fr_radius_client_read_t		read;			//!< read a REQUEST from a socket.
+	fr_radius_client_flush_t	flush;			//!< flush data for an outgoing socket
 } fr_radius_client_io_t;
 
 #endif	/* _RLM_RADIUS_H */

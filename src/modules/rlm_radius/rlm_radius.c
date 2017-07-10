@@ -228,12 +228,39 @@ static void mod_radius_conn_read(fr_event_list_t *el, int sock, UNUSED int flags
 static void mod_radius_conn_writable(UNUSED fr_event_list_t *el, UNUSED int sock, UNUSED int flags, void *uctx)
 {
 	rlm_radius_connection_t	*c = talloc_get_type_abort(uctx, rlm_radius_connection_t);
+	fr_dlist_t *entry, *next;
+	bool sent;
 
-	// if no requests, still call client_io->service, as it may have signaling data to write
+	/*
+	 *	Send all of the requests to the transport.
+	 */
+	for (entry = FR_DLIST_FIRST(c->queued);
+	     entry != NULL;
+	     entry = next) {
+		rlm_radius_link_t *link;
 
-	// dequeue a REQUEST
-	// add it to the socket
-	// if EWOULDBLOCK, return.
+		link = fr_ptr_to_type(rlm_radius_link_t, entry, entry);
+
+		next = FR_DLIST_NEXT(c->queued, entry);
+
+		rad_assert(link->waiting = false);
+
+		fr_dlist_remove(&link->entry);
+		fr_dlist_insert_head(&c->sent, &link->entry);
+		link->waiting = true;
+		sent = true;
+
+		// @todo - if this returns EWOULDBLOCK, stop
+		// @todo - if this returns "too many requests", stop.  But the caller should have checked...
+		(void) c->inst->client_io->write(link->request, link->request_io_ctx, c->client_io_ctx);
+	}
+
+	// @todo - maybe grab more packets from t->queued?
+
+	/*
+	 *	We didn't send anything, go flush the socket.
+	 */
+	if (!sent) (void) c->inst->client_io->flush(c->client_io_ctx);
 
 	mod_radius_fd_idle(c);
 }
