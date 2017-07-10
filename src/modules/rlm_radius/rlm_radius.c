@@ -216,6 +216,8 @@ static void mod_radius_conn_read(fr_event_list_t *el, int sock, UNUSED int flags
 		return;
 	}
 
+	// @todo - put the connection into the un-frozen state, so that we can use it for new requests
+
 	link->waiting = false;
 	link->rcode = rcode;
 
@@ -229,7 +231,9 @@ static void mod_radius_conn_writable(UNUSED fr_event_list_t *el, UNUSED int sock
 {
 	rlm_radius_connection_t	*c = talloc_get_type_abort(uctx, rlm_radius_connection_t);
 	fr_dlist_t *entry, *next;
-	bool sent;
+	bool sent, pending;
+
+	sent = pending = false;
 
 	/*
 	 *	Send all of the requests to the transport.
@@ -237,6 +241,7 @@ static void mod_radius_conn_writable(UNUSED fr_event_list_t *el, UNUSED int sock
 	for (entry = FR_DLIST_FIRST(c->queued);
 	     entry != NULL;
 	     entry = next) {
+		int rcode;
 		rlm_radius_link_t *link;
 
 		link = fr_ptr_to_type(rlm_radius_link_t, entry, entry);
@@ -245,15 +250,46 @@ static void mod_radius_conn_writable(UNUSED fr_event_list_t *el, UNUSED int sock
 
 		rad_assert(link->waiting = false);
 
-		fr_dlist_remove(&link->entry);
-		fr_dlist_insert_head(&c->sent, &link->entry);
-		link->waiting = true;
-		sent = true;
-
 		// @todo - if this returns EWOULDBLOCK, stop
 		// @todo - if this returns "too many requests", stop.  But the caller should have checked...
-		(void) c->inst->client_io->write(link->request, link->request_io_ctx, c->client_io_ctx);
+		rcode = c->inst->client_io->write(link->request, link->request_io_ctx, c->client_io_ctx);
+
+		/*
+		 *	The transport is full.  Stop writing to it.
+		 */
+		if (rcode == 0) {
+			pending = true;
+			break;
+		}
+
+		/*
+		 *	The transport has handled this request.  Try to send some more.
+		 */
+		if (rcode == 1) {
+			fr_dlist_remove(&link->entry);
+			fr_dlist_insert_head(&c->sent, &link->entry);
+			link->waiting = true;
+			sent = true;
+			continue;
+		}
+
+		/*
+		 *	The transport couldn't handle this one, put it
+		 *	back on the main thread queue.
+		 */
+		if (rcode < 0) {
+			rlm_radius_thread_t *t = c->thread;
+
+			fr_dlist_remove(&link->entry);
+			fr_dlist_insert_head(&t->queued, &link->entry);
+			t->pending = true;
+
+			// @todo - put the connection into the frozen state
+			// so that no one else can use it.
+		}
 	}
+
+	c->pending = pending;
 
 	// @todo - maybe grab more packets from t->queued?
 
