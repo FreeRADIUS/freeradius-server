@@ -291,12 +291,15 @@ static void mod_radius_conn_writable(UNUSED fr_event_list_t *el, UNUSED int sock
 
 	c->pending = pending;
 
-	// @todo - maybe grab more packets from t->queued?
-
 	/*
 	 *	We didn't send anything, go flush the socket.
 	 */
-	if (!sent) (void) c->inst->client_io->flush(c->client_io_ctx);
+	if (!sent && c->inst->client_io->flush) (void) c->inst->client_io->flush(c->client_io_ctx);
+
+	/*
+	 *	Push queued requests to other connections.
+	 */
+	if (c->thread->pending) mod_clear_backlog(c->thread);
 
 	mod_radius_fd_idle(c);
 }
@@ -566,6 +569,9 @@ static int mod_radius_conn_free(rlm_radius_connection_t *c)
 		t->pending = true;
 	}
 
+	/*
+	 *	Push queued requests to other connections.
+	 */
 	if (t->pending) mod_clear_backlog(t);
 
 	return 0;
