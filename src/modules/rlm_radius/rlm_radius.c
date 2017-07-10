@@ -1,3 +1,8 @@
+// rlm_radius_udp has to have links back to rlm_radius_link_t...
+// open / close have to be in rlm_radius, for radius_ctx -> udp_ctx changes
+// fd_active, etc. need to have callbacks in udp, for status-server checks...
+
+
 /*
  *   This program is is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -181,10 +186,8 @@ static void mod_radius_conn_read(UNUSED fr_event_list_t *el, UNUSED int sock, UN
 {
 //	rlm_radius_connection_t		*c = talloc_get_type_abort(uctx, rlm_radius_connection_t);
 
-	// read a reply from the sub-module
-	// find the original request
-	// check signature
-	// if OK, resume it
+	// get REQUEST from submodule
+	// resume if necessary
 }
 
 /** There's space available to write data, so do that...
@@ -194,9 +197,10 @@ static void mod_radius_conn_writable(UNUSED fr_event_list_t *el, UNUSED int sock
 {
 	rlm_radius_connection_t	*c = talloc_get_type_abort(uctx, rlm_radius_connection_t);
 
+	// if no requests, still call client_io->service, as it may have signaling data to write
+
 	// dequeue a REQUEST
-	// encode it
-	// write it to the socket
+	// add it to the socket
 	// if EWOULDBLOCK, return.
 
 	mod_radius_fd_idle(c);
@@ -211,10 +215,23 @@ static void mod_radius_conn_writable(UNUSED fr_event_list_t *el, UNUSED int sock
  */
 static void mod_radius_fd_idle(rlm_radius_connection_t *c)
 {
+	rlm_radius_thread_t	*t = c->thread;
+	rlm_radius_t const	*inst = t->inst;
+
+	/*
+	 *	Transport wants to send it's own data, so don't disable
+	 *	the write callback.
+	 */
+	if (inst->client_io->fd_idle &&
+	    !inst->client_io->fd_idle(c->client_io_ctx)) {
+		return;
+	}
+
 	DEBUG3("Marking socket (%i) as idle", fr_connection_get_fd(c->conn));
 	if (fr_event_fd_insert(c, c->el, fr_connection_get_fd(c->conn),
 			       mod_radius_conn_read, NULL, mod_radius_conn_error, c) < 0) {
 		PERROR("Failed inserting FD event");
+		talloc_free(c);
 	}
 }
 
@@ -226,10 +243,22 @@ static void mod_radius_fd_idle(rlm_radius_connection_t *c)
  */
 static void mod_radius_fd_active(rlm_radius_connection_t *c)
 {
+	rlm_radius_thread_t	*t = c->thread;
+	rlm_radius_t const	*inst = t->inst;
+
 	DEBUG3("Marking socket (%i) as active - Draining requests", fr_connection_get_fd(c->conn));
+
+	/*
+	 *	Tell the transport that we're making the connection
+	 *	active.
+	 */
+	if (inst->client_io->fd_active) (void) inst->client_io->fd_active(c->client_io_ctx);
+
 	if (fr_event_fd_insert(c, c->el, fr_connection_get_fd(c->conn),
-			       mod_radius_conn_read, mod_radius_conn_writable, mod_radius_conn_error, c) < 0) {
+			       mod_radius_conn_read, mod_radius_conn_writable,
+			       mod_radius_conn_error, c) < 0) {
 		PERROR("Failed inserting FD event");
+		talloc_free(c);
 	}
 }
 
@@ -297,7 +326,7 @@ static fr_connection_state_t mod_radius_conn_failed(UNUSED int fd, fr_connection
 		// @todo - insert into the list by when we first sent
 		// the packet, so that earlier packets are handled
 		// before later packets
-		fr_dlist_insert_tail(&c->queued, &link->entry);
+		fr_dlist_insert_head(&c->queued, &link->entry);
 
 		c->pending = true;
 	}
@@ -310,14 +339,42 @@ static fr_connection_state_t mod_radius_conn_failed(UNUSED int fd, fr_connection
 	return FR_CONNECTION_STATE_INIT;
 }
 
-/** Process notification that fd is open
+/** Shutdown/close a file descriptor
  *
  */
-static fr_connection_state_t mod_radius_conn_open(UNUSED int fd, UNUSED fr_event_list_t *el, void *uctx)
+static void mod_conn_close(int fd, void *uctx)
 {
 	rlm_radius_connection_t	*c = talloc_get_type_abort(uctx, rlm_radius_connection_t);
 	rlm_radius_thread_t	*t = c->thread;
-	rlm_radius_t const	*inst = talloc_get_type_abort(t->inst, rlm_radius_t);
+	rlm_radius_t const	*inst = t->inst;
+
+	DEBUG2("Closing - %s", c->name);
+
+	inst->client_io->close(fd, c->client_io_ctx);
+}
+
+/** Process notification that fd is open
+ *
+ */
+static fr_connection_state_t mod_radius_conn_open(int fd, fr_event_list_t *el, void *uctx)
+{
+	rlm_radius_connection_t	*c = talloc_get_type_abort(uctx, rlm_radius_connection_t);
+	rlm_radius_thread_t	*t = c->thread;
+	rlm_radius_t const	*inst = t->inst;
+	fr_connection_state_t	state;
+
+	/*
+	 *	Tell the underlying transport that it's now open.
+	 */
+	state = inst->client_io->open(fd, el, c->client_io_ctx);
+	if (state != FR_CONNECTION_STATE_CONNECTED) {
+		return state;
+	}
+
+	/*
+	 *	Get the (possibly new) name of the connection.
+	 */
+	if (c->name) talloc_const_free(&c->name);
 
 	c->name = inst->client_io->get_name(c, c->client_io_ctx);
 
@@ -393,7 +450,7 @@ static int mod_radius_conn_free(rlm_radius_connection_t *c)
 		// @todo - insert into the list by when we first sent
 		// the packet, so that earlier packets are handled
 		// before later packets
-		fr_dlist_insert_tail(&t->queued, &link->entry);
+		fr_dlist_insert_head(&t->queued, &link->entry);
 
 		t->pending = true;
 	}
@@ -418,7 +475,7 @@ static int mod_radius_conn_free(rlm_radius_connection_t *c)
 		// @todo - insert into the list by when we first sent
 		// the packet, so that earlier packets are handled
 		// before later packets
-		fr_dlist_insert_tail(&t->queued, &link->entry);
+		fr_dlist_insert_head(&t->queued, &link->entry);
 
 		t->pending = true;
 	}
@@ -428,17 +485,24 @@ static int mod_radius_conn_free(rlm_radius_connection_t *c)
 	return 0;
 }
 
-/** Unlink a request from wherever it is
+/** Free and rlm_radius_link_t
  *
+ *  Unlink it from the queued / sent list, and remove it from the
+ *  transport.
  */
 static int mod_link_free(rlm_radius_link_t *link)
 {
+	rlm_radius_connection_t *c = link->c;
+	rlm_radius_t const *inst = c->inst;
+	REQUEST *request = link->request;
+
 	fr_dlist_remove(&link->entry);
 	if (!link->waiting) return 0;
 
-	// remove it from the client IO
-
-//	inst->client_io->remove(request, c->client_io_ctx, link->request_io_ctx);
+	/*
+	 *	Tell the transport that the request is no longer active.
+	 */
+	(void) inst->client_io->remove(request, link->request_io_ctx, c->client_io_ctx);
 
 	return 0;
 }
@@ -461,7 +525,7 @@ static int CC_HINT(nonnull) mod_add(rlm_radius_t *inst, rlm_radius_connection_t 
 		size += inst->client_io->request_inst_size;
 	}
 
-	link = (rlm_radius_link_t *) talloc_zero_array(c, uint64_t, (size / sizeof(uint64_t)));
+	link = (rlm_radius_link_t *) talloc_zero_array(request, uint64_t, (size / sizeof(uint64_t)));
 	talloc_set_type(link, rlm_radius_link_t);
 	rad_assert(link != NULL);
 
@@ -482,12 +546,15 @@ static int CC_HINT(nonnull) mod_add(rlm_radius_t *inst, rlm_radius_connection_t 
 
 	(void) request_data_add(request, c, 0, link, true, true, false);
 
-//	inst->client_io->add(request, c->client_io_ctx, link->request_io_ctx);
+	if (inst->client_io->write(request, link->request_io_ctx, c->client_io_ctx) < 0) {
+		talloc_free(link);
+		return RLM_MODULE_FAIL;
+	}
 
-	// insert resumption handler
-	// insert max_request_timeout
+	link->waiting = true;
+
+	// @todo - insert max_request_timeout
 	// retransmission timeouts, etc. MUST be handled by the IO handler, which gets REQUEST in it's write() routine
-	// return yield
 
 	/*
 	 *	If there are no pending writes, enable the write
@@ -502,12 +569,36 @@ static int CC_HINT(nonnull) mod_add(rlm_radius_t *inst, rlm_radius_connection_t 
 	return 0;
 }
 
+/** Continue after unlang_resumable()
+ *
+ */
+static rlm_rcode_t mod_radius_resume( REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *ctx)
+{
+//	rlm_radius_t *inst = talloc_get_type_abort(instance, rlm_radius_t);
+//	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
+	rlm_radius_connection_t *c = talloc_get_type_abort(ctx, rlm_radius_connection_t);
+	rlm_radius_link_t *link;
+
+	link = request_data_get(request, c, 0);
+	if (!link) {
+		RDEBUG("Failed finding link to transport");
+		return RLM_MODULE_FAIL;
+	}
+
+	// @todo - get status of client packet, and return that.
+
+	rad_assert(link->waiting == false);
+	talloc_free(link);
+
+	return RLM_MODULE_OK;
+}
+
+
 /** Send packets outbound.
  *
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, REQUEST *request)
 {
-	int rcode;
 	rlm_radius_t *inst = instance;
 	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
 	rlm_radius_connection_t *c;
@@ -536,15 +627,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	// @todo - find the "most recently started" connection which has a response
 	// @todo - check the connection busy-ness before calling mod_add()
 
-	rcode = mod_add(inst, c, request);
-	if (rcode < 0) return RLM_MODULE_FAIL;
+	if (mod_add(inst, c, request) < 0) return RLM_MODULE_FAIL;
 
-	// @todo otherwise return RLM_MODULE_YIELD
-	// i.e. we always yield, and rely on the event loop to wake up the request
-
-	// @todo - create or add another connection
-
-	return RLM_MODULE_FAIL;
+	return unlang_module_yield(request, mod_radius_resume, NULL, c);
 }
 
 
@@ -718,7 +803,7 @@ static int mod_thread_instantiate(CONF_SECTION const *cs, void *instance, fr_eve
 	 *	This opens the outbound connection
 	 */
 	c->conn = fr_connection_alloc(c, el, &inst->connection_timeout, &inst->reconnection_delay,
-				      mod_radius_conn_init, mod_radius_conn_open, inst->client_io->close,
+				      mod_radius_conn_init, mod_radius_conn_open, mod_conn_close,
 				      inst->name, c);
 	if (c->conn == NULL) return -1;
 

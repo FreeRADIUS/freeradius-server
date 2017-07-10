@@ -36,6 +36,22 @@ typedef int (*fr_radius_client_process_t)(void *thread, REQUEST *request);
  */
 typedef char *(*fr_radius_client_name_t)(TALLOC_CTX *ctx, void *uctx);
 
+/** Update the FD state to active or idle
+ *
+ */
+typedef bool (*fr_radius_client_active_t)(void *uctx);
+
+/** Get a REQUEST from a socket
+ *
+ */
+typedef int (*fr_radius_client_read_t)(REQUEST **p_request, void *uctx);
+
+/** Write a REQUEST to a socket.
+ *
+ */
+typedef int (*fr_radius_client_write_t)(REQUEST *request, void *request_ctx, void *uctx);
+
+
 
 /** Public structure describing an I/O path for an outgoing socket.
  *
@@ -53,11 +69,14 @@ typedef struct fr_radius_client_io_t {
 	fr_connection_init_t		init;			//!< initialize a socket using thread instance data
 	fr_connection_open_t		open;			//!< open a socket using thread instance data
 	fr_connection_close_t       	close;			//!< close a socket using thread instance data
-	fr_radius_client_name_t		get_name;			//!< get the name of this socket.
-	// get name
-	// write
-	// read
-	// error
+	fr_radius_client_name_t		get_name;	       	//!< get the name of this socket.
+
+	fr_radius_client_active_t	fd_active;		//!< mark the FD as active
+	fr_radius_client_active_t	fd_idle;		//!< mark the FD as idle
+
+	fr_radius_client_write_t	write;			//!< write a REQUEST to a socket
+	fr_radius_client_write_t	remove;			//!< remove a written request from a socket
+	fr_radius_client_read_t		read;			//!< read a REQUEST from a socket.
 } fr_radius_client_io_t;
 
 #endif	/* _RLM_RADIUS_H */
