@@ -94,6 +94,7 @@ struct rlm_radius_connection_t {
 
 typedef struct rlm_radius_link_t {
 	bool			waiting;       		//!< queued or live
+	rlm_rcode_t		rcode;			//!< from the transport
 	REQUEST			*request;		//!< the request we are for
 	fr_dlist_t		entry;			//!< linked list of queued or sent
 	rlm_radius_connection_t	*c;			//!< which connection we're queued or sent
@@ -177,17 +178,48 @@ static void mod_clear_backlog(UNUSED rlm_radius_thread_t *t)
 	// call mod_add() with the request
 }
 
-/** Drain any data we received
+/** Get a REQUEST from the transport.
  *
- * We don't care about this data, we just don't want the kernel to
- * signal the other side that our read buffer's full.
  */
-static void mod_radius_conn_read(UNUSED fr_event_list_t *el, UNUSED int sock, UNUSED int flags, UNUSED void *uctx)
+static void mod_radius_conn_read(fr_event_list_t *el, int sock, UNUSED int flags, void *uctx)
 {
-//	rlm_radius_connection_t		*c = talloc_get_type_abort(uctx, rlm_radius_connection_t);
+	rlm_radius_connection_t	*c = talloc_get_type_abort(uctx, rlm_radius_connection_t);
+	rlm_radius_t const	*inst = c->inst;
+	rlm_radius_link_t	*link;
+	int status;
+	rlm_rcode_t rcode;
+	REQUEST *request;
 
-	// get REQUEST from submodule
-	// resume if necessary
+	/*
+	 *	There may or may not be data.  If there isn't, it's not always an error.
+	 */
+	status = inst->client_io->read(&request, &rcode, el, sock, c->client_io_ctx);
+	if (status == 0) return;
+
+	if (status < 0) {
+		fr_connection_reconnect(c->conn);
+		return;
+	}
+
+	rad_assert(request != NULL);
+	rad_assert(rcode != RLM_MODULE_YIELD);
+
+	(void) talloc_get_type_abort(request, REQUEST);
+
+	/*
+	 *	Save the return code of the transport in the link.
+	 */
+	link = request_data_get(request, c, 0);
+	if (!link) {
+		RDEBUG("Failed finding link to transport");
+		unlang_resumable(request);
+		return;
+	}
+
+	link->waiting = false;
+	link->rcode = rcode;
+
+	unlang_resumable(request);
 }
 
 /** There's space available to write data, so do that...
@@ -265,11 +297,11 @@ static void mod_radius_fd_active(rlm_radius_connection_t *c)
 /** Connection errored
  *
  */
-static void mod_radius_conn_error(UNUSED fr_event_list_t *el, int sock, UNUSED int flags, int fd_errno, void *uctx)
+static void mod_radius_conn_error(UNUSED fr_event_list_t *el, UNUSED int sock, UNUSED int flags, int fd_errno, void *uctx)
 {
 	rlm_radius_connection_t	*c = talloc_get_type_abort(uctx, rlm_radius_connection_t);
 
-	ERROR("Connection failed (%i): %s", sock, fr_syserror(fd_errno));
+	ERROR("Connection %s failed): %s", c->name, fr_syserror(fd_errno));
 
 	/*
 	 *	Something bad happened... Fix it.  The connection API
@@ -322,10 +354,6 @@ static fr_connection_state_t mod_radius_conn_failed(UNUSED int fd, fr_connection
 		c->waiting--;
 
 		fr_dlist_remove(&link->entry);
-
-		// @todo - insert into the list by when we first sent
-		// the packet, so that earlier packets are handled
-		// before later packets
 		fr_dlist_insert_head(&c->queued, &link->entry);
 
 		c->pending = true;
@@ -442,14 +470,13 @@ static int mod_radius_conn_free(rlm_radius_connection_t *c)
 		next = FR_DLIST_NEXT(c->sent, entry);
 
 		rad_assert(link->waiting = true);
+		rad_assert(link->request != NULL);
+
+		(void) c->inst->client_io->remove(link->request, link->request_io_ctx, c->client_io_ctx);
 		link->waiting = false;
 		c->waiting--;
 
 		fr_dlist_remove(&link->entry);
-
-		// @todo - insert into the list by when we first sent
-		// the packet, so that earlier packets are handled
-		// before later packets
 		fr_dlist_insert_head(&t->queued, &link->entry);
 
 		t->pending = true;
@@ -471,10 +498,6 @@ static int mod_radius_conn_free(rlm_radius_connection_t *c)
 		rad_assert(link->waiting = false);
 
 		fr_dlist_remove(&link->entry);
-
-		// @todo - insert into the list by when we first sent
-		// the packet, so that earlier packets are handled
-		// before later packets
 		fr_dlist_insert_head(&t->queued, &link->entry);
 
 		t->pending = true;
@@ -503,6 +526,7 @@ static int mod_link_free(rlm_radius_link_t *link)
 	 *	Tell the transport that the request is no longer active.
 	 */
 	(void) inst->client_io->remove(request, link->request_io_ctx, c->client_io_ctx);
+	link->waiting = false;
 
 	return 0;
 }
@@ -578,19 +602,21 @@ static rlm_rcode_t mod_radius_resume( REQUEST *request, UNUSED void *instance, U
 //	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
 	rlm_radius_connection_t *c = talloc_get_type_abort(ctx, rlm_radius_connection_t);
 	rlm_radius_link_t *link;
+	rlm_rcode_t rcode;
 
 	link = request_data_get(request, c, 0);
 	if (!link) {
 		RDEBUG("Failed finding link to transport");
 		return RLM_MODULE_FAIL;
 	}
+	(void) talloc_get_type_abort(link, rlm_radius_link_t);
 
-	// @todo - get status of client packet, and return that.
-
+	rcode = link->rcode;
+	rad_assert(rcode != RLM_MODULE_YIELD);
 	rad_assert(link->waiting == false);
 	talloc_free(link);
 
-	return RLM_MODULE_OK;
+	return rcode;
 }
 
 
@@ -705,7 +731,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 static int mod_thread_detach(void *thread)
 {
 	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
-//	rlm_radius_t *inst = t->inst;
+//	rlm_radius_t const *inst = t->inst;
 	fr_dlist_t *entry, *next;
 
 	/*
@@ -759,7 +785,8 @@ static int mod_thread_detach(void *thread)
 		next = FR_DLIST_NEXT(t->queued, entry);
 
 		request = link->request;
-		talloc_free(link);
+		link->rcode = RLM_MODULE_FAIL;
+		rad_assert(link->waiting == false);
 
 		unlang_resumable(request);
 	}

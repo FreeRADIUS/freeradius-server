@@ -44,7 +44,7 @@ typedef bool (*fr_radius_client_active_t)(void *uctx);
 /** Get a REQUEST from a socket
  *
  */
-typedef int (*fr_radius_client_read_t)(REQUEST **p_request, void *uctx);
+typedef int (*fr_radius_client_read_t)(REQUEST **p_request, rlm_rcode_t *p_rcode, fr_event_list_t *el, int sock, void *uctx);
 
 /** Write a REQUEST to a socket.
  *
