@@ -13,3 +13,16 @@ all:
 	@mv tmp/foo tmp/server.cnf
 	@$(MAKE) -C tmp
 	@cp tmp/ca.* tmp/server.* tmp/client.* tmp/ocsp.* tmp/dh .
+
+.PHONY: print
+print:
+	@openssl x509 -text -in ca.pem
+	@openssl x509 -text -in server.pem
+	@openssl x509 -text -in client.pem
+
+.PHONY: verify
+verify:
+	@openssl verify -CAfile ca.pem server.pem
+	@openssl verify -CAfile ca.pem ocsp.pem
+	@c_rehash .
+	@openssl verify -CApath . client.pem
