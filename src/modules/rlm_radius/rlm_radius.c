@@ -45,6 +45,7 @@ typedef struct rlm_radius_retry_t {
 	uint32_t		mrd;			//!< Maximum retransmission duration
 } rlm_radius_retry_t;
 
+typedef struct rlm_radius_client_io_ctx_t rlm_radius_client_io_ctx_t;
 
 /*
  *	Define a structure for our module configuration.
@@ -230,7 +231,13 @@ bool rlm_radius_update_delay(struct timeval *start, uint32_t *rt, uint32_t *coun
 	uint32_t delay, frac;
 	struct timeval now, end;
 	rlm_radius_retry_t const *retry;
-	rlm_radius_thread_t *t = talloc_parent(client_io_ctx);
+	rlm_radius_thread_t *t;
+
+	(void) talloc_get_type_abort(client_io_ctx, rlm_radius_client_io_ctx_t);
+
+	t = talloc_parent(client_io_ctx);
+
+	(void) talloc_get_type_abort(t, rlm_radius_thread_t);
 
 	rad_assert(code > 0);
 	rad_assert(code < FR_MAX_PACKET_CODE);
@@ -1160,6 +1167,7 @@ static int mod_thread_instantiate(CONF_SECTION const *cs, void *instance, fr_eve
 		return -1;
 	}
 
+	talloc_set_type(c->client_io_ctx, rlm_radius_client_io_ctx_t);
 	talloc_set_destructor(c, mod_radius_conn_free);
 
 	FR_DLIST_INIT(t->queued);
