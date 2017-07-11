@@ -11,6 +11,10 @@ all:
 	@mv tmp/foo tmp/ca.cnf
 	@sed 's/^default_days.*= 60/default_days = 365/' < tmp/server.cnf > tmp/foo
 	@mv tmp/foo tmp/server.cnf
+	@sed 's/^default_days.*= 60/default_days = 365/' < tmp/client.cnf > tmp/foo
+	@mv tmp/foo tmp/client.cnf
+	@sed 's/^default_days.*= 60/default_days = 365/' < tmp/ocsp.cnf > tmp/foo
+	@mv tmp/foo tmp/ocsp.cnf
 	@$(MAKE) -C tmp
 	@cp tmp/ca.* tmp/server.* tmp/client.* tmp/ocsp.* tmp/dh .
 
