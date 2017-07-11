@@ -142,15 +142,15 @@ static CONF_PARSER auth_config[] = {
 
 static CONF_PARSER acct_config[] = {
 	{ FR_CONF_OFFSET("irt", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_ACCOUNTING_REQUEST].irt), .dflt = STRINGIFY(2) },
-	{ FR_CONF_OFFSET("mrt", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_ACCOUNTING_REQUEST].mrt), .dflt = STRINGIFY(16) },
-	{ FR_CONF_OFFSET("mrc", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_ACCOUNTING_REQUEST].mrc), .dflt = STRINGIFY(5) },
+	{ FR_CONF_OFFSET("mrt", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_ACCOUNTING_REQUEST].mrt), .dflt = STRINGIFY(5) },
+	{ FR_CONF_OFFSET("mrc", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_ACCOUNTING_REQUEST].mrc), .dflt = STRINGIFY(1) },
 	{ FR_CONF_OFFSET("mrd", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_ACCOUNTING_REQUEST].mrd), .dflt = STRINGIFY(30) },
 	CONF_PARSER_TERMINATOR
 };
 
 static CONF_PARSER status_config[] = {
 	{ FR_CONF_OFFSET("irt", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_STATUS_SERVER].irt), .dflt = STRINGIFY(2) },
-	{ FR_CONF_OFFSET("mrt", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_STATUS_SERVER].mrt), .dflt = STRINGIFY(16) },
+	{ FR_CONF_OFFSET("mrt", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_STATUS_SERVER].mrt), .dflt = STRINGIFY(10) },
 	{ FR_CONF_OFFSET("mrc", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_STATUS_SERVER].mrc), .dflt = STRINGIFY(5) },
 	{ FR_CONF_OFFSET("mrd", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_STATUS_SERVER].mrd), .dflt = STRINGIFY(30) },
 	CONF_PARSER_TERMINATOR
@@ -221,7 +221,97 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
 	return dl_instance(ctx, out, transport_cs, parent_inst, name, DL_TYPE_SUBMODULE);
 }
 
+#ifndef USEC
+#define USEC (1000000)
+#endif
 
+bool rlm_radius_update_delay(struct timeval *start, uint32_t *rt, uint32_t *count, int code, void *client_io_ctx)
+{
+	uint32_t delay, frac;
+	struct timeval now, end;
+	rlm_radius_retry_t const *retry;
+	rlm_radius_thread_t *t = talloc_parent(client_io_ctx);
+
+	rad_assert(code > 0);
+	rad_assert(code < FR_MAX_PACKET_CODE);
+	rad_assert(t->inst->packets[code].irt != 0);
+
+	retry = &t->inst->packets[code];
+
+	/*
+	 *	First packet: use IRT.
+	 */
+	if (!*rt) {
+		gettimeofday(start, NULL);
+		*rt = retry->irt * USEC;
+		*count = 1;
+		return true;
+	}
+
+	/*
+	 *	Later packets, do more stuff.
+	 */
+	(*count)++;
+
+	/*
+	 *	We retried too many times.  Fail.
+	 */
+	if (*count > retry->mrc) {
+		return false;
+	}
+
+	/*
+	 *	Cap delay at MRD
+	 */
+	gettimeofday(&now, NULL);
+	end = *start;
+	end.tv_sec += retry->mrd;
+
+	if (timercmp(&now, &end, >=)) {
+		return false;
+	}
+
+	/*
+	 *	RFC 5080 Section 2.2.1
+	 *
+	 *	RT = 2*RTprev + RAND*RTprev
+	 *	   = 1.9 * RTprev + rand(0,.2) * RTprev
+	 *	   = 1.9 * RTprev + rand(0,1) * (RTprev / 5)
+	 */
+	delay = fr_rand();
+	delay ^= (delay >> 16);
+	delay &= 0xffff;
+	frac = *rt / 5;
+	delay = ((frac >> 16) * delay) + (((frac & 0xffff) * delay) >> 16);
+
+	delay += (2 * *rt) - (*rt / 10);
+
+	/*
+	 *	Cap delay at MRT
+	 */
+	if (delay > (retry->mrt * USEC)) {
+		int mrt_usec = retry->mrt * USEC;
+
+		/*
+		 *	delay = MRT + RAND * MRT
+		 *	      = 0.9 MRT + rand(0,.2)  * MRT
+		 */
+		delay = fr_rand();
+		delay ^= (delay >> 15);
+		delay &= 0x1ffff;
+		delay = ((mrt_usec >> 16) * delay) + (((mrt_usec & 0xffff) * delay) >> 16);
+		delay += mrt_usec - (mrt_usec / 10);
+	}
+
+	*rt = delay;
+
+	return true;
+}
+
+
+/*
+ *	rlm_radius state machine
+ */
 static void mod_radius_fd_idle(rlm_radius_connection_t *c);
 
 static void mod_radius_fd_active(rlm_radius_connection_t *c);
