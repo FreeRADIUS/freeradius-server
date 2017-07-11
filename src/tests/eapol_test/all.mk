@@ -118,6 +118,7 @@ $(RADDB_PATH)/certs/%:
 	${Q}make -C $(dir $@)
 
 $(CONFIG_PATH)/radiusd.pid: $(CONFIG_PATH)/test.conf $(RADDB_PATH)/certs/server.pem | $(EAPOL_METH_FILES) $(OUTPUT_DIR)
+	${Q}make -C src/tests/certs verify
 	${Q}rm -f $(GDB_LOG) $(RADIUS_LOG)
 	${Q}printf "Starting EAP test server... "
 	${Q}if ! TEST_PORT=$(PORT) $(JLIBTOOL) --mode=execute $(BIN_PATH)/radiusd -Pxxxl $(RADIUS_LOG) -d $(CONFIG_PATH) -n test -D $(CONFIG_PATH); then\
