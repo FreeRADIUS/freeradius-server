@@ -38,6 +38,14 @@ RCSID("$Id$")
 
 static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
 
+typedef struct rlm_radius_retry_t {
+	uint32_t		irt;			//!< Initial transmission time
+	uint32_t		mrc;			//!< Maximum retransmission count
+	uint32_t		mrt;			//!< Maximum retransmission time
+	uint32_t		mrd;			//!< Maximum retransmission duration
+} rlm_radius_retry_t;
+
+
 /*
  *	Define a structure for our module configuration.
  */
@@ -52,6 +60,8 @@ typedef struct radius_instance {
 	fr_radius_client_io_t	*client_io;	//!< Easy access to the client_io handle
 	void			*client_io_instance; //!< Easy access to the client_io instance
 	CONF_SECTION		*client_io_conf;  //!< Easy access to the client_io's config section
+
+	rlm_radius_retry_t	packets[FR_MAX_PACKET_CODE];
 } rlm_radius_t;
 
 typedef struct rlm_radius_connection_t rlm_radius_connection_t;
@@ -106,7 +116,6 @@ typedef struct rlm_radius_link_t {
 	void			*request_io_ctx;
 } rlm_radius_link_t;
 
-
 static CONF_PARSER const timer_config[] = {
 	{ FR_CONF_OFFSET("connection", FR_TYPE_TIMEVAL, rlm_radius_t, connection_timeout),
 	  .dflt = STRINGIFY(5) },
@@ -120,6 +129,48 @@ static CONF_PARSER const timer_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+/*
+ *	Retransmission intervals for the packets we support.
+ */
+static CONF_PARSER auth_config[] = {
+	{ FR_CONF_OFFSET("irt", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_ACCESS_REQUEST].irt), .dflt = STRINGIFY(2) },
+	{ FR_CONF_OFFSET("mrt", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_ACCESS_REQUEST].mrt), .dflt = STRINGIFY(16) },
+	{ FR_CONF_OFFSET("mrc", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_ACCESS_REQUEST].mrc), .dflt = STRINGIFY(5) },
+	{ FR_CONF_OFFSET("mrd", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_ACCESS_REQUEST].mrd), .dflt = STRINGIFY(30) },
+	CONF_PARSER_TERMINATOR
+};
+
+static CONF_PARSER acct_config[] = {
+	{ FR_CONF_OFFSET("irt", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_ACCOUNTING_REQUEST].irt), .dflt = STRINGIFY(2) },
+	{ FR_CONF_OFFSET("mrt", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_ACCOUNTING_REQUEST].mrt), .dflt = STRINGIFY(16) },
+	{ FR_CONF_OFFSET("mrc", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_ACCOUNTING_REQUEST].mrc), .dflt = STRINGIFY(5) },
+	{ FR_CONF_OFFSET("mrd", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_ACCOUNTING_REQUEST].mrd), .dflt = STRINGIFY(30) },
+	CONF_PARSER_TERMINATOR
+};
+
+static CONF_PARSER status_config[] = {
+	{ FR_CONF_OFFSET("irt", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_STATUS_SERVER].irt), .dflt = STRINGIFY(2) },
+	{ FR_CONF_OFFSET("mrt", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_STATUS_SERVER].mrt), .dflt = STRINGIFY(16) },
+	{ FR_CONF_OFFSET("mrc", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_STATUS_SERVER].mrc), .dflt = STRINGIFY(5) },
+	{ FR_CONF_OFFSET("mrd", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_STATUS_SERVER].mrd), .dflt = STRINGIFY(30) },
+	CONF_PARSER_TERMINATOR
+};
+
+static CONF_PARSER coa_config[] = {
+	{ FR_CONF_OFFSET("irt", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_COA_REQUEST].irt), .dflt = STRINGIFY(2) },
+	{ FR_CONF_OFFSET("mrt", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_COA_REQUEST].mrt), .dflt = STRINGIFY(16) },
+	{ FR_CONF_OFFSET("mrc", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_COA_REQUEST].mrc), .dflt = STRINGIFY(5) },
+	{ FR_CONF_OFFSET("mrd", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_COA_REQUEST].mrd), .dflt = STRINGIFY(30) },
+	CONF_PARSER_TERMINATOR
+};
+
+static CONF_PARSER disconnect_config[] = {
+	{ FR_CONF_OFFSET("irt", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_DISCONNECT_REQUEST].irt), .dflt = STRINGIFY(2) },
+	{ FR_CONF_OFFSET("mrt", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_DISCONNECT_REQUEST].mrt), .dflt = STRINGIFY(16) },
+	{ FR_CONF_OFFSET("mrc", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_DISCONNECT_REQUEST].mrc), .dflt = STRINGIFY(5) },
+	{ FR_CONF_OFFSET("mrd", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_DISCONNECT_REQUEST].mrd), .dflt = STRINGIFY(30) },
+	CONF_PARSER_TERMINATOR
+};
 
 
 /*
@@ -129,7 +180,12 @@ static CONF_PARSER const module_config[] = {
 	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, rlm_radius_t, io_submodule),
 	  .func = transport_parse },
 
-	{ FR_CONF_POINTER("timers", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) timer_config },
+	{ FR_CONF_POINTER("connection", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) timer_config },
+	{ FR_CONF_POINTER("Access-Request", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) auth_config },
+	{ FR_CONF_POINTER("Accounting-Request", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) acct_config },
+	{ FR_CONF_POINTER("Status-Server", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) status_config },
+	{ FR_CONF_POINTER("CoA-Request", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) coa_config },
+	{ FR_CONF_POINTER("Disconnect-Request", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) disconnect_config },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -747,6 +803,26 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 		mod_clear_backlog(t);
 	}
 
+	if (!request->packet->code) {
+		RDEBUG("You MUST specify a packet code");
+		return RLM_MODULE_FAIL;
+	}
+
+	/*
+	 *	Reserve Status-Server for ourselves, for link-specific
+	 *	signaling.
+	 */
+	if (request->packet->code == FR_CODE_STATUS_SERVER) {
+		RDEBUG("Cannot proxy Status-Server packets");
+		return RLM_MODULE_FAIL;
+	}
+
+	if ((request->packet->code >= FR_MAX_PACKET_CODE) ||
+	    !inst->packets[request->packet->code].irt) { /* can't be zero */
+		RDEBUG("Invalid packet code %d", request->packet->code);
+		return RLM_MODULE_FAIL;
+	}
+
 	entry = FR_DLIST_FIRST(t->active);
 	if (!entry) {
 		REDEBUG("No active connections");
@@ -792,6 +868,73 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 	FR_TIMEVAL_BOUND_CHECK("timers.idle", &inst->connection_timeout, >=, 30, 0);
 	FR_TIMEVAL_BOUND_CHECK("timers.idle", &inst->connection_timeout, <=, 600, 0);
+
+	/*
+	 *	Set limits on retransmission timers
+	 */
+	FR_INTEGER_BOUND_CHECK("Access-Request.irt", inst->packets[FR_CODE_ACCESS_REQUEST].irt, >=, 1);
+	FR_INTEGER_BOUND_CHECK("Access-Request.mrt", inst->packets[FR_CODE_ACCESS_REQUEST].mrt, >=, 5);
+	FR_INTEGER_BOUND_CHECK("Access-Request.mrc", inst->packets[FR_CODE_ACCESS_REQUEST].mrc, >=, 1);
+	FR_INTEGER_BOUND_CHECK("Access-Request.mrd", inst->packets[FR_CODE_ACCESS_REQUEST].mrd, >=, 5);
+
+	FR_INTEGER_BOUND_CHECK("Access-Request.irt", inst->packets[FR_CODE_ACCESS_REQUEST].irt, <=, 3);
+	FR_INTEGER_BOUND_CHECK("Access-Request.mrt", inst->packets[FR_CODE_ACCESS_REQUEST].mrt, <=, 10);
+	FR_INTEGER_BOUND_CHECK("Access-Request.mrc", inst->packets[FR_CODE_ACCESS_REQUEST].mrc, <=, 10);
+	FR_INTEGER_BOUND_CHECK("Access-Request.mrd", inst->packets[FR_CODE_ACCESS_REQUEST].mrd, <=, 30);
+
+	/*
+	 *	Note that RFC 5080 allows for Accounting-Request to
+	 *	have mrt=mrc=mrd = 0, which means "retransmit
+	 *	forever".  We can't do that, so we put the same bounds as for Access-Request
+	 */
+	FR_INTEGER_BOUND_CHECK("Accounting-Request.irt", inst->packets[FR_CODE_ACCOUNTING_REQUEST].irt, >=, 1);
+	FR_INTEGER_BOUND_CHECK("Accounting-Request.mrt", inst->packets[FR_CODE_ACCOUNTING_REQUEST].mrt, >=, 5);
+	FR_INTEGER_BOUND_CHECK("Accounting-Request.mrc", inst->packets[FR_CODE_ACCOUNTING_REQUEST].mrc, >=, 1);
+	FR_INTEGER_BOUND_CHECK("Accounting-Request.mrd", inst->packets[FR_CODE_ACCOUNTING_REQUEST].mrd, >=, 5);
+
+	FR_INTEGER_BOUND_CHECK("Accounting-Request.irt", inst->packets[FR_CODE_ACCOUNTING_REQUEST].irt, <=, 3);
+	FR_INTEGER_BOUND_CHECK("Accounting-Request.mrt", inst->packets[FR_CODE_ACCOUNTING_REQUEST].mrt, <=, 10);
+	FR_INTEGER_BOUND_CHECK("Accounting-Request.mrc", inst->packets[FR_CODE_ACCOUNTING_REQUEST].mrc, <=, 10);
+	FR_INTEGER_BOUND_CHECK("Accounting-Request.mrd", inst->packets[FR_CODE_ACCOUNTING_REQUEST].mrd, <=, 30);
+
+	/*
+	 *	Status-Server
+	 */
+	FR_INTEGER_BOUND_CHECK("Status-Server.irt", inst->packets[FR_CODE_STATUS_SERVER].irt, >=, 1);
+	FR_INTEGER_BOUND_CHECK("Status-Server.mrt", inst->packets[FR_CODE_STATUS_SERVER].mrt, >=, 5);
+	FR_INTEGER_BOUND_CHECK("Status-Server.mrc", inst->packets[FR_CODE_STATUS_SERVER].mrc, >=, 1);
+	FR_INTEGER_BOUND_CHECK("Status-Server.mrd", inst->packets[FR_CODE_STATUS_SERVER].mrd, >=, 5);
+
+	FR_INTEGER_BOUND_CHECK("Status-Server.irt", inst->packets[FR_CODE_STATUS_SERVER].irt, <=, 3);
+	FR_INTEGER_BOUND_CHECK("Status-Server.mrt", inst->packets[FR_CODE_STATUS_SERVER].mrt, <=, 10);
+	FR_INTEGER_BOUND_CHECK("Status-Server.mrc", inst->packets[FR_CODE_STATUS_SERVER].mrc, <=, 10);
+	FR_INTEGER_BOUND_CHECK("Status-Server.mrd", inst->packets[FR_CODE_STATUS_SERVER].mrd, <=, 30);
+
+	/*
+	 *	CoA
+	 */
+	FR_INTEGER_BOUND_CHECK("CoA-Request.irt", inst->packets[FR_CODE_COA_REQUEST].irt, >=, 1);
+	FR_INTEGER_BOUND_CHECK("CoA-Request.mrt", inst->packets[FR_CODE_COA_REQUEST].mrt, >=, 5);
+	FR_INTEGER_BOUND_CHECK("CoA-Request.mrc", inst->packets[FR_CODE_COA_REQUEST].mrc, >=, 1);
+	FR_INTEGER_BOUND_CHECK("CoA-Request.mrd", inst->packets[FR_CODE_COA_REQUEST].mrd, >=, 5);
+
+	FR_INTEGER_BOUND_CHECK("CoA-Request.irt", inst->packets[FR_CODE_COA_REQUEST].irt, <=, 3);
+	FR_INTEGER_BOUND_CHECK("CoA-Request.mrt", inst->packets[FR_CODE_COA_REQUEST].mrt, <=, 10);
+	FR_INTEGER_BOUND_CHECK("CoA-Request.mrc", inst->packets[FR_CODE_COA_REQUEST].mrc, <=, 10);
+	FR_INTEGER_BOUND_CHECK("CoA-Request.mrd", inst->packets[FR_CODE_COA_REQUEST].mrd, <=, 30);
+
+	/*
+	 *	Disconnect
+	 */
+	FR_INTEGER_BOUND_CHECK("Disconnect-Request.irt", inst->packets[FR_CODE_DISCONNECT_REQUEST].irt, >=, 1);
+	FR_INTEGER_BOUND_CHECK("Disconnect-Request.mrt", inst->packets[FR_CODE_DISCONNECT_REQUEST].mrt, >=, 5);
+	FR_INTEGER_BOUND_CHECK("Disconnect-Request.mrc", inst->packets[FR_CODE_DISCONNECT_REQUEST].mrc, >=, 1);
+	FR_INTEGER_BOUND_CHECK("Disconnect-Request.mrd", inst->packets[FR_CODE_DISCONNECT_REQUEST].mrd, >=, 5);
+
+	FR_INTEGER_BOUND_CHECK("Disconnect-Request.irt", inst->packets[FR_CODE_DISCONNECT_REQUEST].irt, <=, 3);
+	FR_INTEGER_BOUND_CHECK("Disconnect-Request.mrt", inst->packets[FR_CODE_DISCONNECT_REQUEST].mrt, <=, 10);
+	FR_INTEGER_BOUND_CHECK("Disconnect-Request.mrc", inst->packets[FR_CODE_DISCONNECT_REQUEST].mrc, <=, 10);
+	FR_INTEGER_BOUND_CHECK("Disconnect-Request.mrd", inst->packets[FR_CODE_DISCONNECT_REQUEST].mrd, <=, 30);
 
 	rad_assert(inst->client_io->io_inst_size > 0);
 
