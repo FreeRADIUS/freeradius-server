@@ -264,8 +264,9 @@ static void mod_radius_conn_writable(UNUSED fr_event_list_t *el, UNUSED int sock
 
 		rad_assert(link->waiting = false);
 
-		// @todo - if this returns EWOULDBLOCK, stop
-		// @todo - if this returns "too many requests", stop.  But the caller should have checked...
+		/*
+		 *	Write to the socket.
+		 */
 		rcode = c->inst->client_io->write(link->request, link->request_io_ctx, c->client_io_ctx);
 
 		/*
@@ -661,8 +662,38 @@ static int CC_HINT(nonnull) mod_add(rlm_radius_t *inst, rlm_radius_connection_t 
 	 *	If there are no pending writes, enable the write
 	 *	callback.  It will wake up and write the packets to
 	 *	the socket.
+	 *
+	 *	We have no packets in the queue.  Try calling write().
+	 *	If it succeeds, we're good, and we can avoid updating
+	 *	the event list along with many callbacks and lots of
+	 *	overhead.
 	 */
 	if (!c->pending) {
+		int rcode;
+
+		rcode = c->inst->client_io->write(link->request, link->request_io_ctx, c->client_io_ctx);
+		if (rcode < 0) {
+			talloc_free(link);
+			return -1;
+		}
+
+		/*
+		 *	It was successfully written to the socket.
+		 *	Update the various timers, etc.
+		 */
+		if (rcode == 1) {
+			link->time_sent = fr_time();
+			fr_dlist_remove(&link->entry);
+			fr_dlist_insert_head(&c->sent, &link->entry);
+			link->waiting = true;
+			c->num_outstanding++;
+			return 1;
+		}
+
+		/*
+		 *	We couldn't write it, so leave the request on
+		 *	the pending queue.
+		 */
 		c->pending = true;
 		mod_radius_fd_active(c);
 	}
