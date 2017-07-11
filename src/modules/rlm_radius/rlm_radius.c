@@ -86,7 +86,9 @@ struct rlm_radius_connection_t {
 	void			*client_io_ctx;		//!< client IO context
 
 	bool			pending;		//!< we have pending messages to write
-	int			waiting;		//!< written, but waiting for replies
+	int			num_outstanding;	//!< written, but waiting for replies
+	fr_time_t		sent_with_reply;	//!< the latest "link->time_sent" with a reply
+	fr_time_t		time_recv;		//!< the time we last received a reply on this connection
 
 	fr_dlist_t		queued;			//!< queued for sending
 	fr_dlist_t		sent;			//!< actually sent
@@ -94,6 +96,9 @@ struct rlm_radius_connection_t {
 
 typedef struct rlm_radius_link_t {
 	bool			waiting;       		//!< queued or live
+	fr_time_t		time_sent;		//!< when we sent the packet
+	fr_time_t		time_recv;		//!< when we received the reply
+
 	rlm_rcode_t		rcode;			//!< from the transport
 	REQUEST			*request;		//!< the request we are for
 	fr_dlist_t		entry;			//!< linked list of queued or sent
@@ -212,14 +217,23 @@ static void mod_radius_conn_read(fr_event_list_t *el, int sock, UNUSED int flags
 	link = request_data_get(request, c, 0);
 	if (!link) {
 		RDEBUG("Failed finding link to transport");
-		unlang_resumable(request);
-		return;
+	} else {
+		// @todo - put the connection into the un-frozen state, so that we can use it for new requests
+
+		link->waiting = false;
+		link->rcode = rcode;
+		link->time_recv = fr_time();
+
+		// @todo - check for Status-Server, state alive / zombie / etc.
+		c->time_recv = link->time_recv;
+		if (link->time_sent > c->sent_with_reply) {
+			// @todo re-order the connections based on this time
+			c->sent_with_reply = link->time_sent;
+		}
 	}
 
-	// @todo - put the connection into the un-frozen state, so that we can use it for new requests
-
-	link->waiting = false;
-	link->rcode = rcode;
+	rad_assert(c->num_outstanding > 0);
+	c->num_outstanding--;
 
 	unlang_resumable(request);
 }
@@ -266,9 +280,11 @@ static void mod_radius_conn_writable(UNUSED fr_event_list_t *el, UNUSED int sock
 		 *	The transport has handled this request.  Try to send some more.
 		 */
 		if (rcode == 1) {
+			link->time_sent = fr_time();
 			fr_dlist_remove(&link->entry);
 			fr_dlist_insert_head(&c->sent, &link->entry);
 			link->waiting = true;
+			c->num_outstanding++;
 			sent = true;
 			continue;
 		}
@@ -417,7 +433,7 @@ static fr_connection_state_t mod_radius_conn_failed(UNUSED int fd, fr_connection
 
 		rad_assert(link->waiting = true);
 		link->waiting = false;
-		c->waiting--;
+		c->num_outstanding--;
 
 		fr_dlist_remove(&link->entry);
 		fr_dlist_insert_head(&c->queued, &link->entry);
@@ -540,7 +556,7 @@ static int mod_radius_conn_free(rlm_radius_connection_t *c)
 
 		(void) c->inst->client_io->remove(link->request, link->request_io_ctx, c->client_io_ctx);
 		link->waiting = false;
-		c->waiting--;
+		c->num_outstanding--;
 
 		fr_dlist_remove(&link->entry);
 		fr_dlist_insert_head(&t->queued, &link->entry);
