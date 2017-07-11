@@ -134,42 +134,42 @@ static CONF_PARSER const timer_config[] = {
  *	Retransmission intervals for the packets we support.
  */
 static CONF_PARSER auth_config[] = {
-	{ FR_CONF_OFFSET("irt", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_ACCESS_REQUEST].irt), .dflt = STRINGIFY(2) },
-	{ FR_CONF_OFFSET("mrt", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_ACCESS_REQUEST].mrt), .dflt = STRINGIFY(16) },
-	{ FR_CONF_OFFSET("mrc", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_ACCESS_REQUEST].mrc), .dflt = STRINGIFY(5) },
-	{ FR_CONF_OFFSET("mrd", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_ACCESS_REQUEST].mrd), .dflt = STRINGIFY(30) },
+	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_ACCESS_REQUEST].irt), .dflt = STRINGIFY(2) },
+	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_ACCESS_REQUEST].mrt), .dflt = STRINGIFY(16) },
+	{ FR_CONF_OFFSET("maximum_retransmission_count", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_ACCESS_REQUEST].mrc), .dflt = STRINGIFY(5) },
+	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_ACCESS_REQUEST].mrd), .dflt = STRINGIFY(30) },
 	CONF_PARSER_TERMINATOR
 };
 
 static CONF_PARSER acct_config[] = {
-	{ FR_CONF_OFFSET("irt", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_ACCOUNTING_REQUEST].irt), .dflt = STRINGIFY(2) },
-	{ FR_CONF_OFFSET("mrt", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_ACCOUNTING_REQUEST].mrt), .dflt = STRINGIFY(5) },
-	{ FR_CONF_OFFSET("mrc", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_ACCOUNTING_REQUEST].mrc), .dflt = STRINGIFY(1) },
-	{ FR_CONF_OFFSET("mrd", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_ACCOUNTING_REQUEST].mrd), .dflt = STRINGIFY(30) },
+	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_ACCOUNTING_REQUEST].irt), .dflt = STRINGIFY(2) },
+	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_ACCOUNTING_REQUEST].mrt), .dflt = STRINGIFY(5) },
+	{ FR_CONF_OFFSET("maximum_retransmission_count", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_ACCOUNTING_REQUEST].mrc), .dflt = STRINGIFY(1) },
+	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_ACCOUNTING_REQUEST].mrd), .dflt = STRINGIFY(30) },
 	CONF_PARSER_TERMINATOR
 };
 
 static CONF_PARSER status_config[] = {
-	{ FR_CONF_OFFSET("irt", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_STATUS_SERVER].irt), .dflt = STRINGIFY(2) },
-	{ FR_CONF_OFFSET("mrt", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_STATUS_SERVER].mrt), .dflt = STRINGIFY(10) },
-	{ FR_CONF_OFFSET("mrc", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_STATUS_SERVER].mrc), .dflt = STRINGIFY(5) },
-	{ FR_CONF_OFFSET("mrd", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_STATUS_SERVER].mrd), .dflt = STRINGIFY(30) },
+	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_STATUS_SERVER].irt), .dflt = STRINGIFY(2) },
+	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_STATUS_SERVER].mrt), .dflt = STRINGIFY(10) },
+	{ FR_CONF_OFFSET("maximum_retransmission_count", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_STATUS_SERVER].mrc), .dflt = STRINGIFY(5) },
+	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_STATUS_SERVER].mrd), .dflt = STRINGIFY(30) },
 	CONF_PARSER_TERMINATOR
 };
 
 static CONF_PARSER coa_config[] = {
-	{ FR_CONF_OFFSET("irt", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_COA_REQUEST].irt), .dflt = STRINGIFY(2) },
-	{ FR_CONF_OFFSET("mrt", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_COA_REQUEST].mrt), .dflt = STRINGIFY(16) },
-	{ FR_CONF_OFFSET("mrc", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_COA_REQUEST].mrc), .dflt = STRINGIFY(5) },
-	{ FR_CONF_OFFSET("mrd", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_COA_REQUEST].mrd), .dflt = STRINGIFY(30) },
+	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_COA_REQUEST].irt), .dflt = STRINGIFY(2) },
+	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_COA_REQUEST].mrt), .dflt = STRINGIFY(16) },
+	{ FR_CONF_OFFSET("maximum_retransmission_count", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_COA_REQUEST].mrc), .dflt = STRINGIFY(5) },
+	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_COA_REQUEST].mrd), .dflt = STRINGIFY(30) },
 	CONF_PARSER_TERMINATOR
 };
 
 static CONF_PARSER disconnect_config[] = {
-	{ FR_CONF_OFFSET("irt", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_DISCONNECT_REQUEST].irt), .dflt = STRINGIFY(2) },
-	{ FR_CONF_OFFSET("mrt", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_DISCONNECT_REQUEST].mrt), .dflt = STRINGIFY(16) },
-	{ FR_CONF_OFFSET("mrc", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_DISCONNECT_REQUEST].mrc), .dflt = STRINGIFY(5) },
-	{ FR_CONF_OFFSET("mrd", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_DISCONNECT_REQUEST].mrd), .dflt = STRINGIFY(30) },
+	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_DISCONNECT_REQUEST].irt), .dflt = STRINGIFY(2) },
+	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_DISCONNECT_REQUEST].mrt), .dflt = STRINGIFY(16) },
+	{ FR_CONF_OFFSET("maximum_retransmission_count", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_DISCONNECT_REQUEST].mrc), .dflt = STRINGIFY(5) },
+	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_UINT32, rlm_radius_t, packets[FR_CODE_DISCONNECT_REQUEST].mrd), .dflt = STRINGIFY(30) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -226,10 +226,10 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
 #define USEC (1000000)
 #endif
 
+// @todo - pass in REQUEST, or maybe request_io_ctx, so we can store these numbers in the rlm_link_t?
 bool rlm_radius_update_delay(struct timeval *start, uint32_t *rt, uint32_t *count, int code, void *client_io_ctx)
 {
 	uint32_t delay, frac;
-	struct timeval now, end;
 	rlm_radius_retry_t const *retry;
 	rlm_radius_thread_t *t;
 
@@ -263,19 +263,22 @@ bool rlm_radius_update_delay(struct timeval *start, uint32_t *rt, uint32_t *coun
 	/*
 	 *	We retried too many times.  Fail.
 	 */
-	if (*count > retry->mrc) {
+	if (retry->mrc && (*count > retry->mrc)) {
 		return false;
 	}
 
 	/*
 	 *	Cap delay at MRD
 	 */
-	gettimeofday(&now, NULL);
-	end = *start;
-	end.tv_sec += retry->mrd;
+	if (retry->mrd) {
+		struct timeval now, end;
+		gettimeofday(&now, NULL);
+		end = *start;
+		end.tv_sec += retry->mrd;
 
-	if (timercmp(&now, &end, >=)) {
-		return false;
+		if (timercmp(&now, &end, >=)) {
+			return false;
+		}
 	}
 
 	/*
@@ -296,7 +299,7 @@ bool rlm_radius_update_delay(struct timeval *start, uint32_t *rt, uint32_t *coun
 	/*
 	 *	Cap delay at MRT
 	 */
-	if (delay > (retry->mrt * USEC)) {
+	if (retry->mrt && (delay > (retry->mrt * USEC))) {
 		int mrt_usec = retry->mrt * USEC;
 
 		/*
@@ -982,12 +985,14 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Note that RFC 5080 allows for Accounting-Request to
 	 *	have mrt=mrc=mrd = 0, which means "retransmit
-	 *	forever".  We can't do that, so we put the same bounds as for Access-Request
+	 *	forever".  We allow that, with the restriction that
+	 *	the server core will automatically free the request at
+	 *	max_request_time.
 	 */
 	FR_INTEGER_BOUND_CHECK("Accounting-Request.irt", inst->packets[FR_CODE_ACCOUNTING_REQUEST].irt, >=, 1);
-	FR_INTEGER_BOUND_CHECK("Accounting-Request.mrt", inst->packets[FR_CODE_ACCOUNTING_REQUEST].mrt, >=, 5);
-	FR_INTEGER_BOUND_CHECK("Accounting-Request.mrc", inst->packets[FR_CODE_ACCOUNTING_REQUEST].mrc, >=, 1);
-	FR_INTEGER_BOUND_CHECK("Accounting-Request.mrd", inst->packets[FR_CODE_ACCOUNTING_REQUEST].mrd, >=, 5);
+	FR_INTEGER_BOUND_CHECK("Accounting-Request.mrt", inst->packets[FR_CODE_ACCOUNTING_REQUEST].mrt, >=, 0);
+	FR_INTEGER_BOUND_CHECK("Accounting-Request.mrc", inst->packets[FR_CODE_ACCOUNTING_REQUEST].mrc, >=, 0);
+	FR_INTEGER_BOUND_CHECK("Accounting-Request.mrd", inst->packets[FR_CODE_ACCOUNTING_REQUEST].mrd, >=, 0);
 
 	FR_INTEGER_BOUND_CHECK("Accounting-Request.irt", inst->packets[FR_CODE_ACCOUNTING_REQUEST].irt, <=, 3);
 	FR_INTEGER_BOUND_CHECK("Accounting-Request.mrt", inst->packets[FR_CODE_ACCOUNTING_REQUEST].mrt, <=, 10);
