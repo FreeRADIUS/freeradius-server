@@ -1928,6 +1928,8 @@ int cf_section_parse(CONF_SECTION *cs, void *base, CONF_PARSER const *variables)
 			    (variables[i + 1].data == variables[i].data)) {
 				cf_log_err(&(cs->item), "Replace \"%s\" with \"%s\"", variables[i].name,
 					   variables[i + 1].name);
+			} else {
+				cf_log_err(&(cs->item), "Cannot use deprecated configuration item \"%s\"", variables[i].name);
 			}
 			goto finish;
 		}
