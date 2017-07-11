@@ -179,11 +179,12 @@ typedef size_t (*fr_io_nak_t)(void const *instance, uint8_t *const packet, size_
  * @param[in,out] recv_time	A pointer to a time when the packet was received
  * @param[in,out] buffer	the buffer where the raw packet will be written to (or read from)
  * @param[in] buffer_len	the length of the buffer
+ * @param[out] leftover		bytes left in the buffer after reading a full packet.
  * @return
  *	- <0 on error
  *	- >=0 length of the data read or written.
  */
-typedef ssize_t (*fr_io_data_read_t)(void const *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len);
+typedef ssize_t (*fr_io_data_read_t)(void const *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover);
 
 /** Write a socket.
  *

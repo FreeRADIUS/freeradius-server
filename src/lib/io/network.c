@@ -59,6 +59,7 @@ typedef struct fr_network_socket_t {
 
 	fr_message_set_t	*ms;			//!< message buffers for this socket.
 	fr_channel_data_t	*cd;			//!< cached in case of allocation & read error
+	size_t			leftover;		//!< leftover data from a previous read
 } fr_network_socket_t;
 
 /*
@@ -342,7 +343,8 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int f
 	 *	network side knows that it needs to close the
 	 *	connection.
 	 */
-	data_size = s->listen->app_io->read(s->listen->app_io_instance, &cd->packet_ctx, &recv_time, cd->m.data, cd->m.rb_size);
+	data_size = s->listen->app_io->read(s->listen->app_io_instance, &cd->packet_ctx, &recv_time,
+					    cd->m.data, cd->m.rb_size, &s->leftover);
 	if (data_size == 0) {
 		fr_log(nr->log, L_DBG_ERR, "got no data from transport read");
 

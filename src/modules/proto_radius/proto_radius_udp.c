@@ -172,7 +172,7 @@ static int mod_decode(UNUSED void const *instance, REQUEST *request, UNUSED uint
 	return 0;
 }
 
-static ssize_t mod_read(void const *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len)
+static ssize_t mod_read(void const *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover)
 {
 	proto_radius_udp_t const	*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
 
@@ -184,6 +184,8 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, fr_time_t **rec
 	fr_tracking_status_t		tracking_status;
 	fr_tracking_entry_t		*track;
 	proto_radius_udp_address_t	address;
+
+	*leftover = 0;
 
 	data_size = udp_recv(inst->sockfd, buffer, buffer_len, 0,
 			     &address.src_ipaddr, &address.src_port,
