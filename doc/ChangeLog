@@ -6,6 +6,32 @@ FreeRADIUS 3.0.15 Fri 26 May 2017 13:00:00 EDT urgency=medium
 	* Allow builds without TCP or DHCP
 
 	Bug fixes
+	* Fix multiple issues.  See this web page for details:
+	  http://freeradius.org/security/fuzzer-2017.html
+	* Pass correct statement length into sqlite3_prepare[_v2]
+	* Bind the lifetime of program name and python path to the module
+	* Check input / output length in make_secret().
+	  CVE-2017-10978.
+	* Fix read overflow when decoding DHCP option 63
+	   CVE-2017-10983.
+	* Fix write overflow in data2vp_wimax()
+	  CVE-2017-10984.
+	* Fix infinite loop and memory exhaustion with 'concat' attributes
+	  CVE-2017-10985
+	* Fix infinite read in dhcp_attr2vp()
+	  CVE-2017-10986.
+	* Fix buffer over-read in fr_dhcp_decode_suboptions()
+	  CVE-2017-10987.
+	* use strncmp() instead of memcmp() for bounded data
+	* Decode 'signed' attributes correctly.
+	* print messages when we see deprecated configuration
+	  items
+	* show reasons why we couldn't parse a certificate
+	  expiry time
+	* Fix OpenSSL API issue which could leak small amounts
+	  of memory.  Issue reported by Guido Vranken.
+	* For Access-Reject, call rad_authlog() after running
+	  the post-auth section, just like for Access-Accept.
 	* don't crash when reading corrupted data from session
 	  resumption cache.  Fixes #1999.
 	* Parse port in dhcpclient.  Fixes #2000.
@@ -14,6 +40,7 @@ FreeRADIUS 3.0.15 Fri 26 May 2017 13:00:00 EDT urgency=medium
 	* Portability fixes taken from OpenBSD port collection.
 	* run rad_authlog after post-auth for Access-Reject.
 	* Don't process VMPS packets twice.
+	* Fix attribute truncation in rlm_perl
 
 FreeRADIUS 3.0.14 Fri 26 May 2017 13:00:00 EDT urgency=medium
 	Feature improvements
