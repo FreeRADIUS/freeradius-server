@@ -636,15 +636,7 @@ static int CC_HINT(nonnull) mod_add(rlm_radius_t *inst, rlm_radius_connection_t 
 	link->waiting = false;
 
 	talloc_set_destructor(link, mod_link_free);
-
 	(void) request_data_add(request, c, 0, link, true, true, false);
-
-	if (inst->client_io->write(request, link->request_io_ctx, c->client_io_ctx) < 0) {
-		talloc_free(link);
-		return RLM_MODULE_FAIL;
-	}
-
-	link->waiting = true;
 
 	// @todo - insert max_request_timeout
 	// retransmission timeouts, etc. MUST be handled by the IO handler, which gets REQUEST in it's write() routine
