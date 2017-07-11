@@ -312,7 +312,7 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int f
 	fr_network_socket_t *s = ctx;
 	fr_network_t *nr = talloc_parent(s);
 	ssize_t data_size;
-	fr_channel_data_t *cd;
+	fr_channel_data_t *cd, *next;
 	fr_time_t *recv_time;
 
 	rad_assert(s->listen->app_io->fd(s->listen->app_io_instance) == sockfd);
@@ -343,6 +343,7 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int f
 	 *	network side knows that it needs to close the
 	 *	connection.
 	 */
+next_message:
 	data_size = s->listen->app_io->read(s->listen->app_io_instance, &cd->packet_ctx, &recv_time,
 					    cd->m.data, cd->m.rb_size, &s->leftover);
 	if (data_size == 0) {
@@ -387,11 +388,32 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int f
 	cd->listen = s->listen;
 	cd->request.recv_time = recv_time;
 
-	(void) fr_message_alloc(s->ms, &cd->m, data_size);
+	if (!s->leftover) {
+		(void) fr_message_alloc(s->ms, &cd->m, data_size);
+		next = NULL;
+	} else {
+		/*
+		 *	There are leftover bytes in the buffer, feed
+		 *	them to the next incantation of the module.
+		 */
+		next = (fr_channel_data_t *) fr_message_alloc_reserve(s->ms, &cd->m, data_size, s->listen->default_message_size);
+		if (!next) {
+			fr_log(nr->log, L_ERR, "Failed reserving partial packet.");
+			// @todo - probably close the socket...
+		}
+	}
 
 	if (!fr_network_send_request(nr, cd)) {
 		fr_log(nr->log, L_ERR, "Failed sending packet to worker");
 		fr_message_done(&cd->m);
+	}
+
+	/*
+	 *	If there is a next message, go read it from the buffer.
+	 */
+	if (next) {
+		cd = next;
+		goto next_message;
 	}
 }
 
