@@ -1,3 +1,16 @@
+// @todo - finish it!
+// * track packets in RB tree when writing them
+// * do ID allocation based on packet code
+// * simple: just allow for any type of packet code.  The rlm_radius will take care of giving us
+//   only the codes which are allowed
+// * implement remove(), which removes packets from the tracking tree
+// * don't make request_io_ctx talloc'd from rlm_radius_link_t, as the link can be used
+// * for other connections.  it's simpler to just have one remove() func, than to muck with
+//   more allocations and talloc destructors.
+// * add fd_active / fd_idle callbacks.  They will suppress the 'idle' call in rlm_radius
+// - i.e. if UDP wants to send a Status-Server, it can't be idle...
+// figure out a way to tell rlm_radius that the connection is zombie / alive?
+
 /*
  *   This program is is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
