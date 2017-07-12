@@ -28,6 +28,7 @@ FreeRADIUS 3.0.15 Fri 26 May 2017 13:00:00 EDT urgency=medium
 	  items
 	* show reasons why we couldn't parse a certificate
 	  expiry time
+	* be more accepting about truncated ASN1 times.
 	* Fix OpenSSL API issue which could leak small amounts
 	  of memory.  Issue reported by Guido Vranken.
 	* For Access-Reject, call rad_authlog() after running
