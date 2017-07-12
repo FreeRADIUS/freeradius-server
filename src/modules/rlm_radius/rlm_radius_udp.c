@@ -144,6 +144,10 @@ static int mod_write(REQUEST *request, void *request_ctx, void *io_ctx)
 	// @todo - put the packet into an RB tree, too, so we can find replies...
 	memcpy(&track->header ,io->buffer, 20);
 
+	if (data_size < packet_len) {
+		rad_assert(0 == 1);
+	}
+
 	return 1;
 }
 
