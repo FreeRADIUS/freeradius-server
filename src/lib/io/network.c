@@ -763,6 +763,14 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 		listen = cd->listen;
 
 		/*
+		 *	No data to write to the socket, so we skip it.
+		 */
+		if (!cd->m.data_size) {
+			fr_message_done(&cd->m);
+			continue;
+		}
+
+		/*
 		 *	The write function is responsible for ensuring
 		 *	that NAKs are not written to the network.
 		 */
