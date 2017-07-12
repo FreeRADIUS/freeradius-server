@@ -31,30 +31,25 @@
  */
 typedef fr_connection_state_t (*fr_radius_client_init_t)(int *fd_out, void *io_ctx, void const *uctx);
 
-/** Process a request through a client socket.
- *
- */
-typedef int (*fr_radius_client_process_t)(void *thread, REQUEST *request);
-
 /** Get a printable name for a socket.
  *
  */
-typedef char const *(*fr_radius_client_name_t)(TALLOC_CTX *ctx, void *uctx);
+typedef char const *(*fr_radius_client_name_t)(TALLOC_CTX *ctx, void *io_ctx);
 
 /** Update the FD state to active or idle
  *
  */
-typedef bool (*fr_radius_client_active_t)(void *uctx);
+typedef bool (*fr_radius_client_active_t)(void *io_ctx);
 
 /** Get a REQUEST from a socket
  *
  */
-typedef int (*fr_radius_client_read_t)(REQUEST **p_request, rlm_rcode_t *p_rcode, fr_event_list_t *el, int sock, void *uctx);
+typedef int (*fr_radius_client_read_t)(REQUEST **p_request, rlm_rcode_t *p_rcode, fr_event_list_t *el, int sock, void *io_ctx);
 
 /** Write a REQUEST to a socket.
  *
  */
-typedef int (*fr_radius_client_write_t)(REQUEST *request, void *request_ctx, void *uctx);
+typedef int (*fr_radius_client_write_t)(REQUEST *request, void *request_ctx, void *io_ctx);
 
 /** Flush a socket for writing
  *
