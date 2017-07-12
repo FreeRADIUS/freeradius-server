@@ -26,6 +26,11 @@
  * @copyright 2017 Alan DeKok <aland@freeradius.org>
  */
 
+/** Initialize a RADIUS client socket
+ *
+ */
+typedef fr_connection_state_t (*fr_radius_client_init_t)(int *fd_out, void *io_ctx, void const *uctx);
+
 /** Process a request through a client socket.
  *
  */
@@ -34,7 +39,7 @@ typedef int (*fr_radius_client_process_t)(void *thread, REQUEST *request);
 /** Get a printable name for a socket.
  *
  */
-typedef char *(*fr_radius_client_name_t)(TALLOC_CTX *ctx, void *uctx);
+typedef char const *(*fr_radius_client_name_t)(TALLOC_CTX *ctx, void *uctx);
 
 /** Update the FD state to active or idle
  *
@@ -70,7 +75,7 @@ typedef struct fr_radius_client_io_t {
 	size_t				request_inst_size;	//!< size of the data to allocate per-request.
 
 
-	fr_connection_init_t		init;			//!< initialize a socket using thread instance data
+	fr_radius_client_init_t		init;			//!< initialize a socket using thread instance data
 	fr_connection_open_t		open;			//!< open a socket using thread instance data
 	fr_connection_close_t       	close;			//!< close a socket using thread instance data
 	fr_radius_client_name_t		get_name;	       	//!< get the name of this socket.

@@ -679,7 +679,7 @@ static fr_connection_state_t mod_radius_conn_init(int *fd_out, void *uctx)
 
 	memset(c->client_io_ctx, 0, inst->client_io->io_inst_size);
 
-	return inst->client_io->init(fd_out, c->client_io_ctx);
+	return inst->client_io->init(fd_out, c->client_io_ctx, inst->client_io_instance);
 }
 
 
