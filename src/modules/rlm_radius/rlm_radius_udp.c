@@ -26,15 +26,18 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/io/application.h>
+#include <freeradius-devel/udp.h>
 #include <freeradius-devel/rad_assert.h>
 
 #include "rlm_radius.h"
 
 typedef struct rlm_radius_udp_t {
-	fr_ipaddr_t	dst_ipaddr;		//!< IP of the home server	
+	fr_ipaddr_t	dst_ipaddr;		//!< IP of the home server
 	fr_ipaddr_t	src_ipaddr;		//!< IP we open our socket on
 	uint16_t	dst_port;		//!< port of the home server
 	char const	*secret;		//!< shared secret
+
+	char const	*interface;		//!< Interface to bind to.
 
 	uint32_t	recv_buff;		//!< How big the kernel's receive buffer should be.
 	uint32_t	send_buff;		//!< How big the kernel's send buffer should be.
@@ -59,6 +62,11 @@ typedef struct udp_io_ctx_t {
 	uint32_t		max_packet_size; //!< our max packet size. may be different from the parent...
 	int			fd;		//!< file descriptor
 
+	fr_ipaddr_t		dst_ipaddr;	//!< IP of the home server. stupid 'const' issues..
+	fr_ipaddr_t		src_ipaddr;	//!< my source IP
+	uint16_t	       	src_port;	//!< my source port
+	uint16_t		dst_port;	//!< port of the home server
+
 	// @todo - track status-server, open, signaling, etc.
 
 	// @todo - track outstanding IDs, one per packet code...
@@ -67,6 +75,12 @@ typedef struct udp_io_ctx_t {
 	size_t			buflen;		//!< receive buffer length
 } udp_io_ctx_t;
 
+typedef struct request_ctx_t {
+	uint8_t			header[20];
+
+	// @todo - timers, retransmits, etc
+} request_ctx_t;
+
 
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_IS_SET_OFFSET("ipaddr", FR_TYPE_COMBO_IP_ADDR, rlm_radius_udp_t, dst_ipaddr) },
@@ -74,6 +88,10 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_IS_SET_OFFSET("ipv6addr", FR_TYPE_IPV6_ADDR, rlm_radius_udp_t, dst_ipaddr) },
 
 	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, rlm_radius_udp_t, dst_port) },
+
+	{ FR_CONF_OFFSET("secret", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_radius_udp_t, secret) },
+
+	{ FR_CONF_OFFSET("interface", FR_TYPE_STRING, rlm_radius_udp_t, interface) },
 
 	{ FR_CONF_IS_SET_OFFSET("recv_buff", FR_TYPE_UINT32, rlm_radius_udp_t, recv_buff) },
 	{ FR_CONF_IS_SET_OFFSET("send_buff", FR_TYPE_UINT32, rlm_radius_udp_t, send_buff) },
@@ -89,6 +107,33 @@ static const CONF_PARSER module_config[] = {
 };
 
 
+static int mod_write(REQUEST *request, void *request_ctx, void *io_ctx)
+{
+	udp_io_ctx_t *io = talloc_get_type_abort(io_ctx, udp_io_ctx_t);
+	request_ctx_t *track = (request_ctx_t *) request_ctx; /* not talloc'd */
+	ssize_t packet_len, data_size;
+
+	packet_len = fr_radius_encode(io->buffer, io->buflen, NULL, io->inst->secret, strlen(io->inst->secret),
+				      request->packet->code, 0, request->packet->vps);
+	if (packet_len < 0) {
+		RDEBUG("Failed encoding packet: %s", fr_strerror());
+
+		// @todo - distinguish write errors from encode errors?
+		return -1;
+	}
+
+	data_size = udp_send(io->fd, io->buffer, packet_len, 0,
+			     &io->dst_ipaddr, io->inst->dst_port,
+//			     address->if_index,
+			     0,
+			     &io->src_ipaddr, io->src_port);
+
+	// @todo - put the packet into an RB tree, too, so we can find replies...
+	memcpy(&track->header ,io->buffer, 20);
+
+	return 1;
+}
+
 /** Get a printable name for the socket
  *
  */
@@ -97,16 +142,16 @@ static char const *mod_get_name(TALLOC_CTX *ctx, void *io_ctx)
 	udp_io_ctx_t *io = talloc_get_type_abort(io_ctx, udp_io_ctx_t);
 	char src_buf[FR_IPADDR_STRLEN], dst_buf[FR_IPADDR_STRLEN];
 
-	fr_inet_ntop(dst_buf, sizeof(dst_buf), &io->inst->dst_ipaddr);
+	fr_inet_ntop(dst_buf, sizeof(dst_buf), &io->dst_ipaddr);
 
 	// @todo - make sure to get the local port number we're bound to
 
 	if (fr_ipaddr_is_inaddr_any(&io->inst->src_ipaddr)) {
-		return talloc_asprintf(ctx, "home server %s port %u", dst_buf, io->inst->dst_port);				      
+		return talloc_asprintf(ctx, "home server %s port %u", dst_buf, io->dst_port);
 	}
 
 	fr_inet_ntop(src_buf, sizeof(src_buf), &io->inst->src_ipaddr);
-	return talloc_asprintf(ctx, "from %s to home server %s port %u", src_buf, dst_buf, io->inst->dst_port);
+	return talloc_asprintf(ctx, "from %s to home server %s port %u", src_buf, dst_buf, io->dst_port);
 }
 
 
@@ -164,7 +209,14 @@ static fr_connection_state_t mod_init(int *fd_out, void *io_ctx, void const *uct
 		return FR_CONNECTION_STATE_FAILED;
 	}
 
-	// @todo - make sure to get the local port number we're bound to
+	io->dst_ipaddr = inst->dst_ipaddr;
+	io->dst_port = inst->dst_port;
+	io->src_ipaddr = inst->src_ipaddr;
+
+	if (fr_socket_bind(fd, &io->src_ipaddr, &io->src_port, inst->interface) < 0) {
+		DEBUG("Failed binding RADIUS client UDP socket: %s", fr_strerror());
+		return FR_CONNECTION_STATE_FAILED;
+	}
 
 	// @todo - set recv_buff and send_buff socket options
 
@@ -275,6 +327,7 @@ fr_radius_client_io_t rlm_radius_udp = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "radius_udp",
 	.inst_size	= sizeof(rlm_radius_udp_t),
+	.request_inst_size = sizeof(request_ctx_t),
 	.config		= module_config,
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
@@ -282,8 +335,8 @@ fr_radius_client_io_t rlm_radius_udp = {
 	.open		= mod_open,
 	.close		= mod_close,
 	.get_name	= mod_get_name,
-#if 0
 	.write		= mod_write,
+#if 0
 	.flush		= mod_flush,
 	.remove		= mod_remove,
 	.read		= mod_read,
