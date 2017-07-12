@@ -201,6 +201,41 @@ struct value_box {
 #define fr_box_timeval(_val)			_fr_box(FR_TYPE_TIMEVAL, .vb_timeval, _val)
 /* @} **/
 
+/** Automagically fill in a box, determining the value type from the type of the C variable
+ *
+ * Simplify boxing for simple C types using the _Generic macro to emit code that
+ * fills in the value box based on the type of _var provided.
+ *
+ * @note Will not set the box value to tainted.  You should do this manually if required.
+ *
+ * @note Will not work for all box types.  Will default to the 'simpler' box type, if the mapping
+ *	 between C type and box type is ambiguous.
+ *
+ * @param[in] _box to fill.
+ * @param[in] _field to take value from.
+ */
+#define fr_box_from_cvar_shallow(_box, _var)
+_Generic((_var), \
+	char *		: fr_value_box_strdup_shallow(_box, NULL, _var, false), \
+	char const *	: fr_value_box_strdup_shallow(_box, NULL, _var, false), \
+	uint8_t *	: , \
+	uint8_t const *	: , \
+	fr_ipaddr_t	: , \
+	fr_ipaddr_t *	: , \
+	uint8_t		: , \
+	uint16_t	: , \
+	uint32_t	: , \
+	uint64_t	: , \
+	uint128_t	: , \
+	int8_t		: , \
+	int16_t		: , \
+	int32_t		: , \
+	int64_t		: , \
+	float		: , \
+	double		: , \
+	size_t		: , \
+	struct timeval	:
+)
 /*
  *	Allocation
  */
