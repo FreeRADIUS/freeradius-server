@@ -298,7 +298,7 @@ FR_VALUE_BOX(uint64_t, date_milliseconds, FR_TYPE_DATE_MILLISECONDS)
 FR_VALUE_BOX(uint64_t, date_microseconds, FR_TYPE_DATE_MICROSECONDS)
 FR_VALUE_BOX(uint64_t, date_nanoseconds, FR_TYPE_DATE_NANOSECONDS)
 
-FR_VALUE_BOX(size_t, size, FR_TYPE_SIZE);
+FR_VALUE_BOX(size_t, size, FR_TYPE_SIZE)
 
 /** Automagically fill in a box, determining the value type from the type of the C variable
  *
