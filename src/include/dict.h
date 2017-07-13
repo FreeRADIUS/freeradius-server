@@ -34,6 +34,7 @@
  */
 typedef struct dict_attr fr_dict_attr_t;
 typedef struct fr_dict fr_dict_t;
+extern const FR_NAME_NUMBER dict_attr_types[];	/* Fixme - Should probably move to value.c */
 
 #include <freeradius-devel/value.h>
 
@@ -81,7 +82,6 @@ typedef struct attr_flags {
 	uint8_t			type_size;			//!< For TLV2 and root attributes.
 } fr_dict_attr_flags_t;
 
-extern const FR_NAME_NUMBER dict_attr_types[];
 extern const size_t dict_attr_sizes[FR_TYPE_MAX + 1][2];
 extern fr_dict_t *fr_dict_internal;
 

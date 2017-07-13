@@ -1572,7 +1572,7 @@ int fr_dict_enum_add_alias(fr_dict_attr_t const *da, char const *alias,
 		return -1;
 	}
 	enumv->alias = talloc_typed_strdup(enumv, alias);
-	enum_value = fr_value_box_alloc(enumv, da->type);
+	enum_value = fr_value_box_alloc(enumv, da->type, NULL, false);
 
 	if (da->type != value->type) {
 		if (!coerce) {
