@@ -16,9 +16,8 @@
 #ifndef _FR_APPLICATION_H
 #define _FR_APPLICATION_H
 
-#include <freeradius-devel/cf_util.h>
 #include <freeradius-devel/dl.h>
-#include <freeradius-devel/io/io.h>
+#include <freeradius-devel/value.h>
 
 /**
  * $Id$
@@ -78,8 +77,9 @@ typedef enum {
  *
  */
 typedef enum {
-	PROTO_OPT_APP_NAME = 0
-}
+	PROTO_OPT_PAIRS = 0,				//!< Attribute Value Pairs belonging
+							///< to the application.
+} fr_proto_opt_app_t;
 
 /** Decode a packet header
  *
@@ -90,14 +90,14 @@ typedef enum {
  * about the underlying network transport (e.g. UDP), and it MUST NOT
  * know anything about how the data will be used.
  *
- * @param[out] packet_ctx	populated with information learned from the packet header.
+ * @param[out] proto_ctx	populated with information learned from the packet header.
  * @param[in] data		the raw packet data.
  * @param[in] data_len		the length of the raw data.
  * @return
  *	- >0 the number of bytes consumed.
  *	- <=0 the offset (as a negative integer), of where a parsing error occurred.
  */
-typedef int (*fr_proto_decode_t)(void const *packet_ctx, uint8_t *const data, size_t data_len);
+typedef ssize_t (*fr_proto_decode_t)(void *proto_ctx, uint8_t const *data, size_t data_len);
 
 /** Encode a packet header
  *
@@ -109,7 +109,7 @@ typedef int (*fr_proto_decode_t)(void const *packet_ctx, uint8_t *const data, si
  * know anything about how the data will be used (e.g. reject delay
  * on Access-Reject)
  *
- * @param[in] packet_ctx	as created by #fr_proto_decode_t.
+ * @param[in] proto_ctx	as created by #fr_proto_decode_t.
  * @param[out] buffer		the buffer where the raw packet will be written
  * @param[in] buffer_len	the length of the buffer
  * @return
@@ -117,31 +117,31 @@ typedef int (*fr_proto_decode_t)(void const *packet_ctx, uint8_t *const data, si
  *	  that would have been needed to encode the total packet data.
  *	- >=0 length of the encoded data in the buffer, will be <=buffer_len
  */
-typedef ssize_t (*fr_proto_encode_t)(void const *packet_ctx, uint8_t *buffer, size_t buffer_len);
+typedef ssize_t (*fr_proto_encode_t)(void *proto_ctx, uint8_t *buffer, size_t buffer_len);
 
-/** Invert the src and address fields of a packet_ctx
+/** Invert the src and address fields of a proto_ctx
  *
  * This is used to create a response to a decoded packet.
  *
- * @param[in] packet_ctx	to manipulate.
+ * @param[in] proto_ctx	to manipulate.
  */
-typedef void (*fr_proto_invert_t)(void const *packet_ctx);
+typedef void (*fr_proto_invert_t)(void *proto_ctx);
 
 /** Retrieve a protocol option
  *
- * @param[in] packet_ctx	to retrieve data from.
+ * @param[in] out		boxed value containing the option.
+ * @param[in] proto_ctx		to retrieve data from.
  * @param[in] group		Option group to use.
  * @param[in] opt		to retrieve.
- * @param[in] out		boxed value containing the option.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-typedef int (*fr_proto_get_option_t)(void const *packet_ctx, fr_proto_opt_group_t group, int opt, fr_value_box_t *out);
+typedef int (*fr_proto_get_option_t)(fr_value_box_t *out, void const *proto_ctx, fr_proto_opt_group_t group, int opt);
 
 /** Set a protocol option
  *
- * @param[in] packet_ctx	to set option in.
+ * @param[in] proto_ctx	to set option in.
  * @param[in] group		Option group to use.
  * @param[in] opt		to set.
  * @param[in] in		value to set.
@@ -149,7 +149,7 @@ typedef int (*fr_proto_get_option_t)(void const *packet_ctx, fr_proto_opt_group_
  *	- 0 on success.
  *	- -1 on failure.
  */
-typedef int (*fr_proto_set_option_t)(void *packet_ctx, fr_proto_opt_ctx_t opt_ctx, int opt, fr_value_box_t *in);
+typedef int (*fr_proto_set_option_t)(void *proto_ctx, fr_proto_opt_group_t opt_group, int opt, fr_value_box_t *in);
 
 
 /** The public structure exported by protocol encoding/decoding libraries
@@ -158,22 +158,23 @@ typedef int (*fr_proto_set_option_t)(void *packet_ctx, fr_proto_opt_ctx_t opt_ct
 typedef struct {
 	RAD_MODULE_COMMON;					//!< Common fields to all loadable modules.
 
-	size_t				packet_ctx_size;	//!< Size required for the packet ctx structure.
+	size_t				proto_ctx_size;	//!< Size required for the packet ctx structure.
 
 	fr_proto_opt_group_t		opt_group;		//!< Option groups implemented by proto lib.
 
 	fr_proto_decode_t		decode;			//!< Function to decode a protocol/header.
 	fr_proto_encode_t		encode;			//!< Function to encode a protocol/header.
-	fr_proto_get_option_t		get_option;		//!< Get data from the packet_ctx.
-	fr_proto_set_option_t		set_option;		//!< Set data in the packet_ctx.
-} proto_lib_t;
+	fr_proto_invert_t		invert;
+	fr_proto_get_option_t		get_option;		//!< Get data from the proto_ctx.
+	fr_proto_set_option_t		set_option;		//!< Set data in the proto_ctx.
+} fr_proto_lib_t;
 
 /** A protocol transcoder stack frame
  *
  */
-typedef enum {
-	proto_lib_t const	*proto;				//!< Protocol library.
-	void			*packet_ctx;			//!< Packet ctx produced by the decoder,
+typedef struct {
+	fr_proto_lib_t const	*proto;				//!< Protocol library.
+	void			*proto_ctx;			//!< Packet ctx produced by the decoder,
 								///< or populated for consumption by the
 								///< encoder.
 } fr_proto_stack_frame_t;
@@ -182,8 +183,9 @@ typedef enum {
  *
  * Describes a series of encoders/decoders data must pass through
  */
-typedef enum {
+typedef struct {
 	fr_proto_stack_frame_t	frame[FR_PROTO_STACK_MAX + 1];
 	int			depth;
 } fr_proto_stack_t;
+#endif /* _FR_APPLICATION_H */
 
