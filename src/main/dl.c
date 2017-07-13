@@ -176,7 +176,7 @@ static int dl_handle_cmp(void const *one, void const *two)
 	return strcmp(((dl_t const *)one)->name, ((dl_t const *)two)->name);
 }
 
-/* Call the load() function in a module's exported structure
+/** Call the load() function in a module's exported structure
  *
  * @param[in] dl_module	to call the load function for.
  * @param[in] symbol	UNUSED.
@@ -195,7 +195,7 @@ static int dl_load_func(dl_t const *dl_module, UNUSED void *symbol, UNUSED void 
 	return 0;
 }
 
-/* Call the unload() function in a module's exported structure
+/** Call the unload() function in a module's exported structure
  *
  * @param[in] dl_module	to call the unload function for.
  * @param[in] symbol	UNUSED.
@@ -261,136 +261,6 @@ static int dl_magic_verify(CONF_SECTION const *cs, dl_common_t const *module)
 	}
 
 	return 0;
-}
-
-/** Search for a module's shared object in various locations
- *
- * @param name of module to load.
- */
-static void *dl_by_name(char const *name)
-{
-	int		flags = RTLD_NOW;
-	void		*handle;
-	char		buffer[2048];
-	char		*env;
-	char const	*search_path;
-
-#ifdef RTLD_GLOBAL
-	if (strcmp(name, "rlm_perl") == 0) {
-		flags |= RTLD_GLOBAL;
-	} else
-#endif
-		flags |= RTLD_LOCAL;
-
-#ifndef NDEBUG
-	/*
-	 *	Bind all the symbols *NOW* so we don't hit errors later
-	 */
-	flags |= RTLD_NOW;
-#endif
-
-	/*
-	 *	Apple removed support for DYLD_LIBRARY_PATH in rootless mode.
-	 */
-	env = getenv("FR_LIBRARY_PATH");
-	if (env) {
-		DEBUG3("Ignoring libdir as FR_LIBRARY_PATH set.  Module search path will be: %s", env);
-		search_path = env;
-	} else {
-		search_path = radlib_dir;
-	}
-
-	/*
-	 *	Prefer loading our libraries by absolute path.
-	 */
-	if (search_path) {
-		char *error;
-		char *ctx, *paths, *path;
-		char *p;
-
-		fr_strerror();
-
-		ctx = paths = talloc_strdup(NULL, search_path);
-		while ((path = strsep(&paths, ":")) != NULL) {
-			/*
-			 *	Trim the trailing slash
-			 */
-			p = strrchr(path, '/');
-			if (p && ((p[1] == '\0') || (p[1] == ':'))) *p = '\0';
-
-			path = talloc_asprintf(ctx, "%s/%s%s", path, name, DL_EXTENSION);
-
-			DEBUG4("Loading %s with path: %s", name, path);
-
-			handle = dlopen(path, flags);
-			if (handle) {
-				talloc_free(ctx);
-				return handle;
-			}
-			error = dlerror();
-
-			fr_strerror_printf("%s%s\n", fr_strerror(), error);
-#ifndef __COVERITY__
-			/*
-			 *	There's no version of dlopen() which takes
-			 *	a file descriptor, so no way of fixing
-			 *	this TOCTOU.
-			 */
-			DEBUG4("Loading %s failed: %s - %s", name, error,
-			       (access(path, R_OK) < 0) ? fr_syserror(errno) : "No access errors");
-			talloc_free(path);
-#endif
-		}
-		talloc_free(ctx);
-	}
-
-	DEBUG4("Loading library using linker search path(s)");
-	if (DEBUG_ENABLED4) {
-#ifdef __APPLE__
-
-		env = getenv("LD_LIBRARY_PATH");
-		if (env) {
-			DEBUG4("LD_LIBRARY_PATH            : %s", env);
-		}
-		env = getenv("DYLD_LIBRARY_PATH");
-		if (env) {
-			DEBUG4("DYLB_LIBRARY_PATH          : %s", env);
-		}
-		env = getenv("DYLD_FALLBACK_LIBRARY_PATH");
-		if (env) {
-			DEBUG4("DYLD_FALLBACK_LIBRARY_PATH : %s", env);
-		}
-		env = getcwd(buffer, sizeof(buffer));
-		if (env) {
-			DEBUG4("Current directory          : %s", env);
-		}
-#else
-		env = getenv("LD_LIBRARY_PATH");
-		if (env) {
-			DEBUG4("LD_LIBRARY_PATH  : %s", env);
-		}
-		DEBUG4("Defaults         : /lib:/usr/lib");
-#endif
-	}
-
-	strlcpy(buffer, name, sizeof(buffer));
-	/*
-	 *	FIXME: Make this configurable...
-	 */
-	strlcat(buffer, DL_EXTENSION, sizeof(buffer));
-
-	handle = dlopen(buffer, flags);
-	if (!handle) {
-		char *error = dlerror();
-
-		DEBUG4("Failed with error: %s", error);
-		/*
-		 *	Append the error
-		 */
-		fr_strerror_printf("%s: %s", fr_strerror(), error);
-		return NULL;
-	}
-	return handle;
 }
 
 /** Walk over the registered init callbacks, searching for the symbols they depend on
@@ -639,6 +509,136 @@ static void dl_instance_data_alloc(TALLOC_CTX *ctx, void **data, dl_t const *mod
 	} else {
 		talloc_set_name(*data, "%s", module->common->inst_type);
 	}
+}
+
+/** Search for a module's shared object in various locations
+ *
+ * @param name of module to load.
+ */
+void *dl_by_name(char const *name)
+{
+	int		flags = RTLD_NOW;
+	void		*handle;
+	char		buffer[2048];
+	char		*env;
+	char const	*search_path;
+
+#ifdef RTLD_GLOBAL
+	if (strcmp(name, "rlm_perl") == 0) {
+		flags |= RTLD_GLOBAL;
+	} else
+#endif
+		flags |= RTLD_LOCAL;
+
+#ifndef NDEBUG
+	/*
+	 *	Bind all the symbols *NOW* so we don't hit errors later
+	 */
+	flags |= RTLD_NOW;
+#endif
+
+	/*
+	 *	Apple removed support for DYLD_LIBRARY_PATH in rootless mode.
+	 */
+	env = getenv("FR_LIBRARY_PATH");
+	if (env) {
+		DEBUG3("Ignoring libdir as FR_LIBRARY_PATH set.  Module search path will be: %s", env);
+		search_path = env;
+	} else {
+		search_path = radlib_dir;
+	}
+
+	/*
+	 *	Prefer loading our libraries by absolute path.
+	 */
+	if (search_path) {
+		char *error;
+		char *ctx, *paths, *path;
+		char *p;
+
+		fr_strerror();
+
+		ctx = paths = talloc_strdup(NULL, search_path);
+		while ((path = strsep(&paths, ":")) != NULL) {
+			/*
+			 *	Trim the trailing slash
+			 */
+			p = strrchr(path, '/');
+			if (p && ((p[1] == '\0') || (p[1] == ':'))) *p = '\0';
+
+			path = talloc_asprintf(ctx, "%s/%s%s", path, name, DL_EXTENSION);
+
+			DEBUG4("Loading %s with path: %s", name, path);
+
+			handle = dlopen(path, flags);
+			if (handle) {
+				talloc_free(ctx);
+				return handle;
+			}
+			error = dlerror();
+
+			fr_strerror_printf("%s%s\n", fr_strerror(), error);
+#ifndef __COVERITY__
+			/*
+			 *	There's no version of dlopen() which takes
+			 *	a file descriptor, so no way of fixing
+			 *	this TOCTOU.
+			 */
+			DEBUG4("Loading %s failed: %s - %s", name, error,
+			       (access(path, R_OK) < 0) ? fr_syserror(errno) : "No access errors");
+			talloc_free(path);
+#endif
+		}
+		talloc_free(ctx);
+	}
+
+	DEBUG4("Loading library using linker search path(s)");
+	if (DEBUG_ENABLED4) {
+#ifdef __APPLE__
+
+		env = getenv("LD_LIBRARY_PATH");
+		if (env) {
+			DEBUG4("LD_LIBRARY_PATH            : %s", env);
+		}
+		env = getenv("DYLD_LIBRARY_PATH");
+		if (env) {
+			DEBUG4("DYLB_LIBRARY_PATH          : %s", env);
+		}
+		env = getenv("DYLD_FALLBACK_LIBRARY_PATH");
+		if (env) {
+			DEBUG4("DYLD_FALLBACK_LIBRARY_PATH : %s", env);
+		}
+		env = getcwd(buffer, sizeof(buffer));
+		if (env) {
+			DEBUG4("Current directory          : %s", env);
+		}
+#else
+		env = getenv("LD_LIBRARY_PATH");
+		if (env) {
+			DEBUG4("LD_LIBRARY_PATH  : %s", env);
+		}
+		DEBUG4("Defaults         : /lib:/usr/lib");
+#endif
+	}
+
+	strlcpy(buffer, name, sizeof(buffer));
+	/*
+	 *	FIXME: Make this configurable...
+	 */
+	strlcat(buffer, DL_EXTENSION, sizeof(buffer));
+
+	handle = dlopen(buffer, flags);
+	if (!handle) {
+		char *error = dlerror();
+
+		DEBUG4("Failed with error: %s", error);
+		/*
+		 *	Append the error
+		 */
+		fr_strerror_printf("%s: %s", fr_strerror(), error);
+		return NULL;
+	}
+	return handle;
 }
 
 /** Load a module library using dlopen() or return a previously loaded module from the cache
