@@ -281,22 +281,22 @@ static inline int fr_value_box_##_field(fr_value_box_t *dst, fr_dict_attr_t cons
 }
 
 FR_VALUE_BOX(uint8_t, uint8, FR_TYPE_UINT8)
-FR_VALUE_BOX(uint16_t, uint16, FR_TYPE_UINT16);
-FR_VALUE_BOX(uint32_t, uint32, FR_TYPE_UINT32);
-FR_VALUE_BOX(uint64_t, uint64, FR_TYPE_UINT64);
+FR_VALUE_BOX(uint16_t, uint16, FR_TYPE_UINT16)
+FR_VALUE_BOX(uint32_t, uint32, FR_TYPE_UINT32)
+FR_VALUE_BOX(uint64_t, uint64, FR_TYPE_UINT64)
 
-FR_VALUE_BOX(int8_t, int8, FR_TYPE_INT8);
-FR_VALUE_BOX(int16_t, int16, FR_TYPE_INT16);
-FR_VALUE_BOX(int32_t, int32, FR_TYPE_INT32);
-FR_VALUE_BOX(int64_t, int64, FR_TYPE_INT64);
+FR_VALUE_BOX(int8_t, int8, FR_TYPE_INT8)
+FR_VALUE_BOX(int16_t, int16, FR_TYPE_INT16)
+FR_VALUE_BOX(int32_t, int32, FR_TYPE_INT32)
+FR_VALUE_BOX(int64_t, int64, FR_TYPE_INT64)
 
-FR_VALUE_BOX(float, float32, FR_TYPE_FLOAT32);
-FR_VALUE_BOX(double, float64, FR_TYPE_FLOAT64);
+FR_VALUE_BOX(float, float32, FR_TYPE_FLOAT32)
+FR_VALUE_BOX(double, float64, FR_TYPE_FLOAT64)
 
-FR_VALUE_BOX(uint64_t, date, FR_TYPE_DATE);
-FR_VALUE_BOX(uint64_t, date_milliseconds, FR_TYPE_DATE_MILLISECONDS);
-FR_VALUE_BOX(uint64_t, date_microseconds, FR_TYPE_DATE_MICROSECONDS);
-FR_VALUE_BOX(uint64_t, date_nanoseconds, FR_TYPE_DATE_NANOSECONDS);
+FR_VALUE_BOX(uint64_t, date, FR_TYPE_DATE)
+FR_VALUE_BOX(uint64_t, date_milliseconds, FR_TYPE_DATE_MILLISECONDS)
+FR_VALUE_BOX(uint64_t, date_microseconds, FR_TYPE_DATE_MICROSECONDS)
+FR_VALUE_BOX(uint64_t, date_nanoseconds, FR_TYPE_DATE_NANOSECONDS)
 
 FR_VALUE_BOX(size_t, size, FR_TYPE_SIZE);
 
@@ -363,24 +363,24 @@ static inline int fr_value_unbox_##_field(_ctype *var, fr_value_box_t const *src
 }
 
 FR_VALUE_UNBOX(uint8_t, uint8, FR_TYPE_UINT8)
-FR_VALUE_UNBOX(uint16_t, uint16, FR_TYPE_UINT16);
-FR_VALUE_UNBOX(uint32_t, uint32, FR_TYPE_UINT32);
-FR_VALUE_UNBOX(uint64_t, uint64, FR_TYPE_UINT64);
+FR_VALUE_UNBOX(uint16_t, uint16, FR_TYPE_UINT16)
+FR_VALUE_UNBOX(uint32_t, uint32, FR_TYPE_UINT32)
+FR_VALUE_UNBOX(uint64_t, uint64, FR_TYPE_UINT64)
 
-FR_VALUE_UNBOX(int8_t, int8, FR_TYPE_INT8);
-FR_VALUE_UNBOX(int16_t, int16, FR_TYPE_INT16);
-FR_VALUE_UNBOX(int32_t, int32, FR_TYPE_INT32);
-FR_VALUE_UNBOX(int64_t, int64, FR_TYPE_INT64);
+FR_VALUE_UNBOX(int8_t, int8, FR_TYPE_INT8)
+FR_VALUE_UNBOX(int16_t, int16, FR_TYPE_INT16)
+FR_VALUE_UNBOX(int32_t, int32, FR_TYPE_INT32)
+FR_VALUE_UNBOX(int64_t, int64, FR_TYPE_INT64)
 
-FR_VALUE_UNBOX(float, float32, FR_TYPE_FLOAT32);
-FR_VALUE_UNBOX(double, float64, FR_TYPE_FLOAT64);
+FR_VALUE_UNBOX(float, float32, FR_TYPE_FLOAT32)
+FR_VALUE_UNBOX(double, float64, FR_TYPE_FLOAT64)
 
-FR_VALUE_UNBOX(uint64_t, date, FR_TYPE_DATE);
-FR_VALUE_UNBOX(uint64_t, date_milliseconds, FR_TYPE_DATE_MILLISECONDS);
-FR_VALUE_UNBOX(uint64_t, date_microseconds, FR_TYPE_DATE_MICROSECONDS);
-FR_VALUE_UNBOX(uint64_t, date_nanoseconds, FR_TYPE_DATE_NANOSECONDS);
+FR_VALUE_UNBOX(uint64_t, date, FR_TYPE_DATE)
+FR_VALUE_UNBOX(uint64_t, date_milliseconds, FR_TYPE_DATE_MILLISECONDS)
+FR_VALUE_UNBOX(uint64_t, date_microseconds, FR_TYPE_DATE_MICROSECONDS)
+FR_VALUE_UNBOX(uint64_t, date_nanoseconds, FR_TYPE_DATE_NANOSECONDS)
 
-FR_VALUE_UNBOX(size_t, size, FR_TYPE_SIZE);
+FR_VALUE_UNBOX(size_t, size, FR_TYPE_SIZE)
 
 /** Unbox simple types peforming type checks
  *
