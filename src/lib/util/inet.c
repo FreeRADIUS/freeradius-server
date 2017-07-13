@@ -59,6 +59,29 @@ int fr_ipaddr_is_inaddr_any(fr_ipaddr_t const *ipaddr)
 	return 0;
 }
 
+/** Determine if an address is a prefix
+ *
+ * @param ipaddr to check.
+ * @return
+ *	- 0 if it's not.
+ *	- 1 if it is.
+ *	- -1 on error.
+ */
+int fr_ipaddr_is_prefix(fr_ipaddr_t const *ipaddr)
+{
+	switch (ipaddr->af) {
+	case AF_INET:
+		return (ipaddr->prefix < 32);
+
+	case AF_INET6:
+		return (ipaddr->prefix < 128);
+
+	default:
+		fr_strerror_printf("Unknown address family");
+		return -1;
+	}
+}
+
 /** Mask off a portion of an IPv4 address
  *
  * @param ipaddr to mask.

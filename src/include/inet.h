@@ -90,6 +90,7 @@ extern struct in6_addr fr_inet_link_local6;
  *	Utility functions
  */
 int	fr_ipaddr_is_inaddr_any(fr_ipaddr_t const *ipaddr);
+int	fr_ipaddr_is_prefix(fr_ipaddr_t const *ipaddr);
 
 /*
  *	IP address masking

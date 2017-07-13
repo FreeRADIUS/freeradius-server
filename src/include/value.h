@@ -193,13 +193,51 @@ struct value_box {
 #define fr_box_float64(_val)			_fr_box(FR_TYPE_FLOAT64, .vb_float64, _val)
 
 #define fr_box_date(_val)			_fr_box(FR_TYPE_DATE, .vb_date, _val)
-#define fr_box_date_milliseconds(_val)		_fr_box(FR_TYPE_DATE_MILISECONDS, .vb_date_milliseconds, _val)
+#define fr_box_date_milliseconds(_val)		_fr_box(FR_TYPE_DATE_MILLISECONDS, .vb_date_milliseconds, _val)
 #define fr_box_date_microseconds(_val)		_fr_box(FR_TYPE_DATE_MICROSECONDS, .vb_date_microseconds, _val)
 #define fr_box_date_nanoseconds(_val)		_fr_box(FR_TYPE_DATE_NANOSECONDS, .vb_date_nanoseconds, _val)
 
 #define fr_box_size(_val)			_fr_box(FR_TYPE_SIZE, .vb_size, _val)
 #define fr_box_timeval(_val)			_fr_box(FR_TYPE_TIMEVAL, .vb_timeval, _val)
 /* @} **/
+
+/** @name Value box assignment functions
+ *
+ * These functions allow C values to be assigned to value boxes.
+ * They will work with uninitialised/stack allocated memory.
+ *
+ * @{
+ */
+#define FR_VALUE_BOX_FROM(_ctype, _field, _type) \
+static inline int fr_value_box_from_##_field(fr_value_box_t *dst, fr_dict_attr_t const *enumv, _ctype value, bool tainted) { \
+	dst->type = _type; \
+	dst->vb_##_field = value; \
+	dst->enumv = enumv; \
+	dst->tainted = tainted; \
+	dst->next = NULL; \
+	return 0; \
+}
+
+FR_VALUE_BOX_FROM(uint8_t, uint8, FR_TYPE_UINT8)
+FR_VALUE_BOX_FROM(uint16_t, uint16, FR_TYPE_UINT16);
+FR_VALUE_BOX_FROM(uint32_t, uint32, FR_TYPE_UINT32);
+FR_VALUE_BOX_FROM(uint64_t, uint64, FR_TYPE_UINT64);
+
+FR_VALUE_BOX_FROM(int8_t, int8, FR_TYPE_INT8);
+FR_VALUE_BOX_FROM(int16_t, int16, FR_TYPE_INT16);
+FR_VALUE_BOX_FROM(int32_t, int32, FR_TYPE_INT32);
+FR_VALUE_BOX_FROM(int64_t, int64, FR_TYPE_INT64);
+
+FR_VALUE_BOX_FROM(float, float32, FR_TYPE_FLOAT32);
+FR_VALUE_BOX_FROM(double, float64, FR_TYPE_FLOAT64);
+
+FR_VALUE_BOX_FROM(uint64_t, date, FR_TYPE_DATE);
+FR_VALUE_BOX_FROM(uint64_t, date_milliseconds, FR_TYPE_DATE_MILLISECONDS);
+FR_VALUE_BOX_FROM(uint64_t, date_microseconds, FR_TYPE_DATE_MICROSECONDS);
+FR_VALUE_BOX_FROM(uint64_t, date_nanoseconds, FR_TYPE_DATE_NANOSECONDS);
+
+FR_VALUE_BOX_FROM(size_t, size, FR_TYPE_SIZE);
+FR_VALUE_BOX_FROM(struct timeval, timeval, FR_TYPE_TIMEVAL);
 
 /** Automagically fill in a box, determining the value type from the type of the C variable
  *
@@ -211,31 +249,32 @@ struct value_box {
  * @note Will not work for all box types.  Will default to the 'simpler' box type, if the mapping
  *	 between C type and box type is ambiguous.
  *
- * @param[in] _box to fill.
- * @param[in] _field to take value from.
+ * @param[in] _box	to assign value to.
+ * @param[in] _var	C variable to assign value from.
  */
-#define fr_box_from_cvar_shallow(_box, _var)
+#define fr_box_from_cvar_shallow(_box, _var) \
 _Generic((_var), \
-	char *		: fr_value_box_strdup_shallow(_box, NULL, _var, false), \
-	char const *	: fr_value_box_strdup_shallow(_box, NULL, _var, false), \
-	uint8_t *	: , \
-	uint8_t const *	: , \
-	fr_ipaddr_t	: , \
-	fr_ipaddr_t *	: , \
-	uint8_t		: , \
-	uint16_t	: , \
-	uint32_t	: , \
-	uint64_t	: , \
-	uint128_t	: , \
-	int8_t		: , \
-	int16_t		: , \
-	int32_t		: , \
-	int64_t		: , \
-	float		: , \
-	double		: , \
-	size_t		: , \
-	struct timeval	:
+	char *		: fr_value_box_strdup_buffer_shallow(_box, NULL, (_var), false), \
+	char const *	: fr_value_box_strdup_buffer_shallow(_box, NULL, (_var), false), \
+	uint8_t *	: fr_value_box_memdup_buffer_shallow(_box, NULL, (_var), false), \
+	uint8_t const *	: fr_value_box_memdup_buffer_shallow(_box, NULL, (_var), false), \
+	fr_ipaddr_t	: fr_value_box_from_ipaddr(_box, NULL, &(_var), false), \
+	fr_ipaddr_t *	: fr_value_box_from_ipaddr(_box, NULL, (_var), false), \
+	uint8_t		: fr_value_box_from_uint8(_box, NULL, (_var), false), \
+	uint16_t	: fr_value_box_from_uint16(_box, NULL, (_var), false), \
+	uint32_t	: fr_value_box_from_uint32(_box, NULL, (_var), false), \
+	uint64_t	: fr_value_box_from_uint64(_box, NULL, (_var), false), \
+	int8_t		: fr_value_box_from_int8(_box, NULL, (_var), false), \
+	int16_t		: fr_value_box_from_int16(_box, NULL, (_var), false), \
+	int32_t		: fr_value_box_from_int32(_box, NULL, (_var), false), \
+	int64_t		: fr_value_box_from_int64(_box, NULL, (_var), false), \
+	float		: fr_value_box_from_float32(_box, NULL, (_var), false), \
+	double		: fr_value_box_from_float64(_box, NULL, (_var), false), \
+	size_t		: fr_value_box_from_size(_box, NULL, (_var), false), \
+	struct timeval	: fr_value_box_from_timeval(_box, NULL, (_var), false) \
 )
+/* @} **/
+
 /*
  *	Allocation
  */

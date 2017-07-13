@@ -2180,33 +2180,13 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
  */
 int fr_value_box_from_ipaddr(fr_value_box_t *dst, fr_dict_attr_t const *enumv, fr_ipaddr_t const *ipaddr, bool tainted)
 {
-	fr_type_t type;
-
 	switch (ipaddr->af) {
 	case AF_INET:
-		if (ipaddr->prefix > 32) {
-			fr_strerror_printf("Invalid IPv6 prefix length %i", ipaddr->prefix);
-			return -1;
-		}
-
-		if (ipaddr->prefix == 32) {
-			type = FR_TYPE_IPV4_ADDR;
-		} else {
-			type = FR_TYPE_IPV4_PREFIX;
-		}
+		dst->type = (fr_ipaddr_is_prefix(ipaddr) == 1) ? FR_TYPE_IPV4_PREFIX : FR_TYPE_IPV4_ADDR;
 		break;
 
 	case AF_INET6:
-		if (ipaddr->prefix > 128) {
-			fr_strerror_printf("Invalid IPv6 prefix length %i", ipaddr->prefix);
-			return -1;
-		}
-
-		if (ipaddr->prefix == 128) {
-			type = FR_TYPE_IPV6_ADDR;
-		} else {
-			type = FR_TYPE_IPV6_PREFIX;
-		}
+		dst->type = (fr_ipaddr_is_prefix(ipaddr) == 1) ? FR_TYPE_IPV6_PREFIX : FR_TYPE_IPV6_ADDR;
 		break;
 
 	default:
@@ -2214,10 +2194,10 @@ int fr_value_box_from_ipaddr(fr_value_box_t *dst, fr_dict_attr_t const *enumv, f
 		return -1;
 	}
 
-	dst->type = type;
-	dst->tainted = tainted;
-	dst->vb_ip = *ipaddr;
+	memcpy(&dst->vb_ip, ipaddr, sizeof(dst->vb_ip));
+
 	dst->enumv = enumv;
+	dst->tainted = tainted;
 	dst->next = NULL;
 
 	return 0;
