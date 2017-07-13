@@ -348,6 +348,11 @@ ATTRIBUTE	LDAP-Sync-Entry-UUID			8	octets
 END-TLV		LDAP-Sync-TLV
 
 #
+# 	Consumes attribute 1194
+#
+$INCLUDE dictionary.ethernet
+
+#
 #	Range:	1200-1210
 #
 #	SIM attributes.  These do not belong to either EAP-AKA or EAP-SIM
