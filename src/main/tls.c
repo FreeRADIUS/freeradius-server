@@ -1454,7 +1454,7 @@ static int ocsp_asn1time_to_epoch(time_t *out, char const *asn1)
 
 	memset(&t, 0, sizeof(t));
 
-	if ((end - p) <= 12) {
+	if ((end - p) <= 13) {
 		if ((end - p) < 2) {
 			fr_strerror_printf("ASN1 date string too short, expected 2 additional bytes, got %zu bytes",
 					   end - p);
