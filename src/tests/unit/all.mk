@@ -6,9 +6,22 @@
 #  The files are put here in order.  Later tests need
 #  functionality from earlier tests.
 #
-FILES  := rfc.txt errors.txt extended.txt lucent.txt wimax.txt \
-	escape.txt condition.txt xlat.txt vendor.txt dhcp.txt \
-	tlv.txt tunnel.txt dict.txt regex.txt
+FILES  := \
+	rfc.txt \
+	errors.txt \
+	extended.txt \
+	lucent.txt \
+	wimax.txt \
+	escape.txt \
+	condition.txt \
+	xlat.txt \
+	vendor.txt \
+	dhcp.txt \
+	tlv.txt \
+	tunnel.txt \
+	dict.txt \
+	regex.txt \
+	ethernet.txt
 
 #
 #  Create the output directory

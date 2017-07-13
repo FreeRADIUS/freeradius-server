@@ -35,6 +35,7 @@ typedef struct REQUEST REQUEST;
 #include <freeradius-devel/radpaths.h>
 #include <freeradius-devel/dhcpv4/dhcpv4.h>
 #include <freeradius-devel/cf_parse.h>
+#include <freeradius-devel/io/proto.h>
 
 #ifdef WITH_TACACS
 #include "../modules/proto_tacacs/tacacs.h"
@@ -81,6 +82,9 @@ static RADIUS_PACKET my_packet = {
 
 
 static char *my_secret = NULL;
+
+static char proto_name_prev[128];
+static void *dl_handle, *dl_symbol;
 
 /*
  *	End of hacks for xlat
@@ -571,7 +575,58 @@ static void parse_xlat(char const *input, char *output, size_t outlen)
 	talloc_free(fmt);
 }
 
-static void process_file(fr_dict_t *dict, const char *root_dir, char const *filename)
+static int load_proto_library(void **handle, void **symbol, char *proto_name)
+{
+	char dl_name[128];
+	char *p;
+
+	if (strcmp(proto_name_prev, proto_name) == 0) {
+		if (handle) *handle = dl_handle;
+		if (symbol) *symbol = dl_symbol;
+		return 0;
+	}
+
+	snprintf(dl_name, sizeof(dl_name), "libfreeradius-%s", proto_name);
+	if (dl_handle) {
+		dlclose(dl_handle);
+		dl_handle = NULL;
+	}
+
+	dl_handle = dl_by_name(dl_name);
+	if (!dl_handle) {
+		fprintf(stderr, "Failed to link to library \"%s\": %s\n", dl_name, fr_strerror());
+		return -1;
+	}
+
+
+	/*
+	 *	Can't have '-' in variable names.
+	 */
+	for (p = dl_name; *p; p++) if (*p == '-') *p = '_';
+
+	dl_symbol = dlsym(dl_handle, dl_name);
+	if (!dl_symbol) {
+		fprintf(stderr, "Symbol \"%s\" not exported by library\n", dl_name);
+		dlclose(dl_handle);
+		return -1;
+	}
+
+	if (handle) *handle = dl_handle;
+	if (symbol) *symbol = dl_symbol;
+
+	return 0;
+}
+
+static void unload_proto_library(void)
+{
+	if (dl_handle) {
+		dl_symbol = NULL;
+		dlclose(dl_handle);
+		dl_handle = NULL;
+	}
+}
+
+static void process_file(UNUSED fr_dict_t *dict, const char *root_dir, char const *filename)
 {
 	int		lineno;
 	size_t		i, outlen;
@@ -581,6 +636,8 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 	char		output[8192];
 	char		directory[8192];
 	uint8_t		*attr, data[2048];
+
+
 
 	if (strcmp(filename, "-") == 0) {
 		fp = stdin;
@@ -609,9 +666,9 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 	data_len = 0;
 
 	while (fgets(buffer, sizeof(buffer), fp) != NULL) {
-		char *p = strchr(buffer, '\n'), *q;
-		char test_type[128];
-		VALUE_PAIR *vp, *head = NULL;
+		char			*p = strchr(buffer, '\n'), *q;
+		char			test_type[128];
+		VALUE_PAIR		*vp, *head = NULL;
 
 		lineno++;
 
@@ -1020,12 +1077,34 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 			continue;
 		}
 
+		/*
+		 *	Generic decode test point
+		 */
+		if (strncmp(test_type, "decode-", 7)) {
+			fr_proto_lib_t *lib;
+
+			if (load_proto_library(NULL, (void **)&lib, test_type + 7) < 0) exit(EXIT_FAILURE);
+			continue;
+		}
+
+		/*
+		 *	Generic encode test point
+		 */
+		if (strncmp(test_type, "encode-", 7)) {
+			fr_proto_lib_t *lib;
+
+			if (load_proto_library(NULL, (void **)&lib, test_type + 7) < 0) exit(EXIT_FAILURE);
+			continue;
+		}
+
 		fprintf(stderr, "Unknown input at line %d of %s\n", lineno, directory);
 
 		exit(1);
 	}
 
 	if (fp != stdin) fclose(fp);
+
+	unload_proto_library();	/* Cleanup */
 }
 
 static void NEVER_RETURNS usage(void)
