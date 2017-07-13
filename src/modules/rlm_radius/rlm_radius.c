@@ -232,7 +232,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
 #endif
 
 // @todo - pass in REQUEST, or maybe request_io_ctx, so we can store these numbers in the rlm_link_t?
-bool rlm_radius_update_delay(struct timeval *start, uint32_t *rt, uint32_t *count, int code, void *client_io_ctx)
+bool rlm_radius_update_delay(struct timeval *start, uint32_t *rt, uint32_t *count, int code, void *client_io_ctx, struct timeval *now)
 {
 	uint32_t delay, frac;
 	rlm_radius_retry_t const *retry;
@@ -275,13 +275,13 @@ bool rlm_radius_update_delay(struct timeval *start, uint32_t *rt, uint32_t *coun
 	/*
 	 *	Cap delay at MRD
 	 */
-	if (retry->mrd) {
-		struct timeval now, end;
-		gettimeofday(&now, NULL);
+	if (now && retry->mrd) {
+		struct timeval end;
+
 		end = *start;
 		end.tv_sec += retry->mrd;
 
-		if (timercmp(&now, &end, >=)) {
+		if (timercmp(now, &end, >=)) {
 			return false;
 		}
 	}

@@ -87,6 +87,6 @@ typedef struct fr_radius_client_io_t {
 /*
  *	So transports can calculate retransmission timers.
  */
-bool rlm_radius_update_delay(struct timeval *start, uint32_t *rt, uint32_t *count, int code, void *client_io_ctx);
+bool rlm_radius_update_delay(struct timeval *start, uint32_t *rt, uint32_t *count, int code, void *client_io_ctx, struct timeval *now);
 
 #endif	/* _RLM_RADIUS_H */
