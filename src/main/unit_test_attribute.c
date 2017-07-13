@@ -609,7 +609,8 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 	data_len = 0;
 
 	while (fgets(buffer, sizeof(buffer), fp) != NULL) {
-		char *p = strchr(buffer, '\n');
+		char *p = strchr(buffer, '\n'), *q;
+		char test_type[128];
 		VALUE_PAIR *vp, *head = NULL;
 
 		lineno++;
@@ -639,7 +640,15 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 
 		strlcpy(input, p, sizeof(input));
 
-		if (strncmp(p, "raw ", 4) == 0) {
+		q = strchr(p, ' ');
+		if ((size_t)(q - p) > (sizeof(test_type) - 1)) {
+			fprintf(stderr, "Verb \"%.*s\" is too long\n", (int)(q - p), p);
+			exit(1);
+		}
+
+		strlcpy(test_type, p, (q - p) + 1);
+
+		if (strcmp(test_type, "raw") == 0) {
 			outlen = encode_rfc(p + 4, data, sizeof(data));
 			if (outlen == 0) {
 				fprintf(stderr, "Parse error in line %d of %s\n",
@@ -669,7 +678,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 			continue;
 		}
 
-		if (strncmp(p, "data ", 5) == 0) {
+		if (strcmp(test_type, "data") == 0) {
 			if (strcmp(p + 5, output) != 0) {
 				fprintf(stderr, "Mismatch at line %d of %s\n\tgot      : %s\n\texpected : %s\n",
 					lineno, directory, output, p + 5);
@@ -678,7 +687,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 			continue;
 		}
 
-		if (strncmp(p, "encode ", 7) == 0) {
+		if (strcmp(test_type, "encode") == 0) {
 			vp_cursor_t cursor;
 			fr_radius_ctx_t encoder_ctx = { .vector = my_packet.vector,
 							.secret = my_secret };
@@ -716,7 +725,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 			goto print_hex;
 		}
 
-		if (strncmp(p, "decode ", 7) == 0) {
+		if (strcmp(test_type, "decode") == 0) {
 			ssize_t		my_len;
 			vp_cursor_t 	cursor;
 			fr_radius_ctx_t decoder_ctx = { .vector = my_packet.vector,
@@ -782,7 +791,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 		/*
 		 *	And some DHCP tests
 		 */
-		if (strncmp(p, "encode-dhcp ", 12) == 0) {
+		if (strcmp(test_type, "encode-dhcp") == 0) {
 			vp_cursor_t cursor;
 
 			if (strcmp(p + 12, "-") == 0) {
@@ -814,7 +823,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 			goto print_hex;
 		}
 
-		if (strncmp(p, "decode-dhcp ", 12) == 0) {
+		if (strcmp(test_type, "decode-dhcp") == 0) {
 			vp_cursor_t cursor;
 			ssize_t my_len = 0;
 
@@ -885,7 +894,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 		/*
 		 *	And some TACACS tests
 		 */
-		if (strncmp(p, "encode-tacacs ", 14) == 0) {
+		if (strcmp(test_type, "encode-tacacs") == 0) {
 			RADIUS_PACKET *packet = talloc(NULL, RADIUS_PACKET);
 
 			if (strcmp(p + 14, "-") == 0) {
@@ -915,7 +924,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 			goto print_hex;
 		}
 
-		if (strncmp(p, "decode-tacacs ", 14) == 0) {
+		if (strcmp(test_type, "decode-tacacs") == 0) {
 			vp_cursor_t cursor;
 			RADIUS_PACKET *packet = talloc(NULL, RADIUS_PACKET);
 
@@ -959,7 +968,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 		}
 #endif	/* WITH_TACACS */
 
-		if (strncmp(p, "attribute ", 10) == 0) {
+		if (strcmp(test_type, "attribute") == 0) {
 			p += 10;
 
 			if (fr_pair_list_afrom_str(NULL, p, &head) != T_EOL) {
@@ -972,7 +981,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 			continue;
 		}
 
-		if (strncmp(p, "dictionary ", 11) == 0) {
+		if (strcmp(test_type, "dictionary") == 0) {
 			p += 11;
 
 			if (fr_dict_parse_str(dict, p, fr_dict_root(dict), 0) < 0) {
@@ -984,9 +993,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 			continue;
 		}
 
-		if (strncmp(p, "$INCLUDE ", 9) == 0) {
-			char *q;
-
+		if (strcmp(test_type, "$INCLUDE") == 0) {
 			p += 9;
 			while (isspace((int) *p)) p++;
 
@@ -1001,20 +1008,20 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 			continue;
 		}
 
-		if (strncmp(p, "condition ", 10) == 0) {
+		if (strcmp(test_type, "condition") == 0) {
 			p += 10;
 			parse_condition(p, output, sizeof(output));
 			continue;
 		}
 
-		if (strncmp(p, "xlat ", 5) == 0) {
+		if (strcmp(test_type, "xlat") == 0) {
 			p += 5;
 			parse_xlat(p, output, sizeof(output));
 			continue;
 		}
 
-		fprintf(stderr, "Unknown input at line %d of %s\n",
-			lineno, directory);
+		fprintf(stderr, "Unknown input at line %d of %s\n", lineno, directory);
+
 		exit(1);
 	}
 
