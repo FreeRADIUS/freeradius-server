@@ -215,28 +215,6 @@ size_t const fr_value_box_offsets[] = {
 	[FR_TYPE_MAX]				= 0	//!< Ensure array covers all types.
 };
 
-/** Allocate a value box of a specific type
- *
- * Allocates memory for the box, and sets the length of the value
- * for fixed length types.
- *
- * @param[in] ctx	to allocate the value_box in.
- * @param[in] type	of value.
- * @return
- *	- A new fr_value_box_t.
- *	- NULL on error.
- */
-fr_value_box_t *fr_value_box_alloc(TALLOC_CTX *ctx, fr_type_t type)
-{
-	fr_value_box_t *value;
-
-	value = talloc_zero(ctx, fr_value_box_t);
-	if (!value) return NULL;
-	value->type = type;
-
-	return value;
-}
-
 /** Clear/free any existing value
  *
  * @note Do not use on uninitialised memory.
@@ -2178,15 +2156,17 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_value_box_from_ipaddr(fr_value_box_t *dst, fr_dict_attr_t const *enumv, fr_ipaddr_t const *ipaddr, bool tainted)
+int fr_value_box_ipaddr(fr_value_box_t *dst, fr_dict_attr_t const *enumv, fr_ipaddr_t const *ipaddr, bool tainted)
 {
+	fr_type_t type;
+
 	switch (ipaddr->af) {
 	case AF_INET:
-		dst->type = (fr_ipaddr_is_prefix(ipaddr) == 1) ? FR_TYPE_IPV4_PREFIX : FR_TYPE_IPV4_ADDR;
+		type = (fr_ipaddr_is_prefix(ipaddr) == 1) ? FR_TYPE_IPV4_PREFIX : FR_TYPE_IPV4_ADDR;
 		break;
 
 	case AF_INET6:
-		dst->type = (fr_ipaddr_is_prefix(ipaddr) == 1) ? FR_TYPE_IPV6_PREFIX : FR_TYPE_IPV6_ADDR;
+		type = (fr_ipaddr_is_prefix(ipaddr) == 1) ? FR_TYPE_IPV6_PREFIX : FR_TYPE_IPV6_ADDR;
 		break;
 
 	default:
@@ -2194,11 +2174,33 @@ int fr_value_box_from_ipaddr(fr_value_box_t *dst, fr_dict_attr_t const *enumv, f
 		return -1;
 	}
 
+	fr_value_box_init(dst, type, enumv, tainted);
 	memcpy(&dst->vb_ip, ipaddr, sizeof(dst->vb_ip));
 
-	dst->enumv = enumv;
-	dst->tainted = tainted;
-	dst->next = NULL;
+	return 0;
+}
+
+/** Unbox an IP address performing a type check
+ *
+ * @param[out] dst	Where to copy the IP address to.
+ * @param[in] src	Where to copy the IP address from.
+ * @return
+ *	- 0 on success.
+ *	- -1 on type mismatch.
+ */
+int fr_value_unbox_ipaddr(fr_ipaddr_t *dst, fr_value_box_t *src)
+{
+	switch (src->type) {
+	case FR_TYPE_IP:
+		break;
+
+	default:
+		fr_strerror_printf("Unboxing failed.  Needed IPv4/6 addr/prefix, had type %s",
+				   fr_int2str(dict_attr_types, src->type, "?Unknown?"));
+		return -1;
+	}
+
+	memcpy(dst, &src->vb_ip, sizeof(*dst));
 
 	return 0;
 }
@@ -2453,7 +2455,7 @@ int fr_value_box_strdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_att
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_value_box_strsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+int fr_value_box_from_strsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 			  char *src, bool tainted)
 {
 	size_t	len;
