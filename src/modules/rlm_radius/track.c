@@ -341,3 +341,16 @@ rlm_radius_request_t *rr_track_find(rlm_radius_id_t *id, int packet_id, uint8_t 
 
 	return rr;
 }
+
+
+/** Use Request Authenticator (or not) as an Identifier
+ *
+ * @param id		The rlm_radius_id_t tracking table
+ * @param flag		Whether or not to use it.
+ */
+void rr_track_use_authenticator(rlm_radius_id_t *id, bool flag)
+{
+	(void) talloc_get_type_abort(id, rlm_radius_id_t);
+
+	id->use_authenticator = flag;
+}

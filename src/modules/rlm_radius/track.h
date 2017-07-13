@@ -63,5 +63,6 @@ rlm_radius_request_t *rr_track_alloc(rlm_radius_id_t *id, REQUEST *request) CC_H
 int rr_track_update(rlm_radius_id_t *id, rlm_radius_request_t *rr, uint8_t *vector) CC_HINT(nonnull);
 rlm_radius_request_t *rr_track_find(rlm_radius_id_t *id, int packet_id, uint8_t *vector) CC_HINT(nonnull(1));
 int rr_track_delete(rlm_radius_id_t *id, rlm_radius_request_t *rr);
+void rr_track_use_authenticator(rlm_radius_id_t *id, bool flag);
 
 #endif	/* _RLM_RADIUS_TRACK_H */
