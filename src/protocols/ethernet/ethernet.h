@@ -23,6 +23,8 @@
  *
  * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
+#include <stdint.h>
+#include <stddef.h>
 
 /*
  *	The number of bytes in an ethernet (MAC) address.
@@ -55,7 +57,7 @@
  *			whether this packet should be dropped in case of congestion.
  * @param[in] _vid	12 bit VLAN identifier.
  */
-#define VLAN_TCI_PACK(_pcp, _dei, _vid)	htons((((_pcp) & 0xe0) << 13) | (((_dei) & 0x01) << 12) | ((_vid) & 0x0fff))
+#define VLAN_TCI_PACK(_pcp, _dei, _vid)	htons((((uint16_t)(_pcp) & 0xe0) << 13) | (((uint16_t)(_dei) & 0x01) << 12) | ((_vid) & 0x0fff))
 
 /** A VLAN header
  *
@@ -87,15 +89,17 @@ typedef struct {
 	uint16_t	ether_type;		//!< Ether type.  Usually 0x0800 (IPv4) 0x086DD (IPv6).
 
 	uint16_t	cvlan_tpid;		//!< CVLAN tag type.  If 0, no CVLAN/SVLAN present.
-	uint16_t	cvlan_pcp : 3;		//!< CVLAN priority code point 0-6.
-	uint16_t	cvlan_dei : 1;		//!< CVLAN drop eligible indicator.
-	uint16_t	cvlan_vid : 12;		//!< CVLAN vlan ID.
+	uint8_t		cvlan_pcp;		//!< CVLAN priority code point 0-6.
+	uint8_t		cvlan_dei;		//!< CVLAN drop eligible indicator.
+	uint16_t	cvlan_vid;		//!< CVLAN vlan ID.
 
 	uint16_t	svlan_tpid;		//!< SVLAN tag type.  If 0, no SVLAN present.
-	uint16_t	svlan_pcp : 3;		//!< SVLAN priority code point 0-6.
-	uint16_t	svlan_dei : 1;		//!< SVLAN drop eligible indicator.
-	uint16_t	svlan_vid : 12;		//!< SVLAN vlan ID.
-} fr_ethernet_packet_ctx_t;
+	uint8_t		svlan_pcp;		//!< SVLAN priority code point 0-6.
+	uint8_t		svlan_dei;		//!< SVLAN drop eligible indicator.
+	uint16_t	svlan_vid;		//!< SVLAN vlan ID.
+
+	size_t		payload_len;		//!< Remaining bytes after the ethernet header has been parsed.
+} fr_ethernet_proto_ctx_t;
 
 /** Protocol options for ethernet
  *

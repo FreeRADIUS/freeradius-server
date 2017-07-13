@@ -20,6 +20,10 @@
  *
  * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
+#include "ethernet.h"
+#include <string.h>
+#include <arpa/inet.h>
+#include <freeradius-devel/io/proto.h>
 
 /** Decodes an ethernet header with up to two levels of VLAN nesting
  *
@@ -27,7 +31,7 @@
  * ether_type field, it's just easier to munge it together with the ethernet
  * decoder.
  *
- * @param[out] ctx		Header information extracted from the ethernet frame,
+ * @param[out] proto_ctx	Header information extracted from the ethernet frame,
  *				and any additional VLAN tags discovered.
  *				Must point to memory of the size indicated by the
  *				#fr_proto_lib_t struct exported by this library.
@@ -37,26 +41,25 @@
  *	- >0 Length of the header.
  *	- <=0 on failure.
  */
-ssize_t fr_ethernet_decode(void *packet_ctx, uint8_t const *data, size_t data_len)
+static ssize_t fr_ethernet_decode(void *proto_ctx, uint8_t const *data, size_t data_len)
 {
 	uint8_t const			*p = data, *end = p + data_len;
-	ethernet_header_t const 	ether_hdr = (void const *)p;
+	ethernet_header_t const 	*ether_hdr = (void const *)p;
 	vlan_header_t const		*vlan_hdr;
 	int				i = 0;
 	uint16_t			ether_type;
-	fr_ethernet_packet_ctx_t	*out = packet_ctx;
-
-	memset(out, 0, sizeof(*out));
+	fr_ethernet_proto_ctx_t	*ether_ctx = proto_ctx;
 
 	p += sizeof(*ether_hdr);
 	if (unlikely(p >= end)) {
+	ood:
 		fr_strerror_printf("Ethernet header length (%zu bytes) is greater than remaining "
 				   "data in buffer (%zu bytes)", sizeof(*ether_hdr), data_len);
 		return 0;
 	}
 
-	memcpy(out->dst_addr, ether_hdr->dst_addr, sizeof(out->dst_addr));
-	memcpy(out->src_addr, ether_hdr->src_addr, sizeof(out->src_addr));
+	memcpy(ether_ctx->dst_addr, ether_hdr->dst_addr, sizeof(ether_ctx->dst_addr));
+	memcpy(ether_ctx->src_addr, ether_hdr->src_addr, sizeof(ether_ctx->src_addr));
 	ether_type = ntohs(ether_hdr->ether_type);
 
 	p -= sizeof(ether_hdr->ether_type);	/* reverse */
@@ -83,15 +86,22 @@ ssize_t fr_ethernet_decode(void *packet_ctx, uint8_t const *data, size_t data_le
 	}
 	vlan_hdr = (void const *)p;		/* reset */
 
+	/*
+	 *	We don't explicitly memset the ctx
+	 *	so se these to zero now.
+	 */
+	ether_ctx->svlan_tpid = 0;
+	ether_ctx->cvlan_tpid = 0;
+
 	switch (i) {
 	/*
 	 *	SVLAN
 	 */
 	case 2:
-		out->svlan_tpid = ntohs(vlan_hdr->tag_type);
-		out->svlan_pcp = VLAN_PCP(vlan_hdr);
-		out->svlan_dei = VLAN_DEI(vlan_hdr);
-		out->svlan_vid = VLAN_VID(vlan_hdr);
+		ether_ctx->svlan_tpid = ntohs(vlan_hdr->tag_type);
+		ether_ctx->svlan_pcp = VLAN_PCP_UNPACK(vlan_hdr);
+		ether_ctx->svlan_dei = VLAN_DEI_UNPACK(vlan_hdr);
+		ether_ctx->svlan_vid = VLAN_VID_UNPACK(vlan_hdr);
 		vlan_hdr++;
 		/* FALL-THROUGH */
 
@@ -99,10 +109,10 @@ ssize_t fr_ethernet_decode(void *packet_ctx, uint8_t const *data, size_t data_le
 	 *	CVLAN
 	 */
 	case 1:
-		out->cvlan_tpid = ntohs(vlan_hdr->tag_type);
-		out->cvlan_pcp = VLAN_PCP(vlan_hdr);
-		out->cvlan_dei = VLAN_DEI(vlan_hdr);
-		out->cvlan_vid = VLAN_VID(vlan_hdr);
+		ether_ctx->cvlan_tpid = ntohs(vlan_hdr->tag_type);
+		ether_ctx->cvlan_pcp = VLAN_PCP_UNPACK(vlan_hdr);
+		ether_ctx->cvlan_dei = VLAN_DEI_UNPACK(vlan_hdr);
+		ether_ctx->cvlan_vid = VLAN_VID_UNPACK(vlan_hdr);
 		vlan_hdr++;
 		/* FALL-THROUGH */
 
@@ -110,7 +120,7 @@ ssize_t fr_ethernet_decode(void *packet_ctx, uint8_t const *data, size_t data_le
 	 *	Naked
 	 */
 	case 0:
-		out->ether_type = ether_type;	/* Always ends up being the payload type */
+		ether_ctx->ether_type = ether_type;	/* Always ends up being the payload type */
 		break;
 
 	default:
@@ -119,12 +129,14 @@ ssize_t fr_ethernet_decode(void *packet_ctx, uint8_t const *data, size_t data_le
 	}
 	p = ((uint8_t const *)vlan_hdr) + sizeof(ether_hdr->ether_type);
 
+	ether_ctx->payload_len = data_len - (p - data);
+
 	return p - data;
 }
 
 /** Encodes an ethernet header and up to two levels of VLAN nesting
  *
- * @param[in] ctx	produced by #fr_ethernet_decode, or by the code
+ * @param[in] proto_ctx	produced by #fr_ethernet_decode, or by the code
  *			creating a new packet.
  * @param[out] data	Where to write output data.
  * @param[in] data_len	Length of the output buffer.
@@ -133,13 +145,13 @@ ssize_t fr_ethernet_decode(void *packet_ctx, uint8_t const *data, size_t data_le
  *	- 0 an error occurred.
  *	- <0 The amount of buffer space we would have needed (as a negative integer).
  */
-ssize_t fr_ethernet_encode(void *packet_ctx, uint8_t *data, size_t data_len)
+static ssize_t fr_ethernet_encode(void *proto_ctx, uint8_t *data, size_t data_len)
 {
-	fr_ethernet_packet_ctx_t	*ether_ctx = packet_ctx;
+	fr_ethernet_proto_ctx_t	*ether_ctx = proto_ctx;
 
-	uint8_t				*p = data, *end = p + data_len;
+	uint8_t			*p = data, *end = p + data_len;
 
-	ethernet_header_t const 	ether_hdr = (void *)p;
+	ethernet_header_t 	*ether_hdr = (void *)p;
 
 	p += sizeof(ether_hdr->src_addr) + sizeof(ether_hdr->dst_addr);
 	if (unlikely(p >= end)) {
@@ -156,8 +168,8 @@ ssize_t fr_ethernet_encode(void *packet_ctx, uint8_t *data, size_t data_len)
 	 *	Encode the SVLAN, CVLAN and ether type.
 	 */
 	if (ether_ctx->svlan_tpid) {
-		vlan_header_t const	*svlan_hdr, *cvlan_hdr;
-		uint16_t		*ether_type;
+		vlan_header_t	*svlan_hdr, *cvlan_hdr;
+		uint16_t	*ether_type;
 
 		svlan_hdr = (void *)p;
 		p += sizeof(*svlan_hdr);
@@ -171,10 +183,12 @@ ssize_t fr_ethernet_encode(void *packet_ctx, uint8_t *data, size_t data_len)
 		if (unlikely(p >= end)) goto oob;
 
 		svlan_hdr->tag_type = htons(ether_ctx->svlan_tpid);
-		svlan_hdr->tag_control = VLAN_TCI_PACK(ether_ctx->svlan_pcp, ether_ctx->svlan_dei, ether_ctx->svlan_vid);
+		svlan_hdr->tag_control = VLAN_TCI_PACK(ether_ctx->svlan_pcp, ether_ctx->svlan_dei,
+						       ether_ctx->svlan_vid);
 
 		cvlan_hdr->tag_type = htons(ether_ctx->cvlan_tpid);
-		cvlan_hdr->tag_control = VLAN_TCI_PACK(ether_ctx->cvlan_pcp, ether_ctx->cvlan_dei, ether_ctx->cvlan_vid);
+		cvlan_hdr->tag_control = VLAN_TCI_PACK(ether_ctx->cvlan_pcp, ether_ctx->cvlan_dei,
+						       ether_ctx->cvlan_vid);
 
 		*ether_type = htons(ether_ctx->ether_type);
 
@@ -185,8 +199,8 @@ ssize_t fr_ethernet_encode(void *packet_ctx, uint8_t *data, size_t data_len)
 	 *	Just encode the CVLAN and ether type.
 	 */
 	if (ether_ctx->cvlan_tpid) {
-		vlan_header_t const	*cvlan_hdr;
-		uether_ctxt16_t		*ether_type;
+		vlan_header_t	*cvlan_hdr;
+		uint16_t	*ether_type;
 
 		cvlan_hdr = (void *)p;
 		p += sizeof(*cvlan_hdr);
@@ -194,10 +208,11 @@ ssize_t fr_ethernet_encode(void *packet_ctx, uint8_t *data, size_t data_len)
 		ether_type = (void *)p;
 		p += sizeof(*ether_type);
 
-		if (unlikely(p >= end)) goto oo
+		if (unlikely(p >= end)) goto oob;
 
 		cvlan_hdr->tag_type = htons(ether_ctx->cvlan_tpid);
-		cvlan_hdr->tag_control = VLAN_TCI_PACK(ether_ctx->cvlan_pcp, ether_ctx->cvlan_dei, ether_ctx->cvlan_vid);
+		cvlan_hdr->tag_control = VLAN_TCI_PACK(ether_ctx->cvlan_pcp, ether_ctx->cvlan_dei,
+						       ether_ctx->cvlan_vid);
 
 		*ether_type = htons(ether_ctx->ether_type);
 
@@ -215,14 +230,14 @@ ssize_t fr_ethernet_encode(void *packet_ctx, uint8_t *data, size_t data_len)
 	return p - data;
 }
 
-/** ether_ctxverts addresses, so that a decoder packet_ctx can be used for encodether_ctxg
+/** Inverts addresses, so that a decoder proto_ctx can be used for encoding
  *
- * @param[in] packet_ctx	created by the user or decoder.
+ * @param[in] proto_ctx	created by the user or decoder.
  */
-void fr_ethernet_invert(void *packet_ctx)
+static void fr_ethernet_invert(void *proto_ctx)
 {
-	fr_ethernet_packet_ctx_t	*ether_ctx = packet_ctx;
-	uether_ctxt8_t			tmp_addr[ETHER_ADDR_LEN];
+	fr_ethernet_proto_ctx_t	*ether_ctx = proto_ctx;
+	uint8_t			tmp_addr[ETHER_ADDR_LEN];
 
 	/*
 	 *	VLANs stay the same, we just need to swap the mac addresses
@@ -232,18 +247,70 @@ void fr_ethernet_invert(void *packet_ctx)
 	memcpy(ether_ctx->src_addr, tmp_addr, sizeof(ether_ctx->src_addr));
 }
 
-int fr_ethernet_get_option(void *packet_ctx, fr_proto_opt_group_t group, int opt, fr_value_box_t *out)
+/** Retrieve an option value from the proto_ctx
+ *
+ * @param[out] out		value box to place option value into.
+ * @param[in] proto_ctx		to retrieve value from.
+ * @param[in] group		Option group.  Which collection of options to query.
+ * @param[in] opt		Option to retrieve.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int fr_ethernet_get_option(fr_value_box_t *out, void const *proto_ctx, fr_proto_opt_group_t group, int opt)
 {
+	fr_ethernet_proto_ctx_t const *ether_ctx = proto_ctx;
+
 	switch (group) {
 	case PROTO_OPT_GROUP_CUSTOM:
 		switch (opt) {
+		case PROTO_OPT_ETHERNET_SVLAN_TPID:
+			return fr_value_box_shallow(out, ether_ctx->svlan_tpid, true);
 
+		case PROTO_OPT_ETHERNET_SVLAN_PCP:
+			return fr_value_box_shallow(out, ether_ctx->svlan_pcp, true);
+
+		case PROTO_OPT_ETHERNET_SVLAN_DEI:
+			return fr_value_box_shallow(out, ether_ctx->svlan_dei, true);
+
+		case PROTO_OPT_ETHERNET_SVLAN_VID:
+			return fr_value_box_shallow(out, ether_ctx->svlan_vid, true);
+
+		case PROTO_OPT_ETHERNET_CVLAN_TPID:
+			return fr_value_box_shallow(out, ether_ctx->cvlan_tpid, true);
+
+		case PROTO_OPT_ETHERNET_CVLAN_PCP:
+			return fr_value_box_shallow(out, ether_ctx->cvlan_pcp, true);
+
+		case PROTO_OPT_ETHERNET_CVLAN_DEI:
+			return fr_value_box_shallow(out, ether_ctx->cvlan_dei, true);
+
+		case PROTO_OPT_ETHERNET_CVLAN_VID:
+			return fr_value_box_shallow(out, ether_ctx->cvlan_vid, true);
+
+		default:
+			fr_strerror_printf("Option %i group %i not implemented", opt, group);
+			return -1;
 		}
 		break;
 
 	case PROTO_OPT_GROUP_L2:
 		switch (opt) {
+		case PROTO_OPT_L2_PAYLOAD_LEN:
+			return fr_value_box_shallow(out, ether_ctx->payload_len, true);
 
+		case PROTO_OPT_L2_SRC_ADDRESS:
+			return fr_value_box_ethernet_addr(out, NULL, ether_ctx->src_addr, true);
+
+		case PROTO_OPT_L2_DST_ADDRESS:
+			return fr_value_box_ethernet_addr(out, NULL, ether_ctx->dst_addr, true);
+
+		case PROTO_OPT_L2_NEXT_PROTOCOL:
+			return fr_value_box_shallow(out, ether_ctx->ether_type, true);
+
+		default:
+			fr_strerror_printf("Option %i group %i not implemented", opt, group);
+			return -1;
 		}
 		break;
 
@@ -253,18 +320,70 @@ int fr_ethernet_get_option(void *packet_ctx, fr_proto_opt_group_t group, int opt
 	}
 }
 
-int fr_ethernet_set_option(void *packet_ctx, fr_proto_opt_group_t group, int opt, fr_value_box_t *in)
+/** Set an option in the proto_ctx
+ *
+ * @param[in] proto_ctx		to set value in.
+ * @param[in] group		Option group.  Which collection of options opt exists in.
+ * @param[in] opt		Option to set.
+ * @param[in] in		value to set.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int fr_ethernet_set_option(void *proto_ctx, fr_proto_opt_group_t group, int opt, fr_value_box_t *in)
 {
+	fr_ethernet_proto_ctx_t	*ether_ctx = proto_ctx;
+
 	switch (group) {
 	case PROTO_OPT_GROUP_CUSTOM:
 		switch (opt) {
+		case PROTO_OPT_ETHERNET_SVLAN_TPID:
+			return fr_value_unbox_shallow(&ether_ctx->svlan_tpid, in);
 
+		case PROTO_OPT_ETHERNET_SVLAN_PCP:
+			return fr_value_unbox_shallow(&ether_ctx->svlan_pcp, in);
+
+		case PROTO_OPT_ETHERNET_SVLAN_DEI:
+			return fr_value_unbox_shallow(&ether_ctx->svlan_dei, in);
+
+		case PROTO_OPT_ETHERNET_SVLAN_VID:
+			return fr_value_unbox_shallow(&ether_ctx->svlan_vid, in);
+
+		case PROTO_OPT_ETHERNET_CVLAN_TPID:
+			return fr_value_unbox_shallow(&ether_ctx->cvlan_tpid, in);
+
+		case PROTO_OPT_ETHERNET_CVLAN_PCP:
+			return fr_value_unbox_shallow(&ether_ctx->cvlan_pcp, in);
+
+		case PROTO_OPT_ETHERNET_CVLAN_DEI:
+			return fr_value_unbox_shallow(&ether_ctx->cvlan_dei, in);
+
+		case PROTO_OPT_ETHERNET_CVLAN_VID:
+			return fr_value_unbox_shallow(&ether_ctx->cvlan_vid, in);
+
+		default:
+			fr_strerror_printf("Option %i group %i not implemented", opt, group);
+			return -1;
 		}
 		break;
 
 	case PROTO_OPT_GROUP_L2:
 		switch (opt) {
+		case PROTO_OPT_L2_PAYLOAD_LEN:
+			return fr_value_unbox_shallow(&ether_ctx->payload_len, in);
 
+		case PROTO_OPT_L2_SRC_ADDRESS:
+			return fr_value_unbox_ethernet_addr(ether_ctx->src_addr, in);
+
+		case PROTO_OPT_L2_DST_ADDRESS:
+			return fr_value_unbox_ethernet_addr(ether_ctx->dst_addr, in);
+
+		case PROTO_OPT_L2_NEXT_PROTOCOL:
+			return fr_value_unbox_shallow(&ether_ctx->ether_type, in);
+
+		default:
+			fr_strerror_printf("Option %i group %i not implemented", opt, group);
+			return -1;
 		}
 		break;
 
@@ -272,17 +391,20 @@ int fr_ethernet_set_option(void *packet_ctx, fr_proto_opt_group_t group, int opt
 		fr_strerror_printf("Option group %i not implemented", group);
 		return -1;
 	}
+
 }
 
-extern fr_proto_lib_t const ethernet;
-fr_proto_lib_t const libfreeradius-ethernet {
+extern fr_proto_lib_t const libfreeradius_ethernet;
+fr_proto_lib_t const libfreeradius_ethernet = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "ethernet",
-	.packet_ctx_size = sizeof(fr_ethernet_packet_ctx_t);
+	.inst_size	= sizeof(fr_ethernet_proto_ctx_t),
 
-	.opt_group	= PROTO_OPT_GROUP_CUSTOM | PROTO_OPT_GROUP_L2;
+	.opt_group	= PROTO_OPT_GROUP_CUSTOM | PROTO_OPT_GROUP_L2,
 
 	.decode		= fr_ethernet_decode,
 	.encode		= fr_ethernet_encode,
-	.invert		= fr_ethernet_invert
-}
+	.invert		= fr_ethernet_invert,
+	.get_option	= fr_ethernet_get_option,
+	.set_option	= fr_ethernet_set_option
+};
