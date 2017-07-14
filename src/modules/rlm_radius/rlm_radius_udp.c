@@ -136,7 +136,7 @@ static int mod_write(REQUEST *request, void *request_ctx, void *io_ctx)
 	}
 
 	data_size = udp_send(io->fd, io->buffer, packet_len, 0,
-			     &io->dst_ipaddr, io->inst->dst_port,
+			     &io->dst_ipaddr, io->dst_port,
 //			     address->if_index,
 			     0,
 			     &io->src_ipaddr, io->src_port);
