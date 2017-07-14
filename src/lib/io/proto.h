@@ -131,18 +131,19 @@ typedef void (*fr_proto_invert_t)(void *proto_ctx);
  *
  * @param[in] out		boxed value containing the option.
  * @param[in] proto_ctx		to retrieve data from.
- * @param[in] group		Option group to use.
+ * @param[in] opt_group		Option group to use.
  * @param[in] opt		to retrieve.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-typedef int (*fr_proto_get_option_t)(fr_value_box_t *out, void const *proto_ctx, fr_proto_opt_group_t group, int opt);
+typedef int (*fr_proto_get_option_t)(fr_value_box_t *out, void const *proto_ctx,
+				     fr_proto_opt_group_t opt_group, int opt);
 
 /** Set a protocol option
  *
  * @param[in] proto_ctx	to set option in.
- * @param[in] group		Option group to use.
+ * @param[in] opt_group		Option group to use.
  * @param[in] opt		to set.
  * @param[in] in		value to set.
  * @return
@@ -158,7 +159,7 @@ typedef int (*fr_proto_set_option_t)(void *proto_ctx, fr_proto_opt_group_t opt_g
 typedef struct {
 	RAD_MODULE_COMMON;					//!< Common fields to all loadable modules.
 
-	size_t				proto_ctx_size;	//!< Size required for the packet ctx structure.
+	size_t				proto_ctx_size;		//!< Size required for the packet ctx structure.
 
 	fr_proto_opt_group_t		opt_group;		//!< Option groups implemented by proto lib.
 

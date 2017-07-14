@@ -298,8 +298,6 @@ FR_VALUE_BOX(uint64_t, date_milliseconds, FR_TYPE_DATE_MILLISECONDS)
 FR_VALUE_BOX(uint64_t, date_microseconds, FR_TYPE_DATE_MICROSECONDS)
 FR_VALUE_BOX(uint64_t, date_nanoseconds, FR_TYPE_DATE_NANOSECONDS)
 
-FR_VALUE_BOX(size_t, size, FR_TYPE_SIZE)
-
 /** Automagically fill in a box, determining the value type from the type of the C variable
  *
  * Simplify boxing for simple C types using the _Generic macro to emit code that
@@ -326,8 +324,7 @@ _Generic((_var), \
 	int32_t			: fr_value_box_int32, \
 	int64_t			: fr_value_box_int64, \
 	float			: fr_value_box_float32, \
-	double			: fr_value_box_float64, \
-	size_t			: fr_value_box_size \
+	double			: fr_value_box_float64 \
 )(_box, NULL, _var, _tainted)
 
 /** Unbox an ethernet value (6 bytes, network byte order)
@@ -380,8 +377,6 @@ FR_VALUE_UNBOX(uint64_t, date_milliseconds, FR_TYPE_DATE_MILLISECONDS)
 FR_VALUE_UNBOX(uint64_t, date_microseconds, FR_TYPE_DATE_MICROSECONDS)
 FR_VALUE_UNBOX(uint64_t, date_nanoseconds, FR_TYPE_DATE_NANOSECONDS)
 
-FR_VALUE_UNBOX(size_t, size, FR_TYPE_SIZE)
-
 /** Unbox simple types peforming type checks
  *
  * @param[out] _var	to write to.
@@ -398,8 +393,7 @@ _Generic((_var), \
 	int32_t	*		: fr_value_unbox_int32, \
 	int64_t	*		: fr_value_unbox_int64, \
 	float *			: fr_value_unbox_float32, \
-	double *		: fr_value_unbox_float64, \
-	size_t *		: fr_value_unbox_size \
+	double *		: fr_value_unbox_float64 \
 )(_var, _box)
 
 /* @} **/

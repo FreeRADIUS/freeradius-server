@@ -297,7 +297,9 @@ static int fr_ethernet_get_option(fr_value_box_t *out, void const *proto_ctx, fr
 	case PROTO_OPT_GROUP_L2:
 		switch (opt) {
 		case PROTO_OPT_L2_PAYLOAD_LEN:
-			return fr_value_box_shallow(out, ether_ctx->payload_len, true);
+			fr_value_box_init(out, FR_TYPE_SIZE, NULL, true);
+			out->vb_size = ether_ctx->payload_len;
+			return 0;
 
 		case PROTO_OPT_L2_SRC_ADDRESS:
 			return fr_value_box_ethernet_addr(out, NULL, ether_ctx->src_addr, true);
@@ -370,7 +372,14 @@ static int fr_ethernet_set_option(void *proto_ctx, fr_proto_opt_group_t group, i
 	case PROTO_OPT_GROUP_L2:
 		switch (opt) {
 		case PROTO_OPT_L2_PAYLOAD_LEN:
-			return fr_value_unbox_shallow(&ether_ctx->payload_len, in);
+			if (in->type != FR_TYPE_SIZE) {
+				fr_strerror_printf("Unboxing failed.  Needed type %s, had type %s",
+						   fr_int2str(dict_attr_types, FR_TYPE_SIZE, "?Unknown?"),
+						   fr_int2str(dict_attr_types, in->type, "?Unknown?"));
+				return -1;
+			}
+			ether_ctx->payload_len = in->vb_size;
+			return 0;
 
 		case PROTO_OPT_L2_SRC_ADDRESS:
 			return fr_value_unbox_ethernet_addr(ether_ctx->src_addr, in);
