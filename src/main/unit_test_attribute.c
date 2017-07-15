@@ -626,7 +626,7 @@ static void unload_proto_library(void)
 	}
 }
 
-static void process_file(UNUSED fr_dict_t *dict, const char *root_dir, char const *filename)
+static void process_file(fr_dict_t *dict, const char *root_dir, char const *filename)
 {
 	int		lineno;
 	size_t		i, outlen;
