@@ -161,7 +161,7 @@ typedef struct {
 
 	size_t				proto_ctx_size;		//!< Size required for the packet ctx structure.
 
-	fr_proto_opt_group_t		opt_group;		//!< Option groups implemented by proto lib.
+	int				opt_group;		//!< Option groups implemented by proto lib.
 
 	fr_proto_decode_t		decode;			//!< Function to decode a protocol/header.
 	fr_proto_encode_t		encode;			//!< Function to encode a protocol/header.

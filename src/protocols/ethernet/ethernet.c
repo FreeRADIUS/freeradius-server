@@ -292,7 +292,6 @@ static int fr_ethernet_get_option(fr_value_box_t *out, void const *proto_ctx, fr
 			fr_strerror_printf("Option %i group %i not implemented", opt, group);
 			return -1;
 		}
-		break;
 
 	case PROTO_OPT_GROUP_L2:
 		switch (opt) {
@@ -314,7 +313,6 @@ static int fr_ethernet_get_option(fr_value_box_t *out, void const *proto_ctx, fr
 			fr_strerror_printf("Option %i group %i not implemented", opt, group);
 			return -1;
 		}
-		break;
 
 	default:
 		fr_strerror_printf("Option group %i not implemented", group);
@@ -367,7 +365,6 @@ static int fr_ethernet_set_option(void *proto_ctx, fr_proto_opt_group_t group, i
 			fr_strerror_printf("Option %i group %i not implemented", opt, group);
 			return -1;
 		}
-		break;
 
 	case PROTO_OPT_GROUP_L2:
 		switch (opt) {
@@ -394,7 +391,6 @@ static int fr_ethernet_set_option(void *proto_ctx, fr_proto_opt_group_t group, i
 			fr_strerror_printf("Option %i group %i not implemented", opt, group);
 			return -1;
 		}
-		break;
 
 	default:
 		fr_strerror_printf("Option group %i not implemented", group);
