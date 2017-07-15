@@ -274,7 +274,7 @@ static inline int fr_value_box_ethernet_addr(fr_value_box_t *dst, fr_dict_attr_t
 }
 
 #define FR_VALUE_BOX(_ctype, _field, _type) \
-static inline int fr_value_box_##_field(fr_value_box_t *dst, fr_dict_attr_t const *enumv, _ctype value, bool tainted) { \
+static inline int fr_value_box_##_field(fr_value_box_t *dst, fr_dict_attr_t const *enumv, _ctype const value, bool tainted) { \
 	fr_value_box_init(dst, _type, enumv, tainted); \
 	dst->vb_##_field = value; \
 	return 0; \
@@ -315,16 +315,27 @@ FR_VALUE_BOX(uint64_t, date_nanoseconds, FR_TYPE_DATE_NANOSECONDS)
 #define fr_value_box_shallow(_box, _var, _tainted) \
 _Generic((_var), \
 	fr_ipaddr_t *		: fr_value_box_ipaddr, \
+	fr_ipaddr_t const *	: fr_value_box_ipaddr, \
 	uint8_t			: fr_value_box_uint8, \
+	uint8_t const		: fr_value_box_uint8, \
 	uint16_t		: fr_value_box_uint16, \
+	uint16_t const		: fr_value_box_uint16, \
 	uint32_t		: fr_value_box_uint32, \
+	uint32_t const		: fr_value_box_uint32, \
 	uint64_t		: fr_value_box_uint64, \
+	uint64_t const		: fr_value_box_uint64, \
 	int8_t			: fr_value_box_int8, \
+	int8_t const		: fr_value_box_int8, \
 	int16_t			: fr_value_box_int16, \
+	int16_t const		: fr_value_box_int16, \
 	int32_t			: fr_value_box_int32, \
+	int32_t	const		: fr_value_box_int32, \
 	int64_t			: fr_value_box_int64, \
+	int64_t	const		: fr_value_box_int64, \
 	float			: fr_value_box_float32, \
-	double			: fr_value_box_float64 \
+	float const		: fr_value_box_float32, \
+	double			: fr_value_box_float64, \
+	double const		: fr_value_box_float64 \
 )(_box, NULL, _var, _tainted)
 
 /** Unbox an ethernet value (6 bytes, network byte order)
