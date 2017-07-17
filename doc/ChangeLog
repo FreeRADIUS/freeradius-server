@@ -1,4 +1,4 @@
-FreeRADIUS 3.0.15 Fri 26 May 2017 13:00:00 EDT urgency=medium
+FreeRADIUS 3.0.15 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	Feature improvements
 	* Provide HOSTNAME in default systemd files.
 	* Incorporate RedHat specific files
@@ -11,19 +11,25 @@ FreeRADIUS 3.0.15 Fri 26 May 2017 13:00:00 EDT urgency=medium
 	* Pass correct statement length into sqlite3_prepare[_v2]
 	* Bind the lifetime of program name and python path to the module
 	* Check input / output length in make_secret().
-	  CVE-2017-10978.
+	  FR-GV-201
 	* Fix read overflow when decoding DHCP option 63
-	   CVE-2017-10983.
+	  FR-GV-206
 	* Fix write overflow in data2vp_wimax()
-	  CVE-2017-10984.
+	  FR-GV-301
 	* Fix infinite loop and memory exhaustion with 'concat' attributes
-	  CVE-2017-10985
+	  FR-GV-302
 	* Fix infinite read in dhcp_attr2vp()
-	  CVE-2017-10986.
+	  FR-GV-303
 	* Fix buffer over-read in fr_dhcp_decode_suboptions()
-	  CVE-2017-10987.
-	* use strncmp() instead of memcmp() for bounded data
+	  FR-GV-304
 	* Decode 'signed' attributes correctly.
+	  FR-GV-305
+	* use strncmp() instead of memcmp() for bounded data
+	  FR-AD-001
+	* Bind the lifetime of program name and python path to the module
+	  FR-AD-002
+	* Pass correct statement length into sqlite3_prepare[_v2]
+	  FR-AD-003
 	* print messages when we see deprecated configuration
 	  items
 	* show reasons why we couldn't parse a certificate
@@ -42,6 +48,7 @@ FreeRADIUS 3.0.15 Fri 26 May 2017 13:00:00 EDT urgency=medium
 	* run rad_authlog after post-auth for Access-Reject.
 	* Don't process VMPS packets twice.
 	* Fix attribute truncation in rlm_perl
+	* Fix bug when processing huntgroups.
 
 FreeRADIUS 3.0.14 Fri 26 May 2017 13:00:00 EDT urgency=medium
 	Feature improvements
