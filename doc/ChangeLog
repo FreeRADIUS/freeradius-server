@@ -1,8 +1,25 @@
-FreeRADIUS 2.2.10 Wednesday 30 Sep 2015 17:00:00 EDT, urgency=medium
+FreeRADIUS 2.2.10 Monday 17 Jul 2017 09:00:00 EDT, urgency=high
 	Feature improvements
 	* None.
 
 	Bug fixes
+	* Fix multiple security issues. See
+	  http://freeradius.org/security/fuzzer-2017.html
+	  Thanks to Guido Vranken for working with us to
+	  discover the issues and test the fixes.
+	* FR-GV-207 Avoid zero-length malloc() in data2vp()
+	* FR-GV-206 correct decoding of option 60
+	* FR-GV-205 check for "too long" WiMAX options
+	* FR-GV-204 free VP if decoding fails, so we don't leak memory.
+	* FR-GV-203 fix memory leak when using decode_tlv()
+	* FR-GV-202 check for "too long" attributes
+	* FR-GV-201 check input/output length in make_secret()
+	* FR-AD-001 Use strncmp() instead of memcmp() for bounded data.
+	* Disable in-memory TLS session caches due to OpenSSL API
+	  issues.
+	* Allow issuer_cert to be empty.
+	* Look for extensions using correct index
+	* Fix types
 	* Work around OpenSSL 1.0.2 problems, which cause failures
 	  in TLS-based EAP methods.
 	* Revert RedHat contributed bug which removes run-time checks
