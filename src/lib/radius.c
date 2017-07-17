@@ -3417,8 +3417,6 @@ int rad_tunnel_pwdecode(uint8_t *passwd, size_t *pwlen, const char *secret,
 
 	encrypted_len = *pwlen;
 
-	fprintf(stderr, "HERE %d\n", __LINE__);
-
 	/*
 	 *	We need at least a salt.
 	 */
@@ -3445,8 +3443,6 @@ int rad_tunnel_pwdecode(uint8_t *passwd, size_t *pwlen, const char *secret,
 
 	encrypted_len -= 2;		/* discount the salt */
 
-	fprintf(stderr, "HERE %d\n", __LINE__);
-
 	/*
 	 *	Use the secret to setup the decryption digest
 	 */
@@ -3463,8 +3459,6 @@ int rad_tunnel_pwdecode(uint8_t *passwd, size_t *pwlen, const char *secret,
 	 */
 	fr_MD5Update(&context, vector, AUTH_VECTOR_LEN);
 	fr_MD5Update(&context, passwd, 2);
-
-	fprintf(stderr, "HERE %d\n", __LINE__);
 
 	reallen = 0;
 	for (n = 0; n < encrypted_len; n += AUTH_PASS_LEN) {
