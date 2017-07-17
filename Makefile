@@ -160,13 +160,13 @@ freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz: .git
 	git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION_STRING)/ v2.x.x | gzip > $@
 
 freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz.sig: freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz
-	gpg --default-key aland@freeradius.org -b $<
+	gpg --default-key packages@freeradius.org -b $<
 
 freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2: .git
 	git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION_STRING)/ v2.x.x | bzip2 > $@
 
 freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2.sig: freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2
-	gpg --default-key aland@freeradius.org -b $<
+	gpg --default-key packages@freeradius.org -b $<
 
 # high-level targets
 .PHONY: dist-check
