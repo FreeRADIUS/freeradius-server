@@ -1454,7 +1454,7 @@ static int ocsp_asn1time_to_epoch(time_t *out, char const *asn1)
 
 	memset(&t, 0, sizeof(t));
 
-	if ((end - p) <= 12) {
+	if ((end - p) <= 13) {
 		if ((end - p) < 2) {
 			fr_strerror_printf("ASN1 date string too short, expected 2 additional bytes, got %zu bytes",
 					   end - p);
@@ -1472,7 +1472,7 @@ static int ocsp_asn1time_to_epoch(time_t *out, char const *asn1)
 		t.tm_year -= 1900;
 	}
 
-	if ((end - p) < 10) {
+	if ((end - p) < 4) {
 		fr_strerror_printf("ASN1 string too short, expected 10 additional bytes, got %zu bytes",
 				   end - p);
 		return -1;
@@ -1482,14 +1482,21 @@ static int ocsp_asn1time_to_epoch(time_t *out, char const *asn1)
 	t.tm_mon += (*(p++) - '0') - 1; // -1 since January is 0 not 1.
 	t.tm_mday = (*(p++) - '0') * 10;
 	t.tm_mday += (*(p++) - '0');
+
+	if ((end - p) < 2) goto done;
 	t.tm_hour = (*(p++) - '0') * 10;
 	t.tm_hour += (*(p++) - '0');
+
+	if ((end - p) < 2) goto done;
 	t.tm_min = (*(p++) - '0') * 10;
 	t.tm_min += (*(p++) - '0');
+
+	if ((end - p) < 2) goto done;
 	t.tm_sec = (*(p++) - '0') * 10;
 	t.tm_sec += (*(p++) - '0');
 
 	/* Apparently OpenSSL converts all timestamps to UTC? Maybe? */
+done:
 	*out = timegm(&t);
 	return 0;
 }
@@ -1617,7 +1624,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, const unsigned char *data, int l
 			time_t expires;
 
 			if (ocsp_asn1time_to_epoch(&expires, vp->vp_strvalue) < 0) {
-				RDEBUG2("Failed getting certificate expiration, removing cache entry for session %s", buffer);
+				RDEBUG2("Failed getting certificate expiration, removing cache entry for session %s - %s", buffer, fr_strerror());
 				SSL_SESSION_free(sess);
 				sess = NULL;
 				goto error;
@@ -2034,7 +2041,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	char		cn_str[1024];
 	char		buf[64];
 	X509		*client_cert;
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
 	const STACK_OF(X509_EXTENSION) *ext_list;
 #else
 	STACK_OF(X509_EXTENSION) *ext_list;
@@ -3041,6 +3048,7 @@ post_ca:
 		SSL_CTX_set_verify_depth(ctx, conf->verify_depth);
 	}
 
+#ifndef LIBRESSL_VERSION_NUMBER
 	/* Load randomness */
 	if (conf->random_file) {
 		if (!(RAND_load_file(conf->random_file, 1024*10))) {
@@ -3048,6 +3056,7 @@ post_ca:
 			return NULL;
 		}
 	}
+#endif
 
 	/*
 	 * Set the cipher list if we were told to
@@ -3169,6 +3178,7 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 	 *	Only check for certificate things if we don't have a
 	 *	PSK query.
 	 */
+#ifdef PSK_MAX_IDENTITY_LEN
 	if (conf->psk_identity) {
 		if (conf->private_key_file) {
 			WARN(LOG_PREFIX ": Ignoring private key file due to psk_identity being used");
@@ -3178,7 +3188,9 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 			WARN(LOG_PREFIX ": Ignoring certificate file due to psk_identity being used");
 		}
 
-	} else {
+	} else
+#endif
+	{
 		if (!conf->private_key_file) {
 			ERROR(LOG_PREFIX ": TLS Server requires a private key file");
 			goto error;

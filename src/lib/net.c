@@ -36,7 +36,9 @@ bool fr_link_layer_supported(int link_layer)
 	case DLT_RAW:
 	case DLT_NULL:
 	case DLT_LOOP:
+#ifdef DLT_LINUX_SLL
 	case DLT_LINUX_SLL:
+#endif
 	case DLT_PFLOG:
 		return true;
 
@@ -119,12 +121,14 @@ ssize_t fr_link_layer_offset(uint8_t const *data, size_t len, int link_layer)
 		return -1;
 	}
 
+#ifdef DLT_LINUX_SLL
 	case DLT_LINUX_SLL:
 		p += 16;
 		if (((size_t)(p - data)) > len) {
 			goto ood;
 		}
 		break;
+#endif
 
 	case DLT_PFLOG:
 		p += 28;

@@ -119,7 +119,7 @@ static size_t chbind_get_data(chbind_packet_t const *packet,
 	}
 
 	ptr = (uint8_t const *) packet;
-	end = ptr + talloc_array_length(packet);
+	end = ptr + talloc_array_length((uint8_t const *) packet);
 
 	ptr++;			/* skip the code at the start of the packet */
 	while (ptr < end) {
@@ -182,7 +182,7 @@ PW_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 	/* Add the channel binding attributes to the fake packet */
 	data_len = chbind_get_data(chbind->request, CHBIND_NSID_RADIUS, &attr_data);
 	if (data_len) {
-		rad_assert(data_len <= talloc_array_length(chbind->request));
+		rad_assert(data_len <= talloc_array_length((uint8_t const *) chbind->request));
 
 		while (data_len > 0) {
 			int attr_len = rad_attr2vp(fake->packet, NULL, NULL, NULL, attr_data, data_len, &vp);
