@@ -57,14 +57,14 @@ typedef fr_connection_state_t (*fr_connection_init_t)(int *fd_out, void *uctx);
  * This should be used to add any additional I/O events for the file descriptor
  * to call other code if it becomes readable or writable.
  *
- * @param[in] fd	That was successfully opened.
  * @param[in] el	to use for inserting I/O events.
+ * @param[in] fd	That was successfully opened.
  * @param[in] uctx	User context.
  * @return
  *	- #FR_CONNECTION_STATE_CONNECTED	if the file descriptor is useable.
  *	- #FR_CONNECTION_STATE_FAILED		if the file descriptor is unusable.
  */
-typedef fr_connection_state_t (*fr_connection_open_t)(int fd, fr_event_list_t *el, void *uctx);
+typedef fr_connection_state_t (*fr_connection_open_t)(fr_event_list_t *el, int fd, void *uctx);
 
 /** Notification that a connection attempt has failed
  *

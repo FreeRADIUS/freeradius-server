@@ -330,7 +330,7 @@ static void _logtee_conn_close(int fd, UNUSED void *uctx)
 /** Process notification that fd is open
  *
  */
-static fr_connection_state_t _logtee_conn_open(UNUSED int fd, UNUSED fr_event_list_t *el, void *uctx)
+static fr_connection_state_t _logtee_conn_open(UNUSED fr_event_list_t *el, UNUSED int fd, void *uctx)
 {
 	rlm_logtee_thread_t	*t = talloc_get_type_abort(uctx, rlm_logtee_thread_t);
 

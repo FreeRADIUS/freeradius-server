@@ -628,7 +628,7 @@ static void mod_conn_close(int fd, void *uctx)
 /** Process notification that fd is open
  *
  */
-static fr_connection_state_t mod_radius_conn_open(int fd, fr_event_list_t *el, void *uctx)
+static fr_connection_state_t mod_radius_conn_open(fr_event_list_t *el, int fd, void *uctx)
 {
 	rlm_radius_connection_t	*c = talloc_get_type_abort(uctx, rlm_radius_connection_t);
 	rlm_radius_thread_t	*t = c->thread;
@@ -638,7 +638,7 @@ static fr_connection_state_t mod_radius_conn_open(int fd, fr_event_list_t *el, v
 	/*
 	 *	Tell the underlying transport that it's now open.
 	 */
-	state = inst->client_io->open(fd, el, c->client_io_ctx);
+	state = inst->client_io->open(el, fd, c->client_io_ctx);
 	if (state != FR_CONNECTION_STATE_CONNECTED) {
 		return state;
 	}

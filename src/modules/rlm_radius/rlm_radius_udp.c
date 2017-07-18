@@ -45,28 +45,28 @@ RCSID("$Id$")
 #include "rlm_radius.h"
 
 typedef struct rlm_radius_udp_t {
-	fr_ipaddr_t	dst_ipaddr;		//!< IP of the home server
-	fr_ipaddr_t	src_ipaddr;		//!< IP we open our socket on
-	uint16_t	dst_port;		//!< port of the home server
-	char const	*secret;		//!< shared secret
+	fr_ipaddr_t		dst_ipaddr;		//!< IP of the home server
+	fr_ipaddr_t		src_ipaddr;		//!< IP we open our socket on
+	uint16_t		dst_port;		//!< port of the home server
+	char const		*secret;		//!< shared secret
 
-	char const	*interface;		//!< Interface to bind to.
+	char const		*interface;		//!< Interface to bind to.
 
-	uint32_t	recv_buff;		//!< How big the kernel's receive buffer should be.
-	uint32_t	send_buff;		//!< How big the kernel's send buffer should be.
+	uint32_t		recv_buff;		//!< How big the kernel's receive buffer should be.
+	uint32_t		send_buff;		//!< How big the kernel's send buffer should be.
 
-	uint32_t	max_packet_size;	//!< maximum packet size
+	uint32_t		max_packet_size;	//!< maximum packet size
 
-	bool		recv_buff_is_set;	//!< Whether we were provided with a recv_buf
-	bool		send_buff_is_set;	//!< Whether we were provided with a send_buf
+	bool			recv_buff_is_set;	//!< Whether we were provided with a recv_buf
+	bool			send_buff_is_set;	//!< Whether we were provided with a send_buf
 
-	bool		dst_ipaddr_is_set;     	//!< ipaddr config item is set.
-	bool		dst_ipv4addr_is_set;	//!< ipv4addr config item is set.
-	bool		dst_ipv6addr_is_set;	//!< ipv6addr config item is set.
+	bool			dst_ipaddr_is_set;     	//!< ipaddr config item is set.
+	bool			dst_ipv4addr_is_set;	//!< ipv4addr config item is set.
+	bool			dst_ipv6addr_is_set;	//!< ipv6addr config item is set.
 
-	bool		src_ipaddr_is_set;     	//!< src_ipaddr config item is set.
-	bool		src_ipv4addr_is_set;	//!< src_ipv4addr config item is set.
-	bool		src_ipv6addr_is_set;	//!< src_ipv6addr config item is set.
+	bool			src_ipaddr_is_set;     	//!< src_ipaddr config item is set.
+	bool			src_ipv4addr_is_set;	//!< src_ipv4addr config item is set.
+	bool			src_ipv6addr_is_set;	//!< src_ipv6addr config item is set.
 
 } rlm_radius_udp_t;
 
@@ -188,7 +188,7 @@ static void mod_close(int fd, void *io_ctx)
 /** Do more setup once the connection has been opened
  *
  */
-static fr_connection_state_t mod_open(UNUSED int fd, UNUSED fr_event_list_t *el, UNUSED void *io_ctx)
+static fr_connection_state_t mod_open(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED void *io_ctx)
 {
 //	udp_io_ctx_t_t *io = talloc_get_type_abort(io_ctx, udp_io_ctx_t);
 
