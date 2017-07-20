@@ -1,3 +1,12 @@
+FreeRADIUS 3.0.16 Mon 17 Jul 2017 09:00:00 EDT urgency=high
+	Feature improvements
+
+	Bug fixes
+	* Bind the lifetime of program name and python path to the module
+	  FR-AD-002 (redone)
+	* Pass correct statement length into sqlite3_prepare[_v2]
+	  FR-AD-003 (redone)
+
 FreeRADIUS 3.0.15 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	Feature improvements
 	* Provide HOSTNAME in default systemd files.
