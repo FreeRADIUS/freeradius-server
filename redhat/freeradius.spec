@@ -75,9 +75,11 @@ BuildRequires: libpcap-devel
 BuildRequires: libtalloc-devel
 BuildRequires: net-snmp-devel
 BuildRequires: net-snmp-utils
+%if %{?_unitdir:1}%{!?_unitdir:0}
+BuildRequires: systemd-devel
+%endif
 BuildRequires: pam-devel
 BuildRequires: readline-devel
-BuildRequires: systemd-devel
 BuildRequires: zlib-devel
 
 Requires(pre): shadow-utils glibc-common
@@ -692,6 +694,11 @@ fi
 %{_libdir}/freeradius/rlm_unpack.so
 %{_libdir}/freeradius/rlm_utf8.so
 %{_libdir}/freeradius/rlm_wimax.so
+%{_libdir}/freeradius/rlm_logtee.so
+%{_libdir}/freeradius/proto_radius.so
+%{_libdir}/freeradius/proto_radius_udp.so
+
+
 %{?_with_rlm_idn: %{_libdir}/freeradius/rlm_idn.so}
 %if %{?_with_experimental_modules:1}%{!?_with_experimental_modules:0}
 %{_libdir}/freeradius/rlm_example.so
@@ -712,7 +719,6 @@ fi
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/users
 %dir %attr(770,root,radiusd) /etc/raddb/certs
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/certs/*
-%attr(750,root,radiusd) /etc/raddb/certs/bootstrap
 %dir %attr(750,root,radiusd) /etc/raddb/sites-available
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/sites-available/*
 %dir %attr(750,root,radiusd) /etc/raddb/sites-enabled
@@ -735,7 +741,7 @@ fi
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/python
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/python/*
 %dir %attr(750,root,radiusd) /etc/raddb/mods-enabled
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-enabled/*
+%config(noreplace) /etc/raddb/mods-enabled/*
 # mysql
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/driver
@@ -745,7 +751,6 @@ fi
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/cui
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/cui/mysql
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/cui/mysql/*
-%dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/ippool-dhcp
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/ippool-dhcp/mysql
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/ippool-dhcp/mysql/*
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/ippool
