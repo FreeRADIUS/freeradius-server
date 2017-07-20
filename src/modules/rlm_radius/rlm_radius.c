@@ -7,6 +7,10 @@
 //   - mainly so that we can fail here instead of not getting a reply from the home server
 //   - and it mirrors the old configuration
 // * add documentation for function prototypes in rlm_radius.h
+// * allow for "no reply" proxying, where we don't care about getting the reply
+//   - i.e. we still drain the socket, we just don't do anything with the replies
+// * allow for PCAP interfaces in RADIUS, so we can sniff on sockets without
+//   sending replies
 
 /*
  *   This program is is free software; you can redistribute it and/or modify
