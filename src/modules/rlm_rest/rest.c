@@ -1556,6 +1556,12 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 	case WRITE_STATE_INIT:
 		RDEBUG2("Processing response header");
 
+		/**
+		* Ignore other headers since we are looking for only http version header
+		* in this state.
+		*/
+		if (strncasecmp("HTTP", p, 4) != 0) return t;
+
 		/*
 		 *  HTTP/<version> <reason_code>[ <reason_phrase>]\r\n
 		 *
