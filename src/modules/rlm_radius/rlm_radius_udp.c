@@ -93,9 +93,9 @@ typedef struct request_ctx_t {
 
 
 static const CONF_PARSER module_config[] = {
-	{ FR_CONF_IS_SET_OFFSET("ipaddr", FR_TYPE_COMBO_IP_ADDR, rlm_radius_udp_t, dst_ipaddr) },
-	{ FR_CONF_IS_SET_OFFSET("ipv4addr", FR_TYPE_IPV4_ADDR, rlm_radius_udp_t, dst_ipaddr) },
-	{ FR_CONF_IS_SET_OFFSET("ipv6addr", FR_TYPE_IPV6_ADDR, rlm_radius_udp_t, dst_ipaddr) },
+	{ FR_CONF_OFFSET("ipaddr", FR_TYPE_COMBO_IP_ADDR, rlm_radius_udp_t, dst_ipaddr), },
+	{ FR_CONF_OFFSET("ipv4addr", FR_TYPE_IPV4_ADDR, rlm_radius_udp_t, dst_ipaddr) },
+	{ FR_CONF_OFFSET("ipv6addr", FR_TYPE_IPV6_ADDR, rlm_radius_udp_t, dst_ipaddr) },
 
 	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, rlm_radius_udp_t, dst_port) },
 
@@ -109,9 +109,9 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, rlm_radius_udp_t, max_packet_size),
 	  .dflt = "4096" },
 
-	{ FR_CONF_IS_SET_OFFSET("src_ipaddr", FR_TYPE_COMBO_IP_ADDR, rlm_radius_udp_t, src_ipaddr) },
-	{ FR_CONF_IS_SET_OFFSET("src_ipv4addr", FR_TYPE_IPV4_ADDR, rlm_radius_udp_t, src_ipaddr) },
-	{ FR_CONF_IS_SET_OFFSET("src_ipv6addr", FR_TYPE_IPV6_ADDR, rlm_radius_udp_t, src_ipaddr) },
+	{ FR_CONF_OFFSET("src_ipaddr", FR_TYPE_COMBO_IP_ADDR, rlm_radius_udp_t, src_ipaddr) },
+	{ FR_CONF_OFFSET("src_ipv4addr", FR_TYPE_IPV4_ADDR, rlm_radius_udp_t, src_ipaddr) },
+	{ FR_CONF_OFFSET("src_ipv6addr", FR_TYPE_IPV6_ADDR, rlm_radius_udp_t, src_ipaddr) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -240,23 +240,30 @@ static fr_connection_state_t mod_init(int *fd_out, void *io_ctx, void const *uct
 		return FR_CONNECTION_STATE_FAILED;
 	}
 
+	io->dst_ipaddr = inst->dst_ipaddr;
+	io->dst_port = inst->dst_port;
+	io->src_ipaddr = inst->src_ipaddr;
+	io->src_port = 0;
+
 	/*
 	 *	Open the outgoing socket.
+	 *
+	 *	@todo - pass src_ipaddr, and remove later call to fr_socket_bind()
+	 *	which does return the src_port, but doesn't set the "don't fragment" bit.
 	 */
-	fd = fr_socket_client_udp(&inst->src_ipaddr, &inst->dst_ipaddr, inst->dst_port, true);
+	fd = fr_socket_client_udp(&io->src_ipaddr, &io->dst_ipaddr, io->dst_port, true);
 	if (fd < 0) {
 		DEBUG("Failed opening RADIUS client UDP socket: %s", fr_strerror());
 		return FR_CONNECTION_STATE_FAILED;
 	}
 
-	io->dst_ipaddr = inst->dst_ipaddr;
-	io->dst_port = inst->dst_port;
-	io->src_ipaddr = inst->src_ipaddr;
-
+#if 0
 	if (fr_socket_bind(fd, &io->src_ipaddr, &io->src_port, inst->interface) < 0) {
-		DEBUG("Failed binding RADIUS client UDP socket: %s", fr_strerror());
+		DEBUG("Failed binding RADIUS client UDP socket: %s FD %d %pV port %u interface %s", fr_strerror(), fd, fr_box_ipaddr(io->src_ipaddr),
+			io->src_port, inst->interface);
 		return FR_CONNECTION_STATE_FAILED;
 	}
+#endif
 
 	// @todo - set recv_buff and send_buff socket options
 
@@ -305,7 +312,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Ensure that we have a destination address.
 	 */
-	if (!inst->dst_ipaddr_is_set && !inst->dst_ipv4addr_is_set && !inst->dst_ipv6addr_is_set) {
+	if (inst->dst_ipaddr.af == AF_UNSPEC) {
 		cf_log_err(conf, "A value must be given for 'ipaddr'");
 		return -1;
 	}
@@ -314,7 +321,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 *	If src_ipaddr isn't set, make sure it's INADDR_ANY, of
 	 *	the same address family as dst_ipaddr.
 	 */
-	if (!inst->src_ipaddr_is_set && !inst->src_ipv4addr_is_set && !inst->src_ipv6addr_is_set) {
+	if (inst->src_ipaddr.af == AF_UNSPEC) {
 		memset(&inst->src_ipaddr, 0, sizeof(inst->src_ipaddr));
 
 		inst->src_ipaddr.af = inst->dst_ipaddr.af;
@@ -326,7 +333,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		}
 	}
 
-	if (inst->src_ipaddr.af != inst->dst_ipaddr.af) {
+	else if (inst->src_ipaddr.af != inst->dst_ipaddr.af) {
 		cf_log_err(conf, "The 'ipaddr' and 'src_ipaddr' configuration items must be both of the same address family");
 		return -1;
 	}

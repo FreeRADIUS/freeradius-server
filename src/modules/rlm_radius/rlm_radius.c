@@ -1171,7 +1171,7 @@ static int mod_thread_instantiate(CONF_SECTION const *cs, void *instance, fr_eve
 	t->inst = instance;
 
 	c = talloc_zero(t, rlm_radius_connection_t);
-	c->name = "<pending>";
+	c->name = NULL;
 	c->inst = inst;
 	c->thread = t;
 	c->el = el;
