@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 
 #include "track.h"
+#include "rlm_radius.h"
 
 /** Free an rlm_radius_id_t
  *
@@ -96,7 +97,7 @@ static int rr_cmp(void const *one, void const *two)
  *	- NULL on error
  *	- rlm_radius_request_t on success
  */
-rlm_radius_request_t *rr_track_alloc(rlm_radius_id_t *id, REQUEST *request)
+rlm_radius_request_t *rr_track_alloc(rlm_radius_id_t *id, REQUEST *request, int code, void *client_io_ctx, void *request_io_ctx)
 {
 	fr_dlist_t *entry;
 	rlm_radius_request_t *rr;
@@ -127,9 +128,7 @@ retry:
 			goto retry;
 		}
 
-		rr->request = request;
-		id->num_requests++;
-		return rr;
+		goto done;
 	}
 
 	/*
@@ -160,7 +159,11 @@ retry:
 	FR_DLIST_INIT(rr->entry);
 	rr->id = id->next_id;
 
+done:
 	rr->request = request;
+	rr->client_io_ctx = client_io_ctx;
+	rr->request_io_ctx = request_io_ctx;
+	rr->code = code;
 	id->num_requests++;
 	return rr;
 }
@@ -325,6 +328,10 @@ rlm_radius_request_t *rr_track_find(rlm_radius_id_t *id, int packet_id, uint8_t 
 		 *	Not in use, die.
 		 */
 		if (!rr->request) return NULL;
+
+		// @todo - add a "generation" count for packets, so we can skip this after all outstanding packets
+		// are using the new method.  Hmm... probably just a timer "last sent packet with old-style"
+		// and then compare it to rr->start
 
 		/*
 		 *	We have the vector, so we need to check it.
