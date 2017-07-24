@@ -384,14 +384,14 @@ int fr_socket_client_udp(fr_ipaddr_t const *src_ipaddr, fr_ipaddr_t const *dst_i
 	}
 
 	/*
-	 *	Ensure don't fragment bit is set
-	 */
-	if (socket_dont_fragment(sockfd, src_ipaddr->af) < 0) goto error;
-
-	/*
 	 *	Allow the caller to bind us to a specific source IP.
 	 */
 	if (src_ipaddr && (src_ipaddr->af != AF_UNSPEC)) {
+		/*
+		 *	Ensure don't fragment bit is set
+		 */
+		if (socket_dont_fragment(sockfd, src_ipaddr->af) < 0) goto error;
+
 		if (fr_ipaddr_to_sockaddr(src_ipaddr, 0, &salocal, &salen) < 0) {
 			close(sockfd);
 			return -1;
