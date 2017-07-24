@@ -361,3 +361,76 @@ void rr_track_use_authenticator(rlm_radius_id_t *id, bool flag)
 
 	id->use_authenticator = flag;
 }
+
+#if 0
+#ifndef USEC
+#define USEC (1000000)
+#endif
+
+static void rr_timeout(UNUSED fr_event_list_t *el, struct timeval *now, void *uctx)
+{
+	rlm_radius_request_t *rr = uctx;
+	struct timeval next;
+
+	// re-send the packet using request_io_ctx <sigh>
+
+	/*
+	 *	Get when we SHOULD have woken up, which might not be
+	 *	the same as 'now'.
+	 */
+	next = rr->start;
+	next.tv_usec += rr->rt;
+
+	/*
+	 *	Try to update the delays
+	 */
+
+	// @todo get rlm_radius_retry_t pointer, or just copy all of the data to the request_io_ctx?
+	// - that also lets us change retransmissions on the fly for free...
+
+	if (!rlm_radius_update_delay(&rr->start, &rr->rt, &rr->count, rr->code, rr->client_io_ctx, now)) {
+		// @todo - something intelligent?
+		return;
+	}
+
+	/*
+	 *	Get the next delay time.
+	 */
+	next.tv_usec += rr->rt;
+	if (next.tv_usec > USEC) {
+		next.tv_sec += (next.tv_usec / USEC);
+		next.tv_usec %= USEC;
+	}
+
+	if (fr_event_timer_insert(rr->request, el, &rr->ev, &next, rr_timeout, rr) < 0) {
+		// @todo - something intelligent?
+		return;
+	}
+}
+
+int rr_track_start(rlm_radius_id_t *id, rlm_radius_request_t *rr, int code, fr_event_list_t *el)
+{
+	struct timeval next;
+
+	(void) talloc_get_type_abort(id, rlm_radius_id_t);
+
+	gettimeofday(&rr->start, NULL);
+
+	if (!rlm_radius_update_delay(&rr->start, &rr->rt, &rr->count, code, rr->client_io_ctx, NULL)) {
+		return -1;
+	}
+
+	next = rr->start;
+	next.tv_usec += rr->rt;
+	if (next.tv_usec > USEC) {
+		next.tv_sec += (next.tv_usec / USEC);
+		next.tv_usec %= USEC;
+	}
+
+	if (fr_event_timer_insert(rr->request, el, &rr->ev, &next, rr_timeout, rr) < 0) {
+		return -1;
+	}
+
+	return 0;
+}
+#endif
