@@ -54,8 +54,6 @@ typedef struct rlm_radius_retry_t {
 	uint32_t		mrd;			//!< Maximum retransmission duration
 } rlm_radius_retry_t;
 
-typedef struct rlm_radius_client_io_ctx_t rlm_radius_client_io_ctx_t;
-
 /*
  *	Define a structure for our module configuration.
  */
@@ -67,7 +65,7 @@ typedef struct radius_instance {
 	struct timeval		idle_timeout;
 
 	dl_instance_t		*io_submodule;	//!< As provided by the transport_parse
-	fr_radius_client_io_t	*client_io;	//!< Easy access to the client_io handle
+	fr_radius_client_io_t const *client_io;	//!< Easy access to the client_io handle
 	void			*client_io_instance; //!< Easy access to the client_io instance
 	CONF_SECTION		*client_io_conf;  //!< Easy access to the client_io's config section
 
@@ -1049,6 +1047,10 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	FR_INTEGER_BOUND_CHECK("Disconnect-Request.mrc", inst->packets[FR_CODE_DISCONNECT_REQUEST].mrc, <=, 10);
 	FR_INTEGER_BOUND_CHECK("Disconnect-Request.mrd", inst->packets[FR_CODE_DISCONNECT_REQUEST].mrd, <=, 30);
 
+	inst->client_io = (fr_radius_client_io_t const *) inst->io_submodule->module->common;
+	inst->client_io_instance = inst->io_submodule->data;
+	inst->client_io_conf = inst->io_submodule->conf;
+
 	rad_assert(inst->client_io->io_inst_size > 0);
 
 	if (!inst->client_io->bootstrap) return 0;
@@ -1161,8 +1163,12 @@ static int mod_thread_detach(void *thread)
 static int mod_thread_instantiate(CONF_SECTION const *cs, void *instance, fr_event_list_t *el, void *thread)
 {
 	rlm_radius_t *inst = talloc_get_type_abort(instance, rlm_radius_t);
-	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
+	rlm_radius_thread_t *t = thread;
 	rlm_radius_connection_t *c;
+
+	(void) talloc_set_type(t, rlm_radius_thread_t);
+
+	t->inst = instance;
 
 	c = talloc_zero(t, rlm_radius_connection_t);
 	c->name = "<pending>";
@@ -1234,6 +1240,8 @@ rad_module_t rlm_radius = {
 	.config		= module_config,
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
+
+	.thread_inst_size = sizeof(rlm_radius_thread_t),
 	.thread_instantiate = mod_thread_instantiate,
 	.thread_detach	= mod_thread_detach,
 	.methods = {

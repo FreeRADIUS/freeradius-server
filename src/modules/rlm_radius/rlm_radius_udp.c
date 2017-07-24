@@ -1,8 +1,4 @@
 // @todo - finish it!
-// * track packets in RB tree when writing them
-// * do ID allocation based on packet code
-// * simple: just allow for any type of packet code.  The rlm_radius will take care of giving us
-//   only the codes which are allowed
 // * implement remove(), which removes packets from the tracking tree
 // * don't make request_io_ctx talloc'd from rlm_radius_link_t, as the link can be used
 // * for other connections.  it's simpler to just have one remove() func, than to muck with
@@ -43,6 +39,7 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 
 #include "rlm_radius.h"
+#include "track.h"
 
 typedef struct rlm_radius_udp_t {
 	fr_ipaddr_t		dst_ipaddr;		//!< IP of the home server
@@ -70,7 +67,7 @@ typedef struct rlm_radius_udp_t {
 
 } rlm_radius_udp_t;
 
-typedef struct udp_io_ctx_t {
+struct rlm_radius_client_io_ctx_t {
 	rlm_radius_udp_t const	*inst;		//!< our module instance
 	uint32_t		max_packet_size; //!< our max packet size. may be different from the parent...
 	int			fd;		//!< file descriptor
@@ -82,11 +79,11 @@ typedef struct udp_io_ctx_t {
 
 	// @todo - track status-server, open, signaling, etc.
 
-	// @todo - track outstanding IDs, one per packet code...
-
 	uint8_t			*buffer;	//!< receive buffer
 	size_t			buflen;		//!< receive buffer length
-} udp_io_ctx_t;
+
+	rlm_radius_id_t		*id[FR_MAX_PACKET_CODE]; //!< ID tracking
+};
 
 typedef struct request_ctx_t {
 	uint8_t			header[20];
@@ -122,12 +119,39 @@ static const CONF_PARSER module_config[] = {
 
 static int mod_write(REQUEST *request, void *request_ctx, void *io_ctx)
 {
-	udp_io_ctx_t *io = talloc_get_type_abort(io_ctx, udp_io_ctx_t);
+	rlm_radius_client_io_ctx_t *io = talloc_get_type_abort(io_ctx, rlm_radius_client_io_ctx_t);
 	request_ctx_t *track = (request_ctx_t *) request_ctx; /* not talloc'd */
 	ssize_t packet_len, data_size;
+	rlm_radius_request_t *rr;
+
+	rad_assert(request->packet->code > 0);
+	rad_assert(request->packet->code < FR_MAX_PACKET_CODE);
+
+	/*
+	 *	Create the tracking table if it doesn't already exist.
+	 *
+	 *	@todo - move this into the "init" routine?  where was can examine
+	 *	        the rlm_radius_t, and create the relevant data structures.
+	 */
+	if (!io->id[request->packet->code]) {
+		io->id[request->packet->code] = rr_track_create(io_ctx);
+		if (!io->id[request->packet->code]) {
+			RDEBUG("Failed creating tracking table for code %d", request->packet->code);
+			return -1;
+		}
+	}
+
+	/*
+	 *	Allocate an ID
+	 */
+	rr = rr_track_alloc(io->id[request->packet->code], request, request->packet->code, io, request_ctx);
+	if (!rr) {
+		RDEBUG("Failed allocating packet ID for code %d", request->packet->code);
+		return -1;
+	}
 
 	packet_len = fr_radius_encode(io->buffer, io->buflen, NULL, io->inst->secret, strlen(io->inst->secret),
-				      request->packet->code, 0, request->packet->vps);
+				      rr->code, rr->id, request->packet->vps);
 	if (packet_len < 0) {
 		RDEBUG("Failed encoding packet: %s", fr_strerror());
 
@@ -137,12 +161,11 @@ static int mod_write(REQUEST *request, void *request_ctx, void *io_ctx)
 
 	data_size = udp_send(io->fd, io->buffer, packet_len, 0,
 			     &io->dst_ipaddr, io->dst_port,
-//			     address->if_index,
-			     0,
+			     0,	/* if_index */
 			     &io->src_ipaddr, io->src_port);
 
 	// @todo - put the packet into an RB tree, too, so we can find replies...
-	memcpy(&track->header ,io->buffer, 20);
+	memcpy(&track->header, io->buffer, 20);
 
 	if (data_size < packet_len) {
 		rad_assert(0 == 1);
@@ -156,7 +179,7 @@ static int mod_write(REQUEST *request, void *request_ctx, void *io_ctx)
  */
 static char const *mod_get_name(TALLOC_CTX *ctx, void *io_ctx)
 {
-	udp_io_ctx_t *io = talloc_get_type_abort(io_ctx, udp_io_ctx_t);
+	rlm_radius_client_io_ctx_t *io = talloc_get_type_abort(io_ctx, rlm_radius_client_io_ctx_t);
 	char src_buf[FR_IPADDR_STRLEN], dst_buf[FR_IPADDR_STRLEN];
 
 	fr_inet_ntop(dst_buf, sizeof(dst_buf), &io->dst_ipaddr);
@@ -177,7 +200,7 @@ static char const *mod_get_name(TALLOC_CTX *ctx, void *io_ctx)
  */
 static void mod_close(int fd, void *io_ctx)
 {
-	udp_io_ctx_t *io = talloc_get_type_abort(io_ctx, udp_io_ctx_t);
+	rlm_radius_client_io_ctx_t *io = talloc_get_type_abort(io_ctx, rlm_radius_client_io_ctx_t);
 
 	if (shutdown(fd, SHUT_RDWR) < 0) DEBUG3("Shutdown on socket (%i) failed: %s", fd, fr_syserror(errno));
 	if (close(fd) < 0) DEBUG3("Closing socket (%i) failed: %s", fd, fr_syserror(errno));
@@ -190,7 +213,7 @@ static void mod_close(int fd, void *io_ctx)
  */
 static fr_connection_state_t mod_open(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED void *io_ctx)
 {
-//	udp_io_ctx_t_t *io = talloc_get_type_abort(io_ctx, udp_io_ctx_t);
+//	rlm_radius_client_io_ctx_t_t *io = talloc_get_type_abort(io_ctx, rlm_radius_client_io_ctx_t);
 
 	// @todo - create the initial Status-Server for negotiation and send that
 
@@ -204,7 +227,7 @@ static fr_connection_state_t mod_open(UNUSED fr_event_list_t *el, UNUSED int fd,
 static fr_connection_state_t mod_init(int *fd_out, void *io_ctx, void const *uctx)
 {
 	int fd;
-	udp_io_ctx_t *io = talloc_get_type_abort(io_ctx, udp_io_ctx_t);
+	rlm_radius_client_io_ctx_t *io = talloc_get_type_abort(io_ctx, rlm_radius_client_io_ctx_t);
 	rlm_radius_udp_t const *inst = talloc_get_type_abort(uctx, rlm_radius_udp_t);
 
 	io->inst = inst;
@@ -344,6 +367,7 @@ fr_radius_client_io_t rlm_radius_udp = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "radius_udp",
 	.inst_size	= sizeof(rlm_radius_udp_t),
+	.io_inst_size	= sizeof(rlm_radius_client_io_ctx_t),
 	.request_inst_size = sizeof(request_ctx_t),
 	.config		= module_config,
 	.bootstrap	= mod_bootstrap,

@@ -89,4 +89,6 @@ typedef struct fr_radius_client_io_t {
  */
 bool rlm_radius_update_delay(struct timeval *start, uint32_t *rt, uint32_t *count, int code, void *client_io_ctx, struct timeval *now);
 
+typedef struct rlm_radius_client_io_ctx_t rlm_radius_client_io_ctx_t;
+
 #endif	/* _RLM_RADIUS_H */
