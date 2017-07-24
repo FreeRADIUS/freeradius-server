@@ -16,7 +16,7 @@ The GitHub issue tracker and mailing lists have a strict code of conduct.
 This code of conduct is simple to abide by, and simple to enforce. Unlike other codes of conduct it
 does not require participants to be explicitly "inclusive" or "accepting" of certain topics. It
 requires participants to be blind to non-technical topics, as those subjects are explicitly off
-topic. The FreeRADIUS community is inclusive by not being exclusive.
+topic. The FreeRADIUS community is inclusive by virtue of not being exclusive.
 
 ## 2. Expected Behaviour
 
