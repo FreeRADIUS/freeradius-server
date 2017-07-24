@@ -506,7 +506,7 @@ static void mod_radius_fd_idle(rlm_radius_connection_t *c)
 	}
 
 	DEBUG3("Marking socket (%i) as idle", fr_connection_get_fd(c->conn));
-	if (fr_event_fd_insert(c, c->el, fr_connection_get_fd(c->conn),
+	if (fr_event_fd_insert(c->conn, c->el, fr_connection_get_fd(c->conn),
 			       mod_radius_conn_read, NULL, mod_radius_conn_error, c) < 0) {
 		PERROR("Failed inserting FD event");
 		talloc_free(c);
@@ -532,7 +532,7 @@ static void mod_radius_fd_active(rlm_radius_connection_t *c)
 	 */
 	if (inst->client_io->fd_active) (void) inst->client_io->fd_active(c->client_io_ctx);
 
-	if (fr_event_fd_insert(c, c->el, fr_connection_get_fd(c->conn),
+	if (fr_event_fd_insert(c->conn, c->el, fr_connection_get_fd(c->conn),
 			       mod_radius_conn_read, mod_radius_conn_writable,
 			       mod_radius_conn_error, c) < 0) {
 		PERROR("Failed inserting FD event");
