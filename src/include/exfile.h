@@ -41,7 +41,7 @@ void		exfile_enable_triggers(exfile_t *ef, CONF_SECTION *cs, char const *trigger
 				       VALUE_PAIR *trigger_args);
 
 int		exfile_open(exfile_t *lf, REQUEST *request, char const *filename,
-			    mode_t permissions, bool append);
+			    mode_t permissions);
 
 int		exfile_close(exfile_t *lf, REQUEST *request, int fd);
 

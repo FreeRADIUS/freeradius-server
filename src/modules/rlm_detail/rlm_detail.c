@@ -385,7 +385,7 @@ static rlm_rcode_t CC_HINT(nonnull) detail_do(void const *instance, REQUEST *req
 #endif
 #endif
 
-	outfd = exfile_open(inst->ef, request, buffer, inst->perm, true);
+	outfd = exfile_open(inst->ef, request, buffer, inst->perm);
 	if (outfd < 0) {
 		RERROR("Couldn't open file %s: %s", buffer, fr_strerror());
 		/* coverity[missing_unlock] */

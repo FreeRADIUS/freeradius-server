@@ -667,7 +667,7 @@ build_vector:
 			*p = '/';
 		}
 
-		fd = exfile_open(inst->file.ef, request, path, inst->file.permissions, true);
+		fd = exfile_open(inst->file.ef, request, path, inst->file.permissions);
 		if (fd < 0) {
 			RERROR("Failed to open %s: %s", path, fr_syserror(errno));
 			rcode = RLM_MODULE_FAIL;

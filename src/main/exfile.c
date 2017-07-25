@@ -203,12 +203,11 @@ void exfile_enable_triggers(exfile_t *ef, CONF_SECTION *conf, char const *trigge
  * @param request The current request.
  * @param filename the file to open.
  * @param permissions to use.
- * @param append If true seek to the end of the file.
  * @return
  *	- FD used to write to the file.
  *	- -1 on failure.
  */
-int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t permissions, bool append)
+int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t permissions)
 {
 	int i, tries, unused = -1, found = -1, oldest = -1;
 	bool do_cleanup = false;
@@ -415,7 +414,7 @@ do_return:
 	 *	Seek to the end of the file before returning the FD to
 	 *	the caller.
 	 */
-	if (append) lseek(ef->entries[i].fd, 0, SEEK_END);
+	(void) lseek(ef->entries[i].fd, 0, SEEK_END);
 
 	/*
 	 *	Return holding the mutex for the entry.
