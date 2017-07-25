@@ -2000,7 +2000,12 @@ void unlang_signal(REQUEST *request, fr_state_action_t action)
 
 	frame = &stack->frame[stack->depth];
 
-	rad_assert(frame->instruction->type == UNLANG_TYPE_MODULE_RESUME);
+	/*
+	 *	Be gracious in errors.
+	 */
+	if (frame->instruction->type != UNLANG_TYPE_MODULE_RESUME) {
+		return;
+	}
 
 	mr = unlang_generic_to_module_resumption(frame->instruction);
 	if (!mr->signal_callback) return;
