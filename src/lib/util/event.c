@@ -67,9 +67,9 @@ typedef struct fr_event_fd_t {
 	bool                    pf_attached;            //!< Has an attached packet filter (PF) program.
 #endif
 
-	fr_event_fd_handler_t	read;			//!< Callback for when data is available.
-	fr_event_fd_handler_t	write;			//!< Callback for when we can write data.
-	fr_event_fd_error_handler_t	error;		//!< Callback for when an error occurs on the FD.
+	fr_event_fd_io_t	read;			//!< Callback for when data is available.
+	fr_event_fd_io_t	write;			//!< Callback for when we can write data.
+	fr_event_fd_error_t	error;			//!< Callback for when an error occurs on the FD.
 
 	bool			is_registered;		//!< Whether this fr_event_fd_t's FD has been registered with
 							///< kevent.  Mostly for debugging.
@@ -77,7 +77,7 @@ typedef struct fr_event_fd_t {
 	bool			in_handler;		//!< Event is currently being serviced.  Deletes should be
 							///< deferred until after the handlers complete.
 
-	bool			deferred_free;	//!< Deferred deletion flag.  Delete this event *after*
+	bool			deferred_free;		//!< Deferred deletion flag.  Delete this event *after*
 							///< the handlers complete.
 
 	void			*uctx;			//!< Context pointer to pass to each file descriptor callback.
@@ -325,9 +325,9 @@ int fr_event_fd_delete(fr_event_list_t *el, int fd)
  *	- -1 on failure.
  */
 int fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
-		       fr_event_fd_handler_t read_fn,
-		       fr_event_fd_handler_t write_fn,
-		       fr_event_fd_error_handler_t error,
+		       fr_event_fd_io_t read_fn,
+		       fr_event_fd_io_t write_fn,
+		       fr_event_fd_error_t error,
 		       void *uctx)
 {
 	int		count = 0;
@@ -962,7 +962,7 @@ void fr_event_service(fr_event_list_t *el)
 	 *	Run all of the file descriptor events.
 	 */
 	for (i = 0; i < el->num_fd_events; i++) {
-		fr_event_fd_t	*ev;
+		fr_event_fd_t	*ef;
 		int		fd_errno = 0;
 		int		flags = el->events[i].flags;
 
@@ -987,9 +987,10 @@ void fr_event_service(fr_event_list_t *el)
 			continue;
 		}
 
-		ev = talloc_get_type_abort(el->events[i].udata, fr_event_fd_t);
+		ef = talloc_get_type_abort(el->events[i].udata, fr_event_fd_t);
 
-		if (!fr_cond_assert(ev->is_registered)) continue;
+		if (!fr_cond_assert(ef->is_registered)) continue;
+		if (ef->deferred_free) continue;			/* Stale, ignore it */
 
                 if (unlikely(flags & EV_ERROR)) {
                 	fd_errno = el->events[i].data;
@@ -997,8 +998,8 @@ void fr_event_service(fr_event_list_t *el)
                         /*
                          *      Call the error handler
                          */
-                        if (ev->error) ev->error(el, ev->fd, flags, fd_errno, ev->uctx);
-                        fr_event_fd_delete(el, ev->fd);
+                        if (ef->error) ef->error(el, ef->fd, flags, fd_errno, ef->uctx);
+                        fr_event_fd_delete(el, ef->fd);
                         continue;
                 }
 
@@ -1013,7 +1014,7 @@ void fr_event_service(fr_event_list_t *el)
 			 *	This is fine, the callback will get notified
 			 *	via the flags field.
 			 */
-			if (ev->is_file) goto service;
+			if (ef->is_file) goto service;
 #if defined(__linux__) && defined(SO_GET_FILTER)
 			/*
 			 *      There seems to be an issue with the
@@ -1028,7 +1029,7 @@ void fr_event_service(fr_event_list_t *el)
 			 *	with a packet filter attached, we ignore
 			 *	the EOF flag and continue.
 			 */
-			if ((ev->sock_type == SOCK_RAW) && ev->pf_attached) goto service;
+			if ((ef->sock_type == SOCK_RAW) && ef->pf_attached) goto service;
 #endif
 			fd_errno = el->events[i].fflags;
 
@@ -1036,14 +1037,15 @@ void fr_event_service(fr_event_list_t *el)
                 }
 
 service:
-		ev->in_handler = true;
-		if (ev->read && (el->events[i].filter == EVFILT_READ)) {
-			ev->read(el, ev->fd, flags, ev->uctx);
+		ef->in_handler = true;
+		if (ef->read && (el->events[i].filter == EVFILT_READ)) {
+			ef->read(el, ef->fd, flags, ef->uctx);
 		}
-		if (ev->write && (el->events[i].filter == EVFILT_WRITE) && !ev->deferred_free) {
-			ev->write(el, ev->fd, flags, ev->uctx);
+		if (ef->write && (el->events[i].filter == EVFILT_WRITE) && !ef->deferred_free) {
+			ef->write(el, ef->fd, flags, ef->uctx);
 		}
-		ev->in_handler = false;
+		ef->in_handler = false;
+	}
 
 		/*
 		 *	Process any deferred deletes performed
