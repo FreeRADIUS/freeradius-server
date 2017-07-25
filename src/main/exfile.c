@@ -32,7 +32,6 @@
 
 typedef struct exfile_entry_t {
 	int			fd;			//!< File descriptor associated with an entry.
-	int			dup;
 	uint32_t		hash;			//!< Hash for cheap comparison.
 	time_t			last_used;		//!< Last time the entry was used.
 	char			*filename;		//!< Filename.
@@ -102,7 +101,6 @@ static void exfile_cleanup_entry(exfile_t *ef, REQUEST *request, exfile_entry_t 
 
 	entry->hash = 0;
 	entry->fd = -1;
-	entry->dup = -1;
 
 	/*
 	 *	Issue close trigger *after* we've closed the fd
@@ -298,7 +296,6 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 	ef->entries[i].hash = hash;
 	ef->entries[i].filename = talloc_strdup(ef->entries, filename);
 	ef->entries[i].fd = -1;
-	ef->entries[i].dup = -1;
 
 	ef->entries[i].fd = open(filename, O_RDWR | O_APPEND | O_CREAT, permissions);
 	if (ef->entries[i].fd < 0) {
@@ -420,18 +417,11 @@ do_return:
 	 *	Return holding the mutex for the entry.
 	 */
 	ef->entries[i].last_used = now;
-	ef->entries[i].dup = dup(ef->entries[i].fd);
-	if (ef->entries[i].dup < 0) {
-		fr_strerror_printf("Failed calling dup(): %s", strerror(errno));
-		goto error;
-	}
 
 	exfile_trigger_exec(ef, request, &ef->entries[i], "reserve");
 
-	rad_assert(ef->entries[i].dup >= 0); /* try to shut up Coverity */
-
 	/* coverity[missing_unlock] */
-	return ef->entries[i].dup;
+	return ef->entries[i].fd;
 }
 
 /** Close the log file.  Really just return it to the pool.
@@ -457,10 +447,8 @@ int exfile_close(exfile_t *ef, REQUEST *request, int fd)
 		/*
 		 *	Unlock the bytes that we had previously locked.
 		 */
-		if (ef->entries[i].dup == fd) {
-			if (ef->locking) (void) rad_unlockfd(ef->entries[i].dup, 0);
-			close(ef->entries[i].dup); /* releases the fcntl lock */
-			ef->entries[i].dup = -1;
+		if (ef->entries[i].fd == fd) {
+			if (ef->locking) (void) rad_unlockfd(ef->entries[i].fd, 0);
 
 			pthread_mutex_unlock(&(ef->mutex));
 
