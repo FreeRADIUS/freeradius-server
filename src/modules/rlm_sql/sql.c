@@ -487,7 +487,7 @@ void rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request,
 		return;
 	}
 
-	fd = exfile_open(inst->ef, filename, 0640, true);
+	fd = exfile_open(inst->ef, filename, 0640);
 	if (fd < 0) {
 		ERROR("rlm_sql (%s): Couldn't open logfile '%s': %s", inst->name,
 		      expanded, fr_syserror(errno));

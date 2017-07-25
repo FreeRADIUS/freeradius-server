@@ -248,7 +248,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(void *instance, REQUEST *requ
 		return RLM_MODULE_FAIL;
 	}
 
-	fd = exfile_open(inst->ef, path, inst->permissions, true);
+	fd = exfile_open(inst->ef, path, inst->permissions);
 	if (fd < 0) {
 		ERROR("rlm_linelog: Failed to open %s: %s", path, fr_syserror(errno));
 		return RLM_MODULE_FAIL;

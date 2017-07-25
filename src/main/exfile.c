@@ -205,10 +205,9 @@ static int exfile_open_mkdir(exfile_t *ef, char const *filename, mode_t permissi
  * @param ef The logfile context returned from exfile_init().
  * @param filename the file to open.
  * @param permissions to use.
- * @param append If true seek to the end of the file.
  * @return an FD used to write to the file, or -1 on error.
  */
-int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool append)
+int exfile_open(exfile_t *ef, char const *filename, mode_t permissions)
 {
 	int i, found, tries, unused, oldest;
 	uint32_t hash;
@@ -224,8 +223,7 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool app
 		found = exfile_open_mkdir(ef, filename, permissions);
 		if (found < 0) return -1;
 
-		if (append) (void) lseek(found, 0, SEEK_END);
-
+		(void) lseek(found, 0, SEEK_END);
 		return found;
 	}
 
@@ -316,10 +314,15 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool app
 
 reopen:
 	/*
-	 *	Open the file and try to lock it.
+	 *	Open the file.
 	 */
 	ef->entries[i].fd = exfile_open_mkdir(ef, filename, permissions);
-	if (ef->entries[i].fd < 0) goto error;
+	if (ef->entries[i].fd < 0) {
+	error:
+		exfile_cleanup_entry(&ef->entries[i]);
+		PTHREAD_MUTEX_UNLOCK(&(ef->mutex));
+		return -1;
+	}
 
 	/*
 	 *	Try to lock it.  If we can't lock it, it's because
@@ -336,11 +339,7 @@ reopen:
 	 */
 	if (lseek(ef->entries[i].fd, 0, SEEK_SET) < 0) {
 		fr_strerror_printf("Failed to seek in file %s: %s", filename, strerror(errno));
-
-	error:
-		exfile_cleanup_entry(&ef->entries[i]);
-		PTHREAD_MUTEX_UNLOCK(&(ef->mutex));
-		return -1;
+		goto error;
 	}
 
 	/*
@@ -357,7 +356,7 @@ reopen:
 		/*
 		 *	Close the file and re-open it.  It may
 		 *	have been deleted.  If it was deleted,
-		 *	then it should now be unlocked.
+		 *	then the new file should now be unlocked.
 		 */
 		close(ef->entries[i].fd);
 		ef->entries[i].fd = open(filename, O_WRONLY | O_CREAT, permissions);
@@ -391,7 +390,7 @@ reopen:
 	 *	If we're appending, eek to the end of the file before
 	 *	returning the FD to the caller.
 	 */
-	if (append) lseek(ef->entries[i].fd, 0, SEEK_END);
+	(void) lseek(ef->entries[i].fd, 0, SEEK_END);
 
 	/*
 	 *	Return holding the mutex for the entry.
