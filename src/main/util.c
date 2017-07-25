@@ -923,15 +923,15 @@ void verify_request(char const *file, int line, REQUEST *request)
  */
 void rad_mode_to_str(char out[10], mode_t mode)
 {
-    static char const *rwx[] = {"---", "--x", "-w-", "-wx", "r--", "r-x", "rw-", "rwx"};
+	static char const *rwx[] = {"---", "--x", "-w-", "-wx", "r--", "r-x", "rw-", "rwx"};
 
-    strcpy(&out[0], rwx[(mode >> 6) & 0x07]);
-    strcpy(&out[3], rwx[(mode >> 3) & 0x07]);
-    strcpy(&out[6], rwx[(mode & 7)]);
-    if (mode & S_ISUID) out[2] = (mode & 0100) ? 's' : 'S';
-    if (mode & S_ISGID) out[5] = (mode & 0010) ? 's' : 'l';
-    if (mode & S_ISVTX) out[8] = (mode & 0100) ? 't' : 'T';
-    out[9] = '\0';
+	strcpy(&out[0], rwx[(mode >> 6) & 0x07]);
+	strcpy(&out[3], rwx[(mode >> 3) & 0x07]);
+	strcpy(&out[6], rwx[(mode & 7)]);
+	if (mode & S_ISUID) out[2] = (mode & 0100) ? 's' : 'S';
+	if (mode & S_ISGID) out[5] = (mode & 0010) ? 's' : 'l';
+	if (mode & S_ISVTX) out[8] = (mode & 0100) ? 't' : 'T';
+	out[9] = '\0';
 }
 
 void rad_mode_to_oct(char out[5], mode_t mode)
