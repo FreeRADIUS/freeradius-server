@@ -70,7 +70,7 @@ The main source of unacceptable behavior is community participants who
 are unaware of the complexities outlined in the previous section.
 They have questions, and they want answers.  They believe that as the
 experts, we can answer any and all questions about all possible
-technologies that interacts with FreeRADIUS.
+technologies which interact with FreeRADIUS.
 
 That expectation is unreasonable.  When that expectation turns to
 entitlement and anger, it becomes unacceptable behaviour.
