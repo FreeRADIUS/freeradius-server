@@ -1011,9 +1011,17 @@ void fr_worker_destroy(fr_worker_t *worker)
 	 */
 	while ((entry = FR_DLIST_TAIL(worker->time_order)) != NULL) {
 		fr_async_t *async;
+		fr_io_final_t final;
 
 		async = fr_ptr_to_type(fr_async_t, time_order, entry);
 		request = talloc_parent(async);
+
+		final = request->async->process(request, FR_IO_ACTION_DONE);
+
+		if (final != FR_IO_DONE) {
+			fr_dlist_insert_tail(&worker->waiting_to_die, &request->async->time_order);
+			continue;
+		}
 
 		fr_dlist_remove(&request->async->time_order);
 		talloc_free(request);
