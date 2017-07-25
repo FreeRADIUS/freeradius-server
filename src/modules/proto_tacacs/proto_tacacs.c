@@ -504,7 +504,7 @@ static int tacacs_socket_recv(rad_listen_t *listener)
 	}
 
 	request->process = tacacs_queued;
-	request_enqueue(request);
+//	request_enqueue(request);
 
 	sock->packet = NULL;	/* we have no need for more partial reads */
 	return 1;

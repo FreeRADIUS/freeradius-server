@@ -646,7 +646,7 @@ static int _proto_ldap_cookie_store(UNUSED fr_ldap_conn_t *conn, sync_config_t c
 
 	request->packet->code = LDAP_SYNC_CODE_COOKIE_STORE;
 
-	request_enqueue(request);
+//	request_enqueue(request);
 
 	return 0;
 }
@@ -709,7 +709,7 @@ static int _proto_ldap_entry(fr_ldap_conn_t *conn, sync_config_t const *config,
 	}
 	if (fr_ldap_map_do(request, conn, NULL, &expanded, msg) < 0) goto error;
 
-	request_enqueue(request);
+//	request_enqueue(request);
 
 	return 0;
 }
