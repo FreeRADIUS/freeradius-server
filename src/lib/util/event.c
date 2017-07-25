@@ -44,7 +44,7 @@ RCSID("$Id$")
 /** A timer event
  *
  */
-struct fr_event_timer_t {
+struct fr_event_timer {
 	struct timeval		when;			//!< When this timer should fire.
 	fr_event_callback_t	callback;		//!< Callback to execute when the timer fires.
 	void const		*uctx;			//!< Context pointer to pass to the callback.
@@ -57,7 +57,7 @@ struct fr_event_timer_t {
 /** A file descriptor event
  *
  */
-typedef struct fr_event_fd_t {
+struct fr_event_fd {
 	int			fd;			//!< File descriptor we're listening for events on.
 
 	int                     sock_type;              //!< The type of socket SOCK_STREAM, SOCK_RAW etc...
@@ -82,12 +82,14 @@ typedef struct fr_event_fd_t {
 
 	void			*uctx;			//!< Context pointer to pass to each file descriptor callback.
 	TALLOC_CTX		*linked_ctx;		//!< talloc ctx this event was bound to.
-} fr_event_fd_t;
+
+	fr_event_fd_t		*next;			//!< item in a list of fr_event_fd.
+};
 
 /** Callbacks to perform when the event handler is about to check the events
  *
  */
-typedef struct fr_event_pre_t {
+typedef struct {
 	fr_dlist_t		entry;			//!< Linked list of callback.
 	fr_event_status_t	callback;		//!< The callback to call.
 	void			*uctx;			//!< Context for the callback.
@@ -96,7 +98,7 @@ typedef struct fr_event_pre_t {
 /** Callbacks to perform after all timers and FDs have been checked
  *
  */
-typedef struct fr_event_post_t {
+typedef struct {
 	fr_dlist_t		entry;			//!< Linked list of callback.
 	fr_event_callback_t	callback;		//!< The callback to call.
 	void			*uctx;			//!< Context for the callback.
@@ -105,7 +107,7 @@ typedef struct fr_event_post_t {
 /** Callbacks for kevent() user events
  *
  */
-typedef struct fr_event_user_t {
+typedef struct {
 	fr_dlist_t		entry;			//!< Linked list of callback.
 	uintptr_t		ident;			//!< The identifier of this event.
 	fr_event_user_handler_t callback;		//!< The callback to call.
@@ -115,7 +117,7 @@ typedef struct fr_event_user_t {
 /** Stores all information relating to an event list
  *
  */
-struct fr_event_list_t {
+struct fr_event_list {
 	fr_heap_t		*times;			//!< of timer events to be executed.
 	rbtree_t		*fds;			//!< Tree used to track FDs with filters in kqueue.
 
@@ -135,6 +137,8 @@ struct fr_event_list_t {
 	fr_dlist_t		post_callbacks;		//!< post-processing callbacks
 
 	struct kevent		events[FR_EV_BATCH_FDS]; /* so it doesn't go on the stack every time */
+
+	fr_event_fd_t		*fd_to_free;		//!< File descriptor events pending deletion.
 };
 
 /** Compare two timer events to see which one should occur first
@@ -297,8 +301,10 @@ int fr_event_fd_delete(fr_event_list_t *el, int fd)
 	 *	in use within fr_event_service.
 	 */
 	if (ef->in_handler) {
-		if (fr_event_fd_delete_internal(ef) < 0) return -1;	/* Removes from kevent/rbtree, does not free */
+		if (unlikely(fr_event_fd_delete_internal(ef)) < 0) return -1;	/* Removes from kevent/rbtree, does not free */
 		ef->deferred_free = true;
+		ef->next = el->fd_to_free;
+		el->fd_to_free = ef;
 		return 0;
 	}
 
@@ -1047,11 +1053,24 @@ service:
 		ef->in_handler = false;
 	}
 
-		/*
-		 *	Process any deferred deletes performed
-		 *	by the I/O handler.
-		 */
-		if (ev->deferred_free) fr_event_fd_delete(el, ev->fd);
+	/*
+	 *	Process any deferred frees performed
+	 *	by the I/O handlers.
+	 *
+	 *	The events are removed from the FD rbtree
+	 *	and kevent immediately, but frees are
+	 *	deferred to allow stale events to be
+	 *	skipped sans SEGV.
+	 */
+	if (el->fd_to_free) {
+		fr_event_fd_t *to_free, *next;
+
+		for (to_free = el->fd_to_free; to_free; to_free = next) {
+			next = to_free->next;
+			talloc_free(to_free);
+		}
+
+		el->fd_to_free = NULL;	/* all gone */
 	}
 
 	gettimeofday(&el->now, NULL);

@@ -36,15 +36,15 @@ extern "C" {
 
 /** An opaque file descriptor handle
  */
-typedef struct fr_event_fd_t fr_event_fd_t;
+typedef struct fr_event_fd fr_event_fd_t;
 
 /** An opaque event list handle
  */
-typedef struct fr_event_list_t fr_event_list_t;
+typedef struct fr_event_list fr_event_list_t;
 
 /** An opaque timer handle
  */
-typedef struct fr_event_timer_t fr_event_timer_t;
+typedef struct fr_event_timer fr_event_timer_t;
 
 /** Called when a timer event fires
  *
