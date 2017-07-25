@@ -28,7 +28,7 @@
 #include <freeradius-devel/dict.h>
 #include <freeradius-devel/rad_assert.h>
 
-static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
+static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 {
 	rlm_rcode_t rcode;
 	CONF_SECTION *unlang;
@@ -37,6 +37,15 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 	VALUE_PAIR *vp;
 
 	VERIFY_REQUEST(request);
+
+	/*
+	 *	Pass this through asynchronously to the module which
+	 *	is waiting for something to happen.
+	 */
+	if (action != FR_ACTION_RUN) {
+		unlang_signal(request, action);
+		return;
+	}
 
 	switch (request->request_state) {
 	case REQUEST_INIT:

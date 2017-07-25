@@ -115,7 +115,7 @@ static void auth_message(char const *msg, REQUEST *request, int goodpass)
 		       extra);
 }
 
-static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
+static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 {
 	VALUE_PAIR		*vp, *auth_type;
 	rlm_rcode_t		rcode;
@@ -123,6 +123,17 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 	fr_dict_enum_t const	*dv = NULL;
 	fr_dict_attr_t const 	*da = NULL;
 	vp_cursor_t		cursor;
+
+	VERIFY_REQUEST(request);
+
+	/*
+	 *	Pass this through asynchronously to the module which
+	 *	is waiting for something to happen.
+	 */
+	if (action != FR_ACTION_RUN) {
+		unlang_signal(request, action);
+		return;
+	}
 
 	switch (request->request_state) {
 	case REQUEST_INIT:
