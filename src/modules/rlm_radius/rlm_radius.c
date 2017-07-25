@@ -6,6 +6,8 @@
 // * add 'type = Access-Request' checking.  Which (if set) limits the outbound packet types
 //   - mainly so that we can fail here instead of not getting a reply from the home server
 //   - and it mirrors the old configuration
+//   - which allows us to parse "Access-Request { ... }" sub-sections only if there's an Access-Request
+// * add status_check = Status-Server or Access-Request, ala old code
 // * add documentation for function prototypes in rlm_radius.h
 // * allow for "no reply" proxying, where we don't care about getting the reply
 //   - i.e. we still drain the socket, we just don't do anything with the replies
@@ -164,7 +166,8 @@ static int mod_link_free(rlm_radius_link_t *link)
 
 	/*
 	 *	Free the child's request io context.  That will call
-	 *	the child's destructor, which will remove it from the list, etc.
+	 *	the IO submodules destructor, which will remove it
+	 *	from the tracking table, etc.
 	 *
 	 *	Note that the IO submodule has to set the destructor
 	 *	itself...
@@ -253,6 +256,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 
 	talloc_set_destructor(link, mod_link_free);
 
+	// @todo - add signal / cancellation handler
 	return unlang_module_yield(request, mod_radius_resume, NULL, link);
 }
 
