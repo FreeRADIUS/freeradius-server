@@ -352,6 +352,7 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 	ef->entries[i].filename = talloc_strdup(ef->entries, filename);
 	ef->entries[i].fd = -1;
 
+reopen:
 	ef->entries[i].fd = exfile_open_mkdir(ef, filename, permissions);
 	if (ef->entries[i].fd < 0) goto error;
 
@@ -387,7 +388,7 @@ do_return:
 			}
 
 			close(ef->entries[i].fd);
-			ef->entries[i].fd = open(filename, O_WRONLY | O_CREAT, permissions);
+			ef->entries[i].fd = open(filename, O_RDWR | O_CREAT, permissions);
 			if (ef->entries[i].fd < 0) {
 				fr_strerror_printf("Failed to open file %s: %s",
 						   filename, strerror(errno));
@@ -412,12 +413,7 @@ do_return:
 
 	if (st.st_nlink == 0) {
 		close(ef->entries[i].fd);
-		ef->entries[i].fd = open(filename, O_WRONLY | O_CREAT, permissions);
-		if (ef->entries[i].fd < 0) {
-			fr_strerror_printf("Failed to open file %s: %s",
-					   filename, strerror(errno));
-			goto error;
-		}
+		goto reopen;
 	}
 
 	/*
