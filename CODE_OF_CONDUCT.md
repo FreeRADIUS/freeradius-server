@@ -36,10 +36,10 @@ The following behaviours are expected and requested of all community members:
 
 ## 3. Our Limitations
 
-We understand that when people ask questions, their goal is to obtain
-help from the community.  Please be aware that the FreeRADIUS
-community is not large.  The project has three core members, who are
-not 100% dedicated to FreeADIUS.  The project has about seventy
+We understand that when participants ask questions, their goal is to
+obtain help from the community.  Please be aware that the FreeRADIUS
+community is not large.  The project has three core members, none of
+whom are dedicated 100% to FreeADIUS.  The project has about seventy
 modules, each of which has complex behavior.  All of that code, test
 cases, and documentation has to be updated with limited resources.
 
@@ -56,7 +56,8 @@ SIM, AKA, LEAP, PWD.  The TLS-based EAP methods work with TLSv1.0,
 TLSv1.1, and TLSv1.2.  The EAP methods interact with client EAP
 configurations on Linux, BSD, MacOS, iOS, Android, and many other
 embedded systems.  FreeRADIUS supports NAS equipment from Cisco, HP,
-Juniper, Alcatel-Lucent, Aerohive, Ruckus, Aruba, and Mikrotik.
+Juniper, Alcatel-Lucent, Aerohive, Ruckus, Aruba, Mikrotik, and dozens
+of other vendors, across thousands of individual products.
 
 Finally, the configuration files support a nearly infinite number of
 ways to integrate and arrange the above technlogies.  In short, we
