@@ -91,8 +91,11 @@ static int rr_cmp(void const *one, void const *two)
 
 /** Allocate a tracking entry.
  *
- * @param id		The rlm_radius_id_t tracking table
- * @param request	The request which will send the proxied packet
+ * @param[in] id		The rlm_radius_id_t tracking table.
+ * @param[in] request		The request which will send the proxied packet.
+ * @param[in] code		Of the outbound request.
+ * @param[in] client_io_ctx	Client I/O ctx.
+ * @param[in] request_io_ctx	Request I/O ctx.
  * @return
  *	- NULL on error
  *	- rlm_radius_request_t on success
@@ -305,7 +308,7 @@ rlm_radius_request_t *rr_track_find(rlm_radius_id_t *id, int packet_id, uint8_t 
 		/*
 		 *	Ignore the Request Authenticator, as the
 		 *	caller doesn't have it.
-		 */		
+		 */
 		return rr;
 	}
 
