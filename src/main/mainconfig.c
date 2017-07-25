@@ -106,7 +106,7 @@ static char const	*radius_dir = NULL;	//!< Path to raddb directory
 /*
  *	Log destinations
  */
-static const CONF_PARSER log_config[] = {
+static const CONF_PARSER initial_log_subsection_config[] = {
 	{ FR_CONF_POINTER("destination", FR_TYPE_STRING, &radlog_dest), .dflt = "files" },
 	{ FR_CONF_POINTER("syslog_facility", FR_TYPE_STRING, &syslog_facility), .dflt = STRINGIFY(0) },
 
@@ -114,7 +114,31 @@ static const CONF_PARSER log_config[] = {
 	{ FR_CONF_POINTER("logdir", FR_TYPE_STRING, &radlog_dir), .dflt = "${localstatedir}/log"},
 	{ FR_CONF_POINTER("file", FR_TYPE_STRING, &main_config.log_file), .dflt = "${logdir}/radius.log" },
 	{ FR_CONF_POINTER("requests", FR_TYPE_STRING | FR_TYPE_DEPRECATED, &default_log.file) },
+	CONF_PARSER_TERMINATOR
+};
 
+
+/*
+ *	Basic configuration for the server.
+ */
+static const CONF_PARSER initial_logging_config[] = {
+	{ FR_CONF_POINTER("log", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) initial_log_subsection_config },
+
+	{ FR_CONF_POINTER("prefix", FR_TYPE_STRING, &prefix), .dflt = "/usr/local" },
+
+	{ FR_CONF_POINTER("use_utc", FR_TYPE_BOOL, &log_dates_utc) },
+	{ FR_CONF_IS_SET_POINTER("timestamp", FR_TYPE_BOOL, &log_timestamp) },
+	CONF_PARSER_TERMINATOR
+};
+
+
+/**********************************************************************
+ *
+ *	Now that we've parsed the log destination, AND the security
+ *	items, we can parse the rest of the configuration items.
+ *
+ **********************************************************************/
+static const CONF_PARSER log_config[] = {
 	{ FR_CONF_POINTER("stripped_names", FR_TYPE_BOOL, &log_stripped_names), .dflt = "no" },
 	{ FR_CONF_POINTER("auth", FR_TYPE_BOOL, &main_config.log_auth), .dflt = "no" },
 	{ FR_CONF_POINTER("auth_badpass", FR_TYPE_BOOL, &main_config.log_auth_badpass), .dflt = "no" },
@@ -131,27 +155,6 @@ static const CONF_PARSER log_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-
-/*
- *	Basic configuration for the server.
- */
-static const CONF_PARSER initial_logging_config[] = {
-	{ FR_CONF_POINTER("log", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) log_config },
-
-	{ FR_CONF_POINTER("prefix", FR_TYPE_STRING, &prefix), .dflt = "/usr/local" },
-
-	{ FR_CONF_POINTER("use_utc", FR_TYPE_BOOL, &log_dates_utc) },
-	{ FR_CONF_IS_SET_POINTER("timestamp", FR_TYPE_BOOL, &log_timestamp) },
-	CONF_PARSER_TERMINATOR
-};
-
-
-/**********************************************************************
- *
- *	Now that we've parsed the log destination, AND the security
- *	items, we can parse the rest of the configuration items.
- *
- **********************************************************************/
 
 static const CONF_PARSER resources[] = {
 	/*
@@ -194,6 +197,7 @@ static const CONF_PARSER server_config[] = {
 #ifdef WITH_PROXY
 	{ FR_CONF_POINTER("proxy_requests", FR_TYPE_BOOL, &main_config.proxy_requests), .dflt = "yes" },
 #endif
+	{ FR_CONF_POINTER("log", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) log_config },
 
 	{ FR_CONF_POINTER("resources", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) resources },
 
