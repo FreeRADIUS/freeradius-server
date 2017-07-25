@@ -90,8 +90,11 @@ The following behaviours are unacceptable within our community:
 
 ## 5. Consequences of Unacceptable Behaviour
 
-Where unacceptable behaviour is noted and the community participant informed of behaviour and next
-steps, the community participant is expected to comply immediately.
+Where unacceptable behaviour is noted and the community participant
+informed of behaviour and next steps, the community participant is
+expected to comply immediately.  Arguing with the warnings is deemed
+"off topic" for the community (see section 1), and is seen as a
+continuance of the unacceptable behavior.
 
 The community organizers will take any action they deem appropriate, which may include permanent
 expulsion from the community using appropriate mechanisms.
