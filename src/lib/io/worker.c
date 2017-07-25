@@ -557,7 +557,8 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 	}
 
 	/*
-	 *	Check the "runnable" queue for old requests.
+	 *	Look at the oldest requests, and see if they need to
+	 *	be deleted.
 	 */
 	while ((entry = FR_DLIST_TAIL(worker->time_order)) != NULL) {
 		REQUEST *request;
@@ -974,6 +975,8 @@ void fr_worker_destroy(fr_worker_t *worker)
 {
 //	int i;
 	fr_channel_data_t *cd;
+	fr_dlist_t *entry;
+	REQUEST *request;
 
 //	WORKER_VERIFY;
 
@@ -991,6 +994,44 @@ void fr_worker_destroy(fr_worker_t *worker)
 		WORKER_HEAP_POP(localized, cd, request.list);
 		if (!cd) break;
 		fr_message_done(&cd->m);
+	}
+
+	/*
+	 *	Remove the requests from the "runnable" queue.
+	 */
+	while ((request = fr_heap_pop(worker->runnable)) != NULL) {
+		fr_dlist_remove(&request->async->time_order);
+		talloc_free(request);
+	}
+
+	/*
+	 *	Destroy all of the active requests.  These are ones
+	 *	which are still waiting for timers or file descriptor
+	 *	events.
+	 */
+	while ((entry = FR_DLIST_TAIL(worker->time_order)) != NULL) {
+		fr_async_t *async;
+
+		async = fr_ptr_to_type(fr_async_t, time_order, entry);
+		request = talloc_parent(async);
+
+		fr_dlist_remove(&request->async->time_order);
+		talloc_free(request);
+	}
+
+	/*
+	 *	Destroy requests which are unresponsive.
+	 */
+	for (entry = FR_DLIST_FIRST(worker->waiting_to_die);
+	     entry != NULL;
+	     entry = FR_DLIST_NEXT(worker->waiting_to_die, entry)) {
+		fr_async_t *async;
+
+		async = fr_ptr_to_type(fr_async_t, time_order, entry);
+		request = talloc_parent(async);
+
+		fr_dlist_remove(&request->async->time_order);
+		talloc_free(request);
 	}
 
 #if 0
