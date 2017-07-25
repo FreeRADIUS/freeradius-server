@@ -119,8 +119,6 @@ struct fr_worker_t {
 	fr_heap_t      		*runnable;	//!< current runnable requests which we've spent time processing
 	fr_dlist_t		time_order;	//!< time order of requests
 
-	fr_dlist_t		waiting_to_die;	//!< waiting to die
-
 	int			num_requests;	//!< number of requests processed by this worker
 	int			num_decoded;	//!< number of messages which have been decoded
 	int			num_replies;	//!< number of messages which were replied to
@@ -563,7 +561,6 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 	while ((entry = FR_DLIST_TAIL(worker->time_order)) != NULL) {
 		REQUEST *request;
 		fr_async_t *async;
-		fr_io_final_t final;
 
 		async = fr_ptr_to_type(fr_async_t, time_order, entry);
 		request = talloc_parent(async);
@@ -577,46 +574,13 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 		fr_dlist_remove(&request->async->time_order);
 		(void) fr_heap_extract(worker->runnable, request);
 
-		final = request->async->process(request, FR_IO_ACTION_DONE);
-
-		if (final != FR_IO_DONE) {
-			fr_dlist_insert_tail(&worker->waiting_to_die, &request->async->time_order);
-			continue;
-		}
-
+		(void) request->async->process(request, FR_IO_ACTION_DONE);
 		fr_log(worker->log, L_DBG, "(%"PRIu64") taking too long, stopping it", request->number);
 
 		/*
 		 *	Tell the network side that this request is done.
 		 */
 		fr_worker_send_reply(worker, request, 0);
-	}
-
-	/*
-	 *	Check the waiting_to_die list.
-	 */
-	for (entry = FR_DLIST_FIRST(worker->waiting_to_die);
-	     entry != NULL;
-	     entry = FR_DLIST_NEXT(worker->waiting_to_die, entry)) {
-		REQUEST *request;
-		fr_async_t *async;
-		fr_io_final_t final;
-
-		async = fr_ptr_to_type(fr_async_t, time_order, entry);
-		request = talloc_parent(async);
-
-		final = request->async->process(request, FR_IO_ACTION_DONE);
-
-		if (final == FR_IO_DONE) {
-			fr_dlist_remove(&request->async->time_order);
-
-			fr_log(worker->log, L_DBG, "(%"PRIu64") finally finished", request->number);
-
-			/*
-			 *	Tell the network side that this request is done.
-			 */
-			fr_worker_send_reply(worker, request, 0);
-		}
 	}
 }
 
@@ -833,15 +797,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	} else {
 		final = request->async->process(request, FR_IO_ACTION_DONE);
 
-		/*
-		 *	If the request isn't done, put it into the
-		 *	async cleanup queue.
-		 */
-		if (final != FR_IO_DONE) {
-			fr_dlist_remove(&request->async->time_order);
-			fr_dlist_insert_tail(&worker->waiting_to_die, &request->async->time_order);
-			return;
-		}
+		rad_assert(final == FR_IO_DONE);
 	}
 
 	/*
@@ -1011,32 +967,11 @@ void fr_worker_destroy(fr_worker_t *worker)
 	 */
 	while ((entry = FR_DLIST_TAIL(worker->time_order)) != NULL) {
 		fr_async_t *async;
-		fr_io_final_t final;
 
 		async = fr_ptr_to_type(fr_async_t, time_order, entry);
 		request = talloc_parent(async);
 
-		final = request->async->process(request, FR_IO_ACTION_DONE);
-
-		if (final != FR_IO_DONE) {
-			fr_dlist_insert_tail(&worker->waiting_to_die, &request->async->time_order);
-			continue;
-		}
-
-		fr_dlist_remove(&request->async->time_order);
-		talloc_free(request);
-	}
-
-	/*
-	 *	Destroy requests which are unresponsive.
-	 */
-	for (entry = FR_DLIST_FIRST(worker->waiting_to_die);
-	     entry != NULL;
-	     entry = FR_DLIST_NEXT(worker->waiting_to_die, entry)) {
-		fr_async_t *async;
-
-		async = fr_ptr_to_type(fr_async_t, time_order, entry);
-		request = talloc_parent(async);
+		(void) request->async->process(request, FR_IO_ACTION_DONE);
 
 		fr_dlist_remove(&request->async->time_order);
 		talloc_free(request);
@@ -1161,7 +1096,6 @@ nomem:
 		goto fail;
 	}
 	FR_DLIST_INIT(worker->time_order);
-	FR_DLIST_INIT(worker->waiting_to_die);
 
 	if (fr_event_post_insert(worker->el, fr_worker_post_event, worker) < 0) {
 		fr_strerror_printf("Failed inserting post-processing event");
