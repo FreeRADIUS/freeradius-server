@@ -26,35 +26,14 @@
  * @copyright 2017 Alan DeKok <aland@freeradius.org>
  */
 
-/** Initialize a RADIUS client socket
- *
- */
-typedef fr_connection_state_t (*fr_radius_client_init_t)(int *fd_out, void *io_ctx, void const *uctx);
+typedef struct rlm_radius_t rlm_radius_t;
+typedef struct rlm_radius_link_t rlm_radius_link_t;
 
-/** Get a printable name for a socket.
- *
- */
-typedef char const *(*fr_radius_client_name_t)(TALLOC_CTX *ctx, void *io_ctx);
 
-/** Update the FD state to active or idle
+/** Push a REQUEST to an IO submodule
  *
  */
-typedef bool (*fr_radius_client_active_t)(void *io_ctx);
-
-/** Get a REQUEST from a socket
- *
- */
-typedef int (*fr_radius_client_read_t)(REQUEST **p_request, rlm_rcode_t *p_rcode, fr_event_list_t *el, int sock, void *io_ctx);
-
-/** Write a REQUEST to a socket.
- *
- */
-typedef int (*fr_radius_client_write_t)(REQUEST *request, void *request_ctx, void *io_ctx);
-
-/** Flush a socket for writing
- *
- */
-typedef int (*fr_radius_client_flush_t)(void *uctx);
+typedef int (*fr_radius_io_push_t)(rlm_radius_t *inst, REQUEST *request, rlm_radius_link_t *link, void *thread);
 
 
 /** Public structure describing an I/O path for an outgoing socket.
@@ -66,29 +45,72 @@ typedef struct fr_radius_client_io_t {
 
 	fr_app_bootstrap_t		bootstrap;
 	fr_app_instantiate_t		instantiate;
-	size_t				io_inst_size;		//!< Size of data to allocate to the IO handler
-	size_t				request_inst_size;	//!< size of the data to allocate per-request.
+	size_t				io_inst_size;		//!< Size of data for parsing the configuration
 
+	module_thread_t			thread_instantiate;	//!< Callback to configure a module's instance for
+								//!< a new worker thread.
+	module_thread_detach_t		thread_detach;		//!< Destroy thread specific data.
+	size_t				thread_inst_size;	//!< Size of data to allocate to the thread instance.
 
-	fr_radius_client_init_t		init;			//!< initialize a socket using thread instance data
-	fr_connection_open_t		open;			//!< open a socket using thread instance data
-	fr_connection_close_t       	close;			//!< close a socket using thread instance data
-	fr_radius_client_name_t		get_name;	       	//!< get the name of this socket.
+	size_t				request_inst_size;	//!< size of the data per request
 
-	fr_radius_client_active_t	fd_active;		//!< mark the FD as active
-	fr_radius_client_active_t	fd_idle;		//!< mark the FD as idle
-
-	fr_radius_client_write_t	write;			//!< write a REQUEST to a socket
-	fr_radius_client_write_t	remove;			//!< remove a written request from a socket
-	fr_radius_client_read_t		read;			//!< read a REQUEST from a socket.
-	fr_radius_client_flush_t	flush;			//!< flush data for an outgoing socket
+	fr_radius_io_push_t		push;			//!< push a REQUEST to an IO submodule
 } fr_radius_client_io_t;
 
-/*
- *	So transports can calculate retransmission timers.
- */
-bool rlm_radius_update_delay(struct timeval *start, uint32_t *rt, uint32_t *count, int code, void *client_io_ctx, struct timeval *now);
+typedef struct rlm_radius_retry_t {
+	uint32_t		irt;			//!< Initial transmission time
+	uint32_t		mrc;			//!< Maximum retransmission count
+	uint32_t		mrt;			//!< Maximum retransmission time
+	uint32_t		mrd;			//!< Maximum retransmission duration
+} rlm_radius_retry_t;
 
-typedef struct rlm_radius_client_io_ctx_t rlm_radius_client_io_ctx_t;
+/*
+ *	Define a structure for our module configuration.
+ */
+struct rlm_radius_t {
+	char const		*name;		//!< Module instance name.
+
+	struct timeval		connection_timeout;
+	struct timeval		reconnection_delay;
+	struct timeval		idle_timeout;
+
+	dl_instance_t		*io_submodule;	//!< As provided by the transport_parse
+	fr_radius_client_io_t const *io;	//!< Easy access to the IO handle
+	void			*io_instance;	//!< Easy access to the IO instance
+	CONF_SECTION		*io_conf;	//!< Easy access to the IO config section
+
+	rlm_radius_retry_t	packets[FR_MAX_PACKET_CODE];
+};
+
+typedef struct rlm_radius_connection_t rlm_radius_connection_t;
+
+struct rlm_radius_link_t {
+	REQUEST			*request;		//!< the request we are for, so we can find it from the link
+	bool			queued;			//!< is the request queued and waiting, or sent?
+	fr_dlist_t		entry;			//!< linked list of queued or sent
+
+	fr_time_t		time_sent;		//!< when we sent the packet
+	fr_time_t		time_recv;		//!< when we received the reply
+
+
+	rlm_rcode_t		rcode;			//!< from the transport
+	void			*request_io_ctx;
+	rlm_radius_connection_t	*c;			//!< which connection we're queued or sent
+};
+
+/** Per-thread instance data
+ *
+ * Contains buffers and connection handles specific to the thread.
+ */
+typedef struct rlm_radius_thread_t {
+	rlm_radius_t const	*inst;			//!< Instance of the module.
+	fr_event_list_t		*el;			//!< This thread's event list.
+
+	bool			pending;		//!< We have pending messages to write.
+	fr_dlist_t		queued;			//!< queued requests
+	fr_dlist_t		running;		//!< running requests
+
+	void			*io_thread_ctx;		//!< IO context for the IO submodule
+} rlm_radius_thread_t;
 
 #endif	/* _RLM_RADIUS_H */
