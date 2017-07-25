@@ -136,7 +136,7 @@ static void exfile_cleanup_entry(exfile_entry_t *entry)
 {
 	TALLOC_FREE(entry->filename);
 
-	close(entry->fd);
+	if (entry->fd >= 0) close(entry->fd);
 	entry->hash = 0;
 	entry->fd = -1;
 }
