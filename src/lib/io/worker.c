@@ -972,10 +972,10 @@ static int worker_request_cmp(void const *one, void const *two)
  */
 void fr_worker_destroy(fr_worker_t *worker)
 {
-	int i;
+//	int i;
 	fr_channel_data_t *cd;
 
-	WORKER_VERIFY;
+//	WORKER_VERIFY;
 
 	/*
 	 *	These messages aren't in the channel, so we have to
@@ -993,6 +993,7 @@ void fr_worker_destroy(fr_worker_t *worker)
 		fr_message_done(&cd->m);
 	}
 
+#if 0
 	/*
 	 *	Signal the channels that we're closing.
 	 *
@@ -1007,6 +1008,7 @@ void fr_worker_destroy(fr_worker_t *worker)
 
 		fr_channel_worker_ack_close(worker->channel[i]);
 	}
+#endif
 
 	(void) fr_event_pre_delete(worker->el, fr_worker_pre_event, worker);
 	(void) fr_event_post_delete(worker->el, fr_worker_post_event, worker);
