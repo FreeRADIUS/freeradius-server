@@ -2,11 +2,15 @@ FreeRADIUS 3.0.16 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	Feature improvements
 
 	Bug fixes
-	* Allow 100-Continue responses with additional headers in rlm_rest.
 	* Bind the lifetime of program name and python path to the module
 	  FR-AD-002 (redone)
 	* Pass correct statement length into sqlite3_prepare[_v2]
 	  FR-AD-003 (redone)
+	* Allow 100-Continue responses with additional headers in rlm_rest.
+	* fix corner case where detail files were not being locked
+	  correctly.
+	* Fix (SQL-Group == "%{...}") checks, and same for LDAP-Group.
+	  Fixes #1947
 
 FreeRADIUS 3.0.15 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	Feature improvements
