@@ -345,7 +345,7 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 static rlm_rcode_t CC_HINT(nonnull) detail_do(void const *instance, REQUEST *request,
 					      RADIUS_PACKET *packet, bool compat)
 {
-	int		outfd;
+	int		outfd, dupfd;
 	char		buffer[DIRLEN];
 
 	FILE		*outfp;
@@ -407,14 +407,21 @@ static rlm_rcode_t CC_HINT(nonnull) detail_do(void const *instance, REQUEST *req
 	}
 
 skip_group:
+	outfp = NULL;
+	dupfd = dup(outfd);
+	if (dupfd < 0) {
+		RERROR("Failed to dup() file descriptor for detail file");
+		goto fail;
+	}
+
 	/*
 	 *	Open the output fp for buffering.
 	 */
-	if ((outfp = fdopen(outfd, "a")) == NULL) {
+	if ((outfp = fdopen(dupfd, "a")) == NULL) {
 		RERROR("Couldn't open file %s: %s", buffer, fr_syserror(errno));
 	fail:
 		if (outfp) fclose(outfp);
-		exfile_unlock(inst->ef, request, outfd);
+		exfile_close(inst->ef, request, outfd);
 		return RLM_MODULE_FAIL;
 	}
 
@@ -424,7 +431,7 @@ skip_group:
 	 *	Flush everything
 	 */
 	fclose(outfp);
-	exfile_unlock(inst->ef, request, outfd); /* do NOT close outfp */
+	exfile_close(inst->ef, request, outfd);
 
 	/*
 	 *	And everything is fine.
