@@ -394,22 +394,3 @@ int exfile_close(exfile_t *ef, int fd)
 	fr_strerror_printf("Attempt to unlock file which is not tracked");
 	return -1;
 }
-
-int exfile_unlock(exfile_t *ef, int fd)
-{
-	uint32_t i;
-
-	for (i = 0; i < ef->max_entries; i++) {
-		if (!ef->entries[i].filename) continue;
-
-		if (ef->entries[i].fd == fd) {
-			PTHREAD_MUTEX_UNLOCK(&(ef->mutex));
-			return 0;
-		}
-	}
-
-	PTHREAD_MUTEX_UNLOCK(&(ef->mutex));
-
-	fr_strerror_printf("Attempt to unlock file which does not exist");
-	return -1;
-}
