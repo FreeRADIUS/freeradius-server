@@ -292,9 +292,13 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions)
 	}
 
 	/*
-	 *	There are no unused entries, free the oldest one.
+	 *	If it wasn't found, create a new entry.
 	 */
 	if (found < 0) {
+		/*
+		 *	There are no unused entries.  Clean up the
+		 *	oldest one.
+		 */
 		if (unused < 0) {
 			exfile_cleanup_entry(&ef->entries[oldest]);
 			unused = oldest;
@@ -308,20 +312,21 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions)
 		ef->entries[i].hash = hash;
 		ef->entries[i].filename = talloc_strdup(ef->entries, filename);
 		ef->entries[i].fd = -1;
+
+		/*
+		 *	We've just created the entry.  Open the file
+		 *	and cache the FD.
+		 */
+	reopen:
+		ef->entries[i].fd = exfile_open_mkdir(ef, filename, permissions);
+		if (ef->entries[i].fd < 0) {
+		error:
+			exfile_cleanup_entry(&ef->entries[i]);
+			PTHREAD_MUTEX_UNLOCK(&(ef->mutex));
+			return -1;
+		}
 	} else {
 		i = found;
-	}
-
-reopen:
-	/*
-	 *	Open the file.
-	 */
-	ef->entries[i].fd = exfile_open_mkdir(ef, filename, permissions);
-	if (ef->entries[i].fd < 0) {
-	error:
-		exfile_cleanup_entry(&ef->entries[i]);
-		PTHREAD_MUTEX_UNLOCK(&(ef->mutex));
-		return -1;
 	}
 
 	/*
@@ -359,7 +364,7 @@ reopen:
 		 *	then the new file should now be unlocked.
 		 */
 		close(ef->entries[i].fd);
-		ef->entries[i].fd = open(filename, O_WRONLY | O_CREAT, permissions);
+		ef->entries[i].fd = open(filename, O_RDWR | O_CREAT, permissions);
 		if (ef->entries[i].fd < 0) {
 			fr_strerror_printf("Failed to open file %s: %s",
 					   filename, strerror(errno));
@@ -381,6 +386,10 @@ reopen:
 		goto error;
 	}
 
+	/*
+	 *	It's unlinked from the file system, close the FD and
+	 *	try to re-open it.
+	 */
 	if (st.st_nlink == 0) {
 		close(ef->entries[i].fd);
 		goto reopen;
