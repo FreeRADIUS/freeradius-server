@@ -910,8 +910,8 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 		fr_pair_value_strcpy(sql_group, entry->name);
 
 		if (inst->config->authorize_group_check_query) {
-			vp_cursor_t cursor;
-			VALUE_PAIR *vp;
+			vp_cursor_t	cursor;
+			VALUE_PAIR	*vp;
 
 			/*
 			 *	Expand the group query
@@ -955,10 +955,12 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 			     vp = fr_pair_cursor_next(&cursor)) {
 			 	if (!fr_assignment_op[vp->op]) continue;
 
+				rcode = RLM_MODULE_UPDATED;
 			 	rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 			}
 			REXDENT();
 			radius_pairmove(request, &request->control, check_tmp, true);
+
 			check_tmp = NULL;
 		}
 
@@ -990,7 +992,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 			*do_fall_through = fall_through(reply_tmp);
 
 			RDEBUG2("Group \"%s\": Merging reply items", entry->name);
-			rcode = RLM_MODULE_OK;
+			if (rcode == RLM_MODULE_NOOP) rcode = RLM_MODULE_UPDATED;
 
 			rdebug_pair_list(L_DBG_LVL_2, request, reply_tmp, NULL);
 
@@ -1397,9 +1399,8 @@ skipreply:
 			rcode = RLM_MODULE_UPDATED;
 			/* FALL-THROUGH */
 		case RLM_MODULE_OK:
-			if (rcode != RLM_MODULE_UPDATED) {
-				rcode = RLM_MODULE_OK;
-			}
+			if (rcode != RLM_MODULE_UPDATED) rcode = RLM_MODULE_OK;
+
 			/* FALL-THROUGH */
 		case RLM_MODULE_NOOP:
 			user_found = true;
@@ -1452,9 +1453,8 @@ skipreply:
 			rcode = RLM_MODULE_UPDATED;
 			/* FALL-THROUGH */
 		case RLM_MODULE_OK:
-			if (rcode != RLM_MODULE_UPDATED) {
-				rcode = RLM_MODULE_OK;
-			}
+			if (rcode != RLM_MODULE_UPDATED) rcode = RLM_MODULE_OK;
+
 			/* FALL-THROUGH */
 		case RLM_MODULE_NOOP:
 			user_found = true;
