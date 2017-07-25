@@ -126,8 +126,6 @@ static const CONF_PARSER initial_logging_config[] = {
 
 	{ FR_CONF_POINTER("prefix", FR_TYPE_STRING, &prefix), .dflt = "/usr/local" },
 
-	{ FR_CONF_POINTER("log_file", FR_TYPE_STRING, &main_config.log_file) },
-	{ FR_CONF_POINTER("log_destination", FR_TYPE_STRING, &radlog_dest) },
 	{ FR_CONF_POINTER("use_utc", FR_TYPE_BOOL, &log_dates_utc) },
 	{ FR_CONF_IS_SET_POINTER("timestamp", FR_TYPE_BOOL, &log_timestamp) },
 	CONF_PARSER_TERMINATOR
