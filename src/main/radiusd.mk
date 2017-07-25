@@ -12,7 +12,6 @@ SOURCES := acct.c \
     stats.c \
     soh.c \
     snmp.c \
-    threads.c \
     unlang_compile.c \
     unlang_interpret.c \
     virtual_servers.c \

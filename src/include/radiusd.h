@@ -566,20 +566,8 @@ int radius_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, char con
 #define pair_make_reply(_a, _b, _c) fr_pair_make(request->reply, &request->reply->vps, _a, _b, _c)
 #define pair_make_config(_a, _b, _c) fr_pair_make(request, &request->control, _a, _b, _c)
 
-/* threads.c */
-int		thread_pool_bootstrap(CONF_SECTION *cs, bool *spawn_workers);
-int		thread_pool_init(void);
-void		thread_pool_stop(void);
-
-/*
- *	In threads.c
- */
-void request_enqueue(REQUEST *request);
-void request_queue_extract(REQUEST *request);
-
 REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *packet,
 		       RADCLIENT *client, RAD_REQUEST_FUNP fun);
-bool request_limit(rad_listen_t *listener, RADCLIENT *client, RADIUS_PACKET *packet);
 
 int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *packet,
 		    RADCLIENT *client, RAD_REQUEST_FUNP fun);
