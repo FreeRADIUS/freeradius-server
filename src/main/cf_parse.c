@@ -1357,6 +1357,24 @@ int _cf_section_rule_push(CONF_SECTION *cs, CONF_PARSER const *rule, char const 
 			return 0;
 		}
 
+		/*
+		 *	If we have a duplicate sub-section, just
+		 *	recurse and add the new sub-rules to the
+		 *	existing sub-section.
+		 */
+		if (rule->type == FR_TYPE_SUBSECTION) {
+			CONF_SECTION *subcs;
+
+			subcs = cf_section_find(cs, rule->name, rule->ident2);
+			if (!subcs) {
+				cf_log_err(cs, "Failed finding '%s' subsection", rule->name);
+				cf_debug(cs);
+				return -1;
+			}
+
+			return cf_section_rules_push(subcs, rule->subcs);
+		}
+
 		cf_log_err(cs, "Data of type %s with name \"%s\" already exists.  Existing data added %s[%i]", "CONF_PARSER",
 			   rule->name, cd->item.filename, cd->item.lineno);
 
