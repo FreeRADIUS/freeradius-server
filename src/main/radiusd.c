@@ -527,11 +527,6 @@ int main(int argc, char *argv[])
 	radius_pid = getpid();
 
 	/*
-	 *	Parse the thread pool configuration.
-	 */
-	if (thread_pool_bootstrap(main_config.config, &main_config.spawn_workers) < 0) exit(EXIT_FAILURE);
-
-	/*
 	 *	Initialize Auth-Type, etc. in the virtual servers
 	 *	before loading the modules.  Some modules need those
 	 *	to be defined.
@@ -606,12 +601,6 @@ int main(int argc, char *argv[])
 
 		if (virtual_servers_open(sc) < 0) exit(EXIT_FAILURE);
 	}
-
-	/*
-	 *	Initialize the threads ONLY if we're spawning, AND
-	 *	we're running normally.
-	 */
-	if (main_config.spawn_workers && (thread_pool_init() < 0)) exit(EXIT_FAILURE);
 
 	event_loop_started = true;
 
@@ -777,8 +766,6 @@ int main(int argc, char *argv[])
 	 *	SEGVs.
 	 */
 	radius_event_free();		/* Free the requests */
-
-	thread_pool_stop();		/* stop all the threads */
 
 	talloc_free(global_state);	/* Free state entries */
 
