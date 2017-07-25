@@ -519,8 +519,12 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	 *	Single threaded mode: kill the only network / worker we have.
 	 */
 	if (sc->el) {
-		fr_worker_destroy(sc->single_worker);
+		/*
+		 *	Destroy the network side first.  It tells the
+		 *	workers to close.
+		 */
 		fr_network_destroy(sc->single_network);
+		fr_worker_destroy(sc->single_worker);
 		goto done;
 	}
 
