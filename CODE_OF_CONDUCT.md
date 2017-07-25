@@ -13,10 +13,12 @@ The GitHub issue tracker and mailing lists have a strict code of conduct.
 > will result in the individual being unsubscribed from the mailing lists and/or permanent
 > banishment from the GitHub repositories.
 
-This code of conduct is simple to abide by, and simple to enforce. Unlike other codes of conduct it
-does not require participants to be explicitly "inclusive" or "accepting" of certain topics. It
-requires participants to be blind to non-technical topics, as those subjects are explicitly off
-topic. The FreeRADIUS community is inclusive by virtue of not being exclusive.
+This code of conduct is simple to abide by, and is simple to
+enforce. Unlike other codes of conduct, it does not require
+participants to be explicitly "inclusive" or "accepting" of certain
+topics. It requires participants to be *blind* to non-technical
+subjects, as those subjects are explicitly off topic. The FreeRADIUS
+community is inclusive by virtue of not being exclusionary.
 
 ## 2. Expected Behaviour
 
@@ -31,20 +33,61 @@ The following behaviours are expected and requested of all community members:
   community members are entirely irrelevant and comments of this nature will not be tolerated.
 - Research topics using appropriate standards, design documents, and technical manuals before raising
   GitHub issues, or sending pull requests.
-  _The FreeRADIUS project has three core team members, around seventy modules, and a very large list 
-  of dependencies. We cannot be experts on every part of the
-  FreeRADIUS ecosystem and rely on well researched and technically sound contributions to make the
-  project a success._
 
-## 3. Unacceptable Behaviour
+## 3. Our Limitations
+
+We understand that when people ask questions, their goal is to obtain
+help from the community.  Please be aware that the FreeRADIUS
+community is not large.  The project has three core members, who are
+not 100% dedicated to FreeADIUS.  The project has about seventy
+modules, each of which has complex behavior.  All of that code, test
+cases, and documentation has to be updated with limited resources.
+
+FreeRADIUS is built mainly for Linux and BSD systems.  We cannot
+however be experts in every possible combination of configuration for
+those systems.
+
+FreeRADIUS depends on SQL (MySQL, Postgresl, Oracle, SQLite), LDAP,
+REST, Couchbase, OpenDirectory, PAM, Redis, flat-text files, and
+SecurID.  It has plugins for Perl, Python, MRuby, and Lua.  It
+supports multiple authentication types, including PAP, CHAP, MS-CHAP,
+Digest, EAP-GTC, EAP-MD5, EAP-MSCHAPv2, PEAP, TTLS, TLS, EAP-FAST,
+SIM, AKA, LEAP, PWD.  The TLS-based EAP methods work with TLSv1.0,
+TLSv1.1, and TLSv1.2.  The EAP methods interact with client EAP
+configurations on Linux, BSD, MacOS, iOS, Android, and many other
+embedded systems.  FreeRADIUS supports NAS equipment from Cisco, HP,
+Juniper, Alcatel-Lucent, Aerohive, Ruckus, Aruba, and Mikrotik.
+
+Finally, the configuration files support a nearly infinite number of
+ways to integrate and arrange the above technlogies.  In short, we
+cannot be experts in every part of the RADIUS ecosystem.
+
+We rely on well researched and technically sound contributions in
+order to make the project a success.  This means useful contributions
+from you, the community.
+
+## 4. Unacceptable Behaviour
+
+The main source of unacceptable behavior is community participants who
+are unaware of the complexities outlined in the previous section.
+They have questions, and they want answers.  They believe that as the
+experts, we can answer any and all question about any possible
+technology that interacts with FreeRADIUS.
+
+That expectation is unreasonable.  When that expectation turns to
+entitlement and anger, it becomes unacceptable behaviour.
 
 The following behaviours are unacceptable within our community:
 
 - Non-technical discussion.
 - Ad hominem attacks and other personal attacks.
 - Willful ignorance.
+- Demands that questions be answered
+- Refusal to read documentation when pointed to it
+- Failure to give more information when requested
+- Refusal to follow instructions for solving a problem
 
-## 4. Consequences of Unacceptable Behaviour
+## 5. Consequences of Unacceptable Behaviour
 
 Where unacceptable behaviour is noted and the community participant informed of behaviour and next
 steps, the community participant is expected to comply immediately.
@@ -52,17 +95,17 @@ steps, the community participant is expected to comply immediately.
 The community organizers will take any action they deem appropriate, which may include permanent
 expulsion from the community using appropriate mechanisms.
 
-## 5. Reporting Guidelines
+## 6. Reporting Guidelines
 
 If you are subject to or witness unacceptable behaviour or have any other concerns, please notify a
 community organizer as soon as possible. social@freeradius.org.
 
-## 6. Scope
+## 7. Scope
 
 We expect all community members, including those who contribute to the project financially or are in
 positions of power within the community, to abide by this Code of Conduct in all venues and over all
 communication mediums.
 
-## 7. Contact info
+## 8. Contact info
 
 social@freeradius.org
