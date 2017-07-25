@@ -233,6 +233,7 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool app
 	ef->entries[i].fd = -1;
 	ef->entries[i].dup = -1;
 
+reopen:
 	ef->entries[i].fd = open(filename, O_RDWR | O_APPEND | O_CREAT, permissions);
 	if (ef->entries[i].fd < 0) {
 		mode_t dirperm;
@@ -331,12 +332,7 @@ do_return:
 
 	if (st.st_nlink == 0) {
 		close(ef->entries[i].fd);
-		ef->entries[i].fd = open(filename, O_WRONLY | O_CREAT, permissions);
-		if (ef->entries[i].fd < 0) {
-			fr_strerror_printf("Failed to open file %s: %s",
-					   filename, strerror(errno));
-			goto error;
-		}
+		goto reopen;
 	}
 
 	/*
