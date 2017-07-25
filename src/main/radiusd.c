@@ -758,6 +758,11 @@ int main(int argc, char *argv[])
 	if (main_config.daemonize) unlink(main_config.pid_file);
 
 	/*
+	 *	Stop the scheduler
+	 */
+	(void) fr_schedule_destroy(sc);
+
+	/*
 	 *	Free memory in an explicit and consistent order
 	 *
 	 *	We could let everything be freed by the autofree
