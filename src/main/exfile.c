@@ -31,7 +31,6 @@
 
 typedef struct exfile_entry_t {
 	int		fd;		//!< File descriptor associated with an entry.
-	int		dup;
 	uint32_t	hash;		//!< Hash for cheap comparison.
 	time_t		last_used;	//!< Last time the entry was used.
 	char		*filename;	//!< Filename.
@@ -133,8 +132,8 @@ static void exfile_cleanup_entry(exfile_entry_t *entry)
 	close(entry->fd);
 	entry->hash = 0;
 	entry->fd = -1;
-	entry->dup = -1;
 }
+
 
 /** Open a new log file, or maybe an existing one.
  *
@@ -149,7 +148,7 @@ static void exfile_cleanup_entry(exfile_entry_t *entry)
  */
 int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool append)
 {
-	int i, tries, unused, oldest;
+	int i, found, tries, unused, oldest;
 	uint32_t hash;
 	time_t now = time(NULL);
 	struct stat st;
@@ -157,7 +156,6 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool app
 	if (!ef || !filename) return -1;
 
 	hash = fr_hash_string(filename);
-	unused = -1;
 
 	PTHREAD_MUTEX_LOCK(&ef->mutex);
 
@@ -186,7 +184,7 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool app
 	 *	Also track which entry is the oldest, in case there
 	 *	are no unused entries.
 	 */
-	oldest = -1;
+	found = oldest = unused = -1;
 	for (i = 0; i < (int) ef->max_entries; i++) {
 		if (!ef->entries[i].filename) {
 			if (unused < 0) unused = i;
@@ -212,28 +210,35 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool app
 		 */
 		if (strcmp(ef->entries[i].filename, filename) != 0) continue;
 
-		goto do_return;
+		found = i;
+		break;
 	}
 
 	/*
 	 *	There are no unused entries, free the oldest one.
 	 */
-	if (unused < 0) {
-		exfile_cleanup_entry(&ef->entries[oldest]);
-		unused = oldest;
+	if (found < 0) {
+		if (unused < 0) {
+			exfile_cleanup_entry(&ef->entries[oldest]);
+			unused = oldest;
+		}
+
+		/*
+		 *	Create a new entry.
+		 */
+		i = unused;
+
+		ef->entries[i].hash = hash;
+		ef->entries[i].filename = talloc_strdup(ef->entries, filename);
+		ef->entries[i].fd = -1;
+	} else {
+		i = found;
 	}
 
-	/*
-	 *	Create a new entry.
-	 */
-	i = unused;
-
-	ef->entries[i].hash = hash;
-	ef->entries[i].filename = talloc_strdup(ef->entries, filename);
-	ef->entries[i].fd = -1;
-	ef->entries[i].dup = -1;
-
 reopen:
+	/*
+	 *	Open the file and try to lock it.
+	 */
 	ef->entries[i].fd = open(filename, O_RDWR | O_APPEND | O_CREAT, permissions);
 	if (ef->entries[i].fd < 0) {
 		mode_t dirperm;
@@ -277,20 +282,6 @@ reopen:
 		} /* else fall through to creating the rest of the entry */
 	} /* else the file was already opened */
 
-do_return:
-	/*
-	 *	Lock from the start of the file.
-	 */
-	if (lseek(ef->entries[i].fd, 0, SEEK_SET) < 0) {
-		fr_strerror_printf("Failed to seek in file %s: %s", filename, strerror(errno));
-
-	error:
-		exfile_cleanup_entry(&ef->entries[i]);
-
-		PTHREAD_MUTEX_UNLOCK(&(ef->mutex));
-		return -1;
-	}
-
 	/*
 	 *	Try to lock it.  If we can't lock it, it's because
 	 *	some reader has re-named the file to "foo.work" and
@@ -298,6 +289,21 @@ do_return:
 	 *	and try again.
 	 */
 	if (ef->locking) {
+		/*
+		 *	Lock from the start of the file.
+		 */
+		if (lseek(ef->entries[i].fd, 0, SEEK_SET) < 0) {
+			fr_strerror_printf("Failed to seek in file %s: %s", filename, strerror(errno));
+
+		error:
+			exfile_cleanup_entry(&ef->entries[i]);
+			PTHREAD_MUTEX_UNLOCK(&(ef->mutex));
+			return -1;
+		}
+
+		/*
+		 *	Busy-loop trying to lock the file.
+		 */
 		for (tries = 0; tries < MAX_TRY_LOCK; tries++) {
 			if (rad_lockfd_nonblock(ef->entries[i].fd, 0) >= 0) break;
 
@@ -306,6 +312,11 @@ do_return:
 				goto error;
 			}
 
+			/*
+			 *	Close the file and re-open it.  It may
+			 *	have been deleted.  If it was deleted,
+			 *	then it should now be unlocked.
+			 */
 			close(ef->entries[i].fd);
 			ef->entries[i].fd = open(filename, O_WRONLY | O_CREAT, permissions);
 			if (ef->entries[i].fd < 0) {
@@ -345,13 +356,8 @@ do_return:
 	 *	Return holding the mutex for the entry.
 	 */
 	ef->entries[i].last_used = now;
-	ef->entries[i].dup = dup(ef->entries[i].fd);
-	if (ef->entries[i].dup < 0) {
-		fr_strerror_printf("Failed calling dup(): %s", strerror(errno));
-		goto error;
-	}
 
-	return ef->entries[i].dup;
+	return ef->entries[i].fd;
 }
 
 /** Close the log file.  Really just return it to the pool.
@@ -369,15 +375,14 @@ int exfile_close(exfile_t *ef, int fd)
 	uint32_t i;
 
 	for (i = 0; i < ef->max_entries; i++) {
-		if (!ef->entries[i].filename) continue;
-
 		/*
 		 *	Unlock the bytes that we had previously locked.
 		 */
-		if (ef->entries[i].dup == fd) {
-			if (ef->locking) (void) rad_unlockfd(ef->entries[i].dup, 0);
-			close(ef->entries[i].dup); /* releases the fcntl lock */
-			ef->entries[i].dup = -1;
+		if (ef->entries[i].fd == fd) {
+			if (ef->locking) {
+				(void) lseek(ef->entries[i].fd, 0, SEEK_SET);
+				(void) rad_unlockfd(ef->entries[i].fd, 0);
+			}
 
 			PTHREAD_MUTEX_UNLOCK(&(ef->mutex));
 			return 0;
@@ -397,8 +402,7 @@ int exfile_unlock(exfile_t *ef, int fd)
 	for (i = 0; i < ef->max_entries; i++) {
 		if (!ef->entries[i].filename) continue;
 
-		if (ef->entries[i].dup == fd) {
-			ef->entries[i].dup = -1;
+		if (ef->entries[i].fd == fd) {
 			PTHREAD_MUTEX_UNLOCK(&(ef->mutex));
 			return 0;
 		}
