@@ -192,6 +192,61 @@ void exfile_enable_triggers(exfile_t *ef, CONF_SECTION *conf, char const *trigge
 }
 
 
+/*
+ *	Try to open the file. It it doesn't exist, try to
+ *	create it's parent directories.
+ */
+static int exfile_open_mkdir(exfile_t *ef, char const *filename, mode_t permissions)
+{
+	int fd;
+
+	fd = open(filename, O_RDWR | O_CREAT, permissions);
+	if (fd < 0) {
+		mode_t dirperm;
+		char *p, *dir;
+
+		/*
+		 *	Maybe the directory doesn't exist.  Try to
+		 *	create it.
+		 */
+		dir = talloc_strdup(ef, filename);
+		if (!dir) return -1;
+		p = strrchr(dir, FR_DIR_SEP);
+		if (!p) {
+			fr_strerror_printf("No '/' in '%s'", filename);
+			return -1;
+		}
+		*p = '\0';
+
+		/*
+		 *	Ensure that the 'x' bit is set, so that we can
+		 *	read the directory.
+		 */
+		dirperm = permissions;
+		if ((dirperm & 0600) != 0) dirperm |= 0100;
+		if ((dirperm & 0060) != 0) dirperm |= 0010;
+		if ((dirperm & 0006) != 0) dirperm |= 0001;
+
+		if (rad_mkdir(dir, dirperm, -1, -1) < 0) {
+			fr_strerror_printf("Failed to create directory %s: %s",
+					   dir, strerror(errno));
+			talloc_free(dir);
+			return -1;
+		}
+		talloc_free(dir);
+
+		fd = open(filename, O_RDWR | O_CREAT, permissions);
+		if (fd < 0) {
+			fr_strerror_printf("Failed to open file %s: %s",
+					   filename, strerror(errno));
+			return -1;
+		}
+	}
+
+	return fd;
+}
+
+
 /** Open a new log file, or maybe an existing one.
  *
  * When multithreaded, the FD is locked via a mutex.  This way we're
@@ -297,50 +352,8 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 	ef->entries[i].filename = talloc_strdup(ef->entries, filename);
 	ef->entries[i].fd = -1;
 
-	ef->entries[i].fd = open(filename, O_RDWR | O_APPEND | O_CREAT, permissions);
-	if (ef->entries[i].fd < 0) {
-		mode_t dirperm;
-		char *p, *dir;
-
-		/*
-		 *	Maybe the directory doesn't exist.  Try to
-		 *	create it.
-		 */
-		dir = talloc_strdup(ef, filename);
-		if (!dir) goto error;
-		p = strrchr(dir, FR_DIR_SEP);
-		if (!p) {
-			fr_strerror_printf("No '/' in '%s'", filename);
-			goto error;
-		}
-		*p = '\0';
-
-		/*
-		 *	Ensure that the 'x' bit is set, so that we can
-		 *	read the directory.
-		 */
-		dirperm = permissions;
-		if ((dirperm & 0600) != 0) dirperm |= 0100;
-		if ((dirperm & 0060) != 0) dirperm |= 0010;
-		if ((dirperm & 0006) != 0) dirperm |= 0001;
-
-		if (rad_mkdir(dir, dirperm, -1, -1) < 0) {
-			fr_strerror_printf("Failed to create directory %s: %s",
-					   dir, strerror(errno));
-			talloc_free(dir);
-			goto error;
-		}
-		talloc_free(dir);
-
-		ef->entries[i].fd = open(filename, O_WRONLY | O_CREAT, permissions);
-		if (ef->entries[i].fd < 0) {
-			fr_strerror_printf("Failed to open file %s: %s",
-					   filename, strerror(errno));
-			goto error;
-		} /* else fall through to creating the rest of the entry */
-
-		exfile_trigger_exec(ef, request, &ef->entries[i], "create");
-	} /* else the file was already opened */
+	ef->entries[i].fd = exfile_open_mkdir(ef, filename, permissions);
+	if (ef->entries[i].fd < 0) goto error;
 
 	exfile_trigger_exec(ef, request, &ef->entries[i], "open");
 
