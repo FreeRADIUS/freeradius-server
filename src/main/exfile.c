@@ -475,30 +475,3 @@ int exfile_close(exfile_t *ef, REQUEST *request, int fd)
 	fr_strerror_printf("Attempt to unlock file which is not tracked");
 	return -1;
 }
-
-/** Unlock the file, but leave the dup'd file descriptor open
- *
- */
-int exfile_unlock(exfile_t *ef, REQUEST *request, int fd)
-{
-	uint32_t i;
-
-	for (i = 0; i < ef->max_entries; i++) {
-		if (!ef->entries[i].filename) continue;
-
-		if (ef->entries[i].dup == fd) {
-			ef->entries[i].dup = -1;
-
-			pthread_mutex_unlock(&(ef->mutex));
-
-			exfile_trigger_exec(ef, request, &ef->entries[i], "release");
-
-			return 0;
-		}
-	}
-
-	pthread_mutex_unlock(&(ef->mutex));
-
-	fr_strerror_printf("Attempt to unlock file which does not exist");
-	return -1;
-}

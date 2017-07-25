@@ -45,8 +45,6 @@ int		exfile_open(exfile_t *lf, REQUEST *request, char const *filename,
 
 int		exfile_close(exfile_t *lf, REQUEST *request, int fd);
 
-int		exfile_unlock(exfile_t *lf, REQUEST *request, int fd);
-
 #ifdef __cplusplus
 }
 #endif
