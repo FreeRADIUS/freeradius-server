@@ -146,6 +146,17 @@ exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle, 
 
 	fr_talloc_link_ctx(ctx, ef);
 
+	ef->max_entries = max_entries;
+	ef->max_idle = max_idle;
+	ef->locking = locking;
+
+	/*
+	 *	If we're not locking the files, just return the
+	 *	handle.  Each call to exfile_open() will just open a
+	 *	new file descriptor.
+	 */
+	if (!ef->locking) return ef;
+
 	ef->entries = talloc_zero_array(ef, exfile_entry_t, max_entries);
 	if (!ef->entries) {
 		talloc_free(ef);
@@ -156,10 +167,6 @@ exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle, 
 		talloc_free(ef);
 		return NULL;
 	}
-
-	ef->max_entries = max_entries;
-	ef->max_idle = max_idle;
-	ef->locking = locking;
 
 	talloc_set_destructor(ef, _exfile_free);
 
@@ -265,12 +272,28 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 	int i, tries, unused = -1, found = -1, oldest = -1;
 	bool do_cleanup = false;
 	uint32_t hash;
-	time_t now = time(NULL);
+	time_t now;
 	struct stat st;
 
 	if (!ef || !filename) return -1;
 
+	/*
+	 *	No locking: just return a new FD.
+	 */
+	if (!ef->locking) {
+		found = exfile_open_mkdir(ef, filename, permissions);
+		if (found < 0) return -1;
+
+		(void) lseek(found, 0, SEEK_END);
+		return found;
+	}
+
+	/*
+	 *	It's faster to do hash comparisons of a string than
+	 *	full string comparisons.
+	 */
 	hash = fr_hash_string(filename);
+	now = time(NULL);
 	unused = -1;
 
 	pthread_mutex_lock(&ef->mutex);
@@ -309,12 +332,12 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 			found = i;
 
 			/*
-			 *	If we're not cleanin up, stop now.
+			 *	If we're not cleaning up, stop now.
 			 */
 			if (!do_cleanup) break;
 
 			/*
-			 *	If we are cleaning up, and only
+			 *	If we are cleaning up, then clean up
 			 *	entries OTHER than the one we found,
 			 *	do so now.
 			 */
@@ -332,7 +355,7 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 	 */
 	if (found >= 0) {
 		i = found;
-		goto do_return;
+		goto try_lock;
 	}
 
 	/*
@@ -358,7 +381,7 @@ reopen:
 
 	exfile_trigger_exec(ef, request, &ef->entries[i], "open");
 
-do_return:
+try_lock:
 	/*
 	 *	Lock from the start of the file.
 	 */
@@ -367,7 +390,6 @@ do_return:
 
 	error:
 		exfile_cleanup_entry(ef, request, &ef->entries[i]);
-
 		pthread_mutex_unlock(&(ef->mutex));
 		return -1;
 	}
@@ -450,21 +472,26 @@ int exfile_close(exfile_t *ef, REQUEST *request, int fd)
 {
 	uint32_t i;
 
+	/*
+	 *	No locking: just close the file.
+	 */
+	if (!ef->locking) {
+		close(fd);
+		return 0;
+	}
+
+	/*
+	 *	Unlock the bytes that we had previously locked.
+	 */
 	for (i = 0; i < ef->max_entries; i++) {
-		if (!ef->entries[i].filename) continue;
+		if (ef->entries[i].fd != fd) continue;
 
-		/*
-		 *	Unlock the bytes that we had previously locked.
-		 */
-		if (ef->entries[i].fd == fd) {
-			if (ef->locking) (void) rad_unlockfd(ef->entries[i].fd, 0);
+		(void) lseek(ef->entries[i].fd, 0, SEEK_SET);
+		(void) rad_unlockfd(ef->entries[i].fd, 0);
+		pthread_mutex_unlock(&(ef->mutex));
 
-			pthread_mutex_unlock(&(ef->mutex));
-
-			exfile_trigger_exec(ef, request, &ef->entries[i], "release");
-
-			return 0;
-		}
+		exfile_trigger_exec(ef, request, &ef->entries[i], "release");
+		return 0;
 	}
 
 	pthread_mutex_unlock(&(ef->mutex));
