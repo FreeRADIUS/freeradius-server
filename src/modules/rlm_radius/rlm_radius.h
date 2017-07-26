@@ -36,6 +36,7 @@ typedef struct rlm_radius_link_t rlm_radius_link_t;
  *
  */
 typedef int (*fr_radius_io_push_t)(void *instance, REQUEST *request, rlm_radius_link_t *link, void *thread);
+typedef int (*fr_radius_io_instantiate_t)(rlm_radius_t *inst, void *io_instance, CONF_SECTION *cs);
 
 
 /** Public structure describing an I/O path for an outgoing socket.
@@ -46,7 +47,7 @@ typedef struct fr_radius_client_io_t {
 	RAD_MODULE_COMMON;				//!< Common fields to all loadable modules.
 
 	fr_app_bootstrap_t		bootstrap;
-	fr_app_instantiate_t		instantiate;
+	fr_radius_io_instantiate_t	instantiate;
 	size_t				io_inst_size;		//!< Size of data for parsing the configuration
 
 	module_thread_t			thread_instantiate;	//!< Callback to configure a module's instance for
