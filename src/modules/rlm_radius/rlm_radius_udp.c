@@ -89,8 +89,8 @@ typedef struct rlm_radius_udp_connection_t {
 
 	struct timeval		last_sent_with_reply;	//!< most recent sent time which had a reply
 
-	int			num_packets;	//!< number of packets we sent
-	int			max_packets;	//!< maximum number of packets we can send
+	int			num_requests;	//!< number of packets we sent
+	int			max_requests;	//!< maximum number of packets we can send
 
 	bool			pending;	//!< are there packets pending?
 	fr_dlist_t		queued;		//!< list of packets queued for sending
@@ -217,9 +217,14 @@ static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 static void conn_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
 	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
+	rlm_radius_request_t *rr;
+	rlm_radius_link_t *link;
+	rlm_radius_udp_request_t *u;
+	REQUEST *request;
 	decode_fail_t reason;
 	size_t packet_len;
 	ssize_t data_len;
+	uint8_t original[20];
 
 	data_len = read(fd, c->buffer, c->buflen);
 	if (data_len == 0) return;
@@ -235,17 +240,52 @@ static void conn_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 		return;
 	}
 
-	// look the packet up by ID, and find the matching one
-	// allowing multiple packet codes in the same socket is annoying,
-	// because each request code can have one of multiple reply codes..
-	// and they all share the same ID space. :(
+	rr = rr_track_find(c->id, c->buffer[1], NULL);
+	if (!rr) {
+		DEBUG("Ignoring response to request we did not send");
+		return;
+	}
 
-	// verify it
-	// get the REQUEST for it
+	original[0] = rr->code;
+	original[1] = 0;	/* not looked at by fr_radius_verify() */
+	original[2] = 0;
+	original[3] = 0;
+	memcpy(original + 4, rr->vector, sizeof(rr->vector));
 
-	// remove it from c->sent
+	if (fr_radius_verify(c->buffer, original,
+			     (uint8_t const *) c->inst->secret, strlen(c->inst->secret)) < 0) {
+		DEBUG("Ignoring response with invalid signature");
+		return;
+	}
+
+	link = rr->link;
+	u = link->request_io_ctx;
+
+	/*
+	 *	Track the Most Recently Sent with reply
+	 */
+	if (timercmp(&rr->start, &c->last_sent_with_reply, >)) {
+		c->last_sent_with_reply = rr->start;
+	}
+
+	/*
+	 *	Delete the tracking table entry, and remove the
+	 *	request from the "sent" list for this connection.
+	 */
+	(void) rr_track_delete(c->id, rr);
+	u->rr = NULL;
+	fr_dlist_remove(&u->entry);
+	rad_assert(c->num_requests > 0);
+	c->num_requests--;
+
+	request = link->request;
+
+	// @todo - set rcode based on ACK or NAK
+	link->rcode = RLM_MODULE_OK;
+
 	// update the status of this connection
-	// unlang_resumable(request);
+
+	unlang_resumable(request);
 }
 
 /** There's space available to write data, so do that...
@@ -289,6 +329,7 @@ static void conn_writable(fr_event_list_t *el, int fd, UNUSED int flags, void *u
 
 		fr_dlist_remove(&u->entry);
 		fr_dlist_insert_tail(&c->sent, &u->entry);
+		c->num_requests++;
 	}
 
 	/*
@@ -310,6 +351,7 @@ static void conn_writable(fr_event_list_t *el, int fd, UNUSED int flags, void *u
 		c->pending = true;
 		fd_active(c);
 	}
+
 	/*
 	 *	Else c->pending was already set, and we already have fd_active().
 	 */
@@ -486,8 +528,8 @@ static void mod_connection_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t
 		talloc_free(c);
 		return;
 	}
-	c->num_packets = 0;
-	c->max_packets = 256;
+	c->num_requests = 0;
+	c->max_requests = 256;
 
 	c->conn = fr_connection_alloc(c, t->el, &inst->parent->connection_timeout, &inst->parent->reconnection_delay,
 				      conn_init, conn_open, conn_close, inst->parent->name, c);
@@ -514,6 +556,8 @@ static rlm_radius_udp_connection_t *connection_get(rlm_radius_udp_thread_t *t, r
 
 	c = fr_ptr_to_type(rlm_radius_udp_connection_t, entry, entry);
 	(void) talloc_get_type_abort(c, rlm_radius_udp_connection_t);
+
+	if (c->num_requests == c->max_requests) return NULL;
 
 	u->rr = rr_track_alloc(c->id, u->link->request, u->code, u->link);
 	if (!u->rr) return NULL;
