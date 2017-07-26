@@ -106,7 +106,7 @@ typedef struct rlm_radius_udp_connection_t {
 	uint8_t			*buffer;	//!< receive buffer
 	size_t			buflen;		//!< receive buffer length
 
-	rlm_radius_id_t		*id[FR_MAX_PACKET_CODE]; //!< ID tracking
+	rlm_radius_id_t		*id;		//!< ID tracking
 } rlm_radius_udp_connection_t;
 
 
@@ -409,6 +409,56 @@ static fr_connection_state_t conn_init(int *fd_out, void *uctx)
 	return FR_CONNECTION_STATE_CONNECTING;
 }
 
+/** Free the connection, and return requests to the thread queue
+ *
+ */
+static int conn_free(rlm_radius_udp_connection_t *c)
+{
+	fr_dlist_t *entry, *next;
+	rlm_radius_udp_thread_t *t = c->thread;
+
+	talloc_free_children(c); /* clears out FD events, timers, etc. */
+
+	/*
+	 *	Move "sent" packets back to the main thread queue
+	 */
+	for (entry = FR_DLIST_FIRST(c->sent);
+	     entry != NULL;
+	     entry = next) {
+		rlm_radius_udp_request_t *u;
+
+		next = FR_DLIST_NEXT(c->sent, entry);
+
+		u = fr_ptr_to_type(rlm_radius_udp_request_t, entry, entry);
+
+		u->rr = NULL;
+		fr_dlist_remove(&c->entry);
+		fr_dlist_insert_tail(&t->queued, &u->entry);
+		t->pending = true;
+	}
+
+	/*
+	 *	Move "queued" packets back to the main thread queue
+	 */
+	for (entry = FR_DLIST_FIRST(c->queued);
+	     entry != NULL;
+	     entry = next) {
+		rlm_radius_udp_request_t *u;
+
+		next = FR_DLIST_NEXT(c->queued, entry);
+
+		u = fr_ptr_to_type(rlm_radius_udp_request_t, entry, entry);
+
+		u->rr = NULL;
+		fr_dlist_remove(&c->entry);
+		fr_dlist_insert_tail(&t->queued, &u->entry);
+		t->pending = true;
+	}
+
+	return 0;
+}
+
+
 static void mod_connect(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t *t)
 {
 	rlm_radius_udp_connection_t *c;
@@ -429,6 +479,12 @@ static void mod_connect(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t *t)
 	}
 	c->buflen = c->max_packet_size;
 
+	c->id = rr_track_create(c);
+	if (!c->id) {
+		talloc_free(c);
+		return;
+	}
+
 	c->conn = fr_connection_alloc(c, t->el, &inst->parent->connection_timeout, &inst->parent->reconnection_delay,
 				      conn_init, conn_open, conn_close, inst->parent->name, c);
 	if (!c->conn) return;
@@ -437,7 +493,7 @@ static void mod_connect(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t *t)
 
 	fr_dlist_insert_head(&t->opening, &c->entry);
 
-	// @todo - set destructor for connection which removes it from the various lists?
+	talloc_set_destructor(c, conn_free);
 }
 
 static rlm_radius_udp_connection_t *mod_connection_get(rlm_radius_udp_thread_t *t, UNUSED int code)
@@ -457,6 +513,21 @@ static rlm_radius_udp_connection_t *mod_connection_get(rlm_radius_udp_thread_t *
 static void mod_connection_add(UNUSED rlm_radius_udp_connection_t *c, UNUSED rlm_radius_udp_request_t *u)
 {
 	// do stuff
+}
+
+
+/** Free an rlm_radius_udp_request_t
+ *
+ *  Unlink the packet from the connection, and remove any tracking
+ *  entries.
+ */
+static int udp_request_free(rlm_radius_udp_request_t *u)
+{
+	fr_dlist_remove(&u->entry);
+
+	if (u->rr) (void) rr_track_delete(u->c->id, u->rr);
+
+	return 0;
 }
 
 
@@ -499,6 +570,8 @@ static int mod_push(void *instance, REQUEST *request, rlm_radius_link_t *link, v
 
 	u->link = link;
 	u->code = request->packet->code;
+
+	talloc_set_destructor(u, udp_request_free);
 
 	/*
 	 *	Get a connection.  If they're all full, try to open a
@@ -651,6 +724,40 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	return 0;
 }
 
+/** Destroy thread data for the IO submodule.
+ *
+ */
+static int mod_thread_detach(void *thread)
+{
+	rlm_radius_udp_thread_t *t = talloc_get_type_abort(thread, rlm_radius_udp_thread_t);
+	fr_dlist_t *entry;
+
+	entry = FR_DLIST_FIRST(t->queued);
+	if (entry != NULL) {
+		ERROR("There are still queued requests");
+		return -1;
+	}
+
+	/*
+	 *	Free all of the sockets.
+	 */
+	talloc_free_children(t);
+
+	entry = FR_DLIST_FIRST(t->active);
+	if (entry != NULL) {
+		ERROR("There are still active sockets");
+		return -1;
+	}
+
+	entry = FR_DLIST_FIRST(t->opening);
+	if (entry != NULL) {
+		ERROR("There are still partially open sockets");
+		return -1;
+	}
+
+	return 0;
+}
+
 /*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
@@ -672,6 +779,7 @@ fr_radius_client_io_t rlm_radius_udp = {
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.thread_instantiate = mod_thread_instantiate,
+	.thread_detach	= mod_thread_detach,
 
 	.push		= mod_push,
 };

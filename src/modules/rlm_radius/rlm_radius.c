@@ -421,7 +421,6 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	 */
 	t->thread_io_ctx = talloc_zero_array(t, uint8_t, inst->io->thread_inst_size);
 	if (!t->thread_io_ctx) {
-		talloc_free(t);
 		return -1;
 	}
 
@@ -430,7 +429,41 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	 *	sockets, set timers, etc.
 	 */
 	if (inst->io->thread_instantiate(inst->io_conf, inst->io_instance, el, t->thread_io_ctx) < 0) {
-		talloc_free(t);
+		return -1;
+	}
+
+	return 0;
+}
+
+
+/** Destroy thread data for the submodule.
+ *
+ */
+static int mod_thread_detach(void *thread)
+{
+	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
+	rlm_radius_t const *inst = t->inst;
+	fr_dlist_t *entry;
+
+	/*
+	 *	Tell the submodule to shut down all of its
+	 *	connections.
+	 */
+	if (inst->io->thread_detach &&
+	    (inst->io->thread_detach(t->thread_io_ctx) < 0)) {
+		return -1;
+	}
+
+	/*
+	 *	The scheduler MUST be destroyed before this modules
+	 *	thread memory is freed.  That ordering ensures that
+	 *	all of the requests for a worker thread are forcibly
+	 *	marked DONE, and (in an ideal world) resumed / cleaned
+	 *	up before this memory is freed.
+	 */
+	entry = FR_DLIST_FIRST(t->running);
+	if (entry != NULL) {
+		ERROR("Module still has running requests!");
 		return -1;
 	}
 
@@ -459,7 +492,7 @@ rad_module_t rlm_radius = {
 
 	.thread_inst_size = sizeof(rlm_radius_thread_t),
 	.thread_instantiate = mod_thread_instantiate,
-//	.thread_detach	= mod_thread_detach,
+	.thread_detach	= mod_thread_detach,
 	.methods = {
 		[MOD_PREACCT]		= mod_process,
 		[MOD_AUTHENTICATE]     	= mod_process,
