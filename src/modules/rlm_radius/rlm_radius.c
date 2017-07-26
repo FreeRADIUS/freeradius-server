@@ -157,7 +157,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
 
 /** Free an rlm_radius_link_t
  *
- *  Unlink it from the queued / sent list, and remove it from the
+ *  Unlink it from the running list, and remove it from the
  *  transport.
  */
 static int mod_link_free(rlm_radius_link_t *link)
@@ -241,8 +241,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	}
 
 	link->request = request;
-	link->queued = false;
-	fr_dlist_insert_tail(&t->queued, &link->entry);
+	fr_dlist_insert_tail(&t->running, &link->entry);
 
 	link->rcode = RLM_MODULE_FAIL;
 
@@ -416,8 +415,6 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	t->inst = instance;
 	t->el = el;
 
-	t->pending = false;
-	FR_DLIST_INIT(t->queued);
 	FR_DLIST_INIT(t->running);
 
 	/*

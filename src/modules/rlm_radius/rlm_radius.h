@@ -86,8 +86,7 @@ typedef struct rlm_radius_connection_t rlm_radius_connection_t;
 
 struct rlm_radius_link_t {
 	REQUEST			*request;		//!< the request we are for, so we can find it from the link
-	bool			queued;			//!< is the request queued and waiting, or sent?
-	fr_dlist_t		entry;			//!< linked list of queued or sent
+	fr_dlist_t		entry;			//!< linked list of active requests for rlm_radius
 
 	fr_time_t		time_sent;		//!< when we sent the packet
 	fr_time_t		time_recv;		//!< when we received the reply
@@ -106,8 +105,6 @@ typedef struct rlm_radius_thread_t {
 	rlm_radius_t const	*inst;			//!< Instance of the module.
 	fr_event_list_t		*el;			//!< This thread's event list.
 
-	bool			pending;		//!< We have pending messages to write.
-	fr_dlist_t		queued;			//!< queued requests
 	fr_dlist_t		running;		//!< running requests
 
 	void			*io_thread_ctx;		//!< IO context for the IO submodule
