@@ -513,8 +513,6 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 #ifdef HAVE_PTHREAD_H
 	fr_dlist_t	*entry, *next;
 
-	fr_log(sc->log, L_DBG, "Destroying scheduler\n");
-
 	/*
 	 *	Single threaded mode: kill the only network / worker we have.
 	 */
@@ -579,8 +577,6 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 
 
 done:
-	fr_log(sc->log, L_INFO, "Destroyed scheduler\n");
-
 	/*
 	 *	Now that all of the workers are done, we can return to
 	 *	the caller, and have him dlclose() the modules.
