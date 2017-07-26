@@ -56,10 +56,6 @@ typedef struct {
 
 	fr_ipaddr_t			ipaddr;			//!< Ipaddr to listen on.
 
-	bool				ipaddr_is_set;		//!< ipaddr config item is set.
-	bool				ipv4addr_is_set;	//!< ipv4addr config item is set.
-	bool				ipv6addr_is_set;	//!< ipv6addr config item is set.
-
 	char const			*interface;		//!< Interface to bind to.
 	char const			*port_name;		//!< Name of the port for getservent().
 
@@ -73,9 +69,9 @@ typedef struct {
 } proto_radius_udp_t;
 
 static const CONF_PARSER udp_listen_config[] = {
-	{ FR_CONF_IS_SET_OFFSET("ipaddr", FR_TYPE_COMBO_IP_ADDR, proto_radius_udp_t, ipaddr) },
-	{ FR_CONF_IS_SET_OFFSET("ipv4addr", FR_TYPE_IPV4_ADDR, proto_radius_udp_t, ipaddr) },
-	{ FR_CONF_IS_SET_OFFSET("ipv6addr", FR_TYPE_IPV6_ADDR, proto_radius_udp_t, ipaddr) },
+	{ FR_CONF_OFFSET("ipaddr", FR_TYPE_COMBO_IP_ADDR, proto_radius_udp_t, ipaddr) },
+	{ FR_CONF_OFFSET("ipv4addr", FR_TYPE_IPV4_ADDR, proto_radius_udp_t, ipaddr) },
+	{ FR_CONF_OFFSET("ipv6addr", FR_TYPE_IPV6_ADDR, proto_radius_udp_t, ipaddr) },
 
 	{ FR_CONF_OFFSET("interface", FR_TYPE_STRING, proto_radius_udp_t, interface) },
 	{ FR_CONF_OFFSET("port_name", FR_TYPE_STRING, proto_radius_udp_t, port_name) },
@@ -425,12 +421,11 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	proto_radius_udp_t *inst = talloc_get_type_abort(instance, proto_radius_udp_t);
 
 	/*
-	 *	Default to all IPv6 interfaces (it's the future)
+	 *	Complain if no "ipaddr" is set.
 	 */
-	if (!inst->ipaddr_is_set && !inst->ipv4addr_is_set && !inst->ipv6addr_is_set) {
-		inst->ipaddr.af = AF_INET6;
-		inst->ipaddr.prefix = 128;
-		inst->ipaddr.addr.v6 = in6addr_any;	/* in6addr_any binds to all addresses */
+	if (inst->ipaddr.af == AF_UNSPEC) {
+		cf_log_err(cs, "No 'ipaddr' was specified in the 'udp' section");
+		return -1;
 	}
 
 	if (inst->recv_buff_is_set) {
@@ -442,7 +437,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 		struct servent *s;
 
 		if (!inst->port_name) {
-			cf_log_err(cs, "No 'port' specified in 'udp' section");
+			cf_log_err(cs, "No 'port' was specified in the 'udp' section");
 			return -1;
 		}
 
