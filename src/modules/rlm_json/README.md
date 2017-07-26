@@ -1,7 +1,7 @@
 # rlm_json
 ## Metadata
 <dl>
-  <dt>category</dt><dd>languages</dd>
+  <dt>category</dt><dd>policy</dd>
 </dl>
 
 ## Summary
