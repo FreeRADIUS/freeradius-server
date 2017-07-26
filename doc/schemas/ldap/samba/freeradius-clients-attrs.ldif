@@ -1,0 +1,91 @@
+dn: CN=radiusClientIdentifier,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.1.100.2.1
+isSingleValued: TRUE
+cn: radiusClientIdentifier
+name: radiusClientIdentifier
+lDAPDisplayName: radiusClientIdentifier
+description: Client Identifier
+attributeSyntax: 2.5.5.3
+oMSyntax: 27
+
+dn: CN=radiusClientSecret,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.1.100.2.2
+isSingleValued: TRUE
+cn: radiusClientSecret
+name: radiusClientSecret
+lDAPDisplayName: radiusClientSecret
+description: Client Secret
+attributeSyntax: 2.5.5.3
+oMSyntax: 27
+
+dn: CN=radiusClientShortname,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.1.100.2.3
+isSingleValued: TRUE
+cn: radiusClientShortname
+name: radiusClientShortname
+lDAPDisplayName: radiusClientShortname
+description: Client Shortname
+attributeSyntax: 2.5.5.3
+oMSyntax: 27
+
+dn: CN=radiusClientVirtualServer,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.1.100.2.4
+isSingleValued: TRUE
+cn: radiusClientVirtualServer
+name: radiusClientVirtualServer
+lDAPDisplayName: radiusClientVirtualServer
+description: VirtualServer
+attributeSyntax: 2.5.5.3
+oMSyntax: 27
+
+dn: CN=radiusClientType,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.1.100.2.5
+isSingleValued: TRUE
+cn: radiusClientType
+name: radiusClientType
+lDAPDisplayName: radiusClientType
+description: Client Type
+attributeSyntax: 2.5.5.3
+oMSyntax: 27
+
+dn: CN=radiusClientRequireMa,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.1.100.2.6
+isSingleValued: TRUE
+cn: radiusClientRequireMa
+name: radiusClientRequireMa
+lDAPDisplayName: radiusClientRequireMa
+description: Require Message Authenticator
+attributeSyntax: 2.5.5.8
+oMSyntax: 1
+
+dn: CN=radiusClientComment,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.1.100.2.7
+isSingleValued: TRUE
+cn: radiusClientComment
+name: radiusClientComment
+lDAPDisplayName: radiusClientComment
+description: Client comment
+attributeSyntax: 2.5.5.3
+oMSyntax: 27
+

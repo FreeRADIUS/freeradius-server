@@ -1,0 +1,806 @@
+dn: CN=radiusArapFeatures,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.1
+isSingleValued: TRUE
+cn: radiusArapFeatures
+name: radiusArapFeatures
+lDAPDisplayName: radiusArapFeatures
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusArapSecurity,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.2
+isSingleValued: TRUE
+cn: radiusArapSecurity
+name: radiusArapSecurity
+lDAPDisplayName: radiusArapSecurity
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusArapZoneAccess,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.3
+isSingleValued: TRUE
+cn: radiusArapZoneAccess
+name: radiusArapZoneAccess
+lDAPDisplayName: radiusArapZoneAccess
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusAuthType,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.44
+isSingleValued: TRUE
+cn: radiusAuthType
+name: radiusAuthType
+lDAPDisplayName: radiusAuthType
+description: controlItem: Auth-Type
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusCallbackId,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.4
+isSingleValued: TRUE
+cn: radiusCallbackId
+name: radiusCallbackId
+lDAPDisplayName: radiusCallbackId
+description: replyItem: Callback-Id
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusCallbackNumber,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.5
+isSingleValued: TRUE
+cn: radiusCallbackNumber
+name: radiusCallbackNumber
+lDAPDisplayName: radiusCallbackNumber
+description: replyItem: Callback-Number
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusCalledStationId,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.6
+isSingleValued: TRUE
+cn: radiusCalledStationId
+name: radiusCalledStationId
+lDAPDisplayName: radiusCalledStationId
+description: controlItem: Called-Station-Id
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusCallingStationId,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.7
+isSingleValued: TRUE
+cn: radiusCallingStationId
+name: radiusCallingStationId
+lDAPDisplayName: radiusCallingStationId
+description: controlItem: Calling-Station-Id
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusClass,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.8
+isSingleValued: FALSE
+cn: radiusClass
+name: radiusClass
+lDAPDisplayName: radiusClass
+description: replyItem: Class
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusClientIPAddress,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.45
+isSingleValued: TRUE
+cn: radiusClientIPAddress
+name: radiusClientIPAddress
+lDAPDisplayName: radiusClientIPAddress
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusFilterId,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.9
+isSingleValued: FALSE
+cn: radiusFilterId
+name: radiusFilterId
+lDAPDisplayName: radiusFilterId
+description: replyItem: Filter-Id
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusFramedAppleTalkLink,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.10
+isSingleValued: TRUE
+cn: radiusFramedAppleTalkLink
+name: radiusFramedAppleTalkLink
+lDAPDisplayName: radiusFramedAppleTalkLink
+description: replyItem: Framed-AppleTalk-Link
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusFramedAppleTalkNetwork,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.11
+isSingleValued: FALSE
+cn: radiusFramedAppleTalkNetwork
+name: radiusFramedAppleTalkNetwork
+lDAPDisplayName: radiusFramedAppleTalkNetwork
+description: replyItem: Framed-AppleTalk-Network
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusFramedAppleTalkZone,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.12
+isSingleValued: TRUE
+cn: radiusFramedAppleTalkZone
+name: radiusFramedAppleTalkZone
+lDAPDisplayName: radiusFramedAppleTalkZone
+description: replyItem: Framed-AppleTalk-Zone
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusFramedCompression,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.13
+isSingleValued: FALSE
+cn: radiusFramedCompression
+name: radiusFramedCompression
+lDAPDisplayName: radiusFramedCompression
+description: replyItem: Framed-Compression
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusFramedIPAddress,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.14
+isSingleValued: TRUE
+cn: radiusFramedIPAddress
+name: radiusFramedIPAddress
+lDAPDisplayName: radiusFramedIPAddress
+description: replyItem: Framed-IP-Address
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusFramedIPNetmask,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.15
+isSingleValued: TRUE
+cn: radiusFramedIPNetmask
+name: radiusFramedIPNetmask
+lDAPDisplayName: radiusFramedIPNetmask
+description: replyItem: Framed-IP-Netmask
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusFramedIPXNetwork,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.16
+isSingleValued: TRUE
+cn: radiusFramedIPXNetwork
+name: radiusFramedIPXNetwork
+lDAPDisplayName: radiusFramedIPXNetwork
+description: replyItem: Framed-IPX-Network
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusFramedMTU,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.17
+isSingleValued: TRUE
+cn: radiusFramedMTU
+name: radiusFramedMTU
+lDAPDisplayName: radiusFramedMTU
+description: replyItem: Framed-MTU
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusFramedProtocol,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.18
+isSingleValued: TRUE
+cn: radiusFramedProtocol
+name: radiusFramedProtocol
+lDAPDisplayName: radiusFramedProtocol
+description: replyItem: Framed-Protocol
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusFramedRoute,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.19
+isSingleValued: FALSE
+cn: radiusFramedRoute
+name: radiusFramedRoute
+lDAPDisplayName: radiusFramedRoute
+description: replyItem: Framed-Route
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusFramedRouting,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.20
+isSingleValued: TRUE
+cn: radiusFramedRouting
+name: radiusFramedRouting
+lDAPDisplayName: radiusFramedRouting
+description: replyItem: Framed-Routing
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusGroupName,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.46
+isSingleValued: FALSE
+cn: radiusGroupName
+name: radiusGroupName
+lDAPDisplayName: radiusGroupName
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusHint,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.47
+isSingleValued: TRUE
+cn: radiusHint
+name: radiusHint
+lDAPDisplayName: radiusHint
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusHuntgroupName,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.48
+isSingleValued: FALSE
+cn: radiusHuntgroupName
+name: radiusHuntgroupName
+lDAPDisplayName: radiusHuntgroupName
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusIdleTimeout,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.21
+isSingleValued: TRUE
+cn: radiusIdleTimeout
+name: radiusIdleTimeout
+lDAPDisplayName: radiusIdleTimeout
+description: replyItem: Idle-Timeout
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusLoginIPHost,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.22
+isSingleValued: FALSE
+cn: radiusLoginIPHost
+name: radiusLoginIPHost
+lDAPDisplayName: radiusLoginIPHost
+description: replyItem: Login-IP-Host
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusLoginLATGroup,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.23
+isSingleValued: TRUE
+cn: radiusLoginLATGroup
+name: radiusLoginLATGroup
+lDAPDisplayName: radiusLoginLATGroup
+description: replyItem: Login-LAT-Group
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusLoginLATNode,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.24
+isSingleValued: TRUE
+cn: radiusLoginLATNode
+name: radiusLoginLATNode
+lDAPDisplayName: radiusLoginLATNode
+description: replyItem: Login-LAT-Node
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusLoginLATPort,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.25
+isSingleValued: TRUE
+cn: radiusLoginLATPort
+name: radiusLoginLATPort
+lDAPDisplayName: radiusLoginLATPort
+description: replyItem: Login-LAT-Port
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusLoginLATService,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.26
+isSingleValued: TRUE
+cn: radiusLoginLATService
+name: radiusLoginLATService
+lDAPDisplayName: radiusLoginLATService
+description: replyItem: Login-LAT-Service
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusLoginService,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.27
+isSingleValued: TRUE
+cn: radiusLoginService
+name: radiusLoginService
+lDAPDisplayName: radiusLoginService
+description: replyItem: Login-Service
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusLoginTCPPort,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.28
+isSingleValued: TRUE
+cn: radiusLoginTCPPort
+name: radiusLoginTCPPort
+lDAPDisplayName: radiusLoginTCPPort
+description: replyItem: Login-TCP-Port
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusPasswordRetry,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.29
+isSingleValued: TRUE
+cn: radiusPasswordRetry
+name: radiusPasswordRetry
+lDAPDisplayName: radiusPasswordRetry
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusPortLimit,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.30
+isSingleValued: TRUE
+cn: radiusPortLimit
+name: radiusPortLimit
+lDAPDisplayName: radiusPortLimit
+description: replyItem: Port-Limit
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusProfileDN,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.49
+isSingleValued: FALSE
+cn: radiusProfileDN
+name: radiusProfileDN
+lDAPDisplayName: radiusProfileDN
+attributeSyntax: 2.5.5.1
+oMSyntax: 127
+
+dn: CN=radiusPrompt,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.31
+isSingleValued: TRUE
+cn: radiusPrompt
+name: radiusPrompt
+lDAPDisplayName: radiusPrompt
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusProxyToRealm,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.50
+isSingleValued: TRUE
+cn: radiusProxyToRealm
+name: radiusProxyToRealm
+lDAPDisplayName: radiusProxyToRealm
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusReplicateToRealm,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.51
+isSingleValued: TRUE
+cn: radiusReplicateToRealm
+name: radiusReplicateToRealm
+lDAPDisplayName: radiusReplicateToRealm
+description: control:Replicate-To-Realm
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusRealm,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.52
+isSingleValued: TRUE
+cn: radiusRealm
+name: radiusRealm
+lDAPDisplayName: radiusRealm
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusServiceType,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.32
+isSingleValued: TRUE
+cn: radiusServiceType
+name: radiusServiceType
+lDAPDisplayName: radiusServiceType
+description: replyItem: Service-Type
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusSessionTimeout,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.33
+isSingleValued: TRUE
+cn: radiusSessionTimeout
+name: radiusSessionTimeout
+lDAPDisplayName: radiusSessionTimeout
+description: replyItem: Session-Timeout
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusTerminationAction,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.34
+isSingleValued: TRUE
+cn: radiusTerminationAction
+name: radiusTerminationAction
+lDAPDisplayName: radiusTerminationAction
+description: replyItem: Termination-Action
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusTunnelAssignmentId,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.35
+isSingleValued: FALSE
+cn: radiusTunnelAssignmentId
+name: radiusTunnelAssignmentId
+lDAPDisplayName: radiusTunnelAssignmentId
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusTunnelMediumType,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.36
+isSingleValued: FALSE
+cn: radiusTunnelMediumType
+name: radiusTunnelMediumType
+lDAPDisplayName: radiusTunnelMediumType
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusTunnelPassword,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.37
+isSingleValued: TRUE
+cn: radiusTunnelPassword
+name: radiusTunnelPassword
+lDAPDisplayName: radiusTunnelPassword
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusTunnelPreference,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.38
+isSingleValued: FALSE
+cn: radiusTunnelPreference
+name: radiusTunnelPreference
+lDAPDisplayName: radiusTunnelPreference
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusTunnelPrivateGroupId,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.39
+isSingleValued: FALSE
+cn: radiusTunnelPrivateGroupId
+name: radiusTunnelPrivateGroupId
+lDAPDisplayName: radiusTunnelPrivateGroupId
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusTunnelServerEndpoint,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.40
+isSingleValued: FALSE
+cn: radiusTunnelServerEndpoint
+name: radiusTunnelServerEndpoint
+lDAPDisplayName: radiusTunnelServerEndpoint
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusTunnelType,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.41
+isSingleValued: FALSE
+cn: radiusTunnelType
+name: radiusTunnelType
+lDAPDisplayName: radiusTunnelType
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusVSA,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.42
+isSingleValued: FALSE
+cn: radiusVSA
+name: radiusVSA
+lDAPDisplayName: radiusVSA
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusTunnelClientEndpoint,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.43
+isSingleValued: FALSE
+cn: radiusTunnelClientEndpoint
+name: radiusTunnelClientEndpoint
+lDAPDisplayName: radiusTunnelClientEndpoint
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusSimultaneousUse,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.53
+isSingleValued: TRUE
+cn: radiusSimultaneousUse
+name: radiusSimultaneousUse
+lDAPDisplayName: radiusSimultaneousUse
+description: controlItem: Simultaneous-Use
+attributeSyntax: 2.5.5.9
+oMSyntax: 10
+
+dn: CN=radiusLoginTime,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.54
+isSingleValued: TRUE
+cn: radiusLoginTime
+name: radiusLoginTime
+lDAPDisplayName: radiusLoginTime
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusUserCategory,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.55
+isSingleValued: TRUE
+cn: radiusUserCategory
+name: radiusUserCategory
+lDAPDisplayName: radiusUserCategory
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusStripUserName,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.56
+isSingleValued: TRUE
+cn: radiusStripUserName
+name: radiusStripUserName
+lDAPDisplayName: radiusStripUserName
+attributeSyntax: 2.5.5.8
+oMSyntax: 1
+
+dn: CN=dialupAccess,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.57
+isSingleValued: TRUE
+cn: dialupAccess
+name: dialupAccess
+lDAPDisplayName: dialupAccess
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusExpiration,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.58
+isSingleValued: TRUE
+cn: radiusExpiration
+name: radiusExpiration
+lDAPDisplayName: radiusExpiration
+description: controlItem: Expiration
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusAttribute,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.59
+isSingleValued: FALSE
+cn: radiusAttribute
+name: radiusAttribute
+lDAPDisplayName: radiusAttribute
+description: controlItem: $GENERIC$
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusNASIpAddress,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.61
+isSingleValued: TRUE
+cn: radiusNASIpAddress
+name: radiusNASIpAddress
+lDAPDisplayName: radiusNASIpAddress
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusReplyMessage,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.62
+isSingleValued: FALSE
+cn: radiusReplyMessage
+name: radiusReplyMessage
+lDAPDisplayName: radiusReplyMessage
+description: replyItem: Reply-Message
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusControlAttribute,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.63
+isSingleValued: FALSE
+cn: radiusControlAttribute
+name: radiusControlAttribute
+lDAPDisplayName: radiusControlAttribute
+description: controlItem: $GENERIC$
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusReplyAttribute,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.64
+isSingleValued: FALSE
+cn: radiusReplyAttribute
+name: radiusReplyAttribute
+lDAPDisplayName: radiusReplyAttribute
+description: replyItem: $GENERIC$
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
+dn: CN=radiusRequestAttribute,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: add
+objectClass: top
+objectClass: attributeSchema
+attributeID: 1.3.6.1.4.1.11344.4.3.1.65
+isSingleValued: FALSE
+cn: radiusRequestAttribute
+name: radiusRequestAttribute
+lDAPDisplayName: radiusRequestAttribute
+description: requestItem: $GENERIC$
+attributeSyntax: 2.5.5.5
+oMSyntax: 22
+
