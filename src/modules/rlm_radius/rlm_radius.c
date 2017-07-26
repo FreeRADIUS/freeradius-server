@@ -1,18 +1,11 @@
-// @todo - allow for multiple connections
-// * connections have to be in a heap, sorted by most recently sent (that got a reply)
-// * need to add zombie connections in a zombie list, so that "dead" ones aren't used for new packets
-// * need to check if a connection is zombie, and if so, move it to the zombie list
-// * somehow need to tell udp -> main that a connection is zombie / alive?
 // * add 'type = Access-Request' checking.  Which (if set) limits the outbound packet types
 //   - mainly so that we can fail here instead of not getting a reply from the home server
 //   - and it mirrors the old configuration
 //   - which allows us to parse "Access-Request { ... }" sub-sections only if there's an Access-Request
 // * add status_check = Status-Server or Access-Request, ala old code
-// * add documentation for function prototypes in rlm_radius.h
 // * allow for "no reply" proxying, where we don't care about getting the reply
 //   - i.e. we still drain the socket, we just don't do anything with the replies
-// * allow for PCAP interfaces in RADIUS, so we can sniff on sockets without
-//   sending replies
+// * allow for PCAP interfaces in proto_radius, so we can sniff the network and proxy RADIUS packets...
 
 /*
  *   This program is is free software; you can redistribute it and/or modify

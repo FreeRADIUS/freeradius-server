@@ -1,11 +1,9 @@
-// @todo - finish it!
-// * implement remove(), which removes packets from the tracking tree
-// * don't make request_io_ctx talloc'd from rlm_radius_link_t, as the link can be used
-// * for other connections.  it's simpler to just have one remove() func, than to muck with
-//   more allocations and talloc destructors.
-// * add fd_active / fd_idle callbacks.  They will suppress the 'idle' call in rlm_radius
-// - i.e. if UDP wants to send a Status-Server, it can't be idle...
-// figure out a way to tell rlm_radius that the connection is zombie / alive?
+// @todo - allow for multiple connections
+// * connections have to be in a heap, sorted by most recently sent with reply, followed by # of free packets
+// * need to add zombie connections in a zombie list, so that "dead" ones aren't used for new packets
+// * need to check if a connection is zombie, and if so, move it to the zombie list
+// * add packet retransmission timers
+// * add status-server checks
 
 /*
  *   This program is is free software; you can redistribute it and/or modify
@@ -283,7 +281,7 @@ static void conn_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 	// @todo - set rcode based on ACK or NAK
 	link->rcode = RLM_MODULE_OK;
 
-	// update the status of this connection
+	// @todo - update the status of this connection
 
 	unlang_resumable(request);
 }
@@ -523,6 +521,18 @@ static void mod_connection_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t
 	}
 	c->buflen = c->max_packet_size;
 
+	/*
+	 *	Note that each connection can have AT MOST 256 packets
+	 *	outstanding, no matter what the packet code.  i.e. we
+	 *	use a common ID space for all packet codes sent on
+	 *	this connection.
+	 *
+	 *	This is the same behavior as v2 and v3.  In an ideal
+	 *	world, we SHOULD be able to have separate ID spaces
+	 *	for each packet code.  The problem is that the replies
+	 *	don't contain the original packet codes.  Which means
+	 *	looking up packets by ID is difficult.
+	 */
 	c->id = rr_track_create(c);
 	if (!c->id) {
 		talloc_free(c);
