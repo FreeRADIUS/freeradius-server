@@ -40,8 +40,6 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/rad_assert.h>
 
@@ -248,7 +246,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	/*
 	 *	Push the request and it's link to the IO submodule.
 	 */
-	if (inst->io->push(inst, request, link, t->thread_io_ctx) < 0) {
+	if (inst->io->push(inst->io_instance, request, link, t->thread_io_ctx) < 0) {
 		talloc_free(link);
 		return RLM_MODULE_FAIL;
 	}

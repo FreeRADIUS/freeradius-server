@@ -32,15 +32,17 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/udp.h>
+#include <freeradius-devel/connection.h>
 #include <freeradius-devel/rad_assert.h>
 
 #include "rlm_radius.h"
 #include "track.h"
 
+/** Static configuration for the module.
+ *
+ */
 typedef struct rlm_radius_udp_t {
 	fr_ipaddr_t		dst_ipaddr;		//!< IP of the home server
 	fr_ipaddr_t		src_ipaddr;		//!< IP we open our socket on
@@ -56,26 +58,42 @@ typedef struct rlm_radius_udp_t {
 
 	bool			recv_buff_is_set;	//!< Whether we were provided with a recv_buf
 	bool			send_buff_is_set;	//!< Whether we were provided with a send_buf
-
-	bool			dst_ipaddr_is_set;     	//!< ipaddr config item is set.
-	bool			dst_ipv4addr_is_set;	//!< ipv4addr config item is set.
-	bool			dst_ipv6addr_is_set;	//!< ipv6addr config item is set.
-
-	bool			src_ipaddr_is_set;     	//!< src_ipaddr config item is set.
-	bool			src_ipv4addr_is_set;	//!< src_ipv4addr config item is set.
-	bool			src_ipv6addr_is_set;	//!< src_ipv6addr config item is set.
-
 } rlm_radius_udp_t;
 
-struct rlm_radius_client_io_ctx_t {
+
+/** Per-thread configuration for the module.
+ *
+ *  This data structure holds the connections, etc. for this IO submodule.
+ */
+typedef struct rlm_radius_udp_thread_t {
+	rlm_radius_udp_t	*inst;			//!< IO submodule instance
+	fr_event_list_t		*el;			//!< event list
+
+	bool			pending;		//!< are there pending requests?
+	fr_dlist_t		queued;			//!< queued requests for some new connection
+
+	fr_dlist_t		active;	       	//!< active connections
+} rlm_radius_udp_thread_t;
+
+typedef struct rlm_radius_udp_connection_t {
 	rlm_radius_udp_t const	*inst;		//!< our module instance
+	fr_connection_t		*conn;		//!< Connection to our destination.
+
+	fr_dlist_t		entry;		//!< in the linked list of connections
+
+	struct timeval		last_sent_with_reply;	//!< most recent sent time which had a reply
+
+	bool			pending;	//!< are there packets pending?
+	fr_dlist_t		queued;		//!< list of packets queued for sending
+	fr_dlist_t		sent;		//!< list of sent packets
+
 	uint32_t		max_packet_size; //!< our max packet size. may be different from the parent...
 	int			fd;		//!< file descriptor
 
 	fr_ipaddr_t		dst_ipaddr;	//!< IP of the home server. stupid 'const' issues..
+	uint16_t		dst_port;	//!< port of the home server
 	fr_ipaddr_t		src_ipaddr;	//!< my source IP
 	uint16_t	       	src_port;	//!< my source port
-	uint16_t		dst_port;	//!< port of the home server
 
 	// @todo - track status-server, open, signaling, etc.
 
@@ -83,13 +101,19 @@ struct rlm_radius_client_io_ctx_t {
 	size_t			buflen;		//!< receive buffer length
 
 	rlm_radius_id_t		*id[FR_MAX_PACKET_CODE]; //!< ID tracking
-};
+} rlm_radius_udp_connection_t;
 
-typedef struct request_ctx_t {
-	uint8_t			header[20];
 
-	// @todo - timers, retransmits, etc
-} request_ctx_t;
+/** Link a packet to a connection
+ *
+ */
+typedef struct rlm_radius_udp_request_t {
+	fr_dlist_t		entry;		//!< in the connection list of packets
+
+	rlm_radius_udp_connection_t	*c;		//!< the connection
+	rlm_radius_request_t	*rr;		//!< the ID tracking, resend count, etc.
+
+} rlm_radius_udp_request_t;
 
 
 static const CONF_PARSER module_config[] = {
@@ -117,163 +141,60 @@ static const CONF_PARSER module_config[] = {
 };
 
 
-static int mod_write(REQUEST *request, void *request_ctx, void *io_ctx)
+static rlm_radius_udp_connection_t *mod_connect(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t *t)
 {
-	rlm_radius_client_io_ctx_t *io = talloc_get_type_abort(io_ctx, rlm_radius_client_io_ctx_t);
-	request_ctx_t *track = (request_ctx_t *) request_ctx; /* not talloc'd */
-	ssize_t packet_len, data_size;
-	rlm_radius_request_t *rr;
+	rlm_radius_udp_connection_t *c;
+
+	c = talloc_zero(t, rlm_radius_udp_connection_t);
+	c->dst_ipaddr = inst->dst_ipaddr;
+	c->dst_port = inst->dst_port;
+	c->src_ipaddr = inst->src_ipaddr;
+	c->src_port = 0;
+
+	return c;
+}
+
+
+static int mod_push(void *instance, REQUEST *request, rlm_radius_link_t *link, void *thread)
+{
+	rlm_radius_udp_t *inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
+	rlm_radius_udp_thread_t *t = talloc_get_type_abort(thread, rlm_radius_udp_thread_t);
+	rlm_radius_udp_request_t *u = link->request_io_ctx;
+	rlm_radius_udp_connection_t *c;
+	fr_dlist_t *entry;
 
 	rad_assert(request->packet->code > 0);
 	rad_assert(request->packet->code < FR_MAX_PACKET_CODE);
 
-	/*
-	 *	Create the tracking table if it doesn't already exist.
-	 *
-	 *	@todo - move this into the "init" routine?  where was can examine
-	 *	        the rlm_radius_t, and create the relevant data structures.
-	 */
-	if (!io->id[request->packet->code]) {
-		io->id[request->packet->code] = rr_track_create(io_ctx);
-		if (!io->id[request->packet->code]) {
-			RDEBUG("Failed creating tracking table for code %d", request->packet->code);
+	entry = FR_DLIST_FIRST(t->active);
+	if (!entry) {
+		c = mod_connect(inst, t);
+		if (!c) {
+			RDEBUG("Failed initializing new connection");
 			return -1;
 		}
 	}
 
 	/*
-	 *	Allocate an ID
+	 *	Now that we have a connection, use it to send packets.
 	 */
-	rr = rr_track_alloc(io->id[request->packet->code], request, request->packet->code, io, request_ctx);
-	if (!rr) {
-		RDEBUG("Failed allocating packet ID for code %d", request->packet->code);
-		return -1;
+	c = fr_ptr_to_type(rlm_radius_udp_connection_t, entry, entry);
+	(void) talloc_get_type_abort(c, rlm_radius_udp_connection_t);
+
+	u->c = c;
+
+	if (c->pending) {
+		fr_dlist_insert_head(&c->queued, &u->entry);
+		return 0;
 	}
 
-	packet_len = fr_radius_encode(io->buffer, io->buflen, NULL, io->inst->secret, strlen(io->inst->secret),
-				      rr->code, rr->id, request->packet->vps);
-	if (packet_len < 0) {
-		RDEBUG("Failed encoding packet: %s", fr_strerror());
+	// @todo - try to write to the socket.  If we can, return instead of adding it to the queue
 
-		// @todo - distinguish write errors from encode errors?
-		return -1;
-	}
+	c->pending = true;
+	fr_dlist_insert_head(&c->queued, &u->entry);
+//	mod_fd_active(c);
 
-	data_size = udp_send(io->fd, io->buffer, packet_len, 0,
-			     &io->dst_ipaddr, io->dst_port,
-			     0,	/* if_index */
-			     &io->src_ipaddr, io->src_port);
-
-	// @todo - put the packet into an RB tree, too, so we can find replies...
-	memcpy(&track->header, io->buffer, 20);
-
-	if (data_size < packet_len) {
-		rad_assert(0 == 1);
-	}
-
-	return 1;
-}
-
-/** Get a printable name for the socket
- *
- */
-static char const *mod_get_name(TALLOC_CTX *ctx, void *io_ctx)
-{
-	rlm_radius_client_io_ctx_t *io = talloc_get_type_abort(io_ctx, rlm_radius_client_io_ctx_t);
-	char src_buf[FR_IPADDR_STRLEN], dst_buf[FR_IPADDR_STRLEN];
-
-	fr_inet_ntop(dst_buf, sizeof(dst_buf), &io->dst_ipaddr);
-
-	// @todo - make sure to get the local port number we're bound to
-
-	if (fr_ipaddr_is_inaddr_any(&io->inst->src_ipaddr)) {
-		return talloc_asprintf(ctx, "home server %s port %u", dst_buf, io->dst_port);
-	}
-
-	fr_inet_ntop(src_buf, sizeof(src_buf), &io->inst->src_ipaddr);
-	return talloc_asprintf(ctx, "from %s to home server %s port %u", src_buf, dst_buf, io->dst_port);
-}
-
-
-/** Shutdown/close a file descriptor
- *
- */
-static void mod_close(int fd, void *io_ctx)
-{
-	rlm_radius_client_io_ctx_t *io = talloc_get_type_abort(io_ctx, rlm_radius_client_io_ctx_t);
-
-	if (shutdown(fd, SHUT_RDWR) < 0) DEBUG3("Shutdown on socket (%i) failed: %s", fd, fr_syserror(errno));
-	if (close(fd) < 0) DEBUG3("Closing socket (%i) failed: %s", fd, fr_syserror(errno));
-
-	io->fd = -1;
-}
-
-/** Do more setup once the connection has been opened
- *
- */
-static fr_connection_state_t mod_open(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED void *io_ctx)
-{
-//	rlm_radius_client_io_ctx_t_t *io = talloc_get_type_abort(io_ctx, rlm_radius_client_io_ctx_t);
-
-	// @todo - create the initial Status-Server for negotiation and send that
-
-	return FR_CONNECTION_STATE_CONNECTED;
-}
-
-
-/** Initialize the connection.
- *
- */
-static fr_connection_state_t mod_init(int *fd_out, void *io_ctx, void const *uctx)
-{
-	int fd;
-	rlm_radius_client_io_ctx_t *io = talloc_get_type_abort(io_ctx, rlm_radius_client_io_ctx_t);
-	rlm_radius_udp_t const *inst = talloc_get_type_abort(uctx, rlm_radius_udp_t);
-
-	io->inst = inst;
-
-	io->max_packet_size = inst->max_packet_size;
-	io->buflen = io->max_packet_size;
-	io->buffer = talloc_array(io, uint8_t, io->buflen);
-
-	if (!io->buffer) {
-		return FR_CONNECTION_STATE_FAILED;
-	}
-
-	io->dst_ipaddr = inst->dst_ipaddr;
-	io->dst_port = inst->dst_port;
-	io->src_ipaddr = inst->src_ipaddr;
-	io->src_port = 0;
-
-	/*
-	 *	Open the outgoing socket.
-	 *
-	 *	@todo - pass src_ipaddr, and remove later call to fr_socket_bind()
-	 *	which does return the src_port, but doesn't set the "don't fragment" bit.
-	 */
-	fd = fr_socket_client_udp(&io->src_ipaddr, &io->dst_ipaddr, io->dst_port, true);
-	if (fd < 0) {
-		DEBUG("Failed opening RADIUS client UDP socket: %s", fr_strerror());
-		return FR_CONNECTION_STATE_FAILED;
-	}
-
-#if 0
-	if (fr_socket_bind(fd, &io->src_ipaddr, &io->src_port, inst->interface) < 0) {
-		DEBUG("Failed binding RADIUS client UDP socket: %s FD %d %pV port %u interface %s", fr_strerror(), fd, fr_box_ipaddr(io->src_ipaddr),
-			io->src_port, inst->interface);
-		return FR_CONNECTION_STATE_FAILED;
-	}
-#endif
-
-	// @todo - set recv_buff and send_buff socket options
-
-	io->fd = fd;
-
-	// @todo - initialize the tracking memory, etc.
-
-	*fd_out = fd;
-
-	return FR_CONNECTION_STATE_CONNECTING;
+	return 0;
 }
 
 
@@ -360,6 +281,28 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 }
 
 
+/** Instantiate thread data for the submodule.
+ *
+ */
+static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance, fr_event_list_t *el, void *thread)
+{
+	rlm_radius_udp_thread_t *t = thread;
+
+	(void) talloc_set_type(t, rlm_radius_udp_thread_t);
+	t->inst = instance;
+	t->el = el;
+
+	t->pending = false;
+	FR_DLIST_INIT(t->queued);
+	FR_DLIST_INIT(t->active);
+
+	// @todo - get parent, and initialize the list of IDs by code, from what is permitted by rlm_radius
+
+	// start the connection
+
+	return 0;
+}
+
 /*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
@@ -374,19 +317,13 @@ fr_radius_client_io_t rlm_radius_udp = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "radius_udp",
 	.inst_size	= sizeof(rlm_radius_udp_t),
-	.io_inst_size	= sizeof(rlm_radius_client_io_ctx_t),
-	.request_inst_size = sizeof(request_ctx_t),
+	.request_inst_size = sizeof(rlm_radius_udp_request_t),
+	.thread_inst_size	= sizeof(rlm_radius_udp_thread_t),
+
 	.config		= module_config,
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
-	.init		= mod_init,
-	.open		= mod_open,
-	.close		= mod_close,
-	.get_name	= mod_get_name,
-	.write		= mod_write,
-#if 0
-	.flush		= mod_flush,
-	.remove		= mod_remove,
-	.read		= mod_read,
-#endif
+	.thread_instantiate = mod_thread_instantiate,
+
+	.push		= mod_push,
 };

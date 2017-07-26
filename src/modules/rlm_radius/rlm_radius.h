@@ -15,7 +15,9 @@
  */
 #ifndef _RLM_RADIUS_H
 #define _RLM_RADIUS_H
-#include <freeradius-devel/connection.h>
+
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/modules.h>
 
 /*
  * $Id$
@@ -33,7 +35,7 @@ typedef struct rlm_radius_link_t rlm_radius_link_t;
 /** Push a REQUEST to an IO submodule
  *
  */
-typedef int (*fr_radius_io_push_t)(rlm_radius_t *inst, REQUEST *request, rlm_radius_link_t *link, void *thread);
+typedef int (*fr_radius_io_push_t)(void *instance, REQUEST *request, rlm_radius_link_t *link, void *thread);
 
 
 /** Public structure describing an I/O path for an outgoing socket.
@@ -82,20 +84,6 @@ struct rlm_radius_t {
 	rlm_radius_retry_t	packets[FR_MAX_PACKET_CODE];
 };
 
-typedef struct rlm_radius_connection_t rlm_radius_connection_t;
-
-struct rlm_radius_link_t {
-	REQUEST			*request;		//!< the request we are for, so we can find it from the link
-	fr_dlist_t		entry;			//!< linked list of active requests for rlm_radius
-
-	fr_time_t		time_sent;		//!< when we sent the packet
-	fr_time_t		time_recv;		//!< when we received the reply
-
-
-	rlm_rcode_t		rcode;			//!< from the transport
-	void			*request_io_ctx;
-	rlm_radius_connection_t	*c;			//!< which connection we're queued or sent
-};
 
 /** Per-thread instance data
  *
@@ -107,7 +95,22 @@ typedef struct rlm_radius_thread_t {
 
 	fr_dlist_t		running;		//!< running requests
 
-	void			*thread_io_ctx;		//!< IO context for the IO submodule
+	void			*thread_io_ctx;		//!< thread context for the IO submodule
 } rlm_radius_thread_t;
+
+/** Link a REQUEST to an rlm_radius thread context, and to the IO submodule.
+ *
+ */
+struct rlm_radius_link_t {
+	REQUEST			*request;		//!< the request we are for, so we can find it from the link
+	rlm_radius_thread_t	*t;			//!< thread context for rlm_radius
+	fr_dlist_t		entry;			//!< linked list of active requests for rlm_radius
+
+	fr_time_t		time_sent;		//!< when we sent the packet
+	fr_time_t		time_recv;		//!< when we received the reply
+
+	rlm_rcode_t		rcode;			//!< from the transport
+	void			*request_io_ctx;	//!< IO submodule tracking for this request
+};
 
 #endif	/* _RLM_RADIUS_H */
