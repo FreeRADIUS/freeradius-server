@@ -83,11 +83,14 @@ typedef struct rlm_radius_udp_connection_t {
 	rlm_radius_udp_t const	*inst;		//!< our module instance
 	rlm_radius_udp_thread_t *thread;       	//!< our thread-specific data
 	fr_connection_t		*conn;		//!< Connection to our destination.
-	char const		*name;		//!< from IP PORT to IP PORT
+	char const     		*name;		//!< from IP PORT to IP PORT
 
 	fr_dlist_t		entry;		//!< in the linked list of connections
 
 	struct timeval		last_sent_with_reply;	//!< most recent sent time which had a reply
+
+	int			num_packets;	//!< number of packets we sent
+	int			max_packets;	//!< maximum number of packets we can send
 
 	bool			pending;	//!< are there packets pending?
 	fr_dlist_t		queued;		//!< list of packets queued for sending
@@ -151,7 +154,7 @@ static const CONF_PARSER module_config[] = {
 static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int fd_errno, void *uctx);
 static void conn_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx);
 static void conn_writable(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx);
-
+static void mod_clear_backlog(rlm_radius_udp_thread_t *t);
 
 /** Set the socket to idle
  *
@@ -272,9 +275,13 @@ static void conn_writable(fr_event_list_t *el, int fd, UNUSED int flags, void *u
 					      u->link->request->packet->vps);
 		if (packet_len <= 0) break;
 
+		/*
+		 *	Write the packet to the socket.  If it blocks,
+		 *	stop dequeueing packets.
+		 */
 		rcode = write(fd, c->buffer, packet_len);
 		if (rcode < 0) {
-			if (errno == EWOULDBLOCK) return;
+			if (errno == EWOULDBLOCK) break;
 
 			conn_error(el, fd, 0, errno, c);
 			return;
@@ -293,9 +300,19 @@ static void conn_writable(fr_event_list_t *el, int fd, UNUSED int flags, void *u
 		fd_idle(c);
 
 	} else if (!c->pending) {
+		/*
+		 *	This check is here only for mod_push(), which
+		 *	calls us when there are no packets pending on
+		 *	a socket.  If the connection is writable, and
+		 *	the write succeeds, and there's nothing more
+		 *	to write, we don't need to call fd_active().
+		 */
 		c->pending = true;
 		fd_active(c);
 	}
+	/*
+	 *	Else c->pending was already set, and we already have fd_active().
+	 */
 }
 
 /** Shutdown/close a file descriptor
@@ -319,9 +336,8 @@ static fr_connection_state_t conn_open(UNUSED fr_event_list_t *el, UNUSED int fd
 {
 	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
 	rlm_radius_udp_thread_t *t = c->thread;
-	fr_dlist_t *entry, *next;
 
-	talloc_const_free(&c->name);
+	talloc_const_free(c->name);
 	c->name = talloc_strdup(c, "connected");
 
 	/*
@@ -332,27 +348,6 @@ static fr_connection_state_t conn_open(UNUSED fr_event_list_t *el, UNUSED int fd
 	fr_dlist_insert_tail(&t->active, &c->entry);
 
 	/*
-	 *	Clear the global backlog first.
-	 */
-	for (entry = FR_DLIST_FIRST(t->queued);
-	     entry != NULL;
-	     entry = next) {
-		rlm_radius_udp_request_t *u;
-
-		next = FR_DLIST_NEXT(t->queued, entry);
-
-		u = fr_ptr_to_type(rlm_radius_udp_request_t, entry, entry);
-
-		// @todo - figure out if we can the request to the
-		// connection, by tracking used codes, etc.
-
-		fr_dlist_remove(entry);
-		fr_dlist_insert_tail(&c->queued, &u->entry);
-		c->pending = true;
-	}
-
-
-	/*
 	 *	If we have data pending, add the writable event immediately
 	 */
 	if (c->pending) {
@@ -360,6 +355,13 @@ static fr_connection_state_t conn_open(UNUSED fr_event_list_t *el, UNUSED int fd
 	} else {
 		fd_idle(c);
 	}
+
+	/*
+	 *	Now that we're open, also push pending requests from
+	 *	the main thread queue onto the queue for this
+	 *	connection.
+	 */
+	if (t->pending) mod_clear_backlog(t);
 
 	return FR_CONNECTION_STATE_CONNECTED;
 }
@@ -459,7 +461,7 @@ static int conn_free(rlm_radius_udp_connection_t *c)
 }
 
 
-static void mod_connect(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t *t)
+static void mod_connection_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t *t)
 {
 	rlm_radius_udp_connection_t *c;
 
@@ -484,6 +486,8 @@ static void mod_connect(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t *t)
 		talloc_free(c);
 		return;
 	}
+	c->num_packets = 0;
+	c->max_packets = 256;
 
 	c->conn = fr_connection_alloc(c, t->el, &inst->parent->connection_timeout, &inst->parent->reconnection_delay,
 				      conn_init, conn_open, conn_close, inst->parent->name, c);
@@ -496,7 +500,11 @@ static void mod_connect(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t *t)
 	talloc_set_destructor(c, conn_free);
 }
 
-static rlm_radius_udp_connection_t *mod_connection_get(rlm_radius_udp_thread_t *t, UNUSED int code)
+/** Get a new connection...
+ *
+ * For now, there's only one connection.
+ */
+static rlm_radius_udp_connection_t *connection_get(rlm_radius_udp_thread_t *t, rlm_radius_udp_request_t *u)
 {
 	rlm_radius_udp_connection_t *c;
 	fr_dlist_t *entry;
@@ -507,12 +515,10 @@ static rlm_radius_udp_connection_t *mod_connection_get(rlm_radius_udp_thread_t *
 	c = fr_ptr_to_type(rlm_radius_udp_connection_t, entry, entry);
 	(void) talloc_get_type_abort(c, rlm_radius_udp_connection_t);
 
-	return c;
-}
+	u->rr = rr_track_alloc(c->id, u->link->request, u->code, u->link);
+	if (!u->rr) return NULL;
 
-static void mod_connection_add(UNUSED rlm_radius_udp_connection_t *c, UNUSED rlm_radius_udp_request_t *u)
-{
-	// do stuff
+	return c;
 }
 
 
@@ -535,6 +541,9 @@ static void mod_clear_backlog(rlm_radius_udp_thread_t *t)
 {
 	fr_dlist_t *entry, *next;
 
+	entry = FR_DLIST_FIRST(t->active);
+	if (!entry) return;
+
 	for (entry = FR_DLIST_FIRST(t->queued);
 	     entry != NULL;
 	     entry = next) {
@@ -544,11 +553,20 @@ static void mod_clear_backlog(rlm_radius_udp_thread_t *t)
 		next = FR_DLIST_NEXT(t->queued, entry);
 
 		u = fr_ptr_to_type(rlm_radius_udp_request_t, entry, entry);
-		c = mod_connection_get(t, u->code);
-		if (!c) return;
+		c = connection_get(t, u);
+		if (!c) break;
 
-		fr_dlist_remove(entry);
-		mod_connection_add(c, u);
+		/*
+		 *	Remove it from the main thread queue, and add
+		 *	it to the connection queue.
+		 */
+		fr_dlist_remove(&u->entry);
+		fr_dlist_insert_tail(&c->queued, &u->entry);
+
+		if (!c->pending) {
+			c->pending = true;
+			fd_active(c);
+		}
 	}
 }
 
@@ -565,6 +583,9 @@ static int mod_push(void *instance, REQUEST *request, rlm_radius_link_t *link, v
 
 	/*
 	 *	Clear the backlog before sending any new packets.
+	 *
+	 *	@todo - only call mod_clear_backlog() if there are
+	 *	active connections.
 	 */
 	if (t->pending) mod_clear_backlog(t);
 
@@ -577,12 +598,12 @@ static int mod_push(void *instance, REQUEST *request, rlm_radius_link_t *link, v
 	 *	Get a connection.  If they're all full, try to open a
 	 *	new one.
 	 */
-	c = mod_connection_get(t, u->code);
+	c = connection_get(t, u);
 	if (!c) {
 		fr_dlist_t *entry;
 
 		entry = FR_DLIST_FIRST(t->opening);
-		if (!entry) mod_connect(inst, t);
+		if (!entry) mod_connection_alloc(inst, t);
 
 		/*
 		 *	Add the request to the backlog.  It will be
@@ -604,6 +625,9 @@ static int mod_push(void *instance, REQUEST *request, rlm_radius_link_t *link, v
 	 *	If there are no active packets, try to write one
 	 *	immediately.  This avoids a few context switches in
 	 *	the case where the socket is writable.
+	 *
+	 *	conn_writable() will set c->pending, and call
+	 *	fd_active() as necessary.
 	 */
 	if (!c->pending) {
 		conn_writable(t->el, c->fd, 0, c);
@@ -719,7 +743,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 
 	// @todo - get parent, and initialize the list of IDs by code, from what is permitted by rlm_radius
 
-	mod_connect(t->inst, t);
+	mod_connection_alloc(t->inst, t);
 
 	return 0;
 }
