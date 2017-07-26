@@ -41,6 +41,10 @@ static int rr_track_free(rlm_radius_id_t *id)
 	for (i = 0; i < 256; i++) {
 		if (!id->id[i].request) continue;
 
+		/*
+		 *	The timers are parented from the request, so
+		 *	we have to manually free them here.
+		 */
 		talloc_const_free(id->id[i].ev);
 	}
 
