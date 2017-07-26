@@ -290,6 +290,7 @@ ATTRIBUTE	SSHA2-224-Password			1180	octets
 ATTRIBUTE	SSHA2-256-Password			1181	octets
 ATTRIBUTE	SSHA2-384-Password			1182	octets
 ATTRIBUTE	SSHA2-512-Password			1183	octets
+ATTRIBUTE	PBKDF2-Password				1184	octets
 
 ATTRIBUTE	Exec-Export				1190	string
 

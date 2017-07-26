@@ -1,0 +1,11 @@
+#
+#  Input packet
+#
+User-Name = 'pbkdf2_dig_small'
+User-Password = 'password'
+
+#
+#  Expected answer
+#
+Response-Packet-Type == Access-Accept
+
