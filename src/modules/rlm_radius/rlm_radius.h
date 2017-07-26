@@ -107,7 +107,7 @@ typedef struct rlm_radius_thread_t {
 
 	fr_dlist_t		running;		//!< running requests
 
-	void			*io_thread_ctx;		//!< IO context for the IO submodule
+	void			*thread_io_ctx;		//!< IO context for the IO submodule
 } rlm_radius_thread_t;
 
 #endif	/* _RLM_RADIUS_H */

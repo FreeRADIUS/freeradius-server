@@ -248,7 +248,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	/*
 	 *	Push the request and it's link to the IO submodule.
 	 */
-	if (inst->io->push(inst, request, link, t->io_thread_ctx) < 0) {
+	if (inst->io->push(inst, request, link, t->thread_io_ctx) < 0) {
 		talloc_free(link);
 		return RLM_MODULE_FAIL;
 	}
@@ -421,8 +421,8 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	 *	Allocate thread-specific data.  The connections should
 	 *	live here.
 	 */
-	t->io_thread_ctx = talloc_zero_array(t, uint8_t, inst->io->thread_inst_size);
-	if (!t->io_thread_ctx) {
+	t->thread_io_ctx = talloc_zero_array(t, uint8_t, inst->io->thread_inst_size);
+	if (!t->thread_io_ctx) {
 		talloc_free(t);
 		return -1;
 	}
@@ -431,7 +431,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	 *	Instantiate the per-thread data.  This should open up
 	 *	sockets, set timers, etc.
 	 */
-	if (inst->io->thread_instantiate(inst->io_conf, inst->io_instance, el, t->io_thread_ctx) < 0) {
+	if (inst->io->thread_instantiate(inst->io_conf, inst->io_instance, el, t->thread_io_ctx) < 0) {
 		talloc_free(t);
 		return -1;
 	}
