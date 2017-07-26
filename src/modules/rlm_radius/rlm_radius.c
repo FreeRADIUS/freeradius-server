@@ -359,7 +359,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->io_instance = inst->io_submodule->data;
 	inst->io_conf = inst->io_submodule->conf;
 
-	rad_assert(inst->io->io_inst_size > 0);
 	rad_assert(inst->io->thread_inst_size > 0);
 	rad_assert(inst->io->bootstrap != NULL);
 	rad_assert(inst->io->instantiate != NULL);

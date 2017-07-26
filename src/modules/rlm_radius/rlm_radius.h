@@ -48,7 +48,6 @@ typedef struct fr_radius_client_io_t {
 
 	fr_app_bootstrap_t		bootstrap;
 	fr_radius_io_instantiate_t	instantiate;
-	size_t				io_inst_size;		//!< Size of data for parsing the configuration
 
 	module_thread_t			thread_instantiate;	//!< Callback to configure a module's instance for
 								//!< a new worker thread.
