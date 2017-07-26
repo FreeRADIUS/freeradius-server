@@ -49,6 +49,7 @@ size_t fr_base64_encode(char *out, size_t outlen, uint8_t const *in, size_t inle
 	static char const b64str[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 	char *p = out;
+
 	if (outlen < (FR_BASE64_ENC_LENGTH(inlen) + 1)) {
 		*out = '\0';
 		return -1;
@@ -243,56 +244,80 @@ bool fr_is_base64(char c)
  * This means that, when applicable, you must remove any line terminators
  * that is part of the data stream before calling this function.
  *
- * @param[out] out Where to write the decoded data.
- * @param[in] outlen The length of the output buffer.
- * @param[in] in Base64 string to decode.
- * @param[in] inlen length of Base64 string.
+ * @param[out] out	Where to write the decoded data.
+ * @param[in] outlen	The length of the output buffer.
+ * @param[in] in	Base64 string to decode.
+ * @param[in] inlen	length of Base64 string.
  * @return
- *	- -1 on failure.
+ *	- <= 0 on failure.  The offset where the decoding error occurred as a negative integer.
  *	- Length of decoded data.
  */
 ssize_t fr_base64_decode(uint8_t *out, size_t outlen, char const *in, size_t inlen)
 {
-	uint8_t *p = out;
+	uint8_t		*out_p = out;
+	uint8_t		*out_end = out + outlen;
+	char const	*p = in, *q;
+	char const	*end = p + inlen;
 
-	if (outlen <  FR_BASE64_DEC_LENGTH(inlen)) {
-		return -1;
-	}
+	/*
+	 *	Process complete 24bit quanta
+	 */
+	while ((end - p) >= 4) {
+		if (!fr_is_base64(p[0]) || !fr_is_base64(p[1]) || !fr_is_base64(p[2]) || !fr_is_base64(p[3])) break;
 
-	while (inlen >= 2) {
-		if (!fr_is_base64(in[0]) || !fr_is_base64(in[1])) {
-			break;
+		/*
+		 *	Check we have enough bytes to write out
+		 *	the 24bit quantum.
+		 */
+		if ((out_end - out_p) <= 3) {
+		oob:
+			fr_strerror_printf("Output buffer too small, needed at least %zu bytes", outlen + 1);
+			return p - end;
 		}
 
-		*p++ = ((b64[us(in[0])] << 2) | (b64[us(in[1])] >> 4));
+		*out_p++ = ((b64[us(p[0])] << 2) | (b64[us(p[1])] >> 4));
+		*out_p++ = ((b64[us(p[1])] << 4) & 0xf0) | (b64[us(p[2])] >> 2);
+		*out_p++ = ((b64[us(p[2])] << 6) & 0xc0) | b64[us(p[3])];
 
-		if (inlen == 2) break;
+		p += 4;	/* 32bit input -> 24bit output */
+	}
 
-		if (in[2] == '=') {
-			if ((inlen != 4) || (in[3] != '=')) break;
-		} else {
-			if (!fr_is_base64(in[2])) break;
+	q = p;
 
-			*p++ = ((b64[us(in[1])] << 4) & 0xf0) | (b64[us(in[2])] >> 2);
+	/*
+	 *	Find the first non-base64 char
+	 */
+	while ((q < end) && fr_is_base64(*q)) q++;
 
-			if (inlen == 3) break;
+	switch (q - p) {
+	case 0:		/* Final quantum is 24 bits */
+		break;
 
-			if (in[3] == '=') {
-				if (inlen != 4) break;
-			} else {
-				if (!fr_is_base64(in[3])) break;
+	case 2:		/* Final quantum is 8 bits */
+		if ((out_end - out_p) < 1) goto oob;
+		*out_p++ = ((b64[us(p[0])] << 2) | (b64[us(p[1])] >> 4));
+		p += 2;
+		break;
 
-				*p++ = ((b64[us(in[2])] << 6) & 0xc0) | b64[us(in[3])];
-			}
+	case 3:		/* Final quantum is 16 bits */
+		if ((out_end - out_p) < 2) goto oob;
+		*out_p++ = ((b64[us(p[0])] << 2) | (b64[us(p[1])] >> 4));
+		*out_p++ = ((b64[us(p[1])] << 4) & 0xf0) | (b64[us(p[2])] >> 2);
+		p += 3;
+		break;
+
+	default:
+		fr_strerror_printf("Invalid base64 padding data");
+		return p - end;
+	}
+
+	while (p < end) {
+		if (*p != '=') {
+			fr_strerror_printf("Found non-padding char '%c' at end of base64 string", *p);
+			return p - end;
 		}
-
-		in += 4;
-		inlen -= 4;
+		p++;
 	}
 
-	if (inlen != 0) {
-		return -1;
-	}
-
-	return p - out;
+	return out_p - out;
 }

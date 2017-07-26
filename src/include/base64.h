@@ -35,8 +35,8 @@ extern "C" {
 
 /* This uses that the expression (n+(k-1))/k means the smallest
    integer >= n/k, i.e., the ceiling of n/k.  */
-#define FR_BASE64_ENC_LENGTH(inlen) ((((inlen) + 2) / 3) * 4)
-#define FR_BASE64_DEC_LENGTH(inlen) ((3 * (inlen / 4)) + 2)
+#define FR_BASE64_ENC_LENGTH(_inlen) ((((_inlen) + 2) / 3) * 4)
+#define FR_BASE64_DEC_LENGTH(_inlen) ((3 * ((_inlen) / 4)) + 2)
 
 bool fr_is_base64(char c);
 
