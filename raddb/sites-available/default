@@ -291,7 +291,7 @@ authenticate pam {
 #  LDAP servers do not.
 #
 authenticate ldap {
-	ldap
+	-ldap
 }
 
 #
