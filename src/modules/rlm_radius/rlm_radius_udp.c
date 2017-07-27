@@ -293,6 +293,7 @@ static void conn_writable(fr_event_list_t *el, int fd, UNUSED int flags, void *u
 {
 	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
 	fr_dlist_t *entry, *next;
+	bool pending;
 
 	/*
 	 *	Clear our backlog
@@ -342,26 +343,27 @@ static void conn_writable(fr_event_list_t *el, int fd, UNUSED int flags, void *u
 	/*
 	 *	Check if we have to enable or disable writing on the socket.
 	 */
-	entry = FR_DLIST_FIRST(c->queued);
-	if (!entry) {
+	pending = ((entry = FR_DLIST_FIRST(c->queued)) != NULL);
+	if (!pending && c->pending) {
+		/*
+		 *	The queue is empty, and we apparently just
+		 *	emptied it.  Set the FD to idle.
+		 */
 		c->pending = false;
 		fd_idle(c);
-
-	} else if (!c->pending) {
-		/*
-		 *	This check is here only for mod_push(), which
-		 *	calls us when there are no packets pending on
-		 *	a socket.  If the connection is writable, and
-		 *	the write succeeds, and there's nothing more
-		 *	to write, we don't need to call fd_active().
-		 */
-		c->pending = true;
-		fd_active(c);
 	}
 
 	/*
-	 *	Else c->pending was already set, and we already have fd_active().
+	 *	This check is here only for mod_push(), which
+	 *	calls us when there are no packets pending on
+	 *	a socket.  If the connection is writable, and
+	 *	the write succeeds, and there's nothing more
+	 *	to write, we don't need to call fd_active().
 	 */
+	else if (pending && !c->pending) {
+		c->pending = true;
+		fd_active(c);
+	}
 }
 
 /** Shutdown/close a file descriptor
@@ -633,6 +635,11 @@ static void mod_clear_backlog(rlm_radius_udp_thread_t *t)
 			fd_active(c);
 		}
 	}
+
+	/*
+	 *	Update the pending flag.
+	 */
+	t->pending = ((entry = FR_DLIST_FIRST(t->queued)) != NULL);
 }
 
 
@@ -827,6 +834,7 @@ static int mod_thread_detach(void *thread)
 		ERROR("There are still queued requests");
 		return -1;
 	}
+	rad_assert(t->pending == false);
 
 	/*
 	 *	Free all of the sockets.
