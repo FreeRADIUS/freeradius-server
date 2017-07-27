@@ -72,6 +72,7 @@ rlm_radius_id_t *rr_track_create(TALLOC_CTX *ctx)
 	for (i = 0; i < 256; i++) {
 		id->id[i].id = i;
 		fr_dlist_insert_tail(&id->free_list, &id->id[i].entry);
+		id->num_free++;
 	}
 
 	talloc_set_destructor(id, rr_track_free);
