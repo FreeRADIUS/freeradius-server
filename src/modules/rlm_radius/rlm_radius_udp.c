@@ -701,7 +701,7 @@ static int mod_push(void *instance, REQUEST *request, rlm_radius_link_t *link, v
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int mod_bootstrap(UNUSED void *instance, UNUSED CONF_SECTION *conf)
+static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
 {
 	rlm_radius_udp_t *inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
 
