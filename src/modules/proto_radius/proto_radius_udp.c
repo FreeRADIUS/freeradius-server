@@ -196,7 +196,6 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, fr_time_t **rec
 
 	if (data_size < 20) {
 		DEBUG2("proto_radius_udp got 'too short' packet size %zd", data_size);
-		return data_size;
 		return 0;
 	}
 
