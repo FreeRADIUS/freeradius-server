@@ -209,6 +209,12 @@ static void fr_worker_channel_callback(void *ctx, void const *data, size_t data_
 	fr_channel_event_t ce;
 	fr_worker_t *worker = ctx;
 
+	/*
+	 *	We were woken up by a signal to do something.  We're
+	 *	not sleeping.
+	 */
+	worker->was_sleeping = false;
+
 	ce = fr_channel_service_message(now, &ch, data, data_size);
 	switch (ce) {
 	case FR_CHANNEL_ERROR:
@@ -1269,6 +1275,7 @@ static void fr_worker_post_event(UNUSED fr_event_list_t *el, UNUSED struct timev
 
 	rad_assert(request->async->process != NULL);
 	rad_assert(request->async->listen != NULL);
+
 
 	/*
 	 *	Run the request, and either track it as
