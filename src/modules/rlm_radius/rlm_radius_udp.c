@@ -301,17 +301,26 @@ static void conn_writable(fr_event_list_t *el, int fd, UNUSED int flags, void *u
 	     entry != NULL;
 	     entry = next) {
 		rlm_radius_udp_request_t *u;
+		REQUEST *request;
 		ssize_t packet_len;
 		ssize_t rcode;
 
 		next = FR_DLIST_NEXT(c->queued, entry);
 
 		u = fr_ptr_to_type(rlm_radius_udp_request_t, entry, entry);
+		request = u->link->request;
 
 		packet_len = fr_radius_encode(c->buffer, c->buflen, NULL,
 					      c->inst->secret, u->rr->id, u->code, 0,
-					      u->link->request->packet->vps);
+					      request->packet->vps);
 		if (packet_len <= 0) break;
+
+		if (fr_radius_sign(c->buffer, NULL, (uint8_t const *) c->inst->secret,
+				   strlen(c->inst->secret)) < 0) {
+			ERROR("Failed signing packet");
+			conn_error(el, fd, 0, errno, c);
+			return;
+		}
 
 		/*
 		 *	Write the packet to the socket.  If it blocks,
