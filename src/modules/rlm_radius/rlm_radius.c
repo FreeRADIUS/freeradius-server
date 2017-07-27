@@ -237,6 +237,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	link->rcode = RLM_MODULE_FAIL;
 
 	/*
+	 *	Do any necessary RADIUS level fixups
+	 *	- add Proxy-State
+	 *	- do CHAP-Challenge fixups
+	 */
+
+	/*
 	 *	Push the request and it's link to the IO submodule.
 	 */
 	if (inst->io->push(inst->io_instance, request, link, t->thread_io_ctx) < 0) {
