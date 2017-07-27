@@ -145,6 +145,7 @@ size_t fr_base64_encode(char *out, size_t outlen, uint8_t const *in, size_t inle
    : (_) == '8' ? 60				\
    : (_) == '9' ? 61				\
    : (_) == '+' ? 62				\
+   : (_) == '.' ? 62				\	// Alt-64 from passlib
    : (_) == '/' ? 63				\
    : -1)
 
