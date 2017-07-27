@@ -272,6 +272,7 @@ static void conn_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 	 */
 	(void) rr_track_delete(c->id, rr);
 	u->rr = NULL;
+	u->c = NULL;
 	fr_dlist_remove(&u->entry);
 	rad_assert(c->num_requests > 0);
 	c->num_requests--;
@@ -477,6 +478,7 @@ static int conn_free(rlm_radius_udp_connection_t *c)
 		u = fr_ptr_to_type(rlm_radius_udp_request_t, entry, entry);
 
 		u->rr = NULL;
+		u->c = NULL;
 		fr_dlist_remove(&c->entry);
 		fr_dlist_insert_tail(&t->queued, &u->entry);
 		t->pending = true;
@@ -491,6 +493,7 @@ static int conn_free(rlm_radius_udp_connection_t *c)
 		u = fr_ptr_to_type(rlm_radius_udp_request_t, entry, entry);
 
 		u->rr = NULL;
+		u->c = NULL;
 		fr_dlist_remove(&c->entry);
 		fr_dlist_insert_tail(&t->queued, &u->entry);
 		t->pending = true;
@@ -574,6 +577,7 @@ static rlm_radius_udp_connection_t *connection_get(rlm_radius_udp_thread_t *t, r
 	u->rr = rr_track_alloc(c->id, u->link->request, u->code, u->link);
 	if (!u->rr) return NULL;
 
+	u->c = c;
 	request = u->link->request;
 	RDEBUG("Allocated ID %d", u->rr->id);
 

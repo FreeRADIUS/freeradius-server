@@ -163,7 +163,7 @@ static int mod_link_free(rlm_radius_link_t *link)
 	 *	Note that the IO submodule has to set the destructor
 	 *	itself...
 	 */
-	talloc_free_children(link);
+	talloc_free(link->request_io_ctx);
 
 	return 0;
 }
