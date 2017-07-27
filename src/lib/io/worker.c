@@ -574,6 +574,7 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 		 */
 		fr_dlist_remove(&request->async->time_order);
 		(void) fr_heap_extract(worker->runnable, request);
+		fr_time_tracking_resume(&request->async->tracking, now);
 
 		(void) request->async->process(request, FR_IO_ACTION_DONE);
 		fr_log(worker->log, L_DBG, "(%"PRIu64") taking too long, stopping it", request->number);
