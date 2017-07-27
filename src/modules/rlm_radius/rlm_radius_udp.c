@@ -540,6 +540,8 @@ static void mod_connection_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t
 	}
 	c->num_requests = 0;
 	c->max_requests = 256;
+	FR_DLIST_INIT(c->queued);
+	FR_DLIST_INIT(c->sent);
 
 	c->conn = fr_connection_alloc(c, t->el, &inst->parent->connection_timeout, &inst->parent->reconnection_delay,
 				      conn_init, conn_open, conn_close, inst->parent->name, c);
