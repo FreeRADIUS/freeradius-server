@@ -380,35 +380,6 @@ defaultactions[MOD_COUNT][UNLANG_GROUP_TYPE_MAX][RLM_MODULE_NUMCODES] =
 #endif
 };
 
-static const int authtype_actions[UNLANG_GROUP_TYPE_MAX][RLM_MODULE_NUMCODES] =
-{
-	/* group */
-	{
-		MOD_ACTION_RETURN,	/* reject   */
-		MOD_ACTION_RETURN,	/* fail     */
-		4,			/* ok       */
-		MOD_ACTION_RETURN,	/* handled  */
-		MOD_ACTION_RETURN,	/* invalid  */
-		MOD_ACTION_RETURN,	/* userlock */
-		1,			/* notfound */
-		2,			/* noop     */
-		3			/* updated  */
-	},
-	/* redundant */
-	{
-		MOD_ACTION_RETURN,	/* reject   */
-		1,			/* fail     */
-		MOD_ACTION_RETURN,	/* ok       */
-		MOD_ACTION_RETURN,	/* handled  */
-		MOD_ACTION_RETURN,	/* invalid  */
-		MOD_ACTION_RETURN,	/* userlock */
-		MOD_ACTION_RETURN,	/* notfound */
-		MOD_ACTION_RETURN,	/* noop     */
-		MOD_ACTION_RETURN	/* updated  */
-	}
-};
-
-
 #ifdef WITH_UNLANG
 static bool pass2_fixup_xlat(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert,
 			       fr_dict_attr_t const *da)
@@ -3070,7 +3041,7 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component)
 	if (component != MOD_AUTHENTICATE) {
 		unlang_ctx.actions = &defaultactions[component];
 	} else {
-		unlang_ctx.actions = &authtype_actions;
+		unlang_ctx.actions = &defaultactions[MOD_AUTHORIZE];
 	}
 
 	c = compile_group(NULL, &unlang_ctx, cs, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_GROUP);
