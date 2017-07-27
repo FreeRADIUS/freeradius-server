@@ -308,7 +308,7 @@ static void conn_writable(fr_event_list_t *el, int fd, UNUSED int flags, void *u
 		request = u->link->request;
 
 		packet_len = fr_radius_encode(c->buffer, c->buflen, NULL,
-					      c->inst->secret, u->rr->id, u->code, 1,
+					      c->inst->secret, u->rr->id, u->code, u->rr->id,
 					      request->packet->vps);
 		if (packet_len <= 0) break;
 
