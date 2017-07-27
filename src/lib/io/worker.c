@@ -702,7 +702,11 @@ nak:
 	 */
 	listen->app->process_set(listen->app_instance, request);
 
-	rad_assert(request->async->process != NULL);
+	if (!request->async->process) {
+		fr_log(worker->log, L_DBG, "Protocol failed to set 'process' function");
+		fr_worker_nak(worker, cd, fr_time());
+		return NULL;
+	}
 
 	/*
 	 *	Hoist run-time checks here.
