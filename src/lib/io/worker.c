@@ -366,8 +366,12 @@ static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t 
 	/*
 	 *	Encode a NAK
 	 */
-	size = listen->app_io->nak(listen->app_io_instance, cd->m.data,
-				   cd->m.data_size, reply->m.data, reply->m.rb_size);
+	if (listen->app_io->nak) {
+		size = listen->app_io->nak(listen->app_io_instance, cd->m.data,
+					   cd->m.data_size, reply->m.data, reply->m.rb_size);
+	} else {
+		size = 1;	/* rely on them to figure it the heck out */
+	}
 
 	(void) fr_message_alloc(ms, &reply->m, size);
 
