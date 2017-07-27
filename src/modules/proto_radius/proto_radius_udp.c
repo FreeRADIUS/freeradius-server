@@ -187,14 +187,36 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, fr_time_t **rec
 			     &address.src_ipaddr, &address.src_port,
 			     &address.dst_ipaddr, &address.dst_port,
 			     &address.if_index, &timestamp);
-	if (data_size <= 0) return data_size;
+	if (data_size <= 0) {
+		DEBUG2("proto_radius_udp got read error %zd", data_size);
+		return data_size;
+	}
 
 	packet_len = data_size;
+
+	if (data_size < 20) {
+		DEBUG2("proto_radius_udp got 'too short' packet size %zd", data_size);
+		return data_size;
+		return 0;
+	}
+
+	if ((buffer[0] == 0) || (buffer[0] > FR_MAX_PACKET_CODE)) {
+		DEBUG("proto_radius_udp got invalid packet code %d", buffer[0]);
+		return 0;
+	}
+
+	if (!inst->parent->process_by_code[buffer[0]]) {
+		DEBUG("proto_radius_udp got unexpected packet code %d", buffer[0]);
+		return 0;
+	}
 
 	/*
 	 *	If it's not a RADIUS packet, ignore it.
 	 */
-	if (!fr_radius_ok(buffer, &packet_len, false, &reason)) return 0;
+	if (!fr_radius_ok(buffer, &packet_len, false, &reason)) {
+		DEBUG2("proto_radius_udp got a packet which isn't RADIUS");
+		return 0;
+	}
 
 	address.timestamp = fr_time();
 
@@ -215,6 +237,7 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, fr_time_t **rec
 	if (fr_radius_verify(buffer, NULL,
 			     (uint8_t const *)address.client->secret,
 			     talloc_array_length(address.client->secret)) < 0) {
+		DEBUG2("proto_radius_udp packet failed verification");
 		return 0;
 	}
 
