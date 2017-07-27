@@ -292,27 +292,23 @@ static void conn_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 static void conn_writable(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
 	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
-	fr_dlist_t *entry, *next;
+	fr_dlist_t *entry;
 	bool pending;
 
 	/*
 	 *	Clear our backlog
 	 */
-	for (entry = FR_DLIST_FIRST(c->queued);
-	     entry != NULL;
-	     entry = next) {
+	while ((entry = FR_DLIST_FIRST(c->queued)) != NULL) {
 		rlm_radius_udp_request_t *u;
 		REQUEST *request;
 		ssize_t packet_len;
 		ssize_t rcode;
 
-		next = FR_DLIST_NEXT(c->queued, entry);
-
 		u = fr_ptr_to_type(rlm_radius_udp_request_t, entry, entry);
 		request = u->link->request;
 
 		packet_len = fr_radius_encode(c->buffer, c->buflen, NULL,
-					      c->inst->secret, u->rr->id, u->code, u->rr->id,
+					      c->inst->secret, u->rr->id, u->code, 1,
 					      request->packet->vps);
 		if (packet_len <= 0) break;
 
@@ -467,7 +463,7 @@ static fr_connection_state_t conn_init(int *fd_out, void *uctx)
  */
 static int conn_free(rlm_radius_udp_connection_t *c)
 {
-	fr_dlist_t *entry, *next;
+	fr_dlist_t *entry;
 	rlm_radius_udp_thread_t *t = c->thread;
 
 	talloc_free_children(c); /* clears out FD events, timers, etc. */
@@ -475,12 +471,8 @@ static int conn_free(rlm_radius_udp_connection_t *c)
 	/*
 	 *	Move "sent" packets back to the main thread queue
 	 */
-	for (entry = FR_DLIST_FIRST(c->sent);
-	     entry != NULL;
-	     entry = next) {
+	while ((entry = FR_DLIST_FIRST(c->sent)) != NULL) {
 		rlm_radius_udp_request_t *u;
-
-		next = FR_DLIST_NEXT(c->sent, entry);
 
 		u = fr_ptr_to_type(rlm_radius_udp_request_t, entry, entry);
 
@@ -493,12 +485,8 @@ static int conn_free(rlm_radius_udp_connection_t *c)
 	/*
 	 *	Move "queued" packets back to the main thread queue
 	 */
-	for (entry = FR_DLIST_FIRST(c->queued);
-	     entry != NULL;
-	     entry = next) {
+	while ((entry = FR_DLIST_FIRST(c->queued)) != NULL) {
 		rlm_radius_udp_request_t *u;
-
-		next = FR_DLIST_NEXT(c->queued, entry);
 
 		u = fr_ptr_to_type(rlm_radius_udp_request_t, entry, entry);
 
@@ -573,6 +561,7 @@ static rlm_radius_udp_connection_t *connection_get(rlm_radius_udp_thread_t *t, r
 {
 	rlm_radius_udp_connection_t *c;
 	fr_dlist_t *entry;
+	REQUEST *request;
 
 	entry = FR_DLIST_FIRST(t->active);
 	if (!entry) return NULL;
@@ -584,6 +573,9 @@ static rlm_radius_udp_connection_t *connection_get(rlm_radius_udp_thread_t *t, r
 
 	u->rr = rr_track_alloc(c->id, u->link->request, u->code, u->link);
 	if (!u->rr) return NULL;
+
+	request = u->link->request;
+	RDEBUG("Allocated ID %d", u->rr->id);
 
 	return c;
 }
@@ -606,18 +598,14 @@ static int udp_request_free(rlm_radius_udp_request_t *u)
 
 static void mod_clear_backlog(rlm_radius_udp_thread_t *t)
 {
-	fr_dlist_t *entry, *next;
+	fr_dlist_t *entry;
 
 	entry = FR_DLIST_FIRST(t->active);
 	if (!entry) return;
 
-	for (entry = FR_DLIST_FIRST(t->queued);
-	     entry != NULL;
-	     entry = next) {
+	while ((entry = FR_DLIST_FIRST(t->queued)) != NULL) {
 		rlm_radius_udp_request_t *u;
 		rlm_radius_udp_connection_t *c;
-
-		next = FR_DLIST_NEXT(t->queued, entry);
 
 		u = fr_ptr_to_type(rlm_radius_udp_request_t, entry, entry);
 		c = connection_get(t, u);
