@@ -126,6 +126,7 @@ struct fr_worker_t {
 
 	fr_time_tracking_t	tracking;	//!< how much time the worker has spent doing things.
 
+	bool			was_sleeping;	//!< used to suppress multiple sleep signals in a row
 	bool			exiting;	//!< are we exiting?
 
 	fr_channel_t		**channel;	//!< list of channels
@@ -871,7 +872,10 @@ static int fr_worker_pre_event(void *ctx, struct timeval *wake)
 	 *	don't want to wait for events, but instead check them,
 	 *	and start processing packets immediately.
 	 */
-	if (!sleeping) return 1;
+	if (!sleeping) {
+		worker->was_sleeping = false;
+		return 1;
+	}
 
 	fr_log(worker->log, L_DBG, "\t%ssleeping running %zd, localized %zd, to_decode %zd",
 	       worker->name,
@@ -880,6 +884,12 @@ static int fr_worker_pre_event(void *ctx, struct timeval *wake)
 	       fr_heap_num_elements(worker->to_decode.heap));
 	fr_log(worker->log, L_DBG, "\t%srequests %d, decoded %d, replied %d",
 	       worker->name, worker->num_requests, worker->num_decoded, worker->num_replies);
+
+	/*
+	 *	We were sleeping, don't send another signal that we
+	 *	are still sleeping.
+	 */
+	if (worker->was_sleeping) return 0;
 
 	/*
 	 *	Nothing more to do, and the event loop has us sleeping
@@ -893,6 +903,7 @@ static int fr_worker_pre_event(void *ctx, struct timeval *wake)
 
 		(void) fr_channel_worker_sleeping(worker->channel[i]);
 	}
+	worker->was_sleeping = true;
 
 	return 0;
 }
