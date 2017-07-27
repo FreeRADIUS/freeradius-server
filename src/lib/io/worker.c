@@ -628,6 +628,7 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 		 *	Waiting too long, delete it.
 		 */
 		WORKER_HEAP_EXTRACT(localized, cd, request.list);
+		fr_log(worker->log, L_DBG, "TIMEOUT: Extracting packet from localized list");
 		fr_worker_nak(worker, cd, now);
 	}
 
@@ -648,6 +649,8 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 		 */
 		if (waiting > NANOSEC) {
 			WORKER_HEAP_EXTRACT(to_decode, cd, request.list);
+			fr_log(worker->log, L_DBG, "TIMEOUT: Extracting packet from to_decode list");
+
 		nak:
 			fr_worker_nak(worker, cd, now);
 			continue;
@@ -657,8 +660,11 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 		 *	0.01 to 1s.  Localize it.
 		 */
 		WORKER_HEAP_EXTRACT(to_decode, cd, request.list);
-		lm = fr_message_localize(worker, &cd->m, sizeof(cd->m));
-		if (!lm) goto nak;
+		lm = fr_message_localize(worker, &cd->m, sizeof(*cd));
+		if (!lm) {
+			fr_log(worker->log, L_DBG, "TIMEOUT: Failed localizing message from to_decode list: %s", fr_strerror());
+			goto nak;
+		}
 
 		WORKER_HEAP_INSERT(localized, cd, request.list);
 	}
