@@ -726,6 +726,7 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
  *
  * Instantiate I/O and type submodules.
  *
+ * @param[in] parent    rlm_radius_t
  * @param[in] instance	Ctx data for this module
  * @param[in] conf	our configuration section parsed to give us instance.
  * @return
