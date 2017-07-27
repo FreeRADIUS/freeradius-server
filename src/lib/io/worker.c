@@ -130,6 +130,9 @@ struct fr_worker_t {
 	bool			was_sleeping;	//!< used to suppress multiple sleep signals in a row
 	bool			exiting;	//!< are we exiting?
 
+	fr_time_t		next_cleanup;	//!< when we next do the max_request_time checks
+	fr_event_timer_t const	*ev_cleanup;	//!< timer for max_request_time
+
 	fr_channel_t		**channel;	//!< list of channels
 };
 
@@ -490,6 +493,98 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	talloc_free(request);
 }
 
+static void worker_reset_timer(fr_worker_t *worker);
+
+/** Enforce max_request_time
+ *
+ *  Run periodically, and tries to clean up old requests.  In the
+ *  interest of not updating the timer for every packet, the requests
+ *  are given a 1 second leeway.
+ *
+ * @param[in] el the event list
+ * @param[in] when the current time
+ * @param[in] uctx the fr_worker_t
+ */
+static void fr_worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED struct timeval *when, void *uctx)
+{
+	fr_time_t waiting;
+	fr_dlist_t *entry;
+	fr_time_t now = fr_time();
+	fr_worker_t *worker = talloc_get_type_abort(uctx, fr_worker_t);
+
+	/*
+	 *	Look at the oldest requests, and see if they need to
+	 *	be deleted.
+	 */
+	while ((entry = FR_DLIST_TAIL(worker->time_order)) != NULL) {
+		REQUEST *request;
+		fr_async_t *async;
+
+		async = fr_ptr_to_type(fr_async_t, time_order, entry);
+		request = talloc_parent(async);
+		waiting = now - request->async->recv_time;
+
+		if (waiting < NANOSEC) break;
+
+		/*
+		 *	Waiting too long, delete it.
+		 */
+		fr_dlist_remove(&request->async->time_order);
+		(void) fr_heap_extract(worker->runnable, request);
+		fr_time_tracking_resume(&request->async->tracking, now);
+
+		fr_log(worker->log, L_DBG, "(%"PRIu64") taking too long, stopping it", request->number);
+		(void) request->async->process(request, FR_IO_ACTION_DONE);
+
+		/*
+		 *	Tell the network side that this request is done.
+		 */
+		fr_worker_send_reply(worker, request, 0);
+	}
+
+	worker_reset_timer(worker);
+}
+
+static void worker_reset_timer(fr_worker_t *worker)
+{
+	struct timeval when;
+	fr_time_t cleanup;
+	fr_dlist_t *entry;
+	fr_async_t *async;
+
+	entry = FR_DLIST_TAIL(worker->time_order);
+	if (!entry) {
+		if (worker->ev_cleanup) fr_event_timer_delete(worker->el, &worker->ev_cleanup);
+		worker->next_cleanup = 0;
+		return;
+	}
+
+	async = fr_ptr_to_type(fr_async_t, time_order, entry);
+
+	cleanup = 30;
+	cleanup *= NANOSEC;
+	cleanup += async->recv_time;
+	fr_time_to_timeval(&when, cleanup);
+
+	/*
+	 *	Suppress the timer update if it's within 1s of the
+	 *	previous one.
+	 */
+	if (worker->ev_cleanup) {
+		rad_assert(cleanup >= worker->next_cleanup);
+		if ((cleanup - worker->next_cleanup) <= NANOSEC) return;
+	}
+
+	worker->next_cleanup = cleanup;
+	fr_time_to_timeval(&when, cleanup);
+
+	if (fr_event_timer_insert(worker, worker->el, &worker->ev_cleanup,
+				  &when, fr_worker_max_request_time, worker) < 0) {
+		fr_log(worker->log, L_ERR, "Failed inserting max_request_time timer.");
+	}
+}
+
+
 /** Check timeouts on the various queues
  *
  *  This function checks and enforces timeouts on the multiple worker
@@ -502,8 +597,8 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
  */
 static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 {
-	fr_time_t waiting;
 	fr_dlist_t *entry;
+	fr_time_t waiting;
 
 	/*
 	 *	Check the "localized" queue for old packets.
@@ -556,36 +651,6 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 		if (!lm) goto nak;
 
 		WORKER_HEAP_INSERT(localized, cd, request.list);
-	}
-
-	/*
-	 *	Look at the oldest requests, and see if they need to
-	 *	be deleted.
-	 */
-	while ((entry = FR_DLIST_TAIL(worker->time_order)) != NULL) {
-		REQUEST *request;
-		fr_async_t *async;
-
-		async = fr_ptr_to_type(fr_async_t, time_order, entry);
-		request = talloc_parent(async);
-		waiting = now - request->async->recv_time;
-
-		if (waiting < NANOSEC) break;
-
-		/*
-		 *	Waiting too long, delete it.
-		 */
-		fr_dlist_remove(&request->async->time_order);
-		(void) fr_heap_extract(worker->runnable, request);
-		fr_time_tracking_resume(&request->async->tracking, now);
-
-		fr_log(worker->log, L_DBG, "(%"PRIu64") taking too long, stopping it", request->number);
-		(void) request->async->process(request, FR_IO_ACTION_DONE);
-
-		/*
-		 *	Tell the network side that this request is done.
-		 */
-		fr_worker_send_reply(worker, request, 0);
 	}
 }
 
@@ -772,6 +837,7 @@ nak:
 	fr_time_tracking_start(&request->async->tracking, now);
 	worker->num_active++;
 
+	worker_reset_timer(worker);
 	return request;
 }
 
@@ -1173,7 +1239,7 @@ void fr_worker_exit(fr_worker_t *worker)
 }
 
 
-static void fr_worker_post_event(fr_event_list_t *el, UNUSED struct timeval *when, void *uctx)
+static void fr_worker_post_event(UNUSED fr_event_list_t *el, UNUSED struct timeval *when, void *uctx)
 {
 	fr_time_t now;
 	REQUEST *request;
@@ -1184,9 +1250,7 @@ static void fr_worker_post_event(fr_event_list_t *el, UNUSED struct timeval *whe
 	now = fr_time();
 
 	/*
-	 *	Ten times a second, check for timeouts on incoming packets.
-	 *
-	 *	@todo - move this to an event list timer.
+	 *      Ten times a second, check for timeouts on incoming packets.
 	 */
 	if ((now - worker->checked_timeout) > (NANOSEC / 10)) {
 		fr_log(worker->log, L_DBG, "\t%schecking timeouts", worker->name);
