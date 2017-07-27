@@ -137,14 +137,14 @@ defaultactions[MOD_COUNT][UNLANG_GROUP_TYPE_MAX][RLM_MODULE_NUMCODES] =
 		/* group */
 		{
 			MOD_ACTION_RETURN,	/* reject   */
-			1,			/* fail     */
-			MOD_ACTION_RETURN,	/* ok       */
+			MOD_ACTION_RETURN,	/* fail     */
+			3,			/* ok       */
 			MOD_ACTION_RETURN,	/* handled  */
-			1,			/* invalid  */
+			MOD_ACTION_RETURN,	/* invalid  */
 			MOD_ACTION_RETURN,	/* userlock */
-			MOD_ACTION_RETURN,	/* notfound */
-			1,			/* noop     */
-			1			/* updated  */
+			1,			/* notfound */
+			2,			/* noop     */
+			4			/* updated  */
 		},
 		/* redundant */
 		{
@@ -3037,12 +3037,7 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component)
 	unlang_ctx.name = comp2str[component];
 	unlang_ctx.section_name1 = cf_section_name1(cs);
 	unlang_ctx.section_name2 = cf_section_name2(cs);
-
-	if (component != MOD_AUTHENTICATE) {
-		unlang_ctx.actions = &defaultactions[component];
-	} else {
-		unlang_ctx.actions = &defaultactions[MOD_AUTHORIZE];
-	}
+	unlang_ctx.actions = &defaultactions[component];
 
 	c = compile_group(NULL, &unlang_ctx, cs, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_GROUP);
 	if (!c) return -1;

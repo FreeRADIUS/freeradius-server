@@ -366,8 +366,12 @@ int virtual_servers_open(fr_schedule_t *sc)
 					   listen->app->name);
 				return -1;
 			}
-		}
 
+			/*
+			 *	FIXME: print out the socket information
+			 */
+			DEBUG2("Opened listener for %s", listen->app->name);
+		}
 	}
 
 	return 0;
