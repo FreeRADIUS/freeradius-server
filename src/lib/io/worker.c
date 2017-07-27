@@ -123,6 +123,7 @@ struct fr_worker_t {
 	int			num_decoded;	//!< number of messages which have been decoded
 	int			num_replies;	//!< number of messages which were replied to
 	int			num_timeouts;	//!< number of messages which timed out
+	int			num_active;	//!< number of active requests
 
 	fr_time_tracking_t	tracking;	//!< how much time the worker has spent doing things.
 
@@ -447,6 +448,8 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	 *	The request is done.  Track that.
 	 */
 	fr_time_tracking_end(&request->async->tracking, fr_time(), &worker->tracking);
+	rad_assert(worker->num_active > 0);
+	worker->num_active--;
 
 	/*
 	 *	Fill in the rest of the fields in the channel message.
@@ -576,8 +579,8 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 		(void) fr_heap_extract(worker->runnable, request);
 		fr_time_tracking_resume(&request->async->tracking, now);
 
-		(void) request->async->process(request, FR_IO_ACTION_DONE);
 		fr_log(worker->log, L_DBG, "(%"PRIu64") taking too long, stopping it", request->number);
+		(void) request->async->process(request, FR_IO_ACTION_DONE);
 
 		/*
 		 *	Tell the network side that this request is done.
@@ -699,7 +702,7 @@ nak:
 	}
 
 	/*
-	 *	Call the main protocol handlr to set the right async
+	 *	Call the main protocol handler to set the right async
 	 *	process function.
 	 */
 	listen->app->process_set(listen->app_instance, request);
@@ -725,9 +728,8 @@ nak:
 	 *	strict time priority.  Once they are in the list, they
 	 *	are only removed when the request is freed.
 	 *
-	 *	Requests may be received from multiple network threads
-	 *	out of order.  We should walk the list to insert this
-	 *	one into the right place.
+	 *	@todo - Right now we're manually ordering the
+	 *	list...we should use a priority heap instead.
 	 */
 	entry = FR_DLIST_FIRST(worker->time_order);
 	if (!entry) {
@@ -768,6 +770,7 @@ nak:
 	 *	state of the request.
 	 */
 	fr_time_tracking_start(&request->async->tracking, now);
+	worker->num_active++;
 
 	return request;
 }
@@ -855,7 +858,9 @@ static int fr_worker_pre_event(void *ctx, struct timeval *wake)
 
 	/*
 	 *	The application is polling the event loop, but has
-	 *	other work to do.  Don't bother decoding any packets.
+	 *	other work to do.  Don't do anything special here, as
+	 *	we will get called again on the next round of the
+	 *	event loop.
 	 */
 	if (wake && ((wake->tv_sec == 0) && (wake->tv_usec == 0))) return 0;
 
@@ -883,8 +888,9 @@ static int fr_worker_pre_event(void *ctx, struct timeval *wake)
 	       fr_heap_num_elements(worker->runnable),
 	       fr_heap_num_elements(worker->localized.heap),
 	       fr_heap_num_elements(worker->to_decode.heap));
-	fr_log(worker->log, L_DBG, "\t%srequests %d, decoded %d, replied %d",
-	       worker->name, worker->num_requests, worker->num_decoded, worker->num_replies);
+	fr_log(worker->log, L_DBG, "\t%srequests %d, decoded %d, replied %d active %d",
+	       worker->name, worker->num_requests, worker->num_decoded,
+	       worker->num_replies, worker->num_active);
 
 	/*
 	 *	We were sleeping, don't send another signal that we
@@ -949,6 +955,7 @@ void fr_worker_destroy(fr_worker_t *worker)
 	fr_channel_data_t *cd;
 	fr_dlist_t *entry;
 	REQUEST *request;
+	fr_time_t now = fr_time();
 
 //	WORKER_VERIFY;
 
@@ -970,9 +977,13 @@ void fr_worker_destroy(fr_worker_t *worker)
 
 	/*
 	 *	Remove the requests from the "runnable" queue.
+	 *
+	 *	@todo - set a destructor for the REQUEST which cleans
+	 *	it all up.
 	 */
 	while ((request = fr_heap_pop(worker->runnable)) != NULL) {
 		fr_dlist_remove(&request->async->time_order);
+		fr_time_tracking_resume(&request->async->tracking, now);
 		talloc_free(request);
 	}
 
@@ -989,6 +1000,7 @@ void fr_worker_destroy(fr_worker_t *worker)
 
 		(void) request->async->process(request, FR_IO_ACTION_DONE);
 
+		fr_time_tracking_resume(&request->async->tracking, now);
 		fr_dlist_remove(&request->async->time_order);
 		talloc_free(request);
 	}
@@ -1161,7 +1173,7 @@ void fr_worker_exit(fr_worker_t *worker)
 }
 
 
-static void fr_worker_post_event(UNUSED fr_event_list_t *el, UNUSED struct timeval *when, void *uctx)
+static void fr_worker_post_event(fr_event_list_t *el, UNUSED struct timeval *when, void *uctx)
 {
 	fr_time_t now;
 	REQUEST *request;
