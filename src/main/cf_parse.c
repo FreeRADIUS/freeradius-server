@@ -607,6 +607,7 @@ static int cf_pair_parse_internal(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, 
 		for (i = 0; i < count; i++, cp = cf_pair_find_next(cs, cp, rule->name)) {
 			int ret;
 			cf_parse_t func = cf_pair_parse_value;
+			void *entry;
 
 			if (rule->func) {
 				cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces,
@@ -614,7 +615,13 @@ static int cf_pair_parse_internal(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, 
 				func = rule->func;
 			}
 
-			ret = func(ctx, &array[i], cf_pair_to_item(cp), rule);
+			if (FR_BASE_TYPE(type) == FR_TYPE_VOID) {
+				entry = &array[i];
+			} else {
+				entry = ((uint8_t *) array) + i * fr_value_box_field_sizes[FR_BASE_TYPE(type)];
+			}
+
+			ret = func(ctx, entry, cf_pair_to_item(cp), rule);
 			if (ret < 0) {
 				talloc_free(array);
 				talloc_free(dflt_cp);
