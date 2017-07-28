@@ -472,7 +472,6 @@ int fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 	return 0;
 }
 
-
 /** Delete a timer event from the event list
  *
  * @param[in] el	to delete event from.
@@ -650,7 +649,6 @@ uintptr_t fr_event_user_insert(fr_event_list_t *el, fr_event_user_handler_t call
 
 	return user->ident;;
 }
-
 
 /** Delete a user callback to the event list.
  *
