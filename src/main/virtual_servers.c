@@ -116,11 +116,6 @@ static int listen_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_P
 		return -1;
 	}
 
-	/*
-	 *	Hack for now: tell the server core we have new listeners.
-	 */
-	main_config.namespace = true;
-
 	return 0;
 }
 

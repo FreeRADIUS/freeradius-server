@@ -581,7 +581,7 @@ int main(int argc, char *argv[])
 	 *	If this isn't just a config check, AND we have new
 	 *	async listeners, then we open the sockets.
 	 */
-	if (!check_config && main_config.namespace) {
+	if (!check_config) {
 		int networks = 1;
 		int workers = 4;
 		fr_event_list_t *el = NULL;

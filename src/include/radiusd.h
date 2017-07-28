@@ -183,8 +183,6 @@ typedef struct main_config {
 
 	size_t		talloc_memory_limit;		//!< Limit the amount of talloced memory the server uses.
 							//!< Only applicable in single threaded mode.
-
-	bool		namespace;			//!< Only for new listeners
 } main_config_t;
 
 #ifdef WITH_VERIFY_PTR
