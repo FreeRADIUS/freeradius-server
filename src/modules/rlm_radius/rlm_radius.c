@@ -33,13 +33,13 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSE
 static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
 
 static CONF_PARSER const timer_config[] = {
-	{ FR_CONF_OFFSET("connection", FR_TYPE_TIMEVAL, rlm_radius_t, connection_timeout),
+	{ FR_CONF_OFFSET("connect_timeout", FR_TYPE_TIMEVAL, rlm_radius_t, connection_timeout),
 	  .dflt = STRINGIFY(5) },
 
-	{ FR_CONF_OFFSET("reconnect", FR_TYPE_TIMEVAL, rlm_radius_t, reconnection_delay),
+	{ FR_CONF_OFFSET("reconnect_delay", FR_TYPE_TIMEVAL, rlm_radius_t, reconnection_delay),
 	  .dflt = STRINGIFY(5) },
 
-	{ FR_CONF_OFFSET("idle", FR_TYPE_TIMEVAL, rlm_radius_t, idle_timeout),
+	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_TIMEVAL, rlm_radius_t, idle_timeout),
 	  .dflt = STRINGIFY(300) },
 
 	CONF_PARSER_TERMINATOR
@@ -334,14 +334,14 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
-	FR_TIMEVAL_BOUND_CHECK("timers.connection", &inst->connection_timeout, >=, 1, 0);
-	FR_TIMEVAL_BOUND_CHECK("timers.connection", &inst->connection_timeout, <=, 30, 0);
+	FR_TIMEVAL_BOUND_CHECK("timers.connect_timeout", &inst->connection_timeout, >=, 1, 0);
+	FR_TIMEVAL_BOUND_CHECK("timers.connect_timeout", &inst->connection_timeout, <=, 30, 0);
 
-	FR_TIMEVAL_BOUND_CHECK("timers.reconnect", &inst->reconnection_delay, >=, 5, 0);
-	FR_TIMEVAL_BOUND_CHECK("timers.reconned", &inst->reconnection_delay, <=, 300, 0);
+	FR_TIMEVAL_BOUND_CHECK("timers.reconnect_delay", &inst->reconnection_delay, >=, 5, 0);
+	FR_TIMEVAL_BOUND_CHECK("timers.reconnect_delay", &inst->reconnection_delay, <=, 300, 0);
 
-	FR_TIMEVAL_BOUND_CHECK("timers.idle", &inst->connection_timeout, >=, 30, 0);
-	FR_TIMEVAL_BOUND_CHECK("timers.idle", &inst->connection_timeout, <=, 600, 0);
+	FR_TIMEVAL_BOUND_CHECK("timers.idle_timeout", &inst->connection_timeout, >=, 30, 0);
+	FR_TIMEVAL_BOUND_CHECK("timers.idle_timeout", &inst->connection_timeout, <=, 600, 0);
 
 	num_types = talloc_array_length(inst->packet_types);
 	rad_assert(num_types > 0);
