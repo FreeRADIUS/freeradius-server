@@ -1,0 +1,26 @@
+#
+#  In v4, all of the proxying is handled by the RADISU module
+#
+radius {
+	#
+	#  Only UDP transport is allowed
+	#
+	transport = udp
+
+	# List of allowed packet types
+	#
+	# There is currently no way to change the packet type in the
+	# request.  See unlang "fork" for that functionality.
+	type = Access-Request
+	type = Accounting-Request
+
+	#
+	#  UDP is configured here.
+	#
+	udp {
+		ipaddr = 127.0.0.1
+		port = 1812
+		secret = testing123
+	}
+
+}
