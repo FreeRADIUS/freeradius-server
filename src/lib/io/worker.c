@@ -665,6 +665,7 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 			fr_log(worker->log, L_DBG, "TIMEOUT: Failed localizing message from to_decode list: %s", fr_strerror());
 			goto nak;
 		}
+		cd = (fr_channel_data_t *) lm;
 
 		WORKER_HEAP_INSERT(localized, cd, request.list);
 	}
