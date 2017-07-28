@@ -830,7 +830,7 @@ static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_ldap(REQUEST *request
 	RDEBUG("Comparing with \"known-good\" PBKDF2-Password (ldap format)");
 
 	/*
-	 *	Parse PBKDF string = {hash_algorithm}:base64(interations):base64(salt):base64(hash)
+	 *	Parse PBKDF string = {hash_algorithm}:base64(iterations):base64(salt):base64(hash)
 	 */
 	p = str;
 	end = p + len;
