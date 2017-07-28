@@ -958,7 +958,7 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 		if (array) {
 			MEM(buff = talloc_zero_array(array, uint8_t, subcs_size));
 			if (rule->subcs_type) talloc_set_name_const(buff, rule->subcs_type);
-			array[i] = buff;
+			array[i++] = buff;
 		}
 
 		/*
@@ -983,8 +983,6 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 			talloc_free(array);
 			return ret;
 		}
-
-		i++;
 	}
 
 	if (out) *((uint8_t ***)out) = array;
