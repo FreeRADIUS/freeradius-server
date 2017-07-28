@@ -467,11 +467,13 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
  		listen_cnt = talloc_array_length(listener);
 
 		for (j = 0; j < listen_cnt; j++) {
-			fr_virtual_listen_t *listen;
+			fr_virtual_listen_t *listen = listener[j];
 
-			if (!listener[j] || !listener[j]->proto_module) continue; 		/* Skip old style */
+			rad_assert(listen != NULL);
+			rad_assert(listen->proto_module != NULL);
 
-			listen = talloc_get_type_abort(listener[j], fr_virtual_listen_t);
+			(void) talloc_get_type_abort(listen, fr_virtual_listen_t);
+
 			talloc_get_type_abort(listen->proto_module, dl_instance_t);
 			listen->app = (fr_app_t const *)listen->proto_module->module->common;
 
