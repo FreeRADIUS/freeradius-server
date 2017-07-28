@@ -809,8 +809,6 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha2(rlm_pap_t const *inst, REQUES
 	return RLM_MODULE_OK;
 }
 
-#define B64_DIM(siz) FR_BASE64_DEC_LENGTH(FR_BASE64_ENC_LENGTH(siz))
-
 static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_ldap(REQUEST *request, const uint8_t *str, size_t len)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_INVALID;
