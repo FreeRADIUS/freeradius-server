@@ -1,10 +1,3 @@
-// @todo - allow for multiple connections
-// * connections have to be in a heap, sorted by most recently sent with reply, followed by # of free packets
-// * need to add zombie connections in a zombie list, so that "dead" ones aren't used for new packets
-// * need to check if a connection is zombie, and if so, move it to the zombie list
-// * add packet retransmission timers
-// * add status-server checks
-
 /*
  *   This program is is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by

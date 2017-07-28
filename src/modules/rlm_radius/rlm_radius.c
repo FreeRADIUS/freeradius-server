@@ -1,12 +1,3 @@
-// * add 'type = Access-Request' checking.  Which (if set) limits the outbound packet types
-//   - mainly so that we can fail here instead of not getting a reply from the home server
-//   - and it mirrors the old configuration
-//   - which allows us to parse "Access-Request { ... }" sub-sections only if there's an Access-Request
-// * add status_check = Status-Server or Access-Request, ala old code
-// * allow for "no reply" proxying, where we don't care about getting the reply
-//   - i.e. we still drain the socket, we just don't do anything with the replies
-// * allow for PCAP interfaces in proto_radius, so we can sniff the network and proxy RADIUS packets...
-
 /*
  *   This program is is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
