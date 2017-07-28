@@ -41,20 +41,6 @@ Mark a connection live / dead / zombie based on packet retransmission
 timers.  Set / do Status-Server checks as necessary.
 
 
-## Type = Access-Request checking
-
-Which (if set) limits the outbound packet types mainly so that we can
-fail int the module instead of not getting a reply from the home
-server and it mirrors the old configuration.
-
-This also allows us to parse "Access-Request { ... }" sub-sections
-only if there's an Access-Request.  i.e. we only get the debug output
-for the various timers if they're needed.
-
-see `rlm_radius.h`, retransmission intervals are in:
-
-`rlm_radius_retry_t	packets[FR_MAX_PACKET_CODE];`
-
 ## status_check = Status-Server
 
 add status_check = Status-Server or Access-Request, ala old code

@@ -30,7 +30,7 @@ RCSID("$Id$")
 #include "rlm_radius.h"
 
 static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
-
+static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
 
 static CONF_PARSER const timer_config[] = {
 	{ FR_CONF_OFFSET("connection", FR_TYPE_TIMEVAL, rlm_radius_t, connection_timeout),
@@ -96,15 +96,77 @@ static CONF_PARSER const module_config[] = {
 	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, rlm_radius_t, io_submodule),
 	  .func = transport_parse },
 
+	{ FR_CONF_OFFSET("type", FR_TYPE_UINT32 | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY | FR_TYPE_REQUIRED, rlm_radius_t, packet_types),
+	  .func = type_parse },
+
 	{ FR_CONF_POINTER("connection", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) timer_config },
-	{ FR_CONF_POINTER("Access-Request", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) auth_config },
-	{ FR_CONF_POINTER("Accounting-Request", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) acct_config },
-	{ FR_CONF_POINTER("Status-Server", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) status_config },
-	{ FR_CONF_POINTER("CoA-Request", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) coa_config },
-	{ FR_CONF_POINTER("Disconnect-Request", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) disconnect_config },
 
 	CONF_PARSER_TERMINATOR
 };
+
+static CONF_PARSER const type_interval_config[FR_MAX_PACKET_CODE] = {
+	[FR_CODE_ACCESS_REQUEST] = { FR_CONF_POINTER("Access-Request", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) auth_config },
+
+	[FR_CODE_ACCOUNTING_REQUEST] = { FR_CONF_POINTER("Accounting-Request", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) acct_config },
+	[FR_CODE_STATUS_SERVER] = { FR_CONF_POINTER("Status-Server", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) status_config },
+	[FR_CODE_COA_REQUEST] = { FR_CONF_POINTER("CoA-Request", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) coa_config },
+	[FR_CODE_DISCONNECT_REQUEST] = { FR_CONF_POINTER("Disconnect-Request", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) disconnect_config },
+
+};
+
+
+/** Set which types of packets we can parse
+ *
+ * @param[in] ctx	to allocate data in (instance of rlm_radius).
+ * @param[out] out	Where to write the parsed data
+ * @param[in] ci	#CONF_PAIR specifying the name of the type module.
+ * @param[in] rule	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
+	CONF_SECTION		*cs = cf_item_to_section(cf_parent(ci));
+	fr_dict_attr_t const	*da;
+	fr_dict_enum_t const	*type_enum;
+	uint32_t		code;
+
+	/*
+	 *	Must be the RADIUS module
+	 */
+	rad_assert(cs && (strcmp(cf_section_name1(cs), "radius") == 0));
+
+	da = fr_dict_attr_by_name(NULL, "Packet-Type");
+	if (!da) {
+		ERROR("Missing definiton for Packet-Type");
+		return -1;
+	}
+
+	/*
+	 *	Allow the process module to be specified by
+	 *	packet type.
+	 */
+	type_enum = fr_dict_enum_by_alias(NULL, da, type_str);
+	if (!type_enum) {
+	invalid_code:
+		cf_log_err(ci, "Unknown or invalid RADIUS packet type '%s'", type_str);
+		return -1;
+	}
+
+	code = type_enum->value->vb_uint32;
+
+	if (!code ||
+	    (code >= FR_MAX_PACKET_CODE) ||
+	    (!type_interval_config[code].name)) goto invalid_code;
+
+	cf_section_rule_push(cs, &type_interval_config[code]);
+
+	memcpy(out, &code, sizeof(code));				     
+
+	return 0;
+}
 
 /** Wrapper around dl_instance
  *
@@ -204,6 +266,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 		return RLM_MODULE_FAIL;
 	}
 
+	if (!inst->allowed[request->packet->code]) {
+		RDEBUG("Packet code %s is disallowed by the configuration",
+		       fr_packet_codes[request->packet->code]);
+		return RLM_MODULE_FAIL;
+	}
+
 	/*
 	 *	Allocate and fill in the data structure which links
 	 *	the request to the IO submodule.
@@ -260,6 +328,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
  */
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
+	size_t i, num_types;
 	rlm_radius_t *inst = talloc_get_type_abort(instance, rlm_radius_t);
 
 	inst->name = cf_section_name2(conf);
@@ -274,19 +343,37 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	FR_TIMEVAL_BOUND_CHECK("timers.idle", &inst->connection_timeout, >=, 30, 0);
 	FR_TIMEVAL_BOUND_CHECK("timers.idle", &inst->connection_timeout, <=, 600, 0);
 
+	num_types = talloc_array_length(inst->packet_types);
+	rad_assert(num_types > 0);
+
+	/*
+	 *	Allow for O(1) lookup later...
+	 */
+	for (i = 0; i < num_types; i++) {
+		uint32_t code;
+
+		code = inst->packet_types[i];
+		rad_assert(code > 0);
+		rad_assert(code < FR_MAX_PACKET_CODE);
+
+		inst->allowed[code] = 1;
+	}
+
 	/*
 	 *	Set limits on retransmission timers
 	 */
-	FR_INTEGER_BOUND_CHECK("Access-Request.irt", inst->packets[FR_CODE_ACCESS_REQUEST].irt, >=, 1);
-	FR_INTEGER_BOUND_CHECK("Access-Request.mrt", inst->packets[FR_CODE_ACCESS_REQUEST].mrt, >=, 5);
-	FR_INTEGER_BOUND_CHECK("Access-Request.mrc", inst->packets[FR_CODE_ACCESS_REQUEST].mrc, >=, 1);
-	FR_INTEGER_BOUND_CHECK("Access-Request.mrd", inst->packets[FR_CODE_ACCESS_REQUEST].mrd, >=, 5);
+	if (inst->allowed[FR_CODE_ACCESS_REQUEST]) {
+		FR_INTEGER_BOUND_CHECK("Access-Request.irt", inst->packets[FR_CODE_ACCESS_REQUEST].irt, >=, 1);
+		FR_INTEGER_BOUND_CHECK("Access-Request.mrt", inst->packets[FR_CODE_ACCESS_REQUEST].mrt, >=, 5);
+		FR_INTEGER_BOUND_CHECK("Access-Request.mrc", inst->packets[FR_CODE_ACCESS_REQUEST].mrc, >=, 1);
+		FR_INTEGER_BOUND_CHECK("Access-Request.mrd", inst->packets[FR_CODE_ACCESS_REQUEST].mrd, >=, 5);
 
-	FR_INTEGER_BOUND_CHECK("Access-Request.irt", inst->packets[FR_CODE_ACCESS_REQUEST].irt, <=, 3);
-	FR_INTEGER_BOUND_CHECK("Access-Request.mrt", inst->packets[FR_CODE_ACCESS_REQUEST].mrt, <=, 10);
-	FR_INTEGER_BOUND_CHECK("Access-Request.mrc", inst->packets[FR_CODE_ACCESS_REQUEST].mrc, <=, 10);
-	FR_INTEGER_BOUND_CHECK("Access-Request.mrd", inst->packets[FR_CODE_ACCESS_REQUEST].mrd, <=, 30);
-
+		FR_INTEGER_BOUND_CHECK("Access-Request.irt", inst->packets[FR_CODE_ACCESS_REQUEST].irt, <=, 3);
+		FR_INTEGER_BOUND_CHECK("Access-Request.mrt", inst->packets[FR_CODE_ACCESS_REQUEST].mrt, <=, 10);
+		FR_INTEGER_BOUND_CHECK("Access-Request.mrc", inst->packets[FR_CODE_ACCESS_REQUEST].mrc, <=, 10);
+		FR_INTEGER_BOUND_CHECK("Access-Request.mrd", inst->packets[FR_CODE_ACCESS_REQUEST].mrd, <=, 30);
+	}
+		
 	/*
 	 *	Note that RFC 5080 allows for Accounting-Request to
 	 *	have mrt=mrc=mrd = 0, which means "retransmit
@@ -294,56 +381,64 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	the server core will automatically free the request at
 	 *	max_request_time.
 	 */
-	FR_INTEGER_BOUND_CHECK("Accounting-Request.irt", inst->packets[FR_CODE_ACCOUNTING_REQUEST].irt, >=, 1);
+	if (inst->allowed[FR_CODE_ACCOUNTING_REQUEST]) {
+		FR_INTEGER_BOUND_CHECK("Accounting-Request.irt", inst->packets[FR_CODE_ACCOUNTING_REQUEST].irt, >=, 1);
 #if 0
-	FR_INTEGER_BOUND_CHECK("Accounting-Request.mrt", inst->packets[FR_CODE_ACCOUNTING_REQUEST].mrt, >=, 0);
-	FR_INTEGER_BOUND_CHECK("Accounting-Request.mrc", inst->packets[FR_CODE_ACCOUNTING_REQUEST].mrc, >=, 0);
-	FR_INTEGER_BOUND_CHECK("Accounting-Request.mrd", inst->packets[FR_CODE_ACCOUNTING_REQUEST].mrd, >=, 0);
+		FR_INTEGER_BOUND_CHECK("Accounting-Request.mrt", inst->packets[FR_CODE_ACCOUNTING_REQUEST].mrt, >=, 0);
+		FR_INTEGER_BOUND_CHECK("Accounting-Request.mrc", inst->packets[FR_CODE_ACCOUNTING_REQUEST].mrc, >=, 0);
+		FR_INTEGER_BOUND_CHECK("Accounting-Request.mrd", inst->packets[FR_CODE_ACCOUNTING_REQUEST].mrd, >=, 0);
 #endif
 
-	FR_INTEGER_BOUND_CHECK("Accounting-Request.irt", inst->packets[FR_CODE_ACCOUNTING_REQUEST].irt, <=, 3);
-	FR_INTEGER_BOUND_CHECK("Accounting-Request.mrt", inst->packets[FR_CODE_ACCOUNTING_REQUEST].mrt, <=, 10);
-	FR_INTEGER_BOUND_CHECK("Accounting-Request.mrc", inst->packets[FR_CODE_ACCOUNTING_REQUEST].mrc, <=, 10);
-	FR_INTEGER_BOUND_CHECK("Accounting-Request.mrd", inst->packets[FR_CODE_ACCOUNTING_REQUEST].mrd, <=, 30);
+		FR_INTEGER_BOUND_CHECK("Accounting-Request.irt", inst->packets[FR_CODE_ACCOUNTING_REQUEST].irt, <=, 3);
+		FR_INTEGER_BOUND_CHECK("Accounting-Request.mrt", inst->packets[FR_CODE_ACCOUNTING_REQUEST].mrt, <=, 10);
+		FR_INTEGER_BOUND_CHECK("Accounting-Request.mrc", inst->packets[FR_CODE_ACCOUNTING_REQUEST].mrc, <=, 10);
+		FR_INTEGER_BOUND_CHECK("Accounting-Request.mrd", inst->packets[FR_CODE_ACCOUNTING_REQUEST].mrd, <=, 30);
+	}
 
 	/*
 	 *	Status-Server
 	 */
-	FR_INTEGER_BOUND_CHECK("Status-Server.irt", inst->packets[FR_CODE_STATUS_SERVER].irt, >=, 1);
-	FR_INTEGER_BOUND_CHECK("Status-Server.mrt", inst->packets[FR_CODE_STATUS_SERVER].mrt, >=, 5);
-	FR_INTEGER_BOUND_CHECK("Status-Server.mrc", inst->packets[FR_CODE_STATUS_SERVER].mrc, >=, 1);
-	FR_INTEGER_BOUND_CHECK("Status-Server.mrd", inst->packets[FR_CODE_STATUS_SERVER].mrd, >=, 5);
+	if (inst->allowed[FR_CODE_STATUS_SERVER]) {
+		FR_INTEGER_BOUND_CHECK("Status-Server.irt", inst->packets[FR_CODE_STATUS_SERVER].irt, >=, 1);
+		FR_INTEGER_BOUND_CHECK("Status-Server.mrt", inst->packets[FR_CODE_STATUS_SERVER].mrt, >=, 5);
+		FR_INTEGER_BOUND_CHECK("Status-Server.mrc", inst->packets[FR_CODE_STATUS_SERVER].mrc, >=, 1);
+		FR_INTEGER_BOUND_CHECK("Status-Server.mrd", inst->packets[FR_CODE_STATUS_SERVER].mrd, >=, 5);
 
-	FR_INTEGER_BOUND_CHECK("Status-Server.irt", inst->packets[FR_CODE_STATUS_SERVER].irt, <=, 3);
-	FR_INTEGER_BOUND_CHECK("Status-Server.mrt", inst->packets[FR_CODE_STATUS_SERVER].mrt, <=, 10);
-	FR_INTEGER_BOUND_CHECK("Status-Server.mrc", inst->packets[FR_CODE_STATUS_SERVER].mrc, <=, 10);
-	FR_INTEGER_BOUND_CHECK("Status-Server.mrd", inst->packets[FR_CODE_STATUS_SERVER].mrd, <=, 30);
+		FR_INTEGER_BOUND_CHECK("Status-Server.irt", inst->packets[FR_CODE_STATUS_SERVER].irt, <=, 3);
+		FR_INTEGER_BOUND_CHECK("Status-Server.mrt", inst->packets[FR_CODE_STATUS_SERVER].mrt, <=, 10);
+		FR_INTEGER_BOUND_CHECK("Status-Server.mrc", inst->packets[FR_CODE_STATUS_SERVER].mrc, <=, 10);
+		FR_INTEGER_BOUND_CHECK("Status-Server.mrd", inst->packets[FR_CODE_STATUS_SERVER].mrd, <=, 30);
+	}
 
 	/*
 	 *	CoA
 	 */
-	FR_INTEGER_BOUND_CHECK("CoA-Request.irt", inst->packets[FR_CODE_COA_REQUEST].irt, >=, 1);
-	FR_INTEGER_BOUND_CHECK("CoA-Request.mrt", inst->packets[FR_CODE_COA_REQUEST].mrt, >=, 5);
-	FR_INTEGER_BOUND_CHECK("CoA-Request.mrc", inst->packets[FR_CODE_COA_REQUEST].mrc, >=, 1);
-	FR_INTEGER_BOUND_CHECK("CoA-Request.mrd", inst->packets[FR_CODE_COA_REQUEST].mrd, >=, 5);
+	if (inst->allowed[FR_CODE_COA_REQUEST]) {
+		FR_INTEGER_BOUND_CHECK("CoA-Request.irt", inst->packets[FR_CODE_COA_REQUEST].irt, >=, 1);
+		FR_INTEGER_BOUND_CHECK("CoA-Request.mrt", inst->packets[FR_CODE_COA_REQUEST].mrt, >=, 5);
+		FR_INTEGER_BOUND_CHECK("CoA-Request.mrc", inst->packets[FR_CODE_COA_REQUEST].mrc, >=, 1);
+		FR_INTEGER_BOUND_CHECK("CoA-Request.mrd", inst->packets[FR_CODE_COA_REQUEST].mrd, >=, 5);
 
-	FR_INTEGER_BOUND_CHECK("CoA-Request.irt", inst->packets[FR_CODE_COA_REQUEST].irt, <=, 3);
-	FR_INTEGER_BOUND_CHECK("CoA-Request.mrt", inst->packets[FR_CODE_COA_REQUEST].mrt, <=, 10);
-	FR_INTEGER_BOUND_CHECK("CoA-Request.mrc", inst->packets[FR_CODE_COA_REQUEST].mrc, <=, 10);
-	FR_INTEGER_BOUND_CHECK("CoA-Request.mrd", inst->packets[FR_CODE_COA_REQUEST].mrd, <=, 30);
+		FR_INTEGER_BOUND_CHECK("CoA-Request.irt", inst->packets[FR_CODE_COA_REQUEST].irt, <=, 3);
+		FR_INTEGER_BOUND_CHECK("CoA-Request.mrt", inst->packets[FR_CODE_COA_REQUEST].mrt, <=, 10);
+		FR_INTEGER_BOUND_CHECK("CoA-Request.mrc", inst->packets[FR_CODE_COA_REQUEST].mrc, <=, 10);
+		FR_INTEGER_BOUND_CHECK("CoA-Request.mrd", inst->packets[FR_CODE_COA_REQUEST].mrd, <=, 30);
+	}
 
 	/*
 	 *	Disconnect
 	 */
-	FR_INTEGER_BOUND_CHECK("Disconnect-Request.irt", inst->packets[FR_CODE_DISCONNECT_REQUEST].irt, >=, 1);
-	FR_INTEGER_BOUND_CHECK("Disconnect-Request.mrt", inst->packets[FR_CODE_DISCONNECT_REQUEST].mrt, >=, 5);
-	FR_INTEGER_BOUND_CHECK("Disconnect-Request.mrc", inst->packets[FR_CODE_DISCONNECT_REQUEST].mrc, >=, 1);
-	FR_INTEGER_BOUND_CHECK("Disconnect-Request.mrd", inst->packets[FR_CODE_DISCONNECT_REQUEST].mrd, >=, 5);
+	if (inst->allowed[FR_CODE_DISCONNECT_REQUEST]) {
+		FR_INTEGER_BOUND_CHECK("Disconnect-Request.irt", inst->packets[FR_CODE_DISCONNECT_REQUEST].irt, >=, 1);
+		FR_INTEGER_BOUND_CHECK("Disconnect-Request.mrt", inst->packets[FR_CODE_DISCONNECT_REQUEST].mrt, >=, 5);
+		FR_INTEGER_BOUND_CHECK("Disconnect-Request.mrc", inst->packets[FR_CODE_DISCONNECT_REQUEST].mrc, >=, 1);
+		FR_INTEGER_BOUND_CHECK("Disconnect-Request.mrd", inst->packets[FR_CODE_DISCONNECT_REQUEST].mrd, >=, 5);
 
-	FR_INTEGER_BOUND_CHECK("Disconnect-Request.irt", inst->packets[FR_CODE_DISCONNECT_REQUEST].irt, <=, 3);
-	FR_INTEGER_BOUND_CHECK("Disconnect-Request.mrt", inst->packets[FR_CODE_DISCONNECT_REQUEST].mrt, <=, 10);
-	FR_INTEGER_BOUND_CHECK("Disconnect-Request.mrc", inst->packets[FR_CODE_DISCONNECT_REQUEST].mrc, <=, 10);
-	FR_INTEGER_BOUND_CHECK("Disconnect-Request.mrd", inst->packets[FR_CODE_DISCONNECT_REQUEST].mrd, <=, 30);
+		FR_INTEGER_BOUND_CHECK("Disconnect-Request.irt", inst->packets[FR_CODE_DISCONNECT_REQUEST].irt, <=, 3);
+		FR_INTEGER_BOUND_CHECK("Disconnect-Request.mrt", inst->packets[FR_CODE_DISCONNECT_REQUEST].mrt, <=, 10);
+		FR_INTEGER_BOUND_CHECK("Disconnect-Request.mrc", inst->packets[FR_CODE_DISCONNECT_REQUEST].mrc, <=, 10);
+		FR_INTEGER_BOUND_CHECK("Disconnect-Request.mrd", inst->packets[FR_CODE_DISCONNECT_REQUEST].mrd, <=, 30);
+	}
 
 	inst->io = (fr_radius_client_io_t const *) inst->io_submodule->module->common;
 	inst->io_instance = inst->io_submodule->data;
