@@ -359,7 +359,10 @@ int virtual_servers_open(fr_schedule_t *sc)
 		for (j = 0; j < listen_cnt; j++) {
 			fr_virtual_listen_t *listen = listener[j];
 
-			if (!listen || !listen->proto_module) continue; 		/* Skip old style */
+			rad_assert(listen != NULL);
+			rad_assert(listen->proto_module != NULL);
+			rad_assert(listen->app != NULL);
+
 			if (listen->app->open &&
 			    listen->app->open(listen->proto_module->data, sc, listen->proto_module->conf) < 0) {
 				cf_log_err(listen->proto_module->conf, "Opening %s I/O interface failed",
@@ -402,7 +405,10 @@ int virtual_servers_instantiate(UNUSED CONF_SECTION *config)
 		for (j = 0; j < listen_cnt; j++) {
 			fr_virtual_listen_t *listen = listener[j];
 
-			if (!listen || !listen->proto_module) continue; 		/* Skip old style */
+			rad_assert(listen != NULL);
+			rad_assert(listen->proto_module != NULL);
+			rad_assert(listen->app != NULL);
+
 			if (listen->app->instantiate &&
 			    listen->app->instantiate(listen->proto_module->data, listen->proto_module->conf) < 0) {
 				cf_log_err(listen->proto_module->conf, "Instantiate failed");
