@@ -81,9 +81,9 @@ struct rlm_radius_t {
 	void			*io_instance;	//!< Easy access to the IO instance
 	CONF_SECTION		*io_conf;	//!< Easy access to the IO config section
 
-	uint32_t		*packet_types; //! array of allowed packet types
+	uint32_t		*types;		//!< array of allowed packet types
 	int			allowed[FR_MAX_PACKET_CODE];
-	rlm_radius_retry_t	packets[FR_MAX_PACKET_CODE];
+	rlm_radius_retry_t	retry[FR_MAX_PACKET_CODE];
 };
 
 
