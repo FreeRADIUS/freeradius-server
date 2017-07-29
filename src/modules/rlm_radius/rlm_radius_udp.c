@@ -114,7 +114,8 @@ typedef struct rlm_radius_udp_request_t {
 	rlm_radius_udp_connection_t	*c;     //!< the connection
 	rlm_radius_link_t	*link;		//!< more link stuff
 	rlm_radius_request_t	*rr;		//!< the ID tracking, resend count, etc.
-
+	uint8_t			*packet;	//!< packet we write to the network
+	size_t			packet_len;	//!< length of the packet
 } rlm_radius_udp_request_t;
 
 
@@ -202,6 +203,23 @@ static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 }
 
 
+static void mod_finished_request(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *u)
+{
+	/*
+	 *	Delete the tracking table entry, and remove the
+	 *	request from the "sent" list for this connection.
+	 */
+	(void) rr_track_delete(c->id, u->rr);
+	u->rr = NULL;
+	u->c = NULL;
+	fr_dlist_remove(&u->entry);
+	rad_assert(c->num_requests > 0);
+	c->num_requests--;
+
+	unlang_resumable(u->link->request);
+}
+
+
 /** Read reply packets.
  *
  */
@@ -211,7 +229,6 @@ static void conn_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 	rlm_radius_request_t *rr;
 	rlm_radius_link_t *link;
 	rlm_radius_udp_request_t *u;
-	REQUEST *request;
 	decode_fail_t reason;
 	size_t packet_len;
 	ssize_t data_len;
@@ -259,25 +276,41 @@ static void conn_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 		c->last_sent_with_reply = rr->start;
 	}
 
-	/*
-	 *	Delete the tracking table entry, and remove the
-	 *	request from the "sent" list for this connection.
-	 */
-	(void) rr_track_delete(c->id, rr);
-	u->rr = NULL;
-	u->c = NULL;
-	fr_dlist_remove(&u->entry);
-	rad_assert(c->num_requests > 0);
-	c->num_requests--;
-
-	request = link->request;
-
 	// @todo - set rcode based on ACK or NAK
 	link->rcode = RLM_MODULE_OK;
 
-	// @todo - update the status of this connection
+	mod_finished_request(c, u);
+}
 
-	unlang_resumable(request);
+
+/** Deal with per-request timeouts for transmissions, etc.
+ *
+ */
+static void response_timeout(UNUSED fr_event_list_t *el, struct timeval *now, void *uctx)
+{
+	int rcode;
+	rlm_radius_udp_request_t *u = uctx;
+	rlm_radius_udp_connection_t *c = u->c;
+	REQUEST *request;
+
+	rcode = rr_track_retry(c->id, u->rr, c->thread->el, response_timeout, u, &c->inst->parent->retry[u->code], now);
+	if (rcode < 0) {
+		mod_finished_request(c, u);
+		return;
+	}
+
+	request = u->link->request;
+	if (rcode == 0) {
+		// @todo - update connection state - is it dead?
+		RDEBUG("No response to proxied request");
+		mod_finished_request(c, u);
+		return;
+	}
+
+	// @todo update connection state - is it zombie?
+
+	RDEBUG("Retransmitting request.  Expecting response within %d.%06ds",
+	       u->rr->rt / USEC, u->rr->rt % USEC);
 }
 
 /** There's space available to write data, so do that...
@@ -301,6 +334,8 @@ static void conn_writable(fr_event_list_t *el, int fd, UNUSED int flags, void *u
 		u = fr_ptr_to_type(rlm_radius_udp_request_t, entry, entry);
 		request = u->link->request;
 
+		rad_assert(c->inst->parent->allowed[u->code]);
+
 		packet_len = fr_radius_encode(c->buffer, c->buflen, NULL,
 					      c->inst->secret, u->rr->id, u->code, u->rr->id,
 					      request->packet->vps);
@@ -313,17 +348,34 @@ static void conn_writable(fr_event_list_t *el, int fd, UNUSED int flags, void *u
 			return;
 		}
 
+		MEM(u->packet = talloc_memdup(u, c->buffer, packet_len));
+		u->packet_len = packet_len;
+
 		/*
 		 *	Write the packet to the socket.  If it blocks,
 		 *	stop dequeueing packets.
 		 */
-		rcode = write(fd, c->buffer, packet_len);
+		rcode = write(fd, u->packet, u->packet_len);
 		if (rcode < 0) {
 			if (errno == EWOULDBLOCK) break;
 
 			conn_error(el, fd, 0, errno, c);
 			return;
 		}
+
+		/*
+		 *	Start the retransmission timers.
+		 */
+		u->link->time_sent = fr_time();
+		fr_time_to_timeval(&u->rr->start, u->link->time_sent);
+
+		if (rr_track_start(c->id, u->rr, c->thread->el, response_timeout, u, &c->inst->parent->retry[u->code]) < 0) {
+			mod_finished_request(c, u);
+			continue;
+		}
+
+		RDEBUG("Proxying request.  Expecting response within %d.%06ds",
+		       u->rr->rt / USEC, u->rr->rt % USEC);
 
 		fr_dlist_remove(&u->entry);
 		fr_dlist_insert_tail(&c->sent, &u->entry);

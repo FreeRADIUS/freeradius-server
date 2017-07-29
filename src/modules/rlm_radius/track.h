@@ -66,7 +66,13 @@ rlm_radius_id_t *rr_track_create(TALLOC_CTX *ctx);
 rlm_radius_request_t *rr_track_alloc(rlm_radius_id_t *id, REQUEST *request, int code, rlm_radius_link_t *link) CC_HINT(nonnull);
 int rr_track_update(rlm_radius_id_t *id, rlm_radius_request_t *rr, uint8_t *vector) CC_HINT(nonnull);
 rlm_radius_request_t *rr_track_find(rlm_radius_id_t *id, int packet_id, uint8_t *vector) CC_HINT(nonnull(1));
-int rr_track_delete(rlm_radius_id_t *id, rlm_radius_request_t *rr);
-void rr_track_use_authenticator(rlm_radius_id_t *id, bool flag);
+int rr_track_delete(rlm_radius_id_t *id, rlm_radius_request_t *rr) CC_HINT(nonnull);
+void rr_track_use_authenticator(rlm_radius_id_t *id, bool flag) CC_HINT(nonnull);
+
+int rr_track_start(rlm_radius_id_t *id, rlm_radius_request_t *rr, fr_event_list_t *el,
+		   fr_event_callback_t callback, void *uctx, rlm_radius_retry_t *retry) CC_HINT(nonnull);
+int rr_track_retry(rlm_radius_id_t *id, rlm_radius_request_t *rr, fr_event_list_t *el,
+		   fr_event_callback_t callback, void *uctx, rlm_radius_retry_t *retry,
+		   struct timeval *no) CC_HINT(nonnull);
 
 #endif	/* _RLM_RADIUS_TRACK_H */

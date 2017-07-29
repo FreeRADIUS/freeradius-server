@@ -18,30 +18,99 @@ When the packet times out, we just free the ID (unless it's
 Status-Server ping checks), and extract / insert the connection back
 into the heap.
 
-We need to extract / insert because it's location may have changed...
+We need to extract / insert the connection because it's location may have changed...
 
-We *probably* want to keep one connection "full", if at all possible.
-i.e. the heap should prefer connections with *fewer* free IDs.
-... unless we're using extended ID, in which was we always pick an
-active connection.  i.e. one that's writable.
+We probably don't want to load-balance across connections via
+"num_outstanding" as with "load-balance" in v3.  We probably don't
+want to order "live" connections by number of free packets.  Instead,
+just use the "most lively" connection.  Which should do automatic
+load-balancing.  i.e. if it JUST responded to us, it's probably ready
+to take another packet.
 
 The "full" connections should be on a *separate* heap, or maybe a
 `fr_dlist_t`.  The extract / insert connection work needs to be done
 in it's own function, because it's mostly magic, and needs to be done
 in multiple places.
 
-## Packet retransmission timers
+We need to track:
 
-Via similar code to v3.  See references to "jitter" and "mrt / irt /
-mrc" in process.c in v3.
+* connection state: connecting, live, full, zombie, dead
+* connecting = trying, but not yet open
+* live connections which have IDs available
+* live connections which are "full"
+  * either no more IDs, or we've seen EWOULDBLOCK
+  * these don't have packets sent to them
+* zombie connections
+  * these don't have packets sent to them
+  * they have Status-Server checks done
+  * they are moved to "live" if we get 3 responses to Status-Server
+  * they are moved to "live" if we get a response to a previously proxied request
+* dead connections are closed
+
+We need some more configuration options:
+
+    # per-connection limits
+    connection {
+	# this is a per-thread limit.  Oops.
+	max_connections
+	connect_timeout
+	reconnect_delay
+	idle_timeout
+    }
+    
+    # return RLM_MODULE_USERLOCK if we're sitting on too many packets
+    # note that this is a per-thread limit.  Sorry about that.
+    max_packets = 65536
+    
+    status_checks {
+	type = Status-Server  # or NONE
+	# mrt, irt, mrc taken from another section, as per Access-Request, etc.
+	
+	num_answers_to_alive
+	# check_interval and check_timeout are no longer relevant
+	# we just use MRT, IRT, etc.  if the response doesn't come
+	# by the time we're sending the next packet, it's a timeout.
+	
+	# update the Status-Server packet here???
+	# probably no need for a separate virtual server...
+	# i.e. no policies
+	# no if / then / else conditions
+	# no templates, just static strings
+	update request {
+		User-Name = ...
+		User-Password = ...
+	}
+	
+	# as per 3.0
+	response_window
+	response_timeouts
+	zombie_period
+	revive_interval
+    }
+
+The `rlm_radius` module should not have an idea as to the status of
+the server, across multiple connections.  i.e. each connection is
+handled separately.  That is because especially for TCP, one
+connection can be dropped by a firewall, but another one can be fine.
+So it should just treat each connection independently.
+
+The module should also track the state of multiple connections:
+
+* connecting (all connections are connecting)
+* live (one or more connection is live)
+* full (all connections are full)
+  * this should probably just return to the connecting state,
+  * unless it hits max_connections
+* zombie (all connections are zombie)
+* dead (all connections are dead)
+  * this should probably just return it to the connecting state.
 
 ## Connection status management
 
 Mark a connection live / dead / zombie based on packet retransmission
-timers.  Set / do Status-Server checks as necessary.
+timers.  Do Status-Server checks as necessary.
 
-
-## status_check = Status-Server
+## status_check
 
 add status_check = Status-Server or Access-Request, ala old code
 
