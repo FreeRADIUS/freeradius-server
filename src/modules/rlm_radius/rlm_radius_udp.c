@@ -359,6 +359,11 @@ static void conn_writable(fr_event_list_t *el, int fd, UNUSED int flags, void *u
 			return;
 		}
 
+		/*
+		 *	@todo - print out the packet we're proxying,
+		 *	including socket name.
+		 */
+
 		MEM(u->packet = talloc_memdup(u, c->buffer, packet_len));
 		u->packet_len = packet_len;
 
@@ -758,6 +763,25 @@ static int mod_push(void *instance, REQUEST *request, rlm_radius_link_t *link, v
 	 *
 	 *	conn_writable() will set c->pending, and call
 	 *	fd_active() as necessary.
+	 *
+	 *	@todo - if there's an error, and we call
+	 *	mod_finished_request(), it will call
+	 *	unlang_resumable().  This marks it as resumable BEFORE
+	 *	rlm_radius calls unlang_yield.  Oops...
+	 *
+	 *	We need to update the push() API to return
+	 *	-1 error
+	 *	0  should yield
+	 *	1  written immediately
+	 *
+	 *	and add an rlm_rcode_t* pointer, so that we can return
+	 *	it here.
+	 *
+	 *	This also means splitting conn_writable() into two
+	 *	parts.  One, a loop around the queues.  And two, a
+	 *	function that does the actual write.  We can then call
+	 *	the write function from here, and have it return an
+	 *	OK/yield return code.
 	 */
 	if (!c->pending) {
 		conn_writable(t->el, c->fd, 0, c);
