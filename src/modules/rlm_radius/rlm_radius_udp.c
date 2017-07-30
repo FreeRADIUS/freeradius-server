@@ -51,6 +51,7 @@ typedef struct rlm_radius_udp_t {
 
 	bool			recv_buff_is_set;	//!< Whether we were provided with a recv_buf
 	bool			send_buff_is_set;	//!< Whether we were provided with a send_buf
+	bool			replicate;		//!< copied from parent->replicate
 } rlm_radius_udp_t;
 
 
@@ -234,6 +235,11 @@ static void conn_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 	ssize_t data_len;
 	uint8_t original[20];
 
+	/*
+	 *	@todo - call read() until it returns no data.  There
+	 *	may be multiple packets pending!  We don't want to go
+	 *	through a whole kevent cycle just to read another packet.
+	 */
 	data_len = read(fd, c->buffer, c->buflen);
 	if (data_len == 0) return;
 
@@ -241,6 +247,11 @@ static void conn_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 		conn_error(el, fd, 0, errno, c);
 		return;
 	}
+
+	/*
+	 *	Replicating?  Drain the socket, but ignore all responses.
+	 */
+	 if (c->inst->replicate) return;
 
 	packet_len = data_len;
 	if (!fr_radius_ok(c->buffer, &packet_len, false, &reason)) {
@@ -361,6 +372,16 @@ static void conn_writable(fr_event_list_t *el, int fd, UNUSED int flags, void *u
 
 			conn_error(el, fd, 0, errno, c);
 			return;
+		}
+
+		/*
+		 *	We're replicating, so we don't care about the
+		 *	responses.  Don't do any retransmission
+		 *	timers, etc.
+		 */
+		if (c->inst->replicate) {
+			mod_finished_request(c, u);
+			continue;
 		}
 
 		/*
@@ -782,6 +803,7 @@ static int mod_instantiate(rlm_radius_t *parent, void *instance, CONF_SECTION *c
 	rlm_radius_udp_t *inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
 
 	inst->parent = parent;
+	inst->replicate = parent->replicate;
 
 	/*
 	 *	Ensure that we have a destination address.

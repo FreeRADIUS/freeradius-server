@@ -123,8 +123,3 @@ list of allowed packet types.  We then need to require config for
 username / password, for Access-Request, and just username for
 Accounting-Request.
 
-## Replication (i.e. not proxying)
-
-allow for "no reply" proxying, where we don't care about getting the reply
-i.e. we still drain the socket, we just don't do anything with the replies
-

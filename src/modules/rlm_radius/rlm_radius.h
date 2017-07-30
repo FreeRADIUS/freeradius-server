@@ -76,6 +76,8 @@ struct rlm_radius_t {
 	struct timeval		reconnection_delay;
 	struct timeval		idle_timeout;
 
+	bool			replicate;	//!< are we ignoring responses?
+
 	dl_instance_t		*io_submodule;	//!< As provided by the transport_parse
 	fr_radius_client_io_t const *io;	//!< Easy access to the IO handle
 	void			*io_instance;	//!< Easy access to the IO instance
