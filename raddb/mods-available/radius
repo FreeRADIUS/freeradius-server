@@ -7,10 +7,10 @@ radius {
 	#
 	transport = udp
 
-	# List of allowed packet types
+	#  List of allowed packet types
 	#
-	# There is currently no way to change the packet type in the
-	# request.  See unlang "fork" for that functionality.
+	#  There is currently no way to change the packet type in the
+	#  request.  See unlang "fork" for that functionality.
 	type = Access-Request
 	type = Accounting-Request
 
@@ -23,4 +23,103 @@ radius {
 		secret = testing123
 	}
 
+	#
+	#  Whether or not we're replicating.
+	#
+	#  By default we proxy, which means we send a packet and wait
+	#  for a reply.  If we are replicating, we send a packet and
+	#  continue immediately.  Any reply packet is read from the
+	#  socket, but it is ignored.
+	# 
+#	replicate = no
+
+	#
+	#  Each packet can have it's own retransmission timers.
+	#  
+	#  The sections are named for each packet type. The contents
+	#  are the same for all packet types.  Only the relevant ones
+	#  are parsed (see 'type' above).
+	#
+	Access-Request {
+		#
+		#  Initial retransmit time: 1..5
+		#
+		#  If there is no response within this time,
+		#  the module will retransmit the packet.
+		#
+		initial_retransmission_time = 2
+
+		#
+		# Maximum Retransmit Time: 1..30 (0 == no maximum)
+		#
+		# The maximum time between retransmissions.
+		#
+		maximum_retransmission_time = 16
+
+		#
+		#  The following are maximums that *all* apply.
+		#  i.e. if any one of the limits is hit, the
+		#  retransmission stops.
+		#
+
+		#
+		#  Maximum Retransmit Count: 1..20 (0 == retransmit forever)
+		#
+		#  How many times the module will send the packet
+		#  before giving up.
+		#
+		maximum_retransmission_count = 5
+
+		#
+		#  Maximum Retransmit Duration: 5..60
+		#
+		#  The total length of time the module will try to
+		#  retransit the packet.
+		#
+		maximum_retransmission_duration = 30
+	}
+
+	#
+	#  The same timeouts apply for accounting packets.
+	#
+	Accounting-Request {
+		initial_retransmission_time = 2
+		maximum_retransmission_time = 16
+		maximum_retransmission_count = 5
+		maximum_retransmission_duration = 30
+
+	}
+
+	#
+	#  The same timeouts apply for coa packets.
+	#
+	Coa-Request {
+		initial_retransmission_time = 2
+		maximum_retransmission_time = 16
+		maximum_retransmission_count = 5
+		maximum_retransmission_duration = 30
+
+	}
+
+	#
+	#  The same timeouts apply for disconnect packets.
+	#
+	Disconnect-Request {
+		initial_retransmission_time = 2
+		maximum_retransmission_time = 16
+		maximum_retransmission_count = 5
+		maximum_retransmission_duration = 30
+
+	}
+
+	#
+	#  The same timeouts apply for Status-Server packets.
+	#
+	Status-Server {
+		initial_retransmission_time = 2
+		maximum_retransmission_time = 16
+		maximum_retransmission_count = 5
+		maximum_retransmission_duration = 30
+
+	}
 }
