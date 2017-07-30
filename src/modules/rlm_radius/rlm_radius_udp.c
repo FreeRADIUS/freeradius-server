@@ -281,6 +281,12 @@ static void conn_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 	u = link->request_io_ctx;
 
 	/*
+	 *	@todo - update idle timeout Only do it if it's within
+	 *	1s of firing, tho.  We don't want to do it on every
+	 *	packet.
+	 */
+
+	/*
 	 *	Track the Most Recently Sent with reply
 	 */
 	if (timercmp(&rr->start, &c->last_sent_with_reply, >)) {
@@ -406,6 +412,12 @@ static void conn_writable(fr_event_list_t *el, int fd, UNUSED int flags, void *u
 		fr_dlist_remove(&u->entry);
 		fr_dlist_insert_tail(&c->sent, &u->entry);
 		c->num_requests++;
+
+		/*
+		 *	@todo - update idle timeout Only do it if it's within
+		 *	1s of firing, tho.  We don't want to do it on every
+		 *	packet.
+		 */
 	}
 
 	/*
@@ -440,6 +452,10 @@ static void conn_writable(fr_event_list_t *el, int fd, UNUSED int flags, void *u
 static void conn_close(int fd, void *uctx)
 {
 	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
+
+	/*
+	 *	@todo - remove idle timeout
+	 */
 
 	DEBUG3("Closing socket %s", c->name);
 	if (shutdown(fd, SHUT_RDWR) < 0) DEBUG3("Shutdown on socket %s failed: %s", c->name, fr_syserror(errno));
@@ -481,6 +497,10 @@ static fr_connection_state_t conn_open(UNUSED fr_event_list_t *el, UNUSED int fd
 	 *	connection.
 	 */
 	if (t->pending) mod_clear_backlog(t);
+
+	/*
+	 *	@todo - set idle timout
+	 */
 
 	return FR_CONNECTION_STATE_CONNECTED;
 }

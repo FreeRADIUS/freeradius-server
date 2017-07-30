@@ -24,6 +24,32 @@ radius {
 	}
 
 	#
+	#  Per-connection configurations.
+	#
+	connection {
+		#
+		#  Timeout on the initial connection attempt.
+		#  If the connection isn't open after this time,
+		#  it is marked dead.
+		#
+		connect_timeout = 5
+
+		#
+		#  Timeout on subsequent reconnection attempts.
+		#  i.e. if there is an error writing packets
+		#  to the socket, it is closed, and the module
+		#  tries to connect the socket.
+		#
+		reconnect_delay = 5
+
+		#
+		#  If the socket is idle for this length of time,
+		#  it is closed.  Use '0' for 'no timeout'
+		#
+		idle_timeout = 300
+	}
+
+	#
 	#  Whether or not we're replicating.
 	#
 	#  By default we proxy, which means we send a packet and wait
