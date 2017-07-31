@@ -342,7 +342,10 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	FR_TIMEVAL_BOUND_CHECK("timers.reconnect_delay", &inst->reconnection_delay, >=, 5, 0);
 	FR_TIMEVAL_BOUND_CHECK("timers.reconnect_delay", &inst->reconnection_delay, <=, 300, 0);
 
-	FR_TIMEVAL_BOUND_CHECK("timers.idle_timeout", &inst->connection_timeout, <=, 600, 0);
+	if ((inst->idle_timeout.tv_sec != 0) && (inst->idle_timeout.tv_usec != 0)) {
+		FR_TIMEVAL_BOUND_CHECK("timers.idle_timeout", &inst->idle_timeout, >=, 5, 0);
+	}
+	FR_TIMEVAL_BOUND_CHECK("timers.idle_timeout", &inst->idle_timeout, <=, 600, 0);
 
 	num_types = talloc_array_length(inst->types);
 	rad_assert(num_types > 0);

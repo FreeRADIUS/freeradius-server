@@ -60,11 +60,11 @@ typedef struct rlm_radius_udp_t {
  *  This data structure holds the connections, etc. for this IO submodule.
  */
 typedef struct rlm_radius_udp_thread_t {
-	rlm_radius_udp_t	*inst;			//!< IO submodule instance
-	fr_event_list_t		*el;			//!< event list
+	rlm_radius_udp_t	*inst;		//!< IO submodule instance
+	fr_event_list_t		*el;		//!< event list
 
-	bool			pending;		//!< are there pending requests?
-	fr_dlist_t		queued;			//!< queued requests for some new connection
+	bool			pending;	//!< are there pending requests?
+	fr_dlist_t		queued;		//!< queued requests for some new connection
 
 	fr_dlist_t		active;	       	//!< active connections
 	fr_dlist_t		frozen;      	//!< frozen connections
@@ -78,6 +78,9 @@ typedef struct rlm_radius_udp_connection_t {
 	char const     		*name;		//!< from IP PORT to IP PORT
 
 	fr_dlist_t		entry;		//!< in the linked list of connections
+
+	fr_event_timer_t const	*ev;		//!< idle timeout event
+	struct timeval		idle_timeout;	//!< when the idle timeout will fire
 
 	struct timeval		last_sent_with_reply;	//!< most recent sent time which had a reply
 
@@ -149,6 +152,7 @@ static void conn_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void
 static void conn_writable(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx);
 static void mod_clear_backlog(rlm_radius_udp_thread_t *t);
 
+
 /** Set the socket to idle
  *
  *  But keep the read event open, just in case the other end sends us
@@ -178,13 +182,27 @@ static void fd_active(rlm_radius_udp_connection_t *c)
 {
 	rlm_radius_udp_thread_t	*t = c->thread;
 
-	DEBUG3("Marking socket %s as active - Draining requests", c->name);
+	DEBUG3("%s activating connection %s",
+	       c->inst->parent->name, c->name);
 
 	if (fr_event_fd_insert(c->conn, t->el, c->fd,
 			       conn_read, conn_writable, conn_error, c) < 0) {
 		PERROR("Failed inserting FD event");
 		talloc_free(c);
 	}
+}
+
+/** Close a socket due to idle timeout
+ *
+ */
+static void conn_idle_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
+{
+	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
+
+	DEBUG("%s idle timeout for connection %s",
+	      c->inst->parent->name, c->name);
+
+	talloc_free(c);
 }
 
 
@@ -195,7 +213,8 @@ static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 {
 	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
 
-	ERROR("Connection failed %s: %s", c->name, fr_syserror(fd_errno));
+	ERROR("%s Failed new connection %s: %s",
+	      c->inst->parent->name, c->name, fr_syserror(fd_errno));
 
 	/*
 	 *	Something bad happened... Fix it...
@@ -235,6 +254,9 @@ static void conn_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 	ssize_t data_len;
 	uint8_t original[20];
 
+	DEBUG3("%s reading data for connection %s",
+	       c->inst->parent->name, c->name);
+
 	/*
 	 *	@todo - call read() until it returns no data.  There
 	 *	may be multiple packets pending!  We don't want to go
@@ -255,13 +277,13 @@ static void conn_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 
 	packet_len = data_len;
 	if (!fr_radius_ok(c->buffer, &packet_len, false, &reason)) {
-		DEBUG("Ignoring malformed packet");
+		DEBUG("%s Ignoring malformed packet", c->inst->parent->name);
 		return;
 	}
 
 	rr = rr_track_find(c->id, c->buffer[1], NULL);
 	if (!rr) {
-		DEBUG("Ignoring response to request we did not send");
+		DEBUG("%s Ignoring response to request we did not send", c->inst->parent->name);
 		return;
 	}
 
@@ -273,7 +295,7 @@ static void conn_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 
 	if (fr_radius_verify(c->buffer, original,
 			     (uint8_t const *) c->inst->secret, strlen(c->inst->secret)) < 0) {
-		DEBUG("Ignoring response with invalid signature");
+		DEBUG("%s Ignoring response with invalid signature", c->inst->parent->name);
 		return;
 	}
 
@@ -285,6 +307,27 @@ static void conn_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 	 *	1s of firing, tho.  We don't want to do it on every
 	 *	packet.
 	 */
+	if (c->ev) {
+		struct timeval when = rr->start;
+
+		when.tv_usec += c->inst->parent->idle_timeout.tv_usec;
+		when.tv_sec += when.tv_usec / USEC;
+		when.tv_usec %= USEC;
+
+		when.tv_sec += c->inst->parent->idle_timeout.tv_sec;
+		when.tv_sec += 1;
+
+		if (timercmp(&when, &c->idle_timeout, >)) {
+			when.tv_sec--;
+			c->idle_timeout = when;
+
+			DEBUG("Resetting idle timeout for connection %s", c->name);
+			if (fr_event_timer_insert(c, el, &c->ev, &c->idle_timeout, conn_idle_timeout, c) < 0) {
+				ERROR("%s failed inserting idle timeout for connection %s",
+				      c->inst->parent->name, c->name);
+			}
+		}
+	}
 
 	/*
 	 *	Track the Most Recently Sent with reply
@@ -338,6 +381,9 @@ static void conn_writable(fr_event_list_t *el, int fd, UNUSED int flags, void *u
 	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
 	fr_dlist_t *entry;
 	bool pending;
+
+	DEBUG3("%s writing packets for connection %s",
+	       c->inst->parent->name, c->name);
 
 	/*
 	 *	Clear our backlog
@@ -453,13 +499,20 @@ static void conn_close(int fd, void *uctx)
 {
 	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
 
-	/*
-	 *	@todo - remove idle timeout
-	 */
+	if (c->ev) fr_event_timer_delete(c->thread->el, &c->ev);
 
-	DEBUG3("Closing socket %s", c->name);
-	if (shutdown(fd, SHUT_RDWR) < 0) DEBUG3("Shutdown on socket %s failed: %s", c->name, fr_syserror(errno));
-	if (close(fd) < 0) DEBUG3("Closing socket %s failed: %s", c->name, fr_syserror(errno));
+	DEBUG("%s closing connection %s",
+	      c->inst->parent->name, c->name);
+
+	if (shutdown(fd, SHUT_RDWR) < 0) {
+		DEBUG3("%s failed shutting down connection %s: %s",
+		       c->inst->parent->name, c->name, fr_syserror(errno));
+	}
+
+	if (close(fd) < 0) {
+		DEBUG3("%s failed closing connection: %s",
+		       c->inst->parent->name, c->name, fr_syserror(errno));
+	}
 
 	c->fd = -1;
 }
@@ -467,13 +520,22 @@ static void conn_close(int fd, void *uctx)
 /** Process notification that fd is open
  *
  */
-static fr_connection_state_t conn_open(UNUSED fr_event_list_t *el, UNUSED int fd, void *uctx)
+static fr_connection_state_t conn_open(fr_event_list_t *el, UNUSED int fd, void *uctx)
 {
 	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
 	rlm_radius_udp_thread_t *t = c->thread;
+	char src_buf[128], dst_buf[128];
+
+	fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(c->src_ipaddr), 0);
+	fr_value_box_snprint(dst_buf, sizeof(dst_buf), fr_box_ipaddr(c->dst_ipaddr), 0);
 
 	talloc_const_free(c->name);
-	c->name = talloc_strdup(c, "connected");
+	c->name = talloc_asprintf(c, "proto udp from %s port %u to %s port %u",
+				  src_buf, c->src_port,
+				  dst_buf, c->dst_port);
+
+	DEBUG("%s opened new connection %s",
+	      c->inst->parent->name, c->name);
 
 	/*
 	 *	Remove the connection from the "opening" list, and add
@@ -499,8 +561,25 @@ static fr_connection_state_t conn_open(UNUSED fr_event_list_t *el, UNUSED int fd
 	if (t->pending) mod_clear_backlog(t);
 
 	/*
-	 *	@todo - set idle timout
+	 *	Set idle timout
 	 */
+	if ((c->inst->parent->idle_timeout.tv_sec != 0) ||
+	    (c->inst->parent->idle_timeout.tv_usec != 0)) {
+		struct timeval when;
+
+		gettimeofday(&when, NULL); /* @todo: get it from a recently sent packet? */
+		when.tv_usec += c->inst->parent->idle_timeout.tv_usec;
+		when.tv_sec += when.tv_usec / USEC;
+		when.tv_sec += c->inst->parent->idle_timeout.tv_sec;
+		when.tv_usec %= USEC;
+		c->idle_timeout = when;
+
+		DEBUG("Setting idle timeout for connection %s", c->name);
+		if (fr_event_timer_insert(c, el, &c->ev, &c->idle_timeout, conn_idle_timeout, c) < 0) {
+			ERROR("%s failed inserting idle timeout for connection %s",
+			      c->inst->parent->name, c->name);
+		}
+	}
 
 	return FR_CONNECTION_STATE_CONNECTED;
 }
@@ -515,6 +594,7 @@ static fr_connection_state_t conn_init(int *fd_out, void *uctx)
 {
 	int fd;
 	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
+	char src_buf[128], dst_buf[128];
 
 	/*
 	 *	Open the outgoing socket.
@@ -524,7 +604,8 @@ static fr_connection_state_t conn_init(int *fd_out, void *uctx)
 	 */
 	fd = fr_socket_client_udp(&c->src_ipaddr, &c->dst_ipaddr, c->dst_port, true);
 	if (fd < 0) {
-		DEBUG("Failed opening RADIUS client UDP socket: %s", fr_strerror());
+		DEBUG("%s failed opening socket: %s",
+		      c->inst->parent->name, fr_strerror());
 		return FR_CONNECTION_STATE_FAILED;
 	}
 
@@ -536,14 +617,23 @@ static fr_connection_state_t conn_init(int *fd_out, void *uctx)
 	}
 #endif
 
-	// @todo - set name properly
-	c->name = talloc_strdup(c, "connecting...");
+	/*
+	 *	Set the connection name.
+	 */
+	fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(c->src_ipaddr), 0);
+	fr_value_box_snprint(dst_buf, sizeof(dst_buf), fr_box_ipaddr(c->dst_ipaddr), 0);
+
+	c->name = talloc_asprintf(c, "connecting proto udp from %s to %s port %u",
+				  src_buf,
+				  dst_buf, c->dst_port);
 
 	// @todo - set recv_buff and send_buff socket options
 
 	c->fd = fd;
 
 	// @todo - initialize the tracking memory, etc.
+	// i.e. histograms (or hyperloglog) of packets, so we can see
+	// which connections / home servers are fast / slow.
 
 	*fd_out = fd;
 
@@ -557,6 +647,9 @@ static int conn_free(rlm_radius_udp_connection_t *c)
 {
 	fr_dlist_t *entry;
 	rlm_radius_udp_thread_t *t = c->thread;
+
+	talloc_free(c->conn);
+	c->conn = NULL;
 
 	talloc_free_children(c); /* clears out FD events, timers, etc. */
 
