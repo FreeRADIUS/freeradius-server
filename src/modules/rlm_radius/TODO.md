@@ -4,8 +4,6 @@
 
 It has to add Proxy-State to outbound packets (oops)
 
-And do CHAP-Challenge fixups
-
 ## Multiple connections
 
 rlm_radius_udp.c now has one connection, in `c->active`, which is an

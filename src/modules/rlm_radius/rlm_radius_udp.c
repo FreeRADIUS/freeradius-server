@@ -77,6 +77,7 @@ typedef struct rlm_radius_udp_connection_t {
 	fr_connection_t		*conn;		//!< Connection to our destination.
 	char const     		*name;		//!< from IP PORT to IP PORT
 
+	uint32_t		proxy_state;  	//!< ID of this connection
 	fr_dlist_t		entry;		//!< in the linked list of connections
 
 	fr_event_timer_t const	*ev;		//!< idle timeout event
@@ -404,6 +405,28 @@ static void conn_writable(fr_event_list_t *el, int fd, UNUSED int flags, void *u
 					      request->packet->vps);
 		if (packet_len <= 0) break;
 
+		/*
+		 *	@todo - add Proxy-State to the tail end of the
+		 *	packet.  We need to add it here, and NOT in
+		 *	request->packet->vps, because multiple modules
+		 *	may be sending the packets at the same time.
+		 */
+		if ((size_t) (packet_len + 6) <= c->buflen) {
+			uint8_t *attr = c->buffer + packet_len;
+			int hdr_len;
+
+			attr[0] = FR_PROXY_STATE;
+			attr[1] = 6;
+			memcpy(attr + 2, &c->proxy_state, 4);
+
+			hdr_len = (c->buffer[2] << 8) | (c->buffer[3]);
+			hdr_len += 6;
+			c->buffer[2] = (hdr_len >> 8) & 0xff;
+			c->buffer[3] = hdr_len & 0xff;
+
+			packet_len += 6;
+		}
+
 		if (fr_radius_sign(c->buffer, NULL, (uint8_t const *) c->inst->secret,
 				   strlen(c->inst->secret)) < 0) {
 			ERROR("Failed signing packet");
@@ -533,6 +556,7 @@ static fr_connection_state_t conn_open(fr_event_list_t *el, UNUSED int fd, void 
 	c->name = talloc_asprintf(c, "proto udp from %s port %u to %s port %u",
 				  src_buf, c->src_port,
 				  dst_buf, c->dst_port);
+	c->proxy_state = fr_rand();
 
 	DEBUG("%s opened new connection %s",
 	      c->inst->parent->name, c->name);

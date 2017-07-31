@@ -238,6 +238,41 @@ static rlm_rcode_t mod_radius_resume(UNUSED REQUEST *request, UNUSED void *insta
 	return rcode;
 }
 
+/** Do any RADIUS-layer fixups for proxying.
+ *
+ */
+static void radius_fixups(REQUEST *request)
+{
+	VALUE_PAIR *vp;
+
+	if (request->packet->code != FR_CODE_ACCESS_REQUEST) return;
+
+	/*
+	 *	If there is no PW_CHAP_CHALLENGE attribute but
+	 *	there is a PW_CHAP_PASSWORD we need to add it
+	 *	since we can't use the request->packet request
+	 *	authenticator anymore, as the
+	 *	request->proxy->packet authenticator is
+	 *	different.
+	 */
+	if (fr_pair_find_by_num(request->packet->vps, 0, FR_CHAP_PASSWORD, TAG_ANY) &&
+	    !fr_pair_find_by_num(request->packet->vps, 0, FR_CHAP_CHALLENGE, TAG_ANY)) {
+		vp = fr_pair_afrom_num(request->packet, 0, FR_CHAP_CHALLENGE);
+
+		fr_pair_value_memcpy(vp, request->packet->vector, sizeof(request->packet->vector));
+		fr_pair_add(&request->packet->vps, vp);
+	}
+
+	/*
+	 *	Access-Requests have a Message-Authenticator added,
+	 *	unless one already exists.
+	 */
+	if (!fr_pair_find_by_num(request->packet->vps, 0, FR_MESSAGE_AUTHENTICATOR, TAG_ANY)) {
+		fr_pair_make(request->packet, &request->packet->vps,
+			     "Message-Authenticator", "0x00", T_OP_SET);
+	}
+}
+
 
 /** Send packets outbound.
  *
@@ -302,6 +337,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	 *	- add Proxy-State
 	 *	- do CHAP-Challenge fixups
 	 */
+	radius_fixups(request);
 
 	/*
 	 *	Push the request and it's link to the IO submodule.
