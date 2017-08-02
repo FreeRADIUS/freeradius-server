@@ -93,6 +93,7 @@ typedef struct fr_channel_end_t {
 	void			*ctx;		//!< Worker context.
 
 	int			num_outstanding; //!< Number of outstanding requests with no reply.
+	bool			must_signal;	//!< we need to signal the other end
 
 	size_t			num_signals;	//!< Number of kevent signals we've sent.
 
@@ -231,6 +232,7 @@ static int fr_channel_data_ready(fr_channel_t *ch, fr_time_t when, fr_channel_en
 
 	end->last_sent_signal = when;
 	end->num_signals++;
+	end->must_signal = false;
 
 	cc.signal = which;
 	cc.ack = end->ack;
@@ -318,7 +320,7 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_
 		 *	Or, there is a reply, and there are more packets outstanding.
 		 *	Skip the signal.
 		 */
-		if (!*p_reply || (*p_reply && (master->num_outstanding > 1))) {
+		if (!master->must_signal && (!*p_reply || (*p_reply && (master->num_outstanding > 1)))) {
 			MPRINT("MASTER SKIPS signal\n");
 			return 0;
 		}
@@ -618,11 +620,13 @@ fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_c
 	case FR_CHANNEL_SIGNAL_DATA_DONE_WORKER:
 		MPRINT("channel got data_done_worker\n");
 		ce = FR_CHANNEL_DATA_READY_NETWORK;
+		ch->end[TO_WORKER].must_signal = true;
 		break;
 
 	case FR_CHANNEL_SIGNAL_WORKER_SLEEPING:
 		MPRINT("channel got worker_sleeping\n");
 		ce = FR_CHANNEL_NOOP;
+		ch->end[TO_WORKER].must_signal = true;
 		break;
 	}
 
@@ -633,7 +637,7 @@ fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_c
 	 */
 	master = &ch->end[TO_WORKER];
 #if ENABLE_SKIPS
-	if (ack == master->sequence) {
+	if (!master->must_signal && (ack == master->sequence)) {
 		MPRINT("MASTER SKIPS signal AFTER CE %d num_outstanding %zd\n", cs, master->num_outstanding);
 		MPRINT("MASTER has ack %zd, my seq %zd my_view %zd\n", ack, master->sequence, master->their_view_of_my_sequence);
 		return ce;
