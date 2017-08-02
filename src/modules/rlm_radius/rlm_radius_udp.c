@@ -346,7 +346,9 @@ static void conn_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 			when.tv_sec--;
 			c->idle_timeout = when;
 
-			DEBUG("Resetting idle timeout for connection %s", c->name);
+			DEBUG("Resetting idle timeout to +%ld.%06d for connection %s",
+			      c->inst->parent->idle_timeout.tv_sec, c->inst->parent->idle_timeout.tv_usec,
+			      c->name);
 			if (fr_event_timer_insert(c, el, &c->ev, &c->idle_timeout, conn_idle_timeout, c) < 0) {
 				ERROR("%s failed inserting idle timeout for connection %s",
 				      c->inst->parent->name, c->name);
@@ -922,7 +924,10 @@ static int udp_request_free(rlm_radius_udp_request_t *u)
 {
 	fr_dlist_remove(&u->entry);
 
-	if (u->rr) (void) rr_track_delete(u->c->id, u->rr);
+	if (u->rr) {
+		(void) rr_track_delete(u->c->id, u->rr);
+		u->rr = NULL;
+	}
 
 	return 0;
 }
