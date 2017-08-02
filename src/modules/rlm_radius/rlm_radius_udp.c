@@ -25,6 +25,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/udp.h>
+#include <freeradius-devel/heap.h>
 #include <freeradius-devel/connection.h>
 #include <freeradius-devel/rad_assert.h>
 
@@ -66,10 +67,18 @@ typedef struct rlm_radius_udp_thread_t {
 	bool			pending;	//!< are there pending requests?
 	fr_dlist_t		queued;		//!< queued requests for some new connection
 
-	fr_dlist_t		active;	       	//!< active connections
+	fr_heap_t		*active;       	//!< active connections
+	fr_dlist_t		full;      	//!< full connections
 	fr_dlist_t		frozen;      	//!< frozen connections
 	fr_dlist_t		opening;      	//!< opening connections
 } rlm_radius_udp_thread_t;
+
+typedef enum rlm_radius_udp_connection_state_t {
+	CONN_UNUSED = 0,
+	CONN_OPENING,
+	CONN_ACTIVE,
+	CONN_FULL,
+} rlm_radius_udp_connection_state_t;
 
 typedef struct rlm_radius_udp_connection_t {
 	rlm_radius_udp_t const	*inst;		//!< our module instance
@@ -79,11 +88,13 @@ typedef struct rlm_radius_udp_connection_t {
 
 	uint32_t		proxy_state;  	//!< ID of this connection
 	fr_dlist_t		entry;		//!< in the linked list of connections
+	int			heap_id;	//!< for the active heap
+	rlm_radius_udp_connection_state_t state; //!< state of the connection
 
 	fr_event_timer_t const	*ev;		//!< idle timeout event
 	struct timeval		idle_timeout;	//!< when the idle timeout will fire
 
-	struct timeval		last_sent_with_reply;	//!< most recent sent time which had a reply
+	struct timeval		mrs_time;	//!< most recent sent time which had a reply
 
 	int			num_requests;	//!< number of packets we sent
 	int			max_requests;	//!< maximum number of packets we can send
@@ -153,6 +164,19 @@ static void conn_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void
 static void conn_writable(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx);
 static void mod_clear_backlog(rlm_radius_udp_thread_t *t);
 
+static int conn_cmp(void const *one, void const *two)
+{
+	rlm_radius_udp_connection_t const *a = talloc_get_type_abort(one, rlm_radius_udp_connection_t);
+	rlm_radius_udp_connection_t const *b = talloc_get_type_abort(two, rlm_radius_udp_connection_t);
+
+	if (timercmp(&a->mrs_time, &b->mrs_time, <)) return -1;
+	if (timercmp(&a->mrs_time, &b->mrs_time, >)) return -1;
+
+	if (a->id->num_free < b->id->num_free) return -1;
+	if (a->id->num_free > b->id->num_free) return +1;
+
+	return 0;
+}
 
 /** Set the socket to idle
  *
@@ -331,10 +355,28 @@ static void conn_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 	}
 
 	/*
-	 *	Track the Most Recently Sent with reply
+	 *	Track the Most Recently Started with reply
 	 */
-	if (timercmp(&rr->start, &c->last_sent_with_reply, >)) {
-		c->last_sent_with_reply = rr->start;
+	if (timercmp(&rr->start, &c->mrs_time, >)) {
+		c->mrs_time = rr->start;
+	}
+
+	switch (c->state) {
+	default:
+		rad_assert(0 == 1);
+		break;
+
+	case CONN_FULL:
+		fr_dlist_remove(&c->entry);
+		rad_assert(c->id->num_free > 0);
+		(void) fr_heap_insert(c->thread->active, c);
+		c->state = CONN_ACTIVE;
+		break;
+
+	case CONN_ACTIVE:
+		(void) fr_heap_extract(c->thread->active, c);
+		(void) fr_heap_insert(c->thread->active, c);
+		break;
 	}
 
 	// @todo - set rcode based on ACK or NAK
@@ -609,6 +651,7 @@ static fr_connection_state_t conn_open(fr_event_list_t *el, UNUSED int fd, void 
 				  src_buf, c->src_port,
 				  dst_buf, c->dst_port);
 	c->proxy_state = fr_rand();
+	c->state = CONN_OPENING;
 
 	DEBUG("%s opened new connection %s",
 	      c->inst->parent->name, c->name);
@@ -617,8 +660,10 @@ static fr_connection_state_t conn_open(fr_event_list_t *el, UNUSED int fd, void 
 	 *	Remove the connection from the "opening" list, and add
 	 *	it to the "active" list.
 	 */
+	rad_assert(c->state == CONN_OPENING);
 	fr_dlist_remove(&c->entry);
-	fr_dlist_insert_tail(&t->active, &c->entry);
+	fr_heap_insert(t->active, c);
+	c->state = CONN_ACTIVE;
 
 	/*
 	 *	If we have data pending, add the writable event immediately
@@ -759,6 +804,21 @@ static int conn_free(rlm_radius_udp_connection_t *c)
 		t->pending = true;
 	}
 
+	switch (c->state) {
+	default:
+		rad_assert(0 == 1);
+		break;
+
+	case CONN_OPENING:
+	case CONN_FULL:
+		fr_dlist_remove(&c->entry);
+		break;
+
+	case CONN_ACTIVE:
+		(void) fr_heap_extract(t->active, c);
+		break;
+	}
+
 	return 0;
 }
 
@@ -823,23 +883,31 @@ static void mod_connection_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t
 static rlm_radius_udp_connection_t *connection_get(rlm_radius_udp_thread_t *t, rlm_radius_udp_request_t *u)
 {
 	rlm_radius_udp_connection_t *c;
-	fr_dlist_t *entry;
 	REQUEST *request;
 
-	entry = FR_DLIST_FIRST(t->active);
-	if (!entry) return NULL;
+	c = fr_heap_peek(t->active);
+	if (!c) return NULL;
 
-	c = fr_ptr_to_type(rlm_radius_udp_connection_t, entry, entry);
 	(void) talloc_get_type_abort(c, rlm_radius_udp_connection_t);
-
-	if (c->num_requests == c->max_requests) return NULL;
+	rad_assert(c->state == CONN_ACTIVE);
+	rad_assert(c->num_requests < c->max_requests);
 
 	u->rr = rr_track_alloc(c->id, u->link->request, u->code, u->link);
-	if (!u->rr) return NULL;
+	if (!u->rr) {
+		rad_assert(0 == 1);
+		return NULL;
+	}
 
 	u->c = c;
 	request = u->link->request;
-	RDEBUG("Allocated ID %d", u->rr->id);
+
+	fr_heap_extract(t->active, c);
+	if (c->id->num_free > 0) {
+		fr_heap_insert(t->active, c);
+	} else {
+		fr_dlist_insert_head(&t->full, &c->entry);
+		c->state = CONN_FULL;
+	}
 
 	return c;
 }
@@ -863,13 +931,13 @@ static int udp_request_free(rlm_radius_udp_request_t *u)
 static void mod_clear_backlog(rlm_radius_udp_thread_t *t)
 {
 	fr_dlist_t *entry;
+	rlm_radius_udp_connection_t *c;
 
-	entry = FR_DLIST_FIRST(t->active);
-	if (!entry) return;
+	c = fr_heap_peek(t->active);
+	if (!c) return;
 
 	while ((entry = FR_DLIST_FIRST(t->queued)) != NULL) {
 		rlm_radius_udp_request_t *u;
-		rlm_radius_udp_connection_t *c;
 
 		u = fr_ptr_to_type(rlm_radius_udp_request_t, entry, entry);
 		c = connection_get(t, u);
@@ -1082,9 +1150,11 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 
 	t->pending = false;
 	FR_DLIST_INIT(t->queued);
-	FR_DLIST_INIT(t->active);
 	FR_DLIST_INIT(t->frozen);
+	FR_DLIST_INIT(t->full);
 	FR_DLIST_INIT(t->opening);
+
+	t->active = fr_heap_create(conn_cmp, offsetof(rlm_radius_udp_connection_t, heap_id));
 
 	// @todo - get parent, and initialize the list of IDs by code, from what is permitted by rlm_radius
 
@@ -1111,13 +1181,8 @@ static int mod_thread_detach(void *thread)
 	/*
 	 *	Free all of the sockets.
 	 */
+	talloc_free(t->active);
 	talloc_free_children(t);
-
-	entry = FR_DLIST_FIRST(t->active);
-	if (entry != NULL) {
-		ERROR("There are still active sockets");
-		return -1;
-	}
 
 	entry = FR_DLIST_FIRST(t->opening);
 	if (entry != NULL) {
