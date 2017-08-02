@@ -408,6 +408,12 @@ static void conn_writable(fr_event_list_t *el, int fd, UNUSED int flags, void *u
 		if (packet_len <= 0) break;
 
 		/*
+		 *	Might have been sent and then given up
+		 *	on... free the raw data.
+		 */
+		if (u->packet) TALLOC_FREE(u->packet);
+
+		/*
 		 *	Ad Proxy-State to the tail end of the packet.
 		 *	We need to add it here, and NOT in
 		 *	request->packet->vps, because multiple modules
@@ -474,17 +480,22 @@ static void conn_writable(fr_event_list_t *el, int fd, UNUSED int flags, void *u
 
 		// @todo - if debug >= 3, print out hex of the packet.
 
-		MEM(u->packet = talloc_memdup(u, c->buffer, packet_len));
-		u->packet_len = packet_len;
-
 		/*
 		 *	Write the packet to the socket.  If it blocks,
 		 *	stop dequeueing packets.
 		 */
-		rcode = write(fd, u->packet, u->packet_len);
+		rcode = write(fd, c->buffer, packet_len);
 		if (rcode < 0) {
-			if (errno == EWOULDBLOCK) break;
+			if (errno == EWOULDBLOCK) {
+				MEM(u->packet = talloc_memdup(u, c->buffer, packet_len));
+				u->packet_len = packet_len;
+				break;
+			}
 
+			/*
+			 *	We have to re-encode the packet, so
+			 *	don't bother copying it to 'u'.
+			 */
 			conn_error(el, fd, 0, errno, c);
 			return;
 		}
@@ -498,6 +509,12 @@ static void conn_writable(fr_event_list_t *el, int fd, UNUSED int flags, void *u
 			mod_finished_request(c, u);
 			continue;
 		}
+
+		/*
+		 *	Only copy the packet if we're not replicating
+		 */
+		MEM(u->packet = talloc_memdup(u, c->buffer, packet_len));
+		u->packet_len = packet_len;
 
 		/*
 		 *	Start the retransmission timers.
