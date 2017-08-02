@@ -226,7 +226,10 @@ int rr_track_delete(rlm_radius_id_t *id, rlm_radius_request_t *rr)
 	(void) talloc_get_type_abort(id, rlm_radius_id_t);
 
 	rr->request = NULL;
-	if (rr->ev) talloc_const_free(rr->ev);
+	if (rr->ev) {
+		talloc_const_free(rr->ev);
+		rr->ev = NULL;
+	}
 
 	rad_assert(id->num_requests > 0);
 	id->num_requests--;
@@ -452,7 +455,7 @@ int rr_track_retry(UNUSED rlm_radius_id_t *id, rlm_radius_request_t *rr, fr_even
 	next.tv_sec += (next.tv_usec / USEC);
 	next.tv_usec %= USEC;
 
-	if (fr_event_timer_insert(rr->request, el, &rr->ev, &next, callback, uctx) < 0) {
+	if (fr_event_timer_insert(id, el, &rr->ev, &next, callback, uctx) < 0) {
 		return -1;
 	}
 
@@ -473,7 +476,7 @@ int rr_track_start(UNUSED rlm_radius_id_t *id, rlm_radius_request_t *rr, fr_even
 	next.tv_sec += (next.tv_usec / USEC);
 	next.tv_usec %= USEC;
 
-	if (fr_event_timer_insert(rr->request, el, &rr->ev, &next, callback, uctx) < 0) {
+	if (fr_event_timer_insert(id, el, &rr->ev, &next, callback, uctx) < 0) {
 		return -1;
 	}
 
