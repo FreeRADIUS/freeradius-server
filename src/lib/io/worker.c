@@ -404,6 +404,8 @@ static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t 
 	if (cd) fr_worker_drain_input(worker, ch, cd);
 }
 
+static void worker_reset_timer(fr_worker_t *worker);
+
 
 /** Reply to a request
  *
@@ -501,9 +503,9 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	 */
 	fr_dlist_remove(&request->async->time_order);
 	talloc_free(request);
-}
 
-static void worker_reset_timer(fr_worker_t *worker);
+	if (!worker->num_active) worker_reset_timer(worker);
+}
 
 /** Enforce max_request_time
  *
@@ -564,10 +566,13 @@ static void worker_reset_timer(fr_worker_t *worker)
 
 	entry = FR_DLIST_TAIL(worker->time_order);
 	if (!entry) {
+		rad_assert(worker->num_active == 0);
+		fr_log(worker->log, L_DBG, "Worker has nothing to do, deleting cleanup timer.");
 		if (worker->ev_cleanup) fr_event_timer_delete(worker->el, &worker->ev_cleanup);
 		worker->next_cleanup = 0;
 		return;
 	}
+	rad_assert(worker->num_active > 0);
 
 	async = fr_ptr_to_type(fr_async_t, time_order, entry);
 
@@ -588,6 +593,7 @@ static void worker_reset_timer(fr_worker_t *worker)
 	worker->next_cleanup = cleanup;
 	fr_time_to_timeval(&when, cleanup);
 
+	fr_log(worker->log, L_DBG, "Resetting worker cleanup timer to +30s");
 	if (fr_event_timer_insert(worker, worker->el, &worker->ev_cleanup,
 				  &when, fr_worker_max_request_time, worker) < 0) {
 		fr_log(worker->log, L_ERR, "Failed inserting max_request_time timer.");
