@@ -43,6 +43,19 @@ WORKDIR /usr/local/src/repositories
 RUN git clone --depth=1 --no-single-branch https://github.com/arr2036/libkqueue.git
 WORKDIR libkqueue
 
+#
+#  Use LTB's openldap packages intead of the distribution version to avoid linking against NSS
+#
+RUN echo $'[ltb-project]\n\
+name=LTB project packages\n\
+baseurl=https://ltb-project.org/rpm/$releasever/$basearch\n\
+enabled=1\n\
+gpgcheck=1\n\
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project'\
+> /etc/yum.repos.d/ltb-project.repo
+RUN rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
+
+
 # Fixme: Change to the main repo when they merge this branch
 RUN git checkout patch-3
 RUN cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib ./ && \
