@@ -400,14 +400,16 @@ static void conn_writable(fr_event_list_t *el, int fd, UNUSED int flags, void *u
 
 		rad_assert(c->inst->parent->allowed[u->code]);
 
+		// @todo - print out packet header and attributes
+
 		packet_len = fr_radius_encode(c->buffer, c->buflen, NULL,
 					      c->inst->secret, u->rr->id, u->code, u->rr->id,
 					      request->packet->vps);
 		if (packet_len <= 0) break;
 
 		/*
-		 *	@todo - add Proxy-State to the tail end of the
-		 *	packet.  We need to add it here, and NOT in
+		 *	Ad Proxy-State to the tail end of the packet.
+		 *	We need to add it here, and NOT in
 		 *	request->packet->vps, because multiple modules
 		 *	may be sending the packets at the same time.
 		 */
@@ -424,7 +426,41 @@ static void conn_writable(fr_event_list_t *el, int fd, UNUSED int flags, void *u
 			c->buffer[2] = (hdr_len >> 8) & 0xff;
 			c->buffer[3] = hdr_len & 0xff;
 
+			// @todo - print out Proxy-State
+
 			packet_len += 6;
+		}
+
+		/*
+		 *	Add Message-Authenticator manually.
+		 */
+		if ((c->buffer[0] == FR_CODE_ACCESS_REQUEST) &&
+		    ((size_t) (packet_len + 18) <= c->buflen)) {
+			uint8_t *attr, *end;
+			int hdr_len;
+
+			end = c->buffer + packet_len;
+			for (attr = c->buffer + 20;
+			     attr < end;
+			     attr += attr[1]) {
+				if (attr[0] != FR_MESSAGE_AUTHENTICATOR) continue;
+
+				break;
+			}
+
+			if (attr == end) {
+				// @todo - save ptr to attr
+				attr[0] = FR_PROXY_STATE;
+				attr[1] = 18;
+				memset(attr + 2, 0, 16);
+
+				hdr_len = (c->buffer[2] << 8) | (c->buffer[3]);
+				hdr_len += 18;
+				c->buffer[2] = (hdr_len >> 8) & 0xff;
+				c->buffer[3] = hdr_len & 0xff;
+
+				packet_len += 18;
+			}
 		}
 
 		if (fr_radius_sign(c->buffer, NULL, (uint8_t const *) c->inst->secret,
@@ -434,10 +470,9 @@ static void conn_writable(fr_event_list_t *el, int fd, UNUSED int flags, void *u
 			return;
 		}
 
-		/*
-		 *	@todo - print out the packet we're proxying,
-		 *	including socket name.
-		 */
+		// @todo - print out actual value of signed Message-Authenticator
+
+		// @todo - if debug >= 3, print out hex of the packet.
 
 		MEM(u->packet = talloc_memdup(u, c->buffer, packet_len));
 		u->packet_len = packet_len;

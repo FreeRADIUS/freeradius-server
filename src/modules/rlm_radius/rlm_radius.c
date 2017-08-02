@@ -262,15 +262,6 @@ static void radius_fixups(REQUEST *request)
 		fr_pair_value_memcpy(vp, request->packet->vector, sizeof(request->packet->vector));
 		fr_pair_add(&request->packet->vps, vp);
 	}
-
-	/*
-	 *	Access-Requests have a Message-Authenticator added,
-	 *	unless one already exists.
-	 */
-	if (!fr_pair_find_by_num(request->packet->vps, 0, FR_MESSAGE_AUTHENTICATOR, TAG_ANY)) {
-		fr_pair_make(request->packet, &request->packet->vps,
-			     "Message-Authenticator", "0x00", T_OP_SET);
-	}
 }
 
 
