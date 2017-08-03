@@ -628,7 +628,7 @@ static void conn_close(int fd, void *uctx)
 	}
 
 	if (close(fd) < 0) {
-		DEBUG3("%s failed closing connection: %s",
+		DEBUG3("%s failed closing connection %s: %s",
 		       c->inst->parent->name, c->name, fr_syserror(errno));
 	}
 
