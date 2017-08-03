@@ -346,9 +346,8 @@ static void conn_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 			when.tv_sec--;
 			c->idle_timeout = when;
 
-			DEBUG("Resetting idle timeout to +%ld.%06d for connection %s",
-			      c->inst->parent->idle_timeout.tv_sec, c->inst->parent->idle_timeout.tv_usec,
-			      c->name);
+			DEBUG("Resetting idle timeout to +%pV for connection %s",
+			      fr_box_timeval(c->inst->parent->idle_timeout), c->name);
 			if (fr_event_timer_insert(c, el, &c->ev, &c->idle_timeout, conn_idle_timeout, c) < 0) {
 				ERROR("%s failed inserting idle timeout for connection %s",
 				      c->inst->parent->name, c->name);
