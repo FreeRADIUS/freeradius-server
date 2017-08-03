@@ -32,30 +32,7 @@ The following behaviours are expected and requested of all community members:
 - Research topics using appropriate standards, design documents, and technical manuals before raising
   GitHub issues, or sending pull requests.
 
-## 3. Our Limitations
-
-We understand that when participants ask questions, their goal is to obtain help from the community.
- Please be aware that the FreeRADIUS community is not large.  The project has three core members,
-none of whom are dedicated 100% to FreeADIUS.  The project has about seventy modules, each of which
-has complex behavior.  All of that code, test cases, and documentation have to be updated with
-limited resources.
-
-FreeRADIUS is built mainly for Linux and BSD systems.  It depends on SQL (MySQL, Postgresl, Oracle,
-SQLite), LDAP, REST, Couchbase, OpenDirectory, PAM, Redis, flat-text files, and SecurID.  It has
-plugins for Perl, Python, MRuby, and Lua. It supports multiple authentication types, including PAP,
-CHAP, MS-CHAP, Digest, EAP-GTC, EAP-MD5, EAP-MSCHAPv2, PEAP, TTLS, TLS, EAP-FAST, SIM, AKA, LEAP,
-PWD. The TLS-based EAP methods work with TLSv1.0, TLSv1.1, and TLSv1.2. The EAP methods interact
-with client EAP configurations on Linux, BSD, MacOS, iOS, Android, and many other embedded systems.
-FreeRADIUS supports NAS equipment from Cisco, HP, Juniper, Alcatel-Lucent, Aerohive, Ruckus, Aruba,
-Mikrotik, and dozens of other vendors, across thousands of individual products.
-
-Finally, the configuration files support a nearly infinite number of ways to integrate and arrange
-the above technlogies.  In short, we cannot be experts in every part of the RADIUS ecosystem.
-
-We rely on well researched and technically sound contributions in order to make the project a
-success.  This means useful contributions from you, the community.
-
-## 4. Unacceptable Behaviour
+## 3. Unacceptable Behaviour
 
 The main source of unacceptable behavior is community participants who are unaware of the
 complexities outlined in the previous section. They have questions, and they want answers.  They
@@ -75,7 +52,7 @@ The following behaviours are unacceptable within our community:
 - Failure to give more information when requested
 - Refusal to follow instructions for solving a problem
 
-## 5. Consequences of Unacceptable Behaviour
+## 4. Consequences of Unacceptable Behaviour
 
 Where unacceptable behaviour is noted and the community participant informed of behaviour and next
 steps, the community participant is expected to comply immediately.  Arguing with the warnings is
@@ -84,6 +61,17 @@ unacceptable behavior.
 
 The community organizers will take any action they deem appropriate, which may include permanent
 expulsion from the community using appropriate mechanisms.
+
+## 5. Our Limitations
+
+We understand that when participants ask questions, their goal is to obtain help from the community.
+Please be aware that the FreeRADIUS community is not large.  The project has three core members,
+none of whom are dedicated 100% to FreeADIUS.  The project has about seventy modules, each of which
+has complex behavior.  All of that code, test cases, and documentation have to be updated with
+limited resources.
+
+We rely on well researched and technically sound contributions in order to make the project a
+success.
 
 ## 6. Reporting Guidelines
 
