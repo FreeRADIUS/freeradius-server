@@ -1199,7 +1199,7 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 				ERROR("%s[%d]: Reference \"%s\" type is invalid", cf, *lineno, input);
 				return NULL;
 			}
-		} else if (memcmp(ptr, "$ENV{", 5) == 0) {
+		} else if (strncmp(ptr, "$ENV{", 5) == 0) {
 			char *env;
 
 			ptr += 5;
@@ -1928,6 +1928,8 @@ int cf_section_parse(CONF_SECTION *cs, void *base, CONF_PARSER const *variables)
 			    (variables[i + 1].data == variables[i].data)) {
 				cf_log_err(&(cs->item), "Replace \"%s\" with \"%s\"", variables[i].name,
 					   variables[i + 1].name);
+			} else {
+				cf_log_err(&(cs->item), "Cannot use deprecated configuration item \"%s\"", variables[i].name);
 			}
 			goto finish;
 		}

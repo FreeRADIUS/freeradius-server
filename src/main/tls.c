@@ -1454,7 +1454,7 @@ static int ocsp_asn1time_to_epoch(time_t *out, char const *asn1)
 
 	memset(&t, 0, sizeof(t));
 
-	if ((end - p) <= 12) {
+	if ((end - p) <= 13) {
 		if ((end - p) < 2) {
 			fr_strerror_printf("ASN1 date string too short, expected 2 additional bytes, got %zu bytes",
 					   end - p);
@@ -1472,7 +1472,7 @@ static int ocsp_asn1time_to_epoch(time_t *out, char const *asn1)
 		t.tm_year -= 1900;
 	}
 
-	if ((end - p) < 10) {
+	if ((end - p) < 4) {
 		fr_strerror_printf("ASN1 string too short, expected 10 additional bytes, got %zu bytes",
 				   end - p);
 		return -1;
@@ -1482,14 +1482,21 @@ static int ocsp_asn1time_to_epoch(time_t *out, char const *asn1)
 	t.tm_mon += (*(p++) - '0') - 1; // -1 since January is 0 not 1.
 	t.tm_mday = (*(p++) - '0') * 10;
 	t.tm_mday += (*(p++) - '0');
+
+	if ((end - p) < 2) goto done;
 	t.tm_hour = (*(p++) - '0') * 10;
 	t.tm_hour += (*(p++) - '0');
+
+	if ((end - p) < 2) goto done;
 	t.tm_min = (*(p++) - '0') * 10;
 	t.tm_min += (*(p++) - '0');
+
+	if ((end - p) < 2) goto done;
 	t.tm_sec = (*(p++) - '0') * 10;
 	t.tm_sec += (*(p++) - '0');
 
 	/* Apparently OpenSSL converts all timestamps to UTC? Maybe? */
+done:
 	*out = timegm(&t);
 	return 0;
 }
@@ -1617,7 +1624,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, const unsigned char *data, int l
 			time_t expires;
 
 			if (ocsp_asn1time_to_epoch(&expires, vp->vp_strvalue) < 0) {
-				RDEBUG2("Failed getting certificate expiration, removing cache entry for session %s", buffer);
+				RDEBUG2("Failed getting certificate expiration, removing cache entry for session %s - %s", buffer, fr_strerror());
 				SSL_SESSION_free(sess);
 				sess = NULL;
 				goto error;

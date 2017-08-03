@@ -1,4 +1,18 @@
-FreeRADIUS 3.0.15 Fri 26 May 2017 13:00:00 EDT urgency=medium
+FreeRADIUS 3.0.16 Mon 17 Jul 2017 09:00:00 EDT urgency=high
+	Feature improvements
+
+	Bug fixes
+	* Bind the lifetime of program name and python path to the module
+	  FR-AD-002 (redone)
+	* Pass correct statement length into sqlite3_prepare[_v2]
+	  FR-AD-003 (redone)
+	* Allow 100-Continue responses with additional headers in rlm_rest.
+	* fix corner case where detail files were not being locked
+	  correctly.
+	* Fix (SQL-Group == "%{...}") checks, and same for LDAP-Group.
+	  Fixes #1947
+
+FreeRADIUS 3.0.15 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	Feature improvements
 	* Provide HOSTNAME in default systemd files.
 	* Incorporate RedHat specific files
@@ -6,6 +20,39 @@ FreeRADIUS 3.0.15 Fri 26 May 2017 13:00:00 EDT urgency=medium
 	* Allow builds without TCP or DHCP
 
 	Bug fixes
+	* Fix multiple issues.  See this web page for details:
+	  http://freeradius.org/security/fuzzer-2017.html
+	* Pass correct statement length into sqlite3_prepare[_v2]
+	* Bind the lifetime of program name and python path to the module
+	* Check input / output length in make_secret().
+	  FR-GV-201
+	* Fix read overflow when decoding DHCP option 63
+	  FR-GV-206
+	* Fix write overflow in data2vp_wimax()
+	  FR-GV-301
+	* Fix infinite loop and memory exhaustion with 'concat' attributes
+	  FR-GV-302
+	* Fix infinite read in dhcp_attr2vp()
+	  FR-GV-303
+	* Fix buffer over-read in fr_dhcp_decode_suboptions()
+	  FR-GV-304
+	* Decode 'signed' attributes correctly.
+	  FR-GV-305
+	* use strncmp() instead of memcmp() for bounded data
+	  FR-AD-001
+	* Bind the lifetime of program name and python path to the module
+	  FR-AD-002
+	* Pass correct statement length into sqlite3_prepare[_v2]
+	  FR-AD-003
+	* print messages when we see deprecated configuration
+	  items
+	* show reasons why we couldn't parse a certificate
+	  expiry time
+	* be more accepting about truncated ASN1 times.
+	* Fix OpenSSL API issue which could leak small amounts
+	  of memory.  Issue reported by Guido Vranken.
+	* For Access-Reject, call rad_authlog() after running
+	  the post-auth section, just like for Access-Accept.
 	* don't crash when reading corrupted data from session
 	  resumption cache.  Fixes #1999.
 	* Parse port in dhcpclient.  Fixes #2000.
@@ -14,6 +61,8 @@ FreeRADIUS 3.0.15 Fri 26 May 2017 13:00:00 EDT urgency=medium
 	* Portability fixes taken from OpenBSD port collection.
 	* run rad_authlog after post-auth for Access-Reject.
 	* Don't process VMPS packets twice.
+	* Fix attribute truncation in rlm_perl
+	* Fix bug when processing huntgroups.
 
 FreeRADIUS 3.0.14 Fri 26 May 2017 13:00:00 EDT urgency=medium
 	Feature improvements

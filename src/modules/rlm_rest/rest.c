@@ -1546,11 +1546,21 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 	http_body_type_t type;
 
 	/*
-	 *  Curl seems to throw these (\r\n) in before the next set of headers when
-	 *  looks like it's just a body separator and safe to ignore after we
-	 *  receive a 100 Continue.
+	 *  This seems to be curl's indication there are no more header lines.
 	 */
-	if (t == 2 && ((p[0] == '\r') && (p[1] == '\n'))) return t;
+	if (t == 2 && ((p[0] == '\r') && (p[1] == '\n'))) {
+		/*
+		 *  If we got a 100 Continue, we need to send additional payload data.
+		 *  reset the state to WRITE_STATE_INIT, so that when were called again
+		 *  we overwrite previous header data with that from the proper header.
+		 */
+		if (ctx->code == 100) {
+			RDEBUG2("Continuing...");
+			ctx->state = WRITE_STATE_INIT;
+		}
+
+		return t;
+	}
 
 	switch (ctx->state) {
 	case WRITE_STATE_INIT:
@@ -1696,16 +1706,6 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 
 	default:
 		break;
-	}
-
-	/*
-	 *  If we got a 100 Continue, we need to send additional payload data.
-	 *  reset the state to WRITE_STATE_INIT, so that when were called again
-	 *  we overwrite previous header data with that from the proper header.
-	 */
-	if (ctx->code == 100) {
-		RDEBUG2("Continuing...");
-		ctx->state = WRITE_STATE_INIT;
 	}
 
 	return t;

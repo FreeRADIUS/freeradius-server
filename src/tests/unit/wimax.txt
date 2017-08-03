@@ -7,6 +7,12 @@ data 1a 0e 00 00 60 b5 01 08 00 01 05 31 2e 30
 decode -
 data WiMAX-Release = "1.0"
 
+decode 1a 08 00 00 60 b5 01 02
+data Attr-26 = 0x000060b50102
+
+decode 1a 0a 00 00 60 b5 01 04 00 01
+data Attr-26.24757.1 = 0x01
+
 encode WiMAX-Accounting-Capabilities = 1
 data 1a 0c 00 00 60 b5 01 06 00 02 03 01
 
@@ -143,3 +149,15 @@ data 1a ff 00 00 60 b5 01 f9 80 01 ff 45 45 45 45 45 45 45 45 45 45 45 45 45 45 
 
 decode -
 data WiMAX-Release = "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE", WiMAX-Idle-Mode-Notification-Cap = Supported
+
+#
+#  Continuation is set, but there's no continued data.
+decode 1a 0b 00 00 60 b5 31 05 80 00 00
+data Attr-26 = 0x000060b53105800000
+
+encode WiMAX-GMT-Timezone-offset = -1
+data 1a 0d 00 00 60 b5 03 07 00 ff ff ff ff
+
+decode -
+data WiMAX-GMT-Timezone-offset = -1
+
