@@ -900,7 +900,7 @@ static rlm_radius_udp_connection_t *connection_get(rlm_radius_udp_thread_t *t, r
 	}
 
 	u->c = c;
-	request = u->link->request;
+//	request = u->link->request;
 
 	fr_heap_extract(t->active, c);
 	if (c->id->num_free > 0) {
