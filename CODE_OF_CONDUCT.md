@@ -47,10 +47,10 @@ The following behaviours are unacceptable within our community:
 - Non-technical discussion.
 - Ad hominem attacks and other personal attacks.
 - Willful ignorance.
-- Demands that questions be answered
-- Refusal to read documentation when pointed to it
-- Failure to give more information when requested
-- Refusal to follow instructions for solving a problem
+- Demands that questions be answered.
+- Refusal to read documentation when pointed to it.
+- Failure to give more information when requested.
+- Refusal to follow instructions for solving a problem.
 
 ## 4. Consequences of Unacceptable Behaviour
 
