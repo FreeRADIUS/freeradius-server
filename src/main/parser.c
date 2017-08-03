@@ -1196,9 +1196,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 *	and do no parsing until after all of the modules
 				 *	are loaded.  But that has issues, too.
 				 */
-				if ((c->data.map->lhs->type == TMPL_TYPE_LITERAL) &&
-				    (lhs_type == T_BARE_WORD) &&
-				    (c->data.map->rhs->type == TMPL_TYPE_LITERAL)) {
+				if ((c->data.map->lhs->type == TMPL_TYPE_LITERAL) && (lhs_type == T_BARE_WORD)) {
 					int hyphens = 0;
 					bool may_be_attr = true;
 					size_t i;

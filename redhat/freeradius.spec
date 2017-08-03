@@ -26,7 +26,7 @@
 
 Summary: High-performance and highly configurable free RADIUS server
 Name: freeradius
-Version: 3.0.15
+Version: 3.0.16
 Release: 2%{?dist}
 License: GPLv2+ and LGPLv2+
 Group: System Environment/Daemons
@@ -60,6 +60,8 @@ BuildRequires: pam-devel
 BuildRequires: zlib-devel
 BuildRequires: net-snmp-devel
 BuildRequires: net-snmp-utils
+BuildRequires: libwbclient-devel
+BuildRequires: samba-devel
 BuildRequires: readline-devel
 BuildRequires: libpcap-devel
 BuildRequires: libtalloc-devel
@@ -74,6 +76,8 @@ Requires: libpcap
 Requires: readline
 Requires: libtalloc
 Requires: net-snmp
+Requires: libwbclient
+Requires: samba-libs
 Requires: zlib
 Requires: pam
 
@@ -341,6 +345,7 @@ export LDFLAGS="-Wl,--build-id"
         --without-rlm_sql_db2 \
         --with-jsonc-lib-dir=%{_libdir} \
         --with-jsonc-include-dir=/usr/include/json \
+        --with-winbind-include-dir=/usr/include/samba-4.0 \
         %{?_with_rlm_yubikey} \
         %{?_without_rlm_yubikey} \
         %{?_with_rlm_sql_oracle} \

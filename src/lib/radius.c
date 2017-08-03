@@ -3354,7 +3354,7 @@ static ssize_t data2vp_wimax(TALLOC_CTX *ctx,
 	 *	No continued data, just decode the attribute in place.
 	 */
 	if ((data[6] & 0x80) == 0) {
-		if ((data[5] + 4) != attrlen) goto raw; /* WiMAX attribute doesn't fill Vendor-Specific */
+		if (((size_t) (data[5] + 4)) != attrlen) goto raw; /* WiMAX attribute doesn't fill Vendor-Specific */
 
 		rcode = data2vp(ctx, packet, original, secret, child,
 				data + 7, data[5] - 3, data[5] - 3,

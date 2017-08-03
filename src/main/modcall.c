@@ -3479,12 +3479,6 @@ static bool pass2_callback(void *ctx, fr_cond_t *c)
 
 	if (!radius_find_compare(map->lhs->tmpl_da)) return true;
 
-	if (map->rhs->type == TMPL_TYPE_ATTR) {
-		cf_log_err(map->ci, "Cannot compare virtual attribute %s to another attribute",
-			   map->lhs->name);
-		return false;
-	}
-
 	if (map->rhs->type == TMPL_TYPE_REGEX) {
 		cf_log_err(map->ci, "Cannot compare virtual attribute %s via a regex",
 			   map->lhs->name);
