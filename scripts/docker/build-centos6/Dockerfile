@@ -6,6 +6,7 @@ FROM centos:centos6
 RUN yum groupinstall -y "Development Tools"
 RUN yum install -y rpmdevtools
 RUN yum install -y vim emacs nano
+RUN yum install -y openssl
 RUN yum install -y yum-utils
 
 #
@@ -29,27 +30,21 @@ WORKDIR /usr/local/src
 #
 #  Get a modern version of cmake.  We need 3.8.2 or later to build libkqueue rpms
 #
-RUN yum install -y openssl
-
-RUN curl https://cmake.org/files/v3.8/cmake-3.8.2-Linux-x86_64.sh > ./cmake.sh
-
-RUN [ "$(cat ./cmake.sh | openssl sha256 | sed 's/^.* //')" = "bb26b1871f9e5c2fb73476186cc94d03b674608f704b48b94d617340b87b4d73" ]
-RUN chmod +x ./cmake.sh
-RUN ./cmake.sh --skip-license --prefix=/usr/local
+RUN curl -f -o cmake.sh https://cmake.org/files/v3.8/cmake-3.8.2-Linux-x86_64.sh
+RUN [ "$(cat cmake.sh | openssl sha256 | sed 's/^.* //')" = "bb26b1871f9e5c2fb73476186cc94d03b674608f704b48b94d617340b87b4d73" ]
+RUN sh cmake.sh --skip-license --prefix=/usr/local
 
 #
 #  Grab libkqueue and build
 #
 WORKDIR /usr/local/src/repositories
-RUN git clone --depth=1 https://github.com/arr2036/libkqueue.git
-WORKDIR libkqueue
-
 # Fixme: Change to the main repo when they merge this branch
-RUN git checkout patch-3
+RUN git clone --branch patch-3 --depth=1 https://github.com/arr2036/libkqueue.git
+WORKDIR libkqueue
 RUN cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib ./ && \
     make && \
     cpack -G RPM
-RUN yum localinstall -y ./*.rpm
+RUN yum localinstall -y *.rpm
 
 #
 #  Use LTB's openldap packages intead of the distribution version to avoid linking against NSS
@@ -62,7 +57,6 @@ gpgcheck=1\n\
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project'\
 > /etc/yum.repos.d/ltb-project.repo
 RUN rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
-
 
 WORKDIR /usr/local/src/repositories
 RUN git clone --depth=1 https://github.com/mattrose/hiredis.git
@@ -81,7 +75,8 @@ RUN yum localinstall -y $HOME/rpmbuild/RPMS/*/hiredis-*.rpm
 #  Shallow clone the FreeRADIUS source
 #
 WORKDIR /usr/local/src/repositories
-RUN git clone --depth=1 https://github.com/mattrose/freeradius-server.git
+ARG source=https://github.com/FreeRADIUS/freeradius-server.git
+RUN git clone --depth 1 --no-single-branch ${source}
 
 WORKDIR freeradius-server
 
@@ -89,7 +84,7 @@ WORKDIR freeradius-server
 RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 2>/dev/null | sed -e 's#origin/##' | egrep "^v[0-9]*\.[0-9x]*\.x$");\
 	do \
 		git checkout $i; \
-		[ -e ./redhat/freeradius.spec ] && yum-builddep -y ./redhat/freeradius.spec; \
+		[ -e redhat/freeradius.spec ] && yum-builddep -y redhat/freeradius.spec; \
 	done
 
 # Create the build tree
@@ -98,7 +93,7 @@ RUN rpmdev-setuptree
 ### This is necessary for the jenkins server to talk to the docker instance
 RUN yum install -y openssh-server java-1.8.0-openjdk-headless createrepo
 RUN adduser jenkins
-RUN echo -e "jenkins1" | passwd --stdin jenkins
+RUN printf jenkins1 | passwd --stdin jenkins
 RUN mkdir /var/run/sshd
 RUN ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -N ''
 RUN sed -i 's|session    required     pam_loginuid.so|session    optional     pam_loginuid.so|g' /etc/pam.d/sshd
