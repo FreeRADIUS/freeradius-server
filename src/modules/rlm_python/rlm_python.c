@@ -95,6 +95,7 @@ typedef struct rlm_python_t {
 
 	PyObject	*pythonconf_dict;	//!< Configuration parameters defined in the module
 						//!< made available to the python script.
+	bool 		pass_all_vps;		//!< Pass all VPS lists (request, reply, config, state, proxy_req, proxy_reply)
 } rlm_python_t;
 
 /** Tracks a python module inst/thread state pair
@@ -134,6 +135,7 @@ static CONF_PARSER module_config[] = {
 
 	{ "python_path", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_python_t, python_path), NULL },
 	{ "cext_compat", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_python_t, cext_compat), "yes" },
+	{ "pass_all_vps", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_python_t, pass_all_vps), "no" },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -375,67 +377,119 @@ static int mod_populate_vptuple(PyObject *pPair, VALUE_PAIR *vp)
 	return 0;
 }
 
-static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char const *funcname)
+/*
+ * This function generates a tuple representing a given VPS and inserts it into
+ * the indicated position in the tuple pArgs.
+ * Returns false on error.
+ */
+static bool mod_populate_vps(PyObject* pArgs, const int pos, VALUE_PAIR *vps)
 {
+	PyObject *vps_tuple = NULL;
+	int tuplelen = 0;
+	int i = 0;
 	vp_cursor_t	cursor;
-	VALUE_PAIR      *vp;
-	PyObject	*pRet = NULL;
-	PyObject	*pArgs = NULL;
-	int		tuplelen;
-	int		ret;
+	VALUE_PAIR 	*vp;
 
-	/* Default return value is "OK, continue" */
-	ret = RLM_MODULE_OK;
+	/* If vps is NULL, return None */
+	if (vps == NULL) {
+		Py_INCREF(Py_None);
+		PyTuple_SET_ITEM(pArgs, pos, Py_None);
+		return true;
+	}
 
 	/*
 	 *	We will pass a tuple containing (name, value) tuples
 	 *	We can safely use the Python function to build up a
 	 *	tuple, since the tuple is not used elsewhere.
 	 *
-	 *	Determine the size of our tuple by walking through the packet.
-	 *	If request is NULL, pass None.
+	 *	Determine the size of our tuple by walking through the vps.
 	 */
-	tuplelen = 0;
-	if (request != NULL) {
-		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
-		     vp;
-		     vp = fr_cursor_next(&cursor)) tuplelen++;
+	for (vp = fr_cursor_init(&cursor, &vps); vp; vp = fr_cursor_next(&cursor))
+		tuplelen++;
+
+	if ((vps_tuple = PyTuple_New(tuplelen)) == NULL) goto error;
+
+	for (vp = fr_cursor_init(&cursor, &vps); vp; vp = fr_cursor_next(&cursor), i++) {
+		PyObject *pPair = NULL;
+
+		/* The inside tuple has two only: */
+		if ((pPair = PyTuple_New(2)) == NULL) goto error;
+
+		if (mod_populate_vptuple(pPair, vp) == 0) {
+			/* Put the tuple inside the container */
+			PyTuple_SET_ITEM(vps_tuple, i, pPair);
+		} else {
+			Py_INCREF(Py_None);
+			PyTuple_SET_ITEM(vps_tuple, i, Py_None);
+			Py_DECREF(pPair);
+		}
+	}
+	PyTuple_SET_ITEM(pArgs, pos, vps_tuple);
+	return true;
+
+error:
+	Py_XDECREF(vps_tuple);
+	return false;
+}
+
+static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char const *funcname, bool pass_all_vps)
+{
+	PyObject	*pRet = NULL;
+	PyObject	*pArgs = NULL;
+	int		ret;
+	int 		i;
+
+	/* Default return value is "OK, continue" */
+	ret = RLM_MODULE_OK;
+
+	/*
+	 * pArgs is a 6-tuple with (Request, Reply, Config, State, Proxy-Request, Proxy-Reply)
+	 * If some list is not available, NONE is used instead
+	 */
+	if ((pArgs = PyTuple_New(6)) == NULL) {
+		ret = RLM_MODULE_FAIL;
+		goto finish;
 	}
 
-	if (tuplelen == 0) {
-		Py_INCREF(Py_None);
-		pArgs = Py_None;
-	} else {
-		int i = 0;
-		if ((pArgs = PyTuple_New(tuplelen)) == NULL) {
+	/* If there is a request, fill in the first 4 attribute lists */
+	if (request != NULL) {
+		if (!mod_populate_vps(pArgs, 0, request->packet->vps) ||
+		    !mod_populate_vps(pArgs, 1, request->reply->vps) ||
+		    !mod_populate_vps(pArgs, 2, request->config) ||
+		    !mod_populate_vps(pArgs, 3, request->state)) {
 			ret = RLM_MODULE_FAIL;
 			goto finish;
 		}
 
-		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
-		     vp;
-		     vp = fr_cursor_next(&cursor), i++) {
-			PyObject *pPair;
-
-			/* The inside tuple has two only: */
-			if ((pPair = PyTuple_New(2)) == NULL) {
+		/* fill proxy vps */
+		if (request->proxy) {
+			if (!mod_populate_vps(pArgs, 4, request->proxy->vps) ||
+			    !mod_populate_vps(pArgs, 5, request->proxy_reply->vps)) {
 				ret = RLM_MODULE_FAIL;
 				goto finish;
 			}
-
-			if (mod_populate_vptuple(pPair, vp) == 0) {
-				/* Put the tuple inside the container */
-				PyTuple_SET_ITEM(pArgs, i, pPair);
-			} else {
-				Py_INCREF(Py_None);
-				PyTuple_SET_ITEM(pArgs, i, Py_None);
-				Py_DECREF(pPair);
-			}
 		}
-	}
+		/* If there are no proxy lists */
+		else {
+			mod_populate_vps(pArgs, 4, NULL);
+			mod_populate_vps(pArgs, 5, NULL);
+		}
 
-	/* Call Python function. */
-	pRet = PyObject_CallFunctionObjArgs(pFunc, pArgs, NULL);
+	}
+	/* If there is no request, set all the elements to None */
+	else for (i = 0; i < 6; i++) mod_populate_vps(pArgs, i, NULL);
+
+	/*
+	 * Call Python function. If pass_all_vps is true, a 6-tuple representing
+	 * (Request, Reply, Config, State, Proxy-Request, Proxy-Reply) is passed
+	 * as argument to the module callback.
+	 * Otherwise, a tuple representing just the request is passed.
+	 */
+	if (pass_all_vps)
+		pRet = PyObject_CallFunctionObjArgs(pFunc, pArgs, NULL);
+	else
+		pRet = PyObject_CallFunctionObjArgs(pFunc, PyTuple_GET_ITEM(pArgs, 0), NULL);
+
 	if (!pRet) {
 		ret = RLM_MODULE_FAIL;
 		goto finish;
@@ -631,7 +685,7 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 	RDEBUG3("Using thread state %p", this_thread->state);
 
 	PyEval_RestoreThread(this_thread->state);	/* Swap in our local thread state */
-	ret = do_python_single(request, pFunc, funcname);
+	ret = do_python_single(request, pFunc, funcname, inst->pass_all_vps);
 	PyEval_SaveThread();
 
 	return ret;
@@ -1031,7 +1085,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Call the instantiate function.
 	 */
-	code = do_python_single(NULL, inst->instantiate.function, "instantiate");
+	code = do_python_single(NULL, inst->instantiate.function, "instantiate", inst->pass_all_vps);
 	if (code < 0) {
 	error:
 		python_error_log();	/* Needs valid thread with GIL */
@@ -1053,7 +1107,7 @@ static int mod_detach(void *instance)
 	 */
 	PyEval_RestoreThread(inst->sub_interpreter);
 
-	ret = do_python_single(NULL, inst->detach.function, "detach");
+	ret = do_python_single(NULL, inst->detach.function, "detach", inst->pass_all_vps);
 
 #define PYTHON_FUNC_DESTROY(_x) python_function_destroy(&inst->_x)
 	PYTHON_FUNC_DESTROY(instantiate);
