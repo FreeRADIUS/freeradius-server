@@ -1,3 +1,8 @@
+if (${features.tls} == 'no') {
+	test_pass
+	return
+}
+
 if (&User-Name == 'pbkdf2_iter_small') {
 	update control {
 		PBKDF2-Password := 'HMACSHA2+256:AAAAA:E+VXOSsE8RwyYGdygQoW9Q==:UivlvrwHML4VtZHMJLiT/xlH7oyoyvbXQceivptq9TI='

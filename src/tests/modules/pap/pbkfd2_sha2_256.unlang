@@ -1,3 +1,8 @@
+if (${features.tls} == 'no') {
+	test_pass
+	return
+}
+
 if (&User-Name == 'pbkdf2_sha2_256') {
 	update control {
 		PBKDF2-Password := 'HMACSHA2+256:AAAnEA:a/8HbYW2HWsMthN27JI+Ew==:3nPlXYOlOuDCFOfethUomHxTXkG9JCivOdvh6FDNdGw='
