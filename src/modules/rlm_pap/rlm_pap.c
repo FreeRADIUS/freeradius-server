@@ -100,12 +100,19 @@ static const FR_NAME_NUMBER header_names[] = {
 };
 
 #ifdef HAVE_OPENSSL_EVP_H
-static const FR_NAME_NUMBER pbkdf2_names[] = {
+static const FR_NAME_NUMBER pbkdf2_crypt_names[] = {
 	{ "HMACSHA1",		FR_SSHA_PASSWORD },
 	{ "HMACSHA2+224",	FR_SSHA2_224_PASSWORD },
 	{ "HMACSHA2+256",	FR_SSHA2_256_PASSWORD },
 	{ "HMACSHA2+384",	FR_SSHA2_384_PASSWORD },
 	{ "HMACSHA2+512",	FR_SSHA2_512_PASSWORD },
+	{ NULL, 0 }
+};
+
+static const FR_NAME_NUMBER pbkdf2_passlib_names[] = {
+	{ "sha1",		FR_SSHA_PASSWORD },
+	{ "sha256",		FR_SSHA2_256_PASSWORD },
+	{ "sha512",		FR_SSHA2_512_PASSWORD },
 	{ NULL, 0 }
 };
 #endif
@@ -809,7 +816,19 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha2(rlm_pap_t const *inst, REQUES
 	return RLM_MODULE_OK;
 }
 
-static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_ldap(REQUEST *request, const uint8_t *str, size_t len)
+/** Validates Crypt::PBKDF2 LDAP format strings
+ *
+ * @param[in] request	The current request.
+ * @param[in] str	Raw PBKDF2 string.
+ * @param[in] len	Length of string.
+ * @return
+ *	- RLM_MODULE_REJECT
+ *	- RLM_MODULE_OK
+ */
+static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_parse(REQUEST *request, const uint8_t *str, size_t len,
+								 FR_NAME_NUMBER const hash_names[],
+								 char scheme_sep, char iter_sep, char salt_sep,
+								 bool iter_is_base64)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_INVALID;
 
@@ -827,21 +846,26 @@ static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_ldap(REQUEST *request
 	uint8_t			hash[EVP_MAX_MD_SIZE];
 	uint8_t			digest[EVP_MAX_MD_SIZE];
 
-	RDEBUG("Comparing with \"known-good\" PBKDF2-Password (ldap format)");
+	RDEBUG("Comparing with \"known-good\" PBKDF2-Password");
+
+	if (len <= 1) {
+		REDEBUG("PBKDF2-Password is too short");
+		goto finish;
+	}
 
 	/*
-	 *	Parse PBKDF string = {hash_algorithm}:base64(iterations):base64(salt):base64(hash)
+	 *	Parse PBKDF string = {hash_algorithm}<scheme_sep><iterations><iter_sep>b64(<salt>)<salt_sep>b64(<hash>)
 	 */
 	p = str;
 	end = p + len;
 
-	q = memchr(p, ':', end - p);
+	q = memchr(p, scheme_sep, end - p);
 	if (!q) {
 		REDEBUG("PBKDF2-Password has no component separators");
 		goto finish;
 	}
 
-	digest_type = fr_substr2int(pbkdf2_names, (char const *)p, -1, q - p);
+	digest_type = fr_substr2int(hash_names, (char const *)p, -1, q - p);
 	switch (digest_type) {
 	case FR_SSHA_PASSWORD:
 		evp_md = EVP_sha1();
@@ -875,7 +899,7 @@ static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_ldap(REQUEST *request
 
 	p = q + 1;
 
-	if (((end - p) < 1) || !(q = memchr(p, ':', end - p))) {
+	if (((end - p) < 1) || !(q = memchr(p, iter_sep, end - p))) {
 		REDEBUG("PBKDF2-Password missing iterations component");
 		goto finish;
 	}
@@ -885,22 +909,44 @@ static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_ldap(REQUEST *request
 		goto finish;
 	}
 
-	(void)fr_strerror();
-	slen = fr_base64_decode((uint8_t *)&iterations, sizeof(iterations), (char const *)p, q - p);
-	if (slen < 0) {
-		REDEBUG("Failed decoding PBKDF2-Password iterations component (%.*s): %s", (int)(q - p), p,
-			fr_strerror());
-		goto finish;
+	/*
+	 *	If it's not base64 encoded, assume it's ascii
+	 */
+	if (!iter_is_base64) {
+		char iterations_buff[sizeof("4294967295") + 1];
+		char *qq;
+
+		strlcpy(iterations_buff, (char const *)p, (q - p) + 1);
+
+		iterations = strtoul(iterations_buff, &qq, 10);
+		if (*qq != '\0') {
+			REMARKER(iterations_buff, qq - iterations_buff,
+				 "PBKDF2-Password iterations field contains an invalid character");
+
+			goto finish;
+		}
+		p = q + 1;
+	/*
+	 *	base64 encoded and big endian
+	 */
+	} else {
+		(void)fr_strerror();
+		slen = fr_base64_decode((uint8_t *)&iterations, sizeof(iterations), (char const *)p, q - p);
+		if (slen < 0) {
+			REDEBUG("Failed decoding PBKDF2-Password iterations component (%.*s): %s", (int)(q - p), p,
+				fr_strerror());
+			goto finish;
+		}
+		if (slen != sizeof(iterations)) {
+			REDEBUG("Decoded PBKDF2-Password iterations component is wrong size");
+		}
+
+		iterations = ntohl(iterations);
+
+		p = q + 1;
 	}
-	if (slen != sizeof(iterations)) {
-		REDEBUG("Decoded PBKDF2-Password iterations component is wrong size");
-	}
 
-	iterations = ntohl(iterations);
-
-	p = q + 1;
-
-	if (((end - p) < 1) || !(q = memchr(p, ':', end - p))) {
+	if (((end - p) < 1) || !(q = memchr(p, salt_sep, end - p))) {
 		REDEBUG("PBKDF2-Password missing salt component");
 		goto finish;
 	}
@@ -941,7 +987,7 @@ static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_ldap(REQUEST *request
 	}
 
 	RDEBUG2("PBKDF2 %s: Iterations %u, salt length %zu, hash length %zd",
-		fr_int2str(pbkdf2_names, digest_type, "<UNKNOWN>"),
+		fr_int2str(pbkdf2_crypt_names, digest_type, "<UNKNOWN>"),
 		iterations, salt_len, slen);
 
 	/*
@@ -975,19 +1021,57 @@ finish:
 static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2(UNUSED rlm_pap_t const *inst,
 							   REQUEST *request, VALUE_PAIR *vp)
 {
-	if (vp->vp_length < 2) {
+	uint8_t const *p = vp->vp_octets, *q, *end = p + vp->vp_length;
+
+	if (end - p < 2) {
 		REDEBUG("PBKDF2-Password too short");
 		return RLM_MODULE_INVALID;
 	}
 
-	if (vp->vp_octets[0] == '$') {
-		ERROR("Crypt PBKDF2 is currently unsupported");
-		return RLM_MODULE_FAIL;
-	} else {
-		return pap_auth_pbkdf2_ldap(request, vp->vp_octets, vp->vp_length);
+	/*
+	 *	If it doesn't begin with a $ assume
+	 *	It's Crypt::PBKDF2 LDAP format
+	 *
+	 *	{X-PBKDF2}<digest>:<b64 rounds>:<b64_salt>:<b64_hash>
+	 */
+	if (*p != '$') {
+		/*
+		 *	Strip the header if it's present
+		 */
+		if (*p == '{') {
+			q = memchr(p, '}', end - p);
+			p = q + 1;
+		}
+		return pap_auth_pbkdf2_parse(request, p, end - p,
+					     pbkdf2_crypt_names, ':', ':', ':', true);
+	}
+
+	/*
+	 *	Crypt::PBKDF2 Crypt format
+	 *
+	 *	$PBKDF2$<digest>:<rounds>:<b64_salt>$<b64_hash>
+	 */
+	if ((size_t)(end - p) >= sizeof("$PBKDF2$") && (memcmp(p, "$PBKDF2$", sizeof("$PBKDF2$") - 1) == 0)) {
+		p += sizeof("$PBKDF2$") - 1;
+		return pap_auth_pbkdf2_parse(request, p, end - p,
+					     pbkdf2_crypt_names, ':', ':', '$', false);
+	}
+
+	/*
+	 *	Python's passlib format
+	 *
+	 *	$pbkdf2-<digest>$<rounds>$<alt_b64_salt>$<alt_b64_hash>
+	 *
+	 *	Note: Our base64 functions also work with alt_b64
+	 */
+	if ((size_t)(end - p) >= sizeof("$pbkdf2-") && (memcmp(p, "$pbkdf2-", sizeof("$pbkdf2-") - 1) == 0)) {
+		p += sizeof("$pbkdf2-") - 1;
+		return pap_auth_pbkdf2_parse(request, p, end - p,
+					     pbkdf2_passlib_names, '$', '$', '$', false);
 	}
 
 	REDEBUG("Can't determine format of PBKDF2-Password");
+
 	return RLM_MODULE_INVALID;
 }
 #endif
@@ -1028,7 +1112,6 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_nt(rlm_pap_t const *inst, REQUEST *
 
 	return RLM_MODULE_OK;
 }
-
 
 static rlm_rcode_t CC_HINT(nonnull) pap_auth_lm(rlm_pap_t const *inst, REQUEST *request, VALUE_PAIR *vp)
 {
