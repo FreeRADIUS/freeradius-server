@@ -339,9 +339,6 @@ static rlm_rcode_t code2rcode[FR_MAX_PACKET_CODE] = {
 
 /** If we get a reply, the request must come from one of a small
  * number of packet types.
- *
- * @todo - special logic for Status-Server
- *  For Status-Server, almost any reply is OK
  */
 static FR_CODE allowed_replies[FR_MAX_PACKET_CODE] = {
 	[FR_CODE_ACCESS_ACCEPT] = FR_CODE_ACCESS_REQUEST,
@@ -412,7 +409,7 @@ redo:
 
 	link = rr->link;
 	u = link->request_io_ctx;
-	request = link->request;
+	request = link->request; /* may be NULL for Status-Server */
 
 	original[0] = rr->code;
 	original[1] = 0;	/* not looked at by fr_radius_verify() */
@@ -422,7 +419,7 @@ redo:
 
 	if (fr_radius_verify(c->buffer, original,
 			     (uint8_t const *) c->inst->secret, strlen(c->inst->secret)) < 0) {
-		RDEBUG("%s Ignoring response with invalid signature", c->inst->parent->name);
+		if (request) RDEBUG("%s Ignoring response with invalid signature", c->inst->parent->name);
 		return;
 	}
 
@@ -494,7 +491,7 @@ redo:
 			if ((attr[3] != 0) ||
 			    (attr[4] != 0) ||
 			    (attr[5] != 0)) {
-				RDEBUG("Original-Packet-Code has invalid value > 255");
+				if (request) RDEBUG("Original-Packet-Code has invalid value > 255");
 				break;
 			}
 
@@ -506,8 +503,8 @@ redo:
 			 *	for sanity.
 			 */
 			if (attr[6] != u->code) {
-				RDEBUG("Original-Packet-Code %d does not match original code %d",
-				       attr[6], u->code);
+				if (request) RDEBUG("Original-Packet-Code %d does not match original code %d",
+						    attr[6], u->code);
 				break;
 			}
 
@@ -520,7 +517,7 @@ redo:
 		}
 
 	} else if (!code || (code >= FR_MAX_PACKET_CODE)) {
-		RDEBUG("Unknown reply code %d", code);
+		if (request) RDEBUG("Unknown reply code %d", code);
 		link->rcode = RLM_MODULE_INVALID;
 
 		/*
@@ -528,15 +525,25 @@ redo:
 		 *	the known bounds, but is one we don't handle.
 		 */
 	} else if (!code2rcode[code]) {
-		RDEBUG("Invalid reply code %s", fr_packet_codes[code]);
+		if (request) RDEBUG("Invalid reply code %s", fr_packet_codes[code]);
 		link->rcode = RLM_MODULE_INVALID;
 
+
+		/*
+		 *	Status-Server packets can accept all possible replies.
+		 */
+	} else if (u->code == FR_CODE_STATUS_SERVER) {
+		link->rcode = code2rcode[code];
+
+		// @todo - handle Status-Server replies, and do NOT call mod_finished_request()
 
 		/*
 		 *	The reply is a known code, but isn't
 		 *	appropriate for the request packet type.
 		 */
 	} else if (allowed_replies[code] != u->code) {
+		rad_assert(request != NULL);
+
 		RDEBUG("Invalid reply code %s to request packet %s",
 		       fr_packet_codes[code], fr_packet_codes[u->code]);
 		link->rcode = RLM_MODULE_INVALID;
