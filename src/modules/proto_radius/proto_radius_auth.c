@@ -387,6 +387,16 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		if (!da) da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
 		rad_assert(da != NULL);
 
+		if (!request->reply->code) {
+			vp = fr_pair_find_by_num(request->reply->vps, 0, FR_PACKET_TYPE, TAG_ANY);
+			if (vp) {
+				request->reply->code = vp->vp_uint32;
+			} else {
+				RDEBUG("No reply code was set.  Forcing to Access-Reject");
+				request->reply->code = FR_CODE_ACCESS_REJECT;
+			}
+		}
+
 		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
 		unlang = NULL;
 		if (dv) unlang = cf_section_find(request->server_cs, "send", dv->alias);
