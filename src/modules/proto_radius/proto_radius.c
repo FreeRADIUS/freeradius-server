@@ -203,6 +203,14 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	proto_radius_t const *inst = talloc_get_type_abort(instance, proto_radius_t);
 	RADCLIENT *client;
 
+	/*
+	 *	"Do not respond"
+	 */
+	 if (request->reply->code == FR_CODE_DO_NOT_RESPOND) {
+		*buffer = 0;
+		return 1;
+	}
+
 	client = inst->app_io_private->client(inst->app_io, request->async->packet_ctx);
 	rad_assert(client);
 
