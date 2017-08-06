@@ -174,13 +174,13 @@ static void fr_worker_post_event(fr_event_list_t *el, struct timeval *now, void 
  * @param[in] ch the channel to drain
  * @param[in] cd the message (if any) to start with
  */
-static void fr_worker_drain_input(fr_worker_t *worker, fr_channel_t *ch, fr_channel_data_t *cd)
+static bool fr_worker_drain_input(fr_worker_t *worker, fr_channel_t *ch, fr_channel_data_t *cd)
 {
 	if (!cd) {
 		cd = fr_channel_recv_request(ch);
 		if (!cd) {
 			fr_log(worker->log, L_DBG, "\t%sno data?", worker->name);
-			return;
+			return false;
 		}
 	}
 
@@ -190,6 +190,8 @@ static void fr_worker_drain_input(fr_worker_t *worker, fr_channel_t *ch, fr_chan
 		cd->channel.ch = ch;
 		WORKER_HEAP_INSERT(to_decode, cd, request.list);
 	} while ((cd = fr_channel_recv_request(ch)) != NULL);
+
+	return true;
 }
 
 
@@ -203,18 +205,19 @@ static void fr_worker_drain_input(fr_worker_t *worker, fr_channel_t *ch, fr_chan
 static void fr_worker_channel_callback(void *ctx, void const *data, size_t data_size, fr_time_t now)
 {
 	int i;
-	bool ok;
+	bool ok, was_sleeping;
 	fr_channel_t *ch;
 	fr_message_set_t *ms;
 	fr_channel_event_t ce;
 	fr_worker_t *worker = ctx;
 
+	was_sleeping = worker->was_sleeping;
+	worker->was_sleeping = false;
+
 	/*
 	 *	We were woken up by a signal to do something.  We're
 	 *	not sleeping.
 	 */
-	worker->was_sleeping = false;
-
 	ce = fr_channel_service_message(now, &ch, data, data_size);
 	switch (ce) {
 	case FR_CHANNEL_ERROR:
@@ -237,7 +240,9 @@ static void fr_worker_channel_callback(void *ctx, void const *data, size_t data_
 	case FR_CHANNEL_DATA_READY_WORKER:
 		rad_assert(ch != NULL);
 		fr_log(worker->log, L_DBG, "\t%saq data ready", worker->name);
-		fr_worker_drain_input(worker, ch, NULL);
+		if (!fr_worker_drain_input(worker, ch, NULL)) {
+			worker->was_sleeping = was_sleeping;
+		}
 		break;
 
 	case FR_CHANNEL_OPEN:
@@ -401,7 +406,7 @@ static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t 
 
 	worker->num_replies++;
 
-	if (cd) fr_worker_drain_input(worker, ch, cd);
+	if (cd) (void) fr_worker_drain_input(worker, ch, cd);
 }
 
 static void worker_reset_timer(fr_worker_t *worker);
@@ -449,7 +454,8 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 		}
 		if (slen < 0) {
 			fr_log(worker->log, L_DBG, "\t%sfails encode", worker->name);
-			slen = 0;
+			rad_assert(0 == 1);
+			slen = 1;
 		}
 
 		/*
@@ -495,7 +501,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	 *	Drain the incoming TO_WORKER queue.  We do this every
 	 *	time we're done processing a request.
 	 */
-	if (cd) fr_worker_drain_input(worker, ch, cd);
+	if (cd) (void) fr_worker_drain_input(worker, ch, cd);
 
 	/*
 	 *	@todo Use a talloc pool for the request.  Clean it up,
