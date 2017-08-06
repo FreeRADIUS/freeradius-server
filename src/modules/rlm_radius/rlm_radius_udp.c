@@ -355,13 +355,6 @@ static void conn_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 		}
 	}
 
-	/*
-	 *	Track the Most Recently Started with reply
-	 */
-	if (timercmp(&rr->start, &c->mrs_time, >)) {
-		c->mrs_time = rr->start;
-	}
-
 	switch (c->state) {
 	default:
 		rad_assert(0 == 1);
@@ -370,15 +363,22 @@ static void conn_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 	case CONN_FULL:
 		fr_dlist_remove(&c->entry);
 		rad_assert(c->id->num_free > 0);
-		(void) fr_heap_insert(c->thread->active, c);
-		c->state = CONN_ACTIVE;
 		break;
 
 	case CONN_ACTIVE:
 		(void) fr_heap_extract(c->thread->active, c);
-		(void) fr_heap_insert(c->thread->active, c);
 		break;
 	}
+
+	/*
+	 *	Track the Most Recently Started with reply
+	 */
+	if (timercmp(&rr->start, &c->mrs_time, >)) {
+		c->mrs_time = rr->start;
+	}
+
+	(void) fr_heap_insert(c->thread->active, c);
+	c->state = CONN_ACTIVE;
 
 	// @todo - set rcode based on ACK or NAK
 	link->rcode = RLM_MODULE_OK;
