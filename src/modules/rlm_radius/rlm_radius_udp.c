@@ -892,7 +892,6 @@ static void mod_connection_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t
 static rlm_radius_udp_connection_t *connection_get(rlm_radius_udp_thread_t *t, rlm_radius_udp_request_t *u)
 {
 	rlm_radius_udp_connection_t *c;
-//	REQUEST *request;
 
 	c = fr_heap_peek(t->active);
 	if (!c) return NULL;
@@ -908,7 +907,6 @@ static rlm_radius_udp_connection_t *connection_get(rlm_radius_udp_thread_t *t, r
 	}
 
 	u->c = c;
-//	request = u->link->request;
 
 	fr_heap_extract(t->active, c);
 	if (c->id->num_free > 0) {
