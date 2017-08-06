@@ -178,7 +178,61 @@ static int conn_cmp(void const *one, void const *two)
 	return 0;
 }
 
-/** Set the socket to idle
+
+/** Close a socket due to idle timeout
+ *
+ */
+static void conn_idle_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
+{
+	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
+
+	DEBUG("%s idle timeout for connection %s",
+	      c->inst->parent->name, c->name);
+
+	talloc_free(c);
+}
+
+
+/** The connection is idle, set up idle timeouts.
+ *
+ */
+static void conn_idle(rlm_radius_udp_connection_t *c)
+{
+	struct timeval when;
+
+	/*
+	 *	Still has active requests: it's not idle.
+	 */
+	if (c->num_requests > 0) {
+		if (c->ev) {
+			talloc_const_free(c->ev);
+			c->ev = NULL;
+		}
+		return;
+	}
+
+	gettimeofday(&when, NULL);
+	when.tv_usec += c->inst->parent->idle_timeout.tv_usec;
+	when.tv_sec += when.tv_usec / USEC;
+	when.tv_usec %= USEC;
+
+	when.tv_sec += c->inst->parent->idle_timeout.tv_sec;
+	when.tv_sec += 1;
+
+	if (timercmp(&when, &c->idle_timeout, >)) {
+		when.tv_sec--;
+		c->idle_timeout = when;
+
+		DEBUG("Resetting idle timeout to +%pV for connection %s",
+		      fr_box_timeval(c->inst->parent->idle_timeout), c->name);
+		if (fr_event_timer_insert(c, c->thread->el, &c->ev, &c->idle_timeout, conn_idle_timeout, c) < 0) {
+			ERROR("%s failed inserting idle timeout for connection %s",
+			      c->inst->parent->name, c->name);
+		}
+	}
+}
+
+/** Set the socket to "nothing to write"
  *
  *  But keep the read event open, just in case the other end sends us
  *  data  That way we can process it.
@@ -195,6 +249,8 @@ static void fd_idle(rlm_radius_udp_connection_t *c)
 		PERROR("Failed inserting FD event");
 		talloc_free(c);
 	}
+
+	conn_idle(c);
 }
 
 /** Set the socket to active
@@ -210,24 +266,19 @@ static void fd_active(rlm_radius_udp_connection_t *c)
 	DEBUG3("%s activating connection %s",
 	       c->inst->parent->name, c->name);
 
+	/*
+	 *	If we're writing to the connection, it's not idle.
+	 */
+	if (c->ev) {
+		talloc_const_free(c->ev);
+		c->ev = NULL;
+	}
+
 	if (fr_event_fd_insert(c->conn, t->el, c->fd,
 			       conn_read, conn_writable, conn_error, c) < 0) {
 		PERROR("Failed inserting FD event");
 		talloc_free(c);
 	}
-}
-
-/** Close a socket due to idle timeout
- *
- */
-static void conn_idle_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
-{
-	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
-
-	DEBUG("%s idle timeout for connection %s",
-	      c->inst->parent->name, c->name);
-
-	talloc_free(c);
 }
 
 
@@ -260,6 +311,8 @@ static void mod_finished_request(rlm_radius_udp_connection_t *c, rlm_radius_udp_
 	fr_dlist_remove(&u->entry);
 	rad_assert(c->num_requests > 0);
 	c->num_requests--;
+
+	conn_idle(c);
 
 	unlang_resumable(u->link->request);
 }
@@ -326,34 +379,6 @@ static void conn_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 
 	link = rr->link;
 	u = link->request_io_ctx;
-
-	/*
-	 *	@todo - update idle timeout Only do it if it's within
-	 *	1s of firing, tho.  We don't want to do it on every
-	 *	packet.
-	 */
-	if (c->ev) {
-		struct timeval when = rr->start;
-
-		when.tv_usec += c->inst->parent->idle_timeout.tv_usec;
-		when.tv_sec += when.tv_usec / USEC;
-		when.tv_usec %= USEC;
-
-		when.tv_sec += c->inst->parent->idle_timeout.tv_sec;
-		when.tv_sec += 1;
-
-		if (timercmp(&when, &c->idle_timeout, >)) {
-			when.tv_sec--;
-			c->idle_timeout = when;
-
-			DEBUG("Resetting idle timeout to +%pV for connection %s",
-			      fr_box_timeval(c->inst->parent->idle_timeout), c->name);
-			if (fr_event_timer_insert(c, el, &c->ev, &c->idle_timeout, conn_idle_timeout, c) < 0) {
-				ERROR("%s failed inserting idle timeout for connection %s",
-				      c->inst->parent->name, c->name);
-			}
-		}
-	}
 
 	switch (c->state) {
 	default:
@@ -577,11 +602,7 @@ static void conn_writable(fr_event_list_t *el, int fd, UNUSED int flags, void *u
 		fr_dlist_insert_tail(&c->sent, &u->entry);
 		c->num_requests++;
 
-		/*
-		 *	@todo - update idle timeout Only do it if it's within
-		 *	1s of firing, tho.  We don't want to do it on every
-		 *	packet.
-		 */
+		rad_assert(c->ev == NULL); /* if it's writable and writing, it's not idle */
 	}
 
 	/*
@@ -675,15 +696,6 @@ static fr_connection_state_t conn_open(fr_event_list_t *el, UNUSED int fd, void 
 	c->state = CONN_ACTIVE;
 
 	/*
-	 *	If we have data pending, add the writable event immediately
-	 */
-	if (c->pending) {
-		fd_active(c);
-	} else {
-		fd_idle(c);
-	}
-
-	/*
 	 *	Now that we're open, also push pending requests from
 	 *	the main thread queue onto the queue for this
 	 *	connection.
@@ -691,23 +703,32 @@ static fr_connection_state_t conn_open(fr_event_list_t *el, UNUSED int fd, void 
 	if (t->pending) mod_clear_backlog(t);
 
 	/*
-	 *	Set idle timout
+	 *	If we have data pending, add the writable event immediately
 	 */
-	if ((c->inst->parent->idle_timeout.tv_sec != 0) ||
-	    (c->inst->parent->idle_timeout.tv_usec != 0)) {
-		struct timeval when;
+	if (c->pending) {
+		fd_active(c);
+	} else {
+		fd_idle(c);
 
-		gettimeofday(&when, NULL); /* @todo: get it from a recently sent packet? */
-		when.tv_usec += c->inst->parent->idle_timeout.tv_usec;
-		when.tv_sec += when.tv_usec / USEC;
-		when.tv_sec += c->inst->parent->idle_timeout.tv_sec;
-		when.tv_usec %= USEC;
-		c->idle_timeout = when;
+		/*
+		 *	Set initial idle timeout
+		 */
+		if ((c->inst->parent->idle_timeout.tv_sec != 0) ||
+		    (c->inst->parent->idle_timeout.tv_usec != 0)) {
+			struct timeval when;
 
-		DEBUG("Setting idle timeout for connection %s", c->name);
-		if (fr_event_timer_insert(c, el, &c->ev, &c->idle_timeout, conn_idle_timeout, c) < 0) {
-			ERROR("%s failed inserting idle timeout for connection %s",
-			      c->inst->parent->name, c->name);
+			gettimeofday(&when, NULL); /* @todo: get it from a recently sent packet? */
+			when.tv_usec += c->inst->parent->idle_timeout.tv_usec;
+			when.tv_sec += when.tv_usec / USEC;
+			when.tv_sec += c->inst->parent->idle_timeout.tv_sec;
+			when.tv_usec %= USEC;
+			c->idle_timeout = when;
+
+			DEBUG("Setting idle timeout for connection %s", c->name);
+			if (fr_event_timer_insert(c, el, &c->ev, &c->idle_timeout, conn_idle_timeout, c) < 0) {
+				ERROR("%s failed inserting idle timeout for connection %s",
+				      c->inst->parent->name, c->name);
+			}
 		}
 	}
 
@@ -1051,6 +1072,10 @@ static int mod_push(void *instance, REQUEST *request, rlm_radius_link_t *link, v
 	 *	OK/yield return code.
 	 */
 	if (!c->pending) {
+		if (c->ev) {
+			talloc_const_free(c->ev);
+			c->ev = NULL;
+		}
 		conn_writable(t->el, c->fd, 0, c);
 	}
 
