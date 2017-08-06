@@ -984,3 +984,45 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 
 	return total_length;
 }
+
+/** Decode a raw RADIUS packet into VPs.
+ *
+ */
+ssize_t	fr_radius_decode(TALLOC_CTX *ctx, uint8_t *packet, size_t packet_len, uint8_t const *original,
+			 char const *secret, UNUSED size_t secret_len, VALUE_PAIR **vps)
+{
+	ssize_t			slen;
+	vp_cursor_t		cursor;
+	uint8_t const		*attr, *end;
+	fr_radius_ctx_t		packet_ctx;
+
+	packet_ctx.secret = secret;
+	packet_ctx.vector = original + 4;
+
+	fr_pair_cursor_init(&cursor, vps);
+
+	attr = packet + 20;
+	end = packet + packet_len;
+
+	/*
+	 *	The caller MUST have called fr_radius_ok() first.  If
+	 *	he doesn't, all hell breaks loose.
+	 */
+	while (attr < end) {
+		slen = fr_radius_decode_pair(ctx, &cursor, fr_dict_root(fr_dict_internal),
+					     attr, (end - attr), &packet_ctx);
+		if (slen < 0) return slen;
+
+		/*
+		 *	Here be dragons.
+		 */
+		 if (!fr_cond_assert((end - attr) <= slen)) return -1;
+
+		attr += slen;
+	}
+
+	/*
+	 *	We've parsed the whole packet, return that.
+	 */
+	return packet_len;
+}
