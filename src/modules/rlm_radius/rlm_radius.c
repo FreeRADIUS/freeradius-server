@@ -241,9 +241,26 @@ static rlm_rcode_t mod_radius_resume(UNUSED REQUEST *request, UNUSED void *insta
 /** Do any RADIUS-layer fixups for proxying.
  *
  */
-static void radius_fixups(REQUEST *request)
+static void radius_fixups(rlm_radius_t *inst, REQUEST *request)
 {
 	VALUE_PAIR *vp;
+
+	/*
+	 *	Check for proxy loops.
+	 */
+	if (radlog_debug_enabled(L_DBG, L_DBG_LVL_1, request)) {
+		vp_cursor_t cursor;
+
+		fr_pair_cursor_init(&cursor, &request->packet->vps);
+		while ((vp = fr_pair_cursor_next_by_num(&cursor, 0, FR_PROXY_STATE, TAG_ANY)) != NULL) {
+			if (vp->vp_length != 4) continue;
+
+			if (memcmp(&inst->proxy_state, vp->vp_octets, 4) == 0) {
+				RWARN("Possible proxy loop - please check server configuration.");
+				break;
+			}
+		}
+	}
 
 	if (request->packet->code != FR_CODE_ACCESS_REQUEST) return;
 
@@ -326,10 +343,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 
 	/*
 	 *	Do any necessary RADIUS level fixups
-	 *	- add Proxy-State
+	 *	- check Proxy-State
 	 *	- do CHAP-Challenge fixups
 	 */
-	radius_fixups(request);
+	radius_fixups(inst, request);
 
 	/*
 	 *	Push the request and it's link to the IO submodule.
