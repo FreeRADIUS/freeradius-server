@@ -319,7 +319,7 @@ static void mod_finished_request(rlm_radius_udp_connection_t *c, rlm_radius_udp_
 	unlang_resumable(u->link->request);
 }
 
-/**
+/** Turn a reply code into a module rcode;
  *
  */
 static rlm_rcode_t code2rcode[FR_MAX_PACKET_CODE] = {
@@ -337,6 +337,28 @@ static rlm_rcode_t code2rcode[FR_MAX_PACKET_CODE] = {
 };
 
 
+/** If we get a reply, the request must come from one of a small
+ * number of packet types.
+ *
+ * @todo - special logic for Status-Server and Protocol-Error.
+ *  For Status-Server, almost any reply is OK
+ *  For Protocol-Error, we look up Original-Packet-Code, and see if it matches u->code.
+ */
+static FR_CODE allowed_replies[FR_MAX_PACKET_CODE] = {
+	[FR_CODE_ACCESS_ACCEPT] = FR_CODE_ACCESS_REQUEST,
+	[FR_CODE_ACCESS_CHALLENGE] = FR_CODE_ACCESS_REQUEST,
+	[FR_CODE_ACCESS_REJECT] = FR_CODE_ACCESS_REQUEST,
+
+	[FR_CODE_ACCOUNTING_RESPONSE] = FR_CODE_ACCOUNTING_REQUEST,
+
+	[FR_CODE_COA_ACK] = FR_CODE_COA_REQUEST,
+	[FR_CODE_COA_NAK] = FR_CODE_COA_REQUEST,
+
+	[FR_CODE_DISCONNECT_ACK] = FR_CODE_DISCONNECT_REQUEST,
+	[FR_CODE_DISCONNECT_NAK] = FR_CODE_DISCONNECT_REQUEST,
+};
+
+
 /** Read reply packets.
  *
  */
@@ -350,6 +372,7 @@ static void conn_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 	size_t packet_len;
 	ssize_t data_len;
 	uint8_t original[20];
+	REQUEST *request;
 
 	DEBUG3("%s reading data for connection %s",
 	       c->inst->parent->name, c->name);
@@ -387,6 +410,10 @@ redo:
 		goto redo;
 	}
 
+	link = rr->link;
+	u = link->request_io_ctx;
+	request = link->request;
+
 	original[0] = rr->code;
 	original[1] = 0;	/* not looked at by fr_radius_verify() */
 	original[2] = 0;
@@ -395,12 +422,9 @@ redo:
 
 	if (fr_radius_verify(c->buffer, original,
 			     (uint8_t const *) c->inst->secret, strlen(c->inst->secret)) < 0) {
-		DEBUG("%s Ignoring response with invalid signature", c->inst->parent->name);
+		RDEBUG("%s Ignoring response with invalid signature", c->inst->parent->name);
 		return;
 	}
-
-	link = rr->link;
-	u = link->request_io_ctx;
 
 	switch (c->state) {
 	default:
@@ -432,16 +456,41 @@ redo:
 	 *	Note that we don't care what the sent packet is, we
 	 *	presume that the reply is correct for the request...
 	 *
-	 *	@todo - check that the reply is valid for the request!
-	 *
 	 *	@todo - handle Protocol-Error!
 	 */
-	if (!c->buffer[0] || (c->buffer[0] >= FR_MAX_PACKET_CODE) ||
-	    !code2rcode[c->buffer[0]]) {
+	if (!c->buffer[0] || (c->buffer[0] >= FR_MAX_PACKET_CODE)) {
+		RDEBUG("Unknown reply code %d", c->buffer[0]);
 		link->rcode = RLM_MODULE_INVALID;
+
+		/*
+		 *	Different debug message.  The packet is within
+		 *	the known bounds, but is one we don't handle.
+		 */
+	} else if (!code2rcode[c->buffer[0]]) {
+		RDEBUG("Invalid reply code %s", fr_packet_codes[c->buffer[0]]);
+		link->rcode = RLM_MODULE_INVALID;
+
+
+		/*
+		 *	The reply is a known code, but isn't
+		 *	appropriate for the request packet type.
+		 */
+	} else if (allowed_replies[c->buffer[0]] != u->code) {
+		RDEBUG("Invalid reply code %s to request packet %s",
+		       fr_packet_codes[c->buffer[0]], fr_packet_codes[u->code]);
+		link->rcode = RLM_MODULE_INVALID;
+
+
+		/*
+		 *	<whew>, it's OK.  Choose the correct module
+		 *	rcode based on the reply code.
+		 */
 	} else {
 		link->rcode = code2rcode[c->buffer[0]];
 	}
+
+	// @todo - decode and print out VPs.
+	// @todo - apply VPs to parents reply... somehow?
 
 	mod_finished_request(c, u);
 	goto redo;
