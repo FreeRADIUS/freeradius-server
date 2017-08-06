@@ -152,13 +152,9 @@ struct fr_event_list {
  */
 static int fr_event_timer_cmp(void const *a, void const *b)
 {
-	int			ret;
 	fr_event_timer_t const	*ev_a = a, *ev_b = b;
 
-	ret = (ev_a->when.tv_sec < ev_b->when.tv_sec) - (ev_a->when.tv_sec > ev_b->when.tv_sec);
-	if (ret != 0) return ret;
-
-	return (ev_a->when.tv_usec < ev_b->when.tv_usec) - (ev_a->when.tv_usec > ev_b->when.tv_usec);
+	return fr_timeval_cmp(&ev_a->when, &ev_b->when);
 }
 
 /** Compare two file descriptor handles
