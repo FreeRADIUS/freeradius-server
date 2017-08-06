@@ -641,19 +641,62 @@ static void response_timeout(UNUSED fr_event_list_t *el, struct timeval *now, vo
 static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *u)
 {
 	int rcode;
+	size_t buflen;
 	ssize_t packet_len;
+	uint8_t *msg = NULL;
+	bool require_ma = false;
 	REQUEST *request;
+	char const *module_name;
 
 	rad_assert(c->inst->parent->allowed[u->code]);
 
 	request = u->link->request;
 
-	// @todo - print out packet header and attributes
+	/*
+	 *	Make sure that we print out the actual encoded value
+	 *	of the Message-Authenticator attribute.  If the caller
+	 *	asked for one, delete theirs (which has a bad value),
+	 *	and remember to add one manually.
+	 */
+	if (fr_pair_find_by_num(request->packet->vps, 0, FR_MESSAGE_AUTHENTICATOR, TAG_ANY)) {
+		require_ma = true;
+		fr_pair_delete_by_num(&request->packet->vps, 0, FR_MESSAGE_AUTHENTICATOR, TAG_ANY);
+	}
 
-	packet_len = fr_radius_encode(c->buffer, c->buflen, NULL,
+	/*
+	 *	All proxies Access-Request packets MUST have a
+	 *	Message-Authenticator, otherwise they're insecure.
+	 */
+	if (c->buffer[0] == FR_CODE_ACCESS_REQUEST) {
+		require_ma = true;
+	}
+
+	/*
+	 *	Leave room for the Message-Authenticator.
+	 */
+	if (require_ma) {
+		buflen = c->buflen - 18;
+	} else {
+		buflen = c->buflen;
+	}
+
+	/*
+	 *	Encode it, leaving room for Proxy-State, too.
+	 */
+	packet_len = fr_radius_encode(c->buffer, buflen - 6, NULL,
 				      c->inst->secret, u->rr->id, u->code, u->rr->id,
 				      request->packet->vps);
 	if (packet_len <= 0) return -1;
+
+	RDEBUG("%s sending %s ID %d length %ld reply packet to connection %s",
+	       c->inst->parent->name, fr_packet_codes[u->code], u->code, packet_len, c->name);
+
+	/*
+	 *	This hack cleans up the debug output a bit.
+	 */
+	module_name = request->module;
+	request->module = NULL;
+	rdebug_pair_list(L_DBG_LVL_2, request, request->packet->vps, NULL);
 
 	/*
 	 *	Might have been sent and then given up
@@ -666,6 +709,9 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	 *	We need to add it here, and NOT in
 	 *	request->packet->vps, because multiple modules
 	 *	may be sending the packets at the same time.
+	 *
+	 *	Note that the length check will always pass, due to
+	 *	the buflen manipulation done above.
 	 */
 	if ((size_t) (packet_len + 6) <= c->buflen) {
 		uint8_t *attr = c->buffer + packet_len;
@@ -680,52 +726,63 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 		c->buffer[2] = (hdr_len >> 8) & 0xff;
 		c->buffer[3] = hdr_len & 0xff;
 
-		// @todo - print out Proxy-State
+		if (radlog_debug_enabled(L_DBG, L_DBG_LVL_2, request)) {
+			RINDENT();
+			RDEBUG2("&Proxy-State := 0x%08x", c->proxy_state);
+			REXDENT();
+		}
 
 		packet_len += 6;
 	}
 
 	/*
 	 *	Add Message-Authenticator manually.
+	 *
+	 *	Note that the length check will always pass, due to
+	 *	the buflen manipulation done above.
 	 */
-	if ((c->buffer[0] == FR_CODE_ACCESS_REQUEST) &&
+	if (require_ma &&
 	    ((size_t) (packet_len + 18) <= c->buflen)) {
-		uint8_t *attr, *end;
 		int hdr_len;
 
-		end = c->buffer + packet_len;
-		for (attr = c->buffer + 20;
-		     attr < end;
-		     attr += attr[1]) {
-			if (attr[0] != FR_MESSAGE_AUTHENTICATOR) continue;
+		msg = c->buffer + packet_len;
 
-			break;
-		}
+		msg[0] = FR_MESSAGE_AUTHENTICATOR;
+		msg[1] = 18;
+		memset(msg + 2, 0, 16);
 
-		if (attr == end) {
-			attr[0] = FR_PROXY_STATE;
-			attr[1] = 18;
-			memset(attr + 2, 0, 16);
+		hdr_len = (c->buffer[2] << 8) | (c->buffer[3]);
+		hdr_len += 18;
+		c->buffer[2] = (hdr_len >> 8) & 0xff;
+		c->buffer[3] = hdr_len & 0xff;
 
-			hdr_len = (c->buffer[2] << 8) | (c->buffer[3]);
-			hdr_len += 18;
-			c->buffer[2] = (hdr_len >> 8) & 0xff;
-			c->buffer[3] = hdr_len & 0xff;
-
-			packet_len += 18;
-		}
+		packet_len += 18;
 	}
 
 	if (fr_radius_sign(c->buffer, NULL, (uint8_t const *) c->inst->secret,
 			   strlen(c->inst->secret)) < 0) {
+		request->module = module_name;
 		ERROR("Failed signing packet");
 		conn_error(c->thread->el, c->fd, 0, errno, c);
 		return -1;
 	}
 
-	// @todo - print out actual value of signed Message-Authenticator
+	/*
+	 *	Print out the actual value of the Message-Authenticator attribute
+	 */
+	if (msg && radlog_debug_enabled(L_DBG, L_DBG_LVL_2, request)) {
+		char msg_buf[2 * 16 + 1];
+
+		fr_bin2hex(msg_buf, msg + 2, msg[1] - 2);
+
+		RINDENT();
+		RDEBUG2("&Message-Authenticator := %s", msg_buf);
+		REXDENT();
+	}
 
 	// @todo - if debug >= 3, print out hex of the packet.
+
+	request->module = module_name;
 
 	/*
 	 *	Write the packet to the socket.  If it blocks,
