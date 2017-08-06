@@ -703,7 +703,6 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 		}
 
 		if (attr == end) {
-			// @todo - save ptr to attr
 			attr[0] = FR_PROXY_STATE;
 			attr[1] = 18;
 			memset(attr + 2, 0, 16);
@@ -1218,9 +1217,6 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 
 	/*
 	 *	Clear the backlog before sending any new packets.
-	 *
-	 *	@todo - only call mod_clear_backlog() if there are
-	 *	active connections.
 	 */
 	if (t->pending) mod_clear_backlog(t);
 
@@ -1402,8 +1398,6 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	FR_DLIST_INIT(t->opening);
 
 	t->active = fr_heap_create(conn_cmp, offsetof(rlm_radius_udp_connection_t, heap_id));
-
-	// @todo - get parent, and initialize the list of IDs by code, from what is permitted by rlm_radius
 
 	mod_connection_alloc(t->inst, t);
 
