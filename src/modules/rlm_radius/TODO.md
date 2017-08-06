@@ -2,24 +2,6 @@
 
 ## Multiple connections
 
-rlm_radius_udp.c now has one connection, in `c->active`, which is an
-`fr_dlist_t`.  That needs to be moved to a heap, ordered by (1)
-most-recently active (i.e. most recent sent packet that had a
-response), followed by (2) number of free IDs.
-
-When we need a connection, we pop it from the heap.  Allocate an ID,
-and push it back to the heap.
-
-When we get a reply, we grab the connection, check / update
-`last_sent_with_reply`, free the ID (unless it's Status-Server ping
-checks), and extract / insert the connection back into the heap.
-
-When the packet times out, we just free the ID (unless it's
-Status-Server ping checks), and extract / insert the connection back
-into the heap.
-
-We need to extract / insert the connection because it's location may have changed...
-
 We probably don't want to load-balance across connections via
 "num_outstanding" as with "load-balance" in v3.  We probably don't
 want to order "live" connections by number of free packets.  Instead,
@@ -58,9 +40,13 @@ We need some more configuration options:
 	idle_timeout
 
 	# as per 3.0
-	response_window
-	response_timeouts
+	# no response_window, that's handled by IRT, MRC, MRD, MRT.
+	# no "response_timeouts, either.
+	# instead, we just immediately go to zombie on MRT.
 	zombie_period
+
+	# response_window && response_timeouts are for synchronous
+	# proxying...
 	revive_interval
     }
     
@@ -127,9 +113,11 @@ Accounting-Request.
 
 ala v3.  All retransmissions started by the client.
 
-This requires a "signal" handler to be added when the module calls unlang_yield.
+This requires a "signal" handler to be added when the module calls
+unlang_yield.
 
-The call to the signal handler is already in proto_radius_auth and friends.
+The call to the signal handler is already in proto_radius_auth and
+friends.
 
 We could probably add a signal handler to the module, to handle the
 DONE signal.  This would allow graceful cleanups.  Those are mostly
