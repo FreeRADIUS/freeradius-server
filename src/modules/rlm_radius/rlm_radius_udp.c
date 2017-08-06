@@ -574,7 +574,7 @@ redo:
 			goto done;
 		}
 
-		RDEBUG("%s received %s ID %d length %ld reply packet from connection %s",
+		RDEBUG("%s - received %s ID %d length %ld reply packet from connection %s",
 		       c->inst->parent->name, fr_packet_codes[code], code, packet_len, c->name);
 		rdebug_pair_list(L_DBG_LVL_2, request, vp, NULL);
 
@@ -687,8 +687,8 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 				      request->packet->vps);
 	if (packet_len <= 0) return -1;
 
-	RDEBUG("%s sending %s ID %d length %ld reply packet to connection %s",
-	       c->inst->parent->name, fr_packet_codes[u->code], u->code, packet_len, c->name);
+	RDEBUG("sending %s ID %d length %ld reply packet to connection %s",
+	       fr_packet_codes[u->code], u->code, packet_len, c->name);
 
 	/*
 	 *	This hack cleans up the debug output a bit.
