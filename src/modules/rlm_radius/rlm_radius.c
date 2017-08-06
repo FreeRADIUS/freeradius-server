@@ -270,6 +270,7 @@ static void radius_fixups(REQUEST *request)
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, REQUEST *request)
 {
+	rlm_rcode_t rcode;
 	rlm_radius_t *inst = instance;
 	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
 	rlm_radius_link_t *link;
@@ -332,10 +333,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 
 	/*
 	 *	Push the request and it's link to the IO submodule.
+	 *
+	 *	This may return YIELD, for "please yield", or it may
+	 *	return another code which indicates what happened to
+	 *	the request...b
 	 */
-	if (inst->io->push(inst->io_instance, request, link, t->thread_io_ctx) < 0) {
+	rcode = inst->io->push(inst->io_instance, request, link, t->thread_io_ctx);
+	if (rcode != RLM_MODULE_YIELD) {
 		talloc_free(link);
-		return RLM_MODULE_FAIL;
+		return rcode;
 	}
 
 	talloc_set_destructor(link, mod_link_free);

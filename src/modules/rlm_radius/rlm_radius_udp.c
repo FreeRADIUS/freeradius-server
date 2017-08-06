@@ -442,14 +442,172 @@ static void response_timeout(UNUSED fr_event_list_t *el, struct timeval *now, vo
 	       u->rr->rt / USEC, u->rr->rt % USEC);
 }
 
+
+/** Write a packet to a connection
+ *
+ * @param c the conneciton
+ * @param u the udp_request_t connecting everything
+ * @return
+ *	- <0 on error
+ *	- 0 should retry the write later
+ *	- 1 the packet was successfully written to the socket, and we wait for a reply
+ *	- 2 the packet was replicated to the socket, and should be resumed immediately.
+ */
+static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *u)
+{
+	int rcode;
+	ssize_t packet_len;
+	REQUEST *request;
+
+	rad_assert(c->inst->parent->allowed[u->code]);
+
+	request = u->link->request;
+
+	// @todo - print out packet header and attributes
+
+	packet_len = fr_radius_encode(c->buffer, c->buflen, NULL,
+				      c->inst->secret, u->rr->id, u->code, u->rr->id,
+				      request->packet->vps);
+	if (packet_len <= 0) return -1;
+
+	/*
+	 *	Might have been sent and then given up
+	 *	on... free the raw data.
+	 */
+	if (u->packet) TALLOC_FREE(u->packet);
+
+	/*
+	 *	Ad Proxy-State to the tail end of the packet.
+	 *	We need to add it here, and NOT in
+	 *	request->packet->vps, because multiple modules
+	 *	may be sending the packets at the same time.
+	 */
+	if ((size_t) (packet_len + 6) <= c->buflen) {
+		uint8_t *attr = c->buffer + packet_len;
+		int hdr_len;
+
+		attr[0] = FR_PROXY_STATE;
+		attr[1] = 6;
+		memcpy(attr + 2, &c->proxy_state, 4);
+
+		hdr_len = (c->buffer[2] << 8) | (c->buffer[3]);
+		hdr_len += 6;
+		c->buffer[2] = (hdr_len >> 8) & 0xff;
+		c->buffer[3] = hdr_len & 0xff;
+
+		// @todo - print out Proxy-State
+
+		packet_len += 6;
+	}
+
+	/*
+	 *	Add Message-Authenticator manually.
+	 */
+	if ((c->buffer[0] == FR_CODE_ACCESS_REQUEST) &&
+	    ((size_t) (packet_len + 18) <= c->buflen)) {
+		uint8_t *attr, *end;
+		int hdr_len;
+
+		end = c->buffer + packet_len;
+		for (attr = c->buffer + 20;
+		     attr < end;
+		     attr += attr[1]) {
+			if (attr[0] != FR_MESSAGE_AUTHENTICATOR) continue;
+
+			break;
+		}
+
+		if (attr == end) {
+			// @todo - save ptr to attr
+			attr[0] = FR_PROXY_STATE;
+			attr[1] = 18;
+			memset(attr + 2, 0, 16);
+
+			hdr_len = (c->buffer[2] << 8) | (c->buffer[3]);
+			hdr_len += 18;
+			c->buffer[2] = (hdr_len >> 8) & 0xff;
+			c->buffer[3] = hdr_len & 0xff;
+
+			packet_len += 18;
+		}
+	}
+
+	if (fr_radius_sign(c->buffer, NULL, (uint8_t const *) c->inst->secret,
+			   strlen(c->inst->secret)) < 0) {
+		ERROR("Failed signing packet");
+		conn_error(c->thread->el, c->fd, 0, errno, c);
+		return -1;
+	}
+
+	// @todo - print out actual value of signed Message-Authenticator
+
+	// @todo - if debug >= 3, print out hex of the packet.
+
+	/*
+	 *	Write the packet to the socket.  If it blocks,
+	 *	stop dequeueing packets.
+	 */
+	rcode = write(c->fd, c->buffer, packet_len);
+	if (rcode < 0) {
+		if (errno == EWOULDBLOCK) {
+			MEM(u->packet = talloc_memdup(u, c->buffer, packet_len));
+			u->packet_len = packet_len;
+			return 0;
+		}
+
+		/*
+		 *	We have to re-encode the packet, so
+		 *	don't bother copying it to 'u'.
+		 */
+		conn_error(c->thread->el, c->fd, 0, errno, c);
+		return 0;
+	}
+
+	/*
+	 *	We're replicating, so we don't care about the
+	 *	responses.  Don't do any retransmission
+	 *	timers, etc.
+	 */
+	if (c->inst->replicate) {
+		return 1;
+	}
+
+	/*
+	 *	Only copy the packet if we're not replicating
+	 */
+	MEM(u->packet = talloc_memdup(u, c->buffer, packet_len));
+	u->packet_len = packet_len;
+
+	/*
+	 *	Start the retransmission timers.
+	 */
+	u->link->time_sent = fr_time();
+	fr_time_to_timeval(&u->rr->start, u->link->time_sent);
+
+	if (rr_track_start(c->id, u->rr, c->thread->el, response_timeout, u, &c->inst->parent->retry[u->code]) < 0) {
+		return -1;
+	}
+
+	RDEBUG("Proxying request.  Expecting response within %d.%06ds",
+	       u->rr->rt / USEC, u->rr->rt % USEC);
+
+	fr_dlist_remove(&u->entry);
+	fr_dlist_insert_tail(&c->sent, &u->entry);
+	c->num_requests++;
+
+	return 1;
+}
+
 /** There's space available to write data, so do that...
  *
  */
-static void conn_writable(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
+static void conn_writable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
 {
 	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
 	fr_dlist_t *entry;
 	bool pending;
+
+	rad_assert(c->ev == NULL); /* if it's writable and we're writing, it can't be idle */
 
 	DEBUG3("%s writing packets for connection %s",
 	       c->inst->parent->name, c->name);
@@ -459,150 +617,21 @@ static void conn_writable(fr_event_list_t *el, int fd, UNUSED int flags, void *u
 	 */
 	while ((entry = FR_DLIST_FIRST(c->queued)) != NULL) {
 		rlm_radius_udp_request_t *u;
-		REQUEST *request;
-		ssize_t packet_len;
-		ssize_t rcode;
+		int rcode;
 
 		u = fr_ptr_to_type(rlm_radius_udp_request_t, entry, entry);
-		request = u->link->request;
 
-		rad_assert(c->inst->parent->allowed[u->code]);
+		rcode = conn_write(c, u);
 
-		// @todo - print out packet header and attributes
+		// @todo - do something intelligent on error..
+		if (rcode <= 0) break;
 
-		packet_len = fr_radius_encode(c->buffer, c->buflen, NULL,
-					      c->inst->secret, u->rr->id, u->code, u->rr->id,
-					      request->packet->vps);
-		if (packet_len <= 0) break;
+		if (rcode == 1) continue;
 
 		/*
-		 *	Might have been sent and then given up
-		 *	on... free the raw data.
+		 *	Was replicated: can resume it immediately.
 		 */
-		if (u->packet) TALLOC_FREE(u->packet);
-
-		/*
-		 *	Ad Proxy-State to the tail end of the packet.
-		 *	We need to add it here, and NOT in
-		 *	request->packet->vps, because multiple modules
-		 *	may be sending the packets at the same time.
-		 */
-		if ((size_t) (packet_len + 6) <= c->buflen) {
-			uint8_t *attr = c->buffer + packet_len;
-			int hdr_len;
-
-			attr[0] = FR_PROXY_STATE;
-			attr[1] = 6;
-			memcpy(attr + 2, &c->proxy_state, 4);
-
-			hdr_len = (c->buffer[2] << 8) | (c->buffer[3]);
-			hdr_len += 6;
-			c->buffer[2] = (hdr_len >> 8) & 0xff;
-			c->buffer[3] = hdr_len & 0xff;
-
-			// @todo - print out Proxy-State
-
-			packet_len += 6;
-		}
-
-		/*
-		 *	Add Message-Authenticator manually.
-		 */
-		if ((c->buffer[0] == FR_CODE_ACCESS_REQUEST) &&
-		    ((size_t) (packet_len + 18) <= c->buflen)) {
-			uint8_t *attr, *end;
-			int hdr_len;
-
-			end = c->buffer + packet_len;
-			for (attr = c->buffer + 20;
-			     attr < end;
-			     attr += attr[1]) {
-				if (attr[0] != FR_MESSAGE_AUTHENTICATOR) continue;
-
-				break;
-			}
-
-			if (attr == end) {
-				// @todo - save ptr to attr
-				attr[0] = FR_PROXY_STATE;
-				attr[1] = 18;
-				memset(attr + 2, 0, 16);
-
-				hdr_len = (c->buffer[2] << 8) | (c->buffer[3]);
-				hdr_len += 18;
-				c->buffer[2] = (hdr_len >> 8) & 0xff;
-				c->buffer[3] = hdr_len & 0xff;
-
-				packet_len += 18;
-			}
-		}
-
-		if (fr_radius_sign(c->buffer, NULL, (uint8_t const *) c->inst->secret,
-				   strlen(c->inst->secret)) < 0) {
-			ERROR("Failed signing packet");
-			conn_error(el, fd, 0, errno, c);
-			return;
-		}
-
-		// @todo - print out actual value of signed Message-Authenticator
-
-		// @todo - if debug >= 3, print out hex of the packet.
-
-		/*
-		 *	Write the packet to the socket.  If it blocks,
-		 *	stop dequeueing packets.
-		 */
-		rcode = write(fd, c->buffer, packet_len);
-		if (rcode < 0) {
-			if (errno == EWOULDBLOCK) {
-				MEM(u->packet = talloc_memdup(u, c->buffer, packet_len));
-				u->packet_len = packet_len;
-				break;
-			}
-
-			/*
-			 *	We have to re-encode the packet, so
-			 *	don't bother copying it to 'u'.
-			 */
-			conn_error(el, fd, 0, errno, c);
-			return;
-		}
-
-		/*
-		 *	We're replicating, so we don't care about the
-		 *	responses.  Don't do any retransmission
-		 *	timers, etc.
-		 */
-		if (c->inst->replicate) {
-			mod_finished_request(c, u);
-			continue;
-		}
-
-		/*
-		 *	Only copy the packet if we're not replicating
-		 */
-		MEM(u->packet = talloc_memdup(u, c->buffer, packet_len));
-		u->packet_len = packet_len;
-
-		/*
-		 *	Start the retransmission timers.
-		 */
-		u->link->time_sent = fr_time();
-		fr_time_to_timeval(&u->rr->start, u->link->time_sent);
-
-		if (rr_track_start(c->id, u->rr, c->thread->el, response_timeout, u, &c->inst->parent->retry[u->code]) < 0) {
-			mod_finished_request(c, u);
-			continue;
-		}
-
-		RDEBUG("Proxying request.  Expecting response within %d.%06ds",
-		       u->rr->rt / USEC, u->rr->rt % USEC);
-
-		fr_dlist_remove(&u->entry);
-		fr_dlist_insert_tail(&c->sent, &u->entry);
-		c->num_requests++;
-
-		rad_assert(c->ev == NULL); /* if it's writable and writing, it's not idle */
+		unlang_resumable(u->link->request);
 	}
 
 	/*
@@ -659,7 +688,7 @@ static void conn_close(int fd, void *uctx)
 /** Process notification that fd is open
  *
  */
-static fr_connection_state_t conn_open(fr_event_list_t *el, UNUSED int fd, void *uctx)
+static fr_connection_state_t conn_open(UNUSED fr_event_list_t *el, UNUSED int fd, void *uctx)
 {
 	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
 	rlm_radius_udp_thread_t *t = c->thread;
@@ -725,7 +754,7 @@ static fr_connection_state_t conn_open(fr_event_list_t *el, UNUSED int fd, void 
 			c->idle_timeout = when;
 
 			DEBUG("Setting idle timeout for connection %s", c->name);
-			if (fr_event_timer_insert(c, el, &c->ev, &c->idle_timeout, conn_idle_timeout, c) < 0) {
+			if (fr_event_timer_insert(c, c->thread->el, &c->ev, &c->idle_timeout, conn_idle_timeout, c) < 0) {
 				ERROR("%s failed inserting idle timeout for connection %s",
 				      c->inst->parent->name, c->name);
 			}
@@ -994,8 +1023,9 @@ static void mod_clear_backlog(rlm_radius_udp_thread_t *t)
 }
 
 
-static int mod_push(void *instance, REQUEST *request, rlm_radius_link_t *link, void *thread)
+static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t *link, void *thread)
 {
+	int rcode;
 	rlm_radius_udp_t *inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
 	rlm_radius_udp_thread_t *t = talloc_get_type_abort(thread, rlm_radius_udp_thread_t);
 	rlm_radius_udp_request_t *u = link->request_io_ctx;
@@ -1014,6 +1044,7 @@ static int mod_push(void *instance, REQUEST *request, rlm_radius_link_t *link, v
 
 	u->link = link;
 	u->code = request->packet->code;
+	FR_DLIST_INIT(u->entry);
 
 	talloc_set_destructor(u, udp_request_free);
 
@@ -1036,50 +1067,50 @@ static int mod_push(void *instance, REQUEST *request, rlm_radius_link_t *link, v
 		 */
 		t->pending = true;
 		fr_dlist_insert_head(&t->queued, &u->entry);
-		return 0;
+		return RLM_MODULE_YIELD;
 	}
 
 	/*
-	 *	Insert it into the pending queue
+	 *	There are pending requests on this connection.  Insert
+	 *	the new packet into the queue, and let the event loop
+	 *	call conn_writable() as necessary.
 	 */
-	fr_dlist_insert_head(&c->queued, &u->entry);
+	if (c->pending) goto queue_for_write;
 
 	/*
-	 *	If there are no active packets, try to write one
-	 *	immediately.  This avoids a few context switches in
-	 *	the case where the socket is writable.
-	 *
-	 *	conn_writable() will set c->pending, and call
-	 *	fd_active() as necessary.
-	 *
-	 *	@todo - if there's an error, and we call
-	 *	mod_finished_request(), it will call
-	 *	unlang_resumable().  This marks it as resumable BEFORE
-	 *	rlm_radius calls unlang_yield.  Oops...
-	 *
-	 *	We need to update the push() API to return
-	 *	-1 error
-	 *	0  should yield
-	 *	1  written immediately
-	 *
-	 *	and add an rlm_rcode_t* pointer, so that we can return
-	 *	it here.
-	 *
-	 *	This also means splitting conn_writable() into two
-	 *	parts.  One, a loop around the queues.  And two, a
-	 *	function that does the actual write.  We can then call
-	 *	the write function from here, and have it return an
-	 *	OK/yield return code.
+	 *	There are no pending packets, try to write to the
+	 *	socket immediately.  If the write succeeds, we can
+	 *	return the appropriate return code.
 	 */
-	if (!c->pending) {
-		if (c->ev) {
-			talloc_const_free(c->ev);
-			c->ev = NULL;
-		}
-		conn_writable(t->el, c->fd, 0, c);
+	rcode = conn_write(c, u);
+	if (rcode < 0) return RLM_MODULE_FAIL;
+
+	/*
+	 *	Got EWOULDBLOCK, or other recoverable issue writing to the socket.
+	 *
+	 *	Insert it into the pending queue, and mark the FD as
+	 *	actively trying to write.
+	 */
+	if (rcode == 0) {
+		c->pending = true;
+		fd_active(c);
+	queue_for_write:
+		fr_dlist_insert_tail(&c->queued, &u->entry);
+		return RLM_MODULE_YIELD;
 	}
 
-	return 0;
+	/*
+	 *	The packet was successfully written to the socket.
+	 *	There are no more packets to write, so we just yield
+	 *	waiting for the reply.
+	 */
+	if (rcode == 1) return RLM_MODULE_YIELD;
+
+	/*
+	 *	We replicated the packet, so we return "ok", and don't
+	 *	care about the reply.
+	 */
+	return RLM_MODULE_OK;
 }
 
 

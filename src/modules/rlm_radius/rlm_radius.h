@@ -35,7 +35,7 @@ typedef struct rlm_radius_link_t rlm_radius_link_t;
 /** Push a REQUEST to an IO submodule
  *
  */
-typedef int (*fr_radius_io_push_t)(void *instance, REQUEST *request, rlm_radius_link_t *link, void *thread);
+typedef rlm_rcode_t (*fr_radius_io_push_t)(void *instance, REQUEST *request, rlm_radius_link_t *link, void *thread);
 typedef int (*fr_radius_io_instantiate_t)(rlm_radius_t *inst, void *io_instance, CONF_SECTION *cs);
 
 
