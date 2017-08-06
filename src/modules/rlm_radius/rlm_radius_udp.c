@@ -319,6 +319,23 @@ static void mod_finished_request(rlm_radius_udp_connection_t *c, rlm_radius_udp_
 	unlang_resumable(u->link->request);
 }
 
+/**
+ *
+ */
+static rlm_rcode_t code2rcode[FR_MAX_PACKET_CODE] = {
+	[FR_CODE_ACCESS_ACCEPT] = RLM_MODULE_OK,
+	[FR_CODE_ACCESS_CHALLENGE] = RLM_MODULE_UPDATED,
+	[FR_CODE_ACCESS_REJECT] = RLM_MODULE_REJECT,
+
+	[FR_CODE_ACCOUNTING_RESPONSE] = RLM_MODULE_OK,
+
+	[FR_CODE_COA_ACK] = RLM_MODULE_OK,
+	[FR_CODE_COA_NAK] = RLM_MODULE_REJECT,
+
+	[FR_CODE_DISCONNECT_ACK] = RLM_MODULE_OK,
+	[FR_CODE_DISCONNECT_NAK] = RLM_MODULE_REJECT,
+};
+
 
 /** Read reply packets.
  *
@@ -410,8 +427,21 @@ redo:
 	(void) fr_heap_insert(c->thread->active, c);
 	c->state = CONN_ACTIVE;
 
-	// @todo - set rcode based on ACK or NAK
-	link->rcode = RLM_MODULE_OK;
+	/*
+	 *	Set request return code based on the packet type.
+	 *	Note that we don't care what the sent packet is, we
+	 *	presume that the reply is correct for the request...
+	 *
+	 *	@todo - check that the reply is valid for the request!
+	 *
+	 *	@todo - handle Protocol-Error!
+	 */
+	if (!c->buffer[0] || (c->buffer[0] >= FR_MAX_PACKET_CODE) ||
+	    !code2rcode[c->buffer[0]]) {
+		link->rcode = RLM_MODULE_INVALID;
+	} else {
+		link->rcode = code2rcode[c->buffer[0]];
+	}
 
 	mod_finished_request(c, u);
 	goto redo;
