@@ -151,21 +151,3 @@ which means "no tracking", as that will likely be the common case.
 
 * Check on packet lifetime timers in network side?
 i.e. cleanup_delay, Double-check that they work...
-
-* idle timeout on connections doesn't seem to work?  i.e. set to 5s,
-  it times out if there's never traffic (as expected).
-
-* if there's traffic, it says "resetting idle timeout", but then it
-  wakes up in 30s instead of 5s.  It still closes the connection which
-  is nice... but it should do it after 5s, not 30s.  After 30s, it
-  does fire.
-
-* OK, after fixing up the worker to delete it's timer when nothing
-  is happening, the idle timeout now fires... but largely because
-  it's the only timer??  to test, edit worker.c, and delete
-
-    if (!worker->num_active) worker_reset_timer(worker);
-
-* and you'll see the problem again.
-
-* there was also a talloc free error
