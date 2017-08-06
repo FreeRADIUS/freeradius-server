@@ -340,9 +340,8 @@ static rlm_rcode_t code2rcode[FR_MAX_PACKET_CODE] = {
 /** If we get a reply, the request must come from one of a small
  * number of packet types.
  *
- * @todo - special logic for Status-Server and Protocol-Error.
+ * @todo - special logic for Status-Server
  *  For Status-Server, almost any reply is OK
- *  For Protocol-Error, we look up Original-Packet-Code, and see if it matches u->code.
  */
 static FR_CODE allowed_replies[FR_MAX_PACKET_CODE] = {
 	[FR_CODE_ACCESS_ACCEPT] = FR_CODE_ACCESS_REQUEST,
@@ -373,6 +372,7 @@ static void conn_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 	ssize_t data_len;
 	uint8_t original[20];
 	REQUEST *request;
+	int code;
 
 	DEBUG3("%s reading data for connection %s",
 	       c->inst->parent->name, c->name);
@@ -451,23 +451,84 @@ redo:
 	(void) fr_heap_insert(c->thread->active, c);
 	c->state = CONN_ACTIVE;
 
+	code = c->buffer[0];
+
 	/*
 	 *	Set request return code based on the packet type.
 	 *	Note that we don't care what the sent packet is, we
 	 *	presume that the reply is correct for the request...
 	 *
-	 *	@todo - handle Protocol-Error!
+	 *	Protocol-Error is special.  It goes through it's own
+	 *	set of checks.
 	 */
-	if (!c->buffer[0] || (c->buffer[0] >= FR_MAX_PACKET_CODE)) {
-		RDEBUG("Unknown reply code %d", c->buffer[0]);
+	if (code == FR_CODE_PROTOCOL_ERROR) {
+		uint8_t const *attr, *end;
+
+		attr = c->buffer + 20;
+		end = c->buffer + packet_len;
+		link->rcode = RLM_MODULE_INVALID;
+
+		for (attr = c->buffer + 20;
+		     attr < end;
+		     attr += attr[1]) {
+			/*
+			 *	@todo - fix dict2header code to handle
+			 *	extended OIDs
+			 */
+			if (attr[0] != FR_EXTENDED_ATTRIBUTE_1) continue;
+
+			/*
+			 *	ATTR + LEN + EXT-Attr + uint32
+			 */
+			if (attr[1] != 7) continue;
+
+			/*
+			 *	@todo - fix dict2header code to handle
+			 *	extended OIDs
+			 */
+			if (attr[2] != 4) continue;
+
+			/*
+			 *	Has to be an 8-bit number.
+			 */
+			if ((attr[3] != 0) ||
+			    (attr[4] != 0) ||
+			    (attr[5] != 0)) {
+				RDEBUG("Original-Packet-Code has invalid value > 255");
+				break;
+			}
+
+			/*
+			 *	This has to match.  We don't currently
+			 *	multiplex different codes with the
+			 *	same IDs on connections.  So this
+			 *	check is just for RFC compliance, and
+			 *	for sanity.
+			 */
+			if (attr[6] != u->code) {
+				RDEBUG("Original-Packet-Code %d does not match original code %d",
+				       attr[6], u->code);
+				break;
+			}
+
+			/*
+			 *	Allow the Protocol-Error response,
+			 *	which returns "fail".
+			 */
+			link->rcode = RLM_MODULE_FAIL;
+			break;
+		}
+
+	} else if (!code || (code >= FR_MAX_PACKET_CODE)) {
+		RDEBUG("Unknown reply code %d", code);
 		link->rcode = RLM_MODULE_INVALID;
 
 		/*
 		 *	Different debug message.  The packet is within
 		 *	the known bounds, but is one we don't handle.
 		 */
-	} else if (!code2rcode[c->buffer[0]]) {
-		RDEBUG("Invalid reply code %s", fr_packet_codes[c->buffer[0]]);
+	} else if (!code2rcode[code]) {
+		RDEBUG("Invalid reply code %s", fr_packet_codes[code]);
 		link->rcode = RLM_MODULE_INVALID;
 
 
@@ -475,18 +536,19 @@ redo:
 		 *	The reply is a known code, but isn't
 		 *	appropriate for the request packet type.
 		 */
-	} else if (allowed_replies[c->buffer[0]] != u->code) {
+	} else if (allowed_replies[code] != u->code) {
 		RDEBUG("Invalid reply code %s to request packet %s",
-		       fr_packet_codes[c->buffer[0]], fr_packet_codes[u->code]);
+		       fr_packet_codes[code], fr_packet_codes[u->code]);
 		link->rcode = RLM_MODULE_INVALID;
 
 
 		/*
 		 *	<whew>, it's OK.  Choose the correct module
-		 *	rcode based on the reply code.
+		 *	rcode based on the reply code.  This is either
+		 *	OK for an ACK, or FAIL for a NAK.
 		 */
 	} else {
-		link->rcode = code2rcode[c->buffer[0]];
+		link->rcode = code2rcode[code];
 	}
 
 	// @todo - decode and print out VPs.
