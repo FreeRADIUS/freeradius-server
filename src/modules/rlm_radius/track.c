@@ -394,6 +394,7 @@ int rr_track_retry(rlm_radius_id_t *id, rlm_radius_request_t *rr, fr_event_list_
 	 *	We retried too many times.  Fail.
 	 */
 	if (retry->mrc && (rr->count > retry->mrc)) {
+		DEBUG3("RETRANSMIT - reached MRC %d", retry->mrc);
 		return 0;
 	}
 
@@ -407,6 +408,7 @@ int rr_track_retry(rlm_radius_id_t *id, rlm_radius_request_t *rr, fr_event_list_
 		end.tv_sec += retry->mrd;
 
 		if (timercmp(now, &end, >=)) {
+			DEBUG3("RETRANSMIT - reached MRD %d", retry->mrd);
 			return 0;
 		}
 	}
@@ -459,7 +461,8 @@ int rr_track_retry(rlm_radius_id_t *id, rlm_radius_request_t *rr, fr_event_list_
 		return -1;
 	}
 
-	return 0;
+	DEBUG3("RETRANSMIT - in %d.%06ds", rr->rt / USEC, rr->rt % USEC);
+	return 1;
 }
 
 
