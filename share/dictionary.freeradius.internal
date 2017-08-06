@@ -845,6 +845,8 @@ VALUE	Packet-Type			CoA-NAK			45
 VALUE	Packet-Type			IP-Address-Allocate	50
 VALUE	Packet-Type			IP-Address-Release	51
 
+VALUE	Packet-Type			Do-Not-Respond		256
+
 VALUE	Response-Packet-Type		Access-Request		1
 VALUE	Response-Packet-Type		Access-Accept		2
 VALUE	Response-Packet-Type		Access-Reject		3
