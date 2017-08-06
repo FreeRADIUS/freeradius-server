@@ -654,6 +654,14 @@ static fr_connection_state_t conn_open(fr_event_list_t *el, UNUSED int fd, void 
 	c->proxy_state = fr_rand();
 	c->state = CONN_OPENING;
 
+	/*
+	 *	Connection is "active" now.  i.e. we prefer the newly
+	 *	opened connection for sending packets.
+	 *
+	 *	@todo - connection negotiation via Status-Server
+	 */
+	gettimeofday(&c->mrs_time, NULL);
+
 	DEBUG("%s opened new connection %s",
 	      c->inst->parent->name, c->name);
 
