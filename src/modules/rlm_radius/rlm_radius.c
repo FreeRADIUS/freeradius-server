@@ -486,6 +486,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	rad_assert(inst->io->instantiate != NULL);
 
 	/*
+	 *	Get random Proxy-State identifier for this module.
+	 */
+	inst->proxy_state = fr_rand();
+
+	/*
 	 *	Bootstrap the submodule.
 	 */
 	if (inst->io->bootstrap(inst->io_instance, inst->io_conf) < 0) {

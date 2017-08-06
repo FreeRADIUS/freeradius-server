@@ -86,7 +86,6 @@ typedef struct rlm_radius_udp_connection_t {
 	fr_connection_t		*conn;		//!< Connection to our destination.
 	char const     		*name;		//!< from IP PORT to IP PORT
 
-	uint32_t		proxy_state;  	//!< ID of this connection
 	fr_dlist_t		entry;		//!< in the linked list of connections
 	int			heap_id;	//!< for the active heap
 	rlm_radius_udp_connection_state_t state; //!< state of the connection
@@ -719,7 +718,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 
 		attr[0] = FR_PROXY_STATE;
 		attr[1] = 6;
-		memcpy(attr + 2, &c->proxy_state, 4);
+		memcpy(attr + 2, &c->inst->parent->proxy_state, 4);
 
 		hdr_len = (c->buffer[2] << 8) | (c->buffer[3]);
 		hdr_len += 6;
@@ -728,7 +727,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 
 		if (radlog_debug_enabled(L_DBG, L_DBG_LVL_2, request)) {
 			RINDENT();
-			RDEBUG2("&Proxy-State := 0x%08x", c->proxy_state);
+			RDEBUG2("&Proxy-State := 0x%08x", c->inst->parent->proxy_state);
 			REXDENT();
 		}
 
@@ -940,7 +939,6 @@ static fr_connection_state_t conn_open(UNUSED fr_event_list_t *el, UNUSED int fd
 	c->name = talloc_asprintf(c, "proto udp local %s port %u remote %s port %u",
 				  src_buf, c->src_port,
 				  dst_buf, c->dst_port);
-	c->proxy_state = fr_rand();
 	c->state = CONN_OPENING;
 
 	/*
