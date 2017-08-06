@@ -337,15 +337,18 @@ static void conn_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 	DEBUG3("%s reading data for connection %s",
 	       c->inst->parent->name, c->name);
 
+redo:
 	/*
-	 *	@todo - call read() until it returns no data.  There
-	 *	may be multiple packets pending!  We don't want to go
-	 *	through a whole kevent cycle just to read another packet.
+	 *	Drain the socket of all packets.  If we're busy, this
+	 *	saves a round through the event loop.  If we're not
+	 *	busy, a few extra system calls don't matter.
 	 */
-	data_len = read(fd, c->buffer, c->buflen);
+	 data_len = read(fd, c->buffer, c->buflen);
 	if (data_len == 0) return;
 
 	if (data_len < 0) {
+		if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) return;
+
 		conn_error(el, fd, 0, errno, c);
 		return;
 	}
@@ -353,18 +356,18 @@ static void conn_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 	/*
 	 *	Replicating?  Drain the socket, but ignore all responses.
 	 */
-	 if (c->inst->replicate) return;
+	 if (c->inst->replicate) goto redo;
 
 	packet_len = data_len;
 	if (!fr_radius_ok(c->buffer, &packet_len, false, &reason)) {
 		DEBUG("%s Ignoring malformed packet", c->inst->parent->name);
-		return;
+		goto redo;
 	}
 
 	rr = rr_track_find(c->id, c->buffer[1], NULL);
 	if (!rr) {
 		DEBUG("%s Ignoring response to request we did not send", c->inst->parent->name);
-		return;
+		goto redo;
 	}
 
 	original[0] = rr->code;
@@ -411,6 +414,7 @@ static void conn_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 	link->rcode = RLM_MODULE_OK;
 
 	mod_finished_request(c, u);
+	goto redo;
 }
 
 
