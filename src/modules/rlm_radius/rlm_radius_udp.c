@@ -243,6 +243,7 @@ static void fd_idle(rlm_radius_udp_connection_t *c)
 {
 	rlm_radius_udp_thread_t	*t = c->thread;
 
+	c->pending = false;
 	DEBUG3("Marking socket %s as idle", c->name);
 	if (fr_event_fd_insert(c->conn, t->el, c->fd,
 			       conn_read, NULL, conn_error, c) < 0) {
@@ -263,6 +264,7 @@ static void fd_active(rlm_radius_udp_connection_t *c)
 {
 	rlm_radius_udp_thread_t	*t = c->thread;
 
+	c->pending = true;
 	DEBUG3("%s activating connection %s",
 	       c->inst->parent->name, c->name);
 
@@ -643,7 +645,6 @@ static void conn_writable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int 
 		 *	The queue is empty, and we apparently just
 		 *	emptied it.  Set the FD to idle.
 		 */
-		c->pending = false;
 		fd_idle(c);
 	}
 
@@ -655,7 +656,6 @@ static void conn_writable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int 
 	 *	to write, we don't need to call fd_active().
 	 */
 	else if (pending && !c->pending) {
-		c->pending = true;
 		fd_active(c);
 	}
 }
@@ -1011,7 +1011,6 @@ static void mod_clear_backlog(rlm_radius_udp_thread_t *t)
 		fr_dlist_insert_tail(&c->queued, &u->entry);
 
 		if (!c->pending) {
-			c->pending = true;
 			fd_active(c);
 		}
 	}
@@ -1092,7 +1091,6 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 	 *	actively trying to write.
 	 */
 	if (rcode == 0) {
-		c->pending = true;
 		fd_active(c);
 	queue_for_write:
 		fr_dlist_insert_tail(&c->queued, &u->entry);
