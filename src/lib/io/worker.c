@@ -888,7 +888,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 
 	WORKER_VERIFY;
 
-	fr_log(worker->log, L_DBG, "\t%s running request (%"PRIu64")", worker->name, request->number);
+	fr_log(worker->log, L_DBG, "(%" PRIu64 ") running request", request->number);
 
 	/*
 	 *	If we still have the same packet, and the channel is
@@ -929,7 +929,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 		break;
 	}
 
-	fr_log(worker->log, L_DBG, "(%"PRIu64") done naturally", request->number);
+	fr_log(worker->log, L_DBG, "(%"PRIu64") done request", request->number);
 
 	fr_worker_send_reply(worker, request, size);
 }
@@ -1304,7 +1304,6 @@ static void fr_worker_post_event(UNUSED fr_event_list_t *el, UNUSED struct timev
 	 *	Run the request, and either track it as
 	 *	yielded, or send a reply.
 	 */
-	fr_log(worker->log, L_DBG, "\t%srunning request (%"PRIu64")", worker->name, request->number);
 	fr_worker_run_request(worker, request);
 }
 
