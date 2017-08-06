@@ -364,12 +364,12 @@ static void conn_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 	rlm_radius_request_t *rr;
 	rlm_radius_link_t *link;
 	rlm_radius_udp_request_t *u;
+	int code;
 	decode_fail_t reason;
 	size_t packet_len;
 	ssize_t data_len;
-	uint8_t original[20];
 	REQUEST *request;
-	int code;
+	uint8_t original[20];
 
 	DEBUG3("%s reading data for connection %s",
 	       c->inst->parent->name, c->name);
@@ -397,12 +397,14 @@ redo:
 
 	packet_len = data_len;
 	if (!fr_radius_ok(c->buffer, &packet_len, false, &reason)) {
+		// @todo - debug3, print the hex value of the packet we read
 		DEBUG("%s Ignoring malformed packet", c->inst->parent->name);
 		goto redo;
 	}
 
 	rr = rr_track_find(c->id, c->buffer[1], NULL);
 	if (!rr) {
+		// @todo - debug3, print the hex value of the packet we read
 		DEBUG("%s Ignoring response to request we did not send", c->inst->parent->name);
 		goto redo;
 	}
@@ -419,6 +421,7 @@ redo:
 
 	if (fr_radius_verify(c->buffer, original,
 			     (uint8_t const *) c->inst->secret, strlen(c->inst->secret)) < 0) {
+		// @todo - debug3, print the hex value of the packet we read
 		if (request) RDEBUG("%s Ignoring response with invalid signature", c->inst->parent->name);
 		return;
 	}
@@ -437,6 +440,8 @@ redo:
 		(void) fr_heap_extract(c->thread->active, c);
 		break;
 	}
+
+	// @todo - debug3, print the hex value of the packet we read
 
 	/*
 	 *	Track the Most Recently Started with reply
@@ -555,12 +560,38 @@ redo:
 		 *	OK for an ACK, or FAIL for a NAK.
 		 */
 	} else {
+		VALUE_PAIR *vp = NULL;
+
 		link->rcode = code2rcode[code];
+
+		/*
+		 *	Decode the attributes, in the context of the reply.
+		 */
+		if (fr_radius_decode(request->reply, c->buffer, packet_len, original,
+				     c->inst->secret, 0, &vp) < 0) {
+			RDEBUG("Failed decoding attributes for packet");
+			fr_pair_list_free(&vp);
+			link->rcode = RLM_MODULE_INVALID;
+			goto done;
+		}
+
+		RDEBUG("%s received %s ID %d length %ld reply packet from connection %s",
+		       c->inst->parent->name, fr_packet_codes[code], code, packet_len, c->name);
+		rdebug_pair_list(L_DBG_LVL_2, request, vp, NULL);
+
+		/*
+		 *	@todo - make this programmatic?  i.e. run a
+		 *	separate policy which updates the reply.
+		 *
+		 *	This is why I wanted to have "recv
+		 *	Access-Accept" policies...  so the user could
+		 *	programatically decide which attributes to add.
+		 */
+		
+		fr_pair_add(&request->reply->vps, vp);
 	}
 
-	// @todo - decode and print out VPs.
-	// @todo - apply VPs to parents reply... somehow?
-
+done:
 	mod_finished_request(c, u);
 	goto redo;
 }
@@ -850,7 +881,7 @@ static fr_connection_state_t conn_open(UNUSED fr_event_list_t *el, UNUSED int fd
 	fr_value_box_snprint(dst_buf, sizeof(dst_buf), fr_box_ipaddr(c->dst_ipaddr), 0);
 
 	talloc_const_free(c->name);
-	c->name = talloc_asprintf(c, "proto udp from %s port %u to %s port %u",
+	c->name = talloc_asprintf(c, "proto udp local %s port %u remote %s port %u",
 				  src_buf, c->src_port,
 				  dst_buf, c->dst_port);
 	c->proxy_state = fr_rand();
