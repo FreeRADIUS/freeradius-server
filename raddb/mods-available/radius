@@ -1,5 +1,33 @@
 #
-#  In v4, all of the proxying is handled by the RADISU module
+#  In v4, all of the proxying is handled by the RADIUS module
+#
+#  The module has the following return codes:
+#
+#  invalid - something went wrong sending the request, or the reply
+#            packet is invalid
+#
+#  ok       - the module received an "ack" (Access-Accept,
+#             Accounting-Response, CoA-ACK, etc.)
+#
+#  handled  - the module received an Access-Challenge
+#
+#  fail     - there was no response to the proxied request
+#
+#  reject   - the module received a "nak" (Access-Reject,
+#             CoA-NAK, etc.)
+#
+#  Any proxied packet (including Accounting-Request!) can
+#  receive a Protocol-Error response packet.  This packet
+#  is an explicit NAK that something went wrong processing
+#  the request.
+#
+#  The module adds a Message-Authenticator attribute to all proxied
+#  Access-Request packets.  For security reasons, this behavior is NOT
+#  configurable, and CANNOT be changed.
+#
+#  The module adds a Proxy-State attribute to all proxied packets.
+#  This Proxy-State contains a 32-bit random number, which is unique
+#  to this module.  It helps to detect proxy loops.
 #
 radius {
 	#
@@ -7,10 +35,23 @@ radius {
 	#
 	transport = udp
 
+	#
+	#  Whether or not we are replicating packets.
+	#
+	#  Replication is "send proxied request, and continue,
+	#  without waiting for a response".  Any response received
+	#  is discarded, and does not affect packet processing.
+	#
+#	replicate = no
+
 	#  List of allowed packet types
 	#
 	#  There is currently no way to change the packet type in the
 	#  request.  See unlang "fork" for that functionality.
+	#
+	#  Status-Server is reserved for inter-server signaling,
+	#  and cannot be proxied.
+	#
 	type = Access-Request
 	type = Accounting-Request
 
@@ -46,18 +87,8 @@ radius {
 		#  If the socket is idle for this length of time,
 		#  it is closed.  Use '0' for 'no timeout'
 		#
-		idle_timeout = 300
+		idle_timeout = 5
 	}
-
-	#
-	#  Whether or not we're replicating.
-	#
-	#  By default we proxy, which means we send a packet and wait
-	#  for a reply.  If we are replicating, we send a packet and
-	#  continue immediately.  Any reply packet is read from the
-	#  socket, but it is ignored.
-	# 
-#	replicate = no
 
 	#
 	#  Each packet can have it's own retransmission timers.
@@ -94,7 +125,7 @@ radius {
 		#  How many times the module will send the packet
 		#  before giving up.
 		#
-		maximum_retransmission_count = 5
+		maximum_retransmission_count = 1
 
 		#
 		#  Maximum Retransmit Duration: 5..60
@@ -106,7 +137,7 @@ radius {
 	}
 
 	#
-	#  The same timeouts apply for accounting packets.
+	#  ... and for accounting packets.
 	#
 	Accounting-Request {
 		initial_retransmission_time = 2
@@ -117,7 +148,7 @@ radius {
 	}
 
 	#
-	#  The same timeouts apply for coa packets.
+	#  ... and for coa packets.
 	#
 	Coa-Request {
 		initial_retransmission_time = 2
@@ -128,7 +159,7 @@ radius {
 	}
 
 	#
-	#  The same timeouts apply for disconnect packets.
+	#  ... and for disconnect packets.
 	#
 	Disconnect-Request {
 		initial_retransmission_time = 2
@@ -139,7 +170,13 @@ radius {
 	}
 
 	#
-	#  The same timeouts apply for Status-Server packets.
+	#  ... and for Status-Server packets.
+	#
+	#  Note that Status-Server packets CANNOT
+	#  be proxied.
+	#
+	#  The configuration here helps the module determine if a home
+	#  server is alive and responding to requests.
 	#
 	Status-Server {
 		initial_retransmission_time = 2
