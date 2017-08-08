@@ -32,7 +32,7 @@ RCSID("$Id$")
 static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
 
-static CONF_PARSER const timer_config[] = {
+static CONF_PARSER const connection_config[] = {
 	{ FR_CONF_OFFSET("connect_timeout", FR_TYPE_TIMEVAL, rlm_radius_t, connection_timeout),
 	  .dflt = STRINGIFY(5) },
 
@@ -104,7 +104,7 @@ static CONF_PARSER const module_config[] = {
 	{ FR_CONF_OFFSET("type", FR_TYPE_UINT32 | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY | FR_TYPE_REQUIRED, rlm_radius_t, types),
 	  .func = type_parse },
 
-	{ FR_CONF_POINTER("connection", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) timer_config },
+	{ FR_CONF_POINTER("connection", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) connection_config },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -389,19 +389,19 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
-	FR_TIMEVAL_BOUND_CHECK("timers.connect_timeout", &inst->connection_timeout, >=, 1, 0);
-	FR_TIMEVAL_BOUND_CHECK("timers.connect_timeout", &inst->connection_timeout, <=, 30, 0);
+	FR_TIMEVAL_BOUND_CHECK("connection.connect_timeout", &inst->connection_timeout, >=, 1, 0);
+	FR_TIMEVAL_BOUND_CHECK("connection.connect_timeout", &inst->connection_timeout, <=, 30, 0);
 
-	FR_TIMEVAL_BOUND_CHECK("timers.reconnect_delay", &inst->reconnection_delay, >=, 5, 0);
-	FR_TIMEVAL_BOUND_CHECK("timers.reconnect_delay", &inst->reconnection_delay, <=, 300, 0);
+	FR_TIMEVAL_BOUND_CHECK("connection.reconnect_delay", &inst->reconnection_delay, >=, 5, 0);
+	FR_TIMEVAL_BOUND_CHECK("connection.reconnect_delay", &inst->reconnection_delay, <=, 300, 0);
 
 	if ((inst->idle_timeout.tv_sec != 0) && (inst->idle_timeout.tv_usec != 0)) {
-		FR_TIMEVAL_BOUND_CHECK("timers.idle_timeout", &inst->idle_timeout, >=, 5, 0);
+		FR_TIMEVAL_BOUND_CHECK("connection.idle_timeout", &inst->idle_timeout, >=, 5, 0);
 	}
-	FR_TIMEVAL_BOUND_CHECK("timers.idle_timeout", &inst->idle_timeout, <=, 600, 0);
+	FR_TIMEVAL_BOUND_CHECK("connection.idle_timeout", &inst->idle_timeout, <=, 600, 0);
 
-	FR_TIMEVAL_BOUND_CHECK("timers.zombie_period", &inst->zombie_period, >=, 1, 0);
-	FR_TIMEVAL_BOUND_CHECK("timers.zombie_period", &inst->zombie_period, <=, 120, 0);
+	FR_TIMEVAL_BOUND_CHECK("connection.zombie_period", &inst->zombie_period, >=, 1, 0);
+	FR_TIMEVAL_BOUND_CHECK("connection.zombie_period", &inst->zombie_period, <=, 120, 0);
 
 	num_types = talloc_array_length(inst->types);
 	rad_assert(num_types > 0);
