@@ -1,5 +1,18 @@
 # rlm_radius
 
+## daemon mode bugs
+
+in daemon mode, it doesn't seem to send the reply until IRT has passed???
+
+channel.c is suppressing the worker signal...
+
+but it works in debug mode <sigh>  which is only 1 thread...
+so there is some weird threading interaction issue...
+
+- add debug / fprintf output in rlm_radius_udp to see WTF is going on...
+
+- it's like the response packet is ignored?
+
 ## Multiple connections
 
 We probably don't want to load-balance across connections via

@@ -65,19 +65,22 @@ typedef struct rlm_radius_udp_thread_t {
 	fr_event_list_t		*el;		//!< event list
 
 	bool			pending;	//!< are there pending requests?
+
+	// @todo - make this a heap, so that older packets are transmitted first
 	fr_dlist_t		queued;		//!< queued requests for some new connection
 
 	fr_heap_t		*active;       	//!< active connections
 	fr_dlist_t		full;      	//!< full connections
-	fr_dlist_t		frozen;      	//!< frozen connections
+	fr_dlist_t		zombie;      	//!< zombie connections
 	fr_dlist_t		opening;      	//!< opening connections
 } rlm_radius_udp_thread_t;
 
 typedef enum rlm_radius_udp_connection_state_t {
 	CONN_UNUSED = 0,
-	CONN_OPENING,
-	CONN_ACTIVE,
-	CONN_FULL,
+	CONN_OPENING,				//!< trying to connect
+	CONN_ACTIVE,				//!< available to send packets
+	CONN_FULL,				//!< live, but can't send more packets
+	CONN_ZOMBIE,				//!< has had a retransmit timeout
 } rlm_radius_udp_connection_state_t;
 
 typedef struct rlm_radius_udp_connection_t {
@@ -94,6 +97,7 @@ typedef struct rlm_radius_udp_connection_t {
 	struct timeval		idle_timeout;	//!< when the idle timeout will fire
 
 	struct timeval		mrs_time;	//!< most recent sent time which had a reply
+	struct timeval		zombie_start;	//!< when the zombie period started
 
 	int			num_requests;	//!< number of packets we sent
 	int			max_requests;	//!< maximum number of packets we can send
@@ -191,6 +195,19 @@ static void conn_idle_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeval 
 	talloc_free(c);
 }
 
+/** Close a socket due to zombie timeout
+ *
+ */
+static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
+{
+	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
+
+	DEBUG("%s zombie timeout for connection %s",
+	      c->inst->parent->name, c->name);
+
+	talloc_free(c);
+}
+
 
 /** The connection is idle, set up idle timeouts.
  *
@@ -230,6 +247,45 @@ static void conn_idle(rlm_radius_udp_connection_t *c)
 		}
 	}
 }
+
+
+/** A connection is "zombie"
+ *
+ */
+static void conn_zombie(rlm_radius_udp_connection_t *c)
+{
+	struct timeval when;
+
+	/*
+	 *	Already zombie, don't do anything
+	 */
+	if (c->state == CONN_ZOMBIE) return;
+
+	/*
+	 *	Remember when we became a zombie, and move the
+	 *	connection from the active heap to the zombie list.
+	 */
+	gettimeofday(&when, NULL);
+
+	// @todo - hysteresis... if we're close to c->mrs_time, don't be zombie...
+
+
+	(void) fr_heap_extract(c->thread->active, c);
+	fr_dlist_insert_head(&c->thread->zombie, &c->entry);
+	c->state = CONN_ZOMBIE;
+	c->zombie_start = when;
+
+	rad_assert(c->ev == NULL);
+	fr_timeval_add(&when, &when, &c->inst->parent->zombie_period);
+	DEBUG("%s setting to zombie for connection %s",
+	      c->inst->parent->name, c->name);
+
+	if (fr_event_timer_insert(c, c->thread->el, &c->ev, &when, conn_zombie_timeout, c) < 0) {
+		ERROR("%s failed inserting idle timeout for connection %s",
+		      c->inst->parent->name, c->name);
+	}
+}
+
 
 /** Set the socket to "nothing to write"
  *
@@ -379,7 +435,7 @@ redo:
 	 *	saves a round through the event loop.  If we're not
 	 *	busy, a few extra system calls don't matter.
 	 */
-	 data_len = read(fd, c->buffer, c->buflen);
+	data_len = read(fd, c->buffer, c->buflen);
 	if (data_len == 0) return;
 
 	if (data_len < 0) {
@@ -428,6 +484,11 @@ redo:
 	switch (c->state) {
 	default:
 		rad_assert(0 == 1);
+		break;
+
+	case CONN_ZOMBIE:
+		rad_assert(c->ev != NULL);
+		fr_dlist_remove(&c->entry);
 		break;
 
 	case CONN_FULL:
@@ -614,13 +675,16 @@ static void response_timeout(UNUSED fr_event_list_t *el, struct timeval *now, vo
 
 	rcode = rr_track_retry(c->id, u->rr, c->thread->el, response_timeout, u, &c->inst->parent->retry[u->code], now);
 	if (rcode < 0) {
+		/*
+		 *	Failed inserting event... the request is done.
+		 */
 		mod_finished_request(c, u);
 		return;
 	}
 
 	request = u->link->request;
 	if (rcode == 0) {
-		// @todo - update connection state - is it dead?
+		conn_zombie(c);
 		RDEBUG("No response to proxied request");
 		mod_finished_request(c, u);
 		return;
@@ -631,7 +695,7 @@ static void response_timeout(UNUSED fr_event_list_t *el, struct timeval *now, vo
 	rcode = write(c->fd, u->packet, u->packet_len);
 	if (rcode < 0) {
 		if (errno == EWOULDBLOCK) {
-			return 0;
+			return;
 		}
 
 		/*
@@ -639,7 +703,7 @@ static void response_timeout(UNUSED fr_event_list_t *el, struct timeval *now, vo
 		 *	don't bother copying it to 'u'.
 		 */
 		conn_error(c->thread->el, c->fd, 0, errno, c);
-		return 0;
+		return;
 	}
 }
 
@@ -1124,6 +1188,7 @@ static int conn_free(rlm_radius_udp_connection_t *c)
 
 	case CONN_OPENING:
 	case CONN_FULL:
+	case CONN_ZOMBIE:
 		fr_dlist_remove(&c->entry);
 		break;
 
@@ -1465,7 +1530,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 
 	t->pending = false;
 	FR_DLIST_INIT(t->queued);
-	FR_DLIST_INIT(t->frozen);
+	FR_DLIST_INIT(t->zombie);
 	FR_DLIST_INIT(t->full);
 	FR_DLIST_INIT(t->opening);
 
