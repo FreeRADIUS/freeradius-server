@@ -857,9 +857,10 @@ int fr_event_corral(fr_event_list_t *el, bool wait)
 	struct timeval		when, *wake;
 	struct timespec		ts_when, *ts_wake;
 	fr_dlist_t		*entry;
-	int			num_fd_events;
+	int			num_fd_events, num_timer_events;
 
 	el->num_fd_events = 0;
+	num_timer_events = 0;
 
 	if (el->exit) {
 		fr_strerror_printf("Event loop exiting");
@@ -893,6 +894,7 @@ int fr_event_corral(fr_event_list_t *el, bool wait)
 			if (fr_timeval_cmp(&ev->when, &el->now) > 0) fr_timeval_subtract(&when, &ev->when, &el->now);
 
 			wake = &when;
+			num_timer_events = 1;
 		} else {
 			wake = NULL;
 		}
@@ -910,6 +912,7 @@ int fr_event_corral(fr_event_list_t *el, bool wait)
 
 		pre = fr_ptr_to_type(fr_event_pre_t, entry, entry);
 		if (pre->callback(pre->uctx, wake) > 0) {
+			num_timer_events++;
 			wake = &when;
 			when.tv_sec = 0;
 			when.tv_usec = 0;
@@ -943,7 +946,9 @@ int fr_event_corral(fr_event_list_t *el, bool wait)
 		}
 	}
 
-	return el->num_fd_events = num_fd_events;
+	el->num_fd_events = num_fd_events;
+
+	return num_fd_events + num_timer_events;
 }
 
 /** Service any outstanding timer or file descriptor events
