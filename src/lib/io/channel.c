@@ -518,7 +518,7 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 	 *	predictions about packet processing time?
 	 */
 	rad_assert(worker->their_view_of_my_sequence <= worker->sequence);
-#if ENABLE_SKIPS
+#if 0
 	if (((worker->sequence - worker->their_view_of_my_sequence) <= 1000) &&
 	    ((when - worker->last_read_other < SIGNAL_INTERVAL) ||
 	     ((when - worker->last_sent_signal) < SIGNAL_INTERVAL))) {
