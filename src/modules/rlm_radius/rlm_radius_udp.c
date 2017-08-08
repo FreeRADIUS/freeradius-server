@@ -592,6 +592,12 @@ redo:
 
 done:
 	mod_finished_request(c, u);
+
+	/*
+	 *	We've read a packet, reset the idle timers.
+	 */
+	conn_idle(c);
+
 	goto redo;
 }
 
