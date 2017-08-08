@@ -620,10 +620,21 @@ static void response_timeout(UNUSED fr_event_list_t *el, struct timeval *now, vo
 		return;
 	}
 
-	// @todo update connection state - is it zombie?
-
 	RDEBUG("Retransmitting request.  Expecting response within %d.%06ds",
 	       u->rr->rt / USEC, u->rr->rt % USEC);
+	rcode = write(c->fd, u->packet, u->packet_len);
+	if (rcode < 0) {
+		if (errno == EWOULDBLOCK) {
+			return 0;
+		}
+
+		/*
+		 *	We have to re-encode the packet, so
+		 *	don't bother copying it to 'u'.
+		 */
+		conn_error(c->thread->el, c->fd, 0, errno, c);
+		return 0;
+	}
 }
 
 
