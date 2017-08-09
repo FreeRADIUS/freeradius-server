@@ -100,11 +100,15 @@ static int _eap_handler_free(eap_handler_t *handler)
 	if (fr_debug_lvl && handler->tls && !handler->finished &&
 	    (time(NULL) > (handler->timestamp + 3))) {
 		WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-		WARN("!! EAP session with state 0x%02x%02x%02x%02x%02x%02x%02x%02x did not finish!                  !!",
+		WARN("!! EAP session with state 0x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x did not finish!                  !!",
 		     handler->state[0], handler->state[1],
 		     handler->state[2], handler->state[3],
 		     handler->state[4], handler->state[5],
-		     handler->state[6], handler->state[7]);
+		     handler->state[6], handler->state[7],
+		     handler->state[8], handler->state[9],
+		     handler->state[a], handler->state[b],
+		     handler->state[c], handler->state[d],
+		     handler->state[e], handler->state[f]);
 
 		WARN("!! Please read http://wiki.freeradius.org/guide/Certificate_Compatibility     !!");
 		WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
