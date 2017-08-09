@@ -106,9 +106,9 @@ static int _eap_handler_free(eap_handler_t *handler)
 		     handler->state[4], handler->state[5],
 		     handler->state[6], handler->state[7],
 		     handler->state[8], handler->state[9],
-		     handler->state[a], handler->state[b],
-		     handler->state[c], handler->state[d],
-		     handler->state[e], handler->state[f]);
+		     handler->state[10], handler->state[11],
+		     handler->state[12], handler->state[13],
+		     handler->state[14], handler->state[15]);
 
 		WARN("!! Please read http://wiki.freeradius.org/guide/Certificate_Compatibility     !!");
 		WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
