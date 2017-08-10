@@ -681,6 +681,9 @@ redo:
 	}
 
 done:
+	rad_assert(request != NULL);
+	rad_assert(request->reply != NULL);
+
 	/*
 	 *	We received the response to a Status-Server
 	 *	check.
@@ -690,7 +693,7 @@ done:
 		 *	Delete the reply, but leave the request VPs in
 		 *	place.
 		 */
-		if (request->reply) fr_pair_list_free(&request->reply->vps);
+		fr_pair_list_free(&request->reply->vps);
 
 	} else {
 		/*
@@ -1637,6 +1640,9 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 	if (!c) {
 		fr_dlist_t *entry;
 
+		/*
+		 *	Only open one new connection at a time.
+		 */
 		entry = FR_DLIST_FIRST(t->opening);
 		if (!entry) mod_connection_alloc(inst, t);
 
