@@ -43,7 +43,9 @@ RCSID("$Id$")
 #define TO_WORKER (0)
 #define FROM_WORKER (1)
 
+#if 0
 #define SIGNAL_INTERVAL (1000000)	//!< The minimum interval between worker signals.
+#endif
 
 /** Size of the atomic queues
  *
