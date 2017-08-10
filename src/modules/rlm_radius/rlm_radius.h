@@ -87,6 +87,7 @@ struct rlm_radius_t {
 	uint32_t		proxy_state;  	//!< Unique ID (mostly) of this module.
 
 	uint32_t		*types;		//!< array of allowed packet types
+	uint32_t		status_check;  	//!< code of status-check type
 	int			allowed[FR_MAX_PACKET_CODE];
 	rlm_radius_retry_t	retry[FR_MAX_PACKET_CODE];
 };

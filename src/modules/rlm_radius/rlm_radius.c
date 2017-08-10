@@ -31,6 +31,7 @@ RCSID("$Id$")
 
 static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int status_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
 
 static CONF_PARSER const connection_config[] = {
 	{ FR_CONF_OFFSET("connect_timeout", FR_TYPE_TIMEVAL, rlm_radius_t, connection_timeout),
@@ -44,6 +45,9 @@ static CONF_PARSER const connection_config[] = {
 
 	{ FR_CONF_OFFSET("zombie_period", FR_TYPE_TIMEVAL, rlm_radius_t, zombie_period),
 	  .dflt = STRINGIFY(40) },
+
+	{ FR_CONF_OFFSET("status_check", FR_TYPE_VOID, rlm_radius_t, status_check),
+	  .func = status_parse },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -116,8 +120,18 @@ static CONF_PARSER const type_interval_config[FR_MAX_PACKET_CODE] = {
 	[FR_CODE_STATUS_SERVER] = { FR_CONF_POINTER("Status-Server", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) status_config },
 	[FR_CODE_COA_REQUEST] = { FR_CONF_POINTER("CoA-Request", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) coa_config },
 	[FR_CODE_DISCONNECT_REQUEST] = { FR_CONF_POINTER("Disconnect-Request", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) disconnect_config },
-
 };
+
+#if 0
+static CONF_PARSER const status_check_config[FR_MAX_PACKET_CODE] = {
+	[FR_CODE_ACCESS_REQUEST] = { FR_CONF_POINTER("Access-Request", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) auth_check_config },
+
+	[FR_CODE_ACCOUNTING_REQUEST] = { FR_CONF_POINTER("Accounting-Request", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) acct_check_config },
+	[FR_CODE_STATUS_SERVER] = { FR_CONF_POINTER("Status-Server", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) status_check_config },
+	[FR_CODE_COA_REQUEST] = { FR_CONF_POINTER("CoA-Request", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) coa_check_config },
+	[FR_CODE_DISCONNECT_REQUEST] = { FR_CONF_POINTER("Disconnect-Request", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) disconnect_check_config },
+};
+#endif
 
 
 /** Set which types of packets we can parse
@@ -162,13 +176,21 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED C
 
 	code = type_enum->value->vb_uint32;
 
+	/*
+	 *	Status-Server packets cannot be proxied.
+	 */
+	if (code == FR_CODE_STATUS_SERVER) {
+		cf_log_err(ci, "Invalid setting of 'type = Status-Server'.  Status-Server packets cannot be proxied.");
+		return -1;
+	}
+
 	if (!code ||
 	    (code >= FR_MAX_PACKET_CODE) ||
 	    (!type_interval_config[code].name)) goto invalid_code;
 
 	cf_section_rule_push(cs, &type_interval_config[code]);
 
-	memcpy(out, &code, sizeof(code));				     
+	memcpy(out, &code, sizeof(code));
 
 	return 0;
 }
@@ -203,6 +225,73 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
 
 	return dl_instance(ctx, out, transport_cs, parent_inst, name, DL_TYPE_SUBMODULE);
 }
+
+
+/** Allow for Status-Server ping checks
+ *
+ * @param[in] ctx	to allocate data in (instance of proto_radius).
+ * @param[out] out	Where to write a dl_instance_t containing the module handle and instance.
+ * @param[in] ci	#CONF_PAIR specifying the name of the type module.
+ * @param[in] rule	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int status_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
+	CONF_SECTION		*cs = cf_item_to_section(cf_parent(ci));
+	fr_dict_attr_t const	*da;
+	fr_dict_enum_t const	*type_enum;
+	uint32_t		code;
+
+	/*
+	 *	Must be the RADIUS module
+	 */
+	rad_assert(cs && (strcmp(cf_section_name1(cs), "radius") == 0));
+
+	da = fr_dict_attr_by_name(NULL, "Packet-Type");
+	if (!da) {
+		ERROR("Missing definiton for Packet-Type");
+		return -1;
+	}
+
+	/*
+	 *	Allow the process module to be specified by
+	 *	packet type.
+	 */
+	type_enum = fr_dict_enum_by_alias(NULL, da, type_str);
+	if (!type_enum) {
+	invalid_code:
+		cf_log_err(ci, "Unknown or invalid RADIUS packet type '%s'", type_str);
+		return -1;
+	}
+
+	code = type_enum->value->vb_uint32;
+
+	/*
+	 *	Cheat, and re-use the "type" array for allowed packet
+	 *	types.
+	 */
+	if (!code ||
+	    (code >= FR_MAX_PACKET_CODE) ||
+	    (!type_interval_config[code].name)) goto invalid_code;
+
+	/*
+	 *	This wasn't allowed by 'type = ..', so we add it here
+	 *	manually.
+	 */
+	if (code == FR_CODE_STATUS_SERVER) {
+		cf_section_rule_push(cs, &type_interval_config[FR_CODE_STATUS_SERVER]);
+	}
+
+	// @todo - push type_check_config rules
+
+	memcpy(out, &code, sizeof(code));
+
+	return 0;
+}
+
 
 /** Free an rlm_radius_link_t
  *
@@ -417,6 +506,20 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		rad_assert(code < FR_MAX_PACKET_CODE);
 
 		inst->allowed[code] = 1;
+	}
+
+	rad_assert(inst->status_check >= 0);
+	rad_assert(inst->status_check < FR_MAX_PACKET_CODE);
+
+	/*
+	 *	If we have status_check = packet, then 'packet' MUST either be
+	 *	Status-Server, or it MUST be one of the allowed packet types for this connection.
+	 */
+	if (inst->status_check && (inst->status_check != FR_CODE_STATUS_SERVER) &&
+	    !inst->allowed[inst->status_check]) {
+		cf_log_err(inst->io_conf, "Using 'status_check = %s' requires also 'type = %s'",
+			   fr_packet_codes[inst->status_check], fr_packet_codes[inst->status_check]);
+		return -1;
 	}
 
 	/*
