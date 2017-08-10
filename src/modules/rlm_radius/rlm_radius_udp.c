@@ -351,12 +351,23 @@ static void fd_active(rlm_radius_udp_connection_t *c)
 /** Connection errored
  *
  */
-static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int fd_errno, void *uctx)
+static void conn_error(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int fd_errno, void *uctx)
 {
 	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
 
 	ERROR("%s Failed new connection %s: %s",
 	      c->inst->parent->name, c->name, fr_syserror(fd_errno));
+
+	/*
+	 *	Stop all Status-Server checks
+	 */
+	if (c->status_u) (void) fr_event_timer_delete(el, &c->status_u->rr->ev);
+
+	/*
+	 *	@todo - remove timers from sent packets?
+	 *	i.e. retransmits when the socket isn't open is
+	 *	probably a bad idea...
+	 */
 
 	/*
 	 *	Something bad happened... Fix it...
