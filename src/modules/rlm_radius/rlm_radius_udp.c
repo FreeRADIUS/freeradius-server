@@ -709,6 +709,50 @@ done:
 }
 
 
+/** Deal with per-request timeouts for Status-Server
+ *
+ */
+static void status_check_timeout(UNUSED fr_event_list_t *el, struct timeval *now, void *uctx)
+{
+	int rcode;
+	rlm_radius_udp_request_t *u = uctx;
+	rlm_radius_udp_connection_t *c = u->c;
+	REQUEST *request;
+
+	rcode = rr_track_retry(c->id, u->rr, c->thread->el, status_check_timeout, u, &c->inst->parent->retry[u->code], now);
+	if (rcode < 0) {
+		/*
+		 *	Failed inserting event... the request is done.
+		 */
+		conn_error(c->thread->el, c->fd, 0, EINVAL, c);
+		return;
+	}
+
+	request = u->link->request;
+	if (rcode == 0) {
+		RDEBUG("No response to status check,  Marking connection dead");
+		talloc_free(c);
+		return;
+	}
+
+	RDEBUG("Retransmitting request.  Expecting response within %d.%06ds",
+	       u->rr->rt / USEC, u->rr->rt % USEC);
+	rcode = write(c->fd, u->packet, u->packet_len);
+	if (rcode < 0) {
+		if (errno == EWOULDBLOCK) {
+			return;
+		}
+
+		/*
+		 *	We have to re-encode the packet, so
+		 *	don't bother copying it to 'u'.
+		 */
+		conn_error(c->thread->el, c->fd, 0, errno, c);
+		return;
+	}
+}
+
+
 /** Deal with per-request timeouts for transmissions, etc.
  *
  */
@@ -987,17 +1031,23 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	u->link->time_sent = fr_time();
 	fr_time_to_timeval(&u->rr->start, u->link->time_sent);
 
-	if (rr_track_start(c->id, u->rr, c->thread->el, response_timeout, u, &c->inst->parent->retry[u->code]) < 0) {
-		return -1;
-	}
-
 	if (proxy_state) {
 		RDEBUG("Proxying request.  Expecting response within %d.%06ds",
 		       u->rr->rt / USEC, u->rr->rt % USEC);
+
+		if (rr_track_start(c->id, u->rr, c->thread->el, response_timeout, u, &c->inst->parent->retry[u->code]) < 0) {
+			RDEBUG("Failed starting retransmit tracking");
+			return -1;
+		}
 	} else {
 		RDEBUG("Sending %s status check.  Expecting response within %d.%06ds",
 		       fr_packet_codes[u->packet[0]],
 		       u->rr->rt / USEC, u->rr->rt % USEC);
+
+		if (rr_track_start(c->id, u->rr, c->thread->el, status_check_timeout, u, &c->inst->parent->retry[u->code]) < 0) {
+			RDEBUG("Failed starting retransmit tracking");
+			return -1;
+		}
 	}
 
 	fr_dlist_remove(&u->entry);
