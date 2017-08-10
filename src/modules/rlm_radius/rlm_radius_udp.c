@@ -748,6 +748,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	ssize_t packet_len;
 	uint8_t *msg = NULL;
 	bool require_ma = false;
+	int proxy_state = 6;
 	REQUEST *request;
 	char const *module_name;
 
@@ -775,6 +776,15 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	}
 
 	/*
+	 *	Status-Server requires Message-Authenticator, but not
+	 *	Proxy-State.
+	 */
+	if (c->buffer[0] == FR_CODE_STATUS_SERVER) {
+		require_ma = true;
+		proxy_state = 0;
+	}
+
+	/*
 	 *	Leave room for the Message-Authenticator.
 	 */
 	if (require_ma) {
@@ -786,7 +796,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	/*
 	 *	Encode it, leaving room for Proxy-State, too.
 	 */
-	packet_len = fr_radius_encode(c->buffer, buflen - 6, NULL,
+	packet_len = fr_radius_encode(c->buffer, buflen - proxy_state, NULL,
 				      c->inst->secret, u->rr->id, u->code, u->rr->id,
 				      request->packet->vps);
 	if (packet_len <= 0) return -1;
@@ -816,9 +826,11 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	 *	Note that the length check will always pass, due to
 	 *	the buflen manipulation done above.
 	 */
-	if ((size_t) (packet_len + 6) <= c->buflen) {
+	if (proxy_state) {
 		uint8_t *attr = c->buffer + packet_len;
 		int hdr_len;
+
+		rad_assert((size_t) (packet_len + 6) <= c->buflen);
 
 		attr[0] = FR_PROXY_STATE;
 		attr[1] = 6;
