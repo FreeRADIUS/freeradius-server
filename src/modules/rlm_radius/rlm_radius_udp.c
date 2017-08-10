@@ -717,6 +717,7 @@ static void status_check_timeout(UNUSED fr_event_list_t *el, struct timeval *now
 	rlm_radius_udp_request_t *u = uctx;
 	rlm_radius_udp_connection_t *c = u->c;
 	REQUEST *request;
+	uint8_t *attr, *end;
 
 	rcode = rr_track_retry(c->id, u->rr, c->thread->el, status_check_timeout, u, &c->inst->parent->retry[u->code], now);
 	if (rcode < 0) {
@@ -734,7 +735,48 @@ static void status_check_timeout(UNUSED fr_event_list_t *el, struct timeval *now
 		return;
 	}
 
-	RDEBUG("Retransmitting request.  Expecting response within %d.%06ds",
+	/*
+	 *	Update Event-Timestamp
+	 */
+	end = u->packet + u->packet_len;
+	for (attr = u->packet + 20; attr < end; attr += attr[1]) {
+		uint32_t stamp;
+
+		if (attr[0] != FR_EVENT_TIMESTAMP) continue;
+
+		rad_assert(attr[1] == 6);
+
+		stamp = now->tv_sec;
+		stamp = htonl(stamp);
+		memcpy(attr + 2, &stamp, 4);
+		break;
+	}
+
+	/*
+	 *	Get a new Request Authenticator
+	 */
+	{
+		size_t i;
+		uint32_t hash, base;
+
+		base = fr_rand();
+		for (i = 0; i < AUTH_VECTOR_LEN; i += sizeof(uint32_t)) {
+			hash = fr_rand() ^ base;
+			memcpy(c->buffer + 4 + i, &hash, sizeof(hash));
+		}
+	}
+
+	/*
+	 *	And sign the updated packet.
+	 */
+	if (fr_radius_sign(u->packet, NULL, (uint8_t const *) c->inst->secret,
+			   strlen(c->inst->secret)) < 0) {
+		RDEBUG("Failed signing status_check packet");
+		talloc_free(c);
+		return;
+	}
+
+	RDEBUG("Retransmitting Status-Server.  Expecting response within %d.%06ds",
 	       u->rr->rt / USEC, u->rr->rt % USEC);
 	rcode = write(c->fd, u->packet, u->packet_len);
 	if (rcode < 0) {
