@@ -780,6 +780,12 @@ static void response_timeout(UNUSED fr_event_list_t *el, struct timeval *now, vo
 		return;
 	}
 
+	/*
+	 *	@todo - RADIUS layer fixups!
+	 *
+	 *	For accounting packets, update Acct-Delay-Time <sigh>
+	 */
+
 	RDEBUG("Retransmitting request.  Expecting response within %d.%06ds",
 	       u->rr->rt / USEC, u->rr->rt % USEC);
 	rcode = write(c->fd, u->packet, u->packet_len);

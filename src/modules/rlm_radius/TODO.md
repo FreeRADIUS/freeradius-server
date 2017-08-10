@@ -33,6 +33,14 @@ Connection states are:
 * zombie - has received MRC / MRT / MRD timeouts
   * TODO: we should start pinging as soon as a connection is zombie
 
+### RADIUS fixes on retransmits
+
+* update Acct-Delay-Time, and anything else necessary on retransmits..
+
+* don't do `u->packet = talloc_memdup()` if we're going to edit the packet
+
+* delete rr->id and re-allocate it on retransmit if the packet changes
+
 ### Limits
 
 * limit the maximum number of proxied packets
@@ -67,6 +75,7 @@ We should also allow `status_check = auto`, which picks it up from the
 list of allowed packet types.  We then need to require config for
 username / password, for Access-Request, and just username for
 Accounting-Request.
+
 
 ## synchronous proxying
 
