@@ -37,6 +37,7 @@ RCSID("$Id$")
  */
 typedef struct rlm_radius_udp_t {
 	rlm_radius_t		*parent;		//!< rlm_radius instance
+	CONF_SECTION		*config;
 
 	fr_ipaddr_t		dst_ipaddr;		//!< IP of the home server
 	fr_ipaddr_t		src_ipaddr;		//!< IP we open our socket on
@@ -81,7 +82,10 @@ typedef enum rlm_radius_udp_connection_state_t {
 	CONN_ACTIVE,				//!< available to send packets
 	CONN_FULL,				//!< live, but can't send more packets
 	CONN_ZOMBIE,				//!< has had a retransmit timeout
+	CONN_STATUS_CHECKS,			//!< status-checks, nothing else
 } rlm_radius_udp_connection_state_t;
+
+typedef struct rlm_radius_udp_request_t rlm_radius_udp_request_t;
 
 typedef struct rlm_radius_udp_connection_t {
 	rlm_radius_udp_t const	*inst;		//!< our module instance
@@ -119,6 +123,9 @@ typedef struct rlm_radius_udp_connection_t {
 	uint8_t			*buffer;	//!< receive buffer
 	size_t			buflen;		//!< receive buffer length
 
+	rlm_radius_udp_request_t *status_u;    	//!< for Status-Server checks
+	fr_event_timer_t const	*status_ev;	//!< timers for Status-Server checks
+
 	rlm_radius_id_t		*id;		//!< ID tracking
 } rlm_radius_udp_connection_t;
 
@@ -126,7 +133,7 @@ typedef struct rlm_radius_udp_connection_t {
 /** Link a packet to a connection
  *
  */
-typedef struct rlm_radius_udp_request_t {
+struct rlm_radius_udp_request_t {
 	fr_dlist_t		entry;		//!< in the connection list of packets
 
 	int			code;		//!< packet code
@@ -135,7 +142,7 @@ typedef struct rlm_radius_udp_request_t {
 	rlm_radius_request_t	*rr;		//!< the ID tracking, resend count, etc.
 	uint8_t			*packet;	//!< packet we write to the network
 	size_t			packet_len;	//!< length of the packet
-} rlm_radius_udp_request_t;
+};
 
 
 static const CONF_PARSER module_config[] = {
@@ -205,6 +212,10 @@ static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeva
 	DEBUG("%s zombie timeout for connection %s",
 	      c->inst->parent->name, c->name);
 
+	if (c->status_u) {
+		// @todo - start pinging
+	}
+
 	talloc_free(c);
 }
 
@@ -220,10 +231,7 @@ static void conn_idle(rlm_radius_udp_connection_t *c)
 	 *	Still has active requests: it's not idle.
 	 */
 	if (c->num_requests > 0) {
-		if (c->ev) {
-			talloc_const_free(c->ev);
-			c->ev = NULL;
-		}
+		if (c->ev) (void) fr_event_timer_delete(c->thread->el, &c->ev);
 		return;
 	}
 
@@ -261,6 +269,8 @@ static void conn_zombie(rlm_radius_udp_connection_t *c)
 	 */
 	if (c->state == CONN_ZOMBIE) return;
 
+	rad_assert(c->state != CONN_STATUS_CHECKS);
+
 	/*
 	 *	Remember when we became a zombie, and move the
 	 *	connection from the active heap to the zombie list.
@@ -268,7 +278,6 @@ static void conn_zombie(rlm_radius_udp_connection_t *c)
 	gettimeofday(&when, NULL);
 
 	// @todo - hysteresis... if we're close to c->mrs_time, don't be zombie...
-
 
 	(void) fr_heap_extract(c->thread->active, c);
 	fr_dlist_insert_head(&c->thread->zombie, &c->entry);
@@ -326,10 +335,7 @@ static void fd_active(rlm_radius_udp_connection_t *c)
 	/*
 	 *	If we're writing to the connection, it's not idle.
 	 */
-	if (c->ev) {
-		talloc_const_free(c->ev);
-		c->ev = NULL;
-	}
+	if (c->ev) (void) fr_event_timer_delete(c->thread->el, &c->ev);
 
 	if (fr_event_fd_insert(c->conn, t->el, c->fd,
 			       conn_read, conn_writable, conn_error, c) < 0) {
@@ -486,6 +492,13 @@ redo:
 		rad_assert(0 == 1);
 		break;
 
+	case CONN_STATUS_CHECKS:
+		// @todo - require N responses before marking it alive.  See RFC 3539 for details
+		rad_assert(c->status_ev != NULL);
+		fr_dlist_remove(&c->entry);
+		(void) fr_event_timer_delete(c->thread->el, &c->status_ev);
+		break;
+
 	case CONN_ZOMBIE:
 		rad_assert(c->ev != NULL);
 		fr_dlist_remove(&c->entry);
@@ -600,8 +613,6 @@ redo:
 	} else if (u->code == FR_CODE_STATUS_SERVER) {
 		link->rcode = code2rcode[code];
 
-		// @todo - handle Status-Server replies, and do NOT call mod_finished_request()
-
 		/*
 		 *	The reply is a known code, but isn't
 		 *	appropriate for the request packet type.
@@ -612,7 +623,6 @@ redo:
 		RDEBUG("Invalid reply code %s to request packet %s",
 		       fr_packet_codes[code], fr_packet_codes[u->code]);
 		link->rcode = RLM_MODULE_INVALID;
-
 
 		/*
 		 *	<whew>, it's OK.  Choose the correct module
@@ -652,7 +662,20 @@ redo:
 	}
 
 done:
-	mod_finished_request(c, u);
+	/*
+	 *	We received the response to a Status-Server
+	 *	check.
+	 */
+	if (c->status_u == u) {
+		fr_pair_list_free(&request->packet->vps);
+		fr_pair_list_free(&request->reply->vps);
+
+	} else {
+		/*
+		 *	It's a normal request.  Mark it as finished.
+		 */
+		mod_finished_request(c, u);
+	}
 
 	/*
 	 *	We've read a packet, reset the idle timers.
@@ -1186,6 +1209,10 @@ static int conn_free(rlm_radius_udp_connection_t *c)
 		rad_assert(0 == 1);
 		break;
 
+	case CONN_STATUS_CHECKS:
+		(void) fr_event_timer_delete(c->thread->el, &c->status_ev);
+		/* FALL-THROUGH */
+
 	case CONN_OPENING:
 	case CONN_FULL:
 	case CONN_ZOMBIE:
@@ -1201,6 +1228,27 @@ static int conn_free(rlm_radius_udp_connection_t *c)
 }
 
 
+/** Free an rlm_radius_udp_request_t
+ *
+ *  Unlink the packet from the connection, and remove any tracking
+ *  entries.
+ */
+static int udp_request_free(rlm_radius_udp_request_t *u)
+{
+	fr_dlist_remove(&u->entry);
+
+	if (u->rr) {
+		(void) rr_track_delete(u->c->id, u->rr);
+		u->rr = NULL;
+	}
+
+	return 0;
+}
+
+
+/** Allocate a new connection and set it up.
+ *
+ */
 static void mod_connection_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t *t)
 {
 	rlm_radius_udp_connection_t *c;
@@ -1216,6 +1264,8 @@ static void mod_connection_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t
 
 	c->buffer = talloc_array(c, uint8_t, c->max_packet_size);
 	if (!c->buffer) {
+		cf_log_err(inst->config, "%s failed allocating memory for new connection",
+			   inst->parent->name);
 		talloc_free(c);
 		return;
 	}
@@ -1235,6 +1285,8 @@ static void mod_connection_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t
 	 */
 	c->id = rr_track_create(c);
 	if (!c->id) {
+		cf_log_err(inst->config, "%s failed allocating ID tracking for new connection",
+			   inst->parent->name);
 		talloc_free(c);
 		return;
 	}
@@ -1243,9 +1295,63 @@ static void mod_connection_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t
 	FR_DLIST_INIT(c->queued);
 	FR_DLIST_INIT(c->sent);
 
+	/*
+	 *	Status-Server checks.  Manually build the packet, and
+	 *	all of it's associated glue.
+	 */
+	if (inst->parent->status_check) {
+		rlm_radius_link_t *link;
+		rlm_radius_udp_request_t *u;
+		REQUEST *request;
+
+		link = talloc_zero(c, rlm_radius_link_t);
+		u = talloc_zero(c, rlm_radius_udp_request_t);
+		request = request_alloc(link);
+		request->packet = fr_radius_alloc(request, false);
+		request->reply = fr_radius_alloc(request, false);
+
+		/*
+		 *	Initialize the link.  Note that we don't set
+		 *	destructors.
+		 */
+		FR_DLIST_INIT(link->entry);
+		link->request = request;
+		link->request_io_ctx = u;
+
+		/*
+		 *	Unitialize the UDP link.
+		 */
+		FR_DLIST_INIT(u->entry);
+		u->code = inst->parent->status_check;
+		request->packet->code = u->code;
+		u->c = c;
+		u->link = link;
+
+		/*
+		 *	Reserve a permanent ID for the packet.  This
+		 *	is because we need to be able to send an ID on
+		 *	demand.  If the proxied packets use all of the
+		 *	IDs, then we can't send a Status-Server check.
+		 */
+		u->rr = rr_track_alloc(c->id, request, inst->parent->status_check, link);
+		if (!u->rr) {
+			cf_log_err(inst->config, "%s failed allocating status_check ID for new connection",
+				   inst->parent->name);
+			talloc_free(c);
+			return;
+		}
+
+		talloc_set_destructor(u, udp_request_free);
+		c->status_u = u;
+	}
+
 	c->conn = fr_connection_alloc(c, t->el, &inst->parent->connection_timeout, &inst->parent->reconnection_delay,
 				      conn_init, conn_open, conn_close, inst->parent->name, c);
-	if (!c->conn) return;
+	if (!c->conn) {
+		cf_log_err(inst->config, "%s failed allocating state handler for new connection",
+			   inst->parent->name);
+		return;
+	}
 
 	fr_connection_start(c->conn);
 
@@ -1286,24 +1392,6 @@ static rlm_radius_udp_connection_t *connection_get(rlm_radius_udp_thread_t *t, r
 	}
 
 	return c;
-}
-
-
-/** Free an rlm_radius_udp_request_t
- *
- *  Unlink the packet from the connection, and remove any tracking
- *  entries.
- */
-static int udp_request_free(rlm_radius_udp_request_t *u)
-{
-	fr_dlist_remove(&u->entry);
-
-	if (u->rr) {
-		(void) rr_track_delete(u->c->id, u->rr);
-		u->rr = NULL;
-	}
-
-	return 0;
 }
 
 
@@ -1438,11 +1526,12 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	rlm_radius_udp_t *inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
 
 	(void) talloc_set_type(inst, rlm_radius_udp_t);
+	inst->config = conf;
 
 	return 0;
 }
