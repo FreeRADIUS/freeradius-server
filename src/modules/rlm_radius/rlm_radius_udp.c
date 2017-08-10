@@ -67,7 +67,11 @@ typedef struct rlm_radius_udp_thread_t {
 
 	bool			pending;	//!< are there pending requests?
 
-	// @todo - make this a heap, so that older packets are transmitted first
+	/*
+	 *	@todo - make this a heap, so that older packets are transmitted first
+	 *
+	 *	Order by Status-Server first, and then by request->async->recv_time
+	 */
 	fr_dlist_t		queued;		//!< queued requests for some new connection
 
 	fr_heap_t		*active;       	//!< active connections
@@ -124,7 +128,6 @@ typedef struct rlm_radius_udp_connection_t {
 	size_t			buflen;		//!< receive buffer length
 
 	rlm_radius_udp_request_t *status_u;    	//!< for Status-Server checks
-	fr_event_timer_t const	*status_ev;	//!< timers for Status-Server checks
 
 	rlm_radius_id_t		*id;		//!< ID tracking
 } rlm_radius_udp_connection_t;
@@ -487,6 +490,11 @@ redo:
 		return;
 	}
 
+	/*
+	 *	Stop all retransmissions.
+	 */
+	if (u->rr->ev) (void) fr_event_timer_delete(c->thread->el, &u->rr->ev);
+
 	switch (c->state) {
 	default:
 		rad_assert(0 == 1);
@@ -494,9 +502,7 @@ redo:
 
 	case CONN_STATUS_CHECKS:
 		// @todo - require N responses before marking it alive.  See RFC 3539 for details
-		rad_assert(c->status_ev != NULL);
 		fr_dlist_remove(&c->entry);
-		(void) fr_event_timer_delete(c->thread->el, &c->status_ev);
 		break;
 
 	case CONN_ZOMBIE:
@@ -531,7 +537,10 @@ redo:
 	/*
 	 *	Set request return code based on the packet type.
 	 *	Note that we don't care what the sent packet is, we
-	 *	presume that the reply is correct for the request...
+	 *	presume that the reply is correct for the request,
+	 *	because it has been successfully verified.  The reply
+	 *	packet code only affects the module return code,
+	 *	nothing else.
 	 *
 	 *	Protocol-Error is special.  It goes through it's own
 	 *	set of checks.
@@ -667,7 +676,10 @@ done:
 	 *	check.
 	 */
 	if (c->status_u == u) {
-		fr_pair_list_free(&request->packet->vps);
+		/*
+		 *	Delete the reply, but leave the request VPs in
+		 *	place.
+		 */
 		fr_pair_list_free(&request->reply->vps);
 
 	} else {
@@ -768,20 +780,44 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	}
 
 	/*
-	 *	All proxies Access-Request packets MUST have a
-	 *	Message-Authenticator, otherwise they're insecure.
-	 */
-	if (c->buffer[0] == FR_CODE_ACCESS_REQUEST) {
-		require_ma = true;
-	}
-
-	/*
 	 *	Status-Server requires Message-Authenticator, but not
 	 *	Proxy-State.
 	 */
 	if (c->buffer[0] == FR_CODE_STATUS_SERVER) {
-		require_ma = true;
 		proxy_state = 0;
+	}
+
+	/*
+	 *	All proxied Access-Request packets MUST have a
+	 *	Message-Authenticator, otherwise they're insecure.
+	 *	Same goes for Status-Server.
+	 *
+	 *	And we set the authentication vector to a random
+	 *	number...
+	 */
+	if ((c->buffer[0] == FR_CODE_ACCESS_REQUEST) ||
+	    (c->buffer[0] == FR_CODE_STATUS_SERVER)) {
+		size_t i;
+		uint32_t hash, base;
+
+		require_ma = true;
+
+		base = fr_rand();
+		for (i = 0; i < AUTH_VECTOR_LEN; i += sizeof(uint32_t)) {
+			hash = fr_rand() ^ base;
+			memcpy(c->buffer + 4 + i, &hash, sizeof(hash));
+		}
+	}
+
+	/*
+	 *	Every status check packet has an Event-Timestamp.
+	 *	Which changes every time we send a packet.
+	 */
+	if (u == c->status_u) {
+		VALUE_PAIR *vp;
+
+		vp = fr_pair_find_by_num(request->packet->vps, 0, FR_EVENT_TIMESTAMP, TAG_ANY);
+		vp->vp_uint32 = time(NULL);
 	}
 
 	/*
@@ -818,7 +854,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	if (u->packet) TALLOC_FREE(u->packet);
 
 	/*
-	 *	Ad Proxy-State to the tail end of the packet.
+	 *	Add Proxy-State to the tail end of the packet.
 	 *	We need to add it here, and NOT in
 	 *	request->packet->vps, because multiple modules
 	 *	may be sending the packets at the same time.
@@ -944,8 +980,14 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 		return -1;
 	}
 
-	RDEBUG("Proxying request.  Expecting response within %d.%06ds",
-	       u->rr->rt / USEC, u->rr->rt % USEC);
+	if (proxy_state) {
+		RDEBUG("Proxying request.  Expecting response within %d.%06ds",
+		       u->rr->rt / USEC, u->rr->rt % USEC);
+	} else {
+		RDEBUG("Sending %s status check.  Expecting response within %d.%06ds",
+		       fr_packet_codes[u->packet[0]],
+		       u->rr->rt / USEC, u->rr->rt % USEC);
+	}
 
 	fr_dlist_remove(&u->entry);
 	fr_dlist_insert_tail(&c->sent, &u->entry);
@@ -1187,6 +1229,12 @@ static int conn_free(rlm_radius_udp_connection_t *c)
 	talloc_free_children(c); /* clears out FD events, timers, etc. */
 
 	/*
+	 *	Status-Server checks remain with this connection, and
+	 *	don't get sent back to the main thread queue.
+	 */
+	if (c->status_u) talloc_free(c->status_u);
+
+	/*
 	 *	Move "sent" packets back to the main thread queue
 	 */
 	while ((entry = FR_DLIST_FIRST(c->sent)) != NULL) {
@@ -1223,9 +1271,6 @@ static int conn_free(rlm_radius_udp_connection_t *c)
 		break;
 
 	case CONN_STATUS_CHECKS:
-		(void) fr_event_timer_delete(c->thread->el, &c->status_ev);
-		/* FALL-THROUGH */
-
 	case CONN_OPENING:
 	case CONN_FULL:
 	case CONN_ZOMBIE:
@@ -1320,8 +1365,20 @@ static void mod_connection_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t
 		link = talloc_zero(c, rlm_radius_link_t);
 		u = talloc_zero(c, rlm_radius_udp_request_t);
 		request = request_alloc(link);
+
+		// @todo - if we call unlang, we need to set a whole lot more... see worker.c
+		request->el = c->thread->el;
 		request->packet = fr_radius_alloc(request, false);
 		request->reply = fr_radius_alloc(request, false);
+
+		/*
+		 *	Create the packet contents.
+		 *
+		 *	@todo - different packet contents for
+		 *	Access-Request, Accounting-Request, etc.
+		 */
+		pair_make_request("NAS-Identifier", "status check - are you alive?", T_OP_EQ);
+		pair_make_request("Event-Timestamp", "0", T_OP_EQ);
 
 		/*
 		 *	Initialize the link.  Note that we don't set
