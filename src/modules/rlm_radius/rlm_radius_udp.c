@@ -1184,6 +1184,7 @@ static int conn_free(rlm_radius_udp_connection_t *c)
 
 		u->rr = NULL;
 		u->c = NULL;
+		(void) fr_event_timer_delete(c->thread->el, &u->rr->ev);
 		fr_dlist_remove(&c->entry);
 		fr_dlist_insert_tail(&t->queued, &u->entry);
 		t->pending = true;
