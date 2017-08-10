@@ -517,9 +517,19 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 */
 	if (inst->status_check && (inst->status_check != FR_CODE_STATUS_SERVER) &&
 	    !inst->allowed[inst->status_check]) {
-		cf_log_err(inst->io_conf, "Using 'status_check = %s' requires also 'type = %s'",
+		cf_log_err(conf, "Using 'status_check = %s' requires also 'type = %s'",
 			   fr_packet_codes[inst->status_check], fr_packet_codes[inst->status_check]);
 		return -1;
+	}
+
+	/*
+	 *	If we're replicating, we don't care if the other end
+	 *	is alive.
+	 */
+	if (inst->replicate && inst->status_check) {
+		cf_log_warn(conf, "Ignoring 'status_check = %s' due to 'replicate = true'",
+			    fr_packet_codes[inst->status_check]);
+		inst->status_check = 0;
 	}
 
 	/*
