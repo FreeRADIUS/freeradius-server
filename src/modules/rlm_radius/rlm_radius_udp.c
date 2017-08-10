@@ -636,7 +636,7 @@ redo:
 		 *	The reply is a known code, but isn't
 		 *	appropriate for the request packet type.
 		 */
-	} else if (allowed_replies[code] != u->code) {
+	} else if (allowed_replies[code] != (FR_CODE) u->code) {
 		rad_assert(request != NULL);
 
 		RDEBUG("Invalid reply code %s to request packet %s",
@@ -693,7 +693,10 @@ done:
 		 *	Delete the reply, but leave the request VPs in
 		 *	place.
 		 */
-		fr_pair_list_free(&request->reply->vps);
+#ifdef __clang_analyzer__
+		if (request && request->reply)
+#endif
+			fr_pair_list_free(&request->reply->vps);
 
 	} else {
 		/*
