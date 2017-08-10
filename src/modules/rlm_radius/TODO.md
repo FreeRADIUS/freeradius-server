@@ -1,18 +1,5 @@
 # rlm_radius
 
-## daemon mode bugs
-
-in daemon mode, it doesn't seem to send the reply until IRT has passed???
-
-channel.c is suppressing the worker signal...
-
-but it works in debug mode <sigh>  which is only 1 thread...
-so there is some weird threading interaction issue...
-
-- add debug / fprintf output in rlm_radius_udp to see WTF is going on...
-
-- it's like the response packet is ignored?
-
 ## Multiple connections
 
 We probably don't want to load-balance across connections via
@@ -22,59 +9,42 @@ just use the "most lively" connection.  Which should do automatic
 load-balancing.  i.e. if it JUST responded to us, it's probably ready
 to take another packet.
 
-The "full" connections should be on a *separate* heap, or maybe a
-`fr_dlist_t`.  The extract / insert connection work needs to be done
-in it's own function, because it's mostly magic, and needs to be done
-in multiple places.
+We don't want "revive_interval", as (unlike v3) outgoing sockets are
+connected.  When a connection fails, we rely on the underlying
+connection state machine to try re-opening the connection.
 
-We need to track:
+... but only if we don't have Status-Server pings
+(i.e. application-layer watchdog).  If we have that, then
 
-* connection state: connecting, live, full, zombie, dead
-* connecting = trying, but not yet open
-* live connections which have IDs available
-* live connections which are "full"
-  * either no more IDs, or we've seen EWOULDBLOCK
-  * these don't have packets sent to them
-* zombie connections
-  * these don't have packets sent to them
-  * they have Status-Server checks done
-  * they are moved to "live" if we get 3 responses to Status-Server
-  * they are moved to "live" if we get a response to a previously proxied request
-* dead connections are closed
 
-We need some more configuration options:
+The `rlm_radius` module should not have an idea as to the status of
+the server, across multiple connections.  i.e. each connection is
+handled separately.  That is because especially for TCP, one
+connection can be dropped by a firewall, but another one can be fine.
+So it should just treat each connection independently.
 
-    # per-connection limits
-    connection {
-	# this is a per-thread limit.  Oops.
-	max_connections
-	connect_timeout
-	reconnect_delay
-	idle_timeout
+### What works
 
-	# as per 3.0
-	# no response_window, that's handled by IRT, MRC, MRD, MRT.
-	# no "response_timeouts, either.
-	# instead, we just immediately go to zombie on MRT.
-	zombie_period
+Connection states are:
 
-	# response_window && response_timeouts are for synchronous
-	# proxying...
-	revive_interval
-    }
-    
-    # return RLM_MODULE_USERLOCK if we're sitting on too many packets
-    # note that this is a per-thread limit.  Sorry about that.
-    max_packets = 65536
+* opening - connecting to the other end
+* active - available for new requests
+* full - no more IDs available on this connection
+* zombie - has received MRC / MRT / MRD timeouts
+  * TODO: we should start pinging as soon as a connection is zombie
+
+### Limits
+
+* limit the maximum number of proxied packets
+* limit the maximum number of outgoing connections
+
+Both will likely require atomic variables in rlm_radius.c
+
+### Status Checks
     
     status_checks {
-	type = Status-Server  # or NONE
+	type = Status-Server 
 	# mrt, irt, mrc taken from another section, as per Access-Request, etc.
-	
-	num_answers_to_alive
-	# check_interval and check_timeout are no longer relevant
-	# we just use MRT, IRT, etc.  if the response doesn't come
-	# by the time we're sending the next packet, it's a timeout.
 	
 	# update the Status-Server packet here???
 	# probably no need for a separate virtual server...
@@ -86,30 +56,6 @@ We need some more configuration options:
 		User-Password = ...
 	}
     }
-
-The `rlm_radius` module should not have an idea as to the status of
-the server, across multiple connections.  i.e. each connection is
-handled separately.  That is because especially for TCP, one
-connection can be dropped by a firewall, but another one can be fine.
-So it should just treat each connection independently.
-
-The module should also track the state of multiple connections:
-
-* connecting (all connections are connecting)
-* live (one or more connection is live)
-* full (all connections are full)
-  * this should probably just return to the connecting state,
-  * unless it hits max_connections
-* zombie (all connections are zombie)
-* dead (all connections are dead)
-  * this should probably just return it to the connecting state.
-
-## Connection status management
-
-Mark a connection live / dead / zombie based on packet retransmission
-timers.  Do Status-Server checks as necessary.
-
-## status_check
 
 add status_check = Status-Server or Access-Request, ala old code
 
@@ -123,6 +69,8 @@ username / password, for Access-Request, and just username for
 Accounting-Request.
 
 ## synchronous proxying
+
+much lower priority, as it requires other changes to the core
 
 ala v3.  All retransmissions started by the client.
 
@@ -152,3 +100,10 @@ which means "no tracking", as that will likely be the common case.
 
 * Check on packet lifetime timers in network side?
 i.e. cleanup_delay, Double-check that they work...
+
+* double-check ENABLE_SKIPS in src/lib/io/channel.c
+
+We should move to a "must_signal" approach, as with the network side
+The worker should suppress signals if it sees that the ACKs from the
+other end haven't caught up to it's sent packets.  Otherwise, it must
+signal.
