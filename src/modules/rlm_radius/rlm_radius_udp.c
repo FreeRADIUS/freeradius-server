@@ -559,7 +559,6 @@ redo:
 	if (code == FR_CODE_PROTOCOL_ERROR) {
 		uint8_t const *attr, *end;
 
-		attr = c->buffer + 20;
 		end = c->buffer + packet_len;
 		link->rcode = RLM_MODULE_INVALID;
 
@@ -677,7 +676,7 @@ redo:
 		 *	Access-Accept" policies...  so the user could
 		 *	programatically decide which attributes to add.
 		 */
-		
+
 		fr_pair_add(&request->reply->vps, vp);
 	}
 
@@ -691,7 +690,7 @@ done:
 		 *	Delete the reply, but leave the request VPs in
 		 *	place.
 		 */
-		fr_pair_list_free(&request->reply->vps);
+		if (request->reply) fr_pair_list_free(&request->reply->vps);
 
 	} else {
 		/*
