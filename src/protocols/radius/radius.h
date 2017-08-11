@@ -90,6 +90,8 @@ ssize_t		fr_radius_decode(TALLOC_CTX *ctx, uint8_t *packet, size_t packet_len, u
 				 char const *secret, UNUSED size_t secret_len, VALUE_PAIR **vps) CC_HINT(nonnull);
 
 
+void		fr_radius_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len);
+
 /*
  *	protocols/radius/packet.c
  */
