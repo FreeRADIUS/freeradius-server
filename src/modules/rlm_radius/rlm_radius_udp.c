@@ -872,6 +872,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	char const *module_name;
 
 	rad_assert(c->inst->parent->allowed[u->code]);
+	if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
 
 	request = u->link->request;
 
