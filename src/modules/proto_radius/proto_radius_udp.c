@@ -42,8 +42,6 @@ typedef struct {
 	uint16_t			src_port;
 	uint16_t 			dst_port;
 
-	fr_time_t			timestamp;
-
 	RADCLIENT			*client;
 } proto_radius_udp_address_t;
 
@@ -217,8 +215,6 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, fr_time_t **rec
 		return 0;
 	}
 
-	address.timestamp = fr_time();
-
 	/*
 	 *	Lookup the client - Must exist to continue.
 	 */
@@ -240,7 +236,7 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, fr_time_t **rec
 		return 0;
 	}
 
-	tracking_status = fr_radius_tracking_entry_insert(&track, inst->ft, buffer, address.timestamp, &address);
+	tracking_status = fr_radius_tracking_entry_insert(&track, inst->ft, buffer, fr_time(), &address);
 	switch (tracking_status) {
 	case FR_TRACKING_ERROR:
 	case FR_TRACKING_UNUSED:
