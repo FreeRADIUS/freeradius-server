@@ -476,6 +476,11 @@ redo:
 		goto redo;
 	}
 
+	if (DEBUG_ENABLED3) {
+		RDEBUG("rlm_radius read packet");
+		fr_radius_print_hex(fr_log_fp, c->buffer, packet_len);
+	}
+
 	rr = rr_track_find(c->id, c->buffer[1], NULL);
 	if (!rr) {
 		// @todo - debug3, print the hex value of the packet we read
@@ -1039,7 +1044,10 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 		REXDENT();
 	}
 
-	// @todo - if debug >= 3, print out hex of the packet.
+	if (DEBUG_ENABLED3) {
+		RDEBUG("rlm_radius encode packet");
+		fr_radius_print_hex(fr_log_fp, c->buffer, packet_len);
+	}
 
 	request->module = module_name;
 
