@@ -87,6 +87,8 @@ static void mod_cleanup_delay(UNUSED fr_event_list_t *el, UNUSED struct timeval 
 	fr_tracking_entry_t *track = uctx;
 	// proto_radius_udp_t const *inst = talloc_parent(track->ft);
 
+	DEBUG2("TIMER - proto_radius cleanup delay for ID %d", track->data[1]);
+
 	(void) fr_radius_tracking_entry_delete(track->ft, track);
 }
 
@@ -249,12 +251,14 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, fr_time_t **rec
 		 *	the first one.
 		 */
 	case FR_TRACKING_SAME:
+		DEBUG3("SAME packet");
 		if (track->ev) {
 			struct timeval tv;
 
 			gettimeofday(&tv, NULL);
 			tv.tv_sec += inst->cleanup_delay;
 
+			DEBUG3("SAME packet - cleanup");
 			(void) fr_event_timer_insert(NULL, inst->el, &track->ev,
 						     &tv, mod_cleanup_delay, track);
 		}
@@ -274,10 +278,12 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, fr_time_t **rec
 	 *	Delete any pre-existing cleanup_delay timers.
 	 */
 	case FR_TRACKING_DIFFERENT:
+		DEBUG3("DIFFERENT packet");
 		if (track->ev) (void) fr_event_timer_delete(inst->el, &track->ev);
 		break;
 
 	case FR_TRACKING_NEW:
+		DEBUG3("NEW packet");
 		break;
 	}
 
@@ -302,7 +308,10 @@ static ssize_t mod_write(void const *instance, void *packet_ctx,
 	 *	The original packet has changed.  Suppress the write,
 	 *	as the client will never accept the response.
 	 */
-	if (track->timestamp != request_time) return buffer_len;
+	if (track->timestamp != request_time) {
+		DEBUG3("Suppressing reply as we have a newer packet");
+		return buffer_len;
+	}
 
 	/*
 	 *	Figure out when we've sent the reply.
@@ -323,6 +332,7 @@ static ssize_t mod_write(void const *instance, void *packet_ctx,
 		 *	Otherwise lie, and say we've written it all...
 		 */
 		data_size = buffer_len;
+		DEBUG3("Got NAK, not writing reply");
 	}
 
 	/*
@@ -330,35 +340,38 @@ static ssize_t mod_write(void const *instance, void *packet_ctx,
 	 *	cleanup_delay = 0, then we even clean up
 	 *	Access-Request packets immediately.
 	 */
-	 if ((track->data[0] != FR_CODE_ACCESS_REQUEST) || !inst->el) {
+	if ((track->data[0] != FR_CODE_ACCESS_REQUEST) || !inst->el) {
+		DEBUG3("Not Access-Request.  Deleting tracking table entry");
 		(void) fr_radius_tracking_entry_delete(inst->ft, track);
 		return data_size;
 	}
 
-	 /*
-	  *	Add the reply to the tracking entry.
-	  */
-	 if (fr_radius_tracking_entry_reply(inst->ft, track, reply_time,
-					    buffer, buffer_len) < 0) {
+	/*
+	 *	Add the reply to the tracking entry.
+	 */
+	if (fr_radius_tracking_entry_reply(inst->ft, track, reply_time,
+					   buffer, buffer_len) < 0) {
+		DEBUG3("Failed adding reply to tracking table");
 		(void) fr_radius_tracking_entry_delete(inst->ft, track);
 		return data_size;
-	 }
+	}
 
-	 /*
-	  *	@todo - Move event timers to fr_time_t
-	  */
-	 gettimeofday(&tv, NULL);
+	/*
+	 *	@todo - Move event timers to fr_time_t
+	 */
+	gettimeofday(&tv, NULL);
 
-	 tv.tv_sec += inst->cleanup_delay;
+	tv.tv_sec += inst->cleanup_delay;
 
-	 /*
-	  *	Clean up after a while.
-	  */
-	 if (fr_event_timer_insert(NULL, inst->el, &track->ev,
-	 			   &tv, mod_cleanup_delay, track) < 0) {
+	/*
+	 *	Clean up after a while.
+	 */
+	if (fr_event_timer_insert(NULL, inst->el, &track->ev,
+				  &tv, mod_cleanup_delay, track) < 0) {
+		DEBUG3("Failed adding cleanup timer");
 		(void) fr_radius_tracking_entry_delete(inst->ft, track);
 		return data_size;
-	 }
+	}
 
 	return data_size;
 }
