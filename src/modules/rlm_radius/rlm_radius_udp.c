@@ -199,7 +199,7 @@ static void conn_idle_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeval 
 {
 	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
 
-	DEBUG("%s idle timeout for connection %s",
+	DEBUG("TIMER - %s idle timeout for connection %s",
 	      c->inst->parent->name, c->name);
 
 	talloc_free(c);
@@ -212,7 +212,7 @@ static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeva
 {
 	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
 
-	DEBUG("%s zombie timeout for connection %s",
+	DEBUG("TIMER - %s zombie timeout for connection %s",
 	      c->inst->parent->name, c->name);
 
 	if (c->status_u) {
