@@ -483,7 +483,6 @@ redo:
 
 	rr = rr_track_find(c->id, c->buffer[1], NULL);
 	if (!rr) {
-		// @todo - debug3, print the hex value of the packet we read
 		DEBUG("%s Ignoring response to request we did not send", c->inst->parent->name);
 		goto redo;
 	}
@@ -500,7 +499,6 @@ redo:
 
 	if (fr_radius_verify(c->buffer, original,
 			     (uint8_t const *) c->inst->secret, strlen(c->inst->secret)) < 0) {
-		// @todo - debug3, print the hex value of the packet we read
 		if (request) RDEBUG("%s Ignoring response with invalid signature", c->inst->parent->name);
 		return;
 	}
@@ -534,8 +532,6 @@ redo:
 		(void) fr_heap_extract(c->thread->active, c);
 		break;
 	}
-
-	// @todo - debug3, print the hex value of the packet we read
 
 	/*
 	 *	Track the Most Recently Started with reply
