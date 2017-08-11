@@ -769,7 +769,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			if (fr_log_fp) fr_packet_header_print(fr_log_fp, request, false);
 			if (fr_debug_lvl > 0) fr_pair_list_fprint(fr_log_fp, request->vps);
 #ifndef NDEBUG
-			if (fr_log_fp && (fr_debug_lvl > 3)) fr_radius_print_hex(request);
+			if (fr_log_fp && (fr_debug_lvl > 3)) fr_radius_packet_print_hex(request);
 #endif
 
 			FD_ZERO(&set); /* clear the set */
@@ -830,7 +830,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			if (fr_log_fp) fr_packet_header_print(fr_log_fp, reply, true);
 			if (fr_debug_lvl > 0) fr_pair_list_fprint(fr_log_fp, reply->vps);
 #ifndef NDEBUG
-			if (fr_log_fp && (fr_debug_lvl > 3)) fr_radius_print_hex(reply);
+			if (fr_log_fp && (fr_debug_lvl > 3)) fr_radius_packet_print_hex(reply);
 #endif
 
 			switch (command) {

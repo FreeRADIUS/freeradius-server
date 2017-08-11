@@ -448,7 +448,7 @@ RADIUS_PACKET *fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, bool re
 	packet->vps = NULL;
 
 #ifndef NDEBUG
-	if ((fr_debug_lvl > 3) && fr_log_fp) fr_radius_print_hex(packet);
+	if ((fr_debug_lvl > 3) && fr_log_fp) fr_radius_packet_print_hex(packet);
 #endif
 
 	return packet;
@@ -494,7 +494,7 @@ int fr_radius_packet_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	}
 
 #ifndef NDEBUG
-	if ((fr_debug_lvl > 3) && fr_log_fp) fr_radius_print_hex(packet);
+	if ((fr_debug_lvl > 3) && fr_log_fp) fr_radius_packet_print_hex(packet);
 #endif
 
 #ifdef WITH_TCP
@@ -538,7 +538,7 @@ static void print_hex_data(uint8_t const *ptr, int attrlen, int depth)
 }
 
 
-void fr_radius_print_hex(RADIUS_PACKET const *packet)
+void fr_radius_packet_print_hex(RADIUS_PACKET const *packet)
 {
 	int i;
 

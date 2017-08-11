@@ -455,7 +455,7 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 		 *	Print out verbose HEX output
 		 */
 		if (conf->print_packet && (fr_debug_lvl > 3)) {
-			fr_radius_print_hex(packet);
+			fr_radius_packet_print_hex(packet);
 		}
 
 		if (conf->print_packet && (fr_debug_lvl > 1)) {

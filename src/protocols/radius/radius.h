@@ -115,7 +115,7 @@ RADIUS_PACKET	*fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, bool re
 int		fr_radius_packet_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 				      char const *secret) CC_HINT(nonnull (1,3));
 
-void		fr_radius_print_hex(RADIUS_PACKET const *packet) CC_HINT(nonnull);
+void		fr_radius_packet_print_hex(RADIUS_PACKET const *packet) CC_HINT(nonnull);
 
 
 typedef struct fr_radius_ctx {
