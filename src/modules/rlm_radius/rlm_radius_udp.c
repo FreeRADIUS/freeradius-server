@@ -1203,6 +1203,24 @@ static void conn_close(int fd, void *uctx)
 	c->fd = -1;
 }
 
+/** Free an rlm_radius_udp_request_t
+ *
+ *  Unlink the packet from the connection, and remove any tracking
+ *  entries.
+ */
+static int udp_request_free(rlm_radius_udp_request_t *u)
+{
+	fr_dlist_remove(&u->entry);
+
+	if (u->rr) {
+		(void) rr_track_delete(u->c->id, u->rr);
+		u->rr = NULL;
+	}
+
+	return 0;
+}
+
+
 /** Process notification that fd is open
  *
  */
@@ -1240,6 +1258,70 @@ static fr_connection_state_t conn_open(UNUSED fr_event_list_t *el, UNUSED int fd
 	fr_dlist_remove(&c->entry);
 	fr_heap_insert(t->active, c);
 	c->state = CONN_ACTIVE;
+
+	/*
+	 *	Status-Server checks.  Manually build the packet, and
+	 *	all of it's associated glue.
+	 */
+	if (c->inst->parent->status_check) {
+		rlm_radius_link_t *link;
+		rlm_radius_udp_request_t *u;
+		REQUEST *request;
+
+		link = talloc_zero(c, rlm_radius_link_t);
+		u = talloc_zero(c, rlm_radius_udp_request_t);
+		request = request_alloc(link);
+
+		// @todo - if we call unlang, we need to set a whole lot more... see worker.c
+		request->el = c->thread->el;
+		request->packet = fr_radius_alloc(request, false);
+		request->reply = fr_radius_alloc(request, false);
+
+		/*
+		 *	Create the packet contents.
+		 *
+		 *	@todo - different packet contents for
+		 *	Access-Request, Accounting-Request, etc.
+		 */
+		pair_make_request("NAS-Identifier", "status check - are you alive?", T_OP_EQ);
+		pair_make_request("Event-Timestamp", "0", T_OP_EQ);
+
+		/*
+		 *	Initialize the link.  Note that we don't set
+		 *	destructors.
+		 */
+		FR_DLIST_INIT(link->entry);
+		link->request = request;
+		link->request_io_ctx = u;
+
+		/*
+		 *	Unitialize the UDP link.
+		 */
+		FR_DLIST_INIT(u->entry);
+		u->code = c->inst->parent->status_check;
+		request->packet->code = u->code;
+		u->c = c;
+		u->link = link;
+
+		/*
+		 *	Reserve a permanent ID for the packet.  This
+		 *	is because we need to be able to send an ID on
+		 *	demand.  If the proxied packets use all of the
+		 *	IDs, then we can't send a Status-Server check.
+		 */
+		u->rr = rr_track_alloc(c->id, request, u->code, link);
+		if (!u->rr) {
+			ERROR("%s failed allocating status_check ID for new connection %s",
+			      c->inst->parent->name, c->name);
+			talloc_free(u);
+			talloc_free(link);
+		} else {
+			DEBUG3("%s allocated %s ID %u for status checks on connection %s",
+			       c->inst->parent->name, fr_packet_codes[u->code], u->rr->id, c->name);
+			talloc_set_destructor(u, udp_request_free);
+			c->status_u = u;
+		}
+	}
 
 	/*
 	 *	Now that we're open, also push pending requests from
@@ -1408,24 +1490,6 @@ static int conn_free(rlm_radius_udp_connection_t *c)
 }
 
 
-/** Free an rlm_radius_udp_request_t
- *
- *  Unlink the packet from the connection, and remove any tracking
- *  entries.
- */
-static int udp_request_free(rlm_radius_udp_request_t *u)
-{
-	fr_dlist_remove(&u->entry);
-
-	if (u->rr) {
-		(void) rr_track_delete(u->c->id, u->rr);
-		u->rr = NULL;
-	}
-
-	return 0;
-}
-
-
 /** Allocate a new connection and set it up.
  *
  */
@@ -1474,68 +1538,6 @@ static void mod_connection_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t
 	c->max_requests = 256;
 	FR_DLIST_INIT(c->queued);
 	FR_DLIST_INIT(c->sent);
-
-	/*
-	 *	Status-Server checks.  Manually build the packet, and
-	 *	all of it's associated glue.
-	 */
-	if (inst->parent->status_check) {
-		rlm_radius_link_t *link;
-		rlm_radius_udp_request_t *u;
-		REQUEST *request;
-
-		link = talloc_zero(c, rlm_radius_link_t);
-		u = talloc_zero(c, rlm_radius_udp_request_t);
-		request = request_alloc(link);
-
-		// @todo - if we call unlang, we need to set a whole lot more... see worker.c
-		request->el = c->thread->el;
-		request->packet = fr_radius_alloc(request, false);
-		request->reply = fr_radius_alloc(request, false);
-
-		/*
-		 *	Create the packet contents.
-		 *
-		 *	@todo - different packet contents for
-		 *	Access-Request, Accounting-Request, etc.
-		 */
-		pair_make_request("NAS-Identifier", "status check - are you alive?", T_OP_EQ);
-		pair_make_request("Event-Timestamp", "0", T_OP_EQ);
-
-		/*
-		 *	Initialize the link.  Note that we don't set
-		 *	destructors.
-		 */
-		FR_DLIST_INIT(link->entry);
-		link->request = request;
-		link->request_io_ctx = u;
-
-		/*
-		 *	Unitialize the UDP link.
-		 */
-		FR_DLIST_INIT(u->entry);
-		u->code = inst->parent->status_check;
-		request->packet->code = u->code;
-		u->c = c;
-		u->link = link;
-
-		/*
-		 *	Reserve a permanent ID for the packet.  This
-		 *	is because we need to be able to send an ID on
-		 *	demand.  If the proxied packets use all of the
-		 *	IDs, then we can't send a Status-Server check.
-		 */
-		u->rr = rr_track_alloc(c->id, request, inst->parent->status_check, link);
-		if (!u->rr) {
-			cf_log_err(inst->config, "%s failed allocating status_check ID for new connection",
-				   inst->parent->name);
-			talloc_free(c);
-			return;
-		}
-
-		talloc_set_destructor(u, udp_request_free);
-		c->status_u = u;
-	}
 
 	c->conn = fr_connection_alloc(c, t->el, &inst->parent->connection_timeout, &inst->parent->reconnection_delay,
 				      conn_init, conn_open, conn_close, inst->parent->name, c);

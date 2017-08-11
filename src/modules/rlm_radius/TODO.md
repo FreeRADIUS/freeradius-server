@@ -105,6 +105,10 @@ signaling if necessary.
 We probaby want the network + worker to be able to send IDs of 0/0,
 which means "no tracking", as that will likely be the common case.
 
+We also need the same thing for conflicting packets... we need a way
+to tell the end modules to stop retransmitting the packet, as no one
+cares about it any more.
+
 ## miscellaneous
 
 * Check on packet lifetime timers in network side?
@@ -116,3 +120,31 @@ We should move to a "must_signal" approach, as with the network side
 The worker should suppress signals if it sees that the ACKs from the
 other end haven't caught up to it's sent packets.  Otherwise, it must
 signal.
+
+this whole thing is wrong... we end up signaling on every damned packet in real life...
+
+we need worker-side de-dup for dup / conflicting packets.  Which lets
+us stop old packets while processing new ones.
+
+OK... fix the damned channel to use queue depth instead of ACKs
+which makes them less general, but better.  The worker can NAK a packet, send a reply, or mark it ask discarded
+
+DATA		N -> W: (packet + queue 1, active)
+
+DATA		N <- W (packet + queue is now 0, inactive)
+
+DISCARD		N <- W (no packet, queue is now 0, inactive)
+
+SLEEPING	N <- W (no packet, queue is 1, inactive)
+
+We also need an "must_signal" flag, for if the other end is
+sleeping... the network always sets it, I guess..
+
+What else...
+
+* the debug output is still a bit too complex to understand fully
+* Status-Server packets (etc.) need to have priorities associated with them
+  * maybe the proto_radius stuff needs to take Status-Server and just respond itself??
+  * for now, that's probably the best idea...
+* need to move to queue depth / active flag in channels / network / worker
+  * the current ACK, and "my_view_of_their_shit" is just too complex
