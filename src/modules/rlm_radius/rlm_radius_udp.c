@@ -891,7 +891,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	 *	Status-Server requires Message-Authenticator, but not
 	 *	Proxy-State.
 	 */
-	if (c->buffer[0] == FR_CODE_STATUS_SERVER) {
+	if (u->code == FR_CODE_STATUS_SERVER) {
 		proxy_state = 0;
 	}
 
@@ -903,8 +903,8 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	 *	And we set the authentication vector to a random
 	 *	number...
 	 */
-	if ((c->buffer[0] == FR_CODE_ACCESS_REQUEST) ||
-	    (c->buffer[0] == FR_CODE_STATUS_SERVER)) {
+	if ((u->code == FR_CODE_ACCESS_REQUEST) ||
+	    (u->code == FR_CODE_STATUS_SERVER)) {
 		size_t i;
 		uint32_t hash, base;
 
@@ -941,12 +941,12 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	 *	Encode it, leaving room for Proxy-State, too.
 	 */
 	packet_len = fr_radius_encode(c->buffer, buflen - proxy_state, NULL,
-				      c->inst->secret, u->rr->id, u->code, u->rr->id,
+				      c->inst->secret, 0, u->code, u->rr->id,
 				      request->packet->vps);
 	if (packet_len <= 0) return -1;
 
-	RDEBUG("sending %s ID %d length %ld reply packet to connection %s",
-	       fr_packet_codes[u->code], u->code, packet_len, c->name);
+	RDEBUG("sending %s ID %d length %ld over connection %s",
+	       fr_packet_codes[u->code], u->rr->id, packet_len, c->name);
 
 	/*
 	 *	This hack cleans up the debug output a bit.
