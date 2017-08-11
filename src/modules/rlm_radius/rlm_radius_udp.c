@@ -442,7 +442,7 @@ static void conn_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 	decode_fail_t reason;
 	size_t packet_len;
 	ssize_t data_len;
-	REQUEST *request;
+	REQUEST *request = NULL;
 	uint8_t original[20];
 
 	DEBUG3("%s reading data for connection %s",
@@ -476,8 +476,8 @@ redo:
 		goto redo;
 	}
 
-	if (DEBUG_ENABLED3 && request) {
-		RDEBUG("rlm_radius read packet");
+	if (DEBUG_ENABLED3) {
+		DEBUG("rlm_radius read packet");
 		fr_radius_print_hex(fr_log_fp, c->buffer, packet_len);
 	}
 
