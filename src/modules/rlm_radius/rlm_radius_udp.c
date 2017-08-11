@@ -476,7 +476,7 @@ redo:
 		goto redo;
 	}
 
-	if (DEBUG_ENABLED3) {
+	if (DEBUG_ENABLED3 && request) {
 		RDEBUG("rlm_radius read packet");
 		fr_radius_print_hex(fr_log_fp, c->buffer, packet_len);
 	}
