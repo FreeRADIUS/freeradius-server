@@ -101,7 +101,7 @@ typedef struct rlm_radius_udp_connection_t {
 	int			heap_id;	//!< for the active heap
 	rlm_radius_udp_connection_state_t state; //!< state of the connection
 
-	fr_event_timer_t const	*ev;		//!< idle timeout event
+	fr_event_timer_t const	*idle_ev;	//!< idle timeout event
 	struct timeval		idle_timeout;	//!< when the idle timeout will fire
 
 	struct timeval		mrs_time;	//!< most recent sent time which had a reply
@@ -234,7 +234,7 @@ static void conn_idle(rlm_radius_udp_connection_t *c)
 	 *	Still has active requests: it's not idle.
 	 */
 	if (c->num_requests > 0) {
-		if (c->ev) (void) fr_event_timer_delete(c->thread->el, &c->ev);
+		if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
 		return;
 	}
 
@@ -252,7 +252,7 @@ static void conn_idle(rlm_radius_udp_connection_t *c)
 
 		DEBUG("Resetting idle timeout to +%pV for connection %s",
 		      fr_box_timeval(c->inst->parent->idle_timeout), c->name);
-		if (fr_event_timer_insert(c, c->thread->el, &c->ev, &c->idle_timeout, conn_idle_timeout, c) < 0) {
+		if (fr_event_timer_insert(c, c->thread->el, &c->idle_ev, &c->idle_timeout, conn_idle_timeout, c) < 0) {
 			ERROR("%s failed inserting idle timeout for connection %s",
 			      c->inst->parent->name, c->name);
 		}
@@ -287,12 +287,11 @@ static void conn_zombie(rlm_radius_udp_connection_t *c)
 	c->state = CONN_ZOMBIE;
 	c->zombie_start = when;
 
-	rad_assert(c->ev == NULL);
 	fr_timeval_add(&when, &when, &c->inst->parent->zombie_period);
 	DEBUG("%s setting to zombie for connection %s",
 	      c->inst->parent->name, c->name);
 
-	if (fr_event_timer_insert(c, c->thread->el, &c->ev, &when, conn_zombie_timeout, c) < 0) {
+	if (fr_event_timer_insert(c, c->thread->el, &c->idle_ev, &when, conn_zombie_timeout, c) < 0) {
 		ERROR("%s failed inserting idle timeout for connection %s",
 		      c->inst->parent->name, c->name);
 	}
@@ -338,7 +337,7 @@ static void fd_active(rlm_radius_udp_connection_t *c)
 	/*
 	 *	If we're writing to the connection, it's not idle.
 	 */
-	if (c->ev) (void) fr_event_timer_delete(c->thread->el, &c->ev);
+	if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
 
 	if (fr_event_fd_insert(c->conn, t->el, c->fd,
 			       conn_read, conn_writable, conn_error, c) < 0) {
@@ -517,7 +516,7 @@ redo:
 		break;
 
 	case CONN_ZOMBIE:
-		rad_assert(c->ev != NULL);
+		rad_assert(c->idle_ev != NULL);
 		fr_dlist_remove(&c->entry);
 		break;
 
@@ -1119,7 +1118,7 @@ static void conn_writable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int 
 	fr_dlist_t *entry;
 	bool pending;
 
-	rad_assert(c->ev == NULL); /* if it's writable and we're writing, it can't be idle */
+	rad_assert(c->idle_ev == NULL); /* if it's writable and we're writing, it can't be idle */
 
 	DEBUG3("%s writing packets for connection %s",
 	       c->inst->parent->name, c->name);
@@ -1177,7 +1176,7 @@ static void conn_close(int fd, void *uctx)
 {
 	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
 
-	if (c->ev) fr_event_timer_delete(c->thread->el, &c->ev);
+	if (c->idle_ev) fr_event_timer_delete(c->thread->el, &c->idle_ev);
 
 	DEBUG("%s closing connection %s",
 	      c->inst->parent->name, c->name);
@@ -1263,7 +1262,7 @@ static fr_connection_state_t conn_open(UNUSED fr_event_list_t *el, UNUSED int fd
 			c->idle_timeout = when;
 
 			DEBUG("Setting idle timeout for connection %s", c->name);
-			if (fr_event_timer_insert(c, c->thread->el, &c->ev, &c->idle_timeout, conn_idle_timeout, c) < 0) {
+			if (fr_event_timer_insert(c, c->thread->el, &c->idle_ev, &c->idle_timeout, conn_idle_timeout, c) < 0) {
 				ERROR("%s failed inserting idle timeout for connection %s",
 				      c->inst->parent->name, c->name);
 			}
