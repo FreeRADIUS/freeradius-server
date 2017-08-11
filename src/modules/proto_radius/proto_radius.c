@@ -171,6 +171,11 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 
 	rad_assert(data[0] < FR_MAX_PACKET_CODE);
 
+	if (DEBUG_ENABLED3) {
+		RDEBUG("proto_radius decode packet");
+		fr_radius_print_hex(fr_log_fp, data, data_len);
+	}
+
 	client = inst->app_io_private->client(inst->app_io, request->async->packet_ctx);
 	rad_assert(client);
 
@@ -228,6 +233,11 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	if (buffer_len < len) len = buffer_len;
 
 	memcpy(buffer, request->reply->data, len);
+
+	if (DEBUG_ENABLED3) {
+		RDEBUG("proto_radius encode packet");
+		fr_radius_print_hex(fr_log_fp, buffer, len);
+	}
 
 	return len;
 }
