@@ -189,26 +189,26 @@ static void fr_network_channel_callback(void *ctx, void const *data, size_t data
 	ce = fr_channel_service_message(now, &ch, data, data_size);
 	switch (ce) {
 	case FR_CHANNEL_ERROR:
-		fr_log(nr->log, L_DBG_ERR, "aq error");
+		fr_log(nr->log, L_DBG_ERR, "error <--");
 		return;
 
 	case FR_CHANNEL_EMPTY:
-		fr_log(nr->log, L_DBG, "aq empty");
+		fr_log(nr->log, L_DBG, "... <--");
 		return;
 
 	case FR_CHANNEL_NOOP:
-		fr_log(nr->log, L_DBG, "aq noop");
+		fr_log(nr->log, L_DBG, "noop <--");
 		break;
 
 	case FR_CHANNEL_DATA_READY_NETWORK:
 		rad_assert(ch != NULL);
-		fr_log(nr->log, L_DBG, "aq data ready");
+		fr_log(nr->log, L_DBG, "data <--");
 		fr_network_drain_input(nr, ch, NULL);
 		break;
 
 	case FR_CHANNEL_DATA_READY_WORKER:
 		rad_assert(0 == 1);
-		fr_log(nr->log, L_DBG_ERR, "aq data ready ? WORKER ?");
+		fr_log(nr->log, L_DBG_ERR, "worker ??? <--");
 		break;
 
 	case FR_CHANNEL_OPEN:
@@ -217,7 +217,7 @@ static void fr_network_channel_callback(void *ctx, void const *data, size_t data
 		break;
 
 	case FR_CHANNEL_CLOSE:
-		fr_log(nr->log, L_DBG, "aq channel close");
+		fr_log(nr->log, L_DBG, "close <--");
 		///
 		break;
 	}

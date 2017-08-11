@@ -179,7 +179,7 @@ static bool fr_worker_drain_input(fr_worker_t *worker, fr_channel_t *ch, fr_chan
 	if (!cd) {
 		cd = fr_channel_recv_request(ch);
 		if (!cd) {
-			fr_log(worker->log, L_DBG, "\t%sno data?", worker->name);
+			fr_log(worker->log, L_DBG, "\t--> empty-ack");
 			return false;
 		}
 	}
@@ -221,25 +221,25 @@ static void fr_worker_channel_callback(void *ctx, void const *data, size_t data_
 	ce = fr_channel_service_message(now, &ch, data, data_size);
 	switch (ce) {
 	case FR_CHANNEL_ERROR:
-		fr_log(worker->log, L_DBG, "\t%saq error", worker->name);
+		fr_log(worker->log, L_DBG, "\t--> error");
 		return;
 
 	case FR_CHANNEL_EMPTY:
-		fr_log(worker->log, L_DBG, "\t%saq empty", worker->name);
+		fr_log(worker->log, L_DBG, "\t--> ...");
 		return;
 
 	case FR_CHANNEL_NOOP:
-		fr_log(worker->log, L_DBG, "\t%saq noop", worker->name);
+		fr_log(worker->log, L_DBG, "\t--> noop");
 		return;
 
 	case FR_CHANNEL_DATA_READY_NETWORK:
 		rad_assert(0 == 1);
-		fr_log(worker->log, L_DBG, "\t%saq data ready ? MASTER ?", worker->name);
+		fr_log(worker->log, L_DBG, "\t--> ??? network");
 		break;
 
 	case FR_CHANNEL_DATA_READY_WORKER:
 		rad_assert(ch != NULL);
-		fr_log(worker->log, L_DBG, "\t%saq data ready", worker->name);
+		fr_log(worker->log, L_DBG, "\t--> data");
 		if (!fr_worker_drain_input(worker, ch, NULL)) {
 			worker->was_sleeping = was_sleeping;
 		}
@@ -529,6 +529,8 @@ static void fr_worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED struct
 	fr_dlist_t *entry;
 	fr_time_t now = fr_time();
 	fr_worker_t *worker = talloc_get_type_abort(uctx, fr_worker_t);
+
+	fr_log(worker->log, L_DBG, "worker max_request_time");
 
 	/*
 	 *	Look at the oldest requests, and see if they need to
@@ -991,7 +993,10 @@ static int fr_worker_pre_event(void *ctx, struct timeval *wake)
 	 *	We were sleeping, don't send another signal that we
 	 *	are still sleeping.
 	 */
-	if (worker->was_sleeping) return 0;
+	if (worker->was_sleeping) {
+		fr_log(worker->log, L_DBG, "\tworker was sleeping, not re-signaling");
+		return 0;
+	}
 
 	/*
 	 *	Nothing more to do, and the event loop has us sleeping
