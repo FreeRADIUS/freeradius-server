@@ -540,7 +540,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 
 	(void) rbtree_insert(nr->sockets, s);
 
-	DEBUG("Using new socket with FD %d", fd);
+	DEBUG3("Using new socket with FD %d", fd);
 }
 
 
