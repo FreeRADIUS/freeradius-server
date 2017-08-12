@@ -232,8 +232,12 @@ static void conn_idle(rlm_radius_udp_connection_t *c)
 
 	/*
 	 *	Still has active requests: it's not idle.
+	 *
+	 *	Note that Status-Server checks don't count for
+	 *	num_requests, but they are still active packets for
+	 *	the purpose of idle timeouts.
 	 */
-	if (c->num_requests > 0) {
+	if ((c->num_requests > 0) || c->status_u->rr->ev) {
 		if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
 		return;
 	}
