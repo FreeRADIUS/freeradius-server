@@ -592,7 +592,8 @@ int main(int argc, char *argv[])
 			el = process_global_event_list(EVENT_CORRAL_MAIN);
 		}
 
-		sc = fr_schedule_create(NULL, el, &default_log, networks, workers,
+		sc = fr_schedule_create(NULL, el, &default_log, rad_debug_lvl,
+					networks, workers,
 					(fr_schedule_thread_instantiate_t) modules_thread_instantiate,
 					main_config.config);
 		if (!sc) {

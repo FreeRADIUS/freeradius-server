@@ -113,6 +113,7 @@ struct fr_schedule_t {
 	fr_event_list_t	*el;			//!< event list for single-threaded mode.
 
 	fr_log_t	*log;			//!< log destination
+	fr_log_lvl_t	lvl;			//!< log level
 
 	int		max_networks;		//!< number of network threads
 	int		max_workers;		//!< max number of worker threads
@@ -302,6 +303,7 @@ fail:
  * @param[in] ctx the talloc context
  * @param[in] el the event list, only for single-threaded mode.
  * @param[in] logger the destination for all logging messages
+ * @param[in] lvl the log level
  * @param[in] max_networks the number of network threads
  * @param[in] max_workers the number of worker threads
  * @param[in] worker_thread_instantiate callback for new worker threads
@@ -310,7 +312,8 @@ fail:
  *	- NULL on error
  *	- fr_schedule_t new scheduler
  */
-fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t *logger,
+fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
+				  fr_log_t *logger, fr_log_lvl_t lvl,
 				  int max_networks, int max_workers,
 				  fr_schedule_thread_instantiate_t worker_thread_instantiate,
 				  void *worker_thread_ctx)
@@ -352,6 +355,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t
 	sc->max_workers = max_workers;
 	sc->num_workers = 0;
 	sc->log = logger;
+	sc->lvl = lvl;
 
 	sc->worker_thread_instantiate = worker_thread_instantiate;
 	sc->worker_instantiate_ctx = worker_thread_ctx;
