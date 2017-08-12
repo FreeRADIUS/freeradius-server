@@ -1216,6 +1216,18 @@ static int udp_request_free(rlm_radius_udp_request_t *u)
 	return 0;
 }
 
+/** Free the status-check rlm_radius_udp_request_t
+ *
+ *  Unlink the packet from the connection, and remove any tracking
+ *  entries.
+ */
+static int status_udp_request_free(rlm_radius_udp_request_t *u)
+{
+	u->c->status_u = NULL;
+
+	return udp_request_free(u);
+}
+
 
 /** Process notification that fd is open
  *
@@ -1314,7 +1326,7 @@ static fr_connection_state_t conn_open(UNUSED fr_event_list_t *el, UNUSED int fd
 		} else {
 			DEBUG3("%s allocated %s ID %u for status checks on connection %s",
 			       c->inst->parent->name, fr_packet_codes[u->code], u->rr->id, c->name);
-			talloc_set_destructor(u, udp_request_free);
+			talloc_set_destructor(u, status_udp_request_free);
 			c->status_u = u;
 		}
 	}
@@ -1432,7 +1444,10 @@ static int conn_free(rlm_radius_udp_connection_t *c)
 	 *	Status-Server checks remain with this connection, and
 	 *	don't get sent back to the main thread queue.
 	 */
-	if (c->status_u) talloc_free(c->status_u);
+	if (c->status_u) {
+		talloc_free(c->status_u);
+		c->status_u = NULL;
+	}
 
 	/*
 	 *	Move "sent" packets back to the main thread queue
