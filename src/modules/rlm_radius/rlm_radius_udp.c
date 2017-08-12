@@ -893,14 +893,6 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	}
 
 	/*
-	 *	Status-Server requires Message-Authenticator, but not
-	 *	Proxy-State.
-	 */
-	if (u->code == FR_CODE_STATUS_SERVER) {
-		proxy_state = 0;
-	}
-
-	/*
 	 *	All proxied Access-Request packets MUST have a
 	 *	Message-Authenticator, otherwise they're insecure.
 	 *	Same goes for Status-Server.
@@ -924,11 +916,13 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 
 	/*
 	 *	Every status check packet has an Event-Timestamp.
-	 *	Which changes every time we send a packet.
+	 *	Which changes every time we send a packet, but it
+	 *	doesn't have Proxy-State.
 	 */
 	if (u == c->status_u) {
 		VALUE_PAIR *vp;
 
+		proxy_state = 0;
 		vp = fr_pair_find_by_num(request->packet->vps, 0, FR_EVENT_TIMESTAMP, TAG_ANY);
 		vp->vp_uint32 = time(NULL);
 	}
