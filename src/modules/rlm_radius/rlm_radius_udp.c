@@ -199,7 +199,7 @@ static void conn_idle_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeval 
 {
 	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
 
-	DEBUG("TIMER - %s idle timeout for connection %s",
+	DEBUG("%s TIMER - idle timeout for connection %s",
 	      c->inst->parent->name, c->name);
 
 	talloc_free(c);
@@ -212,7 +212,7 @@ static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeva
 {
 	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
 
-	DEBUG("TIMER - %s zombie timeout for connection %s",
+	DEBUG("%s TIMER - zombie timeout for connection %s",
 	      c->inst->parent->name, c->name);
 
 	if (c->status_u) {
@@ -254,8 +254,8 @@ static void conn_idle(rlm_radius_udp_connection_t *c)
 		when.tv_sec--;
 		c->idle_timeout = when;
 
-		DEBUG("Resetting idle timeout to +%pV for connection %s",
-		      fr_box_timeval(c->inst->parent->idle_timeout), c->name);
+		DEBUG("%s setting idle timeout to +%pV for connection %s",
+		      c->inst->parent->name, fr_box_timeval(c->inst->parent->idle_timeout), c->name);
 		if (fr_event_timer_insert(c, c->thread->el, &c->idle_ev, &c->idle_timeout, conn_idle_timeout, c) < 0) {
 			ERROR("%s failed inserting idle timeout for connection %s",
 			      c->inst->parent->name, c->name);
@@ -1349,27 +1349,6 @@ static fr_connection_state_t conn_open(UNUSED fr_event_list_t *el, UNUSED int fd
 		fd_active(c);
 	} else {
 		fd_idle(c);
-
-		/*
-		 *	Set initial idle timeout
-		 */
-		if ((c->inst->parent->idle_timeout.tv_sec != 0) ||
-		    (c->inst->parent->idle_timeout.tv_usec != 0)) {
-			struct timeval when;
-
-			gettimeofday(&when, NULL); /* @todo: get it from a recently sent packet? */
-			when.tv_usec += c->inst->parent->idle_timeout.tv_usec;
-			when.tv_sec += when.tv_usec / USEC;
-			when.tv_sec += c->inst->parent->idle_timeout.tv_sec;
-			when.tv_usec %= USEC;
-			c->idle_timeout = when;
-
-			DEBUG("Setting idle timeout for connection %s", c->name);
-			if (fr_event_timer_insert(c, c->thread->el, &c->idle_ev, &c->idle_timeout, conn_idle_timeout, c) < 0) {
-				ERROR("%s failed inserting idle timeout for connection %s",
-				      c->inst->parent->name, c->name);
-			}
-		}
 	}
 
 	return FR_CONNECTION_STATE_CONNECTED;
