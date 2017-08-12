@@ -78,6 +78,7 @@ struct fr_network_t {
 	int			kq;			//!< our KQ
 
 	fr_log_t const		*log;			//!< log destination
+	fr_log_lvl_t		lvl;			//!< debug log level
 
 	fr_atomic_queue_t	*aq_control;		//!< atomic queue for control messages sent to me
 
@@ -347,7 +348,7 @@ next_message:
 	data_size = s->listen->app_io->read(s->listen->app_io_instance, &cd->packet_ctx, &recv_time,
 					    cd->m.data, cd->m.rb_size, &s->leftover);
 	if (data_size == 0) {
-		fr_log(nr->log, L_DBG_ERR, "got no data from transport read");
+//		fr_log(nr->log, L_DBG_ERR, "got no data from transport read");
 
 		/*
 		 *	Cache the message for later.  This is
@@ -586,11 +587,12 @@ static void fr_network_evfilt_user(UNUSED int kq, UNUSED struct kevent const *ke
  * @param[in] ctx the talloc ctx
  * @param[in] el the event list
  * @param[in] logger the destination for all logging messages
+ * @param[in] lvl log level
  * @return
  *	- NULL on error
  *	- fr_network_t on success
  */
-fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t const *logger)
+fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t const *logger, fr_log_lvl_t lvl)
 {
 	fr_network_t *nr;
 
@@ -602,6 +604,7 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t c
 
 	nr->el = el;
 	nr->log = logger;
+	nr->lvl = lvl;
 
 	nr->kq = fr_event_list_kq(nr->el);
 	rad_assert(nr->kq >= 0);
