@@ -81,6 +81,19 @@ static void fr_worker_verify(fr_worker_t *worker);
 #define WORKER_VERIFY
 #endif
 
+/*
+ *	Define our own debugging.
+ */
+#undef DEBUG
+#undef DEBUG2
+#undef DEBUG3
+#undef ERROR
+
+#define DEBUG(fmt, ...) if (worker->lvl) fr_log(worker->log, L_DBG, fmt, ## __VA_ARGS__)
+#define DEBUG2(fmt, ...) if (worker->lvl >= L_DBG_LVL_2) fr_log(worker->log, L_DBG, fmt, ## __VA_ARGS__)
+#define DEBUG3(fmt, ...) if (worker->lvl >= L_DBG_LVL_3) fr_log(worker->log, L_DBG, fmt, ## __VA_ARGS__)
+#define ERROR(fmt, ...) fr_log(worker->log, L_ERR, fmt, ## __VA_ARGS__)
+
 /**
  *  A worker which takes packets from a master, and processes them.
  */
@@ -178,14 +191,14 @@ static bool fr_worker_drain_input(fr_worker_t *worker, fr_channel_t *ch, fr_chan
 	if (!cd) {
 		cd = fr_channel_recv_request(ch);
 		if (!cd) {
-			fr_log(worker->log, L_DBG, "\t--> empty-ack");
+			DEBUG3("\t--> empty-ack");
 			return false;
 		}
 	}
 
 	do {
 		worker->num_requests++;
-		fr_log(worker->log, L_DBG, "\t%sreceived request %d", worker->name, worker->num_requests);
+		DEBUG3("\t%sreceived request %d", worker->name, worker->num_requests);
 		cd->channel.ch = ch;
 		WORKER_HEAP_INSERT(to_decode, cd, request.list);
 	} while ((cd = fr_channel_recv_request(ch)) != NULL);
@@ -220,32 +233,32 @@ static void fr_worker_channel_callback(void *ctx, void const *data, size_t data_
 	ce = fr_channel_service_message(now, &ch, data, data_size);
 	switch (ce) {
 	case FR_CHANNEL_ERROR:
-		fr_log(worker->log, L_DBG, "\t--> error");
+		DEBUG3("\t--> error");
 		return;
 
 	case FR_CHANNEL_EMPTY:
-		fr_log(worker->log, L_DBG, "\t--> ...");
+		DEBUG3("\t--> ...");
 		return;
 
 	case FR_CHANNEL_NOOP:
-		fr_log(worker->log, L_DBG, "\t--> noop");
+		DEBUG3("\t--> noop");
 		return;
 
 	case FR_CHANNEL_DATA_READY_NETWORK:
 		rad_assert(0 == 1);
-		fr_log(worker->log, L_DBG, "\t--> ??? network");
+		DEBUG3("\t--> ??? network");
 		break;
 
 	case FR_CHANNEL_DATA_READY_WORKER:
 		rad_assert(ch != NULL);
-		fr_log(worker->log, L_DBG, "\t--> data");
+		DEBUG3("\t--> data");
 		if (!fr_worker_drain_input(worker, ch, NULL)) {
 			worker->was_sleeping = was_sleeping;
 		}
 		break;
 
 	case FR_CHANNEL_OPEN:
-		fr_log(worker->log, L_DBG, "\t%saq channel open", worker->name);
+		DEBUG3("\t--> channel open");
 
 		rad_assert(ch != NULL);
 
@@ -256,7 +269,7 @@ static void fr_worker_channel_callback(void *ctx, void const *data, size_t data_
 			if (worker->channel[i] != NULL) continue;
 
 			worker->channel[i] = ch;
-			fr_log(worker->log, L_DBG, "\t%sreceived channel %p into array entry %d", worker->name, ch, i);
+			DEBUG3("\t%sreceived channel %p into array entry %d", worker->name, ch, i);
 
 			ms = fr_message_set_create(worker, worker->message_set_size,
 						   sizeof(fr_channel_data_t),
@@ -273,7 +286,7 @@ static void fr_worker_channel_callback(void *ctx, void const *data, size_t data_
 		break;
 
 	case FR_CHANNEL_CLOSE:
-		fr_log(worker->log, L_DBG, "\t%saq channel close", worker->name);
+		DEBUG3("\t--> channel close");
 
 		rad_assert(ch != NULL);
 
@@ -399,7 +412,7 @@ static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t 
 	 *	Send the reply, which also polls the request queue.
 	 */
 	if (fr_channel_send_reply(ch, reply, &cd) < 0) {
-		fr_log(worker->log, L_DBG, "\t%sfails sending reply", worker->name);
+		DEBUG2("\t%sfails sending reply to channel", worker->name);
 		cd = NULL;
 	}
 
@@ -452,7 +465,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 						      reply->m.data, reply->m.rb_size);
 		}
 		if (slen < 0) {
-			fr_log(worker->log, L_DBG, "\t%sfails encode", worker->name);
+			DEBUG2("\t%sfails encode", worker->name);
 			rad_assert(0 == 1);
 			slen = 1;
 		}
@@ -484,13 +497,13 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	reply->listen = request->async->listen;
 	reply->packet_ctx = request->async->packet_ctx;
 
-	fr_log(worker->log, L_DBG, "(%"PRIu64") finished, sending reply", request->number);
+	DEBUG("(%"PRIu64") finished request.", request->number);
 
 	/*
 	 *	Send the reply, which also polls the request queue.
 	 */
 	if (fr_channel_send_reply(ch, reply, &cd) < 0) {
-		fr_log(worker->log, L_DBG, "\t%sfails sending reply", worker->name);
+		DEBUG2("\t%sfails sending reply", worker->name);
 		cd = NULL;
 	}
 
@@ -529,7 +542,7 @@ static void fr_worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED struct
 	fr_time_t now = fr_time();
 	fr_worker_t *worker = talloc_get_type_abort(uctx, fr_worker_t);
 
-	fr_log(worker->log, L_DBG, "worker max_request_time");
+	DEBUG2("TIMER - worker max_request_time");
 
 	/*
 	 *	Look at the oldest requests, and see if they need to
@@ -552,7 +565,7 @@ static void fr_worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED struct
 		(void) fr_heap_extract(worker->runnable, request);
 		fr_time_tracking_resume(&request->async->tracking, now);
 
-		fr_log(worker->log, L_DBG, "(%"PRIu64") taking too long, stopping it", request->number);
+		DEBUG("(%"PRIu64") taking too long, stopping it", request->number);
 		(void) request->async->process(request, FR_IO_ACTION_DONE);
 
 		/*
@@ -574,7 +587,7 @@ static void worker_reset_timer(fr_worker_t *worker)
 	entry = FR_DLIST_TAIL(worker->time_order);
 	if (!entry) {
 		rad_assert(worker->num_active == 0);
-		fr_log(worker->log, L_DBG, "Worker has nothing to do, deleting cleanup timer.");
+		DEBUG3("Worker has nothing to do, deleting cleanup timer.");
 		if (worker->ev_cleanup) fr_event_timer_delete(worker->el, &worker->ev_cleanup);
 		worker->next_cleanup = 0;
 		return;
@@ -600,10 +613,10 @@ static void worker_reset_timer(fr_worker_t *worker)
 	worker->next_cleanup = cleanup;
 	fr_time_to_timeval(&when, cleanup);
 
-	fr_log(worker->log, L_DBG, "Resetting worker cleanup timer to +30s");
+	DEBUG2("Resetting worker cleanup timer to +30s");
 	if (fr_event_timer_insert(worker, worker->el, &worker->ev_cleanup,
 				  &when, fr_worker_max_request_time, worker) < 0) {
-		fr_log(worker->log, L_ERR, "Failed inserting max_request_time timer.");
+		ERROR("Failed inserting max_request_time timer.");
 	}
 }
 
@@ -641,7 +654,7 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 		 *	Waiting too long, delete it.
 		 */
 		WORKER_HEAP_EXTRACT(localized, cd, request.list);
-		fr_log(worker->log, L_DBG, "TIMEOUT: Extracting packet from localized list");
+		DEBUG3("TIMEOUT: Extracting packet from localized list");
 		fr_worker_nak(worker, cd, now);
 	}
 
@@ -662,7 +675,7 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 		 */
 		if (waiting > NANOSEC) {
 			WORKER_HEAP_EXTRACT(to_decode, cd, request.list);
-			fr_log(worker->log, L_DBG, "TIMEOUT: Extracting packet from to_decode list");
+			DEBUG3("TIMEOUT: Extracting packet from to_decode list");
 
 		nak:
 			fr_worker_nak(worker, cd, now);
@@ -675,7 +688,7 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 		WORKER_HEAP_EXTRACT(to_decode, cd, request.list);
 		lm = fr_message_localize(worker, &cd->m, sizeof(*cd));
 		if (!lm) {
-			fr_log(worker->log, L_DBG, "TIMEOUT: Failed localizing message from to_decode list: %s", fr_strerror());
+			DEBUG3("TIMEOUT: Failed localizing message from to_decode list: %s", fr_strerror());
 			goto nak;
 		}
 		cd = (fr_channel_data_t *) lm;
@@ -732,8 +745,8 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 		 *	in the queue.  Delete it, and go get another one.
 		 */
 		if (cd->request.recv_time && (cd->m.when != *cd->request.recv_time)) {
-			fr_log(worker->log, L_DBG, "\t%sIGNORING old message: was %zd now %zd", worker->name,
-				*cd->request.recv_time, cd->m.when);
+			DEBUG("\t%sIGNORING old message: was %zd now %zd", worker->name,
+			      *cd->request.recv_time, cd->m.when);
 			fr_worker_nak(worker, cd, fr_time());
 			cd = NULL;
 		}
@@ -789,7 +802,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	}
 
 	if (ret < 0) {
-		fr_log(worker->log, L_DBG, "\t%sFAILED decode of request %"PRIu64, worker->name, request->number);
+		DEBUG("\t%sFAILED decode of request %"PRIu64, worker->name, request->number);
 		talloc_free(ctx);
 nak:
 		fr_worker_nak(worker, cd, fr_time());
@@ -803,7 +816,7 @@ nak:
 	listen->app->process_set(listen->app_instance, request);
 
 	if (!request->async->process) {
-		fr_log(worker->log, L_DBG, "Protocol failed to set 'process' function");
+		ERROR("Protocol failed to set 'process' function");
 		fr_worker_nak(worker, cd, fr_time());
 		return NULL;
 	}
@@ -889,7 +902,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 
 	WORKER_VERIFY;
 
-	fr_log(worker->log, L_DBG, "(%" PRIu64 ") running request", request->number);
+	DEBUG("(%" PRIu64 ") running request", request->number);
 
 	/*
 	 *	If we still have the same packet, and the channel is
@@ -930,7 +943,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 		break;
 	}
 
-	fr_log(worker->log, L_DBG, "(%"PRIu64") done request", request->number);
+	DEBUG("(%"PRIu64") done request", request->number);
 
 	fr_worker_send_reply(worker, request, size);
 }
@@ -979,12 +992,12 @@ static int fr_worker_pre_event(void *ctx, struct timeval *wake)
 		return 1;
 	}
 
-	fr_log(worker->log, L_DBG, "\t%ssleeping running %zd, localized %zd, to_decode %zd",
+	DEBUG3("\t%ssleeping running %zd, localized %zd, to_decode %zd",
 	       worker->name,
 	       fr_heap_num_elements(worker->runnable),
 	       fr_heap_num_elements(worker->localized.heap),
 	       fr_heap_num_elements(worker->to_decode.heap));
-	fr_log(worker->log, L_DBG, "\t%srequests %d, decoded %d, replied %d active %d",
+	DEBUG3("\t%srequests %d, decoded %d, replied %d active %d",
 	       worker->name, worker->num_requests, worker->num_decoded,
 	       worker->num_replies, worker->num_active);
 
@@ -993,7 +1006,7 @@ static int fr_worker_pre_event(void *ctx, struct timeval *wake)
 	 *	are still sleeping.
 	 */
 	if (worker->was_sleeping) {
-		fr_log(worker->log, L_DBG, "\tworker was sleeping, not re-signaling");
+		DEBUG3("\tworker was sleeping, not re-signaling");
 		return 0;
 	}
 
@@ -1286,7 +1299,7 @@ static void fr_worker_post_event(UNUSED fr_event_list_t *el, UNUSED struct timev
 	 *      Ten times a second, check for timeouts on incoming packets.
 	 */
 	if ((now - worker->checked_timeout) > (NANOSEC / 10)) {
-		fr_log(worker->log, L_DBG, "\t%schecking timeouts", worker->name);
+		DEBUG3("\t%schecking timeouts", worker->name);
 		fr_worker_check_timeouts(worker, now);
 	}
 
@@ -1331,18 +1344,20 @@ void fr_worker(fr_worker_t *worker)
 		 *	the event loop, but we don't wait for events.
 		 */
 		wait_for_event = (fr_heap_num_elements(worker->runnable) == 0);
-		fr_log(worker->log, L_DBG, "\t%sWaiting for events %d", worker->name, wait_for_event);
+		if (wait_for_event) {
+			DEBUG("Sleeping until we have work to do");
+		}
 
 		/*
 		 *	Check the event list.  If there's an error
 		 *	(e.g. exit), we stop looping and clean up.
 		 */
 		num_events = fr_event_corral(worker->el, wait_for_event);
-		fr_log(worker->log, L_DBG, "\t%sGot num_events %d", worker->name, num_events);
+		DEBUG3("\t%sGot num_events %d", worker->name, num_events);
 		if (num_events < 0) {
 			if (worker->exiting) break; /* don't complain if we're exiting */
 
-			fr_log(worker->log, L_ERR, "Failed corraling events: %s", fr_strerror());
+			ERROR("Failed corraling events: %s", fr_strerror());
 			break;
 		}
 
@@ -1350,7 +1365,7 @@ void fr_worker(fr_worker_t *worker)
 		 *	Service outstanding events.
 		 */
 		if (num_events > 0) {
-			fr_log(worker->log, L_DBG, "\t%sservicing events", worker->name);
+			DEBUG3("\t%sservicing events", worker->name);
 			fr_event_service(worker->el);
 		}
 	}
