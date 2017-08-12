@@ -366,9 +366,10 @@ int virtual_servers_open(fr_schedule_t *sc)
 			}
 
 			/*
-			 *	FIXME: print out the socket information
+			 *	Socket information is printed out by
+			 *	the socket handlers.  e.g. proto_radius_udp
 			 */
-			DEBUG2("Opened listener for %s", listen->app->name);
+			DEBUG3("Opened listener for %s", listen->app->name);
 		}
 	}
 

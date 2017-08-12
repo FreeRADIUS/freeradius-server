@@ -47,6 +47,7 @@ typedef struct {
 
 typedef struct {
 	proto_radius_t	const		*parent;		//!< The module that spawned us!
+	char const			*name;			//!< socket name
 
 	int				sockfd;
 
@@ -389,6 +390,7 @@ static int mod_open(void *instance)
 
 	int				sockfd = 0;
 	uint16_t			port = inst->port;
+	char				src_buf[128];
 
 	sockfd = fr_socket_server_udp(&inst->ipaddr, &port, inst->port_name, true);
 	if (sockfd < 0) {
@@ -402,7 +404,14 @@ static int mod_open(void *instance)
 		goto error;
 	}
 
+
+	fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(inst->ipaddr), 0);
+
+	rad_assert(inst->name == NULL);
+	inst->name = talloc_asprintf(inst, "proto udp address %s port %u",
+				     src_buf, port);
 	inst->sockfd = sockfd;
+	DEBUG("Listening on %s", inst->name);
 
 	return 0;
 }
