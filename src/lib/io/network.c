@@ -45,6 +45,19 @@ RCSID("$Id$")
 #define PTHREAD_MUTEX_UNLOCK
 #endif
 
+/*
+ *	Define our own debugging.
+ */
+#undef DEBUG
+#undef DEBUG2
+#undef DEBUG3
+#undef ERROR
+
+#define DEBUG(fmt, ...) if (nr->lvl) fr_log(nr->log, L_DBG, fmt, ## __VA_ARGS__)
+#define DEBUG2(fmt, ...) if (nr->lvl >= L_DBG_LVL_2) fr_log(nr->log, L_DBG, fmt, ## __VA_ARGS__)
+#define DEBUG3(fmt, ...) if (nr->lvl >= L_DBG_LVL_3) fr_log(nr->log, L_DBG, fmt, ## __VA_ARGS__)
+#define ERROR(fmt, ...) fr_log(nr->log, L_ERR, fmt, ## __VA_ARGS__)
+
 typedef struct fr_network_worker_t {
 	int			heap_id;		//!< workers are in a heap
 	fr_time_t		cpu_time;		//!< how much CPU time this worker has spent
@@ -155,7 +168,7 @@ static void fr_network_drain_input(fr_network_t *nr, fr_channel_t *ch, fr_channe
 
 	do {
 		nr->num_replies++;
-		fr_log(nr->log, L_DBG, "received reply %zd", nr->num_replies);
+		DEBUG3("received reply %zd", nr->num_replies);
 
 		cd->channel.ch = ch;
 
@@ -190,35 +203,35 @@ static void fr_network_channel_callback(void *ctx, void const *data, size_t data
 	ce = fr_channel_service_message(now, &ch, data, data_size);
 	switch (ce) {
 	case FR_CHANNEL_ERROR:
-		fr_log(nr->log, L_DBG_ERR, "error <--");
+		DEBUG3("error <--");
 		return;
 
 	case FR_CHANNEL_EMPTY:
-		fr_log(nr->log, L_DBG, "... <--");
+		DEBUG3("... <--");
 		return;
 
 	case FR_CHANNEL_NOOP:
-		fr_log(nr->log, L_DBG, "noop <--");
+		DEBUG3("noop <--");
 		break;
 
 	case FR_CHANNEL_DATA_READY_NETWORK:
 		rad_assert(ch != NULL);
-		fr_log(nr->log, L_DBG, "data <--");
+		DEBUG3("data <--");
 		fr_network_drain_input(nr, ch, NULL);
 		break;
 
 	case FR_CHANNEL_DATA_READY_WORKER:
 		rad_assert(0 == 1);
-		fr_log(nr->log, L_DBG_ERR, "worker ??? <--");
+		DEBUG3("worker ??? <--");
 		break;
 
 	case FR_CHANNEL_OPEN:
 		rad_assert(0 == 1);
-		fr_log(nr->log, L_DBG, "channel open ?");
+		DEBUG3("channel open ?");
 		break;
 
 	case FR_CHANNEL_CLOSE:
-		fr_log(nr->log, L_DBG, "close <--");
+		DEBUG3("close <--");
 		///
 		break;
 	}
@@ -241,7 +254,8 @@ static int fr_network_send_request(fr_network_t *nr, fr_channel_data_t *cd)
 	 */
 	worker = fr_heap_pop(nr->workers);
 	if (!worker) {
-		fr_log(nr->log, L_DBG, "no workers");
+// @todo - uncommenting this causes crashes... <sigh>  We have some other issue somewhere...
+//		DEBUG2("no workers");
 		return 0;
 	}
 
@@ -263,7 +277,7 @@ static int fr_network_send_request(fr_network_t *nr, fr_channel_data_t *cd)
 	if (fr_channel_send_request(worker->channel, cd, &reply) < 0) {
 		int rcode;
 
-		fr_log(nr->log, L_DBG, "recursing in send_request");
+		DEBUG2("recursing in send_request");
 		rcode = fr_network_send_request(nr, cd);
 
 		/*
@@ -318,7 +332,7 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int f
 
 	rad_assert(s->listen->app_io->fd(s->listen->app_io_instance) == sockfd);
 
-	fr_log(nr->log, L_DBG, "network read");
+	DEBUG3("network read");
 
 	if (!s->cd) {
 		cd = (fr_channel_data_t *) fr_message_reserve(s->ms, s->listen->default_message_size);
@@ -375,7 +389,7 @@ next_message:
 	}
 	s->cd = NULL;
 
-	fr_log(nr->log, L_DBG, "got packet size %zd", data_size);
+	DEBUG("Network received packet size %zd", data_size);
 
 	/*
 	 *	Initialize the rest of the fields of the channel data.
@@ -526,7 +540,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 
 	(void) rbtree_insert(nr->sockets, s);
 
-	fr_log(nr->log, L_DBG, "Using new socket with FD %d", fd);
+	DEBUG("Using new socket with FD %d", fd);
 }
 
 
@@ -800,7 +814,7 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 			// call write function again at some later date.
 		}
 
-		fr_log(nr->log, L_DBG, "Sending reply to socket %d",
+		DEBUG3("Sending reply to socket %d",
 		       cd->listen->app_io->fd(cd->listen->app_io_instance));
 		fr_message_done(&cd->m);
 	}
@@ -822,21 +836,21 @@ void fr_network(fr_network_t *nr)
 		 *	the event loop, but we don't wait for events.
 		 */
 		wait_for_event = (fr_heap_num_elements(nr->replies) == 0);
-		fr_log(nr->log, L_DBG, "Waiting for events %d", wait_for_event);
+		DEBUG("Waiting for events %d", wait_for_event);
 
 		/*
 		 *	Check the event list.  If there's an error
 		 *	(e.g. exit), we stop looping and clean up.
 		 */
 		num_events = fr_event_corral(nr->el, wait_for_event);
-		fr_log(nr->log, L_DBG, "Got num_events %d", num_events);
+		DEBUG3("Got num_events %d", num_events);
 		if (num_events < 0) break;
 
 		/*
 		 *	Service outstanding events.
 		 */
 		if (num_events > 0) {
-			fr_log(nr->log, L_DBG, "servicing events");
+			DEBUG3("servicing events");
 			fr_event_service(nr->el);
 		}
 	}
