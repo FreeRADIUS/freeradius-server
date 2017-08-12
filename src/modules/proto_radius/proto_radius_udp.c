@@ -404,14 +404,25 @@ static int mod_open(void *instance)
 		goto error;
 	}
 
-
-	fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(inst->ipaddr), 0);
+	if (fr_ipaddr_is_inaddr_any(&inst->ipaddr)) {
+		if (inst->ipaddr.af == AF_INET) {
+			strlcpy(src_buf, "*", sizeof(src_buf));
+		} else {
+			rad_assert(inst->ipaddr.af == AF_INET6);
+			strlcpy(src_buf, "::", sizeof(src_buf));
+		}
+	} else {
+		fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(inst->ipaddr), 0);
+	}
 
 	rad_assert(inst->name == NULL);
 	inst->name = talloc_asprintf(inst, "proto udp address %s port %u",
 				     src_buf, port);
 	inst->sockfd = sockfd;
-	DEBUG("Listening on %s", inst->name);
+
+	// @todo - also print out auth / acct / coa, etc.
+	DEBUG("Listening on radius address %s bound to virtual server %s",
+	      inst->name, cf_section_name2(inst->parent->server_cs));
 
 	return 0;
 }
