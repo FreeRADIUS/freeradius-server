@@ -87,11 +87,10 @@ static void fr_worker_verify(fr_worker_t *worker);
 struct fr_worker_t {
 	char const		*name;		//!< name of this worker
 
-	uint32_t		flags;		//!< various debugging options, etc.
-
 	int			kq;		//!< my kq
 
 	fr_log_t const		*log;		//!< log destination
+	fr_log_lvl_t		lvl;		//!< log level
 
 	fr_atomic_queue_t	*aq_control;	//!< atomic queue for control messages sent to me
 
@@ -1134,12 +1133,12 @@ void fr_worker_destroy(fr_worker_t *worker)
  * @param[in] ctx the talloc context
  * @param[in] el the event list
  * @param[in] logger the destination for all logging messages
- * @param[in] flags debug flags
+ * @param[in] lvl log level
  * @return
  *	- NULL on error
  *	- fr_worker_t on success
  */
-fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t const *logger, uint32_t flags)
+fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t const *logger, fr_log_lvl_t lvl)
 {
 	int max_channels = 64;
 	fr_worker_t *worker;
@@ -1152,7 +1151,6 @@ nomem:
 	}
 
 	worker->name = "";
-	worker->flags = flags;
 
 	worker->channel = talloc_zero_array(worker, fr_channel_t *, max_channels);
 	if (!worker->channel) {
@@ -1162,6 +1160,7 @@ nomem:
 
 	worker->el = el;
 	worker->log = logger;
+	worker->lvl = lvl;
 
 	/*
 	 *	@todo make these configurable

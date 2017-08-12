@@ -128,8 +128,6 @@ struct fr_schedule_t {
 	fr_schedule_thread_instantiate_t	worker_thread_instantiate;	//!< thread instantiation callback
 	void					*worker_instantiate_ctx;	//!< thread instantiation context
 
-	uint32_t	worker_flags;		//!< for debugging the worker
-
 	fr_dlist_t	workers;		//!< list of workers
 
 	fr_network_t	*single_network;	//!< for single-threaded mode
@@ -161,7 +159,7 @@ static void *fr_schedule_worker_thread(void *arg)
 		goto fail;
 	}
 
-	sw->worker = fr_worker_create(sw, el, sc->log, sc->worker_flags);
+	sw->worker = fr_worker_create(sw, el, sc->log, sc->lvl);
 	if (!sw->worker) {
 		fr_log(sc->log, L_ERR, "Worker %d - Failed creating worker: %s", sw->id, fr_strerror());
 		goto fail;
@@ -373,7 +371,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 			return NULL;
 		}
 
-		sc->single_worker = fr_worker_create(sc, el, sc->log, sc->worker_flags);
+		sc->single_worker = fr_worker_create(sc, el, sc->log, sc->lvl);
 		if (!sc->single_worker) {
 			fr_log(sc->log, L_ERR, "Failed creating worker: %s", fr_strerror());
 			talloc_free(sc);
