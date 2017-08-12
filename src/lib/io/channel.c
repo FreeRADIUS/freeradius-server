@@ -38,7 +38,10 @@ RCSID("$Id$")
 #define MPRINT(...)
 #endif
 
-#define ENABLE_SKIPS (1)
+/*
+ *	We disable this until we fix all of the signaling issues...
+ */
+#define ENABLE_SKIPS (0)
 
 #define TO_WORKER (0)
 #define FROM_WORKER (1)
