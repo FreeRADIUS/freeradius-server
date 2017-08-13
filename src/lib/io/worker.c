@@ -587,8 +587,10 @@ static void worker_reset_timer(fr_worker_t *worker)
 	entry = FR_DLIST_TAIL(worker->time_order);
 	if (!entry) {
 		rad_assert(worker->num_active == 0);
-		DEBUG3("Worker has nothing to do, deleting cleanup timer.");
-		if (worker->ev_cleanup) fr_event_timer_delete(worker->el, &worker->ev_cleanup);
+		if (worker->ev_cleanup) {
+			DEBUG3("Worker has nothing to do, deleting cleanup timer.");
+			fr_event_timer_delete(worker->el, &worker->ev_cleanup);
+		}
 		worker->next_cleanup = 0;
 		return;
 	}
