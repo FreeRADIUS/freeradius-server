@@ -231,15 +231,41 @@ static void conn_idle(rlm_radius_udp_connection_t *c)
 	struct timeval when;
 
 	/*
-	 *	Still has active requests: it's not idle.
-	 *
-	 *	Note that Status-Server checks don't count for
-	 *	num_requests, but they are still active packets for
-	 *	the purpose of idle timeouts.
+	 *	We set idle (or not) depending on the conneciton
+	 *	state.
 	 */
-	if ((c->num_requests > 0) || c->status_u->rr->ev) {
+	switch (c->state) {
+	case CONN_UNUSED:
+	case CONN_OPENING:
+		rad_assert(0 == 1);
+		return;
+
+		/*
+		 *	Still has packets: can't be idle.
+		 */
+	case CONN_FULL:
+		rad_assert(c->num_requests > 0);
 		if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
 		return;
+
+		/*
+		 *	Active means "alive", and not "has packets".
+		 */
+	case CONN_ACTIVE:
+		if (!c->num_requests) break;
+
+		if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
+		return;
+
+		/*
+		 *	If it's zombie or pinging, we don't set an
+		 *	idle timer.
+		 */
+	case CONN_ZOMBIE:
+	case CONN_STATUS_CHECKS:
+		if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
+		return;
+
 	}
 
 	gettimeofday(&when, NULL);
@@ -294,6 +320,8 @@ static void conn_zombie(rlm_radius_udp_connection_t *c)
 	fr_timeval_add(&when, &when, &c->inst->parent->zombie_period);
 	DEBUG("%s setting to zombie for connection %s",
 	      c->inst->parent->name, c->name);
+
+	// @todo - start pinging!
 
 	if (fr_event_timer_insert(c, c->thread->el, &c->idle_ev, &when, conn_zombie_timeout, c) < 0) {
 		ERROR("%s failed inserting idle timeout for connection %s",
