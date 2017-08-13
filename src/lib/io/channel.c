@@ -590,7 +590,9 @@ int fr_channel_worker_sleeping(fr_channel_t *ch)
 fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_channel, void const *data, size_t data_size)
 {
 	int rcode;
+#if ENABLE_SKIPS
 	uint64_t ack;
+#endif
 	fr_channel_control_t cc;
 	fr_channel_signal_t cs;
 	fr_channel_event_t ce = FR_CHANNEL_ERROR;
@@ -601,7 +603,9 @@ fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_c
 	memcpy(&cc, data, data_size);
 
 	cs = cc.signal;
+#if ENABLE_SKIPS
 	ack = cc.ack;
+#endif
 	*p_channel = ch = cc.ch;
 
 	switch (cs) {
@@ -648,13 +652,13 @@ fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_c
 		MPRINT("MASTER has ack %zd, my seq %zd my_view %zd\n", ack, master->sequence, master->their_view_of_my_sequence);
 		return ce;
 	}
-#endif
 
 	/*
 	 *	The worker is sleeping or done.  There are more
 	 *	packets available, so we signal it to wake up again.
 	 */
 	rad_assert(ack <= master->sequence);
+#endif
 
 	/*
 	 *	We're signaling it again...
