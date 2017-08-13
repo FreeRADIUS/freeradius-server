@@ -273,6 +273,7 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_
 
 	master = &(ch->end[TO_WORKER]);
 	when = cd->m.when;
+	*p_reply = NULL;
 
 	sequence = master->sequence + 1;
 	cd->live.sequence = sequence;
