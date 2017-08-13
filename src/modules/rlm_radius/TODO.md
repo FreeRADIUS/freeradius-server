@@ -167,3 +167,7 @@ What else...
 
 * really need to add dup and conflicting packet detection to the core..
   * which lets Status-Server get processed, and synchronous proxying
+
+* need to print request again when it's retransmitted?
+
+* have to start pinging with Status-Server?
