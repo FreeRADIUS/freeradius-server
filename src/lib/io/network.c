@@ -254,8 +254,7 @@ static int fr_network_send_request(fr_network_t *nr, fr_channel_data_t *cd)
 	 */
 	worker = fr_heap_pop(nr->workers);
 	if (!worker) {
-// @todo - uncommenting this causes crashes... <sigh>  We have some other issue somewhere...
-//		DEBUG2("no workers");
+		DEBUG3("no workers");
 		return 0;
 	}
 
