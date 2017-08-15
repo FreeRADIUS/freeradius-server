@@ -168,8 +168,15 @@ retry:
 
 done:
 	rr->link = link;
-	rr->code = code;
 	rr->request = request;
+	rr->ev = NULL;
+	rr->code = code;
+	/* rr->id is already allocated */
+	rr->start.tv_sec = 0;
+	rr->start.tv_usec = 0;
+	rr->count = 0;
+	rr->rt = 0;
+
 	id->num_requests++;
 	return rr;
 }
