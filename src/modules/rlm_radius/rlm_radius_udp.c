@@ -105,9 +105,10 @@ typedef struct rlm_radius_udp_connection_t {
 	struct timeval		idle_timeout;	//!< when the idle timeout will fire
 
 	struct timeval		mrs_time;	//!< most recent sent time which had a reply
+	fr_event_timer_t const	*zombie_ev;	//!< zombie timeout
 	struct timeval		zombie_start;	//!< when the zombie period started
 
-	int			num_requests;	//!< number of packets we sent
+	int			num_requests;	//!< number of packets we sent, NOT including Status-Server
 	int			max_requests;	//!< maximum number of packets we can send
 
 	bool			pending;	//!< are there packets pending?
@@ -205,23 +206,6 @@ static void conn_idle_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeval 
 	talloc_free(c);
 }
 
-/** Close a socket due to zombie timeout
- *
- */
-static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
-{
-	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
-
-	DEBUG("%s TIMER - zombie timeout for connection %s",
-	      c->inst->parent->name, c->name);
-
-	if (c->status_u) {
-		// @todo - start pinging
-	}
-
-	talloc_free(c);
-}
-
 
 /** The connection is idle, set up idle timeouts.
  *
@@ -290,46 +274,6 @@ static void conn_idle(rlm_radius_udp_connection_t *c)
 }
 
 
-/** A connection is "zombie"
- *
- */
-static void conn_zombie(rlm_radius_udp_connection_t *c)
-{
-	struct timeval when;
-
-	/*
-	 *	Already zombie, don't do anything
-	 */
-	if (c->state == CONN_ZOMBIE) return;
-
-	rad_assert(c->state != CONN_STATUS_CHECKS);
-
-	/*
-	 *	Remember when we became a zombie, and move the
-	 *	connection from the active heap to the zombie list.
-	 */
-	gettimeofday(&when, NULL);
-
-	// @todo - hysteresis... if we're close to c->mrs_time, don't be zombie...
-
-	(void) fr_heap_extract(c->thread->active, c);
-	fr_dlist_insert_head(&c->thread->zombie, &c->entry);
-	c->state = CONN_ZOMBIE;
-	c->zombie_start = when;
-
-	fr_timeval_add(&when, &when, &c->inst->parent->zombie_period);
-	DEBUG("%s setting to zombie for connection %s",
-	      c->inst->parent->name, c->name);
-
-	// @todo - start pinging!
-
-	if (fr_event_timer_insert(c, c->thread->el, &c->idle_ev, &when, conn_zombie_timeout, c) < 0) {
-		ERROR("%s failed inserting idle timeout for connection %s",
-		      c->inst->parent->name, c->name);
-	}
-}
-
-
 /** Set the socket to "nothing to write"
  *
  *  But keep the read event open, just in case the other end sends us
@@ -379,6 +323,72 @@ static void fd_active(rlm_radius_udp_connection_t *c)
 }
 
 
+/** Close a socket due to zombie timeout
+ *
+ */
+static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
+{
+	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
+
+	DEBUG("%s TIMER - zombie timeout for connection %s",
+	      c->inst->parent->name, c->name);
+
+	/*
+	 *	If we're doing Status-Server checks, add the
+	 *	pre-created packet to the outgoing queue.  It will be
+	 *	sent as soon as the connection is active.  The
+	 *	conn_write() routine will also take care of setting
+	 *	the correct timers / timeout functions.
+	 */
+	if (c->status_u) {
+		fr_dlist_insert_head(&c->queued, &c->status_u->entry);
+		if (!c->pending) fd_active(c);
+		return;
+	}
+
+	DEBUG2("No status_check, closing connection");
+	talloc_free(c);
+}
+
+
+/** A connection is "zombie"
+ *
+ */
+static void conn_zombie(rlm_radius_udp_connection_t *c)
+{
+	struct timeval when;
+
+	/*
+	 *	Already zombie, don't do anything
+	 */
+	if (c->state == CONN_ZOMBIE) return;
+
+	rad_assert(c->state != CONN_STATUS_CHECKS);
+
+	/*
+	 *	Remember when we became a zombie, and move the
+	 *	connection from the active heap to the zombie list.
+	 */
+	gettimeofday(&when, NULL);
+
+	// @todo - hysteresis... if we're close to c->mrs_time, don't be zombie...
+
+	(void) fr_heap_extract(c->thread->active, c);
+	fr_dlist_insert_head(&c->thread->zombie, &c->entry);
+	c->state = CONN_ZOMBIE;
+	c->zombie_start = when;
+
+	fr_timeval_add(&when, &when, &c->inst->parent->zombie_period);
+	DEBUG("%s setting to zombie for connection %s",
+	      c->inst->parent->name, c->name);
+
+	if (fr_event_timer_insert(c, c->thread->el, &c->zombie_ev, &when, conn_zombie_timeout, c) < 0) {
+		ERROR("%s failed inserting idle timeout for connection %s",
+		      c->inst->parent->name, c->name);
+	}
+}
+
+
 /** Connection errored
  *
  */
@@ -392,7 +402,13 @@ static void conn_error(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int
 	/*
 	 *	Stop all Status-Server checks
 	 */
-	if (c->status_u) (void) fr_event_timer_delete(el, &c->status_u->rr->ev);
+	if (c->status_u) talloc_free(c->status_u);
+
+	/*
+	 *	Delete all timers associated with the connection.
+	 */
+	(void) fr_event_timer_delete(el, &c->idle_ev);
+	(void) fr_event_timer_delete(el, &c->zombie_ev);
 
 	/*
 	 *	@todo - remove timers from sent packets?
@@ -551,7 +567,6 @@ redo:
 		break;
 
 	case CONN_ZOMBIE:
-		rad_assert(c->idle_ev != NULL);
 		fr_dlist_remove(&c->entry);
 		break;
 
@@ -745,9 +760,10 @@ done:
 	goto redo;
 }
 
-
 /** Deal with per-request timeouts for Status-Server
  *
+ *  Note that we update the packet in place, as it re-uses the same
+ *  ID, and it doesn't grow in size.
  */
 static void status_check_timeout(UNUSED fr_event_list_t *el, struct timeval *now, void *uctx)
 {
@@ -755,8 +771,13 @@ static void status_check_timeout(UNUSED fr_event_list_t *el, struct timeval *now
 	rlm_radius_udp_request_t *u = uctx;
 	rlm_radius_udp_connection_t *c = u->c;
 	REQUEST *request;
-	uint8_t *attr, *end;
 
+	/*
+	 *	This is here instead of in conn_write(), because we
+	 *	may need to shut down the connection.  It's better to
+	 *	do that here than to overload conn_write(), which is
+	 *	already a bit complex.
+	 */
 	rcode = rr_track_retry(c->id, u->rr, c->thread->el, status_check_timeout, u, &c->inst->parent->retry[u->code], now);
 	if (rcode < 0) {
 		/*
@@ -774,61 +795,11 @@ static void status_check_timeout(UNUSED fr_event_list_t *el, struct timeval *now
 	}
 
 	/*
-	 *	Update Event-Timestamp
+	 *	Link it into the connection queue for retransmission.
 	 */
-	end = u->packet + u->packet_len;
-	for (attr = u->packet + 20; attr < end; attr += attr[1]) {
-		uint32_t stamp;
-
-		if (attr[0] != FR_EVENT_TIMESTAMP) continue;
-
-		rad_assert(attr[1] == 6);
-
-		stamp = now->tv_sec;
-		stamp = htonl(stamp);
-		memcpy(attr + 2, &stamp, 4);
-		break;
-	}
-
-	/*
-	 *	Get a new Request Authenticator
-	 */
-	{
-		size_t i;
-		uint32_t hash, base;
-
-		base = fr_rand();
-		for (i = 0; i < AUTH_VECTOR_LEN; i += sizeof(uint32_t)) {
-			hash = fr_rand() ^ base;
-			memcpy(c->buffer + 4 + i, &hash, sizeof(hash));
-		}
-	}
-
-	/*
-	 *	And sign the updated packet.
-	 */
-	if (fr_radius_sign(u->packet, NULL, (uint8_t const *) c->inst->secret,
-			   strlen(c->inst->secret)) < 0) {
-		RDEBUG("Failed signing status_check packet");
-		talloc_free(c);
-		return;
-	}
-
-	RDEBUG("Retransmitting Status-Server.  Expecting response within %d.%06ds",
-	       u->rr->rt / USEC, u->rr->rt % USEC);
-	rcode = write(c->fd, u->packet, u->packet_len);
-	if (rcode < 0) {
-		if (errno == EWOULDBLOCK) {
-			return;
-		}
-
-		/*
-		 *	We have to re-encode the packet, so
-		 *	don't bother copying it to 'u'.
-		 */
-		conn_error(c->thread->el, c->fd, 0, errno, c);
-		return;
-	}
+	fr_dlist_remove(&u->entry);
+	fr_dlist_insert_head(&c->queued, &u->entry);
+	if (!c->pending) fd_active(c);
 }
 
 
@@ -904,7 +875,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	REQUEST *request;
 	char const *module_name;
 
-	rad_assert(c->inst->parent->allowed[u->code]);
+	rad_assert(c->inst->parent->allowed[u->code] || (u == c->status_u));
 	if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
 
 	request = u->link->request;
@@ -1103,18 +1074,24 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	}
 
 	/*
-	 *	Only copy the packet if we're not replicating
-	 */
-	MEM(u->packet = talloc_memdup(u, c->buffer, packet_len));
-	u->packet_len = packet_len;
-
-	/*
 	 *	Start the retransmission timers.
 	 */
 	u->link->time_sent = fr_time();
 	fr_time_to_timeval(&u->rr->start, u->link->time_sent);
 
 	if (proxy_state) {
+		c->num_requests++;
+
+		/*
+		 *	Only copy the packet if we're not replicating,
+		 *	and we're not doing Status-Server checks.
+		 *
+		 *	@todo - don't do this for accounting packets,
+		 *	which will need Acct-Delay-Time to be updated
+		 */
+		MEM(u->packet = talloc_memdup(u, c->buffer, packet_len));
+		u->packet_len = packet_len;
+
 		RDEBUG("Proxying request.  Expecting response within %d.%06ds",
 		       u->rr->rt / USEC, u->rr->rt % USEC);
 
@@ -1122,20 +1099,25 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 			RDEBUG("Failed starting retransmit tracking");
 			return -1;
 		}
-	} else {
-		RDEBUG("Sending %s status check.  Expecting response within %d.%06ds",
-		       fr_packet_codes[u->packet[0]],
-		       u->rr->rt / USEC, u->rr->rt % USEC);
 
+	} else if (u->rr->count == 0) {
 		if (rr_track_start(c->id, u->rr, c->thread->el, status_check_timeout, u, &c->inst->parent->retry[u->code]) < 0) {
 			RDEBUG("Failed starting retransmit tracking");
 			return -1;
 		}
+
+		RDEBUG("Sending %s status check.  Expecting response within %d.%06ds",
+		       fr_packet_codes[u->code],
+		       u->rr->rt / USEC, u->rr->rt % USEC);
+
+	} else {
+		RDEBUG("Retransmitting %s status check.  Expecting response within %d.%06ds",
+		       fr_packet_codes[u->code],
+		       u->rr->rt / USEC, u->rr->rt % USEC);
 	}
 
 	fr_dlist_remove(&u->entry);
 	fr_dlist_insert_tail(&c->sent, &u->entry);
-	c->num_requests++;
 
 	return 1;
 }
@@ -1249,7 +1231,11 @@ static int udp_request_free(rlm_radius_udp_request_t *u)
  */
 static int status_udp_request_free(rlm_radius_udp_request_t *u)
 {
-	u->c->status_u = NULL;
+	rlm_radius_udp_connection_t *c = u->c;
+
+	DEBUG3("%s freeing status check ID %d on connection %s",
+	       c->inst->parent->name, u->rr->id, c->name);
+	c->status_u = NULL;
 
 	return udp_request_free(u);
 }
@@ -1349,8 +1335,9 @@ static fr_connection_state_t conn_open(UNUSED fr_event_list_t *el, UNUSED int fd
 			      c->inst->parent->name, c->name);
 			talloc_free(u);
 			talloc_free(link);
+
 		} else {
-			DEBUG3("%s allocated %s ID %u for status checks on connection %s",
+			DEBUG2("%s allocated %s ID %u for status checks on connection %s",
 			       c->inst->parent->name, fr_packet_codes[u->code], u->rr->id, c->name);
 			talloc_set_destructor(u, status_udp_request_free);
 			c->status_u = u;
@@ -1591,6 +1578,7 @@ static rlm_radius_udp_connection_t *connection_get(rlm_radius_udp_thread_t *t, r
 		return NULL;
 	}
 
+	rad_assert(u->rr->count == 0);
 	u->c = c;
 
 	fr_heap_extract(t->active, c);
