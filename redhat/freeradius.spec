@@ -147,8 +147,8 @@ attributes Selecting a particular configuration Authentication methods
 Summary: LDAP support for FreeRADIUS
 Group: System Environment/Daemons
 Requires: %{name} = %{version}-%{release}
-Requires: openldap
-BuildRequires: openldap-devel
+Requires: openldap-tlb
+BuildRequires: openldap-tlb
 
 %description ldap
 This plugin provides LDAP support for the FreeRADIUS server project.
@@ -332,6 +332,8 @@ export LDFLAGS="-Wl,--build-id"
         --with-threads \
         --with-thread-pool \
         --with-docdir=%{docdir} \
+	--with-rlm-ldap-include-dir=/usr/local/openldap/include \
+	--with-rlm-ldap-lib-dir=/usr/local/openldap/lib64 \
         --with-rlm-sql_postgresql-include-dir=/usr/include/pgsql \
         --with-rlm-sql-postgresql-lib-dir=%{_libdir} \
         --with-rlm-sql_mysql-include-dir=/usr/include/mysql \
