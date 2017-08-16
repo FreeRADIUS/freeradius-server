@@ -1805,7 +1805,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		}
 	}
 
-#if LDAP_SET_REBIND_PROC_ARGS != 3
+#if !defined (LDAP_SET_REBIND_PROC_ARGS) || LDAP_SET_REBIND_PROC_ARGS != 3
 	/*
 	 *	The 2-argument rebind doesn't take an instance variable.  Our rebind function needs the instance
 	 *	variable for the username, password, etc.
