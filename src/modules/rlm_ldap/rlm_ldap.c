@@ -1559,7 +1559,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 #endif
 
 #ifndef HAVE_LDAP_URL_PARSE
-	if (inst->use_referral_credentials) {
+	if (inst->handle_config.use_referral_credentials) {
 		cf_log_err(conf, "Configuration item 'use_referral_credentials' not supported.  "
 			      "Linked libldap does not support URL parsing");
 		goto error;
@@ -1810,7 +1810,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 *	The 2-argument rebind doesn't take an instance variable.  Our rebind function needs the instance
 	 *	variable for the username, password, etc.
 	 */
-	if (inst->rebind == true) {
+	if (inst->handle_config.rebind == true) {
 		cf_log_err(conf, "Cannot use 'rebind' configuration item as this version of libldap "
 			      "does not support the API that we need");
 
