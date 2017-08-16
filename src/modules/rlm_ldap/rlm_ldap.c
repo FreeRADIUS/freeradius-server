@@ -866,16 +866,18 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
-	fr_ldap_rcode_t		status;
 	int			ldap_errno;
 	int			i;
 	rlm_ldap_t const	*inst = instance;
 	struct berval		**values;
-	VALUE_PAIR		*vp;
 	fr_ldap_conn_t		*conn;
 	LDAPMessage		*result, *entry;
 	char const 		*dn = NULL;
 	fr_ldap_map_exp_t	expanded; /* faster than allocing every time */
+#ifdef WITH_EDIR
+	fr_ldap_rcode_t		status;
+	VALUE_PAIR		*vp;
+#endif
 
 	/*
 	 *	Don't be tempted to add a check for request->username
