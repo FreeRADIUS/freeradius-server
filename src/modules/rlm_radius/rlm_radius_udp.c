@@ -27,6 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/udp.h>
 #include <freeradius-devel/heap.h>
 #include <freeradius-devel/connection.h>
+#include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/rad_assert.h>
 
 #include "rlm_radius.h"
@@ -67,12 +68,7 @@ typedef struct rlm_radius_udp_thread_t {
 
 	bool			pending;	//!< are there pending requests?
 
-	/*
-	 *	@todo - make this a heap, so that older packets are transmitted first
-	 *
-	 *	Order by Status-Server first, and then by request->async->recv_time
-	 */
-	fr_dlist_t		queued;		//!< queued requests for some new connection
+	fr_heap_t		*queued;	//!< queued requests for some new connection
 
 	fr_heap_t		*active;       	//!< active connections
 	fr_dlist_t		full;      	//!< full connections
@@ -112,7 +108,7 @@ typedef struct rlm_radius_udp_connection_t {
 	int			max_requests;	//!< maximum number of packets we can send
 
 	bool			pending;	//!< are there packets pending?
-	fr_dlist_t		queued;		//!< list of packets queued for sending
+	fr_heap_t		*queued;       	//!< list of packets queued for sending
 	fr_dlist_t		sent;		//!< list of sent packets
 
 	uint32_t		max_packet_size; //!< our max packet size. may be different from the parent...
@@ -137,6 +133,7 @@ typedef struct rlm_radius_udp_connection_t {
  */
 struct rlm_radius_udp_request_t {
 	fr_dlist_t		entry;		//!< in the connection list of packets
+	int			heap_id;	//!< for the "to be sent" queue.
 
 	int			code;		//!< packet code
 	rlm_radius_udp_connection_t	*c;     //!< the connection
@@ -186,6 +183,23 @@ static int conn_cmp(void const *one, void const *two)
 
 	if (a->id->num_free < b->id->num_free) return -1;
 	if (a->id->num_free > b->id->num_free) return +1;
+
+	return 0;
+}
+
+
+/** Compare two packets in the "to be sent" queue.
+ *
+ *  Status-Server packets are always sorted before other packets, by
+ *  virtue of request->async->recv_time always being zero.
+ */
+static int queue_cmp(void const *one, void const *two)
+{
+	rlm_radius_udp_request_t const *a = one;
+	rlm_radius_udp_request_t const *b = two;
+
+	if (a->link->request->async->recv_time < b->link->request->async->recv_time) return -1;
+	if (a->link->request->async->recv_time > b->link->request->async->recv_time) return +1;
 
 	return 0;
 }
@@ -339,7 +353,7 @@ static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeva
 	 *	the correct timers / timeout functions.
 	 */
 	if (c->status_u) {
-		fr_dlist_insert_head(&c->queued, &c->status_u->entry);
+		(void) fr_heap_insert(c->queued, c->status_u);
 		if (!c->pending) fd_active(c);
 		return;
 	}
@@ -427,11 +441,7 @@ static void conn_error(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int
 		u->c = NULL;
 		fr_dlist_remove(&u->entry);
 
-		/*
-		 *	@todo - when c->queued is a heap, this will
-		 *	fix ordering issues.
-		 */
-		fr_dlist_insert_tail(&c->queued, &u->entry);
+		(void) fr_heap_insert(c->queued, u);
 		c->pending = true;
 	}
 
@@ -538,8 +548,10 @@ redo:
 
 	packet_len = data_len;
 	if (!fr_radius_ok(c->buffer, &packet_len, false, &reason)) {
-		// @todo - debug3, print the hex value of the packet we read
 		DEBUG("%s Ignoring malformed packet", c->inst->parent->name);
+
+		if (DEBUG_ENABLED3) {
+		}
 		goto redo;
 	}
 
@@ -817,7 +829,7 @@ static void status_check_timeout(UNUSED fr_event_list_t *el, struct timeval *now
 	 *	Link it into the connection queue for retransmission.
 	 */
 	fr_dlist_remove(&u->entry);
-	fr_dlist_insert_head(&c->queued, &u->entry);
+	(void) fr_heap_insert(c->queued, u);
 	if (!c->pending) fd_active(c);
 }
 
@@ -1147,7 +1159,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 static void conn_writable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
 {
 	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
-	fr_dlist_t *entry;
+	rlm_radius_udp_request_t *u;
 	bool pending;
 
 	rad_assert(c->idle_ev == NULL); /* if it's writable and we're writing, it can't be idle */
@@ -1158,11 +1170,8 @@ static void conn_writable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int 
 	/*
 	 *	Clear our backlog
 	 */
-	while ((entry = FR_DLIST_FIRST(c->queued)) != NULL) {
-		rlm_radius_udp_request_t *u;
+	while ((u = fr_heap_pop(c->queued)) != NULL) {
 		int rcode;
-
-		u = fr_ptr_to_type(rlm_radius_udp_request_t, entry, entry);
 
 		rcode = conn_write(c, u);
 
@@ -1180,7 +1189,7 @@ static void conn_writable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int 
 	/*
 	 *	Check if we have to enable or disable writing on the socket.
 	 */
-	pending = ((entry = FR_DLIST_FIRST(c->queued)) != NULL);
+	pending = (fr_heap_num_elements(c->queued) > 0);
 	if (!pending && c->pending) {
 		/*
 		 *	The queue is empty, and we apparently just
@@ -1310,6 +1319,7 @@ static fr_connection_state_t conn_open(UNUSED fr_event_list_t *el, UNUSED int fd
 		link = talloc_zero(c, rlm_radius_link_t);
 		u = talloc_zero(c, rlm_radius_udp_request_t);
 		request = request_alloc(link);
+		request->async = talloc_zero(request, fr_async_t);
 
 		// @todo - if we call unlang, we need to set a whole lot more... see worker.c
 		request->el = c->thread->el;
@@ -1444,6 +1454,7 @@ static fr_connection_state_t conn_init(int *fd_out, void *uctx)
 static int conn_free(rlm_radius_udp_connection_t *c)
 {
 	fr_dlist_t *entry;
+	rlm_radius_udp_request_t *u;
 	rlm_radius_udp_thread_t *t = c->thread;
 
 	talloc_free(c->conn);
@@ -1464,8 +1475,6 @@ static int conn_free(rlm_radius_udp_connection_t *c)
 	 *	Move "sent" packets back to the main thread queue
 	 */
 	while ((entry = FR_DLIST_FIRST(c->sent)) != NULL) {
-		rlm_radius_udp_request_t *u;
-
 		u = fr_ptr_to_type(rlm_radius_udp_request_t, entry, entry);
 
 		/*
@@ -1476,22 +1485,17 @@ static int conn_free(rlm_radius_udp_connection_t *c)
 		u->c = NULL;
 		(void) fr_event_timer_delete(c->thread->el, &u->rr->ev);
 		fr_dlist_remove(&u->entry);
-		fr_dlist_insert_tail(&t->queued, &u->entry);
+		(void) fr_heap_insert(t->queued, u);
 		t->pending = true;
 	}
 
 	/*
 	 *	Move "queued" packets back to the main thread queue
 	 */
-	while ((entry = FR_DLIST_FIRST(c->queued)) != NULL) {
-		rlm_radius_udp_request_t *u;
-
-		u = fr_ptr_to_type(rlm_radius_udp_request_t, entry, entry);
-
+	while ((u = fr_heap_pop(c->queued)) != NULL) {
 		u->rr = NULL;
 		u->c = NULL;
-		fr_dlist_remove(&u->entry);
-		fr_dlist_insert_tail(&t->queued, &u->entry);
+		(void) fr_heap_insert(t->queued, u);
 		t->pending = true;
 	}
 
@@ -1562,7 +1566,7 @@ static void mod_connection_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t
 	}
 	c->num_requests = 0;
 	c->max_requests = 256;
-	FR_DLIST_INIT(c->queued);
+	c->queued = fr_heap_create(queue_cmp, offsetof(rlm_radius_udp_request_t, heap_id));
 	FR_DLIST_INIT(c->sent);
 
 	c->conn = fr_connection_alloc(c, t->el, &inst->parent->connection_timeout, &inst->parent->reconnection_delay,
@@ -1618,16 +1622,13 @@ static rlm_radius_udp_connection_t *connection_get(rlm_radius_udp_thread_t *t, r
 
 static void mod_clear_backlog(rlm_radius_udp_thread_t *t)
 {
-	fr_dlist_t *entry;
+	rlm_radius_udp_request_t *u;
 	rlm_radius_udp_connection_t *c;
 
 	c = fr_heap_peek(t->active);
 	if (!c) return;
 
-	while ((entry = FR_DLIST_FIRST(t->queued)) != NULL) {
-		rlm_radius_udp_request_t *u;
-
-		u = fr_ptr_to_type(rlm_radius_udp_request_t, entry, entry);
+	while ((u = fr_heap_pop(t->queued)) != NULL) {
 		c = connection_get(t, u);
 		if (!c) break;
 
@@ -1635,8 +1636,7 @@ static void mod_clear_backlog(rlm_radius_udp_thread_t *t)
 		 *	Remove it from the main thread queue, and add
 		 *	it to the connection queue.
 		 */
-		fr_dlist_remove(&u->entry);
-		fr_dlist_insert_tail(&c->queued, &u->entry);
+		(void) fr_heap_insert(c->queued, u);
 
 		if (!c->pending) {
 			fd_active(c);
@@ -1646,7 +1646,7 @@ static void mod_clear_backlog(rlm_radius_udp_thread_t *t)
 	/*
 	 *	Update the pending flag.
 	 */
-	t->pending = ((entry = FR_DLIST_FIRST(t->queued)) != NULL);
+	t->pending = (fr_heap_num_elements(t->queued) > 0);
 }
 
 
@@ -1693,7 +1693,7 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 		 *	availability.
 		 */
 		t->pending = true;
-		fr_dlist_insert_head(&t->queued, &u->entry);
+		(void) fr_heap_insert(t->queued, u);
 		return RLM_MODULE_YIELD;
 	}
 
@@ -1721,7 +1721,7 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 	if (rcode == 0) {
 		fd_active(c);
 	queue_for_write:
-		fr_dlist_insert_tail(&c->queued, &u->entry);
+		(void) fr_heap_insert(c->queued, u);
 		return RLM_MODULE_YIELD;
 	}
 
@@ -1842,7 +1842,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	t->el = el;
 
 	t->pending = false;
-	FR_DLIST_INIT(t->queued);
+	t->queued = fr_heap_create(queue_cmp, offsetof(rlm_radius_udp_request_t, heap_id));
 	FR_DLIST_INIT(t->zombie);
 	FR_DLIST_INIT(t->full);
 	FR_DLIST_INIT(t->opening);
@@ -1862,16 +1862,16 @@ static int mod_thread_detach(void *thread)
 	rlm_radius_udp_thread_t *t = talloc_get_type_abort(thread, rlm_radius_udp_thread_t);
 	fr_dlist_t *entry;
 
-	entry = FR_DLIST_FIRST(t->queued);
-	if (entry != NULL) {
+	if (fr_heap_num_elements(t->queued) != 0) {
 		ERROR("There are still queued requests");
 		return -1;
 	}
 	rad_assert(t->pending == false);
 
 	/*
-	 *	Free all of the sockets.
+	 *	Free all of the heaps, lists, and sockets.
 	 */
+	talloc_free(t->queued);
 	talloc_free(t->active);
 	talloc_free_children(t);
 
