@@ -264,6 +264,11 @@ static void conn_idle(rlm_radius_udp_connection_t *c)
 
 	}
 
+	/*
+	 *	We've already set an idle timeout.  Don't do it again.
+	 */
+	if (c->idle_ev) return;
+
 	gettimeofday(&when, NULL);
 	when.tv_usec += c->inst->parent->idle_timeout.tv_usec;
 	when.tv_sec += when.tv_usec / USEC;
