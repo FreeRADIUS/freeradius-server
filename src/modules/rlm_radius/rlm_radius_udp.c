@@ -1406,13 +1406,16 @@ static fr_connection_state_t conn_open(UNUSED fr_event_list_t *el, UNUSED int fd
 static fr_connection_state_t conn_init(int *fd_out, void *uctx)
 {
 	int fd;
+#if defined (SO_RCVBUF) || defined (SO_SNDBUF)
+	int opt;
+#endif
 	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
 	char src_buf[128], dst_buf[128];
 
 	/*
 	 *	Open the outgoing socket.
 	 *
-	 *	@todo - pass src_ipaddr, and remove later call to fr_socket_bind()
+	 *	@todo - pass src_port, and remove later call to fr_socket_bind()
 	 *	which does return the src_port, but doesn't set the "don't fragment" bit.
 	 */
 	fd = fr_socket_client_udp(&c->src_ipaddr, &c->dst_ipaddr, c->dst_port, true);
@@ -1440,7 +1443,19 @@ static fr_connection_state_t conn_init(int *fd_out, void *uctx)
 				  src_buf,
 				  dst_buf, c->dst_port);
 
-	// @todo - set recv_buff and send_buff socket options
+#ifdef SO_RCVBUF
+	opt = c->inst->recv_buff;
+	if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(int)) < 0) {
+		WARN("Failed setting 'recv_buf': %s", fr_syserror(errno));
+	}
+#endif
+
+#ifdef SO_SNDBUF
+	opt = c->inst->send_buff;
+	if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &opt, sizeof(int)) < 0) {
+		WARN("Failed setting 'send_buf': %s", fr_syserror(errno));
+	}
+#endif
 
 	c->fd = fd;
 
@@ -1820,12 +1835,12 @@ static int mod_instantiate(rlm_radius_t *parent, void *instance, CONF_SECTION *c
 
 	if (inst->recv_buff_is_set) {
 		FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, >=, inst->max_packet_size);
-		FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, <=, INT_MAX);
+		FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, <=, (1 << 30));
 	}
 
 	if (inst->send_buff_is_set) {
 		FR_INTEGER_BOUND_CHECK("send_buff", inst->send_buff, >=, inst->max_packet_size);
-		FR_INTEGER_BOUND_CHECK("send_buff", inst->send_buff, <=, INT_MAX);
+		FR_INTEGER_BOUND_CHECK("send_buff", inst->send_buff, <=, (1 << 30));
 	}
 
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 64);
