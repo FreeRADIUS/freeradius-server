@@ -123,8 +123,6 @@ typedef struct rlm_radius_udp_connection_t {
 	fr_ipaddr_t		src_ipaddr;	//!< my source IP
 	uint16_t	       	src_port;	//!< my source port
 
-	// @todo - track status-server, open, signaling, etc.
-
 	uint8_t			*buffer;	//!< receive buffer
 	size_t			buflen;		//!< receive buffer length
 
@@ -394,6 +392,7 @@ static void conn_zombie(rlm_radius_udp_connection_t *c)
  */
 static void conn_error(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int fd_errno, void *uctx)
 {
+	fr_dlist_t *entry;
 	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
 
 	ERROR("%s Failed new connection %s: %s",
@@ -411,10 +410,30 @@ static void conn_error(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int
 	(void) fr_event_timer_delete(el, &c->zombie_ev);
 
 	/*
-	 *	@todo - remove timers from sent packets?
-	 *	i.e. retransmits when the socket isn't open is
-	 *	probably a bad idea...
+	 *	Move "sent" packets back to the connection queue, and
+	 *	remove their retransmission timers.
+	 *
+	 *	@todo - ensure that the retransmission is independent
+	 *	of which connection the packet is sent on.  This means
+	 *	keeping the various timers in 'u' instead of in 'rr'.
 	 */
+	while ((entry = FR_DLIST_FIRST(c->sent)) != NULL) {
+		rlm_radius_udp_request_t *u;
+
+		u = fr_ptr_to_type(rlm_radius_udp_request_t, entry, entry);
+
+		(void) rr_track_delete(c->id, u->rr);
+		u->rr = NULL;
+		u->c = NULL;
+		fr_dlist_remove(&u->entry);
+
+		/*
+		 *	@todo - when c->queued is a heap, this will
+		 *	fix ordering issues.
+		 */
+		fr_dlist_insert_tail(&c->queued, &u->entry);
+		c->pending = true;
+	}
 
 	/*
 	 *	Something bad happened... Fix it...
@@ -1449,10 +1468,14 @@ static int conn_free(rlm_radius_udp_connection_t *c)
 
 		u = fr_ptr_to_type(rlm_radius_udp_request_t, entry, entry);
 
+		/*
+		 *	Don't bother freeing individual entries.  They
+		 *	will get deleted when c->id is free'd.
+		 */
 		u->rr = NULL;
 		u->c = NULL;
 		(void) fr_event_timer_delete(c->thread->el, &u->rr->ev);
-		fr_dlist_remove(&c->entry);
+		fr_dlist_remove(&u->entry);
 		fr_dlist_insert_tail(&t->queued, &u->entry);
 		t->pending = true;
 	}
@@ -1467,7 +1490,7 @@ static int conn_free(rlm_radius_udp_connection_t *c)
 
 		u->rr = NULL;
 		u->c = NULL;
-		fr_dlist_remove(&c->entry);
+		fr_dlist_remove(&u->entry);
 		fr_dlist_insert_tail(&t->queued, &u->entry);
 		t->pending = true;
 	}
