@@ -42,6 +42,9 @@ typedef struct {
 	uint16_t			src_port;
 	uint16_t 			dst_port;
 
+	int				code;			//!< for duplicate detection
+	int				id;			//!< for duplicate detection
+
 	RADCLIENT			*client;
 } proto_radius_udp_address_t;
 
@@ -238,6 +241,12 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, fr_time_t **rec
 		DEBUG2("proto_radius_udp packet failed verification");
 		return 0;
 	}
+
+	/*
+	 *	Track the packet ID.
+	 */
+	address.code = buffer[0];
+	address.id = buffer[1];
 
 	tracking_status = fr_radius_tracking_entry_insert(&track, inst->ft, buffer, fr_time(), &address);
 	switch (tracking_status) {
