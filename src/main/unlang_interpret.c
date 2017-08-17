@@ -540,6 +540,16 @@ static unlang_action_t unlang_fork(REQUEST *request, unlang_stack_t *stack,
 	unlang_push(child_stack, g->children, frame->result, UNLANG_NEXT_CONTINUE, UNLANG_SUB_FRAME);
 	child_stack->frame[child_stack->depth].top_frame = true;
 
+	/*
+	 *	Run the child in the same section as the master.  If
+	 *	we want to run a different virtual server, we have to
+	 *	create a "server" keyword.
+	 *
+	 *	The only difficult there is setting child->async
+	 *	to... some magic value. :( That code should be in a
+	 *	virtual server callback, and not directly in the
+	 *	interpreter.
+	 */
 	rcode = unlang_run(child, child->stack);
 	if (rcode != RLM_MODULE_YIELD) {
 		talloc_free(child);
