@@ -876,6 +876,18 @@ nak:
 	}
 
 	/*
+	 *	@todo - create an RBtree based on comparing request->async->packet_ctx?
+	 *	so that we can detect duplicates...
+	 *
+	 *	add ASYNC API to do handle (old, &FR_IO_DONE, new, &FR_IO_DONE)
+	 *	so the async process function can choose either (or both) of the packets
+	 *	and do any async signalling as necessary
+	 *
+	 *	which probably also menas moving to queue-depth instead of seq/ack for network/worker,
+	 *	as we don't want to send NAKs for conflicing / discarded packets
+	 */
+
+	/*
 	 *	Bootstrap the async state machine with the initial
 	 *	state of the request.
 	 */
