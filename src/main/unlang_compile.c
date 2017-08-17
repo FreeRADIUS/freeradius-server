@@ -2533,7 +2533,7 @@ static unlang_t *compile_fork(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		}
 
 		/*
-		 *	@fixme - make it a simple integer.  That way
+		 *	@todo - make it a simple integer.  That way
 		 *	we don't need to do lookups at run-time.
 		 */
 		slen = tmpl_afrom_str(g, &g->vpt, name2, strlen(name2), type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
@@ -2571,6 +2571,7 @@ static unlang_t *compile_fork(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	/*
 	 *	@todo - figure out what protocol we're running, and
 	 *	ensure that the packet types are allowed for that.
+	 *	For now, it's always RADIUS.
 	 *
 	 *	@ todo - after that, allow for different protocols to be specified.
 	 */

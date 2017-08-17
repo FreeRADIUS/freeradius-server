@@ -503,8 +503,18 @@ static unlang_action_t unlang_fork(REQUEST *request, unlang_stack_t *stack,
 	child->packet->code = request->packet->code;
 
 	if (g->vpt) {
+		ssize_t slen;
+		char const *p = NULL;
 		fr_dict_attr_t const *da;
 		fr_dict_enum_t const *dval;
+		char buffer[256];
+
+		slen = tmpl_expand(&p, buffer, sizeof(buffer), request, g->vpt, NULL, NULL);
+		if (slen < 0) {
+			REDEBUG("Failed expanding template");
+			*result = RLM_MODULE_FAIL;
+			return UNLANG_ACTION_CALCULATE_RESULT;
+		}
 
 		da = fr_dict_attr_by_name(NULL, "Packet-Type");
 		if (!da) {
@@ -512,8 +522,9 @@ static unlang_action_t unlang_fork(REQUEST *request, unlang_stack_t *stack,
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 
-		dval = fr_dict_enum_by_alias(NULL, da, g->vpt->name);
+		dval = fr_dict_enum_by_alias(NULL, da, buffer);
 		if (!dval) {
+			RDEBUG("Failed to find Packet-Type %s", buffer);
 			*result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
