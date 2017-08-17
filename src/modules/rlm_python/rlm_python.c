@@ -914,7 +914,7 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 #if PY_VERSION_HEX > 0x03050000
 		{
 			inst->wide_name = Py_DecodeLocale(main_config.name, strlen(main_config.name));
-			Py_SetProgramName(name);		/* The value of argv[0] as a wide char string */
+			Py_SetProgramName(inst->wide_name);		/* The value of argv[0] as a wide char string */
 		}
 #else
 		{
