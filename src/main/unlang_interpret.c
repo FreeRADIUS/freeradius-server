@@ -518,6 +518,7 @@ static unlang_action_t unlang_fork(REQUEST *request, unlang_stack_t *stack,
 
 		da = fr_dict_attr_by_name(NULL, "Packet-Type");
 		if (!da) {
+			REDEBUG("Failed finding Packet-Type attribute");
 			*result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
@@ -560,6 +561,8 @@ static unlang_action_t unlang_fork(REQUEST *request, unlang_stack_t *stack,
 	/*
 	 *	@todo - actually do yeild, probably by hacking up unlang_module_resumption_t ???
 	 */
+	RDEBUG("fork - child returned %s", fr_int2str(mod_rcode_table, rcode, "<invalid>"));
+	WARN("Yeild in fork {...} is not implemented.  Forcing failure");
 	*result = RLM_MODULE_FAIL;
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
