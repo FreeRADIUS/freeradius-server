@@ -522,7 +522,7 @@ static unlang_action_t unlang_fork(REQUEST *request, unlang_stack_t *stack,
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 
-		dval = fr_dict_enum_by_alias(NULL, da, buffer);
+		dval = fr_dict_enum_by_alias(NULL, da, p);
 		if (!dval) {
 			RDEBUG("Failed to find Packet-Type %s", buffer);
 			*result = RLM_MODULE_FAIL;
