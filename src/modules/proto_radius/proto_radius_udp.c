@@ -173,11 +173,11 @@ static int mod_decode(UNUSED void const *instance, REQUEST *request, UNUSED uint
 }
 
 static uint32_t priorities[FR_MAX_PACKET_CODE] = {
-	[FR_CODE_ACCESS_REQUEST] = (1 << 15),
-	[FR_CODE_ACCOUNTING_REQUEST] = (1 << 14),
-	[FR_CODE_COA_REQUEST] = (1 << 14) + 1,
-	[FR_CODE_DISCONNECT_REQUEST] = (1 << 14) + 1,
-	[FR_CODE_STATUS_SERVER] = (1 << 16),
+	[FR_CODE_ACCESS_REQUEST] = PRIORITY_HIGH,
+	[FR_CODE_ACCOUNTING_REQUEST] = PRIORITY_LOW,
+	[FR_CODE_COA_REQUEST] = PRIORITY_NORMAL,
+	[FR_CODE_DISCONNECT_REQUEST] = PRIORITY_NORMAL,
+	[FR_CODE_STATUS_SERVER] = PRIORITY_NOW,
 };
 
 static ssize_t mod_read(void const *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority)

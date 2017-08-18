@@ -173,7 +173,7 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, fr_time_t **rec
 
 	*packet_ctx = ip;
 	*recv_time = NULL;
-	*priority = (1 << 15);
+	*priority = PRIORITY_NORMAL;
 
 	return packet_len + sizeof(*ip);
 }
