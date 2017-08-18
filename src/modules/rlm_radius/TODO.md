@@ -156,6 +156,4 @@ What else...
 * really need to add dup and conflicting packet detection to the core..
   * which lets Status-Server get processed, and synchronous proxying
 
-* need to print request again when it's retransmitted?
-
 * move the worker "time_order" list to be a heap, instead of manually doing it

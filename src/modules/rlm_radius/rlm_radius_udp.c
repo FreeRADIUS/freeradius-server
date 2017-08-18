@@ -874,6 +874,16 @@ static void response_timeout(UNUSED fr_event_list_t *el, struct timeval *now, vo
 
 	RDEBUG("Retransmitting request.  Expecting response within %d.%06ds",
 	       u->rr->rt / USEC, u->rr->rt % USEC);
+
+	/*
+	 *	Debug the packet again
+	 *
+	 *	@todo - Proxy-State, Message-Authenticator, etc.
+	 */
+	RDEBUG("sending %s ID %d length %ld over connection %s",
+	       fr_packet_codes[u->code], u->rr->id, u->packet_len, c->name);
+	rdebug_pair_list(L_DBG_LVL_2, request, request->packet->vps, NULL);
+
 	rcode = write(c->fd, u->packet, u->packet_len);
 	if (rcode < 0) {
 		if (errno == EWOULDBLOCK) {
@@ -979,14 +989,14 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 				      request->packet->vps);
 	if (packet_len <= 0) return -1;
 
-	RDEBUG("sending %s ID %d length %ld over connection %s",
-	       fr_packet_codes[u->code], u->rr->id, packet_len, c->name);
-
 	/*
 	 *	This hack cleans up the debug output a bit.
 	 */
 	module_name = request->module;
 	request->module = NULL;
+
+	RDEBUG("sending %s ID %d length %ld over connection %s",
+	       fr_packet_codes[u->code], u->rr->id, packet_len, c->name);
 	rdebug_pair_list(L_DBG_LVL_2, request, request->packet->vps, NULL);
 
 	/*
