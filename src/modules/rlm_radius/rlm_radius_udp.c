@@ -825,7 +825,8 @@ static void status_check_timeout(UNUSED fr_event_list_t *el, struct timeval *now
 
 	request = u->link->request;
 	if (rcode == 0) {
-		RDEBUG("No response to status check,  Marking connection dead");
+		REDEBUG("No response to status check ID %d, closing connection %s",
+			u->rr->id, c->name);
 		talloc_free(c);
 		return;
 	}
@@ -861,7 +862,8 @@ static void response_timeout(UNUSED fr_event_list_t *el, struct timeval *now, vo
 	request = u->link->request;
 	if (rcode == 0) {
 		conn_zombie(c);
-		RDEBUG("No response to proxied request");
+		REDEBUG("Failing proxied request ID %d due to lack of response on connection %s",
+			u->rr->id, c->name);
 		mod_finished_request(c, u);
 		return;
 	}
