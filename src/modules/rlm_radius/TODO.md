@@ -142,13 +142,6 @@ sleeping... the network always sets it, I guess..
 
 What else...
 
-* the debug output is still a bit too complex to understand fully
-  * After Aug 11, a bit better.  and DEBUG3 prints raw packets
-
-* Status-Server packets (etc.) need to have priorities associated with them
-  * maybe the proto_radius stuff needs to take Status-Server and just respond itself??
-  * for now, that's probably the best idea...
-
 * need to move to queue depth / active flag in channels / network / worker
   * the current ACK, and "my_view_of_their_shit" is just too complex
 
@@ -160,14 +153,9 @@ What else...
   * especially if the client retransmits are 10s?
   * or maybe it was the dup detection bug (timestamp) where it didn't detect dups...
 
-* need to double-check Status-Server
-  * they're sent, are they processed thru the "recv Status-Server" section?
-
-* verify zombie_timeout, etc.
-
 * really need to add dup and conflicting packet detection to the core..
   * which lets Status-Server get processed, and synchronous proxying
 
 * need to print request again when it's retransmitted?
 
-* have to start pinging with Status-Server?
+* move the worker "time_order" list to be a heap, instead of manually doing it
