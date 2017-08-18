@@ -132,7 +132,7 @@ static int test_open(void *ctx)
 
 static fr_time_t start_time;
 
-static ssize_t test_read(void const *ctx, UNUSED void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover)
+static ssize_t test_read(void const *ctx, UNUSED void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority)
 {
 	ssize_t			data_size;
 	fr_listen_test_t	*io_ctx = talloc_get_type_abort(ctx, fr_listen_test_t);
@@ -151,6 +151,7 @@ static ssize_t test_read(void const *ctx, UNUSED void **packet_ctx, fr_time_t **
 
 	start_time = fr_time();
 	*recv_time = &start_time;
+	*priority = 0;
 
 	return data_size;
 }

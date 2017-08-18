@@ -172,7 +172,15 @@ static int mod_decode(UNUSED void const *instance, REQUEST *request, UNUSED uint
 	return 0;
 }
 
-static ssize_t mod_read(void const *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover)
+static uint32_t priorities[FR_MAX_PACKET_CODE] = {
+	[FR_CODE_ACCESS_REQUEST] = (1 << 15),
+	[FR_CODE_ACCOUNTING_REQUEST] = (1 << 14),
+	[FR_CODE_COA_REQUEST] = (1 << 14) + 1,
+	[FR_CODE_DISCONNECT_REQUEST] = (1 << 14) + 1,
+	[FR_CODE_STATUS_SERVER] = (1 << 16),
+};
+
+static ssize_t mod_read(void const *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority)
 {
 	proto_radius_udp_t const	*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
 
@@ -299,6 +307,7 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, fr_time_t **rec
 
 	*packet_ctx = track;
 	*recv_time = &track->timestamp;
+	*priority = priorities[buffer[0]];
 
 	return packet_len;
 }

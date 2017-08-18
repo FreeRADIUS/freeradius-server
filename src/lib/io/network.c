@@ -359,7 +359,7 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int f
 	 */
 next_message:
 	data_size = s->listen->app_io->read(s->listen->app_io_instance, &cd->packet_ctx, &recv_time,
-					    cd->m.data, cd->m.rb_size, &s->leftover);
+					    cd->m.data, cd->m.rb_size, &s->leftover, &cd->priority);
 	if (data_size == 0) {
 //		fr_log(nr->log, L_DBG_ERR, "got no data from transport read");
 
@@ -398,7 +398,7 @@ next_message:
 	} else {
 		cd->m.when = fr_time();
 	}
-	cd->priority = 0;
+
 	cd->listen = s->listen;
 	cd->request.recv_time = recv_time;
 
