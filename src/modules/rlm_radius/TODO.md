@@ -65,17 +65,6 @@ Both will likely require atomic variables in rlm_radius.c
 	}
     }
 
-add status_check = Status-Server or Access-Request, ala old code
-
-The main issue here is the ID allocation... If this is set, then we
-need to reserve one ID via `rr_track_alloc()` for the status-server
-check.  Then use that ID if there are no responses to packets.
-
-We should also allow `status_check = auto`, which picks it up from the
-list of allowed packet types.  We then need to require config for
-username / password, for Access-Request, and just username for
-Accounting-Request.
-
 
 ## synchronous proxying
 
@@ -123,9 +112,6 @@ signal.
 
 this whole thing is wrong... we end up signaling on every damned packet in real life...
 
-we need worker-side de-dup for dup / conflicting packets.  Which lets
-us stop old packets while processing new ones.
-
 OK... fix the damned channel to use queue depth instead of ACKs
 which makes them less general, but better.  The worker can NAK a packet, send a reply, or mark it ask discarded
 
@@ -145,9 +131,6 @@ What else...
 * need to move to queue depth / active flag in channels / network / worker
   * the current ACK, and "my_view_of_their_shit" is just too complex
 
-* need to double-check retransmissions
-  * dups are finally suppressed
-
 * need to double-check cleanup_delay
   * it works, but it's likely set too small?
   * especially if the client retransmits are 10s?
@@ -155,5 +138,22 @@ What else...
 
 * really need to add dup and conflicting packet detection to the core..
   * which lets Status-Server get processed, and synchronous proxying
+  * add cancel / signal handler in rlm_radius.
 
 * move the worker "time_order" list to be a heap, instead of manually doing it
+
+* ensure that the retransmission is independent of which connection
+the packet is sent on.  This means keeping the various timers in 'u'
+instead of in 'rr'.  i.e. if a connection closes, the packet should
+just retransmit on a new connection.
+
+* RADIUS layer fixups for Accounting-Request, e.g. Acct-Delay-Time
+
+* connection negotiation in Status-Server
+
+* `status_check = auto`, which picks it up from the list of allowed
+packet types.  We then need to require config for username / password,
+for Access-Request, and just username for Accounting-Request.
+
+* fr_socket_client_udp() needs to be passed &src_port, so that it can be updated
+
