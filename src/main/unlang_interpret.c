@@ -559,7 +559,7 @@ static unlang_action_t unlang_fork(REQUEST *request, unlang_stack_t *stack,
 	}
 
 	/*
-	 *	@todo - actually do yeild, probably by hacking up unlang_module_resumption_t ???
+	 *	@todo - actually do yeild, probably by hacking up unlang_resumption_t ???
 	 */
 	RDEBUG("fork - child returned %s", fr_int2str(mod_rcode_table, rcode, "<invalid>"));
 	WARN("Yeild in fork {...} is not implemented.  Forcing failure");
@@ -1110,12 +1110,12 @@ static unlang_action_t unlang_if(REQUEST *request, unlang_stack_t *stack,
 }
 
 
-static unlang_action_t unlang_module_resumption(REQUEST *request, unlang_stack_t *stack,
+static unlang_action_t unlang_resumption(REQUEST *request, unlang_stack_t *stack,
 						rlm_rcode_t *presult, int *priority)
 {
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
-	unlang_module_resumption_t	*mr = unlang_generic_to_module_resumption(instruction);
+	unlang_resumption_t		*mr = unlang_generic_to_resumption(instruction);
 	unlang_stack_state_modcall_t	*modcall_state = talloc_get_type_abort(frame->state,
 									       unlang_stack_state_modcall_t);
 	void 				*resume_ctx;
@@ -1264,9 +1264,9 @@ unlang_op_t unlang_ops[] = {
 		.func = unlang_xlat_inline,
 		.debug_braces = false
 	},
-	[UNLANG_TYPE_MODULE_RESUME] = {
-		.name = "module-call-resume",
-		.func = unlang_module_resumption,
+	[UNLANG_TYPE_RESUME] = {
+		.name = "resume",
+		.func = unlang_resumption,
 		.debug_braces = false
 	},
 	[UNLANG_TYPE_MAX] = { NULL, NULL, false }
@@ -1374,7 +1374,7 @@ resume_subsection:
 
 		case UNLANG_ACTION_CALCULATE_RESULT:
 			if (result == RLM_MODULE_YIELD) {
-				rad_assert(frame->instruction->type == UNLANG_TYPE_MODULE_RESUME);
+				rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
 				frame->resume = true;
 				RDEBUG4("** [%i] %s - yielding with current (%s %d)", stack->depth, __FUNCTION__,
 					fr_int2str(mod_rcode_table, frame->result, "<invalid>"),
@@ -1850,7 +1850,7 @@ int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t call
 
 	rad_assert(stack->depth > 0);
 	rad_assert((frame->instruction->type == UNLANG_TYPE_MODULE_CALL) ||
-		   (frame->instruction->type == UNLANG_TYPE_MODULE_RESUME));
+		   (frame->instruction->type == UNLANG_TYPE_RESUME));
 	sp = unlang_generic_to_module_call(frame->instruction);
 
 	ev = talloc_zero(request, unlang_event_t);
@@ -1933,7 +1933,7 @@ int unlang_event_fd_add(REQUEST *request,
 	rad_assert(stack->depth > 0);
 
 	rad_assert((frame->instruction->type == UNLANG_TYPE_MODULE_CALL) ||
-		   (frame->instruction->type == UNLANG_TYPE_MODULE_RESUME));
+		   (frame->instruction->type == UNLANG_TYPE_RESUME));
 	sp = unlang_generic_to_module_call(frame->instruction);
 
 	ev = talloc_zero(request, unlang_event_t);
@@ -2014,7 +2014,7 @@ void unlang_signal(REQUEST *request, fr_state_action_t action)
 {
 	unlang_stack_frame_t		*frame;
 	unlang_stack_t			*stack = request->stack;
-	unlang_module_resumption_t	*mr;
+	unlang_resumption_t		*mr;
 	void				*resume_ctx;
 	void				*instance;
 
@@ -2025,11 +2025,11 @@ void unlang_signal(REQUEST *request, fr_state_action_t action)
 	/*
 	 *	Be gracious in errors.
 	 */
-	if (frame->instruction->type != UNLANG_TYPE_MODULE_RESUME) {
+	if (frame->instruction->type != UNLANG_TYPE_RESUME) {
 		return;
 	}
 
-	mr = unlang_generic_to_module_resumption(frame->instruction);
+	mr = unlang_generic_to_resumption(frame->instruction);
 	if (!mr->signal_callback) return;
 
 	memcpy(&resume_ctx, &mr->resume_ctx, sizeof(resume_ctx));
@@ -2054,25 +2054,25 @@ void unlang_signal(REQUEST *request, fr_state_action_t action)
  * @param[in] ctx		to pass to the callbacks.
  * @return always returns RLM_MODULE_YIELD.
  */
-rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_module_resume_t callback,
+rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_resume_callback_t callback,
 				fr_unlang_action_t signal_callback, void const *ctx)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_module_resumption_t	*mr;
+	unlang_resumption_t		*mr;
 	unlang_stack_state_modcall_t	*modcall_state = talloc_get_type_abort(frame->state,
 									       unlang_stack_state_modcall_t);
 
 	rad_assert(stack->depth > 0);
 
 	rad_assert((frame->instruction->type == UNLANG_TYPE_MODULE_CALL) ||
-		   (frame->instruction->type == UNLANG_TYPE_MODULE_RESUME));
+		   (frame->instruction->type == UNLANG_TYPE_RESUME));
 
 	if (frame->instruction->type == UNLANG_TYPE_MODULE_CALL) {
 		unlang_module_call_t		*sp;
 		sp = unlang_generic_to_module_call(frame->instruction);
 
-		mr = talloc(request, unlang_module_resumption_t);
+		mr = talloc(request, unlang_resumption_t);
 		rad_assert(mr != NULL);
 
 		/*
@@ -2086,7 +2086,7 @@ rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_module_resume_t call
 		 *	type was.
 		 */
 		mr->parent_type = UNLANG_TYPE_MODULE_CALL;
-		mr->self.type = UNLANG_TYPE_MODULE_RESUME;
+		mr->self.type = UNLANG_TYPE_RESUME;
 		mr->module_instance = sp->module_instance;
 
 		/*
@@ -2097,11 +2097,11 @@ rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_module_resume_t call
 
 		/*
 		 *	Replaces the current MODULE_CALL stack frame with a
-		 *	MODULE_RESUME frame.
+		 *	RESUME frame.
 		 */
-		frame->instruction = unlang_module_resumption_to_generic(mr);
+		frame->instruction = unlang_resumption_to_generic(mr);
 	} else {
-		mr = talloc_get_type_abort(frame->instruction, unlang_module_resumption_t);
+		mr = talloc_get_type_abort(frame->instruction, unlang_resumption_t);
 
 		/*
 		 *	Can't change threads...
@@ -2109,7 +2109,7 @@ rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_module_resume_t call
 		rad_assert(mr->thread == modcall_state->thread->data);
 
 		/*
-		 *	Re-use the current MODULE_RESUME frame.
+		 *	Re-use the current RESUME frame.
 		 */
 	}
 
