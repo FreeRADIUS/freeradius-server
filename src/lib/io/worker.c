@@ -916,6 +916,10 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 
 	WORKER_VERIFY;
 
+	rad_assert(request->parent == NULL);
+	rad_assert(request->async->process != NULL);
+	rad_assert(request->async->listen != NULL);
+
 	DEBUG("(%" PRIu64 ") running request", request->number);
 
 	/*
@@ -1326,10 +1330,6 @@ static void fr_worker_post_event(UNUSED fr_event_list_t *el, UNUSED struct timev
 	 */
 	request = fr_worker_get_request(worker, now);
 	if (!request) return;
-
-	rad_assert(request->async->process != NULL);
-	rad_assert(request->async->listen != NULL);
-
 
 	/*
 	 *	Run the request, and either track it as
