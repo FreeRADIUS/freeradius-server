@@ -1203,7 +1203,7 @@ static unlang_action_t unlang_resume(REQUEST *request, unlang_stack_t *stack,
 	}
 
 	if (*presult != RLM_MODULE_YIELD) {
-		modcall_state->thread->active_callers--;
+		if (modcall_state) modcall_state->thread->active_callers--;
 
 		rad_assert(*presult >= RLM_MODULE_REJECT);
 		rad_assert(*presult < RLM_MODULE_NUMCODES);
@@ -2127,20 +2127,24 @@ rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_resume_callback_t ca
 	if (frame->instruction->type == UNLANG_TYPE_MODULE_CALL) {
 		unlang_module_call_t		*sp;
 
+		/*
+		 *	Do this BEFORE allocating mr, which replaces
+		 *	frame->instruction.
+		 */
+		sp = unlang_generic_to_module_call(frame->instruction);
+
 		mr = unlang_resume_alloc(request, callback, signal_callback, ctx);
 		rad_assert(mr != NULL);
 
 		/*
 		 *	Remember module-specific data.
 		 */
-		sp = unlang_generic_to_module_call(frame->instruction);
 		mr->module_instance = sp->module_instance;
 		mr->instance = sp->module_instance->dl_inst->data;
 		mr->thread = modcall_state->thread->data;
 
 	} else {
 		mr = talloc_get_type_abort(frame->instruction, unlang_resume_t);
-
 		rad_assert(mr->parent_type == UNLANG_TYPE_MODULE_CALL);
 
 		/*
