@@ -470,6 +470,59 @@ static unlang_action_t unlang_group(REQUEST *request, unlang_stack_t *stack,
 
 static rlm_rcode_t unlang_run(REQUEST *request, unlang_stack_t *stack);
 
+
+/** Allocates and initializes an unlang_resume_t
+ *
+ * @param[in] request		The current request.
+ * @param[in] callback		to call on unlang_resumable().
+ * @param[in] signal_callback	to call on unlang_action().
+ * @param[in] ctx		to pass to the callbacks.
+ * @return
+ *	unlang_resume_t on success
+ *	NULL on error
+ */
+static unlang_resume_t *unlang_resume_alloc(REQUEST *request,
+					    fr_unlang_resume_callback_t callback,
+					    fr_unlang_action_t signal_callback, void const *ctx)
+{
+	unlang_resume_t 		*mr;
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+
+	mr = talloc_zero(request, unlang_resume_t);
+	if (!mr) return NULL;
+
+	/*
+	 *	Remember the parent type.
+	 */
+	mr->parent_type = frame->instruction->type;
+
+	/*
+	 *	Initialize parent ptr, next ptr, name, debug_name,
+	 *	type, actions, etc.
+	 */
+	memcpy(&mr->self, frame->instruction, sizeof(mr->self));
+
+	/*
+	 *	But note that we're of type RESUME
+	 */
+	mr->self.type = UNLANG_TYPE_RESUME;
+
+	/*
+	 *	Fill in the signal handlers and resumption ctx
+	 */
+	mr->callback = callback;
+	mr->signal_callback = signal_callback;
+	mr->resume_ctx = ctx;
+
+	/*
+	 *	Replaces the current stack frame with a RESUME frame.
+	 */
+	frame->instruction = unlang_resume_to_generic(mr);
+
+	return mr;
+}
+
 static unlang_action_t unlang_fork(REQUEST *request, unlang_stack_t *stack,
 				   rlm_rcode_t *result, UNUSED int *priority)
 {
@@ -2070,38 +2123,22 @@ rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_resume_callback_t ca
 
 	if (frame->instruction->type == UNLANG_TYPE_MODULE_CALL) {
 		unlang_module_call_t		*sp;
-		sp = unlang_generic_to_module_call(frame->instruction);
 
-		mr = talloc(request, unlang_resume_t);
+		mr = unlang_resume_alloc(request, callback, signal_callback, ctx);
 		rad_assert(mr != NULL);
 
 		/*
-		 *	Initialize parent ptr, next ptr, name, debug_name,
-		 *	type, actions, etc.
+		 *	Remember module-specific data.
 		 */
-		memcpy(&mr->self, &sp->self, sizeof(mr->self));
-
-		/*
-		 *	Reset the type to RESUME, but remember what the parent
-		 *	type was.
-		 */
-		mr->parent_type = UNLANG_TYPE_MODULE_CALL;
-		mr->self.type = UNLANG_TYPE_RESUME;
+		sp = unlang_generic_to_module_call(frame->instruction);
 		mr->module_instance = sp->module_instance;
-
-		/*
-		 *	Remember the module instance and thread data.
-		 */
 		mr->instance = sp->module_instance->dl_inst->data;
 		mr->thread = modcall_state->thread->data;
 
-		/*
-		 *	Replaces the current MODULE_CALL stack frame with a
-		 *	RESUME frame.
-		 */
-		frame->instruction = unlang_resume_to_generic(mr);
 	} else {
 		mr = talloc_get_type_abort(frame->instruction, unlang_resume_t);
+
+		rad_assert(mr->parent_type == UNLANG_TYPE_MODULE_CALL);
 
 		/*
 		 *	Can't change threads...
@@ -2109,16 +2146,13 @@ rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_resume_callback_t ca
 		rad_assert(mr->thread == modcall_state->thread->data);
 
 		/*
-		 *	Re-use the current RESUME frame.
+		 *	Re-use the current RESUME frame, but over-ride
+		 *	the callbacks and context.
 		 */
+		mr->callback = callback;
+		mr->signal_callback = signal_callback;
+		mr->resume_ctx = ctx;
 	}
-
-	/*
-	 *	Fill in the signal handlers and resumption ctx
-	 */
-	mr->callback = callback;
-	mr->signal_callback = signal_callback;
-	mr->resume_ctx = ctx;
 
 	return RLM_MODULE_YIELD;
 }
