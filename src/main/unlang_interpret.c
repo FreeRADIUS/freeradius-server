@@ -2050,6 +2050,9 @@ int unlang_event_fd_delete(REQUEST *request, void const *ctx, int fd)
  */
 void unlang_resumable(REQUEST *request)
 {
+	if (request->parent) request = request->parent;
+
+	rad_assert(request->backlog != NULL);
 	fr_heap_insert(request->backlog, request);
 }
 
