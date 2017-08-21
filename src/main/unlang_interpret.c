@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/modpriv.h>
 #include <freeradius-devel/interpreter.h>
 #include <freeradius-devel/parser.h>
+#include <freeradius-devel/io/listen.h>
 
 static FR_NAME_NUMBER unlang_action_table[] = {
 	{ "calculate-result",	UNLANG_ACTION_CALCULATE_RESULT },
@@ -523,6 +524,65 @@ static unlang_resume_t *unlang_resume_alloc(REQUEST *request,
 	return mr;
 }
 
+/** Send a signal from parent request to child
+ *
+ */
+static void unlang_fork_signal(UNUSED REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *ctx,
+			       fr_state_action_t action)
+{
+	REQUEST			*child = talloc_get_type_abort(ctx, REQUEST);
+
+	unlang_signal(child, action);
+}
+
+
+/** Resume a forked request
+ *
+ */
+static rlm_rcode_t unlang_fork_resume(REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *ctx)
+{
+	REQUEST			*child = talloc_get_type_abort(ctx, REQUEST);
+	unlang_stack_t		*stack = child->stack;
+	rlm_rcode_t		rcode;
+	unlang_stack_frame_t	*frame;
+#ifndef NDEBUG
+	unlang_resume_t		*mr;
+#endif
+
+	/*
+	 *	Continue running the child.
+	 */
+	rcode = unlang_run(child, stack);
+	if (rcode != RLM_MODULE_YIELD) {
+		stack = request->stack;
+		frame = &stack->frame[stack->depth];
+		rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
+
+		frame->instruction->type = UNLANG_TYPE_FORK; /* for debug purposes */
+		talloc_free(child);
+		return rcode;
+	}
+
+#ifndef NDEBUG
+	stack = request->stack;
+	frame = &stack->frame[stack->depth];
+	rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
+
+	mr = unlang_generic_to_resume(frame->instruction);
+	(void) talloc_get_type_abort(mr, unlang_resume_t);
+
+	rad_assert(mr->callback == unlang_fork_resume);
+	rad_assert(mr->signal_callback == unlang_fork_signal);
+	rad_assert(mr->resume_ctx == child);
+#endif
+
+	/*
+	 *	If the child yields, our current frame is still an
+	 *	unlang_resume_t.
+	 */
+	return RLM_MODULE_YIELD;
+}
+
 static unlang_action_t unlang_fork(REQUEST *request, unlang_stack_t *stack,
 				   rlm_rcode_t *result, UNUSED int *priority)
 {
@@ -532,6 +592,7 @@ static unlang_action_t unlang_fork(REQUEST *request, unlang_stack_t *stack,
 	REQUEST			*child;
 	rlm_rcode_t		rcode;
 	unlang_stack_t		*child_stack;
+	unlang_resume_t		*mr;
 
 	g = unlang_generic_to_group(instruction);
 
@@ -595,6 +656,41 @@ static unlang_action_t unlang_fork(REQUEST *request, unlang_stack_t *stack,
 	child_stack->frame[child_stack->depth].top_frame = true;
 
 	/*
+	 *	Initialize some basic information for the child.
+	 *
+	 *	Note that we do NOT initialize child->backlog, as the
+	 *	child is never resumable... the parent is resumable.
+	 */
+	child->number = request->number;
+	child->el = request->el;
+	child->server_cs = request->server_cs;
+
+	/*
+	 *	Initialize all of the async fields.
+	 */
+	child->async = talloc_zero(child, fr_async_t);
+
+#define COPY_FIELD(_x) child->async->_x = request->async->_x
+	COPY_FIELD(original_recv_time);
+	COPY_FIELD(recv_time);
+	COPY_FIELD(listen);
+
+	child->async->listen->app->process_set(child->async->listen->app_instance, child);
+	rad_assert(child->async->process != NULL);
+
+	/*
+	 *	Note that we don't do time tracking on the child.
+	 *	Instead, all of it is done in the context of the
+	 *	parent.
+	 */
+	FR_DLIST_INIT(child->async->time_order);
+
+	/*
+	 *	fork() is a copy???
+	 */
+	child->packet->vps = fr_pair_list_copy(child->packet, request->packet->vps);
+
+	/*
 	 *	Run the child in the same section as the master.  If
 	 *	we want to run a different virtual server, we have to
 	 *	create a "server" keyword.
@@ -612,11 +708,15 @@ static unlang_action_t unlang_fork(REQUEST *request, unlang_stack_t *stack,
 	}
 
 	/*
-	 *	@todo - actually do yeild, probably by hacking up unlang_resume_t ???
+	 *	Create the "resume" stack frame, and have it replace our stack frame.
 	 */
-	RDEBUG("fork - child returned %s", fr_int2str(mod_rcode_table, rcode, "<invalid>"));
-	WARN("Yeild in fork {...} is not implemented.  Forcing failure");
-	*result = RLM_MODULE_FAIL;
+	mr = unlang_resume_alloc(request, unlang_fork_resume, unlang_fork_signal, child);
+	if (!mr) {
+		*result = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	*result = RLM_MODULE_YIELD;
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
@@ -1169,24 +1269,39 @@ static unlang_action_t unlang_resume(REQUEST *request, unlang_stack_t *stack,
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
 	unlang_resume_t			*mr = unlang_generic_to_resume(instruction);
-	unlang_stack_state_modcall_t	*modcall_state = talloc_get_type_abort(frame->state,
-									       unlang_stack_state_modcall_t);
+	unlang_stack_state_modcall_t	*modcall_state = NULL;
 	void 				*resume_ctx;
 	void 				*instance;
+	bool				is_module = true;
 
-	rad_assert(mr->parent_type == UNLANG_TYPE_MODULE_CALL);
 	RDEBUG3("Resuming in module %s", mr->self.debug_name);
 
 	memcpy(&resume_ctx, &mr->resume_ctx, sizeof(resume_ctx));
 	memcpy(&instance, &mr->instance, sizeof(instance));
 	request->module = mr->self.debug_name;
 
-	/*
-	 *	Lock is noop unless instance->mutex is set.
-	 */
-	safe_lock(mr->module_instance);
-	*presult = request->rcode = mr->callback(request, instance, mr->thread, resume_ctx);
-	safe_unlock(mr->module_instance);
+	if (mr->parent_type == UNLANG_TYPE_MODULE_CALL) {
+		modcall_state = talloc_get_type_abort(frame->state,
+						      unlang_stack_state_modcall_t);
+
+		/*
+		 *	Lock is noop unless instance->mutex is set.
+		 */
+		safe_lock(mr->module_instance);
+		*presult = request->rcode = mr->callback(request, instance, mr->thread, resume_ctx);
+		safe_unlock(mr->module_instance);
+
+	} else {
+		/*
+		 *	We're resuming after a fork.  Don't bother
+		 *	dereferencing the callback, just call the
+		 *	resumption function directly.
+		 */
+		rad_assert(mr->parent_type == UNLANG_TYPE_FORK);
+		is_module = false;
+		rad_assert(mr->callback == unlang_fork_resume);
+		*presult = unlang_fork_resume(request, NULL, NULL, resume_ctx);
+	}
 
 	request->module = NULL;
 
@@ -1211,8 +1326,11 @@ static unlang_action_t unlang_resume(REQUEST *request, unlang_stack_t *stack,
 	}
 
 	*presult = request->rcode;
-	RDEBUG2("%s (%s)", instruction->name ? instruction->name : "",
-		fr_int2str(mod_rcode_table, *presult, "<invalid>"));
+
+	if (is_module) {
+		RDEBUG2("%s (%s)", instruction->name ? instruction->name : "",
+			fr_int2str(mod_rcode_table, *presult, "<invalid>"));
+	}
 
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
