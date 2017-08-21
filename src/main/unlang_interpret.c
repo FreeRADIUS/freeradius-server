@@ -1031,8 +1031,8 @@ static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stac
 	 *	Is now marked as "stop" when it wasn't before, we must have been blocked.
 	 */
 	if (request->master_state == REQUEST_STOP_PROCESSING) {
-		RWARN("Module %s became unblocked for request %" PRIu64 "",
-		      sp->module_instance->module->name, request->number);
+		RWARN("Module %s became unblocked",
+		      sp->module_instance->module->name);
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}
 
@@ -1116,26 +1116,24 @@ static unlang_action_t unlang_module_resumption(REQUEST *request, unlang_stack_t
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
 	unlang_module_resumption_t	*mr = unlang_generic_to_module_resumption(instruction);
-	unlang_module_call_t		*sp;
 	unlang_stack_state_modcall_t	*modcall_state = talloc_get_type_abort(frame->state,
 									       unlang_stack_state_modcall_t);
-	void 				*mutable;
+	void 				*resume_ctx;
+	void 				*instance;
 
-	sp = &mr->module;
+	rad_assert(mr->parent_type == UNLANG_TYPE_MODULE_CALL);
+	RDEBUG3("Resuming in module %s", mr->self.debug_name);
 
-	RDEBUG3("Resuming %s (%s) for request %" PRIu64,
-		sp->module_instance->name,
-		sp->module_instance->module->name, request->number);
-
-	memcpy(&mutable, &mr->ctx, sizeof(mutable));
-	request->module = sp->module_instance->name;
+	memcpy(&resume_ctx, &mr->resume_ctx, sizeof(resume_ctx));
+	memcpy(&instance, &mr->instance, sizeof(instance));
+	request->module = mr->self.debug_name;
 
 	/*
 	 *	Lock is noop unless instance->mutex is set.
 	 */
-	safe_lock(sp->module_instance);
-	*presult = request->rcode = mr->callback(request, mr->module.module_instance->dl_inst->data, mr->thread->data, mutable);
-	safe_unlock(sp->module_instance);
+	safe_lock(mr->module_instance);
+	*presult = request->rcode = mr->callback(request, instance, mr->thread, resume_ctx);
+	safe_unlock(mr->module_instance);
 
 	request->module = NULL;
 
@@ -1147,8 +1145,7 @@ static unlang_action_t unlang_module_resumption(REQUEST *request, unlang_stack_t
 	 *	Is now marked as "stop" when it wasn't before, we must have been blocked.
 	 */
 	if (request->master_state == REQUEST_STOP_PROCESSING) {
-		RWARN("Module %s became unblocked for request %" PRIu64 "",
-		      sp->module_instance->module->name, request->number);
+		RWARN("Module %s became unblocked", mr->self.debug_name);
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}
 
@@ -2018,7 +2015,8 @@ void unlang_signal(REQUEST *request, fr_state_action_t action)
 	unlang_stack_frame_t		*frame;
 	unlang_stack_t			*stack = request->stack;
 	unlang_module_resumption_t	*mr;
-	void				*mutable;
+	void				*resume_ctx;
+	void				*instance;
 
 	rad_assert(stack->depth > 0);
 
@@ -2034,9 +2032,10 @@ void unlang_signal(REQUEST *request, fr_state_action_t action)
 	mr = unlang_generic_to_module_resumption(frame->instruction);
 	if (!mr->signal_callback) return;
 
-	memcpy(&mutable, &mr->ctx, sizeof(mutable));
+	memcpy(&resume_ctx, &mr->resume_ctx, sizeof(resume_ctx));
+	memcpy(&instance, &mr->instance, sizeof(instance));
 
-	mr->signal_callback(request, mr->module.module_instance->dl_inst->data, mr->thread->data, mutable, action);
+	mr->signal_callback(request, instance, mr->thread, resume_ctx, action);
 }
 
 /** Yield a request back to the interpreter from within a module
@@ -2061,7 +2060,6 @@ rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_module_resume_t call
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_module_resumption_t	*mr;
-	unlang_module_call_t		*sp;
 	unlang_stack_state_modcall_t	*modcall_state = talloc_get_type_abort(frame->state,
 									       unlang_stack_state_modcall_t);
 
@@ -2069,24 +2067,58 @@ rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_module_resume_t call
 
 	rad_assert((frame->instruction->type == UNLANG_TYPE_MODULE_CALL) ||
 		   (frame->instruction->type == UNLANG_TYPE_MODULE_RESUME));
-	sp = unlang_generic_to_module_call(frame->instruction);
 
-	mr = talloc(request, unlang_module_resumption_t);
-	rad_assert(mr != NULL);
+	if (frame->instruction->type == UNLANG_TYPE_MODULE_CALL) {
+		unlang_module_call_t		*sp;
+		sp = unlang_generic_to_module_call(frame->instruction);
 
-	memcpy(&mr->module, frame->instruction, sizeof(mr->module));
-	mr->thread = modcall_state->thread;
-	mr->module.self.type = UNLANG_TYPE_MODULE_RESUME;
-	mr->callback = callback;
-	mr->signal_callback = signal_callback;
-	mr->thread = module_thread_instance_find(sp->module_instance);
-	mr->ctx = ctx;
+		mr = talloc(request, unlang_module_resumption_t);
+		rad_assert(mr != NULL);
+
+		/*
+		 *	Initialize parent ptr, next ptr, name, debug_name,
+		 *	type, actions, etc.
+		 */
+		memcpy(&mr->self, &sp->self, sizeof(mr->self));
+
+		/*
+		 *	Reset the type to RESUME, but remember what the parent
+		 *	type was.
+		 */
+		mr->parent_type = UNLANG_TYPE_MODULE_CALL;
+		mr->self.type = UNLANG_TYPE_MODULE_RESUME;
+		mr->module_instance = sp->module_instance;
+
+		/*
+		 *	Remember the module instance and thread data.
+		 */
+		mr->instance = sp->module_instance->dl_inst->data;
+		mr->thread = modcall_state->thread->data;
+
+		/*
+		 *	Replaces the current MODULE_CALL stack frame with a
+		 *	MODULE_RESUME frame.
+		 */
+		frame->instruction = unlang_module_resumption_to_generic(mr);
+	} else {
+		mr = talloc_get_type_abort(frame->instruction, unlang_module_resumption_t);
+
+		/*
+		 *	Can't change threads...
+		 */
+		rad_assert(mr->thread == modcall_state->thread->data);
+
+		/*
+		 *	Re-use the current MODULE_RESUME frame.
+		 */
+	}
 
 	/*
-	 *	Replaces the current MODULE_CALL stack frame with a
-	 *	MODULE_RESUME frame.
+	 *	Fill in the signal handlers and resumption ctx
 	 */
-	frame->instruction = unlang_module_resumption_to_generic(mr);
+	mr->callback = callback;
+	mr->signal_callback = signal_callback;
+	mr->resume_ctx = ctx;
 
 	return RLM_MODULE_YIELD;
 }

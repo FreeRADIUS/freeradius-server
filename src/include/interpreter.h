@@ -162,12 +162,11 @@ typedef struct {
  * without being straightjacketed.
  */
 typedef struct {
-	unlang_module_call_t		module;		//!< Module call that returned #RLM_MODULE_YIELD.
-							//!< This field must be first, as it includes an
-							//!< #unlang_t field which must be at the start
-							//!< of every unlang_* structure.
+	unlang_t			self;
+	unlang_type_t			parent_type;	//!< type of the parent
 
-	module_thread_instance_t 	*thread;	//!< thread-local data for this module.
+	module_instance_t		*module_instance; //!< as described
+
 	fr_unlang_module_resume_t	callback;	//!< Function the yielding module indicated should
 							//!< be called when the request could be resumed.
 
@@ -176,8 +175,10 @@ typedef struct {
 							//!< may be removed in future.
 
 
-	void const			*ctx;		//!< Context data for the callback.  Usually represents
+	void const			*resume_ctx;   	//!< Context data for the callback.  Usually represents
 							//!< the module's internal state at the time of yielding.
+	void const			*instance;	//!< instance data
+	void     			*thread;	//!< thread data
 } unlang_module_resumption_t;
 
 /** A naked xlat
