@@ -179,7 +179,7 @@ typedef struct {
 							//!< the module's internal state at the time of yielding.
 	void const			*instance;	//!< instance data
 	void     			*thread;	//!< thread data
-} unlang_resumption_t;
+} unlang_resume_t;
 
 /** A naked xlat
  *
@@ -341,13 +341,13 @@ static inline unlang_t *unlang_xlat_inline_to_generic(unlang_xlat_inline_t *p)
 	return (unlang_t *)p;
 }
 
-static inline unlang_resumption_t *unlang_generic_to_resumption(unlang_t *p)
+static inline unlang_resume_t *unlang_generic_to_resume(unlang_t *p)
 {
 	rad_assert(p->type == UNLANG_TYPE_RESUME);
-	return talloc_get_type_abort(p, unlang_resumption_t);
+	return talloc_get_type_abort(p, unlang_resume_t);
 }
 
-static inline unlang_t *unlang_resumption_to_generic(unlang_resumption_t *p)
+static inline unlang_t *unlang_resume_to_generic(unlang_resume_t *p)
 {
 	return (unlang_t *)p;
 }

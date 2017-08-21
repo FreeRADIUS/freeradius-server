@@ -559,7 +559,7 @@ static unlang_action_t unlang_fork(REQUEST *request, unlang_stack_t *stack,
 	}
 
 	/*
-	 *	@todo - actually do yeild, probably by hacking up unlang_resumption_t ???
+	 *	@todo - actually do yeild, probably by hacking up unlang_resume_t ???
 	 */
 	RDEBUG("fork - child returned %s", fr_int2str(mod_rcode_table, rcode, "<invalid>"));
 	WARN("Yeild in fork {...} is not implemented.  Forcing failure");
@@ -1110,12 +1110,12 @@ static unlang_action_t unlang_if(REQUEST *request, unlang_stack_t *stack,
 }
 
 
-static unlang_action_t unlang_resumption(REQUEST *request, unlang_stack_t *stack,
-						rlm_rcode_t *presult, int *priority)
+static unlang_action_t unlang_resume(REQUEST *request, unlang_stack_t *stack,
+				     rlm_rcode_t *presult, int *priority)
 {
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
-	unlang_resumption_t		*mr = unlang_generic_to_resumption(instruction);
+	unlang_resume_t			*mr = unlang_generic_to_resume(instruction);
 	unlang_stack_state_modcall_t	*modcall_state = talloc_get_type_abort(frame->state,
 									       unlang_stack_state_modcall_t);
 	void 				*resume_ctx;
@@ -1266,7 +1266,7 @@ unlang_op_t unlang_ops[] = {
 	},
 	[UNLANG_TYPE_RESUME] = {
 		.name = "resume",
-		.func = unlang_resumption,
+		.func = unlang_resume,
 		.debug_braces = false
 	},
 	[UNLANG_TYPE_MAX] = { NULL, NULL, false }
@@ -2014,7 +2014,7 @@ void unlang_signal(REQUEST *request, fr_state_action_t action)
 {
 	unlang_stack_frame_t		*frame;
 	unlang_stack_t			*stack = request->stack;
-	unlang_resumption_t		*mr;
+	unlang_resume_t			*mr;
 	void				*resume_ctx;
 	void				*instance;
 
@@ -2029,7 +2029,7 @@ void unlang_signal(REQUEST *request, fr_state_action_t action)
 		return;
 	}
 
-	mr = unlang_generic_to_resumption(frame->instruction);
+	mr = unlang_generic_to_resume(frame->instruction);
 	if (!mr->signal_callback) return;
 
 	memcpy(&resume_ctx, &mr->resume_ctx, sizeof(resume_ctx));
@@ -2059,7 +2059,7 @@ rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_resume_callback_t ca
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_resumption_t		*mr;
+	unlang_resume_t			*mr;
 	unlang_stack_state_modcall_t	*modcall_state = talloc_get_type_abort(frame->state,
 									       unlang_stack_state_modcall_t);
 
@@ -2072,7 +2072,7 @@ rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_resume_callback_t ca
 		unlang_module_call_t		*sp;
 		sp = unlang_generic_to_module_call(frame->instruction);
 
-		mr = talloc(request, unlang_resumption_t);
+		mr = talloc(request, unlang_resume_t);
 		rad_assert(mr != NULL);
 
 		/*
@@ -2099,9 +2099,9 @@ rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_resume_callback_t ca
 		 *	Replaces the current MODULE_CALL stack frame with a
 		 *	RESUME frame.
 		 */
-		frame->instruction = unlang_resumption_to_generic(mr);
+		frame->instruction = unlang_resume_to_generic(mr);
 	} else {
-		mr = talloc_get_type_abort(frame->instruction, unlang_resumption_t);
+		mr = talloc_get_type_abort(frame->instruction, unlang_resume_t);
 
 		/*
 		 *	Can't change threads...
