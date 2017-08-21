@@ -2036,7 +2036,7 @@ void unlang_signal(REQUEST *request, fr_state_action_t action)
 
 	memcpy(&mutable, &mr->ctx, sizeof(mutable));
 
-	mr->signal_callback(request, mr->module.module_instance->dl_inst->data, mr->thread, mutable, action);
+	mr->signal_callback(request, mr->module.module_instance->dl_inst->data, mr->thread->data, mutable, action);
 }
 
 /** Yield a request back to the interpreter from within a module
