@@ -36,7 +36,7 @@
 Summary: High-performance and highly configurable free RADIUS server
 Name: freeradius
 Version: 4.0.0
-Release: 1%{?dist}
+Release: %{?_release}%{!?_release:1}%{?dist}
 License: GPLv2+ and LGPLv2+
 Group: System Environment/Daemons
 URL: http://www.freeradius.org/
@@ -55,7 +55,7 @@ Source103: freeradius-pam-conf
 
 Obsoletes: freeradius-devel
 Obsoletes: freeradius-libs
-Obsoletes: freeradius < 4.0.0-1%{?dist}
+Obsoletes: freeradius < %{version}-%{release}%{?dist}
 
 %define docdir %{_docdir}/freeradius-%{version}
 
@@ -145,7 +145,7 @@ Adds support for rlm_memcached as a cache driver.
 Group: System Environment/Daemons
 Summary: FreeRADIUS config files
 Provides: freeradius-config
-Obsoletes: freeradius < 4.0.0-1%{?dist}
+Obsoletes: freeradius < %{version}-%{release}%{?dist}
 
 %description config
 FreeRADIUS default config files
