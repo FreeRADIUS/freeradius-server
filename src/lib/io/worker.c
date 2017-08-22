@@ -46,11 +46,11 @@
  *  the heap for "too long", in fr_worker_check_timeouts().
  *
  *  When a packet is decoded, it is put into the "runnable" heap, and
- *  also into the head of the "time_order" linked list. The main loop
- *  fr_worker() then pulls requests off of this heap and runs them.
- *  The fr_worker_check_timeouts() function also checks the tail of
- *  the "time_order" list, and ages out requests which have been
- *  running for "too long".
+ *  also into the "time_order" heap. The main loop fr_worker() then
+ *  pulls new requests off of this heap and runs them.  The
+ *  fr_worker_check_timeouts() function also checks the tail of the
+ *  "time_order" heap, and ages out requests which have been active
+ *  for "too long".
  *
  *  A request may return one of FR_IO_YIELD,
  *  FR_IO_REPLY, or FR_IO_DONE.  If a request is
@@ -129,7 +129,7 @@ struct fr_worker_t {
 	fr_worker_heap_t       	localized;	//!< localized messages to be decoded
 
 	fr_heap_t      		*runnable;	//!< current runnable requests which we've spent time processing
-	fr_dlist_t		time_order;	//!< time order of requests
+	fr_heap_t		*time_order;	//!< time ordered heap of requests
 
 	int			num_requests;	//!< number of requests processed by this worker
 	int			num_decoded;	//!< number of messages which have been decoded
@@ -519,7 +519,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	 *	@todo Use a talloc pool for the request.  Clean it up,
 	 *	and insert it back into a slab allocator.
 	 */
-	fr_dlist_remove(&request->async->time_order);
+	(void) fr_heap_extract(worker->time_order, request);
 	talloc_free(request);
 
 	if (!worker->num_active) worker_reset_timer(worker);
@@ -538,8 +538,8 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 static void fr_worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED struct timeval *when, void *uctx)
 {
 	fr_time_t waiting;
-	fr_dlist_t *entry;
 	fr_time_t now = fr_time();
+	REQUEST *request;
 	fr_worker_t *worker = talloc_get_type_abort(uctx, fr_worker_t);
 
 	DEBUG2("TIMER - worker max_request_time");
@@ -548,12 +548,7 @@ static void fr_worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED struct
 	 *	Look at the oldest requests, and see if they need to
 	 *	be deleted.
 	 */
-	while ((entry = FR_DLIST_TAIL(worker->time_order)) != NULL) {
-		REQUEST *request;
-		fr_async_t *async;
-
-		async = fr_ptr_to_type(fr_async_t, time_order, entry);
-		request = talloc_parent(async);
+	while ((request = fr_heap_peek_tail(worker->time_order)) != NULL) {
 		waiting = now - request->async->recv_time;
 
 		if (waiting < NANOSEC) break;
@@ -561,7 +556,7 @@ static void fr_worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED struct
 		/*
 		 *	Waiting too long, delete it.
 		 */
-		fr_dlist_remove(&request->async->time_order);
+		(void) fr_heap_extract(worker->time_order, request);
 		(void) fr_heap_extract(worker->runnable, request);
 		fr_time_tracking_resume(&request->async->tracking, now);
 
@@ -577,15 +572,18 @@ static void fr_worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED struct
 	worker_reset_timer(worker);
 }
 
+/** See when we next need to service the time_order heap for "too old"
+ * packets.
+ *
+ */
 static void worker_reset_timer(fr_worker_t *worker)
 {
 	struct timeval when;
 	fr_time_t cleanup;
-	fr_dlist_t *entry;
-	fr_async_t *async;
+	REQUEST *request;
 
-	entry = FR_DLIST_TAIL(worker->time_order);
-	if (!entry) {
+	request = fr_heap_peek_tail(worker->time_order);
+	if (!request) {
 		rad_assert(worker->num_active == 0);
 		if (worker->ev_cleanup) {
 			DEBUG3("Worker has nothing to do, deleting cleanup timer.");
@@ -596,11 +594,9 @@ static void worker_reset_timer(fr_worker_t *worker)
 	}
 	rad_assert(worker->num_active > 0);
 
-	async = fr_ptr_to_type(fr_async_t, time_order, entry);
-
 	cleanup = 30;
 	cleanup *= NANOSEC;
-	cleanup += async->recv_time;
+	cleanup += request->async->recv_time;
 	fr_time_to_timeval(&when, cleanup);
 
 	/*
@@ -713,7 +709,6 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	int			ret = -1;
 	fr_channel_data_t	*cd;
 	REQUEST			*request;
-	fr_dlist_t		*entry;
 	fr_listen_t const	*listen;
 #ifndef HAVE_TALLOC_POOLED_OBJECT
 	TALLOC_CTX		*ctx;
@@ -837,43 +832,8 @@ nak:
 	 *	New requests are inserted into the time order list in
 	 *	strict time priority.  Once they are in the list, they
 	 *	are only removed when the request is freed.
-	 *
-	 *	@todo - Right now we're manually ordering the
-	 *	list...we should use a priority heap instead.
 	 */
-	entry = FR_DLIST_FIRST(worker->time_order);
-	if (!entry) {
-		fr_dlist_insert_head(&worker->time_order, &request->async->time_order);
-	} else {
-		REQUEST *old;
-		fr_dlist_t *prev = &worker->time_order;
-
-		/*
-		 *	Requests are orderd by their receive time.
-		 *	Requests which are older (i.e. smaller receive
-		 *	time) are at the tail of the list.
-		 */
-		while (entry) {
-			fr_async_t *async;
-
-			async = fr_ptr_to_type(fr_async_t, time_order, entry);
-			old = talloc_parent(async);
-
-			/*
-			 *	If entry is older than the new packet,
-			 *	insert the new packet *before* the
-			 *	current entry.
-			 */
-			if (old->async->recv_time < request->async->recv_time) {
-				break;
-			}
-
-			prev = entry;
-			entry = FR_DLIST_NEXT(worker->time_order, entry);
-		}
-
-		fr_dlist_insert_head(prev, &request->async->time_order);
-	}
+	(void) fr_heap_insert(worker->time_order, request);
 
 	/*
 	 *	@todo - create an RBtree based on comparing request->async->packet_ctx?
@@ -1060,15 +1020,25 @@ static int worker_message_cmp(void const *one, void const *two)
 }
 
 /**
- *  Track a REQUEST in the "running" heap.
+ *  Track a REQUEST in the "runnable" heap.
  */
-static int worker_request_cmp(void const *one, void const *two)
+static int worker_runnable_cmp(void const *one, void const *two)
 {
 	REQUEST const *a = one, *b = two;
 	int ret;
 
 	ret = (a->async->priority > b->async->priority) - (a->async->priority < b->async->priority);
 	if (ret != 0) return ret;
+
+	return (a->async->recv_time > b->async->recv_time) - (a->async->recv_time < b->async->recv_time);
+}
+
+/**
+ *  Track a REQUEST in the "time_order" heap.
+ */
+static int worker_time_order_cmp(void const *one, void const *two)
+{
+	REQUEST const *a = one, *b = two;
 
 	return (a->async->recv_time > b->async->recv_time) - (a->async->recv_time < b->async->recv_time);
 }
@@ -1083,7 +1053,6 @@ void fr_worker_destroy(fr_worker_t *worker)
 {
 //	int i;
 	fr_channel_data_t *cd;
-	fr_dlist_t *entry;
 	REQUEST *request;
 	fr_time_t now = fr_time();
 
@@ -1112,28 +1081,25 @@ void fr_worker_destroy(fr_worker_t *worker)
 	 *	it all up.
 	 */
 	while ((request = fr_heap_pop(worker->runnable)) != NULL) {
-		fr_dlist_remove(&request->async->time_order);
+		(void) fr_heap_extract(worker->time_order, request);
 		fr_time_tracking_resume(&request->async->tracking, now);
 		talloc_free(request);
 	}
+	talloc_free(worker->runnable);
 
 	/*
 	 *	Destroy all of the active requests.  These are ones
 	 *	which are still waiting for timers or file descriptor
 	 *	events.
 	 */
-	while ((entry = FR_DLIST_TAIL(worker->time_order)) != NULL) {
-		fr_async_t *async;
-
-		async = fr_ptr_to_type(fr_async_t, time_order, entry);
-		request = talloc_parent(async);
-
+	while ((request = fr_heap_peek(worker->time_order)) != NULL) {
 		(void) request->async->process(request, FR_IO_ACTION_DONE);
 
+		(void) fr_heap_extract(worker->time_order, request);
 		fr_time_tracking_resume(&request->async->tracking, now);
-		fr_dlist_remove(&request->async->time_order);
 		talloc_free(request);
 	}
+	talloc_free(worker->time_order);
 
 #if 0
 	/*
@@ -1248,12 +1214,17 @@ nomem:
 	WORKER_HEAP_INIT(to_decode, worker_message_cmp, fr_channel_data_t, channel.heap_id);
 	WORKER_HEAP_INIT(localized, worker_message_cmp, fr_channel_data_t, channel.heap_id);
 
-	worker->runnable = fr_heap_create(worker_request_cmp, offsetof(REQUEST, heap_id));
+	worker->runnable = fr_heap_create(worker_runnable_cmp, offsetof(REQUEST, runnable_id));
 	if (!worker->runnable) {
 		fr_strerror_printf("Failed creating runnable heap");
 		goto fail;
 	}
-	FR_DLIST_INIT(worker->time_order);
+
+	worker->time_order = fr_heap_create(worker_time_order_cmp, offsetof(REQUEST, time_order_id));
+	if (!worker->time_order) {
+		fr_strerror_printf("Failed creating time_order heap");
+		goto fail;
+	}
 
 	if (fr_event_post_insert(worker->el, fr_worker_post_event, worker) < 0) {
 		fr_strerror_printf("Failed inserting post-processing event");

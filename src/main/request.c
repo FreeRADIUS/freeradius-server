@@ -126,7 +126,8 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 #else
 	request->stack = talloc_zero(request, unlang_stack_t);
 #endif
-	request->heap_id = -1;
+	request->runnable_id = -1;
+	request->time_order_id = -1;
 
 	request->state_ctx = talloc_init("session-state");
 

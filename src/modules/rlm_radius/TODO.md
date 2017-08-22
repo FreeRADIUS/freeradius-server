@@ -140,8 +140,6 @@ What else...
   * which lets Status-Server get processed, and synchronous proxying
   * add cancel / signal handler in rlm_radius.
 
-* move the worker "time_order" list to be a heap, instead of manually doing it
-
 * ensure that the retransmission is independent of which connection
 the packet is sent on.  This means keeping the various timers in 'u'
 instead of in 'rr'.  i.e. if a connection closes, the packet should

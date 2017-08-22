@@ -296,7 +296,8 @@ struct rad_request {
 	fr_event_timer_t const	*ev;		//!< Event in event loop tied to this request.
 
 	int			delay;		//!< incrementing delay for various timers
-	int			heap_id;	//!< entry in the queue / heap of incoming packets
+	int			runnable_id;	//!< entry in the queue / heap of runnable packets
+	int			time_order_id;	//!< entry in the queue / heap of time ordered packets
 
 	main_config_t		*root;		//!< Pointer to the main config hack to try and deal with hup.
 
