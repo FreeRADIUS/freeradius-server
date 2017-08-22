@@ -338,7 +338,7 @@ int fr_socket_client_unix(UNUSED char const *path, UNUSED bool async)
  *
  * The following code demonstrates using this function with a connection timeout:
  @code {.c}
-   sockfd = fr_socket_client_udp(NULL, ipaddr, port, true);
+   sockfd = fr_socket_client_udp(NULL, NULL, ipaddr, port, true);
    if (sockfd < 0) {
    	fr_perror();
    	exit(1);
@@ -355,6 +355,7 @@ int fr_socket_client_unix(UNUSED char const *path, UNUSED bool async)
  *
  * @param src_ipaddr	to bind socket to, may be NULL if socket is not bound to any specific
  *			address.
+ * @param[out] src_port	The source port we were bound to.
  * @param dst_ipaddr	Where to send datagrams.
  * @param dst_port	Where to send datagrams.
  * @param async		Whether to set the socket to nonblocking, allowing use of
@@ -363,11 +364,13 @@ int fr_socket_client_unix(UNUSED char const *path, UNUSED bool async)
  *	- FD on success.
  *	- -1 on failure.
  */
-int fr_socket_client_udp(fr_ipaddr_t const *src_ipaddr, fr_ipaddr_t const *dst_ipaddr, uint16_t dst_port, bool async)
+int fr_socket_client_udp(fr_ipaddr_t const *src_ipaddr, uint16_t *src_port, fr_ipaddr_t const *dst_ipaddr, uint16_t dst_port, bool async)
 {
 	int			sockfd;
 	struct sockaddr_storage salocal;
 	socklen_t		salen;
+	fr_ipaddr_t		my_ipaddr;
+	uint16_t		my_port;
 
 	if (!dst_ipaddr) return -1;
 
@@ -424,6 +427,14 @@ int fr_socket_client_udp(fr_ipaddr_t const *src_ipaddr, fr_ipaddr_t const *dst_i
 		setsockopt(sockfd, SOL_SOCKET, SO_NOSIGPIPE, (void *)&set, sizeof(int));
 	}
 #endif
+
+	if (getsockname(sockfd, (struct sockaddr *) &salocal, &salen) < 0) {
+		fr_strerror_printf("Failed getting socket name: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	if (fr_ipaddr_from_sockaddr(&salocal, salen, &my_ipaddr, &my_port) < 0) return -1;
+	if (src_port) *src_port = my_port;
 
 	if (connect(sockfd, (struct sockaddr *) &salocal, salen) < 0) {
 		/*

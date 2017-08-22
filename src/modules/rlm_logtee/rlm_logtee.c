@@ -376,7 +376,7 @@ static fr_connection_state_t _logtee_conn_init(int *fd_out, void *uctx)
 	case LOGTEE_DST_UDP:
 		DEBUG2("Opening UDP connection to %pV:%u",
 		       fr_box_ipaddr(inst->udp.dst_ipaddr), inst->udp.port);
-		fd = fr_socket_client_udp(NULL, &inst->udp.dst_ipaddr, inst->udp.port, true);
+		fd = fr_socket_client_udp(NULL, NULL, &inst->udp.dst_ipaddr, inst->udp.port, true);
 		if (fd < 0) return FR_CONNECTION_STATE_FAILED;
 		break;
 

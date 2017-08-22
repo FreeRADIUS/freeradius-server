@@ -1133,7 +1133,7 @@ int main(int argc, char **argv)
 
 	default:
 	case IPPROTO_UDP:
-		sockfd = fr_socket_client_udp(NULL, &conf->server_ipaddr, conf->server_port, true);
+		sockfd = fr_socket_client_udp(NULL, NULL, &conf->server_ipaddr, conf->server_port, true);
 		break;
 	}
 	if (sockfd < 0) {

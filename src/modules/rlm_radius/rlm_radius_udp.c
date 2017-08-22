@@ -1423,24 +1423,13 @@ static fr_connection_state_t conn_init(int *fd_out, void *uctx)
 
 	/*
 	 *	Open the outgoing socket.
-	 *
-	 *	@todo - pass src_port, and remove later call to fr_socket_bind()
-	 *	which does return the src_port, but doesn't set the "don't fragment" bit.
 	 */
-	fd = fr_socket_client_udp(&c->src_ipaddr, &c->dst_ipaddr, c->dst_port, true);
+	fd = fr_socket_client_udp(&c->src_ipaddr, &c->src_port, &c->dst_ipaddr, c->dst_port, true);
 	if (fd < 0) {
 		DEBUG("%s failed opening socket: %s",
 		      c->inst->parent->name, fr_strerror());
 		return FR_CONNECTION_STATE_FAILED;
 	}
-
-#if 0
-	if (fr_socket_bind(fd, &io->src_ipaddr, &io->src_port, inst->interface) < 0) {
-		DEBUG("Failed binding RADIUS client UDP socket: %s FD %d %pV port %u interface %s", fr_strerror(), fd, fr_box_ipaddr(io->src_ipaddr),
-			io->src_port, inst->interface);
-		return FR_CONNECTION_STATE_FAILED;
-	}
-#endif
 
 	/*
 	 *	Set the connection name.

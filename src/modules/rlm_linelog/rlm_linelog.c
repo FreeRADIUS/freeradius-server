@@ -235,7 +235,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval con
 			DEBUG2("Opening UDP connection to %s:%u", buff, inst->udp.port);
 		}
 
-		sockfd = fr_socket_client_udp(NULL, &inst->udp.dst_ipaddr, inst->udp.port, true);
+		sockfd = fr_socket_client_udp(NULL, NULL, &inst->udp.dst_ipaddr, inst->udp.port, true);
 		if (sockfd < 0) {
 			PERROR("Failed opening UDP socket");
 			return NULL;
