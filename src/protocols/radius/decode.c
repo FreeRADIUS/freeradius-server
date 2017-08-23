@@ -693,10 +693,10 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 			    uint8_t const *data, size_t attr_len, size_t packet_len, void *decoder_ctx, uint32_t vendor)
 {
 	ssize_t			rcode;
-	size_t			fraglen;
-	bool			last_frag;
+	size_t			wimax_len;
+	bool			more;
 	uint8_t			*head, *tail;
-	uint8_t	const		*frag, *end;
+	uint8_t	const		*attr, *end;
 	fr_dict_attr_t const	*da;
 
 	/*
@@ -734,58 +734,112 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	 *	MUST be all of the same VSA, WiMAX, and WiMAX-attr.
 	 *
 	 *	The first fragment doesn't have a RADIUS attribute
-	 *	header, so it needs to be treated a little special.
+	 *	header.
 	 */
-	fraglen = data[5] - 3;
-	frag = data + attr_len;
+	wimax_len = 0;
+	attr = data + 4;
 	end = data + packet_len;
-	last_frag = false;
 
-	while (frag < end) {
-		if (last_frag ||
-		    (frag[0] != FR_VENDOR_SPECIFIC) ||
-		    (frag[1] < 9) ||			/* too short for wimax */
-		    ((frag + frag[1]) > end) ||		/* overflow */
-		    (memcmp(frag + 2, data, 4) != 0) || /* not wimax */
-		    (frag[6] != data[4]) ||		/* not the same wimax attr */
-		    ((frag[7] + 6) != frag[1])) {	/* doesn't fill the attr */
-			end = frag;
-			break;
-		}
+	while (attr < end) {
+		/*
+		 *	Not enough room for Attribute + length +
+		 *	continuation, it's bad.
+		 */
+		if ((end - attr) < 3) return -1;
 
-		last_frag = ((frag[8] & 0x80) == 0);
+		/*
+		 *	Must have non-zero data in the attribute.
+		 */
+		if (attr[1] <= 3) return -1;
 
-		fraglen += frag[7] - 3;
-		frag += frag[1];
+		/*
+		 *	If the WiMAX attribute overflows the packet,
+		 *	it's bad.
+		 */
+		if ((attr + attr[1]) > end) return -1;
+
+		/*
+		 *	Check the continuation flag.
+		 */
+		more = ((attr[2] & 0x80) != 0);
+
+		/*
+		 *	Or, there's no more data, in which case we
+		 *	shorten "end" to finish at this attribute.
+		 */
+		if (!more) end = attr + attr[1];
+
+		/*
+		 *	There's more data, but we're at the end of the
+		 *	packet.  The attribute is malformed!
+		 */
+		if (more && ((attr + attr[1]) == end)) return -1;
+
+		/*
+		 *	Add in the length of the data we need to
+		 *	concatenate together.
+		 */
+		wimax_len += attr[1] - 3;
+
+		/*
+		 *	Go to the next attribute, and stop if there's
+		 *	no more.
+		 */
+		attr += attr[1];
+		if (!more) break;
+
+		/*
+		 *	data = VID VID VID VID WiMAX-Attr WimAX-Len Continuation ...
+		 *
+		 *	attr = Vendor-Specific VSA-Length VID VID VID VID WiMAX-Attr WimAX-Len Continuation ...
+		 *
+		 */
+
+		/*
+		 *	No room for Vendor-Specific + length +
+		 *	Vendor(4) + attr + length + continuation + data
+		 */
+		if ((end - attr) < 9) return -1;
+
+		if (attr[0] != FR_VENDOR_SPECIFIC) return -1;
+		if (attr[1] < 9) return -1;
+		if ((attr + attr[1]) > end) return -1;
+		if (memcmp(data, attr + 2, 4) != 0) return -1; /* not WiMAX Vendor ID */
+
+		if (attr[1] != (attr[7] + 6)) return -1; /* WiMAX attr doesn't exactly fill the VSA */
+
+		if (data[4] != attr[6]) return -1; /* different WiMAX attribute */
+
+		/*
+		 *	Skip over the Vendor-Specific header, and
+		 *	continue with the WiMAX attributes.
+		 */
+		attr += 6;
 	}
 
-	head = tail = talloc_array(ctx, uint8_t, fraglen);
+	/*
+	 *	No data in the WiMAX attribute, make a "raw" one.
+	 */
+	if (!wimax_len) return -1;
+
+	head = tail = talloc_array(ctx, uint8_t, wimax_len);
 	if (!head) return -1;
 
 	/*
-	 *	And again, but faster and looser.
-	 *
-	 *	We copy the first fragment, followed by the rest of
-	 *	the fragments.
+	 *	Copy the data over, this time trusting the attribute
+	 *	contents.
 	 */
-	frag = data;
+	attr = data;
+	while (attr < end) {
+		memcpy_bounded(tail, attr + 4 + 3, attr[4 + 1] - 3, end);
+		tail += attr[4 + 1] - 3;
+		attr += 4 + attr[4 + 1]; /* skip VID+WiMax header */
+		attr += 2;		 /* skip Vendor-Specific header */
+	}
 
-	memcpy_bounded(tail, frag + 4 + 3, frag[4 + 1] - 3, end);
-	tail += frag[4 + 1] - 3;
-	frag += attr_len;	/* should be frag[1] - 7 */
+	FR_PROTO_HEX_DUMP("Wimax fragments", head, wimax_len);
 
-	/*
-	 *	frag now points to RADIUS attributes
-	 */
-	do {
-		memcpy_bounded(tail, frag + 2 + 4 + 3, frag[2 + 4 + 1] - 3, end);
-		tail += frag[2 + 4 + 1] - 3;
-		frag += frag[1];
-	} while (frag < end);
-
-	FR_PROTO_HEX_DUMP("Wimax fragments", head, fraglen);
-
-	rcode = fr_radius_decode_pair_value(ctx, cursor, da, head, fraglen, fraglen, decoder_ctx);
+	rcode = fr_radius_decode_pair_value(ctx, cursor, da, head, wimax_len, wimax_len, decoder_ctx);
 	talloc_free(head);
 	if (rcode < 0) return rcode;
 
