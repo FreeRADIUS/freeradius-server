@@ -411,6 +411,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			gettimeofday(&now, NULL);
 			snprintf(str, freespace, "%" PRIu64, (uint64_t)now.tv_usec);
 		}
+			break;
 
 		case 'D': /* request date */
 			if (!localtime_r(&when, &ts)) goto error;
