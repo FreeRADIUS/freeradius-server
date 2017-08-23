@@ -352,11 +352,18 @@ static ssize_t decode_concat(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 
 		ptr += ptr[1];
 
+		if (ptr == end) break;
+
 		/*
 		 *	Attributes MUST be consecutive.
 		 */
 		if (ptr[0] != attr) break;
 	}
+
+	/*
+	 *	Reset the end of the data we're trying to parse
+	 */
+	end = ptr;
 
 	/*
 	 *	If there's no data, just return that we skipped the
@@ -376,7 +383,7 @@ static ssize_t decode_concat(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 
 	total = 0;
 	ptr = data;
-	while (total < fr_radius_attr_len(vp)) {
+	while (ptr < end) {
 		memcpy_bounded(p, ptr + 2, ptr[1] - 2, end);
 		p += ptr[1] - 2;
 		total += ptr[1] - 2;
