@@ -951,7 +951,7 @@ static void response_timeout(UNUSED fr_event_list_t *el, struct timeval *now, vo
 	       fr_packet_codes[u->code], u->rr->id, u->packet_len, c->name);
 	rdebug_pair_list(L_DBG_LVL_2, request, request->packet->vps, NULL);
 	if (u->extra) rdebug_pair_list(L_DBG_LVL_2, request, u->extra, NULL);
-	if (u->manual_delay_time && m->acct_delay_time) {
+	if (u->manual_delay_time && u->acct_delay_time) {
 		uint32_t delay;
 
 		memcpy(&delay, u->acct_delay_time, 4);
