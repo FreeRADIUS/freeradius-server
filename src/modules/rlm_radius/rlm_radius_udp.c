@@ -135,6 +135,8 @@ struct rlm_radius_udp_request_t {
 	fr_dlist_t		entry;		//!< in the connection list of packets
 	int			heap_id;	//!< for the "to be sent" queue.
 
+	VALUE_PAIR		*extra;		//!< extra VPs for debugging, like Proxy-State
+
 	int			code;		//!< packet code
 	rlm_radius_udp_connection_t	*c;     //!< the connection
 	rlm_radius_link_t	*link;		//!< more link stuff
@@ -878,13 +880,13 @@ static void response_timeout(UNUSED fr_event_list_t *el, struct timeval *now, vo
 	       u->rr->rt / USEC, u->rr->rt % USEC);
 
 	/*
-	 *	Debug the packet again
-	 *
-	 *	@todo - Proxy-State, Message-Authenticator, etc.
+	 *	Debug the packet again, including any extra
+	 *	Proxy-State or Message-Authenticator we added.
 	 */
 	RDEBUG("sending %s ID %d length %ld over connection %s",
 	       fr_packet_codes[u->code], u->rr->id, u->packet_len, c->name);
 	rdebug_pair_list(L_DBG_LVL_2, request, request->packet->vps, NULL);
+	if (u->extra) rdebug_pair_list(L_DBG_LVL_2, request, u->extra, NULL);
 
 	rcode = write(c->fd, u->packet, u->packet_len);
 	if (rcode < 0) {
@@ -1005,7 +1007,10 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	 *	Might have been sent and then given up
 	 *	on... free the raw data.
 	 */
-	if (u->packet) TALLOC_FREE(u->packet);
+	if (u->packet) {
+		TALLOC_FREE(u->packet);
+		fr_pair_list_free(&u->extra);
+	}
 
 	/*
 	 *	Add Proxy-State to the tail end of the packet.
@@ -1032,9 +1037,15 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 		c->buffer[3] = hdr_len & 0xff;
 
 		if (radlog_debug_enabled(L_DBG, L_DBG_LVL_2, request)) {
+			VALUE_PAIR *vp;
+
 			RINDENT();
 			RDEBUG2("&Proxy-State := 0x%08x", c->inst->parent->proxy_state);
 			REXDENT();
+
+			vp = fr_pair_afrom_num(u, FR_PROXY_STATE, 0);
+			fr_pair_value_memcpy(vp, attr + 2, 4);
+			fr_pair_add(&u->extra, vp);
 		}
 
 		packet_len += 6;
@@ -1077,12 +1088,17 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	 */
 	if (msg && radlog_debug_enabled(L_DBG, L_DBG_LVL_2, request)) {
 		char msg_buf[2 * 16 + 1];
+		VALUE_PAIR *vp;
 
 		fr_bin2hex(msg_buf, msg + 2, msg[1] - 2);
 
 		RINDENT();
 		RDEBUG2("&Message-Authenticator := %s", msg_buf);
 		REXDENT();
+
+		vp = fr_pair_afrom_num(u, FR_MESSAGE_AUTHENTICATOR, 0);
+		fr_pair_value_memcpy(vp, msg + 2, 16);
+		fr_pair_add(&u->extra, vp);
 	}
 
 	if (DEBUG_ENABLED3) {
