@@ -699,8 +699,19 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	uint8_t	const		*frag, *end;
 	fr_dict_attr_t const	*da;
 
+	/*
+	 *	data = VID VID VID VID WiMAX-Attr WiMAX-Len Continuation ...
+	 */
 	if (attr_len < 8) return -1;
 
+	/*
+	 *	WiMAX-Attr WiMAX-Len Continuation
+	 */
+	if (data[5] < 3) return -1;
+
+	/*
+	 *	The WiMAX-Len + 4 VID must exactly fill the attribute.
+	 */
 	if (((size_t) (data[5] + 4)) != attr_len) return -1;
 
 	da = fr_dict_attr_child_by_num(parent, data[4]);
@@ -708,10 +719,13 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	if (!da) return -1;
 	FR_PROTO_TRACE("decode context changed %s -> %s", da->parent->name, da->name);
 
+	/*
+	 *	No continuation, just decode the attributre in place.
+	 */
 	if ((data[6] & 0x80) == 0) {
 		rcode = fr_radius_decode_pair_value(ctx, cursor, da, data + 7, data[5] - 3, data[5] - 3, decoder_ctx);
 		if (rcode < 0) return -1;
-		return 7 + rcode;
+		return attr_len;
 	}
 
 	/*
