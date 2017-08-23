@@ -3,7 +3,7 @@
 # Sets Tmp-Integer64-0 with the request started time
 time_request_ms {
 	update request {
-		Tmp-Integer64-0 := "%{expr:(%e*1000) + (%m/1000)}"
+		Tmp-Integer64-0 := "%{expr:(%e*1000) + (%M/1000)}"
 	}
 }
 
