@@ -47,7 +47,11 @@ Connection states are:
 * limit the maximum number of proxied packets
 * limit the maximum number of outgoing connections
 
-Both will likely require atomic variables in rlm_radius.c
+Both will likely require atomic variables in rlm_radius.c, which are
+slow...  Or, we just don't limit the number of proxied packets, and
+instead rely on the other end to do some kind of push-back.  (HA!)
+
+We should limit the number of outgoing connections, tho.
 
 ### Status Checks
     
@@ -146,13 +150,9 @@ the packet is sent on.  This means keeping the various timers in 'u'
 instead of in 'rr'.  i.e. if a connection closes, the packet should
 just retransmit on a new connection.
 
-* RADIUS layer fixups for Accounting-Request, e.g. Acct-Delay-Time
-
 * connection negotiation in Status-Server
 
 * `status_check = auto`, which picks it up from the list of allowed
 packet types.  We then need to require config for username / password,
 for Access-Request, and just username for Accounting-Request.
-
-* fr_socket_client_udp() needs to be passed &src_port, so that it can be updated
 

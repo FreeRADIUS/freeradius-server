@@ -1182,6 +1182,8 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 			memcpy(&delay, u->acct_delay_time, 4);
 			u->initial_delay_time = htonl(delay);
 		}
+
+		u->manual_delay_time = false;
 	}
 
 	if (fr_radius_sign(c->buffer, NULL, (uint8_t const *) c->inst->secret,
