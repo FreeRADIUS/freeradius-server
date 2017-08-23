@@ -1,0 +1,17 @@
+# Returns the time the request was received in ms
+#
+# Sets Tmp-Integer64-0 with the request started time
+time_request_ms {
+	update request {
+		Tmp-Integer64-0 := "%{expr:(%e*1000) + (%m/1000)}"
+	}
+}
+
+# Returns the current epoch time in ms
+#
+# Sets Tmp-Integer64-0 with the current epoch time in ms
+time_current_ms {
+	update request {
+		Tmp-Integer64-0 := "%{expr:(%c*1000) + (%C/1000)}"
+	}
+}

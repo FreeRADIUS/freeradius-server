@@ -361,6 +361,15 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			str[1] = '\0';
 			break;
 
+		case 'c': /* current epoch time seconds */
+		{
+			struct timeval now;
+
+			gettimeofday(&now, NULL);
+			snprintf(str, freespace, "%" PRIu64, (uint64_t)now.tv_sec);
+		}
+			break;
+
 		case 'd': /* request day */
 			if (!localtime_r(&when, &ts)) goto error;
 			strftime(str, freespace, "%d", &ts);
@@ -394,6 +403,14 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			nl = strchr(str, '\n');
 			if (nl) *nl = '\0';
 			break;
+
+		case 'C': /* curent epoch time microseconds */
+		{
+			struct timeval now;
+
+			gettimeofday(&now, NULL);
+			snprintf(str, freespace, "%" PRIu64, (uint64_t)now.tv_usec);
+		}
 
 		case 'D': /* request date */
 			if (!localtime_r(&when, &ts)) goto error;
