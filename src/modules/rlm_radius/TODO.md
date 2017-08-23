@@ -156,3 +156,17 @@ just retransmit on a new connection.
 packet types.  We then need to require config for username / password,
 for Access-Request, and just username for Accounting-Request.
 
+* fix fork
+
+    fork server.packet-type {
+        &foo += &parent:bar
+    }
+
+* fork is an 'update' section that also runs a new virtual server.  A
+  little weird, but it should work.
+
+* needs helper functions in virtual_server.c to do it.. and to create
+  child REQUEST async stuff with listen, protocol handler, etc.
+
+* fork also needs to do this sanity check on compile, so that it knows
+  it can dereference things which exist...
