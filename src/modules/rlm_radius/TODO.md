@@ -35,11 +35,12 @@ Connection states are:
 
 ### RADIUS fixes on retransmits
 
-* update Acct-Delay-Time, and anything else necessary on retransmits..
-
-* don't do `u->packet = talloc_memdup()` if we're going to edit the packet
+* don't do `u->packet = talloc_memdup()` if we're going to edit the
+  packet
 
 * delete rr->id and re-allocate it on retransmit if the packet changes
+  * if the IDs are all allocated, a delete / re-allocate means that it
+    gets the same ID.  So we might as well just do that all of the time.
 
 ### Limits
 

@@ -137,6 +137,10 @@ struct rlm_radius_udp_request_t {
 
 	VALUE_PAIR		*extra;		//!< extra VPs for debugging, like Proxy-State
 
+	uint8_t			*acct_delay_time; //!< in the encoded packet
+	uint32_t		initial_delay_time; //!< initial value of Acct-Delay-Time
+	bool			manual_delay_time;	//!< whether or not we manually added an Acct-Delay-Time
+
 	int			code;		//!< packet code
 	rlm_radius_udp_connection_t	*c;     //!< the connection
 	rlm_radius_link_t	*link;		//!< more link stuff
@@ -871,10 +875,70 @@ static void response_timeout(UNUSED fr_event_list_t *el, struct timeval *now, vo
 	}
 
 	/*
-	 *	@todo - RADIUS layer fixups!
+	 *	RADIUS layer fixups for Accounting-Request packets.
 	 *
-	 *	For accounting packets, update Acct-Delay-Time <sigh>
+	 *	Note that we don't change the ID.  We can claim that
+	 *	we randomly chose the same one again. :(
 	 */
+	if (u->code == FR_CODE_ACCOUNTING_REQUEST) {
+		/*
+		 *	No Acct-Delay-Time, add one manually if
+		 *	there's room.
+		 */
+		if (!u->acct_delay_time && ((u->packet_len + 6) <= u->c->max_packet_size)) {
+			int hdr_len;
+			uint8_t *packet, *attr;
+
+			MEM(packet = talloc_array(u, uint8_t, u->packet_len + 6));
+			memcpy(packet, u->packet, u->packet_len);
+			talloc_free(u->packet);
+			u->packet = packet;
+
+			attr = u->packet + u->packet_len;
+			u->packet_len += 6;
+
+			/*
+			 *	Append the attribute.
+			 */
+			attr[0] = FR_ACCT_DELAY_TIME;
+			attr[1] = 6;
+			memset(attr + 2, 0, 4);
+
+			hdr_len = (u->packet[2] << 8) | (u->packet[3]);
+			hdr_len += 6;
+			u->packet[2] = (hdr_len >> 8) & 0xff;
+			u->packet[3] = hdr_len & 0xff;
+
+			/*
+			 *     Remember it, and the fact that we added
+			 *     it manually.  The manual flag allows us
+			 *     to print out the auto-created
+			 *     Acct-Delay-Time in debug mode.
+			 */
+			u->acct_delay_time = attr + 2;
+			u->manual_delay_time = true;
+		}
+
+		if (u->acct_delay_time) {
+			uint32_t delay;
+			struct timeval diff;
+
+			fr_timeval_subtract(&diff, now, &u->rr->start);
+			delay = u->initial_delay_time + diff.tv_sec;
+			delay = htonl(delay);
+			memcpy(u->acct_delay_time, &delay, 4);
+
+			/*
+			 *	Recalculate the packet signature again.
+			 */
+			if (fr_radius_sign(u->packet, NULL, (uint8_t const *) c->inst->secret,
+					   strlen(c->inst->secret)) < 0) {
+				REDEBUG("Failed re-signing packet");
+				mod_finished_request(c, u);
+				return;
+			}
+		}
+	}
 
 	RDEBUG("Retransmitting request.  Expecting response within %d.%06ds",
 	       u->rr->rt / USEC, u->rr->rt % USEC);
@@ -887,6 +951,16 @@ static void response_timeout(UNUSED fr_event_list_t *el, struct timeval *now, vo
 	       fr_packet_codes[u->code], u->rr->id, u->packet_len, c->name);
 	rdebug_pair_list(L_DBG_LVL_2, request, request->packet->vps, NULL);
 	if (u->extra) rdebug_pair_list(L_DBG_LVL_2, request, u->extra, NULL);
+	if (u->manual_delay_time) {
+		uint32_t delay;
+
+		memcpy(&delay, u->acct_delay_time, 4);
+		delay = ntohl(delay);
+
+		RINDENT();
+		RDEBUG2("&Acct-Delay-Time := %u", delay);
+		REXDENT();
+	}
 
 	rcode = write(c->fd, u->packet, u->packet_len);
 	if (rcode < 0) {
@@ -934,7 +1008,9 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	 *	Make sure that we print out the actual encoded value
 	 *	of the Message-Authenticator attribute.  If the caller
 	 *	asked for one, delete theirs (which has a bad value),
-	 *	and remember to add one manually.
+	 *	and remember to add one manually when we encode the
+	 *	packet.  This is the only editing we do on the input
+	 *	request.
 	 */
 	if (fr_pair_find_by_num(request->packet->vps, 0, FR_MESSAGE_AUTHENTICATOR, TAG_ANY)) {
 		require_ma = true;
@@ -1073,6 +1149,39 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 		c->buffer[3] = hdr_len & 0xff;
 
 		packet_len += 18;
+	}
+
+	/*
+	 *	Ensure that we update the Acct-Delay-Time on
+	 *	retransmissions.
+	 *
+	 *	If the accounting packet doesn't have Acct-Delay-Time,
+	 *	then we leave well enough alone.
+	 */
+	if (u->code == FR_CODE_ACCOUNTING_REQUEST) {
+		uint8_t *attr, *end;
+		uint32_t delay;
+
+		end = c->buffer + packet_len;
+		u->acct_delay_time = NULL;
+
+		for (attr = c->buffer + 20;
+		     attr < end;
+		     attr += attr[1]) {
+			if (attr[0] != FR_ACCT_DELAY_TIME) continue;
+			if (attr[1] != 6) continue;
+
+			u->acct_delay_time = attr + 2;
+			break;
+		}
+
+		/*
+		 *	Remember the value if it exists.
+		 */
+		if (u->acct_delay_time) {
+			memcpy(&delay, u->acct_delay_time, 4);
+			u->initial_delay_time = htonl(delay);
+		}
 	}
 
 	if (fr_radius_sign(c->buffer, NULL, (uint8_t const *) c->inst->secret,
