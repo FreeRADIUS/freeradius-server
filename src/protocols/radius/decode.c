@@ -631,7 +631,20 @@ static ssize_t decode_extended(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	int		fragments;
 	bool		last_frag;
 
+	/*
+	 *	data = Ext-Attr Flag ...
+	 */
+
 	if (attr_len < 3) return -1;
+
+	/*
+	 *	No continuation, just decode the attributre in place.
+	 */
+	if ((data[1] & 0x80) == 0) {
+		rcode = fr_radius_decode_pair_value(ctx, cursor, parent, data + 2, attr_len - 2, attr_len - 2, decoder_ctx);
+		if (rcode < 0) return -1;
+		return attr_len;
+	}
 
 	/*
 	 *	Calculate the length of all of the fragments.  For
