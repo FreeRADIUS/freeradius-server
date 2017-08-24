@@ -71,11 +71,6 @@ static const FR_NAME_NUMBER header_names[] = {
 	{ "{smd5}",		FR_SMD5_PASSWORD },
 	{ "{crypt}",		FR_CRYPT_PASSWORD },
 #ifdef HAVE_OPENSSL_EVP_H
-	/*
-	 *	It'd make more sense for the headers to be
-	 *	ssha2-* with SHA3 coming soon but we're at
-	 *	the mercy of directory implementors.
-	 */
 	{ "{sha2}",		FR_SHA2_PASSWORD },
 	{ "{sha224}",		FR_SHA2_PASSWORD },
 	{ "{sha256}",		FR_SHA2_PASSWORD },
