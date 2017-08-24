@@ -16,9 +16,8 @@ currently supports the older DES and MD5 hashes.
 Current best practice is to use certificate-based authentication rather than 
 relying on passwords. However, other external tools such as openssl can generate
 high quality hashed and salted passwords if needed, e.g. "echo -n 'password' | 
-openssl dgst -sha512". Although more modern hashes such as bcrypt and SHA3 
-are not yet supported by freeradius, SSHA2 hashes are supported in the server 
-by rlm_pap(5).
+openssl dgst -sha512". Although more modern hashes such as bcrypt, SSHA3, and SSHA2
+are not supported by radcrypt, hashes are supported in the server by rlm_pap(5).
 .PP
 A hashed password can be validated by specifying \fI-c\fP or \fI--check\fP and
 passing \fIhashed_password\fP after \fIplaintext_password\fP on the command line.
