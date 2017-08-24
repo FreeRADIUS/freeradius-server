@@ -539,7 +539,7 @@ static void worker_stop_request(fr_worker_t *worker, REQUEST *request, fr_time_t
 	/*
 	 *	The request is ALWAYS in the time_order list.  It MAY
 	 *	be in the runnable list, but if not, no worries.  It
-	 *	ALWAYS is in the dedup list.
+	 *	MAY be in the dedup list, but if not, no worries.
 	 */
 	(void) fr_heap_extract(worker->time_order, request);
 	(void) fr_heap_extract(worker->runnable, request);
@@ -725,7 +725,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 {
 	int			ret = -1;
 	fr_channel_data_t	*cd;
-	REQUEST			*request, *old;
+	REQUEST			*request;
 	fr_listen_t const	*listen;
 #ifndef HAVE_TALLOC_POOLED_OBJECT
 	TALLOC_CTX		*ctx;
@@ -761,7 +761,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 		if (cd->request.recv_time && (cd->m.when != *cd->request.recv_time)) {
 			DEBUG("\t%sIGNORING old message: was %zd now %zd", worker->name,
 			      *cd->request.recv_time, cd->m.when);
-			fr_worker_nak(worker, cd, fr_time());
+			fr_worker_nak(worker, cd, now);
 			cd = NULL;
 		}
 	} while (!cd);
@@ -819,7 +819,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 		DEBUG("\t%sFAILED decode of request %"PRIu64, worker->name, request->number);
 		talloc_free(ctx);
 nak:
-		fr_worker_nak(worker, cd, fr_time());
+		fr_worker_nak(worker, cd, now);
 		return NULL;
 	}
 
@@ -831,7 +831,7 @@ nak:
 
 	if (!request->async->process) {
 		ERROR("Protocol failed to set 'process' function");
-		fr_worker_nak(worker, cd, fr_time());
+		fr_worker_nak(worker, cd, now);
 		return NULL;
 	}
 
@@ -858,10 +858,55 @@ nak:
 	 *	@todo - somehow figure out if the packet is a DUP, or
 	 *	a conflicting one?
 	 */
-	old = rbtree_finddata(worker->dedup, request);
-	if (old) {
-		worker_stop_request(worker, old, fr_time());
+	/*
+	 *	Look for conflicting / duplicate packets, but only if
+	 *	requested to do so.
+	 */
+	if (request->async->listen->app_io->track_duplicates) {
+		REQUEST *old;
+
+		old = rbtree_finddata(worker->dedup, request);
+		if (!old) goto insert_new;
+
+		rad_assert(old->async->listen == request->async->listen);
+		rad_assert(old->async->channel == request->async->channel);
+
+		/*
+		 *	There's a new packet.  Do we keep the old one,
+		 *	or the new one?  This decision is made by
+		 *	checking the recv_time, which is a
+		 *	nanosecond-resolution timer.  If the time is
+		 *	identical, then the new packet is the same as
+		 *	the old one.
+		 *
+		 *	If the new packet is a duplicate of the old
+		 *	one, then we can just discard the new one.  We
+		 *	have to tell the channel that we've "eaten"
+		 *	this reply, so the sequence number should
+		 *	increase.
+		 *
+		 *	@todo - fix the channel code to do queue
+		 *	depth, and not sequence / ack.
+		 *
+		 *	@todo - send DUP signal to old request!
+		 */
+		if (old->async->recv_time == request->async->recv_time) {
+			fr_channel_null_reply(request->async->channel);
+			talloc_free(request);
+			return NULL;
+		}
+
+		/*
+		 *	Stop the old request, and decrement the number
+		 *	of active requests.
+		 */
+		worker_stop_request(worker, old, now);
+		rad_assert(worker->num_active > 0);
+		worker->num_active--;
 		talloc_free(old);
+
+	insert_new:
+		(void) rbtree_insert(worker->dedup, request);
 	}
 
 	/*
@@ -1065,7 +1110,11 @@ static int worker_time_order_cmp(void const *one, void const *two)
  */
 static int worker_dedup_cmp(void const *one, void const *two)
 {
+	int ret;
 	REQUEST const *a = one, *b = two;
+
+	ret = (a->async->listen > b->async->listen) - (a->async->listen < b->async->listen);
+	if (ret) return ret;
 
 	return (a->async->packet_ctx > b->async->packet_ctx) - (a->async->packet_ctx < b->async->packet_ctx);
 }
