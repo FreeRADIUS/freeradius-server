@@ -251,7 +251,7 @@ unsigned int	fr_fifo_num_elements(fr_fifo_t *fi);
 
 bool		fr_socket_is_valid_proto(int proto);
 int		fr_socket_client_unix(char const *path, bool async);
-int		fr_socket_client_udp(fr_ipaddr_t const *src_ipaddr, uint16_t *src_port, fr_ipaddr_t const *dst_ipaddr,
+int		fr_socket_client_udp(fr_ipaddr_t *src_ipaddr, uint16_t *src_port, fr_ipaddr_t const *dst_ipaddr,
 				     uint16_t dst_port, bool async);
 int		fr_socket_client_tcp(fr_ipaddr_t const *src_ipaddr, fr_ipaddr_t const *dst_ipaddr,
 				     uint16_t dst_port, bool async);
