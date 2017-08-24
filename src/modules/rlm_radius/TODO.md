@@ -40,36 +40,6 @@ We should limit the number of outgoing connections, tho.
 
 ## synchronous proxying
 
-ala v3.  All retransmissions started by the client.
-
-This is probably trivial as a side-effect of doing de-dup /
-conflicting packet in the server core.
-
-This requires a "signal" handler to be added when the module calls
-unlang_yield.
-
-The call to the signal handler is already in proto_radius_auth and
-friends.
-
-We should add a signal handler to the module, to handle the DUP / DONE
-signals.  This would allow graceful cleanups.  Those are mostly
-already handled via the talloc_free() hierarchy and destructors. But
-it may be nice to distinguish the situations.  And, it lets us test
-the signal handler independent of anything else.
-
-Doing synchronous proxying also mean having the network side return
-DUP PACKET (somehow).  And, send that dup packet signal to the worker.
-Which somehow associates it with a request (probably via a simple
-network thread + packet identifier).  This means that the worker has
-to have yet another tree tracking packets... but it will allow for
-signaling if necessary.
-
-We probaby want the network + worker to be able to send IDs of 0/0,
-which means "no tracking", as that will likely be the common case.
-
-We also need the same thing for conflicting packets... we need a way
-to tell the end modules to stop retransmitting the packet, as no one
-cares about it any more.
 
 ## miscellaneous
 
@@ -135,3 +105,13 @@ for Access-Request, and just username for Accounting-Request.
 
 * fork also needs to do this sanity check on compile, so that it knows
   it can dereference things which exist...
+
+## connection state
+
+* CONN_UNUSED isn't used...
+
+* CONN_STATUS_CHECKS isn't used...that needs to be fixed
+
+* add configurable timers for response_window (see @todo in rlm_radius_udp)
+
+*
