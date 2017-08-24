@@ -407,11 +407,6 @@ int fr_socket_client_udp(fr_ipaddr_t const *src_ipaddr, uint16_t *src_port, fr_i
 		}
 	}
 
-	if (fr_ipaddr_to_sockaddr(dst_ipaddr, dst_port, &salocal, &salen) < 0) {
-		close(sockfd);
-		return -1;
-	}
-
 	/*
 	 *	Although we ignore SIGPIPE, some operating systems
 	 *	like BSD and OSX ignore the ignoring.
@@ -428,6 +423,13 @@ int fr_socket_client_udp(fr_ipaddr_t const *src_ipaddr, uint16_t *src_port, fr_i
 	}
 #endif
 
+	/*
+	 *	FreeBSD jail issues.  We bind to 0.0.0.0, but the
+	 *	kernel instead binds us to a 1.2.3.4.  So once the
+	 *	socket is bound, ask it what it's IP address is.
+	 */
+	salen = sizeof(salocal);
+	memset(&salocal, 0, salen);
 	if (getsockname(sockfd, (struct sockaddr *) &salocal, &salen) < 0) {
 		fr_strerror_printf("Failed getting socket name: %s", fr_syserror(errno));
 		return -1;
@@ -435,6 +437,14 @@ int fr_socket_client_udp(fr_ipaddr_t const *src_ipaddr, uint16_t *src_port, fr_i
 
 	if (fr_ipaddr_from_sockaddr(&salocal, salen, &my_ipaddr, &my_port) < 0) return -1;
 	if (src_port) *src_port = my_port;
+
+	/*
+	 *	And now get our destination
+	 */
+	if (fr_ipaddr_to_sockaddr(dst_ipaddr, dst_port, &salocal, &salen) < 0) {
+		close(sockfd);
+		return -1;
+	}
 
 	if (connect(sockfd, (struct sockaddr *) &salocal, salen) < 0) {
 		/*
