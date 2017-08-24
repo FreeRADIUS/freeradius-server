@@ -42,6 +42,7 @@ typedef struct fr_listen fr_listen_t;
  */
 typedef enum fr_io_action_t {
 	FR_IO_ACTION_RUN,
+	FR_IO_ACTION_DUP,
 	FR_IO_ACTION_DONE,
 } fr_io_action_t;
 

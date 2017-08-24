@@ -887,12 +887,23 @@ nak:
 		 *
 		 *	@todo - fix the channel code to do queue
 		 *	depth, and not sequence / ack.
-		 *
-		 *	@todo - send DUP signal to old request!
 		 */
 		if (old->async->recv_time == request->async->recv_time) {
 			fr_channel_null_reply(request->async->channel);
 			talloc_free(request);
+
+			/*
+			 *	Signal there's a dup, and ignore the
+			 *	return code.  We don't bother replying
+			 *	here, as an FD event or timer will
+			 *	wake up the request, and cause it to
+			 *	continue.
+			 *
+			 *	@todo - the old request is NOT
+			 *	running, but is yielded.  It MAY clean
+			 *	itself up, or do something...
+			 */
+			(void) old->async->process(old, FR_IO_ACTION_DUP);
 			return NULL;
 		}
 
