@@ -1,38 +1,5 @@
 # rlm_radius
 
-## Multiple connections
-
-We probably don't want to load-balance across connections via
-"num_outstanding" as with "load-balance" in v3.  We probably don't
-want to order "live" connections by number of free packets.  Instead,
-just use the "most lively" connection.  Which should do automatic
-load-balancing.  i.e. if it JUST responded to us, it's probably ready
-to take another packet.
-
-We don't want "revive_interval", as (unlike v3) outgoing sockets are
-connected.  When a connection fails, we rely on the underlying
-connection state machine to try re-opening the connection.
-
-... but only if we don't have Status-Server pings
-(i.e. application-layer watchdog).  If we have that, then
-
-
-The `rlm_radius` module should not have an idea as to the status of
-the server, across multiple connections.  i.e. each connection is
-handled separately.  That is because especially for TCP, one
-connection can be dropped by a firewall, but another one can be fine.
-So it should just treat each connection independently.
-
-### What works
-
-Connection states are:
-
-* opening - connecting to the other end
-* active - available for new requests
-* full - no more IDs available on this connection
-* zombie - has received MRC / MRT / MRD timeouts
-  * TODO: we should start pinging as soon as a connection is zombie
-
 ### RADIUS fixes on retransmits
 
 * don't do `u->packet = talloc_memdup()` if we're going to edit the
@@ -73,9 +40,10 @@ We should limit the number of outgoing connections, tho.
 
 ## synchronous proxying
 
-much lower priority, as it requires other changes to the core
-
 ala v3.  All retransmissions started by the client.
+
+This is probably trivial as a side-effect of doing de-dup /
+conflicting packet in the server core.
 
 This requires a "signal" handler to be added when the module calls
 unlang_yield.
@@ -83,8 +51,8 @@ unlang_yield.
 The call to the signal handler is already in proto_radius_auth and
 friends.
 
-We could probably add a signal handler to the module, to handle the
-DONE signal.  This would allow graceful cleanups.  Those are mostly
+We should add a signal handler to the module, to handle the DUP / DONE
+signals.  This would allow graceful cleanups.  Those are mostly
 already handled via the talloc_free() hierarchy and destructors. But
 it may be nice to distinguish the situations.  And, it lets us test
 the signal handler independent of anything else.
@@ -104,9 +72,6 @@ to tell the end modules to stop retransmitting the packet, as no one
 cares about it any more.
 
 ## miscellaneous
-
-* Check on packet lifetime timers in network side?
-i.e. cleanup_delay, Double-check that they work...
 
 * double-check ENABLE_SKIPS in src/lib/io/channel.c
 
