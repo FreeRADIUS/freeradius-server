@@ -101,6 +101,8 @@ typedef struct rlm_radius_udp_connection_t {
 	struct timeval		idle_timeout;	//!< when the idle timeout will fire
 
 	struct timeval		mrs_time;	//!< most recent sent time which had a reply
+	struct timeval		last_reply;	//!< when we last received a reply
+
 	fr_event_timer_t const	*zombie_ev;	//!< zombie timeout
 	struct timeval		zombie_start;	//!< when the zombie period started
 
@@ -573,7 +575,7 @@ redo:
 
 	rr = rr_track_find(c->id, c->buffer[1], NULL);
 	if (!rr) {
-		DEBUG("%s Ignoring response to request we did not send", c->inst->parent->name);
+		DEBUG("%s Ignoring reply which arrived too late.", c->inst->parent->name);
 		goto redo;
 	}
 
@@ -594,7 +596,12 @@ redo:
 	}
 
 	/*
-	 *	Stop all retransmissions.
+	 *	Remember when we last saw a reply.
+	 */
+	gettimeofday(&c->last_reply, NULL);
+
+	/*
+	 *	Stop all retransmissions for this packet.
 	 */
 	if (u->rr->ev) (void) fr_event_timer_delete(c->thread->el, &u->rr->ev);
 
@@ -1260,19 +1267,30 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 		/*
 		 *	Only copy the packet if we're not replicating,
 		 *	and we're not doing Status-Server checks.
-		 *
-		 *	@todo - don't do this for accounting packets,
-		 *	which will need Acct-Delay-Time to be updated
 		 */
 		MEM(u->packet = talloc_memdup(u, c->buffer, packet_len));
 		u->packet_len = packet_len;
 
-		RDEBUG("Proxying request.  Expecting response within %d.%06ds",
-		       u->rr->rt / USEC, u->rr->rt % USEC);
+		if (!c->inst->parent->synchronous) {
+			RDEBUG("Proxying request.  Expecting response within %d.%06ds",
+			       u->rr->rt / USEC, u->rr->rt % USEC);
 
-		if (rr_track_start(c->id, u->rr, c->thread->el, response_timeout, u, &c->inst->parent->retry[u->code]) < 0) {
-			RDEBUG("Failed starting retransmit tracking");
-			return -1;
+			if (rr_track_start(c->id, u->rr, c->thread->el, response_timeout, u, &c->inst->parent->retry[u->code]) < 0) {
+				RDEBUG("Failed starting retransmit tracking");
+				return -1;
+			}
+		} else {
+			/*
+			 *	If the packet doesn't get a response,
+			 *	then udp_request_free() will notice, and run conn_zombie()
+			 *
+			 *	@todo - set up a response_window which is LESS
+			 *	than max_request_time.  That way we
+			 *	can return "fail", and process the
+			 *	request through a fail handler,
+			 *	instead of just freeing it.
+			 */
+			RDEBUG("Proxying request.  Relying on NAS to perform retransmissions");
 		}
 
 	} else if (u->rr->count == 0) {
@@ -1386,12 +1404,73 @@ static void conn_close(int fd, void *uctx)
  */
 static int udp_request_free(rlm_radius_udp_request_t *u)
 {
+	struct timeval when, now;
+
 	fr_dlist_remove(&u->entry);
 
+	/*
+	 *	Delete any tracking entry associated with the packet.
+	 */
 	if (u->rr) {
 		(void) rr_track_delete(u->c->id, u->rr);
 		u->rr = NULL;
 	}
+
+	/*
+	 *	This packet isn't for any connection, we don't need to
+	 *	do more.
+	 */
+	if (!u->c) return 0;
+
+	/*
+	 *	The module is doing async proxying, we don't need to
+	 *	do more.
+	 */
+	if (!u->c->inst->parent->synchronous) return 0;
+
+	switch (u->c->state) {
+		/*
+		 *	If it's unused, why is there a request for it?
+		 */
+	case CONN_UNUSED:
+	case CONN_OPENING:
+		rad_assert(0 == 1);
+		return 0;
+
+		/*
+		 *	The connection is already marked "zombie", or
+		 *	is doing status checks.  Don't do it again.
+		 */
+	case CONN_ZOMBIE:
+	case CONN_STATUS_CHECKS:
+		return 0;
+
+		/*
+		 *	It was alive, but likely no longer..
+		 */
+	case CONN_ACTIVE:
+	case CONN_FULL:
+		break;
+	}
+
+	/*
+	 *	Check if we can mark the connection as "dead".
+	 */
+	gettimeofday(&now, NULL);
+	when = u->c->last_reply;
+
+	/*
+	 *	@todo - make this timer configurable, and find a way
+	 *	to not re-run these checks on every packet...
+	 */
+	when.tv_sec += 30;
+	if (timercmp(&when, &now, > )) return 0;
+
+	/*
+	 *	The home server hasn't responded in a long time.  Mark
+	 *	the connection as "zombie".
+	 */
+	conn_zombie(u->c);
 
 	return 0;
 }
