@@ -9,9 +9,12 @@ radcrypt - generate password hash for use with radius, or validates a password h
 \fIplaintext_password\fP [\fIhashed_password\fP]
 .SH DESCRIPTION
 \fBradcrypt\fP generates a hashed digest of a plaintext password, or can
-validate if a password hash matches a plaintext password. DES and MD5
-hashes are currently supported. When generating a password hash a random
-salt is generated and applied.
+validate if a password hash matches a plaintext password. DES and MD5 hashes 
+are currently supported. bcrypt, SHA3, SHA2 and SSHA2, not to mention SSHA1 
+are not supported by radcrypt though they are supported by PAP. In other words, 
+radcrypt is essentially not maintained. When generating a password hash a random 
+salt is generated and applied. Custom salts are not supported (users should not
+be entering their own salts anyway).
 .PP
 A hashed password can be validated by specifying \fI-c\fP or \fI--check\fP and
 passing \fIhashed_password\fP after \fIplaintext_password\fP on the command line.
@@ -19,6 +22,16 @@ In this case \fIhashed_password\fP will be checked to see if it matches
 \fIplaintext_password\fP. If so "Password OK" will be printed and the exit
 status will be 1, otherwise "Password BAD" will be printed and exit status
 will be 0 (Note this is the opposite of a normal successful shell status).
+
+That said, it should be noted that the current (August 2017) best practice is to 
+not use or store passwords at all. Rather, if possible, administrators are encouraged 
+to get rid of passwords and use X509 certs instead. Supplicant behaviour is poor on 
+macOS/iOS and Windows. If you use EAP-TTLS, EAP-PEAP etc... anyone sufficiently motivated 
+will be able to harvest your user's passwords.
+
+However, if generating high quality hashed passwords is a priority, dovecot's doveadm
+utility is quite useful (e.g. doveadm pw -s SSHA512) or openssl (echo -n "pw" | 
+openssl dgst -sha512).
 
 .SH OPTIONS
 
