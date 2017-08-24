@@ -185,7 +185,7 @@ static int conn_cmp(void const *one, void const *two)
 	rlm_radius_udp_connection_t const *b = talloc_get_type_abort(two, rlm_radius_udp_connection_t);
 
 	if (timercmp(&a->mrs_time, &b->mrs_time, <)) return -1;
-	if (timercmp(&a->mrs_time, &b->mrs_time, >)) return -1;
+	if (timercmp(&a->mrs_time, &b->mrs_time, >)) return +1;
 
 	if (a->id->num_free < b->id->num_free) return -1;
 	if (a->id->num_free > b->id->num_free) return +1;
