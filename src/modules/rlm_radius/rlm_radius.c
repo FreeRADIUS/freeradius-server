@@ -315,6 +315,33 @@ static int mod_link_free(rlm_radius_link_t *link)
 	return 0;
 }
 
+static void mod_radius_signal(REQUEST *request, void *instance, void *thread, void *ctx,
+			      fr_state_action_t action)
+{
+	rlm_radius_t const *inst = talloc_get_type_abort(instance, rlm_radius_t);
+	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
+	rlm_radius_link_t *link = talloc_get_type_abort(ctx, rlm_radius_link_t);
+
+	/*
+	 *	We've been told we're done.  Clean up.
+	 *
+	 *	Note that the caller doesn't necessarily need to send
+	 *	us the signal, as he can just talloc_free(request).
+	 *	But it is more polite to send a signal, and it allows
+	 *	the IO modules to do additional debugging if
+	 *	necessary.
+	 */
+	if (action == FR_ACTION_DONE) {
+		talloc_free(link);
+		return;
+	}
+
+	if (!inst->io->signal) return;
+
+	inst->io->signal(request, inst->io_instance, t->thread_io_ctx, link, action);
+}
+
+
 /** Continue after unlang_resumable()
  *
  */
@@ -455,8 +482,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 
 	talloc_set_destructor(link, mod_link_free);
 
-	// @todo - add signal / cancellation handler
-	return unlang_module_yield(request, mod_radius_resume, NULL, link);
+	return unlang_module_yield(request, mod_radius_resume, mod_radius_signal, link);
 }
 
 

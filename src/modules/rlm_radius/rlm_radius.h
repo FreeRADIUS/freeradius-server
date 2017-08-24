@@ -36,6 +36,7 @@ typedef struct rlm_radius_link_t rlm_radius_link_t;
  *
  */
 typedef rlm_rcode_t (*fr_radius_io_push_t)(void *instance, REQUEST *request, rlm_radius_link_t *link, void *thread);
+typedef void (*fr_radius_io_signal_t)(REQUEST *request, void *instance, void *thread, rlm_radius_link_t *link, fr_state_action_t action);
 typedef int (*fr_radius_io_instantiate_t)(rlm_radius_t *inst, void *io_instance, CONF_SECTION *cs);
 
 
@@ -57,6 +58,7 @@ typedef struct fr_radius_client_io_t {
 	size_t				request_inst_size;	//!< size of the data per request
 
 	fr_radius_io_push_t		push;			//!< push a REQUEST to an IO submodule
+	fr_radius_io_signal_t		signal;			//!< send a signal to an IO module
 } fr_radius_client_io_t;
 
 typedef struct rlm_radius_retry_t {
