@@ -95,6 +95,9 @@
 /* Define to 1 if you have the <errno.h> header file. */
 #undef HAVE_ERRNO_H
 
+/* Define to 1 if you have the `EVP_sha3_512' function. */
+#undef HAVE_EVP_SHA3_512
+
 /* define this if we have <execinfo.h> and symbols */
 #undef HAVE_EXECINFO
 

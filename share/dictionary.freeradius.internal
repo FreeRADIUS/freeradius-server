@@ -290,8 +290,15 @@ ATTRIBUTE	SSHA2-224-Password			1180	octets
 ATTRIBUTE	SSHA2-256-Password			1181	octets
 ATTRIBUTE	SSHA2-384-Password			1182	octets
 ATTRIBUTE	SSHA2-512-Password			1183	octets
-ATTRIBUTE	PBKDF2-Password				1184	octets
-ATTRIBUTE	Session-State-User-Name			1185	string
+
+ATTRIBUTE	SHA3-Password				1184	octets
+ATTRIBUTE	SSHA3-224-Password			1185	octets
+ATTRIBUTE	SSHA3-256-Password			1186	octets
+ATTRIBUTE	SSHA3-384-Password			1187	octets
+ATTRIBUTE	SSHA3-512-Password			1188	octets
+
+ATTRIBUTE	PBKDF2-Password				1188	octets
+ATTRIBUTE	Session-State-User-Name			1189	string
 
 ATTRIBUTE	Exec-Export				1190	string
 

@@ -1089,6 +1089,7 @@ if test "x$WITH_OPENSSL" = xyes; then
     AC_CHECK_FUNCS( \
       SSL_get_client_random \
       SSL_get_server_random \
+      EVP_sha3_512 \
     )
 
     CPPFLAGS="$old_CPPFLAGS"

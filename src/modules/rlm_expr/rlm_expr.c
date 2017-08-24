@@ -1159,6 +1159,11 @@ static ssize_t _md##_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,\
 
 EVP_MD_XLAT(sha256)
 EVP_MD_XLAT(sha512)
+
+#  ifdef HAVE_EVP_SHA3_512
+EVP_MD_XLAT(sha3_256)
+EVP_MD_XLAT(sha3_512)
+#  endif
 #endif
 
 /** Generate the HMAC-MD5 of a string or attribute

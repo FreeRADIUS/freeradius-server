@@ -85,6 +85,12 @@ static const FR_NAME_NUMBER header_names[] = {
 	{ "{ssha256}",		FR_SSHA2_256_PASSWORD },
 	{ "{ssha384}",		FR_SSHA2_384_PASSWORD },
 	{ "{ssha512}",		FR_SSHA2_512_PASSWORD },
+#  ifdef HAVE_EVP_SHA3_512
+	{ "{ssha3-224}",	FR_SSHA3_224_PASSWORD },
+	{ "{ssha3-256}",	FR_SSHA3_256_PASSWORD },
+	{ "{ssha3-384}",	FR_SSHA3_384_PASSWORD },
+	{ "{ssha3-512}",	FR_SSHA3_512_PASSWORD },
+#  endif
 	{ "{x-pbkdf2}",		FR_PBKDF2_PASSWORD },
 #endif
 	{ "{sha}",		FR_SHA_PASSWORD },
@@ -106,6 +112,12 @@ static const FR_NAME_NUMBER pbkdf2_crypt_names[] = {
 	{ "HMACSHA2+256",	FR_SSHA2_256_PASSWORD },
 	{ "HMACSHA2+384",	FR_SSHA2_384_PASSWORD },
 	{ "HMACSHA2+512",	FR_SSHA2_512_PASSWORD },
+#  ifdef HAVE_EVP_SHA3_512
+	{ "HMACSHA3+224",	FR_SSHA3_224_PASSWORD },
+	{ "HMACSHA3+256",	FR_SSHA3_256_PASSWORD },
+	{ "HMACSHA3+384",	FR_SSHA3_384_PASSWORD },
+	{ "HMACSHA3+512",	FR_SSHA3_512_PASSWORD },
+#  endif
 	{ NULL, 0 }
 };
 
@@ -113,6 +125,7 @@ static const FR_NAME_NUMBER pbkdf2_passlib_names[] = {
 	{ "sha1",		FR_SSHA_PASSWORD },
 	{ "sha256",		FR_SSHA2_256_PASSWORD },
 	{ "sha512",		FR_SSHA2_512_PASSWORD },
+
 	{ NULL, 0 }
 };
 #endif
@@ -437,6 +450,43 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 			found_pw = true;
 			break;
 
+#  ifdef HAVE_EVP_SHA3_512
+		case FR_SHA3_PASSWORD:
+			if (inst->normify) {
+				normify(request, vp, 28); /* ensure it's in the right format */
+			}
+			found_pw = true;
+			break;
+
+		case FR_SSHA3_224_PASSWORD:
+			if (inst->normify) {
+				normify(request, vp, 28); /* ensure it's in the right format */
+			}
+			found_pw = true;
+			break;
+
+		case FR_SSHA3_256_PASSWORD:
+			if (inst->normify) {
+				normify(request, vp, 32); /* ensure it's in the right format */
+			}
+			found_pw = true;
+			break;
+
+		case FR_SSHA3_384_PASSWORD:
+			if (inst->normify) {
+				normify(request, vp, 48); /* ensure it's in the right format */
+			}
+			found_pw = true;
+			break;
+
+		case FR_SSHA3_512_PASSWORD:
+			if (inst->normify) {
+				normify(request, vp, 64); /* ensure it's in the right format */
+			}
+			found_pw = true;
+			break;
+#  endif
+
 		case FR_PBKDF2_PASSWORD:
 			found_pw = true; /* Already base64 standardized */
 			break;
@@ -681,7 +731,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha(rlm_pap_t const *inst, REQUEST
 }
 
 #ifdef HAVE_OPENSSL_EVP_H
-static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha2(rlm_pap_t const *inst, REQUEST *request, VALUE_PAIR *vp)
+static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha_evp(rlm_pap_t const *inst, REQUEST *request, VALUE_PAIR *vp)
 {
 	EVP_MD_CTX *ctx;
 	EVP_MD const *md;
@@ -693,41 +743,86 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha2(rlm_pap_t const *inst, REQUEST
 
 	if (inst->normify) normify(request, vp, 28);
 
-	/*
-	 *	All the SHA-2 algorithms produce digests of different lengths,
-	 *	so it's trivial to determine which EVP_MD to use.
-	 */
-	switch (vp->vp_length) {
-	/* SHA-224 */
-	case 28:
-		name = "SHA2-224";
-		md = EVP_sha224();
+	switch (vp->da->attr) {
+	case FR_SHA2_PASSWORD:
+		/*
+		 *	All the SHA-2 algorithms produce digests of different lengths,
+		 *	so it's trivial to determine which EVP_MD to use.
+		 */
+		switch (vp->vp_length) {
+		/* SHA-224 */
+		case 28:
+			name = "SHA2-224";
+			md = EVP_sha224();
+			break;
+
+		/* SHA-256 */
+		case 32:
+			name = "SHA2-256";
+			md = EVP_sha256();
+			break;
+
+		/* SHA-384 */
+		case 48:
+			name = "SHA2-384";
+			md = EVP_sha384();
+			break;
+
+		/* SHA-512 */
+		case 64:
+			name = "SHA2-512";
+			md = EVP_sha512();
+			break;
+
+		default:
+			REDEBUG("\"known good\" digest length (%zu) does not match output length of any SHA-2 digests",
+				vp->vp_length);
+			return RLM_MODULE_INVALID;
+		}
 		break;
 
-	/* SHA-256 */
-	case 32:
-		name = "SHA2-256";
-		md = EVP_sha256();
-		break;
+# ifdef HAVE_EVP_SHA3_512
+	case FR_SHA3_PASSWORD:
+		/*
+		 *	All the SHA-3 algorithms produce digests of different lengths,
+		 *	so it's trivial to determine which EVP_MD to use.
+		 */
+		switch (vp->vp_length) {
+		/* SHA-224 */
+		case 28:
+			name = "SHA3-224";
+			md = EVP_sha3_224();
+			break;
 
-	/* SHA-384 */
-	case 48:
-		name = "SHA2-384";
-		md = EVP_sha384();
-		break;
+		/* SHA-256 */
+		case 32:
+			name = "SHA3-256";
+			md = EVP_sha3_256();
+			break;
 
-	/* SHA-512 */
-	case 64:
-		name = "SHA2-512";
-		md = EVP_sha512();
+		/* SHA-384 */
+		case 48:
+			name = "SHA3-384";
+			md = EVP_sha3_384();
+			break;
+
+		/* SHA-512 */
+		case 64:
+			name = "SHA3-512";
+			md = EVP_sha3_512();
+			break;
+
+		default:
+			REDEBUG("\"known good\" digest length (%zu) does not match output length of any SHA-2 digests",
+				vp->vp_length);
+			return RLM_MODULE_INVALID;
+		}
 		break;
+#  endif
 
 	default:
-		REDEBUG("\"known good\" digest length (%zu) does not match output length of any SHA-2 digests",
-			vp->vp_length);
-		return RLM_MODULE_INVALID;
+		rad_assert(0);
 	}
-
 	ctx = EVP_MD_CTX_create();
 	EVP_DigestInit_ex(ctx, md, NULL);
 	EVP_DigestUpdate(ctx, request->password->vp_octets, request->password->vp_length);
@@ -744,7 +839,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha2(rlm_pap_t const *inst, REQUEST
 	return RLM_MODULE_OK;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha2(rlm_pap_t const *inst, REQUEST *request, VALUE_PAIR *vp)
+static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha_evp(rlm_pap_t const *inst, REQUEST *request, VALUE_PAIR *vp)
 {
 	EVP_MD_CTX *ctx;
 	EVP_MD const *md = NULL;
@@ -777,6 +872,32 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha2(rlm_pap_t const *inst, REQUES
 		md = EVP_sha512();
 		break;
 
+#ifdef HAVE_EVP_SHA3_512
+	case FR_SSHA3_224_PASSWORD:
+		name = "SSHA3-224";
+		md = EVP_sha3_224();
+		min_len = 28;
+		break;
+
+	case FR_SSHA3_256_PASSWORD:
+		name = "SSHA3-256";
+		md = EVP_sha3_256();
+		min_len = 32;
+		break;
+
+	case FR_SSHA3_384_PASSWORD:
+		name = "SSHA3-384";
+		md = EVP_sha3_384();
+		min_len = 48;
+		break;
+
+	case FR_SSHA3_512_PASSWORD:
+		name = "SSHA3-512";
+		min_len = 64;
+		md = EVP_sha3_512();
+		break;
+#endif
+
 	default:
 		rad_assert(0);
 	}
@@ -784,7 +905,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha2(rlm_pap_t const *inst, REQUES
 	RDEBUG("Comparing with \"known-good\" %s-Password", name);
 
 	/*
-	 *	Unlike plain SHA2 we already know what length
+	 *	Unlike plain SHA2/3 we already know what length
 	 *	to expect, so can be more specific with the
 	 *	minimum digest length.
 	 */
@@ -891,6 +1012,28 @@ static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_parse(REQUEST *reques
 		evp_md = EVP_sha512();
 		digest_len = 64;
 		break;
+
+#  ifdef HAVE_EVP_SHA3_512
+	case FR_SSHA3_224_PASSWORD:
+		evp_md = EVP_sha3_224();
+		digest_len = 28;
+		break;
+
+	case FR_SSHA3_256_PASSWORD:
+		evp_md = EVP_sha3_256();
+		digest_len = 32;
+		break;
+
+	case FR_SSHA3_384_PASSWORD:
+		evp_md = EVP_sha3_384();
+		digest_len = 48;
+		break;
+
+	case FR_SSHA3_512_PASSWORD:
+		evp_md = EVP_sha3_512();
+		digest_len = 64;
+		break;
+#  endif
 
 	default:
 		REDEBUG("Unknown PBKDF2 hash method \"%.*s\"", (int)(q - p), p);
@@ -1264,14 +1407,23 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 
 #ifdef HAVE_OPENSSL_EVP_H
 		case FR_SHA2_PASSWORD:
-			auth_func = &pap_auth_sha2;
+#  ifdef HAVE_EVP_SHA3_512
+		case FR_SHA3_PASSWORD:
+#  endif
+			auth_func = &pap_auth_sha_evp;
 			break;
 
 		case FR_SSHA2_224_PASSWORD:
 		case FR_SSHA2_256_PASSWORD:
 		case FR_SSHA2_384_PASSWORD:
 		case FR_SSHA2_512_PASSWORD:
-			auth_func = &pap_auth_ssha2;
+#  ifdef HAVE_EVP_SHA3_512
+		case FR_SSHA3_224_PASSWORD:
+		case FR_SSHA3_256_PASSWORD:
+		case FR_SSHA3_384_PASSWORD:
+		case FR_SSHA3_512_PASSWORD:
+#  endif
+			auth_func = &pap_auth_ssha_evp;
 			break;
 
 		case FR_PBKDF2_PASSWORD:
