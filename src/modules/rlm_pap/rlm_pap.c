@@ -739,12 +739,12 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha_evp(rlm_pap_t const *inst, REQU
 	uint8_t digest[EVP_MAX_MD_SIZE];
 	unsigned int digest_len;
 
-	RDEBUG("Comparing with \"known-good\" SHA2-Password");
-
 	if (inst->normify) normify(request, vp, 28);
 
 	switch (vp->da->attr) {
 	case FR_SHA2_PASSWORD:
+		RDEBUG("Comparing with \"known-good\" SHA2-Password");
+
 		/*
 		 *	All the SHA-2 algorithms produce digests of different lengths,
 		 *	so it's trivial to determine which EVP_MD to use.
@@ -783,6 +783,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha_evp(rlm_pap_t const *inst, REQU
 
 # ifdef HAVE_EVP_SHA3_512
 	case FR_SHA3_PASSWORD:
+		RDEBUG("Comparing with \"known-good\" SHA3-Password");
 		/*
 		 *	All the SHA-3 algorithms produce digests of different lengths,
 		 *	so it's trivial to determine which EVP_MD to use.
@@ -813,7 +814,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha_evp(rlm_pap_t const *inst, REQU
 			break;
 
 		default:
-			REDEBUG("\"known good\" digest length (%zu) does not match output length of any SHA-2 digests",
+			REDEBUG("\"known good\" digest length (%zu) does not match output length of any SHA-3 digests",
 				vp->vp_length);
 			return RLM_MODULE_INVALID;
 		}
