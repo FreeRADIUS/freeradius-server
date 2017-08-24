@@ -531,8 +531,9 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 /**  Tell a request that it's stopped.
  *
  */
-static void worker_stop_request(fr_worker_t *worker, REQUEST *request)
+static void worker_stop_request(fr_worker_t *worker, REQUEST *request, fr_time_t now)
 {
+	fr_time_tracking_resume(&request->async->tracking, now);
 	(void) request->async->process(request, FR_IO_ACTION_DONE);
 
 	/*
@@ -576,9 +577,8 @@ static void fr_worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED struct
 		/*
 		 *	Waiting too long, delete it.
 		 */
-		fr_time_tracking_resume(&request->async->tracking, now);
 		DEBUG("(%"PRIu64") taking too long, stopping it", request->number);
-		worker_stop_request(worker, request);
+		worker_stop_request(worker, request, now);
 
 		/*
 		 *	Tell the network side that this request is done.
@@ -860,7 +860,7 @@ nak:
 	 */
 	old = rbtree_finddata(worker->dedup, request);
 	if (old) {
-		worker_stop_request(worker, old);
+		worker_stop_request(worker, old, fr_time());
 		talloc_free(old);
 	}
 
@@ -1107,9 +1107,7 @@ void fr_worker_destroy(fr_worker_t *worker)
 	 *	events.
 	 */
 	while ((request = fr_heap_peek(worker->time_order)) != NULL) {
-		fr_time_tracking_resume(&request->async->tracking, now);
-
-		worker_stop_request(worker, request);
+		worker_stop_request(worker, request, now);
 		talloc_free(request);
 	}
 	talloc_free(worker->time_order);
