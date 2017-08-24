@@ -102,6 +102,8 @@ static CONF_PARSER const module_config[] = {
 
 	{ FR_CONF_OFFSET("replicate", FR_TYPE_BOOL, rlm_radius_t, replicate) },
 
+	{ FR_CONF_OFFSET("synchronous", FR_TYPE_BOOL, rlm_radius_t, synchronous) },
+
 	{ FR_CONF_OFFSET("type", FR_TYPE_UINT32 | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY | FR_TYPE_REQUIRED, rlm_radius_t, types),
 	  .func = type_parse },
 
@@ -188,6 +190,10 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED C
 	    (code >= FR_MAX_PACKET_CODE) ||
 	    (!type_interval_config[code].name)) goto invalid_code;
 
+	/*
+	 *	If we're doing async proxying, push the timers for the
+	 *	various packet types.
+	 */
 	cf_section_rule_push(cs, &type_interval_config[code]);
 
 	memcpy(out, &code, sizeof(code));
@@ -335,6 +341,13 @@ static void mod_radius_signal(REQUEST *request, void *instance, void *thread, vo
 		talloc_free(link);
 		return;
 	}
+
+	/*
+	 *	We received a duplicate packet, but we're not doing
+	 *	synchronous proxying.  Ignore the dup, and rely on the
+	 *	IO submodule to time it's own retransmissions.
+	 */
+	if ((action == FR_ACTION_DUP) && !inst->synchronous) return;
 
 	if (!inst->io->signal) return;
 
@@ -558,6 +571,12 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	}
 
 	/*
+	 *	Don't sanity check the async timers if we're doing
+	 *	synchronous proxying.
+	 */
+	if (inst->synchronous) goto setup_io_submodule;
+
+	/*
 	 *	Set limits on retransmission timers
 	 */
 	if (inst->allowed[FR_CODE_ACCESS_REQUEST]) {
@@ -638,6 +657,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		FR_INTEGER_BOUND_CHECK("Disconnect-Request.mrd", inst->retry[FR_CODE_DISCONNECT_REQUEST].mrd, <=, 30);
 	}
 
+setup_io_submodule:
 	inst->io = (fr_radius_client_io_t const *) inst->io_submodule->module->common;
 	inst->io_instance = inst->io_submodule->data;
 	inst->io_conf = inst->io_submodule->conf;
