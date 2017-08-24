@@ -130,6 +130,7 @@ struct fr_worker_t {
 
 	fr_heap_t      		*runnable;	//!< current runnable requests which we've spent time processing
 	fr_heap_t		*time_order;	//!< time ordered heap of requests
+	rbtree_t		*dedup;		//!< de-dup tree
 
 	int			num_requests;	//!< number of requests processed by this worker
 	int			num_decoded;	//!< number of messages which have been decoded
@@ -520,9 +521,28 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	 *	and insert it back into a slab allocator.
 	 */
 	(void) fr_heap_extract(worker->time_order, request);
+	(void) rbtree_deletebydata(worker->dedup, request);
 	talloc_free(request);
 
 	if (!worker->num_active) worker_reset_timer(worker);
+}
+
+
+/**  Tell a request that it's stopped.
+ *
+ */
+static void worker_stop_request(fr_worker_t *worker, REQUEST *request)
+{
+	(void) request->async->process(request, FR_IO_ACTION_DONE);
+
+	/*
+	 *	The request is ALWAYS in the time_order list.  It MAY
+	 *	be in the runnable list, but if not, no worries.  It
+	 *	ALWAYS is in the dedup list.
+	 */
+	(void) fr_heap_extract(worker->time_order, request);
+	(void) fr_heap_extract(worker->runnable, request);
+	(void) rbtree_deletebydata(worker->dedup, request);
 }
 
 /** Enforce max_request_time
@@ -556,12 +576,9 @@ static void fr_worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED struct
 		/*
 		 *	Waiting too long, delete it.
 		 */
-		(void) fr_heap_extract(worker->time_order, request);
-		(void) fr_heap_extract(worker->runnable, request);
 		fr_time_tracking_resume(&request->async->tracking, now);
-
 		DEBUG("(%"PRIu64") taking too long, stopping it", request->number);
-		(void) request->async->process(request, FR_IO_ACTION_DONE);
+		worker_stop_request(worker, request);
 
 		/*
 		 *	Tell the network side that this request is done.
@@ -708,7 +725,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 {
 	int			ret = -1;
 	fr_channel_data_t	*cd;
-	REQUEST			*request;
+	REQUEST			*request, *old;
 	fr_listen_t const	*listen;
 #ifndef HAVE_TALLOC_POOLED_OBJECT
 	TALLOC_CTX		*ctx;
@@ -836,16 +853,16 @@ nak:
 	(void) fr_heap_insert(worker->time_order, request);
 
 	/*
-	 *	@todo - create an RBtree based on comparing request->async->packet_ctx?
-	 *	so that we can detect duplicates...
+	 *	Look for conflicting / duplicate packets.
 	 *
-	 *	add ASYNC API to do handle (old, &FR_IO_DONE, new, &FR_IO_DONE)
-	 *	so the async process function can choose either (or both) of the packets
-	 *	and do any async signalling as necessary
-	 *
-	 *	which probably also menas moving to queue-depth instead of seq/ack for network/worker,
-	 *	as we don't want to send NAKs for conflicing / discarded packets
+	 *	@todo - somehow figure out if the packet is a DUP, or
+	 *	a conflicting one?
 	 */
+	old = rbtree_finddata(worker->dedup, request);
+	if (old) {
+		worker_stop_request(worker, old);
+		talloc_free(old);
+	}
 
 	/*
 	 *	Bootstrap the async state machine with the initial
@@ -1043,6 +1060,16 @@ static int worker_time_order_cmp(void const *one, void const *two)
 	return (a->async->recv_time > b->async->recv_time) - (a->async->recv_time < b->async->recv_time);
 }
 
+/**
+ *  Track a REQUEST in the "dedup" tree
+ */
+static int worker_dedup_cmp(void const *one, void const *two)
+{
+	REQUEST const *a = one, *b = two;
+
+	return (a->async->packet_ctx > b->async->packet_ctx) - (a->async->packet_ctx < b->async->packet_ctx);
+}
+
 /** Destroy a worker.
  *
  *  The input channels are signaled, and local messages are cleaned up.
@@ -1075,31 +1102,20 @@ void fr_worker_destroy(fr_worker_t *worker)
 	}
 
 	/*
-	 *	Remove the requests from the "runnable" queue.
-	 *
-	 *	@todo - set a destructor for the REQUEST which cleans
-	 *	it all up.
-	 */
-	while ((request = fr_heap_pop(worker->runnable)) != NULL) {
-		(void) fr_heap_extract(worker->time_order, request);
-		fr_time_tracking_resume(&request->async->tracking, now);
-		talloc_free(request);
-	}
-	talloc_free(worker->runnable);
-
-	/*
 	 *	Destroy all of the active requests.  These are ones
 	 *	which are still waiting for timers or file descriptor
 	 *	events.
 	 */
 	while ((request = fr_heap_peek(worker->time_order)) != NULL) {
-		(void) request->async->process(request, FR_IO_ACTION_DONE);
-
-		(void) fr_heap_extract(worker->time_order, request);
 		fr_time_tracking_resume(&request->async->tracking, now);
+
+		worker_stop_request(worker, request);
 		talloc_free(request);
 	}
 	talloc_free(worker->time_order);
+
+	rad_assert(fr_heap_num_elements(worker->runnable) == 0);
+	talloc_free(worker->runnable);
 
 #if 0
 	/*
@@ -1223,6 +1239,12 @@ nomem:
 	worker->time_order = fr_heap_create(worker_time_order_cmp, offsetof(REQUEST, time_order_id));
 	if (!worker->time_order) {
 		fr_strerror_printf("Failed creating time_order heap");
+		goto fail;
+	}
+
+	worker->dedup = rbtree_create(worker, worker_dedup_cmp, NULL, RBTREE_FLAG_NONE);
+	if (!worker->dedup) {
+		fr_strerror_printf("Failed creating de_dup tree");
 		goto fail;
 	}
 
@@ -1450,6 +1472,9 @@ static void fr_worker_verify(fr_worker_t *worker)
 
 	rad_assert(worker->runnable != NULL);
 	(void) talloc_get_type_abort(worker->runnable, fr_heap_t);
+
+	rad_assert(worker->dedup != NULL);
+	(void) talloc_get_type_abort(worker->dedup, rbtree_t);
 
 	for (i = 0; i < worker->max_channels; i++) {
 		if (!worker->channel[i]) continue;
