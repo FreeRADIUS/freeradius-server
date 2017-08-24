@@ -131,7 +131,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 	 *	is waiting for something to happen.
 	 */
 	if (action != FR_IO_ACTION_RUN) {
-		unlang_signal(request, FR_ACTION_DONE);
+		unlang_signal(request, (fr_state_action_t) action);
 		return FR_IO_DONE;
 	}
 
