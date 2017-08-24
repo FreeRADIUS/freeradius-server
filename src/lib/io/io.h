@@ -41,9 +41,10 @@ typedef struct fr_listen fr_listen_t;
  *  Tell an async process function if it should run or exit.
  */
 typedef enum fr_io_action_t {
+	FR_IO_ACTION_INVALID = 0,
 	FR_IO_ACTION_RUN,
-	FR_IO_ACTION_DUP,
 	FR_IO_ACTION_DONE,
+	FR_IO_ACTION_DUP,
 } fr_io_action_t;
 
 /**
