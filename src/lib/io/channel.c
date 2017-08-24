@@ -538,6 +538,27 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 }
 
 
+/** Don't send a reply message into the channel
+ *
+ * The message should be the one we received from the network.
+ *
+ * @param[in] ch		the channel on which we're dropping a packet
+ * @return
+ *	- <0 on error
+ *	- 0 on success
+ */
+int fr_channel_null_reply(fr_channel_t *ch)
+{
+	fr_channel_end_t *worker;
+
+	worker = &(ch->end[FROM_WORKER]);
+
+	worker->sequence++;
+	return 0;
+}
+
+
+
 /** Signal a channel that the worker is sleeping
  *
  * This function should be called from the workers idle loop.

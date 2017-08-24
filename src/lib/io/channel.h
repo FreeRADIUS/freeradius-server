@@ -125,6 +125,8 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cm, fr_channel_
 fr_channel_data_t *fr_channel_recv_request(fr_channel_t *ch) CC_HINT(nonnull);
 
 int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cm, fr_channel_data_t **p_request) CC_HINT(nonnull);
+int fr_channel_null_reply(fr_channel_t *ch) CC_HINT(nonnull);
+
 fr_channel_data_t *fr_channel_recv_reply(fr_channel_t *ch) CC_HINT(nonnull);
 
 int fr_channel_worker_sleeping(fr_channel_t *ch) CC_HINT(nonnull);
