@@ -822,6 +822,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha_evp(rlm_pap_t const *inst, REQU
 
 	default:
 		rad_assert(0);
+		return RLM_MODULE_INVALID;
 	}
 	ctx = EVP_MD_CTX_create();
 	EVP_DigestInit_ex(ctx, md, NULL);
@@ -900,6 +901,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha_evp(rlm_pap_t const *inst, REQ
 
 	default:
 		rad_assert(0);
+		return RLM_MODULE_INVALID;
 	}
 
 	RDEBUG("Comparing with \"known-good\" %s-Password", name);
