@@ -1042,9 +1042,10 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, uint8_t *packet, size_t packet_len, ui
 		if (slen < 0) return slen;
 
 		/*
-		 *	Here be dragons.
+		 *	If slen is larger than the room in the packet,
+		 *	all kinds of bad things happen.
 		 */
-		 if (!fr_cond_assert((end - attr) <= slen)) return -1;
+		 if (!fr_cond_assert(slen <= (end - attr))) return -1;
 
 		attr += slen;
 	}
