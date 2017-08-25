@@ -408,7 +408,7 @@ static void conn_zombie(rlm_radius_udp_connection_t *c)
 	      c->inst->parent->name, c->name);
 
 	if (fr_event_timer_insert(c, c->thread->el, &c->zombie_ev, &when, conn_zombie_timeout, c) < 0) {
-		ERROR("%s failed inserting idle timeout for connection %s",
+		ERROR("%s failed inserting zombie timeout for connection %s",
 		      c->inst->parent->name, c->name);
 	}
 }
