@@ -498,7 +498,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	reply->listen = request->async->listen;
 	reply->packet_ctx = request->async->packet_ctx;
 
-	DEBUG("(%"PRIu64") finished request.", request->number);
+	RDEBUG("finished request.");
 
 	/*
 	 *	Send the reply, which also polls the request queue.
@@ -533,6 +533,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
  */
 static void worker_stop_request(fr_worker_t *worker, REQUEST *request, fr_time_t now)
 {
+	RDEBUG("request is being stopped.");
 	fr_time_tracking_resume(&request->async->tracking, now);
 	(void) request->async->process(request, FR_IO_ACTION_DONE);
 
@@ -577,7 +578,7 @@ static void fr_worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED struct
 		/*
 		 *	Waiting too long, delete it.
 		 */
-		DEBUG("(%"PRIu64") taking too long, stopping it", request->number);
+		RDEBUG("request has reached max_request_time");
 		worker_stop_request(worker, request, now);
 
 		/*
@@ -785,7 +786,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	 */
 	request->async->channel = cd->channel.ch;
 	request->async->original_recv_time = cd->request.recv_time;
-	request->async->recv_time = cd->m.when;
+	request->async->recv_time = *request->async->original_recv_time;
 	request->async->el = worker->el;
 	request->number = worker->number++;
 
@@ -805,7 +806,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	}
 
 	if (ret < 0) {
-		DEBUG("\t%sFAILED decode of request %"PRIu64, worker->name, request->number);
+		RDEBUG("\t%s FAILED decoding packet", worker->name);
 		talloc_free(ctx);
 nak:
 		fr_worker_nak(worker, cd, now);
@@ -835,18 +836,12 @@ nak:
 	fr_message_done(&cd->m);
 
 	/*
-	 *	New requests are inserted into the time order list in
+	 *	New requests are inserted into the time order heap in
 	 *	strict time priority.  Once they are in the list, they
-	 *	are only removed when the request is freed.
+	 *	are only removed when the request is done / free'd.
 	 */
 	(void) fr_heap_insert(worker->time_order, request);
 
-	/*
-	 *	Look for conflicting / duplicate packets.
-	 *
-	 *	@todo - somehow figure out if the packet is a DUP, or
-	 *	a conflicting one?
-	 */
 	/*
 	 *	Look for conflicting / duplicate packets, but only if
 	 *	requested to do so.
@@ -892,6 +887,8 @@ nak:
 			 *	running, but is yielded.  It MAY clean
 			 *	itself up, or do something...
 			 */
+			request = old;
+			RDEBUG("received duplicate request.");
 			(void) old->async->process(old, FR_IO_ACTION_DUP);
 			return NULL;
 		}
@@ -900,6 +897,15 @@ nak:
 		 *	Stop the old request, and decrement the number
 		 *	of active requests.
 		 */
+		{
+			REQUEST *tmp = request;
+
+			request = old;
+			RDEBUG("received new request %" PRIu64 " which which over-rides this one.",
+			       tmp->number);
+			request = tmp;
+		}
+
 		worker_stop_request(worker, old, now);
 		rad_assert(worker->num_active > 0);
 		worker->num_active--;
@@ -942,7 +948,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	rad_assert(request->async->process != NULL);
 	rad_assert(request->async->listen != NULL);
 
-	DEBUG("(%" PRIu64 ") running request", request->number);
+	RDEBUG("running request");
 
 	/*
 	 *	If we still have the same packet, and the channel is
@@ -983,7 +989,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 		break;
 	}
 
-	DEBUG("(%"PRIu64") done request", request->number);
+	RDEBUG("done request");
 
 	fr_worker_send_reply(worker, request, size);
 }
