@@ -753,17 +753,6 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 		if (!cd) return NULL;
 
 		worker->num_decoded++;
-
-		/*
-		 *	This message has asynchronously aged out while it was
-		 *	in the queue.  Delete it, and go get another one.
-		 */
-		if (cd->request.recv_time && (cd->m.when != *cd->request.recv_time)) {
-			DEBUG("\t%sIGNORING old message: was %zd now %zd", worker->name,
-			      *cd->request.recv_time, cd->m.when);
-			fr_worker_nak(worker, cd, now);
-			cd = NULL;
-		}
 	} while (!cd);
 
 	ctx = request = request_alloc(NULL);
