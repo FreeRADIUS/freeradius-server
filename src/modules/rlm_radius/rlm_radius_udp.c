@@ -852,34 +852,11 @@ static void status_check_timeout(UNUSED fr_event_list_t *el, struct timeval *now
 	if (!c->pending) fd_active(c);
 }
 
-
-/** Deal with per-request timeouts for transmissions, etc.
- *
- */
-static void response_timeout(UNUSED fr_event_list_t *el, struct timeval *now, void *uctx)
+static void retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 {
 	int rcode;
-	rlm_radius_udp_request_t *u = uctx;
 	rlm_radius_udp_connection_t *c = u->c;
-	REQUEST *request;
-
-	rcode = rr_track_retry(c->id, u->rr, c->thread->el, response_timeout, u, &c->inst->parent->retry[u->code], now);
-	if (rcode < 0) {
-		/*
-		 *	Failed inserting event... the request is done.
-		 */
-		mod_finished_request(c, u);
-		return;
-	}
-
-	request = u->link->request;
-	if (rcode == 0) {
-		conn_zombie(c);
-		REDEBUG("Failing proxied request ID %d due to lack of response on connection %s",
-			u->rr->id, c->name);
-		mod_finished_request(c, u);
-		return;
-	}
+	REQUEST *request = u->link->request;
 
 	/*
 	 *	RADIUS layer fixups for Accounting-Request packets.
@@ -982,6 +959,38 @@ static void response_timeout(UNUSED fr_event_list_t *el, struct timeval *now, vo
 		conn_error(c->thread->el, c->fd, 0, errno, c);
 		return;
 	}
+}
+
+
+/** Deal with per-request timeouts for transmissions, etc.
+ *
+ */
+static void response_timeout(UNUSED fr_event_list_t *el, struct timeval *now, void *uctx)
+{
+	int rcode;
+	rlm_radius_udp_request_t *u = uctx;
+	rlm_radius_udp_connection_t *c = u->c;
+	REQUEST *request;
+
+	rcode = rr_track_retry(c->id, u->rr, c->thread->el, response_timeout, u, &c->inst->parent->retry[u->code], now);
+	if (rcode < 0) {
+		/*
+		 *	Failed inserting event... the request is done.
+		 */
+		mod_finished_request(c, u);
+		return;
+	}
+
+	request = u->link->request;
+	if (rcode == 0) {
+		conn_zombie(c);
+		REDEBUG("Failing proxied request ID %d due to lack of response on connection %s",
+			u->rr->id, c->name);
+		mod_finished_request(c, u);
+		return;
+	}
+
+	retransmit_packet(u, now);
 }
 
 
