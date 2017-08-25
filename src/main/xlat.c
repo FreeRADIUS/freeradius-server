@@ -1373,6 +1373,9 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 		return -(p - fmt);
 	}
 
+	/*
+	 *	Might be a list, too...
+	 */
 	node->type = XLAT_ATTRIBUTE;
 	p += slen;
 
@@ -1665,45 +1668,15 @@ size_t xlat_sprint(char *buffer, size_t bufsize, xlat_exp_t const *node)
 			*(p++) = '%';
 			*(p++) = '{';
 
-			if (node->attr.tmpl_request != REQUEST_CURRENT) {
-				strlcpy(p, fr_int2str(request_refs, node->attr.tmpl_request, "??"), end - p);
-				p += strlen(p);
-				*(p++) = '.';
+			/*
+			 *	The node MAY NOT be an attribute.  It
+			 *	may be a list.
+			 */
+			tmpl_prints(p, end - p, &node->attr, NULL);
+			if (*p == '&') {
+				memmove(p, p + 1, strlen(p + 1) + 1);
 			}
-
-			if ((node->attr.tmpl_request != REQUEST_CURRENT) ||
-			    (node->attr.tmpl_list != PAIR_LIST_REQUEST)) {
-				strlcpy(p, fr_int2str(pair_lists, node->attr.tmpl_list, "??"), end - p);
-				p += strlen(p);
-				*(p++) = ':';
-			}
-
-			strlcpy(p, node->attr.tmpl_da->name, end - p);
 			p += strlen(p);
-
-			if (node->attr.tmpl_tag != TAG_ANY) {
-				*(p++) = ':';
-				snprintf(p, end - p, "%u", node->attr.tmpl_tag);
-				p += strlen(p);
-			}
-
-			if (node->attr.tmpl_num != NUM_ANY) {
-				*(p++) = '[';
-				switch (node->attr.tmpl_num) {
-				case NUM_COUNT:
-					*(p++) = '#';
-					break;
-
-				case NUM_ALL:
-					*(p++) = '*';
-					break;
-
-				default:
-					snprintf(p, end - p, "%i", node->attr.tmpl_num);
-					p += strlen(p);
-				}
-				*(p++) = ']';
-			}
 			*(p++) = '}';
 			break;
 #ifdef HAVE_REGEX
