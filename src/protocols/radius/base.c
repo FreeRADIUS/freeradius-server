@@ -1052,7 +1052,7 @@ void fr_radius_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 	uint8_t const *attr, *end;
 
 	if ((packet[0] > 0) && (packet[0] < FR_MAX_PACKET_CODE)) {
-		fprintf(fp, "  Code:\t%s\n", fr_packet_codes[packet[0]]);
+		fprintf(fp, "  Code:\t\t%s\n", fr_packet_codes[packet[0]]);
 	} else {
 		fprintf(fp, "  Code:\t\t%u\n", packet[0]);
 	}
