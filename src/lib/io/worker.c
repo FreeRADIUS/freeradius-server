@@ -88,11 +88,15 @@ static void fr_worker_verify(fr_worker_t *worker);
 #undef DEBUG2
 #undef DEBUG3
 #undef ERROR
+#undef RDEBUG
+#undef RDEBUG2
+#undef RDEBUG3
 
 #define DEBUG(fmt, ...) if (worker->lvl) fr_log(worker->log, L_DBG, fmt, ## __VA_ARGS__)
 #define DEBUG2(fmt, ...) if (worker->lvl >= L_DBG_LVL_2) fr_log(worker->log, L_DBG, fmt, ## __VA_ARGS__)
 #define DEBUG3(fmt, ...) if (worker->lvl >= L_DBG_LVL_3) fr_log(worker->log, L_DBG, fmt, ## __VA_ARGS__)
 #define ERROR(fmt, ...) fr_log(worker->log, L_ERR, fmt, ## __VA_ARGS__)
+#define RDEBUG(fmt, ...) if (worker->lvl) fr_log(worker->log, L_DBG, "(%" PRIu64 ")  " fmt, request->number, ## __VA_ARGS__)
 
 /**
  *  A worker which takes packets from a master, and processes them.
