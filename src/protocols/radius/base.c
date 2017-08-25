@@ -406,6 +406,7 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 	case FR_CODE_DISCONNECT_NAK:
 	case FR_CODE_COA_ACK:
 	case FR_CODE_COA_NAK:
+	case FR_CODE_PROTOCOL_ERROR:
 		if (!original) {
 		need_original:
 			fr_strerror_printf("Cannot sign response packet without a request packet");
@@ -858,6 +859,7 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 	case FR_CODE_DISCONNECT_ACK:
 	case FR_CODE_DISCONNECT_NAK:
 #endif
+	case FR_CODE_PROTOCOL_ERROR:
 		if (!original) {
 			fr_strerror_printf("Cannot encode response without request");
 			return -1;
@@ -893,6 +895,32 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 	 *	Load up the configuration values for the user
 	 */
 	ptr = packet + RADIUS_HDR_LEN;
+
+	/*
+	 *	If we're sending Protocol-Error, add in
+	 *	Original-Packet-Code manually.  If the user adds it
+	 *	later themselves, well, too bad.
+	 */
+	if (code == FR_CODE_PROTOCOL_ERROR) {
+		size_t room;
+
+		room = (packet + packet_len) - ptr;
+		if (room < 7) {
+			fr_strerror_printf("Insufficient room to encode attributes");
+			return -1;
+		}
+
+		ptr[0] = 241;
+		ptr[1] = 7;
+		ptr[2] = 4;	/* Original-Packet-Code */
+		ptr[3] = 0;
+		ptr[4] = 0;
+		ptr[5] = 0;
+		ptr[6] = original[0];
+
+		ptr += 7;
+		total_length += 7;
+	}
 
 	/*
 	 *	Loop over the reply attributes for the packet.
