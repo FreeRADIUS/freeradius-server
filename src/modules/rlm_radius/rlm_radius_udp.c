@@ -52,6 +52,9 @@ typedef struct rlm_radius_udp_t {
 
 	uint32_t		max_packet_size;	//!< maximum packet size
 
+	fr_dict_attr_t const	*response_length;	//!< cached Response-Length attribute
+	fr_dict_attr_t const	*error_cause;		//!< cache Error-Cause attribute
+
 	bool			recv_buff_is_set;	//!< Whether we were provided with a recv_buf
 	bool			send_buff_is_set;	//!< Whether we were provided with a send_buf
 	bool			replicate;		//!< copied from parent->replicate
@@ -498,6 +501,8 @@ static rlm_rcode_t code2rcode[FR_MAX_PACKET_CODE] = {
 
 	[FR_CODE_DISCONNECT_ACK] = RLM_MODULE_OK,
 	[FR_CODE_DISCONNECT_NAK] = RLM_MODULE_REJECT,
+
+	[FR_CODE_PROTOCOL_ERROR] = RLM_MODULE_FAIL,
 };
 
 
@@ -518,6 +523,50 @@ static FR_CODE allowed_replies[FR_MAX_PACKET_CODE] = {
 	[FR_CODE_DISCONNECT_NAK] = FR_CODE_DISCONNECT_REQUEST,
 };
 
+
+/** Deal with Protocol-Error replies, and possible negotiation
+ *
+ */
+static void protocol_error_reply(rlm_radius_udp_connection_t *c, REQUEST *request)
+{
+	VALUE_PAIR *vp, *error_cause;
+
+	error_cause = fr_pair_find_by_da(request->reply->vps, c->inst->error_cause, TAG_ANY);
+	if (!error_cause) return;
+
+	if ((error_cause->vp_uint32 == 601) &&
+	    c->inst->response_length &&
+	    ((vp = fr_pair_find_by_da(request->reply->vps, c->inst->response_length, TAG_ANY)) != NULL)) {
+		if (vp->vp_uint32 > c->buflen) {
+			request->module = c->inst->parent->name;
+			RDEBUG("increasing buffer size to %u for connection %s",
+			       vp->vp_uint32, c->name);
+			talloc_free(c->buffer);
+			c->buflen = vp->vp_uint32;
+			MEM(c->buffer = talloc_array(c, uint8_t, c->buflen));
+		}
+	}
+}
+
+/** Deal with Status-Server replies, and possible negotiation
+ *
+ */
+static void status_check_reply(rlm_radius_udp_connection_t *c, REQUEST *request)
+{
+	VALUE_PAIR *vp;
+
+	if (c->inst->response_length &&
+	    ((vp = fr_pair_find_by_da(request->reply->vps, c->inst->response_length, TAG_ANY)) != NULL)) {
+		if (vp->vp_uint32 > c->buflen) {
+			request->module = c->inst->parent->name;
+			RDEBUG("increasing buffer size to %u for connection %s",
+			       vp->vp_uint32, c->name);
+			talloc_free(c->buffer);
+			c->buflen = vp->vp_uint32;
+			MEM(c->buffer = talloc_array(c, uint8_t, c->buflen));
+		}
+	}
+}
 
 /** Read reply packets.
  *
@@ -562,9 +611,6 @@ redo:
 	packet_len = data_len;
 	if (!fr_radius_ok(c->buffer, &packet_len, false, &reason)) {
 		DEBUG("%s Ignoring malformed packet", c->inst->parent->name);
-
-		if (DEBUG_ENABLED3) {
-		}
 		goto redo;
 	}
 
@@ -709,6 +755,12 @@ redo:
 			break;
 		}
 
+		/*
+		 *	Decode and print the reply, so that the caller
+		 *	can do something with it.
+		 */
+		goto decode_reply;
+
 	} else if (!code || (code >= FR_MAX_PACKET_CODE)) {
 		if (request) RDEBUG("Unknown reply code %d", code);
 		link->rcode = RLM_MODULE_INVALID;
@@ -745,9 +797,12 @@ redo:
 		 *	OK for an ACK, or FAIL for a NAK.
 		 */
 	} else {
-		VALUE_PAIR *vp = NULL;
+		VALUE_PAIR *vp;
 
 		link->rcode = code2rcode[code];
+
+	decode_reply:
+		vp = NULL;
 
 		/*
 		 *	Decode the attributes, in the context of the reply.
@@ -774,6 +829,11 @@ redo:
 		 */
 
 		fr_pair_add(&request->reply->vps, vp);
+
+		/*
+		 *	Run hard-coded policies on Protocol-Error
+		 */
+		if (code == FR_CODE_PROTOCOL_ERROR) protocol_error_reply(c, request);
 	}
 
 done:
@@ -785,6 +845,10 @@ done:
 	 *	check.
 	 */
 	if (c->status_u == u) {
+		if (u->code == FR_CODE_STATUS_SERVER) {
+			status_check_reply(c, request);
+		}
+
 		/*
 		 *	Delete the reply, but leave the request VPs in
 		 *	place.
@@ -2013,6 +2077,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 	(void) talloc_set_type(inst, rlm_radius_udp_t);
 	inst->config = conf;
+
+	inst->response_length = fr_dict_attr_by_name(NULL, "Response-Length");
+	inst->error_cause = fr_dict_attr_by_name(NULL, "Error-Cause");
 
 	return 0;
 }
