@@ -292,7 +292,7 @@ static void conn_idle(rlm_radius_udp_connection_t *c)
 		when.tv_sec--;
 		c->idle_timeout = when;
 
-		DEBUG("%s setting idle timeout to +%pV for connection %s",
+		DEBUG("%s - setting idle timeout to +%pV for connection %s",
 		      c->inst->parent->name, fr_box_timeval(c->inst->parent->idle_timeout), c->name);
 		if (fr_event_timer_insert(c, c->thread->el, &c->idle_ev, &c->idle_timeout, conn_idle_timeout, c) < 0) {
 			ERROR("%s failed inserting idle timeout for connection %s",
@@ -407,11 +407,11 @@ static void conn_zombie(rlm_radius_udp_connection_t *c)
 	c->zombie_start = when;
 
 	fr_timeval_add(&when, &when, &c->inst->parent->zombie_period);
-	DEBUG("%s setting to zombie for connection %s",
+	DEBUG("%s - setting to zombie for connection %s",
 	      c->inst->parent->name, c->name);
 
 	if (fr_event_timer_insert(c, c->thread->el, &c->zombie_ev, &when, conn_zombie_timeout, c) < 0) {
-		ERROR("%s failed inserting zombie timeout for connection %s",
+		ERROR("%s - failed inserting zombie timeout for connection %s",
 		      c->inst->parent->name, c->name);
 	}
 }
