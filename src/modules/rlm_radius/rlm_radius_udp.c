@@ -934,7 +934,7 @@ static void retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 		 *	No Acct-Delay-Time, add one manually if
 		 *	there's room.
 		 */
-		if (!u->acct_delay_time && ((u->packet_len + 6) <= u->c->max_packet_size)) {
+		if (!u->acct_delay_time && ((u->packet_len + 6) <= u->c->buflen)) {
 			int hdr_len;
 			uint8_t *packet, *attr;
 
