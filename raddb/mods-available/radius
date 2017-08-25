@@ -56,6 +56,43 @@ radius {
 	type = Accounting-Request
 
 	#
+	#  For "are you alive?" queries.
+	#
+	#  If the home server does not respond to proxied packets, the
+	#  module starts pinging the home server with these packets.
+	#
+	#  For now, the contents of the status check packets cannot be
+	#  edited.  Only Status-Server is supported.
+	#
+	#  If the home server does not support Status-Server packets,
+	#  this configuration item should be deleted or commented out.
+	#
+	status_check = Status-Server
+
+	#
+	#  In many cases, the module should do retransmissions of
+	#  proxied request on it's own.  See the various
+	#  configurations for "initial_retransmission_time",
+	#  etc. below.  This means setting "synchronous = no".
+	#
+	#  However, in some cases, it is useful to retranmsit only
+	#  when the server receives a retransmission from the NAS.
+	#  This is done by setting "synchronous = yes"
+	#
+	#  In general, if the server is receiving packets directly
+	#  from a NAS, you should set "synchronous = no".  This is
+	#  because the NAS retransmission behavior is horrible,
+	#  inconsistent, and hard to configure.
+	#
+	#  If the server is receiving packets from another proxy
+	#  server, you should set "synchronous = yes".  This allows
+	#  the other proxy server to do retranmsissions correctly.
+	#
+	#  The behavior in v3 is the same as "synchronous = yes"
+	#
+#	synchronous = no
+
+	#
 	#  UDP is configured here.
 	#
 	udp {
@@ -88,6 +125,17 @@ radius {
 		#  it is closed.  Use '0' for 'no timeout'
 		#
 		idle_timeout = 5
+
+		#
+		#  If the home server does not reply to a packet, the
+		#  "zombie_period" starts.  The connection is marked
+		#  "zombie", and isn't used to send new packets.  If
+		#  there are no responses within "zombie_period", the
+		#  server either closes the connection (no
+		#  status_check), or starts pinging the home server
+		#  (status_check = Status-Server).
+		#
+		zombie_period = 10
 	}
 
 	#
@@ -125,7 +173,7 @@ radius {
 		#  How many times the module will send the packet
 		#  before giving up.
 		#
-		maximum_retransmission_count = 1
+		maximum_retransmission_count = 2
 
 		#
 		#  Maximum Retransmit Duration: 5..60
