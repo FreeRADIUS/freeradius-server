@@ -282,15 +282,20 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, fr_time_t **rec
 		}
 
 		/*
-		 *	@todo - if track->reply_len == 1, then we are
-		 *	INTENTIONALLY not replying.  In that case,
-		 *	return 0.  Otherwise, it's a duplicate packet.
-		 *	We MAY want to go poke the worker and say it's
-		 *	a duplicate packet.  BUT all of that tracking
-		 *	is very hard, so we might as well just ignore
-		 *	it.
+		 *	We are intentionally not responding.
 		 */
-		return 0;
+		if (track->reply_len == 1) {
+			return 0;
+		}
+
+		/*
+		 *	Otherwise it's a duplicate packet.  Send the
+		 *	whole thing over to the network stack, noting
+		 *	that the tracking code ensures we get
+		 *	"recv_time" from the ORIGINAL packet, and not
+		 *	from now.
+		 */
+		break;
 
 	/*
 	 *	Delete any pre-existing cleanup_delay timers.
@@ -583,6 +588,8 @@ fr_app_io_t proto_radius_udp = {
 	.instantiate		= mod_instantiate,
 
 	.default_message_size	= 4096,
+	.track_duplicates	= true,
+
 	.open			= mod_open,
 	.read			= mod_read,
 	.decode			= mod_decode,
