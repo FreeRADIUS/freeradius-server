@@ -853,6 +853,11 @@ VALUE	Packet-Type			CoA-NAK			45
 VALUE	Packet-Type			IP-Address-Allocate	50
 VALUE	Packet-Type			IP-Address-Release	51
 
+#
+#  From RFC 3730, Section 4
+#
+VALUE	Packet-Type			Protocol-Error		52
+
 VALUE	Packet-Type			Do-Not-Respond		256
 
 VALUE	Response-Packet-Type		Access-Request		1
