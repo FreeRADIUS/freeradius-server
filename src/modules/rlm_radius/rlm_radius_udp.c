@@ -627,7 +627,8 @@ redo:
 
 	link = rr->link;
 	u = link->request_io_ctx;
-	request = link->request; /* may be NULL for Status-Server */
+	request = link->request;
+	rad_assert(request != NULL);
 
 	original[0] = rr->code;
 	original[1] = 0;	/* not looked at by fr_radius_verify() */
@@ -637,7 +638,7 @@ redo:
 
 	if (fr_radius_verify(c->buffer, original,
 			     (uint8_t const *) c->inst->secret, strlen(c->inst->secret)) < 0) {
-		if (request) RDEBUG("%s Ignoring response with invalid signature", c->inst->parent->name);
+		RDEBUG("%s Ignoring response with invalid signature", c->inst->parent->name);
 		return;
 	}
 
@@ -730,7 +731,7 @@ redo:
 			if ((attr[3] != 0) ||
 			    (attr[4] != 0) ||
 			    (attr[5] != 0)) {
-				if (request) RDEBUG("Original-Packet-Code has invalid value > 255");
+				RDEBUG("Original-Packet-Code has invalid value > 255");
 				break;
 			}
 
@@ -742,8 +743,8 @@ redo:
 			 *	for sanity.
 			 */
 			if (attr[6] != u->code) {
-				if (request) RDEBUG("Original-Packet-Code %d does not match original code %d",
-						    attr[6], u->code);
+				RDEBUG("Original-Packet-Code %d does not match original code %d",
+				       attr[6], u->code);
 				break;
 			}
 
@@ -762,7 +763,7 @@ redo:
 		goto decode_reply;
 
 	} else if (!code || (code >= FR_MAX_PACKET_CODE)) {
-		if (request) RDEBUG("Unknown reply code %d", code);
+		RDEBUG("Unknown reply code %d", code);
 		link->rcode = RLM_MODULE_INVALID;
 
 		/*
@@ -770,7 +771,7 @@ redo:
 		 *	the known bounds, but is one we don't handle.
 		 */
 	} else if (!code2rcode[code]) {
-		if (request) RDEBUG("Invalid reply code %s", fr_packet_codes[code]);
+		RDEBUG("Invalid reply code %s", fr_packet_codes[code]);
 		link->rcode = RLM_MODULE_INVALID;
 
 
@@ -854,7 +855,7 @@ done:
 		 *	place.
 		 */
 #ifdef __clang_analyzer__
-		if (request && request->reply)
+		if (request->reply)
 #endif
 			fr_pair_list_free(&request->reply->vps);
 
