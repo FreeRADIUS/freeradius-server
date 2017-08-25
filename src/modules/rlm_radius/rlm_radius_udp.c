@@ -1981,6 +1981,21 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 }
 
 
+static void mod_signal(REQUEST *request, UNUSED void *instance, UNUSED void *thread, rlm_radius_link_t *link, fr_state_action_t action)
+{
+	rlm_radius_udp_request_t *u = link->request_io_ctx;
+	struct timeval now;
+
+	if (action != FR_ACTION_DUP) return;
+
+	RDEBUG("retransmitting proxied request");
+
+	gettimeofday(&now, NULL);
+	retransmit_packet(u, &now);
+}
+
+
+
 /** Bootstrap the module
  *
  * Bootstrap I/O and type submodules.
@@ -2149,4 +2164,5 @@ fr_radius_client_io_t rlm_radius_udp = {
 	.thread_detach	= mod_thread_detach,
 
 	.push		= mod_push,
+	.signal		= mod_signal,
 };
