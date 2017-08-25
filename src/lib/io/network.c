@@ -392,13 +392,12 @@ next_message:
 
 	/*
 	 *	Initialize the rest of the fields of the channel data.
+	 *
+	 *	We always use "now" as the time of the message, as the
+	 *	packet MAY be a duplicate packet magically resurrected
+	 *	from the past.
 	 */
-	if (recv_time) {
-		cd->m.when = *recv_time;
-	} else {
-		cd->m.when = fr_time();
-	}
-
+	cd->m.when = fr_time();
 	cd->listen = s->listen;
 	cd->request.recv_time = recv_time;
 
