@@ -1517,7 +1517,6 @@ static fr_connection_state_t conn_open(UNUSED fr_event_list_t *el, UNUSED int fd
 	c->name = talloc_asprintf(c, "proto udp local %s port %u remote %s port %u",
 				  src_buf, c->src_port,
 				  dst_buf, c->dst_port);
-	c->state = CONN_OPENING;
 
 	/*
 	 *	Connection is "active" now.  i.e. we prefer the newly
@@ -1526,6 +1525,7 @@ static fr_connection_state_t conn_open(UNUSED fr_event_list_t *el, UNUSED int fd
 	 *	@todo - connection negotiation via Status-Server
 	 */
 	gettimeofday(&c->mrs_time, NULL);
+	c->last_reply = c->mrs_time;
 
 	DEBUG("%s opened new connection %s",
 	      c->inst->parent->name, c->name);
@@ -1769,6 +1769,7 @@ static void mod_connection_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t
 	rlm_radius_udp_connection_t *c;
 
 	c = talloc_zero(t, rlm_radius_udp_connection_t);
+	c->state = CONN_OPENING;
 	c->inst = inst;
 	c->thread = t;
 	c->dst_ipaddr = inst->dst_ipaddr;
