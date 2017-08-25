@@ -1534,10 +1534,12 @@ static int udp_request_free(rlm_radius_udp_request_t *u)
 	when = u->c->last_reply;
 
 	/*
-	 *	@todo - make this timer configurable, and find a way
-	 *	to not re-run these checks on every packet...
+	 *	Use the zombie_period for the timeout.
+	 *
+	 *	Note that we do this check on every packet, which is a
+	 *	bit annoying, but oh well.
 	 */
-	when.tv_sec += 30;
+	fr_timeval_add(&when, &when, &u->c->inst->parent->zombie_period);
 	if (timercmp(&when, &now, > )) return 0;
 
 	/*
