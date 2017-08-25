@@ -38,9 +38,6 @@ We should limit the number of outgoing connections, tho.
     }
 
 
-## synchronous proxying
-
-
 ## miscellaneous
 
 * double-check ENABLE_SKIPS in src/lib/io/channel.c
