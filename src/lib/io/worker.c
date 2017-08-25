@@ -836,13 +836,6 @@ nak:
 	fr_message_done(&cd->m);
 
 	/*
-	 *	New requests are inserted into the time order heap in
-	 *	strict time priority.  Once they are in the list, they
-	 *	are only removed when the request is done / free'd.
-	 */
-	(void) fr_heap_insert(worker->time_order, request);
-
-	/*
 	 *	Look for conflicting / duplicate packets, but only if
 	 *	requested to do so.
 	 */
@@ -914,6 +907,13 @@ nak:
 	insert_new:
 		(void) rbtree_insert(worker->dedup, request);
 	}
+
+	/*
+	 *	New requests are inserted into the time order heap in
+	 *	strict time priority.  Once they are in the list, they
+	 *	are only removed when the request is done / free'd.
+	 */
+	(void) fr_heap_insert(worker->time_order, request);
 
 	/*
 	 *	Bootstrap the async state machine with the initial
