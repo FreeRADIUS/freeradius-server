@@ -41,6 +41,130 @@ names are now consistent.  `recv` receives packets from the network.
 processing section is the *type* of the packet which is being received
 or sent.
 
+## Proxying
+
+Proxying has undergone massive changes.  The `proxy.conf` file no
+longer exists, along with everything in it.  e.g. `realm`,
+`home_server`, `home_server_pool`.  The proxying functionality was
+welded into the server core, which made many useful configurations
+impossible.
+
+The `radius` module now handles basic proxying to home servers.  We
+recommend creating one instance of the `radius` module per home
+server.  e.g.
+
+    radius home_server_1 {
+       ... configuration for home server 1 ...
+    }
+
+You can then use `home_server_1` in any processing section, and the
+request will be proxied when processing reaches the module.
+
+For ease of management, we recommend naming the modules for the host
+name of the home server.
+
+It is often simplest to do proxying via an `authenticate proxy`
+section, though that section can have any name.  e.g. setting
+`Auth-Type := proxy` will call the `authenticate proxy` section, and
+is similar to the previous setting `Proxy-To-Realm`.
+
+    authenticate proxy {
+        home_server_1
+    }
+
+### home_server
+
+The `home_server` configuration has been replaced with the `radius`
+module.  See `raddb/mods-available/radius` for examples and
+documentation.
+
+### home_server_pool
+
+The `home_server_pool` configuration has been replaced with standard
+unlang configurations.  The various load-balancing options can be
+re-created using in-place 'unlang' configuration.
+
+The mappings
+for `type` are as follows:
+
+* `type = fail-over` - replaced with 'unlang'
+
+    redundant {
+        home_server_1
+	home_server_2
+	home_server_3
+    }
+
+Note, of course, you will have to use the names of your `radius`
+modules, and not `home_server_1`, etc.
+
+* `type = load-balance` - replaced with 'unlang'
+
+    load-balance {
+        home_server_1
+	home_server_2
+	home_server_3
+    }
+
+* `type = client-balance` - replaced with 'unlang'
+
+    load-balance "%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}" {
+        home_server_1
+	home_server_2
+	home_server_3
+    }
+
+
+* `type = client-port-balance` - replaced with 'unlang'
+
+    load-balance "%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}-%{Packet-Src-Port}" {
+        home_server_1
+	home_server_2
+	home_server_3
+    }
+
+* `type = keyed-balance` - replaced with 'unlang'
+
+    load-balance "%{Load-Balance-Key}" {
+        home_server_1
+	home_server_2
+	home_server_3
+    }
+
+You can use any attribute or string expansion as part of the
+`load-balance` key.  While the `Load-Balance-Key` was a special
+attribute in v3, it has no special meaning in v4.
+
+### Things which were impossible in v3
+
+In v3, it was impossible to proxy the same request to multiple
+destinations.  This is now trivial.  In any processing section, just do:
+
+    ...
+    home_server_1
+    home_server_2
+    ...
+
+When processing reaches that point, it will proxy the request to
+home_server_1, followed by home_server_2.
+
+This functionality can be used to send Accounting-Request packets to
+multiple destinations.
+
+You can also catch "failed" proxying, and do something else.  In the
+example below, try to proxy to home_server_1, if that fails, just
+"accept" the request.
+
+    ...
+    home_server_1
+    if (fail) {
+        accept
+    }
+    ...
+
+### CoA and Originate-Coa
+
+See `fork` and the `radius` module.
 
 ## Dictionaries
 
@@ -83,20 +207,27 @@ filtering operators do not *create* any attribute.
 
 ## load-balance and redundant-load-balance sections
 
-Before v4, the load-balance sections implemented load balancing by
+Before v4, the `load-balance` sections implemented load balancing by
 picking a child at random.  This meant that load balancing was
 probabilistically fair, but not perfectly fair.
 
-In v4, load-balance sections track how many requests are in each
-child.  This lets them do load balancing across multiple requests,
-which is more fair.
+In v4, `load-balance` sections track how many requests are in each
+sub-section, and pick the subsection which is used the least.  This is
+like the v3 proxy behavior of load balancing across home server pools.
 
-i.e. the load-balance sections now behave like the old home server
-pools of type "load-balance".  Which in turn lets us remove the
-special-case code for home servers, and then just use unlang
-`load-balance` sections.
+The `load-balance` and `redundant-load-balance` sections now allow for
+a load-balance key:
 
-The user visible changes should be minimal.
+    load-balance "%{Calling-Station-Id}" {
+        module1
+	module2
+	module3
+	...
+    }
+
+If the key exists, it is hashed, and used to pick one of the
+subsections.  This behavior allows for deterministic load-balancing,
+like the v3 proxy "keyed-balance" configuration.
 
 ## Connection timeouts
 
@@ -196,6 +327,29 @@ before, and then the result is multiplied by one.
 
 Attributes of type `octets` are now passed directly to Perl as binary
 data, instead of as hex strings.
+
+### rlm_radius
+
+The `radius` module has taken over much of the functionality of
+`proxy.conf`.  See `raddb/mods-available/radius` for documentation and
+configuration examples.
+
+The `radius` module connects to one home server, just like the
+`home_server` configuration in v3.  Some of the configuration items
+are similar, but many are different.
+
+The module can send multiple packet types to one home server.
+e.g. Access-Request and Accounting-Request.
+
+This module also replaces the old 'coa' and 'originate-coa'
+configuration.  See also `fork` for creating child requests which are
+different from the parent requests.
+
+Unlike v3, the module can do asynchronous proxying.  That is, proxying
+where the server controls the retransmission behavior.  In v3, the
+server retransmitted proxied packets only when it received a
+retransmission from the NAS.  That behavior is good, but there are
+times where retransmitting at the proxy is better.
 
 ### rlm_rest
 
