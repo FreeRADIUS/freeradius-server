@@ -46,7 +46,7 @@ static CONF_PARSER const proto_radius_config[] = {
 	/*
 	 *	For performance tweaking.  NOT for normal humans.
 	 */
-	{ FR_CONF_OFFSET("default_message_size", FR_TYPE_UINT32, proto_radius_t, default_message_size) } ,
+	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, proto_radius_t, max_packet_size) } ,
 	{ FR_CONF_OFFSET("num_messages", FR_TYPE_UINT32, proto_radius_t, num_messages) } ,
 
 	CONF_PARSER_TERMINATOR
@@ -292,8 +292,8 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	/*
 	 *	Set configurable parameters for message ring buffer.
 	 */
-	listen->default_message_size = inst->default_message_size;
-	listen->num_messages = inst->default_message_size;
+	listen->default_message_size = inst->max_packet_size;
+	listen->num_messages = inst->num_messages;
 
 	/*
 	 *	Open the socket, and add it to the scheduler.
@@ -386,15 +386,15 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 *	These configuration items are not printed by default,
 	 *	because normal people shouldn't be touching them.
 	 */
-	if (!inst->default_message_size && inst->app_io) inst->default_message_size = inst->app_io->default_message_size;
+	if (!inst->max_packet_size && inst->app_io) inst->max_packet_size = inst->app_io->default_message_size;
 
 	if (!inst->num_messages) inst->num_messages = 256;
 
 	FR_INTEGER_BOUND_CHECK("num_messages", inst->num_messages, >=, 32);
 	FR_INTEGER_BOUND_CHECK("num_messages", inst->num_messages, <=, 65535);
 
-	FR_INTEGER_BOUND_CHECK("default_message_size", inst->default_message_size, >=, 1024);
-	FR_INTEGER_BOUND_CHECK("default_message_size", inst->default_message_size, <=, 65535);
+	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 1024);
+	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65535);
 
 	return 0;
 }
