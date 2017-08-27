@@ -317,10 +317,10 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, fr_time_t **rec
 	return packet_len;
 }
 
-static ssize_t mod_write(void const *instance, void *packet_ctx,
+static ssize_t mod_write(void *instance, void *packet_ctx,
 			 fr_time_t request_time, uint8_t *buffer, size_t buffer_len)
 {
-	proto_radius_udp_t const	*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
+	proto_radius_udp_t		*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
 	fr_tracking_entry_t		*track = packet_ctx;
 	proto_radius_udp_address_t	*address = track->src_dst;
 

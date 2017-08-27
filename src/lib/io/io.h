@@ -213,7 +213,7 @@ typedef ssize_t (*fr_io_data_read_t)(void const *instance, void **packet_ctx, fr
  *	- <0 on error
  *	- >=0 length of the data read or written.
  */
-typedef ssize_t (*fr_io_data_write_t)(void const *instance, void *packet_ctx, fr_time_t request_time,
+typedef ssize_t (*fr_io_data_write_t)(void *instance, void *packet_ctx, fr_time_t request_time,
 				      uint8_t *buffer, size_t buffer_len);
 
 /**  Handle a close or error on the socket.
