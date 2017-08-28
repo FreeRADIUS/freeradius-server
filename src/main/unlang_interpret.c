@@ -1141,11 +1141,6 @@ static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stac
 	sp = unlang_generic_to_module_call(instruction);
 	rad_assert(sp);
 
-	/*
-	 *	If the request should stop, refuse to do anything.
-	 */
-	if (request->master_state == REQUEST_STOP_PROCESSING) return UNLANG_ACTION_STOP_PROCESSING;
-
 	RDEBUG4("[%i] %s - %s (%s)", stack->depth, __FUNCTION__,
 		sp->module_instance->name, sp->module_instance->module->name);
 
@@ -1486,6 +1481,8 @@ start_subsection:
 	 *	Loop over all modules in this list.
 	 */
 	while (frame->instruction != NULL) {
+		REQUEST *parent;
+
 resume_subsection:
 		instruction = frame->instruction;
 
@@ -1496,11 +1493,17 @@ resume_subsection:
 		VERIFY_REQUEST(request);
 
 		/*
+		 *	We may be multiple layers deep in fork{} or
+		 *	parallel{}.  Only the top-level request is
+		 *	tracked && marked "stop processing".
+		 */
+		parent = request;
+		while (parent->parent) parent = parent->parent;
+
+		/*
 		 *	We've been asked to stop.  Do so.
 		 */
-		if ((request->master_state == REQUEST_STOP_PROCESSING) ||
-		    (request->parent &&
-		     (request->parent->master_state == REQUEST_STOP_PROCESSING))) {
+		if (parent->master_state == REQUEST_STOP_PROCESSING) {
 		do_stop:
 			frame->result = RLM_MODULE_FAIL;
 			frame->priority = 9999;
