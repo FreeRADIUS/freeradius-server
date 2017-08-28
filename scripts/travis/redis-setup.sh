@@ -1,5 +1,17 @@
 #!/bin/sh -e
 
+# Load RVM into a shell session *as a function*
+# First try to load from a user install
+if [[ -s "$HOME/.rvm/scripts/rvm" ]] ; then
+    source "$HOME/.rvm/scripts/rvm"
+
+# Then try to load from a root install
+elif [[ -s "/usr/local/rvm/scripts/rvm" ]] ; then
+    source "/usr/local/rvm/scripts/rvm"
+else
+    printf "WARNING: An RVM installation was not found.\n"
+fi
+
 TMP_REDIS_DIR='/tmp/redis'
 export PATH="${TMP_REDIS_DIR}:${PATH}"
 
