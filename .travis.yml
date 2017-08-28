@@ -104,7 +104,7 @@ services:
 - postgresql
 - redis-server
 before_install:
-- sudo rvm --install --default --binary use 2.4
+- rvm --install --default --binary use 2.4
 - ruby -v
 - if [ "${CC}" == 'gcc' ]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 60; fi
 - if [ "${CC}" == 'gcc' ]; then sudo update-alternatives --config gcc; fi
