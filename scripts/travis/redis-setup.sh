@@ -1,4 +1,4 @@
-#!/bin/sh -e
+#!/bin/bash -e
 
 # Load RVM into a shell session *as a function*
 # First try to load from a user install
