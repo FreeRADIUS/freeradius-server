@@ -1124,6 +1124,7 @@ static unlang_action_t unlang_map(REQUEST *request, unlang_stack_t *stack,
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
+
 static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stack,
 				     	  rlm_rcode_t *presult, int *priority)
 {
@@ -1272,7 +1273,6 @@ static unlang_action_t unlang_resume(REQUEST *request, unlang_stack_t *stack,
 	unlang_stack_state_modcall_t	*modcall_state = NULL;
 	void 				*resume_ctx;
 	void 				*instance;
-	bool				is_module = true;
 
 	RDEBUG3("Resuming in %s", mr->self.debug_name);
 
@@ -1280,11 +1280,15 @@ static unlang_action_t unlang_resume(REQUEST *request, unlang_stack_t *stack,
 	memcpy(&instance, &mr->instance, sizeof(instance));
 	request->module = mr->self.debug_name;
 
+	/*
+	 *	Do the internal resume function.
+	 */
 	if (unlang_ops_resume[mr->parent_type]) {
 		*presult = request->rcode = unlang_ops_resume[mr->parent_type](request, stack, instance, mr->thread, resume_ctx);
-	} else
 
-	if (mr->parent_type == UNLANG_TYPE_MODULE_CALL) {
+	} else {
+		rad_assert(mr->parent_type == UNLANG_TYPE_MODULE_CALL);
+
 		modcall_state = talloc_get_type_abort(frame->state,
 						      unlang_stack_state_modcall_t);
 
@@ -1318,7 +1322,7 @@ static unlang_action_t unlang_resume(REQUEST *request, unlang_stack_t *stack,
 		*priority = instruction->actions[*presult];
 	}
 
-	if (is_module) {
+	if (modcall_state) {
 		RDEBUG2("%s (%s)", instruction->name ? instruction->name : "",
 			fr_int2str(mod_rcode_table, *presult, "<invalid>"));
 	}
