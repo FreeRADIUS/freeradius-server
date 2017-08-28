@@ -45,6 +45,9 @@ static FR_NAME_NUMBER unlang_action_table[] = {
 #define UNLANG_TOP_FRAME (true)
 #define UNLANG_SUB_FRAME (false)
 
+typedef rlm_rcode_t (*unlang_op_resume_func_t)(REQUEST *request, unlang_stack_t *stack,
+					       const void *instance, void *thread, void *resume_ctx);
+
 /*
  *	Lock the mutex for the module
  */
@@ -539,10 +542,11 @@ static void unlang_fork_signal(UNUSED REQUEST *request, UNUSED void *instance, U
 /** Resume a forked request
  *
  */
-static rlm_rcode_t unlang_fork_resume(REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *ctx)
+static rlm_rcode_t unlang_fork_resume(UNUSED REQUEST *request, unlang_stack_t *stack,
+				      UNUSED const void *instance, UNUSED void *thread, void *resume_ctx)
 {
-	REQUEST			*child = talloc_get_type_abort(ctx, REQUEST);
-	unlang_stack_t		*stack = child->stack;
+	REQUEST			*child = talloc_get_type_abort(resume_ctx, REQUEST);
+	unlang_stack_t		*child_stack = child->stack;
 	rlm_rcode_t		rcode;
 	unlang_stack_frame_t	*frame;
 #ifndef NDEBUG
@@ -552,9 +556,8 @@ static rlm_rcode_t unlang_fork_resume(REQUEST *request, UNUSED void *instance, U
 	/*
 	 *	Continue running the child.
 	 */
-	rcode = unlang_run(child, stack);
+	rcode = unlang_run(child, child_stack);
 	if (rcode != RLM_MODULE_YIELD) {
-		stack = request->stack;
 		frame = &stack->frame[stack->depth];
 		rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
 
@@ -564,14 +567,13 @@ static rlm_rcode_t unlang_fork_resume(REQUEST *request, UNUSED void *instance, U
 	}
 
 #ifndef NDEBUG
-	stack = request->stack;
 	frame = &stack->frame[stack->depth];
 	rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
 
 	mr = unlang_generic_to_resume(frame->instruction);
 	(void) talloc_get_type_abort(mr, unlang_resume_t);
 
-	rad_assert(mr->callback == unlang_fork_resume);
+	rad_assert(mr->callback == NULL);
 	rad_assert(mr->signal_callback == unlang_fork_signal);
 	rad_assert(mr->resume_ctx == child);
 #endif
@@ -710,7 +712,7 @@ static unlang_action_t unlang_fork(REQUEST *request, unlang_stack_t *stack,
 	/*
 	 *	Create the "resume" stack frame, and have it replace our stack frame.
 	 */
-	mr = unlang_resume_alloc(request, unlang_fork_resume, unlang_fork_signal, child);
+	mr = unlang_resume_alloc(request, NULL, unlang_fork_signal, child);
 	if (!mr) {
 		*result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
@@ -1257,6 +1259,9 @@ static unlang_action_t unlang_if(REQUEST *request, unlang_stack_t *stack,
 	return unlang_group(request, stack, presult, priority);
 }
 
+static unlang_op_resume_func_t unlang_ops_resume[] = {
+	[UNLANG_TYPE_FORK] = unlang_fork_resume,
+};
 
 static unlang_action_t unlang_resume(REQUEST *request, unlang_stack_t *stack,
 				     rlm_rcode_t *presult, int *priority)
@@ -1269,11 +1274,15 @@ static unlang_action_t unlang_resume(REQUEST *request, unlang_stack_t *stack,
 	void 				*instance;
 	bool				is_module = true;
 
-	RDEBUG3("Resuming in module %s", mr->self.debug_name);
+	RDEBUG3("Resuming in %s", mr->self.debug_name);
 
 	memcpy(&resume_ctx, &mr->resume_ctx, sizeof(resume_ctx));
 	memcpy(&instance, &mr->instance, sizeof(instance));
 	request->module = mr->self.debug_name;
+
+	if (unlang_ops_resume[mr->parent_type]) {
+		*presult = request->rcode = unlang_ops_resume[mr->parent_type](request, stack, instance, mr->thread, resume_ctx);
+	} else
 
 	if (mr->parent_type == UNLANG_TYPE_MODULE_CALL) {
 		modcall_state = talloc_get_type_abort(frame->state,
@@ -1285,17 +1294,6 @@ static unlang_action_t unlang_resume(REQUEST *request, unlang_stack_t *stack,
 		safe_lock(mr->module_instance);
 		*presult = request->rcode = mr->callback(request, instance, mr->thread, resume_ctx);
 		safe_unlock(mr->module_instance);
-
-	} else {
-		/*
-		 *	We're resuming after a fork.  Don't bother
-		 *	dereferencing the callback, just call the
-		 *	resumption function directly.
-		 */
-		rad_assert(mr->parent_type == UNLANG_TYPE_FORK);
-		is_module = false;
-		rad_assert(mr->callback == unlang_fork_resume);
-		*presult = unlang_fork_resume(request, NULL, NULL, resume_ctx);
 	}
 
 	request->module = NULL;
@@ -1319,8 +1317,6 @@ static unlang_action_t unlang_resume(REQUEST *request, unlang_stack_t *stack,
 		rad_assert(*presult < RLM_MODULE_NUMCODES);
 		*priority = instruction->actions[*presult];
 	}
-
-	*presult = request->rcode;
 
 	if (is_module) {
 		RDEBUG2("%s (%s)", instruction->name ? instruction->name : "",
