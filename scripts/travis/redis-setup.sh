@@ -54,10 +54,7 @@ sed -ie 's/yes_or_die "\(.*\)"/xputs "\1 Yes!"/' "${TMP_REDIS_DIR}/redis-trib.rb
 # Install the 'redis' gem (needed for redis-trib) - not actually needed by travis
 # but is useful if we're running redis-setup.sh locally.
 if [ `gem list redis -i` = 'false' ]; then
-    ruby -v
-    gem -v
-
-    sudo rvm gem install redis
+    gem install redis
 fi
 
 # Again, not needed by travis, but useful for local testing
