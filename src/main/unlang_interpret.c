@@ -789,8 +789,8 @@ typedef struct unlang_parallel_t {
  */
 static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *state)
 {
-	int			i;
-	rlm_rcode_t		rcode;
+	int			i, priority;
+	rlm_rcode_t		result;
 	unlang_parallel_child_state_t done = CHILD_DONE; /* hope that we're done */
 
 	// @todo - rdebug running the request.
@@ -807,7 +807,7 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 			 *	Not ready to run.
 			 */
 		case CHILD_YIELDED:
-			DEBUG3("parallel child %d is already YIELDED", i);
+			RDEBUG3("parallel child %d is already YIELDED", i);
 			rad_assert(state->children[i].child != NULL);
 			rad_assert(state->children[i].instruction != NULL);
 			done = CHILD_YIELDED;
@@ -817,7 +817,7 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 			 *	Don't need to call this any more.
 			 */
 		case CHILD_DONE:
-			DEBUG3("parallel child %d is already DONE", i);
+			RDEBUG3("parallel child %d is already DONE", i);
 			rad_assert(state->children[i].child == NULL);
 			rad_assert(state->children[i].instruction == NULL);
 			continue;
@@ -826,7 +826,7 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 			 *	Create the child and then run it.
 			 */
 		case CHILD_INIT:
-			DEBUG3("parallel child %d is INIT", i);
+			RDEBUG3("parallel child %d is INIT", i);
 			rad_assert(state->children[i].instruction != NULL);
 			state->children[i].child = unlang_child_alloc(request, state->children[i].instruction,
 								      RLM_MODULE_FAIL, /* @todo - fixme ? */
@@ -838,19 +838,21 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 			 *	Run this entry.
 			 */
 		case CHILD_RUNNABLE:
-			DEBUG3("parallel child %d is RUNNABLE", i);
-			rcode = unlang_run(state->children[i].child, state->children[i].child->stack);
-			if (rcode == RLM_MODULE_YIELD) {
+			RDEBUG("parallel - running entry %d/%d", i + 1, state->num_children);
+			result = unlang_run(state->children[i].child, state->children[i].child->stack);
+			if (result == RLM_MODULE_YIELD) {
 				state->children[i].state = CHILD_YIELDED;
 				done = CHILD_YIELDED;
 				continue;
 			}
 
-			DEBUG3("parallel child %d returns %s", i, fr_int2str(mod_rcode_table, rcode, "<invalid>"));
+			RDEBUG3("parallel child %d returns %s", i, fr_int2str(mod_rcode_table, result, "<invalid>"));
 
 			/*
-			 *	@todo - Merge the results into state->result, state->priority
+			 *	Remember this before we delete the
+			 *	reference to 'instruction'.
 			 */
+			priority = state->children[i].instruction->actions[result];
 
 			/*
 			 *	Clean up the state entry.
@@ -858,6 +860,31 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 			state->children[i].state = CHILD_DONE;
 			TALLOC_FREE(state->children[i].child);
 			state->children[i].instruction = NULL;
+
+			/*
+			 *	Deal with magic priorities.
+			 */
+			if (priority == MOD_ACTION_RETURN) priority = 0;
+
+			if (priority == MOD_ACTION_REJECT) {
+				priority = 0;
+				result = RLM_MODULE_REJECT;
+			}
+
+			/*
+			 *	Do priority over-ride.
+			 */
+			if (priority > state->priority) {
+				unlang_stack_t *stack = request->stack;
+
+				state->result = result;
+				state->priority = priority;
+
+				RDEBUG4("** [%i] %s - over-riding result from higher priority to (%s %d)",
+					stack->depth, __FUNCTION__,
+					fr_int2str(mod_rcode_table, result, "<invalid>"),
+					priority);
+			}
 
 			/*
 			 *	Another child has yielded, so we
