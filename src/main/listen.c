@@ -1942,11 +1942,6 @@ static int do_proxy(REQUEST *request)
 {
 	VALUE_PAIR *vp;
 
-	if (request->in_proxy_hash ||
-	    (request->proxy && request->proxy->reply && (request->proxy->reply->code != 0))) {
-		return 0;
-	}
-
 	/*
 	 *	We have a destination IP address.  It will (later) proxied.
 	 */

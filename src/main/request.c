@@ -48,10 +48,6 @@ struct request_data_t {
  */
 static int _request_free(REQUEST *request)
 {
-	rad_assert(!request->in_request_hash);
-#ifdef WITH_PROXY
-	rad_assert(!request->in_proxy_hash);
-#endif
 	rad_assert(!request->ev);
 
 #ifndef NDEBUG

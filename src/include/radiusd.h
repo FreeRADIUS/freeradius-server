@@ -301,7 +301,6 @@ struct rad_request {
 
 	main_config_t		*root;		//!< Pointer to the main config hack to try and deal with hup.
 
-	bool			in_request_hash;
 #ifdef WITH_PROXY
 	bool			in_proxy_hash;
 #endif
