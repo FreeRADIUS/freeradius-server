@@ -2504,7 +2504,9 @@ void unlang_resumable(REQUEST *request)
 
 			rad_assert(state->children[i].state == CHILD_YIELDED);
 			state->children[i].state = CHILD_RUNNABLE;
+#ifndef NDEBUG
 			found = true;
+#endif
 			break;
 		}
 
