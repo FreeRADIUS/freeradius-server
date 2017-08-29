@@ -12,8 +12,6 @@ else
     printf "WARNING: An RVM installation was not found.\n"
 fi
 
-rvm default
-
 TMP_REDIS_DIR='/tmp/redis'
 export PATH="${TMP_REDIS_DIR}:${PATH}"
 
@@ -59,7 +57,7 @@ if [ `gem list redis -i` = 'false' ]; then
     ruby -v
     gem -v
 
-    sudo gem install redis
+    sudo rvm gem install redis
 fi
 
 # Again, not needed by travis, but useful for local testing
