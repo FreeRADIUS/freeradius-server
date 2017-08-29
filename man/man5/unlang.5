@@ -39,22 +39,6 @@ one one line.  Each entry begins with a keyword.  Entries are
 organized into lists.  Processing of the language is line by line,
 from the start of the list to the end.  Actions are executed
 per-keyword.
-.IP module-name[.section-name]
-A reference to the named module.  When processing reaches this point,
-the pre-compiled module is called.  The module may succeed or fail,
-and will return a status to "unlang" if so.  This status can be tested
-in a condition.  See the "Simple Conditions" text in the CONDITIONS
-section, and MODULE RETURN CODES, below.
-If a section-name is provided, it will cause the module to execute 
-as if it were listed in the named section.
-
-.DS
-	chap  # call the CHAP module
-.br
-	sql   # call the SQL module
-.br
-	...
-.DE
 .IP if
 .br
 Checks for a particular condition.  If true, the block after the
@@ -136,6 +120,133 @@ recommended.
 	foreach &Attribute-Reference {
 .br
 		...
+.br
+	}
+.DE
+.IP load-balance
+This section contains a simple list of modules.  When the section is
+entered, one module is chosen to process the request.  All of the
+modules in the list should be the same type (e.g. ldap or sql).  All
+of the modules in the list should behave identically, otherwise the
+load-balance section may return different results for the same
+request.
+
+Load-balance sections can contain only a list of modules, and cannot
+contain keywords that perform conditional operations (if, else, etc)
+or which update an attribute list.
+
+Load-balance sections can optionally take a key.  The key is expanded
+at run time, hashed, and the hash used to select a module.  If no
+key is given, a module is chosen at random.
+
+.DS
+	load-balance &User-Name {
+.br
+		ldap1	# 50% of requests go here
+.br
+		ldap2	# 50% of requests go here
+.br
+	}
+.DE
+
+In general, we recommend using "redundant-load-balance" instead of
+"load-balance".  The main use of the keyed load-balance sections is to
+perform sharding of data across multiple back-ends, without
+redundancy.  i.e. Requests will always go to one back-end, and if that
+back-end is not available, the "load-balance" section will return "fail".
+.IP module-name[.section-name]
+A reference to the named module.  When processing reaches this point,
+the pre-compiled module is called.  The module may succeed or fail,
+and will return a status to "unlang" if so.  This status can be tested
+in a condition.  See the "Simple Conditions" text in the CONDITIONS
+section, and MODULE RETURN CODES, below.
+If a section-name is provided, it will cause the module to execute 
+as if it were listed in the named section.
+
+.DS
+	chap  # call the CHAP module
+.br
+	sql   # call the SQL module
+.br
+	...
+.DE
+.IP redundant
+This section contains a simple list of modules.  The first module is
+called when the section is being processed.  If the first module
+succeeds in its operation, then the server stops processing the
+section, and returns to the parent section.
+
+If, however, the module fails, then the next module in the list is
+tried, as described above.  The processing continues until one module
+succeeds, or until the list has been exhausted.
+
+Redundant sections can contain only a list of modules, and cannot
+contain keywords that perform conditional operations (if, else, etc)
+or update an attribute list.
+
+.DS
+	redundant {
+.br
+		sql1	# try this
+.br
+		sql2	# try this only if sql1 fails.
+.br
+		...
+.br
+	}
+.DE
+.IP redundant-load-balance
+This section contains a simple list of modules.  When the section is
+entered, one module is chosen to process the request.  If that module
+succeeds, then the server stops processing the section.  If, however,
+the module fails, then one of the remaining modules is chosen at
+random to process the request.  This process repeats until one module
+succeeds, or until the list has been exhausted.
+
+All of the modules in the list should be the same type (e.g. ldap or
+sql).  All of the modules in the list should behave identically,
+otherwise the load-balance section may return different results for
+the same request.
+
+Redundant-load-balance sections can contain only a list of modules, and cannot
+contain keywords that perform conditional operations (if, else, etc)
+or update an attribute list. Please see raddb/radiusd.conf 
+"instantiate" section for more configuration examples.
+
+Redundant-load-balance sections can optionally take a key.  The key is expanded
+at run time, hashed, and the hash used to select a module.  If no
+key is given, a module is chosen at random.
+
+.DS
+	redundant-load-balance {
+.br
+		ldap1	# 50%, unless ldap2 is down, then 100%
+.br
+		ldap2	# 50%, unless ldap1 is down, then 100%
+.br
+	}
+.DE
+
+.IP return
+.br
+Returns from the current section, and stops all processing.  This
+keyword is mainly used to avoid layers of nested "if" and "else"
+statements.
+
+.DS
+	recv Access-Request {
+.br
+		if (...) {
+.br
+			...
+.br
+			return
+.br
+		}
+.br
+		...  # this is never reached when the "if"
+.br
+		...  # statement is executed
 .br
 	}
 .DE
@@ -239,114 +350,6 @@ received.
 The only contents permitted in an "update" section are attributes and
 values.  The contents of the "update" section are described in the
 ATTRIBUTE REFERENCE and ATTRIBUTE ASSIGNMENT sections below.
-.IP redundant
-This section contains a simple list of modules.  The first module is
-called when the section is being processed.  If the first module
-succeeds in its operation, then the server stops processing the
-section, and returns to the parent section.
-
-If, however, the module fails, then the next module in the list is
-tried, as described above.  The processing continues until one module
-succeeds, or until the list has been exhausted.
-
-Redundant sections can contain only a list of modules, and cannot
-contain keywords that perform conditional operations (if, else, etc)
-or update an attribute list.
-
-.DS
-	redundant {
-.br
-		sql1	# try this
-.br
-		sql2	# try this only if sql1 fails.
-.br
-		...
-.br
-	}
-.DE
-.IP load-balance
-This section contains a simple list of modules.  When the section is
-entered, one module is chosen to process the request.  All of the
-modules in the list should be the same type (e.g. ldap or sql).  All
-of the modules in the list should behave identically, otherwise the
-load-balance section may return different results for the same
-request.
-
-Load-balance sections can contain only a list of modules, and cannot
-contain keywords that perform conditional operations (if, else, etc)
-or which update an attribute list.
-
-Load-balance sections can optionally take a key.  The key is expanded
-at run time, hashed, and the hash used to select a module.  If no
-key is given, a module is chosen at random.
-
-.DS
-	load-balance &User-Name {
-.br
-		ldap1	# 50% of requests go here
-.br
-		ldap2	# 50% of requests go here
-.br
-	}
-.DE
-
-In general, we recommend using "redundant-load-balance" instead of
-"load-balance".
-.IP redundant-load-balance
-This section contains a simple list of modules.  When the section is
-entered, one module is chosen to process the request.  If that module
-succeeds, then the server stops processing the section.  If, however,
-the module fails, then one of the remaining modules is chosen at
-random to process the request.  This process repeats until one module
-succeeds, or until the list has been exhausted.
-
-All of the modules in the list should be the same type (e.g. ldap or
-sql).  All of the modules in the list should behave identically,
-otherwise the load-balance section may return different results for
-the same request.
-
-Redundant-load-balance sections can contain only a list of modules, and cannot
-contain keywords that perform conditional operations (if, else, etc)
-or update an attribute list. Please see raddb/radiusd.conf 
-"instantiate" section for more configuration examples.
-
-Redundant-load-balance sections can optionally take a key.  The key is expanded
-at run time, hashed, and the hash used to select a module.  If no
-key is given, a module is chosen at random.
-
-.DS
-	redundant-load-balance {
-.br
-		ldap1	# 50%, unless ldap2 is down, then 100%
-.br
-		ldap2	# 50%, unless ldap1 is down, then 100%
-.br
-	}
-.DE
-
-.IP return
-.br
-Returns from the current section, and stops all processing.  This
-keyword is mainly used to avoid layers of nested "if" and "else"
-statements.
-
-.DS
-	recv Access-Request {
-.br
-		if (...) {
-.br
-			...
-.br
-			return
-.br
-		}
-.br
-		...  # this is never reached when the "if"
-.br
-		...  # statement is executed
-.br
-	}
-.DE
 .SH ATTRIBUTE REFERENCES
 
 Attributes may be referenced via the following syntax:
