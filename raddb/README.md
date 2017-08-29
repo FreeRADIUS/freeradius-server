@@ -256,6 +256,33 @@ The following modules will apply `connect_timeout`:
 Some modules such as rlm_sql_postgresql can have their timeout set via an alternative
 configuration item (e.g. `radius_db` in the case of postgresql).
 
+## New Modules
+
+The following modules are new in v4.
+
+### rlm_radius
+
+The `radius` module has taken over much of the functionality of
+`proxy.conf`.  See `raddb/mods-available/radius` for documentation and
+configuration examples.
+
+The `radius` module connects to one home server, just like the
+`home_server` configuration in v3.  Some of the configuration items
+are similar, but many are different.
+
+The module can send multiple packet types to one home server.
+e.g. Access-Request and Accounting-Request.
+
+This module also replaces the old 'coa' and 'originate-coa'
+configuration.  See also `fork` for creating child requests which are
+different from the parent requests.
+
+Unlike v3, the module can do asynchronous proxying.  That is, proxying
+where the server controls the retransmission behavior.  In v3, the
+server retransmitted proxied packets only when it received a
+retransmission from the NAS.  That behavior is good, but there are
+times where retransmitting at the proxy is better.
+
 ## Changed Modules
 
 The following modules exhibit changed behaviour.
@@ -327,29 +354,6 @@ before, and then the result is multiplied by one.
 
 Attributes of type `octets` are now passed directly to Perl as binary
 data, instead of as hex strings.
-
-### rlm_radius
-
-The `radius` module has taken over much of the functionality of
-`proxy.conf`.  See `raddb/mods-available/radius` for documentation and
-configuration examples.
-
-The `radius` module connects to one home server, just like the
-`home_server` configuration in v3.  Some of the configuration items
-are similar, but many are different.
-
-The module can send multiple packet types to one home server.
-e.g. Access-Request and Accounting-Request.
-
-This module also replaces the old 'coa' and 'originate-coa'
-configuration.  See also `fork` for creating child requests which are
-different from the parent requests.
-
-Unlike v3, the module can do asynchronous proxying.  That is, proxying
-where the server controls the retransmission behavior.  In v3, the
-server retransmitted proxied packets only when it received a
-retransmission from the NAS.  That behavior is good, but there are
-times where retransmitting at the proxy is better.
 
 ### rlm_rest
 
