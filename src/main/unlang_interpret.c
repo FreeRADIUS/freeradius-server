@@ -560,12 +560,6 @@ static REQUEST *unlang_child_alloc(REQUEST *request, unlang_t *instruction, rlm_
 	child->server_cs = request->server_cs;
 
 	/*
-	 *	If this is used, it needs to be freed when the child
-	 *	is freed.
-	 */
-	child->state_ctx = child;
-
-	/*
 	 *	Initialize all of the async fields.
 	 */
 	child->async = talloc_zero(child, fr_async_t);
