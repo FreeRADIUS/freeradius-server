@@ -10,7 +10,7 @@
 .RE
 .sp
 ..
-.TH unlang 5 "29 June 2017" "" "FreeRADIUS Processing un-language"
+.TH unlang 5 "29 August 2017" "" "FreeRADIUS Processing un-language"
 .SH NAME
 unlang \- FreeRADIUS Processing un\-language
 .SH DESCRIPTION
@@ -23,9 +23,8 @@ Python modules rlm_perl, or rlm_python.
 The goal of the language is to allow simple policies to be written
 with minimal effort.  Those policies are then applied when a request
 is being processed.  Requests are processed through virtual servers
-(including the default one), in the sections titled "authorize",
-"authenticate", "post-auth", "preacct", "accounting", "pre-proxy",
-and "post-proxy".
+(including the default one), in the sections titled "recv
+Access-Request", "send Access-Accept", "authenticate pap", etc.
 
 These policies cannot be used in any other part of the configuration
 files, such as module or client configuration.
@@ -215,10 +214,9 @@ the current block.
 	}
 .DE
 
-The <list> can be one of "request", "reply", "proxy-request",
-"proxy-reply", "session-state", or "control".  As
-of Version 3, the <list> can be omitted, in which case "request" is
-assumed.
+The <list> can be one of "request", "reply", "session-state", or
+"control".  As of Version 3, the <list> can be omitted, in which case
+"request" is assumed.
 
 The "control" list is the list of attributes maintainted internally by
 the server that controls how the server processes the request.  Any
@@ -229,6 +227,9 @@ For EAP methods with tunneled authentication sessions (i.e. PEAP and
 EAP-TTLS), the inner tunnel session can also reference
 "outer.request", "outer.reply", and "outer.control".  Those references
 allow you to address the relevant list in the outer tunnel session.
+
+The word "parent" may also be used as a synonym to "outer".
+e.g. "parent.request", etc.
 
 The "session-state" list is primarily used for EAP.  Attributes put
 into the "session-state" list are saved for the next packet in the
@@ -325,9 +326,9 @@ key is given, a module is chosen at random.
 
 .IP return
 .br
-Returns from the current top-level section, e.g. "authorize" or
-"authenticate".  This keyword is mainly used to avoid layers of nested
-"if" and "else" statements.
+Returns from the current section, and stops all processing.  This
+keyword is mainly used to avoid layers of nested "if" and "else"
+statements.
 
 .DS
 	recv Access-Request {
