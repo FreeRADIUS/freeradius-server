@@ -118,7 +118,30 @@ sleeping... the network always sets it, I guess..
 * fork also needs to do this sanity check on compile, so that it knows
   it can dereference sections which exist...
 
-### Add parallel
+### Add short-circuit fail on no connections
 
-mostly like fork, as each request is run independently.  They can
-update the parent manually if they so desire.
+ If rlm_radius has no connections up, or all connections are zombie,
+ it can just return "fail" immediately.  This is so that parallel
+ sections don't sit around waiting 30s for the connection to come back
+ up.
+
+i.e. if down, don't add more requests, and just skip this home server
+
+### add short-circuit parallel
+
+As soon as ANY module is done, take that result, and kill the rest of
+the child requests.
+
+### double-check request_data and children
+
+and session-state?
+
+What does it mean when a child has state?  typically "delete it"
+
+### clean up REQUEST structure
+
+in_request_hash, in_proxy_hash, etc. are essentially unused.
+
+all of those (and listen.c, etc.) need to be cleaned up and deleted.
+
+grunt work, but very useful.
