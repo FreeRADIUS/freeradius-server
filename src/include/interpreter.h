@@ -175,7 +175,7 @@ typedef struct {
 							//!< may be removed in future.
 
 
-	void const			*resume_ctx;   	//!< Context data for the callback.  Usually represents
+	void				*resume_ctx;   	//!< Context data for the callback.  Usually represents
 							//!< the module's internal state at the time of yielding.
 	void const			*instance;	//!< instance data
 	void     			*thread;	//!< thread data

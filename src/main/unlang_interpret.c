@@ -487,7 +487,7 @@ static rlm_rcode_t unlang_run(REQUEST *request, unlang_stack_t *stack);
  */
 static unlang_resume_t *unlang_resume_alloc(REQUEST *request,
 					    fr_unlang_resume_callback_t callback,
-					    fr_unlang_action_t signal_callback, void const *ctx)
+					    fr_unlang_action_t signal_callback, void *ctx)
 {
 	unlang_resume_t 		*mr;
 	unlang_stack_t			*stack = request->stack;
@@ -1301,12 +1301,10 @@ static unlang_action_t unlang_resume(REQUEST *request, unlang_stack_t *stack,
 	unlang_t			*instruction = frame->instruction;
 	unlang_resume_t			*mr = unlang_generic_to_resume(instruction);
 	unlang_stack_state_modcall_t	*modcall_state = NULL;
-	void 				*resume_ctx;
 	void 				*instance;
 
 	RDEBUG3("Resuming in %s", mr->self.debug_name);
 
-	memcpy(&resume_ctx, &mr->resume_ctx, sizeof(resume_ctx));
 	memcpy(&instance, &mr->instance, sizeof(instance));
 	request->module = mr->self.debug_name;
 
@@ -1314,7 +1312,7 @@ static unlang_action_t unlang_resume(REQUEST *request, unlang_stack_t *stack,
 	 *	Do the internal resume function.
 	 */
 	if (unlang_ops_resume[mr->parent_type]) {
-		*presult = request->rcode = unlang_ops_resume[mr->parent_type](request, stack, instance, mr->thread, resume_ctx);
+		*presult = request->rcode = unlang_ops_resume[mr->parent_type](request, stack, instance, mr->thread, mr->resume_ctx);
 
 	} else {
 		rad_assert(mr->parent_type == UNLANG_TYPE_MODULE_CALL);
@@ -1326,7 +1324,7 @@ static unlang_action_t unlang_resume(REQUEST *request, unlang_stack_t *stack,
 		 *	Lock is noop unless instance->mutex is set.
 		 */
 		safe_lock(mr->module_instance);
-		*presult = request->rcode = mr->callback(request, instance, mr->thread, resume_ctx);
+		*presult = request->rcode = mr->callback(request, instance, mr->thread, mr->resume_ctx);
 		safe_unlock(mr->module_instance);
 	}
 
@@ -2222,7 +2220,6 @@ void unlang_signal(REQUEST *request, fr_state_action_t action)
 	unlang_stack_frame_t		*frame;
 	unlang_stack_t			*stack = request->stack;
 	unlang_resume_t			*mr;
-	void				*resume_ctx;
 	void				*instance;
 
 	rad_assert(stack->depth > 0);
@@ -2239,10 +2236,9 @@ void unlang_signal(REQUEST *request, fr_state_action_t action)
 	mr = unlang_generic_to_resume(frame->instruction);
 	if (!mr->signal_callback) return;
 
-	memcpy(&resume_ctx, &mr->resume_ctx, sizeof(resume_ctx));
 	memcpy(&instance, &mr->instance, sizeof(instance));
 
-	mr->signal_callback(request, instance, mr->thread, resume_ctx, action);
+	mr->signal_callback(request, instance, mr->thread, mr->resume_ctx, action);
 }
 
 /** Yield a request back to the interpreter from within a module
@@ -2262,7 +2258,7 @@ void unlang_signal(REQUEST *request, fr_state_action_t action)
  * @return always returns RLM_MODULE_YIELD.
  */
 rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_resume_callback_t callback,
-				fr_unlang_action_t signal_callback, void const *ctx)
+				fr_unlang_action_t signal_callback, void *ctx)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];

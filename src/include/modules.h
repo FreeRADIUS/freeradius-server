@@ -304,7 +304,7 @@ void		unlang_resumable(REQUEST *request);
 void		unlang_signal(REQUEST *request, fr_state_action_t action);
 
 rlm_rcode_t	unlang_module_yield(REQUEST *request, fr_unlang_resume_callback_t callback, fr_unlang_action_t signal_callback,
-			     void const *ctx);
+			     void *ctx);
 
 #ifdef __cplusplus
 }
