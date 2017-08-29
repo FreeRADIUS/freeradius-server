@@ -983,6 +983,19 @@ static rlm_rcode_t unlang_parallel_resume(REQUEST *request, unlang_stack_t *stac
 	return RLM_MODULE_YIELD;
 }
 
+static int parallel_state_free(unlang_parallel_t *state)
+{
+	int i;
+
+	for (i = 0; i < state->num_children; i++) {
+		if (state->children[i].child) {
+			talloc_free(state->children[i].child);
+		}
+	}
+
+	return 0;
+}
+
 static unlang_action_t unlang_parallel(REQUEST *request, unlang_stack_t *stack,
 				       rlm_rcode_t *presult, int *priority)
 {
@@ -1013,6 +1026,7 @@ static unlang_action_t unlang_parallel(REQUEST *request, unlang_stack_t *stack,
 	};
 
 	(void) talloc_set_type(state, unlang_parallel_t);
+	talloc_set_destructor(state, parallel_state_free);
 	state->result = RLM_MODULE_FAIL;
 	state->priority = -1;				/* as-yet unset */
 	state->g = g;
