@@ -697,21 +697,24 @@ static unlang_action_t unlang_fork(REQUEST *request, unlang_stack_t *stack,
 		slen = tmpl_expand(&p, buffer, sizeof(buffer), request, g->vpt, NULL, NULL);
 		if (slen < 0) {
 			REDEBUG("Failed expanding template");
-			*result = RLM_MODULE_FAIL;
+			*presult = RLM_MODULE_FAIL;
+			*priority = instruction->actions[*presult];
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 
 		da = fr_dict_attr_by_name(NULL, "Packet-Type");
 		if (!da) {
 			REDEBUG("Failed finding Packet-Type attribute");
-			*result = RLM_MODULE_FAIL;
+			*presult = RLM_MODULE_FAIL;
+			*priority = instruction->actions[*presult];
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 
 		dval = fr_dict_enum_by_alias(NULL, da, p);
 		if (!dval) {
 			RDEBUG("Failed to find Packet-Type %s", buffer);
-			*result = RLM_MODULE_FAIL;
+			*presult = RLM_MODULE_FAIL;
+			*priority = instruction->actions[*presult];
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 
@@ -731,7 +734,8 @@ static unlang_action_t unlang_fork(REQUEST *request, unlang_stack_t *stack,
 	rcode = unlang_run(child, child->stack);
 	if (rcode != RLM_MODULE_YIELD) {
 		talloc_free(child);
-		*result = rcode;
+		*presult = rcode;
+		*priority = instruction->actions[*presult];
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
