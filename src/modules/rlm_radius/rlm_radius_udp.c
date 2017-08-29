@@ -1975,6 +1975,16 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 	 */
 	if (t->pending) mod_clear_backlog(t);
 
+	/*
+	 *	If configured, and we don't have any active
+	 *	connections, fail the request.  This lets "parallel"
+	 *	sections finish much more quickly than otherwise.
+	 */
+	if (inst->parent->no_connection_fail && !fr_heap_num_elements(t->active)) {
+		RDEBUG("Failing request due to 'no_connection_fail = true', and there are no active connections");
+		return RLM_MODULE_FAIL;
+	}
+
 	u->link = link;
 	u->code = request->packet->code;
 	FR_DLIST_INIT(u->entry);
