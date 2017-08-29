@@ -807,7 +807,7 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 			 *	Not ready to run.
 			 */
 		case CHILD_YIELDED:
-			RDEBUG3("parallel child %d is already YIELDED", i);
+			RDEBUG3("parallel child %d is already YIELDED", i + 1);
 			rad_assert(state->children[i].child != NULL);
 			rad_assert(state->children[i].instruction != NULL);
 			done = CHILD_YIELDED;
@@ -817,7 +817,7 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 			 *	Don't need to call this any more.
 			 */
 		case CHILD_DONE:
-			RDEBUG3("parallel child %d is already DONE", i);
+			RDEBUG3("parallel child %d is already DONE", i + 1);
 			rad_assert(state->children[i].child == NULL);
 			rad_assert(state->children[i].instruction == NULL);
 			continue;
@@ -826,7 +826,7 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 			 *	Create the child and then run it.
 			 */
 		case CHILD_INIT:
-			RDEBUG3("parallel child %d is INIT", i);
+			RDEBUG3("parallel child %d is INIT", i + 1);
 			rad_assert(state->children[i].instruction != NULL);
 			state->children[i].child = unlang_child_alloc(request, state->children[i].instruction,
 								      RLM_MODULE_FAIL, /* @todo - fixme ? */
@@ -846,7 +846,8 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 				continue;
 			}
 
-			RDEBUG3("parallel child %d returns %s", i, fr_int2str(mod_rcode_table, result, "<invalid>"));
+			RDEBUG3("parallel child %d returns %s", i + 1,
+				fr_int2str(mod_rcode_table, result, "<invalid>"));
 
 			/*
 			 *	Remember this before we delete the
@@ -862,10 +863,20 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 			state->children[i].instruction = NULL;
 
 			/*
-			 *	Deal with magic priorities.
+			 *	return is "stop processing the
+			 *	parallel section".
 			 */
-			if (priority == MOD_ACTION_RETURN) priority = 0;
+			if (priority == MOD_ACTION_RETURN) {
+				priority = 0;
+				done = CHILD_DONE;
+				RDEBUG("child %d/%d says 'return' - skipping the remaining children",
+				       i + 1, state->num_children);
+				i = state->num_children;
+			}
 
+			/*
+			 *	Reject is just reject.
+			 */
 			if (priority == MOD_ACTION_REJECT) {
 				priority = 0;
 				result = RLM_MODULE_REJECT;
@@ -894,6 +905,7 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 			if (done == CHILD_YIELDED) continue;
 
 			rad_assert(done == CHILD_DONE);
+			break;
 		}
 	}
 
