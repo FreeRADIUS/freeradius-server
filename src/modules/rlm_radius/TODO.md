@@ -18,9 +18,6 @@
 * CONN_STATUS_CHECKS isn't used... it's probably not useful, and
   should be deleted.
 
-* add configurable timers for response_window (see @todo in rlm_radius_udp)
-  * for synchronous proxying.
-
 * maybe move Status-Server to fixed-time pings, as recommended in RFC 3539?
   * low priority, and probably not useful
 
@@ -117,26 +114,6 @@ sleeping... the network always sets it, I guess..
 
 * fork also needs to do this sanity check on compile, so that it knows
   it can dereference sections which exist...
-
-### Add short-circuit fail on no connections
-
- If rlm_radius has no connections up, or all connections are zombie,
- it can just return "fail" immediately.  This is so that parallel
- sections don't sit around waiting 30s for the connection to come back
- up.
-
-i.e. if down, don't add more requests, and just skip this home server
-
-### add short-circuit parallel
-
-As soon as ANY module is done, take that result, and kill the rest of
-the child requests.
-
-### double-check request_data and children
-
-and session-state?
-
-What does it mean when a child has state?  typically "delete it"
 
 ### clean up REQUEST structure
 
