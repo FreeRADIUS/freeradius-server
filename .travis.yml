@@ -105,7 +105,6 @@ services:
 - redis-server
 before_install:
 - rvm --install --default --binary use 2.4
-- ruby -v
 - if [ "${CC}" == 'gcc' ]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 60; fi
 - if [ "${CC}" == 'gcc' ]; then sudo update-alternatives --config gcc; fi
 - if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-3.9 60; fi
