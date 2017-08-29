@@ -170,6 +170,30 @@ as if it were listed in the named section.
 .br
 	...
 .DE
+.IP parallel
+This section runs subsections in parallel.  Each subsection runs as a
+child request, which is a clone of the parent request.  Policies in
+the child can update the original parent request by using "update
+parent.request", or "update parent.reply".
+
+The child requests are required because each subsection is run
+simultaneously.  If each subsection updated the original request, it
+would be impossible to separate the state of each subsection.
+
+The return code of the parallel section is the same as if each
+subsection was run sequentially.
+
+.DS
+	parallel {
+.br
+		home_server_1
+.br
+		home_server_2
+.br
+		...
+.br
+	}
+.DE
 .IP redundant
 This section contains a simple list of modules.  The first module is
 called when the section is being processed.  If the first module
