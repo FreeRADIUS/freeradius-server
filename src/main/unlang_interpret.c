@@ -527,6 +527,67 @@ static unlang_resume_t *unlang_resume_alloc(REQUEST *request,
 	return mr;
 }
 
+
+/** Allocate a child request based on the parent.
+ *
+ */
+static REQUEST *unlang_child_alloc(REQUEST *request, unlang_t *instruction, rlm_rcode_t default_rcode, bool do_next_sibling)
+{
+	REQUEST *child;
+	unlang_stack_t *stack;
+
+	child = request_alloc_fake(request);
+	if (!child) return NULL;
+
+	child->packet->code = request->packet->code;
+
+	/*
+	 *	Push the children, and set it's top frame to be true.
+	 */
+	stack = child->stack;
+	child->log.unlang_indent = request->log.unlang_indent;
+	unlang_push(stack, instruction, default_rcode, do_next_sibling, UNLANG_SUB_FRAME);
+	stack->frame[stack->depth].top_frame = true;
+
+	/*
+	 *	Initialize some basic information for the child.
+	 *
+	 *	Note that we do NOT initialize child->backlog, as the
+	 *	child is never resumable... the parent is resumable.
+	 */
+	child->number = request->number;
+	child->el = request->el;
+	child->server_cs = request->server_cs;
+
+	/*
+	 *	Initialize all of the async fields.
+	 */
+	child->async = talloc_zero(child, fr_async_t);
+
+#define COPY_FIELD(_x) child->async->_x = request->async->_x
+	COPY_FIELD(original_recv_time);
+	COPY_FIELD(recv_time);
+	COPY_FIELD(listen);
+
+	child->async->listen->app->process_set(child->async->listen->app_instance, child);
+	rad_assert(child->async->process != NULL);
+
+	/*
+	 *	Note that we don't do time tracking on the child.
+	 *	Instead, all of it is done in the context of the
+	 *	parent.
+	 */
+	FR_DLIST_INIT(child->async->time_order);
+
+	/*
+	 *	fork() is a copy???
+	 */
+	child->packet->vps = fr_pair_list_copy(child->packet, request->packet->vps);
+
+	return child;
+}
+
+
 /** Send a signal from parent request to child
  *
  */
@@ -586,14 +647,13 @@ static rlm_rcode_t unlang_fork_resume(UNUSED REQUEST *request, unlang_stack_t *s
 }
 
 static unlang_action_t unlang_fork(REQUEST *request, unlang_stack_t *stack,
-				   rlm_rcode_t *result, UNUSED int *priority)
+				   rlm_rcode_t *presult, UNUSED int *priority)
 {
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
 	unlang_group_t		*g;
 	REQUEST			*child;
 	rlm_rcode_t		rcode;
-	unlang_stack_t		*child_stack;
 	unlang_resume_t		*mr;
 
 	g = unlang_generic_to_group(instruction);
@@ -610,14 +670,23 @@ static unlang_action_t unlang_fork(REQUEST *request, unlang_stack_t *stack,
 		return UNLANG_ACTION_CONTINUE;
 	}
 
-	child = request_alloc_fake(request);
+	/*
+	 *	Allocate the child request.
+	 */
+	child = unlang_child_alloc(request, instruction, frame->result, UNLANG_NEXT_CONTINUE);
 	if (!child) {
-		*result = RLM_MODULE_FAIL;
+		*presult = RLM_MODULE_FAIL;
+		*priority = instruction->actions[*presult];
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	child->packet->code = request->packet->code;
-
+	/*
+	 *	Swap the child->packet->code
+	 *
+	 *	@todo - do this before calling unlang_child_alloc(),
+	 *	and pass the virtual server && packet code to that
+	 *	function, so it can fill in the various bits of magic.x
+	 */
 	if (g->vpt) {
 		ssize_t slen;
 		char const *p = NULL;
@@ -648,49 +717,6 @@ static unlang_action_t unlang_fork(REQUEST *request, unlang_stack_t *stack,
 
 		child->packet->code = dval->value->vb_uint32;
 	}
-
-	/*
-	 *	Push the children, and set it's top frame to be true.
-	 */
-	child_stack = child->stack;
-	child->log.unlang_indent = request->log.unlang_indent;
-	unlang_push(child_stack, g->children, frame->result, UNLANG_NEXT_CONTINUE, UNLANG_SUB_FRAME);
-	child_stack->frame[child_stack->depth].top_frame = true;
-
-	/*
-	 *	Initialize some basic information for the child.
-	 *
-	 *	Note that we do NOT initialize child->backlog, as the
-	 *	child is never resumable... the parent is resumable.
-	 */
-	child->number = request->number;
-	child->el = request->el;
-	child->server_cs = request->server_cs;
-
-	/*
-	 *	Initialize all of the async fields.
-	 */
-	child->async = talloc_zero(child, fr_async_t);
-
-#define COPY_FIELD(_x) child->async->_x = request->async->_x
-	COPY_FIELD(original_recv_time);
-	COPY_FIELD(recv_time);
-	COPY_FIELD(listen);
-
-	child->async->listen->app->process_set(child->async->listen->app_instance, child);
-	rad_assert(child->async->process != NULL);
-
-	/*
-	 *	Note that we don't do time tracking on the child.
-	 *	Instead, all of it is done in the context of the
-	 *	parent.
-	 */
-	FR_DLIST_INIT(child->async->time_order);
-
-	/*
-	 *	fork() is a copy???
-	 */
-	child->packet->vps = fr_pair_list_copy(child->packet, request->packet->vps);
 
 	/*
 	 *	Run the child in the same section as the master.  If
