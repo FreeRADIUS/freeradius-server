@@ -16,18 +16,22 @@
 #  reject   - the module received a "nak" (Access-Reject,
 #             CoA-NAK, etc.)
 #
+#  noop     - the module saw it's own Proxy-State attribute,
+#             and is will not proxy the request.  This behavior
+#	      prevents proxy loops.
+#
 #  Any proxied packet (including Accounting-Request!) can
 #  receive a Protocol-Error response packet.  This packet
 #  is an explicit NAK that something went wrong processing
 #  the request.
 #
-#  The module adds a Message-Authenticator attribute to all proxied
-#  Access-Request packets.  For security reasons, this behavior is NOT
-#  configurable, and CANNOT be changed.
+#  For security reasons, the module ensures that all proxied
+#  Access-Request packets contain a Message-Authenticator attribute.
+#  This behavior is NOT configurable, and CANNOT be changed.
 #
 #  The module adds a Proxy-State attribute to all proxied packets.
 #  This Proxy-State contains a 32-bit random number, which is unique
-#  to this module.  It helps to detect proxy loops.
+#  to this module.  This unique number helps to detect proxy loops.
 #
 radius {
 	#
@@ -61,13 +65,49 @@ radius {
 	#  If the home server does not respond to proxied packets, the
 	#  module starts pinging the home server with these packets.
 	#
-	#  For now, the contents of the status check packets cannot be
-	#  edited.  Only Status-Server is supported.
-	#
-	#  If the home server does not support Status-Server packets,
-	#  this configuration item should be deleted or commented out.
-	#
-	status_check = Status-Server
+	status_checks {
+		#
+		#  You can specify any type of packet here, though
+		#  Status-Server is recommended.
+		#
+		#  If you specify another type of packet, it MUST be
+		#  listed as an allowed "type", above.
+		#
+		type = Status-Server
+
+		#
+		#  Status-Server packet contents are fixed and cannot
+		#  be edited.
+		#
+		#  For other packet types, you can create the contents
+		#  here.  The section MUST be "update request", and
+		#  anything else will cause a parse error.
+		#
+		#  We RECOMMEND that you use packet contents which
+		#  lets the other end easily tell that they are not
+		#  "real" packets from a NAS.
+		#
+		#  The example here is for Access-Request.  The
+		#  contents will vary by other packet types.
+		#
+		#  The module will automatically update the contents
+		#  of the Event-Timestamp attribute to be the time
+		#  when the packet is sent.  The module will also
+		#  automatically add a Proxy-State attribute.
+		#
+		#  Do NOT do SQL queries, LDAP queries, dynamic
+		#  expansions, etc. in this section.  The contents are
+		#  created when a connection is opened, and are not
+		#  changable after that.
+		#
+#		update request {
+#			&User-Name := "test-user"
+#			&User-Password := "this-is-not-a-real-password"
+#			&NAS-Identifier := "Status check.  Are you alive?"
+#			&Event-Timestamp = 0
+#		}
+
+	}
 
 	#
 	#  In many cases, the module should do retransmissions of
