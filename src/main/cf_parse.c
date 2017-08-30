@@ -1367,7 +1367,7 @@ int _cf_section_rule_push(CONF_SECTION *cs, CONF_PARSER const *rule, char const 
 		 *	recurse and add the new sub-rules to the
 		 *	existing sub-section.
 		 */
-		if (rule->type == FR_TYPE_SUBSECTION) {
+		if (FR_BASE_TYPE(rule->type) == FR_TYPE_SUBSECTION) {
 			CONF_SECTION *subcs;
 
 			subcs = cf_section_find(cs, rule->name, rule->ident2);
