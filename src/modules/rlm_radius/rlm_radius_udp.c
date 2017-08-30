@@ -996,7 +996,8 @@ static void retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 	 *	Debug the packet again, including any extra
 	 *	Proxy-State or Message-Authenticator we added.
 	 */
-	RDEBUG("sending %s ID %d length %ld over connection %s",
+	RDEBUG("%s %s ID %d length %ld over connection %s",
+	       (c->status_u != u) ? "sending" : "status_check",
 	       fr_packet_codes[u->code], u->rr->id, u->packet_len, c->name);
 	rdebug_pair_list(L_DBG_LVL_2, request, request->packet->vps, NULL);
 	if (u->extra) rdebug_pair_list(L_DBG_LVL_2, request, u->extra, NULL);
@@ -1128,9 +1129,9 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	if (u == c->status_u) {
 		VALUE_PAIR *vp;
 
-		proxy_state = 0;
+		if (u->code == FR_CODE_STATUS_SERVER) proxy_state = 0;
 		vp = fr_pair_find_by_num(request->packet->vps, 0, FR_EVENT_TIMESTAMP, TAG_ANY);
-		vp->vp_uint32 = time(NULL);
+		if (vp) vp->vp_uint32 = time(NULL);
 	}
 
 	/*
@@ -1620,19 +1621,30 @@ static fr_connection_state_t conn_open(UNUSED fr_event_list_t *el, UNUSED int fd
 		request = request_alloc(link);
 		request->async = talloc_zero(request, fr_async_t);
 
-		// @todo - if we call unlang, we need to set a whole lot more... see worker.c
 		request->el = c->thread->el;
 		request->packet = fr_radius_alloc(request, false);
 		request->reply = fr_radius_alloc(request, false);
 
 		/*
 		 *	Create the packet contents.
-		 *
-		 *	@todo - different packet contents for
-		 *	Access-Request, Accounting-Request, etc.
 		 */
-		pair_make_request("NAS-Identifier", "status check - are you alive?", T_OP_EQ);
-		pair_make_request("Event-Timestamp", "0", T_OP_EQ);
+		if (c->inst->parent->status_check == FR_CODE_STATUS_SERVER) {
+			pair_make_request("NAS-Identifier", "status check - are you alive?", T_OP_EQ);
+			pair_make_request("Event-Timestamp", "0", T_OP_EQ);
+		} else {
+			vp_map_t *map;
+
+			/*
+			 *	Create the VPs, and ignore any errors
+			 *	creating them.
+			 */
+			for (map = c->inst->parent->status_check_map; map != NULL; map = map->next) {
+				(void) map_to_request(request, map, map_to_vp, NULL);
+			}
+		}
+
+		DEBUG3("Status check packet will be %s", fr_packet_codes[u->code]);
+		rdebug_pair_list(L_DBG_LVL_3, request, request->packet->vps, NULL);
 
 		/*
 		 *	Initialize the link.  Note that we don't set
