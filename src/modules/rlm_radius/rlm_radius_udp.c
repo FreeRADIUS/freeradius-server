@@ -1777,6 +1777,18 @@ static int conn_free(rlm_radius_udp_connection_t *c)
 	rlm_radius_udp_request_t *u;
 	rlm_radius_udp_thread_t *t = c->thread;
 
+	/*
+	 *	We're no longer using this connection.
+	 */
+	while (true) {
+		uint32_t num_connections;
+
+		num_connections = load(c->inst->parent->num_connections);
+		rad_assert(num_connections > 0);
+
+		if (cas_decr(c->inst->parent->num_connections, num_connections)) break;
+	}
+
 	talloc_free(c->conn);
 	c->conn = NULL;
 
@@ -1843,7 +1855,7 @@ static int conn_free(rlm_radius_udp_connection_t *c)
 /** Allocate a new connection and set it up.
  *
  */
-static void mod_connection_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t *t)
+static void conn_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t *t)
 {
 	rlm_radius_udp_connection_t *c;
 
@@ -1893,9 +1905,29 @@ static void mod_connection_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t
 	c->conn = fr_connection_alloc(c, t->el, &inst->parent->connection_timeout, &inst->parent->reconnection_delay,
 				      conn_init, conn_open, conn_close, inst->parent->name, c);
 	if (!c->conn) {
+		talloc_free(c);
 		cf_log_err(inst->config, "%s failed allocating state handler for new connection",
 			   inst->parent->name);
 		return;
+	}
+
+	/*
+	 *	Enforce max_connections via atomic variables.
+	 *
+	 *	Note that we're counting connections which are in the
+	 *	CONN_OPENING and CONN_ZOMBIE states, too.
+	 */
+	while (true) {
+		uint32_t num_connections;
+
+		num_connections = load(inst->parent->num_connections);
+
+		if (num_connections >= inst->parent->max_connections) {
+			TALLOC_FREE(c->conn); /* ordering */
+			talloc_free(c);
+			return;
+		}
+		if (cas_incr(inst->parent->num_connections, num_connections)) break;
 	}
 
 	fr_connection_start(c->conn);
@@ -1903,6 +1935,8 @@ static void mod_connection_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t
 	fr_dlist_insert_head(&t->opening, &c->entry);
 
 	talloc_set_destructor(c, conn_free);
+
+	return;
 }
 
 /** Get a new connection...
@@ -2015,7 +2049,7 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 		 *	Only open one new connection at a time.
 		 */
 		entry = FR_DLIST_FIRST(t->opening);
-		if (!entry) mod_connection_alloc(inst, t);
+		if (!entry) conn_alloc(inst, t);
 
 		/*
 		 *	Add the request to the backlog.  It will be
@@ -2198,7 +2232,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 
 	t->active = fr_heap_create(conn_cmp, offsetof(rlm_radius_udp_connection_t, heap_id));
 
-	mod_connection_alloc(t->inst, t);
+	conn_alloc(t->inst, t);
 
 	return 0;
 }

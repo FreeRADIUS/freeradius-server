@@ -23,42 +23,14 @@
 
 ## Limits
 
-* limit the maximum number of proxied packets
-* limit the maximum number of outgoing connections
-
-Both will likely require atomic variables in rlm_radius.c, which are
-slow...  Or, we just don't limit the number of proxied packets, and
-instead rely on the other end to do some kind of push-back.  (HA!)
-
-We should limit the number of outgoing connections, tho.
+We limit the number of connections, but not the number of proxied
+packets.  This is because (for now), each connection can only proxy 256 packets...
 
 ## Status Checks
     
-* connection negotiation in Status-Server
+* connection negotiation in Status-Server in proto_radius
   * some is there (Response-Length)
   * add more?  Extended ID, etc.
-
-* enable editing of the contents of status check packets, specifically
-  for Access-Request, etc. which need a User-Name
-
-* it's probably better to just have an "update" section than manual
-  configs?
-
-    status_checks {
-	type = Status-Server 
-	# mrt, irt, mrc taken from another section, as per Access-Request, etc.
-	
-	# update the Status-Server packet here???
-	# probably no need for a separate virtual server...
-	# i.e. no policies
-	# no if / then / else conditions
-	# no templates, just static strings
-	update request {
-		User-Name = ...
-		User-Password = ...
-	}
-    }
-
 
 ## Core Issues
 
@@ -117,8 +89,7 @@ sleeping... the network always sets it, I guess..
 
 ### clean up REQUEST structure
 
-in_request_hash, in_proxy_hash, etc. are essentially unused.
-
-all of those (and listen.c, etc.) need to be cleaned up and deleted.
+many fields are essentially unused.  request->proxy is no longer used,
+but is referenced all over the place.
 
 grunt work, but very useful.

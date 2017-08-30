@@ -128,6 +128,8 @@ static CONF_PARSER const module_config[] = {
 
 	{ FR_CONF_POINTER("status_checks", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) status_checks_config },
 
+	{ FR_CONF_OFFSET("max_connections", FR_TYPE_UINT32, rlm_radius_t, max_connections), .dflt = STRINGIFY(32) },
+
 	{ FR_CONF_POINTER("connection", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) connection_config },
 
 	CONF_PARSER_TERMINATOR
@@ -563,6 +565,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	size_t i, num_types;
+	uint32_t num_connections;
 	rlm_radius_t *inst = talloc_get_type_abort(instance, rlm_radius_t);
 
 	inst->name = cf_section_name2(conf);
@@ -728,6 +731,12 @@ setup_io_submodule:
 	 *	Get random Proxy-State identifier for this module.
 	 */
 	inst->proxy_state = fr_rand();
+
+	FR_INTEGER_BOUND_CHECK("max_connections", inst->max_connections, >=, 2);
+	FR_INTEGER_BOUND_CHECK("max_connections", inst->max_connections, <=, 1024);
+
+	num_connections = 0;
+	store(inst->num_connections, num_connections);
 
 	/*
 	 *	Bootstrap the submodule.

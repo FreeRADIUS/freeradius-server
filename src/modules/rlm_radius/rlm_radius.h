@@ -19,6 +19,23 @@
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
+#ifdef HAVE_STDATOMIC_H
+#  include <stdatomic.h>
+#else
+#  include <freeradius-devel/stdatomic.h>
+#endif
+
+/*
+ *	Some macros to make our life easier.
+ */
+#define atomic_uint32_t _Atomic(uint32_t)
+
+#define cas_incr(_store, _var)    atomic_compare_exchange_strong_explicit(&_store, &_var, _var + 1, memory_order_release, memory_order_relaxed)
+#define cas_decr(_store, _var)    atomic_compare_exchange_strong_explicit(&_store, &_var, _var - 1, memory_order_release, memory_order_relaxed)
+#define load(_var)           atomic_load_explicit(&_var, memory_order_relaxed)
+#define aquire(_var)         atomic_load_explicit(&_var, memory_order_acquire)
+#define store(_store, _var)  atomic_store_explicit(&_store, _var, memory_order_release);
+
 /*
  * $Id$
  *
@@ -88,8 +105,10 @@ struct rlm_radius_t {
 	void			*io_instance;	//!< Easy access to the IO instance
 	CONF_SECTION		*io_conf;	//!< Easy access to the IO config section
 
-	uint32_t		proxy_state;  	//!< Unique ID (mostly) of this module.
+	uint32_t		max_connections;  //!< maximum number of open connections
+	atomic_uint32_t		num_connections;  //!< actual number of connections
 
+	uint32_t		proxy_state;  	//!< Unique ID (mostly) of this module.
 	uint32_t		*types;		//!< array of allowed packet types
 	uint32_t		status_check;  	//!< code of status-check type
 	vp_map_t		*status_check_map;	//!< attributes for the status-server checks
