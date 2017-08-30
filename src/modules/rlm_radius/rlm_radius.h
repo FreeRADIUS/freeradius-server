@@ -92,6 +92,8 @@ struct rlm_radius_t {
 
 	uint32_t		*types;		//!< array of allowed packet types
 	uint32_t		status_check;  	//!< code of status-check type
+	vp_map_t		*status_check_map;	//!< attributes for the status-server checks
+
 	int			allowed[FR_MAX_PACKET_CODE];
 	rlm_radius_retry_t	retry[FR_MAX_PACKET_CODE];
 };

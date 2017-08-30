@@ -25,13 +25,30 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/io/application.h>
+#include <freeradius-devel/modpriv.h>
 #include <freeradius-devel/rad_assert.h>
 
 #include "rlm_radius.h"
 
 static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
-static int status_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int status_check_type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int status_check_update_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
+
+static CONF_PARSER const status_checks_config[] = {
+	{ FR_CONF_OFFSET("type", FR_TYPE_VOID, rlm_radius_t, status_check),
+	  .func = status_check_type_parse },
+
+	CONF_PARSER_TERMINATOR
+};
+
+static CONF_PARSER const status_check_update_config[] = {
+	{ FR_CONF_OFFSET("update", FR_TYPE_SUBSECTION | FR_TYPE_REQUIRED, rlm_radius_t, status_check_map),
+	  .ident2 = CF_IDENT_ANY,
+	  .func = status_check_update_parse },
+
+	CONF_PARSER_TERMINATOR
+};
 
 static CONF_PARSER const connection_config[] = {
 	{ FR_CONF_OFFSET("connect_timeout", FR_TYPE_TIMEVAL, rlm_radius_t, connection_timeout),
@@ -103,14 +120,13 @@ static CONF_PARSER const module_config[] = {
 	{ FR_CONF_OFFSET("type", FR_TYPE_UINT32 | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY | FR_TYPE_REQUIRED, rlm_radius_t, types),
 	  .func = type_parse },
 
-	{ FR_CONF_OFFSET("status_check", FR_TYPE_VOID, rlm_radius_t, status_check),
-	  .func = status_parse },
-
 	{ FR_CONF_OFFSET("replicate", FR_TYPE_BOOL, rlm_radius_t, replicate) },
 
 	{ FR_CONF_OFFSET("synchronous", FR_TYPE_BOOL, rlm_radius_t, synchronous) },
 
 	{ FR_CONF_OFFSET("no_connection_fail", FR_TYPE_BOOL, rlm_radius_t, no_connection_fail) },
+
+	{ FR_CONF_POINTER("status_checks", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) status_checks_config },
 
 	{ FR_CONF_POINTER("connection", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) connection_config },
 
@@ -125,18 +141,6 @@ static CONF_PARSER const type_interval_config[FR_MAX_PACKET_CODE] = {
 	[FR_CODE_COA_REQUEST] = { FR_CONF_POINTER("CoA-Request", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) coa_config },
 	[FR_CODE_DISCONNECT_REQUEST] = { FR_CONF_POINTER("Disconnect-Request", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) disconnect_config },
 };
-
-#if 0
-static CONF_PARSER const status_check_config[FR_MAX_PACKET_CODE] = {
-	[FR_CODE_ACCESS_REQUEST] = { FR_CONF_POINTER("Access-Request", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) auth_check_config },
-
-	[FR_CODE_ACCOUNTING_REQUEST] = { FR_CONF_POINTER("Accounting-Request", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) acct_check_config },
-	[FR_CODE_STATUS_SERVER] = { FR_CONF_POINTER("Status-Server", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) status_check_config },
-	[FR_CODE_COA_REQUEST] = { FR_CONF_POINTER("CoA-Request", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) coa_check_config },
-	[FR_CODE_DISCONNECT_REQUEST] = { FR_CONF_POINTER("Disconnect-Request", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) disconnect_check_config },
-};
-#endif
-
 
 /** Set which types of packets we can parse
  *
@@ -238,25 +242,20 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
 /** Allow for Status-Server ping checks
  *
  * @param[in] ctx	to allocate data in (instance of proto_radius).
- * @param[out] out	Where to write a dl_instance_t containing the module handle and instance.
+ * @param[out] out	Where to write our parsed data
  * @param[in] ci	#CONF_PAIR specifying the name of the type module.
  * @param[in] rule	unused.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int status_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int status_check_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
 	CONF_SECTION		*cs = cf_item_to_section(cf_parent(ci));
 	fr_dict_attr_t const	*da;
 	fr_dict_enum_t const	*type_enum;
 	uint32_t		code;
-
-	/*
-	 *	Must be the RADIUS module
-	 */
-	rad_assert(cs && (strcmp(cf_section_name1(cs), "radius") == 0));
 
 	da = fr_dict_attr_by_name(NULL, "Packet-Type");
 	if (!da) {
@@ -286,19 +285,69 @@ static int status_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED
 	    (!type_interval_config[code].name)) goto invalid_code;
 
 	/*
-	 *	This wasn't allowed by 'type = ..', so we add it here
-	 *	manually.
+	 *	Add irt / mrt / mrd / mrc parsing, in the parent
+	 *	configuration section.
 	 */
-	if (code == FR_CODE_STATUS_SERVER) {
-		cf_section_rule_push(cs, &type_interval_config[FR_CODE_STATUS_SERVER]);
-	}
-
-	// @todo - push type_check_config rules
+	cf_section_rule_push(cf_item_to_section(cf_parent(cs)), &type_interval_config[code]);
 
 	memcpy(out, &code, sizeof(code));
 
+	/*
+	 *	Nothing more to do here, so we stop.
+	 */
+	if (code == FR_CODE_STATUS_SERVER) return 0;
+
+	cf_section_rule_push(cs, status_check_update_config);
+
 	return 0;
 }
+
+/** Allow the admin to set packet contents for Status-Server ping checks
+ *
+ * @param[in] ctx	to allocate data in (instance of proto_radius).
+ * @param[out] out	Where to write our parsed data
+ * @param[in] ci	#CONF_SECTION specifying the things to update
+ * @param[in] rule	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int status_check_update_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+	int			rcode;
+	CONF_SECTION		*cs;
+	char const		*name2;
+	vp_map_t		*head = NULL;
+
+	rad_assert(cf_item_is_section(ci));
+
+	cs = cf_item_to_section(ci);
+
+	name2 = cf_section_name2(cs);
+	if (!name2 || (strcmp(name2, "request") != 0)) {
+		cf_log_err(cs, "You must specify 'request' as the destination list");
+		return -1;
+	}
+
+	/*
+	 *	Compile the "update" section.
+	 */
+	rcode = map_afrom_cs(&head, cs, PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, unlang_fixup_update, NULL, 128);
+	if (rcode < 0) return -1; /* message already printed */
+	if (!head) {
+		cf_log_err(cs, "'update' sections cannot be empty");
+		return -1;
+	}
+
+	/*
+	 *	Rely on "bootstrap" to do sanity checks between 'type
+	 *	= Access-Request', and 'update' containing passwords.
+	 */
+	memcpy(out, &head, sizeof(head));
+
+	return 0;
+}
+
 
 
 /** Free an rlm_radius_link_t
@@ -555,11 +604,18 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	If we have status_check = packet, then 'packet' MUST either be
 	 *	Status-Server, or it MUST be one of the allowed packet types for this connection.
 	 */
-	if (inst->status_check && (inst->status_check != FR_CODE_STATUS_SERVER) &&
-	    !inst->allowed[inst->status_check]) {
-		cf_log_err(conf, "Using 'status_check = %s' requires also 'type = %s'",
-			   fr_packet_codes[inst->status_check], fr_packet_codes[inst->status_check]);
-		return -1;
+	if (inst->status_check && inst->status_check != FR_CODE_STATUS_SERVER) {
+		if (!inst->allowed[inst->status_check]) {
+			cf_log_err(conf, "Using 'status_check = %s' requires also 'type = %s'",
+				   fr_packet_codes[inst->status_check], fr_packet_codes[inst->status_check]);
+			return -1;
+		}
+
+		/*
+		 *	@todo - check the contents of the "update"
+		 *	section, to be sure that (e.g.) Access-Request
+		 *	contains User-Name, etc.
+		 */
 	}
 
 	/*
