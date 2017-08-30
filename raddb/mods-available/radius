@@ -39,15 +39,6 @@ radius {
 	#
 	transport = udp
 
-	#
-	#  Whether or not we are replicating packets.
-	#
-	#  Replication is "send proxied request, and continue,
-	#  without waiting for a response".  Any response received
-	#  is discarded, and does not affect packet processing.
-	#
-#	replicate = no
-
 	#  List of allowed packet types
 	#
 	#  There is currently no way to change the packet type in the
@@ -58,6 +49,38 @@ radius {
 	#
 	type = Access-Request
 	type = Accounting-Request
+
+	#
+	#  Whether or not we are replicating packets.
+	#
+	#  Replication is "send proxied request, and continue,
+	#  without waiting for a response".  Any response received
+	#  is discarded, and does not affect packet processing.
+	#
+#	replicate = no
+
+	#
+	#  In many cases, the module should do retransmissions of
+	#  proxied request on it's own.  See the various
+	#  configurations for "initial_retransmission_time",
+	#  etc. below.  This means setting "synchronous = no".
+	#
+	#  However, in some cases, it is useful to retranmsit only
+	#  when the server receives a retransmission from the NAS.
+	#  This is done by setting "synchronous = yes"
+	#
+	#  In general, if the server is receiving packets directly
+	#  from a NAS, you should set "synchronous = no".  This is
+	#  because the NAS retransmission behavior is horrible,
+	#  inconsistent, and hard to configure.
+	#
+	#  If the server is receiving packets from another proxy
+	#  server, you should set "synchronous = yes".  This allows
+	#  the other proxy server to do retranmsissions correctly.
+	#
+	#  The behavior in v3 is the same as "synchronous = yes"
+	#
+#	synchronous = no
 
 	#
 	#  For "are you alive?" queries.
@@ -108,29 +131,6 @@ radius {
 #		}
 
 	}
-
-	#
-	#  In many cases, the module should do retransmissions of
-	#  proxied request on it's own.  See the various
-	#  configurations for "initial_retransmission_time",
-	#  etc. below.  This means setting "synchronous = no".
-	#
-	#  However, in some cases, it is useful to retranmsit only
-	#  when the server receives a retransmission from the NAS.
-	#  This is done by setting "synchronous = yes"
-	#
-	#  In general, if the server is receiving packets directly
-	#  from a NAS, you should set "synchronous = no".  This is
-	#  because the NAS retransmission behavior is horrible,
-	#  inconsistent, and hard to configure.
-	#
-	#  If the server is receiving packets from another proxy
-	#  server, you should set "synchronous = yes".  This allows
-	#  the other proxy server to do retranmsissions correctly.
-	#
-	#  The behavior in v3 is the same as "synchronous = yes"
-	#
-#	synchronous = no
 
 	#
 	#  UDP is configured here.
