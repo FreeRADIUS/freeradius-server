@@ -3378,7 +3378,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 			 */
 			fr_pair_add(&vps, fr_pair_list_copy(talloc_ctx, *certs));
 
-			vp = fr_pair_find_by_num(request->packet->vps, PW_TLS_CLIENT_CERT_EXPIRATION, 0, TAG_ANY);
+			vp = fr_pair_find_by_num(vps, PW_TLS_CLIENT_CERT_EXPIRATION, 0, TAG_ANY);
 			if (vp) {
 				time_t expires;
 
