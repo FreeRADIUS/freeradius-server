@@ -58,6 +58,8 @@ RCSID("$Id$")
 #define DEBUG3(fmt, ...) if (nr->lvl >= L_DBG_LVL_3) fr_log(nr->log, L_DBG, fmt, ## __VA_ARGS__)
 //#define ERROR(fmt, ...) fr_log(nr->log, L_ERR, fmt, ## __VA_ARGS__)
 
+#define MAX_WORKERS 32
+
 typedef struct fr_network_worker_t {
 	int			heap_id;		//!< workers are in a heap
 	fr_time_t		cpu_time;		//!< how much CPU time this worker has spent
@@ -76,10 +78,11 @@ typedef struct fr_network_socket_t {
 } fr_network_socket_t;
 
 /*
- *	@todo - have an array of workers, so we can index the workers in O(1) time.
- *	remove the heap of "workers ordered by CPU time"
- *	when we send a packet to a worker, just update the predicted CPU time in place.
- *	when we receive a reply from a worker, just update the predicted CPU time in place.
+ *	We have an array of workers, so we can index the workers in
+ *	O(1) time.  remove the heap of "workers ordered by CPU time"
+ *	when we send a packet to a worker, just update the predicted
+ *	CPU time in place.  when we receive a reply from a worker,
+ *	just update the predicted CPU time in place.
  *
  *	when we need to choose a worker, pick 2 at random, and then
  *	choose the one with the lowe cpu time.  For background, see
@@ -104,8 +107,6 @@ struct fr_network_t {
 	fr_event_list_t		*el;			//!< our event list
 
 	fr_heap_t		*replies;		//!< replies from the worker, ordered by priority / origin time
-	fr_heap_t		*workers;		//!< workers, ordered by total CPU time spent
-	fr_heap_t		*closing;		//!< workers which are being closed
 
 	uint64_t		num_requests;		//!< number of requests we sent
 	uint64_t		num_replies;		//!< number of replies we received
@@ -115,16 +116,14 @@ struct fr_network_t {
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t		mutex;			//!< for sending us control messages
 #endif
+
+	int			num_workers;		//!< number of active workers
+	int			max_workers;		//!< maximum number of allowed workers
+
+	fr_network_worker_t	*workers[MAX_WORKERS]; 	//!< each worker
 };
 
 static void fr_network_post_event(fr_event_list_t *el, struct timeval *now, void *uctx);
-
-static int worker_cmp(void const *one, void const *two)
-{
-	fr_network_worker_t const *a = one, *b = two;
-
-	return (a->cpu_time < b->cpu_time) - (a->cpu_time > b->cpu_time);
-}
 
 static int reply_cmp(void const *one, void const *two)
 {
@@ -242,53 +241,34 @@ static void fr_network_channel_callback(void *ctx, void const *data, size_t data
  * @param nr the network
  * @param cd the message we've received
  */
-static int fr_network_send_request(fr_network_t *nr, fr_channel_data_t *cd)
+static bool fr_network_send_request(fr_network_t *nr, fr_channel_data_t *cd)
 {
+	uint32_t one, two;
 	fr_network_worker_t *worker;
 	fr_channel_data_t *reply;
 
 	(void) talloc_get_type_abort(nr, fr_network_t);
 
-	/*
-	 *	Grab the worker with the least total CPU time.
-	 */
-	worker = fr_heap_pop(nr->workers);
-	if (!worker) {
-		DEBUG3("no workers");
-		return 0;
+	one = fr_rand() % nr->num_workers;
+	two = fr_rand() % nr->num_workers;
+
+	if (nr->workers[one]->cpu_time < nr->workers[one]->cpu_time) {
+		worker = nr->workers[one];
+	} else {
+		worker = nr->workers[two];
 	}
 
 	(void) talloc_get_type_abort(worker, fr_network_worker_t);
 
 	/*
-	 *	Send the message to the channel.  If we fail, recurse.
-	 *	That's easier than manually tracking the channel we
-	 *	popped off of the heap.
-	 *
-	 *	The only practical reason why the channel send will
-	 *	fail is because the recipient is not servicing it's
-	 *	queue.  When that happens, we just hand the request to
-	 *	another channel.
-	 *
-	 *	If we run out of channels to use, the caller needs to
-	 *	allocate another one, and hand it to the scheduler.
+	 *	Send the message to the channel.  If we fail, drop the
+	 *	packet.  The only reason for failure is that the
+	 *	worker isn't servicing it's input queue.  When that
+	 *	happens, we have no idea what to do, and the whole
+	 *	thing falls over.
 	 */
 	if (fr_channel_send_request(worker->channel, cd, &reply) < 0) {
-		int rcode;
-
-		DEBUG2("recursing in send_request");
-		rcode = fr_network_send_request(nr, cd);
-
-		/*
-		 *	Mark this channel as still busy, for some
-		 *	future time.  This process ensures that we
-		 *	don't immediately pop it off the heap and try
-		 *	to send it another request.
-		 */
-		worker->cpu_time = cd->m.when + worker->predicted;
-		(void) fr_heap_insert(nr->workers, worker);
-
-		return rcode;
+		return false;
 	}
 
 	/*
@@ -300,17 +280,12 @@ static int fr_network_send_request(fr_network_t *nr, fr_channel_data_t *cd)
 	worker->cpu_time += worker->predicted;
 
 	/*
-	 *	Insert the worker back into the heap of workers.
-	 */
-	(void) fr_heap_insert(nr->workers, worker);
-
-	/*
 	 *	If we have a reply, push it onto our local queue, and
 	 *	poll for more replies.
 	 */
 	if (reply) fr_network_drain_input(nr, worker->channel, reply);
 
-	return 1;
+	return true;
 }
 
 
@@ -551,6 +526,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
  */
 static void fr_network_worker_callback(void *ctx, void const *data, size_t data_size, UNUSED fr_time_t now)
 {
+	int i;
 	fr_network_t *nr = ctx;
 	fr_worker_t *worker;
 	fr_network_worker_t *w;
@@ -569,7 +545,21 @@ static void fr_network_worker_callback(void *ctx, void const *data, size_t data_
 
 	fr_channel_master_ctx_add(w->channel, w);
 
-	(void) fr_heap_insert(nr->workers, w);
+	/*
+	 *	Insert the worker into the array of workers.
+	 */
+	for (i = 0; i < nr->max_workers; i++) {
+		if (nr->workers[i]) continue;
+
+		nr->workers[i] = w;
+		nr->num_workers++;
+		return;
+	}
+
+	/*
+	 *	Run out of room to put workers!
+	 */
+	rad_assert(0 == 1);
 }
 
 
@@ -617,6 +607,8 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t c
 	nr->el = el;
 	nr->log = logger;
 	nr->lvl = lvl;
+	nr->max_workers = MAX_WORKERS;
+	nr->num_workers = 0;
 
 	nr->kq = fr_event_list_kq(nr->el);
 	rad_assert(nr->kq >= 0);
@@ -682,32 +674,16 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t c
 		goto fail2;
 	}
 
-	nr->workers = fr_heap_create(worker_cmp, offsetof(fr_network_worker_t, heap_id));
-	if (!nr->workers) {
-		fr_strerror_printf("Failed creating heap for workers: %s", fr_strerror());
-	fail3:
-		talloc_free(nr->replies);
-		goto fail2;
-	}
-
-	nr->closing = fr_heap_create(worker_cmp, offsetof(fr_network_worker_t, heap_id));
-	if (!nr->closing) {
-		fr_strerror_printf("Failed creating heap for exiting workers: %s", fr_strerror());
-		goto fail3;
-	}
-
 #ifdef HAVE_PTHREAD_H
 	if (pthread_mutex_init(&nr->mutex, NULL) != 0) {
 		fr_strerror_printf("Failed initializing mutex");
-	fail4:
-		talloc_free(nr->closing);
-		goto fail3;
+		goto fail2;
 	}
 #endif
 
 	if (fr_event_post_insert(nr->el, fr_network_post_event, nr) < 0) {
 		fr_strerror_printf("Failed inserting post-processing event");
-		goto fail4;
+		goto fail2;
 	}
 
 	return nr;
@@ -723,19 +699,19 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t c
  */
 int fr_network_destroy(fr_network_t *nr)
 {
-	fr_network_worker_t *worker;
+	int i;
 	fr_channel_data_t *cd;
 
 	(void) talloc_get_type_abort(nr, fr_network_t);
-	rad_assert(nr->closing);
 
 	/*
 	 *	Pop all of the workers, and signal them that we're
 	 *	closing/
 	 */
-	while ((worker = fr_heap_pop(nr->workers)) != NULL) {
+	for (i = 0; i < nr->num_workers; i++) {
+		fr_network_worker_t *worker = nr->workers[i];
+
 		fr_channel_signal_worker_close(worker->channel);
-		(void) fr_heap_insert(nr->closing, worker);
 	}
 
 	/*
