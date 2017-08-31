@@ -156,7 +156,7 @@ static int socket_cmp(void const *one, void const *two)
  */
 static void fr_network_drain_input(fr_network_t *nr, fr_channel_t *ch, fr_channel_data_t *cd)
 {
-	fr_network_worker_t *w;
+	fr_network_worker_t *worker;
 
 	if (!cd) {
 		cd = fr_channel_recv_reply(ch);
@@ -174,12 +174,12 @@ static void fr_network_drain_input(fr_network_t *nr, fr_channel_t *ch, fr_channe
 		/*
 		 *	Update stats for the worker.
 		 */
-		w = fr_channel_master_ctx_get(ch);
-		w->cpu_time = cd->reply.cpu_time;
-		if (!w->predicted) {
-			w->predicted = cd->reply.processing_time;
+		worker = fr_channel_master_ctx_get(ch);
+		worker->cpu_time = cd->reply.cpu_time;
+		if (!worker->predicted) {
+			worker->predicted = cd->reply.processing_time;
 		} else {
-			w->predicted = RTT(w->predicted, cd->reply.processing_time);
+			worker->predicted = RTT(worker->predicted, cd->reply.processing_time);
 		}
 
 		(void) fr_heap_insert(nr->replies, cd);
