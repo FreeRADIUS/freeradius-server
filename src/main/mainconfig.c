@@ -155,6 +155,13 @@ static const CONF_PARSER log_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static const CONF_PARSER thread_config[] = {
+	{ FR_CONF_POINTER("num_networks", FR_TYPE_UINT32, &main_config.num_networks), .dflt = STRINGIFY(1) },
+	{ FR_CONF_POINTER("num_workers", FR_TYPE_UINT32, &main_config.num_workers), .dflt = STRINGIFY(4) },
+
+	CONF_PARSER_TERMINATOR
+};
+
 
 static const CONF_PARSER resources[] = {
 	/*
@@ -199,6 +206,8 @@ static const CONF_PARSER server_config[] = {
 	{ FR_CONF_POINTER("log", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) log_config },
 
 	{ FR_CONF_POINTER("resources", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) resources },
+
+	{ FR_CONF_POINTER("thread", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) thread_config },
 
 	/*
 	 *	People with old configs will have these.  They are listed
@@ -926,6 +935,13 @@ do {\
 	FR_INTEGER_BOUND_CHECK("cleanup_delay", main_config.cleanup_delay, <=, 10);
 
 	FR_TIMEVAL_BOUND_CHECK("reject_delay", &main_config.reject_delay, <=, main_config.cleanup_delay, 0);
+
+	/*
+	 *	For now we don't do connected sockets.
+	 */
+	FR_INTEGER_BOUND_CHECK("thread.num_networks", main_config.num_networks, ==, 1);
+	FR_INTEGER_BOUND_CHECK("thread.num_workers", main_config.num_workers, >, 0);
+	FR_INTEGER_BOUND_CHECK("thread.num_workers", main_config.num_workers, <, 1024);
 
 	FR_SIZE_BOUND_CHECK("resources.talloc_pool_size", main_config.talloc_pool_size, >=, (size_t)(2 * 1024));
 	FR_SIZE_BOUND_CHECK("resources.talloc_pool_size", main_config.talloc_pool_size, <=, (size_t)(1024 * 1024));

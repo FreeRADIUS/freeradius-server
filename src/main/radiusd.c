@@ -582,8 +582,8 @@ int main(int argc, char *argv[])
 	 *	async listeners, then we open the sockets.
 	 */
 	if (!check_config) {
-		int networks = 1;
-		int workers = 4;
+		int networks = main_config.num_networks;
+		int workers = main_config.num_workers;
 		fr_event_list_t *el = NULL;
 
 		if (!main_config.spawn_workers) {
