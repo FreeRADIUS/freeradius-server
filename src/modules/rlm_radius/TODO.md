@@ -93,3 +93,18 @@ many fields are essentially unused.  request->proxy is no longer used,
 but is referenced all over the place.
 
 grunt work, but very useful.
+
+### Network and worker fixups
+
+* make number of network and workers configurable
+
+* switch worker selection from recursing / heap to O(N) lookups and "power of 2"
+  * see comments in src/lib/io/network.c
+
+* associate packets with a particular worker across multiple packets
+  * once this is done, we can move to per-thread SSL contexts, and drop contention massively
+  * with the caveat that *all SSL work* has to be done in one thread
+  * hopefully this doesn't affect things like SQL drivers?  need to check...
+
+* do NUMA for high-end systems
+  * associate N network threads with W worker threads
