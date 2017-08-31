@@ -190,7 +190,6 @@ static const CONF_PARSER server_config[] = {
 	{ FR_CONF_POINTER("continuation_timeout", FR_TYPE_UINT32, &main_config.continuation_timeout), .dflt = "15" },
 	{ FR_CONF_POINTER("max_requests", FR_TYPE_UINT32, &main_config.max_requests), .dflt = STRINGIFY(MAX_REQUESTS) },
 	{ FR_CONF_POINTER("pidfile", FR_TYPE_STRING, &main_config.pid_file), .dflt = "${run_dir}/radiusd.pid"},
-	{ FR_CONF_POINTER("checkrad", FR_TYPE_STRING, &main_config.checkrad), .dflt = "${sbindir}/checkrad" },
 
 	{ FR_CONF_POINTER("debug_level", FR_TYPE_UINT32, &main_config.debug_level), .dflt = "0" },
 

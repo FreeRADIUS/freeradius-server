@@ -140,11 +140,6 @@ typedef struct main_config {
 
 	char const	*dictionary_dir;		//!< Where to load dictionaries from.
 
-	char const	*checkrad;			//!< Script to use to determine if a user is already
-							//!< connected.
-
-	rad_listen_t	*listen;			//!< Head of a linked list of listeners.
-
 	struct timeval	init_delay;			//!< Initial request processing delay.
 
 	size_t		talloc_pool_size;		//!< Size of pool to allocate to hold each #REQUEST.
