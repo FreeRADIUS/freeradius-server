@@ -206,7 +206,7 @@ static int fr_get_debug_state(void)
 			}
 
 			/* Detach */
-			_PTRACE(PT_ATTACH, ppid);
+			_PTRACE(PT_DETACH, ppid);
 			exit(0);
 		}
 
