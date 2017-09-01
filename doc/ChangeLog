@@ -1,6 +1,6 @@
 FreeRADIUS 3.0.16 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	Feature improvements
-	* rlm_python now supports different lists.  From #2031.
+	* rlm_python now supports multiple lists.  From #2031.
 	* Add trust router re-keying.  From #2007.
 	* Add support for Samba / AD LDAP schema.
 	  See oc/schemas/ldap/samba/README.txt and
@@ -22,6 +22,11 @@ FreeRADIUS 3.0.16 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	* Add libjson-c3 as an optional dependency.
 	* Require LTB OpenLDAP on CentOS / Redhat, to avoid linking
 	  against NSS, which breaks the server.  Fixes #2040.
+	* rlm_python fixes.  Fixes #2041
+	* Typos in "man" pages.  Fixes #2045
+	* Expand "next" in %{%{...}:-%{...}}.  Fixes #2048
+	* Don't add TLS attributes twice.  Fixes #2050.
+	* Fix memory allocation in rlm_rest.  Fixes #2051.
 
 FreeRADIUS 3.0.15 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	Feature improvements
