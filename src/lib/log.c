@@ -42,7 +42,7 @@ fr_thread_local_setup(char *, fr_syserror_buffer)	/* macro */
  *
  * Non-POSIX macros may be added, but you must check they're defined.
  */
-char const *fr_errno_macro_names[] = {
+static char const *fr_errno_macro_names[] = {
 	[E2BIG] = "E2BIG",
 	[EACCES] = "EACCES",
 	[EADDRINUSE] = "EADDRINUSE",
