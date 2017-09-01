@@ -45,9 +45,6 @@ RCSID("$Id$")
  */
 #ifdef __linux__
 #define CLOSEFROM_DIR "/proc/self/fd"
-#ifdef HAVE_SIGACTION
-#undef sa_handler
-#endif
 #elif defined(__APPLE__)
 #define CLOSEFROM_DIR "/dev/fd"
 #else
