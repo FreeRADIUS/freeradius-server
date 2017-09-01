@@ -1477,8 +1477,9 @@ static size_t rest_response_body(void *ptr, size_t size, size_t nmemb, void *use
 
 	char const *p = ptr, *q;
 	char *tmp;
-
+	
 	size_t const t = (size * nmemb);
+	size_t needed;
 
 	if (t == 0) return 0;
 
@@ -1513,8 +1514,11 @@ static size_t rest_response_body(void *ptr, size_t size, size_t nmemb, void *use
 		return t;
 
 	default:
-		if ((t + 1) > (ctx->alloc - ctx->used)) {
-			ctx->alloc += ((t + 1) > REST_BODY_INIT) ? t + 1 : REST_BODY_INIT;
+		needed = ctx->used + t + 1;
+		if (needed < REST_BODY_INIT) needed = REST_BODY_INIT;
+
+		if (needed > ctx->alloc) {
+			ctx->alloc = needed;
 
 			tmp = ctx->buffer;
 			ctx->buffer = talloc_array(NULL, char, ctx->alloc);
