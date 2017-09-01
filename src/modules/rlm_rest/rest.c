@@ -1781,7 +1781,7 @@ static size_t rest_response_body(void *ptr, size_t size, size_t nmemb, void *use
 		return t;
 
 	default:
-		if ((t + 1) > (ctx->alloc - ctx->used) {
+		if ((t + 1) > (ctx->alloc - ctx->used)) {
 			ctx->alloc += ((t + 1) > REST_BODY_INIT) ? t + 1 : REST_BODY_INIT;
 
 			tmp = ctx->buffer;
@@ -1790,7 +1790,7 @@ static size_t rest_response_body(void *ptr, size_t size, size_t nmemb, void *use
 
 			/* If data has been written previously */
 			if (tmp) {
-				strlcpy(ctx->buffer, tmp, (ctx->used + 1));
+				memcpy(ctx->buffer, tmp, ctx->used);
 				free(tmp);
 			}
 		}
