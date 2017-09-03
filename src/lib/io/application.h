@@ -102,6 +102,8 @@ typedef struct fr_app_io_t {
 	fr_io_open_t			open;		//!< Open a new socket for listening, or accept/connect a new
 							//!< connection.
 	fr_io_get_fd_t			fd;		//!< Return the file descriptor from the instance.
+	fr_io_timers_t			timer_instantiate; //!< instantiate any necessary timers
+	fr_io_timers_t			timer_detach;	//!< detach any necessary timers
 	fr_io_data_read_t		read;		//!< Read from a socket to a data buffer
 	fr_io_data_write_t		write;		//!< Write from a data buffer to a socket
 	fr_io_decode_t			decode;		//!< Translate raw bytes into VALUE_PAIRs and metadata.
