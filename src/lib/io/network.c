@@ -449,10 +449,6 @@ static int _network_socket_free(fr_network_socket_t *s)
 
 	rbtree_deletebydata(nr->sockets, s);
 
-	if (s->listen->app_io->timer_detach) {
-		(void) s->listen->app_io->timer_detach(s->listen->app_io_instance, nr->el);
-	}
-
 	if (s->listen->app_io->close) {
 		s->listen->app_io->close(s->listen->app_io_instance);
 	} else {
@@ -504,13 +500,6 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 
 	rad_assert(app_io->fd);
 	fd = app_io->fd(s->listen->app_io_instance);
-
-	if (app_io->timer_instantiate &&
-	    (app_io->timer_instantiate(s->listen->app_io_instance, nr->el) < 0)) {
-		fr_log(nr->log, L_ERR, "Failed starting timers");
-		talloc_free(s);
-		return;
-	}
 
 	if (fr_event_fd_insert(nr, nr->el, fd,
 			       fr_network_read,

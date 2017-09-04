@@ -86,16 +86,6 @@ typedef int (*fr_io_open_t)(void *instance);
  */
 typedef int (*fr_io_get_fd_t)(void const *instance);
 
-/** Set up timers for a socket.
- *
- * @param[in] instance	of the IO submodule
- * @param[in] el	event list
- * @return
- *	- <0 on error
- *	- 0 on success
- */
-typedef int (*fr_io_timers_t)(void const *instance, fr_event_list_t *el);
-
 /** Decode a raw packet and convert it into a request.
  *
  *  This function is the opposite of fr_io_encode_t.
