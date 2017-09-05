@@ -126,8 +126,6 @@ static REQUEST *request_from_file(FILE *fp, fr_event_list_t *el, RADCLIENT *clie
 	request->number = number++;
 
 	request->master_state = REQUEST_ACTIVE;
-	request->child_state = REQUEST_RUNNING;
-	request->handle = NULL;
 	request->server_cs = virtual_server_find("default");
 
 	request->root = &main_config;

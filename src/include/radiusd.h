@@ -241,8 +241,6 @@ struct rad_request {
 
 	request_data_t		*data;		//!< Request metadata.
 
-	RAD_LISTEN_TYPE		priority;
-
 	rad_listen_t		*listener;	//!< The listener that received the request.
 	RADCLIENT		*client;	//!< The client that originally sent us the request.
 
@@ -264,15 +262,8 @@ struct rad_request {
 
 	rad_master_state_t	master_state;	//!< Set by the master thread to signal the child that's currently
 						//!< working with the request, to do something.
-	rad_child_state_t	child_state;
-
-	pthread_t    		child_pid;	//!< Current thread handling the request.
-	void			*thread_ctx;	//!< for request_queue_extract()
 
 	fr_request_process_t	process;	//!< The function to call to move the request through the state machine.
-
-	RAD_REQUEST_FUNP	handle;		//!< The function to call to move the request through the
-						//!< various server configuration sections.
 
 	rlm_rcode_t		rcode;		//!< Last rcode returned by a module
 	CONF_SECTION		*server_cs;	//!< virtual server which is processing the request.
@@ -299,10 +290,6 @@ struct rad_request {
 	int			time_order_id;	//!< entry in the queue / heap of time ordered packets
 
 	main_config_t		*root;		//!< Pointer to the main config hack to try and deal with hup.
-
-#ifdef WITH_PROXY
-	bool			in_proxy_hash;
-#endif
 
 	struct {
 		log_dst_t	*dst;		//!< First in a list of log destinations.

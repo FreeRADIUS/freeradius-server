@@ -147,7 +147,6 @@ REQUEST *request_alloc_fake(REQUEST *request)
 	fake->number = request->number;
 	fake->seq_start = request->seq_start;
 
-	fake->child_pid = request->child_pid;
 	fake->parent = request;
 	fake->root = request->root;
 	fake->client = request->client;
@@ -174,7 +173,6 @@ REQUEST *request_alloc_fake(REQUEST *request)
 	}
 
 	fake->master_state = REQUEST_ACTIVE;
-	fake->child_state = REQUEST_RUNNING;
 
 	/*
 	 *	Fill in the fake request.
