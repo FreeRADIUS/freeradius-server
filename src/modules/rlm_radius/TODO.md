@@ -96,8 +96,6 @@ grunt work, but very useful.
 
 ### Network and worker fixups
 
-* make number of network and workers configurable
-
 * switch worker selection from recursing / heap to O(N) lookups and "power of 2"
   * see comments in src/lib/io/network.c
 
