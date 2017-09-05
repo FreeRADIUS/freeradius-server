@@ -2580,14 +2580,6 @@ static unlang_t *compile_create(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		c->debug_name = c->name;
 	}
 
-	/*
-	 *	@todo - figure out what protocol we're running, and
-	 *	ensure that the packet types are allowed for that.
-	 *	For now, it's always RADIUS.
-	 *
-	 *	@ todo - after that, allow for different protocols to be specified.
-	 */
-
 	return compile_children(g, parent, unlang_ctx, group_type, parentgroup_type);
 }
 
