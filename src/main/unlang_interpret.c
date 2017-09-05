@@ -580,9 +580,8 @@ static REQUEST *unlang_child_alloc(REQUEST *request, unlang_t *instruction, rlm_
 	FR_DLIST_INIT(child->async->time_order);
 
 	/*
-	 *	fork() is a copy???
+	 *	create {...} creates an empty copy.
 	 */
-	child->packet->vps = fr_pair_list_copy(child->packet, request->packet->vps);
 
 	return child;
 }
@@ -591,7 +590,7 @@ static REQUEST *unlang_child_alloc(REQUEST *request, unlang_t *instruction, rlm_
 /** Send a signal from parent request to child
  *
  */
-static void unlang_fork_signal(UNUSED REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *ctx,
+static void unlang_create_signal(UNUSED REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *ctx,
 			       fr_state_action_t action)
 {
 	REQUEST			*child = talloc_get_type_abort(ctx, REQUEST);
@@ -600,10 +599,10 @@ static void unlang_fork_signal(UNUSED REQUEST *request, UNUSED void *instance, U
 }
 
 
-/** Resume a forked request
+/** Resume a created child request
  *
  */
-static rlm_rcode_t unlang_fork_resume(UNUSED REQUEST *request, unlang_stack_t *stack,
+static rlm_rcode_t unlang_create_resume(UNUSED REQUEST *request, unlang_stack_t *stack,
 				      UNUSED const void *instance, UNUSED void *thread, void *resume_ctx)
 {
 	REQUEST			*child = talloc_get_type_abort(resume_ctx, REQUEST);
@@ -622,7 +621,7 @@ static rlm_rcode_t unlang_fork_resume(UNUSED REQUEST *request, unlang_stack_t *s
 		frame = &stack->frame[stack->depth];
 		rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
 
-		frame->instruction->type = UNLANG_TYPE_FORK; /* for debug purposes */
+		frame->instruction->type = UNLANG_TYPE_CREATE; /* for debug purposes */
 		talloc_free(child);
 		return rcode;
 	}
@@ -635,7 +634,7 @@ static rlm_rcode_t unlang_fork_resume(UNUSED REQUEST *request, unlang_stack_t *s
 	(void) talloc_get_type_abort(mr, unlang_resume_t);
 
 	rad_assert(mr->callback == NULL);
-	rad_assert(mr->signal_callback == unlang_fork_signal);
+	rad_assert(mr->signal_callback == unlang_create_signal);
 	rad_assert(mr->resume_ctx == child);
 #endif
 
@@ -646,8 +645,8 @@ static rlm_rcode_t unlang_fork_resume(UNUSED REQUEST *request, unlang_stack_t *s
 	return RLM_MODULE_YIELD;
 }
 
-static unlang_action_t unlang_fork(REQUEST *request, unlang_stack_t *stack,
-				   rlm_rcode_t *presult, int *priority)
+static unlang_action_t unlang_create(REQUEST *request, unlang_stack_t *stack,
+				     rlm_rcode_t *presult, int *priority)
 {
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
@@ -742,7 +741,7 @@ static unlang_action_t unlang_fork(REQUEST *request, unlang_stack_t *stack,
 	/*
 	 *	Create the "resume" stack frame, and have it replace our stack frame.
 	 */
-	mr = unlang_resume_alloc(request, NULL, unlang_fork_signal, child);
+	mr = unlang_resume_alloc(request, NULL, unlang_create_signal, child);
 	if (!mr) {
 		*presult = RLM_MODULE_FAIL;
 		*priority = instruction->actions[*presult];
@@ -1588,7 +1587,7 @@ static unlang_action_t unlang_if(REQUEST *request, unlang_stack_t *stack,
 }
 
 static unlang_op_resume_func_t unlang_ops_resume[] = {
-	[UNLANG_TYPE_FORK]		= unlang_fork_resume,
+	[UNLANG_TYPE_CREATE]		= unlang_create_resume,
 	[UNLANG_TYPE_PARALLEL]		= unlang_parallel_resume,
 };
 
@@ -1745,9 +1744,9 @@ unlang_op_t unlang_ops[] = {
 		.func = unlang_policy,
 		.debug_braces = true
 	},
-	[UNLANG_TYPE_FORK] = {
-		.name = "fork",
-		.func = unlang_fork,
+	[UNLANG_TYPE_CREATE] = {
+		.name = "create",
+		.func = unlang_create,
 		.debug_braces = true
 	},
 #endif
@@ -1819,7 +1818,7 @@ resume_subsection:
 		VERIFY_REQUEST(request);
 
 		/*
-		 *	We may be multiple layers deep in fork{} or
+		 *	We may be multiple layers deep in create{} or
 		 *	parallel{}.  Only the top-level request is
 		 *	tracked && marked "stop processing".
 		 */
