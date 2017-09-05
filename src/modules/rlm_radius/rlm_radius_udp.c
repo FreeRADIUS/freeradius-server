@@ -829,6 +829,7 @@ redo:
 		 *	programatically decide which attributes to add.
 		 */
 
+		request->reply->code = code;
 		fr_pair_add(&request->reply->vps, vp);
 
 		/*
