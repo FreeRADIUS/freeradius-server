@@ -1558,7 +1558,7 @@ FREERADIUS
 ++++++++++
 
 * _`FreeRADIUS`: http://www.freeradius.org
-* _`FreeRADIUS Documentation`: http://www.freeradius.org/radiusd/doc
+* _`FreeRADIUS Documentation`: http://freeradius.org/documentation/
 * _`FreeRADIUS Wiki`: http://wiki.freeradius.org/
 
 OPENLDAP
@@ -1570,9 +1570,9 @@ OPENLDAP
 RFCs
 ++++
 
-* _`RFC2865: RADIUS Authentication`: http://www.freeradius.org/radiusd/doc/rfc/rfc2865.txt
-* _`RFC2866: RADIUS Accounting`: http://www.freeradius.org/radiusd/doc/rfc/rfc2866.txt
-* _`RFC2869: RADIUS Extentions`: http://www.freeradius.org/radiusd/doc/rfc/rfc2869.txt
+* _`RFC2865: RADIUS Authentication`: http://freeradius.org/rfc/rfc2865.txt
+* _`RFC2866: RADIUS Accounting`: http://freeradius.org/rfc/rfc2866.txt
+* _`RFC2869: RADIUS Extentions`: http://freeradius.org/rfc/rfc2869.txt
 * _`RFC2251: LDAP v3`: http://www.ietf.org/rfc/rfc2251.txt
 * _`RFC2252: LDAP v3 Attribute Syntax Definitions`: http://www.ietf.org/rfc/rfc2252.txt
 * _`RFC2253: LDAP UTF-8 String Representation of Distinguishe d Names (DNs)`: http://www.ietf.org/rfc/rfc2252.txt
