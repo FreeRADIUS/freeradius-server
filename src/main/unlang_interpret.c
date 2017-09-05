@@ -680,26 +680,11 @@ static unlang_action_t unlang_create(REQUEST *request, unlang_stack_t *stack,
 	}
 
 	/*
-	 *	Swap the child->packet->code
-	 *
-	 *	@todo - do this before calling unlang_child_alloc(),
-	 *	and pass the virtual server && packet code to that
-	 *	function, so it can fill in the various bits of magic.x
+	 *	If necessary, change the child->packet->code.
 	 */
 	if (g->vpt) {
-		ssize_t slen;
-		char const *p = NULL;
 		fr_dict_attr_t const *da;
 		fr_dict_enum_t const *dval;
-		char buffer[256];
-
-		slen = tmpl_expand(&p, buffer, sizeof(buffer), request, g->vpt, NULL, NULL);
-		if (slen < 0) {
-			REDEBUG("Failed expanding template");
-			*presult = RLM_MODULE_FAIL;
-			*priority = instruction->actions[*presult];
-			return UNLANG_ACTION_CALCULATE_RESULT;
-		}
 
 		da = fr_dict_attr_by_name(NULL, "Packet-Type");
 		if (!da) {
@@ -709,9 +694,12 @@ static unlang_action_t unlang_create(REQUEST *request, unlang_stack_t *stack,
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 
-		dval = fr_dict_enum_by_alias(NULL, da, p);
+		/*
+		 *	This has to be a fixed string.
+		 */
+		dval = fr_dict_enum_by_alias(NULL, da, g->vpt->name);
 		if (!dval) {
-			RDEBUG("Failed to find Packet-Type %s", buffer);
+			RDEBUG("Failed to find Packet-Type %s", g->vpt->name);
 			*presult = RLM_MODULE_FAIL;
 			*priority = instruction->actions[*presult];
 			return UNLANG_ACTION_CALCULATE_RESULT;

@@ -2513,7 +2513,7 @@ static unlang_t *compile_create(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 
 		type = cf_section_name2_quote(cs);
 		if (type != T_BARE_WORD) {
-			cf_log_err(cs, "The packet type for 'fork' must be an un-quoted string.");
+			cf_log_err(cs, "The packet type for 'create' must be an string without quotation marks.");
 			talloc_free(g);
 			return NULL;
 		}
@@ -2530,6 +2530,11 @@ static unlang_t *compile_create(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 			return NULL;
 		}
 
+		/*
+		 *	The name MUST be a fixed string.  Run-time
+		 *	expansion of the name is forbidden, as the
+		 *	packet contents depend on the name.
+		 */
 		dval = fr_dict_enum_by_alias(NULL, da, name2);
 		if (!dval) {
 			cf_log_err(cs, "Unknown Packet-Type %s", name2);
@@ -2538,8 +2543,8 @@ static unlang_t *compile_create(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		}
 
 		/*
-		 *	@todo - make it a simple integer.  That way
-		 *	we don't need to do lookups at run-time.
+		 *	Parse the static name into a template, because
+		 *	unlang_interpret() takes a template here.
 		 */
 		slen = tmpl_afrom_str(g, &g->vpt, name2, strlen(name2), type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
 		if (slen < 0) {
@@ -2559,14 +2564,16 @@ static unlang_t *compile_create(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		}
 
 		/*
-		 *	Fixup the template before compiling the children.
-		 *	This is so that compile_case() can do attribute type
-		 *	checks / casts against us.
+		 *	Convert TMPL_TYPE_UNPARSED (it might have been
+		 *	an attribute) to TMPL_TYPE_DATA, with
+		 *	FR_TYPE_STRING data.
 		 */
-		if (!pass2_fixup_tmpl(cf_section_to_item(g->cs), &g->vpt, true)) {
-			talloc_free(g);
-			return NULL;
-		}
+		tmpl_cast_in_place_str(g->vpt);
+
+		/*
+		 *	Has to be a fixed string...
+		 */
+		rad_assert(g->vpt->type == TMPL_TYPE_DATA);
 
 		c->debug_name = talloc_asprintf(c, "%s %s", unlang_ops[c->type].name, cf_section_name2(cs));
 	} else {
