@@ -241,11 +241,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 	uint32_t count = 0;
 
 	g = unlang_generic_to_group(instruction);
-	if (!g->children) {
-		*presult = RLM_MODULE_NOOP;
-		*priority = instruction->actions[RLM_MODULE_NOOP];
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
+	rad_assert(g->children != NULL);
 
 	/*
 	 *	No frame?  This is the first time we've been called.
@@ -457,11 +453,9 @@ static unlang_action_t unlang_group(REQUEST *request, unlang_stack_t *stack,
 	g = unlang_generic_to_group(instruction);
 
 	/*
-	 *	This should really have been caught in the
-	 *	compiler, and the program never generated.  But
-	 *	doing that requires changing it's API so that
-	 *	it returns a flag instead of the compiled
-	 *	UNLANG_TYPE_GROUP.
+	 *	The compiler catches most of these, EXCEPT for the
+	 *	top-level 'recv Access-Request' etc.  Which can exist,
+	 *	and can be empty.
 	 */
 	if (!g->children) {
 		RDEBUG2("} # %s ... <ignoring empty subsection>", instruction->debug_name);
@@ -656,18 +650,7 @@ static unlang_action_t unlang_create(REQUEST *request, unlang_stack_t *stack,
 	unlang_resume_t		*mr;
 
 	g = unlang_generic_to_group(instruction);
-
-	/*
-	 *	This should really have been caught in the
-	 *	compiler, and the program never generated.  But
-	 *	doing that requires changing it's API so that
-	 *	it returns a flag instead of the compiled
-	 *	UNLANG_TYPE_GROUP.
-	 */
-	if (!g->children) {
-		RDEBUG2("} # %s ... <ignoring empty subsection>", instruction->debug_name);
-		return UNLANG_ACTION_CONTINUE;
-	}
+	rad_assert(g->children != NULL);
 
 	/*
 	 *	Allocate the child request.
@@ -1081,7 +1064,7 @@ static unlang_action_t unlang_case(REQUEST *request, unlang_stack_t *stack,
 
 	if (!g->children) {
 		*presult = RLM_MODULE_NOOP;
-		// ?? priority
+		*priority = 0;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
