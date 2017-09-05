@@ -1,0 +1,132 @@
+# -*- text -*-
+#
+#  $Id$
+
+# Winbind module to authenticate PAP users against Microsoft
+# Active Directory or Samba, via winbind.
+#
+# This module is for PAP authentication (where plaintext passwords
+# are sent in the User-Password attribute) only. For authenticating
+# mschap requests against AD/Samba see the options available in the
+# rlm_mschap module.
+#
+# Samba version 4.2.1 or higher is required to use this module.
+
+winbind {
+
+	# The username to pass to winbind for authentication.
+	#
+	winbind_username = "%{%{Stripped-User-Name}:-%{User-Name}}"
+
+	# The Windows Domain. While not required to be set, it is
+	# likely authentication will fail if it is not set correctly.
+	# This configuration option, as the username above, is also
+	# expanded before use.
+	#
+	# If unset then winbind will be queried for the correct value.
+	# If you actually want it blank it should be explicitly set
+	# here.
+	#
+	#winbind_domain = ""
+
+
+	# Group membership checking
+	#
+	group {
+		# AD username to search for group searches
+		#
+		# This should generally not include a realm, so
+		# Stripped-User-Name is likely the best attribute
+		# if it exists.
+		#
+		group_search_username = "%{%{Stripped-User-Name}:-%{User-Name}}"
+
+		# Include the domain in group searches?
+		#
+		# When this is enabled, winbind_domain is prepended to the
+		# username (as domain\username) before searching. This is
+		# generally required.
+		#
+		#group_add_domain = yes
+
+		# Attribute to use for group comparisons.
+		#
+		# This will normally be "Winbind-Group" if this instance is
+		# unnamed, otherwise it will be "name-Winbind-Group". The
+		# name of this attribute can be overridden here.
+		#
+		#group_attribute = "Winbind-Group"
+	}
+
+
+	# Information for the winbind connection pool. The configuration
+	# items below are the same for all modules which use the new
+	# connection pool.
+	#
+	pool {
+		#  Connections to create during module instantiation.
+		#  If the server cannot create specified number of
+		#  connections during instantiation it will exit.
+		#  Set to 0 to allow the server to start without the
+		#  winbind daemon being available.
+		start = ${thread[pool].start_servers}
+
+		#  Minimum number of connections to keep open
+		min = ${thread[pool].min_spare_servers}
+
+		#  Maximum number of connections
+		#
+		#  If these connections are all in use and a new one
+		#  is requested, the request will NOT get a connection.
+		#
+		#  Setting 'max' to LESS than the number of threads means
+		#  that some threads may starve, and you will see errors
+		#  like 'No connections available and at max connection limit'
+		#
+		#  Setting 'max' to MORE than the number of threads means
+		#  that there are more connections than necessary.
+		max = ${thread[pool].max_servers}
+
+		#  Spare connections to be left idle
+		#
+		#  NOTE: Idle connections WILL be closed if "idle_timeout"
+		#  is set.  This should be less than or equal to "max" above.
+		spare = ${thread[pool].max_spare_servers}
+
+		#  Number of uses before the connection is closed
+		#
+		#  0 means "infinite"
+		uses = 0
+
+		#  The number of seconds to wait after the server tries
+		#  to open a connection, and fails.  During this time,
+		#  no new connections will be opened.
+		retry_delay = 30
+
+		#  The lifetime (in seconds) of the connection
+		#
+		#  NOTE: A setting of 0 means infinite (no limit).
+		lifetime = 86400
+
+		#  The pool is checked for free connections every
+		#  "cleanup_interval".  If there are free connections,
+		#  then one of them is closed.
+		cleanup_interval = 300
+
+		#  The idle timeout (in seconds).  A connection which is
+		#  unused for this length of time will be closed.
+		#
+		#  NOTE: A setting of 0 means infinite (no timeout).
+		idle_timeout = 600
+
+		#  NOTE: All configuration settings are enforced.  If a
+		#  connection is closed because of "idle_timeout",
+		#  "uses", or "lifetime", then the total number of
+		#  connections MAY fall below "min".  When that
+		#  happens, it will open a new connection.  It will
+		#  also log a WARNING message.
+		#
+		#  The solution is to either lower the "min" connections,
+		#  or increase lifetime/idle_timeout.
+	}
+}
