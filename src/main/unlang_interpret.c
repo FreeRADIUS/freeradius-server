@@ -672,7 +672,7 @@ static unlang_action_t unlang_create(REQUEST *request, unlang_stack_t *stack,
 	/*
 	 *	Allocate the child request.
 	 */
-	child = unlang_child_alloc(request, instruction, frame->result, UNLANG_NEXT_CONTINUE);
+	child = unlang_child_alloc(request, g->children, frame->result, UNLANG_NEXT_CONTINUE);
 	if (!child) {
 		*presult = RLM_MODULE_FAIL;
 		*priority = instruction->actions[*presult];
