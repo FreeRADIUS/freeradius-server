@@ -360,41 +360,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, UNUSED voi
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, void *thread, REQUEST *request)
 {
-	rlm_exec_t const	*inst = instance;
 	rlm_rcode_t 		rcode;
-	int			status;
 
-	char			out[1024];
-	bool			we_wait = false;
-	VALUE_PAIR		*vp, *tmp;
-
-	vp = fr_pair_find_by_num(request->reply->vps, 0, FR_EXEC_PROGRAM, TAG_ANY);
-	if (vp) {
-		we_wait = false;
-	} else if ((vp = fr_pair_find_by_num(request->reply->vps, 0, FR_EXEC_PROGRAM_WAIT, TAG_ANY)) != NULL) {
-		we_wait = true;
-	}
-	if (!vp) {
-		if (!inst->program) {
-			return RLM_MODULE_NOOP;
-		}
-
-		rcode = mod_exec_dispatch(instance, thread, request);
-		goto finish;
-	}
-
-	tmp = NULL;
-	status = radius_exec_program(request, out, sizeof(out), &tmp, request, vp->vp_strvalue, request->packet->vps,
-				     we_wait, inst->shell_escape, inst->timeout);
-	rcode = rlm_exec_status2rcode(request, out, strlen(out), status);
-
-	/*
-	 *	Always add the value-pairs to the reply.
-	 */
-	fr_pair_list_move(request->reply, &request->reply->vps, &tmp);
-	fr_pair_list_free(&tmp);
-
-	finish:
+	rcode = mod_exec_dispatch(instance, thread, request);
 	switch (rcode) {
 	case RLM_MODULE_FAIL:
 	case RLM_MODULE_INVALID:
@@ -409,42 +377,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, void *thread, 
 	return rcode;
 }
 
-/*
- *	First, look for Exec-Program && Exec-Program-Wait.
- *
- *	Then, call exec_dispatch.
- */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, void *thread, REQUEST *request)
-{
-	rlm_exec_t const	*inst = instance;
-	int			status;
-
-	char			out[1024];
-	bool 			we_wait = false;
-	VALUE_PAIR		*vp;
-
-	/*
-	 *	The "bare" exec module takes care of handling
-	 *	Exec-Program and Exec-Program-Wait.
-	 */
-	if (!inst->bare) {
-		return mod_exec_dispatch(instance, thread, request);
-	}
-
-	vp = fr_pair_find_by_num(request->reply->vps, 0, FR_EXEC_PROGRAM, TAG_ANY);
-	if (vp) {
-		we_wait = true;
-	} else if ((vp = fr_pair_find_by_num(request->reply->vps, 0, FR_EXEC_PROGRAM_WAIT, TAG_ANY)) != NULL) {
-		we_wait = false;
-	}
-	if (!vp) {
-		return RLM_MODULE_NOOP;
-	}
-
-	status = radius_exec_program(request, out, sizeof(out), NULL, request, vp->vp_strvalue, request->packet->vps,
-				     we_wait, inst->shell_escape, inst->timeout);
-	return rlm_exec_status2rcode(request, out, strlen(out), status);
-}
 
 /*
  *	The module name should be the only globally exported symbol.
@@ -467,7 +399,7 @@ rad_module_t rlm_exec = {
 		[MOD_AUTHENTICATE]	= mod_exec_dispatch,
 		[MOD_AUTHORIZE]		= mod_exec_dispatch,
 		[MOD_PREACCT]		= mod_exec_dispatch,
-		[MOD_ACCOUNTING]	= mod_accounting,
+		[MOD_ACCOUNTING]	= mod_exec_dispatch,
 		[MOD_PRE_PROXY]		= mod_exec_dispatch,
 		[MOD_POST_PROXY]	= mod_exec_dispatch,
 		[MOD_POST_AUTH]		= mod_post_auth,

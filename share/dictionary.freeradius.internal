@@ -19,8 +19,9 @@ FLAGS	internal
 # 	These attributes CAN go in the reply item list.
 ATTRIBUTE	Fall-Through				500	integer
 ATTRIBUTE	Relax-Filter				501	integer
-ATTRIBUTE	Exec-Program				502	string
-ATTRIBUTE	Exec-Program-Wait			503	string
+#
+# Exec-Program and Exec-Program-Wait are no longer supported in v4.
+#
 
 #	These attributes CANNOT go in the reply item list.
 

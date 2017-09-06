@@ -338,6 +338,10 @@ complicated.  Experience shows that having configurable policies in
 The `virtual_server` configuration has been removed from EAP-PWD.  The
 module now looks for &request.control:Cleartext-Password.
 
+### rlm_exec
+
+Exec-Program and Exec-Program-Wait have been removed.
+
 ### rlm_expr
 
 Allow `&Attr-Name[*]` to mean "sum".  Previously, it just referred to
