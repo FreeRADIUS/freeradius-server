@@ -61,6 +61,8 @@ struct xlat_exp {
 	char const	*fmt;		//!< The format string.
 	size_t		len;		//!< Length of the format string.
 
+	bool		async_safe;	//!< carried from all of the children
+
 	xlat_state_t	type;		//!< type of this expansion.
 	xlat_exp_t	*next;		//!< Next in the list.
 

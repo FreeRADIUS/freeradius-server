@@ -161,6 +161,8 @@ static ssize_t xlat_tokenize_alternation(TALLOC_CTX *ctx, char *fmt, xlat_exp_t 
 		p += slen;
 	}
 
+	node->async_safe = (node->child->async_safe && node->alternate->async_safe);
+
 	*head = node;
 	return p - fmt;
 }
@@ -271,6 +273,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 			}
 			p += slen;
 
+			node->async_safe = (node->xlat->async_safe && node->child->async_safe);
 			*head = node;
 			rad_assert(node->next == NULL);
 
@@ -318,6 +321,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 			node->fmt = node->attr->tmpl_unknown_name;
 
 			XLAT_DEBUG("VIRTUAL <-- %s", node->fmt);
+			node->async_safe = node->xlat->async_safe;
 			*head = node;
 			rad_assert(node->next == NULL);
 			q++;
@@ -338,6 +342,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 		return -1;	/* second character of format string */
 	}
 	*p++ = '\0';
+	node->async_safe = true; /* attribute expansions are always async-safe */
 	*head = node;
 	rad_assert(node->next == NULL);
 
@@ -502,6 +507,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 	 *	Squash zero-width literals
 	 */
 	if (node->len > 0) {
+		node->async_safe = true; /* literals are always true */
 		*head = node;
 
 	} else {
@@ -747,7 +753,10 @@ ssize_t xlat_tokenize_request(TALLOC_CTX *ctx, REQUEST *request, char const *fmt
 	/*
 	 *	Zero length expansion, return a zero length node.
 	 */
-	if (slen == 0) *head = talloc_zero(ctx, xlat_exp_t);
+	if (slen == 0) {
+		MEM(*head = talloc_zero(ctx, xlat_exp_t));
+		(*head)->async_safe = true;
+	}
 
 	/*
 	 *	Output something like:
