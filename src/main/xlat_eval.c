@@ -127,6 +127,15 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 	default:
 		break;
 
+	case FR_RESPONSE_PACKET_TYPE:
+		if (packet != request->reply) {
+			RWARN("%%{Response-Packet-Type} is ONLY for responses!");
+		}
+		packet = request->reply;
+
+		RWARN("Please replace %%{Response-Packet-Type} with %%{reply:Packet-Type}");
+		/* FALL-THROUGH */
+
 	case FR_PACKET_TYPE:
 		if (packet->code > 0) {
 			dv = fr_dict_enum_by_value(NULL, vpt->tmpl_da, fr_box_uint32(packet->code));
@@ -138,30 +147,6 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 		 *	If there's no code set then we return an empty string (not zero).
 		 */
 		return talloc_strdup(ctx, "");
-
-	case FR_RESPONSE_PACKET_TYPE:
-	{
-		int code = 0;
-
-#ifdef WITH_PROXY
-		/*
-		 *	This code is probably wrong.  Why automatically get the proxy reply code?
-		 */
-		if (request->proxy && request->proxy->reply && (!request->reply || !request->reply->code)) {
-			code = request->proxy->reply->code;
-		} else
-#endif
-		if (request->reply) {
-			code = request->reply->code;
-		}
-
-		if (code > 0) return talloc_typed_strdup(ctx, fr_packet_codes[code]);
-
-		/*
-		 *	If there's no code set then we return an empty string (not zero).
-		 */
-		return talloc_strdup(ctx, "");
-	}
 
 	/*
 	 *	Virtual attributes which require a temporary VALUE_PAIR
