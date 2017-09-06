@@ -252,7 +252,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	We need a program to execute.
 	 */
 	if (!inst->program) {
-		cf_log_err(conf, "You MUSt specify 'program' to execute");
+		cf_log_err(conf, "You must specify 'program' to execute");
 		return -1;
 	}
 
@@ -317,31 +317,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, UNUSED voi
 
 
 /*
- *	First, look for Exec-Program && Exec-Program-Wait.
- *
- *	Then, call exec_dispatch.
- */
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, void *thread, REQUEST *request)
-{
-	rlm_rcode_t 		rcode;
-
-	rcode = mod_exec_dispatch(instance, thread, request);
-	switch (rcode) {
-	case RLM_MODULE_FAIL:
-	case RLM_MODULE_INVALID:
-	case RLM_MODULE_REJECT:
-		request->reply->code = FR_CODE_ACCESS_REJECT;
-		break;
-
-	default:
-		break;
-	}
-
-	return rcode;
-}
-
-
-/*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  *
@@ -365,7 +340,7 @@ rad_module_t rlm_exec = {
 		[MOD_ACCOUNTING]	= mod_exec_dispatch,
 		[MOD_PRE_PROXY]		= mod_exec_dispatch,
 		[MOD_POST_PROXY]	= mod_exec_dispatch,
-		[MOD_POST_AUTH]		= mod_post_auth,
+		[MOD_POST_AUTH]		= mod_exec_dispatch,
 #ifdef WITH_COA
 		[MOD_RECV_COA]		= mod_exec_dispatch,
 		[MOD_SEND_COA]		= mod_exec_dispatch
