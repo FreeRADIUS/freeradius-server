@@ -674,7 +674,7 @@ int fr_event_pid_wait(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_pid_t const
 	ev->callback = wait_fn;
 	ev->uctx = uctx;
 
-	EV_SET(&evset, pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT 0, ev);
+	EV_SET(&evset, pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT, 0, ev);
 
 	if (unlikely(kevent(el->kq, &evset, 1, NULL, 0, NULL) < 0)) {
 		fr_strerror_printf("Failed adding waiter for PID %ld", (long) pid);
