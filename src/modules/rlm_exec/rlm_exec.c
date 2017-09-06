@@ -43,8 +43,6 @@ typedef struct rlm_exec_t {
 	char const	*output;
 	pair_lists_t	input_list;
 	pair_lists_t	output_list;
-	char const	*packet_type;
-	unsigned int	packet_code;
 	bool		shell_escape;
 	uint32_t	timeout;
 } rlm_exec_t;
@@ -54,7 +52,6 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("program", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_exec_t, program) },
 	{ FR_CONF_OFFSET("input_pairs", FR_TYPE_STRING, rlm_exec_t, input) },
 	{ FR_CONF_OFFSET("output_pairs", FR_TYPE_STRING, rlm_exec_t, output) },
-	{ FR_CONF_OFFSET("packet_type", FR_TYPE_STRING, rlm_exec_t, packet_type) },
 	{ FR_CONF_OFFSET("shell_escape", FR_TYPE_BOOL, rlm_exec_t, shell_escape), .dflt = "yes" },
 	{ FR_CONF_OFFSET("timeout", FR_TYPE_UINT32, rlm_exec_t, timeout) },
 	CONF_PARSER_TERMINATOR
@@ -235,23 +232,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	}
 
 	/*
-	 *	Get the packet type on which to execute
-	 */
-	if (!inst->packet_type) {
-		inst->packet_code = 0;
-	} else {
-		fr_dict_enum_t	*dval;
-
-		dval = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE), inst->packet_type);
-		if (!dval) {
-			cf_log_err(conf, "Unknown packet type %s: See list of VALUEs for Packet-Type in "
-				      "share/dictionary", inst->packet_type);
-			return -1;
-		}
-		inst->packet_code = dval->value->vb_uint32;
-	}
-
-	/*
 	 *	Get the time to wait before killing the child
 	 */
 	if (!inst->timeout) {
@@ -293,22 +273,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, UNUSED voi
 	if (!inst->program) {
 		ERROR("We require a program to execute");
 		return RLM_MODULE_FAIL;
-	}
-
-	/*
-	 *	See if we're supposed to execute it now.
-	 */
-	if (!((inst->packet_code == 0) || (request->packet->code == inst->packet_code) ||
-	      (request->reply->code == inst->packet_code)
-#ifdef WITH_PROXY
-	      || (request->proxy &&
-		  ((request->proxy->packet->code == inst->packet_code) ||
-		   (request->proxy->reply && (request->proxy->reply->code == inst->packet_code))))
-#endif
-		    )) {
-		RDEBUG2("Packet type is not %s. Not executing", inst->packet_type);
-
-		return RLM_MODULE_NOOP;
 	}
 
 	/*

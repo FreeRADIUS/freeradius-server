@@ -342,6 +342,9 @@ module now looks for &request.control:Cleartext-Password.
 
 Exec-Program and Exec-Program-Wait have been removed.
 
+The `packet_type` configuration has been removed.  Use `unlang` checks
+to see if you want to execute the module.
+
 ### rlm_expr
 
 Allow `&Attr-Name[*]` to mean "sum".  Previously, it just referred to
