@@ -86,6 +86,15 @@ struct fr_event_fd {
 	fr_event_fd_t		*next;			//!< item in a list of fr_event_fd.
 };
 
+
+struct fr_event_pid {
+	pid_t			pid;			//!< child to wait for
+	fr_event_list_t		*el;			//!< the event list which this thing is in
+
+	fr_event_pid_callback_t	callback;		//!< callback to run when the child exits
+	void			*uctx;			//!< Context pointer to pass to each file descriptor callback.
+};
+
 /** Callbacks to perform when the event handler is about to check the events
  *
  */
@@ -623,6 +632,62 @@ int fr_event_timer_insert(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t
 }
 
 
+static int event_pid_free(fr_event_pid_t *ev)
+{
+	struct kevent evset;
+
+	if (ev->pid == 0) return 0; /* already deleted from kevent */
+
+	EV_SET(&evset, ev->pid, EVFILT_PROC, EV_DELETE, NOTE_EXIT, 0, ev);
+
+	(void) kevent(ev->el->kq, &evset, 1, NULL, 0, NULL);
+
+	return 0;
+}
+
+/** Insert a PID event into an event list
+ *
+ * @note The talloc parent of the memory returned in ev_p must not be changed.
+ *	 If the lifetime of the event needs to be bound to another context
+ *	 this function should be called with the existing event pointed to by
+ *	 ev_p.
+ *
+ * @param[in] ctx		to bind lifetime of the event to.
+ * @param[in] el		to insert event into.
+ * @param[in,out] ev_p		If not NULL modify this event instead of creating a new one.  This is a parent
+ *				in a temporal sense, not in a memory structure or dependency sense.
+ * @param[in] pid		child PID to wait for
+ * @param[in] wait_fn		function to execute if the event fires.
+ * @param[in] uctx		user data to pass to the event.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_event_pid_wait(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_pid_t const **ev_p,
+		      pid_t pid, fr_event_pid_callback_t wait_fn, void *uctx)
+{
+	fr_event_pid_t *ev;
+	struct kevent evset;
+
+	ev = talloc(ctx, fr_event_pid_t);
+	ev->pid = pid;
+	ev->callback = wait_fn;
+	ev->uctx = uctx;
+
+	EV_SET(&evset, pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT | NOTE_EXITSTATUS, 0, ev);
+
+	if (unlikely(kevent(el->kq, &evset, 1, NULL, 0, NULL) < 0)) {
+		fr_strerror_printf("Failed adding waiter for PID %ld", (long) pid);
+		return -1;
+	}
+	talloc_set_destructor(ev, event_pid_free);
+
+	*ev_p = ev;
+	return 0;
+}
+
+
+
 /** Add a user callback to the event list.
  *
  * @param[in] el	Containing the timer events.
@@ -989,6 +1054,22 @@ void fr_event_service(fr_event_list_t *el)
 			rad_assert(user->ident == el->events[i].ident);
 
 			user->callback(el->kq, &el->events[i], user->uctx);
+			continue;
+		}
+
+		if (el->events[i].filter == EVFILT_PROC) {
+			pid_t pid;
+			fr_event_pid_t *ev;
+
+			ev = (fr_event_pid_t *) el->events[i].udata;
+			(void) talloc_get_type_abort(ev, fr_event_pid_t);
+
+			rad_assert(ev->pid == (pid_t) el->events[i].ident);
+			rad_assert((el->events[i].fflags & NOTE_EXIT) != 0);
+
+			pid = ev->pid;
+			ev->pid = 0; /* so we won't hit kevent again when it's freed */
+			ev->callback(el, pid, (int) el->events[i].data, ev->uctx);
 			continue;
 		}
 

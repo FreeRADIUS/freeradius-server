@@ -46,6 +46,10 @@ typedef struct fr_event_list fr_event_list_t;
  */
 typedef struct fr_event_timer fr_event_timer_t;
 
+/** An opaque PID status handle
+ */
+typedef struct fr_event_pid fr_event_pid_t;
+
 /** Called when a timer event fires
  *
  * @param[in] now	The current time.
@@ -81,6 +85,15 @@ typedef void (*fr_event_fd_io_t)(fr_event_list_t *el, int fd, int flags, void *u
  */
 typedef void (*fr_event_fd_error_t)(fr_event_list_t *el, int fd, int flags, int fd_errno, void *uctx);
 
+/** Called when a child process has exited
+ *
+ * @param[in] el	Event list
+ * @param[in] pid	That exited
+ * @param[in] status	exit status
+ * @param[in] uctx	User ctx passed to #fr_event_fd_insert.
+ */
+typedef void (*fr_event_pid_callback_t)(fr_event_list_t *el, pid_t pid, int status, void *uctx);
+
 /** Called when a user kevent occurs
  *
  * @param[in] kq	that received the user kevent.
@@ -100,6 +113,9 @@ int		fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 				   fr_event_fd_io_t write_fn,
 				   fr_event_fd_error_t error,
 				   void *uctx);
+
+int		fr_event_pid_wait(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_pid_t const **ev_p,
+				  pid_t pid, fr_event_pid_callback_t wait_fn, void *uctx) CC_HINT(nonnull(2,5));
 
 int		fr_event_timer_insert(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t const **ev,
 				      struct timeval *when, fr_event_callback_t callback, void const *uctx);
