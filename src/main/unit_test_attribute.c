@@ -1178,7 +1178,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	if (xlat_register(inst, "test", xlat_test, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN) < 0) {
+	if (xlat_register(inst, "test", xlat_test, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true) < 0) {
 		fprintf(stderr, "Failed registering xlat");
 		return 1;
 	}

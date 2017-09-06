@@ -684,6 +684,7 @@ xlat_t *xlat_find(char const *name)
  * @param[in] inst_size sizeof() this xlat's instance data.
  * @param[in] buf_len Size of the output buffer to allocate when calling the function.
  *	May be 0 if the function allocates its own buffer.
+ * @param[in] async whether or not the function is async-safe.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -691,7 +692,7 @@ xlat_t *xlat_find(char const *name)
 int xlat_register(void *mod_inst, char const *name,
 		  xlat_func_t func, xlat_escape_t escape,
 		  xlat_instantiate_t instantiate, size_t inst_size,
-		  size_t buf_len)
+		  size_t buf_len, bool async_safe)
 {
 	xlat_t	*c;
 	xlat_t	my_xlat;
@@ -721,14 +722,14 @@ int xlat_register(void *mod_inst, char const *name,
 
 #ifdef WITH_UNLANG
 		for (i = 0; xlat_foreach_names[i] != NULL; i++) {
-			xlat_register(&xlat_foreach_inst[i], xlat_foreach_names[i], xlat_foreach, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+			xlat_register(&xlat_foreach_inst[i], xlat_foreach_names[i], xlat_foreach, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 			c = xlat_find(xlat_foreach_names[i]);
 			rad_assert(c != NULL);
 			c->internal = true;
 		}
 #endif
 
-#define XLAT_REGISTER(_x) xlat_register(NULL, STRINGIFY(_x), xlat_ ## _x, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN); \
+#define XLAT_REGISTER(_x) xlat_register(NULL, STRINGIFY(_x), xlat_ ## _x, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true); \
 		c = xlat_find(STRINGIFY(_x)); \
 		rad_assert(c != NULL); \
 		c->internal = true
@@ -751,7 +752,7 @@ int xlat_register(void *mod_inst, char const *name,
 		XLAT_REGISTER(regex);
 #endif
 
-		xlat_register(&xlat_foreach_inst[0], "debug", xlat_debug, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+		xlat_register(&xlat_foreach_inst[0], "debug", xlat_debug, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 		c = xlat_find("debug");
 		rad_assert(c != NULL);
 		c->internal = true;
@@ -765,7 +766,12 @@ int xlat_register(void *mod_inst, char const *name,
 	c = rbtree_finddata(xlat_root, &my_xlat);
 	if (c) {
 		if (c->internal) {
-			ERROR("%s: Cannot re-define internal xlat", __FUNCTION__);
+			ERROR("%s: Cannot re-define internal expansion %s", __FUNCTION__, name);
+			return -1;
+		}
+
+		if (c->async_safe != async_safe) {
+			ERROR("%s: Cannot change async capability of %s", __FUNCTION__, name);
 			return -1;
 		}
 
@@ -790,6 +796,7 @@ int xlat_register(void *mod_inst, char const *name,
 	c->mod_inst = mod_inst;
 	c->instantiate = instantiate;
 	c->inst_size = inst_size;
+	c->async_safe = async_safe;
 
 	DEBUG3("%s: %s", c->name, __FUNCTION__);
 
@@ -1008,6 +1015,11 @@ static ssize_t xlat_load_balance(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size
  * These xlats wrap the xlat methods of the modules in a redundant section,
  * emulating the behaviour of a redundant section, but over xlats.
  *
+ * @todo - make xlat_register() take ASYNC / SYNC / UNKNOWN.  We may
+ * need "unknown" here in order to properly handle the children, which
+ * we don't know are async-safe or not.  For now, it's best to assume
+ * that all xlat's in a redundant block are module calls, and are not async-safe
+ *
  * @return
  *	- 0 on success.
  *	- -1 on error.
@@ -1044,7 +1056,7 @@ int xlat_register_redundant(CONF_SECTION *cs)
 	 *	Get the number of children for load balancing.
 	 */
 	if (xr->type == XLAT_REDUNDANT) {
-		if (xlat_register(xr, name2, xlat_redundant, NULL, NULL, 0, 0) < 0) {
+		if (xlat_register(xr, name2, xlat_redundant, NULL, NULL, 0, 0, false) < 0) {
 			ERROR("Registering xlat for redundant section failed");
 			talloc_free(xr);
 			return -1;
@@ -1072,7 +1084,7 @@ int xlat_register_redundant(CONF_SECTION *cs)
 			xr->count++;
 		}
 
-		if (xlat_register(xr, name2, xlat_load_balance, NULL, NULL, 0, 0) < 0) {
+		if (xlat_register(xr, name2, xlat_load_balance, NULL, NULL, 0, 0, false) < 0) {
 			ERROR("Registering xlat for load-balance section failed");
 			talloc_free(xr);
 			return -1;

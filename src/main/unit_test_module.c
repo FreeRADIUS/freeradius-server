@@ -780,7 +780,7 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-	if (xlat_register(NULL, "poke", xlat_poke, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN) < 0) {
+	if (xlat_register(NULL, "poke", xlat_poke, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true) < 0) {
 		rcode = EXIT_FAILURE;
 		goto finish;
 	}

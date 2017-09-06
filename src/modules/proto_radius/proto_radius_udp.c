@@ -360,6 +360,14 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	}
 
 	/*
+	 *	Root through the reply to determine any
+	 *	connection-level negotiation data.
+	 */
+	if (track->data[0] == FR_CODE_STATUS_SERVER) {
+//		status_check_reply(inst, buffer, buffer_len);
+	}
+
+	/*
 	 *	Most packets are cleaned up immediately.  Also, if
 	 *	cleanup_delay = 0, then we even clean up
 	 *	Access-Request packets immediately.

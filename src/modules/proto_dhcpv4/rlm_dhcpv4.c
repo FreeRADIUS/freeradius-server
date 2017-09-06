@@ -166,8 +166,8 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
 	rlm_dhcpv4_t *inst = instance;
 	fr_dict_attr_t const *da;
 
-	xlat_register(inst, "dhcp_options", dhcp_options_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	xlat_register(inst, "dhcp", dhcp_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat_register(inst, "dhcp_options", dhcp_options_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register(inst, "dhcp", dhcp_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 
 	/*
 	 *	Fixup dictionary entry for DHCP-Paramter-Request-List adding all the options

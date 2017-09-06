@@ -130,7 +130,7 @@ void trigger_exec_init(CONF_SECTION const *cs)
 	pthread_mutex_init(trigger_mutex, 0);
 	talloc_set_destructor(trigger_mutex, _mutex_free);
 
-	xlat_register(NULL, "trigger", xlat_trigger, NULL, NULL, 0, 0);
+	xlat_register(NULL, "trigger", xlat_trigger, NULL, NULL, 0, 0, false);
 }
 
 /** Free trigger resources

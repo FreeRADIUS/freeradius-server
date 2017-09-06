@@ -381,33 +381,6 @@ static ssize_t xlat_config(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	return strlen(*out);
 }
 
-/*
- *	Xlat for %{listen:foo}
- */
-static ssize_t xlat_listen(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			   REQUEST *request, char const *fmt)
-{
-	char const *value = NULL;
-	CONF_PAIR *cp;
-
-	if (!request->listener) {
-		RWDEBUG("No listener associated with this request");
-		return 0;
-	}
-
-	cp = cf_pair_find(request->listener->cs, fmt);
-	if (!cp || !(value = cf_pair_value(cp))) {
-		RDEBUG("Listener does not contain config item \"%s\"", fmt);
-		return 0;
-	}
-
-	strlcpy(*out, value, outlen);
-
-	return strlen(*out);
-}
-
-
 #ifdef HAVE_SETUID
 /*
  *  Do chroot, if requested.
@@ -980,13 +953,7 @@ do {\
 	/*
 	 *	Register the %{config:section.subsection} xlat function.
 	 */
-	xlat_register(NULL, "config", xlat_config, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-
-	/*
-	 *	...and the client and listen xlats which need to be
-	 *	defined before we start parsing the config.
-	 */
-	xlat_register(NULL, "listen", xlat_listen, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat_register(NULL, "config", xlat_config, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 
 	/*
 	 *	Ensure cwd is inside the chroot.

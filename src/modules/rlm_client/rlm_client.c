@@ -340,7 +340,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
  */
 static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
 {
-	xlat_register(instance, "client", xlat_client, NULL, NULL, 0, 0);
+	xlat_register(instance, "client", xlat_client, NULL, NULL, 0, 0, true);
 	map_proc_register(instance, "client", map_proc_client, NULL, 0);
 
 	return 0;

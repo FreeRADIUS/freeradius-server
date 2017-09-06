@@ -144,7 +144,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 	inst->xlat_name = xlat_name;
 
-	xlat_register(inst, inst->xlat_name, xlat_idna, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat_register(inst, inst->xlat_name, xlat_idna, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 
 	return 0;
 }

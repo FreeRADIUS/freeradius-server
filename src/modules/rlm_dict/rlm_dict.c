@@ -72,7 +72,7 @@ static ssize_t xlat_dict_attr_by_num(TALLOC_CTX *ctx, char **out, UNUSED size_t 
  */
 static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
 {
-	xlat_register(instance, "attr_by_num", xlat_dict_attr_by_num, NULL, NULL, 0, 0);
+	xlat_register(instance, "attr_by_num", xlat_dict_attr_by_num, NULL, NULL, 0, 0, true);
 
 	return 0;
 }

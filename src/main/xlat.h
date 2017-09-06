@@ -42,6 +42,7 @@ typedef struct xlat_t {
 	size_t			inst_size;		//!< Length of instance data to pre-allocate.
 	size_t			buf_len;		//!< Length of output buffer to pre-allocate.
 	bool			internal;		//!< If true, cannot be redefined.
+	bool			async_safe;		///!< If true, is async safe
 } xlat_t;
 
 typedef enum {

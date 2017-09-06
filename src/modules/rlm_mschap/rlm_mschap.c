@@ -584,7 +584,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	name = cf_section_name2(conf);
 	if (!name) name = cf_section_name1(conf);
 	inst->xlat_name = name;
-	xlat_register(inst, inst->xlat_name, mschap_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat_register(inst, inst->xlat_name, mschap_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 
 	return 0;
 }
