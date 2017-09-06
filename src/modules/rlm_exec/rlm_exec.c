@@ -36,7 +36,6 @@ RCSID("$Id$")
  */
 typedef struct rlm_exec_t {
 	char const	*name;
-	int		bare;
 	bool		wait;
 	char const	*program;
 	char const	*input;
@@ -199,7 +198,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) {
 		inst->name = cf_section_name1(conf);
-		inst->bare = 1;
 	}
 
 	xlat_register(inst, inst->name, exec_xlat, rlm_exec_shell_escape, NULL, 0, XLAT_DEFAULT_BUF_LEN, false);
@@ -241,11 +239,20 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		cf_log_err(conf, "Timeout '%d' is too small (minimum: 1)", inst->timeout);
 		return -1;
 	}
+
 	/*
 	 *	Blocking a request longer than max_request_time isn't going to help anyone.
 	 */
 	if (inst->timeout > main_config.max_request_time) {
 		cf_log_err(conf, "Timeout '%d' is too large (maximum: %d)", inst->timeout, main_config.max_request_time);
+		return -1;
+	}
+
+	/*
+	 *	We need a program to execute.
+	 */
+	if (!inst->program) {
+		cf_log_err(conf, "You MUSt specify 'program' to execute");
 		return -1;
 	}
 
@@ -266,14 +273,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, UNUSED voi
 	VALUE_PAIR		*answer = NULL;
 	TALLOC_CTX		*ctx = NULL;
 	char			out[1024];
-
-	/*
-	 *	We need a program to execute.
-	 */
-	if (!inst->program) {
-		ERROR("We require a program to execute");
-		return RLM_MODULE_FAIL;
-	}
 
 	/*
 	 *	Decide what input/output the program takes.
