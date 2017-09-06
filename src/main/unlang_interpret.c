@@ -232,7 +232,7 @@ static uint64_t unlang_active_callers(unlang_t *instruction)
 }
 
 static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *stack,
-					   rlm_rcode_t *presult, int *priority)
+					   rlm_rcode_t *presult, UNUSED int *priority)
 {
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
