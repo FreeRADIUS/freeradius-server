@@ -148,25 +148,6 @@ static int packetcmp(UNUSED void *instance,
 }
 
 /*
- *	Compare the response packet type.
- */
-static int responsecmp(UNUSED void *instance,
-		       REQUEST *request,
-		       UNUSED VALUE_PAIR *req,
-		       VALUE_PAIR *check,
-		       UNUSED VALUE_PAIR *check_pairs,
-		       UNUSED VALUE_PAIR **reply_pairs)
-{
-	VERIFY_VP(check);
-
-	if (request->reply->code == check->vp_uint32) {
-		return 0;
-	}
-
-	return 1;
-}
-
-/*
  *	Generic comparisons, via xlat.
  */
 static int genericcmp(UNUSED void *instance,
@@ -252,7 +233,6 @@ void pair_builtincompare_add(void *instance)
 												FR_CONNECT_INFO),
 			     false, connectcmp, instance);
 	paircompare_register(fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE), NULL, true, packetcmp, instance);
-	paircompare_register(fr_dict_attr_by_num(NULL, 0, FR_RESPONSE_PACKET_TYPE), NULL, true, responsecmp, instance);
 
 	for (i = 0; generic_attrs[i] != 0; i++) {
 		paircompare_register(fr_dict_attr_by_num(NULL, 0, generic_attrs[i]), NULL, true, genericcmp, instance);
