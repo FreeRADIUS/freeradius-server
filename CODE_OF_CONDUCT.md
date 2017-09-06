@@ -35,7 +35,7 @@ The following behaviours are expected and requested of all community members:
 ## 3. Unacceptable Behaviour
 
 The main source of unacceptable behavior is community participants who are unaware of the
-complexities of the software and protocols they're using.
+complexities of the software and protocols involved.
 They have questions, and they want answers.  They believe that as the experts, we can answer any and
 all questions about all possible technologies which interact with FreeRADIUS.
 
