@@ -521,14 +521,12 @@ int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, VALUE_PAIR **
 {
 	pid_t pid;
 	int from_child;
-#ifndef __MINGW32__
 	char *p;
 	pid_t child_pid;
 	int comma = 0;
 	int status, ret = 0;
 	ssize_t len;
 	char answer[4096];
-#endif
 
 	RDEBUG2("Executing: %s", cmd);
 
@@ -543,7 +541,6 @@ int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, VALUE_PAIR **
 		return 0;
 	}
 
-#ifndef __MINGW32__
 	len = radius_readfrom_program(from_child, pid, timeout, answer, sizeof(answer));
 	if (len < 0) {
 		/*
@@ -646,7 +643,6 @@ wait:
 	}
 
 	RERROR("Abnormal child exit: %s", fr_syserror(errno));
-#endif	/* __MINGW32__ */
 
 	return -1;
 }
