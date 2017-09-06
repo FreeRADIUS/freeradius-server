@@ -73,14 +73,14 @@ typedef fr_connection_state_t (*fr_connection_open_t)(fr_event_list_t *el, int f
  * @param[in] fd	That was successfully opened.
  * @param[in] state	the connection was in when it failed. Usually one of:
  *			- #FR_CONNECTION_STATE_CONNECTING	the connection attempt explicitly failed.
- *			- #FR_CONNECTION_STATE_CONNECTED	something called #fr_connection_reconnect.
+ *			- #FR_CONNECTION_STATE_CONNECTED	something called #fr_connection_signal_reconnect.
  *			- #FR_CONNECTION_STATE_TIMEOUT		the connection attempt timed out.
  * @param[in] uctx	User context.
  * @return
  *	- #FR_CONNECTION_STATE_INIT		to transition to the init state.
  *	- #FR_CONNECTION_STATE_HALTED		To prevent further reconnection
  *						attempts Can be restarted with
- *	  					#fr_connection_start().
+ *	  					#fr_connection_signal_init().
  */
 typedef fr_connection_state_t (*fr_connection_failed_t)(int fd, fr_connection_state_t state, void *uctx);
 
@@ -97,14 +97,20 @@ typedef fr_connection_state_t (*fr_connection_failed_t)(int fd, fr_connection_st
  */
 typedef void (*fr_connection_close_t)(int fd, void *uctx);
 
-
 fr_connection_t		*fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
-			       	       	     struct timeval *open_time, struct timeval *wait_time,
+					     struct timeval const *connection_timeout,
+					     struct timeval const *reconnection_delay,
 					     fr_connection_init_t init, fr_connection_open_t open,
 					     fr_connection_close_t close,
-					     char const *log_prefix,
-					     void *uctx);
+					     char const *log_prefix, void *uctx);
+
 void			fr_connection_failed_func(fr_connection_t *conn, fr_connection_failed_t func);
-void			fr_connection_start(fr_connection_t *conn);
+void			fr_connection_signal_init(fr_connection_t *conn);
+void			fr_connection_signal_open(fr_connection_t *conn);
+void			fr_connection_signal_reconnect(fr_connection_t *conn);
+
+fr_event_list_t		*fr_connection_get_el(fr_connection_t const *conn);
 int			fr_connection_get_fd(fr_connection_t const *conn);
-void			fr_connection_reconnect(fr_connection_t *conn);
+void			fr_connection_set_fd(fr_connection_t *conn, int fd);
+
+

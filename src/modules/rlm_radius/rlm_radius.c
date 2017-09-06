@@ -225,7 +225,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
 	dl_instance_t	*parent_inst;
 	CONF_SECTION	*cs = cf_item_to_section(cf_parent(ci));
 	CONF_SECTION	*transport_cs;
-
+	
 	transport_cs = cf_section_find(cs, name, NULL);
 
 	/*
@@ -324,7 +324,6 @@ static int status_check_update_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITE
 	rad_assert(cf_item_is_section(ci));
 
 	cs = cf_item_to_section(ci);
-
 	name2 = cf_section_name2(cs);
 	if (!name2 || (strcmp(name2, "request") != 0)) {
 		cf_log_err(cs, "You must specify 'request' as the destination list");

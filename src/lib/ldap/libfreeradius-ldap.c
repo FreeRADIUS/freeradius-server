@@ -39,8 +39,18 @@ static int instance_count = 0;
 /** Used to set the global log prefix for functions which don't operate on connections
  *
  */
-static fr_ldap_handle_config_t ldap_global_handle_config = {
+static fr_ldap_config_t ldap_global_handle_config = {
 	.name = "global"
+};
+
+FR_NAME_NUMBER const fr_ldap_connection_states[] = {
+	{ "init",	FR_LDAP_STATE_INIT	},
+	{ "start-tls",	FR_LDAP_STATE_START_TLS	},
+	{ "bind",	FR_LDAP_STATE_BIND	},
+	{ "run",	FR_LDAP_STATE_RUN	},
+	{ "error",	FR_LDAP_STATE_ERROR	},
+
+	{  NULL , -1 }
 };
 
 FR_NAME_NUMBER const fr_ldap_supported_extensions[] = {
@@ -89,12 +99,12 @@ FR_NAME_NUMBER const fr_ldap_dereference[] = {
  * There are so many different timers in LDAP it's often hard to debug
  * issues with them, hence the need for this function.
  */
-void fr_ldap_timeout_debug(REQUEST *request, fr_ldap_conn_t const *conn,
+void fr_ldap_timeout_debug(REQUEST *request, fr_ldap_connection_t const *conn,
 			   struct timeval const *timeout, char const *prefix)
 {
 	struct timeval 			*net = NULL, *client = NULL;
 	int				server = 0;
-	fr_ldap_handle_config_t const	*handle_config = conn->config;
+	fr_ldap_config_t const	*handle_config = conn->config;
 
 
 #ifdef LDAP_OPT_NETWORK_TIMEOUT
@@ -153,7 +163,7 @@ void fr_ldap_timeout_debug(REQUEST *request, fr_ldap_conn_t const *conn,
  * @param conn to retrieve error from.
  * @return error string.
  */
-char const *fr_ldap_error_str(fr_ldap_conn_t const *conn)
+char const *fr_ldap_error_str(fr_ldap_connection_t const *conn)
 {
 	int lib_errno;
 	ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER, &lib_errno);
@@ -175,7 +185,7 @@ char const *fr_ldap_error_str(fr_ldap_conn_t const *conn)
  * @param[in] dn	if processing the result from a search request.
  * @return One of the LDAP_PROC_* (#fr_ldap_rcode_t) values.
  */
-fr_ldap_rcode_t fr_ldap_error_check(LDAPControl ***ctrls, fr_ldap_conn_t const *conn, LDAPMessage *msg, char const *dn)
+fr_ldap_rcode_t fr_ldap_error_check(LDAPControl ***ctrls, fr_ldap_connection_t const *conn, LDAPMessage *msg, char const *dn)
 {
 	fr_ldap_rcode_t status = LDAP_PROC_SUCCESS;
 
@@ -357,7 +367,8 @@ process_error:
  *
  * @note Error messages should be retrieved with fr_strerror() and fr_strerror_pop()
  *
- * @param[out] result	Where to write result, if NULL result will be freed.
+ * @param[out] result	Where to write result, if NULL result will be freed.  If not NULL caller
+ *			must free with ldap_msgfree().
  * @param[out] ctrls	Server ctrls returned to the client.  May be NULL if not required.
  *			Must be freed with ldap_free_ctrls.
  * @param[in] conn	Current connection.
@@ -375,9 +386,9 @@ process_error:
  * @return One of the LDAP_PROC_* (#fr_ldap_rcode_t) values.
  */
 fr_ldap_rcode_t fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
-			    fr_ldap_conn_t const *conn, int msgid, int all,
-			    char const *dn,
-			    struct timeval const *timeout)
+			       fr_ldap_connection_t const *conn, int msgid, int all,
+			       char const *dn,
+			       struct timeval const *timeout)
 {
 	fr_ldap_rcode_t	status = LDAP_PROC_SUCCESS;
 	int		lib_errno;
@@ -458,18 +469,18 @@ fr_ldap_rcode_t fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
  * @return One of the LDAP_PROC_* (#fr_ldap_rcode_t) values.
  */
 fr_ldap_rcode_t fr_ldap_bind(REQUEST *request,
-			  fr_ldap_conn_t **pconn,
-			  char const *dn, char const *password,
+			     fr_ldap_connection_t **pconn,
+			     char const *dn, char const *password,
 #ifdef WITH_SASL
-			  fr_ldap_sasl_t const *sasl,
+			     fr_ldap_sasl_t const *sasl,
 #else
-			  NDEBUG_UNUSED fr_ldap_sasl_t const *sasl,
+			     NDEBUG_UNUSED fr_ldap_sasl_t const *sasl,
 #endif
-			  struct timeval const *timeout,
-			  LDAPControl **serverctrls, LDAPControl **clientctrls)
+			     struct timeval const *timeout,
+			     LDAPControl **serverctrls, LDAPControl **clientctrls)
 {
 	fr_ldap_rcode_t			status = LDAP_PROC_ERROR;
-	fr_ldap_handle_config_t const	*handle_config = (*pconn)->config;
+	fr_ldap_config_t const	*handle_config = (*pconn)->config;
 
 	int				msgid = -1;
 
@@ -557,14 +568,14 @@ fr_ldap_rcode_t fr_ldap_bind(REQUEST *request,
  * @return One of the LDAP_PROC_* (#fr_ldap_rcode_t) values.
  */
 fr_ldap_rcode_t fr_ldap_search(LDAPMessage **result, REQUEST *request,
-			    fr_ldap_conn_t **pconn,
-			    char const *dn, int scope, char const *filter, char const * const *attrs,
-			    LDAPControl **serverctrls, LDAPControl **clientctrls)
+			       fr_ldap_connection_t **pconn,
+			       char const *dn, int scope, char const *filter, char const * const *attrs,
+			       LDAPControl **serverctrls, LDAPControl **clientctrls)
 {
 	fr_ldap_rcode_t			status = LDAP_PROC_ERROR;
 	LDAPMessage			*our_result = NULL;
 
-	fr_ldap_handle_config_t const	*handle_config = (*pconn)->config;
+	fr_ldap_config_t const	*handle_config = (*pconn)->config;
 
 	int				msgid;		// Message id returned by
 							// ldap_search_ext.
@@ -685,13 +696,13 @@ finish:
  * @return One of the LDAP_PROC_* (#fr_ldap_rcode_t) values.
  */
 fr_ldap_rcode_t fr_ldap_search_async(int *msgid, REQUEST *request,
-				  fr_ldap_conn_t **pconn,
-				  char const *dn, int scope, char const *filter, char const * const *attrs,
-				  LDAPControl **serverctrls, LDAPControl **clientctrls)
+				     fr_ldap_connection_t **pconn,
+				     char const *dn, int scope, char const *filter, char const * const *attrs,
+				     LDAPControl **serverctrls, LDAPControl **clientctrls)
 {
 	fr_ldap_rcode_t			status = LDAP_PROC_ERROR;
 
-	fr_ldap_handle_config_t const	*handle_config = (*pconn)->config;
+	fr_ldap_config_t const	*handle_config = (*pconn)->config;
 
 	struct timeval			tv;		// Holds timeout values.
 
@@ -768,9 +779,9 @@ fr_ldap_rcode_t fr_ldap_search_async(int *msgid, REQUEST *request,
  * @param[in] clientctrls	Search controls for ldap_modify.  May be NULL.
  * @return One of the LDAP_PROC_* (#fr_ldap_rcode_t) values.
  */
-fr_ldap_rcode_t fr_ldap_modify(REQUEST *request, fr_ldap_conn_t **pconn,
-			    char const *dn, LDAPMod *mods[],
-			    LDAPControl **serverctrls, LDAPControl **clientctrls)
+fr_ldap_rcode_t fr_ldap_modify(REQUEST *request, fr_ldap_connection_t **pconn,
+			       char const *dn, LDAPMod *mods[],
+			       LDAPControl **serverctrls, LDAPControl **clientctrls)
 {
 	fr_ldap_rcode_t	status = LDAP_PROC_ERROR;
 
@@ -828,387 +839,6 @@ finish:
 	return status;
 }
 
-#if LDAP_SET_REBIND_PROC_ARGS == 3
-/** Callback for OpenLDAP to rebind and chase referrals
- *
- * Called by OpenLDAP when it receives a referral and has to rebind.
- *
- * @param handle to rebind.
- * @param url to bind to.
- * @param request that triggered the rebind.
- * @param msgid that triggered the rebind.
- * @param ctx fr_ldap configuration.
- */
-static int fr_ldap_rebind(LDAP *handle, LDAP_CONST char *url,
-			  UNUSED ber_tag_t request, UNUSED ber_int_t msgid, void *ctx)
-{
-	fr_ldap_rcode_t			status;
-	fr_ldap_conn_t			*conn = talloc_get_type_abort(ctx, fr_ldap_conn_t);
-	fr_ldap_handle_config_t const	*handle_config = conn->config;
-
-	char const			*admin_identity = NULL;
-	char const			*admin_password = NULL;
-
-	int				ldap_errno;
-
-	conn->referred = true;
-	conn->rebound = true;	/* not really, but oh well... */
-	rad_assert(handle == conn->handle);
-
-	DEBUG("Rebinding to URL %s", url);
-
-#  ifdef HAVE_LDAP_URL_PARSE
-	/*
-	 *	Use bindname and x-bindpw extensions to get the bind credentials
-	 *	SASL mech is inherited from the module that defined the connection
-	 *	pool.
-	 */
-	if (handle_config->use_referral_credentials) {
-		LDAPURLDesc	*ldap_url;
-		int		ret;
-		char		**ext;
-
-		ret = ldap_url_parse(url, &ldap_url);
-		if (ret != LDAP_SUCCESS) {
-			ERROR("Failed parsing LDAP URL \"%s\": %s", url, ldap_err2string(ret));
-			return -1;
-		}
-
-		/*
-		 *	If there are no extensions, OpenLDAP doesn't
-		 *	bother allocating an array.
-		 */
-		for (ext = ldap_url->lud_exts; ext && *ext; ext++) {
-			char const *p;
-			bool critical = false;
-
-			p = *ext;
-
-			if (*p == '!') {
-				critical = true;
-				p++;
-			}
-
-			/*
-			 *	LDAP Parse URL unescapes the extensions for us
-			 */
-			switch (fr_substr2int(fr_ldap_supported_extensions, p, LDAP_EXT_UNSUPPORTED, -1)) {
-			case LDAP_EXT_BINDNAME:
-				p = strchr(p, '=');
-				if (!p) {
-				bad_ext:
-					ERROR("Failed parsing extension \"%s\": "
-					      "No attribute/value delimiter '='", *ext);
-					ldap_free_urldesc(ldap_url);
-					return LDAP_OTHER;
-				}
-				admin_identity = p + 1;
-				break;
-
-			case LDAP_EXT_BINDPW:
-				p = strchr(p, '=');
-				if (!p) goto bad_ext;
-				admin_password = p + 1;
-				break;
-
-			default:
-				if (critical) {
-					ERROR("Failed parsing critical extension \"%s\": "
-					      "Not supported by FreeRADIUS", *ext);
-					ldap_free_urldesc(ldap_url);
-					return LDAP_OTHER;
-				}
-				DEBUG2("Skipping unsupported extension \"%s\"", *ext);
-				continue;
-			}
-		}
-		ldap_free_urldesc(ldap_url);
-	} else
-#  endif
-	{
-		admin_identity = handle_config->admin_identity;
-		admin_password = handle_config->admin_password;
-	}
-
-	status = fr_ldap_bind(NULL, &conn, admin_identity, admin_password,
-			      &conn->config->admin_sasl, NULL, NULL, NULL);
-	if (status != LDAP_PROC_SUCCESS) {
-		ldap_get_option(handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
-
-		return ldap_errno;
-	}
-
-	return LDAP_SUCCESS;
-}
-#endif
-
-/** Close and delete a connection
- *
- * Unbinds the LDAP connection, informing the server and freeing any memory, then releases the memory used by the
- * connection handle.
- *
- * @param conn to destroy.
- * @return always indicates success.
- */
-static int _mod_conn_free(fr_ldap_conn_t *conn)
-{
-	fr_ldap_handle_config_t const	*handle_config = conn->config;
-
-	rad_assert(conn->handle);
-
-	talloc_free_children(conn);	/* Force inverted free order */
-
-	fr_ldap_control_clear(conn);
-
-#ifdef HAVE_LDAP_UNBIND_EXT_S
-	LDAPControl	*our_serverctrls[LDAP_MAX_CONTROLS];
-	LDAPControl	*our_clientctrls[LDAP_MAX_CONTROLS];
-
-	fr_ldap_control_merge(our_serverctrls, our_clientctrls,
-			      sizeof(our_serverctrls) / sizeof(*our_serverctrls),
-			      sizeof(our_clientctrls) / sizeof(*our_clientctrls),
-			      conn, NULL, NULL);
-
-	DEBUG3("Closing libldap handle %p", conn->handle);
-	ldap_unbind_ext_s(conn->handle, our_serverctrls, our_clientctrls);
-#else
-	DEBUG3("Closing libldap handle %p", conn->handle);
-	ldap_unbind_s(conn->handle);
-#endif
-	conn->handle = NULL;
-
-	return 0;
-}
-
-/** Allocate and configure a new connection
- *
- * Allocates and configures both our ldap handle, and libldap's handle.
- *
- * @param[in] ctx		to allocate handle in.
- * @param[in] handle_config	Connection configuration.
- * @return
- *	- A new handle on success.
- *	- NULL on error.
- */
-fr_ldap_conn_t *fr_ldap_conn_alloc(TALLOC_CTX *ctx, fr_ldap_handle_config_t const *handle_config)
-{
-	fr_ldap_conn_t			*conn;
-	LDAP				*handle = NULL;
-
-	int				ldap_errno, ldap_version;
-
-	rad_assert(handle_config->server);
-
-#ifdef HAVE_LDAP_INITIALIZE
-	ldap_errno = ldap_initialize(&handle, handle_config->server);
-	if (ldap_errno != LDAP_SUCCESS) {
-		ERROR("ldap_initialize failed: %s", ldap_err2string(ldap_errno));
-		return NULL;
-	}
-#else
-	handle = ldap_init(handle_config->server, handle_config->port);
-	if (!handle) {
-		ERROR("ldap_init failed");
-		return NULL;
-	}
-#endif
-
-	DEBUG3("New libldap handle %p", handle);
-
-	/*
-	 *	Allocate memory for the handle.
-	 */
-	conn = talloc_zero(ctx, fr_ldap_conn_t);
-	if (!conn) return NULL;
-
-	conn->config = handle_config;
-	conn->handle = handle;
-	conn->rebound = false;
-	conn->referred = false;
-
-	talloc_set_destructor(conn, _mod_conn_free);
-
-	/*
-	 *	We now have a connection structure, but no actual connection.
-	 *
-	 *	Set a bunch of LDAP options, using common code.
-	 */
-#define do_ldap_option(_option, _name, _value) \
-	if (ldap_set_option(conn->handle, _option, _value) != LDAP_OPT_SUCCESS) { \
-		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno); \
-		ERROR("Failed setting connection option %s: %s", _name, \
-		      (ldap_errno != LDAP_SUCCESS) ? ldap_err2string(ldap_errno) : "Unknown error"); \
-		goto error;\
-	}
-
-#define maybe_ldap_option(_option, _name, _value) \
-	if (_value) do_ldap_option(_option, _name, _value)
-
-	/*
-	 *	Leave "dereference" unset to use the OpenLDAP default.
-	 */
-	if (handle_config->dereference_str) {
-		do_ldap_option(LDAP_OPT_DEREF, "dereference", &(handle_config->dereference));
-	}
-
-	/*
-	 *	Leave "chase_referrals" unset to use the OpenLDAP default.
-	 */
-	if (!handle_config->chase_referrals_unset) {
-		if (handle_config->chase_referrals) {
-			do_ldap_option(LDAP_OPT_REFERRALS, "chase_referrals", LDAP_OPT_ON);
-
-			if (handle_config->rebind == true) {
-#if LDAP_SET_REBIND_PROC_ARGS == 3
-				ldap_set_rebind_proc(conn->handle, fr_ldap_rebind, conn);
-#endif
-			}
-		} else {
-			do_ldap_option(LDAP_OPT_REFERRALS, "chase_referrals", LDAP_OPT_OFF);
-		}
-	}
-
-#ifdef LDAP_OPT_NETWORK_TIMEOUT
-	/*
-	 *	A value of zero results in an handle configuration failure.
-	 *
-	 *	When most people specify zero they mean infinite.
-	 *
-	 *	libldap requires tv_sec to be -1 to mean that.
-	 */
-	{
-		struct timeval ldap_timeout = handle_config->net_timeout;
-
-		if ((ldap_timeout.tv_usec == 0) && (ldap_timeout.tv_sec == 0)) ldap_timeout.tv_sec = -1;
-
-		do_ldap_option(LDAP_OPT_NETWORK_TIMEOUT, "net_timeout", &ldap_timeout);
-	}
-#endif
-
-	do_ldap_option(LDAP_OPT_TIMELIMIT, "srv_timelimit", &(handle_config->srv_timelimit));
-
-	ldap_version = LDAP_VERSION3;
-	do_ldap_option(LDAP_OPT_PROTOCOL_VERSION, "ldap_version", &ldap_version);
-
-#ifdef LDAP_OPT_X_KEEPALIVE_IDLE
-	do_ldap_option(LDAP_OPT_X_KEEPALIVE_IDLE, "keepalive_idle", &(handle_config->keepalive_idle));
-#endif
-
-#ifdef LDAP_OPT_X_KEEPALIVE_PROBES
-	do_ldap_option(LDAP_OPT_X_KEEPALIVE_PROBES, "keepalive_probes", &(handle_config->keepalive_probes));
-#endif
-
-#ifdef LDAP_OPT_X_KEEPALIVE_INTERVAL
-	do_ldap_option(LDAP_OPT_X_KEEPALIVE_INTERVAL, "keepalive_interval", &(handle_config->keepalive_interval));
-#endif
-
-#ifdef HAVE_LDAP_START_TLS_S
-	/*
-	 *	Set all of the TLS options
-	 */
-	if (handle_config->tls_mode) do_ldap_option(LDAP_OPT_X_TLS, "tls_mode", &(handle_config->tls_mode));
-
-	maybe_ldap_option(LDAP_OPT_X_TLS_CACERTFILE, "ca_file", handle_config->tls_ca_file);
-	maybe_ldap_option(LDAP_OPT_X_TLS_CACERTDIR, "ca_path", handle_config->tls_ca_path);
-
-	/*
-	 *	Set certificate options
-	 */
-	maybe_ldap_option(LDAP_OPT_X_TLS_CERTFILE, "certificate_file", handle_config->tls_certificate_file);
-	maybe_ldap_option(LDAP_OPT_X_TLS_KEYFILE, "private_key_file", handle_config->tls_private_key_file);
-
-#  ifdef LDAP_OPT_X_TLS_NEVER
-	if (handle_config->tls_require_cert_str) {
-		do_ldap_option(LDAP_OPT_X_TLS_REQUIRE_CERT, "require_cert", &handle_config->tls_require_cert);
-	}
-#  endif
-
-	/*
-	 *	Counter intuitively the TLS context appears to need to be initialised
-	 *	after all the TLS options are set on the handle.
-	 */
-#  ifdef LDAP_OPT_X_TLS_NEWCTX
-	{
-		/* Always use the new TLS configuration context */
-		int is_server = 0;
-		do_ldap_option(LDAP_OPT_X_TLS_NEWCTX, "new TLS context", &is_server);
-	}
-#  endif
-
-	if (handle_config->start_tls) {
-		if (handle_config->port == 636) {
-			WARN("Told to Start TLS on LDAPS port this will probably fail, please correct the "
-			     "configuration");
-		}
-	}
-#endif /* HAVE_LDAP_START_TLS_S */
-
-	conn->config = handle_config;
-
-	return conn;
-
-error:
-	talloc_free(conn);
-
-	return NULL;
-}
-
-int fr_ldap_conn_timeout_set(fr_ldap_conn_t const *conn, struct timeval const *timeout)
-{
-	int				ldap_errno;
-	fr_ldap_handle_config_t const	*handle_config = conn->config;
-
-#ifdef LDAP_OPT_NETWORK_TIMEOUT
-	/*
-	 *	A value of zero results in an handle configuration failure.
-	 *
-	 *	When most people specify zero they mean infinite.
-	 *
-	 *	libldap requires tv_sec to be -1 to mean that.
-	 */
-	{
-		struct timeval ldap_timeout = *timeout;
-
-		if ((ldap_timeout.tv_usec == 0) && (ldap_timeout.tv_sec == 0)) ldap_timeout.tv_sec = -1;
-
-		do_ldap_option(LDAP_OPT_NETWORK_TIMEOUT, "net_timeout", &ldap_timeout);
-	}
-#endif
-
-	return 0;
-
-error:
-	return -1;
-}
-
-int fr_ldap_conn_timeout_reset(fr_ldap_conn_t const *conn)
-{
-	int				ldap_errno;
-	fr_ldap_handle_config_t const	*handle_config = conn->config;
-
-#ifdef LDAP_OPT_NETWORK_TIMEOUT
-	/*
-	 *	A value of zero results in an handle configuration failure.
-	 *
-	 *	When most people specify zero they mean infinite.
-	 *
-	 *	libldap requires tv_sec to be -1 to mean that.
-	 */
-	{
-		struct timeval ldap_timeout = handle_config->net_timeout;
-
-		if ((ldap_timeout.tv_usec == 0) && (ldap_timeout.tv_sec == 0)) ldap_timeout.tv_sec = -1;
-
-		do_ldap_option(LDAP_OPT_NETWORK_TIMEOUT, "net_timeout", &ldap_timeout);
-	}
-#endif
-
-	return 0;
-
-error:
-	return -1;
-}
-
 /** Change settings global to libldap
  *
  * May only be called once.  Subsequent calls will be ignored.
@@ -1219,7 +849,7 @@ error:
 int fr_ldap_global_config(int debug_level, char const *tls_random_file)
 {
 	static bool		done_config;
-	fr_ldap_handle_config_t	*handle_config = &ldap_global_handle_config;
+	fr_ldap_config_t	*handle_config = &ldap_global_handle_config;
 
 	if (done_config) return 0;
 
@@ -1265,7 +895,7 @@ int fr_ldap_global_init(void)
 {
 	int			ldap_errno;
 	static LDAPAPIInfo	info = { .ldapai_info_version = LDAP_API_INFO_VERSION };	/* static to quiet valgrind about this being uninitialised */
-	fr_ldap_handle_config_t	*handle_config = &ldap_global_handle_config;
+	fr_ldap_config_t	*handle_config = &ldap_global_handle_config;
 
 	if (instance_count > 0) {
 		instance_count++;

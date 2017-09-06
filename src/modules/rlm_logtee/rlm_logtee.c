@@ -204,7 +204,7 @@ static void _logtee_conn_error(UNUSED fr_event_list_t *el, int sock, UNUSED int 
 	/*
 	 *	Something bad happened... Fix it...
 	 */
-	fr_connection_reconnect(t->conn);
+	fr_connection_signal_reconnect(t->conn);
 }
 
 /** Drain any data we received
@@ -229,7 +229,7 @@ static void _logtee_conn_read(UNUSED fr_event_list_t *el, int sock, UNUSED int f
 		case ETIMEDOUT:
 		case EIO:
 		case ENXIO:
-			fr_connection_reconnect(t->conn);
+			fr_connection_signal_reconnect(t->conn);
 			return;
 
 		/*
@@ -270,7 +270,7 @@ static void _logtee_conn_writable(UNUSED fr_event_list_t *el, int sock, UNUSED i
 			case ENXIO:
 			case EPIPE:
 			case ENETDOWN:
-				fr_connection_reconnect(t->conn);
+				fr_connection_signal_reconnect(t->conn);
 				return;
 
 			/*
@@ -535,7 +535,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instanc
 				      inst->name, t);
 	if (t->conn == NULL) return -1;
 
-	fr_connection_start(t->conn);
+	fr_connection_signal_init(t->conn);
 
 	return 0;
 }
