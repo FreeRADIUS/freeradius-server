@@ -684,7 +684,7 @@ xlat_t *xlat_find(char const *name)
  * @param[in] inst_size sizeof() this xlat's instance data.
  * @param[in] buf_len Size of the output buffer to allocate when calling the function.
  *	May be 0 if the function allocates its own buffer.
- * @param[in] async whether or not the function is async-safe.
+ * @param[in] async_safe whether or not the function is async-safe.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
