@@ -208,7 +208,9 @@ static void _ldap_start_tls_io_write(fr_event_list_t *el, int fd, UNUSED int fla
 
 /** Install I/O handlers for Start TLS negotiation
  *
- * @param[in] c		connection to StartTLS on.
+ * @param[in] c			connection to StartTLS on.
+ * @param[in] serverctrls	Extra controls to pass to the server.
+ * @param[in] clientctrls	Extra controls to pass to libldap.
  * @return
  *	- 0 on success.
  *	- -1 on failure.

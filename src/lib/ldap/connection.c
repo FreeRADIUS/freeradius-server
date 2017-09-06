@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file lib/ldap/conn.c
+ * @file lib/ldap/connection.c
  * @brief Asynchronous connection management functions for LDAP.
  *
  * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)

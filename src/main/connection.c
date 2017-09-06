@@ -16,7 +16,7 @@
 
 /**
  * $Id$
- * @file connection.c
+ * @file src/main/connection.c
  * @brief Simple state machine for managing connection states.
  *
  * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)

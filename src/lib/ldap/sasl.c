@@ -278,7 +278,14 @@ static int _sasl_ctx_free(fr_ldap_sasl_ctx_t *sasl_ctx)
 
 /** Install I/O handlers for the bind operation
  *
- * @param[in] c		connection to StartTLS on.
+ * @param[in] c			connection to StartTLS on.
+ * @param[in] mechs		Space delimited list of sasl mechs to try.
+ * @param[in] identity		SASL identity to bind with.
+ * @param[in] password		Password credential to pass to SASL.
+ * @param[in] proxy		identity. May be NULL.
+ * @param[in] realm		SASL realm.
+ * @param[in] serverctrls	Extra controls to pass to the server.
+ * @param[in] clientctrls	Extra controls to pass to libldap.
  * @return
  *	- 0 on success.
  *	- -1 on failure.

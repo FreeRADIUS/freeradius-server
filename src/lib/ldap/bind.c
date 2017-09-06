@@ -185,7 +185,11 @@ static void _ldap_bind_io_write(fr_event_list_t *el, int fd, UNUSED int flags, v
 
 /** Install I/O handlers for the bind operation
  *
- * @param[in] c		connection to StartTLS on.
+ * @param[in] c			connection to StartTLS on.
+ * @param[in] bind_dn		Identity to bind with.
+ * @param[in] password		Password to bind with.
+ * @param[in] serverctrls	Extra controls to pass to the server.
+ * @param[in] clientctrls	Extra controls to pass to libldap.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
