@@ -15,7 +15,7 @@
  */
 
 /**
- * @file src/modules/proto_ldap_sync/sync_touch.
+ * @file src/modules/proto_ldap_sync/sync_touch.c
  *
  * @brief Touch entries, causing them to be re-processed by the proto_ldap_sync module.
  *

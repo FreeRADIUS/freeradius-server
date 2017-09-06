@@ -393,11 +393,11 @@ static void _ldap_connection_close(UNUSED int fd, void *uctx)
  *      - bind or start_tls errors with LDAP_X_CONNECTING without sending the request.
  *      - We install a write I/O handler, and wait to be called again, then we retry the
  *        operation.
- *   - else
- *     - the bind or start_tls operation succeeds, our ldap state machine advances,
- *       the connection callback is called and our socket state machine transitions to
- *       connected.
- *   - Continue running the state machine
+ *    - else
+ *      - the bind or start_tls operation succeeds, our ldap state machine advances,
+ *        the connection callback is called and our socket state machine transitions to
+ *        connected.
+ *  - Continue running the state machine
  *
  * @param[out] fd_out	Underlying file descriptor from libldap handle.
  * @param[in] uctx	Our LDAP connection handle (a #fr_ldap_connection_t).
