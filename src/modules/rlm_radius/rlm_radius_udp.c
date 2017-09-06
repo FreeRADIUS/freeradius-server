@@ -464,7 +464,7 @@ static void conn_error(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int
 	/*
 	 *	Something bad happened... Fix it...
 	 */
-	fr_connection_reconnect(c->conn);
+	fr_connection_signal_reconnect(c->conn);
 }
 
 
@@ -1930,7 +1930,7 @@ static void conn_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t *t)
 		if (cas_incr(inst->parent->num_connections, num_connections)) break;
 	}
 
-	fr_connection_start(c->conn);
+	fr_connection_signal_init(c->conn);
 
 	fr_dlist_insert_head(&t->opening, &c->entry);
 
