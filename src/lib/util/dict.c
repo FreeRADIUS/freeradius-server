@@ -4316,9 +4316,7 @@ void fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da)
 {
 	int i;
 	fr_dict_attr_t const *da_p;
-#ifndef NDEBUG
 	fr_dict_attr_t *tmp;
-#endif
 
 	if (!da) {
 		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t pointer was NULL", file, line);
@@ -4326,10 +4324,8 @@ void fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da)
 		if (!fr_cond_assert(0)) fr_exit_now(1);
 	}
 
-#ifndef NDEBUG
 	memcpy(&tmp, &da, sizeof(da));
 	(void) talloc_get_type_abort(tmp, fr_dict_attr_t);
-#endif
 
 	if ((!da->flags.is_root) && (da->depth == 0)) {
 		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t %s vendor: %i, attr %i: "
@@ -4347,7 +4343,11 @@ void fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da)
 		if (!fr_cond_assert(0)) fr_exit_now(1);
 	}
 
-	for (da_p = da; da_p; da_p = da_p->next) (void) talloc_get_type_abort(da_p, fr_dict_attr_t);
+	for (da_p = da; da_p; da_p = da_p->next) {
+		memcpy(&tmp, &da_p, sizeof(da_p));
+
+		(void) talloc_get_type_abort(tmp, fr_dict_attr_t);
+	}
 
 	for (i = da->depth, da_p = da; (i >= 0) && da; i--, da_p = da_p->parent) {
 		if (i != (int)da_p->depth) {
