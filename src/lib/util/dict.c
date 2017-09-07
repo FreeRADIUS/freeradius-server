@@ -4316,6 +4316,9 @@ void fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da)
 {
 	int i;
 	fr_dict_attr_t const *da_p;
+#ifndef NDEBUG
+	fr_dict_attr_t *tmp;
+#endif
 
 	if (!da) {
 		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t pointer was NULL", file, line);
@@ -4323,7 +4326,10 @@ void fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da)
 		if (!fr_cond_assert(0)) fr_exit_now(1);
 	}
 
-	(void) talloc_get_type_abort(da, fr_dict_attr_t);
+#ifndef NDEBUG
+	memcpy(&tmp, &da, sizeof(da));
+	(void) talloc_get_type_abort(tmp, fr_dict_attr_t);
+#endif
 
 	if ((!da->flags.is_root) && (da->depth == 0)) {
 		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t %s vendor: %i, attr %i: "
