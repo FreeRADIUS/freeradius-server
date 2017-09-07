@@ -233,9 +233,10 @@ VALUE_PAIR *fr_pair_copy(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 	 */
 	if (n->da->flags.is_unknown) {
 		n->da = fr_dict_unknown_acopy(n, n->da);
-		if (!n->da) talloc_free(n);
-
-		return NULL;
+		if (!n->da) {
+			talloc_free(n);
+			return NULL;
+		}
 	}
 	n->next = NULL;
 
