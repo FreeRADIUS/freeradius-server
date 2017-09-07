@@ -2524,7 +2524,9 @@ int fr_value_box_strdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_
 {
 	size_t	len;
 
+#ifndef NDEBUG
 	(void) talloc_get_type_abort(src, char);
+#endif
 
 	len = talloc_array_length(src);
 	if ((len == 1) || (src[len - 1] != '\0')) {
