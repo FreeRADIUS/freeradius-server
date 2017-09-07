@@ -340,9 +340,23 @@ eap {
 		#  not calculate the EAP keys correctly.  The fix is to upgrade
 		#  OpenSSL, or disable TLS 1.2 here.
 		#
-		#  For EAP-FAST, this MUST be set to "yes".
+		#  For EAP-FAST, this MUST be set to 1.1
 		#
-		disable_tlsv1_2 = no
+		#  SSLv2 and SSLv3 are permanently disabled due to security
+		#  issues.
+		#
+#		tls_max_version = 1.1
+
+		#
+		#  Prevents versions < tls_min_version from being negotiated.
+		#  In general the higher the tls_min_version the more secure
+		#  the protocol, but the narrower the range of supported TLS
+		#  clients.
+		#
+		#  SSLv2 and SSLv3 are permanently disabled due to security
+		#  issues.
+		#
+#		tls_min_version = 1.0
 
 		#
 		#  Elliptical cryptography configuration

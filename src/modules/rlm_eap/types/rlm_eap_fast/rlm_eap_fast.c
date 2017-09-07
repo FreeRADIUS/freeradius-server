@@ -107,8 +107,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	}
 
 	// FIXME TLSv1.2 uses a different PRF and SSL_export_keying_material("key expansion") is forbidden
-	if (!inst->tls_conf->disable_tlsv1_2) {
-		cf_log_err_by_name(cs, "disable_tlsv1_2", "require disable_tlsv1_2=yes");
+	if ((inst->tls_conf->tls_max_version > 1.1) || (inst->tls_conf->tls_max_version == 0.0)) {
+		cf_log_err_by_name(cs, "tls_max_version", "require tls_max_version <= 1.1");
 		return -1;
 	}
 
