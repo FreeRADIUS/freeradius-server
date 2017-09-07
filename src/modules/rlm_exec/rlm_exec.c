@@ -296,6 +296,18 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, UNUSED voi
 	}
 
 	/*
+	 *	async changes:
+	 *
+	 *	- create rlm_exec_thread_t, with inst->el
+	 *	  - or for the short term, just use request->el
+	 *	- do our own xlat of inst->program
+	 *	- call radius_start_program()
+	 *	- call event loop to add callback for EVFILT_PROC, NOTE_EXIT | NOTE_EXITSTATUS, pid
+	 *	- call event loop to add callback for reading from the pipe
+	 *	- return YIELD
+	 */
+
+	/*
 	 *	This function does it's own xlat of the input program
 	 *	to execute.
 	 */
