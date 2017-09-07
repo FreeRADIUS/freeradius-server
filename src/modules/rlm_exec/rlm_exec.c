@@ -248,14 +248,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
-	/*
-	 *	We need a program to execute.
-	 */
-	if (!inst->program) {
-		cf_log_err(conf, "You must specify 'program' to execute");
-		return -1;
-	}
-
 	return 0;
 }
 
@@ -273,6 +265,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, UNUSED voi
 	VALUE_PAIR		*answer = NULL;
 	TALLOC_CTX		*ctx = NULL;
 	char			out[1024];
+
+	/*
+	 *	This needs to be a runtime check for now as
+	 *	rlm_exec is often called via xlat instead
+	 *	of with a static program.
+	 */
+	if (!inst->program) {
+		REDEBUG("You must specify 'program' to execute");
+		return RLM_MODULE_FAIL;
+	}
 
 	/*
 	 *	Decide what input/output the program takes.
