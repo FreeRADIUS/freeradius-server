@@ -2650,7 +2650,9 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 		if (!fr_cond_assert(0)) fr_exit_now(1);
 	}
 
+#ifndef NDEBUG
 	(void) talloc_get_type_abort(vp, VALUE_PAIR);
+#endif
 
 	if (!vp->da) {
 		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR da pointer was NULL", file, line);
@@ -2763,7 +2765,9 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 	}
 
 	if (vp->da->flags.is_unknown) {
+#ifndef NDEBUG
 		(void) talloc_get_type_abort(vp->da, fr_dict_attr_t);
+#endif
 	} else {
 		fr_dict_attr_t const *da;
 
