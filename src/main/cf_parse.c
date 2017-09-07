@@ -384,6 +384,21 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_P
 	}
 		break;
 
+	case FR_TYPE_FLOAT32:
+	{
+		float num;
+
+		if (sscanf(cp->value, "%f", &num) != 1) {
+			cf_log_err(cp, "Failed parsing floating point number");
+			rcode = -1;
+			goto error;
+		}
+		cf_log_debug(cs, "%.*s%s = %f", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp),
+			num);
+		memcpy(out, &num, sizeof(num));
+	}		
+		break;
+
 	default:
 		/*
 		 *	If we get here, it's a sanity check error.
