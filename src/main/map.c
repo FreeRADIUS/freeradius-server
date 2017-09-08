@@ -376,6 +376,8 @@ int map_afrom_cs(vp_map_t **out, CONF_SECTION *cs,
 		}
 
 		cp = cf_item_to_pair(ci);
+		rad_assert(cp != NULL);
+
 		if (map_afrom_cp(parent, &map, cp, request_def, dst_list_def, REQUEST_CURRENT, src_list_def) < 0) {
 			cf_log_err(ci, "Failed creating map from '%s = %s'",
 				   cf_pair_attr(cp), cf_pair_value(cp));
