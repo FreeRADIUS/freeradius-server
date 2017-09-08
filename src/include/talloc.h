@@ -46,10 +46,9 @@ void		**talloc_array_null_strip(void **array);
  *	type, but it is part of the pointer type.  But only if
  *	talloc_get_type_abort() is just a cast.
  */
-#ifndef NDEBUG
-#define talloc_get_type_abort_const talloc_get_type_abort
+#ifdef TALLOC_GET_TYPE_ABORT_NOOP
+#  define talloc_get_type_abort_const(ptr, type) (const type *)(ptr)
 #else
-#define talloc_get_type_abort_const(ptr, type) (const type *)(ptr)
+#  define talloc_get_type_abort_const talloc_get_type_abort
 #endif
-
 #endif
