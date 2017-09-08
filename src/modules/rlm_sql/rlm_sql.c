@@ -548,7 +548,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
 static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, void *arg)
 {
 	rlm_sql_handle_t	*handle = arg;
-	rlm_sql_t const		*inst = talloc_get_type_abort(handle->inst, rlm_sql_t);
+	rlm_sql_t const		*inst = talloc_get_type_abort_const(handle->inst, rlm_sql_t);
 	size_t			len = 0;
 
 	while (in[0]) {
@@ -790,7 +790,7 @@ static int sql_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req
 			UNUSED VALUE_PAIR **reply_pairs)
 {
 	rlm_sql_handle_t	*handle;
-	rlm_sql_t const		*inst = talloc_get_type_abort(instance, rlm_sql_t);
+	rlm_sql_t const		*inst = talloc_get_type_abort_const(instance, rlm_sql_t);
 	rlm_sql_grouplist_t	*head, *entry;
 
 	/*
@@ -1690,7 +1690,7 @@ static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *
 static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
 static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_sql_t const *inst = talloc_get_type_abort(instance, rlm_sql_t);
+	rlm_sql_t const *inst = talloc_get_type_abort_const(instance, rlm_sql_t);
 
 	if (inst->config->postauth.reference_cp) {
 		return acct_redundant(inst, request, &inst->config->postauth);
