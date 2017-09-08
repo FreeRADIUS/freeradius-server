@@ -465,7 +465,7 @@ static int mod_open(void *instance)
  */
 static int mod_fd(void const *instance)
 {
-	proto_radius_udp_t const *inst = talloc_get_type_abort(instance, proto_radius_udp_t);
+	proto_radius_udp_t const *inst = talloc_get_type_abort_const(instance, proto_radius_udp_t);
 
 	return inst->sockfd;
 }
