@@ -2524,9 +2524,7 @@ int fr_value_box_strdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_
 {
 	size_t	len;
 
-#ifndef NDEBUG
-	(void) talloc_get_type_abort(src, char);
-#endif
+	(void) talloc_get_type_abort_const(src, char);
 
 	len = talloc_array_length(src);
 	if ((len == 1) || (src[len - 1] != '\0')) {
@@ -2621,9 +2619,7 @@ int fr_value_box_memsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t c
 {
 	uint8_t const	*bin;
 
-#ifndef NDEBUG
-	(void) talloc_get_type_abort(src, uint8_t);
-#endif
+	(void) talloc_get_type_abort_const(src, uint8_t);
 
 	bin = talloc_steal(ctx, src);
 	if (!bin) {

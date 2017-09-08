@@ -376,7 +376,7 @@ static int mod_link_free(rlm_radius_link_t *link)
 static void mod_radius_signal(REQUEST *request, void *instance, void *thread, void *ctx,
 			      fr_state_action_t action)
 {
-	rlm_radius_t const *inst = talloc_get_type_abort(instance, rlm_radius_t);
+	rlm_radius_t const *inst = talloc_get_type_abort_const(instance, rlm_radius_t);
 	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
 	rlm_radius_link_t *link = talloc_get_type_abort(ctx, rlm_radius_link_t);
 

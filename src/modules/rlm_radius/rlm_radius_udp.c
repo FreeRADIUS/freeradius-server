@@ -186,8 +186,8 @@ static void mod_clear_backlog(rlm_radius_udp_thread_t *t);
 
 static int conn_cmp(void const *one, void const *two)
 {
-	rlm_radius_udp_connection_t const *a = talloc_get_type_abort(one, rlm_radius_udp_connection_t);
-	rlm_radius_udp_connection_t const *b = talloc_get_type_abort(two, rlm_radius_udp_connection_t);
+	rlm_radius_udp_connection_t const *a = talloc_get_type_abort_const(one, rlm_radius_udp_connection_t);
+	rlm_radius_udp_connection_t const *b = talloc_get_type_abort_const(two, rlm_radius_udp_connection_t);
 
 	if (timercmp(&a->mrs_time, &b->mrs_time, <)) return -1;
 	if (timercmp(&a->mrs_time, &b->mrs_time, >)) return +1;

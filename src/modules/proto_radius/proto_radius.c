@@ -166,7 +166,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
  */
 static int mod_decode(void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
 {
-	proto_radius_t const *inst = talloc_get_type_abort(instance, proto_radius_t);
+	proto_radius_t const *inst = talloc_get_type_abort_const(instance, proto_radius_t);
 	RADCLIENT *client;
 
 	rad_assert(data[0] < FR_MAX_PACKET_CODE);
@@ -205,7 +205,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 {
 	size_t len;
 
-	proto_radius_t const *inst = talloc_get_type_abort(instance, proto_radius_t);
+	proto_radius_t const *inst = talloc_get_type_abort_const(instance, proto_radius_t);
 	RADCLIENT *client;
 
 	/*
@@ -244,7 +244,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 
 static void mod_process_set(void const *instance, REQUEST *request)
 {
-	proto_radius_t const *inst = talloc_get_type_abort(instance, proto_radius_t);
+	proto_radius_t const *inst = talloc_get_type_abort_const(instance, proto_radius_t);
 	fr_io_process_t process;
 
 	rad_assert(request->packet->code != 0);
@@ -419,7 +419,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	Bootstrap the process modules
 	 */
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
-		dl_t const	       *module = talloc_get_type_abort(inst->process_submodule[i]->module, dl_t);
+		dl_t const	       *module = talloc_get_type_abort_const(inst->process_submodule[i]->module, dl_t);
 		fr_app_process_t const *app_process = (fr_app_process_t const *)module->common;
 
 		if (app_process->bootstrap && (app_process->bootstrap(inst->process_submodule[i]->data,

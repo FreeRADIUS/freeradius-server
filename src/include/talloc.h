@@ -41,4 +41,15 @@ void		**talloc_array_null_terminate(void **array);
 
 void		**talloc_array_null_strip(void **array);
 
+/*
+ *	talloc portability issues.  'const' is not part of the talloc
+ *	type, but it is part of the pointer type.  But only if
+ *	talloc_get_type_abort() is just a cast.
+ */
+#ifndef NDEBUG
+#define talloc_get_type_abort_const talloc_get_type_abort
+#else
+#define talloc_get_type_abort_const(ptr, type) (const type *)(ptr)
+#endif
+
 #endif
