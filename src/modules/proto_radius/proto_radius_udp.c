@@ -476,9 +476,9 @@ static int mod_fd(void const *instance)
  * @param[in] instance of the RADIUS UDP I/O path.
  * @param[in] el the event list
  */
-static void mod_event_list_set(void const *instance, fr_event_list_t *el)
+static void mod_event_list_set(void *instance, fr_event_list_t *el)
 {
-	proto_radius_udp_t const *inst;
+	proto_radius_udp_t *inst;
 
 	memcpy(&inst, &instance, sizeof(inst)); /* const issues */
 

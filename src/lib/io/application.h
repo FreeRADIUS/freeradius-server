@@ -47,7 +47,7 @@ typedef void (*fr_app_process_set_t)(void const *instance, REQUEST *request);
 
 /** Called by the network thread to pass an event list for the module to use for timer events
  */
-typedef void (*fr_app_event_list_set_t)(void const *instance, fr_event_list_t *el);
+typedef void (*fr_app_event_list_set_t)(void *instance, fr_event_list_t *el);
 
 /** Describes a new application (protocol)
  *
