@@ -770,7 +770,7 @@ void rdebug_pair_list(fr_log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char
 	for (vp = fr_pair_cursor_init(&cursor, &vp);
 	     vp;
 	     vp = fr_pair_cursor_next(&cursor)) {
-		VERIFY_VP(vp);
+		VP_VERIFY(vp);
 
 		value = fr_pair_asprint(request, vp, '"');
 		RDEBUGX(level, "%s%s", prefix ? prefix : "&", value);
@@ -799,7 +799,7 @@ void rdebug_proto_pair_list(fr_log_lvl_t level, REQUEST *request, VALUE_PAIR *vp
 	for (vp = fr_pair_cursor_init(&cursor, &vp);
 	     vp;
 	     vp = fr_pair_cursor_next(&cursor)) {
-		VERIFY_VP(vp);
+		VP_VERIFY(vp);
 		if (vp->da->flags.internal) continue;
 
 		value = fr_pair_asprint(request, vp, '"');

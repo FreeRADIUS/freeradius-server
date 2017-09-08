@@ -542,7 +542,7 @@ authenticate:
 		}
 
 		if (request->password) {
-			VERIFY_VP(request->password);
+			VP_VERIFY(request->password);
 			/* double check: maybe the secret is wrong? */
 			if ((rad_debug_lvl > 1) && (request->password->da->attr == FR_USER_PASSWORD)) {
 				uint8_t const *p;

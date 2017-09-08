@@ -267,7 +267,7 @@ int tacacs_encode(RADIUS_PACKET * const packet, char const * const secret)
 
 	length_body = 0;
 	for (vp = fr_pair_cursor_init(&cursor, &packet->vps); vp != NULL; vp = fr_pair_cursor_next(&cursor)) {
-		VERIFY_VP(vp);
+		VP_VERIFY(vp);
 
 		if (!vp->da->flags.internal) continue;
 

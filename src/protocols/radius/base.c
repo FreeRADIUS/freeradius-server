@@ -930,7 +930,7 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 		size_t		last_len, room;
 		char const	*last_name = NULL;
 
-		VERIFY_VP(vp);
+		VP_VERIFY(vp);
 
 		room = (packet + packet_len) - ptr;
 

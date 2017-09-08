@@ -287,7 +287,7 @@ static REQUEST *request_from_file(FILE *fp, fr_event_list_t *el, RADCLIENT *clie
 			vp->data.enumv = NULL;
 			vp->type = VT_DATA;
 
-			VERIFY_VP(vp);
+			VP_VERIFY(vp);
 		}
 
 		break;

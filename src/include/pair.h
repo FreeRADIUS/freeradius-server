@@ -32,22 +32,22 @@ extern "C" {
 #endif
 
 #ifdef WITH_VERIFY_PTR
-#  define VERIFY_VP(_x)		fr_pair_verify(__FILE__, __LINE__, _x)
-#  define VERIFY_LIST(_x)	fr_pair_list_verify(__FILE__, __LINE__, NULL, _x)
-#  define VERIFY_PACKET(_x)	(void) talloc_get_type_abort(_x, RADIUS_PACKET)
+#  define VP_VERIFY(_x)		fr_pair_verify(__FILE__, __LINE__, _x)
+#  define LIST_VERIFY(_x)	fr_pair_list_verify(__FILE__, __LINE__, NULL, _x)
+#  define PACKET_VERIFY(_x)	(void) talloc_get_type_abort(_x, RADIUS_PACKET)
 #else
 /*
  *	Even if were building without WITH_VERIFY_PTR
  *	the pointer must not be NULL when these various macros are used
  *	so we can add some sneaky soft asserts.
  */
-#  define VERIFY_VP(_x)		fr_cond_assert(_x)
+#  define VP_VERIFY(_x)		fr_cond_assert(_x)
 /*
  *	We don't assert the list head is non-NULL, as it's perfectly
  *	valid to have an empty list.
  */
-#  define VERIFY_LIST(_x)
-#  define VERIFY_PACKET(_x)	fr_cond_assert(_x)
+#  define LIST_VERIFY(_x)
+#  define PACKET_VERIFY(_x)	fr_cond_assert(_x)
 #endif
 
 /** The type of value a VALUE_PAIR contains

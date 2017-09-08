@@ -862,7 +862,7 @@ static void verify_packet(char const *file, int line, REQUEST *request, RADIUS_P
 		rad_assert(0);
 	}
 
-	VERIFY_PACKET(packet);
+	PACKET_VERIFY(packet);
 
 	if (!packet->vps) return;
 
@@ -886,8 +886,8 @@ void request_verify(char const *file, int line, REQUEST *request)
 	fr_pair_list_verify(file, line, request, request->control);
 	fr_pair_list_verify(file, line, request->state_ctx, request->state);
 
-	if (request->username) VERIFY_VP(request->username);
-	if (request->password) VERIFY_VP(request->password);
+	if (request->username) VP_VERIFY(request->username);
+	if (request->password) VP_VERIFY(request->password);
 #endif
 
 	rad_assert(request->server_cs != NULL);

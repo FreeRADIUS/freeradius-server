@@ -3425,7 +3425,7 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 		our_ctx = talloc_steal(our_ctx, tmp);
 	}
 
-	VERIFY_DA(n);
+	DA_VERIFY(n);
 
 	*out = n;
 
@@ -3850,7 +3850,7 @@ fr_dict_t *fr_dict_by_da(fr_dict_attr_t const *da)
 
 	while (da_p->parent) {
 		da_p = da_p->parent;
-		VERIFY_DA(da_p);
+		DA_VERIFY(da_p);
 	}
 
 	if (!da_p->flags.is_root) {

@@ -62,7 +62,7 @@ vp_tmpl_t *xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t *node)
 	if (!vpt) return NULL;
 	memcpy(&vpt->data, &node->attr->data, sizeof(vpt->data));
 
-	VERIFY_TMPL(vpt);
+	TMPL_VERIFY(vpt);
 
 	return vpt;
 }

@@ -107,8 +107,8 @@ int8_t fr_dhcpv4_attr_cmp(void const *a, void const *b)
 	VALUE_PAIR const *my_a = a, *my_b = b;
 	fr_dict_attr_t const *a_82, *b_82;
 
-	VERIFY_VP(my_a);
-	VERIFY_VP(my_b);
+	VP_VERIFY(my_a);
+	VP_VERIFY(my_b);
 
 	/*
 	 *	We can only use attribute numbers if we know they're

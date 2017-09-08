@@ -808,7 +808,7 @@ finish:
 	 */
 	if ((vpt->type == TMPL_TYPE_ATTR) && vpt->tmpl_da->flags.is_unknown) vpt->tmpl_da = vpt->tmpl_unknown;
 
-	VERIFY_TMPL(vpt);	/* Because we want to ensure we produced something sane */
+	TMPL_VERIFY(vpt);	/* Because we want to ensure we produced something sane */
 
 	*out = vpt;
 
@@ -837,7 +837,7 @@ ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name,
 		return -slen;
 	}
 
-	VERIFY_TMPL(*out);
+	TMPL_VERIFY(*out);
 
 	return slen;
 }
@@ -1037,7 +1037,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
 
 	rad_assert(slen >= 0);
 
-	VERIFY_TMPL(vpt);
+	TMPL_VERIFY(vpt);
 	*out = vpt;
 
 	return slen;
@@ -1076,7 +1076,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
  */
 int tmpl_cast_in_place(vp_tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enumv)
 {
-	VERIFY_TMPL(vpt);
+	TMPL_VERIFY(vpt);
 
 	rad_assert(vpt != NULL);
 	rad_assert((vpt->type == TMPL_TYPE_UNPARSED) || (vpt->type == TMPL_TYPE_DATA));
@@ -1122,7 +1122,7 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enu
 		rad_assert(0);
 	}
 
-	VERIFY_TMPL(vpt);
+	TMPL_VERIFY(vpt);
 
 	return 0;
 }
@@ -1172,7 +1172,7 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 	fr_value_box_t	data;
 	char		*p;
 
-	VERIFY_TMPL(vpt);
+	TMPL_VERIFY(vpt);
 
 	*out = NULL;
 
@@ -1180,7 +1180,7 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 	if (!vp) return -1;
 
 	if (vpt->type == TMPL_TYPE_DATA) {
-		VERIFY_VP(vp);
+		VP_VERIFY(vp);
 		rad_assert(vp->vp_type == vpt->tmpl_value_type);
 
 		fr_value_box_copy(vp, &vp->data, &vpt->tmpl_value);
@@ -1226,7 +1226,7 @@ int tmpl_define_unknown_attr(vp_tmpl_t *vpt)
 
 	if (!vpt) return 1;
 
-	VERIFY_TMPL(vpt);
+	TMPL_VERIFY(vpt);
 
 	if (vpt->type != TMPL_TYPE_ATTR) return 1;
 
@@ -1262,7 +1262,7 @@ int tmpl_define_undefined_attr(vp_tmpl_t *vpt, fr_type_t type, fr_dict_attr_flag
 
 	if (!vpt) return -1;
 
-	VERIFY_TMPL(vpt);
+	TMPL_VERIFY(vpt);
 
 	if (vpt->type != TMPL_TYPE_ATTR_UNDEFINED) return 1;
 
@@ -1361,7 +1361,7 @@ ssize_t _tmpl_to_type(void *out,
 
 	ssize_t			slen = -1;	/* quiet compiler */
 
-	VERIFY_TMPL(vpt);
+	TMPL_VERIFY(vpt);
 
 	rad_assert(vpt->type != TMPL_TYPE_LIST);
 	rad_assert(!buff || (bufflen >= 2));
@@ -1656,7 +1656,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 
 	TALLOC_CTX		*tmp_ctx = talloc_new(ctx);
 
-	VERIFY_TMPL(vpt);
+	TMPL_VERIFY(vpt);
 
 	memset(&value, 0, sizeof(value));
 
@@ -1862,7 +1862,7 @@ size_t tmpl_snprint(char *out, size_t outlen, vp_tmpl_t const *vpt)
 		*out = '\0';
 		return 0;
 	}
-	VERIFY_TMPL(vpt);
+	TMPL_VERIFY(vpt);
 
 	out[outlen - 1] = '\0';	/* Always terminate for safety */
 
@@ -2022,7 +2022,7 @@ VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, vp
 	VALUE_PAIR **vps, *vp = NULL;
 	int num;
 
-	VERIFY_TMPL(vpt);
+	TMPL_VERIFY(vpt);
 
 	rad_assert((vpt->type == TMPL_TYPE_ATTR) || (vpt->type == TMPL_TYPE_LIST));
 
@@ -2051,7 +2051,7 @@ VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, vp
 				if (err) *err = -1;
 				return NULL;
 			}
-			VERIFY_VP(vp);
+			VP_VERIFY(vp);
 			return vp;
 
 		/*
@@ -2062,10 +2062,10 @@ VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, vp
 			VALUE_PAIR *last = NULL;
 
 			while ((vp = fr_pair_cursor_next_by_da(cursor, vpt->tmpl_da, vpt->tmpl_tag))) {
-				VERIFY_VP(vp);
+				VP_VERIFY(vp);
 				last = vp;
 			}
-			VERIFY_VP(last);
+			VP_VERIFY(last);
 			if (!last) break;
 			return last;
 		}
@@ -2084,7 +2084,7 @@ VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, vp
 		default:
 			num = vpt->tmpl_num;
 			while ((vp = fr_pair_cursor_next_by_da(cursor, vpt->tmpl_da, vpt->tmpl_tag))) {
-				VERIFY_VP(vp);
+				VP_VERIFY(vp);
 				if (num-- <= 0) return vp;
 			}
 			break;
@@ -2103,7 +2103,7 @@ VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, vp
 				if (err) *err = -1;
 				return NULL;
 			}
-			VERIFY_VP(vp);
+			VP_VERIFY(vp);
 			return vp;
 
 		/*
@@ -2116,11 +2116,11 @@ VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, vp
 			for (vp = fr_pair_cursor_init(cursor, vps);
 			     vp;
 			     vp = fr_pair_cursor_next(cursor)) {
-				VERIFY_VP(vp);
+				VP_VERIFY(vp);
 				last = vp;
 			}
 			if (!last) break;
-			VERIFY_VP(last);
+			VP_VERIFY(last);
 			return last;
 		}
 
@@ -2129,7 +2129,7 @@ VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, vp
 			for (vp = fr_pair_cursor_init(cursor, vps);
 			     vp;
 			     vp = fr_pair_cursor_next(cursor)) {
-				VERIFY_VP(vp);
+				VP_VERIFY(vp);
 				if (num-- <= 0) return vp;
 			}
 			break;
@@ -2159,7 +2159,7 @@ VALUE_PAIR *tmpl_cursor_next(vp_cursor_t *cursor, vp_tmpl_t const *vpt)
 {
 	rad_assert((vpt->type == TMPL_TYPE_ATTR) || (vpt->type == TMPL_TYPE_LIST));
 
-	VERIFY_TMPL(vpt);
+	TMPL_VERIFY(vpt);
 
 	switch (vpt->type) {
 	/*
@@ -2213,7 +2213,7 @@ int tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_tmpl_t
 	VALUE_PAIR *vp;
 	vp_cursor_t from, to;
 
-	VERIFY_TMPL(vpt);
+	TMPL_VERIFY(vpt);
 
 	int err;
 
@@ -2256,7 +2256,7 @@ int tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, vp_tmpl_t const *vpt)
 	vp_cursor_t cursor;
 	VALUE_PAIR *vp;
 
-	VERIFY_TMPL(vpt);
+	TMPL_VERIFY(vpt);
 
 	int err;
 
@@ -2284,7 +2284,7 @@ int tmpl_find_or_add_vp(VALUE_PAIR **out, REQUEST *request, vp_tmpl_t const *vpt
 	VALUE_PAIR	*vp;
 	int		err;
 
-	VERIFY_TMPL(vpt);
+	TMPL_VERIFY(vpt);
 	rad_assert(vpt->type == TMPL_TYPE_ATTR);
 
 	*out = NULL;

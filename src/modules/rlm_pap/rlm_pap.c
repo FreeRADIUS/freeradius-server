@@ -233,7 +233,7 @@ static VALUE_PAIR *normify_with_header(REQUEST *request, VALUE_PAIR *vp)
 
 	VALUE_PAIR	*new;
 
-	VERIFY_VP(vp);
+	VP_VERIFY(vp);
 
 	/*
 	 *	Ensure this is only ever called with a
@@ -354,7 +354,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	for (vp = fr_pair_cursor_init(&cursor, &request->control);
 	     vp;
 	     vp = fr_pair_cursor_next(&cursor)) {
-	     	VERIFY_VP(vp);
+	     	VP_VERIFY(vp);
 	next:
 		switch (vp->da->attr) {
 		case FR_USER_PASSWORD: /* deprecated */

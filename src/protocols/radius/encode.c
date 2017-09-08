@@ -419,7 +419,7 @@ static ssize_t encode_struct(uint8_t *out, size_t outlen,
 	VALUE_PAIR const	*vp = fr_pair_cursor_current(cursor);
 	fr_dict_attr_t const	*da = tlv_stack[depth];
 
-	VERIFY_VP(fr_pair_cursor_current(cursor));
+	VP_VERIFY(fr_pair_cursor_current(cursor));
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
 	if (tlv_stack[depth]->type != FR_TYPE_STRUCT) {
@@ -549,7 +549,7 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 {
 	ssize_t			len;
 
-	VERIFY_VP(fr_pair_cursor_current(cursor));
+	VP_VERIFY(fr_pair_cursor_current(cursor));
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
 	if (tlv_stack[depth]->type != FR_TYPE_TLV) {
@@ -601,7 +601,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	fr_dict_attr_t const	*da = tlv_stack[depth];
 	fr_radius_ctx_t		*packet_ctx = encoder_ctx;
 
-	VERIFY_VP(vp);
+	VP_VERIFY(vp);
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
 	/*
@@ -899,7 +899,7 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 	uint8_t			*start = out;
 	VALUE_PAIR const	*vp = fr_pair_cursor_current(cursor);
 
-	VERIFY_VP(vp);
+	VP_VERIFY(vp);
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
 	if ((tlv_stack[depth]->type != FR_TYPE_EXTENDED) && (tlv_stack[depth]->type != FR_TYPE_LONG_EXTENDED)) {
@@ -1278,7 +1278,7 @@ static int encode_wimax_hdr(uint8_t *out, size_t outlen,
 	uint8_t			*start = out;
 	VALUE_PAIR const	*vp = fr_pair_cursor_current(cursor);
 
-	VERIFY_VP(vp);
+	VP_VERIFY(vp);
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
 	/*
@@ -1436,7 +1436,7 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const **tl
 	/*
 	 *	Sanity checks
 	 */
-	VERIFY_VP(vp);
+	VP_VERIFY(vp);
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
 	switch (tlv_stack[depth]->type) {
@@ -1522,7 +1522,7 @@ ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, 
 	vp = first_encodable(cursor);
 	if (!vp) return 0;
 
-	VERIFY_VP(vp);
+	VP_VERIFY(vp);
 
 	if (vp->da->depth > FR_DICT_MAX_TLV_STACK) {
 		fr_strerror_printf("%s: Attribute depth %i exceeds maximum nesting depth %i",

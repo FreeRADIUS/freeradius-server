@@ -336,7 +336,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 			 *	Maybe the shared secret is wrong?
 			 */
 			if (request->password) {
-				VERIFY_VP(request->password);
+				VP_VERIFY(request->password);
 
 				if ((rad_debug_lvl > 1) && (request->password->da->attr == FR_USER_PASSWORD)) {
 					uint8_t const *p;

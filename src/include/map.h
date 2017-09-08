@@ -56,11 +56,11 @@ typedef struct vp_map {
 } vp_map_t;
 
 #ifndef WITH_VERIFY_PTR
-#  define VERIFY_MAP(_x) rad_assert((_x)->lhs)
+#  define MAP_VERIFY(_x) rad_assert((_x)->lhs)
 #else
-#  define VERIFY_MAP(_x) do { \
-	VERIFY_TMPL((_x)->lhs); \
-	if ((_x)->rhs) VERIFY_TMPL((_x)->rhs); \
+#  define MAP_VERIFY(_x) do { \
+	TMPL_VERIFY((_x)->lhs); \
+	if ((_x)->rhs) TMPL_VERIFY((_x)->rhs); \
 } while (0)
 #endif
 

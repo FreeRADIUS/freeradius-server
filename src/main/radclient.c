@@ -532,7 +532,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				vp->data.enumv = NULL;
 				vp->type = VT_DATA;
 
-				VERIFY_VP(vp);
+				VP_VERIFY(vp);
 			}
 				break;
 

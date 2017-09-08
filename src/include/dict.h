@@ -43,9 +43,9 @@ extern "C" {
 #endif
 
 #ifdef WITH_VERIFY_PTR
-#  define VERIFY_DA(_x)		fr_dict_verify(__FILE__, __LINE__, _x)
+#  define DA_VERIFY(_x)		fr_dict_verify(__FILE__, __LINE__, _x)
 #else
-#  define VERIFY_DA(_x)		fr_cond_assert(_x)
+#  define DA_VERIFY(_x)		fr_cond_assert(_x)
 #endif
 
 /** Values of the encryption flags

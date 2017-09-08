@@ -1502,7 +1502,7 @@ static bool CC_HINT(nonnull (1, 2, 4)) find_nt_password(rlm_mschap_t const *inst
 	 */
 	nt_password = fr_pair_find_by_num(request->control, 0, FR_NT_PASSWORD, TAG_ANY);
 	if (nt_password) {
-		VERIFY_VP(nt_password);
+		VP_VERIFY(nt_password);
 
 		switch (nt_password->vp_length) {
 		case NT_DIGEST_LENGTH:
@@ -1569,7 +1569,7 @@ static bool CC_HINT(nonnull (1, 2, 5)) find_lm_password(rlm_mschap_t const *inst
 
 	lm_password = fr_pair_find_by_num(request->control, 0, FR_LM_PASSWORD, TAG_ANY);
 	if (lm_password) {
-		VERIFY_VP(lm_password);
+		VP_VERIFY(lm_password);
 
 		switch (lm_password->vp_length) {
 		case LM_DIGEST_LENGTH:

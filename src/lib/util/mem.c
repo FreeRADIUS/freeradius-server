@@ -115,7 +115,7 @@ void fr_radius_free(RADIUS_PACKET **radius_packet_ptr)
 	if (!radius_packet_ptr || !*radius_packet_ptr) return;
 	radius_packet = *radius_packet_ptr;
 
-	VERIFY_PACKET(radius_packet);
+	PACKET_VERIFY(radius_packet);
 
 	fr_pair_list_free(&radius_packet->vps);
 

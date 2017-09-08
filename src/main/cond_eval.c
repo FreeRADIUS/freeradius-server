@@ -596,7 +596,7 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 		   fr_int2str(tmpl_names, map->lhs->type, "???"),
 		   fr_int2str(tmpl_names, map->rhs->type, "???"));
 
-	VERIFY_MAP(map);
+	MAP_VERIFY(map);
 
 	switch (map->lhs->type) {
 	/*
