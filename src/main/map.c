@@ -272,7 +272,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 		}
 	}
 	if (!map->rhs) {
-		cf_log_err(cp, "%s", fr_strerror());
+		cf_log_err(cp, "Failed parsing RHS: %s", fr_strerror());
 		goto error;
 	}
 
@@ -377,6 +377,8 @@ int map_afrom_cs(vp_map_t **out, CONF_SECTION *cs,
 
 		cp = cf_item_to_pair(ci);
 		if (map_afrom_cp(parent, &map, cp, request_def, dst_list_def, REQUEST_CURRENT, src_list_def) < 0) {
+			cf_log_err(ci, "Failed creating map from '%s = %s'",
+				   cf_pair_attr(cp), cf_pair_value(cp));
 			goto error;
 		}
 
