@@ -465,7 +465,7 @@ static int mod_open(void *instance)
  */
 static int mod_fd(void const *instance)
 {
-	proto_radius_udp_t *inst = talloc_get_type_abort(instance, proto_radius_udp_t);
+	proto_radius_udp_t const *inst = talloc_get_type_abort(instance, proto_radius_udp_t);
 
 	return inst->sockfd;
 }
@@ -478,7 +478,7 @@ static int mod_fd(void const *instance)
  */
 static void mod_event_list_set(void const *instance, fr_event_list_t *el)
 {
-	proto_radius_udp_t *inst;
+	proto_radius_udp_t const *inst;
 
 	memcpy(&inst, &instance, sizeof(inst)); /* const issues */
 
