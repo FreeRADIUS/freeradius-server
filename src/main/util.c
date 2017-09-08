@@ -882,6 +882,12 @@ void request_verify(char const *file, int line, REQUEST *request)
 
 	(void) talloc_get_type_abort(request, REQUEST);
 
+	if (talloc_get_size(request) != sizeof(REQUEST)) {
+		fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%i]: expected REQUEST size of %zu bytes, got %zu bytes",
+			file, line, sizeof(REQUEST), talloc_get_size(request));
+		if (!fr_cond_assert(0)) fr_exit_now(1);
+	}
+
 #ifdef WITH_VERIFY_PTR
 	fr_pair_list_verify(file, line, request, request->control);
 	fr_pair_list_verify(file, line, request->state_ctx, request->state);
