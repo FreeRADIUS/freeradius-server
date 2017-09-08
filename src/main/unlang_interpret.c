@@ -1786,7 +1786,7 @@ resume_subsection:
 
 		rad_assert(instruction->debug_name != NULL); /* if this happens, all bets are off. */
 
-		VERIFY_REQUEST(request);
+		REQUEST_VERIFY(request);
 
 		/*
 		 *	We may be multiple layers deep in create{} or

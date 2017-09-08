@@ -741,7 +741,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	 */
 	request = fr_heap_pop(worker->runnable);
 	if (request) {
-		VERIFY_REQUEST(request);
+		REQUEST_VERIFY(request);
 		fr_time_tracking_resume(&request->async->tracking, now);
 		return request;
 	}

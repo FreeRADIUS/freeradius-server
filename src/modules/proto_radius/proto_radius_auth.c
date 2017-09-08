@@ -124,7 +124,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 	fr_dict_attr_t const 	*da = NULL;
 	vp_cursor_t		cursor;
 
-	VERIFY_REQUEST(request);
+	REQUEST_VERIFY(request);
 
 	/*
 	 *	Pass this through asynchronously to the module which

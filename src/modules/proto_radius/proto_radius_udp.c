@@ -167,7 +167,7 @@ static int mod_decode(UNUSED void const *instance, REQUEST *request, UNUSED uint
 	request->reply->dst_port = address->src_port;
 
 	request->root = &main_config;
-	VERIFY_REQUEST(request);
+	REQUEST_VERIFY(request);
 
 	return 0;
 }

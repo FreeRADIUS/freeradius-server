@@ -155,7 +155,7 @@ static void tacacs_running(REQUEST *request, fr_state_action_t action)
 	vp_cursor_t cursor;
 	int rc;
 
-	VERIFY_REQUEST(request);
+	REQUEST_VERIFY(request);
 
 	switch (action) {
 	case FR_ACTION_DONE:
@@ -391,7 +391,7 @@ send_reply:
 						fr_pair_add(&request->reply->vps, vp);
 					} else {
 						state_add(request, request->reply);
-						request->reply->code = 1;	/* FIXME: util.c:verify_request() */
+						request->reply->code = 1;	/* FIXME: util.c:request_verify() */
 						fr_request_to_state(global_state, request, request->packet, request->reply);
 					}
 				}
@@ -418,7 +418,7 @@ done:
 
 static void tacacs_queued(REQUEST *request, fr_state_action_t action)
 {
-	VERIFY_REQUEST(request);
+	REQUEST_VERIFY(request);
 
 	switch (action) {
 	case FR_ACTION_RUN:

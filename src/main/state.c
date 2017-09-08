@@ -604,7 +604,7 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET
 
 	RDEBUG3("RADIUS State - restored");
 
-	VERIFY_REQUEST(request);
+	REQUEST_VERIFY(request);
 	return;
 }
 
@@ -655,7 +655,7 @@ bool fr_request_to_state(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
 	RDEBUG3("RADIUS State - saved");
-	VERIFY_REQUEST(request);
+	REQUEST_VERIFY(request);
 
 	return true;
 }

@@ -873,7 +873,7 @@ static void verify_packet(char const *file, int line, REQUEST *request, RADIUS_P
 /*
  *	Catch horrible talloc errors.
  */
-void verify_request(char const *file, int line, REQUEST *request)
+void request_verify(char const *file, int line, REQUEST *request)
 {
 	if (!request) {
 		fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%i]: REQUEST pointer was NULL", file, line);

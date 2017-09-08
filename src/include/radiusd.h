@@ -185,14 +185,14 @@ typedef struct main_config {
 } main_config_t;
 
 #ifdef WITH_VERIFY_PTR
-#  define VERIFY_REQUEST(_x) verify_request(__FILE__, __LINE__, _x)
+#  define REQUEST_VERIFY(_x) request_verify(__FILE__, __LINE__, _x)
 #else
 /*
  *  Even if were building without WITH_VERIFY_PTR
  *  the pointer must not be NULL when these various macros are used
  *  so we can add some sneaky asserts.
  */
-#  define VERIFY_REQUEST(_x) rad_assert(_x)
+#  define REQUEST_VERIFY(_x) rad_assert(_x)
 #endif
 
 typedef enum {
@@ -431,7 +431,7 @@ char const	*rad_default_sbin_dir(void);
 char const	*rad_radacct_dir(void);
 
 #ifdef WITH_VERIFY_PTR
-void		verify_request(char const *file, int line, REQUEST *request);	/* only for special debug builds */
+void		request_verify(char const *file, int line, REQUEST *request);	/* only for special debug builds */
 #endif
 void		rad_mode_to_str(char out[10], mode_t mode);
 void		rad_mode_to_oct(char out[5], mode_t mode);

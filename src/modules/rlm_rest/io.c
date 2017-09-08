@@ -67,7 +67,7 @@ static inline void _rest_io_demux(rlm_rest_thread_t *thread, CURLM *mandle)
 			ret = curl_easy_getinfo(candle, CURLINFO_PRIVATE, &request);
 			if (!fr_cond_assert(ret == CURLE_OK)) return;
 
-			VERIFY_REQUEST(request);
+			REQUEST_VERIFY(request);
 
 			/*
 			 *	If the request failed, say why...
@@ -365,7 +365,7 @@ int rest_io_request_enqueue(rlm_rest_thread_t *t, REQUEST *request, void *handle
 	CURL			*candle = randle->candle;
 	CURLcode		ret;
 
-	VERIFY_REQUEST(request);
+	REQUEST_VERIFY(request);
 
 	/*
 	 *	Stick the current request in the curl handle's

@@ -305,7 +305,7 @@ static void request_running(REQUEST *request, fr_state_action_t action)
 	char const	*state;
 	rlm_rcode_t	rcode = RLM_MODULE_FAIL;
 
-	VERIFY_REQUEST(request);
+	REQUEST_VERIFY(request);
 
 	/*
 	 *	Async (in the same thread, tho) signal to be done.
@@ -418,7 +418,7 @@ static void request_running(REQUEST *request, fr_state_action_t action)
  */
 static void request_queued(REQUEST *request, fr_state_action_t action)
 {
-	VERIFY_REQUEST(request);
+	REQUEST_VERIFY(request);
 
 	switch (action) {
 	case FR_ACTION_RUN:
