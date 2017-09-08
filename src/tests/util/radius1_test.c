@@ -98,8 +98,8 @@ static fr_io_final_t test_process(REQUEST *request, fr_io_action_t action)
 
 static int test_decode(UNUSED void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
 {
-	fr_radius_packet_ctx_t const *pc = talloc_get_type_abort(request->async->listen->app_instance,
-								 fr_radius_packet_ctx_t);
+	fr_radius_packet_ctx_t const *pc = talloc_get_type_abort_const(request->async->listen->app_instance,
+								       fr_radius_packet_ctx_t);
 
 	request->number = pc->id;
 	request->async->process = test_process;
@@ -114,8 +114,8 @@ static int test_decode(UNUSED void const *instance, REQUEST *request, uint8_t *c
 static ssize_t test_encode(UNUSED void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
 {
 	FR_MD5_CTX context;
-	fr_radius_packet_ctx_t const *pc = talloc_get_type_abort(request->async->listen->app_instance,
-								 fr_radius_packet_ctx_t);
+	fr_radius_packet_ctx_t const *pc = talloc_get_type_abort_const(request->async->listen->app_instance,
+								       fr_radius_packet_ctx_t);
 
 	MPRINT1("\t\tENCODE >>> request %"PRIu64" - data %p %p room %zd\n",
 		request->number, pc, buffer, buffer_len);
