@@ -101,7 +101,10 @@ static int process_file(char const *filename)
 	 *	Convert the update section to a list of maps.
 	 */
 	rcode = map_afrom_cs(&head, cs, PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, unlang_fixup_update, NULL, 128);
-	if (rcode < 0) return -1; /* message already printed */
+	if (rcode < 0) {
+		cf_log_err(cs, "map_afrom_cs failed: %s", fr_strerror());
+		return -1; /* message already printed */
+	}
 	if (!head) {
 		cf_log_err(cs, "'update' sections cannot be empty");
 		return -1;
