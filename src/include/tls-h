@@ -357,6 +357,11 @@ struct fr_tls_server_conf_t {
 	bool		disable_tlsv1_1;
 	bool		disable_tlsv1_2;
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	char const	*tls_min_version;
+	char const	*tls_max_version;
+#endif
+
 	/*
 	 *	Always < 4096 (due to radius limit), 0 by default = 1024
 	 */

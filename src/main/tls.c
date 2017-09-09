@@ -1226,6 +1226,12 @@ static CONF_PARSER tls_server_config[] = {
 	{ "disable_tlsv1_2", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_tlsv1_2), NULL },
 #endif
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	{ "tls_max_version", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, tls_max_version), },
+
+	{ "tls_min_version", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, tls_min_version), "1.0" },
+#endif
+
 	{ "cache", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) cache_config },
 
 	{ "verify", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) verify_config },
@@ -1270,6 +1276,12 @@ static CONF_PARSER tls_client_config[] = {
 
 #ifdef SSL_OP_NO_TLSv1_2
 	{ "disable_tlsv1_2", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_tlsv1_2), NULL },
+#endif
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	{ "tls_max_version", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, tls_max_version), },
+
+	{ "tls_min_version", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, tls_min_version), "1.0" },
 #endif
 	CONF_PARSER_TERMINATOR
 };
