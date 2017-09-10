@@ -396,7 +396,7 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_P
 		cf_log_debug(cs, "%.*s%s = %f", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp),
 			num);
 		memcpy(out, &num, sizeof(num));
-	}		
+	}
 		break;
 
 	default:
@@ -529,7 +529,7 @@ static int cf_pair_parse_internal(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, 
 		 *	Don't re-parse things which have already been parsed.
 		 */
 		first = cf_pair_find(cs, rule->name);
-		if (first->parsed) return 0;
+		if (first && first->parsed) return 0;
 
 		/*
 		 *	Easier than re-allocing
@@ -671,7 +671,7 @@ static int cf_pair_parse_internal(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, 
 
 			if (cf_pair_default(&dflt_cp, cs, rule->name, type, dflt, dflt_quote) < 0) return -1;
 			cp = dflt_cp;
-		
+
 		} else if (cp->parsed) {
 			/*
 			 *	Don't re-parse things which have already been parsed.
