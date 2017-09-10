@@ -58,6 +58,9 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project'\
 > /etc/yum.repos.d/ltb-project.repo
 RUN rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
 
+#
+#  Build hiredis packages manually as the version available is too old
+#
 WORKDIR /usr/local/src/repositories
 RUN git clone --depth=1 https://github.com/mattrose/hiredis.git
 WORKDIR hiredis
@@ -90,7 +93,10 @@ RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 
 # Create the build tree
 ENV BUILDDIR=/root/rpmbuild
 RUN rpmdev-setuptree
-### This is necessary for the jenkins server to talk to the docker instance
+
+#
+#  This is necessary for the jenkins server to talk to the docker instance
+#
 RUN yum install -y openssh-server java-1.8.0-openjdk-headless createrepo
 RUN adduser jenkins
 RUN printf jenkins1 | passwd --stdin jenkins
