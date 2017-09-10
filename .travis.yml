@@ -6,7 +6,6 @@ sudo: true
 dist: trusty
 env:
   global:
-  - ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer-3.9
   - ASAN_OPTIONS="symbolize=1 detect_stack_use_after_return=1"
   - LSAN_OPTIONS="exitcode=0"
   - KQUEUE_DEBUG="yes"
@@ -105,10 +104,9 @@ services:
 - redis-server
 before_install:
 - rvm --install --default --binary use 2.4
-- if [ "${CC}" == 'gcc' ]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 60; fi
-- if [ "${CC}" == 'gcc' ]; then sudo update-alternatives --config gcc; fi
-- if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-3.9 60; fi
-- if [ "${CC}" == 'clang' ]; then sudo update-alternatives --config clang; fi
+- if [ "${CC}" == 'gcc' ]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 60 && sudo update-alternatives --config gcc; fi
+- if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-3.9 60 && sudo update-alternatives --config clang; fi
+- if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-3.9 60 && sudo update-alternatives --config llvm-symbolizer; fi
 - $CC --version
 before_script:
 - ./scripts/travis/build.sh
