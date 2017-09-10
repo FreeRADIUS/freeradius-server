@@ -3,10 +3,11 @@ RUN apt-get update && apt-get install -y devscripts equivs git quilt
 RUN apt-get install -y software-properties-common python-software-properties
 RUN add-apt-repository ppa:ubuntu-toolchain-r/test
 RUN apt-get update
-RUN apt-get install -y g++-4.9 llvm-3.9 clang-3.9
+RUN apt-get install -y g++-4.9 llvm-3.9 clang-3.9 lldb-3.9
 
 RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 50 --slave /usr/bin/g++ g++ /usr/bin/g++-4.9 && update-alternatives --config gcc
 RUN update-alternatives --install /usr/bin/clang clang /usr/bin/clang-3.9 60 && update-alternatives --config clang
+RUN update-alternatives --install /usr/bin/lldb lldb /usr/bin/lldb-3.9 60 && update-alternatives --config lldb
 
 #
 #  Shallow clone the FreeRADIUS source
