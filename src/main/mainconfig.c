@@ -408,6 +408,7 @@ static int switch_users(CONF_SECTION *cs)
 		return 0;
 	}
 
+	DEBUG("Parsing security rules to bootstrap UID / GID / chroot / etc.");
 	if (cf_section_parse(NULL, NULL, cs) < 0) {
 		fprintf(stderr, "%s: Error: Failed to parse user/group information.\n",
 			main_config.name);
@@ -785,6 +786,7 @@ do {\
 			return -1;
 		}
 
+		DEBUG("Parsing initial logging configuration.");
 		if (cf_section_parse(NULL, NULL, cs) < 0) {
 			fprintf(stderr, "%s: Error: Failed to parse log{} section.\n",
 				main_config.name);
@@ -866,6 +868,8 @@ do {\
 	 */
 	if (cf_section_rules_push(cs, server_config) < 0) return -1;
 	if (cf_section_rules_push(cs, virtual_servers_config) < 0) return -1;
+
+	DEBUG("Parsing main configuration.");
 	if (cf_section_parse(NULL, NULL, cs) < 0) return -1;
 
 	/*
