@@ -1226,6 +1226,12 @@ static CONF_PARSER tls_server_config[] = {
 	{ "disable_tlsv1_2", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_tlsv1_2), NULL },
 #endif
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	{ "tls_max_version", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, tls_max_version), },
+
+	{ "tls_min_version", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, tls_min_version), "1.0" },
+#endif
+
 	{ "cache", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) cache_config },
 
 	{ "verify", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) verify_config },
@@ -1271,6 +1277,13 @@ static CONF_PARSER tls_client_config[] = {
 #ifdef SSL_OP_NO_TLSv1_2
 	{ "disable_tlsv1_2", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_tlsv1_2), NULL },
 #endif
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	{ "tls_max_version", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, tls_max_version), },
+
+	{ "tls_min_version", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, tls_min_version), "1.0" },
+#endif
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -2665,6 +2678,29 @@ void tls_global_cleanup(void)
 	CRYPTO_cleanup_all_ex_data();
 }
 
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+/*
+ *	Map version strings to OpenSSL macros.
+ */
+static const FR_NAME_NUMBER version2int[] = {
+	{ "1.0",    TLS1_VERSION },
+#ifdef TLS_1_1_VERSION
+	{ "1.1",    TLS1_1_VERSION },
+#endif
+#ifdef TLS_1_2_VERSION
+	{ "1.2",    TLS1_2_VERSION },
+#endif
+#ifdef TLS_1_3_VERSION
+	{ "1.3",    TLS1_3_VERSION },
+#endif
+#ifdef TLS_1_4_VERSION
+	{ "1.4",    TLS1_4_VERSION },
+#endif
+	{ NULL, 0 }
+};
+#endif
+
 /** Create SSL context
  *
  * - Load the trusted CAs
@@ -2899,23 +2935,113 @@ post_ca:
 	ctx_options |= SSL_OP_NO_SSLv2;
 	ctx_options |= SSL_OP_NO_SSLv3;
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 	/*
-	 *	As of 3.0.5, we always allow TLSv1.1 and TLSv1.2.
-	 *	Though they can be *globally* disabled if necessary.x
+	 *	SSL_CTX_set_(min|max)_proto_version was included in OpenSSL 1.1.0
+	 *
+	 *	This version already defines macros for TLS1_2_VERSION and
+	 *	below, so we don't need to check for them explicitly.
+	 *
+	 *	TLS1_3_VERSION is available in OpenSSL 1.1.1.
+	 *
+	 *	TLS1_4_VERSION in speculative.
+	 */
+	{
+		int min_version = 0;
+		int max_version = 0;
+
+		/*
+		 *	Get the max version.
+		 */
+		if (conf->tls_max_version) {
+			max_version = fr_str2int(version2int, conf->tls_max_version, 0);
+			if (!max_version) {
+				ERROR("Invalid value for tls_max_version '%s'", conf->tls_max_version);
+				return NULL;
+			}
+		} else {
+			/*
+			 *	Pick the maximum one we know about.
+			 */
+#ifdef TLS1_4_VERSION
+			max_version = TLS1_4_VERSION;
+#elsif defined(TLS1_3_VERSION)
+			max_version = TLS1_3_VERSION;
+#elsif defined(TLS1_2_VERSION)
+			max_version = TLS1_2_VERSION;
+#elsif defined(TLS1_1_VERSION)
+			max_version = TLS1_1_VERSION;
+#else
+			max_version = TLS1_VERSION;
+#endif
+		}
+
+		/*
+		 *	Get the min version.
+		 */
+		if (conf->tls_min_version) {
+			min_version = fr_str2int(version2int, conf->tls_min_version, 0);
+			if (!min_version) {
+				ERROR("Invalid value for tls_min_version '%s'", conf->tls_min_version);
+				return NULL;
+			}
+		} else {
+			min_version = TLS1_VERSION;
+		}
+
+		/*
+		 *	Compare the two.
+		 */
+		if (min_version > max_version) {
+			ERROR("tls_min_version '%s' must be <= tls_max_version '%s'",
+			      conf->tls_min_version, conf->tls_max_version);
+			return -1;
+		}
+
+		if (!SSL_CTX_set_max_proto_version(ctx, max_version)) {
+			tls_log_error(NULL, "Failed setting TLS maximum version");
+			return NULL;
+		}
+
+		if (!SSL_CTX_set_min_proto_version(ctx, min_version)) {
+			tls_log_error(NULL, "Failed setting TLS minimum version");
+			return NULL;
+		}
+	}
+#endif	/* OpenSSL version >1.1.0 */
+
+	/*
+	 *	For historical config compatibility, we also allow
+	 *	these, but complain if the admin uses them.
 	 */
 #ifdef SSL_OP_NO_TLSv1
-	if (conf->disable_tlsv1) ctx_options |= SSL_OP_NO_TLSv1;
+	if (conf->disable_tlsv1) {
+		ctx_options |= SSL_OP_NO_TLSv1;
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+		WARN("Please use tls_min_version and tls_max_version instead of disable_tlsv1");
+#endif
+	}
 
 	ctx_tls_versions |= SSL_OP_NO_TLSv1;
 #endif
 #ifdef SSL_OP_NO_TLSv1_1
-	if (conf->disable_tlsv1_1) ctx_options |= SSL_OP_NO_TLSv1_1;
+	if (conf->disable_tlsv1_1) {
+		ctx_options |= SSL_OP_NO_TLSv1_1;
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+		WARN("Please use tls_min_version and tls_max_version instead of disable_tlsv1_2");
+#endif
+	}
 
 	ctx_tls_versions |= SSL_OP_NO_TLSv1_1;
 #endif
 #ifdef SSL_OP_NO_TLSv1_2
 
-	if (conf->disable_tlsv1_2) ctx_options |= SSL_OP_NO_TLSv1_2;
+	if (conf->disable_tlsv1_2) {
+		ctx_options |= SSL_OP_NO_TLSv1_2;
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+		WARN("Please use tls_min_version and tls_max_version instead of disable_tlsv1_2");
+#endif
+	}
 
 	ctx_tls_versions |= SSL_OP_NO_TLSv1_2;
 
