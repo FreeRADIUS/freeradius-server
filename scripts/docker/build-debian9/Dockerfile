@@ -6,6 +6,11 @@ RUN apt-get update && apt-get install -y devscripts equivs git quilt
 #
 
 #
+#  Install eapol_test dependencies
+#
+RUN apt-get install libnl-3-dev libnl-genl-3-dev
+
+#
 #  Setup a src dir in /usr/local
 #
 RUN mkdir -p /usr/local/src/repositories
@@ -38,7 +43,9 @@ ARG source=https://github.com/FreeRADIUS/freeradius-server.git
 RUN git clone --depth 1 --no-single-branch ${source}
 WORKDIR freeradius-server
 
-# Install build dependencies for all branches
+#
+#  Install build dependencies for all branches
+#
 RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 2>/dev/null | sed -e 's#origin/##' | egrep "^v[0-9]*\.[0-9x]*\.x$");\
 	do \
 		git checkout $i; \

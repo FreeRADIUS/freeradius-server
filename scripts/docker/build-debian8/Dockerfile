@@ -8,6 +8,11 @@ RUN apt-get install -y g++-4.9
 RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 50 --slave /usr/bin/g++ g++ /usr/bin/g++-4.9 && update-alternatives --config gcc
 
 #
+#  Install eapol_test dependencies
+#
+RUN apt-get install libnl-3-dev libnl-genl-3-dev
+
+#
 #  Setup a src dir in /usr/local
 #
 WORKDIR /usr/local/src/repositories

@@ -1,5 +1,9 @@
 FROM ubuntu:14.04
 RUN apt-get update && apt-get install -y devscripts equivs git quilt
+
+#
+#  Install GCC-4.9 as it has the requisite support for C11 keywords and atomics
+#
 RUN apt-get install -y software-properties-common python-software-properties
 RUN add-apt-repository ppa:ubuntu-toolchain-r/test
 RUN apt-get update
@@ -10,10 +14,19 @@ RUN update-alternatives --install /usr/bin/clang clang /usr/bin/clang-3.9 60 && 
 RUN update-alternatives --install /usr/bin/lldb lldb /usr/bin/lldb-3.9 60 && update-alternatives --config lldb
 
 #
-#  Shallow clone the FreeRADIUS source
+#  Install eapol_test dependencies
+#
+RUN apt-get install libnl-3-dev libnl-genl-3-dev
+
+#
+#  Setup a src dir in /usr/local
 #
 RUN mkdir -p /usr/local/src/repositories
 WORKDIR /usr/local/src/repositories
+
+#
+#  Shallow clone the FreeRADIUS source
+#
 ARG source=https://github.com/FreeRADIUS/freeradius-server.git
 RUN git clone --depth 1 --no-single-branch ${source}
 WORKDIR freeradius-server

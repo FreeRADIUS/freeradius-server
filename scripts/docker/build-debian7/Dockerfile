@@ -9,6 +9,11 @@ RUN apt-get update && apt-get install -y gcc-4.9 g++-4.9
 RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 50 --slave /usr/bin/g++ g++ /usr/bin/g++-4.9 && update-alternatives --config gcc
 
 #
+#  Install eapol_test dependencies
+#
+RUN apt-get install libnl-3-dev libnl-genl-3-dev
+
+#
 #  This is necessary for the jenkins server to talk to the docker instance
 #
 ENV DISABLE_HOTSPOT_OS_VERSION_CHECK=ok
