@@ -526,9 +526,15 @@ static int cf_pair_parse_internal(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, 
 		size_t		i;
 
 		/*
+		 *	Don't re-parse things which have already been parsed.
+		 */
+		first = cf_pair_find(cs, rule->name);
+		if (first->parsed) return 0;
+
+		/*
 		 *	Easier than re-allocing
 		 */
-		for (cp = first = cf_pair_find(cs, rule->name);
+		for (cp = first;
 		     cp;
 		     cp = cf_pair_find_next(cs, cp, rule->name)) count++;
 
@@ -665,6 +671,12 @@ static int cf_pair_parse_internal(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, 
 
 			if (cf_pair_default(&dflt_cp, cs, rule->name, type, dflt, dflt_quote) < 0) return -1;
 			cp = dflt_cp;
+		
+		} else if (cp->parsed) {
+			/*
+			 *	Don't re-parse things which have already been parsed.
+			 */
+			return 0;
 		}
 
 		next = cf_pair_find_next(cs, cp, rule->name);
@@ -794,6 +806,8 @@ int cf_pair_parse(TALLOC_CTX *ctx, CONF_SECTION *cs, char const *name,
  */
 static int cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER const *rule)
 {
+	CONF_PAIR *cp;
+
 	if ((FR_BASE_TYPE(rule->type) == FR_TYPE_SUBSECTION)) {
 		CONF_SECTION *subcs;
 
@@ -832,6 +846,12 @@ static int cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER const
 
 		return 0;
 	}
+
+	/*
+	 *	Don't re-initialize data which was already parsed.
+	 */
+	cp = cf_pair_find(cs, rule->name);
+	if (cp && cp->parsed) return 0;
 
 	if ((FR_BASE_TYPE(rule->type) != FR_TYPE_STRING) &&
 	    (rule->type != FR_TYPE_FILE_INPUT) &&
@@ -1062,7 +1082,6 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs)
 			if (ret < 0) goto finish;
 			continue;
 		} /* else it's a CONF_PAIR */
-
 
 		/*
 		 *	Get pointer to where we need to write out
