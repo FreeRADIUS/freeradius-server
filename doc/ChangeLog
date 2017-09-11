@@ -5,6 +5,8 @@ FreeRADIUS 3.0.16 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	* Add support for Samba / AD LDAP schema.
 	  See oc/schemas/ldap/samba/README.txt and
 	  doc/schemas/ldap/samba/
+	* Add "tls_min_version" and "tls_max_version" to EAP module
+	  for Debian OpenSSL issues.
 
 	Bug fixes
 	* Bind the lifetime of program name and python path to the module
