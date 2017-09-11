@@ -74,7 +74,7 @@ if test x$with_[]modname != xno; then
     smart_try_dir="$sqlite_lib_dir"
     FR_SMART_CHECK_LIB(sqlite3, sqlite3_open)
     dnl # Ensure we use the library we just found the rest of the checks
-    LDFLAGS="$SMART_LIBS"
+    LDFLAGS="${LDFLAGS} ${SMART_LIBS}"
     if test "x$ac_cv_lib_sqlite3_sqlite3_open" != "xyes"
     then
 	AC_MSG_WARN([Sqlite libraries not found. Use --with-sqlite-lib-dir=<path>.])
