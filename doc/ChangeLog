@@ -29,6 +29,8 @@ FreeRADIUS 3.0.16 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	* Expand "next" in %{%{...}:-%{...}}.  Fixes #2048
 	* Don't add TLS attributes twice.  Fixes #2050.
 	* Fix memory allocation in rlm_rest.  Fixes #2051.
+	* Update trustrouter for new API. Fixes #2059.
+	* Fix SQLite issues on FreeBSD.  Fixes #2060
 
 FreeRADIUS 3.0.15 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	Feature improvements
