@@ -646,6 +646,33 @@ static rlm_rcode_t unlang_create_resume(UNUSED REQUEST *request, unlang_stack_t 
 	return RLM_MODULE_YIELD;
 }
 
+static unlang_action_t unlang_detach(REQUEST *request, unlang_stack_t *stack,
+				     rlm_rcode_t *presult, int *priority)
+{
+	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
+	unlang_t		*instruction = frame->instruction;
+
+	rad_assert(instruction->parent->type == UNLANG_TYPE_CREATE);
+	RDEBUG2("%s", unlang_ops[instruction->type].name);
+
+	if (request_detach(request) < 0) {
+		ERROR("Failed detaching child");
+		*presult = RLM_MODULE_FAIL;
+		*priority = 0;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	/*
+	 *	request_detach() doesn't set the "detached" flag, but
+	 *	it does set the backlog...
+	 */
+	request->async->detached = true;
+	rad_assert(request->backlog != NULL);
+
+	*presult = RLM_MODULE_YIELD;
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
 static unlang_action_t unlang_create(REQUEST *request, unlang_stack_t *stack,
 				     rlm_rcode_t *presult, int *priority)
 {
@@ -714,6 +741,33 @@ static unlang_action_t unlang_create(REQUEST *request, unlang_stack_t *stack,
 		*presult = rcode;
 		*priority = instruction->actions[*presult];
 		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	/*
+	 *	As a special case, if the child is "detach", detach
+	 *	the child, insert the child into the runnable queue,
+	 *	and keep going with the parent.
+	 */
+	{
+		unlang_stack_t		*child_stack = child->stack;
+		unlang_stack_frame_t	*child_frame = &child_stack->frame[child_stack->depth];
+		unlang_t		*child_instruction = child_frame->instruction;
+
+		if (child_instruction->type == UNLANG_TYPE_DETACH) {
+			rad_assert(child->backlog != NULL);
+			fr_heap_insert(child->backlog, child);
+
+			/*
+			 *	Tell the interpreter to skip the "detach"
+			 *	stack frame when it continues.
+			 */
+			child_frame->instruction = child_frame->next;
+			if (child_frame->instruction) child_frame->next = child_frame->instruction->next;
+
+			*presult = RLM_MODULE_NOOP;
+			*priority = 0;
+			return UNLANG_ACTION_CALCULATE_RESULT;
+		} /* else the child yielded, so we have to yield */
 	}
 
 	/*
@@ -1727,6 +1781,11 @@ unlang_op_t unlang_ops[] = {
 		.func = unlang_create,
 		.debug_braces = true
 	},
+	[UNLANG_TYPE_DETACH] = {
+		.name = "detach",
+		.func = unlang_detach,
+		.debug_braces = false
+	},
 #endif
 	[UNLANG_TYPE_XLAT_INLINE] = {
 		.name = "xlat_inline",
@@ -1851,6 +1910,20 @@ resume_subsection:
 
 		case UNLANG_ACTION_CALCULATE_RESULT:
 			if (result == RLM_MODULE_YIELD) {
+				/*
+				 *	Detach is magic.  The parent
+				 *	"create" function takes care
+				 *	of bumping the instruction
+				 *	pointer...
+				 */
+				if (frame->instruction->type == UNLANG_TYPE_DETACH) {
+					RDEBUG4("** [%i] %s - detaching child with current (%s %d)", stack->depth, __FUNCTION__,
+						fr_int2str(mod_rcode_table, frame->result, "<invalid>"),
+						frame->priority);
+					DUMP_STACK;
+					return RLM_MODULE_YIELD;
+				}
+
 				rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
 				frame->resume = true;
 				RDEBUG4("** [%i] %s - yielding with current (%s %d)", stack->depth, __FUNCTION__,

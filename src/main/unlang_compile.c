@@ -2120,6 +2120,26 @@ static unlang_t *compile_break(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	return compile_empty(parent, unlang_ctx, NULL, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_GROUP_TYPE_SIMPLE,
 			     UNLANG_TYPE_BREAK, COND_TYPE_INVALID);
 }
+
+static unlang_t *compile_detach(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM const *ci)
+{
+	if (parent->type != UNLANG_TYPE_CREATE) {
+		cf_log_err(ci, "'detach' can only be used in a 'create' section");
+		return NULL;
+	}
+
+	/*
+	 *	This really overloads the functionality of
+	 *	cf_item_next().
+	 */
+	if (!cf_item_next(ci, ci)) {
+		cf_log_err(ci, "'detach' cannot be used as the last entry in a section");
+		return NULL;
+	}
+
+	return compile_empty(parent, unlang_ctx, NULL, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_GROUP_TYPE_SIMPLE,
+			     UNLANG_TYPE_DETACH, COND_TYPE_INVALID);
+}
 #endif
 
 static unlang_t *compile_xlat_inline(unlang_t *parent,
@@ -2811,6 +2831,10 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			cf_log_err(ci, "Invalid use of 'break'");
 			return NULL;
 
+		} else if (strcmp(modrefname, "detach") == 0) {
+			cf_log_err(ci, "Invalid use of 'detach'");
+			return NULL;
+
 		} else if (strcmp(modrefname, "return") == 0) {
 			cf_log_err(ci, "Invalid use of 'return'");
 			return NULL;
@@ -2855,6 +2879,10 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	 */
 	if (strcmp(modrefname, "break") == 0) {
 		return compile_break(parent, unlang_ctx, ci);
+	}
+
+	if (strcmp(modrefname, "detach") == 0) {
+		return compile_detach(parent, unlang_ctx, ci);
 	}
 
 	if (strcmp(modrefname, "return") == 0) {

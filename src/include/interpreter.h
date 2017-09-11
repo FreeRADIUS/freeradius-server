@@ -68,6 +68,7 @@ typedef enum {
 	UNLANG_TYPE_MAP,			//!< Mapping section (like #UNLANG_TYPE_UPDATE, but uses
 						//!< values from a #map_proc_t call).
 	UNLANG_TYPE_CREATE,			//!< create a child
+	UNLANG_TYPE_DETACH,			//!< detach a child
 #endif
 	UNLANG_TYPE_POLICY,			//!< Policy section.
 	UNLANG_TYPE_XLAT_INLINE,		//!< xlat statement, inline in "unlang"
