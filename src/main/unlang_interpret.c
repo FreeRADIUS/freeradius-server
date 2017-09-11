@@ -67,6 +67,37 @@ static inline void safe_unlock(module_instance_t *instance)
 	if (instance->mutex) pthread_mutex_unlock(instance->mutex);
 }
 
+/** Continue after creating a subrequest.
+ *
+ *  Just run some "unlang", but don't do anything else.
+ */
+static fr_io_final_t unlang_process_continue(REQUEST *request, fr_io_action_t action)
+{
+	rlm_rcode_t rcode;
+
+	REQUEST_VERIFY(request);
+
+	/*
+	 *	Pass this through asynchronously to the module which
+	 *	is waiting for something to happen.
+	 */
+	if (action != FR_IO_ACTION_RUN) {
+		unlang_signal(request, (fr_state_action_t) action);
+		return FR_IO_DONE;
+	}
+
+	rcode = unlang_interpret_continue(request);
+
+	if (request->master_state == REQUEST_STOP_PROCESSING) return FR_IO_DONE;
+
+	if (rcode == RLM_MODULE_YIELD) return FR_IO_YIELD;
+
+	/*
+	 *	Don't bother setting request->reply->code.
+	 */
+	return FR_IO_DONE;
+}
+
 #ifndef NDEBUG
 unlang_op_t unlang_ops[];
 
@@ -669,6 +700,7 @@ static unlang_action_t unlang_detach(REQUEST *request, unlang_stack_t *stack,
 	 */
 	request->async->detached = true;
 	rad_assert(request->backlog != NULL);
+	request->async->process = unlang_process_continue;
 
 	*presult = RLM_MODULE_YIELD;
 	return UNLANG_ACTION_CALCULATE_RESULT;
@@ -696,6 +728,11 @@ static unlang_action_t unlang_create(REQUEST *request, unlang_stack_t *stack,
 		*priority = instruction->actions[*presult];
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
+
+	/*
+	 *	Only for debugging, when sending 1-2 packets at a time.
+	 */
+//	child->number++;
 
 	/*
 	 *	If necessary, change the child->packet->code.
@@ -757,6 +794,8 @@ static unlang_action_t unlang_create(REQUEST *request, unlang_stack_t *stack,
 		if (child_instruction->type == UNLANG_TYPE_DETACH) {
 			rad_assert(child->backlog != NULL);
 			fr_heap_insert(child->backlog, child);
+
+			RDEBUG3("Detaching child request (%" PRIu64 ")", child->number);
 
 			/*
 			 *	Tell the interpreter to skip the "detach"
