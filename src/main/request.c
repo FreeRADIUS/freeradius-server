@@ -130,20 +130,8 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 	return request;
 }
 
-
-/*
- *	Create a new REQUEST, based on an old one.
- *
- *	This function allows modules to inject fake requests
- *	into the server, for tunneled protocols like TTLS & PEAP.
- */
-REQUEST *request_alloc_fake(REQUEST *request)
+static REQUEST *request_init_fake(REQUEST *request, REQUEST *fake)
 {
-	REQUEST *fake;
-
-	fake = request_alloc(request);
-	if (!fake) return NULL;
-
 	fake->number = request->number;
 	fake->seq_start = request->seq_start;
 
@@ -216,6 +204,74 @@ REQUEST *request_alloc_fake(REQUEST *request)
 	fake->log.module_indent = 0;	/* Apart from the indent which we reset */
 
 	return fake;
+}
+
+
+/*
+ *	Create a new REQUEST, based on an old one.
+ *
+ *	This function allows modules to inject fake requests
+ *	into the server, for tunneled protocols like TTLS & PEAP.
+ */
+REQUEST *request_alloc_fake(REQUEST *request)
+{
+	REQUEST *fake;
+
+	fake = request_alloc(request);
+	if (!fake) return NULL;
+
+	return request_init_fake(request, fake);
+}
+
+/** Allocate a fake request which is detachable from the parent.
+ * i.e. if the parent goes away, sometimes the child MAY continue to
+ * run.
+ *
+ */
+REQUEST *request_alloc_detachable(REQUEST *request)
+{
+	REQUEST *fake;
+
+	fake = request_alloc(NULL);
+	if (!fake) return NULL;
+
+	if (!request_init_fake(request, fake)) return NULL;
+
+	/*
+	 *	Associate the child with the parent, using the child's
+	 *	pointer as a unique identifier.  Free it if the parent
+	 *	goes away, but don't persist it across
+	 *	challenge-response boundaries.
+	 */
+	if (request_data_add(request, fake, 0, fake, true, true, false) < 0) {
+		talloc_free(fake);
+		return NULL;
+	}
+
+	return fake;
+}
+
+
+/** Detach a detachable request.
+ *
+ *  @note the caller still has to set fake->async->detached
+ */
+int request_detach(REQUEST *fake)
+{
+	REQUEST *request = fake->parent;
+
+	rad_assert(request != NULL);
+	rad_assert(talloc_parent(fake) != request);
+
+	/*
+	 *	Unlink the child from the parent.
+	 */
+	if (!request_data_get(request, fake, 0)) {
+		return -1;
+	}
+
+	fake->parent = NULL;
+	return 0;
 }
 
 REQUEST *request_alloc_proxy(REQUEST *request)
