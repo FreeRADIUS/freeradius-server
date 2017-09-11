@@ -646,7 +646,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		FR_INTEGER_BOUND_CHECK("Access-Request.maximum_retransmission_duration", inst->retry[FR_CODE_ACCESS_REQUEST].mrd, >=, 5);
 
 		FR_INTEGER_BOUND_CHECK("Access-Request.initial_retransmission_time", inst->retry[FR_CODE_ACCESS_REQUEST].irt, <=, 3);
-		FR_INTEGER_BOUND_CHECK("Access-Request.maximum_retransmission_time", inst->retry[FR_CODE_ACCESS_REQUEST].mrt, <=, 10);
+		FR_INTEGER_BOUND_CHECK("Access-Request.maximum_retransmission_time", inst->retry[FR_CODE_ACCESS_REQUEST].mrt, <=, 30);
 		FR_INTEGER_BOUND_CHECK("Access-Request.maximum_retransmission_count", inst->retry[FR_CODE_ACCESS_REQUEST].mrc, <=, 10);
 		FR_INTEGER_BOUND_CHECK("Access-Request.maximum_retransmission_duration", inst->retry[FR_CODE_ACCESS_REQUEST].mrd, <=, 30);
 	}
@@ -661,13 +661,13 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	if (inst->allowed[FR_CODE_ACCOUNTING_REQUEST]) {
 		FR_INTEGER_BOUND_CHECK("Accounting-Request.initial_retransmission_time", inst->retry[FR_CODE_ACCOUNTING_REQUEST].irt, >=, 1);
 #if 0
-		FR_INTEGER_BOUND_CHECK("Accounting-Request.maximum_retransmission_time", inst->retry[FR_CODE_ACCOUNTING_REQUEST].mrt, >=, 0);
+		FR_INTEGER_BOUND_CHECK("Accounting-Request.maximum_retransmission_time", inst->retry[FR_CODE_ACCOUNTING_REQUEST].mrt, >=, 5);
 		FR_INTEGER_BOUND_CHECK("Accounting-Request.maximum_retransmission_count", inst->retry[FR_CODE_ACCOUNTING_REQUEST].mrc, >=, 0);
 		FR_INTEGER_BOUND_CHECK("Accounting-Request.maximum_retransmission_duration", inst->retry[FR_CODE_ACCOUNTING_REQUEST].mrd, >=, 0);
 #endif
 
 		FR_INTEGER_BOUND_CHECK("Accounting-Request.initial_retransmission_time", inst->retry[FR_CODE_ACCOUNTING_REQUEST].irt, <=, 3);
-		FR_INTEGER_BOUND_CHECK("Accounting-Request.maximum_retransmission_time", inst->retry[FR_CODE_ACCOUNTING_REQUEST].mrt, <=, 10);
+		FR_INTEGER_BOUND_CHECK("Accounting-Request.maximum_retransmission_time", inst->retry[FR_CODE_ACCOUNTING_REQUEST].mrt, <=, 30);
 		FR_INTEGER_BOUND_CHECK("Accounting-Request.maximum_retransmission_count", inst->retry[FR_CODE_ACCOUNTING_REQUEST].mrc, <=, 10);
 		FR_INTEGER_BOUND_CHECK("Accounting-Request.maximum_retransmission_duration", inst->retry[FR_CODE_ACCOUNTING_REQUEST].mrd, <=, 30);
 	}
@@ -682,7 +682,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		FR_INTEGER_BOUND_CHECK("Status-Server.maximum_retransmission_duration", inst->retry[FR_CODE_STATUS_SERVER].mrd, >=, 5);
 
 		FR_INTEGER_BOUND_CHECK("Status-Server.initial_retransmission_time", inst->retry[FR_CODE_STATUS_SERVER].irt, <=, 3);
-		FR_INTEGER_BOUND_CHECK("Status-Server.maximum_retransmission_time", inst->retry[FR_CODE_STATUS_SERVER].mrt, <=, 10);
+		FR_INTEGER_BOUND_CHECK("Status-Server.maximum_retransmission_time", inst->retry[FR_CODE_STATUS_SERVER].mrt, <=, 30);
 		FR_INTEGER_BOUND_CHECK("Status-Server.maximum_retransmission_count", inst->retry[FR_CODE_STATUS_SERVER].mrc, <=, 10);
 		FR_INTEGER_BOUND_CHECK("Status-Server.maximum_retransmission_duration", inst->retry[FR_CODE_STATUS_SERVER].mrd, <=, 30);
 	}
@@ -697,7 +697,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		FR_INTEGER_BOUND_CHECK("CoA-Request.maximum_retransmission_duration", inst->retry[FR_CODE_COA_REQUEST].mrd, >=, 5);
 
 		FR_INTEGER_BOUND_CHECK("CoA-Request.initial_retransmission_time", inst->retry[FR_CODE_COA_REQUEST].irt, <=, 3);
-		FR_INTEGER_BOUND_CHECK("CoA-Request.maximum_retransmission_time", inst->retry[FR_CODE_COA_REQUEST].mrt, <=, 10);
+		FR_INTEGER_BOUND_CHECK("CoA-Request.maximum_retransmission_time", inst->retry[FR_CODE_COA_REQUEST].mrt, <=, 60);
 		FR_INTEGER_BOUND_CHECK("CoA-Request.maximum_retransmission_count", inst->retry[FR_CODE_COA_REQUEST].mrc, <=, 10);
 		FR_INTEGER_BOUND_CHECK("CoA-Request.maximum_retransmission_duration", inst->retry[FR_CODE_COA_REQUEST].mrd, <=, 30);
 	}
@@ -712,7 +712,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		FR_INTEGER_BOUND_CHECK("Disconnect-Request.maximum_retransmission_duration", inst->retry[FR_CODE_DISCONNECT_REQUEST].mrd, >=, 5);
 
 		FR_INTEGER_BOUND_CHECK("Disconnect-Request.initial_retransmission_time", inst->retry[FR_CODE_DISCONNECT_REQUEST].irt, <=, 3);
-		FR_INTEGER_BOUND_CHECK("Disconnect-Request.maximum_retransmission_time", inst->retry[FR_CODE_DISCONNECT_REQUEST].mrt, <=, 10);
+		FR_INTEGER_BOUND_CHECK("Disconnect-Request.maximum_retransmission_time", inst->retry[FR_CODE_DISCONNECT_REQUEST].mrt, <=, 30);
 		FR_INTEGER_BOUND_CHECK("Disconnect-Request.maximum_retransmission_count", inst->retry[FR_CODE_DISCONNECT_REQUEST].mrc, <=, 10);
 		FR_INTEGER_BOUND_CHECK("Disconnect-Request.maximum_retransmission_duration", inst->retry[FR_CODE_DISCONNECT_REQUEST].mrd, <=, 30);
 	}

@@ -203,7 +203,7 @@ radius {
 		initial_retransmission_time = 2
 
 		#
-		# Maximum Retransmit Time: 1..30 (0 == no maximum)
+		# Maximum Retransmit Time: 5..30
 		#
 		# The maximum time between retransmissions.
 		#
@@ -234,6 +234,13 @@ radius {
 
 	#
 	#  ... and for accounting packets.
+	#
+	#  For accounting packets, you can set
+	#
+	# 	maximum_retransmission_time = 0
+	#	maximum_retransmission_count = 0
+	#
+	#  which means "retransmit forever"
 	#
 	Accounting-Request {
 		initial_retransmission_time = 2
