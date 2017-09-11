@@ -261,6 +261,7 @@ int request_detach(REQUEST *fake)
 	REQUEST *request = fake->parent;
 
 	rad_assert(request != NULL);
+	rad_assert(request->parent->backlog != NULL);
 	rad_assert(talloc_parent(fake) != request);
 
 	/*
@@ -271,6 +272,7 @@ int request_detach(REQUEST *fake)
 	}
 
 	fake->parent = NULL;
+	fake->backlog = request->backlog;
 	return 0;
 }
 
