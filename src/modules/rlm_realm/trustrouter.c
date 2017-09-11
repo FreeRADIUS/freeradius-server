@@ -361,6 +361,7 @@ static home_server_t *srvr_blk_to_home_server(TALLOC_CTX *ctx,
 	uint16_t port;
 	char nametemp[256];
 	time_t now = time(NULL);
+	struct timeval key_expiration;
 
 	rad_assert(blk != NULL);
 	tid_srvr_get_address(blk, &sa, &sa_len);
@@ -401,10 +402,15 @@ static home_server_t *srvr_blk_to_home_server(TALLOC_CTX *ctx,
 	/*
 	 *  Set the expiration of the server.
 	 *  If a realm_lifetime configuration parameter is provided (i.e. >0), use: now + realm_lifetime
-	 *  Else use the value from the TIDC response.
-	 *  TODO: While the accessor to the TIDC response expiration time is not available use: now + 600
+	 *  Else use the value from the TIDC response (if the accessor function is available) or now + 600
 	 */
-	hs->expiration = realm_lifetime > 0 ? (now + realm_lifetime) : (now + 600);
+#ifdef HAVE_TRUST_ROUTER_GET_KEY_EXP
+	tid_srvr_get_key_expiration(blk, &key_expiration);
+#else
+	key_expiration.tv_sec = now + 600;
+#endif
+	hs->expiration = realm_lifetime > 0 ? (now + realm_lifetime) : key_expiration.tv_sec;
+
 	hs->tls = construct_tls(inst, hs, blk);
 	if (!hs->tls) goto error;
 
