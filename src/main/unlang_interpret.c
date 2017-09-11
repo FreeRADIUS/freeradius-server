@@ -45,6 +45,9 @@ static FR_NAME_NUMBER unlang_action_table[] = {
 #define UNLANG_TOP_FRAME (true)
 #define UNLANG_SUB_FRAME (false)
 
+#define UNLANG_DETACHABLE (true)
+#define UNLANG_NORMAL_CHILD (false)
+
 typedef rlm_rcode_t (*unlang_op_resume_func_t)(REQUEST *request, unlang_stack_t *stack,
 					       const void *instance, void *thread, void *resume_ctx);
 
@@ -525,12 +528,16 @@ static unlang_resume_t *unlang_resume_alloc(REQUEST *request,
 /** Allocate a child request based on the parent.
  *
  */
-static REQUEST *unlang_child_alloc(REQUEST *request, unlang_t *instruction, rlm_rcode_t default_rcode, bool do_next_sibling)
+static REQUEST *unlang_child_alloc(REQUEST *request, unlang_t *instruction, rlm_rcode_t default_rcode, bool do_next_sibling, bool detachable)
 {
 	REQUEST *child;
 	unlang_stack_t *stack;
 
-	child = request_alloc_fake(request);
+	if (!detachable) {
+		child = request_alloc_fake(request);
+	} else {
+		child = request_alloc_detachable(request);
+	}
 	if (!child) return NULL;
 
 	child->packet->code = request->packet->code;
@@ -655,7 +662,7 @@ static unlang_action_t unlang_create(REQUEST *request, unlang_stack_t *stack,
 	/*
 	 *	Allocate the child request.
 	 */
-	child = unlang_child_alloc(request, g->children, frame->result, UNLANG_NEXT_CONTINUE);
+	child = unlang_child_alloc(request, g->children, frame->result, UNLANG_NEXT_CONTINUE, UNLANG_DETACHABLE);
 	if (!child) {
 		*presult = RLM_MODULE_FAIL;
 		*priority = instruction->actions[*presult];
@@ -800,7 +807,7 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 			rad_assert(state->children[i].instruction != NULL);
 			state->children[i].child = unlang_child_alloc(request, state->children[i].instruction,
 								      RLM_MODULE_FAIL, /* @todo - fixme ? */
-								      UNLANG_NEXT_STOP);
+								      UNLANG_NEXT_STOP, UNLANG_NORMAL_CHILD);
 			state->children[i].state = CHILD_RUNNABLE;
 			/* FALL-THROUGH */
 
