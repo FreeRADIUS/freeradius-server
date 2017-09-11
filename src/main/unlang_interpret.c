@@ -610,7 +610,7 @@ static REQUEST *unlang_child_alloc(REQUEST *request, unlang_t *instruction, rlm_
 	 *	parent.
 	 */
 	FR_DLIST_INIT(child->async->time_order);
-	fr_time_tracking_start(&child->async->tracking, fr_time());
+	FR_DLIST_INIT(child->async->tracking.list);
 
 	/*
 	 *	create {...} creates an empty copy.
