@@ -368,9 +368,6 @@ send Access-Accept {
 	#
 #	ldap
 
-	# For Exec-Program and Exec-Program-Wait
-	exec
-
 	#
 	#  Calculate the various WiMAX keys.  In order for this to work,
 	#  you will need to define the WiMAX NAI, usually via
@@ -572,9 +569,6 @@ send Accounting-Response {
 
 	#  Cisco VoIP specific bulk accounting
 #	pgsql-voip
-
-	# For Exec-Program and Exec-Program-Wait
-	exec
 
 	#  Filter attributes from the accounting response.
 	attr_filter.accounting_response
