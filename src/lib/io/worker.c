@@ -444,6 +444,17 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	fr_message_set_t *ms;
 
 	/*
+	 *	If it's a detached request, don't send a real reply.
+	 *	Just toss the request.
+	 */
+	if (request->async->detached) {
+		fr_time_tracking_end(&request->async->tracking, fr_time(), &worker->tracking);
+		RDEBUG("finished request.");
+		talloc_free(request);
+		return;
+	}
+
+	/*
 	 *	Allocate and send the reply.
 	 */
 	ch = request->async->channel;
