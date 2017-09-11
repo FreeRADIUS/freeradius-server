@@ -970,7 +970,8 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	 *	active, run it.  Otherwise, tell it that it's done.
 	 */
 	if ((*request->async->original_recv_time == request->async->recv_time) &&
-	    fr_channel_active(request->async->channel)) {
+	    (request->async->detached ||
+	     fr_channel_active(request->async->channel))) {
 		final = request->async->process(request, FR_IO_ACTION_RUN);
 
 	} else {
