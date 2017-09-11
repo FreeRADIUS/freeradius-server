@@ -238,6 +238,13 @@ REQUEST *request_alloc_detachable(REQUEST *request)
 	if (!request_init_fake(request, fake)) return NULL;
 
 	/*
+	 *	Ensure that we use our own version of the logging
+	 *	information, and not the original request one.
+	 */
+	fake->log.dst = talloc_zero(fake, log_dst_t);
+	memcpy(fake->log.dst, request->log.dst, sizeof(*fake->log.dst));
+
+	/*
 	 *	Associate the child with the parent, using the child's
 	 *	pointer as a unique identifier.  Free it if the parent
 	 *	goes away, but don't persist it across
