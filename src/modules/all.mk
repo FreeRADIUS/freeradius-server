@@ -18,3 +18,7 @@ SUBMAKEFILES := $(sort $(wildcard ${top_srcdir}/src/modules/rlm_*/all.mk) \
 endif
 
 SUBMAKEFILES += $(wildcard ${top_srcdir}/src/modules/proto_*/all.mk)
+
+src/modules/%/configure: src/modules/%/configure.ac
+	@echo AUTOCONF $(dir $@)
+	cd $(dir $@) && $(AUTOCONF) -I $(top_builddir) -I $(top_builddir)/m4 -I $(top_builddir)/$(dir $@)m4
