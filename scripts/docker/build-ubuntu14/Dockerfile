@@ -42,6 +42,7 @@ RUN cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR
     make && \
     cpack -G DEB
 RUN apt-get install -y ./*.deb
+WORKDIR /usr/local/src/repositories
 
 #
 #  Shallow clone the FreeRADIUS source
