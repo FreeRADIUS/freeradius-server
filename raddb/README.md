@@ -3,7 +3,26 @@
 
 The configuration for 4.0 is *somewhat* compatible with the 3.0.x
 configuration.  It should be possible to reuse most of a 3.0.x
-reconfiguration with minor tweaks.
+reconfiguration with minor tweaks.  This file describes the
+differences between v3 and v4.  It does not contain a step-by-step
+process for upgrading the server.
+
+In general, we have the following differences:
+
+* most module configuration is very close to v3
+* most of the `unlang` processing is very close to v3
+* each `server` section need a `namespace` parameter
+* each `listen` section needs to be converted to the v4 format
+
+When upgrading, start with the default configuration of v4.  Then,
+move your v3 configuration over, one module at a time.  Check this
+file for differences in module configuration, and update to using the
+new configuration.  Start the server after every change via `radiusd
+-XC` to see if the configuration is OK.  Then, convert the `listen`
+sections, followed by the `server` sections.
+
+Take your time.  It is better to make small incrementatal progress,
+than to make massive changes... and spend weeks debugging it.
 
 If you're upgrading from v2.2.x you should read the v3.0.x version of
 this file.  It describes changed from v2 to v3.0.  This file describes
@@ -15,7 +34,8 @@ DOCUMENTATION MAY CHANGE.**
 
 ## Virtual Servers
 
-There are some changes to the virtual servers in v4.  First, every virtual server has to begin with an entry:
+There are some changes to the virtual servers in v4.  First, every
+virtual server has to begin with an entry:
 
     namespace = ...
 
@@ -439,7 +459,7 @@ data, instead of as hex strings.
 `REST-HTTP-Code` is now inserted into the `&request:` list instead of the `&reply:`
 list, to be compliant with the [list usage](http://wiki.freeradius.org/contributing/List-Usage) guidelines.
 
-### rlm_sqlcounter and rlm_counter
+### rlm_sqlcounter
 
 ### Attribute references
 
@@ -474,13 +494,6 @@ This allows significantly greater flexibility, and better integration with
 newer features in the server such as CoA, where reply_name can now be
 `&coa:Session-Timeout`.
 
-
-#### allowed_service_type
-
-The `allowed_service_type` config item of the rlm_counter module has
-also been removed, as it duplicated existing functionality.
-
-
 ### rlm_sql
 
 Driver-specific options have moved from `mods-available/sql` to
@@ -505,10 +518,8 @@ The following modules have been deleted
 
 ### rlm_counter
 
-Please use rlm_sqlcounter with sqlite.
-
+Instead of using this, please use rlm_sqlcounter with sqlite.
 
 ### rlm_ippool
 
-Please use rlm_sql_ippool with sqlite.
-
+Instead of using this, please use rlm_sql_ippool with sqlite.
