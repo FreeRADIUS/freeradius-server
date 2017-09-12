@@ -1621,6 +1621,8 @@ static fr_connection_state_t conn_open(UNUSED fr_event_list_t *el, UNUSED int fd
 		u = talloc_zero(c, rlm_radius_udp_request_t);
 		request = request_alloc(link);
 		request->async = talloc_zero(request, fr_async_t);
+		talloc_const_free(request->name);
+		request->name = talloc_strdup(request, c->inst->parent->name);
 
 		request->el = c->thread->el;
 		request->packet = fr_radius_alloc(request, false);
