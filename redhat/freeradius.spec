@@ -345,6 +345,7 @@ export LDFLAGS="-Wl,--build-id"
         --without-rlm_sql_iodbc \
         --without-rlm_sql_firebird \
         --without-rlm_sql_db2 \
+        --without-rlm_sql_sqlhpwippool \
         --with-jsonc-lib-dir=%{_libdir} \
         --with-jsonc-include-dir=/usr/include/json \
         --with-winbind-include-dir=/usr/include/samba-4.0 \
