@@ -21,7 +21,7 @@
  *
  * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-#define LOG_PREFIX "(%" PRIu64 ") %s - "
+#define LOG_PREFIX "[%" PRIu64 "] %s - "
 #define LOG_PREFIX_ARGS conn->id, conn->log_prefix
 
 #ifdef HAVE_STDATOMIC_H
