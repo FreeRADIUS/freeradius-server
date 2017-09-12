@@ -454,7 +454,8 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 		 *	Skip old-style virtual servers.
 		 */
 		if (!cf_pair_find(cs, "namespace")) {
-			WARN("Skipping old-style server %s", cf_section_name2(cs));
+			cf_log_err(cs, "server sections must set 'namesspace = ...'");
+			return -1;
 		}
 	}
 
