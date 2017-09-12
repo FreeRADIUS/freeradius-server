@@ -25,6 +25,25 @@ RUN mkdir -p /usr/local/src/repositories
 WORKDIR /usr/local/src/repositories
 
 #
+#  Get a modern version of cmake.  We need 3.8.2 or later to build libkqueue rpms
+#
+RUN curl -f -o cmake.sh https://cmake.org/files/v3.8/cmake-3.8.2-Linux-x86_64.sh
+RUN [ "$(cat cmake.sh | openssl sha256 | sed 's/^.* //')" = "bb26b1871f9e5c2fb73476186cc94d03b674608f704b48b94d617340b87b4d73" ]
+RUN sh cmake.sh --skip-license --prefix=/usr/local
+
+#
+#  Grab libkqueue and build
+#
+WORKDIR /usr/local/src/repositories
+# Fixme: Change to the main repo when they merge this branch
+RUN git clone --branch patch-3 --depth=1 https://github.com/arr2036/libkqueue.git
+WORKDIR libkqueue
+RUN cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib ./ && \
+    make && \
+    cpack -G DEB
+RUN apt-get install -y ./*.deb
+
+#
 #  Shallow clone the FreeRADIUS source
 #
 ARG source=https://github.com/FreeRADIUS/freeradius-server.git
@@ -47,7 +66,7 @@ RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 
 #
 #RUN echo deb http://archive.ubuntu.com/ubuntu trusty-backports main restricted universe multiverse >>  /etc/apt/sources.list
 RUN apt-add-repository ppa:openjdk-r/ppa
-RUN apt-get update && apt-get install -y openjdk-8-jre-headless 
+RUN apt-get update && apt-get install -y openjdk-8-jre-headless
 RUN apt-get install -y openssh-server
 RUN useradd -m jenkins
 RUN echo "jenkins:jenkins1" | chpasswd
