@@ -45,17 +45,48 @@
 ######################################################################
 
 server default {
+	#
+	#  In v4, all "server" sections MUST start with a "namespace"
+	#  parameter.  This tells the server which protocol is being used.
+	#
+	#  All of the subsequent "listen" sections in this server will
+	#  only accept packets for that protocol.
+	#
 	namespace = radius
 
+	#
+	#  The listen sections in v4 are very different from v3.
+	#
 	listen {
+		#
+		#  What RADIUS packet types to accept.
+		#  To accept multiple packet types, list "type = .."
+		#  multiple times.
+		#
 		type = Access-Request
 		type = Status-Server
 
+		#
+		#  For now, only UDP transport is supported.
+		#
+		#  You can have a "headless" server (e.g. inner-tunnel)
+		#  by commenting out the "transport" configuration.
+		#
 		transport = udp
 
+		#
+		#  When the configuration has "transport = foo",
+		#  it looks for a "foo" subsection.  That subsection
+		#  contains all of the configuration for the transport.
+		#
 		udp {
+			#
+			#  As with v3, "ipaddr", "ipv4addr", and "ipv6addr"
+			#  are all allowed.
+			#
 			ipaddr = *
 			port = 1812
+			cleanup_delay = 30
 		}
 	}
 
