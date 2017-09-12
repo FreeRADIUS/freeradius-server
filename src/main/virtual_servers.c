@@ -490,10 +490,16 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 		}
 
 		/*
+		 *	Ignore internally generated "server" sections,
+		 *	they're for the unit tests.
+		 */
+		if (!cf_filename(cs)) continue;
+
+		/*
 		 *	Forbid old-style virtual servers.
 		 */
 		if (!cf_pair_find(cs, "namespace")) {
-			cf_log_err(cs, "server sections must set 'namesspace = ...'");
+			cf_log_err(cs, "server %s { ...} section must set 'namesspace = ...'", server_name);
 			return -1;
 		}
 	}
