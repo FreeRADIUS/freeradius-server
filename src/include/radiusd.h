@@ -234,6 +234,8 @@ struct rad_request {
 						//!< or request structs that have not been properly initialised.
 #endif
 	uint64_t		number; 	//!< Monotonically increasing request number. Reset on server restart.
+	uint64_t		child_number; 	//!< Monotonically increasing number for children of this request
+	char const		*name;		//!< for debug printing, as (%d) is no longer sufficient
 
 	fr_event_list_t		*el;		//!< thread-specific event list.
 	fr_heap_t		*backlog;	//!< thread-specific backlog
