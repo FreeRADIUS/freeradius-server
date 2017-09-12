@@ -41,7 +41,7 @@ WORKDIR libkqueue
 RUN cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib ./ && \
     make && \
     cpack -G DEB
-RUN apt-get install -y ./*.deb
+RUN dpkg -i --force-all ./libkqueue-*deb
 WORKDIR /usr/local/src/repositories
 
 #
