@@ -2514,6 +2514,19 @@ static unlang_t *compile_create(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	unlang_t *c;
 	unlang_group_t *g;
 
+	/*
+	 *	async async is not allowed.  It will work, but we
+	 *	don't know what it means.  If someone has a good
+	 *	use-case, we can try enabling it.
+	 */
+	for (c = parent; c != NULL; c = c->parent) {
+		if (c->type == UNLANG_TYPE_CREATE) {
+			cf_log_err(cs, "'%s' sections cannot be nested inside of other '%s' sections",
+				   unlang_ops[mod_type].name, unlang_ops[mod_type].name);
+			return NULL;
+		}
+	}	
+
 	g = group_allocate(parent, cs, group_type, mod_type);
 	if (!g) return NULL;
 
