@@ -404,6 +404,8 @@ int virtual_servers_instantiate(UNUSED CONF_SECTION *config)
  		listener = virtual_servers[i]->listener;
  		listen_cnt = talloc_array_length(listener);
 
+		DEBUG("Compiling policies in server %s { ... }", cf_section_name2(listener[0]->server_cs));		      
+
 		for (j = 0; j < listen_cnt; j++) {
 			fr_virtual_listen_t *listen = listener[j];
 
