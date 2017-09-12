@@ -601,8 +601,12 @@ static REQUEST *unlang_child_alloc(REQUEST *request, unlang_t *instruction, rlm_
 	COPY_FIELD(recv_time);
 	COPY_FIELD(listen);
 
-	child->async->listen->app->process_set(child->async->listen->app_instance, child);
-	rad_assert(child->async->process != NULL);
+	/*
+	 *	Always set the "process" function to the local
+	 *	bare-bones function which just runs on section of
+	 *	"unlang", and doesn't send replies or anything else.
+	 */
+	child->async->process = unlang_process_continue;
 
 	/*
 	 *	Note that we don't do time tracking on the child.
@@ -700,7 +704,6 @@ static unlang_action_t unlang_detach(REQUEST *request, unlang_stack_t *stack,
 	 */
 	request->async->detached = true;
 	rad_assert(request->backlog != NULL);
-	request->async->process = unlang_process_continue;
 
 	*presult = RLM_MODULE_YIELD;
 	return UNLANG_ACTION_CALCULATE_RESULT;
