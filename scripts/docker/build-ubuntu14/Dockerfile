@@ -16,7 +16,7 @@ RUN update-alternatives --install /usr/bin/lldb lldb /usr/bin/lldb-3.9 60 && upd
 #
 #  Install eapol_test dependencies
 #
-RUN apt-get install libnl-dev libnl-genl-3-dev
+RUN apt-get install libnl-3-dev libnl-genl-3-dev
 
 #
 #  Setup a src dir in /usr/local
