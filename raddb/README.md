@@ -13,8 +13,80 @@ only the changes from v3.0 to v4.0
 THE CONFIGURATION MAY CHANGE.  THE BEHAVIOR MAY CHANGE.  THE
 DOCUMENTATION MAY CHANGE.**
 
+## Virtual Servers
+
+There are some changes to the virtual servers in v4.  First, every virtual server has to begin with an entry:
+
+    namespace = ...
+
+For RADIUS, use:
+
+    namespace = radius
+
+This tells the daemon what protocol is being used in that virtual
+server.  This configuration was not necessary in v3, because each
+protocol was implemented (mostly) in the RADIUS state machine.  In v4,
+each protocol is completely independent, and RADIUS is no longer
+welded into the server core.
+
+### Listen Sections
+
+The `listen` sections have changed.  There is now a `type` entry,
+which lists the packet types (e.g. `Access-Request`) instead of
+`auth`.  To accept multiple kinds of packets, just list `type`
+multiple times`:
+
+    type = Access-Request
+    type = Accounting-Request
+
+Each `listen` section also has a `transport` entry.  This
+configuration can be left out for "headless" servers, such as
+"inner-tunnel".  For now, the only network transport which is
+supported is `udp`.
+
+    transport = udp
+
+Each type of transport has its configuration stored in a subsection
+named for that transport:
+
+    transport = udp
+    udp {
+        ... udp transport configuration ...
+    }
+
+For `udp`, the configuration entries are the same as for v3.
+e.g. `ipaddr`, `port`, etc.
+
+The `listen` section then compiles each [Processing
+Section](#processing-sections) based on the named packet types.  It
+has a `recv` section for receiving packets, and a `send` section for
+sending packets.  e.g.
+
+    recv Access-Request {
+       ... unlang ...
+    }
+    
+    send Access-Accept {
+        ... unlang ....
+    }
+
+This configuration is different from v3, but is much easier to
+understand.  Instead of using things like `Post-Auth-Type Reject`, we
+now have just `send Access-Reject`.
+
+See also [Processing Sections](#processing-sections) for how `unlang`
+is parsed.
+
+### Clients
+
+For now, v4 only supports global clients in the `clients.conf` file.
+That will change before the official release of v4.
+
+The plan is to allow *per-connection* clients.  This functionality
+means that it will be possible to place multiple clients behind a NAT,
+and to have different shared secrets for each one.
+
 ## Processing Sections
--------------------
 
 All of the processing sections have been renamed.  Sorry, but this was
 required for the new features in v4.
