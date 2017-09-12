@@ -729,10 +729,7 @@ static unlang_action_t unlang_create(REQUEST *request, unlang_stack_t *stack,
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	/*
-	 *	Only for debugging, when sending 1-2 packets at a time.
-	 */
-//	child->number++;
+	RDEBUG2("- creating child request (%s)", child->name);
 
 	/*
 	 *	If necessary, change the child->packet->code.
@@ -754,7 +751,7 @@ static unlang_action_t unlang_create(REQUEST *request, unlang_stack_t *stack,
 		 */
 		dval = fr_dict_enum_by_alias(NULL, da, g->vpt->name);
 		if (!dval) {
-			RDEBUG("Failed to find Packet-Type %s", g->vpt->name);
+			REDEBUG("Failed to find Packet-Type %s", g->vpt->name);
 			*presult = RLM_MODULE_FAIL;
 			*priority = instruction->actions[*presult];
 			return UNLANG_ACTION_CALCULATE_RESULT;
@@ -795,7 +792,7 @@ static unlang_action_t unlang_create(REQUEST *request, unlang_stack_t *stack,
 			rad_assert(child->backlog != NULL);
 			fr_heap_insert(child->backlog, child);
 
-			RDEBUG3("Detaching child request (%" PRIu64 ")", child->number);
+			RDEBUG2("- detaching child request (%s)", child->name);
 
 			/*
 			 *	Tell the interpreter to skip the "detach"
