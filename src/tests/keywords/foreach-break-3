@@ -32,9 +32,7 @@ foreach &control:Calling-Station-Id {
 		break
 	}
 	elsif ("%{Foreach-Variable-0}" == '9') {
-		update reply {
-			Filter-Id := "fail-9"
-		}
+		test_fail
 
 		reject
 	}

@@ -14,8 +14,6 @@ switch &Packet-Type {
 	}
 
 	case {
-		update reply {
-			Filter-Id := "fail"
-		}
+		test_fail
 	}
 }

@@ -14,9 +14,7 @@ update request {
 #  Check attribute references
 #
 if (!(NAS-IP-Address == &Framed-IP-Address)) {
-	update reply {
-		Filter-Id += 'fail'
-	}
+	test_fail
 }
 
 update request {
@@ -25,21 +23,15 @@ update request {
 }
 
 if (!(NAS-IP-Address != &Framed-IP-Address)) {
-	update reply {
-		Filter-Id += 'fail'
-	}
+	test_fail
 }
 
 if (!(NAS-IP-Address < &Framed-IP-Address)) {
-	update reply {
-		Filter-Id += "fail"
-	}
+	test_fail
 }
 
 if (NAS-IP-Address > &Framed-IP-Address) {
-	update reply {
-		Filter-Id += "fail"
-	}
+	test_fail
 }
 
 success

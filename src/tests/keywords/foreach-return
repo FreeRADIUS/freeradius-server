@@ -37,14 +37,10 @@ foreach &Filter-Id {
 		#
 		#  Shouldn't reach this
 		#
-		update reply {
-			Filter-Id := "fail"
-		}
+		test_fail
 	}
 
 	if ("%{Foreach-Variable-0}" == "4") {
-		update reply {
-			Filter-Id := "fail-4"
-		}
+		test_fail
 	}
 }

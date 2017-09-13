@@ -25,21 +25,15 @@ update request {
 }
 
 if (&request:Tmp-String-0 != 'candy') {
-	update reply {
-		reply:Filter-Id += 'fail 0'
-	}
+	test_fail
 }
 
 if (&request:Reply-Message[0] != 'I am #literally a comment #') {
-	update reply {
-		reply:Filter-Id += 'fail 1'
-	}
+	test_fail
 }
 
 if (&request:Reply-Message[1] != "I am #literally a comment #") {
-	update reply {
-		reply:Filter-Id += 'fail 2'
-	}
+	test_fail
 }
 
 ok # I'm a comment after a module call

@@ -9,18 +9,14 @@ update control {
 #  Simple
 #
 if ("%{expr: 1 + 2 + 3 + 4}" != 10) {
-	update reply {
-		Filter-Id := "fail-1"
-	}
+	test_fail
 }
 
 #
 #  Precedence
 #
 if ("%{expr: 1 + 2 * 3 + 4}" != 11) {
-	update reply {
-		Filter-Id := "fail-2"
-	}
+	test_fail
 }
 
 #
@@ -34,72 +30,50 @@ update request {
 }
 
 if ("%{expr: 1 + 2 * &Tmp-Integer-1 + 4}" != 11) {
-	update reply {
-		Filter-Id := "fail-3"
-	}
+	test_fail
 }
 
 if ("%{expr: 1 + 2 * (&Tmp-Integer-1 + 4)}" != 15) {
-	update reply {
-		Filter-Id := "fail-4"
-	}
+	test_fail
 }
 
 if ("%{expr: 1 + 2 * (&Tmp-Integer-1 + &Tmp-Integer-2)}" != 15) {
-	update reply {
-		Filter-Id := "fail-5"
-	}
+	test_fail
 }
 
 if ("%{expr: 1 & ~1}" != 0) {
-	update reply {
-		Filter-Id := "fail-6"
-	}
+	test_fail
 }
 
 if ("%{expr: 1 & ~2}" != 1) {
-	update reply {
-		Filter-Id := "fail-7"
-	}
+	test_fail
 }
 
 if ("%{expr: -1 * 2}" != -2) {
-	update reply {
-		Filter-Id := "fail-8"
-	}
+	test_fail
 }
 
 if ("%{expr: 2 - -1}" != 3) {
-	update reply {
-		Filter-Id := "fail-9"
-	}
+	test_fail
 }
 
 if ("%{expr: 1 << 2 | 1}" != 5) {
-	update reply {
-		Filter-Id := "fail-10"
-	}
+	test_fail
 }
 
 if ("%{expr: &Tmp-Date-0}" <= 0) {
-	update reply {
-		Filter-Id := "fail-11"
-	}
+	test_fail
 }
 
 #
 #  Unary negation
 #
 if ("%{expr: 6 + -(1 + 3)}" != 2) {
-	update reply {
-		Filter-Id := "fail-12"
-	}
+	test_fail
 }
 
 if ("%{expr: 6 * -&Tmp-Integer-2}" != -24) {
-	update reply {
-		Filter-Id := "fail-13"
-	}
+	test_fail
 }
 
 success

@@ -14,9 +14,7 @@ if (User-Name) {
 }
 
 if (&control:Tmp-String-1 != 'ssid=GHIJKL') {
-	update reply {
-		Filter-Id += 'fail 0'
-	}
+	test_fail
 }
 
 update control {
@@ -32,9 +30,7 @@ foreach &control:Tmp-String-0 {
 }
 
 if (&control:Tmp-String-1 != 'ssid=GHIJKL') {
-	update reply {
-		Filter-Id += 'fail 1'
-	}
+	test_fail
 }
 
 update control {

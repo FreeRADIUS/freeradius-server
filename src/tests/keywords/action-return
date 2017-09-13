@@ -19,6 +19,4 @@ if (1) {
 	}
 }
 
-update reply {
-	Filter-Id := "fail"
-}
+test_fail

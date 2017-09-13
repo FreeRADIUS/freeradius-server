@@ -86,9 +86,7 @@ foreach &Tmp-Integer-2 {
 # is quite small, and if this happens repeatedly, it's likely there's a bug in
 # the load-balance code or random number generator.
 if ((&Tmp-Integer-0 == 0) || (&Tmp-Integer-1 == 0)) {
-	update reply {
-		Filter-Id += "fail 1 %{Tmp-Integer-0}/%{Tmp-Integer-1})"
-	}
+	test_fail
 }
 else {
 	success

@@ -8,15 +8,11 @@ switch "%{tolower:%{request:Tmp-String-0}}" {
 	}
 
 	case '' {
-		update reply {
-			Filter-Id += "fail-empty-1"
-		}
+		test_fail
 	}
 
 	case {
-		update reply {
-			Filter-Id += "fail-default-1"
-		}
+		test_fail
 	}
 }
 
@@ -28,14 +24,10 @@ switch "%{request:Tmp-String-0}" {
 	}
 
 	case '' {
-		update reply {
-			Filter-Id += "fail-empty-2"
-		}
+		test_fail
 	}
 
 	case {
-		update reply {
-			Filter-Id += "fail-default-2"
-		}
+		test_fail
 	}
 }

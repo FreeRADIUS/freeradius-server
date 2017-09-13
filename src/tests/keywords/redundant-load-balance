@@ -54,9 +54,7 @@ foreach &Tmp-Integer-1 {
 }
 
 if (&Tmp-Integer-0 != "%{Tmp-Integer-1[#]}") {
-	update reply {
-		Filter-Id += "fail 1 (passed %{Tmp-Integer-0}/%{Tmp-Integer-1[#]})"
-	}
+	test_fail
 }
 else {
 	success

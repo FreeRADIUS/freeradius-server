@@ -7,9 +7,7 @@ update request {
 }
 
 if (WiMAX-PFDv2-Src-Port != 6809) {
-	update reply {
-		Filter-Id := "fail-1"
-	}
+	test_fail
 }
 
 #
@@ -19,9 +17,7 @@ update request {
 }
 
 if (WiMAX-PFDv2-Src-Assigned != 1) {
-	update reply {
-		Filter-Id := "fail-2"
-	}
+	test_fail
 }
 
 success

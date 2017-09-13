@@ -17,9 +17,7 @@ pap.authenticate {
 	reject = 1
 }
 if (reject) {
-	update reply {
-		Filter-Id += 'fail 0'
-	}
+	test_fail
 }
 
 update {
@@ -40,9 +38,7 @@ pap.authenticate {
 	reject = 1
 }
 if (reject) {
-	update reply {
-		Filter-Id += 'fail 0'
-	}
+	test_fail
 }
 
 update {
@@ -61,9 +57,7 @@ pap.authenticate {
 	reject = 1
 }
 if (reject) {
-	update reply {
-		Filter-Id += 'fail 1'
-	}
+	test_fail
 }
 
 update {
@@ -96,9 +90,7 @@ pap.authenticate {
 	reject = 1
 }
 if (reject) {
-	update reply {
-		Filter-Id += 'fail 2'
-	}
+	test_fail
 }
 
 update {
@@ -131,9 +123,7 @@ pap.authenticate {
 	reject = 1
 }
 if (reject) {
-	update reply {
-		Filter-Id += 'fail 3'
-	}
+	test_fail
 }
 
 update {

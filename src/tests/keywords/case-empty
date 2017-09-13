@@ -6,9 +6,7 @@ switch &reply:Filter-Id {
 	}
 
 	case "fail" {
-		update reply {
-			Filter-Id := "fail"
-		}
+		test_fail
 	}
 
 	case {

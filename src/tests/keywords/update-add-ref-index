@@ -16,29 +16,21 @@ update request {
 }
 
 if (&Proxy-State[0] != 0x01020304) {
-	update reply {
-		Filter-Id := "fail 0a"
-	}
+	test_fail
 }
 
 #  Must be the same as above
 if (&Proxy-State[1] != 0x05060708) {
-	update reply {
-		Filter-Id += "fail 0b"
-	}
+	test_fail
 }
 
 if (&Proxy-State[2] != 0x090a0b0c) {
-	update reply {
-		Filter-Id += "fail 0c"
-	}
+	test_fail
 }
 
 # must not exist
 if (&Proxy-State[3]) {
-	update reply {
-		Filter-Id += "fail 1"
-	}
+	test_fail
 }
 
 # Remove all the Proxy-State attributes
@@ -54,16 +46,12 @@ update request {
 }
 
 if (&Proxy-State[0] != 0x01020304) {
-	update reply {
-		Filter-Id := "fail 2a"
-	}
+	test_fail
 }
 
 #  Must be the same as above
 if (&Proxy-State[1]) {
-	update reply {
-		Filter-Id += "fail 2b"
-	}
+	test_fail
 }
 
 # Remove all the Proxy-State attributes
@@ -79,16 +67,12 @@ update request {
 }
 
 if (&Proxy-State[0] != 0x01020304) {
-	update reply {
-		Filter-Id := "fail 3a"
-	}
+	test_fail
 }
 
 #  Must be the same as above
 if (&Proxy-State[1]) {
-	update reply {
-		Filter-Id += "fail 3b"
-	}
+	test_fail
 }
 
 # Remove all the Proxy-State attributes
@@ -104,16 +88,12 @@ update request {
 }
 
 if (&Proxy-State[0] != 0x05060708) {
-	update reply {
-		Filter-Id := "fail 4a"
-	}
+	test_fail
 }
 
 #  Must be the same as above
 if (&Proxy-State[1]) {
-	update reply {
-		Filter-Id += "fail 4b"
-	}
+	test_fail
 }
 
 success

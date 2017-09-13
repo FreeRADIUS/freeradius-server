@@ -20,6 +20,4 @@ if (1) {
 	ok
 }
 
-update reply {
-	Filter-Id := "fail"
-}
+test_fail

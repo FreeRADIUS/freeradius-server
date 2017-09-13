@@ -17,9 +17,7 @@ parallel {
 }
 
 if ("%{control:Tmp-Integer-0[#]}" != 4) {
-	update reply {
-		Filter-Id += "fail-count"
-	}
+	test_fail
 
 	return
 }

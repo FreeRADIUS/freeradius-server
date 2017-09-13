@@ -11,9 +11,7 @@ switch &User-Name {
 }
 
 if (&reply:Filter-Id) {
-	update reply {
-		Filter-Id := "fail 1"
-	}
+	test_fail
 }
 else {
 	success

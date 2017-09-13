@@ -1,8 +1,6 @@
 # PRE: case-empty
 #
-update reply {
-	Filter-Id := "fail"
-}
+test_fail
 
 switch &reply:Filter-Id {
 	# deliberately empty
@@ -10,9 +8,7 @@ switch &reply:Filter-Id {
 	}
 
 	case &Not-Dynamically-Allocated {	# ERROR
-		update reply {
-			Filter-Id := "fail"
-		}
+		test_fail
 	}
 
 	case {

@@ -12,14 +12,10 @@ update request {
 }
 
 if (&Tmp-String-0 !~ /example\.com$/) {
-	update reply {
-		Filter-Id := "fail 1"
-	}
+	test_fail
 }
 elsif (&Tmp-String-1 !~ /\^foo\$bar/) {
-	update reply {
-		Filter-Id := "fail 1"
-	}
+	test_fail
 } else {
 	success
 }

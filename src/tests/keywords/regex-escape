@@ -12,15 +12,11 @@ update request {
 }
 
 if ("exampleXcom" =~ /%{Tmp-String-0}/) {
-	update reply {
-		Filter-Id := "fail 1"
-	}
+	test_fail
 }
 
 elsif (&Tmp-String-1 =~ /%{Tmp-String-0}/) {
-	update reply {
-		Filter-Id := "fail 2"
-	}
+	test_fail
 }
 else {
 	success

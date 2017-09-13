@@ -25,7 +25,5 @@ if (User-Name == "bob") {
 	#
 	#  Shouldn't reach this
 	#
-	update reply {
-		Filter-Id := "fail"
-	}
+	test_fail
 }

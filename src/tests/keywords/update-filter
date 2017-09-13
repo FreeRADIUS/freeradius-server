@@ -27,21 +27,15 @@ update request {
 }
 
 if (&Tmp-Integer-0[0] != 10) {
-	update reply {
-		Filter-Id += "fail 1"
-	}
+	test_fail
 }
 
 if ("%{Tmp-Integer-0[#]}" != 1) {
-	update reply {
-		Filter-Id += "fail 2"
-	}
+	test_fail
 }
 
 if ("%{Tmp-String-0[#]}" != 3) {
-	update reply {
-		Filter-Id += "fail 3"
-	}
+	test_fail
 }
 
 debug_request
@@ -60,15 +54,11 @@ update request {
 }
 
 if (&Tmp-String-0[0] != 'baz') {
-	update reply {
-		Filter-Id += "fail 4"
-	}
+	test_fail
 }
 
 if ("%{Tmp-String-0[#]}" != 1) {
-	update reply {
-		Filter-Id += "fail 5"
-	}
+	test_fail
 }
 
 debug_request
@@ -87,21 +77,15 @@ update request {
 }
 
 if (&Tmp-Integer-0[0] != 5) {
-	update reply {
-		Filter-Id += "fail 6"
-	}
+	test_fail
 }
 
 if ("%{Tmp-Integer-0[#]}" != 1) {
-	update reply {
-		Filter-Id += "fail 7"
-	}
+	test_fail
 }
 
 if ("%{Tmp-String-0[#]}" != 3) {
-	update reply {
-		Filter-Id += "fail 8"
-	}
+	test_fail
 }
 
 # Reset the request list
@@ -118,28 +102,20 @@ update request {
 }
 
 if (&Tmp-Integer-0[0] != 15) {
-	update reply {
-		Filter-Id += "fail 9"
-	}
+	test_fail
 }
 
 if (&Tmp-Integer-0[1] != 20) {
-	update reply {
-		Filter-Id += "fail 10"
-	}
+	test_fail
 }
 
 
 if ("%{Tmp-Integer-0[#]}" != 2) {
-	update reply {
-		Filter-Id += "fail 11"
-	}
+	test_fail
 }
 
 if ("%{Tmp-String-0[#]}" != 3) {
-	update reply {
-		Filter-Id += "fail 12"
-	}
+	test_fail
 }
 
 # Reset the request list
@@ -156,27 +132,19 @@ update request {
 }
 
 if (&Tmp-Integer-0[0] != 5) {
-	update reply {
-		Filter-Id += "fail 13"
-	}
+	test_fail
 }
 
 if (&Tmp-Integer-0[1] != 10) {
-	update reply {
-		Filter-Id += "fail 14"
-	}
+	test_fail
 }
 
 if ("%{Tmp-Integer-0[#]}" != 2) {
-	update reply {
-		Filter-Id += "fail 15"
-	}
+	test_fail
 }
 
 if ("%{Tmp-String-0[#]}" != 3) {
-	update reply {
-		Filter-Id += "fail 16"
-	}
+	test_fail
 }
 
 # Reset the request list
@@ -193,33 +161,23 @@ update request {
 }
 
 if (&Tmp-Integer-0[0] != 10) {
-	update reply {
-		Filter-Id += "fail 17"
-	}
+	test_fail
 }
 
 if (&Tmp-Integer-0[1] != 15) {
-	update reply {
-		Filter-Id += "fail 18"
-	}
+	test_fail
 }
 
 if (&Tmp-Integer-0[2] != 20) {
-	update reply {
-		Filter-Id += "fail 19"
-	}
+	test_fail
 }
 
 if ("%{Tmp-Integer-0[#]}" != 3) {
-	update reply {
-		Filter-Id += "fail 20"
-	}
+	test_fail
 }
 
 if ("%{Tmp-String-0[#]}" != 3) {
-	update reply {
-		Filter-Id += "fail 21"
-	}
+	test_fail
 }
 
 # Reset the request list
@@ -236,33 +194,23 @@ update request {
 }
 
 if (&Tmp-Integer-0[0] != 5) {
-	update reply {
-		Filter-Id += "fail 22"
-	}
+	test_fail
 }
 
 if (&Tmp-Integer-0[1] != 15) {
-	update reply {
-		Filter-Id += "fail 23"
-	}
+	test_fail
 }
 
 if (&Tmp-Integer-0[2] != 20) {
-	update reply {
-		Filter-Id += "fail 24"
-	}
+	test_fail
 }
 
 if ("%{Tmp-Integer-0[#]}" != 3) {
-	update reply {
-		Filter-Id += "fail 25"
-	}
+	test_fail
 }
 
 if ("%{Tmp-String-0[#]}" != 3) {
-	update reply {
-		Filter-Id += "fail 26"
-	}
+	test_fail
 }
 
 # Reset the request list
@@ -284,15 +232,11 @@ update request {
 }
 
 if (&Tmp-String-0[0] != &Tmp-String-1) {
-	update reply {
-		Filter-Id += "fail 27"
-	}
+	test_fail
 }
 
 if ("%{Tmp-String-0[#]}" != 1) {
-	update reply {
-		Filter-Id += "fail 28"
-	}
+	test_fail
 }
 
 debug_request
