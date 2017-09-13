@@ -85,6 +85,17 @@ static char const *secret = "testing123";
 
 #include <sys/wait.h>
 
+#ifdef HAVE_PTHREAD_H
+pid_t rad_fork(void)
+{
+	return fork();
+}
+pid_t rad_waitpid(pid_t pid, int *status)
+{
+	return waitpid(pid, status, 0);
+}
+#endif
+
 static void NEVER_RETURNS usage(int status)
 {
 	FILE *output = status ? stderr : stdout;

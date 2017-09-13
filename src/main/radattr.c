@@ -44,6 +44,20 @@ typedef struct REQUEST REQUEST;
 extern log_lvl_t rad_debug_lvl;
 
 #include <sys/wait.h>
+#ifdef HAVE_PTHREAD_H
+pid_t rad_fork(void);
+pid_t rad_waitpid(pid_t pid, int *status);
+
+pid_t rad_fork(void)
+{
+	return fork();
+}
+
+pid_t rad_waitpid(pid_t pid, int *status)
+{
+	return waitpid(pid, status, 0);
+}
+#endif
 
 static ssize_t xlat_test(UNUSED void *instance, UNUSED REQUEST *request,
 			 UNUSED char const *fmt, UNUSED char *out, UNUSED size_t outlen)
