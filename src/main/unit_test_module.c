@@ -124,6 +124,7 @@ static REQUEST *request_from_file(FILE *fp, fr_event_list_t *el, RADCLIENT *clie
 	request->client = client;
 
 	request->number = number++;
+	request->name = talloc_asprintf(request, "%" PRIu64, request->number);
 
 	request->master_state = REQUEST_ACTIVE;
 	request->server_cs = virtual_server_find("default");
