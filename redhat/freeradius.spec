@@ -608,6 +608,11 @@ fi
 %{_libdir}/freeradius/rlm_sql_sqlite.so
 %{_libdir}/freeradius/rlm_sqlcounter.so
 %{_libdir}/freeradius/rlm_sqlippool.so
+
+%if %{?_with_developer:1}%{!?_with_developer:0}
+%{_libdir}/freeradius/rlm_sqlhpwippool.so
+%endif
+
 %{_libdir}/freeradius/rlm_unpack.so
 %{_libdir}/freeradius/rlm_unix.so
 %{_libdir}/freeradius/rlm_utf8.so
@@ -810,12 +815,6 @@ fi
 %files yubikey
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_yubikey.so
-%endif
-
-%if %{?_with_developer:1}%{!?_with_developer:0}
-%files sqlhpwippool
-%defattr(-,root,root)
-%{_libdir}/freeradius/rlm_sqlhpwippool.so
 %endif
 
 %changelog
