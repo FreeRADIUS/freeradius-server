@@ -23,11 +23,6 @@ else {
 			Filter-Id := "Attr-4 is not 0x0120203"
 		}
 	}
-	else {
-		update reply {
-			Filter-Id := "filter"
-		}
-	}
 }
 
 success

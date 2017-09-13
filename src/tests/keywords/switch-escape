@@ -18,9 +18,7 @@ switch "%{tolower:%{request:Tmp-String-0}}" {
 
 switch "%{request:Tmp-String-0}" {
 	case 'foo' {
-		update reply {
-			Filter-Id := "filter"
-		}
+		success
 	}
 
 	case '' {

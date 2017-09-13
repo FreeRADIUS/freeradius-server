@@ -48,5 +48,6 @@ if (Tmp-Integer-0 != 2) {
 # Boilerplate junk
 update {
 	control:Cleartext-Password := 'hello'
-    reply:Filter-Id := 'filter'
 }
+
+success
