@@ -1679,6 +1679,8 @@ static unlang_t *compile_children(unlang_group_t *g, UNUSED unlang_t *parent, un
 	 *	Loop over the children of this group.
 	 */
 	while ((ci = cf_item_next(g->cs, ci))) {
+		if (cf_item_is_data(ci)) continue;
+
 		/*
 		 *	Sections are references to other groups, or
 		 *	to modules with updated return codes.
@@ -1759,20 +1761,17 @@ static unlang_t *compile_children(unlang_group_t *g, UNUSED unlang_t *parent, un
 				}
 				add_child(g, single);
 
-				/*
-				 *	Or it MUST be a module instance with action.
-				 */
-			} else if (parent->type != UNLANG_TYPE_MODULE_CALL) {
-				cf_log_err(ci, "Invalid location for action over-ride");
+			} else if (!parent || (parent->type != UNLANG_TYPE_MODULE_CALL)) {
+				cf_log_err(cp, "Invalid location for action over-ride");
 				talloc_free(c);
 				return NULL;
 
-			} else if (!compile_action_pair(c, cp)) {
-				talloc_free(c);
-				return NULL;
-			} /* else it worked */
-		} else if (cf_item_is_data(ci)) {
-			continue;
+			} else {
+				if (!compile_action_pair(c, cp)) {
+					talloc_free(c);
+					return NULL;
+				}
+			}
 		} else {
 			rad_assert(0);
 		}
