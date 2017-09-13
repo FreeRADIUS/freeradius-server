@@ -345,7 +345,6 @@ export LDFLAGS="-Wl,--build-id"
         --without-rlm_sql_iodbc \
         --without-rlm_sql_firebird \
         --without-rlm_sql_db2 \
-        --without-rlm_sql_sqlhpwippool \
         --with-jsonc-lib-dir=%{_libdir} \
         --with-jsonc-include-dir=/usr/include/json \
         --with-winbind-include-dir=/usr/include/samba-4.0 \
@@ -813,6 +812,11 @@ fi
 %{_libdir}/freeradius/rlm_yubikey.so
 %endif
 
+%if %{?_with_developer:1}%{!?_with_developer:0}
+%files sqlhpwippool
+%defattr(-,root,root)
+%{_libdir}/freeradius/rlm_sqlhpwippool.so
+%endif
 
 %changelog
 * Wed Sep 25 2013 Alan DeKok <aland@freeradius.org> - 3.0.0
