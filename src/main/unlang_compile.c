@@ -1754,8 +1754,13 @@ static unlang_t *compile_children(unlang_group_t *g, UNUSED unlang_t *parent, un
 				add_child(g, single);
 
 				/*
-				 *	Or a module instance with action.
+				 *	Or it MUST be a module instance with action.
 				 */
+			} else if (parent->type != UNLANG_TYPE_MODULE_CALL) {
+				cf_log_err(ci, "Invalid location for action over-ride");
+				talloc_free(c);
+				return NULL;
+
 			} else if (!compile_action_pair(c, cp)) {
 				talloc_free(c);
 				return NULL;

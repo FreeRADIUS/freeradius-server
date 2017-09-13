@@ -3,7 +3,9 @@
 #  return code in an "if" section.
 #
 if (User-Name == "bob") {
-	success
+	update request {
+	       Proxy-State := 0x01020304
+	}
 
 	ok = reject	# ERROR
 }
