@@ -10,7 +10,7 @@ RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 50 --slave /
 #
 #  Install eapol_test dependencies
 #
-RUN apt-get install libnl-3-dev libnl-genl-3-dev
+RUN apt-get install -y libnl-3-dev libnl-genl-3-dev
 
 #
 #  Setup a src dir in /usr/local
