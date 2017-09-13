@@ -283,15 +283,15 @@ update request {
 	&Tmp-String-0 == &Tmp-String-1
 }
 
-if (&Tmp-String-0[0] != 'foo') {
+if (&Tmp-String-0[0] != &Tmp-String-1) {
 	update reply {
-		Filter-Id += "fail 4"
+		Filter-Id += "fail 27"
 	}
 }
 
 if ("%{Tmp-String-0[#]}" != 1) {
 	update reply {
-		Filter-Id += "fail 5"
+		Filter-Id += "fail 28"
 	}
 }
 
