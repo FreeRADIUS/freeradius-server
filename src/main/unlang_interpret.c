@@ -2712,3 +2712,112 @@ rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_resume_callback_t ca
 
 	return RLM_MODULE_YIELD;
 }
+
+/** Get information about the interpreter state
+ *
+ */
+static ssize_t xlat_interpreter(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
+			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			   REQUEST *request, char const *fmt)
+{
+	unlang_stack_t		*stack = request->stack;
+	int			depth = stack->depth;
+	unlang_stack_frame_t	*frame;
+	unlang_t		*instruction;
+
+	while (isspace((int) *fmt)) fmt++;
+
+	/*
+	 *	Find the correct stack frame.
+	 */
+	while (*fmt == '.') {
+		if (depth <= 1) {
+			return snprintf(*out, outlen, "<underflow>");
+		}
+
+		fmt++;
+		depth--;
+	}
+
+	/*
+	 *	Get the current instruction.
+	 */
+	frame = &stack->frame[depth];
+	instruction = frame->instruction;
+
+	/*
+	 *	Nothing there...
+	 */
+	if (!instruction) {
+		**out = '\0';
+		return 0;
+	}
+
+	/*
+	 *	Name of the instruction.
+	 */
+	if (strcmp(fmt, "name") == 0) {
+		return snprintf(*out, outlen, "%s", instruction->name);
+	}
+
+	/*
+	 *	Unlang type.
+	 */
+	if (strcmp(fmt, "type") == 0) {
+		return snprintf(*out, outlen, "%s", unlang_ops[instruction->type].name);
+	}
+
+	/*
+	 *	How deep the current stack is.
+	 */
+	if (strcmp(fmt, "depth") == 0) {
+		return snprintf(*out, outlen, "%d", depth);
+	}
+
+	/*
+	 *	Line number of the current section.
+	 */
+	if (strcmp(fmt, "line") == 0) {
+		unlang_group_t *g;
+
+		if (!unlang_ops[instruction->type].debug_braces) {
+			return snprintf(*out, outlen, "???");
+		}
+
+		g = unlang_generic_to_group(instruction);
+		rad_assert(g->cs != NULL);
+
+		return snprintf(*out, outlen, "%d", cf_lineno(g->cs));
+	}
+
+	/*
+	 *	Filename of the current section.
+	 */
+	if (strcmp(fmt, "filename") == 0) {
+		unlang_group_t *g;
+
+		if (!unlang_ops[instruction->type].debug_braces) {
+			return snprintf(*out, outlen, "???");
+		}
+
+		g = unlang_generic_to_group(instruction);
+		rad_assert(g->cs != NULL);
+
+		return snprintf(*out, outlen, "%s", cf_filename(g->cs));
+	}
+
+	**out = '\0';
+	return 0;
+}
+
+
+/** Initialize the unlang compiler / interpreter.
+ *
+ *  For now, just register the magic xlat function.
+ */
+int unlang_initialize(void)
+{
+	(void) xlat_register(NULL, "interpreter", xlat_interpreter, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+
+	return 0;
+}

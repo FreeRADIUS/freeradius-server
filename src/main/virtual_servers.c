@@ -467,6 +467,8 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 	size_t i, server_cnt = 0;
 	CONF_SECTION *cs = NULL;
 
+	(void) unlang_initialize();
+
 	if (virtual_servers) {
 		/*
 		 *	Check the talloc hierarchy is sane
