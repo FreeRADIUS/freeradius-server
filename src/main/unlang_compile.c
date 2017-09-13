@@ -1699,6 +1699,12 @@ static unlang_t *compile_children(unlang_group_t *g, UNUSED unlang_t *parent, un
 			 */
 			name1 = cf_section_name1(subcs);
 			if (strcmp(name1, "actions") == 0) {
+				if (cf_item_next(g->cs, ci) != NULL) {
+					cf_log_err(subcs, "'actions' MUST be the last thing in a subsection");
+					talloc_free(c);
+					return NULL;
+				}
+
 				if (!compile_action_subsection(c, g->cs, subcs)) {
 					talloc_free(c);
 					return NULL;
