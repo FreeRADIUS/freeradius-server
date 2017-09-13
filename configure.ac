@@ -145,6 +145,17 @@ if test "x$GCC" = "xyes"; then
 fi
 
 dnl #
+dnl # -Wno-unknown-warning-option means the compiler doesn't complain about diag pragmas
+dnl # for warnings it doesn't understand.  This may sound like a bad idea, but consider
+dnl # the number of different compiler versions we build under, and the fact that the
+dnl # more anally retentive warnings are likely to be added in later versions.
+dnl #
+AX_CC_NO_UNKNOWN_WARNING_OPTION_FLAG
+if test "x$ax_cv_cc_no_unknown_warning_option_flag" = "xyes"; then
+  CFLAGS="$CFLAGS -Wno-unknown-warning-option"
+fi
+
+dnl #
 dnl #  -Qunused-arguments means the compiler won't complain about unsupported arguments
 dnl #
 AX_CC_QUNUSED_ARGUMENTS_FLAG
