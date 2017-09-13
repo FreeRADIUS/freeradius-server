@@ -12,15 +12,11 @@ update {
 }
 
 if ("%{map:%{Tmp-String-0}}" != 1) {
-    update reply {
-        Filter-Id += 'Fail 0'
-    }
+    test_fail
 }
 
 if (&control:Tmp-String-0 != 'testing123') {
-    update reply {
-        Filter-Id += 'Fail 1'
-    }
+    test_fail
 }
 
 success

@@ -1,4 +1,4 @@
-M#
+#
 #  PRE: update if redundant
 #
 update {
@@ -12,9 +12,7 @@ update request {
 }
 
 if (<ipaddr>Tmp-Integer-0 != NAS-IP-Address) {
-	update reply {
-		Filter-Id += 'Fail 0'
-	}
+	test_fail
 }
 
 #
@@ -41,9 +39,7 @@ update control {
 }
 
 if (&control:Tmp-Cast-IPv6addr != ::ffff:203.0.113.1) {
-	update reply {
-		Filter-Id += 'Fail 1'
-	}
+	test_fail
 }
 
 #
@@ -54,9 +50,7 @@ update control {
 }
 
 if (&control:Tmp-Cast-IPaddr != 203.0.113.1) {
-	update reply {
-		Filter-Id += 'Fail 2'
-	}
+	test_fail
 }
 
 #
@@ -67,9 +61,7 @@ update control {
 }
 
 if (&control:Tmp-Cast-IPv6Prefix != ::ffff:203.0.113.0/120) {
-	update reply {
-		Filter-Id += 'Fail 31'
-	}
+	test_fail
 }
 
 #
@@ -80,9 +72,7 @@ update control {
 }
 
 if (&control:Tmp-Cast-IPv4Prefix != 203.0.113.1/24) {
-	update reply {
-		Filter-Id += 'Fail 4'
-	}
+	test_fail
 }
 
 #
@@ -93,9 +83,7 @@ update control {
 }
 
 if (&control:Tmp-Cast-IPv6Addr != ::ffff:203.0.113.1) {
-	update reply {
-		Filter-Id += 'Fail 5'
-	}
+	test_fail
 }
 
 #
@@ -106,9 +94,7 @@ update control {
 }
 
 if (&control:Tmp-Cast-Ipaddr != 203.0.113.1/32) {
-	update reply {
-		Filter-Id += 'Fail 6'
-	}
+	test_fail
 }
 
 #
@@ -119,9 +105,7 @@ update control {
 }
 
 if (&control:Tmp-Cast-IPv6Prefix != ::ffff:203.0.113.1/128) {
-	update reply {
-		Filter-Id += 'Fail 7'
-	}
+	test_fail
 }
 
 #
@@ -132,9 +116,7 @@ update control {
 }
 
 if (&control:Tmp-Cast-IPv4Prefix != 203.0.113.1/32) {
-	update reply {
-		Filter-Id += 'Fail 8'
-	}
+	test_fail
 }
 
 #
@@ -145,9 +127,7 @@ update control {
 }
 
 if (&control:Tmp-Cast-IPv4Prefix != 203.0.113.1/32) {
-	update reply {
-		Filter-Id += 'Fail 9'
-	}
+	test_fail
 }
 
 #
@@ -158,9 +138,7 @@ update control {
 }
 
 if (&control:Tmp-Cast-IPv6Prefix != 2001:DB8::1/128) {
-	update reply {
-		Filter-Id += 'Fail 11'
-	}
+	test_fail
 }
 
 #
@@ -171,9 +149,7 @@ update control {
 }
 
 if (&control:Tmp-Cast-Ipaddr != 203.0.113.1) {
-	update reply {
-		Filter-Id += 'Fail 12'
-	}
+	test_fail
 }
 
 #
@@ -184,9 +160,7 @@ update control {
 }
 
 if (&control:Tmp-Cast-IPv6Addr != ::ffff:203.0.113.1) {
-	update reply {
-		Filter-Id += 'Fail 13'
-	}
+	test_fail
 }
 
 #
@@ -201,15 +175,11 @@ redundant {
 		update control {
 			Tmp-Cast-IPv6Addr := Tmp-Cast-IPv6Prefix
 		}
-		update reply {
-			Filter-Id += 'Fail 14'
-		}
+		test_fail
 	}
 	group {
 		if ("%{Module-Failure-Message}" != 'Attribute conversion failed: Invalid cast from ipv6prefix to ipv6addr.  Only /128 (not /32) prefixes may be cast to IP address types') {
-			update reply {
-				Filter-Id += 'Fail 14.5'
-			}
+			test_fail
 		}
 		update request {
 			Module-Failure-Message !* ANY
@@ -226,15 +196,11 @@ redundant {
 		update control {
 			Tmp-Cast-Ipaddr := &Tmp-Cast-IPv6Prefix[2]
 		}
-		update reply {
-			Filter-Id += 'Fail 15'
-		}
+		test_fail
 	}
 	group {
 		if ("%{Module-Failure-Message}" != 'Attribute conversion failed: Invalid cast from ipv6prefix to ipaddr.  Only /128 (not /64) prefixes may be cast to IP address types') {
-			update reply {
-				Filter-Id += 'Fail 15.5'
-			}
+			test_fail
 		}
 		update request {
 			Module-Failure-Message !* ANY
@@ -251,15 +217,11 @@ redundant {
 		update control {
 			Tmp-Cast-Ipv4Prefix := &Tmp-Cast-IPv6Prefix[2]
 		}
-		update reply {
-			Filter-Id += 'Fail 16'
-		}
+		test_fail
 	}
 	group {
 		if ("%{Module-Failure-Message}" != 'Attribute conversion failed: Invalid cast from ipv6prefix to ipv4prefix.  No IPv4-IPv6 mapping prefix') {
-			update reply {
-				Filter-Id += 'Fail 16.5'
-			}
+			test_fail
 		}
 		update request {
 			Module-Failure-Message !* ANY
@@ -276,15 +238,11 @@ redundant {
 		update control {
 			Tmp-Cast-IPv6Addr := &Tmp-Cast-IPv4Prefix
 		}
-		update reply {
-			Filter-Id += 'Fail 17'
-		}
+		test_fail
 	}
 	group {
 		if ("%{Module-Failure-Message}" != 'Attribute conversion failed: Invalid cast from ipv4prefix to ipv6addr.  Only /32 (not /24) prefixes may be cast to IP address types') {
-			update reply {
-				Filter-Id += 'Fail 17.5'
-			}
+			test_fail
 		}
 		update request {
 			Module-Failure-Message !* ANY
@@ -301,15 +259,11 @@ redundant {
 		update control {
 			Tmp-Cast-Ipaddr := &Tmp-Cast-IPv4Prefix
 		}
-		update reply {
-			Filter-Id += 'Fail 17.1'
-		}
+		test_fail
 	}
 	group {
 		if ("%{Module-Failure-Message}" != 'Attribute conversion failed: Invalid cast from ipv4prefix to ipaddr.  Only /32 (not 24/) prefixes may be cast to IP address types') {
-			update reply {
-				Filter-Id += 'Fail 17.6'
-			}
+			test_fail
 		}
 		update request {
 			Module-Failure-Message !* ANY
@@ -326,15 +280,11 @@ redundant {
 		update control {
 			Tmp-Cast-Ipaddr := &Tmp-Cast-IPv6Prefix
 		}
-		update reply {
-			Filter-Id += 'Fail 18'
-		}
+		test_fail
 	}
 	group {
 		if ("%{Module-Failure-Message}" != 'Attribute conversion failed: Invalid cast from ipv6prefix to ipaddr.  Only /128 (not /32) prefixes may be cast to IP address types') {
-			update reply {
-				Filter-Id += 'Fail 18.5'
-			}
+			test_fail
 		}
 		update request {
 			Module-Failure-Message !* ANY
@@ -351,15 +301,11 @@ redundant {
 		update control {
 			Tmp-Cast-IPv4Prefix := &Tmp-Cast-IPv6Prefix
 		}
-		update reply {
-			Filter-Id += 'Fail 19'
-		}
+		test_fail
 	}
 	group {
 		if ("%{Module-Failure-Message}" != 'Attribute conversion failed: Invalid cast from ipv6prefix to ipv4prefix.  No IPv4-IPv6 mapping prefix') {
-			update reply {
-				Filter-Id += 'Fail 19.5'
-			}
+			test_fail
 		}
 		update request {
 			Module-Failure-Message !* ANY
@@ -376,15 +322,11 @@ redundant {
 		update control {
 			Tmp-Cast-Ipaddr := &Tmp-Cast-IPv6Addr
 		}
-		update reply {
-			Filter-Id += 'Fail 20'
-		}
+		test_fail
 	}
 	group {
 		if ("%{Module-Failure-Message}" != 'Attribute conversion failed: Invalid cast from ipv6addr to ipaddr.  No IPv4-IPv6 mapping prefix') {
-			update reply {
-				Filter-Id += 'Fail 20'
-			}
+			test_fail
 		}
 		update request {
 			Module-Failure-Message !* ANY
@@ -401,15 +343,11 @@ redundant {
 		update control {
 			Tmp-Cast-IPv4Prefix := &Tmp-Cast-IPv6Addr
 		}
-		update reply {
-			Filter-Id += 'Fail 21'
-		}
+		test_fail
 	}
 	group {
 		if ("%{Module-Failure-Message}" != 'Attribute conversion failed: Invalid cast from ipv6addr to ipv4prefix.  No IPv4-IPv6 mapping prefix') {
-			update reply {
-				Filter-Id += 'Fail 21.5'
-			}
+			test_fail
 		}
 		update request {
 			Module-Failure-Message !* ANY

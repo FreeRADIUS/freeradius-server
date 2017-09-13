@@ -17,51 +17,35 @@ update request {
 }
 
 if (<string>"%{escape:%{request:Tmp-String-0}}" != &Tmp-String-0) {
-	update reply {
-		Filter-Id += 'Fail 1'
-	}
+	test_fail
 }
 
 if (<string>"%{escape:%{request:Tmp-String-1}}" != &Tmp-String-3) {
-	update reply {
-		Filter-Id += 'Fail 2'
-	}
+	test_fail
 }
 
 if (<string>"%{escape:%{request:Tmp-String-2}}" != &Tmp-String-4) {
-	update reply {
-		Filter-Id += 'Fail 3'
-	}
+	test_fail
 }
 
 if (<string>"%{unescape:%{request:Tmp-String-0}}" != &Tmp-String-0) {
-	update reply {
-		Filter-Id += 'Fail 4'
-	}
+	test_fail
 }
 
 if (<string>"%{unescape:%{request:Tmp-String-3}}" != "%{Tmp-String-1}") {
-	update reply {
-		Filter-Id += 'Fail 5'
-	}
+	test_fail
 }
 
 if (<string>"%{unescape:%{request:Tmp-String-4}}" != &Tmp-String-2) {
-	update reply {
-		Filter-Id += 'Fail 6'
-	}
+	test_fail
 }
 
 if (<string>"%{escape:%{request:Tmp-String-6}}" != &Tmp-String-7) {
-	update reply {
-		Filter-Id += 'Fail 7'
-	}
+	test_fail
 }
 
 if (<string>"%{unescape:%{request:Tmp-String-7}}" != &Tmp-String-6) {
-	update reply {
-		Filter-Id += 'Fail 8'
-	}
+	test_fail
 }
 
 success

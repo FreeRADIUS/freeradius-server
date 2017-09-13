@@ -13,51 +13,35 @@ update request {
 }
 
 if ("%{attr:&FreeRADIUS-Proxied-To}" != 'FreeRADIUS-Proxied-To') {
-	update reply {
-		Filter-Id += 'Fail 0'
-	}
+	test_fail
 }
 
 if ("%{attr_num:&FreeRADIUS-Proxied-To}" != 1) {
-	update reply {
-		Filter-Id += 'Fail 2'
-	}
+	test_fail
 }
 
 if ("%{vendor:&FreeRADIUS-Proxied-To}" != 'FreeRADIUS') {
-	update reply {
-		Filter-Id += 'Fail 3'
-	}
+	test_fail
 }
 
 if ("%{vendor_num:&FreeRADIUS-Proxied-To}" != 11344) {
-	update reply {
-		Filter-Id += 'Fail 4'
-	}
+	test_fail
 }
 
 if ("%{attr:&Reply-Message}" != 'Reply-Message') {
-	update reply {
-		Filter-Id += 'Fail 5'
-	}
+	test_fail
 }
 
 if ("%{attr_num:&Reply-Message}" != 18) {
-	update reply {
-		Filter-Id += 'Fail 6'
-	}
+	test_fail
 }
 
 if ("%{vendor:&Reply-Message}" != '') {
-	update reply {
-		Filter-Id += 'Fail 7'
-	}
+	test_fail
 }
 
 if ("%{vendor_num:&Reply-Message}" != 0) {
-	update reply {
-		Filter-Id += 'Fail 8'
-	}
+	test_fail
 }
 
 success

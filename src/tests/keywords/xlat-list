@@ -20,9 +20,9 @@ if (("%{control:[0]}" != 192.0.2.1) || ("%{control:[1]}" != 192.0.2.2)) {
 	test_fail
 }
 
-if (("%{control:[n]}" != 192.0.2.2)) {
-    test_fail
-}
+#if (("%{control:[n]}" != 192.0.2.2)) {
+#	test_fail
+#}
 
 if ("%{control:[*]}" != '192.0.2.1,192.0.2.2') {
 	test_fail

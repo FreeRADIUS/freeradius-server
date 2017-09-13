@@ -80,16 +80,12 @@ update request {
 }
 
 if (Tmp-Integer-0 != 4084) {
-	update reply {
-		Filter-Id += 'Fail 0'
-	}
+	test_fail
 }
 
 # Octets are expanded to 8168 hexits
 if ("%{Tmp-Octets-0}" !~ /^0x([0-9a-f]+)$/) {
-	update reply {
-		Filter-Id += 'Fail 1'
-	}
+	test_fail
 }
 
 update request {
@@ -97,9 +93,7 @@ update request {
 }
 
 if ("%{length:Tmp-String-0}" != 8168) {
-	update reply {
-		Filter-Id += 'Fail 2'
-	}
+	test_fail
 }
 
 # We can't do any more until all the xlat code uses dynamically allocated buffers

@@ -12,27 +12,19 @@ update {
 }
 
 if ("%{explode:&Class |}" != 3) {
-	update reply {
-		Filter-Id += 'Fail 0'
-	}
+	test_fail
 }
 
 if ("%{Class[#]}" != 3) {
-	update reply {
-		Filter-Id += 'Fail 1'
-	}
+	test_fail
 }
 
 if ((&Class[0] != '1=1') || (&Class[1] != 'my_attr=2') || (&Class[2] != 'my_attr=hello')) {
-	update reply {
-		Filter-Id += 'Fail 2'
-	}
+	test_fail
 }
 
 if (&Class[3]) {
-	update reply {
-		Filter-Id += 'Fail 3'
-	}
+	test_fail
 }
 
 if ("%{explode:&control:Calling-Station-Id |}" != 0) {
@@ -42,15 +34,11 @@ if ("%{explode:&control:Calling-Station-Id |}" != 0) {
 }
 
 if ("%{explode:&control:User-Name[*] |}" != 5) {
-	update reply {
-		Filter-Id += 'Fail 5'
-	}
+	test_fail
 }
 
 if ("%{control:User-Name[#]}" != 5) {
-	update reply {
-		Filter-Id += 'Fail 6'
-	}
+	test_fail
 }
 
 if ((&control:User-Name[0] != 'hello') || \
@@ -58,33 +46,23 @@ if ((&control:User-Name[0] != 'hello') || \
     (&control:User-Name[2] != 'morning') || \
     (&control:User-Name[3] != 'night') || \
     (&control:User-Name[4] != '1')) {
-	update reply {
-		Filter-Id += 'Fail 7'
-	}
+	test_fail
 }
 
 if (&control:User-Name[5]) {
-	update reply {
-		Filter-Id += 'Fail 8'
-	}
+	test_fail
 }
 
 if ("%{explode:&control:Reply-Message |}" != 0) {
-	update reply {
-		Filter-Id += 'Fail 9'
-	}
+	test_fail
 }
 
 if ("%{control:Reply-Message[#]}" != 1) {
-	update reply {
-		Filter-Id += 'Fail 10'
-	}
+	test_fail
 }
 
 if (&control:Reply-Message != 'Can\'t touch this') {
-	update reply {
-		Filter-Id += 'Fail 11'
-	}
+	test_fail
 }
 
 debug_all

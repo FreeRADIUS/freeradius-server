@@ -17,9 +17,7 @@ update request {
 }
 
 if (&Attr-26.24757.84.9.5.7 != 0xab) {
-	update reply {
-		Filter-Id += 'Fail 1'
-	}
+	test_fail
 }
 
 #
@@ -30,9 +28,7 @@ update request {
 }
 
 if (&Attr-26.24757.84.9.5.15 != 0xabcdef) {
-	update reply {
-		Filter-Id += 'Fail 2'
-	}
+	test_fail
 }
 
 #
@@ -40,15 +36,11 @@ if (&Attr-26.24757.84.9.5.15 != 0xabcdef) {
 #  get automatically resolved to the real attribute.
 #
 if (&Attr-26.11344.1 == 127.0.0.1) {
-	update reply {
-		Filter-Id += 'Fail 3'
-	}
+	test_fail
 }
 
 if (&Attr-26.11344.1 != 127.0.0.2) {
-	update reply {
-		Filter-Id += 'Fail 4'
-	}
+	test_fail
 }
 
 update request {
@@ -56,27 +48,19 @@ update request {
 }
 
 if (&FreeRADIUS-Proxied-To == 127.0.0.2) {
-	update reply {
-		Filter-Id += 'Fail 5'
-	}
+	test_fail
 }
 
 if (&FreeRADIUS-Proxied-To != 127.0.0.1) {
-	update reply {
-		Filter-Id += 'Fail 6'
-	}
+	test_fail
 }
 
 if (&Attr-26.11344.1 == 127.0.0.2) {
-	update reply {
-		Filter-Id += 'Fail 7'
-	}
+	test_fail
 }
 
 if (&Attr-26.11344.1 != 127.0.0.1) {
-	update reply {
-		Filter-Id += 'Fail 8'
-	}
+	test_fail
 }
 
 update request {
@@ -84,9 +68,7 @@ update request {
 }
 
 if (&Attr-26.66.1 != 0x01020304) {
-	update reply {
-		Filter-Id += 'Fail 9'
-	}
+	test_fail
 }
 
 success
