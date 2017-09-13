@@ -601,9 +601,9 @@ static rlm_rcode_t virtual_server_async(REQUEST *request, bool parent)
 					       sizeof(fr_async_t));
 	}
 
-	RDEBUG("server %s (async) {", cf_section_name2(request->server_cs));
+	RDEBUG("server %s {", cf_section_name2(request->server_cs));
 	final = request->async->process(request, FR_IO_ACTION_RUN);
-	RDEBUG("} # server %s (async) ", cf_section_name2(request->server_cs));
+	RDEBUG("} # server %s", cf_section_name2(request->server_cs));
 
 	rad_cond_assert(final == FR_IO_REPLY);
 
