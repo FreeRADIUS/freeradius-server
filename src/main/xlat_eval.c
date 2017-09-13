@@ -467,7 +467,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		 *	Some attributes are virtual <sigh>
 		 */
 		str = xlat_getvp(ctx, request, node->attr, escape ? false : true, true);
-		if (str) {
+		if (str && (node->attr->type == TMPL_TYPE_ATTR)) {
 			XLAT_DEBUG("%.*sEXPAND attr %s", lvl, xlat_spaces, node->attr->tmpl_da->name);
 			XLAT_DEBUG("%.*s       ---> %s", lvl ,xlat_spaces, str);
 		}
