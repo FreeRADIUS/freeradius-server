@@ -79,6 +79,7 @@ typedef struct fr_talloc_link {
  * @param sig to set handler for.
  * @param func handler to set.
  */
+DIAG_OPTIONAL
 DIAG_OFF(disabled-macro-expansion)
 int fr_set_signal(int sig, sig_t func)
 {
@@ -110,6 +111,7 @@ DIAG_ON(disabled-macro-expansion)
  *
  * @param sig SIGNAL
  */
+DIAG_OPTIONAL
 DIAG_OFF(disabled-macro-expansion)
 int fr_unset_signal(int sig)
 {
