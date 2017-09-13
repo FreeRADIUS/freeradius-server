@@ -1,10 +1,6 @@
 #
 # PRE: update
 #
-update reply {
-       Filter-Id := "filter"
-}
-
 update request {
 	Tmp-String-0        := '9870'
 	Tmp-String-1        := '98709870'
@@ -211,6 +207,4 @@ if (Tmp-String-4 != '959985470') {
 	}
 }
 
-
-
-
+success

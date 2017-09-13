@@ -52,12 +52,4 @@ if (&Proxy-State[3]) {
 	}
 }
 
-#
-#  The test passes only if no test above
-#  added a Filter-Id
-#
-if (!reply:Filter-Id) {
-	update reply {
-		Filter-Id := "filter"
-	}
-}
+success

@@ -3,7 +3,6 @@
 #
 update {
        control:Cleartext-Password := 'hello'
-       reply:Filter-Id := 'filter'
 }
 
 #
@@ -25,3 +24,5 @@ if (&Test-Paircmp == 'no') {
 		Filter-Id += 'fail 2'
 	}
 }
+
+success

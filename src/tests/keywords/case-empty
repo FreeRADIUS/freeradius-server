@@ -1,9 +1,5 @@
 # PRE: switch
 #
-update reply {
-	Filter-Id := "filter"
-}
-
 switch &reply:Filter-Id {
 	# deliberately empty
 	case "filter" {
@@ -16,8 +12,6 @@ switch &reply:Filter-Id {
 	}
 
 	case {
-		update reply {
-			Filter-Id := "default"
-		}
+		success
 	}
 }

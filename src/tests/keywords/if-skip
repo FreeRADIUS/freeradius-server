@@ -37,6 +37,4 @@ else {
 	no-such-module
 }
 
-update reply {
-	Filter-Id := "filter"
-}
+success

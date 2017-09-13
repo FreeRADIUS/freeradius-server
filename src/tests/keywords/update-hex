@@ -5,7 +5,6 @@
 #
 update {
        control:Cleartext-Password := 'hello'
-       reply:Filter-Id := "filter"
 }
 
 update {
@@ -27,3 +26,5 @@ if (Tmp-String-0 != '0x626f62') {
 		Filter-Id += 'Fail 1'
 	}
 }
+
+success

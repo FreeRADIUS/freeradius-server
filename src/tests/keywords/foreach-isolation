@@ -3,7 +3,6 @@
 #
 
 update {
-	&reply:Filter-Id := 'filter'
 	&control:Tmp-String-0 := '0'
 	&control:Tmp-String-0 += '1'
 	&control:Tmp-String-0 += '2'
@@ -36,3 +35,5 @@ if (!&control:Tmp-String-0[0] || &control:Tmp-String-0[1] || &control:Tmp-String
 		Filter-Id += 'Fail 2'
 	}
 }
+
+success

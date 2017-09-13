@@ -5,7 +5,6 @@
 #
 update {
 	control:Cleartext-Password := 'hello'
-	reply:Filter-Id := "filter"
 }
 
 update {
@@ -50,3 +49,4 @@ if ("%{control:Reply-Message[#]}" != 3) {
 	}
 }
 
+success

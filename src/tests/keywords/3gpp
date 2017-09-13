@@ -14,6 +14,4 @@ update control {
 	Tmp-String-1 := "%{request:3GPP-IMSI}"
 }
 
-update reply {
-       Filter-Id := "filter"
-}
+success

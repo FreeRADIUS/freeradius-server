@@ -56,7 +56,4 @@ if ("%{lpad:&Tmp-String-0 7 x}" != "xxxtest") {
 	return
 }
 
-update reply {
-	Filter-Id := "filter"
-}
-
+success

@@ -5,7 +5,6 @@
 #
 update {
 	control:Cleartext-Password := 'hello'
-	reply:Filter-Id := 'filter'
 }
 
 update {
@@ -48,3 +47,5 @@ if ((control:Tmp-IP-Address-0 != 192.0.2.1) || ("%{control:Tmp-IP-Address-0[1]}"
 		reply:Filter-Id += 'fail 4'
 	}
 }
+
+success

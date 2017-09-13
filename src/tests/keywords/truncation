@@ -1,9 +1,5 @@
 # cat /dev/urandom | env LC_CTYPE=C tr -cd 'a-f0-9' | head -c <n>
 
-update reply {
-       Filter-Id := "filter"
-}
-
 # 8192 - 0x (2) - '' (2) there are unlikely to be any static buffers this big outside of the conffile parser
 update request {
 	Tmp-Octets-0 := '0x\
@@ -107,3 +103,4 @@ if ("%{length:Tmp-String-0}" != 8168) {
 }
 
 # We can't do any more until all the xlat code uses dynamically allocated buffers
+success

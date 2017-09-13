@@ -3,7 +3,6 @@
 #
 update {
        control:Cleartext-Password := 'hello'
-       reply:Filter-Id := 'filter'
 }
 
 update request {
@@ -171,3 +170,5 @@ if (!(&request:Tmp-Integer-0[*] < 10)) {
 		Filter-Id += 'fail 16'
 	}
 }
+
+success

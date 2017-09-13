@@ -16,7 +16,5 @@ if (&reply:Filter-Id) {
 	}
 }
 else {
-	update reply {
-		Filter-Id := "filter"
-	}
+	success
 }

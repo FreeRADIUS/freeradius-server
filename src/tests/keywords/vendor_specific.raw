@@ -18,7 +18,5 @@ elsif (&Attr-26 != 0x01020304) {
 	}
 }
 else {
-	update reply {
-		Filter-Id := "filter"
-	}
+	success
 }

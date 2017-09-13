@@ -5,10 +5,6 @@ update control {
        Cleartext-Password := 'hello'
 }
 
-update reply {
-	Filter-Id := "filter"
-}
-
 #
 #  Simple
 #
@@ -106,3 +102,4 @@ if ("%{expr: 6 * -&Tmp-Integer-2}" != -24) {
 	}
 }
 
+success

@@ -6,9 +6,7 @@ update request {
 
 switch &Filter-Id {
 	case "" {
-		update reply {
-			Filter-Id := "filter"
-		}
+		success
 	}
 
 	case "doug" {

@@ -91,7 +91,5 @@ if ((&Tmp-Integer-0 == 0) || (&Tmp-Integer-1 == 0)) {
 	}
 }
 else {
-	update reply {
-		Filter-Id := 'filter'
-	}
+	success
 }

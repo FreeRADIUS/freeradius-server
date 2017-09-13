@@ -5,10 +5,6 @@ update control {
        Cleartext-Password := 'hello'
 }
 
-update reply {
-	Filter-Id := "filter"
-}
-
 update request {
 	FreeRADIUS-Proxied-To  := 127.0.0.2
 }
@@ -92,3 +88,5 @@ if (&Attr-26.66.1 != 0x01020304) {
 		Filter-Id += 'Fail 9'
 	}
 }
+
+success

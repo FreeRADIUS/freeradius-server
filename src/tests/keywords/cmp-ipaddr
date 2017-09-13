@@ -1,9 +1,6 @@
 #
 #  PRE: update
 #
-update reply {
-	Filter-Id := "filter"
-}
 update control {
        Cleartext-Password := 'hello'
 }
@@ -44,3 +41,5 @@ if (NAS-IP-Address > &Framed-IP-Address) {
 		Filter-Id += "fail"
 	}
 }
+
+success

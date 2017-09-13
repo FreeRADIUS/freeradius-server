@@ -9,10 +9,6 @@ update {
        request:Tmp-String-2 := "Jefe"
 }
 
-update reply {
-	Filter-Id := 'filter'
-}
-
 #
 #  Put "This is a string" into a file and call "sha1sum" on it.
 #  You should get this string.
@@ -58,3 +54,5 @@ if ("%{hmacsha1:&Tmp-String-1 &Tmp-String-2}" != 'effcdf6ae5eb2fa2d27416d5f184df
 		Filter-Id += 'fail 6'
 	}
 }
+
+success

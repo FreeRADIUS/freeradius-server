@@ -9,10 +9,6 @@ update {
        request:Tmp-Octets-0 := 0x000504030201
 }
 
-update reply {
-	Filter-Id := 'filter'
-}
-
 #
 #  Put "This is a string" into a file and call "sha256sum" on it.
 #  You should get this string.
@@ -79,3 +75,5 @@ else {	# no OPENSSL.  Force the test to pass
 		Filter-Id := 'filter'
 	}
 }
+
+success

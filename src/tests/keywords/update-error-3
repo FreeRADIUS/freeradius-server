@@ -6,5 +6,4 @@
 #
 update {
        Service-Type := 'hello'	# ERROR
-       reply:Filter-Id := "filter"
 }

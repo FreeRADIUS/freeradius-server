@@ -75,6 +75,4 @@ if (&Tmp-Integer-5 != 1) {
 	return
 }
 
-update reply {
-	Filter-Id := "filter"
-}
+success

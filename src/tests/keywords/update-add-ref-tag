@@ -3,7 +3,6 @@
 #
 
 update request {
-	reply:Filter-Id := "filter"
 	request:Tunnel-Server-Endpoint += '192.0.1.1'
 	request:Tunnel-Server-Endpoint += '192.0.1.2'
 	request:Tunnel-Server-Endpoint:1 += '192.0.1.1'
@@ -116,3 +115,5 @@ if ((&control:Tunnel-Server-Endpoint[0] != '192.0.2.1') || \
 		Filter-Id := "fail 4"
 	}
 }
+
+success

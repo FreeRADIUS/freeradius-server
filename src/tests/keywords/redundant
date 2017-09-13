@@ -24,9 +24,7 @@ redundant {
 	}
 
 	group {
-		update reply {
-			Filter-Id := "filter"
-		}
+		success
 	}
 }
 

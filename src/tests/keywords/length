@@ -1,10 +1,6 @@
 #
 # PRE: hex
 #
-update reply {
-       Filter-Id := "filter"
-}
-
 update request {
 	Tmp-String-0        := '\
 abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz\
@@ -153,3 +149,5 @@ if (Tmp-Integer-3 != 5) {
 		Filter-Id += 'fail 15'
 	}
 }
+
+success

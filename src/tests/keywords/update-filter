@@ -299,5 +299,6 @@ debug_request
 
 update control {
 	Auth-Type := Accept
-	reply:Filter-Id := 'filter'
 }
+
+success

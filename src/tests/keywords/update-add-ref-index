@@ -3,7 +3,6 @@
 #
 
 update request {
-       reply:Filter-Id := "filter"
        Class := 0x01020304
        Class += 0x05060708
        Class += 0x090a0b0c
@@ -116,3 +115,5 @@ if (&Proxy-State[1]) {
 		Filter-Id += "fail 4b"
 	}
 }
+
+success

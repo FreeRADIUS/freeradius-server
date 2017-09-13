@@ -5,5 +5,4 @@
 #
 update no-such-list {	# ERROR
        control:Cleartext-Password := 'hello'
-       reply:Filter-Id := "filter"
 }

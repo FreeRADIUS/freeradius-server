@@ -3,7 +3,6 @@
 #
 update request {
         control:Cleartext-Password := 'hello'
-        reply:Filter-Id := "filter"
 
 	Tmp-String-0 := '@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /'
 	Tmp-String-1 := '±§#$%^&+={[}];<,>?`|"'
@@ -65,3 +64,4 @@ if (<string>"%{unescape:%{request:Tmp-String-7}}" != &Tmp-String-6) {
 	}
 }
 
+success

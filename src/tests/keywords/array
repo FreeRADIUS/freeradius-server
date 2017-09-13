@@ -3,10 +3,6 @@
 #
 #  Tests for dereferencing the Nth attribute
 #
-update reply {
-	Filter-Id := "filter"
-}
-
 update request {
        Class := 0x01020304
        Class += 0x05060708
@@ -51,3 +47,5 @@ if (&Class[n] != 0x090a0b0c) {
 		Filter-Id += "fail 4"
 	}
 }
+
+success

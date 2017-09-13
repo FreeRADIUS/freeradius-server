@@ -2,10 +2,6 @@
 #  PRE: if
 #
 
-update reply {
-	Filter-Id := "filter"
-}
-
 if ("%{Client-Shortname}" != 'test') {
 	update reply {
 		Filter-Id += "fail 0"
@@ -123,3 +119,5 @@ if ("%{Virtual-Server[#]}" != 1) {
 		Filter-Id += "fail 16"
 	}
 }
+
+success

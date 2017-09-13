@@ -1,7 +1,6 @@
 update {
 	control:Tmp-String-0 := "ssid=ABCDEF"
 	control:Tmp-String-0 += "ssid=GHIJKL"
-	reply:Filter-Id := "filter"
 }
 
 if (User-Name) {
@@ -41,3 +40,5 @@ if (&control:Tmp-String-1 != 'ssid=GHIJKL') {
 update control {
 	Tmp-String-1 !* ANY
 }
+
+success

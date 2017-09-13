@@ -3,7 +3,6 @@
 #
 update {
        control:Cleartext-Password := 'hello'
-       reply:Filter-Id := 'filter'
 }
 
 if (control:Cleartext-Password !~ /hell(o)(.*)/) {
@@ -44,3 +43,5 @@ if ("%{1}") {
 		Filter-Id += 'Fail 5'
 	}
 }
+
+success

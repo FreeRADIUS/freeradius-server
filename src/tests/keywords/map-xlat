@@ -5,7 +5,6 @@
 #
 update {
        control:Cleartext-Password := 'hello'
-       reply:Filter-Id := "filter"
 }
 
 update {
@@ -23,3 +22,5 @@ if (&control:Tmp-String-0 != 'testing123') {
         Filter-Id += 'Fail 1'
     }
 }
+
+success

@@ -7,9 +7,7 @@ update {
 }
 
 if (<byte>Class == 173) {
-	update reply {
-		Filter-Id := "filter"
-	}
+	success
 }
 
 if (<byte>Class < 173) {

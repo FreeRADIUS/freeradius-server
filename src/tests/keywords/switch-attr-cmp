@@ -10,9 +10,7 @@ update request {
 #
 switch &User-Name {
 	case &Tmp-String-0 {
-		update reply {
-			Filter-Id := "filter"
-		}
+		success
 	}
 
 	case "bob" {

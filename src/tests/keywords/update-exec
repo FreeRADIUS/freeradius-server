@@ -5,10 +5,6 @@ update control {
        Cleartext-Password := 'hello'
 }
 
-update reply {
-	Filter-Id := "filter"
-}
-
 #
 # Exec with script output to attribute
 #
@@ -92,3 +88,4 @@ if (Tmp-String-0) {
 	}
 }
 
+success

@@ -5,7 +5,6 @@
 #
 update {
 	control:Cleartext-Password := 'hello'
-	reply:Filter-Id := 'filter'
 }
 
 update request {
@@ -51,3 +50,5 @@ if (Tmp-Integer-0 != 2) {
 		reply:Filter-Id += 'fail 4'
 	}
 }
+
+success

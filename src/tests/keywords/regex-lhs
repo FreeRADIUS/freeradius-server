@@ -21,7 +21,5 @@ elsif (&Tmp-String-1 !~ /\^foo\$bar/) {
 		Filter-Id := "fail 1"
 	}
 } else {
-	update reply {
-		Filter-Id := "filter"
-	}
+	success
 }

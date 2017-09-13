@@ -3,7 +3,6 @@
 #
 update control {
        Cleartext-Password := 'hello'
-       reply:Filter-Id := "filter"
 }
 
 update request {
@@ -49,3 +48,5 @@ if (Tmp-IP-Address-3 != 127.0.0.4) {
 		Filter-Id += "fail 5"
 	}
 }
+
+success

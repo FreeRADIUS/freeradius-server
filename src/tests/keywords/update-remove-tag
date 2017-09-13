@@ -5,7 +5,6 @@
 #
 update {
 	control:Cleartext-Password := 'hello'
-	reply:Filter-Id := 'filter'
 }
 
 update {
@@ -273,3 +272,4 @@ if (Tunnel-Server-Endpoint:3[2] != '192.0.3.3') {
 	}
 }
 
+success

@@ -18,9 +18,7 @@ update request {
 
 foreach &Filter-Id {
 	if ("%{Foreach-Variable-0}" == "3") {
-		update reply {
-			Filter-Id := "filter"
-		}
+		success
 
 		#
 		#  We need this because the "return" below

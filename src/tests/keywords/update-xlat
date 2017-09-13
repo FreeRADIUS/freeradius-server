@@ -5,7 +5,6 @@
 #
 update {
 	control:Cleartext-Password := 'hello'
-	reply:Filter-Id := 'filter'
 }
 
 
@@ -80,3 +79,5 @@ if (&Tmp-String-1 != 'hello2') {
 }
 
 } # XXX
+
+success

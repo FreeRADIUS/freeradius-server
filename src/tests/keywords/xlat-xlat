@@ -3,7 +3,6 @@
 #
 update {
 	control:Cleartext-Password := 'hello'
-	reply:Filter-Id := 'filter'
 }
 
 update request {
@@ -48,3 +47,5 @@ if ("%{xlat:&Tmp-String-1[%{Tmp-Integer-0[2]}]}" != 'bar') {
 		Filter-Id += "fail 4"
 	}
 }
+
+success

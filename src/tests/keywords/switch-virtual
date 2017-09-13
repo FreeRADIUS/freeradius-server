@@ -10,9 +10,7 @@ update control {
 #
 switch &Packet-Type {
 	case Access-Request {
-		update reply {
-			Filter-Id := "filter"
-		}
+		success
 	}
 
 	case {

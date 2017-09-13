@@ -23,7 +23,5 @@ elsif (&Tmp-String-1 =~ /%{Tmp-String-0}/) {
 	}
 }
 else {
-	update reply {
-		Filter-Id := "filter"
-	}
+	success
 }

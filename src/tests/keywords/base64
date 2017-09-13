@@ -1,10 +1,6 @@
 #
 # PRE: hex
 #
-update reply {
-       Filter-Id := "filter"
-}
-
 update request {
 	Tmp-String-0        := '9870'
 	Tmp-Octets-0        := 0x39383731
@@ -139,3 +135,5 @@ if (Tmp-String-3 != 'IDk4Nz4=') {
 		Filter-Id += 'fail 12'
 	}
 }
+
+success

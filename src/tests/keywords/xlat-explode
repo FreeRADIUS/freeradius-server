@@ -9,7 +9,6 @@ update {
 	control:User-Name += '|hello|goodbye'
 	control:User-Name += '|morning|night|1|'
 	control:Reply-Message := 'Can\'t touch this'
-	reply:Filter-Id = 'filter'
 }
 
 if ("%{explode:&Class |}" != 3) {
@@ -89,3 +88,4 @@ if (&control:Reply-Message != 'Can\'t touch this') {
 }
 
 debug_all
+success

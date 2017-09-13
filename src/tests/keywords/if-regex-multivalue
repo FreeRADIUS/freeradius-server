@@ -3,7 +3,6 @@
 #
 update {
        control:Cleartext-Password := 'hello'
-       reply:Filter-Id := 'filter'
 }
 
 update request {
@@ -24,3 +23,5 @@ else {
 		Filter-Id += 'Fail 2'
 	}
 }
+
+success

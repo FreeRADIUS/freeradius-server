@@ -1,10 +1,6 @@
 #
 # PRE: update if
 #
-update reply {
-	Filter-Id := "filter"
-}
-
 update {
        control:Cleartext-Password := 'hello'
        request:Tmp-String-0 := "This is a string\n"
@@ -58,3 +54,5 @@ if ("%{hmacmd5:&Tmp-String-1 &Tmp-String-2}" != '750c783e6ab0b503eaa86e310a5db73
 		Filter-Id += 'fail 6'
 	}
 }
+
+success

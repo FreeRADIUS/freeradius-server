@@ -28,10 +28,7 @@ update control {
 
 foreach &control:Calling-Station-Id {
 	if (&request:Calling-Station-Id == "%{Foreach-Variable-0}") {
-		update reply {
-			Filter-Id := "filter"
-		}
-
+		success
 		break
 	}
 	elsif ("%{Foreach-Variable-0}" == '9') {

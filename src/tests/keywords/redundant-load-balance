@@ -59,7 +59,5 @@ if (&Tmp-Integer-0 != "%{Tmp-Integer-1[#]}") {
 	}
 }
 else {
-	update reply {
-		Filter-Id := 'filter'
-	}
+	success
 }
