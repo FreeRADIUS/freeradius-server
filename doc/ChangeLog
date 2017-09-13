@@ -18,6 +18,8 @@ FreeRADIUS 3.0.16 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	  correctly.
 	* Fix (SQL-Group == "%{...}") checks, and same for LDAP-Group.
 	  Fixes #1947
+	* Clean up exfile code.  Which should better avoid issues
+	  with reading / writing 100's of detail files.
 	* Fix build for winbind.  Patch from Alex Clouter.
 	* Fix checkrad for Mikrotik.  Patch from Muchael Ducharme.
 	* Fix home server stats lookup.  Patch from Phil Mayers.
