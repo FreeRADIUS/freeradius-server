@@ -571,8 +571,6 @@ static REQUEST *unlang_child_alloc(REQUEST *request, unlang_t *instruction, rlm_
 	}
 	if (!child) return NULL;
 
-	child->packet->code = request->packet->code;
-
 	/*
 	 *	Push the children, and set it's top frame to be true.
 	 */
@@ -624,10 +622,10 @@ static REQUEST *unlang_child_alloc(REQUEST *request, unlang_t *instruction, rlm_
 }
 
 
-/** Send a signal from parent request to child
+/** Send a signal from parent request to subrequest
  *
  */
-static void unlang_create_signal(UNUSED REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *ctx,
+static void unlang_subrequest_signal(UNUSED REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *ctx,
 			       fr_state_action_t action)
 {
 	REQUEST			*child = talloc_get_type_abort(ctx, REQUEST);
@@ -636,11 +634,11 @@ static void unlang_create_signal(UNUSED REQUEST *request, UNUSED void *instance,
 }
 
 
-/** Resume a created child request
+/** Resume a subrequest
  *
  */
-static rlm_rcode_t unlang_create_resume(UNUSED REQUEST *request, unlang_stack_t *stack,
-				      UNUSED const void *instance, UNUSED void *thread, void *resume_ctx)
+static rlm_rcode_t unlang_subrequest_resume(UNUSED REQUEST *request, unlang_stack_t *stack,
+					    UNUSED const void *instance, UNUSED void *thread, void *resume_ctx)
 {
 	REQUEST			*child = talloc_get_type_abort(resume_ctx, REQUEST);
 	unlang_stack_t		*child_stack = child->stack;
@@ -658,7 +656,7 @@ static rlm_rcode_t unlang_create_resume(UNUSED REQUEST *request, unlang_stack_t 
 		frame = &stack->frame[stack->depth];
 		rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
 
-		frame->instruction->type = UNLANG_TYPE_CREATE; /* for debug purposes */
+		frame->instruction->type = UNLANG_TYPE_SUBREQUEST; /* for debug purposes */
 		talloc_free(child);
 		return rcode;
 	}
@@ -671,7 +669,7 @@ static rlm_rcode_t unlang_create_resume(UNUSED REQUEST *request, unlang_stack_t 
 	(void) talloc_get_type_abort(mr, unlang_resume_t);
 
 	rad_assert(mr->callback == NULL);
-	rad_assert(mr->signal_callback == unlang_create_signal);
+	rad_assert(mr->signal_callback == unlang_subrequest_signal);
 	rad_assert(mr->resume_ctx == child);
 #endif
 
@@ -688,7 +686,7 @@ static unlang_action_t unlang_detach(REQUEST *request, unlang_stack_t *stack,
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
 
-	rad_assert(instruction->parent->type == UNLANG_TYPE_CREATE);
+	rad_assert(instruction->parent->type == UNLANG_TYPE_SUBREQUEST);
 	RDEBUG2("%s", unlang_ops[instruction->type].name);
 
 	if (request_detach(request) < 0) {
@@ -709,8 +707,8 @@ static unlang_action_t unlang_detach(REQUEST *request, unlang_stack_t *stack,
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-static unlang_action_t unlang_create(REQUEST *request, unlang_stack_t *stack,
-				     rlm_rcode_t *presult, int *priority)
+static unlang_action_t unlang_subrequest(REQUEST *request, unlang_stack_t *stack,
+					 rlm_rcode_t *presult, int *priority)
 {
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
@@ -732,36 +730,7 @@ static unlang_action_t unlang_create(REQUEST *request, unlang_stack_t *stack,
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	RDEBUG2("- creating child request (%s)", child->name);
-
-	/*
-	 *	If necessary, change the child->packet->code.
-	 */
-	if (g->vpt) {
-		fr_dict_attr_t const *da;
-		fr_dict_enum_t const *dval;
-
-		da = fr_dict_attr_by_name(NULL, "Packet-Type");
-		if (!da) {
-			REDEBUG("Failed finding Packet-Type attribute");
-			*presult = RLM_MODULE_FAIL;
-			*priority = instruction->actions[*presult];
-			return UNLANG_ACTION_CALCULATE_RESULT;
-		}
-
-		/*
-		 *	This has to be a fixed string.
-		 */
-		dval = fr_dict_enum_by_alias(NULL, da, g->vpt->name);
-		if (!dval) {
-			REDEBUG("Failed to find Packet-Type %s", g->vpt->name);
-			*presult = RLM_MODULE_FAIL;
-			*priority = instruction->actions[*presult];
-			return UNLANG_ACTION_CALCULATE_RESULT;
-		}
-
-		child->packet->code = dval->value->vb_uint32;
-	}
+	RDEBUG2("- creating subrequest (%s)", child->name);
 
 	/*
 	 *	Run the child in the same section as the master.  If
@@ -813,7 +782,7 @@ static unlang_action_t unlang_create(REQUEST *request, unlang_stack_t *stack,
 	/*
 	 *	Create the "resume" stack frame, and have it replace our stack frame.
 	 */
-	mr = unlang_resume_alloc(request, NULL, unlang_create_signal, child);
+	mr = unlang_resume_alloc(request, NULL, unlang_subrequest_signal, child);
 	if (!mr) {
 		*presult = RLM_MODULE_FAIL;
 		*priority = instruction->actions[*presult];
@@ -903,6 +872,7 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 								      RLM_MODULE_FAIL, /* @todo - fixme ? */
 								      UNLANG_NEXT_STOP, UNLANG_NORMAL_CHILD);
 			state->children[i].state = CHILD_RUNNABLE;
+			state->children[i].child->packet->code = request->packet->code;
 			/* FALL-THROUGH */
 
 			/*
@@ -1659,7 +1629,7 @@ static unlang_action_t unlang_if(REQUEST *request, unlang_stack_t *stack,
 }
 
 static unlang_op_resume_func_t unlang_ops_resume[] = {
-	[UNLANG_TYPE_CREATE]		= unlang_create_resume,
+	[UNLANG_TYPE_SUBREQUEST]       	= unlang_subrequest_resume,
 	[UNLANG_TYPE_PARALLEL]		= unlang_parallel_resume,
 };
 
@@ -1816,9 +1786,9 @@ unlang_op_t unlang_ops[] = {
 		.func = unlang_policy,
 		.debug_braces = true
 	},
-	[UNLANG_TYPE_CREATE] = {
-		.name = "create",
-		.func = unlang_create,
+	[UNLANG_TYPE_SUBREQUEST] = {
+		.name = "subrequest",
+		.func = unlang_subrequest,
 		.debug_braces = true
 	},
 	[UNLANG_TYPE_DETACH] = {

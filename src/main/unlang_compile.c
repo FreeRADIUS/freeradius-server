@@ -2123,7 +2123,7 @@ static unlang_t *compile_break(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 
 static unlang_t *compile_detach(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM const *ci)
 {
-	if (parent->type != UNLANG_TYPE_CREATE) {
+	if (parent->type != UNLANG_TYPE_SUBREQUEST) {
 		cf_log_err(ci, "'detach' can only be used in a 'create' section");
 		return NULL;
 	}
@@ -2520,7 +2520,7 @@ static unlang_t *compile_create(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	 *	use-case, we can try enabling it.
 	 */
 	for (c = parent; c != NULL; c = c->parent) {
-		if (c->type == UNLANG_TYPE_CREATE) {
+		if (c->type == UNLANG_TYPE_SUBREQUEST) {
 			cf_log_err(cs, "'%s' sections cannot be nested inside of other '%s' sections",
 				   unlang_ops[mod_type].name, unlang_ops[mod_type].name);
 			return NULL;
@@ -2532,87 +2532,16 @@ static unlang_t *compile_create(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 
 	c = unlang_group_to_generic(g);
 	c->name = unlang_ops[c->type].name;
+	c->debug_name = c->name;
 
 	/*
-	 *	Create the template.  All attributes and xlats are
-	 *	defined by now.
+	 *	subrequests can't have an argument.
 	 */
 	name2 = cf_section_name2(cs);
 	if (name2) {
-		FR_TOKEN type;
-		ssize_t slen;
-		fr_dict_attr_t const *da;
-		fr_dict_enum_t const *dval;
-
-		type = cf_section_name2_quote(cs);
-		if (type != T_BARE_WORD) {
-			cf_log_err(cs, "The packet type for 'create' must be an string without quotation marks.");
-			talloc_free(g);
-			return NULL;
-		}
-
-		/*
-		 *	@todo - figure out how to tell protocol at
-		 *	compile time?  Packet-Type is RADIUS-specific,
-		 *	and we want this to be protocol-specific.
-		 */
-		da = fr_dict_attr_by_name(NULL, "Packet-Type");
-		if (!da) {
-			cf_log_err(cs, "Failed finding Packet-Type attribute for 'fork'");
-			talloc_free(g);
-			return NULL;
-		}
-
-		/*
-		 *	The name MUST be a fixed string.  Run-time
-		 *	expansion of the name is forbidden, as the
-		 *	packet contents depend on the name.
-		 */
-		dval = fr_dict_enum_by_alias(NULL, da, name2);
-		if (!dval) {
-			cf_log_err(cs, "Unknown Packet-Type %s", name2);
-			talloc_free(g);
-			return NULL;
-		}
-
-		/*
-		 *	Parse the static name into a template, because
-		 *	unlang_interpret() takes a template here.
-		 */
-		slen = tmpl_afrom_str(g, &g->vpt, name2, strlen(name2), type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
-		if (slen < 0) {
-			char *spaces, *text;
-
-			fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
-
-			cf_log_err(cs, "Syntax error");
-			cf_log_err(cs, "%s", name2);
-			cf_log_err(cs, "%s^ %s", spaces, text);
-
-			talloc_free(g);
-			talloc_free(spaces);
-			talloc_free(text);
-
-			return NULL;
-		}
-
-		/*
-		 *	Convert TMPL_TYPE_UNPARSED (it might have been
-		 *	an attribute) to TMPL_TYPE_DATA, with
-		 *	FR_TYPE_STRING data.
-		 */
-		tmpl_cast_in_place_str(g->vpt);
-
-		/*
-		 *	Has to be a fixed string...
-		 */
-		rad_assert(g->vpt->type == TMPL_TYPE_DATA);
-
-		c->debug_name = talloc_asprintf(c, "%s %s", unlang_ops[c->type].name, cf_section_name2(cs));
-	} else {
-		c->debug_name = c->name;
+		cf_log_err(cs, "Invalid argument '%s' to subrequest", name2);
+		return NULL;
 	}
-
 	return compile_children(g, parent, unlang_ctx, group_type, parentgroup_type);
 }
 
@@ -2778,7 +2707,7 @@ static modcall_compile_t compile_table[] = {
 	{ "map",		compile_map, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_MAP, REQUIRE_CHILDREN },
 	{ "switch",		compile_switch, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_SWITCH, REQUIRE_CHILDREN },
 	{ "parallel",		compile_parallel, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_PARALLEL, REQUIRE_CHILDREN },
-	{ "create",		compile_create, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_CREATE, REQUIRE_CHILDREN },
+	{ "subrequest",		compile_create, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_SUBREQUEST, REQUIRE_CHILDREN },
 
 	{ NULL, NULL, 0, UNLANG_TYPE_NULL }
 };
