@@ -2422,6 +2422,7 @@ ac_config_headers="$ac_config_headers src/include/autoconf.h"
 
 
 
+
 RADIUSD_MAJOR_VERSION=`cat VERSION | cut -f1 -d.`
 RADIUSD_MINOR_VERSION=`cat VERSION | cut -f2 -d.`
 RADIUSD_INCRM_VERSION=`cat VERSION | cut -f3 -d. | sed 's/[\.-].*$//'`
@@ -4325,47 +4326,45 @@ if test "x$GCC" = "xyes"; then
 fi
 
 
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for the compiler flag \"-Wno-unknown-warning-option\"" >&5
-$as_echo_n "checking for the compiler flag \"-Wno-unknown-warning-option\"... " >&6; }
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking or the compiler flag \"-Wno-unknown-warning-option\"" >&5
+$as_echo_n "checking or the compiler flag \"-Wno-unknown-warning-option\"... " >&6; }
 if ${ax_cv_cc_no_unknown_warning_option_flag+:} false; then :
   $as_echo_n "(cached) " >&6
 else
 
 
-    CFLAGS_SAVED=$CFLAGS
-    CFLAGS="$CFLAGS -Werror -Wno-unknown-warning-option"
+  CFLAGS_SAVED=$CFLAGS
+  CFLAGS="-Werror -Wno-unknown-warning-option"
 
-    ac_ext=c
-ac_cpp='$CPP $CPPFLAGS'
-ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
-ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
-ac_compiler_gnu=$ac_cv_c_compiler_gnu
-
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
 int
 main ()
 {
-return 0;
+
+    /*
+     *  gcc will happily accept -Wno-unknown-warning-option
+     *  only emitting an error about it, if an error ocurrs in the source file.
+     */
+    #ifdef __GNUC__
+        gcc sucks
+    #endif
+
+    return 0;
+
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
-  ax_cv_cc_no_unknown_warning_option_flag="yes"
+  ax_cv_cc_no_unknown_warning_option_flag=yes
 else
-  ax_cv_cc_no_unknown_warning_option_flag="no"
+  ax_cv_cc_no_unknown_warning_option_flag=no
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-    ac_ext=c
-ac_cpp='$CPP $CPPFLAGS'
-ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
-ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
-ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
-
-    CFLAGS="$CFLAGS_SAVED"
+  CFLAGS="$CFLAGS_SAVED"
 
 fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_no_unknown_warning_option_flag" >&5
