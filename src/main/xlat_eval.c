@@ -278,6 +278,13 @@ do_print:
 		return p;
 	}
 
+	/*
+	 *	tmpl_cursor_init() returns cursor->current==NULL
+	 *	instead of ==last.
+	 */
+	case NUM_LAST:
+		break;
+
 	default:
 		/*
 		 *	The cursor was set to the correct
