@@ -45,7 +45,7 @@ AC_DEFUN([AX_CC_NO_UNKNOWN_WARNING_OPTION_FLAG],[
      *  gcc will happily accept -Wno-unknown-warning-option
      *  only emitting an error about it, if an error ocurrs in the source file.
      */
-    #ifdef __GNUC__
+    #if defined(__GNUC__) && !defined(__clang__)
         gcc sucks
     #endif    
     
