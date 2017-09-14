@@ -2568,6 +2568,21 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	char *packet;
 	CONF_SECTION *server_cs, *root;
 
+	/*
+	 *	calls with a normal packet are not allowed.  It will
+	 *	work, but we don't know what it means.  If someone has
+	 *	a good use-case, we can try enabling it.
+	 */
+	for (c = parent; c != NULL; c = c->parent) {
+		if (c->type == UNLANG_TYPE_SUBREQUEST) break;
+	}
+
+	if (!c) {
+		cf_log_err(cs, "'%s' can only be used inside of a 'subrequest' section",
+			   unlang_ops[mod_type].name);
+		return NULL;
+	}
+
 	name2 = cf_section_name2(cs);
 	if (!name2) {
 		cf_log_err(cs, "'call' must be given with a server.PACKET argument");
