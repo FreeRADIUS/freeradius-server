@@ -539,8 +539,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_clear(UNUSED rlm_pap_t *inst, REQUE
 	    (rad_digest_cmp(vp->vp_octets,
 			    request->password->vp_octets,
 			    vp->vp_length) != 0)) {
-		REDEBUG("Cleartext password \"%s\" does not match \"known good\" password",
-			request->password->vp_strvalue);
+		REDEBUG("Cleartext password does not match \"known good\" password");
 		return RLM_MODULE_REJECT;
 	}
 	return RLM_MODULE_OK;
