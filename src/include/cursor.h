@@ -44,7 +44,6 @@ typedef struct fr_cursor_s {
 	void			*tail;		//!< Used for efficient fr_cursor_append.
 	void			*current;	//!< The current item in the linked list.
 	void			*prev;		//!< The previous item in the linked list.
-	void			*iter_prev;	//!< Iterator's previous item.  Only set if iter != NULL.
 
 	size_t			offset;		//!< Where the next ptr is in the item struct.
 	fr_cursor_iter_t	iter;		//!< Iterator function.
