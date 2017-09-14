@@ -2517,8 +2517,8 @@ static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx
 }
 
 
-static unlang_t *compile_create(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
+static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
+				    unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
 {
 	char const *name2;
 	unlang_t *c;
@@ -2717,7 +2717,7 @@ static modcall_compile_t compile_table[] = {
 	{ "map",		compile_map, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_MAP, REQUIRE_CHILDREN },
 	{ "switch",		compile_switch, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_SWITCH, REQUIRE_CHILDREN },
 	{ "parallel",		compile_parallel, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_PARALLEL, REQUIRE_CHILDREN },
-	{ "subrequest",		compile_create, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_SUBREQUEST, REQUIRE_CHILDREN },
+	{ "subrequest",		compile_subrequest, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_SUBREQUEST, REQUIRE_CHILDREN },
 
 	{ NULL, NULL, 0, UNLANG_TYPE_NULL }
 };
