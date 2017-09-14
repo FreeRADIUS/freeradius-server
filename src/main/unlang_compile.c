@@ -2567,6 +2567,7 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	char *server;
 	char *packet;
 	CONF_SECTION *server_cs, *root;
+	fr_io_process_t *process_p;
 
 	/*
 	 *	calls with a normal packet are not allowed.  It will
@@ -2651,13 +2652,15 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	 *	Verify it exists, but don't bother caching it.  We can
 	 *	figure it out at run-time.
 	 */
-	g->process = cf_data_find(server_cs, fr_io_process_t, packet);
-	if (!g->process) {
+	process_p = (fr_io_process_t *) cf_data_value(cf_data_find(server_cs, fr_io_process_t, packet));
+	if (!process_p) {
 		cf_log_err(cs, "Virtual server %s cannot process '%s' packets",
 			   cf_section_name2(server_cs), packet);
 		talloc_free(g);
 		return NULL;
 	}
+
+	g->process = *process_p;
 
 	c = unlang_group_to_generic(g);
 	c->name = unlang_ops[c->type].name;
