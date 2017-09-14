@@ -763,6 +763,7 @@ static unlang_action_t unlang_subrequest(REQUEST *request, unlang_stack_t *stack
 	 */
 	rcode = unlang_run(child, child->stack);
 	if (rcode != RLM_MODULE_YIELD) {
+		if (UNLANG_DETACHABLE) request_detach(child);
 		talloc_free(child);
 		*presult = rcode;
 		*priority = instruction->actions[*presult];
