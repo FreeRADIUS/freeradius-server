@@ -40,12 +40,12 @@ static size_t xlat_process(TALLOC_CTX *ctx, char **out, REQUEST *request, xlat_e
 static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 			bool escape, bool return_null)
 {
-	VALUE_PAIR *vp = NULL, *virtual = NULL;
-	RADIUS_PACKET *packet = NULL;
-	fr_dict_enum_t *dv;
-	char *ret = NULL;
+	VALUE_PAIR		*vp = NULL, *virtual = NULL;
+	RADIUS_PACKET		*packet = NULL;
+	fr_dict_enum_t		*dv;
+	char			*ret = NULL;
 
-	vp_cursor_t cursor;
+	fr_cursor_t		cursor;
 	char quote = escape ? '"' : '\0';
 
 	rad_assert((vpt->type == TMPL_TYPE_ATTR) || (vpt->type == TMPL_TYPE_LIST));
@@ -250,7 +250,7 @@ do_print:
 
 		for (vp = tmpl_cursor_init(NULL, &cursor, request, vpt);
 		     vp;
-		     vp = tmpl_cursor_next(&cursor, vpt)) count++;
+		     vp = fr_cursor_next(&cursor)) count++;
 
 		return talloc_typed_asprintf(ctx, "%d", count);
 	}
@@ -264,11 +264,11 @@ do_print:
 	{
 		char *p, *q;
 
-		if (!fr_pair_cursor_current(&cursor)) return NULL;
+		if (!fr_cursor_current(&cursor)) return NULL;
 		p = fr_pair_value_asprint(ctx, vp, quote);
 		if (!p) return NULL;
 
-		while ((vp = tmpl_cursor_next(&cursor, vpt)) != NULL) {
+		while ((vp = fr_cursor_next(&cursor)) != NULL) {
 			q = fr_pair_value_asprint(ctx, vp, quote);
 			if (!q) return NULL;
 			p = talloc_strdup_append(p, ",");
@@ -278,19 +278,12 @@ do_print:
 		return p;
 	}
 
-	/*
-	 *	tmpl_cursor_init() returns cursor->current==NULL
-	 *	instead of ==last.
-	 */
-	case NUM_LAST:
-		break;
-
 	default:
 		/*
 		 *	The cursor was set to the correct
 		 *	position above by tmpl_cursor_init.
 		 */
-		vp = fr_pair_cursor_current(&cursor);
+		vp = fr_cursor_current(&cursor);
 		break;
 	}
 

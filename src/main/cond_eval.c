@@ -474,11 +474,11 @@ do {\
 	case TMPL_TYPE_ATTR:
 	{
 		VALUE_PAIR *vp;
-		vp_cursor_t cursor;
+		fr_cursor_t cursor;
 
 		for (vp = tmpl_cursor_init(&rcode, &cursor, request, map->rhs);
 		     vp;
-	     	     vp = tmpl_cursor_next(&cursor, map->rhs)) {
+	     	     vp = fr_cursor_next(&cursor)) {
 			rhs = &vp->data;
 
 			CHECK_INT_CAST(lhs, rhs);
@@ -606,7 +606,7 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 	case TMPL_TYPE_ATTR:
 	{
 		VALUE_PAIR *vp;
-		vp_cursor_t cursor;
+		fr_cursor_t cursor;
 		/*
 		 *	Legacy paircompare call, skip processing the magic attribute
 		 *	if it's the LHS and cast RHS to the same type.
@@ -620,7 +620,7 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 		}
 		for (vp = tmpl_cursor_init(&rcode, &cursor, request, map->lhs);
 		     vp;
-	     	     vp = tmpl_cursor_next(&cursor, map->lhs)) {
+	     	     vp = fr_cursor_next(&cursor)) {
 			/*
 			 *	Evaluate all LHS values, condition evaluates to true
 			 *	if we get at least one set of operands that

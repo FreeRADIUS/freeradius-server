@@ -52,7 +52,8 @@ static ssize_t dhcp_options_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 			   	 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			   	 REQUEST *request, char const *fmt)
 {
-	vp_cursor_t	cursor, src_cursor;
+	vp_cursor_t	cursor;
+	fr_cursor_t	src_cursor;
 	vp_tmpl_t	*src;
 	VALUE_PAIR	*vp, *head = NULL;
 	int		decoded = 0;
@@ -83,7 +84,7 @@ static ssize_t dhcp_options_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 
 	for (vp = tmpl_cursor_init(NULL, &src_cursor, request, src);
 	     vp;
-	     vp = tmpl_cursor_next(&src_cursor, src)) {
+	     vp = fr_cursor_next(&src_cursor)) {
 		uint8_t const	*p = vp->vp_octets, *end = p + vp->vp_length;
 		ssize_t		len;
 		VALUE_PAIR	*vps = NULL;

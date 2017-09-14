@@ -1998,6 +1998,110 @@ finish:
 	return (out_p - out);
 }
 
+static void *_tmpl_cursor_next(void **prev, void *curr, void *ctx)
+{
+	VALUE_PAIR	*c, *p, *fc = NULL, *fp = NULL;
+	vp_tmpl_t const	*vpt = ctx;
+	int		num;
+
+	if (!curr) return NULL;
+
+	switch (vpt->type) {
+	case TMPL_TYPE_ATTR:
+		switch (vpt->tmpl_num) {
+		case NUM_ANY:				/* Bare attribute ref */
+			if (*prev) {
+			null_result:
+				*prev = curr;
+				return NULL;		/* Subsequent call */
+			}
+			/* FALL-THROUGH */
+
+		case NUM_ALL:
+		case NUM_COUNT:				/* Iterator is called multiple time to get the count */
+			for (c = curr, p = *prev; c; p = c, c = c->next) {
+			     	VP_VERIFY(c);
+				if ((c->da == vpt->tmpl_da) &&
+				    (!c->da->flags.has_tag || TAG_EQ(vpt->tmpl_tag, c->tag))) {
+					*prev = p;
+					return c;
+				}
+			}
+			goto null_result;
+
+		case NUM_LAST:				/* Get the last instance of a VALUE_PAIR */
+			for (c = curr, p = *prev; c; p = c, c = c->next) {
+			     	VP_VERIFY(c);
+				if ((c->da == vpt->tmpl_da) &&
+				    (!c->da->flags.has_tag || TAG_EQ(vpt->tmpl_tag, c->tag))) {
+				    	fp = p;
+					fc = c;
+				}
+			}
+			*prev = fp;
+			return fc;
+
+		default:				/* Get the specified index*/
+			if (*prev) goto null_result;
+			for (c = curr, p = *prev, num = vpt->tmpl_num;
+			     c && (num >= 0);
+			     p = c, c = c->next) {
+			     	VP_VERIFY(c);
+				if ((c->da == vpt->tmpl_da) && (!c->da->flags.has_tag ||
+				    TAG_EQ(vpt->tmpl_tag, c->tag))) {
+					fp = p;
+					fc = c;
+					num--;
+				}
+			}
+			if (num >= 0) goto null_result;	/* Not enough entries */
+			*prev = fp;
+			return fc;
+		}
+
+	case TMPL_TYPE_LIST:
+		switch (vpt->tmpl_num) {
+		case NUM_ANY:				/* Bare attribute ref */
+			if (*prev) goto null_result;
+			/* FALL-THROUGH */
+
+		case NUM_COUNT:				/* Iterate over the list, one attribute at a time */
+		case NUM_ALL:
+			return curr;			/* (cursor already advanced by the caller) */
+
+		case NUM_LAST:				/* Get the last attribute in the list */
+			for (c = curr, p = *prev; c; p = c, c = c->next) {
+				fp = p;
+				fc = c;
+			}
+			*prev = fp;
+			return fc;
+
+		default:				/* Get the specified index*/
+			if (*prev) goto null_result;	/* Subsequent call */
+			for (c = curr, p = *prev, num = vpt->tmpl_num;
+			     c && (num >= 0);
+			     p = c, c = c->next) {
+			     	VP_VERIFY(c);
+			     	fp = p;
+			     	fc = c;
+			     	num--;
+			}
+			/* Not enough entries */
+			if (num >= 0) goto null_result;
+			*prev = fp;
+			 return fc;
+		}
+
+		break;
+
+	default:
+		rad_assert(0);
+	}
+
+	return NULL;
+}
+
 /** Initialise a #vp_cursor_t to the #VALUE_PAIR specified by a #vp_tmpl_t
  *
  * This makes iterating over the one or more #VALUE_PAIR specified by a #vp_tmpl_t
@@ -2017,10 +2121,9 @@ finish:
  *
  * @see tmpl_cursor_next
  */
-VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, vp_tmpl_t const *vpt)
+VALUE_PAIR *tmpl_cursor_init(int *err, fr_cursor_t *cursor, REQUEST *request, vp_tmpl_t const *vpt)
 {
-	VALUE_PAIR **vps, *vp = NULL;
-	int num;
+	VALUE_PAIR	**vps, *vp = NULL;
 
 	TMPL_VERIFY(vpt);
 
@@ -2037,160 +2140,14 @@ VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, vp
 		if (err) *err = -2;
 		return NULL;
 	}
-	(void) fr_pair_cursor_init(cursor, vps);
 
-	switch (vpt->type) {
-	/*
-	 *	May not may not be found, but it *is* a known name.
-	 */
-	case TMPL_TYPE_ATTR:
-		switch (vpt->tmpl_num) {
-		case NUM_ANY:
-			vp = fr_pair_cursor_next_by_da(cursor, vpt->tmpl_da, vpt->tmpl_tag);
-			if (!vp) {
-				if (err) *err = -1;
-				return NULL;
-			}
-			VP_VERIFY(vp);
-			return vp;
-
-		/*
-		 *	Get the last instance of a VALUE_PAIR.
-		 */
-		case NUM_LAST:
-		{
-			VALUE_PAIR *last = NULL;
-
-			while ((vp = fr_pair_cursor_next_by_da(cursor, vpt->tmpl_da, vpt->tmpl_tag))) {
-				VP_VERIFY(vp);
-				last = vp;
-			}
-			VP_VERIFY(last);
-			if (!last) break;
-			return last;
-		}
-
-		/*
-		 *	Callers expect NUM_COUNT to setup the cursor to point
-		 *	to the first attribute in the list we're meant to be
-		 *	counting.
-		 *
-		 *	It does not produce a virtual attribute containing the
-		 *	total number of attributes.
-		 */
-		case NUM_COUNT:
-			return fr_pair_cursor_next_by_da(cursor, vpt->tmpl_da, vpt->tmpl_tag);
-
-		default:
-			num = vpt->tmpl_num;
-			while ((vp = fr_pair_cursor_next_by_da(cursor, vpt->tmpl_da, vpt->tmpl_tag))) {
-				VP_VERIFY(vp);
-				if (num-- <= 0) return vp;
-			}
-			break;
-		}
-
+	vp = fr_cursor_talloc_iter_init(cursor, vps, _tmpl_cursor_next, vpt, VALUE_PAIR);
+	if (!vp) {
 		if (err) *err = -1;
 		return NULL;
-
-	case TMPL_TYPE_LIST:
-		switch (vpt->tmpl_num) {
-		case NUM_COUNT:
-		case NUM_ANY:
-		case NUM_ALL:
-			vp = fr_pair_cursor_init(cursor, vps);
-			if (!vp) {
-				if (err) *err = -1;
-				return NULL;
-			}
-			VP_VERIFY(vp);
-			return vp;
-
-		/*
-		 *	Get the last instance of a VALUE_PAIR.
-		 */
-		case NUM_LAST:
-		{
-			VALUE_PAIR *last = NULL;
-
-			for (vp = fr_pair_cursor_init(cursor, vps);
-			     vp;
-			     vp = fr_pair_cursor_next(cursor)) {
-				VP_VERIFY(vp);
-				last = vp;
-			}
-			if (!last) break;
-			VP_VERIFY(last);
-			return last;
-		}
-
-		default:
-			num = vpt->tmpl_num;
-			for (vp = fr_pair_cursor_init(cursor, vps);
-			     vp;
-			     vp = fr_pair_cursor_next(cursor)) {
-				VP_VERIFY(vp);
-				if (num-- <= 0) return vp;
-			}
-			break;
-		}
-
-		break;
-
-	default:
-		rad_assert(0);
 	}
 
 	return vp;
-}
-
-/** Returns the next #VALUE_PAIR specified by vpt
- *
- * @param cursor initialised with #tmpl_cursor_init.
- * @param vpt specifying the #VALUE_PAIR type/tag to iterate over.
- *	Must be one of the following types:
- *	- #TMPL_TYPE_LIST
- *	- #TMPL_TYPE_ATTR
- * @return
- *	- The next #VALUE_PAIR matching the #vp_tmpl_t.
- *	- NULL if no more matching #VALUE_PAIR of the specified type/tag are found.
- */
-VALUE_PAIR *tmpl_cursor_next(vp_cursor_t *cursor, vp_tmpl_t const *vpt)
-{
-	rad_assert((vpt->type == TMPL_TYPE_ATTR) || (vpt->type == TMPL_TYPE_LIST));
-
-	TMPL_VERIFY(vpt);
-
-	switch (vpt->type) {
-	/*
-	 *	May not may not be found, but it *is* a known name.
-	 */
-	case TMPL_TYPE_ATTR:
-		switch (vpt->tmpl_num) {
-		default:
-			return NULL;
-
-		case NUM_ALL:
-		case NUM_COUNT:	/* This cursor is being used to count matching attrs */
-			break;
-		}
-		return fr_pair_cursor_next_by_da(cursor, vpt->tmpl_da, vpt->tmpl_tag);
-
-	case TMPL_TYPE_LIST:
-		switch (vpt->tmpl_num) {
-		default:
-			return NULL;
-
-		case NUM_ALL:
-		case NUM_COUNT:	/* This cursor is being used to count matching attrs */
-			break;
-		}
-		return fr_pair_cursor_next(cursor);
-
-	default:
-		rad_assert(0);
-		return NULL;	/* Older versions of GCC flag the lack of return as an error */
-	}
 }
 
 /** Copy pairs matching a #vp_tmpl_t in the current #REQUEST
@@ -2210,8 +2167,8 @@ VALUE_PAIR *tmpl_cursor_next(vp_cursor_t *cursor, vp_tmpl_t const *vpt)
  */
 int tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_tmpl_t const *vpt)
 {
-	VALUE_PAIR *vp;
-	vp_cursor_t from, to;
+	VALUE_PAIR	*vp;
+	fr_cursor_t	from, to;
 
 	TMPL_VERIFY(vpt);
 
@@ -2221,17 +2178,17 @@ int tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_tmpl_t
 
 	*out = NULL;
 
-	fr_pair_cursor_init(&to, out);
+	fr_cursor_init(&to, out);
 
 	for (vp = tmpl_cursor_init(&err, &from, request, vpt);
 	     vp;
-	     vp = tmpl_cursor_next(&from, vpt)) {
+	     vp = fr_cursor_next(&from)) {
 		vp = fr_pair_copy(ctx, vp);
 		if (!vp) {
 			fr_pair_list_free(out);
 			return -4;
 		}
-		fr_pair_cursor_append(&to, vp);
+		fr_cursor_append(&to, vp);
 	}
 
 	return err;
@@ -2253,7 +2210,7 @@ int tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_tmpl_t
  */
 int tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, vp_tmpl_t const *vpt)
 {
-	vp_cursor_t cursor;
+	fr_cursor_t cursor;
 	VALUE_PAIR *vp;
 
 	TMPL_VERIFY(vpt);
@@ -2280,7 +2237,7 @@ int tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, vp_tmpl_t const *vpt)
  */
 int tmpl_find_or_add_vp(VALUE_PAIR **out, REQUEST *request, vp_tmpl_t const *vpt)
 {
-	vp_cursor_t	cursor;
+	fr_cursor_t	cursor;
 	VALUE_PAIR	*vp;
 	int		err;
 

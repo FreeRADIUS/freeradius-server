@@ -568,14 +568,14 @@ build_vector:
 	case TMPL_TYPE_LIST:
 	{
 		#define VECTOR_INCREMENT 20
-		vp_cursor_t	cursor;
+		fr_cursor_t	cursor;
 		VALUE_PAIR	*vp;
 		int		alloced = VECTOR_INCREMENT, i;
 
 		MEM(vector = talloc_array(request, struct iovec, alloced));
 		for (vp = tmpl_cursor_init(NULL, &cursor, request, vpt_p), i = 0;
 		     vp;
-		     vp = tmpl_cursor_next(&cursor, vpt_p), i++) {
+		     vp = fr_cursor_next(&cursor), i++) {
 		     	/* need extra for line terminator */
 			if ((with_delim && ((i + 1) >= alloced)) ||
 			    (i >= alloced)) {

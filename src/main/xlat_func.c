@@ -318,10 +318,9 @@ static ssize_t xlat_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED
 			       UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			       REQUEST *request, char const *fmt)
 {
-	VALUE_PAIR *vp;
-	vp_cursor_t cursor;
-
-	vp_tmpl_t *vpt;
+	VALUE_PAIR	*vp;
+	fr_cursor_t	cursor;
+	vp_tmpl_t	*vpt;
 
 	if (!RDEBUG_ENABLED2) return -1;
 
@@ -337,7 +336,7 @@ static ssize_t xlat_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED
 	RINDENT();
 	for (vp = tmpl_cursor_init(NULL, &cursor, request, vpt);
 	     vp;
-	     vp = tmpl_cursor_next(&cursor, vpt)) {
+	     vp = fr_cursor_next(&cursor)) {
 		FR_NAME_NUMBER const *type;
 		char *value;
 
