@@ -458,7 +458,7 @@ void * CC_HINT(hot) fr_cursor_replace(fr_cursor_t *cursor, void *r)
 	 *	so the replace becomes an append.
 	 */
 	v = cursor->current;
-	if (v) {
+	if (!v) {
 		fr_cursor_append(cursor, r);
 		return NULL;
 	}
@@ -475,9 +475,9 @@ void * CC_HINT(hot) fr_cursor_replace(fr_cursor_t *cursor, void *r)
 		*NEXT_PTR(r) = *NEXT_PTR(v);
 	}
 
-	 /*
-	  *	Fixup current pointer.
-	  */
+	/*
+	 *	Fixup current pointer.
+	 */
 	if (v) {
 		cursor->current = p;
 		cursor->prev = NULL;				/* populated on next call to fr_cursor_next */
