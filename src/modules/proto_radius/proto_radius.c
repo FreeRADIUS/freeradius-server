@@ -335,11 +335,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	CONF_PAIR		*cp = NULL;
 
 	/*
-	 *	The listener is inside of a virtual server.
-	 */
-	inst->server_cs = cf_item_to_section(cf_parent(conf));
-
-	/*
 	 *	Instantiate the I/O module
 	 */
 	if (inst->app_io && inst->app_io->instantiate &&
@@ -378,24 +373,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		code = fr_dict_enum_by_alias(NULL, da, cf_pair_value(cp))->value->vb_uint32;
 		inst->process_by_code[code] = app_process->process;	/* Store the process function */
 		inst->code_allowed[code] = true;
-
-		/*
-		 *	Add handlers for the virtual server calls.
-		 *	This is so that when one virtual server wants
-		 *	to call another, it just looks up the data
-		 *	here by packet name, and doesn't need to troll
-		 *	through all of the listeners.
-		 */
-		if (!cf_data_find(inst->server_cs, fr_io_process_t, fr_packet_codes[code])) {
-			fr_io_process_t process, *process_p;
-
-			process = inst->process_by_code[code];
-			process_p = talloc(inst->server_cs, fr_io_process_t);
-			*process_p = process;
-
-			(void) cf_data_add(inst->server_cs, process_p, fr_packet_codes[code], NULL);
-		}
-
 		i++;
 	}
 
@@ -433,17 +410,42 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	CONF_PAIR		*cp = NULL;
 
 	/*
+	 *	The listener is inside of a virtual server.
+	 */
+	inst->server_cs = cf_item_to_section(cf_parent(conf));
+
+	/*
 	 *	Bootstrap the process modules
 	 */
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
-		dl_t const	       *module = talloc_get_type_abort_const(inst->process_submodule[i]->module, dl_t);
-		fr_app_process_t const *app_process = (fr_app_process_t const *)module->common;
+		char const		*value;
+		dl_t const		*module = talloc_get_type_abort_const(inst->process_submodule[i]->module, dl_t);
+		fr_app_process_t const	*app_process = (fr_app_process_t const *)module->common;
 
 		if (app_process->bootstrap && (app_process->bootstrap(inst->process_submodule[i]->data,
 								      inst->process_submodule[i]->conf) < 0)) {
 			cf_log_err(conf, "Bootstrap failed for \"%s\"", app_process->name);
 			return -1;
 		}
+
+		value = cf_pair_value(cp);
+
+		/*
+		 *	Add handlers for the virtual server calls.
+		 *	This is so that when one virtual server wants
+		 *	to call another, it just looks up the data
+		 *	here by packet name, and doesn't need to troll
+		 *	through all of the listeners.
+		 */
+		if (!cf_data_find(inst->server_cs, fr_io_process_t, value)) {
+			fr_io_process_t *process_p;
+
+			process_p = talloc(inst->server_cs, fr_io_process_t);
+			*process_p = app_process->process;
+
+			(void) cf_data_add(inst->server_cs, process_p, value, NULL);
+		}
+
 		i++;
 	}
 
