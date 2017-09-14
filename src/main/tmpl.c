@@ -2013,7 +2013,7 @@ static void *_tmpl_cursor_next(void **prev, void *curr, void *ctx)
 			if (*prev) {
 			null_result:
 				*prev = curr;
-				return NULL;		/* Subsequent call */
+				return NULL;
 			}
 			/* FALL-THROUGH */
 
@@ -2067,10 +2067,12 @@ static void *_tmpl_cursor_next(void **prev, void *curr, void *ctx)
 
 		case NUM_COUNT:				/* Iterate over the list, one attribute at a time */
 		case NUM_ALL:
+			VP_VERIFY(curr);
 			return curr;			/* (cursor already advanced by the caller) */
 
 		case NUM_LAST:				/* Get the last attribute in the list */
 			for (c = curr, p = *prev; c; p = c, c = c->next) {
+				VP_VERIFY(c);
 				fp = p;
 				fc = c;
 			}
