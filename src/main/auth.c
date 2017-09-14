@@ -50,11 +50,7 @@ char *auth_name(char *buf, size_t buflen, REQUEST *request, bool do_cli)
 	}
 
 	if (request->packet->dst_port == 0) {
-		if (fr_pair_find_by_num(request->packet->vps, 0, FR_FREERADIUS_PROXIED_TO, TAG_ANY)) {
-			tls = " via TLS tunnel";
-		} else {
-			tls = " via proxy to virtual server";
-		}
+		tls = " via proxy to virtual server";
 	}
 
 	snprintf(buf, buflen, "from client %.128s port %u%s%.128s%s",
