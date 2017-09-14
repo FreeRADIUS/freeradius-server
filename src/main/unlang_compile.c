@@ -2556,6 +2556,66 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 }
 
 
+static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
+				    unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
+{
+	ssize_t slen;
+	char const *name2;
+	unlang_group_t *g;
+	unlang_t *c;
+	FR_TOKEN type;
+
+	name2 = cf_section_name2(cs);
+	if (!name2) {
+		cf_log_err(cs, "'call' must be given with a server.PACKET argument");
+		return NULL;
+	}
+
+	type = cf_section_name2_quote(cs);
+	if (type != T_BARE_WORD) {
+		cf_log_err(cs, "The arguments to 'call' cannot by a quoted string or a dynamic value");
+		return NULL;
+	}
+
+	g = group_allocate(parent, cs, group_type, mod_type);
+	if (!g) return NULL;
+
+	slen = tmpl_afrom_str(g, &g->vpt, name2, strlen(name2), type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
+	if (slen < 0) {
+		char *spaces, *text;
+
+		fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
+
+		cf_log_err(cs, "Syntax error");
+		cf_log_err(cs, "%s", name2);
+		cf_log_err(cs, "%s^ %s", spaces, text);
+
+		talloc_free(g);
+		talloc_free(spaces);
+		talloc_free(text);
+
+		return NULL;
+	}
+
+	/*
+	 *      Convert TMPL_TYPE_UNPARSED (it might have been
+	 *      an attribute) to TMPL_TYPE_DATA, with
+	 *      FR_TYPE_STRING data.
+	 */
+	tmpl_cast_in_place_str(g->vpt);
+
+	/*
+	 *	@todo - look up server && packet type
+	 */
+
+	c = unlang_group_to_generic(g);
+	c->name = unlang_ops[c->type].name;
+	c->debug_name = c->name;
+
+	return compile_children(g, parent, unlang_ctx, group_type, parentgroup_type);
+}
+
+
 /** Load a named module from "instantiate" or "policy".
  *
  * If it's "foo.method", look for "foo", and return "method" as the method
@@ -2718,6 +2778,7 @@ static modcall_compile_t compile_table[] = {
 	{ "switch",		compile_switch, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_SWITCH, REQUIRE_CHILDREN },
 	{ "parallel",		compile_parallel, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_PARALLEL, REQUIRE_CHILDREN },
 	{ "subrequest",		compile_subrequest, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_SUBREQUEST, REQUIRE_CHILDREN },
+	{ "call",		compile_call, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_CALL, ALLOW_EMPTY_GROUP },
 
 	{ NULL, NULL, 0, UNLANG_TYPE_NULL }
 };

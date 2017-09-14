@@ -69,6 +69,7 @@ typedef enum {
 						//!< values from a #map_proc_t call).
 	UNLANG_TYPE_SUBREQUEST,			//!< create a child subrequest
 	UNLANG_TYPE_DETACH,			//!< detach a child
+	UNLANG_TYPE_CALL,			//!< call another virtual server
 #endif
 	UNLANG_TYPE_POLICY,			//!< Policy section.
 	UNLANG_TYPE_XLAT_INLINE,		//!< xlat statement, inline in "unlang"

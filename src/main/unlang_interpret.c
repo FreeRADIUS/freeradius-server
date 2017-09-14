@@ -707,6 +707,25 @@ static unlang_action_t unlang_detach(REQUEST *request, unlang_stack_t *stack,
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
+static unlang_action_t unlang_call(REQUEST *request, unlang_stack_t *stack,
+				   UNUSED rlm_rcode_t *presult, UNUSED int *priority)
+{
+	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
+	unlang_t		*instruction = frame->instruction;
+	unlang_group_t		*g;
+
+	g = unlang_generic_to_group(instruction);
+	rad_assert(g->children != NULL);
+
+	rad_assert(request->async->process == unlang_process_continue);
+
+	RDEBUG("FAKING CALL TO %s", g->vpt->name);
+
+	unlang_push(stack, g->children, frame->result, UNLANG_NEXT_CONTINUE, UNLANG_SUB_FRAME);
+	return UNLANG_ACTION_PUSHED_CHILD;
+}
+
+
 static unlang_action_t unlang_subrequest(REQUEST *request, unlang_stack_t *stack,
 					 rlm_rcode_t *presult, int *priority)
 {
@@ -1795,6 +1814,11 @@ unlang_op_t unlang_ops[] = {
 		.name = "detach",
 		.func = unlang_detach,
 		.debug_braces = false
+	},
+	[UNLANG_TYPE_CALL] = {
+		.name = "call",
+		.func = unlang_call,
+		.debug_braces = true
 	},
 #endif
 	[UNLANG_TYPE_XLAT_INLINE] = {
