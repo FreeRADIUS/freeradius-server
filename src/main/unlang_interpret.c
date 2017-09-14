@@ -744,7 +744,9 @@ static unlang_action_t unlang_call(REQUEST *request, unlang_stack_t *stack,
 	/*
 	 *	@todo - handle other return codes later.
 	 */
-	rad_assert(final == FR_IO_REPLY);
+	if (final != FR_IO_REPLY) {
+		RDEBUG("ignoring unknown return code... no yield for you!");
+	}
 
 	request->log.unlang_indent = indent;
 	request->async->process = unlang_process_continue;
