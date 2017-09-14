@@ -2564,6 +2564,9 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	unlang_group_t *g;
 	unlang_t *c;
 	FR_TOKEN type;
+	char *server;
+	char *packet;
+	CONF_SECTION *server_cs, *root;
 
 	name2 = cf_section_name2(cs);
 	if (!name2) {
@@ -2605,8 +2608,41 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	tmpl_cast_in_place_str(g->vpt);
 
 	/*
-	 *	@todo - look up server && packet type
+	 *	Look up server and packet type.
+	 *
+	 *	memcpy for const issues... we know what we're doing.
 	 */
+	memcpy(&server, &g->vpt->tmpl_value.datum.strvalue, sizeof(server));
+	packet = strchr(server, '.');
+	if (!packet) {
+		cf_log_err(cs, "Invalid syntax: expected server.PACKET");
+		talloc_free(g);
+		return NULL;
+	}
+
+	*packet = '\0';		/* hack */
+	root = cf_root(cs);
+	server_cs = cf_section_find(root, "server", server);
+	if (!server_cs) {
+		cf_log_err(cs, "Unknown virtual server '%s'", server);
+		talloc_free(g);
+		return NULL;
+	}
+
+	*packet = '.';
+	packet++;
+
+	/*
+	 *	Verify it exists, but don't bother caching it.  We can
+	 *	figure it out at run-time.
+	 */
+	g->process = cf_data_find(server_cs, fr_io_process_t, packet);
+	if (!g->process) {
+		cf_log_err(cs, "Virtual server %s cannot process '%s' packets",
+			   cf_section_name2(server_cs), packet);
+		talloc_free(g);
+		return NULL;
+	}
 
 	c = unlang_group_to_generic(g);
 	c->name = unlang_ops[c->type].name;
