@@ -407,8 +407,8 @@ export LDFLAGS="-Wl,--build-id"
         --with-threads \
         --with-thread-pool \
         --with-docdir=%{docdir} \
-	--with-rlm-ldap-include-dir=/usr/local/openldap/include \
-	--with-rlm-ldap-lib-dir=/usr/local/openldap/lib64 \
+	--with-libfreeradius-ldap-include-dir=/usr/local/openldap/include \
+	--with-libfreeradius-ldap-lib-dir=/usr/local/openldap/lib64 \
         --with-rlm-sql_postgresql-include-dir=/usr/include/pgsql \
         --with-rlm-sql-postgresql-lib-dir=%{_libdir} \
         --with-rlm-sql_mysql-include-dir=/usr/include/mysql \
@@ -644,14 +644,16 @@ fi
 %{_libdir}/freeradius/proto_arp.so
 %{_libdir}/freeradius/proto_bfd.so
 %{_libdir}/freeradius/proto_detail.so
-%{_libdir}/freeradius/proto_dhcp.so
+%{_libdir}/freeradius/proto_dhcpv4.so
 %{_libdir}/freeradius/proto_ldap_sync.so
 %{_libdir}/freeradius/proto_radius_acct.so
 %{_libdir}/freeradius/proto_radius_auth.so
 %{_libdir}/freeradius/proto_radius_coa.so
 %{_libdir}/freeradius/proto_radius_status.so
-%{_libdir}/freeradius/proto_vmps.so
 %{_libdir}/freeradius/proto_tacacs.so
+%{_libdir}/freeradius/proto_vmps.so
+%{_libdir}/freeradius/proto_vmps_all.so
+%{_libdir}/freeradius/proto_vmps_udp.so
 %{_libdir}/freeradius/rlm_always.so
 %{_libdir}/freeradius/rlm_attr_filter.so
 %{_libdir}/freeradius/rlm_cache.so
@@ -663,7 +665,7 @@ fi
 %{_libdir}/freeradius/rlm_date.so
 %{_libdir}/freeradius/rlm_detail.so
 %{_libdir}/freeradius/rlm_delay.so
-%{_libdir}/freeradius/rlm_dhcp.so
+%{_libdir}/freeradius/rlm_dhcpv4.so
 %{_libdir}/freeradius/rlm_dict.so
 %{_libdir}/freeradius/rlm_digest.so
 %{_libdir}/freeradius/rlm_eap.so
@@ -687,7 +689,8 @@ fi
 %{_libdir}/freeradius/rlm_pam.so
 %{_libdir}/freeradius/rlm_pap.so
 %{_libdir}/freeradius/rlm_passwd.so
-%{_libdir}/freeradius/rlm_radius_client.so
+%{_libdir}/freeradius/rlm_radius.so
+%{_libdir}/freeradius/rlm_radius_udp.so
 %{_libdir}/freeradius/rlm_radutmp.so
 %{_libdir}/freeradius/rlm_soh.so
 %{_libdir}/freeradius/rlm_sometimes.so
