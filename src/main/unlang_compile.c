@@ -2661,10 +2661,11 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	}
 
 	g->process = *process_p;
+	g->server_cs = server_cs;
 
 	c = unlang_group_to_generic(g);
 	c->name = unlang_ops[c->type].name;
-	c->debug_name = c->name;
+	c->debug_name = talloc_asprintf(c, "%s %s", c->name, server);
 
 	return compile_children(g, parent, unlang_ctx, group_type, parentgroup_type);
 }

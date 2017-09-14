@@ -140,6 +140,7 @@ typedef struct {
 		map_proc_inst_t		*proc_inst;	//!< Instantiation data for #UNLANG_TYPE_MAP.
 		void const		*process;	//!< UNLANG_TYPE_CALL
 	};
+	CONF_SECTION		*server_cs;		//!< UNLANG_TYPE_CALL
 } unlang_group_t;
 
 /** A call to a module method

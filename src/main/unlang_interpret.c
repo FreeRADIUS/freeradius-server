@@ -713,14 +713,50 @@ static unlang_action_t unlang_call(REQUEST *request, unlang_stack_t *stack,
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
 	unlang_group_t		*g;
+	int			indent;
+	fr_io_final_t		final;
+	unlang_stack_t		*current;
+	CONF_SECTION		*server_cs;
 
 	g = unlang_generic_to_group(instruction);
 	rad_assert(g->children != NULL);
 
 	rad_assert(request->async->process == unlang_process_continue);
+	rad_assert(stack == request->stack); /* probably want to just remove the 'stack' parameter */
 
-	RDEBUG("FAKING CALL TO %s", g->vpt->name);
+	indent = request->log.unlang_indent;
+	request->log.unlang_indent = 0; /* the process function expects this */
 
+	current = request->stack;
+	request->stack = talloc_zero(request, unlang_stack_t);
+
+	server_cs = request->server_cs;
+	request->server_cs = g->server_cs;
+
+	request->async->process = g->process;
+
+	RDEBUG("server %s {", cf_section_name2(g->server_cs));
+
+	final = request->async->process(request, FR_IO_ACTION_RUN);
+
+	RDEBUG("} # server %s", cf_section_name2(g->server_cs));
+
+	/*
+	 *	@todo - handle other return codes later.
+	 */
+	rad_assert(final == FR_IO_REPLY);
+
+	request->log.unlang_indent = indent;
+	request->async->process = unlang_process_continue;
+	talloc_free(request->stack);
+	request->stack = current;
+	request->server_cs = server_cs;
+
+	RDEBUG("Continuing with contents of %s { ...", instruction->debug_name);
+
+	/*
+	 *	And then call the children to process the answer.
+	 */
 	unlang_push(stack, g->children, frame->result, UNLANG_NEXT_CONTINUE, UNLANG_SUB_FRAME);
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
