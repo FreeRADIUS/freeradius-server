@@ -379,6 +379,23 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		inst->process_by_code[code] = app_process->process;	/* Store the process function */
 		inst->code_allowed[code] = true;
 
+		/*
+		 *	Add handlers for the virtual server calls.
+		 *	This is so that when one virtual server wants
+		 *	to call another, it just looks up the data
+		 *	here by packet name, and doesn't need to troll
+		 *	through all of the listeners.
+		 */
+		if (!cf_data_find(inst->server_cs, fr_io_process_t, fr_packet_codes[code])) {
+			fr_io_process_t process, *process_p;
+
+			process = inst->process_by_code[code];
+			process_p = talloc(inst->server_cs, fr_io_process_t);
+			*process_p = process;
+
+			(void) cf_data_add(inst->server_cs, process_p, fr_packet_codes[code], NULL);
+		}
+
 		i++;
 	}
 
