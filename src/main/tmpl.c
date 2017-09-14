@@ -2090,7 +2090,7 @@ static void *_tmpl_cursor_next(void **prev, void *curr, void *ctx)
 			/* Not enough entries */
 			if (num >= 0) goto null_result;
 			*prev = fp;
-			 return fc;
+			return fc;
 		}
 
 		break;
