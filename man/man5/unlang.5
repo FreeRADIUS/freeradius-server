@@ -10,7 +10,7 @@
 .RE
 .sp
 ..
-.TH unlang 5 "29 August 2017" "" "FreeRADIUS Processing un-language"
+.TH unlang 5 "14 September 2017" "" "FreeRADIUS Processing un-language"
 .SH NAME
 unlang \- FreeRADIUS Processing un\-language
 .SH DESCRIPTION
@@ -178,7 +178,7 @@ parent.request", or "update parent.reply".
 
 The child requests are required because each subsection is run
 simultaneously.  If each subsection updated the original request, it
-would be impossible to separate the state of each subsection.
+would be impossible to separate the state of each subsection
 
 The return code of the parallel section is the same as if each
 subsection was run sequentially.
@@ -273,6 +273,41 @@ statements.
 		...  # statement is executed
 .br
 	}
+.DE
+.IP subrequest
+.br
+The "subrequest" keyword creates an empty subrequest (i.e. child
+request).  Attributes in the child can be copied from the parent via
+an "update" block.
+
+.DS
+	subrequest {
+.br
+		update request {
+.br
+			User-Name = parent.request:User-Name
+.br
+			...
+.br
+		}
+.br
+		...
+.br
+	}
+.DE
+The purpose of a "subrequest" section is to create a child request
+which can be edited and upated independently of the parent.
+
+The return value of the subrequest is taken from the return value of
+the subsection being run.
+.DE
+.IP detach
+.br
+The "detach" keyword causes a subrequest to be detached from its
+parent request.  The subrequest runs asynchronously to completion.
+The subrequest immediately returns "noop" to the parent request.
+
+The "detach" keyword can only be used inside of a "subrequest" block.
 .DE
 .IP switch
 .br
