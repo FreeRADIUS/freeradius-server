@@ -131,16 +131,27 @@ typedef struct {
 	CONF_SECTION		*cs;
 	int			num_children;
 
-	vp_tmpl_t		*vpt;		//!< #UNLANG_TYPE_SWITCH, #UNLANG_TYPE_MAP.
-
-	vp_map_t		*map;		//!< #UNLANG_TYPE_UPDATE, #UNLANG_TYPE_MAP.
+	/*
+	 *	Hackity-hack.  We should probably just have a common
+	 *	group header, and then have type-specific structures.
+	 */
 	union {
-		fr_cond_t		*cond;		//!< #UNLANG_TYPE_IF, #UNLANG_TYPE_ELSIF.
+		struct {
+			vp_tmpl_t		*vpt;		//!< #UNLANG_TYPE_SWITCH, #UNLANG_TYPE_MAP, #UNLANG_TYPE_CALL
 
-		map_proc_inst_t		*proc_inst;	//!< Instantiation data for #UNLANG_TYPE_MAP.
-		void const		*process;	//!< UNLANG_TYPE_CALL
+			union {
+				struct {
+					vp_map_t		*map;		//!< #UNLANG_TYPE_UPDATE, #UNLANG_TYPE_MAP.
+					map_proc_inst_t		*proc_inst;	//!< Instantiation data for #UNLANG_TYPE_MAP.
+				};
+				struct {
+					void const		*process;	//!< #UNLANG_TYPE_CALL
+					CONF_SECTION		*server_cs;	//!< #UNLANG_TYPE_CALL
+				};
+			};
+		};
+		fr_cond_t		*cond;		//!< #UNLANG_TYPE_IF, #UNLANG_TYPE_ELSIF.
 	};
-	CONF_SECTION		*server_cs;		//!< UNLANG_TYPE_CALL
 } unlang_group_t;
 
 /** A call to a module method
