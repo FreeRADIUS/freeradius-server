@@ -79,7 +79,7 @@ RUN yum localinstall -y $HOME/rpmbuild/RPMS/*/hiredis-*.rpm
 #
 WORKDIR /usr/local/src/repositories
 ARG source=https://github.com/FreeRADIUS/freeradius-server.git
-RUN git clone --depth 1 --no-single-branch ${source}
+RUN git clone --depth 1 ${source}
 
 WORKDIR freeradius-server
 
