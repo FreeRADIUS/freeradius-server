@@ -680,9 +680,20 @@ static rlm_rcode_t unlang_subrequest_resume(UNUSED REQUEST *request, unlang_stac
 	return RLM_MODULE_YIELD;
 }
 
+
+static void unlang_max_request_time(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
+{
+	REQUEST *request = talloc_get_type_abort(uctx, REQUEST);
+
+	RDEBUG("Reached Request-Lifetime.  Forcibly stopping request");
+	talloc_free(request);
+}
+
+
 static unlang_action_t unlang_detach(REQUEST *request, unlang_stack_t *stack,
 				     rlm_rcode_t *presult, int *priority)
 {
+	VALUE_PAIR		*vp;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
 
@@ -694,6 +705,37 @@ static unlang_action_t unlang_detach(REQUEST *request, unlang_stack_t *stack,
 		*presult = RLM_MODULE_FAIL;
 		*priority = 0;
 		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	/*
+	 *	Set Request Lifetime
+	 */
+	vp = fr_pair_find_by_num(request->control, 0, FR_REQUEST_LIFETIME, TAG_ANY);
+	if (!vp || (vp->vp_uint32 > 0)) {
+		struct timeval when;
+		const fr_event_timer_t **ev_p;
+
+		gettimeofday(&when, NULL);
+
+		if (!vp) {
+			when.tv_sec += 30; /* default to 30s if not set */
+
+		} else if (vp->vp_uint32 > 3600) {
+			RWARN("Request-Timeout can be no more than 3600");
+			when.tv_sec += 3600;
+
+		} else if (vp->vp_uint32 < 5) {
+			RWARN("Request-Timeout can be no less than 5");
+			when.tv_sec += 5;
+
+		} else {
+			when.tv_sec += vp->vp_uint32;
+		}
+
+		ev_p = talloc_size(request, sizeof(*ev_p));
+
+		(void) fr_event_timer_insert(request, request->el, ev_p,
+					     &when, unlang_max_request_time, request);
 	}
 
 	/*
