@@ -910,7 +910,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 		fr_pair_value_strcpy(sql_group, entry->name);
 
 		if (inst->config->authorize_group_check_query) {
-			vp_cursor_t	cursor;
+			fr_cursor_t	cursor;
 			VALUE_PAIR	*vp;
 
 			/*
@@ -950,9 +950,9 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 
 			RDEBUG2("Group \"%s\": Merging assignment check items", entry->name);
 			RINDENT();
-			for (vp = fr_pair_cursor_init(&cursor, &check_tmp);
+			for (vp = fr_cursor_init(&cursor, &check_tmp);
 			     vp;
-			     vp = fr_pair_cursor_next(&cursor)) {
+			     vp = fr_cursor_next(&cursor)) {
 			 	if (!fr_assignment_op[vp->op]) continue;
 
 				rcode = RLM_MODULE_UPDATED;
@@ -1297,8 +1297,8 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 	 *	Query the check table to find any conditions associated with this user/realm/whatever...
 	 */
 	if (inst->config->authorize_check_query) {
-		vp_cursor_t cursor;
-		VALUE_PAIR *vp;
+		fr_cursor_t	cursor;
+		VALUE_PAIR	*vp;
 
 		if (xlat_aeval(request, &expanded, request, inst->config->authorize_check_query,
 				 inst->sql_escape_func, handle) < 0) {
@@ -1330,9 +1330,9 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 
 		RDEBUG2("Conditional check items matched, merging assignment check items");
 		RINDENT();
-		for (vp = fr_pair_cursor_init(&cursor, &check_tmp);
+		for (vp = fr_cursor_init(&cursor, &check_tmp);
 		     vp;
-		     vp = fr_pair_cursor_next(&cursor)) {
+		     vp = fr_cursor_next(&cursor)) {
 			if (!fr_assignment_op[vp->op]) continue;
 
 			rdebug_pair(2, request, vp, NULL);

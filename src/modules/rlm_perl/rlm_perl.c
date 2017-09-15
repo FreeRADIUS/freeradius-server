@@ -664,13 +664,13 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 
 	hv_undef(rad_hv);
 
-	vp_cursor_t cursor;
+	fr_cursor_t cursor;
 
 	RINDENT();
 	fr_pair_list_sort(vps, fr_pair_cmp_by_da_tag);
-	for (vp = fr_pair_cursor_init(&cursor, vps);
+	for (vp = fr_cursor_init(&cursor, vps);
 	     vp;
-	     vp = fr_pair_cursor_next(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		VALUE_PAIR *next;
 
 		char const *name;
@@ -695,7 +695,7 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 		 *	We've sorted by type, then tag, so attributes of the
 		 *	same type/tag should follow on from each other.
 		 */
-		if ((next = fr_pair_cursor_next_peek(&cursor)) && ATTRIBUTE_EQ(vp, next)) {
+		if ((next = fr_cursor_next_peek(&cursor)) && ATTRIBUTE_EQ(vp, next)) {
 			int i = 0;
 			AV *av;
 
@@ -703,8 +703,8 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 			perl_vp_to_svpvn_element(request, av, vp, &i, hash_name, list_name);
 			do {
 				perl_vp_to_svpvn_element(request, av, next, &i, hash_name, list_name);
-				fr_pair_cursor_next(&cursor);
-			} while ((next = fr_pair_cursor_next_peek(&cursor)) && ATTRIBUTE_EQ(vp, next));
+				fr_cursor_next(&cursor);
+			} while ((next = fr_cursor_next_peek(&cursor)) && ATTRIBUTE_EQ(vp, next));
 			(void)hv_store(rad_hv, name, strlen(name), newRV_noinc((SV *)av), 0);
 
 			continue;
