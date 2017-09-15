@@ -53,15 +53,13 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires: autoconf
 BuildRequires: gdbm-devel
-BuildRequires: libtool
-BuildRequires: libtool-ltdl-devel
 BuildRequires: openssl, openssl-devel
 BuildRequires: pam-devel
 BuildRequires: zlib-devel
 BuildRequires: net-snmp-devel
 BuildRequires: net-snmp-utils
-BuildRequires: libwbclient-devel
-BuildRequires: samba-devel
+%{?el7:BuildRequires: samba-winbind-devel}
+%{?el6:BuildRequires: samba4-devel}
 BuildRequires: readline-devel
 BuildRequires: libpcap-devel
 BuildRequires: libtalloc-devel
@@ -76,8 +74,10 @@ Requires: libpcap
 Requires: readline
 Requires: libtalloc
 Requires: net-snmp
-Requires: libwbclient
-Requires: samba-libs
+%{?el7:Requires: samba-libs}
+%{?el7:Requires: samba-winbind-clients}
+%{?el6:Requires: samba4-libs}
+%{?el6:Requires: samba4-winbind-clients}
 Requires: zlib
 Requires: pam
 
@@ -326,14 +326,13 @@ export LDFLAGS="-Wl,--build-id"
 
 %configure \
         --libdir=%{_libdir}/freeradius \
-        --with-system-libtool \
         --disable-ltdl-install \
         --with-gnu-ld \
         --with-threads \
         --with-thread-pool \
         --with-docdir=%{docdir} \
-	--with-rlm-ldap-include-dir=/usr/local/openldap/include \
-	--with-rlm-ldap-lib-dir=/usr/local/openldap/lib64 \
+        --with-rlm-ldap-include-dir=/usr/local/openldap/include \
+        --with-rlm-ldap-lib-dir=/usr/local/openldap/lib64 \
         --with-rlm-sql_postgresql-include-dir=/usr/include/pgsql \
         --with-rlm-sql-postgresql-lib-dir=%{_libdir} \
         --with-rlm-sql_mysql-include-dir=/usr/include/mysql \
@@ -348,6 +347,7 @@ export LDFLAGS="-Wl,--build-id"
         --with-jsonc-lib-dir=%{_libdir} \
         --with-jsonc-include-dir=/usr/include/json \
         --with-winbind-include-dir=/usr/include/samba-4.0 \
+        --with-winbind-lib-dir=/usr/lib64/samba \
         %{?_with_rlm_yubikey} \
         %{?_without_rlm_yubikey} \
         %{?_with_rlm_sql_oracle} \
@@ -370,19 +370,12 @@ export LDFLAGS="-Wl,--build-id"
         %{?_without_rlm_cache_memcached} \
 #        --with-modules="rlm_wimax" \
 
-%if "%{_lib}" == "lib64"
-perl -pi -e 's:sys_lib_search_path_spec=.*:sys_lib_search_path_spec="/lib64 /usr/lib64 /usr/local/lib64":' libtool
-%endif
-
-make
-
+make %_smp_mflags
 
 %install
 rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/var/run/radiusd
 mkdir -p $RPM_BUILD_ROOT/var/lib/radiusd
-# fix for bad libtool bug - can not rebuild dependent libs and bins
-#FIXME export LD_LIBRARY_PATH=$RPM_BUILD_ROOT/%{_libdir}
 make install R=$RPM_BUILD_ROOT
 # modify default configuration
 RADDB=$RPM_BUILD_ROOT%{_sysconfdir}/raddb
