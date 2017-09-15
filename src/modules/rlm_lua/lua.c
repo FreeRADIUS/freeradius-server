@@ -204,11 +204,11 @@ static int rlm_lua_unmarshall(VALUE_PAIR **out, REQUEST *request, lua_State *L, 
 			break;
 
 		case FR_TYPE_INT8:
-			vp->vp_int32 = (int8_t) lua_tointeger(L, -1);
+			vp->vp_int8 = (int8_t) lua_tointeger(L, -1);
 			break;
 
 		case FR_TYPE_INT16:
-			vp->vp_int32 = (int16_t) lua_tointeger(L, -1);
+			vp->vp_int16 = (int16_t) lua_tointeger(L, -1);
 			break;
 
 		case FR_TYPE_INT32:
@@ -329,10 +329,10 @@ static int rlm_lua_unmarshall(VALUE_PAIR **out, REQUEST *request, lua_State *L, 
 static int _lua_pair_get(lua_State *L)
 {
 	vp_cursor_t cursor;
-	fr_dict_attr_t const *da;
-	VALUE_PAIR *vp = NULL;
-	int index;
-	REQUEST *request = rlm_lua_request;
+	fr_dict_attr_t const	*da;
+	VALUE_PAIR		*vp = NULL;
+	int			index;
+	REQUEST			*request = rlm_lua_request;
 
 	rad_assert(lua_islightuserdata(L, lua_upvalueindex(1)));
 
