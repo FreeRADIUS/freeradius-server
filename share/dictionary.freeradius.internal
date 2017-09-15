@@ -379,7 +379,7 @@ ATTRIBUTE	SIM-IMSI				1201	string
 ATTRIBUTE	SIM-Algo-Version			1202	integer
 
 #
-#	Range:	1210-1210
+#	Range:	1210-1219
 #		EAP-AKA (and other EAP type) weirdness.
 #
 #	For EAP-AKA, some attribute definitions for database interface
@@ -390,7 +390,7 @@ $INCLUDE dictionary.eap.aka
 END-TLV		EAP-AKA-Root
 
 #
-#	Range:	1200-1210
+#	Range:	1220-1229
 #		EAP-SIM (and other EAP type) weirdness.
 #
 #	For EAP-SIM, some attribute definitions for database interface
@@ -401,10 +401,17 @@ BEGIN-TLV	EAP-SIM-Root
 $INCLUDE dictionary.eap.sim
 END-TLV		EAP-SIM-Root
 
+#
+#	Range:	1230-1239
+#		Sigtran
+#
 ATTRIBUTE	Sigtran-MAP-Version			1230	integer
 ATTRIBUTE	Sigtran-Mobile-Network-Code		1231	integer
 ATTRIBUTE	Sigtran-Mobile-Country-Code		1232	integer
 
+#
+#	Range:	1240-1249
+#		Tacacs+
 #
 #	For TACACS+, some attribute definitions for database interface
 #
@@ -701,7 +708,7 @@ ATTRIBUTE	Radclient-Test-Name			2200	string
 ATTRIBUTE	Request-Authenticator			2201	octets
 
 #
-#       Range:  2220-2260
+#       Range:  2220-2259
 #               Attributes used as trigger arguments
 #
 ATTRIBUTE	Connection-Pool-Server			2220	string
