@@ -1176,6 +1176,18 @@ static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUES
 				return -691;
 			}
 
+			if (strcasestr(buffer, "No logon servers") ||
+			    strcasestr(buffer, "0xC000005E")) {
+				REDEBUG2("%s", buffer);
+				return -2;
+			}
+
+			if (strcasestr(buffer, "could not obtain winbind separator") ||
+			    strcasestr(buffer, "Reading winbind reply failed")) {
+				REDEBUG2("%s", buffer);
+				return -2;
+			}
+
 			RDEBUG2("External script failed");
 			p = strchr(buffer, '\n');
 			if (p) *p = '\0';
@@ -1446,12 +1458,18 @@ static rlm_rcode_t mschap_error(rlm_mschap_t *inst, REQUEST *request, unsigned c
 		retry = 0;
 		message = "Account locked out";
 		rcode = RLM_MODULE_USERLOCK;
+	} else if (mschap_result == -2) {
+		RDEBUG("Authentication failed");
+		error = 691;
+		retry = inst->allow_retry;
+		message = "Authentication failed";
+		rcode = RLM_MODULE_FAIL;
 
 	} else if (mschap_result < 0) {
 		REDEBUG("MS-CHAP2-Response is incorrect");
 		error = 691;
 		retry = inst->allow_retry;
-		message = "Authentication failed";
+		message = "Authentication rejected";
 		rcode = RLM_MODULE_REJECT;
 	}
 

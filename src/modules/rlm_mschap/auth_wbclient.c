@@ -78,6 +78,7 @@ static char *wbclient_normalise_username(TALLOC_CTX *tctx, struct wbcContext *ct
  *	Returns:
  *	 0    success
  *	 -1   auth failure
+ *	 -2   failed connecting to AD
  *	 -648 password expired
  */
 int do_auth_wbclient(rlm_mschap_t *inst, REQUEST *request,
@@ -212,6 +213,7 @@ normalised_username_retry_failure:
 		memcpy(nthashhash, info->user_session_key, NT_DIGEST_LENGTH);
 		break;
 	case WBC_ERR_WINBIND_NOT_AVAILABLE:
+		rcode = -2;
 		RERROR("Unable to contact winbind!");
 		RDEBUG2("Check that winbind is running and that FreeRADIUS has");
 		RDEBUG2("permission to connect to the winbind privileged socket.");
@@ -249,6 +251,7 @@ normalised_username_retry_failure:
 		 *   WBC_ERR_NO_MEMORY
 		 * neither of which are particularly likely.
 		 */
+		rcode = -2;
 		if (error && error->display_string) {
 			REDEBUG2("libwbclient error: wbcErr %d (%s)", err, error->display_string);
 		} else {
