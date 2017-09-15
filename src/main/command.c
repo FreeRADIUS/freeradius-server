@@ -1754,7 +1754,7 @@ static int null_socket_dencode(UNUSED rad_listen_t *listener, UNUSED REQUEST *re
 
 static int null_socket_send(UNUSED rad_listen_t *listener, REQUEST *request)
 {
-	vp_cursor_t cursor;
+	fr_cursor_t cursor;
 	char *output_file;
 	FILE *fp;
 
@@ -1790,9 +1790,9 @@ static int null_socket_send(UNUSED rad_listen_t *listener, REQUEST *request)
 		}
 
 		RINDENT();
-		for (vp = fr_pair_cursor_init(&cursor, &request->reply->vps);
+		for (vp = fr_cursor_init(&cursor, &request->reply->vps);
 		     vp;
-		     vp = fr_pair_cursor_next(&cursor)) {
+		     vp = fr_cursor_next(&cursor)) {
 			fr_pair_snprint(buffer, sizeof(buffer), vp);
 			fprintf(fp, "%s\n", buffer);
 			RDEBUG("%s", buffer);
@@ -1903,17 +1903,17 @@ static int command_inject_from(rad_listen_t *listener, int argc, char *argv[])
 
 static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 {
-	static int inject_id = 0;
-	int ret;
-	bool filedone;
-	fr_command_socket_t *sock = listener->data;
-	rad_listen_t *fake;
-	RADIUS_PACKET *packet;
-	vp_cursor_t cursor;
-	VALUE_PAIR *vp;
-	FILE *fp;
-	RAD_REQUEST_FUNP fun = NULL;
-	char buffer[2048];
+	static int		inject_id = 0;
+	int			ret;
+	bool			filedone;
+	fr_command_socket_t	*sock = listener->data;
+	rad_listen_t		*fake;
+	RADIUS_PACKET		*packet;
+	vp_cursor_t		cursor;
+	VALUE_PAIR		*vp;
+	FILE			*fp;
+	RAD_REQUEST_FUNP	fun = NULL;
+	char			buffer[2048];
 
 	if (argc < 2) {
 		cprintf_error(listener, "You must specify <input-file> <output-file>\n");
@@ -1993,9 +1993,9 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 				buffer, sizeof(buffer)),
 		      packet->code, packet->id);
 
-		for (vp = fr_pair_cursor_init(&cursor, &packet->vps);
+		for (vp = fr_cursor_init(&cursor, &packet->vps);
 		     vp;
-		     vp = fr_pair_cursor_next(&cursor)) {
+		     vp = fr_cursor_next(&cursor)) {
 			fr_pair_snprint(buffer, sizeof(buffer), vp);
 			DEBUG("\t%s", buffer);
 		}

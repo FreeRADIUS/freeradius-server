@@ -770,15 +770,15 @@ int cond_eval(REQUEST *request, int modreturn, int depth, fr_cond_t const *c)
  */
 void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool do_xlat)
 {
-	int i, j, count, from_count, to_count, tailto;
-	vp_cursor_t cursor;
-	VALUE_PAIR *vp, *next, **last;
-	VALUE_PAIR **from_list, **to_list;
-	VALUE_PAIR *append, **append_tail;
-	VALUE_PAIR *to_copy;
-	bool *edited = NULL;
-	REQUEST *fixup = NULL;
-	TALLOC_CTX *ctx;
+	int		i, j, count, from_count, to_count, tailto;
+	fr_cursor_t	cursor;
+	VALUE_PAIR	*vp, *next, **last;
+	VALUE_PAIR	**from_list, **to_list;
+	VALUE_PAIR	*append, **append_tail;
+	VALUE_PAIR 	*to_copy;
+	bool		*edited = NULL;
+	REQUEST		*fixup = NULL;
+	TALLOC_CTX	*ctx;
 
 	/*
 	 *	Set up arrays for editing, to remove some of the
@@ -802,10 +802,10 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 	 *	the matching attributes are deleted.
 	 */
 	count = 0;
-	for (vp = fr_pair_cursor_init(&cursor, &from); vp; vp = fr_pair_cursor_next(&cursor)) count++;
+	for (vp = fr_cursor_init(&cursor, &from); vp; vp = fr_cursor_next(&cursor)) count++;
 	from_list = talloc_array(request, VALUE_PAIR *, count);
 
-	for (vp = fr_pair_cursor_init(&cursor, to); vp; vp = fr_pair_cursor_next(&cursor)) count++;
+	for (vp = fr_cursor_init(&cursor, to); vp; vp = fr_cursor_next(&cursor)) count++;
 	to_list = talloc_array(request, VALUE_PAIR *, count);
 
 	append = NULL;

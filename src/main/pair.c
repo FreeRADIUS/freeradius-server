@@ -480,18 +480,18 @@ void paircompare_unregister_instance(void *instance)
 int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 		VALUE_PAIR **rep_list)
 {
-	vp_cursor_t cursor;
-	VALUE_PAIR *check_item;
-	VALUE_PAIR *auth_item;
-	fr_dict_attr_t const *from;
+	fr_cursor_t		cursor;
+	VALUE_PAIR		*check_item;
+	VALUE_PAIR		*auth_item;
+	fr_dict_attr_t const	*from;
 
-	int result = 0;
-	int compare;
-	bool first_only;
+	int			result = 0;
+	int			compare;
+	bool			first_only;
 
-	for (check_item = fr_pair_cursor_init(&cursor, &check);
+	for (check_item = fr_cursor_init(&cursor, &check);
 	     check_item;
-	     check_item = fr_pair_cursor_next(&cursor)) {
+	     check_item = fr_cursor_next(&cursor)) {
 		/*
 		 *	If the user is setting a configuration value,
 		 *	then don't bother comparing it to any attributes
@@ -759,7 +759,7 @@ void rdebug_pair(fr_log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char cons
  */
 void rdebug_pair_list(fr_log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char const *prefix)
 {
-	vp_cursor_t cursor;
+	fr_cursor_t cursor;
 	char *value;
 
 	if (!vp || !request || !request->log.dst) return;
@@ -767,9 +767,9 @@ void rdebug_pair_list(fr_log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char
 	if (!radlog_debug_enabled(L_DBG, level, request)) return;
 
 	RINDENT();
-	for (vp = fr_pair_cursor_init(&cursor, &vp);
+	for (vp = fr_cursor_init(&cursor, &vp);
 	     vp;
-	     vp = fr_pair_cursor_next(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		VP_VERIFY(vp);
 
 		value = fr_pair_asprint(request, vp, '"');
@@ -788,7 +788,7 @@ void rdebug_pair_list(fr_log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char
  */
 void rdebug_proto_pair_list(fr_log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char const *prefix)
 {
-	vp_cursor_t cursor;
+	fr_cursor_t cursor;
 	char *value;
 
 	if (!vp || !request || !request->log.dst) return;
@@ -796,9 +796,9 @@ void rdebug_proto_pair_list(fr_log_lvl_t level, REQUEST *request, VALUE_PAIR *vp
 	if (!radlog_debug_enabled(L_DBG, level, request)) return;
 
 	RINDENT();
-	for (vp = fr_pair_cursor_init(&cursor, &vp);
+	for (vp = fr_cursor_init(&cursor, &vp);
 	     vp;
-	     vp = fr_pair_cursor_next(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		VP_VERIFY(vp);
 		if (vp->da->flags.internal) continue;
 

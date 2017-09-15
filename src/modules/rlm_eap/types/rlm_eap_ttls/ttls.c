@@ -138,7 +138,7 @@ static int diameter_verify(REQUEST *request, uint8_t const *data, unsigned int d
 /*
  *	Convert diameter attributes to our VALUE_PAIR's
  */
-static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
+static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *parent,
 				    uint8_t const *data, size_t data_len,
 				    void *decoder_ctx)
 {
@@ -158,7 +158,7 @@ static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		if ((end - p) < 8) {
 			fr_strerror_printf("Malformed diameter VPs.  Needed at least 8 bytes, got %zu bytes", end - p);
 		error:
-			fr_pair_cursor_free(cursor);
+			fr_cursor_list_free(cursor);
 			return -1;
 		}
 
@@ -234,7 +234,7 @@ do_value:
 		 *	to the nearest 4-byte boundary.
 		 */
 		p += (value_len + 0x03) & ~0x03;
-		fr_pair_cursor_append(cursor, vp);
+		fr_cursor_append(cursor, vp);
 
 		if (vp->da->flags.is_unknown) continue;
 
@@ -307,12 +307,14 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 	size_t		total;
 	uint64_t	attr64;
 	VALUE_PAIR	*vp;
-	vp_cursor_t	cursor;
+	fr_cursor_t	cursor;
 
 	p = buffer;
 	total = 0;
 
-	for (vp = fr_pair_cursor_init(&cursor, &first); vp; vp = fr_pair_cursor_next(&cursor)) {
+	for (vp = fr_cursor_init(&cursor, &first);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
 		/*
 		 *	Too much data: die.
 		 */
@@ -441,8 +443,8 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 {
 	rlm_rcode_t	rcode = RLM_MODULE_REJECT;
 	VALUE_PAIR	*vp, *tunnel_vps = NULL;
-	vp_cursor_t	cursor;
-	vp_cursor_t	to_tunnel;
+	fr_cursor_t	cursor;
+	fr_cursor_t	to_tunnel;
 
 	ttls_tunnel_t	*t = tls_session->opaque;
 
@@ -474,16 +476,16 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 	{
 		RDEBUG("Got tunneled Access-Accept");
 
-		fr_pair_cursor_init(&to_tunnel, &tunnel_vps);
+		fr_cursor_init(&to_tunnel, &tunnel_vps);
 		rcode = RLM_MODULE_OK;
 
 		/*
 		 *	Copy what we need into the TTLS tunnel and leave
 		 *	the rest to be cleaned up.
 		 */
-		for (vp = fr_pair_cursor_init(&cursor, &reply->vps);
+		for (vp = fr_cursor_init(&cursor, &reply->vps);
 		     vp;
-		     vp = fr_pair_cursor_next(&cursor)) {
+		     vp = fr_cursor_next(&cursor)) {
 		     	switch (vp->da->vendor) {
 			case VENDORPEC_MICROSOFT:
 				if (vp->da->attr == FR_MSCHAP2_SUCCESS) {
@@ -491,7 +493,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 
 					rcode = RLM_MODULE_HANDLED;
 					t->authenticated = true;
-					fr_pair_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
+					fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
 				}
 				break;
 
@@ -499,7 +501,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 				if (vp->da->attr == FR_UKERNA_CHBIND) {
 					rcode = RLM_MODULE_HANDLED;
 					t->authenticated = true;
-					fr_pair_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
+					fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
 				}
 				break;
 
@@ -525,19 +527,19 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 	case FR_CODE_ACCESS_CHALLENGE:
 		RDEBUG("Got tunneled Access-Challenge");
 
-		fr_pair_cursor_init(&to_tunnel, &tunnel_vps);
+		fr_cursor_init(&to_tunnel, &tunnel_vps);
 
 		/*
 		 *	Copy what we need into the TTLS tunnel and leave
 		 *	the rest to be cleaned up.
 		 */
-		for (vp = fr_pair_cursor_init(&cursor, &reply->vps);
+		for (vp = fr_cursor_init(&cursor, &reply->vps);
 		     vp;
-		     vp = fr_pair_cursor_next(&cursor)) {
+		     vp = fr_cursor_next(&cursor)) {
 		     	switch (vp->da->vendor) {
 			case VENDORPEC_UKERNA:
 				if (vp->da->attr == FR_UKERNA_CHBIND) {
-					fr_pair_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
+					fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
 				}
 				break;
 
@@ -545,7 +547,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 				switch (vp->da->attr) {
 				case FR_EAP_MESSAGE:
 				case FR_REPLY_MESSAGE:
-					fr_pair_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
+					fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));
 					break;
 
 				default:
@@ -716,7 +718,7 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	rlm_rcode_t		rcode;
 	REQUEST			*fake = NULL;
 	VALUE_PAIR		*vp = NULL;
-	vp_cursor_t		cursor;
+	fr_cursor_t		cursor;
 	ttls_tunnel_t		*t;
 	uint8_t			const *data;
 	size_t			data_len;
@@ -768,7 +770,7 @@ FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	/*
 	 *	Add the tunneled attributes to the fake request.
 	 */
-	fr_pair_cursor_init(&cursor, &fake->packet->vps);
+	fr_cursor_init(&cursor, &fake->packet->vps);
 	if (eap_ttls_decode_pair(fake->packet, &cursor, fr_dict_root(fr_dict_internal),
 				 data, data_len, tls_session->ssl) < 0) {
 		RPEDEBUG("Decoding TTLS TLVs failed");

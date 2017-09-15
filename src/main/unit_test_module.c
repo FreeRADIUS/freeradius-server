@@ -95,7 +95,7 @@ static REQUEST *request_from_file(FILE *fp, fr_event_list_t *el, RADCLIENT *clie
 {
 	VALUE_PAIR	*vp;
 	REQUEST		*request;
-	vp_cursor_t	cursor;
+	fr_cursor_t	cursor;
 	struct timeval	now;
 
 	static int	number = 0;
@@ -162,9 +162,9 @@ static REQUEST *request_from_file(FILE *fp, fr_event_list_t *el, RADCLIENT *clie
 	/*
 	 *	Fix up Digest-Attributes issues
 	 */
-	for (vp = fr_pair_cursor_init(&cursor, &request->packet->vps);
+	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 	     vp;
-	     vp = fr_pair_cursor_next(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		/*
 		 *	Double quoted strings get marked up as xlat expansions,
 		 *	but we don't support that here.
@@ -297,9 +297,9 @@ static REQUEST *request_from_file(FILE *fp, fr_event_list_t *el, RADCLIENT *clie
 #endif
 
 	if (rad_debug_lvl) {
-		for (vp = fr_pair_cursor_init(&cursor, &request->packet->vps);
+		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 		     vp;
-		     vp = fr_pair_cursor_next(&cursor)) {
+		     vp = fr_cursor_next(&cursor)) {
 			/*
 			 *	Take this opportunity to verify all the VALUE_PAIRs are still valid.
 			 */
@@ -367,7 +367,7 @@ static REQUEST *request_from_file(FILE *fp, fr_event_list_t *el, RADCLIENT *clie
 static void print_packet(FILE *fp, RADIUS_PACKET *packet)
 {
 	VALUE_PAIR *vp;
-	vp_cursor_t cursor;
+	fr_cursor_t cursor;
 
 	if (!packet) {
 		fprintf(fp, "\n");
@@ -376,9 +376,9 @@ static void print_packet(FILE *fp, RADIUS_PACKET *packet)
 
 	fprintf(fp, "%s\n", fr_packet_codes[packet->code]);
 
-	for (vp = fr_pair_cursor_init(&cursor, &packet->vps);
+	for (vp = fr_cursor_init(&cursor, &packet->vps);
 	     vp;
-	     vp = fr_pair_cursor_next(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		/*
 		 *	Take this opportunity to verify all the VALUE_PAIRs are still valid.
 		 */

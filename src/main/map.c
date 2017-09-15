@@ -700,12 +700,12 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, v
  */
 int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, UNUSED void *uctx)
 {
-	int rcode = 0;
-	VALUE_PAIR *vp = NULL, *found = NULL, *n;
-	REQUEST *context = request;
-	vp_cursor_t cursor;
-	ssize_t slen;
-	char *str;
+	int		rcode = 0;
+	VALUE_PAIR	*vp = NULL, *found = NULL, *n;
+	REQUEST		*context = request;
+	fr_cursor_t	cursor;
+	ssize_t		slen;
+	char		*str;
 
 	*out = NULL;
 
@@ -740,9 +740,9 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		 */
 		if (!found) return 0;
 
-		for (vp = fr_pair_cursor_init(&cursor, &found);
+		for (vp = fr_cursor_init(&cursor, &found);
 		     vp;
-		     vp = fr_pair_cursor_next(&cursor)) {
+		     vp = fr_cursor_next(&cursor)) {
 			vp->op = T_OP_ADD;
 		}
 
@@ -836,7 +836,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 
 	case TMPL_TYPE_ATTR:
 	{
-		vp_cursor_t from;
+		fr_cursor_t from;
 
 		rad_assert(((map->lhs->type == TMPL_TYPE_ATTR) && map->lhs->tmpl_da) ||
 			   ((map->lhs->type == TMPL_TYPE_LIST) && !map->lhs->tmpl_da));
@@ -846,7 +846,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		 */
 		if (tmpl_copy_vps(ctx, &found, request, map->rhs) < 0) return 0;
 
-		vp = fr_pair_cursor_init(&from, &found);
+		vp = fr_cursor_init(&from, &found);
 
 		/*
 		 *  Src/Dst attributes don't match, convert src attributes
@@ -854,29 +854,30 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		 */
 		if ((map->lhs->type == TMPL_TYPE_ATTR) &&
 		    (map->rhs->tmpl_da->type != map->lhs->tmpl_da->type)) {
-			vp_cursor_t to;
+			fr_cursor_t to;
 
-			(void) fr_pair_cursor_init(&to, out);
-			for (; vp; vp = fr_pair_cursor_next(&from)) {
+			(void) fr_cursor_init(&to, out);
+			for (; vp; vp = fr_cursor_current(&from)) {
 				n = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
 				if (!n) return -1;
 
 				if (fr_value_box_cast(n, &n->data,
-						   map->lhs->tmpl_da->type, map->lhs->tmpl_da, &vp->data) < 0) {
+						      map->lhs->tmpl_da->type, map->lhs->tmpl_da, &vp->data) < 0) {
 					RPEDEBUG("Attribute conversion failed");
 					fr_pair_list_free(&found);
 					talloc_free(n);
 					return -1;
 				}
-				vp = fr_pair_cursor_remove(&from);
+				vp = fr_cursor_remove(&from);	/* advances cursor */
 				talloc_free(vp);
 
 				rad_assert((n->vp_type != FR_TYPE_STRING) || (n->vp_strvalue != NULL));
 
 				n->op = map->op;
 				n->tag = map->lhs->tmpl_tag;
-				fr_pair_cursor_append(&to, n);
+				fr_cursor_append(&to, n);
 			}
+
 			return 0;
 		}
 
@@ -884,7 +885,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		 *   Otherwise we just need to fixup the attribute types
 		 *   and operators
 		 */
-		for (; vp; vp = fr_pair_cursor_next(&from)) {
+		for (; vp; vp = fr_cursor_next(&from)) {
 			vp->da = map->lhs->tmpl_da;
 			vp->op = map->op;
 			vp->tag = map->lhs->tmpl_tag;

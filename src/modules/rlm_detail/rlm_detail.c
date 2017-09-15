@@ -294,11 +294,11 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 	}
 
 	{
-		vp_cursor_t cursor;
+		fr_cursor_t cursor;
 		/* Write each attribute/value to the log file */
-		for (vp = fr_pair_cursor_init(&cursor, &packet->vps);
+		for (vp = fr_cursor_init(&cursor, &packet->vps);
 		     vp;
-		     vp = fr_pair_cursor_next(&cursor)) {
+		     vp = fr_cursor_next(&cursor)) {
 			FR_TOKEN op;
 
 			if (inst->ht && fr_hash_table_finddata(inst->ht, vp->da)) continue;
