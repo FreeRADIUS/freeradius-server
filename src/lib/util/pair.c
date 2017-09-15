@@ -538,13 +538,10 @@ void fr_pair_list_free(VALUE_PAIR **vps)
 	VALUE_PAIR	*vp;
 	fr_cursor_t	cursor;
 
-	if (!vps || !*vps) {
-		return;
-	}
+	if (!vps || !*vps) return;
 
-	for (vp = fr_cursor_init(&cursor, vps);
-	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	fr_cursor_init(&cursor, vps);
+	while ((vp = fr_cursor_remove(&cursor))) {
 		VP_VERIFY(vp);
 		talloc_free(vp);
 	}
