@@ -691,6 +691,10 @@ eap {
 		#
 		# in the control items for a request.
 		#
+		# Note that the majority of supplicants do not support using a
+		# client certificate with EAP-TTLS, so this option is unlikely
+		# to be usable for most people.
+		#
 	#	require_client_cert = yes
 	}
 
@@ -816,6 +820,10 @@ eap {
 		#	EAP-TLS-Require-Client-Cert = Yes
 		#
 		# in the control items for a request.
+		#
+		# Note that the majority of supplicants do not support using a
+		# client certificate with PEAP, so this option is unlikely to
+		# be usable for most people.
 		#
 	#	require_client_cert = yes
 	}
