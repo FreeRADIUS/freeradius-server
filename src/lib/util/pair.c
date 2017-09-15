@@ -607,6 +607,48 @@ int fr_pair_mark_xlat(VALUE_PAIR *vp, char const *value)
 	return 0;
 }
 
+/** Iterate over pairs with a specified da
+ *
+ * @param[in,out] prev	The VALUE_PAIR before curr. Will be updated to point to the
+ *			pair before the one returned, or the last pair in the list
+ *			if no matching pairs found.
+ * @param[in] curr	The VALUE_PAIR after cursor->current.  Will be checked to
+ *			see if it matches the specified fr_dict_attr_t.
+ * @param[in] ctx	The fr_dict_attr_t to search for.
+ * @return
+ *	- Next matching VALUE_PAIR.
+ *	- NULL if not more matching VALUE_PAIRs could be found.
+ */
+static void *_pair_iter_by_da(void **prev, void *curr, void *ctx)
+{
+	VALUE_PAIR	*c, *p;
+	fr_dict_attr_t	*da = ctx;
+	
+	if (!curr) return NULL;
+	
+	for (p = *prev, c = curr; c; p = c, c = c->next) {
+		VP_VERIFY(c);
+		if (c->da == da) break;
+	}
+	
+	*prev = p;
+	
+	return c;
+}
+
+/** Create a cursor which will only return pairs with the specified fr_dict_attr_t
+ *
+ * @param[in] cursor	Usually an #fr_cursor_t struct in stack memory.
+ * @param[in] head	Pointer to the start of the list.
+ * @param[in] da	We're searching for.
+ * @return
+ *	- The first VALUE_PAIR in the list matching da
+ */
+VALUE_PAIR *fr_pair_cursor_init_by_da(fr_cursor_t *cursor, VALUE_PAIR **head, fr_dict_attr_t const *da)
+{	
+	return fr_cursor_talloc_iter_init(cursor, head, _pair_iter_by_da, da, VALUE_PAIR);
+}
+
 /** Find the pair with the matching DAs
  *
  */

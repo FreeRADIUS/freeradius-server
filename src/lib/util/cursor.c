@@ -64,7 +64,6 @@ static inline void *cursor_next(void **prev, fr_cursor_t *cursor, void *current)
 	}
 
 	if (!cursor->iter) {
-
 		next = *NEXT_PTR(current);				/* Fast path without custom iter */
 		if (prev) *prev = current;
 

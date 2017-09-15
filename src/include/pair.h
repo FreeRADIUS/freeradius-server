@@ -26,6 +26,7 @@
 RCSIDH(pair_h, "$Id$")
 
 #include <freeradius-devel/value.h>
+#include <freeradius-devel/cursor.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -200,6 +201,8 @@ int		fr_pair_to_unknown(VALUE_PAIR *vp);
 int 		fr_pair_mark_xlat(VALUE_PAIR *vp, char const *value);
 
 /* Searching and list modification */
+VALUE_PAIR	*fr_pair_cursor_init_by_da(fr_cursor_t *cursor, VALUE_PAIR **head, fr_dict_attr_t const *da);
+
 VALUE_PAIR	*fr_pair_find_by_da(VALUE_PAIR *head, fr_dict_attr_t const *da, int8_t tag);
 
 VALUE_PAIR	*fr_pair_find_by_num(VALUE_PAIR *head, unsigned int vendor, unsigned int attr, int8_t tag);
