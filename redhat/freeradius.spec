@@ -75,8 +75,8 @@ BuildRequires: libpcap-devel
 BuildRequires: libtalloc-devel
 BuildRequires: net-snmp-devel
 BuildRequires: net-snmp-utils
-BuildRequires: libwbclient-devel
-BuildRequires: samba-devel
+%{?el7:BuildRequires: samba-winbind-devel}
+%{?el6:BuildRequires: samba4-devel}
 %if %{?_unitdir:1}%{!?_unitdir:0}
 BuildRequires: systemd-devel
 %endif
@@ -99,8 +99,10 @@ Requires: readline
 Requires: libtalloc
 Requires: libkqueue
 Requires: net-snmp
-Requires: libwbclient
-Requires: samba-libs
+%{?el7:Requires: samba-libs}
+%{?el7:Requires: samba-winbind-clients}
+%{?el6:Requires: samba4-libs}
+%{?el6:Requires: samba4-winbind-clients}
 Requires: zlib
 Requires: pam
 
@@ -422,6 +424,7 @@ export LDFLAGS="-Wl,--build-id"
         --with-jsonc-lib-dir=%{_libdir} \
         --with-jsonc-include-dir=/usr/include/json \
         --with-winbind-include-dir=/usr/include/samba-4.0 \
+        --with-winbind-lib-dir=/usr/lib64/samba \
 %if %{?_with_freeradius_openssl:1}%{!?_with_freeradius_openssl:0}
         --with-openssl-lib-dir=/opt/openssl/lib \
         --with-openssl-include-dir=/opt/openssl/include \
