@@ -22,6 +22,7 @@ ATTRIBUTE	Juniper-Interactive-Command		8	string
 ATTRIBUTE	Juniper-Configuration-Change		9	string
 ATTRIBUTE	Juniper-User-Permissions		10	string
 ATTRIBUTE	Juniper-Junosspace-Profile		11	String
+ATTRIBUTE	Juniper-Junosspace-Profiles		11	String
 
 ATTRIBUTE	Juniper-CTP-Group			21	integer
 ATTRIBUTE	Juniper-CTPView-APP-Group		22	integer
