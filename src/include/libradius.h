@@ -44,9 +44,9 @@ RCSIDH(libradius_h, "$Id$")
 #  define MAGIC_COMMIT(_x)	((uint32_t) 0x00000000)
 #else
 #  ifdef RADIUSD_VERSION_COMMIT
-#    define RADIUSD_MAGIC_NUMBER ((uint64_t) HEXIFY3(f4, RADIUSD_VERSION, RADIUSD_VERSION_COMMIT))
+#    define RADIUSD_MAGIC_NUMBER ((uint64_t) HEXIFY3(f, RADIUSD_VERSION, RADIUSD_VERSION_COMMIT))
 #  else
-#    define RADIUSD_MAGIC_NUMBER ((uint64_t) HEXIFY3(f4, RADIUSD_VERSION, 00000000))
+#    define RADIUSD_MAGIC_NUMBER ((uint64_t) HEXIFY3(f, RADIUSD_VERSION, 00000))
 #  endif
 #  define MAGIC_PREFIX(_x)	((uint8_t) (_x >> 56))
 #  define MAGIC_VERSION(_x)	((uint32_t) ((_x >> 32) & 0x00ffffff))
