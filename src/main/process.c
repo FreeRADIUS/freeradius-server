@@ -366,6 +366,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply) CC_HINT(n
 static void remove_from_proxy_hash(REQUEST *request) CC_HINT(nonnull);
 static void remove_from_proxy_hash_nl(REQUEST *request, bool yank) CC_HINT(nonnull);
 static int insert_into_proxy_hash(REQUEST *request) CC_HINT(nonnull);
+static int setup_post_proxy_fail(REQUEST *request);
 #endif
 
 static REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *packet,
@@ -1539,8 +1540,7 @@ static void request_running(REQUEST *request, int action)
 		/*
 		 *	We may need to send a proxied request.
 		 */
-		if ((action == FR_ACTION_RUN) &&
-		    request_will_proxy(request)) {
+		if (request_will_proxy(request)) {
 #ifdef DEBUG_STATE_MACHINE
 			if (rad_debug_lvl) printf("(%u) ********\tWill Proxy\t********\n", request->number);
 #endif
@@ -1550,7 +1550,11 @@ static void request_running(REQUEST *request, int action)
 			 *	up the post proxy fail
 			 *	handler.
 			 */
-			if (request_proxy(request) < 0) goto req_finished;
+			if (request_proxy(request) < 0) {
+				(void) setup_post_proxy_fail(request);
+				process_proxy_reply(request, NULL);
+				goto req_finished;
+			}
 		} else
 #endif
 		{
@@ -2287,7 +2291,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	/*
 	 *	There may be a proxy reply, but it may be too late.
 	 */
-	if (!request->home_server->server && !request->proxy_listener) return 0;
+	if ((request->home_server && !request->home_server->server) && !request->proxy_listener) return 0;
 
 	/*
 	 *	Delete any reply we had accumulated until now.
@@ -2386,7 +2390,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	}
 
 #ifdef WITH_COA
-	if (request->packet->code == request->proxy->code) {
+	if (request->proxy && request->packet->code == request->proxy->code) {
 	  /*
 	   *	Don't run the next bit if we originated a CoA
 	   *	packet, after receiving an Access-Request or
@@ -2619,23 +2623,26 @@ static int setup_post_proxy_fail(REQUEST *request)
 {
 	DICT_VALUE const *dval = NULL;
 	VALUE_PAIR *vp;
+	RADIUS_PACKET *packet;
 
 	VERIFY_REQUEST(request);
 
-	if (request->proxy->code == PW_CODE_ACCESS_REQUEST) {
+	packet = request->proxy ? request->proxy : request->packet;
+
+	if (packet->code == PW_CODE_ACCESS_REQUEST) {
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0,
 				      "Fail-Authentication");
 #ifdef WITH_ACCOUNTING
-	} else if (request->proxy->code == PW_CODE_ACCOUNTING_REQUEST) {
+	} else if (packet->code == PW_CODE_ACCOUNTING_REQUEST) {
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0,
 				      "Fail-Accounting");
 #endif
 
 #ifdef WITH_COA
-	} else if (request->proxy->code == PW_CODE_COA_REQUEST) {
+	} else if (packet->code == PW_CODE_COA_REQUEST) {
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, "Fail-CoA");
 
-	} else if (request->proxy->code == PW_CODE_DISCONNECT_REQUEST) {
+	} else if (packet->code == PW_CODE_DISCONNECT_REQUEST) {
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, "Fail-Disconnect");
 #endif
 	} else {
@@ -2951,7 +2958,7 @@ static int request_will_proxy(REQUEST *request)
 
 	if (!home) {
 		REDEBUG2("Failed to find live home server: Cancelling proxy");
-		return 0;
+		return 1;
 	}
 
 do_home:
@@ -3177,6 +3184,11 @@ static int request_proxy(REQUEST *request)
 		request_done(request->coa, FR_ACTION_DONE);
 	}
 #endif
+
+	if (!request->home_server) {
+		RWDEBUG("No home server selected");
+		return -1;
+	}
 
 	/*
 	 *	The request may need sending to a virtual server.
