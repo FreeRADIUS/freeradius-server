@@ -763,8 +763,26 @@ static unlang_action_t unlang_call(REQUEST *request, unlang_stack_t *stack,
 	g = unlang_generic_to_group(instruction);
 	rad_assert(g->children != NULL);
 
+	/*
+	 *	@todo - allow for other process functions.  Mostly
+	 *	because we need to save and resume this function, and
+	 *	we haven't bothered to do that so far.
+	 *
+	 *	If we DO allow other functions, we need to replace
+	 *	request->async->listener, as we want to pretend this
+	 *	is a virtual request which didn't come in from the
+	 *	network.  i.e. the other virtual server shouldn't be
+	 *	able to access request->async->listener, and muck with
+	 *	it's statistics, see it's configuration, etc.
+	 */
 	rad_assert(request->async->process == unlang_process_continue);
-	rad_assert(stack == request->stack); /* probably want to just remove the 'stack' parameter */
+
+	/*
+	 *	@todo - We probably want to just remove the 'stack'
+	 *	parameter from the interpreter function arguments.
+	 *	It's not needed there.
+	 */
+	rad_assert(stack == request->stack);
 
 	indent = request->log.unlang_indent;
 	request->log.unlang_indent = 0; /* the process function expects this */
@@ -779,17 +797,32 @@ static unlang_action_t unlang_call(REQUEST *request, unlang_stack_t *stack,
 
 	RDEBUG("server %s {", cf_section_name2(g->server_cs));
 
+	/*
+	 *	@todo - we can't change protocols (e.g. RADIUS ->
+	 *	DHCP) unless we're in a subrequest.
+	 *
+	 *	@todo - we can't change packet types
+	 *	(e.g. Access-Request -> Accounting-Request) unless
+	 *	we're in a subrequest.
+	 */
 	final = request->async->process(request, FR_IO_ACTION_RUN);
 
 	RDEBUG("} # server %s", cf_section_name2(g->server_cs));
 
 	/*
-	 *	@todo - handle other return codes later.
+	 *	All other return codes are semantically equivalent for
+	 *	our purposes.  "DONE" means "stopped without reply",
+	 *	and REPLY means "finished successfully".  Neither of
+	 *	those map well into module rcodes.  Instead, we rely
+	 *	on the caller to look at request->reply->code.
 	 */
-	if (final != FR_IO_REPLY) {
-		RDEBUG("ignoring unknown return code... no yield for you!");
+	if (final == FR_IO_YIELD) {
+		RDEBUG("Noo yield for you!");
 	}
 
+	/*
+	 *	@todo - save these in a resume state somewhere...
+	 */
 	request->log.unlang_indent = indent;
 	request->async->process = unlang_process_continue;
 	talloc_free(request->stack);
