@@ -298,7 +298,7 @@ typedef struct {
 	unlang_stack_frame_t	frame[UNLANG_STACK_MAX];	//!< The stack...
 } unlang_stack_t;
 
-typedef unlang_action_t (*unlang_op_func_t)(REQUEST *request, unlang_stack_t *stack,
+typedef unlang_action_t (*unlang_op_func_t)(REQUEST *request,
 					    rlm_rcode_t *presult, int *priority);
 
 /** An unlang operation

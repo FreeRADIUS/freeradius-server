@@ -48,7 +48,7 @@ static FR_NAME_NUMBER unlang_action_table[] = {
 #define UNLANG_DETACHABLE (true)
 #define UNLANG_NORMAL_CHILD (false)
 
-typedef rlm_rcode_t (*unlang_op_resume_func_t)(REQUEST *request, unlang_stack_t *stack,
+typedef rlm_rcode_t (*unlang_op_resume_func_t)(REQUEST *request,
 					       const void *instance, void *thread, void *resume_ctx);
 
 /*
@@ -134,9 +134,10 @@ static void unlang_dump_frame(REQUEST *request, unlang_stack_frame_t *frame)
 }
 
 
-static void unlang_dump_stack(REQUEST *request, unlang_stack_t *stack)
+static void unlang_dump_stack(REQUEST *request)
 {
 	int i;
+	unlang_stack_t *stack = request->stack;
 
 	RDEBUG("----- Begin stack debug [depth %i] -----", stack->depth);
 	for (i = stack->depth; i >= 0; i--) {
@@ -148,7 +149,7 @@ static void unlang_dump_stack(REQUEST *request, unlang_stack_t *stack)
 
 	RDEBUG("----- End stack debug [depth %i] -------", stack->depth);
 }
-#define DUMP_STACK if (DEBUG_ENABLED5) unlang_dump_stack(request, stack)
+#define DUMP_STACK if (DEBUG_ENABLED5) unlang_dump_stack(request)
 #else
 #define DUMP_STACK
 #endif
@@ -265,9 +266,10 @@ static uint64_t unlang_active_callers(unlang_t *instruction)
 	return active_callers;
 }
 
-static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *stack,
+static unlang_action_t unlang_load_balance(REQUEST *request,
 					   rlm_rcode_t *presult, UNUSED int *priority)
 {
+	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
 	unlang_group_t		*g;
@@ -477,9 +479,10 @@ static unlang_action_t unlang_load_balance(REQUEST *request, unlang_stack_t *sta
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-static unlang_action_t unlang_group(REQUEST *request, unlang_stack_t *stack,
+static unlang_action_t unlang_group(REQUEST *request,
 				    UNUSED rlm_rcode_t *result, UNUSED int *priority)
 {
+	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
 	unlang_group_t		*g;
@@ -500,7 +503,7 @@ static unlang_action_t unlang_group(REQUEST *request, unlang_stack_t *stack,
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-static rlm_rcode_t unlang_run(REQUEST *request, unlang_stack_t *stack);
+static rlm_rcode_t unlang_run(REQUEST *request);
 
 
 /** Allocates and initializes an unlang_resume_t
@@ -637,11 +640,11 @@ static void unlang_subrequest_signal(UNUSED REQUEST *request, UNUSED void *insta
 /** Resume a subrequest
  *
  */
-static rlm_rcode_t unlang_subrequest_resume(UNUSED REQUEST *request, unlang_stack_t *stack,
+static rlm_rcode_t unlang_subrequest_resume(UNUSED REQUEST *request,
 					    UNUSED const void *instance, UNUSED void *thread, void *resume_ctx)
 {
 	REQUEST			*child = talloc_get_type_abort(resume_ctx, REQUEST);
-	unlang_stack_t		*child_stack = child->stack;
+	unlang_stack_t		*stack = request->stack;
 	rlm_rcode_t		rcode;
 	unlang_stack_frame_t	*frame;
 #ifndef NDEBUG
@@ -651,7 +654,7 @@ static rlm_rcode_t unlang_subrequest_resume(UNUSED REQUEST *request, unlang_stac
 	/*
 	 *	Continue running the child.
 	 */
-	rcode = unlang_run(child, child_stack);
+	rcode = unlang_run(child);
 	if (rcode != RLM_MODULE_YIELD) {
 		frame = &stack->frame[stack->depth];
 		rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
@@ -690,10 +693,11 @@ static void unlang_max_request_time(UNUSED fr_event_list_t *el, UNUSED struct ti
 }
 
 
-static unlang_action_t unlang_detach(REQUEST *request, unlang_stack_t *stack,
+static unlang_action_t unlang_detach(REQUEST *request,
 				     rlm_rcode_t *presult, int *priority)
 {
 	VALUE_PAIR		*vp;
+	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
 
@@ -749,9 +753,10 @@ static unlang_action_t unlang_detach(REQUEST *request, unlang_stack_t *stack,
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-static unlang_action_t unlang_call(REQUEST *request, unlang_stack_t *stack,
+static unlang_action_t unlang_call(REQUEST *request,
 				   UNUSED rlm_rcode_t *presult, UNUSED int *priority)
 {
+	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
 	unlang_group_t		*g;
@@ -839,9 +844,10 @@ static unlang_action_t unlang_call(REQUEST *request, unlang_stack_t *stack,
 }
 
 
-static unlang_action_t unlang_subrequest(REQUEST *request, unlang_stack_t *stack,
+static unlang_action_t unlang_subrequest(REQUEST *request,
 					 rlm_rcode_t *presult, int *priority)
 {
+	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
 	unlang_group_t		*g;
@@ -874,7 +880,7 @@ static unlang_action_t unlang_subrequest(REQUEST *request, unlang_stack_t *stack
 	 *	virtual server callback, and not directly in the
 	 *	interpreter.
 	 */
-	rcode = unlang_run(child, child->stack);
+	rcode = unlang_run(child);
 	if (rcode != RLM_MODULE_YIELD) {
 		if (UNLANG_DETACHABLE) request_detach(child);
 		talloc_free(child);
@@ -1013,7 +1019,7 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 			 */
 		case CHILD_RUNNABLE:
 			RDEBUG("parallel - running entry %d/%d", i + 1, state->num_children);
-			result = unlang_run(state->children[i].child, state->children[i].child->stack);
+			result = unlang_run(state->children[i].child);
 			if (result == RLM_MODULE_YIELD) {
 				state->children[i].state = CHILD_YIELDED;
 				done = CHILD_YIELDED;
@@ -1128,11 +1134,12 @@ static void unlang_parallel_signal(UNUSED REQUEST *request, UNUSED void *instanc
 }
 
 
-static rlm_rcode_t unlang_parallel_resume(REQUEST *request, unlang_stack_t *stack,
+static rlm_rcode_t unlang_parallel_resume(REQUEST *request,
 					  UNUSED const void *instance, UNUSED void *thread, void *resume_ctx)
 {
 	rlm_rcode_t		rcode;
 	unlang_parallel_t	*state = talloc_get_type_abort(resume_ctx, unlang_parallel_t);
+	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 
 #ifndef NDEBUG
@@ -1182,11 +1189,12 @@ static int parallel_state_free(unlang_parallel_t *state)
 	return 0;
 }
 
-static unlang_action_t unlang_parallel(REQUEST *request, unlang_stack_t *stack,
+static unlang_action_t unlang_parallel(REQUEST *request,
 				       rlm_rcode_t *presult, int *priority)
 {
 	int			i;
 	rlm_rcode_t		rcode;
+	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
 	unlang_group_t		*g;
@@ -1257,9 +1265,10 @@ static unlang_action_t unlang_parallel(REQUEST *request, unlang_stack_t *stack,
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-static unlang_action_t unlang_case(REQUEST *request, unlang_stack_t *stack,
+static unlang_action_t unlang_case(REQUEST *request,
 				   rlm_rcode_t *presult, int *priority)
 {
+	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
 	unlang_group_t	*g;
@@ -1272,14 +1281,15 @@ static unlang_action_t unlang_case(REQUEST *request, unlang_stack_t *stack,
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	return unlang_group(request, stack, presult, priority);
+	return unlang_group(request, presult, priority);
 }
 
-static unlang_action_t unlang_return(REQUEST *request, unlang_stack_t *stack,
+static unlang_action_t unlang_return(REQUEST *request,
 				     rlm_rcode_t *presult, int *priority)
 {
 	int			i;
 	VALUE_PAIR		**copy_p;
+	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
 
@@ -1303,10 +1313,11 @@ static unlang_action_t unlang_return(REQUEST *request, unlang_stack_t *stack,
 	return UNLANG_ACTION_BREAK;
 }
 
-static unlang_action_t unlang_foreach(REQUEST *request, unlang_stack_t *stack,
+static unlang_action_t unlang_foreach(REQUEST *request,
 				      rlm_rcode_t *presult, int *priority)
 {
 	VALUE_PAIR		*vp;
+	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
 	unlang_group_t	*g;
@@ -1428,9 +1439,10 @@ static unlang_action_t unlang_foreach(REQUEST *request, unlang_stack_t *stack,
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-static unlang_action_t unlang_xlat_inline(REQUEST *request, unlang_stack_t *stack,
+static unlang_action_t unlang_xlat_inline(REQUEST *request,
 					  UNUSED rlm_rcode_t *presult, UNUSED int *priority)
 {
+	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
 	unlang_xlat_inline_t	*mx = unlang_generic_to_xlat_inline(instruction);
@@ -1447,9 +1459,10 @@ static unlang_action_t unlang_xlat_inline(REQUEST *request, unlang_stack_t *stac
 	return UNLANG_ACTION_CONTINUE;
 }
 
-static unlang_action_t unlang_switch(REQUEST *request, unlang_stack_t *stack,
+static unlang_action_t unlang_switch(REQUEST *request,
 				       UNUSED rlm_rcode_t *presult, UNUSED int *priority)
 {
+	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
 	unlang_t		*this, *found, *null_case;
@@ -1590,10 +1603,11 @@ do_null_case:
 }
 
 
-static unlang_action_t unlang_update(REQUEST *request, unlang_stack_t *stack,
-				       rlm_rcode_t *presult, int *priority)
+static unlang_action_t unlang_update(REQUEST *request,
+				     rlm_rcode_t *presult, int *priority)
 {
 	int rcode;
+	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
 	unlang_group_t		*g = unlang_generic_to_group(instruction);
@@ -1613,9 +1627,10 @@ static unlang_action_t unlang_update(REQUEST *request, unlang_stack_t *stack,
 }
 
 
-static unlang_action_t unlang_map(REQUEST *request, unlang_stack_t *stack,
+static unlang_action_t unlang_map(REQUEST *request,
 				  rlm_rcode_t *presult, UNUSED int *priority)
 {
+	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
 	unlang_group_t		*g = unlang_generic_to_group(instruction);
@@ -1626,10 +1641,11 @@ static unlang_action_t unlang_map(REQUEST *request, unlang_stack_t *stack,
 }
 
 
-static unlang_action_t unlang_module_call(REQUEST *request, unlang_stack_t *stack,
+static unlang_action_t unlang_module_call(REQUEST *request,
 				     	  rlm_rcode_t *presult, int *priority)
 {
 	unlang_module_call_t		*sp;
+	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
 	unlang_stack_state_modcall_t	*modcall_state;
@@ -1707,10 +1723,11 @@ done:
 }
 
 
-static unlang_action_t unlang_if(REQUEST *request, unlang_stack_t *stack,
+static unlang_action_t unlang_if(REQUEST *request,
 				   rlm_rcode_t *presult, int *priority)
 {
 	int			condition;
+	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
 	unlang_group_t		*g;
@@ -1758,7 +1775,7 @@ static unlang_action_t unlang_if(REQUEST *request, unlang_stack_t *stack,
 	/*
 	 *	We took the "if".  Go recurse into its' children.
 	 */
-	return unlang_group(request, stack, presult, priority);
+	return unlang_group(request, presult, priority);
 }
 
 static unlang_op_resume_func_t unlang_ops_resume[] = {
@@ -1766,9 +1783,10 @@ static unlang_op_resume_func_t unlang_ops_resume[] = {
 	[UNLANG_TYPE_PARALLEL]		= unlang_parallel_resume,
 };
 
-static unlang_action_t unlang_resume(REQUEST *request, unlang_stack_t *stack,
+static unlang_action_t unlang_resume(REQUEST *request,
 				     rlm_rcode_t *presult, int *priority)
 {
+	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
 	unlang_resume_t			*mr = unlang_generic_to_resume(instruction);
@@ -1784,7 +1802,7 @@ static unlang_action_t unlang_resume(REQUEST *request, unlang_stack_t *stack,
 	 *	Do the internal resume function.
 	 */
 	if (unlang_ops_resume[mr->parent_type]) {
-		*presult = request->rcode = unlang_ops_resume[mr->parent_type](request, stack, instance, mr->thread, mr->resume_ctx);
+		*presult = request->rcode = unlang_ops_resume[mr->parent_type](request, instance, mr->thread, mr->resume_ctx);
 
 	} else {
 		rad_assert(mr->parent_type == UNLANG_TYPE_MODULE_CALL);
@@ -1951,13 +1969,14 @@ unlang_op_t unlang_ops[] = {
 /*
  *	Interpret the various types of blocks.
  */
-static rlm_rcode_t unlang_run(REQUEST *request, unlang_stack_t *stack)
+static rlm_rcode_t unlang_run(REQUEST *request)
 {
 	unlang_t		*instruction;
 	int			priority;
 	rlm_rcode_t		result;
 	unlang_stack_frame_t	*frame;
 	unlang_action_t		action = UNLANG_ACTION_BREAK;
+	unlang_stack_t		*stack = request->stack;
 
 #ifndef NDEBUG
 	if (DEBUG_ENABLED5) DEBUG("###### unlang_run is starting");
@@ -2032,7 +2051,7 @@ resume_subsection:
 		RDEBUG4("** [%i] %s >> %s", stack->depth, __FUNCTION__,
 			unlang_ops[instruction->type].name);
 
-		action = unlang_ops[instruction->type].func(request, stack, &result, &priority);
+		action = unlang_ops[instruction->type].func(request, &result, &priority);
 
 		RDEBUG4("** [%i] %s << %s (%d)", stack->depth, __FUNCTION__,
 			fr_int2str(unlang_action_table, action, "<INVALID>"), priority);
@@ -2334,7 +2353,7 @@ void unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
  */
 rlm_rcode_t unlang_interpret_continue(REQUEST *request)
 {
-	return unlang_run(request, request->stack);
+	return unlang_run(request);
 }
 
 /** Call a module, iteratively, with a local stack, rather than recursively
@@ -2343,15 +2362,13 @@ rlm_rcode_t unlang_interpret_continue(REQUEST *request)
  */
 rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
 {
-	unlang_stack_t	*stack = request->stack;
-
 	/*
 	 *	This pushes a new frame onto the stack, which is the
 	 *	start of a new unlang section...
 	 */
 	unlang_push_section(request, cs, action);
 
-	return unlang_run(request, stack);
+	return unlang_run(request);
 }
 
 /** Execute an unlang section synchronously
