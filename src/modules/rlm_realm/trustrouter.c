@@ -408,7 +408,7 @@ static home_server_t *srvr_blk_to_home_server(TALLOC_CTX *ctx,
 #else
 	key_expiration.tv_sec = now + 600;
 #endif
-	hs->expiration = realm_lifetime > 0 ? (now + realm_lifetime) : (now + 600);
+	hs->expiration = realm_lifetime > 0 ? (now + realm_lifetime) : key_expiration.tv_sec;
 	hs->tls = construct_tls(inst, hs, blk);
 	if (!hs->tls) goto error;
 
