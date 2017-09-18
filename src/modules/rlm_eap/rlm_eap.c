@@ -84,8 +84,14 @@ static int eap_handler_cmp(void const *a, void const *b)
 	 *	EAP work.
 	 */
 	if (fr_ipaddr_cmp(&one->src_ipaddr, &two->src_ipaddr) != 0) {
-		WARN("EAP packets are arriving from two different upstream "
-		       "servers.  Has there been a proxy fail-over?");
+		char src1[64], src2[64];
+
+		fr_ntop(src1, sizeof(src1), &one->src_ipaddr);
+		fr_ntop(src2, sizeof(src2), &two->src_ipaddr);
+		
+		RATE_LIMIT(WARN("EAP packets for one session are arriving from two different upstream"
+				"servers (%s and %s).  Has there been a proxy fail-over?",
+				src1, src2));
 	}
 
 	return 0;
