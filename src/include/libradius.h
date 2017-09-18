@@ -714,7 +714,7 @@ int		fr_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, 
 int		fr_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, bool resolve);
 int		fr_pton_port(fr_ipaddr_t *out, uint16_t *port_out, char const *value, ssize_t inlen, int af,
 			     bool resolve);
-int		fr_ntop(char *out, size_t outlen, fr_ipaddr_t *addr);
+int		fr_ntop(char *out, size_t outlen, fr_ipaddr_t const *addr);
 char		*ifid_ntoa(char *buffer, size_t size, uint8_t const *ifid);
 uint8_t		*ifid_aton(char const *ifid_str, uint8_t *ifid);
 int		rad_lockfd(int fd, int lock_len);

@@ -653,7 +653,7 @@ do_port:
 	return 0;
 }
 
-int fr_ntop(char *out, size_t outlen, fr_ipaddr_t *addr)
+int fr_ntop(char *out, size_t outlen, fr_ipaddr_t const *addr)
 {
 	char buffer[INET6_ADDRSTRLEN];
 
