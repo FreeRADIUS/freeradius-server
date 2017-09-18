@@ -916,6 +916,8 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 			RDEBUG("perl_embed:: module = %s , func = %s exit status= %s\n",
 			       inst->module, function_name, SvPV(ERRSV,n_a));
 			(void)POPs;
+			count = 0;
+			exitstatus = RLM_MODULE_FAIL;
 		}
 
 		if (count == 1) {
