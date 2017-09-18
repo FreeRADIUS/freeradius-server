@@ -7,6 +7,16 @@ FreeRADIUS 3.0.16 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	  doc/schemas/ldap/samba/
 	* Add "tls_min_version" and "tls_max_version" to EAP module
 	  for Debian OpenSSL issues.
+	* Better documentation for client certificates in PEAP and TTLS:
+	  it usually doesn't work.  Fixes #2068.
+	* Distinguish login failure from AD unavailable.  Fixes #2069.
+	* Update RH spec files.  Fixes #2070.
+	* Run Post-Proxy-Type if all home servers are dead.
+	  Fixes #2072.
+	* Print offending IP addresses when EAP sessions come from
+	  two upstream home servers, and rate-limit the messages.
+	* Minor packaging updates.
+	* Better documentation for rlm_rest.
 
 	Bug fixes
 	* Bind the lifetime of program name and python path to the module
@@ -33,6 +43,8 @@ FreeRADIUS 3.0.16 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	* Fix memory allocation in rlm_rest.  Fixes #2051.
 	* Update trustrouter for new API. Fixes #2059.
 	* Fix SQLite issues on FreeBSD.  Fixes #2060
+	* Don't do debug logging of bad passwords.  Fixes #2064.
+	* More graceful handling of "die" in rlm_perl.  Fixes #2073.
 
 FreeRADIUS 3.0.15 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	Feature improvements
