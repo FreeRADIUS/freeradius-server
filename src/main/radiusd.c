@@ -542,15 +542,21 @@ int main(int argc, char *argv[])
 	if (modules_bootstrap(main_config.config) < 0) exit(EXIT_FAILURE);
 
 	/*
+	 *	And then load the virtual servers.
+	 *
+	 *	This function also opens the listeners in each virtual
+	 *	server.  These listeners MUST be started before the
+	 *	modules.  If there is another server already running,
+	 *	we will discover it here and exit BEFORE opening
+	 *	connections to back-end DBs.
+	 */
+	if (virtual_servers_instantiate(main_config.config) < 0) exit(EXIT_FAILURE);
+
+	/*
 	 *	Call the module's initialisation methods.  These create
 	 *	connection pools and open connections to external resources.
 	 */
 	if (modules_instantiate(main_config.config) < 0) exit(EXIT_FAILURE);
-
-	/*
-	 *	And then load the virtual servers.
-	 */
-	if (virtual_servers_instantiate(main_config.config) < 0) exit(EXIT_FAILURE);
 
 	/*
 	 *	Initialise the SNMP stats structures
