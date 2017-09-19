@@ -1,4 +1,4 @@
-FROM ubuntu:14.04
+FROM ubuntu:16.04
 RUN apt-get update && apt-get install -y devscripts equivs git quilt
 
 #
@@ -16,7 +16,7 @@ RUN update-alternatives --install /usr/bin/lldb lldb /usr/bin/lldb-3.9 60 && upd
 #
 #  Install eapol_test dependencies
 #
-RUN apt-get install -y libnl-3-dev libnl-genl-3-dev
+RUN apt-get -y install libnl-3-dev libnl-genl-3-dev
 
 #
 #  Setup a src dir in /usr/local
