@@ -607,7 +607,7 @@ int main(int argc, char *argv[])
 		if (!main_config.spawn_workers) {
 			networks = 0;
 			workers = 0;
-			el = process_global_event_list(EVENT_CORRAL_MAIN);
+			el = fr_global_event_list();
 		}
 
 		sc = fr_schedule_create(NULL, el, &default_log, rad_debug_lvl,

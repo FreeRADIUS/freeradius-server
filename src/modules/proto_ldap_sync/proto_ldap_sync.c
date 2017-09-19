@@ -932,7 +932,7 @@ static int proto_ldap_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *listen)
 	/*
 	 *	Fixme - Should be the network thread's event loop?
 	 */
-	inst->el = process_global_event_list(0);
+	inst->el = fr_global_event_list();
 
 	/*
 	 *	Destroys any existing syncs and connections

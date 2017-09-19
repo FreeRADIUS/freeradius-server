@@ -573,13 +573,8 @@ void main_config_hup(void);
 void hup_logfile(void);
 
 
-/* event.c */
-typedef enum event_corral_t {
-	EVENT_CORRAL_MAIN = 0,	//!< Always main thread event list
-	EVENT_CORRAL_AUX	//!< Maybe main thread or one shared by modules
-} event_corral_t;
-
-fr_event_list_t *process_global_event_list(event_corral_t hint);
+/* process.c */
+fr_event_list_t *fr_global_event_list(void);
 int radius_event_init(TALLOC_CTX *ctx);
 int radius_event_start(bool spawn_flag);
 void radius_event_free(void);

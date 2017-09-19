@@ -409,7 +409,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	@todo - move this to the thread-instantiate function
 	 */
-	inst->el = process_global_event_list(EVENT_CORRAL_AUX);
+	inst->el = fr_global_event_list();
 	inst->log_pipe_stream[0] = NULL;
 	inst->log_pipe_stream[1] = NULL;
 	inst->log_fd = -1;

@@ -57,7 +57,7 @@ static bool just_started = true;
 time_t fr_start_time = (time_t)-1;
 static fr_event_list_t *event_list = NULL;
 
-fr_event_list_t *process_global_event_list(UNUSED event_corral_t hint) {
+fr_event_list_t *fr_global_event_list(void) {
 	/* Currently we do not run a second event loop for modules. */
 	return event_list;
 }
