@@ -868,6 +868,11 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 				rad_assert(0);
 				/* FALL-THROUGH */
 
+			/*
+			 *	One is added to get the accounting port
+			 *	for home->dual.
+			 */
+			case HOME_TYPE_AUTH_ACCT:
 			case HOME_TYPE_AUTH:
 				home->port = PW_AUTH_UDP_PORT;
 				break;
