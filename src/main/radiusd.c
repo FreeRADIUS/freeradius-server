@@ -624,8 +624,6 @@ int main(int argc, char *argv[])
 		if (virtual_servers_open(sc) < 0) exit(EXIT_FAILURE);
 	}
 
-	event_loop_started = true;
-
 #ifndef NDEBUG
 	{
 		size_t size;
