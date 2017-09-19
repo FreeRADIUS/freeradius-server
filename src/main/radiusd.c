@@ -559,6 +559,14 @@ int main(int argc, char *argv[])
 	if (modules_instantiate(main_config.config) < 0) exit(EXIT_FAILURE);
 
 	/*
+	 *  Everything seems to have loaded OK, exit gracefully.
+	 */
+	if (check_config) {
+		DEBUG("Configuration appears to be OK");
+		goto cleanup;
+	}
+
+	/*
 	 *	Initialise the SNMP stats structures
 	 */
 	if (fr_snmp_init() < 0) {
@@ -567,8 +575,8 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 *  Initialize any event loops just enough so module instantiations can
-	 *  add fd/event to them, but do not start them yet.
+	 *  Initialize the global event loop which handles things like
+	 *  systemd, and single-server mode.
 	 *
 	 *  This has to be done post-fork in case we're using kqueue, where the
 	 *  queue isn't inherited by the child process.
@@ -584,14 +592,18 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 *	If this isn't just a config check, AND we have new
-	 *	async listeners, then we open the sockets.
+	 *	Start the network / worker threads.
 	 */
-	if (!check_config) {
+	if (1) {
 		int networks = main_config.num_networks;
 		int workers = main_config.num_workers;
 		fr_event_list_t *el = NULL;
 
+		/*
+		 *	Single server mode: use the global event list.
+		 *	Otherwise, each network thread will create
+		 *	it's own event list.
+		 */
 		if (!main_config.spawn_workers) {
 			networks = 0;
 			workers = 0;
@@ -606,6 +618,9 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 
+		/*
+		 *	Tell the virtual servers to open their sockets.
+		 */
 		if (virtual_servers_open(sc) < 0) exit(EXIT_FAILURE);
 	}
 
@@ -625,9 +640,8 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-
 	/*
-	 *  Start the event loop.
+	 *  Start the main event loop.
 	 */
 	if (radius_event_start(main_config.spawn_workers) < 0) {
 		ERROR("Failed starting event loop");
@@ -648,15 +662,6 @@ int main(int argc, char *argv[])
 #ifdef SIGQUIT
 	if (fr_set_signal(SIGQUIT, sig_fatal) < 0) goto set_signal_error;
 #endif
-
-	/*
-	 *  Everything seems to have loaded OK, exit gracefully.
-	 */
-	if (check_config) {
-		DEBUG("Configuration appears to be OK");
-
-		goto cleanup;
-	}
 
 	/*
 	 *  Now that we've set everything up, we can install the signal
@@ -802,10 +807,6 @@ cleanup:
 	 *	parsed configuration items.
 	 */
 	main_config_free();
-
-#ifdef WIN32
-	WSACleanup();
-#endif
 
 #if defined(HAVE_OPENSSL_CRYPTO_H) && OPENSSL_VERSION_NUMBER < 0x10100000L
 	tls_global_cleanup();		/* Cleanup any memory alloced by OpenSSL and placed into globals */
