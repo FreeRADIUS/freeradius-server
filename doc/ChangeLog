@@ -45,6 +45,8 @@ FreeRADIUS 3.0.16 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	* Fix SQLite issues on FreeBSD.  Fixes #2060
 	* Don't do debug logging of bad passwords.  Fixes #2064.
 	* More graceful handling of "die" in rlm_perl.  Fixes #2073.
+	* Fix occasional crash when using
+	  cisco_accounting_username_bug = yes
 
 FreeRADIUS 3.0.15 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	Feature improvements
