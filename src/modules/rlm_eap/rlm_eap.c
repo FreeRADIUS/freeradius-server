@@ -476,7 +476,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 
 			memcpy(new, old, vp->vp_length);
 			new[vp->length] = '\0';
-			new[vp->length + 1] = '\0';
 			vp->vp_strvalue = new;
 
 			rad_const_free(old);
