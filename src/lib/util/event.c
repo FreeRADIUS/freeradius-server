@@ -331,6 +331,7 @@ int fr_event_fd_delete(fr_event_list_t *el, int fd)
  * @param[in] fd	to read from.
  * @param[in] read_fn	function to call when fd is readable.
  * @param[in] write_fn	function to call when fd is writable.
+ * @param[in] vnode_fn	function to call when the underlying file is extended.
  * @param[in] error	function to call when an error occurs on the fd.
  * @param[in] uctx	to pass to handler.
  * @return
