@@ -1141,7 +1141,10 @@ service:
 			ef->write(el, ef->fd, flags, ef->uctx);
 		}
 		if (ef->vnode && (el->events[i].filter == EVFILT_VNODE) && !ef->deferred_free) {
-			ef->vnode(el, ef->fd, flags, ef->uctx);
+			/*
+			 *	Note fflags, not flags!
+			 */
+			ef->vnode(el, ef->fd, el->events[i].fflags, ef->uctx);
 		}
 		ef->in_handler = false;
 	}

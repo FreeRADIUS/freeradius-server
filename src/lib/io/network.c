@@ -425,10 +425,10 @@ next_message:
  *
  * @param[in] el	the event list.
  * @param[in] sockfd	the socket which is ready to read.
- * @param[in] flags	from kevent.
+ * @param[in] fflags	from kevent.
  * @param[in] ctx	the network socket context.
  */
-static void fr_network_vnode(UNUSED fr_event_list_t *el, int sockfd, UNUSED int flags, void *ctx)
+static void fr_network_vnode(UNUSED fr_event_list_t *el, int sockfd, int fflags, void *ctx)
 {
 	fr_network_socket_t *s = ctx;
 	fr_network_t *nr = talloc_parent(s);
@@ -436,6 +436,12 @@ static void fr_network_vnode(UNUSED fr_event_list_t *el, int sockfd, UNUSED int 
 	rad_cond_assert(s->fd == sockfd);
 
 	DEBUG3("network vnode");
+
+	/*
+	 *	Tell the IO handler that something has happened to the
+	 *	file.
+	 */
+	s->listen->app_io->vnode(s->listen->app_io_instance, fflags);
 }
 
 

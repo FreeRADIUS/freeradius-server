@@ -216,6 +216,13 @@ typedef ssize_t (*fr_io_data_read_t)(void const *instance, void **packet_ctx, fr
 typedef ssize_t (*fr_io_data_write_t)(void *instance, void *packet_ctx, fr_time_t request_time,
 				      uint8_t *buffer, size_t buffer_len);
 
+/** Tell the IO handler that a VNODE has changed
+ *
+ * @param[in] instance		the context for this function
+ * @param[in] fflags		from kevent.  Usually just NOTE_EXEND
+ */
+typedef void (*fr_io_data_vnode_t)(void const *instance, uint32_t fflags);
+
 /**  Handle a close or error on the socket.
  *
  *  In general, the only thing to do on errors is to close the
