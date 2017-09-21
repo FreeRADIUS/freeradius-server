@@ -31,6 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/heap.h>
 #include <freeradius-devel/event.h>
 #include <freeradius-devel/io/time.h>
+#include <sys/stat.h>
 
 #define FR_EV_BATCH_FDS (256)
 
@@ -431,7 +432,28 @@ int fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 
 		if (read_fn) EV_SET(&evset[count++], fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, ef);
 		if (write_fn) EV_SET(&evset[count++], fd, EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, ef);
-		if (vnode_fn) EV_SET(&evset[count++], fd, EVFILT_VNODE, EV_ADD | EV_ENABLE, NOTE_EXTEND, 0, ef);
+		if (vnode_fn) {
+			struct stat buf;
+
+			/*
+			 *	Sanity checks. If we care later, we
+			 *	can listen on all NOTE_* for FDs which
+			 *	are just files.
+			 */
+			if (fstat(fd, &buf) < 0) {
+				fr_strerror_printf("Failed calling stat() on file");
+				talloc_free(ef);
+				return -1;
+			}
+
+			if (!S_ISDIR(buf.st_mode)) {
+				fr_strerror_printf("Added vnode handler on non-directory");
+				talloc_free(ef);
+				return -1;
+			}
+
+			EV_SET(&evset[count++], fd, EVFILT_VNODE, EV_ADD | EV_ENABLE, NOTE_EXTEND, 0, ef);
+		}
 
 		if (unlikely(kevent(el->kq, evset, count, NULL, 0, NULL) < 0)) {
 			fr_strerror_printf("Failed adding filter for FD %i: %s", fd, fr_syserror(errno));
