@@ -75,6 +75,8 @@ typedef struct fr_network_socket_t {
 	fr_message_set_t	*ms;			//!< message buffers for this socket.
 	fr_channel_data_t	*cd;			//!< cached in case of allocation & read error
 	size_t			leftover;		//!< leftover data from a previous read
+
+	fr_dlist_t     		queued;			//!< entries queued for writing
 } fr_network_socket_t;
 
 /*
@@ -444,6 +446,7 @@ static void fr_network_error(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 static int _network_socket_free(fr_network_socket_t *s)
 {
 	fr_network_t *nr = talloc_parent(s);
+	fr_dlist_t *entry;
 
 	fr_event_fd_delete(nr->el, s->listen->app_io->fd(s->listen->app_io_instance));
 
@@ -453,6 +456,16 @@ static int _network_socket_free(fr_network_socket_t *s)
 		s->listen->app_io->close(s->listen->app_io_instance);
 	} else {
 		close(s->listen->app_io->fd(s->listen->app_io_instance));
+	}
+
+	/*
+	 *	Clean up any queued entries.
+	 */
+	while ((entry = FR_DLIST_FIRST(s->queued)) != NULL) {
+		fr_channel_data_t *cd;
+
+		cd = fr_ptr_to_type(fr_channel_data_t, request.list, entry);
+		fr_message_done(&cd->m);
 	}
 
 	return 0;
@@ -479,6 +492,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 	s = talloc(nr, fr_network_socket_t);
 	rad_assert(s != NULL);
 	memcpy(s, data, sizeof(*s));
+	FR_DLIST_INIT(s->queued);
 
 	talloc_set_destructor(s, _network_socket_free);
 
