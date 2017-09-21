@@ -351,6 +351,8 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 				     &address->dst_ipaddr, address->dst_port,
 				     address->if_index,
 				     &address->src_ipaddr, address->src_port);
+		if (data_size < 0) return data_size;
+
 	} else {
 		/*
 		 *	Otherwise lie, and say we've written it all...
