@@ -2824,16 +2824,19 @@ static int request_will_proxy(REQUEST *request)
 		 *	Figure out which pool to use.
 		 */
 		if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
+			DEBUG3("Using home pool auth for realm %s", realm->name);
 			pool = realm->auth_pool;
 
 #ifdef WITH_ACCOUNTING
 		} else if (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) {
+			DEBUG3("Using home pool acct for realm %s", realm->name);
 			pool = realm->acct_pool;
 #endif
 
 #ifdef WITH_COA
 		} else if ((request->packet->code == PW_CODE_COA_REQUEST) ||
 			   (request->packet->code == PW_CODE_DISCONNECT_REQUEST)) {
+			DEBUG3("Using home pool coa for realm %s", realm->name);
 			pool = realm->coa_pool;
 #endif
 
@@ -2843,6 +2846,8 @@ static int request_will_proxy(REQUEST *request)
 
 	} else if ((vp = fr_pair_find_by_num(request->config, PW_HOME_SERVER_POOL, 0, TAG_ANY)) != NULL) {
 		int pool_type;
+
+		DEBUG3("Using Home-Server-Pool %s", vp->vp_strvalue);
 
 		switch (request->packet->code) {
 		case PW_CODE_ACCESS_REQUEST:
@@ -2918,9 +2923,9 @@ static int request_will_proxy(REQUEST *request)
 		if (!home) {
 			char buffer[256];
 
-			WARN("No such home server %s port %u",
-			     inet_ntop(dst_ipaddr.af, &dst_ipaddr.ipaddr, buffer, sizeof(buffer)),
-			     (unsigned int) dst_port);
+			RWDEBUG("No such home server %s port %u",
+				inet_ntop(dst_ipaddr.af, &dst_ipaddr.ipaddr, buffer, sizeof(buffer)),
+				(unsigned int) dst_port);
 			return 0;
 		}
 
