@@ -140,6 +140,17 @@ static int reply_cmp(void const *one, void const *two)
 	return (a->m.when > b->m.when) - (a->m.when < b->m.when);
 }
 
+static int waiting_cmp(void const *one, void const *two)
+{
+	fr_channel_data_t const *a = one, *b = two;
+	int ret;
+
+	ret = (a->priority > b->priority) - (a->priority < b->priority);
+	if (ret != 0) return ret;
+
+	return (a->reply.request_time > b->reply.request_time) - (a->reply.request_time < b->reply.request_time);
+}
+
 static int socket_cmp(void const *one, void const *two)
 {
 	fr_network_socket_t const *a = one, *b = two;
@@ -546,7 +557,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 	rad_assert(s != NULL);
 	memcpy(s, data, sizeof(*s));
 
-	MEM(s->waiting = fr_heap_create(reply_cmp, offsetof(fr_channel_data_t, channel.heap_id)));
+	MEM(s->waiting = fr_heap_create(waiting_cmp, offsetof(fr_channel_data_t, channel.heap_id)));
 
 	talloc_set_destructor(s, _network_socket_free);
 
@@ -843,11 +854,6 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 		 *	There are queued entries for this socket.
 		 *	Append the packet into the list of packets to
 		 *	write.
-		 *
-		 *	@todo - order this by priority again?  So that
-		 *	unwritten packets which are low priority get
-		 *	pushed to the back of the queue when a high
-		 *	priority reply comes in.
 		 *
 		 *	For sanity, we localize the message first.
 		 *	Doing so ensures that the worker has it's
