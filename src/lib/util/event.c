@@ -69,6 +69,7 @@ struct fr_event_fd {
 
 	fr_event_fd_io_t	read;			//!< Callback for when data is available.
 	fr_event_fd_io_t	write;			//!< Callback for when we can write data.
+	fr_event_fd_io_t	vnode;			//!< Callback for when we get EVFILT_VNODE
 	fr_event_fd_error_t	error;			//!< Callback for when an error occurs on the FD.
 
 	bool			is_registered;		//!< Whether this fr_event_fd_t's FD has been registered with
@@ -255,7 +256,7 @@ int fr_event_list_time(struct timeval *when, fr_event_list_t *el)
  */
 static int fr_event_fd_delete_internal(fr_event_fd_t *ef)
 {
-	struct kevent	evset[2];
+	struct kevent	evset[3];
 	int		count = 0;
 	fr_event_list_t	*el;
 
@@ -265,6 +266,7 @@ static int fr_event_fd_delete_internal(fr_event_fd_t *ef)
 
 	if (ef->read) EV_SET(&evset[count++], ef->fd, EVFILT_READ, EV_DELETE, 0, 0, 0);
 	if (ef->write) EV_SET(&evset[count++], ef->fd, EVFILT_WRITE, EV_DELETE, 0, 0, 0);
+	if (ef->vnode) EV_SET(&evset[count++], ef->fd, EVFILT_VNODE, EV_DELETE, 0, 0, 0);
 
 	if (unlikely(kevent(el->kq, evset, count, NULL, 0, NULL) < 0)) {
 		fr_strerror_printf("Failed removing filters for FD %i: %s", ef->fd, fr_syserror(errno));
@@ -338,11 +340,12 @@ int fr_event_fd_delete(fr_event_list_t *el, int fd)
 int fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 		       fr_event_fd_io_t read_fn,
 		       fr_event_fd_io_t write_fn,
+		       fr_event_fd_io_t vnode_fn,
 		       fr_event_fd_error_t error,
 		       void *uctx)
 {
 	int		count = 0;
-	struct kevent	evset[2];
+	struct kevent	evset[3];
 	fr_event_fd_t	*ef, find;
 
 	if (unlikely(!el)) {
@@ -350,8 +353,8 @@ int fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 		return -1;
 	}
 
-	if (unlikely(!read_fn && !write_fn)) {
-		fr_strerror_printf("Invalid arguments: NULL read and write callbacks");
+	if (unlikely(!read_fn && !write_fn && !vnode_fn)) {
+		fr_strerror_printf("Invalid arguments: All callbacks are NULL");
 		return -1;
 	}
 
@@ -427,6 +430,7 @@ int fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 
 		if (read_fn) EV_SET(&evset[count++], fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, ef);
 		if (write_fn) EV_SET(&evset[count++], fd, EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, ef);
+		if (vnode_fn) EV_SET(&evset[count++], fd, EVFILT_VNODE, EV_ADD | EV_ENABLE, NOTE_EXTEND, 0, ef);
 
 		if (unlikely(kevent(el->kq, evset, count, NULL, 0, NULL) < 0)) {
 			fr_strerror_printf("Failed adding filter for FD %i: %s", fd, fr_syserror(errno));
@@ -459,6 +463,11 @@ int fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 		if (!write_fn) EV_SET(&evset[count++], ef->fd, EVFILT_WRITE, EV_DELETE, 0, 0, 0);
 	} else {
 		if (write_fn) EV_SET(&evset[count++], ef->fd, EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, ef);
+	}
+	if (ef->vnode) {
+		if (!vnode_fn) EV_SET(&evset[count++], ef->fd, EVFILT_VNODE, EV_DELETE, 0, 0, 0);
+	} else {
+		if (vnode_fn) EV_SET(&evset[count++], ef->fd, EVFILT_VNODE, EV_ADD | EV_ENABLE, NOTE_EXTEND, 0, ef);
 	}
 
 	if (count) {
@@ -1129,6 +1138,9 @@ service:
 		}
 		if (ef->write && (el->events[i].filter == EVFILT_WRITE) && !ef->deferred_free) {
 			ef->write(el, ef->fd, flags, ef->uctx);
+		}
+		if (ef->vnode && (el->events[i].filter == EVFILT_VNODE) && !ef->deferred_free) {
+			ef->vnode(el, ef->fd, flags, ef->uctx);
 		}
 		ef->in_handler = false;
 	}

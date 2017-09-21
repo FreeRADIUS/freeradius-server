@@ -163,6 +163,7 @@ static void _ldap_sasl_bind_io_read(fr_event_list_t *el, int fd, UNUSED int flag
 		ret = fr_event_fd_insert(sasl_ctx, el, fd,
 					NULL,
 					_ldap_sasl_bind_io_write,	/* Need to write more SASL stuff */
+					 NULL,
 					_ldap_sasl_bind_io_error,
 					sasl_ctx);
 		if (!rad_cond_assert(ret == 0)) goto error;
@@ -233,6 +234,7 @@ static void _ldap_sasl_bind_io_write(fr_event_list_t *el, int fd, UNUSED int fla
 		ret = fr_event_fd_insert(sasl_ctx, el, fd,
 					 NULL,
 					 _ldap_sasl_bind_io_write,	/* We'll be called again when the conn is open */
+					 NULL,
 					 _ldap_sasl_bind_io_error,
 					 sasl_ctx);
 		if (!rad_cond_assert(ret == 0)) goto error;
@@ -244,6 +246,7 @@ static void _ldap_sasl_bind_io_write(fr_event_list_t *el, int fd, UNUSED int fla
 	case LDAP_SASL_BIND_IN_PROGRESS:
 		ret = fr_event_fd_insert(sasl_ctx, el, fd,
 					 _ldap_sasl_bind_io_read,
+					 NULL,
 					 NULL,
 					 _ldap_sasl_bind_io_error,
 					 sasl_ctx);
@@ -324,6 +327,7 @@ int fr_ldap_sasl_bind_async(fr_ldap_connection_t *c,
 		ret = fr_event_fd_insert(sasl_ctx, el, fd,
 					 NULL,
 					 _ldap_sasl_bind_io_write,
+					 NULL,
 					 _ldap_sasl_bind_io_error,
 					 sasl_ctx);
 		if (!rad_cond_assert(ret == 0)) {

@@ -111,6 +111,7 @@ int		fr_event_fd_delete(fr_event_list_t *el, int fd);
 int		fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 				   fr_event_fd_io_t read_fn,
 				   fr_event_fd_io_t write_fn,
+				   fr_event_fd_io_t vnode_fn,
 				   fr_event_fd_error_t error,
 				   void *uctx);
 

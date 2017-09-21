@@ -161,6 +161,7 @@ static void _ldap_bind_io_write(fr_event_list_t *el, int fd, UNUSED int flags, v
 		ret = fr_event_fd_insert(bind_ctx, el, fd,
 					 NULL,
 					 _ldap_bind_io_write,	/* We'll be called again when the conn is open */
+					 NULL,
 					 _ldap_bind_io_error,
 					 bind_ctx);
 		if (!rad_cond_assert(ret == 0)) goto error;
@@ -169,6 +170,7 @@ static void _ldap_bind_io_write(fr_event_list_t *el, int fd, UNUSED int flags, v
 	case LDAP_SUCCESS:
 		ret = fr_event_fd_insert(bind_ctx, el, fd,
 					 _ldap_bind_io_read,
+					 NULL,
 					 NULL,
 					 _ldap_bind_io_error,
 					 bind_ctx);
@@ -223,6 +225,7 @@ int fr_ldap_bind_async(fr_ldap_connection_t *c,
 		ret = fr_event_fd_insert(bind_ctx, el, fd,
 					 NULL,
 					 _ldap_bind_io_write,
+					 NULL,
 					 _ldap_bind_io_error,
 					 bind_ctx);
 		if (!rad_cond_assert(ret == 0)) {

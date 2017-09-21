@@ -497,6 +497,7 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 	if (fr_event_fd_insert(nr, nr->el, s->fd,
 			       fr_network_read,
 			       NULL,
+			       NULL,
 			       listen->app_io->error ? fr_network_error : NULL,
 			       s) < 0) {
 		ERROR("Failed adding new socket to event loop: %s", fr_strerror());
@@ -582,6 +583,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 
 	if (fr_event_fd_insert(nr, nr->el, s->fd,
 			       fr_network_read,
+			       NULL,
 			       NULL,
 			       app_io->error ? fr_network_error : NULL,
 			       s) < 0) {
@@ -884,6 +886,7 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 				if (fr_event_fd_insert(nr, nr->el, s->fd,
 						       fr_network_read,
 						       fr_network_write,
+						       NULL,
 						       listen->app_io->error ? fr_network_error : NULL,
 						       s) < 0) {
 					ERROR("Failed adding write callback to event loop: %s", fr_strerror());
