@@ -77,6 +77,7 @@ typedef struct fr_network_socket_t {
 	fr_channel_data_t	*cd;			//!< cached in case of allocation & read error
 	size_t			leftover;		//!< leftover data from a previous read
 
+	fr_channel_data_t	*pending;		//!< the currently pending partial packet
 	fr_heap_t		*waiting;		//!< packets waiting to be written
 } fr_network_socket_t;
 
@@ -444,7 +445,15 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 	nr = talloc_parent(s);
 	(void) talloc_get_type_abort(nr, fr_network_t);
 
-	while ((cd = fr_heap_pop(s->waiting)) != NULL) {
+	rad_assert(s->pending != NULL);
+
+	/*
+	 *	Start with the currently pending message, and then
+	 *	work through the priority heap.
+	 */
+	for (cd = s->pending;
+	     cd != NULL;
+	     cd = fr_heap_pop(s->waiting)) {
 		int rcode;
 
 		rad_assert(listen == cd->listen);
@@ -454,9 +463,13 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 		if (rcode < 0) {
 
 			/*
-			 *	Stop processing the queue.
+			 *	Stop processing the heap, and set the
+			 *	pending message to the current one.
 			 */
-			if (errno == EWOULDBLOCK) return;
+			if (errno == EWOULDBLOCK) {
+				s->pending = cd;
+				return;
+			}
 
 			ERROR("Failed writing to socket %d: %s", s->fd, fr_strerror());
 			talloc_free(s);
@@ -495,12 +508,19 @@ static int _network_socket_free(fr_network_socket_t *s)
 		close(s->fd);
 	}
 
+	if (s->pending) {
+		fr_message_done(&s->pending->m);
+		s->pending = NULL;
+	}
+
 	/*
 	 *	Clean up any queued entries.
 	 */
 	while ((cd = fr_heap_pop(s->waiting)) != NULL) {
 		fr_message_done(&cd->m);
 	}
+
+	talloc_free(s->waiting);
 
 	return 0;
 }
@@ -833,8 +853,7 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 		 *	Doing so ensures that the worker has it's
 		 *	message buffers cleaned up quickly.
 		 */
-		if (fr_heap_num_elements(s->waiting) > 0) {
-		localize:
+		if (s->pending) {
 			lm = fr_message_localize(s, &cd->m, sizeof(*cd));
 			fr_message_done(&cd->m);
 
@@ -865,7 +884,21 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 					goto error;
 				}
 
-				goto localize;
+				/*
+				 *	Localize the message, and add
+				 *	it as the current pending /
+				 *	partially written packet.
+				 */
+				lm = fr_message_localize(s, &cd->m, sizeof(*cd));
+				fr_message_done(&cd->m);
+				if (!lm) {
+					ERROR("Failed copying packet.  Discarding it.");
+					continue;
+				}
+
+				cd = (fr_channel_data_t *) lm;
+				s->pending = cd;
+				continue;
 			}
 
 			/*
