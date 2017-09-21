@@ -896,9 +896,12 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 			continue;
 		}
 
-		if ((size_t) rcode < cd->m.data_size) {
-			// call write function again at some later date.
-		}
+		/*
+		 *	We MUST have written all of the data.  It is
+		 *	up to the app_io->write() function to track
+		 *	any partially written data.
+		 */
+		rad_assert((size_t) rcode == cd->m.data_size);
 
 		DEBUG3("Sending reply to socket %d", s->fd);
 		fr_message_done(&cd->m);
