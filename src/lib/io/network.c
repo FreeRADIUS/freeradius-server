@@ -77,7 +77,7 @@ typedef struct fr_network_socket_t {
 	fr_channel_data_t	*cd;			//!< cached in case of allocation & read error
 	size_t			leftover;		//!< leftover data from a previous read
 
-	fr_dlist_t     		queued;			//!< entries queued for writing
+	fr_heap_t		*waiting;		//!< packets waiting to be written
 } fr_network_socket_t;
 
 /*
@@ -437,18 +437,15 @@ static void fr_network_error(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED int flags, void *ctx)
 {
 	fr_network_socket_t *s = ctx;
-	fr_dlist_t *entry;
 	fr_listen_t const *listen = s->listen;
 	fr_network_t *nr;
+	fr_channel_data_t *cd;
 
 	nr = talloc_parent(s);
 	(void) talloc_get_type_abort(nr, fr_network_t);
 
-	while ((entry = FR_DLIST_FIRST(s->queued)) != NULL) {
+	while ((cd = fr_heap_pop(s->waiting)) != NULL) {
 		int rcode;
-		fr_channel_data_t *cd;
-
-		cd = fr_ptr_to_type(fr_channel_data_t, request.list, entry);
 
 		rad_assert(listen == cd->listen);
 
@@ -466,7 +463,6 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 			return;
 		}
 
-		fr_dlist_remove(&cd->request.list);
 		fr_message_done(&cd->m);
 	}
 
@@ -487,7 +483,7 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 static int _network_socket_free(fr_network_socket_t *s)
 {
 	fr_network_t *nr = talloc_parent(s);
-	fr_dlist_t *entry;
+	fr_channel_data_t *cd;
 
 	fr_event_fd_delete(nr->el, s->fd);
 
@@ -502,10 +498,7 @@ static int _network_socket_free(fr_network_socket_t *s)
 	/*
 	 *	Clean up any queued entries.
 	 */
-	while ((entry = FR_DLIST_FIRST(s->queued)) != NULL) {
-		fr_channel_data_t *cd;
-
-		cd = fr_ptr_to_type(fr_channel_data_t, request.list, entry);
+	while ((cd = fr_heap_pop(s->waiting)) != NULL) {
 		fr_message_done(&cd->m);
 	}
 
@@ -532,7 +525,8 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 	s = talloc(nr, fr_network_socket_t);
 	rad_assert(s != NULL);
 	memcpy(s, data, sizeof(*s));
-	FR_DLIST_INIT(s->queued);
+
+	MEM(s->waiting = fr_heap_create(reply_cmp, offsetof(fr_channel_data_t, channel.heap_id)));
 
 	talloc_set_destructor(s, _network_socket_free);
 
@@ -839,9 +833,9 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 		 *	Doing so ensures that the worker has it's
 		 *	message buffers cleaned up quickly.
 		 */
-		if (FR_DLIST_FIRST(s->queued)) {
+		if (fr_heap_num_elements(s->waiting) > 0) {
 		localize:
-			lm = fr_message_localize(nr, &cd->m, sizeof(*cd));
+			lm = fr_message_localize(s, &cd->m, sizeof(*cd));
 			fr_message_done(&cd->m);
 
 			if (!lm) {
@@ -850,7 +844,7 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 			}
 
 			cd = (fr_channel_data_t *) lm;
-			fr_dlist_insert_tail(&s->queued, &cd->request.list);
+			(void) fr_heap_insert(s->waiting, cd);
 			continue;
 		}
 
