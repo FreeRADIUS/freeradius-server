@@ -421,6 +421,24 @@ next_message:
 }
 
 
+/** Get a notification that a vnode changed
+ *
+ * @param[in] el	the event list.
+ * @param[in] sockfd	the socket which is ready to read.
+ * @param[in] flags	from kevent.
+ * @param[in] ctx	the network socket context.
+ */
+static void fr_network_vnode(UNUSED fr_event_list_t *el, int sockfd, UNUSED int flags, void *ctx)
+{
+	fr_network_socket_t *s = ctx;
+	fr_network_t *nr = talloc_parent(s);
+
+	rad_cond_assert(s->fd == sockfd);
+
+	DEBUG3("network vnode");
+}
+
+
 /** Handle errors for a socket.
  *
  * @param[in] el		the event list
@@ -597,6 +615,66 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 	DEBUG3("Using new socket with FD %d", s->fd);
 }
 
+/** Handle a network control message callback for a new "watch directory"
+ *
+ * @param[in] ctx the network
+ * @param[in] data the message
+ * @param[in] data_size size of the data
+ * @param[in] now the current time
+ */
+static void fr_network_directory_callback(void *ctx, void const *data, size_t data_size, UNUSED fr_time_t now)
+{
+	fr_network_t		*nr = ctx;
+	fr_network_socket_t	*s;
+	fr_app_io_t const	*app_io;
+
+	rad_assert(data_size == sizeof(*s));
+
+	if (data_size != sizeof(*s)) return;
+
+	s = talloc(nr, fr_network_socket_t);
+	rad_assert(s != NULL);
+	memcpy(s, data, sizeof(*s));
+
+	MEM(s->waiting = fr_heap_create(waiting_cmp, offsetof(fr_channel_data_t, channel.heap_id)));
+
+	talloc_set_destructor(s, _network_socket_free);
+
+	/*
+	 *	Allocate the ring buffer for messages and packets.
+	 */
+	s->ms = fr_message_set_create(s, s->listen->num_messages,
+				      sizeof(fr_channel_data_t),
+				      s->listen->default_message_size * s->listen->num_messages);
+	if (!s->ms) {
+		fr_log(nr->log, L_ERR, "Failed creating message buffers for directoryx IO.  Closing socket.");
+		talloc_free(s);
+		return;
+	}
+
+	app_io = s->listen->app_io;
+
+	if (app_io->event_list_set) app_io->event_list_set(s->listen->app_io_instance, nr->el);
+
+	rad_assert(app_io->fd);
+	s->fd = app_io->fd(s->listen->app_io_instance);
+
+	if (fr_event_fd_insert(nr, nr->el, s->fd,
+			       NULL,
+			       NULL,
+			       fr_network_vnode,
+			       app_io->error ? fr_network_error : NULL,
+			       s) < 0) {
+		ERROR("Failed adding new socket to event loop: %s", fr_strerror());
+		talloc_free(s);
+		return;
+	}
+
+	(void) rbtree_insert(nr->sockets, s);
+
+	DEBUG3("Using new socket with FD %d", s->fd);
+}
+
 
 /** Handle a network control message callback for a new worker
  *
@@ -731,6 +809,11 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t c
 	}
 
 	if (fr_control_callback_add(nr->control, FR_CONTROL_ID_SOCKET, nr, fr_network_socket_callback) < 0) {
+		fr_strerror_printf("Failed adding socket callback: %s", fr_strerror());
+		goto fail2;
+	}
+
+	if (fr_control_callback_add(nr->control, FR_CONTROL_ID_DIRECTORY, nr, fr_network_directory_callback) < 0) {
 		fr_strerror_printf("Failed adding socket callback: %s", fr_strerror());
 		goto fail2;
 	}
@@ -1006,6 +1089,26 @@ int fr_network_socket_add(fr_network_t *nr, fr_listen_t const *listen)
 
 	PTHREAD_MUTEX_LOCK(&nr->mutex);
 	rcode = fr_control_message_send(nr->control, nr->rb, FR_CONTROL_ID_SOCKET, &m, sizeof(m));
+	PTHREAD_MUTEX_UNLOCK(&nr->mutex);
+
+	return rcode;
+}
+
+/** Add a "watch directory" call to a network
+ *
+ * @param nr		the network
+ * @param listen	Functions and context.
+ */
+int fr_network_directory_add(fr_network_t *nr, fr_listen_t const *listen)
+{
+	int rcode;
+	fr_network_socket_t m;
+
+	memset(&m, 0, sizeof(m));
+	m.listen = listen;
+
+	PTHREAD_MUTEX_LOCK(&nr->mutex);
+	rcode = fr_control_message_send(nr->control, nr->rb, FR_CONTROL_ID_DIRECTORY, &m, sizeof(m));
 	PTHREAD_MUTEX_UNLOCK(&nr->mutex);
 
 	return rcode;
