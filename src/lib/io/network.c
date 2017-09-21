@@ -56,7 +56,7 @@ RCSID("$Id$")
 #define DEBUG(fmt, ...) if (nr->lvl) fr_log(nr->log, L_DBG, fmt, ## __VA_ARGS__)
 //#define DEBUG2(fmt, ...) if (nr->lvl >= L_DBG_LVL_2) fr_log(nr->log, L_DBG, fmt, ## __VA_ARGS__)
 #define DEBUG3(fmt, ...) if (nr->lvl >= L_DBG_LVL_3) fr_log(nr->log, L_DBG, fmt, ## __VA_ARGS__)
-//#define ERROR(fmt, ...) fr_log(nr->log, L_ERR, fmt, ## __VA_ARGS__)
+#define ERROR(fmt, ...) fr_log(nr->log, L_ERR, fmt, ## __VA_ARGS__)
 
 #define MAX_WORKERS 32
 
@@ -70,6 +70,7 @@ typedef struct fr_network_worker_t {
 } fr_network_worker_t;
 
 typedef struct fr_network_socket_t {
+	int			fd;			//!< file descriptor
 	fr_listen_t const	*listen;		//!< I/O ctx and functions.
 
 	fr_message_set_t	*ms;			//!< message buffers for this socket.
@@ -306,7 +307,7 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int f
 	fr_channel_data_t *cd, *next;
 	fr_time_t *recv_time;
 
-	rad_assert(s->listen->app_io->fd(s->listen->app_io_instance) == sockfd);
+	rad_assert(s->fd == sockfd);
 
 	DEBUG3("network read");
 
@@ -407,24 +408,6 @@ next_message:
 	}
 }
 
-#if 0
-/** Write packets to the network.
- *
- * @param el the event list
- * @param sockfd the socket which is ready to write
- * @param flags returned by kevent.
- * @param ctx the network socket context.
- */
-static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED int flags, void *ctx)
-{
-	fr_network_socket_t *s = ctx;
-
-	if (s->listen->app_io->flush(s->listen->app_io_instance) < 0) {
-		s->listen->app_io->error(s->listen->app_io_instance);
-		talloc_free(s);
-	}
-}
-#endif
 
 /** Handle errors for a socket.
  *
@@ -443,19 +426,77 @@ static void fr_network_error(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 	talloc_free(s);
 }
 
+
+/** Write packets to the network.
+ *
+ * @param el the event list
+ * @param sockfd the socket which is ready to write
+ * @param flags returned by kevent.
+ * @param ctx the network socket context.
+ */
+static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED int flags, void *ctx)
+{
+	fr_network_socket_t *s = ctx;
+	fr_dlist_t *entry;
+	fr_listen_t const *listen = s->listen;
+	fr_network_t *nr;
+
+	nr = talloc_parent(s);
+	(void) talloc_get_type_abort(nr, fr_network_t);
+
+	while ((entry = FR_DLIST_FIRST(s->queued)) != NULL) {
+		int rcode;
+		fr_channel_data_t *cd;
+
+		cd = fr_ptr_to_type(fr_channel_data_t, request.list, entry);
+
+		rad_assert(listen == cd->listen);
+
+		rcode = listen->app_io->write(listen->app_io_instance, cd->packet_ctx,
+					      cd->reply.request_time, cd->m.data, cd->m.data_size);
+		if (rcode < 0) {
+
+			/*
+			 *	Stop processing the queue.
+			 */
+			if (errno == EWOULDBLOCK) return;
+
+			ERROR("Failed writing to socket %d: %s", s->fd, fr_strerror());
+			talloc_free(s);
+			return;
+		}
+
+		fr_dlist_remove(&cd->request.list);
+		fr_message_done(&cd->m);
+	}
+
+	/*
+	 *	We've successfully written all of the packets.  Remove
+	 *	the write callback.
+	 */
+	if (fr_event_fd_insert(nr, nr->el, s->fd,
+			       fr_network_read,
+			       NULL,
+			       listen->app_io->error ? fr_network_error : NULL,
+			       s) < 0) {
+		ERROR("Failed adding new socket to event loop: %s", fr_strerror());
+		talloc_free(s);
+	}
+}
+
 static int _network_socket_free(fr_network_socket_t *s)
 {
 	fr_network_t *nr = talloc_parent(s);
 	fr_dlist_t *entry;
 
-	fr_event_fd_delete(nr->el, s->listen->app_io->fd(s->listen->app_io_instance));
+	fr_event_fd_delete(nr->el, s->fd);
 
 	rbtree_deletebydata(nr->sockets, s);
 
 	if (s->listen->app_io->close) {
 		s->listen->app_io->close(s->listen->app_io_instance);
 	} else {
-		close(s->listen->app_io->fd(s->listen->app_io_instance));
+		close(s->fd);
 	}
 
 	/*
@@ -480,7 +521,6 @@ static int _network_socket_free(fr_network_socket_t *s)
  */
 static void fr_network_socket_callback(void *ctx, void const *data, size_t data_size, UNUSED fr_time_t now)
 {
-	int			fd;
 	fr_network_t		*nr = ctx;
 	fr_network_socket_t	*s;
 	fr_app_io_t const	*app_io;
@@ -513,21 +553,21 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 	if (app_io->event_list_set) app_io->event_list_set(s->listen->app_io_instance, nr->el);
 
 	rad_assert(app_io->fd);
-	fd = app_io->fd(s->listen->app_io_instance);
+	s->fd = app_io->fd(s->listen->app_io_instance);
 
-	if (fr_event_fd_insert(nr, nr->el, fd,
+	if (fr_event_fd_insert(nr, nr->el, s->fd,
 			       fr_network_read,
-			       NULL,			/* app_io->write ? fr_network_write : NULL - FIXME */
+			       NULL,
 			       app_io->error ? fr_network_error : NULL,
 			       s) < 0) {
-		fr_log(nr->log, L_ERR, "Failed adding new socket to event loop: %s", fr_strerror());
+		ERROR("Failed adding new socket to event loop: %s", fr_strerror());
 		talloc_free(s);
 		return;
 	}
 
 	(void) rbtree_insert(nr->sockets, s);
 
-	DEBUG3("Using new socket with FD %d", fd);
+	DEBUG3("Using new socket with FD %d", s->fd);
 }
 
 
@@ -764,8 +804,18 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 	while ((cd = fr_heap_pop(nr->replies)) != NULL) {
 		ssize_t rcode;
 		fr_listen_t const *listen;
+		fr_message_t *lm;
+		fr_network_socket_t my_socket, *s;
 
 		listen = cd->listen;
+
+		/*
+		 *	@todo - cache this somewhere so we don't need
+		 *	to do an rbtree lookup for every packet.
+		 */
+		my_socket.listen = listen;
+		s = rbtree_finddata(nr->sockets, &my_socket);
+		rad_assert(s != NULL);
 
 		/*
 		 *	No data to write to the socket, so we skip it.
@@ -776,13 +826,53 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 		}
 
 		/*
+		 *	There are queued entries for this socket.
+		 *	Append the packet into the list of packets to
+		 *	write.
+		 *
+		 *	@todo - order this by priority again?  So that
+		 *	unwritten packets which are low priority get
+		 *	pushed to the back of the queue when a high
+		 *	priority reply comes in.
+		 *
+		 *	For sanity, we localize the message first.
+		 *	Doing so ensures that the worker has it's
+		 *	message buffers cleaned up quickly.
+		 */
+		if (FR_DLIST_FIRST(s->queued)) {
+		localize:
+			lm = fr_message_localize(nr, &cd->m, sizeof(*cd));
+			fr_message_done(&cd->m);
+
+			if (!lm) {
+				ERROR("Failed copying packet.  Discarding it.");
+				continue;
+			}
+
+			cd = (fr_channel_data_t *) lm;
+			fr_dlist_insert_tail(&s->queued, &cd->request.list);
+			continue;
+		}
+
+		/*
 		 *	The write function is responsible for ensuring
 		 *	that NAKs are not written to the network.
 		 */
 		rcode = listen->app_io->write(listen->app_io_instance, cd->packet_ctx,
 					      cd->reply.request_time, cd->m.data, cd->m.data_size);
 		if (rcode < 0) {
-			fr_network_socket_t my_socket, *s;
+			if (errno == EWOULDBLOCK) {
+				if (fr_event_fd_insert(nr, nr->el, s->fd,
+						       fr_network_read,
+						       fr_network_write,
+						       listen->app_io->error ? fr_network_error : NULL,
+						       s) < 0) {
+					ERROR("Failed adding write callback to event loop: %s", fr_strerror());
+					goto error;
+				}
+
+				goto localize;
+			}
 
 			/*
 			 *	Tell the socket that there was an error.
@@ -790,11 +880,19 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 			 *	Don't call close, as that will be done
 			 *	in the destructor.
 			 */
+			ERROR("Failed writing to socket %d: %s", s->fd, fr_strerror());
+		error:
+			fr_message_done(&cd->m);
 			if (listen->app_io->error) listen->app_io->error(listen->app_io_instance);
 
-			my_socket.listen = listen;
-			s = rbtree_finddata(nr->sockets, &my_socket);
-			if (s) talloc_free(s);
+			/*
+			 *	@todo - mark the socket as "to be
+			 *	deleted", and free it once we're done
+			 *	processing the replies.  Otherwise, if
+			 *	there's another reply for this socket,
+			 *	we will crash!
+			 */
+			talloc_free(s);
 			continue;
 		}
 
@@ -802,8 +900,7 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 			// call write function again at some later date.
 		}
 
-		DEBUG3("Sending reply to socket %d",
-		       cd->listen->app_io->fd(cd->listen->app_io_instance));
+		DEBUG3("Sending reply to socket %d", s->fd);
 		fr_message_done(&cd->m);
 	}
 }
