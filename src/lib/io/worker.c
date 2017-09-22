@@ -1378,6 +1378,11 @@ static void fr_worker_post_event(UNUSED fr_event_list_t *el, UNUSED struct timev
 
 	/*
 	 *      Ten times a second, check for timeouts on incoming packets.
+	 *
+	 *	@todo - change this to a timer, based on a new field,
+	 *	request->async->cleanup_time.  Then round that UP to
+	 *	the next nearest second (or 1/10s) so that the
+	 *	cleanups are done periodically.
 	 */
 	if ((now - worker->checked_timeout) > (NANOSEC / 10)) {
 		DEBUG3("\t%schecking timeouts", worker->name);
