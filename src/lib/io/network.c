@@ -71,6 +71,7 @@ typedef struct fr_network_worker_t {
 
 typedef struct fr_network_socket_t {
 	int			fd;			//!< file descriptor
+
 	fr_listen_t const	*listen;		//!< I/O ctx and functions.
 
 	fr_message_set_t	*ms;			//!< message buffers for this socket.
@@ -79,6 +80,8 @@ typedef struct fr_network_socket_t {
 
 	fr_channel_data_t	*pending;		//!< the currently pending partial packet
 	fr_heap_t		*waiting;		//!< packets waiting to be written
+
+	fr_dlist_t		entry;			//!< for deleted sockets
 } fr_network_socket_t;
 
 /*
@@ -583,6 +586,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 	memcpy(s, data, sizeof(*s));
 
 	MEM(s->waiting = fr_heap_create(waiting_cmp, offsetof(fr_channel_data_t, channel.heap_id)));
+	FR_DLIST_INIT(s->entry);
 
 	talloc_set_destructor(s, _network_socket_free);
 
@@ -643,6 +647,7 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 	memcpy(s, data, sizeof(*s));
 
 	MEM(s->waiting = fr_heap_create(waiting_cmp, offsetof(fr_channel_data_t, channel.heap_id)));
+	FR_DLIST_INIT(s->entry);
 
 	talloc_set_destructor(s, _network_socket_free);
 
@@ -916,6 +921,9 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 {
 	fr_channel_data_t *cd;
 	fr_network_t *nr = talloc_get_type_abort(uctx, fr_network_t);
+	fr_dlist_t died, *entry;
+
+	FR_DLIST_INIT(died);
 
 	while ((cd = fr_heap_pop(nr->replies)) != NULL) {
 		ssize_t rcode;
@@ -931,7 +939,14 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 		 */
 		my_socket.listen = listen;
 		s = rbtree_finddata(nr->sockets, &my_socket);
-		rad_assert(s != NULL);
+
+		/*
+		 *	Socket is dead.  Ignore all packets for it.
+		 */
+		if (!s) {
+			fr_message_done(&cd->m);
+			continue;
+		}
 
 		/*
 		 *	No data to write to the socket, so we skip it.
@@ -1010,14 +1025,8 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 			fr_message_done(&cd->m);
 			if (listen->app_io->error) listen->app_io->error(listen->app_io_instance);
 
-			/*
-			 *	@todo - mark the socket as "to be
-			 *	deleted", and free it once we're done
-			 *	processing the replies.  Otherwise, if
-			 *	there's another reply for this socket,
-			 *	we will crash!
-			 */
-			talloc_free(s);
+			rbtree_deletebydata(nr->sockets, s);
+			fr_dlist_insert_tail(&died, &s->entry);
 			continue;
 		}
 
@@ -1031,6 +1040,18 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 		DEBUG3("Sending reply to socket %d", s->fd);
 		fr_message_done(&cd->m);
 	}
+
+	/*
+	 *	Walk over the dead sockets, and delete them.
+	 */
+	while ((entry = FR_DLIST_FIRST(died)) != NULL) {
+		fr_network_socket_t *s;
+
+		s = fr_ptr_to_type(fr_network_socket_t, entry, entry);
+		fr_dlist_remove(&s->entry);
+		talloc_free(s);
+	}
+	
 }
 
 
