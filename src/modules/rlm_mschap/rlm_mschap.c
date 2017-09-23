@@ -1887,8 +1887,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	} else if ((response = fr_pair_find_by_num(request->packet->vps, PW_MSCHAP2_RESPONSE,
 						   VENDORPEC_MICROSOFT, TAG_ANY)) != NULL) {
 		uint8_t		mschapv1_challenge[16];
-		VALUE_PAIR	*name_attr, *response_name;
+		VALUE_PAIR	*name_attr, *response_name, *peer_challenge_attr;
 		rlm_rcode_t	rcode;
+		uint8_t const *peer_challenge;
 
 		mschap_version = 2;
 
@@ -1970,6 +1971,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 			}
 		}
 #endif
+		peer_challenge = response->vp_octets + 2;
+
+		peer_challenge_attr = fr_pair_find_by_num(request->config, PW_MS_CHAP_PEER_CHALLENGE, 0, TAG_ANY);
+		if (peer_challenge_attr) {
+			RDEBUG2("Overriding peer challenge");
+			peer_challenge = peer_challenge_attr->vp_octets;
+		}
+
 		/*
 		 *	The old "mschapv2" function has been moved to
 		 *	here.
@@ -1978,7 +1987,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		 *	MS-CHAPv1 challenge, and then does MS-CHAPv1.
 		 */
 		RDEBUG2("Creating challenge hash with username: %s", username_string);
-		mschap_challenge_hash(response->vp_octets + 2,	/* peer challenge */
+		mschap_challenge_hash(peer_challenge,		/* peer challenge */
 				      challenge->vp_octets,	/* our challenge */
 				      username_string,		/* user name */
 				      mschapv1_challenge);	/* resulting challenge */
@@ -2004,7 +2013,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		mschap_auth_response(username_string,		/* without the domain */
 				     nthashhash,		/* nt-hash-hash */
 				     response->vp_octets + 26,	/* peer response */
-				     response->vp_octets + 2,	/* peer challenge */
+				     peer_challenge,		/* peer challenge */
 				     challenge->vp_octets,	/* our challenge */
 				     msch2resp);		/* calculated MPPE key */
 		mschap_add_reply(request, *response->vp_octets, "MS-CHAP2-Success", msch2resp, 42);
