@@ -297,7 +297,7 @@ post_ca:
 	 *
 	 *	TLS1_4_VERSION in speculative.
 	 */
-	if (conf->tls_max_version > 0.0) {
+	if (conf->tls_max_version > (float) 0.0) {
 		int max_version = 0;
 
 		if (conf->tls_min_version > conf->tls_max_version) {
@@ -306,19 +306,19 @@ post_ca:
 			return NULL;
 		}
 
-		if (conf->tls_max_version < 1.0) {
+		if (conf->tls_max_version < (float) 1.0) {
 			ERROR("tls_max_version must be >= 1.0 as SSLv2 and SSLv3 are permanently disabled");
 			return NULL;
 		}
 
 #  ifdef TLS1_4_VERSION
-		else if (conf->tls_max_version >= 1.4) max_version = TLS1_4_VERSION;
+		else if (conf->tls_max_version >= (float) 1.4) max_version = TLS1_4_VERSION;
 #  endif
 #  ifdef TLS1_3_VERSION
-		else if (conf->tls_max_version >= 1.3) max_version = TLS1_3_VERSION;
+		else if (conf->tls_max_version >= (float) 1.3) max_version = TLS1_3_VERSION;
 #  endif
-		else if (conf->tls_max_version >= 1.2) max_version = TLS1_2_VERSION;
-		else if (conf->tls_max_version >= 1.1) max_version = TLS1_1_VERSION;
+		else if (conf->tls_max_version >= (float) 1.2) max_version = TLS1_2_VERSION;
+		else if (conf->tls_max_version >= (float) 1.1) max_version = TLS1_1_VERSION;
 		else max_version = TLS1_VERSION;
 
 		if (!SSL_CTX_set_max_proto_version(ctx, max_version)) {
@@ -330,18 +330,18 @@ post_ca:
 	{
 		int min_version = TLS1_VERSION;
 
-		if (conf->tls_min_version < 1.0) {
+		if (conf->tls_min_version < (float) 1.0) {
 			ERROR("tls_min_version must be >= 1.0 as SSLv2 and SSLv3 are permanently disabled");
 			return NULL;
 		}
 #  ifdef TLS1_4_VERSION
-		else if (conf->tls_min_version >= 1.4) min_version = TLS1_4_VERSION;
+		else if (conf->tls_min_version >= (float) 1.4) min_version = TLS1_4_VERSION;
 #  endif
 #  ifdef TLS1_3_VERSION
-		else if (conf->tls_min_version >= 1.3) min_version = TLS1_3_VERSION;
+		else if (conf->tls_min_version >= (float) 1.3) min_version = TLS1_3_VERSION;
 #  endif
-		else if (conf->tls_min_version >= 1.2) min_version = TLS1_2_VERSION;
-		else if (conf->tls_min_version >= 1.1) min_version = TLS1_1_VERSION;
+		else if (conf->tls_min_version >= (float) 1.2) min_version = TLS1_2_VERSION;
+		else if (conf->tls_min_version >= (float) 1.1) min_version = TLS1_1_VERSION;
 		else min_version = TLS1_VERSION;
 
 		if (!SSL_CTX_set_min_proto_version(ctx, min_version)) {
