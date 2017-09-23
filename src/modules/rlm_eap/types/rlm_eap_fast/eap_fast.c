@@ -464,6 +464,7 @@ ssize_t eap_fast_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_
 			fr_pair_to_unknown(vp);
 			fr_pair_value_memcpy(vp, p, len);
 		}
+		fr_pair_cursor_append(cursor, vp);
 		p += len;
 	}
 
