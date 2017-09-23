@@ -332,13 +332,13 @@ ATTRIBUTE	EAP-FAST-PAC-Info-PAC-Type		1191.11.9.10	short
 
 ATTRIBUTE	EAP-FAST-PAC-Type			1191.11.10	short
 
-ATTRIBUTE	EAP-FAST-Crypto-Binding			1191.12	struct
-ATTRIBUTE	EAP-FAST-Crypto-Binding-Reserved	1191.12.1	byte
-ATTRIBUTE	EAP-FAST-Crypto-Binding-Version		1191.12.2	byte
-ATTRIBUTE	EAP-FAST-Crypto-Binding-Recv-Version	1191.12.3	byte
-ATTRIBUTE	EAP-FAST-Crypto-Binding-Sub-Type	1191.12.4	byte
-ATTRIBUTE	EAP-FAST-Crypto-Binding-Nonce		1191.12.5	octets[32]
-ATTRIBUTE	EAP-FAST-Crypto-Binding-Compound-MAC	1191.12.6	octets[20]
+ATTRIBUTE	EAP-FAST-Crypto-Binding			1191.12	octets
+#ATTRIBUTE	EAP-FAST-Crypto-Binding-Reserved	1191.12.1	byte
+#ATTRIBUTE	EAP-FAST-Crypto-Binding-Version		1191.12.2	byte
+#ATTRIBUTE	EAP-FAST-Crypto-Binding-Recv-Version	1191.12.3	byte
+#ATTRIBUTE	EAP-FAST-Crypto-Binding-Sub-Type	1191.12.4	byte
+#ATTRIBUTE	EAP-FAST-Crypto-Binding-Nonce		1191.12.5	octets[32]
+#ATTRIBUTE	EAP-FAST-Crypto-Binding-Compound-MAC	1191.12.6	octets[20]
 
 ATTRIBUTE	EAP-FAST-Trusted-Root			1191.18	octets
 ATTRIBUTE	EAP-FAST-Request-Action			1191.19	short
