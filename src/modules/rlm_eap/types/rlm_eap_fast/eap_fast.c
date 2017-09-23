@@ -450,9 +450,11 @@ ssize_t eap_fast_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_
 		da = fr_dict_attr_child_by_num(parent, attr);
 		if (!da) {
 			MEM(vp = fr_pair_afrom_child_num(ctx, parent, attr));
-		} else if (da->type != FR_TYPE_TLV) {
-			p += (size_t) eap_fast_decode_pair(ctx, cursor, parent, data, data_len, decoder_ctx);
+
+		} else if (da->type == FR_TYPE_TLV) {
+			p += (size_t) eap_fast_decode_pair(ctx, cursor, parent, p, end - p, decoder_ctx);
 			continue;
+
 		} else {
 			MEM(vp = fr_pair_afrom_da(ctx, da));
 		}
