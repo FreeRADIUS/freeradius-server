@@ -2036,7 +2036,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 #endif
 		peer_challenge = response->vp_octets + 2;
 
-		peer_challenge_attr = fr_pair_find_by_num(request->control, FR_MS_CHAP_PEER_CHALLENGE, 0, TAG_ANY);
+		peer_challenge_attr = fr_pair_find_by_num(request->control, 0, FR_MS_CHAP_PEER_CHALLENGE, TAG_ANY);
 		if (peer_challenge_attr) {
 			RDEBUG2("Overriding peer challenge");
 			peer_challenge = peer_challenge_attr->vp_octets;
@@ -2068,7 +2068,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 
 #ifdef WITH_AUTH_WINBIND
 		if (inst->wb_retry_with_normalised_username) {
-			if ((response_name = fr_pair_find_by_num(request->packet->vps, FR_MS_CHAP_USER_NAME, 0, TAG_ANY))) {
+			if ((response_name = fr_pair_find_by_num(request->packet->vps, 0, FR_MS_CHAP_USER_NAME, TAG_ANY))) {
 				if (strcmp(username_string, response_name->vp_strvalue)) {
 					RDEBUG2("Changing username %s to %s", username_string, response_name->vp_strvalue);
 					username_string = response_name->vp_strvalue;
