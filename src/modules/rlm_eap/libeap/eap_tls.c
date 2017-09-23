@@ -149,7 +149,7 @@ int eaptls_success(eap_handler_t *handler, int peap_flag)
 	if (tls_session->prf_label) {
 		eaptls_gen_mppe_keys(handler->request,
 				     tls_session->ssl, tls_session->prf_label);
-	} else {
+	} else if (handler->type != PW_EAP_FAST) {
 		RWDEBUG("Not adding MPPE keys because there is no PRF label");
 	}
 

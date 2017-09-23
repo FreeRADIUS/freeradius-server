@@ -463,7 +463,6 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		 *	Success: Automatically return MPPE keys.
 		 */
 	case PW_CODE_ACCESS_ACCEPT:
-		RDEBUG("Note that the 'missing PRF label' message below is harmless. Please ignore it.");
 		if (t->accept_vps) {
 			RDEBUG2("Using saved attributes from the original Access-Accept");
 			rdebug_pair_list(L_DBG_LVL_2, request, t->accept_vps, NULL);
