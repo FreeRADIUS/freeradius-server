@@ -181,9 +181,6 @@ VALUE_PAIR *fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *paren
 		fr_dict_attr_t const	*vendor;
 		VALUE_PAIR		*vp;
 
-		vp = fr_pair_alloc(ctx);
-		if (!vp) return NULL;
-
 		/*
 		 *	If parent is a vendor, that's fine. If parent
 		 *	is a TLV attribute parented by a vendor, that's
@@ -194,7 +191,6 @@ VALUE_PAIR *fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *paren
 		da = fr_dict_unknown_afrom_fields(ctx, fr_dict_root(fr_dict_internal),
 						  vendor ? vendor->vendor : 0, attr);
 		if (!da) {
-			talloc_free(vp);
 			return NULL;
 		}
 
