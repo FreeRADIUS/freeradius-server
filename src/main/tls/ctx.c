@@ -370,9 +370,6 @@ post_ca:
 		 */
 #  ifdef SSL_OP_NO_TLSv1
 		if (conf->tls_min_version > (float) 1.0) ctx_options |= SSL_OP_NO_TLSv1;
-		if ((conf->tls_max_version != (float) 0.0) && (conf->tls_max_version < (float) 1.0)) {
-			ctx_options |= SSL_OP_NO_TLSv1;
-		}
 		ctx_tls_versions |= SSL_OP_NO_TLSv1;
 #  endif
 #  ifdef SSL_OP_NO_TLSv1_1
