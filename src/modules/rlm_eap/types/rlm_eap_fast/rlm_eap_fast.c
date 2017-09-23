@@ -439,7 +439,6 @@ static rlm_rcode_t mod_process(void *arg, eap_session_t *eap_session)
 		 *	Success: Automatically return MPPE keys.
 		 */
 	case FR_CODE_ACCESS_ACCEPT:
-		RDEBUG("Note that the 'missing PRF label' message below is harmless. Please ignore it.");
 		if (eap_tls_success(eap_session) < 0) return RLM_MODULE_FAIL;
 		return RLM_MODULE_OK;
 
