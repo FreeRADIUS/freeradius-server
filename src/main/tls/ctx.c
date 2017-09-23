@@ -359,7 +359,7 @@ post_ca:
 		ctx_options |= SSL_OP_NO_SSLv2;
 		ctx_options |= SSL_OP_NO_SSLv3;
 
-		if (conf->tls_min_version < 1.0) {
+		if (conf->tls_min_version < (float) 1.0) {
 			ERROR("SSLv2 and SSLv3 are permanently disabled due to critical security issues");
 			return NULL;
 		}
@@ -369,22 +369,22 @@ post_ca:
 		 *	Though they can be *globally* disabled if necessary.x
 		 */
 #  ifdef SSL_OP_NO_TLSv1
-		if (conf->tls_min_version > 1.0) ctx_options |= SSL_OP_NO_TLSv1;
-		if ((conf->tls_max_version != 0.0) && (conf->tls_max_version < 1.0)) {
+		if (conf->tls_min_version > (float) 1.0) ctx_options |= SSL_OP_NO_TLSv1;
+		if ((conf->tls_max_version != (float) 0.0) && (conf->tls_max_version < (float) 1.0)) {
 			ctx_options |= SSL_OP_NO_TLSv1;
 		}
 		ctx_tls_versions |= SSL_OP_NO_TLSv1;
 #  endif
 #  ifdef SSL_OP_NO_TLSv1_1
-		if (conf->tls_min_version > 1.1) ctx_options |= SSL_OP_NO_TLSv1_1;
-		if ((conf->tls_max_version != 0.0) && (conf->tls_max_version < 1.1)) {
+		if (conf->tls_min_version > (float) 1.1) ctx_options |= SSL_OP_NO_TLSv1_1;
+		if ((conf->tls_max_version != (float) 0.0) && (conf->tls_max_version < (float) 1.1)) {
 			ctx_options |= SSL_OP_NO_TLSv1_1;
 		}
 		ctx_tls_versions |= SSL_OP_NO_TLSv1_1;
 #  endif
 #  ifdef SSL_OP_NO_TLSv1_2
-		if (conf->tls_min_version > 1.2) ctx_options |= SSL_OP_NO_TLSv1_2;
-		if ((conf->tls_max_version != 0.0) && (conf->tls_max_version < 1.2)) {
+		if (conf->tls_min_version > (float) 1.2) ctx_options |= SSL_OP_NO_TLSv1_2;
+		if ((conf->tls_max_version != (float) 0.0) && (conf->tls_max_version < (float) 1.2)) {
 			ctx_options |= SSL_OP_NO_TLSv1_2;
 		}
 		ctx_tls_versions |= SSL_OP_NO_TLSv1_2;
