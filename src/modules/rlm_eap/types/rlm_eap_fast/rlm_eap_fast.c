@@ -108,9 +108,12 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 		return -1;
 	}
 
-	// FIXME TLSv1.2 uses a different PRF and SSL_export_keying_material("key expansion") is forbidden
-	if ((inst->tls_conf->tls_max_version > (float) 1.1) || (inst->tls_conf->tls_max_version == (float) 0.0)) {
-		cf_log_err_by_name(cs, "tls_max_version", "require tls_max_version <= 1.1");
+	/*
+	 *	Allow anything for the TLS version, we try to forcibly
+	 *	disable TLSv1.2 later.
+	 */
+	if (inst->tls_conf->tls_min_version > (float) 1.1) {
+		cf_log_err_by_name(cs, "tls_min_version", "require tls_min_version <= 1.1");
 		return -1;
 	}
 
@@ -508,6 +511,13 @@ static rlm_rcode_t mod_session_init(void *type_arg, eap_session_t *eap_session)
 				inst->cipher_list);
 		}
 	}
+
+#ifdef SSL_OP_NO_TLSv1_2
+	/*
+	 *	Forcibly disable TLSv1.2
+	 */
+	SSL_set_options(tls_session->ssl, SSL_OP_NO_TLSv1_2);
+#endif
 
 	/*
 	 *	Push TLV of authority_identity into tls_record
