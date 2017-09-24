@@ -622,7 +622,7 @@ if test "x$HAVE_THREADS" != "xno"; then
       dnl #  only support it on certain platforms.
       dnl #
       AX_CC_PTHREAD_FLAG
-      if test "x$ax_cv_cc_pthread_flag" == 'xyes'; then
+      if test "x$ax_cv_cc_pthread_flag" = 'xyes'; then
         CFLAGS="$CFLAGS -pthread"
       fi
     ]
@@ -1078,7 +1078,7 @@ if test "x$WITH_OPENSSL" = xyes; then
         ]],
         [[
           printf("library: %lx header: %lx... ", (unsigned long) SSLeay(), (unsigned long) OPENSSL_VERSION_NUMBER);
-          if (SSLeay() == OPENSSL_VERSION_NUMBER) {
+          if (SSLeay() = OPENSSL_VERSION_NUMBER) {
             return 0;
           } else {
             return 1;
@@ -1124,7 +1124,7 @@ else
   dnl #
   smart_try_dir="$pcap_include_dir"
   FR_SMART_CHECK_INCLUDE([pcap.h])
-  if test "x$ac_cv_header_pcap_h" == "xyes"; then
+  if test "x$ac_cv_header_pcap_h" = "xyes"; then
     AC_DEFINE(HAVE_PCAP_H, 1, [Define to 1 if you have the <pcap.h> header file.])
     AC_SUBST(PCAP_LIBS)
     AC_SUBST(PCAP_LDFLAGS)
@@ -1144,7 +1144,7 @@ else
   dnl #
   smart_try_dir="$collectdclient_include_dir"
   FR_SMART_CHECK_INCLUDE([collectd/client.h])
-  if test "x$ac_cv_header_collectd_client_h" == "xyes"; then
+  if test "x$ac_cv_header_collectd_client_h" = "xyes"; then
     AC_DEFINE(HAVE_COLLECTDC_H, 1, [Define to 1 if you have the `collectdclient' library (-lcollectdclient).])
     AC_SUBST(COLLECTDC_LIBS)
     AC_SUBST(COLLECTDC_LDFLAGS)
@@ -1164,7 +1164,7 @@ else
   dnl #
   smart_try_dir="$cap_include_dir"
   FR_SMART_CHECK_INCLUDE([sys/capability.h])
-  if test "x$ac_cv_header_sys_capability_h" == "xyes"; then
+  if test "x$ac_cv_header_sys_capability_h" = "xyes"; then
     AC_DEFINE(HAVE_CAPABILITY_H, 1, [Define to 1 if you have the <sys/capability.h> header file.])
   else
     AC_MSG_WARN([cap headers not found, will not perform debugger checks. Use --with-cap-include-dir=<path>.])
@@ -1179,7 +1179,7 @@ if test "x$WITH_GPERFTOOLS" != xyes || test "x$GPERFTOOLS_LIBS" = x; then
 else
   smart_try_dir="$gperftools_include_dir"
   FR_SMART_CHECK_INCLUDE([gperftools/profiler.h])
-  if test "x$ac_cv_header_gperftools_profiler_h" == "xyes"; then
+  if test "x$ac_cv_header_gperftools_profiler_h" = "xyes"; then
     AC_DEFINE(HAVE_GPERFTOOLS_PROFILER_H, 1, [Define to 1 if you have the <gperftools/profiler.h> header file.])
     AC_SUBST(GPERFTOOLS_LIBS)
     AC_SUBST(GPERFTOOLS_LDFLAGS)
@@ -1196,7 +1196,7 @@ if test "x$WITH_SYSTEMD" != xyes || test "x$SYSTEMD_LIBS" = x; then
 else
   smart_try_dir="$systemd_include_dir"
   FR_SMART_CHECK_INCLUDE([systemd/sd-daemon.h])
-  if test "x$ac_cv_header_systemd_sdmdaemon_h" == "xyes"; then
+  if test "x$ac_cv_header_systemd_sdmdaemon_h" = "xyes"; then
     AC_DEFINE(HAVE_SYSTEMD_SD_DAEMON_H, 1, [Define to 1 if you have the <systemd/sd-daemon.h> header file.])
     AC_SUBST(SYSTEMD_LIBS)
     AC_SUBST(SYSTEMD_LDFLAGS)
@@ -1446,7 +1446,7 @@ AC_TYPE_SIGNAL
 dnl #
 dnl #  Check if we have utmpx.h
 dnl #  if so, check if struct utmpx has entry ut_xtime
-dnl #  if not, set it to define ut_xtime == ut_tv.tv_sec
+dnl #  if not, set it to define ut_xtime = ut_tv.tv_sec
 dnl #
 if test "x$ac_cv_header_utmpx_h" = "xyes"; then
  FR_CHECK_STRUCT_HAS_MEMBER([#include <utmpx.h>], [struct utmpx], ut_xtime)
@@ -2161,7 +2161,7 @@ dnl #  Add -Werror last, so it doesn't interfere with autoconf's
 dnl #  test programs.
 dnl #
 dnl #############################################################
-if test "x$werror" == "xyes"; then
+if test "x$werror" = "xyes"; then
   CFLAGS="-Werror $CFLAGS"
 fi
 
