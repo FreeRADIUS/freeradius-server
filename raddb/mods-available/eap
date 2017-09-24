@@ -340,8 +340,6 @@ eap {
 		#  not calculate the EAP keys correctly.  The fix is to upgrade
 		#  OpenSSL, or disable TLS 1.2 here.
 		#
-		#  For EAP-FAST, this MUST be set to 1.1
-		#
 		#  SSLv2 and SSLv3 are permanently disabled due to security
 		#  issues.
 		#
