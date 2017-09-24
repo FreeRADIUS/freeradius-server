@@ -42,6 +42,7 @@ typedef struct rlm_eap_fast_t {
 	int			default_provisioning_method;
 
 	char const		*virtual_server;			//!< Virtual server to use for processing
+	char const		*cipher_list;				//!< cipher list specific to EAP-FAST
 									//!< inner EAP method.
 	bool			req_client_cert;			//!< Whether we require a client cert
 									//!< in the outer tunnel.
@@ -61,6 +62,7 @@ static CONF_PARSER submodule_config[] = {
 	{ FR_CONF_OFFSET("default_provisioning_eap_type", FR_TYPE_STRING, rlm_eap_fast_t, default_provisioning_method_name), .dflt = "mschapv2" },
 
 	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, rlm_eap_fast_t, virtual_server) },
+	{ FR_CONF_OFFSET("cipher_list", FR_TYPE_STRING, rlm_eap_fast_t, cipher_list) },
 
 	{ FR_CONF_OFFSET("require_client_cert", FR_TYPE_BOOL, rlm_eap_fast_t, req_client_cert), .dflt = "no" },
 
@@ -497,6 +499,15 @@ static rlm_rcode_t mod_session_init(void *type_arg, eap_session_t *eap_session)
 	if (!eap_tls_session) return RLM_MODULE_FAIL;
 
 	tls_session = eap_tls_session->tls_session;
+
+	if (inst->cipher_list) {
+		RDEBUG("Over-riding main cipher list with '%s'", inst->cipher_list);
+
+		if (!SSL_set_cipher_list(tls_session->ssl, inst->cipher_list)) {
+			REDEBUG("Failed over-riding cipher list to '%s'.  EAP-FAST will likely not work",
+				inst->cipher_list);
+		}
+	}
 
 	/*
 	 *	Push TLV of authority_identity into tls_record

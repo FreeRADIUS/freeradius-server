@@ -1034,11 +1034,22 @@ eap {
 		# "DEFAULT" as "DEFAULT" contains "!aNULL" so instead it is
 		# recommended "ALL:!EXPORT:!eNULL:!SSLv2" is used
 		#
-#		tls = tls-common
+		tls = tls-common
+
+		#
+		#  If 'cipher_list' is set here, it will over-ride the
+		#  'cipher_list' configuration from the 'tls-common'
+		#  configuration.  The EAP-FAST module has it's own
+		#  over-ride for 'cipher_list' because the
+		#  specifications mandata a different set of ciphers
+		#  than are used by the other EAP methods.
+		#
+		cipher_list = "ALL:!EXPORT:!eNULL:!SSLv2"
+
 
 		# PAC lifetime in seconds (default: seven days)
 		#
-#		pac_lifetime = 604800
+		pac_lifetime = 604800
 
 		# Authority ID of the server
 		#
