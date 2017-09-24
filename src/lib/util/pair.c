@@ -178,8 +178,8 @@ VALUE_PAIR *fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *paren
 
 	da = fr_dict_attr_child_by_num(parent, attr);
 	if (!da) {
+		unsigned int		vendor_id = 0;
 		fr_dict_attr_t const	*vendor;
-		VALUE_PAIR		*vp;
 
 		/*
 		 *	If parent is a vendor, that's fine. If parent
@@ -187,15 +187,11 @@ VALUE_PAIR *fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *paren
 		 *	also fine...
 		 */
 		vendor = fr_dict_vendor_attr_by_da(parent);
+		if (vendor) vendor_id = vendor->vendor;
 
-		da = fr_dict_unknown_afrom_fields(ctx, fr_dict_root(fr_dict_internal),
-						  vendor ? vendor->vendor : 0, attr);
-		if (!da) {
-			return NULL;
-		}
-
-		vp = fr_pair_afrom_child_num(ctx, vendor, attr);
-		return vp;
+		da = fr_dict_unknown_afrom_fields(ctx, parent,
+						  vendor_id, attr);
+		if (!da) return NULL;
 	}
 
 	return fr_pair_afrom_da(ctx, da);
