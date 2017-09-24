@@ -76,7 +76,7 @@ if test x$with_[]modname != xno; then
 		[LINKS="yes"], [LINKS="no"])
 
 		AC_MSG_RESULT($LINKS)
-		if test "x$LINKS" == "xno"; then
+		if test "x$LINKS" = "xno"; then
 			fail="$fail libperl.so"
 			targetname=
 		fi
@@ -90,7 +90,7 @@ if test x$with_[]modname != xno; then
 		[LINKS="yes"], [LINKS="no"])
 
 		AC_MSG_RESULT($LINKS)
-		if test "x$LINKS" == "xno"; then
+		if test "x$LINKS" = "xno"; then
 			fail="$fail libperl.so"
 			targetname=
 		fi
