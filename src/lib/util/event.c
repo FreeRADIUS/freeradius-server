@@ -154,6 +154,7 @@ static fr_event_func_map_t vnode_func_map[] = {
 		.type		= FR_EVENT_FD_FILE,
 		.coalesce	= true
 	},
+#ifdef NOTE_REVOKE
 	{
 		.offset		= offsetof(fr_event_vnode_func_t, revoke),
 		.name		= "revoke",
@@ -163,6 +164,8 @@ static fr_event_func_map_t vnode_func_map[] = {
 		.type		= FR_EVENT_FD_FILE,
 		.coalesce	= true
 	},
+#endif
+#ifdef NOTE_FUNLOCK
 	{
 		.offset		= offsetof(fr_event_vnode_func_t, funlock),
 		.name		= "funlock",
@@ -172,6 +175,7 @@ static fr_event_func_map_t vnode_func_map[] = {
 		.type		= FR_EVENT_FD_FILE,
 		.coalesce	= true
 	},
+#endif
 	{ 0 }
 };
 
@@ -378,11 +382,12 @@ int fr_event_list_time(struct timeval *when, fr_event_list_t *el)
 
 /** Build a new evset based on function pointers present
  *
- * @param[out] where	to write the evset.
- * @param[in] outlen	length of output buffer.
- * @param[in] ef	event to insert.
- * @param[in] map	of function pointer offsets to filters and filter flags.
- * @param[in] funcs	to map to events.
+ * @param[out] out		where to write the evset.
+ * @param[in] outlen		length of output buffer.
+ * @param[in] ef		event to insert.
+ * @param[in] map		of function pointer offsets to filters and filter flags.
+ * @param[in] prev_funcs	Previous set of functions mapped to filters.
+ * @param[in] curr_funcs	Functions to map to filters.
  * @return
  *	- >= 0 the number of changes written to out.
  *	- < 0 an error ocurred.
@@ -628,6 +633,8 @@ int fr_event_fd_delete(fr_event_list_t *el, int fd)
  * @param[in] el	to insert fd callback into.
  * @param[in] fd	to install filters for.
  * @param[in] filter	one of the #fr_event_filter_t values.
+ * @param[in] funcs	Structure containing callback functions. If a function pointer
+ *			is set, the equivalent kevent filter will be installed.
  * @param[in] error	function to call when an error occurs on the fd.
  * @param[in] uctx	to pass to handler.
  */

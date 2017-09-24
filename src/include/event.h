@@ -125,9 +125,13 @@ typedef struct {
 	fr_event_fd_cb_t	attrib;			//!< File attributes changed.
 	fr_event_fd_cb_t	link;			//!< The link count on the file changed.
 	fr_event_fd_cb_t	rename;			//!< The file was renamed.
+#ifdef NOTE_REVOKE
 	fr_event_fd_cb_t	revoke;			//!< Volume containing the file was unmounted or
 							///< access was revoked with revoke().
+#endif
+#ifdef NOTE_FUNLOCK
 	fr_event_fd_cb_t	funlock;		//!< The file was unlocked.
+#endif
 } fr_event_vnode_func_t;
 
 int		fr_event_list_num_fds(fr_event_list_t *el);
