@@ -1026,7 +1026,7 @@ eap {
 	#
 	#  The FAST module implements the EAP-FAST protocol
 	#
-#	fast {
+	fast {
 		# Point to the common TLS configuration
 		#
 		# cipher_list though must include "ADH" for anonymous provisioning.
@@ -1058,17 +1058,17 @@ eap {
 		# your RADIUS servers.  This value should be unique to your
 		# installation.  We suggest using a domain name.
 		#
-#		authority_identity = "1234"
+		authority_identity = "1234"
 
 		# PAC Opaque encryption key (must be exactly 32 bytes in size)
 		#
 		# This value MUST be secret, and MUST be generated using
 		# a secure method, such as via 'openssl rand -hex 32'
 		#
-#		pac_opaque_key = "0123456789abcdef0123456789ABCDEF"
+		pac_opaque_key = "0123456789abcdef0123456789ABCDEF"
 
 		# Same as for TTLS, PEAP, etc.
 		#
-#		virtual_server = inner-tunnel
-#	}
+		virtual_server = inner-tunnel
+	}
 }
