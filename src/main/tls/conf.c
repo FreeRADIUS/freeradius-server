@@ -118,18 +118,6 @@ CONF_PARSER tls_server_config[] = {
 #endif
 #endif
 
-#ifdef SSL_OP_NO_TLSv1
-	{ FR_CONF_DEPRECATED("disable_tlsv1", FR_TYPE_BOOL, fr_tls_conf_t, disable_tlsv1) },
-#endif
-
-#ifdef SSL_OP_NO_TLSv1_1
-	{ FR_CONF_DEPRECATED("disable_tlsv1_1", FR_TYPE_BOOL, fr_tls_conf_t, disable_tlsv1_1) },
-#endif
-
-#ifdef SSL_OP_NO_TLSv1_2
-	{ FR_CONF_DEPRECATED("disable_tlsv1_2", FR_TYPE_BOOL, fr_tls_conf_t, disable_tlsv1_2) },
-#endif
-
 	{ FR_CONF_OFFSET("tls_max_version", FR_TYPE_FLOAT32, fr_tls_conf_t, tls_max_version) },
 
 	{ FR_CONF_OFFSET("tls_min_version", FR_TYPE_FLOAT32, fr_tls_conf_t, tls_min_version), .dflt = "1.0" },
@@ -168,17 +156,6 @@ CONF_PARSER tls_client_config[] = {
 #endif
 #endif
 
-#ifdef SSL_OP_NO_TLSv1
-	{ FR_CONF_DEPRECATED("disable_tlsv1", FR_TYPE_BOOL, fr_tls_conf_t, disable_tlsv1) },
-#endif
-
-#ifdef SSL_OP_NO_TLSv1_1
-	{ FR_CONF_DEPRECATED("disable_tlsv1_1", FR_TYPE_BOOL, fr_tls_conf_t, disable_tlsv1_1) },
-#endif
-
-#ifdef SSL_OP_NO_TLSv1_2
-	{ FR_CONF_DEPRECATED("disable_tlsv1_2", FR_TYPE_BOOL, fr_tls_conf_t, disable_tlsv1_2) },
-#endif
 	{ FR_CONF_OFFSET("tls_max_version", FR_TYPE_FLOAT32, fr_tls_conf_t, tls_max_version) },
 
 	{ FR_CONF_OFFSET("tls_min_version", FR_TYPE_FLOAT32, fr_tls_conf_t, tls_min_version), .dflt = "1.0" },
