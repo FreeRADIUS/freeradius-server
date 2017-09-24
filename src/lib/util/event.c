@@ -1484,14 +1484,15 @@ service:
 			case NOTE_RENAME:
 				ef->funcs.vnode.rename(el, ef->fd, flags, ef->uctx);
 				break;
-
+#ifdef NOTE_REVOKE
 			case NOTE_REVOKE:
 				ef->funcs.vnode.revoke(el, ef->fd, flags, ef->uctx);
 				break;
-
+#endif
+#ifdef NOTE_FUNLOCK
 			case NOTE_FUNLOCK:
 				ef->funcs.vnode.funlock(el, ef->fd, flags, ef->uctx);
-
+#endif
 			default:
 				if (unlikely(!fr_cond_assert(false))) break;
 			}
