@@ -2669,8 +2669,8 @@ int unlang_event_fd_add(REQUEST *request,
 	if (fr_event_fd_insert(request, request->el, fd,
 			       ev->fd_read ? unlang_event_fd_read_handler : NULL,
 			       ev->fd_write ? unlang_event_fd_write_handler : NULL,
-			       NULL,
-			       ev->fd_error ? unlang_event_fd_error_handler: NULL, ev) < 0) {
+			       ev->fd_error ? unlang_event_fd_error_handler: NULL,
+			       ev) < 0) {
 		talloc_free(ev);
 		return -1;
 	}

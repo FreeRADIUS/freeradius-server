@@ -316,7 +316,10 @@ static void fd_idle(rlm_radius_udp_connection_t *c)
 	c->pending = false;
 	DEBUG3("Marking socket %s as idle", c->name);
 	if (fr_event_fd_insert(c->conn, t->el, c->fd,
-			       conn_read, NULL, NULL, conn_error, c) < 0) {
+			       conn_read,
+			       NULL,
+			       conn_error,
+			       c) < 0) {
 		PERROR("Failed inserting FD event");
 		talloc_free(c);
 	}
@@ -344,7 +347,10 @@ static void fd_active(rlm_radius_udp_connection_t *c)
 	if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
 
 	if (fr_event_fd_insert(c->conn, t->el, c->fd,
-			       conn_read, conn_writable, NULL, conn_error, c) < 0) {
+			       conn_read,
+			       conn_writable,
+			       conn_error,
+			       c) < 0) {
 		PERROR("Failed inserting FD event");
 		talloc_free(c);
 	}

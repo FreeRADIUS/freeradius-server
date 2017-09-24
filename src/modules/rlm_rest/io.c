@@ -268,7 +268,9 @@ static int _rest_io_event_modify(UNUSED CURL *easy, curl_socket_t fd, int what, 
 	switch (what) {
 	case CURL_POLL_IN:
 		if (fr_event_fd_insert(thread, thread->el, fd,
-				       _rest_io_service_readable, NULL, NULL, _rest_io_service_errored,
+				       _rest_io_service_readable,
+				       NULL,
+				       _rest_io_service_errored,
 				       thread) < 0) {
 			ERROR("multi-handle %p registration failed for read+error events on FD %i: %s",
 			      thread->mandle, fd, fr_strerror());
@@ -279,7 +281,9 @@ static int _rest_io_event_modify(UNUSED CURL *easy, curl_socket_t fd, int what, 
 
 	case CURL_POLL_OUT:
 		if (fr_event_fd_insert(thread, thread->el, fd,
-				       NULL, _rest_io_service_writable, NULL, _rest_io_service_errored,
+				       NULL,
+				       _rest_io_service_writable,
+				       _rest_io_service_errored,
 				       thread) < 0) {
 			ERROR("multi-handle %p registration failed for write+error events on FD %i: %s",
 			      thread->mandle, fd, fr_strerror());
@@ -290,7 +294,9 @@ static int _rest_io_event_modify(UNUSED CURL *easy, curl_socket_t fd, int what, 
 
 	case CURL_POLL_INOUT:
 		if (fr_event_fd_insert(thread, thread->el, fd,
-				       _rest_io_service_readable, _rest_io_service_writable, NULL, _rest_io_service_errored,
+				       _rest_io_service_readable,
+				       _rest_io_service_writable,
+				       _rest_io_service_errored,
 				       thread) < 0) {
 			ERROR("multi-handle %p registration failed for read+write+error events on FD %i: %s",
 			      thread->mandle, fd, fr_strerror());

@@ -524,7 +524,6 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 	if (fr_event_fd_insert(nr, nr->el, s->fd,
 			       fr_network_read,
 			       NULL,
-			       NULL,
 			       listen->app_io->error ? fr_network_error : NULL,
 			       s) < 0) {
 		ERROR("Failed adding new socket to event loop: %s", fr_strerror());
@@ -612,7 +611,6 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 	if (fr_event_fd_insert(nr, nr->el, s->fd,
 			       fr_network_read,
 			       NULL,
-			       NULL,
 			       app_io->error ? fr_network_error : NULL,
 			       s) < 0) {
 		ERROR("Failed adding new socket to event loop: %s", fr_strerror());
@@ -637,6 +635,7 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 	fr_network_t		*nr = ctx;
 	fr_network_socket_t	*s;
 	fr_app_io_t const	*app_io;
+	fr_event_vnode_func_t	funcs = { .extend = fr_network_vnode };
 
 	rad_assert(data_size == sizeof(*s));
 
@@ -670,12 +669,10 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 	rad_assert(app_io->fd);
 	s->fd = app_io->fd(s->listen->app_io_instance);
 
-	if (fr_event_fd_insert(nr, nr->el, s->fd,
-			       NULL,
-			       NULL,
-			       fr_network_vnode,
-			       app_io->error ? fr_network_error : NULL,
-			       s) < 0) {
+	if (fr_event_filter_insert(nr, nr->el, s->fd, FR_EVENT_FILTER_VNODE,
+				   &funcs,
+				   app_io->error ? fr_network_error : NULL,
+				   s) < 0) {
 		ERROR("Failed adding new socket to event loop: %s", fr_strerror());
 		talloc_free(s);
 		return;
@@ -990,7 +987,6 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 				if (fr_event_fd_insert(nr, nr->el, s->fd,
 						       fr_network_read,
 						       fr_network_write,
-						       NULL,
 						       listen->app_io->error ? fr_network_error : NULL,
 						       s) < 0) {
 					ERROR("Failed adding write callback to event loop: %s", fr_strerror());

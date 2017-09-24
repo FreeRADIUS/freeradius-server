@@ -70,9 +70,9 @@ int rr_track_delete(rlm_radius_id_t *id, rlm_radius_request_t *rr) CC_HINT(nonnu
 void rr_track_use_authenticator(rlm_radius_id_t *id, bool flag) CC_HINT(nonnull);
 
 int rr_track_start(rlm_radius_id_t *id, rlm_radius_request_t *rr, fr_event_list_t *el,
-		   fr_event_callback_t callback, void *uctx, rlm_radius_retry_t *retry) CC_HINT(nonnull);
+		   fr_event_cb_t callback, void *uctx, rlm_radius_retry_t *retry) CC_HINT(nonnull);
 int rr_track_retry(rlm_radius_id_t *id, rlm_radius_request_t *rr, fr_event_list_t *el,
-		   fr_event_callback_t callback, void *uctx, rlm_radius_retry_t *retry,
+		   fr_event_cb_t callback, void *uctx, rlm_radius_retry_t *retry,
 		   struct timeval *no) CC_HINT(nonnull);
 
 #endif	/* _RLM_RADIUS_TRACK_H */

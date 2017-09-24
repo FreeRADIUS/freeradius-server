@@ -47,7 +47,7 @@ RCSID("$Id$")
  */
 struct fr_event_timer {
 	struct timeval		when;			//!< When this timer should fire.
-	fr_event_callback_t	callback;		//!< Callback to execute when the timer fires.
+	fr_event_cb_t	callback;		//!< Callback to execute when the timer fires.
 	void const		*uctx;			//!< Context pointer to pass to the callback.
 	TALLOC_CTX		*linked_ctx;		//!< talloc ctx this event was bound to.
 
@@ -55,23 +55,151 @@ struct fr_event_timer {
 	int			heap;			//!< Where to store opaque heap data.
 };
 
-/** A file descriptor event
+typedef enum {
+	FR_EVENT_FD_SOCKET	= 1,			//!< is a socket.
+	FR_EVENT_FD_FILE	= 2,			//!< is a file.
+	FR_EVENT_FD_DIRECTORY	= 4,			//!< is a directory.
+
+#ifdef SO_GET_FILTER
+	FR_EVENT_FD_PCAP	= 8,
+#endif
+} fr_event_fd_type_t;
+
+#ifndef SO_GET_FILTER
+#  define FR_EVENT_FD_PCAP	0
+#endif
+
+typedef struct {
+	size_t			offset;			//!< Offset of function pointer in structure.
+	char const		*name;			//!< Name of the event.
+	int16_t			filter;			//!< Filter to apply.
+	uint16_t		flags;			//!< Flags to use for inserting event.
+	uint32_t		fflags;			//!< fflags to pass to filter.
+	fr_event_fd_type_t	type;			//!< Type this filter applies to.
+	bool			coalesce;		//!< Coalesce this map with the next.
+} fr_event_func_map_t;
+
+static fr_event_func_map_t io_func_map[] = {
+	{
+		.offset		= offsetof(fr_event_io_func_t, read),
+		.name		= "read",
+		.filter		= EVFILT_READ,
+		.flags		= EV_ADD | EV_ENABLE,
+		.fflags		= 0,
+		.type		= FR_EVENT_FD_SOCKET | FR_EVENT_FD_FILE | FR_EVENT_FD_PCAP
+	},
+	{
+		.offset		= offsetof(fr_event_io_func_t, write),
+		.name		= "write",
+		.filter		= EVFILT_WRITE,
+		.flags		= EV_ADD | EV_ENABLE,
+		.fflags		= 0,
+		.type		= FR_EVENT_FD_SOCKET | FR_EVENT_FD_FILE | FR_EVENT_FD_PCAP
+	},
+	{ 0 }
+};
+
+static fr_event_func_map_t vnode_func_map[] = {
+	{
+		.offset		= offsetof(fr_event_vnode_func_t, delete),
+		.name		= "delete",
+		.filter		= EVFILT_VNODE,
+		.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
+		.fflags		= NOTE_DELETE,
+		.type		= FR_EVENT_FD_FILE | FR_EVENT_FD_DIRECTORY,
+		.coalesce	= true
+	},
+	{
+		.offset		= offsetof(fr_event_vnode_func_t, write),
+		.name		= "write",
+		.filter		= EVFILT_VNODE,
+		.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
+		.fflags		= NOTE_WRITE,
+		.type		= FR_EVENT_FD_FILE,
+		.coalesce	= true
+	},
+	{
+		.offset		= offsetof(fr_event_vnode_func_t, extend),
+		.name		= "extend",
+		.filter		= EVFILT_VNODE,
+		.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
+		.fflags		= NOTE_EXTEND,
+		.type		= FR_EVENT_FD_FILE,
+		.coalesce	= true
+	},
+	{
+		.offset		= offsetof(fr_event_vnode_func_t, attrib),
+		.name		= "attrib",
+		.filter		= EVFILT_VNODE,
+		.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
+		.fflags		= NOTE_ATTRIB,
+		.type		= FR_EVENT_FD_FILE,
+		.coalesce	= true
+	},
+	{
+		.offset		= offsetof(fr_event_vnode_func_t, link),
+		.name		= "link",
+		.filter		= EVFILT_VNODE,
+		.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
+		.fflags		= NOTE_LINK,
+		.type		= FR_EVENT_FD_FILE,
+		.coalesce	= true
+	},
+	{
+		.offset		= offsetof(fr_event_vnode_func_t, rename),
+		.name		= "rename",
+		.filter		= EVFILT_VNODE,
+		.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
+		.fflags		= NOTE_RENAME,
+		.type		= FR_EVENT_FD_FILE,
+		.coalesce	= true
+	},
+	{
+		.offset		= offsetof(fr_event_vnode_func_t, revoke),
+		.name		= "revoke",
+		.filter		= EVFILT_VNODE,
+		.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
+		.fflags		= NOTE_REVOKE,
+		.type		= FR_EVENT_FD_FILE,
+		.coalesce	= true
+	},
+	{
+		.offset		= offsetof(fr_event_vnode_func_t, funlock),
+		.name		= "funlock",
+		.filter		= EVFILT_VNODE,
+		.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
+		.fflags		= NOTE_FUNLOCK,
+		.type		= FR_EVENT_FD_FILE,
+		.coalesce	= true
+	},
+	{ 0 }
+};
+
+static FR_NAME_NUMBER const fr_event_fd_type_table[] = {
+	{ "socket",		FR_EVENT_FD_SOCKET },
+	{ "file",		FR_EVENT_FD_FILE },
+	{ "directory",		FR_EVENT_FD_DIRECTORY },
+	{ "pcap",		FR_EVENT_FD_PCAP },
+	{ NULL,			-1 },
+};
+
+/** A file descriptor/filter event
  *
  */
 struct fr_event_fd {
+	fr_event_filter_t	filter;
 	int			fd;			//!< File descriptor we're listening for events on.
 
+	fr_event_fd_type_t	type;			//!< Type of events we're interested in.
+
 	int                     sock_type;              //!< The type of socket SOCK_STREAM, SOCK_RAW etc...
-	bool                    is_file;                //!< Is a file, not a socket.
 
-#ifdef SO_GET_FILTER
-	bool                    pf_attached;            //!< Has an attached packet filter (PF) program.
-#endif
+	union {
+		fr_event_io_func_t	io;
+		fr_event_vnode_func_t	vnode;
+	} funcs;
 
-	fr_event_fd_io_t	read;			//!< Callback for when data is available.
-	fr_event_fd_io_t	write;			//!< Callback for when we can write data.
-	fr_event_fd_io_t	vnode;			//!< Callback for when we get EVFILT_VNODE
-	fr_event_fd_error_t	error;			//!< Callback for when an error occurs on the FD.
+	fr_event_error_cb_t	error;			//!< Callback for when an error occurs on the FD.
 
 	bool			is_registered;		//!< Whether this fr_event_fd_t's FD has been registered with
 							///< kevent.  Mostly for debugging.
@@ -88,12 +216,11 @@ struct fr_event_fd {
 	fr_event_fd_t		*next;			//!< item in a list of fr_event_fd.
 };
 
-
 struct fr_event_pid {
 	pid_t			pid;			//!< child to wait for
 	fr_event_list_t		*el;			//!< the event list which this thing is in
 
-	fr_event_pid_callback_t	callback;		//!< callback to run when the child exits
+	fr_event_pid_cb_t	callback;		//!< callback to run when the child exits
 	void			*uctx;			//!< Context pointer to pass to each file descriptor callback.
 };
 
@@ -102,7 +229,7 @@ struct fr_event_pid {
  */
 typedef struct {
 	fr_dlist_t		entry;			//!< Linked list of callback.
-	fr_event_status_t	callback;		//!< The callback to call.
+	fr_event_status_cb_t	callback;		//!< The callback to call.
 	void			*uctx;			//!< Context for the callback.
 } fr_event_pre_t;
 
@@ -111,7 +238,7 @@ typedef struct {
  */
 typedef struct {
 	fr_dlist_t		entry;			//!< Linked list of callback.
-	fr_event_callback_t	callback;		//!< The callback to call.
+	fr_event_cb_t	callback;		//!< The callback to call.
 	void			*uctx;			//!< Context for the callback.
 } fr_event_post_t;
 
@@ -179,7 +306,11 @@ static int fr_event_timer_cmp(void const *a, void const *b)
  */
 static int fr_event_fd_cmp(void const *a, void const *b)
 {
-	fr_event_fd_t const *ev_a = a, *ev_b = b;
+	fr_event_fd_t const	*ev_a = a, *ev_b = b;
+	int			ret;
+
+	ret = (ev_a->filter > ev_b->filter) - (ev_b->filter < ev_b->filter);
+	if (ret != 0) return ret;
 
 	return (ev_a->fd < ev_b->fd) - (ev_a->fd > ev_b->fd);
 }
@@ -245,6 +376,144 @@ int fr_event_list_time(struct timeval *when, fr_event_list_t *el)
 	return 1;
 }
 
+/** Build a new evset based on function pointers present
+ *
+ * @param[out] where	to write the evset.
+ * @param[in] outlen	length of output buffer.
+ * @param[in] ef	event to insert.
+ * @param[in] map	of function pointer offsets to filters and filter flags.
+ * @param[in] funcs	to map to events.
+ * @return
+ *	- >= 0 the number of changes written to out.
+ *	- < 0 an error ocurred.
+ */
+static ssize_t fr_event_build_evset(struct kevent out[], size_t outlen,
+				    fr_event_fd_t *ef, fr_event_func_map_t const map[],
+				    void const *prev_funcs, void const *curr_funcs)
+{
+	struct kevent			*out_p = out, *end = out_p + outlen;
+	fr_event_func_map_t const	*map_p;
+
+	/*
+	 *	Iterate over the function map, setting/unsetting
+	 *	filters and filter flags.
+	 */
+	for (map_p = map; map_p->name; map_p++) {
+		bool		c_func = false;
+		bool		p_func = false;
+		uint32_t	c_fflags = 0;
+		uint32_t	p_fflags = 0;
+
+		do {
+			if (*(uintptr_t const *)((uint8_t const *)curr_funcs + map_p->offset)) {
+				c_fflags |= map_p->fflags;
+				c_func = true;
+
+				/*
+				 *	Check the filter will work for the
+				 *	type of file descriptor specified.
+				 */
+				if (!(map_p->type & ef->type)) {
+					fr_strerror_printf("kevent %s, can't be applied to fd of type",
+							   map_p->name,
+							   fr_int2str(fr_event_fd_type_table,
+							   	      map->type, "<INVALID>"));
+					return -1;
+				}
+			}
+
+			if (*(uintptr_t const *)((uint8_t const *)prev_funcs + map_p->offset)) {
+				p_fflags |= map_p->fflags;
+				p_func = true;
+			}
+
+			if (!(map_p + 1)->coalesce) break;
+			map_p++;
+		} while (1);
+
+		if (out_p > end) {
+			fr_strerror_printf("Out of memory to store kevent filters");
+			return -1;
+		}
+
+		/*
+		 *	Upsert
+		 */
+		if ((c_func && !p_func) || (c_func && p_func && (c_fflags != p_fflags))) {
+			EV_SET(out_p++, ef->fd, map_p->filter, map_p->flags, c_fflags, 0, ef);
+		/*
+		 *	Delete
+		 */
+		} else if (!c_func && p_func) {
+			EV_SET(out_p++, ef->fd, EVFILT_READ, EV_DELETE, 0, 0, 0);
+		}
+	}
+
+	return out_p - out;
+}
+
+/** Discover the type of a file descriptor
+ *
+ * This function writes the result of the discovery to the ef->type,
+ * and ef->sock_type fields.
+ *
+ * @param[out] ef	to write type data to.
+ * @param[in] fd	to discover the type of.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int fr_event_fd_type_set(fr_event_fd_t *ef, int fd)
+{
+	int             sock_type;
+	socklen_t       opt_len = sizeof(sock_type);
+
+	/*
+	 *      It's a socket or PCAP socket
+	 */
+	if (getsockopt(fd, SOL_SOCKET, SO_TYPE, &sock_type, &opt_len) == 0) {
+#ifdef SO_GET_FILTER
+		opt_len = 0;
+		if (unlikely(getsockopt(fd, SOL_SOCKET, SO_ATTACH_FILTER, NULL, &opt_len) < 0)) {
+			fr_strerror_printf("Failed determining PF status: %s", fr_syserror(errno));
+			return -1;
+		}
+		if (opt_len) {
+			ef->type = FR_EVENT_FD_PCAP;
+		} else
+#endif
+		{
+			ef->sock_type = sock_type;
+			ef->type = FR_EVENT_FD_SOCKET;
+		}
+
+	/*
+	 *	It's a file or directory
+	 */
+	} else {
+		struct stat buf;
+
+		if (errno != ENOTSOCK) {
+			fr_strerror_printf("Failed retrieving socket type: %s", fr_syserror(errno));
+			return -1;
+		}
+
+		if (fstat(fd, &buf) < 0) {
+			fr_strerror_printf("Failed calling stat() on file: %s", fr_syserror(errno));
+			return -1;
+		}
+
+		if (S_ISDIR(buf.st_mode)) {
+			ef->type = FR_EVENT_FD_DIRECTORY;
+		} else {
+			ef->type = FR_EVENT_FD_FILE;
+		}
+	}
+	ef->fd = fd;
+
+	return 0;
+}
+
 /** Remove a file descriptor from the event loop and rbtree but don't free it
  *
  * This is used as the talloc destructor for events, and also called by
@@ -257,7 +526,7 @@ int fr_event_list_time(struct timeval *when, fr_event_list_t *el)
  */
 static int fr_event_fd_delete_internal(fr_event_fd_t *ef)
 {
-	struct kevent	evset[3];
+	struct kevent	evset[10];
 	int		count = 0;
 	fr_event_list_t	*el;
 
@@ -265,9 +534,37 @@ static int fr_event_fd_delete_internal(fr_event_fd_t *ef)
 
 	el = talloc_parent(ef);
 
-	if (ef->read) EV_SET(&evset[count++], ef->fd, EVFILT_READ, EV_DELETE, 0, 0, 0);
-	if (ef->write) EV_SET(&evset[count++], ef->fd, EVFILT_WRITE, EV_DELETE, 0, 0, 0);
-	if (ef->vnode) EV_SET(&evset[count++], ef->fd, EVFILT_VNODE, EV_DELETE, 0, 0, 0);
+	switch (ef->filter) {
+	/*
+	 *	Build the filters for normal I/O events
+	 */
+	case FR_EVENT_FILTER_IO:
+	{
+		fr_event_io_func_t funcs = { NULL };
+
+		count = fr_event_build_evset(evset, sizeof(evset)/sizeof(*evset), ef,
+					     io_func_map, &ef->funcs.io, &funcs);
+		if (count < 0) return -1;
+	}
+		break;
+
+	/*
+	 *	Build the filters for vnode events
+	 */
+	case FR_EVENT_FILTER_VNODE:
+	{
+		fr_event_vnode_func_t funcs = { NULL };
+
+		count = fr_event_build_evset(evset, sizeof(evset)/sizeof(*evset), ef,
+					     vnode_func_map, &ef->funcs.vnode, &funcs);
+		if (count < 0) return -1;
+
+
+	}
+
+	default:
+		break;
+	}
 
 	if (unlikely(kevent(el->kq, evset, count, NULL, 0, NULL) < 0)) {
 		fr_strerror_printf("Failed removing filters for FD %i: %s", ef->fd, fr_syserror(errno));
@@ -325,38 +622,27 @@ int fr_event_fd_delete(fr_event_list_t *el, int fd)
 	return 0;
 }
 
-/** Associate a callback with an file descriptor
+/** Insert a filter for the specified fd
  *
  * @param[in] ctx	to bind lifetime of the event to.
  * @param[in] el	to insert fd callback into.
- * @param[in] fd	to read from.
- * @param[in] read_fn	function to call when fd is readable.
- * @param[in] write_fn	function to call when fd is writable.
- * @param[in] vnode_fn	function to call when the underlying file is extended.
+ * @param[in] fd	to install filters for.
+ * @param[in] filter	one of the #fr_event_filter_t values.
  * @param[in] error	function to call when an error occurs on the fd.
  * @param[in] uctx	to pass to handler.
- * @return
- *	- 0 on succes.
- *	- -1 on failure.
  */
-int fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
-		       fr_event_fd_io_t read_fn,
-		       fr_event_fd_io_t write_fn,
-		       fr_event_fd_io_t vnode_fn,
-		       fr_event_fd_error_t error,
-		       void *uctx)
+int fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
+			   fr_event_filter_t filter,
+			   void *funcs, fr_event_error_cb_t error,
+			   void *uctx)
 {
-	int		count = 0;
-	struct kevent	evset[3];
-	fr_event_fd_t	*ef, find;
+	bool		is_new = false;
+	ssize_t		count;
+	fr_event_fd_t	find, *ef;
+	struct kevent	evset[10];
 
 	if (unlikely(!el)) {
 		fr_strerror_printf("Invalid argument: NULL event list");
-		return -1;
-	}
-
-	if (unlikely(!read_fn && !write_fn && !vnode_fn)) {
-		fr_strerror_printf("Invalid arguments: All callbacks are NULL");
 		return -1;
 	}
 
@@ -390,109 +676,61 @@ int fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 
 	/*
 	 *	No pre-existing event.  Allocate an entry
-	 *	for insertion into the rbtree, and call
-	 *	kevent to register read/write callbacks.
+	 *	for insertion into the rbtree.
 	 */
 	if (!ef) {
-		int             sock_type;
-		socklen_t       opt_len = sizeof(sock_type);
-
 		ef = talloc_zero(el, fr_event_fd_t);
 		if (unlikely(!ef)) {
 			fr_strerror_printf("Out of memory");
 			return -1;
 		}
 		talloc_set_destructor(ef, fr_event_fd_delete_internal);
+		ef->linked_ctx = ctx;
 
-		el->num_fds++;
-
-		ef->fd = fd;
-
-                /*
-                 *      Retrieve file descriptor metadata
-                 */
-                if (unlikely(getsockopt(fd, SOL_SOCKET, SO_TYPE, &sock_type, &opt_len) < 0)) {
-                        if (errno != ENOTSOCK) {
-                                fr_strerror_printf("Failed retrieving socket type: %s", fr_syserror(errno));
-                                return -1;
-                        }
-                        ef->is_file = true;
-                }
-#ifdef SO_GET_FILTER
-                else {
-                        opt_len = 0;
-                        if (unlikely(getsockopt(fd, SOL_SOCKET, SO_ATTACH_FILTER, NULL, &opt_len) < 0)) {
-                                fr_strerror_printf("Failed determining PF status: %s", fr_syserror(errno));
-                                return -1;
-                        }
-                        if (opt_len) ef->pf_attached = true;
-                        ef->sock_type = sock_type;
-                }
-#endif
-
-		if (read_fn) EV_SET(&evset[count++], fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, ef);
-		if (write_fn) EV_SET(&evset[count++], fd, EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, ef);
-		if (vnode_fn) {
-			struct stat buf;
-
-			/*
-			 *	Sanity checks. If we care later, we
-			 *	can listen on all NOTE_* for FDs which
-			 *	are just files.
-			 */
-			if (fstat(fd, &buf) < 0) {
-				fr_strerror_printf("Failed calling stat() on file");
-				talloc_free(ef);
-				return -1;
-			}
-
-			if (!S_ISDIR(buf.st_mode)) {
-				fr_strerror_printf("Added vnode handler on non-directory");
-				talloc_free(ef);
-				return -1;
-			}
-
-			EV_SET(&evset[count++], fd, EVFILT_VNODE, EV_ADD | EV_ENABLE, NOTE_EXTEND, 0, ef);
-		}
-
-		if (unlikely(kevent(el->kq, evset, count, NULL, 0, NULL) < 0)) {
-			fr_strerror_printf("Failed adding filter for FD %i: %s", fd, fr_syserror(errno));
+		/*
+		 *	Determine what type of file descriptor
+		 *	this is.
+		 */
+		if (fr_event_fd_type_set(ef, fd) < 0) {
 			talloc_free(ef);
 			return -1;
 		}
 
-		rbtree_insert(el->fds, ef);
+		is_new = true;
+	}
 
-		ef->uctx = uctx;
-		ef->read = read_fn;
-		ef->write = write_fn;
-		ef->error = error;
-		ef->is_registered = true;
-		ef->linked_ctx = ctx;
+	switch (filter) {
+	/*
+	 *	Build the filters for normal I/O events
+	 */
+	case FR_EVENT_FILTER_IO:
+		count = fr_event_build_evset(evset, sizeof(evset)/sizeof(*evset), ef,
+					     io_func_map, &ef->funcs.io, funcs);
+		if (count < 0) {
+		error:
+			if (is_new) talloc_free(ef);
+			return -1;
+		}
+		memcpy(&ef->funcs.io, funcs, sizeof(ef->funcs.io));
+		break;
 
-		return 0;
+	/*
+	 *	Build the filters for vnode events
+	 */
+	case FR_EVENT_FILTER_VNODE:
+		count = fr_event_build_evset(evset, sizeof(evset)/sizeof(*evset), ef,
+					     vnode_func_map, &ef->funcs.vnode, funcs);
+		if (count < 0) goto error;
+		memcpy(&ef->funcs.vnode, funcs, sizeof(ef->funcs.vnode));
+
+	default:
+		fr_strerror_printf("Filter %i not supported", fd, filter);
+		goto error;
 	}
 
 	/*
-	 *	Calculate the diff between the filters that
-	 *	should be registered and the filters we need.
+	 *	We won't necessarily have changes
 	 */
-	if (ef->read) {
-		if (!read_fn) EV_SET(&evset[count++], ef->fd, EVFILT_READ, EV_DELETE, 0, 0, 0);
-	} else {
-		if (read_fn) EV_SET(&evset[count++], ef->fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, ef);
-	}
-	if (ef->write) {
-		if (!write_fn) EV_SET(&evset[count++], ef->fd, EVFILT_WRITE, EV_DELETE, 0, 0, 0);
-	} else {
-		if (write_fn) EV_SET(&evset[count++], ef->fd, EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, ef);
-	}
-	if (ef->vnode) {
-		if (!vnode_fn) EV_SET(&evset[count++], ef->fd, EVFILT_VNODE, EV_DELETE, 0, 0, 0);
-	} else {
-		if (vnode_fn) EV_SET(&evset[count++], ef->fd, EVFILT_VNODE, EV_ADD | EV_ENABLE, NOTE_EXTEND, 0, ef);
-	}
-
 	if (count) {
 		if (unlikely(kevent(el->kq, evset, count, NULL, 0, NULL) < 0)) {
 			fr_strerror_printf("Failed modifying filters for FD %i: %s", fd, fr_syserror(errno));
@@ -500,13 +738,49 @@ int fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 		}
 	}
 
+	ef->error = error;
 	ef->deferred_free = false;
 	ef->uctx = uctx;
-	ef->read = read_fn;
-	ef->write = write_fn;
-	ef->error = error;
+
+	/*
+	 *	Register the fd in the tree of fds...
+	 */
+	if (is_new) {
+		el->num_fds++;
+		rbtree_insert(el->fds, ef);
+		ef->is_registered = true;
+	}
 
 	return 0;
+}
+
+/** Associate I/O callbacks with a file descriptor
+ *
+ * @param[in] ctx	to bind lifetime of the event to.
+ * @param[in] el	to insert fd callback into.
+ * @param[in] fd	to install filters for.
+ * @param[in] read_fn	function to call when fd is readable.
+ * @param[in] write_fn	function to call when fd is writable.
+ * @param[in] error	function to call when an error occurs on the fd.
+ * @param[in] uctx	to pass to handler.
+ * @return
+ *	- 0 on succes.
+ *	- -1 on failure.
+ */
+int fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
+		       fr_event_fd_cb_t read_fn,
+		       fr_event_fd_cb_t write_fn,
+		       fr_event_error_cb_t error,
+		       void *uctx)
+{
+	fr_event_io_func_t funcs =  { .read = read_fn, .write = write_fn };
+
+	if (unlikely(!read_fn && !write_fn)) {
+		fr_strerror_printf("Invalid arguments: All callbacks are NULL");
+		return -1;
+	}
+
+	return fr_event_filter_insert(ctx, el, fd, FR_EVENT_FILTER_IO, &funcs, error, uctx);
 }
 
 /** Delete a timer event from the event list
@@ -576,7 +850,7 @@ static int _event_timer_free(fr_event_timer_t *ev)
  *	- -1 on failure.
  */
 int fr_event_timer_insert(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t const **ev_p,
-			  struct timeval *when, fr_event_callback_t callback, void const *uctx)
+			  struct timeval *when, fr_event_cb_t callback, void const *uctx)
 {
 	fr_event_timer_t *ev;
 
@@ -696,7 +970,7 @@ static int event_pid_free(fr_event_pid_t *ev)
  *	- -1 on failure.
  */
 int fr_event_pid_wait(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_pid_t const **ev_p,
-		      pid_t pid, fr_event_pid_callback_t wait_fn, void *uctx)
+		      pid_t pid, fr_event_pid_cb_t wait_fn, void *uctx)
 {
 	fr_event_pid_t *ev;
 	struct kevent evset;
@@ -787,7 +1061,7 @@ int fr_event_user_delete(fr_event_list_t *el, fr_event_user_handler_t callback, 
  *	- < 0 on error
  *	- 0 on success
  */
-int fr_event_pre_insert(fr_event_list_t *el, fr_event_status_t callback, void *uctx)
+int fr_event_pre_insert(fr_event_list_t *el, fr_event_status_cb_t callback, void *uctx)
 {
 	fr_event_pre_t *pre;
 
@@ -809,7 +1083,7 @@ int fr_event_pre_insert(fr_event_list_t *el, fr_event_status_t callback, void *u
  *	- < 0 on error
  *	- 0 on success
  */
-int fr_event_pre_delete(fr_event_list_t *el, fr_event_status_t callback, void *uctx)
+int fr_event_pre_delete(fr_event_list_t *el, fr_event_status_cb_t callback, void *uctx)
 {
 	fr_dlist_t *entry, *next;
 
@@ -844,7 +1118,7 @@ int fr_event_pre_delete(fr_event_list_t *el, fr_event_status_t callback, void *u
  *	- < 0 on error
  *	- 0 on success
  */
-int fr_event_post_insert(fr_event_list_t *el, fr_event_callback_t callback, void *uctx)
+int fr_event_post_insert(fr_event_list_t *el, fr_event_cb_t callback, void *uctx)
 {
 	fr_event_post_t *post;
 
@@ -866,7 +1140,7 @@ int fr_event_post_insert(fr_event_list_t *el, fr_event_callback_t callback, void
  *	- < 0 on error
  *	- 0 on success
  */
-int fr_event_post_delete(fr_event_list_t *el, fr_event_callback_t callback, void *uctx)
+int fr_event_post_delete(fr_event_list_t *el, fr_event_cb_t callback, void *uctx)
 {
 	fr_dlist_t *entry, *next;
 
@@ -899,7 +1173,7 @@ int fr_event_post_delete(fr_event_list_t *el, fr_event_callback_t callback, void
  */
 int fr_event_timer_run(fr_event_list_t *el, struct timeval *when)
 {
-	fr_event_callback_t	callback;
+	fr_event_cb_t	callback;
 	void			*uctx;
 	fr_event_timer_t	*ev;
 
@@ -1132,7 +1406,7 @@ void fr_event_service(fr_event_list_t *el)
 			 *	This is fine, the callback will get notified
 			 *	via the flags field.
 			 */
-			if (ef->is_file) goto service;
+			if (ef->type == FR_EVENT_FD_FILE) goto service;
 #if defined(__linux__) && defined(SO_GET_FILTER)
 			/*
 			 *      There seems to be an issue with the
@@ -1147,7 +1421,7 @@ void fr_event_service(fr_event_list_t *el)
 			 *	with a packet filter attached, we ignore
 			 *	the EOF flag and continue.
 			 */
-			if ((ef->sock_type == SOCK_RAW) && ef->pf_attached) goto service;
+			if ((ef->sock_type == SOCK_RAW) && (ef->type == FR_EVENT_FD_PCAP)) goto service;
 #endif
 			fd_errno = el->events[i].fflags;
 
@@ -1156,17 +1430,68 @@ void fr_event_service(fr_event_list_t *el)
 
 service:
 		ef->in_handler = true;
-		if (ef->read && (el->events[i].filter == EVFILT_READ)) {
-			ef->read(el, ef->fd, flags, ef->uctx);
-		}
-		if (ef->write && (el->events[i].filter == EVFILT_WRITE) && !ef->deferred_free) {
-			ef->write(el, ef->fd, flags, ef->uctx);
-		}
-		if (ef->vnode && (el->events[i].filter == EVFILT_VNODE) && !ef->deferred_free) {
+		/*
+		 *	If any of these callbacks are NULL, then
+		 *	there's a logic error somewhere.
+		 *	Filters are only installed if there's a
+		 *	callback to handle them.
+		 */
+		switch (ef->filter) {
+		case FR_EVENT_FILTER_IO:
 			/*
-			 *	Note fflags, not flags!
+			 *	io.read can delete the event, in which case
+			 *	we *DON'T* want to call the write event.
 			 */
-			ef->vnode(el, ef->fd, el->events[i].fflags, ef->uctx);
+			if (el->events[i].filter == EVFILT_READ) {
+				ef->funcs.io.read(el, ef->fd, flags, ef->uctx);
+			}
+			if ((el->events[i].filter == EVFILT_WRITE) && !ef->deferred_free) {
+				ef->funcs.io.write(el, ef->fd, flags, ef->uctx);
+			}
+			break;
+
+		case FR_EVENT_FILTER_VNODE:
+			if (unlikely(!fr_cond_assert(el->events[i].filter == EVFILT_VNODE))) break;
+
+			switch (el->events[i].fflags) {
+			case NOTE_DELETE:
+				ef->funcs.vnode.delete(el, ef->fd, flags, ef->uctx);
+				break;
+
+			case NOTE_WRITE:
+				ef->funcs.vnode.write(el, ef->fd, flags, ef->uctx);
+				break;
+
+			case NOTE_EXTEND:
+				ef->funcs.vnode.extend(el, ef->fd, flags, ef->uctx);
+				break;
+
+			case NOTE_ATTRIB:
+				ef->funcs.vnode.attrib(el, ef->fd, flags, ef->uctx);
+				break;
+
+			case NOTE_LINK:
+				ef->funcs.vnode.link(el, ef->fd, flags, ef->uctx);
+				break;
+
+			case NOTE_RENAME:
+				ef->funcs.vnode.rename(el, ef->fd, flags, ef->uctx);
+				break;
+
+			case NOTE_REVOKE:
+				ef->funcs.vnode.revoke(el, ef->fd, flags, ef->uctx);
+				break;
+
+			case NOTE_FUNLOCK:
+				ef->funcs.vnode.funlock(el, ef->fd, flags, ef->uctx);
+
+			default:
+				if (unlikely(!fr_cond_assert(false))) break;
+			}
+			break;
+
+		default:
+			break;
 		}
 		ef->in_handler = false;
 	}
@@ -1298,7 +1623,7 @@ static int _event_list_free(fr_event_list_t *el)
  *	- A pointer to a new event list on success (free with talloc_free).
  *	- NULL on error.
  */
-fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_t status, void *status_uctx)
+fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t status, void *status_uctx)
 {
 	fr_event_list_t *el;
 	struct kevent kev;

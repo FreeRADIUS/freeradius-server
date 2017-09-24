@@ -183,7 +183,6 @@ static void _ldap_start_tls_io_write(fr_event_list_t *el, int fd, UNUSED int fla
 		ret = fr_event_fd_insert(tls_ctx, el, fd,
 					 NULL,
 					 _ldap_start_tls_io_write,	/* We'll be called again when the conn is open */
-					 NULL,
 					 _ldap_start_tls_io_error,
 					 tls_ctx);
 		if (!rad_cond_assert(ret == 0)) goto error;
@@ -192,7 +191,6 @@ static void _ldap_start_tls_io_write(fr_event_list_t *el, int fd, UNUSED int fla
 	case LDAP_SUCCESS:
 		ret = fr_event_fd_insert(tls_ctx, el, fd,
 					 _ldap_start_tls_io_read,
-					 NULL,
 					 NULL,
 					 _ldap_start_tls_io_error,
 					 tls_ctx);
@@ -238,7 +236,6 @@ int fr_ldap_start_tls_async(fr_ldap_connection_t *c, LDAPControl **serverctrls, 
 		ret = fr_event_fd_insert(tls_ctx, el, fd,
 					 NULL,
 					 _ldap_start_tls_io_write,
-					 NULL,
 					 _ldap_start_tls_io_error,
 					 tls_ctx);
 		if (!rad_cond_assert(ret == 0)) {

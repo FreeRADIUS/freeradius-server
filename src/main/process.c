@@ -390,7 +390,11 @@ int radius_event_start(UNUSED bool have_children)
 	}
 	DEBUG4("Created signal pipe.  Read end FD %i, write end FD %i", self_pipe[0], self_pipe[1]);
 
-	if (fr_event_fd_insert(NULL, event_list, self_pipe[0], event_signal_handler, NULL, NULL, NULL, event_list) < 0) {
+	if (fr_event_fd_insert(NULL, event_list, self_pipe[0],
+			       event_signal_handler,
+			       NULL,
+			       NULL,
+			       event_list) < 0) {
 		PERROR("Failed creating signal pipe handler");
 		return -1;
 	}

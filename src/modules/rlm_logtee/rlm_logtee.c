@@ -297,7 +297,10 @@ static void logtee_fd_idle(rlm_logtee_thread_t *t)
 {
 	DEBUG3("Marking socket (%i) as idle", fr_connection_get_fd(t->conn));
 	if (fr_event_fd_insert(t->conn, t->el, fr_connection_get_fd(t->conn),
-			       _logtee_conn_read, NULL, NULL, _logtee_conn_error, t) < 0) {
+			       _logtee_conn_read,
+			       NULL,
+			       _logtee_conn_error,
+			       t) < 0) {
 		PERROR("Failed inserting FD event");
 	}
 }
@@ -312,7 +315,10 @@ static void logtee_fd_active(rlm_logtee_thread_t *t)
 {
 	DEBUG3("Marking socket (%i) as active - Draining requests", fr_connection_get_fd(t->conn));
 	if (fr_event_fd_insert(t->conn, t->el, fr_connection_get_fd(t->conn),
-			       _logtee_conn_read, _logtee_conn_writable, NULL, _logtee_conn_error, t) < 0) {
+			       _logtee_conn_read,
+			       _logtee_conn_writable,
+			       _logtee_conn_error,
+			       t) < 0) {
 		PERROR("Failed inserting FD event");
 	}
 }
