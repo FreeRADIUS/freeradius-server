@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file include/detail.h
+ * @file proto_detail_file.h
  * @brief API to deserialise packets in detail file format and inject them into the server.
  *
  * @copyright 2015  The FreeRADIUS server project
