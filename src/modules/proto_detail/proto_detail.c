@@ -25,10 +25,11 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
-#include <freeradius-devel/detail.h>
 #include <freeradius-devel/protocol.h>
 #include <freeradius-devel/process.h>
 #include <freeradius-devel/rad_assert.h>
+
+#include "detail.h"
 
 #ifdef HAVE_SYS_STAT_H
 #include <sys/stat.h>
