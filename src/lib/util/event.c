@@ -446,11 +446,12 @@ static ssize_t fr_event_build_evset(struct kevent out[], size_t outlen,
 		 */
 		if ((c_func && !p_func) || (c_func && p_func && (c_fflags != p_fflags))) {
 			EV_SET(out_p++, ef->fd, map_p->filter, map_p->flags, c_fflags, 0, ef);
+
 		/*
 		 *	Delete
 		 */
 		} else if (!c_func && p_func) {
-			EV_SET(out_p++, ef->fd, EVFILT_READ, EV_DELETE, 0, 0, 0);
+			EV_SET(out_p++, ef->fd, map_p->filter, EV_DELETE, 0, 0, 0);
 		}
 	}
 
