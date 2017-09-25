@@ -91,6 +91,13 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PAR
 
 	code = type_enum->value->vb_uint32;
 	if (!code || (code >= FR_CODE_MAX)) {
+		cf_log_err(ci, "Invalid value for 'type = %s'", type_str);
+		return -1;
+	}
+
+	if ((code != FR_CODE_ACCOUNTING_REQUEST) &&
+	    (code != FR_CODE_COA_REQUEST) &&
+	    (code != FR_CODE_DISCONNECT_REQUEST)) {
 		cf_log_err(ci, "Cannot process packets of Packet-Type = '%s'", type_str);
 		return -1;
 	}
@@ -300,7 +307,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		 *	function.  The only difference is what kind of
 		 *	packet is created.
 		 */
-		 break;
+		inst->code = fr_dict_enum_by_alias(NULL, da, cf_pair_value(cp))->value->vb_uint32;
+		break;
 	}
 
 	/*

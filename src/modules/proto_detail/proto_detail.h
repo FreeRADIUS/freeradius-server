@@ -44,6 +44,7 @@ typedef struct proto_detail_t {
 	dl_instance_t			**type_submodule;		//!< Instance of the various types
 									//!< only one instance per type allowed.
 
+	uint32_t			code;				//!< RADIUS code to use for incoming packets
 	uint32_t			max_packet_size;		//!< for message ring buffer
 	uint32_t			num_messages;			//!< for message ring buffer
 
