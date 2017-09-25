@@ -3004,12 +3004,12 @@ post_ca:
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
 		if (!SSL_CTX_set_max_proto_version(ctx, max_version)) {
-			tls_log_error(NULL, "Failed setting TLS maximum version");
+			ERROR("Failed setting TLS maximum version");
 			return NULL;
 		}
 
 		if (!SSL_CTX_set_min_proto_version(ctx, min_version)) {
-			tls_log_error(NULL, "Failed setting TLS minimum version");
+			ERROR("Failed setting TLS minimum version");
 			return NULL;
 		}
 #endif	/* OpenSSL version >1.1.0 */
