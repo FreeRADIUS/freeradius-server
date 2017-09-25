@@ -219,6 +219,18 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	client = inst->app_io_private->client(inst->app_io, request->async->packet_ctx);
 	rad_assert(client);
 
+#ifdef WITH_UDPFROMTO
+	/*
+	 *	Overwrite the src ip address on the outbound packet
+	 *	with the one specified by the client.  This is useful
+	 *	to work around broken DSR implementations and other
+	 *	routing issues.
+	 */
+	if (client->src_ipaddr.af != AF_UNSPEC) {
+		request->reply->src_ipaddr = client->src_ipaddr;
+	}
+#endif
+
 	if (fr_radius_packet_encode(request->reply, request->packet, client->secret) < 0) {
 		RDEBUG("Failed encoding RADIUS reply: %s", fr_strerror());
 		return -1;

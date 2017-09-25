@@ -501,18 +501,6 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 			return FR_IO_REPLY;
 		}
 
-#ifdef WITH_UDPFROMTO
-		/*
-		 *	Overwrite the src ip address on the outbound packet
-		 *	with the one specified by the client.
-		 *	This is useful to work around broken DSR implementations
-		 *	and other routing issues.
-		 */
-		if (request->client->src_ipaddr.af != AF_UNSPEC) {
-			request->reply->src_ipaddr = request->client->src_ipaddr;
-		}
-#endif
-
 		if (RDEBUG_ENABLED) common_packet_debug(request, request->reply, false);
 		break;
 
