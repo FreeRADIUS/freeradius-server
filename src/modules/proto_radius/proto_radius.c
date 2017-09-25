@@ -17,7 +17,7 @@
 /**
  * $Id$
  * @file proto_radius.c
- * @brief RAIDUS master protocol handler.
+ * @brief RADIUS master protocol handler.
  *
  * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2016 Alan DeKok (aland@freeradius.org)
@@ -31,7 +31,7 @@
 #include "proto_radius.h"
 
 extern fr_app_t proto_radius;
-static int process_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
 
 /** How to parse a RADIUS listen section
@@ -39,7 +39,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSE
  */
 static CONF_PARSER const proto_radius_config[] = {
 	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY, proto_radius_t,
-			  process_submodule), .dflt = "Status-Server", .func = process_parse },
+			  type_submodule), .dflt = "Status-Server", .func = type_parse },
 	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, proto_radius_t, io_submodule),
 	  .func = transport_parse },
 
@@ -62,7 +62,7 @@ static CONF_PARSER const proto_radius_config[] = {
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int process_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	static char const *type_lib_table[] = {
 		[FR_CODE_ACCESS_REQUEST]	= "auth",
@@ -161,7 +161,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
 	return dl_instance(ctx, out, transport_cs, parent_inst, name, DL_TYPE_SUBMODULE);
 }
 
-/** Decode the packet, and set the request->process function
+/** Decode the packet
  *
  */
 static int mod_decode(void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
@@ -211,7 +211,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	/*
 	 *	"Do not respond"
 	 */
-	 if (request->reply->code == FR_CODE_DO_NOT_RESPOND) {
+	if (request->reply->code == FR_CODE_DO_NOT_RESPOND) {
 		*buffer = 0;
 		return 1;
 	}
@@ -360,9 +360,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		fr_app_process_t const *app_process;
 		int code;
 
-		app_process = (fr_app_process_t const *)inst->process_submodule[i]->module->common;
-		if (app_process->instantiate && (app_process->instantiate(inst->process_submodule[i]->data,
-									  inst->process_submodule[i]->conf) < 0)) {
+		app_process = (fr_app_process_t const *)inst->type_submodule[i]->module->common;
+		if (app_process->instantiate && (app_process->instantiate(inst->type_submodule[i]->data,
+									  inst->type_submodule[i]->conf) < 0)) {
 			cf_log_err(conf, "Instantiation failed for \"%s\"", app_process->name);
 			return -1;
 		}
@@ -419,11 +419,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 */
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
 		char const		*value;
-		dl_t const		*module = talloc_get_type_abort_const(inst->process_submodule[i]->module, dl_t);
+		dl_t const		*module = talloc_get_type_abort_const(inst->type_submodule[i]->module, dl_t);
 		fr_app_process_t const	*app_process = (fr_app_process_t const *)module->common;
 
-		if (app_process->bootstrap && (app_process->bootstrap(inst->process_submodule[i]->data,
-								      inst->process_submodule[i]->conf) < 0)) {
+		if (app_process->bootstrap && (app_process->bootstrap(inst->type_submodule[i]->data,
+								      inst->type_submodule[i]->conf) < 0)) {
 			cf_log_err(conf, "Bootstrap failed for \"%s\"", app_process->name);
 			return -1;
 		}
