@@ -94,32 +94,32 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PAR
 	 *	packet type.
 	 */
 	type_enum = fr_dict_enum_by_alias(NULL, da, type_str);
-	if (type_enum) {
-		code = type_enum->value->vb_uint32;
-		if (code >= FR_CODE_MAX) {
-		invalid_type:
-			cf_log_err(ci, "No module associated with Packet-Type = '%s'", type_str);
-			return -1;
-		}
-
-		name = type_lib_table[code];
-		if (!name) goto invalid_type;
-	/*
-	 *	...or by module name.
-	 */
-	} else {
+	if (!type_enum) {
 		size_t i;
 
 		for (i = 0; i < (sizeof(type_lib_table) / sizeof(*type_lib_table)); i++) {
 			name = type_lib_table[i];
-			if (name && (strcmp(name, type_str) == 0)) break;
+			if (name && (strcmp(name, type_str) == 0)) {
+				type_enum = fr_dict_enum_by_value(NULL, da, fr_box_uint32(i));
+				break;
+			}
 		}
 
-		if (!name) {
+		if (!name || !type_enum) {
 			cf_log_err(ci, "Invalid type \"%s\"", type_str);
 			return -1;
 		}
 	}
+
+	code = type_enum->value->vb_uint32;
+	if (code >= FR_CODE_MAX) {
+	invalid_type:
+		cf_log_err(ci, "Unsupport 'type = %s'", type_str);
+		return -1;
+	}
+
+	name = type_lib_table[code];
+	if (!name) goto invalid_type;
 
 	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_instance_t, "proto_radius"));
 	rad_assert(parent_inst);
