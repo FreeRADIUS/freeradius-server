@@ -353,7 +353,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	Bootstrap the process modules
 	 */
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
-		char const		*value;
 		dl_t const		*module = talloc_get_type_abort_const(inst->type_submodule[i]->module, dl_t);
 		fr_app_process_t const	*app_process = (fr_app_process_t const *)module->common;
 
@@ -362,32 +361,15 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 			cf_log_err(conf, "Bootstrap failed for \"%s\"", app_process->name);
 			return -1;
 		}
-
-		value = cf_pair_value(cp);
-
-		/*
-		 *	Add handlers for the virtual server calls.
-		 *	This is so that when one virtual server wants
-		 *	to call another, it just looks up the data
-		 *	here by packet name, and doesn't need to troll
-		 *	through all of the listeners.
-		 */
-		if (!cf_data_find(inst->server_cs, fr_io_process_t, value)) {
-			fr_io_process_t *process_p;
-
-			process_p = talloc(inst->server_cs, fr_io_process_t);
-			*process_p = app_process->process;
-
-			(void) cf_data_add(inst->server_cs, process_p, value, NULL);
-		}
-
-		i++;
 	}
 
 	/*
 	 *	No IO module, it's an empty listener.
 	 */
-	if (!inst->io_submodule) return 0;
+	if (!inst->io_submodule) {
+		cf_log_err(conf, "Virtual server for detail files requires a 'transport' configuration");
+		return -1;
+	}
 
 	/*
 	 *	Bootstrap the I/O module
