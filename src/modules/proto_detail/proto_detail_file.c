@@ -19,8 +19,8 @@
  * @file proto_detail_file.c
  * @brief Detail handler for files
  *
- * @copyright 2016 The FreeRADIUS server project.
- * @copyright 2016 Alan DeKok (aland@deployingradius.com)
+ * @copyright 2017 The FreeRADIUS server project.
+ * @copyright 2017 Alan DeKok (aland@deployingradius.com)
  */
 #include <netdb.h>
 #include <freeradius-devel/radiusd.h>
@@ -54,6 +54,9 @@ typedef struct {
 
 	bool				vnode;			//!< are we the vnode instance, or the filename_work instance?
 	bool				eof;			//!< are we at EOF on reading?
+	bool				closing;		//!< we should be closing the file
+
+	int				outstanding;		//!< number of outstanding records;
 
 	off_t				header_offset;		//!< offset of the current header we're reading
 	off_t				read_offset;		//!< where we're reading from in filename_work
@@ -96,8 +99,8 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	size_t				packet_len;
 	fr_detail_entry_t		*track;
 	uint8_t				*partial, *end, *next, *p;
-	size_t				room;
 
+	rad_assert(inst->closing != true);
 	rad_assert(*leftover < buffer_len);
 
 	/*
@@ -105,36 +108,38 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	 *	from any previous read.  At the start of the file,
 	 *	"leftover" will be zero.
 	 */
-        partial= buffer + *leftover;
-	room = buffer_len - *leftover;
+	partial = buffer + *leftover;
 
 	/*
 	 *	Try to read as much data as possible.
 	 */
 	if (!inst->eof) {
+		size_t room;
+
+		room = buffer_len - *leftover;
+
 		data_size = read(inst->fd, partial, room);
 		if (data_size < 0) return -1;
 
 		/*
-		 *	Remember the read offset, or EOF.
+		 *	Remember the read offset, and whether we got EOF.
 		 */
-		if (data_size > 0) {
-			inst->read_offset = lseek(inst->fd, 0, SEEK_CUR);
-		} else {
-			inst->eof = true;
-		}
+		inst->read_offset = lseek(inst->fd, 0, SEEK_CUR);
+		inst->eof = (data_size == 0);
+		end = partial + data_size;
+
 	} else {
 		/*
-		 *	We didn't read any more data.
+		 *	We didn't read any more data from the file,
+		 *	but there should be data left in the buffer.
 		 */
 		data_size = 0;
+
+		rad_assert(*leftover > 0);
+		end = buffer + *leftover;
 	}
 
-	/*
-	 *	Remember where the end of all of the data is.
-	 */
-	end = partial + data_size;
-
+redo:
 	/*
 	 *	Look for "end of record" marker.  We've already
 	 *	searched "leftover" bytes for \n\n, so we only have to
@@ -181,12 +186,41 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 
 	} else {
 		/*
-		 *	Else we're at EOF, it's OK to miss an "end of
-		 *	record" marker.  We just eat all of the
+		 *	Else we're at EOF, it's OK to not have an "end
+		 *	of record" marker.  We just eat all of the
 		 *	remaining data.
 		 */
 		packet_len = end - buffer;
 		*leftover = 0;
+	}
+
+	/*
+	 *	Too big?  Ignore it.
+	 *
+	 *	@todo - skip the record, using memmove() etc.
+	 */
+	if (packet_len > inst->parent->max_packet_size) {
+		DEBUG("Ignoring 'too large' entry at offset %llu of %s",
+		      inst->header_offset, inst->filename_work);
+		DEBUG("Entry size %lu is greater than allowed maximum %u",
+		      packet_len, inst->parent->max_packet_size);
+	skip_record:
+		if (next) {
+			/*
+			 *	@todo - be smart, and eat multiple
+			 *	records until we find one which isn't
+			 *	done.
+			 */
+			memmove(buffer, next, (end - next));
+			data_size = (end - next);
+			*leftover = 0;
+			partial = buffer;
+			end = buffer + data_size;
+			goto redo;
+		}
+
+		rad_assert(*leftover == 0);
+		goto done;
 	}
 
 	/*
@@ -208,14 +242,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 
 		if (((end - p) >= 5) &&
 		    (memcmp(p, "\tDone", 5) == 0)) {
-			/*
-			 *	@todo - try to grab another packet
-			 *	from the buffer.  If there is a
-			 *	packet, memmove() the data to the
-			 *	start of the buffer, which is what
-			 *	fr_network_read() expects to see.
-			 */
-			rad_assert(0 == 1);
+			goto skip_record;
 		}
 
 		if (((end - p) > 10) &&
@@ -223,17 +250,6 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 			p += 2;
 			track->done_offset = inst->header_offset + (p - buffer);
 		}
-	}
-
-	/*
-	 *	Too big?  Ignore it.
-	 */
-	if (packet_len > inst->parent->max_packet_size) {
-		DEBUG("Ignoring 'too large' entry at offset %llu of %s",
-		      inst->header_offset, inst->filename_work);
-		DEBUG("Entry size %lu is greater than allowed maximum %u",
-		      packet_len, inst->parent->max_packet_size);
-		return 0;
 	}
 
 	/*
@@ -256,13 +272,23 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	 *	that logic doesn't integrate well into the event loop.
 	 *	So this hack is the next best thing.
 	 */
-	if (inst->eof && (*leftover > 0)) {
-		off_t hack;
+done:
+	if (inst->eof) {
+		if (*leftover > 0) {
+			off_t hack;
 
-		hack = inst->read_offset - 1;
-		(void) lseek(inst->fd, 0, SEEK_SET);
+			hack = inst->read_offset - 1;
+			(void) lseek(inst->fd, 0, SEEK_SET);
+		} else {
+			/*
+			 *	Close the FD when we've written the
+			 *	last response.
+			 */
+			inst->closing = true;
+		}
 	}
 
+	inst->outstanding++;
 	return packet_len;
 }
 
@@ -274,17 +300,17 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 
 	if (buffer_len < 1) return -1;
 
+	rad_assert(inst->outstanding > 0);
+	inst->outstanding--;
+
 	if (buffer[0] == 0) {
 		DEBUG3("Got Do-Not-Respond, not writing reply");
-		talloc_free(track);
-		return buffer_len;
-	}
 
-	/*
-	 *	Seek to the entry, mark it as done, and then seek to
-	 *	the point in the file where we were reading from.
-	 */
-	if (track->done_offset > 0) {
+	} else if (track->done_offset > 0) {
+		/*
+		 *	Seek to the entry, mark it as done, and then seek to
+		 *	the point in the file where we were reading from.
+		 */
 		(void) lseek(inst->fd, track->done_offset, SEEK_SET);
 		(void) write(inst->fd, "Done", 4);
 		(void) lseek(inst->fd, inst->read_offset, SEEK_SET);
@@ -294,6 +320,10 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	 *	@todo - add a used / free pool for these
 	 */
 	talloc_free(track);
+
+	/*
+	 *	@todo - close the socket if we're at EOF, and outstanding == 0?
+	 */
 
 	return buffer_len;
 }
