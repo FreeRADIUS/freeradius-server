@@ -431,7 +431,7 @@ next_message:
  * @param[in] fflags	from kevent.
  * @param[in] ctx	the network socket context.
  */
-static void fr_network_vnode(UNUSED fr_event_list_t *el, int sockfd, int fflags, void *ctx)
+static void fr_network_vnode_extend(UNUSED fr_event_list_t *el, int sockfd, int fflags, void *ctx)
 {
 	fr_network_socket_t *s = ctx;
 	fr_network_t *nr = talloc_parent(s);
@@ -635,7 +635,7 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 	fr_network_t		*nr = ctx;
 	fr_network_socket_t	*s;
 	fr_app_io_t const	*app_io;
-	fr_event_vnode_func_t	funcs = { .extend = fr_network_vnode };
+	fr_event_vnode_func_t	funcs = { .extend = fr_network_vnode_extend };
 
 	rad_assert(data_size == sizeof(*s));
 
