@@ -144,9 +144,9 @@ static ssize_t mod_encode(UNUSED void const *instance, UNUSED REQUEST *request, 
 	return 0;
 }
 
-static ssize_t mod_read(void const *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority)
+static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority)
 {
-	proto_vmps_udp_t const		*inst = talloc_get_type_abort_const(instance, proto_vmps_udp_t);
+	proto_vmps_udp_t const		*inst = talloc_get_type_abort(instance, proto_vmps_udp_t);
 	fr_ip_srcdst_t			*ip;
 	uint8_t				*packet;
 	size_t				packet_len;
