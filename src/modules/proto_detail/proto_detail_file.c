@@ -35,6 +35,8 @@
 
 #include <fcntl.h>
 
+#define MPRINT DEBUG
+
 typedef struct {
 	fr_time_t			timestamp;		//!< when we read the entry.
 	off_t				done_offset;		//!< where we're tracking the status
@@ -72,12 +74,15 @@ static const CONF_PARSER file_listen_config[] = {
 };
 
 
-static int mod_decode(UNUSED void const *instance, REQUEST *request, UNUSED uint8_t *const data, UNUSED size_t data_len)
+static int mod_decode(void const *instance, REQUEST *request, UNUSED uint8_t *const data, UNUSED size_t data_len)
 {
 
+	proto_detail_file_t		*inst = talloc_get_type_abort(instance, proto_detail_file_t);
 //	fr_detail_entry_t const			*track = request->async->packet_ctx;
 
 	request->root = &main_config;
+	request->packet->id = inst->outstanding;
+	request->reply->id = inst->outstanding;
 	REQUEST_VERIFY(request);
 
 	return 0;
@@ -113,6 +118,8 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	 */
 	partial = buffer + *leftover;
 
+	MPRINT("READ leftover %zd", *leftover);
+
 	/*
 	 *	Try to read as much data as possible.
 	 */
@@ -124,6 +131,8 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 		data_size = read(inst->fd, partial, room);
 		if (data_size < 0) return -1;
 
+		MPRINT("GOT %zd bytes", data_size);
+
 		/*
 		 *	Remember the read offset, and whether we got EOF.
 		 */
@@ -132,6 +141,8 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 		end = partial + data_size;
 
 	} else {
+		MPRINT("AT EOF");
+
 		/*
 		 *	We didn't read any more data from the file,
 		 *	but there should be data left in the buffer.
@@ -177,6 +188,8 @@ redo:
 		packet_len = next - buffer;
 		*leftover = end - next;
 
+		MPRINT("FOUND next at %zd, leftover is %zd", packet_len, *leftover);
+
 	} else if (!inst->eof) {
 		/*
 		 *	We're not at EOF, and there is no "next"
@@ -185,6 +198,7 @@ redo:
 		 *	there's more data.
 		 */
 		*leftover = end - buffer;
+		MPRINT("Not at EOF, and no next.  Leftover is %zd", *leftover);
 		return 0;
 
 	} else {
@@ -195,6 +209,8 @@ redo:
 		 */
 		packet_len = end - buffer;
 		*leftover = 0;
+
+		MPRINT("NO end of record, but at EOF, found %zd leftover is 0", packet_len);
 	}
 
 	/*
@@ -208,6 +224,7 @@ redo:
 		DEBUG("Entry size %lu is greater than allowed maximum %u",
 		      packet_len, inst->parent->max_packet_size);
 	skip_record:
+		MPRINT("Skipping record");
 		if (next) {
 			/*
 			 *	@todo - be smart, and eat multiple
@@ -277,21 +294,19 @@ redo:
 	 */
 done:
 	if (inst->eof) {
-		if (*leftover > 0) {
-			off_t hack;
+		off_t hack;
 
-			hack = inst->read_offset - 1;
-			(void) lseek(inst->fd, 0, SEEK_SET);
-		} else {
-			/*
-			 *	Close the FD when we've written the
-			 *	last response.
-			 */
-			inst->closing = true;
-		}
+		MPRINT("BACKING UP: hoping to god we get more data");
+		inst->closing = (*leftover == 0);
+
+		hack = inst->read_offset - 1;
+		inst->read_offset = lseek(inst->fd, 0, SEEK_SET);
 	}
 
 	inst->outstanding++;
+
+	MPRINT("Returning raw packet %.*s", (int) packet_len, buffer);
+
 	return packet_len;
 }
 
@@ -307,7 +322,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	inst->outstanding--;
 
 	if (buffer[0] == 0) {
-		DEBUG3("Got Do-Not-Respond, not writing reply");
+		DEBUG("Got Do-Not-Respond, not writing reply");
 
 	} else if (track->done_offset > 0) {
 		/*
