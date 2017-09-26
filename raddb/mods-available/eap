@@ -1027,11 +1027,6 @@ eap {
 	fast {
 		# Point to the common TLS configuration
 		#
-		# cipher_list though must include "ADH" for anonymous provisioning.
-		# This is not as straight forward as appending "ADH" alongside
-		# "DEFAULT" as "DEFAULT" contains "!aNULL" so instead it is
-		# recommended "ALL:!EXPORT:!eNULL:!SSLv2" is used
-		#
 		tls = tls-common
 
 		#
@@ -1042,8 +1037,15 @@ eap {
 		#  specifications mandata a different set of ciphers
 		#  than are used by the other EAP methods.
 		#
+		#  cipher_list though must include "ADH" for anonymous provisioning.
+		#  This is not as straight forward as appending "ADH" alongside
+		#  "DEFAULT" as "DEFAULT" contains "!aNULL" so instead it is
+		#  recommended "ALL:!EXPORT:!eNULL:!SSLv2" is used
+		#
+		#  Note - for OpenSSL 1.1.0 and above you may need
+		#  to add ":@SECLEVEL=0"
+		#
 		cipher_list = "ALL:!EXPORT:!eNULL:!SSLv2"
-
 
 		# PAC lifetime in seconds (default: seven days)
 		#
