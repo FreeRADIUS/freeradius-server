@@ -96,7 +96,8 @@ typedef struct fr_app_io_t {
 	fr_app_event_list_set_t		event_list_set;	//!< Called by the network thread to pass an event list
 							//!< for use by the app_io_t.
 
-	size_t				default_message_size;	//!< Usually minimum message size
+	size_t				default_message_size;	//!< Usually maximum message size
+	size_t				default_reply_size;	//!< same for replies
 	bool				track_duplicates;	//!< track duplicate packets
 
 	fr_io_open_t			open;		//!< Open a new socket for listening, or accept/connect a new

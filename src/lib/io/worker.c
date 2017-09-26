@@ -1002,7 +1002,8 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 		return;
 
 	case FR_IO_REPLY:
-		size = request->async->listen->app_io->default_message_size;
+		size = request->async->listen->app_io->default_reply_size;
+		if (!size) size = request->async->listen->app_io->default_message_size;
 		break;
 	}
 

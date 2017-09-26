@@ -443,6 +443,7 @@ fr_app_io_t proto_detail_file = {
 	.instantiate		= mod_instantiate,
 
 	.default_message_size	= 65536,
+	.default_reply_size	= 32,
 
 	.open			= mod_open,
 	.read			= mod_read,
