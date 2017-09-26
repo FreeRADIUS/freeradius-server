@@ -478,11 +478,13 @@ int		fr_ldap_map_do(REQUEST *request, fr_ldap_connection_t *conn,
 /*
  *	sasl_s.c - SASL synchronous bind functions
  */
+#ifdef HAVE_LDAP_SASL_INTERACTIVE_BIND
 fr_ldap_rcode_t	 fr_ldap_sasl_interactive(REQUEST *request,
 					  fr_ldap_connection_t *pconn, char const *dn,
 					  char const *password, fr_ldap_sasl_t const *sasl,
 					  LDAPControl **serverctrls, LDAPControl **clientctrls,
 					  struct timeval const *timeout);
+#endif
 
 /*
  *	connection.c - Connection configuration functions
@@ -514,6 +516,7 @@ int		fr_ldap_start_tls_async(fr_ldap_connection_t *c,
 /*
  *	sasl.c - Async sasl bind
  */
+#ifdef HAVE_LDAP_SASL_INTERACTIVE_BIND
 int		fr_ldap_sasl_bind_async(fr_ldap_connection_t *c,
 					char const *mechs,
 			    		char const *identity,
@@ -521,6 +524,8 @@ int		fr_ldap_sasl_bind_async(fr_ldap_connection_t *c,
 			    		char const *proxy,
 			    		char const *realm,
 			    		LDAPControl **serverctrls, LDAPControl **clientctrls);
+#endif
+
 /*
  *	bind.c - Async bind
  */

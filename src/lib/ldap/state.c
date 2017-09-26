@@ -73,6 +73,7 @@ again:
 		/*
 		 *	SASL uses a different (and more complex) codepath
 		 */
+#ifdef HAVE_LDAP_SASL_INTERACTIVE_BIND
 		if (c->config->admin_sasl.mech) {
 			if (fr_ldap_sasl_bind_async(c,
 						    c->config->admin_sasl.mech,
@@ -86,6 +87,7 @@ again:
 			}
 			break;
 		}
+#endif
 
 		/*
 		 *	Normal binds are just a simple request/response pair
