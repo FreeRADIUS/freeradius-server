@@ -44,7 +44,7 @@ if test x$with_[]modname != xno; then
 
 		dnl # AWK originally from from https://github.com/hpc/lustre
 		krb5_version=$(echo "$krb5_version_raw" | head -n 1 | \
-			awk '{split($(4),v,"."); if (v@<:@"3"@:>@ = "") v@<:@"3"@:>@ = "0"; print v@<:@"1"@:>@v@<:@"2"@:>@v@<:@"3"@:>@ }')
+			awk '{split($(4),v,"."); if (v@<:@"3"@:>@ == "") v@<:@"3"@:>@ = "0"; print v@<:@"1"@:>@v@<:@"2"@:>@v@<:@"3"@:>@ }')
 		AC_MSG_RESULT([${krb5_version_raw} ($krb5_version)])
 
 		AC_MSG_CHECKING([krb5-config reported vendor])
