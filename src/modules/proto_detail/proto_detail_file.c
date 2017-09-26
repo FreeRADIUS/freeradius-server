@@ -34,6 +34,7 @@
 #include "proto_detail.h"
 
 #include <fcntl.h>
+#include <sys/stat.h>
 
 #define MPRINT DEBUG
 
@@ -61,6 +62,7 @@ typedef struct {
 
 	int				outstanding;		//!< number of outstanding records;
 
+	off_t				file_size;		//!< size of the file
 	off_t				header_offset;		//!< offset of the current header we're reading
 	off_t				read_offset;		//!< where we're reading from in filename_work
 } proto_detail_file_t;
@@ -108,8 +110,16 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	fr_detail_entry_t		*track;
 	uint8_t				*partial, *end, *next, *p;
 
-	rad_assert(inst->closing != true);
 	rad_assert(*leftover < buffer_len);
+
+	/*
+	 *	We're closing.  Go to the end of the file, and say
+	 *	there's no more data.
+	 */
+	if (inst->closing) {
+		inst->read_offset = lseek(inst->fd, inst->file_size, SEEK_SET);
+		return 0;
+	}
 
 	/*
 	 *	There will be "leftover" bytes left over in the buffer
@@ -137,7 +147,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 		 *	Remember the read offset, and whether we got EOF.
 		 */
 		inst->read_offset = lseek(inst->fd, 0, SEEK_CUR);
-		inst->eof = (data_size == 0);
+		inst->eof = (data_size == 0) || (inst->read_offset == inst->file_size);
 		end = partial + data_size;
 
 	} else {
@@ -297,15 +307,16 @@ done:
 		off_t hack;
 
 		MPRINT("BACKING UP: hoping to god we get more data");
-		inst->closing = (*leftover == 0);
-
 		hack = inst->read_offset - 1;
-		inst->read_offset = lseek(inst->fd, 0, SEEK_SET);
+		inst->read_offset = lseek(inst->fd, hack, SEEK_SET);
+
+		rad_assert(!inst->closing);
+		inst->closing = (*leftover == 0);
 	}
 
 	inst->outstanding++;
 
-	MPRINT("Returning raw packet %.*s", (int) packet_len, buffer);
+	MPRINT("Returning NUM %d - %.*s", inst->outstanding, (int) packet_len, buffer);
 
 	return packet_len;
 }
@@ -356,6 +367,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 static int mod_open(void *instance)
 {
 	proto_detail_file_t *inst = talloc_get_type_abort(instance, proto_detail_file_t);
+	struct stat buf;
 
 	inst->fd = open(inst->filename_work, O_RDWR);
 	if (inst->fd < 0) {
@@ -363,8 +375,14 @@ static int mod_open(void *instance)
 		return -1;
 	}
 
+	if (fstat(inst->fd, &buf) < 0) {
+		cf_log_err(inst->cs, "Failed examining %s: %s", inst->filename_work, fr_syserror(errno));
+		return -1;
+	}
+
 	rad_assert(inst->name == NULL);
 	inst->name = talloc_asprintf(inst, "detail working file %s", inst->filename_work);
+	inst->file_size = buf.st_size;
 
 	DEBUG("Listening on %s bound to virtual server %s",
 	      inst->name, cf_section_name2(inst->parent->server_cs));
