@@ -42,8 +42,8 @@ typedef struct rlm_eap_fast_t {
 	int			default_provisioning_method;
 
 	char const		*virtual_server;			//!< Virtual server to use for processing
-	char const		*cipher_list;				//!< cipher list specific to EAP-FAST
 									//!< inner EAP method.
+	char const		*cipher_list;				//!< cipher list specific to EAP-FAST
 	bool			req_client_cert;			//!< Whether we require a client cert
 									//!< in the outer tunnel.
 
