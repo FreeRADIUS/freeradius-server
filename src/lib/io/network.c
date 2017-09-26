@@ -596,7 +596,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 				      sizeof(fr_channel_data_t),
 				      s->listen->default_message_size * s->listen->num_messages);
 	if (!s->ms) {
-		fr_log(nr->log, L_ERR, "Failed creating message buffers for network IO.  Closing socket.");
+		fr_log(nr->log, L_ERR, "Failed creating message buffers for network IO: %s", fr_strerror());
 		talloc_free(s);
 		return;
 	}
@@ -657,7 +657,7 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 				      sizeof(fr_channel_data_t),
 				      s->listen->default_message_size * s->listen->num_messages);
 	if (!s->ms) {
-		fr_log(nr->log, L_ERR, "Failed creating message buffers for directoryx IO.  Closing socket.");
+		fr_log(nr->log, L_ERR, "Failed creating message buffers for directory IO.  Closing socket.");
 		talloc_free(s);
 		return;
 	}

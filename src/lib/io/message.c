@@ -155,7 +155,7 @@ fr_message_set_t *fr_message_set_create(TALLOC_CTX *ctx, int num_messages, size_
 	}
 
 	if ((ring_buffer_size & (ring_buffer_size - 1)) != 0) {
-		fr_strerror_printf("Ring buffer size must be a power of 2");
+		fr_strerror_printf("Ring buffer size must be a power of 2, not %zd", ring_buffer_size);
 		return NULL;
 	}
 
