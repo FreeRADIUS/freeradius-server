@@ -121,11 +121,12 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	rad_assert(*leftover < buffer_len);
 
 	/*
-	 *	We're closing.  Go to the end of the file, and say
-	 *	there's no more data.
+	 *	If we decide that we're closing, ignore everything
+	 *	else in the file.  Someone extended the file on us
+	 *	without locking it first.  So too bad for them.
 	 */
 	if (inst->closing) {
-		inst->read_offset = lseek(inst->fd, inst->file_size, SEEK_SET);
+		inst->read_offset = lseek(inst->fd, 0, SEEK_END);
 		return 0;
 	}
 
@@ -296,25 +297,11 @@ redo:
 	*recv_time = &track->timestamp;
 	*priority = priorities[buffer[0]];
 
-	/*
-	 *	We're done reading the file, but not the buffer.  Back
-	 *	up one byte so that the network code will try to read
-	 *	the byte again, which lets us then finish reading the
-	 *	buffer.
-	 *
-	 *	We could make the network code smarter, to call our
-	 *	read() routine again if there are leftover bytes.  But
-	 *	that logic doesn't integrate well into the event loop.
-	 *	So this hack is the next best thing.
-	 */
 done:
+	/*
+	 *	If we're at EOF, mark us as "closing".
+	 */
 	if (inst->eof) {
-		off_t hack;
-
-		MPRINT("BACKING UP: hoping to god we get more data");
-		hack = inst->read_offset - 1;
-		inst->read_offset = lseek(inst->fd, hack, SEEK_SET);
-
 		rad_assert(!inst->closing);
 		inst->closing = (*leftover == 0);
 	}
