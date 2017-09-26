@@ -2733,12 +2733,13 @@ fi
 
 				CFLAGS="-DLDAP_DEPRECATED=1 ${CFLAGS}"
 
-													smart_try_dir=$libfreeradius_ldap_lib_dir
+
+						smart_try_dir=$libfreeradius_ldap_lib_dir
 
 
 
 sm_lib_safe=`echo "ldap" | sed 'y%./+-%__p_%'`
-sm_func_safe=`echo "ldap_init" | sed 'y%./+-%__p_%'`
+sm_func_safe=`echo "ldap_install_tls" | sed 'y%./+-%__p_%'`
 
 old_LIBS="$LIBS"
 old_CPPFLAGS="$CPPFLAGS"
@@ -2748,17 +2749,17 @@ smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
 for try in $smart_try_dir; do
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ldap_init in -lldap in $try" >&5
-$as_echo_n "checking for ldap_init in -lldap in $try... " >&6; }
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ldap_install_tls in -lldap in $try" >&5
+$as_echo_n "checking for ldap_install_tls in -lldap in $try... " >&6; }
   LIBS="-lldap $old_LIBS"
   CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-extern char ldap_init();
+extern char ldap_install_tls();
 int
 main ()
 {
-ldap_init()
+ldap_install_tls()
   ;
   return 0;
 }
@@ -2783,16 +2784,16 @@ CPPFLAGS="$old_CPPFLAGS"
 fi
 
 if test "x$smart_lib" = "x"; then
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for ldap_init in -lldap" >&5
-$as_echo_n "checking for ldap_init in -lldap... " >&6; }
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for ldap_install_tls in -lldap" >&5
+$as_echo_n "checking for ldap_install_tls in -lldap... " >&6; }
 LIBS="-lldap $old_LIBS"
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-extern char ldap_init();
+extern char ldap_install_tls();
 int
 main ()
 {
-ldap_init()
+ldap_install_tls()
   ;
   return 0;
 }
@@ -2869,17 +2870,17 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 
 for try in $smart_lib_dir /usr/local/lib /opt/lib; do
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ldap_init in -lldap in $try" >&5
-$as_echo_n "checking for ldap_init in -lldap in $try... " >&6; }
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ldap_install_tls in -lldap in $try" >&5
+$as_echo_n "checking for ldap_install_tls in -lldap in $try... " >&6; }
   LIBS="-lldap $old_LIBS"
   CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-extern char ldap_init();
+extern char ldap_install_tls();
 int
 main ()
 {
-ldap_init()
+ldap_install_tls()
   ;
   return 0;
 }
@@ -2909,8 +2910,8 @@ LIBS="$smart_ldflags $smart_lib $old_LIBS"
 SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
-	if test "x$ac_cv_lib_ldap_ldap_init" != "xyes"; then
-		fail="$fail libldap"
+	if test "x$ac_cv_lib_ldap_ldap_install_tls" != "xyes"; then
+		fail="$fail libldap (with async support)"
 	fi
 
 
