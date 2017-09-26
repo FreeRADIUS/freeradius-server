@@ -36,7 +36,15 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
+#if 0
+/*
+ *	When we want detailed debugging here, without detailed server
+ *	debugging.
+ */
 #define MPRINT DEBUG
+#else
+#define MPRINT DEBUG3
+#endif
 
 typedef struct {
 	fr_time_t			timestamp;		//!< when we read the entry.
@@ -164,24 +172,21 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	}
 
 redo:
-	/*
-	 *	Look for "end of record" marker.  We've already
-	 *	searched "leftover" bytes for \n\n, so we only have to
-	 *	search the remaining bytes.
-	 *
-	 *	We MIGHT have the last character of the previously
-	 *	read data as \n, so we back up one character here.
-	 *	That lets us catch "\n\n" which crosses a read()
-	 *	boundary.
-	 */
-	if (*leftover > 0) partial--;
+	next = NULL;
 
 	/*
+	 *	Look for "end of record" marker, starting from the
+	 *	beginning of the buffer.
+	 *
+	 *	@todo - remember in 'inst' how far we searched, so we
+	 *	don't need to do that again.  Also, if the last
+	 *	character of the search is \n, stop the search there,
+	 *	instead of going to the next character.
+	 *
 	 *	Note that all of the data MUST be printable, and raw
 	 *	LFs are forbidden in attribute contents.
 	 */
-	next = NULL;
-	for (p = partial; p < end; p++) {
+	for (p = buffer; p < end; p++) {
 		if (p[0] != '\n') continue;
 		if ((p + 1) == end) break; /* no more data */
 		if (p[1] == '\n') {
