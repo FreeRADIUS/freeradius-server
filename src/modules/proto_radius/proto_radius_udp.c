@@ -68,6 +68,8 @@ typedef struct {
 
 	fr_tracking_t			*ft;			//!< tracking table
 	uint32_t			cleanup_delay;		//!< cleanup delay for Access-Request packets
+
+	uint32_t			priorities[FR_MAX_PACKET_CODE];	//!< priorities for individual packets
 } proto_radius_udp_t;
 
 static const CONF_PARSER udp_listen_config[] = {
@@ -82,6 +84,35 @@ static const CONF_PARSER udp_listen_config[] = {
 	{ FR_CONF_IS_SET_OFFSET("recv_buff", FR_TYPE_UINT32, proto_radius_udp_t, recv_buff) },
 
 	{ FR_CONF_OFFSET("cleanup_delay", FR_TYPE_UINT32, proto_radius_udp_t, cleanup_delay), .dflt = "5" },
+
+	CONF_PARSER_TERMINATOR
+};
+
+
+/*
+ *	Allow configurable priorities for each listener.
+ */
+static uint32_t priorities[FR_MAX_PACKET_CODE] = {
+	[FR_CODE_ACCESS_REQUEST] = PRIORITY_HIGH,
+	[FR_CODE_ACCOUNTING_REQUEST] = PRIORITY_LOW,
+	[FR_CODE_COA_REQUEST] = PRIORITY_NORMAL,
+	[FR_CODE_DISCONNECT_REQUEST] = PRIORITY_NORMAL,
+	[FR_CODE_STATUS_SERVER] = PRIORITY_NOW,
+};
+
+
+static const CONF_PARSER priority_config[] = {
+	{ FR_CONF_OFFSET("Access-Request", FR_TYPE_UINT32, proto_radius_udp_t, priorities[FR_CODE_ACCESS_REQUEST]),
+	  .dflt = STRINGIFY(PRIORITY_HIGH) },
+	{ FR_CONF_OFFSET("Accounting-Request", FR_TYPE_UINT32, proto_radius_udp_t, priorities[FR_CODE_ACCOUNTING_REQUEST]),
+	  .dflt = STRINGIFY(PRIORITY_LOW) },
+	{ FR_CONF_OFFSET("CoA-Request", FR_TYPE_UINT32, proto_radius_udp_t, priorities[FR_CODE_COA_REQUEST]),
+	  .dflt = STRINGIFY(PRIORITY_NORMAL) },
+	{ FR_CONF_OFFSET("Disconnect-Request", FR_TYPE_UINT32, proto_radius_udp_t, priorities[FR_CODE_DISCONNECT_REQUEST]),
+	  .dflt = STRINGIFY(PRIORITY_NORMAL) },
+	{ FR_CONF_OFFSET("Status-Server", FR_TYPE_UINT32, proto_radius_udp_t, priorities[FR_CODE_STATUS_SERVER]),
+	  .dflt = STRINGIFY(PRIORITY_NOW) },
+
 
 	CONF_PARSER_TERMINATOR
 };
@@ -171,14 +202,6 @@ static int mod_decode(UNUSED void const *instance, REQUEST *request, UNUSED uint
 
 	return 0;
 }
-
-static uint32_t priorities[FR_MAX_PACKET_CODE] = {
-	[FR_CODE_ACCESS_REQUEST] = PRIORITY_HIGH,
-	[FR_CODE_ACCOUNTING_REQUEST] = PRIORITY_LOW,
-	[FR_CODE_COA_REQUEST] = PRIORITY_NORMAL,
-	[FR_CODE_DISCONNECT_REQUEST] = PRIORITY_NORMAL,
-	[FR_CODE_STATUS_SERVER] = PRIORITY_NOW,
-};
 
 static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority)
 {
@@ -544,10 +567,11 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	return 0;
 }
 
-static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *cs)
+static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 {
 	proto_radius_udp_t	*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
 	dl_instance_t const	*dl_inst;
+	CONF_SECTION		*subcs;
 
 	/*
 	 *	Find the dl_instance_t holding our instance data
@@ -558,6 +582,20 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *cs)
 	rad_assert(dl_inst);
 
 	inst->parent = talloc_get_type_abort(dl_inst->parent->data, proto_radius_t);
+
+	/*
+	 *	Hide this for now.  It's only for people who know what
+	 *	they're doing.
+	 */
+	subcs = cf_section_find(cs, "priority", NULL);
+	if (subcs) {
+		if (cf_section_rules_push(subcs, priority_config) < 0) return -1;
+		if (cf_section_parse(NULL, NULL, subcs) < 0) return -1;
+
+	} else {
+		rad_assert(sizeof(inst->priorities) == sizeof(priorities));
+		memcpy(&inst->priorities, &priorities, sizeof(priorities));
+	}
 
 	return 0;
 }
