@@ -2680,16 +2680,16 @@ void tls_global_cleanup(void)
  */
 static const FR_NAME_NUMBER version2int[] = {
 	{ "1.0",    TLS1_VERSION },
-#ifdef TLS_1_1_VERSION
+#ifdef TLS1_1_VERSION
 	{ "1.1",    TLS1_1_VERSION },
 #endif
-#ifdef TLS_1_2_VERSION
+#ifdef TLS1_2_VERSION
 	{ "1.2",    TLS1_2_VERSION },
 #endif
-#ifdef TLS_1_3_VERSION
+#ifdef TLS1_3_VERSION
 	{ "1.3",    TLS1_3_VERSION },
 #endif
-#ifdef TLS_1_4_VERSION
+#ifdef TLS1_4_VERSION
 	{ "1.4",    TLS1_4_VERSION },
 #endif
 	{ NULL, 0 }
