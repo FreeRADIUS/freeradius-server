@@ -111,6 +111,8 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PAR
 		}
 	}
 
+	cf_data_add(ci, type_enum, NULL, false);
+
 	code = type_enum->value->vb_uint32;
 	if (code >= FR_CODE_MAX) {
 	invalid_type:
@@ -369,7 +371,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 *	Instantiate the process modules
 	 */
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
-		fr_app_process_t const *app_process;
+		fr_app_process_t const	*app_process;
+		fr_dict_enum_t const	*enumv;
 		int code;
 
 		app_process = (fr_app_process_t const *)inst->type_submodule[i]->module->common;
@@ -382,7 +385,10 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		/*
 		 *	We've already done bounds checking in the process_parse function
 		 */
-		code = fr_dict_enum_by_alias(NULL, da, cf_pair_value(cp))->value->vb_uint32;
+		enumv = cf_data_value(cf_data_find(cp, fr_dict_enum_t, NULL));
+		if (!fr_cond_assert(enumv)) return -1;
+
+		code = enumv->value->vb_uint32;
 		inst->process_by_code[code] = app_process->process;	/* Store the process function */
 		inst->code_allowed[code] = true;
 		i++;
