@@ -394,9 +394,10 @@ next_message:
 	cd->listen = s->listen;
 	cd->request.recv_time = recv_time;
 
-	if (!s->leftover) {
+	if (cd->m.data_size == 0) {
 		(void) fr_message_alloc(s->ms, &cd->m, data_size);
 		next = NULL;
+
 	} else {
 		/*
 		 *	There are leftover bytes in the buffer, feed
