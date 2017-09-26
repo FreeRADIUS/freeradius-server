@@ -41,6 +41,7 @@ typedef struct {
 } fr_detail_entry_t;
 
 typedef struct {
+	CONF_SECTION			*cs;			//!< our configuration section
 	proto_detail_t	const		*parent;		//!< The module that spawned us!
 	char const			*name;			//!< debug name for printing
 
@@ -342,7 +343,10 @@ static int mod_open(void *instance)
 	proto_detail_file_t *inst = talloc_get_type_abort(instance, proto_detail_file_t);
 
 	inst->fd = open(inst->filename_work, O_RDWR);
-	if (inst->fd < 0) return -1;
+	if (inst->fd < 0) {
+		cf_log_err(inst->cs, "Failed opening %s: %s", inst->filename_work, fr_syserror(errno));
+		return -1;
+	}
 
 	rad_assert(inst->name == NULL);
 	inst->name = talloc_asprintf(inst, "detail working file %s", inst->filename_work);
@@ -391,7 +395,7 @@ static int mod_instantiate(UNUSED void *instance, UNUSED CONF_SECTION *cs)
 	return 0;
 }
 
-static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *cs)
+static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 {
 	proto_detail_file_t	*inst = talloc_get_type_abort(instance, proto_detail_file_t);
 	dl_instance_t const	*dl_inst;
@@ -405,6 +409,7 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *cs)
 	rad_assert(dl_inst);
 
 	inst->parent = talloc_get_type_abort(dl_inst->parent->data, proto_detail_t);
+	inst->cs = cs;
 
 	return 0;
 }
