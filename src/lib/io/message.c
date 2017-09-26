@@ -1124,7 +1124,7 @@ fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, si
 	 *	Mark how much room there is in this message.
 	 */
 	m2->rb = m->rb;
-	m2->data_size = room;
+	m2->data_size = 0;
 	m2->rb_size = room;
 
 	/*

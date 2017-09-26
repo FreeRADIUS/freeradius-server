@@ -394,9 +394,8 @@ next_message:
 	cd->listen = s->listen;
 	cd->request.recv_time = recv_time;
 
-	if (cd->m.data_size == 0) {
+	if (!s->leftover) {
 		(void) fr_message_alloc(s->ms, &cd->m, data_size);
-		next = NULL;
 
 	} else {
 		/*
