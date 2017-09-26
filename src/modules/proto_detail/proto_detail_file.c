@@ -63,7 +63,9 @@ typedef struct {
 } proto_detail_file_t;
 
 static const CONF_PARSER file_listen_config[] = {
-	{ FR_CONF_OFFSET("filename", FR_TYPE_STRING | FR_TYPE_REQUIRED, proto_detail_file_t, filename ) },
+//	{ FR_CONF_OFFSET("filename", FR_TYPE_STRING | FR_TYPE_REQUIRED, proto_detail_file_t, filename ) },
+
+	{ FR_CONF_OFFSET("filename.work", FR_TYPE_STRING | FR_TYPE_REQUIRED, proto_detail_file_t, filename_work ) },
 
 	CONF_PARSER_TERMINATOR
 };

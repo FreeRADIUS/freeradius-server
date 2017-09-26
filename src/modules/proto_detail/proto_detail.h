@@ -41,8 +41,7 @@ typedef struct proto_detail_t {
 	CONF_SECTION			*app_io_conf;			//!< Easy access to the app_io's config section.
 //	proto_detail_app_io_t		*app_io_private;		//!< Internal interface for proto_radius.
 
-	dl_instance_t			**type_submodule;		//!< Instance of the various types
-									//!< only one instance per type allowed.
+	dl_instance_t			*type_submodule;		//!< Instance of the type
 
 	uint32_t			code;				//!< RADIUS code to use for incoming packets
 	uint32_t			max_packet_size;		//!< for message ring buffer

@@ -38,7 +38,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSE
  *
  */
 static CONF_PARSER const proto_detail_config[] = {
-	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY, proto_detail_t,
+	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_NOT_EMPTY, proto_detail_t,
 			  type_submodule), .dflt = "Accounting-Request", .func = type_parse },
 	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, proto_detail_t, io_submodule),
 	  .func = transport_parse },
@@ -191,7 +191,7 @@ static void mod_process_set(void const *instance, REQUEST *request)
 	/*
 	 *	Only one "process" function: proto_detail_process.
 	 */
-	app_process = (fr_app_process_t const *)inst->type_submodule[0]->module->common;
+	app_process = (fr_app_process_t const *)inst->type_submodule->module->common;
 
 	request->server_cs = inst->server_cs;
 	request->async->process = app_process->process;
@@ -265,7 +265,6 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	proto_detail_t		*inst = talloc_get_type_abort(instance, proto_detail_t);
-	size_t			i = 0;
 
 	fr_dict_attr_t const	*da;
 	CONF_PAIR		*cp = NULL;
@@ -295,9 +294,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
 		fr_app_process_t const *app_process;
 
-		app_process = (fr_app_process_t const *)inst->type_submodule[i]->module->common;
-		if (app_process->instantiate && (app_process->instantiate(inst->type_submodule[i]->data,
-									  inst->type_submodule[i]->conf) < 0)) {
+		app_process = (fr_app_process_t const *)inst->type_submodule->module->common;
+		if (app_process->instantiate && (app_process->instantiate(inst->type_submodule->data,
+									  inst->type_submodule->conf) < 0)) {
 			cf_log_err(conf, "Instantiation failed for \"%s\"", app_process->name);
 			return -1;
 		}
@@ -341,7 +340,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	proto_detail_t 		*inst = talloc_get_type_abort(instance, proto_detail_t);
-	size_t			i = 0;
 	CONF_PAIR		*cp = NULL;
 
 	/*
@@ -353,11 +351,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	Bootstrap the process modules
 	 */
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
-		dl_t const		*module = talloc_get_type_abort_const(inst->type_submodule[i]->module, dl_t);
+		dl_t const		*module = talloc_get_type_abort_const(inst->type_submodule->module, dl_t);
 		fr_app_process_t const	*app_process = (fr_app_process_t const *)module->common;
 
-		if (app_process->bootstrap && (app_process->bootstrap(inst->type_submodule[i]->data,
-								      inst->type_submodule[i]->conf) < 0)) {
+		if (app_process->bootstrap && (app_process->bootstrap(inst->type_submodule->data,
+								      inst->type_submodule->conf) < 0)) {
 			cf_log_err(conf, "Bootstrap failed for \"%s\"", app_process->name);
 			return -1;
 		}
