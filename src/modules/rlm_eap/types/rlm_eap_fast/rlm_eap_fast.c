@@ -43,6 +43,7 @@ typedef struct rlm_eap_fast_t {
 
 	char const		*virtual_server;			//!< Virtual server to use for processing
 									//!< inner EAP method.
+	char const		*cipher_list;				//!< cipher list specific to EAP-FAST
 	bool			req_client_cert;			//!< Whether we require a client cert
 									//!< in the outer tunnel.
 
@@ -65,6 +66,7 @@ static CONF_PARSER module_config[] = {
 	{ "default_eap_type", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_fast_t, default_method_name), "mschapv2" },
 
 	{ "virtual_server", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_NOT_EMPTY, rlm_eap_fast_t, virtual_server) , NULL},
+	{ "cipher_list", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_fast_t, cipher_list) , NULL},
 
 	{ "require_client_cert", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_fast_t, req_client_cert), "no" },
 
@@ -545,6 +547,22 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	handler->opaque = tls_session = eaptls_session(handler, inst->tls_conf, client_cert);
 
 	if (!tls_session) return 0;
+
+	if (inst->cipher_list) {
+		RDEBUG("Over-riding main cipher list with '%s'", inst->cipher_list);
+
+		if (!SSL_set_cipher_list(tls_session->ssl, inst->cipher_list)) {
+			REDEBUG("Failed over-riding cipher list to '%s'.  EAP-FAST will likely not work",
+				inst->cipher_list);
+		}
+	}
+
+#ifdef SSL_OP_NO_TLSv1_2
+	/*
+	 *	Forcibly disable TLSv1.2
+	 */
+	SSL_set_options(tls_session->ssl, SSL_OP_NO_TLSv1_2);
+#endif
 
 	/*
 	 *	Push TLV of authority_identity into tls_record
