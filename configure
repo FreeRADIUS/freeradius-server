@@ -6587,7 +6587,7 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_pthread_flag" >&5
 $as_echo "$ax_cv_cc_pthread_flag" >&6; }
 
-      if test "x$ax_cv_cc_pthread_flag" == 'xyes'; then
+      if test "x$ax_cv_cc_pthread_flag" = 'xyes'; then
         CFLAGS="$CFLAGS -pthread"
       fi
 
@@ -10608,7 +10608,7 @@ fi
 
 smart_prefix=
 
-  if test "x$ac_cv_header_pcap_h" == "xyes"; then
+  if test "x$ac_cv_header_pcap_h" = "xyes"; then
 
 $as_echo "#define HAVE_PCAP_H 1" >>confdefs.h
 
@@ -10851,7 +10851,7 @@ fi
 
 smart_prefix=
 
-  if test "x$ac_cv_header_collectd_client_h" == "xyes"; then
+  if test "x$ac_cv_header_collectd_client_h" = "xyes"; then
 
 $as_echo "#define HAVE_COLLECTDC_H 1" >>confdefs.h
 
@@ -11094,7 +11094,7 @@ fi
 
 smart_prefix=
 
-  if test "x$ac_cv_header_sys_capability_h" == "xyes"; then
+  if test "x$ac_cv_header_sys_capability_h" = "xyes"; then
 
 $as_echo "#define HAVE_CAPABILITY_H 1" >>confdefs.h
 
@@ -11335,7 +11335,7 @@ fi
 
 smart_prefix=
 
-  if test "x$ac_cv_header_gperftools_profiler_h" == "xyes"; then
+  if test "x$ac_cv_header_gperftools_profiler_h" = "xyes"; then
 
 $as_echo "#define HAVE_GPERFTOOLS_PROFILER_H 1" >>confdefs.h
 
@@ -11578,7 +11578,7 @@ fi
 
 smart_prefix=
 
-  if test "x$ac_cv_header_systemd_sdmdaemon_h" == "xyes"; then
+  if test "x$ac_cv_header_systemd_sdmdaemon_h" = "xyes"; then
 
 $as_echo "#define HAVE_SYSTEMD_SD_DAEMON_H 1" >>confdefs.h
 
@@ -14816,7 +14816,7 @@ subdirs="$subdirs $mysubdirs"
 
 
 
-if test "x$werror" == "xyes"; then
+if test "x$werror" = "xyes"; then
   CFLAGS="-Werror $CFLAGS"
 fi
 
