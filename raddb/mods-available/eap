@@ -879,6 +879,8 @@ eap {
 		# This is not as straight forward as appending "ADH" alongside
 		# "DEFAULT" as "DEFAULT" contains "!aNULL" so instead it is
 		# recommended "ALL:!EXPORT:!eNULL:!SSLv2" is used
+		# Note - for OpenSSL 1.1.0 and above you may need
+		# to add ":@SECLEVEL=0"
 		#
 #		tls = tls-common
 
