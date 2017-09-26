@@ -347,7 +347,7 @@ static int mod_open(void *instance)
 	rad_assert(inst->name == NULL);
 	inst->name = talloc_asprintf(inst, "detail working file %s", inst->filename_work);
 
-	DEBUG("Listening om %s bound to virtual server %s",
+	DEBUG("Listening on %s bound to virtual server %s",
 	      inst->name, cf_section_name2(inst->parent->server_cs));
 
 	return 0;
