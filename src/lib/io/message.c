@@ -1076,9 +1076,10 @@ fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, si
 				       size_t reserve_size)
 {
 	bool cleaned_up;
-	size_t room;
+	size_t data_size;
 	uint8_t *p;
 	fr_message_t *m2;
+	size_t m_rb_size;
 
 	(void) talloc_get_type_abort(ms, fr_message_set_t);
 
@@ -1087,7 +1088,6 @@ fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, si
 	rad_assert(m->status == FR_MESSAGE_USED);
 	rad_assert(m->rb != NULL);
 	rad_assert(m->data != NULL);
-	rad_assert(m->data_size == 0);
 	rad_assert(m->rb_size >= actual_packet_size);
 
 	p = fr_ring_buffer_alloc(m->rb, actual_packet_size);
@@ -1099,7 +1099,8 @@ fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, si
 
 	rad_assert(p == m->data);
 
-	room = m->rb_size - actual_packet_size;
+	m_rb_size = m->rb_size;	/* for ring buffer cleanups */
+	data_size = m->rb_size - actual_packet_size;
 
 	/*
 	 *	The caller can change m->data size to something a bit
@@ -1112,7 +1113,7 @@ fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, si
 	 *	If we've allocated all of the reserved ring buffer
 	 *	data, then just reserve a brand new reservation.
 	 */
-	if (!room) return fr_message_reserve(ms, reserve_size);
+	if (!data_size) return fr_message_reserve(ms, reserve_size);
 
 	/*
 	 *	Allocate a new message.
@@ -1121,34 +1122,26 @@ fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, si
 	if (!m2) return NULL;
 
 	/*
-	 *	Mark how much room there is in this message.
+	 *	Track how much data there is in the packet.
 	 */
 	m2->rb = m->rb;
-	m2->data_size = 0;
-	m2->rb_size = room;
+	m2->data_size = data_size;
+	m2->rb_size = reserve_size;
 
 	/*
-	 *	There is more room than the asked reservation.  The
-	 *	reservation MUST succeed.
+	 *	Try to extend the reservation.  If we can do it,
+	 *	return.
 	 */
-	if (room >= reserve_size) {
-		m2->data = fr_ring_buffer_reserve(m2->rb, m2->rb_size);
-		rad_assert(m2->data != NULL);
-		if (!m2->data) {
-			fr_strerror_printf("Failed reserving from ring buffer: %s", fr_strerror());
-			m->rb = NULL;
-			m->status = FR_MESSAGE_DONE;
-			return NULL;
-		}
-	}
+	m2->data = fr_ring_buffer_reserve(m2->rb, m2->rb_size);
+	if (m2->data) return m2;
 
 	/*
-	 *	The caller is asking for more reserve than we have
-	 *	room for.  Find a new ring buffer, and call
-	 *	fr_ring_buffer_reserve_split() on it, and on the old
-	 *	one.
+	 *	Reserve data from a new ring buffer.  If it doesn't
+	 *	succeed, ensure that the old message will properly
+	 *	clean up the old ring buffer.
 	 */
 	if (!fr_message_get_ring_buffer(ms, m2, false)) {
+		m->rb_size = m_rb_size;
 		return NULL;
 	}
 
@@ -1162,9 +1155,12 @@ fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, si
 	}
 
 	/*
-	 *	Copy the remaining data from the old buffer to the new one.
+	 *	Copy the remaining data from the old buffer to the new
+	 *	one.  And ensure that the old message will properly
+	 *	clean up the ring buffer.
 	 */
-	memcpy(m2->data, m->data + actual_packet_size, room);
+	memcpy(m2->data, m->data + actual_packet_size, data_size);
+	m->rb_size = m_rb_size;
 	return m2;
 }
 
