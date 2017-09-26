@@ -114,7 +114,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PAR
 	code = type_enum->value->vb_uint32;
 	if (code >= FR_CODE_MAX) {
 	invalid_type:
-		cf_log_err(ci, "Unsupport 'type = %s'", type_str);
+		cf_log_err(ci, "Unsupported 'type = %s'", type_str);
 		return -1;
 	}
 
