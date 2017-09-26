@@ -394,18 +394,25 @@ next_message:
 	cd->listen = s->listen;
 	cd->request.recv_time = recv_time;
 
-	if (!s->leftover) {
+	/*
+	 *	Nothing in the buffer yet.  Allocate room for one
+	 *	packet.
+	 */
+	if ((cd->m.data_size == 0) && (!s->leftover)) {
+
 		(void) fr_message_alloc(s->ms, &cd->m, data_size);
+		next = NULL;
 
 	} else {
 		/*
 		 *	There are leftover bytes in the buffer, feed
-		 *	them to the next incantation of the module.
+		 *	them to the next round of reading.
 		 */
 		next = (fr_channel_data_t *) fr_message_alloc_reserve(s->ms, &cd->m, data_size, s->listen->default_message_size);
 		if (!next) {
 			fr_log(nr->log, L_ERR, "Failed reserving partial packet.");
 			// @todo - probably close the socket...
+			rad_assert(0 == 1);
 		}
 	}
 
