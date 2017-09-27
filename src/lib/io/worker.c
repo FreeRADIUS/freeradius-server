@@ -379,10 +379,13 @@ static void fr_worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t 
 	ms = fr_channel_worker_ctx_get(ch);
 	rad_assert(ms != NULL);
 
+	size = listen->app_io->default_reply_size;
+	if (!size) size = listen->app_io->default_message_size;
+
 	/*
 	 *	Allocate a default message size.
 	 */
-	reply = (fr_channel_data_t *) fr_message_reserve(ms, listen->app_io->default_message_size);
+	reply = (fr_channel_data_t *) fr_message_reserve(ms, size);
 	rad_assert(reply != NULL);
 
 	/*
