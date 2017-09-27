@@ -1745,8 +1745,8 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	}
 
 	timeout = fr_pool_timeout(t->pool);
-	ERROR("CONNECT TIMEOUT IS %" PRIu64", REQUEST TIMEOUT IS %" PRIu64,
-	      FR_TIMEVAL_TO_MS(&timeout), FR_TIMEVAL_TO_MS(&section->timeout_tv));
+	DEBUG3("CONNECT TIMEOUT IS %" PRIu64", REQUEST TIMEOUT IS %" PRIu64,
+	       FR_TIMEVAL_TO_MS(&timeout), FR_TIMEVAL_TO_MS(&section->timeout_tv));
 	SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, FR_TIMEVAL_TO_MS(&timeout));
 	SET_OPTION(CURLOPT_TIMEOUT_MS, FR_TIMEVAL_TO_MS(&section->timeout_tv));
 
