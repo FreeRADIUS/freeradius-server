@@ -1,4 +1,4 @@
-M/*
+/*
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -191,8 +191,12 @@ redo:
 
 	MPRINT("Starting search from offset %ld", inst->last_search);
 
-	for (p = buffer + inst->last_search; p < end; p++) {
-		if (p[0] != '\n') continue;
+	p = buffer + inst->last_search;
+	while (p < end) {
+		if (p[0] != '\n') {
+			p++;
+			continue;
+		}
 		if ((p + 1) == end) {
 			/*
 			 *	Remember the last LF, so if the next
@@ -202,11 +206,63 @@ redo:
 			stopped_search = p;
 			break; /* no more data */
 		}
+
 		if (p[1] == '\n') {
 			next = p + 2;
 			stopped_search = next;
 			break;
 		}
+
+		/*
+		 *	If we're not at EOF, and we're not at end of
+		 *	record, every line MUST have a leading tab.
+		 */
+		if (p[1] != '\t') {
+			DEBUG("Malformed line found at offset %llu",
+			      (p - buffer) + inst->header_offset);
+			return -1;
+		}
+
+		/*
+		 *	Skip the \n\t
+		 */
+		if ((p + 2) >= end) {
+			stopped_search = p;
+			break;
+		}
+
+		p += 2;
+
+		/*
+		 *	Skip attribute name
+		 */
+		while ((p < end) && !isspace(*p)) p++;
+
+		/*
+		 *	Not enough room for " = ", skip this sanity
+		 *	check, and just search for a \n on the next
+		 *	round through the loop.
+		 */
+		if ((end - p) < 3) {
+			stopped_search = p;
+			break;
+		}
+
+		/*
+		 *	Check for " = ".  If the line doesn't contain
+		 *	this, it's malformed.
+		 */
+		if (memcmp(p, " = ", 3) != 0) {
+			DEBUG("Malformed line found at offset %llu: %.*s",
+			      (p - buffer) + inst->header_offset, (int) (end - p), p);
+			return -1;
+		}
+
+		/*
+		 *	Skip the " = ", and go back to the top of the
+		 *	loop where we check for the next \n.
+		 */
+		p += 3;
 	}
 
 	inst->last_search = (stopped_search - buffer);
