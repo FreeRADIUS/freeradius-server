@@ -208,6 +208,8 @@ redo:
 		}
 
 		if (p[1] == '\n') {
+			p[0] = '\0';
+			p[1] = '\0';
 			next = p + 2;
 			stopped_search = next;
 			break;
@@ -222,6 +224,12 @@ redo:
 			      (p - buffer) + inst->header_offset);
 			return -1;
 		}
+
+		/*
+		 *	Smash the \n with zero, so that each line can
+		 *	be parsed individually.
+		 */
+		p[0] = '\0';
 
 		/*
 		 *	Skip the \n\t
