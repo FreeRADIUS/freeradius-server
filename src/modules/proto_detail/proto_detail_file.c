@@ -101,17 +101,6 @@ static int mod_decode(void const *instance, REQUEST *request, UNUSED uint8_t *co
 	return 0;
 }
 
-/*
- *	@todo - put these into configuration!
- */
-static uint32_t priorities[FR_MAX_PACKET_CODE] = {
-	[FR_CODE_ACCESS_REQUEST] = PRIORITY_HIGH,
-	[FR_CODE_ACCOUNTING_REQUEST] = PRIORITY_LOW,
-	[FR_CODE_COA_REQUEST] = PRIORITY_NORMAL,
-	[FR_CODE_DISCONNECT_REQUEST] = PRIORITY_NORMAL,
-	[FR_CODE_STATUS_SERVER] = PRIORITY_NOW,
-};
-
 static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority)
 {
 	proto_detail_file_t		*inst = talloc_get_type_abort(instance, proto_detail_file_t);
@@ -374,7 +363,7 @@ redo:
 
 	*packet_ctx = track;
 	*recv_time = &track->timestamp;
-	*priority = priorities[buffer[0]];
+	*priority = inst->parent->priority;
 
 done:
 	/*

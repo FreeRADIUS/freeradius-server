@@ -46,6 +46,7 @@ typedef struct proto_detail_t {
 	uint32_t			code;				//!< RADIUS code to use for incoming packets
 	uint32_t			max_packet_size;		//!< for message ring buffer
 	uint32_t			num_messages;			//!< for message ring buffer
+	uint32_t			priority;			//!< for packet processing, larger == higher
 
 	fr_listen_t const		*listen;			//!< The listener structure which describes
 									///< the I/O path.

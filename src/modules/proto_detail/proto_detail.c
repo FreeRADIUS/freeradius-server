@@ -59,6 +59,8 @@ static CONF_PARSER const proto_detail_config[] = {
 	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, proto_detail_t, max_packet_size) } ,
 	{ FR_CONF_OFFSET("num_messages", FR_TYPE_UINT32, proto_detail_t, num_messages) } ,
 
+	{ FR_CONF_OFFSET("priority", FR_TYPE_UINT32, proto_detail_t, priority) },
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -389,6 +391,18 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	return 0;
 }
 
+/*
+ *	@todo - put these into configuration!
+ */
+static uint32_t priorities[FR_MAX_PACKET_CODE] = {
+	[FR_CODE_ACCESS_REQUEST] = PRIORITY_HIGH,
+	[FR_CODE_ACCOUNTING_REQUEST] = PRIORITY_LOW,
+	[FR_CODE_COA_REQUEST] = PRIORITY_NORMAL,
+	[FR_CODE_DISCONNECT_REQUEST] = PRIORITY_NORMAL,
+	[FR_CODE_STATUS_SERVER] = PRIORITY_NOW,
+};
+
+
 /** Instantiate the application
  *
  * Instantiate I/O and type submodules.
@@ -460,6 +474,10 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 1024);
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65536);
+
+	if (!inst->priority && inst->code && (inst->code < FR_MAX_PACKET_CODE)) {
+		inst->priority = priorities[inst->code];
+	}
 
 	return 0;
 }
