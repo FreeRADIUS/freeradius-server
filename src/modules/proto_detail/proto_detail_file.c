@@ -401,7 +401,11 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	rad_assert(inst->outstanding > 0);
 	inst->outstanding--;
 
-	if (fr_event_fd_read_continue(inst->el, inst->fd) < 0) {
+	/*
+	 *	If we've processed all of the outstanding packets,
+	 *	continue reading from the detail file.
+	 */
+	if (!inst->outstanding && (fr_event_fd_read_continue(inst->el, inst->fd) < 0)) {
 		DEBUG("FAILED continuing read: %s", fr_strerror());
 	}
 
