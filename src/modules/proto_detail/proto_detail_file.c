@@ -110,6 +110,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	fr_detail_entry_t		*track;
 	uint8_t				*partial, *end, *next, *p;
 	uint8_t				*stopped_search;
+	off_t				done_offset;
 
 	rad_assert(*leftover < buffer_len);
 
@@ -328,21 +329,21 @@ redo:
 	}
 
 	/*
-	 *	Allocate the tracking entry.
-	 */
-	track = talloc(instance, fr_detail_entry_t);
-	track->timestamp = fr_time();
-
-	track->done_offset = 0;
-
-	/*
 	 *	Search for the "Timestamp" attribute.  We overload
 	 *	that to track which entries have been used.
 	 */
 	end = buffer + packet_len;
-	for (p = buffer; p < end; p++) {
-		if (p[0] != '\n') continue;
+	p = buffer;
+	done_offset = 0;
 
+	while (p < end) {
+		if (*p != '\0') {
+			p++;
+			continue;
+		}
+
+		p++;
+		if (p == end) break;
 
 		if (((end - p) >= 5) &&
 		    (memcmp(p, "\tDone", 5) == 0)) {
@@ -351,10 +352,18 @@ redo:
 
 		if (((end - p) > 10) &&
 		    (memcmp(p, "\tTimestamp", 10) == 0)) {
-			p += 2;
-			track->done_offset = inst->header_offset + (p - buffer);
+			p++;
+			done_offset = inst->header_offset + (p - buffer);
 		}
 	}
+
+	/*
+	 *	Allocate the tracking entry.
+	 */
+	track = talloc(instance, fr_detail_entry_t);
+	track->timestamp = fr_time();
+
+	track->done_offset = done_offset;
 
 	/*
 	 *	We've read one more packet.
