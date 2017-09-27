@@ -160,8 +160,6 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 		 *	We didn't read any more data from the file,
 		 *	but there should be data left in the buffer.
 		 */
-		data_size = 0;
-
 		rad_assert(*leftover > 0);
 		end = buffer + *leftover;
 	}
@@ -319,7 +317,6 @@ redo:
 			memmove(buffer, next, (end - next));
 			data_size = (end - next);
 			*leftover = 0;
-			partial = buffer;
 			end = buffer + data_size;
 			goto redo;
 		}
