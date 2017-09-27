@@ -1,4 +1,4 @@
-/*
+M/*
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -70,6 +70,9 @@ typedef struct {
 
 	int				outstanding;		//!< number of outstanding records;
 
+	size_t				last_search;		//!< where we last searched in the buffer
+								//!< MUST be offset, as the buffers can change.
+
 	off_t				file_size;		//!< size of the file
 	off_t				header_offset;		//!< offset of the current header we're reading
 	off_t				read_offset;		//!< where we're reading from in filename_work
@@ -117,6 +120,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	size_t				packet_len;
 	fr_detail_entry_t		*track;
 	uint8_t				*partial, *end, *next, *p;
+	uint8_t				*stopped_search;
 
 	rad_assert(*leftover < buffer_len);
 
@@ -174,27 +178,38 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 
 redo:
 	next = NULL;
+	stopped_search = end;
 
 	/*
 	 *	Look for "end of record" marker, starting from the
 	 *	beginning of the buffer.
 	 *
-	 *	@todo - remember in 'inst' how far we searched, so we
-	 *	don't need to do that again.  Also, if the last
-	 *	character of the search is \n, stop the search there,
-	 *	instead of going to the next character.
-	 *
 	 *	Note that all of the data MUST be printable, and raw
 	 *	LFs are forbidden in attribute contents.
 	 */
-	for (p = buffer; p < end; p++) {
+	rad_assert((buffer + inst->last_search) <= end);
+
+	MPRINT("Starting search from offset %ld", inst->last_search);
+
+	for (p = buffer + inst->last_search; p < end; p++) {
 		if (p[0] != '\n') continue;
-		if ((p + 1) == end) break; /* no more data */
+		if ((p + 1) == end) {
+			/*
+			 *	Remember the last LF, so if the next
+			 *	read starts with a LF, we can find the
+			 *	end of record marker.
+			 */
+			stopped_search = p;
+			break; /* no more data */
+		}
 		if (p[1] == '\n') {
 			next = p + 2;
+			stopped_search = next;
 			break;
 		}
 	}
+
+	inst->last_search = (stopped_search - buffer);
 
 	/*
 	 *	If there is a next record, remember how large this
@@ -308,8 +323,13 @@ done:
 
 	inst->outstanding++;
 
-	MPRINT("Returning NUM %d - %.*s", inst->outstanding, (int) packet_len, buffer);
+	/*
+	 *	Next time, start searching from the start of the
+	 *	buffer.
+	 */
+	inst->last_search = 0;
 
+	MPRINT("Returning NUM %d - %.*s", inst->outstanding, (int) packet_len, buffer);
 	return packet_len;
 }
 
