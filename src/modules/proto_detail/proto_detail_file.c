@@ -418,6 +418,10 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	/*
 	 *	@todo - close the socket if we're at EOF, and outstanding == 0?
 	 */
+	if (inst->closing && !inst->outstanding) {
+		DEBUG("EOF. Closing %s", inst->name);
+		return 0;
+	}
 
 	return buffer_len;
 }

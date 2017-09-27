@@ -522,6 +522,12 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 		}
 
 		fr_message_done(&cd->m);
+
+		/*
+		 *	As a special case, allow write() to return
+		 *	"0", which means "close the socket".
+		 */
+		if (rcode == 0) talloc_free(s);
 	}
 
 	/*
@@ -1056,10 +1062,16 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 		 *	up to the app_io->write() function to track
 		 *	any partially written data.
 		 */
-		rad_assert((size_t) rcode == cd->m.data_size);
+		rad_assert(!rcode || (size_t) rcode == cd->m.data_size);
 
 		DEBUG3("Sending reply to socket %d", s->fd);
 		fr_message_done(&cd->m);
+
+		/*
+		 *	As a special case, allow write() to return
+		 *	"0", which means "close the socket".
+		 */
+		if (rcode == 0) talloc_free(s);
 	}
 
 	/*
