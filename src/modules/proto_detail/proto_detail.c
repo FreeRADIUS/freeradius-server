@@ -34,6 +34,16 @@ extern fr_app_t proto_detail;
 static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
 
+#if 0
+/*
+ *	When we want detailed debugging here, without detailed server
+ *	debugging.
+ */
+#define MPRINT DEBUG
+#else
+#define MPRINT(x, ...)
+#endif
+
 /** How to parse a Detail listen section
  *
  */
@@ -147,16 +157,143 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
  */
 static int mod_decode(void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
 {
-	proto_detail_t const *inst = talloc_get_type_abort_const(instance, proto_detail_t);
+	proto_detail_t const	*inst = talloc_get_type_abort_const(instance, proto_detail_t);
+	int			num, lineno;
+	uint8_t const		*p, *end;
+	VALUE_PAIR		*vp;
+	vp_cursor_t		cursor;
+	time_t			timestamp = 0;
 
 	if (DEBUG_ENABLED3) {
 		RDEBUG("proto_detail decode packet");
-		fr_radius_print_hex(fr_log_fp, data, data_len);
+//		fr_radius_print_hex(fr_log_fp, data, data_len);
 	}
 
-	// decode header
-	// decode VPs
-	// set packet type from inst->packet_type
+	request->packet->code = inst->code;
+
+	end = data + data_len;
+
+	MPRINT("HEADER %s", data);
+
+	if (sscanf((char const *) data, "%*s %*s %*d %*d:%*d:%*d %d", &num) != 1) {
+		RDEBUG("Malformed header '%s'", (char const *) data);
+		return -1;
+	}
+
+	/*
+	 *	Skip the header
+	 */
+	for (p = data; p < end; p++) {
+		if (!*p) break;
+	}
+
+	lineno = 1;
+	fr_pair_cursor_init(&cursor, &request->packet->vps);
+
+	/*
+	 *	Parse each individual line.
+	 */
+	while (p < end) {
+		/*
+		 *	Each record begins with a zero byte.  If the
+		 *	next byte is also zero, that's the end of
+		 *	record indication.
+		 */
+		if ((end - p) < 2) break;
+		if (!p[1]) break;
+
+		/*
+		 *	Already checked in the "read" routine.  But it
+		 *	doesn't hurt to re-check it here.
+		 */
+		if ((*p != '\0') && (*p != '\t')) {
+			RDEBUG("Malformed line %d", lineno);
+			return -1;
+		}
+
+		p += 2;
+
+		MPRINT("LINE   :%s", p);
+
+		/*
+		 *	Skip this for backwards compatability.
+		 */
+		if (strncasecmp((char const *) p, "Request-Authenticator", 21) == 0) goto next;
+
+		/*
+		 *	The original time at which we received the
+		 *	packet.  We need this to properly calculate
+		 *	Acct-Delay-Time.
+		 */
+		if (strncasecmp((char const *) p, "Timestamp = ", 12) == 0) {
+			p += 12;
+
+			timestamp = atoi((char const *) p);
+
+			vp = fr_pair_afrom_num(request->packet, 0, FR_PACKET_ORIGINAL_TIMESTAMP);
+			if (vp) {
+				vp->vp_date = (uint32_t) timestamp;
+				vp->type = VT_DATA;
+				fr_pair_cursor_append(&cursor, vp);
+			}
+			goto next;
+		}
+
+		/*
+		 *	This should also have been caught.
+		 */
+		if (strncasecmp((char const *) p, "Donestamp", 9) == 0) {
+			goto next;
+		}
+
+		/*
+		 *	The parsing function appends the created VPs
+		 *	to the input list, so we need to set 'vp =
+		 *	NULL'.  We don't want to have multiple cursor
+		 *	functions walking over the list.
+		 */
+		vp = NULL;
+		if ((fr_pair_list_afrom_str(request->packet, (char const *) p, &vp) > 0) && vp) {
+			fr_pair_cursor_append(&cursor, vp);
+		} else {
+			RWDEBUG("Ignoring line %d - :%s", lineno, p);
+		}
+
+
+	next:
+		lineno++;
+		while ((p < end) && (*p)) p++;
+	}
+
+	/*
+	 *	Create / update accounting attributes.
+	 */
+	if (request->packet->code == FR_CODE_ACCOUNTING_REQUEST) {
+		/*
+		 *	Prefer the Event-Timestamp in the packet, if it
+		 *	exists.  That is when the event occurred, whereas the
+		 *	"Timestamp" field is when we wrote the packet to the
+		 *	detail file, which could have been much later.
+		 */
+		vp = fr_pair_find_by_num(request->packet->vps, 0, FR_EVENT_TIMESTAMP, TAG_ANY);
+		if (vp) {
+			timestamp = vp->vp_uint32;
+		}
+
+		/*
+		 *	Look for Acct-Delay-Time, and update
+		 *	based on Acct-Delay-Time += (time(NULL) - timestamp)
+		 */
+		vp = fr_pair_find_by_num(request->packet->vps, 0, FR_ACCT_DELAY_TIME, TAG_ANY);
+		if (!vp) {
+			vp = fr_pair_afrom_num(request->packet, 0, FR_ACCT_DELAY_TIME);
+			rad_assert(vp != NULL);
+			fr_pair_cursor_append(&cursor, vp);
+		}
+		if (timestamp != 0) {
+			vp->vp_uint32 += time(NULL) - timestamp;
+		}
+	}
 
 	/*
 	 *	Let the app_io take care of populating additional fields in the request
