@@ -209,8 +209,8 @@ redo:
 		 *	record, every line MUST have a leading tab.
 		 */
 		if (p[1] != '\t') {
-			DEBUG("Malformed line found at offset %llu",
-			      (p - buffer) + inst->header_offset);
+			DEBUG("Malformed line found at offset %zd",
+			      (size_t) (p - buffer) + inst->header_offset);
 			return -1;
 		}
 
@@ -250,8 +250,8 @@ redo:
 		 *	this, it's malformed.
 		 */
 		if (memcmp(p, " = ", 3) != 0) {
-			DEBUG("Malformed line found at offset %llu: %.*s",
-			      (p - buffer) + inst->header_offset, (int) (end - p), p);
+			DEBUG("Malformed line found at offset %zd: %.*s",
+			      (size_t) (p - buffer) + inst->header_offset, (int) (end - p), p);
 			return -1;
 		}
 
@@ -303,8 +303,8 @@ redo:
 	 *	@todo - skip the record, using memmove() etc.
 	 */
 	if (packet_len > inst->parent->max_packet_size) {
-		DEBUG("Ignoring 'too large' entry at offset %llu of %s",
-		      inst->header_offset, inst->filename_work);
+		DEBUG("Ignoring 'too large' entry at offset %zu of %s",
+		      (size_t) inst->header_offset, inst->filename_work);
 		DEBUG("Entry size %lu is greater than allowed maximum %u",
 		      packet_len, inst->parent->max_packet_size);
 	skip_record:
