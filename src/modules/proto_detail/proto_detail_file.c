@@ -90,7 +90,7 @@ static const CONF_PARSER file_listen_config[] = {
 static int mod_decode(void const *instance, REQUEST *request, UNUSED uint8_t *const data, UNUSED size_t data_len)
 {
 
-	proto_detail_file_t		*inst = talloc_get_type_abort(instance, proto_detail_file_t);
+	proto_detail_file_t const     	*inst = talloc_get_type_abort_const(instance, proto_detail_file_t);
 //	fr_detail_entry_t const			*track = request->async->packet_ctx;
 
 	request->root = &main_config;
