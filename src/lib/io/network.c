@@ -582,6 +582,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 	fr_network_t		*nr = ctx;
 	fr_network_socket_t	*s;
 	fr_app_io_t const	*app_io;
+	size_t			size;
 
 	rad_assert(data_size == sizeof(*s));
 
@@ -597,11 +598,28 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 	talloc_set_destructor(s, _network_socket_free);
 
 	/*
+	 *	Put reasonable limits on the ring buffer size.  Then
+	 *	round it up to the nearest power of 2, which is
+	 *	required by the ring buffer code.
+	 */
+	size = s->listen->default_message_size * s->listen->num_messages;	
+	if (!size) size = (1 << 17);
+	if (size > (1 << 30)) size = (1 << 30);
+
+	size--;
+	size |= size >> 1;
+	size |= size >> 2;
+	size |= size >> 4;
+	size |= size >> 8;
+	size |= size >> 16;
+	size++;
+
+	/*
 	 *	Allocate the ring buffer for messages and packets.
 	 */
 	s->ms = fr_message_set_create(s, s->listen->num_messages,
 				      sizeof(fr_channel_data_t),
-				      s->listen->default_message_size * s->listen->num_messages);
+				      size);
 	if (!s->ms) {
 		fr_log(nr->log, L_ERR, "Failed creating message buffers for network IO: %s", fr_strerror());
 		talloc_free(s);
