@@ -214,6 +214,8 @@ struct fr_event_fd {
 	bool			deferred_free;		//!< Deferred deletion flag.  Delete this event *after*
 							///< the handlers complete.
 
+	bool			read_paused;		//!< is reading paused?
+
 	void			*uctx;			//!< Context pointer to pass to each file descriptor callback.
 	TALLOC_CTX		*linked_ctx;		//!< talloc ctx this event was bound to.
 
@@ -782,14 +784,159 @@ int fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 		       void *uctx)
 {
 	fr_event_io_func_t funcs =  { .read = read_fn, .write = write_fn };
+	fr_event_fd_t	*ef, find;
 
 	if (unlikely(!read_fn && !write_fn)) {
 		fr_strerror_printf("Invalid arguments: All callbacks are NULL");
 		return -1;
 	}
 
+	/*
+	 *	@todo - move some of this lookup to
+	 *	fr_event_filter_insert(), so that we don't do the RB
+	 *	tree lookup twice in a row.
+	 */
+	memset(&find, 0, sizeof(find));
+	find.fd = fd;
+
+	ef = rbtree_finddata(el->fds, &find);
+
+	/*
+	 *	If the FD is known, AND we're paused reading, don't
+	 *	add the read routine.
+	 */
+	if (ef && ef->read_paused) {
+		funcs.read = NULL;
+
+		/*
+		 *	No writing function either, don't insert any
+		 *	filters.
+		 */
+		if (!funcs.write) return 0;
+	}
+
 	return fr_event_filter_insert(ctx, el, fd, FR_EVENT_FILTER_IO, &funcs, error, uctx);
 }
+
+
+/** Pause reading from an FD
+ *
+ * @param[in] el	to delete event from.
+ * @param[in] fd	the FD to pause reading on
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_event_fd_read_pause(fr_event_list_t *el, int fd)
+{
+	int count;
+	fr_event_fd_t	*ef, find;
+	struct kevent	evset[1];
+	fr_event_io_func_t funcs;
+
+	memset(&find, 0, sizeof(find));
+	find.fd = fd;
+
+	ef = rbtree_finddata(el->fds, &find);
+	if (unlikely(!ef)) {
+		fr_strerror_printf("No events are registered for fd %i", fd);
+		return -1;
+	}
+
+	if (ef->filter != FR_EVENT_FILTER_IO) {
+		fr_strerror_printf("No IO events are registered for fd %i", fd);
+		return -1;
+	}
+	
+	if (!ef->funcs.io.read) {
+		fr_strerror_printf("No read events are registered for fd %i", fd);
+		return -1;
+	}
+
+	/*
+	 *	Be forgiving.
+	 */
+	if (ef->read_paused || ef->deferred_free) return 0;
+
+	/*
+	 *	Disable reads.
+	 */
+	funcs = ef->funcs.io;
+	funcs.read = NULL;
+
+	count = fr_event_build_evset(evset, sizeof(evset)/sizeof(*evset), ef,
+				     io_func_map, &ef->funcs.io, &funcs);
+	if (count < 0) return -1;
+
+	if (unlikely(kevent(el->kq, evset, count, NULL, 0, NULL) < 0)) {
+		fr_strerror_printf("Failed pausing reads for FD %i: %s", ef->fd, fr_syserror(errno));
+		return -1;
+	}
+
+	ef->read_paused = true;
+
+	return 0;
+}
+
+/** Continue reading from an FD
+ *
+ * @param[in] el	to delete event from.
+ * @param[in] fd	the FD to continue reading on
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_event_fd_read_continue(fr_event_list_t *el, int fd)
+{
+	int count;
+	fr_event_fd_t	*ef, find;
+	struct kevent	evset[1];
+	fr_event_io_func_t funcs;
+
+	memset(&find, 0, sizeof(find));
+	find.fd = fd;
+
+	ef = rbtree_finddata(el->fds, &find);
+	if (unlikely(!ef)) {
+		fr_strerror_printf("No events are registered for fd %i", fd);
+		return -1;
+	}
+
+	if (ef->filter != FR_EVENT_FILTER_IO) {
+		fr_strerror_printf("No IO events are registered for fd %i", fd);
+		return -1;
+	}
+	
+	if (!ef->funcs.io.read) {
+		fr_strerror_printf("No read events are registered for fd %i", fd);
+		return -1;
+	}
+
+	/*
+	 *	Be forgiving.
+	 */
+	if (!ef->read_paused || ef->deferred_free) return 0;
+
+	/*
+	 *	Reads are currently disabled,
+	 */
+	funcs = ef->funcs.io;
+	funcs.read = NULL;
+
+	count = fr_event_build_evset(evset, sizeof(evset)/sizeof(*evset), ef,
+				     io_func_map, &funcs, &ef->funcs.io);
+	if (count < 0) return -1;
+
+	if (unlikely(kevent(el->kq, evset, count, NULL, 0, NULL) < 0)) {
+		fr_strerror_printf("Failed pausing reads for FD %i: %s", ef->fd, fr_syserror(errno));
+		return -1;
+	}
+
+	ef->read_paused = false;
+
+	return 0;
+}
+
 
 /** Delete a timer event from the event list
  *
