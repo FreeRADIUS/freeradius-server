@@ -261,6 +261,32 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 			RWDEBUG("Ignoring line %d - :%s", lineno, p);
 		}
 
+		/*
+		 *	Set the original src/dst ip/port
+		 */
+		if (vp && (vp->da->vendor == 0) && (vp->da->attr >= FR_PACKET_SRC_IP_ADDRESS) &&
+		    (vp->da->attr <= FR_PACKET_DST_IPV6_ADDRESS)) switch (vp->da->attr) {
+			default:
+				break;
+
+			case FR_PACKET_SRC_IP_ADDRESS:
+			case FR_PACKET_SRC_IPV6_ADDRESS:
+				request->packet->src_ipaddr = vp->vp_ip;
+				break;
+
+			case FR_PACKET_DST_IP_ADDRESS:
+			case FR_PACKET_DST_IPV6_ADDRESS:
+				request->packet->dst_ipaddr = vp->vp_ip;
+				break;
+
+			case FR_PACKET_SRC_PORT:
+				request->packet->src_port = vp->vp_uint32;
+				break;
+
+			case FR_PACKET_DST_PORT:
+				request->packet->dst_port = vp->vp_uint32;
+				break;
+		}
 
 	next:
 		lineno++;
