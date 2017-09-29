@@ -126,12 +126,6 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		return -1;
 	}
 
-	// FIXME TLSv1.2 uses a different PRF and SSL_export_keying_material("key expansion") is forbidden
-	if (!inst->tls_conf->disable_tlsv1_2) {
-		ERROR("rlm_eap_fast.disable_tlsv1_2: require disable_tlsv1_2=yes");
-		return -1;
-	}
-
 	if (!inst->pac_lifetime) {
 		ERROR("rlm_eap_fast.pac_lifetime: must be non-zero");
 		return -1;
@@ -572,6 +566,7 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 		}
 	}
 
+// FIXME TLSv1.2 uses a different PRF and SSL_export_keying_material("key expansion") is forbidden
 #ifdef SSL_OP_NO_TLSv1_2
 	/*
 	 *	Forcibly disable TLSv1.2
