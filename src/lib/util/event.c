@@ -47,7 +47,7 @@ RCSID("$Id$")
  */
 struct fr_event_timer {
 	struct timeval		when;			//!< When this timer should fire.
-	fr_event_cb_t	callback;		//!< Callback to execute when the timer fires.
+	fr_event_cb_t		callback;		//!< Callback to execute when the timer fires.
 	void const		*uctx;			//!< Context pointer to pass to the callback.
 	TALLOC_CTX		*linked_ctx;		//!< talloc ctx this event was bound to.
 
