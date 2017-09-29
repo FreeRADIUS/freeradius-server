@@ -3451,7 +3451,7 @@ rm -f core conftest.err conftest.$ac_objext \
 
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $LINKS" >&5
 $as_echo "$LINKS" >&6; }
-		if test "x$LINKS" == "xno"; then
+		if test "x$LINKS" = "xno"; then
 			fail="$fail libperl.so"
 			targetname=
 		fi
@@ -3482,7 +3482,7 @@ rm -f core conftest.err conftest.$ac_objext \
 
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $LINKS" >&5
 $as_echo "$LINKS" >&6; }
-		if test "x$LINKS" == "xno"; then
+		if test "x$LINKS" = "xno"; then
 			fail="$fail libperl.so"
 			targetname=
 		fi
