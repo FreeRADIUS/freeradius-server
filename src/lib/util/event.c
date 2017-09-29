@@ -589,6 +589,7 @@ static int fr_event_fd_delete_internal(fr_event_fd_t *ef)
  *
  * @param[in] el	to remove file descriptor from.
  * @param[in] fd	to remove.
+ * @param[in] filter	The type of filter to remove
  * @return
  *	- 0 if file descriptor was removed.
  *	- <0 on error.
