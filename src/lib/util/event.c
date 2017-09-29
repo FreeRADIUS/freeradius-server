@@ -601,6 +601,7 @@ int fr_event_fd_delete(fr_event_list_t *el, int fd)
 
 	memset(&find, 0, sizeof(find));
 	find.fd = fd;
+	find.filter = FR_EVENT_FILTER_IO;
 
 	ef = rbtree_finddata(el->fds, &find);
 	if (unlikely(!ef)) {
@@ -798,6 +799,7 @@ int fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 	 */
 	memset(&find, 0, sizeof(find));
 	find.fd = fd;
+	find.filter = FR_EVENT_FILTER_IO;
 
 	ef = rbtree_finddata(el->fds, &find);
 
@@ -836,6 +838,7 @@ int fr_event_fd_read_pause(fr_event_list_t *el, int fd)
 
 	memset(&find, 0, sizeof(find));
 	find.fd = fd;
+	find.filter = FR_EVENT_FILTER_IO;
 
 	ef = rbtree_finddata(el->fds, &find);
 	if (unlikely(!ef)) {
@@ -895,6 +898,7 @@ int fr_event_fd_read_continue(fr_event_list_t *el, int fd)
 
 	memset(&find, 0, sizeof(find));
 	find.fd = fd;
+	find.filter = FR_EVENT_FILTER_IO;
 
 	ef = rbtree_finddata(el->fds, &find);
 	if (unlikely(!ef)) {
