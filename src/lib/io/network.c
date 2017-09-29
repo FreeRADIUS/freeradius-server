@@ -549,7 +549,7 @@ static int _network_socket_free(fr_network_socket_t *s)
 	fr_network_t *nr = talloc_parent(s);
 	fr_channel_data_t *cd;
 
-	fr_event_fd_delete(nr->el, s->fd);
+	fr_event_fd_delete(nr->el, s->fd, FR_EVENT_FILTER_IO);
 
 	rbtree_deletebydata(nr->sockets, s);
 
@@ -608,7 +608,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 	 *	round it up to the nearest power of 2, which is
 	 *	required by the ring buffer code.
 	 */
-	size = s->listen->default_message_size * s->listen->num_messages;	
+	size = s->listen->default_message_size * s->listen->num_messages;
 	if (!size) size = (1 << 17);
 	if (size > (1 << 30)) size = (1 << 30);
 
@@ -1084,7 +1084,7 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 		fr_dlist_remove(&s->entry);
 		talloc_free(s);
 	}
-	
+
 }
 
 

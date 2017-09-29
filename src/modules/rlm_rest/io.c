@@ -306,7 +306,7 @@ static int _rest_io_event_modify(UNUSED CURL *easy, curl_socket_t fd, int what, 
 		break;
 
 	case CURL_POLL_REMOVE:
-		if (fr_event_fd_delete(thread->el, fd) < 0) {
+		if (fr_event_fd_delete(thread->el, fd, FR_EVENT_FILTER_IO) < 0) {
 			ERROR("multi-handle %p de-registration failed for FD %i %s", thread->mandle, fd, fr_strerror());
 			return -1;
 		}

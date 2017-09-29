@@ -1791,7 +1791,7 @@ static void rs_got_packet(fr_event_list_t *el, int fd, UNUSED int flags, void *c
 			if (ret == -2) {
 				DEBUG("Done reading packets (%s)", event->in->name);
 			done_file:
-				fr_event_fd_delete(events, fd);
+				fr_event_fd_delete(events, fd, FR_EVENT_FILTER_IO);
 
 				/* Signal pipe takes one slot which is why this is == 1 */
 				if (fr_event_list_num_fds(events) == 1) fr_event_loop_exit(events, 1);

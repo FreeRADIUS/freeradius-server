@@ -669,7 +669,7 @@ static int mod_detach(void *instance)
 	rlm_unbound_t *inst = instance;
 
 	if (inst->log_fd >= 0) {
-		fr_event_fd_delete(inst->el, inst->log_fd);
+		fr_event_fd_delete(inst->el, inst->log_fd, FR_EVENT_FILTER_IO);
 		if (inst->ub) {
 			ub_process(inst->ub);
 			/* This can hang/leave zombies currently
@@ -688,7 +688,7 @@ static int mod_detach(void *instance)
 
 	if (inst->log_pipe_stream[0]) {
 		if (inst->log_pipe_in_use) {
-			fr_event_fd_delete(inst->el, inst->log_pipe[0]);
+			fr_event_fd_delete(inst->el, inst->log_pipe[0], FR_EVENT_FILTER_IO);
 		}
 		fclose(inst->log_pipe_stream[0]);
 	}

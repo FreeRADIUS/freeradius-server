@@ -244,7 +244,7 @@ typedef struct {
  */
 typedef struct {
 	fr_dlist_t		entry;			//!< Linked list of callback.
-	fr_event_cb_t	callback;		//!< The callback to call.
+	fr_event_cb_t		callback;		//!< The callback to call.
 	void			*uctx;			//!< Context for the callback.
 } fr_event_post_t;
 
@@ -595,13 +595,13 @@ static int fr_event_fd_delete_internal(fr_event_fd_t *ef)
  *	- 0 if file descriptor was removed.
  *	- <0 on error.
  */
-int fr_event_fd_delete(fr_event_list_t *el, int fd)
+int fr_event_fd_delete(fr_event_list_t *el, int fd, fr_event_filter_t filter)
 {
 	fr_event_fd_t	*ef, find;
 
 	memset(&find, 0, sizeof(find));
 	find.fd = fd;
-	find.filter = FR_EVENT_FILTER_IO;
+	find.filter = filter;
 
 	ef = rbtree_finddata(el->fds, &find);
 	if (unlikely(!ef)) {
@@ -670,6 +670,7 @@ int fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 	memset(&find, 0, sizeof(find));
 
 	find.fd = fd;
+	find.filter = filter;
 	ef = rbtree_finddata(el->fds, &find);
 
 	/*
@@ -681,7 +682,7 @@ int fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 	 *	somewhere.
 	 */
 	if (unlikely(ef && (ef->linked_ctx != ctx))) {
-		if (fr_event_fd_delete(el, fd) < 0) return -1;
+		if (fr_event_fd_delete(el, fd, filter) < 0) return -1;
 		ef = NULL;
 	}
 
@@ -850,7 +851,7 @@ int fr_event_fd_read_pause(fr_event_list_t *el, int fd)
 		fr_strerror_printf("No IO events are registered for fd %i", fd);
 		return -1;
 	}
-	
+
 	if (!ef->funcs.io.read) {
 		fr_strerror_printf("No read events are registered for fd %i", fd);
 		return -1;
@@ -910,7 +911,7 @@ int fr_event_fd_read_continue(fr_event_list_t *el, int fd)
 		fr_strerror_printf("No IO events are registered for fd %i", fd);
 		return -1;
 	}
-	
+
 	if (!ef->funcs.io.read) {
 		fr_strerror_printf("No read events are registered for fd %i", fd);
 		return -1;
@@ -1550,7 +1551,7 @@ void fr_event_service(fr_event_list_t *el)
                          *      Call the error handler
                          */
                         if (ef->error) ef->error(el, ef->fd, flags, fd_errno, ef->uctx);
-                        fr_event_fd_delete(el, ef->fd);
+                        fr_event_fd_delete(el, ef->fd, ef->filter);
                         continue;
                 }
 

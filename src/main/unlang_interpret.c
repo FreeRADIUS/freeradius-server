@@ -2447,7 +2447,7 @@ static int _unlang_event_free(unlang_event_t *ev)
 	}
 
 	if (ev->fd >= 0) {
-		(void) fr_event_fd_delete(ev->request->el, ev->fd);
+		(void) fr_event_fd_delete(ev->request->el, ev->fd, FR_EVENT_FILTER_IO);
 	}
 
 	return 0;

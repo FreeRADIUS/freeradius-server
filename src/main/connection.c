@@ -115,7 +115,7 @@ static void connection_state_failed(fr_connection_t *conn, struct timeval *now)
 	fr_connection_state_t prev;
 	rad_assert(conn->state != FR_CONNECTION_STATE_FAILED);
 
-	fr_event_fd_delete(conn->el, conn->fd);			/* Don't leave lingering events */
+	fr_event_fd_delete(conn->el, conn->fd, FR_EVENT_FILTER_IO);			/* Don't leave lingering events */
 	if (conn->close) conn->close(conn->fd, conn->uctx);
 	conn->fd = -1;
 
@@ -235,7 +235,7 @@ static void _connection_writable(UNUSED fr_event_list_t *el, UNUSED int sock, UN
 	 *	Connection is writable, delete the connection timer
 	 */
 	fr_event_timer_delete(conn->el, &conn->connection_timer);
-	fr_event_fd_delete(conn->el, conn->fd);
+	fr_event_fd_delete(conn->el, conn->fd, FR_EVENT_FILTER_IO);
 
 	ret = conn->open(conn->el, conn->fd, conn->uctx);
 	if (conn->state == FR_CONNECTION_STATE_FAILED) return;	/* async signal that connection failed */
@@ -398,7 +398,7 @@ static int _connection_free(fr_connection_t *conn)
 	default:
 		if (conn->fd >= 0) {
 			DEBUG2("Closing connection (%i)", conn->fd);
-			fr_event_fd_delete(conn->el, conn->fd);
+			fr_event_fd_delete(conn->el, conn->fd, FR_EVENT_FILTER_IO);
 			conn->close(conn->fd, conn->uctx);
 			conn->fd = -1;
 		}
