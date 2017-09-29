@@ -388,10 +388,6 @@ done:
 	 */
 	inst->last_search = 0;
 
-	if (fr_event_fd_read_pause(inst->el, inst->fd) < 0) {
-		DEBUG("FAILED pausing read: %s", fr_strerror());
-	}
-
 	MPRINT("Returning NUM %d - %.*s", inst->outstanding, (int) packet_len, buffer);
 	return packet_len;
 }
@@ -406,10 +402,6 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 
 	rad_assert(inst->outstanding > 0);
 	inst->outstanding--;
-
-	if (fr_event_fd_read_continue(inst->el, inst->fd) < 0) {
-		DEBUG("FAILED continuing read: %s", fr_strerror());
-	}
 
 	if (buffer[0] == 0) {
 		DEBUG("Got Do-Not-Respond, not writing reply");
