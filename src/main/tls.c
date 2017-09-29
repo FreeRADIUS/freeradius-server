@@ -2959,11 +2959,11 @@ post_ca:
 			 */
 #ifdef TLS1_4_VERSION
 			max_version = TLS1_4_VERSION;
-#elsif defined(TLS1_3_VERSION)
+#elif defined(TLS1_3_VERSION)
 			max_version = TLS1_3_VERSION;
-#elsif defined(TLS1_2_VERSION)
+#elif defined(TLS1_2_VERSION)
 			max_version = TLS1_2_VERSION;
-#elsif defined(TLS1_1_VERSION)
+#elif defined(TLS1_1_VERSION)
 			max_version = TLS1_1_VERSION;
 #else
 			max_version = TLS1_VERSION;
