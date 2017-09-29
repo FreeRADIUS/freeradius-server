@@ -36,16 +36,20 @@ dnl #  Custom hackery to discover version at configure time
 dnl #
 dnl #############################################################
 
-RADIUSD_MAJOR_VERSION=`cat VERSION | cut -f1 -d.`
-RADIUSD_MINOR_VERSION=`cat VERSION | cut -f2 -d.`
-RADIUSD_INCRM_VERSION=`cat VERSION | cut -f3 -d. | sed 's/[[\.-]].*$//'`
+RADIUSD_VERSION_MAJOR=`cat VERSION | cut -f1 -d.`
+RADIUSD_VERSION_MINOR=`cat VERSION | cut -f2 -d.`
+RADIUSD_VERSION_INCRM=`cat VERSION | cut -f3 -d. | sed 's/[[\.-]].*$//'`
 
-RADIUSD_VERSION=`printf "%02i%02i%02i" $RADIUSD_MAJOR_VERSION $RADIUSD_MINOR_VERSION $RADIUSD_INCRM_VERSION`
+AC_MSG_CHECKING([build version])
+RADIUSD_VERSION=`printf "%02i%02i%02i" $RADIUSD_VERSION_MAJOR $RADIUSD_VERSION_MINOR $RADIUSD_VERSION_INCRM`
+AC_MSG_RESULT($RADIUSD_VERSION)
 
 dnl #
 dnl #  Still useful for custom builds
 dnl #
+AC_MSG_CHECKING([build version string])
 RADIUSD_VERSION_STRING=`cat VERSION`
+AC_MSG_RESULT($RADIUSD_VERSION_STRING)
 
 dnl #
 dnl #  Add definitions to Make.inc as it's used by various build targets
@@ -91,10 +95,31 @@ dnl #
 dnl #  Turn on the developer flag when taken from a git checkout (not a release)
 dnl #
 if test "x$GIT" = "xyes" && git status 2>&1 > /dev/null; then
+  if test "x$RADIUSD_VERSION_RELEASE" = "x"; then
+    AC_MSG_CHECKING([build release])
+    RADIUSD_VERSION_RELEASE=`git describe | sed -e 's/^.*-\([[0-9]]*\)-g[[0-9a-f]]*/\1/'`
+    AC_MSG_RESULT($RADIUSD_VERSION_RELEASE)
+  fi 
+  
+  if test "x$RADIUSD_VERSION_COMMIT" = "x"; then
+    AC_MSG_CHECKING([build commit])
+    RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1`
+    AC_MSG_RESULT($RADIUSD_VERSION_COMMIT)
+  fi
+
   if test "x$developer" != "xno"; then
     AC_MSG_NOTICE([in git repository, enabling developer build implicitly, disable with --disable-developer])
     developer="yes"
   fi
+
+fi
+
+if test "x$RADIUSD_VERSION_RELEASE" != "x"; then
+  AC_DEFINE_UNQUOTED([RADIUSD_VERSION_RELEASE],[${RADIUSD_VERSION_RELEASE}],[Version release number at time of configuring])
+fi
+
+if test "x$RADIUSD_VERSION_COMMIT" != "x"; then
+  AC_DEFINE_UNQUOTED([RADIUSD_VERSION_COMMIT],[${RADIUSD_VERSION_COMMIT}],[Commit HEAD at time of configuring])
 fi
 
 dnl #
@@ -1610,14 +1635,6 @@ else
 fi
 
 export EXPERIMENTAL
-
-dnl #
-dnl #  append the current git hash onto the version string
-dnl #
-if test "x$GIT" = "xyes" && git status 2>&1 > /dev/null; then
-  RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1`
-  AC_DEFINE_UNQUOTED([RADIUSD_VERSION_COMMIT],[${RADIUSD_VERSION_COMMIT}],[Commit HEAD at time of configuring])
-fi
 
 dnl #
 dnl #  check for some compiler features

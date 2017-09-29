@@ -587,6 +587,9 @@
 /* Commit HEAD at time of configuring */
 #undef RADIUSD_VERSION_COMMIT
 
+/* Version release number at time of configuring */
+#undef RADIUSD_VERSION_RELEASE
+
 /* Raw version string from VERSION file */
 #undef RADIUSD_VERSION_STRING
 

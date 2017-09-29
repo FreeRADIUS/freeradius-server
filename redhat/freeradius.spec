@@ -401,6 +401,11 @@ export CXXFLAGS="$CFLAGS"
 # which ships with RHEL 6 has basic C11 support, gcc doesn't.
 export LDFLAGS="-Wl,--build-id"
 
+# Pass in the release number, which was passed to us by whatever called rpmbuild
+%if %{?_release:1}%{!?_release:0}
+export RADIUSD_VERSION_RELEASE="%{release}"
+%endif
+
 %configure \
         --libdir=%{_libdir}/freeradius \
         --disable-ltdl-install \
