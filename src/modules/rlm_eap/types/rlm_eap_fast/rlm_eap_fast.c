@@ -376,6 +376,7 @@ error:
 static int mod_process(void *arg, eap_handler_t *handler)
 {
 	int rcode;
+	int ret = 0;
 	fr_tls_status_t	status;
 	rlm_eap_fast_t *inst = (rlm_eap_fast_t *) arg;
 	tls_session_t *tls_session = (tls_session_t *) handler->opaque;
@@ -400,6 +401,10 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		RDEBUG2("[eaptls process] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
 	}
 
+	/*
+	 *	Make request available to any SSL callbacks
+	 */
+	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST, request);
 	switch (status) {
 	/*
 	 *	EAP-TLS handshake was successful, tell the
@@ -419,7 +424,8 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	 *	do nothing.
 	 */
 	case FR_TLS_HANDLED:
-		return 1;
+		ret = 1;
+		goto done;
 
 	/*
 	 *	Handshake is done, proceed with decoding tunneled
@@ -432,7 +438,8 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	 *	Anything else: fail.
 	 */
 	default:
-		return 0;
+		ret = 0;
+		goto done;
 	}
 
 	/*
@@ -450,7 +457,8 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	case PW_CODE_ACCESS_REJECT:
 		RDEBUG("Reject");
 		eaptls_fail(handler, EAP_FAST_VERSION);
-		return 0;
+		ret = 0;
+		goto done;
 
 		/*
 		 *	Access-Challenge, continue tunneled conversation.
@@ -459,7 +467,8 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		RDEBUG("Challenge");
 		tls_handshake_send(request, tls_session);
 		eaptls_request(handler->eap_ds, tls_session);
-		return 1;
+		ret = 1;
+		goto done;
 
 		/*
 		 *	Success: Automatically return MPPE keys.
@@ -474,7 +483,8 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		} else if (t->use_tunneled_reply) {
 			RDEBUG2("No saved attributes in the original Access-Accept");
 		}
-		return eaptls_success(handler, EAP_FAST_VERSION);
+		ret = eaptls_success(handler, EAP_FAST_VERSION);
+		goto done;
 
 		/*
 		 *	No response packet, MUST be proxying it.
@@ -486,7 +496,8 @@ static int mod_process(void *arg, eap_handler_t *handler)
 #ifdef WITH_PROXY
 		rad_assert(handler->request->proxy != NULL);
 #endif
-		return 1;
+		ret = 1;
+		goto done;
 
 	default:
 		break;
@@ -496,7 +507,11 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	 *	Something we don't understand: Reject it.
 	 */
 	eaptls_fail(handler, EAP_FAST_VERSION);
-	return 0;
+
+done:
+	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST, NULL);
+
+	return ret;
 }
 
 static int eap_fast_tls_start(EAP_DS * eap_ds,tls_session_t *tls_session)
