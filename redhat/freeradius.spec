@@ -651,6 +651,8 @@ fi
 %{_libdir}/freeradius/proto_arp.so
 %{_libdir}/freeradius/proto_bfd.so
 %{_libdir}/freeradius/proto_detail.so
+%{_libdir}/freeradius/proto_detail_file.so
+%{_libdir}/freeradius/proto_detail_process.so
 %{_libdir}/freeradius/proto_dhcpv4.so
 %{_libdir}/freeradius/proto_ldap_sync.so
 %{_libdir}/freeradius/proto_radius_acct.so
