@@ -73,7 +73,7 @@ again:
 		/*
 		 *	SASL uses a different (and more complex) codepath
 		 */
-#ifdef HAVE_LDAP_SASL_INTERACTIVE_BIND
+#ifdef WITH_SASL
 		if (c->config->admin_sasl.mech) {
 			if (fr_ldap_sasl_bind_async(c,
 						    c->config->admin_sasl.mech,
