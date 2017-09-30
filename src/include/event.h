@@ -57,6 +57,52 @@ typedef enum {
 	FR_EVENT_FILTER_VNODE			//!< Filter for vnode subfilters
 } fr_event_filter_t;
 
+/** Operations to perform on filter
+ */
+typedef enum {
+	FR_EVENT_OP_SUSPEND = 1,		//!< Temporarily remove the relevant filter from kevent.
+	FR_EVENT_OP_RESUME			//!< Reinsert the filter into kevent.
+} fr_event_op_t;
+
+/** Structure describing a modification to a filter's state
+ */
+typedef struct {
+	size_t		offset;			//!< Offset of function in func struct.
+	fr_event_op_t	op;			//!< Operation to perform on function/filter.
+} fr_event_update_t;
+
+/** Temporarily remove the filter for a func from kevent
+ *
+ * Use to populate elements in an array of #fr_event_update_t.
+ *
+ @code {.c}
+   static fr_event_update_t pause_read[] = {
+   	FR_EVENT_SUSPEND(fr_event_io_func_t, read),
+   	{ 0 }
+   }
+ @endcode
+ *
+ * @param[in] _s 	the structure containing the func to suspend.
+ * @param[in] _f	the func to suspend.
+ */
+#define FR_EVENT_SUSPEND(_s, _f)	{ .offset = offsetof(_s, _f), .op = FR_EVENT_OP_SUSPEND }
+
+/** Re-add the filter for a func from kevent
+ *
+ * Use to populate elements in an array of #fr_event_update_t.
+ *
+ @code {.c}
+   static fr_event_update_t resume_read[] = {
+   	FR_EVENT_RESUME(fr_event_io_func_t, read),
+   	{ 0 }
+   }
+ @endcode
+ *
+ * @param[in] _s 	the structure containing the func to suspend.
+ * @param[in] _f	the func to resume.
+ */
+#define FR_EVENT_RESUME(_s, _f)		{ .offset = offsetof(_s, _f), .op = FR_EVENT_OP_RESUME }
+
 /** Called when a timer event fires
  *
  * @param[in] now	The current time.
@@ -153,6 +199,9 @@ int		fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 				       void *funcs,
 				       fr_event_error_cb_t error,
 				       void *uctx);
+
+int		fr_event_filter_update(fr_event_list_t *el, int fd, fr_event_filter_t filter,
+			   	       fr_event_update_t updates[]);
 
 int		fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 				   fr_event_fd_cb_t read_fn,

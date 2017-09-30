@@ -199,6 +199,7 @@ struct fr_event_fd {
 	int                     sock_type;              //!< The type of socket SOCK_STREAM, SOCK_RAW etc...
 
 	fr_event_funcs_t	active;			//!< Active filter functions.
+	fr_event_funcs_t	stored;			//!< Stored (set, but inactive) filter functions.
 
 	fr_event_error_cb_t	error;			//!< Callback for when an error occurs on the FD.
 
@@ -618,6 +619,88 @@ int fr_event_fd_delete(fr_event_list_t *el, int fd, fr_event_filter_t filter)
 	return 0;
 }
 
+/** Suspend/resume a subset of filters
+ *
+ * This function trades producing useful errors for speed.
+ *
+ * An example of suspending the read filter for an FD would be:
+ @code {.c}
+   static fr_event_update_t pause_read[] = {
+   	FR_EVENT_SUSPEND(fr_event_io_func_t, read),
+   	{ 0 }
+   }
+
+   fr_event_filter_update(el, fd, FR_EVENT_FILTER_IO, pause_read);
+ @endcode
+ *
+ * @param[in] el	to update descriptor in.
+ * @param[in] fd	to update filters for.
+ * @param[in] filter	The type of filter to update.
+ * @param[in] updates	An array of updates to toggle filters on/off without removing
+ *			the callback function.
+ */
+int fr_event_filter_update(fr_event_list_t *el, int fd, fr_event_filter_t filter, fr_event_update_t updates[])
+{
+	fr_event_fd_t		*ef, find;
+	size_t			i;
+	fr_event_funcs_t	curr_active, curr_stored;
+	struct kevent		evset[10];
+	int			count = 0;
+
+	memset(&find, 0, sizeof(find));
+	find.fd = fd;
+	find.filter = filter;
+
+	ef = rbtree_finddata(el->fds, &find);
+	if (unlikely(!ef) || unlikely(ef->deferred_free)) {
+		fr_strerror_printf("No events are registered for fd %i", fd);
+		return -1;
+	}
+
+	/*
+	 *	Cheapest way of ensuring this function can error without
+	 *	leaving everything in an inconsistent state.
+	 */
+	memcpy(&curr_active, &ef->active, sizeof(curr_active));
+	memcpy(&curr_stored, &ef->stored, sizeof(curr_stored));
+
+	/*
+	 *	Apply modifications to our copies of the active/stored array.
+	 */
+	for (i = 0; updates[i].op; i++) {
+		switch (updates[i].op) {
+		default:
+		case FR_EVENT_OP_SUSPEND:
+			memcpy((uint8_t *)&ef->stored + updates[i].offset,
+			       (uint8_t *)&ef->active + updates[i].offset, sizeof(fr_event_fd_cb_t));
+			memset((uint8_t *)&ef->active + updates[i].offset, 0, sizeof(fr_event_fd_cb_t));
+			break;
+
+		case FR_EVENT_OP_RESUME:
+			memcpy((uint8_t *)&ef->active + updates[i].offset,
+			       (uint8_t *)&ef->stored + updates[i].offset, sizeof(fr_event_fd_cb_t));
+			memset((uint8_t *)&ef->stored + updates[i].offset, 0, sizeof(fr_event_fd_cb_t));
+			break;
+		}
+	}
+
+	count = fr_event_build_evset(evset, sizeof(evset)/sizeof(*evset), &ef->active,
+				     ef, &ef->active, &curr_active);
+	if (unlikely(count < 0)) {
+	error:
+		memcpy(&ef->active, &curr_active, sizeof(curr_active));
+		memcpy(&ef->stored, &curr_stored, sizeof(curr_stored));
+		return -1;
+	}
+
+	if (count && unlikely(kevent(el->kq, evset, count, NULL, 0, NULL) < 0)) {
+		fr_strerror_printf("Failed updating filters for FD %i: %s", ef->fd, fr_syserror(errno));
+		goto error;
+	}
+
+	return 0;
+}
+
 /** Insert a filter for the specified fd
  *
  * @param[in] ctx	to bind lifetime of the event to.
@@ -742,6 +825,11 @@ int fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 			fr_strerror_printf("Failed modifying filters for FD %i: %s", fd, fr_syserror(errno));
 			goto error;
 		}
+
+		/*
+		 *	Clear any previously suspended functions
+		 */
+		memset(&ef->stored, 0, sizeof(ef->stored));
 	}
 
 	ef->error = error;
