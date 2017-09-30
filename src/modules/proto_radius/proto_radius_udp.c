@@ -264,6 +264,44 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	}
 
 	/*
+	 *	@todo - allow for dynamic clients.
+	 *
+	 * 	- cache packets from the unknown client, ideally in a
+	 *   	  separate tracking table for this source IP/port.
+	 *
+	 *	- make it configurable for src IP, or src IP/port
+	 *
+	 *	- if new packets come in from that same source, add
+	 *	  them to the tracking table, but DON'T process them.
+	 *
+	 *	- run the packet through a proto_radius_client processor
+	 *
+	 *	- if there's a good reply, add the client to the local
+	 *	  dynamic client list, with timeouts, max # of
+	 *	  entries, etc.
+	 *
+	 *	- find a way for the "write" function to trigger a re-read,
+	 *	  ideally via an fr_event_t callback
+	 *
+	 * 	- probably have each read set "leftover", to the total
+	 *	  amount of data associated with packets we've cached.
+	 *
+	 *	- which makes the network code drain this socket.
+	 *
+	 *	- the # of cached packets SHOULD be small enough that
+	 *	  this fast read doesn't matter too much.  If we care,
+	 *	  we can later fix the network code to call the read()
+	 *	  routine if there is pending data.  e.g. like the
+	 *	  issues with the detail file reader reading 64K of
+	 *	  data when each packet is only 200 bytes, and then
+	 *	  processin (64K/200) number of packets all at once.
+	 *
+	 *	- and ideally find a *generic* way to do this, so that
+	 *	  we can re-use the code for TCP, and possibly other
+	 *	  protocols.
+	 */
+
+	/*
 	 *	If the signature fails validation, ignore it.
 	 */
 	if (fr_radius_verify(buffer, NULL,
