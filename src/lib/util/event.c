@@ -203,7 +203,7 @@ struct fr_event_fd {
 
 	fr_event_error_cb_t	error;			//!< Callback for when an error occurs on the FD.
 
-	fr_event_func_map_t const *map;			//!< Function map between #fr_event_func_t and kevent filters.
+	fr_event_func_map_t const *map;			//!< Function map between #fr_event_funcs_t and kevent filters.
 
 	bool			is_registered;		//!< Whether this fr_event_fd_t's FD has been registered with
 							///< kevent.  Mostly for debugging.
@@ -385,7 +385,7 @@ int fr_event_list_time(struct timeval *when, fr_event_list_t *el)
  * @note The contents of active functions may be inconsistent if this function errors.  But the
  *	 only time that will occur is if the caller passed invalid arguments.
  *
- * @param[out] out		where to write the evset.
+ * @param[out] out_kev		where to write the evset.
  * @param[in] outlen		length of output buffer.
  * @param[out] active		The set of function pointers with active filters.
  * @param[in] ef		event to insert.
