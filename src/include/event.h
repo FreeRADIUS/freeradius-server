@@ -53,8 +53,8 @@ typedef struct fr_event_pid fr_event_pid_t;
 /** The type of filter to install for an FD
  */
 typedef enum {
-	FR_EVENT_FILTER_IO,
-	FR_EVENT_FILTER_VNODE
+	FR_EVENT_FILTER_IO = 1,			//!< Combined filter for read/write functions/
+	FR_EVENT_FILTER_VNODE			//!< Filter for vnode subfilters
 } fr_event_filter_t;
 
 /** Called when a timer event fires
@@ -133,6 +133,13 @@ typedef struct {
 	fr_event_fd_cb_t	funlock;		//!< The file was unlocked.
 #endif
 } fr_event_vnode_func_t;
+
+/** Union of all filter functions
+ */
+typedef union {
+	fr_event_io_func_t	io;			//!< Read/write functions.
+	fr_event_vnode_func_t	vnode;			//!< vnode callback functions.
+} fr_event_funcs_t;
 
 int		fr_event_list_num_fds(fr_event_list_t *el);
 int		fr_event_list_num_elements(fr_event_list_t *el);

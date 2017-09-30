@@ -198,12 +198,11 @@ struct fr_event_fd {
 
 	int                     sock_type;              //!< The type of socket SOCK_STREAM, SOCK_RAW etc...
 
-	union {
-		fr_event_io_func_t	io;
-		fr_event_vnode_func_t	vnode;
-	} funcs;
+	fr_event_funcs_t	active;			//!< Active filter functions.
 
 	fr_event_error_cb_t	error;			//!< Callback for when an error occurs on the FD.
+
+	fr_event_func_map_t const *map;			//!< Function map between #fr_event_func_t and kevent filters.
 
 	bool			is_registered;		//!< Whether this fr_event_fd_t's FD has been registered with
 							///< kevent.  Mostly for debugging.
@@ -382,35 +381,43 @@ int fr_event_list_time(struct timeval *when, fr_event_list_t *el)
 
 /** Build a new evset based on function pointers present
  *
+ * @note The contents of active functions may be inconsistent if this function errors.  But the
+ *	 only time that will occur is if the caller passed invalid arguments.
+ *
  * @param[out] out		where to write the evset.
  * @param[in] outlen		length of output buffer.
+ * @param[out] active		The set of function pointers with active filters.
  * @param[in] ef		event to insert.
- * @param[in] map		of function pointer offsets to filters and filter flags.
- * @param[in] prev_funcs	Previous set of functions mapped to filters.
- * @param[in] curr_funcs	Functions to map to filters.
+ * @param[in] new		Functions to map to filters.
+ * @param[in] prev		Previous set of functions mapped to filters.
  * @return
  *	- >= 0 the number of changes written to out.
  *	- < 0 an error ocurred.
  */
-static ssize_t fr_event_build_evset(struct kevent out[], size_t outlen,
-				    fr_event_fd_t *ef, fr_event_func_map_t const map[],
-				    void const *prev_funcs, void const *curr_funcs)
+static ssize_t fr_event_build_evset(struct kevent out_kev[], size_t outlen, fr_event_funcs_t *active,
+				    fr_event_fd_t *ef,
+				    fr_event_funcs_t const *new, fr_event_funcs_t const *prev)
 {
-	struct kevent			*out_p = out, *end = out_p + outlen;
+	struct kevent			*out_p = out_kev, *end = out_p + outlen;
 	fr_event_func_map_t const	*map_p;
 
 	/*
 	 *	Iterate over the function map, setting/unsetting
 	 *	filters and filter flags.
 	 */
-	for (map_p = map; map_p->name; map_p++) {
+	for (map_p = ef->map; map_p->name; map_p++) {
 		bool		c_func = false;
 		bool		p_func = false;
 		uint32_t	c_fflags = 0;
 		uint32_t	p_fflags = 0;
 
 		do {
-			if (*(uintptr_t const *)((uint8_t const *)curr_funcs + map_p->offset)) {
+			if (*(uintptr_t const *)((uint8_t const *)prev + map_p->offset)) {
+				p_fflags |= map_p->fflags;
+				p_func = true;
+			}
+
+			if (*(uintptr_t const *)((uint8_t const *)new + map_p->offset)) {
 				c_fflags |= map_p->fflags;
 				c_func = true;
 
@@ -422,14 +429,20 @@ static ssize_t fr_event_build_evset(struct kevent out[], size_t outlen,
 					fr_strerror_printf("kevent %s, can't be applied to fd of type",
 							   map_p->name,
 							   fr_int2str(fr_event_fd_type_table,
-							   	      map->type, "<INVALID>"));
+							   	      map_p->type, "<INVALID>"));
 					return -1;
 				}
-			}
 
-			if (*(uintptr_t const *)((uint8_t const *)prev_funcs + map_p->offset)) {
-				p_fflags |= map_p->fflags;
-				p_func = true;
+				/*
+				 *	Mark this filter function as active
+				 */
+				memcpy((uint8_t *)active + map_p->offset, (uint8_t const *)new + map_p->offset,
+				       sizeof(fr_event_fd_cb_t));
+			} else {
+				/*
+				 *	Mark this filter function as inactive
+				 */
+				memset((uint8_t *)active + map_p->offset, 0, sizeof(fr_event_fd_cb_t));
 			}
 
 			if (!(map_p + 1)->coalesce) break;
@@ -455,7 +468,7 @@ static ssize_t fr_event_build_evset(struct kevent out[], size_t outlen,
 		}
 	}
 
-	return out_p - out;
+	return out_p - out_kev;
 }
 
 /** Discover the type of a file descriptor
@@ -532,45 +545,20 @@ static int fr_event_fd_type_set(fr_event_fd_t *ef, int fd)
  */
 static int fr_event_fd_delete_internal(fr_event_fd_t *ef)
 {
-	struct kevent	evset[10];
-	int		count = 0;
-	fr_event_list_t	*el;
+	struct kevent		evset[10];
+	int			count = 0;
+	fr_event_list_t		*el;
+	fr_event_funcs_t	funcs;
 
 	if (!ef->is_registered) return 0;
 
+	memset(&funcs, 0, sizeof(funcs));
+
 	el = talloc_parent(ef);
 
-	switch (ef->filter) {
-	/*
-	 *	Build the filters for normal I/O events
-	 */
-	case FR_EVENT_FILTER_IO:
-	{
-		fr_event_io_func_t funcs = { NULL };
-
-		count = fr_event_build_evset(evset, sizeof(evset)/sizeof(*evset), ef,
-					     io_func_map, &ef->funcs.io, &funcs);
-		if (count < 0) return -1;
-	}
-		break;
-
-	/*
-	 *	Build the filters for vnode events
-	 */
-	case FR_EVENT_FILTER_VNODE:
-	{
-		fr_event_vnode_func_t funcs = { NULL };
-
-		count = fr_event_build_evset(evset, sizeof(evset)/sizeof(*evset), ef,
-					     vnode_func_map, &ef->funcs.vnode, &funcs);
-		if (count < 0) return -1;
-
-
-	}
-
-	default:
-		break;
-	}
+	count = fr_event_build_evset(evset, sizeof(evset)/sizeof(*evset), &ef->active,
+				     ef, &funcs, &ef->active);
+	if (count < 0) return -1;
 
 	if (unlikely(kevent(el->kq, evset, count, NULL, 0, NULL) < 0)) {
 		fr_strerror_printf("Failed removing filters for FD %i: %s", ef->fd, fr_syserror(errno));
@@ -589,7 +577,7 @@ static int fr_event_fd_delete_internal(fr_event_fd_t *ef)
  *
  * @param[in] el	to remove file descriptor from.
  * @param[in] fd	to remove.
- * @param[in] filter	The type of filter to remove
+ * @param[in] filter	The type of filter to remove.
  * @return
  *	- 0 if file descriptor was removed.
  *	- <0 on error.
@@ -646,10 +634,10 @@ int fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 			   void *funcs, fr_event_error_cb_t error,
 			   void *uctx)
 {
-	bool		is_new = false;
-	ssize_t		count;
-	fr_event_fd_t	find, *ef;
-	struct kevent	evset[10];
+	ssize_t			count;
+	fr_event_fd_t		find, *ef;
+	fr_event_funcs_t	active;
+	struct kevent		evset[10];
 
 	if (unlikely(!el)) {
 		fr_strerror_printf("Invalid argument: NULL event list");
@@ -673,12 +661,10 @@ int fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 	ef = rbtree_finddata(el->fds, &find);
 
 	/*
-	 *	Need to free the event to change the
-	 *	talloc link.
+	 *	Need to free the event to change the talloc link.
 	 *
 	 *	This is generally bad.  If you hit this
-	 *	code path you probably screwed up
-	 *	somewhere.
+	 *	code path you probably screwed up somewhere.
 	 */
 	if (unlikely(ef && (ef->linked_ctx != ctx))) {
 		if (fr_event_fd_delete(el, fd, filter) < 0) return -1;
@@ -703,64 +689,64 @@ int fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 		 *	this is.
 		 */
 		if (fr_event_fd_type_set(ef, fd) < 0) {
+		free:
 			talloc_free(ef);
 			return -1;
 		}
 
-		is_new = true;
-	}
+		switch (filter) {
+		case FR_EVENT_FILTER_IO:
+			ef->map = io_func_map;
+			break;
 
-	switch (filter) {
+		case FR_EVENT_FILTER_VNODE:
+			ef->map = vnode_func_map;
+			break;
+
+		default:
+			fr_strerror_printf("Filter %i not supported", fd, filter);
+			goto free;
+		}
+
+		count = fr_event_build_evset(evset, sizeof(evset)/sizeof(*evset), &ef->active, ef, funcs, &ef->active);
+		if (count < 0) goto free;
+		if (count && (unlikely(kevent(el->kq, evset, count, NULL, 0, NULL) < 0))) {
+			fr_strerror_printf("Failed modifying filters for FD %i: %s", fd, fr_syserror(errno));
+			goto free;
+		}
+
+		ef->filter = filter;
+		el->num_fds++;
+		rbtree_insert(el->fds, ef);
+		ef->is_registered = true;
+
 	/*
-	 *	Build the filters for normal I/O events
+	 *	Pre-existing event, update the filters
+	 *	and functions associated with the file descriptor.
 	 */
-	case FR_EVENT_FILTER_IO:
-		count = fr_event_build_evset(evset, sizeof(evset)/sizeof(*evset), ef,
-					     io_func_map, &ef->funcs.io, funcs);
+	} else {
+		/*
+		 *	Take a copy of the current set of active
+		 *	functions, so we can error out in a
+		 *	consistent state.
+		 */
+		memcpy(&active, &ef->active, sizeof(ef->active));
+
+		count = fr_event_build_evset(evset, sizeof(evset)/sizeof(*evset), &ef->active, ef, funcs, &ef->active);
 		if (count < 0) {
 		error:
-			if (is_new) talloc_free(ef);
-			return -1;
+			memcpy(&ef->active, &active, sizeof(ef->active));
+			goto error;
 		}
-		memcpy(&ef->funcs.io, funcs, sizeof(ef->funcs.io));
-		break;
-
-	/*
-	 *	Build the filters for vnode events
-	 */
-	case FR_EVENT_FILTER_VNODE:
-		count = fr_event_build_evset(evset, sizeof(evset)/sizeof(*evset), ef,
-					     vnode_func_map, &ef->funcs.vnode, funcs);
-		if (count < 0) goto error;
-		memcpy(&ef->funcs.vnode, funcs, sizeof(ef->funcs.vnode));
-
-	default:
-		fr_strerror_printf("Filter %i not supported", fd, filter);
-		goto error;
-	}
-
-	/*
-	 *	We won't necessarily have changes
-	 */
-	if (count) {
-		if (unlikely(kevent(el->kq, evset, count, NULL, 0, NULL) < 0)) {
+		if (count && (unlikely(kevent(el->kq, evset, count, NULL, 0, NULL) < 0))) {
 			fr_strerror_printf("Failed modifying filters for FD %i: %s", fd, fr_syserror(errno));
-			return -1;
+			goto error;
 		}
 	}
 
 	ef->error = error;
 	ef->deferred_free = false;
 	ef->uctx = uctx;
-
-	/*
-	 *	Register the fd in the tree of fds...
-	 */
-	if (is_new) {
-		el->num_fds++;
-		rbtree_insert(el->fds, ef);
-		ef->is_registered = true;
-	}
 
 	return 0;
 }
@@ -1455,10 +1441,10 @@ service:
 			 *	we *DON'T* want to call the write event.
 			 */
 			if (el->events[i].filter == EVFILT_READ) {
-				ef->funcs.io.read(el, ef->fd, flags, ef->uctx);
+				ef->active.io.read(el, ef->fd, flags, ef->uctx);
 			}
 			if ((el->events[i].filter == EVFILT_WRITE) && !ef->deferred_free) {
-				ef->funcs.io.write(el, ef->fd, flags, ef->uctx);
+				ef->active.io.write(el, ef->fd, flags, ef->uctx);
 			}
 			break;
 
@@ -1467,36 +1453,36 @@ service:
 
 			switch (el->events[i].fflags) {
 			case NOTE_DELETE:
-				ef->funcs.vnode.delete(el, ef->fd, flags, ef->uctx);
+				ef->active.vnode.delete(el, ef->fd, flags, ef->uctx);
 				break;
 
 			case NOTE_WRITE:
-				ef->funcs.vnode.write(el, ef->fd, flags, ef->uctx);
+				ef->active.vnode.write(el, ef->fd, flags, ef->uctx);
 				break;
 
 			case NOTE_EXTEND:
-				ef->funcs.vnode.extend(el, ef->fd, flags, ef->uctx);
+				ef->active.vnode.extend(el, ef->fd, flags, ef->uctx);
 				break;
 
 			case NOTE_ATTRIB:
-				ef->funcs.vnode.attrib(el, ef->fd, flags, ef->uctx);
+				ef->active.vnode.attrib(el, ef->fd, flags, ef->uctx);
 				break;
 
 			case NOTE_LINK:
-				ef->funcs.vnode.link(el, ef->fd, flags, ef->uctx);
+				ef->active.vnode.link(el, ef->fd, flags, ef->uctx);
 				break;
 
 			case NOTE_RENAME:
-				ef->funcs.vnode.rename(el, ef->fd, flags, ef->uctx);
+				ef->active.vnode.rename(el, ef->fd, flags, ef->uctx);
 				break;
 #ifdef NOTE_REVOKE
 			case NOTE_REVOKE:
-				ef->funcs.vnode.revoke(el, ef->fd, flags, ef->uctx);
+				ef->active.vnode.revoke(el, ef->fd, flags, ef->uctx);
 				break;
 #endif
 #ifdef NOTE_FUNLOCK
 			case NOTE_FUNLOCK:
-				ef->funcs.vnode.funlock(el, ef->fd, flags, ef->uctx);
+				ef->active.vnode.funlock(el, ef->fd, flags, ef->uctx);
 #endif
 			default:
 				if (unlikely(!fr_cond_assert(false))) break;
