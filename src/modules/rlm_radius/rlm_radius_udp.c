@@ -152,6 +152,9 @@ struct rlm_radius_udp_request_t {
 	rlm_radius_udp_connection_t	*c;		//!< The connection state machine.
 	rlm_radius_link_t	*link;			//!< More link stuff.
 	rlm_radius_request_t	*rr;			//!< ID tracking, resend count, etc.
+
+	rlm_radius_retransmit_t timer;			//!< retransmission data structures
+
 	uint8_t			*packet;		//!< Packet we write to the network.
 	size_t			packet_len;		//!< Length of the packet.
 };
@@ -618,7 +621,7 @@ redo:
 	/*
 	 *	Stop all retransmissions for this packet.
 	 */
-	if (u->rr->ev) (void) fr_event_timer_delete(c->thread->el, &u->rr->ev);
+	if (u->timer.ev) (void) fr_event_timer_delete(c->thread->el, &u->timer.ev);
 
 	switch (c->state) {
 	default:
@@ -647,8 +650,8 @@ redo:
 	/*
 	 *	Track the Most Recently Started with reply
 	 */
-	if (timercmp(&rr->start, &c->mrs_time, >)) {
-		c->mrs_time = rr->start;
+	if (timercmp(&u->timer.start, &c->mrs_time, >)) {
+		c->mrs_time = u->timer.start;
 	}
 
 	(void) fr_heap_insert(c->thread->active, c);
@@ -941,7 +944,7 @@ static void retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 			uint32_t delay;
 			struct timeval diff;
 
-			fr_timeval_subtract(&diff, now, &u->rr->start);
+			fr_timeval_subtract(&diff, now, &u->timer.start);
 			delay = u->initial_delay_time + diff.tv_sec;
 			delay = htonl(delay);
 			memcpy(u->acct_delay_time, &delay, 4);
@@ -958,8 +961,8 @@ static void retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 		}
 	}
 
-	RDEBUG("Retransmitting request.  Expecting response within %d.%06ds",
-	       u->rr->rt / USEC, u->rr->rt % USEC);
+	RDEBUG("Retransmitting request (%d/%d).  Expecting response within %d.%06ds",
+	       u->timer.count, c->inst->parent->retry[u->code].mrc, u->timer.rt / USEC, u->timer.rt % USEC);
 
 	/*
 	 *	Debug the packet again, including any extra
@@ -1295,7 +1298,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	 *	Start the retransmission timers.
 	 */
 	u->link->time_sent = fr_time();
-	fr_time_to_timeval(&u->rr->start, u->link->time_sent);
+	fr_time_to_timeval(&u->timer.start, u->link->time_sent);
 
 	if (proxy_state) {
 		c->num_requests++;
@@ -1309,7 +1312,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 
 		if (!c->inst->parent->synchronous) {
 			RDEBUG("Proxying request.  Expecting response within %d.%06ds",
-			       u->rr->rt / USEC, u->rr->rt % USEC);
+			       u->timer.rt / USEC, u->timer.rt % USEC);
 
 			if (rr_track_start(c->id, u->rr, c->thread->el, response_timeout, u,
 					   &c->inst->parent->retry[u->code]) < 0) {
@@ -1330,7 +1333,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 			RDEBUG("Proxying request.  Relying on NAS to perform retransmissions");
 		}
 
-	} else if (u->rr->count == 0) {
+	} else if (u->timer.count == 0) {
 		if (rr_track_start(c->id, u->rr, c->thread->el, status_check_timeout,
 				   u, &c->inst->parent->retry[u->code]) < 0) {
 			RDEBUG("Failed starting retransmit tracking");
@@ -1339,12 +1342,12 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 
 		RDEBUG("Sending %s status check.  Expecting response within %d.%06ds",
 		       fr_packet_codes[u->code],
-		       u->rr->rt / USEC, u->rr->rt % USEC);
+		       u->timer.rt / USEC, u->timer.rt % USEC);
 
 	} else {
 		RDEBUG("Retransmitting %s status check.  Expecting response within %d.%06ds",
 		       fr_packet_codes[u->code],
-		       u->rr->rt / USEC, u->rr->rt % USEC);
+		       u->timer.rt / USEC, u->timer.rt % USEC);
 	}
 
 	fr_dlist_remove(&u->entry);
@@ -1533,7 +1536,7 @@ static int status_udp_request_free(rlm_radius_udp_request_t *u)
  *
  * @param[in] fd	of connection that failed.
  * @param[in] state	the connection was in when it failed.
- * @param[in] uctx		the connection.
+ * @param[in] uctx	the connection.
  */
 static fr_connection_state_t _conn_failed(int fd, fr_connection_state_t state, void *uctx)
 {
@@ -1707,7 +1710,7 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, UNUSED int f
 		 *	demand.  If the proxied packets use all of the
 		 *	IDs, then we can't send a Status-Server check.
 		 */
-		u->rr = rr_track_alloc(c->id, request, u->code, link);
+		u->rr = rr_track_alloc(c->id, request, u->code, link, &u->timer);
 		if (!u->rr) {
 			ERROR("%s - Failed allocating status_check ID for new connection %s",
 			      c->inst->parent->name, c->name);
@@ -1851,7 +1854,7 @@ static int _conn_free(rlm_radius_udp_connection_t *c)
 		 */
 		u->rr = NULL;
 		u->c = NULL;
-		(void) fr_event_timer_delete(c->thread->el, &u->rr->ev);
+		(void) fr_event_timer_delete(c->thread->el, &u->timer.ev);
 		fr_dlist_remove(&u->entry);
 		(void) fr_heap_insert(t->queued, u);
 		t->pending = true;
@@ -1994,13 +1997,13 @@ static rlm_radius_udp_connection_t *connection_get(rlm_radius_udp_thread_t *t, r
 	rad_assert(c->state == CONN_ACTIVE);
 	rad_assert(c->num_requests < c->max_requests);
 
-	u->rr = rr_track_alloc(c->id, u->link->request, u->code, u->link);
+	u->rr = rr_track_alloc(c->id, u->link->request, u->code, u->link, &u->timer);
 	if (!u->rr) {
 		rad_assert(0 == 1);
 		return NULL;
 	}
 
-	rad_assert(u->rr->count == 0);
+	rad_assert(u->timer.count == 0);
 	u->c = c;
 
 	fr_heap_extract(t->active, c);

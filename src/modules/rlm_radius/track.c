@@ -45,7 +45,7 @@ static int rr_track_free(rlm_radius_id_t *id)
 		 *	The timers are parented from the request, so
 		 *	we have to manually free them here.
 		 */
-		talloc_const_free(id->id[i].ev);
+		talloc_const_free(id->id[i].timer->ev);
 	}
 
 	return 0;
@@ -104,7 +104,8 @@ static int rr_cmp(void const *one, void const *two)
  *	- NULL on error
  *	- rlm_radius_request_t on success
  */
-rlm_radius_request_t *rr_track_alloc(rlm_radius_id_t *id, REQUEST *request, int code, rlm_radius_link_t *link)
+rlm_radius_request_t *rr_track_alloc(rlm_radius_id_t *id, REQUEST *request, int code, rlm_radius_link_t *link,
+				     rlm_radius_retransmit_t *timer)
 {
 	fr_dlist_t *entry;
 	rlm_radius_request_t *rr;
@@ -169,13 +170,15 @@ retry:
 done:
 	rr->link = link;
 	rr->request = request;
-	rr->ev = NULL;
+
+	rr->timer = timer;
+	rr->timer->ev = NULL;
 	rr->code = code;
 	/* rr->id is already allocated */
-	rr->start.tv_sec = 0;
-	rr->start.tv_usec = 0;
-	rr->count = 0;
-	rr->rt = 0;
+	rr->timer->start.tv_sec = 0;
+	rr->timer->start.tv_usec = 0;
+	rr->timer->count = 0;
+	rr->timer->rt = 0;
 
 	id->num_requests++;
 	return rr;
@@ -233,9 +236,9 @@ int rr_track_delete(rlm_radius_id_t *id, rlm_radius_request_t *rr)
 	(void) talloc_get_type_abort(id, rlm_radius_id_t);
 
 	rr->request = NULL;
-	if (rr->ev) {
-		talloc_const_free(rr->ev);
-		rr->ev = NULL;
+	if (rr->timer->ev) {
+		talloc_const_free(rr->timer->ev);
+		rr->timer->ev = NULL;
 	}
 
 	rad_assert(id->num_requests > 0);
@@ -389,18 +392,18 @@ int rr_track_retry(rlm_radius_id_t *id, rlm_radius_request_t *rr, fr_event_list_
 	 *	Get when we SHOULD have woken up, which might not be
 	 *	the same as 'now'.
 	 */
-	next = rr->start;
-	next.tv_usec += rr->rt;
+	next = rr->timer->start;
+	next.tv_usec += rr->timer->rt;
 
 	/*
 	 *	Increment retransmission counter
 	 */
-	rr->count++;
+	rr->timer->count++;
 
 	/*
 	 *	We retried too many times.  Fail.
 	 */
-	if (retry->mrc && (rr->count > retry->mrc)) {
+	if (retry->mrc && (rr->timer->count > retry->mrc)) {
 		DEBUG3("RETRANSMIT - reached MRC %d", retry->mrc);
 		return 0;
 	}
@@ -411,7 +414,7 @@ int rr_track_retry(rlm_radius_id_t *id, rlm_radius_request_t *rr, fr_event_list_
 	if (retry->mrd) {
 		struct timeval end;
 
-		end = rr->start;
+		end = rr->timer->start;
 		end.tv_sec += retry->mrd;
 
 		if (timercmp(now, &end, >=)) {
@@ -430,10 +433,10 @@ int rr_track_retry(rlm_radius_id_t *id, rlm_radius_request_t *rr, fr_event_list_
 	delay = fr_rand();
 	delay ^= (delay >> 16);
 	delay &= 0xffff;
-	frac = rr->rt / 5;
+	frac = rr->timer->rt / 5;
 	delay = ((frac >> 16) * delay) + (((frac & 0xffff) * delay) >> 16);
 
-	delay += (2 * rr->rt) - (rr->rt / 10);
+	delay += (2 * rr->timer->rt) - (rr->timer->rt / 10);
 
 	/*
 	 *	Cap delay at MRT
@@ -455,20 +458,20 @@ int rr_track_retry(rlm_radius_id_t *id, rlm_radius_request_t *rr, fr_event_list_
 	/*
 	 *	And finally set the retransmission timer.
 	 */
-	rr->rt = delay;
+	rr->timer->rt = delay;
 
 	/*
 	 *	Get the next delay time.
 	 */
-	next.tv_usec += rr->rt;
+	next.tv_usec += rr->timer->rt;
 	next.tv_sec += (next.tv_usec / USEC);
 	next.tv_usec %= USEC;
 
-	if (fr_event_timer_insert(id, el, &rr->ev, &next, callback, uctx) < 0) {
+	if (fr_event_timer_insert(id, el, &rr->timer->ev, &next, callback, uctx) < 0) {
 		return -1;
 	}
 
-	DEBUG3("RETRANSMIT - in %d.%06ds", rr->rt / USEC, rr->rt % USEC);
+	DEBUG3("RETRANSMIT - in %d.%06ds", rr->timer->rt / USEC, rr->timer->rt % USEC);
 	return 1;
 }
 
@@ -478,15 +481,15 @@ int rr_track_start(rlm_radius_id_t *id, rlm_radius_request_t *rr, fr_event_list_
 {
 	struct timeval next;
 
-	rr->count = 1;
-	rr->rt = retry->irt * USEC; /* rt is in usec */
+	rr->timer->count = 1;
+	rr->timer->rt = retry->irt * USEC; /* rt is in usec */
 
-	next = rr->start;
-	next.tv_usec += rr->rt;
+	next = rr->timer->start;
+	next.tv_usec += rr->timer->rt;
 	next.tv_sec += (next.tv_usec / USEC);
 	next.tv_usec %= USEC;
 
-	if (fr_event_timer_insert(id, el, &rr->ev, &next, callback, uctx) < 0) {
+	if (fr_event_timer_insert(id, el, &rr->timer->ev, &next, callback, uctx) < 0) {
 		return -1;
 	}
 
