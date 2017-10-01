@@ -319,6 +319,11 @@ redo:
 			*leftover = 0;
 			end = buffer + data_size;
 			inst->last_search = 0;
+
+			/*
+			 *	No more data, we're done.
+			 */
+			if (end == buffer) return 0;
 			goto redo;
 		}
 
