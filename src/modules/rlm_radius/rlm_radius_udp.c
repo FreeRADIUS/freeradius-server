@@ -1784,15 +1784,6 @@ static int _conn_free(rlm_radius_udp_connection_t *c)
 	talloc_free_children(c); /* clears out FD events, timers, etc. */
 
 	/*
-	 *	Status-Server checks remain with this connection, and
-	 *	don't get sent back to the main thread queue.
-	 */
-	if (c->status_u) {
-		talloc_free(c->status_u);
-		c->status_u = NULL;
-	}
-
-	/*
 	 *	Move "sent" packets back to the main thread queue
 	 */
 	while ((entry = FR_DLIST_FIRST(c->sent)) != NULL) {
