@@ -768,7 +768,7 @@ DIAG_ON(format-nonliteral)
 
 /** Special version of asprintf which implements custom format specifiers
  *
- * @copydetails fr_vasprintf
+ * @copybrief fr_vasprintf
  *
  * @param[in] ctx	to allocate buffer in.
  * @param[in] fmt	string.
