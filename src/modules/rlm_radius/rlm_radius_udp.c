@@ -1581,17 +1581,14 @@ static int status_udp_request_free(rlm_radius_udp_request_t *u)
  */
 static fr_connection_state_t conn_open(UNUSED fr_event_list_t *el, UNUSED int fd, void *uctx)
 {
-	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
-	rlm_radius_udp_thread_t *t = c->thread;
-	char src_buf[128], dst_buf[128];
-
-	fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(c->src_ipaddr), 0);
-	fr_value_box_snprint(dst_buf, sizeof(dst_buf), fr_box_ipaddr(c->dst_ipaddr), 0);
+	rlm_radius_udp_connection_t	*c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
+	rlm_radius_udp_thread_t		*t = c->thread;
 
 	talloc_const_free(c->name);
-	c->name = talloc_asprintf(c, "proto udp local %s port %u remote %s port %u",
-				  src_buf, c->src_port,
-				  dst_buf, c->dst_port);
+
+	c->name = fr_asprintf(c, "proto udp local %pV port %u remote %pV port %u",
+			      fr_box_ipaddr(c->src_ipaddr), c->src_port,
+			      fr_box_ipaddr(c->dst_ipaddr), c->dst_port);
 
 	/*
 	 *	Connection is "active" now.  i.e. we prefer the newly

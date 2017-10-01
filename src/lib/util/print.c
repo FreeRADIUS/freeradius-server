@@ -765,3 +765,25 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 	return out;
 }
 DIAG_ON(format-nonliteral)
+
+/** Special version of asprintf which implements custom format specifiers
+ *
+ * @copydetails fr_vasprintf
+ *
+ * @param[in] ctx	to allocate buffer in.
+ * @param[in] fmt	string.
+ * @param[in] ...	variadic argument list.
+ * @return
+ *	- The result of string interpolation.
+ */
+char *fr_asprintf(TALLOC_CTX *ctx, char const *fmt, ...)
+{
+	va_list ap;
+	char *ret;
+
+	va_start(ap, fmt);
+	ret = fr_vasprintf(ctx, fmt, ap);
+	va_end(ap);
+
+	return ret;
+}
