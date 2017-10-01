@@ -225,7 +225,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
 	dl_instance_t	*parent_inst;
 	CONF_SECTION	*cs = cf_item_to_section(cf_parent(ci));
 	CONF_SECTION	*transport_cs;
-	
+
 	transport_cs = cf_section_find(cs, name, NULL);
 
 	/*
@@ -650,7 +650,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		FR_INTEGER_BOUND_CHECK("Access-Request.maximum_retransmission_count", inst->retry[FR_CODE_ACCESS_REQUEST].mrc, <=, 10);
 		FR_INTEGER_BOUND_CHECK("Access-Request.maximum_retransmission_duration", inst->retry[FR_CODE_ACCESS_REQUEST].mrd, <=, 30);
 	}
-		
+
 	/*
 	 *	Note that RFC 5080 allows for Accounting-Request to
 	 *	have mrt=mrc=mrd = 0, which means "retransmit
@@ -868,6 +868,8 @@ rad_module_t rlm_radius = {
 	.thread_detach	= mod_thread_detach,
 	.methods = {
 		[MOD_PREACCT]		= mod_process,
+		[MOD_ACCOUNTING]	= mod_process,
+		[MOD_AUTHORIZE]		= mod_process,
 		[MOD_AUTHENTICATE]     	= mod_process,
 	},
 };
