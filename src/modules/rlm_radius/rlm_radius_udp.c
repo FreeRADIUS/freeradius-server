@@ -1725,6 +1725,7 @@ static fr_connection_state_t conn_init(int *fd_out, void *uctx)
 	/*
 	 *	Set the connection name.
 	 */
+	talloc_const_free(c->name);
 	c->name = fr_asprintf(c, "connecting proto udp from %pV to %pV port %u",
 			      fr_box_ipaddr(c->src_ipaddr),
 			      fr_box_ipaddr(c->dst_ipaddr), c->dst_port);
