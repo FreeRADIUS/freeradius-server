@@ -897,7 +897,8 @@ static void status_check_timeout(UNUSED fr_event_list_t *el, struct timeval *now
 	 *	do that here than to overload conn_write(), which is
 	 *	already a bit complex.
 	 */
-	rcode = rr_track_retry(c->id, u->rr, c->thread->el, status_check_timeout, u, &c->inst->parent->retry[u->code], now);
+	rcode = rr_track_retry(c->id, u->rr, c->thread->el, status_check_timeout,
+			       u, &c->inst->parent->retry[u->code], now);
 	if (rcode < 0) {
 		/*
 		 *	Failed inserting event... the request is done.
@@ -908,8 +909,7 @@ static void status_check_timeout(UNUSED fr_event_list_t *el, struct timeval *now
 
 	request = u->link->request;
 	if (rcode == 0) {
-		REDEBUG("No response to status check ID %d, closing connection %s",
-			u->rr->id, c->name);
+		REDEBUG("No response to status check ID %d, closing connection %s", u->rr->id, c->name);
 		talloc_free(c);
 		return;
 	}
@@ -1353,7 +1353,8 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 			RDEBUG("Proxying request.  Expecting response within %d.%06ds",
 			       u->rr->rt / USEC, u->rr->rt % USEC);
 
-			if (rr_track_start(c->id, u->rr, c->thread->el, response_timeout, u, &c->inst->parent->retry[u->code]) < 0) {
+			if (rr_track_start(c->id, u->rr, c->thread->el, response_timeout, u,
+					   &c->inst->parent->retry[u->code]) < 0) {
 				RDEBUG("Failed starting retransmit tracking");
 				return -1;
 			}
@@ -2183,7 +2184,8 @@ static int mod_instantiate(rlm_radius_t *parent, void *instance, CONF_SECTION *c
 	}
 
 	else if (inst->src_ipaddr.af != inst->dst_ipaddr.af) {
-		cf_log_err(conf, "The 'ipaddr' and 'src_ipaddr' configuration items must be both of the same address family");
+		cf_log_err(conf, "The 'ipaddr' and 'src_ipaddr' configuration items must "
+			   "be both of the same address family");
 		return -1;
 	}
 
