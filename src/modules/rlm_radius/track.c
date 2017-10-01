@@ -100,6 +100,7 @@ static int rr_cmp(void const *one, void const *two)
  * @param[in] request		The request which will send the proxied packet.
  * @param[in] code		Of the outbound request.
  * @param[in] link		the structure linking REQUEST to rlm_radius thread instance
+ * @param[in] timer		structure containing retransmission data
  * @return
  *	- NULL on error
  *	- rlm_radius_request_t on success
@@ -174,11 +175,14 @@ done:
 	rr->timer = timer;
 	rr->timer->ev = NULL;
 	rr->code = code;
-	/* rr->id is already allocated */
-	rr->timer->start.tv_sec = 0;
-	rr->timer->start.tv_usec = 0;
-	rr->timer->count = 0;
-	rr->timer->rt = 0;
+
+	/*
+	 *	rr->id is already allocated
+	 *
+	 *	don't touch the timer fields.  The caller should have
+	 *	initialized them to all zero.
+	 */
+
 
 	id->num_requests++;
 	return rr;
