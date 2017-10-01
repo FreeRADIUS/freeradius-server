@@ -1186,8 +1186,9 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	 *	the buflen manipulation done above.
 	 */
 	if (proxy_state) {
-		uint8_t *attr = c->buffer + packet_len;
-		int hdr_len;
+		uint8_t		*attr = c->buffer + packet_len;
+		int		hdr_len;
+		VALUE_PAIR	*vp;
 
 		rad_assert((size_t) (packet_len + 6) <= c->buflen);
 
@@ -1200,17 +1201,13 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 		c->buffer[2] = (hdr_len >> 8) & 0xff;
 		c->buffer[3] = hdr_len & 0xff;
 
-		if (radlog_debug_enabled(L_DBG, L_DBG_LVL_2, request)) {
-			VALUE_PAIR *vp;
+		vp = fr_pair_afrom_num(u, 0, FR_PROXY_STATE);
+		fr_pair_value_memcpy(vp, attr + 2, 4);
+		fr_pair_add(&u->extra, vp);
 
-			RINDENT();
-			RDEBUG2("&Proxy-State := 0x%08x", c->inst->parent->proxy_state);
-			REXDENT();
-
-			vp = fr_pair_afrom_num(u, FR_PROXY_STATE, 0);
-			fr_pair_value_memcpy(vp, attr + 2, 4);
-			fr_pair_add(&u->extra, vp);
-		}
+		RINDENT();
+		rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+		REXDENT();
 
 		packet_len += 6;
 	}
@@ -1285,19 +1282,16 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	/*
 	 *	Print out the actual value of the Message-Authenticator attribute
 	 */
-	if (msg && radlog_debug_enabled(L_DBG, L_DBG_LVL_2, request)) {
-		char msg_buf[2 * 16 + 1];
+	if (msg) {
 		VALUE_PAIR *vp;
 
-		fr_bin2hex(msg_buf, msg + 2, msg[1] - 2);
-
-		RINDENT();
-		RDEBUG2("&Message-Authenticator := %s", msg_buf);
-		REXDENT();
-
-		vp = fr_pair_afrom_num(u, FR_MESSAGE_AUTHENTICATOR, 0);
+		vp = fr_pair_afrom_num(u, 0, FR_MESSAGE_AUTHENTICATOR);
 		fr_pair_value_memcpy(vp, msg + 2, 16);
 		fr_pair_add(&u->extra, vp);
+
+		RINDENT();
+		rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+		REXDENT();
 	}
 
 	RHEXDUMP(L_DBG_LVL_3, c->buffer, packet_len, "Encoded packet");
