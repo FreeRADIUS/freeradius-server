@@ -1579,7 +1579,6 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, UNUSED int f
 	rlm_radius_udp_thread_t		*t = c->thread;
 
 	talloc_const_free(c->name);
-
 	c->name = fr_asprintf(c, "proto udp local %pV port %u remote %pV port %u",
 			      fr_box_ipaddr(c->src_ipaddr), c->src_port,
 			      fr_box_ipaddr(c->dst_ipaddr), c->dst_port);
@@ -1593,7 +1592,7 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, UNUSED int f
 	gettimeofday(&c->mrs_time, NULL);
 	c->last_reply = c->mrs_time;
 
-	DEBUG("%s - Opened new connection %s", c->inst->parent->name, c->name);
+	DEBUG("%s - Connection open - %s", c->inst->parent->name, c->name);
 
 	/*
 	 *	Remove the connection from the "opening" list, and add
