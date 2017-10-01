@@ -1577,6 +1577,7 @@ static fr_connection_state_t _conn_failed(int fd, fr_connection_state_t state, v
 			fr_dlist_remove(&u->entry);
 			u->c = NULL;
 			(void) fr_heap_insert(c->thread->queued, u);
+			t->pending = true;
 		}
 
 		fr_event_fd_delete(c->thread->el, fd, FR_EVENT_FILTER_IO);
