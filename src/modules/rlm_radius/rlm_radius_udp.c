@@ -1454,7 +1454,7 @@ static void conn_writable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int 
 /** Shutdown/close a file descriptor
  *
  */
-static void conn_close(int fd, void *uctx)
+static void _conn_close(int fd, void *uctx)
 {
 	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
 
@@ -1708,7 +1708,7 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, UNUSED int f
  * @param[out] fd_out	Where to write the new file descriptor.
  * @param[in] uctx	A #rlm_radius_thread_t.
  */
-static fr_connection_state_t conn_init(int *fd_out, void *uctx)
+static fr_connection_state_t _conn_init(int *fd_out, void *uctx)
 {
 	int				fd;
 	rlm_radius_udp_connection_t	*c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
@@ -1766,7 +1766,7 @@ static fr_connection_state_t conn_init(int *fd_out, void *uctx)
 /** Free the connection, and return requests to the thread queue
  *
  */
-static int conn_free(rlm_radius_udp_connection_t *c)
+static int _conn_free(rlm_radius_udp_connection_t *c)
 {
 	fr_dlist_t			*entry;
 	rlm_radius_udp_request_t	*u;
@@ -1898,9 +1898,9 @@ static void conn_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t *t)
 	FR_DLIST_INIT(c->sent);
 
 	c->conn = fr_connection_alloc(c, t->el, &inst->parent->connection_timeout, &inst->parent->reconnection_delay,
-				      conn_init,
-				      conn_open,
-				      conn_close,
+				      _conn_init,
+				      _conn_open,
+				      _conn_close,
 				      inst->parent->name, c);
 	if (!c->conn) {
 		talloc_free(c);
@@ -1932,7 +1932,7 @@ static void conn_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t *t)
 
 	fr_dlist_insert_head(&t->opening, &c->entry);
 
-	talloc_set_destructor(c, conn_free);
+	talloc_set_destructor(c, _conn_free);
 
 	return;
 }
