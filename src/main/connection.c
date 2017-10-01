@@ -162,6 +162,7 @@ static void connection_state_failed(fr_connection_t *conn, struct timeval *now)
 	{
 		struct timeval when;
 
+		STATE_TRANSITION(FR_CONNECTION_STATE_FAILED);
 		fr_timeval_add(&when, now, &conn->reconnection_delay);
 		fr_event_timer_insert(conn, conn->el, &conn->reconnection_timer,
 				      &when, _reconnect_delay_done, conn);
