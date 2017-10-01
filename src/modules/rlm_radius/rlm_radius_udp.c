@@ -1764,7 +1764,7 @@ static int _conn_free(rlm_radius_udp_connection_t *c)
 {
 	fr_dlist_t			*entry;
 	rlm_radius_udp_request_t	*u;
-	rlm_radius_udp_thread_t		*t = c->thread;
+	rlm_radius_udp_thread_t		*t = talloc_get_type_abort(c->thread, rlm_radius_udp_thread_t);
 
 	/*
 	 *	We're no longer using this connection.
@@ -1778,6 +1778,10 @@ static int _conn_free(rlm_radius_udp_connection_t *c)
 		if (cas_decr(c->inst->parent->num_connections, num_connections)) break;
 	}
 
+	/*
+	 *	Explicit free not technically required,
+	 *	but may prevent future ordering issues.
+	 */
 	talloc_free(c->conn);
 	c->conn = NULL;
 
