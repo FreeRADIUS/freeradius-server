@@ -80,7 +80,7 @@ typedef struct rlm_radius_udp_thread_t {
 } rlm_radius_udp_thread_t;
 
 typedef enum rlm_radius_udp_connection_state_t {
-	CONN_UNUSED = 0,
+	CONN_INIT = 0,					//!< Configured but not started.
 	CONN_OPENING,					//!< Trying to connect.
 	CONN_ACTIVE,					//!< Available to send packets.
 	CONN_FULL,					//!< Live, but can't send more packets.
@@ -243,7 +243,7 @@ static void conn_idle(rlm_radius_udp_connection_t *c)
 	 *	state.
 	 */
 	switch (c->state) {
-	case CONN_UNUSED:
+	case CONN_INIT:
 	case CONN_OPENING:
 		rad_assert(0 == 1);
 		return;
@@ -1504,7 +1504,7 @@ static int udp_request_free(rlm_radius_udp_request_t *u)
 		/*
 		 *	If it's unused, why is there a request for it?
 		 */
-	case CONN_UNUSED:
+	case CONN_INIT:
 	case CONN_OPENING:
 		rad_assert(0 == 1);
 		return 0;
@@ -1707,6 +1707,8 @@ static fr_connection_state_t _conn_init(int *fd_out, void *uctx)
 	int				fd;
 	rlm_radius_udp_connection_t	*c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
 
+	rad_assert(c->state == CONN_INIT);
+
 	/*
 	 *	Open the outgoing socket.
 	 */
@@ -1818,6 +1820,9 @@ static int _conn_free(rlm_radius_udp_connection_t *c)
 	switch (c->state) {
 	default:
 		rad_assert(0 == 1);
+		break;
+
+	case CONN_INIT:
 		break;
 
 	case CONN_STATUS_CHECKS:
