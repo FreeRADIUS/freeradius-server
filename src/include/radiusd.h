@@ -385,10 +385,10 @@ int		session_zap(REQUEST *request, uint32_t nasaddr,
 
 /* radiusd.c */
 #undef debug_pair
-void		debug_pair(VALUE_PAIR *);
-void		rdebug_pair(fr_log_lvl_t level, REQUEST *, VALUE_PAIR *, char const *);
-void 		rdebug_pair_list(fr_log_lvl_t level, REQUEST *, VALUE_PAIR *, char const *);
-void		rdebug_proto_pair_list(fr_log_lvl_t level, REQUEST *, VALUE_PAIR *, char const *);
+void		debug_pair(VALUE_PAIR *vp);
+void		rdebug_pair(fr_log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char const *prefix);
+void		rdebug_pair_list(fr_log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char const *prefix);
+void		rdebug_proto_pair_list(fr_log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char const *prefix);
 int		log_err (char *);
 
 /* util.c */
