@@ -332,7 +332,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	case LINELOG_DST_FILE:
 	{
 		if (!inst->file.name) {
-			cf_log_err(conf, "No value provided for 'filename'");
+			cf_log_err(conf, "No value provided for 'file.filename'");
 			return -1;
 		}
 
