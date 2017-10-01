@@ -318,6 +318,7 @@ redo:
 			data_size = (end - next);
 			*leftover = 0;
 			end = buffer + data_size;
+			inst->last_search = 0;
 			goto redo;
 		}
 
