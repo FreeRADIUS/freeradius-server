@@ -1558,7 +1558,7 @@ static fr_connection_state_t _conn_failed(int fd, fr_connection_state_t state, v
 		(void) fr_event_timer_delete(c->thread->el, &c->zombie_ev);
 
 		/*
-		 *	Move "sent" packets back to the connection queue, and
+		 *	Move "sent" packets back to the thread queue, and
 		 *	remove their retransmission timers.
 		 *
 		 *	@todo - ensure that the retransmission is independent
@@ -1569,14 +1569,13 @@ static fr_connection_state_t _conn_failed(int fd, fr_connection_state_t state, v
 			rlm_radius_udp_request_t *u;
 
 			u = fr_ptr_to_type(rlm_radius_udp_request_t, entry, entry);
-
+			rad_assert(u->rr != NULL);
 			(void) rr_track_delete(c->id, u->rr);
 			u->rr = NULL;
-			u->c = NULL;
-			fr_dlist_remove(&u->entry);
 
-			(void) fr_heap_insert(c->queued, u);
-			c->pending = true;
+			fr_dlist_remove(&u->entry);
+			u->c = NULL;
+			(void) fr_heap_insert(c->thread->queued, u);
 		}
 
 		fr_event_fd_delete(c->thread->el, fd, FR_EVENT_FILTER_IO);
