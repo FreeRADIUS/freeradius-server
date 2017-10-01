@@ -783,7 +783,7 @@ static int cluster_map_node_validate(redisReply *node, int map_idx, int node_idx
 	 *  Similarly a client library should try if possible to cope with the fact 
 	 *  that older versions may just have the IP and port parameter.
 	 */
-	if (node->elements >= 2) {
+	if (node->elements < 2) {
 		fr_strerror_printf("Cluster map %i node %i has incorrect number of elements, expected at least "
 				   "2 got %zu", map_idx, node_idx, node->elements);
 		return CLUSTER_OP_BAD_INPUT;
