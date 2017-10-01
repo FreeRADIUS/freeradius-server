@@ -421,50 +421,14 @@ static void conn_zombie(rlm_radius_udp_connection_t *c)
 	}
 }
 
-
 /** Connection errored
  *
  */
-static void conn_error(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int fd_errno, void *uctx)
+static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int fd_errno, void *uctx)
 {
-	fr_dlist_t *entry;
 	rlm_radius_udp_connection_t *c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
 
-	ERROR("%s - Connection with %s failed: %s",
-	      c->inst->parent->name, c->name, fr_syserror(fd_errno));
-
-	/*
-	 *	Stop all Status-Server checks
-	 */
-	if (c->status_u) talloc_free(c->status_u);
-
-	/*
-	 *	Delete all timers associated with the connection.
-	 */
-	(void) fr_event_timer_delete(el, &c->idle_ev);
-	(void) fr_event_timer_delete(el, &c->zombie_ev);
-
-	/*
-	 *	Move "sent" packets back to the connection queue, and
-	 *	remove their retransmission timers.
-	 *
-	 *	@todo - ensure that the retransmission is independent
-	 *	of which connection the packet is sent on.  This means
-	 *	keeping the various timers in 'u' instead of in 'rr'.
-	 */
-	while ((entry = FR_DLIST_FIRST(c->sent)) != NULL) {
-		rlm_radius_udp_request_t *u;
-
-		u = fr_ptr_to_type(rlm_radius_udp_request_t, entry, entry);
-
-		(void) rr_track_delete(c->id, u->rr);
-		u->rr = NULL;
-		u->c = NULL;
-		fr_dlist_remove(&u->entry);
-
-		(void) fr_heap_insert(c->queued, u);
-		c->pending = true;
-	}
+	ERROR("%s - Connection failed: %s - %s", c->inst->parent->name, fr_syserror(fd_errno), c->name);
 
 	/*
 	 *	Something bad happened... Fix it...
@@ -1564,6 +1528,83 @@ static int status_udp_request_free(rlm_radius_udp_request_t *u)
 	return udp_request_free(u);
 }
 
+/** Connection failed
+ *
+ * @param[in] fd	of connection that failed.
+ * @param[in] state	the connection was in when it failed.
+ * @param[in] c		the connection.
+ */
+static fr_connection_state_t _conn_failed(int fd, fr_connection_state_t state, void *uctx)
+{
+	rlm_radius_udp_connection_t	*c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
+
+	/*
+	 *	If the connection was connected when it failed,
+	 *	we need to handle any outstanding packers and
+	 *	timer events before reconnecting.
+	 */
+	if (state == FR_CONNECTION_STATE_CONNECTED) {
+		fr_dlist_t *entry;
+
+		/*
+		 *	Stop all Status-Server checks
+		 */
+		if (c->status_u) TALLOC_FREE(c->status_u);
+
+		/*
+		 *	Delete all timers associated with the connection.
+		 */
+		(void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
+		(void) fr_event_timer_delete(c->thread->el, &c->zombie_ev);
+
+		/*
+		 *	Move "sent" packets back to the connection queue, and
+		 *	remove their retransmission timers.
+		 *
+		 *	@todo - ensure that the retransmission is independent
+		 *	of which connection the packet is sent on.  This means
+		 *	keeping the various timers in 'u' instead of in 'rr'.
+		 */
+		while ((entry = FR_DLIST_FIRST(c->sent)) != NULL) {
+			rlm_radius_udp_request_t *u;
+
+			u = fr_ptr_to_type(rlm_radius_udp_request_t, entry, entry);
+
+			(void) rr_track_delete(c->id, u->rr);
+			u->rr = NULL;
+			u->c = NULL;
+			fr_dlist_remove(&u->entry);
+
+			(void) fr_heap_insert(c->queued, u);
+			c->pending = true;
+		}
+
+		fr_event_fd_delete(c->thread->el, fd, FR_EVENT_FILTER_IO);
+	}
+
+	/*
+	 *	Reset our state back to init
+	 */
+	switch (c->state) {
+	default:
+		rad_assert(0 == 1);
+		break;
+
+	case CONN_STATUS_CHECKS:
+	case CONN_OPENING:
+	case CONN_FULL:
+	case CONN_ZOMBIE:
+		fr_dlist_remove(&c->entry);
+		break;
+
+	case CONN_ACTIVE:
+		(void) fr_heap_extract(c->thread->active, c);
+		break;
+	}
+	c->state = CONN_INIT;
+
+	return FR_CONNECTION_STATE_INIT;
+}
 
 /** Process notification that fd is open
  *
@@ -1748,6 +1789,11 @@ static fr_connection_state_t _conn_init(int *fd_out, void *uctx)
 	}
 #endif
 
+	/*
+	 *	Insert the connection into the opening list
+	 */
+	fr_dlist_insert_head(&c->thread->opening, &c->entry);
+	c->state = CONN_OPENING;
 	c->fd = fd;
 
 	// @todo - initialize the tracking memory, etc.
@@ -1849,7 +1895,6 @@ static void conn_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t *t)
 	rlm_radius_udp_connection_t	*c;
 
 	c = talloc_zero(t, rlm_radius_udp_connection_t);
-	c->state = CONN_OPENING;
 	c->inst = inst;
 	c->thread = t;
 	c->dst_ipaddr = inst->dst_ipaddr;
@@ -1902,6 +1947,7 @@ static void conn_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t *t)
 			   inst->parent->name);
 		return;
 	}
+	fr_connection_failed_func(c->conn, _conn_failed);
 
 	/*
 	 *	Enforce max_connections via atomic variables.
@@ -1923,8 +1969,6 @@ static void conn_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t *t)
 	}
 
 	fr_connection_signal_init(c->conn);
-
-	fr_dlist_insert_head(&t->opening, &c->entry);
 
 	talloc_set_destructor(c, _conn_free);
 
