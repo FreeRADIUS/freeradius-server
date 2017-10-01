@@ -722,7 +722,7 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 		DEBUG3("cookie->jobj == %s", json_object_to_json_string(cookie->jobj));
 
 		/* allocate conf section */
-		client = tmpl ? cf_section_dup(NULL, tmpl, "client", vkey, true) :
+		client = tmpl ? cf_section_dup(NULL, NULL, tmpl, "client", vkey, true) :
 				cf_section_alloc(NULL, NULL, "client", vkey);
 
 		if (client_map_section(client, map, _get_client_value, cookie->jobj) < 0) {

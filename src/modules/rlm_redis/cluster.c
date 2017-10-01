@@ -216,6 +216,7 @@ typedef struct fr_redis_cluster_node {
 	fr_redis_cluster_t	*cluster;		//!< Commmon configuration (database number,
 							//!< password, etc..).
 	fr_pool_t		*pool;			//!< Pool associated with this node.
+	CONF_SECTION		*pool_cs;		//!< Pool configuration section associated with node.
 
 	bool			is_active;		//!< Whether this node is in the active node set.
 	bool			is_master;		//!< Whether this node is a master.
@@ -373,21 +374,29 @@ static cluster_rcode_t cluster_node_connect(fr_redis_cluster_t *cluster, cluster
 		char		buffer[256];
 		VALUE_PAIR	*args;
 		vp_cursor_t	cursor;
+		CONF_SECTION	*pool;
 
 		snprintf(buffer, sizeof(buffer), "%s [%i]", cluster->log_prefix, node->id);
 
+		pool = cf_section_find(cluster->module, "pool", NULL);
+		/*
+		 *	Dup so we can re-parse, and have unique CONF_DATA
+		 */
+		node->pool_cs = cf_section_dup(cluster, NULL, pool, "pool", NULL, true);
 		node->addr = node->pending_addr;
-		node->pool = fr_pool_init(cluster, cf_section_find(cluster->module, "pool", NULL), node,
-						     fr_redis_cluster_conn_create, NULL, buffer);
-		if (!node->pool) return CLUSTER_OP_FAILED;
+		node->pool = fr_pool_init(cluster, node->pool_cs, node,
+					  fr_redis_cluster_conn_create, NULL, buffer);
+		if (!node->pool) {
+		error:
+			TALLOC_FREE(node->pool_cs);
+			TALLOC_FREE(node->pool);
+			return CLUSTER_OP_FAILED;
+		}
 		fr_pool_reconnect_func(node->pool, _cluster_node_conf_apply);
 
 		if (cluster->triggers_enabled) {
 			args = trigger_args_afrom_server(node->pool, node->name, node->addr.port);
-			if (!args) {
-				TALLOC_FREE(node->pool);
-				return CLUSTER_OP_FAILED;
-			}
+			if (!args) goto error;
 
 			if (cluster->trigger_args) {
 				fr_pair_cursor_init(&cursor, &args);
@@ -405,7 +414,7 @@ static cluster_rcode_t cluster_node_connect(fr_redis_cluster_t *cluster, cluster
 	/*
 	 *	Apply the new config to the possibly live pool
 	 */
-	if (fr_pool_reconnect(node->pool, NULL) < 0) return CLUSTER_OP_FAILED;
+	if (fr_pool_reconnect(node->pool, NULL) < 0) goto error;
 
 	return CLUSTER_OP_SUCCESS;
 }

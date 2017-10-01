@@ -761,6 +761,7 @@ void _cf_lineno_set(CONF_ITEM *ci, int lineno)
  * @note recursively duplicates any child sections.
  * @note does not duplicate any data associated with a section, or its child sections.
  *
+ * @param[in] ctx	to allocate memory in.
  * @param[in] parent	section (may be NULL).
  * @param[in] cs	to duplicate.
  * @param[in] name1	of new section.
@@ -771,7 +772,7 @@ void _cf_lineno_set(CONF_ITEM *ci, int lineno)
  *	- A duplicate of the existing section.
  *	- NULL on error.
  */
-CONF_SECTION *cf_section_dup(CONF_SECTION *parent, CONF_SECTION const *cs,
+CONF_SECTION *cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION const *cs,
 			     char const *name1, char const *name2, bool copy_meta)
 {
 	CONF_SECTION	*new, *subcs;
@@ -779,7 +780,7 @@ CONF_SECTION *cf_section_dup(CONF_SECTION *parent, CONF_SECTION const *cs,
 	CONF_ITEM	*ci;
 	fr_cursor_t	cursor;
 
-	new = cf_section_alloc(parent, parent, name1, name2);
+	new = cf_section_alloc(ctx, parent, name1, name2);
 
 	if (copy_meta) {
 		new->template = cs->template;
@@ -798,7 +799,7 @@ CONF_SECTION *cf_section_dup(CONF_SECTION *parent, CONF_SECTION const *cs,
 		switch (ci->type) {
 		case CONF_ITEM_SECTION:
 			subcs = cf_item_to_section(ci);
-			subcs = cf_section_dup(new, subcs,
+			subcs = cf_section_dup(new, new, subcs,
 					       cf_section_name1(subcs), cf_section_name2(subcs),
 					       copy_meta);
 			if (!subcs) {

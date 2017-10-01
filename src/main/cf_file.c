@@ -233,7 +233,7 @@ char const *cf_expand_variables(char const *cf, int *lineno,
 				 *	referencing it.
 				 */
 				subcs = cf_item_to_section(ci);
-				subcs = cf_section_dup(outer_cs, subcs,
+				subcs = cf_section_dup(outer_cs, outer_cs, subcs,
 						       cf_section_name1(subcs), cf_section_name2(subcs),
 						       false);
 				if (!subcs) {
@@ -386,7 +386,7 @@ static bool cf_template_merge(CONF_SECTION *cs, CONF_SECTION const *template)
 			 *	sub-section.  Copy it verbatim from
 			 *	the template.
 			 */
-			subcs2 = cf_section_dup(cs, subcs1,
+			subcs2 = cf_section_dup(cs, cs, subcs1,
 						cf_section_name1(subcs1), cf_section_name2(subcs1),
 						false);
 			if (!subcs2) return false;
