@@ -1429,6 +1429,7 @@ static void _conn_close(int fd, void *uctx)
 	}
 
 	c->fd = -1;
+	c->state = CONN_INIT;
 
 	DEBUG("%s - Connection closed - %s", c->inst->parent->name, c->name);
 }
@@ -1589,6 +1590,9 @@ static fr_connection_state_t _conn_failed(int fd, fr_connection_state_t state, v
 		rad_assert(0 == 1);
 		break;
 
+	case CONN_INIT:
+		break;
+
 	case CONN_STATUS_CHECKS:
 	case CONN_OPENING:
 	case CONN_FULL:
@@ -1747,7 +1751,7 @@ static fr_connection_state_t _conn_init(int *fd_out, void *uctx)
 	int				fd;
 	rlm_radius_udp_connection_t	*c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
 
-	rad_assert(c->state == CONN_INIT);
+//	rad_assert(c->state == CONN_INIT);
 
 	/*
 	 *	Open the outgoing socket.
