@@ -1533,7 +1533,7 @@ static int status_udp_request_free(rlm_radius_udp_request_t *u)
  *
  * @param[in] fd	of connection that failed.
  * @param[in] state	the connection was in when it failed.
- * @param[in] c		the connection.
+ * @param[in] uctx		the connection.
  */
 static fr_connection_state_t _conn_failed(int fd, fr_connection_state_t state, void *uctx)
 {
