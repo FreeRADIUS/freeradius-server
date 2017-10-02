@@ -474,8 +474,20 @@ void version_init_features(CONF_SECTION *cs)
 #endif
 				);
 
+/*
+ *	GCC uses __SANITIZE_ADDRESS__, clang uses __has_feature, which
+ *	GCC complains about.
+ */
+#ifndef __SANITIZE_ADDRESS__
+#ifdef __has_feature
+#if __has_feature(address_sanitizer)
+#define __SANITIZE_ADDRESS__ (1)
+#endif
+#endif
+#endif
+
 	version_feature_add(cs, "address-sanitizer",
-#if defined(__has_feature) && __has_feature(address_sanitizer)
+#ifdef __SANITIZE_ADDRESS__
 				true
 #else
 				false
