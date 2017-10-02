@@ -150,6 +150,7 @@ struct rlm_radius_udp_request_t {
 
 	int			code;			//!< Packet code.
 	rlm_radius_udp_connection_t	*c;		//!< The connection state machine.
+	rlm_radius_udp_thread_t *thread;		//!< the thread data for this request
 	rlm_radius_link_t	*link;			//!< More link stuff.
 	rlm_radius_request_t	*rr;			//!< ID tracking, resend count, etc.
 
@@ -1005,7 +1006,7 @@ static void retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 /** Deal with per-request timeouts for transmissions, etc.
  *
  */
-static void response_timeout(UNUSED fr_event_list_t *el, struct timeval *now, void *uctx)
+static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uctx)
 {
 	int				rcode;
 	rlm_radius_udp_request_t	*u = uctx;
@@ -1013,7 +1014,7 @@ static void response_timeout(UNUSED fr_event_list_t *el, struct timeval *now, vo
 	REQUEST				*request;
 
 	rad_assert(u->timer.retry == &c->inst->parent->retry[u->code]);
-	rcode = rr_track_retry(c->id, u->rr, c->thread->el, response_timeout, u, now);
+	rcode = rr_track_retry(c->id, u->rr, el, response_timeout, u, now);
 	if (rcode < 0) {
 		/*
 		 *	Failed inserting event... the request is done.
@@ -2010,9 +2011,10 @@ static void conn_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t *t)
  *
  * For now, there's only one connection.
  */
-static rlm_radius_udp_connection_t *connection_get(rlm_radius_udp_thread_t *t, rlm_radius_udp_request_t *u)
+static rlm_radius_udp_connection_t *connection_get(rlm_radius_udp_request_t *u)
 {
 	rlm_radius_udp_connection_t	*c;
+	rlm_radius_udp_thread_t		*t = u->thread;
 
 	c = fr_heap_peek(t->active);
 	if (!c) return NULL;
@@ -2054,7 +2056,8 @@ static void mod_clear_backlog(rlm_radius_udp_thread_t *t)
 	if (!c) return;
 
 	while ((u = fr_heap_pop(t->queued)) != NULL) {
-		c = connection_get(t, u);
+		rad_assert(u->thread == t);
+		c = connection_get(u);
 		if (!c) break;
 
 		/*
@@ -2103,6 +2106,7 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 
 	u->link = link;
 	u->code = request->packet->code;
+	u->thread = t;
 	FR_DLIST_INIT(u->entry);
 
 	talloc_set_destructor(u, udp_request_free);
@@ -2111,7 +2115,7 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 	 *	Get a connection.  If they're all full, try to open a
 	 *	new one.
 	 */
-	c = connection_get(t, u);
+	c = connection_get(u);
 	if (!c) {
 		fr_dlist_t *entry;
 
