@@ -458,6 +458,14 @@ void version_init_features(CONF_SECTION *cs)
 #endif
 				);
 
+	version_feature_add(cs, "socket-timestamps",
+#ifdef SO_TIMESTAMP
+				true
+#else
+				false
+#endif
+				);
+
 	version_feature_add(cs, "developer",
 #ifndef NDEBUG
 				true
@@ -466,8 +474,8 @@ void version_init_features(CONF_SECTION *cs)
 #endif
 				);
 
-	version_feature_add(cs, "socket-timestamps",
-#ifdef SO_TIMESTAMP
+	version_feature_add(cs, "address-sanitizer",
+#if defined(__has_feature) && __has_feature(address_sanitizer)
 				true
 #else
 				false
