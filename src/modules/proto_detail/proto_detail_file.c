@@ -442,6 +442,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	return buffer_len;
 }
 
+#ifdef NOTE_REVOKE
 static void mod_revoke(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
 	proto_detail_file_t *inst = talloc_get_type_abort(uctx, proto_detail_file_t);
@@ -456,7 +457,7 @@ static void mod_revoke(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx
 	DEBUG("Detail worker %s had file system unmounted.  Stopping.", inst->name);
 	talloc_free(inst);
 }
-
+#endif
 
 /** Open a detail listener
  *
