@@ -127,6 +127,10 @@ eap inner-eap {
 		ca_path = ${cadir}
 #		check_cert_issuer = "/C=GB/ST=Berkshire/L=Newbury/O=My Company Ltd"
 #		check_cert_cn = %{User-Name}
+
+		# Accept an expired Certificate Revocation List
+		#
+#		allow_expired_crl = no
 	}
 
 	## EAP-TLS
