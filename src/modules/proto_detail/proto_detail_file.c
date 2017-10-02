@@ -435,12 +435,28 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	 *	@todo - close the socket if we're at EOF, and outstanding == 0?
 	 */
 	if (inst->closing && !inst->outstanding) {
-		DEBUG("EOF. Closing %s", inst->name);
+		DEBUG("Detail worker at EOF. Closing %s", inst->name);
 		return 0;
 	}
 
 	return buffer_len;
 }
+
+static void mod_revoke(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
+{
+	proto_detail_file_t *inst = talloc_get_type_abort(uctx, proto_detail_file_t);
+
+	/*
+	 *	The underlying file system is gone.  Stop reading the
+	 *	file, destroy all of the IO handlers, and delete
+	 */
+	fr_event_fd_delete(el, fd, FR_EVENT_FILTER_VNODE);
+	fr_event_fd_delete(el, fd, FR_EVENT_FILTER_IO);
+
+	DEBUG("Detail worker %s had file system unmounted.  Stopping.", inst->name);
+	talloc_free(inst);
+}
+
 
 /** Open a detail listener
  *
@@ -501,11 +517,18 @@ static int mod_fd(void const *instance)
  */
 static void mod_event_list_set(void *instance, fr_event_list_t *el)
 {
-	proto_detail_file_t *inst;
+	proto_detail_file_t *inst = talloc_get_type_abort(instance, proto_detail_file_t);
 
-	memcpy(&inst, &instance, sizeof(inst)); /* const issues */
+#ifdef NOTE_REVOKE
+	fr_event_vnode_func_t funcs;
 
-	inst = talloc_get_type_abort(instance, proto_detail_file_t);
+	memset(&funcs, 0, sizeof(funcs));
+	funcs.revoke = mod_revoke;
+
+	if (fr_event_filter_insert(inst, el, inst->fd, FR_EVENT_FILTER_VNODE, &funcs, NULL, inst) < 0) {
+		WARN("Failed to add event watching for unmounted file system");
+	}
+#endif
 
 	inst->el = el;
 }
