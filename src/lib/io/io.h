@@ -221,7 +221,7 @@ typedef ssize_t (*fr_io_data_write_t)(void *instance, void *packet_ctx, fr_time_
  * @param[in] instance		the context for this function
  * @param[in] fflags		from kevent.  Usually just NOTE_EXEND
  */
-typedef void (*fr_io_data_vnode_t)(void const *instance, uint32_t fflags);
+typedef void (*fr_io_data_vnode_t)(void *instance, uint32_t fflags);
 
 /**  Handle a close or error on the socket.
  *
