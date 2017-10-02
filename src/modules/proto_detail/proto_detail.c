@@ -399,6 +399,23 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	if (strcmp(inst->io_submodule->module->name, "proto_detail_work") == 0) {
 		proto_detail_work_t *work = inst->app_io_instance;
 		work->fd = -1;
+
+		/*
+		 *	Open the socket.
+		 */
+		if (inst->app_io->open(inst->app_io_instance) < 0) {
+			cf_log_err(conf, "Failed opening %s interface", inst->app_io->name);
+			talloc_free(listen);
+			return -1;
+		}
+
+		if (!fr_schedule_socket_add(sc, listen)) {
+			talloc_free(listen);
+			return -1;
+		}
+
+		inst->listen = listen;
+		return 0;
 	}
 
 	/*
@@ -410,22 +427,9 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 		return -1;
 	}
 
-	/*
-	 *	Add it to the scheduler.
-	 *
-	 *	As a hack, we allow "detail.work" to be specified
-	 *	directly.
-	 */
-	if (strcmp(inst->io_submodule->module->name, "proto_detail_work") == 0) {
-		if (!fr_schedule_socket_add(sc, listen)) {
-			talloc_free(listen);
-			return -1;
-		}
-	} else {
-		if (!fr_schedule_directory_add(sc, listen)) {
-			talloc_free(listen);
-			return -1;
-		}
+	if (!fr_schedule_directory_add(sc, listen)) {
+		talloc_free(listen);
+		return -1;
 	}
 
 	inst->listen = listen;	/* Probably won't need it, but doesn't hurt */
@@ -463,7 +467,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	CONF_PAIR		*cp = NULL;
 
 	/*
-	 *	Instantiate the I/O module
+	 *	Instantiate the I/O module. But DON'T instantiate the
+	 *	work submodule.  We leave that until later.
 	 */
 	if (inst->app_io->instantiate &&
 	    (inst->app_io->instantiate(inst->app_io_instance,
@@ -482,7 +487,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	}
 
 	/*
-	 *	Instantiate the process modules
+	 *	Instantiate the process module.
 	 */
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
 		fr_app_process_t const *app_process;
@@ -543,9 +548,10 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	The listener is inside of a virtual server.
 	 */
 	inst->server_cs = cf_item_to_section(cf_parent(conf));
+	inst->cs = conf;
 
 	/*
-	 *	Bootstrap the process modules
+	 *	Bootstrap the process module.
 	 */
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
 		dl_t const		*module = talloc_get_type_abort_const(inst->type_submodule->module, dl_t);
@@ -559,7 +565,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	}
 
 	/*
-	 *	No IO module, it's an empty listener.
+	 *	No IO module, it's an empty listener.  That's not
+	 *	allowed for the detail file reader.
 	 */
 	if (!inst->io_submodule) {
 		cf_log_err(conf, "Virtual server for detail files requires a 'transport' configuration");
@@ -572,16 +579,45 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->app_io = (fr_app_io_t const *) inst->io_submodule->module->common;
 	inst->app_io_instance = inst->io_submodule->data;
 	inst->app_io_conf = inst->io_submodule->conf;
-#if 0
-	inst->app_io_private = dl_instance_symbol(dl_instance_find(inst->app_io_instance),
-						  "proto_detail_app_io_private");
-	rad_assert(inst->app_io_private);
-#endif
 
 	if (inst->app_io->bootstrap && (inst->app_io->bootstrap(inst->app_io_instance,
 								inst->app_io_conf) < 0)) {
 		cf_log_err(inst->app_io_conf, "Bootstrap failed for \"%s\"", inst->app_io->name);
 		return -1;
+	}
+
+	/*
+	 *	If we're not loading the work submodule directly, then try to load it here.
+	 */
+	if (strcmp(inst->io_submodule->module->name, "proto_detail_work") != 0) {
+		CONF_SECTION *transport_cs;
+		dl_instance_t *parent_inst;
+
+		inst->work_submodule = NULL;
+
+		transport_cs = cf_section_find(inst->cs, "work", NULL);
+		parent_inst = cf_data_value(cf_data_find(inst->cs, dl_instance_t, "proto_detail"));
+		rad_assert(parent_inst);
+
+		if (transport_cs) {
+			(void) dl_instance(inst->cs, &inst->work_submodule, transport_cs,
+					   parent_inst, "work", DL_TYPE_SUBMODULE);
+		}
+	}
+
+	/*
+	 *	Boot strap the work module.
+	 */
+	if (inst->work_submodule) {
+		inst->work_io = (fr_app_io_t const *) inst->work_submodule->module->common;
+		inst->work_io_instance = inst->work_submodule->data;
+		inst->work_io_conf = inst->work_submodule->conf;
+
+		if (inst->work_io->bootstrap && (inst->work_io->bootstrap(inst->work_io_instance,
+									  inst->work_io_conf) < 0)) {
+			cf_log_err(inst->work_io_conf, "Bootstrap failed for \"%s\"", inst->work_io->name);
+			return -1;
+		}
 	}
 
 	return 0;

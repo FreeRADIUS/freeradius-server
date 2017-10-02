@@ -31,6 +31,7 @@ extern "C" {
 
 typedef struct proto_detail_t {
 	CONF_SECTION			*server_cs;			//!< server CS for this listener
+	CONF_SECTION			*cs;				//!< my configuration
 
 	dl_instance_t			*io_submodule;			//!< As provided by the transport_parse
 									///< callback.  Broken out into the
@@ -40,6 +41,13 @@ typedef struct proto_detail_t {
 	void				*app_io_instance;		//!< Easy access to the app_io instance.
 	CONF_SECTION			*app_io_conf;			//!< Easy access to the app_io's config section.
 //	proto_detail_app_io_t		*app_io_private;		//!< Internal interface for proto_radius.
+
+	dl_instance_t			*work_submodule;		//!< the worker
+
+	fr_app_io_t const		*work_io;			//!< Easy access to the app_io handle.
+	void				*work_io_instance;		//!< Easy access to the app_io instance.
+	CONF_SECTION			*work_io_conf;			//!< Easy access to the app_io's config secti
+
 
 	dl_instance_t			*type_submodule;		//!< Instance of the type
 
