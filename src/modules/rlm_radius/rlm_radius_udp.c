@@ -447,14 +447,17 @@ static void mod_finished_request(rlm_radius_udp_connection_t *c, rlm_radius_udp_
 	 *	Delete the tracking table entry, and remove the
 	 *	request from the "sent" list for this connection.
 	 */
-	(void) rr_track_delete(c->id, u->rr);
+	if (c) {
+		(void) rr_track_delete(c->id, u->rr);
+		rad_assert(c->num_requests > 0);
+		c->num_requests--;
+		conn_idle(c);
+	}
+
 	u->rr = NULL;
 	u->c = NULL;
 	fr_dlist_remove(&u->entry);
-	rad_assert(c->num_requests > 0);
-	c->num_requests--;
-
-	conn_idle(c);
+	if (u->timer.ev) talloc_const_free(u->timer.ev);
 
 	unlang_resumable(u->link->request);
 }
@@ -866,8 +869,7 @@ static void status_check_timeout(UNUSED fr_event_list_t *el, struct timeval *now
 	 *	already a bit complex.
 	 */
 	rad_assert(u->timer.retry == &c->inst->parent->retry[u->code]);
-	rcode = rr_track_retry(c->id, u->rr, c->thread->el, status_check_timeout,
-			       u, now);
+	rcode = rr_track_retry(u, u->rr, c->thread->el, status_check_timeout, u, now);
 	if (rcode < 0) {
 		/*
 		 *	Failed inserting event... the request is done.
@@ -1002,6 +1004,7 @@ static void retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 	}
 }
 
+static rlm_radius_udp_connection_t *connection_get(rlm_radius_udp_request_t *u);
 
 /** Deal with per-request timeouts for transmissions, etc.
  *
@@ -1013,9 +1016,29 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	rlm_radius_udp_connection_t	*c = u->c;
 	REQUEST				*request;
 
+	/*
+	 *	The packet timed out while it didn't have a
+	 *	connection, or the connection was closed.  Try to grab
+	 *	a new connection.
+	 */
+	if (!c) c = u->c = connection_get(u);
+
 	rad_assert(u->timer.retry == &c->inst->parent->retry[u->code]);
-	rcode = rr_track_retry(c->id, u->rr, el, response_timeout, u, now);
+	request = u->link->request;
+
+	/*
+	 *	Try to retransmit.
+	 */
+	rcode = rr_track_retry(u, u->rr, el, response_timeout, u, now);
 	if (rcode < 0) {
+		if (c) {
+			REDEBUG("Failing proxied request ID %d due to error trying to proxy on connection %s",
+				u->rr->id, c->name);
+		} else {
+			REDEBUG("Failing proxied request ID %d due to error trying to proxy, with no connection",
+				u->rr->id);
+		}
+
 		/*
 		 *	Failed inserting event... the request is done.
 		 */
@@ -1023,16 +1046,25 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 		return;
 	}
 
-	request = u->link->request;
 	if (rcode == 0) {
-		conn_zombie(c);
-		REDEBUG("Failing proxied request ID %d due to lack of response on connection %s",
-			u->rr->id, c->name);
+		if (c) {
+			conn_zombie(c);
+			REDEBUG("Failing proxied request ID %d due to lack of response on connection %s",
+				u->rr->id, c->name);
+		} else {
+			REDEBUG("Failing proxied request ID %d due to lack of response",
+				u->rr->id);
+		}
 		mod_finished_request(c, u);
 		return;
 	}
 
-	retransmit_packet(u, now);
+	/*
+	 *	If we can retransmit it, do so.  Otherwise, it will
+	 *	get retransmitted when we get around to polling
+	 *	t->queued
+	 */
+	if (c) retransmit_packet(u, now);
 }
 
 
@@ -1319,7 +1351,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 
 			rad_assert(u->timer.retry == &c->inst->parent->retry[u->code]);
 
-			if (rr_track_start(c->id, u->rr, c->thread->el, response_timeout, u) < 0) {
+			if (rr_track_start(u, u->rr, c->thread->el, response_timeout, u) < 0) {
 				RDEBUG("Failed starting retransmit tracking");
 				return -1;
 			}
@@ -1340,7 +1372,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	} else if (u->timer.count == 0) {
 		rad_assert(u->timer.retry == &c->inst->parent->retry[u->code]);
 
-		if (rr_track_start(c->id, u->rr, c->thread->el, status_check_timeout, u) < 0) {
+		if (rr_track_start(u, u->rr, c->thread->el, status_check_timeout, u) < 0) {
 			RDEBUG("Failed starting retransmit tracking");
 			return -1;
 		}
@@ -1460,6 +1492,7 @@ static int udp_request_free(rlm_radius_udp_request_t *u)
 		(void) rr_track_delete(u->c->id, u->rr);
 		u->rr = NULL;
 	}
+	if (u->timer.ev) talloc_const_free(u->timer.ev);
 
 	/*
 	 *	This packet isn't for any connection, we don't need to
@@ -1590,6 +1623,11 @@ static fr_connection_state_t _conn_failed(int fd, fr_connection_state_t state, v
 			u = fr_ptr_to_type(rlm_radius_udp_request_t, entry, entry);
 			rad_assert(u->rr != NULL);
 			(void) rr_track_delete(c->id, u->rr);
+
+			/*
+			 *	Do NOT change u->timer.ev
+			 */
+
 			u->rr = NULL;
 
 			fr_dlist_remove(&u->entry);

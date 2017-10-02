@@ -240,10 +240,6 @@ int rr_track_delete(rlm_radius_id_t *id, rlm_radius_request_t *rr)
 	(void) talloc_get_type_abort(id, rlm_radius_id_t);
 
 	rr->request = NULL;
-	if (rr->timer->ev) {
-		talloc_const_free(rr->timer->ev);
-		rr->timer->ev = NULL;
-	}
 
 	rad_assert(id->num_requests > 0);
 	id->num_requests--;
