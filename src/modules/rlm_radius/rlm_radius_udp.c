@@ -1551,9 +1551,21 @@ static fr_connection_state_t _conn_failed(int fd, fr_connection_state_t state, v
 		fr_dlist_t *entry;
 
 		/*
-		 *	Stop all Status-Server checks
+		 *	Reset the Status-Server checks.
 		 */
-		if (c->status_u) TALLOC_FREE(c->status_u);
+		if (c->status_u) {
+			rlm_radius_udp_request_t *u = c->status_u;
+
+			memset(&u->timer, 0, sizeof(u->timer));
+			rad_assert(u->c == c);
+
+			if (u->packet) TALLOC_FREE(u->packet);
+			u->packet_len = 0;
+
+			if (u->timer.ev) (void) fr_event_timer_delete(c->thread->el, &u->timer.ev);
+			fr_dlist_remove(&u->entry);
+			(void) fr_heap_extract(c->queued, c->status_u);
+		}
 
 		/*
 		 *	Delete all timers associated with the connection.
