@@ -440,23 +440,40 @@ static int mod_open(void *instance)
 	proto_detail_work_t *inst = talloc_get_type_abort(instance, proto_detail_work_t);
 	struct stat buf;
 
-	inst->fd = open(inst->filename_work, O_RDWR);
 	if (inst->fd < 0) {
-		cf_log_err(inst->cs, "Failed opening %s: %s", inst->filename_work, fr_syserror(errno));
-		return -1;
+		inst->fd = open(inst->filename_work, O_RDWR);
+		if (inst->fd < 0) {
+			cf_log_err(inst->cs, "Failed opening %s: %s", inst->filename_work, fr_syserror(errno));
+			return -1;
+		}
+
+		if (fstat(inst->fd, &buf) < 0) {
+			cf_log_err(inst->cs, "Failed examining %s: %s", inst->filename_work, fr_syserror(errno));
+			return -1;
+		}
+
+		rad_assert(inst->name == NULL);
+		inst->name = talloc_asprintf(inst, "detail working file %s", inst->filename_work);
+		inst->file_size = buf.st_size;
+	} else {
+		rad_assert(inst->name != NULL);
 	}
 
-	if (fstat(inst->fd, &buf) < 0) {
-		cf_log_err(inst->cs, "Failed examining %s: %s", inst->filename_work, fr_syserror(errno));
-		return -1;
+	/*
+	 *	Avoid triggering erroneous EOF.
+	 */
+	if (!inst->track_progress) {
+		inst->file_size = 1;
 	}
-
-	rad_assert(inst->name == NULL);
-	inst->name = talloc_asprintf(inst, "detail working file %s", inst->filename_work);
-	inst->file_size = buf.st_size;
 
 	DEBUG("Listening on %s bound to virtual server %s",
 	      inst->name, cf_section_name2(inst->parent->server_cs));
+
+	/*
+	 *	@todo - troll through the directory, looking for
+	 *	"detail.work".  If found, create an instance, link to
+	 *	it, fill in it's information, and go from there.
+	 */
 
 	return 0;
 }

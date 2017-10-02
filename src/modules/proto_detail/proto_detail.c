@@ -396,6 +396,11 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	listen->default_message_size = inst->max_packet_size;
 	listen->num_messages = inst->num_messages;
 
+	if (strcmp(inst->io_submodule->module->name, "proto_detail_work") == 0) {
+		proto_detail_work_t *work = inst->app_io_instance;
+		work->fd = -1;
+	}
+
 	/*
 	 *	Open the socket.
 	 */
