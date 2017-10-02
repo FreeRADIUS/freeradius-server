@@ -864,8 +864,9 @@ static void status_check_timeout(UNUSED fr_event_list_t *el, struct timeval *now
 	 *	do that here than to overload conn_write(), which is
 	 *	already a bit complex.
 	 */
+	rad_assert(u->timer.retry == &c->inst->parent->retry[u->code]);
 	rcode = rr_track_retry(c->id, u->rr, c->thread->el, status_check_timeout,
-			       u, &c->inst->parent->retry[u->code], now);
+			       u, now);
 	if (rcode < 0) {
 		/*
 		 *	Failed inserting event... the request is done.
@@ -1011,7 +1012,8 @@ static void response_timeout(UNUSED fr_event_list_t *el, struct timeval *now, vo
 	rlm_radius_udp_connection_t	*c = u->c;
 	REQUEST				*request;
 
-	rcode = rr_track_retry(c->id, u->rr, c->thread->el, response_timeout, u, &c->inst->parent->retry[u->code], now);
+	rad_assert(u->timer.retry == &c->inst->parent->retry[u->code]);
+	rcode = rr_track_retry(c->id, u->rr, c->thread->el, response_timeout, u, now);
 	if (rcode < 0) {
 		/*
 		 *	Failed inserting event... the request is done.
@@ -1314,8 +1316,9 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 			RDEBUG("Proxying request.  Expecting response within %d.%06ds",
 			       u->timer.rt / USEC, u->timer.rt % USEC);
 
-			if (rr_track_start(c->id, u->rr, c->thread->el, response_timeout, u,
-					   &c->inst->parent->retry[u->code]) < 0) {
+			rad_assert(u->timer.retry == &c->inst->parent->retry[u->code]);
+
+			if (rr_track_start(c->id, u->rr, c->thread->el, response_timeout, u) < 0) {
 				RDEBUG("Failed starting retransmit tracking");
 				return -1;
 			}
@@ -1334,8 +1337,9 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 		}
 
 	} else if (u->timer.count == 0) {
-		if (rr_track_start(c->id, u->rr, c->thread->el, status_check_timeout,
-				   u, &c->inst->parent->retry[u->code]) < 0) {
+		rad_assert(u->timer.retry == &c->inst->parent->retry[u->code]);
+
+		if (rr_track_start(c->id, u->rr, c->thread->el, status_check_timeout, u) < 0) {
 			RDEBUG("Failed starting retransmit tracking");
 			return -1;
 		}
@@ -1557,6 +1561,8 @@ static fr_connection_state_t _conn_failed(int fd, fr_connection_state_t state, v
 			rlm_radius_udp_request_t *u = c->status_u;
 
 			memset(&u->timer, 0, sizeof(u->timer));
+			u->timer.retry = &c->inst->parent->retry[u->code];
+
 			rad_assert(u->c == c);
 
 			if (u->packet) TALLOC_FREE(u->packet);
@@ -1737,7 +1743,10 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, UNUSED int f
 	 *	Reset the timer, retransmission counters, etc.
 	 */
 	if (c->status_u) {
-		memset(&c->status_u->timer, 0, sizeof(c->status_u->timer));
+		rlm_radius_udp_request_t *u = c->status_u;
+
+		memset(&u->timer, 0, sizeof(u->timer));
+		u->timer.retry = &c->inst->parent->retry[u->code];
 	}
 
 	/*
@@ -2012,6 +2021,7 @@ static rlm_radius_udp_connection_t *connection_get(rlm_radius_udp_thread_t *t, r
 	rad_assert(c->state == CONN_ACTIVE);
 	rad_assert(c->num_requests < c->max_requests);
 
+	u->timer.retry = &c->inst->parent->retry[u->code];
 	u->rr = rr_track_alloc(c->id, u->link->request, u->code, u->link, &u->timer);
 	if (!u->rr) {
 		rad_assert(0 == 1);

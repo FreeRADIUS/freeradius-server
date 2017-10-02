@@ -32,6 +32,7 @@ typedef struct rlm_radius_retransmit_t {
 	uint32_t		count;		//!< how many times we sent this packet
 	uint32_t		rt;		//!< retransmit timer (microseconds)
 	fr_event_timer_t const	*ev;		//!< timer event associated with this packet
+	rlm_radius_retry_t	*retry;		//!< pointer to retry structure
 } rlm_radius_retransmit_t;
 
 /** Track one request to a response
@@ -75,9 +76,9 @@ int rr_track_delete(rlm_radius_id_t *id, rlm_radius_request_t *rr) CC_HINT(nonnu
 void rr_track_use_authenticator(rlm_radius_id_t *id, bool flag) CC_HINT(nonnull);
 
 int rr_track_start(TALLOC_CTX *ctx, rlm_radius_request_t *rr, fr_event_list_t *el,
-		   fr_event_cb_t callback, void *uctx, rlm_radius_retry_t *retry) CC_HINT(nonnull);
+		   fr_event_cb_t callback, void *uctx) CC_HINT(nonnull);
 int rr_track_retry(TALLOC_CTX *ctx, rlm_radius_request_t *rr, fr_event_list_t *el,
-		   fr_event_cb_t callback, void *uctx, rlm_radius_retry_t *retry,
+		   fr_event_cb_t callback, void *uctx,
 		   struct timeval *no) CC_HINT(nonnull);
 
 #endif	/* _RLM_RADIUS_TRACK_H */

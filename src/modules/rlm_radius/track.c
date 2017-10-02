@@ -386,7 +386,7 @@ void rr_track_use_authenticator(rlm_radius_id_t *id, bool flag)
 }
 
 int rr_track_retry(TALLOC_CTX *ctx, rlm_radius_request_t *rr, fr_event_list_t *el,
-		   fr_event_cb_t callback, void *uctx, rlm_radius_retry_t *retry,
+		   fr_event_cb_t callback, void *uctx,
 		   struct timeval *now)
 {
 	uint32_t delay, frac;
@@ -407,22 +407,22 @@ int rr_track_retry(TALLOC_CTX *ctx, rlm_radius_request_t *rr, fr_event_list_t *e
 	/*
 	 *	We retried too many times.  Fail.
 	 */
-	if (retry->mrc && (rr->timer->count > retry->mrc)) {
-		DEBUG3("RETRANSMIT - reached MRC %d", retry->mrc);
+	if (rr->timer->retry->mrc && (rr->timer->count > rr->timer->retry->mrc)) {
+		DEBUG3("RETRANSMIT - reached MRC %d", rr->timer->retry->mrc);
 		return 0;
 	}
 
 	/*
 	 *	Cap delay at MRD
 	 */
-	if (retry->mrd) {
+	if (rr->timer->retry->mrd) {
 		struct timeval end;
 
 		end = rr->timer->start;
-		end.tv_sec += retry->mrd;
+		end.tv_sec += rr->timer->retry->mrd;
 
 		if (timercmp(now, &end, >=)) {
-			DEBUG3("RETRANSMIT - reached MRD %d", retry->mrd);
+			DEBUG3("RETRANSMIT - reached MRD %d", rr->timer->retry->mrd);
 			return 0;
 		}
 	}
@@ -445,8 +445,8 @@ int rr_track_retry(TALLOC_CTX *ctx, rlm_radius_request_t *rr, fr_event_list_t *e
 	/*
 	 *	Cap delay at MRT
 	 */
-	if (retry->mrt && (delay > (retry->mrt * USEC))) {
-		int mrt_usec = retry->mrt * USEC;
+	if (rr->timer->retry->mrt && (delay > (rr->timer->retry->mrt * USEC))) {
+		int mrt_usec = rr->timer->retry->mrt * USEC;
 
 		/*
 		 *	delay = MRT + RAND * MRT
@@ -481,12 +481,12 @@ int rr_track_retry(TALLOC_CTX *ctx, rlm_radius_request_t *rr, fr_event_list_t *e
 
 
 int rr_track_start(TALLOC_CTX *ctx, rlm_radius_request_t *rr, fr_event_list_t *el,
-		   fr_event_cb_t callback, void *uctx, rlm_radius_retry_t *retry)
+		   fr_event_cb_t callback, void *uctx)
 {
 	struct timeval next;
 
 	rr->timer->count = 1;
-	rr->timer->rt = retry->irt * USEC; /* rt is in usec */
+	rr->timer->rt = rr->timer->retry->irt * USEC; /* rt is in usec */
 
 	next = rr->timer->start;
 	next.tv_usec += rr->timer->rt;
