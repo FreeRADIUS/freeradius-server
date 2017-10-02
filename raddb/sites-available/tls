@@ -129,6 +129,10 @@ server radsec {
 		#	check_crl = yes
 			ca_path = ${cadir}
 
+			# Accept an expired Certificate Revocation List
+			#
+		#	allow_expired_crl = no
+
 			#
 			#  If check_cert_issuer is set, the value will
 			#  be checked against the DN of the issuer in
