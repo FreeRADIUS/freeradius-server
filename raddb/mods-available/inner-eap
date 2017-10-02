@@ -86,6 +86,10 @@ eap inner-eap {
 	#	check_crl = yes
 	#	ca_path = /path/to/directory/with/ca_certs/and/crls/
 
+		# Accept an expired Certificate Revocation List
+		#
+#		allow_expired_crl = no
+
 		#
 		#  The session resumption / fast re-authentication
 		#  cache CANNOT be used for inner sessions.
