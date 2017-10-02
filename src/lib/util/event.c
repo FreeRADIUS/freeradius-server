@@ -124,7 +124,7 @@ static fr_event_func_map_t vnode_func_map[] = {
 		.filter		= EVFILT_VNODE,
 		.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
 		.fflags		= NOTE_EXTEND,
-		.type		= FR_EVENT_FD_FILE,
+		.type		= FR_EVENT_FD_FILE | FR_EVENT_FD_DIRECTORY,
 		.coalesce	= true
 	},
 	{
