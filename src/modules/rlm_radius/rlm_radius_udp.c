@@ -1300,7 +1300,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	u->link->time_sent = fr_time();
 	fr_time_to_timeval(&u->timer.start, u->link->time_sent);
 
-	if (proxy_state) {
+	if (u != c->status_u) {
 		c->num_requests++;
 
 		/*
@@ -1658,7 +1658,7 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, UNUSED int f
 	 *	Status-Server checks.  Manually build the packet, and
 	 *	all of it's associated glue.
 	 */
-	if (c->inst->parent->status_check) {
+	if (c->inst->parent->status_check && !c->status_u) {
 		rlm_radius_link_t *link;
 		rlm_radius_udp_request_t *u;
 		REQUEST *request;
@@ -1720,7 +1720,7 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, UNUSED int f
 		 */
 		u->rr = rr_track_alloc(c->id, request, u->code, link, &u->timer);
 		if (!u->rr) {
-			ERROR("%s - Failed allocating status_check ID for new connection %s",
+			ERROR("%s - Failed allocating status_check ID for connection %s",
 			      c->inst->parent->name, c->name);
 			talloc_free(u);
 			talloc_free(link);
@@ -1731,6 +1731,13 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, UNUSED int f
 			talloc_set_destructor(u, status_udp_request_free);
 			c->status_u = u;
 		}
+	}
+
+	/*
+	 *	Reset the timer, retransmission counters, etc.
+	 */
+	if (c->status_u) {
+		memset(&c->status_u->timer, 0, sizeof(c->status_u->timer));
 	}
 
 	/*
@@ -2011,7 +2018,9 @@ static rlm_radius_udp_connection_t *connection_get(rlm_radius_udp_thread_t *t, r
 		return NULL;
 	}
 
-	rad_assert(u->timer.count == 0);
+	/*
+	 *	Don't check or reset the timers, mrc, mrt, etc.
+	 */
 	u->c = c;
 
 	fr_heap_extract(t->active, c);
