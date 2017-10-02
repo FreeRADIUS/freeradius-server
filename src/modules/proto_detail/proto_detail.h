@@ -83,7 +83,7 @@ typedef struct {
 	off_t				file_size;		//!< size of the file
 	off_t				header_offset;		//!< offset of the current header we're reading
 	off_t				read_offset;		//!< where we're reading from in filename_work
-} proto_detail_file_t;
+} proto_detail_work_t;
 
 #ifdef __cplusplus
 }

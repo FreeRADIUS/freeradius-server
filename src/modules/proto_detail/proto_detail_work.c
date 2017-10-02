@@ -51,11 +51,11 @@ typedef struct {
 } fr_detail_entry_t;
 
 static const CONF_PARSER file_listen_config[] = {
-//	{ FR_CONF_OFFSET("filename", FR_TYPE_STRING | FR_TYPE_REQUIRED, proto_detail_file_t, filename ) },
+//	{ FR_CONF_OFFSET("filename", FR_TYPE_STRING | FR_TYPE_REQUIRED, proto_detail_work_t, filename ) },
 
-	{ FR_CONF_OFFSET("filename.work", FR_TYPE_STRING | FR_TYPE_REQUIRED, proto_detail_file_t, filename_work ) },
+	{ FR_CONF_OFFSET("filename.work", FR_TYPE_STRING | FR_TYPE_REQUIRED, proto_detail_work_t, filename_work ) },
 
-	{ FR_CONF_OFFSET("track", FR_TYPE_BOOL, proto_detail_file_t, track_progress ) },
+	{ FR_CONF_OFFSET("track", FR_TYPE_BOOL, proto_detail_work_t, track_progress ) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -66,7 +66,7 @@ static const CONF_PARSER file_listen_config[] = {
 static int mod_decode(void const *instance, REQUEST *request, UNUSED uint8_t *const data, UNUSED size_t data_len)
 {
 
-	proto_detail_file_t const     	*inst = talloc_get_type_abort_const(instance, proto_detail_file_t);
+	proto_detail_work_t const     	*inst = talloc_get_type_abort_const(instance, proto_detail_work_t);
 
 	request->root = &main_config;
 	request->packet->id = inst->outstanding;
@@ -78,7 +78,7 @@ static int mod_decode(void const *instance, REQUEST *request, UNUSED uint8_t *co
 
 static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority)
 {
-	proto_detail_file_t		*inst = talloc_get_type_abort(instance, proto_detail_file_t);
+	proto_detail_work_t		*inst = talloc_get_type_abort(instance, proto_detail_work_t);
 
 	ssize_t				data_size;
 	size_t				packet_len;
@@ -376,7 +376,7 @@ done:
 static ssize_t mod_write(void *instance, void *packet_ctx,
 			 UNUSED fr_time_t request_time, uint8_t *buffer, size_t buffer_len)
 {
-	proto_detail_file_t		*inst = talloc_get_type_abort(instance, proto_detail_file_t);
+	proto_detail_work_t		*inst = talloc_get_type_abort(instance, proto_detail_work_t);
 	fr_detail_entry_t		*track = packet_ctx;
 
 	if (buffer_len < 1) return -1;
@@ -416,7 +416,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 #ifdef NOTE_REVOKE
 static void mod_revoke(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
-	proto_detail_file_t *inst = talloc_get_type_abort(uctx, proto_detail_file_t);
+	proto_detail_work_t *inst = talloc_get_type_abort(uctx, proto_detail_work_t);
 
 	/*
 	 *	The underlying file system is gone.  Stop reading the
@@ -439,7 +439,7 @@ static void mod_revoke(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx
  */
 static int mod_open(void *instance)
 {
-	proto_detail_file_t *inst = talloc_get_type_abort(instance, proto_detail_file_t);
+	proto_detail_work_t *inst = talloc_get_type_abort(instance, proto_detail_work_t);
 	struct stat buf;
 
 	if (inst->fd < 0) {
@@ -476,7 +476,7 @@ static int mod_open(void *instance)
  */
 static int mod_fd(void const *instance)
 {
-	proto_detail_file_t const *inst = talloc_get_type_abort_const(instance, proto_detail_file_t);
+	proto_detail_work_t const *inst = talloc_get_type_abort_const(instance, proto_detail_work_t);
 
 	return inst->fd;
 }
@@ -489,7 +489,7 @@ static int mod_fd(void const *instance)
  */
 static void mod_event_list_set(void *instance, fr_event_list_t *el)
 {
-	proto_detail_file_t *inst = talloc_get_type_abort(instance, proto_detail_file_t);
+	proto_detail_work_t *inst = talloc_get_type_abort(instance, proto_detail_work_t);
 
 #ifdef NOTE_REVOKE
 	fr_event_vnode_func_t funcs;
@@ -508,7 +508,7 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el)
 
 static int mod_instantiate(UNUSED void *instance, UNUSED CONF_SECTION *cs)
 {
-//	proto_detail_file_t *inst = talloc_get_type_abort(instance, proto_detail_file_t);
+//	proto_detail_work_t *inst = talloc_get_type_abort(instance, proto_detail_work_t);
 
 
 	return 0;
@@ -516,7 +516,7 @@ static int mod_instantiate(UNUSED void *instance, UNUSED CONF_SECTION *cs)
 
 static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 {
-	proto_detail_file_t	*inst = talloc_get_type_abort(instance, proto_detail_file_t);
+	proto_detail_work_t	*inst = talloc_get_type_abort(instance, proto_detail_work_t);
 	dl_instance_t const	*dl_inst;
 
 	/*
@@ -536,7 +536,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 
 static int mod_detach(void *instance)
 {
-	proto_detail_file_t	*inst = talloc_get_type_abort(instance, proto_detail_file_t);
+	proto_detail_work_t	*inst = talloc_get_type_abort(instance, proto_detail_work_t);
 
 	/*
 	 *	@todo - have our OWN event loop for timers, and a
@@ -552,12 +552,12 @@ static int mod_detach(void *instance)
 /** Private interface for use by proto_detail_file
  *
  */
-extern fr_app_io_t proto_detail_file;
-fr_app_io_t proto_detail_file = {
+extern fr_app_io_t proto_detail_work;
+fr_app_io_t proto_detail_work = {
 	.magic			= RLM_MODULE_INIT,
-	.name			= "detail_file",
+	.name			= "detail_work",
 	.config			= file_listen_config,
-	.inst_size		= sizeof(proto_detail_file_t),
+	.inst_size		= sizeof(proto_detail_work_t),
 	.detach			= mod_detach,
 	.bootstrap		= mod_bootstrap,
 	.instantiate		= mod_instantiate,
