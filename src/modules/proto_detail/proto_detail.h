@@ -52,6 +52,39 @@ typedef struct proto_detail_t {
 									///< the I/O path.
 } proto_detail_t;
 
+/*
+ *	The detail "work" data structure, shared by all of the detail readers.
+ */
+typedef struct {
+	CONF_SECTION			*cs;			//!< our configuration section
+	proto_detail_t	const		*parent;		//!< The module that spawned us!
+	char const			*name;			//!< debug name for printing
+
+	int				fd;			//!< file descriptor
+
+	fr_event_list_t			*el;			//!< for various timers
+	fr_schedule_t			*sc;			//!< the scheduler, where we insert new readers
+
+	char const			*filename;     		//!< file name, usually with wildcards
+	char const			*filename_work;		//!< work file name
+
+	bool				vnode;			//!< are we the vnode instance,
+								//!< or the filename_work instance?
+	bool				eof;			//!< are we at EOF on reading?
+	bool				closing;		//!< we should be closing the file
+
+	bool				track_progress;		//!< do we track progress by writing?
+
+	int				outstanding;		//!< number of outstanding records;
+
+	size_t				last_search;		//!< where we last searched in the buffer
+								//!< MUST be offset, as the buffers can change.
+
+	off_t				file_size;		//!< size of the file
+	off_t				header_offset;		//!< offset of the current header we're reading
+	off_t				read_offset;		//!< where we're reading from in filename_work
+} proto_detail_file_t;
+
 #ifdef __cplusplus
 }
 #endif

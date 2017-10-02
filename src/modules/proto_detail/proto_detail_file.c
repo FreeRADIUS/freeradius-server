@@ -50,36 +50,6 @@ typedef struct {
 	off_t				done_offset;		//!< where we're tracking the status
 } fr_detail_entry_t;
 
-typedef struct {
-	CONF_SECTION			*cs;			//!< our configuration section
-	proto_detail_t	const		*parent;		//!< The module that spawned us!
-	char const			*name;			//!< debug name for printing
-
-	int				fd;			//!< file descriptor
-
-	fr_event_list_t			*el;			//!< for various timers
-	fr_schedule_t			*sc;			//!< the scheduler, where we insert new readers
-
-	char const			*filename;     		//!< file name, usually with wildcards
-	char const			*filename_work;		//!< work file name
-
-	bool				vnode;			//!< are we the vnode instance,
-								//!< or the filename_work instance?
-	bool				eof;			//!< are we at EOF on reading?
-	bool				closing;		//!< we should be closing the file
-
-	bool				track_progress;		//!< do we track progress by writing?
-
-	int				outstanding;		//!< number of outstanding records;
-
-	size_t				last_search;		//!< where we last searched in the buffer
-								//!< MUST be offset, as the buffers can change.
-
-	off_t				file_size;		//!< size of the file
-	off_t				header_offset;		//!< offset of the current header we're reading
-	off_t				read_offset;		//!< where we're reading from in filename_work
-} proto_detail_file_t;
-
 static const CONF_PARSER file_listen_config[] = {
 //	{ FR_CONF_OFFSET("filename", FR_TYPE_STRING | FR_TYPE_REQUIRED, proto_detail_file_t, filename ) },
 
@@ -90,12 +60,13 @@ static const CONF_PARSER file_listen_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-
+/*
+ *	All of the decoding is done by proto_detail.c
+ */
 static int mod_decode(void const *instance, REQUEST *request, UNUSED uint8_t *const data, UNUSED size_t data_len)
 {
 
 	proto_detail_file_t const     	*inst = talloc_get_type_abort_const(instance, proto_detail_file_t);
-//	fr_detail_entry_t const			*track = request->async->packet_ctx;
 
 	request->root = &main_config;
 	request->packet->id = inst->outstanding;
