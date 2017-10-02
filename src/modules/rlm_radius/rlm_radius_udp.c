@@ -1574,12 +1574,8 @@ static fr_connection_state_t _conn_failed(int fd, fr_connection_state_t state, v
 		(void) fr_event_timer_delete(c->thread->el, &c->zombie_ev);
 
 		/*
-		 *	Move "sent" packets back to the thread queue, and
-		 *	remove their retransmission timers.
-		 *
-		 *	@todo - ensure that the retransmission is independent
-		 *	of which connection the packet is sent on.  This means
-		 *	keeping the various timers in 'u' instead of in 'rr'.
+		 *	Move "sent" packets back to the thread queue,
+		 *	and remove their retransmission timers.
 		 */
 		while ((entry = FR_DLIST_FIRST(c->sent)) != NULL) {
 			rlm_radius_udp_request_t *u;
