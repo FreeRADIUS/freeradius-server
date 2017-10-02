@@ -385,7 +385,7 @@ void rr_track_use_authenticator(rlm_radius_id_t *id, bool flag)
 	id->use_authenticator = flag;
 }
 
-int rr_track_retry(rlm_radius_id_t *id, rlm_radius_request_t *rr, fr_event_list_t *el,
+int rr_track_retry(TALLOC_CTX *ctx, rlm_radius_request_t *rr, fr_event_list_t *el,
 		   fr_event_cb_t callback, void *uctx, rlm_radius_retry_t *retry,
 		   struct timeval *now)
 {
@@ -471,7 +471,7 @@ int rr_track_retry(rlm_radius_id_t *id, rlm_radius_request_t *rr, fr_event_list_
 	next.tv_sec += (next.tv_usec / USEC);
 	next.tv_usec %= USEC;
 
-	if (fr_event_timer_insert(id, el, &rr->timer->ev, &next, callback, uctx) < 0) {
+	if (fr_event_timer_insert(ctx, el, &rr->timer->ev, &next, callback, uctx) < 0) {
 		return -1;
 	}
 
@@ -480,7 +480,7 @@ int rr_track_retry(rlm_radius_id_t *id, rlm_radius_request_t *rr, fr_event_list_
 }
 
 
-int rr_track_start(rlm_radius_id_t *id, rlm_radius_request_t *rr, fr_event_list_t *el,
+int rr_track_start(TALLOC_CTX *ctx, rlm_radius_request_t *rr, fr_event_list_t *el,
 		   fr_event_cb_t callback, void *uctx, rlm_radius_retry_t *retry)
 {
 	struct timeval next;
@@ -493,7 +493,7 @@ int rr_track_start(rlm_radius_id_t *id, rlm_radius_request_t *rr, fr_event_list_
 	next.tv_sec += (next.tv_usec / USEC);
 	next.tv_usec %= USEC;
 
-	if (fr_event_timer_insert(id, el, &rr->timer->ev, &next, callback, uctx) < 0) {
+	if (fr_event_timer_insert(ctx, el, &rr->timer->ev, &next, callback, uctx) < 0) {
 		return -1;
 	}
 
