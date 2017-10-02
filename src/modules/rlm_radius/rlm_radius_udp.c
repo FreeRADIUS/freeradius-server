@@ -1023,7 +1023,7 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	 */
 	if (!c) c = u->c = connection_get(u);
 
-	rad_assert(u->timer.retry == &c->inst->parent->retry[u->code]);
+	rad_assert(!c || (u->timer.retry == &c->inst->parent->retry[u->code]));
 	request = u->link->request;
 
 	/*
