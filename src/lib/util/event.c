@@ -427,7 +427,7 @@ static ssize_t fr_event_build_evset(struct kevent out_kev[], size_t outlen, fr_e
 				 *	type of file descriptor specified.
 				 */
 				if (!(map_p->type & ef->type)) {
-					fr_strerror_printf("kevent %s, can't be applied to fd of type",
+					fr_strerror_printf("kevent %s, can't be applied to fd of type %s",
 							   map_p->name,
 							   fr_int2str(fr_event_fd_type_table,
 							   	      map_p->type, "<INVALID>"));
