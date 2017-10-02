@@ -44,7 +44,7 @@ fr_schedule_t		*fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_
 int			fr_schedule_destroy(fr_schedule_t *sc);
 
 fr_network_t		*fr_schedule_socket_add(fr_schedule_t *sc, fr_listen_t const *io) CC_HINT(nonnull);
-
+fr_network_t		*fr_schedule_directory_add(fr_schedule_t *sc, fr_listen_t const *io) CC_HINT(nonnull);
 #ifdef __cplusplus
 }
 #endif

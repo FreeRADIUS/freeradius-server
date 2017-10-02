@@ -612,3 +612,28 @@ fr_network_t *fr_schedule_socket_add(fr_schedule_t *sc, fr_listen_t const *io)
 
 	return nr;
 }
+
+/** Add a directory NOTE_EXTEND to a scheduler.
+ *
+ * @param[in] sc the scheduler
+ * @param[in] io the ctx and callbacks for the transport.
+ * @return
+ *	- NULL on error
+ *	- the fr_network_t that the socket was added to.
+ */
+fr_network_t *fr_schedule_directory_add(fr_schedule_t *sc, fr_listen_t const *io)
+{
+	fr_network_t *nr;
+
+	(void) talloc_get_type_abort(sc, fr_schedule_t);
+
+	if (sc->el) {
+		nr = sc->single_network;
+	} else {
+		nr = sc->sn->rc;
+	}
+
+	if (fr_network_directory_add(nr, io) < 0) return NULL;
+
+	return nr;
+}
