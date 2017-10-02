@@ -25,7 +25,6 @@
 #include <netdb.h>
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/protocol.h>
-#include <freeradius-devel/udp.h>
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/io/io.h>
 #include <freeradius-devel/io/application.h>
@@ -443,9 +442,9 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	return buffer_len;
 }
 
-/** Open a UDP listener for RADIUS
+/** Open a detail listener
  *
- * @param[in] instance of the RADIUS UDP I/O path.
+ * @param[in] instance of the detail worker.
  * @return
  *	- <0 on error
  *	- 0 on success
@@ -455,20 +454,26 @@ static int mod_open(void *instance)
 	proto_detail_file_t *inst = talloc_get_type_abort(instance, proto_detail_file_t);
 	struct stat buf;
 
-	inst->fd = open(inst->filename_work, O_RDWR);
 	if (inst->fd < 0) {
-		cf_log_err(inst->cs, "Failed opening %s: %s", inst->filename_work, fr_syserror(errno));
-		return -1;
-	}
+		inst->fd = open(inst->filename_work, O_RDWR);
+		if (inst->fd < 0) {
+			cf_log_err(inst->cs, "Failed opening %s: %s", inst->filename_work, fr_syserror(errno));
+			return -1;
+		}
 
-	if (fstat(inst->fd, &buf) < 0) {
-		cf_log_err(inst->cs, "Failed examining %s: %s", inst->filename_work, fr_syserror(errno));
-		return -1;
-	}
+		if (fstat(inst->fd, &buf) < 0) {
+			cf_log_err(inst->cs, "Failed examining %s: %s", inst->filename_work, fr_syserror(errno));
+			return -1;
+		}
 
-	rad_assert(inst->name == NULL);
-	inst->name = talloc_asprintf(inst, "detail working file %s", inst->filename_work);
-	inst->file_size = buf.st_size;
+		rad_assert(inst->name == NULL);
+		inst->name = talloc_asprintf(inst, "detail working file %s", inst->filename_work);
+		inst->file_size = buf.st_size;
+
+	} else {
+		inst->file_size = 1; /* so we don't muck up inst->eof calculations */
+		rad_assert(inst->name != NULL);
+	}
 
 	DEBUG("Listening on %s bound to virtual server %s",
 	      inst->name, cf_section_name2(inst->parent->server_cs));
@@ -476,9 +481,9 @@ static int mod_open(void *instance)
 	return 0;
 }
 
-/** Get the file descriptor for this socket.
+/** Get the file descriptor for this IO instance
  *
- * @param[in] instance of the RADIUS UDP I/O path.
+ * @param[in] instance of the detail worker
  * @return the file descriptor
  */
 static int mod_fd(void const *instance)
@@ -489,9 +494,9 @@ static int mod_fd(void const *instance)
 }
 
 
-/** Set the event list for a new socket
+/** Set the event list for a new IO instance
  *
- * @param[in] instance of the RADIUS UDP I/O path.
+ * @param[in] instance of the detail worker
  * @param[in] el the event list
  */
 static void mod_event_list_set(void *instance, fr_event_list_t *el)
@@ -529,6 +534,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 
 	inst->parent = talloc_get_type_abort(dl_inst->parent->data, proto_detail_t);
 	inst->cs = cs;
+	inst->fd = -1;
 
 	return 0;
 }
