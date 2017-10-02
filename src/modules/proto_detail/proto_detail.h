@@ -55,7 +55,7 @@ typedef struct proto_detail_t {
 /*
  *	The detail "work" data structure, shared by all of the detail readers.
  */
-typedef struct {
+typedef struct proto_detail_work_t {
 	CONF_SECTION			*cs;			//!< our configuration section
 	proto_detail_t	const		*parent;		//!< The module that spawned us!
 	char const			*name;			//!< debug name for printing
@@ -65,6 +65,7 @@ typedef struct {
 	fr_event_list_t			*el;			//!< for various timers
 	fr_schedule_t			*sc;			//!< the scheduler, where we insert new readers
 
+	char const			*directory;     	//!< containing the file below
 	char const			*filename;     		//!< file name, usually with wildcards
 	char const			*filename_work;		//!< work file name
 

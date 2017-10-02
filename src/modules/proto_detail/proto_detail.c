@@ -397,16 +397,27 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	listen->num_messages = inst->num_messages;
 
 	/*
-	 *	Open the socket, and add it to the scheduler.
+	 *	Open the socket.
 	 */
-	if (inst->app_io) {
-		if (inst->app_io->open(inst->app_io_instance) < 0) {
-			cf_log_err(conf, "Failed opening %s interface", inst->app_io->name);
+	if (inst->app_io->open(inst->app_io_instance) < 0) {
+		cf_log_err(conf, "Failed opening %s interface", inst->app_io->name);
+		talloc_free(listen);
+		return -1;
+	}
+
+	/*
+	 *	Add it to the scheduler.
+	 *
+	 *	As a hack, we allow "detail.work" to be specified
+	 *	directly.
+	 */
+	if (strcmp(inst->io_submodule->module->name, "proto_detail_work") == 0) {
+		if (!fr_schedule_socket_add(sc, listen)) {
 			talloc_free(listen);
 			return -1;
 		}
-
-		if (!fr_schedule_socket_add(sc, listen)) {
+	} else {
+		if (!fr_schedule_directory_add(sc, listen)) {
 			talloc_free(listen);
 			return -1;
 		}
@@ -449,7 +460,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Instantiate the I/O module
 	 */
-	if (inst->app_io && inst->app_io->instantiate &&
+	if (inst->app_io->instantiate &&
 	    (inst->app_io->instantiate(inst->app_io_instance,
 				       inst->app_io_conf) < 0)) {
 		cf_log_err(conf, "Instantiation failed for \"%s\"", inst->app_io->name);
