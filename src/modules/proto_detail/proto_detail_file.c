@@ -64,9 +64,12 @@ typedef struct {
 	char const			*filename;     		//!< file name, usually with wildcards
 	char const			*filename_work;		//!< work file name
 
-	bool				vnode;			//!< are we the vnode instance, or the filename_work instance?
+	bool				vnode;			//!< are we the vnode instance,
+								//!< or the filename_work instance?
 	bool				eof;			//!< are we at EOF on reading?
 	bool				closing;		//!< we should be closing the file
+
+	bool				track_progress;		//!< do we track progress by writing?
 
 	int				outstanding;		//!< number of outstanding records;
 
@@ -82,6 +85,8 @@ static const CONF_PARSER file_listen_config[] = {
 //	{ FR_CONF_OFFSET("filename", FR_TYPE_STRING | FR_TYPE_REQUIRED, proto_detail_file_t, filename ) },
 
 	{ FR_CONF_OFFSET("filename.work", FR_TYPE_STRING | FR_TYPE_REQUIRED, proto_detail_file_t, filename_work ) },
+
+	{ FR_CONF_OFFSET("track", FR_TYPE_BOOL, proto_detail_file_t, track_progress ) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -120,7 +125,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	 *	without locking it first.  So too bad for them.
 	 */
 	if (inst->closing) {
-		inst->read_offset = lseek(inst->fd, 0, SEEK_END);
+		if (inst->track_progress) inst->read_offset = lseek(inst->fd, 0, SEEK_END);
 		return 0;
 	}
 
@@ -149,7 +154,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 		/*
 		 *	Remember the read offset, and whether we got EOF.
 		 */
-		inst->read_offset = lseek(inst->fd, 0, SEEK_CUR);
+		if (inst->track_progress) inst->read_offset = lseek(inst->fd, 0, SEEK_CUR);
 		inst->eof = (data_size == 0) || (inst->read_offset == inst->file_size);
 		end = partial + data_size;
 
@@ -412,7 +417,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	if (buffer[0] == 0) {
 		DEBUG("Got Do-Not-Respond, not writing reply");
 
-	} else if (track->done_offset > 0) {
+	} else if (inst->track_progress && (track->done_offset > 0)) {
 		/*
 		 *	Seek to the entry, mark it as done, and then seek to
 		 *	the point in the file where we were reading from.
