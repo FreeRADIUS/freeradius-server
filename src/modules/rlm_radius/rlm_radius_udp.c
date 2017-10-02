@@ -316,11 +316,9 @@ static void conn_idle(rlm_radius_udp_connection_t *c)
  */
 static void fd_idle(rlm_radius_udp_connection_t *c)
 {
-	rlm_radius_udp_thread_t	*t = c->thread;
-
 	c->pending = false;
 	DEBUG3("Marking socket %s as idle", c->name);
-	if (fr_event_fd_insert(c->conn, t->el, c->fd,
+	if (fr_event_fd_insert(c->conn, c->thread->el, c->fd,
 			       conn_read,
 			       NULL,
 			       conn_error,
@@ -340,8 +338,6 @@ static void fd_idle(rlm_radius_udp_connection_t *c)
  */
 static void fd_active(rlm_radius_udp_connection_t *c)
 {
-	rlm_radius_udp_thread_t	*t = c->thread;
-
 	c->pending = true;
 	DEBUG3("%s - Activating connection %s", c->inst->parent->name, c->name);
 
@@ -350,7 +346,7 @@ static void fd_active(rlm_radius_udp_connection_t *c)
 	 */
 	if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
 
-	if (fr_event_fd_insert(c->conn, t->el, c->fd,
+	if (fr_event_fd_insert(c->conn, c->thread->el, c->fd,
 			       conn_read,
 			       conn_writable,
 			       conn_error,
