@@ -1342,15 +1342,16 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 		u->packet_len = packet_len;
 
 		if (!c->inst->parent->synchronous) {
-			RDEBUG("Proxying request.  Expecting response within %d.%06ds",
-			       u->timer.rt / USEC, u->timer.rt % USEC);
-
 			rad_assert(u->timer.retry == &c->inst->parent->retry[u->code]);
 
 			if (rr_track_start(u, &u->timer, c->thread->el, response_timeout, u) < 0) {
 				RDEBUG("Failed starting retransmit tracking");
 				return -1;
 			}
+
+			RDEBUG("Proxying request.  Expecting response within %d.%06ds",
+			       u->timer.rt / USEC, u->timer.rt % USEC);
+
 		} else {
 			/*
 			 *	If the packet doesn't get a response,
