@@ -139,6 +139,8 @@ typedef struct rlm_radius_udp_connection_t {
  *
  */
 struct rlm_radius_udp_request_t {
+	bool			finished;		//!< hack
+
 	fr_dlist_t		entry;			//!< in the connection list of packets.
 	int			heap_id;		//!< for the "to be sent" queue.
 
@@ -439,6 +441,8 @@ static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 
 static void mod_finished_request(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *u)
 {
+	rad_assert(!u->finished);
+
 	/*
 	 *	Delete the tracking table entry, and remove the
 	 *	request from the "sent" list for this connection.
@@ -456,8 +460,9 @@ static void mod_finished_request(rlm_radius_udp_connection_t *c, rlm_radius_udp_
 	u->rr = NULL;
 	u->c = NULL;
 	fr_dlist_remove(&u->entry);
-	if (u->timer.ev) talloc_const_free(u->timer.ev);
+	if (u->timer.ev) (void) fr_event_timer_delete(u->thread->el, &u->timer.ev);
 
+	u->finished = true;
 	unlang_resumable(u->link->request);
 }
 
@@ -1010,6 +1015,9 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	rlm_radius_udp_connection_t	*c = u->c;
 	REQUEST				*request;
 
+	rad_assert(u->timer.ev == NULL);
+	rad_assert(!u->finished);
+
 	/*
 	 *	The packet timed out while it didn't have a
 	 *	connection, or the connection was closed.  Try to grab
@@ -1023,6 +1031,8 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	/*
 	 *	Try to retransmit.
 	 */
+	if (u->rr) RDEBUG("Retransmitting ID %d on connection %s", u->rr->id, c->name);
+
 	rcode = rr_track_retry(u, &u->timer, el, response_timeout, u, now);
 	if (rcode < 0) {
 		if (c) {
