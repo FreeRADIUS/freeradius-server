@@ -75,9 +75,9 @@ rlm_radius_request_t *rr_track_find(rlm_radius_id_t *id, int packet_id, uint8_t 
 int rr_track_delete(rlm_radius_id_t *id, rlm_radius_request_t *rr) CC_HINT(nonnull);
 void rr_track_use_authenticator(rlm_radius_id_t *id, bool flag) CC_HINT(nonnull);
 
-int rr_track_start(TALLOC_CTX *ctx, rlm_radius_request_t *rr, fr_event_list_t *el,
+int rr_track_start(TALLOC_CTX *ctx, rlm_radius_retransmit_t *timer, fr_event_list_t *el,
 		   fr_event_cb_t callback, void *uctx) CC_HINT(nonnull);
-int rr_track_retry(TALLOC_CTX *ctx, rlm_radius_request_t *rr, fr_event_list_t *el,
+int rr_track_retry(TALLOC_CTX *ctx, rlm_radius_retransmit_t *timer, fr_event_list_t *el,
 		   fr_event_cb_t callback, void *uctx,
 		   struct timeval *no) CC_HINT(nonnull);
 

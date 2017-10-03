@@ -381,7 +381,7 @@ void rr_track_use_authenticator(rlm_radius_id_t *id, bool flag)
 	id->use_authenticator = flag;
 }
 
-int rr_track_retry(TALLOC_CTX *ctx, rlm_radius_request_t *rr, fr_event_list_t *el,
+int rr_track_retry(TALLOC_CTX *ctx, rlm_radius_retransmit_t *timer, fr_event_list_t *el,
 		   fr_event_cb_t callback, void *uctx,
 		   struct timeval *now)
 {
@@ -392,33 +392,33 @@ int rr_track_retry(TALLOC_CTX *ctx, rlm_radius_request_t *rr, fr_event_list_t *e
 	 *	Get when we SHOULD have woken up, which might not be
 	 *	the same as 'now'.
 	 */
-	next = rr->timer->start;
-	next.tv_usec += rr->timer->rt;
+	next = timer->start;
+	next.tv_usec += timer->rt;
 
 	/*
 	 *	Increment retransmission counter
 	 */
-	rr->timer->count++;
+	timer->count++;
 
 	/*
 	 *	We retried too many times.  Fail.
 	 */
-	if (rr->timer->retry->mrc && (rr->timer->count > rr->timer->retry->mrc)) {
-		DEBUG3("RETRANSMIT - reached MRC %d", rr->timer->retry->mrc);
+	if (timer->retry->mrc && (timer->count > timer->retry->mrc)) {
+		DEBUG3("RETRANSMIT - reached MRC %d", timer->retry->mrc);
 		return 0;
 	}
 
 	/*
 	 *	Cap delay at MRD
 	 */
-	if (rr->timer->retry->mrd) {
+	if (timer->retry->mrd) {
 		struct timeval end;
 
-		end = rr->timer->start;
-		end.tv_sec += rr->timer->retry->mrd;
+		end = timer->start;
+		end.tv_sec += timer->retry->mrd;
 
 		if (timercmp(now, &end, >=)) {
-			DEBUG3("RETRANSMIT - reached MRD %d", rr->timer->retry->mrd);
+			DEBUG3("RETRANSMIT - reached MRD %d", timer->retry->mrd);
 			return 0;
 		}
 	}
@@ -433,16 +433,16 @@ int rr_track_retry(TALLOC_CTX *ctx, rlm_radius_request_t *rr, fr_event_list_t *e
 	delay = fr_rand();
 	delay ^= (delay >> 16);
 	delay &= 0xffff;
-	frac = rr->timer->rt / 5;
+	frac = timer->rt / 5;
 	delay = ((frac >> 16) * delay) + (((frac & 0xffff) * delay) >> 16);
 
-	delay += (2 * rr->timer->rt) - (rr->timer->rt / 10);
+	delay += (2 * timer->rt) - (timer->rt / 10);
 
 	/*
 	 *	Cap delay at MRT
 	 */
-	if (rr->timer->retry->mrt && (delay > (rr->timer->retry->mrt * USEC))) {
-		int mrt_usec = rr->timer->retry->mrt * USEC;
+	if (timer->retry->mrt && (delay > (timer->retry->mrt * USEC))) {
+		int mrt_usec = timer->retry->mrt * USEC;
 
 		/*
 		 *	delay = MRT + RAND * MRT
@@ -458,38 +458,38 @@ int rr_track_retry(TALLOC_CTX *ctx, rlm_radius_request_t *rr, fr_event_list_t *e
 	/*
 	 *	And finally set the retransmission timer.
 	 */
-	rr->timer->rt = delay;
+	timer->rt = delay;
 
 	/*
 	 *	Get the next delay time.
 	 */
-	next.tv_usec += rr->timer->rt;
+	next.tv_usec += timer->rt;
 	next.tv_sec += (next.tv_usec / USEC);
 	next.tv_usec %= USEC;
 
-	if (fr_event_timer_insert(ctx, el, &rr->timer->ev, &next, callback, uctx) < 0) {
+	if (fr_event_timer_insert(ctx, el, &timer->ev, &next, callback, uctx) < 0) {
 		return -1;
 	}
 
-	DEBUG3("RETRANSMIT - in %d.%06ds", rr->timer->rt / USEC, rr->timer->rt % USEC);
+	DEBUG3("RETRANSMIT - in %d.%06ds", timer->rt / USEC, timer->rt % USEC);
 	return 1;
 }
 
 
-int rr_track_start(TALLOC_CTX *ctx, rlm_radius_request_t *rr, fr_event_list_t *el,
+int rr_track_start(TALLOC_CTX *ctx, rlm_radius_retransmit_t *timer, fr_event_list_t *el,
 		   fr_event_cb_t callback, void *uctx)
 {
 	struct timeval next;
 
-	rr->timer->count = 1;
-	rr->timer->rt = rr->timer->retry->irt * USEC; /* rt is in usec */
+	timer->count = 1;
+	timer->rt = timer->retry->irt * USEC; /* rt is in usec */
 
-	next = rr->timer->start;
-	next.tv_usec += rr->timer->rt;
+	next = timer->start;
+	next.tv_usec += timer->rt;
 	next.tv_sec += (next.tv_usec / USEC);
 	next.tv_usec %= USEC;
 
-	if (fr_event_timer_insert(ctx, el, &rr->timer->ev, &next, callback, uctx) < 0) {
+	if (fr_event_timer_insert(ctx, el, &timer->ev, &next, callback, uctx) < 0) {
 		return -1;
 	}
 

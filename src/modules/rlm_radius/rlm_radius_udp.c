@@ -865,7 +865,7 @@ static void status_check_timeout(UNUSED fr_event_list_t *el, struct timeval *now
 	 *	already a bit complex.
 	 */
 	rad_assert(u->timer.retry == &c->inst->parent->retry[u->code]);
-	rcode = rr_track_retry(u, u->rr, c->thread->el, status_check_timeout, u, now);
+	rcode = rr_track_retry(u, &u->timer, c->thread->el, status_check_timeout, u, now);
 	if (rcode < 0) {
 		/*
 		 *	Failed inserting event... the request is done.
@@ -1025,7 +1025,7 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	/*
 	 *	Try to retransmit.
 	 */
-	rcode = rr_track_retry(u, u->rr, el, response_timeout, u, now);
+	rcode = rr_track_retry(u, &u->timer, el, response_timeout, u, now);
 	if (rcode < 0) {
 		if (c) {
 			REDEBUG("Failing proxied request ID %d due to error trying to proxy on connection %s",
@@ -1347,7 +1347,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 
 			rad_assert(u->timer.retry == &c->inst->parent->retry[u->code]);
 
-			if (rr_track_start(u, u->rr, c->thread->el, response_timeout, u) < 0) {
+			if (rr_track_start(u, &u->timer, c->thread->el, response_timeout, u) < 0) {
 				RDEBUG("Failed starting retransmit tracking");
 				return -1;
 			}
@@ -1368,7 +1368,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	} else if (u->timer.count == 0) {
 		rad_assert(u->timer.retry == &c->inst->parent->retry[u->code]);
 
-		if (rr_track_start(u, u->rr, c->thread->el, status_check_timeout, u) < 0) {
+		if (rr_track_start(u, &u->timer, c->thread->el, status_check_timeout, u) < 0) {
 			RDEBUG("Failed starting retransmit tracking");
 			return -1;
 		}
