@@ -1661,8 +1661,8 @@ static fr_connection_state_t _conn_failed(int fd, fr_connection_state_t state, v
 		/*
 		 *	Delete all timers associated with the connection.
 		 */
-		(void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
-		(void) fr_event_timer_delete(c->thread->el, &c->zombie_ev);
+		if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
+		if (c->zombie_ev) (void) fr_event_timer_delete(c->thread->el, &c->zombie_ev);
 
 		/*
 		 *	Move "sent" packets back to the thread queue,
@@ -1944,7 +1944,7 @@ static int _conn_free(rlm_radius_udp_connection_t *c)
 		 */
 		u->rr = NULL;
 		u->c = NULL;
-		(void) fr_event_timer_delete(c->thread->el, &u->timer.ev);
+		if (u->timer.ev) (void) fr_event_timer_delete(c->thread->el, &u->timer.ev);
 		fr_dlist_remove(&u->entry);
 		(void) fr_heap_insert(t->queued, u);
 		t->pending = true;
