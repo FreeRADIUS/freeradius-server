@@ -173,7 +173,6 @@ done:
 	rr->request = request;
 
 	rr->timer = timer;
-	rr->timer->ev = NULL;
 	rr->code = code;
 
 	/*
