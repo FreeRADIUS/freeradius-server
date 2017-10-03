@@ -868,7 +868,7 @@ static void status_check_timeout(UNUSED fr_event_list_t *el, struct timeval *now
 	 *	already a bit complex.
 	 */
 	rad_assert(u->timer.retry == &c->inst->parent->retry[u->code]);
-	rcode = rr_track_retry(u, &u->timer, c->thread->el, status_check_timeout, u, now);
+	rcode = rr_track_retry(&u->timer, now);
 	if (rcode < 0) {
 		/*
 		 *	Failed inserting event... the request is done.
@@ -880,6 +880,12 @@ static void status_check_timeout(UNUSED fr_event_list_t *el, struct timeval *now
 	request = u->link->request;
 	if (rcode == 0) {
 		REDEBUG("No response to status check ID %d, closing connection %s", u->rr->id, c->name);
+		talloc_free(c);
+		return;
+	}
+
+	if (fr_event_timer_insert(u, c->thread->el, &u->timer.ev, &u->timer.next, status_check_timeout, u) < 0) {
+		RDEBUG("Failed inserting status check timer for connection %s", c->name);
 		talloc_free(c);
 		return;
 	}
@@ -1033,7 +1039,7 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	 */
 	if (u->rr) RDEBUG("Retransmitting ID %d on connection %s", u->rr->id, c->name);
 
-	rcode = rr_track_retry(u, &u->timer, el, response_timeout, u, now);
+	rcode = rr_track_retry(&u->timer, now);
 	if (rcode < 0) {
 		if (c) {
 			REDEBUG("Failing proxied request ID %d due to error trying to proxy on connection %s",
@@ -1057,6 +1063,12 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 		} else {
 			REDEBUG("Failing proxied request due to lack of response");
 		}
+		mod_finished_request(c, u);
+		return;
+	}
+
+	if (fr_event_timer_insert(u, el, &u->timer.ev, &u->timer.next, response_timeout, u) < 0) {
+		RDEBUG("Failed inserting status check timer for connection %s", c->name);
 		mod_finished_request(c, u);
 		return;
 	}
@@ -1350,7 +1362,13 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 		if (!c->inst->parent->synchronous) {
 			rad_assert(u->timer.retry == &c->inst->parent->retry[u->code]);
 
-			if (rr_track_start(u, &u->timer, c->thread->el, response_timeout, u) < 0) {
+			if (rr_track_start(&u->timer) < 0) {
+				RDEBUG("Failed starting retransmit tracking");
+				return -1;
+			}
+
+			if (fr_event_timer_insert(u, c->thread->el, &u->timer.ev, &u->timer.next,
+						  response_timeout, u) < 0) {
 				RDEBUG("Failed starting retransmit tracking");
 				return -1;
 			}
@@ -1375,10 +1393,16 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	} else if (u->timer.count == 0) {
 		rad_assert(u->timer.retry == &c->inst->parent->retry[u->code]);
 
-		if (rr_track_start(u, &u->timer, c->thread->el, status_check_timeout, u) < 0) {
+		if (rr_track_start(&u->timer) < 0) {
 			RDEBUG("Failed starting retransmit tracking");
 			return -1;
 		}
+
+		if (fr_event_timer_insert(u, c->thread->el, &u->timer.ev, &u->timer.next,
+					  status_check_timeout, u) < 0) {
+			RDEBUG("Failed starting retransmit tracking");
+			return -1;
+			}
 
 		RDEBUG("Sending %s status check.  Expecting response within %d.%06ds",
 		       fr_packet_codes[u->code],

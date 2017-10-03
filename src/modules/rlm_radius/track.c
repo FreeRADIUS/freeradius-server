@@ -381,19 +381,16 @@ void rr_track_use_authenticator(rlm_radius_id_t *id, bool flag)
 	id->use_authenticator = flag;
 }
 
-int rr_track_retry(TALLOC_CTX *ctx, rlm_radius_retransmit_t *timer, fr_event_list_t *el,
-		   fr_event_cb_t callback, void *uctx,
-		   struct timeval *now)
+int rr_track_retry(rlm_radius_retransmit_t *timer, struct timeval *now)
 {
 	uint32_t delay, frac;
-	struct timeval next;
 
 	/*
 	 *	Get when we SHOULD have woken up, which might not be
 	 *	the same as 'now'.
 	 */
-	next = timer->start;
-	next.tv_usec += timer->rt;
+	timer->next = timer->start;
+	timer->next.tv_usec += timer->rt;
 
 	/*
 	 *	Increment retransmission counter
@@ -463,35 +460,24 @@ int rr_track_retry(TALLOC_CTX *ctx, rlm_radius_retransmit_t *timer, fr_event_lis
 	/*
 	 *	Get the next delay time.
 	 */
-	next.tv_usec += timer->rt;
-	next.tv_sec += (next.tv_usec / USEC);
-	next.tv_usec %= USEC;
-
-	if (fr_event_timer_insert(ctx, el, &timer->ev, &next, callback, uctx) < 0) {
-		return -1;
-	}
+	timer->next.tv_usec += timer->rt;
+	timer->next.tv_sec += (timer->next.tv_usec / USEC);
+	timer->next.tv_usec %= USEC;
 
 	DEBUG3("RETRANSMIT - in %d.%06ds", timer->rt / USEC, timer->rt % USEC);
 	return 1;
 }
 
 
-int rr_track_start(TALLOC_CTX *ctx, rlm_radius_retransmit_t *timer, fr_event_list_t *el,
-		   fr_event_cb_t callback, void *uctx)
+int rr_track_start(rlm_radius_retransmit_t *timer)
 {
-	struct timeval next;
-
 	timer->count = 1;
 	timer->rt = timer->retry->irt * USEC; /* rt is in usec */
 
-	next = timer->start;
-	next.tv_usec += timer->rt;
-	next.tv_sec += (next.tv_usec / USEC);
-	next.tv_usec %= USEC;
-
-	if (fr_event_timer_insert(ctx, el, &timer->ev, &next, callback, uctx) < 0) {
-		return -1;
-	}
+	timer->next = timer->start;
+	timer->next.tv_usec += timer->rt;
+	timer->next.tv_sec += (timer->next.tv_usec / USEC);
+	timer->next.tv_usec %= USEC;
 
 	return 0;
 }
