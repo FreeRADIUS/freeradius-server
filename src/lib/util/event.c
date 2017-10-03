@@ -988,6 +988,8 @@ int fr_event_timer_insert(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t
 	} else {
 		memcpy(&ev, ev_p, sizeof(ev));	/* Not const to us */
 
+		rad_assert(*ev_p == ev);
+
 		/*
 		 *	We can't disarm the linking context due to
 		 *	limitations in talloc, so if the linking
@@ -1292,6 +1294,8 @@ int fr_event_timer_run(fr_event_list_t *el, struct timeval *when)
 
 	callback = ev->callback;
 	memcpy(&uctx, &ev->uctx, sizeof(uctx));
+
+	rad_assert(*ev->parent == ev);
 
 	/*
 	 *	Delete the event before calling it.
