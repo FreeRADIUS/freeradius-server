@@ -444,6 +444,7 @@ static void mod_finished_request(rlm_radius_udp_connection_t *c, rlm_radius_udp_
 	 *	request from the "sent" list for this connection.
 	 */
 	if (c) {
+		(void) fr_heap_extract(c->queued, u);
 		(void) rr_track_delete(c->id, u->rr);
 		rad_assert(c->num_requests > 0);
 		c->num_requests--;
@@ -622,6 +623,7 @@ redo:
 	 *	Stop all retransmissions for this packet.
 	 */
 	if (u->timer.ev) (void) fr_event_timer_delete(c->thread->el, &u->timer.ev);
+	(void) fr_heap_extract(c->queued, u);
 
 	switch (c->state) {
 	default:
