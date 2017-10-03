@@ -1034,15 +1034,6 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	rad_assert(!c || (u->timer.retry == &c->inst->parent->retry[u->code]));
 	request = u->link->request;
 
-	/*
-	 *	Try to retransmit.
-	 */
-	if (u->rr) {
-		RDEBUG("Retransmitting ID %d on connection %s", u->rr->id, c->name);
-	} else {
-		RDEBUG("No available connections for retransmission.  Waiting until next timeout.");
-	}
-
 	rcode = rr_track_retry(&u->timer, now);
 	if (rcode < 0) {
 		if (c) {
@@ -1082,7 +1073,13 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	 *	get retransmitted when we get around to polling
 	 *	t->queued
 	 */
-	if (c) retransmit_packet(u, now);
+	if (c) {
+		RDEBUG("Retransmitting ID %d on connection %s", u->rr->id, c->name);
+		retransmit_packet(u, now);
+	} else {
+		RDEBUG("No available connections for retransmission.  Waiting %d.%06ds for retry",
+		       u->timer.rt / USEC, u->timer.rt % USEC);
+	}
 }
 
 
@@ -1546,7 +1543,7 @@ static int udp_request_free(rlm_radius_udp_request_t *u)
 		(void) rr_track_delete(u->c->id, u->rr);
 		u->rr = NULL;
 	}
-	if (u->timer.ev) talloc_const_free(u->timer.ev);
+	if (u->timer.ev) fr_event_timer_delete(u->thread->el, &u->timer.ev);
 
 	/*
 	 *	This packet isn't for any connection, we don't need to
