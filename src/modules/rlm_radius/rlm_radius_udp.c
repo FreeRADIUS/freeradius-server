@@ -449,6 +449,8 @@ static void mod_finished_request(rlm_radius_udp_connection_t *c, rlm_radius_udp_
 		rad_assert(c->num_requests > 0);
 		c->num_requests--;
 		conn_idle(c);
+	} else {
+		(void) fr_heap_extract(u->thread->queued, u);
 	}
 
 	u->rr = NULL;
@@ -618,12 +620,6 @@ redo:
 	 *	Remember when we last saw a reply.
 	 */
 	gettimeofday(&c->last_reply, NULL);
-
-	/*
-	 *	Stop all retransmissions for this packet.
-	 */
-	if (u->timer.ev) (void) fr_event_timer_delete(c->thread->el, &u->timer.ev);
-	(void) fr_heap_extract(c->queued, u);
 
 	switch (c->state) {
 	default:
