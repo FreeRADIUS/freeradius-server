@@ -882,16 +882,12 @@ int fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 int fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t const **ev_p)
 {
 	fr_event_timer_t *ev;
-	int ret;
 
 	if (unlikely(!*ev_p)) return 0;
 	if (!fr_cond_assert(talloc_parent(*ev_p) == el)) return -1;
 
 	memcpy(&ev, ev_p, sizeof(ev));
-	ret = talloc_free(ev);
-	if (ret == 0) *ev_p = NULL;
-
-	return ret;
+	return talloc_free(ev);
 }
 
 /** Remove an event from the event loop
@@ -904,9 +900,14 @@ int fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t const **ev_p)
 static int _event_timer_free(fr_event_timer_t *ev)
 {
 	fr_event_list_t	*el = talloc_parent(ev);
+	fr_event_timer_t const **ev_p;
 	int		ret;
 
 	ret = fr_heap_extract(el->times, ev);
+
+	ev_p = ev->parent;
+	rad_assert(*(ev->parent) == ev);
+	*ev_p = NULL;
 
 	/*
 	 *	Events MUST be in the heap
