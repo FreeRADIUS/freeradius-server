@@ -140,8 +140,6 @@ static void connection_state_failed(fr_connection_t *conn, struct timeval *now)
 		ret = conn->failed(conn->fd, prev, conn->uctx);
 		switch (ret) {
 		case FR_CONNECTION_STATE_INIT:
-			conn->state = FR_CONNECTION_STATE_FAILED;	/* so init function prints the correct transition */
-			connection_state_init(conn, now);
 			break;
 
 		case FR_CONNECTION_STATE_HALTED:		/* Do nothing */
