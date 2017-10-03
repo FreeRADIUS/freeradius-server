@@ -2,6 +2,12 @@
 
 ## RADIUS fixes
 
+* idle out old connections
+
+* limit # of bad / reconnected connections
+
+* move status_u allocation and init to connection alloc
+
 * delete rr->id and re-allocate it on retransmit if the packet changes
   * if the IDs are all allocated, a delete / re-allocate means that it
     gets the same ID.  So we might as well just do that all of the time.
