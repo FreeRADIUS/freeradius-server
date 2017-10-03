@@ -1037,7 +1037,11 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	/*
 	 *	Try to retransmit.
 	 */
-	if (u->rr) RDEBUG("Retransmitting ID %d on connection %s", u->rr->id, c->name);
+	if (u->rr) {
+		RDEBUG("Retransmitting ID %d on connection %s", u->rr->id, c->name);
+	} else {
+		RDEBUG("No available connections for retransmission.  Waiting until next timeout.");
+	}
 
 	rcode = rr_track_retry(&u->timer, now);
 	if (rcode < 0) {
