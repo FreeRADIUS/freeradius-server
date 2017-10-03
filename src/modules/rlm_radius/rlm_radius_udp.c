@@ -1031,8 +1031,7 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 			REDEBUG("Failing proxied request ID %d due to error trying to proxy on connection %s",
 				u->rr->id, c->name);
 		} else {
-			REDEBUG("Failing proxied request ID %d due to error trying to proxy, with no connection",
-				u->rr->id);
+			REDEBUG("Failing proxied request due to error trying to proxy, with no connection");
 		}
 
 		/*
@@ -1048,8 +1047,7 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 			REDEBUG("Failing proxied request ID %d due to lack of response on connection %s",
 				u->rr->id, c->name);
 		} else {
-			REDEBUG("Failing proxied request ID %d due to lack of response",
-				u->rr->id);
+			REDEBUG("Failing proxied request due to lack of response");
 		}
 		mod_finished_request(c, u);
 		return;
