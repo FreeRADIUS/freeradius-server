@@ -1658,30 +1658,6 @@ static fr_connection_state_t _conn_failed(int fd, fr_connection_state_t state, v
 		fr_event_fd_delete(c->thread->el, fd, FR_EVENT_FILTER_IO);
 	}
 
-	/*
-	 *	Reset our state back to init
-	 */
-	switch (c->state) {
-	default:
-		rad_assert(0 == 1);
-		break;
-
-	case CONN_INIT:
-		break;
-
-	case CONN_STATUS_CHECKS:
-	case CONN_OPENING:
-	case CONN_FULL:
-	case CONN_ZOMBIE:
-		fr_dlist_remove(&c->entry);
-		break;
-
-	case CONN_ACTIVE:
-		(void) fr_heap_extract(c->thread->active, c);
-		break;
-	}
-	c->state = CONN_INIT;
-
 	return FR_CONNECTION_STATE_INIT;
 }
 
