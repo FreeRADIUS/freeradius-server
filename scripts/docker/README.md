@@ -11,7 +11,7 @@ if they're shipping their own packages, or performing debugging on behalf of the
 As with any Dockerfile you'll first need to build the image:
 
 ```bash
-cd scripts/docker/<os_name>
+cd scripts/docker/build-<os_name>
 docker build -t freeradius/<os_name>-build .
 ```
 
