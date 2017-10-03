@@ -399,77 +399,79 @@ static ssize_t fr_event_build_evset(struct kevent out_kev[], size_t outlen, fr_e
 				    fr_event_fd_t *ef,
 				    fr_event_funcs_t const *new, fr_event_funcs_t const *prev)
 {
-	struct kevent			*out_p = out_kev, *end = out_p + outlen;
-	fr_event_func_map_t const	*map_p;
+	struct kevent			*out = out_kev, *end = out + outlen;
+	fr_event_func_map_t const	*map;
 
 	/*
 	 *	Iterate over the function map, setting/unsetting
 	 *	filters and filter flags.
 	 */
-	for (map_p = ef->map; map_p->name; map_p++) {
-		bool		c_func = false;
-		bool		p_func = false;
-		uint32_t	c_fflags = 0;
-		uint32_t	p_fflags = 0;
+	for (map = ef->map; map->name; map++) {
+		bool		has_current_func = false;
+		bool		has_prev_func = false;
+		uint32_t	current_fflags = 0;
+		uint32_t	prev_fflags = 0;
 
 		do {
-			if (*(uintptr_t const *)((uint8_t const *)prev + map_p->offset)) {
-				p_fflags |= map_p->fflags;
-				p_func = true;
+			if (*(uintptr_t const *)((uint8_t const *)prev + map->offset)) {
+				prev_fflags |= map->fflags;
+				has_prev_func = true;
 			}
 
-			if (*(uintptr_t const *)((uint8_t const *)new + map_p->offset)) {
-				c_fflags |= map_p->fflags;
-				c_func = true;
+			if (*(uintptr_t const *)((uint8_t const *)new + map->offset)) {
+				current_fflags |= map->fflags;
+				has_current_func = true;
 
 				/*
 				 *	Check the filter will work for the
 				 *	type of file descriptor specified.
 				 */
-				if (!(map_p->type & ef->type)) {
+				if (!(map->type & ef->type)) {
 					fr_strerror_printf("kevent %s, can't be applied to fd of type %s",
-							   map_p->name,
+							   map->name,
 							   fr_int2str(fr_event_fd_type_table,
-							   	      map_p->type, "<INVALID>"));
+								      map->type, "<INVALID>"));
 					return -1;
 				}
 
 				/*
 				 *	Mark this filter function as active
 				 */
-				memcpy((uint8_t *)active + map_p->offset, (uint8_t const *)new + map_p->offset,
+				memcpy((uint8_t *)active + map->offset, (uint8_t const *)new + map->offset,
 				       sizeof(fr_event_fd_cb_t));
 			} else {
 				/*
 				 *	Mark this filter function as inactive
 				 */
-				memset((uint8_t *)active + map_p->offset, 0, sizeof(fr_event_fd_cb_t));
+				memset((uint8_t *)active + map->offset, 0, sizeof(fr_event_fd_cb_t));
 			}
 
-			if (!(map_p + 1)->coalesce) break;
-			map_p++;
+			if (!(map + 1)->coalesce) break;
+			map++;
 		} while (1);
 
-		if (out_p > end) {
+		if (out > end) {
 			fr_strerror_printf("Out of memory to store kevent filters");
 			return -1;
 		}
 
 		/*
-		 *	Upsert
+		 *	Upsert if we add a function or change the flags.
 		 */
-		if ((c_func && !p_func) || (c_func && p_func && (c_fflags != p_fflags))) {
-			EV_SET(out_p++, ef->fd, map_p->filter, map_p->flags, c_fflags, 0, ef);
+		if (has_current_func &&
+		    (!has_prev_func ||
+		     (has_prev_func && (current_fflags != prev_fflags)))) {
+			EV_SET(out++, ef->fd, map->filter, map->flags, current_fflags, 0, ef);
 
 		/*
-		 *	Delete
+		 *	Delete if we remove a function.
 		 */
-		} else if (!c_func && p_func) {
-			EV_SET(out_p++, ef->fd, map_p->filter, EV_DELETE, 0, 0, 0);
+		} else if (!has_current_func && has_prev_func) {
+			EV_SET(out++, ef->fd, map->filter, EV_DELETE, 0, 0, 0);
 		}
 	}
 
-	return out_p - out_kev;
+	return out - out_kev;
 }
 
 /** Discover the type of a file descriptor
