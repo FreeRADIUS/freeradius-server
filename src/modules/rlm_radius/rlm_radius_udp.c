@@ -1536,6 +1536,8 @@ static int udp_request_free(rlm_radius_udp_request_t *u)
 
 	fr_dlist_remove(&u->entry);
 
+	if (u->timer.ev) fr_event_timer_delete(u->thread->el, &u->timer.ev);
+
 	/*
 	 *	Delete any tracking entry associated with the packet.
 	 */
@@ -1543,13 +1545,21 @@ static int udp_request_free(rlm_radius_udp_request_t *u)
 		(void) rr_track_delete(u->c->id, u->rr);
 		u->rr = NULL;
 	}
-	if (u->timer.ev) fr_event_timer_delete(u->thread->el, &u->timer.ev);
 
 	/*
-	 *	This packet isn't for any connection, we don't need to
-	 *	do more.
+	 *	This packet isn't for any connection, so it's likely
+	 *	sitting in the thread queue.
 	 */
-	if (!u->c) return 0;
+	if (!u->c) {
+		fr_heap_extract(u->thread->queued, u);
+		return 0;
+	}
+
+	/*
+	 *	The packet may be queued in the connection
+	 */
+	fr_heap_extract(u->c->queued, u);
+	u->c->num_requests--;
 
 	/*
 	 *	The module is doing async proxying, we don't need to
