@@ -826,7 +826,9 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	}
 
 	if (ret < 0) {
-		RDEBUG("\t%s FAILED decoding packet", worker->name);
+		RINDENT();
+		REDEBUG("%s failed decoding packet", worker->name);
+		REXDENT();
 		talloc_free(ctx);
 nak:
 		fr_worker_nak(worker, cd, now);
@@ -840,7 +842,7 @@ nak:
 	listen->app->process_set(listen->app_instance, request);
 
 	if (!request->async->process) {
-		ERROR("Protocol failed to set 'process' function");
+		RERROR("Protocol failed to set 'process' function");
 		fr_worker_nak(worker, cd, now);
 		return NULL;
 	}
