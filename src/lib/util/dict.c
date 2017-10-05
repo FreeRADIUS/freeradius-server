@@ -1907,8 +1907,6 @@ static int dict_read_process_attribute(fr_dict_t *dict, fr_dict_attr_t const *pa
 		} while (key);
 	}
 
-	if (block_vendor) vendor = block_vendor;
-
 #ifdef WITH_DICTIONARY_WARNINGS
 	/*
 	 *	Hack to help us discover which vendors have illegal
