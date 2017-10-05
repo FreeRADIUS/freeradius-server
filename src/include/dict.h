@@ -224,7 +224,7 @@ fr_dict_attr_t const	*fr_dict_parent_common(fr_dict_attr_t const *a, fr_dict_att
 int			fr_dict_oid_component(unsigned int *out, char const **oid);
 
 ssize_t			fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
-			   		   unsigned int *vendor, unsigned int *attr, char const *oid);
+			   		    unsigned int *attr, char const *oid);
 
 /*
  *	Lookup

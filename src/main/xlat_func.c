@@ -234,76 +234,6 @@ static ssize_t xlat_tag(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	return snprintf(*out, outlen, "%u", vp->tag);
 }
 
-/** Return the vendor of an attribute reference
- *
- */
-static ssize_t xlat_vendor(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			   REQUEST *request, char const *fmt)
-{
-	VALUE_PAIR *vp;
-	fr_dict_vendor_t const *vendor;
-
-	while (isspace((int) *fmt)) fmt++;
-
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
-
-	vendor = fr_dict_vendor_by_num(NULL, vp->da->vendor);
-	if (!vendor) return 0;
-	strlcpy(*out, vendor->name, outlen);
-
-	return vendor->length;
-}
-
-/** Return the vendor number of an attribute reference
- *
- */
-static ssize_t xlat_vendor_num(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			       UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			       REQUEST *request, char const *fmt)
-{
-	VALUE_PAIR *vp;
-
-	while (isspace((int) *fmt)) fmt++;
-
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
-
-	return snprintf(*out, outlen, "%i", vp->da->vendor);
-}
-
-/** Return the attribute name of an attribute reference
- *
- */
-static ssize_t xlat_attr(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			 REQUEST *request, char const *fmt)
-{
-	VALUE_PAIR *vp;
-
-	while (isspace((int) *fmt)) fmt++;
-
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
-	strlcpy(*out, vp->da->name, outlen);
-
-	return strlen(vp->da->name);
-}
-
-/** Return the attribute number of an attribute reference
- *
- */
-static ssize_t xlat_attr_num(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			     REQUEST *request, char const *fmt)
-{
-	VALUE_PAIR *vp;
-
-	while (isspace((int) *fmt)) fmt++;
-
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
-
-	return snprintf(*out, outlen, "%i", vp->da->attr);
-}
-
 /** Print out attribute info
  *
  * Prints out all instances of a current attribute, or all attributes in a list.
@@ -738,10 +668,6 @@ int xlat_register(void *mod_inst, char const *name,
 		XLAT_REGISTER(length);
 		XLAT_REGISTER(hex);
 		XLAT_REGISTER(tag);
-		XLAT_REGISTER(vendor);
-		XLAT_REGISTER(vendor_num);
-		XLAT_REGISTER(attr);
-		XLAT_REGISTER(attr_num);
 		XLAT_REGISTER(string);
 		XLAT_REGISTER(xlat);
 		XLAT_REGISTER(map);

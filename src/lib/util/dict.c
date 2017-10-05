@@ -1783,16 +1783,13 @@ static int dict_read_process_attribute(fr_dict_t *dict, fr_dict_attr_t const *pa
 		ssize_t slen;
 
 		oid = true;
-		vendor = block_vendor;
 
-		slen = fr_dict_attr_by_oid(dict, &parent, &vendor, &attr, argv[1]);
+		slen = fr_dict_attr_by_oid(dict, &parent, &attr, argv[1]);
 		if (slen <= 0) {
 			return -1;
 		}
 
 		if (!fr_cond_assert(parent)) return -1;	/* Should have provided us with a parent */
-
-		block_vendor = vendor; /* Weird case where we're processing 26.<vid>.<tlv> */
 	}
 
 	/*
@@ -3699,7 +3696,6 @@ int fr_dict_oid_component(unsigned int *out, char const **oid)
  * @param[in] dict of protocol context we're operating in.  If NULL the internal
  *	dictionary will be used.
  * @param[out] attr Number we parsed.
- * @param[in,out] vendor number of attribute.
  * @param[in,out] parent attribute (or root of dictionary).  Will be updated to the parent
  *	directly beneath the leaf.
  * @param[in] oid string to parse.
@@ -3707,8 +3703,7 @@ int fr_dict_oid_component(unsigned int *out, char const **oid)
  *	- > 0 on success (number of bytes parsed).
  *	- <= 0 on parse error (negative offset of parse error).
  */
-ssize_t fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
-			    unsigned int *vendor, unsigned int *attr, char const *oid)
+ssize_t fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent, unsigned int *attr, char const *oid)
 {
 	char const		*p = oid;
 	unsigned int		num = 0;
@@ -3728,49 +3723,6 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
 	 */
 	*attr = num;
 
-	/*
-	 *	Look for 26.VID.x.y
-	 *
-	 *	This allows us to specify a VSA if our parent is the root
-	 *	of the dictionary, and we're operating outside of a vendor
-	 *	block.
-	 *
-	 *	The additional code is because we need at least three components
-	 *	the VSA attribute (26), the vendor ID, and actual attribute.
-	 */
-	if (((*parent)->flags.is_root) && !*vendor && (num == FR_VENDOR_SPECIFIC)) {
-		fr_dict_vendor_t const *dv;
-
-		if (p[0] == '\0') {
-			fr_strerror_printf("Vendor attribute must specify a VID");
-			return oid - p;
-		}
-		p++;
-
-		if (fr_dict_oid_component(&num, &p) < 0) return oid - p;
-		if (p[0] == '\0') {
-			fr_strerror_printf("Vendor attribute must specify a child");
-			return oid - p;
-		}
-		p++;
-
-		dv = fr_dict_vendor_by_num(dict, num);
-		if (!dv) {
-			fr_strerror_printf("Unknown vendor '%u' ", num);
-			return oid - p;
-		}
-		*vendor = dv->vendorpec;	/* Record vendor number */
-
-		/*
-		 *	Recurse to get the attribute.
-		 */
-		slen = fr_dict_attr_by_oid(dict, parent, vendor, attr, p);
-		if (slen <= 0) return slen - (p - oid);
-
-		slen += p - oid;
-		return slen;
-	}
-
 	switch ((*parent)->type) {
 	case FR_TYPE_STRUCTURAL:
 		break;
@@ -3786,7 +3738,7 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
 	 *
 	 *	@fixme: find the TLV parent, and check it's size
 	 */
-	if (((*parent)->type != FR_TYPE_VENDOR) && !(*parent)->flags.is_root &&
+	if (((*parent)->type != FR_TYPE_VENDOR) && ((*parent)->type != FR_TYPE_VSA) && !(*parent)->flags.is_root &&
 	    (num > UINT8_MAX)) {
 		fr_strerror_printf("TLV attributes must be between 0..255 inclusive");
 		return 0;
@@ -3815,7 +3767,7 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
 		 */
 		*parent = child;
 
-		slen = fr_dict_attr_by_oid(dict, parent, vendor, attr, p);
+		slen = fr_dict_attr_by_oid(dict, parent, attr, p);
 		if (slen <= 0) return slen - (p - oid);
 		return slen + (p - oid);
 	}
