@@ -65,7 +65,7 @@ expulsion from the community using appropriate mechanisms.
 
 We understand that when participants ask questions, their goal is to obtain help from the community.
 Please be aware that the FreeRADIUS community is not large.  The project has three core members,
-none of whom are dedicated 100% to FreeADIUS.  The project has about seventy modules, each of which
+none of whom are dedicated 100% to FreeRADIUS.  The project has about seventy modules, each of which
 has complex behavior.  All of that code, test cases, and documentation have to be updated with
 limited resources.
 
