@@ -21,6 +21,7 @@ FreeRADIUS 3.0.16 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	  easier to configure.
 	* EAP-FAST now forcibly disables TLS1.2, until such time
 	  as we implement the new keying mechanism from TLS1.2.
+	* Add documentation for allow_expired_crl.
 
 	Bug fixes
 	* Bind the lifetime of program name and python path to the module
@@ -52,7 +53,7 @@ FreeRADIUS 3.0.16 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	* Fix occasional crash when using
 	  cisco_accounting_username_bug = yes
 	* EAP-FAST fixes from Isaac Boukris.
-	  #2078, and #2076.
+	  #2078, #2076, and #2082.
 
 FreeRADIUS 3.0.15 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	Feature improvements
