@@ -23,7 +23,7 @@ topic. The FreeRADIUS community is inclusive by virtue of not being exclusionary
 The following behaviours are expected and requested of all community members:
 
 - Ensure that the rules of the community resource you're using have been reviewed in full, [mailing
-  list guidelines](http://freeradius.org/list/) for the mailing lists, [the guidelines for
+  list guidelines](https://freeradius.org/support/) for the mailing lists, [the guidelines for
   contributing](https://github.com/FreeRADIUS/freeradius-server/blob/v4.0.x/.github/contributing.md)
   for GitHub.
 - Use a neutral tone with a focus on technical arguments and technical discussion.

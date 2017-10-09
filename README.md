@@ -23,10 +23,10 @@ but be sure to address any warnings when starting v3.0.x before
 attempting to use en existing configuration with v4.0.x.
 
 For a list of changes in version 4.0, please see
-[doc/changelog](https://github.com/FreeRADIUS/freeradius-server/blob/v4.0.x/doc/ChangeLog)
+[doc/ChangeLog](https://github.com/FreeRADIUS/freeradius-server/blob/v4.0.x/doc/ChangeLog)
 
 See 
-[raddb/README.rst](https://github.com/FreeRADIUS/freeradius-server/blob/v4.0.x/raddb/README.rst)
+[raddb/README.md](https://github.com/FreeRADIUS/freeradius-server/blob/v4.0.x/raddb/README.md)
 for information on what to do to update your configuration.
 
 Administrators upgrading from a previous version should install this
@@ -35,12 +35,13 @@ existing configuration should be carefully migrated to the new
 version, in order to take advantage of the new features which can
 greatly simply configuration.
 
-Please see http://freeradius.org and http://wiki.freeradius.org for
+Please see https://freeradius.org and https://wiki.freeradius.org for
 more information.
 
 
 ## Installation
-To install the server, please see the INSTALL.md file in this directory.
+To install the server, please see the 
+[INSTALL.md](https://github.com/FreeRADIUS/freeradius-server/blob/v4.0.x/INSTALL.md) file in this directory.
 
 ## Configuring the server
 We understand that the server may be difficult to configure,
@@ -81,25 +82,21 @@ they may be fixed.
 
 Read the FAQ.  Many questions are answered there.  See the Wiki
 
-http://wiki.freeradius.org
+https://wiki.freeradius.org
 
 Read the configuration files.  Many parts of the server have NO
 documentation, other than comments in the configuration file.
 
-Search the mailing lists.  There is a Google link on the bottom of
-the page:
+Consult the users mailing lists. 
 
-http://www.freeradius.org/list/users.html
-
-Type some key words into the search box, and you should find
-discussions about common problems and solution.
+https://www.freeradius.org/list/users.html
 
 
 ## Feedback, Defects, and Community Support
 
 If you have any comments, or are having difficulty getting FreeRADIUS
 to do what you want, please post to the 'freeradius-users' list
-(see the URL above).  The FreeRADIUS mailing list is operated and
+(see the URL above). The FreeRADIUS mailing list is operated and
 contributed to, by the FreeRADIUS community. Users of the list will be
 more than happy to answer your questions, with the caveat that you've
 read documentation relevant to your issue first.
@@ -110,7 +107,7 @@ freeradius-server
 [repository](https://github.com/FreeRADIUS/freeradius-server).
 
 Instructions for gathering data for defect reports can be found in
-``doc/bugs`` or on the [wiki](http://wiki.freeradius.org/project/bug-reports).
+``doc/bugs.md`` or on the [wiki](https://wiki.freeradius.org/project/bug-reports).
 
 Under no circumstances should the issue tracker be used for support
 requests, those questions belong on the user's mailing list.  If you
@@ -142,19 +139,19 @@ same issue.
 
 ## Books on RADIUS
 
-See ``doc/README`` for more information about FreeRADIUS.
+See ``doc/README.md`` for more information about FreeRADIUS.
 
 There is an O'Reilly book available.  It serves as a good
-introduction for anyone new to RADIUS.  However, it is almost 12 years
-old, and is not much more than a basic introduction to the subject.
+introduction for anyone new to RADIUS.  However, it is from 2002
+and is not much more than a basic introduction to the subject.
 
-http://www.amazon.com/exec/obidos/ASIN/0596003226/freeradiusorg-20/
+https://www.amazon.com/exec/obidos/ASIN/0596003226/freeradiusorg-20/
 
 ## Commercial support
 
 Technical support, managed systems support, custom deployments,
 sponsored feature development and many other commercial services
-are available from [Network RADIUS](http://www.networkradius.com).
+are available from [Network RADIUS](https://www.networkradius.com).
 
 [CoverityStatus]: https://scan.coverity.com/projects/58/badge.svg? "Coverity Status"
 [CoverityStatusLink]: https://scan.coverity.com/projects/58

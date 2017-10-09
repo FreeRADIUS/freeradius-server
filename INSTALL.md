@@ -132,7 +132,7 @@ radiusd -X
 You should see a lot of text printed on the screen as it starts up.
 If you don't, or if you see error messages, please read the FAQ:
 
-  http://www.freeradius.org/faq/
+  https://wiki.freeradius.org/guide/FAQ
 
 If the server says "Ready to process requests.", then it is running
 properly.  From another shell (or another window), type
@@ -174,6 +174,5 @@ the configuration files also contain a lot of documentation.
 If you have any additional issues, the FAQ is also a good place to
 start.
 
-  http://www.freeradius.org/faq/
-
+  https://wiki.freeradius.org/guide/FAQ
 
