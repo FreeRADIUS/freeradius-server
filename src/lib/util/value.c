@@ -3421,7 +3421,7 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 		break;
 
 	case FR_TYPE_FLOAT32:
-		p = talloc_typed_asprintf(ctx, "%f", data->vb_float32);
+		p = talloc_typed_asprintf(ctx, "%f", (double) data->vb_float32);
 		break;
 
 	case FR_TYPE_FLOAT64:
@@ -3607,7 +3607,7 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 		return snprintf(out, outlen, "%" PRId64, data->vb_int64);
 
 	case FR_TYPE_FLOAT32:
-		return snprintf(out, outlen, "%f", data->vb_float32);
+		return snprintf(out, outlen, "%f", (double) data->vb_float32);
 
 	case FR_TYPE_FLOAT64:
 		return snprintf(out, outlen, "%g", data->vb_float64);
