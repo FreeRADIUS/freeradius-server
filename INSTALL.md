@@ -2,20 +2,24 @@
 ## Introduction
 
 Ignore the installation instructions in this file if you have a
-pre-installed binary package.  When upgrading from older versions of
-FreeRADIUS, you should read ALL of this file, especially the section
-on [Upgrading](#upgrading) below which gives information on how to 
-update your configuration.
+pre-installed binary package.  
+
+When upgrading from older versions of FreeRADIUS, you should read
+ALL of this file, especially the section on [Upgrading](#upgrading)
+which gives information on how to update your configuration.
+
+**WARNING**  Failure to properly update your configurations may cause
+your previously working FreeRADIUS server to no longer authenticate
+your users.
 
 Whether you are installing from source or a pre-built binary
-package, you should read the section below 
-[Running The Server](#running-the-server).
+package, you should read the section [Running The Server](#running-the-server).
 
 
-## Simple build
+## Simple build from Source
 
 If you do not need to modify the default configuration, then take
-the following steps to build and install the server:
+the following steps to build and install the server from source:
 
 ```bash
 ./configure
@@ -25,8 +29,8 @@ make install
 
 ## Custom build
 
-FreeRADIUS has autoconf support. This means you have to run
-``./configure``, and then run make.  To see which configuration options
+FreeRADIUS has GNU autoconf support. This means you have to run
+``./configure``, and then run ``make``.  To see which configuration options
 are supported, run ``./configure --help``, and read it's output.  The
 following list is a selection from the available flags:
 
@@ -55,32 +59,35 @@ not install.
 
 If you see a warning message about files that could not be
 installed, then you MUST ensure that the new server is using the new
-configuration files, and not the old configuration files.  The initial
-output from running in debugging mode (``radiusd -X``) will tell you which
-configuration files are being used.  See UPGRADING above for
+configuration files, and not the old configuration files as this may cause
+undesired behavior and failure to authenticate.
+
+The initial output from running in debugging mode (``radiusd -X``) will tell
+you which configuration files are being used.  See [Upgrading](#upgrading) for
 information about upgrading from older versions.  There MAY be changes
 in the dictionary files which are REQUIRED for a new version of the
 software.  These files will NOT be installed over your current
 configuration, so you MUST verify and install any problem files by
 hand, for example using ``diff(1)`` to check for changes.
 
-It is EXTREMELY helpful to read the output of both ``./configure``,
+It is EXTREMELY helpful to read the output of ``./configure``,
 ``make``, and ``make install``.  If a particular module you expected to be
 installed was not installed, then the output of the
 ``./configure; make; make install`` sequence will tell you why that module
 was not installed.  Please do NOT post questions to the FreeRADIUS
-users list without first carefully reading the output of this process.
+users list without first carefully reading the output of this process as it
+often contains the information needed to resolve a problem.
 
 ## Upgrading
 
 The installation process will not over-write your existing
 configuration files.  It will, however, warn you about the files it
-did not install.
+did not install. These will require manual integration with the existing files.
 
-It is generally not possible to use to re-use configurations between
-different major versions of the server.
+It is generally not possible to re-use configurations between
+different major versions of the server. (For example - 2.x to 3.x)
 
-For details on what has changed, see ``raddb/README.md``.
+For details on what has changed between the version, see ``raddb/README.md``.
 
 We STRONGLY recommend that new major versions be installed in a different 
 location than any existing installations.  Any local policies can
@@ -92,7 +99,7 @@ and just get the old configuration to work.
 ## Running the server
 
 If the server builds and installs, but doesn't run correctly, then
-you should use debugging mode (``radiusd -X``) to figure out the problem. 
+you should first use debugging mode (``radiusd -X``) to figure out the problem. 
 
 This is your BEST HOPE for understanding the problem.  Read ALL of
 the messages which are printed to the screen, the answer to your
@@ -100,7 +107,7 @@ problem will often be in a warning or error message.
 
 We really can't emphasize that last sentence enough.  Configuring a
 RADIUS server for complex local authentication isn't a trivial task.
-Your ONLY method for debugging it is to read the debug messages, where
+Your BEST and ONLY method for debugging it is to read the debug messages, where
 the server will tell you exactly what it's doing, and why.  You should
 then compare its behaviour to what you intended, and edit the
 configuration files as appropriate.
@@ -141,9 +148,8 @@ authentication request is accepted or rejected, what matters is that
 the server received the request, and responded to it.
 
 You can now edit the configuration files for your local system. You
-will usually want to start with ``sites-enabled/default``. To set 
-which NASes (clients) can communicate with this server, 
-edit ``clients.conf``.
+will usually want to start with ``sites-enabled/default`` for main configurations.
+To set which NASes (clients) can communicate with this server, edit ``raddb/clients.conf``.
 Please read the configuration files carefully, as many configuration
 options are only documented in comments in the file.
 
@@ -152,7 +158,12 @@ control system to manage your configuration, such as git or
 Subversion. You should then make small changes to the configuration,
 checking in and testing as you go. When a config change causes the
 server to stop working, you will be able to easily step back and find
-out what update broke the configuraiton.
+out what update broke the configuration.
+
+It is also considered a best practice to maintain a staging or development environment.
+This allows you to test and integrate your changes without impacting your active production
+environment. You should make the appropirate investment in order to properly support a
+critical resource such as your authentication servers.
 
 Configuring and running the server MAY be complicated.  Many modules
 have ``man`` pages.  See ``man rlm_pap``, or ``man rlm_*`` for 
@@ -162,4 +173,7 @@ the configuration files also contain a lot of documentation.
 
 If you have any additional issues, the FAQ is also a good place to
 start.
+
+  http://www.freeradius.org/faq/
+
 
