@@ -326,7 +326,7 @@ static void fd_idle(rlm_radius_udp_connection_t *c)
 			       conn_error,
 			       c) < 0) {
 		PERROR("Failed inserting FD event");
-		talloc_free(c);
+		fr_connection_signal_reconnect(c->conn);
 	}
 
 	conn_idle(c);
@@ -354,7 +354,7 @@ static void fd_active(rlm_radius_udp_connection_t *c)
 			       conn_error,
 			       c) < 0) {
 		PERROR("Failed inserting FD event");
-		talloc_free(c);
+		fr_connection_signal_reconnect(c->conn);
 	}
 }
 
@@ -2141,9 +2141,7 @@ static void mod_clear_backlog(rlm_radius_udp_thread_t *t)
 		 */
 		(void) fr_heap_insert(c->queued, u);
 
-		if (!c->pending) {
-			fd_active(c);
-		}
+		if (!c->pending) fd_active(c);
 	}
 
 	/*
