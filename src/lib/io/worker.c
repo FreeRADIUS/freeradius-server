@@ -447,6 +447,11 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	fr_message_set_t *ms;
 
 	/*
+	 *	If we're sending a reply, then it's no longer runnable.
+	 */
+	rad_assert(request->runnable_id < 0);
+
+	/*
 	 *	If it's a detached request, don't send a real reply.
 	 *	Just toss the request.
 	 */
@@ -456,6 +461,11 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 		talloc_free(request);
 		return;
 	}
+
+	/*
+	 *	The request must still be tracked for max_request_time
+	 */
+	rad_assert(request->time_order_id >= 0);
 
 	/*
 	 *	Allocate and send the reply.
@@ -542,8 +552,6 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	(void) rbtree_deletebydata(worker->dedup, request);
 
 #ifndef NDEBUG
-	rad_assert(request->runnable_id < 0);
-	rad_assert(request->time_order_id < 0);
 	request->async->original_recv_time = NULL;
 	request->async->el = NULL;
 	request->async->process = NULL;
@@ -573,9 +581,13 @@ static void worker_stop_request(fr_worker_t *worker, REQUEST *request, fr_time_t
 	 *	be in the runnable list, but if not, no worries.  It
 	 *	MAY be in the dedup list, but if not, no worries.
 	 */
-	(void) fr_heap_extract(worker->time_order, request);
-	(void) fr_heap_extract(worker->runnable, request);
+	if (request->time_order_id >= 0) (void) fr_heap_extract(worker->time_order, request);
+	if (request->runnable_id >= 0) (void) fr_heap_extract(worker->runnable, request);
 	(void) rbtree_deletebydata(worker->dedup, request);
+
+#ifndef NDEBUG
+	request->async->process = NULL;
+#endif
 }
 
 /** Enforce max_request_time
@@ -980,6 +992,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	rad_assert(request->parent == NULL);
 	rad_assert(request->async->process != NULL);
 	rad_assert(request->async->listen != NULL);
+	rad_assert(request->runnable_id < 0); /* removed from the runnable heap */
 
 	RDEBUG("running request");
 
@@ -1025,6 +1038,8 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	}
 
 	RDEBUG("done request");
+
+	(void) rbtree_deletebydata(worker->dedup, request);
 
 	fr_worker_send_reply(worker, request, size);
 }
