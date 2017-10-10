@@ -1022,7 +1022,7 @@ static int retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 	}
 
 	RDEBUG("Retransmitting request (%d/%d).  Expecting response within %d.%06ds",
-	       u->timer.count, c->inst->parent->retry[u->code].mrc, u->timer.rt / USEC, u->timer.rt % USEC);
+	       u->timer.count, u->timer.retry->mrc, u->timer.rt / USEC, u->timer.rt % USEC);
 
 	/*
 	 *	Debug the packet again, including any extra
