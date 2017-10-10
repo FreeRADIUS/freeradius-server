@@ -977,9 +977,39 @@ static int retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 			if (fr_radius_sign(u->packet, NULL, (uint8_t const *) c->inst->secret,
 					   strlen(c->inst->secret)) < 0) {
 				REDEBUG("Failed re-signing packet");
-				mod_finished_request(c, u);
 				return -1;
 			}
+		}
+	}
+
+	/*
+	 *	Update the Event-Timestamp for status packets.
+	 */
+	if (u == c->status_u) {
+		uint32_t event_time;
+		uint8_t *attr, *end;
+
+		attr = u->packet + 20;
+		end = u->packet + u->packet_len;
+
+		while (attr < end) {
+			if (attr[0] != FR_EVENT_TIMESTAMP) {
+				attr += attr[2];
+			}
+
+			event_time = htonl(time(NULL));
+			rad_assert(attr[1] == 6);
+			memcpy(attr + 2, &event_time, 4);
+
+			/*
+			 *	Recalculate the packet signature again.
+			 */
+			if (fr_radius_sign(u->packet, NULL, (uint8_t const *) c->inst->secret,
+					   strlen(c->inst->secret)) < 0) {
+				REDEBUG("Failed re-signing packet");
+				return -1;
+			}
+			break;
 		}
 	}
 
@@ -1860,6 +1890,15 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, UNUSED int f
 			 */
 			for (map = c->inst->parent->status_check_map; map != NULL; map = map->next) {
 				(void) map_to_request(request, map, map_to_vp, NULL);
+			}
+
+			/*
+			 *	Always add an Event-Timestamp, which
+			 *	will be the time at which the packet
+			 *	is sent.
+			 */
+			if (!fr_pair_find_by_num(request->packet->vps, 0, FR_EVENT_TIMESTAMP, TAG_ANY)) {
+				pair_make_request("Event-Timestamp", "0", T_OP_EQ);
 			}
 		}
 
