@@ -1725,15 +1725,6 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, UNUSED int f
 			      fr_box_ipaddr(c->src_ipaddr), c->src_port,
 			      fr_box_ipaddr(c->dst_ipaddr), c->dst_port);
 
-	/*
-	 *	Connection is "active" now.  i.e. we prefer the newly
-	 *	opened connection for sending packets.
-	 *
-	 *	@todo - connection negotiation via Status-Server
-	 */
-	gettimeofday(&c->mrs_time, NULL);
-	c->last_reply = c->mrs_time;
-
 	DEBUG("%s - Connection open - %s", c->inst->parent->name, c->name);
 
 	/*
@@ -1744,6 +1735,23 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, UNUSED int f
 	fr_dlist_remove(&c->entry);
 	fr_heap_insert(t->active, c);
 	c->state = CONN_ACTIVE;
+
+	/*
+	 *	Connection is "active" now.  i.e. we prefer the newly
+	 *	opened connection for sending packets.
+	 *
+	 *	@todo - connection negotiation via Status-Server
+	 */
+	gettimeofday(&c->mrs_time, NULL);
+	c->last_reply = c->mrs_time;
+
+	rad_assert(c->zombie_ev == NULL);
+	memset(&c->zombie_start, 0, sizeof(c->zombie_start));
+
+	c->num_requests = 0;
+	c->pending = false;
+	rad_assert(fr_heap_num_elements(c->queued) == 0);
+	FR_DLIST_INIT(c->sent);
 
 	/*
 	 *	Status-Server checks.  Manually build the packet, and
