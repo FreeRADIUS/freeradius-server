@@ -749,9 +749,13 @@ bool client_add_dynamic(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c
 	c->created = time(NULL);
 	c->longname = talloc_typed_strdup(c, c->shortname);
 
-	INFO("Adding client %s/%i with shared secret \"%s\"",
-	     ip_ntoh(&c->ipaddr, buffer, sizeof(buffer)), c->ipaddr.prefix, c->secret);
-
+	if (rad_debug_lvl <= 2) {
+		INFO("Adding client %s/%i",
+		     ip_ntoh(&c->ipaddr, buffer, sizeof(buffer)), c->ipaddr.prefix);
+	} else {
+		INFO("Adding client %s/%i with shared secret \"%s\"",
+		     ip_ntoh(&c->ipaddr, buffer, sizeof(buffer)), c->ipaddr.prefix, c->secret);
+	}
 	return true;
 
 error:
