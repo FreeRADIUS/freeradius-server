@@ -48,7 +48,6 @@ RCSID("$Id$")
 #  define EVENT_DEBUG(...)
 #endif
 
-#ifdef WITH_EVENT_DEBUG
 static FR_NAME_NUMBER const kevent_filter_table[] = {
 	{ "EVFILT_READ",	EVFILT_READ },
 #ifdef EVFILT_EXCEPT
@@ -68,7 +67,6 @@ static FR_NAME_NUMBER const kevent_filter_table[] = {
 
 	{  NULL , -1 }
 };
-#endif
 
 /** A timer event
  *
