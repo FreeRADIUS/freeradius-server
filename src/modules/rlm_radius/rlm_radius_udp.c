@@ -448,17 +448,22 @@ static void mod_finished_request(rlm_radius_udp_connection_t *c, rlm_radius_udp_
 	 *	request from the "sent" list for this connection.
 	 */
 	if (c) {
+		rad_assert(u != c->status_u);
+
 		(void) fr_heap_extract(c->queued, u);
 		(void) rr_track_delete(c->id, u->rr);
+
 		rad_assert(c->num_requests > 0);
 		c->num_requests--;
 		conn_idle(c);
+
+		u->rr = NULL;
+		u->c = NULL;
 	} else {
 		(void) fr_heap_extract(u->thread->queued, u);
+		rad_assert(u->rr == NULL);
 	}
 
-	u->rr = NULL;
-	u->c = NULL;
 	fr_dlist_remove(&u->entry);
 	if (u->timer.ev) (void) fr_event_timer_delete(u->thread->el, &u->timer.ev);
 
@@ -1559,7 +1564,11 @@ static int udp_request_free(rlm_radius_udp_request_t *u)
 	 *	The packet may be queued in the connection
 	 */
 	fr_heap_extract(u->c->queued, u);
-	u->c->num_requests--;
+
+	if (u != u->c->status_u) {
+		rad_assert(u->c->num_requests > 0);
+		u->c->num_requests--;
+	}
 
 	/*
 	 *	The module is doing async proxying, we don't need to
