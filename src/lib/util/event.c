@@ -16,10 +16,10 @@
 
 /**
  * @file lib/util/event.c
- * @brief Non-thread-safe event handling, specific to a RADIUS server.
+ * @brief Non-thread-safe event handling specific to FreeRADIUS
  *
  * @note By non-thread-safe we mean multiple threads can't insert/delete events concurrently
- *	without synchronization.
+ *	into the same event list without synchronization.
  *
  * @copyright 2007-2016 The FreeRADIUS server project
  * @copyright 2016 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
@@ -41,6 +41,30 @@ RCSID("$Id$")
 #if !defined(SO_GET_FILTER) && defined(SO_ATTACH_FILTER)
 #  define SO_GET_FILTER SO_ATTACH_FILTER
 #endif
+
+#ifdef WITH_EVENT_DEBUG
+#  define EVENT_DEBUG(fmt, ...) printf("EVENT: ");printf(fmt, ## __VA_ARGS__);printf("\n");fflush(stdout)
+#else
+#  define EVENT_DEBUG(...)
+#endif
+
+static FR_NAME_NUMBER const kevent_filter_table[] = {
+	{ "EVFILT_READ",	EVFILT_READ },
+	{ "EVFILT_EXCEPT",	EVFILT_EXCEPT },
+	{ "EVFILT_WRITE",	EVFILT_WRITE },
+#ifdef EVFILT_AIO
+	{ "EVFILT_AIO",		EVFILT_AIO },
+#endif
+	{ "EVFILT_VNODE",	EVFILT_VNODE },
+	{ "EVFILT_PROC",	EVFILT_PROC },
+	{ "EVFILT_SIGNAL",	EVFILT_SIGNAL },
+#ifdef EVFILT_MACHPORT
+	{ "EVFILT_MACHPORT",	EVFILT_MACHPORT },
+#endif
+	{ "EVFILT_TIMER",	EVFILT_TIMER },
+
+	{  NULL , -1 }
+};
 
 /** A timer event
  *
@@ -402,6 +426,8 @@ static ssize_t fr_event_build_evset(struct kevent out_kev[], size_t outlen, fr_e
 	struct kevent			*out = out_kev, *end = out + outlen;
 	fr_event_func_map_t const	*map;
 
+	EVENT_DEBUG("Building new evset for FD %i (new %p, prev %p)", ef->fd, new, prev);
+
 	/*
 	 *	Iterate over the function map, setting/unsetting
 	 *	filters and filter flags.
@@ -414,11 +440,15 @@ static ssize_t fr_event_build_evset(struct kevent out_kev[], size_t outlen, fr_e
 
 		do {
 			if (*(uintptr_t const *)((uint8_t const *)prev + map->offset)) {
+				EVENT_DEBUG("\t%s prev set", map->name);
 				prev_fflags |= map->fflags;
 				has_prev_func = true;
+			} else {
+				EVENT_DEBUG("\t%s prev unset", map->name);
 			}
 
 			if (*(uintptr_t const *)((uint8_t const *)new + map->offset)) {
+				EVENT_DEBUG("\t%s curr set", map->name);
 				current_fflags |= map->fflags;
 				has_current_func = true;
 
@@ -440,6 +470,7 @@ static ssize_t fr_event_build_evset(struct kevent out_kev[], size_t outlen, fr_e
 				memcpy((uint8_t *)active + map->offset, (uint8_t const *)new + map->offset,
 				       sizeof(fr_event_fd_cb_t));
 			} else {
+				EVENT_DEBUG("\t%s curr unset", map->name);
 				/*
 				 *	Mark this filter function as inactive
 				 */
@@ -461,12 +492,18 @@ static ssize_t fr_event_build_evset(struct kevent out_kev[], size_t outlen, fr_e
 		if (has_current_func &&
 		    (!has_prev_func ||
 		     (has_prev_func && (current_fflags != prev_fflags)))) {
+		     	EVENT_DEBUG("\tEV_SET EV_ADD filter %s (%i), flags %i, fflags %i",
+		     		    fr_int2str(kevent_filter_table, map->filter, "<INVALID>"),
+		     		    map->filter, map->flags, current_fflags);
 			EV_SET(out++, ef->fd, map->filter, map->flags, current_fflags, 0, ef);
 
 		/*
 		 *	Delete if we remove a function.
 		 */
 		} else if (!has_current_func && has_prev_func) {
+		     	EVENT_DEBUG("\tEV_SET EV_DELETE filter %s (%i), flags %i, fflags %i",
+		     		    fr_int2str(kevent_filter_table, map->filter, "<INVALID>"),
+		     		    map->filter, EV_DELETE, 0, 0);
 			EV_SET(out++, ef->fd, map->filter, EV_DELETE, 0, 0, 0);
 		}
 	}
@@ -806,8 +843,8 @@ int fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 		ef->is_registered = true;
 
 	/*
-	 *	Pre-existing event, update the filters
-	 *	and functions associated with the file descriptor.
+	 *	Pre-existing event, update the filters and
+	 *	functions associated with the file descriptor.
 	 */
 	} else {
 		/*
@@ -1082,8 +1119,6 @@ int fr_event_pid_wait(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_pid_t const
 	*ev_p = ev;
 	return 0;
 }
-
-
 
 /** Add a user callback to the event list.
  *
