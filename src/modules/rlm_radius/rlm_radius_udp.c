@@ -464,13 +464,13 @@ static void mod_finished_request(rlm_radius_udp_connection_t *c, rlm_radius_udp_
 {
 	rad_assert(u->state != PACKET_STATE_FINISHED);
 
+	if (u->timer.ev) (void) fr_event_timer_delete(u->thread->el, &u->timer.ev);
+
 	/*
 	 *	Delete the tracking table entry, and remove the
 	 *	request from the "sent" list for this connection.
 	 */
 	if (c) {
-		rad_assert(u != c->status_u);
-
 		switch (u->state) {
 		case PACKET_STATE_THREAD:
 			(void) fr_heap_extract(u->thread->queued, u);
@@ -491,9 +491,23 @@ static void mod_finished_request(rlm_radius_udp_connection_t *c, rlm_radius_udp_
 		default:
 			break;
 		}
-		if (u->rr) (void) rr_track_delete(c->id, u->rr);
+
 		conn_idle(c);
 
+		/*
+		 *	Status check packets are never removed from
+		 *	the connection, and their IDs are never
+		 *	deallocated.
+		 */
+		if (u == c->status_u) {
+			u->state = PACKET_STATE_INIT;
+			return;
+		}
+
+		/*
+		 *	Deallocate the ID.
+		 */
+		if (u->rr) (void) rr_track_delete(c->id, u->rr);
 		u->rr = NULL;
 		u->c = NULL;
 	} else {
@@ -502,8 +516,6 @@ static void mod_finished_request(rlm_radius_udp_connection_t *c, rlm_radius_udp_
 		}
 		rad_assert(u->rr == NULL);
 	}
-
-	if (u->timer.ev) (void) fr_event_timer_delete(u->thread->el, &u->timer.ev);
 
 	u->state = PACKET_STATE_RESUMABLE;
 	unlang_resumable(u->link->request);
@@ -898,57 +910,6 @@ done:
 	goto redo;
 }
 
-/** Deal with per-request timeouts for Status-Server
- *
- *  Note that we update the packet in place, as it re-uses the same
- *  ID, and it doesn't grow in size.
- */
-static void status_check_timeout(UNUSED fr_event_list_t *el, struct timeval *now, void *uctx)
-{
-	int				rcode;
-	rlm_radius_udp_request_t	*u = uctx;
-	rlm_radius_udp_connection_t	*c = u->c;
-	REQUEST				*request;
-
-	/*
-	 *	This is here instead of in conn_write(), because we
-	 *	may need to shut down the connection.  It's better to
-	 *	do that here than to overload conn_write(), which is
-	 *	already a bit complex.
-	 */
-	rad_assert(u->timer.retry == &c->inst->parent->retry[u->code]);
-	rcode = rr_track_retry(&u->timer, now);
-	if (rcode < 0) {
-		/*
-		 *	Failed inserting event... the request is done.
-		 */
-		conn_error(c->thread->el, c->fd, 0, EINVAL, c);
-		return;
-	}
-
-	request = u->link->request;
-	if (rcode == 0) {
-		REDEBUG("No response to status check ID %d, closing connection %s", u->rr->id, c->name);
-		talloc_free(c);
-		return;
-	}
-
-	if (fr_event_timer_insert(u, c->thread->el, &u->timer.ev, &u->timer.next, status_check_timeout, u) < 0) {
-		RDEBUG("Failed inserting status check timer for connection %s", c->name);
-		talloc_free(c);
-		return;
-	}
-
-	/*
-	 *	Link it into the connection queue for retransmission.
-	 */
-	fr_dlist_remove(&u->entry);
-	(void) fr_heap_insert(c->queued, u);
-	c->active_requests++;
-	u->state = PACKET_STATE_QUEUED;
-	if (!c->pending) fd_active(c);
-}
-
 static int retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 {
 	int				rcode;
@@ -1076,6 +1037,11 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 
 	rad_assert(u->timer.ev == NULL);
 
+	request = u->link->request;
+
+	RDEBUG("TIMER - response timeout reached for try (%d/%d)",
+	       u->timer.count, u->timer.retry->mrc);
+
 	/*
 	 *	The packet timed out while it didn't have a
 	 *	connection, or the connection was closed.  Try to grab
@@ -1093,13 +1059,19 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 		rad_assert(u->timer.retry == &c->inst->parent->retry[u->code]);
 	}
 
-	request = u->link->request;
-
 	rcode = rr_track_retry(&u->timer, now);
 	if (rcode < 0) {
 		if (c) {
 			REDEBUG("Failing proxied request ID %d due to error trying to proxy on connection %s",
 				u->rr->id, c->name);
+
+			if (u == c->status_u) {
+				REDEBUG("Closing connection due to status check failures");
+				mod_finished_request(c, u);
+				talloc_free(c);
+				return;
+			}
+
 		} else {
 			REDEBUG("Failing proxied request due to error trying to proxy, with no connection");
 		}
@@ -1140,6 +1112,7 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 		if (rcode < 0) {
 			RDEBUG("Failed retransmitting packet for connection %s", c->name);
 			mod_finished_request(c, u);
+			return;
 		}
 
 		/*
@@ -1490,7 +1463,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 		}
 
 		if (fr_event_timer_insert(u, c->thread->el, &u->timer.ev, &u->timer.next,
-					  status_check_timeout, u) < 0) {
+					  response_timeout, u) < 0) {
 			RDEBUG("Failed starting retransmit tracking");
 			return -1;
 		}
@@ -2277,6 +2250,17 @@ static void mod_clear_backlog(rlm_radius_udp_thread_t *t)
 		rad_assert(u->thread == t);
 		c = connection_get(u);
 		if (!c) break;
+
+		/*
+		 *	The packet already has a timer associated with
+		 *	it.  Just place it into the "sent" queue.
+		 */
+		if (u->timer.ev) {
+			rad_assert(u->state == PACKET_STATE_QUEUED);
+			(void) fr_heap_extract(c->queued, u);
+			fr_dlist_insert_tail(&c->sent, &u->entry);
+			u->state = PACKET_STATE_SENT;
+		}
 	}
 
 	/*
