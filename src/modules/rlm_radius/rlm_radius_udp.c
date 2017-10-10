@@ -112,9 +112,6 @@ typedef struct rlm_radius_udp_connection_t {
 	fr_event_timer_t const	*zombie_ev;		//!< Zombie timeout.
 	struct timeval		zombie_start;		//!< When the zombie period started.
 
-	int			num_requests;		//!< Number of packets we sent, NOT including Status-Server.
-	int			max_requests;		//!< Maximum number of packets we can send.
-
 	bool			pending;		//!< Are there packets pending?
 	fr_heap_t		*queued;       		//!< List of packets queued for sending.
 	fr_dlist_t		sent;			//!< List of sent packets.
@@ -135,11 +132,23 @@ typedef struct rlm_radius_udp_connection_t {
 	rlm_radius_id_t		*id;			//!< RADIUS ID tracking structure.
 } rlm_radius_udp_connection_t;
 
+
+typedef enum rlm_radius_request_state_t {
+	REQUEST_STATUS_INIT = 0,
+	REQUEST_STATUS_WRITE,				//!< trying a short-circuit write
+	REQUEST_STATUS_THREAD,				//!< in the thread queue
+	REQUEST_STATUS_QUEUED,				//!< in the connection queue
+	REQUEST_STATUS_SENT,				//!< in the connection "sent" heap
+	REQUEST_STATUS_RESUMABLE,      			//!< timed out, or received a reply
+	REQUEST_STATUS_FINISHED,			//!< and done
+} rlm_radius_request_state_t;
+
+
 /** An ongoing RADIUS request
  *
  */
 struct rlm_radius_udp_request_t {
-	bool			finished;		//!< hack
+	rlm_radius_request_state_t state;		//!< state of this request
 
 	fr_dlist_t		entry;			//!< in the connection list of packets.
 	int			heap_id;		//!< for the "to be sent" queue.
@@ -258,7 +267,6 @@ static void conn_idle(rlm_radius_udp_connection_t *c)
 		 *	Still has packets: can't be idle.
 		 */
 	case CONN_FULL:
-		rad_assert(c->num_requests > 0);
 		if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
 		return;
 
@@ -266,7 +274,11 @@ static void conn_idle(rlm_radius_udp_connection_t *c)
 		 *	Active means "alive", and not "has packets".
 		 */
 	case CONN_ACTIVE:
-		if (!c->num_requests) break;
+		/*
+		 *	No outstanding packets, we're idle.
+		 */
+		if ((fr_heap_num_elements(c->queued) == 0) &&
+		    (FR_DLIST_FIRST(c->sent) == NULL)) break;
 
 		if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
 		return;
@@ -376,7 +388,10 @@ static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeva
 	 *	the correct timers / timeout functions.
 	 */
 	if (c->status_u) {
-		(void) fr_heap_insert(c->queued, c->status_u);
+		rlm_radius_udp_request_t *u = c->status_u;
+
+		(void) fr_heap_insert(c->queued, u);
+		u->state = REQUEST_STATUS_QUEUED;
 		if (!c->pending) fd_active(c);
 		return;
 	}
@@ -441,7 +456,7 @@ static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 
 static void mod_finished_request(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *u)
 {
-	rad_assert(!u->finished);
+	rad_assert(u->state != REQUEST_STATUS_FINISHED);
 
 	/*
 	 *	Delete the tracking table entry, and remove the
@@ -450,24 +465,37 @@ static void mod_finished_request(rlm_radius_udp_connection_t *c, rlm_radius_udp_
 	if (c) {
 		rad_assert(u != c->status_u);
 
-		(void) fr_heap_extract(c->queued, u);
-		(void) rr_track_delete(c->id, u->rr);
+		switch (u->state) {
+		case REQUEST_STATUS_THREAD:
+			(void) fr_heap_extract(u->thread->queued, u);
+			break;
 
-		rad_assert(c->num_requests > 0);
-		c->num_requests--;
+		case REQUEST_STATUS_QUEUED:
+			(void) fr_heap_extract(c->queued, u);
+			break;
+
+		case REQUEST_STATUS_SENT:
+			fr_dlist_remove(&u->entry);
+			break;
+
+		default:
+			break;
+		}
+		if (u->rr) (void) rr_track_delete(c->id, u->rr);
 		conn_idle(c);
 
 		u->rr = NULL;
 		u->c = NULL;
 	} else {
-		(void) fr_heap_extract(u->thread->queued, u);
+		if (u->state == REQUEST_STATUS_THREAD) {
+			(void) fr_heap_extract(u->thread->queued, u);
+		}
 		rad_assert(u->rr == NULL);
 	}
 
-	fr_dlist_remove(&u->entry);
 	if (u->timer.ev) (void) fr_event_timer_delete(u->thread->el, &u->timer.ev);
 
-	u->finished = true;
+	u->state = REQUEST_STATUS_RESUMABLE;
 	unlang_resumable(u->link->request);
 }
 
@@ -749,8 +777,8 @@ redo:
 		 *	Different debug message.  The packet is within
 		 *	the known bounds, but is one we don't handle.
 		 */
-	} else if (!code2rcode[code]) {
-		REDEBUG("Invalid reply code %s", fr_packet_codes[code]);
+	} else if (!allowed_replies[code]) {
+		REDEBUG("%s packet received invalid reply code %s", fr_packet_codes[u->code], fr_packet_codes[code]);
 		link->rcode = RLM_MODULE_INVALID;
 
 
@@ -900,6 +928,7 @@ static void status_check_timeout(UNUSED fr_event_list_t *el, struct timeval *now
 	 */
 	fr_dlist_remove(&u->entry);
 	(void) fr_heap_insert(c->queued, u);
+	u->state = REQUEST_STATUS_QUEUED;
 	if (!c->pending) fd_active(c);
 }
 
@@ -1012,6 +1041,9 @@ static void retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 		conn_error(c->thread->el, c->fd, 0, errno, c);
 		return;
 	}
+
+	u->state = REQUEST_STATUS_SENT;
+	DEBUG("SENT %d", __LINE__);
 }
 
 static rlm_radius_udp_connection_t *connection_get(rlm_radius_udp_request_t *u);
@@ -1027,16 +1059,23 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	REQUEST				*request;
 
 	rad_assert(u->timer.ev == NULL);
-	rad_assert(!u->finished);
+	rad_assert(u->state == REQUEST_STATUS_SENT);
 
 	/*
 	 *	The packet timed out while it didn't have a
 	 *	connection, or the connection was closed.  Try to grab
 	 *	a new connection.
 	 */
-	if (!c) c = u->c = connection_get(u);
+	if (!c) {
+		rad_assert(u->state == REQUEST_STATUS_THREAD);
+		c = connection_get(u);
+	}
 
-	rad_assert(!c || (u->timer.retry == &c->inst->parent->retry[u->code]));
+	if (c) {
+		rad_assert(u->timer.retry == &c->inst->parent->retry[u->code]);
+		rad_assert(u->state == REQUEST_STATUS_QUEUED);
+	}
+
 	request = u->link->request;
 
 	rcode = rr_track_retry(&u->timer, now);
@@ -1082,6 +1121,7 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 		RDEBUG("Retransmitting ID %d on connection %s", u->rr->id, c->name);
 		retransmit_packet(u, now);
 	} else {
+		rad_assert(u->state == REQUEST_STATUS_THREAD);
 		RDEBUG("No available connections for retransmission.  Waiting %d.%06ds for retry",
 		       u->timer.rt / USEC, u->timer.rt % USEC);
 	}
@@ -1112,6 +1152,9 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	rad_assert(c->inst->parent->allowed[u->code] || (u == c->status_u));
 	if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
 
+	rad_assert((u->state == REQUEST_STATUS_WRITE) ||
+		   (u->state == REQUEST_STATUS_SENT) ||
+		   (u->state == REQUEST_STATUS_QUEUED));
 	request = u->link->request;
 
 	/*
@@ -1346,7 +1389,8 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	 *	timers, etc.
 	 */
 	if (c->inst->replicate) {
-		return 1;
+		u->state = REQUEST_STATUS_FINISHED;
+		return 2;
 	}
 
 	/*
@@ -1356,8 +1400,6 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	fr_time_to_timeval(&u->timer.start, u->link->time_sent);
 
 	if (u != c->status_u) {
-		c->num_requests++;
-
 		/*
 		 *	Only copy the packet if we're not replicating,
 		 *	and we're not doing Status-Server checks.
@@ -1408,7 +1450,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 					  status_check_timeout, u) < 0) {
 			RDEBUG("Failed starting retransmit tracking");
 			return -1;
-			}
+		}
 
 		RDEBUG("Sending %s status check.  Expecting response within %d.%06ds",
 		       fr_packet_codes[u->code],
@@ -1419,9 +1461,6 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 		       fr_packet_codes[u->code],
 		       u->timer.rt / USEC, u->timer.rt % USEC);
 	}
-
-	fr_dlist_remove(&u->entry);
-	fr_dlist_insert_tail(&c->sent, &u->entry);
 
 	return 1;
 }
@@ -1445,16 +1484,23 @@ static void conn_writable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int 
 	while ((u = fr_heap_pop(c->queued)) != NULL) {
 		int rcode;
 
+		rad_assert(u->state == REQUEST_STATUS_QUEUED);
 		rcode = conn_write(c, u);
 
 		// @todo - do something intelligent on error..
 		if (rcode <= 0) break;
 
-		if (rcode == 1) continue;
+		if (rcode == 1) {
+			fr_dlist_insert_tail(&c->sent, &u->entry);
+			u->state = REQUEST_STATUS_SENT;
+			DEBUG("SENT %d", __LINE__);
+			continue;
+		}
 
 		/*
 		 *	Was replicated: can resume it immediately.
 		 */
+		u->state = REQUEST_STATUS_RESUMABLE;
 		unlang_resumable(u->link->request);
 	}
 
@@ -1551,24 +1597,29 @@ static int udp_request_free(rlm_radius_udp_request_t *u)
 		u->rr = NULL;
 	}
 
-	/*
-	 *	This packet isn't for any connection, so it's likely
-	 *	sitting in the thread queue.
-	 */
-	if (!u->c) {
-		fr_heap_extract(u->thread->queued, u);
+	switch (u->state) {
+	case REQUEST_STATUS_THREAD:
+		rad_assert(u->c == NULL);
+		(void) fr_heap_extract(u->thread->queued, u);
 		return 0;
+
+	case REQUEST_STATUS_QUEUED:
+		(void) fr_heap_extract(u->c->queued, u);
+		break;
+
+	case REQUEST_STATUS_SENT:
+		fr_dlist_remove(&u->entry);
+		break;
+
+	default:
+		break;
 	}
 
 	/*
-	 *	The packet may be queued in the connection
+	 *	We don't have a connection, so we can't update any of
+	 *	the connection timers or states.
 	 */
-	fr_heap_extract(u->c->queued, u);
-
-	if (u != u->c->status_u) {
-		rad_assert(u->c->num_requests > 0);
-		u->c->num_requests--;
-	}
+	if (!u->c) return 0;
 
 	/*
 	 *	The module is doing async proxying, we don't need to
@@ -1697,12 +1748,13 @@ static fr_connection_state_t _conn_failed(int fd, fr_connection_state_t state, v
 			/*
 			 *	Do NOT change u->timer.ev
 			 */
-
 			u->rr = NULL;
 
+			rad_assert(u->state == REQUEST_STATUS_SENT);
 			fr_dlist_remove(&u->entry);
 			u->c = NULL;
 			(void) fr_heap_insert(c->thread->queued, u);
+			u->state = REQUEST_STATUS_THREAD;
 			c->thread->pending = true;
 		}
 
@@ -1748,7 +1800,6 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, UNUSED int f
 	rad_assert(c->zombie_ev == NULL);
 	memset(&c->zombie_start, 0, sizeof(c->zombie_start));
 
-	c->num_requests = 0;
 	c->pending = false;
 	rad_assert(fr_heap_num_elements(c->queued) == 0);
 	FR_DLIST_INIT(c->sent);
@@ -1972,8 +2023,11 @@ static int _conn_free(rlm_radius_udp_connection_t *c)
 		u->rr = NULL;
 		u->c = NULL;
 		if (u->timer.ev) (void) fr_event_timer_delete(c->thread->el, &u->timer.ev);
+
+		rad_assert(u->state == REQUEST_STATUS_SENT);
 		fr_dlist_remove(&u->entry);
 		(void) fr_heap_insert(t->queued, u);
+		u->state = REQUEST_STATUS_THREAD;
 		t->pending = true;
 	}
 
@@ -1983,7 +2037,10 @@ static int _conn_free(rlm_radius_udp_connection_t *c)
 	while ((u = fr_heap_pop(c->queued)) != NULL) {
 		u->rr = NULL;
 		u->c = NULL;
+
+		rad_assert(u->state == REQUEST_STATUS_QUEUED);
 		(void) fr_heap_insert(t->queued, u);
+		u->state = REQUEST_STATUS_THREAD;
 		t->pending = true;
 	}
 
@@ -2055,8 +2112,6 @@ static void conn_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t *t)
 		talloc_free(c);
 		return;
 	}
-	c->num_requests = 0;
-	c->max_requests = 256;
 	c->queued = fr_heap_create(queue_cmp, offsetof(rlm_radius_udp_request_t, heap_id));
 	FR_DLIST_INIT(c->sent);
 
@@ -2113,7 +2168,6 @@ static rlm_radius_udp_connection_t *connection_get(rlm_radius_udp_request_t *u)
 
 	(void) talloc_get_type_abort(c, rlm_radius_udp_connection_t);
 	rad_assert(c->state == CONN_ACTIVE);
-	rad_assert(c->num_requests < c->max_requests);
 
 	u->timer.retry = &c->inst->parent->retry[u->code];
 	u->rr = rr_track_alloc(c->id, u->link->request, u->code, u->link, &u->timer);
@@ -2127,6 +2181,21 @@ static rlm_radius_udp_connection_t *connection_get(rlm_radius_udp_request_t *u)
 	 */
 	u->c = c;
 
+	/*
+	 *	Remove it from the main thread queue, and add
+	 *	it to the connection queue.
+	 */
+	rad_assert((u->state == REQUEST_STATUS_THREAD) ||
+		   (u->state == REQUEST_STATUS_WRITE));
+	DEBUG("QUEUE AT %d", __LINE__);
+	(void) fr_heap_insert(c->queued, u);
+	u->state = REQUEST_STATUS_QUEUED;
+
+	if (!c->pending) fd_active(c);
+
+	/*
+	 *	Update the connection statistics
+	 */
 	fr_heap_extract(t->active, c);
 	if (c->id->num_free > 0) {
 		fr_heap_insert(t->active, c);
@@ -2151,14 +2220,6 @@ static void mod_clear_backlog(rlm_radius_udp_thread_t *t)
 		rad_assert(u->thread == t);
 		c = connection_get(u);
 		if (!c) break;
-
-		/*
-		 *	Remove it from the main thread queue, and add
-		 *	it to the connection queue.
-		 */
-		(void) fr_heap_insert(c->queued, u);
-
-		if (!c->pending) fd_active(c);
 	}
 
 	/*
@@ -2194,6 +2255,7 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 		return RLM_MODULE_FAIL;
 	}
 
+	u->state = REQUEST_STATUS_WRITE;
 	u->link = link;
 	u->code = request->packet->code;
 	u->thread = t;
@@ -2223,15 +2285,15 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 		 */
 		t->pending = true;
 		(void) fr_heap_insert(t->queued, u);
+		u->state = REQUEST_STATUS_THREAD;
 		return RLM_MODULE_YIELD;
 	}
 
 	/*
-	 *	There are pending requests on this connection.  Insert
-	 *	the new packet into the queue, and let the event loop
-	 *	call conn_writable() as necessary.
+	 *	There are pending requests on this connection.  Let
+	 *	the event loop call conn_writable() as necessary.
 	 */
-	if (c->pending) goto queue_for_write;
+	if (c->pending) return RLM_MODULE_YIELD;
 
 	/*
 	 *	There are no pending packets, try to write to the
@@ -2248,9 +2310,8 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 	 *	actively trying to write.
 	 */
 	if (rcode == 0) {
+		rad_assert(u->state == REQUEST_STATUS_QUEUED);
 		fd_active(c);
-	queue_for_write:
-		(void) fr_heap_insert(c->queued, u);
 		return RLM_MODULE_YIELD;
 	}
 
@@ -2259,12 +2320,16 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 	 *	There are no more packets to write, so we just yield
 	 *	waiting for the reply.
 	 */
-	if (rcode == 1) return RLM_MODULE_YIELD;
+	if (rcode == 1) {
+		rad_assert(u->state == REQUEST_STATUS_SENT);
+		return RLM_MODULE_YIELD;
+	}
 
 	/*
 	 *	We replicated the packet, so we return "ok", and don't
 	 *	care about the reply.
 	 */
+	u->state = REQUEST_STATUS_FINISHED;
 	return RLM_MODULE_OK;
 }
 
