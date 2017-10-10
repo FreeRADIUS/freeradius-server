@@ -463,11 +463,6 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	}
 
 	/*
-	 *	The request must still be tracked for max_request_time
-	 */
-	rad_assert(request->time_order_id >= 0);
-
-	/*
 	 *	Allocate and send the reply.
 	 */
 	ch = request->async->channel;
