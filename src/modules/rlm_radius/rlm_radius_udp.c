@@ -949,7 +949,7 @@ static void status_check_timeout(UNUSED fr_event_list_t *el, struct timeval *now
 	if (!c->pending) fd_active(c);
 }
 
-static void retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
+static int retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 {
 	int				rcode;
 	rlm_radius_udp_connection_t	*c = u->c;
@@ -1016,7 +1016,7 @@ static void retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 					   strlen(c->inst->secret)) < 0) {
 				REDEBUG("Failed re-signing packet");
 				mod_finished_request(c, u);
-				return;
+				return -1;
 			}
 		}
 	}
@@ -1048,7 +1048,7 @@ static void retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 	rcode = write(c->fd, u->packet, u->packet_len);
 	if (rcode < 0) {
 		if (errno == EWOULDBLOCK) {
-			return;
+			return 0;
 		}
 
 		/*
@@ -1056,10 +1056,10 @@ static void retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 		 *	don't bother copying it to 'u'.
 		 */
 		conn_error(c->thread->el, c->fd, 0, errno, c);
-		return;
+		return -1;
 	}
 
-	u->state = PACKET_STATE_SENT;
+	return 1;
 }
 
 static rlm_radius_udp_connection_t *connection_get(rlm_radius_udp_request_t *u);
@@ -1075,7 +1075,6 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	REQUEST				*request;
 
 	rad_assert(u->timer.ev == NULL);
-	rad_assert(u->state == PACKET_STATE_SENT);
 
 	/*
 	 *	The packet timed out while it didn't have a
@@ -1085,11 +1084,13 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	if (!c) {
 		rad_assert(u->state == PACKET_STATE_THREAD);
 		c = connection_get(u);
+		if (c) rad_assert(u->state == PACKET_STATE_QUEUED);
+	} else {
+		rad_assert(u->state == PACKET_STATE_SENT);
 	}
 
 	if (c) {
 		rad_assert(u->timer.retry == &c->inst->parent->retry[u->code]);
-		rad_assert(u->state == PACKET_STATE_QUEUED);
 	}
 
 	request = u->link->request;
@@ -1135,7 +1136,33 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	 */
 	if (c) {
 		RDEBUG("Retransmitting ID %d on connection %s", u->rr->id, c->name);
-		retransmit_packet(u, now);
+		rcode = retransmit_packet(u, now);
+		if (rcode < 0) {
+			RDEBUG("Failed retransmitting packet for connection %s", c->name);
+			mod_finished_request(c, u);
+		}
+
+		/*
+		 *	EWOULDBLOCK.  Leave it in whatever list it was
+		 *	in.
+		 */
+		if (rcode == 0) return;
+
+		switch (u->state) {
+		case PACKET_STATE_QUEUED:
+			(void) fr_heap_extract(c->queued, u);
+			fr_dlist_insert_tail(&c->sent, &u->entry);
+			u->state = PACKET_STATE_SENT;
+			break;
+
+		case PACKET_STATE_SENT:
+			break;
+
+		default:
+			rad_assert(0 == 1);
+			break;
+		}
+
 	} else {
 		rad_assert(u->state == PACKET_STATE_THREAD);
 		RDEBUG("No available connections for retransmission.  Waiting %d.%06ds for retry",
