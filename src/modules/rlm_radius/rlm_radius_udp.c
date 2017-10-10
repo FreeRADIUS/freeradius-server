@@ -922,7 +922,8 @@ static int retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 	 *	Note that we don't change the ID.  We can claim that
 	 *	we randomly chose the same one again. :(
 	 */
-	if (u->code == FR_CODE_ACCOUNTING_REQUEST) {
+	if ((u->code == FR_CODE_ACCOUNTING_REQUEST) &&
+	    (u != c->status_u)) {
 		/*
 		 *	No Acct-Delay-Time, add one manually if
 		 *	there's room.
@@ -1324,7 +1325,8 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	 *	If the accounting packet doesn't have Acct-Delay-Time,
 	 *	then we leave well enough alone.
 	 */
-	if (u->code == FR_CODE_ACCOUNTING_REQUEST) {
+	if ((u->code == FR_CODE_ACCOUNTING_REQUEST) &&
+	    (u != c->status_u)) {
 		uint8_t *attr, *end;
 		uint32_t delay;
 
