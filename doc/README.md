@@ -1,6 +1,6 @@
 # Installation
 
-See the `INSTALL` file, in the parent directory.
+See the `INSTALL.md` file, in the parent directory.
 
 # Configuration Files
 
@@ -79,7 +79,7 @@ Please do not raise general configuration issues there.
 | ``src/main/``			| Source code for the daemon and associated utilities.
 | ``src/lib/``			| Source code for the RADIUS library.
 | ``src/include/``		| Header files.
-| ``src/modules/``		| Dynamic plug-in modules
+| ``src/modules/``		| Dynamic plug-in modules.
 
 # Debugging
 
@@ -95,6 +95,6 @@ these messages.
 
 For further details, see:
 
-http://www.freeradius.org/faq/
+https://www.freeradius.org/faq/
 
 and the `bugs.md`  file, in this directory.

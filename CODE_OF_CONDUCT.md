@@ -23,7 +23,7 @@ topic. The FreeRADIUS community is inclusive by virtue of not being exclusionary
 The following behaviours are expected and requested of all community members:
 
 - Ensure that the rules of the community resource you're using have been reviewed in full, [mailing
-  list guidelines](http://freeradius.org/list/) for the mailing lists, [the guidelines for
+  list guidelines](https://freeradius.org/support/) for the mailing lists, [the guidelines for
   contributing](https://github.com/FreeRADIUS/freeradius-server/blob/v4.0.x/.github/contributing.md)
   for GitHub.
 - Use a neutral tone with a focus on technical arguments and technical discussion.
@@ -65,7 +65,7 @@ expulsion from the community using appropriate mechanisms.
 
 We understand that when participants ask questions, their goal is to obtain help from the community.
 Please be aware that the FreeRADIUS community is not large.  The project has three core members,
-none of whom are dedicated 100% to FreeADIUS.  The project has about seventy modules, each of which
+none of whom are dedicated 100% to FreeRADIUS.  The project has about seventy modules, each of which
 has complex behavior.  All of that code, test cases, and documentation have to be updated with
 limited resources.
 
