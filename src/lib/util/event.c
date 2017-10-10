@@ -50,7 +50,9 @@ RCSID("$Id$")
 
 static FR_NAME_NUMBER const kevent_filter_table[] = {
 	{ "EVFILT_READ",	EVFILT_READ },
+#ifdef EVFILT_EXCEPT
 	{ "EVFILT_EXCEPT",	EVFILT_EXCEPT },
+#endif
 	{ "EVFILT_WRITE",	EVFILT_WRITE },
 #ifdef EVFILT_AIO
 	{ "EVFILT_AIO",		EVFILT_AIO },
