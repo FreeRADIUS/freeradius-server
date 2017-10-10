@@ -540,6 +540,19 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	 */
 	(void) fr_heap_extract(worker->time_order, request);
 	(void) rbtree_deletebydata(worker->dedup, request);
+
+#ifndef NDEBUG
+	rad_assert(request->runnable_id < 0);
+	rad_assert(request->time_order_id < 0);
+	request->async->original_recv_time = NULL;
+	request->async->el = NULL;
+	request->async->process = NULL;
+	fr_dlist_remove(&request->async->tracking.list);
+	request->async->channel = NULL;
+	request->async->packet_ctx = NULL;
+	request->async->listen = NULL;
+#endif
+
 	talloc_free(request);
 
 	if (!worker->num_active) worker_reset_timer(worker);
