@@ -296,7 +296,6 @@ static void conn_idle(rlm_radius_udp_connection_t *c)
 	case CONN_STATUS_CHECKS:
 		if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
 		return;
-
 	}
 
 	/*
@@ -1766,6 +1765,8 @@ static fr_connection_state_t _conn_failed(int fd, fr_connection_state_t state, v
 		if (c->status_u) {
 			rlm_radius_udp_request_t *u = c->status_u;
 
+			if (u->timer.ev) (void) fr_event_timer_delete(c->thread->el, &u->timer.ev);
+
 			memset(&u->timer, 0, sizeof(u->timer));
 			u->timer.retry = &c->inst->parent->retry[u->code];
 
@@ -1774,7 +1775,6 @@ static fr_connection_state_t _conn_failed(int fd, fr_connection_state_t state, v
 			if (u->packet) TALLOC_FREE(u->packet);
 			u->packet_len = 0;
 
-			if (u->timer.ev) (void) fr_event_timer_delete(c->thread->el, &u->timer.ev);
 			fr_dlist_remove(&u->entry);
 			(void) fr_heap_extract(c->queued, c->status_u);
 		}
@@ -1811,6 +1811,42 @@ static fr_connection_state_t _conn_failed(int fd, fr_connection_state_t state, v
 
 		fr_event_fd_delete(c->thread->el, fd, FR_EVENT_FILTER_IO);
 	}
+
+	switch (c->state) {
+	case CONN_INIT:
+	case CONN_OPENING:
+		fr_dlist_remove(&c->entry);
+		break;
+
+	case CONN_FULL:
+		fr_dlist_remove(&c->entry);
+		break;
+
+		/*
+		 *	Active means "alive", and not "has packets".
+		 */
+	case CONN_ACTIVE:
+		(void) fr_heap_extract(c->thread->active, c);
+		if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
+		break;
+
+		/*
+		 *	If it's zombie or pinging, we don't set an
+		 *	idle timer.
+		 */
+	case CONN_ZOMBIE:
+		fr_dlist_remove(&c->entry);
+		if (c->zombie_ev) (void) fr_event_timer_delete(c->thread->el, &c->zombie_ev);
+		break;
+
+	case CONN_STATUS_CHECKS:
+		/* already removed */
+		break;
+
+	}
+
+	c->state = CONN_INIT;
+	fr_dlist_insert_head(&c->thread->opening, &c->entry);
 
 	return FR_CONNECTION_STATE_INIT;
 }
@@ -2269,6 +2305,7 @@ static rlm_radius_udp_connection_t *connection_get(rlm_radius_udp_request_t *u)
 	 */
 	fr_heap_extract(t->active, c);
 	if (c->id->num_free > 0) {
+		rad_assert(c->state == CONN_ACTIVE);
 		fr_heap_insert(t->active, c);
 	} else {
 		fr_dlist_insert_head(&t->full, &c->entry);
