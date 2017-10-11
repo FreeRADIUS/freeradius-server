@@ -113,7 +113,6 @@ typedef struct rlm_radius_udp_connection_t {
 	fr_event_timer_t const	*zombie_ev;		//!< Zombie timeout.
 	struct timeval		zombie_start;		//!< When the zombie period started.
 
-	bool			pending;		//!< Are there packets pending?
 	fr_dlist_t		sent;			//!< List of sent packets.
 
 	uint32_t		max_packet_size;	//!< Our max packet size. may be different from the parent.
@@ -135,9 +134,7 @@ typedef struct rlm_radius_udp_connection_t {
 
 typedef enum rlm_radius_request_state_t {
 	PACKET_STATE_INIT = 0,
-	PACKET_STATE_WRITE,				//!< trying a short-circuit write
 	PACKET_STATE_THREAD,				//!< in the thread queue
-	PACKET_STATE_QUEUED,				//!< in the connection queue
 	PACKET_STATE_SENT,				//!< in the connection "sent" heap
 	PACKET_STATE_RESUMABLE,      			//!< timed out, or received a reply
 	PACKET_STATE_FINISHED,			//!< and done
@@ -329,7 +326,6 @@ static void conn_idle(rlm_radius_udp_connection_t *c)
  */
 static void fd_idle(rlm_radius_udp_connection_t *c)
 {
-	c->pending = false;
 	DEBUG3("Marking socket %s as idle", c->name);
 	if (fr_event_fd_insert(c->conn, c->thread->el, c->fd,
 			       conn_read,
@@ -351,7 +347,6 @@ static void fd_idle(rlm_radius_udp_connection_t *c)
  */
 static void fd_active(rlm_radius_udp_connection_t *c)
 {
-	c->pending = true;
 	DEBUG3("%s - Activating connection %s", c->inst->parent->name, c->name);
 
 	/*
@@ -1092,8 +1087,7 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	 */
 	if (!c) {
 		rad_assert(u->state == PACKET_STATE_THREAD);
-//		c = connection_get(u);
-		rad_assert(!c || (u->state == PACKET_STATE_QUEUED));
+		c = fr_heap_peek(c->thread->active);
 	} else {
 		rad_assert(u->state == PACKET_STATE_SENT);
 	}
@@ -1161,8 +1155,8 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 		if (rcode == 0) return;
 
 		switch (u->state) {
-		case PACKET_STATE_QUEUED:
-//			(void) fr_heap_extract(c->queued, u);
+		case PACKET_STATE_THREAD:
+			(void) fr_heap_extract(c->thread->queued, u);
 			fr_dlist_insert_tail(&c->sent, &u->entry);
 			u->state = PACKET_STATE_SENT;
 			break;
@@ -1207,9 +1201,6 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	rad_assert(c->inst->parent->allowed[u->code] || (u == c->status_u));
 	if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
 
-	rad_assert((u->state == PACKET_STATE_WRITE) ||
-		   (u->state == PACKET_STATE_SENT) ||
-		   (u->state == PACKET_STATE_QUEUED));
 	request = u->link->request;
 
 	/*
@@ -1445,6 +1436,12 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	 *	timers, etc.
 	 */
 	if (c->inst->replicate) {
+		/*
+		 *	Make sure that the ID is free.
+		 */
+		(void) rr_track_delete(c->id, u->rr);
+		u->rr = NULL;
+		u->c = NULL;
 		u->state = PACKET_STATE_FINISHED;
 		return 2;
 	}
@@ -1525,6 +1522,7 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 	rlm_radius_udp_connection_t	*c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
 	rlm_radius_udp_request_t	*u;
 	bool				pending = false;
+	rlm_radius_udp_connection_state_t prev_state = c->state;
 
 	rad_assert(c->idle_ev == NULL); /* if it's writable and we're writing, it can't be idle */
 
@@ -1581,6 +1579,7 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 			(void) fr_heap_insert(c->thread->queued, u);
 			(void) rr_track_delete(c->id, u->rr);
 			u->rr = NULL;
+			u->c = NULL;
 
 			pending = true;
 			conn_transition(c, CONN_BLOCKED);
@@ -1607,10 +1606,12 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 	}
 
 	/*
-	 *	There are more packets to write.  Grab an active
-	 *	connection, and start writing to it.
+	 *	There are more packets to write.  Update our status,
+	 *	and grab another socket to use.
 	 */
 	if (pending) {
+		rlm_radius_udp_connection_t *next;
+
 		switch (c->state) {
 		case CONN_INIT:
 		case CONN_OPENING:
@@ -1619,20 +1620,26 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 			break;
 
 		case CONN_BLOCKED:	/* we're still writable */
+			if (prev_state != CONN_ACTIVE) fd_active(c);
 			break;
 
 		case CONN_FULL:		/* we're no longer writable */
 			fd_idle(c);
 			break;
 
-		case CONN_ZOMBIE:
+		case CONN_ZOMBIE:	/* writable, but other end is not responding */
 			break;
 		}
 
-		c = fr_heap_peek(c->thread->active);
-		if (!c) return;
+		/*
+		 *	Wake up the next connection, and have it drain
+		 *	the input queue.
+		 */
+		next = fr_heap_peek(c->thread->active);
+		if (!next) return;
 
-		conn_writable(el, c->fd, 0, c);
+		rad_assert(next != c);
+		conn_writable(el, next->fd, 0, next);
 		return;
 	}
 
@@ -1689,6 +1696,7 @@ static int udp_request_free(rlm_radius_udp_request_t *u)
 	 *	Delete any tracking entry associated with the packet.
 	 */
 	if (u->rr) {
+		rad_assert(u->c != NULL);
 		(void) rr_track_delete(u->c->id, u->rr);
 		u->rr = NULL;
 	}
@@ -1818,7 +1826,6 @@ static fr_connection_state_t _conn_failed(int fd, fr_connection_state_t state, v
 			u->packet_len = 0;
 
 			fr_dlist_remove(&u->entry);
-//			(void) fr_heap_extract(c->queued, c->status_u);
 		}
 
 		/*
@@ -1891,8 +1898,6 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, UNUSED int f
 
 	rad_assert(c->zombie_ev == NULL);
 	memset(&c->zombie_start, 0, sizeof(c->zombie_start));
-
-	c->pending = false;
 	FR_DLIST_INIT(c->sent);
 
 	/*
@@ -2013,8 +2018,6 @@ static fr_connection_state_t _conn_init(int *fd_out, void *uctx)
 {
 	int				fd;
 	rlm_radius_udp_connection_t	*c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
-
-//	rad_assert(c->state == CONN_INIT);
 
 	/*
 	 *	Open the outgoing socket.
@@ -2234,7 +2237,7 @@ static void conn_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t *t)
 
 static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t *link, void *thread)
 {
-	int				rcode;
+	rlm_rcode_t    			rcode = RLM_MODULE_FAIL;
 	rlm_radius_udp_t		*inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
 	rlm_radius_udp_thread_t		*t = talloc_get_type_abort(thread, rlm_radius_udp_thread_t);
 	rlm_radius_udp_request_t	*u = link->request_io_ctx;
@@ -2253,7 +2256,7 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 		return RLM_MODULE_FAIL;
 	}
 
-	u->state = PACKET_STATE_WRITE;
+	u->state = PACKET_STATE_THREAD;
 	u->link = link;
 	u->code = request->packet->code;
 	u->thread = t;
@@ -2263,8 +2266,22 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 	talloc_set_destructor(u, udp_request_free);
 
 	/*
-	 *	Get a connection.  If they're all full, try to open a
-	 *	new one.
+	 *	Insert the new packet into the thread queue.
+	 */
+	(void) fr_heap_insert(t->queued, u);
+
+	/*
+	 *	There are other pending writes, wait for the event
+	 *	callbacks to wake up a connection and send the packet.
+	 */
+	if (t->pending) return RLM_MODULE_YIELD;
+
+	t->pending = true;
+
+	/*
+	 *	There are no pending writes.  Get a waiting
+	 *	connection.  If they're all full, try to open a new
+	 *	one.
 	 */
 	c = fr_heap_peek(t->active);
 	if (!c) {
@@ -2282,46 +2299,31 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 		 *	or when an existing connection has
 		 *	availability.
 		 */
-		t->pending = true;
-		(void) fr_heap_insert(t->queued, u);
-		u->state = PACKET_STATE_THREAD;
 		return RLM_MODULE_YIELD;
 	}
 
 	/*
-	 *	There are no pending packets, try to write to the
-	 *	socket immediately.  If the write succeeds, we can
-	 *	return the appropriate return code.
+	 *	The connection is active, so try to write to it.
 	 */
-	rcode = conn_write(c, u);
-	if (rcode < 0) return RLM_MODULE_FAIL;
+	conn_writable(t->el, c->fd, 0, c);
 
-	/*
-	 *	Got EWOULDBLOCK, or other recoverable issue writing to the socket.
-	 *
-	 *	Insert it into the pending queue, and mark the FD as
-	 *	actively trying to write.
-	 */
-	if (rcode == 0) {
-		return RLM_MODULE_YIELD;
+	switch (u->state) {
+	case PACKET_STATE_INIT:
+	case PACKET_STATE_RESUMABLE:
+		rad_assert(0 == 1);
+		break;
+
+	case PACKET_STATE_THREAD:
+	case PACKET_STATE_SENT:
+		rcode = RLM_MODULE_YIELD;
+		break;
+
+	case PACKET_STATE_FINISHED:
+		rcode = RLM_MODULE_OK;
+		break;
 	}
 
-	/*
-	 *	The packet was successfully written to the socket.
-	 *	There are no more packets to write, so we just yield
-	 *	waiting for the reply.
-	 */
-	if (rcode == 1) {
-		rad_assert(u->state == PACKET_STATE_SENT);
-		return RLM_MODULE_YIELD;
-	}
-
-	/*
-	 *	We replicated the packet, so we return "ok", and don't
-	 *	care about the reply.
-	 */
-	u->state = PACKET_STATE_FINISHED;
-	return RLM_MODULE_OK;
+	return rcode;
 }
 
 
