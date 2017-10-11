@@ -861,7 +861,7 @@ int fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 		if (count < 0) {
 		error:
 			memcpy(&ef->active, &active, sizeof(ef->active));
-			goto error;
+			return -1;
 		}
 		if (count && (unlikely(kevent(el->kq, evset, count, NULL, 0, NULL) < 0))) {
 			fr_strerror_printf("Failed modifying filters for FD %i: %s", fd, fr_syserror(errno));
