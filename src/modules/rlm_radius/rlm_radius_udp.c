@@ -74,6 +74,7 @@ typedef struct rlm_radius_udp_thread_t {
 	fr_heap_t		*queued;		//!< Queued requests for some new connection.
 
 	fr_heap_t		*active;       		//!< Active connections.
+	fr_dlist_t		blocked;      		//!< blocked connections, waiting for writable
 	fr_dlist_t		full;      		//!< Full connections.
 	fr_dlist_t		zombie;      		//!< Zombie connections.
 	fr_dlist_t		opening;      		//!< Opening connections.
@@ -83,9 +84,9 @@ typedef enum rlm_radius_udp_connection_state_t {
 	CONN_INIT = 0,					//!< Configured but not started.
 	CONN_OPENING,					//!< Trying to connect.
 	CONN_ACTIVE,					//!< Available to send packets.
-	CONN_FULL,					//!< Live, but can't send more packets.
+	CONN_BLOCKED,					//!< blocked, but can't write to the socket
+	CONN_FULL,					//!< Live, but has no more IDs to use.
 	CONN_ZOMBIE,					//!< Has had a retransmit timeout.
-	CONN_STATUS_CHECKS,				//!< Status-checks, nothing else.
 } rlm_radius_udp_connection_state_t;
 
 typedef struct rlm_radius_udp_request_t rlm_radius_udp_request_t;
@@ -199,7 +200,6 @@ static const CONF_PARSER module_config[] = {
 static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int fd_errno, void *uctx);
 static void conn_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx);
 static void conn_writable(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx);
-static void mod_clear_backlog(rlm_radius_udp_thread_t *t);
 
 static int conn_cmp(void const *one, void const *two)
 {
@@ -266,6 +266,7 @@ static void conn_idle(rlm_radius_udp_connection_t *c)
 		/*
 		 *	Still has packets: can't be idle.
 		 */
+	case CONN_BLOCKED:
 	case CONN_FULL:
 		if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
 		return;
@@ -290,7 +291,6 @@ static void conn_idle(rlm_radius_udp_connection_t *c)
 		 *	idle timer.
 		 */
 	case CONN_ZOMBIE:
-	case CONN_STATUS_CHECKS:
 		if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
 		return;
 	}
@@ -402,42 +402,6 @@ static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeva
 	talloc_free(c);
 }
 
-
-/** A connection is "zombie"
- *
- */
-static void conn_zombie(rlm_radius_udp_connection_t *c)
-{
-	struct timeval when;
-
-	/*
-	 *	Already zombie, don't do anything
-	 */
-	if (c->state == CONN_ZOMBIE) return;
-
-	rad_assert(c->state != CONN_STATUS_CHECKS);
-
-	/*
-	 *	Remember when we became a zombie, and move the
-	 *	connection from the active heap to the zombie list.
-	 */
-	gettimeofday(&when, NULL);
-
-	// @todo - hysteresis... if we're close to c->mrs_time, don't be zombie...
-
-	(void) fr_heap_extract(c->thread->active, c);
-	fr_dlist_insert_head(&c->thread->zombie, &c->entry);
-	c->state = CONN_ZOMBIE;
-	c->zombie_start = when;
-
-	fr_timeval_add(&when, &when, &c->inst->parent->zombie_period);
-	WARN("%s - Entering Zombie state - connection %s", c->inst->parent->name, c->name);
-
-	if (fr_event_timer_insert(c, c->thread->el, &c->zombie_ev, &when, conn_zombie_timeout, c) < 0) {
-		ERROR("%s - Failed inserting zombie timeout for connection %s",
-		      c->inst->parent->name, c->name);
-	}
-}
 
 /** Connection errored
  *
@@ -594,6 +558,79 @@ static void status_check_reply(rlm_radius_udp_connection_t *c, REQUEST *request)
 	}
 }
 
+static void conn_transition(rlm_radius_udp_connection_t *c, rlm_radius_udp_connection_state_t state)
+{
+	struct timeval when;
+
+	if (c->state == state) return;
+
+	/*
+	 *	Get it out of the old state.
+	 */
+	switch (c->state) {
+	case CONN_INIT:
+		break;
+
+	case CONN_OPENING:
+	case CONN_FULL:
+	case CONN_BLOCKED:
+		fr_dlist_remove(&c->entry);
+		break;
+
+	case CONN_ACTIVE:
+		(void) fr_heap_extract(c->thread->active, c);
+		if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
+		break;
+
+	case CONN_ZOMBIE:
+		fr_dlist_remove(&c->entry);
+		if (c->zombie_ev) (void) fr_event_timer_delete(c->thread->el, &c->zombie_ev);
+		break;
+	}
+
+	/*
+	 *	And move it to the new state.
+	 */
+	c->state = state;
+	switch (c->state) {
+	case CONN_INIT:
+		rad_assert(0 == 1);
+		break;
+
+	case CONN_ACTIVE:
+		(void) fr_heap_insert(c->thread->active, c);
+		// @todo - add idle timeout
+		break;
+
+	case CONN_OPENING:
+		fr_dlist_insert_head(&c->thread->opening, &c->entry);
+		break;
+
+	case CONN_BLOCKED:
+		fr_dlist_insert_head(&c->thread->blocked, &c->entry);
+		break;
+
+	case CONN_FULL:
+		fr_dlist_insert_head(&c->thread->full, &c->entry);
+		break;
+
+	case CONN_ZOMBIE:
+		fr_dlist_insert_head(&c->thread->zombie, &c->entry);
+
+		gettimeofday(&when, NULL);
+		c->zombie_start = when;
+
+		fr_timeval_add(&when, &when, &c->inst->parent->zombie_period);
+		WARN("%s - Entering Zombie state - connection %s", c->inst->parent->name, c->name);
+
+		if (fr_event_timer_insert(c, c->thread->el, &c->zombie_ev, &when, conn_zombie_timeout, c) < 0) {
+			ERROR("%s - Failed inserting zombie timeout for connection %s",
+			      c->inst->parent->name, c->name);
+		}
+		break;
+	}
+}
+
 /** Read reply packets.
  *
  */
@@ -675,11 +712,6 @@ redo:
 	switch (c->state) {
 	default:
 		rad_assert(0 == 1);
-		break;
-
-	case CONN_STATUS_CHECKS:
-		// @todo - require N responses before marking it alive.  See RFC 3539 for details
-		fr_dlist_remove(&c->entry);
 		break;
 
 	case CONN_ZOMBIE:
@@ -1075,10 +1107,6 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 		rad_assert(u->state == PACKET_STATE_SENT);
 	}
 
-	if (c) {
-		rad_assert(u->timer.retry == &c->inst->parent->retry[u->code]);
-	}
-
 	rcode = rr_track_retry(&u->timer, now);
 	if (rcode < 0) {
 		if (c) {
@@ -1105,7 +1133,7 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 
 	if (rcode == 0) {
 		if (c) {
-			conn_zombie(c);
+			conn_transition(c, CONN_ZOMBIE);
 			REDEBUG("Failing proxied request ID %d due to lack of response on connection %s",
 				u->rr->id, c->name);
 		} else {
@@ -1445,8 +1473,6 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 		u->packet_len = packet_len;
 
 		if (!c->inst->parent->synchronous) {
-			rad_assert(u->timer.retry == &c->inst->parent->retry[u->code]);
-
 			if (rr_track_start(&u->timer) < 0) {
 				RDEBUG("Failed starting retransmit tracking");
 				return -1;
@@ -1476,8 +1502,6 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 		}
 
 	} else if (u->timer.count == 0) {
-		rad_assert(u->timer.retry == &c->inst->parent->retry[u->code]);
-
 		if (rr_track_start(&u->timer) < 0) {
 			RDEBUG("Failed starting retransmit tracking");
 			return -1;
@@ -1505,28 +1529,77 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 /** There's space available to write data, so do that...
  *
  */
-static void conn_writable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
+static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
 {
 	rlm_radius_udp_connection_t	*c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
 	rlm_radius_udp_request_t	*u;
-	bool				pending;
+	bool				pending = false;
 
 	rad_assert(c->idle_ev == NULL); /* if it's writable and we're writing, it can't be idle */
 
 	DEBUG3("%s - Writing packets for connection %s", c->inst->parent->name, c->name);
 
 	/*
-	 *	Clear our backlog
+	 *	Empty the global queue of packets to send.
 	 */
-	while ((u = fr_heap_pop(c->queued)) != NULL) {
+	while ((u = fr_heap_pop(c->thread->queued)) != NULL) {
 		int rcode;
 
-		rad_assert(u->state == PACKET_STATE_QUEUED);
+		u->rr = rr_track_alloc(c->id, u->link->request, u->code, u->link, &u->timer);
+
+		/*
+		 *	Can't allocate any more IDs, re-insert the
+		 *	packet back onto the main thread queue, and
+		 *	stop writing packets.
+		 */
+		if (!u->rr) {
+			(void) fr_heap_insert(c->thread->queued, u);
+
+			pending = true;
+			conn_transition(c, CONN_FULL);
+			break;
+		}
+
+		rad_assert(u->state == PACKET_STATE_THREAD);
+
+		/*
+		 *	The packet already has a timer associated with
+		 *	it.  Don't send it right now, but instead just
+		 *	put it into the "sent" list, so that it will
+		 *	be sent when the timer fires.
+		 */
+		if (u->timer.ev) {
+			fr_dlist_insert_tail(&c->sent, &u->entry);
+			u->state = PACKET_STATE_SENT;
+			u->c = c;
+			continue;
+		}
+
+		/*
+		 *	Encode the packet, and do various magical
+		 *	transformations.
+		 */
 		rcode = conn_write(c, u);
 
-		// @todo - do something intelligent on error..
-		if (rcode <= 0) break;
+		/*
+		 *	The write returned EWOULDBLOCK.  We re-insert
+		 *	the packet back onto the main thread queue,
+		 *	and stop writing packets.
+		 */
+		if (rcode == 0) {
+			(void) fr_heap_insert(c->thread->queued, u);
+			(void) rr_track_delete(c->id, u->rr);
+			u->rr = NULL;
 
+			pending = true;
+			conn_transition(c, CONN_BLOCKED);
+			break;
+		}
+
+		/*
+		 *	The packet was sent, and we should wait for
+		 *	the reply.
+		 */
 		if (rcode == 1) {
 			fr_dlist_insert_tail(&c->sent, &u->entry);
 			u->state = PACKET_STATE_SENT;
@@ -1534,34 +1607,49 @@ static void conn_writable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int 
 		}
 
 		/*
-		 *	Was replicated: can resume it immediately.
+		 *	The packet was replicated, we don't care about
+		 *	the reply.  Just mark the request as
+		 *	resumable.
 		 */
 		u->state = PACKET_STATE_RESUMABLE;
 		unlang_resumable(u->link->request);
 	}
 
 	/*
-	 *	Check if we have to enable or disable writing on the socket.
+	 *	There are more packets to write.  Grab an active
+	 *	connection, and start writing to it.
 	 */
-	pending = (fr_heap_num_elements(c->queued) > 0);
-	if (!pending && c->pending) {
-		/*
-		 *	The queue is empty, and we apparently just
-		 *	emptied it.  Set the FD to idle.
-		 */
-		fd_idle(c);
+	if (pending) {
+		switch (c->state) {
+		case CONN_INIT:
+		case CONN_OPENING:
+		case CONN_ACTIVE:	/* all packets should have been sent! */
+			rad_assert(0 == 1);
+			break;
+
+		case CONN_BLOCKED:	/* we're still writable */
+			break;
+
+		case CONN_FULL:		/* we're no longer writable */
+			fd_idle(c);
+			break;
+
+		case CONN_ZOMBIE:
+			break;
+		}
+
+		c = fr_heap_peek(c->thread->active);
+		if (!c) return;
+
+		conn_writable(el, c->fd, 0, c);
+		return;
 	}
 
 	/*
-	 *	This check is here only for mod_push(), which
-	 *	calls us when there are no packets pending on
-	 *	a socket.  If the connection is writable, and
-	 *	the write succeeds, and there's nothing more
-	 *	to write, we don't need to call fd_active().
+	 *	There are no more packets to write.  Set ourselves to
+	 *	idle.
 	 */
-	else if (pending && !c->pending) {
-		fd_active(c);
-	}
+	fd_idle(c);
 }
 
 /** Shutdown/close a file descriptor
@@ -1596,7 +1684,6 @@ static void _conn_close(int fd, void *uctx)
 	case CONN_INIT:
 		break;
 
-	case CONN_STATUS_CHECKS:
 	case CONN_OPENING:
 	case CONN_FULL:
 	case CONN_ZOMBIE:
@@ -1677,7 +1764,6 @@ static int udp_request_free(rlm_radius_udp_request_t *u)
 		 *	is doing status checks.  Don't do it again.
 		 */
 	case CONN_ZOMBIE:
-	case CONN_STATUS_CHECKS:
 		return 0;
 
 		/*
@@ -1685,6 +1771,7 @@ static int udp_request_free(rlm_radius_udp_request_t *u)
 		 */
 	case CONN_ACTIVE:
 	case CONN_FULL:
+	case CONN_BLOCKED:
 		break;
 	}
 
@@ -1707,7 +1794,7 @@ static int udp_request_free(rlm_radius_udp_request_t *u)
 	 *	The home server hasn't responded in a long time.  Mark
 	 *	the connection as "zombie".
 	 */
-	conn_zombie(u->c);
+	conn_transition(u->c, CONN_ZOMBIE);
 
 	return 0;
 }
@@ -1798,41 +1885,7 @@ static fr_connection_state_t _conn_failed(int fd, fr_connection_state_t state, v
 		fr_event_fd_delete(c->thread->el, fd, FR_EVENT_FILTER_IO);
 	}
 
-	switch (c->state) {
-	case CONN_INIT:
-	case CONN_OPENING:
-		fr_dlist_remove(&c->entry);
-		break;
-
-	case CONN_FULL:
-		fr_dlist_remove(&c->entry);
-		break;
-
-		/*
-		 *	Active means "alive", and not "has packets".
-		 */
-	case CONN_ACTIVE:
-		(void) fr_heap_extract(c->thread->active, c);
-		if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
-		break;
-
-		/*
-		 *	If it's zombie or pinging, we don't set an
-		 *	idle timer.
-		 */
-	case CONN_ZOMBIE:
-		fr_dlist_remove(&c->entry);
-		if (c->zombie_ev) (void) fr_event_timer_delete(c->thread->el, &c->zombie_ev);
-		break;
-
-	case CONN_STATUS_CHECKS:
-		/* already removed */
-		break;
-
-	}
-
-	c->state = CONN_INIT;
-	fr_dlist_insert_head(&c->thread->opening, &c->entry);
+	conn_transition(c, CONN_OPENING);
 
 	return FR_CONNECTION_STATE_INIT;
 }
@@ -1853,15 +1906,6 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, UNUSED int f
 	DEBUG("%s - Connection open - %s", c->inst->parent->name, c->name);
 
 	/*
-	 *	Remove the connection from the "opening" list, and add
-	 *	it to the "active" list.
-	 */
-	rad_assert(c->state == CONN_OPENING);
-	fr_dlist_remove(&c->entry);
-	fr_heap_insert(t->active, c);
-	c->state = CONN_ACTIVE;
-
-	/*
 	 *	Connection is "active" now.  i.e. we prefer the newly
 	 *	opened connection for sending packets.
 	 *
@@ -1869,6 +1913,12 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, UNUSED int f
 	 */
 	gettimeofday(&c->mrs_time, NULL);
 	c->last_reply = c->mrs_time;
+
+	/*
+	 *	If the connection is open, it must be writable.
+	 */
+	rad_assert(c->state == CONN_OPENING);
+	conn_transition(c, CONN_ACTIVE);
 
 	rad_assert(c->zombie_ev == NULL);
 	memset(&c->zombie_start, 0, sizeof(c->zombie_start));
@@ -1888,6 +1938,7 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, UNUSED int f
 
 		link = talloc_zero(c, rlm_radius_link_t);
 		u = talloc_zero(c, rlm_radius_udp_request_t);
+
 		request = request_alloc(link);
 		request->async = talloc_zero(request, fr_async_t);
 		talloc_const_free(request->name);
@@ -1976,20 +2027,10 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, UNUSED int f
 	}
 
 	/*
-	 *	Now that we're open, also push pending requests from
-	 *	the main thread queue onto the queue for this
-	 *	connection.
+	 *	Now that we're open, assume that the connection is
+	 *	writable.
 	 */
-	if (t->pending) mod_clear_backlog(t);
-
-	/*
-	 *	If we have data pending, add the writable event immediately
-	 */
-	if (c->pending) {
-		fd_active(c);
-	} else {
-		fd_idle(c);
-	}
+	if (t->pending) conn_writable(c->thread->el, fd, 0, c);
 
 	return FR_CONNECTION_STATE_CONNECTED;
 }
@@ -2140,7 +2181,6 @@ static int _conn_free(rlm_radius_udp_connection_t *c)
 	case CONN_INIT:
 		break;
 
-	case CONN_STATUS_CHECKS:
 	case CONN_OPENING:
 	case CONN_FULL:
 	case CONN_ZOMBIE:
@@ -2257,7 +2297,6 @@ static rlm_radius_udp_connection_t *connection_get(rlm_radius_udp_request_t *u)
 	(void) talloc_get_type_abort(c, rlm_radius_udp_connection_t);
 	rad_assert(c->state == CONN_ACTIVE);
 
-	u->timer.retry = &c->inst->parent->retry[u->code];
 	u->rr = rr_track_alloc(c->id, u->link->request, u->code, u->link, &u->timer);
 	if (!u->rr) {
 		rad_assert(0 == 1);
@@ -2296,38 +2335,6 @@ static rlm_radius_udp_connection_t *connection_get(rlm_radius_udp_request_t *u)
 }
 
 
-static void mod_clear_backlog(rlm_radius_udp_thread_t *t)
-{
-	rlm_radius_udp_request_t	*u;
-	rlm_radius_udp_connection_t	*c;
-
-	c = fr_heap_peek(t->active);
-	if (!c) return;
-
-	while ((u = fr_heap_pop(t->queued)) != NULL) {
-		rad_assert(u->thread == t);
-		c = connection_get(u);
-		if (!c) break;
-
-		/*
-		 *	The packet already has a timer associated with
-		 *	it.  Just place it into the "sent" queue.
-		 */
-		if (u->timer.ev) {
-			rad_assert(u->state == PACKET_STATE_QUEUED);
-			(void) fr_heap_extract(c->queued, u);
-			fr_dlist_insert_tail(&c->sent, &u->entry);
-			u->state = PACKET_STATE_SENT;
-		}
-	}
-
-	/*
-	 *	Update the pending flag.
-	 */
-	t->pending = (fr_heap_num_elements(t->queued) > 0);
-}
-
-
 static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t *link, void *thread)
 {
 	int				rcode;
@@ -2338,11 +2345,6 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 
 	rad_assert(request->packet->code > 0);
 	rad_assert(request->packet->code < FR_MAX_PACKET_CODE);
-
-	/*
-	 *	Clear the backlog before sending any new packets.
-	 */
-	if (t->pending) mod_clear_backlog(t);
 
 	/*
 	 *	If configured, and we don't have any active
@@ -2358,6 +2360,7 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 	u->link = link;
 	u->code = request->packet->code;
 	u->thread = t;
+	u->timer.retry = &inst->parent->retry[u->code];
 	FR_DLIST_INIT(u->entry);
 
 	talloc_set_destructor(u, udp_request_free);
@@ -2554,8 +2557,9 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 
 	t->pending = false;
 	t->queued = fr_heap_create(queue_cmp, offsetof(rlm_radius_udp_request_t, heap_id));
-	FR_DLIST_INIT(t->zombie);
+	FR_DLIST_INIT(t->blocked);
 	FR_DLIST_INIT(t->full);
+	FR_DLIST_INIT(t->zombie);
 	FR_DLIST_INIT(t->opening);
 
 	t->active = fr_heap_create(conn_cmp, offsetof(rlm_radius_udp_connection_t, heap_id));
