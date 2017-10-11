@@ -1080,7 +1080,7 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	if (!c) {
 		rad_assert(u->state == PACKET_STATE_THREAD);
 		c = connection_get(u);
-		if (c) rad_assert(u->state == PACKET_STATE_QUEUED);
+		rad_assert(!c || (u->state == PACKET_STATE_QUEUED));
 	} else {
 		rad_assert(u->state == PACKET_STATE_SENT);
 	}
