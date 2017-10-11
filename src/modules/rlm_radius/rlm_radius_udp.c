@@ -119,8 +119,6 @@ typedef struct rlm_radius_udp_connection_t {
 	uint32_t		max_packet_size;	//!< Our max packet size. may be different from the parent.
 	int			fd;			//!< File descriptor.
 
-	int			active_requests;	//!< number of active requests handled by this connection
-
 	fr_ipaddr_t		dst_ipaddr;		//!< IP of the home server. stupid 'const' issues.
 	uint16_t		dst_port;		//!< Port of the home server.
 	fr_ipaddr_t		src_ipaddr;		//!< Our source IP.
@@ -281,7 +279,6 @@ static void conn_idle(rlm_radius_udp_connection_t *c)
 		 */
 		if ((fr_heap_num_elements(c->queued) == 0) &&
 		    (FR_DLIST_FIRST(c->sent) == NULL)) {
-			rad_assert(c->active_requests == 0);
 			break;
 		}
 
@@ -396,7 +393,6 @@ static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeva
 
 		(void) fr_heap_insert(c->queued, u);
 		u->state = PACKET_STATE_QUEUED;
-		c->active_requests++;
 		if (!c->pending) fd_active(c);
 		return;
 	}
@@ -477,14 +473,10 @@ static void mod_finished_request(rlm_radius_udp_connection_t *c, rlm_radius_udp_
 
 		case PACKET_STATE_QUEUED:
 			(void) fr_heap_extract(c->queued, u);
-			rad_assert(c->active_requests > 0);
-			c->active_requests--;
 			break;
 
 		case PACKET_STATE_SENT:
 			fr_dlist_remove(&u->entry);
-			rad_assert(c->active_requests > 0);
-			c->active_requests--;
 			break;
 
 		default:
@@ -891,8 +883,6 @@ done:
 		rad_assert(u->state == PACKET_STATE_SENT);
 		fr_dlist_remove(&u->entry);
 		u->state = PACKET_STATE_INIT;
-		rad_assert(c->active_requests > 0);
-		c->active_requests--;
 
 	} else {
 		/*
@@ -1651,14 +1641,10 @@ static int udp_request_free(rlm_radius_udp_request_t *u)
 
 	case PACKET_STATE_QUEUED:
 		(void) fr_heap_extract(u->c->queued, u);
-		rad_assert(u->c->active_requests > 0);
-		u->c->active_requests--;
 		break;
 
 	case PACKET_STATE_SENT:
 		fr_dlist_remove(&u->entry);
-		rad_assert(u->c->active_requests > 0);
-		u->c->active_requests--;
 		break;
 
 	default:
@@ -2114,8 +2100,6 @@ static int _conn_free(rlm_radius_udp_connection_t *c)
 
 		rad_assert(u->state == PACKET_STATE_SENT);
 		rad_assert(u->c == c);
-		rad_assert(c->active_requests > 0);
-		c->active_requests--;
 		u->c = NULL;
 
 		/*
@@ -2138,8 +2122,6 @@ static int _conn_free(rlm_radius_udp_connection_t *c)
 	while ((u = fr_heap_pop(c->queued)) != NULL) {
 		rad_assert(u->state == PACKET_STATE_QUEUED);
 		rad_assert(u->c == c);
-		rad_assert(c->active_requests > 0);
-		c->active_requests--;
 		u->c = NULL;
 
 		u->rr = NULL;
@@ -2149,7 +2131,6 @@ static int _conn_free(rlm_radius_udp_connection_t *c)
 		t->pending = true;
 	}
 
-	rad_assert(c->active_requests == 0);
 
 	switch (c->state) {
 	default:
@@ -2296,7 +2277,6 @@ static rlm_radius_udp_connection_t *connection_get(rlm_radius_udp_request_t *u)
 		   (u->state == PACKET_STATE_WRITE));
 	(void) fr_heap_insert(c->queued, u);
 	u->state = PACKET_STATE_QUEUED;
-	c->active_requests++;
 
 	if (!c->pending) fd_active(c);
 
