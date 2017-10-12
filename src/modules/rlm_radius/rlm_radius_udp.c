@@ -408,6 +408,7 @@ static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeva
 		if (rcode == 1) {
 			FR_DLIST_INIT(u->entry); /* not in any "sent" list */
 			u->state = PACKET_STATE_SENT;
+			u->c = c;
 			return;
 		}
 
@@ -451,21 +452,6 @@ static void mod_finished_request(rlm_radius_udp_connection_t *c, rlm_radius_udp_
 	 *	request from the "sent" list for this connection.
 	 */
 	if (c) {
-		switch (u->state) {
-		case PACKET_STATE_THREAD:
-			(void) fr_heap_extract(u->thread->queued, u);
-			break;
-
-		case PACKET_STATE_SENT:
-			fr_dlist_remove(&u->entry);
-			break;
-
-		default:
-			break;
-		}
-
-		conn_idle(c);
-
 		/*
 		 *	Status check packets are never removed from
 		 *	the connection, and their IDs are never
@@ -476,16 +462,18 @@ static void mod_finished_request(rlm_radius_udp_connection_t *c, rlm_radius_udp_
 			return;
 		}
 
-		/*
-		 *	Deallocate the ID.
-		 */
-		if (u->rr) (void) rr_track_delete(c->id, u->rr);
+		rad_assert(u->state == PACKET_STATE_SENT);
+
+		fr_dlist_remove(&u->entry);
+		(void) rr_track_delete(c->id, u->rr);
 		u->rr = NULL;
 		u->c = NULL;
+
+		conn_idle(c);
+
 	} else {
-		if (u->state == PACKET_STATE_THREAD) {
-			(void) fr_heap_extract(u->thread->queued, u);
-		}
+		rad_assert(u->state == PACKET_STATE_THREAD);
+		(void) fr_heap_extract(u->thread->queued, u);
 		rad_assert(u->rr == NULL);
 	}
 
@@ -544,6 +532,7 @@ static void protocol_error_reply(rlm_radius_udp_connection_t *c, REQUEST *reques
 	if ((error_cause->vp_uint32 == 601) &&
 	    c->inst->response_length &&
 	    ((vp = fr_pair_find_by_da(request->reply->vps, c->inst->response_length, TAG_ANY)) != NULL)) {
+
 		if (vp->vp_uint32 > c->buflen) {
 			request->module = c->inst->parent->name;
 			RDEBUG("Increasing buffer size to %u for connection %s", vp->vp_uint32, c->name);
@@ -558,10 +547,34 @@ static void protocol_error_reply(rlm_radius_udp_connection_t *c, REQUEST *reques
 /** Deal with Status-Server replies, and possible negotiation
  *
  */
-static void status_check_reply(rlm_radius_udp_connection_t *c, REQUEST *request)
+static void status_check_reply(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *u, REQUEST *request)
 {
 	VALUE_PAIR *vp;
 
+	/*
+	 *	Remove all timers associated with the packet.
+	 */
+	if (u->timer.ev) (void) fr_event_timer_delete(u->thread->el, &u->timer.ev);
+
+	/*
+	 *	Delete the reply VPs, but leave the request VPs in
+	 *	place.
+	 */
+#ifdef __clang_analyzer__
+	if (request->reply)
+#endif
+		fr_pair_list_free(&request->reply->vps);
+
+	rad_assert(u->state == PACKET_STATE_SENT);
+	fr_dlist_remove(&u->entry);
+	u->state = PACKET_STATE_INIT;
+
+	if (u->code != FR_CODE_STATUS_SERVER) return;
+
+	/*
+	 *	Allow Response-Length in replies to Status-Server
+	 *	packets.
+	 */
 	if (c->inst->response_length &&
 	    ((vp = fr_pair_find_by_da(request->reply->vps, c->inst->response_length, TAG_ANY)) != NULL)) {
 		if (vp->vp_uint32 > c->buflen) {
@@ -916,23 +929,8 @@ done:
 	 *	We received the response to a Status-Server
 	 *	check.
 	 */
-	if (c->status_u == u) {
-		if (u->code == FR_CODE_STATUS_SERVER) {
-			status_check_reply(c, request);
-		}
-
-		/*
-		 *	Delete the reply, but leave the request VPs in
-		 *	place.
-		 */
-#ifdef __clang_analyzer__
-		if (request->reply)
-#endif
-			fr_pair_list_free(&request->reply->vps);
-
-		rad_assert(u->state == PACKET_STATE_SENT);
-		fr_dlist_remove(&u->entry);
-		u->state = PACKET_STATE_INIT;
+	if (u == c->status_u) {
+		status_check_reply(c, u, request);
 
 	} else {
 		/*
@@ -1147,6 +1145,7 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 		} else {
 			REDEBUG("No response to proxied request");
 		}
+
 		mod_finished_request(c, u);
 		return;
 	}
@@ -1207,6 +1206,8 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 
 		case PACKET_STATE_SENT:
 			/* do nothing */
+			rad_assert(u->rr != NULL);
+			rad_assert(u->c != NULL);
 			break;
 
 		default:
@@ -1224,8 +1225,10 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	case PACKET_STATE_THREAD:
 		rad_assert(u != c->status_u);
 		(void) fr_heap_extract(c->thread->queued, u);
+
 		fr_dlist_insert_tail(&c->sent, &u->entry);
 		u->state = PACKET_STATE_SENT;
+		u->c = c;
 		break;
 
 	case PACKET_STATE_SENT:
@@ -1662,6 +1665,8 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 		 */
 		else if (rcode == 0) {
 			(void) fr_heap_insert(c->thread->queued, u);
+			u->state = PACKET_STATE_THREAD;
+
 			(void) rr_track_delete(c->id, u->rr);
 			u->rr = NULL;
 			u->c = NULL;
@@ -1678,6 +1683,7 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 		else if (rcode == 1) {
 			fr_dlist_insert_tail(&c->sent, &u->entry);
 			u->state = PACKET_STATE_SENT;
+			u->c = c;
 			continue;
 		}
 
@@ -1933,10 +1939,9 @@ static fr_connection_state_t _conn_failed(int fd, fr_connection_state_t state, v
 			/*
 			 *	Do NOT change u->timer.ev
 			 */
-			u->rr = NULL;
-
 			rad_assert(u->state == PACKET_STATE_SENT);
 			fr_dlist_remove(&u->entry);
+			u->rr = NULL;
 			u->c = NULL;
 			(void) fr_heap_insert(c->thread->queued, u);
 			u->state = PACKET_STATE_THREAD;
@@ -2052,6 +2057,7 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, UNUSED int f
 		request->packet->code = u->code;
 		u->c = c;
 		u->link = link;
+		u->thread = t;
 
 		/*
 		 *	Reserve a permanent ID for the packet.  This
@@ -2196,13 +2202,13 @@ static int _conn_free(rlm_radius_udp_connection_t *c)
 
 		rad_assert(u->state == PACKET_STATE_SENT);
 		rad_assert(u->c == c);
-		u->c = NULL;
 
 		/*
 		 *	Don't bother freeing individual entries.  They
 		 *	will get deleted when c->id is free'd.
 		 */
 		u->rr = NULL;
+		u->c = NULL;
 
 		if (u->timer.ev) (void) fr_event_timer_delete(c->thread->el, &u->timer.ev);
 
