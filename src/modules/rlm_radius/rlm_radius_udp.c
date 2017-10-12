@@ -196,6 +196,7 @@ static const CONF_PARSER module_config[] = {
 static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int fd_errno, void *uctx);
 static void conn_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx);
 static void conn_writable(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx);
+static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *u);
 
 static int conn_cmp(void const *one, void const *two)
 {
@@ -365,7 +366,7 @@ static void fd_active(rlm_radius_udp_connection_t *c)
 }
 
 
-/** Close a socket due to zombie timeout
+/** Mark a connection "zombie" due to zombie timeout.
  *
  */
 static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
@@ -375,27 +376,49 @@ static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeva
 	ERROR("%s - Zombie timeout for connection %s", c->inst->parent->name, c->name);
 
 	/*
-	 *	If we're doing Status-Server checks, add the
-	 *	pre-created packet to the outgoing queue.  It will be
-	 *	sent as soon as the connection is active.  The
-	 *	conn_write() routine will also take care of setting
-	 *	the correct timers / timeout functions.
+	 *	If we have Status-Server packets, start sending those now.
 	 */
 	if (c->status_u) {
-#if 0
+		int rcode;
 		rlm_radius_udp_request_t *u = c->status_u;
 
-		// @todo - just write the damned thing to the socket.
-		// If the socket is blocked, do the retransmit thing.
+		/*
+		 *	Re-initialize the timers.
+		 */
+		u->timer.count = 0;
 
-		(void) fr_heap_insert(c->queued, u);
-		u->state = PACKET_STATE_QUEUED;
-		if (!c->pending) fd_active(c);
-#endif
+		rcode = conn_write(c, u);
+		if (rcode < 0) {
+			DEBUG2("%s - Failed writing status check, closing connection %s",
+			       c->inst->parent->name, c->name);
+			talloc_free(c);
+			return;
+		}
+
+		/*
+		 *	It returned EWOULDBLOCK.  Wait for the
+		 *	retransmission timer to fire.
+		 */
+		if (rcode == 0) {
+			DEBUG2("%s - EWOULDBLOCK for status check on connection %s",
+			       c->inst->parent->name, c->name);
+			return;
+		}
+
+		if (rcode == 1) {
+			FR_DLIST_INIT(u->entry);
+			u->state = PACKET_STATE_SENT;
+			return;
+		}
+
+		/*
+		 *	Status check packets are never replicated.
+		 */
+		rad_assert(0 == 1);
 		return;
 	}
 
-	DEBUG2("%s - No status_check response, closing connection", c->inst->parent->name);
+	DEBUG2("%s - No status_check response, closing connection %s", c->inst->parent->name, c->name);
 
 	talloc_free(c);
 }
@@ -1239,14 +1262,15 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	}
 
 	/*
-	 *	Every status check packet has an Event-Timestamp.
-	 *	Which changes every time we send a packet, but it
-	 *	doesn't have Proxy-State.
+	 *	Every status check packet has an Event-Timestamp.  The
+	 *	timestamp changes every time we send a packet.  Status
+	 *	check packets never have Proxy-State, because we
+	 *	generate them, and they're not proxied.
 	 */
 	if (u == c->status_u) {
 		VALUE_PAIR *vp;
 
-		if (u->code == FR_CODE_STATUS_SERVER) proxy_state = 0;
+		proxy_state = 0;
 		vp = fr_pair_find_by_num(request->packet->vps, 0, FR_EVENT_TIMESTAMP, TAG_ANY);
 		if (vp) vp->vp_uint32 = time(NULL);
 	}
@@ -1279,8 +1303,8 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	rdebug_pair_list(L_DBG_LVL_2, request, request->packet->vps, NULL);
 
 	/*
-	 *	Might have been sent and then given up
-	 *	on... free the raw data.
+	 *	Might have been sent and then given up on... free the
+	 *	raw data so we can re-encode it.
 	 */
 	if (u->packet) {
 		TALLOC_FREE(u->packet);
@@ -1435,7 +1459,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	 *	responses.  Don't do any retransmission
 	 *	timers, etc.
 	 */
-	if (c->inst->replicate) {
+	if (c->inst->replicate && (u != c->status_u)) {
 		/*
 		 *	Make sure that the ID is free.
 		 */
@@ -1489,26 +1513,36 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 			RDEBUG("Proxying request.  Relying on NAS to perform retransmissions");
 		}
 
-	} else if (u->timer.count == 0) {
+		return 1;
+	}
+
+	/*
+	 *	Status-Server only checks.
+	 */
+	if (u->timer.count == 0) {
 		if (rr_track_start(&u->timer) < 0) {
-			RDEBUG("Failed starting retransmit tracking");
+			RDEBUG("%s - Failed starting retransmit tracking for connection %s",
+			       c->inst->parent->name, c->name);
 			return -1;
 		}
 
 		if (fr_event_timer_insert(u, c->thread->el, &u->timer.ev, &u->timer.next,
 					  response_timeout, u) < 0) {
-			RDEBUG("Failed starting retransmit tracking");
+			RDEBUG("%s - Failed starting retransmit tracking for connection %s",
+			       c->inst->parent->name, c->name);
 			return -1;
 		}
 
-		RDEBUG("Sending %s status check.  Expecting response within %d.%06ds",
+		RDEBUG("Sending %s status check.  Expecting response within %d.%06ds for connection %s",
 		       fr_packet_codes[u->code],
-		       u->timer.rt / USEC, u->timer.rt % USEC);
+		       u->timer.rt / USEC, u->timer.rt % USEC,
+			c->name);
 
 	} else {
-		RDEBUG("Retransmitting %s status check.  Expecting response within %d.%06ds",
+		RDEBUG("Retransmitting %s status check.  Expecting response within %d.%06ds for connection %s",
 		       fr_packet_codes[u->code],
-		       u->timer.rt / USEC, u->timer.rt % USEC);
+		       u->timer.rt / USEC, u->timer.rt % USEC,
+			c->name);
 	}
 
 	return 1;
@@ -1523,6 +1557,7 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 	rlm_radius_udp_request_t	*u;
 	bool				pending = false;
 	rlm_radius_udp_connection_state_t prev_state = c->state;
+	rlm_radius_udp_connection_t	*next;
 
 	rad_assert(c->idle_ev == NULL); /* if it's writable and we're writing, it can't be idle */
 
@@ -1571,11 +1606,20 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 		rcode = conn_write(c, u);
 
 		/*
+		 *	Can't write it, so we fail the request.
+		 */
+		if (rcode < 0) {
+			u->link->rcode = RLM_MODULE_FAIL;
+			u->state = PACKET_STATE_RESUMABLE;
+			unlang_resumable(u->link->request);
+		}
+
+		/*
 		 *	The write returned EWOULDBLOCK.  We re-insert
 		 *	the packet back onto the main thread queue,
 		 *	and stop writing packets.
 		 */
-		if (rcode == 0) {
+		else if (rcode == 0) {
 			(void) fr_heap_insert(c->thread->queued, u);
 			(void) rr_track_delete(c->id, u->rr);
 			u->rr = NULL;
@@ -1590,7 +1634,7 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 		 *	The packet was sent, and we should wait for
 		 *	the reply.
 		 */
-		if (rcode == 1) {
+		else if (rcode == 1) {
 			fr_dlist_insert_tail(&c->sent, &u->entry);
 			u->state = PACKET_STATE_SENT;
 			continue;
@@ -1601,53 +1645,53 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 		 *	the reply.  Just mark the request as
 		 *	resumable.
 		 */
-		u->state = PACKET_STATE_RESUMABLE;
-		unlang_resumable(u->link->request);
-	}
-
-	/*
-	 *	There are more packets to write.  Update our status,
-	 *	and grab another socket to use.
-	 */
-	if (pending) {
-		rlm_radius_udp_connection_t *next;
-
-		switch (c->state) {
-		case CONN_INIT:
-		case CONN_OPENING:
-		case CONN_ACTIVE:	/* all packets should have been sent! */
-			rad_assert(0 == 1);
-			break;
-
-		case CONN_BLOCKED:	/* we're still writable */
-			if (prev_state != CONN_ACTIVE) fd_active(c);
-			break;
-
-		case CONN_FULL:		/* we're no longer writable */
-			fd_idle(c);
-			break;
-
-		case CONN_ZOMBIE:	/* writable, but other end is not responding */
-			break;
+		else {
+			u->state = PACKET_STATE_RESUMABLE;
+			unlang_resumable(u->link->request);
 		}
-
-		/*
-		 *	Wake up the next connection, and have it drain
-		 *	the input queue.
-		 */
-		next = fr_heap_peek(c->thread->active);
-		if (!next) return;
-
-		rad_assert(next != c);
-		conn_writable(el, next->fd, 0, next);
-		return;
 	}
 
 	/*
 	 *	There are no more packets to write.  Set ourselves to
 	 *	idle.
 	 */
-	fd_idle(c);
+	if (!pending) {
+		fd_idle(c);
+		return;
+	}
+
+	/*
+	 *	There are more packets to write.  Update our status,
+	 *	and grab another socket to use.
+	 */
+	switch (c->state) {
+	case CONN_INIT:
+	case CONN_OPENING:
+	case CONN_ACTIVE:	/* all packets should have been sent! */
+		rad_assert(0 == 1);
+		break;
+
+	case CONN_BLOCKED:	/* we're still writable */
+		if (prev_state != CONN_ACTIVE) fd_active(c);
+		break;
+
+	case CONN_FULL:		/* we're no longer writable */
+		fd_idle(c);
+		break;
+
+	case CONN_ZOMBIE:	/* writable, but other end is not responding */
+		break;
+	}
+
+	/*
+	 *	Wake up the next connection, and have it drain
+	 *	the input queue.
+	 */
+	next = fr_heap_peek(c->thread->active);
+	if (!next) return;
+
+	rad_assert(next != c);
+	conn_writable(el, next->fd, 0, next);
 }
 
 /** Shutdown/close a file descriptor
@@ -2327,13 +2371,27 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 }
 
 
-static void mod_signal(REQUEST *request, UNUSED void *instance, UNUSED void *thread, rlm_radius_link_t *link, fr_state_action_t action)
+static void mod_signal(REQUEST *request, void *instance, UNUSED void *thread, rlm_radius_link_t *link, fr_state_action_t action)
 {
 	rlm_radius_udp_request_t *u = link->request_io_ctx;
+	rlm_radius_udp_t *inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
 	struct timeval now;
 
 	if (action != FR_ACTION_DUP) return;
 
+	/*
+	 *	Asynchronous mode means we do allow the
+	 *	retransmission, and we ignore the retransmission from
+	 *	the NAS.  The main rlm_radius module should take care
+	 *	of not calling us if it's synchronous.
+	 */
+	rad_assert(!inst->parent->synchronous);
+
+	/*
+	 *	Sychronous mode means that we don't do any
+	 *	retransmission, and instead we rely on the
+	 *	retransmission from the NAS.
+	 */
 	RDEBUG("retransmitting proxied request");
 
 	gettimeofday(&now, NULL);
