@@ -406,7 +406,7 @@ static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeva
 		}
 
 		if (rcode == 1) {
-			FR_DLIST_INIT(u->entry);
+			FR_DLIST_INIT(u->entry); /* not in any "sent" list */
 			u->state = PACKET_STATE_SENT;
 			return;
 		}
@@ -600,6 +600,13 @@ static void conn_transition(rlm_radius_udp_connection_t *c, rlm_radius_udp_conne
 		break;
 
 	case CONN_ZOMBIE:
+		/*
+		 *	Don't transition from zombie to blocked when
+		 *	we're trying to write status check packets to
+		 *	the connection.
+		 */
+		if (state == CONN_BLOCKED) return;
+
 		fr_dlist_remove(&c->entry);
 		if (c->zombie_ev) (void) fr_event_timer_delete(c->thread->el, &c->zombie_ev);
 		break;
@@ -953,6 +960,8 @@ static int retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 	 *
 	 *	Note that we don't change the ID.  We can claim that
 	 *	we randomly chose the same one again. :(
+	 *
+	 *	@todo - try to change the ID.
 	 */
 	if ((u->code == FR_CODE_ACCOUNTING_REQUEST) &&
 	    (u != c->status_u)) {
@@ -1111,49 +1120,51 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	if (!c) {
 		rad_assert(u->state == PACKET_STATE_THREAD);
 		c = fr_heap_peek(c->thread->active);
+		if (c) {
+			u->rr = rr_track_alloc(c->id, u->link->request, u->code, u->link, &u->timer);
+			if (u->rr) u->c = c;
+		}
+
 	} else {
 		rad_assert(u->state == PACKET_STATE_SENT);
 	}
 
+	/*
+	 *	Can we retry this packet?
+	 */
 	rcode = rr_track_retry(&u->timer, now);
-	if (rcode < 0) {
+	if (rcode == 0) {
 		if (c) {
-			REDEBUG("Failing proxied request ID %d due to error trying to proxy on connection %s",
-				u->rr->id, c->name);
-
 			if (u == c->status_u) {
-				REDEBUG("Closing connection due to status check failures");
-				mod_finished_request(c, u);
+				REDEBUG("No response to status checks, closing connection %s", c->name);
 				talloc_free(c);
 				return;
 			}
 
-		} else {
-			REDEBUG("Failing proxied request due to error trying to proxy, with no connection");
-		}
-
-		/*
-		 *	Failed inserting event... the request is done.
-		 */
-		mod_finished_request(c, u);
-		return;
-	}
-
-	if (rcode == 0) {
-		if (c) {
 			conn_transition(c, CONN_ZOMBIE);
-			REDEBUG("Failing proxied request ID %d due to lack of response on connection %s",
+			REDEBUG("No response to proxied request ID %d on connection %s",
 				u->rr->id, c->name);
 		} else {
-			REDEBUG("Failing proxied request due to lack of response");
+			REDEBUG("No response to proxied request");
 		}
 		mod_finished_request(c, u);
 		return;
 	}
 
+	/*
+	 *	We're still retrying.  Insert the next retransmission
+	 *	timer.
+	 */
 	if (fr_event_timer_insert(u, el, &u->timer.ev, &u->timer.next, response_timeout, u) < 0) {
-		RDEBUG("Failed inserting status check timer for connection %s", c->name);
+		RDEBUG("Failed inserting retransmission timer for connection %s", c->name);
 		mod_finished_request(c, u);
+		return;
+	}
+
+	if (!c) {
+		rad_assert(u->state == PACKET_STATE_THREAD);
+		RDEBUG("No available connections for retransmission.  Waiting %d.%06ds for retry",
+		       u->timer.rt / USEC, u->timer.rt % USEC);
 		return;
 	}
 
@@ -1162,29 +1173,40 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	 *	get retransmitted when we get around to polling
 	 *	t->queued
 	 */
-	if (c) {
-		RDEBUG("Retransmitting ID %d on connection %s", u->rr->id, c->name);
-		rcode = retransmit_packet(u, now);
-		if (rcode < 0) {
-			RDEBUG("Failed retransmitting packet for connection %s", c->name);
-			mod_finished_request(c, u);
-			return;
-		}
+	RDEBUG("Retransmitting ID %d on connection %s", u->rr->id, c->name);
+	rcode = retransmit_packet(u, now);
+	if (rcode < 0) {
+		RDEBUG("Failed retransmitting packet for connection %s", c->name);
+		mod_finished_request(c, u);
+		return;
+	}
 
+	/*
+	 *	EWOULDBLOCK.  Leave it in whatever list it was already
+	 *	in.
+	 */
+	if (rcode == 0) {
 		/*
-		 *	EWOULDBLOCK.  Leave it in whatever list it was
-		 *	in.
+		 *	Don't pick this connection for new writes.
 		 */
-		if (rcode == 0) return;
+		conn_transition(c, CONN_BLOCKED);
 
 		switch (u->state) {
+			/*
+			 *	We just pulled it off of the main
+			 *	thread queue, then allocated a
+			 *	connection and an ID, but the
+			 *	connection is blocked.
+			 */
 		case PACKET_STATE_THREAD:
-			(void) fr_heap_extract(c->thread->queued, u);
-			fr_dlist_insert_tail(&c->sent, &u->entry);
-			u->state = PACKET_STATE_SENT;
+			rad_assert(u->rr != NULL);
+			(void) rr_track_delete(c->id, u->rr);
+			u->rr = NULL;
+			u->c = NULL;
 			break;
 
 		case PACKET_STATE_SENT:
+			/* do nothing */
 			break;
 
 		default:
@@ -1192,10 +1214,27 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 			break;
 		}
 
-	} else {
-		rad_assert(u->state == PACKET_STATE_THREAD);
-		RDEBUG("No available connections for retransmission.  Waiting %d.%06ds for retry",
-		       u->timer.rt / USEC, u->timer.rt % USEC);
+		return;
+	}
+
+	/*
+	 *	The response timeout is independent of which connection is in use.
+	 */
+	switch (u->state) {
+	case PACKET_STATE_THREAD:
+		rad_assert(u != c->status_u);
+		(void) fr_heap_extract(c->thread->queued, u);
+		fr_dlist_insert_tail(&c->sent, &u->entry);
+		u->state = PACKET_STATE_SENT;
+		break;
+
+	case PACKET_STATE_SENT:
+		/* do nothing */
+		break;
+
+	default:
+		rad_assert(0 == 1);
+		break;
 	}
 }
 
@@ -1486,13 +1525,15 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 
 		if (!c->inst->parent->synchronous) {
 			if (rr_track_start(&u->timer) < 0) {
-				RDEBUG("Failed starting retransmit tracking");
+				RDEBUG("%s - Failed starting retransmit tracking for connection %s",
+				       c->inst->parent->name, c->name);
 				return -1;
 			}
 
 			if (fr_event_timer_insert(u, c->thread->el, &u->timer.ev, &u->timer.next,
 						  response_timeout, u) < 0) {
-				RDEBUG("Failed starting retransmit tracking");
+				RDEBUG("%s - Failed starting retransmit tracking for connection %s",
+				       c->inst->parent->name, c->name);
 				return -1;
 			}
 
