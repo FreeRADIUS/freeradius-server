@@ -775,6 +775,7 @@ redo:
 		 *	responses, but we're happy to do it faster.
 		 */
 		conn_transition(c, CONN_ACTIVE);
+		if (c->thread->pending) fd_active(c);
 		break;
 	}
 
