@@ -243,10 +243,13 @@ static void conn_idle_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeval 
 }
 
 
-/** The connection is idle, set up idle timeouts.
+/** Check if the connection is idle.
  *
+ *  A connection is idle if it hasn't sent or recieved a packet in a
+ *  while.  Note that "no response to packet" does NOT set the idle
+ *  timeout.
  */
-static void conn_idle(rlm_radius_udp_connection_t *c)
+static void conn_check_idle(rlm_radius_udp_connection_t *c)
 {
 	struct timeval when;
 
@@ -261,14 +264,6 @@ static void conn_idle(rlm_radius_udp_connection_t *c)
 		return;
 
 		/*
-		 *	Still has packets: can't be idle.
-		 */
-	case CONN_BLOCKED:
-	case CONN_FULL:
-		if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
-		return;
-
-		/*
 		 *	Active means "alive", and not "has packets".
 		 */
 	case CONN_ACTIVE:
@@ -279,13 +274,17 @@ static void conn_idle(rlm_radius_udp_connection_t *c)
 			break;
 		}
 
-		if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
-		return;
+		/*
+		 *	Has outstanding packets, we're not idle.
+		 */
+		/* FALL-THROUGH */
 
 		/*
-		 *	If it's zombie or pinging, we don't set an
-		 *	idle timer.
+		 *	If a connection is blocked, full, or zombie,
+		 *	it's not idle.
 		 */
+	case CONN_BLOCKED:
+	case CONN_FULL:
 	case CONN_ZOMBIE:
 		if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
 		return;
@@ -321,7 +320,7 @@ static void conn_idle(rlm_radius_udp_connection_t *c)
 /** Set the socket to "nothing to write"
  *
  *  But keep the read event open, just in case the other end sends us
- *  data  That way we can process it.
+ *  data.  That way we can process it.
  *
  * @param[in] c		Connection data structure
  */
@@ -336,8 +335,6 @@ static void fd_idle(rlm_radius_udp_connection_t *c)
 		PERROR("Failed inserting FD event");
 		fr_connection_signal_reconnect(c->conn);
 	}
-
-	conn_idle(c);
 }
 
 /** Set the socket to active
@@ -469,7 +466,7 @@ static void mod_finished_request(rlm_radius_udp_connection_t *c, rlm_radius_udp_
 		u->rr = NULL;
 		u->c = NULL;
 
-		conn_idle(c);
+		conn_check_idle(c);
 
 	} else {
 		rad_assert(u->state == PACKET_STATE_THREAD);
@@ -639,18 +636,24 @@ static void conn_transition(rlm_radius_udp_connection_t *c, rlm_radius_udp_conne
 
 	case CONN_ACTIVE:
 		(void) fr_heap_insert(c->thread->active, c);
-		// @todo - add idle timeout
+		conn_check_idle(c);
 		break;
 
 	case CONN_BLOCKED:
+		if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
+
 		fr_dlist_insert_head(&c->thread->blocked, &c->entry);
 		break;
 
 	case CONN_FULL:
+		if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
+
 		fr_dlist_insert_head(&c->thread->full, &c->entry);
 		break;
 
 	case CONN_ZOMBIE:
+		if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
+
 		fr_dlist_insert_head(&c->thread->zombie, &c->entry);
 
 		gettimeofday(&when, NULL);
@@ -765,6 +768,12 @@ redo:
 		if (timercmp(&u->timer.start, &c->mrs_time, >)) {
 			c->mrs_time = u->timer.start;
 		}
+
+		/*
+		 *	Transition to active on any one packet.  RFC
+		 *	3539 says to wait for N status check
+		 *	responses, but we're happy to do it faster.
+		 */
 		conn_transition(c, CONN_ACTIVE);
 		break;
 	}
@@ -938,11 +947,6 @@ done:
 		 */
 		mod_finished_request(c, u);
 	}
-
-	/*
-	 *	We've read a packet, reset the idle timers.
-	 */
-	conn_idle(c);
 
 	goto redo;
 }
@@ -1602,8 +1606,6 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 	bool				pending = false;
 	rlm_radius_udp_connection_state_t prev_state = c->state;
 	rlm_radius_udp_connection_t	*next;
-
-	rad_assert(c->idle_ev == NULL); /* if it's writable and we're writing, it can't be idle */
 
 	DEBUG3("%s - Writing packets for connection %s", c->inst->parent->name, c->name);
 
