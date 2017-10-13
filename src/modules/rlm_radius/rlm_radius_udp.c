@@ -553,15 +553,6 @@ static void status_check_reply(rlm_radius_udp_connection_t *c, rlm_radius_udp_re
 	 */
 	if (u->timer.ev) (void) fr_event_timer_delete(u->thread->el, &u->timer.ev);
 
-	/*
-	 *	Delete the reply VPs, but leave the request VPs in
-	 *	place.
-	 */
-#ifdef __clang_analyzer__
-	if (request->reply)
-#endif
-		fr_pair_list_free(&request->reply->vps);
-
 	rad_assert(u->state == PACKET_STATE_SENT);
 	fr_dlist_remove(&u->entry);
 	u->state = PACKET_STATE_INIT;
@@ -583,6 +574,16 @@ static void status_check_reply(rlm_radius_udp_connection_t *c, rlm_radius_udp_re
 			MEM(c->buffer = talloc_array(c, uint8_t, c->buflen));
 		}
 	}
+
+	/*
+	 *	Delete the reply VPs, but leave the request VPs in
+	 *	place.
+	 */
+#ifdef __clang_analyzer__
+	if (request->reply)
+#endif
+		fr_pair_list_free(&request->reply->vps);
+
 }
 
 static void conn_transition(rlm_radius_udp_connection_t *c, rlm_radius_udp_connection_state_t state)
