@@ -1160,7 +1160,7 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	 *	timer.
 	 */
 	if (fr_event_timer_insert(u, el, &u->timer.ev, &u->timer.next, response_timeout, u) < 0) {
-		RDEBUG("Failed inserting retransmission timer for connection %s", c->name);
+		RDEBUG("Failed inserting retransmission timer");
 		mod_finished_request(c, u);
 		return;
 	}
