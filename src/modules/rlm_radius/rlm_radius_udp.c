@@ -1122,7 +1122,7 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	 */
 	if (!c) {
 		rad_assert(u->state == PACKET_STATE_THREAD);
-		c = fr_heap_peek(c->thread->active);
+		c = fr_heap_peek(u->thread->active);
 		if (c) {
 			u->rr = rr_track_alloc(c->id, u->link->request, u->code, u->link, &u->timer);
 			if (u->rr) u->c = c;
