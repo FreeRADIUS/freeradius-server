@@ -1012,6 +1012,16 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 								      UNLANG_NEXT_STOP, UNLANG_NORMAL_CHILD);
 			state->children[i].state = CHILD_RUNNABLE;
 			state->children[i].child->packet->code = request->packet->code;
+
+			if (state->g->clone) {
+				state->children[i].child->packet->vps = fr_pair_list_copy(state->children[i].child->packet,
+											  request->packet->vps);
+				state->children[i].child->reply->vps = fr_pair_list_copy(state->children[i].child->reply,
+											 request->reply->vps);
+				state->children[i].child->control = fr_pair_list_copy(state->children[i].child,
+										      request->control);
+			}
+
 			/* FALL-THROUGH */
 
 			/*

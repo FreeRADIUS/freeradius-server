@@ -177,8 +177,11 @@ the child can update the original parent request by using "update
 parent.request", or "update parent.reply".
 
 The child requests are required because each subsection is run
-simultaneously.  If each subsection updated the original request, it
-would be impossible to separate the state of each subsection
+simultaneously.  If each subsection updated the original request at
+the same time, it would be impossible to separate the state of each
+subsection.
+
+Empty child requests can be created by using "parallel empty { ... }"
 
 The return code of the parallel section is the same as if each
 subsection was run sequentially.

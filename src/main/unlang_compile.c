@@ -2494,6 +2494,10 @@ static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx
 				      unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
 {
 	unlang_t *c;
+	char const *name2;
+	unlang_group_t *g;
+	bool clone = true;
+
 
 	/*
 	 *	No children?  Die!
@@ -2503,13 +2507,27 @@ static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx
 		return NULL;
 	}
 
-	if (cf_section_name2(cs) != NULL) {
-		cf_log_err(cs, "%s sections cannot have an argument", unlang_ops[mod_type].name);
-		return NULL;
+	/*
+	 *	Parallel sections can create empty children, if the
+	 *	admin demands it.  Otherwise, the principle of least
+	 *	surprise is to copy the whole request, reply, and
+	 *	config items.
+	 */
+	name2 = cf_section_name2(cs);
+	if (name2) {
+		if (strcmp(name2, "empty") != 0) {
+			cf_log_err(cs, "Invalid argument '%s'", name2);
+			return NULL;
+		}
+
+		clone = false;
 	}
 
 	c = compile_group(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type);
 	if (!c) return NULL;
+
+	g = unlang_generic_to_group(c);
+	g->clone = clone;
 
 	c->name = c->debug_name = unlang_ops[c->type].name;
 

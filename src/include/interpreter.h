@@ -151,6 +151,8 @@ typedef struct {
 			};
 		};
 		fr_cond_t		*cond;		//!< #UNLANG_TYPE_IF, #UNLANG_TYPE_ELSIF.
+
+		bool			clone;		//!< #UNLANG_TYPE_PARALLEL
 	};
 } unlang_group_t;
 
