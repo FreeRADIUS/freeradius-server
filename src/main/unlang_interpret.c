@@ -1128,6 +1128,15 @@ static void unlang_parallel_signal(UNUSED REQUEST *request, UNUSED void *instanc
 		case CHILD_YIELDED:
 			rad_assert(state->children[i].child != NULL);
 			unlang_signal(state->children[i].child, action);
+
+			/*
+			 *	If we're done, also free the children.
+			 */
+			if (action == FR_IO_ACTION_DONE) {
+				talloc_free(state->children[i].child);
+				state->children[i].child = NULL;
+				state->children[i].state = CHILD_DONE;
+			}
 			break;
 		}
 	}
