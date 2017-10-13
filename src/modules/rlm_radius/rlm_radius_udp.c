@@ -2421,21 +2421,12 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 }
 
 
-static void mod_signal(REQUEST *request, void *instance, UNUSED void *thread, rlm_radius_link_t *link, fr_state_action_t action)
+static void mod_signal(REQUEST *request, UNUSED void *instance, UNUSED void *thread, rlm_radius_link_t *link, fr_state_action_t action)
 {
 	rlm_radius_udp_request_t *u = link->request_io_ctx;
-	rlm_radius_udp_t *inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
 	struct timeval now;
 
 	if (action != FR_ACTION_DUP) return;
-
-	/*
-	 *	Asynchronous mode means we do allow the
-	 *	retransmission, and we ignore the retransmission from
-	 *	the NAS.  The main rlm_radius module should take care
-	 *	of not calling us if it's synchronous.
-	 */
-	rad_assert(!inst->parent->synchronous);
 
 	/*
 	 *	Sychronous mode means that we don't do any
