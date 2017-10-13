@@ -1142,7 +1142,7 @@ static void unlang_parallel_signal(UNUSED REQUEST *request, UNUSED void *instanc
 			/*
 			 *	If we're done, also free the children.
 			 */
-			if (action == FR_IO_ACTION_DONE) {
+			if (action == FR_ACTION_DONE) {
 				talloc_free(state->children[i].child);
 				state->children[i].child = NULL;
 				state->children[i].state = CHILD_DONE;
