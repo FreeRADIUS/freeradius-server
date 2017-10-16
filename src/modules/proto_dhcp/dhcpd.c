@@ -225,7 +225,15 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 	packet->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_BROADCAST);
 	packet->dst_port = request->packet->dst_port;		/* server port */
 
-	if ((packet->code == PW_DHCP_NAK) ||
+	/*
+	  *	Unicast the response to another relay if requested.
+	  */
+	vp = fr_pair_find_by_num(request->config, 270, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Relay-To-IP-Address */
+	if (vp) {
+		RDEBUG("DHCP: response will be relayed to previous gateway");
+		packet->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+
+	} else if ((packet->code == PW_DHCP_NAK) ||
 	    !sock->src_interface ||
 	    ((vp = fr_pair_find_by_num(request->packet->vps, 262, DHCP_MAGIC_VENDOR, TAG_ANY)) /* DHCP-Flags */ &&
 	     (vp->vp_integer & 0x8000) &&
