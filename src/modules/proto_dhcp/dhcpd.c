@@ -232,6 +232,7 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 	if (vp) {
 		RDEBUG("DHCP: response will be relayed to previous gateway");
 		packet->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+		giaddr->vp_ipaddr = vp->vp_ipaddr;
 
 	} else if ((packet->code == PW_DHCP_NAK) ||
 	    !sock->src_interface ||
