@@ -127,7 +127,7 @@ static int rlm_lua_marshall(lua_State *L, VALUE_PAIR const *vp)
 		break;
 
 	case FR_TYPE_FLOAT32:
-		lua_pushnumber(L, vp->vp_float32);
+		lua_pushnumber(L, (double) vp->vp_float32);
 		break;
 
 	case FR_TYPE_FLOAT64:
