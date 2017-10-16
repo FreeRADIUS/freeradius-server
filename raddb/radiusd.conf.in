@@ -576,12 +576,8 @@ thread pool {
 	#
 #	max_queue_size = 65536
 
-	#  There may be memory leaks or resource allocation problems with
-	#  the server.  If so, set this value to 300 or so, so that the
-	#  resources will be cleaned up periodically.
-	#
-	#  This should only be necessary if there are serious bugs in the
-	#  server which have not yet been fixed.
+	#  Clean up old threads periodically.  For no reason other than
+	#  it might be useful.
 	#
 	#  '0' is a special value meaning 'infinity', or 'the servers never
 	#  exit'
