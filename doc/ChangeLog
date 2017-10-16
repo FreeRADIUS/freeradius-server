@@ -54,6 +54,7 @@ FreeRADIUS 3.0.16 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	  cisco_accounting_username_bug = yes
 	* EAP-FAST fixes from Isaac Boukris.
 	  #2078, #2076, and #2082.
+	* DHCP relay fixes, #2092
 
 FreeRADIUS 3.0.15 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	Feature improvements
