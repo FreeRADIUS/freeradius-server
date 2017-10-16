@@ -25,7 +25,7 @@ file is read at 100% speed.  If the server is busy, the file is read
 only when it becomes un-busy enough to respond to the packets.
 
 The packets are processed through `recv {}` and `send {}` sections.
-Note no second name!
+Note no second name!  That could be change?
 
 The `send Do-Not-Respond { }` section should work.
 

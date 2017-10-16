@@ -396,12 +396,13 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	listen->default_message_size = inst->max_packet_size;
 	listen->num_messages = inst->num_messages;
 
+	/*
+	 *	Testing: allow it to read a "detail.work" file
+	 *	directly.
+	 */
 	if (strcmp(inst->io_submodule->module->name, "proto_detail_work") == 0) {
-		proto_detail_work_t *work = inst->app_io_instance;
-		work->fd = -1;
-
 		/*
-		 *	Open the socket.
+		 *	Open the file.
 		 */
 		if (inst->app_io->open(inst->app_io_instance) < 0) {
 			cf_log_err(conf, "Failed opening %s interface", inst->app_io->name);
@@ -419,7 +420,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	}
 
 	/*
-	 *	Open the socket.
+	 *	Open the file.
 	 */
 	if (inst->app_io->open(inst->app_io_instance) < 0) {
 		cf_log_err(conf, "Failed opening %s interface", inst->app_io->name);
@@ -427,6 +428,9 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 		return -1;
 	}
 
+	/*
+	 *	Watch the directory for changes.
+	 */
 	if (!fr_schedule_directory_add(sc, listen)) {
 		talloc_free(listen);
 		return -1;
@@ -599,16 +603,25 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		parent_inst = cf_data_value(cf_data_find(inst->cs, dl_instance_t, "proto_detail"));
 		rad_assert(parent_inst);
 
-		if (transport_cs) {
-			(void) dl_instance(inst->cs, &inst->work_submodule, transport_cs,
-					   parent_inst, "work", DL_TYPE_SUBMODULE);
+		if (!transport_cs) {
+			transport_cs = cf_section_dup(inst->cs, inst->cs, inst->app_io_conf,
+						      "work", NULL, false);
+			if (!transport_cs) {
+				cf_log_err(inst->cs, "Failed to create configuration for worker");
+				return -1;
+			}
 		}
-	}
 
-	/*
-	 *	Boot strap the work module.
-	 */
-	if (inst->work_submodule) {
+		if (dl_instance(inst->cs, &inst->work_submodule, transport_cs,
+				parent_inst, "work", DL_TYPE_SUBMODULE) < 0) {
+			cf_log_err(inst->cs, "Failed to load proto_detail_work: %s",
+				   fr_strerror());
+			return -1;
+		}
+
+		/*
+		 *	Boot strap the work module.
+		 */
 		inst->work_io = (fr_app_io_t const *) inst->work_submodule->module->common;
 		inst->work_io_instance = inst->work_submodule->data;
 		inst->work_io_conf = inst->work_submodule->conf;
