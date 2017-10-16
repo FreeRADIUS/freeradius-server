@@ -86,6 +86,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	off_t				done_offset;
 
 	rad_assert(*leftover < buffer_len);
+	rad_assert(inst->fd >= 0);
 
 	/*
 	 *	If we decide that we're closing, ignore everything
@@ -380,6 +381,8 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	if (buffer_len < 1) return -1;
 
 	rad_assert(inst->outstanding > 0);
+	rad_assert(inst->fd >= 0);
+
 	inst->outstanding--;
 
 	if (buffer[0] == 0) {
@@ -404,7 +407,6 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	 *	@todo - close the socket if we're at EOF, and outstanding == 0?
 	 */
 	if (inst->closing && !inst->outstanding) {
-		DEBUG("Detail worker at EOF. Closing %s", inst->name);
 		return 0;
 	}
 
@@ -478,6 +480,26 @@ static int mod_open(void *instance)
 	return 0;
 }
 
+
+/** Close  a detail listener
+ *
+ * @param[in] instance of the detail worker.
+ * @return
+ *	- <0 on error
+ *	- 0 on success
+ */
+static int mod_close(void *instance)
+{
+	proto_detail_work_t *inst = talloc_get_type_abort(instance, proto_detail_work_t);
+
+	DEBUG("Detail worker at EOF. Closing and deleting %s", inst->name);
+	unlink(inst->filename_work);
+	close(inst->fd);
+	inst->fd = -1;
+
+	return 0;
+}
+
 /** Get the file descriptor for this IO instance
  *
  * @param[in] instance of the detail worker
@@ -547,13 +569,8 @@ static int mod_detach(void *instance)
 {
 	proto_detail_work_t	*inst = talloc_get_type_abort(instance, proto_detail_work_t);
 
-	/*
-	 *	@todo - have our OWN event loop for timers, and a
-	 *	"copy timer from -> to, which means we only have to
-	 *	delete our child event loop from the parent on close.
-	 */
+	if (inst->fd >= 0) close(inst->fd);
 
-	close(inst->fd);
 	return 0;
 }
 
@@ -575,6 +592,7 @@ fr_app_io_t proto_detail_work = {
 	.default_reply_size	= 32,
 
 	.open			= mod_open,
+	.close			= mod_close,
 	.read			= mod_read,
 	.decode			= mod_decode,
 	.write			= mod_write,
