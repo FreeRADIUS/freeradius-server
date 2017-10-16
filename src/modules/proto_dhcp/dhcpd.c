@@ -282,6 +282,8 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 		}
 	}
 
+	packet->vps = request->packet->vps; /* hackity hack */
+	
 	if (fr_dhcp_encode(packet) < 0) {
 		DEBUG("dhcprelay_process_server_reply: ERROR in fr_dhcp_encode\n");
 		goto error;
