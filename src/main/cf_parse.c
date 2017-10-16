@@ -394,7 +394,7 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_P
 			goto error;
 		}
 		cf_log_debug(cs, "%.*s%s = %f", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp),
-			num);
+			     (double) num);
 		memcpy(out, &num, sizeof(num));
 	}
 		break;
