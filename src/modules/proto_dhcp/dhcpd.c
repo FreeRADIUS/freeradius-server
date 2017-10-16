@@ -223,7 +223,7 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 	 *	We're a relay, figure out where to send the packet.
 	 */
 	packet->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_BROADCAST);
-	packet->dst_port = packet->dst_port;		/* server port */
+	packet->dst_port = request->packet->dst_port;		/* server port */
 
 	if ((packet->code == PW_DHCP_NAK) ||
 	    !sock->src_interface ||
