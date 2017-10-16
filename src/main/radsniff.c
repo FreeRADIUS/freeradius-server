@@ -874,7 +874,7 @@ static void rs_stats_update_latency(rs_latency_t *stats, struct timeval *latency
 	if (!stats->interval.latency_low || (lint < stats->interval.latency_low)) {
 		stats->interval.latency_low = lint;
 	}
-	stats->interval.latency_total += lint;
+	stats->interval.latency_total += (long double) lint;
 
 }
 
