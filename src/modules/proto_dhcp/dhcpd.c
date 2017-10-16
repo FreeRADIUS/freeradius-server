@@ -220,9 +220,9 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 	packet->dst_ipaddr.af = AF_INET;
 
 	/*
-	 *	We're a relay, and send the packet to giaddr.
+	 *	We're a relay, figure out where to send the packet.
 	 */
-	packet->dst_ipaddr.ipaddr.ip4addr.s_addr = giaddr->vp_ipaddr;
+	packet->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_BROADCAST);
 	packet->dst_port = packet->dst_port;		/* server port */
 
 	if ((packet->code == PW_DHCP_NAK) ||
@@ -241,7 +241,9 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 		 */
 		RDEBUG("DHCP: response will be broadcast");
 		packet->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_BROADCAST);
-	} else {
+
+	} else if ((vp = fr_pair_find_by_num(request->packet->vps, 263, DHCP_MAGIC_VENDOR, TAG_ANY)) /* DHCP-Client-IP-Address */ &&
+		   (vp->vp_ipaddr != htonl(INADDR_ANY))) {
 		/*
 		 * RFC 2131, page 23
 		 *
@@ -249,36 +251,33 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 		 * - ciaddr if present
 		 * otherwise to yiaddr
 		 */
-		if ((vp = fr_pair_find_by_num(request->packet->vps, 263, DHCP_MAGIC_VENDOR, TAG_ANY)) /* DHCP-Client-IP-Address */ &&
-		    (vp->vp_ipaddr != htonl(INADDR_ANY))) {
-			packet->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
-		} else {
-			vp = fr_pair_find_by_num(request->packet->vps, 264, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Your-IP-Address */
-			if (!vp) {
-				DEBUG("DHCP: Failed to find IP Address for request");
+		packet->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+	} else {
+		vp = fr_pair_find_by_num(request->packet->vps, 264, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Your-IP-Address */
+		if (!vp) {
+			DEBUG("DHCP: Failed to find IP Address for request");
+			goto error;
+		}
+
+		RDEBUG("DHCP: response will be unicast to your-ip-address");
+		packet->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+
+		/*
+		 * When sending a DHCP_OFFER, make sure our ARP table
+		 * contains an entry for the client IP address, or else
+		 * packet may not be forwarded if it was the first time
+		 * the client was requesting an IP address.
+		 */
+		if (packet->code == PW_DHCP_OFFER) {
+			VALUE_PAIR *hwvp = fr_pair_find_by_num(request->packet->vps, 267, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Client-Hardware-Address */
+			if (hwvp == NULL) {
+				DEBUG("DHCP: DHCP_OFFER packet received with "
+				      "no Client Hardware Address. Discarding packet");
 				goto error;
 			}
-
-			RDEBUG("DHCP: response will be unicast to your-ip-address");
-			packet->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
-
-			/*
-			 * When sending a DHCP_OFFER, make sure our ARP table
-			 * contains an entry for the client IP address, or else
-			 * packet may not be forwarded if it was the first time
-			 * the client was requesting an IP address.
-			 */
-			if (packet->code == PW_DHCP_OFFER) {
-				VALUE_PAIR *hwvp = fr_pair_find_by_num(request->packet->vps, 267, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Client-Hardware-Address */
-				if (hwvp == NULL) {
-					DEBUG("DHCP: DHCP_OFFER packet received with "
-					    "no Client Hardware Address. Discarding packet");
-					goto error;
-				}
-				if (fr_dhcp_add_arp_entry(packet->sockfd, sock->src_interface, hwvp, vp) < 0) {
-					DEBUG("Failed adding ARP entry: %s", fr_strerror());
-					goto error;
-				}
+			if (fr_dhcp_add_arp_entry(packet->sockfd, sock->src_interface, hwvp, vp) < 0) {
+				DEBUG("Failed adding ARP entry: %s", fr_strerror());
+				goto error;
 			}
 		}
 	}
