@@ -1,5 +1,13 @@
 # rlm_radius
 
+## 2017-10-11
+
+After refactoring...
+
+* on read(), don't put connection into active state, as it may not be writable?
+ * or, just do it, and hope for the best... with the event loop handling it
+
+
 ## RADIUS fixes
 
 * idle out old connections
@@ -8,21 +16,7 @@
 
 * move status_u allocation and init to connection alloc
 
-* delete rr->id and re-allocate it on retransmit if the packet changes
-  * if the IDs are all allocated, a delete / re-allocate means that it
-    gets the same ID.  So we might as well just do that all of the time.
-
-* ensure that the retransmission is independent of which connection
-  the packet is sent on.  This means keeping the various timers in 'u'
-  instead of in 'rr'.  i.e. if a connection closes, the packet should
-  just retransmit on a new connection.
-
 ## connection state
-
-* CONN_UNUSED isn't used...
-
-* CONN_STATUS_CHECKS isn't used... it's probably not useful, and
-  should be deleted.
 
 * maybe move Status-Server to fixed-time pings, as recommended in RFC 3539?
   * low priority, and probably not useful
