@@ -79,7 +79,7 @@ HEADERS	+= $(notdir ${HEADERS_RFC})
 
 .PRECIOUS: $(HEADERS_RFC)
 
-NORMALIZE	:= tr -- '[:lower:]/-.' '[:upper:]___'
+NORMALIZE	:= tr -- '[:lower:]/.-' '[:upper:]___'
 HEADER		:= "/* AUTO_GENERATED FILE.  DO NOT EDIT */"
 
 src/include/attributes.h: share/dictionary.freeradius.internal
