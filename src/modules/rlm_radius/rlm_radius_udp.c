@@ -69,8 +69,6 @@ typedef struct rlm_radius_udp_thread_t {
 	rlm_radius_udp_t	*inst;			//!< IO submodule instance.
 	fr_event_list_t		*el;			//!< Event list.
 
-	bool			pending;		//!< Are there pending requests?
-
 	fr_heap_t		*queued;		//!< Queued requests for some new connection.
 
 	fr_heap_t		*active;   		//!< Active connections.
@@ -776,7 +774,7 @@ redo:
 		 *	responses, but we're happy to do it faster.
 		 */
 		conn_transition(c, CONN_ACTIVE);
-		if (c->thread->pending) fd_active(c);
+		if (fr_heap_num_elements(c->thread->queued) > 0) fd_active(c);
 		break;
 	}
 
@@ -1949,7 +1947,6 @@ static fr_connection_state_t _conn_failed(int fd, fr_connection_state_t state, v
 			u->c = NULL;
 			(void) fr_heap_insert(c->thread->queued, u);
 			u->state = PACKET_STATE_THREAD;
-			c->thread->pending = true;
 		}
 
 		fr_event_fd_delete(c->thread->el, fd, FR_EVENT_FILTER_IO);
@@ -2098,7 +2095,7 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, UNUSED int f
 	 *	Now that we're open, assume that the connection is
 	 *	writable.
 	 */
-	if (t->pending) conn_writable(c->thread->el, fd, 0, c);
+	if (fr_heap_num_elements(t->queued) > 0) conn_writable(c->thread->el, fd, 0, c);
 
 	return FR_CONNECTION_STATE_CONNECTED;
 }
@@ -2219,7 +2216,6 @@ static int _conn_free(rlm_radius_udp_connection_t *c)
 		fr_dlist_remove(&u->entry);
 		(void) fr_heap_insert(t->queued, u);
 		u->state = PACKET_STATE_THREAD;
-		t->pending = true;
 	}
 
 	switch (c->state) {
@@ -2366,10 +2362,10 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 	(void) fr_heap_insert(t->queued, u);
 
 	/*
-	 *	There are other pending writes, wait for the event
+	 *	There are OTHER pending writes, wait for the event
 	 *	callbacks to wake up a connection and send the packet.
 	 */
-	if (t->pending) {
+	if (fr_heap_num_elements(t->queued) > 1) {
 		DEBUG3("Thread has pending packets.  Waiting for socket to be ready");
 		return RLM_MODULE_YIELD;
 	}
@@ -2395,7 +2391,6 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 		 *	or when an existing connection has
 		 *	availability.
 		 */
-		t->pending = true;
 		return RLM_MODULE_YIELD;
 	}
 
@@ -2548,7 +2543,6 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	t->inst = instance;
 	t->el = el;
 
-	t->pending = false;
 	t->queued = fr_heap_create(queue_cmp, offsetof(rlm_radius_udp_request_t, heap_id));
 	FR_DLIST_INIT(t->blocked);
 	FR_DLIST_INIT(t->full);
@@ -2574,7 +2568,6 @@ static int mod_thread_detach(void *thread)
 		ERROR("There are still queued requests");
 		return -1;
 	}
-	rad_assert(t->pending == false);
 
 	/*
 	 *	Free all of the heaps, lists, and sockets.
