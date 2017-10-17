@@ -166,6 +166,12 @@ static void mod_vnode_delete(fr_event_list_t *el, int fd, UNUSED int fflags, voi
 	(void) fr_event_fd_delete(el, fd, FR_EVENT_FILTER_VNODE);
 
 	/*
+	 *	The worker may or may not still exist if the file was
+	 *	deleted.
+	 */
+	inst->parent->work_io_instance = NULL;
+
+	/*
 	 *	@todo - troll for detail.work file.  Allocate new
 	 *	proto_detail_work_t, fill it in, and start up the new
 	 *	detail worker.
