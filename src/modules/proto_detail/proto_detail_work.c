@@ -440,33 +440,39 @@ static void mod_revoke(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx
 static int mod_open(void *instance)
 {
 	proto_detail_work_t *inst = talloc_get_type_abort(instance, proto_detail_work_t);
-	struct stat buf;
 
+	/*
+	 *	Open the file if we haven't already been given one.
+	 */
 	if (inst->fd < 0) {
 		inst->fd = open(inst->filename_work, inst->mode);
 		if (inst->fd < 0) {
 			cf_log_err(inst->cs, "Failed opening %s: %s", inst->filename_work, fr_syserror(errno));
 			return -1;
 		}
+	}
+
+	/*
+	 *	If we're tracking progress, learn where the EOF is.
+	 */
+	if (inst->track_progress) {
+		struct stat buf;
 
 		if (fstat(inst->fd, &buf) < 0) {
 			cf_log_err(inst->cs, "Failed examining %s: %s", inst->filename_work, fr_syserror(errno));
 			return -1;
 		}
 
-		rad_assert(inst->name == NULL);
-		inst->name = talloc_asprintf(inst, "detail working file %s", inst->filename_work);
 		inst->file_size = buf.st_size;
 	} else {
-		rad_assert(inst->name != NULL);
-	}
-
-	/*
-	 *	Avoid triggering erroneous EOF.
-	 */
-	if (!inst->track_progress) {
+		/*
+		 *	Avoid triggering erroneous EOF.
+		 */
 		inst->file_size = 1;
 	}
+
+	rad_assert(inst->name == NULL);
+	inst->name = talloc_asprintf(inst, "detail working file %s", inst->filename_work);
 
 	DEBUG("Listening on %s bound to virtual server %s",
 	      inst->name, cf_section_name2(inst->parent->server_cs));
