@@ -157,11 +157,13 @@ static proto_detail_work_t *worker_alloc(proto_detail_file_t *inst)
 
 
 
-static void mod_vnode_delete(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED int fflags, void *ctx)
+static void mod_vnode_delete(fr_event_list_t *el, int fd, UNUSED int fflags, void *ctx)
 {
 	proto_detail_file_t *inst = talloc_get_type_abort(ctx, proto_detail_file_t);
 
 	DEBUG("Deleted %s", inst->filename_work);
+
+	(void) fr_event_fd_delete(el, fd, FR_EVENT_FILTER_VNODE);
 
 	/*
 	 *	@todo - troll for detail.work file.  Allocate new
@@ -205,7 +207,7 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el)
 		return;
 	}
 
-	work->fd = fd;
+	work->fd = dup(fd);
 
 	/*
 	 *	Don't do anything until the file has been deleted.
@@ -215,10 +217,8 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el)
 	 */
 	if (fr_event_filter_insert(inst, el, fd, FR_EVENT_FILTER_VNODE,
 				   &funcs, NULL, inst) < 0) {
-		talloc_free(work);
-		close(fd);
 		ERROR("Failed adding worker socket to event loop: %s", fr_strerror());
-		return;
+		goto error;
 	}
 
 	/*
@@ -243,6 +243,8 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el)
 	 */
 	inst->parent->work_io_instance = work;
 
+	work->filename_work = talloc_strdup(work, inst->filename_work);
+
 	/*
 	 *	Set configurable parameters for message ring buffer.
 	 */
@@ -250,17 +252,21 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el)
 	listen->num_messages = inst->parent->num_messages;
 
 	/*
-	 *	Open the file.
+	 *	Open the detail.work file.
 	 */
 	if (listen->app_io->open(listen->app_io_instance) < 0) {
 		ERROR("Failed opening %s", listen->app_io->name);
-		close(fd);
-		talloc_free(work);
-		return;
+		goto error;
 	}
 
 	if (!fr_schedule_socket_add(inst->parent->sc, listen)) {
+	error:
+		(void) fr_event_fd_delete(el, fd, FR_EVENT_FILTER_VNODE);
 		close(fd);
+
+		(void) fr_event_fd_delete(el, work->fd, FR_EVENT_FILTER_VNODE);
+		(void) fr_event_fd_delete(el, work->fd, FR_EVENT_FILTER_IO);
+		close(work->fd);
 		talloc_free(work);
 		return;
 	}
@@ -303,10 +309,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 
 	*p = '\0';
 
+	DEBUG("Directory %s", inst->directory);
+
 	if (!inst->filename_work) {
 		inst->filename_work = talloc_asprintf(inst, "%s/detail.work", inst->directory);
 	}
-
 
 	return 0;
 }

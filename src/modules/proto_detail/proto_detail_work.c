@@ -472,6 +472,7 @@ static int mod_open(void *instance)
 	}
 
 	rad_assert(inst->name == NULL);
+	rad_assert(inst->filename_work != NULL);
 	inst->name = talloc_asprintf(inst, "detail working file %s", inst->filename_work);
 
 	DEBUG("Listening on %s bound to virtual server %s",
