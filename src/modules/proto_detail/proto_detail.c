@@ -437,6 +437,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	}
 
 	inst->listen = listen;	/* Probably won't need it, but doesn't hurt */
+	inst->sc = sc;
 
 	return 0;
 }
@@ -553,6 +554,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 */
 	inst->server_cs = cf_item_to_section(cf_parent(conf));
 	inst->cs = conf;
+	inst->self = &proto_detail;
 
 	/*
 	 *	Bootstrap the process module.

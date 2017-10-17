@@ -32,6 +32,7 @@ extern "C" {
 typedef struct proto_detail_t {
 	CONF_SECTION			*server_cs;			//!< server CS for this listener
 	CONF_SECTION			*cs;				//!< my configuration
+	fr_app_t			*self;				//!< child / parent linking issues
 
 	dl_instance_t			*io_submodule;			//!< As provided by the transport_parse
 									///< callback.  Broken out into the
@@ -56,6 +57,8 @@ typedef struct proto_detail_t {
 	uint32_t			num_messages;			//!< for message ring buffer
 	uint32_t			priority;			//!< for packet processing, larger == higher
 
+	fr_schedule_t			*sc;				//!< the scheduler, where we insert new readers
+
 	fr_listen_t const		*listen;			//!< The listener structure which describes
 									///< the I/O path.
 } proto_detail_t;
@@ -65,13 +68,12 @@ typedef struct proto_detail_t {
  */
 typedef struct proto_detail_work_t {
 	CONF_SECTION			*cs;			//!< our configuration section
-	proto_detail_t	const		*parent;		//!< The module that spawned us!
+	proto_detail_t			*parent;		//!< The module that spawned us!
 	char const			*name;			//!< debug name for printing
 
 	int				fd;			//!< file descriptor
 
 	fr_event_list_t			*el;			//!< for various timers
-	fr_schedule_t			*sc;			//!< the scheduler, where we insert new readers
 
 	char const			*directory;     	//!< containing the file below
 	char const			*filename;     		//!< file name, usually with wildcards
