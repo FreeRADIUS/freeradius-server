@@ -29,6 +29,7 @@
 #include <freeradius-devel/io/io.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
+#include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/rad_assert.h>
 #include "proto_detail.h"
 
@@ -137,6 +138,24 @@ static int mod_fd(void const *instance)
 	return inst->fd;
 }
 
+/*
+ *	Duplicate a proto_detail_work_t from the parent instance
+ */
+static proto_detail_work_t *worker_alloc(proto_detail_file_t *inst)
+{
+	proto_detail_work_t *work;
+
+	work = talloc(inst, proto_detail_work_t);
+	if (!work) return NULL;
+
+	memcpy(work, inst->parent->work_submodule->data, sizeof(*work));
+
+	work->free_on_close = true;
+
+	return work;
+}
+
+
 
 static void mod_vnode_delete(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED int fflags, void *ctx)
 {
@@ -159,8 +178,10 @@ static void mod_vnode_delete(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
  */
 static void mod_event_list_set(void *instance, fr_event_list_t *el)
 {
-	proto_detail_file_t *inst = talloc_get_type_abort(instance, proto_detail_file_t);
-	proto_detail_work_t *work = talloc_get_type_abort(inst->parent->work_io_instance, proto_detail_work_t);
+	proto_detail_file_t	*inst = talloc_get_type_abort(instance, proto_detail_file_t);
+	proto_detail_work_t	*work = talloc_get_type_abort(inst->parent->work_io_instance, proto_detail_work_t);
+	fr_listen_t		*listen;
+
 	fr_event_vnode_func_t	funcs = { .delete = mod_vnode_delete };
 	int fd;
 
@@ -176,6 +197,17 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el)
 	}
 
 	/*
+	 *	Fire off proto_detail_work
+	 */
+	work = worker_alloc(inst);
+	if (!work) {
+		ERROR("Failed allocating new worker.  Will not read detail files");
+		return;
+	}
+
+	work->fd = fd;
+
+	/*
 	 *	Don't do anything until the file has been deleted.
 	 *
 	 *	@todo - ensure that proto_detail_work is done the file...
@@ -183,7 +215,53 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el)
 	 */
 	if (fr_event_filter_insert(inst, el, fd, FR_EVENT_FILTER_VNODE,
 				   &funcs, NULL, inst) < 0) {
+		talloc_free(work);
+		close(fd);
 		ERROR("Failed adding worker socket to event loop: %s", fr_strerror());
+		return;
+	}
+
+	/*
+	 *	Create a new listener, and insert it into the
+	 *	scheduler.  Shameless copied from proto_detail.c
+	 *	mod_open(), with changes.
+	 *
+	 *	This listener is parented from the worker.  So that
+	 *	when the worker goes away, so does the listener.
+	 */
+	listen = talloc_zero(work, fr_listen_t);
+
+	listen->app_io = inst->parent->work_io;
+	listen->app_io_instance = work;
+
+	listen->app = inst->parent->self;
+	listen->app_instance = inst->parent;
+	listen->server_cs = inst->parent->server_cs;
+
+	/*
+	 *	Yuck.
+	 */
+	inst->parent->work_io_instance = work;
+
+	/*
+	 *	Set configurable parameters for message ring buffer.
+	 */
+	listen->default_message_size = inst->parent->max_packet_size;
+	listen->num_messages = inst->parent->num_messages;
+
+	/*
+	 *	Open the file.
+	 */
+	if (listen->app_io->open(listen->app_io_instance) < 0) {
+		ERROR("Failed opening %s", listen->app_io->name);
+		close(fd);
+		talloc_free(work);
+		return;
+	}
+
+	if (!fr_schedule_socket_add(inst->parent->sc, listen)) {
+		close(fd);
+		talloc_free(work);
 		return;
 	}
 }
