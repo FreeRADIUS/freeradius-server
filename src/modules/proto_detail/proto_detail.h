@@ -84,6 +84,8 @@ typedef struct proto_detail_work_t {
 
 	bool				track_progress;		//!< do we track progress by writing?
 
+	int				mode;			//!< O_RDWR or O_RDONLY
+
 	int				outstanding;		//!< number of outstanding records;
 
 	size_t				last_search;		//!< where we last searched in the buffer

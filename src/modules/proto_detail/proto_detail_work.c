@@ -443,7 +443,7 @@ static int mod_open(void *instance)
 	struct stat buf;
 
 	if (inst->fd < 0) {
-		inst->fd = open(inst->filename_work, O_RDWR);
+		inst->fd = open(inst->filename_work, inst->mode);
 		if (inst->fd < 0) {
 			cf_log_err(inst->cs, "Failed opening %s: %s", inst->filename_work, fr_syserror(errno));
 			return -1;
@@ -561,6 +561,12 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	inst->parent = talloc_get_type_abort(dl_inst->parent->data, proto_detail_t);
 	inst->cs = cs;
 	inst->fd = -1;
+
+	if (inst->track_progress) {
+		inst->mode = O_RDWR;
+	} else {
+		inst->mode = O_RDONLY;
+	}
 
 	return 0;
 }
