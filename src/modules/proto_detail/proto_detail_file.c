@@ -53,10 +53,7 @@ typedef struct proto_detail_work_t proto_detail_file_t;
 static const CONF_PARSER file_listen_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_STRING | FR_TYPE_REQUIRED, proto_detail_file_t, filename ) },
 
-	/*
-	 *	Only for "filename.work"
-	 */
-	{ FR_CONF_OFFSET("filename.work", FR_TYPE_STRING | FR_TYPE_REQUIRED, proto_detail_work_t, filename_work ) },
+	{ FR_CONF_OFFSET("filename.work", FR_TYPE_STRING, proto_detail_work_t, filename_work ) },
 
 	{ FR_CONF_OFFSET("track", FR_TYPE_BOOL, proto_detail_file_t, track_progress ) },
 
@@ -64,7 +61,7 @@ static const CONF_PARSER file_listen_config[] = {
 };
 
 
-static void mod_vnode(void *instance, UNUSED uint32_t fflags)
+static void mod_vnode_extend(void *instance, UNUSED uint32_t fflags)
 {
 	proto_detail_file_t *inst = talloc_get_type_abort(instance, proto_detail_file_t);
 
@@ -76,7 +73,6 @@ static void mod_vnode(void *instance, UNUSED uint32_t fflags)
 	 *	detail worker.
 	 */
 }
-
 
 /** Open a detail listener
  *
@@ -124,6 +120,20 @@ static int mod_fd(void const *instance)
 }
 
 
+static void mod_vnode_delete(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED int fflags, void *ctx)
+{
+	proto_detail_file_t *inst = talloc_get_type_abort(ctx, proto_detail_file_t);
+
+	DEBUG("Deleted %s", inst->filename_work);
+
+	/*
+	 *	@todo - troll for detail.work file.  Allocate new
+	 *	proto_detail_work_t, fill it in, and start up the new
+	 *	detail worker.
+	 */
+}
+
+
 /** Set the event list for a new IO instance
  *
  * @param[in] instance of the detail worker
@@ -132,8 +142,32 @@ static int mod_fd(void const *instance)
 static void mod_event_list_set(void *instance, fr_event_list_t *el)
 {
 	proto_detail_file_t *inst = talloc_get_type_abort(instance, proto_detail_file_t);
+	proto_detail_work_t *work = talloc_get_type_abort(inst->parent->work_io_instance, proto_detail_work_t);
+	fr_event_vnode_func_t	funcs = { .delete = mod_vnode_delete };
+	int fd;
 
 	inst->el = el;
+
+	/*
+	 *	See if there is a "detail.work" file.  If so, fire off proto_detail_work.
+	 */
+	fd = open(inst->filename_work, work->mode);
+	if (fd < 0) {
+		DEBUG("No work file %s, starting to poll", inst->filename_work);
+		return;
+	}
+
+	/*
+	 *	Don't do anything until the file has been deleted.
+	 *
+	 *	@todo - ensure that proto_detail_work is done the file...
+	 *	maybe by creating a new instance?
+	 */
+	if (fr_event_filter_insert(inst, el, fd, FR_EVENT_FILTER_VNODE,
+				   &funcs, NULL, inst) < 0) {
+		ERROR("Failed adding worker socket to event loop: %s", fr_strerror());
+		return;
+	}
 }
 
 
@@ -171,9 +205,12 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		return -1;
 	}
 
-	inst->filename_work = talloc_asprintf(inst, "%s/detail.work", inst->directory);
-
 	*p = '\0';
+
+	if (!inst->filename_work) {
+		inst->filename_work = talloc_asprintf(inst, "%s/detail.work", inst->directory);
+	}
+
 
 	return 0;
 }
@@ -210,7 +247,7 @@ fr_app_io_t proto_detail_file = {
 	.default_reply_size	= 32,
 
 	.open			= mod_open,
-	.vnode			= mod_vnode,
+	.vnode			= mod_vnode_extend,
 	.fd			= mod_fd,
 	.event_list_set		= mod_event_list_set,
 };
