@@ -1603,42 +1603,54 @@ service:
 		case FR_EVENT_FILTER_VNODE:
 			if (unlikely(!fr_cond_assert(el->events[i].filter == EVFILT_VNODE))) break;
 
-			switch (el->events[i].fflags) {
-			case NOTE_DELETE:
+			if ((el->events[i].fflags & NOTE_DELETE) != 0) {
 				ef->active.vnode.delete(el, ef->fd, flags, ef->uctx);
-				break;
-
-			case NOTE_WRITE:
-				ef->active.vnode.write(el, ef->fd, flags, ef->uctx);
-				break;
-
-			case NOTE_EXTEND:
-				ef->active.vnode.extend(el, ef->fd, flags, ef->uctx);
-				break;
-
-			case NOTE_ATTRIB:
-				ef->active.vnode.attrib(el, ef->fd, flags, ef->uctx);
-				break;
-
-			case NOTE_LINK:
-				ef->active.vnode.link(el, ef->fd, flags, ef->uctx);
-				break;
-
-			case NOTE_RENAME:
-				ef->active.vnode.rename(el, ef->fd, flags, ef->uctx);
-				break;
-#ifdef NOTE_REVOKE
-			case NOTE_REVOKE:
-				ef->active.vnode.revoke(el, ef->fd, flags, ef->uctx);
-				break;
-#endif
-#ifdef NOTE_FUNLOCK
-			case NOTE_FUNLOCK:
-				ef->active.vnode.funlock(el, ef->fd, flags, ef->uctx);
-#endif
-			default:
-				if (unlikely(!fr_cond_assert(false))) break;
+				el->events[i].fflags &= ~NOTE_DELETE;
 			}
+
+			if ((el->events[i].fflags & NOTE_WRITE) != 0) {
+				ef->active.vnode.write(el, ef->fd, flags, ef->uctx);
+				el->events[i].fflags &= ~NOTE_WRITE;
+			}
+
+			if ((el->events[i].fflags & NOTE_EXTEND) != 0) {
+				ef->active.vnode.extend(el, ef->fd, flags, ef->uctx);
+				el->events[i].fflags &= ~NOTE_EXTEND;
+			}
+
+			if ((el->events[i].fflags & NOTE_ATTRIB) != 0) {
+				ef->active.vnode.attrib(el, ef->fd, flags, ef->uctx);
+				el->events[i].fflags &= ~NOTE_ATTRIB;
+			}
+
+			/*
+			 *	NOTE_LINK is sometimes added even if we didn't ask for it.
+			 */
+			if ((el->events[i].fflags & NOTE_LINK) != 0) {
+				if (ef->active.vnode.link) ef->active.vnode.link(el, ef->fd, flags, ef->uctx);
+				el->events[i].fflags &= ~NOTE_LINK;
+			}
+
+			if ((el->events[i].fflags & NOTE_RENAME) != 0) {
+				ef->active.vnode.rename(el, ef->fd, flags, ef->uctx);
+				el->events[i].fflags &= ~NOTE_RENAME;
+			}
+
+#ifdef NOTE_REVOKE
+			if ((el->events[i].fflags & NOTE_REVOKE) != 0) {
+				ef->active.vnode.revoke(el, ef->fd, flags, ef->uctx);
+				el->events[i].fflags &= ~NOTE_REVOKE;
+			}
+#endif
+
+#ifdef NOTE_FUNLOCK
+			if ((el->events[i].fflags & NOTE_FUNLOCK) != 0) {
+				ef->active.vnode.funlock(el, ef->fd, flags, ef->uctx);
+				el->events[i].fflags &= ~NOTE_FUNLOCK;
+			}
+#endif
+
+			if (el->events[i].fflags && unlikely(!fr_cond_assert(false))) break;
 			break;
 
 		default:
