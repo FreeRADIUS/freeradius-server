@@ -85,6 +85,7 @@ typedef struct proto_detail_work_t {
 	bool				closing;		//!< we should be closing the file
 
 	bool				track_progress;		//!< do we track progress by writing?
+	bool				free_on_close;		//!< free the worker on close
 
 	int				mode;			//!< O_RDWR or O_RDONLY
 

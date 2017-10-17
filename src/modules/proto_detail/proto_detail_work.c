@@ -503,6 +503,11 @@ static int mod_close(void *instance)
 	close(inst->fd);
 	inst->fd = -1;
 
+	if (inst->free_on_close) {
+		inst->parent->work_io_instance = NULL;
+		talloc_free(inst);
+	}
+
 	return 0;
 }
 
