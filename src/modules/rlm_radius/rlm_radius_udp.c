@@ -2369,9 +2369,10 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 	 *	There are other pending writes, wait for the event
 	 *	callbacks to wake up a connection and send the packet.
 	 */
-	if (t->pending) return RLM_MODULE_YIELD;
-
-	t->pending = true;
+	if (t->pending) {
+		DEBUG3("Thread has pending packets.  Waiting for socket to be ready");
+		return RLM_MODULE_YIELD;
+	}
 
 	/*
 	 *	There are no pending writes.  Get a waiting
@@ -2394,6 +2395,7 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 		 *	or when an existing connection has
 		 *	availability.
 		 */
+		t->pending = true;
 		return RLM_MODULE_YIELD;
 	}
 
