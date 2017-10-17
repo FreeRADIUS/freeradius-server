@@ -61,6 +61,24 @@ static const CONF_PARSER file_listen_config[] = {
 };
 
 
+/*
+ *	All of the decoding is done by proto_detail and proto_detail_work
+ */
+static int mod_decode(void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
+{
+	proto_detail_file_t const     	*inst = talloc_get_type_abort_const(instance, proto_detail_file_t);
+
+	return inst->parent->work_io->decode(inst->parent->work_io_instance, request, data, data_len);
+}
+
+static ssize_t mod_write(void *instance, void *packet_ctx,
+			 fr_time_t request_time, uint8_t *buffer, size_t buffer_len)
+{
+	proto_detail_file_t const     	*inst = talloc_get_type_abort_const(instance, proto_detail_file_t);
+
+	return inst->parent->work_io->write(inst->parent->work_io_instance, packet_ctx, request_time, buffer, buffer_len);
+}
+
 static void mod_vnode_extend(void *instance, UNUSED uint32_t fflags)
 {
 	proto_detail_file_t *inst = talloc_get_type_abort(instance, proto_detail_file_t);
@@ -248,6 +266,8 @@ fr_app_io_t proto_detail_file = {
 
 	.open			= mod_open,
 	.vnode			= mod_vnode_extend,
+	.decode			= mod_decode,
+	.write			= mod_write,
 	.fd			= mod_fd,
 	.event_list_set		= mod_event_list_set,
 };
