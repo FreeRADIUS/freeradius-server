@@ -244,7 +244,7 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 		when.tv_usec = USEC / 10;
 
 		DEBUG3("Waiting %d.%06ds for lock on file %s",
-		       (int) when.tv_sec, when.tv_usec, inst->filename_work);
+		       (int) when.tv_sec, (int) when.tv_usec, inst->filename_work);
 
 		fr_timeval_add(&when, &when, &now);
 
@@ -400,7 +400,7 @@ redo:
 		when.tv_usec = 0;
 
 		DEBUG3("Waiting %d.%06ds for new files in %s",
-		       (int) when.tv_sec, when.tv_usec, inst->name);
+		       (int) when.tv_sec, (int) when.tv_usec, inst->name);
 
 		gettimeofday(&now, NULL);
 
