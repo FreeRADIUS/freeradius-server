@@ -45,8 +45,9 @@ typedef struct rlm_sqlippool_t {
 	rlm_sql_t	*sql_inst;
 
 	char const	*pool_name;
-	bool		ipv6;			//!< Whether or not we do IPv6 pools.
-	int		framed_ip_address; 	//!< the attribute number for Framed-IP(v6)-Address
+	bool		ipv6_addr;		//!< Whether or not we do IPv6 Address assignment (IPv6_NA)
+	bool		ipv6_pfx;		//!< Whether or not we do IPv6 Prefix delegation (IPv6_PD)
+	int		framed_ip_address; 	//!< the attribute number for Framed-IP(v6)-Address / Delegated-IPv6-Prefix
 
 	time_t		last_clear;		//!< So we only do it once a second.
 	char const	*allocate_begin;	//!< SQL query to begin.
@@ -126,7 +127,8 @@ static CONF_PARSER module_config[] = {
 	{ "default_pool", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, defaultpool), "main_pool" },
 
 
-	{ "ipv6", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sqlippool_t, ipv6), NULL},
+	{ "ipv6_address", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sqlippool_t, ipv6_addr), NULL},
+	{ "ipv6_prefix", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sqlippool_t, ipv6_pfx), NULL},
 
 	{ "allocate-begin", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, allocate_begin), NULL },
 	{ "allocate_begin", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sqlippool_t, allocate_begin), "START TRANSACTION" },
@@ -421,10 +423,17 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
-	if (!inst->ipv6) {
-		inst->framed_ip_address = PW_FRAMED_IP_ADDRESS;
-	} else {
+	if (inst->ipv6_addr && inst->ipv6_pfx) {
+		cf_log_err_cs(conf, "Cannot have both 'ipv6_address' and 'ipv6_prefix' set in the same sqlippool instance");
+		return -1;
+	}
+
+	if (inst->ipv6_addr) {
 		inst->framed_ip_address = PW_FRAMED_IPV6_PREFIX;
+	} else if (inst->ipv6_pfx) {
+		inst->framed_ip_address = PW_DELEGATED_IPV6_PREFIX;
+	} else {
+		inst->framed_ip_address = PW_FRAMED_IP_ADDRESS;
 	}
 
 	if (strcmp(sql_inst->entry->name, "rlm_sql") != 0) {
