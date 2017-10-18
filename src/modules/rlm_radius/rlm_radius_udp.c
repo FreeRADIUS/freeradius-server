@@ -135,7 +135,7 @@ typedef enum rlm_radius_request_state_t {
 	PACKET_STATE_THREAD,				//!< in the thread queue
 	PACKET_STATE_SENT,				//!< in the connection "sent" heap
 	PACKET_STATE_RESUMABLE,      			//!< timed out, or received a reply
-	PACKET_STATE_FINISHED,			//!< and done
+	PACKET_STATE_FINISHED,				//!< and done
 } rlm_radius_request_state_t;
 
 
@@ -400,8 +400,12 @@ static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeva
 			return;
 		}
 
+		/*
+		 *	Note that the status check packets not in any
+		 *	"sent" list
+		 */
 		if (rcode == 1) {
-			FR_DLIST_INIT(u->entry); /* not in any "sent" list */
+			FR_DLIST_INIT(u->entry);
 			u->state = PACKET_STATE_SENT;
 			u->c = c;
 			return;
@@ -436,6 +440,60 @@ static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 }
 
 
+static void state_transition(rlm_radius_udp_request_t *u, rlm_radius_request_state_t state)
+{
+	if (u->state == state) return;
+
+	switch (u->state) {
+	case PACKET_STATE_INIT:
+		rad_assert(state == PACKET_STATE_THREAD);
+		break;
+
+	case PACKET_STATE_THREAD:
+		(void) fr_heap_extract(u->thread->queued, u);
+		break;
+
+	case PACKET_STATE_SENT:
+		rad_assert(u->rr != NULL);
+		rad_assert(u->c != NULL);
+		(void) rr_track_delete(u->c->id, u->rr);
+		fr_dlist_remove(&u->entry);
+		u->rr = NULL;
+		u->c = NULL;
+		break;
+
+	default:
+		rad_assert(0 == 1);
+		break;
+	}
+
+	u->state = state;
+	switch (u->state) {
+	case PACKET_STATE_THREAD:
+		rad_assert(u->rr == NULL);
+		rad_assert(u->c == NULL);
+		fr_heap_insert(u->thread->queued, u);
+		break;
+
+	case PACKET_STATE_SENT:
+		rad_assert(u->rr != NULL);
+		rad_assert(u->c != NULL);
+		fr_dlist_insert_tail(&u->c->sent, &u->entry);
+		break;
+
+	case PACKET_STATE_RESUMABLE:
+		unlang_resumable(u->link->request);
+		break;
+
+	case PACKET_STATE_FINISHED:
+		break;
+
+	default:
+		rad_assert(0 == 1);
+		break;
+	}
+}
+
 static void mod_finished_request(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *u)
 {
 	rad_assert(u->state != PACKET_STATE_FINISHED);
@@ -458,22 +516,14 @@ static void mod_finished_request(rlm_radius_udp_connection_t *c, rlm_radius_udp_
 		}
 
 		rad_assert(u->state == PACKET_STATE_SENT);
-
-		fr_dlist_remove(&u->entry);
-		(void) rr_track_delete(c->id, u->rr);
-		u->rr = NULL;
-		u->c = NULL;
+		state_transition(u, PACKET_STATE_RESUMABLE);
 
 		conn_check_idle(c);
 
 	} else {
 		rad_assert(u->state == PACKET_STATE_THREAD);
-		(void) fr_heap_extract(u->thread->queued, u);
-		rad_assert(u->rr == NULL);
+		state_transition(u, PACKET_STATE_RESUMABLE);
 	}
-
-	u->state = PACKET_STATE_RESUMABLE;
-	unlang_resumable(u->link->request);
 }
 
 /** Turn a reply code into a module rcode;
@@ -552,7 +602,6 @@ static void status_check_reply(rlm_radius_udp_connection_t *c, rlm_radius_udp_re
 	if (u->timer.ev) (void) fr_event_timer_delete(u->thread->el, &u->timer.ev);
 
 	rad_assert(u->state == PACKET_STATE_SENT);
-	fr_dlist_remove(&u->entry);
 	u->state = PACKET_STATE_INIT;
 
 	if (u->code != FR_CODE_STATUS_SERVER) return;
@@ -668,6 +717,7 @@ static void conn_transition(rlm_radius_udp_connection_t *c, rlm_radius_udp_conne
 		break;
 	}
 }
+
 
 /** Read reply packets.
  *
@@ -1120,24 +1170,9 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	       u->timer.count, u->timer.retry->mrc);
 
 	/*
-	 *	The packet timed out while it didn't have a
-	 *	connection, or the connection was closed.  Try to grab
-	 *	a new connection.
-	 */
-	if (!c) {
-		rad_assert(u->state == PACKET_STATE_THREAD);
-		c = fr_heap_peek(u->thread->active);
-		if (c) {
-			u->rr = rr_track_alloc(c->id, u->link->request, u->code, u->link, &u->timer);
-			if (u->rr) u->c = c;
-		}
-
-	} else {
-		rad_assert(u->state == PACKET_STATE_SENT);
-	}
-
-	/*
-	 *	Can we retry this packet?
+	 *	Can we retry this packet?  If not, then maybe the
+	 *	connection is zombie.  If we don't have a connection,
+	 *	just give up on the request.
 	 */
 	rcode = rr_track_retry(&u->timer, now);
 	if (rcode == 0) {
@@ -1148,9 +1183,10 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 				return;
 			}
 
-			conn_transition(c, CONN_ZOMBIE);
 			REDEBUG("No response to proxied request ID %d on connection %s",
 				u->rr->id, c->name);
+			conn_transition(c, CONN_ZOMBIE);
+
 		} else {
 			REDEBUG("No response to proxied request");
 		}
@@ -1160,8 +1196,7 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	}
 
 	/*
-	 *	We're still retrying.  Insert the next retransmission
-	 *	timer.
+	 *	Insert the next retransmission timer.
 	 */
 	if (fr_event_timer_insert(u, el, &u->timer.ev, &u->timer.next, response_timeout, u) < 0) {
 		RDEBUG("Failed inserting retransmission timer");
@@ -1169,12 +1204,40 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 		return;
 	}
 
+	/*
+	 *	The timer hit, but there was no connection for the
+	 *	packet.  Try to grab an active connection.  If we do
+	 *	have an active connection
+	 */
 	if (!c) {
+	get_new_connection:
 		rad_assert(u->state == PACKET_STATE_THREAD);
-		RDEBUG("No available connections for retransmission.  Waiting %d.%06ds for retry",
-		       u->timer.rt / USEC, u->timer.rt % USEC);
-		return;
+		c = fr_heap_peek(u->thread->active);
+		if (!c) {
+			rad_assert(u->state == PACKET_STATE_THREAD);
+			RDEBUG("No available connections for retransmission.  Waiting %d.%06ds for retry",
+			       u->timer.rt / USEC, u->timer.rt % USEC);
+			return;
+		}
+
+		/*
+		 *	We just grabbed a new connection, go allocate
+		 *	an ID for it.
+		 */
+		u->rr = rr_track_alloc(c->id, u->link->request, u->code, u->link, &u->timer);
+		if (!u->rr) {
+			conn_transition(c, CONN_FULL);
+			goto get_new_connection;
+		}
+
+		/*
+		 *	We have a connection, transition to "sent".
+		 */
+		u->c = c;
+		state_transition(u, PACKET_STATE_SENT);
 	}
+
+	rad_assert(u->state == PACKET_STATE_SENT);
 
 	/*
 	 *	If we can retransmit it, do so.  Otherwise, it will
@@ -1185,69 +1248,24 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	rcode = retransmit_packet(u, now);
 	if (rcode < 0) {
 		RDEBUG("Failed retransmitting packet for connection %s", c->name);
-		mod_finished_request(c, u);
-		return;
+		state_transition(u, PACKET_STATE_THREAD);
+		talloc_free(c);
+		goto get_new_connection;
 	}
 
 	/*
-	 *	EWOULDBLOCK.  Leave it in whatever list it was already
-	 *	in.
+	 *	EWOULDBLOCK, move the connection to blocked, and move
+	 *	the packet back to the thread queue, and try to send
+	 *	the packet on yet another connection.
 	 */
 	if (rcode == 0) {
-		/*
-		 *	Don't pick this connection for new writes.
-		 */
+		RDEBUG("Blocked writing for connection %s", c->name);
 		conn_transition(c, CONN_BLOCKED);
-
-		switch (u->state) {
-			/*
-			 *	We just pulled it off of the main
-			 *	thread queue, then allocated a
-			 *	connection and an ID, but the
-			 *	connection is blocked.
-			 */
-		case PACKET_STATE_THREAD:
-			rad_assert(u->rr != NULL);
-			(void) rr_track_delete(c->id, u->rr);
-			u->rr = NULL;
-			u->c = NULL;
-			break;
-
-		case PACKET_STATE_SENT:
-			/* do nothing */
-			rad_assert(u->rr != NULL);
-			rad_assert(u->c != NULL);
-			break;
-
-		default:
-			rad_assert(0 == 1);
-			break;
-		}
-
-		return;
+		state_transition(u, PACKET_STATE_THREAD);
+		goto get_new_connection;
 	}
 
-	/*
-	 *	The response timeout is independent of which connection is in use.
-	 */
-	switch (u->state) {
-	case PACKET_STATE_THREAD:
-		rad_assert(u != c->status_u);
-		(void) fr_heap_extract(c->thread->queued, u);
-
-		fr_dlist_insert_tail(&c->sent, &u->entry);
-		u->state = PACKET_STATE_SENT;
-		u->c = c;
-		break;
-
-	case PACKET_STATE_SENT:
-		/* do nothing */
-		break;
-
-	default:
-		rad_assert(0 == 1);
-		break;
-	}
+	/* else we successfully managed to write the packet to the connection */
 }
 
 
@@ -1511,13 +1529,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	 *	timers, etc.
 	 */
 	if (c->inst->replicate && (u != c->status_u)) {
-		/*
-		 *	Make sure that the ID is free.
-		 */
-		(void) rr_track_delete(c->id, u->rr);
-		u->rr = NULL;
-		u->c = NULL;
-		u->state = PACKET_STATE_FINISHED;
+		state_transition(u, PACKET_STATE_FINISHED);
 		return 2;
 	}
 
@@ -1617,7 +1629,7 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 	/*
 	 *	Empty the global queue of packets to send.
 	 */
-	while ((u = fr_heap_pop(c->thread->queued)) != NULL) {
+	while ((u = fr_heap_peek(c->thread->queued)) != NULL) {
 		int rcode;
 
 		u->rr = rr_track_alloc(c->id, u->link->request, u->code, u->link, &u->timer);
@@ -1628,14 +1640,15 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 		 *	stop writing packets.
 		 */
 		if (!u->rr) {
-			(void) fr_heap_insert(c->thread->queued, u);
-
 			pending = true;
 			conn_transition(c, CONN_FULL);
 			break;
 		}
 
 		rad_assert(u->state == PACKET_STATE_THREAD);
+
+		u->c = c;
+		state_transition(u, PACKET_STATE_SENT);
 
 		/*
 		 *	The packet already has a timer associated with
@@ -1644,9 +1657,6 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 		 *	be sent when the timer fires.
 		 */
 		if (u->timer.ev) {
-			fr_dlist_insert_tail(&c->sent, &u->entry);
-			u->state = PACKET_STATE_SENT;
-			u->c = c;
 			continue;
 		}
 
@@ -1657,41 +1667,42 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 		rcode = conn_write(c, u);
 
 		/*
-		 *	Can't write it, so we fail the request.
+		 *	The packet was sent, and we should wait for
+		 *	the reply.
 		 */
-		if (rcode < 0) {
-			u->link->rcode = RLM_MODULE_FAIL;
-			u->state = PACKET_STATE_RESUMABLE;
-			unlang_resumable(u->link->request);
+		if (rcode == 1) {
+			continue;
 		}
 
 		/*
 		 *	The write returned EWOULDBLOCK.  We re-insert
 		 *	the packet back onto the main thread queue,
-		 *	and stop writing packets.
+		 *	and stop writing packets to this connection.
 		 */
-		else if (rcode == 0) {
-			(void) fr_heap_insert(c->thread->queued, u);
-			u->state = PACKET_STATE_THREAD;
-
-			(void) rr_track_delete(c->id, u->rr);
-			u->rr = NULL;
-			u->c = NULL;
-
+		if (rcode == 0) {
 			pending = true;
+			state_transition(u, PACKET_STATE_THREAD);
 			conn_transition(c, CONN_BLOCKED);
 			break;
 		}
 
 		/*
-		 *	The packet was sent, and we should wait for
-		 *	the reply.
+		 *	Can't write a packet to this connection, so we
+		 *	close it.
+		 *
+		 *	We still wake up the "next" connection, as
+		 *	we hope that it may be writable.
 		 */
-		else if (rcode == 1) {
-			fr_dlist_insert_tail(&c->sent, &u->entry);
-			u->state = PACKET_STATE_SENT;
-			u->c = c;
-			continue;
+		if (rcode < 0) {
+			rlm_radius_udp_thread_t *t = c->thread;
+
+			talloc_free(c);
+
+			next = fr_heap_peek(t->active);
+			if (!next) return;
+
+			conn_writable(el, next->fd, 0, next);
+			return;
 		}
 
 		/*
@@ -1700,8 +1711,7 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 		 *	resumable.
 		 */
 		else {
-			u->state = PACKET_STATE_RESUMABLE;
-			unlang_resumable(u->link->request);
+			state_transition(u, PACKET_STATE_RESUMABLE);
 		}
 	}
 
@@ -1738,7 +1748,7 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 	}
 
 	/*
-	 *	Wake up the next connection, and have it drain
+	 *	Wake up the next connection, and see if it can drain
 	 *	the input queue.
 	 */
 	next = fr_heap_peek(c->thread->active);
@@ -1934,24 +1944,12 @@ static fr_connection_state_t _conn_failed(int fd, fr_connection_state_t state, v
 
 		/*
 		 *	Move "sent" packets back to the thread queue,
-		 *	and remove their retransmission timers.
 		 */
 		while ((entry = FR_DLIST_FIRST(c->sent)) != NULL) {
 			rlm_radius_udp_request_t *u;
 
 			u = fr_ptr_to_type(rlm_radius_udp_request_t, entry, entry);
-			rad_assert(u->rr != NULL);
-			(void) rr_track_delete(c->id, u->rr);
-
-			/*
-			 *	Do NOT change u->timer.ev
-			 */
-			rad_assert(u->state == PACKET_STATE_SENT);
-			fr_dlist_remove(&u->entry);
-			u->rr = NULL;
-			u->c = NULL;
-			(void) fr_heap_insert(c->thread->queued, u);
-			u->state = PACKET_STATE_THREAD;
+			state_transition(u, PACKET_STATE_THREAD);
 		}
 
 		fr_event_fd_delete(c->thread->el, fd, FR_EVENT_FILTER_IO);
@@ -2209,18 +2207,7 @@ static int _conn_free(rlm_radius_udp_connection_t *c)
 		rad_assert(u->state == PACKET_STATE_SENT);
 		rad_assert(u->c == c);
 
-		/*
-		 *	Don't bother freeing individual entries.  They
-		 *	will get deleted when c->id is free'd.
-		 */
-		u->rr = NULL;
-		u->c = NULL;
-
-		if (u->timer.ev) (void) fr_event_timer_delete(c->thread->el, &u->timer.ev);
-
-		fr_dlist_remove(&u->entry);
-		(void) fr_heap_insert(t->queued, u);
-		u->state = PACKET_STATE_THREAD;
+		state_transition(u, PACKET_STATE_THREAD);
 	}
 
 	switch (c->state) {
@@ -2352,7 +2339,9 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 		return RLM_MODULE_FAIL;
 	}
 
-	u->state = PACKET_STATE_THREAD;
+	u->state = PACKET_STATE_INIT;
+	u->rr = NULL;
+	u->c = NULL;
 	u->link = link;
 	u->code = request->packet->code;
 	u->thread = t;
@@ -2364,7 +2353,7 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 	/*
 	 *	Insert the new packet into the thread queue.
 	 */
-	(void) fr_heap_insert(t->queued, u);
+	state_transition(u, PACKET_STATE_THREAD);
 
 	/*
 	 *	There are OTHER pending writes, wait for the event
