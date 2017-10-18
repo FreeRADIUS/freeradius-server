@@ -97,6 +97,8 @@ typedef struct proto_detail_work_t {
 	off_t				file_size;		//!< size of the file
 	off_t				header_offset;		//!< offset of the current header we're reading
 	off_t				read_offset;		//!< where we're reading from in filename_work
+
+	fr_event_timer_t const		*ev;			//!< for detail file timers.
 } proto_detail_work_t;
 
 #ifdef __cplusplus
