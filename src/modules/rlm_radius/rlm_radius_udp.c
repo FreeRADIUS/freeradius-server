@@ -743,6 +743,11 @@ redo:
 	}
 
 	/*
+	 *	We can only get a reply to a sent packet.
+	 */
+	rad_assert(u->state == PACKET_STATE_SENT);
+
+	/*
 	 *	Remember when we last saw a reply.
 	 */
 	gettimeofday(&c->last_reply, NULL);
