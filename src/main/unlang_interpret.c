@@ -1116,7 +1116,7 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 		return RLM_MODULE_YIELD;
 	}
 
-	rad_assert(done = CHILD_DONE);
+	rad_assert(done == CHILD_DONE);
 
 	/*
 	 *	Clean up all of the child requests, because once we
