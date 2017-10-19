@@ -1,0 +1,193 @@
+# -*- text -*-
+######################################################################
+#
+#	This virtual server gives an example of reading the detail
+#	file for the v4 configuration.
+#
+#	$Id$
+#
+######################################################################
+virtual_server detail {
+	#
+	#  In v4, all "server" sections MUST start with a "namespace"
+	#  parameter.  This tells the server which protocol is being used.
+	#
+	#  All of the subsequent "listen" sections in this server will
+	#  only accept packets for that protocol.
+	#
+	namespace = detail
+
+	listen {
+		#
+		#  The packet types are NOT in the detail file,
+		#  so they need to be listed here.
+		#
+		#  Supported types are:
+		#
+		#  Accounting-Request
+		#  CoA-Request
+		#  Disconnect-Request
+		#
+		type = Accounting-Request
+
+		#
+		#  What transports are being used to read detail
+		#  files.  For now, only "file" is supported.
+		#
+		#  Future releases will allow reading "detail"
+		#  style information from sockets or streams.
+		#
+		transport = file
+
+		#
+		#  Unlike v3, there is no "load_factor" configuration.
+		#
+		#  Instead, the detail file listener is "self
+		#  clocking".  The listener reads one entry, and as
+		#  soon as it gets a response to that entry, the
+		#  listener reads a second entry.
+		#
+		#  
+		#
+
+		#
+		#  Set the priority for packets from the detail
+		#  listener.  For safety, it should be set low.  This
+		#  means that "real" packets from a NAS will be
+		#  processed before packets from the detail listener.
+		#
+		#  i.e. the packets from the detail listener won't be
+		#  processed until ALL OTHER packets in the system
+		#  have been received, processed, and responded to.
+		#
+		#  The default is for the server to process packets in
+		#  the following priority:
+		#
+		#	Status-Server
+		#	Access-Request
+		#	Disconnect-Request
+		#	CoA-Request
+		#	Accounting-Request
+		#	packets from the "detail" listener.
+		#
+		#  This priority setting ensures that the server will
+		#  be responsive and stable.
+		#
+		#  Allowed values: 1 to 65536.
+		#
+		#  Setting it to "1" means "very low priority".
+		#
+		#  Setting it to "65536" means "higher priority than
+		#  Access-Request packet"
+		#
+#		priority = 1
+
+		#
+		#  Read from a "file".
+		#
+		file {
+			#
+			#  The wildcard to use for finding detail files
+			#
+			filename = "${confdir}/detail-*"
+
+			#
+			#  The name of the current working file.
+			#  If ommitted, it is the directory from
+			#  the 'filename' above, with "/detail.work"
+			#  appended to it.
+			#
+			#  As of v4, you can have multiple detail file
+			#  readers in the same directory.  The only
+			#  caveat is that the wildcards CANNOT overlap.
+			#
+			#  The best way to enforce that is to give the
+			#  the files different prefixes.
+			#
+			filename.work = "${confdir}/detail.work"
+
+			#
+			#  Track progress through the detail file.  When the detail
+			#  file is large, and the server is re-started, it will
+			#  read from the START of the file.
+			#
+			#  Setting "track = yes" means it will skip packets which
+			#  have already been processed.  The default is "no".
+			#
+			track = yes
+
+			#
+			#  If there are no detail files in the directory,
+			#  the listener will periodically wake up to check
+			#  for new entries.
+			#
+			#  Allowed values: 1 to 3600
+			poll_interval = 5
+
+			#
+			#  The maximum size (in bytes) of one entry in
+			#  the detail file.  If this setting is too
+			#  low, then the "too large" entries in the
+			#  detail file will be ignored.
+			#
+			#  Due to limitations in the detail file
+			#  reader, if multiple entries fit into this
+			#  size, then all of those entries will be
+			#  read and processed, before further reading
+			#  is done from the file.
+			#
+			max_entry_size = 65536
+		}
+	}
+
+#
+#  All packets read by the detail listener are processed through the
+#  'recv' section.  Note that there is no second name to the section.
+#
+recv {
+	ok
+}
+
+#
+#  All successful packets sent by the detail listener are processed through the
+#  'send' section.  Note that the name is the same for all packet types.
+#
+#  If the listener is configured with 'track = yes', then the entry in
+#  the detail file is marked up as being "done".  Subsequent re-reads
+#  of the same detail file (e.g. on server re-start) will skip the
+#  "done" entries.
+#
+send success {
+	ok
+}
+
+#
+#  All failed packets sent by the detail listener are processed through the
+#  'send' section.  Note that the name is the same for all packet types.
+#
+#  If the listener is configured with 'track = yes', then the packet
+#  should be retransmitted by the detail file reader, until the packet
+#  returns "success".
+#
+#  Note that the retransmission is not yet implemented.
+#
+send fail {
+	ok
+}
+
+#
+#  If we are not supposed to respond, run this section.
+#
+#  i.e. do not mark the packet as "done".
+#
+#  If the listener is configured with 'track = yes', then the packet
+#  should be retransmitted by the detail file reader, until the packet
+#  returns "success".
+#
+#  Note that the retransmission is not yet implemented.
+#
+send Do-Not-Respond {
+	ok
+}
+
+} # virtual server "detail"
