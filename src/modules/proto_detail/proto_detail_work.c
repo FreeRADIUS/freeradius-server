@@ -386,6 +386,17 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	inst->outstanding--;
 
 	if (buffer[0] == 0) {
+		/*
+		 *	Note that this packet will be sent again if
+		 *	the detail file reader re-starts.  Otherwise,
+		 *	it will be dropped without a retry.
+		 *
+		 *	@todo - put the original packet onto a list
+		 *	for retransmissions, and don't finish with the
+		 *	detail.work file until all packets are
+		 *	retransmitted.  And don't read new ones until
+		 *	the old ones are finished.
+		 */
 		DEBUG("Got Do-Not-Respond, not writing reply");
 
 	} else if (inst->track_progress && (track->done_offset > 0)) {
