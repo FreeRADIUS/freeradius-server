@@ -34,8 +34,6 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 	VALUE_PAIR *vp;
 	rlm_rcode_t rcode;
 	CONF_SECTION *unlang;
-	fr_dict_enum_t const *dv;
-	fr_dict_attr_t const *da = NULL;
 
 	REQUEST_VERIFY(request);
 
@@ -84,7 +82,23 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		case RLM_MODULE_NOOP:
 		case RLM_MODULE_OK:
 		case RLM_MODULE_UPDATED:
-			request->reply->code = FR_CODE_ACCOUNTING_RESPONSE;
+			switch (request->packet->code) {
+			case FR_CODE_ACCOUNTING_REQUEST:
+				request->reply->code = FR_CODE_ACCOUNTING_RESPONSE;
+				break;
+
+			case FR_CODE_COA_REQUEST:
+				request->reply->code = FR_CODE_COA_ACK;
+				break;
+
+			case FR_CODE_DISCONNECT_REQUEST:
+				request->reply->code = FR_CODE_DISCONNECT_ACK;
+				break;
+
+			default:
+				request->reply->code = FR_CODE_DO_NOT_RESPOND;
+				break;
+			}
 			break;
 
 		case RLM_MODULE_HANDLED:
@@ -100,7 +114,24 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		case RLM_MODULE_REJECT:
 		case RLM_MODULE_USERLOCK:
 		default:
-			return FR_IO_FAIL;
+			switch (request->packet->code) {
+			case FR_CODE_ACCOUNTING_REQUEST:
+				request->reply->code = FR_CODE_DO_NOT_RESPOND;
+				break;
+
+			case FR_CODE_COA_REQUEST:
+				request->reply->code = FR_CODE_COA_NAK;
+				break;
+
+			case FR_CODE_DISCONNECT_REQUEST:
+				request->reply->code = FR_CODE_DISCONNECT_NAK;
+				break;
+
+			default:
+				request->reply->code = FR_CODE_DO_NOT_RESPOND;
+				break;
+			}
+			break;
 		}
 
 		/*
@@ -109,16 +140,19 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		vp = fr_pair_find_by_num(request->reply->vps, 0, FR_PACKET_TYPE, TAG_ANY);
 		if (vp) request->reply->code = vp->vp_uint32;
 
-		if (!da) da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
-		rad_assert(da != NULL);
+		if (request->reply->code == FR_CODE_DO_NOT_RESPOND) {
+			unlang = cf_section_find(request->server_cs, "send", "Do-Not-Respond");
+			if (!unlang) goto send_reply;
 
-		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
-		unlang = NULL;
-		if (dv) unlang = cf_section_find(request->server_cs, "send", dv->alias);
+			RDEBUG("Running 'send %s { ... }' from file %s", cf_section_name2(unlang), cf_filename(unlang));
 
-		if (!unlang) goto send_reply;
+		} else {
+			unlang = cf_section_find(request->server_cs, "send", NULL);
+			if (!unlang) goto send_reply;
 
-		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
+			RDEBUG("Running 'send %s { ... }' from file %s", cf_section_name2(unlang), cf_filename(unlang));
+		}
+
 		unlang_push_section(request, unlang, RLM_MODULE_NOOP);
 
 		request->request_state = REQUEST_SEND;
@@ -198,9 +232,6 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 	if (rcode < 0) return rcode;
 
 	rcode = unlang_compile_subsection(server_cs, "send", "Do-Not-Respond", MOD_POST_AUTH);
-	if (rcode < 0) return rcode;
-
-	rcode = unlang_compile_subsection(server_cs, "send", "Protocol-Error", MOD_POST_AUTH);
 	if (rcode < 0) return rcode;
 
 	return 0;
