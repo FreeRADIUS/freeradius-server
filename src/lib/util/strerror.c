@@ -271,7 +271,7 @@ void fr_perror(char const *fmt, ...)
 	if (error && (error[0] != '\0')) {
 		fprintf(stderr, "%s: %s\n", prefix, error);
 	} else {
-		fprintf(stderr, "%s\n", prefix, stderr);
+		fprintf(stderr, "%s\n", prefix);
 		talloc_free(prefix);
 		return;
 	}
