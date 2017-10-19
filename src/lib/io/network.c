@@ -270,7 +270,7 @@ static bool fr_network_send_request(fr_network_t *nr, fr_channel_data_t *cd)
 	one = fr_rand() % nr->num_workers;
 	two = fr_rand() % nr->num_workers;
 
-	if (nr->workers[one]->cpu_time < nr->workers[one]->cpu_time) {
+	if (nr->workers[one]->cpu_time < nr->workers[two]->cpu_time) {
 		worker = nr->workers[one];
 	} else {
 		worker = nr->workers[two];
