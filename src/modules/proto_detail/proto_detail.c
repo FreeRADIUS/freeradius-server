@@ -522,7 +522,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 *	These configuration items are not printed by default,
 	 *	because normal people shouldn't be touching them.
 	 */
-	if (!inst->max_packet_size && inst->app_io) inst->max_packet_size = inst->app_io->default_message_size;
+	if (!inst->max_packet_size) inst->max_packet_size = inst->app_io->default_message_size;
 
 	if (!inst->num_messages) inst->num_messages = 256;
 
