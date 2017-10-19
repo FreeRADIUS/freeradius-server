@@ -738,6 +738,7 @@ static unlang_action_t unlang_detach(REQUEST *request,
 		}
 
 		ev_p = talloc_size(request, sizeof(*ev_p));
+		memset(ev_p, 0, sizeof(*ev_p));
 
 		(void) fr_event_timer_insert(request, request->el, ev_p,
 					     &when, unlang_max_request_time, request);
