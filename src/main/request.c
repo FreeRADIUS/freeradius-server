@@ -280,7 +280,14 @@ int request_detach(REQUEST *fake)
 	}
 
 	fake->parent = NULL;
+
+	while (!request->backlog) {
+		rad_assert(request->parent != NULL);
+		request = request->parent;
+	}
+
 	fake->backlog = request->backlog;
+
 	return 0;
 }
 
