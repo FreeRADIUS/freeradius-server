@@ -1092,7 +1092,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 #ifndef NDEBUG
-	if (inst->driver_inst) module_instance_read_only(inst->driver_inst, inst->driver->name);
+	module_instance_read_only(inst->driver_inst, inst->driver->name);
 #endif
 
 	/*
