@@ -2021,6 +2021,7 @@ static rlm_rcode_t unlang_run(REQUEST *request)
 	 *	@todo - save / restore this across frames?
 	 */
 	request->module = NULL;
+	rad_assert(request->runnable_id < 0);
 
 	RDEBUG4("** [%i] %s - entered", stack->depth, __FUNCTION__);
 
