@@ -843,7 +843,7 @@ int fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 			break;
 
 		default:
-			fr_strerror_printf("Filter %i not supported", fd, filter);
+			fr_strerror_printf("Filter %i not supported", filter);
 			goto free;
 		}
 
