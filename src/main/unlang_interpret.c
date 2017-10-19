@@ -882,7 +882,7 @@ static unlang_action_t unlang_subrequest(REQUEST *request,
 	 */
 	rcode = unlang_run(child);
 	if (rcode != RLM_MODULE_YIELD) {
-		if (UNLANG_DETACHABLE) request_detach(child);
+		request_detach(child);
 		talloc_free(child);
 		*presult = rcode;
 		*priority = instruction->actions[*presult];
@@ -1114,7 +1114,8 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 	rad_assert(done = CHILD_DONE);
 
 	/*
-	 *	Clean up all of the children as soon as possible.
+	 *	Clean up all of the child requests, because once we
+	 *	return, no one can access their data any more.
 	 */
 	for (i = 0; i < state->num_children; i++) {
 		if ((state->children[i].state == CHILD_YIELDED) ||
