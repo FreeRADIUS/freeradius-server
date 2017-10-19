@@ -776,6 +776,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	request = fr_heap_pop(worker->runnable);
 	if (request) {
 		REQUEST_VERIFY(request);
+		rad_assert(request->runnable_id < 0);
 		fr_time_tracking_resume(&request->async->tracking, now);
 		return request;
 	}
@@ -961,6 +962,7 @@ nak:
 	 */
 	fr_time_tracking_start(&request->async->tracking, now);
 	worker->num_active++;
+	rad_assert(request->runnable_id < 0);
 
 	worker_reset_timer(worker);
 	return request;
