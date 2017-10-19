@@ -248,6 +248,7 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 		DEBUG3("Waiting %d.%06ds for lock on file %s",
 		       (int) when.tv_sec, (int) when.tv_usec, inst->filename_work);
 
+		gettimeofday(&now, NULL);
 		fr_timeval_add(&when, &when, &now);
 
 		if (fr_event_timer_insert(inst, inst->el, &inst->ev,
