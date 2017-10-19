@@ -2771,6 +2771,7 @@ void unlang_resumable(REQUEST *request)
 		rad_assert(request->backlog == NULL);
 		rad_assert(request->runnable_id < 0);
 
+#ifndef NDEBUG
 		/*
 		 *	Look at the current stack.
 		 */
@@ -2782,6 +2783,7 @@ void unlang_resumable(REQUEST *request)
 		 *	order for someone to mark it resumable.
 		 */
 		rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
+#endif
 
 		/*
 		 *	Now look at the parents stack.  It also must
@@ -2823,6 +2825,8 @@ void unlang_resumable(REQUEST *request)
 		parent = parent->parent;
 	}
 
+
+#ifndef NDEBUG
 	/*
 	 *	The current request MUST have been yielded in
 	 *	order for someone to mark it resumable.
@@ -2830,6 +2834,7 @@ void unlang_resumable(REQUEST *request)
 	stack = request->stack;
 	frame = &stack->frame[stack->depth];
 	rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
+#endif
 
 	rad_assert(request->backlog != NULL);
 	fr_heap_insert(request->backlog, request);
