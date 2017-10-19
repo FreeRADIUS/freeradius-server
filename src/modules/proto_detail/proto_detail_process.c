@@ -128,21 +128,16 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 			unlang = cf_section_find(request->server_cs, "send", "Do-Not-Respond");
 			if (!unlang) goto send_reply;
 
-			RDEBUG("Running 'send %s { ... }' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-
 		} else if (request->reply->code == 257) {
 			unlang = cf_section_find(request->server_cs, "send", "fail");
 			if (!unlang) goto send_reply;
 
-			RDEBUG("Running 'send %s { ... }' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-
 		} else {
-			unlang = cf_section_find(request->server_cs, "send", NULL);
+			unlang = cf_section_find(request->server_cs, "send", "success");
 			if (!unlang) goto send_reply;
-
-			RDEBUG("Running 'send %s { ... }' from file %s", cf_section_name2(unlang), cf_filename(unlang));
 		}
 
+		RDEBUG("Running 'send %s { ... }' from file %s", cf_section_name2(unlang), cf_filename(unlang));
 		unlang_push_section(request, unlang, RLM_MODULE_NOOP);
 
 		request->request_state = REQUEST_SEND;
@@ -218,10 +213,10 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 		return -1;
 	}
 
-	rcode = unlang_compile_subsection(server_cs, "send", NULL, MOD_POST_AUTH);
+	rcode = unlang_compile_subsection(server_cs, "send", "success", MOD_POST_AUTH);
 	if (rcode < 0) return rcode;
 
-	rcode = unlang_compile_subsection(server_cs, "send", "fail", MOD_POST_AUTH);
+	rcode = unlang_compile_subsection(server_cs, "send", "failure", MOD_POST_AUTH);
 	if (rcode < 0) return rcode;
 
 	rcode = unlang_compile_subsection(server_cs, "send", "Do-Not-Respond", MOD_POST_AUTH);
