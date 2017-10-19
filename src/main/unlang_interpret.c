@@ -2747,7 +2747,7 @@ void unlang_resumable(REQUEST *request)
 {
 	REQUEST				*parent = request->parent;
 
-	if (parent) do {
+	while (parent) {
 		int i;
 		unlang_stack_t		*stack = parent->stack;
 		unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
@@ -2771,12 +2771,9 @@ void unlang_resumable(REQUEST *request)
 		 *	Find the child and mark it resumable
 		 */
 		for (i = 0; i < state->num_children; i++) {
-			/*
-			 *	This is set to NULL on INIT / DONE
-			 */
+			if (state->children[i].state != CHILD_YIELDED) continue;
 			if (state->children[i].child != request) continue;
 
-			rad_assert(state->children[i].state == CHILD_YIELDED);
 			state->children[i].state = CHILD_RUNNABLE;
 #ifndef NDEBUG
 			found = true;
@@ -2789,7 +2786,7 @@ void unlang_resumable(REQUEST *request)
 	next:
 		request = parent;
 		parent = parent->parent;
-	} while (parent != NULL);
+	}
 
 	rad_assert(request->backlog != NULL);
 	fr_heap_insert(request->backlog, request);
