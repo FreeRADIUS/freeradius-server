@@ -1057,11 +1057,16 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 			 *	parallel section".
 			 */
 			if (priority == MOD_ACTION_RETURN) {
-				priority = 0;
-				done = CHILD_DONE;
 				RDEBUG("child %d/%d says 'return' - skipping the remaining children",
 				       i + 1, state->num_children);
+
+				/*
+				 *	Fall through to processing the
+				 *	priorities and return codes.
+				 */
 				i = state->num_children;
+				priority = 0;
+				done = CHILD_DONE;
 			}
 
 			/*
@@ -1107,6 +1112,19 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 	}
 
 	rad_assert(done = CHILD_DONE);
+
+	/*
+	 *	Clean up all of the children as soon as possible.
+	 */
+	for (i = 0; i < state->num_children; i++) {
+		if ((state->children[i].state == CHILD_YIELDED) ||
+		    (state->children[i].state == CHILD_RUNNABLE)) {
+			TALLOC_FREE(state->children[i].child);
+		}
+
+		state->children[i].state = CHILD_DONE;
+		state->children[i].instruction = NULL;
+	}
 
 	/*
 	 *	Return the final result.  The caller will take care of
