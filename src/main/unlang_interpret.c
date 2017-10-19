@@ -1131,9 +1131,8 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 
 		case CHILD_YIELDED:
 			REQUEST_VERIFY(state->children[i].child);
-			TALLOC_FREE(state->children[i].child);
-
 			rad_assert(state->children[i].child->runnable_id < 0);
+			TALLOC_FREE(state->children[i].child);
 			/* FALL-THROUGH */
 
 		default:
