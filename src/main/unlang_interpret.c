@@ -1121,13 +1121,21 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 	 *	return, no one can access their data any more.
 	 */
 	for (i = 0; i < state->num_children; i++) {
-		if ((state->children[i].state == CHILD_YIELDED) ||
-		    (state->children[i].state == CHILD_RUNNABLE)) {
-			TALLOC_FREE(state->children[i].child);
-		}
+		switch (state->children[i].state) {
+		case CHILD_RUNNABLE:
+			(void) fr_heap_extract(state->children[i].child->backlog,
+					       state->children[i].child);
+			/* FALL-THROUGH */
 
-		state->children[i].state = CHILD_DONE;
-		state->children[i].instruction = NULL;
+		case CHILD_YIELDED:
+			TALLOC_FREE(state->children[i].child);
+			/* FALL-THROUGH */
+
+		default:
+			state->children[i].state = CHILD_DONE;
+			state->children[i].instruction = NULL;
+			break;
+		}
 	}
 
 	/*
