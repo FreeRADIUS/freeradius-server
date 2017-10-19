@@ -825,6 +825,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	 *	processing this message.
 	 */
 	request->async->channel = cd->channel.ch;
+
 	request->async->original_recv_time = cd->request.recv_time;
 	request->async->recv_time = *request->async->original_recv_time;
 	request->async->el = worker->el;
@@ -865,11 +866,6 @@ nak:
 		fr_worker_nak(worker, cd, now);
 		return NULL;
 	}
-
-	/*
-	 *	Hoist run-time checks here.
-	 */
-	if (!cd->request.recv_time) request->async->original_recv_time = &request->async->recv_time;
 
 	/*
 	 *	We're done with this message.
