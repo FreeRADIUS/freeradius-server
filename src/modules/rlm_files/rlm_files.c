@@ -93,8 +93,7 @@ static const CONF_PARSER module_config[] = {
 
 static int pairlist_cmp(void const *a, void const *b)
 {
-	return strcmp(((PAIR_LIST const *)a)->name,
-		      ((PAIR_LIST const *)b)->name);
+	return strcmp(((PAIR_LIST const *)a)->name, ((PAIR_LIST const *)b)->name);
 }
 
 static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
@@ -123,7 +122,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 
 		entry = users;
 		while (entry) {
-			vp_cursor_t cursor;
+			fr_cursor_t cursor;
 
 			/*
 			 *	Look for improper use of '=' in the
@@ -132,7 +131,9 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 			 *	and probably ':=' for server
 			 *	configuration items.
 			 */
-			for (vp = fr_pair_cursor_init(&cursor, &entry->check); vp; vp = fr_pair_cursor_next(&cursor)) {
+			for (vp = fr_cursor_init(&cursor, &entry->check);
+			     vp;
+			     vp = fr_cursor_next(&cursor)) {
 				/*
 				 *	Ignore attributes which are set
 				 *	properly.
@@ -164,7 +165,9 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 			 *	It's a common enough mistake, that it's
 			 *	worth doing.
 			 */
-			for (vp = fr_pair_cursor_init(&cursor, &entry->reply); vp; vp = fr_pair_cursor_next(&cursor)) {
+			for (vp = fr_cursor_init(&cursor, &entry->reply);
+			     vp;
+			     vp = fr_cursor_next(&cursor)) {
 				/*
 				 *	If it's NOT a vendor attribute,
 				 *	and it's NOT a wire protocol
@@ -331,7 +334,7 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
 	 *	Find the entry for the user.
 	 */
 	while (user_pl || default_pl) {
-		vp_cursor_t cursor;
+		fr_cursor_t cursor;
 		VALUE_PAIR *vp;
 		PAIR_LIST const *pl;
 
@@ -361,9 +364,9 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
 		}
 
 		check_tmp = fr_pair_list_copy(request, pl->check);
-		for (vp = fr_pair_cursor_init(&cursor, &check_tmp);
+		for (vp = fr_cursor_init(&cursor, &check_tmp);
 		     vp;
-		     vp = fr_pair_cursor_next(&cursor)) {
+		     vp = fr_cursor_next(&cursor)) {
 			if (xlat_eval_do(request, vp) < 0) {
 				RWARN("Failed parsing expanded value for check item, skipping entry: %s", fr_strerror());
 				fr_pair_list_free(&check_tmp);

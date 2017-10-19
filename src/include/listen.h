@@ -106,7 +106,7 @@ struct rad_listen {
 	 *	Events associated with this listener
 	 */
 	struct timeval		when;
-	fr_event_timer_t	*ev;
+	fr_event_timer_t const	*ev;
 
 	CONF_SECTION const	*cs;
 	void			*data;
@@ -181,13 +181,6 @@ typedef struct listen_socket_t {
 
 	RADCLIENT_LIST		*clients;
 } listen_socket_t;
-
-int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_name);
-int listen_compile(CONF_SECTION *server_cs, CONF_SECTION *listen_cs);
-void listen_free(rad_listen_t **head);
-int listen_init(rad_listen_t **head, bool spawn_flag);
-rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t src_port);
-RADCLIENT *client_listener_find(rad_listen_t *listener, fr_ipaddr_t const *ipaddr, uint16_t src_port);
 
 #ifdef __cplusplus
 }

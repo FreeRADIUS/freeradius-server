@@ -2,7 +2,6 @@
 # PRE: update if
 #
 update {
-	reply:Filter-Id := 'filter'
 	control: !* ANY
 	request:Tmp-String-0 := "5RNqNl8iYLbkCc7JhR8as4TtDDCX6otuuWtcja8rITUyx9zrnHSe9tTHGmKK"	# 60 byte salt
 }
@@ -18,9 +17,7 @@ pap.authenticate {
 	reject = 1
 }
 if (reject) {
-	update reply {
-		Filter-Id += 'fail 0'
-	}
+	test_fail
 }
 
 update {
@@ -41,9 +38,7 @@ pap.authenticate {
 	reject = 1
 }
 if (reject) {
-	update reply {
-		Filter-Id += 'fail 0'
-	}
+	test_fail
 }
 
 update {
@@ -62,9 +57,7 @@ pap.authenticate {
 	reject = 1
 }
 if (reject) {
-	update reply {
-		Filter-Id += 'fail 1'
-	}
+	test_fail
 }
 
 update {
@@ -97,9 +90,7 @@ pap.authenticate {
 	reject = 1
 }
 if (reject) {
-	update reply {
-		Filter-Id += 'fail 2'
-	}
+	test_fail
 }
 
 update {
@@ -132,9 +123,7 @@ pap.authenticate {
 	reject = 1
 }
 if (reject) {
-	update reply {
-		Filter-Id += 'fail 3'
-	}
+	test_fail
 }
 
 update {
@@ -144,3 +133,5 @@ update {
 update control {
 	Auth-Type := Accept
 }
+
+success

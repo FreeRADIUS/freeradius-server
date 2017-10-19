@@ -95,6 +95,31 @@ char *talloc_typed_asprintf(void const *t, char const *fmt, ...)
 	return n;
 }
 
+/** Call talloc vasprintf, setting the type on the new chunk correctly
+ *
+ * For some bizarre reason the talloc string functions don't set the
+ * memory chunk type to char, which causes all kinds of issues with
+ * verifying VALUE_PAIRs.
+ *
+ * @param[in] t The talloc context to hang the result off.
+ * @param[in] fmt The format string.
+ * @param[in] ap varadic arguments.
+ * @return
+ *	- Formatted string.
+ *	- NULL on error.
+ */
+char *talloc_typed_vasprintf(void const *t, char const *fmt, va_list ap)
+{
+	char *n;
+
+	n = talloc_vasprintf(t, fmt, ap);
+	if (!n) return NULL;
+	talloc_set_type(n, char);
+
+	return n;
+}
+
+
 /** Binary safe strndup function
  *
  * @param[in] t The talloc context o allocate new buffer in.

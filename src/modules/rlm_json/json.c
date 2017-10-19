@@ -315,7 +315,7 @@ void fr_json_version_print(void)
  */
 const char *fr_json_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR **vps, const char *prefix)
 {
-	vp_cursor_t		cursor;
+	fr_cursor_t		cursor;
 	VALUE_PAIR 		*vp;
 	struct json_object	*obj;
 	const char		*p;
@@ -323,7 +323,9 @@ const char *fr_json_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR **vps, const cha
 
 	MEM(obj = json_object_new_object());
 
-	for (vp = fr_pair_cursor_init(&cursor, vps); vp; vp = fr_pair_cursor_next(&cursor)) {
+	for (vp = fr_cursor_init(&cursor, vps);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
 		char const		*name_with_prefix;
 		fr_dict_enum_t const	*dv;
 		struct json_object	*vp_object, *values, *value, *type_name;

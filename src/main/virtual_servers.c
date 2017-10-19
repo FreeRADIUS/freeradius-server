@@ -52,6 +52,7 @@ static int default_component_results[MOD_COUNT] = {
 };
 
 typedef struct {
+	CONF_SECTION		*server_cs;	//!< what a hack...
 	dl_instance_t		*proto_module;	//!< The proto_* module for a listen section.
 	fr_app_t const		*app;		//!< Easy access to the exported struct.
 } fr_virtual_listen_t;
@@ -111,15 +112,12 @@ static int listen_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_P
 
 	if (DEBUG_ENABLED4) cf_log_debug(ci, "Loading %s listener into %p", cf_pair_value(namespace), out);
 
+	listen->server_cs = server;
+
 	if (dl_instance(ctx, &listen->proto_module, listen_cs, NULL, cf_pair_value(namespace), DL_TYPE_PROTO) < 0) {
 		cf_log_err(listen_cs, "Failed loading proto module");
 		return -1;
 	}
-
-	/*
-	 *	Hack for now: tell the server core we have new listeners.
-	 */
-	main_config.namespace = true;
 
 	return 0;
 }
@@ -359,19 +357,28 @@ int virtual_servers_open(fr_schedule_t *sc)
 		for (j = 0; j < listen_cnt; j++) {
 			fr_virtual_listen_t *listen = listener[j];
 
-			if (!listen || !listen->proto_module) continue; 		/* Skip old style */
+			rad_assert(listen != NULL);
+			rad_assert(listen->proto_module != NULL);
+			rad_assert(listen->app != NULL);
+
 			if (listen->app->open &&
 			    listen->app->open(listen->proto_module->data, sc, listen->proto_module->conf) < 0) {
 				cf_log_err(listen->proto_module->conf, "Opening %s I/O interface failed",
 					   listen->app->name);
 				return -1;
 			}
-		}
 
+			/*
+			 *	Socket information is printed out by
+			 *	the socket handlers.  e.g. proto_radius_udp
+			 */
+			DEBUG3("Opened listener for %s", listen->app->name);
+		}
 	}
 
 	return 0;
 }
+
 
 /** Instantiate all the virtual servers
  *
@@ -391,14 +398,21 @@ int virtual_servers_instantiate(UNUSED CONF_SECTION *config)
 	for (i = 0; i < server_cnt; i++) {
 		fr_virtual_listen_t	**listener;
 		size_t			j, listen_cnt;
+		CONF_ITEM		*ci;
+		CONF_SECTION		*cs;
 
  		listener = virtual_servers[i]->listener;
  		listen_cnt = talloc_array_length(listener);
 
+		DEBUG("Compiling policies in server %s { ... }", cf_section_name2(listener[0]->server_cs));		      
+
 		for (j = 0; j < listen_cnt; j++) {
 			fr_virtual_listen_t *listen = listener[j];
 
-			if (!listen || !listen->proto_module) continue; 		/* Skip old style */
+			rad_assert(listen != NULL);
+			rad_assert(listen->proto_module != NULL);
+			rad_assert(listen->app != NULL);
+
 			if (listen->app->instantiate &&
 			    listen->app->instantiate(listen->proto_module->data, listen->proto_module->conf) < 0) {
 				cf_log_err(listen->proto_module->conf, "Instantiate failed");
@@ -406,6 +420,37 @@ int virtual_servers_instantiate(UNUSED CONF_SECTION *config)
 			}
 		}
 
+		/*
+		 *	Print out warnings for unused "recv" and
+		 *	"send" sections.
+		 */
+		cs = listener[0]->server_cs;
+		for (ci = cf_item_next(cs, NULL);
+		     ci != NULL;
+		     ci = cf_item_next(cs, ci)) {
+			char const *name;
+			CONF_SECTION *subcs;
+
+			if (!cf_item_is_section(ci)) continue;
+
+
+			subcs = cf_item_to_section(ci);
+			name = cf_section_name1(subcs);
+
+			if ((strcmp(name, "recv") != 0) &&
+			    (strcmp(name, "send") != 0)) continue;
+
+			if (!cf_data_find(subcs, unlang_group_t, NULL)) {
+				if (check_config) {
+					cf_log_err(subcs, "%s %s { ... } section is unused",
+						    name, cf_section_name2(subcs));
+					return -1;
+				}
+
+				cf_log_warn(subcs, "%s %s { ... } section is unused",
+					name, cf_section_name2(subcs));
+			}
+		}
 	}
 
 	return 0;
@@ -421,6 +466,8 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 {
 	size_t i, server_cnt = 0;
 	CONF_SECTION *cs = NULL;
+
+	(void) unlang_initialize();
 
 	if (virtual_servers) {
 		/*
@@ -445,10 +492,17 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 		}
 
 		/*
-		 *	Skip old-style virtual servers.
+		 *	Ignore internally generated "server" sections,
+		 *	they're for the unit tests.
+		 */
+		if (!cf_filename(cs)) continue;
+
+		/*
+		 *	Forbid old-style virtual servers.
 		 */
 		if (!cf_pair_find(cs, "namespace")) {
-			WARN("Skipping old-style server %s", cf_section_name2(cs));
+			cf_log_err(cs, "server %s { ...} section must set 'namesspace = ...'", server_name);
+			return -1;
 		}
 	}
 
@@ -462,11 +516,13 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
  		listen_cnt = talloc_array_length(listener);
 
 		for (j = 0; j < listen_cnt; j++) {
-			fr_virtual_listen_t *listen;
+			fr_virtual_listen_t *listen = listener[j];
 
-			if (!listener[j] || !listener[j]->proto_module) continue; 		/* Skip old style */
+			rad_assert(listen != NULL);
+			rad_assert(listen->proto_module != NULL);
 
-			listen = talloc_get_type_abort(listener[j], fr_virtual_listen_t);
+			(void) talloc_get_type_abort(listen, fr_virtual_listen_t);
+
 			talloc_get_type_abort(listen->proto_module, dl_instance_t);
 			listen->app = (fr_app_t const *)listen->proto_module->module->common;
 

@@ -137,14 +137,14 @@ defaultactions[MOD_COUNT][UNLANG_GROUP_TYPE_MAX][RLM_MODULE_NUMCODES] =
 		/* group */
 		{
 			MOD_ACTION_RETURN,	/* reject   */
-			1,			/* fail     */
-			MOD_ACTION_RETURN,	/* ok       */
+			MOD_ACTION_RETURN,	/* fail     */
+			3,			/* ok       */
 			MOD_ACTION_RETURN,	/* handled  */
-			1,			/* invalid  */
+			MOD_ACTION_RETURN,	/* invalid  */
 			MOD_ACTION_RETURN,	/* userlock */
-			MOD_ACTION_RETURN,	/* notfound */
-			1,			/* noop     */
-			1			/* updated  */
+			1,			/* notfound */
+			2,			/* noop     */
+			4			/* updated  */
 		},
 		/* redundant */
 		{
@@ -379,35 +379,6 @@ defaultactions[MOD_COUNT][UNLANG_GROUP_TYPE_MAX][RLM_MODULE_NUMCODES] =
 	}
 #endif
 };
-
-static const int authtype_actions[UNLANG_GROUP_TYPE_MAX][RLM_MODULE_NUMCODES] =
-{
-	/* group */
-	{
-		MOD_ACTION_RETURN,	/* reject   */
-		MOD_ACTION_RETURN,	/* fail     */
-		2,			/* ok       */
-		MOD_ACTION_RETURN,	/* handled  */
-		MOD_ACTION_RETURN,	/* invalid  */
-		MOD_ACTION_RETURN,	/* userlock */
-		1,			/* notfound */
-		3,			/* noop     */
-		4			/* updated  */
-	},
-	/* redundant */
-	{
-		MOD_ACTION_RETURN,	/* reject   */
-		1,			/* fail     */
-		MOD_ACTION_RETURN,	/* ok       */
-		MOD_ACTION_RETURN,	/* handled  */
-		MOD_ACTION_RETURN,	/* invalid  */
-		MOD_ACTION_RETURN,	/* userlock */
-		MOD_ACTION_RETURN,	/* notfound */
-		MOD_ACTION_RETURN,	/* noop     */
-		MOD_ACTION_RETURN	/* updated  */
-	}
-};
-
 
 #ifdef WITH_UNLANG
 static bool pass2_fixup_xlat(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert,
@@ -828,12 +799,6 @@ static bool pass2_cond_callback(void *ctx, fr_cond_t *c)
 	}
 
 	if (!radius_find_compare(map->lhs->tmpl_da)) return true;
-
-	if (map->rhs->type == TMPL_TYPE_ATTR) {
-		cf_log_err(map->ci, "Cannot compare virtual attribute %s to another attribute",
-			   map->lhs->name);
-		return false;
-	}
 
 	if (map->rhs->type == TMPL_TYPE_REGEX) {
 		cf_log_err(map->ci, "Cannot compare virtual attribute %s via a regex",
@@ -1693,7 +1658,7 @@ static bool compile_action_subsection(unlang_t *c, CONF_SECTION *cs, CONF_SECTIO
 	 *	They just don't make sense for many group types.
 	 */
 	if (!((c->type == UNLANG_TYPE_CASE) || (c->type == UNLANG_TYPE_IF) || (c->type == UNLANG_TYPE_ELSIF) ||
-	      (c->type == UNLANG_TYPE_ELSE))) {
+	      (c->type == UNLANG_TYPE_GROUP) || (c->type == UNLANG_TYPE_ELSE))) {
 		cf_log_err(ci, "'actions' MUST NOT be in a '%s' block", unlang_ops[c->type].name);
 		return false;
 	}
@@ -1714,6 +1679,8 @@ static unlang_t *compile_children(unlang_group_t *g, UNUSED unlang_t *parent, un
 	 *	Loop over the children of this group.
 	 */
 	while ((ci = cf_item_next(g->cs, ci))) {
+		if (cf_item_is_data(ci)) continue;
+
 		/*
 		 *	Sections are references to other groups, or
 		 *	to modules with updated return codes.
@@ -1734,6 +1701,12 @@ static unlang_t *compile_children(unlang_group_t *g, UNUSED unlang_t *parent, un
 			 */
 			name1 = cf_section_name1(subcs);
 			if (strcmp(name1, "actions") == 0) {
+				if (cf_item_next(g->cs, ci) != NULL) {
+					cf_log_err(subcs, "'actions' MUST be the last thing in a subsection");
+					talloc_free(c);
+					return NULL;
+				}
+
 				if (!compile_action_subsection(c, g->cs, subcs)) {
 					talloc_free(c);
 					return NULL;
@@ -1788,15 +1761,17 @@ static unlang_t *compile_children(unlang_group_t *g, UNUSED unlang_t *parent, un
 				}
 				add_child(g, single);
 
-				/*
-				 *	Or a module instance with action.
-				 */
-			} else if (!compile_action_pair(c, cp)) {
+			} else if (!parent || (parent->type != UNLANG_TYPE_MODULE_CALL)) {
+				cf_log_err(cp, "Invalid location for action over-ride");
 				talloc_free(c);
 				return NULL;
-			} /* else it worked */
-		} else if (cf_item_is_data(ci)) {
-			continue;
+
+			} else {
+				if (!compile_action_pair(c, cp)) {
+					talloc_free(c);
+					return NULL;
+				}
+			}
 		} else {
 			rad_assert(0);
 		}
@@ -2155,6 +2130,26 @@ static unlang_t *compile_break(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	return compile_empty(parent, unlang_ctx, NULL, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_GROUP_TYPE_SIMPLE,
 			     UNLANG_TYPE_BREAK, COND_TYPE_INVALID);
 }
+
+static unlang_t *compile_detach(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM const *ci)
+{
+	if (parent->type != UNLANG_TYPE_SUBREQUEST) {
+		cf_log_err(ci, "'detach' can only be used in a 'create' section");
+		return NULL;
+	}
+
+	/*
+	 *	This really overloads the functionality of
+	 *	cf_item_next().
+	 */
+	if (!cf_item_next(ci, ci)) {
+		cf_log_err(ci, "'detach' cannot be used as the last entry in a section");
+		return NULL;
+	}
+
+	return compile_empty(parent, unlang_ctx, NULL, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_GROUP_TYPE_SIMPLE,
+			     UNLANG_TYPE_DETACH, COND_TYPE_INVALID);
+}
 #endif
 
 static unlang_t *compile_xlat_inline(unlang_t *parent,
@@ -2499,6 +2494,10 @@ static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx
 				      unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
 {
 	unlang_t *c;
+	char const *name2;
+	unlang_group_t *g;
+	bool clone = true;
+
 
 	/*
 	 *	No children?  Die!
@@ -2508,13 +2507,27 @@ static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx
 		return NULL;
 	}
 
-	if (cf_section_name2(cs) != NULL) {
-		cf_log_err(cs, "%s sections cannot have an argument", unlang_ops[mod_type].name);
-		return NULL;
+	/*
+	 *	Parallel sections can create empty children, if the
+	 *	admin demands it.  Otherwise, the principle of least
+	 *	surprise is to copy the whole request, reply, and
+	 *	config items.
+	 */
+	name2 = cf_section_name2(cs);
+	if (name2) {
+		if (strcmp(name2, "empty") != 0) {
+			cf_log_err(cs, "Invalid argument '%s'", name2);
+			return NULL;
+		}
+
+		clone = false;
 	}
 
 	c = compile_group(parent, unlang_ctx, cs, group_type, parentgroup_type, mod_type);
 	if (!c) return NULL;
+
+	g = unlang_generic_to_group(c);
+	g->clone = clone;
 
 	c->name = c->debug_name = unlang_ops[c->type].name;
 
@@ -2522,93 +2535,155 @@ static unlang_t *compile_parallel(unlang_t *parent, unlang_compile_t *unlang_ctx
 }
 
 
-static unlang_t *compile_fork(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				   unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
+static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
+				    unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
 {
 	char const *name2;
 	unlang_t *c;
 	unlang_group_t *g;
+
+	/*
+	 *	async async is not allowed.  It will work, but we
+	 *	don't know what it means.  If someone has a good
+	 *	use-case, we can try enabling it.
+	 */
+	for (c = parent; c != NULL; c = c->parent) {
+		if (c->type == UNLANG_TYPE_SUBREQUEST) {
+			cf_log_err(cs, "'%s' sections cannot be nested inside of other '%s' sections",
+				   unlang_ops[mod_type].name, unlang_ops[mod_type].name);
+			return NULL;
+		}
+	}	
 
 	g = group_allocate(parent, cs, group_type, mod_type);
 	if (!g) return NULL;
 
 	c = unlang_group_to_generic(g);
 	c->name = unlang_ops[c->type].name;
+	c->debug_name = c->name;
 
 	/*
-	 *	Create the template.  All attributes and xlats are
-	 *	defined by now.
+	 *	subrequests can't have an argument.
 	 */
 	name2 = cf_section_name2(cs);
 	if (name2) {
-		FR_TOKEN type;
-		ssize_t slen;
-		fr_dict_attr_t const *da;
-		fr_dict_enum_t const *dval;
+		cf_log_err(cs, "Invalid argument '%s' to subrequest", name2);
+		return NULL;
+	}
+	return compile_children(g, parent, unlang_ctx, group_type, parentgroup_type);
+}
 
-		type = cf_section_name2_quote(cs);
-		if (type != T_BARE_WORD) {
-			cf_log_err(cs, "The packet type for 'fork' must be an un-quoted string.");
-			talloc_free(g);
-			return NULL;
-		}
 
-		da = fr_dict_attr_by_name(NULL, "Packet-Type");
-		if (!da) {
-			cf_log_err(cs, "Failed finding Packet-Type attribute for 'fork'");
-			talloc_free(g);
-			return NULL;
-		}
+static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
+				    unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
+{
+	ssize_t slen;
+	char const *name2;
+	unlang_group_t *g;
+	unlang_t *c;
+	FR_TOKEN type;
+	char *server;
+	char *packet;
+	CONF_SECTION *server_cs, *root;
+	fr_io_process_t *process_p;
 
-		dval = fr_dict_enum_by_alias(NULL, da, name2);
-		if (!dval) {
-			cf_log_err(cs, "Unknown Packet-Type %s", name2);
-			talloc_free(g);
-			return NULL;
-		}
+	/*
+	 *	calls with a normal packet are not allowed.  It will
+	 *	work, but we don't know what it means.  If someone has
+	 *	a good use-case, we can try enabling it.
+	 */
+	for (c = parent; c != NULL; c = c->parent) {
+		if (c->type == UNLANG_TYPE_SUBREQUEST) break;
+	}
 
-		/*
-		 *	@fixme - make it a simple integer.  That way
-		 *	we don't need to do lookups at run-time.
-		 */
-		slen = tmpl_afrom_str(g, &g->vpt, name2, strlen(name2), type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
-		if (slen < 0) {
-			char *spaces, *text;
+	if (!c) {
+		cf_log_err(cs, "'%s' can only be used inside of a 'subrequest' section",
+			   unlang_ops[mod_type].name);
+		return NULL;
+	}
 
-			fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
+	name2 = cf_section_name2(cs);
+	if (!name2) {
+		cf_log_err(cs, "'call' must be given with a server.PACKET argument");
+		return NULL;
+	}
 
-			cf_log_err(cs, "Syntax error");
-			cf_log_err(cs, "%s", name2);
-			cf_log_err(cs, "%s^ %s", spaces, text);
+	type = cf_section_name2_quote(cs);
+	if (type != T_BARE_WORD) {
+		cf_log_err(cs, "The arguments to 'call' cannot by a quoted string or a dynamic value");
+		return NULL;
+	}
 
-			talloc_free(g);
-			talloc_free(spaces);
-			talloc_free(text);
+	g = group_allocate(parent, cs, group_type, mod_type);
+	if (!g) return NULL;
 
-			return NULL;
-		}
+	slen = tmpl_afrom_str(g, &g->vpt, name2, strlen(name2), type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
+	if (slen < 0) {
+		char *spaces, *text;
 
-		/*
-		 *	Fixup the template before compiling the children.
-		 *	This is so that compile_case() can do attribute type
-		 *	checks / casts against us.
-		 */
-		if (!pass2_fixup_tmpl(cf_section_to_item(g->cs), &g->vpt, true)) {
-			talloc_free(g);
-			return NULL;
-		}
+		fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
 
-		c->debug_name = talloc_asprintf(c, "%s %s", unlang_ops[c->type].name, cf_section_name2(cs));
-	} else {
-		c->debug_name = c->name;
+		cf_log_err(cs, "Syntax error");
+		cf_log_err(cs, "%s", name2);
+		cf_log_err(cs, "%s^ %s", spaces, text);
+
+		talloc_free(g);
+		talloc_free(spaces);
+		talloc_free(text);
+
+		return NULL;
 	}
 
 	/*
-	 *	@todo - figure out what protocol we're running, and
-	 *	ensure that the packet types are allowed for that.
-	 *
-	 *	@ todo - after that, allow for different protocols to be specified.
+	 *      Convert TMPL_TYPE_UNPARSED (it might have been
+	 *      an attribute) to TMPL_TYPE_DATA, with
+	 *      FR_TYPE_STRING data.
 	 */
+	tmpl_cast_in_place_str(g->vpt);
+
+	/*
+	 *	Look up server and packet type.
+	 *
+	 *	memcpy for const issues... we know what we're doing.
+	 */
+	memcpy(&server, &g->vpt->tmpl_value.datum.strvalue, sizeof(server));
+	packet = strchr(server, '.');
+	if (!packet) {
+		cf_log_err(cs, "Invalid syntax: expected server.PACKET");
+		talloc_free(g);
+		return NULL;
+	}
+
+	*packet = '\0';		/* hack */
+	root = cf_root(cs);
+	server_cs = cf_section_find(root, "server", server);
+	if (!server_cs) {
+		cf_log_err(cs, "Unknown virtual server '%s'", server);
+		talloc_free(g);
+		return NULL;
+	}
+
+	*packet = '.';
+	packet++;
+
+	/*
+	 *	Verify it exists, but don't bother caching it.  We can
+	 *	figure it out at run-time.
+	 */
+	process_p = (fr_io_process_t *) cf_data_value(cf_data_find(server_cs, fr_io_process_t, packet));
+	if (!process_p) {
+		cf_log_err(cs, "Virtual server %s cannot process '%s' packets",
+			   cf_section_name2(server_cs), packet);
+		talloc_free(g);
+		return NULL;
+	}
+
+	g->process = *process_p;
+	g->server_cs = server_cs;
+
+	c = unlang_group_to_generic(g);
+	c->name = unlang_ops[c->type].name;
+	c->debug_name = talloc_asprintf(c, "%s %s", c->name, server);
 
 	return compile_children(g, parent, unlang_ctx, group_type, parentgroup_type);
 }
@@ -2752,33 +2827,38 @@ typedef unlang_t *(*modcall_compile_function_t)(unlang_t *parent, unlang_compile
 typedef struct modcall_compile_t {
 	char const			*name;
 	modcall_compile_function_t	compile;
-	unlang_group_type_t			group_type;
+	unlang_group_type_t	        group_type;
 	unlang_type_t			mod_type;
+	bool				require_children;
 } modcall_compile_t;
 
-static modcall_compile_t compile_table[] = {
-	{ "group",		compile_group, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_GROUP },
-	{ "redundant",		compile_redundant, UNLANG_GROUP_TYPE_REDUNDANT, UNLANG_TYPE_GROUP },
-	{ "load-balance",	compile_load_balance, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_LOAD_BALANCE },
-	{ "redundant-load-balance", compile_load_balance, UNLANG_GROUP_TYPE_REDUNDANT, UNLANG_TYPE_REDUNDANT_LOAD_BALANCE },
+#define ALLOW_EMPTY_GROUP	(false)
+#define REQUIRE_CHILDREN	(true)
 
-	{ "case",		compile_case, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_CASE },
-	{ "foreach",		compile_foreach, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_FOREACH },
-	{ "if",			compile_if, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_IF },
-	{ "elsif",		compile_elsif, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_ELSIF },
-	{ "else",		compile_else, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_ELSE },
-	{ "update",		compile_update, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_UPDATE },
-	{ "map",		compile_map, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_MAP },
-	{ "switch",		compile_switch, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_SWITCH },
-	{ "parallel",		compile_parallel, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_PARALLEL },
-	{ "fork",		compile_fork, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_FORK },
+static modcall_compile_t compile_table[] = {
+	{ "group",		compile_group, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_GROUP, REQUIRE_CHILDREN },
+	{ "redundant",		compile_redundant, UNLANG_GROUP_TYPE_REDUNDANT, UNLANG_TYPE_GROUP, REQUIRE_CHILDREN },
+	{ "load-balance",	compile_load_balance, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_LOAD_BALANCE, REQUIRE_CHILDREN },
+	{ "redundant-load-balance", compile_load_balance, UNLANG_GROUP_TYPE_REDUNDANT, UNLANG_TYPE_REDUNDANT_LOAD_BALANCE, REQUIRE_CHILDREN },
+
+	{ "case",		compile_case, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_CASE, ALLOW_EMPTY_GROUP },
+	{ "foreach",		compile_foreach, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_FOREACH, REQUIRE_CHILDREN },
+	{ "if",			compile_if, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_IF, ALLOW_EMPTY_GROUP },
+	{ "elsif",		compile_elsif, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_ELSIF, ALLOW_EMPTY_GROUP },
+	{ "else",		compile_else, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_ELSE, REQUIRE_CHILDREN },
+	{ "update",		compile_update, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_UPDATE, REQUIRE_CHILDREN },
+	{ "map",		compile_map, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_MAP, REQUIRE_CHILDREN },
+	{ "switch",		compile_switch, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_SWITCH, REQUIRE_CHILDREN },
+	{ "parallel",		compile_parallel, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_PARALLEL, REQUIRE_CHILDREN },
+	{ "subrequest",		compile_subrequest, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_SUBREQUEST, REQUIRE_CHILDREN },
+	{ "call",		compile_call, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_CALL, ALLOW_EMPTY_GROUP },
 
 	{ NULL, NULL, 0, UNLANG_TYPE_NULL }
 };
 
 
 /*
- *	When we swithc to a new unlang ctx, we use the new component
+ *	When we switch to a new unlang ctx, we use the new component
  *	name and number, but we use the CURRENT actions.
  */
 #define UPDATE_CTX2  \
@@ -2821,9 +2901,7 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 				 *	to have contents.
 				 */
 				if (!cf_item_next(cs, NULL) &&
-				    !((compile_table[i].mod_type == UNLANG_TYPE_CASE) ||
-				      (compile_table[i].mod_type == UNLANG_TYPE_IF) ||
-				      (compile_table[i].mod_type == UNLANG_TYPE_ELSIF))) {
+				    (compile_table[i].require_children == true)) {
 					cf_log_err(ci, "'%s' sections cannot be empty", modrefname);
 					return NULL;
 				}
@@ -2837,6 +2915,10 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 #ifdef WITH_UNLANG
 		if (strcmp(modrefname, "break") == 0) {
 			cf_log_err(ci, "Invalid use of 'break'");
+			return NULL;
+
+		} else if (strcmp(modrefname, "detach") == 0) {
+			cf_log_err(ci, "Invalid use of 'detach'");
 			return NULL;
 
 		} else if (strcmp(modrefname, "return") == 0) {
@@ -2883,6 +2965,10 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	 */
 	if (strcmp(modrefname, "break") == 0) {
 		return compile_break(parent, unlang_ctx, ci);
+	}
+
+	if (strcmp(modrefname, "detach") == 0) {
+		return compile_detach(parent, unlang_ctx, ci);
 	}
 
 	if (strcmp(modrefname, "return") == 0) {
@@ -3072,12 +3158,7 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component)
 	unlang_ctx.name = comp2str[component];
 	unlang_ctx.section_name1 = cf_section_name1(cs);
 	unlang_ctx.section_name2 = cf_section_name2(cs);
-
-	if (component != MOD_AUTHENTICATE) {
-		unlang_ctx.actions = &defaultactions[component];
-	} else {
-		unlang_ctx.actions = &authtype_actions;
-	}
+	unlang_ctx.actions = &defaultactions[component];
 
 	c = compile_group(NULL, &unlang_ctx, cs, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_GROUP_TYPE_SIMPLE, UNLANG_TYPE_GROUP);
 	if (!c) return -1;

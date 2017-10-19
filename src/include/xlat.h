@@ -93,7 +93,7 @@ size_t xlat_snprint(char *buffer, size_t bufsize, xlat_exp_t const *node);
 int		xlat_register(void *mod_inst, char const *name,
 			      xlat_func_t func, xlat_escape_t escape,
 			      xlat_instantiate_t instantiate, size_t inst_size,
-			      size_t buf_len);
+			      size_t buf_len, bool async_safe);
 
 void		xlat_unregister(void *mod_inst, char const *name, xlat_func_t func);
 void		xlat_unregister_module(void *instance);

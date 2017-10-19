@@ -234,7 +234,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 	ssize_t		len;
 	int		statement_cnt = 0;
 	char		*buffer;
-	char		*p, *q, *s;
+	char		*p, *q;
 	int		cl;
 	FILE		*f;
 	struct stat	finfo;
@@ -273,7 +273,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 	}
 
 	MEM(buffer = talloc_array(ctx, char, finfo.st_size + 1));
-	len = fread(buffer, sizeof(char), finfo.st_size + 1, f);
+	len = fread(buffer, sizeof(char), finfo.st_size, f);
 	if (len > finfo.st_size) {
 		talloc_free(buffer);
 		goto too_big;
@@ -322,20 +322,18 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 	/*
 	 *	Statement delimiter is ;\n
 	 */
-	s = p = buffer;
+	p = buffer;
 	while ((q = strchr(p, ';'))) {
-		if (q[1] != '\n') {
+		if ((q[1] != '\n') && (q[1] != '\0')) {
 			p = q + 1;
 			statement_cnt++;
 			continue;
 		}
 
-		*q = '\0';
-
 #ifdef HAVE_SQLITE3_PREPARE_V2
-		status = sqlite3_prepare_v2(db, s, len, &statement, &z_tail);
+		status = sqlite3_prepare_v2(db, p, q - p, &statement, &z_tail);
 #else
-		status = sqlite3_prepare(db, s, len, &statement, &z_tail);
+		status = sqlite3_prepare(db, p, q - p, &statement, &z_tail);
 #endif
 
 		if (sql_check_error(db, status) != RLM_SQL_OK) {
@@ -360,7 +358,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 		}
 
 		statement_cnt++;
-		p = s = q + 1;
+		p = q + 1;
 	}
 
 	talloc_free(buffer);

@@ -1047,13 +1047,12 @@ void fr_timeval_divide(struct timeval *out, struct timeval const *in, int diviso
  */
 int fr_timeval_cmp(struct timeval const *a, struct timeval const *b)
 {
-	if (a->tv_sec > b->tv_sec) return +1;
-	if (a->tv_sec < b->tv_sec) return -1;
+	int ret;
 
-	if (a->tv_usec > b->tv_usec) return +1;
-	if (a->tv_usec < b->tv_usec) return -1;
+	ret = (a->tv_sec > b->tv_sec) - (a->tv_sec < b->tv_sec);
+	if (ret != 0) return ret;
 
-	return 0;
+	return (a->tv_usec > b->tv_usec) - (a->tv_usec < b->tv_usec);
 }
 
 /** Create timeval from a string
@@ -1228,10 +1227,7 @@ bool fr_multiply(uint64_t *result, uint64_t lhs, uint64_t rhs)
  */
 int8_t fr_pointer_cmp(void const *a, void const *b)
 {
-	if (a < b) return -1;
-	if (a == b) return 0;
-
-	return 1;
+	return (a > b) - (a < b);
 }
 
 /** Quick sort an array of pointers using a comparator
@@ -1289,9 +1285,7 @@ int fr_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length)
 	int result = 0;
 	size_t i;
 
-	for (i = 0; i < length; i++) {
-		result |= a[i] ^ b[i];
-	}
+	for (i = 0; i < length; i++) result |= a[i] ^ b[i];
 
 	return result;		/* 0 is OK, !0 is !OK, just like memcmp */
 }

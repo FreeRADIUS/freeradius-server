@@ -56,20 +56,20 @@ static CONF_PARSER tls_config[] = {
 	/*
 	 *	Deprecated attributes
 	 */
-	{ FR_CONF_OFFSET("ca_file", FR_TYPE_FILE_INPUT, fr_ldap_handle_config_t, tls_ca_file) },
+	{ FR_CONF_OFFSET("ca_file", FR_TYPE_FILE_INPUT, fr_ldap_config_t, tls_ca_file) },
 
-	{ FR_CONF_OFFSET("ca_path", FR_TYPE_FILE_INPUT, fr_ldap_handle_config_t, tls_ca_path) },
+	{ FR_CONF_OFFSET("ca_path", FR_TYPE_FILE_INPUT, fr_ldap_config_t, tls_ca_path) },
 
-	{ FR_CONF_OFFSET("certificate_file", FR_TYPE_FILE_INPUT, fr_ldap_handle_config_t, tls_certificate_file) },
+	{ FR_CONF_OFFSET("certificate_file", FR_TYPE_FILE_INPUT, fr_ldap_config_t, tls_certificate_file) },
 
-	{ FR_CONF_OFFSET("private_key_file", FR_TYPE_FILE_INPUT, fr_ldap_handle_config_t, tls_private_key_file) },
+	{ FR_CONF_OFFSET("private_key_file", FR_TYPE_FILE_INPUT, fr_ldap_config_t, tls_private_key_file) },
 
 	/*
 	 *	LDAP Specific TLS attributes
 	 */
-	{ FR_CONF_OFFSET("start_tls", FR_TYPE_BOOL, fr_ldap_handle_config_t, start_tls), .dflt = "no" },
+	{ FR_CONF_OFFSET("start_tls", FR_TYPE_BOOL, fr_ldap_config_t, start_tls), .dflt = "no" },
 
-	{ FR_CONF_OFFSET("require_cert", FR_TYPE_STRING, fr_ldap_handle_config_t, tls_require_cert_str) },
+	{ FR_CONF_OFFSET("require_cert", FR_TYPE_STRING, fr_ldap_config_t, tls_require_cert_str) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -263,7 +263,7 @@ static ssize_t ldap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	struct berval		**values;
 
-	fr_ldap_conn_t		*conn;
+	fr_ldap_connection_t		*conn;
 	int			ldap_errno;
 
 	char const		*url;
@@ -397,7 +397,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	vp_map_t const		*map;
 	char			*url_str;
 
-	fr_ldap_conn_t		*conn;
+	fr_ldap_connection_t		*conn;
 
 	LDAPControl		*server_ctrls[] = { NULL, NULL };
 
@@ -554,7 +554,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	bool			found = false;
 	bool			check_is_dn;
 
-	fr_ldap_conn_t		*conn = NULL;
+	fr_ldap_connection_t		*conn = NULL;
 	char const		*user_dn;
 
 	rad_assert(inst->groupobj_base_dn);
@@ -665,7 +665,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	fr_ldap_rcode_t		status;
 	char const		*dn;
 	rlm_ldap_t const	*inst = instance;
-	fr_ldap_conn_t		*conn;
+	fr_ldap_connection_t		*conn;
 
 	char			sasl_mech_buff[LDAP_MAX_DN_STR_LEN];
 	char			sasl_proxy_buff[LDAP_MAX_DN_STR_LEN];
@@ -801,7 +801,7 @@ finish:
 information.
  * @return One of the RLM_MODULE_* values.
  */
-static rlm_rcode_t rlm_ldap_map_profile(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_conn_t **pconn,
+static rlm_rcode_t rlm_ldap_map_profile(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t **pconn,
 					char const *dn, fr_ldap_map_exp_t const *expanded)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
@@ -866,16 +866,17 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
-	fr_ldap_rcode_t		status;
 	int			ldap_errno;
 	int			i;
 	rlm_ldap_t const	*inst = instance;
 	struct berval		**values;
-	VALUE_PAIR		*vp;
-	fr_ldap_conn_t		*conn;
+	fr_ldap_connection_t	*conn;
 	LDAPMessage		*result, *entry;
 	char const 		*dn = NULL;
 	fr_ldap_map_exp_t	expanded; /* faster than allocing every time */
+#ifdef WITH_EDIR
+	fr_ldap_rcode_t		status;
+#endif
 
 	/*
 	 *	Don't be tempted to add a check for request->username
@@ -961,6 +962,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 	 *      Retrieve Universal Password if we use eDirectory
 	 */
 	if (inst->edir) {
+		VALUE_PAIR *vp;
 		int res = 0;
 		char password[256];
 		size_t pass_size = sizeof(password);
@@ -1114,7 +1116,7 @@ static rlm_rcode_t user_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_ac
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
 	fr_ldap_rcode_t	status;
 
-	fr_ldap_conn_t	*conn = NULL;
+	fr_ldap_connection_t	*conn = NULL;
 
 	LDAPMod		*mod_p[LDAP_MAX_ATTRMAP + 1], mod_s[LDAP_MAX_ATTRMAP];
 	LDAPMod		**modify = mod_p;
@@ -1468,9 +1470,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		inst->cache_da = inst->group_da;	/* Default to the group_da */
 	}
 
-	xlat_register(inst, inst->name, ldap_xlat, fr_ldap_escape_func, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	xlat_register(inst, "ldap_escape", ldap_escape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	xlat_register(inst, "ldap_unescape", ldap_unescape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat_register(inst, inst->name, ldap_xlat, fr_ldap_escape_func, NULL, 0, XLAT_DEFAULT_BUF_LEN, false);
+	xlat_register(inst, "ldap_escape", ldap_escape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register(inst, "ldap_unescape", ldap_unescape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 	map_proc_register(inst, inst->name, mod_map_proc, ldap_map_verify, 0);
 
 	return 0;
@@ -1557,7 +1559,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 #endif
 
 #ifndef HAVE_LDAP_URL_PARSE
-	if (inst->use_referral_credentials) {
+	if (inst->handle_config.use_referral_credentials) {
 		cf_log_err(conf, "Configuration item 'use_referral_credentials' not supported.  "
 			      "Linked libldap does not support URL parsing");
 		goto error;
@@ -1803,12 +1805,12 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		}
 	}
 
-#if LDAP_SET_REBIND_PROC_ARGS != 3
+#if !defined (LDAP_SET_REBIND_PROC_ARGS) || LDAP_SET_REBIND_PROC_ARGS != 3
 	/*
 	 *	The 2-argument rebind doesn't take an instance variable.  Our rebind function needs the instance
 	 *	variable for the username, password, etc.
 	 */
-	if (inst->rebind == true) {
+	if (inst->handle_config.rebind == true) {
 		cf_log_err(conf, "Cannot use 'rebind' configuration item as this version of libldap "
 			      "does not support the API that we need");
 

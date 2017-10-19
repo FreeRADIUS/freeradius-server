@@ -21,3 +21,6 @@ NEEDS_CONFIG := $(patsubst %.in,%,$(foreach file,$(SUBMAKEFILES),$(wildcard $(fi
 SUBMAKEFILES := $(sort $(SUBMAKEFILES) $(NEEDS_CONFIG))
 endif
 
+src/modules/%/configure: src/modules/%/configure.ac
+	@echo AUTOCONF $(dir $@)
+	cd $(dir $@) && $(AUTOCONF) -I $(top_builddir) -I $(top_builddir)/m4 -I $(top_builddir)/$(dir $@)m4

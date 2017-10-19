@@ -74,7 +74,7 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 	rad_assert(map->rhs == NULL);
 	rad_assert(rhs != NULL);
 
-	VERIFY_MAP(map);
+	MAP_VERIFY(map);
 
 	/*
 	 *	If the attribute is still unknown, go parse the RHS.
@@ -158,7 +158,7 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 
 	fr_pair_list_free(&vp);
 
-	VERIFY_MAP(map);
+	MAP_VERIFY(map);
 
 	return true;
 }
@@ -272,7 +272,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 		}
 	}
 	if (!map->rhs) {
-		cf_log_err(cp, "%s", fr_strerror());
+		cf_log_err(cp, "Failed parsing RHS: %s", fr_strerror());
 		goto error;
 	}
 
@@ -286,7 +286,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 		goto error;
 	}
 
-	VERIFY_MAP(map);
+	MAP_VERIFY(map);
 
 	*out = map;
 
@@ -376,11 +376,15 @@ int map_afrom_cs(vp_map_t **out, CONF_SECTION *cs,
 		}
 
 		cp = cf_item_to_pair(ci);
+		rad_assert(cp != NULL);
+
 		if (map_afrom_cp(parent, &map, cp, request_def, dst_list_def, REQUEST_CURRENT, src_list_def) < 0) {
+			cf_log_err(ci, "Failed creating map from '%s = %s'",
+				   cf_pair_attr(cp), cf_pair_value(cp));
 			goto error;
 		}
 
-		VERIFY_MAP(map);
+		MAP_VERIFY(map);
 
 		/*
 		 *	Check the types in the map are valid
@@ -447,7 +451,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, vp_map_t **out, char const *lhs, FR_TOKEN 
 	slen = tmpl_afrom_str(map, &map->rhs, rhs, strlen(rhs), rhs_type, src_request_def, src_list_def, true);
 	if (slen < 0) goto error;
 
-	VERIFY_MAP(map);
+	MAP_VERIFY(map);
 
 	*out = map;
 
@@ -511,7 +515,7 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *vp_str,
 
 	*out = map;
 
-	VERIFY_MAP(map);
+	MAP_VERIFY(map);
 
 	return 0;
 }
@@ -624,7 +628,7 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, v
 
 	*out = NULL;
 
-	VERIFY_MAP(map);
+	MAP_VERIFY(map);
 
 	rad_assert(map->rhs->type == TMPL_TYPE_EXEC);
 	rad_assert((map->lhs->type == TMPL_TYPE_ATTR) || (map->lhs->type == TMPL_TYPE_LIST));
@@ -696,16 +700,16 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, v
  */
 int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, UNUSED void *uctx)
 {
-	int rcode = 0;
-	VALUE_PAIR *vp = NULL, *found = NULL, *n;
-	REQUEST *context = request;
-	vp_cursor_t cursor;
-	ssize_t slen;
-	char *str;
+	int		rcode = 0;
+	VALUE_PAIR	*vp = NULL, *found = NULL, *n;
+	REQUEST		*context = request;
+	fr_cursor_t	cursor;
+	ssize_t		slen;
+	char		*str;
 
 	*out = NULL;
 
-	VERIFY_MAP(map);
+	MAP_VERIFY(map);
 	if (!rad_cond_assert(map->lhs != NULL)) return -1;
 	if (!rad_cond_assert(map->rhs != NULL)) return -1;
 
@@ -736,9 +740,9 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		 */
 		if (!found) return 0;
 
-		for (vp = fr_pair_cursor_init(&cursor, &found);
+		for (vp = fr_cursor_init(&cursor, &found);
 		     vp;
-		     vp = fr_pair_cursor_next(&cursor)) {
+		     vp = fr_cursor_next(&cursor)) {
 			vp->op = T_OP_ADD;
 		}
 
@@ -832,7 +836,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 
 	case TMPL_TYPE_ATTR:
 	{
-		vp_cursor_t from;
+		fr_cursor_t from;
 
 		rad_assert(((map->lhs->type == TMPL_TYPE_ATTR) && map->lhs->tmpl_da) ||
 			   ((map->lhs->type == TMPL_TYPE_LIST) && !map->lhs->tmpl_da));
@@ -842,7 +846,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		 */
 		if (tmpl_copy_vps(ctx, &found, request, map->rhs) < 0) return 0;
 
-		vp = fr_pair_cursor_init(&from, &found);
+		vp = fr_cursor_init(&from, &found);
 
 		/*
 		 *  Src/Dst attributes don't match, convert src attributes
@@ -850,29 +854,30 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		 */
 		if ((map->lhs->type == TMPL_TYPE_ATTR) &&
 		    (map->rhs->tmpl_da->type != map->lhs->tmpl_da->type)) {
-			vp_cursor_t to;
+			fr_cursor_t to;
 
-			(void) fr_pair_cursor_init(&to, out);
-			for (; vp; vp = fr_pair_cursor_next(&from)) {
+			(void) fr_cursor_init(&to, out);
+			for (; vp; vp = fr_cursor_current(&from)) {
 				n = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
 				if (!n) return -1;
 
 				if (fr_value_box_cast(n, &n->data,
-						   map->lhs->tmpl_da->type, map->lhs->tmpl_da, &vp->data) < 0) {
+						      map->lhs->tmpl_da->type, map->lhs->tmpl_da, &vp->data) < 0) {
 					RPEDEBUG("Attribute conversion failed");
 					fr_pair_list_free(&found);
 					talloc_free(n);
 					return -1;
 				}
-				vp = fr_pair_cursor_remove(&from);
+				vp = fr_cursor_remove(&from);	/* advances cursor */
 				talloc_free(vp);
 
 				rad_assert((n->vp_type != FR_TYPE_STRING) || (n->vp_strvalue != NULL));
 
 				n->op = map->op;
 				n->tag = map->lhs->tmpl_tag;
-				fr_pair_cursor_append(&to, n);
+				fr_cursor_append(&to, n);
 			}
+
 			return 0;
 		}
 
@@ -880,7 +885,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		 *   Otherwise we just need to fixup the attribute types
 		 *   and operators
 		 */
-		for (; vp; vp = fr_pair_cursor_next(&from)) {
+		for (; vp; vp = fr_cursor_next(&from)) {
 			vp->da = map->lhs->tmpl_da;
 			vp->op = map->op;
 			vp->tag = map->lhs->tmpl_tag;
@@ -913,7 +918,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		n->tag = map->lhs->tmpl_tag;
 		*out = n;
 
-		VERIFY_MAP(map);
+		MAP_VERIFY(map);
 		break;
 
 	/*
@@ -981,7 +986,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	vp_map_t		exp_map;
 	vp_tmpl_t		*exp_lhs;
 
-	VERIFY_MAP(map);
+	MAP_VERIFY(map);
 	rad_assert(map->lhs != NULL);
 	rad_assert(map->rhs != NULL);
 
@@ -1100,7 +1105,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	for (vp = fr_pair_cursor_init(&src_list, &head);
 	     vp;
 	     vp = fr_pair_cursor_next(&src_list)) {
-		VERIFY_VP(vp);
+		VP_VERIFY(vp);
 
 		if (rad_debug_lvl) map_debug_log(request, map, vp);
 	}
@@ -1418,7 +1423,7 @@ bool map_dst_valid(REQUEST *request, vp_map_t const *map)
 {
 	REQUEST *context = request;
 
-	VERIFY_MAP(map);
+	MAP_VERIFY(map);
 
 	if (radius_request(&context, map->lhs->tmpl_request) < 0) return false;
 	if (!radius_list(context, map->lhs->tmpl_list)) return false;
@@ -1441,7 +1446,7 @@ size_t map_snprint(char *out, size_t outlen, vp_map_t const *map)
 	char		*p = out;
 	char		*end = out + outlen;
 
-	VERIFY_MAP(map);
+	MAP_VERIFY(map);
 
 	len = tmpl_snprint(out, (end - p) - 1, map->lhs);		/* -1 for proceeding ' ' */
 	RETURN_IF_TRUNCATED(p, len, (end - p) - 1);
@@ -1486,7 +1491,7 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 	char *rhs = NULL, *value = NULL;
 	char buffer[256];
 
-	VERIFY_MAP(map);
+	MAP_VERIFY(map);
 	if (!rad_cond_assert(map->lhs != NULL)) return;
 	if (!rad_cond_assert(map->rhs != NULL)) return;
 

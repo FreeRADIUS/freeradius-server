@@ -49,7 +49,7 @@ extern fr_cond_t *debug_condition;
 
 #ifdef HAVE_SYSTEMD_WATCHDOG
 extern struct timeval sd_watchdog_interval;
-static fr_event_timer_t *sd_watchdog_ev;
+static fr_event_timer_t const *sd_watchdog_ev;
 #endif
 
 static bool spawn_workers = false;
@@ -57,7 +57,7 @@ static bool just_started = true;
 time_t fr_start_time = (time_t)-1;
 static fr_event_list_t *event_list = NULL;
 
-fr_event_list_t *process_global_event_list(UNUSED event_corral_t hint) {
+fr_event_list_t *fr_global_event_list(void) {
 	/* Currently we do not run a second event loop for modules. */
 	return event_list;
 }
@@ -218,7 +218,8 @@ static void sd_watchdog_event(fr_event_list_t *our_el, struct timeval *now, void
 	sd_notify(0, "WATCHDOG=1");
 
 	fr_timeval_add(&when, &sd_watchdog_interval, now);
-	if (fr_event_timer_insert(our_el, sd_watchdog_event, ctx, &when, &sd_watchdog_ev) < 0) {
+	if (fr_event_timer_insert(NULL, our_el, &sd_watchdog_ev,
+				  &when, sd_watchdog_event, ctx) < 0) {
 		rad_panic("Failed to insert watchdog event");
 	}
 }
@@ -389,7 +390,11 @@ int radius_event_start(UNUSED bool have_children)
 	}
 	DEBUG4("Created signal pipe.  Read end FD %i, write end FD %i", self_pipe[0], self_pipe[1]);
 
-	if (fr_event_fd_insert(event_list, self_pipe[0], event_signal_handler, NULL, NULL, event_list) < 0) {
+	if (fr_event_fd_insert(NULL, event_list, self_pipe[0],
+			       event_signal_handler,
+			       NULL,
+			       NULL,
+			       event_list) < 0) {
 		PERROR("Failed creating signal pipe handler");
 		return -1;
 	}

@@ -42,23 +42,21 @@ typedef struct {
 	uint16_t			src_port;
 	uint16_t 			dst_port;
 
-	fr_time_t			timestamp;
+	int				code;			//!< for duplicate detection
+	int				id;			//!< for duplicate detection
 
 	RADCLIENT			*client;
 } proto_radius_udp_address_t;
 
 typedef struct {
 	proto_radius_t	const		*parent;		//!< The module that spawned us!
+	char const			*name;			//!< socket name
 
 	int				sockfd;
 
 	fr_event_list_t			*el;			//!< for cleanup timers on Access-Request
 
 	fr_ipaddr_t			ipaddr;			//!< Ipaddr to listen on.
-
-	bool				ipaddr_is_set;		//!< ipaddr config item is set.
-	bool				ipv4addr_is_set;	//!< ipv4addr config item is set.
-	bool				ipv6addr_is_set;	//!< ipv6addr config item is set.
 
 	char const			*interface;		//!< Interface to bind to.
 	char const			*port_name;		//!< Name of the port for getservent().
@@ -70,12 +68,14 @@ typedef struct {
 
 	fr_tracking_t			*ft;			//!< tracking table
 	uint32_t			cleanup_delay;		//!< cleanup delay for Access-Request packets
+
+	uint32_t			priorities[FR_MAX_PACKET_CODE];	//!< priorities for individual packets
 } proto_radius_udp_t;
 
 static const CONF_PARSER udp_listen_config[] = {
-	{ FR_CONF_IS_SET_OFFSET("ipaddr", FR_TYPE_COMBO_IP_ADDR, proto_radius_udp_t, ipaddr) },
-	{ FR_CONF_IS_SET_OFFSET("ipv4addr", FR_TYPE_IPV4_ADDR, proto_radius_udp_t, ipaddr) },
-	{ FR_CONF_IS_SET_OFFSET("ipv6addr", FR_TYPE_IPV6_ADDR, proto_radius_udp_t, ipaddr) },
+	{ FR_CONF_OFFSET("ipaddr", FR_TYPE_COMBO_IP_ADDR, proto_radius_udp_t, ipaddr) },
+	{ FR_CONF_OFFSET("ipv4addr", FR_TYPE_IPV4_ADDR, proto_radius_udp_t, ipaddr) },
+	{ FR_CONF_OFFSET("ipv6addr", FR_TYPE_IPV6_ADDR, proto_radius_udp_t, ipaddr) },
 
 	{ FR_CONF_OFFSET("interface", FR_TYPE_STRING, proto_radius_udp_t, interface) },
 	{ FR_CONF_OFFSET("port_name", FR_TYPE_STRING, proto_radius_udp_t, port_name) },
@@ -88,10 +88,41 @@ static const CONF_PARSER udp_listen_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+
+/*
+ *	Allow configurable priorities for each listener.
+ */
+static uint32_t priorities[FR_MAX_PACKET_CODE] = {
+	[FR_CODE_ACCESS_REQUEST] = PRIORITY_HIGH,
+	[FR_CODE_ACCOUNTING_REQUEST] = PRIORITY_LOW,
+	[FR_CODE_COA_REQUEST] = PRIORITY_NORMAL,
+	[FR_CODE_DISCONNECT_REQUEST] = PRIORITY_NORMAL,
+	[FR_CODE_STATUS_SERVER] = PRIORITY_NOW,
+};
+
+
+static const CONF_PARSER priority_config[] = {
+	{ FR_CONF_OFFSET("Access-Request", FR_TYPE_UINT32, proto_radius_udp_t, priorities[FR_CODE_ACCESS_REQUEST]),
+	  .dflt = STRINGIFY(PRIORITY_HIGH) },
+	{ FR_CONF_OFFSET("Accounting-Request", FR_TYPE_UINT32, proto_radius_udp_t, priorities[FR_CODE_ACCOUNTING_REQUEST]),
+	  .dflt = STRINGIFY(PRIORITY_LOW) },
+	{ FR_CONF_OFFSET("CoA-Request", FR_TYPE_UINT32, proto_radius_udp_t, priorities[FR_CODE_COA_REQUEST]),
+	  .dflt = STRINGIFY(PRIORITY_NORMAL) },
+	{ FR_CONF_OFFSET("Disconnect-Request", FR_TYPE_UINT32, proto_radius_udp_t, priorities[FR_CODE_DISCONNECT_REQUEST]),
+	  .dflt = STRINGIFY(PRIORITY_NORMAL) },
+	{ FR_CONF_OFFSET("Status-Server", FR_TYPE_UINT32, proto_radius_udp_t, priorities[FR_CODE_STATUS_SERVER]),
+	  .dflt = STRINGIFY(PRIORITY_NOW) },
+
+
+	CONF_PARSER_TERMINATOR
+};
+
 static void mod_cleanup_delay(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
 {
 	fr_tracking_entry_t *track = uctx;
 	// proto_radius_udp_t const *inst = talloc_parent(track->ft);
+
+	DEBUG2("TIMER - proto_radius cleanup delay for ID %d", track->data[1]);
 
 	(void) fr_radius_tracking_entry_delete(track->ft, track);
 }
@@ -167,12 +198,12 @@ static int mod_decode(UNUSED void const *instance, REQUEST *request, UNUSED uint
 	request->reply->dst_port = address->src_port;
 
 	request->root = &main_config;
-	VERIFY_REQUEST(request);
+	REQUEST_VERIFY(request);
 
 	return 0;
 }
 
-static ssize_t mod_read(void const *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len)
+static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority)
 {
 	proto_radius_udp_t const	*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
 
@@ -185,20 +216,41 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, fr_time_t **rec
 	fr_tracking_entry_t		*track;
 	proto_radius_udp_address_t	address;
 
+	*leftover = 0;
+
 	data_size = udp_recv(inst->sockfd, buffer, buffer_len, 0,
 			     &address.src_ipaddr, &address.src_port,
 			     &address.dst_ipaddr, &address.dst_port,
 			     &address.if_index, &timestamp);
-	if (data_size <= 0) return data_size;
+	if (data_size <= 0) {
+		DEBUG2("proto_radius_udp got read error %zd", data_size);
+		return data_size;
+	}
 
 	packet_len = data_size;
+
+	if (data_size < 20) {
+		DEBUG2("proto_radius_udp got 'too short' packet size %zd", data_size);
+		return 0;
+	}
+
+	if ((buffer[0] == 0) || (buffer[0] > FR_MAX_PACKET_CODE)) {
+		DEBUG("proto_radius_udp got invalid packet code %d", buffer[0]);
+		return 0;
+	}
+
+	if (!inst->parent->process_by_code[buffer[0]]) {
+		DEBUG("proto_radius_udp got unexpected packet code %d", buffer[0]);
+		return 0;
+	}
 
 	/*
 	 *	If it's not a RADIUS packet, ignore it.
 	 */
-	if (!fr_radius_ok(buffer, &packet_len, false, &reason)) return 0;
-
-	address.timestamp = fr_time();
+	if (!fr_radius_ok(buffer, &packet_len, false, &reason)) {
+		DEBUG2("proto_radius_udp got a packet which isn't RADIUS");
+		return 0;
+	}
 
 	/*
 	 *	Lookup the client - Must exist to continue.
@@ -212,15 +264,60 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, fr_time_t **rec
 	}
 
 	/*
+	 *	@todo - allow for dynamic clients.
+	 *
+	 * 	- cache packets from the unknown client, ideally in a
+	 *   	  separate tracking table for this source IP/port.
+	 *
+	 *	- make it configurable for src IP, or src IP/port
+	 *
+	 *	- if new packets come in from that same source, add
+	 *	  them to the tracking table, but DON'T process them.
+	 *
+	 *	- run the packet through a proto_radius_client processor
+	 *
+	 *	- if there's a good reply, add the client to the local
+	 *	  dynamic client list, with timeouts, max # of
+	 *	  entries, etc.
+	 *
+	 *	- find a way for the "write" function to trigger a re-read,
+	 *	  ideally via an fr_event_t callback
+	 *
+	 * 	- probably have each read set "leftover", to the total
+	 *	  amount of data associated with packets we've cached.
+	 *
+	 *	- which makes the network code drain this socket.
+	 *
+	 *	- the # of cached packets SHOULD be small enough that
+	 *	  this fast read doesn't matter too much.  If we care,
+	 *	  we can later fix the network code to call the read()
+	 *	  routine if there is pending data.  e.g. like the
+	 *	  issues with the detail file reader reading 64K of
+	 *	  data when each packet is only 200 bytes, and then
+	 *	  processin (64K/200) number of packets all at once.
+	 *
+	 *	- and ideally find a *generic* way to do this, so that
+	 *	  we can re-use the code for TCP, and possibly other
+	 *	  protocols.
+	 */
+
+	/*
 	 *	If the signature fails validation, ignore it.
 	 */
 	if (fr_radius_verify(buffer, NULL,
 			     (uint8_t const *)address.client->secret,
 			     talloc_array_length(address.client->secret)) < 0) {
+		DEBUG2("proto_radius_udp packet failed verification");
 		return 0;
 	}
 
-	tracking_status = fr_radius_tracking_entry_insert(&track, inst->ft, buffer, address.timestamp, &address);
+	/*
+	 *	Track the packet ID.
+	 */
+	address.code = buffer[0];
+	address.id = buffer[1];
+
+	tracking_status = fr_radius_tracking_entry_insert(&track, inst->ft, buffer, fr_time(), &address);
 	switch (tracking_status) {
 	case FR_TRACKING_ERROR:
 	case FR_TRACKING_UNUSED:
@@ -233,47 +330,58 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, fr_time_t **rec
 		 *	the first one.
 		 */
 	case FR_TRACKING_SAME:
+		DEBUG3("SAME packet");
 		if (track->ev) {
 			struct timeval tv;
 
 			gettimeofday(&tv, NULL);
 			tv.tv_sec += inst->cleanup_delay;
 
-			(void) fr_event_timer_insert(inst->el, mod_cleanup_delay, track, &tv, &track->ev);
+			DEBUG3("SAME packet - cleanup");
+			(void) fr_event_timer_insert(NULL, inst->el, &track->ev,
+						     &tv, mod_cleanup_delay, track);
 		}
 
 		/*
-		 *	@todo - if track->reply_len == 1, then we are
-		 *	INTENTIONALLY not replying.  In that case,
-		 *	return 0.  Otherwise, it's a duplicate packet.
-		 *	We MAY want to go poke the worker and say it's
-		 *	a duplicate packet.  BUT all of that tracking
-		 *	is very hard, so we might as well just ignore
-		 *	it.
+		 *	We are intentionally not responding.
 		 */
-		return 0;
+		if (track->reply_len == 1) {
+			return 0;
+		}
+
+		/*
+		 *	Otherwise it's a duplicate packet.  Send the
+		 *	whole thing over to the network stack, noting
+		 *	that the tracking code ensures we get
+		 *	"recv_time" from the ORIGINAL packet, and not
+		 *	from now.
+		 */
+		break;
 
 	/*
 	 *	Delete any pre-existing cleanup_delay timers.
 	 */
 	case FR_TRACKING_DIFFERENT:
+		DEBUG3("DIFFERENT packet");
 		if (track->ev) (void) fr_event_timer_delete(inst->el, &track->ev);
 		break;
 
 	case FR_TRACKING_NEW:
+		DEBUG3("NEW packet");
 		break;
 	}
 
 	*packet_ctx = track;
 	*recv_time = &track->timestamp;
+	*priority = priorities[buffer[0]];
 
 	return packet_len;
 }
 
-static ssize_t mod_write(void const *instance, void *packet_ctx,
+static ssize_t mod_write(void *instance, void *packet_ctx,
 			 fr_time_t request_time, uint8_t *buffer, size_t buffer_len)
 {
-	proto_radius_udp_t const	*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
+	proto_radius_udp_t		*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
 	fr_tracking_entry_t		*track = packet_ctx;
 	proto_radius_udp_address_t	*address = track->src_dst;
 
@@ -285,7 +393,10 @@ static ssize_t mod_write(void const *instance, void *packet_ctx,
 	 *	The original packet has changed.  Suppress the write,
 	 *	as the client will never accept the response.
 	 */
-	if (track->timestamp != request_time) return buffer_len;
+	if (track->timestamp != request_time) {
+		DEBUG3("Suppressing reply as we have a newer packet");
+		return buffer_len;
+	}
 
 	/*
 	 *	Figure out when we've sent the reply.
@@ -301,11 +412,22 @@ static ssize_t mod_write(void const *instance, void *packet_ctx,
 				     &address->dst_ipaddr, address->dst_port,
 				     address->if_index,
 				     &address->src_ipaddr, address->src_port);
+		if (data_size < 0) return data_size;
+
 	} else {
 		/*
 		 *	Otherwise lie, and say we've written it all...
 		 */
 		data_size = buffer_len;
+		DEBUG3("Got NAK, not writing reply");
+	}
+
+	/*
+	 *	Root through the reply to determine any
+	 *	connection-level negotiation data.
+	 */
+	if (track->data[0] == FR_CODE_STATUS_SERVER) {
+//		status_check_reply(inst, buffer, buffer_len);
 	}
 
 	/*
@@ -313,34 +435,38 @@ static ssize_t mod_write(void const *instance, void *packet_ctx,
 	 *	cleanup_delay = 0, then we even clean up
 	 *	Access-Request packets immediately.
 	 */
-	 if ((track->data[0] != FR_CODE_ACCESS_REQUEST) || !inst->el) {
+	if ((track->data[0] != FR_CODE_ACCESS_REQUEST) || !inst->el) {
+		DEBUG3("Not Access-Request.  Deleting tracking table entry");
 		(void) fr_radius_tracking_entry_delete(inst->ft, track);
 		return data_size;
 	}
 
-	 /*
-	  *	Add the reply to the tracking entry.
-	  */
-	 if (fr_radius_tracking_entry_reply(inst->ft, track, reply_time,
-					    buffer, buffer_len) < 0) {
+	/*
+	 *	Add the reply to the tracking entry.
+	 */
+	if (fr_radius_tracking_entry_reply(inst->ft, track, reply_time,
+					   buffer, buffer_len) < 0) {
+		DEBUG3("Failed adding reply to tracking table");
 		(void) fr_radius_tracking_entry_delete(inst->ft, track);
 		return data_size;
-	 }
+	}
 
-	 /*
-	  *	@todo - Move event timers to fr_time_t
-	  */
-	 gettimeofday(&tv, NULL);
+	/*
+	 *	@todo - Move event timers to fr_time_t
+	 */
+	gettimeofday(&tv, NULL);
 
-	 tv.tv_sec += inst->cleanup_delay;
+	tv.tv_sec += inst->cleanup_delay;
 
-	 /*
-	  *	Clean up after a while.
-	  */
-	 if (fr_event_timer_insert(inst->el, mod_cleanup_delay, track, &tv, &track->ev) < 0) {
+	/*
+	 *	Clean up after a while.
+	 */
+	if (fr_event_timer_insert(NULL, inst->el, &track->ev,
+				  &tv, mod_cleanup_delay, track) < 0) {
+		DEBUG3("Failed adding cleanup timer");
 		(void) fr_radius_tracking_entry_delete(inst->ft, track);
 		return data_size;
-	 }
+	}
 
 	return data_size;
 }
@@ -358,6 +484,7 @@ static int mod_open(void *instance)
 
 	int				sockfd = 0;
 	uint16_t			port = inst->port;
+	char				src_buf[128];
 
 	sockfd = fr_socket_server_udp(&inst->ipaddr, &port, inst->port_name, true);
 	if (sockfd < 0) {
@@ -371,7 +498,25 @@ static int mod_open(void *instance)
 		goto error;
 	}
 
+	if (fr_ipaddr_is_inaddr_any(&inst->ipaddr)) {
+		if (inst->ipaddr.af == AF_INET) {
+			strlcpy(src_buf, "*", sizeof(src_buf));
+		} else {
+			rad_assert(inst->ipaddr.af == AF_INET6);
+			strlcpy(src_buf, "::", sizeof(src_buf));
+		}
+	} else {
+		fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(inst->ipaddr), 0);
+	}
+
+	rad_assert(inst->name == NULL);
+	inst->name = talloc_asprintf(inst, "proto udp address %s port %u",
+				     src_buf, port);
 	inst->sockfd = sockfd;
+
+	// @todo - also print out auth / acct / coa, etc.
+	DEBUG("Listening on radius address %s bound to virtual server %s",
+	      inst->name, cf_section_name2(inst->parent->server_cs));
 
 	return 0;
 }
@@ -383,7 +528,7 @@ static int mod_open(void *instance)
  */
 static int mod_fd(void const *instance)
 {
-	proto_radius_udp_t *inst = talloc_get_type_abort(instance, proto_radius_udp_t);
+	proto_radius_udp_t const *inst = talloc_get_type_abort_const(instance, proto_radius_udp_t);
 
 	return inst->sockfd;
 }
@@ -394,7 +539,7 @@ static int mod_fd(void const *instance)
  * @param[in] instance of the RADIUS UDP I/O path.
  * @param[in] el the event list
  */
-static void mod_event_list_set(void const *instance, fr_event_list_t *el)
+static void mod_event_list_set(void *instance, fr_event_list_t *el)
 {
 	proto_radius_udp_t *inst;
 
@@ -421,12 +566,11 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	proto_radius_udp_t *inst = talloc_get_type_abort(instance, proto_radius_udp_t);
 
 	/*
-	 *	Default to all IPv6 interfaces (it's the future)
+	 *	Complain if no "ipaddr" is set.
 	 */
-	if (!inst->ipaddr_is_set && !inst->ipv4addr_is_set && !inst->ipv6addr_is_set) {
-		inst->ipaddr.af = AF_INET6;
-		inst->ipaddr.prefix = 128;
-		inst->ipaddr.addr.v6 = in6addr_any;	/* in6addr_any binds to all addresses */
+	if (inst->ipaddr.af == AF_UNSPEC) {
+		cf_log_err(cs, "No 'ipaddr' was specified in the 'udp' section");
+		return -1;
 	}
 
 	if (inst->recv_buff_is_set) {
@@ -438,7 +582,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 		struct servent *s;
 
 		if (!inst->port_name) {
-			cf_log_err(cs, "No 'port' specified in 'udp' section");
+			cf_log_err(cs, "No 'port' was specified in the 'udp' section");
 			return -1;
 		}
 
@@ -461,10 +605,11 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	return 0;
 }
 
-static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *cs)
+static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 {
 	proto_radius_udp_t	*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
 	dl_instance_t const	*dl_inst;
+	CONF_SECTION		*subcs;
 
 	/*
 	 *	Find the dl_instance_t holding our instance data
@@ -475,6 +620,20 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *cs)
 	rad_assert(dl_inst);
 
 	inst->parent = talloc_get_type_abort(dl_inst->parent->data, proto_radius_t);
+
+	/*
+	 *	Hide this for now.  It's only for people who know what
+	 *	they're doing.
+	 */
+	subcs = cf_section_find(cs, "priority", NULL);
+	if (subcs) {
+		if (cf_section_rules_push(subcs, priority_config) < 0) return -1;
+		if (cf_section_parse(NULL, NULL, subcs) < 0) return -1;
+
+	} else {
+		rad_assert(sizeof(inst->priorities) == sizeof(priorities));
+		memcpy(&inst->priorities, &priorities, sizeof(priorities));
+	}
 
 	return 0;
 }
@@ -515,6 +674,8 @@ fr_app_io_t proto_radius_udp = {
 	.instantiate		= mod_instantiate,
 
 	.default_message_size	= 4096,
+	.track_duplicates	= true,
+
 	.open			= mod_open,
 	.read			= mod_read,
 	.decode			= mod_decode,

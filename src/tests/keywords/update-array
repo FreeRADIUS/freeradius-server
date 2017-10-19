@@ -21,43 +21,25 @@ update request {
 }
 
 if (&Proxy-State != 0x01020304) {
-	update reply {
-		Filter-Id := "fail 0"
-	}
+	test_fail
 }
 
 #  Must be the same as above
 if (&Proxy-State[0] != 0x01020304) {
-	update reply {
-		Filter-Id += "fail 0a"
-	}
+	test_fail
 }
 
 if (&Proxy-State[1] != 0x05060708) {
-	update reply {
-		Filter-Id += "fail 1"
-	}
+	test_fail
 }
 
 if (&Proxy-State[2] != 0x090a0b0c) {
-	update reply {
-		Filter-Id += "fail 2"
-	}
+	test_fail
 }
 
 # must not exist
 if (&Proxy-State[3]) {
-	update reply {
-		Filter-Id += "fail 3"
-	}
+	test_fail
 }
 
-#
-#  The test passes only if no test above
-#  added a Filter-Id
-#
-if (!reply:Filter-Id) {
-	update reply {
-		Filter-Id := "filter"
-	}
-}
+success

@@ -7,4 +7,4 @@
 ## Summary
 Sends HTTP requests to remote servers and decodes the responses.
 
-Can also perform basicauth with user's credentials.
+Can also perform basic auth with user's credentials.

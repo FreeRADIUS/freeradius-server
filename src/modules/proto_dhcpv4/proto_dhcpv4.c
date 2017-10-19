@@ -76,9 +76,11 @@ static void dhcp_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool rece
 #ifdef WITH_UDPFROMTO
 static int dhcprelay_process_client_request(REQUEST *request)
 {
+	int		rcode;
 	uint8_t		maxhops = 16;
 	VALUE_PAIR	*vp, *giaddr;
 	dhcp_socket_t	*sock;
+	RADIUS_PACKET	*packet;
 
 	rad_assert(request->packet->data[0] == 1);
 
@@ -118,34 +120,56 @@ static int dhcprelay_process_client_request(REQUEST *request)
 	sock = request->listener->data;
 
 	/*
+	 *	Don't muck with the original request packet.  That's
+	 *	bad form.  Plus, dhcp_encode() does nothing if
+	 *	packet->data is already set.
+	 */
+	packet = fr_radius_alloc(request, false);
+	rcode = -1;
+
+	/*
+	 *	Forward the request to the next server using the
+	 *	incoming request as a template.
+	 */
+	packet->code = request->packet->code;
+	packet->sockfd = request->packet->sockfd;
+
+	/*
 	 *	Forward the request to the next server using the
 	 *	incoming request as a template.
 	 */
 	/* set SRC ipaddr/port to the listener ipaddr/port */
-	request->packet->src_ipaddr.af = AF_INET;
-	request->packet->src_ipaddr.addr.v4.s_addr = sock->lsock.my_ipaddr.addr.v4.s_addr;
-	request->packet->src_port = sock->lsock.my_port;
+	packet->src_ipaddr.af = AF_INET;
+	packet->src_ipaddr.addr.v4.s_addr = sock->lsock.my_ipaddr.addr.v4.s_addr;
+	packet->src_port = sock->lsock.my_port;
 
 	vp = fr_pair_find_by_num(request->control, DHCP_MAGIC_VENDOR, 270, TAG_ANY); /* DHCP-Relay-To-IP-Address */
 	rad_assert(vp != NULL);
 
 	/* set DEST ipaddr/port to the next server ipaddr/port */
-	request->packet->dst_ipaddr.af = AF_INET;
-	request->packet->dst_ipaddr.addr.v4.s_addr = vp->vp_ipv4addr;
-	request->packet->dst_port = sock->lsock.my_port;
+	packet->dst_ipaddr.af = AF_INET;
+	packet->dst_ipaddr.addr.v4.s_addr = vp->vp_ipv4addr;
+	packet->dst_port = sock->lsock.my_port;
+
+	packet->vps = request->packet->vps; /* hackity hack */
 
 	/*
 	 *	Relaying is not proxying, we just forward it on and forget
 	 *	about it, not sending a response to the DHCP client.
 	 */
-	dhcp_packet_debug(request, request->packet, false);
+	dhcp_packet_debug(request, packet, false);
 
-	if (fr_dhcpv4_packet_encode(request->packet) < 0) {
+	if (fr_dhcpv4_packet_encode(packet) < 0) {
 		RPERROR("Failed encoding DHCP packet");
-		return -1;
+		goto error;
 	}
 
-	return fr_dhcpv4_udp_packet_send(request->packet);
+	rcode = fr_dhcpv4_udp_packet_send(packet);
+
+error:
+	packet->vps = NULL;
+	talloc_free(packet);
+	return rcode;
 }
 
 
@@ -155,8 +179,10 @@ static int dhcprelay_process_client_request(REQUEST *request)
  */
 static int dhcprelay_process_server_reply(REQUEST *request)
 {
+	int rcode;
 	VALUE_PAIR *vp, *giaddr;
 	dhcp_socket_t *sock;
+	RADIUS_PACKET *packet;
 
 	rad_assert(request->packet->data[0] == 2);
 
@@ -179,20 +205,41 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 		return 1;
 	}
 
+	/*
+	 *	Don't muck with the original request packet.  That's
+	 *	bad form.  Plus, dhcp_encode() does nothing if
+	 *	packet->data is already set.
+	 */
+	packet = fr_radius_alloc(request, false);
+	rcode = -1;
+
+	/*
+	 *	Forward the request to the next server using the
+	 *	incoming request as a template.
+	 */
+	packet->code = request->packet->code;
+	packet->sockfd = request->packet->sockfd;
+
 	/* set SRC ipaddr/port to the listener ipaddr/port */
-	request->packet->src_ipaddr.af = AF_INET;
-	request->packet->src_port = sock->lsock.my_port;
+	packet->src_ipaddr.af = AF_INET;
+	packet->src_port = sock->lsock.my_port;
 
 	/* set DEST ipaddr/port to clientip/68 or broadcast in specific cases */
-	request->packet->dst_ipaddr.af = AF_INET;
+	packet->dst_ipaddr.af = AF_INET;
 
 	/*
 	 *	We're a relay, and send the reply to giaddr.
 	 */
-	request->reply->dst_ipaddr.addr.v4.s_addr = giaddr->vp_ipv4addr;
-	request->reply->dst_port = request->packet->dst_port;		/* server port */
+	packet->dst_ipaddr.addr.v4.s_addr = htonl(INADDR_BROADCAST);
+	packet->dst_port = request->packet->dst_port;		/* server port */
 
-	if ((request->packet->code == FR_DHCPV4_NAK) ||
+	vp = fr_pair_find_by_num(request->control, DHCP_MAGIC_VENDOR, 270, TAG_ANY); /* DHCP-Relay-To-IP-Address */
+	if (vp) {
+		RDEBUG("DHCP: response will be relayed to previous gateway");
+		packet->dst_ipaddr.addr.v4.s_addr = vp->vp_ipv4addr;
+		giaddr->vp_ipv4addr = vp->vp_ipv4addr;
+
+	} else if ((packet->code == FR_DHCPV4_NAK) ||
 	    !sock->src_interface ||
 	    ((vp = fr_pair_find_by_num(request->packet->vps, DHCP_MAGIC_VENDOR, 262, TAG_ANY)) /* DHCP-Flags */ &&
 	     (vp->vp_uint32 & 0x8000) &&
@@ -207,8 +254,11 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 		 * - Broadcast flag is set up and ciaddr == NULL
 		 */
 		RDEBUG2("Response will be broadcast");
-		request->packet->dst_ipaddr.addr.v4.s_addr = htonl(INADDR_BROADCAST);
-	} else {
+		packet->dst_ipaddr.addr.v4.s_addr = htonl(INADDR_BROADCAST);
+
+	} else if ((vp = fr_pair_find_by_num(request->packet->vps, DHCP_MAGIC_VENDOR, 263, TAG_ANY)) /* DHCP-Client-IP-Address */ &&
+		   (vp->vp_ipv4addr != htonl(INADDR_ANY))) {
+
 		/*
 		 * RFC 2131, page 23
 		 *
@@ -216,53 +266,57 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 		 * - ciaddr if present
 		 * otherwise to yiaddr
 		 */
-		if ((vp = fr_pair_find_by_num(request->packet->vps, DHCP_MAGIC_VENDOR, 263, TAG_ANY)) /* DHCP-Client-IP-Address */ &&
-		    (vp->vp_ipv4addr != htonl(INADDR_ANY))) {
-			request->packet->dst_ipaddr.addr.v4.s_addr = vp->vp_ipv4addr;
-		} else {
-			vp = fr_pair_find_by_num(request->packet->vps, DHCP_MAGIC_VENDOR, 264, TAG_ANY); /* DHCP-Your-IP-Address */
-			if (!vp) {
-				RPEDEBUG("Failed to find IP Address for request");
-				return -1;
+		packet->dst_ipaddr.addr.v4.s_addr = vp->vp_ipv4addr;
+	} else {
+		vp = fr_pair_find_by_num(request->packet->vps, DHCP_MAGIC_VENDOR, 264, TAG_ANY); /* DHCP-Your-IP-Address */
+		if (!vp) {
+			RPEDEBUG("Failed to find IP Address for request");
+			goto error;
+		}
+
+		RDEBUG2("Response will be unicast to &DHCP-Your-IP-Address");
+		packet->dst_ipaddr.addr.v4.s_addr = vp->vp_ipv4addr;
+
+		/*
+		 * When sending a DHCP_OFFER, make sure our ARP table
+		 * contains an entry for the client IP address, or else
+		 * packet may not be forwarded if it was the first time
+		 * the client was requesting an IP address.
+		 */
+		if (request->packet->code == FR_DHCPV4_OFFER) {
+			VALUE_PAIR *hwvp = fr_pair_find_by_num(request->packet->vps, DHCP_MAGIC_VENDOR, 267,
+							       TAG_ANY); /* DHCP-Client-Hardware-Address */
+			if (hwvp == NULL) {
+				RDEBUG2("DHCP_OFFER packet received with no Client Hardware Address. "
+					"Discarding packet");
+				goto error;
 			}
-
-			RDEBUG2("Response will be unicast to &DHCP-Your-IP-Address");
-			request->packet->dst_ipaddr.addr.v4.s_addr = vp->vp_ipv4addr;
-
-			/*
-			 * When sending a DHCP_OFFER, make sure our ARP table
-			 * contains an entry for the client IP address, or else
-			 * packet may not be forwarded if it was the first time
-			 * the client was requesting an IP address.
-			 */
-			if (request->packet->code == FR_DHCPV4_OFFER) {
-				VALUE_PAIR *hwvp = fr_pair_find_by_num(request->packet->vps, DHCP_MAGIC_VENDOR, 267,
-								       TAG_ANY); /* DHCP-Client-Hardware-Address */
-				if (hwvp == NULL) {
-					RDEBUG2("DHCP_OFFER packet received with no Client Hardware Address. "
-						"Discarding packet");
-					return 1;
-				}
-				if (fr_dhcpv4_udp_add_arp_entry(request->packet->sockfd, sock->src_interface,
-								&vp->vp_ip, hwvp->vp_ether) < 0) {
-					REDEBUG("Failed adding ARP entry");
-					return -1;
-				}
+			if (fr_dhcpv4_udp_add_arp_entry(request->packet->sockfd, sock->src_interface,
+							&vp->vp_ip, hwvp->vp_ether) < 0) {
+				REDEBUG("Failed adding ARP entry");
+				goto error;
 			}
 		}
 	}
 
+	packet->vps = request->packet->vps; /* hackity hack */
+	
 	/*
 	 *	Our response doesn't go through process.c
 	 */
-	dhcp_packet_debug(request, request->packet, false);
+	dhcp_packet_debug(request, packet, false);
 
-	if (fr_dhcpv4_packet_encode(request->packet) < 0) {
+	if (fr_dhcpv4_packet_encode(packet) < 0) {
 		RPERROR("Failed encoding DHCP packet");
-		return -1;
+		goto error;
 	}
 
-	return fr_dhcpv4_udp_packet_send(request->packet);
+	rcode = fr_dhcpv4_udp_packet_send(request->packet);
+
+error:
+	packet->vps = NULL;
+	talloc_free(packet);
+	return rcode;
 }
 #else  /* WITH_UDPFROMTO */
 static int dhcprelay_process_server_reply(UNUSED REQUEST *request)

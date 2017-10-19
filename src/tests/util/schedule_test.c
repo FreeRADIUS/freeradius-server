@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
 	argv += (optind - 1);
 #endif
 
-	sched = fr_schedule_create(autofree, NULL, &default_log, num_networks, num_workers, NULL, NULL);
+	sched = fr_schedule_create(autofree, NULL, &default_log, L_DBG_LVL_MAX, num_networks, num_workers, NULL, NULL);
 	if (!sched) {
 		fprintf(stderr, "schedule_test: Failed to create scheduler\n");
 		exit(1);

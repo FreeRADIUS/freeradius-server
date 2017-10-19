@@ -130,8 +130,7 @@ static void state_entry_unlink(fr_state_tree_t *state, fr_state_entry_t *entry);
  */
 static int state_entry_cmp(void const *one, void const *two)
 {
-	fr_state_entry_t const *a = one;
-	fr_state_entry_t const *b = two;
+	fr_state_entry_t const *a = one, *b = two;
 
 	return memcmp(a->state, b->state, sizeof(a->state));
 }
@@ -605,7 +604,7 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET
 
 	RDEBUG3("RADIUS State - restored");
 
-	VERIFY_REQUEST(request);
+	REQUEST_VERIFY(request);
 	return;
 }
 
@@ -656,7 +655,7 @@ bool fr_request_to_state(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
 	RDEBUG3("RADIUS State - saved");
-	VERIFY_REQUEST(request);
+	REQUEST_VERIFY(request);
 
 	return true;
 }

@@ -60,6 +60,11 @@ typedef struct rlm_python_t {
 	char const	*name;			//!< Name of the module instance
 	PyThreadState	*sub_interpreter;	//!< The main interpreter/thread used for this instance.
 	char const	*python_path;		//!< Path to search for python files in.
+
+#if PY_VERSION_HEX > 0x03050000
+	wchar_t		*wide_name;		//!< Special wide char encoding of radiusd name.
+	wchar_t		*wide_path;		//!< Special wide char encoding of radiusd path.
+#endif
 	PyObject	*module;		//!< Local, interpreter specific module, containing
 						//!< FreeRADIUS functions.
 	bool		cext_compat;		//!< Whether or not to create sub-interpreters per module
@@ -455,7 +460,7 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 
 static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char const *funcname)
 {
-	vp_cursor_t	cursor;
+	fr_cursor_t	cursor;
 	VALUE_PAIR      *vp;
 	PyObject	*pRet = NULL;
 	PyObject	*pArgs = NULL;
@@ -475,9 +480,9 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 	 */
 	tuplelen = 0;
 	if (request != NULL) {
-		for (vp = fr_pair_cursor_init(&cursor, &request->packet->vps);
+		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 		     vp;
-		     vp = fr_pair_cursor_next(&cursor)) tuplelen++;
+		     vp = fr_cursor_next(&cursor)) tuplelen++;
 	}
 
 	if (tuplelen == 0) {
@@ -490,9 +495,9 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 			goto finish;
 		}
 
-		for (vp = fr_pair_cursor_init(&cursor, &request->packet->vps);
+		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 		     vp;
-		     vp = fr_pair_cursor_next(&cursor), i++) {
+		     vp = fr_cursor_next(&cursor), i++) {
 			PyObject *pp;
 
 			/* The inside tuple has two only: */
@@ -637,9 +642,7 @@ static int _python_inst_cmp(const void *a, const void *b)
 {
 	python_thread_state_t const *a_p = a, *b_p = b;
 
-	if (a_p->inst < b_p->inst) return -1;
-	if (a_p->inst > b_p->inst) return +1;
-	return 0;
+	return (a_p->inst < b_p->inst) - (a_p->inst > b_p->inst);
 }
 
 /** Thread safe call to a python function
@@ -870,19 +873,15 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 
 #if PY_VERSION_HEX > 0x03050000
 		{
-			wchar_t *name;
-
-			wide_name = Py_DecodeLocale(main_config.name, strlen(main_config.name));
-			Py_SetProgramName(name);		/* The value of argv[0] as a wide char string */
-			PyMem_RawFree(name);
+			inst->wide_name = Py_DecodeLocale(main_config.name, strlen(main_config.name));
+			Py_SetProgramName(inst->wide_name);		/* The value of argv[0] as a wide char string */
 		}
 #else
 		{
 			char *name;
 
-			name = talloc_strdup(NULL, main_config.name);
+			memcpy(&name, &main_config.name, sizeof(name));
 			Py_SetProgramName(name);		/* The value of argv[0] as a wide char string */
-			talloc_free(name);
 		}
 #endif
 
@@ -918,23 +917,23 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 
 		/*
 		 *	Set the python search path
+		 *
+		 *	The path buffer does not appear to be dup'd
+		 *	so its lifetime should really be bound to
+		 *	the lifetime of the module.
 		 */
 		if (inst->python_path) {
 #if PY_VERSION_HEX > 0x03050000
 			{
-				wchar_t *name;
-
-				path = Py_DecodeLocale(inst->python_path, strlen(inst->python_path));
-				PySys_SetPath(path);
-				PyMem_RawFree(path);
+				inst->wide_path = Py_DecodeLocale(inst->python_path, strlen(inst->python_path));
+				PySys_SetPath(inst->wide_path);
 			}
 #else
 			{
 				char *path;
 
-				path = talloc_strdup(NULL, inst->python_path);
+				memcpy(&path, &inst->python_path, sizeof(path));
 				PySys_SetPath(path);
-				talloc_free(path);
 			}
 #endif
 		}
@@ -1100,7 +1099,13 @@ static int mod_detach(void *instance)
 		PyThreadState_Swap(main_interpreter); /* Swap to the main thread */
 		Py_Finalize();
 		dlclose(python_dlhandle);
+
+#if PY_VERSION_HEX > 0x03050000
+		if (inst->wide_name) PyMem_RawFree(inst->wide_name);
+		if (inst->wide_path) PyMem_RawFree(inst->wide_path);
+#endif
 	}
+
 
 	return ret;
 }

@@ -406,6 +406,7 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 	case FR_CODE_DISCONNECT_NAK:
 	case FR_CODE_COA_ACK:
 	case FR_CODE_COA_NAK:
+	case FR_CODE_PROTOCOL_ERROR:
 		if (!original) {
 		need_original:
 			fr_strerror_printf("Cannot sign response packet without a request packet");
@@ -858,6 +859,7 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 	case FR_CODE_DISCONNECT_ACK:
 	case FR_CODE_DISCONNECT_NAK:
 #endif
+	case FR_CODE_PROTOCOL_ERROR:
 		if (!original) {
 			fr_strerror_printf("Cannot encode response without request");
 			return -1;
@@ -895,6 +897,32 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 	ptr = packet + RADIUS_HDR_LEN;
 
 	/*
+	 *	If we're sending Protocol-Error, add in
+	 *	Original-Packet-Code manually.  If the user adds it
+	 *	later themselves, well, too bad.
+	 */
+	if (code == FR_CODE_PROTOCOL_ERROR) {
+		size_t room;
+
+		room = (packet + packet_len) - ptr;
+		if (room < 7) {
+			fr_strerror_printf("Insufficient room to encode attributes");
+			return -1;
+		}
+
+		ptr[0] = 241;
+		ptr[1] = 7;
+		ptr[2] = 4;	/* Original-Packet-Code */
+		ptr[3] = 0;
+		ptr[4] = 0;
+		ptr[5] = 0;
+		ptr[6] = original[0];
+
+		ptr += 7;
+		total_length += 7;
+	}
+
+	/*
 	 *	Loop over the reply attributes for the packet.
 	 */
 	fr_pair_cursor_init(&cursor, &vps);
@@ -902,7 +930,7 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 		size_t		last_len, room;
 		char const	*last_name = NULL;
 
-		VERIFY_VP(vp);
+		VP_VERIFY(vp);
 
 		room = (packet + packet_len) - ptr;
 
@@ -984,3 +1012,113 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 
 	return total_length;
 }
+
+/** Decode a raw RADIUS packet into VPs.
+ *
+ */
+ssize_t	fr_radius_decode(TALLOC_CTX *ctx, uint8_t *packet, size_t packet_len, uint8_t const *original,
+			 char const *secret, UNUSED size_t secret_len, VALUE_PAIR **vps)
+{
+	ssize_t			slen;
+	vp_cursor_t		cursor;
+	uint8_t const		*attr, *end;
+	fr_radius_ctx_t		packet_ctx;
+
+	packet_ctx.secret = secret;
+	packet_ctx.vector = original + 4;
+
+	fr_pair_cursor_init(&cursor, vps);
+
+	attr = packet + 20;
+	end = packet + packet_len;
+
+	/*
+	 *	The caller MUST have called fr_radius_ok() first.  If
+	 *	he doesn't, all hell breaks loose.
+	 */
+	while (attr < end) {
+		slen = fr_radius_decode_pair(ctx, &cursor, fr_dict_root(fr_dict_internal),
+					     attr, (end - attr), &packet_ctx);
+		if (slen < 0) return slen;
+
+		/*
+		 *	If slen is larger than the room in the packet,
+		 *	all kinds of bad things happen.
+		 */
+		 if (!fr_cond_assert(slen <= (end - attr))) return -1;
+
+		attr += slen;
+	}
+
+	/*
+	 *	We've parsed the whole packet, return that.
+	 */
+	return packet_len;
+}
+
+
+static void print_hex_data(uint8_t const *ptr, int attrlen, int depth)
+{
+	int i;
+	static char const tabs[] = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
+
+	for (i = 0; i < attrlen; i++) {
+		if ((i > 0) && ((i & 0x0f) == 0x00))
+			fprintf(fr_log_fp, "%.*s", depth, tabs);
+		fprintf(fr_log_fp, "%02x ", ptr[i]);
+		if ((i & 0x0f) == 0x0f) fprintf(fr_log_fp, "\n");
+	}
+	if ((i & 0x0f) != 0) fprintf(fr_log_fp, "\n");
+}
+
+
+/** Print a raw RADIUS packet as hex.
+ *
+ */
+void fr_radius_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
+{
+	int i;
+	uint8_t const *attr, *end;
+
+	if ((packet[0] > 0) && (packet[0] < FR_MAX_PACKET_CODE)) {
+		fprintf(fp, "  Code:\t\t%s\n", fr_packet_codes[packet[0]]);
+	} else {
+		fprintf(fp, "  Code:\t\t%u\n", packet[0]);
+	}
+
+	fprintf(fp, "  Id:\t\t%u\n", packet[1]);
+	fprintf(fp, "  Length:\t%u\n", ((packet[2] << 8) |
+				   (packet[3])));
+	fprintf(fp, "  Vector:\t");
+
+	for (i = 4; i < 20; i++) {
+		fprintf(fp, "%02x", packet[i]);
+	}
+	fprintf(fp, "\n");
+
+	if (packet_len <= 20) return;
+
+	for (attr = packet + 20, end = packet + packet_len;
+	     attr < end;
+	     attr += attr[1]) {
+		int offset;
+		unsigned int vendor = 0;
+
+		fprintf(fp, "\t\t");
+
+		fprintf(fp, "%02x  %02x  ", attr[0], attr[1]);
+
+		if ((attr[0] == FR_VENDOR_SPECIFIC) &&
+		    (attr[1] > 6)) {
+			vendor = (attr[2] << 25) | (attr[3] << 16) | (attr[4] << 8) | attr[5];
+			fprintf(fp, "%02x%02x%02x%02x (%u)  ",
+				attr[2], attr[3], attr[4], attr[5], vendor);
+			offset = 6;
+		} else {
+			offset = 2;
+		}
+
+		print_hex_data(attr + offset, attr[1] - offset, 3);
+	}
+}
+

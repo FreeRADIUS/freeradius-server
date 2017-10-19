@@ -37,8 +37,6 @@ RCSID("$Id$")
 #  define EAP_TLS_MPPE_KEY_LEN     32
 #endif
 
-fr_dict_attr_t const *dict_aka_root;
-
 static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session);
 
 /*

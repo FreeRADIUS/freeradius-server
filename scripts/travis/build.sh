@@ -1,5 +1,7 @@
 #!/bin/sh -e
 
+enable_llvm_address_sanitizer=""
+
 #
 #  If this Travis matrix element does not require the build, we still need to run
 #  configure to make sure any autoconf generated files (tls-h et al) are still
@@ -12,14 +14,25 @@ if [ "${DO_BUILD}" = 'no' ]; then
 fi
 
 #
+#  Enable address sanitizer for the clang builds
+#
+if $CC -v 2>&1 | grep clang > /dev/null; then
+    echo "Enabling address sanitizer"
+    enable_address_sanitizer="--enable-llvm-address-sanitizer"
+else
+    enable_address_sanitizer=""
+fi
+
+#
 #  Configure the server as per the build matrix
 #
-#  We specify -with-rlm-python-bin because Otherwise travis picks up 
+#  We specify -with-rlm-python-bin because Otherwise travis picks up
 #  /opt/python, which doesn't have .so available
 #
 echo "Performing full configuration"
 CFLAGS="${BUILD_CFLAGS}" ./configure -C \
     --enable-werror \
+    $enable_address_sanitizer \
     --prefix=$HOME/freeradius \
     --with-shared-libs=$LIBS_SHARED \
     --with-threads=$LIBS_OPTIONAL \

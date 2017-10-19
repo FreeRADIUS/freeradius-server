@@ -43,6 +43,7 @@ typedef struct rlm_eap_fast_t {
 
 	char const		*virtual_server;			//!< Virtual server to use for processing
 									//!< inner EAP method.
+	char const		*cipher_list;				//!< cipher list specific to EAP-FAST
 	bool			req_client_cert;			//!< Whether we require a client cert
 									//!< in the outer tunnel.
 
@@ -61,6 +62,7 @@ static CONF_PARSER submodule_config[] = {
 	{ FR_CONF_OFFSET("default_provisioning_eap_type", FR_TYPE_STRING, rlm_eap_fast_t, default_provisioning_method_name), .dflt = "mschapv2" },
 
 	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, rlm_eap_fast_t, virtual_server) },
+	{ FR_CONF_OFFSET("cipher_list", FR_TYPE_STRING, rlm_eap_fast_t, cipher_list) },
 
 	{ FR_CONF_OFFSET("require_client_cert", FR_TYPE_BOOL, rlm_eap_fast_t, req_client_cert), .dflt = "no" },
 
@@ -106,9 +108,12 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 		return -1;
 	}
 
-	// FIXME TLSv1.2 uses a different PRF and SSL_export_keying_material("key expansion") is forbidden
-	if (!inst->tls_conf->disable_tlsv1_2) {
-		cf_log_err_by_name(cs, "disable_tlsv1_2", "require disable_tlsv1_2=yes");
+	/*
+	 *	Allow anything for the TLS version, we try to forcibly
+	 *	disable TLSv1.2 later.
+	 */
+	if (inst->tls_conf->tls_min_version > (float) 1.1) {
+		cf_log_err_by_name(cs, "tls_min_version", "require tls_min_version <= 1.1");
 		return -1;
 	}
 
@@ -439,7 +444,6 @@ static rlm_rcode_t mod_process(void *arg, eap_session_t *eap_session)
 		 *	Success: Automatically return MPPE keys.
 		 */
 	case FR_CODE_ACCESS_ACCEPT:
-		RDEBUG("Note that the 'missing PRF label' message below is harmless. Please ignore it.");
 		if (eap_tls_success(eap_session) < 0) return RLM_MODULE_FAIL;
 		return RLM_MODULE_OK;
 
@@ -498,6 +502,22 @@ static rlm_rcode_t mod_session_init(void *type_arg, eap_session_t *eap_session)
 	if (!eap_tls_session) return RLM_MODULE_FAIL;
 
 	tls_session = eap_tls_session->tls_session;
+
+	if (inst->cipher_list) {
+		RDEBUG("Over-riding main cipher list with '%s'", inst->cipher_list);
+
+		if (!SSL_set_cipher_list(tls_session->ssl, inst->cipher_list)) {
+			REDEBUG("Failed over-riding cipher list to '%s'.  EAP-FAST will likely not work",
+				inst->cipher_list);
+		}
+	}
+
+#ifdef SSL_OP_NO_TLSv1_2
+	/*
+	 *	Forcibly disable TLSv1.2
+	 */
+	SSL_set_options(tls_session->ssl, SSL_OP_NO_TLSv1_2);
+#endif
 
 	/*
 	 *	Push TLV of authority_identity into tls_record

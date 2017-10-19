@@ -3,7 +3,6 @@
 #
 update control {
        Cleartext-Password := 'hello'
-       reply:Filter-Id := "filter"
 }
 
 update request {
@@ -21,31 +20,23 @@ update request {
 }
 
 if (NAS-IP-Address != 127.0.0.1) {
-	update reply {
-		Filter-Id += "fail 1"
-	}
+	test_fail
 }
 
 if (Tmp-IP-Address-0 != 127.0.0.1) {
-	update reply {
-		Filter-Id += "fail 2"
-	}
+	test_fail
 }
 
 if (Tmp-IP-Address-1 != 127.0.0.2) {
-	update reply {
-		Filter-Id += "fail 3"
-	}
+	test_fail
 }
 
 if (Tmp-IP-Address-2 != 127.0.0.3) {
-	update reply {
-		Filter-Id += "fail 4"
-	}
+	test_fail
 }
 
 if (Tmp-IP-Address-3 != 127.0.0.4) {
-	update reply {
-		Filter-Id += "fail 5"
-	}
+	test_fail
 }
+
+success

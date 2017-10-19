@@ -384,6 +384,21 @@ static int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_P
 	}
 		break;
 
+	case FR_TYPE_FLOAT32:
+	{
+		float num;
+
+		if (sscanf(cp->value, "%f", &num) != 1) {
+			cf_log_err(cp, "Failed parsing floating point number");
+			rcode = -1;
+			goto error;
+		}
+		cf_log_debug(cs, "%.*s%s = %f", PAIR_SPACE(cs), parse_spaces, cf_pair_attr(cp),
+			     (double) num);
+		memcpy(out, &num, sizeof(num));
+	}
+		break;
+
 	default:
 		/*
 		 *	If we get here, it's a sanity check error.
@@ -511,9 +526,15 @@ static int cf_pair_parse_internal(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, 
 		size_t		i;
 
 		/*
+		 *	Don't re-parse things which have already been parsed.
+		 */
+		first = cf_pair_find(cs, rule->name);
+		if (first && first->parsed) return 0;
+
+		/*
 		 *	Easier than re-allocing
 		 */
-		for (cp = first = cf_pair_find(cs, rule->name);
+		for (cp = first;
 		     cp;
 		     cp = cf_pair_find_next(cs, cp, rule->name)) count++;
 
@@ -607,6 +628,7 @@ static int cf_pair_parse_internal(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, 
 		for (i = 0; i < count; i++, cp = cf_pair_find_next(cs, cp, rule->name)) {
 			int ret;
 			cf_parse_t func = cf_pair_parse_value;
+			void *entry;
 
 			if (rule->func) {
 				cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces,
@@ -614,7 +636,13 @@ static int cf_pair_parse_internal(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, 
 				func = rule->func;
 			}
 
-			ret = func(ctx, &array[i], cf_pair_to_item(cp), rule);
+			if (FR_BASE_TYPE(type) == FR_TYPE_VOID) {
+				entry = &array[i];
+			} else {
+				entry = ((uint8_t *) array) + i * fr_value_box_field_sizes[FR_BASE_TYPE(type)];
+			}
+
+			ret = func(ctx, entry, cf_pair_to_item(cp), rule);
 			if (ret < 0) {
 				talloc_free(array);
 				talloc_free(dflt_cp);
@@ -643,6 +671,12 @@ static int cf_pair_parse_internal(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, 
 
 			if (cf_pair_default(&dflt_cp, cs, rule->name, type, dflt, dflt_quote) < 0) return -1;
 			cp = dflt_cp;
+
+		} else if (cp->parsed) {
+			/*
+			 *	Don't re-parse things which have already been parsed.
+			 */
+			return 0;
 		}
 
 		next = cf_pair_find_next(cs, cp, rule->name);
@@ -772,6 +806,8 @@ int cf_pair_parse(TALLOC_CTX *ctx, CONF_SECTION *cs, char const *name,
  */
 static int cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER const *rule)
 {
+	CONF_PAIR *cp;
+
 	if ((FR_BASE_TYPE(rule->type) == FR_TYPE_SUBSECTION)) {
 		CONF_SECTION *subcs;
 
@@ -810,6 +846,12 @@ static int cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER const
 
 		return 0;
 	}
+
+	/*
+	 *	Don't re-initialize data which was already parsed.
+	 */
+	cp = cf_pair_find(cs, rule->name);
+	if (cp && cp->parsed) return 0;
 
 	if ((FR_BASE_TYPE(rule->type) != FR_TYPE_STRING) &&
 	    (rule->type != FR_TYPE_FILE_INPUT) &&
@@ -958,7 +1000,7 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 		if (array) {
 			MEM(buff = talloc_zero_array(array, uint8_t, subcs_size));
 			if (rule->subcs_type) talloc_set_name_const(buff, rule->subcs_type);
-			array[i] = buff;
+			array[i++] = buff;
 		}
 
 		/*
@@ -983,8 +1025,6 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 			talloc_free(array);
 			return ret;
 		}
-
-		i++;
 	}
 
 	if (out) *((uint8_t ***)out) = array;
@@ -1042,7 +1082,6 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs)
 			if (ret < 0) goto finish;
 			continue;
 		} /* else it's a CONF_PAIR */
-
 
 		/*
 		 *	Get pointer to where we need to write out
@@ -1355,6 +1394,24 @@ int _cf_section_rule_push(CONF_SECTION *cs, CONF_PARSER const *rule, char const 
 		 */
 		if (memcmp(rule, old, sizeof(*rule)) == 0) {
 			return 0;
+		}
+
+		/*
+		 *	If we have a duplicate sub-section, just
+		 *	recurse and add the new sub-rules to the
+		 *	existing sub-section.
+		 */
+		if (FR_BASE_TYPE(rule->type) == FR_TYPE_SUBSECTION) {
+			CONF_SECTION *subcs;
+
+			subcs = cf_section_find(cs, rule->name, rule->ident2);
+			if (!subcs) {
+				cf_log_err(cs, "Failed finding '%s' subsection", rule->name);
+				cf_debug(cs);
+				return -1;
+			}
+
+			return cf_section_rules_push(subcs, rule->subcs);
 		}
 
 		cf_log_err(cs, "Data of type %s with name \"%s\" already exists.  Existing data added %s[%i]", "CONF_PARSER",

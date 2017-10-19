@@ -19,6 +19,7 @@
 #include <freeradius-devel/inet.h>
 #include <freeradius-devel/types.h>
 #include <freeradius-devel/debug.h>
+#include <freeradius-devel/fr_log.h>
 
 /*
  *	Avoid circular type references.
@@ -193,7 +194,7 @@ struct value_box {
 #define fr_box_float64(_val)			_fr_box(FR_TYPE_FLOAT64, .vb_float64, _val)
 
 #define fr_box_date(_val)			_fr_box(FR_TYPE_DATE, .vb_date, _val)
-#define fr_box_date_milliseconds(_val)		_fr_box(FR_TYPE_DATE_MILISECONDS, .vb_date_milliseconds, _val)
+#define fr_box_date_milliseconds(_val)		_fr_box(FR_TYPE_DATE_MILLISECONDS, .vb_date_milliseconds, _val)
 #define fr_box_date_microseconds(_val)		_fr_box(FR_TYPE_DATE_MICROSECONDS, .vb_date_microseconds, _val)
 #define fr_box_date_nanoseconds(_val)		_fr_box(FR_TYPE_DATE_NANOSECONDS, .vb_date_nanoseconds, _val)
 
@@ -201,11 +202,216 @@ struct value_box {
 #define fr_box_timeval(_val)			_fr_box(FR_TYPE_TIMEVAL, .vb_timeval, _val)
 /* @} **/
 
-/*
- *	Allocation
- */
-fr_value_box_t	*fr_value_box_alloc(TALLOC_CTX *ctx, fr_type_t type);
 
+/** @name Value box assignment functions
+ *
+ * These functions allow C values to be assigned to value boxes.
+ * They will work with uninitialised/stack allocated memory.
+ *
+ * @{
+ */
+
+/** Initialise a fr_value_box_t
+ *
+ * The value should be set later with one of the fr_value_box_* functions.
+ *
+ * @param[in] box	to initialise.
+ * @param[in] type	to set.
+ * @param[in] enumv	Enumeration values.
+ * @param[in] tainted	Whether data will come from an untrusted source.
+ */
+static inline void fr_value_box_init(fr_value_box_t *box, fr_type_t type,
+				     fr_dict_attr_t const *enumv, bool tainted)
+{
+	box->type = type;
+	box->enumv = enumv;
+	box->tainted = tainted;
+	box->next = NULL;
+
+	memset(&box->datum, 0, sizeof(box->datum));
+}
+
+/** Allocate a value box of a specific type
+ *
+ * Allocates memory for the box, and sets the length of the value
+ * for fixed length types.
+ *
+ * @param[in] ctx	to allocate the value_box in.
+ * @param[in] type	of value.
+ * @param[in] enumv	Enumeration values.
+ * @param[in] tainted	Whether data will come from an untrusted source.
+ * @return
+ *	- A new fr_value_box_t.
+ *	- NULL on error.
+ */
+static inline fr_value_box_t *fr_value_box_alloc(TALLOC_CTX *ctx, fr_type_t type,
+						 fr_dict_attr_t const *enumv, bool tainted)
+{
+	fr_value_box_t *value;
+
+	value = talloc_zero(ctx, fr_value_box_t);
+	if (!value) return NULL;
+
+	fr_value_box_init(value, type, enumv, tainted);
+
+	return value;
+}
+
+/** Box an ethernet value (6 bytes, network byte order)
+ *
+ * @param[in] dst	Where to copy the ethernet address to.
+ * @param[in] enumv	Enumeration values.
+ * @param[in] src	The ethernet address.
+ * @param[in] tainted	Whether data will come from an untrusted source.
+ * @return 0 (always successful).
+ */
+static inline int fr_value_box_ethernet_addr(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+					     uint8_t const src[6], bool tainted)
+{
+	fr_value_box_init(dst, FR_TYPE_ETHERNET, enumv, tainted);
+	memcpy(dst->vb_ether, src, sizeof(dst->vb_ether));
+	return 0;
+}
+
+#define FR_VALUE_BOX(_ctype, _field, _type) \
+static inline int fr_value_box_##_field(fr_value_box_t *dst, fr_dict_attr_t const *enumv, _ctype const value, bool tainted) { \
+	fr_value_box_init(dst, _type, enumv, tainted); \
+	dst->vb_##_field = value; \
+	return 0; \
+}
+
+FR_VALUE_BOX(uint8_t, uint8, FR_TYPE_UINT8)
+FR_VALUE_BOX(uint16_t, uint16, FR_TYPE_UINT16)
+FR_VALUE_BOX(uint32_t, uint32, FR_TYPE_UINT32)
+FR_VALUE_BOX(uint64_t, uint64, FR_TYPE_UINT64)
+
+FR_VALUE_BOX(int8_t, int8, FR_TYPE_INT8)
+FR_VALUE_BOX(int16_t, int16, FR_TYPE_INT16)
+FR_VALUE_BOX(int32_t, int32, FR_TYPE_INT32)
+FR_VALUE_BOX(int64_t, int64, FR_TYPE_INT64)
+
+FR_VALUE_BOX(float, float32, FR_TYPE_FLOAT32)
+FR_VALUE_BOX(double, float64, FR_TYPE_FLOAT64)
+
+FR_VALUE_BOX(uint64_t, date, FR_TYPE_DATE)
+FR_VALUE_BOX(uint64_t, date_milliseconds, FR_TYPE_DATE_MILLISECONDS)
+FR_VALUE_BOX(uint64_t, date_microseconds, FR_TYPE_DATE_MICROSECONDS)
+FR_VALUE_BOX(uint64_t, date_nanoseconds, FR_TYPE_DATE_NANOSECONDS)
+
+/** Automagically fill in a box, determining the value type from the type of the C variable
+ *
+ * Simplify boxing for simple C types using the _Generic macro to emit code that
+ * fills in the value box based on the type of _var provided.
+ *
+ * @note Will not set the box value to tainted.  You should do this manually if required.
+ *
+ * @note Will not work for all box types.  Will default to the 'simpler' box type, if the mapping
+ *	 between C type and box type is ambiguous.
+ *
+ * @param[in] _box	to assign value to.
+ * @param[in] _var	C variable to assign value from.
+ * @param[in] _tainted	Whether the value came from an untrusted source.
+ */
+#define fr_value_box_shallow(_box, _var, _tainted) \
+_Generic((_var), \
+	fr_ipaddr_t *		: fr_value_box_ipaddr, \
+	fr_ipaddr_t const *	: fr_value_box_ipaddr, \
+	uint8_t			: fr_value_box_uint8, \
+	uint8_t const		: fr_value_box_uint8, \
+	uint16_t		: fr_value_box_uint16, \
+	uint16_t const		: fr_value_box_uint16, \
+	uint32_t		: fr_value_box_uint32, \
+	uint32_t const		: fr_value_box_uint32, \
+	uint64_t		: fr_value_box_uint64, \
+	uint64_t const		: fr_value_box_uint64, \
+	int8_t			: fr_value_box_int8, \
+	int8_t const		: fr_value_box_int8, \
+	int16_t			: fr_value_box_int16, \
+	int16_t const		: fr_value_box_int16, \
+	int32_t			: fr_value_box_int32, \
+	int32_t	const		: fr_value_box_int32, \
+	int64_t			: fr_value_box_int64, \
+	int64_t	const		: fr_value_box_int64, \
+	float			: fr_value_box_float32, \
+	float const		: fr_value_box_float32, \
+	double			: fr_value_box_float64, \
+	double const		: fr_value_box_float64 \
+)(_box, NULL, _var, _tainted)
+
+/** Unbox an ethernet value (6 bytes, network byte order)
+ *
+ * @param[in] dst	Where to copy the ethernet address to.
+ * @param[in] src	Where to copy the ethernet address from.
+ * @return
+ *	- 0 on success.
+ *	- -1 on type mismatch.
+ */
+static inline int fr_value_unbox_ethernet_addr(uint8_t dst[6], fr_value_box_t *src)
+{
+	if (unlikely(src->type != FR_TYPE_ETHERNET)) { \
+		fr_strerror_printf("Unboxing failed.  Needed type %s, had type %s",
+				   fr_int2str(dict_attr_types, FR_TYPE_ETHERNET, "?Unknown?"),
+				   fr_int2str(dict_attr_types, src->type, "?Unknown?"));
+		return -1; \
+	}
+	memcpy(dst, src->vb_ether, sizeof(src->vb_ether));	/* Must be src, dst is a pointer */
+	return 0;
+}
+
+#define FR_VALUE_UNBOX(_ctype, _field, _type) \
+static inline int fr_value_unbox_##_field(_ctype *var, fr_value_box_t const *src) { \
+	if (unlikely(src->type != _type)) { \
+		fr_strerror_printf("Unboxing failed.  Needed type %s, had type %s", \
+				   fr_int2str(dict_attr_types, _type, "?Unknown?"), \
+				   fr_int2str(dict_attr_types, src->type, "?Unknown?")); \
+		return -1; \
+	} \
+	*var = src->vb_##_field; \
+	return 0; \
+}
+
+FR_VALUE_UNBOX(uint8_t, uint8, FR_TYPE_UINT8)
+FR_VALUE_UNBOX(uint16_t, uint16, FR_TYPE_UINT16)
+FR_VALUE_UNBOX(uint32_t, uint32, FR_TYPE_UINT32)
+FR_VALUE_UNBOX(uint64_t, uint64, FR_TYPE_UINT64)
+
+FR_VALUE_UNBOX(int8_t, int8, FR_TYPE_INT8)
+FR_VALUE_UNBOX(int16_t, int16, FR_TYPE_INT16)
+FR_VALUE_UNBOX(int32_t, int32, FR_TYPE_INT32)
+FR_VALUE_UNBOX(int64_t, int64, FR_TYPE_INT64)
+
+FR_VALUE_UNBOX(float, float32, FR_TYPE_FLOAT32)
+FR_VALUE_UNBOX(double, float64, FR_TYPE_FLOAT64)
+
+FR_VALUE_UNBOX(uint64_t, date, FR_TYPE_DATE)
+FR_VALUE_UNBOX(uint64_t, date_milliseconds, FR_TYPE_DATE_MILLISECONDS)
+FR_VALUE_UNBOX(uint64_t, date_microseconds, FR_TYPE_DATE_MICROSECONDS)
+FR_VALUE_UNBOX(uint64_t, date_nanoseconds, FR_TYPE_DATE_NANOSECONDS)
+
+/** Unbox simple types peforming type checks
+ *
+ * @param[out] _var	to write to.
+ * @param[in] _box	to unbox.
+ */
+#define fr_value_unbox_shallow(_var, _box) \
+_Generic((_var), \
+	uint8_t	*		: fr_value_unbox_uint8, \
+	uint16_t *		: fr_value_unbox_uint16, \
+	uint32_t *		: fr_value_unbox_uint32, \
+	uint64_t *		: fr_value_unbox_uint64, \
+	int8_t *		: fr_value_unbox_int8, \
+	int16_t	*		: fr_value_unbox_int16, \
+	int32_t	*		: fr_value_unbox_int32, \
+	int64_t	*		: fr_value_unbox_int64, \
+	float *			: fr_value_unbox_float32, \
+	double *		: fr_value_unbox_float64 \
+)(_var, _box)
+
+/* @} **/
+
+/*
+ *	Allocation - init/alloc use static functions (above)
+ */
 void		fr_value_box_clear(fr_value_box_t *data);
 
 /*
@@ -234,8 +440,10 @@ int		fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				  fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 				  fr_value_box_t const *src);
 
-int		fr_value_box_from_ipaddr(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+int		fr_value_box_ipaddr(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 					 fr_ipaddr_t const *ipaddr, bool tainted);
+
+int		fr_value_unbox_ipaddr(fr_ipaddr_t *dst, fr_value_box_t *src);
 
 /*
  *	Assignment
@@ -250,7 +458,7 @@ int		fr_value_box_bstrndup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t 
 				      char const *src, size_t len, bool tainted);
 int		fr_value_box_strdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 					   char const *src, bool tainted);
-int		fr_value_box_strsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+int		fr_value_box_from_strsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 				      char *src, bool tainted);
 int		fr_value_box_strdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 					    char const *src, bool tainted);

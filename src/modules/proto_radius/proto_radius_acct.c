@@ -29,7 +29,7 @@
 #include <freeradius-devel/state.h>
 #include <freeradius-devel/rad_assert.h>
 
-static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
+static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 {
 	VALUE_PAIR *vp;
 	rlm_rcode_t rcode;
@@ -37,7 +37,16 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 	fr_dict_enum_t const *dv;
 	fr_dict_attr_t const *da = NULL;
 
-	VERIFY_REQUEST(request);
+	REQUEST_VERIFY(request);
+
+	/*
+	 *	Pass this through asynchronously to the module which
+	 *	is waiting for something to happen.
+	 */
+	if (action != FR_IO_ACTION_RUN) {
+		unlang_signal(request, (fr_state_action_t) action);
+		return FR_IO_DONE;
+	}
 
 	switch (request->request_state) {
 	case REQUEST_INIT:
@@ -156,18 +165,6 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 			return FR_IO_DONE;
 		}
 
-#ifdef WITH_UDPFROMTO
-		/*
-		 *	Overwrite the src ip address on the outbound packet
-		 *	with the one specified by the client.
-		 *	This is useful to work around broken DSR implementations
-		 *	and other routing issues.
-		 */
-		if (request->client->src_ipaddr.af != AF_UNSPEC) {
-			request->reply->src_ipaddr = request->client->src_ipaddr;
-		}
-#endif
-
 		if (RDEBUG_ENABLED) common_packet_debug(request, request->reply, false);
 		break;
 
@@ -212,7 +209,7 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 extern fr_app_process_t proto_radius_acct;
 fr_app_process_t proto_radius_acct = {
 	.magic		= RLM_MODULE_INIT,
-	.name		= "radius_coa",
+	.name		= "radius_acct",
 	.instantiate	= mod_instantiate,
 	.process	= mod_process,
 };

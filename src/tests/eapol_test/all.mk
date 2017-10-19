@@ -118,6 +118,7 @@ $(RADDB_PATH)/certs/%:
 	${Q}make -C $(dir $@)
 
 $(CONFIG_PATH)/radiusd.pid: $(CONFIG_PATH)/test.conf $(RADDB_PATH)/certs/server.pem | $(EAPOL_METH_FILES) $(OUTPUT_DIR)
+	${Q}make -C src/tests/certs verify
 	${Q}rm -f $(GDB_LOG) $(RADIUS_LOG)
 	${Q}printf "Starting EAP test server... "
 	${Q}if ! TEST_PORT=$(PORT) $(JLIBTOOL) --mode=execute $(BIN_PATH)/radiusd -Pxxxl $(RADIUS_LOG) -d $(CONFIG_PATH) -n test -D $(CONFIG_PATH); then\
@@ -167,8 +168,18 @@ $(OUTPUT_DIR)/%.ok: $(DIR)/%.conf | radiusd.kill $(CONFIG_PATH)/radiusd.pid
 tests.eap: $(EAPOL_OK_FILES)
 	${Q}$(MAKE) radiusd.kill
 else
+#
+#  Build rules and the make file get evaluated at different times
+#  if we don't touch the test skipped file immediately, users can
+#  cntrl-c out of the build process, and the skip file never gets
+#  created as the tests.eap target is evaluated much later in the
+#  build process.2
+#
+ifneq (,$(findstring test,$(MAKECMDGOALS)))
+$(shell touch "$(OUTPUT_DIR)/eapol_test.skip")
+endif
+
 tests.eap: $(OUTPUT_DIR)
 	${Q}echo "Skipping EAP tests due to previous build error"
 	${Q}echo "Retry with: $(MAKE) clean.$@ && $(MAKE) $@"
-	${Q}touch "$(OUTPUT_DIR)/eapol_test.skip"
 endif

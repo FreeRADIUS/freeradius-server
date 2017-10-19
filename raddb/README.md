@@ -3,7 +3,26 @@
 
 The configuration for 4.0 is *somewhat* compatible with the 3.0.x
 configuration.  It should be possible to reuse most of a 3.0.x
-reconfiguration with minor tweaks.
+reconfiguration with minor tweaks.  This file describes the
+differences between v3 and v4.  It does not contain a step-by-step
+process for upgrading the server.
+
+In general, we have the following differences:
+
+* most module configuration is very close to v3
+* most of the `unlang` processing is very close to v3
+* each `server` section need a `namespace` parameter
+* each `listen` section needs to be converted to the v4 format
+
+When upgrading, start with the default configuration of v4.  Then,
+move your v3 configuration over, one module at a time.  Check this
+file for differences in module configuration, and update to using the
+new configuration.  Start the server after every change via `radiusd
+-XC` to see if the configuration is OK.  Then, convert the `listen`
+sections, followed by the `server` sections.
+
+Take your time.  It is better to make small incrementatal progress,
+than to make massive changes... and spend weeks debugging it.
 
 If you're upgrading from v2.2.x you should read the v3.0.x version of
 this file.  It describes changed from v2 to v3.0.  This file describes
@@ -13,8 +32,81 @@ only the changes from v3.0 to v4.0
 THE CONFIGURATION MAY CHANGE.  THE BEHAVIOR MAY CHANGE.  THE
 DOCUMENTATION MAY CHANGE.**
 
+## Virtual Servers
+
+There are some changes to the virtual servers in v4.  First, every
+virtual server has to begin with an entry:
+
+    namespace = ...
+
+For RADIUS, use:
+
+    namespace = radius
+
+This tells the daemon what protocol is being used in that virtual
+server.  This configuration was not necessary in v3, because each
+protocol was implemented (mostly) in the RADIUS state machine.  In v4,
+each protocol is completely independent, and RADIUS is no longer
+welded into the server core.
+
+### Listen Sections
+
+The `listen` sections have changed.  There is now a `type` entry,
+which lists the packet types (e.g. `Access-Request`) instead of
+`auth`.  To accept multiple kinds of packets, just list `type`
+multiple times`:
+
+    type = Access-Request
+    type = Accounting-Request
+
+Each `listen` section also has a `transport` entry.  This
+configuration can be left out for "headless" servers, such as
+"inner-tunnel".  For now, the only network transport which is
+supported is `udp`.
+
+    transport = udp
+
+Each type of transport has its configuration stored in a subsection
+named for that transport:
+
+    transport = udp
+    udp {
+        ... udp transport configuration ...
+    }
+
+For `udp`, the configuration entries are the same as for v3.
+e.g. `ipaddr`, `port`, etc.
+
+The `listen` section then compiles each [Processing
+Section](#processing-sections) based on the named packet types.  It
+has a `recv` section for receiving packets, and a `send` section for
+sending packets.  e.g.
+
+    recv Access-Request {
+       ... unlang ...
+    }
+    
+    send Access-Accept {
+        ... unlang ....
+    }
+
+This configuration is different from v3, but is much easier to
+understand.  Instead of using things like `Post-Auth-Type Reject`, we
+now have just `send Access-Reject`.
+
+See also [Processing Sections](#processing-sections) for how `unlang`
+is parsed.
+
+### Clients
+
+For now, v4 only supports global clients in the `clients.conf` file.
+That will change before the official release of v4.
+
+The plan is to allow *per-connection* clients.  This functionality
+means that it will be possible to place multiple clients behind a NAT,
+and to have different shared secrets for each one.
+
 ## Processing Sections
--------------------
 
 All of the processing sections have been renamed.  Sorry, but this was
 required for the new features in v4.
@@ -41,6 +133,130 @@ names are now consistent.  `recv` receives packets from the network.
 processing section is the *type* of the packet which is being received
 or sent.
 
+## Proxying
+
+Proxying has undergone massive changes.  The `proxy.conf` file no
+longer exists, along with everything in it.  e.g. `realm`,
+`home_server`, `home_server_pool`.  The proxying functionality was
+welded into the server core, which made many useful configurations
+impossible.
+
+The `radius` module now handles basic proxying to home servers.  We
+recommend creating one instance of the `radius` module per home
+server.  e.g.
+
+    radius home_server_1 {
+       ... configuration for home server 1 ...
+    }
+
+You can then use `home_server_1` in any processing section, and the
+request will be proxied when processing reaches the module.
+
+For ease of management, we recommend naming the modules for the host
+name of the home server.
+
+It is often simplest to do proxying via an `authenticate proxy`
+section, though that section can have any name.  e.g. setting
+`Auth-Type := proxy` will call the `authenticate proxy` section, and
+is similar to the previous setting `Proxy-To-Realm`.
+
+    authenticate proxy {
+        home_server_1
+    }
+
+### home_server
+
+The `home_server` configuration has been replaced with the `radius`
+module.  See `raddb/mods-available/radius` for examples and
+documentation.
+
+### home_server_pool
+
+The `home_server_pool` configuration has been replaced with standard
+unlang configurations.  The various load-balancing options can be
+re-created using in-place 'unlang' configuration.
+
+The mappings
+for `type` are as follows:
+
+* `type = fail-over` - replaced with 'unlang'
+
+    redundant {
+        home_server_1
+	home_server_2
+	home_server_3
+    }
+
+Note, of course, you will have to use the names of your `radius`
+modules, and not `home_server_1`, etc.
+
+* `type = load-balance` - replaced with 'unlang'
+
+    load-balance {
+        home_server_1
+	home_server_2
+	home_server_3
+    }
+
+* `type = client-balance` - replaced with 'unlang'
+
+    load-balance "%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}" {
+        home_server_1
+	home_server_2
+	home_server_3
+    }
+
+
+* `type = client-port-balance` - replaced with 'unlang'
+
+    load-balance "%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}-%{Packet-Src-Port}" {
+        home_server_1
+	home_server_2
+	home_server_3
+    }
+
+* `type = keyed-balance` - replaced with 'unlang'
+
+    load-balance "%{Load-Balance-Key}" {
+        home_server_1
+	home_server_2
+	home_server_3
+    }
+
+You can use any attribute or string expansion as part of the
+`load-balance` key.  While the `Load-Balance-Key` was a special
+attribute in v3, it has no special meaning in v4.
+
+### Things which were impossible in v3
+
+In v3, it was impossible to proxy the same request to multiple
+destinations.  This is now trivial.  In any processing section, just do:
+
+    ...
+    home_server_1
+    home_server_2
+    ...
+
+When processing reaches that point, it will proxy the request to
+home_server_1, followed by home_server_2.
+
+This functionality can be used to send Accounting-Request packets to
+multiple destinations.
+
+You can also catch "failed" proxying, and do something else.  In the
+example below, try to proxy to home_server_1, if that fails, just
+"accept" the request.
+
+    ...
+    home_server_1
+    if (fail) {
+        accept
+    }
+    ...
+
+### CoA and Originate-Coa
+
+See `fork` and the `radius` module.
 
 ## Dictionaries
 
@@ -83,20 +299,27 @@ filtering operators do not *create* any attribute.
 
 ## load-balance and redundant-load-balance sections
 
-Before v4, the load-balance sections implemented load balancing by
+Before v4, the `load-balance` sections implemented load balancing by
 picking a child at random.  This meant that load balancing was
 probabilistically fair, but not perfectly fair.
 
-In v4, load-balance sections track how many requests are in each
-child.  This lets them do load balancing across multiple requests,
-which is more fair.
+In v4, `load-balance` sections track how many requests are in each
+sub-section, and pick the subsection which is used the least.  This is
+like the v3 proxy behavior of load balancing across home server pools.
 
-i.e. the load-balance sections now behave like the old home server
-pools of type "load-balance".  Which in turn lets us remove the
-special-case code for home servers, and then just use unlang
-`load-balance` sections.
+The `load-balance` and `redundant-load-balance` sections now allow for
+a load-balance key:
 
-The user visible changes should be minimal.
+    load-balance "%{Calling-Station-Id}" {
+        module1
+	module2
+	module3
+	...
+    }
+
+If the key exists, it is hashed, and used to pick one of the
+subsections.  This behavior allows for deterministic load-balancing,
+like the v3 proxy "keyed-balance" configuration.
 
 ## Connection timeouts
 
@@ -124,6 +347,33 @@ The following modules will apply `connect_timeout`:
 
 Some modules such as rlm_sql_postgresql can have their timeout set via an alternative
 configuration item (e.g. `radius_db` in the case of postgresql).
+
+## New Modules
+
+The following modules are new in v4.
+
+### rlm_radius
+
+The `radius` module has taken over much of the functionality of
+`proxy.conf`.  See `raddb/mods-available/radius` for documentation and
+configuration examples.
+
+The `radius` module connects to one home server, just like the
+`home_server` configuration in v3.  Some of the configuration items
+are similar, but many are different.
+
+The module can send multiple packet types to one home server.
+e.g. Access-Request and Accounting-Request.
+
+This module also replaces the old 'coa' and 'originate-coa'
+configuration.  See also `fork` for creating child requests which are
+different from the parent requests.
+
+Unlike v3, the module can do asynchronous proxying.  That is, proxying
+where the server controls the retransmission behavior.  In v3, the
+server retransmitted proxied packets only when it received a
+retransmission from the NAS.  That behavior is good, but there are
+times where retransmitting at the proxy is better.
 
 ## Changed Modules
 
@@ -180,6 +430,13 @@ complicated.  Experience shows that having configurable policies in
 The `virtual_server` configuration has been removed from EAP-PWD.  The
 module now looks for &request.control:Cleartext-Password.
 
+### rlm_exec
+
+Exec-Program and Exec-Program-Wait have been removed.
+
+The `packet_type` configuration has been removed.  Use `unlang` checks
+to see if you want to execute the module.
+
 ### rlm_expr
 
 Allow `&Attr-Name[*]` to mean "sum".  Previously, it just referred to
@@ -202,7 +459,7 @@ data, instead of as hex strings.
 `REST-HTTP-Code` is now inserted into the `&request:` list instead of the `&reply:`
 list, to be compliant with the [list usage](http://wiki.freeradius.org/contributing/List-Usage) guidelines.
 
-### rlm_sqlcounter and rlm_counter
+### rlm_sqlcounter
 
 ### Attribute references
 
@@ -237,13 +494,6 @@ This allows significantly greater flexibility, and better integration with
 newer features in the server such as CoA, where reply_name can now be
 `&coa:Session-Timeout`.
 
-
-#### allowed_service_type
-
-The `allowed_service_type` config item of the rlm_counter module has
-also been removed, as it duplicated existing functionality.
-
-
 ### rlm_sql
 
 Driver-specific options have moved from `mods-available/sql` to
@@ -268,10 +518,8 @@ The following modules have been deleted
 
 ### rlm_counter
 
-Please use rlm_sqlcounter with sqlite.
-
+Instead of using this, please use rlm_sqlcounter with sqlite.
 
 ### rlm_ippool
 
-Please use rlm_sql_ippool with sqlite.
-
+Instead of using this, please use rlm_sql_ippool with sqlite.

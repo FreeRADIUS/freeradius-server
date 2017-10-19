@@ -273,12 +273,12 @@ rlm_rcode_t sigtran_client_map_send_auth_info(rlm_sigtran_t *inst, REQUEST *requ
 	case SIGTRAN_RESPONSE_OK:
 	{
 		unsigned int		i = 0;
-		vp_cursor_t		cursor;
+		fr_cursor_t		cursor;
 		VALUE_PAIR		*vp;
 		sigtran_vector_t	*vec;
 		sigtran_map_send_auth_info_res_t *res = talloc_get_type_abort(txn->response.data,
 									      sigtran_map_send_auth_info_res_t);
-		fr_pair_cursor_init(&cursor, &request->control);
+		fr_cursor_init(&cursor, &request->control);
 
 		for (vec = res->vector; vec; vec = vec->next) {
 			switch (vec->type) {
@@ -301,17 +301,17 @@ rlm_rcode_t sigtran_client_map_send_auth_info(rlm_sigtran_t *inst, REQUEST *requ
 				vp = fr_pair_afrom_child_num(request, root, FR_EAP_SIM_RAND);
 				fr_pair_value_memsteal(vp, vec->sim.rand);
 				rdebug_pair(L_DBG_LVL_2, request, vp, "&control:");
-				fr_pair_cursor_append(&cursor, vp);
+				fr_cursor_append(&cursor, vp);
 
 				vp = fr_pair_afrom_child_num(request, root, FR_EAP_SIM_SRES);
 				fr_pair_value_memsteal(vp, vec->sim.sres);
 				rdebug_pair(L_DBG_LVL_2, request, vp, "&control:");
-				fr_pair_cursor_append(&cursor, vp);
+				fr_cursor_append(&cursor, vp);
 
 				vp = fr_pair_afrom_child_num(request, root, FR_EAP_SIM_KC);
 				fr_pair_value_memsteal(vp, vec->sim.kc);
 				rdebug_pair(L_DBG_LVL_2, request, vp, "&control:");
-				fr_pair_cursor_append(&cursor, vp);
+				fr_cursor_append(&cursor, vp);
 				REXDENT();
 
 				i++;
@@ -339,27 +339,27 @@ rlm_rcode_t sigtran_client_map_send_auth_info(rlm_sigtran_t *inst, REQUEST *requ
 				vp = fr_pair_afrom_child_num(request, root, FR_EAP_AKA_RAND);
 				fr_pair_value_memsteal(vp, vec->umts.rand);
 				rdebug_pair(L_DBG_LVL_2, request, vp, "&control:");
-				fr_pair_cursor_append(&cursor, vp);
+				fr_cursor_append(&cursor, vp);
 
 				vp = fr_pair_afrom_child_num(request, root, FR_EAP_AKA_XRES);
 				fr_pair_value_memsteal(vp, vec->umts.xres);
 				rdebug_pair(L_DBG_LVL_2, request, vp, "&control:");
-				fr_pair_cursor_append(&cursor, vp);
+				fr_cursor_append(&cursor, vp);
 
 				vp = fr_pair_afrom_child_num(request, root, FR_EAP_AKA_CK);
 				fr_pair_value_memsteal(vp, vec->umts.ck);
 				rdebug_pair(L_DBG_LVL_2, request, vp, "&control:");
-				fr_pair_cursor_append(&cursor, vp);
+				fr_cursor_append(&cursor, vp);
 
 				vp = fr_pair_afrom_child_num(request, root, FR_EAP_AKA_IK);
 				fr_pair_value_memsteal(vp, vec->umts.ik);
 				rdebug_pair(L_DBG_LVL_2, request, vp, "&control:");
-				fr_pair_cursor_append(&cursor, vp);
+				fr_cursor_append(&cursor, vp);
 
 				vp = fr_pair_afrom_child_num(request, root, FR_EAP_AKA_AUTN);
 				fr_pair_value_memsteal(vp, vec->umts.authn);
 				rdebug_pair(L_DBG_LVL_2, request, vp, "&control:");
-				fr_pair_cursor_append(&cursor, vp);
+				fr_cursor_append(&cursor, vp);
 				REXDENT();
 
 				i++;

@@ -41,8 +41,10 @@ typedef struct fr_listen fr_listen_t;
  *  Tell an async process function if it should run or exit.
  */
 typedef enum fr_io_action_t {
+	FR_IO_ACTION_INVALID = 0,
 	FR_IO_ACTION_RUN,
 	FR_IO_ACTION_DONE,
+	FR_IO_ACTION_DUP,
 } fr_io_action_t;
 
 /**
@@ -151,39 +153,31 @@ typedef size_t (*fr_io_nak_t)(void const *instance, uint8_t *const packet, size_
 
 /** Read from a socket.
  *
- *  If the socket is a datagram socket, then the function can read or
- *  write directly into the buffer.  Stream sockets are a bit more complicated.
+ * The network side guarantees that the read routine can leave partial
+ * data in the buffer.  That data will be there on the next call to
+ * read.  However, the data MAY have moved, so please do not keep a
+ * pointer to 'buffer' around.
  *
- *  A stream reader can read data into the buffer, and be guaranteed
- *  that the data will not change in between subsequent calls to the
- *  read routine.
+ * datagram sockets should always set '*leftover = 0'.
  *
- *  A stream writer MUST be prepared for the caller to delete the data
- *  immediately after calling the write routine.  This means that if
- *  the socket is not ready, the writer MUST copy the data to an
- *  internal buffer, usually in instance.  It MUST then have a
- *  write callback on the socket, which is called when the socket is
- *  ready for writing.  That callback can then write the internal
- *  buffer to the socket.
- *
- *  i.e. this write() function is a way for the network thread to
- *  write packets to the transport context.  The data may or may not
- *  go out to the network right away.
- *
- *  If the writer returns LESS THAN buffer_len, that's a special case
- *  saying "I took saved the data, but the socket wasn't ready, so you
- *  need to call me again at a later point".
+ * stream sockets can read one packet, and set '*leftover' to how many
+ * bytes are left in the buffer.  The read routine will be called
+ * again, with a (possibly new) buffer, but with 'leftover' bytes left
+ * in the buffer.  The value in 'leftover'' will be the same as from
+ * the previous call, so the reader does not need to track it.
  *
  * @param[in] instance		the context for this function
  * @param[out] packet_ctx	Where to write a newly allocated packet_ctx struct containing request specific data.
  * @param[in,out] recv_time	A pointer to a time when the packet was received
  * @param[in,out] buffer	the buffer where the raw packet will be written to (or read from)
  * @param[in] buffer_len	the length of the buffer
+ * @param[out] leftover		bytes left in the buffer after reading a full packet.
+ * @param[out] priority		priority of this packet (0 = low, 65535 = high)
  * @return
  *	- <0 on error
  *	- >=0 length of the data read or written.
  */
-typedef ssize_t (*fr_io_data_read_t)(void const *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len);
+typedef ssize_t (*fr_io_data_read_t)(void *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority);
 
 /** Write a socket.
  *
@@ -219,8 +213,15 @@ typedef ssize_t (*fr_io_data_read_t)(void const *instance, void **packet_ctx, fr
  *	- <0 on error
  *	- >=0 length of the data read or written.
  */
-typedef ssize_t (*fr_io_data_write_t)(void const *instance, void *packet_ctx, fr_time_t request_time,
+typedef ssize_t (*fr_io_data_write_t)(void *instance, void *packet_ctx, fr_time_t request_time,
 				      uint8_t *buffer, size_t buffer_len);
+
+/** Tell the IO handler that a VNODE has changed
+ *
+ * @param[in] instance		the context for this function
+ * @param[in] fflags		from kevent.  Usually just NOTE_EXEND
+ */
+typedef void (*fr_io_data_vnode_t)(void *instance, uint32_t fflags);
 
 /**  Handle a close or error on the socket.
  *

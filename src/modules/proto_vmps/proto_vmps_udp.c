@@ -105,7 +105,7 @@ static int mod_dst_address(fr_socket_addr_t *dst, UNUSED void const *instance, v
 static int mod_decode(UNUSED void const *instance, UNUSED REQUEST *request, UNUSED uint8_t *const data, UNUSED size_t data_len)
 {
 #if 0
-//	proto_vmps_udp_t const *inst = talloc_get_type_abort(instance, proto_vmps_udp_t);
+//	proto_vmps_udp_t const *inst = talloc_get_type_abort_const(instance, proto_vmps_udp_t);
 	fr_ip_srcdst_t *ip;
 	uint8_t *packet;
 	size_t packet_len;
@@ -127,7 +127,7 @@ static int mod_decode(UNUSED void const *instance, UNUSED REQUEST *request, UNUS
 static ssize_t mod_encode(UNUSED void const *instance, UNUSED REQUEST *request, UNUSED uint8_t *buffer, UNUSED size_t buffer_len)
 {
 #if 0
-//	proto_vmps_udp_t const *inst = talloc_get_type_abort(instance, proto_vmps_udp_t);
+//	proto_vmps_udp_t const *inst = talloc_get_type_abort_const(instance, proto_vmps_udp_t);
 	fr_ip_srcdst_t *ip;
 	uint8_t *packet;
 	size_t packet_len;
@@ -144,9 +144,9 @@ static ssize_t mod_encode(UNUSED void const *instance, UNUSED REQUEST *request, 
 	return 0;
 }
 
-static ssize_t mod_read(void const *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len)
+static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority)
 {
-	proto_vmps_udp_t const	*inst = talloc_get_type_abort(instance, proto_vmps_udp_t);
+	proto_vmps_udp_t const		*inst = talloc_get_type_abort(instance, proto_vmps_udp_t);
 	fr_ip_srcdst_t			*ip;
 	uint8_t				*packet;
 	size_t				packet_len;
@@ -156,6 +156,7 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, fr_time_t **rec
 	ip = (fr_ip_srcdst_t *) buffer; /* @todo - should be aligned */
 	packet = buffer + sizeof(*ip);
 	packet_len = buffer_len - sizeof(*ip);
+	*leftover = 0;
 
 	data_size = udp_recv(inst->sockfd, packet, packet_len, 0,
 			     &ip->src_ipaddr, &ip->src_port,
@@ -172,14 +173,15 @@ static ssize_t mod_read(void const *instance, void **packet_ctx, fr_time_t **rec
 
 	*packet_ctx = ip;
 	*recv_time = NULL;
+	*priority = PRIORITY_NORMAL;
 
 	return packet_len + sizeof(*ip);
 }
 
-static ssize_t mod_write(void const *instance, void *packet_ctx,
+static ssize_t mod_write(void *instance, void *packet_ctx,
 			 UNUSED fr_time_t request_time, uint8_t *buffer, size_t buffer_len)
 {
-	proto_vmps_udp_t const	*inst = talloc_get_type_abort(instance, proto_vmps_udp_t);
+	proto_vmps_udp_t	*inst = talloc_get_type_abort(instance, proto_vmps_udp_t);
 	fr_ip_srcdst_t		*ip = packet_ctx;
 	uint8_t			*packet;
 	size_t			packet_len;
@@ -221,7 +223,7 @@ static ssize_t mod_write(void const *instance, void *packet_ctx,
  */
 static int mod_open(void *instance)
 {
-	proto_vmps_udp_t *inst = talloc_get_type_abort(instance, proto_vmps_udp_t);
+	proto_vmps_udp_t		*inst = talloc_get_type_abort(instance, proto_vmps_udp_t);
 
 	int				sockfd = 0;
 	uint16_t			port = inst->port;
@@ -250,7 +252,7 @@ static int mod_open(void *instance)
  */
 static int mod_fd(void const *instance)
 {
-	proto_vmps_udp_t *inst = talloc_get_type_abort(instance, proto_vmps_udp_t);
+	proto_vmps_udp_t const *inst = talloc_get_type_abort_const(instance, proto_vmps_udp_t);
 
 	return inst->sockfd;
 }

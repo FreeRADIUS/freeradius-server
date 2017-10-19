@@ -527,11 +527,6 @@ int main(int argc, char *argv[])
 	radius_pid = getpid();
 
 	/*
-	 *	Parse the thread pool configuration.
-	 */
-	if (thread_pool_bootstrap(main_config.config, &main_config.spawn_workers) < 0) exit(EXIT_FAILURE);
-
-	/*
 	 *	Initialize Auth-Type, etc. in the virtual servers
 	 *	before loading the modules.  Some modules need those
 	 *	to be defined.
@@ -547,15 +542,29 @@ int main(int argc, char *argv[])
 	if (modules_bootstrap(main_config.config) < 0) exit(EXIT_FAILURE);
 
 	/*
+	 *	And then load the virtual servers.
+	 *
+	 *	This function also opens the listeners in each virtual
+	 *	server.  These listeners MUST be started before the
+	 *	modules.  If there is another server already running,
+	 *	we will discover it here and exit BEFORE opening
+	 *	connections to back-end DBs.
+	 */
+	if (virtual_servers_instantiate(main_config.config) < 0) exit(EXIT_FAILURE);
+
+	/*
 	 *	Call the module's initialisation methods.  These create
 	 *	connection pools and open connections to external resources.
 	 */
 	if (modules_instantiate(main_config.config) < 0) exit(EXIT_FAILURE);
 
 	/*
-	 *	And then load the virtual servers.
+	 *  Everything seems to have loaded OK, exit gracefully.
 	 */
-	if (virtual_servers_instantiate(main_config.config) < 0) exit(EXIT_FAILURE);
+	if (check_config) {
+		DEBUG("Configuration appears to be OK");
+		goto cleanup;
+	}
 
 	/*
 	 *	Initialise the SNMP stats structures
@@ -566,8 +575,8 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 *  Initialize any event loops just enough so module instantiations can
-	 *  add fd/event to them, but do not start them yet.
+	 *  Initialize the global event loop which handles things like
+	 *  systemd, and single-server mode.
 	 *
 	 *  This has to be done post-fork in case we're using kqueue, where the
 	 *  queue isn't inherited by the child process.
@@ -583,37 +592,37 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 *	If this isn't just a config check, AND we have new
-	 *	async listeners, then we open the sockets.
+	 *	Start the network / worker threads.
 	 */
-	if (!check_config && main_config.namespace) {
-		int networks = 1;
-		int workers = 4;
+	if (1) {
+		int networks = main_config.num_networks;
+		int workers = main_config.num_workers;
 		fr_event_list_t *el = NULL;
 
+		/*
+		 *	Single server mode: use the global event list.
+		 *	Otherwise, each network thread will create
+		 *	it's own event list.
+		 */
 		if (!main_config.spawn_workers) {
 			networks = 0;
 			workers = 0;
-			el = process_global_event_list(EVENT_CORRAL_MAIN);
+			el = fr_global_event_list();
 		}
 
-		sc = fr_schedule_create(NULL, el, &default_log, networks, workers,
+		sc = fr_schedule_create(NULL, el, &default_log, rad_debug_lvl,
+					networks, workers,
 					(fr_schedule_thread_instantiate_t) modules_thread_instantiate,
 					main_config.config);
 		if (!sc) {
 			exit(EXIT_FAILURE);
 		}
 
+		/*
+		 *	Tell the virtual servers to open their sockets.
+		 */
 		if (virtual_servers_open(sc) < 0) exit(EXIT_FAILURE);
 	}
-
-	/*
-	 *	Initialize the threads ONLY if we're spawning, AND
-	 *	we're running normally.
-	 */
-	if (main_config.spawn_workers && (thread_pool_init() < 0)) exit(EXIT_FAILURE);
-
-	event_loop_started = true;
 
 #ifndef NDEBUG
 	{
@@ -629,9 +638,8 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-
 	/*
-	 *  Start the event loop.
+	 *  Start the main event loop.
 	 */
 	if (radius_event_start(main_config.spawn_workers) < 0) {
 		ERROR("Failed starting event loop");
@@ -652,15 +660,6 @@ int main(int argc, char *argv[])
 #ifdef SIGQUIT
 	if (fr_set_signal(SIGQUIT, sig_fatal) < 0) goto set_signal_error;
 #endif
-
-	/*
-	 *  Everything seems to have loaded OK, exit gracefully.
-	 */
-	if (check_config) {
-		DEBUG("Configuration appears to be OK");
-
-		goto cleanup;
-	}
 
 	/*
 	 *  Now that we've set everything up, we can install the signal
@@ -769,6 +768,11 @@ int main(int argc, char *argv[])
 	if (main_config.daemonize) unlink(main_config.pid_file);
 
 	/*
+	 *	Stop the scheduler
+	 */
+	(void) fr_schedule_destroy(sc);
+
+	/*
 	 *	Free memory in an explicit and consistent order
 	 *
 	 *	We could let everything be freed by the autofree
@@ -777,8 +781,6 @@ int main(int argc, char *argv[])
 	 *	SEGVs.
 	 */
 	radius_event_free();		/* Free the requests */
-
-	thread_pool_stop();		/* stop all the threads */
 
 	talloc_free(global_state);	/* Free state entries */
 
@@ -803,10 +805,6 @@ cleanup:
 	 *	parsed configuration items.
 	 */
 	main_config_free();
-
-#ifdef WIN32
-	WSACleanup();
-#endif
 
 #if defined(HAVE_OPENSSL_CRYPTO_H) && OPENSSL_VERSION_NUMBER < 0x10100000L
 	tls_global_cleanup();		/* Cleanup any memory alloced by OpenSSL and placed into globals */

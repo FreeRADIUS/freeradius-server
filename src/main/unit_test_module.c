@@ -42,7 +42,6 @@ char const *radacct_dir = NULL;
 char const *radlog_dir = NULL;
 bool log_stripped_names = false;
 
-static bool talloc_memory_report = false;
 static bool filedone = false;
 
 char const *radiusd_version = RADIUSD_VERSION_STRING_BUILD("unittest");
@@ -52,48 +51,6 @@ char const *radiusd_version = RADIUSD_VERSION_STRING_BUILD("unittest");
  */
 static void usage(int);
 
-int listen_compile(UNUSED CONF_SECTION *server, UNUSED CONF_SECTION *cs)
-{
-	return 0;
-}
-
-int listen_bootstrap(UNUSED CONF_SECTION *server, UNUSED CONF_SECTION *cs, UNUSED char const *server_name)
-{
-	return -1;
-}
-
-void listen_free(UNUSED rad_listen_t **head)
-{
-	/* do nothing */
-}
-
-
-static rad_listen_t *listen_alloc(void *ctx)
-{
-	rad_listen_t *this;
-
-	this = talloc_zero(ctx, rad_listen_t);
-	if (!this) return NULL;
-
-	this->type = RAD_LISTEN_AUTH;
-	this->recv = NULL;
-	this->send = NULL;
-	this->print = NULL;
-	this->encode = NULL;
-	this->decode = NULL;
-
-	/*
-	 *	We probably don't care about this.  We can always add
-	 *	fields later.
-	 */
-	this->data = talloc_zero(this, listen_socket_t);
-	if (!this->data) {
-		talloc_free(this);
-		return NULL;
-	}
-
-	return this;
-}
 
 static RADCLIENT *client_alloc(TALLOC_CTX *ctx, char const *ip, char const *name)
 {
@@ -138,7 +95,7 @@ static REQUEST *request_from_file(FILE *fp, fr_event_list_t *el, RADCLIENT *clie
 {
 	VALUE_PAIR	*vp;
 	REQUEST		*request;
-	vp_cursor_t	cursor;
+	fr_cursor_t	cursor;
 	struct timeval	now;
 
 	static int	number = 0;
@@ -164,14 +121,12 @@ static REQUEST *request_from_file(FILE *fp, fr_event_list_t *el, RADCLIENT *clie
 		return NULL;
 	}
 
-	request->listener = listen_alloc(request);
 	request->client = client;
 
 	request->number = number++;
+	request->name = talloc_asprintf(request, "%" PRIu64, request->number);
 
 	request->master_state = REQUEST_ACTIVE;
-	request->child_state = REQUEST_RUNNING;
-	request->handle = NULL;
 	request->server_cs = virtual_server_find("default");
 
 	request->root = &main_config;
@@ -207,9 +162,9 @@ static REQUEST *request_from_file(FILE *fp, fr_event_list_t *el, RADCLIENT *clie
 	/*
 	 *	Fix up Digest-Attributes issues
 	 */
-	for (vp = fr_pair_cursor_init(&cursor, &request->packet->vps);
+	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 	     vp;
-	     vp = fr_pair_cursor_next(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		/*
 		 *	Double quoted strings get marked up as xlat expansions,
 		 *	but we don't support that here.
@@ -333,7 +288,7 @@ static REQUEST *request_from_file(FILE *fp, fr_event_list_t *el, RADCLIENT *clie
 			vp->data.enumv = NULL;
 			vp->type = VT_DATA;
 
-			VERIFY_VP(vp);
+			VP_VERIFY(vp);
 		}
 
 		break;
@@ -342,9 +297,9 @@ static REQUEST *request_from_file(FILE *fp, fr_event_list_t *el, RADCLIENT *clie
 #endif
 
 	if (rad_debug_lvl) {
-		for (vp = fr_pair_cursor_init(&cursor, &request->packet->vps);
+		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 		     vp;
-		     vp = fr_pair_cursor_next(&cursor)) {
+		     vp = fr_cursor_next(&cursor)) {
 			/*
 			 *	Take this opportunity to verify all the VALUE_PAIRs are still valid.
 			 */
@@ -412,7 +367,7 @@ static REQUEST *request_from_file(FILE *fp, fr_event_list_t *el, RADCLIENT *clie
 static void print_packet(FILE *fp, RADIUS_PACKET *packet)
 {
 	VALUE_PAIR *vp;
-	vp_cursor_t cursor;
+	fr_cursor_t cursor;
 
 	if (!packet) {
 		fprintf(fp, "\n");
@@ -421,9 +376,9 @@ static void print_packet(FILE *fp, RADIUS_PACKET *packet)
 
 	fprintf(fp, "%s\n", fr_packet_codes[packet->code]);
 
-	for (vp = fr_pair_cursor_init(&cursor, &packet->vps);
+	for (vp = fr_cursor_init(&cursor, &packet->vps);
 	     vp;
-	     vp = fr_pair_cursor_next(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		/*
 		 *	Take this opportunity to verify all the VALUE_PAIRs are still valid.
 		 */
@@ -768,7 +723,7 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'M':
-				talloc_memory_report = true;
+				talloc_enable_leak_report();
 				break;
 
 			case 'n':
@@ -826,7 +781,7 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-	if (xlat_register(NULL, "poke", xlat_poke, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN) < 0) {
+	if (xlat_register(NULL, "poke", xlat_poke, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true) < 0) {
 		rcode = EXIT_FAILURE;
 		goto finish;
 	}
@@ -1068,10 +1023,10 @@ finish:
 	 */
 	main_config_free();
 
-	if (talloc_memory_report) {
-		INFO("Allocated memory at time of report:");
-		fr_log_talloc_report(NULL);
-	}
+	/*
+	 *	Free the strerror buffer.
+	 */
+	fr_strerror_free();
 
 	return rcode;
 }

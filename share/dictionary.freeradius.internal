@@ -19,8 +19,9 @@ FLAGS	internal
 # 	These attributes CAN go in the reply item list.
 ATTRIBUTE	Fall-Through				500	integer
 ATTRIBUTE	Relax-Filter				501	integer
-ATTRIBUTE	Exec-Program				502	string
-ATTRIBUTE	Exec-Program-Wait			503	string
+#
+# Exec-Program and Exec-Program-Wait are no longer supported in v4.
+#
 
 #	These attributes CANNOT go in the reply item list.
 
@@ -291,6 +292,15 @@ ATTRIBUTE	SSHA2-256-Password			1181	octets
 ATTRIBUTE	SSHA2-384-Password			1182	octets
 ATTRIBUTE	SSHA2-512-Password			1183	octets
 
+ATTRIBUTE	SHA3-Password				1184	octets
+ATTRIBUTE	SSHA3-224-Password			1185	octets
+ATTRIBUTE	SSHA3-256-Password			1186	octets
+ATTRIBUTE	SSHA3-384-Password			1187	octets
+ATTRIBUTE	SSHA3-512-Password			1188	octets
+
+ATTRIBUTE	PBKDF2-Password				1188	octets
+ATTRIBUTE	Session-State-User-Name			1189	string
+
 ATTRIBUTE	Exec-Export				1190	string
 
 ATTRIBUTE	EAP-FAST-TLV				1191	tlv
@@ -322,13 +332,13 @@ ATTRIBUTE	EAP-FAST-PAC-Info-PAC-Type		1191.11.9.10	short
 
 ATTRIBUTE	EAP-FAST-PAC-Type			1191.11.10	short
 
-ATTRIBUTE	EAP-FAST-Crypto-Binding			1191.12	struct
-ATTRIBUTE	EAP-FAST-Crypto-Binding-Reserved	1191.12.1	byte
-ATTRIBUTE	EAP-FAST-Crypto-Binding-Version		1191.12.2	byte
-ATTRIBUTE	EAP-FAST-Crypto-Binding-Recv-Version	1191.12.3	byte
-ATTRIBUTE	EAP-FAST-Crypto-Binding-Sub-Type	1191.12.4	byte
-ATTRIBUTE	EAP-FAST-Crypto-Binding-Nonce		1191.12.5	octets[32]
-ATTRIBUTE	EAP-FAST-Crypto-Binding-Compound-MAC	1191.12.6	octets[20]
+ATTRIBUTE	EAP-FAST-Crypto-Binding			1191.12	octets
+#ATTRIBUTE	EAP-FAST-Crypto-Binding-Reserved	1191.12.1	byte
+#ATTRIBUTE	EAP-FAST-Crypto-Binding-Version		1191.12.2	byte
+#ATTRIBUTE	EAP-FAST-Crypto-Binding-Recv-Version	1191.12.3	byte
+#ATTRIBUTE	EAP-FAST-Crypto-Binding-Sub-Type	1191.12.4	byte
+#ATTRIBUTE	EAP-FAST-Crypto-Binding-Nonce		1191.12.5	octets[32]
+#ATTRIBUTE	EAP-FAST-Crypto-Binding-Compound-MAC	1191.12.6	octets[20]
 
 ATTRIBUTE	EAP-FAST-Trusted-Root			1191.18	octets
 ATTRIBUTE	EAP-FAST-Request-Action			1191.19	short
@@ -348,6 +358,11 @@ ATTRIBUTE	LDAP-Sync-Entry-UUID			8	octets
 END-TLV		LDAP-Sync-TLV
 
 #
+# 	Consumes attribute 1194
+#
+$INCLUDE dictionary.ethernet
+
+#
 #	Range:	1200-1210
 #
 #	SIM attributes.  These do not belong to either EAP-AKA or EAP-SIM
@@ -364,7 +379,7 @@ ATTRIBUTE	SIM-IMSI				1201	string
 ATTRIBUTE	SIM-Algo-Version			1202	integer
 
 #
-#	Range:	1210-1210
+#	Range:	1210-1219
 #		EAP-AKA (and other EAP type) weirdness.
 #
 #	For EAP-AKA, some attribute definitions for database interface
@@ -375,7 +390,7 @@ $INCLUDE dictionary.eap.aka
 END-TLV		EAP-AKA-Root
 
 #
-#	Range:	1200-1210
+#	Range:	1220-1229
 #		EAP-SIM (and other EAP type) weirdness.
 #
 #	For EAP-SIM, some attribute definitions for database interface
@@ -386,10 +401,17 @@ BEGIN-TLV	EAP-SIM-Root
 $INCLUDE dictionary.eap.sim
 END-TLV		EAP-SIM-Root
 
+#
+#	Range:	1230-1239
+#		Sigtran
+#
 ATTRIBUTE	Sigtran-MAP-Version			1230	integer
 ATTRIBUTE	Sigtran-Mobile-Network-Code		1231	integer
 ATTRIBUTE	Sigtran-Mobile-Country-Code		1232	integer
 
+#
+#	Range:	1240-1249
+#		Tacacs+
 #
 #	For TACACS+, some attribute definitions for database interface
 #
@@ -417,6 +439,12 @@ VALUE	Listen-Socket-Type		coa			8
 
 ATTRIBUTE	Outer-Realm-Name			1251	string
 ATTRIBUTE	Inner-Realm-Name			1252	string
+ATTRIBUTE	Request-Lifetime			1253	integer
+
+#
+#	Range:	1254 - 1279
+#		Unused
+#
 
 #
 #	Range:	1280 - 1535
@@ -686,7 +714,7 @@ ATTRIBUTE	Radclient-Test-Name			2200	string
 ATTRIBUTE	Request-Authenticator			2201	octets
 
 #
-#       Range:  2220-2260
+#       Range:  2220-2259
 #               Attributes used as trigger arguments
 #
 ATTRIBUTE	Connection-Pool-Server			2220	string
@@ -838,6 +866,13 @@ VALUE	Packet-Type			CoA-NAK			45
 
 VALUE	Packet-Type			IP-Address-Allocate	50
 VALUE	Packet-Type			IP-Address-Release	51
+
+#
+#  From RFC 3730, Section 4
+#
+VALUE	Packet-Type			Protocol-Error		52
+
+VALUE	Packet-Type			Do-Not-Respond		256
 
 VALUE	Response-Packet-Type		Access-Request		1
 VALUE	Response-Packet-Type		Access-Accept		2

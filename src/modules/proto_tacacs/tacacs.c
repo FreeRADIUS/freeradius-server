@@ -267,7 +267,7 @@ int tacacs_encode(RADIUS_PACKET * const packet, char const * const secret)
 
 	length_body = 0;
 	for (vp = fr_pair_cursor_init(&cursor, &packet->vps); vp != NULL; vp = fr_pair_cursor_next(&cursor)) {
-		VERIFY_VP(vp);
+		VP_VERIFY(vp);
 
 		if (!vp->da->flags.internal) continue;
 
@@ -872,10 +872,6 @@ int tacacs_read_packet(RADIUS_PACKET * const packet, char const * const secret)
 		return -1;
 	}
 
-#ifndef NDEBUG
-	if ((fr_debug_lvl > 3) && fr_log_fp) fr_radius_print_hex(packet);
-#endif
-
 	/*
 	 *	See if it's a well-formed TACACS packet.
 	 */
@@ -949,10 +945,6 @@ int tacacs_send(RADIUS_PACKET * const packet, RADIUS_PACKET const * const origin
 		fr_strerror_printf("Failed encoding TACACS reply: %s", fr_syserror(errno));
 		return -1;
 	}
-
-#ifndef NDEBUG
-	if ((fr_debug_lvl > 3) && fr_log_fp) fr_radius_print_hex(packet);
-#endif
 
 	rad_assert(tacacs_ok(packet, false) == true);
 

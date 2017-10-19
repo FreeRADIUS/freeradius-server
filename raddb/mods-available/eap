@@ -292,15 +292,19 @@ eap {
 
 		ca_path = ${cadir}
 
+		# Accept an expired Certificate Revocation List
+		#
+#		allow_expired_crl = no
+
 		#
 		#  If check_cert_issuer is set, the value will be checked
 		#  against the DN of the issuer in the client certificate.  If
 		#  the values do not match, the certificate verification will
 		#  fail, rejecting the user.
 		#
-		#  In 2.1.10 and later, this check can be done more generally by
-		#  checking the value of the TLS-Client-Cert-Issuer attribute.
-		#  This check can be done via any mechanism you choose.
+		#  This check can be done more generally by checking the value
+		#  of the TLS-Client-Cert-Issuer attribute.  This check can be
+		#  done via any mechanism you choose.
 		#
 #		check_cert_issuer = "/C=GB/ST=Berkshire/L=Newbury/O=My Company Ltd"
 
@@ -313,9 +317,9 @@ eap {
 		#  This check is done only if the previous "check_cert_issuer"
 		#  is not set, or if the check succeeds.
 		#
-		#  In 2.1.10 and later, this check can be done more generally by
-		#  checking the value of the TLS-Client-Cert-CN attribute.
-		#  This check can be done via any mechanism you choose.
+		#  This check can be done more generally by checking the value
+		#  of the TLS-Client-Cert-CN attribute.  This check can be done
+		#  via any mechanism you choose.
 		#
 #		check_cert_cn = %{User-Name}
 
@@ -340,9 +344,21 @@ eap {
 		#  not calculate the EAP keys correctly.  The fix is to upgrade
 		#  OpenSSL, or disable TLS 1.2 here.
 		#
-		#  For EAP-FAST, this MUST be set to "yes".
+		#  SSLv2 and SSLv3 are permanently disabled due to security
+		#  issues.
 		#
-		disable_tlsv1_2 = no
+#		tls_max_version = 1.1
+
+		#
+		#  Prevents versions < tls_min_version from being negotiated.
+		#  In general the higher the tls_min_version the more secure
+		#  the protocol, but the narrower the range of supported TLS
+		#  clients.
+		#
+		#  SSLv2 and SSLv3 are permanently disabled due to security
+		#  issues.
+		#
+#		tls_min_version = 1.0
 
 		#
 		#  Elliptical cryptography configuration
@@ -837,6 +853,10 @@ eap {
 		#
 		#  in the control items for a request.
 		#
+		#  Note that the majority of supplicants do not support using a
+		#  client certificate with EAP-TTLS, so this option is unlikely
+		#  to be usable for most people.
+		#
 #		require_client_cert = yes
 	}
 
@@ -960,6 +980,10 @@ eap {
 		#
 		#  in the control items for a request.
 		#
+		#  Note that the majority of supplicants do not support using a
+		#  client certificate with PEAP, so this option is unlikely to
+		#  be usable for most people.
+		#
 #		require_client_cert = yes
 	}
 
@@ -1004,19 +1028,32 @@ eap {
 	#
 	#  The FAST module implements the EAP-FAST protocol
 	#
-#	fast {
+	fast {
 		# Point to the common TLS configuration
 		#
-		# cipher_list though must include "ADH" for anonymous provisioning.
-		# This is not as straight forward as appending "ADH" alongside
-		# "DEFAULT" as "DEFAULT" contains "!aNULL" so instead it is
-		# recommended "ALL:!EXPORT:!eNULL:!SSLv2" is used
+		tls = tls-common
+
 		#
-#		tls = tls-common
+		#  If 'cipher_list' is set here, it will over-ride the
+		#  'cipher_list' configuration from the 'tls-common'
+		#  configuration.  The EAP-FAST module has it's own
+		#  over-ride for 'cipher_list' because the
+		#  specifications mandata a different set of ciphers
+		#  than are used by the other EAP methods.
+		#
+		#  cipher_list though must include "ADH" for anonymous provisioning.
+		#  This is not as straight forward as appending "ADH" alongside
+		#  "DEFAULT" as "DEFAULT" contains "!aNULL" so instead it is
+		#  recommended "ALL:!EXPORT:!eNULL:!SSLv2" is used
+		#
+		#  Note - for OpenSSL 1.1.0 and above you may need
+		#  to add ":@SECLEVEL=0"
+		#
+		cipher_list = "ALL:!EXPORT:!eNULL:!SSLv2"
 
 		# PAC lifetime in seconds (default: seven days)
 		#
-#		pac_lifetime = 604800
+		pac_lifetime = 604800
 
 		# Authority ID of the server
 		#
@@ -1025,17 +1062,17 @@ eap {
 		# your RADIUS servers.  This value should be unique to your
 		# installation.  We suggest using a domain name.
 		#
-#		authority_identity = "1234"
+		authority_identity = "1234"
 
 		# PAC Opaque encryption key (must be exactly 32 bytes in size)
 		#
 		# This value MUST be secret, and MUST be generated using
 		# a secure method, such as via 'openssl rand -hex 32'
 		#
-#		pac_opaque_key = "0123456789abcdef0123456789ABCDEF"
+		pac_opaque_key = "0123456789abcdef0123456789ABCDEF"
 
 		# Same as for TTLS, PEAP, etc.
 		#
-#		virtual_server = inner-tunnel
-#	}
+		virtual_server = inner-tunnel
+	}
 }

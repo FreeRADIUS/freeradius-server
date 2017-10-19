@@ -3,9 +3,7 @@
 #
 switch &User-Name {
 	case "%{no-such-module:bob}" {	# ERROR
-		update reply {
-			Filter-Id := "fail"
-		}
+		test_fail
 	}
 
 	case {

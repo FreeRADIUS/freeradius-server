@@ -240,9 +240,9 @@ typedef struct vp_tmpl_t {
 /* @} **/
 
 #ifndef WITH_VERIFY_PTR
-#  define VERIFY_TMPL(_x)
+#  define TMPL_VERIFY(_x)
 #else
-#  define VERIFY_TMPL(_x) tmpl_verify(__FILE__, __LINE__, _x)
+#  define TMPL_VERIFY(_x) tmpl_verify(__FILE__, __LINE__, _x)
 void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt);
 #endif
 
@@ -413,11 +413,9 @@ ssize_t			_tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 				       fr_type_t dst_type)
 			CC_HINT(nonnull (2, 3, 4));
 
-VALUE_PAIR		*tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request,
+VALUE_PAIR		*tmpl_cursor_init(int *err, fr_cursor_t *cursor, REQUEST *request,
 					  vp_tmpl_t const *vpt);
-
-VALUE_PAIR		*tmpl_cursor_next(vp_cursor_t *cursor, vp_tmpl_t const *vpt);
-
+					  
 int			tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 				      vp_tmpl_t const *vpt);
 

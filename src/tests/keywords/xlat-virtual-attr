@@ -2,95 +2,63 @@
 #  PRE: if
 #
 
-update reply {
-	Filter-Id := "filter"
-}
-
 if ("%{Client-Shortname}" != 'test') {
-	update reply {
-		Filter-Id += "fail 0"
-	}
+	test_fail
 }
 
 if ("%{Virtual-Server}" != 'default') {
-	update reply {
-		Filter-Id += "fail 2"
-	}
+	test_fail
 }
 
 if ("%{Module-Return-Code}" != '') {
-	update reply {
-		Filter-Id += "fail 3a"
-	}
+	test_fail
 }
 
 ok
 if ("%{Module-Return-Code}" != 'ok') {
-	update reply {
-		Filter-Id += "fail 3b"
-	}
+	test_fail
 }
 
 if ("%{Packet-Type}" != 'Access-Request') {
-	update reply {
-		Filter-Id += "fail 4"
-	}
+	test_fail
 }
 
 # Response hasn't been set yet
 if ("%{Response-Packet-Type}" != '') {
-	update reply {
-		Filter-Id += "fail 5"
-	}
+	test_fail
 }
 
 if ("%{Packet-Authentication-Vector}" != '0x00000000000000000000000000000000') {
-	update reply {
-		Filter-Id += "fail 6"
-	}
+	test_fail
 }
 
 if ("%{Client-IP-Address}" != 127.0.0.1) {
-	update reply {
-		Filter-Id += "fail 7a"
-	}
+	test_fail
 }
 
 if ("%{Packet-Src-IP-Address}" != 127.0.0.1) {
-	update reply {
-		Filter-Id += "fail 7b"
-	}
+	test_fail
 }
 
 if ("%{Packet-Dst-IP-Address}" != 127.0.0.1) {
-	update reply {
-		Filter-Id += "fail 8"
-	}
+	test_fail
 }
 
 # Can't have both...
 if ("%{Packet-Src-IPv6-Address}" != '') {
-	update reply {
-		Filter-Id += "fail 9"
-	}
+	test_fail
 }
 
 if ("%{Packet-Dst-IPv6-Address}" != '') {
-	update reply {
-		Filter-Id += "fail 10"
-	}
+	test_fail
 }
 
 if ("%{Packet-Src-Port}" != '18120') {
-	update reply {
-		Filter-Id += "fail 11"
-	}
+	test_fail
 }
 
 if ("%{Packet-Dst-Port}" != '1812') {
-	update reply {
-		Filter-Id += "fail 12"
-	}
+	test_fail
 }
 
 
@@ -100,26 +68,20 @@ update request {
 }
 
 if ("%{Client-Shortname}" != 'my_test_client') {
-	update reply {
-		Filter-Id += "fail 13"
-	}
+	test_fail
 }
 
 # Operations on virtual attributes should be the same as on real ones
 if ("%{Virtual-Server[0]}" != 'default') {
-	update reply {
-		Filter-Id += "fail 14"
-	}
+	test_fail
 }
 
 if ("%{Virtual-Server[*]}" != 'default') {
-	update reply {
-		Filter-Id += "fail 15"
-	}
+	test_fail
 }
 
 if ("%{Virtual-Server[#]}" != 1) {
-	update reply {
-		Filter-Id += "fail 16"
-	}
+	test_fail
 }
+
+success

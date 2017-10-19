@@ -1,10 +1,6 @@
 #
 # PRE: update
 #
-update reply {
-       Filter-Id := "filter"
-}
-
 update request {
 	Tmp-String-0        := '9870'
 	Tmp-Octets-0        := 0x39383731
@@ -37,72 +33,52 @@ update request {
 
 # String
 if (Tmp-String-0 != '39383730') {
-	update reply {
-		Filter-Id += 'fail 1'
-	}
+	test_fail
 }
 
 # Octets
 if (Tmp-String-1 != '39383731') {
-	update reply {
-		Filter-Id += 'fail 2'
-	}
+	test_fail
 }
 
 # IP Address
 if (Tmp-String-2 != '39383732') {
-	update reply {
-		Filter-Id += 'fail 3'
-	}
+	test_fail
 }
 
 # Date
 if (Tmp-String-3 != '39383733') {
-	update reply {
-		Filter-Id += 'fail 4'
-	}
+	test_fail
 }
 
 # Integer
 if (Tmp-String-4 != '39383734') {
-	update reply {
-		Filter-Id += 'fail 5'
-	}
+	test_fail
 }
 
 # Abinary
 if (Tmp-String-5 != '0101000039383735000000002000110000000714000200000000000000000000') {
-	update reply {
-		Filter-Id += 'fail 6'
-	}
+	test_fail
 }
 
 # ifid
 if (Tmp-String-6 != '0000000039383737') {
-	update reply {
-		Filter-Id += 'fail 7'
-	}
+	test_fail
 }
 
 # ipv6addr
 if (Tmp-String-7 != '00000000000000000000000039383738') {
-	update reply {
-		Filter-ID += 'fail 8'
-	}
+	test_fail
 }
 
 # ipv6addrprefix
 if (Tmp-String-8 != '008000000000000000000000000039383739') {
-	update reply {
-		Filter-ID += 'fail 9'
-	}
+	test_fail
 }
 
 # byte
 if (Tmp-String-9 != '3a') {
-	update reply {
-		Filter-ID += 'fail 10'
-	}
+	test_fail
 }
 
 update request {
@@ -114,28 +90,22 @@ update request {
 
 # short
 if (Tmp-String-0 != '373b') {
-	update reply {
-		Filter-ID += 'fail 11'
-	}
+	test_fail
 }
 
 # ethernet
 if (Tmp-String-1 != '00003938373c') {
-	update reply {
-		Filter-Id += 'fail 12'
-	}
+	test_fail
 }
 
 # integer64
 if (Tmp-String-2 != '100000003938373d') {
-	update reply {
-		Filter-Id += 'fail 13'
-	}
+	test_fail
 }
 
 # ipv4prefix
 if (Tmp-String-3 != '203938373e') {
-	update reply {
-		Filter-Id += 'fail 14'
-	}
+	test_fail
 }
+
+success

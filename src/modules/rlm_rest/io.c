@@ -67,7 +67,7 @@ static inline void _rest_io_demux(rlm_rest_thread_t *thread, CURLM *mandle)
 			ret = curl_easy_getinfo(candle, CURLINFO_PRIVATE, &request);
 			if (!fr_cond_assert(ret == CURLE_OK)) return;
 
-			VERIFY_REQUEST(request);
+			REQUEST_VERIFY(request);
 
 			/*
 			 *	If the request failed, say why...
@@ -139,15 +139,16 @@ static void _rest_io_timer_expired(UNUSED fr_event_list_t *el, UNUSED struct tim
  * @param[in] el	fd was registered with.
  * @param[in] fd	that errored.
  * @param[in] flags	from kevent.
+ * @param[in] fd_errno	from kevent.
  * @param[in] ctx	The rlm_rest_thread_t specific to this thread.
  */
-static void _rest_io_service_errored(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *ctx)
+static void _rest_io_service_errored(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, int fd_errno, void *ctx)
 {
 	rlm_rest_thread_t *t;
 
 	t = talloc_get_type_abort(ctx, rlm_rest_thread_t);
 
-	DEBUG4("libcurl fd %i errored", fd);
+	DEBUG4("libcurl fd %i errored: %s", fd, fr_syserror(fd_errno));
 
 	_rest_io_service(t, fd, CURL_CSELECT_ERR);
 }
@@ -237,7 +238,8 @@ static int _rest_io_timer_modify(CURLM *mandle, long timeout_ms, void *ctx)
 	fr_timeval_from_ms(&to_add, (uint64_t)timeout_ms);
 	fr_timeval_add(&when, &now, &to_add);
 
-	(void) fr_event_timer_insert(t->el, _rest_io_timer_expired, t, &when, &t->ev);
+	(void) fr_event_timer_insert(NULL, t->el, &t->ev,
+				     &when, _rest_io_timer_expired, t);
 
 	return 0;
 }
@@ -265,8 +267,10 @@ static int _rest_io_event_modify(UNUSED CURL *easy, curl_socket_t fd, int what, 
 
 	switch (what) {
 	case CURL_POLL_IN:
-		if (fr_event_fd_insert(thread->el, fd,
-				       _rest_io_service_readable, NULL, _rest_io_service_errored,
+		if (fr_event_fd_insert(thread, thread->el, fd,
+				       _rest_io_service_readable,
+				       NULL,
+				       _rest_io_service_errored,
 				       thread) < 0) {
 			ERROR("multi-handle %p registration failed for read+error events on FD %i: %s",
 			      thread->mandle, fd, fr_strerror());
@@ -276,8 +280,10 @@ static int _rest_io_event_modify(UNUSED CURL *easy, curl_socket_t fd, int what, 
 		break;
 
 	case CURL_POLL_OUT:
-		if (fr_event_fd_insert(thread->el, fd,
-				       NULL, _rest_io_service_writable, _rest_io_service_errored,
+		if (fr_event_fd_insert(thread, thread->el, fd,
+				       NULL,
+				       _rest_io_service_writable,
+				       _rest_io_service_errored,
 				       thread) < 0) {
 			ERROR("multi-handle %p registration failed for write+error events on FD %i: %s",
 			      thread->mandle, fd, fr_strerror());
@@ -287,8 +293,10 @@ static int _rest_io_event_modify(UNUSED CURL *easy, curl_socket_t fd, int what, 
 		break;
 
 	case CURL_POLL_INOUT:
-		if (fr_event_fd_insert(thread->el, fd,
-				       _rest_io_service_readable, _rest_io_service_writable, _rest_io_service_errored,
+		if (fr_event_fd_insert(thread, thread->el, fd,
+				       _rest_io_service_readable,
+				       _rest_io_service_writable,
+				       _rest_io_service_errored,
 				       thread) < 0) {
 			ERROR("multi-handle %p registration failed for read+write+error events on FD %i: %s",
 			      thread->mandle, fd, fr_strerror());
@@ -298,7 +306,7 @@ static int _rest_io_event_modify(UNUSED CURL *easy, curl_socket_t fd, int what, 
 		break;
 
 	case CURL_POLL_REMOVE:
-		if (fr_event_fd_delete(thread->el, fd) < 0) {
+		if (fr_event_fd_delete(thread->el, fd, FR_EVENT_FILTER_IO) < 0) {
 			ERROR("multi-handle %p de-registration failed for FD %i %s", thread->mandle, fd, fr_strerror());
 			return -1;
 		}
@@ -363,7 +371,7 @@ int rest_io_request_enqueue(rlm_rest_thread_t *t, REQUEST *request, void *handle
 	CURL			*candle = randle->candle;
 	CURLcode		ret;
 
-	VERIFY_REQUEST(request);
+	REQUEST_VERIFY(request);
 
 	/*
 	 *	Stick the current request in the curl handle's

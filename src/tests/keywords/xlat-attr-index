@@ -5,7 +5,6 @@
 #
 update {
 	control:Cleartext-Password := 'hello'
-	reply:Filter-Id := 'filter'
 }
 
 update request {
@@ -14,21 +13,15 @@ update request {
 }
 
 if ("%{Tmp-IP-Address-0[#]}" != 2) {
-	update {
-		reply:Filter-Id += 'fail 0'
-	}
+	test_fail
 }
 
 if (("%{Tmp-IP-Address-0[0]}" != 192.0.2.1) || ("%{Tmp-IP-Address-0[1]}" != 192.0.2.2)) {
-	update {
-		reply:Filter-Id += 'fail 1'
-	}
+	test_fail
 }
 
 if ("%{Tmp-IP-Address-0[*]}" != '192.0.2.1,192.0.2.2') {
-	update {
-		reply:Filter-Id += 'fail 2'
-	}
+	test_fail
 }
 
 # Try calling these xlats in mapping too, they may get optimised to VPTs which is a
@@ -41,13 +34,11 @@ update request {
 }
 
 if (Tmp-String-0 != '192.0.2.1,192.0.2.2') {
-	update {
-		reply:Filter-Id += 'fail 3'
-	}
+	test_fail
 }
 
 if (Tmp-Integer-0 != 2) {
-	update {
-		reply:Filter-Id += 'fail 4'
-	}
+	test_fail
 }
+
+success

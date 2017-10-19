@@ -34,6 +34,7 @@
  */
 typedef struct dict_attr fr_dict_attr_t;
 typedef struct fr_dict fr_dict_t;
+extern const FR_NAME_NUMBER dict_attr_types[];	/* Fixme - Should probably move to value.c */
 
 #include <freeradius-devel/value.h>
 
@@ -42,9 +43,9 @@ extern "C" {
 #endif
 
 #ifdef WITH_VERIFY_PTR
-#  define VERIFY_DA(_x)		fr_dict_verify(__FILE__, __LINE__, _x)
+#  define DA_VERIFY(_x)		fr_dict_verify(__FILE__, __LINE__, _x)
 #else
-#  define VERIFY_DA(_x)		fr_cond_assert(_x)
+#  define DA_VERIFY(_x)		fr_cond_assert(_x)
 #endif
 
 /** Values of the encryption flags
@@ -81,7 +82,6 @@ typedef struct attr_flags {
 	uint8_t			type_size;			//!< For TLV2 and root attributes.
 } fr_dict_attr_flags_t;
 
-extern const FR_NAME_NUMBER dict_attr_types[];
 extern const size_t dict_attr_sizes[FR_TYPE_MAX + 1][2];
 extern fr_dict_t *fr_dict_internal;
 
@@ -224,7 +224,7 @@ fr_dict_attr_t const	*fr_dict_parent_common(fr_dict_attr_t const *a, fr_dict_att
 int			fr_dict_oid_component(unsigned int *out, char const **oid);
 
 ssize_t			fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
-			   		   unsigned int *vendor, unsigned int *attr, char const *oid);
+			   		    unsigned int *attr, char const *oid);
 
 /*
  *	Lookup

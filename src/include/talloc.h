@@ -27,6 +27,8 @@ char		*talloc_typed_strdup(void const *t, char const *p);
 
 char		*talloc_typed_asprintf(void const *t, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
 
+char		*talloc_typed_vasprintf(void const *t, char const *fmt, va_list ap) CC_HINT(format (printf, 2, 0)) CC_HINT(nonnull (2));
+
 char		*talloc_bstrndup(void const *t, char const *in, size_t inlen);
 
 int		talloc_memcmp_array(uint8_t const *a, uint8_t const *b);
@@ -39,4 +41,14 @@ void		**talloc_array_null_terminate(void **array);
 
 void		**talloc_array_null_strip(void **array);
 
+/*
+ *	talloc portability issues.  'const' is not part of the talloc
+ *	type, but it is part of the pointer type.  But only if
+ *	talloc_get_type_abort() is just a cast.
+ */
+#ifdef TALLOC_GET_TYPE_ABORT_NOOP
+#  define talloc_get_type_abort_const(ptr, type) (const type *)(ptr)
+#else
+#  define talloc_get_type_abort_const talloc_get_type_abort
+#endif
 #endif

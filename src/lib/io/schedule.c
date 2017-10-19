@@ -113,6 +113,7 @@ struct fr_schedule_t {
 	fr_event_list_t	*el;			//!< event list for single-threaded mode.
 
 	fr_log_t	*log;			//!< log destination
+	fr_log_lvl_t	lvl;			//!< log level
 
 	int		max_networks;		//!< number of network threads
 	int		max_workers;		//!< max number of worker threads
@@ -126,8 +127,6 @@ struct fr_schedule_t {
 
 	fr_schedule_thread_instantiate_t	worker_thread_instantiate;	//!< thread instantiation callback
 	void					*worker_instantiate_ctx;	//!< thread instantiation context
-
-	uint32_t	worker_flags;		//!< for debugging the worker
 
 	fr_dlist_t	workers;		//!< list of workers
 
@@ -160,7 +159,7 @@ static void *fr_schedule_worker_thread(void *arg)
 		goto fail;
 	}
 
-	sw->worker = fr_worker_create(sw, el, sc->log, sc->worker_flags);
+	sw->worker = fr_worker_create(sw, el, sc->log, sc->lvl);
 	if (!sw->worker) {
 		fr_log(sc->log, L_ERR, "Worker %d - Failed creating worker: %s", sw->id, fr_strerror());
 		goto fail;
@@ -251,7 +250,7 @@ static void *fr_schedule_network_thread(void *arg)
 		goto fail;
 	}
 
-	sn->rc = fr_network_create(ctx, el, sc->log);
+	sn->rc = fr_network_create(ctx, el, sc->log, sc->lvl);
 	if (!sn->rc) {
 		fr_log(sc->log, L_ERR, "Network %d - Failed creating network: %s", sn->id, fr_strerror());
 		goto fail;
@@ -302,6 +301,7 @@ fail:
  * @param[in] ctx the talloc context
  * @param[in] el the event list, only for single-threaded mode.
  * @param[in] logger the destination for all logging messages
+ * @param[in] lvl the log level
  * @param[in] max_networks the number of network threads
  * @param[in] max_workers the number of worker threads
  * @param[in] worker_thread_instantiate callback for new worker threads
@@ -310,7 +310,8 @@ fail:
  *	- NULL on error
  *	- fr_schedule_t new scheduler
  */
-fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t *logger,
+fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
+				  fr_log_t *logger, fr_log_lvl_t lvl,
 				  int max_networks, int max_workers,
 				  fr_schedule_thread_instantiate_t worker_thread_instantiate,
 				  void *worker_thread_ctx)
@@ -352,6 +353,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t
 	sc->max_workers = max_workers;
 	sc->num_workers = 0;
 	sc->log = logger;
+	sc->lvl = lvl;
 
 	sc->worker_thread_instantiate = worker_thread_instantiate;
 	sc->worker_instantiate_ctx = worker_thread_ctx;
@@ -362,14 +364,14 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t
 	 *	If we're single-threaded, create network / worker, and insert them into the event loop.
 	 */
 	if (el) {
-		sc->single_network = fr_network_create(sc, el, sc->log);
+		sc->single_network = fr_network_create(sc, el, sc->log, sc->lvl);
 		if (!sc->single_network) {
 			fr_log(sc->log, L_ERR, "Failed creating network: %s", fr_strerror());
 			talloc_free(sc);
 			return NULL;
 		}
 
-		sc->single_worker = fr_worker_create(sc, el, sc->log, sc->worker_flags);
+		sc->single_worker = fr_worker_create(sc, el, sc->log, sc->lvl);
 		if (!sc->single_worker) {
 			fr_log(sc->log, L_ERR, "Failed creating worker: %s", fr_strerror());
 			talloc_free(sc);
@@ -513,14 +515,16 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 #ifdef HAVE_PTHREAD_H
 	fr_dlist_t	*entry, *next;
 
-	fr_log(sc->log, L_DBG, "Destroying scheduler\n");
-
 	/*
 	 *	Single threaded mode: kill the only network / worker we have.
 	 */
 	if (sc->el) {
-		fr_worker_destroy(sc->single_worker);
+		/*
+		 *	Destroy the network side first.  It tells the
+		 *	workers to close.
+		 */
 		fr_network_destroy(sc->single_network);
+		fr_worker_destroy(sc->single_worker);
 		goto done;
 	}
 
@@ -575,8 +579,6 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 
 
 done:
-	fr_log(sc->log, L_INFO, "Destroyed scheduler\n");
-
 	/*
 	 *	Now that all of the workers are done, we can return to
 	 *	the caller, and have him dlclose() the modules.
@@ -607,6 +609,31 @@ fr_network_t *fr_schedule_socket_add(fr_schedule_t *sc, fr_listen_t const *io)
 	}
 
 	if (fr_network_socket_add(nr, io) < 0) return NULL;
+
+	return nr;
+}
+
+/** Add a directory NOTE_EXTEND to a scheduler.
+ *
+ * @param[in] sc the scheduler
+ * @param[in] io the ctx and callbacks for the transport.
+ * @return
+ *	- NULL on error
+ *	- the fr_network_t that the socket was added to.
+ */
+fr_network_t *fr_schedule_directory_add(fr_schedule_t *sc, fr_listen_t const *io)
+{
+	fr_network_t *nr;
+
+	(void) talloc_get_type_abort(sc, fr_schedule_t);
+
+	if (sc->el) {
+		nr = sc->single_network;
+	} else {
+		nr = sc->sn->rc;
+	}
+
+	if (fr_network_directory_add(nr, io) < 0) return NULL;
 
 	return nr;
 }

@@ -10,27 +10,19 @@ update request {
 #
 switch &User-Name {
 	case &Tmp-String-0 {
-		update reply {
-			Filter-Id := "filter"
-		}
+		success
 	}
 
 	case "bob" {
-		update reply {
-			Filter-Id := "failed 0"
-		}
+		test_fail
 	}
 
 	case "doug" {
-		update reply {
-			Filter-Id := "failed 1"
-		}
+		test_fail
 	}
 
 	case {
-		update reply {
-			Filter-Id := "failed 2"
-		}
+		test_fail
 	}
 
 }

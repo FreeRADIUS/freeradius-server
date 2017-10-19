@@ -234,76 +234,6 @@ static ssize_t xlat_tag(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	return snprintf(*out, outlen, "%u", vp->tag);
 }
 
-/** Return the vendor of an attribute reference
- *
- */
-static ssize_t xlat_vendor(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			   REQUEST *request, char const *fmt)
-{
-	VALUE_PAIR *vp;
-	fr_dict_vendor_t const *vendor;
-
-	while (isspace((int) *fmt)) fmt++;
-
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
-
-	vendor = fr_dict_vendor_by_num(NULL, vp->da->vendor);
-	if (!vendor) return 0;
-	strlcpy(*out, vendor->name, outlen);
-
-	return vendor->length;
-}
-
-/** Return the vendor number of an attribute reference
- *
- */
-static ssize_t xlat_vendor_num(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			       UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			       REQUEST *request, char const *fmt)
-{
-	VALUE_PAIR *vp;
-
-	while (isspace((int) *fmt)) fmt++;
-
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
-
-	return snprintf(*out, outlen, "%i", vp->da->vendor);
-}
-
-/** Return the attribute name of an attribute reference
- *
- */
-static ssize_t xlat_attr(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			 REQUEST *request, char const *fmt)
-{
-	VALUE_PAIR *vp;
-
-	while (isspace((int) *fmt)) fmt++;
-
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
-	strlcpy(*out, vp->da->name, outlen);
-
-	return strlen(vp->da->name);
-}
-
-/** Return the attribute number of an attribute reference
- *
- */
-static ssize_t xlat_attr_num(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			     REQUEST *request, char const *fmt)
-{
-	VALUE_PAIR *vp;
-
-	while (isspace((int) *fmt)) fmt++;
-
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
-
-	return snprintf(*out, outlen, "%i", vp->da->attr);
-}
-
 /** Print out attribute info
  *
  * Prints out all instances of a current attribute, or all attributes in a list.
@@ -318,10 +248,9 @@ static ssize_t xlat_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED
 			       UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			       REQUEST *request, char const *fmt)
 {
-	VALUE_PAIR *vp;
-	vp_cursor_t cursor;
-
-	vp_tmpl_t *vpt;
+	VALUE_PAIR	*vp;
+	fr_cursor_t	cursor;
+	vp_tmpl_t	*vpt;
 
 	if (!RDEBUG_ENABLED2) return -1;
 
@@ -337,7 +266,7 @@ static ssize_t xlat_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED
 	RINDENT();
 	for (vp = tmpl_cursor_init(NULL, &cursor, request, vpt);
 	     vp;
-	     vp = tmpl_cursor_next(&cursor, vpt)) {
+	     vp = fr_cursor_next(&cursor)) {
 		FR_NAME_NUMBER const *type;
 		char *value;
 
@@ -649,10 +578,11 @@ done:
  */
 static int xlat_cmp(void const *one, void const *two)
 {
-	xlat_t const *a = one;
-	xlat_t const *b = two;
+	xlat_t const *a = one, *b = two;
+	int ret;
 
-	if (a->length != b->length) return a->length - b->length;
+	ret = (a->length > b->length) - (a->length < b->length);
+	if (ret != 0) return ret;
 
 	return memcmp(a->name, b->name, a->length);
 }
@@ -664,6 +594,8 @@ static int xlat_cmp(void const *one, void const *two)
 xlat_t *xlat_find(char const *name)
 {
 	xlat_t my_xlat;
+
+	if (!xlat_root) return NULL;
 
 	strlcpy(my_xlat.name, name, sizeof(my_xlat.name));
 	my_xlat.length = strlen(my_xlat.name);
@@ -681,6 +613,7 @@ xlat_t *xlat_find(char const *name)
  * @param[in] inst_size sizeof() this xlat's instance data.
  * @param[in] buf_len Size of the output buffer to allocate when calling the function.
  *	May be 0 if the function allocates its own buffer.
+ * @param[in] async_safe whether or not the function is async-safe.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -688,7 +621,7 @@ xlat_t *xlat_find(char const *name)
 int xlat_register(void *mod_inst, char const *name,
 		  xlat_func_t func, xlat_escape_t escape,
 		  xlat_instantiate_t instantiate, size_t inst_size,
-		  size_t buf_len)
+		  size_t buf_len, bool async_safe)
 {
 	xlat_t	*c;
 	xlat_t	my_xlat;
@@ -718,14 +651,14 @@ int xlat_register(void *mod_inst, char const *name,
 
 #ifdef WITH_UNLANG
 		for (i = 0; xlat_foreach_names[i] != NULL; i++) {
-			xlat_register(&xlat_foreach_inst[i], xlat_foreach_names[i], xlat_foreach, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+			xlat_register(&xlat_foreach_inst[i], xlat_foreach_names[i], xlat_foreach, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 			c = xlat_find(xlat_foreach_names[i]);
 			rad_assert(c != NULL);
 			c->internal = true;
 		}
 #endif
 
-#define XLAT_REGISTER(_x) xlat_register(NULL, STRINGIFY(_x), xlat_ ## _x, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN); \
+#define XLAT_REGISTER(_x) xlat_register(NULL, STRINGIFY(_x), xlat_ ## _x, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true); \
 		c = xlat_find(STRINGIFY(_x)); \
 		rad_assert(c != NULL); \
 		c->internal = true
@@ -735,10 +668,6 @@ int xlat_register(void *mod_inst, char const *name,
 		XLAT_REGISTER(length);
 		XLAT_REGISTER(hex);
 		XLAT_REGISTER(tag);
-		XLAT_REGISTER(vendor);
-		XLAT_REGISTER(vendor_num);
-		XLAT_REGISTER(attr);
-		XLAT_REGISTER(attr_num);
 		XLAT_REGISTER(string);
 		XLAT_REGISTER(xlat);
 		XLAT_REGISTER(map);
@@ -748,7 +677,7 @@ int xlat_register(void *mod_inst, char const *name,
 		XLAT_REGISTER(regex);
 #endif
 
-		xlat_register(&xlat_foreach_inst[0], "debug", xlat_debug, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+		xlat_register(&xlat_foreach_inst[0], "debug", xlat_debug, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 		c = xlat_find("debug");
 		rad_assert(c != NULL);
 		c->internal = true;
@@ -762,7 +691,12 @@ int xlat_register(void *mod_inst, char const *name,
 	c = rbtree_finddata(xlat_root, &my_xlat);
 	if (c) {
 		if (c->internal) {
-			ERROR("%s: Cannot re-define internal xlat", __FUNCTION__);
+			ERROR("%s: Cannot re-define internal expansion %s", __FUNCTION__, name);
+			return -1;
+		}
+
+		if (c->async_safe != async_safe) {
+			ERROR("%s: Cannot change async capability of %s", __FUNCTION__, name);
 			return -1;
 		}
 
@@ -787,6 +721,7 @@ int xlat_register(void *mod_inst, char const *name,
 	c->mod_inst = mod_inst;
 	c->instantiate = instantiate;
 	c->inst_size = inst_size;
+	c->async_safe = async_safe;
 
 	DEBUG3("%s: %s", c->name, __FUNCTION__);
 
@@ -820,6 +755,8 @@ void xlat_unregister(void *mod_inst, char const *name, UNUSED xlat_func_t func)
 	if (c->mod_inst != mod_inst) return;
 
 	rbtree_deletebydata(xlat_root, c);
+
+	if (rbtree_num_elements(xlat_root) == 0) TALLOC_FREE(xlat_root);
 }
 
 static int xlat_unregister_callback(void *mod_inst, void *data)
@@ -836,6 +773,8 @@ void xlat_unregister_module(void *instance)
 	if (!xlat_root) return;	/* All xlats have already been freed */
 
 	rbtree_walk(xlat_root, RBTREE_DELETE_ORDER, xlat_unregister_callback, instance);
+
+	if (rbtree_num_elements(xlat_root) == 0) TALLOC_FREE(xlat_root);
 }
 
 /*
@@ -1001,6 +940,11 @@ static ssize_t xlat_load_balance(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size
  * These xlats wrap the xlat methods of the modules in a redundant section,
  * emulating the behaviour of a redundant section, but over xlats.
  *
+ * @todo - make xlat_register() take ASYNC / SYNC / UNKNOWN.  We may
+ * need "unknown" here in order to properly handle the children, which
+ * we don't know are async-safe or not.  For now, it's best to assume
+ * that all xlat's in a redundant block are module calls, and are not async-safe
+ *
  * @return
  *	- 0 on success.
  *	- -1 on error.
@@ -1037,7 +981,7 @@ int xlat_register_redundant(CONF_SECTION *cs)
 	 *	Get the number of children for load balancing.
 	 */
 	if (xr->type == XLAT_REDUNDANT) {
-		if (xlat_register(xr, name2, xlat_redundant, NULL, NULL, 0, 0) < 0) {
+		if (xlat_register(xr, name2, xlat_redundant, NULL, NULL, 0, 0, false) < 0) {
 			ERROR("Registering xlat for redundant section failed");
 			talloc_free(xr);
 			return -1;
@@ -1065,7 +1009,7 @@ int xlat_register_redundant(CONF_SECTION *cs)
 			xr->count++;
 		}
 
-		if (xlat_register(xr, name2, xlat_load_balance, NULL, NULL, 0, 0) < 0) {
+		if (xlat_register(xr, name2, xlat_load_balance, NULL, NULL, 0, 0, false) < 0) {
 			ERROR("Registering xlat for load-balance section failed");
 			talloc_free(xr);
 			return -1;

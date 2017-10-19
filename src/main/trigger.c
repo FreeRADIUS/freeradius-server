@@ -107,10 +107,7 @@ static int _trigger_last_fired_cmp(void const *a, void const *b)
 {
 	trigger_last_fired_t const *lf_a = a, *lf_b = b;
 
-	if (lf_a->ci < lf_b->ci) return -1;
-	if (lf_a->ci == lf_b->ci) return 0;
-
-	return 1;
+	return (lf_a->ci < lf_b->ci) - (lf_a->ci > lf_b->ci);
 }
 
 /** Set the global trigger section trigger_exec will search in, and register xlats
@@ -133,7 +130,7 @@ void trigger_exec_init(CONF_SECTION const *cs)
 	pthread_mutex_init(trigger_mutex, 0);
 	talloc_set_destructor(trigger_mutex, _mutex_free);
 
-	xlat_register(NULL, "trigger", xlat_trigger, NULL, NULL, 0, 0);
+	xlat_register(NULL, "trigger", xlat_trigger, NULL, NULL, 0, 0, false);
 }
 
 /** Free trigger resources

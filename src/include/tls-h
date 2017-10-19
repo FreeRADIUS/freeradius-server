@@ -232,9 +232,9 @@ struct fr_tls_conf_t {
 							//!< If false, the complete chain must be provided in
 							//!< certificate file.
 	bool		disable_single_dh_use;
-	bool		disable_tlsv1;			//!< Prevent TLSv1 being negotiated.
-	bool		disable_tlsv1_1;		//!< Prevent TLSv1.1 being negotiated.
-	bool		disable_tlsv1_2;		//!< Prevent TLSv1.2 being negotiated.
+
+	float		tls_max_version;		//!< Maximum TLS version allowed.
+	float		tls_min_version;		//!< Minimum TLS version allowed.
 
 	uint32_t	fragment_size;			//!< Maximum record fragment, or record size.
 	bool		check_crl;			//!< Check certificate revocation lists.

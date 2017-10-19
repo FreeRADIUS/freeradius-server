@@ -16,6 +16,7 @@
 #define	LIBFREERADIUS_LDAP_H
 
 #include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/connection.h>
 #include <lber.h>
 #include <ldap.h>
 #include "config.h"
@@ -154,15 +155,26 @@ typedef enum {
 	FR_LDAP_DIRECTORY_UNBOUND_ID			//!< Directory server is Unbound ID
 } fr_ldap_directory_type_t;
 
-typedef struct fr_ldap_directory {
-	char const	*vendor_str;			//!< As returned from the vendorName attribute in the
-							//!< rootDSE.
-	char const	*version_str;			//!< As returned from the vendorVersion attribute in the
-							//!< rootDSE.
-	fr_ldap_directory_type_t type;			//!< Cannonical server implementation.
+/** LDAP connection handle states
+ *
+ */
+typedef enum {
+	FR_LDAP_STATE_INIT = 0,				//!< Connection uninitialised.
+	FR_LDAP_STATE_START_TLS,			//!< TLS is being negotiated.
+	FR_LDAP_STATE_BIND,				//!< Connection is being bound.
+	FR_LDAP_STATE_RUN,				//!< Connection is muxing/demuxing requests.
+	FR_LDAP_STATE_ERROR				//!< Connection is in an error state.
+} fr_ldap_state_t;
 
-	bool		cleartext_password;		//!< Whether the server will return the user's plaintext
-							//!< password.
+typedef struct fr_ldap_directory {
+	char const		*vendor_str;		//!< As returned from the vendorName attribute in the
+							///< rootDSE.
+	char const		*version_str;		//!< As returned from the vendorVersion attribute in the
+							///< rootDSE.
+	fr_ldap_directory_type_t type;			///< Cannonical server implementation.
+
+	bool			cleartext_password;	//!< Whether the server will return the user's plaintext
+							///< password.
 } fr_ldap_directory_t;
 
 /** Connection configuration
@@ -171,122 +183,133 @@ typedef struct fr_ldap_directory {
  * this avoids problems with not using the connection pool configuration.
  */
 typedef struct {
-	char const	*name;				//!< Name of the module that created this connection.
+	char const		*name;			//!< Name of the module that created this connection.
 
-	char		*server;			//!< Initial server to bind to.
-	char const	**server_str;			//!< Server set in the config.
+	char			*server;		//!< Initial server to bind to.
+	char const		**server_str;		//!< Server set in the config.
 
-	uint16_t	port;				//!< Port to use when binding to the server.
+	uint16_t		port;			//!< Port to use when binding to the server.
 
-	char const	*admin_identity;		//!< Identity we bind as when we need to query the LDAP
-							//!< directory.
-	char const	*admin_password;		//!< Password used in administrative bind.
+	char const		*admin_identity;	//!< Identity we bind as when we need to query the LDAP
+							///< directory.
+	char const		*admin_password;	//!< Password used in administrative bind.
 
-	fr_ldap_sasl_t	admin_sasl;			//!< SASL parameters used when binding as the admin.
+	fr_ldap_sasl_t		admin_sasl;		//!< SASL parameters used when binding as the admin.
 
-	int		dereference;			//!< libldap value specifying dereferencing behaviour.
-	char const	*dereference_str;		//!< When to dereference (never, searching, finding, always)
+	int			dereference;		//!< libldap value specifying dereferencing behaviour.
+	char const		*dereference_str;	//!< When to dereference (never, searching, finding, always)
 
-	bool		chase_referrals;		//!< If the LDAP server returns a referral to another server
-							//!< or point in the tree, follow it, establishing new
-							//!< connections and binding where necessary.
-	bool		chase_referrals_unset;		//!< If true, use the OpenLDAP defaults for chase_referrals.
+	bool			chase_referrals;	//!< If the LDAP server returns a referral to another server
+							///< or point in the tree, follow it, establishing new
+							///< connections and binding where necessary.
+	bool			chase_referrals_unset;	//!< If true, use the OpenLDAP defaults for chase_referrals.
 
-	bool		use_referral_credentials;	//!< If true use credentials from the referral URL.
+	bool			use_referral_credentials;	//!< If true use credentials from the referral URL.
 
-	bool		rebind;				//!< Controls whether we set an ldad_rebind_proc function
-							//!< and so determines if we can bind to other servers whilst
-							//!< chasing referrals. If this is false, we will still chase
-							//!< referrals on the same server, but won't bind to other
-							//!< servers.
+	bool			rebind;			//!< Controls whether we set an ldad_rebind_proc function
+							///< and so determines if we can bind to other servers whilst
+							///< chasing referrals. If this is false, we will still chase
+							///< referrals on the same server, but won't bind to other
+							///< servers.
 
 	/*
 	 *	TLS items.
 	 */
-	int		tls_mode;
+	int			tls_mode;
 
-	bool		start_tls;			//!< Send the Start TLS message to the LDAP directory
-							//!< to start encrypted communications using the standard
-							//!< LDAP port.
+	bool			start_tls;		//!< Send the Start TLS message to the LDAP directory
+							///< to start encrypted communications using the standard
+							///< LDAP port.
 
-	char const	*tls_ca_file;			//!< Sets the full path to a CA certificate (used to validate
-							//!< the certificate the server presents).
+	char const		*tls_ca_file;		//!< Sets the full path to a CA certificate (used to validate
+							///< the certificate the server presents).
 
-	char const	*tls_ca_path;			//!< Sets the path to a directory containing CA certificates.
+	char const		*tls_ca_path;		//!< Sets the path to a directory containing CA certificates.
 
-	char const	*tls_certificate_file;		//!< Sets the path to the public certificate file we present
-							//!< to the servers.
+	char const		*tls_certificate_file;	//!< Sets the path to the public certificate file we present
+							///< to the servers.
 
-	char const	*tls_private_key_file;		//!< Sets the path to the private key for our public
-							//!< certificate.
+	char const		*tls_private_key_file;	//!< Sets the path to the private key for our public
+							///< certificate.
 
-	char const	*tls_require_cert_str;		//!< Sets requirements for validating the certificate the
-							//!< server presents.
+	char const		*tls_require_cert_str;	//!< Sets requirements for validating the certificate the
+							///< server presents.
 
-	int		tls_require_cert;		//!< OpenLDAP constant representing the require cert string.
+	int			tls_require_cert;	//!< OpenLDAP constant representing the require cert string.
 
 
 	/*
 	 *	For keep-alives.
 	 */
 #ifdef LDAP_OPT_X_KEEPALIVE_IDLE
-	uint32_t	keepalive_idle;			//!< Number of seconds a connections needs to remain idle
+	uint32_t		keepalive_idle;		//!< Number of seconds a connections needs to remain idle
 							//!< before TCP starts sending keepalive probes.
 #endif
 #ifdef LDAP_OPT_X_KEEPALIVE_PROBES
-	uint32_t	keepalive_probes;		//!< Number of missed timeouts before the connection is
-							//!< dropped.
+	uint32_t		keepalive_probes;	//!< Number of missed timeouts before the connection is
+							///< dropped.
 #endif
 #ifdef LDAP_OPT_X_KEEPALIVE_INTERVAL
-	uint32_t	keepalive_interval;		//!< Interval between keepalive probes.
+	uint32_t		keepalive_interval;	//!< Interval between keepalive probes.
 #endif
 
 	/*
 	 *	Search timelimits
 	 */
-	uint32_t	srv_timelimit;			//!< How long the server should spent on a single request
-							//!< (also bounded by value on the server).
+	uint32_t		srv_timelimit;		//!< How long the server should spent on a single request
+							///< (also bounded by value on the server).
 
-	struct timeval	net_timeout;			//!< How long we wait in blocking network calls.
-							//!< We set this in the LDAP API, even though with
-							//!< async calls, we control this using our event loop.
-							//!< This is just in case there are blocking calls which
-							//!< happen internally which we can't work around.
+	struct timeval		res_timeout;		//!< How long we wait for results.
 
-	struct timeval	res_timeout;			//!< How long we wait for results.
-} fr_ldap_handle_config_t;
+	/*
+	 *	I/O timelimits.
+	 */
+	struct timeval		net_timeout;		//!< How long we wait in blocking network calls.
+							///< We set this in the LDAP API, even though with
+							///< async calls, we control this using our event loop.
+							///< This is just in case there are blocking calls which
+							///< happen internally which we can't work around.
+
+	struct timeval		tls_handshake_timeout;	//!< How long we wait for the TLS handshake to complete.
+
+	struct timeval		reconnection_delay;	//!< How long to wait before attempting to reconnect.
+} fr_ldap_config_t;
 
 /** Tracks the state of a libldap connection handle
  *
  */
-typedef struct fr_ldap_conn {
-	LDAP		*handle;			//!< libldap handle.
-	bool		rebound;			//!< Whether the connection has been rebound to something
-							//!< other than the admin user.
-	bool		referred;			//!< Whether the connection is now established a server
-							//!< other than the configured one.
+typedef struct fr_ldap_connection {
+	LDAP			*handle;		//!< libldap handle.
 
-	fr_ldap_control_t serverctrls[LDAP_MAX_CONTROLS + 1];	//!< Server controls to use for all operations with
-								//!< this handle.
-	fr_ldap_control_t clientctrls[LDAP_MAX_CONTROLS + 1];	//!< Client controls to use for all operations with
-								//!< this handle.
-	int		serverctrls_cnt;		//!< Number of server controls associated with the handle.
-	int		clientctrls_cnt;		//!< Number of client controls associated with the handle.
+	bool			rebound;		//!< Whether the connection has been rebound to something
+							///< other than the admin user.
+	bool			referred;		//!< Whether the connection is now established a server
+							///< other than the configured one.
 
-	fr_ldap_directory_t *directory;			//!< The type of directory we're connected to.
+	fr_ldap_control_t	serverctrls[LDAP_MAX_CONTROLS + 1];	//!< Server controls to use for all operations
+									///< with this handle.
+	fr_ldap_control_t	clientctrls[LDAP_MAX_CONTROLS + 1];	//!< Client controls to use for all operations
+									///< with this handle.
+	int			serverctrls_cnt;	//!< Number of server controls associated with the handle.
+	int			clientctrls_cnt;	//!< Number of client controls associated with the handle.
 
-	fr_ldap_handle_config_t const *config;		//!< rlm_ldap connection configuration.
+	fr_ldap_directory_t	*directory;		//!< The type of directory we're connected to.
 
-	void		*user_ctx;			//!< User data associated with the handle.
-} fr_ldap_conn_t;
+	fr_ldap_config_t const	*config;		//!< rlm_ldap connection configuration.
+	fr_connection_t		*conn;			//!< Connection state handle.
+
+	fr_ldap_state_t		state;			//!< LDAP connection state machine.
+
+	void			*uctx;			//!< User data associated with the handle.
+} fr_ldap_connection_t;
 
 /** Contains a collection of values
  *
  */
 typedef struct fr_ldap_result {
-	struct berval	**values;			//!< libldap struct containing bv_val (char *)
-							//!< and length bv_len.
-	int		count;				//!< Number of values.
+	struct berval		**values;		//!< libldap struct containing bv_val (char *)
+							///< and length bv_len.
+	int			count;			//!< Number of values.
 } fr_ldap_result_t;
 
 /** Result of expanding the RHS of a set of maps
@@ -310,7 +333,7 @@ typedef enum {
 
 	LDAP_PROC_ERROR	= -1,				//!< Unrecoverable library/server error.
 
-	LDAP_PROC_BAD_CONN	= -2,			//!< Transitory error, caller should retry the operation
+	LDAP_PROC_BAD_CONN = -2,			//!< Transitory error, caller should retry the operation
 							//!< with a new connection.
 
 	LDAP_PROC_NOT_PERMITTED = -3,			//!< Operation was not permitted, either current user was
@@ -332,6 +355,8 @@ typedef enum {
 /*
  *	Tables for resolving strings to LDAP constants
  */
+extern FR_NAME_NUMBER const fr_ldap_connection_states[];
+
 extern FR_NAME_NUMBER const fr_ldap_supported_extensions[];
 extern FR_NAME_NUMBER const fr_ldap_dereference[];
 extern FR_NAME_NUMBER const fr_ldap_scope[];
@@ -355,7 +380,7 @@ static inline void fr_ldap_berval_to_value(fr_value_box_t *value, struct berval 
 /*
  *	ldap.c - Wrappers arounds OpenLDAP functions.
  */
-void		fr_ldap_timeout_debug(REQUEST *request, fr_ldap_conn_t const *conn,
+void		fr_ldap_timeout_debug(REQUEST *request, fr_ldap_connection_t const *conn,
 				      struct timeval const *timeout, char const *prefix);
 
 size_t		fr_ldap_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg);
@@ -365,7 +390,7 @@ size_t		fr_ldap_unescape_func(UNUSED REQUEST *request, char *out, size_t outlen,
 ssize_t		fr_ldap_xlat_filter(REQUEST *request, char const **sub, size_t sublen, char *out, size_t outlen);
 
 fr_ldap_rcode_t	fr_ldap_bind(REQUEST *request,
-			     fr_ldap_conn_t **pconn,
+			     fr_ldap_connection_t **pconn,
 			     char const *dn, char const *password,
 #ifdef WITH_SASL
 			     fr_ldap_sasl_t const *sasl,
@@ -375,35 +400,29 @@ fr_ldap_rcode_t	fr_ldap_bind(REQUEST *request,
 			     struct timeval const *timeout,
 			     LDAPControl **serverctrls, LDAPControl **clientctrls);
 
-char const	*fr_ldap_error_str(fr_ldap_conn_t const *conn);
+char const	*fr_ldap_error_str(fr_ldap_connection_t const *conn);
 
 fr_ldap_rcode_t	fr_ldap_search(LDAPMessage **result, REQUEST *request,
-			       fr_ldap_conn_t **pconn,
+			       fr_ldap_connection_t **pconn,
 			       char const *dn, int scope, char const *filter, char const * const * attrs,
 			       LDAPControl **serverctrls, LDAPControl **clientctrls);
 
 fr_ldap_rcode_t	fr_ldap_search_async(int *msgid, REQUEST *request,
-				     fr_ldap_conn_t **pconn,
+				     fr_ldap_connection_t **pconn,
 				     char const *dn, int scope, char const *filter, char const * const *attrs,
 				     LDAPControl **serverctrls, LDAPControl **clientctrls);
 
-fr_ldap_rcode_t	fr_ldap_modify(REQUEST *request, fr_ldap_conn_t **pconn,
+fr_ldap_rcode_t	fr_ldap_modify(REQUEST *request, fr_ldap_connection_t **pconn,
 			       char const *dn, LDAPMod *mods[],
 			       LDAPControl **serverctrls, LDAPControl **clientctrls);
 
-fr_ldap_rcode_t	fr_ldap_error_check(LDAPControl ***ctrls, fr_ldap_conn_t const *conn,
+fr_ldap_rcode_t	fr_ldap_error_check(LDAPControl ***ctrls, fr_ldap_connection_t const *conn,
 				    LDAPMessage *msg, char const *dn);
 
 fr_ldap_rcode_t	fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
-			       fr_ldap_conn_t const *conn, int msgid, int all,
+			       fr_ldap_connection_t const *conn, int msgid, int all,
 			       char const *dn,
 			       struct timeval const *timeout);
-
-fr_ldap_conn_t	*fr_ldap_conn_alloc(TALLOC_CTX *ctx, fr_ldap_handle_config_t const *handle_config);
-
-int		fr_ldap_conn_timeout_set(fr_ldap_conn_t const *conn, struct timeval const *timeout);
-
-int		fr_ldap_conn_timeout_reset(fr_ldap_conn_t const *conn);
 
 int		fr_ldap_global_config(int debug_level, char const *tls_random_file);
 
@@ -418,22 +437,22 @@ void		fr_ldap_control_merge(LDAPControl *serverctrls_out[],
 				      LDAPControl *clientctrls_out[],
 				      size_t serverctrls_len,
 				      size_t clientctrls_len,
-				      fr_ldap_conn_t *conn,
+				      fr_ldap_connection_t *conn,
 				      LDAPControl *serverctrls_in[],
 				      LDAPControl *clientctrls_in[]);
 
-int		fr_ldap_control_add_server(fr_ldap_conn_t *conn, LDAPControl *ctrl, bool freeit);
+int		fr_ldap_control_add_server(fr_ldap_connection_t *conn, LDAPControl *ctrl, bool freeit);
 
-int		fr_ldap_control_add_client(fr_ldap_conn_t *conn, LDAPControl *ctrl, bool freeit);
+int		fr_ldap_control_add_client(fr_ldap_connection_t *conn, LDAPControl *ctrl, bool freeit);
 
-void		fr_ldap_control_clear(fr_ldap_conn_t *conn);
+void		fr_ldap_control_clear(fr_ldap_connection_t *conn);
 
-int		fr_ldap_control_add_session_tracking(fr_ldap_conn_t *conn, REQUEST *request);
+int		fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, REQUEST *request);
 
 /*
  *	directory.c - Get directory capabilities from the remote server
  */
-int		fr_ldap_directory_alloc(TALLOC_CTX *ctx, fr_ldap_directory_t **out, fr_ldap_conn_t **pconn);
+int		fr_ldap_directory_alloc(TALLOC_CTX *ctx, fr_ldap_directory_t **out, fr_ldap_connection_t **pconn);
 
 /*
  *	edir.c - Edirectory integrations
@@ -453,17 +472,67 @@ int		fr_ldap_map_verify(vp_map_t *map, void *instance);
 
 int		fr_ldap_map_expand(fr_ldap_map_exp_t *expanded, REQUEST *request, vp_map_t const *maps);
 
-int		fr_ldap_map_do(REQUEST *request, fr_ldap_conn_t *conn,
+int		fr_ldap_map_do(REQUEST *request, fr_ldap_connection_t *conn,
 			       char const *valuepair_attr, fr_ldap_map_exp_t const *expanded, LDAPMessage *entry);
 
 /*
- *	sasl.c - SASL bind functions
+ *	sasl_s.c - SASL synchronous bind functions
  */
+#ifdef WITH_SASL
 fr_ldap_rcode_t	 fr_ldap_sasl_interactive(REQUEST *request,
-				      	 fr_ldap_conn_t *pconn, char const *dn,
-				      	 char const *password, fr_ldap_sasl_t const *sasl,
-				      	 LDAPControl **serverctrls, LDAPControl **clientctrls,
-				      	 struct timeval const *timeout);
+					  fr_ldap_connection_t *pconn, char const *dn,
+					  char const *password, fr_ldap_sasl_t const *sasl,
+					  LDAPControl **serverctrls, LDAPControl **clientctrls,
+					  struct timeval const *timeout);
+#endif
+
+/*
+ *	connection.c - Connection configuration functions
+ */
+fr_ldap_connection_t *fr_ldap_connection_alloc(TALLOC_CTX *ctx);
+
+fr_ldap_connection_t *fr_ldap_connection_state_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
+						     fr_ldap_config_t const *config, char *log_prefix);
+
+int		fr_ldap_connection_configure(fr_ldap_connection_t *c, fr_ldap_config_t const *config);
+
+int		fr_ldap_connection_timeout_set(fr_ldap_connection_t const *conn, struct timeval const *timeout);
+
+int		fr_ldap_connection_timeout_reset(fr_ldap_connection_t const *conn);
+
+/*
+ *	state.c - Connection state machine
+ */
+fr_ldap_state_t	fr_ldap_state_next(fr_ldap_connection_t *c);
+
+void		fr_ldap_state_error(fr_ldap_connection_t *c);
+
+/*
+ *	start_tls.c - Mostly async start_tls
+ */
+int		fr_ldap_start_tls_async(fr_ldap_connection_t *c,
+					LDAPControl **serverctrls, LDAPControl **clientctrls);
+
+/*
+ *	sasl.c - Async sasl bind
+ */
+#ifdef WITH_SASL
+int		fr_ldap_sasl_bind_async(fr_ldap_connection_t *c,
+					char const *mechs,
+			    		char const *identity,
+			    		char const *password,
+			    		char const *proxy,
+			    		char const *realm,
+			    		LDAPControl **serverctrls, LDAPControl **clientctrls);
+#endif
+
+/*
+ *	bind.c - Async bind
+ */
+int		fr_ldap_bind_async(fr_ldap_connection_t *c,
+				   char const *bind_dn, char const *password,
+				   LDAPControl **serverctrls, LDAPControl **clientctrls);
+
 
 /*
  *	uti.c - Utility functions
@@ -479,7 +548,7 @@ char		*fr_ldap_berval_to_string(TALLOC_CTX *ctx, struct berval const *in);
 uint8_t		*fr_ldap_berval_to_bin(TALLOC_CTX *ctx, struct berval const *in);
 
 int		fr_ldap_parse_url_extensions(LDAPControl **sss, REQUEST *request,
-					     fr_ldap_conn_t *conn, char **extensions);
+					     fr_ldap_connection_t *conn, char **extensions);
 
 
 #endif

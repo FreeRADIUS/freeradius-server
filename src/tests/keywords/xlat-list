@@ -11,29 +11,21 @@ update control {
 }
 
 if ("%{control:[#]}" != 2) {
-	update {
-		reply:Filter-Id += 'fail 0'
-	}
+	test_fail
 }
 
 debug_control
 
 if (("%{control:[0]}" != 192.0.2.1) || ("%{control:[1]}" != 192.0.2.2)) {
-	update {
-		reply:Filter-Id += 'fail 1'
-	}
+	test_fail
 }
 
 if (("%{control:[n]}" != 192.0.2.2)) {
-    update {
-        reply:Filter-Id += 'fail 1a'
-    }
+	test_fail
 }
 
 if ("%{control:[*]}" != '192.0.2.1,192.0.2.2') {
-	update {
-		reply:Filter-Id += 'fail 2'
-	}
+	test_fail
 }
 
 # Try calling these xlats in mapping too, they may get optimised to VPTs which is a
@@ -46,19 +38,16 @@ update request {
 }
 
 if (Tmp-String-0 != '192.0.2.1,192.0.2.2') {
-	update {
-		reply:Filter-Id += 'fail 3'
-	}
+	test_fail
 }
 
 if (Tmp-Integer-0 != 2) {
-	update {
-		reply:Filter-Id += 'fail 4'
-	}
+	test_fail
 }
 
 # Boilerplate junk
 update {
 	control:Cleartext-Password := 'hello'
-    reply:Filter-Id := 'filter'
 }
+
+success

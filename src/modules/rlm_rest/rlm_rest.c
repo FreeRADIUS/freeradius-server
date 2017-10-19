@@ -907,7 +907,7 @@ static int mod_thread_instantiate(CONF_SECTION const *conf, void *instance, fr_e
 	 *	Temporary hack to make config parsing
 	 *	thread safe.
 	 */
-	my_conf = cf_section_dup(NULL, conf, cf_section_name1(conf), cf_section_name2(conf), true);
+	my_conf = cf_section_dup(NULL, NULL, conf, cf_section_name1(conf), cf_section_name2(conf), true);
 	t->pool = fr_pool_init(NULL, my_conf, instance, mod_conn_create, NULL, inst->xlat_name);
 	talloc_free(my_conf);
 
@@ -987,7 +987,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Register the rest xlat function
 	 */
-	xlat_register(inst, inst->xlat_name, rest_xlat, rest_uri_escape, NULL, 0, 0);
+	xlat_register(inst, inst->xlat_name, rest_xlat, rest_uri_escape, NULL, 0, 0, false);
 #endif
 
 	return 0;

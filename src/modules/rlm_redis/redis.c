@@ -332,7 +332,7 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out, REQUEST *request,
 		goto error;
 
 	}
-	VERIFY_MAP(map);
+	MAP_VERIFY(map);
 
 	*out = map;
 

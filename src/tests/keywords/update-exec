@@ -5,10 +5,6 @@ update control {
        Cleartext-Password := 'hello'
 }
 
-update reply {
-	Filter-Id := "filter"
-}
-
 #
 # Exec with script output to attribute
 #
@@ -17,9 +13,7 @@ update request {
 }
 
 if (Tmp-String-0 != "foo bar baz") {
-	update reply {
-		Filter-Id += "fail 1"
-	}
+	test_fail
 }
 
 #
@@ -30,9 +24,7 @@ update {
 }
 
 if (Tmp-String-0 != 'foo') {
-	update reply {
-		Filter-Id += "fail 2"
-	}
+	test_fail
 }
 
 #
@@ -43,9 +35,7 @@ update {
 }
 
 if ((Tmp-String-0 != 'foo') || (Tmp-String-1 != 'bar')) {
-	update reply {
-		Filter-Id += "fail 3"
-	}
+	test_fail
 }
 
 #
@@ -65,9 +55,7 @@ redundant {
 	ok
 }
 if (Tmp-String-0 || Tmp-String-1) {
-	update reply {
-		Filter-Id += "fail 4"
-	}
+	test_fail
 }
 
 #
@@ -87,8 +75,7 @@ redundant {
 	ok
 }
 if (Tmp-String-0) {
-	update reply {
-		Filter-Id += "fail 5"
-	}
+	test_fail
 }
 
+success

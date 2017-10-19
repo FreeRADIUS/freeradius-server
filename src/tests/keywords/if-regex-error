@@ -6,7 +6,5 @@
 #  Check that bad regular expressions will fail
 #
 if (&User-Name =~ /[a-3]/) {	# ERROR
-	update reply {
-		Filter-Id := "filter"
-	}
+	ok
 }

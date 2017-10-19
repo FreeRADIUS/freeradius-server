@@ -1,10 +1,6 @@
 #
 # PRE: hex
 #
-update reply {
-       Filter-Id := "filter"
-}
-
 update request {
 	Tmp-String-0        := '\
 abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz\
@@ -31,9 +27,7 @@ update request {
 }
 
 if (Tmp-Integer-0 != 260) {
-	update reply {
-		Filter-Id += 'fail 1'
-	}
+	test_fail
 }
 
 update request {
@@ -51,72 +45,52 @@ update request {
 
 # String - bin 0x39383730
 if (Tmp-Integer-0 != 4) {
-	update reply {
-		Filter-Id += 'fail 2'
-	}
+	test_fail
 }
 
 # Octets - bin 0x39383731
 if (Tmp-Integer-1 != 4) {
-	update reply {
-		Filter-Id += 'fail 3'
-	}
+	test_fail
 }
 
 # IP Address - bin 0x39383732
 if (Tmp-Integer-2 != 4) {
-	update reply {
-		Filter-Id += 'fail 4'
-	}
+	test_fail
 }
 
 # Date - bin 0x39383733
 if (Tmp-Integer-3 != 4) {
-	update reply {
-		Filter-Id += 'fail 5'
-	}
+	test_fail
 }
 
 # Integer - bin 0x39383734
 if (Tmp-Integer-4 != 4) {
-	update reply {
-		Filter-Id += 'fail 6'
-	}
+	test_fail
 }
 
 # Abinary - bin 0x0101000039383735000000002000110000000714000200000000000000000000
 if (Tmp-Integer-5 != 32) {
-	update reply {
-		Filter-Id += 'fail 7'
-	}
+	test_fail
 }
 
 # ifid - bin 0x0000000039383737
 if (Tmp-Integer-6 != 8) {
-	update reply {
-		Filter-Id += 'fail 8'
-	}
+	test_fail
 }
 
 # ipv6addr - bin 0x00000000000000000000000039383738
 if (Tmp-Integer-7 != 16) {
-	update reply {
-		Filter-ID += 'fail 9'
-	}
+	test_fail
 }
 
 # ipv6addrprefix - bin 0x8000000000000000000000000039383739
 if (Tmp-Integer-8 != 17) {
-	update reply {
-		Filter-ID += 'fail 10'
-	}
+	test_fail
 }
 
 # byte - bin 0x3a
 if (Tmp-Integer-9 != 1) {
-	update reply {
-		Filter-ID += 'fail 11'
-	}
+	test_fail
 }
 
 update request {
@@ -128,28 +102,22 @@ update request {
 
 # short - bin 0x373b
 if (Tmp-Integer-0 != 2) {
-	update reply {
-		Filter-ID += 'fail 12'
-	}
+	test_fail
 }
 
 # ethernet - bin 0x00003938373c
 if (Tmp-Integer-1 != 6) {
-	update reply {
-		Filter-Id += 'fail 13'
-	}
+	test_fail
 }
 
 # integer64 - bin 0x100000003938373d
 if (Tmp-Integer-2 != 8) {
-	update reply {
-		Filter-Id += 'fail 14'
-	}
+	test_fail
 }
 
 # ipv4prefix - bin 0x203938373e
 if (Tmp-Integer-3 != 5) {
-	update reply {
-		Filter-Id += 'fail 15'
-	}
+	test_fail
 }
+
+success

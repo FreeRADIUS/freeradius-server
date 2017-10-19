@@ -862,7 +862,7 @@ static void verify_packet(char const *file, int line, REQUEST *request, RADIUS_P
 		rad_assert(0);
 	}
 
-	VERIFY_PACKET(packet);
+	PACKET_VERIFY(packet);
 
 	if (!packet->vps) return;
 
@@ -873,7 +873,7 @@ static void verify_packet(char const *file, int line, REQUEST *request, RADIUS_P
 /*
  *	Catch horrible talloc errors.
  */
-void verify_request(char const *file, int line, REQUEST *request)
+void request_verify(char const *file, int line, REQUEST *request)
 {
 	if (!request) {
 		fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%i]: REQUEST pointer was NULL", file, line);
@@ -882,12 +882,18 @@ void verify_request(char const *file, int line, REQUEST *request)
 
 	(void) talloc_get_type_abort(request, REQUEST);
 
+	if (talloc_get_size(request) != sizeof(REQUEST)) {
+		fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%i]: expected REQUEST size of %zu bytes, got %zu bytes",
+			file, line, sizeof(REQUEST), talloc_get_size(request));
+		if (!fr_cond_assert(0)) fr_exit_now(1);
+	}
+
 #ifdef WITH_VERIFY_PTR
 	fr_pair_list_verify(file, line, request, request->control);
 	fr_pair_list_verify(file, line, request->state_ctx, request->state);
 
-	if (request->username) VERIFY_VP(request->username);
-	if (request->password) VERIFY_VP(request->password);
+	if (request->username) VP_VERIFY(request->username);
+	if (request->password) VP_VERIFY(request->password);
 #endif
 
 	rad_assert(request->server_cs != NULL);
@@ -923,15 +929,15 @@ void verify_request(char const *file, int line, REQUEST *request)
  */
 void rad_mode_to_str(char out[10], mode_t mode)
 {
-    static char const *rwx[] = {"---", "--x", "-w-", "-wx", "r--", "r-x", "rw-", "rwx"};
+	static char const *rwx[] = {"---", "--x", "-w-", "-wx", "r--", "r-x", "rw-", "rwx"};
 
-    strcpy(&out[0], rwx[(mode >> 6) & 0x07]);
-    strcpy(&out[3], rwx[(mode >> 3) & 0x07]);
-    strcpy(&out[6], rwx[(mode & 7)]);
-    if (mode & S_ISUID) out[2] = (mode & 0100) ? 's' : 'S';
-    if (mode & S_ISGID) out[5] = (mode & 0010) ? 's' : 'l';
-    if (mode & S_ISVTX) out[8] = (mode & 0100) ? 't' : 'T';
-    out[9] = '\0';
+	strcpy(&out[0], rwx[(mode >> 6) & 0x07]);
+	strcpy(&out[3], rwx[(mode >> 3) & 0x07]);
+	strcpy(&out[6], rwx[(mode & 7)]);
+	if (mode & S_ISUID) out[2] = (mode & 0100) ? 's' : 'S';
+	if (mode & S_ISGID) out[5] = (mode & 0010) ? 's' : 'l';
+	if (mode & S_ISVTX) out[8] = (mode & 0100) ? 't' : 'T';
+	out[9] = '\0';
 }
 
 void rad_mode_to_oct(char out[5], mode_t mode)

@@ -9,9 +9,15 @@ radcrypt - generate password hash for use with radius, or validates a password h
 \fIplaintext_password\fP [\fIhashed_password\fP]
 .SH DESCRIPTION
 \fBradcrypt\fP generates a hashed digest of a plaintext password, or can
-validate if a password hash matches a plaintext password. DES and MD5
-hashes are currently supported. When generating a password hash a random
-salt is generated and applied.
+validate if a password hash matches a plaintext password. When generating 
+a password hash a random salt is generated and applied. \fBradcrypt\fP only
+currently supports the older DES and MD5 hashes.
+.PP
+Current best practice is to use certificate-based authentication rather than 
+relying on passwords. However, other external tools such as openssl can generate
+high quality hashed and salted passwords if needed, e.g. "echo -n 'password' | 
+openssl dgst -sha512". Although more modern hashes such as bcrypt, SSHA3, and SSHA2
+are not supported by radcrypt, hashes are supported in the server by rlm_pap(5).
 .PP
 A hashed password can be validated by specifying \fI-c\fP or \fI--check\fP and
 passing \fIhashed_password\fP after \fIplaintext_password\fP on the command line.

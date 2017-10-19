@@ -38,8 +38,7 @@ struct request_data_t {
 	int		unique_int;		//!< Alternative key to lookup request data.
 	void		*opaque;		//!< Opaque data.
 	bool		free_on_replace;	//!< Whether to talloc_free(opaque) when the request data is removed.
-	bool		free_on_parent;		//!< Whether to talloc_free(opaque) when the parent of the request
-						//!< data is freed.
+	bool		free_on_parent;		//!< Whether to talloc_free(opaque) when the request is freed
 	bool		persist;		//!< Whether this data should be transfered to a session_entry_t
 						//!< after we're done processing this request.
 };
@@ -49,10 +48,6 @@ struct request_data_t {
  */
 static int _request_free(REQUEST *request)
 {
-	rad_assert(!request->in_request_hash);
-#ifdef WITH_PROXY
-	rad_assert(!request->in_proxy_hash);
-#endif
 	rad_assert(!request->ev);
 
 #ifndef NDEBUG
@@ -127,31 +122,21 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 #else
 	request->stack = talloc_zero(request, unlang_stack_t);
 #endif
-	request->heap_id = -1;
+	request->runnable_id = -1;
+	request->time_order_id = -1;
 
 	request->state_ctx = talloc_init("session-state");
 
 	return request;
 }
 
-
-/*
- *	Create a new REQUEST, based on an old one.
- *
- *	This function allows modules to inject fake requests
- *	into the server, for tunneled protocols like TTLS & PEAP.
- */
-REQUEST *request_alloc_fake(REQUEST *request)
+static REQUEST *request_init_fake(REQUEST *request, REQUEST *fake)
 {
-	REQUEST *fake;
+	fake->number = request->child_number++;
+	fake->name = talloc_asprintf(fake, "%s.%" PRIu64 , request->name, fake->number);
 
-	fake = request_alloc(request);
-	if (!fake) return NULL;
+	fake->seq_start = 0;	/* children always start with their own sequence */
 
-	fake->number = request->number;
-	fake->seq_start = request->seq_start;
-
-	fake->child_pid = request->child_pid;
 	fake->parent = request;
 	fake->root = request->root;
 	fake->client = request->client;
@@ -178,7 +163,6 @@ REQUEST *request_alloc_fake(REQUEST *request)
 	}
 
 	fake->master_state = REQUEST_ACTIVE;
-	fake->child_state = REQUEST_RUNNING;
 
 	/*
 	 *	Fill in the fake request.
@@ -222,6 +206,83 @@ REQUEST *request_alloc_fake(REQUEST *request)
 	fake->log.module_indent = 0;	/* Apart from the indent which we reset */
 
 	return fake;
+}
+
+
+/*
+ *	Create a new REQUEST, based on an old one.
+ *
+ *	This function allows modules to inject fake requests
+ *	into the server, for tunneled protocols like TTLS & PEAP.
+ */
+REQUEST *request_alloc_fake(REQUEST *request)
+{
+	REQUEST *fake;
+
+	fake = request_alloc(request);
+	if (!fake) return NULL;
+
+	return request_init_fake(request, fake);
+}
+
+/** Allocate a fake request which is detachable from the parent.
+ * i.e. if the parent goes away, sometimes the child MAY continue to
+ * run.
+ *
+ */
+REQUEST *request_alloc_detachable(REQUEST *request)
+{
+	REQUEST *fake;
+
+	fake = request_alloc(NULL);
+	if (!fake) return NULL;
+
+	if (!request_init_fake(request, fake)) return NULL;
+
+	/*
+	 *	Ensure that we use our own version of the logging
+	 *	information, and not the original request one.
+	 */
+	fake->log.dst = talloc_zero(fake, log_dst_t);
+	memcpy(fake->log.dst, request->log.dst, sizeof(*fake->log.dst));
+
+	/*
+	 *	Associate the child with the parent, using the child's
+	 *	pointer as a unique identifier.  Free it if the parent
+	 *	goes away, but don't persist it across
+	 *	challenge-response boundaries.
+	 */
+	if (request_data_add(request, fake, 0, fake, true, true, false) < 0) {
+		talloc_free(fake);
+		return NULL;
+	}
+
+	return fake;
+}
+
+
+/** Detach a detachable request.
+ *
+ *  @note the caller still has to set fake->async->detached
+ */
+int request_detach(REQUEST *fake)
+{
+	REQUEST *request = fake->parent;
+
+	rad_assert(request != NULL);
+	rad_assert(request->backlog != NULL);
+	rad_assert(talloc_parent(fake) != request);
+
+	/*
+	 *	Unlink the child from the parent.
+	 */
+	if (!request_data_get(request, fake, 0)) {
+		return -1;
+	}
+
+	fake->parent = NULL;
+	fake->backlog = request->backlog;
+	return 0;
 }
 
 REQUEST *request_alloc_proxy(REQUEST *request)

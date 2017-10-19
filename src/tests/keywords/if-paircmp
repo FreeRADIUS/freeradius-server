@@ -3,7 +3,6 @@
 #
 update {
        control:Cleartext-Password := 'hello'
-       reply:Filter-Id := 'filter'
 }
 
 #
@@ -15,13 +14,11 @@ update {
 #  Passing 'no' causes the test paircmp to return a non-match
 #
 if (&Test-Paircmp != 'yes') {
-	update reply {
-		Filter-Id += 'fail 1'
-	}
+	test_fail
 }
 
 if (&Test-Paircmp == 'no') {
-	update reply {
-		Filter-Id += 'fail 2'
-	}
+	test_fail
 }
+
+success

@@ -44,7 +44,7 @@ extern "C" {
  */
 typedef struct fr_worker_t fr_worker_t;
 
-fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t const *logger, uint32_t flags) CC_HINT(nonnull(2,3));
+fr_worker_t *fr_worker_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t const *logger, fr_log_lvl_t lvl) CC_HINT(nonnull(2,3));
 void fr_worker_destroy(fr_worker_t *worker) CC_HINT(nonnull);
 int fr_worker_kq(fr_worker_t *worker) CC_HINT(nonnull);
 fr_event_list_t *fr_worker_el(fr_worker_t *worker) CC_HINT(nonnull);

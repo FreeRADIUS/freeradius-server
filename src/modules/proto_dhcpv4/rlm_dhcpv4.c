@@ -52,7 +52,8 @@ static ssize_t dhcp_options_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 			   	 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			   	 REQUEST *request, char const *fmt)
 {
-	vp_cursor_t	cursor, src_cursor;
+	vp_cursor_t	cursor;
+	fr_cursor_t	src_cursor;
 	vp_tmpl_t	*src;
 	VALUE_PAIR	*vp, *head = NULL;
 	int		decoded = 0;
@@ -83,7 +84,7 @@ static ssize_t dhcp_options_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 
 	for (vp = tmpl_cursor_init(NULL, &src_cursor, request, src);
 	     vp;
-	     vp = tmpl_cursor_next(&src_cursor, src)) {
+	     vp = fr_cursor_next(&src_cursor)) {
 		uint8_t const	*p = vp->vp_octets, *end = p + vp->vp_length;
 		ssize_t		len;
 		VALUE_PAIR	*vps = NULL;
@@ -166,8 +167,8 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
 	rlm_dhcpv4_t *inst = instance;
 	fr_dict_attr_t const *da;
 
-	xlat_register(inst, "dhcp_options", dhcp_options_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	xlat_register(inst, "dhcp", dhcp_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat_register(inst, "dhcp_options", dhcp_options_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register(inst, "dhcp", dhcp_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 
 	/*
 	 *	Fixup dictionary entry for DHCP-Paramter-Request-List adding all the options

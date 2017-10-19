@@ -3,4 +3,6 @@
 #
 #  This gives the game away.
 #
-update { control:Cleartext-Password := 'hello', reply:Filter-Id := "filter" }
+update { control:Cleartext-Password := 'hello', request:Reply-Message := "foo" }
+
+success

@@ -235,7 +235,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval con
 			DEBUG2("Opening UDP connection to %s:%u", buff, inst->udp.port);
 		}
 
-		sockfd = fr_socket_client_udp(NULL, &inst->udp.dst_ipaddr, inst->udp.port, true);
+		sockfd = fr_socket_client_udp(NULL, NULL, &inst->udp.dst_ipaddr, inst->udp.port, true);
 		if (sockfd < 0) {
 			PERROR("Failed opening UDP socket");
 			return NULL;
@@ -332,7 +332,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	case LINELOG_DST_FILE:
 	{
 		if (!inst->file.name) {
-			cf_log_err(conf, "No value provided for 'filename'");
+			cf_log_err(conf, "No value provided for 'file.filename'");
 			return -1;
 		}
 
@@ -568,14 +568,14 @@ build_vector:
 	case TMPL_TYPE_LIST:
 	{
 		#define VECTOR_INCREMENT 20
-		vp_cursor_t	cursor;
+		fr_cursor_t	cursor;
 		VALUE_PAIR	*vp;
 		int		alloced = VECTOR_INCREMENT, i;
 
 		MEM(vector = talloc_array(request, struct iovec, alloced));
 		for (vp = tmpl_cursor_init(NULL, &cursor, request, vpt_p), i = 0;
 		     vp;
-		     vp = tmpl_cursor_next(&cursor, vpt_p), i++) {
+		     vp = fr_cursor_next(&cursor), i++) {
 		     	/* need extra for line terminator */
 			if ((with_delim && ((i + 1) >= alloced)) ||
 			    (i >= alloced)) {
@@ -667,7 +667,7 @@ build_vector:
 			*p = '/';
 		}
 
-		fd = exfile_open(inst->file.ef, request, path, inst->file.permissions, true);
+		fd = exfile_open(inst->file.ef, request, path, inst->file.permissions);
 		if (fd < 0) {
 			RERROR("Failed to open %s: %s", path, fr_syserror(errno));
 			rcode = RLM_MODULE_FAIL;

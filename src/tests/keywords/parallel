@@ -1,0 +1,25 @@
+#
+#  PRE: update
+#
+parallel {
+	update parent.control {
+	       Tmp-Integer-0 += 1
+	}
+	update parent.control {
+	       Tmp-Integer-0 += 2
+	}
+	update parent.control {
+	       Tmp-Integer-0 += 3
+	}
+	update parent.control {
+	       Tmp-Integer-0 += 4
+	}
+}
+
+if ("%{control:Tmp-Integer-0[#]}" != 4) {
+	test_fail
+
+	return
+}
+
+success

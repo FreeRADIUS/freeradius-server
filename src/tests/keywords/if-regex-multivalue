@@ -3,7 +3,6 @@
 #
 update {
        control:Cleartext-Password := 'hello'
-       reply:Filter-Id := 'filter'
 }
 
 update request {
@@ -14,13 +13,11 @@ update request {
 
 if (&Cisco-AVPair[*] =~ /bar=(.*)/) {
 	if ("%{1}" != 'baz') {
-		update reply {
-			Filter-Id += 'Fail 1'
-		}
+		test_fail
 	}
 }
 else {
-	update reply {
-		Filter-Id += 'Fail 2'
-	}
+	test_fail
 }
+
+success

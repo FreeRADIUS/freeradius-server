@@ -9,7 +9,5 @@ update control {
 #  This delayed binding should result in a parse error
 #
 if (&User-Name == &Foo-Bar-Baz) { # ERROR
-	update reply {
-		Filter-Id += "fail-2"
-	}
+	test_fail
 }

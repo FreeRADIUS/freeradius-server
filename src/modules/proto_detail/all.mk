@@ -1,9 +1,1 @@
-TARGETNAME	:= proto_detail
-
-ifneq "$(TARGETNAME)" ""
-TARGET		:= $(TARGETNAME).a
-endif
-
-SOURCES		:= proto_detail.c
-
-TGT_PREREQS	:= libfreeradius-util.a libfreeradius-radius.a
+SUBMAKEFILES := proto_detail.mk proto_detail_file.mk proto_detail_work.mk proto_detail_process.mk

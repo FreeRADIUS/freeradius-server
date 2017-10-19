@@ -39,8 +39,8 @@ static int connectcmp(UNUSED void *instance,
 {
 	int rate;
 
-	VERIFY_VP(req);
-	VERIFY_VP(check);
+	VP_VERIFY(req);
+	VP_VERIFY(check);
 
 	rate = atoi(req->vp_strvalue);
 	return rate - check->vp_uint32;
@@ -72,8 +72,8 @@ static int presufcmp(UNUSED void *instance,
 		return -1;
 	}
 
-	VERIFY_VP(req);
-	VERIFY_VP(check);
+	VP_VERIFY(req);
+	VP_VERIFY(check);
 	rad_assert(req->vp_type == FR_TYPE_STRING);
 
 	name = req->vp_strvalue;
@@ -138,28 +138,9 @@ static int packetcmp(UNUSED void *instance,
 		     UNUSED VALUE_PAIR *check_pairs,
 		     UNUSED VALUE_PAIR **reply_pairs)
 {
-	VERIFY_VP(check);
+	VP_VERIFY(check);
 
 	if (request->packet->code == check->vp_uint32) {
-		return 0;
-	}
-
-	return 1;
-}
-
-/*
- *	Compare the response packet type.
- */
-static int responsecmp(UNUSED void *instance,
-		       REQUEST *request,
-		       UNUSED VALUE_PAIR *req,
-		       VALUE_PAIR *check,
-		       UNUSED VALUE_PAIR *check_pairs,
-		       UNUSED VALUE_PAIR **reply_pairs)
-{
-	VERIFY_VP(check);
-
-	if (request->reply->code == check->vp_uint32) {
 		return 0;
 	}
 
@@ -176,7 +157,7 @@ static int genericcmp(UNUSED void *instance,
 		      UNUSED VALUE_PAIR *check_pairs,
 		      UNUSED VALUE_PAIR **reply_pairs)
 {
-	VERIFY_VP(check);
+	VP_VERIFY(check);
 
 	if ((check->op != T_OP_REG_EQ) &&
 	    (check->op != T_OP_REG_NE)) {
@@ -252,7 +233,6 @@ void pair_builtincompare_add(void *instance)
 												FR_CONNECT_INFO),
 			     false, connectcmp, instance);
 	paircompare_register(fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE), NULL, true, packetcmp, instance);
-	paircompare_register(fr_dict_attr_by_num(NULL, 0, FR_RESPONSE_PACKET_TYPE), NULL, true, responsecmp, instance);
 
 	for (i = 0; generic_attrs[i] != 0; i++) {
 		paircompare_register(fr_dict_attr_by_num(NULL, 0, generic_attrs[i]), NULL, true, genericcmp, instance);

@@ -50,11 +50,7 @@ char *auth_name(char *buf, size_t buflen, REQUEST *request, bool do_cli)
 	}
 
 	if (request->packet->dst_port == 0) {
-		if (fr_pair_find_by_num(request->packet->vps, 0, FR_FREERADIUS_PROXIED_TO, TAG_ANY)) {
-			tls = " via TLS tunnel";
-		} else {
-			tls = " via proxy to virtual server";
-		}
+		tls = " via proxy to virtual server";
 	}
 
 	snprintf(buf, buflen, "from client %.128s port %u%s%.128s%s",
@@ -168,11 +164,11 @@ static int rad_authlog(char const *msg, REQUEST *request, int goodpass)
  */
 static int CC_HINT(nonnull) rad_check_password(REQUEST *request)
 {
-	vp_cursor_t cursor;
-	VALUE_PAIR *auth_type_pair;
-	int auth_type = -1;
-	int result;
-	int auth_type_count = 0;
+	vp_cursor_t	cursor;
+	VALUE_PAIR	*auth_type_pair;
+	int		auth_type = -1;
+	int		result;
+	int		auth_type_count = 0;
 
 	/*
 	 *	Look for matching check items. We skip the whole lot
@@ -542,7 +538,7 @@ authenticate:
 		}
 
 		if (request->password) {
-			VERIFY_VP(request->password);
+			VP_VERIFY(request->password);
 			/* double check: maybe the secret is wrong? */
 			if ((rad_debug_lvl > 1) && (request->password->da->attr == FR_USER_PASSWORD)) {
 				uint8_t const *p;
@@ -601,9 +597,9 @@ static rlm_rcode_t virtual_server_async(REQUEST *request, bool parent)
 					       sizeof(fr_async_t));
 	}
 
-	RDEBUG("server %s (async) {", cf_section_name2(request->server_cs));
+	RDEBUG("server %s {", cf_section_name2(request->server_cs));
 	final = request->async->process(request, FR_IO_ACTION_RUN);
-	RDEBUG("} # server %s (async) ", cf_section_name2(request->server_cs));
+	RDEBUG("} # server %s", cf_section_name2(request->server_cs));
 
 	rad_cond_assert(final == FR_IO_REPLY);
 

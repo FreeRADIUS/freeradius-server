@@ -120,6 +120,7 @@ size_t		fr_snprint(char *out, size_t outlen, char const *in, ssize_t inlen, char
 size_t		fr_snprint_len(char const *in, ssize_t inlen, char quote);
 char		*fr_asprint(TALLOC_CTX *ctx, char const *in, ssize_t inlen, char quote);
 char		*fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap);
+char		*fr_asprintf(TALLOC_CTX *ctx, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
 
 #define		is_truncated(_ret, _max) ((_ret) >= (size_t)(_max))
 #define		truncate_len(_ret, _max) (((_ret) >= (size_t)(_max)) ? (((size_t)(_max)) - 1) : _ret)
@@ -251,7 +252,7 @@ unsigned int	fr_fifo_num_elements(fr_fifo_t *fi);
 
 bool		fr_socket_is_valid_proto(int proto);
 int		fr_socket_client_unix(char const *path, bool async);
-int		fr_socket_client_udp(fr_ipaddr_t const *src_ipaddr, fr_ipaddr_t const *dst_ipaddr,
+int		fr_socket_client_udp(fr_ipaddr_t *src_ipaddr, uint16_t *src_port, fr_ipaddr_t const *dst_ipaddr,
 				     uint16_t dst_port, bool async);
 int		fr_socket_client_tcp(fr_ipaddr_t const *src_ipaddr, fr_ipaddr_t const *dst_ipaddr,
 				     uint16_t dst_port, bool async);

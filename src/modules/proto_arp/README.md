@@ -1,7 +1,7 @@
 # proto_arp
 ## Metadata
 <dl>
-  <dt>category</dt><dd>protocol</dd>
+  <dt>category</dt><dd>protocols</dd>
 </dl>
 
 ## Summary

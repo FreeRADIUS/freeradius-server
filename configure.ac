@@ -36,16 +36,20 @@ dnl #  Custom hackery to discover version at configure time
 dnl #
 dnl #############################################################
 
-RADIUSD_MAJOR_VERSION=`cat VERSION | cut -f1 -d.`
-RADIUSD_MINOR_VERSION=`cat VERSION | cut -f2 -d.`
-RADIUSD_INCRM_VERSION=`cat VERSION | cut -f3 -d. | sed 's/[[\.-]].*$//'`
+RADIUSD_VERSION_MAJOR=`cat VERSION | cut -f1 -d.`
+RADIUSD_VERSION_MINOR=`cat VERSION | cut -f2 -d.`
+RADIUSD_VERSION_INCRM=`cat VERSION | cut -f3 -d. | sed 's/[[\.-]].*$//'`
 
-RADIUSD_VERSION=`printf "%02i%02i%02i" $RADIUSD_MAJOR_VERSION $RADIUSD_MINOR_VERSION $RADIUSD_INCRM_VERSION`
+AC_MSG_CHECKING([build version])
+RADIUSD_VERSION=`printf "%02i%02i%02i" $RADIUSD_VERSION_MAJOR $RADIUSD_VERSION_MINOR $RADIUSD_VERSION_INCRM`
+AC_MSG_RESULT($RADIUSD_VERSION)
 
 dnl #
 dnl #  Still useful for custom builds
 dnl #
+AC_MSG_CHECKING([build version string])
 RADIUSD_VERSION_STRING=`cat VERSION`
+AC_MSG_RESULT($RADIUSD_VERSION_STRING)
 
 dnl #
 dnl #  Add definitions to Make.inc as it's used by various build targets
@@ -91,10 +95,31 @@ dnl #
 dnl #  Turn on the developer flag when taken from a git checkout (not a release)
 dnl #
 if test "x$GIT" = "xyes" && git status 2>&1 > /dev/null; then
+  if test "x$RADIUSD_VERSION_RELEASE" = "x"; then
+    AC_MSG_CHECKING([build release])
+    RADIUSD_VERSION_RELEASE=`git describe | sed -e 's/^.*-\([[0-9]]*\)-g[[0-9a-f]]*/\1/'`
+    AC_MSG_RESULT($RADIUSD_VERSION_RELEASE)
+  fi 
+  
+  if test "x$RADIUSD_VERSION_COMMIT" = "x"; then
+    AC_MSG_CHECKING([build commit])
+    RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1`
+    AC_MSG_RESULT($RADIUSD_VERSION_COMMIT)
+  fi
+
   if test "x$developer" != "xno"; then
     AC_MSG_NOTICE([in git repository, enabling developer build implicitly, disable with --disable-developer])
     developer="yes"
   fi
+
+fi
+
+if test "x$RADIUSD_VERSION_RELEASE" != "x"; then
+  AC_DEFINE_UNQUOTED([RADIUSD_VERSION_RELEASE],[${RADIUSD_VERSION_RELEASE}],[Version release number at time of configuring])
+fi
+
+if test "x$RADIUSD_VERSION_COMMIT" != "x"; then
+  AC_DEFINE_UNQUOTED([RADIUSD_VERSION_COMMIT],[${RADIUSD_VERSION_COMMIT}],[Commit HEAD at time of configuring])
 fi
 
 dnl #
@@ -156,6 +181,17 @@ dnl #  Set Default CFLAGS for GCC compatible compilers
 dnl #
 if test "x$GCC" = "xyes"; then
   CFLAGS="$CFLAGS -Wall -D_GNU_SOURCE"
+fi
+
+dnl #
+dnl # -Wno-unknown-warning-option means the compiler doesn't complain about diag pragmas
+dnl # for warnings it doesn't understand.  This may sound like a bad idea, but consider
+dnl # the number of different compiler versions we build under, and the fact that the
+dnl # more anally retentive warnings are likely to be added in later versions.
+dnl #
+AX_CC_NO_UNKNOWN_WARNING_OPTION_FLAG
+if test "x$ax_cv_cc_no_unknown_warning_option_flag" = "xyes"; then
+  CFLAGS="$CFLAGS -Wno-unknown-warning-option"
 fi
 
 dnl #
@@ -235,6 +271,22 @@ AC_ARG_ENABLE(werror,
     ;;
     *)
       werror=yes
+  esac ]
+)
+
+dnl #
+dnl #  Enable the -fsanitize=address and link in the address sanitizer
+dnl #  libraries.
+dnl #
+AC_ARG_ENABLE(llvm-address-sanitizer,
+[AS_HELP_STRING([--enable-llvm-address-sanitizer],
+                [build with support for LLVM's address sanitizer (if building with clang).])],
+[ case "$enableval" in
+  no)
+    llvm_address_sanitizer=no
+    ;;
+  *)
+    llvm_address_sanitizer=yes
   esac ]
 )
 
@@ -595,7 +647,7 @@ if test "x$HAVE_THREADS" != "xno"; then
       dnl #  only support it on certain platforms.
       dnl #
       AX_CC_PTHREAD_FLAG
-      if test "x$ax_cv_cc_pthread_flag" == 'xyes'; then
+      if test "x$ax_cv_cc_pthread_flag" = 'xyes'; then
         CFLAGS="$CFLAGS -pthread"
       fi
     ]
@@ -1073,6 +1125,7 @@ if test "x$WITH_OPENSSL" = xyes; then
     AC_CHECK_FUNCS( \
       SSL_get_client_random \
       SSL_get_server_random \
+      EVP_sha3_512 \
     )
 
     CPPFLAGS="$old_CPPFLAGS"
@@ -1096,7 +1149,7 @@ else
   dnl #
   smart_try_dir="$pcap_include_dir"
   FR_SMART_CHECK_INCLUDE([pcap.h])
-  if test "x$ac_cv_header_pcap_h" == "xyes"; then
+  if test "x$ac_cv_header_pcap_h" = "xyes"; then
     AC_DEFINE(HAVE_PCAP_H, 1, [Define to 1 if you have the <pcap.h> header file.])
     AC_SUBST(PCAP_LIBS)
     AC_SUBST(PCAP_LDFLAGS)
@@ -1116,7 +1169,7 @@ else
   dnl #
   smart_try_dir="$collectdclient_include_dir"
   FR_SMART_CHECK_INCLUDE([collectd/client.h])
-  if test "x$ac_cv_header_collectd_client_h" == "xyes"; then
+  if test "x$ac_cv_header_collectd_client_h" = "xyes"; then
     AC_DEFINE(HAVE_COLLECTDC_H, 1, [Define to 1 if you have the `collectdclient' library (-lcollectdclient).])
     AC_SUBST(COLLECTDC_LIBS)
     AC_SUBST(COLLECTDC_LDFLAGS)
@@ -1136,7 +1189,7 @@ else
   dnl #
   smart_try_dir="$cap_include_dir"
   FR_SMART_CHECK_INCLUDE([sys/capability.h])
-  if test "x$ac_cv_header_sys_capability_h" == "xyes"; then
+  if test "x$ac_cv_header_sys_capability_h" = "xyes"; then
     AC_DEFINE(HAVE_CAPABILITY_H, 1, [Define to 1 if you have the <sys/capability.h> header file.])
   else
     AC_MSG_WARN([cap headers not found, will not perform debugger checks. Use --with-cap-include-dir=<path>.])
@@ -1151,7 +1204,7 @@ if test "x$WITH_GPERFTOOLS" != xyes || test "x$GPERFTOOLS_LIBS" = x; then
 else
   smart_try_dir="$gperftools_include_dir"
   FR_SMART_CHECK_INCLUDE([gperftools/profiler.h])
-  if test "x$ac_cv_header_gperftools_profiler_h" == "xyes"; then
+  if test "x$ac_cv_header_gperftools_profiler_h" = "xyes"; then
     AC_DEFINE(HAVE_GPERFTOOLS_PROFILER_H, 1, [Define to 1 if you have the <gperftools/profiler.h> header file.])
     AC_SUBST(GPERFTOOLS_LIBS)
     AC_SUBST(GPERFTOOLS_LDFLAGS)
@@ -1168,7 +1221,7 @@ if test "x$WITH_SYSTEMD" != xyes || test "x$SYSTEMD_LIBS" = x; then
 else
   smart_try_dir="$systemd_include_dir"
   FR_SMART_CHECK_INCLUDE([systemd/sd-daemon.h])
-  if test "x$ac_cv_header_systemd_sdmdaemon_h" == "xyes"; then
+  if test "x$ac_cv_header_systemd_sdmdaemon_h" = "xyes"; then
     AC_DEFINE(HAVE_SYSTEMD_SD_DAEMON_H, 1, [Define to 1 if you have the <systemd/sd-daemon.h> header file.])
     AC_SUBST(SYSTEMD_LIBS)
     AC_SUBST(SYSTEMD_LDFLAGS)
@@ -1418,7 +1471,7 @@ AC_TYPE_SIGNAL
 dnl #
 dnl #  Check if we have utmpx.h
 dnl #  if so, check if struct utmpx has entry ut_xtime
-dnl #  if not, set it to define ut_xtime == ut_tv.tv_sec
+dnl #  if not, set it to define ut_xtime = ut_tv.tv_sec
 dnl #
 if test "x$ac_cv_header_utmpx_h" = "xyes"; then
  FR_CHECK_STRUCT_HAS_MEMBER([#include <utmpx.h>], [struct utmpx], ut_xtime)
@@ -1518,7 +1571,7 @@ if test "x$developer" = "xyes"; then
   dnl #
   AX_CC_WDOCUMENTATION_FLAG
   if test "x$ax_cv_cc_wdocumentation_flag" = "xyes"; then
-    devflags="-Wdocumentation"
+    devcflags="-Wdocumentation"
   fi
 
   dnl #
@@ -1527,17 +1580,34 @@ if test "x$developer" = "xyes"; then
   dnl #
   AX_CC_WEVERYTHING_FLAG
   if test "x$ax_cv_cc_weverything_flag" = "xyes"; then
-    devflags="$devflags -W -Weverything -Wformat=2 -Wno-disabled-macro-expansion -Wno-missing-field-initializers -Wno-date-time -Wno-padded -Wno-gnu-zero-variadic-macro-arguments -Wno-shorten-64-to-32 -Wno-sign-conversion -Wno-conversion -Wno-switch-enum -Wno-gnu-statement-expression -Wno-extended-offsetof -Wno-cast-align -Wno-documentation-unknown-command -Wno-covered-switch-default -Wno-packed -DWITH_VERIFY_PTR=1"
+    devcflags="$devflags -W -Weverything -Wformat=2 -Wno-disabled-macro-expansion -Wno-missing-field-initializers -Wno-date-time -Wno-padded -Wno-gnu-zero-variadic-macro-arguments -Wno-shorten-64-to-32 -Wno-sign-conversion -Wno-conversion -Wno-switch-enum -Wno-gnu-statement-expression -Wno-extended-offsetof -Wno-cast-align -Wno-documentation-unknown-command -Wno-covered-switch-default -Wno-packed -DWITH_VERIFY_PTR=1"
   else
     if test "x$GCC" = "xyes"; then
-      devflags="$devflags -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef -Wformat-y2k -Wno-missing-field-initializers -Wno-format-extra-args -Wno-format-zero-length -Wno-cast-align -Wformat-nonliteral -Wformat-security -Wformat=2 -DWITH_VERIFY_PTR=1"
+      devcflags="$devflags -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef -Wformat-y2k -Wno-missing-field-initializers -Wno-format-extra-args -Wno-format-zero-length -Wno-cast-align -Wformat-nonliteral -Wformat-security -Wformat=2 -DWITH_VERIFY_PTR=1"
       INSTALLSTRIP=""
     fi
   fi
 
-  AC_MSG_NOTICE([Developer CFLAGS are "$devflags"])
+  dnl #
+  dnl #  If running with clang, add in ASAN
+  dnl #
+  if test "x$llvm_address_sanitizer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
+    devcflags="$devcflags -fsanitize=address -fno-omit-frame-pointer"
 
-  CFLAGS="$CFLAGS $devflags"
+    AX_CC_SANITZE_ADDRESS_USE_AFTER_SCOPE_FLAG
+    if test "x$ax_cv_cc_sanitize_address_use_after_scope" = "xyes"; then
+      devcflags="$devcflags -fsanitize-address-use-after-scope"
+    fi
+
+    devldflags="$devldflags -fsanitize=address"
+  fi
+
+  AC_MSG_NOTICE([Developer CFLAGS are "$devcflags"])
+  AC_MSG_NOTICE([Developer LDFLAGS are "$devldflags"])
+
+  CFLAGS="$CFLAGS $devcflags"
+  LDFLAGS="$LDFLAGS $devldflags"
+
   dnl #
   dnl #  Enable experimental modules (we want to know if code changes breaks one of them)
   dnl #
@@ -1546,7 +1616,8 @@ if test "x$developer" = "xyes"; then
     EXPERIMENTAL=yes
   fi
 else
-  devflags=""
+  devcflags=""
+  devldflags=""
   CFLAGS="$CFLAGS -DNDEBUG"
   INSTALLSTRIP=""
 fi
@@ -1564,14 +1635,6 @@ else
 fi
 
 export EXPERIMENTAL
-
-dnl #
-dnl #  append the current git hash onto the version string
-dnl #
-if test "x$GIT" = "xyes" && git status 2>&1 > /dev/null; then
-  RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1`
-  AC_DEFINE_UNQUOTED([RADIUSD_VERSION_COMMIT],[${RADIUSD_VERSION_COMMIT}],[Commit HEAD at time of configuring])
-fi
 
 dnl #
 dnl #  check for some compiler features
@@ -2115,7 +2178,7 @@ dnl #  Add -Werror last, so it doesn't interfere with autoconf's
 dnl #  test programs.
 dnl #
 dnl #############################################################
-if test "x$werror" == "xyes"; then
+if test "x$werror" = "xyes"; then
   CFLAGS="-Werror $CFLAGS"
 fi
 

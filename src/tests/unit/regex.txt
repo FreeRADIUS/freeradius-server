@@ -1,0 +1,40 @@
+condition (ok =~ handled)
+data ERROR offset 7 Expected regular expression
+
+condition (ok == /foo/)
+data ERROR offset 7 Unexpected regular expression
+
+condition /foo/ =~ bar
+data ERROR offset 0 Conditional check cannot begin with a regular expression
+
+#
+#  Convert !~ to !(COND) for regex
+#
+condition foo =~ /bar/
+data foo =~ /bar/
+
+condition foo !~ /bar/
+data !foo =~ /bar/
+
+condition !foo !~ /bar/
+data foo =~ /bar/
+
+#
+#  Escape the backslashes correctly
+#  And print them correctly
+#
+condition &User-Name !~ /^foo\nbar$/
+data !&User-Name =~ /^foo\nbar$/
+
+condition &User-Name =~ /@|\\/
+data &User-Name =~ /@|\\/
+
+condition User-Name =~ /^([^\\]*)\\(.*)$/
+data &User-Name =~ /^([^\\]*)\\(.*)$/
+
+xlat %{1}
+data %{1}
+
+xlat %{33}
+data ERROR offset 2 'Invalid regex reference.  Must be in range 0-32'
+

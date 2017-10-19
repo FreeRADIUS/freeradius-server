@@ -548,7 +548,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
 static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, void *arg)
 {
 	rlm_sql_handle_t	*handle = arg;
-	rlm_sql_t const		*inst = talloc_get_type_abort(handle->inst, rlm_sql_t);
+	rlm_sql_t const		*inst = talloc_get_type_abort_const(handle->inst, rlm_sql_t);
 	size_t			len = 0;
 
 	while (in[0]) {
@@ -790,7 +790,7 @@ static int sql_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req
 			UNUSED VALUE_PAIR **reply_pairs)
 {
 	rlm_sql_handle_t	*handle;
-	rlm_sql_t const		*inst = talloc_get_type_abort(instance, rlm_sql_t);
+	rlm_sql_t const		*inst = talloc_get_type_abort_const(instance, rlm_sql_t);
 	rlm_sql_grouplist_t	*head, *entry;
 
 	/*
@@ -910,8 +910,8 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 		fr_pair_value_strcpy(sql_group, entry->name);
 
 		if (inst->config->authorize_group_check_query) {
-			vp_cursor_t cursor;
-			VALUE_PAIR *vp;
+			fr_cursor_t	cursor;
+			VALUE_PAIR	*vp;
 
 			/*
 			 *	Expand the group query
@@ -950,15 +950,17 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 
 			RDEBUG2("Group \"%s\": Merging assignment check items", entry->name);
 			RINDENT();
-			for (vp = fr_pair_cursor_init(&cursor, &check_tmp);
+			for (vp = fr_cursor_init(&cursor, &check_tmp);
 			     vp;
-			     vp = fr_pair_cursor_next(&cursor)) {
+			     vp = fr_cursor_next(&cursor)) {
 			 	if (!fr_assignment_op[vp->op]) continue;
 
+				rcode = RLM_MODULE_UPDATED;
 			 	rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 			}
 			REXDENT();
 			radius_pairmove(request, &request->control, check_tmp, true);
+
 			check_tmp = NULL;
 		}
 
@@ -990,7 +992,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 			*do_fall_through = fall_through(reply_tmp);
 
 			RDEBUG2("Group \"%s\": Merging reply items", entry->name);
-			rcode = RLM_MODULE_OK;
+			if (rcode == RLM_MODULE_NOOP) rcode = RLM_MODULE_UPDATED;
 
 			rdebug_pair_list(L_DBG_LVL_2, request, reply_tmp, NULL);
 
@@ -1135,7 +1137,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Register the SQL xlat function
 	 */
-	xlat_register(inst, inst->name, sql_xlat, sql_escape_for_xlat_func, NULL, 0, 0);
+	xlat_register(inst, inst->name, sql_xlat, sql_escape_for_xlat_func, NULL, 0, 0, false);
 
 	/*
 	 *	Register the SQL map processor function
@@ -1295,8 +1297,8 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 	 *	Query the check table to find any conditions associated with this user/realm/whatever...
 	 */
 	if (inst->config->authorize_check_query) {
-		vp_cursor_t cursor;
-		VALUE_PAIR *vp;
+		fr_cursor_t	cursor;
+		VALUE_PAIR	*vp;
 
 		if (xlat_aeval(request, &expanded, request, inst->config->authorize_check_query,
 				 inst->sql_escape_func, handle) < 0) {
@@ -1328,9 +1330,9 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 
 		RDEBUG2("Conditional check items matched, merging assignment check items");
 		RINDENT();
-		for (vp = fr_pair_cursor_init(&cursor, &check_tmp);
+		for (vp = fr_cursor_init(&cursor, &check_tmp);
 		     vp;
-		     vp = fr_pair_cursor_next(&cursor)) {
+		     vp = fr_cursor_next(&cursor)) {
 			if (!fr_assignment_op[vp->op]) continue;
 
 			rdebug_pair(2, request, vp, NULL);
@@ -1397,9 +1399,8 @@ skipreply:
 			rcode = RLM_MODULE_UPDATED;
 			/* FALL-THROUGH */
 		case RLM_MODULE_OK:
-			if (rcode != RLM_MODULE_UPDATED) {
-				rcode = RLM_MODULE_OK;
-			}
+			if (rcode != RLM_MODULE_UPDATED) rcode = RLM_MODULE_OK;
+
 			/* FALL-THROUGH */
 		case RLM_MODULE_NOOP:
 			user_found = true;
@@ -1452,9 +1453,8 @@ skipreply:
 			rcode = RLM_MODULE_UPDATED;
 			/* FALL-THROUGH */
 		case RLM_MODULE_OK:
-			if (rcode != RLM_MODULE_UPDATED) {
-				rcode = RLM_MODULE_OK;
-			}
+			if (rcode != RLM_MODULE_UPDATED) rcode = RLM_MODULE_OK;
+
 			/* FALL-THROUGH */
 		case RLM_MODULE_NOOP:
 			user_found = true;
@@ -1690,7 +1690,7 @@ static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *
 static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
 static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_sql_t const *inst = talloc_get_type_abort(instance, rlm_sql_t);
+	rlm_sql_t const *inst = talloc_get_type_abort_const(instance, rlm_sql_t);
 
 	if (inst->config->postauth.reference_cp) {
 		return acct_redundant(inst, request, &inst->config->postauth);

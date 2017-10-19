@@ -207,7 +207,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, vp_c
 	for (;;) {
 		unsigned int num = 0;
 
-		slen = fr_dict_attr_by_oid(conf->dict, &parent, NULL, &attr, p);
+		slen = fr_dict_attr_by_oid(conf->dict, &parent, &attr, p);
 		if (slen > 0) break;
 		p += -(slen);
 
@@ -769,7 +769,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			if (fr_log_fp) fr_packet_header_print(fr_log_fp, request, false);
 			if (fr_debug_lvl > 0) fr_pair_list_fprint(fr_log_fp, request->vps);
 #ifndef NDEBUG
-			if (fr_log_fp && (fr_debug_lvl > 3)) fr_radius_print_hex(request);
+			if (fr_log_fp && (fr_debug_lvl > 3)) fr_radius_packet_print_hex(request);
 #endif
 
 			FD_ZERO(&set); /* clear the set */
@@ -830,7 +830,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			if (fr_log_fp) fr_packet_header_print(fr_log_fp, reply, true);
 			if (fr_debug_lvl > 0) fr_pair_list_fprint(fr_log_fp, reply->vps);
 #ifndef NDEBUG
-			if (fr_log_fp && (fr_debug_lvl > 3)) fr_radius_print_hex(reply);
+			if (fr_log_fp && (fr_debug_lvl > 3)) fr_radius_packet_print_hex(reply);
 #endif
 
 			switch (command) {
@@ -1133,7 +1133,7 @@ int main(int argc, char **argv)
 
 	default:
 	case IPPROTO_UDP:
-		sockfd = fr_socket_client_udp(NULL, &conf->server_ipaddr, conf->server_port, true);
+		sockfd = fr_socket_client_udp(NULL, NULL, &conf->server_ipaddr, conf->server_port, true);
 		break;
 	}
 	if (sockfd < 0) {

@@ -372,7 +372,7 @@ static int cond_normalise_and_cmp(REQUEST *request, fr_cond_t const *c, fr_value
 	fr_value_box_t		*rhs = NULL;
 
 	fr_dict_attr_t const	*cast = NULL;
-	fr_type_t			cast_type = FR_TYPE_INVALID;
+	fr_type_t		cast_type = FR_TYPE_INVALID;
 
 	fr_value_box_t		lhs_cast, rhs_cast;
 	void			*lhs_cast_buff = NULL, *rhs_cast_buff = NULL;
@@ -474,11 +474,11 @@ do {\
 	case TMPL_TYPE_ATTR:
 	{
 		VALUE_PAIR *vp;
-		vp_cursor_t cursor;
+		fr_cursor_t cursor;
 
 		for (vp = tmpl_cursor_init(&rcode, &cursor, request, map->rhs);
 		     vp;
-	     	     vp = tmpl_cursor_next(&cursor, map->rhs)) {
+	     	     vp = fr_cursor_next(&cursor)) {
 			rhs = &vp->data;
 
 			CHECK_INT_CAST(lhs, rhs);
@@ -596,7 +596,7 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 		   fr_int2str(tmpl_names, map->lhs->type, "???"),
 		   fr_int2str(tmpl_names, map->rhs->type, "???"));
 
-	VERIFY_MAP(map);
+	MAP_VERIFY(map);
 
 	switch (map->lhs->type) {
 	/*
@@ -606,7 +606,7 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 	case TMPL_TYPE_ATTR:
 	{
 		VALUE_PAIR *vp;
-		vp_cursor_t cursor;
+		fr_cursor_t cursor;
 		/*
 		 *	Legacy paircompare call, skip processing the magic attribute
 		 *	if it's the LHS and cast RHS to the same type.
@@ -620,7 +620,7 @@ int cond_eval_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_c
 		}
 		for (vp = tmpl_cursor_init(&rcode, &cursor, request, map->lhs);
 		     vp;
-	     	     vp = tmpl_cursor_next(&cursor, map->lhs)) {
+	     	     vp = fr_cursor_next(&cursor)) {
 			/*
 			 *	Evaluate all LHS values, condition evaluates to true
 			 *	if we get at least one set of operands that
@@ -770,15 +770,15 @@ int cond_eval(REQUEST *request, int modreturn, int depth, fr_cond_t const *c)
  */
 void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool do_xlat)
 {
-	int i, j, count, from_count, to_count, tailto;
-	vp_cursor_t cursor;
-	VALUE_PAIR *vp, *next, **last;
-	VALUE_PAIR **from_list, **to_list;
-	VALUE_PAIR *append, **append_tail;
-	VALUE_PAIR *to_copy;
-	bool *edited = NULL;
-	REQUEST *fixup = NULL;
-	TALLOC_CTX *ctx;
+	int		i, j, count, from_count, to_count, tailto;
+	fr_cursor_t	cursor;
+	VALUE_PAIR	*vp, *next, **last;
+	VALUE_PAIR	**from_list, **to_list;
+	VALUE_PAIR	*append, **append_tail;
+	VALUE_PAIR 	*to_copy;
+	bool		*edited = NULL;
+	REQUEST		*fixup = NULL;
+	TALLOC_CTX	*ctx;
 
 	/*
 	 *	Set up arrays for editing, to remove some of the
@@ -802,10 +802,10 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 	 *	the matching attributes are deleted.
 	 */
 	count = 0;
-	for (vp = fr_pair_cursor_init(&cursor, &from); vp; vp = fr_pair_cursor_next(&cursor)) count++;
+	for (vp = fr_cursor_init(&cursor, &from); vp; vp = fr_cursor_next(&cursor)) count++;
 	from_list = talloc_array(request, VALUE_PAIR *, count);
 
-	for (vp = fr_pair_cursor_init(&cursor, to); vp; vp = fr_pair_cursor_next(&cursor)) count++;
+	for (vp = fr_cursor_init(&cursor, to); vp; vp = fr_cursor_next(&cursor)) count++;
 	to_list = talloc_array(request, VALUE_PAIR *, count);
 
 	append = NULL;

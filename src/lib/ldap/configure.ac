@@ -71,10 +71,16 @@ if test x$with_[]modname != xno; then
 	dnl #  or packagers that only ship libldap in their OpenLDAP
 	dnl #  client packages, we're forced to switch to just libldap.
 	dnl #
+	
+	dnl #
+	dnl #  FreeRADIUS 4.0 also has a requirement that libldap
+	dnl #  exports OpenLDAP specific functions to managing async
+	dnl #  I/O.
+	dnl # 
 	smart_try_dir=$libfreeradius_ldap_lib_dir
-	FR_SMART_CHECK_LIB(ldap, ldap_init)
-	if test "x$ac_cv_lib_ldap_ldap_init" != "xyes"; then
-		fail="$fail libldap"
+	FR_SMART_CHECK_LIB(ldap, ldap_install_tls)
+	if test "x$ac_cv_lib_ldap_ldap_install_tls" != "xyes"; then
+		fail="$fail libldap (with async support)"
 	fi
 
 	FR_SMART_CHECK_LIB(lber, ber_get_next)
@@ -129,7 +135,7 @@ if test x$with_[]modname != xno; then
 	if test "x$ac_cv_header_sasl_sasl_h" = "xyes"; then
 	  if test x"$ac_cv_func_ldap_sasl_interactive_bind" = "xyes"; then
 	    AC_DEFINE(WITH_SASL, 1, [Build the server with support for SASL binds])
-	    SASL=sasl.c
+	    SASL="sasl_s.c sasl.c"
 	  fi
 	fi
 

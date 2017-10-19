@@ -228,7 +228,7 @@ void fr_time_tracking_resume(fr_time_tracking_t *tt, fr_time_t when)
 	tt->when = when;
 	tt->resumed = when;
 
-	rad_assert(tt->resumed <= tt->yielded);
+	rad_assert(tt->resumed >= tt->yielded);
 
 	tt->waiting += (tt->resumed - tt->yielded);
 

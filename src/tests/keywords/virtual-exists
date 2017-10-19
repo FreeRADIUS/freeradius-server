@@ -6,7 +6,5 @@ update control {
 }
 
 if (&Client-Shortname) {
-	update reply {
-		Filter-Id := "filter"
-	}
+	success
 }

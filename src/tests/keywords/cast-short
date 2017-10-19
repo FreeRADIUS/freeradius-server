@@ -7,9 +7,7 @@ update {
 }
 
 if (<short>Class == 257) {
-	update reply {
-		Filter-Id := "filter"
-	}
+	success
 }
 
 if (<short>Class < 256) {

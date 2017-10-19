@@ -47,7 +47,7 @@ typedef void (*fr_app_process_set_t)(void const *instance, REQUEST *request);
 
 /** Called by the network thread to pass an event list for the module to use for timer events
  */
-typedef void (*fr_app_event_list_set_t)(void const *instance, fr_event_list_t *el);
+typedef void (*fr_app_event_list_set_t)(void *instance, fr_event_list_t *el);
 
 /** Describes a new application (protocol)
  *
@@ -96,18 +96,21 @@ typedef struct fr_app_io_t {
 	fr_app_event_list_set_t		event_list_set;	//!< Called by the network thread to pass an event list
 							//!< for use by the app_io_t.
 
-	size_t				default_message_size;	// Usually minimum message size
+	size_t				default_message_size;	//!< Usually maximum message size
+	size_t				default_reply_size;	//!< same for replies
+	bool				track_duplicates;	//!< track duplicate packets
 
 	fr_io_open_t			open;		//!< Open a new socket for listening, or accept/connect a new
 							//!< connection.
 	fr_io_get_fd_t			fd;		//!< Return the file descriptor from the instance.
 	fr_io_data_read_t		read;		//!< Read from a socket to a data buffer
 	fr_io_data_write_t		write;		//!< Write from a data buffer to a socket
+	fr_io_data_vnode_t		vnode;		//!< Handle notifications that the VNODE has changed
 	fr_io_decode_t			decode;		//!< Translate raw bytes into VALUE_PAIRs and metadata.
 	fr_io_encode_t			encode;		//!< Pack VALUE_PAIRs back into a byte array.
 	fr_io_signal_t			flush;		//!< Flush the data when the socket is ready for writing.
 	fr_io_signal_t			error;		//!< There was an error on the socket.
-	fr_io_signal_t			close;		//!< Close the transport.
+	fr_io_open_t			close;		//!< Close the transport.
 	fr_io_nak_t			nak;		//!< Function to send a NAK.
 } fr_app_io_t;
 #endif

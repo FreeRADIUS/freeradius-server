@@ -216,6 +216,7 @@ typedef struct fr_redis_cluster_node {
 	fr_redis_cluster_t	*cluster;		//!< Commmon configuration (database number,
 							//!< password, etc..).
 	fr_pool_t		*pool;			//!< Pool associated with this node.
+	CONF_SECTION		*pool_cs;		//!< Pool configuration section associated with node.
 
 	bool			is_active;		//!< Whether this node is in the active node set.
 	bool			is_master;		//!< Whether this node is a master.
@@ -305,18 +306,13 @@ static uint16_t cluster_key_hash(uint8_t const *key, size_t key_len)
  */
 static int _cluster_node_cmp(void const *a, void const *b)
 {
+	cluster_node_t const *my_a = a, *my_b = b;
 	int ret;
-
-	cluster_node_t const *my_a = a;
-	cluster_node_t const *my_b = b;
 
 	ret = fr_ipaddr_cmp(&my_a->addr.ipaddr, &my_b->addr.ipaddr);
 	if (ret != 0) return ret;
 
-	if (my_a->addr.port < my_b->addr.port) return -1;
-	if (my_a->addr.port > my_b->addr.port) return +1;
-
-	return 0;
+	return my_a->addr.port - my_b->addr.port;
 }
 
 /** Reconnect callback to apply new pool config
@@ -378,21 +374,29 @@ static cluster_rcode_t cluster_node_connect(fr_redis_cluster_t *cluster, cluster
 		char		buffer[256];
 		VALUE_PAIR	*args;
 		vp_cursor_t	cursor;
+		CONF_SECTION	*pool;
 
 		snprintf(buffer, sizeof(buffer), "%s [%i]", cluster->log_prefix, node->id);
 
+		pool = cf_section_find(cluster->module, "pool", NULL);
+		/*
+		 *	Dup so we can re-parse, and have unique CONF_DATA
+		 */
+		node->pool_cs = cf_section_dup(cluster, NULL, pool, "pool", NULL, true);
 		node->addr = node->pending_addr;
-		node->pool = fr_pool_init(cluster, cf_section_find(cluster->module, "pool", NULL), node,
-						     fr_redis_cluster_conn_create, NULL, buffer);
-		if (!node->pool) return CLUSTER_OP_FAILED;
+		node->pool = fr_pool_init(cluster, node->pool_cs, node,
+					  fr_redis_cluster_conn_create, NULL, buffer);
+		if (!node->pool) {
+		error:
+			TALLOC_FREE(node->pool_cs);
+			TALLOC_FREE(node->pool);
+			return CLUSTER_OP_FAILED;
+		}
 		fr_pool_reconnect_func(node->pool, _cluster_node_conf_apply);
 
 		if (cluster->triggers_enabled) {
 			args = trigger_args_afrom_server(node->pool, node->name, node->addr.port);
-			if (!args) {
-				TALLOC_FREE(node->pool);
-				return CLUSTER_OP_FAILED;
-			}
+			if (!args) goto error;
 
 			if (cluster->trigger_args) {
 				fr_pair_cursor_init(&cursor, &args);
@@ -410,7 +414,7 @@ static cluster_rcode_t cluster_node_connect(fr_redis_cluster_t *cluster, cluster
 	/*
 	 *	Apply the new config to the possibly live pool
 	 */
-	if (fr_pool_reconnect(node->pool, NULL) < 0) return CLUSTER_OP_FAILED;
+	if (fr_pool_reconnect(node->pool, NULL) < 0) goto error;
 
 	return CLUSTER_OP_SUCCESS;
 }
@@ -776,9 +780,21 @@ static int cluster_map_node_validate(redisReply *node, int map_idx, int node_idx
 		return CLUSTER_OP_BAD_INPUT;
 	}
 
-	if (node->elements != 2) {
-		fr_strerror_printf("Cluster map %i node %i has incorrect number of elements, expected 2 got %zu",
-				   map_idx, node_idx, node->elements);
+	/*
+	 *  As per the redis docs: https://redis.io/commands/cluster-slots
+	 *
+	 *  Newer versions of Redis Cluster will output, for each Redis instance,
+	 *  not just the IP and port, but also the node ID as third element of the 
+	 *  array. In future versions there could be more elements describing the 
+	 *  node better. In general a client implementation should just rely on 
+	 *  the fact that certain parameters are at fixed positions as specified,
+	 *  but more parameters may follow and should be ignored.
+	 *  Similarly a client library should try if possible to cope with the fact 
+	 *  that older versions may just have the IP and port parameter.
+	 */
+	if (node->elements < 2) {
+		fr_strerror_printf("Cluster map %i node %i has incorrect number of elements, expected at least "
+				   "2 got %zu", map_idx, node_idx, node->elements);
 		return CLUSTER_OP_BAD_INPUT;
 	}
 

@@ -40,12 +40,12 @@ static size_t xlat_process(TALLOC_CTX *ctx, char **out, REQUEST *request, xlat_e
 static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 			bool escape, bool return_null)
 {
-	VALUE_PAIR *vp = NULL, *virtual = NULL;
-	RADIUS_PACKET *packet = NULL;
-	fr_dict_enum_t *dv;
-	char *ret = NULL;
+	VALUE_PAIR		*vp = NULL, *virtual = NULL;
+	RADIUS_PACKET		*packet = NULL;
+	fr_dict_enum_t		*dv;
+	char			*ret = NULL;
 
-	vp_cursor_t cursor;
+	fr_cursor_t		cursor;
 	char quote = escape ? '"' : '\0';
 
 	rad_assert((vpt->type == TMPL_TYPE_ATTR) || (vpt->type == TMPL_TYPE_LIST));
@@ -127,6 +127,15 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 	default:
 		break;
 
+	case FR_RESPONSE_PACKET_TYPE:
+		if (packet != request->reply) {
+			RWARN("%%{Response-Packet-Type} is ONLY for responses!");
+		}
+		packet = request->reply;
+
+		RWARN("Please replace %%{Response-Packet-Type} with %%{reply:Packet-Type}");
+		/* FALL-THROUGH */
+
 	case FR_PACKET_TYPE:
 		if (packet->code > 0) {
 			dv = fr_dict_enum_by_value(NULL, vpt->tmpl_da, fr_box_uint32(packet->code));
@@ -138,30 +147,6 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 		 *	If there's no code set then we return an empty string (not zero).
 		 */
 		return talloc_strdup(ctx, "");
-
-	case FR_RESPONSE_PACKET_TYPE:
-	{
-		int code = 0;
-
-#ifdef WITH_PROXY
-		/*
-		 *	This code is probably wrong.  Why automatically get the proxy reply code?
-		 */
-		if (request->proxy && request->proxy->reply && (!request->reply || !request->reply->code)) {
-			code = request->proxy->reply->code;
-		} else
-#endif
-		if (request->reply) {
-			code = request->reply->code;
-		}
-
-		if (code > 0) return talloc_typed_strdup(ctx, fr_packet_codes[code]);
-
-		/*
-		 *	If there's no code set then we return an empty string (not zero).
-		 */
-		return talloc_strdup(ctx, "");
-	}
 
 	/*
 	 *	Virtual attributes which require a temporary VALUE_PAIR
@@ -265,7 +250,7 @@ do_print:
 
 		for (vp = tmpl_cursor_init(NULL, &cursor, request, vpt);
 		     vp;
-		     vp = tmpl_cursor_next(&cursor, vpt)) count++;
+		     vp = fr_cursor_next(&cursor)) count++;
 
 		return talloc_typed_asprintf(ctx, "%d", count);
 	}
@@ -279,11 +264,11 @@ do_print:
 	{
 		char *p, *q;
 
-		if (!fr_pair_cursor_current(&cursor)) return NULL;
+		if (!fr_cursor_current(&cursor)) return NULL;
 		p = fr_pair_value_asprint(ctx, vp, quote);
 		if (!p) return NULL;
 
-		while ((vp = tmpl_cursor_next(&cursor, vpt)) != NULL) {
+		while ((vp = fr_cursor_next(&cursor)) != NULL) {
 			q = fr_pair_value_asprint(ctx, vp, quote);
 			if (!q) return NULL;
 			p = talloc_strdup_append(p, ",");
@@ -298,7 +283,7 @@ do_print:
 		 *	The cursor was set to the correct
 		 *	position above by tmpl_cursor_init.
 		 */
-		vp = fr_pair_cursor_current(&cursor);
+		vp = fr_cursor_current(&cursor);
 		break;
 	}
 
@@ -320,7 +305,11 @@ static const char xlat_spaces[] = "                                             
 #endif
 
 static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * const node,
-			 xlat_escape_t escape, void const *escape_ctx, int lvl)
+			 xlat_escape_t escape, void const *escape_ctx,
+#ifndef DEBUG_XLAT
+			 UNUSED
+#endif
+			 int lvl)
 {
 	ssize_t rcode;
 	char *str = NULL, *child;
@@ -361,6 +350,15 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			str[1] = '\0';
 			break;
 
+		case 'c': /* current epoch time seconds */
+		{
+			struct timeval now;
+
+			gettimeofday(&now, NULL);
+			snprintf(str, freespace, "%" PRIu64, (uint64_t)now.tv_sec);
+		}
+			break;
+
 		case 'd': /* request day */
 			if (!localtime_r(&when, &ts)) goto error;
 			strftime(str, freespace, "%d", &ts);
@@ -393,6 +391,15 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			CTIME_R(&when, str, freespace);
 			nl = strchr(str, '\n');
 			if (nl) *nl = '\0';
+			break;
+
+		case 'C': /* curent epoch time microseconds */
+		{
+			struct timeval now;
+
+			gettimeofday(&now, NULL);
+			snprintf(str, freespace, "%" PRIu64, (uint64_t)now.tv_usec);
+		}
 			break;
 
 		case 'D': /* request date */
@@ -460,7 +467,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		 *	Some attributes are virtual <sigh>
 		 */
 		str = xlat_getvp(ctx, request, node->attr, escape ? false : true, true);
-		if (str) {
+		if (str && (node->attr->type == TMPL_TYPE_ATTR)) {
 			XLAT_DEBUG("%.*sEXPAND attr %s", lvl, xlat_spaces, node->attr->tmpl_da->name);
 			XLAT_DEBUG("%.*s       ---> %s", lvl ,xlat_spaces, str);
 		}
@@ -573,28 +580,15 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		rad_assert(node->alternate != NULL);
 
 		/*
-		 *	If there are no "next" nodes, call ourselves
-		 *	recursively, which is fast.
-		 *
-		 *	If there are "next" nodes, call xlat_process()
-		 *	which does a ton more work.
+		 *	Call xlat_process recursively.  The child /
+		 *	alternate nodes may have "next" pointers, and
+		 *	those need to be expanded.
 		 */
-		if (!node->next) {
-			str = xlat_aprint(ctx, request, node->child, escape, escape_ctx, lvl);
-			if (str) {
-				XLAT_DEBUG("%.*sALTERNATE got first string: %s", lvl, xlat_spaces, str);
-			} else {
-				str = xlat_aprint(ctx, request, node->alternate, escape, escape_ctx, lvl);
-				XLAT_DEBUG("%.*sALTERNATE got alternate string %s", lvl, xlat_spaces, str);
-			}
+		if (xlat_process(ctx, &str, request, node->child, escape, escape_ctx) > 0) {
+			XLAT_DEBUG("%.*sALTERNATE got first string: %s", lvl, xlat_spaces, str);
 		} else {
-
-			if (xlat_process(ctx, &str, request, node->child, escape, escape_ctx) > 0) {
-				XLAT_DEBUG("%.*sALTERNATE got first string: %s", lvl, xlat_spaces, str);
-			} else {
-				(void) xlat_process(ctx, &str, request, node->alternate, escape, escape_ctx);
-				XLAT_DEBUG("%.*sALTERNATE got alternate string %s", lvl, xlat_spaces, str);
-			}
+			(void) xlat_process(ctx, &str, request, node->alternate, escape, escape_ctx);
+			XLAT_DEBUG("%.*sALTERNATE got alternate string %s", lvl, xlat_spaces, str);
 		}
 		break;
 	}

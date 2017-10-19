@@ -28,20 +28,22 @@ RCSIDH(cursor_h, "$Id$")
 
 /** Callback for implementing custom iterators
  *
- * @param[out] prev	*prev != NULL, must be updated to the list item before the
- *			one returned in to_eval.
- * @param[out] to_eval	the next item in the list.  Iterator should check to
+ * @param[in] prev	the previous matching attribute.
+ * @param[in] to_eval	the next item in the list.  Iterator should check to
  *			see if it matches the iterator's filter, and if it doesn't
  *			iterate over the items until one if found that does.
  * @param[in] ctx	passed to #fr_cursor_init.
+ * @return
+ *	- An attribute if to_eval matched, or a subsequent attribute matched.
+ *	- NULL if no more matching attributes were found.
  */
-typedef void (*fr_cursor_iter_t)(void **prev, void **to_eval, void *ctx);
+typedef void *(*fr_cursor_iter_t)(void **prev, void *curr, void *ctx);
 
 typedef struct fr_cursor_s {
 	void			**head;		//!< First item in the list.
 	void			*tail;		//!< Used for efficient fr_cursor_append.
-	void			*current;	//!< The current item.
-	void			*prev;		//!< The previous item.
+	void			*current;	//!< The current item in the linked list.
+	void			*prev;		//!< The previous item in the linked list.
 
 	size_t			offset;		//!< Where the next ptr is in the item struct.
 	fr_cursor_iter_t	iter;		//!< Iterator function.

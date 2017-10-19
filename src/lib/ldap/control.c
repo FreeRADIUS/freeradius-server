@@ -42,7 +42,7 @@
 			    LDAPControl *clientctrls_out[],
  			    size_t serverctrls_len,
 			    size_t clientctrls_len,
-			    fr_ldap_conn_t *conn,
+			    fr_ldap_connection_t *conn,
 			    LDAPControl *serverctrls_in[],
 			    LDAPControl *clientctrls_in[])
 {
@@ -83,7 +83,7 @@
  *	- 0 on success.
  *	- -1 on failure (exceeded maximum controls).
  */
-int fr_ldap_control_add_server(fr_ldap_conn_t *conn, LDAPControl *ctrl, bool freeit)
+int fr_ldap_control_add_server(fr_ldap_connection_t *conn, LDAPControl *ctrl, bool freeit)
 {
 	if ((size_t)conn->serverctrls_cnt >= ((sizeof(conn->serverctrls) / sizeof(conn->serverctrls[0])) - 1)) {
 		return -1;
@@ -107,7 +107,7 @@ int fr_ldap_control_add_server(fr_ldap_conn_t *conn, LDAPControl *ctrl, bool fre
  *	- 0 on success.
  *	- -1 on failure (exceeded maximum controls).
  */
-int fr_ldap_control_add_client(fr_ldap_conn_t *conn, LDAPControl *ctrl, bool freeit)
+int fr_ldap_control_add_client(fr_ldap_connection_t *conn, LDAPControl *ctrl, bool freeit)
 {
 	if ((size_t)conn->clientctrls_cnt >= ((sizeof(conn->clientctrls) / sizeof(conn->clientctrls[0])) - 1)) {
 		return -1;
@@ -124,7 +124,7 @@ int fr_ldap_control_add_client(fr_ldap_conn_t *conn, LDAPControl *ctrl, bool fre
  *
  * @param conn to clear controls from.
  */
-void fr_ldap_control_clear(fr_ldap_conn_t *conn)
+void fr_ldap_control_clear(fr_ldap_connection_t *conn)
 {
 	int i;
 
@@ -158,7 +158,7 @@ void fr_ldap_control_clear(fr_ldap_conn_t *conn)
  * @param conn to add controls to.
  * @param request to draw attributes from.
  */
-int fr_ldap_control_add_session_tracking(fr_ldap_conn_t *conn, REQUEST *request)
+int fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, REQUEST *request)
 {
 	/*
 	 *	The OpenLDAP guys didn't declare the formatOID parameter to

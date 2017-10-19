@@ -71,7 +71,7 @@ REQUEST *request_alloc(UNUSED TALLOC_CTX *ctx)
 	return NULL;
 }
 
-void verify_request(UNUSED char const *file, UNUSED int line, UNUSED REQUEST *request)
+void request_verify(UNUSED char const *file, UNUSED int line, UNUSED REQUEST *request)
 {
 }
 
@@ -173,7 +173,7 @@ static void *worker_thread(void *arg)
 		exit(1);
 	}
 
-	worker = sw->worker = fr_worker_create(ctx, el, &default_log, ~0);
+	worker = sw->worker = fr_worker_create(ctx, el, &default_log, L_DBG_LVL_MAX);
 	if (!worker) {
 		fprintf(stderr, "worker_test: Failed to create the worker\n");
 		exit(1);

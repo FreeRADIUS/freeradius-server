@@ -7,27 +7,19 @@
 #
 switch "%{Service-Type}" {
 	case "%{expr: 1 + 2}" {
-		update reply {
-			Filter-Id := "3"
-		}
+		test_fail
 	}
 
 	case Login-User {
-		update reply {
-			Filter-Id := "Login-User"
-		}
+		test_fail
 	}
 
 	case No-Such-Value {	# ERROR
-		update reply {
-			Filter-Id := "FAILED"
-		}
+		test_fail
 	}
 
 	case {
-		update reply {
-			Filter-Id := "default"
-		}
+		test_fail
 	}
 
 }

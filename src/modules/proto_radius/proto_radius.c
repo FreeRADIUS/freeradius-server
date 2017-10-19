@@ -17,7 +17,7 @@
 /**
  * $Id$
  * @file proto_radius.c
- * @brief RAIDUS master protocol handler.
+ * @brief RADIUS master protocol handler.
  *
  * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2016 Alan DeKok (aland@freeradius.org)
@@ -31,7 +31,7 @@
 #include "proto_radius.h"
 
 extern fr_app_t proto_radius;
-static int process_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
 
 /** How to parse a RADIUS listen section
@@ -39,14 +39,14 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSE
  */
 static CONF_PARSER const proto_radius_config[] = {
 	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY, proto_radius_t,
-			  process_submodule), .dflt = "Status-Server", .func = process_parse },
+			  type_submodule), .dflt = "Status-Server", .func = type_parse },
 	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, proto_radius_t, io_submodule),
 	  .func = transport_parse },
 
 	/*
 	 *	For performance tweaking.  NOT for normal humans.
 	 */
-	{ FR_CONF_OFFSET("default_message_size", FR_TYPE_UINT32, proto_radius_t, default_message_size) } ,
+	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, proto_radius_t, max_packet_size) } ,
 	{ FR_CONF_OFFSET("num_messages", FR_TYPE_UINT32, proto_radius_t, num_messages) } ,
 
 	CONF_PARSER_TERMINATOR
@@ -62,7 +62,7 @@ static CONF_PARSER const proto_radius_config[] = {
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int process_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	static char const *type_lib_table[] = {
 		[FR_CODE_ACCESS_REQUEST]	= "auth",
@@ -94,32 +94,34 @@ static int process_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_
 	 *	packet type.
 	 */
 	type_enum = fr_dict_enum_by_alias(NULL, da, type_str);
-	if (type_enum) {
-		code = type_enum->value->vb_uint32;
-		if (code >= FR_CODE_MAX) {
-		invalid_type:
-			cf_log_err(ci, "No module associated with Packet-Type = '%s'", type_str);
-			return -1;
-		}
-
-		name = type_lib_table[code];
-		if (!name) goto invalid_type;
-	/*
-	 *	...or by module name.
-	 */
-	} else {
+	if (!type_enum) {
 		size_t i;
 
 		for (i = 0; i < (sizeof(type_lib_table) / sizeof(*type_lib_table)); i++) {
 			name = type_lib_table[i];
-			if (name && (strcmp(name, type_str) == 0)) break;
+			if (name && (strcmp(name, type_str) == 0)) {
+				type_enum = fr_dict_enum_by_value(NULL, da, fr_box_uint32(i));
+				break;
+			}
 		}
 
-		if (!name) {
+		if (!name || !type_enum) {
 			cf_log_err(ci, "Invalid type \"%s\"", type_str);
 			return -1;
 		}
 	}
+
+	cf_data_add(ci, type_enum, NULL, false);
+
+	code = type_enum->value->vb_uint32;
+	if (code >= FR_CODE_MAX) {
+	invalid_type:
+		cf_log_err(ci, "Unsupported 'type = %s'", type_str);
+		return -1;
+	}
+
+	name = type_lib_table[code];
+	if (!name) goto invalid_type;
 
 	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_instance_t, "proto_radius"));
 	rad_assert(parent_inst);
@@ -161,15 +163,20 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
 	return dl_instance(ctx, out, transport_cs, parent_inst, name, DL_TYPE_SUBMODULE);
 }
 
-/** Decode the packet, and set the request->process function
+/** Decode the packet
  *
  */
 static int mod_decode(void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
 {
-	proto_radius_t const *inst = talloc_get_type_abort(instance, proto_radius_t);
+	proto_radius_t const *inst = talloc_get_type_abort_const(instance, proto_radius_t);
 	RADCLIENT *client;
 
 	rad_assert(data[0] < FR_MAX_PACKET_CODE);
+
+	if (DEBUG_ENABLED3) {
+		RDEBUG("proto_radius decode packet");
+		fr_radius_print_hex(fr_log_fp, data, data_len);
+	}
 
 	client = inst->app_io_private->client(inst->app_io, request->async->packet_ctx);
 	rad_assert(client);
@@ -200,11 +207,31 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 {
 	size_t len;
 
-	proto_radius_t const *inst = talloc_get_type_abort(instance, proto_radius_t);
+	proto_radius_t const *inst = talloc_get_type_abort_const(instance, proto_radius_t);
 	RADCLIENT *client;
+
+	/*
+	 *	"Do not respond"
+	 */
+	if (request->reply->code == FR_CODE_DO_NOT_RESPOND) {
+		*buffer = 0;
+		return 1;
+	}
 
 	client = inst->app_io_private->client(inst->app_io, request->async->packet_ctx);
 	rad_assert(client);
+
+#ifdef WITH_UDPFROMTO
+	/*
+	 *	Overwrite the src ip address on the outbound packet
+	 *	with the one specified by the client.  This is useful
+	 *	to work around broken DSR implementations and other
+	 *	routing issues.
+	 */
+	if (client->src_ipaddr.af != AF_UNSPEC) {
+		request->reply->src_ipaddr = client->src_ipaddr;
+	}
+#endif
 
 	if (fr_radius_packet_encode(request->reply, request->packet, client->secret) < 0) {
 		RDEBUG("Failed encoding RADIUS reply: %s", fr_strerror());
@@ -221,12 +248,17 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 
 	memcpy(buffer, request->reply->data, len);
 
+	if (DEBUG_ENABLED3) {
+		RDEBUG("proto_radius encode packet");
+		fr_radius_print_hex(fr_log_fp, buffer, len);
+	}
+
 	return len;
 }
 
 static void mod_process_set(void const *instance, REQUEST *request)
 {
-	proto_radius_t const *inst = talloc_get_type_abort(instance, proto_radius_t);
+	proto_radius_t const *inst = talloc_get_type_abort_const(instance, proto_radius_t);
 	fr_io_process_t process;
 
 	rad_assert(request->packet->code != 0);
@@ -274,8 +306,8 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	/*
 	 *	Set configurable parameters for message ring buffer.
 	 */
-	listen->default_message_size = inst->default_message_size;
-	listen->num_messages = inst->default_message_size;
+	listen->default_message_size = inst->max_packet_size;
+	listen->num_messages = inst->num_messages;
 
 	/*
 	 *	Open the socket, and add it to the scheduler.
@@ -317,11 +349,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	CONF_PAIR		*cp = NULL;
 
 	/*
-	 *	The listener is inside of a virtual server.
-	 */
-	inst->server_cs = cf_item_to_section(cf_parent(conf));
-
-	/*
 	 *	Instantiate the I/O module
 	 */
 	if (inst->app_io && inst->app_io->instantiate &&
@@ -344,12 +371,13 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 *	Instantiate the process modules
 	 */
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
-		fr_app_process_t const *app_process;
+		fr_app_process_t const	*app_process;
+		fr_dict_enum_t const	*enumv;
 		int code;
 
-		app_process = (fr_app_process_t const *)inst->process_submodule[i]->module->common;
-		if (app_process->instantiate && (app_process->instantiate(inst->process_submodule[i]->data,
-									  inst->process_submodule[i]->conf) < 0)) {
+		app_process = (fr_app_process_t const *)inst->type_submodule[i]->module->common;
+		if (app_process->instantiate && (app_process->instantiate(inst->type_submodule[i]->data,
+									  inst->type_submodule[i]->conf) < 0)) {
 			cf_log_err(conf, "Instantiation failed for \"%s\"", app_process->name);
 			return -1;
 		}
@@ -357,10 +385,12 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		/*
 		 *	We've already done bounds checking in the process_parse function
 		 */
-		code = fr_dict_enum_by_alias(NULL, da, cf_pair_value(cp))->value->vb_uint32;
+		enumv = cf_data_value(cf_data_find(cp, fr_dict_enum_t, NULL));
+		if (!fr_cond_assert(enumv)) return -1;
+
+		code = enumv->value->vb_uint32;
 		inst->process_by_code[code] = app_process->process;	/* Store the process function */
 		inst->code_allowed[code] = true;
-
 		i++;
 	}
 
@@ -368,15 +398,15 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 *	These configuration items are not printed by default,
 	 *	because normal people shouldn't be touching them.
 	 */
-	if (!inst->default_message_size && inst->app_io) inst->default_message_size = inst->app_io->default_message_size;
+	if (!inst->max_packet_size && inst->app_io) inst->max_packet_size = inst->app_io->default_message_size;
 
 	if (!inst->num_messages) inst->num_messages = 256;
 
 	FR_INTEGER_BOUND_CHECK("num_messages", inst->num_messages, >=, 32);
 	FR_INTEGER_BOUND_CHECK("num_messages", inst->num_messages, <=, 65535);
 
-	FR_INTEGER_BOUND_CHECK("default_message_size", inst->default_message_size, >=, 1024);
-	FR_INTEGER_BOUND_CHECK("default_message_size", inst->default_message_size, <=, 65535);
+	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 1024);
+	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65535);
 
 	return 0;
 }
@@ -398,17 +428,42 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	CONF_PAIR		*cp = NULL;
 
 	/*
+	 *	The listener is inside of a virtual server.
+	 */
+	inst->server_cs = cf_item_to_section(cf_parent(conf));
+
+	/*
 	 *	Bootstrap the process modules
 	 */
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
-		dl_t const	       *module = talloc_get_type_abort(inst->process_submodule[i]->module, dl_t);
-		fr_app_process_t const *app_process = (fr_app_process_t const *)module->common;
+		char const		*value;
+		dl_t const		*module = talloc_get_type_abort_const(inst->type_submodule[i]->module, dl_t);
+		fr_app_process_t const	*app_process = (fr_app_process_t const *)module->common;
 
-		if (app_process->bootstrap && (app_process->bootstrap(inst->process_submodule[i]->data,
-								      inst->process_submodule[i]->conf) < 0)) {
+		if (app_process->bootstrap && (app_process->bootstrap(inst->type_submodule[i]->data,
+								      inst->type_submodule[i]->conf) < 0)) {
 			cf_log_err(conf, "Bootstrap failed for \"%s\"", app_process->name);
 			return -1;
 		}
+
+		value = cf_pair_value(cp);
+
+		/*
+		 *	Add handlers for the virtual server calls.
+		 *	This is so that when one virtual server wants
+		 *	to call another, it just looks up the data
+		 *	here by packet name, and doesn't need to troll
+		 *	through all of the listeners.
+		 */
+		if (!cf_data_find(inst->server_cs, fr_io_process_t, value)) {
+			fr_io_process_t *process_p;
+
+			process_p = talloc(inst->server_cs, fr_io_process_t);
+			*process_p = app_process->process;
+
+			(void) cf_data_add(inst->server_cs, process_p, value, NULL);
+		}
+
 		i++;
 	}
 

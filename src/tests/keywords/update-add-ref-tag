@@ -3,7 +3,6 @@
 #
 
 update request {
-	reply:Filter-Id := "filter"
 	request:Tunnel-Server-Endpoint += '192.0.1.1'
 	request:Tunnel-Server-Endpoint += '192.0.1.2'
 	request:Tunnel-Server-Endpoint:1 += '192.0.1.1'
@@ -26,9 +25,7 @@ if ((&control:Tunnel-Server-Endpoint[0] != '192.0.1.1') || \
     (&control:Tunnel-Server-Endpoint[4] != '192.0.2.2') || \
     (&control:Tunnel-Server-Endpoint[5] != '192.0.3.1') || \
     &control:Tunnel-Server-Endpoint[6]) {
-	update reply {
-		Filter-Id := "fail 0"
-	}
+	test_fail
 }
 
 #
@@ -48,9 +45,7 @@ update request {
 if ((&control:Tunnel-Server-Endpoint[0] != '192.0.2.1') || \
     (&control:Tunnel-Server-Endpoint[1] != '192.0.2.2') || \
     &control:Tunnel-Server-Endpoint[2]) {
-	update reply {
-		Filter-Id := "fail 1"
-	}
+	test_fail
 }
 
 #
@@ -70,9 +65,7 @@ update request {
 if ((&control:Tunnel-Server-Endpoint[0] != '192.0.1.1') || \
     (&control:Tunnel-Server-Endpoint[1] != '192.0.1.2') || \
     &control:Tunnel-Server-Endpoint[2]) {
-	update reply {
-		Filter-Id := "fail 2"
-	}
+	test_fail
 }
 
 #
@@ -91,9 +84,7 @@ update request {
 
 if ((&control:Tunnel-Server-Endpoint[0] != '192.0.2.1') || \
     &control:Tunnel-Server-Endpoint[1]) {
-	update reply {
-		Filter-Id := "fail 3"
-	}
+	test_fail
 }
 
 #
@@ -112,7 +103,7 @@ update request {
 
 if ((&control:Tunnel-Server-Endpoint[0] != '192.0.2.1') || \
     &control:Tunnel-Server-Endpoint[1]) {
-	update reply {
-		Filter-Id := "fail 4"
-	}
+	test_fail
 }
+
+success

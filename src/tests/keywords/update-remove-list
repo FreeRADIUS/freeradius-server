@@ -5,7 +5,6 @@
 #
 update {
 	control:Cleartext-Password := 'hello'
-	reply:Filter-Id := 'filter'
 }
 
 update request {
@@ -15,9 +14,7 @@ update request {
 }
 
 if ((Tmp-String-0 != 'foobarbaz') || (Tmp-Integer-0 != 123456789) || (Tmp-IP-Address-0 != 192.0.2.1)) {
-	update reply {
-		Filter-Id += 'fail 0'
-	}
+	test_fail
 }
 
 # Remove all attributes in the control list
@@ -29,12 +26,12 @@ update {
 if ((Tmp-String-0 && (Tmp-String-0 == 'foobarbaz')) || \
     (Tmp-Integer-0 && (Tmp-Integer-0 == 123456789)) || \
     (Tmp-IP-Address-0 && (Tmp-IP-Address-0 == 192.0.2.1))) {
-	update reply {
-		Filter-Id := 'fail 1'
-	}
+	test_fail
 }
 
 # This will of been removed too
 update request {
 	User-Password := 'hello'
 }
+
+success

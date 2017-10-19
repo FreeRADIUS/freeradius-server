@@ -228,7 +228,7 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 		int		i, max, err;
 		ssize_t		slen;
 		VALUE_PAIR	*vp;
-		vp_cursor_t cursor;
+		fr_cursor_t	cursor;
 
 		p += 1;
 
@@ -254,7 +254,7 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 		x = 0;
 		for (i = 0, vp = tmpl_cursor_init(&err, &cursor, request, vpt);
 		     (i < max) && (vp != NULL);
-		     i++, vp = tmpl_cursor_next(&cursor, vpt)) {
+		     i++, vp = fr_cursor_next(&cursor)) {
 			int64_t y;
 
 			if (vp->vp_type != FR_TYPE_UINT64) {
@@ -1159,6 +1159,11 @@ static ssize_t _md##_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,\
 
 EVP_MD_XLAT(sha256)
 EVP_MD_XLAT(sha512)
+
+#  ifdef HAVE_EVP_SHA3_512
+EVP_MD_XLAT(sha3_256)
+EVP_MD_XLAT(sha3_512)
+#  endif
 #endif
 
 /** Generate the HMAC-MD5 of a string or attribute
@@ -1278,7 +1283,7 @@ static ssize_t pairs_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 			  REQUEST *request, char const *fmt)
 {
 	vp_tmpl_t	*vpt = NULL;
-	vp_cursor_t	cursor;
+	fr_cursor_t	cursor;
 	size_t		len, freespace = outlen;
 	char		*p = *out;
 
@@ -1291,7 +1296,7 @@ static ssize_t pairs_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	for (vp = tmpl_cursor_init(NULL, &cursor, request, vpt);
 	     vp;
-	     vp = tmpl_cursor_next(&cursor, vpt)) {
+	     vp = fr_cursor_next(&cursor)) {
 	     	FR_TOKEN op = vp->op;
 
 	     	vp->op = T_OP_EQ;
@@ -1397,13 +1402,14 @@ static ssize_t explode_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 			    UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			    REQUEST *request, char const *fmt)
 {
-	vp_tmpl_t *vpt = NULL;
-	vp_cursor_t cursor, to_merge;
-	VALUE_PAIR *vp, *head = NULL;
-	ssize_t slen;
-	int count = 0;
-	char const *p = fmt;
-	char delim;
+	vp_tmpl_t	*vpt = NULL;
+	VALUE_PAIR	*vp;
+	fr_cursor_t	cursor, to_merge;
+	VALUE_PAIR 	*head = NULL;
+	ssize_t		slen;
+	int		count = 0;
+	char const	*p = fmt;
+	char		delim;
 
 	/*
 	 *  Trim whitespace
@@ -1429,12 +1435,11 @@ static ssize_t explode_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	delim = *p;
 
-	fr_pair_cursor_init(&to_merge, &head);
+	fr_cursor_init(&to_merge, &head);
 
-	for (vp = tmpl_cursor_init(NULL, &cursor, request, vpt);
-	     vp;
-	     vp = tmpl_cursor_next(&cursor, vpt)) {
-	     	VALUE_PAIR *new;
+	vp = tmpl_cursor_init(NULL, &cursor, request, vpt);
+	while (vp) {
+	     	VALUE_PAIR *nvp;
 	     	char const *end;
 		char const *q;
 
@@ -1448,7 +1453,7 @@ static ssize_t explode_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 			break;
 
 		default:
-			continue;
+			goto next;
 		}
 
 		p = vp->vp_ptr;
@@ -1467,21 +1472,21 @@ static ssize_t explode_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 				continue;
 			}
 
-			new = fr_pair_afrom_da(talloc_parent(vp), vp->da);
-			if (!new) {
+			nvp = fr_pair_afrom_da(talloc_parent(vp), vp->da);
+			if (!nvp) {
 				fr_pair_list_free(&head);
 				return -1;
 			}
-			new->tag = vp->tag;
+			nvp->tag = vp->tag;
 
 			switch (vp->vp_type) {
 			case FR_TYPE_OCTETS:
 			{
 				uint8_t *buff;
 
-				buff = talloc_array(new, uint8_t, q - p);
+				buff = talloc_array(nvp, uint8_t, q - p);
 				memcpy(buff, p, q - p);
-				fr_pair_value_memsteal(new, buff);
+				fr_pair_value_memsteal(nvp, buff);
 			}
 				break;
 
@@ -1489,10 +1494,10 @@ static ssize_t explode_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 			{
 				char *buff;
 
-				buff = talloc_array(new, char, (q - p) + 1);
+				buff = talloc_array(nvp, char, (q - p) + 1);
 				memcpy(buff, p, q - p);
 				buff[q - p] = '\0';
-				fr_pair_value_strsteal(new, (char *)buff);
+				fr_pair_value_strsteal(nvp, (char *)buff);
 			}
 				break;
 
@@ -1500,7 +1505,7 @@ static ssize_t explode_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 				rad_assert(0);
 			}
 
-			fr_pair_cursor_append(&to_merge, new);
+			fr_cursor_append(&to_merge, nvp);
 
 			p = q + 1;	/* next */
 
@@ -1510,14 +1515,20 @@ static ssize_t explode_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 		/*
 		 *	Remove the unexploded version
 		 */
-		vp = fr_pair_cursor_remove(&cursor);
+		vp = fr_cursor_remove(&cursor);
 		talloc_free(vp);
+		/*
+		 *	Remove sets cursor->current to
+		 *	the next iter value.
+		 */
+		vp = fr_cursor_current(&cursor);
+		continue;
 
 	next:
-		continue;	/* Apparently goto labels aren't allowed at the end of loops? */
+	    	vp = fr_cursor_next(&cursor);
 	}
 
-	fr_pair_cursor_merge(&cursor, head);
+	fr_cursor_merge(&cursor, &to_merge);
 	talloc_free(vpt);
 
 	return snprintf(*out, outlen, "%i", count);
@@ -1799,34 +1810,34 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		inst->xlat_name = cf_section_name1(conf);
 	}
 
-	xlat_register(inst, inst->xlat_name, expr_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat_register(inst, inst->xlat_name, expr_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 
-	xlat_register(inst, "rand", rand_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	xlat_register(inst, "randstr", randstr_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	xlat_register(inst, "urlquote", urlquote_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	xlat_register(inst, "urlunquote", urlunquote_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	xlat_register(inst, "escape", escape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	xlat_register(inst, "unescape", unescape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	xlat_register(inst, "tolower", tolower_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	xlat_register(inst, "toupper", toupper_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	xlat_register(inst, "md5", md5_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	xlat_register(inst, "sha1", sha1_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat_register(inst, "rand", rand_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register(inst, "randstr", randstr_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register(inst, "urlquote", urlquote_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register(inst, "urlunquote", urlunquote_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register(inst, "escape", escape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register(inst, "unescape", unescape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register(inst, "tolower", tolower_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register(inst, "toupper", toupper_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register(inst, "md5", md5_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register(inst, "sha1", sha1_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 #ifdef HAVE_OPENSSL_EVP_H
-	xlat_register(inst, "sha256", sha256_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	xlat_register(inst, "sha512", sha512_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat_register(inst, "sha256", sha256_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register(inst, "sha512", sha512_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 #endif
-	xlat_register(inst, "hmacmd5", hmac_md5_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	xlat_register(inst, "hmacsha1", hmac_sha1_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	xlat_register(inst, "pairs", pairs_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat_register(inst, "hmacmd5", hmac_md5_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register(inst, "hmacsha1", hmac_sha1_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register(inst, "pairs", pairs_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 
-	xlat_register(inst, "base64", base64_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	xlat_register(inst, "base64tohex", base64_to_hex_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat_register(inst, "base64", base64_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register(inst, "base64tohex", base64_to_hex_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 
-	xlat_register(inst, "explode", explode_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat_register(inst, "explode", explode_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 
-	xlat_register(inst, "nexttime", next_time_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-	xlat_register(inst, "lpad", lpad_xlat, NULL, NULL, 0, 0);
-	xlat_register(inst, "rpad", rpad_xlat, NULL, NULL, 0, 0);
+	xlat_register(inst, "nexttime", next_time_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat_register(inst, "lpad", lpad_xlat, NULL, NULL, 0, 0, true);
+	xlat_register(inst, "rpad", rpad_xlat, NULL, NULL, 0, 0, true);
 
 	/*
 	 *	Initialize various paircompare functions

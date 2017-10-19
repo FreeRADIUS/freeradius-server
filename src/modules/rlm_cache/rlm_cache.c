@@ -323,7 +323,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 	pool = talloc_pool(NULL, 1024);
 	for (map = inst->maps; map != NULL; map = map->next) {
 		VALUE_PAIR	*to_cache = NULL;
-		vp_cursor_t	cursor;
+		fr_cursor_t	cursor;
 
 		rad_assert(map->lhs && map->rhs);
 
@@ -336,9 +336,9 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 			continue;
 		}
 
-		for (vp = fr_pair_cursor_init(&cursor, &to_cache);
+		for (vp = fr_cursor_init(&cursor, &to_cache);
 		     vp;
-		     vp = fr_pair_cursor_next(&cursor)) {
+		     vp = fr_cursor_next(&cursor)) {
 			/*
 			 *	Prevent people from accidentally caching
 			 *	cache control attributes.
@@ -545,7 +545,7 @@ static rlm_rcode_t mod_cache_it(void *instance, UNUSED void *thread, REQUEST *re
 
 	rlm_cache_handle_t	*handle;
 
-	vp_cursor_t		cursor;
+	fr_cursor_t		cursor;
 	VALUE_PAIR		*vp;
 
 	bool			merge = true, insert = true, expire = false, set_ttl = false;
@@ -762,9 +762,10 @@ finish:
 	/*
 	 *	Clear control attributes
 	 */
-	for (vp = fr_pair_cursor_init(&cursor, &request->control);
+	for (vp = fr_cursor_init(&cursor, &request->control);
 	     vp;
-	     vp = fr_pair_cursor_next(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
+	     again:
 		if (vp->da->vendor == 0) switch (vp->da->attr) {
 		case FR_CACHE_TTL:
 		case FR_CACHE_STATUS_ONLY:
@@ -772,9 +773,11 @@ finish:
 		case FR_CACHE_ALLOW_INSERT:
 		case FR_CACHE_MERGE_NEW:
 			RDEBUG2("Removing &control:%s", vp->da->name);
-			vp = fr_pair_cursor_remove(&cursor);
+			vp = fr_cursor_remove(&cursor);
 			talloc_free(vp);
-			break;
+			vp = fr_cursor_current(&cursor);
+			if (!vp) break;
+			goto again;
 		}
 	}
 
@@ -892,7 +895,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Register the cache xlat function
 	 */
-	xlat_register(inst, inst->config.name, cache_xlat, NULL, NULL, 0, 0);
+	xlat_register(inst, inst->config.name, cache_xlat, NULL, NULL, 0, 0, true);
 
 	return 0;
 }

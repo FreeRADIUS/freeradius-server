@@ -116,9 +116,9 @@ static inline void fr_dlist_remove(fr_dlist_t *entry)
 	entry->prev = entry->next = entry;
 }
 
-#define FR_DLIST_FIRST(head) (head.next == &head) ? NULL : head.next
-#define FR_DLIST_NEXT(head, p_entry) (p_entry->next == &head) ? NULL : p_entry->next
-#define FR_DLIST_TAIL(head) (head.prev == &head) ? NULL : head.prev
+#define FR_DLIST_FIRST(head) ((head.next == &head) ? NULL : head.next)
+#define FR_DLIST_NEXT(head, p_entry) ((p_entry->next == &head) ? NULL : p_entry->next)
+#define FR_DLIST_TAIL(head) ((head.prev == &head) ? NULL : head.prev)
 
 int fr_time_start(void);
 fr_time_t fr_time(void);

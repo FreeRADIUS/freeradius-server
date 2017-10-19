@@ -35,7 +35,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 	fr_dict_enum_t const *dv;
 	fr_dict_attr_t const *da = NULL;
 
-	VERIFY_REQUEST(request);
+	REQUEST_VERIFY(request);
 
 	switch (request->request_state) {
 	case REQUEST_INIT:

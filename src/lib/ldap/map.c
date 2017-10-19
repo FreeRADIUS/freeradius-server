@@ -266,7 +266,7 @@ int fr_ldap_map_expand(fr_ldap_map_exp_t *expanded, REQUEST *request, vp_map_t c
  *	- Number of maps successfully applied.
  *	- -1 on failure.
  */
-int fr_ldap_map_do(REQUEST *request, fr_ldap_conn_t *conn,
+int fr_ldap_map_do(REQUEST *request, fr_ldap_connection_t *conn,
 		   char const *valuepair_attr, fr_ldap_map_exp_t const *expanded, LDAPMessage *entry)
 {
 	vp_map_t const		*map;

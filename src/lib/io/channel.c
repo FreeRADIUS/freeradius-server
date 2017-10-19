@@ -38,12 +38,17 @@ RCSID("$Id$")
 #define MPRINT(...)
 #endif
 
-#define ENABLE_SKIPS (1)
+/*
+ *	We disable this until we fix all of the signaling issues...
+ */
+#define ENABLE_SKIPS (0)
 
 #define TO_WORKER (0)
 #define FROM_WORKER (1)
 
+#if 0
 #define SIGNAL_INTERVAL (1000000)	//!< The minimum interval between worker signals.
+#endif
 
 /** Size of the atomic queues
  *
@@ -93,6 +98,7 @@ typedef struct fr_channel_end_t {
 	void			*ctx;		//!< Worker context.
 
 	int			num_outstanding; //!< Number of outstanding requests with no reply.
+	bool			must_signal;	//!< we need to signal the other end
 
 	size_t			num_signals;	//!< Number of kevent signals we've sent.
 
@@ -231,6 +237,7 @@ static int fr_channel_data_ready(fr_channel_t *ch, fr_time_t when, fr_channel_en
 
 	end->last_sent_signal = when;
 	end->num_signals++;
+	end->must_signal = false;
 
 	cc.signal = which;
 	cc.ack = end->ack;
@@ -266,6 +273,7 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_
 
 	master = &(ch->end[TO_WORKER]);
 	when = cd->m.when;
+	*p_reply = NULL;
 
 	sequence = master->sequence + 1;
 	cd->live.sequence = sequence;
@@ -318,7 +326,7 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_
 		 *	Or, there is a reply, and there are more packets outstanding.
 		 *	Skip the signal.
 		 */
-		if (!*p_reply || (*p_reply && (master->num_outstanding > 1))) {
+		if (!master->must_signal && (!*p_reply || (*p_reply && (master->num_outstanding > 1)))) {
 			MPRINT("MASTER SKIPS signal\n");
 			return 0;
 		}
@@ -516,7 +524,7 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 	 *	predictions about packet processing time?
 	 */
 	rad_assert(worker->their_view_of_my_sequence <= worker->sequence);
-#if ENABLE_SKIPS
+#if 0
 	if (((worker->sequence - worker->their_view_of_my_sequence) <= 1000) &&
 	    ((when - worker->last_read_other < SIGNAL_INTERVAL) ||
 	     ((when - worker->last_sent_signal) < SIGNAL_INTERVAL))) {
@@ -528,6 +536,27 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 	MPRINT("\tWORKER SIGNALS num_outstanding %zd\n", worker->num_outstanding);
 	return fr_channel_data_ready(ch, when, worker, FR_CHANNEL_SIGNAL_DATA_FROM_WORKER);
 }
+
+
+/** Don't send a reply message into the channel
+ *
+ * The message should be the one we received from the network.
+ *
+ * @param[in] ch		the channel on which we're dropping a packet
+ * @return
+ *	- <0 on error
+ *	- 0 on success
+ */
+int fr_channel_null_reply(fr_channel_t *ch)
+{
+	fr_channel_end_t *worker;
+
+	worker = &(ch->end[FROM_WORKER]);
+
+	worker->sequence++;
+	return 0;
+}
+
 
 
 /** Signal a channel that the worker is sleeping
@@ -582,7 +611,9 @@ int fr_channel_worker_sleeping(fr_channel_t *ch)
 fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_channel, void const *data, size_t data_size)
 {
 	int rcode;
+#if ENABLE_SKIPS
 	uint64_t ack;
+#endif
 	fr_channel_control_t cc;
 	fr_channel_signal_t cs;
 	fr_channel_event_t ce = FR_CHANNEL_ERROR;
@@ -593,7 +624,9 @@ fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_c
 	memcpy(&cc, data, data_size);
 
 	cs = cc.signal;
+#if ENABLE_SKIPS
 	ack = cc.ack;
+#endif
 	*p_channel = ch = cc.ch;
 
 	switch (cs) {
@@ -618,11 +651,13 @@ fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_c
 	case FR_CHANNEL_SIGNAL_DATA_DONE_WORKER:
 		MPRINT("channel got data_done_worker\n");
 		ce = FR_CHANNEL_DATA_READY_NETWORK;
+		ch->end[TO_WORKER].must_signal = true;
 		break;
 
 	case FR_CHANNEL_SIGNAL_WORKER_SLEEPING:
 		MPRINT("channel got worker_sleeping\n");
 		ce = FR_CHANNEL_NOOP;
+		ch->end[TO_WORKER].must_signal = true;
 		break;
 	}
 
@@ -633,18 +668,18 @@ fr_channel_event_t fr_channel_service_message(fr_time_t when, fr_channel_t **p_c
 	 */
 	master = &ch->end[TO_WORKER];
 #if ENABLE_SKIPS
-	if (ack == master->sequence) {
+	if (!master->must_signal && (ack == master->sequence)) {
 		MPRINT("MASTER SKIPS signal AFTER CE %d num_outstanding %zd\n", cs, master->num_outstanding);
 		MPRINT("MASTER has ack %zd, my seq %zd my_view %zd\n", ack, master->sequence, master->their_view_of_my_sequence);
 		return ce;
 	}
-#endif
 
 	/*
 	 *	The worker is sleeping or done.  There are more
 	 *	packets available, so we signal it to wake up again.
 	 */
 	rad_assert(ack <= master->sequence);
+#endif
 
 	/*
 	 *	We're signaling it again...

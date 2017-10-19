@@ -16,10 +16,10 @@
 
 /**
  * @file lib/util/event.c
- * @brief Non-thread-safe event handling, specific to a RADIUS server.
+ * @brief Non-thread-safe event handling specific to FreeRADIUS
  *
  * @note By non-thread-safe we mean multiple threads can't insert/delete events concurrently
- *	without synchronization.
+ *	into the same event list without synchronization.
  *
  * @copyright 2007-2016 The FreeRADIUS server project
  * @copyright 2016 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
@@ -31,6 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/heap.h>
 #include <freeradius-devel/event.h>
 #include <freeradius-devel/io/time.h>
+#include <sys/stat.h>
 
 #define FR_EV_BATCH_FDS (256)
 
@@ -41,87 +42,255 @@ RCSID("$Id$")
 #  define SO_GET_FILTER SO_ATTACH_FILTER
 #endif
 
+#ifdef WITH_EVENT_DEBUG
+#  define EVENT_DEBUG(fmt, ...) printf("EVENT: ");printf(fmt, ## __VA_ARGS__);printf("\n");fflush(stdout)
+#else
+#  define EVENT_DEBUG(...)
+#endif
+
+static FR_NAME_NUMBER const kevent_filter_table[] = {
+	{ "EVFILT_READ",	EVFILT_READ },
+#ifdef EVFILT_EXCEPT
+	{ "EVFILT_EXCEPT",	EVFILT_EXCEPT },
+#endif
+	{ "EVFILT_WRITE",	EVFILT_WRITE },
+#ifdef EVFILT_AIO
+	{ "EVFILT_AIO",		EVFILT_AIO },
+#endif
+	{ "EVFILT_VNODE",	EVFILT_VNODE },
+	{ "EVFILT_PROC",	EVFILT_PROC },
+	{ "EVFILT_SIGNAL",	EVFILT_SIGNAL },
+#ifdef EVFILT_MACHPORT
+	{ "EVFILT_MACHPORT",	EVFILT_MACHPORT },
+#endif
+	{ "EVFILT_TIMER",	EVFILT_TIMER },
+
+	{  NULL , -1 }
+};
+
 /** A timer event
  *
  */
-struct fr_event_timer_t {
-	fr_event_callback_t	callback;		//!< Callback to execute when the timer fires.
-	void const		*ctx;			//!< Context pointer to pass to the callback.
+struct fr_event_timer {
 	struct timeval		when;			//!< When this timer should fire.
+	fr_event_cb_t		callback;		//!< Callback to execute when the timer fires.
+	void const		*uctx;			//!< Context pointer to pass to the callback.
+	TALLOC_CTX		*linked_ctx;		//!< talloc ctx this event was bound to.
 
-	fr_event_timer_t	**parent;		//!< Previous timer.
+	fr_event_timer_t const	**parent;		//!< Previous timer.
 	int			heap;			//!< Where to store opaque heap data.
 };
 
-/** A file descriptor event
- *
- */
-typedef struct fr_event_fd_t {
-	int			fd;			//!< File descriptor we're listening for events on.
-
-	int                     sock_type;              //!< The type of socket SOCK_STREAM, SOCK_RAW etc...
-	bool                    is_file;                //!< Is a file, not a socket.
+typedef enum {
+	FR_EVENT_FD_SOCKET	= 1,			//!< is a socket.
+	FR_EVENT_FD_FILE	= 2,			//!< is a file.
+	FR_EVENT_FD_DIRECTORY	= 4,			//!< is a directory.
 
 #ifdef SO_GET_FILTER
-	bool                    pf_attached;            //!< Has an attached packet filter (PF) program.
+	FR_EVENT_FD_PCAP	= 8,
+#endif
+} fr_event_fd_type_t;
+
+#ifndef SO_GET_FILTER
+#  define FR_EVENT_FD_PCAP	0
 #endif
 
-	fr_event_fd_handler_t	read;			//!< Callback for when data is available.
-	fr_event_fd_handler_t	write;			//!< Callback for when we can write data.
-	fr_event_fd_handler_t	error;			//!< Callback for when an error occurs on the FD.
+typedef struct {
+	size_t			offset;			//!< Offset of function pointer in structure.
+	char const		*name;			//!< Name of the event.
+	int16_t			filter;			//!< Filter to apply.
+	uint16_t		flags;			//!< Flags to use for inserting event.
+	uint32_t		fflags;			//!< fflags to pass to filter.
+	fr_event_fd_type_t	type;			//!< Type this filter applies to.
+	bool			coalesce;		//!< Coalesce this map with the next.
+} fr_event_func_map_t;
 
-	bool			is_registered;		//!< Whether this fr_event_fd_t's FD has been registered with
-							//!< kevent.  Mostly for debugging.
+static fr_event_func_map_t io_func_map[] = {
+	{
+		.offset		= offsetof(fr_event_io_func_t, read),
+		.name		= "read",
+		.filter		= EVFILT_READ,
+		.flags		= EV_ADD | EV_ENABLE,
+		.fflags		= 0,
+		.type		= FR_EVENT_FD_SOCKET | FR_EVENT_FD_FILE | FR_EVENT_FD_PCAP
+	},
+	{
+		.offset		= offsetof(fr_event_io_func_t, write),
+		.name		= "write",
+		.filter		= EVFILT_WRITE,
+		.flags		= EV_ADD | EV_ENABLE,
+		.fflags		= 0,
+		.type		= FR_EVENT_FD_SOCKET | FR_EVENT_FD_FILE | FR_EVENT_FD_PCAP
+	},
+	{ 0 }
+};
 
-	bool			in_handler;		//!< Event is currently being serviced.  Deletes should be
-							//!< deferred until after the handlers complete.
+static fr_event_func_map_t vnode_func_map[] = {
+	{
+		.offset		= offsetof(fr_event_vnode_func_t, delete),
+		.name		= "delete",
+		.filter		= EVFILT_VNODE,
+		.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
+		.fflags		= NOTE_DELETE,
+		.type		= FR_EVENT_FD_FILE | FR_EVENT_FD_DIRECTORY,
+		.coalesce	= true
+	},
+	{
+		.offset		= offsetof(fr_event_vnode_func_t, write),
+		.name		= "write",
+		.filter		= EVFILT_VNODE,
+		.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
+		.fflags		= NOTE_WRITE,
+		.type		= FR_EVENT_FD_FILE,
+		.coalesce	= true
+	},
+	{
+		.offset		= offsetof(fr_event_vnode_func_t, extend),
+		.name		= "extend",
+		.filter		= EVFILT_VNODE,
+		.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
+		.fflags		= NOTE_EXTEND,
+		.type		= FR_EVENT_FD_FILE | FR_EVENT_FD_DIRECTORY,
+		.coalesce	= true
+	},
+	{
+		.offset		= offsetof(fr_event_vnode_func_t, attrib),
+		.name		= "attrib",
+		.filter		= EVFILT_VNODE,
+		.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
+		.fflags		= NOTE_ATTRIB,
+		.type		= FR_EVENT_FD_FILE,
+		.coalesce	= true
+	},
+	{
+		.offset		= offsetof(fr_event_vnode_func_t, link),
+		.name		= "link",
+		.filter		= EVFILT_VNODE,
+		.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
+		.fflags		= NOTE_LINK,
+		.type		= FR_EVENT_FD_FILE,
+		.coalesce	= true
+	},
+	{
+		.offset		= offsetof(fr_event_vnode_func_t, rename),
+		.name		= "rename",
+		.filter		= EVFILT_VNODE,
+		.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
+		.fflags		= NOTE_RENAME,
+		.type		= FR_EVENT_FD_FILE,
+		.coalesce	= true
+	},
+#ifdef NOTE_REVOKE
+	{
+		.offset		= offsetof(fr_event_vnode_func_t, revoke),
+		.name		= "revoke",
+		.filter		= EVFILT_VNODE,
+		.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
+		.fflags		= NOTE_REVOKE,
+		.type		= FR_EVENT_FD_FILE,
+		.coalesce	= true
+	},
+#endif
+#ifdef NOTE_FUNLOCK
+	{
+		.offset		= offsetof(fr_event_vnode_func_t, funlock),
+		.name		= "funlock",
+		.filter		= EVFILT_VNODE,
+		.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
+		.fflags		= NOTE_FUNLOCK,
+		.type		= FR_EVENT_FD_FILE,
+		.coalesce	= true
+	},
+#endif
+	{ 0 }
+};
 
-	bool			do_delete;		//!< Deferred deletion flag.  Delete this event *after*
-							//!< the handlers complete.
+static FR_NAME_NUMBER const fr_event_fd_type_table[] = {
+	{ "socket",		FR_EVENT_FD_SOCKET },
+	{ "file",		FR_EVENT_FD_FILE },
+	{ "directory",		FR_EVENT_FD_DIRECTORY },
+	{ "pcap",		FR_EVENT_FD_PCAP },
+	{ NULL,			-1 },
+};
 
-	void			*ctx;			//!< Context pointer to pass to each file descriptor callback.
-} fr_event_fd_t;
-
-/** Callbacks to perform when the event handler is about to check the events.
+/** A file descriptor/filter event
  *
  */
-typedef struct fr_event_pre_t {
-	fr_dlist_t		entry;			//!< linked list of callback
-	fr_event_status_t	callback;		//!< the callback to call
-	void			*ctx;			//!< context for the callback.
-} fr_event_pre_t;
+struct fr_event_fd {
+	fr_event_filter_t	filter;
+	int			fd;			//!< File descriptor we're listening for events on.
 
+	fr_event_fd_type_t	type;			//!< Type of events we're interested in.
+
+	int                     sock_type;              //!< The type of socket SOCK_STREAM, SOCK_RAW etc...
+
+	fr_event_funcs_t	active;			//!< Active filter functions.
+	fr_event_funcs_t	stored;			//!< Stored (set, but inactive) filter functions.
+
+	fr_event_error_cb_t	error;			//!< Callback for when an error occurs on the FD.
+
+	fr_event_func_map_t const *map;			//!< Function map between #fr_event_funcs_t and kevent filters.
+
+	bool			is_registered;		//!< Whether this fr_event_fd_t's FD has been registered with
+							///< kevent.  Mostly for debugging.
+
+	bool			in_handler;		//!< Event is currently being serviced.  Deletes should be
+							///< deferred until after the handlers complete.
+
+	bool			deferred_free;		//!< Deferred deletion flag.  Delete this event *after*
+							///< the handlers complete.
+
+	void			*uctx;			//!< Context pointer to pass to each file descriptor callback.
+	TALLOC_CTX		*linked_ctx;		//!< talloc ctx this event was bound to.
+
+	fr_event_fd_t		*next;			//!< item in a list of fr_event_fd.
+};
+
+struct fr_event_pid {
+	pid_t			pid;			//!< child to wait for
+	fr_event_list_t		*el;			//!< the event list which this thing is in
+
+	fr_event_pid_cb_t	callback;		//!< callback to run when the child exits
+	void			*uctx;			//!< Context pointer to pass to each file descriptor callback.
+};
+
+/** Callbacks to perform when the event handler is about to check the events
+ *
+ */
+typedef struct {
+	fr_dlist_t		entry;			//!< Linked list of callback.
+	fr_event_status_cb_t	callback;		//!< The callback to call.
+	void			*uctx;			//!< Context for the callback.
+} fr_event_pre_t;
 
 /** Callbacks to perform after all timers and FDs have been checked
  *
  */
-typedef struct fr_event_post_t {
-	fr_dlist_t		entry;			//!< linked list of callback
-	fr_event_callback_t	callback;		//!< the callback to call
-	void			*ctx;			//!< context for the callback.
+typedef struct {
+	fr_dlist_t		entry;			//!< Linked list of callback.
+	fr_event_cb_t		callback;		//!< The callback to call.
+	void			*uctx;			//!< Context for the callback.
 } fr_event_post_t;
 
-
-/** Callbacks for user events
+/** Callbacks for kevent() user events
  *
  */
-typedef struct fr_event_user_t {
-	fr_dlist_t		entry;			//!< linked list of callback
-	uintptr_t		ident;			//!< the identifier of this event
-	fr_event_user_handler_t callback;		//!< the callback to call
-	void			*ctx;			//!< context for the callback.
+typedef struct {
+	fr_dlist_t		entry;			//!< Linked list of callback.
+	uintptr_t		ident;			//!< The identifier of this event.
+	fr_event_user_handler_t callback;		//!< The callback to call.
+	void			*uctx;			//!< Context for the callback.
 } fr_event_user_t;
-
 
 /** Stores all information relating to an event list
  *
  */
-struct fr_event_list_t {
+struct fr_event_list {
 	fr_heap_t		*times;			//!< of timer events to be executed.
 	rbtree_t		*fds;			//!< Tree used to track FDs with filters in kqueue.
 
-	int			exit;
-
+	int			exit;			//!< If non-zero, the event loop will exit after its current
+							///< iteration, returning this value.
 
 	struct timeval  	now;			//!< The last time the event list was serviced.
 	bool			dispatch;		//!< Whether the event list is currently dispatching events.
@@ -136,6 +305,8 @@ struct fr_event_list_t {
 	fr_dlist_t		post_callbacks;		//!< post-processing callbacks
 
 	struct kevent		events[FR_EV_BATCH_FDS]; /* so it doesn't go on the stack every time */
+
+	fr_event_fd_t		*fd_to_free;		//!< File descriptor events pending deletion.
 };
 
 /** Compare two timer events to see which one should occur first
@@ -149,16 +320,9 @@ struct fr_event_list_t {
  */
 static int fr_event_timer_cmp(void const *a, void const *b)
 {
-	fr_event_timer_t const *ev_a = a;
-	fr_event_timer_t const *ev_b = b;
+	fr_event_timer_t const	*ev_a = a, *ev_b = b;
 
-	if (ev_a->when.tv_sec < ev_b->when.tv_sec) return -1;
-	if (ev_a->when.tv_sec > ev_b->when.tv_sec) return +1;
-
-	if (ev_a->when.tv_usec < ev_b->when.tv_usec) return -1;
-	if (ev_a->when.tv_usec > ev_b->when.tv_usec) return +1;
-
-	return 0;
+	return fr_timeval_cmp(&ev_a->when, &ev_b->when);
 }
 
 /** Compare two file descriptor handles
@@ -172,12 +336,13 @@ static int fr_event_timer_cmp(void const *a, void const *b)
  */
 static int fr_event_fd_cmp(void const *a, void const *b)
 {
-	fr_event_fd_t const *ev_a = a;
-	fr_event_fd_t const *ev_b = b;
-	if (ev_a->fd < ev_b->fd) return -1;
-	if (ev_a->fd > ev_b->fd) return +1;
+	fr_event_fd_t const	*ev_a = a, *ev_b = b;
+	int			ret;
 
-	return 0;
+	ret = (ev_a->fd < ev_b->fd) - (ev_a->fd > ev_b->fd);
+	if (ret != 0) return ret;
+
+	return (ev_a->filter > ev_b->filter) - (ev_b->filter < ev_b->filter);
 }
 
 /** Return the number of file descriptors is_registered with this event loop
@@ -185,7 +350,7 @@ static int fr_event_fd_cmp(void const *a, void const *b)
  */
 int fr_event_list_num_fds(fr_event_list_t *el)
 {
-	if (!el) return -1;
+	if (unlikely(!el)) return -1;
 
 	return el->num_fds;
 }
@@ -197,7 +362,7 @@ int fr_event_list_num_fds(fr_event_list_t *el)
  */
 int fr_event_list_num_elements(fr_event_list_t *el)
 {
-	if (!el) return -1;
+	if (unlikely(!el)) return -1;
 
 	return fr_heap_num_elements(el->times);
 }
@@ -209,7 +374,7 @@ int fr_event_list_num_elements(fr_event_list_t *el)
  */
 int fr_event_list_kq(fr_event_list_t *el)
 {
-	if (!el) return -1;
+	if (unlikely(!el)) return -1;
 
 	return el->kq;
 }
@@ -241,35 +406,263 @@ int fr_event_list_time(struct timeval *when, fr_event_list_t *el)
 	return 1;
 }
 
+/** Build a new evset based on function pointers present
+ *
+ * @note The contents of active functions may be inconsistent if this function errors.  But the
+ *	 only time that will occur is if the caller passed invalid arguments.
+ *
+ * @param[out] out_kev		where to write the evset.
+ * @param[in] outlen		length of output buffer.
+ * @param[out] active		The set of function pointers with active filters.
+ * @param[in] ef		event to insert.
+ * @param[in] new		Functions to map to filters.
+ * @param[in] prev		Previous set of functions mapped to filters.
+ * @return
+ *	- >= 0 the number of changes written to out.
+ *	- < 0 an error ocurred.
+ */
+static ssize_t fr_event_build_evset(struct kevent out_kev[], size_t outlen, fr_event_funcs_t *active,
+				    fr_event_fd_t *ef,
+				    fr_event_funcs_t const *new, fr_event_funcs_t const *prev)
+{
+	struct kevent			*out = out_kev, *end = out + outlen;
+	fr_event_func_map_t const	*map;
+
+	EVENT_DEBUG("Building new evset for FD %i (new %p, prev %p)", ef->fd, new, prev);
+
+	/*
+	 *	Iterate over the function map, setting/unsetting
+	 *	filters and filter flags.
+	 */
+	for (map = ef->map; map->name; map++) {
+		bool		has_current_func = false;
+		bool		has_prev_func = false;
+		uint32_t	current_fflags = 0;
+		uint32_t	prev_fflags = 0;
+
+		do {
+			if (*(uintptr_t const *)((uint8_t const *)prev + map->offset)) {
+				EVENT_DEBUG("\t%s prev set", map->name);
+				prev_fflags |= map->fflags;
+				has_prev_func = true;
+			} else {
+				EVENT_DEBUG("\t%s prev unset", map->name);
+			}
+
+			if (*(uintptr_t const *)((uint8_t const *)new + map->offset)) {
+				EVENT_DEBUG("\t%s curr set", map->name);
+				current_fflags |= map->fflags;
+				has_current_func = true;
+
+				/*
+				 *	Check the filter will work for the
+				 *	type of file descriptor specified.
+				 */
+				if (!(map->type & ef->type)) {
+					fr_strerror_printf("kevent %s (%s), can't be applied to fd of type %s",
+							   map->name,
+							   fr_int2str(kevent_filter_table, map->filter, "<INVALID>"),
+							   fr_int2str(fr_event_fd_type_table,
+								      map->type, "<INVALID>"));
+					return -1;
+				}
+
+				/*
+				 *	Mark this filter function as active
+				 */
+				memcpy((uint8_t *)active + map->offset, (uint8_t const *)new + map->offset,
+				       sizeof(fr_event_fd_cb_t));
+			} else {
+				EVENT_DEBUG("\t%s curr unset", map->name);
+				/*
+				 *	Mark this filter function as inactive
+				 */
+				memset((uint8_t *)active + map->offset, 0, sizeof(fr_event_fd_cb_t));
+			}
+
+			if (!(map + 1)->coalesce) break;
+			map++;
+		} while (1);
+
+		if (out > end) {
+			fr_strerror_printf("Out of memory to store kevent filters");
+			return -1;
+		}
+
+		/*
+		 *	Upsert if we add a function or change the flags.
+		 */
+		if (has_current_func &&
+		    (!has_prev_func ||
+		     (has_prev_func && (current_fflags != prev_fflags)))) {
+		     	EVENT_DEBUG("\tEV_SET EV_ADD filter %s (%i), flags %i, fflags %i",
+		     		    fr_int2str(kevent_filter_table, map->filter, "<INVALID>"),
+		     		    map->filter, map->flags, current_fflags);
+			EV_SET(out++, ef->fd, map->filter, map->flags, current_fflags, 0, ef);
+
+		/*
+		 *	Delete if we remove a function.
+		 */
+		} else if (!has_current_func && has_prev_func) {
+		     	EVENT_DEBUG("\tEV_SET EV_DELETE filter %s (%i), flags %i, fflags %i",
+		     		    fr_int2str(kevent_filter_table, map->filter, "<INVALID>"),
+		     		    map->filter, EV_DELETE, 0, 0);
+			EV_SET(out++, ef->fd, map->filter, EV_DELETE, 0, 0, 0);
+		}
+	}
+
+	return out - out_kev;
+}
+
+/** Discover the type of a file descriptor
+ *
+ * This function writes the result of the discovery to the ef->type,
+ * and ef->sock_type fields.
+ *
+ * @param[out] ef	to write type data to.
+ * @param[in] fd	to discover the type of.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int fr_event_fd_type_set(fr_event_fd_t *ef, int fd)
+{
+	int             sock_type;
+	socklen_t       opt_len = sizeof(sock_type);
+
+	/*
+	 *      It's a socket or PCAP socket
+	 */
+	if (getsockopt(fd, SOL_SOCKET, SO_TYPE, &sock_type, &opt_len) == 0) {
+#ifdef SO_GET_FILTER
+		opt_len = 0;
+		if (unlikely(getsockopt(fd, SOL_SOCKET, SO_ATTACH_FILTER, NULL, &opt_len) < 0)) {
+			fr_strerror_printf("Failed determining PF status: %s", fr_syserror(errno));
+			return -1;
+		}
+		if (opt_len) {
+			ef->type = FR_EVENT_FD_PCAP;
+		} else
+#endif
+		{
+			ef->sock_type = sock_type;
+			ef->type = FR_EVENT_FD_SOCKET;
+		}
+
+	/*
+	 *	It's a file or directory
+	 */
+	} else {
+		struct stat buf;
+
+		if (errno != ENOTSOCK) {
+			fr_strerror_printf("Failed retrieving socket type: %s", fr_syserror(errno));
+			return -1;
+		}
+
+		if (fstat(fd, &buf) < 0) {
+			fr_strerror_printf("Failed calling stat() on file: %s", fr_syserror(errno));
+			return -1;
+		}
+
+		if (S_ISDIR(buf.st_mode)) {
+			ef->type = FR_EVENT_FD_DIRECTORY;
+		} else {
+			ef->type = FR_EVENT_FD_FILE;
+		}
+	}
+	ef->fd = fd;
+
+	return 0;
+}
+
+/** Remove a file descriptor from the event loop and rbtree but don't free it
+ *
+ * This is used as the talloc destructor for events, and also called by
+ * #fr_event_fd_delete to remove the event in case of deferred deletes.
+ *
+ * @param[in] ef	to remove.
+ * @return
+ *	- 0 on success.
+ *	- -1 on error;
+ */
+static int fr_event_fd_delete_internal(fr_event_fd_t *ef)
+{
+	int i;
+	struct kevent		evset[10];
+	int			count = 0;
+	fr_event_list_t		*el;
+	fr_event_funcs_t	funcs;
+
+	if (!ef->is_registered) return 0;
+
+	memset(&funcs, 0, sizeof(funcs));
+
+	el = talloc_parent(ef);
+
+	count = fr_event_build_evset(evset, sizeof(evset)/sizeof(*evset), &ef->active,
+				     ef, &funcs, &ef->active);
+	if (count < 0) return -1;
+
+	if (unlikely(kevent(el->kq, evset, count, NULL, 0, NULL) < 0)) {
+		fr_strerror_printf("Failed removing filters for FD %i: %s", ef->fd, fr_syserror(errno));
+		return -1;
+	}
+
+	rbtree_deletebydata(el->fds, ef);
+	ef->is_registered = false;
+
+	/*
+	 *	If there are pending events for this FD, go mark them
+	 *	as deleted.
+	 */
+	for (i = 0; i < el->num_fd_events; i++) {
+		if (((el->events[i].filter == EVFILT_READ) ||
+		     (el->events[i].filter == EVFILT_WRITE) ||
+		     (el->events[i].filter == EVFILT_VNODE)) &&
+		    (el->events[i].udata == ef)) {
+			el->events[i].udata = NULL;
+		}
+	}
+
+	el->num_fds--;
+
+	return 0;
+}
+
 /** Remove a file descriptor from the event loop
  *
  * @param[in] el	to remove file descriptor from.
  * @param[in] fd	to remove.
+ * @param[in] filter	The type of filter to remove.
  * @return
  *	- 0 if file descriptor was removed.
  *	- <0 on error.
  */
-int fr_event_fd_delete(fr_event_list_t *el, int fd)
+int fr_event_fd_delete(fr_event_list_t *el, int fd, fr_event_filter_t filter)
 {
-	fr_event_fd_t *ef, find;
+	fr_event_fd_t	*ef, find;
 
 	memset(&find, 0, sizeof(find));
 	find.fd = fd;
+	find.filter = filter;
 
 	ef = rbtree_finddata(el->fds, &find);
-	if (!ef) {
-		fr_strerror_printf("No events is_registered for fd %i", fd);
+	if (unlikely(!ef)) {
+		fr_strerror_printf("No events are registered for fd %i", fd);
 		return -1;
 	}
 
 	/*
-	 *	Defer the delete, so we don't free
+	 *	Defer the free, so we don't free
 	 *	an ef structure that might still be
 	 *	in use within fr_event_service.
 	 */
 	if (ef->in_handler) {
-		ef->do_delete = true;
-
+		if (unlikely(fr_event_fd_delete_internal(ef)) < 0) return -1;	/* Removes from kevent/rbtree, does not free */
+		ef->deferred_free = true;
+		ef->next = el->fd_to_free;
+		el->fd_to_free = ef;
 		return 0;
 	}
 
@@ -277,326 +670,478 @@ int fr_event_fd_delete(fr_event_list_t *el, int fd)
 	 *	Destructor may prevent ef from being
 	 *	freed if kevent de-registration fails.
 	 */
-	if (talloc_free(ef) < 0) return -1;
+	if (unlikely(talloc_free(ef) < 0)) return -1;
 
 	return 0;
 }
 
-/** Remove a file descriptor from the event loop
+/** Suspend/resume a subset of filters
  *
- * @param[in] ef	to remove.
- * @return 0;
+ * This function trades producing useful errors for speed.
+ *
+ * An example of suspending the read filter for an FD would be:
+ @code {.c}
+   static fr_event_update_t pause_read[] = {
+   	FR_EVENT_SUSPEND(fr_event_io_func_t, read),
+   	{ 0 }
+   }
+
+   fr_event_filter_update(el, fd, FR_EVENT_FILTER_IO, pause_read);
+ @endcode
+ *
+ * @param[in] el	to update descriptor in.
+ * @param[in] fd	to update filters for.
+ * @param[in] filter	The type of filter to update.
+ * @param[in] updates	An array of updates to toggle filters on/off without removing
+ *			the callback function.
  */
-static int _fr_event_fd_free(fr_event_fd_t *ef)
+int fr_event_filter_update(fr_event_list_t *el, int fd, fr_event_filter_t filter, fr_event_update_t updates[])
 {
-	int		filter = 0;
-	struct kevent	evset;
+	fr_event_fd_t		*ef, find;
+	size_t			i;
+	fr_event_funcs_t	curr_active, curr_stored;
+	struct kevent		evset[10];
+	int			count = 0;
 
-	fr_event_list_t	*el = talloc_parent(ef);
+	memset(&find, 0, sizeof(find));
+	find.fd = fd;
+	find.filter = filter;
 
-	if (ef->read) filter |= EVFILT_READ;
-	if (ef->write) filter |= EVFILT_WRITE;
+	ef = rbtree_finddata(el->fds, &find);
+	if (unlikely(!ef) || unlikely(ef->deferred_free)) {
+		fr_strerror_printf("No events are registered for fd %i", fd);
+		return -1;
+	}
 
-	if (ef->is_registered) {
-		EV_SET(&evset, ef->fd, filter, EV_DELETE, 0, 0, 0);
-		if (kevent(el->kq, &evset, 1, NULL, 0, NULL) < 0) {
-			fr_strerror_printf("Failed removing filters for FD %i: %s", ef->fd, fr_syserror(errno));
-			return -1;
+	/*
+	 *	Cheapest way of ensuring this function can error without
+	 *	leaving everything in an inconsistent state.
+	 */
+	memcpy(&curr_active, &ef->active, sizeof(curr_active));
+	memcpy(&curr_stored, &ef->stored, sizeof(curr_stored));
+
+	/*
+	 *	Apply modifications to our copies of the active/stored array.
+	 */
+	for (i = 0; updates[i].op; i++) {
+		switch (updates[i].op) {
+		default:
+		case FR_EVENT_OP_SUSPEND:
+			memcpy((uint8_t *)&ef->stored + updates[i].offset,
+			       (uint8_t *)&ef->active + updates[i].offset, sizeof(fr_event_fd_cb_t));
+			memset((uint8_t *)&ef->active + updates[i].offset, 0, sizeof(fr_event_fd_cb_t));
+			break;
+
+		case FR_EVENT_OP_RESUME:
+			memcpy((uint8_t *)&ef->active + updates[i].offset,
+			       (uint8_t *)&ef->stored + updates[i].offset, sizeof(fr_event_fd_cb_t));
+			memset((uint8_t *)&ef->stored + updates[i].offset, 0, sizeof(fr_event_fd_cb_t));
+			break;
 		}
 	}
-	rbtree_deletebydata(el->fds, ef);
-	ef->is_registered = false;
 
-	el->num_fds--;
+	count = fr_event_build_evset(evset, sizeof(evset)/sizeof(*evset), &ef->active,
+				     ef, &ef->active, &curr_active);
+	if (unlikely(count < 0)) {
+	error:
+		memcpy(&ef->active, &curr_active, sizeof(curr_active));
+		memcpy(&ef->stored, &curr_stored, sizeof(curr_stored));
+		return -1;
+	}
+
+	if (count && unlikely(kevent(el->kq, evset, count, NULL, 0, NULL) < 0)) {
+		fr_strerror_printf("Failed updating filters for FD %i: %s", ef->fd, fr_syserror(errno));
+		goto error;
+	}
 
 	return 0;
 }
 
-/** Associate a callback with an file descriptor
+/** Insert a filter for the specified fd
  *
+ * @param[in] ctx	to bind lifetime of the event to.
  * @param[in] el	to insert fd callback into.
- * @param[in] fd	to read from.
- * @param[in] read_fn	function to call when fd is readable.
- * @param[in] write_fn	function to call when fd is writable.
+ * @param[in] fd	to install filters for.
+ * @param[in] filter	one of the #fr_event_filter_t values.
+ * @param[in] funcs	Structure containing callback functions. If a function pointer
+ *			is set, the equivalent kevent filter will be installed.
  * @param[in] error	function to call when an error occurs on the fd.
- * @param[in] ctx	to pass to handler.
- * @return
- *	- 0 on succes.
- *	- -1 on failure.
+ * @param[in] uctx	to pass to handler.
  */
-int fr_event_fd_insert(fr_event_list_t *el, int fd,
-		       fr_event_fd_handler_t read_fn,
-		       fr_event_fd_handler_t write_fn,
-		       fr_event_fd_handler_t error,
-		       void *ctx)
+int fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
+			   fr_event_filter_t filter,
+			   void *funcs, fr_event_error_cb_t error,
+			   void *uctx)
 {
-	int	      	filter = 0;
-	struct kevent	evset;
-	fr_event_fd_t	*ef, find;
-	bool		pre_existing;
+	ssize_t			count;
+	fr_event_fd_t		find, *ef;
+	fr_event_funcs_t	active;
+	struct kevent		evset[10];
 
-	if (!el) {
+	if (unlikely(!el)) {
 		fr_strerror_printf("Invalid argument: NULL event list");
 		return -1;
 	}
 
-	if (!read_fn && !write_fn) {
-		fr_strerror_printf("Invalid arguments: NULL read and write callbacks");
-		return -1;
-	}
-
-	if (fd < 0) {
+	if (unlikely(fd < 0)) {
 		fr_strerror_printf("Invalid arguments: Bad FD %i", fd);
 		return -1;
 	}
 
-	if (el->exit) {
+	if (unlikely(el->exit)) {
 		fr_strerror_printf("Event loop exiting");
 		return -1;
 	}
 
 	memset(&find, 0, sizeof(find));
 
-	/*
-	 *	Get the existing fr_event_fd_t if it exists.
-	 */
 	find.fd = fd;
+	find.filter = filter;
 	ef = rbtree_finddata(el->fds, &find);
+
+	/*
+	 *	Need to free the event to change the talloc link.
+	 *
+	 *	This is generally bad.  If you hit this
+	 *	code path you probably screwed up somewhere.
+	 */
+	if (unlikely(ef && (ef->linked_ctx != ctx))) {
+		if (fr_event_fd_delete(el, fd, filter) < 0) return -1;
+		ef = NULL;
+	}
+
+	/*
+	 *	No pre-existing event.  Allocate an entry
+	 *	for insertion into the rbtree.
+	 */
 	if (!ef) {
-		int             sock_type;
-		socklen_t       opt_len = sizeof(sock_type);
-
-		pre_existing = false;
-
 		ef = talloc_zero(el, fr_event_fd_t);
-		if (!ef) {
+		if (unlikely(!ef)) {
 			fr_strerror_printf("Out of memory");
 			return -1;
 		}
-		talloc_set_destructor(ef, _fr_event_fd_free);
+		talloc_set_destructor(ef, fr_event_fd_delete_internal);
+		ef->linked_ctx = ctx;
 
+		/*
+		 *	Determine what type of file descriptor
+		 *	this is.
+		 */
+		if (fr_event_fd_type_set(ef, fd) < 0) {
+		free:
+			talloc_free(ef);
+			return -1;
+		}
+
+		switch (filter) {
+		case FR_EVENT_FILTER_IO:
+			ef->map = io_func_map;
+			break;
+
+		case FR_EVENT_FILTER_VNODE:
+			ef->map = vnode_func_map;
+			break;
+
+		default:
+			fr_strerror_printf("Filter %i not supported", fd, filter);
+			goto free;
+		}
+
+		count = fr_event_build_evset(evset, sizeof(evset)/sizeof(*evset), &ef->active, ef, funcs, &ef->active);
+		if (count < 0) goto free;
+		if (count && (unlikely(kevent(el->kq, evset, count, NULL, 0, NULL) < 0))) {
+			fr_strerror_printf("Failed modifying filters for FD %i: %s", fd, fr_syserror(errno));
+			goto free;
+		}
+
+		ef->filter = filter;
 		el->num_fds++;
-
-		ef->fd = fd;
-
-                /*
-                 *      Retrieve file descriptor metadata
-                 */
-                if (getsockopt(fd, SOL_SOCKET, SO_TYPE, &sock_type, &opt_len) < 0) {
-                        if (errno != ENOTSOCK) {
-                                fr_strerror_printf("Failed retrieving socket type: %s", fr_syserror(errno));
-                                return -1;
-                        }
-                        ef->is_file = true;
-                }
-#ifdef SO_GET_FILTER
-                else {
-                        opt_len = 0;
-                        if (getsockopt(fd, SOL_SOCKET, SO_ATTACH_FILTER, NULL, &opt_len) < 0) {
-                                fr_strerror_printf("Failed determining PF status: %s", fr_syserror(errno));
-                                return -1;
-                        }
-                        if (opt_len) ef->pf_attached = true;
-                        ef->sock_type = sock_type;
-                }
-#endif
-
 		rbtree_insert(el->fds, ef);
+		ef->is_registered = true;
 
 	/*
-	 *	Existing filters will be overwritten if there's
-	 *	a new filter which takes their place.  If there
-	 *	is no new filter however, we need to delete the
-	 *	existing one.
+	 *	Pre-existing event, update the filters and
+	 *	functions associated with the file descriptor.
 	 */
 	} else {
-		pre_existing = true;
+		/*
+		 *	Take a copy of the current set of active
+		 *	functions, so we can error out in a
+		 *	consistent state.
+		 */
+		memcpy(&active, &ef->active, sizeof(ef->active));
 
-		if (ef->read && !read_fn) filter |= EVFILT_READ;
-		if (ef->write && !write_fn) filter |= EVFILT_WRITE;
-
-		if (filter) {
-			EV_SET(&evset, ef->fd, filter, EV_DELETE, 0, 0, 0);
-
-			/*
-			 *	kevent on macOS sierra (and possibly others)
-			 *	is broken, and doesn't allow us to perform
-			 *	an EVILT_* add and delete in the same
-			 *	call.
-			 */
-			if (kevent(el->kq, &evset, 1, NULL, 0, NULL) < 0) {
-				fr_strerror_printf("Failed deleting filter for FD %i: %s", fd, fr_syserror(errno));
-				return -1;
-			}
-			filter = 0;
+		count = fr_event_build_evset(evset, sizeof(evset)/sizeof(*evset), &ef->active, ef, funcs, &ef->active);
+		if (count < 0) {
+		error:
+			memcpy(&ef->active, &active, sizeof(ef->active));
+			return -1;
+		}
+		if (count && (unlikely(kevent(el->kq, evset, count, NULL, 0, NULL) < 0))) {
+			fr_strerror_printf("Failed modifying filters for FD %i: %s", fd, fr_syserror(errno));
+			goto error;
 		}
 
 		/*
-		 *	I/O handler may delete an event, then
-		 *	re-add it.  To avoid deleting modified
-		 *	events we unset the do_delete flag.
+		 *	Clear any previously suspended functions
 		 */
-		ef->do_delete = false;
+		memset(&ef->stored, 0, sizeof(ef->stored));
 	}
 
-	ef->ctx = ctx;
-
-	if (read_fn) {
-		ef->read = read_fn;
-		filter |= EVFILT_READ;
-	}
-
-	if (write_fn) {
-		ef->write = write_fn;
-		filter |= EVFILT_WRITE;
-	}
 	ef->error = error;
-
-	EV_SET(&evset, fd, filter, EV_ADD | EV_ENABLE, 0, 0, ef);
-	if (kevent(el->kq, &evset, 1, NULL, 0, NULL) < 0) {
-		fr_strerror_printf("Failed adding filter for FD %i: %s", fd, fr_syserror(errno));
-		if (!pre_existing) talloc_free(ef);
-		return -1;
-	}
-	ef->is_registered = true;
+	ef->deferred_free = false;
+	ef->uctx = uctx;
 
 	return 0;
+}
+
+/** Associate I/O callbacks with a file descriptor
+ *
+ * @param[in] ctx	to bind lifetime of the event to.
+ * @param[in] el	to insert fd callback into.
+ * @param[in] fd	to install filters for.
+ * @param[in] read_fn	function to call when fd is readable.
+ * @param[in] write_fn	function to call when fd is writable.
+ * @param[in] error	function to call when an error occurs on the fd.
+ * @param[in] uctx	to pass to handler.
+ * @return
+ *	- 0 on succes.
+ *	- -1 on failure.
+ */
+int fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
+		       fr_event_fd_cb_t read_fn,
+		       fr_event_fd_cb_t write_fn,
+		       fr_event_error_cb_t error,
+		       void *uctx)
+{
+	fr_event_io_func_t funcs =  { .read = read_fn, .write = write_fn };
+
+	if (unlikely(!read_fn && !write_fn)) {
+		fr_strerror_printf("Invalid arguments: All callbacks are NULL");
+		return -1;
+	}
+
+	return fr_event_filter_insert(ctx, el, fd, FR_EVENT_FILTER_IO, &funcs, error, uctx);
 }
 
 
 /** Delete a timer event from the event list
  *
  * @param[in] el	to delete event from.
- * @param[in] parent	of the event being deleted.
+ * @param[in] ev_p	of the event being deleted.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-int fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t **parent)
+int fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t const **ev_p)
 {
-	int ret;
-
 	fr_event_timer_t *ev;
 
-	if (!el) {
-		fr_strerror_printf("Invalid argument: NULL event list");
-		return -1;
-	}
+	if (unlikely(!*ev_p)) return 0;
+	if (!fr_cond_assert(talloc_parent(*ev_p) == el)) return -1;
 
-	if (!parent) {
-		fr_strerror_printf("Invalid arguments: NULL event pointer");
-		return -1;
-	}
+	memcpy(&ev, ev_p, sizeof(ev));
+	return talloc_free(ev);
+}
 
-	if (!*parent) {
-		fr_strerror_printf("Invalid arguments: NULL event");
-		return -1;
-	}
-
-	/*
-	 *  Validate the event_t struct to detect memory issues early.
-	 */
-	ev = talloc_get_type_abort(*parent, fr_event_timer_t);
-	if (ev->parent) {
-		(void)fr_cond_assert(*(ev->parent) == ev);
-		*ev->parent = NULL;
-	}
-	*parent = NULL;
+/** Remove an event from the event loop
+ *
+ * @param[in] ev	to free.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int _event_timer_free(fr_event_timer_t *ev)
+{
+	fr_event_list_t	*el = talloc_parent(ev);
+	fr_event_timer_t const **ev_p;
+	int		ret;
 
 	ret = fr_heap_extract(el->times, ev);
+
+	ev_p = ev->parent;
+	rad_assert(*(ev->parent) == ev);
+	*ev_p = NULL;
 
 	/*
 	 *	Events MUST be in the heap
 	 */
 	if (!fr_cond_assert(ret == 1)) {
 		fr_strerror_printf("Event not found in heap");
-		talloc_free(ev);
 		return -1;
 	}
-	talloc_free(ev);
 
-	return ret;
+	return 0;
 }
 
 /** Insert a timer event into an event list
  *
- * @param[in] el	to insert event into.
- * @param[in] callback	function to execute if the event fires.
- * @param[in] ctx	for callback function.
- * @param[in] when	we should run the event.
- * @param[in] parent	If not NULL modify this event instead of creating a new one.  This is a parent
- *			in a temporal sense, not in a memory structure or dependency sense.
+ * @note The talloc parent of the memory returned in ev_p must not be changed.
+ *	 If the lifetime of the event needs to be bound to another context
+ *	 this function should be called with the existing event pointed to by
+ *	 ev_p.
+ *
+ * @param[in] ctx		to bind lifetime of the event to.
+ * @param[in] el		to insert event into.
+ * @param[in,out] ev_p		If not NULL modify this event instead of creating a new one.  This is a parent
+ *				in a temporal sense, not in a memory structure or dependency sense.
+ * @param[in] when		we should run the event.
+ * @param[in] callback		function to execute if the event fires.
+ * @param[in] uctx		user data to pass to the event.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_event_timer_insert(fr_event_list_t *el, fr_event_callback_t callback, void const *ctx,
-			  struct timeval *when, fr_event_timer_t **parent)
+int fr_event_timer_insert(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t const **ev_p,
+			  struct timeval *when, fr_event_cb_t callback, void const *uctx)
 {
 	fr_event_timer_t *ev;
 
-	if (!el) {
+	if (unlikely(!el)) {
 		fr_strerror_printf("Invalid arguments: NULL event list");
 		return -1;
 	}
 
-	if (!callback) {
+	if (unlikely(!callback)) {
 		fr_strerror_printf("Invalid arguments: NULL callback");
 		return -1;
 	}
 
-	if (!when || (when->tv_usec >= USEC)) {
+	if (unlikely(!when || (when->tv_usec >= USEC))) {
 		fr_strerror_printf("Invalid arguments: time");
 		return -1;
 	}
 
-	if (!parent) {
-		fr_strerror_printf("Invalid arguments: NULL parent");
+	if (unlikely(!ev_p)) {
+		fr_strerror_printf("Invalid arguments: NULL ev_p");
 		return -1;
 	}
 
-	if (el->exit) {
+	if (unlikely(el->exit)) {
 		fr_strerror_printf("Event loop exiting");
 		return -1;
 	}
 
 	/*
 	 *	If there is an event, re-use it instead of freeing it
-	 *	and allocating a new one.
+	 *	and allocating a new one.  This is to reduce memory
+	 *	churn for repeat events.
 	 */
-	if (*parent) {
-		int ret;
-
-		ev = talloc_get_type_abort(*parent, fr_event_timer_t);
-
-		ret = fr_heap_extract(el->times, ev);
-		if (!fr_cond_assert(ret == 1)) return -1;	/* events MUST be in the heap */
-
-		memset(ev, 0, sizeof(*ev));
-	} else {
+	if (!*ev_p) {
+	new_event:
 		ev = talloc_zero(el, fr_event_timer_t);
-		if (!ev) return -1;
+		if (unlikely(!ev)) return -1;
+
+		/*
+		 *	Bind the lifetime of the event to the specified
+		 *	talloc ctx.  If the talloc ctx is freed, the
+		 *	event will also be freed.
+		 */
+		if (ctx) fr_talloc_link_ctx(ctx, ev);
+
+		talloc_set_destructor(ev, _event_timer_free);
+	} else {
+		memcpy(&ev, ev_p, sizeof(ev));	/* Not const to us */
+
+		rad_assert(*ev_p == ev);
+
+		/*
+		 *	We can't disarm the linking context due to
+		 *	limitations in talloc, so if the linking
+		 *	context changes, we need to free the old
+		 *	event, and allocate a new one.
+		 *
+		 *	Freeing the event also removes it from the heap.
+		 */
+		if (unlikely(ev->linked_ctx != ctx)) {
+			talloc_free(ev);
+			goto new_event;
+		}
+
+		/*
+		 *	Event may have fired, in which case the
+		 *	event will no longer be in the event loop.
+		 */
+		(void) fr_heap_extract(el->times, ev);
 	}
 
-	ev->callback = callback;
-	ev->ctx = ctx;
 	ev->when = *when;
-	ev->parent = parent;
+	ev->callback = callback;
+	ev->uctx = uctx;
+	ev->linked_ctx = ctx;
+	ev->parent = ev_p;
 
-	if (!fr_heap_insert(el->times, ev)) {
+	if (unlikely(!fr_heap_insert(el->times, ev))) {
 		fr_strerror_printf("Failed inserting event into heap");
 		talloc_free(ev);
 		return -1;
 	}
 
-	*parent = ev;
+	*ev_p = ev;
 
 	return 0;
 }
 
 
+static int event_pid_free(fr_event_pid_t *ev)
+{
+	struct kevent evset;
+
+	if (ev->pid == 0) return 0; /* already deleted from kevent */
+
+	EV_SET(&evset, ev->pid, EVFILT_PROC, EV_DELETE, NOTE_EXIT, 0, ev);
+
+	(void) kevent(ev->el->kq, &evset, 1, NULL, 0, NULL);
+
+	return 0;
+}
+
+/** Insert a PID event into an event list
+ *
+ * @note The talloc parent of the memory returned in ev_p must not be changed.
+ *	 If the lifetime of the event needs to be bound to another context
+ *	 this function should be called with the existing event pointed to by
+ *	 ev_p.
+ *
+ * @param[in] ctx		to bind lifetime of the event to.
+ * @param[in] el		to insert event into.
+ * @param[in,out] ev_p		If not NULL modify this event instead of creating a new one.  This is a parent
+ *				in a temporal sense, not in a memory structure or dependency sense.
+ * @param[in] pid		child PID to wait for
+ * @param[in] wait_fn		function to execute if the event fires.
+ * @param[in] uctx		user data to pass to the event.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_event_pid_wait(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_pid_t const **ev_p,
+		      pid_t pid, fr_event_pid_cb_t wait_fn, void *uctx)
+{
+	fr_event_pid_t *ev;
+	struct kevent evset;
+
+	ev = talloc(ctx, fr_event_pid_t);
+	ev->pid = pid;
+	ev->callback = wait_fn;
+	ev->uctx = uctx;
+
+	EV_SET(&evset, pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT, 0, ev);
+
+	if (unlikely(kevent(el->kq, &evset, 1, NULL, 0, NULL) < 0)) {
+		fr_strerror_printf("Failed adding waiter for PID %ld", (long) pid);
+		return -1;
+	}
+	talloc_set_destructor(ev, event_pid_free);
+
+	*ev_p = ev;
+	return 0;
+}
+
 /** Add a user callback to the event list.
  *
- * @param[in] el	containing the timer events.
- * @param[in] callback	the callback for EVFILT_USER
- * @param[in] uctx	user context for the callback
+ * @param[in] el	Containing the timer events.
+ * @param[in] callback	for EVFILT_USER.
+ * @param[in] uctx	for the callback.
  * @return
  *	- 0 on error
  *	- uintptr_t ident for EVFILT_USER signaling
@@ -607,7 +1152,7 @@ uintptr_t fr_event_user_insert(fr_event_list_t *el, fr_event_user_handler_t call
 
 	user = talloc(el, fr_event_user_t);
 	user->callback = callback;
-	user->ctx = uctx;
+	user->uctx = uctx;
 	user->ident = (uintptr_t) user;
 
 	fr_dlist_insert_tail(&el->user_callbacks, &user->entry);
@@ -615,12 +1160,11 @@ uintptr_t fr_event_user_insert(fr_event_list_t *el, fr_event_user_handler_t call
 	return user->ident;;
 }
 
-
 /** Delete a user callback to the event list.
  *
- * @param[in] el	containing the timer events.
- * @param[in] callback	the callback for EVFILT_USER
- * @param[in] uctx	user context for the callback
+ * @param[in] el	Containing the timer events.
+ * @param[in] callback	for EVFILT_USER.
+ * @param[in] uctx	for the callback.
  * @return
  *	- < 0 on error
  *	- 0 on success
@@ -638,7 +1182,7 @@ int fr_event_user_delete(fr_event_list_t *el, fr_event_user_handler_t callback, 
 
 		user = fr_ptr_to_type(fr_event_user_t, entry, entry);
 		if ((user->callback == callback) &&
-		    (user->ctx == uctx)) {
+		    (user->uctx == uctx)) {
 			fr_dlist_remove(entry);
 			talloc_free(user);
 			return 0;
@@ -648,43 +1192,41 @@ int fr_event_user_delete(fr_event_list_t *el, fr_event_user_handler_t callback, 
 	return -1;
 }
 
-
 /** Add a pre-event callback to the event list.
  *
  *  Events are serviced in insert order.  i.e. insert A, B, we then
  *  have A running before B.
  *
- * @param[in] el	containing the timer events.
- * @param[in] callback	the pre-processing callback;
- * @param[in] uctx	user context for the callback
+ * @param[in] el	Containing the timer events.
+ * @param[in] callback	The pre-processing callback.
+ * @param[in] uctx	for the callback.
  * @return
  *	- < 0 on error
  *	- 0 on success
  */
-int fr_event_pre_insert(fr_event_list_t *el, fr_event_status_t callback, void *uctx)
+int fr_event_pre_insert(fr_event_list_t *el, fr_event_status_cb_t callback, void *uctx)
 {
 	fr_event_pre_t *pre;
 
 	pre = talloc(el, fr_event_pre_t);
 	pre->callback = callback;
-	pre->ctx = uctx;
+	pre->uctx = uctx;
 
 	fr_dlist_insert_tail(&el->pre_callbacks, &pre->entry);
 
 	return 0;
 }
 
-
 /** Delete a pre-event callback from the event list.
  *
- * @param[in] el	containing the timer events.
- * @param[in] callback	the pre-processing callback
- * @param[in] uctx	user context for the callback
+ * @param[in] el	Containing the timer events.
+ * @param[in] callback	The pre-processing callback.
+ * @param[in] uctx	for the callback.
  * @return
  *	- < 0 on error
  *	- 0 on success
  */
-int fr_event_pre_delete(fr_event_list_t *el, fr_event_status_t callback, void *uctx)
+int fr_event_pre_delete(fr_event_list_t *el, fr_event_status_cb_t callback, void *uctx)
 {
 	fr_dlist_t *entry, *next;
 
@@ -697,7 +1239,7 @@ int fr_event_pre_delete(fr_event_list_t *el, fr_event_status_t callback, void *u
 
 		pre = fr_ptr_to_type(fr_event_pre_t, entry, entry);
 		if ((pre->callback == callback) &&
-		    (pre->ctx == uctx)) {
+		    (pre->uctx == uctx)) {
 			fr_dlist_remove(entry);
 			talloc_free(pre);
 			return 0;
@@ -707,43 +1249,41 @@ int fr_event_pre_delete(fr_event_list_t *el, fr_event_status_t callback, void *u
 	return -1;
 }
 
-
 /** Add a post-event callback to the event list.
  *
  *  Events are serviced in insert order.  i.e. insert A, B, we then
  *  have A running before B.
  *
- * @param[in] el	containing the timer events.
- * @param[in] callback	the post-processing callback;
- * @param[in] uctx	user context for the callback
+ * @param[in] el	Containing the timer events.
+ * @param[in] callback	The post-processing callback.
+ * @param[in] uctx	for the callback.
  * @return
  *	- < 0 on error
  *	- 0 on success
  */
-int fr_event_post_insert(fr_event_list_t *el, fr_event_callback_t callback, void *uctx)
+int fr_event_post_insert(fr_event_list_t *el, fr_event_cb_t callback, void *uctx)
 {
 	fr_event_post_t *post;
 
 	post = talloc(el, fr_event_post_t);
 	post->callback = callback;
-	post->ctx = uctx;
+	post->uctx = uctx;
 
 	fr_dlist_insert_tail(&el->post_callbacks, &post->entry);
 
 	return 0;
 }
 
-
 /** Delete a post-event callback from the event list.
  *
- * @param[in] el	containing the timer events.
- * @param[in] callback	the post-processing callback
- * @param[in] uctx	user context for the callback
+ * @param[in] el	Containing the timer events.
+ * @param[in] callback	The post-processing callback.
+ * @param[in] uctx	for the callback.
  * @return
  *	- < 0 on error
  *	- 0 on success
  */
-int fr_event_post_delete(fr_event_list_t *el, fr_event_callback_t callback, void *uctx)
+int fr_event_post_delete(fr_event_list_t *el, fr_event_cb_t callback, void *uctx)
 {
 	fr_dlist_t *entry, *next;
 
@@ -756,7 +1296,7 @@ int fr_event_post_delete(fr_event_list_t *el, fr_event_callback_t callback, void
 
 		post = fr_ptr_to_type(fr_event_post_t, entry, entry);
 		if ((post->callback == callback) &&
-		    (post->ctx == uctx)) {
+		    (post->uctx == uctx)) {
 			fr_dlist_remove(entry);
 			talloc_free(post);
 			return 0;
@@ -765,7 +1305,6 @@ int fr_event_post_delete(fr_event_list_t *el, fr_event_callback_t callback, void
 
 	return -1;
 }
-
 
 /** Run a single scheduled timer event
  *
@@ -777,11 +1316,11 @@ int fr_event_post_delete(fr_event_list_t *el, fr_event_callback_t callback, void
  */
 int fr_event_timer_run(fr_event_list_t *el, struct timeval *when)
 {
-	fr_event_callback_t callback;
-	void *ctx;
-	fr_event_timer_t *ev;
+	fr_event_cb_t	callback;
+	void			*uctx;
+	fr_event_timer_t	*ev;
 
-	if (!el) return 0;
+	if (unlikely(!el)) return 0;
 
 	if (fr_heap_num_elements(el->times) == 0) {
 		when->tv_sec = 0;
@@ -807,14 +1346,16 @@ int fr_event_timer_run(fr_event_list_t *el, struct timeval *when)
 	}
 
 	callback = ev->callback;
-	memcpy(&ctx, &ev->ctx, sizeof(ctx));
+	memcpy(&uctx, &ev->uctx, sizeof(uctx));
+
+	rad_assert(*ev->parent == ev);
 
 	/*
 	 *	Delete the event before calling it.
 	 */
 	fr_event_timer_delete(el, ev->parent);
 
-	callback(el, when, ctx);
+	callback(el, when, uctx);
 
 	return 1;
 }
@@ -829,9 +1370,13 @@ int fr_event_timer_run(fr_event_list_t *el, struct timeval *when)
  */
 int fr_event_corral(fr_event_list_t *el, bool wait)
 {
-	struct timeval when, *wake;
-	struct timespec ts_when, *ts_wake;
-	fr_dlist_t *entry;
+	struct timeval		when, *wake;
+	struct timespec		ts_when, *ts_wake;
+	fr_dlist_t		*entry;
+	int			num_fd_events, num_timer_events;
+
+	el->num_fd_events = 0;
+	num_timer_events = 0;
 
 	if (el->exit) {
 		fr_strerror_printf("Event loop exiting");
@@ -852,7 +1397,7 @@ int fr_event_corral(fr_event_list_t *el, bool wait)
 
 			ev = fr_heap_peek(el->times);
 			if (!fr_cond_assert(ev)) {
-				fr_strerror_printf("Timer heap says it is non-empty, but there are no entries in it.");
+				fr_strerror_printf("Timer heap says it is non-empty, but there are no entries in it");
 				return -1;
 			}
 
@@ -865,7 +1410,7 @@ int fr_event_corral(fr_event_list_t *el, bool wait)
 			if (fr_timeval_cmp(&ev->when, &el->now) > 0) fr_timeval_subtract(&when, &ev->when, &el->now);
 
 			wake = &when;
-
+			num_timer_events = 1;
 		} else {
 			wake = NULL;
 		}
@@ -882,7 +1427,8 @@ int fr_event_corral(fr_event_list_t *el, bool wait)
 		fr_event_pre_t *pre;
 
 		pre = fr_ptr_to_type(fr_event_pre_t, entry, entry);
-		if (pre->callback(pre->ctx, wake) > 0) {
+		if (pre->callback(pre->uctx, wake) > 0) {
+			num_timer_events++;
 			wake = &when;
 			when.tv_sec = 0;
 			when.tv_usec = 0;
@@ -902,20 +1448,23 @@ int fr_event_corral(fr_event_list_t *el, bool wait)
 	 *	that occurred since this function was last called
 	 *	or wait for the next timer event.
 	 */
-	el->num_fd_events = kevent(el->kq, NULL, 0, el->events, FR_EV_BATCH_FDS, ts_wake);
+	num_fd_events = kevent(el->kq, NULL, 0, el->events, FR_EV_BATCH_FDS, ts_wake);
 
 	/*
 	 *	Interrupt is different from timeout / FD events.
 	 */
-	if (el->num_fd_events < 0) {
+	if (unlikely(num_fd_events < 0)) {
 		if (errno == EINTR) {
-			el->num_fd_events = 0;
+			return 0;
 		} else {
 			fr_strerror_printf("Failed calling kevent: %s", fr_syserror(errno));
+			return -1;
 		}
 	}
 
-	return el->num_fd_events;
+	el->num_fd_events = num_fd_events;
+
+	return num_fd_events + num_timer_events;
 }
 
 /** Service any outstanding timer or file descriptor events
@@ -924,18 +1473,19 @@ int fr_event_corral(fr_event_list_t *el, bool wait)
  */
 void fr_event_service(fr_event_list_t *el)
 {
-	int i;
-	fr_dlist_t *entry;
-	struct timeval when;
+	int		i;
+	fr_dlist_t	*entry;
+	struct timeval	when;
 
-	if (el->exit) return;
+	if (unlikely(el->exit)) return;
 
 	/*
 	 *	Run all of the file descriptor events.
 	 */
 	for (i = 0; i < el->num_fd_events; i++) {
-		fr_event_fd_t *ev;
-		int flags = el->events[i].flags;
+		fr_event_fd_t	*ef;
+		int		fd_errno = 0;
+		int		flags = el->events[i].flags;
 
 		/*
 		 *	Process any user events
@@ -949,30 +1499,50 @@ void fr_event_service(fr_event_list_t *el)
 			 */
 			if (el->events[i].ident == 0) continue;
 
-			user = (fr_event_user_t *) el->events[i].ident;
+			user = (fr_event_user_t *)el->events[i].ident;
 
 			(void) talloc_get_type_abort(user, fr_event_user_t);
 			rad_assert(user->ident == el->events[i].ident);
 
-			user->callback(el->kq, &el->events[i], user->ctx);
+			user->callback(el->kq, &el->events[i], user->uctx);
 			continue;
 		}
 
-		ev = talloc_get_type_abort(el->events[i].udata, fr_event_fd_t);
+		if (el->events[i].filter == EVFILT_PROC) {
+			pid_t pid;
+			fr_event_pid_t *ev;
 
-		if (!fr_cond_assert(ev->is_registered)) continue;
+			ev = (fr_event_pid_t *) el->events[i].udata;
+			(void) talloc_get_type_abort(ev, fr_event_pid_t);
 
-                if (flags & EV_ERROR) {
+			rad_assert(ev->pid == (pid_t) el->events[i].ident);
+			rad_assert((el->events[i].fflags & NOTE_EXIT) != 0);
+
+			pid = ev->pid;
+			ev->pid = 0; /* so we won't hit kevent again when it's freed */
+			ev->callback(el, pid, (int) el->events[i].data, ev->uctx);
+			continue;
+		}
+
+		/*
+		 *	Skip events for deleted FDs.
+		 */
+		if (!el->events[i].udata) continue;
+
+		ef = talloc_get_type_abort(el->events[i].udata, fr_event_fd_t);
+
+		if (!fr_cond_assert(ef->is_registered)) continue;
+		if (ef->deferred_free) continue;			/* Stale, ignore it */
+
+                if (unlikely(flags & EV_ERROR)) {
+                	fd_errno = el->events[i].data;
                 ev_error:
                         /*
-                         *      Call the error handler which should
-                         *      tear down the connection.
+                         *      Call the error handler
                          */
-                        if (ev->error) {
-                                ev->error(el, ev->fd, flags, ev->ctx);
-                                continue;
-                        }
-                        fr_event_fd_delete(el, ev->fd);
+                        if (ef->error) ef->error(el, ef->fd, flags, fd_errno, ef->uctx);
+                        fr_event_fd_delete(el, ef->fd, ef->filter);
+                        continue;
                 }
 
                 /*
@@ -986,7 +1556,7 @@ void fr_event_service(fr_event_list_t *el)
 			 *	This is fine, the callback will get notified
 			 *	via the flags field.
 			 */
-			if (ev->is_file) goto service;
+			if (ef->type == FR_EVENT_FD_FILE) goto service;
 #if defined(__linux__) && defined(SO_GET_FILTER)
 			/*
 			 *      There seems to be an issue with the
@@ -1001,26 +1571,112 @@ void fr_event_service(fr_event_list_t *el)
 			 *	with a packet filter attached, we ignore
 			 *	the EOF flag and continue.
 			 */
-			if ((ev->sock_type == SOCK_RAW) && ev->pf_attached) goto service;
+			if ((ef->sock_type == SOCK_RAW) && (ef->type == FR_EVENT_FD_PCAP)) goto service;
 #endif
+			fd_errno = el->events[i].fflags;
+
 			goto ev_error;
                 }
 
 service:
-		ev->in_handler = true;
-		if (ev->read && (el->events[i].filter == EVFILT_READ)) {
-			ev->read(el, ev->fd, flags, ev->ctx);
-		}
-		if (ev->write && (el->events[i].filter == EVFILT_WRITE) && !ev->do_delete) {
-			ev->write(el, ev->fd, flags, ev->ctx);
-		}
-		ev->in_handler = false;
-
+		ef->in_handler = true;
 		/*
-		 *	Process any deferred deletes performed
-		 *	by the I/O handler.
+		 *	If any of these callbacks are NULL, then
+		 *	there's a logic error somewhere.
+		 *	Filters are only installed if there's a
+		 *	callback to handle them.
 		 */
-		if (ev->do_delete) fr_event_fd_delete(el, ev->fd);
+		switch (ef->filter) {
+		case FR_EVENT_FILTER_IO:
+			/*
+			 *	io.read can delete the event, in which case
+			 *	we *DON'T* want to call the write event.
+			 */
+			if (el->events[i].filter == EVFILT_READ) {
+				ef->active.io.read(el, ef->fd, flags, ef->uctx);
+			}
+			if ((el->events[i].filter == EVFILT_WRITE) && !ef->deferred_free) {
+				ef->active.io.write(el, ef->fd, flags, ef->uctx);
+			}
+			break;
+
+		case FR_EVENT_FILTER_VNODE:
+			if (unlikely(!fr_cond_assert(el->events[i].filter == EVFILT_VNODE))) break;
+
+			if ((el->events[i].fflags & NOTE_DELETE) != 0) {
+				ef->active.vnode.delete(el, ef->fd, flags, ef->uctx);
+				el->events[i].fflags &= ~NOTE_DELETE;
+			}
+
+			if ((el->events[i].fflags & NOTE_WRITE) != 0) {
+				ef->active.vnode.write(el, ef->fd, flags, ef->uctx);
+				el->events[i].fflags &= ~NOTE_WRITE;
+			}
+
+			if ((el->events[i].fflags & NOTE_EXTEND) != 0) {
+				ef->active.vnode.extend(el, ef->fd, flags, ef->uctx);
+				el->events[i].fflags &= ~NOTE_EXTEND;
+			}
+
+			if ((el->events[i].fflags & NOTE_ATTRIB) != 0) {
+				ef->active.vnode.attrib(el, ef->fd, flags, ef->uctx);
+				el->events[i].fflags &= ~NOTE_ATTRIB;
+			}
+
+			/*
+			 *	NOTE_LINK is sometimes added even if we didn't ask for it.
+			 */
+			if ((el->events[i].fflags & NOTE_LINK) != 0) {
+				if (ef->active.vnode.link) ef->active.vnode.link(el, ef->fd, flags, ef->uctx);
+				el->events[i].fflags &= ~NOTE_LINK;
+			}
+
+			if ((el->events[i].fflags & NOTE_RENAME) != 0) {
+				ef->active.vnode.rename(el, ef->fd, flags, ef->uctx);
+				el->events[i].fflags &= ~NOTE_RENAME;
+			}
+
+#ifdef NOTE_REVOKE
+			if ((el->events[i].fflags & NOTE_REVOKE) != 0) {
+				ef->active.vnode.revoke(el, ef->fd, flags, ef->uctx);
+				el->events[i].fflags &= ~NOTE_REVOKE;
+			}
+#endif
+
+#ifdef NOTE_FUNLOCK
+			if ((el->events[i].fflags & NOTE_FUNLOCK) != 0) {
+				ef->active.vnode.funlock(el, ef->fd, flags, ef->uctx);
+				el->events[i].fflags &= ~NOTE_FUNLOCK;
+			}
+#endif
+
+			if (el->events[i].fflags && unlikely(!fr_cond_assert(false))) break;
+			break;
+
+		default:
+			break;
+		}
+		ef->in_handler = false;
+	}
+
+	/*
+	 *	Process any deferred frees performed
+	 *	by the I/O handlers.
+	 *
+	 *	The events are removed from the FD rbtree
+	 *	and kevent immediately, but frees are
+	 *	deferred to allow stale events to be
+	 *	skipped sans SEGV.
+	 */
+	if (el->fd_to_free) {
+		fr_event_fd_t *to_free, *next;
+
+		for (to_free = el->fd_to_free; to_free; to_free = next) {
+			next = to_free->next;
+			talloc_free(to_free);
+		}
+
+		el->fd_to_free = NULL;	/* all gone */
 	}
 
 	gettimeofday(&el->now, NULL);
@@ -1045,7 +1701,7 @@ service:
 		when = el->now;
 
 		post = fr_ptr_to_type(fr_event_post_t, entry, entry);
-		post->callback(el, &when, post->ctx);
+		post->callback(el, &when, post->uctx);
 	}
 }
 
@@ -1060,7 +1716,7 @@ void fr_event_loop_exit(fr_event_list_t *el, int code)
 {
 	struct kevent kev;
 
-	if (!el) return;
+	if (unlikely(!el)) return;
 
 	el->exit = code;
 
@@ -1092,10 +1748,7 @@ int fr_event_loop(fr_event_list_t *el)
 
 	el->dispatch = true;
 	while (!el->exit) {
-		if (fr_event_corral(el, true) < 0) {
-			break;
-		}
-
+		if (unlikely(fr_event_corral(el, true)) < 0) break;
 		fr_event_service(el);
 	}
 	el->dispatch = false;
@@ -1111,11 +1764,11 @@ int fr_event_loop(fr_event_list_t *el)
  */
 static int _event_list_free(fr_event_list_t *el)
 {
-	fr_event_timer_t *ev;
+	fr_event_timer_t const *ev;
 
-	while ((ev = fr_heap_peek(el->times)) != NULL) {
-		fr_event_timer_delete(el, &ev);
-	}
+	talloc_free_children(el);
+
+	while ((ev = fr_heap_peek(el->times)) != NULL) fr_event_timer_delete(el, &ev);
 
 	talloc_free(el->times);
 
@@ -1126,14 +1779,14 @@ static int _event_list_free(fr_event_list_t *el)
 
 /** Initialise a new event list
  *
- * @param[in] ctx	to allocate memory in.
- * @param[in] status	callback, called on each iteration of the event list.
- * @param[in] status_ctx context for the status callback
+ * @param[in] ctx		to allocate memory in.
+ * @param[in] status		callback, called on each iteration of the event list.
+ * @param[in] status_uctx	context for the status callback
  * @return
  *	- A pointer to a new event list on success (free with talloc_free).
  *	- NULL on error.
  */
-fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_t status, void *status_ctx)
+fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t status, void *status_uctx)
 {
 	fr_event_list_t *el;
 	struct kevent kev;
@@ -1160,8 +1813,8 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_t status, 
 	FR_DLIST_INIT(el->pre_callbacks);
 	FR_DLIST_INIT(el->post_callbacks);
 	FR_DLIST_INIT(el->user_callbacks);
-	
-	if (status) (void) fr_event_pre_insert(el, status, status_ctx);
+
+	if (status) (void) fr_event_pre_insert(el, status, status_uctx);
 
 	/*
 	 *	Set our "exit" callback as ident 0.
@@ -1242,7 +1895,7 @@ int main(int argc, char **argv)
 			array[i].tv_usec -= 1000000;
 			array[i].tv_sec++;
 		}
-		fr_event_timer_insert(el, print_time, &array[i], &array[i]);
+		fr_event_timer_insert(NULL, el, &array[i], print_time, &array[i]);
 	}
 
 	while (fr_event_list_num_elements(el)) {

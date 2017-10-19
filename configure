@@ -739,6 +739,7 @@ enable_developer
 enable_largefile
 enable_strict_dependencies
 enable_werror
+enable_llvm_address_sanitizer
 enable_openssl_version_check
 with_rlm_FOO_lib_dir
 with_rlm_FOO_include_dir
@@ -755,8 +756,6 @@ with_vmps
 with_dhcp
 with_tacacs
 with_udpfromto
-with_static_modules
-with_shared_libs
 with_cap
 with_cap_lib_dir
 with_cap_include_dir
@@ -1417,6 +1416,9 @@ Optional Features:
   --disable-largefile     omit support for large files
   --enable-strict-dependencies  fail configure on lack of module dependancy.
   --enable-werror         causes the build to fail if any warnings are generated.
+  --enable-llvm-address-sanitizer
+                          build with support for LLVM's address sanitizer (if
+                          building with clang).
   --disable-openssl-version-check
                           disable vulnerable OpenSSL version check
 
@@ -1445,9 +1447,6 @@ Optional Packages:
   --with-dhcp             compile in support for dhcp (default=yes)
   --with-tacacs           compile in support for tacacs (default=yes)
   --with-udpfromto        compile in support for udpfromto (default=yes)
-  --with-static-modules=QUOTED-MODULE-LIST
-  --with-shared-libs      build dynamic libraries and link against them.
-                          (default=yes)
   --with-cap              build with cap if available (default=yes)
   --with-cap-lib-dir=DIR  directory in which to look for cap library files
   --with-cap-include-dir=DIR
@@ -2464,6 +2463,12 @@ ac_config_headers="$ac_config_headers src/include/autoconf.h"
 
 
 
+
+
+
+
+
+
 #
 # SYNOPSIS
 #
@@ -2491,13 +2496,21 @@ ac_config_headers="$ac_config_headers src/include/autoconf.h"
 
 
 
-RADIUSD_MAJOR_VERSION=`cat VERSION | cut -f1 -d.`
-RADIUSD_MINOR_VERSION=`cat VERSION | cut -f2 -d.`
-RADIUSD_INCRM_VERSION=`cat VERSION | cut -f3 -d. | sed 's/[\.-].*$//'`
+RADIUSD_VERSION_MAJOR=`cat VERSION | cut -f1 -d.`
+RADIUSD_VERSION_MINOR=`cat VERSION | cut -f2 -d.`
+RADIUSD_VERSION_INCRM=`cat VERSION | cut -f3 -d. | sed 's/[\.-].*$//'`
 
-RADIUSD_VERSION=`printf "%02i%02i%02i" $RADIUSD_MAJOR_VERSION $RADIUSD_MINOR_VERSION $RADIUSD_INCRM_VERSION`
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking build version" >&5
+$as_echo_n "checking build version... " >&6; }
+RADIUSD_VERSION=`printf "%02i%02i%02i" $RADIUSD_VERSION_MAJOR $RADIUSD_VERSION_MINOR $RADIUSD_VERSION_INCRM`
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $RADIUSD_VERSION" >&5
+$as_echo "$RADIUSD_VERSION" >&6; }
 
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking build version string" >&5
+$as_echo_n "checking build version string... " >&6; }
 RADIUSD_VERSION_STRING=`cat VERSION`
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $RADIUSD_VERSION_STRING" >&5
+$as_echo "$RADIUSD_VERSION_STRING" >&6; }
 
 
 
@@ -2566,11 +2579,44 @@ fi
 
 
 if test "x$GIT" = "xyes" && git status 2>&1 > /dev/null; then
+  if test "x$RADIUSD_VERSION_RELEASE" = "x"; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking build release" >&5
+$as_echo_n "checking build release... " >&6; }
+    RADIUSD_VERSION_RELEASE=`git describe | sed -e 's/^.*-\([0-9]*\)-g[0-9a-f]*/\1/'`
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RADIUSD_VERSION_RELEASE" >&5
+$as_echo "$RADIUSD_VERSION_RELEASE" >&6; }
+  fi
+
+  if test "x$RADIUSD_VERSION_COMMIT" = "x"; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking build commit" >&5
+$as_echo_n "checking build commit... " >&6; }
+    RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1`
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RADIUSD_VERSION_COMMIT" >&5
+$as_echo "$RADIUSD_VERSION_COMMIT" >&6; }
+  fi
+
   if test "x$developer" != "xno"; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: in git repository, enabling developer build implicitly, disable with --disable-developer" >&5
 $as_echo "$as_me: in git repository, enabling developer build implicitly, disable with --disable-developer" >&6;}
     developer="yes"
   fi
+
+fi
+
+if test "x$RADIUSD_VERSION_RELEASE" != "x"; then
+
+cat >>confdefs.h <<_ACEOF
+#define RADIUSD_VERSION_RELEASE ${RADIUSD_VERSION_RELEASE}
+_ACEOF
+
+fi
+
+if test "x$RADIUSD_VERSION_COMMIT" != "x"; then
+
+cat >>confdefs.h <<_ACEOF
+#define RADIUSD_VERSION_COMMIT ${RADIUSD_VERSION_COMMIT}
+_ACEOF
+
 fi
 
 if test "x$developer" = "xyes"; then
@@ -4519,6 +4565,55 @@ if test "x$GCC" = "xyes"; then
 fi
 
 
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking or the compiler flag \"-Wno-unknown-warning-option\"" >&5
+$as_echo_n "checking or the compiler flag \"-Wno-unknown-warning-option\"... " >&6; }
+if ${ax_cv_cc_no_unknown_warning_option_flag+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+
+  CFLAGS_SAVED=$CFLAGS
+  CFLAGS="-Werror -Wno-unknown-warning-option"
+
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main ()
+{
+
+    /*
+     *  gcc will happily accept -Wno-unknown-warning-option
+     *  only emitting an error about it, if an error ocurrs in the source file.
+     */
+    #if defined(__GNUC__) && !defined(__clang__)
+        gcc sucks
+    #endif
+
+    return 0;
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  ax_cv_cc_no_unknown_warning_option_flag=yes
+else
+  ax_cv_cc_no_unknown_warning_option_flag=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+
+  CFLAGS="$CFLAGS_SAVED"
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_no_unknown_warning_option_flag" >&5
+$as_echo "$ax_cv_cc_no_unknown_warning_option_flag" >&6; }
+
+if test "x$ax_cv_cc_no_unknown_warning_option_flag" = "xyes"; then
+  CFLAGS="$CFLAGS -Wno-unknown-warning-option"
+fi
+
+
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for the compiler flag \"-Qunused-arguments\"" >&5
 $as_echo_n "checking for the compiler flag \"-Qunused-arguments\"... " >&6; }
 if ${ax_cv_cc_qunused_arguments_flag+:} false; then :
@@ -5237,6 +5332,19 @@ if test "${enable_werror+set}" = set; then :
 fi
 
 
+# Check whether --enable-llvm-address-sanitizer was given.
+if test "${enable_llvm_address_sanitizer+set}" = set; then :
+  enableval=$enable_llvm_address_sanitizer;  case "$enableval" in
+  no)
+    llvm_address_sanitizer=no
+    ;;
+  *)
+    llvm_address_sanitizer=yes
+  esac
+
+fi
+
+
 # Check whether --enable-openssl-version-check was given.
 if test "${enable_openssl_version_check+set}" = set; then :
   enableval=$enable_openssl_version_check;
@@ -5611,6 +5719,8 @@ $as_echo "#define WITH_UDPFROMTO 1" >>confdefs.h
 $as_echo "#define WITH_UDPFROMTO /**/" >>confdefs.h
 
     fi
+
+
 
 
     WITH_CAP=yes
@@ -6518,7 +6628,7 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_pthread_flag" >&5
 $as_echo "$ax_cv_cc_pthread_flag" >&6; }
 
-      if test "x$ax_cv_cc_pthread_flag" == 'xyes'; then
+      if test "x$ax_cv_cc_pthread_flag" = 'xyes'; then
         CFLAGS="$CFLAGS -pthread"
       fi
 
@@ -10284,6 +10394,7 @@ fi
     for ac_func in \
       SSL_get_client_random \
       SSL_get_server_random \
+      EVP_sha3_512 \
 
 do :
   as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
@@ -10538,7 +10649,7 @@ fi
 
 smart_prefix=
 
-  if test "x$ac_cv_header_pcap_h" == "xyes"; then
+  if test "x$ac_cv_header_pcap_h" = "xyes"; then
 
 $as_echo "#define HAVE_PCAP_H 1" >>confdefs.h
 
@@ -10781,7 +10892,7 @@ fi
 
 smart_prefix=
 
-  if test "x$ac_cv_header_collectd_client_h" == "xyes"; then
+  if test "x$ac_cv_header_collectd_client_h" = "xyes"; then
 
 $as_echo "#define HAVE_COLLECTDC_H 1" >>confdefs.h
 
@@ -11024,7 +11135,7 @@ fi
 
 smart_prefix=
 
-  if test "x$ac_cv_header_sys_capability_h" == "xyes"; then
+  if test "x$ac_cv_header_sys_capability_h" = "xyes"; then
 
 $as_echo "#define HAVE_CAPABILITY_H 1" >>confdefs.h
 
@@ -11265,7 +11376,7 @@ fi
 
 smart_prefix=
 
-  if test "x$ac_cv_header_gperftools_profiler_h" == "xyes"; then
+  if test "x$ac_cv_header_gperftools_profiler_h" = "xyes"; then
 
 $as_echo "#define HAVE_GPERFTOOLS_PROFILER_H 1" >>confdefs.h
 
@@ -11508,7 +11619,7 @@ fi
 
 smart_prefix=
 
-  if test "x$ac_cv_header_systemd_sdmdaemon_h" == "xyes"; then
+  if test "x$ac_cv_header_systemd_sdmdaemon_h" = "xyes"; then
 
 $as_echo "#define HAVE_SYSTEMD_SD_DAEMON_H 1" >>confdefs.h
 
@@ -12386,7 +12497,7 @@ fi
 $as_echo "$ax_cv_cc_wdocumentation_flag" >&6; }
 
   if test "x$ax_cv_cc_wdocumentation_flag" = "xyes"; then
-    devflags="-Wdocumentation"
+    devcflags="-Wdocumentation"
   fi
 
 
@@ -12437,25 +12548,87 @@ fi
 $as_echo "$ax_cv_cc_weverything_flag" >&6; }
 
   if test "x$ax_cv_cc_weverything_flag" = "xyes"; then
-    devflags="$devflags -W -Weverything -Wformat=2 -Wno-disabled-macro-expansion -Wno-missing-field-initializers -Wno-date-time -Wno-padded -Wno-gnu-zero-variadic-macro-arguments -Wno-shorten-64-to-32 -Wno-sign-conversion -Wno-conversion -Wno-switch-enum -Wno-gnu-statement-expression -Wno-extended-offsetof -Wno-cast-align -Wno-documentation-unknown-command -Wno-covered-switch-default -Wno-packed -DWITH_VERIFY_PTR=1"
+    devcflags="$devflags -W -Weverything -Wformat=2 -Wno-disabled-macro-expansion -Wno-missing-field-initializers -Wno-date-time -Wno-padded -Wno-gnu-zero-variadic-macro-arguments -Wno-shorten-64-to-32 -Wno-sign-conversion -Wno-conversion -Wno-switch-enum -Wno-gnu-statement-expression -Wno-extended-offsetof -Wno-cast-align -Wno-documentation-unknown-command -Wno-covered-switch-default -Wno-packed -DWITH_VERIFY_PTR=1"
   else
     if test "x$GCC" = "xyes"; then
-      devflags="$devflags -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef -Wformat-y2k -Wno-missing-field-initializers -Wno-format-extra-args -Wno-format-zero-length -Wno-cast-align -Wformat-nonliteral -Wformat-security -Wformat=2 -DWITH_VERIFY_PTR=1"
+      devcflags="$devflags -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef -Wformat-y2k -Wno-missing-field-initializers -Wno-format-extra-args -Wno-format-zero-length -Wno-cast-align -Wformat-nonliteral -Wformat-security -Wformat=2 -DWITH_VERIFY_PTR=1"
       INSTALLSTRIP=""
     fi
   fi
 
-  { $as_echo "$as_me:${as_lineno-$LINENO}: Developer CFLAGS are \"$devflags\"" >&5
-$as_echo "$as_me: Developer CFLAGS are \"$devflags\"" >&6;}
+        if test "x$llvm_address_sanitizer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
+    devcflags="$devcflags -fsanitize=address -fno-omit-frame-pointer"
 
-  CFLAGS="$CFLAGS $devflags"
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for the compiler flag \"-fsanitize-address-use-after-scope\"" >&5
+$as_echo_n "checking for the compiler flag \"-fsanitize-address-use-after-scope\"... " >&6; }
+if ${ax_cv_cc_sanitize_address_use_after_scope+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+
+        CFLAGS_SAVED=$CFLAGS
+    CFLAGS="$CFLAGS -Werror -fsanitize=address -fsanitize-address-use-after-scope"
+
+    ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main ()
+{
+return 0;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  ax_cv_cc_sanitize_address_use_after_scope="yes"
+else
+  ax_cv_cc_sanitize_address_use_after_scope="no"
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+    ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+
+    CFLAGS="$CFLAGS_SAVED"
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_sanitize_address_use_after_scope" >&5
+$as_echo "$ax_cv_cc_sanitize_address_use_after_scope" >&6; }
+
+    if test "x$ax_cv_cc_sanitize_address_use_after_scope" = "xyes"; then
+      devcflags="$devcflags -fsanitize-address-use-after-scope"
+    fi
+
+    devldflags="$devldflags -fsanitize=address"
+  fi
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: Developer CFLAGS are \"$devcflags\"" >&5
+$as_echo "$as_me: Developer CFLAGS are \"$devcflags\"" >&6;}
+  { $as_echo "$as_me:${as_lineno-$LINENO}: Developer LDFLAGS are \"$devldflags\"" >&5
+$as_echo "$as_me: Developer LDFLAGS are \"$devldflags\"" >&6;}
+
+  CFLAGS="$CFLAGS $devcflags"
+  LDFLAGS="$LDFLAGS $devldflags"
+
         if test "x$EXPERIMENTAL" != "xno"; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: is developer build, enabling experimental modules implicitly, disable with --without-experimental-modules" >&5
 $as_echo "$as_me: is developer build, enabling experimental modules implicitly, disable with --without-experimental-modules" >&6;}
     EXPERIMENTAL=yes
   fi
 else
-  devflags=""
+  devcflags=""
+  devldflags=""
   CFLAGS="$CFLAGS -DNDEBUG"
   INSTALLSTRIP=""
 fi
@@ -12475,15 +12648,6 @@ $as_echo "no" >&6; }
 fi
 
 export EXPERIMENTAL
-
-if test "x$GIT" = "xyes" && git status 2>&1 > /dev/null; then
-  RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1`
-
-cat >>confdefs.h <<_ACEOF
-#define RADIUSD_VERSION_COMMIT ${RADIUSD_VERSION_COMMIT}
-_ACEOF
-
-fi
 
 
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for _Thread_local support in compiler" >&5
@@ -14684,7 +14848,7 @@ subdirs="$subdirs $mysubdirs"
 
 
 
-if test "x$werror" == "xyes"; then
+if test "x$werror" = "xyes"; then
   CFLAGS="-Werror $CFLAGS"
 fi
 
@@ -14695,6 +14859,8 @@ ac_config_commands="$ac_config_commands build-radpaths-h"
 ac_config_commands="$ac_config_commands main-chmod"
 
 ac_config_commands="$ac_config_commands scripts-chmod"
+
+
 
 
 

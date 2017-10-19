@@ -48,7 +48,6 @@ extern fr_log_t		debug_log;
 
 fr_cond_t		*debug_condition = NULL;		//!< Condition used to mark packets up for checking.
 fr_log_t		debug_log = { .fd = -1, .dst = L_DST_NULL };
-bool			event_loop_started = false;		//!< Whether the main event loop has been started yet.
 
 typedef struct cached_config_t {
 	struct cached_config_t *next;
@@ -126,8 +125,6 @@ static const CONF_PARSER initial_logging_config[] = {
 
 	{ FR_CONF_POINTER("prefix", FR_TYPE_STRING, &prefix), .dflt = "/usr/local" },
 
-	{ FR_CONF_POINTER("log_file", FR_TYPE_STRING, &main_config.log_file) },
-	{ FR_CONF_POINTER("log_destination", FR_TYPE_STRING, &radlog_dest) },
 	{ FR_CONF_POINTER("use_utc", FR_TYPE_BOOL, &log_dates_utc) },
 	{ FR_CONF_IS_SET_POINTER("timestamp", FR_TYPE_BOOL, &log_timestamp) },
 	CONF_PARSER_TERMINATOR
@@ -154,6 +151,13 @@ static const CONF_PARSER log_config[] = {
 #ifdef WITH_CONF_WRITE
 	{ FR_CONF_POINTER("write_dir", FR_TYPE_STRING, &main_config.write_dir), .dflt = NULL },
 #endif
+	CONF_PARSER_TERMINATOR
+};
+
+static const CONF_PARSER thread_config[] = {
+	{ FR_CONF_POINTER("num_networks", FR_TYPE_UINT32, &main_config.num_networks), .dflt = STRINGIFY(1) },
+	{ FR_CONF_POINTER("num_workers", FR_TYPE_UINT32, &main_config.num_workers), .dflt = STRINGIFY(4) },
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -192,7 +196,6 @@ static const CONF_PARSER server_config[] = {
 	{ FR_CONF_POINTER("continuation_timeout", FR_TYPE_UINT32, &main_config.continuation_timeout), .dflt = "15" },
 	{ FR_CONF_POINTER("max_requests", FR_TYPE_UINT32, &main_config.max_requests), .dflt = STRINGIFY(MAX_REQUESTS) },
 	{ FR_CONF_POINTER("pidfile", FR_TYPE_STRING, &main_config.pid_file), .dflt = "${run_dir}/radiusd.pid"},
-	{ FR_CONF_POINTER("checkrad", FR_TYPE_STRING, &main_config.checkrad), .dflt = "${sbindir}/checkrad" },
 
 	{ FR_CONF_POINTER("debug_level", FR_TYPE_UINT32, &main_config.debug_level), .dflt = "0" },
 
@@ -202,6 +205,8 @@ static const CONF_PARSER server_config[] = {
 	{ FR_CONF_POINTER("log", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) log_config },
 
 	{ FR_CONF_POINTER("resources", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) resources },
+
+	{ FR_CONF_POINTER("thread", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) thread_config },
 
 	/*
 	 *	People with old configs will have these.  They are listed
@@ -375,33 +380,6 @@ static ssize_t xlat_config(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	return strlen(*out);
 }
 
-/*
- *	Xlat for %{listen:foo}
- */
-static ssize_t xlat_listen(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			   REQUEST *request, char const *fmt)
-{
-	char const *value = NULL;
-	CONF_PAIR *cp;
-
-	if (!request->listener) {
-		RWDEBUG("No listener associated with this request");
-		return 0;
-	}
-
-	cp = cf_pair_find(request->listener->cs, fmt);
-	if (!cp || !(value = cf_pair_value(cp))) {
-		RDEBUG("Listener does not contain config item \"%s\"", fmt);
-		return 0;
-	}
-
-	strlcpy(*out, value, outlen);
-
-	return strlen(*out);
-}
-
-
 #ifdef HAVE_SETUID
 /*
  *  Do chroot, if requested.
@@ -429,6 +407,7 @@ static int switch_users(CONF_SECTION *cs)
 		return 0;
 	}
 
+	DEBUG("Parsing security rules to bootstrap UID / GID / chroot / etc.");
 	if (cf_section_parse(NULL, NULL, cs) < 0) {
 		fprintf(stderr, "%s: Error: Failed to parse user/group information.\n",
 			main_config.name);
@@ -806,6 +785,7 @@ do {\
 			return -1;
 		}
 
+		DEBUG("Parsing initial logging configuration.");
 		if (cf_section_parse(NULL, NULL, cs) < 0) {
 			fprintf(stderr, "%s: Error: Failed to parse log{} section.\n",
 				main_config.name);
@@ -887,6 +867,8 @@ do {\
 	 */
 	if (cf_section_rules_push(cs, server_config) < 0) return -1;
 	if (cf_section_rules_push(cs, virtual_servers_config) < 0) return -1;
+
+	DEBUG("Parsing main configuration.");
 	if (cf_section_parse(NULL, NULL, cs) < 0) return -1;
 
 	/*
@@ -930,6 +912,13 @@ do {\
 
 	FR_TIMEVAL_BOUND_CHECK("reject_delay", &main_config.reject_delay, <=, main_config.cleanup_delay, 0);
 
+	/*
+	 *	For now we don't do connected sockets.
+	 */
+	FR_INTEGER_BOUND_CHECK("thread.num_networks", main_config.num_networks, ==, 1);
+	FR_INTEGER_BOUND_CHECK("thread.num_workers", main_config.num_workers, >, 0);
+	FR_INTEGER_BOUND_CHECK("thread.num_workers", main_config.num_workers, <, 1024);
+
 	FR_SIZE_BOUND_CHECK("resources.talloc_pool_size", main_config.talloc_pool_size, >=, (size_t)(2 * 1024));
 	FR_SIZE_BOUND_CHECK("resources.talloc_pool_size", main_config.talloc_pool_size, <=, (size_t)(1024 * 1024));
 
@@ -967,13 +956,7 @@ do {\
 	/*
 	 *	Register the %{config:section.subsection} xlat function.
 	 */
-	xlat_register(NULL, "config", xlat_config, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
-
-	/*
-	 *	...and the client and listen xlats which need to be
-	 *	defined before we start parsing the config.
-	 */
-	xlat_register(NULL, "listen", xlat_listen, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat_register(NULL, "config", xlat_config, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 
 	/*
 	 *	Ensure cwd is inside the chroot.
@@ -1015,7 +998,6 @@ int main_config_free(void)
 	 *	structures.
 	 */
 	client_list_free();
-	listen_free(&main_config.listen);
 
 	/*
 	 *	Frees current config and any previous configs.

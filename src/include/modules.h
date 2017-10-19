@@ -268,7 +268,7 @@ typedef void (*fr_unlang_fd_callback_t)(REQUEST *request, void *instance, void *
  * @param[in] ctx		a local context for the callback.
  * @return a normal rlm_rcode_t.
  */
-typedef rlm_rcode_t (*fr_unlang_module_resume_t)(REQUEST *request, void *instance, void *thread, void *ctx);
+typedef rlm_rcode_t (*fr_unlang_resume_callback_t)(REQUEST *request, void *instance, void *thread, void *ctx);
 
 /** A callback when the request gets a fr_state_action_t.
  *
@@ -303,8 +303,10 @@ void		unlang_resumable(REQUEST *request);
 
 void		unlang_signal(REQUEST *request, fr_state_action_t action);
 
-rlm_rcode_t	unlang_module_yield(REQUEST *request, fr_unlang_module_resume_t callback, fr_unlang_action_t signal_callback,
-			     void const *ctx);
+rlm_rcode_t	unlang_module_yield(REQUEST *request, fr_unlang_resume_callback_t callback, fr_unlang_action_t signal_callback,
+			     void *ctx);
+
+int		unlang_initialize(void);
 
 #ifdef __cplusplus
 }

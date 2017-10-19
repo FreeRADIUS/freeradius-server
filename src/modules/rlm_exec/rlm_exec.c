@@ -36,15 +36,12 @@ RCSID("$Id$")
  */
 typedef struct rlm_exec_t {
 	char const	*name;
-	int		bare;
 	bool		wait;
 	char const	*program;
 	char const	*input;
 	char const	*output;
 	pair_lists_t	input_list;
 	pair_lists_t	output_list;
-	char const	*packet_type;
-	unsigned int	packet_code;
 	bool		shell_escape;
 	uint32_t	timeout;
 } rlm_exec_t;
@@ -54,7 +51,6 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("program", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_exec_t, program) },
 	{ FR_CONF_OFFSET("input_pairs", FR_TYPE_STRING, rlm_exec_t, input) },
 	{ FR_CONF_OFFSET("output_pairs", FR_TYPE_STRING, rlm_exec_t, output) },
-	{ FR_CONF_OFFSET("packet_type", FR_TYPE_STRING, rlm_exec_t, packet_type) },
 	{ FR_CONF_OFFSET("shell_escape", FR_TYPE_BOOL, rlm_exec_t, shell_escape), .dflt = "yes" },
 	{ FR_CONF_OFFSET("timeout", FR_TYPE_UINT32, rlm_exec_t, timeout) },
 	CONF_PARSER_TERMINATOR
@@ -202,10 +198,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) {
 		inst->name = cf_section_name1(conf);
-		inst->bare = 1;
 	}
 
-	xlat_register(inst, inst->name, exec_xlat, rlm_exec_shell_escape, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat_register(inst, inst->name, exec_xlat, rlm_exec_shell_escape, NULL, 0, XLAT_DEFAULT_BUF_LEN, false);
 
 	if (inst->input) {
 		p = inst->input;
@@ -235,23 +230,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	}
 
 	/*
-	 *	Get the packet type on which to execute
-	 */
-	if (!inst->packet_type) {
-		inst->packet_code = 0;
-	} else {
-		fr_dict_enum_t	*dval;
-
-		dval = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE), inst->packet_type);
-		if (!dval) {
-			cf_log_err(conf, "Unknown packet type %s: See list of VALUEs for Packet-Type in "
-				      "share/dictionary", inst->packet_type);
-			return -1;
-		}
-		inst->packet_code = dval->value->vb_uint32;
-	}
-
-	/*
 	 *	Get the time to wait before killing the child
 	 */
 	if (!inst->timeout) {
@@ -261,6 +239,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		cf_log_err(conf, "Timeout '%d' is too small (minimum: 1)", inst->timeout);
 		return -1;
 	}
+
 	/*
 	 *	Blocking a request longer than max_request_time isn't going to help anyone.
 	 */
@@ -288,27 +267,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, UNUSED voi
 	char			out[1024];
 
 	/*
-	 *	We need a program to execute.
+	 *	This needs to be a runtime check for now as
+	 *	rlm_exec is often called via xlat instead
+	 *	of with a static program.
 	 */
 	if (!inst->program) {
-		ERROR("We require a program to execute");
+		REDEBUG("You must specify 'program' to execute");
 		return RLM_MODULE_FAIL;
-	}
-
-	/*
-	 *	See if we're supposed to execute it now.
-	 */
-	if (!((inst->packet_code == 0) || (request->packet->code == inst->packet_code) ||
-	      (request->reply->code == inst->packet_code)
-#ifdef WITH_PROXY
-	      || (request->proxy &&
-		  ((request->proxy->packet->code == inst->packet_code) ||
-		   (request->proxy->reply && (request->proxy->reply->code == inst->packet_code))))
-#endif
-		    )) {
-		RDEBUG2("Packet type is not %s. Not executing", inst->packet_type);
-
-		return RLM_MODULE_NOOP;
 	}
 
 	/*
@@ -329,6 +294,18 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, UNUSED voi
 
 		ctx = radius_list_ctx(request, inst->output_list);
 	}
+
+	/*
+	 *	async changes:
+	 *
+	 *	- create rlm_exec_thread_t, with inst->el
+	 *	  - or for the short term, just use request->el
+	 *	- do our own xlat of inst->program
+	 *	- call radius_start_program()
+	 *	- call event loop to add callback for EVFILT_PROC, NOTE_EXIT | NOTE_EXITSTATUS, pid
+	 *	- call event loop to add callback for reading from the pipe
+	 *	- return YIELD
+	 */
 
 	/*
 	 *	This function does it's own xlat of the input program
@@ -354,99 +331,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, UNUSED voi
 
 
 /*
- *	First, look for Exec-Program && Exec-Program-Wait.
- *
- *	Then, call exec_dispatch.
- */
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, void *thread, REQUEST *request)
-{
-	rlm_exec_t const	*inst = instance;
-	rlm_rcode_t 		rcode;
-	int			status;
-
-	char			out[1024];
-	bool			we_wait = false;
-	VALUE_PAIR		*vp, *tmp;
-
-	vp = fr_pair_find_by_num(request->reply->vps, 0, FR_EXEC_PROGRAM, TAG_ANY);
-	if (vp) {
-		we_wait = false;
-	} else if ((vp = fr_pair_find_by_num(request->reply->vps, 0, FR_EXEC_PROGRAM_WAIT, TAG_ANY)) != NULL) {
-		we_wait = true;
-	}
-	if (!vp) {
-		if (!inst->program) {
-			return RLM_MODULE_NOOP;
-		}
-
-		rcode = mod_exec_dispatch(instance, thread, request);
-		goto finish;
-	}
-
-	tmp = NULL;
-	status = radius_exec_program(request, out, sizeof(out), &tmp, request, vp->vp_strvalue, request->packet->vps,
-				     we_wait, inst->shell_escape, inst->timeout);
-	rcode = rlm_exec_status2rcode(request, out, strlen(out), status);
-
-	/*
-	 *	Always add the value-pairs to the reply.
-	 */
-	fr_pair_list_move(request->reply, &request->reply->vps, &tmp);
-	fr_pair_list_free(&tmp);
-
-	finish:
-	switch (rcode) {
-	case RLM_MODULE_FAIL:
-	case RLM_MODULE_INVALID:
-	case RLM_MODULE_REJECT:
-		request->reply->code = FR_CODE_ACCESS_REJECT;
-		break;
-
-	default:
-		break;
-	}
-
-	return rcode;
-}
-
-/*
- *	First, look for Exec-Program && Exec-Program-Wait.
- *
- *	Then, call exec_dispatch.
- */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, void *thread, REQUEST *request)
-{
-	rlm_exec_t const	*inst = instance;
-	int			status;
-
-	char			out[1024];
-	bool 			we_wait = false;
-	VALUE_PAIR		*vp;
-
-	/*
-	 *	The "bare" exec module takes care of handling
-	 *	Exec-Program and Exec-Program-Wait.
-	 */
-	if (!inst->bare) {
-		return mod_exec_dispatch(instance, thread, request);
-	}
-
-	vp = fr_pair_find_by_num(request->reply->vps, 0, FR_EXEC_PROGRAM, TAG_ANY);
-	if (vp) {
-		we_wait = true;
-	} else if ((vp = fr_pair_find_by_num(request->reply->vps, 0, FR_EXEC_PROGRAM_WAIT, TAG_ANY)) != NULL) {
-		we_wait = false;
-	}
-	if (!vp) {
-		return RLM_MODULE_NOOP;
-	}
-
-	status = radius_exec_program(request, out, sizeof(out), NULL, request, vp->vp_strvalue, request->packet->vps,
-				     we_wait, inst->shell_escape, inst->timeout);
-	return rlm_exec_status2rcode(request, out, strlen(out), status);
-}
-
-/*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  *
@@ -467,10 +351,10 @@ rad_module_t rlm_exec = {
 		[MOD_AUTHENTICATE]	= mod_exec_dispatch,
 		[MOD_AUTHORIZE]		= mod_exec_dispatch,
 		[MOD_PREACCT]		= mod_exec_dispatch,
-		[MOD_ACCOUNTING]	= mod_accounting,
+		[MOD_ACCOUNTING]	= mod_exec_dispatch,
 		[MOD_PRE_PROXY]		= mod_exec_dispatch,
 		[MOD_POST_PROXY]	= mod_exec_dispatch,
-		[MOD_POST_AUTH]		= mod_post_auth,
+		[MOD_POST_AUTH]		= mod_exec_dispatch,
 #ifdef WITH_COA
 		[MOD_RECV_COA]		= mod_exec_dispatch,
 		[MOD_SEND_COA]		= mod_exec_dispatch

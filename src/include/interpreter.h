@@ -67,11 +67,13 @@ typedef enum {
 	UNLANG_TYPE_RETURN,			//!< Return statement.
 	UNLANG_TYPE_MAP,			//!< Mapping section (like #UNLANG_TYPE_UPDATE, but uses
 						//!< values from a #map_proc_t call).
-	UNLANG_TYPE_FORK,      			//!< fork a child
+	UNLANG_TYPE_SUBREQUEST,			//!< create a child subrequest
+	UNLANG_TYPE_DETACH,			//!< detach a child
+	UNLANG_TYPE_CALL,			//!< call another virtual server
 #endif
 	UNLANG_TYPE_POLICY,			//!< Policy section.
 	UNLANG_TYPE_XLAT_INLINE,		//!< xlat statement, inline in "unlang"
-	UNLANG_TYPE_MODULE_RESUME,		//!< where to resume processing within a module.
+	UNLANG_TYPE_RESUME,			//!< where to resume processing
 	UNLANG_TYPE_MAX
 } unlang_type_t;
 
@@ -129,11 +131,29 @@ typedef struct {
 	CONF_SECTION		*cs;
 	int			num_children;
 
-	vp_map_t		*map;		//!< #UNLANG_TYPE_UPDATE, #UNLANG_TYPE_MAP.
-	vp_tmpl_t		*vpt;		//!< #UNLANG_TYPE_SWITCH, #UNLANG_TYPE_MAP.
-	fr_cond_t		*cond;		//!< #UNLANG_TYPE_IF, #UNLANG_TYPE_ELSIF.
+	/*
+	 *	Hackity-hack.  We should probably just have a common
+	 *	group header, and then have type-specific structures.
+	 */
+	union {
+		struct {
+			vp_tmpl_t		*vpt;		//!< #UNLANG_TYPE_SWITCH, #UNLANG_TYPE_MAP, #UNLANG_TYPE_CALL
 
-	map_proc_inst_t		*proc_inst;	//!< Instantiation data for #UNLANG_TYPE_MAP.
+			union {
+				struct {
+					vp_map_t		*map;		//!< #UNLANG_TYPE_UPDATE, #UNLANG_TYPE_MAP.
+					map_proc_inst_t		*proc_inst;	//!< Instantiation data for #UNLANG_TYPE_MAP.
+				};
+				struct {
+					void const		*process;	//!< #UNLANG_TYPE_CALL
+					CONF_SECTION		*server_cs;	//!< #UNLANG_TYPE_CALL
+				};
+			};
+		};
+		fr_cond_t		*cond;		//!< #UNLANG_TYPE_IF, #UNLANG_TYPE_ELSIF.
+
+		bool			clone;		//!< #UNLANG_TYPE_PARALLEL
+	};
 } unlang_group_t;
 
 /** A call to a module method
@@ -162,13 +182,12 @@ typedef struct {
  * without being straightjacketed.
  */
 typedef struct {
-	unlang_module_call_t		module;		//!< Module call that returned #RLM_MODULE_YIELD.
-							//!< This field must be first, as it includes an
-							//!< #unlang_t field which must be at the start
-							//!< of every unlang_* structure.
+	unlang_t			self;
+	unlang_type_t			parent_type;	//!< type of the parent
 
-	module_thread_instance_t 	*thread;	//!< thread-local data for this module.
-	fr_unlang_module_resume_t	callback;	//!< Function the yielding module indicated should
+	module_instance_t		*module_instance; //!< as described
+
+	fr_unlang_resume_callback_t    callback;	//!< Function the yielding code indicated should
 							//!< be called when the request could be resumed.
 
 	fr_unlang_action_t		signal_callback;  //!< Function the yielding module indicated should
@@ -176,9 +195,11 @@ typedef struct {
 							//!< may be removed in future.
 
 
-	void const			*ctx;		//!< Context data for the callback.  Usually represents
+	void				*resume_ctx;   	//!< Context data for the callback.  Usually represents
 							//!< the module's internal state at the time of yielding.
-} unlang_module_resumption_t;
+	void const			*instance;	//!< instance data
+	void     			*thread;	//!< thread data
+} unlang_resume_t;
 
 /** A naked xlat
  *
@@ -279,7 +300,7 @@ typedef struct {
 	unlang_stack_frame_t	frame[UNLANG_STACK_MAX];	//!< The stack...
 } unlang_stack_t;
 
-typedef unlang_action_t (*unlang_op_func_t)(REQUEST *request, unlang_stack_t *stack,
+typedef unlang_action_t (*unlang_op_func_t)(REQUEST *request,
 					    rlm_rcode_t *presult, int *priority);
 
 /** An unlang operation
@@ -340,13 +361,13 @@ static inline unlang_t *unlang_xlat_inline_to_generic(unlang_xlat_inline_t *p)
 	return (unlang_t *)p;
 }
 
-static inline unlang_module_resumption_t *unlang_generic_to_module_resumption(unlang_t *p)
+static inline unlang_resume_t *unlang_generic_to_resume(unlang_t *p)
 {
-	rad_assert(p->type == UNLANG_TYPE_MODULE_RESUME);
-	return talloc_get_type_abort(p, unlang_module_resumption_t);
+	rad_assert(p->type == UNLANG_TYPE_RESUME);
+	return talloc_get_type_abort(p, unlang_resume_t);
 }
 
-static inline unlang_t *unlang_module_resumption_to_generic(unlang_module_resumption_t *p)
+static inline unlang_t *unlang_resume_to_generic(unlang_resume_t *p)
 {
 	return (unlang_t *)p;
 }

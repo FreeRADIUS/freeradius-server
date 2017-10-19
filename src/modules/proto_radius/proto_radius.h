@@ -70,11 +70,11 @@ typedef struct {
 	CONF_SECTION			*app_io_conf;			//!< Easy access to the app_io's config section.
 	proto_radius_app_io_t		*app_io_private;		//!< Internal interface for proto_radius.
 
-	dl_instance_t			**process_submodule;		//!< Instance of the various types
+	dl_instance_t			**type_submodule;		//!< Instance of the various types
 									//!< only one instance per type allowed.
 	fr_io_process_t			process_by_code[FR_CODE_MAX];	//!< Lookup process entry point by code.
 
-	uint32_t			default_message_size;		//!< for message ring buffer
+	uint32_t			max_packet_size;		//!< for message ring buffer
 	uint32_t			num_messages;			//!< for message ring buffer
 
 	bool				code_allowed[FR_CODE_MAX];	//!< Lookup allowed packet codes.

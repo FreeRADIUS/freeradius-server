@@ -455,7 +455,7 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 		 *	Print out verbose HEX output
 		 */
 		if (conf->print_packet && (fr_debug_lvl > 3)) {
-			fr_radius_print_hex(packet);
+			fr_radius_packet_print_hex(packet);
 		}
 
 		if (conf->print_packet && (fr_debug_lvl > 1)) {
@@ -845,12 +845,13 @@ clear:
 	}
 
 	{
-		static fr_event_timer_t *event;
+		static fr_event_timer_t const *event;
 
 		now->tv_sec += conf->stats.interval;
 		now->tv_usec = 0;
 
-		if (fr_event_timer_insert(el, rs_stats_process, ctx, now, &event) < 0) {
+		if (fr_event_timer_insert(NULL, el, &event,
+					  now, rs_stats_process, ctx) < 0) {
 			ERROR("Failed inserting stats interval event");
 		}
 	}
@@ -873,14 +874,14 @@ static void rs_stats_update_latency(rs_latency_t *stats, struct timeval *latency
 	if (!stats->interval.latency_low || (lint < stats->interval.latency_low)) {
 		stats->interval.latency_low = lint;
 	}
-	stats->interval.latency_total += lint;
+	stats->interval.latency_total += (long double) lint;
 
 }
 
 static int rs_install_stats_processor(rs_stats_t *stats, fr_event_list_t *el,
 				      fr_pcap_t *in, struct timeval *now, bool live)
 {
-	static fr_event_timer_t	*event;
+	static fr_event_timer_t	const *event;
 	static rs_update_t	update;
 
 	memset(&update, 0, sizeof(update));
@@ -919,7 +920,8 @@ static int rs_install_stats_processor(rs_stats_t *stats, fr_event_list_t *el,
 		rs_tv_add_ms(now, conf->stats.timeout, &(stats->quiet));
 	}
 
-	if (fr_event_timer_insert(events, rs_stats_process, (void *) &update, now, &event) < 0) {
+	if (fr_event_timer_insert(NULL, events, (void *) &update,
+				  now, rs_stats_process, &event) < 0) {
 		ERROR("Failed inserting stats event");
 		return -1;
 	}
@@ -1439,7 +1441,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 */
 			original->linked = talloc_steal(original, current);
 			rs_tv_add_ms(&header->ts, conf->stats.timeout, &original->when);
-			if (fr_event_timer_insert(event->list, _rs_event, original, &original->when, &original->event) < 0) {
+			if (fr_event_timer_insert(NULL, event->list, &original->event,
+						  &original->when, _rs_event, original) < 0) {
 				REDEBUG("Failed inserting new event");
 				/*
 				 *	Delete the original request/event, it's no longer valid
@@ -1669,8 +1672,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		 */
 		original->packet->timestamp = header->ts;
 		rs_tv_add_ms(&header->ts, conf->stats.timeout, &original->when);
-		if (fr_event_timer_insert(event->list, _rs_event, original,
-					  &original->when, &original->event) < 0) {
+		if (fr_event_timer_insert(NULL, event->list, &original->event,
+					  &original->when, _rs_event, original) < 0) {
 			REDEBUG("Failed inserting new event");
 
 			talloc_free(original);
@@ -1788,7 +1791,7 @@ static void rs_got_packet(fr_event_list_t *el, int fd, UNUSED int flags, void *c
 			if (ret == -2) {
 				DEBUG("Done reading packets (%s)", event->in->name);
 			done_file:
-				fr_event_fd_delete(events, fd);
+				fr_event_fd_delete(events, fd, FR_EVENT_FILTER_IO);
 
 				/* Signal pipe takes one slot which is why this is == 1 */
 				if (fr_event_list_num_fds(events) == 1) fr_event_loop_exit(events, 1);
@@ -2002,7 +2005,7 @@ static void _unmark_link(void *request)
  */
 static void rs_collectd_reopen(fr_event_list_t *el, struct timeval *now, UNUSED void *ctx)
 {
-	static fr_event_timer_t *event;
+	static fr_event_timer_t const *event;
 	struct timeval when;
 
 	if (rs_stats_collectd_open(conf) == 0) {
@@ -2013,7 +2016,8 @@ static void rs_collectd_reopen(fr_event_list_t *el, struct timeval *now, UNUSED 
 	ERROR("Will attempt to re-establish connection in %i ms", RS_SOCKET_REOPEN_DELAY);
 
 	rs_tv_add_ms(now, RS_SOCKET_REOPEN_DELAY, &when);
-	if (fr_event_timer_insert(el, rs_collectd_reopen, el, &when, &event) < 0) {
+	if (fr_event_timer_insert(NULL, el, &event,
+				  &when, rs_collectd_reopen, el) < 0) {
 		ERROR("Failed inserting re-open event");
 		RS_ASSERT(0);
 	}
@@ -2801,7 +2805,11 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 
-		if (fr_event_fd_insert(events, self_pipe[0], rs_signal_action, NULL, NULL, events) < 0) {
+		if (fr_event_fd_insert(NULL, events, self_pipe[0],
+				       rs_signal_action,
+				       NULL,
+				       NULL,
+				       events) < 0) {
 			ERROR("Failed inserting signal pipe descriptor: %s", fr_strerror());
 			goto finish;
 		}
@@ -2820,7 +2828,11 @@ int main(int argc, char *argv[])
 			event->out = out;
 			event->stats = stats;
 
-			if (fr_event_fd_insert(events, in_p->fd, rs_got_packet, NULL, NULL, event) < 0) {
+			if (fr_event_fd_insert(NULL, events, in_p->fd,
+					       rs_got_packet,
+					       NULL,
+					       NULL,
+					       event) < 0) {
 				ERROR("Failed inserting file descriptor");
 				goto finish;
 			}

@@ -121,7 +121,6 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 	X509_STORE	*cert_vpstore;
 	int		verify_mode = SSL_VERIFY_NONE;
 	int		ctx_options = 0;
-	int		ctx_tls_versions = 0;
 	int		type;
 	void		*app_data_index;
 
@@ -287,36 +286,113 @@ load_ca:
 post_ca:
 #endif
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 	/*
-	 *	We never want SSLv2 or SSLv3.
+	 *	SSL_CTX_set_(min|max)_proto_version was included in OpenSSL 1.1.0
+	 *
+	 *	This version already defines macros for TLS1_2_VERSION and
+	 *	below, so we don't need to check for them explicitly.
+	 *
+	 *	TLS1_3_VERSION is available in OpenSSL 1.1.1.
+	 *
+	 *	TLS1_4_VERSION in speculative.
 	 */
-	ctx_options |= SSL_OP_NO_SSLv2;
-	ctx_options |= SSL_OP_NO_SSLv3;
+	if (conf->tls_max_version > (float) 0.0) {
+		int max_version = 0;
 
-	/*
-	 *	As of 3.0.5, we always allow TLSv1.1 and TLSv1.2.
-	 *	Though they can be *globally* disabled if necessary.x
-	 */
-#ifdef SSL_OP_NO_TLSv1
-	if (conf->disable_tlsv1) ctx_options |= SSL_OP_NO_TLSv1;
+		if (conf->tls_min_version > conf->tls_max_version) {
+			ERROR("tls_min_version (%f) must be <= tls_max_version (%f)",
+			      conf->tls_min_version, conf->tls_max_version);
+			return NULL;
+		}
 
-	ctx_tls_versions |= SSL_OP_NO_TLSv1;
-#endif
-#ifdef SSL_OP_NO_TLSv1_1
-	if (conf->disable_tlsv1_1) ctx_options |= SSL_OP_NO_TLSv1_1;
+		if (conf->tls_max_version < (float) 1.0) {
+			ERROR("tls_max_version must be >= 1.0 as SSLv2 and SSLv3 are permanently disabled");
+			return NULL;
+		}
 
-	ctx_tls_versions |= SSL_OP_NO_TLSv1_1;
-#endif
-#ifdef SSL_OP_NO_TLSv1_2
-	if (conf->disable_tlsv1_2) ctx_options |= SSL_OP_NO_TLSv1_2;
+#  ifdef TLS1_4_VERSION
+		else if (conf->tls_max_version >= (float) 1.4) max_version = TLS1_4_VERSION;
+#  endif
+#  ifdef TLS1_3_VERSION
+		else if (conf->tls_max_version >= (float) 1.3) max_version = TLS1_3_VERSION;
+#  endif
+		else if (conf->tls_max_version >= (float) 1.2) max_version = TLS1_2_VERSION;
+		else if (conf->tls_max_version >= (float) 1.1) max_version = TLS1_1_VERSION;
+		else max_version = TLS1_VERSION;
 
-	ctx_tls_versions |= SSL_OP_NO_TLSv1_2;
-#endif
-
-	if ((ctx_options & ctx_tls_versions) == ctx_tls_versions) {
-		ERROR("You have disabled all available TLS versions.  EAP will not work");
-		return NULL;
+		if (!SSL_CTX_set_max_proto_version(ctx, max_version)) {
+			tls_log_error(NULL, "Failed setting TLS maximum version");
+			return NULL;
+		}
 	}
+
+	{
+		int min_version = TLS1_VERSION;
+
+		if (conf->tls_min_version < (float) 1.0) {
+			ERROR("tls_min_version must be >= 1.0 as SSLv2 and SSLv3 are permanently disabled");
+			return NULL;
+		}
+#  ifdef TLS1_4_VERSION
+		else if (conf->tls_min_version >= (float) 1.4) min_version = TLS1_4_VERSION;
+#  endif
+#  ifdef TLS1_3_VERSION
+		else if (conf->tls_min_version >= (float) 1.3) min_version = TLS1_3_VERSION;
+#  endif
+		else if (conf->tls_min_version >= (float) 1.2) min_version = TLS1_2_VERSION;
+		else if (conf->tls_min_version >= (float) 1.1) min_version = TLS1_1_VERSION;
+		else min_version = TLS1_VERSION;
+
+		if (!SSL_CTX_set_min_proto_version(ctx, min_version)) {
+			tls_log_error(NULL, "Failed setting TLS minimum version");
+			return NULL;
+		}
+	}
+#else
+	{
+		int ctx_tls_versions = 0;
+
+		/*
+		 *	We never want SSLv2 or SSLv3.
+		 */
+		ctx_options |= SSL_OP_NO_SSLv2;
+		ctx_options |= SSL_OP_NO_SSLv3;
+
+		if (conf->tls_min_version < (float) 1.0) {
+			ERROR("SSLv2 and SSLv3 are permanently disabled due to critical security issues");
+			return NULL;
+		}
+
+		/*
+		 *	As of 3.0.5, we always allow TLSv1.1 and TLSv1.2.
+		 *	Though they can be *globally* disabled if necessary.x
+		 */
+#  ifdef SSL_OP_NO_TLSv1
+		if (conf->tls_min_version > (float) 1.0) ctx_options |= SSL_OP_NO_TLSv1;
+		ctx_tls_versions |= SSL_OP_NO_TLSv1;
+#  endif
+#  ifdef SSL_OP_NO_TLSv1_1
+		if (conf->tls_min_version > (float) 1.1) ctx_options |= SSL_OP_NO_TLSv1_1;
+		if ((conf->tls_max_version != (float) 0.0) && (conf->tls_max_version < (float) 1.1)) {
+			ctx_options |= SSL_OP_NO_TLSv1_1;
+		}
+		ctx_tls_versions |= SSL_OP_NO_TLSv1_1;
+#  endif
+#  ifdef SSL_OP_NO_TLSv1_2
+		if (conf->tls_min_version > (float) 1.2) ctx_options |= SSL_OP_NO_TLSv1_2;
+		if ((conf->tls_max_version != (float) 0.0) && (conf->tls_max_version < (float) 1.2)) {
+			ctx_options |= SSL_OP_NO_TLSv1_2;
+		}
+		ctx_tls_versions |= SSL_OP_NO_TLSv1_2;
+#  endif
+
+		if ((ctx_options & ctx_tls_versions) == ctx_tls_versions) {
+			ERROR("You have disabled all available TLS versions.  EAP will not work");
+			return NULL;
+		}
+	}
+#endif
 
 #ifdef SSL_OP_NO_TICKET
 	ctx_options |= SSL_OP_NO_TICKET;

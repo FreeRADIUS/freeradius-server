@@ -8,17 +8,11 @@ update request {
 }
 
 if (!&Attr-26) {
-	update reply {
-		Filter-Id := "fail 1"
-	}
+	test_fail
 }
 elsif (&Attr-26 != 0x01020304) {
-	update reply {
-		Filter-Id := "fail 2"
-	}
+	test_fail
 }
 else {
-	update reply {
-		Filter-Id := "filter"
-	}
+	success
 }

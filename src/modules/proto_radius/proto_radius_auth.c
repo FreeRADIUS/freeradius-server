@@ -115,7 +115,7 @@ static void auth_message(char const *msg, REQUEST *request, int goodpass)
 		       extra);
 }
 
-static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
+static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 {
 	VALUE_PAIR		*vp, *auth_type;
 	rlm_rcode_t		rcode;
@@ -123,6 +123,17 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 	fr_dict_enum_t const	*dv = NULL;
 	fr_dict_attr_t const 	*da = NULL;
 	vp_cursor_t		cursor;
+
+	REQUEST_VERIFY(request);
+
+	/*
+	 *	Pass this through asynchronously to the module which
+	 *	is waiting for something to happen.
+	 */
+	if (action != FR_IO_ACTION_RUN) {
+		unlang_signal(request, (fr_state_action_t) action);
+		return FR_IO_DONE;
+	}
 
 	switch (request->request_state) {
 	case REQUEST_INIT:
@@ -134,7 +145,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 
 		unlang = cf_section_find(request->server_cs, "recv", "Access-Request");
 		if (!unlang) {
-			REDEBUG("Failed to find 'recv %s' section", dv->alias);
+			REDEBUG("Failed to find 'recv Access-Request' section");
 			request->reply->code = FR_CODE_ACCESS_REJECT;
 			goto setup_send;
 		}
@@ -325,7 +336,7 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 			 *	Maybe the shared secret is wrong?
 			 */
 			if (request->password) {
-				VERIFY_VP(request->password);
+				VP_VERIFY(request->password);
 
 				if ((rad_debug_lvl > 1) && (request->password->da->attr == FR_USER_PASSWORD)) {
 					uint8_t const *p;
@@ -375,6 +386,16 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 	setup_send:
 		if (!da) da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
 		rad_assert(da != NULL);
+
+		if (!request->reply->code) {
+			vp = fr_pair_find_by_num(request->reply->vps, 0, FR_PACKET_TYPE, TAG_ANY);
+			if (vp) {
+				request->reply->code = vp->vp_uint32;
+			} else {
+				RDEBUG("No reply code was set.  Forcing to Access-Reject");
+				request->reply->code = FR_CODE_ACCESS_REJECT;
+			}
+		}
 
 		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
 		unlang = NULL;
@@ -479,18 +500,6 @@ static fr_io_final_t mod_process(REQUEST *request, UNUSED fr_io_action_t action)
 			rdebug_proto_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
 			return FR_IO_REPLY;
 		}
-
-#ifdef WITH_UDPFROMTO
-		/*
-		 *	Overwrite the src ip address on the outbound packet
-		 *	with the one specified by the client.
-		 *	This is useful to work around broken DSR implementations
-		 *	and other routing issues.
-		 */
-		if (request->client->src_ipaddr.af != AF_UNSPEC) {
-			request->reply->src_ipaddr = request->client->src_ipaddr;
-		}
-#endif
 
 		if (RDEBUG_ENABLED) common_packet_debug(request, request->reply, false);
 		break;

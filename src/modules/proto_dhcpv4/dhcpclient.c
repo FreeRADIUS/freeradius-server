@@ -540,7 +540,7 @@ static void dhcp_packet_debug(RADIUS_PACKET *packet, bool received)
 	for (vp = fr_pair_cursor_init(&cursor, &packet->vps);
 	     vp;
 	     vp = fr_pair_cursor_next(&cursor)) {
-		VERIFY_VP(vp);
+		VP_VERIFY(vp);
 
 		fr_pair_snprint(buffer, sizeof(buffer), vp);
 		printf("\t%s\n", buffer);

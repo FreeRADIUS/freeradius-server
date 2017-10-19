@@ -36,7 +36,7 @@
 Summary: High-performance and highly configurable free RADIUS server
 Name: freeradius
 Version: 4.0.0
-Release: 1%{?dist}
+Release: %{?_release}%{!?_release:1}%{?dist}
 License: GPLv2+ and LGPLv2+
 Group: System Environment/Daemons
 URL: http://www.freeradius.org/
@@ -55,7 +55,7 @@ Source103: freeradius-pam-conf
 
 Obsoletes: freeradius-devel
 Obsoletes: freeradius-libs
-Obsoletes: freeradius < 4.0.0-1%{?dist}
+Obsoletes: freeradius < %{version}-%{release}%{?dist}
 
 %define docdir %{_docdir}/freeradius-%{version}
 
@@ -75,9 +75,13 @@ BuildRequires: libpcap-devel
 BuildRequires: libtalloc-devel
 BuildRequires: net-snmp-devel
 BuildRequires: net-snmp-utils
+%{?el7:BuildRequires: samba-winbind-devel}
+%{?el6:BuildRequires: samba4-devel}
+%if %{?_unitdir:1}%{!?_unitdir:0}
+BuildRequires: systemd-devel
+%endif
 BuildRequires: pam-devel
 BuildRequires: readline-devel
-BuildRequires: systemd-devel
 BuildRequires: zlib-devel
 
 Requires(pre): shadow-utils glibc-common
@@ -95,6 +99,10 @@ Requires: readline
 Requires: libtalloc
 Requires: libkqueue
 Requires: net-snmp
+%{?el7:Requires: samba-libs}
+%{?el7:Requires: samba-winbind-clients}
+%{?el6:Requires: samba4-libs}
+%{?el6:Requires: samba4-winbind-clients}
 Requires: zlib
 Requires: pam
 
@@ -127,7 +135,7 @@ done when adding or deleting new users.
 %package memcached
 Summary: Memcached support for freeRADIUS
 Group: System Environment/Daemons
-Requires: %{name} = %{version}-%{release}
+Requires: %{name}%{?_isa} = %{version}-%{release}
 Requires: libmemcached
 BuildRequires: libmemcached-devel
 
@@ -139,7 +147,6 @@ Adds support for rlm_memcached as a cache driver.
 Group: System Environment/Daemons
 Summary: FreeRADIUS config files
 Provides: freeradius-config
-Obsoletes: freeradius < 4.0.0-1%{?dist}
 
 %description config
 FreeRADIUS default config files
@@ -149,7 +156,7 @@ to configure the FreeRADIUS server.
 %package utils
 Group: System Environment/Daemons
 Summary: FreeRADIUS utilities
-Requires: %{name} = %{version}-%{release}
+Requires: %{name}%{?_isa} = %{version}-%{release}
 Requires: libpcap >= 0.9.4
 
 %description utils
@@ -163,7 +170,7 @@ attributes Selecting a particular configuration Authentication methods
 
 %package json
 Summary: JSON support for FreeRADIUS
-Requires: %{name} = %{version}-%{release}
+Requires: %{name}%{?_isa} = %{version}-%{release}
 Requires: freeradius-libfreeradius-json = %{version}-%{release}
 
 %description json
@@ -172,7 +179,7 @@ This plugin provides JSON tree mapping, and JSON string escaping for the FreeRAD
 %package krb5
 Summary: Kerberos 5 support for FreeRADIUS
 Group: System Environment/Daemons
-Requires: %{name} = %{version}-%{release}
+Requires: %{name}%{?_isa} = %{version}-%{release}
 Requires: krb5-libs
 BuildRequires: krb5-devel
 
@@ -182,9 +189,9 @@ This plugin provides Kerberos 5 support for the FreeRADIUS server project.
 %package ldap
 Summary: LDAP support for FreeRADIUS
 Group: System Environment/Daemons
-Requires: %{name} = %{version}-%{release}
-Requires: openldap
-BuildRequires: openldap-devel
+Requires: %{name}%{?_isa} = %{version}-%{release}
+Requires: openldap-ltb
+BuildRequires: openldap-ltb
 
 %description ldap
 This plugin provides LDAP support for the FreeRADIUS server project.
@@ -197,7 +204,7 @@ Provides common functions used by other FreeRADIUS libraries and modules.
 
 %package libfreeradius-radius
 Summary: RADIUS protocol library for FreeRADIUS
-Requires: %{name} = %{version}-%{release}
+Requires: %{name}%{?_isa} = %{version}-%{release}
 Requires: freeradius-libfreeradius-util = %{version}-%{release}
 
 %description libfreeradius-radius
@@ -206,7 +213,7 @@ Provides protocol encoders and decoders for the RADIUS protocol.
 %package libfreeradius-json
 Summary: Internal support library for FreeRADIUS modules using json-c
 Group: System Environment/Daemons
-Requires: %{name} = %{version}-%{release}
+Requires: %{name}%{?_isa} = %{version}-%{release}
 Requires: json-c >= 0.10
 BuildRequires: json-c-devel >= 0.10
 
@@ -216,7 +223,7 @@ Internal support library for FreeRADIUS modules using json-c, required by all mo
 %package libfreeradius-redis
 Summary: Internal support library for FreeRADIUS modules using hiredis
 Group: System Environment/Daemons
-Requires: %{name} = %{version}-%{release}
+Requires: %{name}%{?_isa} = %{version}-%{release}
 Requires: hiredis >= 0.10
 BuildRequires: hiredis-devel >= 0.10
 
@@ -226,7 +233,7 @@ Internal support library for FreeRADIUS modules using hiredis, required by all m
 %package perl
 Summary: Perl support for FreeRADIUS
 Group: System Environment/Daemons
-Requires: %{name} = %{version}-%{release}
+Requires: %{name}%{?_isa} = %{version}-%{release}
 Requires: perl(:MODULE_COMPAT_%(eval "`%{__perl} -V:version`"; echo $version))
 %{?fedora:BuildRequires: perl-devel}
 %if 0%{?rhel} <= 5
@@ -243,7 +250,7 @@ This plugin provides Perl support for the FreeRADIUS server project.
 %package python
 Summary: Python support for FreeRADIUS
 Group: System Environment/Daemons
-Requires: %{name} = %{version}-%{release}
+Requires: %{name}%{?_isa} = %{version}-%{release}
 Requires: python
 BuildRequires: python-devel
 
@@ -253,7 +260,7 @@ This plugin provides Python support for the FreeRADIUS server project.
 %package mysql
 Summary: MySQL support for FreeRADIUS
 Group: System Environment/Daemons
-Requires: %{name} = %{version}-%{release}
+Requires: %{name}%{?_isa} = %{version}-%{release}
 Requires: mysql
 BuildRequires: mysql-devel
 
@@ -263,7 +270,7 @@ This plugin provides MySQL support for the FreeRADIUS server project.
 %package postgresql
 Summary: PostgreSQL support for FreeRADIUS
 Group: System Environment/Daemons
-Requires: %{name} = %{version}-%{release}
+Requires: %{name}%{?_isa} = %{version}-%{release}
 Requires: postgresql
 BuildRequires: postgresql-devel
 
@@ -273,7 +280,7 @@ This plugin provides PostgreSQL support for the FreeRADIUS server project.
 %package sqlite
 Summary: SQLite support for FreeRADIUS
 Group: System Environment/Daemons
-Requires: %{name} = %{version}-%{release}
+Requires: %{name}%{?_isa} = %{version}-%{release}
 Requires: sqlite
 BuildRequires: sqlite-devel
 
@@ -283,7 +290,7 @@ This plugin provides SQLite support for the FreeRADIUS server project.
 %package unixODBC
 Summary: unixODBC support for FreeRADIUS
 Group: System Environment/Daemons
-Requires: %{name} = %{version}-%{release}
+Requires: %{name}%{?_isa} = %{version}-%{release}
 Requires: unixODBC
 BuildRequires: unixODBC-devel
 
@@ -293,7 +300,7 @@ This plugin provides unixODBC support for the FreeRADIUS server project.
 %package freetds
 Summary: FreeTDS support for FreeRADIUS
 Group: System Environment/Daemons
-Requires: %{name} = %{version}-%{release}
+Requires: %{name}%{?_isa} = %{version}-%{release}
 Requires: freetds
 BuildRequires: freetds-devel
 
@@ -304,7 +311,7 @@ This plugin provides FreeTDS support for the FreeRADIUS server project.
 %package oracle
 Summary: Oracle support for FreeRADIUS
 Group: System Environment/Daemons
-Requires: %{name} = %{version}-%{release}
+Requires: %{name}%{?_isa} = %{version}-%{release}
 Requires: oracle-instantclient11.2
 BuildRequires: oracle-instantclient11.2-devel
 
@@ -324,7 +331,7 @@ This plugin provides Oracle support for the FreeRADIUS server project.
 %package redis
 Summary: Redis support for FreeRADIUS
 Group: System Environment/Daemons
-Requires: %{name} = %{version}-%{release}
+Requires: %{name}%{?_isa} = %{version}-%{release}
 Requires: freeradius-libfreeradius-redis = %{version}
 
 %description redis
@@ -333,7 +340,7 @@ This plugin provides Redis support for the FreeRADIUS server project.
 %package rest
 Summary: REST support for FreeRADIUS
 Group: System Environment/Daemons
-Requires: %{name} = %{version}-%{release}
+Requires: %{name}%{?_isa} = %{version}-%{release}
 Requires: freeradius-libfreeradius-json = %{version}
 
 %description rest
@@ -343,7 +350,7 @@ This plugin provides the ability to interact with REST APIs for the FreeRADIUS s
 %package ruby
 Summary: Ruby support for FreeRADIUS
 Group: System Environment/Daemons
-Requires: %{name} = %{version}-%{release}
+Requires: %{name}%{?_isa} = %{version}-%{release}
 Requires: ruby
 BuildRequires: ruby ruby-devel
 
@@ -355,7 +362,7 @@ This plugin provides Ruby support for the FreeRADIUS server project.
 %package sigtran
 Summary: Sigtran support for FreeRADIUS
 Group: System Environment/Daemons
-Requires: %{name} = %{version}-%{release}
+Requires: %{name}%{?_isa} = %{version}-%{release}
 Requires: libosmo-sccp, libosmo-xua, libosmo-mtp, libosmocore
 BuildRequires: libosmo-sccp-devel, libosmo-xua-devel, libosmo-mtp-devel, libosmocore-devel
 
@@ -367,7 +374,7 @@ This plugin provides an experimental M3UA/SCCP/TCAP/MAP stack for the FreeRADIUS
 %package yubikey
 Summary: YubiCloud support for FreeRADIUS
 Group: System Environment/Daemons
-Requires: %{name} = %{version}-%{release}
+Requires: %{name}%{?_isa} = %{version}-%{release}
 Requires: ykclient >= 2.10
 BuildRequires: ykclient-devel >= 2.10
 
@@ -394,6 +401,11 @@ export CXXFLAGS="$CFLAGS"
 # which ships with RHEL 6 has basic C11 support, gcc doesn't.
 export LDFLAGS="-Wl,--build-id"
 
+# Pass in the release number, which was passed to us by whatever called rpmbuild
+%if %{?_release:1}%{!?_release:0}
+export RADIUSD_VERSION_RELEASE="%{release}"
+%endif
+
 %configure \
         --libdir=%{_libdir}/freeradius \
         --disable-ltdl-install \
@@ -401,6 +413,8 @@ export LDFLAGS="-Wl,--build-id"
         --with-threads \
         --with-thread-pool \
         --with-docdir=%{docdir} \
+	--with-libfreeradius-ldap-include-dir=/usr/local/openldap/include \
+	--with-libfreeradius-ldap-lib-dir=/usr/local/openldap/lib64 \
         --with-rlm-sql_postgresql-include-dir=/usr/include/pgsql \
         --with-rlm-sql-postgresql-lib-dir=%{_libdir} \
         --with-rlm-sql_mysql-include-dir=/usr/include/mysql \
@@ -413,6 +427,8 @@ export LDFLAGS="-Wl,--build-id"
         --without-rlm_sql_db2 \
         --with-jsonc-lib-dir=%{_libdir} \
         --with-jsonc-include-dir=/usr/include/json \
+        --with-winbind-include-dir=/usr/include/samba-4.0 \
+        --with-winbind-lib-dir=/usr/lib64/samba \
 %if %{?_with_freeradius_openssl:1}%{!?_with_freeradius_openssl:0}
         --with-openssl-lib-dir=/opt/openssl/lib \
         --with-openssl-include-dir=/opt/openssl/include \
@@ -635,14 +651,19 @@ fi
 %{_libdir}/freeradius/proto_arp.so
 %{_libdir}/freeradius/proto_bfd.so
 %{_libdir}/freeradius/proto_detail.so
-%{_libdir}/freeradius/proto_dhcp.so
+%{_libdir}/freeradius/proto_detail_file.so
+%{_libdir}/freeradius/proto_detail_process.so
+%{_libdir}/freeradius/proto_detail_work.so
+%{_libdir}/freeradius/proto_dhcpv4.so
 %{_libdir}/freeradius/proto_ldap_sync.so
 %{_libdir}/freeradius/proto_radius_acct.so
 %{_libdir}/freeradius/proto_radius_auth.so
 %{_libdir}/freeradius/proto_radius_coa.so
 %{_libdir}/freeradius/proto_radius_status.so
-%{_libdir}/freeradius/proto_vmps.so
 %{_libdir}/freeradius/proto_tacacs.so
+%{_libdir}/freeradius/proto_vmps.so
+%{_libdir}/freeradius/proto_vmps_all.so
+%{_libdir}/freeradius/proto_vmps_udp.so
 %{_libdir}/freeradius/rlm_always.so
 %{_libdir}/freeradius/rlm_attr_filter.so
 %{_libdir}/freeradius/rlm_cache.so
@@ -654,7 +675,7 @@ fi
 %{_libdir}/freeradius/rlm_date.so
 %{_libdir}/freeradius/rlm_detail.so
 %{_libdir}/freeradius/rlm_delay.so
-%{_libdir}/freeradius/rlm_dhcp.so
+%{_libdir}/freeradius/rlm_dhcpv4.so
 %{_libdir}/freeradius/rlm_dict.so
 %{_libdir}/freeradius/rlm_digest.so
 %{_libdir}/freeradius/rlm_eap.so
@@ -678,7 +699,8 @@ fi
 %{_libdir}/freeradius/rlm_pam.so
 %{_libdir}/freeradius/rlm_pap.so
 %{_libdir}/freeradius/rlm_passwd.so
-%{_libdir}/freeradius/rlm_radius_client.so
+%{_libdir}/freeradius/rlm_radius.so
+%{_libdir}/freeradius/rlm_radius_udp.so
 %{_libdir}/freeradius/rlm_radutmp.so
 %{_libdir}/freeradius/rlm_soh.so
 %{_libdir}/freeradius/rlm_sometimes.so
@@ -692,9 +714,14 @@ fi
 %{_libdir}/freeradius/rlm_unpack.so
 %{_libdir}/freeradius/rlm_utf8.so
 %{_libdir}/freeradius/rlm_wimax.so
+%{_libdir}/freeradius/rlm_logtee.so
+%{_libdir}/freeradius/proto_radius.so
+%{_libdir}/freeradius/proto_radius_udp.so
+
+
 %{?_with_rlm_idn: %{_libdir}/freeradius/rlm_idn.so}
 %if %{?_with_experimental_modules:1}%{!?_with_experimental_modules:0}
-%{_libdir}/freeradius/rlm_example.so
+#%{_libdir}/freeradius/rlm_example.so
 %endif
 
 %files config
@@ -712,7 +739,6 @@ fi
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/users
 %dir %attr(770,root,radiusd) /etc/raddb/certs
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/certs/*
-%attr(750,root,radiusd) /etc/raddb/certs/bootstrap
 %dir %attr(750,root,radiusd) /etc/raddb/sites-available
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/sites-available/*
 %dir %attr(750,root,radiusd) /etc/raddb/sites-enabled
@@ -735,7 +761,7 @@ fi
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/python
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/python/*
 %dir %attr(750,root,radiusd) /etc/raddb/mods-enabled
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-enabled/*
+%config(noreplace) /etc/raddb/mods-enabled/*
 # mysql
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/driver
@@ -745,7 +771,6 @@ fi
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/cui
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/cui/mysql
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/cui/mysql/*
-%dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/ippool-dhcp
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/ippool-dhcp/mysql
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/ippool-dhcp/mysql/*
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/ippool

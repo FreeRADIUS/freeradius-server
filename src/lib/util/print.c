@@ -571,15 +571,15 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 				}
 				break;
 
-			case 'L':
+			case 'l':
 				if ((*p == 'i') || (*p == 'd')) {
-					if (len [1] == 'L') {
+					if (len[1] == 'l') {
 						(void) va_arg(ap_q, long);		/* long */
 					} else {
 						(void) va_arg(ap_q, long long);		/* long long */
 					}
 				} else {
-					if (len [1] == 'L') {
+					if (len[1] == 'l') {
 						(void) va_arg(ap_q, unsigned long);	/* unsigned long */
 					} else {
 						(void) va_arg(ap_q, unsigned long long);/* unsigned long long */
@@ -765,3 +765,25 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 	return out;
 }
 DIAG_ON(format-nonliteral)
+
+/** Special version of asprintf which implements custom format specifiers
+ *
+ * @copybrief fr_vasprintf
+ *
+ * @param[in] ctx	to allocate buffer in.
+ * @param[in] fmt	string.
+ * @param[in] ...	variadic argument list.
+ * @return
+ *	- The result of string interpolation.
+ */
+char *fr_asprintf(TALLOC_CTX *ctx, char const *fmt, ...)
+{
+	va_list ap;
+	char *ret;
+
+	va_start(ap, fmt);
+	ret = fr_vasprintf(ctx, fmt, ap);
+	va_end(ap);
+
+	return ret;
+}

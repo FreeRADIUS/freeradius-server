@@ -2,6 +2,4 @@ update control {
        Cleartext-Password := 'hello'
 }
 
-update reply {
-       Filter-Id := "filter"
-}
+success

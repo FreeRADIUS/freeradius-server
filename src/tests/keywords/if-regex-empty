@@ -3,44 +3,35 @@
 #
 update {
        control:Cleartext-Password := 'hello'
-       reply:Filter-Id := 'filter'
 }
 
 if (control:Cleartext-Password !~ /hell(o)(.*)/) {
-	update reply {
-		Filter-Id += 'Fail 1'
-	}
+	test_fail
 }
 
 #
 #  Verify non-empty capture groups evaluate to true
 #
 if (!"%{1}") {
-	update reply {
-		Filter-Id += 'Fail 2'
-	}
+	test_fail
 }
 
 #
 #  Verify empty capture groups evaluate to false
 #
 if ("%{2}") {
-	update reply {
-		Filter-Id += 'Fail 3'
-	}
+	test_fail
 }
 
 if (control:Cleartext-Password !~ /hello(.*)/) {
-	update reply {
-		Filter-Id += 'Fail 4'
-	}
+	test_fail
 }
 
 #
 #  Check for stale capture group values
 #
 if ("%{1}") {
-	update reply {
-		Filter-Id += 'Fail 5'
-	}
+	test_fail
 }
+
+success

@@ -99,7 +99,7 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	request = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST), REQUEST);
 
 	identity_p = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_IDENTITY);
-	if (identity_p && *identity_p) identity = talloc_get_type_abort(*identity_p, char);
+	if (identity_p && *identity_p) identity = talloc_get_type_abort_const(*identity_p, char);
 
 	if (RDEBUG_ENABLED3) {
 		STACK_OF(X509)	*our_chain = X509_STORE_CTX_get_chain(x509_ctx);

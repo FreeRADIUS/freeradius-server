@@ -59,6 +59,29 @@ int fr_ipaddr_is_inaddr_any(fr_ipaddr_t const *ipaddr)
 	return 0;
 }
 
+/** Determine if an address is a prefix
+ *
+ * @param ipaddr to check.
+ * @return
+ *	- 0 if it's not.
+ *	- 1 if it is.
+ *	- -1 on error.
+ */
+int fr_ipaddr_is_prefix(fr_ipaddr_t const *ipaddr)
+{
+	switch (ipaddr->af) {
+	case AF_INET:
+		return (ipaddr->prefix < 32);
+
+	case AF_INET6:
+		return (ipaddr->prefix < 128);
+
+	default:
+		fr_strerror_printf("Unknown address family");
+		return -1;
+	}
+}
+
 /** Mask off a portion of an IPv4 address
  *
  * @param ipaddr to mask.
@@ -429,7 +452,7 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 
 		} else if (!resolve) {
 			if (inet_pton(AF_INET, value, &out->addr.v4.s_addr) <= 0) {
-				fr_strerror_printf("Failed to parse IPv4 addreess string \"%s\"", value);
+				fr_strerror_printf("Failed to parse IPv4 address string \"%s\"", value);
 				return -1;
 			}
 		} else if (fr_inet_hton(out, AF_INET, value, fallback) < 0) return -1;
@@ -1081,11 +1104,8 @@ int fr_ipaddr_from_ifindex(fr_ipaddr_t *out, int fd, int af, int if_index)
  */
 int fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b)
 {
-	if (a->af < b->af) return -1;
-	if (a->af > b->af) return +1;
-
-	if (a->prefix < b->prefix) return -1;
-	if (a->prefix > b->prefix) return +1;
+	if (a->af != b->af) return a->af - b->af;
+	if (a->prefix != b->prefix) return a->prefix - b->prefix;
 
 	switch (a->af) {
 	case AF_INET:
@@ -1095,12 +1115,8 @@ int fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b)
 
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 	case AF_INET6:
-		if (a->scope_id < b->scope_id) return -1;
-		if (a->scope_id > b->scope_id) return +1;
-
-		return memcmp(&a->addr.v6,
-			      &b->addr.v6,
-			      sizeof(a->addr.v6));
+		if (a->scope_id != b->scope_id) return a->scope_id - b->scope_id;
+		return memcmp(&a->addr.v6, &b->addr.v6, sizeof(a->addr.v6));
 #endif
 
 	default:

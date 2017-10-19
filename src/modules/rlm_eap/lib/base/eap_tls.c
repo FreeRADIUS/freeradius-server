@@ -292,7 +292,8 @@ int eap_tls_success(eap_session_t *eap_session)
 	 */
 	if (tls_session->prf_label) {
 		eap_tls_gen_mppe_keys(eap_session->request, tls_session->ssl, tls_session->prf_label);
-	} else {
+
+	} else if (eap_session->type != FR_EAP_FAST) {
 		RWDEBUG("Not adding MPPE keys because there is no PRF label");
 	}
 

@@ -49,10 +49,11 @@ struct fr_async_t {
 	fr_time_tracking_t	tracking;
 	fr_channel_t		*channel;
 
-	uint32_t		priority;
 	void			*packet_ctx;
 	fr_listen_t const	*listen;	//!< How we received this request,
 						//!< and how we'll send the reply.
+	uint32_t		priority;
+	bool			detached;	//!< if detached, we don't send real replies
 };
 
 /** Information to track src/dst ip/port

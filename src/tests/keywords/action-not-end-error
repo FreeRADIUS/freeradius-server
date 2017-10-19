@@ -4,10 +4,6 @@
 #  Static if condition
 #
 if (1) {
-	update reply {
-		Filter-Id := "filter"
-	}
-
 	#
 	#  We're not running the 'pap' module, so
 	#  we have to set this ourselves.
@@ -24,6 +20,4 @@ if (1) {
 	ok
 }
 
-update reply {
-	Filter-Id := "fail"
-}
+test_fail

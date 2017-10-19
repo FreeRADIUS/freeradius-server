@@ -584,7 +584,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	name = cf_section_name2(conf);
 	if (!name) name = cf_section_name1(conf);
 	inst->xlat_name = name;
-	xlat_register(inst, inst->xlat_name, mschap_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat_register(inst, inst->xlat_name, mschap_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 
 	return 0;
 }
@@ -1502,7 +1502,7 @@ static bool CC_HINT(nonnull (1, 2, 4)) find_nt_password(rlm_mschap_t const *inst
 	 */
 	nt_password = fr_pair_find_by_num(request->control, 0, FR_NT_PASSWORD, TAG_ANY);
 	if (nt_password) {
-		VERIFY_VP(nt_password);
+		VP_VERIFY(nt_password);
 
 		switch (nt_password->vp_length) {
 		case NT_DIGEST_LENGTH:
@@ -1569,7 +1569,7 @@ static bool CC_HINT(nonnull (1, 2, 5)) find_lm_password(rlm_mschap_t const *inst
 
 	lm_password = fr_pair_find_by_num(request->control, 0, FR_LM_PASSWORD, TAG_ANY);
 	if (lm_password) {
-		VERIFY_VP(lm_password);
+		VP_VERIFY(lm_password);
 
 		switch (lm_password->vp_length) {
 		case LM_DIGEST_LENGTH:
@@ -1666,12 +1666,12 @@ static rlm_rcode_t CC_HINT(nonnull) process_cpw_request(rlm_mschap_t const *inst
 	 */
 	new_nt_enc_len = 0;
 	for (seq = 1; seq < 4; seq++) {
-		vp_cursor_t cursor;
+		fr_cursor_t cursor;
 		int found = 0;
 
-		for (nt_enc = fr_pair_cursor_init(&cursor, &request->packet->vps);
+		for (nt_enc = fr_cursor_init(&cursor, &request->packet->vps);
 		     nt_enc;
-		     nt_enc = fr_pair_cursor_next(&cursor)) {
+		     nt_enc = fr_cursor_next(&cursor)) {
 			if (nt_enc->da->vendor != VENDORPEC_MICROSOFT)
 				continue;
 
@@ -1954,8 +1954,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	} else if ((response = fr_pair_find_by_num(request->packet->vps, VENDORPEC_MICROSOFT, FR_MSCHAP2_RESPONSE,
 						   TAG_ANY)) != NULL) {
 		uint8_t		mschapv1_challenge[16];
-		VALUE_PAIR	*name_attr, *response_name;
+		VALUE_PAIR	*name_attr, *response_name, *peer_challenge_attr;
 		rlm_rcode_t	rcode;
+		uint8_t const *peer_challenge;
 
 		mschap_version = 2;
 
@@ -2033,6 +2034,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 			}
 		}
 #endif
+		peer_challenge = response->vp_octets + 2;
+
+		peer_challenge_attr = fr_pair_find_by_num(request->control, 0, FR_MS_CHAP_PEER_CHALLENGE, TAG_ANY);
+		if (peer_challenge_attr) {
+			RDEBUG2("Overriding peer challenge");
+			peer_challenge = peer_challenge_attr->vp_octets;
+		}
+
 		/*
 		 *	The old "mschapv2" function has been moved to
 		 *	here.
@@ -2041,9 +2050,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		 *	MS-CHAPv1 challenge, and then does MS-CHAPv1.
 		 */
 		RDEBUG2("Creating challenge hash with username: %s", username_string);
-		mschap_challenge_hash(response->vp_octets + 2, 	/* peer challenge */
-				      challenge->vp_octets, 	/* our challenge */
-				      username_string, 		/* user name */
+		mschap_challenge_hash(peer_challenge,		/* peer challenge */
+				      challenge->vp_octets,	/* our challenge */
+				      username_string,		/* user name */
 				      mschapv1_challenge);	/* resulting challenge */
 
 		RDEBUG2("Client is using MS-CHAPv2");
@@ -2059,7 +2068,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 
 #ifdef WITH_AUTH_WINBIND
 		if (inst->wb_retry_with_normalised_username) {
-			if ((response_name = fr_pair_find_by_num(request->packet->vps, FR_MS_CHAP_USER_NAME, 0, TAG_ANY))) {
+			if ((response_name = fr_pair_find_by_num(request->packet->vps, 0, FR_MS_CHAP_USER_NAME, TAG_ANY))) {
 				if (strcmp(username_string, response_name->vp_strvalue)) {
 					RDEBUG2("Changing username %s to %s", username_string, response_name->vp_strvalue);
 					username_string = response_name->vp_strvalue;
@@ -2068,11 +2077,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		}
 #endif
 
-		mschap_auth_response(username_string, 		/* without the domain */
-				     nthashhash, 		/* nt-hash-hash */
-				     response->vp_octets + 26, 	/* peer response */
-				     response->vp_octets + 2, 	/* peer challenge */
-				     challenge->vp_octets, 	/* our challenge */
+		mschap_auth_response(username_string,		/* without the domain */
+				     nthashhash,		/* nt-hash-hash */
+				     response->vp_octets + 26,	/* peer response */
+				     peer_challenge,		/* peer challenge */
+				     challenge->vp_octets,	/* our challenge */
 				     msch2resp);		/* calculated MPPE key */
 		mschap_add_reply(request, *response->vp_octets, "MS-CHAP2-Success", msch2resp, 42);
 

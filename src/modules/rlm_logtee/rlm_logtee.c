@@ -195,14 +195,16 @@ static rlm_rcode_t mod_insert_logtee(void *instance, UNUSED void *thread, REQUES
 /** Connection errored
  *
  */
-static void _logtee_conn_error(UNUSED fr_event_list_t *el, UNUSED int sock, UNUSED int flags, void *uctx)
+static void _logtee_conn_error(UNUSED fr_event_list_t *el, int sock, UNUSED int flags, int fd_errno, void *uctx)
 {
 	rlm_logtee_thread_t	*t = talloc_get_type_abort(uctx, rlm_logtee_thread_t);
+
+	ERROR("Connection failed (%i): %s", sock, fr_syserror(fd_errno));
 
 	/*
 	 *	Something bad happened... Fix it...
 	 */
-	fr_connection_reconnect(t->conn);
+	fr_connection_signal_reconnect(t->conn);
 }
 
 /** Drain any data we received
@@ -227,7 +229,7 @@ static void _logtee_conn_read(UNUSED fr_event_list_t *el, int sock, UNUSED int f
 		case ETIMEDOUT:
 		case EIO:
 		case ENXIO:
-			fr_connection_reconnect(t->conn);
+			fr_connection_signal_reconnect(t->conn);
 			return;
 
 		/*
@@ -268,7 +270,7 @@ static void _logtee_conn_writable(UNUSED fr_event_list_t *el, int sock, UNUSED i
 			case ENXIO:
 			case EPIPE:
 			case ENETDOWN:
-				fr_connection_reconnect(t->conn);
+				fr_connection_signal_reconnect(t->conn);
 				return;
 
 			/*
@@ -293,8 +295,14 @@ static void _logtee_conn_writable(UNUSED fr_event_list_t *el, int sock, UNUSED i
  */
 static void logtee_fd_idle(rlm_logtee_thread_t *t)
 {
-	fr_event_fd_insert(t->el, fr_connection_get_fd(t->conn),
-			   _logtee_conn_read, NULL, _logtee_conn_error, t);
+	DEBUG3("Marking socket (%i) as idle", fr_connection_get_fd(t->conn));
+	if (fr_event_fd_insert(t->conn, t->el, fr_connection_get_fd(t->conn),
+			       _logtee_conn_read,
+			       NULL,
+			       _logtee_conn_error,
+			       t) < 0) {
+		PERROR("Failed inserting FD event");
+	}
 }
 
 /** Set the socket to active
@@ -305,8 +313,14 @@ static void logtee_fd_idle(rlm_logtee_thread_t *t)
  */
 static void logtee_fd_active(rlm_logtee_thread_t *t)
 {
-	fr_event_fd_insert(t->el, fr_connection_get_fd(t->conn),
-			   _logtee_conn_read, _logtee_conn_writable, _logtee_conn_error, t);
+	DEBUG3("Marking socket (%i) as active - Draining requests", fr_connection_get_fd(t->conn));
+	if (fr_event_fd_insert(t->conn, t->el, fr_connection_get_fd(t->conn),
+			       _logtee_conn_read,
+			       _logtee_conn_writable,
+			       _logtee_conn_error,
+			       t) < 0) {
+		PERROR("Failed inserting FD event");
+	}
 }
 
 /** Shutdown/close a file descriptor
@@ -314,6 +328,7 @@ static void logtee_fd_active(rlm_logtee_thread_t *t)
  */
 static void _logtee_conn_close(int fd, UNUSED void *uctx)
 {
+	DEBUG3("Closing socket (%i)", fd);
 	if (shutdown(fd, SHUT_RDWR) < 0) DEBUG3("Shutdown on socket (%i) failed: %s", fd, fr_syserror(errno));
 	if (close(fd) < 0) DEBUG3("Closing socket (%i) failed: %s", fd, fr_syserror(errno));
 }
@@ -321,9 +336,11 @@ static void _logtee_conn_close(int fd, UNUSED void *uctx)
 /** Process notification that fd is open
  *
  */
-static fr_connection_state_t _logtee_conn_open(UNUSED int fd, UNUSED fr_event_list_t *el, void *uctx)
+static fr_connection_state_t _logtee_conn_open(UNUSED fr_event_list_t *el, UNUSED int fd, void *uctx)
 {
 	rlm_logtee_thread_t	*t = talloc_get_type_abort(uctx, rlm_logtee_thread_t);
+
+	DEBUG2("Socket connected");
 
 	/*
 	 *	If we have data pending, add the writable event immediately
@@ -334,7 +351,7 @@ static fr_connection_state_t _logtee_conn_open(UNUSED int fd, UNUSED fr_event_li
 		logtee_fd_idle(t);
 	}
 
-	return FR_CONNECTION_STATE_CONNECTING;
+	return FR_CONNECTION_STATE_CONNECTED;
 }
 
 /** Initialise a new outbound connection
@@ -365,7 +382,7 @@ static fr_connection_state_t _logtee_conn_init(int *fd_out, void *uctx)
 	case LOGTEE_DST_UDP:
 		DEBUG2("Opening UDP connection to %pV:%u",
 		       fr_box_ipaddr(inst->udp.dst_ipaddr), inst->udp.port);
-		fd = fr_socket_client_udp(NULL, &inst->udp.dst_ipaddr, inst->udp.port, true);
+		fd = fr_socket_client_udp(NULL, NULL, &inst->udp.dst_ipaddr, inst->udp.port, true);
 		if (fd < 0) return FR_CONNECTION_STATE_FAILED;
 		break;
 
@@ -403,13 +420,14 @@ static void logtee_it(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, ch
 	char			*msg, *exp;
 	fr_cursor_t		cursor;
 	VALUE_PAIR		*vp;
+	log_dst_t		*dst;
 
 	rad_assert(t->msg->vp_length == 0);	/* Should have been cleared before returning */
 
 	/*
 	 *	None of this should involve mallocs unless msg > 1k
 	 */
-	msg = talloc_vasprintf(t->msg, fmt, ap);
+	msg = talloc_typed_vasprintf(t->msg, fmt, ap);
 	fr_value_box_strdup_buffer_shallow(NULL, &t->msg->data, inst->msg_da, msg, true);
 
 	t->type->vp_uint32 = (uint32_t) type;
@@ -419,6 +437,7 @@ static void logtee_it(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, ch
 	fr_cursor_prepend(&cursor, t->msg);
 	fr_cursor_prepend(&cursor, t->type);
 	fr_cursor_prepend(&cursor, t->lvl);
+	fr_cursor_head(&cursor);
 
 	/*
 	 *	Now expand our fmt string to encapsulate the
@@ -427,7 +446,10 @@ static void logtee_it(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, ch
 	 *	Fixme: Would be better to call tmpl_expand
 	 *	into a variable length ring buffer.
 	 */
+	dst = request->log.dst;
+	request->log.dst = NULL;
 	if (tmpl_aexpand(t, &exp, request, inst->log_fmt, NULL, NULL) < 0) goto finish;
+	request->log.dst = dst;
 
 	fr_fring_overwrite(t->fring, exp);	/* Insert it into the buffer */
 
@@ -435,15 +457,21 @@ static void logtee_it(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, ch
 		t->pending = true;
 		logtee_fd_active(t);		/* Listen for when the fd is writable */
 	}
+
 finish:
 	/*
 	 *	Don't free, we re-use the VALUE_PAIRs for the next message
 	 */
-	fr_cursor_remove(&cursor);
-	fr_cursor_remove(&cursor);
 	vp = fr_cursor_remove(&cursor);
-	rad_assert(vp == t->msg);
-	fr_value_box_clear(&vp->data);		/* Clear message data */
+	if (!rad_cond_assert(vp == t->lvl)) fr_cursor_append(&cursor, vp);
+
+	vp = fr_cursor_remove(&cursor);
+	if (!rad_cond_assert(vp == t->type)) fr_cursor_append(&cursor, vp);
+
+	vp = fr_cursor_remove(&cursor);
+	if (!rad_cond_assert(vp == t->msg)) fr_cursor_append(&cursor, vp);
+
+	fr_value_box_clear(&t->msg->data);		/* Clear message data */
 }
 
 /** Add our logging destination to the linked list of logging destinations (if it doesn't already exist)
@@ -455,21 +483,21 @@ finish:
  *	- #RLM_MODULE_NOOP	if log destination already exists.
  *	- #RLM_MODULE_OK	if we added a new destination.
  */
-static rlm_rcode_t mod_insert_logtee(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t mod_insert_logtee(UNUSED void *instance, void *thread, REQUEST *request)
 {
 	fr_cursor_t	cursor;
 	log_dst_t	*dst;
 	bool		exists = false;
 
 	for (dst = fr_cursor_init(&cursor, &request->log.dst); dst; dst = fr_cursor_next(&cursor)) {
-		if (dst->uctx == instance) exists = true;
+		if (dst->uctx == thread) exists = true;
 	}
 
 	if (exists) return RLM_MODULE_NOOP;
 
 	dst = talloc_zero(request, log_dst_t);
 	dst->func = logtee_it;
-	dst->uctx = instance;
+	dst->uctx = thread;
 
 	fr_cursor_append(&cursor, dst);
 
@@ -489,7 +517,7 @@ static rlm_rcode_t mod_insert_logtee(void *instance, UNUSED void *thread, REQUES
 static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instance, fr_event_list_t *el, void *thread)
 {
 	rlm_logtee_t		*inst = talloc_get_type_abort(instance, rlm_logtee_t);
-	rlm_logtee_thread_t	*t = thread;
+	rlm_logtee_thread_t	*t = talloc_get_type_abort(thread, rlm_logtee_thread_t);
 
 	MEM(t->fring = fr_fring_alloc(t, inst->buffer_depth, false));
 
@@ -513,7 +541,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instanc
 				      inst->name, t);
 	if (t->conn == NULL) return -1;
 
-	fr_connection_start(t->conn);
+	fr_connection_signal_init(t->conn);
 
 	return 0;
 }

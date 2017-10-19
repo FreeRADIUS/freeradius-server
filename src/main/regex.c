@@ -152,7 +152,7 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
 		 *	Check libpcre really is using our overloaded
 		 *	memory allocation and freeing talloc wrappers.
 		 */
-		p = (char *)talloc_get_type_abort(p, uint8_t);
+		p = (char const *)talloc_get_type_abort_const(p, uint8_t);
 		talloc_set_type(p, char *);
 		talloc_steal(ctx, p);
 		memcpy(out, &p, sizeof(*out));
@@ -212,7 +212,7 @@ int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, ch
 		 *	Check libpcre really is using our overloaded
 		 *	memory allocation and freeing talloc wrappers.
 		 */
-		p = (char *)talloc_get_type_abort(p, uint8_t);
+		p = (char const *)talloc_get_type_abort_const(p, uint8_t);
 		talloc_set_type(p, char *);
 		talloc_steal(ctx, p);
 		memcpy(out, &p, sizeof(*out));

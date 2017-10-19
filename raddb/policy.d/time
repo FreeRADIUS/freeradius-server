@@ -1,0 +1,17 @@
+# Returns the current epoch time in ms
+#
+# Sets Tmp-Integer64-0 with the current epoch time in ms
+time_current_ms {
+	update request {
+		Tmp-Integer64-0 := "%{expr:(%c*1000) + (%C/1000)}"
+	}
+}
+
+# Returns elapsed time in ms since time_current_ms
+#
+# Sets Tmp-Integer64-1 with number of milliseconds
+time_elapsed_ms {
+	update request {
+		Tmp-Integer64-1 := "%{expr:(%c*1000) + (%C/1000) - %{Tmp-Integer64-0}}"
+	}
+}

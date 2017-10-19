@@ -1,0 +1,98 @@
+#
+#  Clear out old data
+#
+
+"%{sql:DELETE FROM radgroupcheck WHERE groupname = 'groups_group_a'}"
+"%{sql:DELETE FROM radgroupcheck WHERE groupname = 'groups_group_b'}"
+"%{sql:DELETE FROM radgroupcheck WHERE groupname = 'groups_group_c'}"
+
+"%{sql:DELETE FROM radgroupreply WHERE groupname = 'groups_group_a'}"
+"%{sql:DELETE FROM radgroupreply WHERE groupname = 'groups_group_b'}"
+"%{sql:DELETE FROM radgroupreply WHERE groupname = 'groups_group_c'}"
+
+"%{sql:DELETE FROM radusergroup WHERE priority = 1000}"
+
+#
+#  Insert new test data
+#
+"%{sql:INSERT INTO radusergroup (username, groupname, priority) VALUES ('groups_user_a', 'groups_group_a', 1000)}"
+"%{sql:INSERT INTO radusergroup (username, groupname, priority) VALUES ('groups_user_b', 'groups_group_b', 1000)}"
+"%{sql:INSERT INTO radusergroup (username, groupname, priority) VALUES ('groups_user_a', 'groups_group_c', 1000)}"
+"%{sql:INSERT INTO radusergroup (username, groupname, priority) VALUES ('groups_user_b', 'groups_group_c', 1000)}"
+
+"%{sql:INSERT INTO radgroupcheck (groupname, attribute, op, value) VALUES ('groups_group_a', 'Cleartext-Password', ':=', 'UserAPassword')}"
+"%{sql:INSERT INTO radgroupcheck (groupname, attribute, op, value) VALUES ('groups_group_b', 'Cleartext-Password', ':=', 'UserBPassword')}"
+
+"%{sql:INSERT INTO radgroupreply (groupname, attribute, op, value) VALUES ('groups_group_a', 'Reply-Message', ':=', 'Hello User A')}"
+"%{sql:INSERT INTO radgroupreply (groupname, attribute, op, value) VALUES ('groups_group_b', 'Reply-Message', ':=', 'Hello User B')}"
+
+#
+#  Run SQL
+#
+sql
+if (updated) {
+	test_pass
+}
+else {
+	test_fail
+}
+
+if (&control:Cleartext-Password == &User-Password) {
+	test_pass
+}
+else {
+	test_fail
+}
+
+if (&reply:Reply-Message == "Hello User B") {
+	test_pass
+}
+else {
+	test_fail
+}
+
+#
+#  Test paircmp group comparisons
+#
+if (SQL-Group != 'groups_group_a') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+if (SQL-Group == 'groups_group_b') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+if (SQL-Group == 'groups_group_c') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+# Non-existent group
+if (SQL-Group != 'groups_group_d') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+#
+#  Test paircmp group comparisons with dynamic expansions
+#
+update request {
+	Tmp-String-0 := 'groups_group_b'
+}
+
+if (SQL-Group == "%{Tmp-String-0}") {
+	test_pass
+}
+else {
+	test_fail
+}

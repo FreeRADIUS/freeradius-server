@@ -6,7 +6,5 @@ update control {
 }
 
 if (request:Packet-Type == Access-Request) {
-	update reply {
-		Filter-Id := "filter"
-	}
+	success
 }

@@ -35,16 +35,16 @@
  *
  */
 typedef struct {
-	fr_ldap_handle_config_t		handle_config;		//!< Connection configuration instance.
+	fr_ldap_config_t		handle_config;		//!< Connection configuration instance.
 
 	sync_config_t			**sync_config;		//!< DNs and filters to monitor.
 
 
 	fr_event_list_t			*el;			//!< Network side event list.
 
-	fr_event_timer_t		*sync_retry_ev;		//!< When to retry re-establishing the sync.
+	fr_event_timer_t const		*sync_retry_ev;		//!< When to retry re-establishing the sync.
 
-	fr_event_timer_t		*conn_retry_ev;		//!< When to retry re-establishing the conn.
+	fr_event_timer_t const		*conn_retry_ev;		//!< When to retry re-establishing the conn.
 
 	/*
 	 *	Connection
@@ -55,7 +55,7 @@ typedef struct {
 	fr_ipaddr_t			src_ipaddr;		//!< Our src interface.
 	uint16_t			src_port;		//!< Our src port.
 
-	fr_ldap_conn_t			*conn;			//!< Our connection to the LDAP directory.
+	fr_ldap_connection_t			*conn;			//!< Our connection to the LDAP directory.
 
 	RADCLIENT			*client;		//!< Fake client representing the connection.
 
@@ -123,22 +123,22 @@ static CONF_PARSER ldap_sync_search_config[] = {
 
 static CONF_PARSER option_config[] = {
 #ifdef LDAP_OPT_X_KEEPALIVE_IDLE
-	{ FR_CONF_OFFSET("idle", FR_TYPE_UINT32, fr_ldap_handle_config_t, keepalive_idle), .dflt = "60" },
+	{ FR_CONF_OFFSET("idle", FR_TYPE_UINT32, fr_ldap_config_t, keepalive_idle), .dflt = "60" },
 #endif
 #ifdef LDAP_OPT_X_KEEPALIVE_PROBES
-	{ FR_CONF_OFFSET("probes", FR_TYPE_UINT32, fr_ldap_handle_config_t, keepalive_probes), .dflt = "3" },
+	{ FR_CONF_OFFSET("probes", FR_TYPE_UINT32, fr_ldap_config_t, keepalive_probes), .dflt = "3" },
 #endif
 #ifdef LDAP_OPT_X_KEEPALIVE_INTERVAL
-	{ FR_CONF_OFFSET("interval", FR_TYPE_UINT32, fr_ldap_handle_config_t, keepalive_interval), .dflt = "30" },
+	{ FR_CONF_OFFSET("interval", FR_TYPE_UINT32, fr_ldap_config_t, keepalive_interval), .dflt = "30" },
 #endif
-	{ FR_CONF_OFFSET("dereference", FR_TYPE_STRING, fr_ldap_handle_config_t, dereference_str) },
+	{ FR_CONF_OFFSET("dereference", FR_TYPE_STRING, fr_ldap_config_t, dereference_str) },
 	/* allow server unlimited time for search (server-side limit) */
-	{ FR_CONF_OFFSET("srv_timelimit", FR_TYPE_UINT32, fr_ldap_handle_config_t, srv_timelimit), .dflt = "20" },
+	{ FR_CONF_OFFSET("srv_timelimit", FR_TYPE_UINT32, fr_ldap_config_t, srv_timelimit), .dflt = "20" },
 	/* timeout for search results */
-	{ FR_CONF_OFFSET("res_timeout", FR_TYPE_TIMEVAL, fr_ldap_handle_config_t, res_timeout), .dflt = "20" },
+	{ FR_CONF_OFFSET("res_timeout", FR_TYPE_TIMEVAL, fr_ldap_config_t, res_timeout), .dflt = "20" },
 #ifdef LDAP_OPT_NETWORK_TIMEOUT
 	/* timeout on network activity */
-	{ FR_CONF_DEPRECATED("net_timeout", FR_TYPE_UINT32, fr_ldap_handle_config_t, net_timeout), .dflt = "10" },
+	{ FR_CONF_DEPRECATED("net_timeout", FR_TYPE_UINT32, fr_ldap_config_t, net_timeout), .dflt = "10" },
 #endif
 
 	CONF_PARSER_TERMINATOR
@@ -155,12 +155,12 @@ static const CONF_PARSER global_config[] = {
  *	TLS Configuration
  */
 static CONF_PARSER tls_config[] = {
-	{ FR_CONF_OFFSET("ca_file", FR_TYPE_FILE_INPUT, fr_ldap_handle_config_t, tls_ca_file) },
-	{ FR_CONF_OFFSET("ca_path", FR_TYPE_FILE_INPUT, fr_ldap_handle_config_t, tls_ca_path) },
-	{ FR_CONF_OFFSET("certificate_file", FR_TYPE_FILE_INPUT, fr_ldap_handle_config_t, tls_certificate_file) },
-	{ FR_CONF_OFFSET("private_key_file", FR_TYPE_FILE_INPUT, fr_ldap_handle_config_t, tls_private_key_file) },
-	{ FR_CONF_OFFSET("start_tls", FR_TYPE_BOOL, fr_ldap_handle_config_t, start_tls), .dflt = "no" },
-	{ FR_CONF_OFFSET("require_cert", FR_TYPE_STRING, fr_ldap_handle_config_t, tls_require_cert_str) },
+	{ FR_CONF_OFFSET("ca_file", FR_TYPE_FILE_INPUT, fr_ldap_config_t, tls_ca_file) },
+	{ FR_CONF_OFFSET("ca_path", FR_TYPE_FILE_INPUT, fr_ldap_config_t, tls_ca_path) },
+	{ FR_CONF_OFFSET("certificate_file", FR_TYPE_FILE_INPUT, fr_ldap_config_t, tls_certificate_file) },
+	{ FR_CONF_OFFSET("private_key_file", FR_TYPE_FILE_INPUT, fr_ldap_config_t, tls_private_key_file) },
+	{ FR_CONF_OFFSET("start_tls", FR_TYPE_BOOL, fr_ldap_config_t, start_tls), .dflt = "no" },
+	{ FR_CONF_OFFSET("require_cert", FR_TYPE_STRING, fr_ldap_config_t, tls_require_cert_str) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -305,7 +305,7 @@ static void request_running(REQUEST *request, fr_state_action_t action)
 	char const	*state;
 	rlm_rcode_t	rcode = RLM_MODULE_FAIL;
 
-	VERIFY_REQUEST(request);
+	REQUEST_VERIFY(request);
 
 	/*
 	 *	Async (in the same thread, tho) signal to be done.
@@ -418,7 +418,7 @@ static void request_running(REQUEST *request, fr_state_action_t action)
  */
 static void request_queued(REQUEST *request, fr_state_action_t action)
 {
-	VERIFY_REQUEST(request);
+	REQUEST_VERIFY(request);
 
 	switch (action) {
 	case FR_ACTION_RUN:
@@ -530,7 +530,8 @@ static void proto_ldap_sync_reinit(fr_event_list_t *el, struct timeval *now, voi
 	PERROR("Failed reinitialising sync, will retry in %pT seconds", &inst->sync_retry_interval);
 
 	fr_timeval_add(&when, now, &inst->sync_retry_interval);
-	if (fr_event_timer_insert(el, proto_ldap_sync_reinit, user_ctx, &when, &inst->sync_retry_ev) < 0) {
+	if (fr_event_timer_insert(inst, el, &inst->sync_retry_ev,
+				  &when, proto_ldap_sync_reinit, user_ctx) < 0) {
 		radlog_fatal("Failed inserting event: %s", fr_strerror());
 	}
 }
@@ -547,7 +548,7 @@ static void proto_ldap_sync_reinit(fr_event_list_t *el, struct timeval *now, voi
  * @param[in] now	current time.
  * @param[in] user_ctx	Listener.
  */
-static void proto_ldap_conn_init(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, UNUSED void *user_ctx)
+static void proto_ldap_connection_init(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, UNUSED void *user_ctx)
 {
 	return;
 }
@@ -566,7 +567,7 @@ static void proto_ldap_conn_init(UNUSED fr_event_list_t *el, UNUSED struct timev
  * @param[in] user_ctx	The listener.
  * @return 0.
  */
-static int _proto_ldap_refresh_required(fr_ldap_conn_t *conn, sync_config_t const *config,
+static int _proto_ldap_refresh_required(fr_ldap_connection_t *conn, sync_config_t const *config,
 				        int sync_id, UNUSED sync_phases_t phase, void *user_ctx)
 {
 	rad_listen_t		*listen = talloc_get_type_abort(user_ctx, rad_listen_t);
@@ -596,7 +597,7 @@ static int _proto_ldap_refresh_required(fr_ldap_conn_t *conn, sync_config_t cons
  * @param[in] user_ctx	The listener.
  * @return 0.
  */
-static int _proto_ldap_present(fr_ldap_conn_t *conn, sync_config_t const *config,
+static int _proto_ldap_present(fr_ldap_connection_t *conn, sync_config_t const *config,
 			       int sync_id, sync_phases_t phase, void *user_ctx)
 {
 	rad_listen_t		*listen = talloc_get_type_abort(user_ctx, rad_listen_t);
@@ -627,7 +628,7 @@ static int _proto_ldap_present(fr_ldap_conn_t *conn, sync_config_t const *config
  *	- 0 on success.
  *	- -1 on failure
  */
-static int _proto_ldap_cookie_store(UNUSED fr_ldap_conn_t *conn, sync_config_t const *config,
+static int _proto_ldap_cookie_store(UNUSED fr_ldap_connection_t *conn, sync_config_t const *config,
 			      	    int sync_id, uint8_t const *cookie, void *user_ctx)
 {
 	rad_listen_t		*listen = talloc_get_type_abort(user_ctx, rad_listen_t);
@@ -645,7 +646,7 @@ static int _proto_ldap_cookie_store(UNUSED fr_ldap_conn_t *conn, sync_config_t c
 
 	request->packet->code = LDAP_SYNC_CODE_COOKIE_STORE;
 
-	request_enqueue(request);
+//	request_enqueue(request);
 
 	return 0;
 }
@@ -667,7 +668,7 @@ static int _proto_ldap_cookie_store(UNUSED fr_ldap_conn_t *conn, sync_config_t c
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int _proto_ldap_entry(fr_ldap_conn_t *conn, sync_config_t const *config,
+static int _proto_ldap_entry(fr_ldap_connection_t *conn, sync_config_t const *config,
 			     int sync_id, UNUSED sync_phases_t phase,
 			     uint8_t const uuid[SYNC_UUID_LENGTH], LDAPMessage *msg,
 			     sync_states_t state, void *user_ctx)
@@ -708,7 +709,7 @@ static int _proto_ldap_entry(fr_ldap_conn_t *conn, sync_config_t const *config,
 	}
 	if (fr_ldap_map_do(request, conn, NULL, &expanded, msg) < 0) goto error;
 
-	request_enqueue(request);
+//	request_enqueue(request);
 
 	return 0;
 }
@@ -885,7 +886,8 @@ static int proto_ldap_socket_recv(rad_listen_t *listen)
 		memcpy(&ctx, &config, sizeof(ctx));
 		gettimeofday(&now, 0);
 		fr_timeval_add(&when, &now, &inst->sync_retry_interval);
-		if (fr_event_timer_insert(inst->el, proto_ldap_sync_reinit, ctx, &when, &inst->sync_retry_ev) < 0) {
+		if (fr_event_timer_insert(inst, inst->el, &inst->sync_retry_ev,
+					  &when, proto_ldap_sync_reinit, ctx) < 0) {
 			radlog_fatal("Failed inserting event: %s", fr_strerror());
 		}
  		return 1;
@@ -899,7 +901,8 @@ static int proto_ldap_socket_recv(rad_listen_t *listen)
  		memcpy(&ctx, &config, sizeof(ctx));
 		gettimeofday(&now, 0);
 		fr_timeval_add(&when, &now, &inst->conn_retry_interval);
-		if (fr_event_timer_insert(inst->el, proto_ldap_conn_init, listen, &when, &inst->conn_retry_ev) < 0) {
+		if (fr_event_timer_insert(inst, inst->el, &inst->conn_retry_ev,
+					  &when, proto_ldap_connection_init, listen) < 0) {
 			radlog_fatal("Failed inserting event: %s", fr_strerror());
 		}
 
@@ -929,7 +932,7 @@ static int proto_ldap_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *listen)
 	/*
 	 *	Fixme - Should be the network thread's event loop?
 	 */
-	inst->el = process_global_event_list(0);
+	inst->el = fr_global_event_list();
 
 	/*
 	 *	Destroys any existing syncs and connections
@@ -939,8 +942,10 @@ static int proto_ldap_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *listen)
 	/*
 	 *	Allocate a brand-new connection
 	 */
-	inst->conn = fr_ldap_conn_alloc(inst, &inst->handle_config);
+	inst->conn = fr_ldap_connection_alloc(inst);
 	if (!inst->conn) goto error;
+
+	if (fr_ldap_connection_configure(inst->conn, &inst->handle_config) < 0) goto error;
 
 	if (inst->conn->config->start_tls) {
 		if (ldap_start_tls_s(inst->conn->handle, NULL, NULL) != LDAP_SUCCESS) {
@@ -961,8 +966,8 @@ static int proto_ldap_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *listen)
 
 			fr_timeval_add(&when, &now, &inst->conn_retry_interval);
 
-			if (fr_event_timer_insert(inst->el, proto_ldap_conn_init,
-						  listen, &when, &inst->conn_retry_ev) < 0) {
+			if (fr_event_timer_insert(inst, inst->el, &inst->conn_retry_ev,
+						  &when, proto_ldap_connection_init, listen) < 0) {
 				radlog_fatal("Failed inserting event: %s", fr_strerror());
 			}
 

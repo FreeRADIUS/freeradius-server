@@ -47,6 +47,7 @@ RCSID("$Id$")
 static inline void *cursor_next(void **prev, fr_cursor_t *cursor, void *current)
 {
 	void *unused = NULL;
+	void *next;
 
 	if (!prev) prev = &unused;
 
@@ -59,22 +60,28 @@ static inline void *cursor_next(void **prev, fr_cursor_t *cursor, void *current)
 		if (!cursor->iter) return (*cursor->head);		/* Fast path without custom iter */
 
 		current = *cursor->head;
-		cursor->iter(prev, &current, cursor->ctx);
-		return current;
+		return cursor->iter(prev, current, cursor->ctx);
 	}
 
 	if (!cursor->iter) {
-		void *next;
-
 		next = *NEXT_PTR(current);				/* Fast path without custom iter */
 		if (prev) *prev = current;
 
 		return next;
 	}
 
-	cursor->iter(prev, *NEXT_PTR(current), cursor->ctx);
+	/*
+	 *	Pre-advance prev and current
+	 */
+	*prev = current;
+	next = *NEXT_PTR(current);
 
-	return current;
+	/*
+	 *	The iterator can just return what it was passed for curr
+	 *	and leave prev untouched if it just wants to advance by one.
+	 */
+	next = cursor->iter(prev, next, cursor->ctx);
+	return next;
 }
 
 /** Internal function to get the last attribute
@@ -458,7 +465,7 @@ void * CC_HINT(hot) fr_cursor_replace(fr_cursor_t *cursor, void *r)
 	 *	so the replace becomes an append.
 	 */
 	v = cursor->current;
-	if (v) {
+	if (!v) {
 		fr_cursor_append(cursor, r);
 		return NULL;
 	}
@@ -475,9 +482,9 @@ void * CC_HINT(hot) fr_cursor_replace(fr_cursor_t *cursor, void *r)
 		*NEXT_PTR(r) = *NEXT_PTR(v);
 	}
 
-	 /*
-	  *	Fixup current pointer.
-	  */
+	/*
+	 *	Fixup current pointer.
+	 */
 	if (v) {
 		cursor->current = p;
 		cursor->prev = NULL;				/* populated on next call to fr_cursor_next */
@@ -556,7 +563,7 @@ void * CC_HINT(hot) _fr_cursor_init(fr_cursor_t *cursor, void * const *head, siz
 
 #ifdef TESTING_CURSOR
 /*
- *  cc cursor.c -g3 -Wall -DTESTING_CURSOR -I../ -include ../include/build.h -l talloc -o test_cursor && ./test_cursor
+ *  cc cursor.c -g3 -Wall -DTESTING_CURSOR -I../../ -I../ -include ../include/build.h -l talloc -o test_cursor && ./test_cursor
  */
 #include <stddef.h>
 #include <freeradius-devel/cutest.h>
@@ -566,9 +573,9 @@ typedef struct {
 	void *next;
 } test_item_t;
 
-static void test_iter(void **prev, void **current, void *ctx)
+static void *test_iter(void **prev, void *current, void *ctx)
 {
-	return;
+	return current;
 }
 
 /** Verify internal state is initialised correctly

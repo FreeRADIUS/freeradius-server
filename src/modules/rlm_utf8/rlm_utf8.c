@@ -31,13 +31,13 @@ RCSID("$Id$")
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_utf8_clean(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
-	size_t i, len;
-	VALUE_PAIR *vp;
-	vp_cursor_t cursor;
+	size_t		i, len;
+	VALUE_PAIR	*vp;
+	fr_cursor_t	cursor;
 
-	for (vp = fr_pair_cursor_init(&cursor, &request->packet->vps);
+	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 	     vp;
-	     vp = fr_pair_cursor_next(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		if (vp->vp_type != FR_TYPE_STRING) continue;
 
 		for (i = 0; i < vp->vp_length; i += len) {

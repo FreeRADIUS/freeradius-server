@@ -277,13 +277,13 @@ static bool already_hex(VALUE_PAIR *vp)
  */
 static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 {
-	FILE *packets, *filters = NULL;
+	FILE		*packets, *filters = NULL;
 
-	vp_cursor_t cursor;
-	VALUE_PAIR *vp;
-	rc_request_t *request;
-	bool packets_done = false;
-	uint64_t num = 0;
+	fr_cursor_t	cursor;
+	VALUE_PAIR	*vp;
+	rc_request_t	*request;
+	bool		packets_done = false;
+	uint64_t	num = 0;
 
 	assert(files->packets != NULL);
 
@@ -395,9 +395,10 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			/*
 			 *	xlat expansions aren't supported here
 			 */
-			for (vp = fr_pair_cursor_init(&cursor, &request->filter);
+			for (vp = fr_cursor_init(&cursor, &request->filter);
 			     vp;
-			     vp = fr_pair_cursor_next(&cursor)) {
+			     vp = fr_cursor_next(&cursor)) {
+			     again:
 				if (vp->type == VT_XLAT) {
 					vp->type = VT_DATA;
 					vp->vp_strvalue = vp->xlat;
@@ -407,10 +408,12 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				if (vp->da->vendor == 0 ) switch (vp->da->attr) {
 				case FR_RESPONSE_PACKET_TYPE:
 				case FR_PACKET_TYPE:
-					fr_pair_cursor_remove(&cursor);	/* so we don't break the filter */
+					vp = fr_cursor_remove(&cursor);	/* so we don't break the filter */
 					request->filter_code = vp->vp_uint32;
 					talloc_free(vp);
-
+					vp = fr_cursor_current(&cursor);
+					if (!vp) break;
+					goto again;
 				default:
 					break;
 				}
@@ -425,9 +428,9 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		/*
 		 *	Process special attributes
 		 */
-		for (vp = fr_pair_cursor_init(&cursor, &request->packet->vps);
+		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 		     vp;
-		     vp = fr_pair_cursor_next(&cursor)) {
+		     vp = fr_cursor_next(&cursor)) {
 			/*
 			 *	Double quoted strings get marked up as xlat expansions,
 			 *	but we don't support that in request.
@@ -532,7 +535,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				vp->data.enumv = NULL;
 				vp->type = VT_DATA;
 
-				VERIFY_VP(vp);
+				VP_VERIFY(vp);
 			}
 				break;
 
@@ -751,10 +754,8 @@ static int radclient_sane(rc_request_t *request)
  */
 static int filename_cmp(void const *one, void const *two)
 {
+	rc_file_pair_t const *a = one, *b = two;
 	int cmp;
-
-	rc_file_pair_t const *a = one;
-	rc_file_pair_t const *b = two;
 
 	cmp = strcmp(a->packets, b->packets);
 	if (cmp != 0) return cmp;

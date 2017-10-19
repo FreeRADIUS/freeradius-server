@@ -88,8 +88,8 @@ typedef struct bfd_state_t {
 	struct sockaddr_storage remote_sockaddr;
 	socklen_t	salen;
 
-	fr_event_timer_t	*ev_timeout;
-	fr_event_timer_t	*ev_packet;
+	fr_event_timer_t const	*ev_timeout;
+	fr_event_timer_t const	*ev_packet;
 	struct timeval	last_recv;
 	struct timeval	next_recv;
 	struct timeval	last_sent;
@@ -337,7 +337,11 @@ static int bfd_pthread_create(bfd_state_t *session)
 	fcntl(session->pipefd[1], F_SETFL, O_NONBLOCK | FD_CLOEXEC);
 #endif
 
-	if (fr_event_fd_insert(session->el, session->pipefd[0], bfd_pipe_recv, NULL, NULL, session) < 0) {
+	if (fr_event_fd_insert(session, session->el, session->pipefd[0],
+			       bfd_pipe_recv,
+			       NULL,
+			       NULL,
+			       session) < 0) {
 		PERROR("Failed inserting file descriptor into event list");
 		goto close_pipes;
 	}
@@ -924,8 +928,8 @@ static int bfd_start_packets(bfd_state_t *session)
 		now.tv_usec -= USEC;
 	}
 
-	if (fr_event_timer_insert(session->el, bfd_send_packet, session, &now,
-			    &session->ev_packet) < 0) {
+	if (fr_event_timer_insert(session, session->el, &session->ev_packet,
+				  &now, bfd_send_packet, session) < 0) {
 		rad_assert("Failed to insert event" == NULL);
 	}
 
@@ -965,8 +969,8 @@ static void bfd_set_timeout(bfd_state_t *session, struct timeval *when)
 		}
 	}
 
-	if (fr_event_timer_insert(session->el, bfd_detection_timeout, session, &now,
-			     &session->ev_timeout) < 0) {
+	if (fr_event_timer_insert(session, session->el, &session->ev_timeout,
+				  &now, bfd_detection_timeout, session) < 0) {
 		rad_assert("Failed to insert event" == NULL);
 	}
 }
@@ -1636,8 +1640,7 @@ static int bfd_socket_decode(UNUSED rad_listen_t *listener, UNUSED REQUEST *requ
 
 static int bfd_session_cmp(const void *one, const void *two)
 {
-	const bfd_state_t *a = one;
-	const bfd_state_t *b = two;
+	const bfd_state_t *a = one, *b = two;
 
 	return fr_ipaddr_cmp(&a->remote_ipaddr, &b->remote_ipaddr);
 }

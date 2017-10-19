@@ -121,7 +121,7 @@ void		_cf_lineno_set(CONF_ITEM *cs, int lineno);
  *	Section manipulation and searching
  */
 CONF_SECTION	*cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent, char const *name1, char const *name2);
-CONF_SECTION	*cf_section_dup(CONF_SECTION *parent, CONF_SECTION const *cs,
+CONF_SECTION	*cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION const *cs,
 				char const *name1, char const *name2, bool copy_meta);
 void		cf_section_add(CONF_SECTION *parent, CONF_SECTION *cs);
 CONF_SECTION	*cf_section_next(CONF_SECTION const *cs, CONF_SECTION const *prev);

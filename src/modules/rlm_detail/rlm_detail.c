@@ -29,16 +29,11 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/detail.h>
 #include <freeradius-devel/exfile.h>
 
 #include <ctype.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-
-#ifdef HAVE_FNMATCH_H
-#  include <fnmatch.h>
-#endif
 
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
@@ -106,10 +101,7 @@ static uint32_t detail_hash(void const *data)
 
 static int detail_cmp(void const *a, void const *b)
 {
-	fr_dict_attr_t const *one = a;
-	fr_dict_attr_t const *two = b;
-
-	return one - two;
+	return (a < b) - (a > b);
 }
 
 /*
@@ -297,11 +289,11 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 	}
 
 	{
-		vp_cursor_t cursor;
+		fr_cursor_t cursor;
 		/* Write each attribute/value to the log file */
-		for (vp = fr_pair_cursor_init(&cursor, &packet->vps);
+		for (vp = fr_cursor_init(&cursor, &packet->vps);
 		     vp;
-		     vp = fr_pair_cursor_next(&cursor)) {
+		     vp = fr_cursor_next(&cursor)) {
 			FR_TOKEN op;
 
 			if (inst->ht && fr_hash_table_finddata(inst->ht, vp->da)) continue;
@@ -348,7 +340,7 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 static rlm_rcode_t CC_HINT(nonnull) detail_do(void const *instance, REQUEST *request,
 					      RADIUS_PACKET *packet, bool compat)
 {
-	int		outfd;
+	int		outfd, dupfd;
 	char		buffer[DIRLEN];
 
 	FILE		*outfp;
@@ -371,24 +363,7 @@ static rlm_rcode_t CC_HINT(nonnull) detail_do(void const *instance, REQUEST *req
 
 	RDEBUG2("%s expands to %s", inst->filename, buffer);
 
-#ifdef WITH_ACCOUNTING
-#if defined(HAVE_FNMATCH_H) && defined(FNM_FILE_NAME)
-	/*
-	 *	If we read it from a detail file, and we're about to
-	 *	write it back to the SAME detail file directory, then
-	 *	suppress the write.  This check prevents an infinite
-	 *	loop.
-	 */
-	if (request->listener && (request->listener->type == RAD_LISTEN_DETAIL) &&
-	    (fnmatch(((listen_detail_t *)request->listener->data)->filename,
-		     buffer, FNM_FILE_NAME | FNM_PERIOD ) == 0)) {
-		RWDEBUG2("Suppressing infinite loop");
-		return RLM_MODULE_NOOP;
-	}
-#endif
-#endif
-
-	outfd = exfile_open(inst->ef, request, buffer, inst->perm, true);
+	outfd = exfile_open(inst->ef, request, buffer, inst->perm);
 	if (outfd < 0) {
 		RERROR("Couldn't open file %s: %s", buffer, fr_strerror());
 		/* coverity[missing_unlock] */
@@ -410,14 +385,21 @@ static rlm_rcode_t CC_HINT(nonnull) detail_do(void const *instance, REQUEST *req
 	}
 
 skip_group:
+	outfp = NULL;
+	dupfd = dup(outfd);
+	if (dupfd < 0) {
+		RERROR("Failed to dup() file descriptor for detail file");
+		goto fail;
+	}
+
 	/*
 	 *	Open the output fp for buffering.
 	 */
-	if ((outfp = fdopen(outfd, "a")) == NULL) {
+	if ((outfp = fdopen(dupfd, "a")) == NULL) {
 		RERROR("Couldn't open file %s: %s", buffer, fr_syserror(errno));
 	fail:
 		if (outfp) fclose(outfp);
-		exfile_unlock(inst->ef, request, outfd);
+		exfile_close(inst->ef, request, outfd);
 		return RLM_MODULE_FAIL;
 	}
 
@@ -427,7 +409,7 @@ skip_group:
 	 *	Flush everything
 	 */
 	fclose(outfp);
-	exfile_unlock(inst->ef, request, outfd); /* do NOT close outfp */
+	exfile_close(inst->ef, request, outfd);
 
 	/*
 	 *	And everything is fine.
@@ -440,15 +422,6 @@ skip_group:
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
 {
-#ifdef WITH_DETAIL
-	if (request->listener && (request->listener->type == RAD_LISTEN_DETAIL) &&
-	    strcmp(((rlm_detail_t const *)instance)->filename,
-		   ((listen_detail_t *)request->listener->data)->filename) == 0) {
-		RDEBUG("Suppressing writes to detail file as the request was just read from a detail file");
-		return RLM_MODULE_NOOP;
-	}
-#endif
-
 	return detail_do(instance, request, request->packet, true);
 }
 

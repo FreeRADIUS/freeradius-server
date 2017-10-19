@@ -55,19 +55,15 @@ struct fr_tracking_t {
 
 static int entry_cmp(void const *one, void const *two)
 {
-	fr_tracking_entry_t const *a = one;
-	fr_tracking_entry_t const *b = two;
+	fr_tracking_entry_t const *a = one, *b = two;
 
 	/*
 	 *	Check Code and Identifier.
 	 *
 	 *	But NOT the Request Authenticator.
 	 */
-	if (a->data[0] < b->data[0]) return -1;
-	if (a->data[0] > b->data[0]) return +1;
-
-	if (a->data[1] < b->data[1]) return -1;
-	if (a->data[1] > b->data[1]) return +1;
+	if (a->data[0] != b->data[0]) return a->data[0] - b->data[0];
+	if (a->data[1] != b->data[1]) return a->data[1] - b->data[1];
 
 	return memcmp(a->src_dst, b->src_dst, a->src_dst_size);
 }

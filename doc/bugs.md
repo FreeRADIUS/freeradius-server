@@ -1,6 +1,6 @@
 # Introduction
 
-The FreeRADIUS web site is at http://www.freeradius.org, and
+The FreeRADIUS web site is at https://www.freeradius.org, and
 most information referenced in this document can be found there.
 
 This is primarily for non-developers of the FreeRADIUS server. If you are
@@ -12,7 +12,7 @@ how to code, then this is the place for you!
 
 Where the server terminates ungracefully due to a bus error,
 segmentation violation, or other memory error, you should create
-a new issue in the issue tracker http://bugs.freeradius.org,
+a new issue in the issue tracker https://bugs.freeradius.org,
 including information from the debugging sections below.
 
 For other issues, you should first discuss them on the users list,
@@ -25,7 +25,7 @@ If the behavior is correct but confusing, we think that's a bug too, and
 you should file a bug against our documentation.
 
 For more information about the users list, the lists' archives and the
-faq, please visit http://www.freeradius.org/list/users.html
+faq, please visit https://www.freeradius.org/list/users.html
 Please make sure to READ and RESPECT the house-rules. You will get much
 better response and much faster if you do!
 
@@ -54,7 +54,7 @@ Enable logging in `gdb` via the following commands:
 
 and follow the instructions in the proceeding section.
 
-You can also enable the "panic_action" given in raddb/radiusd.conf.
+You can also enable the "panic_action" given in ``raddb/radiusd.conf``.
 See the comments in that file for more details about automatically
 collecting gdb debugging information when the server crashes.
 
@@ -117,10 +117,10 @@ The output should be printed to the screen, and also sent to the
 gdb-radiusd.log file.
 
 You should then submit the information from the log file, along with
-any server output, the output of radiusd -xv, and information about your
+any server output, the output of ``radiusd -xv``, and information about your
 operating system to:
 
-http://bugs.freeradius.org/
+https://bugs.freeradius.org/
 
 Submitting it to the bug database ensures that the bug report won't
 get forgotten, and that it will be dealt with in due course.

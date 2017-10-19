@@ -163,8 +163,14 @@ static ssize_t cond_tokenize_string(TALLOC_CTX *ctx, char **out, char const **er
 		break;
 
 	case '/':
+#ifdef HAVE_REGEX
 		*op = T_OP_REG_EQ; /* a bit of a hack. */
 		break;
+#else
+		p--;
+		*error = "Regular expressions are not supported";
+		return -(p - start);
+#endif
 
 	}
 
@@ -1159,9 +1165,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 				 *	and do no parsing until after all of the modules
 				 *	are loaded.  But that has issues, too.
 				 */
-				if ((c->data.map->lhs->type == TMPL_TYPE_UNPARSED) &&
-				    (lhs_type == T_BARE_WORD) &&
-				    (c->data.map->rhs->type == TMPL_TYPE_UNPARSED)) {
+				if ((c->data.map->lhs->type == TMPL_TYPE_UNPARSED) && (lhs_type == T_BARE_WORD)) {
 					int hyphens = 0;
 					bool may_be_attr = true;
 					size_t i;

@@ -14,9 +14,7 @@ switch &User-Name {
 	}
 
 	case {
-		update reply {
-			Filter-Id := "filter"
-		}
+		success
 	}
 
 }

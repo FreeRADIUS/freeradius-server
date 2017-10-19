@@ -129,6 +129,10 @@ server radsec {
 		#	check_crl = yes
 			ca_path = ${cadir}
 
+			# Accept an expired Certificate Revocation List
+			#
+		#	allow_expired_crl = no
+
 			#
 			#  If check_cert_issuer is set, the value will
 			#  be checked against the DN of the issuer in
@@ -136,10 +140,9 @@ server radsec {
 			#  match, the certificate verification will fail,
 			#  rejecting the user.
 			#
-			#  In 2.1.10 and later, this check can be done
-			#  more generally by checking the value of the
-			#  TLS-Client-Cert-Issuer attribute.  This check
-			#  can be done via any mechanism you choose.
+			#  This check can be done more generally by checking
+			#  the value of the TLS-Client-Cert-Issuer attribute.
+			#  This check can be done via any mechanism you choose.
 			#
 		#	check_cert_issuer = "/C=GB/ST=Berkshire/L=Newbury/O=My Company Ltd"
 
@@ -154,10 +157,9 @@ server radsec {
 			#  "check_cert_issuer" is not set, or if
 			#  the check succeeds.
 			#
-			#  In 2.1.10 and later, this check can be done
-			#  more generally by checking the value of the
-			#  TLS-Client-Cert-CN attribute.  This check
-			#  can be done via any mechanism you choose.
+			#  This check can be done more generally by checking
+			#  the value of the TLS-Client-Cert-CN attribute.
+			#  This check can be done via any mechanism you choose.
 			#
 		#	check_cert_cn = %{User-Name}
 		#

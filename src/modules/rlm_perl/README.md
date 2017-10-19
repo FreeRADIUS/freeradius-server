@@ -1,7 +1,7 @@
 # rlm_perl
 ## Metadata
 <dl>
-  <dt>category</dt><dd></dd>
+  <dt>category</dt><dd>languages</dd>
 </dl>
 
 ## Summary

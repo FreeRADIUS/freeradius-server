@@ -95,7 +95,7 @@ typedef struct home_server {
 
 	char const		*secret;
 
-	fr_event_timer_t		*ev;
+	fr_event_timer_t const	*ev;
 	struct timeval		when;
 
 	struct timeval		response_window;

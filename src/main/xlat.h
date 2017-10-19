@@ -42,6 +42,7 @@ typedef struct xlat_t {
 	size_t			inst_size;		//!< Length of instance data to pre-allocate.
 	size_t			buf_len;		//!< Length of output buffer to pre-allocate.
 	bool			internal;		//!< If true, cannot be redefined.
+	bool			async_safe;		///!< If true, is async safe
 } xlat_t;
 
 typedef enum {
@@ -59,6 +60,8 @@ typedef enum {
 struct xlat_exp {
 	char const	*fmt;		//!< The format string.
 	size_t		len;		//!< Length of the format string.
+
+	bool		async_safe;	//!< carried from all of the children
 
 	xlat_state_t	type;		//!< type of this expansion.
 	xlat_exp_t	*next;		//!< Next in the list.

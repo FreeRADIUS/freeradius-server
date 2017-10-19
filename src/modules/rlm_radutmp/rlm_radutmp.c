@@ -146,7 +146,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 {
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
 	struct radutmp	ut, u;
-	vp_cursor_t	cursor;
+	fr_cursor_t	cursor;
 	VALUE_PAIR	*vp;
 	int		status = -1;
 	int		protocol = -1;
@@ -217,9 +217,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	/*
 	 *	First, find the interesting attributes.
 	 */
-	for (vp = fr_pair_cursor_init(&cursor, &request->packet->vps);
+	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 	     vp;
-	     vp = fr_pair_cursor_next(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		if (!vp->da->vendor) switch (vp->da->attr) {
 		case FR_LOGIN_IP_HOST:
 		case FR_FRAMED_IP_ADDRESS:

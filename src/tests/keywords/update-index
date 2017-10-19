@@ -5,7 +5,6 @@
 #
 update {
 	control:Cleartext-Password := 'hello'
-	reply:Filter-Id := "filter"
 }
 
 update {
@@ -15,9 +14,7 @@ update {
 }
 
 if ((&control:Reply-Message[0] != 'a') || (&control:Reply-Message[1] != 'b') || (&control:Reply-Message[2] != 'c')) {
-	update {
-		reply:Filter-Id := 'Fail 0'
-	}
+	test_fail
 }
 
 # Overwrite a specific index, and check the value here is replaced
@@ -26,9 +23,7 @@ update {
 }
 
 if ((&control:Reply-Message[0] != 'a') || (&control:Reply-Message[1] != 'd') || (&control:Reply-Message[2] != 'c')) {
-	update {
-		reply:Filter-Id := 'Fail 1'
-	}
+	test_fail
 }
 
 # Check isolation...
@@ -37,16 +32,13 @@ update {
 }
 
 if ((&control:Reply-Message[0] != 'a') || (&control:Reply-Message[1] != 'd') || (&control:Reply-Message[2] != 'c')) {
-	update {
-		reply:Filter-Id := 'Fail 2'
-	}
+	test_fail
 }
 
 # Verify we haven't acquired any extra..
 
 if ("%{control:Reply-Message[#]}" != 3) {
-	update {
-		reply:Filter-Id := 'Fail 3'
-	}
+	test_fail
 }
 
+success

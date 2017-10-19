@@ -5,7 +5,6 @@
 #
 update {
 	control:Cleartext-Password := 'hello'
-	reply:Filter-Id := 'filter'
 }
 
 
@@ -23,15 +22,11 @@ update request {
 }
 
 if (&Tmp-String-1 != 'hello') {
-	update reply {
-		Filter-Id += 'Fail 0'
-	}
+	test_fail
 }
 
 if (&Tmp-String-0 == 'hello') {
-	update reply {
-		Filter-Id += 'Fail 1'
-	}
+	test_fail
 }
 
 if (0) { # XXX
@@ -47,9 +42,7 @@ update {
 }
 
 if (&Vendor-66-Attr-1 != 0x01020304) {
-	update reply {
-		Filter-Id += 'Fail 1a'
-	}
+	test_fail
 }
 
 #
@@ -64,9 +57,7 @@ update {
 }
 
 if (&FreeRADIUS-Proxied-To != 127.0.0.1) {
-	update reply {
-		Filter-Id += 'Fail 2'
-	}
+	test_fail
 }
 
 update {
@@ -74,9 +65,9 @@ update {
 }
 
 if (&Tmp-String-1 != 'hello2') {
-	update reply {
-		Filter-Id += 'Fail 3'
-	}
+	test_fail
 }
 
 } # XXX
+
+success

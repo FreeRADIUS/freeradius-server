@@ -190,4 +190,13 @@ typedef enum {
 	case FR_TYPE_IFID: \
 	case FR_TYPE_ABINARY
 
+/** Types which can fit in an #fr_ipaddr_t
+ *
+ */
+#define FR_TYPE_IP \
+	FR_TYPE_IPV4_ADDR: \
+	case FR_TYPE_IPV4_PREFIX: \
+	case FR_TYPE_IPV6_ADDR: \
+	case FR_TYPE_IPV6_PREFIX
+
 #endif /* _FR_TYPES_H */

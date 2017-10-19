@@ -107,7 +107,7 @@ int tls_utils_asn1time_to_epoch(time_t *out, ASN1_TIME const *asn1)
 		t.tm_year -= 1900;
 	}
 
-	if ((end - p) < 10) {
+	if ((end - p) < 4) {
 		fr_strerror_printf("ASN1 string too short, expected 10 additional bytes, got %zu bytes",
 				   end - p);
 		return -1;
@@ -117,14 +117,21 @@ int tls_utils_asn1time_to_epoch(time_t *out, ASN1_TIME const *asn1)
 	t.tm_mon += (*(p++) - '0') - 1; // -1 since January is 0 not 1.
 	t.tm_mday = (*(p++) - '0') * 10;
 	t.tm_mday += (*(p++) - '0');
+
+	if ((end - p) < 2) goto done;
 	t.tm_hour = (*(p++) - '0') * 10;
 	t.tm_hour += (*(p++) - '0');
+
+	if ((end - p) < 2) goto done;
 	t.tm_min = (*(p++) - '0') * 10;
 	t.tm_min += (*(p++) - '0');
+
+	if ((end - p) < 2) goto done;
 	t.tm_sec = (*(p++) - '0') * 10;
 	t.tm_sec += (*(p++) - '0');
 
 	/* ASN1_TIME is UTC, but mktime will treat it as being in the local timezone */
+done:
 	*out = mktime(&t) + timezone;
 
 	return 0;

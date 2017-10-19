@@ -233,7 +233,7 @@ char const *cf_expand_variables(char const *cf, int *lineno,
 				 *	referencing it.
 				 */
 				subcs = cf_item_to_section(ci);
-				subcs = cf_section_dup(outer_cs, subcs,
+				subcs = cf_section_dup(outer_cs, outer_cs, subcs,
 						       cf_section_name1(subcs), cf_section_name2(subcs),
 						       false);
 				if (!subcs) {
@@ -251,7 +251,7 @@ char const *cf_expand_variables(char const *cf, int *lineno,
 				ERROR("%s[%d]: Reference \"%s\" type is invalid", cf, *lineno, input);
 				return NULL;
 			}
-		} else if (memcmp(ptr, "$ENV{", 5) == 0) {
+		} else if (strncmp(ptr, "$ENV{", 5) == 0) {
 			char *env;
 
 			ptr += 5;
@@ -386,7 +386,7 @@ static bool cf_template_merge(CONF_SECTION *cs, CONF_SECTION const *template)
 			 *	sub-section.  Copy it verbatim from
 			 *	the template.
 			 */
-			subcs2 = cf_section_dup(cs, subcs1,
+			subcs2 = cf_section_dup(cs, cs, subcs1,
 						cf_section_name1(subcs1), cf_section_name2(subcs1),
 						false);
 			if (!subcs2) return false;
@@ -409,16 +409,13 @@ static bool cf_template_merge(CONF_SECTION *cs, CONF_SECTION const *template)
  */
 static int _filename_cmp(void const *a, void const *b)
 {
-	cf_file_t const *one = a;
-	cf_file_t const *two = b;
+	cf_file_t const *one = a, *two = b;
+	int ret;
 
-	if (one->buf.st_dev < two->buf.st_dev) return -1;
-	if (one->buf.st_dev > two->buf.st_dev) return +1;
+	ret = (one->buf.st_dev < two->buf.st_dev) - (one->buf.st_dev > two->buf.st_dev);
+	if (ret != 0) return ret;
 
-	if (one->buf.st_ino < two->buf.st_ino) return -1;
-	if (one->buf.st_ino > two->buf.st_ino) return +1;
-
-	return 0;
+	return (one->buf.st_ino < two->buf.st_ino) - (one->buf.st_ino > two->buf.st_ino);
 }
 
 static FILE *cf_file_open(CONF_SECTION *cs, char const *filename)

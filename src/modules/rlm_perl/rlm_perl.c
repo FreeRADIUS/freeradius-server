@@ -500,7 +500,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	xlat_name = cf_section_name2(conf);
 	if (!xlat_name) xlat_name = cf_section_name1(conf);
 
-	xlat_register(inst, xlat_name, perl_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat_register(inst, xlat_name, perl_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, false);
 
 	return 0;
 }
@@ -664,13 +664,13 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 
 	hv_undef(rad_hv);
 
-	vp_cursor_t cursor;
+	fr_cursor_t cursor;
 
 	RINDENT();
 	fr_pair_list_sort(vps, fr_pair_cmp_by_da_tag);
-	for (vp = fr_pair_cursor_init(&cursor, vps);
+	for (vp = fr_cursor_init(&cursor, vps);
 	     vp;
-	     vp = fr_pair_cursor_next(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		VALUE_PAIR *next;
 
 		char const *name;
@@ -695,7 +695,7 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 		 *	We've sorted by type, then tag, so attributes of the
 		 *	same type/tag should follow on from each other.
 		 */
-		if ((next = fr_pair_cursor_next_peek(&cursor)) && ATTRIBUTE_EQ(vp, next)) {
+		if ((next = fr_cursor_next_peek(&cursor)) && ATTRIBUTE_EQ(vp, next)) {
 			int i = 0;
 			AV *av;
 
@@ -703,8 +703,8 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 			perl_vp_to_svpvn_element(request, av, vp, &i, hash_name, list_name);
 			do {
 				perl_vp_to_svpvn_element(request, av, next, &i, hash_name, list_name);
-				fr_pair_cursor_next(&cursor);
-			} while ((next = fr_pair_cursor_next_peek(&cursor)) && ATTRIBUTE_EQ(vp, next));
+				fr_cursor_next(&cursor);
+			} while ((next = fr_cursor_next_peek(&cursor)) && ATTRIBUTE_EQ(vp, next));
 			(void)hv_store(rad_hv, name, strlen(name), newRV_noinc((SV *)av), 0);
 
 			continue;
@@ -778,7 +778,7 @@ static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char 
 		if (fr_pair_value_from_str(vp, val, len) < 0) goto fail;
 	}
 
-	VERIFY_VP(vp);
+	VP_VERIFY(vp);
 
 	RDEBUG("&%s:%s %s $%s{'%s'} -> '%s'", list_name, key, fr_int2str(fr_tokens_table, op, "<INVALID>"),
 	       hash_name, key, val);
@@ -810,7 +810,7 @@ static int get_hv_content(TALLOC_CTX *ctx, REQUEST *request, HV *my_hv, VALUE_PA
 		} else ret = pairadd_sv(ctx, request, vps, key, res_sv, T_OP_EQ, hash_name, list_name) + ret;
 	}
 
-	if (*vps) VERIFY_LIST(*vps);
+	if (*vps) LIST_VERIFY(*vps);
 
 	return ret;
 }
@@ -916,9 +916,8 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 			RDEBUG("perl_embed:: module = %s , func = %s exit status= %s\n",
 			       inst->module, function_name, SvPV(ERRSV,n_a));
 			(void)POPs;
-		}
-
-		if (count == 1) {
+			exitstatus = RLM_MODULE_FAIL;
+		} else if (count == 1) {
 			exitstatus = POPi;
 			if (exitstatus >= 100 || exitstatus < 0) {
 				exitstatus = RLM_MODULE_FAIL;

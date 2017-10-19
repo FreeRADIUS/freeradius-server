@@ -10,7 +10,7 @@
 .RE
 .sp
 ..
-.TH unlang 5 "29 June 2017" "" "FreeRADIUS Processing un-language"
+.TH unlang 5 "14 September 2017" "" "FreeRADIUS Processing un-language"
 .SH NAME
 unlang \- FreeRADIUS Processing un\-language
 .SH DESCRIPTION
@@ -23,9 +23,8 @@ Python modules rlm_perl, or rlm_python.
 The goal of the language is to allow simple policies to be written
 with minimal effort.  Those policies are then applied when a request
 is being processed.  Requests are processed through virtual servers
-(including the default one), in the sections titled "authorize",
-"authenticate", "post-auth", "preacct", "accounting", "pre-proxy",
-and "post-proxy".
+(including the default one), in the sections titled "recv
+Access-Request", "send Access-Accept", "authenticate pap", etc.
 
 These policies cannot be used in any other part of the configuration
 files, such as module or client configuration.
@@ -40,22 +39,6 @@ one one line.  Each entry begins with a keyword.  Entries are
 organized into lists.  Processing of the language is line by line,
 from the start of the list to the end.  Actions are executed
 per-keyword.
-.IP module-name[.section-name]
-A reference to the named module.  When processing reaches this point,
-the pre-compiled module is called.  The module may succeed or fail,
-and will return a status to "unlang" if so.  This status can be tested
-in a condition.  See the "Simple Conditions" text in the CONDITIONS
-section, and MODULE RETURN CODES, below.
-If a section-name is provided, it will cause the module to execute 
-as if it were listed in the named section.
-
-.DS
-	chap  # call the CHAP module
-.br
-	sql   # call the SQL module
-.br
-	...
-.DE
 .IP if
 .br
 Checks for a particular condition.  If true, the block after the
@@ -97,7 +80,7 @@ returned false, and if the specified condition evaluates to true.
 .br
 Allows for the setting of actions inside of a block.  The 'actions'
 block MUST be the last block in the section.  The enclosing block MUST
-be one of 'if', 'else', 'elsif', or 'case'.
+be one of 'group', 'if', 'else', 'elsif', or 'case'.
 
 See MODULE RETURN CODES, below, for a description of the actions and
 their meanings.
@@ -139,6 +122,195 @@ recommended.
 		...
 .br
 	}
+.DE
+.IP load-balance
+This section contains a simple list of modules.  When the section is
+entered, one module is chosen to process the request.  All of the
+modules in the list should be the same type (e.g. ldap or sql).  All
+of the modules in the list should behave identically, otherwise the
+load-balance section may return different results for the same
+request.
+
+Load-balance sections can contain only a list of modules, and cannot
+contain keywords that perform conditional operations (if, else, etc)
+or which update an attribute list.
+
+Load-balance sections can optionally take a key.  The key is expanded
+at run time, hashed, and the hash used to select a module.  If no
+key is given, a module is chosen at random.
+
+.DS
+	load-balance &User-Name {
+.br
+		ldap1	# 50% of requests go here
+.br
+		ldap2	# 50% of requests go here
+.br
+	}
+.DE
+
+In general, we recommend using "redundant-load-balance" instead of
+"load-balance".  The main use of the keyed load-balance sections is to
+perform sharding of data across multiple back-ends, without
+redundancy.  i.e. Requests will always go to one back-end, and if that
+back-end is not available, the "load-balance" section will return "fail".
+.IP module-name[.section-name]
+A reference to the named module.  When processing reaches this point,
+the pre-compiled module is called.  The module may succeed or fail,
+and will return a status to "unlang" if so.  This status can be tested
+in a condition.  See the "Simple Conditions" text in the CONDITIONS
+section, and MODULE RETURN CODES, below.
+If a section-name is provided, it will cause the module to execute 
+as if it were listed in the named section.
+
+.DS
+	chap  # call the CHAP module
+.br
+	sql   # call the SQL module
+.br
+	...
+.DE
+.IP parallel
+This section runs subsections in parallel.  Each subsection runs as a
+child request, which is a clone of the parent request.  Policies in
+the child can update the original parent request by using "update
+parent.request", or "update parent.reply".
+
+The child requests are required because each subsection is run
+simultaneously.  If each subsection updated the original request at
+the same time, it would be impossible to separate the state of each
+subsection.
+
+Empty child requests can be created by using "parallel empty { ... }"
+
+The return code of the parallel section is the same as if each
+subsection was run sequentially.
+
+.DS
+	parallel {
+.br
+		home_server_1
+.br
+		home_server_2
+.br
+		...
+.br
+	}
+.DE
+.IP redundant
+This section contains a simple list of modules.  The first module is
+called when the section is being processed.  If the first module
+succeeds in its operation, then the server stops processing the
+section, and returns to the parent section.
+
+If, however, the module fails, then the next module in the list is
+tried, as described above.  The processing continues until one module
+succeeds, or until the list has been exhausted.
+
+Redundant sections can contain only a list of modules, and cannot
+contain keywords that perform conditional operations (if, else, etc)
+or update an attribute list.
+
+.DS
+	redundant {
+.br
+		sql1	# try this
+.br
+		sql2	# try this only if sql1 fails.
+.br
+		...
+.br
+	}
+.DE
+.IP redundant-load-balance
+This section contains a simple list of modules.  When the section is
+entered, one module is chosen to process the request.  If that module
+succeeds, then the server stops processing the section.  If, however,
+the module fails, then one of the remaining modules is chosen at
+random to process the request.  This process repeats until one module
+succeeds, or until the list has been exhausted.
+
+All of the modules in the list should be the same type (e.g. ldap or
+sql).  All of the modules in the list should behave identically,
+otherwise the load-balance section may return different results for
+the same request.
+
+Redundant-load-balance sections can contain only a list of modules, and cannot
+contain keywords that perform conditional operations (if, else, etc)
+or update an attribute list. Please see raddb/radiusd.conf 
+"instantiate" section for more configuration examples.
+
+Redundant-load-balance sections can optionally take a key.  The key is expanded
+at run time, hashed, and the hash used to select a module.  If no
+key is given, a module is chosen at random.
+
+.DS
+	redundant-load-balance {
+.br
+		ldap1	# 50%, unless ldap2 is down, then 100%
+.br
+		ldap2	# 50%, unless ldap1 is down, then 100%
+.br
+	}
+.DE
+
+.IP return
+.br
+Returns from the current section, and stops all processing.  This
+keyword is mainly used to avoid layers of nested "if" and "else"
+statements.
+
+.DS
+	recv Access-Request {
+.br
+		if (...) {
+.br
+			...
+.br
+			return
+.br
+		}
+.br
+		...  # this is never reached when the "if"
+.br
+		...  # statement is executed
+.br
+	}
+.DE
+.IP subrequest
+.br
+The "subrequest" keyword creates an empty subrequest (i.e. child
+request).  Attributes in the child can be copied from the parent via
+an "update" block.
+
+.DS
+	subrequest {
+.br
+		update request {
+.br
+			User-Name = parent.request:User-Name
+.br
+			...
+.br
+		}
+.br
+		...
+.br
+	}
+.DE
+The purpose of a "subrequest" section is to create a child request
+which can be edited and upated independently of the parent.
+
+The return value of the subrequest is taken from the return value of
+the subsection being run.
+.DE
+.IP detach
+.br
+The "detach" keyword causes a subrequest to be detached from its
+parent request.  The subrequest runs asynchronously to completion.
+The subrequest immediately returns "noop" to the parent request.
+
+The "detach" keyword can only be used inside of a "subrequest" block.
 .DE
 .IP switch
 .br
@@ -215,10 +387,9 @@ the current block.
 	}
 .DE
 
-The <list> can be one of "request", "reply", "proxy-request",
-"proxy-reply", "session-state", or "control".  As
-of Version 3, the <list> can be omitted, in which case "request" is
-assumed.
+The <list> can be one of "request", "reply", "session-state", or
+"control".  As of Version 3, the <list> can be omitted, in which case
+"request" is assumed.
 
 The "control" list is the list of attributes maintainted internally by
 the server that controls how the server processes the request.  Any
@@ -230,6 +401,9 @@ EAP-TTLS), the inner tunnel session can also reference
 "outer.request", "outer.reply", and "outer.control".  Those references
 allow you to address the relevant list in the outer tunnel session.
 
+The word "parent" may also be used as a synonym to "outer".
+e.g. "parent.request", etc.
+
 The "session-state" list is primarily used for EAP.  Attributes put
 into the "session-state" list are saved for the next packet in the
 session.  They are automatically retrieved when the next packet is
@@ -238,114 +412,6 @@ received.
 The only contents permitted in an "update" section are attributes and
 values.  The contents of the "update" section are described in the
 ATTRIBUTE REFERENCE and ATTRIBUTE ASSIGNMENT sections below.
-.IP redundant
-This section contains a simple list of modules.  The first module is
-called when the section is being processed.  If the first module
-succeeds in its operation, then the server stops processing the
-section, and returns to the parent section.
-
-If, however, the module fails, then the next module in the list is
-tried, as described above.  The processing continues until one module
-succeeds, or until the list has been exhausted.
-
-Redundant sections can contain only a list of modules, and cannot
-contain keywords that perform conditional operations (if, else, etc)
-or update an attribute list.
-
-.DS
-	redundant {
-.br
-		sql1	# try this
-.br
-		sql2	# try this only if sql1 fails.
-.br
-		...
-.br
-	}
-.DE
-.IP load-balance
-This section contains a simple list of modules.  When the section is
-entered, one module is chosen to process the request.  All of the
-modules in the list should be the same type (e.g. ldap or sql).  All
-of the modules in the list should behave identically, otherwise the
-load-balance section may return different results for the same
-request.
-
-Load-balance sections can contain only a list of modules, and cannot
-contain keywords that perform conditional operations (if, else, etc)
-or which update an attribute list.
-
-Load-balance sections can optionally take a key.  The key is expanded
-at run time, hashed, and the hash used to select a module.  If no
-key is given, a module is chosen at random.
-
-.DS
-	load-balance &User-Name {
-.br
-		ldap1	# 50% of requests go here
-.br
-		ldap2	# 50% of requests go here
-.br
-	}
-.DE
-
-In general, we recommend using "redundant-load-balance" instead of
-"load-balance".
-.IP redundant-load-balance
-This section contains a simple list of modules.  When the section is
-entered, one module is chosen to process the request.  If that module
-succeeds, then the server stops processing the section.  If, however,
-the module fails, then one of the remaining modules is chosen at
-random to process the request.  This process repeats until one module
-succeeds, or until the list has been exhausted.
-
-All of the modules in the list should be the same type (e.g. ldap or
-sql).  All of the modules in the list should behave identically,
-otherwise the load-balance section may return different results for
-the same request.
-
-Redundant-load-balance sections can contain only a list of modules, and cannot
-contain keywords that perform conditional operations (if, else, etc)
-or update an attribute list. Please see raddb/radiusd.conf 
-"instantiate" section for more configuration examples.
-
-Redundant-load-balance sections can optionally take a key.  The key is expanded
-at run time, hashed, and the hash used to select a module.  If no
-key is given, a module is chosen at random.
-
-.DS
-	redundant-load-balance {
-.br
-		ldap1	# 50%, unless ldap2 is down, then 100%
-.br
-		ldap2	# 50%, unless ldap1 is down, then 100%
-.br
-	}
-.DE
-
-.IP return
-.br
-Returns from the current top-level section, e.g. "authorize" or
-"authenticate".  This keyword is mainly used to avoid layers of nested
-"if" and "else" statements.
-
-.DS
-	recv Access-Request {
-.br
-		if (...) {
-.br
-			...
-.br
-			return
-.br
-		}
-.br
-		...  # this is never reached when the "if"
-.br
-		...  # statement is executed
-.br
-	}
-.DE
 .SH ATTRIBUTE REFERENCES
 
 Attributes may be referenced via the following syntax:

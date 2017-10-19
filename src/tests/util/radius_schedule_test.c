@@ -132,12 +132,13 @@ static int test_open(void *ctx)
 
 static fr_time_t start_time;
 
-static ssize_t test_read(void const *ctx, UNUSED void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len)
+static ssize_t test_read(void *ctx, UNUSED void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority)
 {
 	ssize_t			data_size;
-	fr_listen_test_t	*io_ctx = talloc_get_type_abort(ctx, fr_listen_test_t);
+	fr_listen_test_t const	*io_ctx = talloc_get_type_abort(ctx, fr_listen_test_t);
 
 	tpc.salen = sizeof(tpc.src);
+	*leftover = 0;
 
 	data_size = recvfrom(io_ctx->sockfd, buffer, buffer_len, 0, (struct sockaddr *) &tpc.src, &tpc.salen);
 	if (data_size <= 0) return data_size;
@@ -150,12 +151,13 @@ static ssize_t test_read(void const *ctx, UNUSED void **packet_ctx, fr_time_t **
 
 	start_time = fr_time();
 	*recv_time = &start_time;
+	*priority = 0;
 
 	return data_size;
 }
 
 
-static ssize_t test_write(void const *ctx, UNUSED void *packet_ctx,  UNUSED fr_time_t request_time,
+static ssize_t test_write(void *ctx, UNUSED void *packet_ctx,  UNUSED fr_time_t request_time,
 			  uint8_t *buffer, size_t buffer_len)
 {
 	ssize_t			data_size;
@@ -175,7 +177,7 @@ static ssize_t test_write(void const *ctx, UNUSED void *packet_ctx,  UNUSED fr_t
 
 static int test_fd(void const *ctx)
 {
-	fr_listen_test_t	*io_ctx = talloc_get_type_abort(ctx, fr_listen_test_t);
+	fr_listen_test_t const *io_ctx = talloc_get_type_abort_const(ctx, fr_listen_test_t);
 
 	return io_ctx->sockfd;
 }
@@ -277,7 +279,7 @@ int main(int argc, char *argv[])
 	app_io_inst->ipaddr = my_ipaddr;
 	app_io_inst->port = my_port;
 
-	sched = fr_schedule_create(autofree, NULL, &default_log, num_networks, num_workers, NULL, NULL);
+	sched = fr_schedule_create(autofree, NULL, &default_log, debug_lvl, num_networks, num_workers, NULL, NULL);
 	if (!sched) {
 		fprintf(stderr, "schedule_test: Failed to create scheduler\n");
 		exit(1);
@@ -296,7 +298,7 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-	fr_fault_setup(NULL, argv[0]);
+	(void) fr_fault_setup(NULL, argv[0]);
 	(void) fr_schedule_socket_add(sched, &listen);
 
 	sleep(10);

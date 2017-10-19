@@ -18,9 +18,7 @@ update request {
 
 foreach &Filter-Id {
 	if ("%{Foreach-Variable-0}" == "3") {
-		update reply {
-			Filter-Id := "filter"
-		}
+		success
 
 		#
 		#  We need this because the "return" below
@@ -39,14 +37,10 @@ foreach &Filter-Id {
 		#
 		#  Shouldn't reach this
 		#
-		update reply {
-			Filter-Id := "fail"
-		}
+		test_fail
 	}
 
 	if ("%{Foreach-Variable-0}" == "4") {
-		update reply {
-			Filter-Id := "fail-4"
-		}
+		test_fail
 	}
 }

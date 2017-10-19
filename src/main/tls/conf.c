@@ -118,17 +118,9 @@ CONF_PARSER tls_server_config[] = {
 #endif
 #endif
 
-#ifdef SSL_OP_NO_TLSv1
-	{ FR_CONF_OFFSET("disable_tlsv1", FR_TYPE_BOOL, fr_tls_conf_t, disable_tlsv1) },
-#endif
+	{ FR_CONF_OFFSET("tls_max_version", FR_TYPE_FLOAT32, fr_tls_conf_t, tls_max_version) },
 
-#ifdef SSL_OP_NO_TLSv1_1
-	{ FR_CONF_OFFSET("disable_tlsv1_1", FR_TYPE_BOOL, fr_tls_conf_t, disable_tlsv1_1) },
-#endif
-
-#ifdef SSL_OP_NO_TLSv1_2
-	{ FR_CONF_OFFSET("disable_tlsv1_2", FR_TYPE_BOOL, fr_tls_conf_t, disable_tlsv1_2) },
-#endif
+	{ FR_CONF_OFFSET("tls_min_version", FR_TYPE_FLOAT32, fr_tls_conf_t, tls_min_version), .dflt = "1.0" },
 
 	{ FR_CONF_POINTER("cache", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) cache_config },
 
@@ -164,17 +156,10 @@ CONF_PARSER tls_client_config[] = {
 #endif
 #endif
 
-#ifdef SSL_OP_NO_TLSv1
-	{ FR_CONF_OFFSET("disable_tlsv1", FR_TYPE_BOOL, fr_tls_conf_t, disable_tlsv1) },
-#endif
+	{ FR_CONF_OFFSET("tls_max_version", FR_TYPE_FLOAT32, fr_tls_conf_t, tls_max_version) },
 
-#ifdef SSL_OP_NO_TLSv1_1
-	{ FR_CONF_OFFSET("disable_tlsv1_1", FR_TYPE_BOOL, fr_tls_conf_t, disable_tlsv1_1) },
-#endif
+	{ FR_CONF_OFFSET("tls_min_version", FR_TYPE_FLOAT32, fr_tls_conf_t, tls_min_version), .dflt = "1.0" },
 
-#ifdef SSL_OP_NO_TLSv1_2
-	{ FR_CONF_OFFSET("disable_tlsv1_2", FR_TYPE_BOOL, fr_tls_conf_t, disable_tlsv1_2) },
-#endif
 	CONF_PARSER_TERMINATOR
 };
 
@@ -411,7 +396,7 @@ fr_tls_conf_t *tls_conf_parse_server(CONF_SECTION *cs)
 	 *	OpenSSL 1.0.1f and 1.0.1g get the MS-MPPE keys wrong.
 	 */
 #if (OPENSSL_VERSION_NUMBER >= 0x10010060L) && (OPENSSL_VERSION_NUMBER < 0x10010060L)
-	conf->disable_tlsv1_2 = true;
+	conf->max_tls_version = 1.1;
 	WARN("OpenSSL version in range 1.0.1f-1.0.1g. "
 	     "TLSv1.2 disabled to workaround broken keying material export");
 #endif

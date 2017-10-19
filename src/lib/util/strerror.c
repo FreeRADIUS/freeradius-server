@@ -284,6 +284,13 @@ void fr_perror(char const *fmt, ...)
 	talloc_free(prefix);
 }
 
+/** Explicitly free the memory used by fr_strerror
+ *
+ */
+void fr_strerror_free(void)
+{
+	talloc_free(fr_strerror_buffer);
+}
 
 #ifdef TESTING_STRERROR
 /*

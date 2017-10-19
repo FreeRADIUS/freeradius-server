@@ -295,7 +295,7 @@ static rlm_rcode_t mschap_finalize(REQUEST *request, rlm_eap_mschapv2_t *inst, e
 			int n,err,retry;
 			char buf[34];
 
-			VERIFY_VP(response);
+			VP_VERIFY(response);
 
 			RDEBUG2("MSCHAP-Error: %s", response->vp_strvalue);
 

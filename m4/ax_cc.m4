@@ -101,6 +101,33 @@ AC_DEFUN([AX_CC_QUNUSED_ARGUMENTS_FLAG],[
   ])
 ])
 
+AC_DEFUN([AX_CC_NO_UNKNOWN_WARNING_OPTION_FLAG],[
+  AC_CACHE_CHECK([or the compiler flag "-Wno-unknown-warning-option"], [ax_cv_cc_no_unknown_warning_option_flag],[
+
+  CFLAGS_SAVED=$CFLAGS
+  CFLAGS="-Werror -Wno-unknown-warning-option"
+    
+  AC_COMPILE_IFELSE(
+    [AC_LANG_PROGRAM([], [[
+    /*
+     *  gcc will happily accept -Wno-unknown-warning-option
+     *  only emitting an error about it, if an error ocurrs in the source file.
+     */
+    #if defined(__GNUC__) && !defined(__clang__)
+        gcc sucks
+    #endif    
+    
+    return 0;
+    ]])],
+    [ax_cv_cc_no_unknown_warning_option_flag=yes],
+    [ax_cv_cc_no_unknown_warning_option_flag=no])
+
+  CFLAGS="$CFLAGS_SAVED"    
+  ])
+])
+
+
+
 AC_DEFUN([AX_CC_WEVERYTHING_FLAG],[
   AC_CACHE_CHECK([for the compiler flag "-Weverything"], [ax_cv_cc_weverything_flag],[
 
@@ -149,6 +176,25 @@ AC_DEFUN([AX_CC_PTHREAD_FLAG],[
       [return 0;],
       [ax_cv_cc_pthread_flag="yes"],
       [ax_cv_cc_pthread_flag="no"])
+    AC_LANG_POP
+
+    CFLAGS="$CFLAGS_SAVED"
+  ])
+])
+
+AC_DEFUN([AX_CC_SANITZE_ADDRESS_USE_AFTER_SCOPE_FLAG],[
+  AC_CACHE_CHECK([for the compiler flag "-fsanitize-address-use-after-scope"], [ax_cv_cc_sanitize_address_use_after_scope],[
+
+    dnl # Need -fsanitize=address else we get an unused argument error
+    CFLAGS_SAVED=$CFLAGS
+    CFLAGS="$CFLAGS -Werror -fsanitize=address -fsanitize-address-use-after-scope"
+
+    AC_LANG_PUSH(C)
+    AC_TRY_COMPILE(
+      [],
+      [return 0;],
+      [ax_cv_cc_sanitize_address_use_after_scope="yes"],
+      [ax_cv_cc_sanitize_address_use_after_scope="no"])
     AC_LANG_POP
 
     CFLAGS="$CFLAGS_SAVED"

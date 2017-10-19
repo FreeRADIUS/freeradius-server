@@ -5,7 +5,6 @@
 #
 update {
 	control:Cleartext-Password := 'hello'
-	reply:Filter-Id := 'filter'
 }
 
 update {
@@ -29,9 +28,7 @@ if (("%{Tmp-IP-Address-0[0]}" != '192.0.2.1') || \
     ("%{Tmp-IP-Address-0[2]}" != '192.0.2.3') || \
     ("%{Tmp-IP-Address-0[3]}" != '192.0.2.4') || \
     ("%{Tmp-IP-Address-0[4]}" != '')) {
-	update reply {
-		Filter-Id += 'fail 1'
-	}
+	test_fail
 }
 
 # There's still a 192.0.2.2 but it's not at index 3
@@ -45,9 +42,7 @@ if (("%{Tmp-IP-Address-0[0]}" != '192.0.2.1') || \
     ("%{Tmp-IP-Address-0[2]}" != '192.0.2.3') || \
     ("%{Tmp-IP-Address-0[3]}" != '192.0.2.4') || \
     ("%{Tmp-IP-Address-0[4]}" != '')) {
-	update reply {
-		Filter-Id += 'fail 2'
-	}
+	test_fail
 }
 
 # Remove whatever's at index 0
@@ -60,9 +55,7 @@ if (("%{Tmp-IP-Address-0[0]}" != '192.0.2.2') || \
     ("%{Tmp-IP-Address-0[1]}" != '192.0.2.3') || \
     ("%{Tmp-IP-Address-0[2]}" != '192.0.2.4') || \
     ("%{Tmp-IP-Address-0[3]}" != '')) {
-	update reply {
-		Filter-Id += 'fail 3'
-	}
+	test_fail
 }
 
 # Remove whatever's at index 3 (should be nothing)
@@ -75,9 +68,7 @@ if (("%{Tmp-IP-Address-0[0]}" != '192.0.2.2') || \
     ("%{Tmp-IP-Address-0[1]}" != '192.0.2.3') || \
     ("%{Tmp-IP-Address-0[2]}" != '192.0.2.4') || \
     ("%{Tmp-IP-Address-0[3]}" != '')) {
-	update reply {
-		Filter-Id += 'fail 4'
-	}
+	test_fail
 }
 
 # Remove all instances of Tmp-IP-Address
@@ -87,14 +78,12 @@ update request {
 
 # No more IP address attributes!
 if ("%{Tmp-IP-Address-0[0]}" != '') {
-	update reply {
-		Filter-Id += 'fail 5'
-	}
+	test_fail
 }
 
 # Non Tmp-IP-Address-0 address attributes should still be in the request list
 if ((Tmp-String-0 != 'foobarbaz') || (Tmp-Integer-0 != 123456789)) {
-	update reply {
-		Filter-Id += 'fail 6'
-	}
+	test_fail
 }
+
+success

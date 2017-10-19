@@ -376,7 +376,7 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 {
 	listen_socket_t *sock = listener->data;
 
-	VERIFY_REQUEST(request);
+	REQUEST_VERIFY(request);
 
 	rad_assert(request->listener == listener);
 	rad_assert(listener->send == dual_tls_send);
@@ -634,7 +634,7 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 	int rcode;
 	listen_socket_t *sock = listener->data;
 
-	VERIFY_REQUEST(request);
+	REQUEST_VERIFY(request);
 
 	if ((listener->status != RAD_LISTEN_STATUS_INIT) &&
 	    (listener->status != RAD_LISTEN_STATUS_KNOWN)) return 0;

@@ -32,7 +32,6 @@
 
 typedef struct exfile_entry_t {
 	int			fd;			//!< File descriptor associated with an entry.
-	int			dup;
 	uint32_t		hash;			//!< Hash for cheap comparison.
 	time_t			last_used;		//!< Last time the entry was used.
 	char			*filename;		//!< Filename.
@@ -98,11 +97,10 @@ static void exfile_cleanup_entry(exfile_t *ef, REQUEST *request, exfile_entry_t 
 {
 	TALLOC_FREE(entry->filename);
 
-	close(entry->fd);
+	if (entry->fd >= 0) close(entry->fd);
 
 	entry->hash = 0;
 	entry->fd = -1;
-	entry->dup = -1;
 
 	/*
 	 *	Issue close trigger *after* we've closed the fd
@@ -148,6 +146,17 @@ exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle, 
 
 	fr_talloc_link_ctx(ctx, ef);
 
+	ef->max_entries = max_entries;
+	ef->max_idle = max_idle;
+	ef->locking = locking;
+
+	/*
+	 *	If we're not locking the files, just return the
+	 *	handle.  Each call to exfile_open() will just open a
+	 *	new file descriptor.
+	 */
+	if (!ef->locking) return ef;
+
 	ef->entries = talloc_zero_array(ef, exfile_entry_t, max_entries);
 	if (!ef->entries) {
 		talloc_free(ef);
@@ -158,10 +167,6 @@ exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle, 
 		talloc_free(ef);
 		return NULL;
 	}
-
-	ef->max_entries = max_entries;
-	ef->max_idle = max_idle;
-	ef->locking = locking;
 
 	talloc_set_destructor(ef, _exfile_free);
 
@@ -194,6 +199,61 @@ void exfile_enable_triggers(exfile_t *ef, CONF_SECTION *conf, char const *trigge
 }
 
 
+/*
+ *	Try to open the file. It it doesn't exist, try to
+ *	create it's parent directories.
+ */
+static int exfile_open_mkdir(exfile_t *ef, char const *filename, mode_t permissions)
+{
+	int fd;
+
+	fd = open(filename, O_RDWR | O_CREAT, permissions);
+	if (fd < 0) {
+		mode_t dirperm;
+		char *p, *dir;
+
+		/*
+		 *	Maybe the directory doesn't exist.  Try to
+		 *	create it.
+		 */
+		dir = talloc_strdup(ef, filename);
+		if (!dir) return -1;
+		p = strrchr(dir, FR_DIR_SEP);
+		if (!p) {
+			fr_strerror_printf("No '/' in '%s'", filename);
+			return -1;
+		}
+		*p = '\0';
+
+		/*
+		 *	Ensure that the 'x' bit is set, so that we can
+		 *	read the directory.
+		 */
+		dirperm = permissions;
+		if ((dirperm & 0600) != 0) dirperm |= 0100;
+		if ((dirperm & 0060) != 0) dirperm |= 0010;
+		if ((dirperm & 0006) != 0) dirperm |= 0001;
+
+		if (rad_mkdir(dir, dirperm, -1, -1) < 0) {
+			fr_strerror_printf("Failed to create directory %s: %s",
+					   dir, strerror(errno));
+			talloc_free(dir);
+			return -1;
+		}
+		talloc_free(dir);
+
+		fd = open(filename, O_RDWR | O_CREAT, permissions);
+		if (fd < 0) {
+			fr_strerror_printf("Failed to open file %s: %s",
+					   filename, strerror(errno));
+			return -1;
+		}
+	}
+
+	return fd;
+}
+
+
 /** Open a new log file, or maybe an existing one.
  *
  * When multithreaded, the FD is locked via a mutex.  This way we're
@@ -203,22 +263,37 @@ void exfile_enable_triggers(exfile_t *ef, CONF_SECTION *conf, char const *trigge
  * @param request The current request.
  * @param filename the file to open.
  * @param permissions to use.
- * @param append If true seek to the end of the file.
  * @return
  *	- FD used to write to the file.
  *	- -1 on failure.
  */
-int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t permissions, bool append)
+int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t permissions)
 {
 	int i, tries, unused = -1, found = -1, oldest = -1;
 	bool do_cleanup = false;
 	uint32_t hash;
-	time_t now = time(NULL);
+	time_t now;
 	struct stat st;
 
 	if (!ef || !filename) return -1;
 
+	/*
+	 *	No locking: just return a new FD.
+	 */
+	if (!ef->locking) {
+		found = exfile_open_mkdir(ef, filename, permissions);
+		if (found < 0) return -1;
+
+		(void) lseek(found, 0, SEEK_END);
+		return found;
+	}
+
+	/*
+	 *	It's faster to do hash comparisons of a string than
+	 *	full string comparisons.
+	 */
 	hash = fr_hash_string(filename);
+	now = time(NULL);
 	unused = -1;
 
 	pthread_mutex_lock(&ef->mutex);
@@ -257,12 +332,12 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 			found = i;
 
 			/*
-			 *	If we're not cleanin up, stop now.
+			 *	If we're not cleaning up, stop now.
 			 */
 			if (!do_cleanup) break;
 
 			/*
-			 *	If we are cleaning up, and only
+			 *	If we are cleaning up, then clean up
 			 *	entries OTHER than the one we found,
 			 *	do so now.
 			 */
@@ -280,7 +355,7 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 	 */
 	if (found >= 0) {
 		i = found;
-		goto do_return;
+		goto try_lock;
 	}
 
 	/*
@@ -299,56 +374,14 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 	ef->entries[i].hash = hash;
 	ef->entries[i].filename = talloc_strdup(ef->entries, filename);
 	ef->entries[i].fd = -1;
-	ef->entries[i].dup = -1;
 
-	ef->entries[i].fd = open(filename, O_RDWR | O_APPEND | O_CREAT, permissions);
-	if (ef->entries[i].fd < 0) {
-		mode_t dirperm;
-		char *p, *dir;
-
-		/*
-		 *	Maybe the directory doesn't exist.  Try to
-		 *	create it.
-		 */
-		dir = talloc_strdup(ef, filename);
-		if (!dir) goto error;
-		p = strrchr(dir, FR_DIR_SEP);
-		if (!p) {
-			fr_strerror_printf("No '/' in '%s'", filename);
-			goto error;
-		}
-		*p = '\0';
-
-		/*
-		 *	Ensure that the 'x' bit is set, so that we can
-		 *	read the directory.
-		 */
-		dirperm = permissions;
-		if ((dirperm & 0600) != 0) dirperm |= 0100;
-		if ((dirperm & 0060) != 0) dirperm |= 0010;
-		if ((dirperm & 0006) != 0) dirperm |= 0001;
-
-		if (rad_mkdir(dir, dirperm, -1, -1) < 0) {
-			fr_strerror_printf("Failed to create directory %s: %s",
-					   dir, strerror(errno));
-			talloc_free(dir);
-			goto error;
-		}
-		talloc_free(dir);
-
-		ef->entries[i].fd = open(filename, O_WRONLY | O_CREAT, permissions);
-		if (ef->entries[i].fd < 0) {
-			fr_strerror_printf("Failed to open file %s: %s",
-					   filename, strerror(errno));
-			goto error;
-		} /* else fall through to creating the rest of the entry */
-
-		exfile_trigger_exec(ef, request, &ef->entries[i], "create");
-	} /* else the file was already opened */
+reopen:
+	ef->entries[i].fd = exfile_open_mkdir(ef, filename, permissions);
+	if (ef->entries[i].fd < 0) goto error;
 
 	exfile_trigger_exec(ef, request, &ef->entries[i], "open");
 
-do_return:
+try_lock:
 	/*
 	 *	Lock from the start of the file.
 	 */
@@ -357,7 +390,6 @@ do_return:
 
 	error:
 		exfile_cleanup_entry(ef, request, &ef->entries[i]);
-
 		pthread_mutex_unlock(&(ef->mutex));
 		return -1;
 	}
@@ -378,7 +410,7 @@ do_return:
 			}
 
 			close(ef->entries[i].fd);
-			ef->entries[i].fd = open(filename, O_WRONLY | O_CREAT, permissions);
+			ef->entries[i].fd = open(filename, O_RDWR | O_CREAT, permissions);
 			if (ef->entries[i].fd < 0) {
 				fr_strerror_printf("Failed to open file %s: %s",
 						   filename, strerror(errno));
@@ -403,36 +435,24 @@ do_return:
 
 	if (st.st_nlink == 0) {
 		close(ef->entries[i].fd);
-		ef->entries[i].fd = open(filename, O_WRONLY | O_CREAT, permissions);
-		if (ef->entries[i].fd < 0) {
-			fr_strerror_printf("Failed to open file %s: %s",
-					   filename, strerror(errno));
-			goto error;
-		}
+		goto reopen;
 	}
 
 	/*
 	 *	Seek to the end of the file before returning the FD to
 	 *	the caller.
 	 */
-	if (append) lseek(ef->entries[i].fd, 0, SEEK_END);
+	(void) lseek(ef->entries[i].fd, 0, SEEK_END);
 
 	/*
 	 *	Return holding the mutex for the entry.
 	 */
 	ef->entries[i].last_used = now;
-	ef->entries[i].dup = dup(ef->entries[i].fd);
-	if (ef->entries[i].dup < 0) {
-		fr_strerror_printf("Failed calling dup(): %s", strerror(errno));
-		goto error;
-	}
 
 	exfile_trigger_exec(ef, request, &ef->entries[i], "reserve");
 
-	rad_assert(ef->entries[i].dup >= 0); /* try to shut up Coverity */
-
 	/* coverity[missing_unlock] */
-	return ef->entries[i].dup;
+	return ef->entries[i].fd;
 }
 
 /** Close the log file.  Really just return it to the pool.
@@ -452,54 +472,30 @@ int exfile_close(exfile_t *ef, REQUEST *request, int fd)
 {
 	uint32_t i;
 
+	/*
+	 *	No locking: just close the file.
+	 */
+	if (!ef->locking) {
+		close(fd);
+		return 0;
+	}
+
+	/*
+	 *	Unlock the bytes that we had previously locked.
+	 */
 	for (i = 0; i < ef->max_entries; i++) {
-		if (!ef->entries[i].filename) continue;
+		if (ef->entries[i].fd != fd) continue;
 
-		/*
-		 *	Unlock the bytes that we had previously locked.
-		 */
-		if (ef->entries[i].dup == fd) {
-			if (ef->locking) (void) rad_unlockfd(ef->entries[i].dup, 0);
-			close(ef->entries[i].dup); /* releases the fcntl lock */
-			ef->entries[i].dup = -1;
+		(void) lseek(ef->entries[i].fd, 0, SEEK_SET);
+		(void) rad_unlockfd(ef->entries[i].fd, 0);
+		pthread_mutex_unlock(&(ef->mutex));
 
-			pthread_mutex_unlock(&(ef->mutex));
-
-			exfile_trigger_exec(ef, request, &ef->entries[i], "release");
-
-			return 0;
-		}
+		exfile_trigger_exec(ef, request, &ef->entries[i], "release");
+		return 0;
 	}
 
 	pthread_mutex_unlock(&(ef->mutex));
 
 	fr_strerror_printf("Attempt to unlock file which is not tracked");
-	return -1;
-}
-
-/** Unlock the file, but leave the dup'd file descriptor open
- *
- */
-int exfile_unlock(exfile_t *ef, REQUEST *request, int fd)
-{
-	uint32_t i;
-
-	for (i = 0; i < ef->max_entries; i++) {
-		if (!ef->entries[i].filename) continue;
-
-		if (ef->entries[i].dup == fd) {
-			ef->entries[i].dup = -1;
-
-			pthread_mutex_unlock(&(ef->mutex));
-
-			exfile_trigger_exec(ef, request, &ef->entries[i], "release");
-
-			return 0;
-		}
-	}
-
-	pthread_mutex_unlock(&(ef->mutex));
-
-	fr_strerror_printf("Attempt to unlock file which does not exist");
 	return -1;
 }
