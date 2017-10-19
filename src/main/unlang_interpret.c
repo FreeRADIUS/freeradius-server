@@ -660,6 +660,7 @@ static rlm_rcode_t unlang_subrequest_resume(UNUSED REQUEST *request,
 		rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
 
 		frame->instruction->type = UNLANG_TYPE_SUBREQUEST; /* for debug purposes */
+		request_detach(child);
 		talloc_free(child);
 		return rcode;
 	}
