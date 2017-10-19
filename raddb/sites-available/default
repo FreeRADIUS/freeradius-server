@@ -1,8 +1,5 @@
 ######################################################################
 #
-#	As of 2.0.0, FreeRADIUS supports virtual hosts using the
-#	"server" section, and configuration directives.
-#
 #	Virtual hosts should be put into the "sites-available"
 #	directory.  Soft links should be created in the "sites-enabled"
 #	directory to these files.  This is done in a normal installation.
