@@ -890,9 +890,12 @@ static unlang_action_t unlang_subrequest(REQUEST *request,
 	}
 
 	/*
-	 *	As a special case, if the child is "detach", detach
-	 *	the child, insert the child into the runnable queue,
-	 *	and keep going with the parent.
+	 *	As a special case, if the child instruction is
+	 *	"detach", detach the child, insert the child into the
+	 *	runnable queue, and keep going with the parent.
+	 *
+	 *	The unlang_detach() interpreter function takes care of
+	 *	calling request_detach() for the child.
 	 */
 	{
 		unlang_stack_t		*child_stack = child->stack;
