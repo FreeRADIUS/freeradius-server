@@ -65,9 +65,9 @@ static const CONF_PARSER file_listen_config[] = {
 
 	{ FR_CONF_OFFSET("filename.work", FR_TYPE_STRING, proto_detail_work_t, filename_work ) },
 
-	{ FR_CONF_OFFSET("track", FR_TYPE_BOOL, proto_detail_file_t, track_progress ) },
+	{ FR_CONF_OFFSET("track", FR_TYPE_BOOL, proto_detail_file_t, track_progress), .dflt = "yes" },
 
-	{ FR_CONF_OFFSET("poll_interval", FR_TYPE_UINT32, proto_detail_file_t, poll_interval ) },
+	{ FR_CONF_OFFSET("poll_interval", FR_TYPE_UINT32, proto_detail_file_t, poll_interval), .dflt = "5" },
 
 	CONF_PARSER_TERMINATOR
 };
