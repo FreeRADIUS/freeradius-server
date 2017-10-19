@@ -838,6 +838,10 @@ static int send_one_packet(rc_request_t *request)
 				mysockfd = fr_socket_client_tcp(NULL,
 								&request->packet->dst_ipaddr,
 								request->packet->dst_port, false);
+				if (mysockfd < 0) {
+					ERROR("Error opening socket: %s", fr_strerror());
+					return 0;
+				}
 			} else
 #endif
 			{
