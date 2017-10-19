@@ -342,7 +342,7 @@ static int fr_event_fd_cmp(void const *a, void const *b)
 	ret = (ev_a->fd < ev_b->fd) - (ev_a->fd > ev_b->fd);
 	if (ret != 0) return ret;
 
-	return (ev_a->filter > ev_b->filter) - (ev_b->filter < ev_b->filter);
+	return (ev_a->filter > ev_b->filter) - (ev_a->filter < ev_b->filter);
 }
 
 /** Return the number of file descriptors is_registered with this event loop
