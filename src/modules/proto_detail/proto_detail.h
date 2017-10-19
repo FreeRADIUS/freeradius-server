@@ -79,6 +79,8 @@ typedef struct proto_detail_work_t {
 	char const			*filename;     		//!< file name, usually with wildcards
 	char const			*filename_work;		//!< work file name
 
+	uint32_t			poll_interval;		//!< interval between polling
+
 	bool				vnode;			//!< are we the vnode instance,
 								//!< or the filename_work instance?
 	bool				eof;			//!< are we at EOF on reading?

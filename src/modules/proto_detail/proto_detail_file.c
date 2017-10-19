@@ -67,6 +67,8 @@ static const CONF_PARSER file_listen_config[] = {
 
 	{ FR_CONF_OFFSET("track", FR_TYPE_BOOL, proto_detail_file_t, track_progress ) },
 
+	{ FR_CONF_OFFSET("poll_interval", FR_TYPE_UINT32, proto_detail_file_t, poll_interval ) },
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -392,11 +394,9 @@ redo:
 		}
 
 		/*
-		 *	Check every 5 seconds.
-		 *
-		 *	@todo - make this configurable.
+		 *	Check every N seconds.
 		 */
-		when.tv_sec = 5;
+		when.tv_sec = inst->poll_interval;
 		when.tv_usec = 0;
 
 		DEBUG3("Waiting %d.%06ds for new files in %s",
@@ -462,6 +462,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	 */
 	dl_inst = dl_instance_find(instance);
 	rad_assert(dl_inst);
+
+	FR_INTEGER_BOUND_CHECK("poll_interval", inst->poll_interval, >=, 1);
+	FR_INTEGER_BOUND_CHECK("poll_interval", inst->poll_interval, <=, 3600);
 
 	inst->parent = talloc_get_type_abort(dl_inst->parent->data, proto_detail_t);
 	inst->cs = cs;
