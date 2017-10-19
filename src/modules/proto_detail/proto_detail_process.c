@@ -96,7 +96,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 				break;
 
 			default:
-				request->reply->code = FR_CODE_DO_NOT_RESPOND;
+				request->reply->code = 257;
 				break;
 			}
 			break;
@@ -114,23 +114,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		case RLM_MODULE_REJECT:
 		case RLM_MODULE_USERLOCK:
 		default:
-			switch (request->packet->code) {
-			case FR_CODE_ACCOUNTING_REQUEST:
-				request->reply->code = FR_CODE_DO_NOT_RESPOND;
-				break;
-
-			case FR_CODE_COA_REQUEST:
-				request->reply->code = FR_CODE_COA_NAK;
-				break;
-
-			case FR_CODE_DISCONNECT_REQUEST:
-				request->reply->code = FR_CODE_DISCONNECT_NAK;
-				break;
-
-			default:
-				request->reply->code = FR_CODE_DO_NOT_RESPOND;
-				break;
-			}
+			request->reply->code = 257;
 			break;
 		}
 
@@ -142,6 +126,12 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 
 		if (request->reply->code == FR_CODE_DO_NOT_RESPOND) {
 			unlang = cf_section_find(request->server_cs, "send", "Do-Not-Respond");
+			if (!unlang) goto send_reply;
+
+			RDEBUG("Running 'send %s { ... }' from file %s", cf_section_name2(unlang), cf_filename(unlang));
+
+		} else if (request->reply->code == 257) {
+			unlang = cf_section_find(request->server_cs, "send", "fail");
 			if (!unlang) goto send_reply;
 
 			RDEBUG("Running 'send %s { ... }' from file %s", cf_section_name2(unlang), cf_filename(unlang));
@@ -229,6 +219,9 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 	}
 
 	rcode = unlang_compile_subsection(server_cs, "send", NULL, MOD_POST_AUTH);
+	if (rcode < 0) return rcode;
+
+	rcode = unlang_compile_subsection(server_cs, "send", "fail", MOD_POST_AUTH);
 	if (rcode < 0) return rcode;
 
 	rcode = unlang_compile_subsection(server_cs, "send", "Do-Not-Respond", MOD_POST_AUTH);
