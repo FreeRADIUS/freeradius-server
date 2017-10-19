@@ -443,7 +443,10 @@ int fr_socket_client_udp(fr_ipaddr_t *src_ipaddr, uint16_t *src_port, fr_ipaddr_
 		if (!src_ipaddr) src_ipaddr = &my_ipaddr;
 		if (!src_port) src_port = &my_port;
 
-		if (fr_ipaddr_from_sockaddr(&salocal, salen, src_ipaddr, src_port) < 0) return -1;
+		if (fr_ipaddr_from_sockaddr(&salocal, salen, src_ipaddr, src_port) < 0) {
+			close(sockfd);
+			return -1;
+		}
 	}
 
 	/*
