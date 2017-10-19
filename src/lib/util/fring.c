@@ -55,12 +55,12 @@ static int _fring_free(fr_fring_t *fring)
 {
 	void *next;
 
-	if (fring->lock) pthread_mutex_destroy(&fring->mutex);
-
 	/*
 	 *	Free any data left in the buffer
 	 */
 	while ((next = fr_fring_next(fring))) talloc_free(next);
+
+	if (fring->lock) pthread_mutex_destroy(&fring->mutex);
 
 	return 0;
 }
