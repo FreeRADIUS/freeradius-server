@@ -1123,10 +1123,13 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 	for (i = 0; i < state->num_children; i++) {
 		switch (state->children[i].state) {
 		case CHILD_RUNNABLE:
-			rad_assert(state->children[i].child->backlog != NULL);
-			rad_assert(state->children[i].child->runnable_id >= 0);
-			(void) fr_heap_extract(state->children[i].child->backlog,
-					       state->children[i].child);
+			rad_assert(state->children[i].child->backlog == NULL);
+			rad_assert(state->children[i].child->runnable_id < 0);
+
+			/*
+			 *	Un-detached children are never in the
+			 *	runnable queue.
+			 */
 			/* FALL-THROUGH */
 
 		case CHILD_YIELDED:
