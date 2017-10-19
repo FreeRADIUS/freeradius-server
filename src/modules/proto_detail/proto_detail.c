@@ -54,6 +54,11 @@ static CONF_PARSER const proto_detail_config[] = {
 	  .func = transport_parse },
 
 	/*
+	 *	Add this as a synonym so normal humans can understand it.
+	 */
+	{ FR_CONF_OFFSET("max_entry_size", FR_TYPE_UINT32, proto_detail_t, max_packet_size) } ,
+
+	/*
 	 *	For performance tweaking.  NOT for normal humans.
 	 */
 	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, proto_detail_t, max_packet_size) } ,
