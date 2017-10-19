@@ -1564,8 +1564,8 @@ static inline void truncate_filename(char const **e, char const **p, int *len, c
 	*len = FILENAME_TRUNCATE;
 
 	q = strchr(*p, FR_DIR_SEP);
-	q++;
 	if (q) {
+		q++;
 		*p += (q - *p);
 		*len -= (q - *p);
 	}
