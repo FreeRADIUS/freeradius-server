@@ -2750,19 +2750,46 @@ int unlang_event_fd_delete(REQUEST *request, void const *ctx, int fd)
 void unlang_resumable(REQUEST *request)
 {
 	REQUEST				*parent = request->parent;
+	unlang_stack_t			*stack;
+	unlang_stack_frame_t		*frame;
 
 	while (parent) {
 		int i;
-		unlang_stack_t		*stack = parent->stack;
-		unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 		unlang_resume_t		*mr;
 		unlang_parallel_t	*state;
 #ifndef NDEBUG
 		bool			found = false;
 #endif
-		rad_assert(request->backlog == NULL);
 
-		if (frame->instruction->type != UNLANG_TYPE_RESUME) goto next;
+		/*
+		 *	Child requests CANNOT be runnable.  Only the
+		 *	parent request can be runnable.  When it runs
+		 *	(eventually), the interpreter will walk back
+		 *	down the stack, resuming anything that needs resuming.
+		 */
+		rad_assert(request->backlog == NULL);
+		rad_assert(request->runnable_id < 0);
+
+		/*
+		 *	Look at the current stack.
+		 */
+		stack = request->stack;
+		frame = &stack->frame[stack->depth];
+
+		/*
+		 *	The current request MUST have been yielded in
+		 *	order for someone to mark it resumable.
+		 */
+		rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
+
+		/*
+		 *	Now look at the parents stack.  It also must
+		 *	have been yielded in order for someone to mark
+		 *	the child as resumable.
+		 */
+		stack = parent->stack;
+		frame = &stack->frame[stack->depth];
+		rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
 
 		mr = unlang_generic_to_resume(frame->instruction);
 		(void) talloc_get_type_abort(mr, unlang_resume_t);
@@ -2785,12 +2812,23 @@ void unlang_resumable(REQUEST *request)
 			break;
 		}
 
+		/*
+		 *	We MUST have found the child here.
+		 */
 		rad_assert(found == true);
 
 	next:
 		request = parent;
 		parent = parent->parent;
 	}
+
+	/*
+	 *	The current request MUST have been yielded in
+	 *	order for someone to mark it resumable.
+	 */
+	stack = request->stack;
+	frame = &stack->frame[stack->depth];
+	rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
 
 	rad_assert(request->backlog != NULL);
 	fr_heap_insert(request->backlog, request);
