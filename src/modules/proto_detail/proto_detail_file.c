@@ -278,6 +278,30 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 	work->free_on_close = true;
 
 	work->fd = dup(fd);
+	if (work->fd < 0) {
+		struct timeval when, now;
+
+
+		DEBUG("Failed opening %s: %s", inst->filename_work, fr_syserror(errno));
+
+		close(fd);
+		talloc_free(work);
+
+		when.tv_sec = 0;
+		when.tv_usec = 10; /* hard-code! */
+
+		DEBUG3("Waiting %d.%06ds for lock on file %s",
+		       (int) when.tv_sec, (int) when.tv_usec, inst->filename_work);
+
+		gettimeofday(&now, NULL);
+		fr_timeval_add(&when, &when, &now);
+
+		if (fr_event_timer_insert(inst, inst->el, &inst->ev,
+					  &when, work_retry_timer, inst) < 0) {
+			ERROR("Failed inserting retry timer for %s", inst->filename_work);
+		}
+		return;
+	}
 
 	/*
 	 *	Don't do anything until the file has been deleted.
