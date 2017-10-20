@@ -2857,7 +2857,7 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 /*
  *	Verify a pair list
  */
-void fr_pair_list_verify(char const *file, int line, TALLOC_CTX *expected, VALUE_PAIR *vps)
+void fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected, VALUE_PAIR *vps)
 {
 	vp_cursor_t		slow_cursor, fast_cursor;
 	VALUE_PAIR		*slow, *fast;

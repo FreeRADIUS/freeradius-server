@@ -185,7 +185,7 @@ typedef struct value_pair_raw {
 
 #  ifdef WITH_VERIFY_PTR
 void		fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp);
-void		fr_pair_list_verify(char const *file, int line, TALLOC_CTX *expected, VALUE_PAIR *vps);
+void		fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected, VALUE_PAIR *vps);
 #  endif
 
 /* Allocation and management */
