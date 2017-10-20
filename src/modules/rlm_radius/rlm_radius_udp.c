@@ -462,6 +462,10 @@ static void state_transition(rlm_radius_udp_request_t *u, rlm_radius_request_sta
 		u->c = NULL;
 		break;
 
+	case PACKET_STATE_RESUMABLE:
+		rad_assert(state == PACKET_STATE_FINISHED);
+		break;
+
 	default:
 		rad_assert(0 == 1);
 		break;
