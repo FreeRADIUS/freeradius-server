@@ -690,6 +690,12 @@ static void unlang_max_request_time(UNUSED fr_event_list_t *el, UNUSED struct ti
 	REQUEST *request = talloc_get_type_abort(uctx, REQUEST);
 
 	RDEBUG("Reached Request-Lifetime.  Forcibly stopping request");
+
+	if (request->runnable_id >= 0) {
+		rad_assert(request->backlog != NULL);
+		(void) fr_heap_extract(request->backlog, request);
+	}
+
 	talloc_free(request);
 }
 
