@@ -114,31 +114,6 @@ rlm_rcode_t rad_accounting(REQUEST *request)
 		default:
 			return rcode;
 		}
-
-		/*
-		 *	Maybe one of the preacct modules has decided
-		 *	that a proxy should be used.
-		 */
-		if ((vp = fr_pair_find_by_num(request->control, 0, FR_PROXY_TO_REALM, TAG_ANY))) {
-			REALM *realm;
-
-			/*
-			 *	Check whether Proxy-To-Realm is
-			 *	a LOCAL realm.
-			 */
-			realm = NULL;
-			if (realm && !realm->acct_pool) {
-				DEBUG("rad_accounting: Cancelling proxy to realm %s, as it is a LOCAL realm.", realm->name);
-				fr_pair_delete_by_num(&request->control, 0, FR_PROXY_TO_REALM, TAG_ANY);
-			} else {
-				/*
-				 *	Don't reply to the NAS now because
-				 *	we have to send the proxied packet
-				 *	before that.
-				 */
-				return rcode;
-			}
-		}
 	}
 
 #ifdef WITH_PROXY
