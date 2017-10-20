@@ -334,7 +334,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 
 #ifndef NDEBUG
 		if ((q - p) > (1 << 20)) {
-			sql_print_error(db, status, "Failed preparing statement %i: too long!", statement_cnt);
+			ERROR("Failed preparing statement %i: too long!", statement_cnt);
 			talloc_free(buffer);
 			return -1;
 		}
