@@ -972,7 +972,7 @@ static int _request_free(rs_request_t *request)
 	bool ret;
 
 	/*
-	 *	If were attempting to cleanup the request, and it's no longer in the request_tree
+	 *	If we're attempting to cleanup the request, and it's no longer in the request_tree
 	 *	something has gone very badly wrong.
 	 */
 	if (request->in_request_tree) {
@@ -1020,7 +1020,7 @@ static void rs_packet_cleanup(rs_request_t *request)
 	}
 
 	/*
-	 *	Were at packet cleanup time which is when the packet was received + timeout
+	 *	We're at packet cleanup time which is when the packet was received + timeout
 	 *	and it's not been linked with a forwarded packet or a response.
 	 *
 	 *	We now count it as lost.
@@ -1717,7 +1717,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		rs_stats_update_latency(&stats->exchange[original->expect->code], &latency);
 
 		/*
-		 *	Were filtering on response, now print out the full data from the request
+		 *	We're filtering on response, now print out the full data from the request
 		 */
 		if (conf->filter_response && RIDEBUG_ENABLED() && (conf->event_flags & RS_NORMAL)) {
 			rs_time_print(timestr, sizeof(timestr), &original->packet->timestamp);
@@ -1735,7 +1735,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	/*
 	 *	It's the original request
 	 *
-	 *	If were filtering on responses we can only indicate we received it on response, or timeout.
+	 *	If we're filtering on responses we can only indicate we received it on response, or timeout.
 	 */
 	} else if (!conf->filter_response && (conf->event_flags & status)) {
 		rs_packet_print(original, original ? original->id : count, status, event->in,
@@ -1745,7 +1745,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	fflush(fr_log_fp);
 
 	/*
-	 *	If it's a unlinked response, we need to free it explicitly, as it will
+	 *	If it's an unlinked response, we need to free it explicitly, as it will
 	 *	not be done by the event queue.
 	 */
 	if (response && !original) {
@@ -2094,7 +2094,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "options:\n");
 	fprintf(output, "  -a                    List all interfaces available for capture.\n");
 	fprintf(output, "  -c <count>            Number of packets to capture.\n");
-	fprintf(output, "  -C                    Enable UDP checksum validation.\n");
+	fprintf(output, "  -C <checksum_type>    Enable checksum validation. (Specify 'udp' or 'radius')\n");
 	fprintf(output, "  -d <raddb>            Set configuration directory (defaults to " RADDBDIR ").\n");
 	fprintf(output, "  -D <dictdir>          Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(output, "  -e <event>[,<event>]  Only log requests with these event flags.\n");
@@ -2105,21 +2105,21 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "                        - noreq    - could be matched with the response.\n");
 	fprintf(output, "                        - reused   - ID too soon.\n");
 	fprintf(output, "                        - error    - decoding the packet.\n");
-	fprintf(output, "  -f <filter>           PCAP filter (default is 'udp port <port> or <port + 1> or 3799')\n");
+	fprintf(output, "  -f <filter>           PCAP filter (default is 'udp port <port> or <port + 1> or %i')\n", FR_COA_UDP_PORT);
 	fprintf(output, "  -h                    This help message.\n");
 	fprintf(output, "  -i <interface>        Capture packets from interface (defaults to all if supported).\n");
 	fprintf(output, "  -I <file>             Read packets from <file>\n");
 	fprintf(output, "  -l <attr>[,<attr>]    Output packet sig and a list of attributes.\n");
 	fprintf(output, "  -L <attr>[,<attr>]    Detect retransmissions using these attributes to link requests.\n");
 	fprintf(output, "  -m                    Don't put interface(s) into promiscuous mode.\n");
-	fprintf(output, "  -p <port>             Filter packets by port (default is 1812).\n");
+	fprintf(output, "  -p <port>             Filter packets by port (default is %i).\n", FR_AUTH_UDP_PORT);
 	fprintf(output, "  -P <pidfile>          Daemonize and write out <pidfile>.\n");
 	fprintf(output, "  -q                    Print less debugging information.\n");
 	fprintf(output, "  -r <filter>           RADIUS attribute request filter.\n");
 	fprintf(output, "  -R <filter>           RADIUS attribute response filter.\n");
 	fprintf(output, "  -s <secret>           RADIUS secret.\n");
 	fprintf(output, "  -S                    Write PCAP data to stdout.\n");
-	fprintf(output, "  -v                    Show program version information.\n");
+	fprintf(output, "  -v                    Show program version information and exit.\n");
 	fprintf(output, "  -w <file>             Write output packets to file.\n");
 	fprintf(output, "  -x                    Print more debugging information.\n");
 	fprintf(output, "stats options:\n");
@@ -2143,7 +2143,7 @@ int main(int argc, char *argv[])
 	int ret = 1;					/* Exit status */
 
 	char errbuf[PCAP_ERRBUF_SIZE];			/* Error buffer */
-	int port = 1812;
+	int port = FR_AUTH_UDP_PORT;
 
 	char buffer[1024];
 
@@ -2242,7 +2242,7 @@ int main(int argc, char *argv[])
 			}
 			break;
 
-		/* udp checksum */
+		/* UDP/RADIUS checksum validation */
 		case 'C':
 			if (strcmp(optarg, "udp") == 0) {
 				conf->verify_udp_checksum = true;
@@ -2468,7 +2468,7 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 *	If were writing pcap data, or CSV to stdout we *really* don't want to send
+	 *	If we're writing pcap data, or CSV to stdout we *really* don't want to send
 	 *	logging there as well.
 	 */
 	if (conf->to_stdout || conf->list_attributes || (conf->stats.out == RS_STATS_OUT_STDIO_CSV)) {
@@ -2490,7 +2490,7 @@ int main(int argc, char *argv[])
 
 	if (!conf->pcap_filter) {
 		snprintf(buffer, sizeof(buffer), "udp port %d or %d or %d",
-			 port, port + 1, 3799);
+			 port, port + 1, FR_COA_UDP_PORT);
 		conf->pcap_filter = buffer;
 	}
 
