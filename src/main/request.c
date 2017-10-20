@@ -68,6 +68,8 @@ static int _request_free(REQUEST *request)
 	 */
 	if (request->state_ctx) talloc_free(request->state_ctx);
 
+	talloc_free_children(request);
+
 	return 0;
 }
 
