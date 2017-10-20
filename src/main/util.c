@@ -875,6 +875,8 @@ static void verify_packet(char const *file, int line, REQUEST *request, RADIUS_P
  */
 void request_verify(char const *file, int line, REQUEST *request)
 {
+	rad_assert(request->magic == REQUEST_MAGIC);
+
 	if (!request) {
 		fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%i]: REQUEST pointer was NULL", file, line);
 		if (!fr_cond_assert(0)) fr_exit_now(1);
