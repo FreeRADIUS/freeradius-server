@@ -433,6 +433,7 @@ int fr_socket_client_udp(fr_ipaddr_t *src_ipaddr, uint16_t *src_port, fr_ipaddr_
 		salen = sizeof(salocal);
 		memset(&salocal, 0, salen);
 		if (getsockname(sockfd, (struct sockaddr *) &salocal, &salen) < 0) {
+			close(sockfd);
 			fr_strerror_printf("Failed getting socket name: %s", fr_syserror(errno));
 			return -1;
 		}
