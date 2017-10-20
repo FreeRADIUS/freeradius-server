@@ -1358,7 +1358,8 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 			for (parse = client_config; parse->name; parse++) {
 				if (parse->offset == dynamic_config[i].offset) break;
 			}
-			rad_assert(parse);
+
+			if (!parse) break;
 
 			cp = cf_pair_alloc(c->cs, parse->name, strvalue, T_OP_SET, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
 		}
