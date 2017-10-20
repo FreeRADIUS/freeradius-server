@@ -1264,8 +1264,8 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 	 */
 	if (rcode == 0) {
 		RDEBUG("Blocked writing for connection %s", c->name);
-		conn_transition(c, CONN_BLOCKED);
 		state_transition(u, PACKET_STATE_THREAD);
+		conn_transition(c, CONN_BLOCKED);
 		goto get_new_connection;
 	}
 
