@@ -841,7 +841,7 @@ char const *rad_radacct_dir(void)
 /*
  *	Verify a packet.
  */
-static void verify_packet(char const *file, int line, REQUEST *request, RADIUS_PACKET *packet, char const *type)
+static void packet_verify(char const *file, int line, REQUEST *request, RADIUS_PACKET *packet, char const *type)
 {
 	TALLOC_CTX *parent;
 
@@ -901,21 +901,21 @@ void request_verify(char const *file, int line, REQUEST *request)
 	rad_assert(request->server_cs != NULL);
 
 	if (request->packet) {
-		verify_packet(file, line, request, request->packet, "request");
+		packet_verify(file, line, request, request->packet, "request");
 		if ((request->packet->code == FR_CODE_ACCESS_REQUEST) &&
 		    (request->reply && !request->reply->code)) {
 			rad_assert(request->state_ctx != NULL);
 		}
 	}
-	if (request->reply) verify_packet(file, line, request, request->reply, "reply");
+	if (request->reply) packet_verify(file, line, request, request->reply, "reply");
 #ifdef WITH_PROXY
 	if (request->proxy) {
 		(void) talloc_get_type_abort(request->proxy, REQUEST);
 
 		rad_assert(request == talloc_parent(request->proxy));
 
-		if (request->proxy->packet) verify_packet(file, line, request->proxy, request->proxy->packet, "proxy-request");
-		if (request->proxy->reply) verify_packet(file, line, request->proxy, request->proxy->reply, "proxy-reply");
+		if (request->proxy->packet) packet_verify(file, line, request->proxy, request->proxy->packet, "proxy-request");
+		if (request->proxy->reply) packet_verify(file, line, request->proxy, request->proxy->reply, "proxy-reply");
 	}
 #endif
 
