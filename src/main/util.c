@@ -880,7 +880,7 @@ void request_verify(char const *file, int line, REQUEST const *request)
 		if (!fr_cond_assert(0)) fr_exit_now(1);
 	}
 
-	(void) talloc_get_type_abort(request, REQUEST);
+	(void) talloc_get_type_abort_const(request, REQUEST);
 
 	rad_assert(request->magic == REQUEST_MAGIC);
 
