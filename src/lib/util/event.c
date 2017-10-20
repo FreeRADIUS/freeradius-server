@@ -1650,7 +1650,7 @@ service:
 			}
 #endif
 
-			if (el->events[i].fflags && unlikely(!fr_cond_assert(false))) break;
+			if (unlikely(!fr_cond_assert(el->events[i].fflags == 0))) break;
 			break;
 
 		default:
