@@ -464,43 +464,6 @@ autz_redo:
 		}
 	}
 
-	/*
-	 *	If we haven't already proxied the packet, then check
-	 *	to see if we should.  Maybe one of the authorize
-	 *	modules has decided that a proxy should be used. If
-	 *	so, get out of here and send the packet.
-	 */
-	if (
-#ifdef WITH_PROXY
-	    (request->proxy == NULL) &&
-#endif
-	    ((tmp = fr_pair_find_by_num(request->control, 0, FR_PROXY_TO_REALM, TAG_ANY)) != NULL)) {
-		REALM *realm;
-
-		realm = NULL;
-
-		/*
-		 *	Don't authenticate, as the request is going to
-		 *	be proxied.
-		 */
-		if (realm && realm->auth_pool) {
-			return RLM_MODULE_OK;
-		}
-
-		/*
-		 *	Catch users who set Proxy-To-Realm to a LOCAL
-		 *	realm (sigh).  But don't complain if it is
-		 *	*the* LOCAL realm.
-		 */
-		if (realm &&(strcmp(realm->name, "LOCAL") != 0)) {
-			RWDEBUG2("You set Proxy-To-Realm = %s, but it is a LOCAL realm!  Cancelling proxy request.", realm->name);
-		}
-
-		if (!realm) {
-			RWDEBUG2("You set Proxy-To-Realm = %s, but the realm does not exist!  Cancelling invalid proxy request.", tmp->vp_strvalue);
-		}
-	}
-
 #ifdef WITH_PROXY
 authenticate:
 #endif
