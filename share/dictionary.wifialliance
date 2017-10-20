@@ -75,7 +75,7 @@ ATTRIBUTE	HS20-Deauthentication-Request		4	octets
 #
 #  Session Information URL field: URL which is transmitted to a mobile
 #  device in a BSS Transition Management Request frame SWT minutes
-#  before the mobile device’s session is terminated. The URL provides
+#  before the mobile device's session is terminated. The URL provides
 #  the location of a webpage with information for the user on how to
 #  extend the session.
 #
