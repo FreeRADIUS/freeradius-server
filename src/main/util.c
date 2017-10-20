@@ -841,7 +841,7 @@ char const *rad_radacct_dir(void)
 /*
  *	Verify a packet.
  */
-static void packet_verify(char const *file, int line, REQUEST *request, RADIUS_PACKET *packet, char const *type)
+static void packet_verify(char const *file, int line, REQUEST const *request, RADIUS_PACKET const *packet, char const *type)
 {
 	TALLOC_CTX *parent;
 
@@ -873,7 +873,7 @@ static void packet_verify(char const *file, int line, REQUEST *request, RADIUS_P
 /*
  *	Catch horrible talloc errors.
  */
-void request_verify(char const *file, int line, REQUEST *request)
+void request_verify(char const *file, int line, REQUEST const *request)
 {
 	rad_assert(request->magic == REQUEST_MAGIC);
 

@@ -436,7 +436,7 @@ char const	*rad_default_sbin_dir(void);
 char const	*rad_radacct_dir(void);
 
 #ifdef WITH_VERIFY_PTR
-void		request_verify(char const *file, int line, REQUEST *request);	/* only for special debug builds */
+void		request_verify(char const *file, int line, REQUEST const *request);	/* only for special debug builds */
 #endif
 void		rad_mode_to_str(char out[10], mode_t mode);
 void		rad_mode_to_oct(char out[5], mode_t mode);
