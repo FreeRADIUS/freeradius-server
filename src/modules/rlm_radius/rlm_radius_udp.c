@@ -482,10 +482,12 @@ static void state_transition(rlm_radius_udp_request_t *u, rlm_radius_request_sta
 		break;
 
 	case PACKET_STATE_RESUMABLE:
+		if (u->timer.ev) (void) fr_event_timer_delete(u->thread->el, &u->timer.ev);
 		unlang_resumable(u->link->request);
 		break;
 
 	case PACKET_STATE_FINISHED:
+		if (u->timer.ev) (void) fr_event_timer_delete(u->thread->el, &u->timer.ev);
 		break;
 
 	default:
@@ -497,8 +499,6 @@ static void state_transition(rlm_radius_udp_request_t *u, rlm_radius_request_sta
 static void mod_finished_request(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *u)
 {
 	rad_assert(u->state != PACKET_STATE_FINISHED);
-
-	if (u->timer.ev) (void) fr_event_timer_delete(u->thread->el, &u->timer.ev);
 
 	/*
 	 *	Delete the tracking table entry, and remove the
@@ -1795,8 +1795,6 @@ static void _conn_close(int fd, void *uctx)
 static int udp_request_free(rlm_radius_udp_request_t *u)
 {
 	struct timeval when, now;
-
-	if (u->timer.ev) fr_event_timer_delete(u->thread->el, &u->timer.ev);
 
 	state_transition(u, PACKET_STATE_FINISHED);
 
