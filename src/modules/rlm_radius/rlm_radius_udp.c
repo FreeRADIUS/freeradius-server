@@ -1796,32 +1796,9 @@ static int udp_request_free(rlm_radius_udp_request_t *u)
 {
 	struct timeval when, now;
 
-	fr_dlist_remove(&u->entry);
-
 	if (u->timer.ev) fr_event_timer_delete(u->thread->el, &u->timer.ev);
 
-	/*
-	 *	Delete any tracking entry associated with the packet.
-	 */
-	if (u->rr) {
-		rad_assert(u->c != NULL);
-		(void) rr_track_delete(u->c->id, u->rr);
-		u->rr = NULL;
-	}
-
-	switch (u->state) {
-	case PACKET_STATE_THREAD:
-		rad_assert(u->c == NULL);
-		(void) fr_heap_extract(u->thread->queued, u);
-		return 0;
-
-	case PACKET_STATE_SENT:
-		fr_dlist_remove(&u->entry);
-		break;
-
-	default:
-		break;
-	}
+	state_transition(u, PACKET_STATE_FINISHED);
 
 	/*
 	 *	We don't have a connection, so we can't update any of
