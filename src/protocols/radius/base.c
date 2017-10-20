@@ -1108,6 +1108,10 @@ void fr_radius_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 
 		fprintf(fp, "%02x  %02x  ", attr[0], attr[1]);
 
+#ifndef NDEBUG
+		if (attr[1] < 2) break; /* Coverity */
+#endif
+
 		if ((attr[0] == FR_VENDOR_SPECIFIC) &&
 		    (attr[1] > 6)) {
 			vendor = (attr[2] << 25) | (attr[3] << 16) | (attr[4] << 8) | attr[5];
