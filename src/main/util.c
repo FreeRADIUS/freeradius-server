@@ -875,14 +875,14 @@ static void packet_verify(char const *file, int line, REQUEST const *request, RA
  */
 void request_verify(char const *file, int line, REQUEST const *request)
 {
-	rad_assert(request->magic == REQUEST_MAGIC);
-
 	if (!request) {
 		fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%i]: REQUEST pointer was NULL", file, line);
 		if (!fr_cond_assert(0)) fr_exit_now(1);
 	}
 
 	(void) talloc_get_type_abort(request, REQUEST);
+
+	rad_assert(request->magic == REQUEST_MAGIC);
 
 	if (talloc_get_size(request) != sizeof(REQUEST)) {
 		fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%i]: expected REQUEST size of %zu bytes, got %zu bytes",
