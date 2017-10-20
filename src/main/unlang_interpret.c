@@ -2843,7 +2843,12 @@ void unlang_resumable(REQUEST *request)
 #endif
 
 	rad_assert(request->backlog != NULL);
-	fr_heap_insert(request->backlog, request);
+
+	/*
+	 *	Multiple child request may mark a request runnable,
+	 *	before it is enabled for running.
+	 */
+	if (request->runnable_id < 0) fr_heap_insert(request->backlog, request);
 }
 
 /** Send a signal (usually stop) to a request
