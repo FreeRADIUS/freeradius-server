@@ -405,7 +405,7 @@ static int mod_populate_vptuple(PyObject *pp, VALUE_PAIR *vp)
 		break;
 
 	case FR_TYPE_FLOAT32:
-		value = PyFloat_FromDouble(vp->vp_float32);
+		value = PyFloat_FromDouble((double) vp->vp_float32);
 		break;
 
 	case FR_TYPE_FLOAT64:
