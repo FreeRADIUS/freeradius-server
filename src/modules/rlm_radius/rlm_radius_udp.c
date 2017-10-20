@@ -1001,6 +1001,10 @@ done:
 		status_check_reply(c, u, request);
 
 	} else {
+		rad_assert(u->c == c);
+		rad_assert(u->rr != NULL);
+		rad_assert(u->state == PACKET_STATE_SENT);
+
 		/*
 		 *	It's a normal request.  Mark it as finished.
 		 */
