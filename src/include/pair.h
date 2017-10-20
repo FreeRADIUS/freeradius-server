@@ -35,7 +35,7 @@ extern "C" {
 #ifdef WITH_VERIFY_PTR
 #  define VP_VERIFY(_x)		fr_pair_verify(__FILE__, __LINE__, _x)
 #  define LIST_VERIFY(_x)	fr_pair_list_verify(__FILE__, __LINE__, NULL, _x)
-#  define PACKET_VERIFY(_x)	(void) talloc_get_type_abort(_x, RADIUS_PACKET)
+#  define PACKET_VERIFY(_x)	(void) talloc_get_type_abort_const(_x, RADIUS_PACKET)
 #else
 /*
  *	Even if were building without WITH_VERIFY_PTR
