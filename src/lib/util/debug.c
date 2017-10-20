@@ -829,7 +829,7 @@ static void _fr_talloc_log(char const *msg)
  *
  * @param ctx to generate a report for, may be NULL in which case the root context is used.
  */
-int fr_log_talloc_report(TALLOC_CTX *ctx)
+int fr_log_talloc_report(TALLOC_CTX const *ctx)
 {
 #define TALLOC_REPORT_MAX_DEPTH 20
 
