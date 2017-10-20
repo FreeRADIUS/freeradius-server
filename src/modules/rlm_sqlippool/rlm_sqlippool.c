@@ -17,7 +17,7 @@
 /**
  * $Id$
  * @file rlm_sqlippool.c
- * @brief Allocates an IPv4 address from pools stored in SQL.
+ * @brief Allocates an IPv4/IPv6 prefix/IPv6 prefix delegated from pools stored in SQL.
  *
  * @copyright 2002  Globe.Net Communications Limited
  * @copyright 2006  The FreeRADIUS server project
@@ -45,9 +45,9 @@ typedef struct rlm_sqlippool_t {
 	rlm_sql_t	*sql_inst;
 
 	char const	*pool_name;
-	bool		ipv6_addr;		//!< Whether or not we do IPv6 Address assignment (IPv6_NA)
-	bool		ipv6_pfx;		//!< Whether or not we do IPv6 Prefix delegation (IPv6_PD)
-	int		framed_ip_address; 	//!< the attribute number for Framed-IP(v6)-Address / Delegated-IPv6-Prefix
+	char const  *ip_attribute_name; //!< Name of the RADIUS attribute from the module configuration
+	DICT_ATTR const *ip_attr;       //!< Actual RADIUS DICT_ATTR from the ip_attribute_name
+
 
 	time_t		last_clear;		//!< So we only do it once a second.
 	char const	*allocate_begin;	//!< SQL query to begin.
@@ -126,9 +126,8 @@ static CONF_PARSER module_config[] = {
 	{ "default-pool", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, defaultpool), NULL },
 	{ "default_pool", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, defaultpool), "main_pool" },
 
-
-	{ "ipv6_address", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sqlippool_t, ipv6_addr), NULL},
-	{ "ipv6_prefix", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sqlippool_t, ipv6_pfx), NULL},
+    {"ip-attribute-name", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, ip_attribute_name), "Framed-IP-Address" },
+	{"ip_attribute_name", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, ip_attribute_name), "Framed-IP-Address" },
 
 	{ "allocate-begin", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, allocate_begin), NULL },
 	{ "allocate_begin", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sqlippool_t, allocate_begin), "START TRANSACTION" },
@@ -408,6 +407,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	module_instance_t *sql_inst;
 	rlm_sqlippool_t *inst = instance;
 	char const *pool_name = NULL;
+	DICT_ATTR const *da;
 
 	pool_name = cf_section_name2(conf);
 	if (pool_name != NULL) {
@@ -423,18 +423,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
-	if (inst->ipv6_addr && inst->ipv6_pfx) {
-		cf_log_err_cs(conf, "Cannot have both 'ipv6_address' and 'ipv6_prefix' set in the same sqlippool instance");
-		return -1;
-	}
-
-	if (inst->ipv6_addr) {
-		inst->framed_ip_address = PW_FRAMED_IPV6_PREFIX;
-	} else if (inst->ipv6_pfx) {
-		inst->framed_ip_address = PW_DELEGATED_IPV6_PREFIX;
-	} else {
-		inst->framed_ip_address = PW_FRAMED_IP_ADDRESS;
-	}
+    /* Check if the ip_attribute_name is known in the RADIUS dictionnary */
+    da = dict_attrbyname(inst->ip_attribute_name);
+    if (!da) {
+        cf_log_err_cs(conf, "Cannot parse 'ip_attribute_name' '%s' as RADIUS attribute", inst->ip_attribute_name);
+        return -1;
+    }
+    inst->ip_attr = da;
 
 	if (strcmp(sql_inst->entry->name, "rlm_sql") != 0) {
 		cf_log_err_cs(conf, "Module \"%s\""
@@ -485,8 +480,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	/*
 	 *	If there is a Framed-IP-Address attribute in the reply do nothing
 	 */
-	if (fr_pair_find_by_num(request->reply->vps, inst->framed_ip_address, 0, TAG_ANY) != NULL) {
-		RDEBUG("Framed-IP-Address already exists");
+	if (fr_pair_find_by_da(request->reply->vps, inst->ip_attr, TAG_ANY) != NULL) {
+		RDEBUG("'%s' already exists", inst->ip_attribute_name);
 
 		return do_logging(request, inst->log_exists, RLM_MODULE_NOOP);
 	}
@@ -571,32 +566,30 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 			 *	sqlippool, so we should just ignore this
 			 *	allocation failure and return NOOP
 			 */
-			RDEBUG("IP address could not be allocated as no pool exists with that name");
+			RDEBUG("'%s' could not be allocated as no pool exists with that name", inst->ip_attribute_name);
 			return RLM_MODULE_NOOP;
 
 		}
 
 		fr_connection_release(inst->sql_inst->pool, handle);
 
-		RDEBUG("IP address could not be allocated");
+		RDEBUG("'%s' address could not be allocated", inst->ip_attribute_name);
 		return do_logging(request, inst->log_failed, RLM_MODULE_NOOP);
 	}
 
 	/*
-	 *	See if we can create the VP from the returned data.  If not,
-	 *	error out.  If so, add it to the list.
+	 *	See if we can create the VP from the returned data.
+	 *  If not commit and error out.
 	 */
-	vp = fr_pair_afrom_num(request->reply, inst->framed_ip_address, 0);
-	if (fr_pair_value_from_str(vp, allocation, allocation_len) < 0) {
-		DO_PART(allocate_commit);
-
-		RDEBUG("Invalid IP number [%s] returned from instbase query.", allocation);
-		fr_connection_release(inst->sql_inst->pool, handle);
+	vp = pair_make_reply(inst->ip_attribute_name, allocation, T_OP_SET);
+	if (vp == NULL) {
+	    RDEBUG("Unable to create RADIUS attribute %s with value %s.", inst->ip_attribute_name, allocation);
+	    DO_PART(allocate_commit);
+	    fr_connection_release(inst->sql_inst->pool, handle);
 		return do_logging(request, inst->log_failed, RLM_MODULE_NOOP);
 	}
 
-	RDEBUG("Allocated IP %s", allocation);
-	fr_pair_add(&request->reply->vps, vp);
+	RDEBUG("Allocated '%s' with value %s", inst->ip_attribute_name, allocation);
 
 	/*
 	 *	UPDATE

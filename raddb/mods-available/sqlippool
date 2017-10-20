@@ -24,10 +24,9 @@ sqlippool {
 	# IP lease duration. (Leases expire even if Acct Stop packet is lost)
 	lease_duration = 3600
 
-	# Whether to assign IPv6 address (IA_NA). Default to be IPv4 only
-	# ipv6_address = yes
-	# Whether to assign IPv6 prefix (IA_PD) for prefix delegation. Default to be IPv4 only
-	# ipv6_prefix = yes
+    # RADIUS attribute name to send back as a VP (default : Framed-IP-Address)
+    # Can also be Framed-IPv6-Prefix or Delegated-IPv6-Prefix
+    ip_attribute_name = Framed-IP-Address
 
 	# Attribute which should be considered unique per NAS
 	#
