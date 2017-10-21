@@ -423,6 +423,9 @@ static int dhcp_process(REQUEST *request)
 
 	/* BOOTREPLY received on port 67 (i.e. from a server) */
 	if (vp->vp_byte == 2) {
+		if (request->reply->code == 0) {
+			return 1;
+		}
 		return dhcprelay_process_server_reply(request);
 	}
 
