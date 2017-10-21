@@ -1879,7 +1879,15 @@ static int status_udp_request_free(rlm_radius_udp_request_t *u)
 	DEBUG3("%s - Freeing status check ID %d on connection %s", c->inst->parent->name, u->rr->id, c->name);
 	c->status_u = NULL;
 
-	return udp_request_free(u);
+	/*
+	 *	Status check packets are not in any list, but they do
+	 *	have an ID allocated.
+	 */
+	if (u->timer.ev) (void) fr_event_timer_delete(u->thread->el, &u->timer.ev);
+
+	(void) rr_track_delete(u->c->id, u->rr);
+
+	return 0;
 }
 
 /** Connection failed
