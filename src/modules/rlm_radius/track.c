@@ -45,7 +45,7 @@ static int rr_track_free(rlm_radius_id_t *id)
 		 *	The timers are parented from the request, so
 		 *	we have to manually free them here.
 		 */
-		talloc_const_free(id->id[i].timer->ev);
+		if (id->id[i].timer->ev) talloc_const_free(id->id[i].timer->ev);
 	}
 
 	return 0;
