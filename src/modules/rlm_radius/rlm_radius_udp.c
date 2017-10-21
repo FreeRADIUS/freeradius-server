@@ -450,6 +450,7 @@ static void state_transition(rlm_radius_udp_request_t *u, rlm_radius_request_sta
 		break;
 
 	case PACKET_STATE_THREAD:
+		rad_assert(u->heap_id >= 0);
 		(void) fr_heap_extract(u->thread->queued, u);
 		break;
 
@@ -476,6 +477,7 @@ static void state_transition(rlm_radius_udp_request_t *u, rlm_radius_request_sta
 	case PACKET_STATE_THREAD:
 		rad_assert(u->rr == NULL);
 		rad_assert(u->c == NULL);
+		rad_assert(u->heap_id < 0);
 		fr_heap_insert(u->thread->queued, u);
 		break;
 
@@ -657,6 +659,7 @@ static void conn_transition(rlm_radius_udp_connection_t *c, rlm_radius_udp_conne
 		break;
 
 	case CONN_ACTIVE:
+		rad_assert(c->heap_id >= 0);
 		(void) fr_heap_extract(c->thread->active, c);
 		if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
 		break;
@@ -687,6 +690,7 @@ static void conn_transition(rlm_radius_udp_connection_t *c, rlm_radius_udp_conne
 		break;
 
 	case CONN_ACTIVE:
+		rad_assert(c->heap_id < 0);
 		(void) fr_heap_insert(c->thread->active, c);
 		conn_check_idle(c);
 		break;
@@ -2221,6 +2225,7 @@ static int _conn_free(rlm_radius_udp_connection_t *c)
 		break;
 
 	case CONN_ACTIVE:
+		rad_assert(c->heap_id < 0);
 		(void) fr_heap_extract(t->active, c);
 		break;
 	}
@@ -2237,6 +2242,7 @@ static void conn_alloc(rlm_radius_udp_t *inst, rlm_radius_udp_thread_t *t)
 	rlm_radius_udp_connection_t	*c;
 
 	c = talloc_zero(t, rlm_radius_udp_connection_t);
+	c->heap_id = -1;
 	c->inst = inst;
 	c->thread = t;
 	c->dst_ipaddr = inst->dst_ipaddr;
@@ -2341,6 +2347,7 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 	u->link = link;
 	u->code = request->packet->code;
 	u->thread = t;
+	u->heap_id = -1;
 	u->timer.retry = &inst->parent->retry[u->code];
 	FR_DLIST_INIT(u->entry);
 
