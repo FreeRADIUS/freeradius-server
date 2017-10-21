@@ -2187,8 +2187,6 @@ static int _conn_free(rlm_radius_udp_connection_t *c)
 	talloc_free(c->conn);
 	c->conn = NULL;
 
-	talloc_free_children(c); /* clears out FD events, timers, etc. */
-
 	/*
 	 *	Move "sent" packets back to the main thread queue
 	 */
@@ -2200,6 +2198,13 @@ static int _conn_free(rlm_radius_udp_connection_t *c)
 
 		state_transition(u, PACKET_STATE_THREAD);
 	}
+
+	if (c->status_u) talloc_free(c->status_u);
+
+	if (c->zombie_ev) (void) fr_event_timer_delete(c->thread->el, &c->zombie_ev);
+	if (c->idle_ev) (void) fr_event_timer_delete(c->thread->el, &c->idle_ev);
+
+	talloc_free_children(c); /* clears out FD events, timers, etc. */
 
 	switch (c->state) {
 	default:
