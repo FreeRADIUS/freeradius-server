@@ -5,33 +5,34 @@
 #
 
 #
-#    Global options for all files
-#
-daily
-rotate 14
-missingok
-compress
-delaycompress
-notifempty
-
-#
 #  The main server log
 #
 /var/log/radius/radius.log {
+	# common options
+	daily
+	rotate 52
+	missingok
+	compress
+	delaycompress
+	notifempty
+
 	copytruncate
 }
 
-#
+# (in order)
 #  Session monitoring utilities
-#
-/var/log/radius/checkrad.log /var/log/radius/radwatch.log {
-	nocreate
-}
-
-#
 #  SQL log files
-#
-/var/log/radius/sqllog.sql {
+/var/log/freeradius/checkrad.log /var/log/freeradius/radwatch.log
+/var/log/freeradius/sqllog.sql
+{
+	# common options
+	daily
+	rotate 52
+	missingok
+	compress
+	delaycompress
+	notifempty
+
 	nocreate
 }
 
@@ -43,5 +44,13 @@ notifempty
 # second technique, you will need another cron job that removes old
 # detail files.  You do not need to comment out the below for method #2.
 /var/log/radius/radacct/*/detail {
+	# common options
+	daily
+	rotate 52
+	missingok
+	compress
+	delaycompress
+	notifempty
+
 	nocreate
 }
