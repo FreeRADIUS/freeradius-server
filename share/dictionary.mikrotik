@@ -2,13 +2,7 @@
 # Copyright (C) 2015 The FreeRADIUS Server project and contributors
 #	http://www.mikrotik.com
 #
-#	http://www.mikrotik.com/documentation//manual_2.9/dictionary
-#
-#	Do NOT follow their instructions and replace the dictionary
-#	in /etc/raddb with the one that they supply.  It is NOT necessary.
-#
-#	On top of that, the sample dictionary file they provide
-#	DOES NOT WORK.  Do NOT use it.
+#	https://wiki.mikrotik.com/wiki/Manual:RADIUS_Client/vendor_dictionary
 #
 #	$Id$
 #
@@ -56,5 +50,9 @@ VALUE	Mikrotik-Wireless-Enc-Algo	40-bit-WEP		1
 VALUE	Mikrotik-Wireless-Enc-Algo	104-bit-WEP		2
 VALUE	Mikrotik-Wireless-Enc-Algo	AES-CCM			3
 VALUE	Mikrotik-Wireless-Enc-Algo	TKIP			4
+
+VALUE	Mikrotik-Wireless-VLANID-Type	802.1q			0
+VALUE	Mikrotik-Wireless-VLANID-Type	802.1ad			1
+
 
 END-VENDOR	Mikrotik

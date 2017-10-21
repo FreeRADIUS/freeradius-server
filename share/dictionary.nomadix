@@ -1,6 +1,11 @@
 # -*- text -*-
 # Copyright (C) 2015 The FreeRADIUS Server project and contributors
 #
+#	Nomadix VSAs
+#	From:
+#http://business.nomadix.com/aghelp/common/ag_userguide/QuickReference/Nomadix_Vendor-Specific_RADIUS_Attributes.htm
+# But the type is not specified.
+#
 # Version:	$Id$
 #
 VENDOR		Nomadix				3309

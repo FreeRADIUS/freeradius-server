@@ -4,6 +4,8 @@
 #
 #	OpenSER dictionary.
 #
+#	OpenSER renamed to Kamailio in July 2008.
+#
 #	This dictionary is NOT included by default, because it conflicts
 #	with attributes defined in the RADIUS standard.  Vendors SHOULD
 #	be using a VSA space to assign attributes.
@@ -11,7 +13,7 @@
 #	Be aware that if you DO include this dictionary in the main
 #	dictionary file, other parts of your configuration may break!
 #
-#	http://www.openser.org/docs/openser-radius-1.0.x.html
+#	https://github.com/kamailio/kamailio/blob/master/etc/dictionary.sip-router
 #
 #	$Id$
 #
