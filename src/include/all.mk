@@ -79,21 +79,21 @@ HEADERS	+= $(notdir ${HEADERS_RFC})
 
 .PRECIOUS: $(HEADERS_RFC)
 
-NORMALIZE	:= tr -- '[:lower:]/.-' '[:upper:]___'
+NORMALIZE	:= tr -- '[:lower:]/.-' '[:upper:]___' | sed 's/^/\#define /;s/241_//;'
 HEADER		:= "/* AUTO_GENERATED FILE.  DO NOT EDIT */"
 
 src/include/attributes.h: share/dictionary.freeradius.internal
 	${Q}$(ECHO) HEADER $@
 	${Q}echo ${HEADER} > $@
-	${Q}grep ^ATTRIBUTE $<  | awk '{print "FR_"$$2 " " $$3 }' | ${NORMALIZE} | sed 's/^/#define /' >> $@
+	${Q}grep ^ATTRIBUTE $<  | awk '{print "FR_"$$2 " " $$3 }' | ${NORMALIZE}  >> $@
 	${Q}echo " " >> $@
-	${Q}grep -- 'Auth-Type' $< | grep ^VALUE | awk '{print "FR_"$$2 "_" $$3 " " $$4 }' | ${NORMALIZE} | sed 's/^/#define /' >> $@
+	${Q}grep -- 'Auth-Type' $< | grep ^VALUE | awk '{print "FR_"$$2 "_" $$3 " " $$4 }' | ${NORMALIZE}  >> $@
 
 src/include/%.h: share/dictionary.% share/dictionary.vqp share/dictionary.freeradius.snmp
 	${Q}$(ECHO) HEADER $@
 	${Q}echo ${HEADER} > $@
-	${Q}grep ^ATTRIBUTE $<  | awk '{print "FR_"$$2 " " $$3 }' | ${NORMALIZE} | sed 's/^/#define /' >> $@
-	${Q}grep ^VALUE $<  | awk '{print "FR_"$$2"_VALUE_"$$3 " " $$4 }' | ${NORMALIZE} | sed 's/^/#define /' >> $@
+	${Q}grep ^ATTRIBUTE $<  | awk '{print "FR_"$$2 " " $$3 }' | ${NORMALIZE} >> $@
+	${Q}grep ^VALUE $<  | awk '{print "FR_"$$2"_VALUE_"$$3 " " $$4 }' | ${NORMALIZE} >> $@
 
 #
 #  Build features.h by copying over WITH_* and RADIUSD_VERSION_*
