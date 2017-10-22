@@ -743,6 +743,7 @@ static void conn_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 	ssize_t				data_len;
 	REQUEST				*request = NULL;
 	uint8_t				original[20];
+	bool				reinserted = false;
 
 	DEBUG3("%s - Reading data for connection %s", c->inst->parent->name, c->name);
 
@@ -821,10 +822,13 @@ redo:
 	 */
 	switch (c->state) {
 	case CONN_ACTIVE:
+		if (reinserted) break;
+
 		if (timercmp(&u->timer.start, &c->mrs_time, >)) {
 			(void) fr_heap_extract(c->thread->active, c);
 			c->mrs_time = u->timer.start;
 			(void) fr_heap_insert(c->thread->active, c);
+			reinserted = true;
 		}
 		break;
 
@@ -837,6 +841,11 @@ redo:
 		 *	Transition to active on any one packet.  RFC
 		 *	3539 says to wait for N status check
 		 *	responses, but we're happy to do it faster.
+		 *
+		 *	If the connection was FULL, then
+		 *	mod_finished_request() will ensure that this
+		 *	packet has been removed from the connection,
+		 *	before any subsequent writes go to it.
 		 */
 		conn_transition(c, CONN_ACTIVE);
 		if (fr_heap_num_elements(c->thread->queued) > 0) fd_active(c);
