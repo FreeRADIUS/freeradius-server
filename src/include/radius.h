@@ -100,6 +100,7 @@ typedef enum {
 #include <freeradius-devel/rfc7055.h>
 #include <freeradius-devel/rfc7155.h>
 #include <freeradius-devel/rfc7268.h>
+#include <freeradius-devel/rfc7930.h>
 
 /*
  *	All internal attributes are now defined in this file.
