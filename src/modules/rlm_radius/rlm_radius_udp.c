@@ -405,7 +405,6 @@ static void conn_zombie_timeout(UNUSED fr_event_list_t *el, UNUSED struct timeva
 		 *	"sent" list
 		 */
 		if (rcode == 1) {
-			FR_DLIST_INIT(u->entry);
 			u->state = PACKET_STATE_SENT;
 			u->c = c;
 			return;
@@ -443,6 +442,8 @@ static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 static void state_transition(rlm_radius_udp_request_t *u, rlm_radius_request_state_t state)
 {
 	if (u->state == state) return;
+
+	rad_assert(!u->c || (u != u->c->status_u));
 
 	switch (u->state) {
 	case PACKET_STATE_INIT:
@@ -1927,8 +1928,6 @@ static fr_connection_state_t _conn_failed(int fd, fr_connection_state_t state, v
 
 			if (u->packet) TALLOC_FREE(u->packet);
 			u->packet_len = 0;
-
-			fr_dlist_remove(&u->entry);
 		}
 
 		/*
