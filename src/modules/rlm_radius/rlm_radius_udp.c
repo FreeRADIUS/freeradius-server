@@ -875,8 +875,7 @@ redo:
 		     attr < end;
 		     attr += attr[1]) {
 			/*
-			 *	@todo - fix dict2header code to handle
-			 *	extended OIDs
+			 *	Must be an extended attribute.
 			 */
 			if (attr[0] != FR_EXTENDED_ATTRIBUTE_1) continue;
 
@@ -886,10 +885,9 @@ redo:
 			if (attr[1] != 7) continue;
 
 			/*
-			 *	@todo - fix dict2header code to handle
-			 *	extended OIDs
+			 *	See if there's an original packet code.
 			 */
-			if (attr[2] != 4) continue;
+			if (attr[2] != FR_ORIGINAL_PACKET_CODE) continue;
 
 			/*
 			 *	Has to be an 8-bit number.
