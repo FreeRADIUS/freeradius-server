@@ -544,7 +544,6 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	 *	and insert it back into a slab allocator.
 	 */
 	(void) fr_heap_extract(worker->time_order, request);
-	request->time_order_id = -1; /* work around heap issues? */
 	(void) rbtree_deletebydata(worker->dedup, request);
 
 #ifndef NDEBUG
@@ -577,17 +576,9 @@ static void worker_stop_request(fr_worker_t *worker, REQUEST *request, fr_time_t
 	 *	be in the runnable list, but if not, no worries.  It
 	 *	MAY be in the dedup list, but if not, no worries.
 	 */
-	if (request->time_order_id >= 0) {
-		(void) fr_heap_extract(worker->time_order, request);
-		request->time_order_id = -1;
-	}
-	if (request->runnable_id >= 0) {
-		(void) fr_heap_extract(worker->runnable, request);
-		request->runnable_id = -1;
-	}
+	if (request->time_order_id >= 0) (void) fr_heap_extract(worker->time_order, request);
+	if (request->runnable_id >= 0) (void) fr_heap_extract(worker->runnable, request);
 	(void) rbtree_deletebydata(worker->dedup, request);
-
-
 
 #ifndef NDEBUG
 	request->async->process = NULL;
@@ -785,7 +776,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	request = fr_heap_pop(worker->runnable);
 	if (request) {
 		REQUEST_VERIFY(request);
-		request->runnable_id = -1; /* work around heap issues? */
+		rad_assert(request->runnable_id < 0);
 		fr_time_tracking_resume(&request->async->tracking, now);
 		return request;
 	}
