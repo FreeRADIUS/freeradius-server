@@ -805,6 +805,7 @@ redo:
 	 *	We can only get a reply to a sent packet.
 	 */
 	rad_assert(u->state == PACKET_STATE_SENT);
+	rad_assert(u->c == c);
 
 	/*
 	 *	Remember when we last saw a reply.
@@ -1227,7 +1228,6 @@ static void response_timeout(fr_event_list_t *el, struct timeval *now, void *uct
 		rad_assert(u->state == PACKET_STATE_THREAD);
 		c = fr_heap_peek(u->thread->active);
 		if (!c) {
-			rad_assert(u->state == PACKET_STATE_THREAD);
 			RDEBUG("No available connections for retransmission.  Waiting %d.%06ds for retry",
 			       u->timer.rt / USEC, u->timer.rt % USEC);
 			return;
