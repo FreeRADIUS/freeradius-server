@@ -66,8 +66,8 @@ $(BUILD_DIR)/tests/radiusd-c: raddb/test.conf ${BUILD_DIR}/bin/radiusd $(GENERAT
 test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient tests.unit tests.xlat tests.keywords tests.auth tests.modules $(BUILD_DIR)/tests/radiusd-c tests.eap | build.raddb
 	@$(MAKE) -C src/tests tests
 
-#  Tests specifically for Travis.  We do a LOT more than just
-#  the above tests
+#  Tests specifically for Travis. We do a LOT more than just
+#  the above tests
 ifneq "$(findstring travis,${prefix})" ""
 travis-test: raddb/test.conf test
 	@FR_LIBRARY_PATH=./build/lib/local/.libs/ ./build/make/jlibtool --mode=execute ./build/bin/local/radiusd -xxxv -n test

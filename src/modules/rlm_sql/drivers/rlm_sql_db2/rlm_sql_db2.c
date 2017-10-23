@@ -100,7 +100,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		 *	And probably synthesis the retarded connection string ourselves,
 		 *	probably via config file expansions:
 		 *
-		 *	Driver={IBM DB2 ODBC Driver};Database=testDb;Hostname=remoteHostName.com;UID=username;PWD=mypasswd;PO‌​RT=50000
+		 *	Driver={IBM DB2 ODBC Driver};Database=testDb;Hostname=remoteHostName.com;UID=username;PWD=mypasswd;PORT=50000
 		 */
 		row = SQLConnect(conn->dbc_handle,
 				    server, SQL_NTS,
