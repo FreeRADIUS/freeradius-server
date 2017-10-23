@@ -752,6 +752,7 @@ static void conn_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 	REQUEST				*request = NULL;
 	uint8_t				original[20];
 	bool				reinserted = false;
+	bool				activate = false;
 
 	DEBUG3("%s - Reading data for connection %s", c->inst->parent->name, c->name);
 
@@ -762,10 +763,16 @@ redo:
 	 *	busy, a few extra system calls don't matter.
 	 */
 	data_len = read(fd, c->buffer, c->buflen);
-	if (data_len == 0) return;
+	if (data_len == 0) {
+check_active:
+		if (activate && (fr_heap_num_elements(c->thread->queued) > 0)) {
+			fd_active(c);
+		}
+		return;
+	}
 
 	if (data_len < 0) {
-		if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) return;
+		if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) goto check_active;
 
 		conn_error(el, fd, 0, errno, c);
 		return;
@@ -807,7 +814,7 @@ redo:
 	if (fr_radius_verify(c->buffer, original,
 			     (uint8_t const *) c->inst->secret, strlen(c->inst->secret)) < 0) {
 		RWDEBUG("Ignoring response with invalid signature");
-		return;
+		goto redo;
 	}
 
 	/*
@@ -856,6 +863,21 @@ redo:
 		 *	before any subsequent writes go to it.
 		 */
 		conn_transition(c, CONN_ACTIVE);
+
+		/*
+		 *	Most connections are symmetrical.  If we've
+		 *	read a packet from it, we can probably write
+		 *	to it.
+		 *
+		 *      Note that we don't call fd_active() here, as
+		 *      it can fail, and close the connection.  In
+		 *      which case subsequent uses of 'c' would cause
+		 *      the server to crash.
+		 *
+		 *	Instead, we activate the connection only when
+		 *	we're exiting.
+		 */
+		activate = true;
 		break;
 	}
 
