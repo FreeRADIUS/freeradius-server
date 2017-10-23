@@ -356,6 +356,10 @@ static void fd_active(rlm_radius_udp_connection_t *c)
 			       conn_error,
 			       c) < 0) {
 		PERROR("Failed inserting FD event");
+
+		/*
+		 *	May free the connection!
+		 */
 		fr_connection_signal_reconnect(c->conn);
 	}
 }
@@ -852,7 +856,6 @@ redo:
 		 *	before any subsequent writes go to it.
 		 */
 		conn_transition(c, CONN_ACTIVE);
-		if (fr_heap_num_elements(c->thread->queued) > 0) fd_active(c);
 		break;
 	}
 
@@ -1714,8 +1717,11 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 		 *	Can't write a packet to this connection, so we
 		 *	close it.
 		 *
-		 *	We still wake up the "next" connection, as
-		 *	we hope that it may be writable.
+		 *	We still wake up the "next" connection, as we
+		 *	hope that it may be writable.  If it isn't, it
+		 *	will shut itself down again.  If it is
+		 *	writable (and it usually is), then we've saved
+		 *	another round trip through the event loop.
 		 */
 		if (rcode < 0) {
 			rlm_radius_udp_thread_t *t = c->thread;
@@ -1748,6 +1754,8 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 		return;
 	}
 
+	next = fr_heap_peek(c->thread->active);
+
 	/*
 	 *	There are more packets to write.  Update our status,
 	 *	and grab another socket to use.
@@ -1775,10 +1783,8 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 	 *	Wake up the next connection, and see if it can drain
 	 *	the input queue.
 	 */
-	next = fr_heap_peek(c->thread->active);
 	if (!next) return;
 
-	rad_assert(next != c);
 	conn_writable(el, next->fd, 0, next);
 }
 
