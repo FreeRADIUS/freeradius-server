@@ -10,7 +10,7 @@
 /var/log/radius/radius.log {
 	# common options
 	daily
-	rotate 52
+	rotate 14
 	missingok
 	compress
 	delaycompress
@@ -27,7 +27,7 @@
 {
 	# common options
 	daily
-	rotate 52
+	rotate 14
 	missingok
 	compress
 	delaycompress
@@ -46,7 +46,7 @@
 /var/log/radius/radacct/*/detail {
 	# common options
 	daily
-	rotate 52
+	rotate 14
 	missingok
 	compress
 	delaycompress
