@@ -489,11 +489,15 @@ static void state_transition(rlm_radius_udp_request_t *u, rlm_radius_request_sta
 		break;
 
 	case PACKET_STATE_RESUMABLE:
+		rad_assert(u->rr == NULL);
+		rad_assert(u->c == NULL);
 		if (u->timer.ev) (void) fr_event_timer_delete(u->thread->el, &u->timer.ev);
 		unlang_resumable(u->link->request);
 		break;
 
 	case PACKET_STATE_FINISHED:
+		rad_assert(u->rr == NULL);
+		rad_assert(u->c == NULL);
 		if (u->timer.ev) (void) fr_event_timer_delete(u->thread->el, &u->timer.ev);
 		break;
 
@@ -1897,7 +1901,8 @@ static int status_udp_request_free(rlm_radius_udp_request_t *u)
 	 */
 	if (u->timer.ev) (void) fr_event_timer_delete(u->thread->el, &u->timer.ev);
 
-	(void) rr_track_delete(u->c->id, u->rr);
+	if (u->rr) (void) rr_track_delete(u->c->id, u->rr);
+	u->rr = NULL;
 
 	return 0;
 }
