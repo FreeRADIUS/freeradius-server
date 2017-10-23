@@ -5,4 +5,4 @@
 </dl>
 
 ## Summary
-Implements support for Microsoft’s Statement of Health (SoH) protocol, which can run inside of PEAP or DHCP.
+Implements support for Microsoft's Statement of Health (SoH) protocol, which can run inside of PEAP or DHCP.
