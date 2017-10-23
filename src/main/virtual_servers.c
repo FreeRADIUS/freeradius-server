@@ -501,7 +501,7 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 		 *	Forbid old-style virtual servers.
 		 */
 		if (!cf_pair_find(cs, "namespace")) {
-			cf_log_err(cs, "server %s { ...} section must set 'namesspace = ...'", server_name);
+			cf_log_err(cs, "server %s { ...} section must set 'namespace = ...' to define the server protocol", server_name);
 			return -1;
 		}
 	}
