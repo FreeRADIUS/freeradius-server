@@ -543,8 +543,8 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	 *	@todo Use a talloc pool for the request.  Clean it up,
 	 *	and insert it back into a slab allocator.
 	 */
-	(void) fr_heap_extract(worker->time_order, request);
-	(void) rbtree_deletebydata(worker->dedup, request);
+	if (request->time_order_id >= 0) (void) fr_heap_extract(worker->time_order, request);
+	if (request->runnable_id >= 0) (void) fr_heap_extract(worker->runnable, request);
 
 #ifndef NDEBUG
 	request->async->original_recv_time = NULL;
