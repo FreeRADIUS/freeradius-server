@@ -217,35 +217,7 @@ rlm_rcode_t process_authenticate(int auth_type, REQUEST *request)
 	return module_method_call(MOD_AUTHENTICATE, auth_type, request);
 }
 
-#ifdef WITH_ACCOUNTING
-/*
- *	Do pre-accounting for ALL configured sessions
- */
-rlm_rcode_t process_preacct(REQUEST *request)
-{
-	return module_method_call(MOD_PREACCT, 0, request);
-}
-
-/*
- *	Do accounting for ALL configured sessions
- */
-rlm_rcode_t process_accounting(int acct_type, REQUEST *request)
-{
-	return module_method_call(MOD_ACCOUNTING, acct_type, request);
-}
-#endif
-
 #ifdef WITH_PROXY
-/*
- *	Do pre-proxying for ALL configured sessions
- */
-rlm_rcode_t process_pre_proxy(int type, REQUEST *request)
-{
-	rad_assert(request->proxy != NULL);
-
-	return module_method_call(MOD_PRE_PROXY, type, request);
-}
-
 /*
  *	Do post-proxying for ALL configured sessions
  */
@@ -265,17 +237,6 @@ rlm_rcode_t process_post_auth(int postauth_type, REQUEST *request)
 	return module_method_call(MOD_POST_AUTH, postauth_type, request);
 }
 
-#ifdef WITH_COA
-rlm_rcode_t process_recv_coa(int recv_coa_type, REQUEST *request)
-{
-	return module_method_call(MOD_RECV_COA, recv_coa_type, request);
-}
-
-rlm_rcode_t process_send_coa(int send_coa_type, REQUEST *request)
-{
-	return module_method_call(MOD_SEND_COA, send_coa_type, request);
-}
-#endif
 
 /** Define a values for Auth-Type attributes by the sections present in a virtual-server
  *

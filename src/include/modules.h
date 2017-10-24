@@ -189,15 +189,10 @@ int		module_instance_read_only(TALLOC_CTX *ctx, char const *name);
  */
 rlm_rcode_t	process_authorize(int type, REQUEST *request);
 rlm_rcode_t	process_authenticate(int type, REQUEST *request);
-rlm_rcode_t	process_preacct(REQUEST *request);
-rlm_rcode_t	process_accounting(int type, REQUEST *request);
-rlm_rcode_t	process_pre_proxy(int type, REQUEST *request);
 rlm_rcode_t	process_post_proxy(int type, REQUEST *request);
 rlm_rcode_t	process_post_auth(int type, REQUEST *request);
 
 #ifdef WITH_COA
-rlm_rcode_t 	process_recv_coa(int type, REQUEST *request);
-rlm_rcode_t	process_send_coa(int type, REQUEST *request);
 #  define MODULE_NULL_COA_FUNCS ,NULL,NULL
 #else
 #  define MODULE_NULL_COA_FUNCS
