@@ -484,8 +484,6 @@ void		version_numbers_init(CONF_SECTION *cs);
 void		version_print(void);
 
 /* auth.c */
-char	*auth_name(char *buf, size_t buflen, REQUEST *request, bool do_cli);
-rlm_rcode_t    	rad_authenticate (REQUEST *);
 rlm_rcode_t    	rad_postauth(REQUEST *);
 rlm_rcode_t    	rad_virtual_server(REQUEST *);
 
