@@ -395,7 +395,6 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	 */
 	if (track->timestamp != request_time) {
 		DEBUG3("Suppressing reply as we have a newer packet");
-		(void) fr_radius_tracking_entry_delete(inst->ft, track);
 		return buffer_len;
 	}
 
