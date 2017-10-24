@@ -2877,12 +2877,12 @@ int main(int argc, char *argv[])
 finish:
 	cleanup = true;
 
+	if (conf->daemonize) unlink(conf->pidfile);
+
 	/*
 	 *	Free all the things! This also closes all the sockets and file descriptors
 	 */
 	talloc_free(conf);
-
-	if (conf->daemonize) unlink(conf->pidfile);
 
 	return ret;
 }
