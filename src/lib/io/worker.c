@@ -567,7 +567,6 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
  */
 static void worker_stop_request(fr_worker_t *worker, REQUEST *request, fr_time_t now)
 {
-	RDEBUG("request is being stopped.");
 	fr_time_tracking_resume(&request->async->tracking, now);
 	(void) request->async->process(request, FR_IO_ACTION_DONE);
 
@@ -616,7 +615,7 @@ static void fr_worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED struct
 		/*
 		 *	Waiting too long, delete it.
 		 */
-		RDEBUG("request has reached max_request_time");
+		RDEBUG("request has reached max_request_time - telling it to stop.");
 		worker_stop_request(worker, request, now);
 
 		/*
@@ -931,7 +930,7 @@ nak:
 			REQUEST *tmp = request;
 
 			request = old;
-			RDEBUG("received new request %" PRIu64 " which which over-rides this one.",
+			RDEBUG("received new request %" PRIu64 " which which over-rides this one - telling old one to stop.",
 			       tmp->number);
 			request = tmp;
 		}
@@ -1206,6 +1205,7 @@ void fr_worker_destroy(fr_worker_t *worker)
 	 *	events.
 	 */
 	while ((request = fr_heap_peek(worker->time_order)) != NULL) {
+		RDEBUG("server is exiting - telling request to stop.");
 		worker_stop_request(worker, request, now);
 		talloc_free(request);
 	}
@@ -1402,6 +1402,8 @@ static void fr_worker_post_event(UNUSED fr_event_list_t *el, UNUSED struct timev
 	WORKER_VERIFY;
 
 	now = fr_time();
+
+	DEBUG("WORKER %ld in time order", fr_heap_num_elements(worker->time_order));
 
 	/*
 	 *      Ten times a second, check for timeouts on incoming packets.
