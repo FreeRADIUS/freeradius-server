@@ -222,7 +222,7 @@ FR_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 	rcode = rad_virtual_server(fake);
 
 	switch (rcode) {
-		/* If rad_authenticate succeeded, build a reply */
+		/* If the virtual server succeeded, build a reply */
 	case RLM_MODULE_OK:
 	case RLM_MODULE_HANDLED:
 		if (chbind_build_response(fake, chbind)) {
@@ -231,7 +231,7 @@ FR_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 		}
 		/* FALL-THROUGH */
 
-		/* If we got any other response from rad_authenticate, it maps to a reject */
+		/* If we got any other response from the virtual server, it maps to a reject */
 	default:
 		code = FR_CODE_ACCESS_REJECT;
 		break;
