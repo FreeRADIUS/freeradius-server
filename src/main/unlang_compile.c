@@ -3209,6 +3209,8 @@ int unlang_compile_subsection(CONF_SECTION *server_cs, char const *name1, char c
 	cs = cf_section_find(server_cs, name1, name2);
 	if (!cs) return 0;
 
+	if (!name2) name2 = "";
+
 	cf_log_debug(cs, "Compiling policies - %s %s {...}", name1, name2);
 
 	if (unlang_compile(cs, component) < 0) {
