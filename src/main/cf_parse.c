@@ -1047,7 +1047,6 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs)
 {
 	int		ret = 0;
 	void		*data;
-	bool		*is_set = NULL;
 	CONF_DATA const	*rule_cd = NULL;
 
 	if (!cs->name2) {
@@ -1058,6 +1057,7 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs)
 
 	while ((rule_cd = cf_data_find_next(cs, rule_cd, CONF_PARSER, CF_IDENT_ANY))) {
 		CONF_PARSER *rule;
+		bool *is_set = NULL;
 
 		rule = cf_data_value(rule_cd);
 
