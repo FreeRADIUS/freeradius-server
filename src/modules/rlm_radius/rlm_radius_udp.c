@@ -1582,12 +1582,6 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 		return 2;
 	}
 
-	/*
-	 *	Start the retransmission timers.
-	 */
-	u->link->time_sent = fr_time();
-	fr_time_to_timeval(&u->timer.start, u->link->time_sent);
-
 	if (u != c->status_u) {
 		/*
 		 *	Only copy the packet if we're not replicating,
@@ -1597,19 +1591,6 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 		u->packet_len = packet_len;
 
 		if (!c->inst->parent->synchronous) {
-			if (rr_track_start(&u->timer) < 0) {
-				RDEBUG("%s - Failed starting retransmit tracking for connection %s",
-				       c->inst->parent->name, c->name);
-				return -1;
-			}
-
-			if (fr_event_timer_insert(u, c->thread->el, &u->timer.ev, &u->timer.next,
-						  response_timeout, u) < 0) {
-				RDEBUG("%s - Failed starting retransmit tracking for connection %s",
-				       c->inst->parent->name, c->name);
-				return -1;
-			}
-
 			RDEBUG("Proxying request.  Expecting response within %d.%06ds",
 			       u->timer.rt / USEC, u->timer.rt % USEC);
 
@@ -1700,12 +1681,10 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 		state_transition(u, PACKET_STATE_SENT);
 
 		/*
-		 *	The packet already has a timer associated with
-		 *	it.  Don't send it right now, but instead just
-		 *	put it into the "sent" list, so that it will
-		 *	be sent when the timer fires.
+		 *	If we're retransmitting the packet, wait for
+		 *	the timer to fire.  Otherwise, send the packet now.
 		 */
-		if (u->timer.ev) {
+		if (u->timer.count > 1) {
 			continue;
 		}
 
@@ -2396,6 +2375,26 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 	 *	Insert the new packet into the thread queue.
 	 */
 	state_transition(u, PACKET_STATE_THREAD);
+
+	/*
+	 *	Start the retransmission timers.
+	 */
+	u->link->time_sent = fr_time();
+	fr_time_to_timeval(&u->timer.start, u->link->time_sent);
+
+	if (rr_track_start(&u->timer) < 0) {
+		RDEBUG("%s - Failed starting retransmit tracking", inst->parent->name);
+		talloc_free(u);
+		return RLM_MODULE_FAIL;
+	}
+
+	if (fr_event_timer_insert(u, t->el, &u->timer.ev, &u->timer.next,
+				  response_timeout, u) < 0) {
+		RDEBUG("%s - Failed starting retransmit tracking",
+		       inst->parent->name);
+		talloc_free(u);
+		return RLM_MODULE_FAIL;
+	}
 
 	/*
 	 *	There are OTHER pending writes, wait for the event
