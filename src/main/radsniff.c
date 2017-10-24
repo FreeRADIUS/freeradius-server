@@ -987,7 +987,10 @@ static int _request_free(rs_request_t *request)
 
 	if (request->event) {
 		ret = fr_event_timer_delete(events, &request->event);
-		RS_ASSERT(ret);
+		if (ret < 0) {
+			fprintf(stderr, "Failed deleting timer: %s\n", fr_strerror());
+			RS_ASSERT(0 == 1);
+		}
 	}
 
 	fr_radius_free(&request->packet);
