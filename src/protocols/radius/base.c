@@ -865,11 +865,13 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 			return -1;
 		}
 		packet_ctx.vector = original + 4;
+		memcpy(packet + 4, packet_ctx.vector, AUTH_VECTOR_LEN);
 		break;
 
 #ifdef WITH_ACCOUNTING
 	case FR_CODE_ACCOUNTING_REQUEST:
 		packet_ctx.vector = nullvector;
+		memcpy(packet + 4, packet_ctx.vector, AUTH_VECTOR_LEN);
 		break;
 #endif
 
@@ -877,6 +879,7 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 	case FR_CODE_COA_REQUEST:
 	case FR_CODE_DISCONNECT_REQUEST:
 		packet_ctx.vector = nullvector;
+		memcpy(packet + 4, packet_ctx.vector, AUTH_VECTOR_LEN);
 		break;
 #endif
 
@@ -889,7 +892,6 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 	packet[1] = id;
 	packet[2] = 0;
 	packet[3] = total_length = RADIUS_HDR_LEN;
-	memcpy(packet + 4, packet_ctx.vector, AUTH_VECTOR_LEN);
 
 	/*
 	 *	Load up the configuration values for the user
