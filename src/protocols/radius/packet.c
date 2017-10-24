@@ -128,15 +128,11 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char
 	case FR_CODE_ACCESS_ACCEPT:
 	case FR_CODE_ACCESS_REJECT:
 	case FR_CODE_ACCESS_CHALLENGE:
-#ifdef WITH_ACCOUNTING
 	case FR_CODE_ACCOUNTING_RESPONSE:
-#endif
-#ifdef WITH_COA
 	case FR_CODE_COA_ACK:
 	case FR_CODE_COA_NAK:
 	case FR_CODE_DISCONNECT_ACK:
 	case FR_CODE_DISCONNECT_NAK:
-#endif
 		if (!original) {
 			fr_strerror_printf("Cannot decode response without request");
 			return -1;
@@ -144,18 +140,14 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char
 		packet_ctx.vector = original->vector;
 		break;
 
-#ifdef WITH_ACCOUNTING
 	case FR_CODE_ACCOUNTING_REQUEST:
 		memset(packet->vector, 0, sizeof(packet->vector));
 		break;
-#endif
 
-#ifdef WITH_COA
 	case FR_CODE_COA_REQUEST:
 	case FR_CODE_DISCONNECT_REQUEST:
 		memset(packet->vector, 0, sizeof(packet->vector));
 		break;
-#endif
 
 	default:
 		fr_strerror_printf("Cannot decode unknown packet code %d", packet->code);

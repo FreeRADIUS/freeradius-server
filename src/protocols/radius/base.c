@@ -850,15 +850,11 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 	case FR_CODE_ACCESS_ACCEPT:
 	case FR_CODE_ACCESS_REJECT:
 	case FR_CODE_ACCESS_CHALLENGE:
-#ifdef WITH_ACCOUNTING
 	case FR_CODE_ACCOUNTING_RESPONSE:
-#endif
-#ifdef WITH_COA
 	case FR_CODE_COA_ACK:
 	case FR_CODE_COA_NAK:
 	case FR_CODE_DISCONNECT_ACK:
 	case FR_CODE_DISCONNECT_NAK:
-#endif
 	case FR_CODE_PROTOCOL_ERROR:
 		if (!original) {
 			fr_strerror_printf("Cannot encode response without request");
@@ -868,20 +864,16 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 		memcpy(packet + 4, packet_ctx.vector, AUTH_VECTOR_LEN);
 		break;
 
-#ifdef WITH_ACCOUNTING
 	case FR_CODE_ACCOUNTING_REQUEST:
 		packet_ctx.vector = nullvector;
 		memcpy(packet + 4, packet_ctx.vector, AUTH_VECTOR_LEN);
 		break;
-#endif
 
-#ifdef WITH_COA
 	case FR_CODE_COA_REQUEST:
 	case FR_CODE_DISCONNECT_REQUEST:
 		packet_ctx.vector = nullvector;
 		memcpy(packet + 4, packet_ctx.vector, AUTH_VECTOR_LEN);
 		break;
-#endif
 
 	default:
 		fr_strerror_printf("Cannot encode unknown packet code %d", code);
