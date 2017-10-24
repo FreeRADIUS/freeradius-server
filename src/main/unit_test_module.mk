@@ -1,6 +1,5 @@
 TARGET	:= unit_test_module
 SOURCES := \
-	acct.c \
 	auth.c \
 	client.c \
 	crypt.c \

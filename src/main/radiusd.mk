@@ -1,5 +1,5 @@
 TARGET	:= radiusd
-SOURCES := acct.c \
+SOURCES := \
     auth.c \
     conduit.c \
     client.c \

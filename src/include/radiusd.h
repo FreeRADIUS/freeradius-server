@@ -371,9 +371,6 @@ typedef enum {
  *	Function prototypes.
  */
 
-/* acct.c */
-rlm_rcode_t	rad_accounting(REQUEST *);
-
 rlm_rcode_t    	rad_coa_recv(REQUEST *request);
 
 /* session.c */
