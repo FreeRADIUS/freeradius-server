@@ -441,14 +441,19 @@ int virtual_servers_instantiate(UNUSED CONF_SECTION *config)
 			    (strcmp(name, "send") != 0)) continue;
 
 			if (!cf_data_find(subcs, unlang_group_t, NULL)) {
+				char const *name2;
+
+				name2 = cf_section_name2(subcs);
+				if (!name2) name2 = "";
+
 				if (check_config) {
 					cf_log_err(subcs, "%s %s { ... } section is unused",
-						    name, cf_section_name2(subcs));
+						    name, name2);
 					return -1;
 				}
 
 				cf_log_warn(subcs, "%s %s { ... } section is unused",
-					name, cf_section_name2(subcs));
+					name, name2);
 			}
 		}
 	}
