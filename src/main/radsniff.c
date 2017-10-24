@@ -986,8 +986,10 @@ static int _request_free(rs_request_t *request)
 	}
 
 	if (request->event) {
-		ret = fr_event_timer_delete(events, &request->event);
-		if (ret < 0) {
+		int rcode;
+
+		rcode = fr_event_timer_delete(events, &request->event);
+		if (rcode < 0) {
 			fprintf(stderr, "Failed deleting timer: %s\n", fr_strerror());
 			RS_ASSERT(0 == 1);
 		}
