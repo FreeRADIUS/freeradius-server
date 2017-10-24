@@ -395,6 +395,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	 */
 	if (track->timestamp != request_time) {
 		DEBUG3("Suppressing reply as we have a newer packet");
+		(void) fr_radius_tracking_entry_delete(inst->ft, track);
 		return buffer_len;
 	}
 
@@ -412,7 +413,11 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 				     &address->dst_ipaddr, address->dst_port,
 				     address->if_index,
 				     &address->src_ipaddr, address->src_port);
-		if (data_size < 0) return data_size;
+		if (data_size < 0) {
+		done:
+			(void) fr_radius_tracking_entry_delete(inst->ft, track);
+			return data_size;
+		}
 
 	} else {
 		/*
@@ -437,8 +442,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	 */
 	if ((track->data[0] != FR_CODE_ACCESS_REQUEST) || !inst->el) {
 		DEBUG3("Not Access-Request.  Deleting tracking table entry");
-		(void) fr_radius_tracking_entry_delete(inst->ft, track);
-		return data_size;
+		goto done;
 	}
 
 	/*
@@ -447,8 +451,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	if (fr_radius_tracking_entry_reply(inst->ft, track, reply_time,
 					   buffer, buffer_len) < 0) {
 		DEBUG3("Failed adding reply to tracking table");
-		(void) fr_radius_tracking_entry_delete(inst->ft, track);
-		return data_size;
+		goto done;
 	}
 
 	/*
@@ -459,15 +462,18 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	tv.tv_sec += inst->cleanup_delay;
 
 	/*
-	 *	Clean up after a while.
+	 *	Set cleanup timer.
 	 */
 	if (fr_event_timer_insert(NULL, inst->el, &track->ev,
 				  &tv, mod_cleanup_delay, track) < 0) {
 		DEBUG3("Failed adding cleanup timer");
-		(void) fr_radius_tracking_entry_delete(inst->ft, track);
-		return data_size;
+		goto done;
 	}
 
+	/*
+	 *	Don't delete the tracking entry.  The cleanup timer
+	 *	will do that.
+	 */
 	return data_size;
 }
 
