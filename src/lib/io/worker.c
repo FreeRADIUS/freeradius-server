@@ -950,6 +950,7 @@ nak:
 	 *	strict time priority.  Once they are in the list, they
 	 *	are only removed when the request is done / free'd.
 	 */
+	rad_assert(request->time_order_id < 0);
 	(void) fr_heap_insert(worker->time_order, request);
 
 	/*
