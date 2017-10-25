@@ -39,8 +39,17 @@ RCSID("$Id$")
 
 #include "eap_types.h"
 #include "eap_sim.h"
+#include "comp128.h"
 
 extern int sha1_data_problems;
+
+#undef DEBUG
+#undef DEBUG2
+#undef ERROR
+
+#define DEBUG if (fr_debug_lvl && fr_log_fp) fr_printf_log
+#define DEBUG2 if ((fr_debug_lvl >= 2) && fr_log_fp) fr_printf_log
+#define ERROR if (fr_debug_lvl && fr_log_fp) fr_printf_log
 
 #define USEC 1000000
 
@@ -86,6 +95,7 @@ typedef struct rc_eap_md5_context {
 typedef struct rc_eap_context {
 	int eap_type;	//!< contains the EAP-Type
 	char password[256];	//!< copy of User-Password (or CHAP-Password).
+	VALUE_PAIR	*ki;
 	union {
 		rc_eap_sim_context_t sim;
 		rc_eap_md5_context_t md5;
@@ -137,6 +147,12 @@ struct rc_transaction {
 	char		password[256];
 	char const	*name;	//!< Test name (as specified in the request).
 };
+
+typedef struct eap_sim_server_state {
+	enum eapsim_serverstates state;
+	struct eapsim_keys keys;
+	int  sim_id;
+} eap_sim_state_t;
 
 
 static TALLOC_CTX *autofree;
@@ -295,15 +311,15 @@ static int rc_load_input(TALLOC_CTX *ctx, char const *filename, rc_input_vps_lis
 
 	/* Determine where to read the VP's from. */
 	if (filename && strcmp(filename, "-") != 0) {
-		DEBUG2("Opening input file: %s", filename);
+		DEBUG2("Opening input file: %s\n", filename);
 		file_in = fopen(filename, "r");
 		if (!file_in) {
-			ERROR("Error opening %s: %s", filename, strerror(errno));
+			ERROR("Error opening %s: %s\n", filename, strerror(errno));
 			return 0;
 		}
 		input = filename;
 	} else {
-		DEBUG2("Reading input vps from stdin");
+		DEBUG2("Reading input vps from stdin\n");
 		file_in = stdin;
 		input = "stdin";
 	}
@@ -314,7 +330,7 @@ static int rc_load_input(TALLOC_CTX *ctx, char const *filename, rc_input_vps_lis
 		MEM(request = talloc_zero(ctx, rc_input_vps_t));
 
 		if (fr_pair_list_afrom_file(request, &request->vps_in, file_in, &file_done) < 0) {
-			ERROR("Error parsing entry %u from input: %s", input_num, input);
+			ERROR("Error parsing entry %u from input: %s\n", input_num, input);
 			talloc_free(request);
 			break;
 		}
@@ -338,7 +354,7 @@ static int rc_load_input(TALLOC_CTX *ctx, char const *filename, rc_input_vps_lis
 	if (file_in != stdin) fclose(file_in);
 
 	/* And we're done. */
-	DEBUG("Read %d element(s) from input: %s", list->size, input);
+	DEBUG("Read %d element(s) from input: %s\n", list->size, input);
 	return 1;
 }
 
@@ -399,7 +415,7 @@ static int rc_init_packet(rc_transaction_t *trans)
 		case PW_PACKET_SRC_PORT:
 			if ((vp->vp_integer < 1024) ||
 				(vp->vp_integer > 65535)) {
-				DEBUG("Invalid value '%u' for Packet-Src-Port", vp->vp_integer);
+				DEBUG("Invalid value '%u' for Packet-Src-Port\n", vp->vp_integer);
 			} else {
 				packet->src_port = (vp->vp_integer & 0xffff);
 			}
@@ -441,7 +457,7 @@ static int rc_init_packet(rc_transaction_t *trans)
 
 			da = dict_attrbyvalue(PW_DIGEST_ATTRIBUTES, 0);
 			if (!da) {
-				ERROR("Attribute 'Digest-Attributes' not found by value");
+				ERROR("Attribute 'Digest-Attributes' not found by value\n");
 				exit(1);
 			}
 			vp->da = da;
@@ -485,7 +501,7 @@ static int rc_init_packet(rc_transaction_t *trans)
 
 	if (packet->dst_ipaddr.af == AF_UNSPEC) {
 		if (!server_addr_init) {
-			DEBUG("No server was given, and input entry %u did not contain Packet-Dst-IP-Address, ignored.", trans->input_vps->num);
+			DEBUG("No server was given, and input entry %u did not contain Packet-Dst-IP-Address, ignored.\n", trans->input_vps->num);
 			return 0;
 		}
 		packet->dst_ipaddr = server_ipaddr;
@@ -494,7 +510,7 @@ static int rc_init_packet(rc_transaction_t *trans)
 	/* Use the default set on the command line. */
 	if (packet->code == PW_CODE_UNDEFINED) {
 		if (packet_code == PW_CODE_UNDEFINED) {
-			DEBUG("No packet type was given, and input entry %u did not contain Packet-Type, ignored.", trans->input_vps->num);
+			DEBUG("No packet type was given, and input entry %u did not contain Packet-Type, ignored.\n", trans->input_vps->num);
 			return 0;
 		}
 		packet->code = packet_code;
@@ -504,7 +520,7 @@ static int rc_init_packet(rc_transaction_t *trans)
 	if (packet->dst_port == 0) {
 		rc_get_port(packet->code, &packet->dst_port);
 		if (packet->dst_port == 0) {
-			DEBUG("Can't determine destination port for input entry %u, ignored.", trans->input_vps->num);
+			DEBUG("Can't determine destination port for input entry %u, ignored.\n", trans->input_vps->num);
 			return 0;
 		}
 	}
@@ -545,8 +561,12 @@ static void rc_build_eap_context(rc_transaction_t *trans)
 		if (vp) {
 			strlcpy(trans->eap_context->password, vp->vp_strvalue, sizeof(trans->eap_context->password));
 		}
+
+		vp = fr_pair_find_by_num(packet->vps, PW_EAP_SIM_KI, 0, TAG_ANY);
+		if (vp) trans->eap_context->ki = fr_pair_copy(autofree, vp);
 	}
 }
+
 
 /** Grab an element from the input list. Initialize a new transaction context, using this element.
  */
@@ -605,7 +625,7 @@ static void rc_finish_transaction(rc_transaction_t *trans)
 	num_ongoing --;
 	num_finished ++;
 
-	DEBUG4("pl: %d, ev: %d, in: %d", fr_packet_list_num_outgoing(pl), fr_event_list_num_elements(ev_list), rc_vps_list_in.size);
+	DEBUG4("pl: %d, ev: %d, in: %d\n", fr_packet_list_num_outgoing(pl), fr_event_list_num_elements(ev_list), rc_vps_list_in.size);
 }
 
 
@@ -649,6 +669,82 @@ static void rc_cleanresp(RADIUS_PACKET *resp)
 	}
 }
 
+
+static void generate_triplets(RADIUS_PACKET *packet, VALUE_PAIR *ki, uint8_t const *ch)
+{
+	int i, idx;
+	eap_sim_state_t ess;
+
+	for (idx = 0; idx < 3; idx++) {
+		VALUE_PAIR *vp;
+		char *p;
+		char buffer[33];	/* 32 hexits (16 bytes) + 1 */
+
+		for (i = 0; i < EAPSIM_RAND_SIZE; i++) {
+			ess.keys.rand[idx][i] = ch[(idx * EAPSIM_RAND_SIZE) + i];
+		}
+
+		/*
+		 *	<sigh>, we always do version 1.
+		 */
+		switch (EAP_SIM_VERSION) {
+		case 1:
+			comp128v1(ess.keys.sres[idx], ess.keys.Kc[idx], ki->vp_octets, ess.keys.rand[idx]);
+			break;
+
+		case 2:
+			comp128v23(ess.keys.sres[idx], ess.keys.Kc[idx], ki->vp_octets, ess.keys.rand[idx],
+				   true);
+			break;
+
+		case 3:
+			comp128v23(ess.keys.sres[idx], ess.keys.Kc[idx], ki->vp_octets, ess.keys.rand[idx],
+				   false);
+			break;
+
+		case 4:
+			DEBUG("Comp128-4 algorithm is not supported as details have not yet been published. "
+			      "If you have details of this algorithm please contact the FreeRADIUS "
+			      "maintainers\n");
+			break;
+
+		default:
+			DEBUG("Unknown/unsupported algorithm Comp128-4\n");
+		}
+
+
+		DEBUG2("Generated following triplets for round %i:\n", idx);
+
+		p = buffer;
+		for (i = 0; i < EAPSIM_RAND_SIZE; i++) {
+			p += sprintf(p, "%02x", ess.keys.rand[idx][i]);
+		}
+		DEBUG2("RAND%d : 0x%s\n", idx,  buffer);
+		vp = fr_pair_afrom_num(packet, PW_EAP_SIM_RAND1 + idx, 0);
+		fr_pair_value_memcpy(vp, ess.keys.rand[idx], EAPSIM_RAND_SIZE);
+		fr_pair_add(&packet->vps, vp);
+
+		p = buffer;
+		for (i = 0; i < EAPSIM_SRES_SIZE; i++) {
+			p += sprintf(p, "%02x", ess.keys.sres[idx][i]);
+		}
+		DEBUG2("SRES%d : 0x%s\n", idx, buffer);
+		vp = fr_pair_afrom_num(packet, PW_EAP_SIM_SRES1 + idx, 0);
+		fr_pair_value_memcpy(vp,  ess.keys.sres[idx], EAPSIM_SRES_SIZE);
+		fr_pair_add(&packet->vps, vp);
+
+		p = buffer;
+		for (i = 0; i < EAPSIM_KC_SIZE; i++) {
+			p += sprintf(p, "%02x", ess.keys.Kc[idx][i]);
+		}
+		DEBUG2("Kc%d  : 0x%s\n", idx, buffer);
+		vp = fr_pair_afrom_num(packet, PW_EAP_SIM_KC1 + idx, 0);
+		fr_pair_value_memcpy(vp, ess.keys.Kc[idx], EAPSIM_KC_SIZE);
+		fr_pair_add(&packet->vps, vp);
+	}
+}
+
+
 /*
  * we got an EAP-Request/Sim/Start message in a legal state.
  *
@@ -662,12 +758,13 @@ static int rc_process_eap_start(rc_eap_context_t *eap_context,
 	uint16_t const *versions;
 	uint16_t selectedversion;
 	unsigned int i,versioncount;
+	VALUE_PAIR *ki;
 
 	/* form new response clear of any EAP stuff */
 	rc_cleanresp(rep);
 
 	if ((vp = fr_pair_find_by_num(req->vps, PW_EAP_SIM_VERSION_LIST, 0, TAG_ANY)) == NULL) {
-		ERROR("illegal start message has no VERSION_LIST");
+		ERROR("illegal start message has no VERSION_LIST\n");
 		return 0;
 	}
 
@@ -676,7 +773,7 @@ static int rc_process_eap_start(rc_eap_context_t *eap_context,
 	/* verify that the attribute length is big enough for a length field */
 	if (vp->vp_length < 4)
 	{
-		ERROR("start message has illegal VERSION_LIST. Too short: %u", (unsigned int) vp->vp_length);
+		ERROR("start message has illegal VERSION_LIST. Too short: %u\n", (unsigned int) vp->vp_length);
 		return 0;
 	}
 
@@ -686,7 +783,7 @@ static int rc_process_eap_start(rc_eap_context_t *eap_context,
 	 */
 	if ((unsigned)vp->vp_length <= (versioncount*2 + 2))
 	{
-		ERROR("start message is too short. Claimed %d versions does not fit in %u bytes", versioncount, (unsigned int) vp->vp_length);
+		ERROR("start message is too short. Claimed %d versions does not fit in %u bytes\n", versioncount, (unsigned int) vp->vp_length);
 		return 0;
 	}
 
@@ -711,10 +808,10 @@ static int rc_process_eap_start(rc_eap_context_t *eap_context,
 	}
 	if (selectedversion == 0)
 	{
-		ERROR("eap-sim start message. No compatible version found. We need %d", EAP_SIM_VERSION);
+		ERROR("eap-sim start message. No compatible version found. We need %d\n", EAP_SIM_VERSION);
 		for (i=0; i < versioncount; i++)
 		{
-			ERROR("\tfound version %d",
+			ERROR("\tfound version %d\n",
 				ntohs(versions[i+1]));
 		}
 	}
@@ -732,7 +829,7 @@ static int rc_process_eap_start(rc_eap_context_t *eap_context,
 	if (!fullauthidreq_vp ||
 	   anyidreq_vp != NULL ||
 	   permanentidreq_vp != NULL) {
-		ERROR("start message has %sanyidreq, %sfullauthid and %spermanentid. Illegal combination.",
+		ERROR("start message has %sanyidreq, %sfullauthid and %spermanentid. Illegal combination.\n",
 			(anyidreq_vp != NULL ? "a ": "no "),
 			(fullauthidreq_vp != NULL ? "a ": "no "),
 			(permanentidreq_vp != NULL ? "a ": "no "));
@@ -796,7 +893,7 @@ static int rc_process_eap_start(rc_eap_context_t *eap_context,
 		vp = fr_pair_find_by_num(rep->vps, PW_USER_NAME, 0, TAG_ANY);
 		if (!vp)
 		{
-			ERROR("eap-sim: We need to have a User-Name attribute!");
+			ERROR("eap-sim: We need to have a User-Name attribute!\n");
 			return 0;
 		}
 		newvp = fr_pair_afrom_num(rep, PW_EAP_SIM_IDENTITY, 0);
@@ -815,8 +912,14 @@ static int rc_process_eap_start(rc_eap_context_t *eap_context,
 		eap_context->eap.sim.keys.identitylen = idlen;
 	}
 
+	ki = fr_pair_find_by_num(req->vps, PW_EAP_SIM_KI, 0, TAG_ANY);
+	if (ki && !fr_pair_find_by_num(req->vps, PW_EAP_SIM_RAND1, 0, TAG_ANY)) {
+	    generate_triplets(req, ki, NULL);
+	}
+
 	return 1;
 }
+
 
 /*
  * we got an EAP-Request/Sim/Challenge message in a legal state.
@@ -841,7 +944,7 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 	mac   = fr_pair_find_by_num(req->vps, PW_EAP_SIM_MAC, 0, TAG_ANY);
 	randvp= fr_pair_find_by_num(req->vps, PW_EAP_SIM_RAND, 0, TAG_ANY);
 	if (!mac || !randvp) {
-		ERROR("challenge message needs to contain RAND and MAC");
+		ERROR("challenge message needs to contain RAND and MAC\n");
 		return 0;
 	}
 
@@ -864,24 +967,54 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 	  if (!randcfgvp[0] ||
 	     !randcfgvp[1] ||
 	     !randcfgvp[2]) {
-	    ERROR("needs to have rand1, 2 and 3 set.");
-	    return 0;
+		  int i;
+		  VALUE_PAIR *ki;
+
+		  /*
+		   *	Generate a new RAND value, and derive Kc and SRES from
+		   *	Ki, but only if we don't already have the random
+		   *	numbers.
+		   */
+		  ki = eap_context->ki;
+		  if (!ki) {
+			  ERROR("Need EAP-SIM-Rand1, EAP-SIM-Rand2, and EAP-SIM-Rand3\n");
+			  return 0;
+		  }
+
+		  for (i = 0; i < 3; i++) {
+			  fr_pair_delete_by_num(&req->vps, PW_EAP_SIM_RAND1 + i, 0, TAG_ANY);
+			  fr_pair_delete_by_num(&req->vps, PW_EAP_SIM_SRES1 + i, 0, TAG_ANY);
+			  fr_pair_delete_by_num(&req->vps, PW_EAP_SIM_KC1 + i, 0, TAG_ANY);
+		  }
+
+		  generate_triplets(rep, ki, randvp->vp_octets + 2);
+
+		  randcfgvp[0] = fr_pair_find_by_num(rep->vps, PW_EAP_SIM_RAND1, 0, TAG_ANY);
+		  randcfgvp[1] = fr_pair_find_by_num(rep->vps, PW_EAP_SIM_RAND2, 0, TAG_ANY);
+		  randcfgvp[2] = fr_pair_find_by_num(rep->vps, PW_EAP_SIM_RAND3, 0, TAG_ANY);
+
+		  if (!randcfgvp[0] ||
+		      !randcfgvp[1] ||
+		      !randcfgvp[2]) {
+			  ERROR("Failed to create triplets\n");
+			  return 0;
+		  }
 	  }
 
 	  if (memcmp(randcfg[0], randcfgvp[0]->vp_octets, EAPSIM_RAND_SIZE)!=0 ||
-	     memcmp(randcfg[1], randcfgvp[1]->vp_octets, EAPSIM_RAND_SIZE)!=0 ||
-	     memcmp(randcfg[2], randcfgvp[2]->vp_octets, EAPSIM_RAND_SIZE)!=0) {
-	    int rnum,i;
+	      memcmp(randcfg[1], randcfgvp[1]->vp_octets, EAPSIM_RAND_SIZE)!=0 ||
+	      memcmp(randcfg[2], randcfgvp[2]->vp_octets, EAPSIM_RAND_SIZE)!=0) {
+		  int rnum, i;
 
-	    ERROR("one of rand 1,2,3 didn't match");
-	    for (rnum = 0; rnum < 3; rnum++) {
-	      ERROR("rand %d\trecv\tconfig", rnum);
-	      for (i = 0; i < EAPSIM_RAND_SIZE; i++) {
-		      fprintf(fr_log_fp, "\t%02x\t%02x\n",
-			      randcfg[rnum][i], randcfgvp[rnum]->vp_octets[i]);
-	      }
-	    }
-	    return 0;
+		  ERROR("one of rand 1,2,3 didn't match\n");
+		  for (rnum = 0; rnum < 3; rnum++) {
+			  ERROR("rand %d\trecv\tconfig\n", rnum);
+			  for (i = 0; i < EAPSIM_RAND_SIZE; i++) {
+				  fprintf(fr_log_fp, "\t%02x\t%02x\n",
+					  randcfg[rnum][i], randcfgvp[rnum]->vp_octets[i]);
+			  }
+		  }
+		  return 0;
 	  }
 	}
 
@@ -899,7 +1032,7 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 	if (!sres1 ||
 	   !sres2 ||
 	   !sres3) {
-		ERROR("needs to have sres1, 2 and 3 set.");
+		ERROR("needs to have sres1, 2 and 3 set.\n");
 		return 0;
 	}
 	memcpy(eap_context->eap.sim.keys.sres[0], sres1->vp_strvalue, sizeof(eap_context->eap.sim.keys.sres[0]));
@@ -913,7 +1046,7 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 	if (!Kc1 ||
 	   !Kc2 ||
 	   !Kc3) {
-		ERROR("needs to have Kc1, 2 and 3 set.");
+		ERROR("needs to have Kc1, 2 and 3 set.\n");
 		return 0;
 	}
 	memcpy(eap_context->eap.sim.keys.Kc[0], Kc1->vp_strvalue, sizeof(eap_context->eap.sim.keys.Kc[0]));
@@ -923,7 +1056,7 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 	/* all set, calculate keys */
 	eapsim_calculate_keys(&eap_context->eap.sim.keys);
 
-	if (rad_debug_lvl) {
+	if (rad_debug_lvl > 2) {
 	  eapsim_dump_mk(&eap_context->eap.sim.keys);
 	}
 
@@ -931,11 +1064,11 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 	if (eapsim_checkmac(NULL, req->vps, eap_context->eap.sim.keys.K_aut,
 			   eap_context->eap.sim.keys.nonce_mt, sizeof(eap_context->eap.sim.keys.nonce_mt),
 			   calcmac)) {
-		DEBUG("MAC check succeed");
+		DEBUG2("MAC check succeed\n");
 	} else {
 		int i, j;
 		j=0;
-		DEBUG("calculated MAC (");
+		DEBUG("calculated MAC (\n");
 		for (i = 0; i < 20; i++) {
 			if (j==4) {
 				printf("_");
@@ -943,9 +1076,9 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 			}
 			j++;
 
-			DEBUG("%02x", calcmac[i]);
+			DEBUG("%02x\n", calcmac[i]);
 		}
-		DEBUG("did not match");
+		DEBUG("did not match\n");
 		return 0;
 	}
 
@@ -992,7 +1125,7 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
                            RADIUS_PACKET *req, RADIUS_PACKET *resp)
 {
 	enum eapsim_clientstates state, newstate;
-	enum eapsim_subtype subtype;
+	enum eapsim_subtype subtype, newsubtype;
 	VALUE_PAIR *vp, *statevp, *radstate, *eapid;
 	char statenamebuf[32], subtypenamebuf[32];
 
@@ -1030,6 +1163,10 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 	}
 	subtype = vp->vp_integer;
 
+	DEBUG2("IN state %s subtype %s\n",
+	      sim_state2name(state, statenamebuf, sizeof(statenamebuf)),
+	      sim_subtype2name(subtype, subtypenamebuf, sizeof(subtypenamebuf)));
+
 	/*
 	 * look for the appropriate state, and process incoming message
 	 */
@@ -1044,9 +1181,9 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 		case EAPSIM_NOTIFICATION:
 		case EAPSIM_REAUTH:
 		default:
-			ERROR("sim in state %s message %s is illegal. Reply dropped.",
-				sim_state2name(state, statenamebuf, sizeof(statenamebuf)),
-				sim_subtype2name(subtype, subtypenamebuf, sizeof(subtypenamebuf)));
+			ERROR("sim in state %s message %s is illegal. Reply dropped.\n",
+			      sim_state2name(state, statenamebuf, sizeof(statenamebuf)),
+			      sim_subtype2name(subtype, subtypenamebuf, sizeof(subtypenamebuf)));
 			/* invalid state, drop message */
 			return 0;
 		}
@@ -1064,7 +1201,7 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 			break;
 
 		default:
-			ERROR("sim in state %s message %s is illegal. Reply dropped.",
+			ERROR("sim in state %s message %s is illegal. Reply dropped.\n",
 				sim_state2name(state, statenamebuf, sizeof(statenamebuf)),
 				sim_subtype2name(subtype, subtypenamebuf, sizeof(subtypenamebuf)));
 			/* invalid state, drop message */
@@ -1074,7 +1211,7 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 
 
 	default:
-		ERROR("sim in illegal state %s",
+		ERROR("sim in illegal state %s\n",
 			sim_state2name(state, statenamebuf, sizeof(statenamebuf)));
 		return 0;
 	}
@@ -1087,6 +1224,18 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 
 	/* copy the radius state object in */
 	fr_pair_replace(&(resp->vps), radstate);
+
+	vp = fr_pair_find_by_num(req->vps, PW_EAP_SIM_SUBTYPE, 0, TAG_ANY);
+	newsubtype = vp->vp_integer;
+
+
+	DEBUG2("MOVE from state %s subtype %s\n",
+	      sim_state2name(state, statenamebuf, sizeof(statenamebuf)),
+	      sim_subtype2name(subtype, subtypenamebuf, sizeof(subtypenamebuf)));
+
+	DEBUG2("       to state %s subtype %s\n",
+	      sim_state2name(newstate, statenamebuf, sizeof(statenamebuf)),
+	      sim_subtype2name(newsubtype, subtypenamebuf, sizeof(subtypenamebuf)));
 
 	statevp->vp_integer = newstate;
 	return 1;
@@ -1106,20 +1255,20 @@ static int rc_respond_eap_md5(rc_eap_context_t *eap_context,
 
 	if ((state = fr_pair_list_copy_by_num(NULL, req->vps, PW_STATE, 0, TAG_ANY)) == NULL)
 	{
-		ERROR("no state attribute found");
+		ERROR("no state attribute found\n");
 		return 0;
 	}
 
 	if ((id = fr_pair_list_copy_by_num(NULL, req->vps, PW_EAP_ID, 0, TAG_ANY)) == NULL)
 	{
-		ERROR("no EAP-ID attribute found");
+		ERROR("no EAP-ID attribute found\n");
 		return 0;
 	}
 	identifier = id->vp_integer;
 
 	if ((vp = fr_pair_find_by_num(req->vps, PW_EAP_TYPE_BASE+PW_EAP_MD5, 0, TAG_ANY)) == NULL)
 	{
-		ERROR("no EAP-MD5 attribute found");
+		ERROR("no EAP-MD5 attribute found\n");
 		return 0;
 	}
 
@@ -1130,7 +1279,7 @@ static int rc_respond_eap_md5(rc_eap_context_t *eap_context,
 	/* sanitize items */
 	if (valuesize > vp->vp_length)
 	{
-		ERROR("md5 valuesize if too big (%u > %u)",
+		ERROR("md5 valuesize if too big (%u > %u)\n",
 			(unsigned int) valuesize, (unsigned int) vp->vp_length);
 		return 0;
 	}
@@ -1185,17 +1334,17 @@ static void rc_add_socket(fr_ipaddr_t *src_ipaddr, uint16_t src_port, fr_ipaddr_
 
 	mysockfd = fr_socket(src_ipaddr, src_port);
 	if (mysockfd < 0) {
-		ERROR("Failed to create new socket: %s", fr_strerror());
+		ERROR("Failed to create new socket: %s\n", fr_strerror());
 		exit(1);
 	}
 
 	if (!fr_packet_list_socket_add(pl, mysockfd, ipproto, dst_ipaddr, dst_port, NULL)) {
-		ERROR("Failed to add new socket: %s", fr_strerror());
+		ERROR("Failed to add new socket: %s\n", fr_strerror());
 		exit(1);
 	}
 
 	num_sockets ++;
-	DEBUG("Added new socket: %d (num sockets: %d)", mysockfd, num_sockets);
+	DEBUG("Added new socket: %d (num sockets: %d)\n", mysockfd, num_sockets);
 }
 
 /** Send one packet for a transaction.
@@ -1228,7 +1377,7 @@ static int rc_send_one_packet(rc_transaction_t *trans, RADIUS_PACKET **packet_p)
 				break;
 			}
 			if (nb_sock_add >= 1) {
-				ERROR("Added %d new socket(s), but still could not get an ID (currently: %d outgoing requests).",
+				ERROR("Added %d new socket(s), but still could not get an ID (currently: %d outgoing requests).\n",
 					nb_sock_add, fr_packet_list_num_outgoing(pl));
 				exit(1);
 			}
@@ -1250,12 +1399,12 @@ static int rc_send_one_packet(rc_transaction_t *trans, RADIUS_PACKET **packet_p)
 	/*
 	 *	Send the packet.
 	 */
-	DEBUG("Transaction: %u, sending packet: %u (id: %u)...", trans->id, trans->num_packet, packet->id);
+	DEBUG2("Transaction: %u, sending packet: %u (id: %u)...\n", trans->id, trans->num_packet, packet->id);
 
 	gettimeofday(&packet->timestamp, NULL); /* set outgoing packet timestamp. */
 
 	if (rad_send(packet, NULL, secret) < 0) {
-		ERROR("Failed to send packet (sockfd: %d, id: %d): %s",
+		ERROR("Failed to send packet (sockfd: %d, id: %d): %s\n",
 			packet->sockfd, packet->id, fr_strerror());
 	}
 
@@ -1294,7 +1443,7 @@ static void rc_deallocate_id(rc_transaction_t *trans)
 
 	RADIUS_PACKET *packet = trans->packet;
 
-	DEBUG2("Deallocating (sockfd: %d, id: %d)", packet->sockfd, packet->id);
+	DEBUG2("Deallocating (sockfd: %d, id: %d)\n", packet->sockfd, packet->id);
 
 	/*
 	 *	One more unused RADIUS ID.
@@ -1360,7 +1509,7 @@ static int rc_recv_one_packet(struct timeval *tv_wait_time)
 	 */
 	reply = fr_packet_list_recv(pl, &set);
 	if (!reply) {
-		ERROR("Received bad packet: %s", fr_strerror());
+		ERROR("Received bad packet: %s\n", fr_strerror());
 		return -1;	/* bad packet */
 	}
 
@@ -1381,7 +1530,7 @@ static int rc_recv_one_packet(struct timeval *tv_wait_time)
 		/* got reply to packet we didn't send.
 		 * (or maybe we sent it, got no response, freed the ID. Then server responds to first request.)
 		 */
-		DEBUG("No outstanding request was found for reply from %s, port %d (sockfd: %d, id: %d)",
+		DEBUG("No outstanding request was found for reply from %s, port %d (sockfd: %d, id: %d)\n",
 			inet_ntop(reply->src_ipaddr.af, &reply->src_ipaddr.ipaddr, buffer, sizeof(buffer)),
 			reply->src_port, reply->sockfd, reply->id);
 		rad_free(&reply);
@@ -1400,7 +1549,7 @@ static int rc_recv_one_packet(struct timeval *tv_wait_time)
 		 * (or maybe this is a response to another packet we sent, for which we got no response,
 		 * freed the ID, then reused it. Then server responds to first packet.)
 		 */
-		DEBUG("Conflicting response authenticator for reply from %s (sockfd: %d, id: %d)",
+		DEBUG("Conflicting response authenticator for reply from %s (sockfd: %d, id: %d)\n",
 			inet_ntop(reply->src_ipaddr.af, &reply->src_ipaddr.ipaddr, buffer, sizeof(buffer)),
 			reply->sockfd, reply->id);
 
@@ -1416,7 +1565,7 @@ static int rc_recv_one_packet(struct timeval *tv_wait_time)
 
 	if (rad_decode(trans->reply, trans->packet, secret) != 0) {
 		/* This can fail if packet contains too many attributes. */
-		DEBUG("Failed decoding reply");
+		DEBUG("Failed decoding reply\n");
 		goto packet_done;
 	}
 
@@ -1427,7 +1576,7 @@ static int rc_recv_one_packet(struct timeval *tv_wait_time)
 		rc_unmap_eap_methods(trans->reply);
 	}
 
-	DEBUG("Transaction: %u, received packet (id: %u).", trans->id, trans->reply->id);
+	DEBUG2("Transaction: %u, received packet (id: %u).\n", trans->id, trans->reply->id);
 
 	if (fr_debug_lvl > 0) fr_packet_header_print(fr_log_fp, trans->reply, true);
 	if (fr_debug_lvl > 0) vp_printlist(fr_log_fp, trans->reply->vps);
@@ -1467,9 +1616,6 @@ static int rc_recv_one_packet(struct timeval *tv_wait_time)
 		}
 	}
 
-	goto eap_done;
-
-eap_done:
 	/* EAP transaction ends here (no more requests from EAP server). */
 
 	/*
@@ -1484,6 +1630,7 @@ eap_done:
 		DEBUG("EAP transaction finished, but reply does not contain EAP-Code = Success");
 		goto packet_done;
 	}
+
 	goto packet_done;
 
 packet_done:
@@ -1537,7 +1684,7 @@ static void rc_evprep_packet_timeout(rc_transaction_t *trans)
 	timeradd(&tv_event, &tv_timeout, &tv_event);
 
 	if (!fr_event_insert(ev_list, rc_evcb_packet_timeout, (void *)trans, &tv_event, &trans->event)) {
-		ERROR("Failed to insert event");
+		ERROR("Failed to insert event\n");
 		exit(1);
 	}
 }
@@ -1721,7 +1868,7 @@ static void rc_resolve_hostname(char *server_arg)
 		}
 
 		if (ip_hton(&server_ipaddr, force_af, hostname, false) < 0) {
-			ERROR("%s: Failed to find IP address for host %s: %s", progname, hostname, strerror(errno));
+			ERROR("%s: Failed to find IP address for host %s: %s\n", progname, hostname, strerror(errno));
 			exit(1);
 		}
 		server_addr_init = true;
@@ -1823,12 +1970,12 @@ int main(int argc, char **argv)
 		case 'S':
 		       fp = fopen(optarg, "r");
 		       if (!fp) {
-			       ERROR("Error opening %s: %s",
+			       ERROR("Error opening %s: %s\n",
 				       optarg, fr_syserror(errno));
 			       exit(1);
 		       }
 		       if (fgets(filesecret, sizeof(filesecret), fp) == NULL) {
-			       ERROR("Error reading %s: %s",
+			       ERROR("Error reading %s: %s\n",
 				       optarg, fr_syserror(errno));
 			       exit(1);
 		       }
@@ -1843,7 +1990,7 @@ int main(int argc, char **argv)
 		       }
 
 		       if (strlen(filesecret) < 2) {
-			       ERROR("Secret in %s is too short", optarg);
+			       ERROR("Secret in %s is too short\n", optarg);
 			       exit(1);
 		       }
 		       secret = filesecret;
@@ -1874,7 +2021,7 @@ int main(int argc, char **argv)
 	 */
 	DEBUG2("including dictionary file %s/%s", main_config.dictionary_dir, RADIUS_DICTIONARY);
 	if (dict_init(main_config.dictionary_dir, RADIUS_DICTIONARY) != 0) {
-		ERROR("Errors reading dictionary: %s", fr_strerror());
+		ERROR("Errors reading dictionary: %s\n", fr_strerror());
 		exit(1);
 	}
 
@@ -1883,7 +2030,7 @@ int main(int argc, char **argv)
 	 */
 	int rcode = dict_read(radius_dir, RADIUS_DICTIONARY);
 	if (rcode == -1) {
-		ERROR("Errors reading %s/%s: %s", radius_dir, RADIUS_DICTIONARY, fr_strerror());
+		ERROR("Errors reading %s/%s: %s\n", radius_dir, RADIUS_DICTIONARY, fr_strerror());
 		exit(1);
 	}
 
@@ -1902,7 +2049,7 @@ int main(int argc, char **argv)
 	if (!isdigit((int) argv[2][0])) {
 		packet_code = fr_str2int(rc_request_types, argv[2], -2);
 		if (packet_code == -2) {
-			ERROR("Unrecognised request type \"%s\"", argv[2]);
+			ERROR("Unrecognised request type \"%s\"\n", argv[2]);
 			usage();
 		}
 	} else {
@@ -1925,7 +2072,7 @@ int main(int argc, char **argv)
 	INFO("Loading input data...");
 	if (!rc_load_input(autofree, filename, &rc_vps_list_in, 0)
 	    || rc_vps_list_in.size == 0) {
-		ERROR("No valid input. Nothing to send.");
+		ERROR("No valid input. Nothing to send.\n");
 		exit(EXIT_FAILURE);
 	}
 	INFO("Loaded: %d input element(s).", rc_vps_list_in.size);
@@ -1936,7 +2083,7 @@ int main(int argc, char **argv)
 	/* Initialize the events list. */
 	ev_list = fr_event_list_create(autofree, NULL);
 	if (!ev_list) {
-		ERROR("Failed to create event list");
+		ERROR("Failed to create event list\n");
 		exit(1);
 	}
 
@@ -2049,7 +2196,7 @@ static void rc_unmap_eap_methods(RADIUS_PACKET *rep)
 	/* find eap message */
 	e = eap_vp2packet(NULL, rep->vps);
 	if (!e) {
-		ERROR("%s", fr_strerror());
+		ERROR("failed decoding EAP: %s\n", fr_strerror());
 		return;
 	}
 	/* create EAP-ID and EAP-CODE attributes to start */
@@ -2131,7 +2278,7 @@ static int rc_unmap_eapsim_types(RADIUS_PACKET *r)
 
 	esvp = fr_pair_find_by_num(r->vps, PW_EAP_TYPE_BASE+PW_EAP_SIM, 0, TAG_ANY);
 	if (!esvp) {
-		ERROR("eap: EAP-Sim attribute not found");
+		ERROR("eap: EAP-Sim attribute not found\n");
 		return 0;
 	}
 
