@@ -871,31 +871,14 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 	  if (memcmp(randcfg[0], randcfgvp[0]->vp_octets, EAPSIM_RAND_SIZE)!=0 ||
 	     memcmp(randcfg[1], randcfgvp[1]->vp_octets, EAPSIM_RAND_SIZE)!=0 ||
 	     memcmp(randcfg[2], randcfgvp[2]->vp_octets, EAPSIM_RAND_SIZE)!=0) {
-	    int rnum,i,j;
+	    int rnum,i;
 
 	    ERROR("one of rand 1,2,3 didn't match");
 	    for (rnum = 0; rnum < 3; rnum++) {
-	      ERROR("received   rand %d: ", rnum);
-	      j=0;
+	      ERROR("rand %d\trecv\tconfig", rnum);
 	      for (i = 0; i < EAPSIM_RAND_SIZE; i++) {
-		if (j==4) {
-		  DEBUG("_");
-		  j=0;
-		}
-		j++;
-
-		ERROR("%02x", randcfg[rnum][i]);
-	      }
-	      ERROR("configured rand %d: ", rnum);
-	      j=0;
-	      for (i = 0; i < EAPSIM_RAND_SIZE; i++) {
-		if (j==4) {
-		  DEBUG("_");
-		  j=0;
-		}
-		j++;
-
-		ERROR("%02x", randcfgvp[rnum]->vp_octets[i]);
+		      fprintf(fr_log_fp, "\t%02x\t%02x\n",
+			      randcfg[rnum][i], randcfgvp[rnum]->vp_octets[i]);
 	      }
 	    }
 	    return 0;
