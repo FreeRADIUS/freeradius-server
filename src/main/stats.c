@@ -477,6 +477,17 @@ static void request_stats_addvp(REQUEST *request,
 	}
 }
 
+static void stats_error(REQUEST *request, char const *msg)
+{
+	VALUE_PAIR *vp;
+
+	vp = radius_pair_create(request->reply, &request->reply->vps,
+				PW_FREERADIUS_STATS_ERROR, VENDORPEC_FREERADIUS);
+	if (!vp) return;
+
+	fr_pair_value_strcpy(vp, msg);
+}
+
 
 void request_stats_reply(REQUEST *request)
 {
@@ -661,7 +672,12 @@ void request_stats_reply(REQUEST *request)
 						    &client->acct);
 			}
 #endif
-		} /* else client wasn't found, don't echo it back */
+		} else {
+			/*
+			 *	No such client.
+			 */
+			stats_error(request, "No such client");
+		}
 	}
 
 	/*
@@ -692,24 +708,33 @@ void request_stats_reply(REQUEST *request)
 		/*
 		 *	Not found: don't do anything
 		 */
-		if (!this) return;
+		if (!this) {
+			stats_error(request, "No such listener");
+			return;
+		}
 
 		fr_pair_add(&request->reply->vps,
 			fr_pair_copy(request->reply, server_ip));
 		fr_pair_add(&request->reply->vps,
 			fr_pair_copy(request->reply, server_port));
 
-		if (((flag->vp_integer & 0x01) != 0) &&
-		    ((request->listener->type == RAD_LISTEN_AUTH) ||
-		     (request->listener->type == RAD_LISTEN_NONE))) {
-			request_stats_addvp(request, authvp, &this->stats);
+		if ((flag->vp_integer & 0x01) != 0) {
+			if ((request->listener->type == RAD_LISTEN_AUTH) ||
+			    (request->listener->type == RAD_LISTEN_NONE)) {
+				request_stats_addvp(request, authvp, &this->stats);
+			} else {
+				stats_error(request, "Listener is not auth");
+			}
 		}
 
 #ifdef WITH_ACCOUNTING
-		if (((flag->vp_integer & 0x02) != 0) &&
-		    ((request->listener->type == RAD_LISTEN_ACCT) ||
-		     (request->listener->type == RAD_LISTEN_NONE))) {
-			request_stats_addvp(request, acctvp, &this->stats);
+		if ((flag->vp_integer & 0x02) != 0) {
+			if ((request->listener->type == RAD_LISTEN_ACCT) ||
+			    (request->listener->type == RAD_LISTEN_NONE)) {
+				request_stats_addvp(request, acctvp, &this->stats);
+			} else {
+				stats_error(request, "Listener is not acct");
+			}
 		}
 #endif
 	}
@@ -729,10 +754,16 @@ void request_stats_reply(REQUEST *request)
 		 *	socket.
 		 */
 		server_ip = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_SERVER_IP_ADDRESS, VENDORPEC_FREERADIUS, TAG_ANY);
-		if (!server_ip) return;
+		if (!server_ip) {
+			stats_error(request, "No home server IP supplied");
+			return;
+		}
 
 		server_port = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_SERVER_PORT, VENDORPEC_FREERADIUS, TAG_ANY);
-		if (!server_port) return;
+		if (!server_port) {
+			stats_error(request, "No home server port supplied");
+			return;
+		}
 
 #ifndef NDEBUG
 		memset(&ipaddr, 0, sizeof(ipaddr));
@@ -746,7 +777,10 @@ void request_stats_reply(REQUEST *request)
 		/*
 		 *	Not found: don't do anything
 		 */
-		if (!home) return;
+		if (!home) {
+			stats_error(request, "Failed to find home server IP");
+			return;
+		}
 
 		fr_pair_add(&request->reply->vps,
 			fr_pair_copy(request->reply, server_ip));
@@ -804,17 +838,23 @@ void request_stats_reply(REQUEST *request)
 				       PW_FREERADIUS_STATS_LAST_PACKET_SENT, VENDORPEC_FREERADIUS);
 		if (vp) vp->vp_date = home->last_packet_sent;
 
-		if (((flag->vp_integer & 0x01) != 0) &&
-		    (home->type == HOME_TYPE_AUTH)) {
-			request_stats_addvp(request, proxy_authvp,
-					    &home->stats);
+		if ((flag->vp_integer & 0x01) != 0) {
+			if (home->type == HOME_TYPE_AUTH) {
+				request_stats_addvp(request, proxy_authvp,
+						    &home->stats);
+			} else {
+				stats_error(request, "Home server is not auth");
+			}
 		}
 
 #ifdef WITH_ACCOUNTING
-		if (((flag->vp_integer & 0x02) != 0) &&
-		    (home->type == HOME_TYPE_ACCT)) {
-			request_stats_addvp(request, proxy_acctvp,
-					    &home->stats);
+		if ((flag->vp_integer & 0x02) != 0) {
+			if (home->type == HOME_TYPE_ACCT) {
+				request_stats_addvp(request, proxy_acctvp,
+						    &home->stats);
+			} else {
+				stats_error(request, "Home server is not acct");
+			}
 		}
 #endif
 	}
