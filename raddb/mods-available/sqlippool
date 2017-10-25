@@ -35,7 +35,12 @@ sqlippool {
 	#  default is Framed-IP-Address.  You can change this to any
 	#  attribute which is IPv4 or IPv6.
 	#
-	#  e.g. Framed-IPv6-Address, or Delegated-IPv6-Prefix.
+	#  e.g. Framed-IPv6-Prefix, or Delegated-IPv6-Prefix.
+	#
+	#  As of 3.0.16, all of the default queries have been updated to use
+	#  this attribute_name.  So you can do IPv6 address assignment simply
+	#  by putting IPv6 addresses into the pool, and changing the following
+	#  line to "Framed-IPv6-Prefix"
 	#
 	attribute_name = Framed-IP-Address
 
