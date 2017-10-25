@@ -32,7 +32,7 @@ RUN git clone --branch patch-3 --depth=1 https://github.com/arr2036/libkqueue.gi
 WORKDIR libkqueue
 RUN cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib ./ && \
     make && \
-    cpack -G DEB
+    cpack -P libkqueue-dev -G DEB
 RUN apt-get install -y ./*.deb
 
 #
