@@ -39,6 +39,11 @@ sqlippool {
 	#
 	attribute_name = Framed-IP-Address
 
+	#
+	#  Assign the IP address, even if the attribute already exists
+	#
+#	allow_duplicates = no
+
 	# Attribute which should be considered unique per NAS
 	#
 	#  Using NAS-Port gives behaviour similar to rlm_ippool. (And ACS)

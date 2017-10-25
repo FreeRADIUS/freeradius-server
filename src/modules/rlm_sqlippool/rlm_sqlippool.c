@@ -46,6 +46,7 @@ typedef struct rlm_sqlippool_t {
 
 	char const	*pool_name;
 	bool		ipv6;			//!< Whether or not we do IPv6 pools.
+	bool		allow_duplicates;	//!< assign even if it already exists
 	char const	*attribute_name;	//!< name of the IP address attribute
 
 	int		framed_ip_address; 	//!< the attribute number for Framed-IP(v6)-Address
@@ -129,6 +130,7 @@ static CONF_PARSER module_config[] = {
 
 
 	{ "ipv6", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sqlippool_t, ipv6), NULL},
+	{ "allow_duplicates", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sqlippool_t, allow_duplicates), NULL},
 	{ "attribute_name", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, attribute_name), NULL},
 
 	{ "allocate-begin", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, allocate_begin), NULL },
@@ -511,7 +513,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	/*
 	 *	If there is already an attribute in the reply do nothing
 	 */
-	if (fr_pair_find_by_num(request->reply->vps, inst->framed_ip_address, 0, TAG_ANY) != NULL) {
+	if (!inst->allow_duplicates && (fr_pair_find_by_num(request->reply->vps, inst->framed_ip_address, 0, TAG_ANY) != NULL)) {
 		RDEBUG("%s already exists", inst->attribute_name);
 
 		return do_logging(request, inst->log_exists, RLM_MODULE_NOOP);
