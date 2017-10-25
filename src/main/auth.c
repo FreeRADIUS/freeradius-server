@@ -585,6 +585,7 @@ static rlm_rcode_t virtual_server_async(REQUEST *request, bool parent)
  */
 rlm_rcode_t rad_virtual_server(REQUEST *request)
 {
+	int rcode;
 	VALUE_PAIR *vp;
 
 	RDEBUG("Virtual server %s received request", cf_section_name2(request->server_cs));
