@@ -1,0 +1,32 @@
+FROM debian:jessie
+
+RUN apt-get update && apt-get install -y devscripts equivs git quilt
+
+#
+#  Install GCC-4.9 as it has the requisite support for C11 keywords and atomics
+#
+RUN apt-get install -y g++-4.9
+RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 50 --slave /usr/bin/g++ g++ /usr/bin/g++-4.9 && update-alternatives --config gcc
+
+#
+#  Install eapol_test dependencies
+#
+RUN apt-get install -y libnl-3-dev libnl-genl-3-dev
+
+#
+#  Setup a src dir in /usr/local
+#
+WORKDIR /usr/local/src/repositories
+RUN git clone --depth=1 --no-single-branch https://github.com/FreeRADIUS/freeradius-server.git
+WORKDIR freeradius-server
+
+# Install build dependencies for all branches
+RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 2>/dev/null | sed -e 's#origin/##' | egrep "^v[0-9]*\.[0-9x]*\.x$");\
+	do \
+		git checkout $i; \
+		[ -e ./debian/control.in ] && debian/rules debian/control && echo 'y' | mk-build-deps -irt'apt-get -yV' debian/control; \
+	done
+
+### For some reason this dep was not installed
+# RUN apt-get install -y libiodbc2-dev
+

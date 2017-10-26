@@ -1,0 +1,23 @@
+#! /bin/sh
+
+DIR="$1"
+
+[ -z "$DIR" ] && echo "Syntax: $0 <dir>" && exit 1
+[ ! -d "$DIR" ] && echo "Directory '$DIR' does not exist" && exit 1
+
+OSNAME=$(echo "$DIR" | sed -e 's/^build-//')
+
+[ ! -r "$DIR/Dockerfile.source" ] && echo "'$DIR/Dockerfile.source' does not exist" && exit 1
+echo Building $OSNAME source image
+docker build "$DIR" -f "$DIR/Dockerfile.source" -t freeradius/$OSNAME-source
+
+if [ -r "$DIR/Dockerfile.jenkins" ]; then
+	echo Building $OSNAME jenkins image
+	docker build "$DIR" -f "$DIR/Dockerfile.jenkins" -t freeradius/$OSNAME-jenkins
+fi
+
+if [ -r "$DIR/Dockerfile" ]; then
+	echo Building $OSNAME FreeRADIUS image
+	docker build "$DIR" -t freeradius/$OSNAME
+fi
+

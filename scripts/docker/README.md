@@ -10,6 +10,18 @@ party developers may also find them useful if they're shipping their
 own packages, or performing debugging on behalf of the development
 team.
 
+Each directory has several dockerfiles:
+
+ - Dockerfile.source will build an image which has full
+   dependencies installed, ready for building FreeRADIUS.
+
+ - Dockerfile is based on Dockerfile.source and will build
+   the FreeRADIUS source and run the server.
+
+ - Dockerfile.jenkins is based on Dockerfile.source and
+   will add components required for use in a jenkins build
+   environment.
+
 ## Getting started
 
 ### Building
@@ -18,7 +30,7 @@ As with any Dockerfile you'll first need to build the image:
 
 ```bash
 cd scripts/docker/build-<os_name>
-docker build -t freeradius/<os_name>-build .
+docker build -f Dockerfile.source -t freeradius/<os_name>-source .
 ```
 
 This will download the OS base image, install/build any dependencies
@@ -31,26 +43,55 @@ Once built, running ``docker images`` should show the image.
 ```bash
 $ docker images
 REPOSITORY                 TAG                 IMAGE ID            CREATED             SIZE
-freeradius/centos7-build   latest              0b7af2e27bef        10 minutes ago      2.15 GB
+freeradius/centos7-source  latest              0b7af2e27bef        10 minutes ago      2.15 GB
 centos                     centos7             3bee3060bfc8        2 weeks ago         193 MB
 ```
-
 You will now be able to execute the built image with an interactive
 shell from which you can perform debugging or build packages.
+
+From this base source image, the other images can be built. To
+compile and run FreeRADIUS:
+
+```bash
+docker build -t freeradius:<os_name> .
+docker run freeradius:<os_name>
+```
+
+To build the jenkins image:
+
+```bash
+docker build -f Dockerfile.jenkins -t freeradius:<os_name>-jenkins .
+```
+
+Building all these docker images can be done with the supplied
+script, for example:
+
+```bash
+$ ./dockerbuild build-centos7
+```
 
 ### Running
 
 The ``docker run`` command is used to create new containers from
 images.  The command takes flags, and an image identifier.  In the
-example below the ``-it`` flags tell docker to operan an interactive
+example below the ``-it`` flags tell docker to open an interactive
 terminal on the container.
 
 ```bash
-$ docker run -it freeradius/centos7-build
+$ docker run -it freeradius/centos7-source
 [root@08a222f5fdfe freeradius-server]# ls
 acinclude.m4  config.guess  configure.ac  debian      install-sh  main.mk      man      raddb      scripts  suse
 aclocal.m4    config.sub    COPYRIGHT     doc         LICENSE     Makefile     mibs     README.md  share    VERSION
 autogen.sh    configure     CREDITS       INSTALL.md  m4          Make.inc.in  missing  redhat     src
+```
+
+To run FreeRADIUS, use:
+
+```bash
+$ docker run freeradius/centos7
+Info  : FreeRADIUS Version 4.0.0
+Info  : Copyright (C) 1999-2017 The FreeRADIUS server project and contributors
+...
 ```
 
 When ``docker run`` is used to execute an image a new container is
@@ -90,5 +131,4 @@ a port on the docker host (similar to port forwarding).
 See
 [here](https://docs.docker.com/engine/userguide/networking/#embedded-dns-server)
 for more details on docker networking.
-
 
