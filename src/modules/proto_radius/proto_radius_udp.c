@@ -71,6 +71,8 @@ typedef struct {
 
 	fr_stats_t			stats;			//!< statistics for this socket
 
+	uint64_t			count[FR_MAX_PACKET_CODE];	//!< count of packets sent
+
 	uint32_t			priorities[FR_MAX_PACKET_CODE];	//!< priorities for individual packets
 } proto_radius_udp_t;
 
@@ -324,6 +326,11 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	address.code = buffer[0];
 	address.id = buffer[1];
 
+	/*
+	 *	Count how many of this packet we received.
+	 */
+	inst->count[buffer[0]]++;
+
 	tracking_status = fr_radius_tracking_entry_insert(&track, inst->ft, buffer, fr_time(), &address);
 	switch (tracking_status) {
 	case FR_TRACKING_ERROR:
@@ -422,6 +429,9 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	 *	sometimes we want to NOT send a reply...
 	 */
 	if (buffer_len >= 20) {
+		rad_assert(buffer[0] < FR_MAX_PACKET_CODE);
+		inst->count[buffer[0]]++;
+
 		data_size = udp_send(inst->sockfd, buffer, buffer_len, 0,
 				     &address->dst_ipaddr, address->dst_port,
 				     address->if_index,
