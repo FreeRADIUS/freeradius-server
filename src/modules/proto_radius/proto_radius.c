@@ -205,7 +205,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 
 static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
 {
-	size_t len;
+	ssize_t data_len;
 
 	proto_radius_t const *inst = talloc_get_type_abort_const(instance, proto_radius_t);
 	RADCLIENT *client;
@@ -233,27 +233,26 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	}
 #endif
 
-	if (fr_radius_packet_encode(request->reply, request->packet, client->secret) < 0) {
+	data_len = fr_radius_encode(buffer, buffer_len, request->packet->data,
+				    client->secret, talloc_array_length(client->secret) - 1,
+				    request->reply->code, request->reply->id, request->reply->vps);
+	if (data_len < 0) {
 		RDEBUG("Failed encoding RADIUS reply: %s", fr_strerror());
 		return -1;
 	}
 
-	if (fr_radius_packet_sign(request->reply, request->packet, client->secret) < 0) {
+	if (fr_radius_sign(buffer, request->packet->data,
+			   (uint8_t const *) client->secret, talloc_array_length(client->secret) - 1) < 0) {
 		RDEBUG("Failed signing RADIUS reply: %s", fr_strerror());
 		return -1;
 	}
 
-	len = request->reply->data_len;
-	if (buffer_len < len) len = buffer_len;
-
-	memcpy(buffer, request->reply->data, len);
-
 	if (DEBUG_ENABLED3) {
 		RDEBUG("proto_radius encode packet");
-		fr_radius_print_hex(fr_log_fp, buffer, len);
+		fr_radius_print_hex(fr_log_fp, buffer, data_len);
 	}
 
-	return len;
+	return data_len;
 }
 
 static void mod_process_set(void const *instance, REQUEST *request)
