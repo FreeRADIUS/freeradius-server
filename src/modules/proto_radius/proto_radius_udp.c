@@ -69,6 +69,8 @@ typedef struct {
 	fr_tracking_t			*ft;			//!< tracking table
 	uint32_t			cleanup_delay;		//!< cleanup delay for Access-Request packets
 
+	fr_stats_t			stats;			//!< statistics for this socket
+
 	uint32_t			priorities[FR_MAX_PACKET_CODE];	//!< priorities for individual packets
 } proto_radius_udp_t;
 
@@ -205,7 +207,7 @@ static int mod_decode(UNUSED void const *instance, REQUEST *request, UNUSED uint
 
 static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority)
 {
-	proto_radius_udp_t const	*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
+	proto_radius_udp_t		*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
 
 	ssize_t				data_size;
 	size_t				packet_len;
@@ -231,16 +233,19 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 
 	if (data_size < 20) {
 		DEBUG2("proto_radius_udp got 'too short' packet size %zd", data_size);
+		inst->stats.total_malformed_requests++;
 		return 0;
 	}
 
 	if ((buffer[0] == 0) || (buffer[0] > FR_MAX_PACKET_CODE)) {
 		DEBUG("proto_radius_udp got invalid packet code %d", buffer[0]);
+		inst->stats.total_unknown_types++;
 		return 0;
 	}
 
 	if (!inst->parent->process_by_code[buffer[0]]) {
 		DEBUG("proto_radius_udp got unexpected packet code %d", buffer[0]);
+		inst->stats.total_unknown_types++;
 		return 0;
 	}
 
@@ -249,6 +254,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	 */
 	if (!fr_radius_ok(buffer, &packet_len, false, &reason)) {
 		DEBUG2("proto_radius_udp got a packet which isn't RADIUS");
+		inst->stats.total_malformed_requests++;
 		return 0;
 	}
 
@@ -259,7 +265,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	if (!address.client) {
 		ERROR("Unknown client at address %pV:%u.  Ignoring...",
 		      fr_box_ipaddr(address.src_ipaddr), address.src_port);
-
+		inst->stats.total_invalid_requests++;
 		return 0;
 	}
 
@@ -308,6 +314,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 			     (uint8_t const *)address.client->secret,
 			     talloc_array_length(address.client->secret)) < 0) {
 		DEBUG2("proto_radius_udp packet failed verification");
+		inst->stats.total_bad_authenticators++;
 		return 0;
 	}
 
@@ -321,6 +328,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	switch (tracking_status) {
 	case FR_TRACKING_ERROR:
 	case FR_TRACKING_UNUSED:
+		inst->stats.total_packets_dropped++;
 		return -1;	/* Fatal */
 
 		/*
@@ -341,6 +349,8 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 			(void) fr_event_timer_insert(NULL, inst->el, &track->ev,
 						     &tv, mod_cleanup_delay, track);
 		}
+
+		inst->stats.total_dup_requests++;
 
 		/*
 		 *	We are intentionally not responding.
@@ -375,6 +385,8 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	*recv_time = &track->timestamp;
 	*priority = priorities[buffer[0]];
 
+	inst->stats.total_requests++;
+
 	return packet_len;
 }
 
@@ -397,6 +409,8 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		DEBUG3("Suppressing reply as we have a newer packet");
 		return buffer_len;
 	}
+
+	inst->stats.total_responses++;
 
 	/*
 	 *	Figure out when we've sent the reply.
