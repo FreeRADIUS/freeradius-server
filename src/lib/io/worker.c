@@ -1403,8 +1403,6 @@ static void fr_worker_post_event(UNUSED fr_event_list_t *el, UNUSED struct timev
 
 	now = fr_time();
 
-	DEBUG("WORKER %ld in time order", fr_heap_num_elements(worker->time_order));
-
 	/*
 	 *      Ten times a second, check for timeouts on incoming packets.
 	 *
