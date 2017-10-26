@@ -28,6 +28,8 @@ FreeRADIUS 3.0.16 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	  It also now can assign any IPv4 or IPv6 address.
 	  Based on patches from maximumG.  #2094.
 	  See raddb/mods-available/sqlippool for changes.
+	* radeapclient can now use EAP-SIM-Ki to dynamically
+	  create the necessary triplets.
 
 	Bug fixes
 	* Bind the lifetime of program name and python path to the module
