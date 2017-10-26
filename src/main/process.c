@@ -3179,7 +3179,6 @@ static int request_proxy(REQUEST *request)
 	VERIFY_REQUEST(request);
 
 	rad_assert(request->parent == NULL);
-	rad_assert(request->home_server != NULL);
 
 	if (request->master_state == REQUEST_STOP_PROCESSING) return 0;
 
