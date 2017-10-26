@@ -709,8 +709,7 @@ int main_config_init(void)
 	 */
 	DEBUG2("Including dictionary file \"%s/%s\"", main_config.dictionary_dir, FR_DICTIONARY_FILE);
 	if (fr_dict_from_file(NULL, &main_config.dict, main_config.dictionary_dir, FR_DICTIONARY_FILE, "radius") != 0) {
-		ERROR("Errors reading dictionary: %s",
-		      fr_strerror());
+		fr_log_perror(&default_log, L_ERR, "Failed to initialize the dictionaries");
 		return -1;
 	}
 

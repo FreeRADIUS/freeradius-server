@@ -2248,7 +2248,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 	if (!fr_cond_assert(ctx->parent)) return -1;
 
 	if ((strlen(dir_name) + 3 + strlen(filename)) > sizeof(dir)) {
-		fr_strerror_printf("%s: Filename name too long", __FUNCTION__);
+		fr_strerror_printf_push("%s: Filename name too long", "Error reading dictionary");
 		return -1;
 	}
 
@@ -2308,11 +2308,11 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 
 	if ((fp = fopen(fn, "r")) == NULL) {
 		if (!src_file) {
-			fr_strerror_printf("%s: Couldn't open dictionary '%s': %s",
-					   __FUNCTION__, fn, fr_syserror(errno));
+			fr_strerror_printf_push("%s: Couldn't open dictionary '%s': %s",
+					   "Error reading dictionary", fn, fr_syserror(errno));
 		} else {
-			fr_strerror_printf("%s: %s[%d]: Couldn't open dictionary '%s': %s",
-					   __FUNCTION__, src_file, src_line, fn, fr_syserror(errno));
+			fr_strerror_printf_push("%s: %s[%d]: Couldn't open dictionary '%s': %s",
+					   "Error reading dictionary", src_file, src_line, fn, fr_syserror(errno));
 		}
 		return -2;
 	}
@@ -2327,7 +2327,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 
 	if (!S_ISREG(statbuf.st_mode)) {
 		fclose(fp);
-		fr_strerror_printf("%s: Dictionary '%s' is not a regular file", __FUNCTION__, fn);
+		fr_strerror_printf_push("%s: Dictionary '%s' is not a regular file", "Error reading dictionary", fn);
 		return -1;
 	}
 
@@ -2338,8 +2338,8 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 #ifdef S_IWOTH
 	if ((statbuf.st_mode & S_IWOTH) != 0) {
 		fclose(fp);
-		fr_strerror_printf("%s: Dictionary '%s' is globally writable.  Refusing to start "
-				   "due to insecure configuration", __FUNCTION__, fn);
+		fr_strerror_printf_push("%s: Dictionary '%s' is globally writable.  Refusing to start "
+				   "due to insecure configuration", "Error reading dictionary", fn);
 		return -1;
 	}
 #endif
@@ -2375,10 +2375,11 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 		if (argc == 0) continue;
 
 		if (argc == 1) {
-			fr_strerror_printf("Invalid entry");
+			fr_strerror_printf_push("Invalid entry");
 
 		error:
-			fr_strerror_printf_push("%s: %s[%d]", __FUNCTION__, fn, line);
+			fr_strerror_printf_push("Error in %s[%d] - %s",
+						fn, line, fr_strerror_pop());
 			fclose(fp);
 			return -1;
 		}
@@ -2417,7 +2418,11 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 		 *	See if we need to import another dictionary.
 		 */
 		if (strcasecmp(argv[0], "$INCLUDE") == 0) {
-			if (_dict_from_file(ctx, dir, argv[1], fn, line) < 0) goto error;
+			if (_dict_from_file(ctx, dir, argv[1], fn, line) < 0) {
+				fr_strerror_printf_push("$INCLUDE at %s[%d]", fn, line);
+				fclose(fp);
+				return -1;
+			}
 			continue;
 		} /* $INCLUDE */
 
@@ -2428,11 +2433,15 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			int rcode = _dict_from_file(ctx, dir, argv[1], fn, line);
 
 			if (rcode == -2) {
-				fr_strerror_printf(NULL); /* reset error to nothing */
+				fr_strerror_printf(NULL); /* delete all errors */
 				continue;
 			}
 
-			if (rcode < 0) goto error;
+			if (rcode < 0) {
+				fr_strerror_printf_push("$INCLUDE at %s[%d]", fn, line);
+				fclose(fp);
+				return -1;
+			}
 			continue;
 		} /* $INCLUDE- */
 
@@ -2448,23 +2457,23 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			fr_dict_attr_t const *common;
 
 			if ((ctx->block_tlv_depth + 1) > FR_DICT_TLV_NEST_MAX) {
-				fr_strerror_printf("TLVs are nested too deep");
+				fr_strerror_printf_push("TLVs are nested too deep");
 				goto error;
 			}
 
 			if (argc != 2) {
-				fr_strerror_printf("Invalid BEGIN-TLV entry");
+				fr_strerror_printf_push("Invalid BEGIN-TLV entry");
 				goto error;
 			}
 
 			da = fr_dict_attr_by_name(ctx->dict, argv[1]);
 			if (!da) {
-				fr_strerror_printf("Unknown attribute '%s'", argv[1]);
+				fr_strerror_printf_push("Unknown attribute '%s'", argv[1]);
 				goto error;
 			}
 
 			if (da->type != FR_TYPE_TLV) {
-				fr_strerror_printf("Attribute '%s' should be a 'tlv', but is a '%s'",
+				fr_strerror_printf_push("Attribute '%s' should be a 'tlv', but is a '%s'",
 						   argv[1],
 						   fr_int2str(dict_attr_types, da->type, "?Unknown?"));
 				goto error;
@@ -2474,7 +2483,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			if (!common ||
 			    (common->type == FR_TYPE_VSA) ||
 			    (common->type == FR_TYPE_EVS)) {
-				fr_strerror_printf("Attribute '%s' is not a child of '%s'", argv[1], ctx->parent->name);
+				fr_strerror_printf_push("Attribute '%s' is not a child of '%s'", argv[1], ctx->parent->name);
 				goto error;
 			}
 			ctx->block_tlv[ctx->block_tlv_depth++] = ctx->parent;
@@ -2487,23 +2496,23 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 		 */
 		if (strcasecmp(argv[0], "END-TLV") == 0) {
 			if (--ctx->block_tlv_depth < 0) {
-				fr_strerror_printf("Too many END-TLV entries.  Mismatch at END-TLV %s", argv[1]);
+				fr_strerror_printf_push("Too many END-TLV entries.  Mismatch at END-TLV %s", argv[1]);
 				goto error;
 			}
 
 			if (argc != 2) {
-				fr_strerror_printf("Invalid END-TLV entry");
+				fr_strerror_printf_push("Invalid END-TLV entry");
 				goto error;
 			}
 
 			da = fr_dict_attr_by_name(ctx->dict, argv[1]);
 			if (!da) {
-				fr_strerror_printf("Unknown attribute '%s'", argv[1]);
+				fr_strerror_printf_push("Unknown attribute '%s'", argv[1]);
 				goto error;
 			}
 
 			if (da != ctx->parent) {
-				fr_strerror_printf("END-TLV %s does not match previous BEGIN-TLV %s", argv[1],
+				fr_strerror_printf_push("END-TLV %s does not match previous BEGIN-TLV %s", argv[1],
 						   ctx->parent->name);
 				goto error;
 			}
@@ -2521,13 +2530,13 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			fr_dict_attr_t		*mutable;
 
 			if (argc < 2) {
-				fr_strerror_printf("Invalid BEGIN-VENDOR entry");
+				fr_strerror_printf_push("Invalid BEGIN-VENDOR entry");
 				goto error;
 			}
 
 			vendor = fr_dict_vendor_by_name(ctx->dict, argv[1]);
 			if (!vendor) {
-				fr_strerror_printf("Unknown vendor '%s'", argv[1]);
+				fr_strerror_printf_push("Unknown vendor '%s'", argv[1]);
 				goto error;
 			}
 
@@ -2538,20 +2547,20 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			 */
 			if (argc > 2) {
 				if (strncmp(argv[2], "format=", 7) != 0) {
-					fr_strerror_printf("Invalid format %s", argv[2]);
+					fr_strerror_printf_push("Invalid format %s", argv[2]);
 					goto error;
 				}
 
 				p = argv[2] + 7;
 				da = fr_dict_attr_by_name(ctx->dict, p);
 				if (!da) {
-					fr_strerror_printf("Invalid format for BEGIN-VENDOR: Unknown attribute '%s'",
+					fr_strerror_printf_push("Invalid format for BEGIN-VENDOR: Unknown attribute '%s'",
 							   p);
 					goto error;
 				}
 
 				if (da->type != FR_TYPE_EVS) {
-					fr_strerror_printf("Invalid format for BEGIN-VENDOR.  Attribute '%s' should "
+					fr_strerror_printf_push("Invalid format for BEGIN-VENDOR.  Attribute '%s' should "
 							   "be 'evs' but is '%s'", p,
 							   fr_int2str(dict_attr_types, da->type, "?Unknown?"));
 					goto error;
@@ -2620,18 +2629,18 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			unsigned int vendor;
 
 			if (argc != 2) {
-				fr_strerror_printf("Invalid END-VENDOR entry");
+				fr_strerror_printf_push("Invalid END-VENDOR entry");
 				goto error;
 			}
 
 			vendor = fr_dict_vendor_by_name(ctx->dict, argv[1]);
 			if (!vendor) {
-				fr_strerror_printf("Unknown vendor '%s'", argv[1]);
+				fr_strerror_printf_push("Unknown vendor '%s'", argv[1]);
 				goto error;
 			}
 
 			if (vendor != ctx->block_vendor) {
-				fr_strerror_printf("END-VENDOR '%s' does not match any previous BEGIN-VENDOR",
+				fr_strerror_printf_push("END-VENDOR '%s' does not match any previous BEGIN-VENDOR",
 						   argv[1]);
 				goto error;
 			}
@@ -2643,7 +2652,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 		/*
 		 *	Any other string: We don't recognize it.
 		 */
-		fr_strerror_printf("Invalid keyword '%s'", argv[0]);
+		fr_strerror_printf_push("Invalid keyword '%s'", argv[0]);
 		goto error;
 	}
 	fclose(fp);
@@ -2856,7 +2865,7 @@ int fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename)
 	INTERNAL_IF_NULL(dict);
 
 	if (!dict->attributes_by_name) {
-		fr_strerror_printf("%s: Must call fr_dict_from_file() before fr_dict_read()", __FUNCTION__);
+		fr_strerror_printf("%s: Must call fr_dict_from_file() before fr_dict_read()", "Error reading dictionary");
 		return -1;
 	}
 

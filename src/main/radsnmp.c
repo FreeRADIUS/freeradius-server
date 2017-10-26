@@ -1031,7 +1031,7 @@ int main(int argc, char **argv)
 	}
 
 	if (fr_dict_read(conf->dict, conf->radius_dir, FR_DICTIONARY_FILE) == -1) {
-		fr_perror("radsnmp");
+		fr_log_perror(&default_log, L_ERR, "Failed to initialize the dictionaries");
 		return EXIT_FAILURE;
 	}
 	fr_strerror();	/* Clear the error buffer */

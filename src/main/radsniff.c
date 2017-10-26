@@ -2506,7 +2506,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (fr_dict_read(dict, radius_dir, FR_DICTIONARY_FILE) == -1) {
-		fr_perror("radsniff");
+		fr_log_perror(&default_log, L_ERR, "Failed to initialize the dictionaries");
 		ret = 64;
 		goto finish;
 	}
