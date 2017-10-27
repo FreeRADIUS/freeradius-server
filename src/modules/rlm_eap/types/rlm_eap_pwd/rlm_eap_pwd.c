@@ -188,7 +188,6 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 
 		MEM(session->in = talloc_zero_array(session, uint8_t, session->in_len));
 
-		memset(session->in, 0, session->in_len);
 		session->in_pos = 0;
 		in += sizeof(uint16_t);
 		in_len -= sizeof(uint16_t);
