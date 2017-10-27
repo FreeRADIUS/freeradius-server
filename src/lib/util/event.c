@@ -545,9 +545,9 @@ static int fr_event_fd_type_set(fr_event_fd_t *ef, int fd)
 		} else
 #endif
 		{
-			ef->sock_type = sock_type;
 			ef->type = FR_EVENT_FD_SOCKET;
 		}
+		ef->sock_type = sock_type;
 
 	/*
 	 *	It's a file or directory
