@@ -527,13 +527,12 @@ static ssize_t fr_event_build_evset(struct kevent out_kev[], size_t outlen, fr_e
  */
 static int fr_event_fd_type_set(fr_event_fd_t *ef, int fd)
 {
-	int             sock_type;
-	socklen_t       opt_len = sizeof(sock_type);
+	socklen_t       opt_len = sizeof(ef->sock_type);
 
 	/*
 	 *      It's a socket or PCAP socket
 	 */
-	if (getsockopt(fd, SOL_SOCKET, SO_TYPE, &sock_type, &opt_len) == 0) {
+	if (getsockopt(fd, SOL_SOCKET, SO_TYPE, &ef->sock_type, &opt_len) == 0) {
 #ifdef SO_GET_FILTER
 		opt_len = 0;
 		if (unlikely(getsockopt(fd, SOL_SOCKET, SO_ATTACH_FILTER, NULL, &opt_len) < 0)) {
@@ -547,7 +546,6 @@ static int fr_event_fd_type_set(fr_event_fd_t *ef, int fd)
 		{
 			ef->type = FR_EVENT_FD_SOCKET;
 		}
-		ef->sock_type = sock_type;
 
 	/*
 	 *	It's a file or directory
