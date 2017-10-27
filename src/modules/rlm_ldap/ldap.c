@@ -1331,8 +1331,6 @@ int rlm_ldap_global_init(rlm_ldap_t *inst)
 {
 	int ldap_errno;
 
-	rad_assert(inst); /* clang scan */
-
 #define do_ldap_global_option(_option, _name, _value) \
 	if (ldap_set_option(NULL, _option, _value) != LDAP_OPT_SUCCESS) { \
 		ldap_get_option(NULL, LDAP_OPT_ERROR_NUMBER, &ldap_errno); \
