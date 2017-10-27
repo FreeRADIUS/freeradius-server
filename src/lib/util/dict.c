@@ -2419,7 +2419,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 		 */
 		if (strcasecmp(argv[0], "$INCLUDE") == 0) {
 			if (_dict_from_file(ctx, dir, argv[1], fn, line) < 0) {
-				fr_strerror_printf_push("$INCLUDE at %s[%d]", fn, line);
+				fr_strerror_printf_push("from $INCLUDE at %s[%d]", fn, line);
 				fclose(fp);
 				return -1;
 			}
@@ -2438,7 +2438,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			}
 
 			if (rcode < 0) {
-				fr_strerror_printf_push("$INCLUDE at %s[%d]", fn, line);
+				fr_strerror_printf_push("from $INCLUDE at %s[%d]", fn, line);
 				fclose(fp);
 				return -1;
 			}
