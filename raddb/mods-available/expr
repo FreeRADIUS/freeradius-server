@@ -77,6 +77,9 @@
 #  urlquote	quote special characters in URI
 #		"%{urlquote:http://example.org/}" == "http%3A%47%47example.org%47"
 #
+#  unhex	convert from hex to ASCII
+#		"%{unhex:0x4142434445}" == "ABCDE"
+#
 #  urlunquote	unquote URL special characters
 #		"%{urlunquote:http%%3A%%47%%47example.org%%47}" == "http://example.org/"
 #
