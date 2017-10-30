@@ -176,10 +176,12 @@ static int mod_thread_detach(void *thread)
 {
 	rlm_stats_thread_t *t = talloc_get_type_abort(thread, rlm_stats_thread_t);
 	rlm_stats_t *inst = t->inst;
-
+	int i;
 
 	PTHREAD_MUTEX_LOCK(&inst->mutex);
-	// @todo - merge all of the stats in
+	for (i = 0; i < FR_MAX_PACKET_CODE; i++) {
+		inst->stats[i] += t->stats[i];
+	}
 	PTHREAD_MUTEX_UNLOCK(&inst->mutex);
 
 	return 0;
