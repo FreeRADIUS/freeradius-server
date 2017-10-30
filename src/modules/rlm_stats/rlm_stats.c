@@ -54,6 +54,9 @@ typedef struct rlm_stats_t {
 	pthread_mutex_t		mutex;
 #endif
 
+	fr_dict_attr_t const	*type_da;			//!< FreeRADIUS-Stats4-Type
+	fr_dict_attr_t const	*ipv4_da;			//!< FreeRADIUS-Stats4-IPv4-Address
+	fr_dict_attr_t const	*ipv6_da;			//!< FreeRADIUS-Stats4-IPv6-Address
 	fr_dlist_t		entry;				//!< for threads to know about each other
 
 	uint64_t		stats[FR_MAX_PACKET_CODE];
@@ -98,9 +101,11 @@ static const CONF_PARSER module_config[] = {
 static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQUEST *request)
 {
 	int i;
+	uint32_t stats_type;
 	rlm_stats_thread_t *t = thread;
 	rlm_stats_t *inst = instance;
 	VALUE_PAIR *vp;
+	rlm_stats_data_t mydata, *stats;
 	vp_cursor_t cursor;
 	char buffer[64];
 	uint64_t local_stats[sizeof(inst->stats) / sizeof(inst->stats[0])];
@@ -111,7 +116,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 	 *	i.e. only when we have a reply to send.
 	 */
 	if (request->request_state == REQUEST_SEND) {
-		rlm_stats_data_t mydata, *stats;
 		int src_code, dst_code;
 
 		src_code = request->packet->code;
@@ -129,7 +133,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 		mydata.ipaddr = request->packet->src_ipaddr;
 		stats = rbtree_finddata(t->src, &mydata);
 		if (!stats) {
-			MEM(stats = talloc(t, rlm_stats_data_t));
+			MEM(stats = talloc_zero(t, rlm_stats_data_t));
 
 			stats->ipaddr = request->packet->src_ipaddr;
 			stats->created = request->async->recv_time;
@@ -149,7 +153,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 		mydata.ipaddr = request->packet->dst_ipaddr;
 		stats = rbtree_finddata(t->dst, &mydata);
 		if (!stats) {
-			MEM(stats = talloc(t, rlm_stats_data_t));
+			MEM(stats = talloc_zero(t, rlm_stats_data_t));
 
 			stats->ipaddr = request->packet->dst_ipaddr;
 			stats->created = request->async->recv_time;
@@ -191,26 +195,79 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 		return RLM_MODULE_NOOP;
 	}
 
-	/*
-	 *	Merge our stats with the global stats, and then copy
-	 *	the global stats to a thread-local variable.
-	 *
-	 *	The copy helps minimize mutex contention.
-	 */
-	PTHREAD_MUTEX_LOCK(&inst->mutex);
-	for (i = 0; i < FR_MAX_PACKET_CODE; i++) {
-		inst->stats[i] += t->stats[i];
-		t->stats[i] = 0;
+	vp = fr_pair_find_by_da(request->packet->vps, inst->type_da, TAG_ANY);
+	if (!vp) {
+		stats_type = 1;
+	} else {
+		stats_type = vp->vp_uint32;
 	}
-	memcpy(&local_stats, inst->stats, sizeof(inst->stats));
-	PTHREAD_MUTEX_UNLOCK(&inst->mutex);
 
 	/*
 	 *	Create attributes based on the statistics.
 	 */
 	fr_pair_cursor_init(&cursor, &request->reply->vps);
-	vp = pair_make_reply("FreeRADIUS-Stats4-Name", "global", T_OP_EQ);
+	vp = pair_make_reply("FreeRADIUS-Stats4-Type", "Global", T_OP_EQ);
 	if (!vp) return RLM_MODULE_FAIL;
+	vp->vp_uint32 = stats_type;
+
+	switch (stats_type) {
+	case 1:			/* global */
+		/*
+		 *	Merge our stats with the global stats, and then copy
+		 *	the global stats to a thread-local variable.
+		 *
+		 *	The copy helps minimize mutex contention.
+		 */
+		PTHREAD_MUTEX_LOCK(&inst->mutex);
+		for (i = 0; i < FR_MAX_PACKET_CODE; i++) {
+			inst->stats[i] += t->stats[i];
+			t->stats[i] = 0;
+		}
+		memcpy(&local_stats, inst->stats, sizeof(inst->stats));
+		PTHREAD_MUTEX_UNLOCK(&inst->mutex);
+		break;
+
+	case 2:			/* src */
+		vp = fr_pair_find_by_da(request->packet->vps, inst->ipv4_da, TAG_ANY);
+		if (!vp) vp = fr_pair_find_by_da(request->packet->vps, inst->ipv6_da, TAG_ANY);
+		if (!vp) return RLM_MODULE_NOOP;
+
+		mydata.ipaddr = vp->vp_ip;
+		stats = rbtree_finddata(t->src, &mydata);
+		if (!stats) return RLM_MODULE_NOOP;
+
+		vp = fr_pair_copy(request->reply, vp);
+		if (vp) {
+			fr_pair_cursor_append(&cursor, vp);
+			(void) fr_pair_cursor_last(&cursor);
+		}
+
+		memcpy(&local_stats, stats->stats, sizeof(local_stats));
+		break;
+
+	case 3:			/* dst */
+		vp = fr_pair_find_by_da(request->packet->vps, inst->ipv4_da, TAG_ANY);
+		if (!vp) vp = fr_pair_find_by_da(request->packet->vps, inst->ipv6_da, TAG_ANY);
+		if (!vp) return RLM_MODULE_NOOP;
+
+		mydata.ipaddr = vp->vp_ip;
+		stats = rbtree_finddata(t->dst, &mydata);
+		if (!stats) return RLM_MODULE_NOOP;
+
+		vp = fr_pair_copy(request->reply, vp);
+		if (vp) {
+			fr_pair_cursor_append(&cursor, vp);
+			(void) fr_pair_cursor_last(&cursor);
+		}
+
+		memcpy(&local_stats, stats->stats, sizeof(local_stats));
+		break;
+
+	default:
+		REDEBUG("Invalid value '%d' for FreeRADIUS-Stats4-type",
+			stats_type);
+		return RLM_MODULE_FAIL;
+	}
 
 	strcpy(buffer, "FreeRADIUS-Stats4-");
 
@@ -299,13 +356,33 @@ static int mod_thread_detach(void *thread)
 }
 
 
-static int mod_instantiate(UNUSED void *instance, UNUSED CONF_SECTION *conf)
+static int mod_instantiate(UNUSED void *instance, CONF_SECTION *conf)
 {
 	rlm_stats_t	*inst = instance;
 
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_init(&inst->mutex, NULL);
 #endif
+
+	inst->type_da = fr_dict_attr_by_name(NULL, "FreeRADIUS-Stats4-Type");
+	if (!inst->type_da) {
+		cf_log_err(conf, "Dictionaries are missing 'FreeRADIUS-Stats4-Type'");
+		return -1;
+	}
+
+	inst->ipv4_da = fr_dict_attr_by_name(NULL, "FreeRADIUS-Stats4-IPv4-Address");
+	if (!inst->type_da) {
+		cf_log_err(conf, "Dictionaries are missing 'FreeRADIUS-IPv4-Address'");
+		return -1;
+	}
+
+	inst->ipv6_da = fr_dict_attr_by_name(NULL, "FreeRADIUS-Stats4-IPv6-Address");
+	if (!inst->type_da) {
+		cf_log_err(conf, "Dictionaries are missing 'FreeRADIUS-Stats4-IPv6-Address'");
+		return -1;
+	}
+
+	FR_DLIST_INIT(inst->entry);
 
 	return 0;
 }

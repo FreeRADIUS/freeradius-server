@@ -28,6 +28,11 @@ ATTRIBUTE	FreeRADIUS-Stats4-IPv4-Address		15.4	ipaddr
 ATTRIBUTE	FreeRADIUS-Stats4-IPv6-Address		15.5	ipv6addr
 ATTRIBUTE	FreeRADIUS-Stats4-Port			15.6	integer
 
+VALUE	FreeRADIUS-Stats4-Type		Global			1
+VALUE	FreeRADIUS-Stats4-Type		Client			2
+VALUE	FreeRADIUS-Stats4-Type		Listener		3
+
+
 #
 #  All of the counters are in a sub-TLV
 #
