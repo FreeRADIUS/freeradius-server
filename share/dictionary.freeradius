@@ -18,6 +18,63 @@ ATTRIBUTE	FreeRADIUS-Proxied-To			1	ipaddr
 ATTRIBUTE	FreeRADIUS-Acct-Session-Start-Time	2	date
 
 #
+#  FreeRADIUS v4 produces statistics in its own TLV
+#
+ATTRIBUTE	FreeRADIUS-Stats4-TLV			15	tlv
+ATTRIBUTE	FreeRADIUS-Stats4-Type			15.1	integer
+ATTRIBUTE	FreeRADIUS-Stats4-Name			15.2	string
+ATTRIBUTE	FreeRADIUS-Stats4-Number		15.3	string
+ATTRIBUTE	FreeRADIUS-Stats4-IPv4-Address		15.4	ipaddr
+ATTRIBUTE	FreeRADIUS-Stats4-IPv6-Address		15.5	ipv6addr
+ATTRIBUTE	FreeRADIUS-Stats4-Port			15.6	integer
+
+#
+#  All of the counters are in a sub-TLV
+#
+ATTRIBUTE	FreeRADIUS-Stats4-Counters		15.8	TLV
+ATTRIBUTE	FreeRADIUS-Stats4-Requests		15.8.1	integer64
+ATTRIBUTE	FreeRADIUS-Stats4-Responses		15.8.2	integer64
+ATTRIBUTE	FreeRADIUS-Stats4-Invalid-Requests	15.8.3	integer64
+ATTRIBUTE	FreeRADIUS-Stats4-Dup-Requests		15.8.4	integer64
+ATTRIBUTE	FreeRADIUS-Stats4-Malformed-Requests	15.8.5	integer64
+ATTRIBUTE	FreeRADIUS-Stats4-Packets-Dropped	15.8.6	integer64
+ATTRIBUTE	FreeRADIUS-Stats4-Bad-Authenticators	15.8.7	integer64
+ATTRIBUTE	FreeRADIUS-Stats4-Unknown-Types		15.8.8	integer64
+
+#
+#  These count request and response packets for each type of packet.
+#  There is just one attribute for all of these counters.  We trust
+#  that the reader is knowledgable enough to know which ones are
+#  requests, and which ones are responses.
+#
+ATTRIBUTE	FreeRADIUS-Stats4-Packet-Counters	15.9	TLV
+
+#
+#  The attribute number for the counters is taken from the packet codes.
+#
+ATTRIBUTE	FreeRADIUS-Stats4-Access-Request	15.9.1	integer64
+ATTRIBUTE	FreeRADIUS-Stats4-Access-Accept		15.9.2	integer64
+ATTRIBUTE	FreeRADIUS-Stats4-Access-Reject		15.9.3	integer64
+ATTRIBUTE	FreeRADIUS-Stats4-Accounting-Request	15.9.4	integer64
+ATTRIBUTE	FreeRADIUS-Stats4-Accounting-Response	15.9.5	integer64
+ATTRIBUTE	FreeRADIUS-Stats4-Access-Challenge	15.9.11	integer64
+ATTRIBUTE	FreeRADIUS-Stats4-Status-Server		15.9.12	integer64
+ATTRIBUTE	FreeRADIUS-Stats4-Disconnect-Request	15.9.40	integer64
+ATTRIBUTE	FreeRADIUS-Stats4-Disconnect-ACK	15.9.41	integer64
+ATTRIBUTE	FreeRADIUS-Stats4-Disconnect-NAK	15.9.42	integer64
+ATTRIBUTE	FreeRADIUS-Stats4-CoA-Request		15.9.43	integer64
+ATTRIBUTE	FreeRADIUS-Stats4-CoA-ACK		15.9.44	integer64
+ATTRIBUTE	FreeRADIUS-Stats4-CoA-NAK		15.9.45	integer64
+ATTRIBUTE	FreeRADIUS-Stats4-Protocol-Error	15.9.52	integer64
+
+
+#
+#  Attributes 127 through 187 are for statistics produced by
+#  FreeRADIUS from version 2 to version 3.  Version 4 produces
+#  entirely different statistics.
+#
+
+#
 #  This attribute is really a bitmask.
 #
 ATTRIBUTE	FreeRADIUS-Statistics-Type		127	integer
