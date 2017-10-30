@@ -38,18 +38,51 @@ RCSID("$Id$")
 #define PTHREAD_MUTEX_UNLOCK
 #endif
 
+/*
+ *	@todo - use RBtrees to track stats by src / dst.
+ *
+ *	thread-local lookups are thread-safe, and don't need locks.
+ *	thread-local add / delete need locks
+ *
+ *	thread-remote lookups (i.e. from other thread) need locks
+ *
+ *	use same memcpy() trick to avoid work in the contended area.
+ */
+
 typedef struct rlm_stats_t {
 #ifdef HAVE_PTHREAD_H
-	pthread_mutex_t	mutex;
+	pthread_mutex_t		mutex;
 #endif
+
+	fr_dlist_t		entry;				//!< for threads to know about each other
 
 	uint64_t		stats[FR_MAX_PACKET_CODE];
 } rlm_stats_t;
 
+typedef struct rlm_stats_data_t {
+	fr_ipaddr_t		ipaddr;				//!< IP address of this thing
+	fr_time_t		created;			//!< when it was created
+	fr_time_t		last_packet;			//!< when we last saw a packet
+	uint64_t		stats[FR_MAX_PACKET_CODE];	//!< actual statistic
+} rlm_stats_data_t;
+
 typedef struct rlm_stats_thread_t {
 	rlm_stats_t		*inst;
 
-	fr_time_t		last_update;
+	fr_time_t		last_global_update;
+	fr_dlist_t		entry;				//!< for threads to know about each other
+
+	fr_time_t		last_manage;			//!< when we deleted old things
+
+#ifdef HAVE_PTHREAD_H
+	pthread_mutex_t		src_mutex;
+#endif
+	rbtree_t		*src;				//!< stats by source
+
+#ifdef HAVE_PTHREAD_H
+	pthread_mutex_t		dst_mutex;
+#endif
+	rbtree_t		*dst;				//!< stats by destination
 
 	uint64_t		stats[FR_MAX_PACKET_CODE];
 } rlm_stats_thread_t;
@@ -64,13 +97,13 @@ static const CONF_PARSER module_config[] = {
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQUEST *request)
 {
-	int i, code;
+	int i;
 	rlm_stats_thread_t *t = thread;
 	rlm_stats_t *inst = instance;
 	VALUE_PAIR *vp;
 	vp_cursor_t cursor;
 	char buffer[64];
-	uint64_t stats[sizeof(inst->stats) / sizeof(inst->stats[0])];
+	uint64_t local_stats[sizeof(inst->stats) / sizeof(inst->stats[0])];
 
 	/*
 	 *	Increment counters only in "send foo" sections.
@@ -78,17 +111,67 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 	 *	i.e. only when we have a reply to send.
 	 */
 	if (request->request_state == REQUEST_SEND) {
-		code = request->packet->code;
-		if ((code > 0) && (code < FR_MAX_PACKET_CODE)) t->stats[code]++;
+		rlm_stats_data_t mydata, *stats;
+		int src_code, dst_code;
 
-		code = request->reply->code;
-		if ((code > 0) && (code < FR_MAX_PACKET_CODE)) t->stats[code]++;
+		src_code = request->packet->code;
+		if (src_code > FR_MAX_PACKET_CODE) src_code = 0;
 
-		if ((t->last_update + NANOSEC) > request->async->recv_time) {
+		dst_code = request->reply->code;
+		if (dst_code > FR_MAX_PACKET_CODE) dst_code = 0;
+
+		t->stats[src_code]++;
+		t->stats[dst_code]++;
+
+		/*
+		 *	Update source statistics
+		 */
+		mydata.ipaddr = request->packet->src_ipaddr;
+		stats = rbtree_finddata(t->src, &mydata);
+		if (!stats) {
+			MEM(stats = talloc(t, rlm_stats_data_t));
+
+			stats->ipaddr = request->packet->src_ipaddr;
+			stats->created = request->async->recv_time;
+
+			PTHREAD_MUTEX_LOCK(&t->src_mutex);
+			(void) rbtree_insert(t->src, stats);
+			PTHREAD_MUTEX_UNLOCK(&t->src_mutex);
+		}
+
+		stats->last_packet = request->async->recv_time;
+		stats->stats[src_code]++;
+		stats->stats[dst_code]++;
+
+		/*
+		 *	Update destination statistics
+		 */
+		mydata.ipaddr = request->packet->dst_ipaddr;
+		stats = rbtree_finddata(t->dst, &mydata);
+		if (!stats) {
+			MEM(stats = talloc(t, rlm_stats_data_t));
+
+			stats->ipaddr = request->packet->dst_ipaddr;
+			stats->created = request->async->recv_time;
+
+			PTHREAD_MUTEX_LOCK(&t->dst_mutex);
+			(void) rbtree_insert(t->dst, stats);
+			PTHREAD_MUTEX_UNLOCK(&t->dst_mutex);
+		}
+
+		stats->last_packet = request->async->recv_time;
+		stats->stats[src_code]++;
+		stats->stats[dst_code]++;
+
+		/*
+		 *	@todo - periodically clean up old entries.
+		 */
+
+		if ((t->last_global_update + NANOSEC) > request->async->recv_time) {
 			return RLM_MODULE_UPDATED;
 		}
 
-		t->last_update = request->async->recv_time;
+		t->last_global_update = request->async->recv_time;
 
 		PTHREAD_MUTEX_LOCK(&inst->mutex);
 		for (i = 0; i < FR_MAX_PACKET_CODE; i++) {
@@ -119,7 +202,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 		inst->stats[i] += t->stats[i];
 		t->stats[i] = 0;
 	}
-	memcpy(&stats, inst->stats, sizeof(inst->stats));
+	memcpy(&local_stats, inst->stats, sizeof(inst->stats));
 	PTHREAD_MUTEX_UNLOCK(&inst->mutex);
 
 	/*
@@ -134,7 +217,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 	for (i = 0; i < FR_MAX_PACKET_CODE; i++) {
 		fr_dict_attr_t const *da;
 
-		if (!stats[i]) continue;
+		if (!local_stats[i]) continue;
 
 		strcpy(buffer + 18, fr_packet_codes[i]);
 		da = fr_dict_attr_by_name(NULL, buffer);
@@ -143,13 +226,29 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 		vp = fr_pair_afrom_da(request->reply, da);
 		if (!vp) return RLM_MODULE_FAIL;
 
-		vp->vp_uint64 = stats[i];
+		vp->vp_uint64 = local_stats[i];
 
 		fr_pair_cursor_append(&cursor, vp);
 		(void) fr_pair_cursor_last(&cursor);
 	}
 
 	return RLM_MODULE_OK;
+}
+
+
+static int data_cmp(const void *one, const void *two)
+{
+	rlm_stats_data_t const *a = one;
+	rlm_stats_data_t const *b = two;
+
+	return fr_ipaddr_cmp(&a->ipaddr, &b->ipaddr);
+}
+
+static void data_free(void *one)
+{
+	rlm_stats_data_t *a = one;
+
+	talloc_free(a);
 }
 
 
@@ -164,6 +263,17 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	(void) talloc_set_type(t, rlm_radius_thread_t);
 
 	t->inst = inst;
+
+#ifdef HAVE_PTHREAD_H
+	pthread_mutex_init(&t->src_mutex, NULL);
+	pthread_mutex_init(&t->dst_mutex, NULL);
+#endif
+	t->src = rbtree_create(t, data_cmp, data_free, RBTREE_FLAG_NONE);
+	t->dst = rbtree_create(t, data_cmp, data_free, RBTREE_FLAG_NONE);
+
+	PTHREAD_MUTEX_LOCK(&inst->mutex);
+	fr_dlist_insert_head(&inst->entry, &t->entry);
+	PTHREAD_MUTEX_UNLOCK(&inst->mutex);
 
 	return 0;
 }
@@ -182,6 +292,7 @@ static int mod_thread_detach(void *thread)
 	for (i = 0; i < FR_MAX_PACKET_CODE; i++) {
 		inst->stats[i] += t->stats[i];
 	}
+	fr_dlist_remove(&t->entry);
 	PTHREAD_MUTEX_UNLOCK(&inst->mutex);
 
 	return 0;
