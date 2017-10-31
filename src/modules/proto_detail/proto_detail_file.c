@@ -161,7 +161,7 @@ static int work_rename(proto_detail_file_t *inst)
 	glob_t		files;
 	struct stat	st;
 
-	DEBUG2("proto_detail (%s): polling for detail files in %s",
+	DEBUG3("proto_detail (%s): polling for detail files in %s",
 	       inst->name, inst->directory);
 
 	memset(&files, 0, sizeof(files));
