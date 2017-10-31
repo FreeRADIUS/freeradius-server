@@ -172,10 +172,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 		int src_code, dst_code;
 
 		src_code = request->packet->code;
-		if (src_code > FR_MAX_PACKET_CODE) src_code = 0;
+		if (src_code >= FR_MAX_PACKET_CODE) src_code = 0;
 
 		dst_code = request->reply->code;
-		if (dst_code > FR_MAX_PACKET_CODE) dst_code = 0;
+		if (dst_code >= FR_MAX_PACKET_CODE) dst_code = 0;
 
 		t->stats[src_code]++;
 		t->stats[dst_code]++;
@@ -324,7 +324,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 
 		if (!local_stats[i]) continue;
 
-		strcpy(buffer + 18, fr_packet_codes[i]);
+		strlcpy(buffer + 18, fr_packet_codes[i], sizeof(buffer) - 18);
 		da = fr_dict_attr_by_name(NULL, buffer);
 		if (!da) continue;
 
