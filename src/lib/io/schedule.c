@@ -560,7 +560,6 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	 *	Clean up the exited workers.
 	 */
 	while ((entry = FR_DLIST_FIRST(sc->workers)) != NULL) {
-		sw = fr_ptr_to_type(fr_schedule_worker_t, entry, entry);
 		sc->num_workers--;
 		fr_dlist_remove(entry);
 
@@ -572,6 +571,7 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 		 *	We can't catch that, so the best bet in the
 		 *	short term is to just leak this memory on exit.
 		 */
+//		sw = fr_ptr_to_type(fr_schedule_worker_t, entry, entry);
 //		talloc_free(sw->ctx);
 	}
 
