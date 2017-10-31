@@ -364,6 +364,7 @@ int fr_radius_tracking_entry_reply(fr_tracking_t *ft, fr_tracking_entry_t *entry
 		return 0;
 	}
 
+	rad_assert(entry->reply == NULL);
 	entry->reply = talloc_memdup(ft, reply, reply_len);
 	entry->reply_len = reply_len;
 
