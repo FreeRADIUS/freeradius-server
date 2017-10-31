@@ -2607,9 +2607,9 @@ static int mod_thread_detach(void *thread)
 	/*
 	 *	Free all of the heaps, lists, and sockets.
 	 */
+	talloc_free_children(t);
 	talloc_free(t->queued);
 	talloc_free(t->active);
-	talloc_free_children(t);
 
 	entry = FR_DLIST_FIRST(t->opening);
 	if (entry != NULL) {
