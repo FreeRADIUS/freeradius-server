@@ -77,6 +77,7 @@ typedef enum fr_schedule_child_status_t {
  */
 typedef struct fr_schedule_worker_t {
 	TALLOC_CTX	*ctx;			//!< our allocation ctx
+	fr_event_list_t	*el;			//!< our event list
 	pthread_t	pthread_id;		//!< the thread of this worker
 
 	int		id;			//!< a unique ID
@@ -150,7 +151,6 @@ static void *fr_schedule_worker_thread(void *arg)
 	fr_schedule_worker_t *sw = arg;
 	fr_schedule_t *sc = sw->sc;
 	fr_schedule_child_status_t status = FR_CHILD_FAIL;
-	fr_event_list_t *el = NULL;
 	char buffer[32];
 
 	sw->ctx = ctx = talloc_init("worker %d", sw->id);
@@ -161,14 +161,14 @@ static void *fr_schedule_worker_thread(void *arg)
 
 	fr_log(sc->log, L_INFO, "Worker %d starting\n", sw->id);
 
-	el = fr_event_list_alloc(ctx, NULL, NULL);
-	if (!el) {
+	sw->el = fr_event_list_alloc(ctx, NULL, NULL);
+	if (!sw->el) {
 		fr_log(sc->log, L_ERR, "Worker %d - Failed creating event list: %s",
 		       sw->id, fr_strerror());
 		goto fail;
 	}
 
-	sw->worker = fr_worker_create(ctx, el, sc->log, sc->lvl);
+	sw->worker = fr_worker_create(ctx, sw->el, sc->log, sc->lvl);
 	if (!sw->worker) {
 		fr_log(sc->log, L_ERR, "Worker %d - Failed creating worker: %s", sw->id, fr_strerror());
 		goto fail;
@@ -215,8 +215,6 @@ fail:
 		fr_worker_destroy(sw->worker);
 		sw->worker = NULL;
 	}
-
-//	if (el) talloc_free(el);
 
 	fr_log(sc->log, L_INFO, "Worker %d exiting\n", sw->id);
 
