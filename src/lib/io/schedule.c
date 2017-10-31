@@ -551,7 +551,6 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 		SEM_WAIT_INTR(&sc->semaphore);
 	}
 
-
 	/*
 	 *	Clean up the exited workers.
 	 */
@@ -560,6 +559,15 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 		sc->num_workers--;
 		fr_dlist_remove(entry);
 		fr_worker_destroy(sw->worker);
+
+		/*
+		 *	We can't free the context, because the event
+		 *	loop is allocated from it.  And the per-module
+		 *	thread instance data isn't freed until the
+		 *	thread is freed, which happens asynchronously.
+		 *	We can't catch that, so the best bet in the
+		 *	short term is to just leak this memory on exit.
+		 */
 //		talloc_free(sw->ctx);
 	}
 
