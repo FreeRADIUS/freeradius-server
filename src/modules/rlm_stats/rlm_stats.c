@@ -28,6 +28,13 @@ RCSID("$Id$")
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/rad_assert.h>
 
+/*
+ *	@todo - also get the statistics from the network side for
+ *		that, though, we need a way to find other network
+ *		sockets (i.e. not this one), and then query them for
+ *		statistics.
+ */
+
 #ifdef HAVE_PTHREAD_H
 #include <pthread.h>
 #define PTHREAD_MUTEX_LOCK   pthread_mutex_lock
