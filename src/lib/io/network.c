@@ -934,7 +934,9 @@ int fr_network_destroy(fr_network_t *nr)
 
 	(void) fr_event_post_delete(nr->el, fr_network_post_event, nr);
 
-	talloc_free(nr);
+	/*
+	 *	The caller has to free 'nr'.
+	 */
 
 	return 0;
 }

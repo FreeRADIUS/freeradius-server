@@ -76,6 +76,7 @@ typedef enum fr_schedule_child_status_t {
  *	A data structure to track workers.
  */
 typedef struct fr_schedule_worker_t {
+	TALLOC_CTX	*ctx;			//!< our allocation ctx
 	pthread_t	pthread_id;		//!< the thread of this worker
 
 	int		id;			//!< a unique ID
@@ -94,6 +95,7 @@ typedef struct fr_schedule_worker_t {
  *	A data structure to track network threads / networks.
  */
 typedef struct fr_schedule_network_t {
+	TALLOC_CTX	*ctx;			//!< our allocation ctx
 	pthread_t	pthread_id;		//!< the thread of this network
 
 	int		id;			//!< a unique ID
@@ -144,22 +146,29 @@ struct fr_schedule_t {
  */
 static void *fr_schedule_worker_thread(void *arg)
 {
+	TALLOC_CTX *ctx;
 	fr_schedule_worker_t *sw = arg;
 	fr_schedule_t *sc = sw->sc;
 	fr_schedule_child_status_t status = FR_CHILD_FAIL;
 	fr_event_list_t *el;
 	char buffer[32];
 
+	sw->ctx = ctx = talloc_init("worker %d", sw->id);
+	if (!ctx) {
+		fr_log(sc->log, L_ERR, "Worker %d - Failed allocating memory", sw->id);
+		goto fail;
+	}
+
 	fr_log(sc->log, L_INFO, "Worker %d starting\n", sw->id);
 
-	el = fr_event_list_alloc(sw, NULL, NULL);
+	el = fr_event_list_alloc(ctx, NULL, NULL);
 	if (!el) {
 		fr_log(sc->log, L_ERR, "Worker %d - Failed creating event list: %s",
 		       sw->id, fr_strerror());
 		goto fail;
 	}
 
-	sw->worker = fr_worker_create(sw, el, sc->log, sc->lvl);
+	sw->worker = fr_worker_create(ctx, el, sc->log, sc->lvl);
 	if (!sw->worker) {
 		fr_log(sc->log, L_ERR, "Worker %d - Failed creating worker: %s", sw->id, fr_strerror());
 		goto fail;
@@ -197,17 +206,10 @@ static void *fr_schedule_worker_thread(void *arg)
 
 	fr_log(sc->log, L_INFO, "Worker %d finished\n", sw->id);
 
-	/*
-	 *	Talloc ordering issues. We want to be independent of
-	 *	how talloc walks it's children, and ensure that some
-	 *	things are freed in a specific order.
-	 */
-	fr_worker_destroy(sw->worker);
-	sw->worker = NULL;
-
 	status = FR_CHILD_EXITED;
 
 fail:
+	if (sw->ctx) TALLOC_FREE(sw->ctx);
 
 	sw->status = status;
 
@@ -237,7 +239,7 @@ static void *fr_schedule_network_thread(void *arg)
 
 	fr_log(sc->log, L_INFO, "Network %d starting\n", sn->id);
 
-	ctx = talloc_init("network %d", sn->id);
+	sn->ctx = ctx = talloc_init("network %d", sn->id);
 	if (!ctx) {
 		fr_log(sc->log, L_ERR, "Network %d - Failed allocating memory", sn->id);
 		goto fail;
@@ -270,19 +272,9 @@ static void *fr_schedule_network_thread(void *arg)
 	 */
 	fr_network(sn->rc);
 
-	/*
-	 *	Talloc ordering issues. We want to be independent of
-	 *	how talloc walks it's children, and ensure that some
-	 *	things are freed in a specific order.
-	 */
-	fr_network_destroy(sn->rc);
-	sn->rc = NULL;
-
 	status = FR_CHILD_EXITED;
 
 fail:
-	if (ctx) talloc_free(ctx);
-
 	sn->status = status;
 
 	fr_log(sc->log, L_INFO, "Network exiting");
@@ -416,6 +408,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 	SEM_WAIT_INTR(&sc->semaphore);
 	if (sc->sn->status != FR_CHILD_RUNNING) {
 	fail:
+		if (sc->sn->ctx) TALLOC_FREE(sc->sn->ctx);
 		TALLOC_FREE(sc->sn);
 		fr_schedule_destroy(sc);
 		return NULL;
@@ -432,7 +425,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		/*
 		 *	Create a worker "glue" structure
 		 */
-		sw = talloc(NULL, fr_schedule_worker_t);
+		sw = talloc(sc, fr_schedule_worker_t);
 		if (!sw) {
 			fr_log(sc->log, L_ERR, "Worker %d - Failed allocating memory", i);
 			break;
@@ -446,7 +439,6 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		rcode = pthread_create(&sw->pthread_id, &attr, fr_schedule_worker_thread, sw);
 		if (rcode != 0) {
 			fr_log(sc->log, L_ERR, "Failed creating worker %d: %s\n", i, fr_syserror(errno));
-			talloc_free(sw);
 			break;
 		}
 
@@ -478,7 +470,6 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		if (sw->status != FR_CHILD_RUNNING) {
 			sc->num_workers--;
 			fr_dlist_remove(entry);
-			talloc_free(sw);
 			continue;
 		}
 	}
@@ -507,13 +498,17 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
  */
 int fr_schedule_destroy(fr_schedule_t *sc)
 {
+#if 0
 	int i;
 	fr_schedule_worker_t *sw;
+#endif
 
 	sc->running = false;
 
 #ifdef HAVE_PTHREAD_H
+#if 0
 	fr_dlist_t	*entry, *next;
+#endif
 
 	/*
 	 *	Single threaded mode: kill the only network / worker we have.
@@ -530,6 +525,19 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 
 	rad_assert(sc->num_workers > 0);
 
+	/*
+	 *	If the network thread is running, tell it to exit, and
+	 *	wait for it to do so.  Once it's exited, we know that
+	 *	this thread can use the network channels to tell the
+	 *	workers that the network side is going away.
+	 */
+	if (sc->sn->status == FR_CHILD_RUNNING) {
+		fr_network_exit(sc->sn->rc);
+		SEM_WAIT_INTR(&sc->semaphore);
+		fr_network_destroy(sc->sn->rc);
+	}
+
+#if 0
 	/*
 	 *	Signal all of the workers to exit.
 	 */
@@ -563,17 +571,14 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 		sw = fr_ptr_to_type(fr_schedule_worker_t, entry, entry);
 		sc->num_workers--;
 		fr_dlist_remove(entry);
-		talloc_free(sw);
+		fr_worker_destroy(sw->worker);
+//		talloc_free(sw->ctx);
 	}
 
-	/*
-	 *	If the network thread is running, tell it to exit.
-	 */
-	if (sc->sn->status == FR_CHILD_RUNNING) {
-		fr_network_exit(sc->sn->rc);
-		SEM_WAIT_INTR(&sc->semaphore);
-	}
+	TALLOC_FREE(sc->sn->ctx);
 
+#endif
+	
 	sem_destroy(&sc->semaphore);
 #endif	/* HAVE_PTHREAD_H */
 

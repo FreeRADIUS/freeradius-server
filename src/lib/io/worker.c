@@ -1464,7 +1464,7 @@ void fr_worker(fr_worker_t *worker)
 		num_events = fr_event_corral(worker->el, wait_for_event);
 		DEBUG3("\t%sGot num_events %d", worker->name, num_events);
 		if (num_events < 0) {
-			if (worker->exiting) break; /* don't complain if we're exiting */
+			if (worker->exiting) return; /* don't complain if we're exiting */
 
 			ERROR("Failed corraling events: %s", fr_strerror());
 			break;
