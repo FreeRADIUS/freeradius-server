@@ -1105,7 +1105,7 @@ void fr_network(fr_network_t *nr)
 		 *	the event loop, but we don't wait for events.
 		 */
 		wait_for_event = (fr_heap_num_elements(nr->replies) == 0);
-		DEBUG("Waiting for events %d", wait_for_event);
+		DEBUG3("Waiting for events %d", wait_for_event);
 
 		/*
 		 *	Check the event list.  If there's an error
