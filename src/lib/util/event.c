@@ -1764,11 +1764,11 @@ static int _event_list_free(fr_event_list_t *el)
 {
 	fr_event_timer_t const *ev;
 
-	talloc_free_children(el);
-
 	while ((ev = fr_heap_peek(el->times)) != NULL) fr_event_timer_delete(el, &ev);
 
 	talloc_free(el->times);
+
+	talloc_free_children(el);
 
 	close(el->kq);
 
