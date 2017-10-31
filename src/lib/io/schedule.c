@@ -502,7 +502,7 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	sc->running = false;
 
 #ifdef HAVE_PTHREAD_H
-	fr_dlist_t	*entry, *next;
+	fr_dlist_t	*entry;
 
 	/*
 	 *	Single threaded mode: kill the only network / worker we have.
@@ -536,9 +536,7 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	 */
 	for (entry = FR_DLIST_FIRST(sc->workers);
 	     entry != NULL;
-	     entry = next) {
-		next = FR_DLIST_NEXT(sc->workers, entry);
-
+	     entry = FR_DLIST_NEXT(sc->workers, entry)) {
 		sw = fr_ptr_to_type(fr_schedule_worker_t, entry, entry);
 		fr_worker_exit(sw->worker);
 	}
@@ -557,11 +555,7 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 	/*
 	 *	Clean up the exited workers.
 	 */
-	for (entry = FR_DLIST_FIRST(sc->workers);
-	     entry != NULL;
-	     entry = next) {
-		next = FR_DLIST_NEXT(sc->workers, entry);
-
+	while ((entry = FR_DLIST_FIRST(sc->workers)) != NULL) {
 		sw = fr_ptr_to_type(fr_schedule_worker_t, entry, entry);
 		sc->num_workers--;
 		fr_dlist_remove(entry);
