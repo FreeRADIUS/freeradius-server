@@ -38,17 +38,6 @@ RCSID("$Id$")
 #define PTHREAD_MUTEX_UNLOCK
 #endif
 
-/*
- *	@todo - use RBtrees to track stats by src / dst.
- *
- *	thread-local lookups are thread-safe, and don't need locks.
- *	thread-local add / delete need locks
- *
- *	thread-remote lookups (i.e. from other thread) need locks
- *
- *	use same memcpy() trick to avoid work in the contended area.
- */
-
 typedef struct rlm_stats_t {
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t		mutex;
@@ -93,6 +82,63 @@ typedef struct rlm_stats_thread_t {
 static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
+
+static void coalesce(uint64_t final_stats[FR_MAX_PACKET_CODE], rlm_stats_thread_t *t,
+		     UNUSED size_t mutex_offset, size_t tree_offset,
+		     rlm_stats_data_t *mydata)
+{
+	rlm_stats_data_t *stats;
+	fr_dlist_t *entry;
+	rlm_stats_thread_t *other;
+#ifdef HAVE_PTHREAD_H
+	pthread_mutex_t *mutex;
+#endif
+	rbtree_t **tree;
+	uint64_t local_stats[FR_MAX_PACKET_CODE];
+
+	tree = (rbtree_t **) (((uint8_t *) t) + tree_offset);
+
+	/*
+	 *	Bootstrap with my statistics, where we don't need a
+	 *	lock.
+	 */
+	stats = rbtree_finddata(*tree, mydata);
+	if (!stats) {
+		memset(final_stats, 0, sizeof(uint64_t) * FR_MAX_PACKET_CODE);
+	} else {
+		memcpy(final_stats, stats->stats, sizeof(stats->stats));
+	}
+
+	/*
+	 *	Loop over all of the other thread instances, locking
+	 *	them, and adding their statistics in.
+	 */
+	for (entry = FR_DLIST_FIRST(t->inst->entry);
+	     entry != NULL;
+	     entry = FR_DLIST_NEXT(t->inst->entry, entry)) {
+		other = fr_ptr_to_type(rlm_stats_thread_t, entry, entry);
+		int i;
+
+		if (other == t) continue;
+
+		tree = (rbtree_t **) (((uint8_t *) other) + tree_offset);
+#ifdef HAVE_PTHREAD_H
+		mutex = (pthread_mutex_t *) (((uint8_t *) other) + mutex_offset);
+#endif
+		PTHREAD_MUTEX_LOCK(mutex);
+		stats = rbtree_finddata(*tree, mydata);
+		if (!stats) {
+			PTHREAD_MUTEX_UNLOCK(mutex);
+			continue;
+		}
+		memcpy(&local_stats, stats->stats, sizeof(stats->stats));
+		PTHREAD_MUTEX_UNLOCK(mutex);
+
+		for (i = 0; i < FR_MAX_PACKET_CODE; i++) {
+			final_stats[i] += local_stats[i];
+		}
+	}
+}
 
 
 /*
@@ -225,6 +271,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 		}
 		memcpy(&local_stats, inst->stats, sizeof(inst->stats));
 		PTHREAD_MUTEX_UNLOCK(&inst->mutex);
+		vp = NULL;
 		break;
 
 	case 2:			/* src */
@@ -233,16 +280,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 		if (!vp) return RLM_MODULE_NOOP;
 
 		mydata.ipaddr = vp->vp_ip;
-		stats = rbtree_finddata(t->src, &mydata);
-		if (!stats) return RLM_MODULE_NOOP;
-
-		vp = fr_pair_copy(request->reply, vp);
-		if (vp) {
-			fr_pair_cursor_append(&cursor, vp);
-			(void) fr_pair_cursor_last(&cursor);
-		}
-
-		memcpy(&local_stats, stats->stats, sizeof(local_stats));
+		coalesce(local_stats, t,
+			 offsetof(rlm_stats_thread_t, src_mutex), offsetof(rlm_stats_thread_t, src),
+			 &mydata);
 		break;
 
 	case 3:			/* dst */
@@ -251,22 +291,23 @@ static rlm_rcode_t CC_HINT(nonnull) mod_stats(void *instance, void *thread, REQU
 		if (!vp) return RLM_MODULE_NOOP;
 
 		mydata.ipaddr = vp->vp_ip;
-		stats = rbtree_finddata(t->dst, &mydata);
-		if (!stats) return RLM_MODULE_NOOP;
-
-		vp = fr_pair_copy(request->reply, vp);
-		if (vp) {
-			fr_pair_cursor_append(&cursor, vp);
-			(void) fr_pair_cursor_last(&cursor);
-		}
-
-		memcpy(&local_stats, stats->stats, sizeof(local_stats));
+		coalesce(local_stats, t,
+			 offsetof(rlm_stats_thread_t, dst_mutex), offsetof(rlm_stats_thread_t, dst),
+			 &mydata);
 		break;
 
 	default:
 		REDEBUG("Invalid value '%d' for FreeRADIUS-Stats4-type",
 			stats_type);
 		return RLM_MODULE_FAIL;
+	}
+
+	if (vp ) {
+		vp = fr_pair_copy(request->reply, vp);
+		if (vp) {
+			fr_pair_cursor_append(&cursor, vp);
+			(void) fr_pair_cursor_last(&cursor);
+		}
 	}
 
 	strcpy(buffer, "FreeRADIUS-Stats4-");
@@ -317,7 +358,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	rlm_stats_t *inst = talloc_get_type_abort(instance, rlm_stats_t);
 	rlm_stats_thread_t *t = thread;
 
-	(void) talloc_set_type(t, rlm_radius_thread_t);
+	(void) talloc_set_type(t, rlm_stats_thread_t);
 
 	t->inst = inst;
 
