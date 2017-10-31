@@ -209,8 +209,6 @@ static void *fr_schedule_worker_thread(void *arg)
 	status = FR_CHILD_EXITED;
 
 fail:
-	if (sw->ctx) TALLOC_FREE(sw->ctx);
-
 	sw->status = status;
 
 	fr_log(sc->log, L_INFO, "Worker %d exiting\n", sw->id);
@@ -425,7 +423,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		/*
 		 *	Create a worker "glue" structure
 		 */
-		sw = talloc(sc, fr_schedule_worker_t);
+		sw = talloc_zero(sc, fr_schedule_worker_t);
 		if (!sw) {
 			fr_log(sc->log, L_ERR, "Worker %d - Failed allocating memory", i);
 			break;
@@ -498,17 +496,13 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
  */
 int fr_schedule_destroy(fr_schedule_t *sc)
 {
-#if 0
 	int i;
 	fr_schedule_worker_t *sw;
-#endif
 
 	sc->running = false;
 
 #ifdef HAVE_PTHREAD_H
-#if 0
 	fr_dlist_t	*entry, *next;
-#endif
 
 	/*
 	 *	Single threaded mode: kill the only network / worker we have.
@@ -537,7 +531,6 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 		fr_network_destroy(sc->sn->rc);
 	}
 
-#if 0
 	/*
 	 *	Signal all of the workers to exit.
 	 */
@@ -560,6 +553,7 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 		SEM_WAIT_INTR(&sc->semaphore);
 	}
 
+
 	/*
 	 *	Clean up the exited workers.
 	 */
@@ -577,8 +571,6 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 
 	TALLOC_FREE(sc->sn->ctx);
 
-#endif
-	
 	sem_destroy(&sc->semaphore);
 #endif	/* HAVE_PTHREAD_H */
 
