@@ -150,7 +150,7 @@ static void *fr_schedule_worker_thread(void *arg)
 	fr_schedule_worker_t *sw = arg;
 	fr_schedule_t *sc = sw->sc;
 	fr_schedule_child_status_t status = FR_CHILD_FAIL;
-	fr_event_list_t *el;
+	fr_event_list_t *el = NULL;
 	char buffer[32];
 
 	sw->ctx = ctx = talloc_init("worker %d", sw->id);
@@ -210,6 +210,13 @@ static void *fr_schedule_worker_thread(void *arg)
 
 fail:
 	sw->status = status;
+
+	if (sw->worker) {
+		fr_worker_destroy(sw->worker);
+		sw->worker = NULL;
+	}
+
+//	if (el) talloc_free(el);
 
 	fr_log(sc->log, L_INFO, "Worker %d exiting\n", sw->id);
 
@@ -558,7 +565,6 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 		sw = fr_ptr_to_type(fr_schedule_worker_t, entry, entry);
 		sc->num_workers--;
 		fr_dlist_remove(entry);
-		fr_worker_destroy(sw->worker);
 
 		/*
 		 *	We can't free the context, because the event
