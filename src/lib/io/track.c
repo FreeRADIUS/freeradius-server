@@ -250,6 +250,7 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_entry_t **p_ent
 
 		if (entry->reply) {
 			talloc_const_free(entry->reply);
+			entry->reply = NULL;
 			entry->reply_len = 0;
 		}
 
@@ -287,6 +288,7 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_entry_t **p_ent
 
 			if (entry->reply) {
 				talloc_const_free(entry->reply);
+				entry->reply = NULL;
 				entry->reply_len = 0;
 			}
 
@@ -357,6 +359,7 @@ int fr_radius_tracking_entry_reply(fr_tracking_t *ft, fr_tracking_entry_t *entry
 	 *	Bad packets are "don't reply"
 	 */
 	if (reply_len < 20) {
+		entry->reply = NULL;
 		entry->reply_len = 1;
 		return 0;
 	}
