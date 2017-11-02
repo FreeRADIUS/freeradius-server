@@ -17,10 +17,6 @@ SOURCES := \
     virtual_servers.c \
     process.c
 
-ifneq ($(OPENSSL_LIBS),)
-include ${top_srcdir}/src/main/tls.mk
-endif
-
 SRC_CFLAGS	:=
 
 TGT_INSTALLDIR  := ${sbindir}
