@@ -550,6 +550,6 @@ int fr_ring_buffer_start(fr_ring_buffer_t *rb, uint8_t **p_start, size_t *p_size
  */
 void fr_ring_buffer_debug(fr_ring_buffer_t *rb, FILE *fp)
 {
-	fprintf(fp, "Buffer %p, write_offset %zd, data_start %zd, data_end %zd\n",
+	fprintf(fp, "Buffer %p, write_offset %zu, data_start %zu, data_end %zu\n",
 		rb->buffer, rb->write_offset, rb->data_start, rb->data_end);
 }
