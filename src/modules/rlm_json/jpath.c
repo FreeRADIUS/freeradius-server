@@ -62,12 +62,8 @@ typedef union {
  */
 typedef struct jpath_expr {
 	jpath_operand_t		lhs;		//!< LHS value.
-	jpath_operand_type 	lhs_type;	//!< LHS type.
 
 	jpath_operand_t		rhs;		//!< RHS value.
-	jpath_operand_type	rhs_type;	//!< RHS type.
-
-	FR_TOKEN		op;		//!< Comparison operator
 } jpath_expr_t;
 
 /** Selects a subset of JSON child nodes
