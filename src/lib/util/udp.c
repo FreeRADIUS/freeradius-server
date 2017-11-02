@@ -51,8 +51,8 @@ RCSID("$Id$")
  * @param[in] dst_port of the packet.
  */
 ssize_t udp_send(int sockfd, void *data, size_t data_len, int flags,
-		 UDP_UNUSED fr_ipaddr_t *src_ipaddr, UDP_UNUSED uint16_t src_port, UDP_UNUSED int if_index,
-		 fr_ipaddr_t *dst_ipaddr, uint16_t dst_port)
+		 UDP_UNUSED fr_ipaddr_t const *src_ipaddr, UDP_UNUSED uint16_t src_port, UDP_UNUSED int if_index,
+		 fr_ipaddr_t const *dst_ipaddr, uint16_t dst_port)
 {
 	int rcode;
 
