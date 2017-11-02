@@ -395,7 +395,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 {
 	proto_radius_udp_t		*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
 	fr_tracking_entry_t		*track = packet_ctx;
-	proto_radius_udp_address_t	*address = track->src_dst;
+	proto_radius_udp_address_t const *address = track->src_dst;
 
 	ssize_t				data_size;
 	fr_time_t			reply_time;
