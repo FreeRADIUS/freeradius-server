@@ -108,10 +108,6 @@ typedef struct radmin_state {
 	fr_event_list_t		*event_list;		//!< Our main event list.
 
 	radmin_conn_t		*active_conn;		//!< Connection to remote entity.
-
-	bool			batch;			//!< Whether we're in batch mode.
-	bool			echo;			//!< Whether we should be echoing commands as they're issued.
-	bool			unbuffered;		//!< Whether we're in unbuffered mode...
 } radmin_state_t;
 
 /** Main radmin state
