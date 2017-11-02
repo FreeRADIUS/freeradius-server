@@ -386,7 +386,6 @@ static ssize_t decode_concat(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	while (ptr < end) {
 		memcpy_bounded(p, ptr + 2, ptr[1] - 2, end);
 		p += ptr[1] - 2;
-		total += ptr[1] - 2;
 		ptr += ptr[1];
 	}
 	fr_pair_cursor_append(cursor, vp);
