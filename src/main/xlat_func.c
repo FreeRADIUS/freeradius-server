@@ -625,7 +625,6 @@ int xlat_register(void *mod_inst, char const *name,
 {
 	xlat_t	*c;
 	xlat_t	my_xlat;
-	rbnode_t *node;
 
 	if (!name || !*name) {
 		ERROR("%s: Invalid xlat name", __FUNCTION__);
@@ -725,7 +724,12 @@ int xlat_register(void *mod_inst, char const *name,
 
 	DEBUG3("%s: %s", c->name, __FUNCTION__);
 
-	MEM(node = rbtree_insert_node(xlat_root, c));
+	if (!rbtree_insert(xlat_root, c)) {
+		ERROR("Failed inserting xlat registration for %s",
+		      c->name);
+		talloc_free(c);
+		return -1;
+	}
 
 	return 0;
 }
