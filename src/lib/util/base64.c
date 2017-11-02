@@ -32,43 +32,7 @@ RCSID("$Id$")
 
 #define us(x) (uint8_t) x
 
-/** Base 64 encode binary data
- *
- * Base64 encode IN array of size INLEN into OUT array of size OUTLEN.
- *
- * @param[out] out Where to write Base64 string.
- * @param[in] outlen size of buffer including NULL byte.
- * @param[in] in Data to encode.
- * @param[in] inlen Length of data to encode.
- * @return
- *	- Amount of data we wrote to the buffer.
- *	- -1 if output buffer was too small.
- */
-size_t fr_base64_encode(char *out, size_t outlen, uint8_t const *in, size_t inlen)
-{
-	static char const b64str[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
-	char *p = out;
-
-	if (outlen < (FR_BASE64_ENC_LENGTH(inlen) + 1)) {
-		*out = '\0';
-		return -1;
-	}
-
-	while (inlen) {
-		*p++ = b64str[(in[0] >> 2) & 0x3f];
-		*p++ = b64str[((in[0] << 4) + (--inlen ? in[1] >> 4 : 0)) & 0x3f];
-		*p++ = (inlen ? b64str[((in[1] << 2) + (--inlen ? in[2] >> 6 : 0)) & 0x3f] : '=');
-		*p++ = inlen ? b64str[in[2] & 0x3f] : '=';
-
-		if (inlen) inlen--;
-		if (inlen) in += 3;
-	}
-
-	p[0] = '\0';
-
-	return p - out;
-}
+char const fr_base64_str[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 /*
  * With this approach this file works independent of the charset used
@@ -149,7 +113,7 @@ size_t fr_base64_encode(char *out, size_t outlen, uint8_t const *in, size_t inle
    : (_) == '/' ? 63				\
    : -1)
 
-static const signed char b64[0x100] = {
+char const fr_base64_sextet[0x100] = {
   B64 (0), B64 (1), B64 (2), B64 (3),
   B64 (4), B64 (5), B64 (6), B64 (7),
   B64 (8), B64 (9), B64 (10), B64 (11),
@@ -216,6 +180,42 @@ static const signed char b64[0x100] = {
   B64 (252), B64 (253), B64 (254), B64 (255)
 };
 
+/** Base 64 encode binary data
+ *
+ * Base64 encode IN array of size INLEN into OUT array of size OUTLEN.
+ *
+ * @param[out] out Where to write Base64 string.
+ * @param[in] outlen size of buffer including NULL byte.
+ * @param[in] in Data to encode.
+ * @param[in] inlen Length of data to encode.
+ * @return
+ *	- Amount of data we wrote to the buffer.
+ *	- -1 if output buffer was too small.
+ */
+size_t fr_base64_encode(char *out, size_t outlen, uint8_t const *in, size_t inlen)
+{
+	char *p = out;
+
+	if (outlen < (FR_BASE64_ENC_LENGTH(inlen) + 1)) {
+		*out = '\0';
+		return -1;
+	}
+
+	while (inlen) {
+		*p++ = fr_base64_str[(in[0] >> 2) & 0x3f];
+		*p++ = fr_base64_str[((in[0] << 4) + (--inlen ? in[1] >> 4 : 0)) & 0x3f];
+		*p++ = (inlen ? fr_base64_str[((in[1] << 2) + (--inlen ? in[2] >> 6 : 0)) & 0x3f] : '=');
+		*p++ = inlen ? fr_base64_str[in[2] & 0x3f] : '=';
+
+		if (inlen) inlen--;
+		if (inlen) in += 3;
+	}
+
+	p[0] = '\0';
+
+	return p - out;
+}
+
 /** Check if char is in Base64 alphabet
  *
  * Note that '=' is padding and not considered to be part of the alphabet.
@@ -227,7 +227,7 @@ static const signed char b64[0x100] = {
  */
 bool fr_is_base64(char c)
 {
-	return b64[us(c)] >= 0;
+	return fr_base64_sextet[us(c)] >= 0;
 }
 
 /* Decode base64 encoded input array.
@@ -276,9 +276,9 @@ ssize_t fr_base64_decode(uint8_t *out, size_t outlen, char const *in, size_t inl
 			return p - end;
 		}
 
-		*out_p++ = ((b64[us(p[0])] << 2) | (b64[us(p[1])] >> 4));
-		*out_p++ = ((b64[us(p[1])] << 4) & 0xf0) | (b64[us(p[2])] >> 2);
-		*out_p++ = ((b64[us(p[2])] << 6) & 0xc0) | b64[us(p[3])];
+		*out_p++ = ((fr_base64_sextet[us(p[0])] << 2) | (fr_base64_sextet[us(p[1])] >> 4));
+		*out_p++ = ((fr_base64_sextet[us(p[1])] << 4) & 0xf0) | (fr_base64_sextet[us(p[2])] >> 2);
+		*out_p++ = ((fr_base64_sextet[us(p[2])] << 6) & 0xc0) | fr_base64_sextet[us(p[3])];
 
 		p += 4;	/* 32bit input -> 24bit output */
 	}
@@ -296,14 +296,14 @@ ssize_t fr_base64_decode(uint8_t *out, size_t outlen, char const *in, size_t inl
 
 	case 2:		/* Final quantum is 8 bits */
 		if ((out_end - out_p) < 1) goto oob;
-		*out_p++ = ((b64[us(p[0])] << 2) | (b64[us(p[1])] >> 4));
+		*out_p++ = ((fr_base64_sextet[us(p[0])] << 2) | (fr_base64_sextet[us(p[1])] >> 4));
 		p += 2;
 		break;
 
 	case 3:		/* Final quantum is 16 bits */
 		if ((out_end - out_p) < 2) goto oob;
-		*out_p++ = ((b64[us(p[0])] << 2) | (b64[us(p[1])] >> 4));
-		*out_p++ = ((b64[us(p[1])] << 4) & 0xf0) | (b64[us(p[2])] >> 2);
+		*out_p++ = ((fr_base64_sextet[us(p[0])] << 2) | (fr_base64_sextet[us(p[1])] >> 4));
+		*out_p++ = ((fr_base64_sextet[us(p[1])] << 4) & 0xf0) | (fr_base64_sextet[us(p[2])] >> 2);
 		p += 3;
 		break;
 
