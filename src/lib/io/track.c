@@ -275,6 +275,8 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_entry_t **p_ent
 		if (entry) {
 			/*
 			 *	Duplicate, tell the caller so.
+			 *
+			 *	Same Code, ID, size, and authentication vector.
 			 */
 			if (memcmp(&entry->data[0], packet, sizeof(entry->data)) == 0) {
 				*p_entry = entry;
@@ -291,6 +293,14 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_entry_t **p_ent
 				entry->reply = NULL;
 				entry->reply_len = 0;
 			}
+
+			/*
+			 *	Don't change any of the fields we need
+			 *	for the RB tree.
+			 */
+			rad_assert(memcmp(my_entry.src_dst, src_dst, ft->src_dst_size) == 0);
+			rad_assert(my_entry.data[0] == entry->data[0]);
+			rad_assert(my_entry.data[1] == entry->data[1]);
 
 		/*
 		 *	Don't change src_dst.  It MUST have
