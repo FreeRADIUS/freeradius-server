@@ -810,9 +810,10 @@ static int _lua_state_free(lua_State **marker)
  */
 static lua_State *rlm_lua_get_interp(rlm_lua_t const *inst) {
 	lua_State **marker;
-	lua_State *L;
 
 #ifdef HAVE_PTHREAD_H
+	lua_State *L;
+
 	/*
 	 *	Were running in single interpreter mode, grab the interpreter lock
 	 *	and return the instance specific interpreter.
