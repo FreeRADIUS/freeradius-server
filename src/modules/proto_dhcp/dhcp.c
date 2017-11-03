@@ -1106,10 +1106,10 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	memcpy(&giaddr, packet->data + 24, sizeof(giaddr));
 	if (giaddr == htonl(INADDR_ANY)) {
 		/*
-		 *	DHCP Opcode is request
+		 *	DHCP-Message-Type is request
 		 */
-		vp = fr_pair_find_by_num(head, 256, DHCP_MAGIC_VENDOR, TAG_ANY);
-		if (vp && vp->vp_integer == 3) {
+		vp = fr_pair_find_by_num(head, 53, DHCP_MAGIC_VENDOR, TAG_ANY);
+		if (vp && vp->vp_byte == 3) {
 			/*
 			 *	Vendor is "MSFT 98"
 			 */
