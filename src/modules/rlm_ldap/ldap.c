@@ -1596,7 +1596,7 @@ void mod_conn_release(rlm_ldap_t const *inst, ldap_handle_t *conn)
 	 *	Instead, we let the next caller do the rebind.
 	 */
 	if (conn->referred) {
-		fr_connection_close(inst->pool, conn);
+		fr_connection_close(inst->pool, conn, "Was referred to a different LDAP server");
 		return;
 	}
 

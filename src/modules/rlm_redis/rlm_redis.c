@@ -242,7 +242,7 @@ int rlm_redis_query(REDISSOCK **dissocket_p, REDIS_INST *inst,
 		dissocket->reply = redisCommand(dissocket->conn, query);
 		if (!dissocket->reply) {
 			RERROR("Failed after re-connect");
-			fr_connection_close(inst->pool, dissocket);
+			fr_connection_close(inst->pool, dissocket, NULL);
 			goto error;
 		}
 
