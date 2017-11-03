@@ -63,6 +63,8 @@ FreeRADIUS 3.0.16 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	* EAP-FAST fixes from Isaac Boukris.
 	  #2078, #2076, and #2082.
 	* DHCP relay fixes, #2092
+	* Decode multiple RADIUS packets at a time in highly loaded
+	  RadSec connections.  Patch from Jan Tomasek.  #2106.
 
 FreeRADIUS 3.0.15 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	Feature improvements
