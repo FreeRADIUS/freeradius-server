@@ -18,7 +18,13 @@ EnvironmentFile=-/etc/default/freeradius
 # We provide HOSTNAME here for convenience.
 Environment=HOSTNAME=%H
 
+# Limit memory to 2G this is fine for %99.99 of deployments.  FreeRADIUS
+# is not memory hungry, if it's using more than this, then there's probably
+# a leak somewhere.
+MemoryLimit=2G
+
 RuntimeDirectory=freeradius
+RuntimeDirectoryMode=0775
 ExecStartPre=/usr/sbin/freeradius $FREERADIUS_OPTIONS -Cx -lstdout
 ExecStart=/usr/sbin/freeradius $FREERADIUS_OPTIONS
 Restart=on-failure
