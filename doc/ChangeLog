@@ -30,6 +30,8 @@ FreeRADIUS 3.0.16 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	  See raddb/mods-available/sqlippool for changes.
 	* radeapclient can now use EAP-SIM-Ki to dynamically
 	  create the necessary triplets.
+	* Explain why many LDAP connections are closed.
+	  Fixes #1969.
 
 	Bug fixes
 	* Bind the lifetime of program name and python path to the module
@@ -65,6 +67,8 @@ FreeRADIUS 3.0.16 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	* DHCP fixes, relay, #2092, add run-time check, #2028
 	* Decode multiple RADIUS packets at a time in highly loaded
 	  RadSec connections.  Patch from Jan Tomasek.  #2106.
+	* TunnelPassword is not "single value" in LDAP schema.
+	  Fixes #2061.
 
 FreeRADIUS 3.0.15 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	Feature improvements
