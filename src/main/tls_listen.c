@@ -188,6 +188,18 @@ static int tls_socket_recv(rad_listen_t *listener)
 
 	RDEBUG3("Reading from socket %d", request->packet->sockfd);
 	PTHREAD_MUTEX_LOCK(&sock->mutex);
+
+	/*
+	 *	If there is pending application data, as set up by
+	 *	SSL_peek(), read that before reading more data from
+	 *	the socket.
+	 */
+	if (SSL_pending(sock->ssn->ssl)) {
+		RDEBUG3("Reading pending buffered data");
+		sock->ssn->dirty_in.used = 0;
+		goto get_application_data;
+	}
+
 	rcode = read(request->packet->sockfd,
 		     sock->ssn->dirty_in.data,
 		     sizeof(sock->ssn->dirty_in.data));
@@ -249,6 +261,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	/*
 	 *	Try to get application data.
 	 */
+get_application_data:
 	status = tls_application_data(sock->ssn, request);
 	RDEBUG("Application data status %d", status);
 
@@ -332,9 +345,14 @@ int dual_tls_recv(rad_listen_t *listener)
 	RAD_REQUEST_FUNP fun = NULL;
 	listen_socket_t *sock = listener->data;
 	RADCLIENT	*client = sock->client;
+	BIO		*rbio;
+	int		pending;
 
 	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
 
+	rbio = SSL_get_rbio(sock->ssn->ssl);
+
+redo:
 	if (!tls_socket_recv(listener)) {
 		return 0;
 	}
@@ -400,6 +418,26 @@ int dual_tls_recv(rad_listen_t *listener)
 		FR_STATS_INC(auth, total_packets_dropped);
 		rad_free(&packet);
 		return 0;
+	}
+
+	/*
+	 *	Check for more application data.
+	 *
+	 *	If there is pending SSL data, "peek" at the
+	 *	application data.  If we get at least one byte of
+	 *	application data, go back to tls_socket_recv().
+	 *	SSL_peek() will set SSL_pending(), and
+	 *	tls_socket_recv() will read another packet.
+	 */
+	pending = BIO_ctrl_pending(rbio);
+	if (pending) {
+		char buf[1];
+		int peek = SSL_peek(sock->ssn->ssl, buf, 1);
+
+		if (peek > 0) {
+			DEBUG("more TLS records after dual_tls_recv");
+			goto redo;
+		}
 	}
 
 	return 1;
