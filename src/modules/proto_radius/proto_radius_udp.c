@@ -462,7 +462,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	 *	cleanup_delay = 0, then we even clean up
 	 *	Access-Request packets immediately.
 	 */
-	if ((track->data[0] != FR_CODE_ACCESS_REQUEST) || !inst->el) {
+	if ((track->data[0] != FR_CODE_ACCESS_REQUEST) || !inst->cleanup_delay) {
 		DEBUG3("Not Access-Request.  Deleting tracking table entry");
 		goto done;
 	}
