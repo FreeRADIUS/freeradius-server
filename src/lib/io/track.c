@@ -235,6 +235,11 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_entry_t **p_ent
 	}
 
 	/*
+	 *	Over-write an existing entry.
+	 */
+	entry->timestamp = timestamp;
+
+	/*
 	 *	Toss the conflicting packet (for now).
 	 */
 	if (entry->reply_len == 0) {

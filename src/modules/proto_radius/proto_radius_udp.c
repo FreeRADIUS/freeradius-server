@@ -408,9 +408,13 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	/*
 	 *	The original packet has changed.  Suppress the write,
 	 *	as the client will never accept the response.
+	 *
+	 *	But since we still own the tracking entry, we have to delete it.
 	 */
 	if (track->timestamp != request_time) {
 		DEBUG3("Suppressing reply as we have a newer packet");
+		rad_assert(track->ev == NULL);
+		(void) fr_radius_tracking_entry_delete(inst->ft, track);
 		return buffer_len;
 	}
 
