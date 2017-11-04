@@ -381,7 +381,6 @@ static ssize_t decode_concat(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	}
 	fr_pair_value_memsteal(vp, p);
 
-	total = 0;
 	ptr = data;
 	while (ptr < end) {
 		memcpy_bounded(p, ptr + 2, ptr[1] - 2, end);
