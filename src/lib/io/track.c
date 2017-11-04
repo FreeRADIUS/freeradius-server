@@ -87,7 +87,6 @@ static void entry_free(void *data)
  *
  * @param[in] ctx			the talloc ctx.
  * @param[in] src_dst_size		size of src/dst information for a packet on this socket.
- *					Use 0 for connected sockets.
  * @param[in] allowed_packets		the array of packet codes which are tracked in this table.
  *					We use this so we don't have to allocate arrays of tracking
  *					entries for unused codes.
@@ -96,10 +95,8 @@ static void entry_free(void *data)
  *	- fr_tracking_t * on success
  */
 fr_tracking_t *fr_radius_tracking_create(TALLOC_CTX *ctx, size_t src_dst_size,
-					 bool const allowed_packets[FR_MAX_PACKET_CODE])
+					 UNUSED bool const allowed_packets[FR_MAX_PACKET_CODE])
 {
-	int i;
-	size_t ft_size;
 	fr_tracking_t *ft;
 
 	if (!ctx) return NULL;
@@ -108,14 +105,10 @@ fr_tracking_t *fr_radius_tracking_create(TALLOC_CTX *ctx, size_t src_dst_size,
 	 *	Connected sockets need an array of codes.
 	 *	Unconnected ones do not.
 	 */
-	ft_size = sizeof(fr_tracking_t);
-	if (!src_dst_size) ft_size += sizeof(ft->codes[0]) * FR_MAX_PACKET_CODE;
-
-	ft = talloc_size(ctx, ft_size);
+	ft = talloc_zero(ctx, fr_tracking_t);
 	if (!ft) return NULL;
 
-	memset(ft, 0, ft_size);
-	talloc_set_type(ft, fr_tracking_t);
+	memset(ft, 0, sizeof(*ft));
 
 	ft->num_entries = 0;
 	ft->src_dst_size = src_dst_size;
@@ -123,25 +116,7 @@ fr_tracking_t *fr_radius_tracking_create(TALLOC_CTX *ctx, size_t src_dst_size,
 	/*
 	 *	The socket is unconnected.  We need to track entries by src/dst ip/port.
 	 */
-	if (src_dst_size > 0) {
-		ft->tree = rbtree_create(ft, entry_cmp, entry_free, RBTREE_FLAG_NONE);
-		return ft;
-	}
-
-	/*
-	 *	The socket is connected.  We don't need per-packet
-	 *	src/dst information.
-	 */
-	for (i = 0; i < FR_MAX_PACKET_CODE; i++) {
-		if (!allowed_packets[i]) continue;
-
-		ft->codes[i] = talloc_zero_array(ft, fr_tracking_entry_t, 256);
-		if (!ft->codes[i]) {
-			talloc_free(ft);
-			return NULL;
-		}
-	}
-
+	ft->tree = rbtree_create(ft, entry_cmp, entry_free, RBTREE_FLAG_NONE);
 	return ft;
 }
 
@@ -172,11 +147,6 @@ int fr_radius_tracking_entry_delete(fr_tracking_t *ft, fr_tracking_entry_t *entr
 	}
 
 	/*
-	 *	If we're not tracking src/dst ip/port, just return.
-	 */
-	if (!ft->src_dst_size) return 0;
-
-	/*
 	 *	We are tracking src/dst ip/port, we have to remove
 	 *	this entry from the tracking tree, and then free it.
 	 */
@@ -204,37 +174,32 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_entry_t **p_ent
 {
 	bool			insert = false;
 	fr_tracking_entry_t	*entry;
+	fr_tracking_entry_t my_entry;
 
 	(void) talloc_get_type_abort(ft, fr_tracking_t);
 
 	if (!packet[0] || (packet[0] >= FR_MAX_PACKET_CODE)) return FR_TRACKING_ERROR;
 
 	/*
-	 *	Connected socket: just look in the array.
+	 *	Unconnected socket: we have to allocate the
+	 *	entry ourselves.
+	 *
+	 *	@todo - use a slab allocator
 	 */
-	if (!ft->src_dst_size) {
-		if (!ft->codes[packet[0]]) return FR_TRACKING_ERROR;
+	my_entry.src_dst = src_dst;
+	my_entry.src_dst_size = ft->src_dst_size;
+	memcpy(my_entry.data, packet, sizeof(my_entry.data));
 
-		entry = &ft->codes[packet[0]][packet[1]];
-
+	/*
+	 *	See if we're adding a duplicate, or
+	 *	over-writing an existing one.
+	 */
+	entry = rbtree_finddata(ft->tree, &my_entry);
+	if (entry) {
 		/*
-		 *	The entry is unused, insert it.
-		 */
-		if (entry->timestamp == 0) {
-			entry->ft = ft;
-			entry->timestamp = timestamp;
-			entry->reply = NULL;
-			entry->reply_len = 0;
-
-			memcpy(&entry->data[0], packet, sizeof(entry->data));
-			*p_entry = entry;
-
-			ft->num_entries++;
-			return FR_TRACKING_NEW;
-		}
-
-		/*
-		 *	Is it the same packet?  If so, return that.
+		 *	Duplicate, tell the caller so.
+		 *
+		 *	Same Code, ID, size, and authentication vector.
 		 */
 		if (memcmp(&entry->data[0], packet, sizeof(entry->data)) == 0) {
 			*p_entry = entry;
@@ -242,9 +207,7 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_entry_t **p_ent
 		}
 
 		/*
-		 *	It's in use, but the new packet is different.  update
-		 *	the timestamp, so that anyone checking it knows it's
-		 *	no longer relevant.
+		 *	Over-write an existing entry.
 		 */
 		entry->timestamp = timestamp;
 
@@ -254,87 +217,46 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_entry_t **p_ent
 			entry->reply_len = 0;
 		}
 
-	} else {
-		fr_tracking_entry_t my_entry;
-
 		/*
-		 *	Unconnected socket: we have to allocate the
-		 *	entry ourselves.
-		 *
-		 *	@todo - use a slab allocator
+		 *	Don't change any of the fields we need
+		 *	for the RB tree.
 		 */
-		my_entry.src_dst = src_dst;
-		my_entry.src_dst_size = ft->src_dst_size;
-		memcpy(my_entry.data, packet, sizeof(my_entry.data));
-
-		/*
-		 *	See if we're adding a duplicate, or
-		 *	over-writing an existing one.
-		 */
-		entry = rbtree_finddata(ft->tree, &my_entry);
-		if (entry) {
-			/*
-			 *	Duplicate, tell the caller so.
-			 *
-			 *	Same Code, ID, size, and authentication vector.
-			 */
-			if (memcmp(&entry->data[0], packet, sizeof(entry->data)) == 0) {
-				*p_entry = entry;
-				return FR_TRACKING_SAME;
-			}
-
-			/*
-			 *	Over-write an existing entry.
-			 */
-			entry->timestamp = timestamp;
-
-			if (entry->reply) {
-				talloc_const_free(entry->reply);
-				entry->reply = NULL;
-				entry->reply_len = 0;
-			}
-
-			/*
-			 *	Don't change any of the fields we need
-			 *	for the RB tree.
-			 */
-			rad_assert(memcmp(my_entry.src_dst, src_dst, ft->src_dst_size) == 0);
-			rad_assert(my_entry.data[0] == entry->data[0]);
-			rad_assert(my_entry.data[1] == entry->data[1]);
+		rad_assert(memcmp(my_entry.src_dst, src_dst, ft->src_dst_size) == 0);
+		rad_assert(my_entry.data[0] == entry->data[0]);
+		rad_assert(my_entry.data[1] == entry->data[1]);
 
 		/*
 		 *	Don't change src_dst.  It MUST have
 		 *	the same data as the previous entry.
 		 */
-		} else {
-			size_t align;
-			uint8_t *p;
+	} else {
+		size_t align;
+		uint8_t *p;
 
-			/*
-			 *	Ensure that structures are aligned.
-			 */
-			align = sizeof(fr_tracking_entry_t);
-			align += 15;
-			align &= ~(15);
+		/*
+		 *	Ensure that structures are aligned.
+		 */
+		align = sizeof(fr_tracking_entry_t);
+		align += 15;
+		align &= ~(15);
 
-			/*
-			 *	No existing entry, create a new one.
-			 */
-			entry = talloc_size(ft->tree, align + ft->src_dst_size);
-			if (!entry) return FR_TRACKING_ERROR;
+		/*
+		 *	No existing entry, create a new one.
+		 */
+		entry = talloc_size(ft->tree, align + ft->src_dst_size);
+		if (!entry) return FR_TRACKING_ERROR;
 
-			memset(entry, 0, align + ft->src_dst_size);
-			entry->ft = ft;
-			entry->timestamp = timestamp;
-			insert = true;
+		memset(entry, 0, align + ft->src_dst_size);
+		entry->ft = ft;
+		entry->timestamp = timestamp;
+		insert = true;
 
-			/*
-			 *	Copy the src_dst information over to the entry.
-			 */
-			entry->src_dst = p = ((uint8_t *) entry) + align;
-			entry->src_dst_size = ft->src_dst_size;
-			memcpy(p, src_dst, entry->src_dst_size);
-		}
+		/*
+		 *	Copy the src_dst information over to the entry.
+		 */
+		entry->src_dst = p = ((uint8_t *) entry) + align;
+		entry->src_dst_size = ft->src_dst_size;
+		memcpy(p, src_dst, entry->src_dst_size);
 	}
 
 	/*
