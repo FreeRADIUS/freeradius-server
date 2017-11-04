@@ -134,9 +134,6 @@ int fr_radius_tracking_entry_delete(fr_tracking_t *ft, fr_tracking_entry_t *entr
 
 	if (entry->timestamp == 0) return -1;
 
-	entry->timestamp = 0;
-	ft->num_entries--;
-
 	/*
 	 *	Mark the reply (if any) as done.
 	 */
@@ -146,12 +143,16 @@ int fr_radius_tracking_entry_delete(fr_tracking_t *ft, fr_tracking_entry_t *entr
 		entry->reply_len = 0;
 	}
 
+	rad_assert(entry->ev == NULL);
+	entry->timestamp = 0;
+
 	/*
 	 *	We are tracking src/dst ip/port, we have to remove
 	 *	this entry from the tracking tree, and then free it.
 	 */
 	rbtree_deletebydata(ft->tree, entry);
 
+	ft->num_entries--;
 	return 0;
 }
 
@@ -166,13 +167,13 @@ int fr_radius_tracking_entry_delete(fr_tracking_t *ft, fr_tracking_entry_t *entr
  *	- FR_TRACKING_ERROR, there was an error in the function parameters.
  *	- FR_TRACKING_NEW, a new entry was created.
  *	- FR_TRACKING_SAME, the packet is the same as one already in the tracking table.
- *	- FR_TRACKING_DIFFERENT, the old packet was deleted, and the newer packet inserted.
+ *	- FR_TRACKING_UPDATED, the old packet was deleted, and the newer packet inserted.
+ *	- FR_TRACKING_CONFLICTING, the old packet was marked as "bad", and the newer packet inserted.
  */
 fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_entry_t **p_entry,
 						     fr_tracking_t *ft, uint8_t *packet, fr_time_t timestamp,
 						     void *src_dst)
 {
-	bool			insert = false;
 	fr_tracking_entry_t	*entry;
 	fr_tracking_entry_t my_entry;
 
@@ -181,55 +182,15 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_entry_t **p_ent
 	if (!packet[0] || (packet[0] >= FR_MAX_PACKET_CODE)) return FR_TRACKING_ERROR;
 
 	/*
-	 *	Unconnected socket: we have to allocate the
-	 *	entry ourselves.
-	 *
-	 *	@todo - use a slab allocator
+	 *	See if we're adding a duplicate, or
+	 *	over-writing an existing one.
 	 */
 	my_entry.src_dst = src_dst;
 	my_entry.src_dst_size = ft->src_dst_size;
 	memcpy(my_entry.data, packet, sizeof(my_entry.data));
 
-	/*
-	 *	See if we're adding a duplicate, or
-	 *	over-writing an existing one.
-	 */
 	entry = rbtree_finddata(ft->tree, &my_entry);
-	if (entry) {
-		/*
-		 *	Duplicate, tell the caller so.
-		 *
-		 *	Same Code, ID, size, and authentication vector.
-		 */
-		if (memcmp(&entry->data[0], packet, sizeof(entry->data)) == 0) {
-			*p_entry = entry;
-			return FR_TRACKING_SAME;
-		}
-
-		/*
-		 *	Over-write an existing entry.
-		 */
-		entry->timestamp = timestamp;
-
-		if (entry->reply) {
-			talloc_const_free(entry->reply);
-			entry->reply = NULL;
-			entry->reply_len = 0;
-		}
-
-		/*
-		 *	Don't change any of the fields we need
-		 *	for the RB tree.
-		 */
-		rad_assert(memcmp(my_entry.src_dst, src_dst, ft->src_dst_size) == 0);
-		rad_assert(my_entry.data[0] == entry->data[0]);
-		rad_assert(my_entry.data[1] == entry->data[1]);
-
-		/*
-		 *	Don't change src_dst.  It MUST have
-		 *	the same data as the previous entry.
-		 */
-	} else {
+	if (!entry) {
 		size_t align;
 		uint8_t *p;
 
@@ -249,7 +210,6 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_entry_t **p_ent
 		memset(entry, 0, align + ft->src_dst_size);
 		entry->ft = ft;
 		entry->timestamp = timestamp;
-		insert = true;
 
 		/*
 		 *	Copy the src_dst information over to the entry.
@@ -257,7 +217,61 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_entry_t **p_ent
 		entry->src_dst = p = ((uint8_t *) entry) + align;
 		entry->src_dst_size = ft->src_dst_size;
 		memcpy(p, src_dst, entry->src_dst_size);
+
+		/*
+		 *	Copy the new packet over.
+		 */
+		memcpy(&entry->data[0], packet, sizeof(entry->data));
+
+		if (!rbtree_insert(ft->tree, entry)) {
+			talloc_free(entry);
+			return FR_TRACKING_ERROR;
+		}
+
+		*p_entry = entry;
+		return FR_TRACKING_NEW;
 	}
+
+	/*
+	 *	Duplicate, tell the caller so.
+	 *
+	 *	Same Code, ID, size, and authentication vector.
+	 */
+	if (memcmp(&entry->data[0], packet, sizeof(entry->data)) == 0) {
+		*p_entry = entry;
+		return FR_TRACKING_SAME;
+	}
+
+	/*
+	 *	Toss the conflicting packet (for now).
+	 */
+	if (entry->reply_len == 0) {
+		return FR_TRACKING_CONFLICTING;
+	}
+
+	/*
+	 *	Over-write an existing entry.
+	 */
+	entry->timestamp = timestamp;
+
+	if (entry->reply) {
+		talloc_const_free(entry->reply);
+		entry->reply = NULL;
+		entry->reply_len = 0;
+	}
+
+	/*
+	 *	Don't change any of the fields we need
+	 *	for the RB tree.
+	 */
+	rad_assert(memcmp(my_entry.src_dst, src_dst, ft->src_dst_size) == 0);
+	rad_assert(my_entry.data[0] == entry->data[0]);
+	rad_assert(my_entry.data[1] == entry->data[1]);
+
+	/*
+	 *	Don't change src_dst.  It MUST have
+	 *	the same data as the previous entry.
+	 */
 
 	/*
 	 *	Copy the new packet over top of the old one.
@@ -265,9 +279,9 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_entry_t **p_ent
 	memcpy(&entry->data[0], packet, sizeof(entry->data));
 	*p_entry = entry;
 
-	if (insert) rbtree_insert(ft->tree, entry);
+	rbtree_insert(ft->tree, entry);
 
-	return FR_TRACKING_DIFFERENT;
+	return FR_TRACKING_UPDATED;
 }
 
 /** Insert a (possibly new) packet and a timestamp

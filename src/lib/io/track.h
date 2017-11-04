@@ -61,7 +61,8 @@ typedef enum fr_tracking_status_t {
 	FR_TRACKING_UNUSED = 0,
 	FR_TRACKING_NEW,
 	FR_TRACKING_SAME,
-	FR_TRACKING_DIFFERENT,
+	FR_TRACKING_UPDATED,
+	FR_TRACKING_CONFLICTING,
 } fr_tracking_status_t;
 
 fr_tracking_t			*fr_radius_tracking_create(TALLOC_CTX *ctx, size_t src_dst_size,

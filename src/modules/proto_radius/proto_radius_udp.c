@@ -371,10 +371,14 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	/*
 	 *	Delete any pre-existing cleanup_delay timers.
 	 */
-	case FR_TRACKING_DIFFERENT:
-		DEBUG3("DIFFERENT packet");
+	case FR_TRACKING_UPDATED:
+		DEBUG3("UPDATED packet");
 		if (track->ev) (void) fr_event_timer_delete(inst->el, &track->ev);
 		break;
+
+	case FR_TRACKING_CONFLICTING:
+		DEBUG3("CONFLICTING packet ID %d", buffer[1]);
+		return 0;	/* discard it */
 
 	case FR_TRACKING_NEW:
 		DEBUG3("NEW packet");
@@ -428,6 +432,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 				     &address->src_ipaddr, address->src_port);
 		if (data_size < 0) {
 		done:
+			if (track->ev) (void) fr_event_timer_delete(inst->el, &track->ev);
 			(void) fr_radius_tracking_entry_delete(inst->ft, track);
 			return data_size;
 		}
