@@ -41,6 +41,8 @@ void		**talloc_array_null_terminate(void **array);
 
 void		**talloc_array_null_strip(void **array);
 
+void		talloc_const_free(void const *ptr);
+
 /*
  *	talloc portability issues.  'const' is not part of the talloc
  *	type, but it is part of the pointer type.  But only if

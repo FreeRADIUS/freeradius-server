@@ -268,4 +268,15 @@ void **talloc_array_null_strip(void **array)
 	return new;
 }
 
+/** Free const'd memory
+ *
+ * @param[in] ptr	to free.
+ */
+void talloc_const_free(void const *ptr)
+{
+	void *tmp;
+	if (!ptr) return;
 
+	memcpy(&tmp, &ptr, sizeof(tmp));
+	talloc_free(tmp);
+}

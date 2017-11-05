@@ -405,15 +405,6 @@ ssize_t rad_filename_unescape(char *out, size_t outlen, char const *in, size_t i
 	return outlen - freespace;	/* how many bytes were written */
 }
 
-void talloc_const_free(void const *ptr)
-{
-	void *tmp;
-	if (!ptr) return;
-
-	memcpy(&tmp, &ptr, sizeof(tmp));
-	talloc_free(tmp);
-}
-
 /** talloc a buffer to hold the concatenated value of all elements of argv
  *
  * @param ctx to allocate buffer in.

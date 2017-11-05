@@ -7,4 +7,4 @@ TARGET		:= libfreeradius-ethernet.a
 
 SOURCES		:= ethernet.c
 
-TGT_PREREQS	:= libfreeradius-util.a libfreeradius-io.a
+TGT_PREREQS	:= $(LIBFREERADIUS_SERVER) libfreeradius-io.a libfreeradius-util.a
