@@ -2694,11 +2694,13 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
  * If it's "foo.method", look for "foo", and return "method" as the method
  * we wish to use, instead of the input component.
  *
- * @param[out] pcomponent Where to write the method we found, if any.  If no method is specified
- *	will be set to MOD_COUNT.
- * @param[in] real_name Complete name string e.g. foo.authorize.
- * @param[in] virtual_name Virtual module name e.g. foo.
- * @param[in] method_name Method override (may be NULL) or the method name e.g. authorize.
+ * @param[in] conf_root		Configuration root.
+ * @param[out] pcomponent	Where to write the method we found, if any.
+ *				If no method is specified will be set to MOD_COUNT.
+ * @param[in] real_name		Complete name string e.g. foo.authorize.
+ * @param[in] virtual_name	Virtual module name e.g. foo.
+ * @param[in] method_name	Method override (may be NULL) or the method
+ *				name e.g. authorize.
  * @return the CONF_SECTION specifying the virtual module.
  */
 static CONF_SECTION *virtual_module_find_cs(CONF_SECTION *conf_root, rlm_components_t *pcomponent,

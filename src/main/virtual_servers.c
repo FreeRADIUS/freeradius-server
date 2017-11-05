@@ -368,7 +368,6 @@ int virtual_servers_open(fr_schedule_t *sc)
 
 /** Instantiate all the virtual servers
  *
- * @param[in] config	section containing all the virtual servers.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
