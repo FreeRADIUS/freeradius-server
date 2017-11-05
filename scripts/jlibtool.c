@@ -2370,9 +2370,7 @@ static int add_for_runtime(command_t *cmd)
 		fprintf(f,"# Libraries that this one depends upon.\n");
 		fprintf(f,"dependency_libs='");
 		while (dep->num--) {
-			fprintf(f,"%s", dep->vals[dep->num]);
-			if ((dep->num - 1) >= 1)
-				fputc(' ', f);
+			fprintf(f,"%s ", dep->vals[dep->num]);
 		}
 		fprintf(f,"'\n\n");
 
