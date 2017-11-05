@@ -119,6 +119,13 @@ static const CONF_PARSER priority_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+
+/*
+ *	@todo - put packets to be cleaned up in a heap or linked list,
+ *	and then have one cleanup delay per rlm_radius_udp_t.  That
+ *	way we can have a timer which fires periodically, and then
+ *	cleans up multiple packets.
+ */
 static void mod_cleanup_delay(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
 {
 	fr_tracking_entry_t *track = uctx;
