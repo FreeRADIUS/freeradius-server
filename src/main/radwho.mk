@@ -1,5 +1,5 @@
 TARGET		:= radwho
 SOURCES		:= radwho.c
 
-TGT_PREREQS	:= libfreeradius-util.a libfreeradius-radius.a libfreeradius-server.a
+TGT_PREREQS	:= $(LIBFREERADIUS_SERVER) libfreeradius-util.a
 TGT_LDLIBS	:= $(LIBS)

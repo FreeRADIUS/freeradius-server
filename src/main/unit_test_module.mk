@@ -13,13 +13,9 @@ SOURCES := \
 	unlang_compile.c \
 	unlang_interpret.c
 
-ifneq ($(OPENSSL_LIBS),)
-include ${top_srcdir}/src/main/tls.mk
-endif
-
 TGT_INSTALLDIR  :=
 TGT_LDLIBS	:= $(LIBS) $(LCRYPT)
-TGT_PREREQS	:= libfreeradius-server.a libfreeradius-util.a libfreeradius-radius.a libfreeradius-io.a
+TGT_PREREQS	:= $(LIBFREERADIUS_SERVER) libfreeradius-radius.a libfreeradius-io.a libfreeradius-util.a
 
 # Libraries can't depend on libraries (oops), so make the binary
 # depend on the EAP code...

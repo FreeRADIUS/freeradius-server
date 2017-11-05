@@ -12,7 +12,7 @@ endif
 SOURCES		:= $(TARGETNAME).c
 SRC_CFLAGS	+= -I$(top_builddir)/src/modules/rlm_redis
 
-TGT_PREREQS	:= libfreeradius-util.a libfreeradius-radius.a libfreeradius-redis.a libfreeradius-server.a 
+TGT_PREREQS	:= $(LIBFREERADIUS_SERVER) libfreeradius-redis.a libfreeradius-util.a
 TGT_LDLIBS	+= $(TALLOC_LIBS)
 
 MAN		:= rlm_redis_ippool_tool.8

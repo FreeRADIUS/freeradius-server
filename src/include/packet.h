@@ -101,7 +101,7 @@ bool fr_packet_list_socket_freeze(fr_packet_list_t *pl, int sockfd);
 bool fr_packet_list_socket_thaw(fr_packet_list_t *pl, int sockfd);
 int fr_packet_list_walk(fr_packet_list_t *pl, void *ctx, rb_walker_t callback);
 int fr_packet_list_fd_set(fr_packet_list_t *pl, fd_set *set);
-RADIUS_PACKET *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set);
+RADIUS_PACKET *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, uint32_t max_attributes, bool require_ma);
 
 uint32_t fr_packet_list_num_incoming(fr_packet_list_t *pl);
 uint32_t fr_packet_list_num_outgoing(fr_packet_list_t *pl);

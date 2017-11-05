@@ -322,12 +322,8 @@ fr_tls_conf_t *tls_conf_parse_server(CONF_SECTION *cs)
 	if (conf_cert_admin_password(conf) < 0) goto error;
 #endif
 
-	if (!main_config.spawn_workers) {
-		conf->ctx_count = 1;
-	} else {
-		conf->ctx_count = fr_tls_max_threads * 2; /* Reduce contention */
-		rad_assert(conf->ctx_count > 0);
-	}
+	conf->ctx_count = fr_tls_max_threads * 2; /* Reduce contention */
+	if (!conf->ctx_count) conf->ctx_count = 1;
 
 	/*
 	 *	Initialize TLS
@@ -440,12 +436,8 @@ fr_tls_conf_t *tls_conf_parse_client(CONF_SECTION *cs)
 	/*
 	 *	Initialize TLS
 	 */
-	if (!main_config.spawn_workers) {
-		conf->ctx_count = 1;
-	} else {
-		conf->ctx_count = fr_tls_max_threads * 2; /* Even one context per thread will lead to contention */
-		rad_assert(conf->ctx_count > 0);
-	}
+	conf->ctx_count = fr_tls_max_threads * 2; /* Even one context per thread will lead to contention */
+	if (!conf->ctx_count) conf->ctx_count = 1;
 
 #ifdef __APPLE__
 	if (conf_cert_admin_password(conf) < 0) goto error;

@@ -263,8 +263,7 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 		int	fd;
 		FILE	*fp;
 
-		snprintf(filename, sizeof(filename), "%s/%s.client.XXXXXXXX",
-			 conf->verify_tmp_dir, main_config.name);
+		snprintf(filename, sizeof(filename), "%s/client.XXXXXXXX", conf->verify_tmp_dir);
 
 #ifdef __COVERITY__
 		/*

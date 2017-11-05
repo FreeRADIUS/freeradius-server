@@ -133,10 +133,15 @@ MODULES		= @MODULES@
 #  We don't use OpenSSL SHA1 by default because src/modules/rlm_eap/libeap/fips186prf.c
 #  needs access to the SHA internals.
 #
-ifeq "$(WITH_OPENSSL)" "yes"
-CFLAGS		+=  -DWITH_OPENSSL_MD4 -DWITH_OPENSSL_MD5
-CPPFLAGS	:= "$(OPENSSL_CPPFLAGS) $(CPPFLAGS)"
+ifneq ($(OPENSSL_LIBS),)
+CFLAGS			+=  -DWITH_OPENSSL_MD4 -DWITH_OPENSSL_MD5
+CPPFLAGS		:= "$(OPENSSL_CPPFLAGS) $(CPPFLAGS)"
+#
+#  Add optional dependency for libfreeradius-server if we're building with OpenSSL
+#
+LIBFREERADIUS_SERVER	:= libfreeradius-tls.a
 endif
+LIBFREERADIUS_SERVER	+= libfreeradius-server.a
 
 OPENSSL_LIBS	= @OPENSSL_LIBS@
 

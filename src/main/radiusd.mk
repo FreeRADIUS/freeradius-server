@@ -17,16 +17,12 @@ SOURCES := \
     virtual_servers.c \
     process.c
 
-ifneq ($(OPENSSL_LIBS),)
-include ${top_srcdir}/src/main/tls.mk
-endif
-
 SRC_CFLAGS	:=
 
 TGT_INSTALLDIR  := ${sbindir}
 TGT_LDLIBS	:= $(LIBS) $(LCRYPT) $(SYSTEMD_LIBS)
 TGT_LDFLAGS	:= $(LDFLAGS) $(SYSTEMD_LDFLAGS)
-TGT_PREREQS	:= libfreeradius-server.a libfreeradius-util.a libfreeradius-radius.a libfreeradius-io.a
+TGT_PREREQS	:= $(LIBFREERADIUS_SERVER) libfreeradius-io.a libfreeradius-util.a
 
 # Libraries can't depend on libraries (oops), so make the binary
 # depend on the EAP code...
