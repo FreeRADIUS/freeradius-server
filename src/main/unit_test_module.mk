@@ -9,9 +9,6 @@ SOURCES := \
 	unit_test_module.c \
 	soh.c \
 	state.c \
-	virtual_servers.c \
-	unlang_compile.c \
-	unlang_interpret.c
 
 TGT_INSTALLDIR  :=
 TGT_LDLIBS	:= $(LIBS) $(LCRYPT)
