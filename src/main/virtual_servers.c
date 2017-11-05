@@ -566,7 +566,7 @@ void fr_request_async_bootstrap(REQUEST *request, fr_event_list_t *el)
 
 	request->async->channel = NULL;
 	request->async->original_recv_time = NULL;
-	request->async->recv_time = fr_time();
+/*	request->async->recv_time = fr_time(); */
 	request->async->el = el;
 
 	request->async->listen = NULL;

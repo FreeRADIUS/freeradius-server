@@ -724,7 +724,7 @@ int modules_instantiate(CONF_SECTION *root)
 	modules = cf_section_find(root, "modules", NULL);
 	if (!modules) return 0;
 
-	DEBUG2("%s: #### Instantiating modules ####", main_config.name);
+	DEBUG2("#### Instantiating modules ####");
 
 	if (cf_data_walk(modules, module_instance_t, _module_instantiate, NULL) < 0) return -1;
 
@@ -986,7 +986,7 @@ int modules_bootstrap(CONF_SECTION *root)
 		return 0;
 	}
 
-	DEBUG2("%s: #### Bootstrapping modules ####", main_config.name);
+	DEBUG2("#### Bootstrapping modules ####");
 
 	cf_log_debug(modules, " modules {");
 

@@ -6,7 +6,6 @@ SOURCES := \
     crypt.c \
     files.c \
     mainconfig.c \
-    modules.c \
     radiusd.c \
     state.c \
     stats.c \

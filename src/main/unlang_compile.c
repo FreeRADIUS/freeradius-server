@@ -3146,7 +3146,7 @@ static unlang_t *compile_item(unlang_t *parent,
 fail:
 	*modname = NULL;
 	cf_log_err(ci, "Failed to find \"%s\" as a module or policy.", modrefname);
-	cf_log_err(ci, "Please verify that the configuration exists in %s/mods-enabled/%s.", get_radius_dir(), modrefname);
+	cf_log_err(ci, "Please verify that the configuration exists in mods-enabled/%s.", modrefname);
 	return NULL;
 }
 
