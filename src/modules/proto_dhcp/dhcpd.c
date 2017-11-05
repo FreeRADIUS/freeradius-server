@@ -429,13 +429,18 @@ static int dhcp_process(REQUEST *request)
 		return dhcprelay_process_server_reply(request);
 	}
 
+	/*
+	 *	If it's not BOOTREQUEST, we ignore it.
+	 */
+	if (vp->vp_byte != 1) {
+		REDEBUG("Ignoring invalid packet code %u", vp->vp_byte);
+		return 1;
+	}
+
 	/* Packet from client, and we have DHCP-Relay-To-IP-Address */
 	if (fr_pair_find_by_num(request->config, 270, DHCP_MAGIC_VENDOR, TAG_ANY)) {
 		return dhcprelay_process_client_request(request);
 	}
-
-	/* else it's a packet from a client, without relaying */
-	rad_assert(vp->vp_byte == 1); /* BOOTREQUEST */
 
 	sock = request->listener->data;
 

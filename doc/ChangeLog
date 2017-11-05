@@ -3,7 +3,7 @@ FreeRADIUS 3.0.16 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	* rlm_python now supports multiple lists.  From #2031.
 	* Add trust router re-keying.  From #2007.
 	* Add support for Samba / AD LDAP schema.
-	  See oc/schemas/ldap/samba/README.txt and
+	  See doc/schemas/ldap/samba/README.txt and
 	  doc/schemas/ldap/samba/
 	* Add "tls_min_version" and "tls_max_version" to EAP module
 	  for Debian OpenSSL issues.
@@ -30,6 +30,8 @@ FreeRADIUS 3.0.16 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	  See raddb/mods-available/sqlippool for changes.
 	* radeapclient can now use EAP-SIM-Ki to dynamically
 	  create the necessary triplets.
+	* Explain why many LDAP connections are closed.
+	  Fixes #1969.
 
 	Bug fixes
 	* Bind the lifetime of program name and python path to the module
@@ -62,7 +64,11 @@ FreeRADIUS 3.0.16 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	  cisco_accounting_username_bug = yes
 	* EAP-FAST fixes from Isaac Boukris.
 	  #2078, #2076, and #2082.
-	* DHCP relay fixes, #2092
+	* DHCP fixes, relay, #2092, add run-time check, #2028
+	* Decode multiple RADIUS packets at a time in highly loaded
+	  RadSec connections.  Patch from Jan Tomasek.  #2106.
+	* TunnelPassword is not "single value" in LDAP schema.
+	  Fixes #2061.
 
 FreeRADIUS 3.0.15 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	Feature improvements

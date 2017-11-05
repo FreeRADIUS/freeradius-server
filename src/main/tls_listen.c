@@ -186,29 +186,20 @@ static int tls_socket_recv(rad_listen_t *listener)
 
 	request = sock->request;
 
+	RDEBUG3("Reading from socket %d", request->packet->sockfd);
+	PTHREAD_MUTEX_LOCK(&sock->mutex);
+
 	/*
-	 * PEAK: The previous invocation of tls_socket_recv might have
-	 * already received enough data and another RADIUS packet is ready
-	 * in the record-layer queue. (See dual_tls_recv.)
+	 *	If there is pending application data, as set up by
+	 *	SSL_peek(), read that before reading more data from
+	 *	the socket.
 	 */
 	if (SSL_pending(sock->ssn->ssl)) {
 		RDEBUG3("Reading pending buffered data");
 		sock->ssn->dirty_in.used = 0;
-		goto skip_socket_io;
+		goto get_application_data;
 	}
 
-	RDEBUG3("Reading from socket %d", request->packet->sockfd);
-	PTHREAD_MUTEX_LOCK(&sock->mutex);
-#if 0
-	/*
-	 * PEAK: Nasty "bug-bait" hack to make the read syscall more likely
-	 * to receive multiple encrypted RADIUS packets.
-	 */
-	{
-		sleep(1);
-		DEBUG("Sleeping in tls_socket_recv");
-	}
-#endif
 	rcode = read(request->packet->sockfd,
 		     sock->ssn->dirty_in.data,
 		     sizeof(sock->ssn->dirty_in.data));
@@ -267,10 +258,10 @@ static int tls_socket_recv(rad_listen_t *listener)
 		 */
 	}
 
-	skip_socket_io:
 	/*
 	 *	Try to get application data.
 	 */
+get_application_data:
 	status = tls_application_data(sock->ssn, request);
 	RDEBUG("Application data status %d", status);
 
@@ -354,10 +345,14 @@ int dual_tls_recv(rad_listen_t *listener)
 	RAD_REQUEST_FUNP fun = NULL;
 	listen_socket_t *sock = listener->data;
 	RADCLIENT	*client = sock->client;
+	BIO		*rbio;
+	int		pending;
 
 	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
 
-	again:
+	rbio = SSL_get_rbio(sock->ssn->ssl);
+
+redo:
 	if (!tls_socket_recv(listener)) {
 		return 0;
 	}
@@ -426,23 +421,22 @@ int dual_tls_recv(rad_listen_t *listener)
 	}
 
 	/*
-	 * PEAK: tls_socket_recv might have received more than one RADIUS
-	 * packet. Check for extra unprocessed data in the input buffer and
-	 * restart dual_tls_recv if necessary.
-	 * SSL_peek extracts one TLS record from the input buffer, decrypt it,
-	 * puts it in the record-layer queue and sets SSL_pending for
-	 * tls_socket_recv.
+	 *	Check for more application data.
+	 *
+	 *	If there is pending SSL data, "peek" at the
+	 *	application data.  If we get at least one byte of
+	 *	application data, go back to tls_socket_recv().
+	 *	SSL_peek() will set SSL_pending(), and
+	 *	tls_socket_recv() will read another packet.
 	 */
-	{
-		BIO *rbio = SSL_get_rbio(sock->ssn->ssl);
-		int pending = BIO_ctrl_pending(rbio);
-		if (pending) {
-			char buf[1];
-			int peek = SSL_peek(sock->ssn->ssl, buf, 1);
-			if (peek > 0) {
-				DEBUG("more TLS records after dual_tls_recv");
-				goto again;
-			}
+	pending = BIO_ctrl_pending(rbio);
+	if (pending) {
+		char buf[1];
+		int peek = SSL_peek(sock->ssn->ssl, buf, 1);
+
+		if (peek > 0) {
+			DEBUG("more TLS records after dual_tls_recv");
+			goto redo;
 		}
 	}
 
