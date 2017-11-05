@@ -18,8 +18,11 @@ SOURCES	:=	cond_eval.c \
 		tmpl.c \
 		util.c \
 		version.c \
+   		virtual_servers.c \
 		pair.c \
 		pool.c \
+    		unlang_compile.c \
+    		unlang_interpret.c \
 		xlat_eval.c \
 		xlat_func.c \
 		xlat_tokenize.c

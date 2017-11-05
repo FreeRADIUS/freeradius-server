@@ -12,9 +12,6 @@ SOURCES := \
     stats.c \
     soh.c \
     snmp.c \
-    unlang_compile.c \
-    unlang_interpret.c \
-    virtual_servers.c \
     process.c
 
 SRC_CFLAGS	:=
