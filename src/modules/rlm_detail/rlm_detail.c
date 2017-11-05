@@ -242,7 +242,13 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 		 *	Numbers, if not.
 		 */
 		if (is_radius_code(packet->code)) {
-			WRITE("\tPacket-Type = %s\n", fr_packet_codes[packet->code]);
+			fr_dict_attr_t const	*da;
+
+			da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
+			rad_assert(da != NULL);
+
+			WRITE("\tPacket-Type = %s\n",
+			      fr_dict_enum_alias_by_value(NULL, da, fr_box_uint32(packet->code)));
 		} else {
 			WRITE("\tPacket-Type = %u\n", packet->code);
 		}
