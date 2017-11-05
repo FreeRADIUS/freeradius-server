@@ -31,11 +31,15 @@
 
 static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 {
-	VALUE_PAIR *vp;
-	rlm_rcode_t rcode;
-	CONF_SECTION *unlang;
+	VALUE_PAIR		*vp;
+	rlm_rcode_t		rcode;
+	CONF_SECTION		*unlang;
+	fr_dict_attr_t const	*da;
 
 	REQUEST_VERIFY(request);
+
+	da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
+	rad_assert(da != NULL);
 
 	/*
 	 *	Pass this through asynchronously to the module which
@@ -49,7 +53,8 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 	switch (request->request_state) {
 	case REQUEST_INIT:
 		radlog_request(L_DBG, L_DBG_LVL_1, request, "Received %s ID %i",
-			       fr_packet_codes[request->packet->code], request->packet->id);
+			       fr_dict_enum_alias_by_value(NULL, da, fr_box_uint32(request->reply->code)),
+			       request->packet->id);
 		rdebug_proto_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
 
 		request->component = "radius";
@@ -180,7 +185,8 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		 */
 		if (request->parent) {
 			radlog_request(L_DBG, L_DBG_LVL_1, request, "Sent %s ID %i",
-				       fr_packet_codes[request->reply->code], request->reply->id);
+				       fr_dict_enum_alias_by_value(NULL, da, fr_box_uint32(request->reply->code)),
+				       request->reply->id);
 			rdebug_proto_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
 			return FR_IO_DONE;
 		}
