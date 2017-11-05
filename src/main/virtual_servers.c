@@ -36,6 +36,24 @@ RCSID("$Id$")
 #include <freeradius-devel/dl.h>
 #include <freeradius-devel/io/application.h>
 
+/*
+ *	Ordered by component
+ */
+const section_type_value_t section_type_value[MOD_COUNT] = {
+	{ "authenticate", "Auth-Type",      FR_AUTH_TYPE },
+	{ "authorize",   "Autz-Type",      FR_AUTZ_TYPE },
+	{ "preacct",     "Pre-Acct-Type",  FR_PRE_ACCT_TYPE },
+	{ "accounting",  "Acct-Type",      FR_ACCT_TYPE },
+	{ "pre-proxy",   "Pre-Proxy-Type", FR_PRE_PROXY_TYPE },
+	{ "post-proxy",  "Post-Proxy-Type", FR_POST_PROXY_TYPE },
+	{ "post-auth",   "Post-Auth-Type", FR_POST_AUTH_TYPE }
+#ifdef WITH_COA
+	,
+	{ "recv-coa",    "Recv-CoA-Type",  FR_RECV_COA_TYPE },
+	{ "send-coa",    "Send-CoA-Type",  FR_SEND_COA_TYPE }
+#endif
+};
+
 static int default_component_results[MOD_COUNT] = {
 	RLM_MODULE_REJECT,	/* AUTH */
 	RLM_MODULE_NOTFOUND,	/* AUTZ */
@@ -66,6 +84,13 @@ typedef struct {
  *
  */
 static fr_virtual_server_t **virtual_servers;
+
+/** CONF_SECTION holding all the virtual servers
+ *
+ * Set during the call to virtual_server_bootstrap and used by
+ * other virtual server functions.
+ */
+static CONF_SECTION const *virtual_server_root;
 
 static int listen_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
 static const CONF_PARSER server_config[] = {
@@ -306,7 +331,7 @@ int virtual_servers_open(fr_schedule_t *sc)
 
 	rad_assert(virtual_servers);
 
-	DEBUG2("%s: #### Opening listener interfaces ####", main_config.name);
+	DEBUG2("#### Opening listener interfaces ####");
 
 	for (i = 0; i < server_cnt; i++) {
 		fr_virtual_listen_t	**listener;
@@ -348,13 +373,13 @@ int virtual_servers_open(fr_schedule_t *sc)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int virtual_servers_instantiate(UNUSED CONF_SECTION *config)
+int virtual_servers_instantiate(void)
 {
 	size_t i, server_cnt = virtual_servers ? talloc_array_length(virtual_servers) : 0;
 
 	rad_assert(virtual_servers);
 
-	DEBUG2("%s: #### Instantiating listeners ####", main_config.name);
+	DEBUG2("#### Instantiating listeners ####");
 
 	for (i = 0; i < server_cnt; i++) {
 		fr_virtual_listen_t	**listener;
@@ -365,7 +390,7 @@ int virtual_servers_instantiate(UNUSED CONF_SECTION *config)
  		listener = virtual_servers[i]->listener;
  		listen_cnt = talloc_array_length(listener);
 
-		DEBUG("Compiling policies in server %s { ... }", cf_section_name2(listener[0]->server_cs));		      
+		DEBUG("Compiling policies in server %s { ... }", cf_section_name2(listener[0]->server_cs));
 
 		for (j = 0; j < listen_cnt; j++) {
 			fr_virtual_listen_t *listen = listener[j];
@@ -433,6 +458,8 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 	size_t i, server_cnt = 0;
 	CONF_SECTION *cs = NULL;
 
+	virtual_server_root = config;
+
 	(void) unlang_initialize();
 
 	if (virtual_servers) {
@@ -443,7 +470,7 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 		server_cnt = talloc_array_length(virtual_servers);
 	}
 
-	DEBUG2("%s: #### Bootstrapping listeners ####", main_config.name);
+	DEBUG2("#### Bootstrapping listeners ####");
 
 	/*
 	 *	Load all of the virtual servers.
@@ -507,14 +534,14 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
  *
  * @note May be called in bootstrap or instantiate as all servers should be present.
  *
- * @param[in] name of virtual server.
+ * @param[in] name	of virtual server.
  * @return
  *	- NULL if no virtual server was found.
  *	- The CONF_SECTION of the named virtual server.
  */
 CONF_SECTION *virtual_server_find(char const *name)
 {
-	return cf_section_find(main_config.config, "server", name);
+	return cf_section_find(virtual_server_root, "server", name);
 }
 
 /*
@@ -523,7 +550,7 @@ CONF_SECTION *virtual_server_find(char const *name)
 void fr_request_async_bootstrap(REQUEST *request, fr_event_list_t *el)
 {
 	size_t listen_cnt;
-	fr_virtual_listen_t	**listener;	
+	fr_virtual_listen_t	**listener;
 
 	if (!virtual_servers) return; /* let it crash! */
 

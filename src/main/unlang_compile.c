@@ -1336,7 +1336,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 	char const	*name2 = cf_section_name2(cs);
 
-	modules = cf_section_find(main_config.config, "modules", NULL);
+	modules = cf_section_find(cf_root(cs), "modules", NULL);
 	if (!modules) {
 		cf_log_err(cs, "'map' sections require a 'modules' section");
 		return NULL;
@@ -1611,7 +1611,7 @@ static unlang_t *compile_empty(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 
 
 static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci,
-				 unlang_group_type_t parent_group_type, char const **modname);
+			      unlang_group_type_t parent_group_type, char const **modname);
 
 
 /* unlang_group_ts are grown by adding a unlang_t to the end */
@@ -2553,7 +2553,7 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 				   unlang_ops[mod_type].name, unlang_ops[mod_type].name);
 			return NULL;
 		}
-	}	
+	}
 
 	g = group_allocate(parent, cs, group_type, mod_type);
 	if (!g) return NULL;
@@ -2575,7 +2575,8 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 
 
 static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs,
-				    unlang_group_type_t group_type, unlang_group_type_t parentgroup_type, unlang_type_t mod_type)
+			      unlang_group_type_t group_type, unlang_group_type_t parentgroup_type,
+			      unlang_type_t mod_type)
 {
 	ssize_t slen;
 	char const *name2;
@@ -2584,7 +2585,7 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	FR_TOKEN type;
 	char *server;
 	char *packet;
-	CONF_SECTION *server_cs, *root;
+	CONF_SECTION *server_cs;
 	fr_io_process_t *process_p;
 
 	/*
@@ -2655,8 +2656,7 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	}
 
 	*packet = '\0';		/* hack */
-	root = cf_root(cs);
-	server_cs = cf_section_find(root, "server", server);
+	server_cs = cf_section_find(cf_root(cs), "server", server);
 	if (!server_cs) {
 		cf_log_err(cs, "Unknown virtual server '%s'", server);
 		talloc_free(g);
@@ -2701,7 +2701,7 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
  * @param[in] method_name Method override (may be NULL) or the method name e.g. authorize.
  * @return the CONF_SECTION specifying the virtual module.
  */
-static CONF_SECTION *virtual_module_find_cs(rlm_components_t *pcomponent,
+static CONF_SECTION *virtual_module_find_cs(CONF_SECTION *conf_root, rlm_components_t *pcomponent,
 					    char const *real_name, char const *virtual_name, char const *method_name)
 {
 	CONF_SECTION *cs, *subcs;
@@ -2733,7 +2733,7 @@ static CONF_SECTION *virtual_module_find_cs(rlm_components_t *pcomponent,
 	 *
 	 *	Return it to the caller, with the updated method.
 	 */
-	cs = cf_section_find(main_config.config, "instantiate", NULL);
+	cs = cf_section_find(conf_root, "instantiate", NULL);
 	if (cs) {
 		/*
 		 *	Found "foo".  Load it as "foo", or "foo.method".
@@ -2750,7 +2750,7 @@ static CONF_SECTION *virtual_module_find_cs(rlm_components_t *pcomponent,
 	 *
 	 *	If there's no policy section, we can't do anything else.
 	 */
-	cs = cf_section_find(main_config.config, "policy", NULL);
+	cs = cf_section_find(conf_root, "policy", NULL);
 	if (!cs) return NULL;
 
 	/*
@@ -2871,7 +2871,8 @@ static modcall_compile_t compile_table[] = {
 /*
  *	Compile one entry of a module call.
  */
-static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci,
+static unlang_t *compile_item(unlang_t *parent,
+			      unlang_compile_t *unlang_ctx, CONF_ITEM *ci,
 			      unlang_group_type_t parent_group_type, char const **modname)
 {
 	char const		*modrefname, *p;
@@ -3017,14 +3018,15 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	subcs = NULL;
 	p = strrchr(modrefname, '.');
 	if (!p) {
-		subcs = virtual_module_find_cs(&component, modrefname, modrefname, NULL);
+		subcs = virtual_module_find_cs(cf_root(ci), &component, modrefname, modrefname, NULL);
 	} else {
 		char buffer[256];
 
 		strlcpy(buffer, modrefname, sizeof(buffer));
 		buffer[p - modrefname] = '\0';
 
-		subcs = virtual_module_find_cs(&component, modrefname, buffer, buffer + (p - modrefname) + 1);
+		subcs = virtual_module_find_cs(cf_root(ci), &component, modrefname,
+					       buffer, buffer + (p - modrefname) + 1);
 	}
 
 	/*
@@ -3104,7 +3106,7 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	/*
 	 *	Not a virtual module.  It must be a real module.
 	 */
-	modules = cf_section_find(main_config.config, "modules", NULL);
+	modules = cf_section_find(cf_root(ci), "modules", NULL);
 	if (!modules) goto fail;
 
 	this = NULL;

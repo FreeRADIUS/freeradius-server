@@ -857,7 +857,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	And then load the virtual servers.
 	 */
-	if (virtual_servers_instantiate(main_config.config) < 0) goto exit_failure;
+	if (virtual_servers_instantiate() < 0) goto exit_failure;
 
 	state = fr_state_tree_init(NULL, main_config.max_requests * 2, 10);
 

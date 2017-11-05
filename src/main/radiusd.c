@@ -550,7 +550,7 @@ int main(int argc, char *argv[])
 	 *	we will discover it here and exit BEFORE opening
 	 *	connections to back-end DBs.
 	 */
-	if (virtual_servers_instantiate(main_config.config) < 0) exit(EXIT_FAILURE);
+	if (virtual_servers_instantiate() < 0) exit(EXIT_FAILURE);
 
 	/*
 	 *	Call the module's initialisation methods.  These create
