@@ -350,7 +350,6 @@ int dual_tls_recv(rad_listen_t *listener)
 
 	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
 
-	rbio = SSL_get_rbio(sock->ssn->ssl);
 
 redo:
 	if (!tls_socket_recv(listener)) {
@@ -429,6 +428,7 @@ redo:
 	 *	SSL_peek() will set SSL_pending(), and
 	 *	tls_socket_recv() will read another packet.
 	 */
+	rbio = SSL_get_rbio(sock->ssn->ssl);
 	pending = BIO_ctrl_pending(rbio);
 	if (pending) {
 		char buf[1];
