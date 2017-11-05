@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radclient.h>
 #include <freeradius-devel/conf.h>
+#include <freeradius-devel/radius/radius.h>
 #include <ctype.h>
 
 #ifdef HAVE_GETOPT_H
@@ -1001,7 +1002,7 @@ static int recv_one_packet(int wait_time)
 	/*
 	 *	Look for the packet.
 	 */
-	reply = fr_packet_list_recv(packet_list, &set);
+	reply = fr_packet_list_recv(packet_list, &set, RADIUS_MAX_ATTRIBUTES, false);
 	if (!reply) {
 		ERROR("Received bad packet");
 #ifdef WITH_TCP
@@ -1071,7 +1072,7 @@ static int recv_one_packet(int wait_time)
 	/*
 	 *	If this fails, we're out of memory.
 	 */
-	if (fr_radius_packet_decode(request->reply, request->packet, secret) != 0) {
+	if (fr_radius_packet_decode(request->reply, request->packet, RADIUS_MAX_ATTRIBUTES, false, secret) != 0) {
 		REDEBUG("Reply decode failed");
 		stats.lost++;
 		goto packet_done;

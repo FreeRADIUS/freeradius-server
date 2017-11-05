@@ -130,6 +130,8 @@ static CONF_PARSER const module_config[] = {
 
 	{ FR_CONF_OFFSET("max_connections", FR_TYPE_UINT32, rlm_radius_t, max_connections), .dflt = STRINGIFY(32) },
 
+	{ FR_CONF_OFFSET("max_attributes", FR_TYPE_UINT32, rlm_radius_t, max_attributes), .dflt = STRINGIFY(RADIUS_MAX_ATTRIBUTES) },
+
 	{ FR_CONF_POINTER("connection", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) connection_config },
 
 	CONF_PARSER_TERMINATOR

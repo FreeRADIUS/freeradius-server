@@ -25,8 +25,8 @@
 
 RCSID("$Id$")
 
-#include	<freeradius-devel/libradius.h>
-#include	<freeradius-devel/udp.h>
+#include <freeradius-devel/libradius.h>
+#include <freeradius-devel/udp.h>
 
 #include <fcntl.h>
 
@@ -758,7 +758,7 @@ int fr_packet_list_fd_set(fr_packet_list_t *pl, fd_set *set)
  *	FIXME: Add sockfd, if -1, do round-robin, else do sockfd
  *		IF in fdset.
  */
-RADIUS_PACKET *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set)
+RADIUS_PACKET *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, uint32_t max_attributes, bool require_ma)
 {
 	int start;
 	RADIUS_PACKET *packet;
@@ -779,7 +779,8 @@ RADIUS_PACKET *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set)
 			packet = fr_tcp_recv(pl->sockets[start].sockfd, false);
 		} else
 #endif
-			packet = fr_radius_packet_recv(NULL, pl->sockets[start].sockfd, UDP_FLAGS_NONE, false);
+			packet = fr_radius_packet_recv(NULL, pl->sockets[start].sockfd, UDP_FLAGS_NONE,
+						       max_attributes, require_ma);
 		if (!packet) continue;
 
 		/*

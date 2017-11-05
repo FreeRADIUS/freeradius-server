@@ -252,7 +252,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	/*
 	 *	If it's not a RADIUS packet, ignore it.
 	 */
-	if (!fr_radius_ok(buffer, &packet_len, false, &reason)) {
+	if (!fr_radius_ok(buffer, &packet_len, inst->parent->max_attributes, false, &reason)) {
 		DEBUG2("proto_radius_udp got a packet which isn't RADIUS");
 		inst->stats.total_malformed_requests++;
 		return 0;

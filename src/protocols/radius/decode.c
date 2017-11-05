@@ -27,8 +27,6 @@ RCSID("$Id$")
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/md5.h>
 
-bool fr_tunnel_password_zeros = true;
-
 static void memcpy_bounded(void * restrict dst, const void * restrict src, size_t n, const void * restrict end)
 {
 	size_t len = n;
@@ -55,7 +53,8 @@ static void memcpy_bounded(void * restrict dst, const void * restrict src, size_
  * initial intermediate value, to differentiate it from the
  * above.
  */
-ssize_t fr_radius_decode_tunnel_password(uint8_t *passwd, size_t *pwlen, char const *secret, uint8_t const *vector)
+ssize_t fr_radius_decode_tunnel_password(uint8_t *passwd, size_t *pwlen,
+					 char const *secret, uint8_t const *vector, bool tunnel_password_zeros)
 {
 	FR_MD5_CTX	context, old;
 	uint8_t		digest[AUTH_VECTOR_LEN];
@@ -156,7 +155,7 @@ ssize_t fr_radius_decode_tunnel_password(uint8_t *passwd, size_t *pwlen, char co
 	/*
 	 *	Check trailing bytes
 	 */
-	if (fr_tunnel_password_zeros) for (i = embedded_len; i < (encrypted_len - 1); i++) {	/* -1 for length field */
+	if (tunnel_password_zeros) for (i = embedded_len; i < (encrypted_len - 1); i++) {	/* -1 for length field */
 		if (passwd[i] != 0) {
 			fr_strerror_printf("Trailing garbage in Tunnel Password "
 					   "(shared secret is probably incorrect!)");
@@ -1125,7 +1124,8 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 		 */
 		case FLAG_ENCRYPT_TUNNEL_PASSWORD:
 			if (fr_radius_decode_tunnel_password(buffer, &data_len,
-							     packet_ctx->secret, packet_ctx->vector) < 0) {
+							     packet_ctx->secret, packet_ctx->vector,
+							     packet_ctx->tunnel_password_zeros) < 0) {
 				goto raw;
 			}
 			break;

@@ -785,7 +785,7 @@ static rlm_rcode_t mod_post_proxy(void *instance, UNUSED void *thread, REQUEST *
 	p = talloc_memdup(vp, vp->vp_strvalue, vp->vp_length + 1);
 	talloc_set_type(p, uint8_t);
 	ret = fr_radius_decode_tunnel_password((uint8_t *)p + 17, &i, request->proxy->home_server->secret,
-					       request->proxy->packet->vector);
+					       request->proxy->packet->vector, false);
 	if (ret < 0) {
 		REDEBUG("Decoding leap:session-key failed");
 		talloc_free(p);

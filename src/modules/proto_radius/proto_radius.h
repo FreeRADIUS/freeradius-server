@@ -74,8 +74,11 @@ typedef struct {
 									//!< only one instance per type allowed.
 	fr_io_process_t			process_by_code[FR_CODE_MAX];	//!< Lookup process entry point by code.
 
-	uint32_t			max_packet_size;		//!< for message ring buffer
-	uint32_t			num_messages;			//!< for message ring buffer
+	uint32_t			max_packet_size;		//!< for message ring buffer.
+	uint32_t			num_messages;			//!< for message ring buffer.
+	uint32_t			max_attributes;			//!< Limit maximum decodable attributes.
+
+	bool				tunnel_password_zeros;
 
 	bool				code_allowed[FR_CODE_MAX];	//!< Lookup allowed packet codes.
 

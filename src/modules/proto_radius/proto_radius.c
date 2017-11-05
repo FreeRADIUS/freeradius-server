@@ -44,10 +44,16 @@ static CONF_PARSER const proto_radius_config[] = {
 	  .func = transport_parse },
 
 	/*
+	 *	Security
+	 */
+	{ FR_CONF_OFFSET("tunnel_password_zeros", FR_TYPE_BOOL, proto_radius_t, tunnel_password_zeros) } ,
+
+	/*
 	 *	For performance tweaking.  NOT for normal humans.
 	 */
 	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, proto_radius_t, max_packet_size) } ,
 	{ FR_CONF_OFFSET("num_messages", FR_TYPE_UINT32, proto_radius_t, num_messages) } ,
+	{ FR_CONF_OFFSET("max_attributes", FR_TYPE_UINT32, proto_radius_t, max_attributes), .dflt = STRINGIFY(RADIUS_MAX_ATTRIBUTES) } ,
 
 	CONF_PARSER_TERMINATOR
 };
@@ -192,7 +198,8 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	request->packet->data = talloc_memdup(request->packet, data, data_len);
 	request->packet->data_len = data_len;
 
-	if (fr_radius_packet_decode(request->packet, NULL, client->secret) < 0) {
+	if (fr_radius_packet_decode(request->packet, NULL,
+				    inst->max_attributes, inst->tunnel_password_zeros, client->secret) < 0) {
 		RDEBUG("Failed decoding packet: %s", fr_strerror());
 		return -1;
 	}

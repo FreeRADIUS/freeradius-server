@@ -1337,7 +1337,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	current->src_port = ntohs(udp->src);
 	current->dst_port = ntohs(udp->dst);
 
-	if (!fr_radius_packet_ok(current, false, &reason)) {
+	if (!fr_radius_packet_ok(current, RADIUS_MAX_ATTRIBUTES, false, &reason)) {
 		REDEBUG("%s", fr_strerror());
 		if (conf->event_flags & RS_ERROR) {
 			rs_packet_print(NULL, count, RS_ERROR, event->in, current, &elapsed, NULL, false, false);
@@ -1400,7 +1400,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			FILE *log_fp = fr_log_fp;
 
 			fr_log_fp = NULL;
-			ret = fr_radius_packet_decode(current, original ? original->expect : NULL, conf->radius_secret);
+			ret = fr_radius_packet_decode(current, original ? original->expect : NULL,
+						      RADIUS_MAX_ATTRIBUTES, false, conf->radius_secret);
 			fr_log_fp = log_fp;
 			if (ret != 0) {
 				fr_radius_free(&current);
@@ -1507,7 +1508,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			FILE *log_fp = fr_log_fp;
 
 			fr_log_fp = NULL;
-			ret = fr_radius_packet_decode(current, NULL, conf->radius_secret);
+			ret = fr_radius_packet_decode(current, NULL,
+						      RADIUS_MAX_ATTRIBUTES, false, conf->radius_secret);
 			fr_log_fp = log_fp;
 
 			if (ret != 0) {

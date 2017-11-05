@@ -784,7 +784,7 @@ check_active:
 	 if (c->inst->replicate) goto redo;
 
 	packet_len = data_len;
-	if (!fr_radius_ok(c->buffer, &packet_len, false, &reason)) {
+	if (!fr_radius_ok(c->buffer, &packet_len, c->inst->parent->max_attributes, false, &reason)) {
 		WARN("%s - Ignoring malformed packet", c->inst->parent->name);
 		goto redo;
 	}

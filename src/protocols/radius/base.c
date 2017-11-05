@@ -99,20 +99,6 @@ FR_NAME_NUMBER const fr_request_types[] = {
 	{ NULL, 0}
 };
 
-/*
- *	The maximum number of attributes which we allow in an incoming
- *	request.  If there are more attributes than this, the request
- *	is rejected.
- *
- *	This helps to minimize the potential for a DoS, when an
- *	attacker spoofs Access-Request packets, which don't have a
- *	Message-Authenticator attribute.  This means that the packet
- *	is unsigned, and the attacker can use resources on the server,
- *	even if the end request is rejected.
- */
-uint32_t fr_max_attributes = 0;
-
-
 char const *fr_packet_codes[FR_MAX_PACKET_CODE] = {
 	"",					//!< 0
 	"Access-Request",
@@ -444,15 +430,17 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 
 /** See if the data pointed to by PTR is a valid RADIUS packet.
  *
- * @param packet to check
- * @param[in,out] packet_len_p the size of the packet data
- * @param require_ma to require Message-Authenticator
- * @param reason if not NULL, will have the failure reason written to where it points.
+ * @param[in] packet		to check.
+ * @param[in,out] packet_len_p	The size of the packet data.
+ * @param[in] max_attributes	to allow in the packet.
+ * @param[in] require_ma	whether we require Message-Authenticator.
+ * @param[in] reason		if not NULL, will have the failure reason written to where it points.
  * @return
  *	- True on success.
  *	- False on failure.
  */
-bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p, bool require_ma, decode_fail_t *reason)
+bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
+		  uint32_t max_attributes, bool require_ma, decode_fail_t *reason)
 {
 	uint8_t	const		*attr, *end;
 	size_t			totallen;
@@ -671,10 +659,10 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p, bool require_ma, 
 	 *	attributes, and we've seen more than that maximum,
 	 *	then throw the packet away, as a possible DoS.
 	 */
-	if ((fr_max_attributes > 0) &&
-	    (num_attributes > fr_max_attributes)) {
+	if ((max_attributes > 0) &&
+	    (num_attributes > max_attributes)) {
 		FR_DEBUG_STRERROR_PRINTF("Possible DoS attack - too many attributes in request (received %d, max %d are allowed).",
-					 num_attributes, fr_max_attributes);
+					 num_attributes, max_attributes);
 		failure = DECODE_FAIL_TOO_MANY_ATTRIBUTES;
 		goto finish;
 	}

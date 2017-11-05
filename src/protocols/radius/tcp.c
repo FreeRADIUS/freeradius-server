@@ -25,6 +25,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
+#include <freeradius-devel/radius/radius.h>
 
 #ifdef WITH_TCP
 
@@ -36,7 +37,7 @@ RADIUS_PACKET *fr_tcp_recv(int sockfd, int flags)
 
 	packet->sockfd = sockfd;
 
-	if (fr_tcp_read_packet(packet, flags) != 1) {
+	if (fr_tcp_read_packet(packet, RADIUS_MAX_ATTRIBUTES, flags) != 1) {
 		fr_radius_free(&packet);
 		return NULL;
 	}
@@ -57,7 +58,7 @@ RADIUS_PACKET *fr_tcp_recv(int sockfd, int flags)
  *	Calling this function MAY change sockfd,
  *	if src_ipaddr.af == AF_UNSPEC.
  */
-int fr_tcp_read_packet(RADIUS_PACKET *packet, bool require_ma)
+int fr_tcp_read_packet(RADIUS_PACKET *packet, uint32_t max_attributes, bool require_ma)
 {
 	ssize_t len;
 
@@ -141,7 +142,7 @@ int fr_tcp_read_packet(RADIUS_PACKET *packet, bool require_ma)
 	/*
 	 *	See if it's a well-formed RADIUS packet.
 	 */
-	if (!fr_radius_packet_ok(packet, require_ma, NULL)) {
+	if (!fr_radius_packet_ok(packet, max_attributes, require_ma, NULL)) {
 		return -1;
 	}
 

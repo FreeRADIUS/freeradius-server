@@ -107,6 +107,7 @@ struct rlm_radius_t {
 
 	uint32_t		max_connections;  //!< maximum number of open connections
 	atomic_uint32_t		num_connections;  //!< actual number of connections
+	uint32_t		max_attributes;   //!< Maximum number of attributes to decode in response.
 
 	uint32_t		proxy_state;  	//!< Unique ID (mostly) of this module.
 	uint32_t		*types;		//!< array of allowed packet types

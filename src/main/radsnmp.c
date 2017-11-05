@@ -798,7 +798,8 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 					continue;	/* Timeout */
 
 				case 1:
-					reply = fr_radius_packet_recv(request, request->sockfd, UDP_FLAGS_NONE, false);
+					reply = fr_radius_packet_recv(request, request->sockfd, UDP_FLAGS_NONE,
+								      RADIUS_MAX_ATTRIBUTES, false);
 					if (!reply) {
 						ERROR("Failed receiving reply: %s", fr_strerror());
 					recv_error:
@@ -806,7 +807,8 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 						talloc_free(request);
 						continue;
 					}
-					if (fr_radius_packet_decode(reply, request, conf->secret) < 0) {
+					if (fr_radius_packet_decode(reply, request,
+								    RADIUS_MAX_ATTRIBUTES, false, conf->secret) < 0) {
 						ERROR("Failed decoding reply: %s", fr_strerror());
 						goto recv_error;
 					}
