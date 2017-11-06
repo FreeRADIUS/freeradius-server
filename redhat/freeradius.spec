@@ -477,7 +477,7 @@ touch $RPM_BUILD_ROOT/var/log/radius/{radutmp,radius.log}
 
 # For systemd based systems, that define _unitdir, install the radiusd unit
 %if %{?_unitdir:1}%{!?_unitdir:0}
-install -D -m 755 %{SOURCE100} $RPM_BUILD_ROOT/%{_unitdir}/radiusd.service
+install -D -m 644 %{SOURCE100} $RPM_BUILD_ROOT/%{_unitdir}/radiusd.service
 # For SystemV install the init script
 %else
 install -D -m 755 %{SOURCE100} $RPM_BUILD_ROOT/%{initddir}/radiusd
