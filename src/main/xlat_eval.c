@@ -321,7 +321,6 @@ static rlm_rcode_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 	case FR_CLIENT_IP_ADDRESS:
 		value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, false);
 		fr_value_box_ipaddr(value, NULL, &request->client->ipaddr, false);	/* Enum might not match type */
-		memcpy(&value->datum.ip, &packet->src_ipaddr, sizeof(value->datum.ip));
 		break;
 
 	case FR_PACKET_SRC_IP_ADDRESS:
