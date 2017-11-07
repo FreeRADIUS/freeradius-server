@@ -307,7 +307,7 @@ static void conn_check_idle(rlm_radius_udp_connection_t *c)
 
 		DEBUG("%s - Setting idle timeout to +%pV for connection %s",
 		      c->inst->parent->name, fr_box_timeval(c->inst->parent->idle_timeout), c->name);
-		if (fr_event_timer_insert(NULL, c->thread->el, &c->idle_ev, &c->idle_timeout, conn_idle_timeout, c) < 0) {
+		if (fr_event_timer_insert(c, c->thread->el, &c->idle_ev, &c->idle_timeout, conn_idle_timeout, c) < 0) {
 			ERROR("%s - Failed inserting idle timeout for connection %s",
 			      c->inst->parent->name, c->name);
 		}
