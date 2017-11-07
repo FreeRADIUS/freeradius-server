@@ -42,7 +42,7 @@ static size_t xlat_process(TALLOC_CTX *ctx, char **out, REQUEST *request, xlat_e
  * @param[in] ctx	to allocate boxed value, and buffers in.
  * @param[out] out	Where to write the boxed value.
  * @param[in] request	The current request.
- * @param[in] vpt	Representing the expansion
+ * @param[in] letter	to expand.
  * @return
  *	- #RLM_MODULE_UPDATED	if an additional value was added.
  *	- #RLM_MODULE_NOOP	if no additional values were added.
@@ -195,7 +195,7 @@ static rlm_rcode_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQUE
 
 	default:
 		rad_assert(0);
-		break;
+		return RLM_MODULE_FAIL;
 	}
 
 	fr_cursor_insert(out, value);
