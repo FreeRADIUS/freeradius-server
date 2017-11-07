@@ -790,40 +790,10 @@ eap {
 		tls = tls-common
 
 		#
-		#  copy_request_to_tunnel has been removed in 3.2.0
+		#  Both copy_request_to_tunnel and use_tunneled_reply have been
+		#  removed in v4.0.
 		#
-		#  Attributes from the outer request may be accessed with:
-		#
-		#	&outer:request:<attribute>
-		#
-		#  The old behaviour may be emulated by adding the following
-		#  to the top of the authorize section of the inner tunnel.
-		#
-		#	update {
-		#		&request: += &reply:[*]
-		#	}
-		#
-
-		#
-		#  use_tunneled_reply has been removed in 3.2.0
-		#
-		#  Attributes that should be provided in the reply should
-		#  be copied to the outer.session-state list.
-		#
-		# 	update outer.session-state {
-		#		...
-		#
-		#	}
-		#
-		#  In the post-auth section of the outer server, these attributes
-		#  can then be copied to the reply list.
-		#
-		#  If you want to copy the entire session-state list to the reply
-		#  the following statement may be used:
-		#
-		#	update {
-		#		&reply: += &session-state:[*]
-		#	}
+		#  See sites-available/inner-tunnel for details.
 		#
 
 		#
@@ -931,15 +901,10 @@ eap {
 		default_eap_type = mschapv2
 
 		#
-		#  copy_request_to_tunnel has been removed in 3.2.0
+		#  Both copy_request_to_tunnel and use_tunneled_reply have been
+		#  removed in v4.0.
 		#
-		#  See notes in the ttls section about emulating this behaviour.
-		#
-
-		#
-		#  use_tunneled_reply has been removed in 3.2.0
-		#
-		#  See notes in the ttls section about emulating this behaviour.
+		#  See sites-available/inner-tunnel for details.
 		#
 
 		#

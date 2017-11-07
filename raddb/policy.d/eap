@@ -83,3 +83,50 @@ remove_reply_message_if_eap {
 	}
 }
 
+#
+#	Copy outer request attributes to the inner tunnel
+#
+#	Similar to the behaviour of the old PEAP and TTLS
+#	configuration option of the same name, but attributes
+#	to copy now have to be explicitly listed.
+#
+copy_request_to_tunnel {
+	update request {
+		Calling-Station-Id = &outer.request:Calling-Station-Id
+		Called-Station-Id = &outer.request:Called-Station-Id
+	}
+}
+
+#
+#	Copy reply attributes to the outer session state
+#
+#	Emulates the behaviour of the old PEAP and TTLS
+#	configuration option of the same name. See
+#	sites-available/inner-tunnel for more details.
+#
+use_tunneled_reply {
+	#
+	#  These attributes are for the inner-tunnel only,
+	#  and MUST NOT be copied to the outer reply.
+	#
+	update reply {
+		User-Name !* ANY
+		Message-Authenticator !* ANY
+		EAP-Message !* ANY
+		Proxy-State !* ANY
+		MS-MPPE-Encryption-Types !* ANY
+		MS-MPPE-Send-Key !* ANY
+		MS-MPPE-Recv-Key !* ANY
+	}
+
+	#
+	#  Copy the inner reply attributes to the outer
+	#  session-state list.  The post-auth policy will take
+	#  care of copying the outer session-state list to the
+	#  outer reply.
+	#
+	update {
+		&outer.session-state: += &reply:
+	}
+}
+
