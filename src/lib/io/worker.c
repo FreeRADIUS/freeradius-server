@@ -667,7 +667,7 @@ static void worker_reset_timer(fr_worker_t *worker)
 	fr_time_to_timeval(&when, cleanup);
 
 	DEBUG2("Resetting worker cleanup timer to +30s");
-	if (fr_event_timer_insert(NULL, worker->el, &worker->ev_cleanup,
+	if (fr_event_timer_insert(worker, worker->el, &worker->ev_cleanup,
 				  &when, fr_worker_max_request_time, worker) < 0) {
 		ERROR("Failed inserting max_request_time timer.");
 	}
@@ -1230,8 +1230,6 @@ void fr_worker_destroy(fr_worker_t *worker)
 		fr_channel_worker_ack_close(worker->channel[i]);
 	}
 #endif
-
-	if (worker->ev_cleanup) (void) fr_event_timer_delete(worker->el, &worker->ev_cleanup);
 
 	(void) fr_event_pre_delete(worker->el, fr_worker_pre_event, worker);
 	(void) fr_event_post_delete(worker->el, fr_worker_post_event, worker);
