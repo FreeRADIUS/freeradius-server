@@ -648,75 +648,7 @@ fi
 %attr(755,root,root) %{_libdir}/freeradius/lib*.so*
 # RADIUS Loadable Modules
 %dir %attr(755,root,root) %{_libdir}/freeradius
-%{_libdir}/freeradius/proto_arp.so
-%{_libdir}/freeradius/proto_bfd.so
-%{_libdir}/freeradius/proto_detail.so
-%{_libdir}/freeradius/proto_detail_file.so
-%{_libdir}/freeradius/proto_detail_process.so
-%{_libdir}/freeradius/proto_detail_work.so
-%{_libdir}/freeradius/proto_dhcpv4.so
-%{_libdir}/freeradius/proto_ldap_sync.so
-%{_libdir}/freeradius/proto_radius_acct.so
-%{_libdir}/freeradius/proto_radius_auth.so
-%{_libdir}/freeradius/proto_radius_coa.so
-%{_libdir}/freeradius/proto_radius_status.so
-%{_libdir}/freeradius/proto_tacacs.so
-%{_libdir}/freeradius/proto_vmps.so
-%{_libdir}/freeradius/proto_vmps_all.so
-%{_libdir}/freeradius/proto_vmps_udp.so
-%{_libdir}/freeradius/rlm_always.so
-%{_libdir}/freeradius/rlm_attr_filter.so
-%{_libdir}/freeradius/rlm_cache.so
-%{_libdir}/freeradius/rlm_cache_rbtree.so
-%{_libdir}/freeradius/rlm_chap.so
-%{_libdir}/freeradius/rlm_client.so
-%{_libdir}/freeradius/rlm_cram.so
-%{_libdir}/freeradius/rlm_csv.so
-%{_libdir}/freeradius/rlm_date.so
-%{_libdir}/freeradius/rlm_detail.so
-%{_libdir}/freeradius/rlm_delay.so
-%{_libdir}/freeradius/rlm_dhcpv4.so
-%{_libdir}/freeradius/rlm_dict.so
-%{_libdir}/freeradius/rlm_digest.so
-%{_libdir}/freeradius/rlm_eap.so
-%{_libdir}/freeradius/rlm_eap_aka.so
-%{_libdir}/freeradius/rlm_eap_fast.so
-%{_libdir}/freeradius/rlm_eap_gtc.so
-%{_libdir}/freeradius/rlm_eap_leap.so
-%{_libdir}/freeradius/rlm_eap_md5.so
-%{_libdir}/freeradius/rlm_eap_mschapv2.so
-%{_libdir}/freeradius/rlm_eap_peap.so
-%{_libdir}/freeradius/rlm_eap_sim.so
-%{_libdir}/freeradius/rlm_eap_tls.so
-%{_libdir}/freeradius/rlm_eap_ttls.so
-%{_libdir}/freeradius/rlm_exec.so
-%{_libdir}/freeradius/rlm_expiration.so
-%{_libdir}/freeradius/rlm_expr.so
-%{_libdir}/freeradius/rlm_files.so
-%{_libdir}/freeradius/rlm_linelog.so
-%{_libdir}/freeradius/rlm_logintime.so
-%{_libdir}/freeradius/rlm_mschap.so
-%{_libdir}/freeradius/rlm_pam.so
-%{_libdir}/freeradius/rlm_pap.so
-%{_libdir}/freeradius/rlm_passwd.so
-%{_libdir}/freeradius/rlm_radius.so
-%{_libdir}/freeradius/rlm_radius_udp.so
-%{_libdir}/freeradius/rlm_radutmp.so
-%{_libdir}/freeradius/rlm_soh.so
-%{_libdir}/freeradius/rlm_sometimes.so
-%{_libdir}/freeradius/rlm_sql.so
-%{_libdir}/freeradius/rlm_sql_null.so
-%{_libdir}/freeradius/rlm_sql_sqlite.so
-%{_libdir}/freeradius/rlm_sqlcounter.so
-%{_libdir}/freeradius/rlm_sqlippool.so
-%{_libdir}/freeradius/rlm_sqlhpwippool.so
-%{_libdir}/freeradius/rlm_unix.so
-%{_libdir}/freeradius/rlm_unpack.so
-%{_libdir}/freeradius/rlm_utf8.so
-%{_libdir}/freeradius/rlm_wimax.so
-%{_libdir}/freeradius/rlm_logtee.so
-%{_libdir}/freeradius/proto_radius.so
-%{_libdir}/freeradius/proto_radius_udp.so
+%{_libdir}/freeradius/*.so
 
 
 %{?_with_rlm_idn: %{_libdir}/freeradius/rlm_idn.so}
@@ -742,7 +674,7 @@ fi
 %dir %attr(750,root,radiusd) /etc/raddb/sites-available
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/sites-available/*
 %dir %attr(750,root,radiusd) /etc/raddb/sites-enabled
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/sites-enabled/*
+%config(noreplace) /etc/raddb/sites-enabled/*
 %dir %attr(750,root,radiusd) /etc/raddb/policy.d
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/policy.d/*
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/templates.conf
