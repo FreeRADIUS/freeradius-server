@@ -65,10 +65,12 @@ static char const *months[] = {
 	"jan", "feb", "mar", "apr", "may", "jun",
 	"jul", "aug", "sep", "oct", "nov", "dec" };
 
-typedef struct fr_talloc_link {		/* allocated in the context of the parent */
-	struct fr_talloc_link **self;   /* allocated in the context of the child */
+typedef struct fr_talloc_link  fr_talloc_link_t;
+
+struct fr_talloc_link {		/* allocated in the context of the parent */
+	fr_talloc_link_t **self;   /* allocated in the context of the child */
 	TALLOC_CTX *child;		/* allocated in the context of the child */
-} fr_talloc_link_t;
+};
 
 /** Sets a signal handler using sigaction if available, else signal
  *
@@ -125,7 +127,16 @@ int fr_unset_signal(int sig)
  */
 static int _link_ctx_link_free(fr_talloc_link_t *link)
 {
-	talloc_free(link->self);
+	/*
+	 *	This hasn't been freed yet.  Mark it as "about to be
+	 *	freed", and then free it.
+	 */
+	if (link->self) {
+		fr_talloc_link_t **self = link->self;
+
+		link->self = NULL;
+		talloc_free(self);
+	}
 	talloc_free(link->child);
 
 	/* link is freed by talloc when this function returns */
@@ -146,7 +157,15 @@ static int _link_ctx_self_free(fr_talloc_link_t **link_p)
 	 */
 
 	/* link->self is freed by talloc when this function returns */
-	talloc_free(link);
+
+	/*
+	 *	If link->self is still pointing to us, the link is
+	 *	still valid.  Mark it as "about to be freed", and free the link.
+	 */
+	if (link->self) {
+		link->self = NULL;
+		talloc_free(link);
+	}
 
 	return 0;
 }
@@ -178,7 +197,7 @@ int fr_talloc_link_ctx(TALLOC_CTX *parent, TALLOC_CTX *child)
 	}
 
 	link->child = child;
-	link->self = &link;
+	*(link->self) = link;
 
 	talloc_set_destructor(link, _link_ctx_link_free);
 	talloc_set_destructor(link->self, _link_ctx_self_free);
