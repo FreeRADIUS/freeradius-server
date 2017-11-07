@@ -47,8 +47,8 @@ typedef struct xlat_t {
 
 typedef enum {
 	XLAT_LITERAL,			//!< Literal string
-	XLAT_PERCENT,			//!< Literal string with %v
-	XLAT_MODULE,			//!< xlat module
+	XLAT_ONE_LETTER,			//!< Literal string with %v
+	XLAT_FUNC,			//!< xlat module
 	XLAT_VIRTUAL,			//!< virtual attribute
 	XLAT_ATTRIBUTE,			//!< xlat attribute
 #ifdef HAVE_REGEX

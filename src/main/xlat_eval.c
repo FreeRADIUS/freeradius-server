@@ -328,7 +328,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		/*
 		 *	Do a one-character expansion.
 		 */
-	case XLAT_PERCENT:
+	case XLAT_ONE_LETTER:
 	{
 		char *nl;
 		size_t freespace = 256;
@@ -489,7 +489,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		RDEBUG2("   --> %s", str);
 		break;
 
-	case XLAT_MODULE:
+	case XLAT_FUNC:
 		XLAT_DEBUG("xlat_aprint MODULE");
 
 		if (node->child) {

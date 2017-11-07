@@ -261,7 +261,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 			/*
 			 *	%{mod:foo}
 			 */
-			node->type = XLAT_MODULE;
+			node->type = XLAT_FUNC;
 
 			p = q + 1;
 			XLAT_DEBUG("MOD <-- %s ... %s", node->fmt, p);
@@ -455,7 +455,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 				next->fmt = p + 1;
 
 				XLAT_DEBUG("PERCENT <-- %c", *next->fmt);
-				next->type = XLAT_PERCENT;
+				next->type = XLAT_ONE_LETTER;
 				break;
 			}
 
@@ -530,7 +530,7 @@ static void xlat_tokenize_debug(REQUEST *request, xlat_exp_t const *node)
 			RDEBUG3("literal --> %s", node->fmt);
 			break;
 
-		case XLAT_PERCENT:
+		case XLAT_ONE_LETTER:
 			RDEBUG3("percent --> %c", node->fmt[0]);
 			break;
 
@@ -567,7 +567,7 @@ static void xlat_tokenize_debug(REQUEST *request, xlat_exp_t const *node)
 			RDEBUG3("virtual --> %s", node->fmt);
 			break;
 
-		case XLAT_MODULE:
+		case XLAT_FUNC:
 			rad_assert(node->xlat != NULL);
 			RDEBUG3("xlat --> %s", node->xlat->name);
 			if (node->child) {
@@ -617,7 +617,7 @@ size_t xlat_snprint(char *buffer, size_t bufsize, xlat_exp_t const *node)
 			p += strlen(p);
 			break;
 
-		case XLAT_PERCENT:
+		case XLAT_ONE_LETTER:
 			p[0] = '%';
 			p[1] = node->fmt[0];
 			p += 2;
@@ -682,7 +682,7 @@ size_t xlat_snprint(char *buffer, size_t bufsize, xlat_exp_t const *node)
 			*(p++) = '}';
 			break;
 
-		case XLAT_MODULE:
+		case XLAT_FUNC:
 			*(p++) = '%';
 			*(p++) = '{';
 			strlcpy(p, node->xlat->name, end - p);
