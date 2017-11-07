@@ -86,7 +86,7 @@ if test x$with_[]modname != xno; then
 		if test "x$oracle_lib_dir" != "x" ; then
 			ORACLE_LIBDIR_SWITCH="-L${oracle_lib_dir} "
 		fi
-		for oracle_version in 10 11 9 ""; do
+		for oracle_version in 12.1 12 11 10 9 ""; do
 			LIBS="$old_LIBS $ORACLE_LIBDIR_SWITCH -lclntsh -lnnz${oracle_version}"
 			AC_TRY_LINK([#include <oci.h>
 		
@@ -134,7 +134,7 @@ if test x$with_[]modname != xno; then
 
 		if test "x$ORACLE_LIBS" = "x"; then
 			AC_MSG_WARN([oracle libraries not found.  Use --with-oracle-lib-dir=<path>.])
-			fail="$fail libclntsh libnnz${oracle_version}"
+			fail="$fail libclntsh libnnz[9-12]"
 		else
 			sql_oracle_ldflags="${sql_oracle_ldflags} $ORACLE_LIBS"
 			AC_MSG_RESULT(yes)

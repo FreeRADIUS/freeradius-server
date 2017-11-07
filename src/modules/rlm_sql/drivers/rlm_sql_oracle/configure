@@ -2726,7 +2726,7 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 		if test "x$oracle_lib_dir" != "x" ; then
 			ORACLE_LIBDIR_SWITCH="-L${oracle_lib_dir} "
 		fi
-		for oracle_version in 10 11 9 ""; do
+		for oracle_version in 12.1 12 11 10 9 ""; do
 			LIBS="$old_LIBS $ORACLE_LIBDIR_SWITCH -lclntsh -lnnz${oracle_version}"
 			cat >conftest.$ac_ext <<_ACEOF
 /* confdefs.h.  */
@@ -2817,7 +2817,7 @@ echo "${ECHO_T}yes" >&6; }
 		if test "x$ORACLE_LIBS" = "x"; then
 			{ echo "$as_me:$LINENO: WARNING: oracle libraries not found.  Use --with-oracle-lib-dir=<path>." >&5
 echo "$as_me: WARNING: oracle libraries not found.  Use --with-oracle-lib-dir=<path>." >&2;}
-			fail="$fail libclntsh libnnz${oracle_version}"
+			fail="$fail libclntsh libnnz[9-12]"
 		else
 			sql_oracle_ldflags="${sql_oracle_ldflags} $ORACLE_LIBS"
 			{ echo "$as_me:$LINENO: result: yes" >&5
