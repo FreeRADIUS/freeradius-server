@@ -56,6 +56,8 @@ static rlm_rcode_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQUE
 	time_t		when = request->packet->timestamp.tv_sec;
 	fr_value_box_t	*value;
 
+	XLAT_DEBUG("xlat_aprint ONE LETTER");
+
 	switch (letter) {
 	case '%':
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
@@ -202,51 +204,36 @@ static rlm_rcode_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQUE
 	return RLM_MODULE_UPDATED;
 }
 
-
-static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
-			bool escape, bool return_null)
+/** Gets the value of a virtual attribute
+ *
+ * These attribute *may* be overloaded by the user using real attribute.
+ *
+ * @todo There should be a virtual attribute registry.
+ *
+ * @param[in] ctx	to allocate boxed value, and buffers in.
+ * @param[out] out	Where to write the boxed value.
+ * @param[in] request	The current request.
+ * @param[in] vpt	Representing the attribute.
+ * @return
+ *	- #RLM_MODULE_UPDATED	if an additional value was added.
+ *	- #RLM_MODULE_NOOP	if no additional values were added.
+ *	- #RLM_MODULE_FAIL	if an error occurred.
+ */
+static rlm_rcode_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, vp_tmpl_t const *vpt)
 {
-	VALUE_PAIR		*vp = NULL, *virtual = NULL;
-	RADIUS_PACKET		*packet = NULL;
-	fr_dict_enum_t		*dv;
-	char			*ret = NULL;
+	RADIUS_PACKET	*packet = NULL;
+	fr_value_box_t	*value;
 
-	fr_cursor_t		cursor;
-	char quote = escape ? '"' : '\0';
-
-	rad_assert((vpt->type == TMPL_TYPE_ATTR) || (vpt->type == TMPL_TYPE_LIST));
+	XLAT_DEBUG("xlat_aprint ATTR VIRTUAL");
 
 	/*
-	 *	We only support count and concatenate operations on lists.
+	 *	Virtual attributes always have a count of 1
 	 */
-	if (vpt->type == TMPL_TYPE_LIST) {
-		vp = tmpl_cursor_init(NULL, &cursor, request, vpt);
-		goto do_print;
+	if (vpt->tmpl_num == NUM_COUNT) {
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL, false));
+		value->datum.uint32 = 1;
+		goto done;
 	}
-
-	/*
-	 *	See if we're dealing with an attribute in the request
-	 *
-	 *	This allows users to manipulate virtual attributes as if
-	 *	they were real ones.
-	 */
-	vp = tmpl_cursor_init(NULL, &cursor, request, vpt);
-	if (vp) goto do_print;
-
-	/*
-	 *	We didn't find the VP in a list.
-	 *	If it's not a virtual one, and we're not meant to
-	 *	be counting it, return.
-	 */
-	if (!vpt->tmpl_da->flags.virtual) {
-		if (vpt->tmpl_num == NUM_COUNT) goto do_print;
-		return NULL;
-	}
-
-	/*
-	 *	Switch out the request to the one specified by the template
-	 */
-	if (radius_request(&request, vpt->tmpl_request) < 0) return NULL;
 
 	/*
 	 *	Some non-packet expansions
@@ -256,25 +243,38 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 		break;		/* ignore them */
 
 	case FR_CLIENT_SHORTNAME:
-		if (vpt->tmpl_num == NUM_COUNT) goto count_virtual;
-		if (request->client && request->client->shortname) {
-			return talloc_typed_strdup(ctx, request->client->shortname);
+		if (!request->client || !request->client->shortname) return RLM_MODULE_NOOP;
+
+		MEM(value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, false));
+		if (fr_value_box_strdup_buffer(ctx, value, vpt->tmpl_da, request->client->shortname, false) < 0) {
+		error:
+			talloc_free(value);
+			return RLM_MODULE_FAIL;
 		}
-		return talloc_typed_strdup(ctx, "<UNKNOWN-CLIENT>");
+		goto done;
 
 	case FR_REQUEST_PROCESSING_STAGE:
-		if (vpt->tmpl_num == NUM_COUNT) goto count_virtual;
-		if (request->component) return talloc_typed_strdup(ctx, request->component);
-		return talloc_typed_strdup(ctx, "server_core");
+		if (!request->component) return RLM_MODULE_NOOP;
+
+		MEM(value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, false));
+		if (fr_value_box_strdup_buffer(ctx, value, vpt->tmpl_da, request->component, false) < 0) goto error;
+		goto done;
 
 	case FR_VIRTUAL_SERVER:
-		if (vpt->tmpl_num == NUM_COUNT) goto count_virtual;
-		return talloc_typed_strdup(ctx, cf_section_name2(request->server_cs));
+		if (!request->server_cs) return RLM_MODULE_NOOP;
+
+		MEM(value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, false));
+		if (fr_value_box_strdup_buffer(ctx, value, vpt->tmpl_da,
+					       cf_section_name2(request->server_cs), false) < 0) goto error;
+		goto done;
 
 	case FR_MODULE_RETURN_CODE:
-		if (vpt->tmpl_num == NUM_COUNT) goto count_virtual;
-		if (!request->rcode) return NULL;
-		return talloc_typed_strdup(ctx, fr_int2str(modreturn_table, request->rcode, ""));
+		if (!request->rcode) return RLM_MODULE_NOOP;
+
+		MEM(value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, false));
+		value->enumv = vpt->tmpl_da;
+		value->datum.int32 = request->rcode;
+		goto done;
 	}
 
 	/*
@@ -283,15 +283,12 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 	 *	referencing it.
 	 */
 	packet = radius_packet(request, vpt->tmpl_list);
-	if (!packet) {
-		if (return_null) return NULL;
-		return fr_pair_type_asprint(ctx, vpt->tmpl_da->type);
-	}
+	if (!packet) return RLM_MODULE_NOOP;
 
-	vp = NULL;
 	switch (vpt->tmpl_da->attr) {
 	default:
-		break;
+		RERROR("Attribute \"%s\" incorrectly marked as virtual", vpt->tmpl_da->name);
+		return RLM_MODULE_FAIL;
 
 	case FR_RESPONSE_PACKET_TYPE:
 		if (packet != request->reply) {
@@ -303,16 +300,12 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 		/* FALL-THROUGH */
 
 	case FR_PACKET_TYPE:
-		if (packet->code > 0) {
-			dv = fr_dict_enum_by_value(NULL, vpt->tmpl_da, fr_box_uint32(packet->code));
-			if (dv) return talloc_typed_strdup(ctx, dv->alias);
-			return talloc_typed_asprintf(ctx, "%d", packet->code);
-		}
+		if (!packet || !packet->code) return RLM_MODULE_NOOP;
 
-		/*
-		 *	If there's no code set then we return an empty string (not zero).
-		 */
-		return talloc_strdup(ctx, "");
+		MEM(value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, false));
+		value->enumv = vpt->tmpl_da;
+		value->datum.int32 = packet->code;
+		break;
 
 	/*
 	 *	Virtual attributes which require a temporary VALUE_PAIR
@@ -321,149 +314,171 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 	 *	various VP functions.
 	 */
 	case FR_PACKET_AUTHENTICATION_VECTOR:
-		virtual = fr_pair_afrom_da(ctx, vpt->tmpl_da);
-		fr_pair_value_memcpy(virtual, packet->vector, sizeof(packet->vector));
-		vp = virtual;
+		value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, true);
+		fr_value_box_memdup(ctx, value, vpt->tmpl_da, packet->vector, sizeof(packet->vector), true);
 		break;
 
 	case FR_CLIENT_IP_ADDRESS:
+		value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, false);
+		fr_value_box_ipaddr(value, NULL, &request->client->ipaddr, false);	/* Enum might not match type */
+		memcpy(&value->datum.ip, &packet->src_ipaddr, sizeof(value->datum.ip));
+		break;
+
 	case FR_PACKET_SRC_IP_ADDRESS:
-		if (packet->src_ipaddr.af == AF_INET) {
-			virtual = fr_pair_afrom_da(ctx, vpt->tmpl_da);
-			memcpy(&virtual->vp_ip, &packet->src_ipaddr, sizeof(virtual->vp_ip));
-			vp = virtual;
-		}
+		if (packet->src_ipaddr.af != AF_INET) return RLM_MODULE_NOOP;
+
+		value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, true);
+		fr_value_box_ipaddr(value, vpt->tmpl_da, &packet->src_ipaddr, true);
 		break;
 
 	case FR_PACKET_DST_IP_ADDRESS:
-		if (packet->dst_ipaddr.af == AF_INET) {
-			virtual = fr_pair_afrom_da(ctx, vpt->tmpl_da);
-			memcpy(&virtual->vp_ip, &packet->dst_ipaddr, sizeof(virtual->vp_ip));
-			vp = virtual;
-		}
+		if (packet->dst_ipaddr.af != AF_INET) return RLM_MODULE_NOOP;
+
+		value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, true);
+		fr_value_box_ipaddr(value, vpt->tmpl_da, &packet->dst_ipaddr, true);
 		break;
 
 	case FR_PACKET_SRC_IPV6_ADDRESS:
-		if (packet->src_ipaddr.af == AF_INET6) {
-			virtual = fr_pair_afrom_da(ctx, vpt->tmpl_da);
-			memcpy(&virtual->vp_ip, &packet->src_ipaddr, sizeof(virtual->vp_ip));
-			vp = virtual;
-		}
+		if (packet->src_ipaddr.af != AF_INET6) return RLM_MODULE_NOOP;
+
+		value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, true);
+		fr_value_box_ipaddr(value, vpt->tmpl_da, &packet->src_ipaddr, true);
 		break;
 
 	case FR_PACKET_DST_IPV6_ADDRESS:
-		if (packet->dst_ipaddr.af == AF_INET6) {
-			virtual = fr_pair_afrom_da(ctx, vpt->tmpl_da);
-			memcpy(&virtual->vp_ip, &packet->dst_ipaddr, sizeof(virtual->vp_ip));
-			vp = virtual;
-		}
+		if (packet->dst_ipaddr.af != AF_INET6) return RLM_MODULE_NOOP;
+
+		value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, true);
+		fr_value_box_ipaddr(value, vpt->tmpl_da, &packet->dst_ipaddr, true);
 		break;
 
 	case FR_PACKET_SRC_PORT:
-		virtual = fr_pair_afrom_da(ctx, vpt->tmpl_da);
-		virtual->vp_uint32 = packet->src_port;
-		vp = virtual;
+		value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, true);
+		value->datum.uint16 = packet->src_port;
 		break;
 
 	case FR_PACKET_DST_PORT:
-		virtual = fr_pair_afrom_da(ctx, vpt->tmpl_da);
-		virtual->vp_uint32 = packet->dst_port;
-		vp = virtual;
+		value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, true);
+		value->datum.uint16 = packet->dst_port;
 		break;
 	}
 
+done:
+	fr_cursor_append(out, value);
+
+	return RLM_MODULE_UPDATED;
+}
+
+
+/** Gets the value of a real or virtual attribute
+ *
+ * @param[in] ctx	to allocate boxed value, and buffers in.
+ * @param[out] out	Where to write the boxed value.
+ * @param[in] request	The current request.
+ * @param[in] vpt	Representing the attribute.
+ * @return
+ *	- #RLM_MODULE_UPDATED	if an additional value was added.
+ *	- #RLM_MODULE_NOOP	if no additional values were added.
+ *	- #RLM_MODULE_FAIL	if an error occurred.
+ */
+static rlm_rcode_t xlat_eval_pair(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, vp_tmpl_t const *vpt)
+{
+	VALUE_PAIR	*vp = NULL;
+	fr_value_box_t	*value;
+
+	fr_cursor_t	cursor;
+
+	XLAT_DEBUG("xlat_aprint ATTR");
+
+	rad_assert((vpt->type == TMPL_TYPE_ATTR) || (vpt->type == TMPL_TYPE_LIST));
+
 	/*
-	 *	Fake various operations for virtual attributes.
+	 *	See if we're dealing with an attribute in the request
+	 *
+	 *	This allows users to manipulate virtual attributes as if
+	 *	they were real ones.
 	 */
-	if (virtual) {
-		if (vpt->tmpl_num != NUM_ANY) switch (vpt->tmpl_num) {
-		/*
-		 *	[n] is NULL (we only have [0])
-		 */
-		default:
-			goto finish;
-		/*
-		 *	[*] means only one.
-		 */
-		case NUM_ALL:
-			break;
+	vp = tmpl_cursor_init(NULL, &cursor, request, vpt);
+
+	/*
+	 *	We didn't find the VP in a list, check to see if it's
+	 *	virtual.
+	 */
+	if (!vp) {
+		if (vpt->tmpl_da->flags.virtual) return xlat_eval_pair_virtual(ctx, out, request, vpt);
 
 		/*
-		 *	[#] means 1 (as there's only one)
+		 *	Zero count.
 		 */
-		case NUM_COUNT:
-		count_virtual:
-			ret = talloc_strdup(ctx, "1");
-			goto finish;
+		if (vpt->tmpl_num == NUM_COUNT) {
+			value = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL, false);
+			if (!value) {
+			oom:
+				fr_strerror_printf("Out of memory");
+				return RLM_MODULE_FAIL;
+			}
+			value->datum.int32 = 0;
+			fr_cursor_append(out, value);
 
-		/*
-		 *	[0] is fine (get the first instance)
-		 */
-		case 0:
-			break;
+			return RLM_MODULE_UPDATED;
 		}
-		goto print;
+
+		return RLM_MODULE_NOOP;
 	}
 
-do_print:
+
 	switch (vpt->tmpl_num) {
 	/*
 	 *	Return a count of the VPs.
 	 */
 	case NUM_COUNT:
 	{
-		int count = 0;
+		uint32_t count = 0;
 
 		for (vp = tmpl_cursor_init(NULL, &cursor, request, vpt);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) count++;
 
-		return talloc_typed_asprintf(ctx, "%d", count);
-	}
+		value = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL, false);
+		value->datum.uint32 = count;
+		fr_cursor_append(out, value);
 
+		return RLM_MODULE_UPDATED;
+	}
 
 	/*
-	 *	Concatenate all values together,
-	 *	separated by commas.
+	 *	Output multiple #value_box_t, one per attribute.
 	 */
 	case NUM_ALL:
-	{
-		char *p, *q;
 
-		if (!fr_cursor_current(&cursor)) return NULL;
-		p = fr_pair_value_asprint(ctx, vp, quote);
-		if (!p) return NULL;
+		if (!fr_cursor_current(&cursor)) return RLM_MODULE_NOOP;
 
-		while ((vp = fr_cursor_next(&cursor)) != NULL) {
-			q = fr_pair_value_asprint(ctx, vp, quote);
-			if (!q) return NULL;
-			p = talloc_strdup_append(p, ",");
-			p = talloc_strdup_append(p, q);
+		/*
+		 *	Loop over all matching #fr_value_pair
+		 *	shallow copying buffers.
+		 */
+		for (vp = fr_cursor_current(&cursor);	/* Initialised above to the first matching attribute */
+		     vp;
+		     vp = fr_cursor_next(&cursor)) {
+		     	value = fr_value_box_alloc(ctx, vp->data.type, vp->da, vp->data.tainted);
+			fr_value_box_copy_shallow(value, value, &vp->data);
+			fr_cursor_append(out, value);
 		}
 
-		return p;
-	}
+		return RLM_MODULE_UPDATED;
 
 	default:
 		/*
 		 *	The cursor was set to the correct
 		 *	position above by tmpl_cursor_init.
 		 */
-		vp = fr_cursor_current(&cursor);
-		break;
+		vp = fr_cursor_current(&cursor);			/* NULLness checked above */
+		value = fr_value_box_alloc(ctx, vp->data.type, vp->da, vp->data.tainted);
+		fr_value_box_copy_shallow(value, value, &vp->data);	/* Also dups taint */
+		if (!value) goto oom;
+		fr_cursor_append(out, value);
+		return RLM_MODULE_UPDATED;
 	}
-
-	if (!vp) {
-		if (return_null) return NULL;
-		return fr_pair_type_asprint(ctx, vpt->tmpl_da->type);
-	}
-
-print:
-	ret = fr_pair_value_asprint(ctx, vp, quote);
-
-finish:
-	talloc_free(virtual);
-	return ret;
 }
 
 #ifdef DEBUG_XLAT
@@ -480,11 +495,11 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 	ssize_t			slen;
 	char			*str = NULL, *child;
 	char const		*p;
-	fr_value_box_t		*head = NULL, string;
+	fr_value_box_t		*head = NULL, string, *value;
 	fr_cursor_t		cursor;
 	rlm_rcode_t		rcode;
 
-	fr_cursor_init(&cursor, &head);
+	fr_cursor_talloc_init(&cursor, &head, fr_value_box_t);
 
 	XLAT_DEBUG("%.*sxlat aprint %d %s", lvl, xlat_spaces, node->type, node->fmt);
 
@@ -525,16 +540,46 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		break;
 
 	case XLAT_ATTRIBUTE:
-		XLAT_DEBUG("%.*sxlat_aprint ATTRIBUTE", lvl, xlat_spaces);
+		rcode = xlat_eval_pair(ctx, &cursor, request, node->attr);
+		switch (rcode) {
+		case RLM_MODULE_UPDATED:
+		case RLM_MODULE_OK:
+			break;
+
+		default:
+			return NULL;
+		}
+
+		value = fr_cursor_current(&cursor);
 
 		/*
-		 *	Some attributes are virtual <sigh>
+		 *	Fixme - In the new xlat code we don't have to
+		 *	cast to a string until we're actually doing
+		 *	the concatenation.
 		 */
-		str = xlat_getvp(ctx, request, node->attr, escape ? false : true, true);
-		if (str && (node->attr->type == TMPL_TYPE_ATTR)) {
-			XLAT_DEBUG("%.*sEXPAND attr %s", lvl, xlat_spaces, node->attr->tmpl_da->name);
-			XLAT_DEBUG("%.*s       ---> %s", lvl ,xlat_spaces, str);
+		str = fr_value_box_asprint(ctx, value, '"');
+		if (!str) {
+		attr_error:
+			RPERROR("Printing box to string failed");
+			fr_cursor_free(&cursor);
+			return NULL;
 		}
+
+		/*
+		 *	Yes this is horrible, but it's only here
+		 *	temporarily until we do aggregation with
+		 *	value boxes.
+		 */
+		while ((value = fr_cursor_next(&cursor))) {
+			char *more;
+
+			more = fr_value_box_asprint(ctx, value, '"');
+			if (!more) goto attr_error;
+			str = talloc_strdup_append_buffer(str, ",");
+			str = talloc_strdup_append_buffer(str, more);
+			talloc_free(more);
+		}
+		fr_cursor_free(&cursor);
 		break;
 
 	case XLAT_VIRTUAL:

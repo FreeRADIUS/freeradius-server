@@ -24,7 +24,7 @@ if ("%{Packet-Type}" != 'Access-Request') {
 }
 
 # Response hasn't been set yet
-if ("%{Response-Packet-Type}" != '') {
+if ("%{reply:Packet-Type}" != '') {
 	test_fail
 }
 
