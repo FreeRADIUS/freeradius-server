@@ -37,6 +37,172 @@ static size_t xlat_process(TALLOC_CTX *ctx, char **out, REQUEST *request, xlat_e
 			   xlat_escape_t escape, void  const *escape_ctx);
 
 
+/** One letter expansions
+ *
+ * @param[in] ctx	to allocate boxed value, and buffers in.
+ * @param[out] out	Where to write the boxed value.
+ * @param[in] request	The current request.
+ * @param[in] vpt	Representing the expansion
+ * @return
+ *	- #RLM_MODULE_UPDATED	if an additional value was added.
+ *	- #RLM_MODULE_NOOP	if no additional values were added.
+ *	- #RLM_MODULE_FAIL	if an error occurred.
+ */
+static rlm_rcode_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, char letter)
+{
+
+	char		buffer[64];
+	struct tm	ts;
+	time_t		when = request->packet->timestamp.tv_sec;
+	fr_value_box_t	*value;
+
+	switch (letter) {
+	case '%':
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+		if (fr_value_box_strdup(value, value, NULL, "%", false) < 0) return RLM_MODULE_FAIL;
+		break;
+
+	case 'c': /* current epoch time seconds */
+	{
+		struct timeval now;
+
+		gettimeofday(&now, NULL);
+
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_DATE, NULL, false));
+		value->datum.date = now.tv_sec;
+	}
+		break;
+
+	case 'd': /* request day */
+		if (!localtime_r(&when, &ts)) {
+		error:
+			REDEBUG("Failed converting packet timestamp to localtime: %s", fr_syserror(errno));
+			return RLM_MODULE_FAIL;
+		}
+		strftime(buffer, sizeof(buffer), "%d", &ts);
+
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) return RLM_MODULE_FAIL;
+
+	case 'l': /* request timestamp */
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_DATE, NULL, false));
+		value->datum.date = when;
+		break;
+
+	case 'm': /* request month */
+		if (!localtime_r(&when, &ts)) goto error;
+
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_INT8, NULL, false));
+		value->datum.uint8 = ts.tm_mon;
+		break;
+
+	case 'n': /* Request Number*/
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL, false));
+		value->datum.uint64 = request->number;
+		break;
+
+	case 's': /* First request in this sequence */
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL, false));
+		value->datum.uint64 = request->seq_start;
+		break;
+
+	case 'e': /* Request second */
+		if (!localtime_r(&when, &ts)) goto error;
+
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_INT8, NULL, false));
+		value->datum.uint8 = ts.tm_sec;
+		break;
+
+	case 't': /* request timestamp */
+	{
+		char *p;
+
+		CTIME_R(&when, buffer, sizeof(buffer));
+		p = strchr(buffer, '\n');
+		if (p) *p = '\0';
+
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
+	}
+		break;
+
+	case 'C': /* curent epoch time microseconds */
+	{
+		struct timeval now;
+
+		gettimeofday(&now, NULL);
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL, false));
+		value->datum.uint64 = (uint64_t)now.tv_usec;
+	}
+		break;
+
+	case 'D': /* request date */
+		if (!localtime_r(&when, &ts)) goto error;
+		strftime(buffer, sizeof(buffer), "%Y%m%d", &ts);
+
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
+		break;
+
+	case 'G': /* request minute */
+		if (!localtime_r(&when, &ts)) goto error;
+
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_INT8, NULL, false));
+		value->datum.uint8 = ts.tm_min;
+		break;
+
+	case 'H': /* request hour */
+		if (!localtime_r(&when, &ts)) goto error;
+
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_INT8, NULL, false));
+		value->datum.uint8 = ts.tm_hour;
+		break;
+
+	case 'I': /* Request ID */
+		if (!request->packet) return 0;
+
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL, false));
+		value->datum.uint32 = request->packet->id;
+		break;
+
+	case 'M': /* Request microsecond */
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL, false));
+		value->datum.uint64 = request->packet->timestamp.tv_usec;
+		break;
+
+	case 'S': /* request timestamp in SQL format*/
+		if (!localtime_r(&when, &ts)) goto error;
+		strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &ts);
+
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
+		break;
+
+	case 'T': /* request timestamp */
+		if (!localtime_r(&when, &ts)) goto error;
+		strftime(buffer, sizeof(buffer), "%Y-%m-%d-%H.%M.%S.000000", &ts);
+
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
+		break;
+
+	case 'Y': /* request year */
+		if (!localtime_r(&when, &ts)) goto error;
+
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT16, NULL, false));
+		value->datum.int16 = ts.tm_year;
+		break;
+
+	default:
+		rad_assert(0);
+		break;
+	}
+
+	fr_cursor_insert(out, value);
+	return RLM_MODULE_UPDATED;
+}
+
+
 static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 			bool escape, bool return_null)
 {
@@ -311,9 +477,14 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 #endif
 			 int lvl)
 {
-	ssize_t rcode;
-	char *str = NULL, *child;
-	char const *p;
+	ssize_t			slen;
+	char			*str = NULL, *child;
+	char const		*p;
+	fr_value_box_t		*head = NULL, string;
+	fr_cursor_t		cursor;
+	rlm_rcode_t		rcode;
+
+	fr_cursor_init(&cursor, &head);
 
 	XLAT_DEBUG("%.*sxlat aprint %d %s", lvl, xlat_spaces, node->type, node->fmt);
 
@@ -329,135 +500,28 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		 *	Do a one-character expansion.
 		 */
 	case XLAT_ONE_LETTER:
-	{
-		char *nl;
-		size_t freespace = 256;
-		struct tm ts;
-		time_t when;
-		long int microseconds;
-
-		XLAT_DEBUG("%.*sxlat_aprint PERCENT", lvl, xlat_spaces);
-
-		str = talloc_array(ctx, char, freespace); /* @todo do better allocation */
-		p = node->fmt;
-
-		when = request->packet->timestamp.tv_sec;
-		microseconds = request->packet->timestamp.tv_usec;
-
-		switch (*p) {
-		case '%':
-			str[0] = '%';
-			str[1] = '\0';
-			break;
-
-		case 'c': /* current epoch time seconds */
-		{
-			struct timeval now;
-
-			gettimeofday(&now, NULL);
-			snprintf(str, freespace, "%" PRIu64, (uint64_t)now.tv_sec);
-		}
-			break;
-
-		case 'd': /* request day */
-			if (!localtime_r(&when, &ts)) goto error;
-			strftime(str, freespace, "%d", &ts);
-			break;
-
-		case 'l': /* request timestamp */
-			snprintf(str, freespace, "%lu",
-				 (unsigned long) when);
-			break;
-
-		case 'm': /* request month */
-			if (!localtime_r(&when, &ts)) goto error;
-			strftime(str, freespace, "%m", &ts);
-			break;
-
-		case 'n': /* Request Number*/
-			snprintf(str, freespace, "%" PRIu64 , request->number);
-			break;
-
-		case 's': /* First request in this sequence */
-			snprintf(str, freespace, "%" PRIu64 , request->seq_start);
-			break;
-
-		case 'e': /* Request second */
-			if (!localtime_r(&when, &ts)) goto error;
-			strftime(str, freespace, "%S", &ts);
-			break;
-
-		case 't': /* request timestamp */
-			CTIME_R(&when, str, freespace);
-			nl = strchr(str, '\n');
-			if (nl) *nl = '\0';
-			break;
-
-		case 'C': /* curent epoch time microseconds */
-		{
-			struct timeval now;
-
-			gettimeofday(&now, NULL);
-			snprintf(str, freespace, "%" PRIu64, (uint64_t)now.tv_usec);
-		}
-			break;
-
-		case 'D': /* request date */
-			if (!localtime_r(&when, &ts)) goto error;
-			strftime(str, freespace, "%Y%m%d", &ts);
-			break;
-
-		case 'G': /* request minute */
-			if (!localtime_r(&when, &ts)) goto error;
-			strftime(str, freespace, "%M", &ts);
-			break;
-
-		case 'H': /* request hour */
-			if (!localtime_r(&when, &ts)) goto error;
-			strftime(str, freespace, "%H", &ts);
-			break;
-
-		case 'I': /* Request ID */
-			rad_assert(request != NULL);
-			snprintf(str, freespace, "%i", request->packet->id);
-			break;
-
-		case 'M': /* Request microsecond */
-			snprintf(str, freespace, "%06ld", microseconds);
-			break;
-
-		case 'S': /* request timestamp in SQL format*/
-			if (!localtime_r(&when, &ts)) goto error;
-			strftime(str, freespace, "%Y-%m-%d %H:%M:%S", &ts);
-			break;
-
-		case 'T': /* request timestamp */
-			if (!localtime_r(&when, &ts)) goto error;
-			nl = str + strftime(str, freespace, "%Y-%m-%d-%H.%M.%S", &ts);
-			rad_assert(((str + freespace) - nl) >= 8);
-			snprintf(nl, (str + freespace) - nl, ".%06d", (int) microseconds);
-			break;
-
-		case 'Y': /* request year */
-			if (!localtime_r(&when, &ts)) {
-				error:
-				REDEBUG("Failed converting packet timestamp to localtime: %s", fr_syserror(errno));
-				talloc_free(str);
-				return NULL;
-			}
-			strftime(str, freespace, "%Y", &ts);
-			break;
-
-		case 'v': /* Version of code */
-			RWDEBUG("%%v is deprecated and will be removed.  Use ${version.freeradius-server}");
-			snprintf(str, freespace, "%s", radiusd_version_short);
+		rcode = xlat_eval_one_letter(ctx, &cursor, request, node->fmt[0]);
+		switch (rcode) {
+		case RLM_MODULE_UPDATED:
+		case RLM_MODULE_OK:
 			break;
 
 		default:
-			rad_assert(0 == 1);
-			break;
+			return NULL;
 		}
-	}
+
+		/*
+		 *	Fixme - In the new xlat code we don't have to
+		 *	cast to a string until we're actually doing
+		 *	the concatenation.
+		 */
+		if (fr_value_box_cast(ctx, &string, FR_TYPE_STRING, NULL, head) < 0) {
+			RPERROR("Casting one letter expansion to string failed");
+			fr_cursor_free(&cursor);
+			return NULL;
+		}
+		memcpy(&str, &string.vb_strvalue, sizeof(str));
+		fr_cursor_free(&cursor);
 		break;
 
 	case XLAT_ATTRIBUTE:
@@ -480,8 +544,8 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			str = talloc_array(ctx, char, node->xlat->buf_len);
 			str[0] = '\0';	/* Be sure the string is \0 terminated */
 		}
-		rcode = node->xlat->func(ctx, &str, node->xlat->buf_len, node->xlat->mod_inst, NULL, request, NULL);
-		if (rcode < 0) {
+		slen = node->xlat->func(ctx, &str, node->xlat->buf_len, node->xlat->mod_inst, NULL, request, NULL);
+		if (slen < 0) {
 			talloc_free(str);
 			return NULL;
 		}
@@ -558,9 +622,9 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			str = talloc_array(ctx, char, node->xlat->buf_len);
 			str[0] = '\0';	/* Be sure the string is \0 terminated */
 		}
-		rcode = node->xlat->func(ctx, &str, node->xlat->buf_len, node->xlat->mod_inst, NULL, request, child);
+		slen = node->xlat->func(ctx, &str, node->xlat->buf_len, node->xlat->mod_inst, NULL, request, child);
 		talloc_free(child);
-		if (rcode < 0) {
+		if (slen < 0) {
 			talloc_free(str);
 			return NULL;
 		}
