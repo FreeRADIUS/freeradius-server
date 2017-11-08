@@ -153,6 +153,7 @@ struct rlm_radius_udp_request_t {
 	uint8_t			*acct_delay_time;	//!< in the encoded packet.
 	uint32_t		initial_delay_time;	//!< Initial value of Acct-Delay-Time.
 	bool			manual_delay_time;	//!< Whether or not we manually added an Acct-Delay-Time.
+	bool			yielded;		//!< whether it yielded
 
 	int			code;			//!< Packet code.
 	rlm_radius_udp_connection_t	*c;		//!< The connection state machine.
@@ -496,7 +497,7 @@ static void state_transition(rlm_radius_udp_request_t *u, rlm_radius_request_sta
 		rad_assert(u->rr == NULL);
 		rad_assert(u->c == NULL);
 		if (u->timer.ev) (void) fr_event_timer_delete(u->thread->el, &u->timer.ev);
-		unlang_resumable(u->link->request);
+		if (u->yielded) unlang_resumable(u->link->request);
 		break;
 
 	case PACKET_STATE_FINISHED:
@@ -2400,6 +2401,7 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 	 *	callbacks to wake up a connection and send the packet.
 	 */
 	if (fr_heap_num_elements(t->queued) > 1) {
+		u->yielded = true;
 		DEBUG3("Thread has pending packets.  Waiting for socket to be ready");
 		return RLM_MODULE_YIELD;
 	}
@@ -2425,6 +2427,7 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 		 *	or when an existing connection has
 		 *	availability.
 		 */
+		u->yielded = true;
 		return RLM_MODULE_YIELD;
 	}
 
@@ -2441,6 +2444,7 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 	case PACKET_STATE_THREAD:
 	case PACKET_STATE_SENT:
 		rcode = RLM_MODULE_YIELD;
+		u->yielded = true;
 		break;
 
 	case PACKET_STATE_RESUMABLE: /* was replicated */
