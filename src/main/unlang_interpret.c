@@ -541,7 +541,7 @@ static unlang_resume_t *unlang_resume_alloc(REQUEST *request,
 	/*
 	 *	But note that we're of type RESUME
 	 */
-	mr->self.type = UNLANG_TYPE_MODULE_RESUME;
+	mr->self.type = UNLANG_TYPE_RESUME;
 
 	/*
 	 *	Fill in the signal handlers and resumption ctx
@@ -657,7 +657,7 @@ static rlm_rcode_t unlang_subrequest_resume(UNUSED REQUEST *request,
 	rcode = unlang_run(child);
 	if (rcode != RLM_MODULE_YIELD) {
 		frame = &stack->frame[stack->depth];
-		rad_assert(frame->instruction->type == UNLANG_TYPE_MODULE_RESUME);
+		rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
 
 		frame->instruction->type = UNLANG_TYPE_SUBREQUEST; /* for debug purposes */
 		request_detach(child);
@@ -667,7 +667,7 @@ static rlm_rcode_t unlang_subrequest_resume(UNUSED REQUEST *request,
 
 #ifndef NDEBUG
 	frame = &stack->frame[stack->depth];
-	rad_assert(frame->instruction->type == UNLANG_TYPE_MODULE_RESUME);
+	rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
 
 	mr = unlang_generic_to_resume(frame->instruction);
 	(void) talloc_get_type_abort(mr, unlang_resume_t);
@@ -1207,7 +1207,7 @@ static rlm_rcode_t unlang_parallel_resume(REQUEST *request,
 	 */
 	rcode = unlang_parallel_run(request, state);
 	if (rcode != RLM_MODULE_YIELD) {
-		rad_assert(frame->instruction->type == UNLANG_TYPE_MODULE_RESUME);
+		rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
 
 		frame->instruction->type = UNLANG_TYPE_PARALLEL; /* for debug purposes */
 		talloc_free(state);
@@ -1215,7 +1215,7 @@ static rlm_rcode_t unlang_parallel_resume(REQUEST *request,
 	}
 
 #ifndef NDEBUG
-	rad_assert(frame->instruction->type == UNLANG_TYPE_MODULE_RESUME);
+	rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
 
 	mr = unlang_generic_to_resume(frame->instruction);
 	(void) talloc_get_type_abort(mr, unlang_resume_t);
@@ -2000,7 +2000,7 @@ unlang_op_t unlang_ops[] = {
 		.func = unlang_xlat_inline,
 		.debug_braces = false
 	},
-	[UNLANG_TYPE_MODULE_RESUME] = {
+	[UNLANG_TYPE_RESUME] = {
 		.name = "resume",
 		.func = unlang_resume,
 		.debug_braces = false
@@ -2134,7 +2134,7 @@ resume_subsection:
 					return RLM_MODULE_YIELD;
 				}
 
-				rad_assert(frame->instruction->type == UNLANG_TYPE_MODULE_RESUME);
+				rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
 				frame->resume = true;
 				RDEBUG4("** [%i] %s - yielding with current (%s %d)", stack->depth, __FUNCTION__,
 					fr_int2str(mod_rcode_table, frame->result, "<invalid>"),
@@ -2608,7 +2608,7 @@ int unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t call
 
 	rad_assert(stack->depth > 0);
 	rad_assert((frame->instruction->type == UNLANG_TYPE_MODULE_CALL) ||
-		   (frame->instruction->type == UNLANG_TYPE_MODULE_RESUME));
+		   (frame->instruction->type == UNLANG_TYPE_RESUME));
 	sp = unlang_generic_to_module_call(frame->instruction);
 
 	ev = talloc_zero(request, unlang_event_t);
@@ -2691,7 +2691,7 @@ int unlang_event_fd_add(REQUEST *request,
 	rad_assert(stack->depth > 0);
 
 	rad_assert((frame->instruction->type == UNLANG_TYPE_MODULE_CALL) ||
-		   (frame->instruction->type == UNLANG_TYPE_MODULE_RESUME));
+		   (frame->instruction->type == UNLANG_TYPE_RESUME));
 	sp = unlang_generic_to_module_call(frame->instruction);
 
 	ev = talloc_zero(request, unlang_event_t);
@@ -2788,7 +2788,7 @@ void unlang_resumable(REQUEST *request)
 		 *	The current request MUST have been yielded in
 		 *	order for someone to mark it resumable.
 		 */
-		rad_assert(frame->instruction->type == UNLANG_TYPE_MODULE_RESUME);
+		rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
 #endif
 
 		/*
@@ -2798,7 +2798,7 @@ void unlang_resumable(REQUEST *request)
 		 */
 		stack = parent->stack;
 		frame = &stack->frame[stack->depth];
-		rad_assert(frame->instruction->type == UNLANG_TYPE_MODULE_RESUME);
+		rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
 
 		mr = unlang_generic_to_resume(frame->instruction);
 		(void) talloc_get_type_abort(mr, unlang_resume_t);
@@ -2839,7 +2839,7 @@ void unlang_resumable(REQUEST *request)
 	 */
 	stack = request->stack;
 	frame = &stack->frame[stack->depth];
-	rad_assert(frame->instruction->type == UNLANG_TYPE_MODULE_RESUME);
+	rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
 #endif
 
 	rad_assert(request->backlog != NULL);
@@ -2875,7 +2875,7 @@ void unlang_signal(REQUEST *request, fr_state_action_t action)
 	/*
 	 *	Be gracious in errors.
 	 */
-	if (frame->instruction->type != UNLANG_TYPE_MODULE_RESUME) {
+	if (frame->instruction->type != UNLANG_TYPE_RESUME) {
 		return;
 	}
 
@@ -2915,7 +2915,7 @@ rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_resume_callback_t ca
 	rad_assert(stack->depth > 0);
 
 	rad_assert((frame->instruction->type == UNLANG_TYPE_MODULE_CALL) ||
-		   (frame->instruction->type == UNLANG_TYPE_MODULE_RESUME));
+		   (frame->instruction->type == UNLANG_TYPE_RESUME));
 
 	if (frame->instruction->type == UNLANG_TYPE_MODULE_CALL) {
 		unlang_module_call_t		*sp;
