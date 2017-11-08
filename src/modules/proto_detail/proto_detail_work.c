@@ -54,10 +54,8 @@ typedef struct {
 	uint8_t				*packet;		//!< for retransmissions
 	size_t				packet_len;		//!< for retransmissions
 
-	union {
-		fr_event_timer_t const		*ev;			//!< retransmission timer
-		fr_dlist_t			entry;			//!< for the retransmission list
-	};
+	fr_event_timer_t const		*ev;			//!< retransmission timer
+	fr_dlist_t			entry;			//!< for the retransmission list
 } fr_detail_entry_t;
 
 static const CONF_PARSER file_listen_config[] = {
@@ -78,13 +76,16 @@ static int mod_decode(UNUSED void const *instance, REQUEST *request, UNUSED uint
 
 //	proto_detail_work_t const     	*inst = talloc_get_type_abort_const(instance, proto_detail_work_t);
 	fr_detail_entry_t const		*track = request->async->packet_ctx;
+	VALUE_PAIR *vp;
 
 	request->root = &main_config;
 	request->packet->id = track->id;
 	request->reply->id = track->id;
 	REQUEST_VERIFY(request);
 
-	// @todo - add retransmission counter
+	vp = fr_pair_make(request->packet, &request->packet->vps,
+			  "Packet-Transmit-Counter", NULL, T_OP_EQ);
+	if (vp) vp->vp_uint32 = track->tries;
 
 	return 0;
 }
@@ -121,6 +122,8 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	entry = FR_DLIST_FIRST(inst->list);
 	if (entry) {
 		track = fr_ptr_to_type(fr_detail_entry_t, entry, entry);
+
+		fr_dlist_remove(&track->entry);
 
 		rad_assert(buffer_len >= track->packet_len);
 		memcpy(buffer, track->packet, track->packet_len);
