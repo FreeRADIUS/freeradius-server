@@ -137,6 +137,60 @@ virtual_server detail {
 			#  is done from the file.
 			#
 			max_entry_size = 65536
+
+			#
+			#  Whether or not the module retransmits
+			#  packets which have failed.
+			#
+			#  default = yes
+			#
+			retransmit = yes
+
+			#
+			#  Limits for retransmissions.
+			#
+			limit {
+				#
+				#  Initial retransmit time: 1..60
+				#
+				#  If there is no response within this time,
+				#  the module will retransmit the packet.
+				#
+				initial_retransmission_time = 1
+
+				#
+				#  Maximum Retransmit Time: 5..30
+				#
+				#  The maximum time between retransmissions.
+				#
+				maximum_retransmission_time = 30
+
+				#
+				#  The following are maximums that *all* apply.
+				#  i.e. if any one of the limits is hit, the
+				#  retransmission stops.
+				#
+
+				#
+				#  Maximum Retransmit Count: 1..20
+				#
+				#  How many times the module will send the packet
+				#  before giving up.
+				#
+				#  A special value of "0" means "retransmit forever".
+				#
+				maximum_retransmission_count = 6
+
+				#
+				#  Maximum Retransmit Duration: 1..600
+				#
+				#  The total length of time the module will try to
+				#  retransit the packet
+				#
+				#  A special value of "0" means "retransmit forever".
+				#
+				maximum_retransmission_duration = 40
+			}
 		}
 	}
 

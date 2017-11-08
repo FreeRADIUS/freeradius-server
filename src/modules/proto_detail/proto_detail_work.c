@@ -491,7 +491,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			goto fail;
 		}
 
-		when.tv_sec = 1;
+		when.tv_sec = inst->irt;
 		when.tv_usec = 0;
 
 		DEBUG("%s - packet %d failed during processing.  Will retransmit in %d.%06ds",
@@ -711,6 +711,23 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		inst->mode = O_RDWR;
 	} else {
 		inst->mode = O_RDONLY;
+	}
+
+	if (inst->retransmit) {
+		FR_INTEGER_BOUND_CHECK("limit.initial_retransmission_time", inst->irt, >=, 1);
+		FR_INTEGER_BOUND_CHECK("limit.initial_retransmission_time", inst->irt, <=, 60);
+
+		/*
+		 *	If you need more than this, just set it to
+		 *	"0", and check Packet-Transmit-Count manually.
+		 */
+		FR_INTEGER_BOUND_CHECK("limit.maximum_retransmission_count", inst->mrc, <=, 20);
+		FR_INTEGER_BOUND_CHECK("limit.maximum_retransmission_duration", inst->mrd, <=, 600);
+
+		/*
+		 *	This is a reasonable value.
+		 */
+		FR_INTEGER_BOUND_CHECK("limit.maximum_retransmission_timer", inst->mrt, <=, 30);
 	}
 
 	return 0;
