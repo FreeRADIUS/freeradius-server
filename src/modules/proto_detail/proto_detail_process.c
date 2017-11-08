@@ -55,7 +55,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		radlog_request(L_DBG, L_DBG_LVL_1, request, "Received %s ID %i",
 			       fr_dict_enum_alias_by_value(NULL, da, fr_box_uint32(request->reply->code)),
 			       request->packet->id);
-		rdebug_proto_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
+		rdebug_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
 
 		request->component = "radius";
 
