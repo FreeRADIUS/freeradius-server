@@ -155,8 +155,18 @@ static void unlang_dump_stack(REQUEST *request)
 #endif
 
 
-
-static inline void unlang_push(unlang_stack_t *stack, unlang_t *program, rlm_rcode_t result, bool do_next_sibling, bool top_frame)
+/** Push a new frame onto the stack
+ *
+ * @param[in] stack		to push the frame onto.
+ * @param[in] program		One or more unlang_t nodes describing the operations to execute.
+ * @param[in] result		The default result.
+ * @param[in] do_next_sibling	Whether to only execute the first node in the #unlang_t program
+ *				or to execute subsequent nodes.
+ * @param[in] top_frame		Return out of the unlang interpreter when popping this frame.
+ *				Hands execution back to whatever called the interpreter.
+ */
+static inline void unlang_push(unlang_stack_t *stack, unlang_t *program,
+			       rlm_rcode_t result, bool do_next_sibling, bool top_frame)
 {
 	unlang_stack_frame_t *frame;
 
@@ -197,6 +207,10 @@ static inline void unlang_push(unlang_stack_t *stack, unlang_t *program, rlm_rco
 	frame->state = NULL;
 }
 
+/** Pop a stack frame, removing any associated dynamically allocated state
+ *
+ * @param[in] stack	frame to pop.
+ */
 static inline void unlang_pop(unlang_stack_t *stack)
 {
 	unlang_stack_frame_t *frame, *next;
