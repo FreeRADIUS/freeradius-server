@@ -1872,6 +1872,19 @@ static unlang_op_resume_func_t unlang_ops_resume[] = {
 	[UNLANG_TYPE_MAX]		= NULL
 };
 
+/** Callback for handling resumption frames
+ *
+ * Resumption frames are added to track when a module, or other construct
+ * has yielded control back to the interpreter.
+ *
+ * This function is called when the request has been marked as resumable
+ * and a resumption frame was previously placed on the stack, i.e. when
+ * the work that caused the request to be yielded initially has completed.
+ *
+ * @param[in] request	to be resumed.
+ * @param[out] presult	the rcode returned by the resume function.
+ * @param[out] priority associated with the rcode.
+ */
 static unlang_action_t unlang_resume(REQUEST *request,
 				     rlm_rcode_t *presult, int *priority)
 {
