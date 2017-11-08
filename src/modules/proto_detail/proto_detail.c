@@ -338,18 +338,7 @@ static ssize_t mod_encode(UNUSED void const *instance, REQUEST *request, uint8_t
 {
 	if (buffer_len < 1) return -1;
 
-	/*
-	 *	"Do not respond"
-	 */
-	if (request->reply->code == FR_CODE_DO_NOT_RESPOND) {
-		*buffer = 0;
-		return 1;
-	}
-
-	/*
-	 *	Do respond.
-	 */
-	*buffer = 1;
+	*buffer = request->reply->code;
 	return 1;
 }
 

@@ -134,7 +134,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 			if (!unlang) goto send_reply;
 
 		} else if (request->reply->code == 257) {
-			request->reply->code = FR_CODE_DO_NOT_RESPOND;
+			request->reply->code = 0;
 			unlang = cf_section_find(request->server_cs, "send", "failure");
 			if (!unlang) goto send_reply;
 
@@ -183,7 +183,13 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		/*
 		 *	This is an internally generated request.  Don't print IP addresses.
 		 */
-		if (request->parent) {
+		if (!request->reply->code) {
+			radlog_request(L_DBG, L_DBG_LVL_1, request, "Failed ID %i",
+				       request->reply->id);
+			rdebug_proto_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
+			return FR_IO_DONE;
+
+		} else if (request->parent) {
 			radlog_request(L_DBG, L_DBG_LVL_1, request, "Sent %s ID %i",
 				       fr_dict_enum_alias_by_value(NULL, da, fr_box_uint32(request->reply->code)),
 				       request->reply->id);
