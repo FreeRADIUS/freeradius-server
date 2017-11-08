@@ -46,9 +46,6 @@ typedef struct radclient {
 
 	char const		*nas_type;		//!< Type of client (arbitrary).
 
-	char const		*login;			//!< Username to use for simultaneous use checks.
-	char const		*password;		//!< Password to use for simultaneous use checks.
-
 	char const 		*server;		//!< Name of the virtual server client is associated with.
 	CONF_SECTION		*server_cs;		//!< Virtual server that the client is associated with
 

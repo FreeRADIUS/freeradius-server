@@ -153,6 +153,7 @@ struct rlm_radius_udp_request_t {
 	uint8_t			*acct_delay_time;	//!< in the encoded packet.
 	uint32_t		initial_delay_time;	//!< Initial value of Acct-Delay-Time.
 	bool			manual_delay_time;	//!< Whether or not we manually added an Acct-Delay-Time.
+	bool			yielded;		//!< whether it yielded
 
 	int			code;			//!< Packet code.
 	rlm_radius_udp_connection_t	*c;		//!< The connection state machine.
@@ -496,7 +497,7 @@ static void state_transition(rlm_radius_udp_request_t *u, rlm_radius_request_sta
 		rad_assert(u->rr == NULL);
 		rad_assert(u->c == NULL);
 		if (u->timer.ev) (void) fr_event_timer_delete(u->thread->el, &u->timer.ev);
-		unlang_resumable(u->link->request);
+		if (u->yielded) unlang_resumable(u->link->request);
 		break;
 
 	case PACKET_STATE_FINISHED:
@@ -1578,7 +1579,6 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	 *	timers, etc.
 	 */
 	if (c->inst->replicate && (u != c->status_u)) {
-		state_transition(u, PACKET_STATE_FINISHED);
 		return 2;
 	}
 
@@ -1738,10 +1738,10 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 
 		/*
 		 *	The packet was replicated, we don't care about
-		 *	the reply.  Just mark the request as
-		 *	resumable.
+		 *	the reply.  Just mark the request as finished.
 		 */
 		else {
+			rad_assert(rcode == 2);
 			state_transition(u, PACKET_STATE_RESUMABLE);
 		}
 	}
@@ -2401,6 +2401,7 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 	 *	callbacks to wake up a connection and send the packet.
 	 */
 	if (fr_heap_num_elements(t->queued) > 1) {
+		u->yielded = true;
 		DEBUG3("Thread has pending packets.  Waiting for socket to be ready");
 		return RLM_MODULE_YIELD;
 	}
@@ -2426,6 +2427,7 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 		 *	or when an existing connection has
 		 *	availability.
 		 */
+		u->yielded = true;
 		return RLM_MODULE_YIELD;
 	}
 
@@ -2436,14 +2438,17 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 
 	switch (u->state) {
 	case PACKET_STATE_INIT:
-	case PACKET_STATE_RESUMABLE:
 		rad_assert(0 == 1);
 		break;
 
 	case PACKET_STATE_THREAD:
 	case PACKET_STATE_SENT:
 		rcode = RLM_MODULE_YIELD;
+		u->yielded = true;
 		break;
+
+	case PACKET_STATE_RESUMABLE: /* was replicated */
+		state_transition(u, PACKET_STATE_FINISHED);
 
 	case PACKET_STATE_FINISHED:
 		rcode = RLM_MODULE_OK;

@@ -285,7 +285,7 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		    (old->ipaddr.prefix == client->ipaddr.prefix) &&
 		    namecmp(longname) && namecmp(secret) &&
 		    namecmp(shortname) && namecmp(nas_type) &&
-		    namecmp(login) && namecmp(password) && namecmp(server) &&
+		    namecmp(server) &&
 #ifdef WITH_DYNAMIC_CLIENTS
 		    (old->lifetime == client->lifetime) &&
 		    namecmp(client_server) &&
@@ -481,8 +481,6 @@ static const CONF_PARSER client_config[] = {
 
 	{ FR_CONF_OFFSET("nas_type", FR_TYPE_STRING, RADCLIENT, nas_type) },
 
-	{ FR_CONF_OFFSET("login", FR_TYPE_STRING, RADCLIENT, login) },
-	{ FR_CONF_OFFSET("password", FR_TYPE_STRING, RADCLIENT, password) },
 	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING, RADCLIENT, server) },
 	{ FR_CONF_OFFSET("response_window", FR_TYPE_TIMEVAL, RADCLIENT, response_window) },
 

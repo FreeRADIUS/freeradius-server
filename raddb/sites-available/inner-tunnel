@@ -47,6 +47,20 @@ listen {
 #
 recv Access-Request {
 	#
+	#  The 'copy_request_to_tunnel' option has been removed
+	#  from from v4.0.
+	#
+	#  Individual attributes from the outer request may be
+	#  accessed with:
+	#
+	#      &outer.request:<attribute>
+	#
+	#  The following policy in raddb/policy.d/eap can be used
+	#  to copy attributes over.
+	#
+#	copy_request_to_tunnel
+
+	#
 	#  Take a User-Name, and perform some checks on it, for spaces and other
 	#  invalid characters.  If the User-Name appears invalid, reject the
 	#  request.
@@ -224,8 +238,18 @@ authenticate eap {
 #  authentication methods.
 #
 #  If you need to send a reply attribute in the outer session,
-#  the ONLY safe way is to set "use_tunneled_reply = yes", and
-#  then update the inner-tunnel reply.
+#  the ONLY safe way is to update the outer session-state.
+#  Attributes that should be provided in the reply should be
+#  copied to the outer.session-state list:
+#
+#      update outer.session-state {
+#          ...
+#      }
+#
+#  The default configuration in the outer post-auth "send" section
+#  will copy this to the reply. To copy the entire reply see
+#  "use_tunneled_reply" below.
+#
 send Access-Accept {
 	#  If you want privacy to remain, see the
 	#  Chargeable-User-Identity attribute from RFC 4372.
@@ -257,36 +281,15 @@ send Access-Accept {
 	#
 #	ldap
 
-
 	#
-	#  Instead of "use_tunneled_reply", change this "if (0)" to an
-	#  "if (1)".
+	#  Instead of the "use_tunneled_reply" option in previous
+	#  versions of the server, uncomment the following line to
+	#  copy reply attributes from the inner-tunnel back to the
+	#  outer session-state. The outer "send Access-Accept"
+	#  section will then copy them from the session-state into
+	#  the reply.
 	#
-	if (0) {
-		#
-		#  These attributes are for the inner-tunnel only,
-		#  and MUST NOT be copied to the outer reply.
-		#
-		update reply {
-			User-Name !* ANY
-			Message-Authenticator !* ANY
-			EAP-Message !* ANY
-			Proxy-State !* ANY
-			MS-MPPE-Encryption-Types !* ANY
-			MS-MPPE-Send-Key !* ANY
-			MS-MPPE-Recv-Key !* ANY
-		}
-
-		#
-		#  Copy the inner reply attributes to the outer
-		#  session-state list.  The post-auth policy will take
-		#  care of copying the outer session-state list to the
-		#  outer reply.
-		#
-		update {
-			&outer.session-state: += &reply:
-		}
-	}
+#	use_tunneled_reply
 }
 
 #

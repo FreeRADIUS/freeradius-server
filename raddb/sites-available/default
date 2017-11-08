@@ -98,90 +98,130 @@ server default {
 		}
 	}
 
+
+
+######################################################################
 #
-#  Authorization.
+#  Authentication and Authorization requests
+#
+#
+#  The sections below are called when a RADIUS packet has been
+#  received.
+#
+#  recv Access-Request - for authorization and authentication
+#  recv Status-Server  - for checking the server is responding
+#
+######################################################################
+
+#
+#  This section is processed when the server receives an
+#  Access-Request authentication packet.
 #
 recv Access-Request {
 	#
-	#  Take a User-Name, and perform some checks on it, for spaces and other
-	#  invalid characters.  If the User-Name appears invalid, reject the
-	#  request.
+	#  Take a User-Name, and perform some checks on it, for
+	#  spaces and other invalid characters. If the User-Name
+	#  appears invalid, reject the request.
 	#
-	#  See policy.d/filter for the definition of the filter_username policy.
+	#  See policy.d/filter for the definition of the
+	#  filter_username policy.
 	#
 	filter_username
 
 	#
-	#  Some broken equipment sends passwords with embedded zeros.
-	#  i.e. the debug output will show
+	#  Some broken equipment sends passwords with embedded
+	#  zeros, i.e. the debug output will show:
 	#
-	#	User-Password = "password\000\000"
+	#      User-Password = "password\000\000"
 	#
 	#  This policy will fix it to just be "password".
 	#
 #	filter_password
 
-	#  If you intend to use CUI and you require that the Operator-Name
-	#  be set for CUI generation and you want to generate CUI also
-	#  for your local clients then uncomment the operator-name
-	#  below and set the operator-name for your clients in clients.conf
+	#
+	#  If you intend to use CUI and you require that the
+	#  Operator-Name be set for CUI generation and you want to
+	#  generate CUI also for your local clients, then uncomment
+	#  operator-name below and set the operator-name for
+	#  your clients in clients.conf.
+	#
 #	operator-name
 
 	#
-	#  If you want to generate CUI for some clients that do not
-	#  send proper CUI requests, then uncomment the
-	#  cui below and set "add_cui = yes" for these clients in clients.conf
+	#  Proxying example
+	#
+	#  The following example will proxy the request if the
+	#  username ends in example.com.
+	#
+#	if (&User-Name =~ /@example\.com$/) {
+#		update control {
+#			Auth-Type := "proxy-example.com"
+#		}
+#	}
+
+	#
+	#  If you want to generate CUI for some clients that do
+	#  not send proper CUI requests, then uncomment cui below
+	#  and set "add_cui = yes" for these clients in
+	#  clients.conf.
+	#
 #	cui
 
 	#
-	#  If you want to have a log of authentication requests,
-	#  un-comment the following line.
+	#  Uncomment to have a log of authentication requests. See
+	#  raddb/mods-available/detail.log.
+	#
 #	auth_log
 
 	#
 	#  The chap module will set 'Auth-Type := CHAP' if we are
-	#  handling a CHAP request and Auth-Type has not already been set
+	#  handling a CHAP request and Auth-Type has not already
+	#  been set.
+	#
 	chap
 
 	#
 	#  If the users are logging in with an MS-CHAP-Challenge
-	#  attribute for authentication, the mschap module will find
-	#  the MS-CHAP-Challenge attribute, and add 'Auth-Type := MS-CHAP'
-	#  to the request, which will cause the server to then use
-	#  the mschap module for authentication.
+	#  attribute for authentication, the mschap module will
+	#  add 'Auth-Type := MS-CHAP' to the request, which will
+	#  cause the server to then use the mschap module for
+	#  authentication.
+	#
 	mschap
 
 	#
 	#  If you have a Cisco SIP server authenticating against
-	#  FreeRADIUS, the digest module will set 'Auth-Type := Digest'
-	#  if we are handling an HTTP Digest request and the Auth-Type
-	#  has not already been set.
+	#  FreeRADIUS, the digest module will set Auth-Type to
+	#  "Digest" if we are handling an HTTP Digest request and
+	#  the Auth-Type has not already been set.
+	#
 	digest
 
 	#
 	#  The WiMAX specification says that the Calling-Station-Id
 	#  is 6 octets of the MAC.  This definition conflicts with
-	#  RFC 3580, and all common RADIUS practices.  Un-commenting
+	#  RFC 3580, and all common RADIUS practices. Un-commenting
 	#  the "wimax" module here means that it will fix the
 	#  Calling-Station-Id attribute to the normal format as
-	#  specified in RFC 3580 Section 3.21
+	#  specified in RFC 3580 Section 3.21.
+	#
 #	wimax
 
 	#
-	#  This module takes care of EAP-MD5, EAP-TLS, and EAP-LEAP
-	#  authentication.
+	#  This module takes care of all EAP authentication,
+	#  including EAP-MD5, EAP-TLS, PEAP and EAP-TTLS.
 	#
 	#  It also sets the EAP-Type attribute in the request
 	#  attribute list to the EAP type from the packet.
 	#
 	#  The EAP module returns "ok" if it is not yet ready to
-	#  authenticate the user.  The configuration below checks for
-	#  that code, and stops processing the "authorize" section if
-	#  so.
+	#  authenticate the user. The configuration below checks
+	#  for that code, and stops processing the "authorize"
+	#  section if so.
 	#
-	#  Any LDAP and/or SQL servers will not be queried for the
-	#  initial set of packets that go back and forth to set up
-	#  TTLS or PEAP.
+	#  Any LDAP and/or SQL servers will not be queried during
+	#  the initial set of packets that go back and forth to
+	#  set up EAP-TTLS or PEAP.
 	#
 	eap {
 		ok = return
@@ -189,106 +229,139 @@ recv Access-Request {
 
 	#
 	#  Pull crypt'd passwords from /etc/passwd or /etc/shadow,
-	#  using the system API's to get the password.  If you want
-	#  to read /etc/passwd or /etc/shadow directly, see the
-	#  mods-available/passwd module.
+	#  using the system API's to get the password. See
+	#  raddb/mods-available/unix for more details.
+	#
+	#  If you want to read the /etc/passwd or /etc/shadow
+	#  files directly, see the passwd module in
+	#  raddb/mods-available/passwd.
 	#
 #	unix
 
 	#
-	#  Read the 'users' file.  In v3, this is located in
-	#  raddb/mods-config/files/authorize
+	#  Read the 'users' file. Since v3, this is located in
+	#  raddb/mods-config/files/authorize.
+	#
 	files
 
 	#
-	#  Look in an SQL database.  The schema of the database
-	#  is meant to mirror the "users" file.
+	#  Look in an SQL database. The schema of the database is
+	#  meant to mirror the "users" file.
 	#
-	#  See "Authorization Queries" in mods-available/sql
+	#  See "Authorization Queries" in raddb/mods-available/sql.
+	#
 	-sql
 
 	#
 	#  If you are using /etc/smbpasswd, and are also doing
 	#  mschap authentication, the un-comment this line, and
-	#  configure the 'smbpasswd' module.
+	#  see the configuration in raddb/mods-available/smbpasswd.
+	#
 #	smbpasswd
 
 	#
-	#  The ldap module reads passwords from the LDAP database.
+	#  The ldap module reads passwords from an LDAP database.
+	#
 	-ldap
 
 	#
-	#  Enforce daily limits on time spent logged in.
+	#  Enforce daily limits on time spent logged in. This uses
+	#  the 'counter' module.
+	#
 #	daily
 
 	#
+	#  See if the account has expired: check the time in the
+	#  Expiration attribute and reject if we are past it.
+	#  If the account has not expired, set Session-Timeout.
+	#
 	expiration
+
+	#
+	#  Look at the Login-Time attribute and reject if the user
+	#  is not allowed access at the present time. Otherwise,
+	#  set Session-Timeout to the end of the permitted time span.
+	#
 	logintime
 
 	#
 	#  If no other module has claimed responsibility for
-	#  authentication, then try to use PAP.  This allows the
-	#  other modules listed above to add a "known good" password
-	#  to the request, and to do nothing else.  The PAP module
-	#  will then see that password, and use it to do PAP
-	#  authentication.
+	#  authentication, then try to use PAP. This allows the
+	#  other modules listed above to add a "known good"
+	#  password to the request, and to do nothing else. The
+	#  PAP module will then see that password, and use it to
+	#  do PAP authentication.
 	#
-	#  This module should be listed last, so that the other modules
-	#  get a chance to set Auth-Type for themselves.
+	#  This module should be listed last, so that the other
+	#  modules get a chance to set Auth-Type for themselves.
 	#
 	pap
 }
 
+
+#
+#  This section is processed when the server receives a
+#  Status-Server packet.
+#
 recv Status-Server {
+	#
+	#  We are still here and responding.
+	#
 	ok
 }
 
-#  Authentication.
-#
-#
-#  This section lists which modules are available for authentication.
-#  Note that it does NOT mean 'try each module in order'.  It means
-#  that a module from the 'authorize' section adds a configuration
-#  attribute 'Auth-Type := FOO'.  That authentication type is then
-#  used to pick the appropriate module from the list below.
-#
 
-#  In general, you SHOULD NOT set the Auth-Type attribute.  The server
-#  will figure it out on its own, and will do the right thing.  The
-#  most common side effect of erroneously setting the Auth-Type
-#  attribute is that one authentication method will work, but the
-#  others will not.
+
+######################################################################
 #
-#  The common reasons to set the Auth-Type attribute by hand
-#  is to either forcibly reject the user (Auth-Type := Reject),
-#  or to or forcibly accept the user (Auth-Type := Accept).
+#  Authentication
+#
+#
+#  The sections below are called based on the value of the
+#  Auth-Type attribute, which should have been set by "recv
+#  Access-Request", above.
+#
+#  Since version 4, proxying also happens in this section.
+#
+#  For authentication, you should generally NOT set the Auth-Type
+#  attribute. The server will figure it out on its own, and will
+#  do the right thing. The most common side effect of erroneously
+#  setting the Auth-Type attribute is that one authentication
+#  method will work, but the others will not.
+#
+#  The common reasons to set the Auth-Type attribute by hand are
+#  to forcibly reject the user (Auth-Type := Reject), to or
+#  forcibly accept the user (Auth-Type := Accept), or for
+#  proxying.
 #
 #  Note that Auth-Type := Accept will NOT work with EAP.
 #
-#  Please do not put "unlang" configurations into the "authenticate"
-#  section.  Put them in the "post-auth" section instead.  That's what
-#  the post-auth section is for.
+#  unlang configuration should generally go in the "send" sections
+#  below, after authentication has completed, not here.
 #
+######################################################################
 
 #
-#  PAP authentication, when a back-end database listed
-#  in the 'authorize' section supplies a password.  The
-#  password can be clear-text, or encrypted.
+#  PAP authentication, for when a back-end database listed in the
+#  "recv Access-Request" section supplies a password. The password
+#  can be clear-text, or encrypted.
+#
 authenticate pap {
 	pap
 }
 
 #
-#  Most people want CHAP authentication
-#  A back-end database listed in the 'authorize' section
-#  MUST supply a CLEAR TEXT password.  Encrypted passwords
-#  won't work.
+#  For users that are using CHAP authentication. A back-end
+#  database listed in the "recv Access-Request" section MUST
+#  supply a CLEAR TEXT password. Encrypted passwords won't work.
+#
 authenticate chap {
 	chap
 }
 
 #
-#  MSCHAP authentication.
+#  Handle MS-CHAP authentication.
+#
 authenticate mschap {
 	mschap
 }
@@ -296,54 +369,105 @@ authenticate mschap {
 #
 #  If you have a Cisco SIP server authenticating against
 #  FreeRADIUS, the following line, and the 'digest' line in
-#  the 'authorize' section will be required.
+#  the "recv Access-Request" section will be required.
+#
 authenticate digest {
 	digest
 }
 
 #
-#  Pluggable Authentication Modules.
+#  Authenticate with PAM (Pluggable Authentication Modules).
+#
 authenticate pam {
 	pam
 }
 
-#  Uncomment it if you want to use ldap for authentication
 #
-#  Note that this means "check plain-text password against
-#  the ldap database", which means that EAP won't work,
-#  as it does not supply a plain-text password.
+#  Use this if you want to use LDAP for authentication.
 #
-#  We do NOT recommend using this.  LDAP servers are databases.
-#  They are NOT authentication servers.  FreeRADIUS is an
-#  authentication server, and knows what to do with authentication.
-#  LDAP servers do not.
+#  Note that this means "check plain-text password by trying to
+#  bind to the LDAP directory". This means that EAP won't work, as
+#  it does not supply a plain-text password.
+#
+#  We do NOT recommend using this. LDAP servers are databases, not
+#  authentication servers.
 #
 authenticate ldap {
 	-ldap
 }
 
 #
-#  Allow EAP authentication, and remove all attributes
-#  from Access-Challenge
+#  Allow EAP authentication, and remove all attributes from
+#  Access-Challenge.
 #
 authenticate eap {
 	eap
 }
 
+
+#
+#  Proxying
+#
+
+#
+#  The following example shows how proxying to three remote servers
+#  can be configured.
+#
+#  The Auth-Type attribute would need to be set to
+#  "proxy-example.com" above. Define the remote servers in
+#  raddb/mods-availble/radius.
+#
+
+#authenticate proxy-example.com {
+#	#
+#	#  Log the request before proxying.
+#	#
+#	pre_proxy_log
+#
+#	#
+#	#  Send the request to remote RADIUS servers, with
+#	#  fail-over if no response.
+#	#
+#	redundant {
+#		radius1.example.com
+#		radius2.example.com
+#	}
+#
+#	#
+#	#  Log the reply after proxying.
+#	#
+#	post_proxy_log.post-proxy
+#}
+
+
+
+######################################################################
+#
+#  Authentication responses
+#
+######################################################################
+
+#
+#  This section is called when sending an Access-Challenge
+#  response. Filter out any attributes that should not be in the
+#  packet.
+#
 send Access-Challenge {
 	attr_filter.access_challenge.post-auth
 	handled
 }
 
-
-#  Post-Authentication
-#  Once we KNOW that the user has been authenticated, there are
-#  additional steps we can take.
+#
+#  Post-Authentication, Access-Accept
+#
+#  Once we KNOW that the user has been authenticated successfully,
+#  there are additional steps we can take.
+#
 send Access-Accept {
 	#
-	#  If you need to have a State attribute, you can
-	#  add it here.  e.g. for later CoA-Request with
-	#  State, and Service-Type = Authorize-Only.
+	#  If you need to have a State attribute, you can add it
+	#  here. e.g. for later CoA-Request with State, and
+	#  Service-Type = Authorize-Only.
 	#
 #	if (!&reply:State) {
 #		update reply {
@@ -352,253 +476,329 @@ send Access-Accept {
 #	}
 
 	#
-	#  For EAP-TTLS and PEAP, add the cached attributes to the reply.
-	#  The "session-state" attributes are automatically cached when
-	#  an Access-Challenge is sent, and automatically retrieved
+	#  For EAP-TTLS and PEAP, add any cached attributes to the
+	#  reply. The "session-state" attributes are automatically
+	#  cached when an Access-Challenge is sent, and retrieved
 	#  when an Access-Request is received.
 	#
-	#  The session-state attributes are automatically deleted after
-	#  an Access-Reject or Access-Accept is sent.
+	#  The session-state attributes are deleted after an
+	#  Access-Reject or Access-Accept has been sent.
 	#
 	update {
 		&reply: += &session-state:
 	}
 
+	#
 	#  Get an address from the IP Pool.
+	#
 #	main_pool
 
 
-	#  Create the CUI value and add the attribute to Access-Accept.
-	#  Uncomment the line below if *returning* the CUI.
+	#
+	#  Create the CUI value and add the attribute to
+	#  Access-Accept. Uncomment the line below if
+	#  *returning* the CUI to the NAS.
+	#
 #	cui
 
 	#
 	#  If you want to have a log of authentication replies,
-	#  un-comment the following line, and enable the
-	#  'detail reply_log' module.
+	#  un-comment the following line. This is defined in
+	#  raddb/mods-available/detail.log.
+	#
 #	reply_log
 
 	#
 	#  After authenticating the user, do another SQL query.
 	#
-	#  See "Authentication Logging Queries" in mods-available/sql
+	#  See "Authentication Logging Queries" in
+	#  raddb/mods-available/sql.
+	#
 	-sql
 
 	#
-	#  Instead of sending the query to the SQL server,
-	#  write it into a log file.
+	#  Instead of sending the query to the SQL server in
+	#  real-time, write it into a log file to be picked up and
+	#  sent to the database later.
 	#
 #	sql_log
 
 	#
-	#  Un-comment the following if you want to modify the user's object
-	#  in LDAP after a successful login.
+	#  Un-comment the following if you want to modify the
+	#  user's object in LDAP after a successful login.
 	#
 #	ldap
 
 	#
-	#  Calculate the various WiMAX keys.  In order for this to work,
-	#  you will need to define the WiMAX NAI, usually via
+	#  Calculate the various WiMAX keys. In order for this to
+	#  work, you will need to define the WiMAX NAI, usually
+	#  via:
 	#
-	#	update request {
-	#	       WiMAX-MN-NAI = "%{User-Name}"
-	#	}
+	#      update request {
+	#          WiMAX-MN-NAI = "%{User-Name}"
+	#      }
 	#
-	#  If you want various keys to be calculated, you will need to
-	#  update the reply with "template" values.  The module will see
-	#  this, and replace the template values with the correct ones
-	#  taken from the cryptographic calculations.  e.g.
+	#  If you want various keys to be calculated, you will
+	#  need to update the reply with "template" values. The
+	#  module will see this, and replace the template values
+	#  with the correct ones taken from the cryptographic
+	#  calculations, e.g.
 	#
-	# 	update reply {
-	#		WiMAX-FA-RK-Key = 0x00
-	#		WiMAX-MSK = "%{EAP-MSK}"
-	#	}
+	#      update reply {
+	#          WiMAX-FA-RK-Key = 0x00
+	#          WiMAX-MSK = "%{EAP-MSK}"
+	#      }
 	#
-	#  You may want to delete the MS-MPPE-*-Keys from the reply,
-	#  as some WiMAX clients behave badly when those attributes
-	#  are included.  See "raddb/modules/wimax", configuration
-	#  entry "delete_mppe_keys" for more information.
+	#  You may want to delete the MS-MPPE-*-Keys from the
+	#  reply, as some WiMAX clients behave badly when those
+	#  attributes are included. See the configuration entry
+	#  "delete_mppe_keys" in raddb/mods-available/wimax for
+	#  more information.
 	#
 #	wimax
 
-
-	#  If there is a client certificate (EAP-TLS, sometimes PEAP
-	#  and TTLS), then some attributes are filled out after the
-	#  certificate verification has been performed.  These fields
-	#  MAY be available during the authentication, or they may be
-	#  available only in the "post-auth" section.
 	#
-	#  The first set of attributes contains information about the
-	#  issuing certificate which is being used.  The second
+	#  If there is a client certificate (EAP-TLS, and very
+	#  occasionally PEAP and EAP-TTLS), then some attributes
+	#  are filled out after the certificate verification has
+	#  been performed. These fields MAY be available during
+	#  the authentication, or they may be available only in
+	#  the appropriate "send" section.
+	#
+	#  The first set of attributes contains information about
+	#  the issuing certificate which is being used. The second
 	#  contains information about the client certificate (if
 	#  available).
-#
+	#
 #	update reply {
-#	       Reply-Message += "%{session-state:TLS-Cert-Serial}"
-#	       Reply-Message += "%{session-state:TLS-Cert-Expiration}"
-#	       Reply-Message += "%{session-state:TLS-Cert-Subject}"
-#	       Reply-Message += "%{session-state:TLS-Cert-Issuer}"
-#	       Reply-Message += "%{session-state:TLS-Cert-Common-Name}"
-#	       Reply-Message += "%{session-state:TLS-Cert-Subject-Alt-Name-Email}"
+#		Reply-Message += "%{session-state:TLS-Cert-Serial}"
+#		Reply-Message += "%{session-state:TLS-Cert-Expiration}"
+#		Reply-Message += "%{session-state:TLS-Cert-Subject}"
+#		Reply-Message += "%{session-state:TLS-Cert-Issuer}"
+#		Reply-Message += "%{session-state:TLS-Cert-Common-Name}"
+#		Reply-Message += "%{session-state:TLS-Cert-Subject-Alt-Name-Email}"
 #
-#	       Reply-Message += "%{session-state:TLS-Client-Cert-Serial}"
-#	       Reply-Message += "%{session-state:TLS-Client-Cert-Expiration}"
-#	       Reply-Message += "%{session-state:TLS-Client-Cert-Subject}"
-#	       Reply-Message += "%{session-state:TLS-Client-Cert-Issuer}"
-#	       Reply-Message += "%{session-state:TLS-Client-Cert-Common-Name}"
-#	       Reply-Message += "%{session-state:TLS-Client-Cert-Subject-Alt-Name-Email}"
+#		Reply-Message += "%{session-state:TLS-Client-Cert-Serial}"
+#		Reply-Message += "%{session-state:TLS-Client-Cert-Expiration}"
+#		Reply-Message += "%{session-state:TLS-Client-Cert-Subject}"
+#		Reply-Message += "%{session-state:TLS-Client-Cert-Issuer}"
+#		Reply-Message += "%{session-state:TLS-Client-Cert-Common-Name}"
+#		Reply-Message += "%{session-state:TLS-Client-Cert-Subject-Alt-Name-Email}"
 #	}
 
-	#  Insert class attribute (with unique value) into response,
-	#  aids matching auth and acct records, and protects against duplicate
-	#  Acct-Session-Id. Note: Only works if the NAS has implemented
-	#  RFC 2865 behaviour for the class attribute, AND if the NAS
-	#  supports long Class attributes.  Many older or cheap NASes
-	#  only support 16-octet Class attributes.
+	#
+	#  Insert Class attribute (with a unique value) into the
+	#  response, which aids matching auth and acct records and
+	#  protects against duplicate Acct-Session-Id.
+	#
+	#  Note: This only works if the NAS has implemented RFC
+	#  2865 behaviour for the Class attribute, AND if the NAS
+	#  supports long Class attributes. Many older or cheap
+	#  NASes only support 16-octet Class attributes.
+	#
 #	insert_acct_class
 
-	#  MacSEC requires the use of EAP-Key-Name.  However, we don't
-	#  want to send it for all EAP sessions.  Therefore, the EAP
-	#  modules put required data into the EAP-Session-Id attribute.
-	#  This attribute is never put into a request or reply packet.
 	#
-	#  Uncomment the next few lines to copy the required data into
-	#  the EAP-Key-Name attribute
+	#  MacSEC requires the use of EAP-Key-Name. However, we
+	#  don't want to send it for all EAP sessions. Therefore,
+	#  the EAP modules put required data into the
+	#  EAP-Session-Id attribute. This attribute is never put
+	#  into a request or reply packet.
+	#
+	#  Uncomment the next few lines to copy the required data
+	#  into the EAP-Key-Name attribute.
+	#
 #	if (&reply:EAP-Session-Id) {
 #		update reply {
 #			EAP-Key-Name := &reply:EAP-Session-Id
 #		}
 #	}
 
-	#  Remove reply message if the response contains an EAP-Message
+	#
+	#  Remove Reply-Message if the response contains an
+	#  EAP-Message.
+	#
 	remove_reply_message_if_eap
 }
 
 #
-#  Access-Reject packets are sent through the REJECT sub-section of the
-#  post-auth section.
+#  This section is called before an Access-Reject packet is sent.
 #
 #  Add the ldap module name (or instance) if you have set
-#  'edir_account_policy_check = yes' in the ldap module configuration
+#  'edir_account_policy_check = yes' in the ldap module
+#  configuration.
 #
 #  The "session-state" attributes are not available here.
 #
 send Access-Reject {
-	# log failed authentications in SQL, too.
+	#
+	# Log failed authentications in SQL, too.
+	#
 	-sql
+
+	#
+	# Filter out attributes that should not be in
+	# Access-Reject packets.
+	#
 	attr_filter.access_reject
 
-	# Insert EAP-Failure message if the request was
-	# rejected by policy instead of because of an
-	# authentication failure
+	#
+	# Insert EAP-Failure message if the request was rejected
+	# by policy rather than because of an authentication
+	# failure.
+	#
 	eap
 
-	#  Remove reply message if the response contains an EAP-Message
+	#
+	#  Remove Reply-Message if the response contains an
+	#  EAP-Message attribute.
+	#
 	remove_reply_message_if_eap
 }
 
 
+
+######################################################################
 #
-#  Pre-accounting.  Decide which accounting type to use.
+#  Accounting
+#
+#
+#  This section deals with receiving Accounting requests and
+#  sending Accounting responses.
+#
+######################################################################
+
+#
+#  An Accounting-Request packet has been received. Decide which
+#  accounting type to use.
 #
 recv Accounting-Request {
 	#
-	#  Merge Acct-[Input|Output]-Gigawords and Acct-[Input-Output]-Octets
-	#  into a single 64bit counter Acct-[Input|Output]-Octets64.
+	#  Merge Acct-[Input|Output]-Gigawords and
+	#  Acct-[Input-Output]-Octets into a single 64-bit
+	#  counter, Acct-[Input|Output]-Octets64.
 	#
 #	acct_counters64
 
 	#
-	#  Session start times are *implied* in RADIUS.
-	#  The NAS never sends a "start time".  Instead, it sends
-	#  a start packet, *possibly* with an Acct-Delay-Time.
-	#  The server is supposed to conclude that the start time
-	#  was "Acct-Delay-Time" seconds in the past.
+	#  Session start times are *implied* in RADIUS. The NAS
+	#  never sends a "start time". Instead, it sends a start
+	#  packet, *possibly* with an Acct-Delay-Time. The server
+	#  is supposed to conclude that the start time was
+	#  "Acct-Delay-Time" seconds in the past.
 	#
-	#  The code below creates an explicit start time, which can
-	#  then be used in other modules.  It will be *mostly* correct.
-	#  Any errors are due to the 1-second resolution of RADIUS,
-	#  and the possibility that the time on the NAS may be off.
+	#  The unlang below creates an explicit start time, which
+	#  can then be used in other modules. It will be *mostly*
+	#  correct. Any errors are due to the 1-second resolution
+	#  of RADIUS, and the possibility that the time on the NAS
+	#  may be off.
 	#
 	#  The start time is: NOW - delay - session_length
 	#
-
 #	update request {
-#	  	&FreeRADIUS-Acct-Session-Start-Time = "%{expr: %l - %{%{Acct-Session-Time}:-0} - %{%{Acct-Delay-Time}:-0}}"
+#		&FreeRADIUS-Acct-Session-Start-Time = "%{expr: %l - %{%{Acct-Session-Time}:-0} - %{%{Acct-Delay-Time}:-0}}"
 #	}
-
 
 	#
 	#  Ensure that we have a semi-unique identifier for every
-	#  request, and many NAS boxes are broken.
+	#  request, as many NAS boxes are broken.
+	#
 	acct_unique
 
 	#
-	#  Read the 'acct_users' file
+	#  Read the 'acct_users' file.
+	#
 	files
 }
 
 #
-#  Accounting.  Log the accounting data.
+#  Send Accounting-Response.
+#
+#  Log the accounting data before replying. If logging fails then
+#  the reply will not be sent, which means the NAS will send the
+#  request again.
 #
 send Accounting-Response {
-	#  Update accounting packet by adding the CUI attribute
-	#  recorded from the corresponding Access-Accept
-	#  use it only if your NAS boxes do not support CUI themselves
-#	cui
 	#
-	#  Create a 'detail'ed log of the packets.
-	#  Note that accounting requests which are proxied
-	#  are also logged in the detail file.
+	#  Add the CUI attribute from the corresponding
+	#  Access-Accept to the Accouning-Response.
+	#
+	#  Use it only if your NAS boxes do not support CUI
+	#  themselves.
+	#
+#	cui
+
+	#
+	#  Create a 'detail'ed log of the packets. Note that
+	#  accounting requests which are proxied are also logged
+	#  in the detail file.
+	#
 	detail
+
+	#
+	#  Update counters for daily usage calculations.
+	#
 #	daily
 
-	#  Update the wtmp file
+	#
+	#  Update the wtmp file.
 	#
 	#  If you don't use "radlast", you can delete this line.
+	#
 	unix
 
 	#
 	#  For Simultaneous-Use tracking.
 	#
-	#  Due to packet losses in the network, the data here
-	#  may be incorrect.  There is little we can do about it.
+	#  Due to packet losses in the network, the data here may
+	#  be incorrect. There is little we can do about it.
+	#
 #	radutmp
 #	sradutmp
 
-	#  Return an address to the IP Pool when we see a stop record.
+	#
+	#  Return an address to the IP Pool when we see a stop
+	#  record.
+	#
 #	main_pool
 
 	#
 	#  Log traffic to an SQL database.
 	#
-	#  See "Accounting queries" in mods-available/sql
+	#  See "Accounting Queries" in raddb/mods-available/sql.
+	#
 	-sql
 
 	#
 	#  If you receive stop packets with zero session length,
-	#  they will NOT be logged in the database.  The SQL module
-	#  will print a message (only in debugging mode), and will
-	#  return "noop".
+	#  they will NOT be logged in the database. The SQL
+	#  module will print a message (only in debugging mode),
+	#  and will return "noop".
 	#
-	#  You can ignore these packets by uncommenting the following
-	#  three lines.  Otherwise, the server will not respond to the
-	#  accounting request, and the NAS will retransmit.
+	#  You can ignore these packets by uncommenting the
+	#  following three lines. Otherwise, the server will not
+	#  respond to the accounting request, and the NAS will
+	#  retransmit.
 	#
 #	if (noop) {
 #		ok
 #	}
 
 	#
-	#  Instead of sending the query to the SQL server,
-	#  write it into a log file.
+	#  Instead of sending the query to the SQL server in
+	#  real-time, write it into a log file to be picked up and
+	#  sent to the database later.
 	#
 #	sql_log
 
-	#  Cisco VoIP specific bulk accounting
+	#
+	#  Cisco VoIP specific bulk accounting.
+	#
 #	pgsql-voip
 
+	#
 	#  Filter attributes from the accounting response.
+	#
 	attr_filter.accounting_response
 }
 }
