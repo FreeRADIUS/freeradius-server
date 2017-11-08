@@ -50,13 +50,22 @@ typedef struct {
 	off_t				done_offset;		//!< where we're tracking the status
 
 	int				id;			//!< for retransmission counters
-	int				tries;			//!< number of retransmission tries
+	uint32_t       			tries;			//!< number of retransmission tries
 	uint8_t				*packet;		//!< for retransmissions
 	size_t				packet_len;		//!< for retransmissions
 
 	fr_event_timer_t const		*ev;			//!< retransmission timer
 	fr_dlist_t			entry;			//!< for the retransmission list
 } fr_detail_entry_t;
+
+static CONF_PARSER limit_config[] = {
+	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_UINT32, proto_detail_work_t, irt), .dflt = STRINGIFY(2) },
+	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_UINT32, proto_detail_work_t, mrt), .dflt = STRINGIFY(16) },
+	{ FR_CONF_OFFSET("maximum_retransmission_count", FR_TYPE_UINT32, proto_detail_work_t, mrc), .dflt = STRINGIFY(5) },
+	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_UINT32, proto_detail_work_t, mrd), .dflt = STRINGIFY(30) },
+	CONF_PARSER_TERMINATOR
+};
+
 
 static const CONF_PARSER file_listen_config[] = {
 	{ FR_CONF_OFFSET("filename.work", FR_TYPE_STRING | FR_TYPE_REQUIRED, proto_detail_work_t, filename_work ) },
@@ -65,6 +74,7 @@ static const CONF_PARSER file_listen_config[] = {
 
 	{ FR_CONF_OFFSET("retransmit", FR_TYPE_BOOL, proto_detail_work_t, retransmit ), .dflt = "yes" },
 
+	{ FR_CONF_POINTER("limit", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) limit_config },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -128,7 +138,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 		rad_assert(buffer_len >= track->packet_len);
 		memcpy(buffer, track->packet, track->packet_len);
 
-		DEBUG("Retrying packet %d (retransmission %d)",
+		DEBUG("Retrying packet %d (retransmission %u)",
 		      track->id, track->tries);
 		*packet_ctx = track;
 		*recv_time = &track->timestamp;
@@ -475,6 +485,12 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	if (!buffer[0]) {
 		struct timeval when, now;
 
+		if (track->tries >= inst->mrc) {
+			DEBUG("%s - packet %d failed after %u retransmissions",
+			      inst->name, track->id, track->tries);
+			goto fail;
+		}
+
 		when.tv_sec = 1;
 		when.tv_usec = 0;
 
@@ -486,6 +502,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 
 		if (fr_event_timer_insert(inst, inst->el, &track->ev, &when, work_retransmit, track) < 0) {
 			ERROR("%s - Failed inserting retransmission timeout", inst->name);
+		fail:
 			if (inst->track_progress && (track->done_offset > 0)) goto mark_done;
 			goto free_track;
 		}

@@ -81,6 +81,11 @@ typedef struct proto_detail_work_t {
 
 	uint32_t			poll_interval;		//!< interval between polling
 
+	uint32_t			irt;
+	uint32_t			mrt;
+	uint32_t			mrc;
+	uint32_t			mrd;
+
 	fr_dlist_t			list;			//!< for retransmissions
 
 	bool				vnode;			//!< are we the vnode instance,
