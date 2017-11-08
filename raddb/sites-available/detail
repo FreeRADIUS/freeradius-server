@@ -199,49 +199,50 @@ virtual_server detail {
 #  'recv' section.  Note that there is no second name to the section.
 #
 recv {
+
+	#
+	#  We handled the packet successfully.  Run the "send ok" section.
+	#
 	ok
+
+	#
+	#  If the "recv" section returns "ok" or "updated", it
+	#  will run the "send ok" section to send the reply.
+	#
+	#  All other return codes (e.g. "fail") will cause it to run
+	#  the "send fail" section.
+	#
 }
 
 #
 #  All successful packets sent by the detail listener are processed through the
-#  'send' section.  Note that the name is the same for all packet types.
+#  'send ok' section.  Note that the name is the same for all packet types.
 #
 #  If the listener is configured with 'track = yes', then the entry in
 #  the detail file is marked up as being "done".  Subsequent re-reads
 #  of the same detail file (e.g. on server re-start) will skip the
 #  "done" entries.
 #
-send success {
+send ok {
 	ok
 }
 
 #
 #  All failed packets sent by the detail listener are processed through the
-#  'send' section.  Note that the name is the same for all packet types.
+#  'send fail' section.  Note that the name is the same for all packet types.
 #
 #  If the listener is configured with 'track = yes', then the packet
-#  should be retransmitted by the detail file reader, until the packet
-#  returns "success".
-#
-#  Note that the retransmission is not yet implemented.
+#  will be retransmitted by the detail file reader, until the packet
+#  returns "success".  See the "limit" subsection above for retransmission
+#  configuration.
 #
 send fail {
 	ok
 }
 
 #
-#  If we are not supposed to respond, run this section.
+#  Note that unlike other listeners, there is no "send Do-Not-Respond"
+#  section.  You should just return "fail" instead.
 #
-#  i.e. do not mark the packet as "done".
-#
-#  If the listener is configured with 'track = yes', then the packet
-#  should be retransmitted by the detail file reader, until the packet
-#  returns "success".
-#
-#  Note that the retransmission is not yet implemented.
-#
-send Do-Not-Respond {
-	ok
-}
 
 } # virtual server "detail"

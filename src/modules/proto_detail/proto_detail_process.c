@@ -84,7 +84,6 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		/*
 		 *	The module has a number of OK return codes.
 		 */
-		case RLM_MODULE_NOOP:
 		case RLM_MODULE_OK:
 		case RLM_MODULE_UPDATED:
 			switch (request->packet->code) {
@@ -101,7 +100,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 				break;
 
 			default:
-				request->reply->code = 257;
+				request->reply->code = FR_CODE_DO_NOT_RESPOND;
 				break;
 			}
 			break;
@@ -113,13 +112,14 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		 *	The module failed, or said the request is
 		 *	invalid, therefore we stop here.
 		 */
+		case RLM_MODULE_NOOP:
 		case RLM_MODULE_FAIL:
 		case RLM_MODULE_INVALID:
 		case RLM_MODULE_NOTFOUND:
 		case RLM_MODULE_REJECT:
 		case RLM_MODULE_USERLOCK:
 		default:
-			request->reply->code = 257;
+			request->reply->code = FR_CODE_DO_NOT_RESPOND;
 			break;
 		}
 
@@ -130,16 +130,12 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		if (vp) request->reply->code = vp->vp_uint32;
 
 		if (request->reply->code == FR_CODE_DO_NOT_RESPOND) {
-			unlang = cf_section_find(request->server_cs, "send", "Do-Not-Respond");
-			if (!unlang) goto send_reply;
-
-		} else if (request->reply->code == 257) {
 			request->reply->code = 0;
-			unlang = cf_section_find(request->server_cs, "send", "failure");
+			unlang = cf_section_find(request->server_cs, "send", "fail");
 			if (!unlang) goto send_reply;
 
 		} else {
-			unlang = cf_section_find(request->server_cs, "send", "success");
+			unlang = cf_section_find(request->server_cs, "send", "ok");
 			if (!unlang) goto send_reply;
 		}
 
@@ -223,13 +219,10 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 		return -1;
 	}
 
-	rcode = unlang_compile_subsection(server_cs, "send", "success", MOD_POST_AUTH);
+	rcode = unlang_compile_subsection(server_cs, "send", "ok", MOD_POST_AUTH);
 	if (rcode < 0) return rcode;
 
-	rcode = unlang_compile_subsection(server_cs, "send", "failure", MOD_POST_AUTH);
-	if (rcode < 0) return rcode;
-
-	rcode = unlang_compile_subsection(server_cs, "send", "Do-Not-Respond", MOD_POST_AUTH);
+	rcode = unlang_compile_subsection(server_cs, "send", "fail", MOD_POST_AUTH);
 	if (rcode < 0) return rcode;
 
 	return 0;
