@@ -793,7 +793,9 @@ eap {
 		#  Both copy_request_to_tunnel and use_tunneled_reply have been
 		#  removed in v4.0.
 		#
-		#  See sites-available/inner-tunnel for details.
+		#  See the new policy "copy_request_to_tunnel" in
+		#  sites-available/inner-tunnel, and in policy.d/eap
+		#  for more information.
 		#
 
 		#
@@ -904,7 +906,9 @@ eap {
 		#  Both copy_request_to_tunnel and use_tunneled_reply have been
 		#  removed in v4.0.
 		#
-		#  See sites-available/inner-tunnel for details.
+		#  See the new policy "copy_request_to_tunnel" in
+		#  sites-available/inner-tunnel, and in policy.d/eap
+		#  for more information.
 		#
 
 		#

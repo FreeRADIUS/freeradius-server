@@ -114,16 +114,20 @@ use_tunneled_reply {
 		Message-Authenticator !* ANY
 		EAP-Message !* ANY
 		Proxy-State !* ANY
+		MS-CHAP-NT-Enc-PW !* ANY
 		MS-MPPE-Encryption-Types !* ANY
 		MS-MPPE-Send-Key !* ANY
 		MS-MPPE-Recv-Key !* ANY
 	}
 
 	#
-	#  Copy the inner reply attributes to the outer
-	#  session-state list.  The post-auth policy will take
-	#  care of copying the outer session-state list to the
-	#  outer reply.
+	#  Copy the remaining inner reply attributes to the outer
+	#  session-state list.  This list is preserved across multiple
+	#  Access-Request / Access-Challenge exchanges.
+	#
+	#  When the final Access-Accept is ready to be sent, The
+	#  'send Access-Accept' policy in sites-available/default will
+	#  copy the outer session-state list to the final reply.
 	#
 	update {
 		&outer.session-state: += &reply:
