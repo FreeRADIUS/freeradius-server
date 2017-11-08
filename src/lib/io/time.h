@@ -106,6 +106,25 @@ static inline void fr_dlist_insert_tail(fr_dlist_t *head, fr_dlist_t *entry)
 	head->prev = entry;
 }
 
+#if 0
+/*
+ *	Insert one list into the tail of another
+ */
+static inline void fr_dlist_insert_tail_list(fr_dlist_t *head, fr_dlist_t *list)
+{
+	if (!rad_cond_assert(head->next != NULL)) return;
+	if (!rad_cond_assert(head->prev != NULL)) return;
+
+	list->prev->next = head;
+	list->next->prev = head->prev;
+
+	head->prev->next = list->next;
+	head->prev = list->prev;
+
+	list->prev = list->next = &list;
+}
+#endif
+
 static inline void fr_dlist_remove(fr_dlist_t *entry)
 {
 	if (!rad_cond_assert(entry->next != NULL)) return;

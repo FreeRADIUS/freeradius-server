@@ -423,6 +423,11 @@ next_message:
 
 	/*
 	 *	If there is a next message, go read it from the buffer.
+	 *
+	 *	@todo - note that this calls read(), even if the
+	 *	app_io has paused the reader.  We likely want to be
+	 *	able to check that, too.  We might just remove this
+	 *	"goto"...
 	 */
 	if (next) {
 		cd = next;
