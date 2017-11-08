@@ -346,6 +346,16 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 	listen->num_messages = inst->parent->num_messages;
 
 	/*
+	 *	Instantiate the new worker.
+	 */
+	if (listen->app_io->instantiate &&
+	    (listen->app_io->instantiate(listen->app_io_instance,
+					 inst->parent->work_io_conf) < 0)) {
+		ERROR("Failed instantiating %s", listen->app_io->name);
+		goto error;
+	}
+
+	/*
 	 *	Open the detail.work file.
 	 */
 	if (listen->app_io->open(listen->app_io_instance) < 0) {

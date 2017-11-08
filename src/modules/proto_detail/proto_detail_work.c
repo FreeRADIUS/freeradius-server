@@ -48,6 +48,16 @@
 typedef struct {
 	fr_time_t			timestamp;		//!< when we read the entry.
 	off_t				done_offset;		//!< where we're tracking the status
+
+	int				id;			//!< for retransmission counters
+	int				tries;			//!< number of retransmission tries
+	uint8_t				*packet;		//!< for retransmissions
+	size_t				packet_len;		//!< for retransmissions
+
+	union {
+		fr_event_timer_t const		*ev;			//!< retransmission timer
+		fr_dlist_t			entry;			//!< for the retransmission list
+	};
 } fr_detail_entry_t;
 
 static const CONF_PARSER file_listen_config[] = {
@@ -55,21 +65,26 @@ static const CONF_PARSER file_listen_config[] = {
 
 	{ FR_CONF_OFFSET("track", FR_TYPE_BOOL, proto_detail_work_t, track_progress ) },
 
+	{ FR_CONF_OFFSET("retransmit", FR_TYPE_BOOL, proto_detail_work_t, retransmit ), .dflt = "yes" },
+
 	CONF_PARSER_TERMINATOR
 };
 
 /*
  *	All of the decoding is done by proto_detail.c
  */
-static int mod_decode(void const *instance, REQUEST *request, UNUSED uint8_t *const data, UNUSED size_t data_len)
+static int mod_decode(UNUSED void const *instance, REQUEST *request, UNUSED uint8_t *const data, UNUSED size_t data_len)
 {
 
-	proto_detail_work_t const     	*inst = talloc_get_type_abort_const(instance, proto_detail_work_t);
+//	proto_detail_work_t const     	*inst = talloc_get_type_abort_const(instance, proto_detail_work_t);
+	fr_detail_entry_t const		*track = request->async->packet_ctx;
 
 	request->root = &main_config;
-	request->packet->id = inst->outstanding;
-	request->reply->id = inst->outstanding;
+	request->packet->id = track->id;
+	request->reply->id = track->id;
 	REQUEST_VERIFY(request);
+
+	// @todo - add retransmission counter
 
 	return 0;
 }
@@ -84,9 +99,29 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	uint8_t				*partial, *end, *next, *p;
 	uint8_t				*stopped_search;
 	off_t				done_offset;
+	fr_dlist_t			*entry;
 
 	rad_assert(*leftover < buffer_len);
 	rad_assert(inst->fd >= 0);
+
+	/*
+	 *	Process retransmissions before anything else in the
+	 *	file.
+	 */
+	entry = FR_DLIST_FIRST(inst->list);
+	if (entry) {
+		track = fr_ptr_to_type(fr_detail_entry_t, entry, entry);
+
+		rad_assert(buffer_len >= track->packet_len);
+		memcpy(buffer, track->packet, track->packet_len);
+
+		DEBUG("Retrying packet %d (retransmission %d)",
+		      track->id, track->tries);
+		*packet_ctx = track;
+		*recv_time = &track->timestamp;
+		*priority = inst->parent->priority;
+		return track->packet_len;
+	}
 
 	/*
 	 *	If we decide that we're closing, ignore everything
@@ -97,6 +132,11 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 		if (inst->track_progress) inst->read_offset = lseek(inst->fd, 0, SEEK_END);
 		return 0;
 	}
+
+	/*
+	 *	Seek to the current read offset.
+	 */
+	(void) lseek(inst->fd, inst->read_offset, SEEK_SET);
 
 	/*
 	 *	There will be "leftover" bytes left over in the buffer
@@ -123,7 +163,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 		/*
 		 *	Remember the read offset, and whether we got EOF.
 		 */
-		if (inst->track_progress) inst->read_offset = lseek(inst->fd, 0, SEEK_CUR);
+		inst->read_offset = lseek(inst->fd, 0, SEEK_CUR);
 		inst->eof = (data_size == 0) || (inst->read_offset == inst->file_size);
 		end = partial + data_size;
 
@@ -283,11 +323,6 @@ redo:
 	skip_record:
 		MPRINT("Skipping record");
 		if (next) {
-			/*
-			 *	@todo - be smart, and eat multiple
-			 *	records until we find one which isn't
-			 *	done.
-			 */
 			memmove(buffer, next, (end - next));
 			data_size = (end - next);
 			*leftover = 0;
@@ -337,10 +372,15 @@ redo:
 	/*
 	 *	Allocate the tracking entry.
 	 */
-	track = talloc(instance, fr_detail_entry_t);
+	track = talloc_zero(instance, fr_detail_entry_t);
 	track->timestamp = fr_time();
+	track->id = inst->count++;
 
 	track->done_offset = done_offset;
+	if (inst->retransmit) {
+		track->packet = talloc_memdup(track, buffer, packet_len);
+		track->packet_len = packet_len;
+	}
 
 	/*
 	 *	We've read one more packet.
@@ -372,6 +412,46 @@ done:
 	return packet_len;
 }
 
+
+static fr_event_update_t pause_read[] = {
+	FR_EVENT_SUSPEND(fr_event_io_func_t, read),
+	{ 0 }
+};
+
+static fr_event_update_t resume_read[] = {
+	FR_EVENT_RESUME(fr_event_io_func_t, read),
+	{ 0 }
+};
+
+
+static void work_retransmit(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, UNUSED void *uctx)
+{
+	fr_detail_entry_t		*track = talloc_get_type_abort(uctx, fr_detail_entry_t);
+	proto_detail_work_t		*inst = talloc_parent(track);
+
+	DEBUG("%s - retransmitting packet %d", inst->name, track->id);
+	track->tries++;
+
+	fr_dlist_insert_tail(&inst->list, &track->entry);
+
+	if (fr_event_filter_update(inst->el, inst->fd, FR_EVENT_FILTER_IO, resume_read) < 0) {
+		DEBUG("Failed updating read filter: %s", fr_strerror());
+		talloc_free(track);
+		_exit(1);
+	}
+
+	rad_assert(inst->fd >= 0);
+
+	/*
+	 *	Seek to the START of the file, so that the FD will
+	 *	always return ready.
+	 *
+	 *	The mod_read() function will take care of seeking to
+	 *	the correct read offset.
+	 */
+	(void) lseek(inst->fd, 0, SEEK_SET);
+}
+
 static ssize_t mod_write(void *instance, void *packet_ctx,
 			 UNUSED fr_time_t request_time, uint8_t *buffer, size_t buffer_len)
 {
@@ -383,20 +463,29 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	rad_assert(inst->outstanding > 0);
 	rad_assert(inst->fd >= 0);
 
-	inst->outstanding--;
-
 	if (!buffer[0]) {
-		/*
-		 *
-		 *	@todo - put the original packet onto a list
-		 *	for retransmissions, and don't finish with the
-		 *	detail.work file until all packets are
-		 *	retransmitted.  And don't read new ones until
-		 *	the old ones are finished.
-		 */
-		DEBUG("Packet failed not writing reply");
+		struct timeval when, now;
+
+		when.tv_sec = 1;
+		when.tv_usec = 0;
+
+		DEBUG("%s - packet %d failed during processing.  Will retransmit in %d.%06ds",
+		      inst->name, track->id, (int) when.tv_sec, (int) when.tv_usec);
+
+		gettimeofday(&now, NULL);
+		fr_timeval_add(&when, &now, &when);
+
+		if (fr_event_timer_insert(inst, inst->el, &track->ev, &when, work_retransmit, track) < 0) {
+			ERROR("%s - Failed inserting retransmission timeout", inst->name);
+			if (inst->track_progress && (track->done_offset > 0)) goto mark_done;
+			goto free_track;
+		}
+
+		fr_event_filter_update(inst->el, inst->fd, FR_EVENT_FILTER_IO, pause_read);
+		return 1;
 
 	} else if (inst->track_progress && (track->done_offset > 0)) {
+	mark_done:
 		/*
 		 *	Seek to the entry, mark it as done, and then seek to
 		 *	the point in the file where we were reading from.
@@ -405,6 +494,9 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		(void) write(inst->fd, "Done", 4);
 		(void) lseek(inst->fd, inst->read_offset, SEEK_SET);
 	}
+
+free_track:
+	inst->outstanding--;
 
 	/*
 	 *	@todo - add a used / free pool for these
@@ -487,12 +579,6 @@ static int mod_open(void *instance)
 	DEBUG("Listening on %s bound to virtual server %s",
 	      inst->name, cf_section_name2(inst->parent->server_cs));
 
-	/*
-	 *	@todo - troll through the directory, looking for
-	 *	"detail.work".  If found, create an instance, link to
-	 *	it, fill in it's information, and go from there.
-	 */
-
 	return 0;
 }
 
@@ -557,10 +643,11 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el)
 }
 
 
-static int mod_instantiate(UNUSED void *instance, UNUSED CONF_SECTION *cs)
+static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
 {
-//	proto_detail_work_t *inst = talloc_get_type_abort(instance, proto_detail_work_t);
+	proto_detail_work_t *inst = talloc_get_type_abort(instance, proto_detail_work_t);
 
+	FR_DLIST_INIT(inst->list);
 
 	return 0;
 }

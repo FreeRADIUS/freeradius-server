@@ -81,17 +81,21 @@ typedef struct proto_detail_work_t {
 
 	uint32_t			poll_interval;		//!< interval between polling
 
+	fr_dlist_t			list;			//!< for retransmissions
+
 	bool				vnode;			//!< are we the vnode instance,
 								//!< or the filename_work instance?
 	bool				eof;			//!< are we at EOF on reading?
 	bool				closing;		//!< we should be closing the file
 
 	bool				track_progress;		//!< do we track progress by writing?
+	bool				retransmit;		//!< are we retransmitting on error?
 	bool				free_on_close;		//!< free the worker on close
 
 	int				mode;			//!< O_RDWR or O_RDONLY
 
 	int				outstanding;		//!< number of outstanding records;
+	int				count;			//!< number of packets we read from this file.
 
 	size_t				last_search;		//!< where we last searched in the buffer
 								//!< MUST be offset, as the buffers can change.

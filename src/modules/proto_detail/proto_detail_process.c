@@ -181,23 +181,20 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		}
 
 		/*
-		 *	This is an internally generated request.  Don't print IP addresses.
+		 *	Failed, but we still reply with a magic code,
+		 *	so that the reader can retransmit.
 		 */
 		if (!request->reply->code) {
 			radlog_request(L_DBG, L_DBG_LVL_1, request, "Failed ID %i",
 				       request->reply->id);
-			rdebug_proto_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
-			return FR_IO_DONE;
 
-		} else if (request->parent) {
+		} else {
 			radlog_request(L_DBG, L_DBG_LVL_1, request, "Sent %s ID %i",
 				       fr_dict_enum_alias_by_value(NULL, da, fr_box_uint32(request->reply->code)),
 				       request->reply->id);
-			rdebug_proto_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
-			return FR_IO_DONE;
 		}
 
-		if (RDEBUG_ENABLED) common_packet_debug(request, request->reply, false);
+		rdebug_proto_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
 		break;
 
 	default:
