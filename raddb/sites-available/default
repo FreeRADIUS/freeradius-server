@@ -148,6 +148,18 @@ recv Access-Request {
 #	operator-name
 
 	#
+	#  Proxying example
+	#
+	#  The following example will proxy the request if the
+	#  username ends in example.com.
+	#
+#	if (&User-Name =~ /@example\.com$/) {
+#		update control {
+#			Auth-Type := "proxy-example.com"
+#		}
+#	}
+
+	#
 	#  If you want to generate CUI for some clients that do
 	#  not send proper CUI requests, then uncomment cui below
 	#  and set "add_cui = yes" for these clients in
@@ -391,6 +403,41 @@ authenticate ldap {
 authenticate eap {
 	eap
 }
+
+
+#
+#  Proxying
+#
+
+#
+#  The following example shows how proxying to three remote servers
+#  can be configured.
+#
+#  The Auth-Type attribute would need to be set to
+#  "proxy-example.com" above. Define the remote servers in
+#  raddb/mods-availble/radius.
+#
+
+#authenticate proxy-example.com {
+#	#
+#	#  Log the request before proxying.
+#	#
+#	pre_proxy_log
+#
+#	#
+#	#  Send the request to remote RADIUS servers, with
+#	#  fail-over if no response.
+#	#
+#	redundant {
+#		radius1.example.com
+#		radius2.example.com
+#	}
+#
+#	#
+#	#  Log the reply after proxying.
+#	#
+#	post_proxy_log.post-proxy
+#}
 
 
 
