@@ -135,7 +135,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 
 		} else if (request->reply->code == 257) {
 			request->reply->code = FR_CODE_DO_NOT_RESPOND;
-			unlang = cf_section_find(request->server_cs, "send", "fail");
+			unlang = cf_section_find(request->server_cs, "send", "failure");
 			if (!unlang) goto send_reply;
 
 		} else {
