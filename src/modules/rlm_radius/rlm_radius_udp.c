@@ -1578,7 +1578,6 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	 *	timers, etc.
 	 */
 	if (c->inst->replicate && (u != c->status_u)) {
-		state_transition(u, PACKET_STATE_FINISHED);
 		return 2;
 	}
 
@@ -1738,10 +1737,10 @@ static void conn_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, 
 
 		/*
 		 *	The packet was replicated, we don't care about
-		 *	the reply.  Just mark the request as
-		 *	resumable.
+		 *	the reply.  Just mark the request as finished.
 		 */
 		else {
+			rad_assert(rcode == 2);
 			state_transition(u, PACKET_STATE_RESUMABLE);
 		}
 	}
@@ -2436,7 +2435,6 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 
 	switch (u->state) {
 	case PACKET_STATE_INIT:
-	case PACKET_STATE_RESUMABLE:
 		rad_assert(0 == 1);
 		break;
 
@@ -2444,6 +2442,9 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 	case PACKET_STATE_SENT:
 		rcode = RLM_MODULE_YIELD;
 		break;
+
+	case PACKET_STATE_RESUMABLE: /* was replicated */
+		state_transition(u, PACKET_STATE_FINISHED);
 
 	case PACKET_STATE_FINISHED:
 		rcode = RLM_MODULE_OK;
