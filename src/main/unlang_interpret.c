@@ -1896,6 +1896,11 @@ static unlang_action_t unlang_resume(REQUEST *request,
 
 	RDEBUG3("Resuming in %s", mr->self.debug_name);
 
+	if (!unlang_ops_resume[mr->parent_type]) {
+		*presult = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
 	memcpy(&instance, &mr->instance, sizeof(instance));
 	request->module = mr->self.debug_name;
 
@@ -1904,10 +1909,8 @@ static unlang_action_t unlang_resume(REQUEST *request,
 	 *	the original frame which was used to
 	 *	create this resumption frame.
 	 */
-	if (unlang_ops_resume[mr->parent_type]) {
-		*presult = request->rcode = unlang_ops_resume[mr->parent_type](request, instance,
-									       mr->thread, mr->resume_ctx);
-	}
+	*presult = request->rcode = unlang_ops_resume[mr->parent_type](request, instance,
+								       mr->thread, mr->resume_ctx);
 
 	request->module = NULL;
 
