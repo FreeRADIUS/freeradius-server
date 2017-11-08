@@ -89,6 +89,16 @@ static int mod_decode(UNUSED void const *instance, REQUEST *request, UNUSED uint
 	return 0;
 }
 
+static fr_event_update_t pause_read[] = {
+	FR_EVENT_SUSPEND(fr_event_io_func_t, read),
+	{ 0 }
+};
+
+static fr_event_update_t resume_read[] = {
+	FR_EVENT_RESUME(fr_event_io_func_t, read),
+	{ 0 }
+};
+
 static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority)
 {
 	proto_detail_work_t		*inst = talloc_get_type_abort(instance, proto_detail_work_t);
@@ -403,6 +413,14 @@ done:
 	inst->outstanding++;
 
 	/*
+	 *	Pause reading until such time as we need more packets.
+	 */
+	if (!inst->paused) {
+		(void) fr_event_filter_update(inst->el, inst->fd, FR_EVENT_FILTER_IO, pause_read);
+		inst->paused = true;
+	}
+
+	/*
 	 *	Next time, start searching from the start of the
 	 *	buffer.
 	 */
@@ -411,17 +429,6 @@ done:
 	MPRINT("Returning NUM %d - %.*s", inst->outstanding, (int) packet_len, buffer);
 	return packet_len;
 }
-
-
-static fr_event_update_t pause_read[] = {
-	FR_EVENT_SUSPEND(fr_event_io_func_t, read),
-	{ 0 }
-};
-
-static fr_event_update_t resume_read[] = {
-	FR_EVENT_RESUME(fr_event_io_func_t, read),
-	{ 0 }
-};
 
 
 static void work_retransmit(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, UNUSED void *uctx)
@@ -434,10 +441,9 @@ static void work_retransmit(UNUSED fr_event_list_t *el, UNUSED struct timeval *n
 
 	fr_dlist_insert_tail(&inst->list, &track->entry);
 
-	if (fr_event_filter_update(inst->el, inst->fd, FR_EVENT_FILTER_IO, resume_read) < 0) {
-		DEBUG("Failed updating read filter: %s", fr_strerror());
-		talloc_free(track);
-		_exit(1);
+	if (inst->paused) {
+		(void) fr_event_filter_update(inst->el, inst->fd, FR_EVENT_FILTER_IO, resume_read);
+		inst->paused = false;
 	}
 
 	rad_assert(inst->fd >= 0);
@@ -481,7 +487,10 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			goto free_track;
 		}
 
-		fr_event_filter_update(inst->el, inst->fd, FR_EVENT_FILTER_IO, pause_read);
+		if (!inst->paused) {
+			(void) fr_event_filter_update(inst->el, inst->fd, FR_EVENT_FILTER_IO, pause_read);
+			inst->paused = true;
+		}
 		return 1;
 
 	} else if (inst->track_progress && (track->done_offset > 0)) {
@@ -497,6 +506,15 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 
 free_track:
 	inst->outstanding--;
+
+	/*
+	 *	There are no outstanding packets, let's go read some
+	 *	more.
+	 */
+	if (!inst->outstanding && inst->paused) {
+		(void) fr_event_filter_update(inst->el, inst->fd, FR_EVENT_FILTER_IO, resume_read);
+		inst->paused = false;
+	}
 
 	/*
 	 *	@todo - add a used / free pool for these

@@ -90,6 +90,7 @@ typedef struct proto_detail_work_t {
 
 	bool				track_progress;		//!< do we track progress by writing?
 	bool				retransmit;		//!< are we retransmitting on error?
+	bool				paused;			//!< Is reading paused?
 	bool				free_on_close;		//!< free the worker on close
 
 	int				mode;			//!< O_RDWR or O_RDONLY
