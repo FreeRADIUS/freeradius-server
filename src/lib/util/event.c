@@ -111,7 +111,11 @@ static fr_event_func_map_t io_func_map[] = {
 		.name		= "read",
 		.filter		= EVFILT_READ,
 		.flags		= EV_ADD | EV_ENABLE,
+#ifdef NOTE_NONE
+		.fflags		= NOTE_NONE,
+#else
 		.fflags		= 0,
+#endif
 		.type		= FR_EVENT_FD_SOCKET | FR_EVENT_FD_FILE | FR_EVENT_FD_PCAP
 	},
 	{
