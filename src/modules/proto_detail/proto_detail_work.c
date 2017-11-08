@@ -50,9 +50,15 @@ typedef struct {
 	off_t				done_offset;		//!< where we're tracking the status
 
 	int				id;			//!< for retransmission counters
-	uint32_t       			tries;			//!< number of retransmission tries
+
 	uint8_t				*packet;		//!< for retransmissions
 	size_t				packet_len;		//!< for retransmissions
+
+	uint32_t			rt;
+	uint32_t       			count;			//!< number of retransmission tries
+
+	struct timeval			start;			//!< when we started trying to send
+	struct timeval			next;			//!< when it next fires
 
 	fr_event_timer_t const		*ev;			//!< retransmission timer
 	fr_dlist_t			entry;			//!< for the retransmission list
@@ -95,7 +101,7 @@ static int mod_decode(UNUSED void const *instance, REQUEST *request, UNUSED uint
 
 	vp = fr_pair_make(request->packet, &request->packet->vps,
 			  "Packet-Transmit-Counter", NULL, T_OP_EQ);
-	if (vp) vp->vp_uint32 = track->tries;
+	if (vp) vp->vp_uint32 = track->count;
 
 	return 0;
 }
@@ -139,7 +145,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 		memcpy(buffer, track->packet, track->packet_len);
 
 		DEBUG("Retrying packet %d (retransmission %u)",
-		      track->id, track->tries);
+		      track->id, track->count);
 		*packet_ctx = track;
 		*recv_time = &track->timestamp;
 		*priority = inst->parent->priority;
@@ -398,6 +404,7 @@ redo:
 	track = talloc_zero(instance, fr_detail_entry_t);
 	track->timestamp = fr_time();
 	track->id = inst->count++;
+	track->rt = inst->irt;
 
 	track->done_offset = done_offset;
 	if (inst->retransmit) {
@@ -450,7 +457,7 @@ static void work_retransmit(UNUSED fr_event_list_t *el, UNUSED struct timeval *n
 	proto_detail_work_t		*inst = talloc_parent(track);
 
 	DEBUG("%s - retransmitting packet %d", inst->name, track->id);
-	track->tries++;
+	track->count++;
 
 	fr_dlist_insert_tail(&inst->list, &track->entry);
 
@@ -472,7 +479,7 @@ static void work_retransmit(UNUSED fr_event_list_t *el, UNUSED struct timeval *n
 }
 
 static ssize_t mod_write(void *instance, void *packet_ctx,
-			 UNUSED fr_time_t request_time, uint8_t *buffer, size_t buffer_len)
+			 fr_time_t request_time, uint8_t *buffer, size_t buffer_len)
 {
 	proto_detail_work_t		*inst = talloc_get_type_abort(instance, proto_detail_work_t);
 	fr_detail_entry_t		*track = packet_ctx;
@@ -485,19 +492,51 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	if (!buffer[0]) {
 		struct timeval when, now;
 
-		if (track->tries >= inst->mrc) {
+		/*
+		 *	Cap at MRC, if required.
+		 */
+		if (inst->mrc && (track->count >= inst->mrc)) {
 			DEBUG("%s - packet %d failed after %u retransmissions",
-			      inst->name, track->id, track->tries);
+			      inst->name, track->id, track->count);
 			goto fail;
 		}
 
-		when.tv_sec = inst->irt;
-		when.tv_usec = 0;
+		gettimeofday(&now, NULL);
+
+		if (track->count == 0) {
+			track->rt = inst->irt * USEC;
+			fr_time_to_timeval(&track->start, request_time);
+			track->next = track->start;
+			track->next.tv_usec += track->rt;
+			track->next.tv_sec += track->next.tv_usec / USEC;
+			track->next.tv_usec %= USEC;
+
+		} else {
+			/*
+			 *	Cap at MRD, if required.
+			 */
+			if (inst->mrd) {
+				struct timeval end;
+
+				end = track->start;
+				end.tv_sec += inst->mrd;
+				if (timercmp(&now, &end, >=)) {
+					DEBUG("%s - packet %d failed after %u seconds",
+					      inst->name, track->id, inst->mrd);
+					goto fail;
+				}
+			}
+
+			// @todo - add random delays...
+
+		} /* we're on retransmission N */
+
+		when.tv_sec = track->rt / USEC;
+		when.tv_usec = track->rt % USEC;
 
 		DEBUG("%s - packet %d failed during processing.  Will retransmit in %d.%06ds",
 		      inst->name, track->id, (int) when.tv_sec, (int) when.tv_usec);
 
-		gettimeofday(&now, NULL);
 		fr_timeval_add(&when, &now, &when);
 
 		if (fr_event_timer_insert(inst, inst->el, &track->ev, &when, work_retransmit, track) < 0) {
