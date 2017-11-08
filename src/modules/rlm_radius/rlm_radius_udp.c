@@ -1615,6 +1615,9 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	 *	Status-Server only checks.
 	 */
 	if (u->timer.count == 0) {
+		u->link->time_sent = fr_time();
+		fr_time_to_timeval(&u->timer.start, u->link->time_sent);
+
 		if (rr_track_start(&u->timer) < 0) {
 			RDEBUG("%s - Failed starting retransmit tracking for connection %s",
 			       c->inst->parent->name, c->name);
