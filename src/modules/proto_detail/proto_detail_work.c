@@ -415,7 +415,8 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	talloc_free(track);
 
 	/*
-	 *	@todo - close the socket if we're at EOF, and outstanding == 0?
+	 *	Close the socket if we're at EOF, and there are no
+	 *	outstanding replies to deal with.
 	 */
 	if (inst->closing && !inst->outstanding) {
 		return 0;
