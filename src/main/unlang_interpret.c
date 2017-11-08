@@ -49,7 +49,7 @@ static FR_NAME_NUMBER unlang_action_table[] = {
 #define UNLANG_NORMAL_CHILD (false)
 
 typedef rlm_rcode_t (*unlang_op_resume_func_t)(REQUEST *request,
-					       const void *instance, void *thread, void *resume_ctx);
+					       void *instance, void *thread, void *resume_ctx);
 
 /*
  *	Lock the mutex for the module
@@ -655,7 +655,7 @@ static void unlang_subrequest_signal(UNUSED REQUEST *request, UNUSED void *insta
  *
  */
 static rlm_rcode_t unlang_subrequest_resume(UNUSED REQUEST *request,
-					    UNUSED const void *instance, UNUSED void *thread, void *resume_ctx)
+					    UNUSED void *instance, UNUSED void *thread, void *resume_ctx)
 {
 	REQUEST			*child = talloc_get_type_abort(resume_ctx, REQUEST);
 	unlang_stack_t		*stack = request->stack;
@@ -697,6 +697,37 @@ static rlm_rcode_t unlang_subrequest_resume(UNUSED REQUEST *request,
 	 */
 	return RLM_MODULE_YIELD;
 }
+
+static rlm_rcode_t unlang_module_resume(REQUEST *request,
+					UNUSED void *instance, UNUSED void *thread, UNUSED void *resume_ctx)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_t			*instruction = frame->instruction;
+	unlang_resume_t			*mr = unlang_generic_to_resume(instruction);
+	unlang_stack_state_modcall_t	*modcall_state = NULL;
+	rlm_rcode_t			rcode;
+
+	rad_assert(mr->parent_type == UNLANG_TYPE_MODULE_CALL);
+
+	modcall_state = talloc_get_type_abort(frame->state,
+					      unlang_stack_state_modcall_t);
+
+	/*
+	 *	Lock is noop unless instance->mutex is set.
+	 */
+	safe_lock(mr->module_instance);
+	rcode = request->rcode = mr->callback(request, instance, mr->thread, mr->resume_ctx);
+	safe_unlock(mr->module_instance);
+
+	if (rcode != RLM_MODULE_YIELD) modcall_state->thread->active_callers--;
+
+	RDEBUG2("%s (%s)", instruction->name ? instruction->name : "",
+		fr_int2str(mod_rcode_table, rcode, "<invalid>"));
+
+	return rcode;
+}
+
 
 
 static void unlang_max_request_time(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
@@ -1205,7 +1236,7 @@ static void unlang_parallel_signal(UNUSED REQUEST *request, UNUSED void *instanc
 
 
 static rlm_rcode_t unlang_parallel_resume(REQUEST *request,
-					  UNUSED const void *instance, UNUSED void *thread, void *resume_ctx)
+					  UNUSED void *instance, UNUSED void *thread, void *resume_ctx)
 {
 	rlm_rcode_t		rcode;
 	unlang_parallel_t	*state = talloc_get_type_abort(resume_ctx, unlang_parallel_t);
@@ -1835,8 +1866,10 @@ static unlang_action_t unlang_if(REQUEST *request,
 }
 
 static unlang_op_resume_func_t unlang_ops_resume[] = {
+	[UNLANG_TYPE_MODULE_CALL]	= unlang_module_resume,
 	[UNLANG_TYPE_SUBREQUEST]       	= unlang_subrequest_resume,
 	[UNLANG_TYPE_PARALLEL]		= unlang_parallel_resume,
+	[UNLANG_TYPE_MAX]		= NULL
 };
 
 static unlang_action_t unlang_resume(REQUEST *request,
@@ -1844,9 +1877,12 @@ static unlang_action_t unlang_resume(REQUEST *request,
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	 *	Leave mr alone, it will be freed when the request is done.
+	 */
+
+	/*
 	unlang_t			*instruction = frame->instruction;
 	unlang_resume_t			*mr = unlang_generic_to_resume(instruction);
-	unlang_stack_state_modcall_t	*modcall_state = NULL;
 	void 				*instance;
 
 	RDEBUG3("Resuming in %s", mr->self.debug_name);
@@ -1855,30 +1891,16 @@ static unlang_action_t unlang_resume(REQUEST *request,
 	request->module = mr->self.debug_name;
 
 	/*
-	 *	Do the internal resume function.
+	 *	Run the resume callback associated with
+	 *	the original frame which was used to
+	 *	create this resumption frame.
 	 */
 	if (unlang_ops_resume[mr->parent_type]) {
-		*presult = request->rcode = unlang_ops_resume[mr->parent_type](request, instance, mr->thread, mr->resume_ctx);
-
-	} else {
-		rad_assert(mr->parent_type == UNLANG_TYPE_MODULE_CALL);
-
-		modcall_state = talloc_get_type_abort(frame->state,
-						      unlang_stack_state_modcall_t);
-
-		/*
-		 *	Lock is noop unless instance->mutex is set.
-		 */
-		safe_lock(mr->module_instance);
-		*presult = request->rcode = mr->callback(request, instance, mr->thread, mr->resume_ctx);
-		safe_unlock(mr->module_instance);
+		*presult = request->rcode = unlang_ops_resume[mr->parent_type](request, instance,
+									       mr->thread, mr->resume_ctx);
 	}
 
 	request->module = NULL;
-
-	/*
-	 *	Leave mr alone, it will be freed when the request is done.
-	 */
 
 	/*
 	 *	Is now marked as "stop" when it wasn't before, we must have been blocked.
@@ -1889,16 +1911,9 @@ static unlang_action_t unlang_resume(REQUEST *request,
 	}
 
 	if (*presult != RLM_MODULE_YIELD) {
-		if (modcall_state) modcall_state->thread->active_callers--;
-
 		rad_assert(*presult >= RLM_MODULE_REJECT);
 		rad_assert(*presult < RLM_MODULE_NUMCODES);
 		*priority = instruction->actions[*presult];
-	}
-
-	if (modcall_state) {
-		RDEBUG2("%s (%s)", instruction->name ? instruction->name : "",
-			fr_int2str(mod_rcode_table, *presult, "<invalid>"));
 	}
 
 	return UNLANG_ACTION_CALCULATE_RESULT;
