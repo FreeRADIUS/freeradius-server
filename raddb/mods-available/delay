@@ -2,36 +2,39 @@
 #
 #  $Id$
 
-# Delay the progression of a request in a non-blocking fashion.
 #
-# This module is useful for rate limiting, and introducing artificial jitter
-# into responses.
+#  Delay the progression of a request in a non-blocking fashion.
+#
+#  This module is useful for rate limiting, and introducing
+#  artificial jitter into responses.
 #
 delay {
-		#
-		#  How long to delay request processing for
-		#
-		delay = 1.0
-		
-		#
-		#  Whether the request should be rescheduled even if no delay is needed.
-		#  This introduces a small delay, and allows processing of other requests
-		#  ahead of this one.
-		#
-#		force_reschedule = no
-		
-		#
-		#  Whether delay should be calculated relative to when the request was
-		#  received.  This can be useful for rate limiting, as most NAS will only
-		#  allow a limited number of request to be in flight.
-		#
-#		relative = no
+	#
+	#  How long to delay request processing for.
+	#
+	delay = 1.0
+
+	#
+	#  Whether the request should be rescheduled even if no
+	#  delay is needed. This introduces a small delay, and
+	#  allows processing of other requests ahead of this one.
+	#
+#	force_reschedule = no
+
+	#
+	#  Whether delay should be calculated relative to when
+	#  the request was received. This can be useful for rate
+	#  limiting, as most NAS will only allow a limited number
+	#  of request to be in flight.
+	#
+#	relative = no
 }
 
 delay delay_reject {
-		#
-		#  How long to delay request processing for
-		#
-		delay = "%{reply:Response-Delay:-1}"
-		relative = yes
+	#
+	#  How long to delay request processing for.
+	#
+	delay = "%{reply:Response-Delay:-1}"
+
+	relative = yes
 }
