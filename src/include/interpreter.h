@@ -73,7 +73,7 @@ typedef enum {
 #endif
 	UNLANG_TYPE_POLICY,			//!< Policy section.
 	UNLANG_TYPE_XLAT_INLINE,		//!< xlat statement, inline in "unlang"
-	UNLANG_TYPE_RESUME,			//!< where to resume processing
+	UNLANG_TYPE_MODULE_RESUME,			//!< where to resume processing
 	UNLANG_TYPE_MAX
 } unlang_type_t;
 
@@ -187,7 +187,7 @@ typedef struct {
 
 	module_instance_t		*module_instance; //!< as described
 
-	fr_unlang_resume_callback_t    callback;	//!< Function the yielding code indicated should
+	fr_unlang_resume_callback_t	callback;	//!< Function the yielding code indicated should
 							//!< be called when the request could be resumed.
 
 	fr_unlang_action_t		signal_callback;  //!< Function the yielding module indicated should
@@ -363,7 +363,7 @@ static inline unlang_t *unlang_xlat_inline_to_generic(unlang_xlat_inline_t *p)
 
 static inline unlang_resume_t *unlang_generic_to_resume(unlang_t *p)
 {
-	rad_assert(p->type == UNLANG_TYPE_RESUME);
+	rad_assert(p->type == UNLANG_TYPE_MODULE_RESUME);
 	return talloc_get_type_abort(p, unlang_resume_t);
 }
 
