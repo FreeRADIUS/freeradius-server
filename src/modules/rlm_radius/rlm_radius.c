@@ -523,7 +523,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	}
 
 	link->request = request;
-	fr_dlist_insert_tail(&t->running, &link->entry);
 
 	link->rcode = RLM_MODULE_FAIL;
 
@@ -534,6 +533,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	 */
 	radius_fixups(inst, request);
 
+	fr_dlist_insert_tail(&t->running, &link->entry);
+	talloc_set_destructor(link, mod_link_free);
+
 	/*
 	 *	Push the request and it's link to the IO submodule.
 	 *
@@ -543,12 +545,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	 */
 	rcode = inst->io->push(inst->io_instance, request, link, t->thread_io_ctx);
 	if (rcode != RLM_MODULE_YIELD) {
-		fr_dlist_remove(&link->entry);
 		talloc_free(link);
 		return rcode;
 	}
-
-	talloc_set_destructor(link, mod_link_free);
 
 	return unlang_module_yield(request, mod_radius_resume, mod_radius_signal, link);
 }
