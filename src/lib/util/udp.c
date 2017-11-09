@@ -187,17 +187,17 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 
 	if ((flags & UDP_FLAGS_PEEK) != 0) sock_flags |= MSG_PEEK;
 
+	if (when) {
+		when->tv_sec = 0;
+		when->tv_usec = 0;
+	}
+
 	/*
 	 *	Connected sockets already know src/dst IP/port
 	 */
 	if ((flags & UDP_FLAGS_CONNECTED) != 0) {
 		received = recv(sockfd, data, data_len, sock_flags);
 		goto done;
-	}
-
-	if (when) {
-		when->tv_sec = 0;
-		when->tv_usec = 0;
 	}
 
 	/*
