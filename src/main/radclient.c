@@ -77,7 +77,7 @@ static char const *radclient_version = "radclient version " RADIUSD_VERSION_STRI
 #ifdef RADIUSD_VERSION_COMMIT
 " (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"
 #endif
-", built on " __DATE__ " at " __TIME__;
+;
 
 static void NEVER_RETURNS usage(void)
 {

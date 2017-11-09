@@ -1964,7 +1964,7 @@ int main(int argc, char **argv)
 			timeout = atof(optarg);
 			break;
 		case 'v':
-			printf("$Id$ built on "__DATE__ "at "__TIME__ "");
+			printf("$Id$");
 			exit(0);
 
 		case 'S':
