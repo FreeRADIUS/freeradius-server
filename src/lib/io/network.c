@@ -1022,8 +1022,9 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 			 */
 			if (!s->outstanding) {
 				talloc_free(s);
-				continue;
 			}
+
+			continue;
 		}
 
 		/*
