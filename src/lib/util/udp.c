@@ -226,7 +226,7 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 #endif
 
 	if (received < 0) {
-		fr_strerror_printf("Failed reading socket: %s", fr_syserr(errno));
+		fr_strerror_printf("Failed reading socket: %s", fr_syserror(errno));
 		return received;
 	}
 
