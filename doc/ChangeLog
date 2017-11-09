@@ -32,6 +32,7 @@ FreeRADIUS 3.0.16 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	  create the necessary triplets.
 	* Explain why many LDAP connections are closed.
 	  Fixes #1969.
+	* Debian build / package issues fixed by Matthew Newton.
 
 	Bug fixes
 	* Bind the lifetime of program name and python path to the module
