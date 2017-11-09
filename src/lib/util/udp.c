@@ -210,13 +210,16 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 				      (struct sockaddr *)&src, &sizeof_src,
 				      (struct sockaddr *)&dst, &sizeof_dst,
 				      if_index, when);
+		if (received <= 0) goto done;
 	} else {
 		received = recvfrom(sockfd, data, data_len, sock_flags,
 				    (struct sockaddr *)&src, &sizeof_src);
+		if (received <= 0) goto done;
 	}
 #else
 	received = recvfrom(sockfd, data, data_len, sock_flags,
 			    (struct sockaddr *)&src, &sizeof_src);
+	if (received <= 0) goto done;
 
 	/*
 	 *	Get the destination address, if requested.
@@ -227,7 +230,6 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 
 	if (if_index) *if_index = 0;
 #endif
-
 
 	if (fr_ipaddr_from_sockaddr(&src, sizeof_src, src_ipaddr, &port) < 0) {
 		fr_strerror_printf("Failed converting sockaddr to ipaddr: %s", fr_strerror());
