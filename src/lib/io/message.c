@@ -276,7 +276,7 @@ fr_message_t *fr_message_localize(TALLOC_CTX *ctx, fr_message_t *m, size_t messa
 	l->data = NULL;
 
 	if (l->data_size) {
-		l->data = talloc_memdup(l, l->data, l->data_size);
+		l->data = talloc_memdup(l, m->data, l->data_size);
 		if (!l->data) {
 			talloc_free(l);
 			goto nomem;
