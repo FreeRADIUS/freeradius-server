@@ -190,7 +190,10 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 	/*
 	 *	Connected sockets already know src/dst IP/port
 	 */
-	if ((flags & UDP_FLAGS_CONNECTED) != 0) return recv(sockfd, data, data_len, sock_flags);
+	if ((flags & UDP_FLAGS_CONNECTED) != 0) {
+		received = recv(sockfd, data, data_len, sock_flags);
+		goto done;
+	}
 
 	if (when) {
 		when->tv_sec = 0;
@@ -225,10 +228,6 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 	if (if_index) *if_index = 0;
 #endif
 
-	if (received < 0) {
-		fr_strerror_printf("Failed reading socket: %s", fr_syserror(errno));
-		return received;
-	}
 
 	if (fr_ipaddr_from_sockaddr(&src, sizeof_src, src_ipaddr, &port) < 0) {
 		fr_strerror_printf("Failed converting sockaddr to ipaddr");
@@ -237,12 +236,20 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 
 	*src_port = port;
 
-	if (when && !when->tv_sec) gettimeofday(when, NULL);
-
 	if (dst_ipaddr) {
 		fr_ipaddr_from_sockaddr(&dst, sizeof_dst, dst_ipaddr, &port);
 		*dst_port = port;
 	}
+
+done:
+	if (received < 0) {
+		if ((errno == EWOULDBLOCK) || (errno == EAGAIN)) return 0;
+
+		fr_strerror_printf("Failed reading socket: %s", fr_syserror(errno));
+		return received;
+	}
+
+	if (when && !when->tv_sec) gettimeofday(when, NULL);
 
 	return received;
 }
