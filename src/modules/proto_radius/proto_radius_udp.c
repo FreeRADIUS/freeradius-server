@@ -231,9 +231,14 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 			     &address.src_ipaddr, &address.src_port,
 			     &address.dst_ipaddr, &address.dst_port,
 			     &address.if_index, &timestamp);
-	if (data_size <= 0) {
-		DEBUG2("proto_radius_udp got read error %zd", data_size);
+	if (data_size < 0) {
+		DEBUG2("proto_radius_udp got read error %zd: %s", data_size, fr_strerror());
 		return data_size;
+	}
+
+	if (!data_size) {
+		DEBUG2("proto_radius_udp got no data: ignoring");
+		return 0;
 	}
 
 	packet_len = data_size;
