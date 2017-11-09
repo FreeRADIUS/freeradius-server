@@ -230,7 +230,7 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 
 
 	if (fr_ipaddr_from_sockaddr(&src, sizeof_src, src_ipaddr, &port) < 0) {
-		fr_strerror_printf("Failed converting sockaddr to ipaddr");
+		fr_strerror_printf("Failed converting sockaddr to ipaddr: %s", fr_strerror());
 		return -1;
 	}
 
