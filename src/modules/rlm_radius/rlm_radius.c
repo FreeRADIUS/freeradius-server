@@ -543,6 +543,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	 */
 	rcode = inst->io->push(inst->io_instance, request, link, t->thread_io_ctx);
 	if (rcode != RLM_MODULE_YIELD) {
+		fr_dlist_remove(&link->entry);
 		talloc_free(link);
 		return rcode;
 	}
