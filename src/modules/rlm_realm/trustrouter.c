@@ -361,6 +361,7 @@ static home_server_t *srvr_blk_to_home_server(TALLOC_CTX *ctx,
 	uint16_t port;
 	char nametemp[256];
 	time_t now = time(NULL);
+	struct timeval key_expiration;
 
 	rad_assert(blk != NULL);
 	tid_srvr_get_address(blk, &sa, &sa_len);
