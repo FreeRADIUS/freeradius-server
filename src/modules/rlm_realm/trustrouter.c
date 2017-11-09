@@ -279,13 +279,29 @@ static fr_tls_server_conf_t *construct_tls(TIDC_INSTANCE *inst,
 	ssize_t keylen;
 	char *hexbuf = NULL;
 	DH *aaa_server_dh;
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	const BIGNUM *dh_pubkey = NULL;
+	BIGNUM *aaa_server_dh_pubkey = NULL;
+#endif
 
 	tls = tls_server_conf_alloc(hs);
 	if (!tls) return NULL;
 
 	aaa_server_dh = tid_srvr_get_dh(server);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+	DH_get0_key(aaa_server_dh, &dh_pubkey, NULL);
+	if (NULL == dh_pubkey) {
+		DEBUG2("DH error");
+		goto error;
+	}
+
+	aaa_server_dh_pubkey = BN_dup(dh_pubkey);
+	keylen = tr_compute_dh_key(&key_buf, aaa_server_dh_pubkey,
+				   tidc_get_dh(inst));
+#else
 	keylen = tr_compute_dh_key(&key_buf, aaa_server_dh->pub_key,
 				   tidc_get_dh(inst));
+#endif
 	if (keylen <= 0) {
 		DEBUG2("DH error");
 		goto error;
@@ -361,6 +377,7 @@ static home_server_t *srvr_blk_to_home_server(TALLOC_CTX *ctx,
 	uint16_t port;
 	char nametemp[256];
 	time_t now = time(NULL);
+	struct timeval key_expiration;
 
 	rad_assert(blk != NULL);
 	tid_srvr_get_address(blk, &sa, &sa_len);
