@@ -218,14 +218,23 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 	/*
 	 *	Get the destination address, if requested.
 	 */
-	if (dst_ipaddr && (getsockname(sockfd, (struct sockaddr *)&dst, &sizeof_dst) < 0)) return -1;
+	if (dst_ipaddr && (getsockname(sockfd, (struct sockaddr *)&dst, &sizeof_dst) < 0)) {
+		return -1;
+	}
 
 	if (if_index) *if_index = 0;
 #endif
 
-	if (received < 0) return received;
+	if (received < 0) {
+		fr_strerror_printf("Failed reading socket: %s", fr_syserr(errno));
+		return received;
+	}
 
-	if (fr_ipaddr_from_sockaddr(&src, sizeof_src, src_ipaddr, &port) < 0) return -1;
+	if (fr_ipaddr_from_sockaddr(&src, sizeof_src, src_ipaddr, &port) < 0) {
+		fr_strerror_printf("Failed converting sockaddr to ipaddr");
+		return -1;
+	}
+
 	*src_port = port;
 
 	if (when && !when->tv_sec) gettimeofday(when, NULL);
