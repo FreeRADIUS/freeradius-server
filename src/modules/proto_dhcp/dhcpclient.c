@@ -62,7 +62,7 @@ static char const *dhcpclient_version = "dhcpclient version " RADIUSD_VERSION_ST
 #ifdef RADIUSD_VERSION_COMMIT
 " (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"
 #endif
-", built on " __DATE__ " at " __TIME__;
+;
 
 /* structure to keep track of offered IP addresses */
 typedef struct dc_offer {
