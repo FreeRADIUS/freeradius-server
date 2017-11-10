@@ -99,7 +99,8 @@ endif
 		--with-iodbc-include-dir='/usr/include/iodbc' \
 		--without-rlm_eap_ikev2 \
 		--without-rlm_sql_oracle \
-		--without-rlm_sql_unixodbc
+		--without-rlm_sql_unixodbc \
+		--enable-reproducible-builds
 
 	rm config.guess
 	mv config.guess.dist config.guess
