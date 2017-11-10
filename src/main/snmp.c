@@ -574,6 +574,8 @@ static ssize_t snmp_process_index(vp_cursor_t *out, REQUEST *request,
 		}
 
 		vp = fr_pair_afrom_da(request->reply, da);
+		if (!vp) return 0;
+
 		vp->vp_uint32 = i;
 		fr_pair_cursor_prepend(out, vp);
 
