@@ -69,6 +69,7 @@ static CONF_PARSER limit_config[] = {
 	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_UINT32, proto_detail_work_t, mrt), .dflt = STRINGIFY(16) },
 	{ FR_CONF_OFFSET("maximum_retransmission_count", FR_TYPE_UINT32, proto_detail_work_t, mrc), .dflt = STRINGIFY(5) },
 	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_UINT32, proto_detail_work_t, mrd), .dflt = STRINGIFY(30) },
+	{ FR_CONF_OFFSET("maximum_outstanding", FR_TYPE_UINT32, proto_detail_work_t, max_outstanding), .dflt = STRINGIFY(1) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -437,7 +438,7 @@ done:
 	/*
 	 *	Pause reading until such time as we need more packets.
 	 */
-	if (!inst->paused) {
+	if (!inst->paused && (inst->outstanding >= inst->max_outstanding)) {
 		(void) fr_event_filter_update(inst->el, inst->fd, FR_EVENT_FILTER_IO, pause_read);
 		inst->paused = true;
 
@@ -453,7 +454,7 @@ done:
 	 */
 	inst->last_search = 0;
 
-	MPRINT("Returning NUM %d - %.*s", inst->outstanding, (int) packet_len, buffer);
+	MPRINT("Returning NUM %u - %.*s", inst->outstanding, (int) packet_len, buffer);
 	return packet_len;
 }
 
@@ -468,7 +469,7 @@ static void work_retransmit(UNUSED fr_event_list_t *el, UNUSED struct timeval *n
 
 	fr_dlist_insert_tail(&inst->list, &track->entry);
 
-	if (inst->paused) {
+	if (inst->paused && (inst->outstanding < inst->max_outstanding)) {
 		(void) fr_event_filter_update(inst->el, inst->fd, FR_EVENT_FILTER_IO, resume_read);
 		inst->paused = false;
 	}
@@ -553,7 +554,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			goto free_track;
 		}
 
-		if (!inst->paused) {
+		if (!inst->paused && (inst->outstanding >= inst->max_outstanding)) {
 			(void) fr_event_filter_update(inst->el, inst->fd, FR_EVENT_FILTER_IO, pause_read);
 			inst->paused = true;
 		}
@@ -574,10 +575,9 @@ free_track:
 	inst->outstanding--;
 
 	/*
-	 *	There are no outstanding packets, let's go read some
-	 *	more.
+	 *	If we need to read some more packet, let's do so.
 	 */
-	if (!inst->outstanding && inst->paused) {
+	if (inst->paused && (inst->outstanding < inst->max_outstanding)) {
 		(void) fr_event_filter_update(inst->el, inst->fd, FR_EVENT_FILTER_IO, resume_read);
 		inst->paused = false;
 	}

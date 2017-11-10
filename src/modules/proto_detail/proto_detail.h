@@ -89,6 +89,8 @@ typedef struct proto_detail_work_t {
 	uint32_t			mrt;
 	uint32_t			mrc;
 	uint32_t			mrd;
+	uint32_t			max_outstanding;	//!< number of packets to run in parallel
+	uint32_t       			outstanding;		//!< number of currently outstanding records;
 
 	fr_dlist_t			list;			//!< for retransmissions
 
@@ -104,7 +106,6 @@ typedef struct proto_detail_work_t {
 
 	int				mode;			//!< O_RDWR or O_RDONLY
 
-	int				outstanding;		//!< number of outstanding records;
 	int				count;			//!< number of packets we read from this file.
 
 	size_t				last_search;		//!< where we last searched in the buffer
