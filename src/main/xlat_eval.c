@@ -319,9 +319,12 @@ static rlm_rcode_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 		break;
 
 	case FR_CLIENT_IP_ADDRESS:
-		value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, false);
-		fr_value_box_ipaddr(value, NULL, &request->client->ipaddr, false);	/* Enum might not match type */
-		break;
+		if (request->client) {
+			value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, false);
+			fr_value_box_ipaddr(value, NULL, &request->client->ipaddr, false);	/* Enum might not match type */
+			break;
+		}
+		/* FALL-THROUGH */
 
 	case FR_PACKET_SRC_IP_ADDRESS:
 		if (packet->src_ipaddr.af != AF_INET) return RLM_MODULE_NOOP;
