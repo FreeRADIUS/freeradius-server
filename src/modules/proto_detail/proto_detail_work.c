@@ -787,6 +787,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		FR_INTEGER_BOUND_CHECK("limit.maximum_retransmission_timer", inst->mrt, <=, 30);
 	}
 
+	FR_INTEGER_BOUND_CHECK("limit.maximum_outstanding", inst->max_outstanding, >=, 1);
+	FR_INTEGER_BOUND_CHECK("limit.maximum_outstanding", inst->max_outstanding, <=, 256);
+
 	return 0;
 }
 

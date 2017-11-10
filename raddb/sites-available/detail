@@ -147,9 +147,16 @@ virtual_server detail {
 			retransmit = yes
 
 			#
-			#  Limits for retransmissions.
+			#  Limits for the files, retransmissions, etc.
 			#
 			limit {
+				#
+				#  Number of simultaneous packets it will
+				#  read from the file.
+				#
+				#  Useful values: 1..256
+				maximum_outstanding = 1
+
 				#
 				#  Initial retransmit time: 1..60
 				#
