@@ -242,8 +242,14 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 
 		close(fd);
 
-		when.tv_sec = 0;
-		when.tv_usec = USEC / 10;
+		when.tv_usec = inst->lock_interval % USEC;
+		when.tv_sec = inst->lock_interval / USEC;
+
+		/*
+		 *	Ensure that we don't do massive busy-polling.
+		 */
+		inst->lock_interval += inst->lock_interval / 2;
+		if (inst->lock_interval > (30 * USEC)) inst->lock_interval = 30 * USEC;
 
 		DEBUG3("Waiting %d.%06ds for lock on file %s",
 		       (int) when.tv_sec, (int) when.tv_usec, inst->filename_work);
@@ -447,6 +453,8 @@ redo:
 		}
 		return;
 	}
+
+	inst->lock_interval = USEC / 10;
 
 	/*
 	 *	It exists, go process it!

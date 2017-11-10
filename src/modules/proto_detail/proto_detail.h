@@ -83,6 +83,8 @@ typedef struct proto_detail_work_t {
 
 	uint32_t			poll_interval;		//!< interval between polling
 
+	uint32_t			lock_interval;		//!< interval between trying the locks.
+
 	uint32_t			irt;
 	uint32_t			mrt;
 	uint32_t			mrc;
