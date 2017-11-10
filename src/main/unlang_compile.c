@@ -2184,7 +2184,7 @@ static unlang_t *compile_xlat_inline(unlang_t *parent,
 		char *p;
 		mx->exec = true;
 
-		strcpy(mx->xlat_name, mx->xlat_name + 1);
+		memmove(mx->xlat_name, mx->xlat_name + 1, strlen(mx->xlat_name)); /* including trailing NUL */
 		p = strrchr(mx->xlat_name, '`');
 		if (p) *p = '\0';
 	}
