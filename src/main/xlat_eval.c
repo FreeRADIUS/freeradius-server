@@ -85,6 +85,7 @@ static rlm_rcode_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQUE
 
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
 		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) return RLM_MODULE_FAIL;
+		break;
 
 	case 'l': /* request timestamp */
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_DATE, NULL, false));
