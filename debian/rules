@@ -109,7 +109,8 @@ endif
 		--without-rlm_eap_ikev2 \
 		--without-rlm_sql_oracle \
 		--without-rlm_sql_unixodbc \
-		--with-systemd
+		--with-systemd \
+		--enable-reproducible-builds
 
 	rm config.guess
 	mv config.guess.dist config.guess
