@@ -251,6 +251,8 @@ static int _sql_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *r
 	char const	*value = uctx;
 
 	vp = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
+	if (!vp) return -1;
+
 	/*
 	 *	Buffer not always talloced, sometimes it's
 	 *	just a pointer to a field in a result struct.
