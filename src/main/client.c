@@ -1095,9 +1095,6 @@ RADCLIENT *client_afrom_query(TALLOC_CTX *ctx, char const *identifier, char cons
 	RADCLIENT *c;
 	char buffer[128];
 
-	rad_assert(identifier);
-	rad_assert(secret);
-
 	c = talloc_zero(ctx, RADCLIENT);
 
 	if (fr_inet_pton(&c->ipaddr, identifier, -1, AF_UNSPEC, true, true) < 0) {

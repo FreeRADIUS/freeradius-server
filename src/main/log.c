@@ -238,8 +238,6 @@ void vradlog_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, cha
 
 	fr_log_t	*log_dst = uctx;
 
-	rad_assert(request);
-
 	/*
 	 *	No output means no output.
 	 */
@@ -467,8 +465,6 @@ void radlog_request(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char
 	va_list		ap;
 	log_dst_t	*dst_p;
 
-	rad_assert(request);
-
 	if (!request->log.dst) return;
 
 	va_start(ap, msg);
@@ -499,8 +495,6 @@ void radlog_request_error(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request
 	va_list		ap;
 	log_dst_t	*dst_p;
 
-	rad_assert(request);
-
 	if (!request->log.dst) return;
 
 	va_start(ap, msg);
@@ -525,8 +519,6 @@ void radlog_request_error(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request
 void radlog_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *request, char const *msg, ...)
 {
 	char const *strerror;
-
-	rad_assert(request);
 
 	if (!request->log.dst) return;
 
@@ -591,8 +583,6 @@ void radlog_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *reques
 	char const *prefix = "";
 	uint8_t unlang_indent;
 	uint8_t module_indent;
-
-	rad_assert(request);
 
 	if (idx >= sizeof(spaces)) {
 		size_t offset = (idx - (sizeof(spaces) - 1)) + (sizeof(spaces) * 0.75);
