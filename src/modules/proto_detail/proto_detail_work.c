@@ -196,7 +196,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 		 *	Remember the read offset, and whether we got EOF.
 		 */
 		inst->read_offset = lseek(inst->fd, 0, SEEK_CUR);
-		inst->eof = (data_size == 0) || (inst->read_offset == inst->file_size);
+		inst->eof = (data_size == 0) || (inst->read_offset == inst->file_size) || ((size_t) data_size < room);
 		end = partial + data_size;
 
 	} else {
