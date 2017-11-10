@@ -87,6 +87,8 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PAR
 	fr_dict_attr_t const	*da;
 	fr_dict_enum_t const	*type_enum;
 	uint32_t		code;
+	dl_instance_t		*process_dl;
+	proto_detail_process_t	*process_inst;
 
 	rad_assert(listen_cs && (strcmp(cf_section_name1(listen_cs), "listen") == 0));
 
@@ -125,7 +127,30 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PAR
 	/*
 	 *	Parent dl_instance_t added in virtual_servers.c (listen_parse)
 	 */
-	return dl_instance(ctx, out, listen_cs,	parent_inst, "process", DL_TYPE_SUBMODULE);
+	if (dl_instance(ctx, out, listen_cs, parent_inst, "process", DL_TYPE_SUBMODULE) < 0) {
+		return -1;
+	}
+
+	process_dl = *(dl_instance_t **) out;
+	process_inst = process_dl->data;
+
+	switch (code) {
+	default:
+		return -1;
+
+	case FR_CODE_ACCOUNTING_REQUEST:
+		process_inst->recv_type = MOD_PREACCT;
+		process_inst->send_type = MOD_ACCOUNTING;
+		break;
+
+	case FR_CODE_COA_REQUEST:
+	case FR_CODE_DISCONNECT_REQUEST:
+		process_inst->recv_type = MOD_RECV_COA;
+		process_inst->send_type = MOD_SEND_COA;
+		break;
+	}
+
+	return 0;
 }
 
 /** Wrapper around dl_instance

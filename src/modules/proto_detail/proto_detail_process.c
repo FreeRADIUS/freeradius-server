@@ -28,6 +28,7 @@
 #include <freeradius-devel/dict.h>
 #include <freeradius-devel/state.h>
 #include <freeradius-devel/rad_assert.h>
+#include "proto_detail.h"
 
 static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 {
@@ -201,17 +202,18 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 }
 
 
-static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
+static int mod_instantiate(void *instance, CONF_SECTION *listen_cs)
 {
 	int rcode;
 	CONF_SECTION *server_cs;
+	proto_detail_process_t *inst = talloc_get_type_abort(instance, proto_detail_process_t);
 
 	rad_assert(listen_cs);
 
 	server_cs = cf_item_to_section(cf_parent(listen_cs));
 	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
 
-	rcode = unlang_compile_subsection(server_cs, "recv", NULL, MOD_AUTHORIZE);
+	rcode = unlang_compile_subsection(server_cs, "recv", NULL, inst->recv_type);
 	if (rcode < 0) return rcode;
 	if (rcode == 0) {
 		cf_log_err(server_cs, "Failed finding 'recv { ... }' section of virtual server %s",
@@ -219,10 +221,10 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 		return -1;
 	}
 
-	rcode = unlang_compile_subsection(server_cs, "send", "ok", MOD_POST_AUTH);
+	rcode = unlang_compile_subsection(server_cs, "send", "ok", inst->send_type);
 	if (rcode < 0) return rcode;
 
-	rcode = unlang_compile_subsection(server_cs, "send", "fail", MOD_POST_AUTH);
+	rcode = unlang_compile_subsection(server_cs, "send", "fail", inst->send_type);
 	if (rcode < 0) return rcode;
 
 	return 0;
@@ -232,6 +234,7 @@ extern fr_app_process_t proto_detail_process;
 fr_app_process_t proto_detail_process = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "detail_process",
+	.inst_size	= sizeof(proto_detail_process_t),
 	.instantiate	= mod_instantiate,
 	.process	= mod_process,
 };
