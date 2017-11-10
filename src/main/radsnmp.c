@@ -333,6 +333,10 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, vp_c
 	}
 
 	vp = fr_pair_afrom_da(ctx, conf->snmp_type);
+	if (!vp) {
+		slen = -(slen);
+		goto error;
+	}
 	vp->vp_uint32 = type;
 
 	fr_pair_cursor_append(cursor, vp);
