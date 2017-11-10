@@ -440,6 +440,11 @@ done:
 	if (!inst->paused) {
 		(void) fr_event_filter_update(inst->el, inst->fd, FR_EVENT_FILTER_IO, pause_read);
 		inst->paused = true;
+
+		/*
+		 *	Back up so that read() knows there's more data.
+		 */
+		if (*leftover) (void) lseek(inst->fd, inst->read_offset - 1, SEEK_SET);
 	}
 
 	/*
