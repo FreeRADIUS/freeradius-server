@@ -55,7 +55,7 @@ RCSIDH(version_h, "$Id$")
 	RADIUSD_VERSION_STRING \
 	RADIUSD_VERSION_RELEASE_STRING \
 	RADIUSD_VERSION_COMMIT_STRING \
-	", for host " HOSTINFO ", built on " __DATE__ " at " __TIME__
+	", for host " HOSTINFO
 
 #ifdef WITHOUT_VERSION_CHECK
 #  define RADIUSD_MAGIC_NUMBER	((uint64_t) (0xf4ee4ad3f4ee4ad3))
