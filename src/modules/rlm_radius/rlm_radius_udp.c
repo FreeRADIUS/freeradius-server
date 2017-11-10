@@ -2452,6 +2452,7 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 
 	case PACKET_STATE_RESUMABLE: /* was replicated */
 		state_transition(u, PACKET_STATE_FINISHED);
+		/* FALL-THROUGH */
 
 	case PACKET_STATE_FINISHED:
 		rcode = RLM_MODULE_OK;
