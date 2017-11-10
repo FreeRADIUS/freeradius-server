@@ -1536,7 +1536,7 @@ static unlang_action_t unlang_xlat_inline(REQUEST *request,
 	char buffer[128];
 
 	if (!mx->exec) {
-		(void) xlat_eval(buffer, sizeof(buffer), request, mx->xlat_name, NULL, NULL);
+		(void) xlat_eval_compiled(buffer, sizeof(buffer), request, mx->exp, NULL, NULL);
 	} else {
 		RDEBUG("`%s`", mx->xlat_name);
 		radius_exec_program(request, NULL, 0, NULL, request, mx->xlat_name, request->packet->vps,

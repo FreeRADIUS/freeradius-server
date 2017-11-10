@@ -209,6 +209,7 @@ typedef struct {
 	unlang_t		self;
 	int			exec;
 	char			*xlat_name;
+	 xlat_exp_t		*exp;			//!< First xlat node to execute.
 } unlang_xlat_inline_t;
 
 /** A module stack entry

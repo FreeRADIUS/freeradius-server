@@ -2153,7 +2153,7 @@ static unlang_t *compile_detach(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 #endif
 
 static unlang_t *compile_xlat_inline(unlang_t *parent,
-				     unlang_compile_t *unlang_ctx, char const *fmt)
+				     unlang_compile_t *unlang_ctx, CONF_PAIR const *cp)
 {
 	unlang_t *c;
 	unlang_xlat_inline_t *mx;
@@ -2169,12 +2169,22 @@ static unlang_t *compile_xlat_inline(unlang_t *parent,
 
 	(void) compile_action_defaults(c, unlang_ctx, UNLANG_GROUP_TYPE_SIMPLE);
 
-	mx->xlat_name = talloc_typed_strdup(mx, fmt);
-	if (fmt[0] != '%') {
+	mx->xlat_name = talloc_typed_strdup(mx, cf_pair_attr(cp));
+	if (mx->xlat_name[0] == '%') {
+		ssize_t		slen;
+		char const	*error;
+
+		slen = xlat_tokenize(mx, mx->xlat_name, &mx->exp, &error);
+		if (slen < 0) {
+			cf_log_err(cp, "%s", error);
+			talloc_free(mx);
+			return NULL;
+		}
+	} else {
 		char *p;
 		mx->exec = true;
 
-		strcpy(mx->xlat_name, fmt + 1);
+		strcpy(mx->xlat_name, mx->xlat_name + 1);
 		p = strrchr(mx->xlat_name, '`');
 		if (p) *p = '\0';
 	}
@@ -2958,7 +2968,7 @@ static unlang_t *compile_item(unlang_t *parent,
 		 */
 		if (((modrefname[0] == '%') && (modrefname[1] == '{')) ||
 		    (modrefname[0] == '`')) {
-			return compile_xlat_inline(parent, unlang_ctx, modrefname);
+			return compile_xlat_inline(parent, unlang_ctx, cp);
 		}
 	}
 
