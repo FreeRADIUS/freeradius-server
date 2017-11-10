@@ -203,6 +203,17 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 
 	request->packet->code = inst->code;
 
+	/*
+	 *	Set default addresses
+	 */
+	request->packet->sockfd = -1;
+	request->packet->src_ipaddr.af = AF_INET;
+	request->packet->src_ipaddr.addr.v4.s_addr = htonl(INADDR_NONE);
+	request->packet->dst_ipaddr = request->packet->src_ipaddr;
+
+	request->reply->src_ipaddr = request->packet->src_ipaddr;
+	request->reply->dst_ipaddr = request->packet->src_ipaddr;
+
 	end = data + data_len;
 
 	MPRINT("HEADER %s", data);
