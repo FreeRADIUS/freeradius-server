@@ -758,6 +758,7 @@ with_openssl
 with_openssl_lib_dir
 with_openssl_include_dir
 enable_openssl_version_check
+enable_reproducible_builds
 with_talloc_lib_dir
 with_talloc_include_dir
 with_pcap_lib_dir
@@ -1406,6 +1407,8 @@ Optional Features:
   --disable-openssl-version-check
                           disable vulnerable OpenSSL version check
 
+  --enable-reproducible-builds
+                          ensure the build does not change each time
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -5519,6 +5522,22 @@ $as_echo "#define ENABLE_OPENSSL_VERSION_CHECK 1" >>confdefs.h
 	allow_vulnerable_openssl = no"
 else
   openssl_version_check_config=
+fi
+
+
+# Check whether --enable-reproducible-builds was given.
+if test "${enable_reproducible_builds+set}" = set; then :
+  enableval=$enable_reproducible_builds;  case "$enableval" in
+  yes)
+
+$as_echo "#define ENABLE_REPRODUCIBLE_BUILDS 1" >>confdefs.h
+
+    reproducible_builds=yes
+    ;;
+  *)
+    reproducible_builds=no
+  esac
+
 fi
 
 
@@ -12708,6 +12727,10 @@ done
 subdirs="$subdirs $mysubdirs"
 
 
+
+if test "x$reproducible_builds" != "xyes"; then
+  CFLAGS="-Wno-date-time $CFLAGS"
+fi
 
 if test "x$werror" == "xyes"; then
   CFLAGS="-Werror $CFLAGS"

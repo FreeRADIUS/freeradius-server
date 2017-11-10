@@ -1964,7 +1964,12 @@ int main(int argc, char **argv)
 			timeout = atof(optarg);
 			break;
 		case 'v':
-			printf("$Id$");
+			printf("$Id$"
+#ifndef ENABLE_REPRODUCIBLE_BUILDS
+			", built on " __DATE__ " at " __TIME__
+#endif
+			"\n"
+			);
 			exit(0);
 
 		case 'S':
