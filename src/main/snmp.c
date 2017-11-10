@@ -802,6 +802,8 @@ static ssize_t snmp_process_leaf(vp_cursor_t *out, REQUEST *request,
 		case FR_FREERADIUS_SNMP_FAILURE_VALUE_WRONG_VALUE:
 		case FR_FREERADIUS_SNMP_FAILURE_VALUE_INCONSISTENT_VALUE:
 			vp = fr_pair_afrom_da(request->reply, fr_snmp_failure);
+			if (!vp) break;
+
 			vp->vp_uint32 = -(ret);
 			fr_pair_cursor_append(out, vp);
 			break;
