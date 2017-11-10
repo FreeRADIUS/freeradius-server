@@ -45,6 +45,12 @@ RCSIDH(version_h, "$Id$")
 #  define RADIUSD_VERSION_COMMIT_STRING ""
 #endif
 
+#ifndef ENABLE_REPRODUCIBLE_BUILDS
+#  define RADIUSD_VERSION_BUILD_TIMESTAMP ", built on " __DATE__ " at " __TIME__
+#else
+#  define RADIUSD_VERSION_BUILD_TIMESTAMP ""
+#endif
+
 /** Create a version string for a utility in the suite of FreeRADIUS utilities
  *
  * @param _x utility name
@@ -55,7 +61,8 @@ RCSIDH(version_h, "$Id$")
 	RADIUSD_VERSION_STRING \
 	RADIUSD_VERSION_RELEASE_STRING \
 	RADIUSD_VERSION_COMMIT_STRING \
-	", for host " HOSTINFO
+	", for host " HOSTINFO \
+	RADIUSD_VERSION_BUILD_TIMESTAMP
 
 #ifdef WITHOUT_VERSION_CHECK
 #  define RADIUSD_MAGIC_NUMBER	((uint64_t) (0xf4ee4ad3f4ee4ad3))
