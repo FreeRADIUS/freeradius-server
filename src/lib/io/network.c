@@ -642,15 +642,6 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 	 */
 	size = s->listen->default_message_size * s->listen->num_messages;
 	if (!size) size = (1 << 17);
-	if (size > (1 << 30)) size = (1 << 30);
-
-	size--;
-	size |= size >> 1;
-	size |= size >> 2;
-	size |= size >> 4;
-	size |= size >> 8;
-	size |= size >> 16;
-	size++;
 
 	/*
 	 *	Allocate the ring buffer for messages and packets.
