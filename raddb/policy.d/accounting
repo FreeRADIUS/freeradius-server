@@ -23,7 +23,7 @@ acct_unique {
 	#  Using a Class/Session-ID combination is more robust
 	#  than using elements in the Accounting-Request,
 	#  which may be subject to change, such as
-	#  NAS-IP-Address, Client-IP-Address and
+	#  NAS-IP-Address, Packet-Src-IP-Address and
 	#  NAS-Port-ID/NAS-Port.
 	#
 	#  This policy should ensure that session data is not

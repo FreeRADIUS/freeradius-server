@@ -13,7 +13,7 @@
 #
 #DEFAULT Huntgroup-Name == "wifi", Acct-Type := sql_log.wifi
 #
-#DEFAULT Client-IP-Address == 10.0.0.1, Acct-Type := sql_log.other
+#DEFAULT Packet-Src-IP-Address == 10.0.0.1, Acct-Type := sql_log.other
 #
 #DEFAULT Acct-Status-Type == Start, Acct-Type := sql_log.start
 
