@@ -216,19 +216,19 @@ typedef struct {
  * Represents a single module call.
  */
 typedef struct {
-	module_thread_instance_t *thread;	//!< thread-local data for this module
+	module_thread_instance_t *thread;		//!< thread-local data for this module
 } unlang_stack_state_modcall_t;
 
 /** State of a foreach loop
  *
  */
 typedef struct {
-	vp_cursor_t		cursor;		//!< Used to track our place in the list we're iterating over.
-	VALUE_PAIR 		*vps;		//!< List containing the attribute(s) we're iterating over.
-	VALUE_PAIR		*variable;	//!< Attribute we update the value of.
-	int			depth;		//!< Level of nesting of this foreach loop.
+	vp_cursor_t		cursor;			//!< Used to track our place in the list we're iterating over.
+	VALUE_PAIR 		*vps;			//!< List containing the attribute(s) we're iterating over.
+	VALUE_PAIR		*variable;		//!< Attribute we update the value of.
+	int			depth;			//!< Level of nesting of this foreach loop.
 #ifndef NDEBUG
-	int			indent;		//!< for catching indentation issues
+	int			indent;			//!< for catching indentation issues
 #endif
 } unlang_stack_state_foreach_t;
 
