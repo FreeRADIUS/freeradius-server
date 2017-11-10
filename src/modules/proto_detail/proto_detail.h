@@ -115,6 +115,7 @@ typedef struct proto_detail_work_t {
 	off_t				read_offset;		//!< where we're reading from in filename_work
 
 	fr_event_timer_t const		*ev;			//!< for detail file timers.
+	RADCLIENT			*client;		//!< so the rest of the server doesn't complain
 } proto_detail_work_t;
 
 typedef struct proto_detail_process_t {

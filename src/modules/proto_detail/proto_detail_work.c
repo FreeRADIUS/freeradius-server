@@ -90,11 +90,13 @@ static const CONF_PARSER file_listen_config[] = {
 static int mod_decode(UNUSED void const *instance, REQUEST *request, UNUSED uint8_t *const data, UNUSED size_t data_len)
 {
 
-//	proto_detail_work_t const     	*inst = talloc_get_type_abort_const(instance, proto_detail_work_t);
+	proto_detail_work_t const     	*inst = talloc_get_type_abort_const(instance, proto_detail_work_t);
 	fr_detail_entry_t const		*track = request->async->packet_ctx;
 	VALUE_PAIR *vp;
 
 	request->root = &main_config;
+	request->client = inst->client;
+
 	request->packet->id = track->id;
 	request->reply->id = track->id;
 	REQUEST_VERIFY(request);
@@ -723,8 +725,19 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el)
 static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
 {
 	proto_detail_work_t *inst = talloc_get_type_abort(instance, proto_detail_work_t);
+	RADCLIENT *client;
 
 	FR_DLIST_INIT(inst->list);
+
+	client = inst->client = talloc_zero(inst, RADCLIENT);
+	if (!inst->client) return 0;
+
+	client->ipaddr.af = AF_INET;
+	client->ipaddr.addr.v4.s_addr = htonl(INADDR_NONE);
+	client->src_ipaddr = client->ipaddr;
+
+	client->longname = client->shortname = client->secret = inst->filename_work;
+	client->nas_type = talloc_strdup(client, "other");
 
 	return 0;
 }
