@@ -609,6 +609,23 @@ else
 fi
 AC_SUBST([openssl_version_check_config])
 
+dnl #
+dnl #  extra argument: --enable-reproducible-builds
+dnl #
+AC_ARG_ENABLE(reproducible-builds,
+[AS_HELP_STRING([--enable-reproducible-builds],
+                [ensure the build does not change each time])],
+[ case "$enableval" in
+  yes)
+    AC_DEFINE(ENABLE_REPRODUCIBLE_BUILDS, [1],
+              [Define to ensure each build is the same])
+    reproducible_builds=yes
+    ;;
+  *)
+    reproducible_builds=no
+  esac ]
+)
+
 
 dnl #############################################################
 dnl #
@@ -2221,6 +2238,14 @@ dnl #  if you do.
 dnl #
 AC_CONFIG_SUBDIRS($mysubdirs)
 AC_SUBST(MODULES)
+
+dnl #
+dnl #  If reproducible builds are not enabled, disable
+dnl #  -Wdate-time so the compiler doesn't croak.
+dnl #
+if test "x$reproducible_builds" != "xyes"; then
+  CFLAGS="-Wno-date-time $CFLAGS"
+fi
 
 dnl #############################################################
 dnl #
