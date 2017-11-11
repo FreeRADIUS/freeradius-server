@@ -2225,14 +2225,27 @@ static inline unlang_frame_action_t unlang_frame_eval(REQUEST *request, unlang_s
 		rad_assert(*priority <= MOD_PRIORITY_MAX);
 
 		switch (action) {
+		/*
+		 *	The request is now defunct, and we should not
+		 *	continue processing it.
+		 */
 		case UNLANG_ACTION_STOP_PROCESSING:
 			goto do_stop;
 
+		/*
+		 *	The operation resulted in additional frames
+		 *	being pushed onto the stack, execution should
+		 *	now continue at the deepest frame.
+		 */
 		case UNLANG_ACTION_PUSHED_CHILD:
 			rad_assert(&stack->frame[stack->depth] > frame);
 			*result = frame->result;
 			return UNLANG_FRAME_ACTION_CONTINUE;
 
+		/*
+		 *	We're in a looping construct and need to stop
+		 *	execution of the current section.
+		 */
 		case UNLANG_ACTION_BREAK:
 			if (*priority < 0) *priority = 0;
 			frame->result = *result;
@@ -2240,6 +2253,10 @@ static inline unlang_frame_action_t unlang_frame_eval(REQUEST *request, unlang_s
 			frame->next = NULL;
 			return UNLANG_FRAME_ACTION_POP;
 
+		/*
+		 *	Yield control back to the scheduler, or whatever
+		 *	called the interpreter.
+		 */
 		case UNLANG_ACTION_YIELD:
 		yield:
 			*result = RLM_MODULE_YIELD;	/* Fixup rcode */
@@ -2273,6 +2290,11 @@ static inline unlang_frame_action_t unlang_frame_eval(REQUEST *request, unlang_s
 			}
 			break;	/* Static analysis tools are stupid */
 
+		/*
+		 *	Instruction finished execution,
+		 *	check to see what we need to do next, and update
+		 *	the section rcode and priority.
+		 */
 		case UNLANG_ACTION_CALCULATE_RESULT:
 			/* Temporary fixup - ops should return the correct code */
 			if (frame->result == RLM_MODULE_YIELD) goto yield;
@@ -2290,6 +2312,9 @@ static inline unlang_frame_action_t unlang_frame_eval(REQUEST *request, unlang_s
 			}
 			/* FALL-THROUGH */
 
+		/*
+		 *	Execute the next instruction in this frame
+		 */
 		case UNLANG_ACTION_CONTINUE:
 			if ((action == UNLANG_ACTION_CONTINUE) && unlang_ops[instruction->type].debug_braces) {
 				REXDENT();

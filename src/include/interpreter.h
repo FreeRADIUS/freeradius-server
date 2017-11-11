@@ -91,10 +91,15 @@ typedef enum {
 	UNLANG_ACTION_STOP_PROCESSING		//!< Break out of processing the current request (unwind).
 } unlang_action_t;
 
+/** Allows the frame evaluator to signal the interpreter
+ *
+ */
 typedef enum {
-	UNLANG_FRAME_ACTION_POP = 1,
-	UNLANG_FRAME_ACTION_CONTINUE,
-	UNLANG_FRAME_ACTION_YIELD
+	UNLANG_FRAME_ACTION_POP = 1,		//!< Pop the current frame, and check the next one further
+						///< up in the stack for what to do next.
+	UNLANG_FRAME_ACTION_CONTINUE,		//!< Process the next instruction at this level.
+	UNLANG_FRAME_ACTION_YIELD		//!< Temporarily return control back to the caller on the C
+						///< stack.
 } unlang_frame_action_t;
 
 typedef enum {
