@@ -91,6 +91,12 @@ typedef enum {
 } unlang_action_t;
 
 typedef enum {
+	UNLANG_FRAME_ACTION_POP = 1,
+	UNLANG_FRAME_ACTION_CONTINUE,
+	UNLANG_FRAME_ACTION_YIELD
+} unlang_frame_action_t;
+
+typedef enum {
 	UNLANG_GROUP_TYPE_SIMPLE = 0,		//!< Execute each of the children sequentially, until we execute
 						//!< all of the children, or one returns #UNLANG_ACTION_BREAK.
 	UNLANG_GROUP_TYPE_REDUNDANT,		//!< Execute each of the children until one returns a 'good'
@@ -278,7 +284,7 @@ typedef struct {
 	unlang_type_t		unwind;				//!< Unwind to this one if it exists.
 								///< This is used for break and return.
 
-	bool			resume : 1;			//!< resume the current section after calling a sub-section
+	bool			repeat : 1;			//!< resume the current section after calling a sub-section
 	bool			top_frame : 1;			//!< are we the top frame of the stack?
 
 	union {
