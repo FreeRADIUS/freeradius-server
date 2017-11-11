@@ -281,7 +281,6 @@ static fr_tls_server_conf_t *construct_tls(TIDC_INSTANCE *inst,
 	DH *aaa_server_dh;
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
 	const BIGNUM *dh_pubkey = NULL;
-	BIGNUM *aaa_server_dh_pubkey = NULL;
 #endif
 
 	tls = tls_server_conf_alloc(hs);
@@ -295,8 +294,7 @@ static fr_tls_server_conf_t *construct_tls(TIDC_INSTANCE *inst,
 		goto error;
 	}
 
-	aaa_server_dh_pubkey = BN_dup(dh_pubkey);
-	keylen = tr_compute_dh_key(&key_buf, aaa_server_dh_pubkey,
+	keylen = tr_compute_dh_key(&key_buf, BN_dup(dh_pubkey),
 				   tidc_get_dh(inst));
 #else
 	keylen = tr_compute_dh_key(&key_buf, aaa_server_dh->pub_key,
