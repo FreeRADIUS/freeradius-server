@@ -35,6 +35,7 @@ static FR_NAME_NUMBER unlang_action_table[] = {
 	{ "continue",		UNLANG_ACTION_CONTINUE },
 	{ "pushed-child",	UNLANG_ACTION_PUSHED_CHILD },
 	{ "break", 		UNLANG_ACTION_BREAK },
+	{ "yield",		UNLANG_ACTION_YIELD },
 	{ "stop",		UNLANG_ACTION_STOP_PROCESSING },
 	{ NULL, -1 }
 };
@@ -803,7 +804,7 @@ static unlang_action_t unlang_detach(REQUEST *request,
 	rad_assert(request->backlog != NULL);
 
 	*presult = RLM_MODULE_YIELD;
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	return UNLANG_ACTION_YIELD;
 }
 
 static unlang_action_t unlang_call(REQUEST *request,
@@ -985,7 +986,7 @@ static unlang_action_t unlang_subrequest(REQUEST *request,
 	}
 
 	*presult = RLM_MODULE_YIELD;
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	return UNLANG_ACTION_YIELD;
 }
 
 /** Parallel children have states
@@ -1349,7 +1350,7 @@ static unlang_action_t unlang_parallel(REQUEST *request,
 	}
 
 	*presult = RLM_MODULE_YIELD;
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	return UNLANG_ACTION_YIELD;
 }
 
 static unlang_action_t unlang_case(REQUEST *request,
@@ -1724,7 +1725,7 @@ static unlang_action_t unlang_map(REQUEST *request,
 
 	*presult = map_proc(request, g->proc_inst);
 
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	return *presult == RLM_MODULE_YIELD ? UNLANG_ACTION_YIELD : UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 
@@ -1806,7 +1807,7 @@ done:
 	RDEBUG2("%s (%s)", instruction->name ? instruction->name : "",
 		fr_int2str(mod_rcode_table, *presult, "<invalid>"));
 
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	return *presult == RLM_MODULE_YIELD ? UNLANG_ACTION_YIELD : UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 
@@ -1932,7 +1933,7 @@ static unlang_action_t unlang_resume(REQUEST *request,
 		*priority = instruction->actions[*presult];
 	}
 
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	return *presult == RLM_MODULE_YIELD ? UNLANG_ACTION_YIELD : UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 /*
@@ -2239,31 +2240,44 @@ static inline unlang_frame_action_t unlang_frame_eval(REQUEST *request, unlang_s
 			frame->next = NULL;
 			return UNLANG_FRAME_ACTION_POP;
 
-		case UNLANG_ACTION_CALCULATE_RESULT:
-			if (*result == RLM_MODULE_YIELD) {
-				/*
-				 *	Detach is magic.  The parent
-				 *	"create" function takes care
-				 *	of bumping the instruction
-				 *	pointer...
-				 */
-				if (frame->instruction->type == UNLANG_TYPE_DETACH) {
-					RDEBUG4("** [%i] %s - detaching child with current (%s %d)",
-						stack->depth, __FUNCTION__,
-						fr_int2str(mod_rcode_table, frame->result, "<invalid>"),
-						frame->priority);
-					DUMP_STACK;
-					*result = RLM_MODULE_YIELD;
-				}
+		case UNLANG_ACTION_YIELD:
+		yield:
+			*result = RLM_MODULE_YIELD;	/* Fixup rcode */
 
-				rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
+			/*
+			 *	Detach is magic.  The parent "create" function
+			 *	takes care of bumping the instruction
+			 *	pointer...
+			 */
+			switch (frame->instruction->type) {
+			case UNLANG_TYPE_DETACH:
+				RDEBUG4("** [%i] %s - detaching child with current (%s %d)",
+					stack->depth, __FUNCTION__,
+					fr_int2str(mod_rcode_table, frame->result, "<invalid>"),
+					frame->priority);
+				DUMP_STACK;
+
+				return UNLANG_FRAME_ACTION_YIELD;
+
+			case UNLANG_TYPE_RESUME:
 				frame->repeat = true;
 				RDEBUG4("** [%i] %s - yielding with current (%s %d)", stack->depth, __FUNCTION__,
 					fr_int2str(mod_rcode_table, frame->result, "<invalid>"),
 					frame->priority);
 				DUMP_STACK;
-				*result = RLM_MODULE_YIELD;
 				return UNLANG_FRAME_ACTION_YIELD;
+
+			default:
+				rad_assert(0);
+				return UNLANG_FRAME_ACTION_YIELD;
+			}
+			break;	/* Static analysis tools are stupid */
+
+		case UNLANG_ACTION_CALCULATE_RESULT:
+			/* Temporary fixup - ops should return the correct code */
+			if (frame->result == RLM_MODULE_YIELD) {
+				action = UNLANG_ACTION_YIELD;
+				goto yield;
 			}
 
 			frame->repeat = false;
