@@ -63,7 +63,11 @@ char const *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
 " (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"
 #endif
-", for host " HOSTINFO ", built on " __DATE__ " at " __TIME__;
+", for host " HOSTINFO
+#ifndef ENABLE_REPRODUCIBLE_BUILDS
+", built on " __DATE__ " at " __TIME__
+#endif
+;
 
 static pid_t radius_pid;
 

@@ -698,7 +698,10 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst, REQUEST *request, ldap_handle
 	rad_assert(!retry || inst->pool);
 
 #ifndef WITH_SASL
-	rad_assert(!sasl->mech);
+	if (sasl && sasl->mech) {
+		REDEBUG("Server is built without SASL, but is being asked to do SASL.");
+		return status;
+	}
 #endif
 
 	/*
