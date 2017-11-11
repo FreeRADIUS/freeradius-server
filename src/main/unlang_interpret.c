@@ -2358,10 +2358,6 @@ static rlm_rcode_t unlang_run(REQUEST *request)
 			 */
 			unlang_pop(stack);
 			frame = &stack->frame[stack->depth];
-			RDEBUG4("** [%i] %s - continuing after subsection with (%s %d)",
-				stack->depth, __FUNCTION__,
-				fr_int2str(mod_rcode_table, result, "<invalid>"),
-				priority);
 			DUMP_STACK;
 
 			/*
@@ -2395,6 +2391,10 @@ static rlm_rcode_t unlang_run(REQUEST *request)
 			 *	end up executing the same code over and over...
 			 */
 			if (fa == UNLANG_FRAME_ACTION_CONTINUE) {
+				RDEBUG4("** [%i] %s - continuing after subsection with (%s %d)",
+					stack->depth, __FUNCTION__,
+					fr_int2str(mod_rcode_table, result, "<invalid>"),
+					priority);
 				frame->instruction = frame->next;
 				if (frame->instruction) frame->next = frame->instruction->next;
 			/*
