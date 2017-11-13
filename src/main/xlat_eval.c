@@ -212,8 +212,8 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
  * @param[in] request	The current request.
  * @param[in] vpt	Representing the attribute.
  * @return
- *	- #XLAT_ACTION_FAIL		if a value couldn't be retrieved.
- *	- #XLAT_ACTION_DONE		if we added a value.
+ *	- #XLAT_ACTION_FAIL	on memory allocation errors.
+ *	- #XLAT_ACTION_DONE	if we're done processing this node.
  */
 static xlat_action_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, vp_tmpl_t const *vpt)
 {
@@ -530,6 +530,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		if (xlat_eval_pair(ctx, &cursor, request, node->attr) == XLAT_ACTION_FAIL) return NULL;
 
 		value = fr_cursor_current(&cursor);
+		if (!value) return NULL;
 
 		/*
 		 *	Fixme - In the new xlat code we don't have to
