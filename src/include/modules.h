@@ -207,20 +207,6 @@ int		virtual_servers_bootstrap(CONF_SECTION *config);
 CONF_SECTION	*virtual_server_find(char const *name);
 void		fr_request_async_bootstrap(REQUEST *request, fr_event_list_t *el); /* for unit_test_module */
 
-/*
- *	In unlang_interpret.c, but here for public consumption.
- */
-void		unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t default_action);
-
-rlm_rcode_t	unlang_interpret_continue(REQUEST *request);
-
-rlm_rcode_t	unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t default_action);
-
-rlm_rcode_t	unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action);
-
-int		unlang_compile(CONF_SECTION *cs, rlm_components_t component);
-int		unlang_compile_subsection(CONF_SECTION *server_cs, char const *name1, char const *name2, rlm_components_t component);
-
 /** A callback when the the timeout occurs
  *
  * Used when a module needs wait for an event.
@@ -280,6 +266,20 @@ typedef rlm_rcode_t (*fr_unlang_resume_callback_t)(REQUEST *request, void *insta
  */
 typedef void (*fr_unlang_action_t)(REQUEST *request, void *instance, void *thread, void *ctx,
 				   fr_state_action_t action);
+
+/*
+ *	In unlang_interpret.c, but here for public consumption.
+ */
+void		unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t default_action);
+
+rlm_rcode_t	unlang_interpret_continue(REQUEST *request);
+
+rlm_rcode_t	unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t default_action);
+
+rlm_rcode_t	unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action);
+
+int		unlang_compile(CONF_SECTION *cs, rlm_components_t component);
+int		unlang_compile_subsection(CONF_SECTION *server_cs, char const *name1, char const *name2, rlm_components_t component);
 
 int		unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t callback,
 					 void const *ctx, struct timeval *timeout);
