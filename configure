@@ -9119,7 +9119,7 @@ fi
 
 smart_prefix=
 
-  if test "x$ac_cv_header_pcap_h" == "xyes"; then
+  if test "x$ac_cv_header_pcap_h" = "xyes"; then
 
 $as_echo "#define HAVE_PCAP_H 1" >>confdefs.h
 
@@ -9362,7 +9362,7 @@ fi
 
 smart_prefix=
 
-  if test "x$ac_cv_header_collectd_client_h" == "xyes"; then
+  if test "x$ac_cv_header_collectd_client_h" = "xyes"; then
 
 $as_echo "#define HAVE_COLLECTDC_H 1" >>confdefs.h
 
@@ -9605,7 +9605,7 @@ fi
 
 smart_prefix=
 
-  if test "x$ac_cv_header_sys_capability_h" == "xyes"; then
+  if test "x$ac_cv_header_sys_capability_h" = "xyes"; then
 
 $as_echo "#define HAVE_CAPABILITY_H 1" >>confdefs.h
 
@@ -12732,7 +12732,7 @@ if test "x$reproducible_builds" != "xyes"; then
   CFLAGS="-Wno-date-time $CFLAGS"
 fi
 
-if test "x$werror" == "xyes"; then
+if test "x$werror" = "xyes"; then
   CFLAGS="-Werror $CFLAGS"
 fi
 
