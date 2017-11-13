@@ -70,8 +70,8 @@ static rlm_rcode_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQUE
 
 		gettimeofday(&now, NULL);
 
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_DATE, NULL, false));
-		value->datum.date = now.tv_sec;
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL, false));
+		value->datum.uint64 = (uint64_t)now.tv_sec;
 	}
 		break;
 
