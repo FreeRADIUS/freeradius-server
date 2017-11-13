@@ -230,7 +230,6 @@ static inline void unlang_pop(unlang_stack_t *stack)
 	if (next->unwind != 0) frame->unwind = next->unwind;
 }
 
-
 /*
  *	Recursively collect active callers.  Slow, but correct.
  */
@@ -3023,6 +3022,13 @@ void unlang_signal(REQUEST *request, fr_state_action_t action)
 	memcpy(&instance, &mr->instance, sizeof(instance));
 
 	mr->signal_callback(request, instance, mr->thread, mr->resume_ctx, action);
+}
+
+int unlang_stack_depth(REQUEST *request)
+{
+	unlang_stack_t	*stack = request->stack;
+
+	return stack->depth;
 }
 
 /** Yield a request back to the interpreter from within a module
