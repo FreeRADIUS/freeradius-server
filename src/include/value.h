@@ -489,4 +489,6 @@ int		fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 char		*fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quote);
 
 size_t		fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data, char quote);
+
+char		*fr_value_box_list_asprint(TALLOC_CTX *ctx, fr_value_box_t const *head, char const *delim, char quote);
 #endif /* _FR_VALUE_H */

@@ -31,6 +31,10 @@ char		*talloc_typed_vasprintf(void const *t, char const *fmt, va_list ap) CC_HIN
 
 char		*talloc_bstrndup(void const *t, char const *in, size_t inlen);
 
+char		*talloc_buffer_append_buffer(char *to, char const *from);
+
+char		*talloc_buffer_append_variadic_buffer(char *to, int argc, ...);
+
 int		talloc_memcmp_array(uint8_t const *a, uint8_t const *b);
 
 int		talloc_memcmp_bstr(char const *a, char const *b);
