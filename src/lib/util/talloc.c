@@ -139,6 +139,113 @@ char *talloc_bstrndup(void const *t, char const *in, size_t inlen)
 	return p;
 }
 
+/** Concatenate to + from
+ *
+ * @param[in] to	talloc string buffer to append to.
+ * @param[in] from	talloc string buffer to append.
+ * @return
+ *	- NULL if to or from are NULL or if the realloc fails.
+ *	  Note: You'll still need to free to if this function
+ *	  returns NULL.
+ *	- The concatenation of to + from.  After this function
+ *	  returns to may point to invalid memory and should
+ *	  not be used.
+ */
+char *talloc_buffer_append_buffer(char *to, char const *from)
+{
+	size_t to_len, from_len, total_len;
+	char *out;
+
+	if (!to || !from) return NULL;
+
+	to_len = talloc_array_length(to);
+	from_len = talloc_array_length(from);
+	total_len = to_len + (from_len - 1);
+
+	out = talloc_realloc(talloc_parent(to), to, char, total_len);
+	if (!out) return NULL;
+
+	memcpy(out + (to_len - 1), from, from_len);
+	out[total_len - 1] = '\0';
+
+	return out;
+}
+
+/** Concatenate to + ...
+ *
+ * @param[in] to	talloc string buffer to append to.
+ * @param[in] ...	talloc string buffer(s) to append.
+ *			Arguments can be NULL to simplify
+ *			calling logic.
+ * @return
+ *	- NULL if to or from are NULL or if the realloc fails.
+ *	  Note: You'll still need to free to if this function
+ *	  returns NULL.
+ *	- The concatenation of to + from.  After this function
+ *	  returns to may point to invalid memory and should
+ *	  not be used.
+ */
+char *talloc_buffer_append_variadic_buffer(char *to, int argc, ...)
+{
+	va_list		ap_val, ap_len;
+	int		i;
+
+	size_t		to_len, from_len = 0, total_len;
+	char		*out, *p;
+
+	if (!to) return NULL;
+
+	va_start(ap_val, argc);
+	va_copy(ap_len, ap_val);
+
+	to_len = talloc_array_length(to);
+
+	/*
+	 *	Figure out how much we need to realloc
+	 */
+	for (i = 0; i < argc; i++) {
+		char *arg;
+
+		arg = va_arg(ap_val, char *);
+		if (!arg) continue;
+
+		from_len += (talloc_array_length(arg) - 1);
+	}
+	total_len = to_len + from_len;
+	if (total_len == to_len) {
+		va_end(ap_val);
+		va_end(ap_len);
+		return to;
+	}
+
+	out = talloc_realloc(talloc_parent(to), to, char, total_len);
+	if (!out) goto finish;
+
+	p = out + (to_len - 1);
+
+	/*
+	 *	Copy the args in
+	 */
+	for (i = 0; i < argc; i++) {
+		char	*arg;
+		size_t	len;
+
+		arg = va_arg(ap_val, char *);
+		if (!arg) continue;
+
+		len = talloc_array_length(arg);
+
+		memcpy(p, arg, len - 1);
+		p += (len - 1);
+	}
+
+finish:
+	va_end(ap_val);
+	va_end(ap_len);
+
+	return out;
+}
+
 /** Compares two talloced uint8_t arrays with memcmp
  *
  * Talloc arrays carry their length as part of the structure, so can be passed to a generic
