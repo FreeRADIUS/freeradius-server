@@ -33,6 +33,13 @@ extern "C" {
 
 typedef struct xlat_exp xlat_exp_t;
 
+typedef enum {
+	XLAT_ACTION_PUSH_CHILD = 1,		//!< A deeper level of nesting needs to be evaluated.
+	XLAT_ACTION_YIELD,		//!< An xlat function pushed a resume frame onto the stack.
+	XLAT_ACTION_DONE,		//!< We're done evaluating this level of nesting.
+	XLAT_ACTION_FAIL		//!< An xlat function failed.
+} xlat_action_t;
+
 typedef size_t (*xlat_escape_t)(REQUEST *request, char *out, size_t outlen, char const *in, void *arg);
 
 /** xlat callback function

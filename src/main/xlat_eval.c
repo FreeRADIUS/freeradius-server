@@ -44,11 +44,11 @@ static size_t xlat_process(TALLOC_CTX *ctx, char **out, REQUEST *request, xlat_e
  * @param[in] request	The current request.
  * @param[in] letter	to expand.
  * @return
- *	- #RLM_MODULE_UPDATED	if an additional value was added.
- *	- #RLM_MODULE_NOOP	if no additional values were added.
- *	- #RLM_MODULE_FAIL	if an error occurred.
+ *	- #XLAT_ACTION_FAIL	on memory allocation errors.
+ *	- #XLAT_ACTION_DONE	if we're done processing this node.
+ *
  */
-static rlm_rcode_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, char letter)
+static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, char letter)
 {
 
 	char		buffer[64];
@@ -56,12 +56,10 @@ static rlm_rcode_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQUE
 	time_t		when = request->packet->timestamp.tv_sec;
 	fr_value_box_t	*value;
 
-	XLAT_DEBUG("xlat_aprint ONE LETTER");
-
 	switch (letter) {
 	case '%':
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
-		if (fr_value_box_strdup(value, value, NULL, "%", false) < 0) return RLM_MODULE_FAIL;
+		if (fr_value_box_strdup(value, value, NULL, "%", false) < 0) return XLAT_ACTION_FAIL;
 		break;
 
 	case 'c': /* current epoch time seconds */
@@ -79,12 +77,12 @@ static rlm_rcode_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQUE
 		if (!localtime_r(&when, &ts)) {
 		error:
 			REDEBUG("Failed converting packet timestamp to localtime: %s", fr_syserror(errno));
-			return RLM_MODULE_FAIL;
+			return XLAT_ACTION_FAIL;
 		}
 		strftime(buffer, sizeof(buffer), "%d", &ts);
 
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
-		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) return RLM_MODULE_FAIL;
+		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) return XLAT_ACTION_FAIL;
 		break;
 
 	case 'l': /* request timestamp */
@@ -196,11 +194,11 @@ static rlm_rcode_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQUE
 
 	default:
 		rad_assert(0);
-		return RLM_MODULE_FAIL;
+		return XLAT_ACTION_FAIL;
 	}
 
 	fr_cursor_insert(out, value);
-	return RLM_MODULE_UPDATED;
+	return XLAT_ACTION_DONE;
 }
 
 /** Gets the value of a virtual attribute
@@ -214,11 +212,10 @@ static rlm_rcode_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQUE
  * @param[in] request	The current request.
  * @param[in] vpt	Representing the attribute.
  * @return
- *	- #RLM_MODULE_UPDATED	if an additional value was added.
- *	- #RLM_MODULE_NOOP	if no additional values were added.
- *	- #RLM_MODULE_FAIL	if an error occurred.
+ *	- #XLAT_ACTION_FAIL		if a value couldn't be retrieved.
+ *	- #XLAT_ACTION_DONE		if we added a value.
  */
-static rlm_rcode_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, vp_tmpl_t const *vpt)
+static xlat_action_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, vp_tmpl_t const *vpt)
 {
 	RADIUS_PACKET	*packet = NULL;
 	fr_value_box_t	*value;
@@ -242,25 +239,25 @@ static rlm_rcode_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 		break;		/* ignore them */
 
 	case FR_CLIENT_SHORTNAME:
-		if (!request->client || !request->client->shortname) return RLM_MODULE_NOOP;
+		if (!request->client || !request->client->shortname) return XLAT_ACTION_DONE;
 
 		MEM(value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, false));
 		if (fr_value_box_strdup_buffer(ctx, value, vpt->tmpl_da, request->client->shortname, false) < 0) {
 		error:
 			talloc_free(value);
-			return RLM_MODULE_FAIL;
+			return XLAT_ACTION_FAIL;
 		}
 		goto done;
 
 	case FR_REQUEST_PROCESSING_STAGE:
-		if (!request->component) return RLM_MODULE_NOOP;
+		if (!request->component) return XLAT_ACTION_DONE;
 
 		MEM(value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, false));
 		if (fr_value_box_strdup_buffer(ctx, value, vpt->tmpl_da, request->component, false) < 0) goto error;
 		goto done;
 
 	case FR_VIRTUAL_SERVER:
-		if (!request->server_cs) return RLM_MODULE_NOOP;
+		if (!request->server_cs) return XLAT_ACTION_DONE;
 
 		MEM(value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, false));
 		if (fr_value_box_strdup_buffer(ctx, value, vpt->tmpl_da,
@@ -268,7 +265,7 @@ static rlm_rcode_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 		goto done;
 
 	case FR_MODULE_RETURN_CODE:
-		if (!request->rcode) return RLM_MODULE_NOOP;
+		if (!request->rcode) return XLAT_ACTION_DONE;
 
 		MEM(value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, false));
 		value->enumv = vpt->tmpl_da;
@@ -282,12 +279,12 @@ static rlm_rcode_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 	 *	referencing it.
 	 */
 	packet = radius_packet(request, vpt->tmpl_list);
-	if (!packet) return RLM_MODULE_NOOP;
+	if (!packet) return XLAT_ACTION_DONE;
 
 	switch (vpt->tmpl_da->attr) {
 	default:
 		RERROR("Attribute \"%s\" incorrectly marked as virtual", vpt->tmpl_da->name);
-		return RLM_MODULE_FAIL;
+		return XLAT_ACTION_FAIL;
 
 	case FR_RESPONSE_PACKET_TYPE:
 		if (packet != request->reply) {
@@ -299,7 +296,7 @@ static rlm_rcode_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 		/* FALL-THROUGH */
 
 	case FR_PACKET_TYPE:
-		if (!packet || !packet->code) return RLM_MODULE_NOOP;
+		if (!packet || !packet->code) return XLAT_ACTION_DONE;
 
 		MEM(value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, false));
 		value->enumv = vpt->tmpl_da;
@@ -326,28 +323,28 @@ static rlm_rcode_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 		/* FALL-THROUGH */
 
 	case FR_PACKET_SRC_IP_ADDRESS:
-		if (packet->src_ipaddr.af != AF_INET) return RLM_MODULE_NOOP;
+		if (packet->src_ipaddr.af != AF_INET) return XLAT_ACTION_DONE;
 
 		value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, true);
 		fr_value_box_ipaddr(value, vpt->tmpl_da, &packet->src_ipaddr, true);
 		break;
 
 	case FR_PACKET_DST_IP_ADDRESS:
-		if (packet->dst_ipaddr.af != AF_INET) return RLM_MODULE_NOOP;
+		if (packet->dst_ipaddr.af != AF_INET) return XLAT_ACTION_DONE;
 
 		value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, true);
 		fr_value_box_ipaddr(value, vpt->tmpl_da, &packet->dst_ipaddr, true);
 		break;
 
 	case FR_PACKET_SRC_IPV6_ADDRESS:
-		if (packet->src_ipaddr.af != AF_INET6) return RLM_MODULE_NOOP;
+		if (packet->src_ipaddr.af != AF_INET6) return XLAT_ACTION_DONE;
 
 		value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, true);
 		fr_value_box_ipaddr(value, vpt->tmpl_da, &packet->src_ipaddr, true);
 		break;
 
 	case FR_PACKET_DST_IPV6_ADDRESS:
-		if (packet->dst_ipaddr.af != AF_INET6) return RLM_MODULE_NOOP;
+		if (packet->dst_ipaddr.af != AF_INET6) return XLAT_ACTION_DONE;
 
 		value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, true);
 		fr_value_box_ipaddr(value, vpt->tmpl_da, &packet->dst_ipaddr, true);
@@ -367,7 +364,7 @@ static rlm_rcode_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 done:
 	fr_cursor_append(out, value);
 
-	return RLM_MODULE_UPDATED;
+	return XLAT_ACTION_DONE;
 }
 
 
@@ -378,11 +375,10 @@ done:
  * @param[in] request	The current request.
  * @param[in] vpt	Representing the attribute.
  * @return
- *	- #RLM_MODULE_UPDATED	if an additional value was added.
- *	- #RLM_MODULE_NOOP	if no additional values were added.
- *	- #RLM_MODULE_FAIL	if an error occurred.
+ *	- #XLAT_ACTION_FAIL		we failed getting a value for the attribute.
+ *	- #XLAT_ACTION_DONE		we
  */
-static rlm_rcode_t xlat_eval_pair(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, vp_tmpl_t const *vpt)
+static xlat_action_t xlat_eval_pair(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *request, vp_tmpl_t const *vpt)
 {
 	VALUE_PAIR	*vp = NULL;
 	fr_value_box_t	*value;
@@ -416,15 +412,15 @@ static rlm_rcode_t xlat_eval_pair(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *re
 			if (!value) {
 			oom:
 				fr_strerror_printf("Out of memory");
-				return RLM_MODULE_FAIL;
+				return XLAT_ACTION_FAIL;
 			}
 			value->datum.int32 = 0;
 			fr_cursor_append(out, value);
 
-			return RLM_MODULE_UPDATED;
+			return XLAT_ACTION_DONE;
 		}
 
-		return RLM_MODULE_NOOP;
+		return XLAT_ACTION_DONE;
 	}
 
 
@@ -444,15 +440,14 @@ static rlm_rcode_t xlat_eval_pair(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *re
 		value->datum.uint32 = count;
 		fr_cursor_append(out, value);
 
-		return RLM_MODULE_UPDATED;
+		return XLAT_ACTION_DONE;
 	}
 
 	/*
 	 *	Output multiple #value_box_t, one per attribute.
 	 */
 	case NUM_ALL:
-
-		if (!fr_cursor_current(&cursor)) return RLM_MODULE_NOOP;
+		if (!fr_cursor_current(&cursor)) return XLAT_ACTION_DONE;
 
 		/*
 		 *	Loop over all matching #fr_value_pair
@@ -466,7 +461,7 @@ static rlm_rcode_t xlat_eval_pair(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *re
 			fr_cursor_append(out, value);
 		}
 
-		return RLM_MODULE_UPDATED;
+		return XLAT_ACTION_DONE;
 
 	default:
 		/*
@@ -478,7 +473,7 @@ static rlm_rcode_t xlat_eval_pair(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *re
 		if (!value) goto oom;
 		fr_value_box_copy_shallow(value, value, &vp->data);	/* Also dups taint */
 		fr_cursor_append(out, value);
-		return RLM_MODULE_UPDATED;
+		return XLAT_ACTION_DONE;
 	}
 }
 
@@ -498,7 +493,6 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 	char const		*p;
 	fr_value_box_t		*head = NULL, string, *value;
 	fr_cursor_t		cursor;
-	rlm_rcode_t		rcode;
 
 	fr_cursor_talloc_init(&cursor, &head, fr_value_box_t);
 
@@ -516,15 +510,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		 *	Do a one-character expansion.
 		 */
 	case XLAT_ONE_LETTER:
-		rcode = xlat_eval_one_letter(ctx, &cursor, request, node->fmt[0]);
-		switch (rcode) {
-		case RLM_MODULE_UPDATED:
-		case RLM_MODULE_OK:
-			break;
-
-		default:
-			return NULL;
-		}
+		if (xlat_eval_one_letter(ctx, &cursor, request, node->fmt[0]) == XLAT_ACTION_FAIL) return NULL;
 
 		/*
 		 *	Fixme - In the new xlat code we don't have to
@@ -541,15 +527,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		break;
 
 	case XLAT_ATTRIBUTE:
-		rcode = xlat_eval_pair(ctx, &cursor, request, node->attr);
-		switch (rcode) {
-		case RLM_MODULE_UPDATED:
-		case RLM_MODULE_OK:
-			break;
-
-		default:
-			return NULL;
-		}
+		if (xlat_eval_pair(ctx, &cursor, request, node->attr) == XLAT_ACTION_FAIL) return NULL;
 
 		value = fr_cursor_current(&cursor);
 
