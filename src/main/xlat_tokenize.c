@@ -32,8 +32,9 @@ RCSID("$Id$")
 #include <ctype.h>
 #include "xlat.h"
 
+#undef XLAT_DEBUG
 #ifdef DEBUG_XLAT
-#  define XLAT_DEBUG RDEBUG3
+#  define XLAT_DEBUG DEBUG3
 #else
 #  define XLAT_DEBUG(...)
 #endif
