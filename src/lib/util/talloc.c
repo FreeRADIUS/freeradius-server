@@ -174,6 +174,7 @@ char *talloc_buffer_append_buffer(char *to, char const *from)
 /** Concatenate to + ...
  *
  * @param[in] to	talloc string buffer to append to.
+ * @param[in] argc	how many variadic arguments were passed.
  * @param[in] ...	talloc string buffer(s) to append.
  *			Arguments can be NULL to simplify
  *			calling logic.
