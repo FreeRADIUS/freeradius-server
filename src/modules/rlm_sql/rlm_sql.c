@@ -189,7 +189,7 @@ static ssize_t sql_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen
 			goto finish;
 		}
 
-		MEM(*out = talloc_asprintf(request, "%d", numaffected));
+		MEM(*out = talloc_typed_asprintf(request, "%d", numaffected));
 		ret = talloc_array_length(*out) - 1;
 
 		(inst->driver->sql_finish_query)(handle, inst->config);
