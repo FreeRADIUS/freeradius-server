@@ -829,7 +829,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	request->async->recv_time = *request->async->original_recv_time;
 	request->async->el = worker->el;
 	request->number = worker->number++;
-	request->name = talloc_asprintf(request, "%" PRIu64 , request->number);
+	request->name = talloc_typed_asprintf(request, "%" PRIu64 , request->number);
 
 	request->async->listen = cd->listen;
 	request->async->packet_ctx = cd->packet_ctx;

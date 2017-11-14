@@ -270,7 +270,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UNUSED si
 	if (errbuff[0] == '\0') return 0;
 
 	out[0].type = L_ERR;
-	out[0].msg = talloc_asprintf(ctx, "%s: %s", state, errbuff);
+	out[0].msg = talloc_typed_asprintf(ctx, "%s: %s", state, errbuff);
 
 	return 1;
 }

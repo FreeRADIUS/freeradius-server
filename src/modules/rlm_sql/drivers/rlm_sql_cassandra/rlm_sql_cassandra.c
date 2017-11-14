@@ -566,7 +566,7 @@ do {\
 
 			if (cass_value_get_int32(value, &i32v) != CASS_OK) RLM_CASS_ERR_DATA_RETRIVE("int32");
 
-			MEM(row[i] = talloc_asprintf(row, "%"PRId32, (int32_t)i32v));
+			MEM(row[i] = talloc_typed_asprintf(row, "%"PRId32, (int32_t)i32v));
 		}
 			break;
 
@@ -577,7 +577,7 @@ do {\
 
 			if (cass_value_get_int64(value, &i64v) != CASS_OK) RLM_CASS_ERR_DATA_RETRIVE("int64");
 
-			MEM(row[i] = talloc_asprintf(row, "%"PRId64, (int64_t)i64v));
+			MEM(row[i] = talloc_typed_asprintf(row, "%"PRId64, (int64_t)i64v));
 		}
 			break;
 

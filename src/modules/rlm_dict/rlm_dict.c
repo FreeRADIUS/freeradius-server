@@ -119,7 +119,7 @@ static ssize_t xlat_vendor_num(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen
 
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 
-	*out = talloc_asprintf(ctx, "%i", vp->da->vendor);
+	*out = talloc_typed_asprintf(ctx, "%i", vp->da->vendor);
 	return talloc_array_length(*out) - 1;
 }
 
@@ -154,7 +154,7 @@ static ssize_t xlat_attr_num(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 
-	*out = talloc_asprintf(ctx, "%i", vp->da->attr);
+	*out = talloc_typed_asprintf(ctx, "%i", vp->da->attr);
 	return talloc_array_length(*out) - 1;
 }
 

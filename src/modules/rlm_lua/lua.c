@@ -167,7 +167,7 @@ static int rlm_lua_unmarshall(VALUE_PAIR **out, REQUEST *request, lua_State *L, 
 		case FR_TYPE_STRING:
 		{
 			char *p;
-			p = talloc_asprintf(vp, "%f", lua_tonumber(L, -1));
+			p = talloc_typed_asprintf(vp, "%f", lua_tonumber(L, -1));
 			fr_pair_value_strsteal(vp, p);
 			break;
 		}

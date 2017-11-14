@@ -385,7 +385,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 	p = PQerrorMessage(conn->db);
 	while ((q = strchr(p, '\n'))) {
 		out[i].type = L_ERR;
-		out[i].msg = talloc_asprintf(ctx, "%.*s", (int) (q - p), p);
+		out[i].msg = talloc_typed_asprintf(ctx, "%.*s", (int) (q - p), p);
 		p = q + 1;
 		if (++i == outlen) return outlen;
 	}

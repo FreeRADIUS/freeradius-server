@@ -2787,7 +2787,7 @@ int fr_dict_from_file(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char co
 		for (p = dict_attr_types; p->name; p++) {
 			fr_dict_attr_t *n;
 
-			type_name = talloc_asprintf(dict->pool, "Tmp-Cast-%s", p->name);
+			type_name = talloc_typed_asprintf(dict->pool, "Tmp-Cast-%s", p->name);
 
 			n = fr_dict_attr_alloc(dict->pool, dict->root, type_name,
 					       0, FR_CAST_BASE + p->number, p->number, &flags);

@@ -46,7 +46,7 @@ int cache_serialize(TALLOC_CTX *ctx, char **out, rlm_cache_entry_t const *c)
 
 	char		*to_store = NULL;
 
-	to_store = talloc_asprintf(ctx, "&Cache-Expires = %" PRIu64 "\n&Cache-Created = %" PRIu64 "\n",
+	to_store = talloc_typed_asprintf(ctx, "&Cache-Expires = %" PRIu64 "\n&Cache-Created = %" PRIu64 "\n",
 				   (uint64_t)c->expires, (uint64_t)c->created);
 	if (!to_store) return -1;
 

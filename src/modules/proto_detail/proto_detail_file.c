@@ -129,7 +129,7 @@ static int mod_open(void *instance)
 	}
 
 	rad_assert(inst->name == NULL);
-	inst->name = talloc_asprintf(inst, "detail directory %s", inst->directory);
+	inst->name = talloc_typed_asprintf(inst, "detail directory %s", inst->directory);
 
 	DEBUG("Listening on %s bound to virtual server %s FD %d",
 	      inst->name, cf_section_name2(inst->parent->server_cs), inst->fd);
@@ -531,7 +531,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	DEBUG("Directory %s", inst->directory);
 
 	if (!inst->filename_work) {
-		inst->filename_work = talloc_asprintf(inst, "%s/detail.work", inst->directory);
+		inst->filename_work = talloc_typed_asprintf(inst, "%s/detail.work", inst->directory);
 	}
 
 	/*

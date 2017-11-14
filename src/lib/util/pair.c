@@ -2478,15 +2478,15 @@ char *fr_pair_asprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
 
 	if (vp->da->flags.has_tag) {
 		if (quote && (vp->vp_type == FR_TYPE_STRING)) {
-			str = talloc_asprintf(ctx, "%s:%d %s %c%s%c", vp->da->name, vp->tag, token, quote, value, quote);
+			str = talloc_typed_asprintf(ctx, "%s:%d %s %c%s%c", vp->da->name, vp->tag, token, quote, value, quote);
 		} else {
-			str = talloc_asprintf(ctx, "%s:%d %s %s", vp->da->name, vp->tag, token, value);
+			str = talloc_typed_asprintf(ctx, "%s:%d %s %s", vp->da->name, vp->tag, token, value);
 		}
 	} else {
 		if (quote && (vp->vp_type == FR_TYPE_STRING)) {
-			str = talloc_asprintf(ctx, "%s %s %c%s%c", vp->da->name, token, quote, value, quote);
+			str = talloc_typed_asprintf(ctx, "%s %s %c%s%c", vp->da->name, token, quote, value, quote);
 		} else {
-			str = talloc_asprintf(ctx, "%s %s %s", vp->da->name, token, value);
+			str = talloc_typed_asprintf(ctx, "%s %s %s", vp->da->name, token, value);
 		}
 	}
 

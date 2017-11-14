@@ -1432,7 +1432,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
-	inst->handle_config.name = talloc_asprintf(inst, "rlm_ldap (%s)", inst->name);
+	inst->handle_config.name = talloc_typed_asprintf(inst, "rlm_ldap (%s)", inst->name);
 
 	if (inst->group_attribute) {
 		group_attribute = inst->group_attribute;

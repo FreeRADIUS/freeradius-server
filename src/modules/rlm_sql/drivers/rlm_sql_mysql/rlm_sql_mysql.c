@@ -582,7 +582,7 @@ static size_t sql_warnings(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen
 		else if (strcasecmp(row[0], "note") == 0) type = L_DBG;
 		else type = L_ERR;
 
-		msg = talloc_asprintf(ctx, "%s: %s", row[1], row[2]);
+		msg = talloc_typed_asprintf(ctx, "%s: %s", row[1], row[2]);
 		out[i].type = type;
 		out[i].msg = msg;
 		if (++i == outlen) break;
@@ -621,7 +621,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 	 *	Grab the error now in case it gets cleared on the next operation.
 	 */
 	if (error && (error[0] != '\0')) {
-		error = talloc_asprintf(ctx, "ERROR %u (%s): %s", mysql_errno(conn->sock), error,
+		error = talloc_typed_asprintf(ctx, "ERROR %u (%s): %s", mysql_errno(conn->sock), error,
 					mysql_sqlstate(conn->sock));
 	}
 

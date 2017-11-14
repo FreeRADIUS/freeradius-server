@@ -550,7 +550,7 @@ static int mod_open(void *instance)
 	}
 
 	rad_assert(inst->name == NULL);
-	inst->name = talloc_asprintf(inst, "proto udp address %s port %u",
+	inst->name = talloc_typed_asprintf(inst, "proto udp address %s port %u",
 				     src_buf, port);
 	inst->sockfd = sockfd;
 

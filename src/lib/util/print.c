@@ -727,7 +727,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 			{
 				struct timeval *in = va_arg(ap_q, struct timeval *);
 
-				subst = talloc_asprintf(NULL, "%" PRIu64 ".%06" PRIu64,
+				subst = talloc_typed_asprintf(NULL, "%" PRIu64 ".%06" PRIu64,
 						        (uint64_t)in->tv_sec,
 							(uint64_t)in->tv_usec);
 				if (!subst) goto oom;

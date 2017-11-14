@@ -343,9 +343,9 @@ print_msg:
 	 *	(0) <msg>
 	 */
 	if ((request->seq_start == 0) || (request->number == request->seq_start)) {
-		msg_prefix = talloc_asprintf(request, "(%s)  ", request->name);
+		msg_prefix = talloc_typed_asprintf(request, "(%s)  ", request->name);
 	} else {
-		msg_prefix = talloc_asprintf(request, "(%s,%" PRIu64 ")  ",
+		msg_prefix = talloc_typed_asprintf(request, "(%s,%" PRIu64 ")  ",
 					     request->name, request->seq_start);
 	}
 
@@ -366,7 +366,7 @@ print_msg:
 	 *	test -     <msg>
 	 */
 	if (request->module) {
-		msg_module = talloc_asprintf(request, "%s - %.*s", request->module, module_indent, spaces);
+		msg_module = talloc_typed_asprintf(request, "%s - %.*s", request->module, module_indent, spaces);
 	}
 
 	/*
