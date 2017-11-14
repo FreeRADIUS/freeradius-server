@@ -459,9 +459,27 @@ data, instead of as hex strings.
 `REST-HTTP-Code` is now inserted into the `&request:` list instead of the `&reply:`
 list, to be compliant with the [list usage](http://wiki.freeradius.org/contributing/List-Usage) guidelines.
 
+### rlm_sql
+
+Driver-specific options have moved from `mods-available/sql` to
+`mods-config/sql/driver/<drivername>`.
+
+#### rlm_sql_mysql
+
+Now calls `mysql_real_escape_string` and no longer produces
+`=<hexit><hexit>` escape sequences in expanded values.
+The `safe_characters` config item will have no effect when used with
+this driver.
+
+#### rlm_sql_postgresql
+
+Now calls `PQescapeStringConn` and no longer produces `=<hexit><hexit>`
+escape sequences in expanded values.  The `safe_characters` config item will
+have no effect when used with this driver.
+
 ### rlm_sqlcounter
 
-### Attribute references
+Attribute references:
 
 The following config items must now be defined as attribute references::
 
@@ -494,23 +512,13 @@ This allows significantly greater flexibility, and better integration with
 newer features in the server such as CoA, where reply_name can now be
 `&coa:Session-Timeout`.
 
-### rlm_sql
+### rlm_sqlippool
 
-Driver-specific options have moved from `mods-available/sql` to
-`mods-config/sql/driver/<drivername>`.
+The `ipv6` configuration item has been deleted.  It was deprecated in
+3.0.16.
 
-#### rlm_sql_mysql
-
-Now calls `mysql_real_escape_string` and no longer produces
-`=<hexit><hexit>` escape sequences in expanded values.
-The `safe_characters` config item will have no effect when used with
-this driver.
-
-#### rlm_sql_postgresql
-
-Now calls `PQescapeStringConn` and no longer produces `=<hexit><hexit>`
-escape sequences in expanded values.  The `safe_characters` config item will
-have no effect when used with this driver.
+Instead, use `attribute-name`.  See raddb/mods-available/sqlippool for
+more information.
 
 ## Deleted Modules
 

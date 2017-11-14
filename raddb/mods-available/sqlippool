@@ -24,8 +24,11 @@ sqlippool {
 	# IP lease duration. (Leases expire even if Acct Stop packet is lost)
 	lease_duration = 3600
 
-	# protocol to use.  The default is IPv4.
-#	ipv6 = yes
+	# Attribute to use for querying / updating IP addresses.
+	# It MUST be a type which contains IP addresses.
+	#  e.g. ipaddr, ipv4prefix, ipv6addr, or ipv6prefix
+	#
+	attribute_name = Framed-IP-Address
 
 	# Attribute which should be considered unique per NAS
 	#
@@ -53,11 +56,11 @@ sqlippool {
 	#  which writes Module-Success-Message message.
 	#
 	messages {
-		exists = "Existing IP: %{reply:Framed-IP-Address} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+		exists = "Existing IP: %{reply:${..attribute_name}} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
 
-		success = "Allocated IP: %{reply:Framed-IP-Address} from %{control:Pool-Name} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+		success = "Allocated IP: %{reply:${..attribute_name}} from %{control:Pool-Name} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
 
-		clear = "Released IP %{Framed-IP-Address} (did %{Called-Station-Id} cli %{Calling-Station-Id} user %{User-Name})"
+		clear = "Released IP %{${..attribute_name}} (did %{Called-Station-Id} cli %{Calling-Station-Id} user %{User-Name})"
 
 		failed = "IP Allocation FAILED from %{control:Pool-Name} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
 

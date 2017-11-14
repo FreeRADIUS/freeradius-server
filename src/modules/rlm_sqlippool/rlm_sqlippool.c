@@ -47,8 +47,8 @@ typedef struct rlm_sqlippool_t {
 	rlm_sql_t const	*sql_inst;
 
 	char const	*pool_name;
-	bool		ipv6;			//!< Whether or not we do IPv6 pools.
-	int		framed_ip_address; 	//!< the attribute number for Framed-IP(v6)-Address
+	fr_dict_attr_t const *framed_ip_address; //!< the attribute for IP address allocation
+	char const	*attribute_name;	//!< name of the IP address attribute
 
 	time_t		last_clear;		//!< So we only do it once a second.
 	char const	*allocate_begin;	//!< SQL query to begin.
@@ -112,10 +112,10 @@ static CONF_PARSER module_config[] = {
 
 	{ FR_CONF_OFFSET("pool_name", FR_TYPE_STRING, rlm_sqlippool_t, pool_name), .dflt = "" },
 
+	{ FR_CONF_OFFSET("attribute_name", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, rlm_sqlippool_t, attribute_name), .dflt = "Framed-IP-Address" },
+
 	{ FR_CONF_OFFSET("default_pool", FR_TYPE_STRING, rlm_sqlippool_t, defaultpool), .dflt = "main_pool" },
 
-
-	{ FR_CONF_OFFSET("ipv6", FR_TYPE_BOOL, rlm_sqlippool_t, ipv6) },
 
 	{ FR_CONF_OFFSET("allocate_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, allocate_begin), .dflt = "START TRANSACTION" },
 
@@ -391,10 +391,22 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
-	if (!inst->ipv6) {
-		inst->framed_ip_address = FR_FRAMED_IP_ADDRESS;
-	} else {
-		inst->framed_ip_address = FR_FRAMED_IPV6_PREFIX;
+	inst->framed_ip_address = fr_dict_attr_by_name(NULL, inst->attribute_name);
+	if (!inst->framed_ip_address) {
+		cf_log_err(conf, "Unknown attribute '%s'", inst->attribute_name);
+		return -1;
+	}
+
+	switch (inst->framed_ip_address->type) {
+	default:
+		cf_log_err(conf, "Cannot use non-IP attributes for 'attribute_name = %s'", inst->attribute_name);
+		return -1;
+
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_IPV6_ADDR:
+	case FR_TYPE_IPV6_PREFIX:
+		break;
 	}
 
 	inst->sql_inst = (rlm_sql_t *) sql_inst->dl_inst->data;
@@ -446,7 +458,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 	/*
 	 *	If there is a Framed-IP-Address attribute in the reply do nothing
 	 */
-	if (fr_pair_find_by_num(request->reply->vps, 0, inst->framed_ip_address, TAG_ANY) != NULL) {
+	if (fr_pair_find_by_da(request->reply->vps, inst->framed_ip_address, TAG_ANY) != NULL) {
 		RDEBUG("Framed-IP-Address already exists");
 
 		return do_logging(request, inst->log_exists, RLM_MODULE_NOOP);
@@ -547,7 +559,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 	 *	See if we can create the VP from the returned data.  If not,
 	 *	error out.  If so, add it to the list.
 	 */
-	vp = fr_pair_afrom_num(request->reply, 0, inst->framed_ip_address);
+	vp = fr_pair_afrom_da(request->reply, inst->framed_ip_address);
 	if (fr_pair_value_from_str(vp, allocation, allocation_len) < 0) {
 		DO_PART(allocate_commit);
 
