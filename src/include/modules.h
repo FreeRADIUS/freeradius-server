@@ -272,6 +272,11 @@ typedef void (*fr_unlang_action_t)(REQUEST *request, void *instance, void *threa
  */
 void		unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t default_action);
 
+rlm_rcode_t	unlang_push_module_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
+					REQUEST *request, xlat_exp_t const *xlat,
+					fr_unlang_resume_callback_t callback,
+					fr_unlang_action_t signal_callback, void *uctx);
+
 rlm_rcode_t	unlang_interpret_continue(REQUEST *request);
 
 rlm_rcode_t	unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t default_action);

@@ -73,6 +73,7 @@ typedef enum {
 #endif
 	UNLANG_TYPE_POLICY,			//!< Policy section.
 	UNLANG_TYPE_XLAT_INLINE,		//!< xlat statement, inline in "unlang"
+	UNLANG_TYPE_XLAT,			//!< Represents one level of an xlat expansion.
 	UNLANG_TYPE_RESUME,			//!< where to resume processing
 	UNLANG_TYPE_MAX
 } unlang_type_t;
@@ -252,6 +253,31 @@ typedef struct {
 	unlang_t 		*child;
 	unlang_t		*found;
 } unlang_stack_state_redundant_t;
+
+/** Hold the result of an inline xlat expansion
+ *
+ */
+typedef struct {
+	fr_value_box_t		*result;			//!< Where to store the result of the
+								///< xlat expansion. This is usually discarded.
+} unlang_stack_state_xlat_inline_t;
+
+/** State of an xlat expansion
+ *
+ * State of one level of nesting within an xlat expansion.
+ */
+typedef struct {
+	TALLOC_CTX		*ctx;				//!< to allocate boxes and values in.
+	xlat_exp_t const	*exp;
+	fr_cursor_t		values;				//!< Values aggregated so far.
+
+	/*
+	 *	For func and alternate
+	 */
+	fr_value_box_t		*result;			//!< Of nested expansion.
+	bool			alternate;			//!< record which alternate branch we
+								///< previously took.
+} unlang_stack_state_xlat_t;
 
 /** Our interpreter stack, as distinct from the C stack
  *

@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/modpriv.h>
 #include <freeradius-devel/interpreter.h>
 #include <freeradius-devel/parser.h>
+#include <freeradius-devel/xlat.h>
 #include <freeradius-devel/io/listen.h>
 
 static FR_NAME_NUMBER unlang_action_table[] = {
@@ -51,6 +52,9 @@ static FR_NAME_NUMBER unlang_action_table[] = {
 
 typedef rlm_rcode_t (*unlang_op_resume_func_t)(REQUEST *request,
 					       void *instance, void *thread, void *resume_ctx);
+
+static void unlang_push_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
+			     REQUEST *request, xlat_exp_t const *exp, bool top_frame);
 
 /*
  *	Lock the mutex for the module
@@ -896,6 +900,48 @@ static unlang_action_t unlang_call(REQUEST *request,
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
+/** Stub function for calling the xlat interpreter
+ *
+ * Calls the xlat interpreter and translates its wants and needs into
+ * unlang_action_t codes.
+ */
+static unlang_action_t unlang_xlat(REQUEST *request,
+				   rlm_rcode_t *presult, UNUSED int *priority)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_stack_state_xlat_t	*xs = talloc_get_type_abort(frame->state, unlang_stack_state_xlat_t);
+	xlat_exp_t const		*child = NULL;
+	xlat_action_t			xa;
+
+	if (frame->repeat) {
+		xa = xlat_frame_eval_repeat(xs->ctx, &xs->values,
+					    &child, &xs->alternate,
+					    request, &xs->exp,
+					    xs->result);
+	} else {
+		xa = xlat_frame_eval(xs->ctx, &xs->values, &child, request, &xs->exp);
+	}
+
+	switch (xa) {
+	case XLAT_ACTION_PUSH_CHILD:
+		rad_assert(child);
+
+		frame->repeat = true;
+		unlang_push_xlat(xs->ctx, &xs->result, request, child, false);
+		return UNLANG_ACTION_PUSHED_CHILD;
+
+	case XLAT_ACTION_YIELD:
+		return UNLANG_ACTION_YIELD;
+
+	case XLAT_ACTION_DONE:
+		return UNLANG_ACTION_CALCULATE_RESULT;
+
+	case XLAT_ACTION_FAIL:
+		*presult = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+}
 
 static unlang_action_t unlang_subrequest(REQUEST *request,
 					 rlm_rcode_t *presult, int *priority)
@@ -1533,17 +1579,22 @@ static unlang_action_t unlang_xlat_inline(REQUEST *request,
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
 	unlang_xlat_inline_t	*mx = unlang_generic_to_xlat_inline(instruction);
-	char buffer[128];
 
 	if (!mx->exec) {
-		(void) xlat_eval_compiled(buffer, sizeof(buffer), request, mx->exp, NULL, NULL);
+		TALLOC_CTX *pool;
+		unlang_stack_state_xlat_inline_t *state;
+
+		MEM(frame->state = state = talloc_zero(stack, unlang_stack_state_xlat_inline_t));
+		MEM(pool = talloc_pool(frame->state, 1024));	/* Pool to absorb some allocs */
+
+		unlang_push_xlat(pool, &state->result, request, mx->exp, false);
+		return UNLANG_ACTION_PUSHED_CHILD;
 	} else {
 		RDEBUG("`%s`", mx->xlat_name);
 		radius_exec_program(request, NULL, 0, NULL, request, mx->xlat_name, request->packet->vps,
 				    false, true, EXEC_TIMEOUT);
+		return UNLANG_ACTION_CONTINUE;
 	}
-
-	return UNLANG_ACTION_CONTINUE;
 }
 
 static unlang_action_t unlang_switch(REQUEST *request,
@@ -2045,6 +2096,11 @@ unlang_op_t unlang_ops[] = {
 		.func = unlang_xlat_inline,
 		.debug_braces = false
 	},
+	[UNLANG_TYPE_XLAT] = {
+		.name = "xlat_eval",
+		.func = unlang_xlat,
+		.debug_braces = false
+	},
 	[UNLANG_TYPE_RESUME] = {
 		.name = "resume",
 		.func = unlang_resume,
@@ -2526,6 +2582,95 @@ void unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
 	RDEBUG4("** [%i] %s - substack begins", stack->depth, __FUNCTION__);
 
 	DUMP_STACK;
+}
+
+/** Static instruction for performing xlat evaluations
+ *
+ */
+static unlang_t xlat_instruction = {
+	.type = UNLANG_TYPE_XLAT,
+	.name = "xlat",
+	.debug_name = "xlat",
+};
+
+/** Push a pre-compiled xlat onto the stack for evaluation
+ *
+ * @param[in] ctx		To allocate value boxes and values in.
+ * @param[out] out		Where to write the result of the expansion.
+ * @param[in] request		to push xlat onto.
+ * @param[in] exp		node to evaluate.
+ * @param[in] top_frame		Set to UNLANG_TOP_FRAME if this is the shallowest nesting level.
+ *				Set to UNLANG_SUB_FRAME if this is a nested expansion.
+ */
+static void unlang_push_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
+			     REQUEST *request, xlat_exp_t const *exp, bool top_frame)
+{
+
+	unlang_stack_state_xlat_t	*state;
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame;
+
+	/*
+	 *	Push a new xlat eval frame onto the stack
+	 */
+	unlang_push(stack, &xlat_instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, top_frame);
+	frame = &stack->frame[stack->depth];
+
+	/*
+	 *	Allocate its state, and setup a cursor for the xlat nodes
+	 */
+	frame->state = state = talloc_zero(stack, unlang_stack_state_xlat_t);
+	state->exp = exp;
+
+	fr_cursor_init(&state->values, out);
+
+	state->ctx = ctx;
+}
+
+/** Push a pre-compiled xlat and resumption state onto the stack for evaluation
+ *
+ * In order to use the async unlang processor the calling module needs to establish
+ * a resumption point, as the call to an xlat function may require yielding control
+ * back to the interpreter.
+ *
+ * To simplify the calling conventions, this function is provided to first push a
+ * resumption stack frame for the module, and then push an xlat stack frame.
+ *
+ * After pushing those frames the function updates the stack pointer to jump over
+ * the resumption frame and execute the xlat interpreter.
+ *
+ * When the xlat interpreter finishes, and pops the xlat frame, the unlang interpreter
+ * will then call the module resumption frame, allowing the module to continue exectuion.
+ *
+ * @param[in] ctx		To allocate value boxes and values in.
+ * @param[out] out		Where to write the result of the expansion.
+ * @param[in] request		The current request.
+ * @param[in] callback		to call on unlang_resumable().
+ * @param[in] signal_callback	to call on unlang_action().
+ * @param[in] uctx		to pass to the callbacks.
+ * @return
+ *	- RLM_MODULE_YIELD if the xlat would perform blocking I/O
+ *	- A return code representing the result of the xla
+ */
+rlm_rcode_t unlang_push_module_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
+				    REQUEST *request, xlat_exp_t const *xlat,
+				    fr_unlang_resume_callback_t callback,
+				    fr_unlang_action_t signal_callback, void *uctx)
+{
+	/*
+	 *	Push the resumption point
+	 */
+	(void) unlang_module_yield(request, callback, signal_callback, uctx);
+
+	/*
+	 *	Push the xlat function
+	 */
+	unlang_push_xlat(ctx, out, request, xlat, true);
+
+	/*
+	 *	Execute the xlat frame we just pushed onto the stack.
+	 */
+	return unlang_run(request);
 }
 
 /** Continue interpreting after a previous push or yield.

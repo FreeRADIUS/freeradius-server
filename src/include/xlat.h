@@ -34,11 +34,13 @@ extern "C" {
 typedef struct xlat_exp xlat_exp_t;
 
 typedef enum {
-	XLAT_ACTION_PUSH_CHILD = 1,		//!< A deeper level of nesting needs to be evaluated.
+	XLAT_ACTION_PUSH_CHILD = 1,	//!< A deeper level of nesting needs to be evaluated.
 	XLAT_ACTION_YIELD,		//!< An xlat function pushed a resume frame onto the stack.
 	XLAT_ACTION_DONE,		//!< We're done evaluating this level of nesting.
 	XLAT_ACTION_FAIL		//!< An xlat function failed.
 } xlat_action_t;
+
+extern FR_NAME_NUMBER const xlat_action_table[];
 
 typedef size_t (*xlat_escape_t)(REQUEST *request, char *out, size_t outlen, char const *in, void *arg);
 
@@ -74,6 +76,14 @@ typedef ssize_t (*xlat_func_t)(TALLOC_CTX *ctx, char **out, size_t outlen,
  *	- -1 on failure.
  */
 typedef int (*xlat_instantiate_t)(void *xlat_inst, void *mod_inst, char const *fmt);
+
+xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
+				     xlat_exp_t const **child, bool *alternate,
+				     REQUEST *request, xlat_exp_t const **in,
+				     fr_value_box_t *result);
+
+xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t const **child,
+			      REQUEST *request, xlat_exp_t const **in);
 
 ssize_t xlat_eval(char *out, size_t outlen, REQUEST *request, char const *fmt, xlat_escape_t escape,
 		    void const *escape_ctx)

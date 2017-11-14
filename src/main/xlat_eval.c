@@ -28,10 +28,20 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/parser.h>
+#include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
 
 #include <ctype.h>
 #include "xlat.h"
+
+FR_NAME_NUMBER const xlat_action_table[] = {
+	{ "push-child",	XLAT_ACTION_PUSH_CHILD	},
+	{ "yield",	XLAT_ACTION_YIELD	},
+	{ "done",	XLAT_ACTION_DONE	},
+	{ "fail",	XLAT_ACTION_FAIL	},
+
+	{  NULL , -1 }
+};
 
 static size_t xlat_process(TALLOC_CTX *ctx, char **out, REQUEST *request, xlat_exp_t const * const head,
 			   xlat_escape_t escape, void  const *escape_ctx);
@@ -476,6 +486,292 @@ static xlat_action_t xlat_eval_pair(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *
 #ifdef DEBUG_XLAT
 static const char xlat_spaces[] = "                                                                                                                                                                                                                                                                ";
 #endif
+
+/** Process the result of a previous nested expansion
+ *
+ * @param[in] ctx		to allocate value boxes in.
+ * @param[out] out		a list of #fr_value_box_t to append to.
+ * @param[out] child		to evaluate.  If a child needs to be evaluated
+ *				by the caller, we return XLAT_ACTION_PUSH_CHILD
+ *				and place the child to be evaluated here.
+ *				Once evaluation is complete, the caller
+ *				should call us with the same #xlat_exp_t and the
+ *				result of the nested evaluation in result.
+ * @param[in,out]		whether we processed an alternate.
+ * @param[in] request		the current request.
+ * @param[in,out] in		xlat node to evaluate.  Advanced as we process
+ *				additional #xlat_exp_t.
+ * @param[in] result		of a previous nested evaluation.
+ */
+xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
+				     xlat_exp_t const **child, bool *alternate,
+				     REQUEST *request, xlat_exp_t const **in,
+				     fr_value_box_t *result)
+{
+	xlat_exp_t const *node = *in;
+
+	rad_assert(in && *in);
+
+	fr_cursor_tail(out);	/* Needed for reentrant behaviour and debugging */
+
+	switch (node->type) {
+	case XLAT_FUNC:
+	{
+		fr_value_box_t	*value;
+		char		*str;
+		char		*result_str;
+		ssize_t		slen;
+
+		result_str = fr_value_box_list_asprint(NULL, result, NULL, '\0');
+		if (!result_str) return XLAT_ACTION_FAIL;
+
+		if (node->xlat->buf_len > 0) {
+			str = talloc_array(ctx, char, node->xlat->buf_len);
+			str[0] = '\0';	/* Be sure the string is \0 terminated */
+		}
+
+		XLAT_DEBUG("** [%i] %s(func) - %%{%s:%pS}", unlang_stack_depth(request), __FUNCTION__,
+			   node->fmt, result_str);
+
+		slen = node->xlat->func(ctx, &str, node->xlat->buf_len,
+					node->xlat->mod_inst, NULL, request, result_str);
+		if (slen < 0) {
+			talloc_free(result_str);
+			talloc_free(str);
+			return XLAT_ACTION_FAIL;
+		}
+		if (slen == 0) break;	/* Zero length result */
+		(void)talloc_get_type_abort(str, char);
+
+		/*
+		 *	Shrink the buffer
+		 */
+		if ((node->xlat->buf_len > 0) && (slen > 0)) MEM(str = talloc_realloc_bstr(str, (size_t)slen));
+
+		/*
+		 *	Fixup talloc lineage and assign the
+		 *	output of the function to a box.
+		 */
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+		fr_value_box_strdup_buffer_shallow(value, value, NULL, talloc_steal(value, str), false);
+
+		RDEBUG2("EXPAND %%{%s:...}", node->xlat->name);
+		RDEBUG2("   --> %pV", value);
+		fr_cursor_append(out, value);	/* Append the result of the expansion */
+		talloc_free(result_str);
+	}
+		break;
+
+	case XLAT_ALTERNATE:
+	{
+		fr_cursor_t alt_result;
+
+		rad_assert(alternate);
+		rad_assert(child);
+
+		/*
+		 *	No result from the first child, try the alternate
+		 */
+		if (!result) {
+			/*
+			 *	Already tried the alternate
+			 */
+			if (*alternate) {
+				XLAT_DEBUG("** [%i] %s(alt-second) - string empty, null expansion, continuing...",
+					   unlang_stack_depth(request), __FUNCTION__);
+				break;
+			}
+
+			XLAT_DEBUG("** [%i] %s(alt-first) - string empty, evaluating alternate: %s",
+				   unlang_stack_depth(request), __FUNCTION__, (*in)->alternate->fmt);
+			*child = (*in)->alternate;
+			*alternate = true;
+
+			return XLAT_ACTION_PUSH_CHILD;
+		}
+
+		fr_cursor_init(&alt_result, &result);
+		fr_cursor_merge(out, &alt_result);
+	}
+		break;
+
+	default:
+		rad_assert(0);
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	It's easier if we get xlat_frame_eval to continue evaluating the frame.
+	 */
+	*in = (*in)->next;	/* advance */
+	return xlat_frame_eval(ctx, out, child, request, in);
+}
+
+/** Converts xlat nodes to value boxes
+ *
+ * Evaluates a single level of expansions.
+ *
+ * @param[in] ctx		to allocate value boxes in.
+ * @param[out] out		a list of #fr_value_box_t to append to.
+ * @param[out] child		to evaluate.  If a child needs to be evaluated
+ *				by the caller, we return XLAT_ACTION_PUSH_CHILD
+ *				and place the child to be evaluated here.
+ *				Once evaluation is complete, the caller
+ *				should call us with the same #xlat_exp_t and the
+ *				result of the nested evaluation in result.
+ * @param[in] request		the current request.
+ * @param[in,out] in		xlat node to evaluate.  Advanced as we process
+ *				additional #xlat_exp_t.
+ * @return
+ *	- XLAT_ACTION_PUSH_CHILD if we need to evaluate a deeper level of nested.
+ *	  child will be filled with the node that needs to be evaluated.
+ *	  call #xlat_frame_eval_repeat on this node, once there are results
+ *	  from the nested expansion.
+ *	- XLAT_ACTION_YIELD a resumption frame was pushed onto the stack by an
+ *	  xlat function and we need to wait for the request to be resumed
+ *	  before continuing.
+ *	- XLAT_ACTION_DONE we're done, pop the frame.
+ *	- XLAT_ACTION_FAIL an xlat module failed.
+ */
+xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t const **child,
+			      REQUEST *request, xlat_exp_t const **in)
+{
+	xlat_exp_t const	*node = *in;
+	xlat_action_t		xa = XLAT_ACTION_DONE;
+	fr_value_box_t		*value;
+
+	*child = NULL;
+
+	if (!node) return XLAT_ACTION_DONE;
+
+	XLAT_DEBUG("** [%i] %s >> entered", unlang_stack_depth(request), __FUNCTION__);
+
+	for (node = *in; node; node = (*in)->next) {
+	     	*in = node;		/* Update node in our caller */
+		fr_cursor_tail(out);	/* Needed for debugging */
+
+		switch (node->type) {
+		case XLAT_LITERAL:
+			XLAT_DEBUG("** [%i] %s(literal) - %s", unlang_stack_depth(request), __FUNCTION__, node->fmt);
+
+			/*
+			 *	We don't need to strdup the buffer we can
+			 *	just assign a pointer to it.
+			 */
+			MEM(value = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+			fr_value_box_strdup_buffer_shallow(value, value, NULL, node->fmt, false);
+			fr_cursor_append(out, value);
+			continue;
+
+		case XLAT_ONE_LETTER:
+			XLAT_DEBUG("** [%i] %s(one-letter) - %%%s", unlang_stack_depth(request), __FUNCTION__,
+				   node->fmt);
+			if (xlat_eval_one_letter(ctx, out, request, node->fmt[0]) == XLAT_ACTION_FAIL) {
+			fail:
+				fr_cursor_free(out);	/* Only frees what we've added during this call */
+				xa = XLAT_ACTION_FAIL;
+				goto finish;
+			}
+
+			RDEBUG2("EXPAND %%s", node->fmt);
+			if (fr_cursor_next(out)) {
+				RDEBUG2("   --> %pV", fr_cursor_current(out));
+			} else {
+				RDEBUG2("   -->");
+			}
+			continue;
+
+		case XLAT_ATTRIBUTE:
+			XLAT_DEBUG("** [%i] %s(attribute) - %%{%s}", unlang_stack_depth(request), __FUNCTION__,
+				   node->fmt);
+			if (xlat_eval_pair(ctx, out, request, node->attr) == XLAT_ACTION_FAIL) goto fail;
+			continue;
+
+		case XLAT_VIRTUAL:
+		{
+			char	*str = NULL;
+			ssize_t	slen;
+
+			XLAT_DEBUG("** [%i] %s(virtual) - %%{%s}", unlang_stack_depth(request), __FUNCTION__,
+				   node->fmt);
+
+			slen = node->xlat->func(ctx, &str, node->xlat->buf_len, node->xlat->mod_inst,
+						NULL, request, NULL);
+			if (slen < 0) goto fail;
+			if (slen == 0) continue;
+
+			MEM(value = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+			fr_value_box_strdup_buffer_shallow(value, value, NULL, str, false);
+			fr_cursor_append(out, value);
+
+			RDEBUG2("EXPAND %%{%s}", node->xlat->name);
+			RDEBUG2("   --> %pV", value);
+		}
+			continue;
+
+		case XLAT_FUNC:
+			XLAT_DEBUG("** [%i] %s(func) - %%{%s: }", unlang_stack_depth(request), __FUNCTION__,
+				   node->fmt);
+
+			/*
+			 *	Hand back the child node to the caller
+			 *	for evaluation.
+			 */
+			if (node->child) {
+				*child = node->child;
+				xa = XLAT_ACTION_PUSH_CHILD;
+				goto finish;
+			}
+			/*
+			 *	If there's no children we can just
+			 *	call the function directly.
+			 */
+			if (xlat_frame_eval_repeat(ctx, out, child, NULL,
+						   request, in, NULL) == XLAT_ACTION_FAIL) goto fail;
+			continue;
+
+#ifdef HAVE_REGEX
+		case XLAT_REGEX:
+		{
+			char *str = NULL;
+
+			XLAT_DEBUG("** [%i] %s(regex) - %%{%s}", unlang_stack_depth(request), __FUNCTION__,
+				   node->fmt);
+			if (regex_request_to_sub(ctx, &str, request, node->regex_index) < 0) continue;
+
+			/*
+			 *	Above call strdups the capture data, so
+			 *	we just need to fix up the talloc lineage
+			 *	and box it.
+			 */
+			MEM(value = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+			fr_value_box_strdup_buffer_shallow(value, value, NULL, talloc_steal(value, str), false);
+			fr_cursor_append(out, value);
+
+			RDEBUG2("EXPAND %%{%s}", node->fmt);
+			RDEBUG2("   --> %pV", value);
+		}
+			continue;
+#endif
+
+		case XLAT_ALTERNATE:
+			XLAT_DEBUG("** [%i] %s(alternate) - %%{%%{%s}:-%%{%s}}", unlang_stack_depth(request),
+				   __FUNCTION__, node->child->fmt, node->alternate->fmt);
+			rad_assert(node->child != NULL);
+			rad_assert(node->alternate != NULL);
+
+			*child = node->child;
+			xa = XLAT_ACTION_PUSH_CHILD;
+			goto finish;
+		}
+	}
+
+finish:
+	XLAT_DEBUG("** [%i] %s << %s", unlang_stack_depth(request),
+		   __FUNCTION__, fr_int2str(xlat_action_table, xa, "<INVALID>"));
+
+	return xa;
+}
 
 static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * const node,
 			 xlat_escape_t escape, void const *escape_ctx,
