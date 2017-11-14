@@ -357,8 +357,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 	 *	Shrink the buffer to the right size
 	 */
 finish:
-	MEM(start = talloc_realloc(node, start, char, node->len + 1));
-	start[node->len] = '\0';
+	MEM(start = talloc_realloc_bstr(start, node->len));
 
 	return 2 + node->len;
 }
@@ -534,8 +533,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 	/*
 	 *	Shrink the buffer to the right size
 	 */
-	MEM(start = talloc_realloc(node, start, char, node->len + 1));
-	start[node->len] = '\0';
+	MEM(start = talloc_realloc_bstr(start, node->len));
 	node->fmt = start;
 
 	return p - fmt;

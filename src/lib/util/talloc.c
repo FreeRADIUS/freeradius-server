@@ -122,9 +122,9 @@ char *talloc_typed_vasprintf(void const *t, char const *fmt, va_list ap)
 
 /** Binary safe strndup function
  *
- * @param[in] t The talloc context o allocate new buffer in.
- * @param[in] in String to dup, may contain embedded '\0'.
- * @param[in] inlen Number of bytes to dup.
+ * @param[in] t 	he talloc context to allocate new buffer in.
+ * @param[in] in	String to dup, may contain embedded '\0'.
+ * @param[in] inlen	Number of bytes to dup.
  * @return duped string.
  */
 char *talloc_bstrndup(void const *t, char const *in, size_t inlen)
@@ -137,6 +137,30 @@ char *talloc_bstrndup(void const *t, char const *in, size_t inlen)
 	p[inlen] = '\0';
 
 	return p;
+}
+
+/** Trim a bstr (char) buffer
+ *
+ * Reallocs to inlen + 1 and '\0' terminates the string buffer.
+ *
+ * @param[in] in	string to trim.  Will be invalid after
+ *			this function returns.
+ * @param[in] inlen	Length to trim string to.
+ * @return
+ *	- The realloced string on success.  in then points to invalid memory.
+ *	- NULL on failure. In will still be valid.
+ */
+char *talloc_realloc_bstr(char *in, size_t inlen)
+{
+	char *n;
+
+	n = talloc_realloc_size(talloc_parent(in), in, inlen + 1);
+	if (!n) return NULL;
+
+	n[inlen] = '\0';
+	talloc_set_type(n, char);
+
+	return n;
 }
 
 /** Concatenate to + from
