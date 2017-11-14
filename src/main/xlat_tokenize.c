@@ -356,6 +356,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 {
 	char *p;
 	xlat_exp_t *node;
+	char *duped;
 
 	*error = "";		/* quiet gcc */
 
@@ -364,7 +365,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 	XLAT_DEBUG("LITERAL <-- %s", fmt);
 
 	node = talloc_zero(ctx, xlat_exp_t);
-	node->fmt = fmt;
+	node->fmt = duped = talloc_typed_strdup(node, fmt);
 	node->len = 0;
 	node->type = XLAT_LITERAL;
 
@@ -430,8 +431,8 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 		 *	Check for valid single-character expansions.
 		 */
 		if (p[0] == '%') {
-			ssize_t slen;
-			xlat_exp_t *next;
+			ssize_t		slen;
+			xlat_exp_t	*next;
 
 			if (!p[1] || !strchr("%}cdlmnsetCDGHIMSTYv", p[1])) {
 				talloc_free(node);
@@ -446,7 +447,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 			switch (p[1]) {
 			case '%':
 			case '}':
-				next->fmt = talloc_strndup(next, p + 1, 1);
+				next->fmt = talloc_bstrndup(next, p + 1, 1);
 
 				XLAT_DEBUG("LITERAL-ESCAPED <-- %s", next->fmt);
 				next->type = XLAT_LITERAL;
@@ -507,15 +508,22 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 	/*
 	 *	Squash zero-width literals
 	 */
-	if (node->len > 0) {
-		node->async_safe = true; /* literals are always true */
-		*head = node;
-
-	} else {
+	if (node->len <= 0) {
 		(void) talloc_steal(ctx, node->next);
 		*head = node->next;
 		talloc_free(node);
+		return p - fmt;
 	}
+
+	node->async_safe = true; /* literals are always true */
+	*head = node;
+
+	/*
+	 *	Shrink the buffer to the right size
+	 */
+	MEM(duped = talloc_realloc(node, duped, char, node->len + 1));
+	duped[node->len] = '\0';
+	node->fmt = duped;
 
 	return p - fmt;
 }
