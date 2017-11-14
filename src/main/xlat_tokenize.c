@@ -85,7 +85,7 @@ xlat_exp_t *xlat_from_tmpl_attr(TALLOC_CTX *ctx, vp_tmpl_t *vpt)
 	node = talloc_zero(ctx, xlat_exp_t);
 	node->type = XLAT_ATTRIBUTE;
 	node->fmt = talloc_bstrndup(node, vpt->name, vpt->len);
-	node->attr = tmpl_alloc(node, TMPL_TYPE_ATTR,node->fmt, talloc_array_length(node->fmt) - 1, T_BARE_WORD);
+	node->attr = tmpl_alloc(node, TMPL_TYPE_ATTR, node->fmt, talloc_array_length(node->fmt) - 1, T_BARE_WORD);
 	memcpy(&node->attr->data, &vpt->data, sizeof(vpt->data));
 
 	return node;
@@ -168,11 +168,11 @@ static ssize_t xlat_tokenize_alternation(TALLOC_CTX *ctx, char *fmt, xlat_exp_t 
 	return p - fmt;
 }
 
-static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head,
-				       char const **error)
+static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head, char const **error)
 {
 	ssize_t slen;
 	char *p, *q;
+	char *start;
 	xlat_exp_t *node;
 #ifdef HAVE_REGEX
 	long num;
@@ -188,14 +188,14 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 
 	XLAT_DEBUG("EXPANSION <-- %s", fmt);
 	node = talloc_zero(ctx, xlat_exp_t);
-	node->fmt = fmt + 2;
+	node->fmt = start = talloc_typed_strdup(node->fmt, fmt + 2);
 	node->len = 0;
 
 #ifdef HAVE_REGEX
 	/*
 	 *	Handle regex's specially.
 	 */
-	p = fmt + 2;
+	p = start;
 	num = strtol(p, &q, 10);
 	if (p != q && (*q == '}')) {
 		XLAT_DEBUG("REGEX <-- %s", fmt);
@@ -204,14 +204,15 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 		if ((num > REQUEST_MAX_REGEX) || (num < 0)) {
 			talloc_free(node);
 			*error = "Invalid regex reference.  Must be in range 0-" STRINGIFY(REQUEST_MAX_REGEX);
-			return -2;
+			return -2;					/* error */
 		}
 		node->regex_index = num;
 
 		node->type = XLAT_REGEX;
 		*head = node;
 
-		return (q - fmt) + 1;
+		node->len = (q - start) + 1;
+		goto finish;
 	}
 #endif /* HAVE_REGEX */
 
@@ -230,7 +231,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 	 *	This is for efficiency, so we don't search for an xlat,
 	 *	when what's being referenced is obviously an attribute.
 	 */
-	p = fmt + 2;
+	p = start;
 	for (q = p; *q != '\0'; q++) {
 		if (*q == ':') break;
 
@@ -247,7 +248,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 	if ((*q == '}') && (q == p)) {
 		talloc_free(node);
 		*error = "Empty expression is invalid";
-		return -(p - fmt);
+		return (-(p - start)) - 2;				/* error */
 	}
 
 	/*
@@ -270,7 +271,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 			slen = xlat_tokenize_literal(node, p, &node->child, true, error);
 			if (slen < 0) {
 				talloc_free(node);
-				return slen - (p - fmt);
+				return (slen - (p - start)) - 2;	/* error */
 			}
 			p += slen;
 
@@ -278,7 +279,8 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 			*head = node;
 			rad_assert(node->next == NULL);
 
-			return p - fmt;
+			node->len = p - start;
+			goto finish;
 		}
 		*q = ':';	/* Avoids a talloc_strdup */
 	}
@@ -303,7 +305,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 		}
 
 		talloc_free(node);
-		return slen - (p - fmt);
+		return (slen - (p - start)) - 2;			/* error */
 	}
 
 	/*
@@ -314,7 +316,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 		if (node->xlat && node->xlat->mod_inst && !node->xlat->internal) {
 			talloc_free(node);
 			*error = "Missing content in expansion";
-			return -(p - fmt) - slen;
+			return (-(p - start) - slen) - 2;		/* error */
 		}
 
 		if (node->xlat) {
@@ -326,12 +328,14 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 			*head = node;
 			rad_assert(node->next == NULL);
 			q++;
-			return q - fmt;
+
+			node->len = (q - start);
+			goto finish;
 		}
 
 		talloc_free(node);
 		*error = "Unknown attribute";
-		return -(p - fmt);
+		return (-(p - start)) - 2;				/* error */
 	}
 
 	node->type = XLAT_ATTRIBUTE;
@@ -340,14 +344,23 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 	if (*p != '}') {
 		talloc_free(node);
 		*error = "No matching closing brace";
-		return -1;	/* second character of format string */
+		return -1;						/* error @ second character of format string */
 	}
-	*p++ = '\0';
+	p++;
+
+	node->len = (p - start);
 	node->async_safe = true; /* attribute expansions are always async-safe */
 	*head = node;
 	rad_assert(node->next == NULL);
 
-	return p - fmt;
+	/*
+	 *	Shrink the buffer to the right size
+	 */
+finish:
+	MEM(start = talloc_realloc(node, start, char, node->len + 1));
+	start[node->len] = '\0';
+
+	return 2 + node->len;
 }
 
 
@@ -356,7 +369,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 {
 	char *p;
 	xlat_exp_t *node;
-	char *duped;
+	char *start;
 
 	*error = "";		/* quiet gcc */
 
@@ -365,7 +378,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 	XLAT_DEBUG("LITERAL <-- %s", fmt);
 
 	node = talloc_zero(ctx, xlat_exp_t);
-	node->fmt = duped = talloc_typed_strdup(node, fmt);
+	node->fmt = start = talloc_typed_strdup(node, fmt);
 	node->len = 0;
 	node->type = XLAT_LITERAL;
 
@@ -521,9 +534,9 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 	/*
 	 *	Shrink the buffer to the right size
 	 */
-	MEM(duped = talloc_realloc(node, duped, char, node->len + 1));
-	duped[node->len] = '\0';
-	node->fmt = duped;
+	MEM(start = talloc_realloc(node, start, char, node->len + 1));
+	start[node->len] = '\0';
+	node->fmt = start;
 
 	return p - fmt;
 }
