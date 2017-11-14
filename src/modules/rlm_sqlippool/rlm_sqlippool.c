@@ -49,7 +49,7 @@ typedef struct rlm_sqlippool_t {
 	bool		allow_duplicates;	//!< assign even if it already exists
 	char const	*attribute_name;	//!< name of the IP address attribute
 
-	int		framed_ip_address; 	//!< the attribute number for Framed-IP(v6)-Address
+	DICT_ATTR const *framed_ip_address; 	//!< the attribute for IP address allocation
 
 	time_t		last_clear;		//!< So we only do it once a second.
 	char const	*allocate_begin;	//!< SQL query to begin.
@@ -431,12 +431,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 		da = dict_attrbyname(inst->attribute_name);
 		if (!da) {
+		fail:
 			cf_log_err_cs(conf, "Unknown attribute 'attribute_name = %s'", inst->attribute_name);
-			return -1;
-		}
-
-		if (da->vendor != 0) {
-			cf_log_err_cs(conf, "Cannot use VSAs for 'attribute_name = %s'", inst->attribute_name);
 			return -1;
 		}
 
@@ -453,15 +449,17 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 		}
 
-		inst->framed_ip_address = da->attr;
+		inst->framed_ip_address = da;
 	} else {
 		if (!inst->ipv6) {
-			inst->framed_ip_address = PW_FRAMED_IP_ADDRESS;
 			inst->attribute_name = "Framed-IP-Address";
+			inst->framed_ip_address = dict_attrbyvalue(PW_FRAMED_IP_ADDRESS, 0);
 		} else {
-			inst->framed_ip_address = PW_FRAMED_IPV6_PREFIX;
 			inst->attribute_name = "Framed-IPv6-Prefix";
+			inst->framed_ip_address = dict_attrbyvalue(PW_FRAMED_IPV6_PREFIX, 0);
 		}
+
+		if (!inst->framed_ip_address) goto fail;
 	}
 
 	if (strcmp(sql_inst->entry->name, "rlm_sql") != 0) {
@@ -513,7 +511,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	/*
 	 *	If there is already an attribute in the reply do nothing
 	 */
-	if (!inst->allow_duplicates && (fr_pair_find_by_num(request->reply->vps, inst->framed_ip_address, 0, TAG_ANY) != NULL)) {
+	if (!inst->allow_duplicates && (fr_pair_find_by_num(request->reply->vps, inst->framed_ip_address->attr, inst->framed_ip_address->vendor, TAG_ANY) != NULL)) {
 		RDEBUG("%s already exists", inst->attribute_name);
 
 		return do_logging(request, inst->log_exists, RLM_MODULE_NOOP);
@@ -614,7 +612,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	 *	See if we can create the VP from the returned data.  If not,
 	 *	error out.  If so, add it to the list.
 	 */
-	vp = fr_pair_afrom_num(request->reply, inst->framed_ip_address, 0);
+	vp = fr_pair_afrom_num(request->reply, inst->framed_ip_address->attr, inst->framed_ip_address->vendor);
 	if (fr_pair_value_from_str(vp, allocation, allocation_len) < 0) {
 		DO_PART(allocate_commit);
 
