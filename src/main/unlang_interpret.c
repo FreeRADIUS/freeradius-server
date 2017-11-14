@@ -2648,6 +2648,7 @@ static void unlang_push_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
  * @param[in] ctx		To allocate value boxes and values in.
  * @param[out] out		Where to write the result of the expansion.
  * @param[in] request		The current request.
+ * @param[in] xlat		to evaluate.
  * @param[in] callback		to call on unlang_resumable().
  * @param[in] signal_callback	to call on unlang_action().
  * @param[in] uctx		to pass to the callbacks.

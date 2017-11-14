@@ -497,7 +497,8 @@ static const char xlat_spaces[] = "                                             
  *				Once evaluation is complete, the caller
  *				should call us with the same #xlat_exp_t and the
  *				result of the nested evaluation in result.
- * @param[in,out]		whether we processed an alternate.
+ * @param[in,out] alternate	Whether we processed, or have previously processed
+ *				the alternate.
  * @param[in] request		the current request.
  * @param[in,out] in		xlat node to evaluate.  Advanced as we process
  *				additional #xlat_exp_t.
