@@ -211,8 +211,11 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 		node->type = XLAT_REGEX;
 		*head = node;
 
-		node->len = (q - start) + 1;
-		goto finish;
+		node->len = (q - start);
+		MEM(start = talloc_realloc_bstr(start, node->len));
+		q++;	/* Skip closing brace */
+
+		return 2 + (q - start);
 	}
 #endif /* HAVE_REGEX */
 
@@ -280,7 +283,9 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 			rad_assert(node->next == NULL);
 
 			node->len = p - start;
-			goto finish;
+			MEM(start = talloc_realloc_bstr(start, node->len));
+
+			return 2 + node->len;
 		}
 		*q = ':';	/* Avoids a talloc_strdup */
 	}
@@ -330,7 +335,9 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 			q++;
 
 			node->len = (q - start);
-			goto finish;
+			MEM(start = talloc_realloc_bstr(start, node->len));
+
+			return 2 + node->len;
 		}
 
 		talloc_free(node);
@@ -346,7 +353,6 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 		*error = "No matching closing brace";
 		return -1;						/* error @ second character of format string */
 	}
-	p++;
 
 	node->len = (p - start);
 	node->async_safe = true; /* attribute expansions are always async-safe */
@@ -356,10 +362,10 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 	/*
 	 *	Shrink the buffer to the right size
 	 */
-finish:
 	MEM(start = talloc_realloc_bstr(start, node->len));
+	p++;
 
-	return 2 + node->len;
+	return 2 + (p - start);
 }
 
 
