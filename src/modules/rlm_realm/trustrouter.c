@@ -279,7 +279,7 @@ static fr_tls_server_conf_t *construct_tls(TIDC_INSTANCE *inst,
 	ssize_t keylen;
 	char *hexbuf = NULL;
 	DH *aaa_server_dh;
-if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 	const BIGNUM *dh_pubkey = NULL;
 #endif
 
