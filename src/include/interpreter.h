@@ -290,7 +290,8 @@ typedef struct {
 	unlang_type_t		unwind;				//!< Unwind to this one if it exists.
 								///< This is used for break and return.
 
-	bool			repeat : 1;			//!< resume the current section after calling a sub-section
+	bool			repeat : 1;			//!< Call the action callback again on our way
+								//!< back up the stack.
 	bool			top_frame : 1;			//!< are we the top frame of the stack?
 
 	union {
