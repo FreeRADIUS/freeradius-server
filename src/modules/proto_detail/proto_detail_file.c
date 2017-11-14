@@ -167,7 +167,8 @@ static int work_rename(proto_detail_file_t *inst)
 	memset(&files, 0, sizeof(files));
 	if (glob(inst->filename, 0, NULL, &files) != 0) {
 	noop:
-		// @todo - insert timers to re-do the rename
+		DEBUG3("proto_detail (%s): no matching files for %s",
+		       inst->name, inst->filename);
 		globfree(&files);
 		return -1;
 	}
@@ -232,13 +233,16 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 
 	fr_event_vnode_func_t	funcs = { .delete = mod_vnode_delete };
 
+	DEBUG3("proto_detail (%s): Trying to lock %s", inst->name, inst->filename_work);
+
 	/*
 	 *	"detail.work" exists, try to lock it.
 	 */
 	if (rad_lockfd_nonblock(fd, 0) < 0) {
 		struct timeval when, now;
 
-		DEBUG("Failed locking %s: %s", inst->filename_work, fr_syserror(errno));
+		DEBUG3("proto_detail (%s): Failed locking %s: %s",
+		       inst->name, inst->filename_work, fr_syserror(errno));
 
 		close(fd);
 
@@ -251,8 +255,8 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 		inst->lock_interval += inst->lock_interval / 2;
 		if (inst->lock_interval > (30 * USEC)) inst->lock_interval = 30 * USEC;
 
-		DEBUG3("Waiting %d.%06ds for lock on file %s",
-		       (int) when.tv_sec, (int) when.tv_usec, inst->filename_work);
+		DEBUG3("proto_detail (%s): Waiting %d.%06ds for lock on file %s",
+		       inst->name, (int) when.tv_sec, (int) when.tv_usec, inst->filename_work);
 
 		gettimeofday(&now, NULL);
 		fr_timeval_add(&when, &when, &now);
@@ -264,7 +268,8 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 		return;
 	}
 
-	DEBUG3("Obtained lock and processing file %s", inst->filename_work);
+	DEBUG3("proto_detail (%s): Obtained lock and starting to process file %s",
+	       inst->name, inst->filename_work);
 
 	/*
 	 *	The worker may be in a different thread, so avoid
@@ -287,8 +292,8 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 	if (work->fd < 0) {
 		struct timeval when, now;
 
-
-		DEBUG("Failed opening %s: %s", inst->filename_work, fr_syserror(errno));
+		DEBUG("proto_detail (%s): Failed opening %s: %s",
+		      inst->name, inst->filename_work, fr_syserror(errno));
 
 		close(fd);
 		talloc_free(work);
@@ -296,8 +301,8 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 		when.tv_sec = 0;
 		when.tv_usec = 10; /* hard-code! */
 
-		DEBUG3("Waiting %d.%06ds for lock on file %s",
-		       (int) when.tv_sec, (int) when.tv_usec, inst->filename_work);
+		DEBUG3("proto_detail (%s): Waiting %d.%06ds for lock on file %s",
+		       inst->name, (int) when.tv_sec, (int) when.tv_usec, inst->filename_work);
 
 		gettimeofday(&now, NULL);
 		fr_timeval_add(&when, &when, &now);
