@@ -220,8 +220,6 @@ static xlat_action_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, R
 	RADIUS_PACKET	*packet = NULL;
 	fr_value_box_t	*value;
 
-	XLAT_DEBUG("xlat_aprint ATTR VIRTUAL");
-
 	/*
 	 *	Virtual attributes always have a count of 1
 	 */
@@ -385,8 +383,6 @@ static xlat_action_t xlat_eval_pair(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *
 
 	fr_cursor_t	cursor;
 
-	XLAT_DEBUG("xlat_aprint ATTR");
-
 	rad_assert((vpt->type == TMPL_TYPE_ATTR) || (vpt->type == TMPL_TYPE_LIST));
 
 	/*
@@ -527,6 +523,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		break;
 
 	case XLAT_ATTRIBUTE:
+		XLAT_DEBUG("xlat_aprint ATTR");
 		if (xlat_eval_pair(ctx, &cursor, request, node->attr) == XLAT_ACTION_FAIL) return NULL;
 
 		value = fr_cursor_head(&cursor);
