@@ -216,6 +216,7 @@ char const *fr_strerror(void)
 	buffer = fr_strerror_buffer;
 	if (!buffer) return "";
 
+	fr_cursor_head(&buffer->cursor);
 	entry = fr_cursor_remove(&buffer->cursor);
 	if (!entry) return "";
 

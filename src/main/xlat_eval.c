@@ -197,7 +197,7 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 		return XLAT_ACTION_FAIL;
 	}
 
-	fr_cursor_insert(out, value);
+	fr_cursor_append(out, value);
 	return XLAT_ACTION_DONE;
 }
 
@@ -529,7 +529,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 	case XLAT_ATTRIBUTE:
 		if (xlat_eval_pair(ctx, &cursor, request, node->attr) == XLAT_ACTION_FAIL) return NULL;
 
-		value = fr_cursor_current(&cursor);
+		value = fr_cursor_head(&cursor);
 		if (!value) return NULL;
 
 		/*
