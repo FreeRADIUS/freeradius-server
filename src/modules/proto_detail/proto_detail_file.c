@@ -447,6 +447,14 @@ redo:
 			if (tries < 5) goto redo;
 		}
 
+#ifdef __LINUX__
+		/*
+		 *	Wait for the directory to change before
+		 *	looking for another "detail" file.
+		 */
+		if (!inst->poll_interval) return;
+#endif
+
 		/*
 		 *	Check every N seconds.
 		 */
@@ -571,7 +579,12 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	dl_inst = dl_instance_find(instance);
 	rad_assert(dl_inst);
 
+#ifndef __LINUX__
+	/*
+	 *	Linux inotify works.  So we allow poll_interval==0
+	 */
 	FR_INTEGER_BOUND_CHECK("poll_interval", inst->poll_interval, >=, 1);
+#endif
 	FR_INTEGER_BOUND_CHECK("poll_interval", inst->poll_interval, <=, 3600);
 
 	inst->parent = talloc_get_type_abort(dl_inst->parent->data, proto_detail_t);
