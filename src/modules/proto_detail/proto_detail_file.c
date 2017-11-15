@@ -505,9 +505,9 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el)
 	/*
 	 *	Initialize the work state machine.
 	 */
+#ifndef __linux__
 	work_init(inst);
-
-#ifdef __linux__
+#else
 
 	/*
 	 *	We're not changing UID, etc.  Start processing the
