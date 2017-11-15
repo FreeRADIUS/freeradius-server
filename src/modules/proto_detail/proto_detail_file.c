@@ -479,6 +479,9 @@ redo:
 static void mod_event_list_set(void *instance, fr_event_list_t *el)
 {
 	proto_detail_file_t	*inst = talloc_get_type_abort(instance, proto_detail_file_t);
+#ifdef __LINUX__
+	struct timeval when;
+#endif
 
 	inst->el = el;
 
@@ -486,6 +489,33 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el)
 	 *	Initialize the work state machine.
 	 */
 	work_init(inst);
+
+#ifdef __LINUX__
+
+	/*
+	 *	We're not changing UID, etc.  Start processing the
+	 *	detail files now.
+	 */
+	if (!main_config.allow_core_dumps) {
+		work_init(inst);
+		return;
+	}
+
+	/*
+	 *	Delay for a bit, before reading the detail files.
+	 *	This gives the server time to call
+	 *	rad_suid_down_permanent(), and for /proc/PID to
+	 *	therefore change permissions, so that libkqueue can
+	 *	read it.
+	 */
+	gettimeofday(&when, NULL);
+	when.tv_sec +=1;
+
+	if (fr_event_timer_insert(inst, inst->el, &inst->ev,
+				  when, work_retry_timer, inst) < 0) {
+		ERROR("Failed inserting poll timer for %s", inst->filename_work);
+	}
+#endif
 }
 
 
