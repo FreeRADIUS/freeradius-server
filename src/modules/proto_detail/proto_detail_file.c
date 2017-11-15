@@ -212,9 +212,9 @@ static int work_rename(proto_detail_file_t *inst)
 	globfree(&files);	/* Shouldn't be using anything in files now */
 
 	/*
-	 *	The file should now exist.
+	 *	The file should now exist, return the open'd FD.
 	 */
-	return 0;
+	return open(inst->filename_work, inst->mode);
 }
 
 /*
@@ -426,26 +426,27 @@ static void mod_vnode_delete(fr_event_list_t *el, int fd, UNUSED int fflags, voi
 static void work_init(proto_detail_file_t *inst)
 {
 	int fd;
-	bool renamed = false;
 
 	/*
 	 *	See if there is a "detail.work" file.  If not, try to
 	 *	rename an existing file to "detail.work".
 	 */
-redo:
 	DEBUG3("Trying to open %s", inst->filename_work);
 	fd = open(inst->filename_work, inst->mode);
+
+	/*
+	 *	If the work file didn't exist, try to rename detail* ->
+	 *	detail.work, and return the newly opened file.
+	 */
+	if (fd < 0) fd = work_rename(inst);
+
+	/*
+	 *	The work file still doesn't exist.  Go set up timers,
+	 *	or wait for an event which signals us that something
+	 *	in the directory changed.
+	 */
 	if (fd < 0) {
 		struct timeval when, now;
-
-		/*
-		 *	Rename a "detail*" to "detail.work" filem but
-		 *	only try once.
-		 */
-		if (!renamed && (work_rename(inst) < 0)) {
-			renamed = true;
-			goto redo;
-		}
 
 #ifdef __LINUX__
 		/*
