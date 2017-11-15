@@ -94,14 +94,18 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 static void mod_vnode_extend(void *instance, UNUSED uint32_t fflags)
 {
 	proto_detail_file_t *inst = talloc_get_type_abort(instance, proto_detail_file_t);
+	bool has_worker = false;
 
-	DEBUG("Directory %s changed", inst->directory);
 
-	/*
-	 *	@todo - troll for detail.work file.  Allocate new
-	 *	proto_detail_work_t, fill it in, and start up the new
-	 *	detail worker.
-	 */
+	PTHREAD_MUTEX_LOCK(&inst->parent->worker_mutex);
+	has_worker = (inst->parent->num_workers == 0);
+	PTHREAD_MUTEX_UNLOCK(&inst->parent->worker_mutex);
+
+	if (has_worker) return;
+
+	if (inst->ev) fr_event_timer_delete(inst->el, &inst->ev);
+
+	work_init(inst);
 }
 
 /** Open a detail listener
