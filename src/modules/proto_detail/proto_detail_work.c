@@ -707,8 +707,9 @@ static int mod_fd(void const *instance)
  *
  * @param[in] instance of the detail worker
  * @param[in] el the event list
+ * @param[in] nr context from the network side
  */
-static void mod_event_list_set(void *instance, fr_event_list_t *el)
+static void mod_event_list_set(void *instance, fr_event_list_t *el, void *nr)
 {
 	proto_detail_work_t *inst = talloc_get_type_abort(instance, proto_detail_work_t);
 

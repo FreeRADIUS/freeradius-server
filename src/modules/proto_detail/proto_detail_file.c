@@ -492,8 +492,9 @@ static void work_init(proto_detail_file_t *inst)
  *
  * @param[in] instance of the detail worker
  * @param[in] el the event list
+ * @param[in] nr context from the network side
  */
-static void mod_event_list_set(void *instance, fr_event_list_t *el)
+static void mod_event_list_set(void *instance, fr_event_list_t *el, UNUSED void *nr)
 {
 	proto_detail_file_t	*inst = talloc_get_type_abort(instance, proto_detail_file_t);
 #ifdef __linux__

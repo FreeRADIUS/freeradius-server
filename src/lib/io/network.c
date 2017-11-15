@@ -657,7 +657,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 
 	app_io = s->listen->app_io;
 
-	if (app_io->event_list_set) app_io->event_list_set(s->listen->app_io_instance, nr->el);
+	if (app_io->event_list_set) app_io->event_list_set(s->listen->app_io_instance, nr->el, nr);
 
 	rad_assert(app_io->fd);
 	s->fd = app_io->fd(s->listen->app_io_instance);
@@ -718,7 +718,7 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 
 	app_io = s->listen->app_io;
 
-	if (app_io->event_list_set) app_io->event_list_set(s->listen->app_io_instance, nr->el);
+	if (app_io->event_list_set) app_io->event_list_set(s->listen->app_io_instance, nr->el, nr);
 
 	rad_assert(app_io->fd);
 	s->fd = app_io->fd(s->listen->app_io_instance);
@@ -1220,4 +1220,26 @@ int fr_network_worker_add(fr_network_t *nr, fr_worker_t *worker)
 	PTHREAD_MUTEX_UNLOCK(&nr->mutex);
 
 	return rcode;
+}
+
+/** Signal the network to read from a listener
+ *
+ * @param nr the network
+ * @param worker the worker
+ */
+void fr_network_listen_read(fr_network_t *nr, fr_listen_t const *listen)
+{
+	fr_network_socket_t my_socket, *s;
+
+	(void) talloc_get_type_abort(nr, fr_network_t);
+	(void) talloc_get_type_abort(listen, fr_listen_t);
+
+	my_socket.listen = listen;
+	s = rbtree_finddata(nr->sockets, &my_socket);
+	if (!s) return;
+
+	/*
+	 *	Go read the socket.
+	 */
+	fr_network_read(nr->el, s->fd, 0, s);
 }
