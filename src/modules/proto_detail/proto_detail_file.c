@@ -503,6 +503,28 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	dl_instance_t const	*dl_inst;
 	char			*p;
 
+#ifdef __LINUX__
+	/*
+	 *	The kqueue API takes an FD, but inotify requires a filename.
+	 *	libkqueue uses /proc/PID/fd/# to look up the FD -> filename mapping.
+	 *
+	 *	However, if you start the server as "root", and then swap to "radiusd",
+	 *	/proc/PID will be owned by "root" for security reasons.  The only way
+	 *	to make /proc/PID owned by "radiusd" is to set the DUMPABLE flag.
+	 *
+	 *	Instead of making the poor sysadmin figure this out,
+	 *	we check for this situation, and give them a
+	 *	descriptive message telling them what to do.
+	 */
+	if (!main_config.allow_core_dumps &&
+	    main_config.uid_name && *main_config.uid_name &&
+	    main_config.server_uid != 0) {
+		cf_log_err(cs, "Cannot start detail file reader due to Linux limitations.");
+		cf_log_err(cs, "Please set 'allow_core_dumps = true' in the main configuration file.");
+		return -1;
+	}
+#endif
+
 	/*
 	 *	Find the dl_instance_t holding our instance data
 	 *	so we can find out what the parent of our instance
