@@ -61,17 +61,7 @@ static cached_config_t	*cs_cache = NULL;
  *	Temporary local variables for parsing the configuration
  *	file.
  */
-#ifdef HAVE_SETUID
-/*
- *	Systems that have set/getresuid also have setuid.
- */
-static uid_t server_uid = 0;
-static gid_t server_gid = 0;
-static char const *uid_name = NULL;
-static char const *gid_name = NULL;
-#endif
 static char const *chroot_dir = NULL;
-static bool allow_core_dumps = false;
 static char const *radlog_dest = NULL;
 
 /*
@@ -241,11 +231,11 @@ static const CONF_PARSER server_config[] = {
  **********************************************************************/
 static const CONF_PARSER security_config[] = {
 #ifdef HAVE_SETUID
-	{ FR_CONF_POINTER("user", FR_TYPE_STRING, &uid_name) },
-	{ FR_CONF_POINTER("group", FR_TYPE_STRING, &gid_name) },
+	{ FR_CONF_POINTER("user", FR_TYPE_STRING, &main_config.uid_name) },
+	{ FR_CONF_POINTER("group", FR_TYPE_STRING, &main_config.gid_name) },
 #endif
 	{ FR_CONF_POINTER("chroot", FR_TYPE_STRING, &chroot_dir) },
-	{ FR_CONF_POINTER("allow_core_dumps", FR_TYPE_BOOL, &allow_core_dumps), .dflt = "no" },
+	{ FR_CONF_POINTER("allow_core_dumps", FR_TYPE_BOOL, &main_config.allow_core_dumps), .dflt = "no" },
 
 	{ FR_CONF_POINTER("reject_delay", FR_TYPE_TIMEVAL, &main_config.reject_delay), .dflt = STRINGIFY(0) },
 	{ FR_CONF_POINTER("status_server", FR_TYPE_BOOL, &main_config.status_server), .dflt = "no" },
@@ -272,11 +262,11 @@ static const CONF_PARSER switch_users_config[] = {
 	 *	For backwards compatibility.
 	 */
 #ifdef HAVE_SETUID
-	{ FR_CONF_POINTER("user", FR_TYPE_STRING | FR_TYPE_DEPRECATED, &uid_name) },
-	{ FR_CONF_POINTER("group", FR_TYPE_STRING | FR_TYPE_DEPRECATED, &gid_name) },
+	{ FR_CONF_POINTER("user", FR_TYPE_STRING | FR_TYPE_DEPRECATED, &main_config.uid_name) },
+	{ FR_CONF_POINTER("group", FR_TYPE_STRING | FR_TYPE_DEPRECATED, &main_config.gid_name) },
 #endif
 	{ FR_CONF_POINTER("chroot", FR_TYPE_STRING | FR_TYPE_DEPRECATED, &chroot_dir) },
-	{ FR_CONF_POINTER("allow_core_dumps", FR_TYPE_BOOL | FR_TYPE_DEPRECATED, &allow_core_dumps) },
+	{ FR_CONF_POINTER("allow_core_dumps", FR_TYPE_BOOL | FR_TYPE_DEPRECATED, &main_config.allow_core_dumps) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -418,20 +408,20 @@ static int switch_users(CONF_SECTION *cs)
 	/*
 	 *	Get the correct GID for the server.
 	 */
-	server_gid = getgid();
+	main_config.server_gid = getgid();
 
-	if (gid_name) {
+	if (main_config.gid_name) {
 		struct group *gr;
 
-		gr = getgrnam(gid_name);
+		gr = getgrnam(main_config.gid_name);
 		if (!gr) {
 			fprintf(stderr, "%s: Cannot get ID for group %s: %s\n",
-				main_config.name, gid_name, fr_syserror(errno));
+				main_config.name, main_config.gid_name, fr_syserror(errno));
 			return 0;
 		}
 
-		if (server_gid != gr->gr_gid) {
-			server_gid = gr->gr_gid;
+		if (main_config.server_gid != gr->gr_gid) {
+			main_config.server_gid = gr->gr_gid;
 			do_sgid = true;
 		}
 	}
@@ -440,27 +430,27 @@ static int switch_users(CONF_SECTION *cs)
 	/*
 	 *	Get the correct UID for the server.
 	 */
-	server_uid = getuid();
+	main_config.server_uid = getuid();
 
-	if (uid_name) {
+	if (main_config.uid_name) {
 		struct passwd *user;
 
-		if (rad_getpwnam(cs, &user, uid_name) < 0) {
+		if (rad_getpwnam(cs, &user, main_config.uid_name) < 0) {
 			fprintf(stderr, "%s: Cannot get passwd entry for user %s: %s\n",
-				main_config.name, uid_name, fr_strerror());
+				main_config.name, main_config.uid_name, fr_strerror());
 			return 0;
 		}
 
 		/*
 		 *	We're not the correct user.  Go set that.
 		 */
-		if (server_uid != user->pw_uid) {
-			server_uid = user->pw_uid;
+		if (main_config.server_uid != user->pw_uid) {
+			main_config.server_uid = user->pw_uid;
 			do_suid = true;
 #ifdef HAVE_INITGROUPS
-			if (initgroups(uid_name, server_gid) < 0) {
+			if (initgroups(main_config.uid_name, main_config.server_gid) < 0) {
 				fprintf(stderr, "%s: Cannot initialize supplementary group list for user %s: %s\n",
-					main_config.name, uid_name, fr_syserror(errno));
+					main_config.name, main_config.uid_name, fr_syserror(errno));
 				talloc_free(user);
 				return 0;
 			}
@@ -474,7 +464,7 @@ static int switch_users(CONF_SECTION *cs)
 	 *	Set the user/group we're going to use
 	 *	to check read permissions on configuration files.
 	 */
-	cf_file_check_user(server_uid ? server_uid : (uid_t)-1, server_gid ? server_gid : (gid_t)-1);
+	cf_file_check_user(main_config.server_uid ? main_config.server_uid : (uid_t)-1, main_config.server_gid ? main_config.server_gid : (gid_t)-1);
 
 	/*
 	 *	Do chroot BEFORE changing UIDs.
@@ -508,9 +498,9 @@ static int switch_users(CONF_SECTION *cs)
 	 *	Set the GID.  Don't bother checking it.
 	 */
 	if (do_sgid) {
-		if (setgid(server_gid) < 0){
+		if (setgid(main_config.server_gid) < 0){
 			fprintf(stderr, "%s: Failed setting group to %s: %s",
-				main_config.name, gid_name, fr_syserror(errno));
+				main_config.name, main_config.gid_name, fr_syserror(errno));
 			return 0;
 		}
 	}
@@ -538,7 +528,7 @@ static int switch_users(CONF_SECTION *cs)
 		 *	allowed to write to this directory however.
 		 */
 		my_dir = talloc_strdup(NULL, run_dir);
-		if (rad_mkdir(my_dir, 0755, server_uid, server_gid) < 0) {
+		if (rad_mkdir(my_dir, 0755, main_config.server_uid, main_config.server_gid) < 0) {
 			DEBUG("Failed to create run_dir %s: %s",
 			      my_dir, strerror(errno));
 		}
@@ -555,7 +545,7 @@ static int switch_users(CONF_SECTION *cs)
 		 *	readable.
 		 */
 		my_dir = talloc_strdup(NULL, radlog_dir);
-		if (rad_mkdir(my_dir, 0755, server_uid, server_gid) < 0) {
+		if (rad_mkdir(my_dir, 0755, main_config.server_uid, main_config.server_gid) < 0) {
 			DEBUG("Failed to create logdir %s: %s",
 			      my_dir, strerror(errno));
 		}
@@ -588,7 +578,7 @@ static int switch_users(CONF_SECTION *cs)
 	 */
 	if ((do_suid || do_sgid) &&
 	    (default_log.dst == L_DST_FILES)) {
-		if (fchown(default_log.fd, server_uid, server_gid) < 0) {
+		if (fchown(default_log.fd, main_config.server_uid, main_config.server_gid) < 0) {
 			fprintf(stderr, "%s: Cannot change ownership of log file %s: %s\n",
 				main_config.name, main_config.log_file, fr_syserror(errno));
 			return 0;
@@ -600,7 +590,7 @@ static int switch_users(CONF_SECTION *cs)
 	 *	permanently change the UID.
 	 */
 	if (do_suid) {
-		rad_suid_set_down_uid(server_uid);
+		rad_suid_set_down_uid(main_config.server_uid);
 		rad_suid_down();
 	}
 
@@ -608,11 +598,11 @@ static int switch_users(CONF_SECTION *cs)
 	 *	This also clears the dumpable flag if core dumps
 	 *	aren't allowed.
 	 */
-	if (fr_set_dumpable(allow_core_dumps) < 0) {
+	if (fr_set_dumpable(main_config.allow_core_dumps) < 0) {
 		ERROR("%s", fr_strerror());
 	}
 
-	if (allow_core_dumps) {
+	if (main_config.allow_core_dumps) {
 		INFO("Core dumps are enabled");
 	}
 

@@ -154,6 +154,13 @@ typedef struct main_config {
 
 	bool		write_pid;			//!< write the PID file
 
+#ifdef HAVE_SETUID
+	uid_t		server_uid;			//!< UID we run as
+	gid_t		server_gid;			//!< GID we run as
+	char const	*uid_name;
+	char const	*gid_name;
+#endif
+
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 	char const	*allow_vulnerable_openssl;	//!< The CVE number of the last security issue acknowledged.
 #endif
