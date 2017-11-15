@@ -448,7 +448,7 @@ static void work_init(proto_detail_file_t *inst)
 	if (fd < 0) {
 		struct timeval when, now;
 
-#ifdef __LINUX__
+#ifdef __linux__
 		/*
 		 *	Wait for the directory to change before
 		 *	looking for another "detail" file.
@@ -496,7 +496,7 @@ static void work_init(proto_detail_file_t *inst)
 static void mod_event_list_set(void *instance, fr_event_list_t *el)
 {
 	proto_detail_file_t	*inst = talloc_get_type_abort(instance, proto_detail_file_t);
-#ifdef __LINUX__
+#ifdef __linux__
 	struct timeval when;
 #endif
 
@@ -507,7 +507,7 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el)
 	 */
 	work_init(inst);
 
-#ifdef __LINUX__
+#ifdef __linux__
 
 	/*
 	 *	We're not changing UID, etc.  Start processing the
@@ -529,7 +529,7 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el)
 	when.tv_sec +=1;
 
 	if (fr_event_timer_insert(inst, inst->el, &inst->ev,
-				  when, work_retry_timer, inst) < 0) {
+				  &when, work_retry_timer, inst) < 0) {
 		ERROR("Failed inserting poll timer for %s", inst->filename_work);
 	}
 #endif
@@ -550,7 +550,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	dl_instance_t const	*dl_inst;
 	char			*p;
 
-#ifdef __LINUX__
+#ifdef __linux__
 	/*
 	 *	The kqueue API takes an FD, but inotify requires a filename.
 	 *	libkqueue uses /proc/PID/fd/# to look up the FD -> filename mapping.
@@ -580,7 +580,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	dl_inst = dl_instance_find(instance);
 	rad_assert(dl_inst);
 
-#ifndef __LINUX__
+#ifndef __linux__
 	/*
 	 *	Linux inotify works.  So we allow poll_interval==0
 	 */
@@ -591,6 +591,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	inst->parent = talloc_get_type_abort(dl_inst->parent->data, proto_detail_t);
 	inst->cs = cs;
 	inst->fd = -1;
+	inst->vnode = true;
 
 	inst->directory = p = talloc_strdup(inst, inst->filename);
 
