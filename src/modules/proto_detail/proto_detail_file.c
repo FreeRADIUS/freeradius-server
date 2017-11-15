@@ -229,7 +229,7 @@ static void work_retry_timer(UNUSED fr_event_list_t *el, UNUSED struct timeval *
 static void work_exists(proto_detail_file_t *inst, int fd)
 {
 	proto_detail_work_t	*work;
-	fr_listen_t		*listen;
+	fr_listen_t		*listen = NULL;
 
 	fr_event_vnode_func_t	funcs = { .delete = mod_vnode_delete };
 
@@ -356,6 +356,10 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 	listen->default_message_size = inst->parent->max_packet_size;
 	listen->num_messages = inst->parent->num_messages;
 
+	PTHREAD_MUTEX_LOCK(&inst->parent->worker_mutex);
+	inst->parent->num_workers++;
+	PTHREAD_MUTEX_UNLOCK(&inst->parent->worker_mutex);
+
 	/*
 	 *	Instantiate the new worker.
 	 */
@@ -381,7 +385,7 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 
 		(void) fr_event_fd_delete(inst->el, work->fd, FR_EVENT_FILTER_VNODE);
 		(void) fr_event_fd_delete(inst->el, work->fd, FR_EVENT_FILTER_IO);
-		close(work->fd);
+		if (listen) (void) listen->app_io->detach(listen->app_io_instance);
 		talloc_free(work);
 		return;
 	}

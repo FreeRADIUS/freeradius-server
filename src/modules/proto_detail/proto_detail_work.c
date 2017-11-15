@@ -799,6 +799,15 @@ static int mod_detach(void *instance)
 
 	if (inst->fd >= 0) close(inst->fd);
 
+	/*
+	 *	One less worker...  we check for "0" because of the
+	 *	hacks in proto_detail which let us start up with
+	 *	"transport = work" for debugging purposes.
+	 */
+	PTHREAD_MUTEX_LOCK(&inst->parent->worker_mutex);
+	if (inst->parent->num_workers > 0) inst->parent->num_workers--;
+	PTHREAD_MUTEX_UNLOCK(&inst->parent->worker_mutex);
+
 	return 0;
 }
 

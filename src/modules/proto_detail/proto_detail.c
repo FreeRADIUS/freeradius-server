@@ -665,6 +665,29 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		}
 	}
 
+#ifdef HAVE_PTHREAD_H
+	(void) pthread_mutex_init(&inst->worker_mutex, NULL);
+#endif
+
+	return 0;
+}
+
+/** Detach the application
+ *
+ *
+ * @param[in] instance	Ctx data for this application.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int mod_detach(void *instance)
+{
+	proto_detail_t		*inst = talloc_get_type_abort(instance, proto_detail_t);
+
+#ifdef HAVE_PTHREAD_H
+	pthread_mutex_destroy(&inst->worker_mutex);
+#endif
+
 	return 0;
 }
 
@@ -676,6 +699,7 @@ fr_app_t proto_detail = {
 
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
+	.detach		= mod_detach,
 	.open		= mod_open,
 	.decode		= mod_decode,
 	.encode		= mod_encode,
