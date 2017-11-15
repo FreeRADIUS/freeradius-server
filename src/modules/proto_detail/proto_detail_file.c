@@ -425,9 +425,8 @@ static void mod_vnode_delete(fr_event_list_t *el, int fd, UNUSED int fflags, voi
 
 static void work_init(proto_detail_file_t *inst)
 {
-	int fd, tries;
-
-	tries = 0;
+	int fd;
+	bool renamed = false;
 
 	/*
 	 *	See if there is a "detail.work" file.  If not, try to
@@ -440,11 +439,12 @@ redo:
 		struct timeval when, now;
 
 		/*
-		 *	Rename a "detail*" to "detail.work" file.
+		 *	Rename a "detail*" to "detail.work" filem but
+		 *	only try once.
 		 */
-		if (work_rename(inst) == 0) {
-			tries++;
-			if (tries < 5) goto redo;
+		if (!renamed && (work_rename(inst) < 0)) {
+			renamed = true;
+			goto redo;
 		}
 
 #ifdef __LINUX__
