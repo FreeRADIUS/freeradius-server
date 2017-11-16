@@ -33,6 +33,8 @@ FreeRADIUS 3.0.16 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	* Explain why many LDAP connections are closed.
 	  Fixes #1969.
 	* Debian build / package issues fixed by Matthew Newton.
+	* sql_ippool module can now use any IP attribute.
+	  See raddb/mods-available/sql_ippool for details.
 
 	Bug fixes
 	* Bind the lifetime of program name and python path to the module
@@ -70,6 +72,9 @@ FreeRADIUS 3.0.16 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	  RadSec connections.  Patch from Jan Tomasek.  #2106.
 	* TunnelPassword is not "single value" in LDAP schema.
 	  Fixes #2061.
+	* sql log now opens the expanded filename, not the input one.
+	  This was a regression introduced in 3.0.15.
+	* Remove unnecessary UNIQUE constrain in Oracle schemas.
 
 FreeRADIUS 3.0.15 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	Feature improvements
