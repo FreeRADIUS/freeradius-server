@@ -1225,14 +1225,14 @@ int fr_network_worker_add(fr_network_t *nr, fr_worker_t *worker)
 /** Signal the network to read from a listener
  *
  * @param nr the network
- * @param worker the worker
+ * @param listen the listener to read from
  */
 void fr_network_listen_read(fr_network_t *nr, fr_listen_t const *listen)
 {
 	fr_network_socket_t my_socket, *s;
 
 	(void) talloc_get_type_abort(nr, fr_network_t);
-	(void) talloc_get_type_abort(listen, fr_listen_t);
+	(void) talloc_get_type_abort_const(listen, fr_listen_t);
 
 	my_socket.listen = listen;
 	s = rbtree_finddata(nr->sockets, &my_socket);
