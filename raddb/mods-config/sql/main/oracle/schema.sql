@@ -151,43 +151,6 @@ CREATE OR REPLACE TRIGGER radusergroup_serialnumber
 /
 
 
-/*
- * Table structure for table 'realmgroup'
- */
-CREATE TABLE realmgroup (
-	id 		INT PRIMARY KEY,
-	RealmName	VARCHAR(30) UNIQUE NOT NULL,
-	GroupName	VARCHAR(30)
-);
-CREATE SEQUENCE realmgroup_seq START WITH 1 INCREMENT BY 1;
-
-CREATE TABLE realms (
-	id		INT PRIMARY KEY,
-	realmname	VARCHAR(64),
-	nas		VARCHAR(128),
-	authport	INT,
-	options		VARCHAR(128)
-);
-CREATE SEQUENCE realms_seq START WITH 1 INCREMENT BY 1;
-
-CREATE TABLE radhuntgroup (
-	id              INT PRIMARY KEY,
-	GroupName VARCHAR(64) NOT NULL,
-	Nasipaddress VARCHAR(15) UNIQUE NOT NULL,
-	NASPortID VARCHAR(15)
-);
-
-CREATE SEQUENCE radhuntgroup_seq START WITH 1 INCREMENT BY 1;
-
-CREATE OR REPLACE TRIGGER radhuntgroup_serialnumber
-	BEFORE INSERT OR UPDATE OF id ON radhuntgroup
-	FOR EACH ROW
-	BEGIN
-		if ( :new.id = 0 or :new.id is null ) then
-			SELECT radhuntgroup_seq.nextval into :new.id from dual;
-		end if;
-	END;
-
 CREATE TABLE radpostauth (
 	  id            INT PRIMARY KEY,
 	  UserName      VARCHAR(64) NOT NULL,
