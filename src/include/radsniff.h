@@ -271,7 +271,7 @@ struct rs {
 	int			list_da_num;
 
 	char			*link_attributes;	//!< Names of fr_dict_attr_ts to use for rtx.
-	fr_dict_attr_t const		*link_da[RS_MAX_ATTRS];	//!< fr_dict_attr_ts to link on.
+	fr_dict_attr_t const	*link_da[RS_MAX_ATTRS];	//!< fr_dict_attr_ts to link on.
 	int			link_da_num;		//!< Number of rtx fr_dict_attr_ts.
 
 	char const		*filter_request;	//!< Raw request filter string.

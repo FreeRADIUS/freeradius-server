@@ -1385,7 +1385,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			ret = fr_radius_packet_verify(current, original->expect, conf->radius_secret);
 			fr_log_fp = log_fp;
 			if (ret != 0) {
-				REDEBUG("Failed verifying packet ID %d", current->id);
+				REDEBUG("Failed verifying packet ID %d: %s", current->id, fr_strerror());
 				fr_radius_free(&current);
 				return;
 			}
@@ -1497,6 +1497,29 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			fr_radius_free(&current);
 
 			return;
+		}
+
+		if (conf->verify_radius_authenticator) {
+			switch (current->code) {
+			case FR_CODE_ACCOUNTING_REQUEST:
+			case FR_CODE_COA_REQUEST:
+			case FR_CODE_DISCONNECT_REQUEST:
+			{
+				int ret;
+				FILE *log_fp = fr_log_fp;
+
+				fr_log_fp = NULL;
+				ret = fr_radius_packet_verify(current, NULL, conf->radius_secret);
+				fr_log_fp = log_fp;
+				if (ret != 0) {
+					REDEBUG("Failed verifying packet ID %d: %s", current->id, fr_strerror());
+					fr_radius_free(&current);
+					return;
+				}
+			}
+			default:
+				break;
+			}
 		}
 
 		/*
