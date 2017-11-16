@@ -223,7 +223,13 @@ static const CONF_PARSER thread_config[] = {
 static pthread_mutex_t *ssl_mutexes = NULL;
 
 #ifdef HAVE_CRYPTO_SET_ID_CALLBACK
-static unsigned long get_ssl_id(void)
+
+/*
+ *	Use preprocessor magic to get the right function and argument
+ *	to use.  This avoids ifdef's through the rest of the code.
+ */
+#if OPENSSL_VERSION_NUMBER < 0x10000000L
+static unsigned long ssl_id_function(void)
 {
 	unsigned long ret;
 	pthread_t thread = pthread_self();
@@ -236,19 +242,12 @@ static unsigned long get_ssl_id(void)
 
 	return ret;
 }
-
-/*
- *	Use preprocessor magic to get the right function and argument
- *	to use.  This avoids ifdef's through the rest of the code.
- */
-#if OPENSSL_VERSION_NUMBER < 0x10000000L
-#define ssl_id_function get_ssl_id
 #define set_id_callback CRYPTO_set_id_callback
 
 #else
 static void ssl_id_function(CRYPTO_THREADID *id)
 {
-	CRYPTO_THREADID_set_numeric(id, get_ssl_id());
+	CRYPTO_THREADID_set_pointer(id, (void *)pthread_self());
 }
 #define set_id_callback CRYPTO_THREADID_set_callback
 #endif
