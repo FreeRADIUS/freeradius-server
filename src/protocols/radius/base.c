@@ -804,6 +804,7 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 		} else {
 			fr_strerror_printf("invalid Request Authenticator (shared secret is incorrect)");
 		}
+		return -1;
 	}
 
 	return 0;
