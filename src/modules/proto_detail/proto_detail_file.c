@@ -231,6 +231,7 @@ static void work_retry_timer(UNUSED fr_event_list_t *el, UNUSED struct timeval *
  */
 static void work_exists(proto_detail_file_t *inst, int fd)
 {
+	bool			opened = false;
 	proto_detail_work_t	*work;
 	fr_listen_t		*listen = NULL;
 
@@ -381,14 +382,20 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 		ERROR("Failed opening %s", listen->app_io->name);
 		goto error;
 	}
+	opened = true;
 
 	if (!fr_schedule_socket_add(inst->parent->sc, listen)) {
 	error:
 		(void) fr_event_fd_delete(inst->el, fd, FR_EVENT_FILTER_VNODE);
-		close(fd);
-
 		(void) fr_event_fd_delete(inst->el, work->fd, FR_EVENT_FILTER_VNODE);
 		(void) fr_event_fd_delete(inst->el, work->fd, FR_EVENT_FILTER_IO);
+
+		if (opened) {
+			(void) listen->app_io->close(listen->app_io_instance);
+		} else {
+			close(fd);
+		}
+
 		if (listen) (void) listen->app_io->detach(listen->app_io_instance);
 		talloc_free(listen);
 		return;
