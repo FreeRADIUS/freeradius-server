@@ -97,7 +97,7 @@ static void mod_vnode_extend(void *instance, UNUSED uint32_t fflags)
 	bool has_worker = false;
 
 	PTHREAD_MUTEX_LOCK(&inst->parent->worker_mutex);
-	has_worker = (inst->parent->num_workers == 0);
+	has_worker = (inst->parent->num_workers != 0);
 	PTHREAD_MUTEX_UNLOCK(&inst->parent->worker_mutex);
 
 	if (has_worker) return;
@@ -423,7 +423,7 @@ static void work_init(proto_detail_file_t *inst)
 	bool has_worker;
 
 	PTHREAD_MUTEX_LOCK(&inst->parent->worker_mutex);
-	has_worker = (inst->parent->num_workers == 0);
+	has_worker = (inst->parent->num_workers != 0);
 	PTHREAD_MUTEX_UNLOCK(&inst->parent->worker_mutex);
 
 	/*
