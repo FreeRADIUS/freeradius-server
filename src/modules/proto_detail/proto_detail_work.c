@@ -691,6 +691,13 @@ static int mod_close(void *instance)
 		talloc_free(talloc_parent(inst));
 	}
 
+	/*
+	 *	Do this as the last thing before exiting.
+	 *
+	 *	For now, we can only have one worker at a time.
+	 */
+	inst->parent->work_io_instance = NULL;
+
 	return 0;
 }
 

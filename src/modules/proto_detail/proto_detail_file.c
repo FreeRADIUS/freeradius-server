@@ -96,7 +96,6 @@ static void mod_vnode_extend(void *instance, UNUSED uint32_t fflags)
 	proto_detail_file_t *inst = talloc_get_type_abort(instance, proto_detail_file_t);
 	bool has_worker = false;
 
-
 	PTHREAD_MUTEX_LOCK(&inst->parent->worker_mutex);
 	has_worker = (inst->parent->num_workers == 0);
 	PTHREAD_MUTEX_UNLOCK(&inst->parent->worker_mutex);
@@ -408,12 +407,6 @@ static void mod_vnode_delete(fr_event_list_t *el, int fd, UNUSED int fflags, voi
 	(void) fr_event_fd_delete(el, fd, FR_EVENT_FILTER_VNODE);
 
 	/*
-	 *	The worker may or may not still exist if the file was
-	 *	deleted.
-	 */
-	inst->parent->work_io_instance = NULL;
-
-	/*
 	 *	Re-initialize the state machine.
 	 *
 	 *	Note that a "delete" may be the result of an atomic
@@ -427,6 +420,17 @@ static void mod_vnode_delete(fr_event_list_t *el, int fd, UNUSED int fflags, voi
 static void work_init(proto_detail_file_t *inst)
 {
 	int fd;
+	bool has_worker;
+
+	PTHREAD_MUTEX_LOCK(&inst->parent->worker_mutex);
+	has_worker = (inst->parent->num_workers == 0);
+	PTHREAD_MUTEX_UNLOCK(&inst->parent->worker_mutex);
+
+	/*
+	 *	The worker is still processing the file, poll until
+	 *	it's done.
+	 */
+	if (has_worker) goto delay;
 
 	/*
 	 *	See if there is a "detail.work" file.  If not, try to
@@ -457,6 +461,7 @@ static void work_init(proto_detail_file_t *inst)
 		if (!inst->poll_interval) return;
 #endif
 
+delay:
 		/*
 		 *	Check every N seconds.
 		 */
