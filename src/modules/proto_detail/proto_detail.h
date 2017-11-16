@@ -122,6 +122,8 @@ typedef struct proto_detail_work_t {
 
 	fr_event_timer_t const		*ev;			//!< for detail file timers.
 	RADCLIENT			*client;		//!< so the rest of the server doesn't complain
+
+	fr_network_t			*nr;			//!< for Linux-specific callbacks
 } proto_detail_work_t;
 
 typedef struct proto_detail_process_t {

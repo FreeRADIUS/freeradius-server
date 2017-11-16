@@ -88,10 +88,10 @@ static const CONF_PARSER file_listen_config[] = {
 /*
  *	All of the decoding is done by proto_detail.c
  */
-static int mod_decode(UNUSED void const *instance, REQUEST *request, UNUSED uint8_t *const data, UNUSED size_t data_len)
+static int mod_decode(void const *instance, REQUEST *request, UNUSED uint8_t *const data, UNUSED size_t data_len)
 {
 
-	proto_detail_work_t const     	*inst = talloc_get_type_abort_const(instance, proto_detail_work_t);
+	proto_detail_work_t const	*inst = talloc_get_type_abort_const(instance, proto_detail_work_t);
 	fr_detail_entry_t const		*track = request->async->packet_ctx;
 	VALUE_PAIR *vp;
 
@@ -459,7 +459,7 @@ done:
 }
 
 
-static void work_retransmit(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, UNUSED void *uctx)
+static void work_retransmit(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
 {
 	fr_detail_entry_t		*track = talloc_get_type_abort(uctx, fr_detail_entry_t);
 	proto_detail_work_t		*inst = talloc_parent(track);
@@ -484,6 +484,10 @@ static void work_retransmit(UNUSED fr_event_list_t *el, UNUSED struct timeval *n
 	 *	the correct read offset.
 	 */
 	(void) lseek(inst->fd, 0, SEEK_SET);
+
+#ifdef __linux__
+	fr_network_listen_read(inst->nr, talloc_parent(inst));
+#endif
 }
 
 static ssize_t mod_write(void *instance, void *packet_ctx,
@@ -684,7 +688,7 @@ static int mod_close(void *instance)
 	inst->fd = -1;
 
 	if (inst->free_on_close) {
-		talloc_free(inst);
+		talloc_free(talloc_parent(inst));
 	}
 
 	return 0;
@@ -725,6 +729,7 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el, void *nr)
 #endif
 
 	inst->el = el;
+	inst->nr = nr;
 }
 
 

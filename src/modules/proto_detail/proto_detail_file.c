@@ -275,12 +275,15 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 	DEBUG3("proto_detail (%s): Obtained lock and starting to process file %s",
 	       inst->name, inst->filename_work);
 
+	MEM(listen = talloc_zero(NULL, fr_listen_t));
+
 	/*
 	 *	The worker may be in a different thread, so avoid
 	 *	talloc threading issues by using a NULL TALLOC_CTX.
 	 */
-	work = talloc(NULL, proto_detail_work_t);
+	work = talloc(listen, proto_detail_work_t);
 	if (!work) {
+		talloc_free(listen);
 		DEBUG("Failed allocating memory");
 		return;
 	}
@@ -300,7 +303,7 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 		      inst->name, inst->filename_work, fr_syserror(errno));
 
 		close(fd);
-		talloc_free(work);
+		talloc_free(listen);
 
 		when.tv_sec = 0;
 		when.tv_usec = 10; /* hard-code! */
@@ -338,8 +341,6 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 	 *	This listener is parented from the worker.  So that
 	 *	when the worker goes away, so does the listener.
 	 */
-	listen = talloc_zero(work, fr_listen_t);
-
 	listen->app_io = inst->parent->work_io;
 	listen->app_io_instance = work;
 
@@ -390,7 +391,7 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 		(void) fr_event_fd_delete(inst->el, work->fd, FR_EVENT_FILTER_VNODE);
 		(void) fr_event_fd_delete(inst->el, work->fd, FR_EVENT_FILTER_IO);
 		if (listen) (void) listen->app_io->detach(listen->app_io_instance);
-		talloc_free(work);
+		talloc_free(listen);
 		return;
 	}
 
