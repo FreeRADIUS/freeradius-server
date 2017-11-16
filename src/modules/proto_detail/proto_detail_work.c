@@ -682,17 +682,15 @@ static int mod_close(void *instance)
 {
 	proto_detail_work_t *inst = talloc_get_type_abort(instance, proto_detail_work_t);
 
+	PTHREAD_MUTEX_LOCK(&inst->parent->worker_mutex);
+	inst->parent->num_workers--;
+	PTHREAD_MUTEX_UNLOCK(&inst->parent->worker_mutex);
+	inst->parent->work_io_instance = NULL;
+
 	DEBUG("Detail worker at EOF. Closing and deleting %s", inst->name);
 	unlink(inst->filename_work);
 	close(inst->fd);
 	inst->fd = -1;
-
-	/*
-	 *	Do this as the last thing before exiting.
-	 *
-	 *	For now, we can only have one worker at a time.
-	 */
-	inst->parent->work_io_instance = NULL;
 
 	if (inst->free_on_close) {
 		talloc_free(talloc_parent(inst));

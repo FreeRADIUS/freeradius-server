@@ -437,7 +437,11 @@ static void work_init(proto_detail_file_t *inst)
 	 *	The worker is still processing the file, poll until
 	 *	it's done.
 	 */
-	if (has_worker) goto delay;
+	if (has_worker) {
+		DEBUG3("proto_detail (%s): worker %s is still alive, waiting for it to finish.",
+		       inst->name, inst->filename_work);
+		goto delay;
+	}
 
 	/*
 	 *	See if there is a "detail.work" file.  If not, try to
