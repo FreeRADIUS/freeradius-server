@@ -86,7 +86,7 @@ CREATE OR REPLACE TRIGGER radcheck_serialnumber
  */
 CREATE TABLE radgroupcheck (
 	id 		INT PRIMARY KEY,
-	groupname	VARCHAR(20) UNIQUE NOT NULL,
+	groupname	VARCHAR(20) NOT NULL,
 	attribute	VARCHAR(64),
 	op		CHAR(2) NOT NULL,
 	value		VARCHAR(40)
@@ -98,7 +98,7 @@ CREATE SEQUENCE radgroupcheck_seq START WITH 1 INCREMENT BY 1;
  */
 CREATE TABLE radgroupreply (
 	id		INT PRIMARY KEY,
-	GroupName	VARCHAR(20) UNIQUE NOT NULL,
+	GroupName	VARCHAR(20) NOT NULL,
 	Attribute	VARCHAR(64),
 	op		CHAR(2) NOT NULL,
 	Value		VARCHAR(40)
@@ -134,7 +134,7 @@ CREATE OR REPLACE TRIGGER radreply_serialnumber
  */
 CREATE TABLE radusergroup (
 	id		INT PRIMARY KEY,
-	UserName	VARCHAR(30) UNIQUE NOT NULL,
+	UserName	VARCHAR(30) NOT NULL,
 	GroupName	VARCHAR(30)
 );
 CREATE SEQUENCE radusergroup_seq START WITH 1 INCREMENT BY 1;
