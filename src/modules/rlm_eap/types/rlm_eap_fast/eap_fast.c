@@ -902,8 +902,10 @@ static FR_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_sessio
 
 	if (binding) {
 		FR_CODE code = eap_fast_crypto_binding(request, eap_session, tls_session, binding);
-		if (code == FR_CODE_ACCESS_ACCEPT)
+		if (code == FR_CODE_ACCESS_ACCEPT) {
 			t->stage = EAP_FAST_PROVISIONING;
+		}
+		return code;
 	}
 
 	return FR_CODE_ACCESS_ACCEPT;
