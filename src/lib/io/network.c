@@ -757,12 +757,11 @@ static void fr_network_worker_callback(void *ctx, void const *data, size_t data_
 	memcpy(&worker, data, data_size);
 	(void) talloc_get_type_abort(worker, fr_worker_t);
 
-	w = talloc_zero(nr, fr_network_worker_t);
-	if (!w) _exit(1);
-
+	MEM(w = talloc_zero(nr, fr_network_worker_t));
+	
 	w->worker = worker;
 	w->channel = fr_worker_channel_create(worker, w, nr->control);
-	if (!w->channel) _exit(1);
+	if (!w->channel) fr_exit_now(1);
 
 	fr_channel_master_ctx_add(w->channel, w);
 
