@@ -324,8 +324,8 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	 */
 	if (fr_radius_verify(buffer, NULL,
 			     (uint8_t const *)address.client->secret,
-			     talloc_array_length(address.client->secret)) < 0) {
-		DEBUG2("proto_radius_udp packet failed verification");
+			     talloc_array_length(address.client->secret) - 1) < 0) {
+		DEBUG2("proto_radius_udp packet failed verification: %s", fr_strerror());
 		inst->stats.total_bad_authenticators++;
 		return 0;
 	}
