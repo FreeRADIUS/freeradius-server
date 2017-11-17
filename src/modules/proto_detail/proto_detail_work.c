@@ -188,7 +188,11 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 		room = buffer_len - *leftover;
 
 		data_size = read(inst->fd, partial, room);
-		if (data_size < 0) return -1;
+		if (data_size < 0) {
+			ERROR("proto_detail (%s): Failed reading file %s: %s",
+			      inst->name, inst->filename_work, fr_syserror(errno));
+			return -1;
+		}
 
 		MPRINT("GOT %zd bytes", data_size);
 
@@ -254,8 +258,9 @@ redo:
 		 *	record, every line MUST have a leading tab.
 		 */
 		if (p[1] != '\t') {
-			DEBUG("Malformed line found at offset %zd",
-			      (size_t) (p - buffer) + inst->header_offset);
+			ERROR("proto_detail (%s): Malformed line found at offset %zd in file %s",
+			      inst->name, (size_t) (p - buffer) + inst->header_offset,
+			      inst->filename_work);
 			return -1;
 		}
 
@@ -295,8 +300,10 @@ redo:
 		 *	this, it's malformed.
 		 */
 		if (memcmp(p, " = ", 3) != 0) {
-			DEBUG("Malformed line found at offset %zd: %.*s",
-			      (size_t) (p - buffer) + inst->header_offset, (int) (end - p), p);
+			ERROR("proto_detail (%s): Malformed line found at offset %zd: %.*s of file %s",
+			      inst->name,
+			      (size_t) (p - buffer) + inst->header_offset, (int) (end - p), p,
+			      inst->filename_work);
 			return -1;
 		}
 
