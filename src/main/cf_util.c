@@ -1588,7 +1588,7 @@ void _cf_log_err(CONF_ITEM const *ci, char const *fmt, ...)
 	msg = talloc_vasprintf(NULL, fmt, ap);
 	va_end(ap);
 
-	if (!ci || !ci->filename) {
+	if (!ci || !ci->filename || !*ci->filename || (*ci->filename == '<')) {
 		ERROR("%s", msg);
 	} else {
 		char const *e, *p;
