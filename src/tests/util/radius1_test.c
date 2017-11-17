@@ -86,7 +86,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -w N                   Create N workers.  Default is 1.\n");
 	fprintf(stderr, "  -x                     Debugging mode.\n");
 
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 
 static fr_io_final_t test_process(REQUEST *request, fr_io_action_t action)
@@ -166,13 +166,13 @@ static void *worker_thread(void *arg)
 	el = fr_event_list_alloc(ctx, NULL, NULL);
 	if (!el) {
 		fprintf(stderr, "radius_test: Failed to create the event list\n");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	worker = sw->worker = fr_worker_create(ctx, el, &default_log, L_DBG_LVL_MAX);
 	if (!worker) {
 		fprintf(stderr, "radius_test: Failed to create the worker\n");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	MPRINT1("\tWorker %d looping.\n", sw->id);
@@ -194,7 +194,7 @@ static void send_reply(int sockfd, fr_channel_data_t *reply)
 
 	if (sendto(sockfd, reply->m.data, reply->m.data_size, 0, (struct sockaddr *) &pc->src, pc->salen) < 0) {
 		fprintf(stderr, "Failed sending reply: %s\n", strerror(errno));
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	talloc_free(pc);
@@ -225,7 +225,7 @@ static void master_process(TALLOC_CTX *ctx)
 	ms = fr_message_set_create(ctx, MAX_MESSAGES, sizeof(fr_channel_data_t), MAX_MESSAGES * 1024);
 	if (!ms) {
 		fprintf(stderr, "Failed creating message set\n");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	/*
@@ -243,12 +243,12 @@ static void master_process(TALLOC_CTX *ctx)
 	sockfd = fr_socket_server_udp(&my_ipaddr, &my_port, NULL, true);
 	if (sockfd < 0) {
 		fprintf(stderr, "radius_test: Failed creating socket: %s\n", fr_strerror());
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	if (fr_socket_bind(sockfd, &my_ipaddr, &my_port, NULL) < 0) {
 		fprintf(stderr, "radius_test: Failed binding to socket: %s\n", fr_strerror());
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	/*
@@ -257,7 +257,7 @@ static void master_process(TALLOC_CTX *ctx)
 	EV_SET(&events[0], sockfd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
 	if (kevent(kq_master, events, 1, NULL, 0, NULL) < 0) {
 		fprintf(stderr, "Failed setting KQ for EVFILT_READ: %s\n", fr_strerror());
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	/*
@@ -315,7 +315,7 @@ static void master_process(TALLOC_CTX *ctx)
 			if (errno == EINTR) continue;
 
 			fprintf(stderr, "Failed waiting for kevent: %s\n", strerror(errno));
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 
 		if (num_events == 0) continue;
@@ -405,7 +405,7 @@ static void master_process(TALLOC_CTX *ctx)
 			rcode = fr_channel_send_request(workers[which_worker].ch, cd, &reply);
 			if (rcode < 0) {
 				fprintf(stderr, "Failed sending request: %s\n", strerror(errno));
-				exit(1);
+				exit(EXIT_FAILURE);
 			}
 			which_worker++;
 			if (which_worker >= num_workers) which_worker = 0;
@@ -550,7 +550,7 @@ int main(int argc, char *argv[])
 		case 'i':
 			if (fr_inet_pton_port(&my_ipaddr, &port16, optarg, -1, AF_INET, true, false) < 0) {
 				fprintf(stderr, "Failed parsing ipaddr: %s\n", fr_strerror());
-				exit(1);
+				exit(EXIT_FAILURE);
 			}
 			my_port = port16;
 			break;

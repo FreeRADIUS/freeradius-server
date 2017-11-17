@@ -68,7 +68,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -x                     Debugging mode.\n");
 	fprintf(stderr, "  -M                     Show program version information.\n");
 
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 
 static int process_file(char const *filename)
@@ -85,7 +85,7 @@ static int process_file(char const *filename)
 	if (cf_file_read(main_config.config, filename) < 0) {
 		fprintf(stderr, "unit_test_map: Failed parsing %s\n",
 			filename);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	/*
@@ -180,17 +180,17 @@ int main(int argc, char *argv[])
 	 */
 	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
 		fr_perror("unit_test_attribute");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	if (fr_dict_from_file(autofree, &dict, dict_dir, FR_DICTIONARY_FILE, "radius") < 0) {
 		fr_perror("unit_test_attribute");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	if (fr_dict_read(dict, radius_dir, FR_DICTIONARY_FILE) == -1) {
 		fr_log_perror(&default_log, L_ERR, "Failed to initialize the dictionaries");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	if (argc < 2) {

@@ -186,7 +186,7 @@ static inline void unlang_push(unlang_stack_t *stack, unlang_t *program,
 
 	if (stack->depth >= (UNLANG_STACK_MAX - 1)) {
 		ERROR("Internal sanity check failed: module stack is too deep");
-		fr_exit(1);
+		fr_exit(EXIT_FAILURE);
 	}
 
 	stack->depth++;
@@ -1466,7 +1466,7 @@ static unlang_action_t unlang_foreach(REQUEST *request,
 
 		if (stack->depth >= UNLANG_STACK_MAX) {
 			ERROR("Internal sanity check failed: module stack is too deep");
-			fr_exit(1);
+			fr_exit(EXIT_FAILURE);
 		}
 
 		/*

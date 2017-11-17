@@ -101,7 +101,7 @@ static void NEVER_RETURNS usage(void)
 	DEBUG("  -v                     Show program version information.");
 	DEBUG("  -x                     Debugging mode.");
 
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 
 
@@ -625,12 +625,12 @@ int main(int argc, char **argv)
 
 	if (fr_dict_from_file(NULL, &dict, dict_dir, FR_DICTIONARY_FILE, "radius") < 0) {
 		fr_perror("dhcpclient");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	if (fr_dict_read(dict, radius_dir, FR_DICTIONARY_FILE) == -1) {
 		fr_log_perror(&default_log, L_ERR, "Failed to initialize the dictionaries");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 	fr_strerror();	/* Clear the error buffer */
 
@@ -641,7 +641,7 @@ int main(int argc, char **argv)
 	if (!da) {
 		if (fr_dict_read(dict, dict_dir, "dictionary.dhcp") < 0) {
 			ERROR("Failed reading dictionary.dhcp");
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 	}
 
@@ -682,7 +682,7 @@ int main(int argc, char **argv)
 		iface_ind = if_nametoindex(iface);
 		if (iface_ind <= 0) {
 			ERROR("Unknown interface: %s", iface);
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 
 		if (server_ipaddr.addr.v4.s_addr == 0xFFFFFFFF) {
@@ -694,7 +694,7 @@ int main(int argc, char **argv)
 	request = request_init(filename);
 	if (!request || !request->vps) {
 		ERROR("Nothing to send");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	/*
@@ -712,7 +712,7 @@ int main(int argc, char **argv)
 	if (!request->code) {
 		ERROR("Command was %s, and request did not contain DHCP-Message-Type nor Packet-Type",
 		      (argc >= 3) ? "'auto'" : "unspecified");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	/*
@@ -727,7 +727,7 @@ int main(int argc, char **argv)
 	 */
 	if (fr_dhcpv4_packet_encode(request) < 0) {
 		ERROR("Failed encoding packet");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	/*
