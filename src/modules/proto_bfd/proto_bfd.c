@@ -1704,12 +1704,12 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	sock->auth_type = fr_str2int(auth_types, auth_type_str, BFD_AUTH_INVALID);
 	if (sock->auth_type == BFD_AUTH_INVALID) {
 		ERROR("Unknown auth_type '%s'", auth_type_str);
-		exit(1);
+		return -1;
 	}
 
 	if (sock->auth_type == BFD_AUTH_SIMPLE) {
 		ERROR("'simple' authentication is insecure and is not supported");
-		exit(1);
+		return -1;
 	}
 
 	if (sock->auth_type != BFD_AUTH_RESERVED) {
@@ -1717,21 +1717,21 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 		if (sock->secret_len == 0) {
 			ERROR("Cannot have empty secret");
-			exit(1);
+			return -1;
 		}
 
 		if (((sock->auth_type == BFD_AUTH_KEYED_MD5) ||
 		     (sock->auth_type == BFD_AUTH_MET_KEYED_MD5)) &&
 		    (sock->secret_len > 16)) {
 			ERROR("Secret must be no more than 16 bytes when using MD5");
-			exit(1);
+			return -1;
 		}
 	}
 
 	sock->session_tree = rbtree_create(sock, bfd_session_cmp, bfd_session_free, 0);
 	if (!sock->session_tree) {
 		ERROR("Failed creating session tree!");
-		exit(1);
+		return -1;
 	}
 
 	/*
@@ -1778,7 +1778,7 @@ static int bfd_socket_open(CONF_SECTION *cs, rad_listen_t *this)
 	 *	Bootstrap the initial set of connections.
 	 */
 	if (bfd_init_sessions(cs, sock, this->fd) < 0) {
-		exit(1);
+		return -1;
 	}
 
 	return 0;
