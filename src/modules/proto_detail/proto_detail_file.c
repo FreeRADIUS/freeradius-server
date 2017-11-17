@@ -454,7 +454,16 @@ static void work_init(proto_detail_file_t *inst)
 	 *	If the work file didn't exist, try to rename detail* ->
 	 *	detail.work, and return the newly opened file.
 	 */
-	if (fd < 0) fd = work_rename(inst);
+	if (fd < 0) {
+		if (errno != ENOENT) {
+			DEBUG("proto_detail (%s): Failed opening %s: %s",
+			      inst->name, inst->filename_work,
+			      fr_syserror(errno));
+			goto delay;
+		}
+
+		fd = work_rename(inst);
+	}
 
 	/*
 	 *	The work file still doesn't exist.  Go set up timers,
