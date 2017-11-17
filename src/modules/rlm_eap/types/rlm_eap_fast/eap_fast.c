@@ -1053,6 +1053,7 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 	VALUE_PAIR			*vp;
 	vp_cursor_t			cursor;
 	eap_tlv_crypto_binding_tlv_t	*binding = NULL;
+	eap_tlv_crypto_binding_tlv_t	my_binding;
 
 	for (vp = fr_cursor_init(&cursor, &fast_vps); vp; vp = fr_cursor_next(&cursor)) {
 		PW_CODE code = PW_CODE_ACCESS_REJECT;
@@ -1081,8 +1082,9 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 				t->stage = PROVISIONING;
 				break;
 			case EAP_FAST_TLV_CRYPTO_BINDING:
-				if (!binding && (vp->vp_length >= sizeof(eap_tlv_crypto_binding_tlv_t))) { {
-					binding = vp->vp_octets;
+				if (!binding && (vp->vp_length >= sizeof(eap_tlv_crypto_binding_tlv_t))) {
+					memcpy(&my_binding, vp->vp_octets, sizeof(my_binding));
+					binding = &my_binding;
 				}
 				continue;
 			default:
