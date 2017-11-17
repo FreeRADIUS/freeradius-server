@@ -1135,8 +1135,10 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 
 	if (binding) {
 		PW_CODE code = eap_fast_crypto_binding(request, eap_session, tls_session, binding);
-		if (code == PW_CODE_ACCESS_ACCEPT)
+		if (code == PW_CODE_ACCESS_ACCEPT) {
 			t->stage = PROVISIONING;
+		}
+		return code;
 	}
 
 	return PW_CODE_ACCESS_ACCEPT;
