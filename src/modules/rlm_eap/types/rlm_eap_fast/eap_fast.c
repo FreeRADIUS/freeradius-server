@@ -1086,10 +1086,11 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 				break;
 			case EAP_FAST_TLV_CRYPTO_BINDING:
 				if (!binding) {
+					int offset = 2 * sizeof(uint16_t);
 					binding = talloc_zero(request->packet, eap_tlv_crypto_binding_tlv_t);
-					memcpy(binding, vp->vp_octets, sizeof(*binding));
+					memcpy((uint8_t *) binding + offset, vp->vp_octets, sizeof(*binding) - offset);
 					binding->tlv_type = htons(EAP_FAST_TLV_MANDATORY | EAP_FAST_TLV_CRYPTO_BINDING);
-					binding->length = htons(sizeof(*binding) - 2 * sizeof(uint16_t));
+					binding->length = htons(sizeof(*binding) - offset);
 				}
 				continue;
 			default:
