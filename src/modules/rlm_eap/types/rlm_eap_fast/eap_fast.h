@@ -151,8 +151,6 @@ typedef struct eap_fast_pac_t {
 
 /* RFC 4851, Section 4.2.8 - Crypto-Binding TLV */
 typedef struct eap_tlv_crypto_binding_tlv_t {
-        uint16_t tlv_type;
-        uint16_t length;
         uint8_t reserved;
         uint8_t version;
         uint8_t received_version;

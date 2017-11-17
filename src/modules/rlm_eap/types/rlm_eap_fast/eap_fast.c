@@ -273,8 +273,6 @@ static void eap_fast_append_crypto_binding(REQUEST *request, tls_session_t *tls_
 	RDEBUG("Sending Cryptobinding");
 
 	memset(&binding, 0, sizeof(eap_tlv_crypto_binding_tlv_t));
-	binding.tlv_type = htons(EAP_FAST_TLV_MANDATORY | EAP_FAST_TLV_CRYPTO_BINDING);
-	binding.length = htons(len);
 	binding.version = EAP_FAST_VERSION;
 	binding.received_version = EAP_FAST_VERSION;	/* FIXME use the clients value */
 	binding.subtype = EAP_FAST_TLV_CRYPTO_BINDING_SUBTYPE_REQUEST;
@@ -285,7 +283,7 @@ static void eap_fast_append_crypto_binding(REQUEST *request, tls_session_t *tls_
 
 	fr_hmac_sha1(binding.compound_mac, (uint8_t *)&binding, sizeof(binding), t->cmk, EAP_FAST_CMK_LEN);
 
-	eap_fast_tlv_append(tls_session, EAP_FAST_TLV_CRYPTO_BINDING, true, len, &binding.reserved);
+	eap_fast_tlv_append(tls_session, EAP_FAST_TLV_CRYPTO_BINDING, true, len, &binding);
 }
 
 static int eap_fast_verify(REQUEST *request, tls_session_t *tls_session, uint8_t const *data, unsigned int data_len)
@@ -1034,7 +1032,6 @@ static PW_CODE eap_fast_crypto_binding(REQUEST *request, UNUSED eap_handler_t *e
 	memcpy(cmac, binding->compound_mac, sizeof(cmac));
 	memset(binding->compound_mac, 0, sizeof(binding->compound_mac));
 
-
 	fr_hmac_sha1(binding->compound_mac, (uint8_t *)binding, sizeof(*binding), t->cmk, EAP_FAST_CMK_LEN);
 	if (memcmp(binding->compound_mac, cmac, sizeof(cmac))) {
 		RDEBUG2("Crypto-Binding TLV mis-match");
@@ -1084,11 +1081,8 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 				t->stage = PROVISIONING;
 				break;
 			case EAP_FAST_TLV_CRYPTO_BINDING:
-				if (!binding && (vp->vp_length >= (sizeof(eap_tlv_crypto_binding_tlv_t) - 4))) { {
-					binding = talloc_zero(request->packet, eap_tlv_crypto_binding_tlv_t);
-					memcpy(binding, vp->vp_octets, sizeof(*binding));
-					binding->tlv_type = htons(EAP_FAST_TLV_MANDATORY | EAP_FAST_TLV_CRYPTO_BINDING);
-					binding->length = htons(sizeof(*binding) - 2 * sizeof(uint16_t));
+				if (!binding && (vp->vp_length >= sizeof(eap_tlv_crypto_binding_tlv_t))) { {
+					binding = vp->vp_octets;
 				}
 				continue;
 			default:
