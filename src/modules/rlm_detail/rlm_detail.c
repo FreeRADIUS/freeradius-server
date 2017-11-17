@@ -263,31 +263,18 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 		switch (packet->src_ipaddr.af) {
 		case AF_INET:
 			src_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_SRC_IP_ADDRESS);
-			src_vp.data.type = src_vp.da->type;
-			src_vp.vp_ip.af = AF_INET;
-			src_vp.vp_ip.prefix = 32;
-			src_vp.vp_ipv4addr = packet->src_ipaddr.addr.v4.s_addr;
+			fr_value_box_ipaddr(&src_vp.data, src_vp.da, &packet->src_ipaddr, true);
 
 			dst_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_DST_IP_ADDRESS);
-			dst_vp.data.type = dst_vp.da->type;
-			dst_vp.vp_ip.af = AF_INET;
-			dst_vp.vp_ip.prefix = 32;
-			dst_vp.vp_ipv4addr = packet->dst_ipaddr.addr.v4.s_addr;
+			fr_value_box_ipaddr(&dst_vp.data, src_vp.da, &packet->dst_ipaddr, true);
 			break;
 
 		case AF_INET6:
 			src_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_SRC_IPV6_ADDRESS);
-			src_vp.data.type = src_vp.da->type;
-			src_vp.vp_ip.af = AF_INET6;
-			src_vp.vp_ip.prefix = 128;
-			memcpy(&src_vp.vp_ipv6addr, &packet->src_ipaddr.addr.v6,
-			       sizeof(packet->src_ipaddr.addr.v6));
+			fr_value_box_ipaddr(&src_vp.data, src_vp.da, &packet->src_ipaddr, true);
+
 			dst_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_DST_IPV6_ADDRESS);
-			dst_vp.data.type = dst_vp.da->type;
-			dst_vp.vp_ip.af = AF_INET6;
-			dst_vp.vp_ip.prefix = 128;
-			memcpy(&dst_vp.vp_ipv6addr, &packet->dst_ipaddr.addr.v6,
-			       sizeof(packet->dst_ipaddr.addr.v6));
+			fr_value_box_ipaddr(&dst_vp.data, src_vp.da, &packet->dst_ipaddr, true);
 			break;
 
 		default:
@@ -298,8 +285,9 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 		detail_fr_pair_fprint(request, out, &dst_vp);
 
 		src_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_SRC_PORT);
-		src_vp.data.type = dst_vp.da->type;
+		src_vp.data.type = src_vp.da->type;
 		src_vp.vp_uint32 = packet->src_port;
+
 		dst_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_DST_PORT);
 		dst_vp.data.type = dst_vp.da->type;
 		dst_vp.vp_uint32 = packet->dst_port;
