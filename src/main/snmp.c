@@ -773,10 +773,12 @@ static ssize_t snmp_process_leaf(vp_cursor_t *out, REQUEST *request,
 		if (map_p->get(request->reply, &data, map_p, snmp_ctx) < 0) goto error;
 
 		vp = fr_pair_afrom_da(request->reply, map_p->da);
+		if (!vp) return 0;
 		fr_value_box_steal(vp, &vp->data, &data);
 		fr_pair_cursor_append(out, vp);
 
 		vp = fr_pair_afrom_da(request->reply, fr_snmp_type);
+		if (!vp) return 0;
 		vp->vp_uint32 = map_p->type;
 		fr_pair_cursor_append(out, vp);
 	}
@@ -788,6 +790,7 @@ static ssize_t snmp_process_leaf(vp_cursor_t *out, REQUEST *request,
 
 		if (!map_p->set || (map_p->type == FR_FREERADIUS_SNMP_TYPE_OBJECT)) {
 			vp = fr_pair_afrom_da(request->reply, fr_snmp_failure);
+			if (!vp) return 0;
 			vp->vp_uint32 = FR_FREERADIUS_SNMP_FAILURE_VALUE_NOT_WRITABLE;
 			fr_pair_cursor_append(out, vp);
 			return 0;
