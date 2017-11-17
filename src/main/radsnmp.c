@@ -251,6 +251,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, vp_c
 		 *	the index number should be available in attr.
 		 */
 		vp = fr_pair_afrom_da(ctx, index_attr);
+		if (!vp) _exit(1);
 		vp->vp_uint32 = attr;
 
 		fr_pair_cursor_append(cursor, vp);
