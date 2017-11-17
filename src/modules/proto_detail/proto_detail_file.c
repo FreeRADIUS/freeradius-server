@@ -229,11 +229,12 @@ static void work_retry_timer(UNUSED fr_event_list_t *el, UNUSED struct timeval *
 /*
  *	The "detail.work" file exists.
  */
-static void work_exists(proto_detail_file_t *inst, int fd)
+static int work_exists(proto_detail_file_t *inst, int fd)
 {
 	bool			opened = false;
 	proto_detail_work_t	*work;
 	fr_listen_t		*listen = NULL;
+	struct stat		st;
 
 	fr_event_vnode_func_t	funcs = { .delete = mod_vnode_delete };
 
@@ -269,11 +270,28 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 					  &when, work_retry_timer, inst) < 0) {
 			ERROR("Failed inserting retry timer for %s", inst->filename_work);
 		}
-		return;
+		return 0;
 	}
 
 	DEBUG3("proto_detail (%s): Obtained lock and starting to process file %s",
 	       inst->name, inst->filename_work);
+
+	/*
+	 *	Ignore empty files.
+	 */
+	if (fstat(fd, &st) < 0) {
+		ERROR("Failed opening %s: %s", inst->filename_work,
+		      fr_syserror(errno));
+		unlink(inst->filename_work);
+		return -1;
+	}
+
+	if (!st.st_size) {
+		DEBUG3("proto_detail (%s): %s file is empty, ignoring it.",
+		       inst->name, inst->filename_work);
+		unlink(inst->filename_work);
+		return -1;
+	}
 
 	MEM(listen = talloc_zero(NULL, fr_listen_t));
 
@@ -299,7 +317,7 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 	if (!work) {
 		talloc_free(listen);
 		DEBUG("Failed allocating memory");
-		return;
+		return -1;
 	}
 
 	memcpy(work, inst->parent->work_submodule->data, sizeof(*work));
@@ -333,7 +351,7 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 					  &when, work_retry_timer, inst) < 0) {
 			ERROR("Failed inserting retry timer for %s", inst->filename_work);
 		}
-		return;
+		return 0;
 	}
 
 	/*
@@ -398,10 +416,10 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 	detach:
 		if (listen) (void) listen->app_io->detach(listen->app_io_instance);
 		talloc_free(listen);
-		return;
+		return -1;
 	}
 
-	return;
+	return 0;
 }
 
 
@@ -510,7 +528,7 @@ delay:
 	 *	We will get back to the main loop when the
 	 *	"detail.work" file is deleted.
 	 */
-	work_exists(inst, fd);
+	if (work_exists(inst, fd) < 0) goto delay;
 }
 
 
