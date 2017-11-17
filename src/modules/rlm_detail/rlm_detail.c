@@ -285,7 +285,7 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 		detail_fr_pair_fprint(request, out, &dst_vp);
 
 		src_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_SRC_PORT);
-		fr_value_box_shallow(&dst_vp.data, packet->src_port, true);
+		fr_value_box_shallow(&src_vp.data, packet->src_port, true);
 
 		dst_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_DST_PORT);
 		fr_value_box_shallow(&dst_vp.data, packet->dst_port, true);
