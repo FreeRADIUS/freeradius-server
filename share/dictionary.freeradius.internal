@@ -132,8 +132,8 @@ ATTRIBUTE	NTLM-User-Name				1083	string
 ATTRIBUTE	MS-CHAP-User-Name			1083	string
 ATTRIBUTE	Packet-Src-IP-Address			1084	ipaddr virtual
 ATTRIBUTE	Packet-Dst-IP-Address			1085	ipaddr virtual
-ATTRIBUTE	Packet-Src-Port				1086	integer virtual
-ATTRIBUTE	Packet-Dst-Port				1087	integer virtual
+ATTRIBUTE	Packet-Src-Port				1086	short virtual
+ATTRIBUTE	Packet-Dst-Port				1087	short virtual
 ATTRIBUTE	Packet-Authentication-Vector		1088	octets virtual
 ATTRIBUTE	Time-Of-Day				1089	string
 ATTRIBUTE	Request-Processing-Stage		1090	string virtual
