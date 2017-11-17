@@ -263,18 +263,18 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 		switch (packet->src_ipaddr.af) {
 		case AF_INET:
 			src_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_SRC_IP_ADDRESS);
-			fr_value_box_ipaddr(&src_vp.data, src_vp.da, &packet->src_ipaddr, true);
+			fr_value_box_shallow(&src_vp.data, &packet->src_ipaddr, true);
 
 			dst_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_DST_IP_ADDRESS);
-			fr_value_box_ipaddr(&dst_vp.data, src_vp.da, &packet->dst_ipaddr, true);
+			fr_value_box_shallow(&dst_vp.data, &packet->dst_ipaddr, true);
 			break;
 
 		case AF_INET6:
 			src_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_SRC_IPV6_ADDRESS);
-			fr_value_box_ipaddr(&src_vp.data, src_vp.da, &packet->src_ipaddr, true);
+			fr_value_box_shallow(&src_vp.data, &packet->src_ipaddr, true);
 
 			dst_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_DST_IPV6_ADDRESS);
-			fr_value_box_ipaddr(&dst_vp.data, src_vp.da, &packet->dst_ipaddr, true);
+			fr_value_box_shallow(&dst_vp.data, &packet->dst_ipaddr, true);
 			break;
 
 		default:
@@ -285,12 +285,10 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 		detail_fr_pair_fprint(request, out, &dst_vp);
 
 		src_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_SRC_PORT);
-		src_vp.data.type = src_vp.da->type;
-		src_vp.vp_uint32 = packet->src_port;
+		fr_value_box_shallow(&dst_vp.data, packet->src_port, true);
 
 		dst_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_DST_PORT);
-		dst_vp.data.type = dst_vp.da->type;
-		dst_vp.vp_uint32 = packet->dst_port;
+		fr_value_box_shallow(&dst_vp.data, packet->dst_port, true);
 
 		detail_fr_pair_fprint(request, out, &src_vp);
 		detail_fr_pair_fprint(request, out, &dst_vp);
