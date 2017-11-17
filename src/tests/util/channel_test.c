@@ -99,8 +99,7 @@ static void *channel_master(void *arg)
 	fr_channel_event_t	ce;
 	struct kevent		events[MAX_KEVENTS];
 
-	ctx = talloc_init("channel_master");
-	if (!ctx) _exit(1);
+	MEM(ctx = talloc_init("channel_master"));
 
 	ms = fr_message_set_create(ctx, MAX_MESSAGES, sizeof(fr_channel_data_t), MAX_MESSAGES * 1024);
 	if (!ms) {
@@ -326,8 +325,7 @@ static void *channel_worker(void *arg)
 	fr_channel_event_t ce;
 	struct kevent events[MAX_KEVENTS];
 
-	ctx = talloc_init("channel_worker");
-	if (!ctx) _exit(1);
+	MEM(ctx = talloc_init("channel_worker"));
 
 	ms = fr_message_set_create(ctx, MAX_MESSAGES, sizeof(fr_channel_data_t), MAX_MESSAGES * 1024);
 	if (!ms) {
