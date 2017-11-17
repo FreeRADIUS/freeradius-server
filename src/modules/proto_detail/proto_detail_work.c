@@ -602,23 +602,6 @@ free_track:
 	return buffer_len;
 }
 
-#ifdef NOTE_REVOKE
-static void mod_revoke(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
-{
-	proto_detail_work_t *inst = talloc_get_type_abort(uctx, proto_detail_work_t);
-
-	/*
-	 *	The underlying file system is gone.  Stop reading the
-	 *	file, destroy all of the IO handlers, and delete
-	 */
-	fr_event_fd_delete(el, fd, FR_EVENT_FILTER_VNODE);
-	fr_event_fd_delete(el, fd, FR_EVENT_FILTER_IO);
-
-	DEBUG("Detail worker %s had file system unmounted.  Stopping.", inst->name);
-	talloc_free(inst);
-}
-#endif
-
 /** Open a detail listener
  *
  * @param[in] instance of the detail worker.
@@ -688,7 +671,13 @@ static int mod_close(void *instance)
 	PTHREAD_MUTEX_UNLOCK(&inst->parent->worker_mutex);
 
 	DEBUG("Detail worker at EOF. Closing and deleting %s", inst->name);
+
+#ifdef NOTE_REVOKE
+	fr_event_fd_delete(inst->el, inst->fd, FR_EVENT_FILTER_VNODE);
+#endif
+
 	unlink(inst->filename_work);
+
 	close(inst->fd);
 	inst->fd = -1;
 
@@ -698,6 +687,20 @@ static int mod_close(void *instance)
 
 	return 0;
 }
+
+#ifdef NOTE_REVOKE
+static void mod_revoke(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
+{
+	proto_detail_work_t *inst = talloc_get_type_abort(uctx, proto_detail_work_t);
+
+	/*
+	 *	The underlying file system is gone.  Stop reading the
+	 *	file, destroy all of the IO handlers, and delete
+	 */
+	DEBUG("Detail worker %s had file system unmounted.  Stopping.", inst->name);
+	mod_close(inst);
+}
+#endif
 
 /** Get the file descriptor for this IO instance
  *

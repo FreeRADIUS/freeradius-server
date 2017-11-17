@@ -285,7 +285,6 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 	 *	This listener is parented from the worker.  So that
 	 *	when the worker goes away, so does the listener.
 	 */
-	listen->proto_instance = inst->parent;
 	listen->app_io = inst->parent->work_io;
 
 	listen->app = inst->parent->self;
@@ -309,6 +308,7 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 	 *	Tell the worker to clean itself up.
 	 */
 	work->free_on_close = true;
+	work->ev = NULL;
 
 	work->fd = dup(fd);
 	if (work->fd < 0) {
@@ -389,8 +389,6 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 		(void) fr_event_fd_delete(inst->el, fd, FR_EVENT_FILTER_VNODE);
 
 		if (opened) {
-			(void) fr_event_fd_delete(inst->el, work->fd, FR_EVENT_FILTER_VNODE);
-			(void) fr_event_fd_delete(inst->el, work->fd, FR_EVENT_FILTER_IO);
 			(void) listen->app_io->close(listen->app_io_instance);
 			listen = NULL;
 		} else {
@@ -411,7 +409,7 @@ static void mod_vnode_delete(fr_event_list_t *el, int fd, UNUSED int fflags, voi
 {
 	proto_detail_file_t *inst = talloc_get_type_abort(ctx, proto_detail_file_t);
 
-	DEBUG("Deleted %s", inst->filename_work);
+	DEBUG("proto_detail (%s): Deleted %s", inst->name, inst->filename_work);
 
 	(void) fr_event_fd_delete(el, fd, FR_EVENT_FILTER_VNODE);
 
@@ -622,8 +620,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	}
 
 	*p = '\0';
-
-	DEBUG("Directory %s", inst->directory);
 
 	if (!inst->filename_work) {
 		inst->filename_work = talloc_typed_asprintf(inst, "%s/detail.work", inst->directory);
