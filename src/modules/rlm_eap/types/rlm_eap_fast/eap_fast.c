@@ -1084,7 +1084,7 @@ static PW_CODE eap_fast_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 				t->stage = PROVISIONING;
 				break;
 			case EAP_FAST_TLV_CRYPTO_BINDING:
-				if (!binding) {
+				if (!binding && (vp->vp_length >= (sizeof(eap_tlv_crypto_binding_tlv_t) - 4))) { {
 					binding = talloc_zero(request->packet, eap_tlv_crypto_binding_tlv_t);
 					memcpy(binding, vp->vp_octets, sizeof(*binding));
 					binding->tlv_type = htons(EAP_FAST_TLV_MANDATORY | EAP_FAST_TLV_CRYPTO_BINDING);
