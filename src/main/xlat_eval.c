@@ -674,7 +674,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 				goto finish;
 			}
 
-			RDEBUG2("EXPAND %%s", node->fmt);
+			RDEBUG2("EXPAND %s", node->fmt);
 			if (fr_cursor_next(out)) {
 				RDEBUG2("   --> %pV", fr_cursor_current(out));
 			} else {
