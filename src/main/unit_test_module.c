@@ -188,7 +188,7 @@ static REQUEST *request_from_file(FILE *fp, fr_event_list_t *el, RADCLIENT *clie
 			break;
 
 		case FR_PACKET_DST_PORT:
-			request->packet->dst_port = (vp->vp_uint32 & 0xffff);
+			request->packet->dst_port = vp->vp_uint16;
 			break;
 
 		case FR_PACKET_DST_IP_ADDRESS:
@@ -197,7 +197,7 @@ static REQUEST *request_from_file(FILE *fp, fr_event_list_t *el, RADCLIENT *clie
 			break;
 
 		case FR_PACKET_SRC_PORT:
-			request->packet->src_port = (vp->vp_uint32 & 0xffff);
+			request->packet->src_port = vp->vp_uint16;
 			break;
 
 		case FR_PACKET_SRC_IP_ADDRESS:

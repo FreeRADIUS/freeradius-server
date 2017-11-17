@@ -321,11 +321,11 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 				break;
 
 			case FR_PACKET_SRC_PORT:
-				request->packet->src_port = vp->vp_uint32;
+				request->packet->src_port = vp->vp_uint16;
 				break;
 
 			case FR_PACKET_DST_PORT:
-				request->packet->dst_port = vp->vp_uint32;
+				request->packet->dst_port = vp->vp_uint16;
 				break;
 		}
 
