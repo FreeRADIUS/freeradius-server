@@ -268,11 +268,11 @@ static void eap_fast_append_crypto_binding(REQUEST *request, tls_session_t *tls_
 {
 	eap_fast_tunnel_t		*t = tls_session->opaque;
 	eap_tlv_crypto_binding_tlv_t	binding;
-    memset(&binding, 0, sizeof(eap_tlv_crypto_binding_tlv_t));
 	const int			len = sizeof(binding) - (&binding.reserved - (uint8_t *)&binding);
 
 	RDEBUG("Sending Cryptobinding");
 
+	memset(&binding, 0, sizeof(eap_tlv_crypto_binding_tlv_t));
 	binding.tlv_type = htons(EAP_FAST_TLV_MANDATORY | EAP_FAST_TLV_CRYPTO_BINDING);
 	binding.length = htons(len);
 	binding.version = EAP_FAST_VERSION;
@@ -282,7 +282,6 @@ static void eap_fast_append_crypto_binding(REQUEST *request, tls_session_t *tls_
 	rad_assert(sizeof(binding.nonce) % sizeof(uint32_t) == 0);
 	RANDFILL(binding.nonce);
 	binding.nonce[sizeof(binding.nonce) - 1] &= ~0x01; /* RFC 4851 section 4.2.8 */
-
 
 	fr_hmac_sha1(binding.compound_mac, (uint8_t *)&binding, sizeof(binding), t->cmk, EAP_FAST_CMK_LEN);
 
