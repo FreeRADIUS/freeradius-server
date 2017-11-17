@@ -278,10 +278,25 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 	MEM(listen = talloc_zero(NULL, fr_listen_t));
 
 	/*
+	 *	Create a new listener, and insert it into the
+	 *	scheduler.  Shamelessly copied from proto_detail.c
+	 *	mod_open(), with changes.
+	 *
+	 *	This listener is parented from the worker.  So that
+	 *	when the worker goes away, so does the listener.
+	 */
+	listen->proto_instance = inst->parent;
+	listen->app_io = inst->parent->work_io;
+
+	listen->app = inst->parent->self;
+	listen->app_instance = inst->parent;
+	listen->server_cs = inst->parent->server_cs;
+
+	/*
 	 *	The worker may be in a different thread, so avoid
 	 *	talloc threading issues by using a NULL TALLOC_CTX.
 	 */
-	work = talloc(listen, proto_detail_work_t);
+	listen->app_io_instance = work = talloc(listen, proto_detail_work_t);
 	if (!work) {
 		talloc_free(listen);
 		DEBUG("Failed allocating memory");
@@ -330,23 +345,8 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 	if (fr_event_filter_insert(inst, inst->el, fd, FR_EVENT_FILTER_VNODE,
 				   &funcs, NULL, inst) < 0) {
 		ERROR("Failed adding work socket to event loop: %s", fr_strerror());
-		goto error;
+		goto detach;
 	}
-
-	/*
-	 *	Create a new listener, and insert it into the
-	 *	scheduler.  Shameless copied from proto_detail.c
-	 *	mod_open(), with changes.
-	 *
-	 *	This listener is parented from the worker.  So that
-	 *	when the worker goes away, so does the listener.
-	 */
-	listen->app_io = inst->parent->work_io;
-	listen->app_io_instance = work;
-
-	listen->app = inst->parent->self;
-	listen->app_instance = inst->parent;
-	listen->server_cs = inst->parent->server_cs;
 
 	/*
 	 *	Yuck.
@@ -387,15 +387,17 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 	if (!fr_schedule_socket_add(inst->parent->sc, listen)) {
 	error:
 		(void) fr_event_fd_delete(inst->el, fd, FR_EVENT_FILTER_VNODE);
-		(void) fr_event_fd_delete(inst->el, work->fd, FR_EVENT_FILTER_VNODE);
-		(void) fr_event_fd_delete(inst->el, work->fd, FR_EVENT_FILTER_IO);
 
 		if (opened) {
+			(void) fr_event_fd_delete(inst->el, work->fd, FR_EVENT_FILTER_VNODE);
+			(void) fr_event_fd_delete(inst->el, work->fd, FR_EVENT_FILTER_IO);
 			(void) listen->app_io->close(listen->app_io_instance);
+			listen = NULL;
 		} else {
 			close(fd);
 		}
 
+	detach:
 		if (listen) (void) listen->app_io->detach(listen->app_io_instance);
 		talloc_free(listen);
 		return;
