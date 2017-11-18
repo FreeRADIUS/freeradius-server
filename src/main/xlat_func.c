@@ -626,60 +626,11 @@ int xlat_register(void *mod_inst, char const *name,
 	xlat_t	*c;
 	xlat_t	my_xlat;
 
+	if (!xlat_root) xlat_init();
+
 	if (!name || !*name) {
 		ERROR("%s: Invalid xlat name", __FUNCTION__);
 		return -1;
-	}
-
-	/*
-	 *	First time around, build up the tree...
-	 *
-	 *	FIXME: This code should be hoisted out of this function,
-	 *	and into a global "initialization".  But it isn't critical...
-	 */
-	if (!xlat_root) {
-#ifdef WITH_UNLANG
-		int i;
-#endif
-
-		xlat_root = rbtree_create(NULL, xlat_cmp, NULL, RBTREE_FLAG_REPLACE);
-		if (!xlat_root) {
-			ERROR("%s: Failed to create tree", __FUNCTION__);
-			return -1;
-		}
-
-#ifdef WITH_UNLANG
-		for (i = 0; xlat_foreach_names[i] != NULL; i++) {
-			xlat_register(&xlat_foreach_inst[i], xlat_foreach_names[i], xlat_foreach, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-			c = xlat_find(xlat_foreach_names[i]);
-			rad_assert(c != NULL);
-			c->internal = true;
-		}
-#endif
-
-#define XLAT_REGISTER(_x) xlat_register(NULL, STRINGIFY(_x), xlat_ ## _x, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true); \
-		c = xlat_find(STRINGIFY(_x)); \
-		rad_assert(c != NULL); \
-		c->internal = true
-
-		XLAT_REGISTER(integer);
-		XLAT_REGISTER(strlen);
-		XLAT_REGISTER(length);
-		XLAT_REGISTER(hex);
-		XLAT_REGISTER(tag);
-		XLAT_REGISTER(string);
-		XLAT_REGISTER(xlat);
-		XLAT_REGISTER(map);
-		XLAT_REGISTER(module);
-		XLAT_REGISTER(debug_attr);
-#if defined(HAVE_REGEX) && defined(HAVE_PCRE)
-		XLAT_REGISTER(regex);
-#endif
-
-		xlat_register(&xlat_foreach_inst[0], "debug", xlat_debug, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-		c = xlat_find("debug");
-		rad_assert(c != NULL);
-		c->internal = true;
 	}
 
 	/*
@@ -1023,6 +974,65 @@ int xlat_register_redundant(CONF_SECTION *cs)
 	return 0;
 }
 
+/** Global initialisation for xlat
+ *
+ * @note Free memory with #xlat_free
+ *
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int xlat_init(void)
+{
+	if (xlat_root) return 0;
+
+	xlat_t	*c;
+
+#ifdef WITH_UNLANG
+	int i;
+#endif
+
+	xlat_root = rbtree_create(NULL, xlat_cmp, NULL, RBTREE_FLAG_REPLACE);
+	if (!xlat_root) {
+		ERROR("%s: Failed to create tree", __FUNCTION__);
+		return -1;
+	}
+
+#ifdef WITH_UNLANG
+	for (i = 0; xlat_foreach_names[i] != NULL; i++) {
+		xlat_register(&xlat_foreach_inst[i], xlat_foreach_names[i], xlat_foreach, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+		c = xlat_find(xlat_foreach_names[i]);
+		rad_assert(c != NULL);
+		c->internal = true;
+	}
+#endif
+
+#define XLAT_REGISTER(_x) xlat_register(NULL, STRINGIFY(_x), xlat_ ## _x, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true); \
+	c = xlat_find(STRINGIFY(_x)); \
+	rad_assert(c != NULL); \
+	c->internal = true
+
+	XLAT_REGISTER(integer);
+	XLAT_REGISTER(strlen);
+	XLAT_REGISTER(length);
+	XLAT_REGISTER(hex);
+	XLAT_REGISTER(tag);
+	XLAT_REGISTER(string);
+	XLAT_REGISTER(xlat);
+	XLAT_REGISTER(map);
+	XLAT_REGISTER(module);
+	XLAT_REGISTER(debug_attr);
+#if defined(HAVE_REGEX) && defined(HAVE_PCRE)
+	XLAT_REGISTER(regex);
+#endif
+
+	xlat_register(&xlat_foreach_inst[0], "debug", xlat_debug, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	c = xlat_find("debug");
+	rad_assert(c != NULL);
+	c->internal = true;
+
+	return 0;
+}
 
 /** De-register all xlat functions, used mainly for debugging.
  *
