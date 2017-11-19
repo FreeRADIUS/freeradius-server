@@ -765,7 +765,7 @@ static int _module_instance_free(module_instance_t *mod_inst)
 	 *	Remove all xlat's registered to module instance.
 	 */
 	if (mod_inst->dl_inst && mod_inst->dl_inst->data) {
-		xlat_unregister(mod_inst->dl_inst->data, mod_inst->name, NULL);
+		xlat_unregister(mod_inst->name);
 		/*
 		 *	Remove any registered paircompares.
 		 */

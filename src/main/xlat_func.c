@@ -579,12 +579,16 @@ done:
 static int xlat_cmp(void const *one, void const *two)
 {
 	xlat_t const *a = one, *b = two;
+	size_t a_len, b_len;
 	int ret;
 
-	ret = (a->length > b->length) - (a->length < b->length);
+	a_len = strlen(a->name);
+	b_len = strlen(b->name);
+
+	ret = (a_len > b_len) - (a_len < b_len);
 	if (ret != 0) return ret;
 
-	return memcmp(a->name, b->name, a->length);
+	return memcmp(a->name, b->name, a_len);
 }
 
 
@@ -593,27 +597,28 @@ static int xlat_cmp(void const *one, void const *two)
  */
 xlat_t *xlat_find(char const *name)
 {
-	xlat_t my_xlat;
+	xlat_t find;
+	xlat_t *found;
 
 	if (!xlat_root) return NULL;
 
-	strlcpy(my_xlat.name, name, sizeof(my_xlat.name));
-	my_xlat.length = strlen(my_xlat.name);
+	find.name = name;
+	found = rbtree_finddata(xlat_root, &find);
 
-	return rbtree_finddata(xlat_root, &my_xlat);
+	return found;
 }
 
 /** Register an xlat function.
  *
- * @param[in] mod_inst Instance of module that's registering the xlat function.
- * @param[in] name xlat name.
- * @param[in] func xlat function to be called.
- * @param[in] escape function to sanitize any sub expansions passed to the xlat function.
- * @param[in] instantiate function to pre-parse any xlat specific data.
- * @param[in] inst_size sizeof() this xlat's instance data.
- * @param[in] buf_len Size of the output buffer to allocate when calling the function.
- *	May be 0 if the function allocates its own buffer.
- * @param[in] async_safe whether or not the function is async-safe.
+ * @param[in] mod_inst		Instance of module that's registering the xlat function.
+ * @param[in] name		xlat name.
+ * @param[in] func 		xlat function to be called.
+ * @param[in] escape		function to sanitize any sub expansions passed to the xlat function.
+ * @param[in] instantiate	function to pre-parse any xlat specific data.
+ * @param[in] inst_size		sizeof() this xlat's instance data.
+ * @param[in] buf_len		Size of the output buffer to allocate when calling the function.
+ *				May be 0 if the function allocates its own buffer.
+ * @param[in] async_safe	whether or not the function is async-safe.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -624,7 +629,8 @@ int xlat_register(void *mod_inst, char const *name,
 		  size_t buf_len, bool async_safe)
 {
 	xlat_t	*c;
-	xlat_t	my_xlat;
+	xlat_t	find;
+	bool	new = false;
 
 	if (!xlat_root) xlat_init();
 
@@ -636,9 +642,8 @@ int xlat_register(void *mod_inst, char const *name,
 	/*
 	 *	If it already exists, replace the instance.
 	 */
-	strlcpy(my_xlat.name, name, sizeof(my_xlat.name));
-	my_xlat.length = strlen(my_xlat.name);
-	c = rbtree_finddata(xlat_root, &my_xlat);
+	find.name = name;
+	c = rbtree_finddata(xlat_root, &find);
 	if (c) {
 		if (c->internal) {
 			ERROR("%s: Cannot re-define internal expansion %s", __FUNCTION__, name);
@@ -650,24 +655,19 @@ int xlat_register(void *mod_inst, char const *name,
 			return -1;
 		}
 
-		c->func = func;
-		c->buf_len = buf_len;
-		c->escape = escape;
-		c->mod_inst = mod_inst;
-		c->instantiate = instantiate;
-		c->inst_size = inst_size;
-		return 0;
-	}
-
 	/*
 	 *	Doesn't exist.  Create it.
 	 */
-	c = talloc_zero(xlat_root, xlat_t);
+	} else {
+		c = talloc_zero(xlat_root, xlat_t);
+		c->name = talloc_typed_strdup(c, name);
+		new = true;
+	}
+
 	c->func = func;
+	c->type = XLAT_FUNC_BOXED;
 	c->buf_len = buf_len;
 	c->escape = escape;
-	strlcpy(c->name, name, sizeof(c->name));
-	c->length = strlen(c->name);
 	c->mod_inst = mod_inst;
 	c->instantiate = instantiate;
 	c->inst_size = inst_size;
@@ -675,7 +675,118 @@ int xlat_register(void *mod_inst, char const *name,
 
 	DEBUG3("%s: %s", c->name, __FUNCTION__);
 
-	if (!rbtree_insert(xlat_root, c)) {
+	if (new && !rbtree_insert(xlat_root, c)) {
+		ERROR("Failed inserting xlat registration for %s",
+		      c->name);
+		talloc_free(c);
+		return -1;
+	}
+
+	return 0;
+}
+
+/** Remove an xlat function from the function tree
+ *
+ * @param[in] xlat	to free.
+ * @return 0
+ */
+static int _xlat_free(xlat_t *xlat)
+{
+	xlat_t *c;
+
+	if (!xlat_root) return 0;
+
+	c = rbtree_finddata(xlat_root, xlat);
+	if (!c) return 0;
+
+	rbtree_deletebydata(xlat_root, c);
+
+	if (rbtree_num_elements(xlat_root) == 0) TALLOC_FREE(xlat_root);
+
+	return 0;
+}
+
+/** Register an async xlat
+ *
+ * All functions registered must be async_safe.
+ *
+ * @param[in] ctx			Used to automate deregistration of the xlat fnction.
+ * @param[in] name			of the xlat.
+ * @param[in] func			to register.
+ * @param[in] instantiate		Instantiation function. Called whenever a xlat is
+ *					compiled.
+ * @param[in] inst_size			The size of the instance struct.
+ *					Pre-allocated for use by the instantiate function.
+ *					If 0, no memory will be allocated.
+ * @param[in] thread_instantiate	thread_instantiation_function. Called whenever a
+ *					a thread is started to create thread local instance
+ *					data.
+ * @param[in] thread_inst_size		The size of the thread instance struct.
+ *					Pre-allocated for use by the thread instance function.
+ *					If 0, no memory will be allocated.
+ * @param[in] uctx			To pass to instantiate callbacks and the xlat function
+ *					when it's called.  Usually the module instance that
+ *					registered the xlat.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int xlat_async_register(TALLOC_CTX *ctx,
+			char const *name, xlat_func_t func,
+			xlat_instantiate_t instantiate, size_t inst_size,
+			xlat_thread_instantiate_t thread_instantiate, size_t thread_inst_size,
+			void *uctx)
+{
+	xlat_t	*c;
+	xlat_t	find;
+	bool	new = false;
+
+	if (!xlat_root) xlat_init();
+
+	if (!name || !*name) {
+		ERROR("%s: Invalid xlat name", __FUNCTION__);
+		return -1;
+	}
+
+	/*
+	 *	If it already exists, replace the instance.
+	 */
+	find.name = name;
+	c = rbtree_finddata(xlat_root, &find);
+	if (c) {
+		if (c->internal) {
+			ERROR("%s: Cannot re-define internal expansion %s", __FUNCTION__, name);
+			return -1;
+		}
+
+		if (!c->async_safe) {
+			ERROR("%s: Cannot change async capability of %s", __FUNCTION__, name);
+			return -1;
+		}
+
+	/*
+	 *	Doesn't exist.  Create it.
+	 */
+	} else {
+		c = talloc_zero(ctx, xlat_t);
+		c->name = talloc_typed_strdup(c, name);
+		new = true;
+	}
+
+	c->func = func;
+	c->type = XLAT_FUNC_BOXED;
+	c->instantiate = instantiate;
+	c->thread_instantiate = thread_instantiate;
+	c->inst_size = inst_size;
+	c->thread_inst_size = thread_inst_size;
+	c->async_safe = true;
+	c->uctx = uctx;
+
+	talloc_set_destructor(c, _xlat_free);
+
+	DEBUG3("%s: %s", c->name, __FUNCTION__);
+
+	if (new && !rbtree_insert(xlat_root, c)) {
 		ERROR("Failed inserting xlat registration for %s",
 		      c->name);
 		talloc_free(c);
@@ -690,31 +801,25 @@ int xlat_register(void *mod_inst, char const *name,
  * We can only have one function to call per name, so the passing of "func"
  * here is extraneous.
  *
- * @param[in] mod_inst data.
  * @param[in] name xlat to unregister.
- * @param[in] func unused.
  */
-void xlat_unregister(void *mod_inst, char const *name, UNUSED xlat_func_t func)
+void xlat_unregister(char const *name)
 {
 	xlat_t	*c;
-	xlat_t		my_xlat;
+	xlat_t	find;
 
 	if (!name || !xlat_root) return;
 
-	strlcpy(my_xlat.name, name, sizeof(my_xlat.name));
-	my_xlat.length = strlen(my_xlat.name);
-
-	c = rbtree_finddata(xlat_root, &my_xlat);
+	find.name = name;
+	c = rbtree_finddata(xlat_root, &find);
 	if (!c) return;
-
-	if (c->mod_inst != mod_inst) return;
 
 	rbtree_deletebydata(xlat_root, c);
 
 	if (rbtree_num_elements(xlat_root) == 0) TALLOC_FREE(xlat_root);
 }
 
-static int xlat_unregister_callback(void *mod_inst, void *data)
+static int _xlat_unregister_callback(void *mod_inst, void *data)
 {
 	xlat_t *c = (xlat_t *) data;
 
@@ -727,7 +832,7 @@ void xlat_unregister_module(void *instance)
 {
 	if (!xlat_root) return;	/* All xlats have already been freed */
 
-	rbtree_walk(xlat_root, RBTREE_DELETE_ORDER, xlat_unregister_callback, instance);
+	rbtree_walk(xlat_root, RBTREE_DELETE_ORDER, _xlat_unregister_callback, instance);
 
 	if (rbtree_num_elements(xlat_root) == 0) TALLOC_FREE(xlat_root);
 }

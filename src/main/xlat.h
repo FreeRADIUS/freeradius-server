@@ -32,22 +32,38 @@
 #  define XLAT_DEBUG(...)
 #endif
 
+/** Function types
+ *
+ */
+typedef enum {
+	XLAT_FUNC_STRING,					//!< Ingests and excretes strings.
+	XLAT_FUNC_BOXED						//!< Ingests and excretes value boxes.
+} xlat_func_type_t;
+
 typedef struct xlat_t {
-	char			name[FR_MAX_STRING_LEN];	//!< Name of the xlat expansion.
-	int			length;			//!< Length of name.
-	void			*mod_inst;		//!< Module instance passed to xlat and escape functions.
-	xlat_func_t		func;			//!< xlat function.
-	xlat_escape_t		escape;			//!< Escape function to apply to dynamic input to func.
-	xlat_instantiate_t	instantiate;		//!< Instantiation function.
-	size_t			inst_size;		//!< Length of instance data to pre-allocate.
-	size_t			buf_len;		//!< Length of output buffer to pre-allocate.
-	bool			internal;		//!< If true, cannot be redefined.
-	bool			async_safe;		///!< If true, is async safe
+	char const		*name;				//!< Name of xlat function.
+	xlat_func_t		func;				//!< xlat function.
+	xlat_func_type_t	type;				//!< Type of xlat function.
+
+	xlat_instantiate_t	instantiate;			//!< Instantiation function.
+	xlat_thread_instantiate_t thread_instantiate;		//!< Thread instantiation function.
+
+	bool			internal;			//!< If true, cannot be redefined.
+
+	size_t			inst_size;			//!< Size of instance data to pre-allocate.
+	size_t			thread_inst_size;		//!< Size of the thread instance data to pre-allocate.
+
+	bool			async_safe;			//!< If true, is async safe
+	void			*uctx;				//!< uctx to pass to instantiation functions.
+
+	size_t			buf_len;			//!< Length of output buffer to pre-allocate.
+	void			*mod_inst;			//!< Module instance passed to xlat
+	xlat_escape_t		escape;				//!< Escape function to apply to dynamic input to func.
 } xlat_t;
 
 typedef enum {
 	XLAT_LITERAL,			//!< Literal string
-	XLAT_ONE_LETTER,			//!< Literal string with %v
+	XLAT_ONE_LETTER,		//!< Literal string with %v
 	XLAT_FUNC,			//!< xlat module
 	XLAT_VIRTUAL,			//!< virtual attribute
 	XLAT_ATTRIBUTE,			//!< xlat attribute

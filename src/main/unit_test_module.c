@@ -995,7 +995,7 @@ finish:
 	talloc_free(request);
 	talloc_free(state);
 
-	xlat_unregister(NULL, "poke", xlat_poke);
+	xlat_unregister("poke");
 
 	/*
 	 *	Free the event list.
