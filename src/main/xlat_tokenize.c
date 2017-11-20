@@ -188,7 +188,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 
 	XLAT_DEBUG("EXPANSION <-- %s", fmt);
 	node = talloc_zero(ctx, xlat_exp_t);
-	node->fmt = start = talloc_typed_strdup(node->fmt, fmt + 2);
+	node->fmt = start = talloc_typed_strdup(node, fmt + 2);
 	node->len = 0;
 
 #ifdef HAVE_REGEX
