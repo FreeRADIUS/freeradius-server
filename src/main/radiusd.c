@@ -338,6 +338,15 @@ int main(int argc, char *argv[])
 	 */
 #ifdef HAVE_OPENSSL_CRYPTO_H
 	tls_global_init();
+	/*
+	 *  Set up the mutexes and enable the thread callbacks before individual modules
+	 *  .instantiate() would happen to do it. We need them ONLY if we're spawning,
+	 *  AND we're running normally.
+	 */
+	if (spawn_flag && !check_config && !setup_ssl_mutexes()) {
+		ERROR("FATAL: Failed to set up SSL mutexes");
+		exit(EXIT_FAILURE);
+	}
 #endif
 
 	/*

@@ -244,13 +244,14 @@ static unsigned long get_ssl_id(void)
 #if OPENSSL_VERSION_NUMBER < 0x10000000L
 #define ssl_id_function get_ssl_id
 #define set_id_callback CRYPTO_set_id_callback
-
+#define get_id_callback CRYPTO_get_id_callback
 #else
 static void ssl_id_function(CRYPTO_THREADID *id)
 {
 	CRYPTO_THREADID_set_numeric(id, get_ssl_id());
 }
 #define set_id_callback CRYPTO_THREADID_set_callback
+#define get_id_callback CRYPTO_THREADID_get_callback
 #endif
 #endif
 
@@ -265,7 +266,7 @@ static void ssl_locking_function(int mode, int n, UNUSED char const *file, UNUSE
 }
 #endif
 
-static int setup_ssl_mutexes(void)
+int setup_ssl_mutexes(void)
 {
 	int i;
 
@@ -280,10 +281,12 @@ static int setup_ssl_mutexes(void)
 	}
 
 #ifdef HAVE_CRYPTO_SET_ID_CALLBACK
-	set_id_callback(ssl_id_function);
+	if (!get_id_callback())
+		set_id_callback(ssl_id_function);
 #endif
 #ifdef HAVE_CRYPTO_SET_LOCKING_CALLBACK
-	CRYPTO_set_locking_callback(ssl_locking_function);
+	if (!CRYPTO_get_locking_callback())
+		CRYPTO_set_locking_callback(ssl_locking_function);
 #endif
 
 	return 1;
@@ -1043,18 +1046,6 @@ int thread_pool_init(CONF_SECTION *cs, bool *spawn_flag)
 		}
 	}
 #endif
-
-#ifdef HAVE_OPENSSL_CRYPTO_H
-	/*
-	 *	If we're linking with OpenSSL too, then we need
-	 *	to set up the mutexes and enable the thread callbacks.
-	 */
-	if (!setup_ssl_mutexes()) {
-		ERROR("FATAL: Failed to set up SSL mutexes");
-		return -1;
-	}
-#endif
-
 
 #ifndef WITH_GCD
 	/*
