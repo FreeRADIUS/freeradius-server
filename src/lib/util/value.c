@@ -146,6 +146,8 @@ size_t const fr_value_box_field_sizes[] = {
 	[FR_TYPE_IPV4_PREFIX]			= SIZEOF_MEMBER(fr_value_box_t, vb_ip),
 	[FR_TYPE_IPV6_ADDR]			= SIZEOF_MEMBER(fr_value_box_t, vb_ip),
 	[FR_TYPE_IPV6_PREFIX]			= SIZEOF_MEMBER(fr_value_box_t, vb_ip),
+	[FR_TYPE_COMBO_IP_ADDR]			= SIZEOF_MEMBER(fr_value_box_t, vb_ip),
+	[FR_TYPE_COMBO_IP_PREFIX]	       	= SIZEOF_MEMBER(fr_value_box_t, vb_ip),
 	[FR_TYPE_IFID]				= SIZEOF_MEMBER(fr_value_box_t, vb_ifid),
 	[FR_TYPE_ETHERNET]			= SIZEOF_MEMBER(fr_value_box_t, vb_ether),
 
@@ -186,6 +188,8 @@ size_t const fr_value_box_offsets[] = {
 	[FR_TYPE_IPV4_PREFIX]			= offsetof(fr_value_box_t, vb_ip),
 	[FR_TYPE_IPV6_ADDR]			= offsetof(fr_value_box_t, vb_ip),
 	[FR_TYPE_IPV6_PREFIX]			= offsetof(fr_value_box_t, vb_ip),
+	[FR_TYPE_COMBO_IP_ADDR]			= offsetof(fr_value_box_t, vb_ip),
+	[FR_TYPE_COMBO_IP_PREFIX]	       	= offsetof(fr_value_box_t, vb_ip),
 	[FR_TYPE_IFID]				= offsetof(fr_value_box_t, vb_ifid),
 	[FR_TYPE_ETHERNET]			= offsetof(fr_value_box_t, vb_ether),
 
