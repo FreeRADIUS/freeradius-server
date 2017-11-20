@@ -75,6 +75,9 @@ FreeRADIUS 3.0.16 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	* sql log now opens the expanded filename, not the input one.
 	  This was a regression introduced in 3.0.15.
 	* Remove unnecessary UNIQUE constrain in Oracle schemas.
+	* EAP-FAST fixes from Isaac Boukris.  Fixes #2127.
+	* Fix SSL thread and locking issues when modules also use SSL.
+	  Fixes #2125 and #2129.
 
 FreeRADIUS 3.0.15 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	Feature improvements
