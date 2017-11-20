@@ -39,7 +39,7 @@ RUN sh cmake.sh --skip-license --prefix=/usr/local
 #
 WORKDIR /usr/local/src/repositories
 # Fixme: Change to the main repo when they merge this branch
-RUN git clone --branch patch-3 --depth=1 https://github.com/arr2036/libkqueue.git
+RUN git clone --branch master --depth=1 https://github.com/FreeRADIUS/libkqueue.git
 WORKDIR libkqueue
 RUN cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib ./ && \
     make && \
@@ -71,7 +71,7 @@ RUN yum-builddep -y hiredis/redhat/hiredis.spec
 RUN v=$(rpm -q --qf '%{VERSION}\n' --specfile hiredis/redhat/hiredis.spec | head -1) ;\
     mv hiredis hiredis-$v ;\
     tar -c -z -f $HOME/rpmbuild/SOURCES/hiredis-$v.tar.gz --exclude=.git hiredis-$v ;\
-    rpmbuild -bb hiredis-$v/redhat/hiredis.spec 
+    rpmbuild -bb hiredis-$v/redhat/hiredis.spec
 RUN yum localinstall -y $HOME/rpmbuild/RPMS/*/hiredis-*.rpm
 
 #
