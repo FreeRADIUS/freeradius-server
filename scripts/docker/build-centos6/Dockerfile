@@ -1,4 +1,4 @@
-FROM freeradius/centos6-source
+FROM freeradius/centos6-deps
 
 WORKDIR /usr/local/src/repositories/freeradius-server
 RUN ./configure --prefix=/opt/freeradius
@@ -10,7 +10,7 @@ WORKDIR certs
 RUN make
 WORKDIR /
 
-FROM freeradius/centos6-source
+FROM freeradius/centos6-deps
 COPY --from=0 /opt/freeradius /opt/freeradius
 
 EXPOSE 1812/udp 1813/udp

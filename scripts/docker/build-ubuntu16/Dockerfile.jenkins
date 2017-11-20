@@ -1,4 +1,4 @@
-FROM freeradius/ubuntu16-source
+FROM freeradius/ubuntu16-deps
 
 #
 #  This is necessary for the jenkins server to talk to the docker instance

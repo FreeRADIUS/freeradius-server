@@ -1,4 +1,4 @@
-FROM freeradius/centos6-source
+FROM freeradius/centos6-deps
 
 #
 #  This is necessary for the jenkins server to talk to the docker instance

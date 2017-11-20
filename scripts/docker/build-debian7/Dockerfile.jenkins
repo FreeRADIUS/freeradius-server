@@ -1,4 +1,4 @@
-FROM freeradius/debian7-source
+FROM freeradius/debian7-deps
 
 #
 #  This is necessary for the jenkins server to talk to the docker instance
@@ -9,9 +9,9 @@ RUN hg clone http://hg.openjdk.java.net/jdk8/jdk8 YourOpenJDK ;\
     cd YourOpenJDK ;\
     bash ./get_source.sh
 RUN apt-get install -y cpio zip openjdk-7-jdk libX11-dev libxext-dev libxrender-dev libxtst-dev libxt-dev cups libcups2-dev
-RUN apt-get install -y libfreetype6-dev libasound2-dev 
+RUN apt-get install -y libfreetype6-dev libasound2-dev
 
-RUN cd YourOpenJDK && bash ./configure && make 
+RUN cd YourOpenJDK && bash ./configure && make
 RUN cd YourOpenJDK && make install
 
 RUN apt-get install -y sudo && echo "jenkins ALL=(ALL:ALL) NOPASSWD:ALL" > /etc/sudoers

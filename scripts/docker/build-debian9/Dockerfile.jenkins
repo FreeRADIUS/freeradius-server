@@ -1,11 +1,11 @@
-FROM freeradius/debian9-source
+FROM freeradius/debian9-deps
 
 #
 #  This is necessary for the jenkins server to talk to the docker instance
 #
 RUN echo deb http://ftp.debian.org/debian stretch-backports main >> /etc/apt/sources.list
-RUN apt-get update && apt-get -t stretch-backports install -y openjdk-8-jre-headless 
-RUN apt-get install -y openssh-server sudo 
+RUN apt-get update && apt-get -t stretch-backports install -y openjdk-8-jre-headless
+RUN apt-get install -y openssh-server sudo
 
 RUN useradd -m jenkins
 RUN echo "jenkins:jenkins1" | chpasswd
