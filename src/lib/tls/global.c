@@ -128,6 +128,23 @@ static unsigned long _thread_id(void)
 	return ret;
 }
 
+/*
+ *	Use preprocessor magic to get the right function and argument
+ *	to use.  This avoids ifdef's through the rest of the code.
+ */
+#if OPENSSL_VERSION_NUMBER < 0x10000000L
+#define ssl_id_function  _thread_id
+#define set_id_callback CRYPTO_set_id_callback
+
+#else
+static void ssl_id_function(CRYPTO_THREADID *id)
+{
+	CRYPTO_THREADID_set_numeric(id, _thread_id());
+}
+#define set_id_callback CRYPTO_THREADID_set_callback
+#endif
+
+
 static void _global_mutex(int mode, int n, UNUSED char const *file, UNUSED int line)
 {
 	if (mode & CRYPTO_LOCK) {
@@ -236,7 +253,7 @@ static pthread_mutex_t *global_mutexes_init(TALLOC_CTX *ctx)
 	 */
 	while (i < CRYPTO_num_locks()) SETUP_CRYPTO_LOCK;
 
-	CRYPTO_set_id_callback(_thread_id);
+	set_id_callback(ssl_id_function);
 	CRYPTO_set_locking_callback(_global_mutex);
 
 	return mutexes;
