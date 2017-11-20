@@ -172,6 +172,7 @@ static RADIUS_PACKET *request_init(char const *filename)
 
 		case FR_PACKET_SRC_PORT:
 			request->src_port = vp->vp_uint16;
+			break;
 
 		case FR_PACKET_SRC_IP_ADDRESS:
 		case FR_PACKET_SRC_IPV6_ADDRESS:
