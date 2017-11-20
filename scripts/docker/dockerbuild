@@ -1,4 +1,10 @@
 #! /bin/sh
+#
+#  This script builds FreeRADIUS in a docker environment
+#  using the Dockerfiles in this directory.
+#
+#  Example usage: ./dockerbuild build-debian9
+#
 
 DIR="$1"
 
@@ -7,9 +13,9 @@ DIR="$1"
 
 OSNAME=$(echo "$DIR" | sed -e 's/^build-//')
 
-[ ! -r "$DIR/Dockerfile.source" ] && echo "'$DIR/Dockerfile.source' does not exist" && exit 1
-echo Building $OSNAME source image
-docker build "$DIR" -f "$DIR/Dockerfile.source" -t freeradius/$OSNAME-source
+[ ! -r "$DIR/Dockerfile.deps" ] && echo "'$DIR/Dockerfile.deps' does not exist" && exit 1
+echo Building $OSNAME source and dependency image
+docker build "$DIR" -f "$DIR/Dockerfile.deps" -t freeradius/$OSNAME-deps
 
 if [ -r "$DIR/Dockerfile.jenkins" ]; then
 	echo Building $OSNAME jenkins image
