@@ -2595,7 +2595,7 @@ static void sess_free_certs(UNUSED void *parent, void *data_ptr,
  * This should be called exactly once from main, before reading the main config
  * or initialising any modules.
  */
-void tls_global_init(void)
+int tls_global_init(bool spawn_flag, bool check)
 {
 	SSL_load_error_strings();	/* readable error messages (examples show call before library_init) */
 	SSL_library_init();		/* initialize library */
@@ -2606,6 +2606,20 @@ void tls_global_init(void)
 	 *	Initialize the index for the certificates.
 	 */
 	fr_tls_ex_index_certs = SSL_SESSION_get_ex_new_index(0, NULL, NULL, NULL, sess_free_certs);
+
+	/*
+	 *	If we're linking with OpenSSL too, then we need
+	 *	to set up the mutexes and enable the thread callbacks.
+	 *
+	 *	'check' and not 'check_config' because it's a global,
+	 *	and we don't want to have tls.c depend on globals.
+	 */
+	if (spawn_flag && !check && (tls_mutexes_init() < 0)) {
+		ERROR("FATAL: Failed to set up SSL mutexes");
+		return -1;
+	}
+
+	return 0;
 }
 
 #ifdef ENABLE_OPENSSL_VERSION_CHECK

@@ -265,14 +265,17 @@ static void ssl_locking_function(int mode, int n, UNUSED char const *file, UNUSE
 }
 #endif
 
-static int setup_ssl_mutexes(void)
+/*
+ *	Create the TLS mutexes.
+ */
+int tls_mutexes_init(void)
 {
 	int i;
 
 	ssl_mutexes = rad_malloc(CRYPTO_num_locks() * sizeof(pthread_mutex_t));
 	if (!ssl_mutexes) {
 		ERROR("Error allocating memory for SSL mutexes!");
-		return 0;
+		return -1;
 	}
 
 	for (i = 0; i < CRYPTO_num_locks(); i++) {
@@ -286,7 +289,7 @@ static int setup_ssl_mutexes(void)
 	CRYPTO_set_locking_callback(ssl_locking_function);
 #endif
 
-	return 1;
+	return 0;
 }
 #endif
 
@@ -1043,18 +1046,6 @@ int thread_pool_init(CONF_SECTION *cs, bool *spawn_flag)
 		}
 	}
 #endif
-
-#ifdef HAVE_OPENSSL_CRYPTO_H
-	/*
-	 *	If we're linking with OpenSSL too, then we need
-	 *	to set up the mutexes and enable the thread callbacks.
-	 */
-	if (!setup_ssl_mutexes()) {
-		ERROR("FATAL: Failed to set up SSL mutexes");
-		return -1;
-	}
-#endif
-
 
 #ifndef WITH_GCD
 	/*
