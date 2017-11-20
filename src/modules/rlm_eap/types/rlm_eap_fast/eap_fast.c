@@ -808,7 +808,7 @@ static FR_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_sessio
 	eap_fast_tunnel_t		*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	VALUE_PAIR			*vp;
 	vp_cursor_t			cursor;
-	eap_tlv_crypto_binding_tlv_t	*binding = NULL;
+	eap_tlv_crypto_binding_tlv_t	my_binding, *binding = NULL;
 
 	for (vp = fr_pair_cursor_init(&cursor, &fast_vps); vp; vp = fr_pair_cursor_next(&cursor)) {
 		FR_CODE code = FR_CODE_ACCESS_REJECT;
@@ -835,10 +835,11 @@ static FR_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_sessio
 			}
 			break;
 		case EAP_FAST_TLV_CRYPTO_BINDING:
-			if (!binding) {
-				binding = talloc_zero(request->packet, eap_tlv_crypto_binding_tlv_t);
+			if (!binding && (vp->vp_length >= sizeof(*binding))) {
+				binding = &my_binding;
 				binding->tlv_type = htons(EAP_FAST_TLV_MANDATORY | EAP_FAST_TLV_CRYPTO_BINDING);
 				binding->length = htons(sizeof(*binding) - 2 * sizeof(uint16_t));
+				memcpy(&my_binding.reserved, vp->vp_octets, sizeof(my_binding) - 4);
 			}
 			/*
 			 * fr_radius_encode_pair() does not work for structures
