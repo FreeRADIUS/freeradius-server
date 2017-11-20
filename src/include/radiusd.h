@@ -537,6 +537,10 @@ void	thread_pool_lock(void);
 void	thread_pool_unlock(void);
 void	thread_pool_queue_stats(int array[RAD_LISTEN_MAX], int pps[2]);
 
+#ifdef HAVE_OPENSSL_CRYPTO_H
+int	setup_ssl_mutexes(void);
+#endif
+
 #ifndef HAVE_PTHREAD_H
 #  define rad_fork(n) fork()
 #  define rad_waitpid(a,b) waitpid(a,b, 0)

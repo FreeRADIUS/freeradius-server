@@ -266,7 +266,7 @@ static void ssl_locking_function(int mode, int n, UNUSED char const *file, UNUSE
 }
 #endif
 
-static int setup_ssl_mutexes(void)
+int setup_ssl_mutexes(void)
 {
 	int i;
 
@@ -1046,18 +1046,6 @@ int thread_pool_init(CONF_SECTION *cs, bool *spawn_flag)
 		}
 	}
 #endif
-
-#ifdef HAVE_OPENSSL_CRYPTO_H
-	/*
-	 *	If we're linking with OpenSSL too, then we need
-	 *	to set up the mutexes and enable the thread callbacks.
-	 */
-	if (!setup_ssl_mutexes()) {
-		ERROR("FATAL: Failed to set up SSL mutexes");
-		return -1;
-	}
-#endif
-
 
 #ifndef WITH_GCD
 	/*
