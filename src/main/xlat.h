@@ -36,14 +36,18 @@
  *
  */
 typedef enum {
-	XLAT_FUNC_STRING,					//!< Ingests and excretes strings.
-	XLAT_FUNC_BOXED						//!< Ingests and excretes value boxes.
-} xlat_func_type_t;
+	XLAT_FUNC_SYNC,						//!< Ingests and excretes strings.
+	XLAT_FUNC_ASYNC						//!< Ingests and excretes value boxes (and may yield)
+} xlat_func_sync_type_t;
 
 typedef struct xlat_t {
 	char const		*name;				//!< Name of xlat function.
-	xlat_func_t		func;				//!< xlat function.
-	xlat_func_type_t	type;				//!< Type of xlat function.
+
+	union {
+		xlat_func_sync_t	sync;			//!< synchronous xlat function (async safe).
+		xlat_func_async_t	async;			//!< async xlat function (async unsafe).
+	} func;
+	xlat_func_sync_type_t	type;				//!< Type of xlat function.
 
 	xlat_instantiate_t	instantiate;			//!< Instantiation function.
 	xlat_thread_instantiate_t thread_instantiate;		//!< Thread instantiation function.

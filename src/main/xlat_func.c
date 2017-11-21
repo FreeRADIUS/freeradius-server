@@ -624,7 +624,7 @@ xlat_t *xlat_find(char const *name)
  *	- -1 on failure.
  */
 int xlat_register(void *mod_inst, char const *name,
-		  xlat_func_t func, xlat_escape_t escape,
+		  xlat_func_sync_t func, xlat_escape_t escape,
 		  xlat_instantiate_t instantiate, size_t inst_size,
 		  size_t buf_len, bool async_safe)
 {
@@ -664,8 +664,8 @@ int xlat_register(void *mod_inst, char const *name,
 		new = true;
 	}
 
-	c->func = func;
-	c->type = XLAT_FUNC_BOXED;
+	c->func.sync = func;
+	c->type = XLAT_FUNC_SYNC;
 	c->buf_len = buf_len;
 	c->escape = escape;
 	c->mod_inst = mod_inst;
@@ -732,7 +732,7 @@ static int _xlat_free(xlat_t *xlat)
  *	- -1 on failure.
  */
 int xlat_async_register(TALLOC_CTX *ctx,
-			char const *name, xlat_func_t func,
+			char const *name, xlat_func_async_t func,
 			xlat_instantiate_t instantiate, size_t inst_size,
 			xlat_thread_instantiate_t thread_instantiate, size_t thread_inst_size,
 			void *uctx)
@@ -773,13 +773,13 @@ int xlat_async_register(TALLOC_CTX *ctx,
 		new = true;
 	}
 
-	c->func = func;
-	c->type = XLAT_FUNC_BOXED;
+	c->func.async = func;
+	c->type = XLAT_FUNC_ASYNC;
 	c->instantiate = instantiate;
 	c->thread_instantiate = thread_instantiate;
 	c->inst_size = inst_size;
 	c->thread_inst_size = thread_inst_size;
-	c->async_safe = true;
+	c->async_safe = false;	/* async safe in this case means it might yield */
 	c->uctx = uctx;
 
 	talloc_set_destructor(c, _xlat_free);
@@ -889,7 +889,7 @@ static ssize_t xlat_redundant(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size_t 
 			*out = NULL;
 		}
 
-		rcode = xlat->func(ctx, out, xlat->buf_len, xlat->mod_inst, NULL, request, fmt);
+		rcode = xlat->func.sync(ctx, out, xlat->buf_len, xlat->mod_inst, NULL, request, fmt);
 		if (rcode <= 0) {
 			TALLOC_FREE(*out);
 			continue;
@@ -953,7 +953,7 @@ static ssize_t xlat_load_balance(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size
 		} else {
 			*out = NULL;
 		}
-		slen = xlat->func(ctx, out, xlat->buf_len, xlat->mod_inst, NULL, request, fmt);
+		slen = xlat->func.sync(ctx, out, xlat->buf_len, xlat->mod_inst, NULL, request, fmt);
 		if (slen <= 0) TALLOC_FREE(*out);
 
 		return slen;
@@ -980,7 +980,7 @@ static ssize_t xlat_load_balance(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size
 			} else {
 				*out = NULL;
 			}
-			rcode = xlat->func(ctx, out, xlat->buf_len, xlat->mod_inst, NULL, request, fmt);
+			rcode = xlat->func.sync(ctx, out, xlat->buf_len, xlat->mod_inst, NULL, request, fmt);
 			if (rcode > 0) return rcode;
 			TALLOC_FREE(*out);
 		}

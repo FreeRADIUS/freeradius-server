@@ -515,50 +515,79 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	switch (node->type) {
 	case XLAT_FUNC:
-	{
-		fr_value_box_t	*value;
-		char		*str;
-		char		*result_str;
-		ssize_t		slen;
+		switch (node->xlat->type) {
+		case XLAT_FUNC_SYNC:
+		{
+			fr_value_box_t	*value;
+			char		*str;
+			char		*result_str;
+			ssize_t		slen;
 
-		result_str = fr_value_box_list_asprint(NULL, result, NULL, '\0');
-		if (!result_str) return XLAT_ACTION_FAIL;
+			result_str = fr_value_box_list_asprint(NULL, result, NULL, '\0');
+			if (!result_str) return XLAT_ACTION_FAIL;
 
-		if (node->xlat->buf_len > 0) {
-			str = talloc_array(ctx, char, node->xlat->buf_len);
-			str[0] = '\0';	/* Be sure the string is \0 terminated */
-		}
+			if (node->xlat->buf_len > 0) {
+				str = talloc_array(ctx, char, node->xlat->buf_len);
+				str[0] = '\0';	/* Be sure the string is \0 terminated */
+			}
 
-		XLAT_DEBUG("** [%i] %s(func) - %%{%s:%pS}", unlang_stack_depth(request), __FUNCTION__,
-			   node->fmt, result_str);
+			XLAT_DEBUG("** [%i] %s(func) - %%{%s:%pS}", unlang_stack_depth(request), __FUNCTION__,
+				   node->fmt, result_str);
 
-		slen = node->xlat->func(ctx, &str, node->xlat->buf_len,
-					node->xlat->mod_inst, NULL, request, result_str);
-		if (slen < 0) {
+			slen = node->xlat->func.sync(ctx, &str, node->xlat->buf_len,
+						     node->xlat->mod_inst, NULL, request, result_str);
+			if (slen < 0) {
+				talloc_free(result_str);
+				talloc_free(str);
+				return XLAT_ACTION_FAIL;
+			}
+			if (slen == 0) break;	/* Zero length result */
+			(void)talloc_get_type_abort(str, char);
+
+			/*
+			 *	Shrink the buffer
+			 */
+			if ((node->xlat->buf_len > 0) && (slen > 0)) MEM(str = talloc_realloc_bstr(str, (size_t)slen));
+
+			/*
+			 *	Fixup talloc lineage and assign the
+			 *	output of the function to a box.
+			 */
+			MEM(value = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+			fr_value_box_strdup_buffer_shallow(value, value, NULL, talloc_steal(value, str), false);
+
+			RDEBUG2("EXPAND %%{%s:...}", node->xlat->name);
+			RDEBUG2("   --> %pV", value);
+			fr_cursor_append(out, value);	/* Append the result of the expansion */
 			talloc_free(result_str);
-			talloc_free(str);
-			return XLAT_ACTION_FAIL;
 		}
-		if (slen == 0) break;	/* Zero length result */
-		(void)talloc_get_type_abort(str, char);
+			break;
 
-		/*
-		 *	Shrink the buffer
-		 */
-		if ((node->xlat->buf_len > 0) && (slen > 0)) MEM(str = talloc_realloc_bstr(str, (size_t)slen));
+		case XLAT_FUNC_ASYNC:
+		{
+			xlat_action_t action;
 
-		/*
-		 *	Fixup talloc lineage and assign the
-		 *	output of the function to a box.
-		 */
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
-		fr_value_box_strdup_buffer_shallow(value, value, NULL, talloc_steal(value, str), false);
+			/* Fixme - Pass in instance and thread instance */
+			action = node->xlat->func.async(ctx, out, NULL, NULL, request, result, node->xlat->uctx);
+			switch (action) {
+			case XLAT_ACTION_PUSH_CHILD:
+			case XLAT_ACTION_YIELD:
+			case XLAT_ACTION_FAIL:
+				return action;
 
-		RDEBUG2("EXPAND %%{%s:...}", node->xlat->name);
-		RDEBUG2("   --> %pV", value);
-		fr_cursor_append(out, value);	/* Append the result of the expansion */
-		talloc_free(result_str);
-	}
+			case XLAT_ACTION_DONE:		/* Process the result */
+				break;
+			}
+
+			RDEBUG2("EXPAND %%{%s:...}", node->xlat->name);
+			if (fr_cursor_current(out)) {
+				RDEBUG2("   --> %pV", fr_cursor_current(out));	/* Fixme - print multiple values */
+			} else {
+				RDEBUG2("   -->");
+			}
+			break;
+		}
+		}
 		break;
 
 	case XLAT_ALTERNATE:
@@ -694,7 +723,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 			XLAT_DEBUG("** [%i] %s(virtual) - %%{%s}", unlang_stack_depth(request), __FUNCTION__,
 				   node->fmt);
 
-			slen = node->xlat->func(ctx, &str, node->xlat->buf_len, node->xlat->mod_inst,
+			slen = node->xlat->func.sync(ctx, &str, node->xlat->buf_len, node->xlat->mod_inst,
 						NULL, request, NULL);
 			if (slen < 0) goto fail;
 			if (slen == 0) continue;
@@ -861,7 +890,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			str = talloc_array(ctx, char, node->xlat->buf_len);
 			str[0] = '\0';	/* Be sure the string is \0 terminated */
 		}
-		slen = node->xlat->func(ctx, &str, node->xlat->buf_len, node->xlat->mod_inst, NULL, request, NULL);
+		slen = node->xlat->func.sync(ctx, &str, node->xlat->buf_len, node->xlat->mod_inst, NULL, request, NULL);
 		if (slen < 0) {
 			talloc_free(str);
 			return NULL;
@@ -939,7 +968,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			str = talloc_array(ctx, char, node->xlat->buf_len);
 			str[0] = '\0';	/* Be sure the string is \0 terminated */
 		}
-		slen = node->xlat->func(ctx, &str, node->xlat->buf_len, node->xlat->mod_inst, NULL, request, child);
+		slen = node->xlat->func.sync(ctx, &str, node->xlat->buf_len, node->xlat->mod_inst, NULL, request, child);
 		talloc_free(child);
 		if (slen < 0) {
 			talloc_free(str);

@@ -62,7 +62,7 @@ typedef size_t (*xlat_escape_t)(REQUEST *request, char *out, size_t outlen, char
  * @param[in] request The current request.
  * @param[in] fmt string to expand.
  */
-typedef ssize_t (*xlat_func_t)(TALLOC_CTX *ctx, char **out, size_t outlen,
+typedef ssize_t (*xlat_func_sync_t)(TALLOC_CTX *ctx, char **out, size_t outlen,
 			       void const *mod_inst, void const *xlat_inst,
 			       REQUEST *request, char const *fmt);
 
@@ -76,6 +76,7 @@ typedef ssize_t (*xlat_func_t)(TALLOC_CTX *ctx, char **out, size_t outlen,
  * @param[in] xlat_thread_inst	Thread specific xlat instance.
  * @param[in] request		The current request.
  * @param[in] in		Input arguments.
+ * @param[in] uctx		passed to registration function.
  * @return
  *	- XLAT_ACTION_YIELD	xlat function is waiting on an I/O event and
  *				has pushed a resumption function onto the stack.
@@ -144,12 +145,12 @@ size_t		xlat_snprint(char *buffer, size_t bufsize, xlat_exp_t const *node);
 #define XLAT_DEFAULT_BUF_LEN	2048
 
 int		xlat_register(void *mod_inst, char const *name,
-			      xlat_func_t func, xlat_escape_t escape,
+			      xlat_func_sync_t func, xlat_escape_t escape,
 			      xlat_instantiate_t instantiate, size_t inst_size,
 			      size_t buf_len, bool async_safe);
 
 int		xlat_async_register(TALLOC_CTX *ctx,
-				    char const *name, xlat_func_t func,
+				    char const *name, xlat_func_async_t func,
 				    xlat_instantiate_t instantiate, size_t inst_size,
 				    xlat_thread_instantiate_t thread_instantiate, size_t thread_inst_size,
 				    void *uctx);
