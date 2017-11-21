@@ -97,8 +97,11 @@ static rlm_rcode_t delay_add(rlm_delay_t const *inst, REQUEST *request)
 	struct timeval	when;
 	int cmp;
 
-	if (tmpl_aexpand(request, &delay, request, inst->delay, NULL, NULL) < 0) return RLM_MODULE_FAIL;
-
+	if (inst->delay) {
+		if (tmpl_aexpand(request, &delay, request, inst->delay, NULL, NULL) < 0) return RLM_MODULE_FAIL;
+	} else {
+		memset(&delay, 0, sizeof(delay));
+	}
 	/*
 	 *	Delay is zero (and reschedule is not forced)
 	 */
