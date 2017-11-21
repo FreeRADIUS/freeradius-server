@@ -662,7 +662,8 @@ int main(int argc, char *argv[])
 	fr_state_tree_t		*state = NULL;
 	fr_event_list_t		*el = NULL;
 	RADCLIENT		*client = NULL;
-
+	CONF_SECTION		*unlang;
+	char			*auth_type;
 	fr_talloc_fault_setup();
 
 	/*
@@ -908,6 +909,7 @@ int main(int argc, char *argv[])
 		rcode = EXIT_FAILURE;
 		goto finish;
 	}
+	request->el = el;
 
 	/*
 	 *	No filter file, OR there's no more input, OR we're
@@ -952,10 +954,68 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 *	FIXME: create scheduler and inject packets into that!!!
+	 *	Simulate an authorize section
 	 */
-	rad_virtual_server(request);
+	unlang = cf_section_find(request->server_cs, "recv", "Access-Request");
+	if (!unlang) {
+		REDEBUG("Failed to find 'recv Access-Request' section");
+		request->reply->code = FR_CODE_ACCESS_REJECT;
+		goto done;
+	}
 
+	switch (unlang_interpret_synchronous(request, unlang, RLM_MODULE_NOOP)) {
+	case RLM_MODULE_OK:
+	case RLM_MODULE_UPDATED:
+	case RLM_MODULE_NOOP:
+		request->reply->code = FR_CODE_ACCESS_ACCEPT;
+		break;
+
+	default:
+		request->reply->code = FR_CODE_ACCESS_REJECT;
+		goto done;
+	}
+
+	/*
+	 *	Simulate an authenticate section
+	 */
+	vp = fr_pair_find_by_num(request->control, 0, FR_AUTH_TYPE, TAG_ANY);
+	if (!vp) goto done;
+
+	switch (vp->vp_int32) {
+	case FR_AUTH_TYPE_ACCEPT:
+		request->reply->code = FR_CODE_ACCESS_ACCEPT;
+		goto done;
+
+	case FR_AUTH_TYPE_REJECT:
+		request->reply->code = FR_CODE_ACCESS_REJECT;
+		goto done;
+
+	default:
+		break;
+	}
+
+	auth_type = fr_pair_value_asprint(vp, vp, '\0');
+	unlang = cf_section_find(request->server_cs, "authenticate", auth_type);
+	talloc_free(auth_type);
+	if (!unlang) {
+		REDEBUG("Failed to find 'recv %s' section", auth_type);
+		request->reply->code = FR_CODE_ACCESS_REJECT;
+		goto done;
+	}
+
+	switch (unlang_interpret_synchronous(request, unlang, RLM_MODULE_NOOP)) {
+	case RLM_MODULE_OK:
+	case RLM_MODULE_UPDATED:
+	case RLM_MODULE_NOOP:
+		request->reply->code = FR_CODE_ACCESS_ACCEPT;
+		break;
+
+	default:
+		request->reply->code = FR_CODE_ACCESS_REJECT;
+		goto done;
+	}
+
+done:
 	if (!output_file || (strcmp(output_file, "-") == 0)) {
 		fp = stdout;
 	} else {
