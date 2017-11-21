@@ -809,12 +809,12 @@ check_active:
 	original[0] = rr->code;
 	original[1] = 0;	/* not looked at by fr_radius_verify() */
 	original[2] = 0;
-	original[3] = 0;
+	original[3] = 20;	/* for debugging */
 	memcpy(original + 4, rr->vector, sizeof(rr->vector));
 
 	if (fr_radius_verify(c->buffer, original,
 			     (uint8_t const *) c->inst->secret, strlen(c->inst->secret)) < 0) {
-		RWDEBUG("Ignoring response with invalid signature");
+		RWDEBUG("Ignoring response with invalid signature: %s", fr_strerror());
 		goto redo;
 	}
 
@@ -1128,6 +1128,7 @@ static int retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 				REDEBUG("Failed re-signing packet");
 				return -1;
 			}
+			memcpy(u->rr->vector, u->packet + 4, AUTH_VECTOR_LEN);
 		}
 	}
 
@@ -1158,6 +1159,8 @@ static int retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 				REDEBUG("Failed re-signing packet");
 				return -1;
 			}
+
+			memcpy(u->rr->vector, u->packet + 4, AUTH_VECTOR_LEN);
 			break;
 		}
 	}
@@ -1533,6 +1536,8 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 		conn_error(c->thread->el, c->fd, 0, errno, c);
 		return -1;
 	}
+
+	memcpy(u->rr->vector, c->buffer + 4, AUTH_VECTOR_LEN);
 
 	/*
 	 *	Print out the actual value of the Message-Authenticator attribute
