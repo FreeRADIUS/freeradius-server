@@ -1237,6 +1237,13 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 		case CHILD_YIELDED:
 			REQUEST_VERIFY(state->children[i].child);
 			rad_assert(state->children[i].child->runnable_id < 0);
+
+			/*
+			 *	Signal the child that it's going to be
+			 *	stopped.  This tells any child modules
+			 *	to clean up timers, etc.
+			 */
+			unlang_signal(state->children[i].child, FR_ACTION_DONE);
 			TALLOC_FREE(state->children[i].child);
 			/* FALL-THROUGH */
 
