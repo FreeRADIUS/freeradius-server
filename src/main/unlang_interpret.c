@@ -1809,7 +1809,7 @@ static unlang_action_t unlang_module_call(REQUEST *request,
 	 *	Return administratively configured return code
 	 */
 	if (sp->module_instance->force) {
-		request->rcode = sp->module_instance->code;
+		*presult = request->rcode = sp->module_instance->code;
 		goto done;
 	}
 
@@ -1831,7 +1831,7 @@ static unlang_action_t unlang_module_call(REQUEST *request,
 	 *	Lock is noop unless instance->mutex is set.
 	 */
 	safe_lock(sp->module_instance);
-	*presult = request->rcode = sp->method(sp->module_instance->dl_inst->data, modcall_state->thread->data, request);
+	*presult = sp->method(sp->module_instance->dl_inst->data, modcall_state->thread->data, request);
 	safe_unlock(sp->module_instance);
 
 	request->module = NULL;
@@ -1853,10 +1853,11 @@ static unlang_action_t unlang_module_call(REQUEST *request,
 		rad_assert(*presult >= RLM_MODULE_REJECT);
 		rad_assert(*presult < RLM_MODULE_NUMCODES);
 		*priority = instruction->actions[*presult];
+
+		request->rcode = *presult;
 	}
 
 done:
-	*presult = request->rcode;
 	RDEBUG2("%s (%s)", instruction->name ? instruction->name : "",
 		fr_int2str(mod_rcode_table, *presult, "<invalid>"));
 
@@ -1963,8 +1964,8 @@ static unlang_action_t unlang_resume(REQUEST *request,
 	 *	the original frame which was used to
 	 *	create this resumption frame.
 	 */
-	*presult = request->rcode = unlang_ops_resume[mr->parent_type](request, instance,
-								       mr->thread, mr->resume_ctx);
+	*presult = unlang_ops_resume[mr->parent_type](request, instance,
+						      mr->thread, mr->resume_ctx);
 
 	request->module = NULL;
 
