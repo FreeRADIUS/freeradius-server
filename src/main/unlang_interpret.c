@@ -2318,7 +2318,7 @@ static inline unlang_frame_action_t unlang_frame_eval(REQUEST *request, unlang_s
 		 */
 		case UNLANG_ACTION_YIELD:
 		yield:
-			*result = frame->result = RLM_MODULE_YIELD;	/* Fixup rcode */
+			*result = RLM_MODULE_YIELD;	/* Fixup rcode */
 
 			/*
 			 *	Detach is magic.  The parent "create" function
