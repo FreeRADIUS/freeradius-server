@@ -305,8 +305,8 @@ void		unlang_signal(REQUEST *request, fr_state_action_t action);
 
 int		unlang_stack_depth(REQUEST *request);
 
-rlm_rcode_t	unlang_module_yield(REQUEST *request, fr_unlang_resume_callback_t callback, fr_unlang_action_t signal_callback,
-			     void *ctx);
+rlm_rcode_t	unlang_module_yield(REQUEST *request, fr_unlang_resume_callback_t callback,
+				    fr_unlang_action_t signal_callback, void *ctx);
 
 int		unlang_initialize(void);
 
