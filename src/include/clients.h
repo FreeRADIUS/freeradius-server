@@ -43,6 +43,8 @@ typedef struct radclient {
 	char const		*secret;		//!< Secret PSK.
 
 	bool			message_authenticator;	//!< Require RADIUS message authenticator in requests.
+	bool			active;			//!< for dynamic clients
+	bool			negative;		//!< negative cache entry
 
 	char const		*nas_type;		//!< Type of client (arbitrary).
 

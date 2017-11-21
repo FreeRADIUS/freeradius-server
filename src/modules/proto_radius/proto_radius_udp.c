@@ -48,6 +48,15 @@ typedef struct {
 	RADCLIENT			*client;
 } proto_radius_udp_address_t;
 
+typedef struct dynamic_client_t {
+	fr_ipaddr_t			*network;		//!< dynamic networks to allow
+	fr_dlist_t			list;			//!< list of accepted packets
+	uint32_t			max_clients;		//!< maximum number of dynamic clients
+	uint32_t			pending_clients;	//!< number of pending clients
+	uint32_t			max_pending_packets;	//!< maximum accepted pending packets
+	uint32_t			num_pending_packets;	//!< how many packets are received, but not accepted
+} dynamic_client_t;
+
 typedef struct {
 	proto_radius_t	const		*parent;		//!< The module that spawned us!
 	char const			*name;			//!< socket name
@@ -71,8 +80,20 @@ typedef struct {
 
 	fr_stats_t			stats;			//!< statistics for this socket
 
+	RADCLIENT_LIST			*clients;		//!< local clients
+
+	bool				dynamic_clients_is_set;	//!< set if we have dynamic clients
+	dynamic_client_t		dynamic_clients;	//!< dynamic client infromation
+
 	uint32_t			priorities[FR_MAX_PACKET_CODE];	//!< priorities for individual packets
 } proto_radius_udp_t;
+
+static const CONF_PARSER dynamic_client_config[] = {
+	{ FR_CONF_OFFSET("network", FR_TYPE_COMBO_IP_PREFIX | FR_TYPE_MULTI, dynamic_client_t, network) },
+
+	CONF_PARSER_TERMINATOR
+};
+
 
 static const CONF_PARSER udp_listen_config[] = {
 	{ FR_CONF_OFFSET("ipaddr", FR_TYPE_COMBO_IP_ADDR, proto_radius_udp_t, ipaddr) },
@@ -87,6 +108,12 @@ static const CONF_PARSER udp_listen_config[] = {
 
 	{ FR_CONF_OFFSET("cleanup_delay", FR_TYPE_UINT32, proto_radius_udp_t, cleanup_delay), .dflt = "5" },
 
+	/*
+	 *	Note that we have to pass offset of dynamic_client to get the "IS_SET" functionality.
+	 *	But that screws up the entries in the dynamic_client_config, which are now offset
+	 *	from THIS offset, instead of offset from the start of proto_radius_udp_t;
+	 */
+	{ FR_CONF_IS_SET_OFFSET("dynamic_clients", FR_TYPE_SUBSECTION, proto_radius_udp_t, dynamic_clients), .subcs = (void const *) dynamic_client_config },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -114,7 +141,6 @@ static const CONF_PARSER priority_config[] = {
 	  .dflt = STRINGIFY(PRIORITY_NORMAL) },
 	{ FR_CONF_OFFSET("Status-Server", FR_TYPE_UINT32, proto_radius_udp_t, priorities[FR_CODE_STATUS_SERVER]),
 	  .dflt = STRINGIFY(PRIORITY_NOW) },
-
 
 	CONF_PARSER_TERMINATOR
 };
@@ -274,51 +300,49 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	 *	Lookup the client - Must exist to continue.
 	 */
 	address.client = client_find(NULL, &address.src_ipaddr, IPPROTO_UDP);
-	if (!address.client) {
-		ERROR("Unknown client at address %pV:%u.  Ignoring...",
+	if (!inst->dynamic_clients_is_set && !address.client) {
+	unknown:
+		ERROR("Unknown client from address %pV:%u.  Ignoring...",
 		      fr_box_ipaddr(address.src_ipaddr), address.src_port);
 		inst->stats.total_invalid_requests++;
 		return 0;
 	}
 
-	/*
-	 *	@todo - allow for dynamic clients.
-	 *
-	 * 	- cache packets from the unknown client, ideally in a
-	 *   	  separate tracking table for this source IP/port.
-	 *
-	 *	- make it configurable for src IP, or src IP/port
-	 *
-	 *	- if new packets come in from that same source, add
-	 *	  them to the tracking table, but DON'T process them.
-	 *
-	 *	- run the packet through a proto_radius_client processor
-	 *
-	 *	- if there's a good reply, add the client to the local
-	 *	  dynamic client list, with timeouts, max # of
-	 *	  entries, etc.
-	 *
-	 *	- find a way for the "write" function to trigger a re-read,
-	 *	  ideally via an fr_event_t callback
-	 *
-	 * 	- probably have each read set "leftover", to the total
-	 *	  amount of data associated with packets we've cached.
-	 *
-	 *	- which makes the network code drain this socket.
-	 *
-	 *	- the # of cached packets SHOULD be small enough that
-	 *	  this fast read doesn't matter too much.  If we care,
-	 *	  we can later fix the network code to call the read()
-	 *	  routine if there is pending data.  e.g. like the
-	 *	  issues with the detail file reader reading 64K of
-	 *	  data when each packet is only 200 bytes, and then
-	 *	  processin (64K/200) number of packets all at once.
-	 *
-	 *	- and ideally find a *generic* way to do this, so that
-	 *	  we can re-use the code for TCP, and possibly other
-	 *	  protocols.
-	 */
+	if (inst->dynamic_clients_is_set && !address.client) {
+		size_t i, num;
 
+		address.client = client_find(inst->clients, &address.src_ipaddr, IPPROTO_UDP);
+		if (address.client) {
+			if (address.client->active) goto found;
+
+			if (address.client->negative) {
+				// @todo - extend the expiry time?
+				goto unknown;
+			}
+
+			// @todo - add the packet to the pending list and return
+			goto unknown;
+		}
+
+		/*
+		 *	Search through the allowed networks, to see if
+		 *	the source IP matches one.
+		 */
+		num = talloc_array_length(inst->dynamic_clients.network);
+		for (i = 0; i < num; i++) {
+			if (fr_ipaddr_cmp(&address.src_ipaddr, &inst->dynamic_clients.network[i]) == 0) {
+				// @todo - return dynamic_client_alloc
+				goto unknown;
+			}
+		}
+
+		/*
+		 *	No match, it's definitely unknown;
+		 */
+		goto unknown;
+	}
+
+found:
 	/*
 	 *	If the signature fails validation, ignore it.
 	 */
@@ -637,6 +661,29 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	}
 
 	FR_INTEGER_BOUND_CHECK("cleanup_delay", inst->cleanup_delay, <=, 30);
+
+	if (inst->dynamic_clients_is_set) {
+		size_t i, num;
+
+		if (!inst->dynamic_clients.network) {
+			cf_log_err(cs, "One or more 'network' entries MUST be specified for dynamic clients.");
+			return -1;
+		}
+
+		num = talloc_array_length(inst->dynamic_clients.network);
+		for (i = 0; i < num; i++) {
+			if (inst->dynamic_clients.network[i].af != inst->ipaddr.af) {
+				char buffer[256];
+
+				fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(inst->dynamic_clients.network[i]), 0);
+
+				cf_log_err(cs, "Address family in entry %zd - 'network = %s' does not match 'ipaddr'", i + 1, buffer);
+				return -1;
+			}
+		}
+
+		// @todo - sanity check parameters
+	}
 
 	inst->ft = fr_radius_tracking_create(inst, sizeof(proto_radius_udp_address_t), inst->parent->code_allowed);
 	if (!inst->ft) {
