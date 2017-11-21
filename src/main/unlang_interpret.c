@@ -2405,9 +2405,8 @@ static rlm_rcode_t unlang_run(REQUEST *request)
 	 *	We don't have a return code yet.
 	 */
 	rlm_rcode_t		result = RLM_MODULE_UNKNOWN;
-	unlang_stack_frame_t	*frame;
-
 	unlang_stack_t		*stack = request->stack;
+	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];	/* Quiet static analysis */
 
 #ifndef NDEBUG
 	if (DEBUG_ENABLED5) DEBUG("###### unlang_run is starting");
