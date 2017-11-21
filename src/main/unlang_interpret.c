@@ -2439,10 +2439,9 @@ static rlm_rcode_t unlang_run(REQUEST *request)
 
 		case UNLANG_FRAME_ACTION_POP:		/* Pop this frame and check the one beneath it */
 			/*
-			 *	The result / priority is returned from
-			 *	the sub-section, and made into our
-			 *	current result / priority, as if we
-			 *	had performed a module call.
+			 *	The result / priority is returned from the sub-section,
+			 *	and made into our current result / priority, as
+			 *	if we had performed a module call.
 			 */
 			result = frame->result;
 			priority = frame->priority;
