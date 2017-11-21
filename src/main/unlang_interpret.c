@@ -2317,9 +2317,8 @@ static inline unlang_frame_action_t unlang_frame_eval(REQUEST *request, unlang_s
 		 *	called the interpreter.
 		 */
 		case UNLANG_ACTION_YIELD:
-		yield:
 			*result = RLM_MODULE_YIELD;	/* Fixup rcode */
-
+		yield:
 			/*
 			 *	Detach is magic.  The parent "create" function
 			 *	takes care of bumping the instruction
