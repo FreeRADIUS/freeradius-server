@@ -4,7 +4,7 @@
 
 # Ensure if one module yields, the rest execute
 parallel {
-	delay
+	reschedule
 	update request {
 		Tmp-String-0 := 'foo'
 	}
