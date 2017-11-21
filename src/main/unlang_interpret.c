@@ -2700,6 +2700,11 @@ rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t act
 	return unlang_run(request);
 }
 
+static int _unlang_request_ptr_cmp(void const *a, void const *b)
+{
+	return (a > b) - (a < b);
+}
+
 /** Execute an unlang section synchronously
  *
  * Create a temporary event loop and swap it out for the one in the request.
@@ -2716,7 +2721,8 @@ rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t act
  */
 rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
 {
-	fr_event_list_t *el, *old;
+	fr_event_list_t *el, *old_el;
+	fr_heap_t	*backlog, *old_backlog;
 	rlm_rcode_t	rcode;
 
 	/*
@@ -2724,24 +2730,39 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 	 *	as we'll almost certainly leave holes in the memory pool.
 	 */
 	MEM(el = fr_event_list_alloc(NULL, NULL, NULL));
-
-	old = request->el;
+	MEM(backlog = fr_heap_create(_unlang_request_ptr_cmp, offsetof(REQUEST, runnable_id)));
+	old_el = request->el;
+	old_backlog = backlog;
 	request->el = el;
+	request->backlog = backlog;
 
-	for (rcode = unlang_interpret(request, cs, action);
-	     rcode == RLM_MODULE_YIELD;
-	     rcode = unlang_interpret_continue(request)) {
-		if (fr_event_corral(el, true) < 0) {
+	rcode = unlang_interpret(request, cs, action);
+	while (rcode == RLM_MODULE_YIELD) {
+		REQUEST *sub_request = NULL;
+
+		if (fr_event_corral(el, true) < 0) {			/* Wait for a timer/IO event */
 			RPERROR("Failed retrieving events");
 			rcode = RLM_MODULE_FAIL;
 			break;
 		}
 
 		fr_event_service(el);
+
+		while ((sub_request = fr_heap_pop(backlog))) {
+			rlm_rcode_t srcode;
+
+			srcode = unlang_interpret_continue(sub_request);
+			if (sub_request == request) {
+				rcode = srcode;
+				break;
+			}
+		}
 	}
 
-	talloc_free(request->el);
-	request->el = old;
+	talloc_free(el);
+	request->el = old_el;
+	talloc_free(backlog);
+	request->backlog = old_backlog;
 
 	return rcode;
 }
