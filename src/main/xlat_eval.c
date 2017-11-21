@@ -273,8 +273,6 @@ static xlat_action_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, R
 		goto done;
 
 	case FR_MODULE_RETURN_CODE:
-		if (!request->rcode) return XLAT_ACTION_DONE;
-
 		MEM(value = fr_value_box_alloc(ctx, vpt->tmpl_da->type, NULL, false));
 		value->enumv = vpt->tmpl_da;
 		value->datum.int32 = request->rcode;
