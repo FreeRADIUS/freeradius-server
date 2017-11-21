@@ -37,12 +37,10 @@ extern "C" {
 typedef enum fr_state_action_t {	/* server action */
 	FR_ACTION_INVALID = 0,
 	FR_ACTION_RUN,
-	FR_ACTION_DONE,
-	FR_ACTION_DUP,
-	FR_ACTION_TIMER,
-#ifdef WITH_PROXY
-	FR_ACTION_PROXY_REPLY,
-#endif
+	FR_ACTION_DONE,			//!< Request is completed.  If a module is signalled
+					///< with this, the module should stop processing
+					///< the request and cleanup.
+	FR_ACTION_DUP,			//!< A duplicate request was received.
 } fr_state_action_t;
 
 /*
