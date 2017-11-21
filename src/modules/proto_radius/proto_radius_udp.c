@@ -94,6 +94,10 @@ typedef struct {
 static const CONF_PARSER dynamic_client_config[] = {
 	{ FR_CONF_OFFSET("network", FR_TYPE_COMBO_IP_PREFIX | FR_TYPE_MULTI, dynamic_client_t, network) },
 
+	{ FR_CONF_OFFSET("max_clients", FR_TYPE_UINT32, dynamic_client_t, max_clients), .dflt = "65536" },
+	{ FR_CONF_OFFSET("max_pending_clients", FR_TYPE_UINT32, dynamic_client_t, max_pending_clients), .dflt = "256" },
+	{ FR_CONF_OFFSET("max_pending_packets", FR_TYPE_UINT32, dynamic_client_t, max_pending_packets), .dflt = "65536" },
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -241,9 +245,18 @@ static int mod_decode(UNUSED void const *instance, REQUEST *request, UNUSED uint
 	return 0;
 }
 
-static ssize_t dynamic_client_alloc(proto_radius_udp_t *inst, UNUSED uint8_t *packet, UNUSED size_t packet_len,
-				    UNUSED proto_radius_udp_address_t *address, UNUSED fr_ipaddr_t *network)
+static int dynamic_client_save_packet(UNUSED proto_radius_udp_t *inst, UNUSED uint8_t *packet, UNUSED size_t packet_len,
+				      UNUSED proto_radius_udp_address_t *address)
 {
+	return 0;
+}
+
+
+static ssize_t dynamic_client_alloc(proto_radius_udp_t *inst, uint8_t *packet, size_t packet_len,
+				    proto_radius_udp_address_t *address, UNUSED fr_ipaddr_t *network)
+{
+	RADCLIENT *client;
+
 	/*
 	 *	Limit the total number of clients.
 	 */
@@ -260,10 +273,45 @@ static ssize_t dynamic_client_alloc(proto_radius_udp_t *inst, UNUSED uint8_t *pa
 		return 0;
 	}
 
+	/*
+	 *	Allocate the bare client, and fill in some basic fields.
+	 */
+	client = talloc_zero(inst, RADCLIENT);
+	if (!client) {
+		return 0;
+	}
+
+	client->active = false;
+	client->secret = client->longname = client->shortname = client->nas_type = "";
+
+	client->ipaddr = address->src_ipaddr;
+	client->src_ipaddr = address->dst_ipaddr;
+
+	address->client = client;
+
+	/*
+	 *	Save a copy of this packet in the client, so that we
+	 *	can re-play it once we accept the client.
+	 */
+	if (dynamic_client_save_packet(inst, packet, packet_len, address) < 0) {
+		talloc_free(client);
+		return 0;
+	}
+
+	/*
+	 *	It's now one of our clients (pending).
+	 *
+	 *	@todo - add creation time, and delete it when the
+	 *	request hits max_request_time.
+	 */
+	if (!client_add(inst->clients, client)) {
+		talloc_free(client);
+		return 0;
+	}
 
 	inst->dynamic_clients.num_pending_clients++;
 
-	return 0;
+	return packet_len;
 }
 
 
