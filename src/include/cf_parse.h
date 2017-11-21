@@ -136,12 +136,14 @@ _Generic((_ct), \
 						(FR_BASE_TYPE(_t) == FR_TYPE_IPV4_PREFIX) || \
 						(FR_BASE_TYPE(_t) == FR_TYPE_IPV6_ADDR) || \
 						(FR_BASE_TYPE(_t) == FR_TYPE_IPV6_PREFIX) || \
+						(FR_BASE_TYPE(_t) == FR_TYPE_COMBO_IP_PREFIX) || \
 						(FR_BASE_TYPE(_t) == FR_TYPE_COMBO_IP_ADDR)) || \
 						!((_t) & FR_TYPE_MULTI), _p, (_mismatch_fripaddr) 0), \
 	fr_ipaddr_t **	: __builtin_choose_expr(((FR_BASE_TYPE(_t) == FR_TYPE_IPV4_ADDR) || \
 						(FR_BASE_TYPE(_t) == FR_TYPE_IPV4_PREFIX) || \
 						(FR_BASE_TYPE(_t) == FR_TYPE_IPV6_ADDR) || \
 						(FR_BASE_TYPE(_t) == FR_TYPE_IPV6_PREFIX) || \
+						(FR_BASE_TYPE(_t) == FR_TYPE_COMBO_IP_PREFIX) || \
 						(FR_BASE_TYPE(_t) == FR_TYPE_COMBO_IP_ADDR)) && \
 						((_t) & FR_TYPE_MULTI), _p, (_mismatch_fripaddr_m) 0), \
 	size_t[32/sizeof(size_t)] : __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_ABINARY) && !((_t) & FR_TYPE_MULTI), \
