@@ -659,8 +659,8 @@ static void worker_reset_timer(fr_worker_t *worker)
 	 *	previous one.
 	 */
 	if (worker->ev_cleanup) {
-		rad_assert(cleanup >= worker->next_cleanup);
-		if ((cleanup - worker->next_cleanup) <= NANOSEC) return;
+		if ((cleanup > worker->next_cleanup) &&
+		    (cleanup - worker->next_cleanup) <= NANOSEC) return;
 	}
 
 	worker->next_cleanup = cleanup;
