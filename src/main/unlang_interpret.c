@@ -2511,8 +2511,8 @@ static rlm_rcode_t unlang_run(REQUEST *request)
 			continue;
 
 		case UNLANG_FRAME_ACTION_YIELD:
-			rad_assert(frame->result == RLM_MODULE_YIELD);
-			return frame->result;
+			rad_assert(result == RLM_MODULE_YIELD);
+			return result;
 		}
 		break;
 	}
