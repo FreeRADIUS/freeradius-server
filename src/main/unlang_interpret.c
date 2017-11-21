@@ -2355,7 +2355,7 @@ static inline unlang_frame_action_t unlang_frame_eval(REQUEST *request, unlang_s
 		 */
 		case UNLANG_ACTION_CALCULATE_RESULT:
 			/* Temporary fixup - ops should return the correct code */
-			if (frame->result == RLM_MODULE_YIELD) goto yield;
+			if (*result == RLM_MODULE_YIELD) goto yield;
 
 			frame->repeat = false;
 
