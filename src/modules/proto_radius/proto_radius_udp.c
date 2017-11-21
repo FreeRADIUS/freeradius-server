@@ -51,8 +51,11 @@ typedef struct {
 typedef struct dynamic_client_t {
 	fr_ipaddr_t			*network;		//!< dynamic networks to allow
 	fr_dlist_t			list;			//!< list of accepted packets
+
 	uint32_t			max_clients;		//!< maximum number of dynamic clients
-	uint32_t			pending_clients;	//!< number of pending clients
+	uint32_t			num_clients;		//!< total number of active clients
+	uint32_t			max_pending_clients;	//!< maximum number of pending clients
+	uint32_t			num_pending_clients;	//!< number of pending clients
 	uint32_t			max_pending_packets;	//!< maximum accepted pending packets
 	uint32_t			num_pending_packets;	//!< how many packets are received, but not accepted
 } dynamic_client_t;
@@ -238,6 +241,32 @@ static int mod_decode(UNUSED void const *instance, REQUEST *request, UNUSED uint
 	return 0;
 }
 
+static ssize_t dynamic_client_alloc(proto_radius_udp_t *inst, UNUSED uint8_t *packet, UNUSED size_t packet_len,
+				    UNUSED proto_radius_udp_address_t *address, UNUSED fr_ipaddr_t *network)
+{
+	/*
+	 *	Limit the total number of clients.
+	 */
+	if (inst->dynamic_clients.num_clients >= inst->dynamic_clients.max_clients) {
+		DEBUG("Too many dynamic clients");
+		return 0;
+	}
+
+	/*
+	 *	Limit the total number of pending clients.
+	 */
+	if (inst->dynamic_clients.num_pending_clients >= inst->dynamic_clients.max_pending_clients) {
+		DEBUG("Too many pending dynamic clients");
+		return 0;
+	}
+
+
+	inst->dynamic_clients.num_pending_clients++;
+
+	return 0;
+}
+
+
 static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority)
 {
 	proto_radius_udp_t		*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
@@ -300,17 +329,21 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	 *	Lookup the client - Must exist to continue.
 	 */
 	address.client = client_find(NULL, &address.src_ipaddr, IPPROTO_UDP);
-	if (!inst->dynamic_clients_is_set && !address.client) {
-	unknown:
-		ERROR("Unknown client from address %pV:%u.  Ignoring...",
-		      fr_box_ipaddr(address.src_ipaddr), address.src_port);
-		inst->stats.total_invalid_requests++;
-		return 0;
-	}
-
-	if (inst->dynamic_clients_is_set && !address.client) {
+	if (!address.client) {
 		size_t i, num;
 
+		if (!inst->dynamic_clients_is_set) {
+		unknown:
+			ERROR("Unknown client from address %pV:%u.  Ignoring...",
+			      fr_box_ipaddr(address.src_ipaddr), address.src_port);
+			inst->stats.total_invalid_requests++;
+			return 0;
+		}
+
+		/*
+		 *	We have dynamic clients.  Try to find the
+		 *	client in the dynamic client set.
+		 */
 		address.client = client_find(inst->clients, &address.src_ipaddr, IPPROTO_UDP);
 		if (address.client) {
 			if (address.client->active) goto found;
@@ -325,14 +358,18 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 		}
 
 		/*
+		 *	The client wasn't found.  It MIGHT be allowed.
 		 *	Search through the allowed networks, to see if
-		 *	the source IP matches one.
+		 *	the source IP matches a listed network.
+		 *
+		 *	@todo - put the networks && clients into a
+		 *	patricia tree, so we only do one search for
+		 *	them, instead of N searches.
 		 */
 		num = talloc_array_length(inst->dynamic_clients.network);
 		for (i = 0; i < num; i++) {
 			if (fr_ipaddr_cmp(&address.src_ipaddr, &inst->dynamic_clients.network[i]) == 0) {
-				// @todo - return dynamic_client_alloc
-				goto unknown;
+				return dynamic_client_alloc(inst, buffer, packet_len, &address, &inst->dynamic_clients.network[i]);
 			}
 		}
 
