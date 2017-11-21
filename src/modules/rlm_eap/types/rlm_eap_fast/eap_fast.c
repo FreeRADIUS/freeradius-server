@@ -835,7 +835,11 @@ static FR_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_sessio
 			}
 			break;
 		case EAP_FAST_TLV_CRYPTO_BINDING:
-			if (!binding && (vp->vp_length >= sizeof(*binding))) {
+			if (!binding) {
+				if (vp->vp_length < sizeof(*binding)) {
+					REDEBUG2("Skipping invalid crypto binding TLV");
+					continue;
+				}
 				binding = &my_binding;
 				binding->tlv_type = htons(EAP_FAST_TLV_MANDATORY | EAP_FAST_TLV_CRYPTO_BINDING);
 				binding->length = htons(sizeof(*binding) - 2 * sizeof(uint16_t));
