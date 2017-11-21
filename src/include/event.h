@@ -188,7 +188,7 @@ typedef union {
 } fr_event_funcs_t;
 
 int		fr_event_list_num_fds(fr_event_list_t *el);
-int		fr_event_list_num_elements(fr_event_list_t *el);
+int		fr_event_list_num_timers(fr_event_list_t *el);
 int		fr_event_list_kq(fr_event_list_t *el);
 int		fr_event_list_time(struct timeval *when, fr_event_list_t *el);
 
