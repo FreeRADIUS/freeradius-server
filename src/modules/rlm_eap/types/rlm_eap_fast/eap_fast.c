@@ -810,6 +810,8 @@ static FR_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_sessio
 	vp_cursor_t			cursor;
 	eap_tlv_crypto_binding_tlv_t	my_binding, *binding = NULL;
 
+	memset(&my_binding, 0, sizeof(my_binding));
+
 	for (vp = fr_pair_cursor_init(&cursor, &fast_vps); vp; vp = fr_pair_cursor_next(&cursor)) {
 		FR_CODE code = FR_CODE_ACCESS_REJECT;
 		char *value;
@@ -835,37 +837,33 @@ static FR_CODE eap_fast_process_tlvs(REQUEST *request, eap_session_t *eap_sessio
 			}
 			break;
 		case EAP_FAST_TLV_CRYPTO_BINDING:
-			if (!binding) {
-				if (vp->vp_length < sizeof(*binding)) {
-					REDEBUG2("Skipping invalid crypto binding TLV");
-					continue;
-				}
-				binding = &my_binding;
-				binding->tlv_type = htons(EAP_FAST_TLV_MANDATORY | EAP_FAST_TLV_CRYPTO_BINDING);
-				binding->length = htons(sizeof(*binding) - 2 * sizeof(uint16_t));
-				memcpy(&my_binding.reserved, vp->vp_octets, sizeof(my_binding) - 4);
-			}
+			binding = &my_binding;
+
 			/*
-			 * fr_radius_encode_pair() does not work for structures
+			 *	fr_radius_encode_pair() does not work for structures
 			 */
 			switch (vp->da->attr) {
 			case 1:	/* FR_EAP_FAST_CRYPTO_BINDING_RESERVED */
-				binding->reserved = vp->vp_uint32;
+				binding->reserved = vp->vp_uint8;
 				break;
 			case 2:	/* FR_EAP_FAST_CRYPTO_BINDING_VERSION */
-				binding->version = vp->vp_uint32;
+				binding->version = vp->vp_uint8;
 				break;
 			case 3:	/* FR_EAP_FAST_CRYPTO_BINDING_RECV_VERSION */
-				binding->received_version = vp->vp_uint32;
+				binding->received_version = vp->vp_uint8;
 				break;
 			case 4:	/* FR_EAP_FAST_CRYPTO_BINDING_SUB_TYPE */
-				binding->subtype = vp->vp_uint32;
+				binding->subtype = vp->vp_uint8;
 				break;
 			case 5:	/* FR_EAP_FAST_CRYPTO_BINDING_NONCE */
-				memcpy(binding->nonce, vp->vp_octets, vp->vp_length);
+				if (vp->vp_length >= sizeof(binding->nonce)) {
+					memcpy(binding->nonce, vp->vp_octets, vp->vp_length);
+				}
 				break;
 			case 6:	/* FR_EAP_FAST_CRYPTO_BINDING_COMPOUND_MAC */
-				memcpy(binding->compound_mac, vp->vp_octets, vp->vp_length);
+				if (vp->vp_length >= sizeof(binding->compound_mac)) {
+					memcpy(binding->compound_mac, vp->vp_octets, sizeof(binding->compound_mac));
+				}
 				break;
 			}
 			continue;
