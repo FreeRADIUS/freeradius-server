@@ -2425,7 +2425,7 @@ static rlm_rcode_t unlang_run(REQUEST *request)
 
 	RDEBUG4("** [%i] %s - interpreter entered", stack->depth, __FUNCTION__);
 
-	do {
+	for (;;) {
 		switch (fa) {
 		case UNLANG_FRAME_ACTION_CONTINUE:	/* Evaluate the current frame */
 			priority = -1;
@@ -2435,6 +2435,14 @@ static rlm_rcode_t unlang_run(REQUEST *request)
 
 			frame = &stack->frame[stack->depth];
 			fa = unlang_frame_eval(request, frame, &result, &priority);
+
+			/*
+			 *	We were executing a frame, unlang_frame_eval()
+			 *	indicated we should pop it, but we're now at
+			 *	a top_frame, so we need to break out of the loop
+			 *	and calculate the final result for this substack.
+			 */
+			if ((fa == UNLANG_FRAME_ACTION_POP) && frame->top_frame) break;	/* return */
 			continue;
 
 		case UNLANG_FRAME_ACTION_POP:		/* Pop this frame and check the one beneath it */
@@ -2507,7 +2515,7 @@ static rlm_rcode_t unlang_run(REQUEST *request)
 			return frame->result;
 		}
 		break;
-	} while (!frame->top_frame);
+	}
 
 	/*
 	 *	Nothing in this section, use the top frame result.
