@@ -272,6 +272,14 @@ static void mod_process_set(void const *instance, REQUEST *request)
 
 	request->server_cs = inst->server_cs;
 
+	/*
+	 *	New packets get processed through proto_radius_dynamic_client
+	 */
+	if (request->client->dynamic && !request->client->active) {
+		rad_assert(request->async->process != NULL);
+		return;
+	}
+
 	process = inst->process_by_code[request->packet->code];
 	if (!process) {
 		REDEBUG("No module available to handle packet code %i", request->packet->code);

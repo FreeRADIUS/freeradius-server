@@ -245,6 +245,14 @@ static int mod_decode(UNUSED void const *instance, REQUEST *request, UNUSED uint
 	request->root = &main_config;
 	REQUEST_VERIFY(request);
 
+	if (request->client->dynamic && !request->client->active) {
+		fr_app_process_t const	*app_process;
+
+		app_process = (fr_app_process_t const *) inst->dynamic_clients.submodule->module->common;
+
+		request->async->process = app_process->process;
+	}
+
 	return 0;
 }
 
