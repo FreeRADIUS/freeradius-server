@@ -695,6 +695,51 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	struct timeval			tv;
 
 	/*
+	 *	Check for the first packet back from a dynamic client
+	 *	definition.  If we find it, add the client (or not),
+	 *	as required.
+	 */
+	if (inst->dynamic_clients_is_set && address->client->dynamic && !address->client->active) {
+		RADCLIENT *client = address->client;
+		fr_dlist_t *entry;
+
+		if (buffer_len == 1) {
+			while ((entry = FR_DLIST_FIRST(client->packets)) != NULL) {
+				dynamic_packet_t *saved;
+
+				saved = fr_ptr_to_type(dynamic_packet_t, entry, entry);
+				(void) fr_radius_tracking_entry_delete(inst->ft, saved->track);
+				fr_dlist_remove(&saved->entry);
+				talloc_free(saved);
+				inst->dynamic_clients.num_pending_packets--;
+			}
+
+			client_delete(inst->dynamic_clients.clients, client);
+			client_free(client); /* @todo - fix this to NOT have a FIFO */
+
+			return buffer_len;
+		}
+
+		inst->dynamic_clients.num_pending_clients--;
+
+		// @todo - update the client definition, etc...
+		// @todo - call fr_network_read()
+		// @todo - cache 'nr' in inst, too.. like proto_detail_file / proto_detail_work
+
+		/*
+		 *	Move the packets over to the pending list.
+		 */
+		while ((entry = FR_DLIST_FIRST(client->packets)) != NULL) {
+			fr_dlist_remove(entry);
+			fr_dlist_insert_tail(&inst->dynamic_clients.pending, entry);
+			inst->dynamic_clients.num_pending_packets--;
+		}
+
+		rad_assert(0 == 1);
+		return buffer_len;
+	}
+
+	/*
 	 *	The original packet has changed.  Suppress the write,
 	 *	as the client will never accept the response.
 	 *
