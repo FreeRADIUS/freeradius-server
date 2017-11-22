@@ -915,6 +915,20 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 		return -1;
 	}
 
+	/*
+	 *	Instantiate proto_radius_dynamic_client
+	 */
+	if (inst->dynamic_clients_is_set) {
+		fr_app_process_t const	*app_process;
+
+		app_process = (fr_app_process_t const *)inst->dynamic_clients.submodule->module->common;
+		if (app_process->instantiate && (app_process->instantiate(inst->dynamic_clients.submodule->data,
+									  cf_item_to_section(cf_parent(cs))) < 0)) {
+			cf_log_err(cs, "Instantiation failed for \"%s\"", app_process->name);
+			return -1;
+		}
+	}
+
 	return 0;
 }
 
