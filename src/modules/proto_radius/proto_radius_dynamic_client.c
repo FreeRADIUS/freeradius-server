@@ -179,7 +179,7 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 	rcode = unlang_compile_subsection(server_cs, "new", "client", MOD_AUTHORIZE);
 	if (rcode < 0) return rcode;
 	if (rcode == 0) {
-		cf_log_err(server_cs, "Failed finding 'recv Status-Server { ... }' section of virtual server %s",
+		cf_log_err(server_cs, "Failed finding 'new client { ... }' section of virtual server %s",
 			      cf_section_name2(server_cs));
 		return -1;
 	}
