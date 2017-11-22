@@ -310,6 +310,7 @@ _Generic((_ct), \
 #define FR_TYPE_IS_SET			(1 << 21)			//!< Write whether this config item was
 									//!< left as the default to is_set_offset
 									//!< or is_set_ptr.
+#define FR_TYPE_OK_MISSING     		(1 << 22) 			//!< OK if it's missing
 
 #define FR_BASE_TYPE(_t)		(0xff & (_t))
 /* @} **/
