@@ -52,7 +52,7 @@ typedef struct dynamic_client_t {
 	dl_instance_t			*submodule;		//!< proto_radius_dynamic_client
 	fr_ipaddr_t			*network;		//!< dynamic networks to allow
 
-	fr_dlist_t			list;			//!< list of accepted packets
+	fr_dlist_t			packets;       		//!< list of accepted packets
 
 	uint32_t			max_clients;		//!< maximum number of dynamic clients
 	uint32_t			num_clients;		//!< total number of active clients
@@ -92,6 +92,13 @@ typedef struct {
 
 	uint32_t			priorities[FR_MAX_PACKET_CODE];	//!< priorities for individual packets
 } proto_radius_udp_t;
+
+
+typedef struct dynamic_packet_t {
+	uint8_t			*packet;
+	fr_tracking_entry_t	*track;
+	fr_dlist_t		entry;
+} dynamic_packet_t;
 
 static const CONF_PARSER dynamic_client_config[] = {
 	{ FR_CONF_OFFSET("network", FR_TYPE_COMBO_IP_PREFIX | FR_TYPE_MULTI, dynamic_client_t, network) },
@@ -256,22 +263,101 @@ static int mod_decode(void const *instance, REQUEST *request, UNUSED uint8_t *co
 	return 0;
 }
 
-static int dynamic_client_save_packet(proto_radius_udp_t *inst, UNUSED uint8_t *packet, UNUSED size_t packet_len,
-				      UNUSED proto_radius_udp_address_t *address, fr_tracking_entry_t **track)
+static ssize_t dynamic_client_packet_restore(proto_radius_udp_t *inst, uint8_t *buffer, size_t buffer_len,
+					 fr_tracking_entry_t **track)
 {
+	fr_dlist_t		*entry;
+	dynamic_packet_t	*saved;
+	size_t			packet_len;
+
+	entry = FR_DLIST_FIRST(inst->dynamic_clients.packets);
+	rad_assert(entry != NULL);
+	fr_dlist_remove(entry);
+
+	saved = fr_ptr_to_type(dynamic_packet_t, entry, entry);
+	packet_len = talloc_array_length(saved->packet);
+	if (packet_len > buffer_len) {
+		(void) fr_radius_tracking_entry_delete(inst->ft, saved->track);
+		talloc_free(saved);
+		return 0;
+	}
+
+	/*
+	 *	Copy the saved packet back to the output buffer.
+	 */
+	memcpy(buffer, saved->packet, packet_len);
+	*track = saved->track;
+	free(saved);
+
+	return packet_len;
+}
+
+
+static int dynamic_client_packet_save(proto_radius_udp_t *inst, uint8_t *packet, size_t packet_len,
+				      proto_radius_udp_address_t *address, fr_tracking_entry_t **track)
+{
+	dynamic_packet_t	*saved;
+	fr_tracking_status_t	tracking_status;
+
 	if (inst->dynamic_clients.num_pending_packets >= inst->dynamic_clients.max_pending_packets) {
 		DEBUG("Too many pending packets - ignoring packet.");
 		return -1;
 	}
 
-	*track = NULL;
+	tracking_status = fr_radius_tracking_entry_insert(track, inst->ft, packet, fr_time(), address);
+	switch (tracking_status) {
+	case FR_TRACKING_ERROR:
+	case FR_TRACKING_UNUSED:
+		rad_assert(0 == 1);
+		return 0;	/* shouldn't happen */
 
+		/*
+		 *	Retransmit of the same packet.  There's
+		 *	nothing we can do.
+		 */
+	case FR_TRACKING_SAME:
+		return 0;
 
-	// create local structure
-	// memdup address into it
-	// memdup packet into it
-	// allocate tracking table entry
-	// add it to the list for this client
+		/*
+		 *	We're done the old packet, and have received a
+		 *	new packet.  This shouldn't happen here.  If
+		 *	we're done the old packet, we shouldn't be calling this function.
+		 */
+	case FR_TRACKING_UPDATED:
+		DEBUG3("UPDATED packet");
+		rad_assert(0 == 1);
+		return 0;
+
+		/*
+		 *	We're NOT done the old packet, and have
+		 *	received a new packet.  This can happen if the
+		 *	old packet is taking too long.  Oh well... we
+		 *	will just discard the old one at some point.
+		 *
+		 *	@todo - note that in mod_write() we MIGHT NOT
+		 *	send the packet.  i.e. if the timestamp is
+		 *	different, we still have to create the client,
+		 *	BUT we need to discard this particular saved
+		 *	packet.
+		 */
+	case FR_TRACKING_CONFLICTING:
+		DEBUG3("CONFLICTING packet ID %d", packet[1]);
+		return 0;	/* discard it */
+
+		/*
+		 *	We have a brand new packet.  Remember it!
+		 */
+	case FR_TRACKING_NEW:
+		DEBUG3("NEW packet");
+		break;
+	}
+
+	MEM(saved = talloc_zero(inst, dynamic_packet_t));
+	MEM(saved->packet = talloc_memdup(saved, packet, packet_len));
+	saved->track = *track;
+	FR_DLIST_INIT(saved->entry);
+
+	// @todo - add it to the list for this client
 
 	inst->dynamic_clients.num_pending_packets++;
 
@@ -321,7 +407,7 @@ static ssize_t dynamic_client_alloc(proto_radius_udp_t *inst, uint8_t *packet, s
 	 *	Save a copy of this packet in the client, so that we
 	 *	can re-play it once we accept the client.
 	 */
-	if (dynamic_client_save_packet(inst, packet, packet_len, address, track) < 0) {
+	if (dynamic_client_packet_save(inst, packet, packet_len, address, track) < 0) {
 		talloc_free(client);
 		return 0;
 	}
@@ -355,6 +441,21 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	fr_tracking_status_t		tracking_status;
 	fr_tracking_entry_t		*track = NULL;
 	proto_radius_udp_address_t	address;
+
+	/*
+	 *	There are saved packets.  Go read them.
+	 */
+	if (FR_DLIST_FIRST(inst->dynamic_clients.packets)) {
+		data_size = dynamic_client_packet_restore(inst, buffer, buffer_len, &track);
+		if (data_size < 0) {
+			rad_assert(0 == 1);
+			return -1;
+		}
+
+		packet_len = data_size;
+		goto return_packet;
+	}
+
 
 	*leftover = 0;
 
@@ -447,7 +548,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 			 *	packet will be removed from the list,
 			 *	and sent to the network side.
 			 */
-			 if (dynamic_client_save_packet(inst, buffer, packet_len, &address, &track) < 0) {
+			 if (dynamic_client_packet_save(inst, buffer, packet_len, &address, &track) < 0) {
 				goto unknown;
 			}
 
