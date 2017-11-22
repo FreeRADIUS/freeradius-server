@@ -31,6 +31,7 @@
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/track.h>
 #include <freeradius-devel/io/listen.h>
+#include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/rad_assert.h>
 #include "proto_radius.h"
 
@@ -72,6 +73,7 @@ typedef struct {
 	int				sockfd;
 
 	fr_event_list_t			*el;			//!< for cleanup timers on Access-Request
+	fr_network_t			*nr;			//!< for fr_network_listen_read();
 
 	fr_ipaddr_t			ipaddr;			//!< Ipaddr to listen on.
 
@@ -757,8 +759,6 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		inst->dynamic_clients.num_pending_clients--;
 
 		// @todo - update the client definition, etc...
-		// @todo - call fr_network_read()
-		// @todo - cache 'nr' in inst, too.. like proto_detail_file / proto_detail_work
 
 		/*
 		 *	Move the packets over to the pending list.
@@ -770,6 +770,11 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		}
 
 		rad_assert(0 == 1);
+
+		/*
+		 *	Tell the network side to call mod_read()
+		 */
+		fr_network_listen_read(inst->nr, talloc_parent(inst));
 		return buffer_len;
 	}
 
@@ -936,7 +941,7 @@ static int mod_fd(void const *instance)
  * @param[in] el the event list
  * @param[in] nr_ctx context from the network side
  */
-static void mod_event_list_set(void *instance, fr_event_list_t *el, UNUSED void *nr_ctx)
+static void mod_event_list_set(void *instance, fr_event_list_t *el, void *nr)
 {
 	proto_radius_udp_t *inst;
 
@@ -960,6 +965,7 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el, UNUSED void 
 	}
 
 	inst->el = el;
+	inst->nr = nr;
 }
 
 
