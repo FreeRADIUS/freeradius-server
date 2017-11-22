@@ -218,6 +218,15 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	RADCLIENT *client;
 
 	/*
+	 *	If the app_io encodes the packet, then we don't need
+	 *	to do that.
+	 */
+	if (inst->app_io->encode) {
+		data_len = inst->app_io->encode(inst->app_io_instance, request, buffer, buffer_len);
+		if (data_len > 0) return data_len;
+	}
+
+	/*
 	 *	"Do not respond"
 	 */
 	if (request->reply->code == FR_CODE_DO_NOT_RESPOND) {
