@@ -52,6 +52,8 @@ typedef struct dynamic_client_t {
 	dl_instance_t			*submodule;		//!< proto_radius_dynamic_client
 	fr_ipaddr_t			*network;		//!< dynamic networks to allow
 
+	RADCLIENT_LIST			*clients;		//!< local clients
+
 	fr_dlist_t			packets;       		//!< list of accepted packets
 	fr_dlist_t			pending;		//!< pending clients
 
@@ -85,8 +87,6 @@ typedef struct {
 	uint32_t			cleanup_delay;		//!< cleanup delay for Access-Request packets
 
 	fr_stats_t			stats;			//!< statistics for this socket
-
-	RADCLIENT_LIST			*clients;		//!< local clients
 
 	bool				dynamic_clients_is_set;	//!< set if we have dynamic clients
 	dynamic_client_t		dynamic_clients;	//!< dynamic client infromation
@@ -418,7 +418,7 @@ static ssize_t dynamic_client_alloc(proto_radius_udp_t *inst, uint8_t *packet, s
 	 *	@todo - add creation time, and delete it when the
 	 *	request hits max_request_time.
 	 */
-	if (!client_add(inst->clients, client)) {
+	if (!client_add(inst->dynamic_clients.clients, client)) {
 		talloc_free(client);
 		return 0;
 	}
@@ -533,9 +533,9 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 		 *	We have dynamic clients.  Try to find the
 		 *	client in the dynamic client set.
 		 */
-		address.client = client_find(inst->clients, &address.src_ipaddr, IPPROTO_UDP);
+		address.client = client_find(inst->dynamic_clients.clients, &address.src_ipaddr, IPPROTO_UDP);
 		if (address.client) {
-			if (address.client->active) goto found;
+			if (!address.client->dynamic || address.client->active) goto found;
 
 			if (address.client->negative) {
 				// @todo - extend the expiry time?
@@ -996,6 +996,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 
 		FR_DLIST_INIT(inst->dynamic_clients.pending);
 		FR_DLIST_INIT(inst->dynamic_clients.packets);
+
+		/*
+		 *	Allow static clients for this virtual server.
+		 */
+		inst->dynamic_clients.clients = client_list_parse_section(inst->parent->server_cs, false);
 	}
 
 	return 0;
