@@ -420,7 +420,7 @@ static ssize_t dynamic_client_alloc(proto_radius_udp_t *inst, uint8_t *packet, s
 	 */
 	if (!client_add(inst->dynamic_clients.clients, client)) {
 		talloc_free(client);
-		return 0;
+		return -1;
 	}
 
 	fr_dlist_insert_tail(&inst->dynamic_clients.pending, &client->pending);
@@ -455,9 +455,8 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 		}
 
 		packet_len = data_size;
-		goto return_packet;
+		goto received_packet;
 	}
-
 
 	*leftover = 0;
 
@@ -523,7 +522,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 
 		if (!inst->dynamic_clients_is_set) {
 		unknown:
-			ERROR("Unknown client from address %pV:%u.  Ignoring...",
+			ERROR("Packet from unknown client at address %pV:%u - ignoring.",
 			      fr_box_ipaddr(address.src_ipaddr), address.src_port);
 			inst->stats.total_invalid_requests++;
 			return 0;
@@ -550,7 +549,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 			 *	packet will be removed from the list,
 			 *	and sent to the network side.
 			 */
-			 if (dynamic_client_packet_save(inst, buffer, packet_len, &address, &track) < 0) {
+			if (dynamic_client_packet_save(inst, buffer, packet_len, &address, &track) < 0) {
 				goto unknown;
 			}
 
@@ -568,9 +567,20 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 		 */
 		num = talloc_array_length(inst->dynamic_clients.network);
 		for (i = 0; i < num; i++) {
-			if (fr_ipaddr_cmp(&address.src_ipaddr, &inst->dynamic_clients.network[i]) == 0) {
+			fr_ipaddr_t ipaddr;
+
+			/*
+			 *	fr_ipaddr_cmp() compares prefixes,
+			 *	too.  So we have to mask the source
+			 *	IP.
+			 */
+			ipaddr = address.src_ipaddr;
+			fr_ipaddr_mask(&ipaddr, inst->dynamic_clients.network[i].prefix);
+
+			if (fr_ipaddr_cmp(&ipaddr, &inst->dynamic_clients.network[i]) == 0) {
 				if (dynamic_client_alloc(inst, buffer, packet_len, &address, &track,
 							 &inst->dynamic_clients.network[i]) < 0) {
+					DEBUG("Failed allocating dynamic client");
 					goto unknown;
 				}
 
@@ -662,6 +672,7 @@ found:
 		break;
 	}
 
+received_packet:
 	inst->stats.total_requests++;
 
 return_packet:
