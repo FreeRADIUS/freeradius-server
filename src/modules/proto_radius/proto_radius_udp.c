@@ -51,6 +51,7 @@ typedef struct {
 typedef struct dynamic_client_t {
 	dl_instance_t			*submodule;		//!< proto_radius_dynamic_client
 	fr_ipaddr_t			*network;		//!< dynamic networks to allow
+
 	fr_dlist_t			list;			//!< list of accepted packets
 
 	uint32_t			max_clients;		//!< maximum number of dynamic clients
@@ -248,14 +249,16 @@ static int mod_decode(UNUSED void const *instance, REQUEST *request, UNUSED uint
 }
 
 static int dynamic_client_save_packet(UNUSED proto_radius_udp_t *inst, UNUSED uint8_t *packet, UNUSED size_t packet_len,
-				      UNUSED proto_radius_udp_address_t *address)
+				      UNUSED proto_radius_udp_address_t *address, fr_tracking_entry_t **track)
 {
+	*track = NULL;
+
 	return 0;
 }
 
 
 static ssize_t dynamic_client_alloc(proto_radius_udp_t *inst, uint8_t *packet, size_t packet_len,
-				    proto_radius_udp_address_t *address, UNUSED fr_ipaddr_t *network)
+				    proto_radius_udp_address_t *address, fr_tracking_entry_t **track, UNUSED fr_ipaddr_t *network)
 {
 	RADCLIENT *client;
 
@@ -284,6 +287,7 @@ static ssize_t dynamic_client_alloc(proto_radius_udp_t *inst, uint8_t *packet, s
 	}
 
 	client->active = false;
+	client->dynamic = true;
 	client->secret = client->longname = client->shortname = client->nas_type = "";
 
 	client->ipaddr = address->src_ipaddr;
@@ -295,7 +299,7 @@ static ssize_t dynamic_client_alloc(proto_radius_udp_t *inst, uint8_t *packet, s
 	 *	Save a copy of this packet in the client, so that we
 	 *	can re-play it once we accept the client.
 	 */
-	if (dynamic_client_save_packet(inst, packet, packet_len, address) < 0) {
+	if (dynamic_client_save_packet(inst, packet, packet_len, address, track) < 0) {
 		talloc_free(client);
 		return 0;
 	}
@@ -370,13 +374,23 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	 *	If it's not a RADIUS packet, ignore it.
 	 */
 	if (!fr_radius_ok(buffer, &packet_len, inst->parent->max_attributes, false, &reason)) {
+		/*
+		 *	@todo - check for F5 load balancer packets.  <sigh>
+		 */
 		DEBUG2("proto_radius_udp got a packet which isn't RADIUS");
 		inst->stats.total_malformed_requests++;
 		return 0;
 	}
 
 	/*
-	 *	Lookup the client - Must exist to continue.
+	 *	Track the packet ID.
+	 */
+	address.code = buffer[0];
+	address.id = buffer[1];
+
+	/*
+	 *	Look up the client.  It either exists, or we create
+	 *	it.
 	 */
 	address.client = client_find(NULL, &address.src_ipaddr, IPPROTO_UDP);
 	if (!address.client) {
@@ -403,8 +417,19 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 				goto unknown;
 			}
 
-			// @todo - add the packet to the pending list and return
-			goto unknown;
+			/*
+			 *	It's dynamic, but inactive.  Save the
+			 *	packet in the client, and return.
+			 *
+			 *	When the client becomes active, the
+			 *	packet will be removed from the list,
+			 *	and sent to the network side.
+			 */
+			 if (dynamic_client_save_packet(inst, buffer, packet_len, &address, &track) < 0) {
+				goto unknown;
+			}
+
+			return 0;
 		}
 
 		/*
@@ -419,7 +444,17 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 		num = talloc_array_length(inst->dynamic_clients.network);
 		for (i = 0; i < num; i++) {
 			if (fr_ipaddr_cmp(&address.src_ipaddr, &inst->dynamic_clients.network[i]) == 0) {
-				return dynamic_client_alloc(inst, buffer, packet_len, &address, &inst->dynamic_clients.network[i]);
+				if (dynamic_client_alloc(inst, buffer, packet_len, &address, &track,
+							 &inst->dynamic_clients.network[i]) < 0) {
+					goto unknown;
+				}
+
+				/*
+				 *	Return the packet, but it's
+				 *	ALREADY been inserted into the
+				 *	tracking table.
+				 */
+				goto return_packet;
 			}
 		}
 
@@ -440,12 +475,6 @@ found:
 		inst->stats.total_bad_authenticators++;
 		return 0;
 	}
-
-	/*
-	 *	Track the packet ID.
-	 */
-	address.code = buffer[0];
-	address.id = buffer[1];
 
 	tracking_status = fr_radius_tracking_entry_insert(&track, inst->ft, buffer, fr_time(), &address);
 	switch (tracking_status) {
@@ -508,11 +537,12 @@ found:
 		break;
 	}
 
+	inst->stats.total_requests++;
+
+return_packet:
 	*packet_ctx = track;
 	*recv_time = &track->timestamp;
 	*priority = priorities[buffer[0]];
-
-	inst->stats.total_requests++;
 
 	return packet_len;
 }
@@ -700,14 +730,19 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el, UNUSED void 
 	inst = talloc_get_type_abort(instance, proto_radius_udp_t);
 
 	/*
-	 *	Only Access-Request gets a cleanup delay.
+	 *	Dynamic clients require an event list for cleanups.
 	 */
-	if (!inst->parent->code_allowed[FR_CODE_ACCESS_REQUEST]) return;
+	if (!inst->dynamic_clients_is_set) {
+		/*
+		 *	Only Access-Request gets a cleanup delay.
+		 */
+		if (!inst->parent->code_allowed[FR_CODE_ACCESS_REQUEST]) return;
 
-	/*
-	 *	And then, only if it is non-zero.
-	 */
-	if (!inst->cleanup_delay) return;
+		/*
+		 *	And then, only if it is non-zero.
+		 */
+		if (!inst->cleanup_delay) return;
+	}
 
 	inst->el = el;
 }
@@ -752,6 +787,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	inst->ft = fr_radius_tracking_create(inst, sizeof(proto_radius_udp_address_t), inst->parent->code_allowed);
 	if (!inst->ft) {
 		cf_log_err(cs, "Failed to create tracking table: %s", fr_strerror());
+		return -1;
 	}
 
 	return 0;
