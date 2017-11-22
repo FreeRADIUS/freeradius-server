@@ -49,6 +49,7 @@ typedef struct {
 } proto_radius_udp_address_t;
 
 typedef struct dynamic_client_t {
+	dl_instance_t			*submodule;		//!< proto_radius_dynamic_client
 	fr_ipaddr_t			*network;		//!< dynamic networks to allow
 	fr_dlist_t			list;			//!< list of accepted packets
 
@@ -748,29 +749,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 
 	FR_INTEGER_BOUND_CHECK("cleanup_delay", inst->cleanup_delay, <=, 30);
 
-	if (inst->dynamic_clients_is_set) {
-		size_t i, num;
-
-		if (!inst->dynamic_clients.network) {
-			cf_log_err(cs, "One or more 'network' entries MUST be specified for dynamic clients.");
-			return -1;
-		}
-
-		num = talloc_array_length(inst->dynamic_clients.network);
-		for (i = 0; i < num; i++) {
-			if (inst->dynamic_clients.network[i].af != inst->ipaddr.af) {
-				char buffer[256];
-
-				fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(inst->dynamic_clients.network[i]), 0);
-
-				cf_log_err(cs, "Address family in entry %zd - 'network = %s' does not match 'ipaddr'", i + 1, buffer);
-				return -1;
-			}
-		}
-
-		// @todo - sanity check parameters
-	}
-
 	inst->ft = fr_radius_tracking_create(inst, sizeof(proto_radius_udp_address_t), inst->parent->code_allowed);
 	if (!inst->ft) {
 		cf_log_err(cs, "Failed to create tracking table: %s", fr_strerror());
@@ -807,6 +785,39 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	} else {
 		rad_assert(sizeof(inst->priorities) == sizeof(priorities));
 		memcpy(&inst->priorities, &priorities, sizeof(priorities));
+	}
+
+	if (inst->dynamic_clients_is_set) {
+		size_t i, num;
+		dl_instance_t *parent_inst;
+
+		if (!inst->dynamic_clients.network) {
+			cf_log_err(cs, "One or more 'network' entries MUST be specified for dynamic clients.");
+			return -1;
+		}
+
+		num = talloc_array_length(inst->dynamic_clients.network);
+		for (i = 0; i < num; i++) {
+			if (inst->dynamic_clients.network[i].af != inst->ipaddr.af) {
+				char buffer[256];
+
+				fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(inst->dynamic_clients.network[i]), 0);
+
+				cf_log_err(cs, "Address family in entry %zd - 'network = %s' does not match 'ipaddr'", i + 1, buffer);
+				return -1;
+			}
+		}
+
+		// @todo - sanity check parameters
+
+		parent_inst = cf_data_value(cf_data_find(cf_parent(cs), dl_instance_t, "proto_radius"));
+		rad_assert(parent_inst != NULL);
+
+		if (dl_instance(inst, &inst->dynamic_clients.submodule,
+				cs, parent_inst, "dynamic_client", DL_TYPE_SUBMODULE) < 0) {
+			cf_log_err(cs, "Failed finding proto_radius_dynamic_client: %s", fr_strerror());
+			return -1;
+		}
 	}
 
 	return 0;
