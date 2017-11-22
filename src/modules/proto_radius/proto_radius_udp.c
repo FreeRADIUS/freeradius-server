@@ -53,6 +53,7 @@ typedef struct dynamic_client_t {
 	fr_ipaddr_t			*network;		//!< dynamic networks to allow
 
 	fr_dlist_t			packets;       		//!< list of accepted packets
+	fr_dlist_t			pending;		//!< pending clients
 
 	uint32_t			max_clients;		//!< maximum number of dynamic clients
 	uint32_t			num_clients;		//!< total number of active clients
@@ -355,9 +356,7 @@ static int dynamic_client_packet_save(proto_radius_udp_t *inst, uint8_t *packet,
 	MEM(saved = talloc_zero(inst, dynamic_packet_t));
 	MEM(saved->packet = talloc_memdup(saved, packet, packet_len));
 	saved->track = *track;
-	FR_DLIST_INIT(saved->entry);
-
-	// @todo - add it to the list for this client
+	fr_dlist_insert_tail(&address->client->packets, &saved->entry);
 
 	inst->dynamic_clients.num_pending_packets++;
 
@@ -394,6 +393,7 @@ static ssize_t dynamic_client_alloc(proto_radius_udp_t *inst, uint8_t *packet, s
 		return 0;
 	}
 
+	FR_DLIST_INIT(client->packets);
 	client->active = false;
 	client->dynamic = true;
 	client->secret = client->longname = client->shortname = client->nas_type = "";
@@ -422,6 +422,8 @@ static ssize_t dynamic_client_alloc(proto_radius_udp_t *inst, uint8_t *packet, s
 		talloc_free(client);
 		return 0;
 	}
+
+	fr_dlist_insert_tail(&inst->dynamic_clients.pending, &client->pending);
 
 	inst->dynamic_clients.num_pending_clients++;
 
@@ -977,6 +979,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			cf_log_err(cs, "Failed finding proto_radius_dynamic_client: %s", fr_strerror());
 			return -1;
 		}
+
+		FR_DLIST_INIT(inst->dynamic_clients.pending);
+		FR_DLIST_INIT(inst->dynamic_clients.packets);
 	}
 
 	return 0;

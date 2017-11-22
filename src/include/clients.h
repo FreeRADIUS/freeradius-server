@@ -29,6 +29,9 @@ RCSIDH(clients_h, "$Id$")
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#include <freeradius-devel/io/time.h>
+
 /** Describes a host allowed to send packets to the server
  *
  */
@@ -77,6 +80,8 @@ typedef struct radclient {
 #endif
 
 #ifdef WITH_DYNAMIC_CLIENTS
+	fr_dlist_t		pending;		//!< if !active, ordered list of pending clients
+	fr_dlist_t		packets;		//!< list of pending packets
 	uint32_t		lifetime;		//!< How long before the client is removed.
 	uint32_t		dynamic;		//!< Whether the client was dynamically defined.
 	time_t			created;		//!< When the client was created.
