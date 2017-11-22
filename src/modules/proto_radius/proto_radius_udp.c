@@ -120,7 +120,8 @@ static const CONF_PARSER udp_listen_config[] = {
 	 *	But that screws up the entries in the dynamic_client_config, which are now offset
 	 *	from THIS offset, instead of offset from the start of proto_radius_udp_t;
 	 */
-	{ FR_CONF_IS_SET_OFFSET("dynamic_clients", FR_TYPE_SUBSECTION, proto_radius_udp_t, dynamic_clients), .subcs = (void const *) dynamic_client_config },
+	{ FR_CONF_IS_SET_OFFSET("dynamic_clients", FR_TYPE_SUBSECTION | FR_TYPE_OK_MISSING, proto_radius_udp_t, dynamic_clients),
+	  .subcs = (void const *) dynamic_client_config },
 	CONF_PARSER_TERMINATOR
 };
 
