@@ -1059,6 +1059,7 @@ done:
 
 static int retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 {
+	bool				resign = false;
 	int				rcode;
 	rlm_radius_udp_connection_t	*c = u->c;
 	REQUEST				*request = u->link->request;
@@ -1120,15 +1121,7 @@ static int retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 			delay = htonl(delay);
 			memcpy(u->acct_delay_time, &delay, 4);
 
-			/*
-			 *	Recalculate the packet signature again.
-			 */
-			if (fr_radius_sign(u->packet, NULL, (uint8_t const *) c->inst->secret,
-					   strlen(c->inst->secret)) < 0) {
-				REDEBUG("Failed re-signing packet");
-				return -1;
-			}
-			memcpy(u->rr->vector, u->packet + 4, AUTH_VECTOR_LEN);
+			resign = true;
 		}
 	}
 
@@ -1151,18 +1144,21 @@ static int retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 			rad_assert(attr[1] == 6);
 			memcpy(attr + 2, &event_time, 4);
 
-			/*
-			 *	Recalculate the packet signature again.
-			 */
-			if (fr_radius_sign(u->packet, NULL, (uint8_t const *) c->inst->secret,
-					   strlen(c->inst->secret)) < 0) {
-				REDEBUG("Failed re-signing packet");
-				return -1;
-			}
-
-			memcpy(u->rr->vector, u->packet + 4, AUTH_VECTOR_LEN);
+			resign = true;
 			break;
 		}
+	}
+
+	/*
+	 *	Recalculate the packet signature again.
+	 */
+	if (resign) {
+		if (fr_radius_sign(u->packet, NULL, (uint8_t const *) c->inst->secret,
+				   strlen(c->inst->secret)) < 0) {
+			REDEBUG("Failed re-signing packet");
+			return -1;
+		}
+		memcpy(u->rr->vector, u->packet + 4, AUTH_VECTOR_LEN);
 	}
 
 	RDEBUG("Retransmitting request (%d/%d).  Expecting response within %d.%06ds",
