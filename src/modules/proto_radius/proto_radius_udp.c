@@ -396,7 +396,7 @@ static ssize_t dynamic_client_alloc(proto_radius_udp_t *inst, uint8_t *packet, s
 	FR_DLIST_INIT(client->packets);
 	client->active = false;
 	client->dynamic = true;
-	client->secret = client->longname = client->shortname = client->nas_type = "";
+	client->secret = client->longname = client->shortname = client->nas_type = talloc_strdup(client, "");
 
 	client->ipaddr = address->src_ipaddr;
 	client->src_ipaddr = address->dst_ipaddr;
