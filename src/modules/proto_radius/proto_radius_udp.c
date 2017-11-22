@@ -371,17 +371,11 @@ static int dynamic_client_packet_save(proto_radius_udp_t *inst, uint8_t *packet,
 		 *	We're NOT done the old packet, and have
 		 *	received a new packet.  This can happen if the
 		 *	old packet is taking too long.  Oh well... we
-		 *	will just discard the old one at some point.
-		 *
-		 *	@todo - note that in mod_write() we MIGHT NOT
-		 *	send the packet.  i.e. if the timestamp is
-		 *	different, we still have to create the client,
-		 *	BUT we need to discard this particular saved
-		 *	packet.
+		 *	will just discard the old one in mod_write()
 		 */
 	case FR_TRACKING_CONFLICTING:
 		DEBUG3("CONFLICTING packet ID %d", packet[1]);
-		return 0;	/* discard it */
+		break;
 
 		/*
 		 *	We have a brand new packet.  Remember it!
@@ -762,6 +756,25 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		inst->dynamic_clients.num_pending_clients--;
 
 		// @todo - update the client definition, etc...
+
+		/*
+		 *	This particular packet had a later one
+		 *	over-ride it.  We still add the client, but
+		 *	don't send the packet on towards mod_read()
+		 */
+		if (track->timestamp != request_time) {
+			dynamic_packet_t *saved;
+
+			entry = FR_DLIST_FIRST(client->packets);
+			rad_assert(entry != NULL);
+			saved = fr_ptr_to_type(dynamic_packet_t, entry, entry);
+				
+			fr_dlist_remove(&saved->entry);
+			/* leave the tracking table entry - it's used by a later packet */
+			rad_assert(saved->track == track);
+			talloc_free(saved);
+			inst->dynamic_clients.num_pending_packets--;
+		}
 
 		/*
 		 *	Move the packets over to the pending list.
