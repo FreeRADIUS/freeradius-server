@@ -255,10 +255,43 @@ static int mod_decode(void const *instance, REQUEST *request, UNUSED uint8_t *co
 
 	if (request->client->dynamic && !request->client->active) {
 		fr_app_process_t const	*app_process;
+		vp_cursor_t cursor;
+		VALUE_PAIR *vp;
 
 		app_process = (fr_app_process_t const *) inst->dynamic_clients.submodule->module->common;
 
 		request->async->process = app_process->process;
+
+		/*
+		 *	Mash all encrypted attributes to sane
+		 *	(i.e. non-hurtful) values.
+		 */
+		for (vp = fr_pair_cursor_init(&cursor, &request->packet->vps);
+		     vp != NULL;
+		     vp = fr_pair_cursor_next(&cursor)) {
+			if (vp->da->flags.encrypt != FLAG_ENCRYPT_NONE) {
+				switch (vp->da->type) {
+				default:
+					break;
+
+				case FR_TYPE_UINT32:
+					vp->vp_uint32 = 0;
+					break;
+
+				case FR_TYPE_IPV4_ADDR:
+					vp->vp_ipv4addr = INADDR_ANY;
+					break;
+
+				case FR_TYPE_OCTETS:
+					fr_pair_value_memcpy(vp, (uint8_t const *) "", 1);
+					break;
+
+				case FR_TYPE_STRING:
+					fr_pair_value_strcpy(vp, "");
+					break;
+				}
+			}
+		}
 	}
 
 	return 0;
