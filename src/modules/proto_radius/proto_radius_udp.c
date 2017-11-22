@@ -311,6 +311,9 @@ static ssize_t dynamic_client_packet_restore(proto_radius_udp_t *inst, uint8_t *
 	fr_dlist_remove(entry);
 
 	saved = fr_ptr_to_type(dynamic_packet_t, entry, entry);
+	rad_assert(saved->packet != NULL);
+	rad_assert(saved->track != NULL);
+
 	packet_len = talloc_array_length(saved->packet);
 	if (packet_len > buffer_len) {
 		(void) fr_radius_tracking_entry_delete(inst->ft, saved->track);
