@@ -152,7 +152,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		} else {
 			radlog_request(L_DBG, L_DBG_LVL_1, request, "Denying client");
 		}
-		if (RDEBUG_ENABLED) common_packet_debug(request, request->reply, false);
+		if (RDEBUG_ENABLED) rdebug_pair_list(L_DBG_LVL_1, request, request->reply->vps, NULL);
 		break;
 
 	default:
