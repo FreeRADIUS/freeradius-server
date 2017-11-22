@@ -611,6 +611,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 			fr_ipaddr_mask(&ipaddr, inst->dynamic_clients.network[i].prefix);
 
 			if (fr_ipaddr_cmp(&ipaddr, &inst->dynamic_clients.network[i]) == 0) {
+				DEBUG("Found matching network.  Checking for dynamic client definition.");
 				if (dynamic_client_alloc(inst, buffer, packet_len, &address, &track,
 							 &inst->dynamic_clients.network[i]) < 0) {
 					DEBUG("Failed allocating dynamic client");
