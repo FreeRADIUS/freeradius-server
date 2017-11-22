@@ -95,7 +95,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		if (!unlang) goto send_reply;
 
 	rerun_nak:
-		RDEBUG("Running 'deny client' from file %s", cf_filename(unlang));
+		RDEBUG("Running '%s client' from file %s", cf_section_name1(unlang), cf_filename(unlang));
 		unlang_push_section(request, unlang, RLM_MODULE_NOOP);
 
 		request->request_state = REQUEST_SEND;
