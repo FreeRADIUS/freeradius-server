@@ -221,9 +221,9 @@ static RADCLIENT *mod_client(UNUSED void const *instance, void const *packet_ctx
 	return address->client;
 }
 
-static int mod_decode(UNUSED void const *instance, REQUEST *request, UNUSED uint8_t *const data, UNUSED size_t data_len)
+static int mod_decode(void const *instance, REQUEST *request, UNUSED uint8_t *const data, UNUSED size_t data_len)
 {
-
+	proto_radius_udp_t const			*inst = instance;
 	fr_tracking_entry_t const		*track = request->async->packet_ctx;
 	proto_radius_udp_address_t const	*address = track->src_dst;
 
@@ -256,10 +256,24 @@ static int mod_decode(UNUSED void const *instance, REQUEST *request, UNUSED uint
 	return 0;
 }
 
-static int dynamic_client_save_packet(UNUSED proto_radius_udp_t *inst, UNUSED uint8_t *packet, UNUSED size_t packet_len,
+static int dynamic_client_save_packet(proto_radius_udp_t *inst, UNUSED uint8_t *packet, UNUSED size_t packet_len,
 				      UNUSED proto_radius_udp_address_t *address, fr_tracking_entry_t **track)
 {
+	if (inst->dynamic_clients.num_pending_packets >= inst->dynamic_clients.max_pending_packets) {
+		DEBUG("Too many pending packets - ignoring packet.");
+		return -1;
+	}
+
 	*track = NULL;
+
+
+	// create local structure
+	// memdup address into it
+	// memdup packet into it
+	// allocate tracking table entry
+	// add it to the list for this client
+
+	inst->dynamic_clients.num_pending_packets++;
 
 	return 0;
 }
@@ -274,7 +288,7 @@ static ssize_t dynamic_client_alloc(proto_radius_udp_t *inst, uint8_t *packet, s
 	 *	Limit the total number of clients.
 	 */
 	if (inst->dynamic_clients.num_clients >= inst->dynamic_clients.max_clients) {
-		DEBUG("Too many dynamic clients");
+		DEBUG("Too many dynamic clients - ignoring packet.");
 		return 0;
 	}
 
@@ -339,7 +353,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 
 	struct timeval			timestamp;
 	fr_tracking_status_t		tracking_status;
-	fr_tracking_entry_t		*track;
+	fr_tracking_entry_t		*track = NULL;
 	proto_radius_udp_address_t	address;
 
 	*leftover = 0;
