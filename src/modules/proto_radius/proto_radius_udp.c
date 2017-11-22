@@ -1056,7 +1056,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		/*
 		 *	Allow static clients for this virtual server.
 		 */
-		inst->dynamic_clients.clients = client_list_parse_section(inst->parent->server_cs, false);
+		inst->dynamic_clients.clients = client_list_init(NULL); // client_list_parse_section(inst->parent->server_cs, false);
 	}
 
 	return 0;
@@ -1071,6 +1071,8 @@ static int mod_detach(void *instance)
 	 *	"copy timer from -> to, which means we only have to
 	 *	delete our child event loop from the parent on close.
 	 */
+
+	if (inst->dynamic_clients.clients) TALLOC_FREE(inst->dynamic_clients.clients);
 
 	close(inst->sockfd);
 	return 0;
