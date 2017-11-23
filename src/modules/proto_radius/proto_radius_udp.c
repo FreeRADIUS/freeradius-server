@@ -708,6 +708,7 @@ found:
 
 received_packet:
 	inst->stats.total_requests++;
+	address.client->outstanding++;
 
 return_packet:
 	*packet_ctx = track;
@@ -796,12 +797,19 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	}
 
 	/*
+	 *	One less packet outstanding.
+	 */
+	rad_assert(address->client->outstanding > 0);
+	address->client->outstanding--;
+
+	/*
 	 *	The original packet has changed.  Suppress the write,
 	 *	as the client will never accept the response.
 	 *
 	 *	But since we still own the tracking entry, we have to delete it.
 	 */
 	if (track->timestamp != request_time) {
+		inst->stats.total_packets_dropped++;
 		DEBUG3("Suppressing reply as we have a newer packet");
 		rad_assert(track->ev == NULL);
 		(void) fr_radius_tracking_entry_delete(inst->ft, track);

@@ -84,6 +84,7 @@ typedef struct radclient {
 	fr_dlist_t		packets;		//!< list of pending packets
 	uint32_t		lifetime;		//!< How long before the client is removed.
 	uint32_t		dynamic;		//!< Whether the client was dynamically defined.
+	uint32_t		outstanding;		//!< number of requests outstanding
 	time_t			created;		//!< When the client was created.
 
 	time_t			last_new_client;	//!< Used for relate limiting addition and deletion of
