@@ -127,7 +127,7 @@ static void *control_master(UNUSED void *arg)
 				fprintf(stderr, "Failed reading control message\n");
 				exit(EXIT_FAILURE);
 			}
-		
+
 			rad_assert(data_size == sizeof(m));
 			rad_assert(id == FR_CONTROL_ID_CHANNEL);
 

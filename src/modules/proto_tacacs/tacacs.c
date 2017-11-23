@@ -585,7 +585,7 @@ int tacacs_decode(RADIUS_PACKET * const packet)
 					fr_strerror_printf("Client aborted authentication session %u with too long message", session_id);
 					return -2;
 				}
-					    
+
 				fr_strerror_printf("Client aborted authentication session %u with message %s",
 						   session_id, vp->vp_strvalue);
 				return -2;

@@ -10,7 +10,7 @@
  * are met:
  *
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer. 
+ *    notice, this list of conditions and the following disclaimer.
  *
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in
@@ -58,13 +58,13 @@
 /* ====================================================================
  * Copyright 2002 Sun Microsystems, Inc. ALL RIGHTS RESERVED.
  *
- * Portions of the attached software ("Contribution") are developed by 
+ * Portions of the attached software ("Contribution") are developed by
  * SUN MICROSYSTEMS, INC., and are contributed to the OpenSSL project.
  *
  * The Contribution is licensed pursuant to the OpenSSL open source
  * license provided above.
  *
- * The elliptic curve binary polynomial software is originally written by 
+ * The elliptic curve binary polynomial software is originally written by
  * Sheueling Chang Shantz and Douglas Stebila of Sun Microsystems Laboratories.
  *
  */
@@ -120,7 +120,7 @@ static void timings(EC_GROUP *group, int type, BN_CTX *ctx)
 	BIGNUM *s;
 	BIGNUM *r[10], *r0[10];
 	EC_POINT *P;
-		
+
 	s = BN_new();
 	if (s == NULL) ABORT;
 
@@ -149,7 +149,7 @@ static void timings(EC_GROUP *group, int type, BN_CTX *ctx)
 		{
 		for (j = 0; j < 10; j++)
 			{
-			if (!EC_POINT_mul(group, P, (type != TIMING_RAND_PT) ? r[i] : NULL, 
+			if (!EC_POINT_mul(group, P, (type != TIMING_RAND_PT) ? r[i] : NULL,
 				(type != TIMING_BASE_PT) ? P : NULL, (type != TIMING_BASE_PT) ? r0[i] : NULL, ctx)) ABORT;
 			}
 		}
@@ -246,7 +246,7 @@ static void prime_field_tests(void)
 	unsigned char buf[100];
 	size_t i, len;
 	int k;
-	
+
 #if 1 /* optional */
 	ctx = BN_CTX_new();
 	if (!ctx) ABORT;
@@ -256,7 +256,7 @@ static void prime_field_tests(void)
 	a = BN_new();
 	b = BN_new();
 	if (!p || !a || !b) ABORT;
-	
+
 	group = EC_GROUP_new(EC_GFp_mont_method()); /* applications should use EC_GROUP_new_curve_GFp
 	                                             * so that the library gets to choose the EC_METHOD */
 	if (!group) ABORT;
@@ -272,7 +272,7 @@ static void prime_field_tests(void)
 	if (!x || !y || !z) ABORT;
 
 /* Curve P-256 (FIPS PUB 186-2, App. 6) */
-	
+
 	if (!BN_hex2bn(&p, "FFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFF")) ABORT;
 	if (1 != BN_is_prime_ex(p, BN_prime_checks, ctx, NULL)) ABORT;
 	if (!BN_hex2bn(&a, "FFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFC")) ABORT;
@@ -295,11 +295,11 @@ static void prime_field_tests(void)
 	/* G_y value taken from the standard: */
 	if (!BN_hex2bn(&z, "4FE342E2FE1A7F9B8EE7EB4A7C0F9E162BCE33576B315ECECBB6406837BF51F5")) ABORT;
 	if (0 != BN_cmp(y, z)) ABORT;
-	
+
 	fprintf(stdout, "verify degree ...");
 	if (EC_GROUP_get_degree(group) != 256) ABORT;
 	fprintf(stdout, " ok\n");
-	
+
 	group_order_tests(group);
 
 	if (!(P_256 = EC_GROUP_new(EC_GROUP_method_of(group)))) ABORT;
@@ -307,7 +307,7 @@ static void prime_field_tests(void)
 
 
 	/* Curve P-384 (FIPS PUB 186-2, App. 6) */
-	
+
 	if (!BN_hex2bn(&p, "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
 		"FFFFFFFFFFFFFFFFFEFFFFFFFF0000000000000000FFFFFFFF")) ABORT;
 	if (1 != BN_is_prime_ex(p, BN_prime_checks, ctx, NULL)) ABORT;
@@ -335,7 +335,7 @@ static void prime_field_tests(void)
 	if (!BN_hex2bn(&z, "3617DE4A96262C6F5D9E98BF9292DC29F8F41DBD289A14"
 		"7CE9DA3113B5F0B8C00A60B1CE1D7E819D7A431D7C90EA0E5F")) ABORT;
 	if (0 != BN_cmp(y, z)) ABORT;
-	
+
 	fprintf(stdout, "verify degree ...");
 	if (EC_GROUP_get_degree(group) != 384) ABORT;
 	fprintf(stdout, " ok\n");
@@ -347,7 +347,7 @@ static void prime_field_tests(void)
 
 
 	/* Curve P-521 (FIPS PUB 186-2, App. 6) */
-	
+
 	if (!BN_hex2bn(&p, "1FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
 		"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
 		"FFFFFFFFFFFFFFFFFFFFFFFFFFFF")) ABORT;
@@ -381,7 +381,7 @@ static void prime_field_tests(void)
 		"B446817AFBD17273E662C97EE72995EF42640C550B9013FAD0761353C"
 		"7086A272C24088BE94769FD16650")) ABORT;
 	if (0 != BN_cmp(y, z)) ABORT;
-	
+
 	fprintf(stdout, "verify degree ...");
 	if (EC_GROUP_get_degree(group) != 521) ABORT;
 	fprintf(stdout, " ok\n");
@@ -408,7 +408,7 @@ static void prime_field_tests(void)
 		const EC_POINT *points[4];
 		const BIGNUM *scalars[4];
 		BIGNUM scalar3;
-	
+
 		if (EC_POINT_is_at_infinity(group, Q)) ABORT;
 		points[0] = Q;
 		points[1] = Q;
@@ -515,7 +515,7 @@ static void internal_curve_test(void)
 		}
 
 	fprintf(stdout, "testing internal curves: ");
-		
+
 	for (n = 0; n < crv_len; n++)
 		{
 		EC_GROUP *group = NULL;
@@ -700,8 +700,8 @@ void nistp_tests()
 static const char rnd_seed[] = "string to make the random number generator think it has entropy";
 
 int main(int argc, char *argv[])
-	{	
-	
+	{
+
 	/* enable memory leak checking unless explicitly disabled */
 	if (!((getenv("OPENSSL_DEBUG_MEMORY") != NULL) && (0 == strcmp(getenv("OPENSSL_DEBUG_MEMORY"), "off"))))
 		{
@@ -736,7 +736,7 @@ int main(int argc, char *argv[])
 	ERR_free_strings();
 	ERR_remove_thread_state(NULL);
 	CRYPTO_mem_leaks_fp(stderr);
-	
+
 	return 0;
 	}
 #endif

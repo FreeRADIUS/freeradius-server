@@ -615,16 +615,16 @@ static void *_pair_iter_by_da(void **prev, void *curr, void *ctx)
 {
 	VALUE_PAIR	*c, *p;
 	fr_dict_attr_t	*da = ctx;
-	
+
 	if (!curr) return NULL;
-	
+
 	for (p = *prev, c = curr; c; p = c, c = c->next) {
 		VP_VERIFY(c);
 		if (c->da == da) break;
 	}
-	
+
 	*prev = p;
-	
+
 	return c;
 }
 
@@ -637,7 +637,7 @@ static void *_pair_iter_by_da(void **prev, void *curr, void *ctx)
  *	- The first VALUE_PAIR in the list matching da
  */
 VALUE_PAIR *fr_pair_cursor_init_by_da(fr_cursor_t *cursor, VALUE_PAIR **head, fr_dict_attr_t const *da)
-{	
+{
 	return fr_cursor_talloc_iter_init(cursor, head, _pair_iter_by_da, da, VALUE_PAIR);
 }
 

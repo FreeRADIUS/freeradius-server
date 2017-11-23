@@ -181,7 +181,7 @@ int main(int argc, char *argv[])
 	 *	Allocate the first set of blocks.
 	 */
 	alloc_blocks(rb, &seed, &start, &end);
-	
+
 	/*
 	 *	Do 1000 rounds of alloc / free.
 	 */

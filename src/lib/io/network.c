@@ -758,7 +758,7 @@ static void fr_network_worker_callback(void *ctx, void const *data, size_t data_
 	(void) talloc_get_type_abort(worker, fr_worker_t);
 
 	MEM(w = talloc_zero(nr, fr_network_worker_t));
-	
+
 	w->worker = worker;
 	w->channel = fr_worker_channel_create(worker, w, nr->control);
 	if (!w->channel) fr_exit_now(1);

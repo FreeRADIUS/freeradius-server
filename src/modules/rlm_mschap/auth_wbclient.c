@@ -249,7 +249,7 @@ normalised_username_retry_failure:
 		break;
 	default:
 		/*
-		 * Only errors left are 
+		 * Only errors left are
 		 *   WBC_ERR_INVALID_PARAM
 		 *   WBC_ERR_NO_MEMORY
 		 * neither of which are particularly likely.
