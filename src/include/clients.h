@@ -86,14 +86,6 @@ typedef struct radclient {
 	uint32_t		lifetime;		//!< How long before the client is removed.
 	uint32_t		outstanding;		//!< number of requests outstanding
 	time_t			created;		//!< When the client was created.
-
-	time_t			last_new_client;	//!< Used for relate limiting addition and deletion of
-							//!< dynamic clients.
-
-	char const		*client_server;		//!< Name of the virtual server for creating dynamic clients
-	CONF_SECTION		*client_server_cs;	//!< Virtual server for creating dynamic clients
-
-	bool			rate_limit;		//!< Where addition of clients should be rate limited.
 #endif
 } RADCLIENT;
 

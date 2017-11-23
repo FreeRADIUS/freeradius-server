@@ -36,12 +36,6 @@ RCSID("$Id$")
 #include <ctype.h>
 #include <fcntl.h>
 
-#ifdef WITH_DYNAMIC_CLIENTS
-#ifdef HAVE_DIRENT_H
-#include <dirent.h>
-#endif
-#endif
-
 /** Group of clients
  *
  */
@@ -251,10 +245,6 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		    namecmp(longname) && namecmp(secret) &&
 		    namecmp(shortname) && namecmp(nas_type) &&
 		    namecmp(server) &&
-#ifdef WITH_DYNAMIC_CLIENTS
-		    (old->lifetime == client->lifetime) &&
-		    namecmp(client_server) &&
-#endif
 		    (old->message_authenticator == client->message_authenticator)) {
 			WARN("Ignoring duplicate client %s", client->longname);
 			client_free(client);
@@ -428,11 +418,6 @@ static const CONF_PARSER client_config[] = {
 	{ FR_CONF_POINTER("limit", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) limit_config },
 #endif
 
-#ifdef WITH_DYNAMIC_CLIENTS
-	{ FR_CONF_OFFSET("dynamic_clients", FR_TYPE_STRING, RADCLIENT, client_server) },
-	{ FR_CONF_OFFSET("lifetime", FR_TYPE_UINT32, RADCLIENT, lifetime) },
-	{ FR_CONF_OFFSET("rate_limit", FR_TYPE_BOOL, RADCLIENT, rate_limit) },
-#endif
 	CONF_PARSER_TERMINATOR
 };
 
@@ -498,88 +483,6 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 		}
 #endif
 
-		/*
-		 *	FIXME: Add the client as data via cf_data_add,
-		 *	for migration issues.
-		 */
-
-#ifdef WITH_DYNAMIC_CLIENTS
-#ifdef HAVE_DIRENT_H
-		if (c->client_server) {
-			char const	*value;
-			CONF_PAIR	*cp;
-			DIR		*dir;
-			struct dirent	*dp;
-			struct stat	stat_buf;
-			char		buf2[2048];
-
-			/*
-			 *	Find the directory where individual
-			 *	client definitions are stored.
-			 */
-			cp = cf_pair_find(cs, "directory");
-			if (!cp) goto add_client;
-
-			value = cf_pair_value(cp);
-			if (!value) {
-				cf_log_err(cs, "The \"directory\" entry must not be empty");
-				goto error;
-			}
-
-			DEBUG("including dynamic clients in %s", value);
-
-			dir = opendir(value);
-			if (!dir) {
-				cf_log_err(cs, "Error reading directory %s: %s", value, fr_syserror(errno));
-				goto error;
-			}
-
-			/*
-			 *	Read the directory, ignoring "." files.
-			 */
-			while ((dp = readdir(dir)) != NULL) {
-				char const *p;
-				RADCLIENT *dc;
-
-				if (dp->d_name[0] == '.') continue;
-
-				/*
-				 *	Check for valid characters
-				 */
-				for (p = dp->d_name; *p != '\0'; p++) {
-					if (isalpha((int)*p) ||
-					    isdigit((int)*p) ||
-					    (*p == ':') ||
-					    (*p == '.')) continue;
-					break;
-				}
-				if (*p != '\0') continue;
-
-				snprintf(buf2, sizeof(buf2), "%s/%s", value, dp->d_name);
-
-				if ((stat(buf2, &stat_buf) != 0) || S_ISDIR(stat_buf.st_mode)) continue;
-
-				dc = client_read(buf2, server_cs, true);
-				if (!dc) {
-					cf_log_err(cs, "Failed reading client file \"%s\"", buf2);
-					closedir(dir);
-					goto error;
-				}
-
-				/*
-				 *	Validate, and add to the list.
-				 */
-				if (!client_add_dynamic(clients, c, dc)) {
-					closedir(dir);
-					goto error;
-				}
-			} /* loop over the directory */
-			closedir(dir);
-		}
-#endif /* HAVE_DIRENT_H */
-
-	add_client:
-#endif /* WITH_DYNAMIC_CLIENTS */
 		if (!client_add(clients, c)) {
 			cf_log_err(cs, "Failed to add client %s", cf_section_name2(cs));
 			goto error;
@@ -944,30 +847,6 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 		FR_TIMEVAL_BOUND_CHECK("response_window", &c->response_window, <=, 60, 0);
 		FR_TIMEVAL_BOUND_CHECK("response_window", &c->response_window, <=, main_config.max_request_time, 0);
 	}
-
-#ifdef WITH_DYNAMIC_CLIENTS
-	/*
-	 *	The virtual server we run UNKNOWN requests through, to
-	 *	see if we need to create a new dynamic client.
-	 */
-	if (c->client_server) {
-		c->secret = talloc_typed_strdup(c, "testing123");
-
-		if (((c->ipaddr.af == AF_INET) && (c->ipaddr.prefix == 32)) ||
-		    ((c->ipaddr.af == AF_INET6) && (c->ipaddr.prefix == 128))) {
-			cf_log_err(cs, "Dynamic clients MUST be a network, not a single IP address");
-			goto error;
-		}
-
-		c->client_server_cs = virtual_server_find(c->client_server);
-		if (!c->client_server_cs) {
-			cf_log_err(cs, "Unknown virtual server '%s'", c->client_server);
-			goto error;
-		}
-
-		return c;
-	}
-#endif
 
 	if (!c->secret || (c->secret[0] == '\0')) {
 #ifdef WITH_DHCP
