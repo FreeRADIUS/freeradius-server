@@ -315,11 +315,15 @@ static ssize_t dynamic_client_packet_restore(proto_radius_udp_t *inst, uint8_t *
 	rad_assert(saved->packet != NULL);
 	rad_assert(saved->track != NULL);
 
+	/*
+	 *	Can't copy the packet over, there's nothing more we
+	 *	can do.
+	 */
 	packet_len = talloc_array_length(saved->packet);
 	if (packet_len > buffer_len) {
 		(void) fr_radius_tracking_entry_delete(inst->ft, saved->track);
 		talloc_free(saved);
-		return 0;
+		return -1;
 	}
 
 	/*
@@ -327,7 +331,7 @@ static ssize_t dynamic_client_packet_restore(proto_radius_udp_t *inst, uint8_t *
 	 */
 	memcpy(buffer, saved->packet, packet_len);
 	*track = saved->track;
-	free(saved);
+	talloc_free(saved);
 
 	return packet_len;
 }
@@ -484,7 +488,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 		data_size = dynamic_client_packet_restore(inst, buffer, buffer_len, &track);
 		if (data_size < 0) {
 			rad_assert(0 == 1);
-			return -1;
+			return 0;
 		}
 
 		packet_len = data_size;
