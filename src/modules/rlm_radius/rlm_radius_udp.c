@@ -1583,14 +1583,17 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 		return 2;
 	}
 
-	if (u != c->status_u) {
-		/*
-		 *	Only copy the packet if we're not replicating,
-		 *	and we're not doing Status-Server checks.
-		 */
-		MEM(u->packet = talloc_memdup(u, c->buffer, packet_len));
-		u->packet_len = packet_len;
+	/*
+	 *	Copy the packet in case it needs retransmitting.
+	 */
+	MEM(u->packet = talloc_memdup(u, c->buffer, packet_len));
+	u->packet_len = packet_len;
 
+	/*
+	 *	Print out helpful debugging messages for non-status
+	 *	checks.
+	 */
+	if (u != c->status_u) {
 		if (!c->inst->parent->synchronous) {
 			RDEBUG("Proxying request.  Expecting response within %d.%06ds",
 			       u->timer.rt / USEC, u->timer.rt % USEC);
