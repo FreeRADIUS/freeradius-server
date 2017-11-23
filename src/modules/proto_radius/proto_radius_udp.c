@@ -402,7 +402,7 @@ static int dynamic_client_packet_save(proto_radius_udp_t *inst, uint8_t *packet,
 
 
 static ssize_t dynamic_client_alloc(proto_radius_udp_t *inst, uint8_t *packet, size_t packet_len,
-				    proto_radius_udp_address_t *address, fr_tracking_entry_t **track, UNUSED fr_ipaddr_t *network)
+				    proto_radius_udp_address_t *address, fr_tracking_entry_t **track, fr_ipaddr_t *network)
 {
 	RADCLIENT *client;
 
@@ -437,6 +437,7 @@ static ssize_t dynamic_client_alloc(proto_radius_udp_t *inst, uint8_t *packet, s
 
 	client->ipaddr = address->src_ipaddr;
 	client->src_ipaddr = address->dst_ipaddr;
+	client->network = *network;
 
 	address->client = client;
 
@@ -759,14 +760,14 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			}
 
 			client_delete(inst->dynamic_clients.clients, client);
-			client_free(client); /* @todo - fix this to NOT have a FIFO */
+			client_free(client);
 
 			return buffer_len;
 		}
 
 		inst->dynamic_clients.num_pending_clients--;
 
-		// @todo - update the client definition, etc...
+		// @todo - create / pack the client definition...
 
 		/*
 		 *	This particular packet had a later one
@@ -1113,8 +1114,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			}
 		}
 
-		// @todo - sanity check parameters
-
 		parent_inst = cf_data_value(cf_data_find(cf_parent(cs), dl_instance_t, "proto_radius"));
 		rad_assert(parent_inst != NULL);
 
@@ -1131,6 +1130,15 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		 *	Allow static clients for this virtual server.
 		 */
 		inst->dynamic_clients.clients = client_list_init(NULL); // client_list_parse_section(inst->parent->server_cs, false);
+
+		FR_INTEGER_BOUND_CHECK("max_clients", inst->dynamic_clients.max_clients, >=, 1);
+		FR_INTEGER_BOUND_CHECK("max_clients", inst->dynamic_clients.max_clients, <=, (1 << 20));
+
+		FR_INTEGER_BOUND_CHECK("max_pending_clients", inst->dynamic_clients.max_pending_clients, >=, 4);
+		FR_INTEGER_BOUND_CHECK("max_pending_clients", inst->dynamic_clients.max_pending_clients, <=, 2048);
+
+		FR_INTEGER_BOUND_CHECK("max_pending_packets", inst->dynamic_clients.max_pending_clients, >=, 256);
+		FR_INTEGER_BOUND_CHECK("max_pending_packets", inst->dynamic_clients.max_pending_clients, <=, 65536);
 	}
 
 	return 0;

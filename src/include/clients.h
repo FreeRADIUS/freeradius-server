@@ -86,6 +86,7 @@ typedef struct radclient {
 	uint32_t		lifetime;		//!< How long before the client is removed.
 	uint32_t		outstanding;		//!< number of requests outstanding
 	time_t			created;		//!< When the client was created.
+	fr_ipaddr_t		network;		//!< encapsulating network
 #endif
 } RADCLIENT;
 
@@ -150,10 +151,6 @@ RADCLIENT	*client_afrom_query(TALLOC_CTX *ctx, char const *identifier, char cons
 RADCLIENT	*client_find(RADCLIENT_LIST const *clients, fr_ipaddr_t const *ipaddr, int proto);
 
 RADCLIENT	*client_findbynumber(RADCLIENT_LIST const *clients, int number);
-
-RADCLIENT	*client_find_old(fr_ipaddr_t const *ipaddr);
-
-bool		client_add_dynamic(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c);
 
 RADCLIENT	*client_read(char const *filename, CONF_SECTION *server_cs, bool check_dns);
 #ifdef __cplusplus

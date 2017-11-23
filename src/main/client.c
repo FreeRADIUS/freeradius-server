@@ -371,14 +371,6 @@ RADCLIENT *client_find(RADCLIENT_LIST const *clients, fr_ipaddr_t const *ipaddr,
 	return NULL;
 }
 
-/*
- *	Old wrapper for client_find
- */
-RADCLIENT *client_find_old(fr_ipaddr_t const *ipaddr)
-{
-	return client_find(root_clients, ipaddr, IPPROTO_UDP);
-}
-
 static fr_ipaddr_t cl_ipaddr;
 static char const *cl_srcipaddr = NULL;
 #ifdef WITH_TCP
@@ -533,7 +525,7 @@ static const CONF_PARSER dynamic_config[] = {
 /** Add a dynamic client
  *
  */
-bool client_add_dynamic(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c)
+static bool client_add_dynamic(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c)
 {
 	char buffer[128];
 
