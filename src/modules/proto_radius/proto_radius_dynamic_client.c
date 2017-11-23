@@ -137,9 +137,27 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		}
 
 		if (request->reply->code == FR_CODE_ACCESS_ACCEPT) {
+			VALUE_PAIR *vp;
+
+			vp = fr_pair_find_by_num(request->control, 0, FR_FREERADIUS_CLIENT_IP_ADDRESS, TAG_ANY);
+			if (!vp) fr_pair_find_by_num(request->control, 0, FR_FREERADIUS_CLIENT_IPV6_ADDRESS, TAG_ANY);
+			if (!vp) fr_pair_find_by_num(request->control, 0, FR_FREERADIUS_CLIENT_IP_PREFIX, TAG_ANY);
+			if (!vp) fr_pair_find_by_num(request->control, 0, FR_FREERADIUS_CLIENT_IPV6_PREFIX, TAG_ANY);
+			if (!vp) {
+				ERROR("The 'control' list MUST contain a FreeRADIUS-Client.. IP address attribute");
+				request->reply->code = FR_CODE_ACCESS_REJECT;
+				goto rerun_nak;
+			}
+
+			vp = fr_pair_find_by_num(request->control, 0, FR_FREERADIUS_CLIENT_SECRET, TAG_ANY);
+			if (!vp) {
+				ERROR("The 'control' list MUST contain a FreeRADIUS-Client-Secret attribute");
+				request->reply->code = FR_CODE_ACCESS_REJECT;
+				goto rerun_nak;
+			}
+
 			/*
-			 *	@todo - check for existence of all necessary VPs.
-			 *	If some don't exist, complain, and run "deny client"
+			 *	Else we're flexible.
 			 */
 		}
 
