@@ -126,6 +126,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 			if (request->reply->code != FR_CODE_ACCESS_REJECT) {
 				RWDEBUG("Failed running 'add client', trying 'deny client'.");
 
+			deny:
 				request->reply->code = FR_CODE_ACCESS_REJECT;
 
 				unlang = cf_section_find(request->server_cs, "deny", "client");
@@ -145,15 +146,13 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 			if (!vp) fr_pair_find_by_num(request->control, 0, FR_FREERADIUS_CLIENT_IPV6_PREFIX, TAG_ANY);
 			if (!vp) {
 				ERROR("The 'control' list MUST contain a FreeRADIUS-Client.. IP address attribute");
-				request->reply->code = FR_CODE_ACCESS_REJECT;
-				goto rerun_nak;
+				goto deny;
 			}
 
 			vp = fr_pair_find_by_num(request->control, 0, FR_FREERADIUS_CLIENT_SECRET, TAG_ANY);
 			if (!vp) {
 				ERROR("The 'control' list MUST contain a FreeRADIUS-Client-Secret attribute");
-				request->reply->code = FR_CODE_ACCESS_REJECT;
-				goto rerun_nak;
+				goto deny;
 			}
 
 			/*
