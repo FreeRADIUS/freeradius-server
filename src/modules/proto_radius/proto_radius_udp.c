@@ -708,6 +708,7 @@ found:
 
 received_packet:
 	inst->stats.total_requests++;
+	rad_assert(address->client != NULL);
 	address.client->outstanding++;
 
 return_packet:
