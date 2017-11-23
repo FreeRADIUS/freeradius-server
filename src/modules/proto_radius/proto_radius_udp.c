@@ -956,7 +956,7 @@ static int mod_fd(void const *instance)
  *
  * @param[in] instance of the RADIUS UDP I/O path.
  * @param[in] el the event list
- * @param[in] nr_ctx context from the network side
+ * @param[in] nr context from the network side
  */
 static void mod_event_list_set(void *instance, fr_event_list_t *el, void *nr)
 {
