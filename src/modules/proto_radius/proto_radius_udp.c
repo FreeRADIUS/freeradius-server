@@ -488,6 +488,9 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 		}
 
 		packet_len = data_size;
+
+		rad_assert(track != NULL);
+		rad_assert(track->src_dst != NULL);
 		address.client = ((proto_radius_udp_address_t *)track->src_dst)->client;
 		goto received_packet;
 	}
