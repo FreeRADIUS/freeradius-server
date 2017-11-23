@@ -58,10 +58,6 @@ static int		tree_num_max = 0;
 
 static RADCLIENT_LIST	*root_clients = NULL;	//!< Global client list.
 
-#ifdef WITH_DYNAMIC_CLIENTS
-static fr_fifo_t	*deleted_clients = NULL;
-#endif
-
 void client_list_free(void)
 {
 	TALLOC_FREE(root_clients);
@@ -69,42 +65,11 @@ void client_list_free(void)
 
 /** Free a client
  *
+ *  It's up to the caller to ensure that it's deleted from any RADCLIENT_LIST.
  */
 void client_free(RADCLIENT *client)
 {
 	if (!client) return;
-
-#ifdef WITH_DYNAMIC_CLIENTS
-	if (client->dynamic == 2) {
-		time_t now;
-
-		if (!deleted_clients) {
-			deleted_clients = fr_fifo_create(NULL, 1024, (void (*)(void *))client_free);
-			if (!deleted_clients) return; /* MEMLEAK */
-		}
-
-		/*
-		 *	Mark it as in the fifo, and remember when we
-		 *	pushed it.
-		 */
-		client->dynamic = 3;
-		client->created = now = time(NULL); /* re-set it */
-		fr_fifo_push(deleted_clients, client);
-
-		/*
-		 *	Peek at the head of the fifo.  If it might
-		 *	still be in use, return.  Otherwise, pop it
-		 *	from the queue and delete it.
-		 */
-		client = fr_fifo_peek(deleted_clients);
-		rad_assert(client != NULL);
-
-		if ((client->created + 120) >= now) return;
-
-		client = fr_fifo_pop(deleted_clients);
-		rad_assert(client != NULL);
-	}
-#endif
 
 	talloc_free(client);
 }
@@ -313,28 +278,6 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		tree_num = rbtree_create(clients, client_num_cmp, NULL, 0);
 	}
 
-#ifdef WITH_DYNAMIC_CLIENTS
-	/*
-	 *	More catching of clients added by rlm_sql.
-	 *
-	 *	The sql modules sets the dynamic flag BEFORE calling
-	 *	us.  The client_afrom_request() function sets it AFTER
-	 *	calling us.
-	 */
-	if (client->dynamic && (client->lifetime == 0)) {
-		RADCLIENT *network;
-
-		/*
-		 *	If there IS an enclosing network,
-		 *	inherit the lifetime from it.
-		 */
-		network = client_find(clients, &client->ipaddr, client->proto);
-		if (network) {
-			client->lifetime = network->lifetime;
-		}
-	}
-#endif
-
 	client->number = tree_num_max;
 	tree_num_max++;
 	if (tree_num) rbtree_insert(tree_num, client);
@@ -357,11 +300,7 @@ void client_delete(RADCLIENT_LIST *clients, RADCLIENT *client)
 
 	if (!clients) clients = root_clients;
 
-	if (!client->dynamic) return;
-
 	rad_assert(client->ipaddr.prefix <= 128);
-
-	client->dynamic = 2;	/* signal to client_free */
 
 #ifdef WITH_STATS
 	rbtree_deletebydata(tree_num, client);
@@ -1104,9 +1043,6 @@ RADCLIENT *client_afrom_query(TALLOC_CTX *ctx, char const *identifier, char cons
 		return NULL;
 	}
 
-#ifdef WITH_DYNAMIC_CLIENTS
-	c->dynamic = true;
-#endif
 	fr_inet_ntoh(&c->ipaddr, buffer, sizeof(buffer));
 	c->longname = talloc_typed_strdup(c, buffer);
 

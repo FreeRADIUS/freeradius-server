@@ -46,6 +46,7 @@ typedef struct radclient {
 	char const		*secret;		//!< Secret PSK.
 
 	bool			message_authenticator;	//!< Require RADIUS message authenticator in requests.
+	bool			dynamic;		//!< Whether the client was dynamically defined.
 	bool			active;			//!< for dynamic clients
 	bool			negative;		//!< negative cache entry
 
@@ -83,7 +84,6 @@ typedef struct radclient {
 	fr_dlist_t		pending;		//!< if !active, ordered list of pending clients
 	fr_dlist_t		packets;		//!< list of pending packets
 	uint32_t		lifetime;		//!< How long before the client is removed.
-	uint32_t		dynamic;		//!< Whether the client was dynamically defined.
 	uint32_t		outstanding;		//!< number of requests outstanding
 	time_t			created;		//!< When the client was created.
 
