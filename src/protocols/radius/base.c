@@ -308,49 +308,6 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 	msg = packet + RADIUS_HDR_LEN;
 	end = packet + packet_len;
 
-	/*
-	 *	Initialize the request authenticator.
-	 */
-	switch (packet[0]) {
-	case FR_CODE_ACCOUNTING_REQUEST:
-	case FR_CODE_DISCONNECT_REQUEST:
-	case FR_CODE_COA_REQUEST:
-		memset(packet + 4, 0, AUTH_VECTOR_LEN);
-		break;
-
-	case FR_CODE_ACCESS_ACCEPT:
-	case FR_CODE_ACCESS_REJECT:
-	case FR_CODE_ACCESS_CHALLENGE:
-	case FR_CODE_ACCOUNTING_RESPONSE:
-	case FR_CODE_DISCONNECT_ACK:
-	case FR_CODE_DISCONNECT_NAK:
-	case FR_CODE_COA_ACK:
-	case FR_CODE_COA_NAK:
-	case FR_CODE_PROTOCOL_ERROR:
-		if (!original) {
-			fr_strerror_printf("Cannot sign response packet without a request packet");
-			return -1;
-		}
-		memcpy(packet + 4, original + 4, AUTH_VECTOR_LEN);
-		break;
-
-		/*
-		 *	The Request Authenticator is random numbers.
-		 *	We don't need to sign anything else, so
-		 *	return.
-		 */
-	case FR_CODE_ACCESS_REQUEST:
-	case FR_CODE_STATUS_SERVER:
-		return 0;
-
-	default:
-		fr_strerror_printf("Cannot sign unknown packet code %u", packet[0]);
-		return -1;
-	}
-
-	/*
-	 *	Look for Message-Authenticator.
-	 */
 	while (msg < end) {
 		if ((end - msg) < 2) goto invalid_attribute;
 
@@ -371,6 +328,39 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 			return -1;
 		}
 
+		switch (packet[0]) {
+		case FR_CODE_ACCOUNTING_RESPONSE:
+		case FR_CODE_DISCONNECT_ACK:
+		case FR_CODE_DISCONNECT_NAK:
+		case FR_CODE_COA_ACK:
+		case FR_CODE_COA_NAK:
+			if (!original) goto need_original;
+			if (original[0] == FR_CODE_STATUS_SERVER) goto do_ack;
+			/* FALL-THROUGH */
+
+		case FR_CODE_ACCOUNTING_REQUEST:
+		case FR_CODE_DISCONNECT_REQUEST:
+		case FR_CODE_COA_REQUEST:
+			memset(packet + 4, 0, AUTH_VECTOR_LEN);
+			break;
+
+		case FR_CODE_ACCESS_ACCEPT:
+		case FR_CODE_ACCESS_REJECT:
+		case FR_CODE_ACCESS_CHALLENGE:
+		do_ack:
+			if (!original) goto need_original;
+			memcpy(packet + 4, original + 4, AUTH_VECTOR_LEN);
+			break;
+
+		case FR_CODE_ACCESS_REQUEST:
+		case FR_CODE_STATUS_SERVER:
+			/* packet + 4 MUST be the Request Authenticator filled with random data */
+			break;
+
+		default:
+			goto bad_packet;
+		}
+
 		/*
 		 *	Force Message-Authenticator to be zero,
 		 *	calculate the HMAC, and put it into the
@@ -379,6 +369,48 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 		memset(msg + 2, 0, AUTH_VECTOR_LEN);
 		fr_hmac_md5(msg + 2, packet, packet_len, secret, secret_len);
 		break;
+	}
+
+	/*
+	 *	Initialize the request authenticator.
+	 */
+	switch (packet[0]) {
+	case FR_CODE_ACCOUNTING_REQUEST:
+	case FR_CODE_DISCONNECT_REQUEST:
+	case FR_CODE_COA_REQUEST:
+		memset(packet + 4, 0, AUTH_VECTOR_LEN);
+		break;
+
+	case FR_CODE_ACCESS_ACCEPT:
+	case FR_CODE_ACCESS_REJECT:
+	case FR_CODE_ACCESS_CHALLENGE:
+	case FR_CODE_ACCOUNTING_RESPONSE:
+	case FR_CODE_DISCONNECT_ACK:
+	case FR_CODE_DISCONNECT_NAK:
+	case FR_CODE_COA_ACK:
+	case FR_CODE_COA_NAK:
+	case FR_CODE_PROTOCOL_ERROR:
+		if (!original) {
+		need_original:
+			fr_strerror_printf("Cannot sign response packet without a request packet");
+			return -1;
+		}
+		memcpy(packet + 4, original + 4, AUTH_VECTOR_LEN);
+		break;
+
+		/*
+		 *	The Request Authenticator is random numbers.
+		 *	We don't need to sign anything else, so
+		 *	return.
+		 */
+	case FR_CODE_ACCESS_REQUEST:
+	case FR_CODE_STATUS_SERVER:
+		return 0;
+
+	default:
+	bad_packet:
+		fr_strerror_printf("Cannot sign unknown packet code %u", packet[0]);
+		return -1;
 	}
 
 	/*
