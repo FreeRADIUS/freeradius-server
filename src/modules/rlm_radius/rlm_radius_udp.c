@@ -1137,7 +1137,7 @@ static int retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 
 		while (attr < end) {
 			if (attr[0] != FR_EVENT_TIMESTAMP) {
-				attr += attr[2];
+				attr += attr[1];
 			}
 
 			event_time = htonl(time(NULL));
