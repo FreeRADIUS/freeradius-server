@@ -1064,6 +1064,9 @@ static int retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 	rlm_radius_udp_connection_t	*c = u->c;
 	REQUEST				*request = u->link->request;
 
+	rad_assert(u->packet != NULL);
+	rad_assert(u->packet_len >= 20);
+
 	/*
 	 *	RADIUS layer fixups for Accounting-Request packets.
 	 *
