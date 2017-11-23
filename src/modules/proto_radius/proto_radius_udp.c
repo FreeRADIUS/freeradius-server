@@ -300,7 +300,7 @@ static int mod_decode(void const *instance, REQUEST *request, UNUSED uint8_t *co
 }
 
 static ssize_t dynamic_client_packet_restore(proto_radius_udp_t *inst, uint8_t *buffer, size_t buffer_len,
-					 fr_tracking_entry_t **track)
+					     fr_tracking_entry_t **track)
 {
 	fr_dlist_t		*entry;
 	dynamic_packet_t	*saved;
@@ -311,6 +311,7 @@ static ssize_t dynamic_client_packet_restore(proto_radius_udp_t *inst, uint8_t *
 	fr_dlist_remove(entry);
 
 	saved = fr_ptr_to_type(dynamic_packet_t, entry, entry);
+	rad_assert(saved);
 	rad_assert(saved->packet != NULL);
 	rad_assert(saved->track != NULL);
 
@@ -768,7 +769,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			entry = FR_DLIST_FIRST(client->packets);
 			rad_assert(entry != NULL);
 			saved = fr_ptr_to_type(dynamic_packet_t, entry, entry);
-				
+
 			fr_dlist_remove(&saved->entry);
 			/* leave the tracking table entry - it's used by a later packet */
 			rad_assert(saved->track == track);
