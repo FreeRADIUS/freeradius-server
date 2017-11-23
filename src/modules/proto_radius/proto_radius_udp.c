@@ -307,7 +307,7 @@ static ssize_t dynamic_client_packet_restore(proto_radius_udp_t *inst, uint8_t *
 	size_t			packet_len;
 
 	entry = FR_DLIST_FIRST(inst->dynamic_clients.packets);
-	rad_assert(entry != NULL);
+	if (!entry) return -1;
 	fr_dlist_remove(entry);
 
 	saved = fr_ptr_to_type(dynamic_packet_t, entry, entry);
