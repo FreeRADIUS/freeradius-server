@@ -743,25 +743,21 @@ static unlang_action_t unlang_xlat_resume(REQUEST *request, UNUSED rlm_rcode_t *
 	unlang_t			*instruction = frame->instruction;
 	unlang_resume_t			*mr = unlang_generic_to_resume(instruction);
 	unlang_stack_state_xlat_t	*xs = talloc_get_type_abort(frame->state, unlang_stack_state_xlat_t);
-	xlat_exp_t const		*child = NULL;
 	xlat_action_t			xa;
 
 	xa = ((xlat_resume_callback_t)mr->callback)(xs->ctx, &xs->values,
 						    request, mr->instance, mr->thread,
 						    &xs->result, mr->resume_ctx);
 	switch (xa) {
-	case XLAT_ACTION_PUSH_CHILD:
-		rad_assert(child);
-
-		frame->repeat = true;
-		unlang_push_xlat(xs->ctx, &xs->rhead, request, child, false);
-		return UNLANG_ACTION_PUSHED_CHILD;
-
 	case XLAT_ACTION_YIELD:
 		return UNLANG_ACTION_YIELD;
 
 	case XLAT_ACTION_DONE:
 		return UNLANG_ACTION_CALCULATE_RESULT;
+
+	case XLAT_ACTION_PUSH_CHILD:
+		rad_assert(0);
+		/* FALL-THROUGH */
 
 	case XLAT_ACTION_FAIL:
 		*presult = RLM_MODULE_FAIL;
