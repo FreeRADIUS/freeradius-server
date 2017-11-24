@@ -231,6 +231,53 @@ static RADCLIENT *mod_client(UNUSED void const *instance, void const *packet_ctx
 	return address->client;
 }
 
+
+static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffer, UNUSED size_t buffer_len)
+{
+	proto_radius_udp_t const		*inst = instance;
+	fr_tracking_entry_t const		*track = request->async->packet_ctx;
+	proto_radius_udp_address_t const	*address = track->src_dst;
+	RADCLIENT				*client;
+
+	/*
+	 *	Not a dynamic client, or it's an active one.  Let
+	 *	proto_radius do all of the work.
+	 */
+	if (!inst->dynamic_clients_is_set || !address->client->dynamic || address->client->active) return 0;
+
+	/*
+	 *	Allocate the client.  If that fails, send back a NAK.
+	 *
+	 *	@todo - deal with NUMA zones?  Or just deal with this
+	 *	client being in different memory.
+	 *
+	 *	Maybe we should create a CONF_SECTION from the client,
+	 *	and pass *that* back to mod_write(), which can then
+	 *	parse it to create the actual client....
+	 */
+	client = client_afrom_request(NULL, request);
+	if (!client) {
+		buffer[0] = 1;
+		return 1;
+	}
+
+	talloc_free(client);
+
+	/*
+	 *	@todo - magically get the new client definition from
+	 *	request->control over to mod_write().
+	 *
+	 *	TBH, the best way is likely a mutex in 'inst'.  <sigh>
+	 */
+
+	buffer[0] = 0;
+	buffer[1] = 0;
+
+	// @todo - return actual value...
+	return 2;
+}
+
+
 static int mod_decode(void const *instance, REQUEST *request, UNUSED uint8_t *const data, UNUSED size_t data_len)
 {
 	proto_radius_udp_t const			*inst = instance;
@@ -1187,6 +1234,7 @@ fr_app_io_t proto_radius_udp = {
 	.open			= mod_open,
 	.read			= mod_read,
 	.decode			= mod_decode,
+	.encode			= mod_encode, /* only for dynamic client creation */
 	.write			= mod_write,
 	.fd			= mod_fd,
 	.event_list_set		= mod_event_list_set,
