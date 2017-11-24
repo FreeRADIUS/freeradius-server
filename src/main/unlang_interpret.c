@@ -735,7 +735,42 @@ static unlang_action_t unlang_module_resume(REQUEST *request, rlm_rcode_t *presu
 	return *presult == RLM_MODULE_YIELD ? UNLANG_ACTION_YIELD : UNLANG_ACTION_CALCULATE_RESULT;
 }
 
+static unlang_action_t unlang_xlat_resume(REQUEST *request, UNUSED rlm_rcode_t *presult,
+					  UNUSED void *instance, UNUSED void *thread, UNUSED void *resume_ctx)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_t			*instruction = frame->instruction;
+	unlang_resume_t			*mr = unlang_generic_to_resume(instruction);
+	unlang_stack_state_xlat_t	*xs = talloc_get_type_abort(frame->state, unlang_stack_state_xlat_t);
+	xlat_exp_t const		*child = NULL;
+	xlat_action_t			xa;
 
+	xa = ((xlat_resume_callback_t)mr->callback)(xs->ctx, &xs->values,
+						    request, mr->instance, mr->thread,
+						    &xs->result, mr->resume_ctx);
+	switch (xa) {
+	case XLAT_ACTION_PUSH_CHILD:
+		rad_assert(child);
+
+		frame->repeat = true;
+		unlang_push_xlat(xs->ctx, &xs->rhead, request, child, false);
+		return UNLANG_ACTION_PUSHED_CHILD;
+
+	case XLAT_ACTION_YIELD:
+		return UNLANG_ACTION_YIELD;
+
+	case XLAT_ACTION_DONE:
+		return UNLANG_ACTION_CALCULATE_RESULT;
+
+	case XLAT_ACTION_FAIL:
+		*presult = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	rad_assert(0);
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
 
 static void unlang_max_request_time(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
 {
