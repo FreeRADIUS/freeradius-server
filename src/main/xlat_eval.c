@@ -568,7 +568,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			xlat_action_t action;
 
 			/* Fixme - Pass in instance and thread instance */
-			action = node->xlat->func.async(ctx, out, NULL, NULL, request, result, node->xlat->uctx);
+			action = node->xlat->func.async(ctx, out, request, NULL, NULL, result);
 			switch (action) {
 			case XLAT_ACTION_PUSH_CHILD:
 			case XLAT_ACTION_YIELD:

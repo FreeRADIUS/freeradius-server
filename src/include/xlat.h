@@ -72,11 +72,10 @@ typedef ssize_t (*xlat_func_sync_t)(TALLOC_CTX *ctx, char **out, size_t outlen,
  *
  * @param[in] ctx		to allocate any fr_value_box_t in.
  * @param[out] out		Where to append #fr_value_box_t containing the output of this function.
+ * @param[in] request		The current request.
  * @param[in] xlat_inst		Global xlat instance.
  * @param[in] xlat_thread_inst	Thread specific xlat instance.
- * @param[in] request		The current request.
  * @param[in] in		Input arguments.
- * @param[in] uctx		passed to registration function.
  * @return
  *	- XLAT_ACTION_YIELD	xlat function is waiting on an I/O event and
  *				has pushed a resumption function onto the stack.
@@ -85,9 +84,8 @@ typedef ssize_t (*xlat_func_sync_t)(TALLOC_CTX *ctx, char **out, size_t outlen,
  *	- XLAT_ACTION_FAIL	the xlat function failed.
  */
 typedef xlat_action_t (*xlat_func_async_t)(TALLOC_CTX *ctx, fr_cursor_t *out,
-					   void const *xlat_inst, void *xlat_thread_inst,
-					   REQUEST *request, fr_value_box_t const *in,
-					   void *uctx);
+					   REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
+					   fr_cursor_t const *in);
 
 /** Allocate new instance data for an xlat instance
  *
