@@ -283,6 +283,7 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 		ERROR("Failed opening %s: %s", inst->filename_work,
 		      fr_syserror(errno));
 		unlink(inst->filename_work);
+		close(fd);
 		return -1;
 	}
 
@@ -290,6 +291,7 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 		DEBUG3("proto_detail (%s): %s file is empty, ignoring it.",
 		       inst->name, inst->filename_work);
 		unlink(inst->filename_work);
+		close(fd);
 		return -1;
 	}
 
@@ -316,6 +318,7 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 	listen->app_io_instance = work = talloc(listen, proto_detail_work_t);
 	if (!work) {
 		talloc_free(listen);
+		close(fd);
 		DEBUG("Failed allocating memory");
 		return -1;
 	}
@@ -363,6 +366,7 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 	if (fr_event_filter_insert(inst, inst->el, fd, FR_EVENT_FILTER_VNODE,
 				   &funcs, NULL, inst) < 0) {
 		ERROR("Failed adding work socket to event loop: %s", fr_strerror());
+		close(fd);
 		goto detach;
 	}
 
@@ -430,6 +434,7 @@ static void mod_vnode_delete(fr_event_list_t *el, int fd, UNUSED int fflags, voi
 	DEBUG("proto_detail (%s): Deleted %s", inst->name, inst->filename_work);
 
 	(void) fr_event_fd_delete(el, fd, FR_EVENT_FILTER_VNODE);
+	close(fd);
 
 	/*
 	 *	Re-initialize the state machine.
