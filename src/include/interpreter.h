@@ -272,7 +272,9 @@ typedef struct {
 	/*
 	 *	For func and alternate
 	 */
-	fr_value_box_t		*result;			//!< Of nested expansion.
+	fr_value_box_t		*rhead;				//!< Of nested expansion.
+	fr_cursor_t		result;				//!< Result cursor, mainly useful for
+								///< asynchronous xlat functions.
 	bool			alternate;			//!< record which alternate branch we
 								///< previously took.
 } unlang_stack_state_xlat_t;

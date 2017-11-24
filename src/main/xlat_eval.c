@@ -505,7 +505,7 @@ static const char xlat_spaces[] = "                                             
 xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				     xlat_exp_t const **child, bool *alternate,
 				     REQUEST *request, xlat_exp_t const **in,
-				     fr_value_box_t *result)
+				     fr_cursor_t *result)
 {
 	xlat_exp_t const *node = *in;
 
@@ -523,7 +523,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			char		*result_str;
 			ssize_t		slen;
 
-			result_str = fr_value_box_list_asprint(NULL, result, NULL, '\0');
+			result_str = fr_value_box_list_asprint(NULL, fr_cursor_head(result), NULL, '\0');
 			if (!result_str) return XLAT_ACTION_FAIL;
 
 			if (node->xlat->buf_len > 0) {
@@ -592,8 +592,6 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	case XLAT_ALTERNATE:
 	{
-		fr_cursor_t alt_result;
-
 		rad_assert(alternate);
 		rad_assert(child);
 
@@ -617,9 +615,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 			return XLAT_ACTION_PUSH_CHILD;
 		}
-
-		fr_cursor_init(&alt_result, &result);
-		fr_cursor_merge(out, &alt_result);
+		fr_cursor_merge(out, result);
 	}
 		break;
 

@@ -117,7 +117,7 @@ typedef int (*xlat_thread_instantiate_t)(void *xlat_inst, void *xlat_thread_inst
 xlat_action_t	xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				       xlat_exp_t const **child, bool *alternate,
 				       REQUEST *request, xlat_exp_t const **in,
-				       fr_value_box_t *result);
+				       fr_cursor_t *result);
 
 xlat_action_t	xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t const **child,
 				REQUEST *request, xlat_exp_t const **in);

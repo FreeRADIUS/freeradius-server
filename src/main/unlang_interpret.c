@@ -918,10 +918,11 @@ static unlang_action_t unlang_xlat(REQUEST *request,
 	xlat_action_t			xa;
 
 	if (frame->repeat) {
+		fr_cursor_init(&xs->result, &xs->rhead);
 		xa = xlat_frame_eval_repeat(xs->ctx, &xs->values,
 					    &child, &xs->alternate,
 					    request, &xs->exp,
-					    xs->result);
+					    &xs->result);
 	} else {
 		xa = xlat_frame_eval(xs->ctx, &xs->values, &child, request, &xs->exp);
 	}
@@ -931,7 +932,7 @@ static unlang_action_t unlang_xlat(REQUEST *request,
 		rad_assert(child);
 
 		frame->repeat = true;
-		unlang_push_xlat(xs->ctx, &xs->result, request, child, false);
+		unlang_push_xlat(xs->ctx, &xs->rhead, request, child, false);
 		return UNLANG_ACTION_PUSHED_CHILD;
 
 	case XLAT_ACTION_YIELD:
