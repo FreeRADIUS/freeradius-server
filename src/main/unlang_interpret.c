@@ -535,7 +535,7 @@ static rlm_rcode_t unlang_run(REQUEST *request);
  *	NULL on error
  */
 static unlang_resume_t *unlang_resume_alloc(REQUEST *request,
-					    fr_unlang_resume_callback_t callback,
+					    void *callback,
 					    fr_unlang_action_t signal_callback, void *rctx)
 {
 	unlang_resume_t 		*mr;
