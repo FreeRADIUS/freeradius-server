@@ -539,7 +539,6 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 		}
 
 		packet_len = data_size;
-		DEBUG("READ PENDING PACKET %zd", data_size);
 
 		rad_assert(track != NULL);
 		rad_assert(track->src_dst != NULL);
@@ -797,7 +796,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		fr_dlist_t *entry;
 		dynamic_packet_t *saved;
 
-		DEBUG("Defining new client");
+		DEBUG#("Defining new client");
 
 		/*
 		 *	@todo - maybe just duplicate the new client fields,
@@ -844,7 +843,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		 *	don't send the packet on towards mod_read()
 		 */
 		if (track->timestamp != request_time) {
-			DEBUG("First packet was too late, discarding it.");
+			DEBUG3("First packet was too late, discarding it.");
 
 			entry = FR_DLIST_FIRST(client->packets);
 			rad_assert(entry != NULL);
@@ -863,7 +862,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		 *	allocated one.
 		 */
 		while ((entry = FR_DLIST_FIRST(client->packets)) != NULL) {
-			DEBUG("Restoring packet...");
+			DEBUG3("Restoring packet...");
 
 			saved = fr_ptr_to_type(dynamic_packet_t, entry, entry);
 			fr_dlist_remove(&saved->entry);
@@ -881,10 +880,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		 */
 		entry = FR_DLIST_FIRST(inst->dynamic_clients.packets);
 		if (entry) {
-			DEBUG2("Emptying pending queue %p %p %p %p", inst,
-			       &inst->dynamic_clients.packets,
-			       inst->dynamic_clients.packets.prev,
-			       inst->dynamic_clients.packets.next);
+			DEBUG3("Emptying pending queue");
 			fr_network_listen_read(inst->nr, inst->parent->listen);
 		}
 
