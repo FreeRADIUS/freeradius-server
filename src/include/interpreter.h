@@ -196,9 +196,7 @@ typedef struct {
  */
 typedef struct {
 	unlang_t			self;
-	unlang_type_t			parent_type;	//!< type of the parent
-
-	module_instance_t		*module_instance; //!< as described
+	unlang_t			*parent;	//!< The original instruction.
 
 	fr_unlang_resume_callback_t    callback;	//!< Function the yielding code indicated should
 							//!< be called when the request could be resumed.

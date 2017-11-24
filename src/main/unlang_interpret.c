@@ -546,9 +546,9 @@ static unlang_resume_t *unlang_resume_alloc(REQUEST *request,
 	if (!mr) return NULL;
 
 	/*
-	 *	Remember the parent type.
+	 *	Remember the parent.
 	 */
-	mr->parent_type = frame->instruction->type;
+	mr->parent = frame->instruction;
 
 	/*
 	 *	Initialize parent ptr, next ptr, name, debug_name,
@@ -709,10 +709,12 @@ static rlm_rcode_t unlang_module_resume(REQUEST *request,
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
 	unlang_resume_t			*mr = unlang_generic_to_resume(instruction);
+	unlang_module_call_t		*mc = unlang_generic_to_module_call(mr->parent);
+
 	unlang_stack_state_modcall_t	*modcall_state = NULL;
 	rlm_rcode_t			rcode;
 
-	rad_assert(mr->parent_type == UNLANG_TYPE_MODULE_CALL);
+	rad_assert(mr->parent->type == UNLANG_TYPE_MODULE_CALL);
 
 	modcall_state = talloc_get_type_abort(frame->state,
 					      unlang_stack_state_modcall_t);
@@ -720,9 +722,10 @@ static rlm_rcode_t unlang_module_resume(REQUEST *request,
 	/*
 	 *	Lock is noop unless instance->mutex is set.
 	 */
-	safe_lock(mr->module_instance);
-	rcode = request->rcode = mr->callback(request, instance, mr->thread, mr->resume_ctx);
-	safe_unlock(mr->module_instance);
+	safe_lock(mc->module_instance);
+	rcode = request->rcode = ((fr_unlang_resume_callback_t)mr->callback)(request, instance,
+									     mr->thread, mr->resume_ctx);
+	safe_unlock(mc->module_instance);
 
 	if (rcode != RLM_MODULE_YIELD) modcall_state->thread->active_callers--;
 
@@ -1958,7 +1961,7 @@ static unlang_action_t unlang_resume(REQUEST *request,
 
 	RDEBUG3("Resuming in %s", mr->self.debug_name);
 
-	if (!unlang_ops_resume[mr->parent_type]) {
+	if (!unlang_ops_resume[mr->parent->type]) {
 		*presult = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
@@ -1971,8 +1974,8 @@ static unlang_action_t unlang_resume(REQUEST *request,
 	 *	the original frame which was used to
 	 *	create this resumption frame.
 	 */
-	*presult = unlang_ops_resume[mr->parent_type](request, instance,
-						      mr->thread, mr->resume_ctx);
+	*presult = unlang_ops_resume[mr->parent->type](request, instance,
+						       mr->thread, mr->resume_ctx);
 
 	request->module = NULL;
 
@@ -3123,7 +3126,7 @@ void unlang_resumable(REQUEST *request)
 		mr = unlang_generic_to_resume(frame->instruction);
 		(void) talloc_get_type_abort(mr, unlang_resume_t);
 
-		if (mr->parent_type != UNLANG_TYPE_PARALLEL) goto next;
+		if (mr->parent->type != UNLANG_TYPE_PARALLEL) goto next;
 
 		state = mr->resume_ctx;
 
@@ -3259,13 +3262,12 @@ rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_resume_callback_t ca
 		/*
 		 *	Remember module-specific data.
 		 */
-		mr->module_instance = sp->module_instance;
 		mr->instance = sp->module_instance->dl_inst->data;
 		mr->thread = modcall_state->thread->data;
 
 	} else {
 		mr = talloc_get_type_abort(frame->instruction, unlang_resume_t);
-		rad_assert(mr->parent_type == UNLANG_TYPE_MODULE_CALL);
+		rad_assert(mr->parent->type == UNLANG_TYPE_MODULE_CALL);
 
 		/*
 		 *	Can't change threads...
