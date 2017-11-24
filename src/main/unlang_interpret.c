@@ -529,14 +529,14 @@ static rlm_rcode_t unlang_run(REQUEST *request);
  * @param[in] request		The current request.
  * @param[in] callback		to call on unlang_resumable().
  * @param[in] signal_callback	to call on unlang_action().
- * @param[in] ctx		to pass to the callbacks.
+ * @param[in] rctx		to pass to the callbacks.
  * @return
  *	unlang_resume_t on success
  *	NULL on error
  */
 static unlang_resume_t *unlang_resume_alloc(REQUEST *request,
 					    fr_unlang_resume_callback_t callback,
-					    fr_unlang_action_t signal_callback, void *ctx)
+					    fr_unlang_action_t signal_callback, void *rctx)
 {
 	unlang_resume_t 		*mr;
 	unlang_stack_t			*stack = request->stack;
@@ -566,7 +566,7 @@ static unlang_resume_t *unlang_resume_alloc(REQUEST *request,
 	 */
 	mr->callback = callback;
 	mr->signal_callback = signal_callback;
-	mr->resume_ctx = ctx;
+	mr->resume_ctx = rctx;
 
 	/*
 	 *	Replaces the current stack frame with a RESUME frame.
@@ -3230,11 +3230,11 @@ int unlang_stack_depth(REQUEST *request)
  * @param[in] request		The current request.
  * @param[in] callback		to call on unlang_resumable().
  * @param[in] signal_callback	to call on unlang_action().
- * @param[in] ctx		to pass to the callbacks.
  * @return always returns RLM_MODULE_YIELD.
+ * @param[in] rctx		to pass to the callbacks.
  */
 rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_resume_callback_t callback,
-				fr_unlang_action_t signal_callback, void *ctx)
+				fr_unlang_action_t signal_callback, void *rctx)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -3256,7 +3256,7 @@ rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_resume_callback_t ca
 		 */
 		sp = unlang_generic_to_module_call(frame->instruction);
 
-		mr = unlang_resume_alloc(request, callback, signal_callback, ctx);
+		mr = unlang_resume_alloc(request, callback, signal_callback, rctx);
 		rad_assert(mr != NULL);
 
 		/*
@@ -3280,7 +3280,7 @@ rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_resume_callback_t ca
 		 */
 		mr->callback = callback;
 		mr->signal_callback = signal_callback;
-		mr->resume_ctx = ctx;
+		mr->resume_ctx = rctx;
 	}
 
 	return RLM_MODULE_YIELD;

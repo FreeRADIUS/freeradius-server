@@ -196,20 +196,20 @@ typedef struct {
  */
 typedef struct {
 	unlang_t			self;
-	unlang_t			*parent;	//!< The original instruction.
+	unlang_t			*parent;		//!< The original instruction.
 
-	fr_unlang_resume_callback_t    callback;	//!< Function the yielding code indicated should
-							//!< be called when the request could be resumed.
+	void    			*callback;		//!< Function the yielding code indicated should
+								//!< be called when the request could be resumed.
 
-	fr_unlang_action_t		signal_callback;  //!< Function the yielding module indicated should
-							//!< be called when the request is poked via an action
-							//!< may be removed in future.
+	fr_unlang_action_t		signal_callback;	//!< Function the yielding module indicated should
+								//!< be called when the request is poked via an action
+								//!< may be removed in future.
 
-
-	void				*resume_ctx;   	//!< Context data for the callback.  Usually represents
-							//!< the module's internal state at the time of yielding.
-	void const			*instance;	//!< instance data
-	void     			*thread;	//!< thread data
+	void				*resume_ctx;   		//!< Context data for the callback.  Usually represents
+								///< the module's internal state at the time of
+								///< <yielding.
+	void const			*instance;		//!< instance data
+	void     			*thread;		//!< thread data
 } unlang_resume_t;
 
 /** A naked xlat
