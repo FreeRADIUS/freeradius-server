@@ -945,7 +945,7 @@ RADCLIENT *client_afrom_request(TALLOC_CTX *ctx, REQUEST *request)
 		return NULL;
 	}
 
-	return NULL;
+	return c;
 }
 
 /** Read a single client from a file
