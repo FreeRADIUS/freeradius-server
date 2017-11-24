@@ -50,8 +50,8 @@ static FR_NAME_NUMBER unlang_action_table[] = {
 #define UNLANG_DETACHABLE (true)
 #define UNLANG_NORMAL_CHILD (false)
 
-typedef rlm_rcode_t (*unlang_op_resume_func_t)(REQUEST *request,
-					       void *instance, void *thread, void *resume_ctx);
+typedef unlang_action_t (*unlang_op_resume_func_t)(REQUEST *request, rlm_rcode_t *presult,
+						   void *instance, void *thread, void *resume_ctx);
 
 static void unlang_push_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
 			     REQUEST *request, xlat_exp_t const *exp, bool top_frame);
@@ -658,12 +658,11 @@ static void unlang_subrequest_signal(UNUSED REQUEST *request, UNUSED void *insta
 /** Resume a subrequest
  *
  */
-static rlm_rcode_t unlang_subrequest_resume(UNUSED REQUEST *request,
-					    UNUSED void *instance, UNUSED void *thread, void *resume_ctx)
+static unlang_action_t unlang_subrequest_resume(UNUSED REQUEST *request, rlm_rcode_t *presult,
+						UNUSED void *instance, UNUSED void *thread, void *resume_ctx)
 {
 	REQUEST			*child = talloc_get_type_abort(resume_ctx, REQUEST);
 	unlang_stack_t		*stack = request->stack;
-	rlm_rcode_t		rcode;
 	unlang_stack_frame_t	*frame;
 #ifndef NDEBUG
 	unlang_resume_t		*mr;
@@ -672,15 +671,16 @@ static rlm_rcode_t unlang_subrequest_resume(UNUSED REQUEST *request,
 	/*
 	 *	Continue running the child.
 	 */
-	rcode = unlang_run(child);
-	if (rcode != RLM_MODULE_YIELD) {
+	*presult = unlang_run(child);
+	if (*presult != RLM_MODULE_YIELD) {
 		frame = &stack->frame[stack->depth];
 		rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
 
 		frame->instruction->type = UNLANG_TYPE_SUBREQUEST; /* for debug purposes */
 		request_detach(child);
 		talloc_free(child);
-		return rcode;
+
+		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
 #ifndef NDEBUG
@@ -699,11 +699,12 @@ static rlm_rcode_t unlang_subrequest_resume(UNUSED REQUEST *request,
 	 *	If the child yields, our current frame is still an
 	 *	unlang_resume_t.
 	 */
-	return RLM_MODULE_YIELD;
+
+	return UNLANG_ACTION_YIELD;
 }
 
-static rlm_rcode_t unlang_module_resume(REQUEST *request,
-					UNUSED void *instance, UNUSED void *thread, UNUSED void *resume_ctx)
+static unlang_action_t unlang_module_resume(REQUEST *request, rlm_rcode_t *presult,
+					    UNUSED void *instance, UNUSED void *thread, UNUSED void *resume_ctx)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -712,7 +713,6 @@ static rlm_rcode_t unlang_module_resume(REQUEST *request,
 	unlang_module_call_t		*mc = unlang_generic_to_module_call(mr->parent);
 
 	unlang_stack_state_modcall_t	*modcall_state = NULL;
-	rlm_rcode_t			rcode;
 
 	rad_assert(mr->parent->type == UNLANG_TYPE_MODULE_CALL);
 
@@ -723,16 +723,16 @@ static rlm_rcode_t unlang_module_resume(REQUEST *request,
 	 *	Lock is noop unless instance->mutex is set.
 	 */
 	safe_lock(mc->module_instance);
-	rcode = request->rcode = ((fr_unlang_resume_callback_t)mr->callback)(request, instance,
-									     mr->thread, mr->resume_ctx);
+	*presult = request->rcode = ((fr_unlang_resume_callback_t)mr->callback)(request, instance,
+										mr->thread, mr->resume_ctx);
 	safe_unlock(mc->module_instance);
 
-	if (rcode != RLM_MODULE_YIELD) modcall_state->thread->active_callers--;
+	if (*presult != RLM_MODULE_YIELD) modcall_state->thread->active_callers--;
 
 	RDEBUG2("%s (%s)", instruction->name ? instruction->name : "",
-		fr_int2str(mod_rcode_table, rcode, "<invalid>"));
+		fr_int2str(mod_rcode_table, *presult, "<invalid>"));
 
-	return rcode;
+	return *presult == RLM_MODULE_YIELD ? UNLANG_ACTION_YIELD : UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 
@@ -1295,10 +1295,9 @@ static void unlang_parallel_signal(UNUSED REQUEST *request, UNUSED void *instanc
 }
 
 
-static rlm_rcode_t unlang_parallel_resume(REQUEST *request,
-					  UNUSED void *instance, UNUSED void *thread, void *resume_ctx)
+static unlang_action_t unlang_parallel_resume(REQUEST *request, rlm_rcode_t *presult,
+					      UNUSED void *instance, UNUSED void *thread, void *resume_ctx)
 {
-	rlm_rcode_t		rcode;
 	unlang_parallel_t	*state = talloc_get_type_abort(resume_ctx, unlang_parallel_t);
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
@@ -1310,13 +1309,13 @@ static rlm_rcode_t unlang_parallel_resume(REQUEST *request,
 	/*
 	 *	Continue running the child.
 	 */
-	rcode = unlang_parallel_run(request, state);
-	if (rcode != RLM_MODULE_YIELD) {
+	*presult = unlang_parallel_run(request, state);
+	if (*presult != RLM_MODULE_YIELD) {
 		rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
 
 		frame->instruction->type = UNLANG_TYPE_PARALLEL; /* for debug purposes */
 		talloc_free(state);
-		return rcode;
+		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
 #ifndef NDEBUG
@@ -1334,7 +1333,7 @@ static rlm_rcode_t unlang_parallel_resume(REQUEST *request,
 	 *	If the child yields, our current frame is still an
 	 *	unlang_resume_t.
 	 */
-	return RLM_MODULE_YIELD;
+	return UNLANG_ACTION_YIELD;
 }
 
 static unlang_action_t unlang_parallel(REQUEST *request,
@@ -1933,6 +1932,7 @@ static unlang_action_t unlang_if(REQUEST *request,
 
 static unlang_op_resume_func_t unlang_ops_resume[] = {
 	[UNLANG_TYPE_MODULE_CALL]	= unlang_module_resume,
+	[UNLANG_TYPE_XLAT]		= unlang_xlat_resume,
 	[UNLANG_TYPE_SUBREQUEST]       	= unlang_subrequest_resume,
 	[UNLANG_TYPE_PARALLEL]		= unlang_parallel_resume,
 	[UNLANG_TYPE_MAX]		= NULL
@@ -1958,6 +1958,7 @@ static unlang_action_t unlang_resume(REQUEST *request,
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
 	unlang_resume_t			*mr = unlang_generic_to_resume(instruction);
+	unlang_action_t			action;
 	void 				*instance;
 
 	RDEBUG3("Resuming in %s", mr->self.debug_name);
@@ -1975,8 +1976,7 @@ static unlang_action_t unlang_resume(REQUEST *request,
 	 *	the original frame which was used to
 	 *	create this resumption frame.
 	 */
-	*presult = unlang_ops_resume[mr->parent->type](request, instance,
-						       mr->thread, mr->resume_ctx);
+	action = unlang_ops_resume[mr->parent->type](request, presult, instance, mr->thread, mr->resume_ctx);
 
 	request->module = NULL;
 
@@ -1998,7 +1998,7 @@ static unlang_action_t unlang_resume(REQUEST *request,
 		*priority = instruction->actions[*presult];
 	}
 
-	return *presult == RLM_MODULE_YIELD ? UNLANG_ACTION_YIELD : UNLANG_ACTION_CALCULATE_RESULT;
+	return action;
 }
 
 /*
