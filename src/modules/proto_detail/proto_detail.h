@@ -79,6 +79,7 @@ typedef struct proto_detail_work_t {
 	char const			*name;			//!< debug name for printing
 
 	int				fd;			//!< file descriptor
+	int				vnode_fd;      		//!< file descriptor for vnode_delete
 
 	fr_event_list_t			*el;			//!< for various timers
 

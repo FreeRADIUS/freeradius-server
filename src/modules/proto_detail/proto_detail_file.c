@@ -423,6 +423,8 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 		return -1;
 	}
 
+	inst->vnode_fd = fd;
+
 	return 0;
 }
 
@@ -435,6 +437,7 @@ static void mod_vnode_delete(fr_event_list_t *el, int fd, UNUSED int fflags, voi
 
 	(void) fr_event_fd_delete(el, fd, FR_EVENT_FILTER_VNODE);
 	close(fd);
+	inst->vnode_fd = -1;
 
 	/*
 	 *	Re-initialize the state machine.
@@ -674,8 +677,13 @@ static int mod_detach(void *instance)
 	 *	"copy timer from -> to, which means we only have to
 	 *	delete our child event loop from the parent on close.
 	 */
-
 	close(inst->fd);
+
+	if (inst->vnode_fd >= 0) {
+		(void) fr_event_fd_delete(inst->el, inst->vnode_fd, FR_EVENT_FILTER_VNODE);
+		close(inst->vnode_fd);
+	}
+
 	return 0;
 }
 
