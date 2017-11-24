@@ -2642,6 +2642,17 @@ static unlang_t xlat_instruction = {
 	.type = UNLANG_TYPE_XLAT,
 	.name = "xlat",
 	.debug_name = "xlat",
+	.actions = {
+		[RLM_MODULE_REJECT]	= 0,
+		[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,	/* Exit out of nested levels */
+		[RLM_MODULE_OK]		= 0,
+		[RLM_MODULE_HANDLED]	= 0,
+		[RLM_MODULE_INVALID]	= 0,
+		[RLM_MODULE_USERLOCK]	= 0,
+		[RLM_MODULE_NOTFOUND]	= 0,
+		[RLM_MODULE_NOOP]	= 0,
+		[RLM_MODULE_UPDATED]	= 0
+	},
 };
 
 /** Push a pre-compiled xlat onto the stack for evaluation
