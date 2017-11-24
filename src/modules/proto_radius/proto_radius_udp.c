@@ -232,7 +232,7 @@ static RADCLIENT *mod_client(UNUSED void const *instance, void const *packet_ctx
 }
 
 
-static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffer, UNUSED size_t buffer_len)
+static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
 {
 	proto_radius_udp_t const		*inst = instance;
 	fr_tracking_entry_t const		*track = request->async->packet_ctx;
@@ -246,6 +246,14 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	if (!inst->dynamic_clients_is_set || !address->client->dynamic || address->client->active) return 0;
 
 	/*
+	 *	This will never happen...
+	 */
+	if (buffer_len < sizeof(client)) {
+		buffer[0] = 1;
+		return 1;
+	}
+
+	/*
 	 *	Allocate the client.  If that fails, send back a NAK.
 	 *
 	 *	@todo - deal with NUMA zones?  Or just deal with this
@@ -257,24 +265,13 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	 */
 	client = client_afrom_request(NULL, request);
 	if (!client) {
+		ERROR("Failed creating new client: %s", fr_strerror());
 		buffer[0] = 1;
 		return 1;
 	}
 
-	talloc_free(client);
-
-	/*
-	 *	@todo - magically get the new client definition from
-	 *	request->control over to mod_write().
-	 *
-	 *	TBH, the best way is likely a mutex in 'inst'.  <sigh>
-	 */
-
-	buffer[0] = 0;
-	buffer[1] = 0;
-
-	// @todo - return actual value...
-	return 2;
+	memcpy(buffer, &client, sizeof(client));
+	return sizeof(client);
 }
 
 
@@ -528,11 +525,13 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	fr_tracking_status_t		tracking_status;
 	fr_tracking_entry_t		*track = NULL;
 	proto_radius_udp_address_t	address;
+	fr_dlist_t			*entry;
 
 	/*
 	 *	There are saved packets.  Go read them.
 	 */
-	if (FR_DLIST_FIRST(inst->dynamic_clients.packets)) {
+	entry = FR_DLIST_FIRST(inst->dynamic_clients.packets);
+	if (entry) {
 		data_size = dynamic_client_packet_restore(inst, buffer, buffer_len, &track);
 		if (data_size < 0) {
 			rad_assert(0 == 1);
@@ -540,6 +539,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 		}
 
 		packet_len = data_size;
+		DEBUG("READ PENDING PACKET %zd", data_size);
 
 		rad_assert(track != NULL);
 		rad_assert(track->src_dst != NULL);
@@ -780,7 +780,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 {
 	proto_radius_udp_t		*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
 	fr_tracking_entry_t		*track = packet_ctx;
-	proto_radius_udp_address_t const *address = track->src_dst;
+	proto_radius_udp_address_t	*address = track->src_dst;
 
 	ssize_t				data_size;
 	fr_time_t			reply_time;
@@ -793,12 +793,28 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	 */
 	if (inst->dynamic_clients_is_set && address->client->dynamic && !address->client->active) {
 		RADCLIENT *client = address->client;
+		RADCLIENT *newclient;
 		fr_dlist_t *entry;
+		dynamic_packet_t *saved;
 
+		DEBUG("Defining new client");
+
+		/*
+		 *	@todo - maybe just duplicate the new client fields,
+		 *	and talloc_free(newclient).
+		 */
+		client_delete(inst->dynamic_clients.clients, client);
+		inst->dynamic_clients.num_pending_clients--;
+
+		/*
+		 *	NAK: drop all packets.
+		 *
+		 *	@todo - add a negative cache, so we ignore bad
+		 *	packets for a while...
+		 */
 		if (buffer_len == 1) {
+		nak:
 			while ((entry = FR_DLIST_FIRST(client->packets)) != NULL) {
-				dynamic_packet_t *saved;
-
 				saved = fr_ptr_to_type(dynamic_packet_t, entry, entry);
 				(void) fr_radius_tracking_entry_delete(inst->ft, saved->track);
 				fr_dlist_remove(&saved->entry);
@@ -806,15 +822,21 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 				inst->dynamic_clients.num_pending_packets--;
 			}
 
-			client_delete(inst->dynamic_clients.clients, client);
 			client_free(client);
-
 			return buffer_len;
 		}
 
-		inst->dynamic_clients.num_pending_clients--;
+		rad_assert(buffer_len == sizeof(newclient));
+		memcpy(&newclient, buffer, sizeof(newclient));
 
-		// @todo - create / pack the client definition...
+		newclient->dynamic = true;
+		newclient->active = true;
+
+		if (!client_add(inst->dynamic_clients.clients, newclient)) {
+			goto nak;
+		}
+
+		inst->dynamic_clients.num_clients++;
 
 		/*
 		 *	This particular packet had a later one
@@ -822,7 +844,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		 *	don't send the packet on towards mod_read()
 		 */
 		if (track->timestamp != request_time) {
-			dynamic_packet_t *saved;
+			DEBUG("First packet was too late, discarding it.");
 
 			entry = FR_DLIST_FIRST(client->packets);
 			rad_assert(entry != NULL);
@@ -836,20 +858,37 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		}
 
 		/*
-		 *	Move the packets over to the pending list.
+		 *	Move the packets over to the pending list, and
+		 *	re-write their client pointers to be the newly
+		 *	allocated one.
 		 */
 		while ((entry = FR_DLIST_FIRST(client->packets)) != NULL) {
-			fr_dlist_remove(entry);
-			fr_dlist_insert_tail(&inst->dynamic_clients.pending, entry);
+			DEBUG("Restoring packet...");
+
+			saved = fr_ptr_to_type(dynamic_packet_t, entry, entry);
+			fr_dlist_remove(&saved->entry);
+			fr_dlist_insert_tail(&inst->dynamic_clients.packets, &saved->entry);
+
+			address = saved->track->src_dst;
+			address->client = newclient;
+
+			rad_assert(inst->dynamic_clients.num_pending_packets > 0);
 			inst->dynamic_clients.num_pending_packets--;
 		}
 
-		rad_assert(0 == 1);
-
 		/*
-		 *	Tell the network side to call mod_read()
+		 *	Tell the network side to call mod_read(), if necessary.
 		 */
-		fr_network_listen_read(inst->nr, talloc_parent(inst));
+		entry = FR_DLIST_FIRST(inst->dynamic_clients.packets);
+		if (entry) {
+			DEBUG2("Emptying pending queue %p %p %p %p", inst,
+			       &inst->dynamic_clients.packets,
+			       inst->dynamic_clients.packets.prev,
+			       inst->dynamic_clients.packets.next);
+			fr_network_listen_read(inst->nr, inst->parent->listen);
+		}
+
+		talloc_free(client);
 		return buffer_len;
 	}
 
