@@ -87,6 +87,28 @@ typedef xlat_action_t (*xlat_func_async_t)(TALLOC_CTX *ctx, fr_cursor_t *out,
 					   REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
 					   fr_cursor_t const *in);
 
+/** Async xlat callback function
+ *
+ * Ingests a list of value boxes as arguments, with arguments delimited by spaces.
+ *
+ * @param[in] ctx		to allocate any fr_value_box_t in.
+ * @param[out] out		Where to append #fr_value_box_t containing the output of this function.
+ * @param[in] request		The current request.
+ * @param[in] xlat_inst		Global xlat instance.
+ * @param[in] xlat_thread_inst	Thread specific xlat instance.
+ * @param[in] in		Input arguments.
+ * @param[in] rctx		passed to resume function.
+ * @return
+ *	- XLAT_ACTION_YIELD	xlat function is waiting on an I/O event and
+ *				has pushed a resumption function onto the stack.
+ *	- XLAT_ACTION_DONE	xlat function completed. This does not necessarily
+ *				mean it turned a result.
+ *	- XLAT_ACTION_FAIL	the xlat function failed.
+ */
+typedef xlat_action_t (*xlat_resume_callback_t)(TALLOC_CTX *ctx, fr_cursor_t *out,
+						REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
+						fr_cursor_t *in, void *rctx);
+
 /** Allocate new instance data for an xlat instance
  *
  * @param[out] xlat_inst 	Structure to populate. Allocated by #map_proc_instantiate.

@@ -307,6 +307,9 @@ int		unlang_stack_depth(REQUEST *request);
 
 rlm_rcode_t	unlang_module_yield(REQUEST *request, fr_unlang_resume_callback_t callback,
 				    fr_unlang_action_t signal_callback, void *ctx);
+xlat_action_t	unlang_xlat_yield(REQUEST *request, xlat_resume_callback_t callback,
+			          fr_unlang_action_t signal_callback, void *rctx);
+
 
 int		unlang_initialize(void);
 

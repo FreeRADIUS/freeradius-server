@@ -3294,6 +3294,62 @@ rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_resume_callback_t ca
 	}
 }
 
+/** Yield a request back to the interpreter from within a module
+ *
+ * This passes control of the request back to the unlang interpreter, setting
+ * callbacks to execute when the request is 'signalled' asynchronously, or whatever
+ * timer or I/O event the module was waiting for occurs.
+ *
+ * @note The module function which calls #unlang_module_yield should return control
+ *	of the C stack to the unlang interpreter immediately after calling #unlang_module_yield.
+ *	A common pattern is to use ``return unlang_module_yield(...)``.
+ *
+ * @param[in] request		The current request.
+ * @param[in] callback		to call on unlang_resumable().
+ * @param[in] signal_callback	to call on unlang_action().
+ * @param[in] rctx		to pass to the callbacks.
+ * @return always returns RLM_MODULE_YIELD.
+ */
+xlat_action_t unlang_xlat_yield(REQUEST *request, xlat_resume_callback_t callback,
+			        fr_unlang_action_t signal_callback, void *rctx)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_resume_t			*mr;
+
+	rad_assert(stack->depth > 0);
+
+	switch (frame->instruction->type) {
+	case UNLANG_TYPE_XLAT:
+	{
+		mr = unlang_resume_alloc(request, callback, signal_callback, rctx);
+		rad_assert(mr != NULL);
+
+		/*
+		 *	Remember xlat-specific data.
+		 */
+		mr->instance = NULL;
+		mr->thread = NULL;
+	}
+		return XLAT_ACTION_YIELD;
+
+	case UNLANG_TYPE_RESUME:
+		mr = talloc_get_type_abort(frame->instruction, unlang_resume_t);
+		rad_assert(mr->parent->type == UNLANG_TYPE_XLAT);
+
+		/*
+		 *	Re-use the current RESUME frame, but over-ride
+		 *	the callbacks and context.
+		 */
+		mr->callback = callback;
+		mr->signal_callback = signal_callback;
+		mr->resume_ctx = rctx;
+		return XLAT_ACTION_YIELD;
+
+	default:
+		rad_assert(0);
+		return XLAT_ACTION_FAIL;
+	}
 }
 
 /** Get information about the interpreter state
