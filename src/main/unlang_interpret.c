@@ -3231,8 +3231,11 @@ int unlang_stack_depth(REQUEST *request)
  * @param[in] request		The current request.
  * @param[in] callback		to call on unlang_resumable().
  * @param[in] signal_callback	to call on unlang_action().
- * @return always returns RLM_MODULE_YIELD.
  * @param[in] rctx		to pass to the callbacks.
+ * @return
+ *	- RLM_MODULE_YIELD on success.
+ *	- RLM_MODULE_FAIL (or asserts) if the current frame is not a module call or
+ *	  resume frame.
  */
 rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_resume_callback_t callback,
 				fr_unlang_action_t signal_callback, void *rctx)
@@ -3245,10 +3248,9 @@ rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_resume_callback_t ca
 
 	rad_assert(stack->depth > 0);
 
-	rad_assert((frame->instruction->type == UNLANG_TYPE_MODULE_CALL) ||
-		   (frame->instruction->type == UNLANG_TYPE_RESUME));
-
-	if (frame->instruction->type == UNLANG_TYPE_MODULE_CALL) {
+	switch (frame->instruction->type) {
+	case UNLANG_TYPE_MODULE_CALL:
+	{
 		unlang_module_call_t		*sp;
 
 		/*
@@ -3265,8 +3267,10 @@ rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_resume_callback_t ca
 		 */
 		mr->instance = sp->module_instance->dl_inst->data;
 		mr->thread = modcall_state->thread->data;
+	}
+		return RLM_MODULE_YIELD;
 
-	} else {
+	case UNLANG_TYPE_RESUME:
 		mr = talloc_get_type_abort(frame->instruction, unlang_resume_t);
 		rad_assert(mr->parent->type == UNLANG_TYPE_MODULE_CALL);
 
@@ -3282,9 +3286,14 @@ rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_resume_callback_t ca
 		mr->callback = callback;
 		mr->signal_callback = signal_callback;
 		mr->resume_ctx = rctx;
-	}
+		return RLM_MODULE_YIELD;
 
-	return RLM_MODULE_YIELD;
+	default:
+		rad_assert(0);
+		return RLM_MODULE_FAIL;
+	}
+}
+
 }
 
 /** Get information about the interpreter state
