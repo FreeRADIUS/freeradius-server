@@ -796,7 +796,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		fr_dlist_t *entry;
 		dynamic_packet_t *saved;
 
-		DEBUG#("Defining new client");
+		DEBUG3("Defining new client");
 
 		/*
 		 *	@todo - maybe just duplicate the new client fields,
