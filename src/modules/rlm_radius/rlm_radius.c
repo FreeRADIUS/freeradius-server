@@ -488,19 +488,24 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	 *	signaling.
 	 */
 	if (request->packet->code == FR_CODE_STATUS_SERVER) {
-		RDEBUG("Cannot proxy Status-Server packets");
+		REDEBUG("Cannot proxy Status-Server packets");
 		return RLM_MODULE_FAIL;
 	}
 
 	if ((request->packet->code >= FR_MAX_PACKET_CODE) ||
 	    !inst->retry[request->packet->code].irt) { /* can't be zero */
-		RDEBUG("Invalid packet code %d", request->packet->code);
+		REDEBUG("Invalid packet code %d", request->packet->code);
 		return RLM_MODULE_FAIL;
 	}
 
 	if (!inst->allowed[request->packet->code]) {
-		RDEBUG("Packet code %s is disallowed by the configuration",
+		REDEBUG("Packet code %s is disallowed by the configuration",
 		       fr_packet_codes[request->packet->code]);
+		return RLM_MODULE_FAIL;
+	}
+
+	if (request->client->dynamic && !request->client->active) {
+		REDEBUG("Cannot proxy packets which define dynamic clients");
 		return RLM_MODULE_FAIL;
 	}
 
