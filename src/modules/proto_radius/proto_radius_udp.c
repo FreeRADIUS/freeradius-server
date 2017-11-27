@@ -64,6 +64,8 @@ typedef struct dynamic_client_t {
 	uint32_t			num_pending_clients;	//!< number of pending clients
 	uint32_t			max_pending_packets;	//!< maximum accepted pending packets
 	uint32_t			num_pending_packets;	//!< how many packets are received, but not accepted
+
+	uint32_t			lifetime;		//!< of the dynamic client, in seconds.
 } dynamic_client_t;
 
 typedef struct {
@@ -109,6 +111,8 @@ static const CONF_PARSER dynamic_client_config[] = {
 	{ FR_CONF_OFFSET("max_clients", FR_TYPE_UINT32, dynamic_client_t, max_clients), .dflt = "65536" },
 	{ FR_CONF_OFFSET("max_pending_clients", FR_TYPE_UINT32, dynamic_client_t, max_pending_clients), .dflt = "256" },
 	{ FR_CONF_OFFSET("max_pending_packets", FR_TYPE_UINT32, dynamic_client_t, max_pending_packets), .dflt = "65536" },
+
+	{ FR_CONF_OFFSET("lifetime", FR_TYPE_UINT32, dynamic_client_t, lifetime), .dflt = "500" },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -1224,6 +1228,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 
 		FR_INTEGER_BOUND_CHECK("max_pending_packets", inst->dynamic_clients.max_pending_clients, >=, 256);
 		FR_INTEGER_BOUND_CHECK("max_pending_packets", inst->dynamic_clients.max_pending_clients, <=, 65536);
+
+		FR_INTEGER_BOUND_CHECK("lifetime", inst->dynamic_clients.lifetime, >=, 30);
+		FR_INTEGER_BOUND_CHECK("lifetime", inst->dynamic_clients.lifetime, <=, 86400);
 	}
 
 	return 0;
