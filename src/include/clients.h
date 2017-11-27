@@ -49,6 +49,7 @@ typedef struct radclient {
 	bool			dynamic;		//!< Whether the client was dynamically defined.
 	bool			active;			//!< for dynamic clients
 	bool			negative;		//!< negative cache entry
+	bool			expired;		//!< has it expired?
 
 #ifdef WITH_TLS
 	bool			tls_required;		//!< whether TLS encryption is required.
@@ -87,6 +88,8 @@ typedef struct radclient {
 	uint32_t		outstanding;		//!< number of requests outstanding
 	time_t			created;		//!< When the client was created.
 	fr_ipaddr_t		network;		//!< encapsulating network
+	void			*ctx;			//!< for timeouts
+	fr_event_timer_t const	*ev;			//!< cleanup timer for dynamic clients
 #endif
 } RADCLIENT;
 

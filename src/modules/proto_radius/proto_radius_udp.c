@@ -54,6 +54,7 @@ typedef struct dynamic_client_t {
 	fr_ipaddr_t			*network;		//!< dynamic networks to allow
 
 	RADCLIENT_LIST			*clients;		//!< local clients
+	RADCLIENT_LIST			*expired;		//!< expired local clients
 
 	fr_dlist_t			packets;       		//!< list of accepted packets
 	fr_dlist_t			pending;		//!< pending clients
@@ -112,7 +113,7 @@ static const CONF_PARSER dynamic_client_config[] = {
 	{ FR_CONF_OFFSET("max_pending_clients", FR_TYPE_UINT32, dynamic_client_t, max_pending_clients), .dflt = "256" },
 	{ FR_CONF_OFFSET("max_pending_packets", FR_TYPE_UINT32, dynamic_client_t, max_pending_packets), .dflt = "65536" },
 
-	{ FR_CONF_OFFSET("lifetime", FR_TYPE_UINT32, dynamic_client_t, lifetime), .dflt = "500" },
+	{ FR_CONF_OFFSET("lifetime", FR_TYPE_UINT32, dynamic_client_t, lifetime), .dflt = "600" },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -519,6 +520,87 @@ static ssize_t dynamic_client_alloc(proto_radius_udp_t *inst, uint8_t *packet, s
 	return packet_len;
 }
 
+static void dynamic_client_timer(proto_radius_udp_t *inst, RADCLIENT *client, uint32_t timer);
+
+static void dynamic_client_expire(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
+{
+	RADCLIENT *client = uctx;
+	proto_radius_udp_t *inst = client->ctx;
+
+	DEBUG("TIMER - checking dynamic client %s for expiration.", client->shortname);
+
+	/*
+	 *	The client has expired, and no one is using it.
+	 *	Remove it from the expired list, and free it.
+	 */
+	if (client->expired) {
+		DEBUG("%s - deleting client %s.", inst->name, client->shortname);
+		(void) client_delete(inst->dynamic_clients.expired, client);
+		rad_assert(client->outstanding == 0);
+		client_free(client);
+		return;
+	}
+
+	/*
+	 *	Mark the client as "expired", so that any new packets
+	 *	will result in us trying to re-define it.  Remove it
+	 *	from the main list, BUT add it to the "expired" list.
+	 */
+	client->expired = true;
+	client_delete(inst->dynamic_clients.clients, client);
+	client_add(inst->dynamic_clients.expired, client);
+
+	/*
+	 *	There are no active requests using this client.  It
+	 *	can be deleted.  However, we only free the client when
+	 *	we're sure that all packets associated with the client
+	 *	have timed out.
+	 *
+	 *	@todo - move to a tracking table per client (or per
+	 *	connection).  That way we know that when we delete the
+	 *	client or close the connection, we can free all
+	 *	packets associated with it.  Even if the packets are
+	 *	in "cleanup_delay" state.
+	 */
+	if (client->outstanding == 0) {
+		DEBUG("%s - marking dynamic client %s for deletion.", inst->name, client->shortname);
+		dynamic_client_timer(inst, client, inst->cleanup_delay + 5);
+		return;
+	}
+
+	/*
+	 *	Else the "expired" flag tells mod_read() to put NEW
+	 *	packets into the "packets" list.  It should then try
+	 *	to renew the client.
+	 */
+}
+
+static void dynamic_client_timer(proto_radius_udp_t *inst, RADCLIENT *client, uint32_t timer)
+{
+	struct timeval when;
+
+	/*
+	 *	It's not active, AND it's not a negative cache.  We
+	 *	had some other error trying to insert a "good" client
+	 *	into the list of known clients.  Just nuke it, and
+	 *	allow another packet to try to recreate it.
+	 */
+	if (!client->expired && !client->active && !client->negative) {
+		talloc_free(client);
+		return;
+	}
+
+	gettimeofday(&when, NULL);
+	when.tv_sec += timer;
+
+	client->ctx = inst;	/* nowhere else to put this... */
+
+	if (fr_event_timer_insert(client, inst->el, &client->ev,
+				  &when, dynamic_client_expire, client) < 0) {
+		ERROR("Failed adding timeout for dynamic client.  It will be permanent!");
+		return;
+	}
+}
 
 static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority)
 {
@@ -632,7 +714,6 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 			if (!address.client->dynamic || address.client->active) goto found;
 
 			if (address.client->negative) {
-				// @todo - extend the expiry time?
 				goto unknown;
 			}
 
@@ -781,6 +862,7 @@ return_packet:
 	return packet_len;
 }
 
+
 static ssize_t mod_write(void *instance, void *packet_ctx,
 			 fr_time_t request_time, uint8_t *buffer, size_t buffer_len)
 {
@@ -809,16 +891,17 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		 *	@todo - maybe just duplicate the new client fields,
 		 *	and talloc_free(newclient).
 		 */
-		client_delete(inst->dynamic_clients.clients, client);
 		inst->dynamic_clients.num_pending_clients--;
 
 		/*
 		 *	NAK: drop all packets.
 		 *
-		 *	@todo - add a negative cache, so we ignore bad
-		 *	packets for a while...
+		 *	If it's an explicit NAK, then add the source
+		 *	IP to a negative cache as a DoS prevention.
 		 */
 		if (buffer_len == 1) {
+			client->negative = true;
+
 		nak:
 			while ((entry = FR_DLIST_FIRST(client->packets)) != NULL) {
 				saved = fr_ptr_to_type(dynamic_packet_t, entry, entry);
@@ -828,7 +911,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 				inst->dynamic_clients.num_pending_packets--;
 			}
 
-			client_free(client);
+			dynamic_client_timer(inst, client, 30);
 			return buffer_len;
 		}
 
@@ -836,12 +919,18 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		memcpy(&newclient, buffer, sizeof(newclient));
 
 		newclient->dynamic = true;
-		newclient->active = true;
 
+		/*
+		 *	If we can't add it, then clean it up.  BUT
+		 *	allow other packets to come from the same IP.
+		 */
+		client_delete(inst->dynamic_clients.clients, client);
 		if (!client_add(inst->dynamic_clients.clients, newclient)) {
+			client->negative = false;
 			goto nak;
 		}
 
+		newclient->active = true;
 		inst->dynamic_clients.num_clients++;
 
 		/*
@@ -882,6 +971,9 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			inst->dynamic_clients.num_pending_packets--;
 		}
 
+		dynamic_client_timer(inst, newclient, inst->dynamic_clients.lifetime);
+		talloc_free(client);
+
 		/*
 		 *	Tell the network side to call mod_read(), if necessary.
 		 */
@@ -891,7 +983,6 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			fr_network_listen_read(inst->nr, inst->parent->listen);
 		}
 
-		talloc_free(client);
 		return buffer_len;
 	}
 
@@ -1219,6 +1310,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		 *	Allow static clients for this virtual server.
 		 */
 		inst->dynamic_clients.clients = client_list_init(NULL); // client_list_parse_section(inst->parent->server_cs, false);
+		inst->dynamic_clients.expired = client_list_init(NULL);
 
 		FR_INTEGER_BOUND_CHECK("max_clients", inst->dynamic_clients.max_clients, >=, 1);
 		FR_INTEGER_BOUND_CHECK("max_clients", inst->dynamic_clients.max_clients, <=, (1 << 20));
