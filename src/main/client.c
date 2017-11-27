@@ -355,6 +355,12 @@ RADCLIENT *client_find(RADCLIENT_LIST const *clients, fr_ipaddr_t const *ipaddr,
 		return NULL;
 	}
 
+	/*
+	 *	If we're told to look for client 192.168/16, then look for that,
+	 *	and don't start at /32.
+	 */
+	if (ipaddr->prefix < max_prefix) max_prefix = ipaddr->prefix;
+
 	for (i = max_prefix; i >= (int32_t) clients->min_prefix; i--) {
 		void *data;
 
