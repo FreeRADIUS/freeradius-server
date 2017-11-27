@@ -950,7 +950,8 @@ RADCLIENT *client_afrom_request(TALLOC_CTX *ctx, REQUEST *request)
 	 *	Do some basic sanity checks.
 	 */
 	if (request->client->network.af != c->ipaddr.af) {
-		fr_strerror_printf("Client IP address MUST match the source IP address of the packet.");
+		fr_strerror_printf("Client IP address %pV IP version does not match the source network %pV of the packet.",
+			fr_box_ipaddr(c->ipaddr), fr_box_ipaddr(request->client->network));
 		goto error;
 	}
 
@@ -959,14 +960,16 @@ RADCLIENT *client_afrom_request(TALLOC_CTX *ctx, REQUEST *request)
 	 *	by the client... that's bad.
 	 */
 	if (request->client->network.prefix > c->ipaddr.prefix) {
-		fr_strerror_printf("Client IP address MUST have a prefix with the defined network");
+		fr_strerror_printf("Client IP address %pV is not within the prefix with the defined network %pV",
+				   fr_box_ipaddr(c->ipaddr), fr_box_ipaddr(request->client->network));
 		goto error;
 	}
 
 	ipaddr = c->ipaddr;
 	fr_ipaddr_mask(&ipaddr, request->client->network.prefix);
 	if (fr_ipaddr_cmp(&ipaddr, &request->client->network) != 0) {
-		fr_strerror_printf("Client IP address MUST be within the defined network.");
+		fr_strerror_printf("Client IP address %pV is not within the defined network %pV.",
+				   fr_box_ipaddr(c->ipaddr), fr_box_ipaddr(request->client->network));
 		goto error;
 	}
 
