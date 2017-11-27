@@ -50,6 +50,10 @@ typedef struct radclient {
 	bool			active;			//!< for dynamic clients
 	bool			negative;		//!< negative cache entry
 
+#ifdef WITH_TLS
+	bool			tls_required;		//!< whether TLS encryption is required.
+#endif
+
 	char const		*nas_type;		//!< Type of client (arbitrary).
 
 	char const 		*server;		//!< Name of the virtual server client is associated with.
@@ -76,14 +80,10 @@ typedef struct radclient {
 #ifdef WITH_TCP
 	fr_socket_limit_t	limit;			//!< Connections per client (TCP clients only).
 #endif
-#ifdef WITH_TLS
-	bool			tls_required;		//!< whether TLS encryption is required.
-#endif
 
 #ifdef WITH_DYNAMIC_CLIENTS
 	fr_dlist_t		pending;		//!< if !active, ordered list of pending clients
 	fr_dlist_t		packets;		//!< list of pending packets
-	uint32_t		lifetime;		//!< How long before the client is removed.
 	uint32_t		outstanding;		//!< number of requests outstanding
 	time_t			created;		//!< When the client was created.
 	fr_ipaddr_t		network;		//!< encapsulating network
