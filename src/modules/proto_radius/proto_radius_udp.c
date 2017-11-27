@@ -971,7 +971,12 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			inst->dynamic_clients.num_pending_packets--;
 		}
 
+		/*
+		 *	Set up the lifetime for the newly defined
+		 *	client.
+		 */
 		dynamic_client_timer(inst, newclient, inst->dynamic_clients.lifetime);
+		fr_dlist_remove(&client->pending);
 		talloc_free(client);
 
 		/*
