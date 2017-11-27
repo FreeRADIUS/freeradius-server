@@ -860,6 +860,7 @@ RADCLIENT *client_afrom_request(TALLOC_CTX *ctx, REQUEST *request)
 	vp_cursor_t	cursor;
 	VALUE_PAIR	*vp;
 	RADCLIENT	*c;
+	fr_ipaddr_t	ipaddr;
 
 	if (!request) return NULL;
 
@@ -943,6 +944,30 @@ RADCLIENT *client_afrom_request(TALLOC_CTX *ctx, REQUEST *request)
 	error:
 		talloc_free(cs);
 		return NULL;
+	}
+
+	/*
+	 *	Do some basic sanity checks.
+	 */
+	if (request->client->network.af != c->ipaddr.af) {
+		fr_strerror_printf("Client IP address MUST match the source IP address of the packet.");
+		goto error;
+	}
+
+	/*
+	 *	Network prefix is more restrictive than the one given
+	 *	by the client... that's bad.
+	 */
+	if (request->client->network.prefix > c->ipaddr.prefix) {
+		fr_strerror_printf("Client IP address MUST have a prefix with the defined network");
+		goto error;
+	}
+
+	ipaddr = c->ipaddr;
+	fr_ipaddr_mask(&ipaddr, request->client->network.prefix);
+	if (fr_ipaddr_cmp(&ipaddr, &request->client->network) != 0) {
+		fr_strerror_printf("Client IP address MUST be within the defined network.");
+		goto error;
 	}
 
 	return c;
