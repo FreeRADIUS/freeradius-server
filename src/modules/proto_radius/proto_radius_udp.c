@@ -517,6 +517,19 @@ static ssize_t dynamic_client_alloc(proto_radius_udp_t *inst, uint8_t *packet, s
 
 	inst->dynamic_clients.num_pending_clients++;
 
+	/*
+	 *	Check for the case of renewing an expired client.  If
+	 *	so, delete it's expiration timer.
+	 *
+	 *	We'll do the same checks when we create or NAK the
+	 *	client in mod_write().  If it matches, we'll just
+	 *	renew the existing client, instead of defining a new
+	 *	one.  That allows for *renewal* instead of deletion
+	 *	and re-creation.
+	 */
+	client = client_find(inst->dynamic_clients.expired, &address->src_ipaddr, IPPROTO_UDP);
+	if (client && client->ev) (void) fr_event_timer_delete(inst->el, &client->ev);
+
 	return packet_len;
 }
 
@@ -569,10 +582,12 @@ static void dynamic_client_expire(UNUSED fr_event_list_t *el, UNUSED struct time
 	}
 
 	/*
-	 *	Else the "expired" flag tells mod_read() to put NEW
-	 *	packets into the "packets" list.  It should then try
-	 *	to renew the client.
+	 *	Else there are still packets in the workers, wake up
+	 *	in another 30 seconds and try again.
 	 */
+	DEBUG("%s - there are still outstanding packets for client %s, will try again in 30s.",
+	      inst->name, client->shortname);
+	dynamic_client_timer(inst, client, 30);
 }
 
 static void dynamic_client_timer(proto_radius_udp_t *inst, RADCLIENT *client, uint32_t timer)
@@ -881,11 +896,9 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	 */
 	if (inst->dynamic_clients_is_set && address->client->dynamic && !address->client->active) {
 		RADCLIENT *client = address->client;
-		RADCLIENT *newclient;
+		RADCLIENT *newclient, *expired;
 		fr_dlist_t *entry;
 		dynamic_packet_t *saved;
-
-		DEBUG3("Defining new client");
 
 		/*
 		 *	@todo - maybe just duplicate the new client fields,
@@ -911,6 +924,18 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 				inst->dynamic_clients.num_pending_packets--;
 			}
 
+			/*
+			 *	If we were renewing an expired client,
+			 *	then delete the expired one, and add
+			 *	the new definition.
+			 */
+			expired = client_find(inst->dynamic_clients.expired, &client->ipaddr, IPPROTO_UDP);
+			if (expired) {
+				rad_assert(expired->outstanding == 0);
+				client_delete(inst->dynamic_clients.expired, expired);
+				talloc_free(expired);
+			}
+
 			dynamic_client_timer(inst, client, 30);
 			return buffer_len;
 		}
@@ -918,20 +943,51 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		rad_assert(buffer_len == sizeof(newclient));
 		memcpy(&newclient, buffer, sizeof(newclient));
 
-		newclient->dynamic = true;
-
 		/*
-		 *	If we can't add it, then clean it up.  BUT
-		 *	allow other packets to come from the same IP.
+		 *	Delete the "pending" client from the client list.
 		 */
 		client_delete(inst->dynamic_clients.clients, client);
-		if (!client_add(inst->dynamic_clients.clients, newclient)) {
-			client->negative = false;
-			goto nak;
-		}
 
-		newclient->active = true;
-		inst->dynamic_clients.num_clients++;
+		/*
+		 *	See if we had a previously expired client.  If
+		 *	not, just create a new one.
+		 */
+		expired = client_find(inst->dynamic_clients.expired, &newclient->ipaddr, IPPROTO_UDP);
+		if (!expired) {
+			DEBUG("%s - Defining new client %s", inst->name, client->shortname);
+			newclient->dynamic = true;
+
+			/*
+			 *	If we can't add it, then clean it up.  BUT
+			 *	allow other packets to come from the same IP.
+			 */
+			if (!client_add(inst->dynamic_clients.clients, newclient)) {
+				talloc_free(newclient);
+				client->negative = false;
+				goto nak;
+			}
+
+			newclient->active = true;
+			inst->dynamic_clients.num_clients++;
+
+		} else {
+			DEBUG("%s - Renewing client %s", inst->name, expired->shortname);
+			rad_assert(expired->ev == NULL);
+
+			talloc_free(newclient);
+			newclient = expired;
+			newclient->expired = false;
+
+			client_delete(inst->dynamic_clients.expired, expired);
+			if (!client_add(inst->dynamic_clients.clients, newclient)) {
+				talloc_free(newclient);
+				newclient->negative = false;
+				goto nak;
+			}
+
+			rad_assert(newclient->active == true);
+			rad_assert(newclient->negative == false);
+		}
 
 		/*
 		 *	This particular packet had a later one
