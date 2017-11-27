@@ -896,7 +896,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	 */
 	if (inst->dynamic_clients_is_set && address->client->dynamic && !address->client->active) {
 		RADCLIENT *client = address->client;
-		RADCLIENT *newclient, *expired;
+		RADCLIENT *newclient, *expired = NULL;
 		fr_dlist_t *entry;
 		dynamic_packet_t *saved;
 
@@ -929,11 +929,13 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			 *	then delete the expired one, and add
 			 *	the new definition.
 			 */
-			expired = client_find(inst->dynamic_clients.expired, &client->ipaddr, IPPROTO_UDP);
-			if (expired) {
-				rad_assert(expired->outstanding == 0);
-				client_delete(inst->dynamic_clients.expired, expired);
-				talloc_free(expired);
+			if (!expired) {
+				expired = client_find(inst->dynamic_clients.expired, &client->ipaddr, IPPROTO_UDP);
+				if (expired) {
+					rad_assert(expired->outstanding == 0);
+					client_delete(inst->dynamic_clients.expired, expired);
+					talloc_free(expired);
+				}
 			}
 
 			dynamic_client_timer(inst, client, 30);
@@ -971,6 +973,26 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			inst->dynamic_clients.num_clients++;
 
 		} else {
+			ssize_t elen, nlen;
+
+			elen = talloc_array_length(expired->secret);
+			nlen = talloc_array_length(newclient->secret);
+
+			/*
+			 *	Catch stupid administrator issues.
+			 */
+			if ((elen != nlen) || (memcmp(expired->secret, newclient->secret, elen) != 0)) {
+				ERROR("Shared secret for clients cannot be changed until all outstanding packets have been processed");
+				expired->active = false;
+				goto nak;
+			}
+
+			if (fr_ipaddr_cmp(&expired->ipaddr, &newclient->ipaddr) != 0) {
+				ERROR("IP / netmask for clients cannot be changed until all outstanding packets have been processed");
+				expired->active = false;
+				goto nak;
+			}
+
 			DEBUG("%s - Renewing client %s", inst->name, expired->shortname);
 			rad_assert(expired->ev == NULL);
 
