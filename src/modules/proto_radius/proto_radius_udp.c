@@ -497,8 +497,11 @@ static ssize_t dynamic_client_alloc(proto_radius_udp_t *inst, uint8_t *packet, s
 	/*
 	 *	It's now one of our clients (pending).
 	 *
-	 *	@todo - add creation time, and delete it when the
-	 *	request hits max_request_time.
+	 *	We can rely on the worker enforcing max_request_time,
+	 *	so we don't need to do something similar here.
+	 *
+	 *	i.e. if the client takes 30s to define, well, too
+	 *	bad...
 	 */
 	if (!client_add(inst->dynamic_clients.clients, client)) {
 		talloc_free(client);
