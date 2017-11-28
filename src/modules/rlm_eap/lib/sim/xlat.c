@@ -15,7 +15,7 @@
  */
 
 /**
- * @file rlm_eap/lib/sim/id_xlat.c
+ * @file rlm_eap/lib/sim/xlat.c
  * @brief EAP-SIM/EAP-AKA identity detection, creation, and decyption.
  *
  * @copyright 2017 The FreeRADIUS server project
