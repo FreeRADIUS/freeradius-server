@@ -54,7 +54,6 @@ RCSIDH(sim_h, "$Id$")
 #define SIM_VECTOR_UMTS_RES_MAX_SIZE	16
 
 /** The type of auth vector held by a fr_sim_keys_t
- *
  */
 typedef enum {
 	SIM_VECTOR_NONE = 0,
@@ -63,17 +62,17 @@ typedef enum {
 } fr_sim_vector_type_t;
 
 /** Where to get EAP-SIM vectors from
- *
  */
 typedef enum {
 	SIM_VECTOR_SRC_AUTO,					//!< Discover where to get Triplets from automatically.
 	SIM_VECTOR_SRC_TRIPLETS,				//!< Source of triplets is EAP-SIM-* attributes.
-	SIM_VECTOR_SRC_QUINTUPLETS,				//!< Source of triplets is derived from EAP-AKA-* quintuplets.
+	SIM_VECTOR_SRC_QUINTUPLETS,				//!< Source of triplets is derived from EAP-AKA-*
+								///< quintuplets.
 	SIM_VECTOR_SRC_KI					//!< Should generate triplets locally using a Ki.
 } fr_sim_vector_src_t;
 
 typedef struct gsm_vector {
-	uint8_t		rand[SIM_VECTOR_GSM_RAND_SIZE];			//!< RAND challenge to the SIM.
+	uint8_t		rand[SIM_VECTOR_GSM_RAND_SIZE];		//!< RAND challenge to the SIM.
 	union {
 		uint8_t		sres[SIM_VECTOR_GSM_SRES_SIZE];		//!< Signing response.
 		uint32_t	sres_uint32;
