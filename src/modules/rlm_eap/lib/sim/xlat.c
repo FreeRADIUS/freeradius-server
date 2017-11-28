@@ -310,7 +310,7 @@ static ssize_t sim_xlat_3gpp_pseudonym_encrypt_nai(TALLOC_CTX *ctx, char **out, 
 	vp_tmpl_t		*id_vpt, *key_vpt;
 	TALLOC_CTX		*our_ctx = talloc_init("sim_xlat");
 	ssize_t			slen, user_len, id_len, key_len;
-	uint8_t			*key, tag;
+	uint8_t			*key, tag = 0;
 	unsigned long		key_index;
 	char			encrypted[SIM_3GPP_PSEUDONYM_LEN + 1];
 	char const		*p = fmt, *id;
