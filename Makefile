@@ -19,9 +19,18 @@ ifeq "0" "1"
 .error GNU Make is required to build FreeRADIUS
 endif
 
+#
+#  We require Make.inc, UNLESS the target is "make deb"
+#
+#  Since "make deb" re-runs configure... there's no point in
+#  requiring the developer to run configure *before* making
+#  the debian packages.
+#
+ifneq "$(MAKECMDGOALS)" "deb"
 $(if $(wildcard Make.inc),,$(error Missing 'Make.inc' Run './configure [options]' and retry))
 
 include Make.inc
+endif
 
 MFLAGS += --no-print-directory
 
