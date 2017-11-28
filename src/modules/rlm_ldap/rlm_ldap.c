@@ -117,13 +117,6 @@ static CONF_PARSER group_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static CONF_PARSER client_config[] = {
-	{ FR_CONF_OFFSET("filter", FR_TYPE_STRING, rlm_ldap_t, clientobj_filter) },
-	{ FR_CONF_OFFSET("scope", FR_TYPE_STRING, rlm_ldap_t, clientobj_scope_str), .dflt = "sub" },
-	{ FR_CONF_OFFSET("base_dn", FR_TYPE_STRING, rlm_ldap_t, clientobj_base_dn), .dflt = "" },
-	CONF_PARSER_TERMINATOR
-};
-
 /*
  *	Reference for accounting updates
  */
@@ -214,13 +207,9 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("edir_autz", FR_TYPE_BOOL, rlm_ldap_t, edir_autz) }, /* NULL defaults to "no" */
 #endif
 
-	{ FR_CONF_OFFSET("read_clients", FR_TYPE_BOOL, rlm_ldap_t, do_clients) }, /* NULL defaults to "no" */
-
 	{ FR_CONF_POINTER("user", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) user_config },
 
 	{ FR_CONF_POINTER("group", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) group_config },
-
-	{ FR_CONF_POINTER("client", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) client_config },
 
 	{ FR_CONF_POINTER("profile", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) profile_config },
 
@@ -1846,18 +1835,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		goto error;
 	}
 
-	inst->clientobj_scope = fr_str2int(fr_ldap_scope, inst->clientobj_scope_str, -1);
-	if (inst->clientobj_scope < 0) {
-#ifdef LDAP_SCOPE_CHILDREN
-		cf_log_err(conf, "Invalid 'client.scope' value \"%s\", expected 'sub', 'one', 'base' or 'children'",
-			   inst->clientobj_scope_str);
-#else
-		cf_log_err(conf, "Invalid 'client.scope' value \"%s\", expected 'sub', 'one' or 'children'",
-			   inst->clientobj_scope_str);
-#endif
-		goto error;
-	}
-
 #ifdef HAVE_LDAP_CREATE_SORT_CONTROL
 	/*
 	 *	Build the server side sort control for user objects
@@ -1931,33 +1908,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	inst->pool = module_connection_pool_init(inst->cs, &inst->handle_config,
 						 mod_conn_create, NULL, NULL, NULL, NULL);
 	if (!inst->pool) goto error;
-
-	/*
-	 *	Bulk load dynamic clients.
-	 */
-	if (inst->do_clients) {
-		CONF_SECTION *cs, *map, *tmpl;
-
-		cs = cf_section_find(inst->cs, "client", NULL);
-		if (!cs) {
-			cf_log_err(conf, "Told to load clients but no client section found");
-			goto error;
-		}
-
-		map = cf_section_find(cs, "attribute", NULL);
-		if (!map) {
-			cf_log_err(cs, "Told to load clients but no attribute section found");
-			goto error;
-		}
-
-		tmpl = cf_section_find(cs, "template", NULL);
-
-		if (rlm_ldap_client_load(inst, tmpl, map) < 0) {
-			cf_log_err(cs, "Error loading clients");
-
-			return -1;
-		}
-	}
 
 	fr_ldap_global_config(inst->ldap_debug, inst->tls_random_file);
 
