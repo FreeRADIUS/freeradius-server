@@ -513,8 +513,9 @@ int fr_sim_id_3gpp_pseudonym_decrypt(char out[SIM_IMSI_MAX_LEN + 1],
 	 *	This should never happen, and probably means that
 	 *	some sort of memory corruption has occured.
 	 */
-	if (unlikely(decr_len > SIM_IMSI_MAX_LEN)) {
-		fr_strerror_printf("Decrypted data len invalid");
+	if (unlikely(decr_len > (SIM_IMSI_MAX_LEN + 1))) {
+		fr_strerror_printf("Decrypted data len invalid.  Expected %i bytes, got %zu bytes",
+				   (SIM_IMSI_MAX_LEN + 1), decr_len);
 		goto error;
 	}
 
