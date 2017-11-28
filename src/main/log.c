@@ -549,7 +549,7 @@ void radlog_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, REQUEST *reques
 		char *tmp;
 
 		va_start(ap, msg);
-		tmp = talloc_vasprintf(request, msg, ap);
+		tmp = fr_vasprintf(request, msg, ap);
 		va_end(ap);
 
 		if (!tmp) return;
