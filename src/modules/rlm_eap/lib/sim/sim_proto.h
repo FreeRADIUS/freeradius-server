@@ -58,18 +58,18 @@ RCSIDH(sim_h, "$Id$")
  */
 typedef enum {
 	SIM_VECTOR_NONE = 0,
-	SIM_VECTOR_GSM,					//!< Vector is GSM triplets.
-	SIM_VECTOR_UMTS					//!< Vector is UMTS quintuplets.
+	SIM_VECTOR_GSM,						//!< Vector is GSM triplets.
+	SIM_VECTOR_UMTS						//!< Vector is UMTS quintuplets.
 } fr_sim_vector_type_t;
 
 /** Where to get EAP-SIM vectors from
  *
  */
 typedef enum {
-	SIM_VECTOR_SRC_AUTO,				//!< Discover where to get Triplets from automatically.
-	SIM_VECTOR_SRC_TRIPLETS,			//!< Source of triplets is EAP-SIM-* attributes.
-	SIM_VECTOR_SRC_QUINTUPLETS,			//!< Source of triplets is derived from EAP-AKA-* quintuplets.
-	SIM_VECTOR_SRC_KI				//!< Should generate triplets locally using a Ki.
+	SIM_VECTOR_SRC_AUTO,					//!< Discover where to get Triplets from automatically.
+	SIM_VECTOR_SRC_TRIPLETS,				//!< Source of triplets is EAP-SIM-* attributes.
+	SIM_VECTOR_SRC_QUINTUPLETS,				//!< Source of triplets is derived from EAP-AKA-* quintuplets.
+	SIM_VECTOR_SRC_KI					//!< Should generate triplets locally using a Ki.
 } fr_sim_vector_src_t;
 
 typedef struct gsm_vector {
