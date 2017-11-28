@@ -248,6 +248,7 @@ char const *fr_strerror_pop(void)
 	buffer = fr_strerror_buffer;
 	if (!buffer) return NULL;
 
+	fr_cursor_head(&buffer->cursor);
 	entry = fr_cursor_remove(&buffer->cursor);
 	if (!entry) return NULL;
 
