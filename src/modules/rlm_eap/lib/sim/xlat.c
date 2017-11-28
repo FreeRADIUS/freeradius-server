@@ -285,7 +285,7 @@ static ssize_t sim_xlat_3gpp_pseudonym_decrypt_nai(TALLOC_CTX *ctx, char **out, 
 
 	RDEBUG2("Decrypting \"%.*s\"", (int)user_len, id);
 	if (fr_sim_id_3gpp_pseudonym_decrypt(decrypted, id, key) < 0) {
-		RPEDEBUG2("SIM ID \"%pS\" is not a 3gpp pseudonym", id);
+		RPEDEBUG2("Failed decrypting SIM ID");
 		return -1;
 	}
 
