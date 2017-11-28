@@ -32,6 +32,7 @@ RCSIDH(sim_h, "$Id$")
 
 #include <assert.h>
 #include "dict.h"
+#include "id.h"
 #include "eap_types.h"
 #include "eap_sim_common.h"
 #include "eap_aka_common.h"
@@ -210,4 +211,10 @@ int		fr_sim_vector_umts_from_attrs(eap_session_t *eap_session, VALUE_PAIR *vps,
 void		fr_sim_fips186_2prf(uint8_t out[160], uint8_t mk[20])
 				    CC_BOUNDED(__size__, 2, 160, 160)
 				    CC_BOUNDED(__size__, 1, 20, 20);
+
+/*
+ *	xlat.c
+ */
+void		sim_xlat_register(void);
+void		sim_xlat_unregister(void);
 #endif /* _SIM_PROTO_H */

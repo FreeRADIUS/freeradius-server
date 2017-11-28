@@ -1,0 +1,9 @@
+#
+#  Input packet
+#
+User-Name = "1420032219455258@wlan.mnc003.mcc420.3gppnetwork.org"
+
+#
+#  Expected answer
+#
+Response-Packet-Type == Access-Accept

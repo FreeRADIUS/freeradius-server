@@ -24,6 +24,7 @@
 #include <freeradius-devel/tls_log.h>
 #include <openssl/evp.h>
 #include "sim_proto.h"
+#include "id.h"
 
 #define us(x) (uint8_t) x
 
@@ -35,14 +36,14 @@
  * @return
  *	- How long the identity portion of the NAI is.
  */
-size_t fr_sim_id_len(char const *nai, size_t nai_len)
+size_t fr_sim_id_user_len(char const *nai, size_t nai_len)
 {
 	char const *p;
 
 	p = (char *)memchr((uint8_t const *)nai, '@', nai_len);
 	if (!p) return nai_len;
 
-	return nai - p;
+	return p - nai;
 }
 
 /** Find where in the NAI string the domain starts
@@ -72,49 +73,85 @@ char const *fr_sim_domain(char const *nai, size_t nai_len)
  * @param[in] domain		to parse.
  * @param[in] domain_len	Length of the domain component.
  * @return
- *	- 0 on success.
- *	- -1 on failure.
+ *	- number of bytes parsed.
+ *	- <= 0 on error - The negative offset of where parsing failed.
  */
-int fr_sim_3gpp_root_nai_domain_mcc_mnc(uint16_t *mnc, uint16_t *mcc,
-					char const *domain, size_t domain_len)
+ssize_t fr_sim_3gpp_root_nai_domain_mcc_mnc(uint16_t *mnc, uint16_t *mcc,
+					    char const *domain, size_t domain_len)
 {
-	uint8_t const *p = domain, *end = p + domain_len;
+	char const *p = domain, *end = p + domain_len;
+	char *q;
 	unsigned long num;
 
 	if (((p + 8) < end) || (memcmp(p, "wlan.mnc", 8) != 0)) return -1;
 	p += 8;
 
-	if (((p + 3) < end) return -1;
-	num = strtoul(
+	if (((p + 3) < end)) {
+		fr_strerror_printf("Missing MNC component");
+		return (domain - p);
+	}
+	num = strtoul(p, &q, 10);
+	if (*q != '.') {
+		fr_strerror_printf("Invalid MCN component");
+		return (domain - q);
+	}
+	*mnc = (uint16_t)num;
+	p = q + 1;
+
+	if (((p + 3) < end) || (memcmp(p, "mcc", 3) != 0)) {
+		fr_strerror_printf("Missing MCC component");
+		return (domain - p);
+	}
+	num = strtoul(p, &q, 10);
+	if (*q != '.') {
+		fr_strerror_printf("Invalid MCC component");
+		return (domain - q);
+	}
+	*mcc = (uint16_t)num;
+
+	p = q + 1;
+	if (((p + 15) < end) || (memcmp(p, "3gppnetwork.org", 15) != 0)) {
+		fr_strerror_printf("Missing 3gppnetwork.org suffix");
+		return (domain - p);
+	}
+	p += 15;
+
+	if (p != end) {
+		fr_strerror_printf("Trailing garbage");
+		return (domain - p);
+	}
+
+	return p - domain;
 }
 
  /** Determine what type of ID was provided in the initial identity response
   *
   * @param[out] hint	Whether this is a hint to do EAP-SIM or EAP-AKA[']:
-  *	- SIM_HINT_AKA		this ID was generated during an EAP-AKA exchange
-  *				or the supplicant hints it wants to perform EAP-AKA.
-  *	- SIM_HINT_SIM		this IS was generated during an EAP-SIM exchange
-  *				or the supplicant hints it wants to perform EAP-SIM.
-  *	- SIM_HINT_UNKNOWN	we don't know what type of authentication generated
-  *				this ID or which one to start.
+  *	- SIM_METHOD_HINT_AKA		this ID was generated during an EAP-AKA exchange
+  *					or the supplicant hints it wants to perform EAP-AKA.
+  *	- SIM_METHOD_HINT_SIM		this IS was generated during an EAP-SIM exchange
+  *					or the supplicant hints it wants to perform EAP-SIM.
+  *	- SIM_METHOD_HINT_UNKNOWN	we don't know what type of authentication generated
+  *					this ID or which one to start.
   * @param[out] type	What type of identity this is:
-  *	- SIM_ID_PERMANENT	if the ID is an IMSI.
-  *	- SIM_ID_3GPP_PSEUDONYM	if the ID is a 3GPP pseudonym (not validated).
-  *	- SIM_ID_PSEUDONYM	if the ID is a freeform pseudonym.
-  *	- SIM_ID_FASTAUTH	if the ID is a fastauth identity.
-  *	- SIM_ID_INVALID	if we can't determine what sort of ID this is.
-  * @param[in] id	provided.
-  * @param[in] id_len	the length of the ID.
+  *	- SIM_ID_TYPE_PERMANENT		if the ID is an IMSI.
+  *	- SIM_ID_TYPE_3GPP_PSEUDONYM	if the ID is a 3GPP pseudonym (not validated).
+  *	- SIM_ID_TYPE_PSEUDONYM		if the ID is a freeform pseudonym.
+  *	- SIM_ID_TYPE_FASTAUTH		if the ID is a fastauth identity.
+  *	- SIM_ID_TYPE_UNKNOWN		if we can't determine what sort of ID this is.
+  * @param[in] id	the NAI string provided.
+  * @param[in] id_len	the length of the user portion of the NAI string.
+  *			See #fr_sim_id_user_len.
   * @return Length of the ID written to out.
   */
-int fr_sim_id_type(fr_sim_identity_type_t *type, fr_sim_method_hint_t *hint,
-		   uint8_t const *id, size_t id_len)
+int fr_sim_id_type(fr_sim_id_type_t *type, fr_sim_method_hint_t *hint,
+		   char const *id, size_t id_len)
 {
 	size_t i;
 
 	if (id_len < 1) {
-		*hint = SIM_HINT_UNKNOWN;
-		*type = SIM_ID_INVALID;
+		*hint = SIM_METHOD_HINT_UNKNOWN;
+		*type = SIM_ID_TYPE_UNKNOWN;
 		return -1;
 	}
 
@@ -126,14 +163,14 @@ int fr_sim_id_type(fr_sim_identity_type_t *type, fr_sim_method_hint_t *hint,
 
 		if (i == id_len) {
 			switch (id[0]) {
-			case '0':
-				*hint = SIM_HINT_AKA;
-				*type = SIM_ID_PERMANENT;	/* All digits */
+			case SIM_ID_TAG_PERMANENT_AKA:
+				*hint = SIM_METHOD_HINT_AKA;
+				*type = SIM_ID_TYPE_PERMANENT;	/* All digits */
 				return 0;
 
-			case '1':
-				*hint = SIM_HINT_SIM;
-				*type = SIM_ID_PERMANENT;	/* All digits */
+			case SIM_ID_TAG_PERMANENT_SIM:
+				*hint = SIM_METHOD_HINT_SIM;
+				*type = SIM_ID_TYPE_PERMANENT;	/* All digits */
 				return 0;
 
 			default:
@@ -151,14 +188,14 @@ int fr_sim_id_type(fr_sim_identity_type_t *type, fr_sim_method_hint_t *hint,
 
 		if (i == id_len) {
 			switch (id[0]) {
-			case '6':
-				*hint = SIM_HINT_AKA;
-				*type = SIM_ID_3GPP_PSEUDONYM;
+			case SIM_ID_TAG_3GPP_PSEUDONYM_AKA:
+				*hint = SIM_METHOD_HINT_AKA;
+				*type = SIM_ID_TYPE_3GPP_PSEUDONYM;
 				return 0;
 
-			case '7':
-				*hint = SIM_HINT_SIM;
-				*type = SIM_ID_3GPP_PSEUDONYM;
+			case SIM_ID_TAG_3GPP_PSEUDONYM_SIM:
+				*hint = SIM_METHOD_HINT_SIM;
+				*type = SIM_ID_TYPE_3GPP_PSEUDONYM;
 				return 0;
 
 			default:
@@ -171,32 +208,32 @@ int fr_sim_id_type(fr_sim_identity_type_t *type, fr_sim_method_hint_t *hint,
 	 *	User assigned pseudonym
 	 */
 	switch (id[0]) {
-	case '2':
-		*hint = SIM_HINT_AKA;
-		*type = SIM_ID_PSEUDONYM;
+	case SIM_ID_TAG_PSEUDONYM_AKA:
+		*hint = SIM_METHOD_HINT_AKA;
+		*type = SIM_ID_TYPE_PSEUDONYM;
 		return 0;
 
-	case '3':
-		*hint = SIM_HINT_SIM;
-		*type = SIM_ID_PSEUDONYM;
+	case SIM_ID_TAG_PSEUDONYM_SIM:
+		*hint = SIM_METHOD_HINT_SIM;
+		*type = SIM_ID_TYPE_PSEUDONYM;
 		return 0;
 
 	/*
 	 *	Fast reauth identity
 	 */
-	case '4':
-		*hint = SIM_HINT_AKA;
-		*type = SIM_ID_FASTAUTH;
+	case SIM_ID_TAG_FASTAUTH_AKA:
+		*hint = SIM_METHOD_HINT_AKA;
+		*type = SIM_ID_TYPE_FASTAUTH;
 		return 0;
 
-	case '5':
-		*hint = SIM_HINT_SIM;
-		*type = SIM_ID_FASTAUTH;
+	case SIM_ID_TAG_FASTAUTH_SIM:
+		*hint = SIM_METHOD_HINT_SIM;
+		*type = SIM_ID_TYPE_FASTAUTH;
 		return 0;
 
 	default:
-		*hint = SIM_HINT_UNKNOWN;
-		*type = SIM_ID_INVALID;
+		*hint = SIM_METHOD_HINT_UNKNOWN;
+		*type = SIM_ID_TYPE_UNKNOWN;
 		return -1;
 	}
 }
@@ -204,24 +241,24 @@ int fr_sim_id_type(fr_sim_identity_type_t *type, fr_sim_method_hint_t *hint,
 /** Create a 3gpp pseudonym from a permanent ID
  *
  * @param[out] out	Where to write the resulting pseudonym, must be a buffer of
- *			exactly SIM_3GPP_PSEUDONYM_LEN bytes.
- * @param[in] id	Permanent ID to derive pseudonym from.  Note: If the IMSI is less than
+ *			exactly SIM_3GPP_PSEUDONYM_LEN + 1 bytes.
+ * @param[in] imsi	Permanent ID to derive pseudonym from.  Note: If the IMSI is less than
  *			15 digits it will be rpadded with zeros.
- * @param[in] id_len	Length of that ID. Must be between 1-15.
- * @param[in] tag	Tag value to prepend to the pseudonym. This field is 6 bits wide
+ * @param[in] imsi_len	Length of the IMSI. Must be between 1-15.
+ * @param[in] tag	Tag value to prepend to the pseudonym. This field is 6 bits wimsie
  *			(0-63).
  * @param[in] key_ind	Key indicator (or key index), the key number used to produce
  *			the encr ID.  There may be up to 16 keys in use at any one
- *			time. This field is 4 bits wide (0-15).
- * @param[in] kpseu	as described by the 'Security aspects of non-3GPP accesses' document.
+ *			time. This field is 4 bits wimsie (0-15).
+ * @param[in] key	as described by the 'Security aspects of non-3GPP accesses' document.
  *			Must be 128 bits (8 bytes).
  * @return
  *	- 0 on success.
- *	- -1 if any of the parameters were invalid.
+ *	- -1 if any of the parameters were invalimsi.
  */
-int fr_sim_id_3gpp_pseudonym_encrypt(uint8_t out[SIM_3GPP_PSEUDONYM_LEN],
-				     uint8_t const *id, size_t id_len,
-				     uint8_t tag,  uint8_t key_ind, uint8_t const *kpseu[16])
+int fr_sim_id_3gpp_pseudonym_encrypt(char out[SIM_3GPP_PSEUDONYM_LEN + 1],
+				     char const *imsi, size_t imsi_len,
+				     uint8_t tag, uint8_t key_ind, uint8_t const key[8])
 {
 	uint8_t		padded[16];				/* Random (8 bytes) + Compressed (8 bytes) */
 	uint8_t		encr[16];				/* aes_ecb(padded) */
@@ -229,30 +266,31 @@ int fr_sim_id_3gpp_pseudonym_encrypt(uint8_t out[SIM_3GPP_PSEUDONYM_LEN],
 
 	char		*out_p = out;
 
-	uint8_t const	*p = id, *end = p + id_len;
+	char const	*p = imsi, *end = p + imsi_len;
+	uint8_t		*u_p, *u_end;
 	uint32_t	rand[2];
 	uint8_t		*compressed = padded + sizeof(rand);	/* Part of padded which contains the compressed IMSI */
 
 	EVP_CIPHER_CTX	*cctx;
 
-	if (unlikely(key_ind > 15)) {				/* 4 bits wide */
+	if (unlikely(key_ind > 15)) {				/* 4 bits wimsie */
 		fr_strerror_printf("Invalid key indicator value, expected value between 0-15, got %u", key_ind);
 		return -1;
 	}
-	if (unlikely(tag > 63)) {				/* 6 bits wide */
+	if (unlikely(tag > 63)) {				/* 6 bits wimsie */
 		fr_strerror_printf("Invalid tag value, expected value between 0-63, got %u", tag);
 		return -1;
 	}
-	if (unlikely(id_len != 15)) {
-		fr_strerror_printf("Invalid ID len, expected length of 15, got %zu", id_len);
+	if (unlikely(imsi_len != 15)) {
+		fr_strerror_printf("Invalid ID len, expected length of 15, got %zu", imsi_len);
 		return -1;
 	}
-	if (unlikely(!kpseu[key_ind])) {
+	if (unlikely(!key)) {
 		fr_strerror_printf("Provided key was NULL");
 		return -1;
 	}
 
-	memset(padded, 0, sizeof(padded));			/* So we don't output garbage if id_len < 15 */
+	memset(padded, 0, sizeof(padded));			/* So we don't output garbage if imsi_len < 15 */
 
 	/*
 	 *	ID is an odd length (15).
@@ -266,7 +304,7 @@ int fr_sim_id_3gpp_pseudonym_encrypt(uint8_t out[SIM_3GPP_PSEUDONYM_LEN],
 	 */
 	while (p < end) {
 		if (unlikely(!isdigit((char)p[0]) || !isdigit((char)p[1]))) {
-			fr_strerror_printf("IMSI contains invalid character");
+			fr_strerror_printf("IMSI contains invalimsi character");
 			return -1;
 		}
 
@@ -293,7 +331,7 @@ int fr_sim_id_3gpp_pseudonym_encrypt(uint8_t out[SIM_3GPP_PSEUDONYM_LEN],
 		return -1;
 	}
 
-	if (unlikely(EVP_EncryptInit_ex(cctx, EVP_aes_128_ecb(), NULL, kpseu[key_ind], NULL) != 1)) {
+	if (unlikely(EVP_EncryptInit_ex(cctx, EVP_aes_128_ecb(), NULL, key, NULL) != 1)) {
 		tls_strerror_printf(true, "Failed initialising AES-128-ECB context");
 	error:
 		EVP_CIPHER_CTX_free(cctx);
@@ -336,56 +374,75 @@ int fr_sim_id_3gpp_pseudonym_encrypt(uint8_t out[SIM_3GPP_PSEUDONYM_LEN],
 	/*
 	 *	Now encode the entire output as base64.
 	 */
-	p = encr;
-	end = p + encr_len;
+	u_p = encr;
+	u_end = u_p + encr_len;
 
 	/*
 	 *	Consume tag (6 bits) + key_ind (4 bits) + encr[0] (8 bits) = 18 bits (or 3 bytes of b64)
 	 */
 	*out_p++ = fr_base64_str[tag & 0x3f];						/* 6 bits tag */
-	*out_p++ = fr_base64_str[((key_ind & 0x0f) << 2) | ((p[0] & 0xc0) >> 6)];	/* 4 bits key_ind + 2 high bits encr[0] */
-	*out_p++ = fr_base64_str[p[0] & 0x3f];						/* 6 low bits of encr[0] */
-	p++;
+	*out_p++ = fr_base64_str[((key_ind & 0x0f) << 2) | ((u_p[0] & 0xc0) >> 6)];	/* 4 bits key_ind + 2 high bits encr[0] */
+	*out_p++ = fr_base64_str[u_p[0] & 0x3f];						/* 6 low bits of encr[0] */
+	u_p++;
 
 	/*
 	 *	Consume 3 bytes of input for 4 bytes of b64 (5 iterations)
 	 */
-	while (p < end) {
-		*out_p++ = fr_base64_str[(p[0] & 0xfc) >> 2];				/* 6 high bits of p[0] */
-		*out_p++ = fr_base64_str[((p[0] & 0x03) << 4) | ((p[1] & 0xf0) >> 4)];	/* 2 low bits of p[0] + 4 high bits of p[1] */
-		*out_p++ = fr_base64_str[((p[1] & 0x0f) << 2) | ((p[2] & 0xc0) >> 6)];	/* 4 low bits of p[1] + 2 high bits of p[2] */
-		*out_p++ = fr_base64_str[p[2] & 0x3f];					/* 6 low bits of p[2] */
-		p += 3;
+	while (u_p < u_end) {
+		*out_p++ = fr_base64_str[(u_p[0] & 0xfc) >> 2];				/* 6 high bits of p[0] */
+		*out_p++ = fr_base64_str[((u_p[0] & 0x03) << 4) | ((u_p[1] & 0xf0) >> 4)];/* 2 low bits of p[0] + 4 high bits of p[1] */
+		*out_p++ = fr_base64_str[((u_p[1] & 0x0f) << 2) | ((u_p[2] & 0xc0) >> 6)];/* 4 low bits of p[1] + 2 high bits of p[2] */
+		*out_p++ = fr_base64_str[u_p[2] & 0x3f];					/* 6 low bits of p[2] */
+		u_p += 3;
 	}
 	if ((out_p - out) != SIM_3GPP_PSEUDONYM_LEN) {
-		fr_strerror_printf("Base64 output length invalid, expected %i bytes, got %zu bytes",
+		fr_strerror_printf("Base64 output length invalimsi, expected %i bytes, got %zu bytes",
 				   SIM_3GPP_PSEUDONYM_LEN, out_p - out);
 		return -1;
 	}
 
+	out[SIM_3GPP_PSEUDONYM_LEN] = '\0';
+
 	return 0;
+}
+
+/** Return the tag from a 3gpp pseudonym
+ *
+ * @param[in] encr_id	The 3gpp pseudonym.
+ *
+ * @return the tag associated with the pseudonym.
+ */
+uint8_t fr_sim_id_3gpp_pseudonym_tag(char const encr_id[SIM_3GPP_PSEUDONYM_LEN])
+{
+	return fr_base64_sextet[us(encr_id[0])];
+}
+
+/** Return the key index from a 3gpp pseudonym
+ *
+ * @param[in] encr_id	The 3gpp pseudonym.
+ *
+ * @return the key index associated with the pseudonym.
+ */
+uint8_t fr_sim_id_3gpp_pseudonym_key_index(char const encr_id[SIM_3GPP_PSEUDONYM_LEN])
+{
+	return ((fr_base64_sextet[us(encr_id[1])] & 0x3c) >> 2);
 }
 
 /** Decrypt the 3GPP pseudonym
  *
  * @param[out] out		Where to write the decypted, uncompressed IMSI.
- * @param[out] tag_out		Tag retrieved from pseudonym.
- * @param[out] key_ind_out	Key indicator retrieved from pseudonym.
- * @param[in] encr_id		to decypt.
- * @param[in] kpseu		array of 8 byte keys.
- * @param[in] kpseu_count	the number of keys.
+ * @param[in] encr_id		to decypt. Will read exactly 23 bytes from the buffer.
+ * @param[in] key		to use to decrypt the encrypted, compressed IMSI.
  * @return
  *	- 0 on success.
  *	- -1 if any of the parameters were invalid.
  */
-int fr_sim_id_3gpp_pseudonym_decypt(uint8_t out[SIM_IMSI_MAX_LEN], uint8_t *tag_out, uint8_t *key_ind_out,
-				    char const encr_id[SIM_3GPP_PSEUDONYM_LEN],
-				    uint8_t const *kpseu[16], size_t kpseu_count)
+int fr_sim_id_3gpp_pseudonym_decrypt(char out[SIM_IMSI_MAX_LEN + 1],
+				     char const encr_id[SIM_3GPP_PSEUDONYM_LEN], uint8_t const key[8])
 {
 	EVP_CIPHER_CTX	*cctx;
 
-	uint8_t		tag, key_ind;
-	uint8_t		*out_p = out;
+	char		*out_p = out;
 
 	uint8_t		dec[16];
 	uint8_t		*dec_p = dec;
@@ -399,11 +456,6 @@ int fr_sim_id_3gpp_pseudonym_decypt(uint8_t out[SIM_IMSI_MAX_LEN], uint8_t *tag_
 	size_t		len = 0;
 	int		i;
 
-	if (unlikely(kpseu_count < 1) || unlikely(kpseu_count > 16)) {
-		tls_strerror_printf(true, "Invalid number of keys provided, need between 1-16 keys");
-		return -1;
-	}
-
 	for (i = 0; i < SIM_3GPP_PSEUDONYM_LEN; i++) {
 		if (!fr_is_base64(encr_id[i])) {
 			fr_strerror_printf("Encrypted IMSI contains non-base64 char");
@@ -411,11 +463,6 @@ int fr_sim_id_3gpp_pseudonym_decypt(uint8_t out[SIM_IMSI_MAX_LEN], uint8_t *tag_
 		}
 	}
 
-	/*
-	 *	Decode tag (6 bit) + key_ind (4 bit) + encrypted[0]
-	 */
-	tag = fr_base64_sextet[us(p[0])];
-	key_ind = ((fr_base64_sextet[us(p[1])] & 0x3c) >> 2);
 	*dec_p++ = (((fr_base64_sextet[us(p[1])] & 0x03) << 6) | fr_base64_sextet[us(p[2])]);
 	p += 3;
 
@@ -427,18 +474,13 @@ int fr_sim_id_3gpp_pseudonym_decypt(uint8_t out[SIM_IMSI_MAX_LEN], uint8_t *tag_
 		p += 4;	/* 32bit input -> 24bit output */
 	}
 
-	if (key_ind >= kpseu_count) {
-		fr_strerror_printf("key_ind specified key[%u], but we only have %zu keys", key_ind, kpseu_count);
-		return -1;
-	}
-
 	cctx = EVP_CIPHER_CTX_new();
 	if (!cctx) {
 		tls_strerror_printf(true, "Failed allocating EVP context");
 		return -1;
 	}
 
-	if (unlikely(EVP_DecryptInit_ex(cctx, EVP_aes_128_ecb(), NULL, kpseu[key_ind], NULL) != 1)) {
+	if (unlikely(EVP_DecryptInit_ex(cctx, EVP_aes_128_ecb(), NULL, key, NULL) != 1)) {
 		tls_strerror_printf(true, "Failed initialising AES-128-ECB context");
 	error:
 		EVP_CIPHER_CTX_free(cctx);
@@ -483,21 +525,21 @@ int fr_sim_id_3gpp_pseudonym_decypt(uint8_t out[SIM_IMSI_MAX_LEN], uint8_t *tag_
 	 *	we ignore.
 	 */
 	*out_p++ = (compressed[0] & 0x0f) + '0';
-	for (i = 1; i < SIM_IMSI_MAX_LEN; i++) {
+	for (i = 1; i < 8; i++) {
 		*out_p++ = ((compressed[i] & 0xf0) >> 4) + '0';
 		*out_p++ = (compressed[i] & 0x0f) + '0';
 	}
-	if (tag_out) *tag_out = tag;
-	if (key_ind_out) *key_ind_out = key_ind;
 
 	EVP_CIPHER_CTX_free(cctx);
+
+	out[SIM_IMSI_MAX_LEN] = '\0';
 
 	return 0;
 }
 
 #ifdef TESTING_SIM_ID
 /*
- *  cc id.c -g3 -Wall -DHAVE_DLFCN_H -DTESTING_SIM_ID -DWITH_TLS -I../../../../ -I../../../ -I ../base/ -I /usr/local/opt/openssl/include/ -include ../include/build.h -L /usr/local/opt/openssl/lib/ -l ssl -l crypto -l talloc -L ../../../../../build/lib/.libs/ -lfreeradius-server -lfreeradius-util -o test_sim_id && ./test_sim_id
+ *  cc id.c -g3 -Wall -DHAVE_DLFCN_H -DTESTING_SIM_ID -DWITH_TLS -I../../../../ -I../../../ -I ../base/ -I /usr/local/opt/openssl/include/ -include ../include/build.h -L /usr/local/opt/openssl/lib/ -l ssl -l crypto -l talloc -L ../../../../../build/lib/local/.libs/ -lfreeradius-server -lfreeradius-tls -lfreeradius-util -o test_sim_id && ./test_sim_id
  */
 #include <stddef.h>
 #include <stdbool.h>
@@ -509,54 +551,53 @@ void test_encrypt_decypt_key0(void)
 {
 	char const	id[] = "001234554321001";
 	char const	key[] = "1234567812345678";
-	char const	*keys[] = { key };
 	uint8_t		tag;
 	uint8_t		key_ind;
 	char const	*log;
 
-	char		encrypted_id[SIM_3GPP_PSEUDONYM_LEN];
-	uint8_t		decrypted_id[sizeof(id)];
+	char		encrypted_id[SIM_3GPP_PSEUDONYM_LEN + 1];
+	char		decrypted_id[sizeof(id)];
 
 	fr_log_fp = stdout;
 
-	TEST_CHECK(fr_sim_id_3gpp_pseudonym_encrypt(encrypted_id, (uint8_t const *)id, sizeof(id) - 1,
-						    11, 0, (uint8_t const **)keys) == 0);
+	TEST_CHECK(fr_sim_id_3gpp_pseudonym_encrypt(encrypted_id, id, sizeof(id) - 1, 6, 0, (uint8_t const *)key) == 0);
 	while ((log = fr_strerror_pop())) printf("%s\n", log);
 
-	TEST_CHECK(fr_sim_id_3gpp_pseudonym_decypt(decrypted_id, &tag, &key_ind,
-						   encrypted_id, (uint8_t const **)keys, 1) == 0);
-	while ((log = fr_strerror_pop())) printf("%s\n", log);
-
-	TEST_CHECK(tag == 11);
+	tag = fr_sim_id_3gpp_pseudonym_tag(encrypted_id);
+	TEST_CHECK(tag == 6);
+	key_ind = fr_sim_id_3gpp_pseudonym_key_index(encrypted_id);
 	TEST_CHECK(key_ind == 0);
+
+	TEST_CHECK(fr_sim_id_3gpp_pseudonym_decrypt(decrypted_id, encrypted_id, (uint8_t const *)key) == 0);
+	while ((log = fr_strerror_pop())) printf("%s\n", log);
+
 	TEST_CHECK(memcmp(id, decrypted_id, 15) == 0);
 }
 
 void test_encrypt_decypt_key1(void)
 {
 	char const	id[] = "001234554321001";
-	char const	key0[] = "1234567812345678";
-	char const	key1[] = "2222222288888888";
-	char const	*keys[] = { key0, key1 };
+	char const	key[] = "1234567812345678";
 	uint8_t		tag;
 	uint8_t		key_ind;
 	char const	*log;
 
-	char		encrypted_id[SIM_3GPP_PSEUDONYM_LEN];
-	uint8_t		decrypted_id[sizeof(id)];
+	char		encrypted_id[SIM_3GPP_PSEUDONYM_LEN + 1];
+	char		decrypted_id[sizeof(id)];
 
 	fr_log_fp = stdout;
 
-	TEST_CHECK(fr_sim_id_3gpp_pseudonym_encrypt(encrypted_id, (uint8_t const *)id, sizeof(id) - 1,
-						    11, 1, (uint8_t const **)keys) == 0);
+	TEST_CHECK(fr_sim_id_3gpp_pseudonym_encrypt(encrypted_id, id, sizeof(id) - 1, 11, 1, (uint8_t const *)key) == 0);
 	while ((log = fr_strerror_pop())) printf("%s\n", log);
 
-	TEST_CHECK(fr_sim_id_3gpp_pseudonym_decypt(decrypted_id, &tag, &key_ind,
-						   encrypted_id, (uint8_t const **)keys, 2) == 0);
-	while ((log = fr_strerror_pop())) printf("%s\n", log);
-
+	tag = fr_sim_id_3gpp_pseudonym_tag(encrypted_id);
 	TEST_CHECK(tag == 11);
+	key_ind = fr_sim_id_3gpp_pseudonym_key_index(encrypted_id);
 	TEST_CHECK(key_ind == 1);
+
+	TEST_CHECK(fr_sim_id_3gpp_pseudonym_decrypt(decrypted_id, encrypted_id, (uint8_t const *)key) == 0);
+	while ((log = fr_strerror_pop())) printf("%s\n", log);
+
 	TEST_CHECK(memcmp(id, decrypted_id, 15) == 0);
 }
 
@@ -586,21 +627,23 @@ void test_encrypt_decypt_key16(void)
 	uint8_t		key_ind;
 	char const	*log;
 
-	char		encrypted_id[SIM_3GPP_PSEUDONYM_LEN];
-	uint8_t		decrypted_id[sizeof(id)];
+	char		encrypted_id[SIM_3GPP_PSEUDONYM_LEN + 1];
+	char		decrypted_id[sizeof(id)];
 
 	fr_log_fp = stdout;
 
-	TEST_CHECK(fr_sim_id_3gpp_pseudonym_encrypt(encrypted_id, (uint8_t const *)id, sizeof(id) - 1,
-						    9, 15, (uint8_t const **)keys) == 0);
+	TEST_CHECK(fr_sim_id_3gpp_pseudonym_encrypt(encrypted_id, id, sizeof(id) - 1,
+						    9, 15, (uint8_t const *)keys[15]) == 0);
 	while ((log = fr_strerror_pop())) printf("%s\n", log);
 
-	TEST_CHECK(fr_sim_id_3gpp_pseudonym_decypt(decrypted_id, &tag, &key_ind,
-						   encrypted_id, (uint8_t const **)keys, 16) == 0);
-	while ((log = fr_strerror_pop())) printf("%s\n", log);
-
+	tag = fr_sim_id_3gpp_pseudonym_tag(encrypted_id);
 	TEST_CHECK(tag == 9);
+	key_ind = fr_sim_id_3gpp_pseudonym_key_index(encrypted_id);
 	TEST_CHECK(key_ind == 15);
+
+	TEST_CHECK(fr_sim_id_3gpp_pseudonym_decrypt(decrypted_id, encrypted_id, (uint8_t const *)keys[key_ind]) == 0);
+	while ((log = fr_strerror_pop())) printf("%s\n", log);
+
 	TEST_CHECK(memcmp(id, decrypted_id, 15) == 0);
 }
 

@@ -407,7 +407,14 @@ static int mod_load(void)
 		return -1;
 	}
 	if (fr_sim_global_init() < 0) return -1;
+	sim_xlat_register();
+
 	return 0;
+}
+
+static void mod_unload(void)
+{
+	sim_xlat_unregister();
 }
 
 /*
@@ -419,6 +426,7 @@ rlm_eap_submodule_t rlm_eap_aka = {
 	.name		= "eap_aka",
 	.magic		= RLM_MODULE_INIT,
 	.load		= mod_load,
+	.unload		= mod_unload,
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */
 	.process	= mod_process,		/* Process next round of EAP method */
 };

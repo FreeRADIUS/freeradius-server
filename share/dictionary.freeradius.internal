@@ -380,6 +380,19 @@ ATTRIBUTE	SIM-IMSI				1201	string
 
 # The algorithm the SIM card uses (Milenage for UMTS, COMP128 for others)
 ATTRIBUTE	SIM-Algo-Version			1202	integer
+ATTRIBUTE	SIM-Method-Hint				1203	integer
+
+VALUE		SIM-Method-Hint		Unknown			0
+VALUE		SIM-Method-Hint		SIM			1
+VALUE		SIM-Method-Hint		AKA			2
+
+ATTRIBUTE	SIM-Identity-Type			1204	integer
+
+VALUE		SIM-Identity-Type	Unknown			0
+VALUE		SIM-Identity-Type	Permanent		1
+VALUE		SIM-Identity-Type	Pseudonym		2
+VALUE		SIM-Identity-Type	3GPP-Pseudonym		3
+VALUE		SIM-Identity-Type	Fastauth		4
 
 #
 #	Range:	1210-1219
