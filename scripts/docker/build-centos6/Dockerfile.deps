@@ -39,7 +39,7 @@ RUN sh cmake.sh --skip-license --prefix=/usr/local
 #
 WORKDIR /usr/local/src/repositories
 # Fixme: Change to the main repo when they merge this branch
-RUN git clone --branch master --depth=1 https://github.com/FreeRADIUS/libkqueue.git
+RUN git clone --branch master --depth=1 https://github.com/mheily/libkqueue.git
 WORKDIR libkqueue
 RUN cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib ./ && \
     make && \
