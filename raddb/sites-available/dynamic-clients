@@ -4,9 +4,9 @@
 #	Sample configuration file for dynamically updating the list
 #	of RADIUS clients at run time.
 #
-#	Everything is keyed off of a client "network".  (e.g. 192.0.2/24)
-#	This configuration lets the server know that clients within
-#	that network are defined dynamically.
+#	Everything is keyed off a client "network" (for example,
+#	192.168.0.2/24). This configuration lets the server know
+#	that clients within that network are defined dynamically.
 #
 #	When the server receives a packet from an unknown IP address
 #	within that network, it tries to find a dynamic definition
@@ -20,7 +20,7 @@
 #	from that client are looked up as above.
 #
 #	If the dynamic definition is not found, then the request is
-#	treated as if it came from an unknown client.  i.e. It is
+#	treated as if it came from an unknown client, i.e. it is
 #	silently discarded.
 #
 #	The server has a negative cache for denied dynamic clients.
@@ -34,9 +34,10 @@
 #
 #  This virtual server is an EXAMPLE, and should not be enabled as-is.
 #
-#  Dynamic clients can be added to an existing virtual server by setting
-#  the "dynamic_clients" subsection of the "udp" listener.  And then
-#  adding sub-sections "new client", "add client", and "deny client".
+#  To enable dynamic clients in an existing virtual server, copy
+#  the "dynamic_clients" sub-section of the "udp" listener from
+#  the below example. Then copy the "new client", "add client",
+#  and "deny client" sub-sections into the virtual server.
 #
 #  When clients are added to a listener, they exist ONLY for that
 #  listener.  Dynamic clients can process packets ONLY through the
@@ -157,9 +158,16 @@ server dynamic_clients {
 				lifetime = 3600
 			}
 		}
+	}
 
 	#
-	#  The only contents of the virtual server is the "authorize" section.
+	#  When a request is received from an unknown client, it
+	#  is initially passed through this 'new client' section
+	#  to determine whether to add the client or not.
+	#
+	#  If the client is added, the request is then sent "for real"
+	#  through the normal virtual server sections, as usual.
+	#
 	new client {
 		#
 		#  Put any modules you want here.  SQL, LDAP, "exec",
@@ -181,23 +189,23 @@ server dynamic_clients {
 		#
 		update control {
 
-			#
-			#  Echo the IP address of the client.
+			#  Copy the IP address of the client from
+			#  the request just received
 			&FreeRADIUS-Client-IP-Address = "%{Packet-Src-IP-Address}"
 
-			# require_message_authenticator
+			#  require_message_authenticator
 			&FreeRADIUS-Client-Require-MA = no
 
-			# secret
+			#  secret
 			&FreeRADIUS-Client-Secret = "testing123"
 
-			# shortname
+			#  shortname
 			&FreeRADIUS-Client-Shortname = "%{Packet-Src-IP-Address}"
 
-			# nas_type
+			#  nas_type
 			&FreeRADIUS-Client-NAS-Type = "other"
 
-			# virtual_server
+			#  virtual_server
 			#
 			#  This can ONLY be used if the network client
 			#  definition (e.g. "client dynamic" above) has
@@ -207,7 +215,7 @@ server dynamic_clients {
 			#  virtual_server defined, then that is used,
 			#  and there is no need to define this attribute.
 			#
-			&FreeRADIUS-Client-Virtual-Server = "something"
+			#&FreeRADIUS-Client-Virtual-Server = "something"
 
 		}
 
@@ -242,31 +250,33 @@ server dynamic_clients {
 		#
 		#  Example 3: Look the clients up in LDAP
 		#
-		#   @todo - use the new 'map' function to map the 'nastable' to the attributes
+		#  @todo - use the new 'map' function to map the
+		#         'nastable' to the attributes
 		#
-		# Do an LDAP lookup in the elements OU, check to see if
-		# the Packet-Src-IP-Address object has a "ou"
-		# attribute, if it does continue.  Change "ACME.COM" to
-		# the real OU of your organization.
+		#  Do an LDAP lookup in the elements OU, check to
+		#  see if the Packet-Src-IP-Address object has an
+		#  "ou" attribute, if it does continue.  Change
+		#  "ACME.COM" to the real OU of your organization.
 		#
-		# Assuming the following schema:
+		#  Assuming the following schema:
 		#
-		# OU=Elements,OU=Radius,DC=ACME,DC=COM
+		#    OU=Elements,OU=Radius,DC=ACME,DC=COM
 		#
-		# Elements will hold a record of every NAS in your
-		# Network.  Create Group objects based on the IP
-		# Address of the NAS and set the "Location" or "l"
-		# attribute to the NAS Huntgroup the NAS belongs to
-		# allow them to be centrally managed in LDAP.
+		#  Elements will hold a record of every NAS in your
+		#  Network.  Create Group objects based on the IP
+		#  Address of the NAS and set the "Location" or "l"
+		#  attribute to the NAS Huntgroup the NAS belongs to
+		#  allow them to be centrally managed in LDAP.
 		#
-		# e.g.  CN=10.1.2.3,OU=Elements,OU=Radius,DC=ACME,DC=COM
+		#  e.g. CN=10.1.2.3,OU=Elements,OU=Radius,DC=ACME,DC=COM
 		#
-		# With a "l" value of "CiscoRTR" for a Cisco Router
-		# that has a NAS-IP-Address or Source-IP-Address of
-		# 10.1.2.3.
+		#  With a "l" value of "CiscoRTR" for a Cisco Router
+		#  that has a NAS-IP-Address or Source-IP-Address of
+		#  10.1.2.3.
 		#
-		# And with a "ou" value of the shared secret password
-		# for the NAS element. ie "password"
+		#  And with a "ou" value of the shared secret password
+		#  for the NAS element, i.e. "password".
+		#
 		if ("%{ldap:ldap:///OU=Elements,OU=Radius,DC=ACME,DC=COM?ou?sub?cn=%{Packet-Src-IP-Address}}") {
 			update control {
 				&FreeRADIUS-Client-IP-Address = "%{Packet-Src-IP-Address}"
@@ -288,12 +298,13 @@ server dynamic_clients {
 		#
 		#  If the 'new client' section does NOT return "ok", then
 		#  the new client is ignored.
+		#
 		ok
 	}
 
 
 	#
-	#  Run this subsection if the client is added.
+	#  This subsection is called if the client was added.
 	#
 	#  If this section is empty, you can just delete it entirely.
 	#
@@ -302,7 +313,7 @@ server dynamic_clients {
 	}
 
 	#
-	#  Run this subsection if the client is NOT added.
+	#  This subsection is called if the client was NOT added.
 	#
 	#  If this section is empty, you can just delete it entirely.
 	#
@@ -313,8 +324,10 @@ server dynamic_clients {
 	#
 	#  Reject all packets sent to this dummy virtual server.
 	#
-	#  This virtual server is just an example for dynamic clients,
-	#  and should not be used for authentication or accounting.
+	#  This virtual server is just an example for dynamic
+	#  clients, and should not be used for authentication or
+	#  accounting. Copy the above sections to the real virtual
+	#  server being used instead.
 	#
 	recv Access-Request {
 		reject
