@@ -1051,14 +1051,6 @@ static int fr_worker_pre_event(void *ctx, struct timeval *wake)
 	WORKER_VERIFY;
 
 	/*
-	 *	The application is polling the event loop, but has
-	 *	other work to do.  Don't do anything special here, as
-	 *	we will get called again on the next round of the
-	 *	event loop.
-	 */
-	if (wake && ((wake->tv_sec == 0) && (wake->tv_usec == 0))) return 0;
-
-	/*
 	 *	See if we need to sleep, because if there's nothing
 	 *	more to do, we need to tell the other end of the
 	 *	channels that we're sleeping.
@@ -1075,6 +1067,16 @@ static int fr_worker_pre_event(void *ctx, struct timeval *wake)
 	if (!sleeping) {
 		worker->was_sleeping = false;
 		return 1;
+	}
+
+	/*
+	 *	The application is polling the event loop, but has
+	 *	other work to do.  Don't do anything special here, as
+	 *	we will get called again on the next round of the
+	 *	event loop.
+	 */
+	if (wake && ((wake->tv_sec == 0) && (wake->tv_usec == 0))) {
+		return 0;
 	}
 
 	DEBUG3("\t%ssleeping running %zd, localized %zd, to_decode %zd",
