@@ -90,12 +90,10 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("radius_db", FR_TYPE_STRING, rlm_sql_config_t, sql_db), .dflt = "radius" },
 	{ FR_CONF_OFFSET("read_groups", FR_TYPE_BOOL, rlm_sql_config_t, read_groups), .dflt = "yes" },
 	{ FR_CONF_OFFSET("read_profiles", FR_TYPE_BOOL, rlm_sql_config_t, read_profiles), .dflt = "yes" },
-	{ FR_CONF_OFFSET("read_clients", FR_TYPE_BOOL, rlm_sql_config_t, do_clients), .dflt = "no" },
 	{ FR_CONF_OFFSET("sql_user_name", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sql_config_t, query_user), .dflt = "" },
 	{ FR_CONF_OFFSET("group_attribute", FR_TYPE_STRING, rlm_sql_config_t, group_attribute) },
 	{ FR_CONF_OFFSET("logfile", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sql_config_t, logfile) },
 	{ FR_CONF_OFFSET("default_user_profile", FR_TYPE_STRING, rlm_sql_config_t, default_profile), .dflt = "" },
-	{ FR_CONF_OFFSET("client_query", FR_TYPE_STRING, rlm_sql_config_t, client_query), .dflt = "SELECT id,nasname,shortname,type,secret FROM nas" },
 	{ FR_CONF_OFFSET("open_query", FR_TYPE_STRING, rlm_sql_config_t, connect_query) },
 
 	{ FR_CONF_OFFSET("authorize_check_query", FR_TYPE_STRING | FR_TYPE_XLAT | FR_TYPE_NOT_EMPTY, rlm_sql_config_t, authorize_check_query) },
@@ -133,7 +131,6 @@ static sql_fall_through_t fall_through(VALUE_PAIR *vp)
 /*
  *	Yucky prototype.
  */
-static int generate_sql_clients(rlm_sql_t *inst);
 static size_t sql_escape_func(REQUEST *, char *out, size_t outlen, char const *in, void *arg);
 
 /** Execute an arbitrary SQL query
@@ -461,88 +458,6 @@ finish:
 	return rcode;
 }
 
-static int generate_sql_clients(rlm_sql_t *inst)
-{
-	rlm_sql_handle_t *handle;
-	rlm_sql_row_t row;
-	unsigned int i = 0;
-	int ret = 0;
-	RADCLIENT *c;
-
-	DEBUG("Processing generate_sql_clients");
-	DEBUG("Query is: %s", inst->config->client_query);
-
-	handle = fr_pool_connection_get(inst->pool, NULL);
-	if (!handle) return -1;
-
-	if (rlm_sql_select_query(inst, NULL, &handle, inst->config->client_query) != RLM_SQL_OK) return -1;
-
-	while (rlm_sql_fetch_row(&row, inst, NULL, &handle) == RLM_SQL_OK) {
-		char *server = NULL;
-		i++;
-
-		/*
-		 *  The return data for each row MUST be in the following order:
-		 *
-		 *  0. Row ID (currently unused)
-		 *  1. Name (or IP address)
-		 *  2. Shortname
-		 *  3. Type
-		 *  4. Secret
-		 *  5. Virtual Server (optional)
-		 */
-		if (!row[0]){
-			ERROR("No row id found on pass %d", i);
-			continue;
-		}
-		if (!row[1]){
-			ERROR("No nasname found for row %s", row[0]);
-			continue;
-		}
-		if (!row[2]){
-			ERROR("No short name found for row %s", row[0]);
-			continue;
-		}
-		if (!row[4]){
-			ERROR("No secret found for row %s", row[0]);
-			continue;
-		}
-
-		if (((inst->driver->sql_num_fields)(handle, inst->config) > 5) && (row[5] != NULL) && *row[5]) {
-			server = row[5];
-		}
-
-		DEBUG("Adding client %s (%s) to %s clients list",
-		      row[1], row[2], server ? server : "global");
-
-		/* FIXME: We should really pass a proper ctx */
-		c = client_afrom_query(NULL,
-				      row[1],	/* identifier */
-				      row[4],	/* secret */
-				      row[2],	/* shortname */
-				      row[3],	/* type */
-				      server,	/* server */
-				      false);	/* require message authenticator */
-		if (!c) {
-			continue;
-		}
-
-		if (!client_add(NULL, c)) {
-			WARN("Failed to add client, possible duplicate?");
-
-			client_free(c);
-			ret = -1;
-			break;
-		}
-
-		DEBUG("Client \"%s\" (%s) added", c->longname, c->shortname);
-	}
-
-	(inst->driver->sql_finish_select_query)(handle, inst->config);
-	fr_pool_connection_release(inst->pool, NULL, handle);
-
-	return ret;
-}
 
 /** xlat escape function for drivers which do not provide their own
  *
@@ -1235,13 +1150,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 	inst->pool = module_connection_pool_init(inst->cs, inst, mod_conn_create, NULL, NULL, NULL, NULL);
 	if (!inst->pool) return -1;
-
-	if (inst->config->do_clients) {
-		if (generate_sql_clients(inst) == -1){
-			ERROR("Failed to load clients from SQL");
-			return -1;
-		}
-	}
 
 	return RLM_MODULE_OK;
 }
