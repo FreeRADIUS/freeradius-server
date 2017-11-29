@@ -557,8 +557,6 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 #endif
 
 	talloc_free(request);
-
-	if (!worker->num_active) worker_reset_timer(worker);
 }
 
 
@@ -624,7 +622,7 @@ static void fr_worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED struct
 		fr_worker_send_reply(worker, request, 0);
 	}
 
-	worker_reset_timer(worker);
+	if (!worker->num_active) worker_reset_timer(worker);
 }
 
 /** See when we next need to service the time_order heap for "too old"
@@ -641,7 +639,7 @@ static void worker_reset_timer(fr_worker_t *worker)
 	if (!request) {
 		rad_assert(worker->num_active == 0);
 		if (worker->ev_cleanup) {
-			DEBUG3("Worker has nothing to do, deleting cleanup timer.");
+			DEBUG3("Worker has no active requests, deleting cleanup timer.");
 			fr_event_timer_delete(worker->el, &worker->ev_cleanup);
 		}
 		worker->next_cleanup = 0;
@@ -1035,6 +1033,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	(void) rbtree_deletebydata(worker->dedup, request);
 
 	fr_worker_send_reply(worker, request, size);
+	if (!worker->num_active) worker_reset_timer(worker);
 }
 
 /** Run the event loop 'pre' callback
