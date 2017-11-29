@@ -892,9 +892,9 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 			       vp_cursor_t *cursor, void *encoder_ctx)
 {
 	int			len;
-	fr_type_t			attr_type;
+	fr_type_t		attr_type;
 #ifndef NDEBUG
-	fr_type_t			vsa_type;
+	fr_type_t		vsa_type;
 #endif
 	uint8_t			*start = out;
 	VALUE_PAIR const	*vp = fr_pair_cursor_current(cursor);
