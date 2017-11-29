@@ -300,7 +300,7 @@ static ssize_t sim_xlat_3gpp_pseudonym_decrypt_nai(TALLOC_CTX *ctx, char **out, 
 
 /** Decrypts a 3gpp pseudonym
  *
- *	%{sim_id_3gpp_pseudonym_encrypt:&id_attr &key_attr <key_index>}
+ *	%{sim_id_3gpp_pseudonym_encrypt:&id_attr &key_attr key_index}
  *
  */
 static ssize_t sim_xlat_3gpp_pseudonym_encrypt_nai(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
