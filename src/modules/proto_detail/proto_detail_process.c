@@ -101,7 +101,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 				break;
 
 			default:
-				request->reply->code = FR_CODE_DO_NOT_RESPOND;
+				request->reply->code = 0;
 				break;
 			}
 			break;
@@ -120,7 +120,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		case RLM_MODULE_REJECT:
 		case RLM_MODULE_USERLOCK:
 		default:
-			request->reply->code = FR_CODE_DO_NOT_RESPOND;
+			request->reply->code = 0;
 			break;
 		}
 
@@ -131,14 +131,11 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		if (vp) request->reply->code = vp->vp_uint32;
 
 		if (request->reply->code == FR_CODE_DO_NOT_RESPOND) {
-			request->reply->code = 0;
-			unlang = cf_section_find(request->server_cs, "send", "fail");
-			if (!unlang) goto send_reply;
-
-		} else {
-			unlang = cf_section_find(request->server_cs, "send", "ok");
-			if (!unlang) goto send_reply;
+			RWARN("Ignoring 'do_not_respond' as it does not apply to detail files");
 		}
+
+		unlang = cf_section_find(request->server_cs, "send", "ok");
+		if (!unlang) goto send_reply;
 
 		RDEBUG("Running 'send %s { ... }' from file %s", cf_section_name2(unlang), cf_filename(unlang));
 		unlang_push_section(request, unlang, RLM_MODULE_NOOP);
@@ -169,14 +166,6 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		}
 
 	send_reply:
-		/*
-		 *	Check for "do not respond".
-		 */
-		if (request->reply->code == FR_CODE_DO_NOT_RESPOND) {
-			RDEBUG("Not sending reply to client.");
-			return FR_IO_DONE;
-		}
-
 		/*
 		 *	Failed, but we still reply with a magic code,
 		 *	so that the reader can retransmit.
