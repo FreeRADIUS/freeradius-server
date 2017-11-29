@@ -14,7 +14,7 @@ if ("%{sim_id_type:&User-Name}" != 'Permanent') {
 #  Encrypt the permanent ID
 #
 update control {
-	Tmp-String-0 := '12345678'
+	Tmp-String-0 := '1234567812345678'
 }
 update control {
 	User-Name := "%{3gpp_pseudonym_encrypt_nai:&User-Name &control:Tmp-String-0 6}"

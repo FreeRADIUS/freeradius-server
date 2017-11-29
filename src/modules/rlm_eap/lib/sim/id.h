@@ -75,12 +75,12 @@ int		fr_sim_id_type(fr_sim_id_type_t *type, fr_sim_method_hint_t *hint,
 
 int		fr_sim_id_3gpp_pseudonym_encrypt(char out[SIM_3GPP_PSEUDONYM_LEN + 1],
 						 char const *imsi, size_t imsi_len,
-						 uint8_t tag,  uint8_t key_ind, uint8_t const key[8]);
+						 uint8_t tag,  uint8_t key_ind, uint8_t const key[16]);
 
 uint8_t		fr_sim_id_3gpp_pseudonym_tag(char const encr_id[SIM_3GPP_PSEUDONYM_LEN]);
 
 uint8_t		fr_sim_id_3gpp_pseudonym_key_index(char const encr_id[SIM_3GPP_PSEUDONYM_LEN]);
 
 int		fr_sim_id_3gpp_pseudonym_decrypt(char out[SIM_IMSI_MAX_LEN],
-				     		 char const encr_id[SIM_3GPP_PSEUDONYM_LEN], uint8_t const key[8]);
+				     		 char const encr_id[SIM_3GPP_PSEUDONYM_LEN], uint8_t const key[16]);
 #endif	/* _EAP_SIM_ID_TYPE_H */

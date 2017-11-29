@@ -263,8 +263,8 @@ static ssize_t sim_xlat_3gpp_pseudonym_decrypt_nai(TALLOC_CTX *ctx, char **out, 
 	}
 
 	key_len = talloc_array_length(key);
-	if (key_len != 8) {
-		REDEBUG2("Decryption key incorrect length, expected %i bytes, got %zu bytes", 8, key_len);
+	if (key_len != 16) {
+		REDEBUG2("Decryption key incorrect length, expected %i bytes, got %zu bytes", 16, key_len);
 		return -1;
 	}
 
@@ -384,8 +384,8 @@ static ssize_t sim_xlat_3gpp_pseudonym_encrypt_nai(TALLOC_CTX *ctx, char **out, 
 	}
 
 	key_len = talloc_array_length(key);
-	if (key_len != 8) {
-		REDEBUG2("Encryption key incorrect length, expected %i bytes, got %zu bytes", 8, key_len);
+	if (key_len != 16) {
+		REDEBUG2("Encryption key incorrect length, expected %i bytes, got %zu bytes", 16, key_len);
 		return -1;
 	}
 

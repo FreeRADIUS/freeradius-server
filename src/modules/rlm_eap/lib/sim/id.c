@@ -251,14 +251,14 @@ int fr_sim_id_type(fr_sim_id_type_t *type, fr_sim_method_hint_t *hint,
  *			the encr ID.  There may be up to 16 keys in use at any one
  *			time. This field is 4 bits wimsie (0-15).
  * @param[in] key	as described by the 'Security aspects of non-3GPP accesses' document.
- *			Must be 128 bits (8 bytes).
+ *			Must be 128 bits (16 bytes).
  * @return
  *	- 0 on success.
  *	- -1 if any of the parameters were invalimsi.
  */
 int fr_sim_id_3gpp_pseudonym_encrypt(char out[SIM_3GPP_PSEUDONYM_LEN + 1],
 				     char const *imsi, size_t imsi_len,
-				     uint8_t tag, uint8_t key_ind, uint8_t const key[8])
+				     uint8_t tag, uint8_t key_ind, uint8_t const key[16])
 {
 	uint8_t		padded[16];				/* Random (8 bytes) + Compressed (8 bytes) */
 	uint8_t		encr[16];				/* aes_ecb(padded) */
@@ -432,13 +432,14 @@ uint8_t fr_sim_id_3gpp_pseudonym_key_index(char const encr_id[SIM_3GPP_PSEUDONYM
  *
  * @param[out] out		Where to write the decypted, uncompressed IMSI.
  * @param[in] encr_id		to decypt. Will read exactly 23 bytes from the buffer.
- * @param[in] key		to use to decrypt the encrypted, compressed IMSI.
+ * @param[in] key		to use to decrypt the encrypted and compressed IMSI.
+ *				Must be 128 bits (16 bytes).
  * @return
  *	- 0 on success.
  *	- -1 if any of the parameters were invalid.
  */
 int fr_sim_id_3gpp_pseudonym_decrypt(char out[SIM_IMSI_MAX_LEN + 1],
-				     char const encr_id[SIM_3GPP_PSEUDONYM_LEN], uint8_t const key[8])
+				     char const encr_id[SIM_3GPP_PSEUDONYM_LEN], uint8_t const key[16])
 {
 	EVP_CIPHER_CTX	*cctx;
 
