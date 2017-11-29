@@ -636,15 +636,7 @@ static void worker_reset_timer(fr_worker_t *worker)
 	REQUEST *request;
 
 	request = fr_heap_peek_tail(worker->time_order);
-	if (!request) {
-		rad_assert(worker->num_active == 0);
-		if (worker->ev_cleanup) {
-			DEBUG3("Worker has no active requests, deleting cleanup timer.");
-			fr_event_timer_delete(worker->el, &worker->ev_cleanup);
-		}
-		worker->next_cleanup = 0;
-		return;
-	}
+	if (!request) return;
 	rad_assert(worker->num_active > 0);
 
 	cleanup = 30;
