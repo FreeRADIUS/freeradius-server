@@ -60,6 +60,7 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 /** Find the next attribute to encode
  *
  * @param cursor to iterate over.
+ * @param encoder_ctx the context for the encoder
  * @return encodable VALUE_PAIR, or NULL if none available.
  */
 static inline VALUE_PAIR *next_encodable(vp_cursor_t *cursor, void *encoder_ctx)
