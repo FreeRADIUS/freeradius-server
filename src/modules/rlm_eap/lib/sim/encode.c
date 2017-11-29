@@ -79,6 +79,7 @@ static inline VALUE_PAIR *next_encodable(vp_cursor_t *cursor, void *encoder_ctx)
 /** Determine if the current attribute is encodable, or find the first one that is
  *
  * @param cursor to iterate over.
+ * @param encoder_ctx the context for the encoder
  * @return encodable VALUE_PAIR, or NULL if none available.
  */
 static inline VALUE_PAIR *first_encodable(vp_cursor_t *cursor, void *encoder_ctx)
