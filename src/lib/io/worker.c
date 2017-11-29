@@ -764,6 +764,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	 */
 	request = fr_heap_pop(worker->runnable);
 	if (request) {
+		DEBUG3("Worker found runnable request.");
 		REQUEST_VERIFY(request);
 		rad_assert(request->runnable_id < 0);
 		fr_time_tracking_resume(&request->async->tracking, now);
@@ -779,8 +780,12 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 		if (!cd) {
 			WORKER_HEAP_POP(to_decode, cd, request.list);
 		}
-		if (!cd) return NULL;
+		if (!cd) {
+			DEBUG3("Worker localized and decode lists are empty.");
+			return NULL;
+		}
 
+		DEBUG3("Worker found request to decode.");
 		worker->num_decoded++;
 	} while (!cd);
 
