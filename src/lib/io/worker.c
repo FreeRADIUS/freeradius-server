@@ -608,8 +608,6 @@ static void fr_worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED struct
 	while ((request = fr_heap_peek_tail(worker->time_order)) != NULL) {
 		waiting = now - request->async->recv_time;
 
-		if (waiting < NANOSEC) break;
-
 		/*
 		 *	Waiting too long, delete it.
 		 */
