@@ -51,7 +51,7 @@ static int eap_sim_compose(eap_session_t *eap_session)
 
 	return fr_sim_encode(eap_session->request, dict_sim_root, FR_EAP_SIM,
 			     eap_session->request->reply->vps, eap_session->this_round->request,
-			     eap_sim_session->keys.gsm.nonce_mt, sizeof(eap_sim_session->keys.gsm.nonce_mt));
+			     &eap_sim_session->keys);
 }
 
 static int eap_sim_send_state(eap_session_t *eap_session)
@@ -208,10 +208,6 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	 */
 	vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_MAC);
 	fr_pair_value_memcpy(vp, hmac_zero, sizeof(hmac_zero));
-	fr_pair_replace(to_client, vp);
-
-	vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_KEY);
-	fr_pair_value_memcpy(vp, eap_sim_session->keys.k_aut, 16);
 	fr_pair_replace(to_client, vp);
 
 	/*

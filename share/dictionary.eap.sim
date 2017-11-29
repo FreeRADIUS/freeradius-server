@@ -30,9 +30,6 @@ ATTRIBUTE	EAP-SIM-Version-List			15	octets
 
 ATTRIBUTE	EAP-SIM-Selected-Version		16	short
 ATTRIBUTE	EAP-SIM-Fullauth-ID-Req			17	bool
-ATTRIBUTE	EAP-SIM-Counter				19	short
-ATTRIBUTE	EAP-SIM-Counter-Too-Small		20	bool
-ATTRIBUTE	EAP-SIM-Nonce-S				21	octets
 ATTRIBUTE	EAP-SIM-Client-Error-Code		22	short
 
 VALUE	EAP-SIM-Client-Error-Code	Unable-To-Process-Packet 0
@@ -45,8 +42,18 @@ VALUE	EAP-SIM-Client-Error-Code	RANDS-Not-Fresh		3
 #
 ATTRIBUTE	EAP-SIM-IV				129	octets
 ATTRIBUTE	EAP-SIM-Encr-Data			130	tlv encrypt=4
+
+#
+#  These attributes are reversibly encrypted
+#
+BEGIN-TLV	EAP-SIM-Encr-Data
+ATTRIBUTE	EAP-SIM-Counter				19	short
+ATTRIBUTE	EAP-SIM-Counter-Too-Small		20	bool
+ATTRIBUTE	EAP-SIM-Nonce-S				21	octets
 ATTRIBUTE	EAP-SIM-Next-Pseudonym			132	string
 ATTRIBUTE	EAP-SIM-Next-Reauth-ID			133	string
+END-TLV		EAP-SIM-Encr-Data
+
 ATTRIBUTE	EAP-SIM-Checkcode			134	octets
 ATTRIBUTE	EAP-SIM-Result-Ind			137	bool
 

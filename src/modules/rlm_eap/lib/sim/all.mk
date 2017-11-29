@@ -3,11 +3,13 @@ TARGET := libfreeradius-eap-sim.a
 endif
 
 SOURCES	:= \
+	base.c \
 	comp128.c \
 	crypto.c \
+	decode.c \
+	encode.c \
 	fips186prf.c \
 	id.c \
-	sim_proto.c \
 	vector.c \
 	xlat.c
 

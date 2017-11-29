@@ -28,9 +28,6 @@ ATTRIBUTE	EAP-AKA-Any-ID-Req			13	bool
 ATTRIBUTE	EAP-AKA-Identity			14	string
 
 ATTRIBUTE	EAP-AKA-Fullauth-ID-Req			17	bool
-ATTRIBUTE	EAP-AKA-Counter				19	short
-ATTRIBUTE	EAP-AKA-Counter-Too-Small		20	bool
-ATTRIBUTE	EAP-AKA-Nonce-S				21	octets
 ATTRIBUTE	EAP-AKA-Client-Error-Code		22	short
 ATTRIBUTE	EAP-AKA-KDF-Input			23	string
 ATTRIBUTE	EAP-AKA-KDF				24	short
@@ -45,8 +42,18 @@ VALUE	EAP-AKA-Client-Error-Code	RANDS-Not-Fresh		3
 #
 ATTRIBUTE	EAP-AKA-IV				129	octets
 ATTRIBUTE	EAP-AKA-Encr-Data			130	tlv encrypt=4
+
+#
+#  These attributes are reversibly encrypted
+#
+BEGIN-TLV	EAP-AKA-Encr-Data
+ATTRIBUTE	EAP-AKA-Counter				19	short
+ATTRIBUTE	EAP-AKA-Counter-Too-Small		20	bool
+ATTRIBUTE	EAP-AKA-Nonce-S				21	octets
 ATTRIBUTE	EAP-AKA-Next-Pseudonym			132	string
 ATTRIBUTE	EAP-AKA-Next-Reauth-ID			133	string
+END-TLV		EAP-AKA-Encr-Data
+
 ATTRIBUTE	EAP-AKA-Checkcode			134	octets
 ATTRIBUTE	EAP-AKA-Result-Ind			137	bool
 

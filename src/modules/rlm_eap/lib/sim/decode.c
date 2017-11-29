@@ -15,7 +15,7 @@
  */
 
 /**
- * @file rlm_eap/lib/sim/sim_proto.c
+ * @file rlm_eap/lib/sim/decode.c
  * @brief Code common to EAP-SIM/AKA/AKA' clients and servers.
  *
  * The development of the EAP-SIM support was funded by Internet Foundation
@@ -24,6 +24,18 @@
  * @copyright 2003 Michael Richardson <mcr@sandelman.ottawa.on.ca>
  * @copyright 2003-2016 The FreeRADIUS server project
  */
+
+RCSID("$Id$")
+
+#include <freeradius-devel/libradius.h>
+#include <freeradius-devel/sha1.h>
+#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/modules.h>
+#include <freeradius-devel/tls.h>
+
+#include "eap_types.h"
+#include "eap_sim_common.h"
+#include "sim_proto.h"
 
 /*
  *  EAP-SIM/AKA/AKA' PACKET FORMAT
@@ -42,36 +54,6 @@
  * With AT-Type/AT-Length/Value... repeating. Length is in units
  * of 32 bits, and includes the Type/Length fields.
  */
-RCSID("$Id$")
-
-#include <freeradius-devel/libradius.h>
-#include <freeradius-devel/sha1.h>
-#include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/tls.h>
-
-#include "eap_types.h"
-#include "eap_sim_common.h"
-#include "sim_proto.h"
-
-fr_dict_attr_t const *dict_sim_root;
-fr_dict_attr_t const *dict_aka_root;
-
-/*
- * definitions changed to take a buffer for unknowns
- * as this is more thread safe.
- */
-char const *fr_sim_session_to_name(char *out, size_t outlen, eap_sim_client_states_t state)
-{
-	static char const *sim_states[] = { "init", "start", NULL };
-
-	if (state >= EAP_SIM_CLIENT_MAX_STATES) {
-		snprintf(out, outlen, "eapstate:%d", state);
-		return out;
-	}
-
-	return sim_states[state];
-}
 
 /** Extract the IV value from an AT_IV attribute
  *
@@ -732,282 +714,3 @@ int fr_sim_decode(REQUEST *request, vp_cursor_t *decoded, fr_dict_attr_t const *
 
 	return 0;
 }
-
-ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t type,
-		      VALUE_PAIR *to_encode, eap_packet_t *eap_packet,
-		      uint8_t const *hmac_extra, size_t hmac_extra_len)
-{
-	VALUE_PAIR		*vp;
-
-	unsigned int		id, eap_code;
-
-	uint8_t			*buff, *p;
-	size_t			len = 0;
-
-	bool			do_hmac = false;
-
-	unsigned char		subtype;
-	vp_cursor_t		cursor;
-
-	/*
-	 *	Encoded_msg is now an EAP-SIM message.
-	 *	It might be too big for putting into an
-	 *	EAP packet.
-	 */
-	vp = fr_pair_find_by_child_num(to_encode, parent, FR_SIM_SUBTYPE, TAG_ANY);
-	if (!vp) {
-		REDEBUG("Missing subtype attribute");
-		return -1;
-	}
-	subtype = vp->vp_uint16;
-
-	vp = fr_pair_find_by_num(to_encode, 0, FR_EAP_ID, TAG_ANY);
-	id = vp ? vp->vp_uint32 : ((int)getpid() & 0xff);
-
-	vp = fr_pair_find_by_num(to_encode, 0, FR_EAP_CODE, TAG_ANY);
-	eap_code = vp ? vp->vp_uint32 : FR_EAP_CODE_REQUEST;
-
-	/*
-	 *	Fill in some bits in the EAP packet
-	 *
-	 *	These are needed even if we're sending an almost empty packet.
-	 */
-	if (eap_packet->code != FR_EAP_CODE_SUCCESS) eap_packet->code = eap_code;
-	eap_packet->id = (id & 0xff);
-	eap_packet->type.num = type;
-
-	(void)fr_pair_cursor_init(&cursor, &to_encode);
-	while ((vp = fr_pair_cursor_next_by_ancestor(&cursor, parent, TAG_ANY))) {
-		int vp_len;
-
-		if (vp->da->attr > UINT8_MAX) continue;	/* Skip non-protocol attributes */
-
-		/*
-		 *	the AT_MAC attribute is a bit different, when we get to this
-		 *	attribute, we pull the contents out, save it for later
-		 *	processing, set the size to 16 bytes (plus 2 bytes padding).
-		 *
-		 *	At this point, we only care about the size.
-		 */
-		if (vp->da->attr == FR_SIM_MAC) {
-			vp_len = 18;
-			do_hmac = true;
-		/*
-		 *	String attributes have a 16bit "Actual Length" field at the start.
-		 */
-		} else if (vp->vp_type == FR_TYPE_STRING) {
-			vp_len = vp->vp_length + 2;
-		/*
-		 *	All other attributes we trust the length.
-		 */
-		} else {
-			vp_len = vp->vp_length;
-		}
-
-		/*
-		 *	Round up to next multiple of 4, after taking in
-		 *	account the type and length bytes.
-		 */
-		len += ((vp_len + 2) + 3) & ~3;
-	}
-
-	/*
-	 *	Fast path...
-	 */
-	if (len == 0) {
-		MEM(buff = talloc_array(eap_packet, uint8_t, 3));
-
-		buff[0] = subtype;	/* SIM or AKA subtype */
-		buff[1] = 0;		/* Reserved */
-		buff[2] = 0;		/* Reserved */
-
-		eap_packet->type.length = 3;
-		eap_packet->type.data = buff;
-
-		return 0;
-	}
-
-	len += 3;		/* Subtype + Reserved */
-
-	MEM(p = buff = talloc_zero_array(eap_packet, uint8_t, len));
-
-	*p++ = subtype;		/* Subtype  (1) */
-	p += 2;			/* Reserved (2) */
-
-	/*
-	 *	Encode all the things...
-	 */
-	(void)fr_pair_cursor_first(&cursor);
-	while ((vp = fr_pair_cursor_next_by_ancestor(&cursor, parent, TAG_ANY))) {
-		int	rounded_len;
-		size_t	vp_len;
-
-		if (vp->da->attr > UINT8_MAX) continue;	/* Skip non-protocol attributes */
-
-		/*
-		 *	We'll append the HMAC last.
-		 */
-		if (vp->da->attr == FR_EAP_SIM_MAC) continue;
-
-		/*
-		 *	For strings we have an 'actual' value field.
-		 */
-		if (vp->vp_type == FR_TYPE_STRING) {
-			vp_len = vp->vp_length + 2;
-		/*
-		 *	All other attributes we trust the length.
-		 */
-		} else {
-			vp_len = vp->vp_length;
-		}
-
-		/*
-		 *	Round attr + len + data length out to a multiple
-		 *	of four, and setup the attribute header and
-		 *	length field in the buffer.
-		 */
-		rounded_len = (vp_len + 2 + 3) & ~3;
-		p[0] = vp->da->attr;
-		p[1] = rounded_len >> 2;
-
-		switch (vp->vp_type) {
-		case FR_TYPE_OCTETS:
-			memcpy(&p[2], vp->vp_octets, vp->vp_length);
-			break;
-
-		/*
-		 *	In order to represent the string length properly we include a second
-		 *	16bit length field with the real string length.
-		 *
-		 *	The end of the string is padded buff to a multiple of 4.
-		 *
-		 *	0                   1                   2                   3
-		 *	0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-		 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-		 *	| AT_<STRING>   | Length        |    Actual <STRING> Length     |
-		 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-		 *	|                                                               |
-		 *	.                           String                              .
-		 *	.                                                               .
-		 *	|                                                               |
-		 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-		 */
-		case FR_TYPE_STRING:
-		{
-			uint16_t actual_len = htons((vp->vp_length & UINT16_MAX));
-
-			memcpy(&p[2], &actual_len, sizeof(uint16_t));
-			memcpy(&p[4], vp->vp_strvalue, actual_len);
-		}
-			break;
-
-		/*
-		 *	In SIM/AKA/AKA' we represent truth values
-		 *	by either including or not including the attribute
-		 *	in the packet.
-		 *
-		 *	0                   1                   2                   3
-		 *	0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-		 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-		 *	|   AT_<BOOL>   | Length = 1    |           Reserved            |
-		 *	+---------------+---------------+-------------------------------+
-		 */
-		case FR_TYPE_BOOL:
-			break;
-
-		/*
-		 *	Numbers are network byte order.
-		 *
-		 *	In the base RFCs only short (16bit) unsigned integers are used.
-		 *	We add support for more, just for completeness.
-		 *
-		 *	0                   1                   2                   3
-		 *	0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-		 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-		 *	|   AT_<SHORT>  | Length = 1    |    Short 1    |    Short 2    |
-		 *	+---------------+---------------+-------------------------------+
-		 */
-		case FR_TYPE_UINT8:			//!< 8 Bit unsigned integer.
-		case FR_TYPE_UINT16:			//!< 16 Bit unsigned integer.
-		case FR_TYPE_UINT32:			//!< 32 Bit unsigned integer.
-		case FR_TYPE_UINT64:			//!< 64 Bit unsigned integer.
-		case FR_TYPE_INT32:			//!< 32 Bit signed integer.
-		{
-			fr_value_box_t data;
-
-			fr_value_box_hton(&data, &vp->data);
-			memcpy(&p[2], &data.datum, vp->vp_length);
-		}
-
-		/*
-		 *	There's nothing to prevent users defining their
-		 *	own SIM/AKA/AKA' attributes, so no real reason
-		 *	to limit to the types of the IANA registered attributes.
-		 */
-		default:
-			memcpy(&p[2], &vp->data.datum, vp->vp_length);
-			break;
-		}
-
-		p += rounded_len;
-	}
-
-	eap_packet->type.data = buff;
-	eap_packet->type.length = len;
-
-	/*
-	 *	Calculate a SHA1-HMAC over the complete EAP packet
-	 */
-	if (do_hmac) {
-		ssize_t slen;
-
-		vp = fr_pair_find_by_child_num(to_encode, parent, FR_SIM_KEY, TAG_ANY);
-		if (!vp) {
-			fr_strerror_printf("Need to sign packet, but no HMAC key set");
-		error:
-			talloc_free(buff);
-			return -1;
-		}
-
-		/*
-		 *	We left some room earlier...
-		 */
-		*p++ = FR_SIM_MAC;
-		*p++ = (SIM_CALC_MAC_SIZE >> 2);
-		*p++ = 0x00;
-		*p++ = 0x00;
-
-		slen = fr_sim_crypto_sign_packet(p, eap_packet,
-				       		 vp->vp_octets, vp->vp_length,
-				       		 hmac_extra, hmac_extra_len);
-		if (slen < 0) goto error;
-	}
-	FR_PROTO_HEX_DUMP("sim packet", buff, len);
-
-
-	return len;
-}
-
-int fr_sim_global_init(void)
-{
-	static bool done_init;
-
-	if (done_init) return 0;
-
-	dict_aka_root = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_EAP_AKA_ROOT);
-	if (!dict_aka_root) {
-		fr_strerror_printf("Missing AKA root");
-		return -1;
-	}
-
-	dict_sim_root = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_EAP_SIM_ROOT);
-	if (!dict_sim_root) {
-		fr_strerror_printf("Missing SIM root");
-		return -1;
-	}
-
-	done_init = true;
-
-	return 0;
-}
-

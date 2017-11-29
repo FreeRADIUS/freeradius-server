@@ -44,12 +44,14 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session);
  */
 static int eap_aka_compose(eap_session_t *eap_session)
 {
+	eap_aka_session_t	*eap_aka_session = talloc_get_type_abort(eap_session->opaque, eap_aka_session_t);
+
 	/* we will set the ID on requests, since we have to HMAC it */
 	eap_session->this_round->set_request_id = true;
 
 	return fr_sim_encode(eap_session->request, dict_aka_root, FR_EAP_AKA,
 			     eap_session->request->reply->vps, eap_session->this_round->request,
-			     NULL, 0);
+			     &eap_aka_session->keys);
 }
 
 /** Send the challenge itself
@@ -140,10 +142,6 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	 */
 	vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_MAC);
 	fr_pair_value_memcpy(vp, hmac_zero, sizeof(hmac_zero));
-	fr_pair_replace(to_client, vp);
-
-	vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_KEY);
-	fr_pair_value_memcpy(vp, eap_aka_session->keys.k_aut, 16);
 	fr_pair_replace(to_client, vp);
 
 	/* the SUBTYPE, set to challenge. */
