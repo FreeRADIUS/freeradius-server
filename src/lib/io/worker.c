@@ -125,6 +125,8 @@ struct fr_worker_t {
 	int                     message_set_size; //!< default start number of messages
 	int                     ring_buffer_size; //!< default start size for the ring buffers
 
+	int			max_request_time; //!< maximum time a request can be processed
+
 	size_t			talloc_pool_size; //!< for each REQUEST
 
 	fr_time_t		checked_timeout; //!< when we last checked the tails of the queues
@@ -637,7 +639,7 @@ static void worker_reset_timer(fr_worker_t *worker)
 	if (!request) return;
 	rad_assert(worker->num_active > 0);
 
-	cleanup = 30;
+	cleanup = worker->max_request_time;
 	cleanup *= NANOSEC;
 	cleanup += request->async->recv_time;
 	fr_time_to_timeval(&when, cleanup);
@@ -654,7 +656,7 @@ static void worker_reset_timer(fr_worker_t *worker)
 	worker->next_cleanup = cleanup;
 	fr_time_to_timeval(&when, cleanup);
 
-	DEBUG2("Resetting worker cleanup timer to +30s");
+	DEBUG2("Resetting worker cleanup timer to +%ds", worker->max_request_time);
 	if (fr_event_timer_insert(worker, worker->el, &worker->ev_cleanup,
 				  &when, fr_worker_max_request_time, worker) < 0) {
 		ERROR("Failed inserting max_request_time timer.");
@@ -689,7 +691,7 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 		cd = fr_ptr_to_type(fr_channel_data_t, request.list, entry);
 		waiting = now - cd->m.when;
 
-		if (waiting < (20 * (fr_time_t) NANOSEC)) break;
+		if (waiting < ((worker->max_request_time - 2) * (fr_time_t) NANOSEC)) break;
 
 		/*
 		 *	Waiting too long, delete it.
@@ -1275,6 +1277,7 @@ nomem:
 	worker->talloc_pool_size = 4096; /* at least enough for a REQUEST */
 	worker->message_set_size = 1024;
 	worker->ring_buffer_size = (1 << 16);
+	worker->max_request_time = 30;
 
 	if (fr_event_pre_insert(worker->el, fr_worker_pre_event, worker) < 0) {
 		fr_strerror_printf("Failed adding pre-check to event list");
