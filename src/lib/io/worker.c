@@ -689,7 +689,7 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 		cd = fr_ptr_to_type(fr_channel_data_t, request.list, entry);
 		waiting = now - cd->m.when;
 
-		if (waiting < NANOSEC) break;
+		if (waiting < (20 * (fr_time_t) NANOSEC)) break;
 
 		/*
 		 *	Waiting too long, delete it.
