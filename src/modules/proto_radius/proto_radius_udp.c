@@ -595,6 +595,11 @@ static void dynamic_client_timer(proto_radius_udp_t *inst, RADCLIENT *client, ui
 	struct timeval when;
 
 	/*
+	 *	This client lives forever.  Don't expire it!
+	 */
+	if (!timer) return;
+
+	/*
 	 *	It's not active, AND it's not a negative cache.  We
 	 *	had some other error trying to insert a "good" client
 	 *	into the list of known clients.  Just nuke it, and
@@ -1404,8 +1409,10 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		FR_INTEGER_BOUND_CHECK("max_pending_packets", inst->dynamic_clients.max_pending_clients, >=, 256);
 		FR_INTEGER_BOUND_CHECK("max_pending_packets", inst->dynamic_clients.max_pending_clients, <=, 65536);
 
-		FR_INTEGER_BOUND_CHECK("lifetime", inst->dynamic_clients.lifetime, >=, 30);
-		FR_INTEGER_BOUND_CHECK("lifetime", inst->dynamic_clients.lifetime, <=, 86400);
+		if (inst->dynamic_clients.lifetime) {
+			FR_INTEGER_BOUND_CHECK("lifetime", inst->dynamic_clients.lifetime, >=, 30);
+			FR_INTEGER_BOUND_CHECK("lifetime", inst->dynamic_clients.lifetime, <=, 86400);
+		}
 	}
 
 	return 0;
