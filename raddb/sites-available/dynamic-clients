@@ -155,6 +155,11 @@ server dynamic_clients {
 				#  If the client is not renewed, then
 				#  the pending packets are discarded.
 				#
+				#  Allowed values: 30..86400
+				#
+				#  The special value of "0" means that
+				#  the client lives forever.
+				#
 				lifetime = 3600
 			}
 		}
