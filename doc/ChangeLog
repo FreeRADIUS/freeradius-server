@@ -33,8 +33,6 @@ FreeRADIUS 3.0.16 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	* Explain why many LDAP connections are closed.
 	  Fixes #1969.
 	* Debian build / package issues fixed by Matthew Newton.
-	* sql_ippool module can now use any IP attribute.
-	  See raddb/mods-available/sql_ippool for details.
 
 	Bug fixes
 	* Bind the lifetime of program name and python path to the module
