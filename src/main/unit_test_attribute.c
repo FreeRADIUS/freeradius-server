@@ -722,7 +722,7 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 		strlcpy(input, p, sizeof(input));
 
 		q = strchr(p, ' ');
-		if ((size_t)(q - p) > (sizeof(test_type) - 1)) {
+		if (q && ((size_t)(q - p) > (sizeof(test_type) - 1))) {
 			fprintf(stderr, "Verb \"%.*s\" is too long\n", (int)(q - p), p);
 			exit(EXIT_FAILURE);
 		}
