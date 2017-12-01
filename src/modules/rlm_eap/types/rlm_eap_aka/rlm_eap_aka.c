@@ -78,7 +78,8 @@ static int eap_aka_compose(eap_session_t *eap_session)
  * or can't perform fast resumption, we need to request the full identity from
  * the supplicant.
  *
- * @param[in] eap_session to continue.
+ * @param[in] eap_session	to continue.
+ * @param[in] id_req_type	what type of identity we need returned.
  * @return
  *	- 0 on success.
  *	- <0 on failure.
