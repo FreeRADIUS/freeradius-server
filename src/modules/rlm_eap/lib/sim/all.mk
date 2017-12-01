@@ -14,3 +14,4 @@ SOURCES	:= \
 	xlat.c
 
 SRC_INCDIRS	:= . ${top_srcdir}/src/modules/rlm_eap/lib/base ${top_srcdir}/src/modules/rlm_eap/
+TGT_PREREQS	:= $(LIBFREERADIUS_SERVER) libfreeradius-util.a
