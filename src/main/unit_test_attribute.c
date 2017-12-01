@@ -35,7 +35,8 @@ typedef struct REQUEST REQUEST;
 #include <freeradius-devel/radpaths.h>
 #include <freeradius-devel/dhcpv4/dhcpv4.h>
 #include <freeradius-devel/cf_parse.h>
-#include <freeradius-devel/io/proto.h>
+#include <freeradius-devel/dl.h>
+#include <freeradius-devel/io/test_point.h>
 
 #ifdef WITH_TACACS
 #include "../modules/proto_tacacs/tacacs.h"
@@ -84,7 +85,7 @@ static RADIUS_PACKET my_packet = {
 static char *my_secret = NULL;
 
 static char proto_name_prev[128];
-static void *dl_handle, *dl_symbol;
+static void *dl_handle;
 
 /*
  *	End of hacks for xlat
@@ -531,20 +532,20 @@ static int encode_rfc(char *buffer, uint8_t *output, size_t outlen)
 
 static void parse_condition(char const *input, char *output, size_t outlen)
 {
-	ssize_t slen;
+	ssize_t dec_len;
 	char const *error = NULL;
 	fr_cond_t *cond;
 
-	slen = fr_cond_tokenize(NULL, NULL, input, &cond, &error, FR_COND_ONE_PASS);
-	if (slen <= 0) {
-		snprintf(output, outlen, "ERROR offset %d %s", (int) -slen, error);
+	dec_len = fr_cond_tokenize(NULL, NULL, input, &cond, &error, FR_COND_ONE_PASS);
+	if (dec_len <= 0) {
+		snprintf(output, outlen, "ERROR offset %d %s", (int) -dec_len, error);
 		return;
 	}
 
-	input += slen;
+	input += dec_len;
 	if (*input != '\0') {
 		talloc_free(cond);
-		snprintf(output, outlen, "ERROR offset %d 'Too much text'", (int) slen);
+		snprintf(output, outlen, "ERROR offset %d 'Too much text'", (int) dec_len);
 		return;
 	}
 
@@ -555,19 +556,19 @@ static void parse_condition(char const *input, char *output, size_t outlen)
 
 static void parse_xlat(char const *input, char *output, size_t outlen)
 {
-	ssize_t slen;
+	ssize_t dec_len;
 	char const *error = NULL;
 	char *fmt = talloc_typed_strdup(NULL, input);
 	xlat_exp_t *head;
 
-	slen = xlat_tokenize(fmt, fmt, &head, &error);
-	if (slen <= 0) {
-		snprintf(output, outlen, "ERROR offset %d '%s'", (int) -slen, error);
+	dec_len = xlat_tokenize(fmt, fmt, &head, &error);
+	if (dec_len <= 0) {
+		snprintf(output, outlen, "ERROR offset %d '%s'", (int) -dec_len, error);
 		return;
 	}
 
-	if (input[slen] != '\0') {
-		snprintf(output, outlen, "ERROR offset %d 'Too much text'", (int) slen);
+	if (input[dec_len] != '\0') {
+		snprintf(output, outlen, "ERROR offset %d 'Too much text'", (int) dec_len);
 		return;
 	}
 
@@ -575,55 +576,77 @@ static void parse_xlat(char const *input, char *output, size_t outlen)
 	talloc_free(fmt);
 }
 
-static int load_proto_library(void **handle, void **symbol, char *proto_name)
-{
-	char dl_name[128];
-	char *p;
-
-	if (strcmp(proto_name_prev, proto_name) == 0) {
-		if (handle) *handle = dl_handle;
-		if (symbol) *symbol = dl_symbol;
-		return 0;
-	}
-
-	snprintf(dl_name, sizeof(dl_name), "libfreeradius-%s", proto_name);
-	if (dl_handle) {
-		dlclose(dl_handle);
-		dl_handle = NULL;
-	}
-
-	dl_handle = dl_by_name(dl_name);
-	if (!dl_handle) {
-		fprintf(stderr, "Failed to link to library \"%s\": %s\n", dl_name, fr_strerror());
-		return -1;
-	}
-
-
-	/*
-	 *	Can't have '-' in variable names.
-	 */
-	for (p = dl_name; *p; p++) if (*p == '-') *p = '_';
-
-	dl_symbol = dlsym(dl_handle, dl_name);
-	if (!dl_symbol) {
-		fprintf(stderr, "Symbol \"%s\" not exported by library\n", dl_name);
-		dlclose(dl_handle);
-		return -1;
-	}
-
-	if (handle) *handle = dl_handle;
-	if (symbol) *symbol = dl_symbol;
-
-	return 0;
-}
-
 static void unload_proto_library(void)
 {
 	if (dl_handle) {
-		dl_symbol = NULL;
 		dlclose(dl_handle);
 		dl_handle = NULL;
 	}
+}
+
+static size_t load_proto_library(char const *proto_name)
+{
+	char dl_name[128];
+
+	if (strcmp(proto_name_prev, proto_name) != 0) {
+		/*
+		 *	Ensure the old proto library is unloaded
+		 */
+		unload_proto_library();
+
+		snprintf(dl_name, sizeof(dl_name), "libfreeradius-%s", proto_name);
+		if (dl_handle) {
+			dlclose(dl_handle);
+			dl_handle = NULL;
+		}
+
+		dl_handle = dl_by_name(dl_name);
+		if (!dl_handle) {
+			fprintf(stderr, "Failed to link to library \"%s\": %s\n", dl_name, fr_strerror());
+			unload_proto_library();
+			return -1;
+		}
+
+		strcpy(proto_name_prev, proto_name);
+	}
+
+	return strlen(proto_name);
+}
+
+static size_t load_test_point_by_command(void **symbol, char *command, size_t offset, char const *dflt_symbol)
+{
+	char const *p, *q;
+	char const *symbol_name;
+	void *dl_symbol;
+
+	if (!dl_handle) {
+		fprintf(stderr, "No protocol library loaded. Specify library with \"load <proto name>\"\n");
+		exit(EXIT_FAILURE);
+	}
+
+	p = command + offset;
+	q = strchr(p, '.');
+
+	/*
+	 *	Use the dflt_symbol name as the test point
+	 */
+	if (!q) {
+		symbol_name = dflt_symbol;
+	} else {
+		symbol_name = q + 1;
+	}
+
+	dl_symbol = dlsym(dl_handle, symbol_name);
+	if (!dl_symbol) {
+		fprintf(stderr, "Test point (symbol \"%s\") not exported by library\n", symbol_name);
+		unload_proto_library();
+		exit(EXIT_FAILURE);
+	}
+	*symbol = dl_symbol;
+
+	p += strlen(p);
+
+	return p - command;
 }
 
 static void process_file(fr_dict_t *dict, const char *root_dir, char const *filename)
@@ -636,8 +659,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 	char		output[8192];
 	char		directory[8192];
 	uint8_t		*attr, data[2048];
-
-
+	TALLOC_CTX	*tp_ctx = talloc_init("tp_ctx");
 
 	if (strcmp(filename, "-") == 0) {
 		fp = stdin;
@@ -1077,27 +1099,146 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 			continue;
 		}
 
-		/*
-		 *	Generic decode test point
-		 */
-		if (strncmp(test_type, "decode-", 7)) {
-			fr_proto_lib_t *lib;
 
-			if (load_proto_library(NULL, (void **)&lib, test_type + 7) < 0) exit(EXIT_FAILURE);
+		if (strcmp(test_type, "load") == 0) {
+			p += 5;
+			p += load_proto_library(p);
 			continue;
 		}
 
 		/*
-		 *	Generic encode test point
+		 *	Generic pair decode test point
 		 */
-		if (strncmp(test_type, "encode-", 7)) {
-			fr_proto_lib_t *lib;
+		if (strncmp(test_type, "decode-pair", 11) == 0) {
+			fr_test_point_pair_decode_t	*tp;
+			ssize_t				dec_len = 0;
+			vp_cursor_t 			cursor;
+			void				*decoder_ctx;
 
-			if (load_proto_library(NULL, (void **)&lib, test_type + 7) < 0) exit(EXIT_FAILURE);
+			p += load_test_point_by_command((void **)&tp, test_type, 11, "tp_decode") + 1;
+			decoder_ctx = tp->test_ctx(tp_ctx);
+
+			if (strcmp(p, "-") == 0) {
+				attr = data;
+				len = data_len;
+			} else {
+				attr = data;
+				len = encode_hex(p, data, sizeof(data));
+				if (len == 0) {
+					fprintf(stderr, "Failed decoding hex string at line %d of %s\n",
+						lineno, directory);
+					exit(EXIT_FAILURE);
+				}
+			}
+
+			fr_pair_cursor_init(&cursor, &head);
+			while (len > 0) {
+				dec_len = tp->func(tp_ctx, &cursor, attr, len, decoder_ctx);
+				if (dec_len < 0) {
+					fr_pair_list_free(&head);
+					break;
+				}
+				if (dec_len > len) {
+					fprintf(stderr, "Internal sanity check failed at %d\n", __LINE__);
+					exit(EXIT_FAILURE);
+				}
+				attr += dec_len;
+				len -= dec_len;
+			}
+
+			/*
+			 *	Output may be an error, and we ignore
+			 *	it if so.
+			 */
+			if (head) {
+				p = output;
+				for (vp = fr_pair_cursor_first(&cursor);
+				     vp;
+				     vp = fr_pair_cursor_next(&cursor)) {
+					fr_pair_snprint(p, sizeof(output) - (p - output), vp);
+					p += strlen(p);
+
+					if (vp->next) {
+						strcpy(p, ", ");
+						p += 2;
+					}
+				}
+
+				fr_pair_list_free(&head);
+			} else if (dec_len < 0) {
+				strlcpy(output, fr_strerror(), sizeof(output));
+			} else { /* zero-length attribute */
+				*output = '\0';
+			}
+			talloc_free_children(tp_ctx);
 			continue;
 		}
 
-		fprintf(stderr, "Unknown input at line %d of %s\n", lineno, directory);
+		/*
+		 *	Generic pair encode test point
+		 */
+		if (strncmp(test_type, "encode-pair", 11) == 0) {
+			fr_test_point_pair_encode_t	*tp;
+			ssize_t				enc_len = 0;
+			vp_cursor_t			cursor;
+			void				*encoder_ctx;
+
+			p += load_test_point_by_command((void **)&tp, test_type, 11, "tp_encode") + 1;
+			encoder_ctx = tp->test_ctx(tp_ctx);
+
+			/*
+			 *	Encode the previous output
+			 */
+			if (strcmp(p, "-") == 0) p = output;
+
+			if (fr_pair_list_afrom_str(tp_ctx, p, &head) != T_EOL) {
+				strlcpy(output, fr_strerror(), sizeof(output));
+				continue;
+			}
+
+			attr = data;
+			fr_pair_cursor_init(&cursor, &head);
+			while ((vp = fr_pair_cursor_current(&cursor))) {
+				enc_len = tp->func(attr, data + sizeof(data) - attr, &cursor, encoder_ctx);
+				if (enc_len < 0) {
+					fprintf(stderr, "Failed encoding %s: %s\n", vp->da->name, fr_strerror());
+					exit(EXIT_FAILURE);
+				}
+
+				attr += enc_len;
+				if (enc_len == 0) break;
+			}
+			fr_pair_list_free(&head);
+
+			outlen = attr - data;
+
+			talloc_free_children(tp_ctx);
+			goto print_hex;
+		}
+
+		/*
+		 *	Generic proto decode test point
+		 */
+		if (strncmp(test_type, "decode-proto", 12) == 0) {
+			fr_test_point_proto_decode_t *tp;
+
+			p += load_test_point_by_command((void **)&tp, test_type, 12, "tp_decode");
+
+			continue;
+		}
+
+		/*
+		 *	Generic proto encode test point
+		 */
+		if (strncmp(test_type, "encode-proto", 12) == 0) {
+			fr_test_point_proto_encode_t *tp;
+
+			p += load_test_point_by_command((void **)&tp, test_type, 12, "tp_encode");
+
+			continue;
+		}
+
+		fprintf(stderr, "Unknown input at line %d of %s: %s\n", lineno, directory, p);
 
 		exit(EXIT_FAILURE);
 	}
@@ -1140,9 +1281,11 @@ int main(int argc, char *argv[])
 		case 'd':
 			radius_dir = optarg;
 			break;
+
 		case 'D':
 			dict_dir = optarg;
 			break;
+
 		case 'x':
 			fr_debug_lvl++;
 			rad_debug_lvl = fr_debug_lvl;
@@ -1150,9 +1293,11 @@ int main(int argc, char *argv[])
 			default_log.dst = L_DST_STDOUT;
 			default_log.fd = STDOUT_FILENO;
 			break;
+
 		case 'M':
 			talloc_enable_leak_report();
 			break;
+
 		case 'h':
 		default:
 			usage();
