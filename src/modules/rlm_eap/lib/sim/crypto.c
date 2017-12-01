@@ -43,11 +43,11 @@ RCSID("$Id$")
  */
 int fr_sim_crypto_mac_verify(TALLOC_CTX *ctx, fr_dict_attr_t const *root,
 			     VALUE_PAIR *rvps,
+			     eap_packet_raw_t *packet,
 			     uint8_t key[EAP_SIM_AUTH_SIZE],
 			     uint8_t *extra, int extra_len, uint8_t calc_mac[20])
 {
 	int			ret;
-	eap_packet_raw_t	*e;
 	uint8_t			*buffer;
 	int			elen, len;
 	VALUE_PAIR		*mac;
@@ -65,23 +65,14 @@ int fr_sim_crypto_mac_verify(TALLOC_CTX *ctx, fr_dict_attr_t const *root,
 		return 0;
 	}
 
-	/* get original copy of EAP message, note that it was sanitized
-	 * to have a valid length, which we depend upon.
-	 */
-	e = eap_vp2packet(ctx, rvps);
-	if (!e) return 0;
-
 	/* make copy big enough for everything */
-	elen = (e->length[0] * 256) + e->length[1];
+	elen = (packet->length[0] * 256) + packet->length[1];
 	len = elen + extra_len;
 
 	buffer = talloc_array(ctx, uint8_t, len);
-	if (!buffer) {
-		talloc_free(e);
-		return 0;
-	}
+	if (!buffer) return 0;
 
-	memcpy(buffer, e, elen);
+	memcpy(buffer, packet, elen);
 	memcpy(buffer + elen, extra, extra_len);
 
 	/*
@@ -118,9 +109,8 @@ int fr_sim_crypto_mac_verify(TALLOC_CTX *ctx, fr_dict_attr_t const *root,
 
 	ret = memcmp(&mac->vp_strvalue[2], calc_mac, 16) == 0 ? 1 : 0;		//-V512
  done:
-	talloc_free(e);
 	talloc_free(buffer);
-	return(ret);
+	return ret;
 }
 
 

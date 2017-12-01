@@ -201,6 +201,7 @@ ssize_t		fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet,
 
 int		fr_sim_crypto_mac_verify(TALLOC_CTX *ctx, fr_dict_attr_t const *root,
 					 VALUE_PAIR *rvps,
+					 eap_packet_raw_t *packet,
 					 uint8_t key[8],
 					 uint8_t *extra, int extra_len,
 					 uint8_t calc_mac[20])

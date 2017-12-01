@@ -373,6 +373,7 @@ static int process_eap_sim_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 	 *	Verify the MAC, now that we have all the keys
 	 */
 	if (fr_sim_crypto_mac_verify(eap_session, dict_sim_root, vps,
+				     (eap_packet_raw_t *)eap_session->this_round->response->packet,
 				     eap_sim_session->keys.k_aut,
 				     sres_cat, sizeof(sres_cat), calc_mac)) {
 		RDEBUG2("MAC check succeed");
