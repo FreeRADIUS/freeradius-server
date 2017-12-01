@@ -1102,7 +1102,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 
 		if (strcmp(test_type, "load") == 0) {
 			p += 5;
-			p += load_proto_library(p);
+			load_proto_library(p);
 			continue;
 		}
 
@@ -1222,7 +1222,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 		if (strncmp(test_type, "decode-proto", 12) == 0) {
 			fr_test_point_proto_decode_t *tp;
 
-			p += load_test_point_by_command((void **)&tp, test_type, 12, "tp_decode");
+			load_test_point_by_command((void **)&tp, test_type, 12, "tp_decode");
 
 			continue;
 		}
@@ -1233,7 +1233,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 		if (strncmp(test_type, "encode-proto", 12) == 0) {
 			fr_test_point_proto_encode_t *tp;
 
-			p += load_test_point_by_command((void **)&tp, test_type, 12, "tp_encode");
+			load_test_point_by_command((void **)&tp, test_type, 12, "tp_encode");
 
 			continue;
 		}
