@@ -1246,6 +1246,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 	if (fp != stdin) fclose(fp);
 
 	unload_proto_library();	/* Cleanup */
+	talloc_free(tp_ctx);
 }
 
 static void NEVER_RETURNS usage(void)
