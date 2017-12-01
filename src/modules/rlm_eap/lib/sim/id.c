@@ -271,7 +271,7 @@ int fr_sim_id_3gpp_pseudonym_encrypt(char out[SIM_3GPP_PSEUDONYM_LEN + 1],
 	uint32_t	rand[2];
 	uint8_t		*compressed = padded + sizeof(rand);	/* Part of padded which contains the compressed IMSI */
 
-	EVP_CIPHER_CTX	*cctx;
+	EVP_CIPHER_CTX	*evp_ctx;
 
 	if (unlikely(key_ind > 15)) {				/* 4 bits wimsie */
 		fr_strerror_printf("Invalid key indicator value, expected value between 0-15, got %u", key_ind);
@@ -325,16 +325,16 @@ int fr_sim_id_3gpp_pseudonym_encrypt(char out[SIM_3GPP_PSEUDONYM_LEN + 1],
 	/*
 	 *	Now we have to encrypt the padded IMSI with AES-ECB
 	 */
-	cctx = EVP_CIPHER_CTX_new();
-	if (!cctx) {
+	evp_ctx = EVP_CIPHER_CTX_new();
+	if (!evp_ctx) {
 		tls_strerror_printf(true, "Failed allocating EVP context");
 		return -1;
 	}
 
-	if (unlikely(EVP_EncryptInit_ex(cctx, EVP_aes_128_ecb(), NULL, key, NULL) != 1)) {
+	if (unlikely(EVP_EncryptInit_ex(evp_ctx, EVP_aes_128_ecb(), NULL, key, NULL) != 1)) {
 		tls_strerror_printf(true, "Failed initialising AES-128-ECB context");
 	error:
-		EVP_CIPHER_CTX_free(cctx);
+		EVP_CIPHER_CTX_free(evp_ctx);
 		return -1;
 	}
 
@@ -348,14 +348,14 @@ int fr_sim_id_3gpp_pseudonym_encrypt(char out[SIM_3GPP_PSEUDONYM_LEN + 1],
 	 *	OpenSSL not to pad here, and not to expected padding
 	 *	when decrypting.
 	 */
-	EVP_CIPHER_CTX_set_padding(cctx, 0);
-	if (unlikely(EVP_EncryptUpdate(cctx, encr, (int *)&len, padded, sizeof(padded)) != 1)) {
+	EVP_CIPHER_CTX_set_padding(evp_ctx, 0);
+	if (unlikely(EVP_EncryptUpdate(evp_ctx, encr, (int *)&len, padded, sizeof(padded)) != 1)) {
 		tls_strerror_printf(true, "Failed encrypting padded IMSI");
 		goto error;
 	}
 	encr_len = len;
 
-	if (unlikely(EVP_EncryptFinal_ex(cctx, encr + len, (int *)&len) != 1)) {
+	if (unlikely(EVP_EncryptFinal_ex(evp_ctx, encr + len, (int *)&len) != 1)) {
 		tls_strerror_printf(true, "Failed finalising encrypted IMSI");
 		goto error;
 	}
@@ -369,7 +369,7 @@ int fr_sim_id_3gpp_pseudonym_encrypt(char out[SIM_3GPP_PSEUDONYM_LEN + 1],
 		goto error;
 	}
 
-	EVP_CIPHER_CTX_free(cctx);
+	EVP_CIPHER_CTX_free(evp_ctx);
 
 	/*
 	 *	Now encode the entire output as base64.
@@ -441,7 +441,7 @@ uint8_t fr_sim_id_3gpp_pseudonym_key_index(char const encr_id[SIM_3GPP_PSEUDONYM
 int fr_sim_id_3gpp_pseudonym_decrypt(char out[SIM_IMSI_MAX_LEN + 1],
 				     char const encr_id[SIM_3GPP_PSEUDONYM_LEN], uint8_t const key[16])
 {
-	EVP_CIPHER_CTX	*cctx;
+	EVP_CIPHER_CTX	*evp_ctx;
 
 	char		*out_p = out;
 
@@ -475,36 +475,36 @@ int fr_sim_id_3gpp_pseudonym_decrypt(char out[SIM_IMSI_MAX_LEN + 1],
 		p += 4;	/* 32bit input -> 24bit output */
 	}
 
-	cctx = EVP_CIPHER_CTX_new();
-	if (!cctx) {
+	evp_ctx = EVP_CIPHER_CTX_new();
+	if (!evp_ctx) {
 		tls_strerror_printf(true, "Failed allocating EVP context");
 		return -1;
 	}
 
-	if (unlikely(EVP_DecryptInit_ex(cctx, EVP_aes_128_ecb(), NULL, key, NULL) != 1)) {
+	if (unlikely(EVP_DecryptInit_ex(evp_ctx, EVP_aes_128_ecb(), NULL, key, NULL) != 1)) {
 		tls_strerror_printf(true, "Failed initialising AES-128-ECB context");
 	error:
-		EVP_CIPHER_CTX_free(cctx);
+		EVP_CIPHER_CTX_free(evp_ctx);
 		return -1;
 	}
 
 	/*
 	 *	By default OpenSSL expects 16 bytes of plaintext
-	 *	to produce 32 bytes of cipher text, due to padding
+	 *	to produce 32 bytes of ciphertext, due to padding
 	 *	being added if the plaintext is a multiple of 16.
 	 *
 	 *	There's no way for OpenSSL to determine if a
 	 *	16 byte ciphertext was padded or not, so we need to
 	 *	inform OpenSSL explicitly that there's no padding.
 	 */
-	EVP_CIPHER_CTX_set_padding(cctx, 0);
-	if (unlikely(EVP_DecryptUpdate(cctx, decr, (int *)&len, dec, sizeof(dec)) != 1)) {
+	EVP_CIPHER_CTX_set_padding(evp_ctx, 0);
+	if (unlikely(EVP_DecryptUpdate(evp_ctx, decr, (int *)&len, dec, sizeof(dec)) != 1)) {
 		tls_strerror_printf(true, "Failed decypting IMSI");
 		goto error;
 	}
 	decr_len = len;
 
-	if (unlikely(EVP_DecryptFinal_ex(cctx, decr + len, (int *)&len) != 1)) {
+	if (unlikely(EVP_DecryptFinal_ex(evp_ctx, decr + len, (int *)&len) != 1)) {
 		tls_strerror_printf(true, "Failed finalising decypted IMSI");
 		goto error;
 	}
@@ -532,7 +532,7 @@ int fr_sim_id_3gpp_pseudonym_decrypt(char out[SIM_IMSI_MAX_LEN + 1],
 		*out_p++ = (compressed[i] & 0x0f) + '0';
 	}
 
-	EVP_CIPHER_CTX_free(cctx);
+	EVP_CIPHER_CTX_free(evp_ctx);
 
 	out[SIM_IMSI_MAX_LEN] = '\0';
 
