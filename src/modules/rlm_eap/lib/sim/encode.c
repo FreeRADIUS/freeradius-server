@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/tls.h>
+#include <freeradius-devel/io/test_point.h>
 
 #include "eap_types.h"
 #include "eap_sim_common.h"
@@ -88,7 +89,10 @@ static inline VALUE_PAIR *first_encodable(vp_cursor_t *cursor, void *encoder_ctx
 	fr_sim_encode_ctx_t	*packet_ctx = encoder_ctx;
 
 	vp = fr_pair_cursor_current(cursor);
-	if (vp && !vp->da->flags.internal && fr_dict_parent_common(packet_ctx->root, vp->da, true)) return vp;
+	if (vp && !vp->da->flags.internal && fr_dict_parent_common(packet_ctx->root, vp->da, true)) {
+		cursor->found = vp;
+		return vp;
+	}
 
 	return next_encodable(cursor, encoder_ctx);
 }
@@ -145,9 +149,9 @@ static ssize_t encode_iv(uint8_t *out, size_t outlen, void *encoder_ctx)
 	return p - out;
 }
 
-/** Encrypt a value with AES-CBC-128
+/** encrypt a value with AES-CBC-128
  *
- * Encrypts a value using AES-CBC-128, padding the value with AT_PADDING
+ * encrypts a value using AES-CBC-128, padding the value with AT_PADDING
  * attributes until it matches the block length of the cipher (16).
  *
  * May also write out an AT_IV attribute if this is the first encrypted
@@ -169,8 +173,8 @@ static ssize_t encode_encrypted_value(uint8_t *out, size_t outlen,
 			     	      uint8_t const *in, size_t inlen, void *encoder_ctx)
 {
 	size_t			rounded_len, pad_len, need_len, encr_len, len = 0;
-	uint8_t			*p = out, *encr;
-	EVP_CIPHER_CTX		*cctx;
+	uint8_t			*p = out, *encr = NULL;
+	EVP_CIPHER_CTX		*evp_ctx;
 	fr_sim_encode_ctx_t	*packet_ctx = encoder_ctx;
 
 	/*
@@ -206,26 +210,25 @@ static ssize_t encode_encrypted_value(uint8_t *out, size_t outlen,
 		p[0] = FR_SIM_PADDING;
 		p[1] = pad_len >> 2;
 		memset(p + 2, 0, pad_len - 2);	/* Ensure the rest is zeroed out */
+		FR_PROTO_HEX_DUMP("Done padding attribute", p, pad_len);
 	}
 
-	cctx = EVP_CIPHER_CTX_new();
-	if (!cctx) {
+	evp_ctx = EVP_CIPHER_CTX_new();
+	if (!evp_ctx) {
 		tls_strerror_printf(true, "Failed allocating EVP context");
 		return -1;
 	}
 
-	if (unlikely(EVP_EncryptInit_ex(cctx, EVP_aes_128_ecb(), NULL,
+	if (unlikely(EVP_EncryptInit_ex(evp_ctx, EVP_aes_128_cbc(), NULL,
 					packet_ctx->keys->k_encr, packet_ctx->iv) != 1)) {
 		tls_strerror_printf(true, "Failed initialising AES-128-ECB context");
 	error:
-		EVP_CIPHER_CTX_free(cctx);
+		talloc_free(encr);
+		EVP_CIPHER_CTX_free(evp_ctx);
 		return -1;
 	}
 
-	/*
-	 *	Yes, we overrode the default OpenSSL malloc
-	 */
-	encr = talloc_array(cctx, uint8_t, rounded_len);
+	encr = talloc_array(NULL, uint8_t, rounded_len);
 	if (!encr) {
 		fr_strerror_printf("%s: Failed allocating temporary buffer", __FUNCTION__);
 		goto error;
@@ -233,29 +236,40 @@ static ssize_t encode_encrypted_value(uint8_t *out, size_t outlen,
 
 	p = out;	/* Because we're using out to store our plaintext (and out usually == in) */
 
+	FR_PROTO_HEX_DUMP("plaintext", p, rounded_len);
+
 	/*
-	 *	Ingest plaintext
+	 *	By default OpenSSL expects 16 bytes of plaintext
+	 *	to produce 32 bytes of ciphertext, due to padding
+	 *	being added if the plaintext is a multiple of 16.
+	 *
+	 *	There's no way for OpenSSL to determine if a
+	 *	16 byte encr was padded or not, so we need to
+	 *	inform OpenSSL explicitly that there's no padding.
 	 */
-	if (unlikely(EVP_EncryptUpdate(cctx, encr, (int *)&len, p, rounded_len) != 1)) {
+	EVP_CIPHER_CTX_set_padding(evp_ctx, 0);
+	if (unlikely(EVP_EncryptUpdate(evp_ctx, encr, (int *)&len, p, rounded_len) != 1)) {
 		tls_strerror_printf(true, "%s: Failed encrypting attribute", __FUNCTION__);
 		goto error;
 	}
-	encr_len = 0;
+	encr_len = len;
 
-	if (unlikely(EVP_EncryptFinal_ex(cctx, encr + len, (int *)&len) != 1)) {
+	if (unlikely(EVP_EncryptFinal_ex(evp_ctx, encr + encr_len, (int *)&len) != 1)) {
 		tls_strerror_printf(true, "%s: Failed finalising encrypted attribute", __FUNCTION__);
 		goto error;
 	}
 	encr_len += len;
 
 	/*
-	 *	Ciphertext should be same length as plaintext.
+	 *	Plaintext should be same length as plaintext.
 	 */
 	if (unlikely(encr_len != rounded_len)) {
-		fr_strerror_printf("%s: Invalid ciphertext length, expected %zu, got %zu",
+		fr_strerror_printf("%s: Invalid plaintext length, expected %zu, got %zu",
 				   __FUNCTION__, rounded_len, encr_len);
 		goto error;
 	}
+
+	FR_PROTO_HEX_DUMP("ciphertext", encr, encr_len);
 
 	p = out;
 
@@ -264,7 +278,8 @@ static ssize_t encode_encrypted_value(uint8_t *out, size_t outlen,
 	 */
 	memcpy(p, encr, encr_len);
 
-	EVP_CIPHER_CTX_free(cctx);	/* Also frees encr */
+	talloc_free(encr);
+	EVP_CIPHER_CTX_free(evp_ctx);
 
 	return encr_len;
 }
@@ -309,15 +324,30 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 
 	switch (da->type) {
 	case FR_TYPE_OCTETS:
-		if ((vp->vp_length + 2) > outlen) {
+	{
+		size_t	 	rounded_len = (vp->vp_length + 3) & ~3;
+		size_t	 	pad_len = rounded_len - vp->vp_length;
+		uint8_t		*p = out;
+
+		if ((rounded_len + 2) > outlen) {
 		oos:
 			fr_strerror_printf("%s: Attribute exceeds available buffer space", __FUNCTION__);
 			return -1;
 		}
-		out[0] = 0;	/* Reserved */
-		out[1] = 0;	/* Reserved */
-		memcpy(out + 2, vp->vp_octets, vp->vp_length);
-		len = vp->vp_length + 2;
+
+		*p++ = 0;	/* Reserved */
+		*p++ = 0;	/* Reserved */
+
+		memcpy(p, vp->vp_octets, vp->vp_length);
+		p += vp->vp_length;
+
+		if (pad_len) {
+			memset(p, 0, pad_len);
+			p += pad_len;
+		}
+
+		len = p - out;
+	}
 		break;
 
 	/*
@@ -339,13 +369,25 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 */
 	case FR_TYPE_STRING:
 	{
-		uint16_t actual_len = htons((vp->vp_length & UINT16_MAX));
+		uint16_t 	actual_len = htons((vp->vp_length & UINT16_MAX));
+		size_t	 	rounded_len = (vp->vp_length + 3) & ~3;
+		size_t	 	pad_len = rounded_len - vp->vp_length;
+		uint8_t		*p = out;
 
-		if ((vp->vp_length + 2) > outlen) goto oos;
+		if ((rounded_len + 2) > outlen) goto oos;
 
-		memcpy(out, &actual_len, sizeof(actual_len));
-		memcpy(out + 2, vp->vp_strvalue, vp->vp_length);
-		len = vp->vp_length + 2;
+		memcpy(p, &actual_len, sizeof(actual_len));		/* Big endian real string length */
+		p += sizeof(actual_len);
+
+		memcpy(p, vp->vp_strvalue, vp->vp_length);
+		p += vp->vp_length;
+
+		if (pad_len) {
+			memset(p, 0, pad_len);
+			p += pad_len;
+		}
+
+		len = p - out;
 	}
 		break;
 
@@ -408,11 +450,12 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
  * If it's a standard attribute, then vp->da->attr == attribute.
  * Otherwise, attribute may be something else.
  */
-static int encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const **tlv_stack, unsigned int depth,
-			  vp_cursor_t *cursor, void *encoder_ctx)
+static ssize_t encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const **tlv_stack, unsigned int depth,
+			      vp_cursor_t *cursor, void *encoder_ctx)
 {
-	unsigned int rounded_len;
-	ssize_t len;
+	size_t			rounded_len;
+	fr_dict_attr_t const	*da;
+	ssize_t			slen;
 
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
@@ -443,21 +486,20 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const **tl
 	 *	zero and fill any subfields like actual
 	 *	length.
 	 */
-	len = encode_value(out + 2, outlen - 2, tlv_stack, depth, cursor, encoder_ctx);
-	if (len <= 0) return len;
+	da = tlv_stack[depth];
+	slen = encode_value(out + 2, outlen - 2, tlv_stack, depth, cursor, encoder_ctx);
+	if (slen <= 0) return slen;
 
 	/*
 	 *	Round attr + len + data length out to a multiple
 	 *	of four, and setup the attribute header and
 	 *	length field in the buffer.
 	 */
-	rounded_len = (len + 2 + 3) & ~3;
-	out[0] = tlv_stack[depth]->attr & 0xff;
+	rounded_len = (slen + 2 + 3) & ~3;
+	out[0] = da->attr & 0xff;
 	out[1] = rounded_len >> 2;
 
-#ifndef NDEBUG
-	if (fr_debug_lvl > 3) FR_PROTO_HEX_DUMP("Done RFC header", out, rounded_len);
-#endif
+	FR_PROTO_HEX_DUMP("Done RFC attribute", out, rounded_len);
 
 	return rounded_len;	/* AT + Length + Data */
 }
@@ -466,7 +508,7 @@ static inline ssize_t encode_tlv(uint8_t *out, size_t outlen,
 				 fr_dict_attr_t const **tlv_stack, unsigned int depth,
 				 vp_cursor_t *cursor, void *encoder_ctx)
 {
-	ssize_t			len;
+	ssize_t			slen;
 	uint8_t			*p = out, *end = p + outlen;
 	VALUE_PAIR const	*vp = fr_pair_cursor_current(cursor);
 	fr_dict_attr_t const	*da = tlv_stack[depth];
@@ -486,13 +528,13 @@ static inline ssize_t encode_tlv(uint8_t *out, size_t outlen,
 		 *	Determine the nested type and call the appropriate encoder
 		 */
 		if (tlv_stack[depth + 1]->type == FR_TYPE_TLV) {
-			len = encode_tlv_hdr(p, sublen, tlv_stack, depth + 1, cursor, encoder_ctx);
+			slen = encode_tlv_hdr(p, sublen, tlv_stack, depth + 1, cursor, encoder_ctx);
 		} else {
-			len = encode_rfc_hdr(p, sublen, tlv_stack, depth + 1, cursor, encoder_ctx);
+			slen = encode_rfc_hdr(p, sublen, tlv_stack, depth + 1, cursor, encoder_ctx);
 		}
 
-		if (len <= 0) return len;
-		p += len;
+		if (slen <= 0) return slen;
+		p += slen;
 
 		/*
 		 *	If nothing updated the attribute, stop
@@ -509,14 +551,14 @@ static inline ssize_t encode_tlv(uint8_t *out, size_t outlen,
 	}
 
 	/*
-	 *	Encrypt the contents of the TLV using AES-CBC-128
+	 *	encrypt the contents of the TLV using AES-CBC-128
 	 *	or another encryption algorithm.
 	 */
-	if (vp->da->flags.encrypt) {
-		len = encode_encrypted_value(out, outlen, out, p - out, encoder_ctx);
-		if (len < 0) return -1;
+	if (da->flags.encrypt) {
+		slen = encode_encrypted_value(out, outlen, out, p - out, encoder_ctx);
+		if (slen < 0) return -1;
 
-		p = out + len;
+		p = out + slen;
 	}
 
 	FR_PROTO_HEX_DUMP("Done TLV", out, p - out);
@@ -531,6 +573,7 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 	unsigned int		rounded_len;
 	ssize_t			len;
 	uint8_t			*p = out;
+	fr_dict_attr_t const	*da;
 
 	VP_VERIFY(fr_pair_cursor_current(cursor));
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
@@ -562,7 +605,8 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 	if (outlen < 4) return 0;
 	if (outlen > SIM_MAX_ATTRIBUTE_VALUE_LEN) outlen = SIM_MAX_ATTRIBUTE_VALUE_LEN;
 
-	len = encode_tlv(p + 2, outlen, tlv_stack, depth, cursor, encoder_ctx);
+	da = tlv_stack[depth];
+	len = encode_tlv(p + 4, outlen - 4, tlv_stack, depth, cursor, encoder_ctx);
 	if (len <= 0) return len;
 
 	/*
@@ -570,11 +614,15 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 	 *	of four, and setup the attribute header and
 	 *	length field in the buffer.
 	 */
-	rounded_len = (len + 2 + 3) & ~3;
-	p[0] = tlv_stack[depth]->attr & 0xff;
-	p[1] = rounded_len >> 2;
+	rounded_len = (len + 4 + 3) & ~3;
+	p[0] = da->attr & 0xff;			/* Type */
+	p[1] = rounded_len >> 2;		/* Length */
+	p[2] = 0;				/* Reserved (0) */
+	p[3] = 0;				/* Reserved (1) */
 
-	return (p - out) + rounded_len;	/* AT_IV + AT_*(TLV) */
+	FR_PROTO_HEX_DUMP("Done TLV attribute", out, rounded_len);
+
+	return rounded_len;	/* AT_IV + AT_*(TLV) */
 }
 
 ssize_t fr_sim_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void *encoder_ctx)
@@ -625,30 +673,19 @@ ssize_t fr_sim_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, voi
 	fr_proto_tlv_stack_build(tlv_stack, vp->da);
 	FR_PROTO_STACK_PRINT(tlv_stack, 0);
 
-	da = tlv_stack[2];	/* FIXME - Should be index 0, and will be when we have proto dicts */
+	da = tlv_stack[1];	/* FIXME - Should be index 0, and will be when we have proto dicts */
 
 	switch (da->type) {
 	/*
 	 *	Supported types
 	 */
-	case FR_TYPE_OCTETS:
-	case FR_TYPE_STRING:
-	case FR_TYPE_BOOL:
-	case FR_TYPE_UINT8:
-	case FR_TYPE_UINT16:
-	case FR_TYPE_UINT32:
-	case FR_TYPE_UINT64:
-	case FR_TYPE_INT32:
-		ret = encode_rfc_hdr(out, attr_len, tlv_stack, 2, cursor, encoder_ctx);
+	default:
+		ret = encode_rfc_hdr(out, attr_len, tlv_stack, 1, cursor, encoder_ctx);
 		break;
 
 	case FR_TYPE_TLV:
-		ret = encode_tlv_hdr(out, attr_len, tlv_stack, 2, cursor, encoder_ctx);
+		ret = encode_tlv_hdr(out, attr_len, tlv_stack, 1, cursor, encoder_ctx);
 		break;
-
-	default:
-		fr_strerror_printf("%s: Cannot encode attribute %s", __FUNCTION__, vp->da->name);
-		return -1;
 	}
 
 	if (ret < 0) return ret;
@@ -800,3 +837,55 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 
 	return len;
 }
+
+/*
+ *	Test ctx data
+ */
+static void *encode_test_ctx_sim(UNUSED TALLOC_CTX *ctx)
+{
+	static fr_sim_encode_ctx_t	test_ctx;
+	static fr_sim_keys_t		keys = {
+						.k_encr = { 0x00, 0x01, 0x02, 0x03, 0x04 ,0x05, 0x06, 0x07,
+							    0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f }
+					};
+	fr_sim_global_init();
+
+	test_ctx.root = dict_sim_root;
+	test_ctx.keys = &keys;
+	memset(&test_ctx.iv, 0, sizeof(test_ctx.iv));
+	test_ctx.iv_included = true;	/* Ensures IV is all zeros */
+
+	return &test_ctx;
+}
+
+static void *encode_test_ctx_aka(UNUSED TALLOC_CTX *ctx)
+{
+	static fr_sim_encode_ctx_t	test_ctx;
+	static fr_sim_keys_t		keys = {
+						.k_encr = { 0x00, 0x01, 0x02, 0x03, 0x04 ,0x05, 0x06, 0x07,
+							    0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f }
+					};
+	fr_sim_global_init();
+
+	test_ctx.root = dict_aka_root;
+	test_ctx.keys = &keys;
+	memset(&test_ctx.iv, 0, sizeof(test_ctx.iv));
+	test_ctx.iv_included = true;	/* Ensures IV is all zeros */
+
+	return &test_ctx;
+}
+
+/*
+ *	Test points
+ */
+extern fr_test_point_pair_encode_t tp_encode_sim;
+fr_test_point_pair_encode_t tp_encode_sim = {
+	.test_ctx	= encode_test_ctx_sim,
+	.func		= fr_sim_encode_pair
+};
+
+extern fr_test_point_pair_encode_t tp_encode_aka;
+fr_test_point_pair_encode_t tp_encode_aka = {
+	.test_ctx	= encode_test_ctx_aka,
+	.func		= fr_sim_encode_pair
+};

@@ -12,7 +12,6 @@ ATTRIBUTE	EAP-AKA-Rand				1	octets
 ATTRIBUTE	EAP-AKA-Autn				2	octets
 ATTRIBUTE	EAP-AKA-Res				3	octets
 ATTRIBUTE	EAP-AKA-Auts				4	octets
-ATTRIBUTE	EAP-AKA-Padding				6	octets
 ATTRIBUTE	EAP-AKA-Nonce-MT			7	octets
 ATTRIBUTE	EAP-AKA-Permanent-ID-Req		10	bool
 ATTRIBUTE	EAP-AKA-Mac				11	octets[20]
@@ -47,6 +46,7 @@ ATTRIBUTE	EAP-AKA-Encr-Data			130	tlv encrypt=4
 #  These attributes are reversibly encrypted
 #
 BEGIN-TLV	EAP-AKA-Encr-Data
+ATTRIBUTE	EAP-AKA-Padding				6	octets
 ATTRIBUTE	EAP-AKA-Counter				19	short
 ATTRIBUTE	EAP-AKA-Counter-Too-Small		20	bool
 ATTRIBUTE	EAP-AKA-Nonce-S				21	octets

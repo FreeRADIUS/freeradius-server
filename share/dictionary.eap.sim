@@ -12,7 +12,6 @@ ATTRIBUTE	EAP-SIM-Rand				1	octets
 ATTRIBUTE	EAP-SIM-Autn				2	octets
 ATTRIBUTE	EAP-SIM-Res				3	octets
 ATTRIBUTE	EAP-SIM-Auts				4	octets
-ATTRIBUTE	EAP-SIM-Padding				6	octets
 ATTRIBUTE	EAP-SIM-Nonce-MT			7	octets
 ATTRIBUTE	EAP-SIM-Permanent-ID-Req		10	bool
 ATTRIBUTE	EAP-SIM-Mac				11	octets
@@ -26,7 +25,7 @@ VALUE	EAP-SIM-Notification		Success			32768
 
 ATTRIBUTE	EAP-SIM-Any-ID-Req			13	bool
 ATTRIBUTE	EAP-SIM-Identity			14	string
-ATTRIBUTE	EAP-SIM-Version-List			15	octets
+ATTRIBUTE	EAP-SIM-Version-List			15	short array
 
 ATTRIBUTE	EAP-SIM-Selected-Version		16	short
 ATTRIBUTE	EAP-SIM-Fullauth-ID-Req			17	bool
@@ -47,6 +46,7 @@ ATTRIBUTE	EAP-SIM-Encr-Data			130	tlv encrypt=4
 #  These attributes are reversibly encrypted
 #
 BEGIN-TLV	EAP-SIM-Encr-Data
+ATTRIBUTE	EAP-SIM-Padding				6	octets
 ATTRIBUTE	EAP-SIM-Counter				19	short
 ATTRIBUTE	EAP-SIM-Counter-Too-Small		20	bool
 ATTRIBUTE	EAP-SIM-Nonce-S				21	octets

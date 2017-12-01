@@ -8,6 +8,7 @@
 #
 FILES  := \
 	rfc.txt \
+	eap-sim.txt \
 	errors.txt \
 	extended.txt \
 	lucent.txt \

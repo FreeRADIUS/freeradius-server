@@ -1,0 +1,80 @@
+#
+#  Tests for the EAP-SIM/AKA/AKA' encoder and decoder
+#
+load eap-sim
+
+# Boolean attribute
+encode-pair.tp_encode_sim EAP-SIM-Any-ID-Req = yes
+data 0d 01 00 00
+
+# Short
+encode-pair.tp_encode_sim EAP-SIM-Selected-Version = 1
+data 10 01 00 01
+
+# Octets
+encode-pair.tp_encode_sim EAP-SIM-Rand = 0x00112233445566770011223344556677
+data 01 05 00 00 00 11 22 33 44 55 66 77 00 11 22 33 44 55 66 77
+
+# Octets (autopad)
+encode-pair.tp_encode_sim EAP-SIM-Rand = 0x11
+data 01 02 00 00 11 00 00 00
+
+# Empty octets
+encode-pair.tp_encode_sim EAP-SIM-Rand = 0x
+data 01 01 00 00
+
+# Aliased
+encode-pair.tp_encode_sim EAP-SIM-Notification = Temporarily-Denied
+data 0c 01 04 02
+
+# No string padding
+encode-pair.tp_encode_sim EAP-SIM-Identity = "testing123@simfi"
+data 0e 05 00 10 74 65 73 74 69 6e 67 31 32 33 40 73 69 6d 66 69
+
+# Three bytes string padding
+encode-pair.tp_encode_sim EAP-SIM-Identity = "testing123@si"
+data 0e 05 00 0d 74 65 73 74 69 6e 67 31 32 33 40 73 69 00 00 00
+
+# Two bytes string padding
+encode-pair.tp_encode_sim EAP-SIM-Identity = "testing123@sim"
+data 0e 05 00 0e 74 65 73 74 69 6e 67 31 32 33 40 73 69 6d 00 00
+
+# One byte string padding
+encode-pair.tp_encode_sim EAP-SIM-Identity = "testing123@simf"
+data 0e 05 00 0f 74 65 73 74 69 6e 67 31 32 33 40 73 69 6d 66 00
+
+# Empty string
+encode-pair.tp_encode_sim EAP-SIM-Identity = ""
+data 0e 01 00 00
+
+# Two attributes
+encode-pair.tp_encode_sim EAP-SIM-Identity = "testing123@simfi", EAP-SIM-Any-ID-Req = yes
+data 0e 05 00 10 74 65 73 74 69 6e 67 31 32 33 40 73 69 6d 66 69 0d 01 00 00
+
+# A single encrypted attribute
+encode-pair.tp_encode_sim EAP-SIM-Next-Pseudonym = "testing123"
+data 82 05 00 00 3f b8 34 1f f8 26 e0 4d 4a f3 f9 61 3c a9 84 26
+
+decode-pair.tp_decode_sim -
+data EAP-SIM-Next-Pseudonym = "testing123"
+
+# Encrypt attribute requiring padding
+encode-pair.tp_encode_sim EAP-SIM-Counter-Too-Small = yes
+data 82 05 00 00 5a f8 99 3c 02 f5 6c 04 b8 6e bb 54 3a af 74 32
+
+decode-pair.tp_decode_sim -
+data EAP-SIM-Counter-Too-Small = yes
+
+# Two encrypted attributes, one bool to extend plaintext so it's not a multiple block of block length
+encode-pair.tp_encode_sim EAP-SIM-Next-Pseudonym = "testing123", EAP-SIM-Counter-Too-Small = yes
+data 82 09 00 00 3f b8 34 1f f8 26 e0 4d 4a f3 f9 61 3c a9 84 26 0f 4a 53 ce 33 99 9e 4f 29 df a4 79 18 a9 57 dd
+
+decode-pair.tp_decode_sim -
+data EAP-SIM-Next-Pseudonym = "testing123", EAP-SIM-Counter-Too-Small = yes
+
+# Plaintext and encrypted attributes interleaved (this shouldn't happen usually, due to sorting)
+encode-pair.tp_encode_sim EAP-SIM-Next-Pseudonym = "testing123", EAP-SIM-Any-ID-Req = yes, EAP-SIM-Counter-Too-Small = yes
+data 82 05 00 00 3f b8 34 1f f8 26 e0 4d 4a f3 f9 61 3c a9 84 26 0d 01 00 00 82 05 00 00 5a f8 99 3c 02 f5 6c 04 b8 6e bb 54 3a af 74 32
+
+decode-pair.tp_decode_sim -
+data EAP-SIM-Next-Pseudonym = "testing123", EAP-SIM-Any-ID-Req = yes, EAP-SIM-Counter-Too-Small = yes

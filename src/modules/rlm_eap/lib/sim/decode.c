@@ -32,6 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/tls.h>
+#include <freeradius-devel/io/test_point.h>
 
 #include "eap_types.h"
 #include "eap_sim_common.h"
@@ -55,10 +56,17 @@ RCSID("$Id$")
  * of 32 bits, and includes the Type/Length fields.
  */
 
+static ssize_t fr_sim_decode_pair_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
+					   uint8_t const *data, size_t data_len, void *decoder_ctx);
+
+static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
+				     uint8_t const *data, size_t const attr_len, size_t const data_len,
+				     void *decoder_ctx);
+
 /** Extract the IV value from an AT_IV attribute
  *
  * SIM uses padding at the start of the attribute to make it a multiple of 4.
- * We need to strip this and check that it was set to zero.
+ * We need to strip packet_ctx and check that it was set to zero.
  *
  * @param[out] out 	Where to write IV.
  * @param[in] in	value of AT_IV attribute.
@@ -94,28 +102,30 @@ static inline int sim_iv_extract(uint8_t out[SIM_IV_SIZE], uint8_t const *in, si
 
 /** Decrypt an AES-128-CBC encrypted attribute
  *
- * @param[in] ctx		to allocate plaintext buffer in.
- * @param[out] out		where to write pointer to plaintext buffer.
+ * @param[in] ctx		to allocate decr buffer in.
+ * @param[out] out		where to write pointer to decr buffer.
  * @param[in] data		to decrypt.
  * @param[in] attr_len		length of encrypted data.
  * @param[in] data_len		length of data remaining in the packet.
  * @param[in] decoder_ctx	containing keys, and the IV (if we already found it).
  * @return
- *	- Number of plaintext bytes decrypted on success.
+ *	- Number of decr bytes decrypted on success.
  *	- < 0 on failure.
  */
 static ssize_t sim_value_decrypt(TALLOC_CTX *ctx, uint8_t **out,
 				 uint8_t const *data, size_t const attr_len, size_t const data_len,
 				 void *decoder_ctx)
 {
-	fr_sim_decode_ctx_t	*this = decoder_ctx;
+	fr_sim_decode_ctx_t	*packet_ctx = decoder_ctx;
 	EVP_CIPHER_CTX		*evp_ctx;
 	EVP_CIPHER const	*evp_cipher = EVP_aes_128_cbc();
 	size_t			block_size = EVP_CIPHER_block_size(evp_cipher);
-	size_t			len, used = 0;
-	uint8_t			*buff = NULL;
+	size_t			len = 0, decr_len = 0;
+	uint8_t			*decr = NULL;
 
-	if (!fr_cond_assert(attr_len > data_len)) return -1;
+	if (!fr_cond_assert(attr_len <= data_len)) return -1;
+
+	FR_PROTO_HEX_DUMP("ciphertext", data, attr_len);
 
 	/*
 	 *	Encrypted values must be a multiple of 16.
@@ -123,7 +133,7 @@ static ssize_t sim_value_decrypt(TALLOC_CTX *ctx, uint8_t **out,
 	 *	There's a padding attribute to ensure they
 	 *	always can be...
 	 */
-	if (data_len % block_size) {
+	if (attr_len % block_size) {
 		fr_strerror_printf("%s: Encrypted attribute is not a multiple of cipher's block size (%zu)",
 				   __FUNCTION__, block_size);
 		return -1;
@@ -132,8 +142,8 @@ static ssize_t sim_value_decrypt(TALLOC_CTX *ctx, uint8_t **out,
 	/*
 	 *	Ugh, now we have to go hunting for it....
 	 */
-	if (!this->have_iv) {
-		uint8_t const	*p = data + attr_len;	/* Skip to the end of this attribute */
+	if (!packet_ctx->have_iv) {
+		uint8_t const	*p = data + attr_len;	/* Skip to the end of packet_ctx attribute */
 		uint8_t const	*end = p + data_len;
 
 		while ((size_t)(end - p) >= sizeof(uint32_t)) {
@@ -141,14 +151,14 @@ static ssize_t sim_value_decrypt(TALLOC_CTX *ctx, uint8_t **out,
 			size_t	 sim_at_len = p[1] * sizeof(uint32_t);
 
 			if (sim_at == FR_SIM_IV) {
-				if (sim_iv_extract(&(this->iv[0]), p, sim_at_len) < 0) return -1;
-				this->have_iv = true;
+				if (sim_iv_extract(&(packet_ctx->iv[0]), p, sim_at_len) < 0) return -1;
+				packet_ctx->have_iv = true;
 				break;
 			}
 			p += sim_at_len;
 		}
 
-		if (!this->have_iv) {
+		if (!packet_ctx->have_iv) {
 			fr_strerror_printf("%s: No IV present in packet, can't decrypt data", __FUNCTION__);
 			return -1;
 		}
@@ -160,49 +170,65 @@ static ssize_t sim_value_decrypt(TALLOC_CTX *ctx, uint8_t **out,
 		return -1;
 	}
 
-	if (!EVP_DecryptInit_ex(evp_ctx, evp_cipher, NULL, &(this->keys->k_encr[0]), &(this->iv[0]))) {
+	if (!EVP_DecryptInit_ex(evp_ctx, evp_cipher, NULL, packet_ctx->keys->k_encr, packet_ctx->iv)) {
 		tls_strerror_printf(true, "%s: Failed setting decryption parameters", __FUNCTION__);
 	error:
-		talloc_free(buff);
+		talloc_free(decr);
 		EVP_CIPHER_CTX_free(evp_ctx);
 		return -1;
 	}
 
+	MEM(decr = talloc_zero_array(ctx, uint8_t, attr_len));
+
 	/*
-	 *	As per OpenSSL's requirements.
+	 *	By default OpenSSL expects 16 bytes of cleartext
+	 *	to produce 32 bytes of ciphertext, due to padding
+	 *	being added if the decr is a multiple of 16.
 	 *
-	 *	We'll shrink this later to the real length.
+	 *	There's no way for OpenSSL to determine if a
+	 *	16 byte ciphertext was padded or not, so we need to
+	 *	inform OpenSSL explicitly that there's no padding.
 	 */
-	MEM(buff = talloc_array(ctx, uint8_t, attr_len + block_size));
-
-	if (!EVP_DecryptUpdate(evp_ctx, buff, (int *)&len, data, data_len)) {
+	EVP_CIPHER_CTX_set_padding(evp_ctx, 0);
+	if (!EVP_DecryptUpdate(evp_ctx, decr, (int *)&len, data, attr_len)) {
 		tls_strerror_printf(true, "%s: Failed decrypting attribute", __FUNCTION__);
 		goto error;
 	}
-	used = len;
+	decr_len = len;
 
-	if (!EVP_DecryptFinal_ex(evp_ctx, buff + used, (int *)&len)) {
+	if (!EVP_DecryptFinal_ex(evp_ctx, decr + decr_len, (int *)&len)) {
 		tls_strerror_printf(true, "%s: Failed decrypting attribute", __FUNCTION__);
 		goto error;
 	}
-	used += len;
+	decr_len += len;
 
 	EVP_CIPHER_CTX_free(evp_ctx);
 
 	/*
-	 *	Note: This implicitly validates the length of the padding
+	 *	Note: packet_ctx implicitly validates the length of the padding
 	 *	attribute (if present), so we don't have to do it later.
 	 */
-	if (used % 16) {
+	if (decr_len % 16) {
 		fr_strerror_printf("%s: Expected decrypted value length to be multiple of 16, got %zu",
-				   __FUNCTION__, used);
+				   __FUNCTION__, decr_len);
 		goto error;
 	}
 
-	MEM(buff = talloc_realloc(ctx, buff, uint8_t, used));
-	*out = buff;
+	/*
+	 *	Ciphertext should be same length as plaintext.
+	 */
+	if (unlikely(attr_len != decr_len)) {
+		fr_strerror_printf("%s: Invalid plaintext length, expected %zu, got %zu",
+				   __FUNCTION__, attr_len, decr_len);
+		goto error;
+	}
 
-	return used;
+	FR_PROTO_TRACE("decryption successful, got %zu bytes of cleartext", decr_len);
+	FR_PROTO_HEX_DUMP("cleartext", decr, decr_len);
+
+	*out = decr;
+
+	return decr_len;
 }
 
 /** Returns the number of array members for arrays with fixed element sizes
@@ -219,8 +245,6 @@ static int fr_sim_array_members(size_t *out, size_t len, fr_dict_attr_t const *d
 	size_t		element_len;
 
 	*out = len;
-
-	if (da->flags.array) return 1;
 
 	/*
 	 *	Could be an array of bytes, integers, etc.
@@ -263,7 +287,7 @@ static int fr_sim_array_members(size_t *out, size_t len, fr_dict_attr_t const *d
  * @param[in] cursor		to addd new attributes to.
  * @param[in] parent		the current attribute TLV attribute we're processing.
  * @param[in] data		to parse. Points to the data field of the attribute.
- * @param[in] data_len		length of this TLV.
+ * @param[in] data_len		length of packet_ctx TLV.
  * @param[in] decoder_ctx	IVs, keys etc...
  * @return
  *	- Length on success.
@@ -271,32 +295,84 @@ static int fr_sim_array_members(size_t *out, size_t len, fr_dict_attr_t const *d
  */
 static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 			      fr_dict_attr_t const *parent,
-			      uint8_t const *data, size_t data_len,
+			      uint8_t const *data, size_t const attr_len, size_t data_len,
 			      void *decoder_ctx)
 {
-	uint8_t const		*p = data, *end = data + data_len;
+	uint8_t const		*p = data, *end = p + attr_len;
+	uint8_t			*decr = NULL;
+	ssize_t			decr_len;
 	fr_dict_attr_t const	*child;
 	VALUE_PAIR		*head = NULL;
 	vp_cursor_t		tlv_cursor;
 	ssize_t			rcode;
 
-	if (data_len < sizeof(uint32_t)) return -1; /* minimum attr size */
-
-	FR_PROTO_HEX_DUMP("tlvs", p, data_len);
+	if (data_len < 2) {
+		fr_strerror_printf("Insufficient data");
+		return -1; /* minimum attr size */
+	}
 
 	/*
-	 *  Record where we were in the list when this function was called
+	 *	We have an AES-128-CBC encrypted attribute
+	 *
+	 *	IV is from AT_IV, key is from k_encr.
+	 *
+	 *	unfortunately the ordering of these two attributes
+	 *	aren't specified, so we may have to hunt for the IV.
+	 */
+	if (parent->flags.encrypt) {
+		FR_PROTO_TRACE("found encrypted attribute '%s'", parent->name);
+
+		decr_len = sim_value_decrypt(ctx, &decr, p + 2,
+						  attr_len - 2, data_len - 2, decoder_ctx);	/* Skip reserved */
+		if (decr_len < 0) return decr_len;
+
+		p = decr;
+		end = p + decr_len;
+	} else {
+		p += 2;	/* Skip the reserved bytes */
+	}
+
+	FR_PROTO_HEX_DUMP("tlvs", p, end - p);
+
+	/*
+	 *  Record where we were in the list when packet_ctx function was called
 	 */
 	fr_pair_cursor_init(&tlv_cursor, &head);
 	while ((size_t)(end - p) >= sizeof(uint32_t)) {
-		uint8_t		sim_at = p[0];
-		size_t		sim_at_len = p[0] * sizeof(uint32_t);
+		uint8_t	sim_at = p[0];
+		size_t	sim_at_len = ((size_t)p[1]) << 2;
 
 		if ((p + sim_at_len) > end) {
 			fr_strerror_printf("Sub-TLV longer than remaining data in parent");
 		error:
+			talloc_free(decr);
 			fr_pair_list_free(&head);
 			return -1;
+		}
+
+		/*
+		 *	Padding attributes are cleartext inside of
+		 *	encrypted TLVs to pad out the value to the
+		 *	correct length for the block cipher
+		 *	(16 in the case of AES-128-CBC).
+		 */
+		if (sim_at == FR_SIM_PADDING) {
+			if (!parent->flags.encrypt) {
+				fr_strerror_printf("%s: Found padding attribute outside of an encrypted TLV",
+						   __FUNCTION__);
+				return -1;
+			}
+
+			if (!fr_cond_assert(data_len % 4)) return -1;
+
+			if (sim_at_len > 12) {
+				fr_strerror_printf("%s: Expected padding attribute length <= 12 bytes, got %zu bytes",
+						   __FUNCTION__, sim_at_len);
+				return -1;
+			}
+
+			p += sim_at_len;
+			continue;
 		}
 
 		child = fr_dict_attr_child_by_num(parent, p[0]);
@@ -326,13 +402,15 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 		}
 		FR_PROTO_TRACE("decode context changed %s -> %s", parent->name, child->name);
 
-		rcode = fr_sim_decode_pair(ctx, &tlv_cursor, child, p + 2, sim_at_len - 2, decoder_ctx);
+		rcode = sim_decode_pair_value(ctx, &tlv_cursor, child, p + 2, sim_at_len - 2, (end - p) - 2,
+					      decoder_ctx);
 		if (rcode < 0) goto error;
 		p += sim_at_len;
 	}
 	fr_pair_cursor_merge(cursor, head);	/* Wind to the end of the new pairs */
+	talloc_free(decr);
 
-	return end - p;
+	return attr_len;
 }
 
 /** Create any kind of VP from the attribute contents
@@ -357,11 +435,10 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 	uint8_t const		*end = p + data_len;
 	ssize_t			rcode;
 
-	fr_sim_decode_ctx_t	*this = decoder_ctx;
+	fr_sim_decode_ctx_t	*packet_ctx = decoder_ctx;
 
 	if (!fr_cond_assert(attr_len <= data_len)) return -1;
 	if (!fr_cond_assert(parent)) return -1;
-	if (!fr_cond_assert(data_len <= (128 * 1024))) return -1;
 
 	FR_PROTO_TRACE("Parent %s len %zu", parent->name, attr_len);
 	FR_PROTO_HEX_DUMP(__FUNCTION__ , data, attr_len);
@@ -370,12 +447,28 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 	 *	It's an array type attribute with a fixed length,
 	 */
 	if (parent->flags.array) {
+		uint16_t	actual_len;
 		int		elements, i;
 		size_t		element_len;
 
 		FR_PROTO_TRACE("Array attribute");
 
-		elements = fr_sim_array_members(&element_len, data_len, parent);
+		if (attr_len < 2) {
+			fr_strerror_printf("%s: Missing length field", __FUNCTION__);
+			return -1;
+		}
+
+		actual_len = (p[0] << 8) | p[1];
+		if (actual_len > (attr_len - 2)) {
+			fr_strerror_printf("%s: Actual length field value (%hu) > attribute value length (%zu)",
+					   __FUNCTION__, actual_len, attr_len - 2);
+			return -1;
+		}
+
+		/*
+		 *	Get the number of elements
+		 */
+		elements = fr_sim_array_members(&element_len, actual_len, parent);
 		if (elements < 0) return elements;
 
 		for (i = 0; i < elements; i++) {
@@ -391,43 +484,16 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 	}
 
 	/*
-	 *	Special attributes that affect parsing
-	 */
-	switch (parent->attr) {
-	/*
-	 *	Padding attributes are used inside of encrypted TLVs
-	 *	to pad out the value to the correct length for the
-	 *	block cipher (16 in the case of AES-128-CBC).
-	 */
-	case FR_SIM_PADDING:
-		if (!parent->parent || (parent->parent->type != FR_TYPE_TLV) || (!parent->parent->flags.encrypt)) {
-			fr_strerror_printf("%s: Found padding attribute outside of an encrypted TLV", __FUNCTION__);
-			return -1;
-		}
-
-		if (!fr_cond_assert(data_len % 4)) return -1;
-
-		if (attr_len > 12) {
-			fr_strerror_printf("%s: Expected padding attribute length <= 12 bytes, got %zu bytes",
-					   __FUNCTION__, attr_len);
-			return -1;
-		}
-		break;
-
-	/*
-	 *	We need to record this so we can decrypt AT_ENCR attributes.
+	 *	We need to record packet_ctx so we can decrypt AT_ENCR attributes.
 	 *
 	 *	If we don't find it before, then that's fine, we'll try and
 	 *	find it in the rest of the packet after the encrypted
 	 *	attribute.
 	 */
-	case FR_SIM_IV:
-		if (sim_iv_extract(&this->iv[0], data, attr_len) < 0) return -1;
-		this->have_iv = true;
-		break;
-
-	default:
-		break;
+	if (parent->attr == FR_SIM_IV) {
+		if (sim_iv_extract(&packet_ctx->iv[0], data, attr_len) < 0) return -1;
+		packet_ctx->have_iv = true;
+		return attr_len;
 	}
 
 	FR_PROTO_TRACE("Type \"%s\" (%u)", fr_int2str(dict_attr_types, parent->type, "?Unknown?"), parent->type);
@@ -436,18 +502,27 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 	case FR_TYPE_OCTETS:
 		break;
 
+	case FR_TYPE_BOOL:
+		if (attr_len != 2) goto raw;
+		break;
+
 	case FR_TYPE_UINT16:
 		if (attr_len != 2) goto raw;
 		break;
 
 	case FR_TYPE_TLV:
+		if (attr_len < 2) goto raw;
+
 		/*
 		 *	We presume that the TLVs all fit into one
 		 *	attribute, OR they've already been grouped
 		 *	into a contiguous memory buffer.
 		 */
-		rcode = sim_decode_tlv(ctx, cursor, parent, p, attr_len, decoder_ctx);
-		if (rcode < 0) goto raw;
+		rcode = sim_decode_tlv(ctx, cursor, parent, p, attr_len, data_len, decoder_ctx);	/* +2 for reserved */
+		if (rcode < 0) {
+			FR_PROTO_TRACE("Failed decoding TLV: %s", fr_strerror());
+			goto raw;
+		}
 		return rcode;
 
 	default:
@@ -486,9 +561,9 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 	{
 		uint16_t str_len = (p[0] << 8) | p[1];
 
-		if (str_len > attr_len) {
+		if (str_len > (attr_len - 2)) {
 			fr_strerror_printf("%s: String value length (%hu) > attribute value length (%zu)",
-					   __FUNCTION__, str_len, attr_len);
+					   __FUNCTION__, str_len, attr_len - 2);
 			return -1;
 		}
 
@@ -497,12 +572,12 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 		break;
 
 	case FR_TYPE_OCTETS:
-		fr_pair_value_memcpy(vp, p, attr_len);
-		vp->vp_length = attr_len;
+		fr_pair_value_memcpy(vp, p + 2, attr_len - 2);	/* -2 for reserved field */
+		vp->vp_length = attr_len - 2;
 		break;
 
 	/*
-	 *	Not proper bool. We Use this to represent
+	 *	Not proper bool. We Use packet_ctx to represent
 	 *	flag attributes like AT_FULLAUTH_ID_REQ
 	 *
 	 *	0                   1                   2                   3
@@ -535,9 +610,9 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
  *
  * @param[in] ctx		to allocate attributes in.
  * @param[in] cursor		where to insert the attributes.
- * @param[in] parent		root attribute for the SIM dialect (SIM/AKA/AKA') we're parsing.
+ * @param[in] parent		of current attribute being decoded.
  * @param[in] data		data to parse.
- * @param[in] data_len		length of data.  For top level attributes this must be the length
+ * @param[in] data_len		length of data.  For top level attributes packet_ctx must be the length
  *				of the packet (so we can hunt for AT_IV), for Sub-TLVs it should
  *				be the length of the container value.
  * @param[in] decoder_ctx	extra context to pass to the decoder.
@@ -545,19 +620,16 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
  *	- The number of bytes parsed.
  *	- -1 on error.
  */
-ssize_t fr_sim_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
-			   uint8_t const *data, size_t data_len,
-			   void *decoder_ctx)
+static ssize_t fr_sim_decode_pair_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
+					   uint8_t const *data, size_t data_len, void *decoder_ctx)
 {
-	uint8_t		sim_at;
-	size_t		sim_at_len;
+	uint8_t			sim_at;
+	size_t			sim_at_len;
 
-	uint8_t const	*p = data;
-	ssize_t rcode;
+	ssize_t			rcode;
+	fr_dict_attr_t const	*da;
 
-	fr_dict_attr_t const *da;
-
-	sim_at_len = (data[1] * sizeof(uint32_t));
+	sim_at_len = ((size_t)data[1]) << 2;
 
 	if ((data_len < sizeof(uint32_t)) || (sim_at_len > data_len)) {
 		fr_strerror_printf("%s: Insufficient data", __FUNCTION__);
@@ -590,48 +662,31 @@ ssize_t fr_sim_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t 
 
 	FR_PROTO_TRACE("decode context changed %s -> %s", da->parent->name, da->name);
 
-	/*
-	 *	We have an AES-128-CBC encrypted attribute
-	 *
-	 *	IV is from AT_IV, key is from k_encr.
-	 *
-	 *	unfortunately the ordering of these two attributes
-	 *	aren't specified, so we may have to hunt for the IV.
-	 */
-	if (parent->flags.encrypt) {
-		uint8_t *plain;
-		ssize_t	plain_len;
-
-		FR_PROTO_TRACE("found encrypted attribute '%s'", da->name);
-
-		plain_len = sim_value_decrypt(ctx, &plain, p, sim_at_len, data_len, decoder_ctx);
-		if (plain_len < 0) return plain_len;
-
-		FR_PROTO_TRACE("decryption successful, got %zu bytes of plaintext", plain_len);
-		FR_PROTO_HEX_DUMP(__FUNCTION__ , plain, plain_len);
-
-		/*
-		 *	'Packet' is now the length of decrypted data.
-		 */
-		rcode = sim_decode_pair_value(ctx, cursor, parent, plain,
-					      (size_t)plain_len, (size_t)plain_len, decoder_ctx);
-		talloc_free(plain);
-
-		if (!fr_cond_assert(rcode <= plain_len)) return -1;
-		if (rcode < 0) return rcode;
-		if (rcode != plain_len) {
-			fr_strerror_printf("%s: Got %zu bytes of trailing garbage in decrypted data",
-					   __FUNCTION__, ((size_t)(plain_len - rcode)));
-			return -1;
-		}
-
-		return data_len;	/* Don't return decrypted len */
-	}
-
 	rcode = sim_decode_pair_value(ctx, cursor, da, data + 2, sim_at_len - 2, data_len - 2, decoder_ctx);
 	if (rcode < 0) return rcode;
 
 	return 2 + rcode;
+}
+
+/** Decode SIM/AKA/AKA' attributes
+ *
+ * @param[in] ctx		to allocate attributes in.
+ * @param[in] cursor		where to insert the attributes.
+ * @param[in] data		data to parse.
+ * @param[in] data_len		length of data.  For top level attributes packet_ctx must be the length
+ *				of the packet (so we can hunt for AT_IV), for Sub-TLVs it should
+ *				be the length of the container value.
+ * @param[in] decoder_ctx	extra context to pass to the decoder.
+ * @return
+ *	- The number of bytes parsed.
+ *	- -1 on error.
+ */
+ssize_t fr_sim_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor,
+			   uint8_t const *data, size_t data_len, void *decoder_ctx)
+{
+	fr_sim_decode_ctx_t	*packet_ctx = decoder_ctx;
+
+	return fr_sim_decode_pair_internal(ctx, cursor, packet_ctx->root, data, data_len, decoder_ctx);
 }
 
 /** Decode SIM/AKA/AKA' specific packet data
@@ -651,13 +706,13 @@ ssize_t fr_sim_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t 
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_sim_decode(REQUEST *request, vp_cursor_t *decoded, fr_dict_attr_t const *parent,
-		  uint8_t const *data, size_t data_len,
-		  fr_sim_decode_ctx_t *decoder_ctx)
+int fr_sim_decode(REQUEST *request, vp_cursor_t *decoded,
+		  uint8_t const *data, size_t data_len, fr_sim_decode_ctx_t *decoder_ctx)
 {
 	ssize_t			rcode;
 	uint8_t	const		*p = data;
 	uint8_t const		*end = p + data_len;
+	fr_sim_decode_ctx_t	*packet_ctx = decoder_ctx;
 
 	fr_strerror();
 
@@ -684,7 +739,7 @@ int fr_sim_decode(REQUEST *request, vp_cursor_t *decoded, fr_dict_attr_t const *
 	 *	in the SIM/AKA/AKA' dict.
 	 */
 	while (p < end) {
-		rcode = fr_sim_decode_pair(request->packet, decoded, parent, p, end - p, decoder_ctx);
+		rcode = fr_sim_decode_pair(request->packet, decoded, p, end - p, decoder_ctx);
 		if (rcode <= 0) {
 			REDEBUG("%s", fr_strerror());
 		error:
@@ -697,13 +752,13 @@ int fr_sim_decode(REQUEST *request, vp_cursor_t *decoded, fr_dict_attr_t const *
 	}
 
 	/*
-	 *	No point in doing this until we known the rest
+	 *	No point in doing packet_ctx until we known the rest
 	 *	of the data is OK!
 	 */
 	{
 		VALUE_PAIR *vp;
 
-		vp = fr_pair_afrom_child_num(request->packet, parent, FR_SIM_SUBTYPE);
+		vp = fr_pair_afrom_child_num(request->packet, packet_ctx->root, FR_SIM_SUBTYPE);
 		if (!vp) {
 			fr_strerror_printf("Failed allocating subtype attribute");
 			goto error;
@@ -714,3 +769,55 @@ int fr_sim_decode(REQUEST *request, vp_cursor_t *decoded, fr_dict_attr_t const *
 
 	return 0;
 }
+
+/*
+ *	Test ctx data
+ */
+static void *decode_test_ctx_sim(UNUSED TALLOC_CTX *ctx)
+{
+	static fr_sim_decode_ctx_t	test_ctx;
+	static fr_sim_keys_t		keys = {
+						.k_encr = { 0x00, 0x01, 0x02, 0x03, 0x04 ,0x05, 0x06, 0x07,
+							    0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f }
+					};
+	fr_sim_global_init();
+
+	test_ctx.root = dict_sim_root;
+	test_ctx.keys = &keys;
+	memset(&test_ctx.iv, 0, sizeof(test_ctx.iv));
+	test_ctx.have_iv = true;	/* Ensures IV is all zeros */
+
+	return &test_ctx;
+}
+
+static void *decode_test_ctx_aka(UNUSED TALLOC_CTX *ctx)
+{
+	static fr_sim_decode_ctx_t	test_ctx;
+	static fr_sim_keys_t		keys = {
+						.k_encr = { 0x00, 0x01, 0x02, 0x03, 0x04 ,0x05, 0x06, 0x07,
+							    0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f }
+					};
+	fr_sim_global_init();
+
+	test_ctx.root = dict_aka_root;
+	test_ctx.keys = &keys;
+	memset(&test_ctx.iv, 0, sizeof(test_ctx.iv));
+	test_ctx.have_iv = true;	/* Ensures IV is all zeros */
+
+	return &test_ctx;
+}
+
+/*
+ *	Test points
+ */
+extern fr_test_point_pair_decode_t tp_decode_sim;
+fr_test_point_pair_decode_t tp_decode_sim = {
+	.test_ctx	= decode_test_ctx_sim,
+	.func		= fr_sim_decode_pair
+};
+
+extern fr_test_point_pair_decode_t tp_decode_aka;
+fr_test_point_pair_decode_t tp_decode_aka = {
+	.test_ctx	= decode_test_ctx_aka,
+	.func		= fr_sim_decode_pair
+};
