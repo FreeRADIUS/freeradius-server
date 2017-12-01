@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/md5.h>
+#include <freeradius-devel/io/test_point.h>
 
 static void memcpy_bounded(void * restrict dst, const void * restrict src, size_t n, const void * restrict end)
 {

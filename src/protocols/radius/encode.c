@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/md5.h>
+#include <freeradius-devel/io/test_point.h>
 
 static unsigned int salt_offset = 0;
 

@@ -1006,6 +1006,7 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, uint8_t *packet, size_t packet_len, ui
 
 	packet_ctx.secret = secret;
 	packet_ctx.vector = original + 4;
+	packet_ctx.root = fr_dict_root(fr_dict_internal);
 
 	fr_pair_cursor_init(&cursor, vps);
 
@@ -1017,8 +1018,7 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, uint8_t *packet, size_t packet_len, ui
 	 *	he doesn't, all hell breaks loose.
 	 */
 	while (attr < end) {
-		slen = fr_radius_decode_pair(ctx, &cursor, fr_dict_root(fr_dict_internal),
-					     attr, (end - attr), &packet_ctx);
+		slen = fr_radius_decode_pair(ctx, &cursor, attr, (end - attr), &packet_ctx);
 		if (slen < 0) return slen;
 
 		/*
