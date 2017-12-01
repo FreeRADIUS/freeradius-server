@@ -35,7 +35,9 @@ typedef struct REQUEST REQUEST;
 #include <freeradius-devel/radpaths.h>
 #include <freeradius-devel/dhcpv4/dhcpv4.h>
 #include <freeradius-devel/cf_parse.h>
+#include <freeradius-devel/cf_util.h>
 #include <freeradius-devel/dl.h>
+#include <freeradius-devel/dependency.h>
 #include <freeradius-devel/io/test_point.h>
 
 #ifdef WITH_TACACS
@@ -649,7 +651,7 @@ static size_t load_test_point_by_command(void **symbol, char *command, size_t of
 	return p - command;
 }
 
-static void process_file(fr_dict_t *dict, const char *root_dir, char const *filename)
+static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *root_dir, char const *filename)
 {
 	int		lineno;
 	size_t		i, outlen;
@@ -726,6 +728,30 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 		}
 
 		strlcpy(test_type, p, (q - p) + 1);
+
+		if (strcmp(test_type, "load") == 0) {
+			p += 5;
+			load_proto_library(p);
+			continue;
+		}
+
+		if (strcmp(test_type, "need-feature") == 0) {
+			CONF_PAIR *cp;
+			p += 12;
+
+			if (*p != ' ') {
+				fprintf(stderr, "Prerequisite syntax is \"need-feature <feature>\".  Use -f to print features");
+				exit(EXIT_FAILURE);
+			}
+			p++;
+
+			cp = cf_pair_find(features, p);
+			if (!cp || (strcmp(cf_pair_value(cp), "yes") != 0)) {
+				fprintf(stdout, "Skipping, missing feature \"%s\"", p);
+				return; /* Skip this file */
+			}
+			continue;
+		}
 
 		if (strcmp(test_type, "raw") == 0) {
 			outlen = encode_rfc(p + 4, data, sizeof(data));
@@ -1079,10 +1105,10 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 			q = strrchr(directory, '/');
 			if (q) {
 				*q = '\0';
-				process_file(dict, directory, p);
+				process_file(features, dict, directory, p);
 				*q = '/';
 			} else {
-				process_file(dict, NULL, p);
+				process_file(features, dict, NULL, p);
 			}
 			continue;
 		}
@@ -1096,13 +1122,6 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 		if (strcmp(test_type, "xlat") == 0) {
 			p += 5;
 			parse_xlat(p, output, sizeof(output));
-			continue;
-		}
-
-
-		if (strcmp(test_type, "load") == 0) {
-			p += 5;
-			load_proto_library(p);
 			continue;
 		}
 
@@ -1255,6 +1274,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -d <raddb>             Set user dictionary directory (defaults to " RADDBDIR ").\n");
 	fprintf(stderr, "  -D <dictdir>           Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(stderr, "  -x                     Debugging mode.\n");
+	fprintf(stderr, "  -f                     Print features.\n");
 	fprintf(stderr, "  -M                     Show talloc memory report.\n");
 
 	exit(EXIT_FAILURE);
@@ -1266,7 +1286,7 @@ int main(int argc, char *argv[])
 	char const	*radius_dir = RADDBDIR;
 	char const	*dict_dir = DICTDIR;
 	int		*inst = &c;
-
+	CONF_SECTION	*cs, *features;
 	fr_dict_t	*dict = NULL;
 
 	TALLOC_CTX	*autofree = talloc_init("main");
@@ -1277,8 +1297,16 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 #endif
+	/*
+	 *	Allocate a root config section so we can write
+	 *	out features and versions.
+	 */
+	MEM(cs = cf_section_alloc(autofree, NULL, "unit_test_attribute", NULL));
+	MEM(features = cf_section_alloc(cs, cs, "feature", NULL));
+	cf_section_add(cs, features);
+	dependency_init_features(features);	/* Add build time features to the config section */
 
-	while ((c = getopt(argc, argv, "d:D:xMh")) != EOF) switch (c) {
+	while ((c = getopt(argc, argv, "d:D:fxMh")) != EOF) switch (c) {
 		case 'd':
 			radius_dir = optarg;
 			break;
@@ -1286,6 +1314,18 @@ int main(int argc, char *argv[])
 		case 'D':
 			dict_dir = optarg;
 			break;
+
+		case 'f':
+		{
+			CONF_PAIR *cp;
+
+			for (cp = cf_pair_find(features, CF_IDENT_ANY);
+			     cp;
+			     cp = cf_pair_find_next(features, cp, CF_IDENT_ANY)) {
+				fprintf(stdout, "%s %s\n", cf_pair_attr(cp), cf_pair_value(cp));
+			}
+			exit(EXIT_SUCCESS);
+		}
 
 		case 'x':
 			fr_debug_lvl++;
@@ -1332,10 +1372,10 @@ int main(int argc, char *argv[])
 	my_secret = talloc_strdup(autofree, "testing123");
 
 	if (argc < 2) {
-		process_file(dict, NULL, "-");
+		process_file(features, dict, NULL, "-");
 
 	} else {
-		process_file(dict, NULL, argv[1]);
+		process_file(features, dict, NULL, argv[1]);
 	}
 
 	/*

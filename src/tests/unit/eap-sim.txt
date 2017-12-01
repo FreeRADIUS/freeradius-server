@@ -1,6 +1,11 @@
 #
 #  Tests for the EAP-SIM/AKA/AKA' encoder and decoder
 #
+
+# Only run the tests if we have TLS support
+need-feature tls
+
+# Load the EAP-SIM module
 load eap-sim
 
 # Boolean attribute

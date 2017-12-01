@@ -733,7 +733,7 @@ do {\
 
 		cf_section_add(cs, subcs);
 	}
-	version_init_features(subcs);
+	dependency_init_features(subcs);
 
 	/*
 	 *	Add a 'version' subsection off the main config
@@ -746,7 +746,7 @@ do {\
 		if (!subcs) return -1;
 		cf_section_add(cs, subcs);
 	}
-	version_numbers_init(subcs);
+	dependency_version_numbers_init(subcs);
 
 	/* Read the configuration file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf", radius_dir, main_config.name);
