@@ -919,6 +919,11 @@ RADCLIENT *client_afrom_request(TALLOC_CTX *ctx, REQUEST *request)
 			value = vp->vp_strvalue;
 			break;
 
+		case FR_FREERADIUS_CLIENT_NAS_TYPE:
+			attr = "nas_type";
+			value = vp->vp_strvalue;
+			break;
+
 		case FR_FREERADIUS_CLIENT_SHORTNAME:
 			attr = "shortname";
 			value = vp->vp_strvalue;
