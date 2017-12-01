@@ -256,7 +256,7 @@ static int fr_sim_array_members(size_t *out, size_t len, fr_dict_attr_t const *d
 		break;
 
 	default:
-		element_len = dict_attr_sizes[da->type][0];
+		element_len = fr_sim_attr_sizes[da->type][0];
 		break;
 	}
 

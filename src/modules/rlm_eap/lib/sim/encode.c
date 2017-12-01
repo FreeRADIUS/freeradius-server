@@ -338,6 +338,13 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		*p++ = 0;	/* Reserved */
 		*p++ = 0;	/* Reserved */
 
+		if (vp->da->flags.length && (vp->vp_length != vp->da->flags.length)) {
+			fr_strerror_printf("%s: Attribute \"%s\" needs a value of exactly %zu bytes, "
+					   "but value was %zu bytes", __FUNCTION__,
+					   vp->da->name, (size_t)vp->da->flags.length, vp->vp_length);
+			return -1;
+		}
+
 		memcpy(p, vp->vp_octets, vp->vp_length);
 		p += vp->vp_length;
 
@@ -375,6 +382,13 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		uint8_t		*p = out;
 
 		if ((rounded_len + 2) > outlen) goto oos;
+
+		if (vp->da->flags.length && (vp->vp_length != vp->da->flags.length)) {
+			fr_strerror_printf("%s: Attribute \"%s\" needs a value of exactly %zu bytes, "
+					   "but value was %zu bytes", __FUNCTION__,
+					   vp->da->name, (size_t)vp->da->flags.length, vp->vp_length);
+			return -1;
+		}
 
 		memcpy(p, &actual_len, sizeof(actual_len));		/* Big endian real string length */
 		p += sizeof(actual_len);
@@ -444,6 +458,71 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	return len;
 }
 
+/** Encodes the data portion of an attribute
+ *
+ @verbatim
+	0                   1                   2                   3
+	0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	| AT_VERSION_L..| Length        | Actual Version List Length    |
+	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	|  Supported Version 1          |  Supported Version 2          |
+	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	.                                                               .
+	.                                                               .
+	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	| Supported Version N           |     Padding                   |
+	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ @endverbatim
+ *
+ */
+static ssize_t encode_array(uint8_t *out, size_t outlen,
+			    fr_dict_attr_t const **tlv_stack, int depth,
+			    vp_cursor_t *cursor, void *encoder_ctx)
+{
+	uint8_t			*p = out, *end = p + outlen;
+	uint8_t			*value;
+	size_t			pad_len;
+	uint16_t		actual_len;
+	fr_dict_attr_t const	*da = tlv_stack[depth];
+
+	rad_assert(da->flags.array);
+
+	p += 2;
+	value = p;	/* Space for actual length */
+
+	/*
+	 *	Keep encoding as long as we have space to
+	 *	encode things.
+	 */
+	while (fr_sim_attr_sizes[da->type][0] <= ((size_t)(end - p))) {
+		VALUE_PAIR	*vp;
+		ssize_t		slen;
+
+		slen = encode_value(p, end - p, tlv_stack, depth, cursor, encoder_ctx);
+		if (slen < 0) return slen;
+
+		p += slen;
+
+		vp = fr_pair_cursor_current(cursor);
+		if (!vp || (vp->da != da)) break;		/* Stop if we have an attribute of a different type */
+	}
+
+	actual_len = htons((p - value) & UINT16_MAX);	/* Length of the elements we encoded */
+	memcpy(out, &actual_len, sizeof(actual_len));
+
+	/*
+	 *	Pad value a multiple of 4
+	 */
+	pad_len = (((p - value) + 3) & ~3) - (p - value);
+	if (pad_len) {
+		memset(p, 0, pad_len);
+		p += pad_len;
+	}
+
+	return p - out;
+}
+
 /** Encode an RFC format attribute header
  *
  * This could be a standard attribute, or a TLV data type.
@@ -487,9 +566,13 @@ static ssize_t encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const 
 	 *	length.
 	 */
 	da = tlv_stack[depth];
-	slen = encode_value(out + 2, outlen - 2, tlv_stack, depth, cursor, encoder_ctx);
-	if (slen <= 0) return slen;
 
+	if (da->flags.array) {
+		slen = encode_array(out + 2, outlen - 2, tlv_stack, depth, cursor, encoder_ctx);
+	} else {
+		slen = encode_value(out + 2, outlen - 2, tlv_stack, depth, cursor, encoder_ctx);
+	}
+	if (slen <= 0) return slen;
 	/*
 	 *	Round attr + len + data length out to a multiple
 	 *	of four, and setup the attribute header and
@@ -668,10 +751,11 @@ ssize_t fr_sim_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, voi
 	 *	Fast path for the common case.
 	 */
 	if ((vp->da->parent == packet_ctx->root) && !vp->da->flags.concat && (vp->vp_type != FR_TYPE_TLV)) {
-		tlv_stack[0] = vp->da;
-		tlv_stack[1] = NULL;
+		tlv_stack[0] = packet_ctx->root;
+		tlv_stack[1] = vp->da;
+		tlv_stack[2] = NULL;
 		FR_PROTO_STACK_PRINT(tlv_stack, 0);
-		return encode_rfc_hdr(out, attr_len, tlv_stack, 0, cursor, encoder_ctx);
+		return encode_rfc_hdr(out, attr_len, tlv_stack, 1, cursor, encoder_ctx);
 	}
 
 	/*
@@ -772,8 +856,8 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 		MEM(buff = talloc_array(eap_packet, uint8_t, 3));
 
 		buff[0] = subtype;	/* SIM or AKA subtype */
-		buff[1] = 0;		/* Reserved */
-		buff[2] = 0;		/* Reserved */
+		buff[1] = 0;		/* Reserved (0) */
+		buff[2] = 0;		/* Reserved (1) */
 
 		eap_packet->type.length = 3;
 		eap_packet->type.data = buff;
@@ -786,9 +870,9 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 	end = p + talloc_array_length(p);
 	if (do_hmac) end -= SIM_CALC_MAC_SIZE;
 
-	*p++ = subtype;			/* Subtype  (1) */
-	*p++ = 0;			/* Reserved */
-	*p++ = 0;			/* Reserved */
+	*p++ = subtype;			/* Subtype */
+	*p++ = 0;			/* Reserved (0) */
+	*p++ = 0;			/* Reserved (1) */
 
 	/*
 	 *	Encode all the things...

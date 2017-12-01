@@ -163,6 +163,7 @@ typedef struct {
 
 typedef struct _eap_session eap_session_t;
 
+extern size_t const fr_sim_attr_sizes[FR_TYPE_MAX + 1][2];
 extern fr_dict_attr_t const *dict_sim_root;
 extern fr_dict_attr_t const *dict_aka_root;
 
@@ -186,6 +187,8 @@ ssize_t		fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t t
 /*
  *	base.c
  */
+size_t		fr_sim_attr_len(VALUE_PAIR const *vp);
+
 char const	*fr_sim_session_to_name(char *out, size_t outlen, eap_sim_client_states_t state);
 
 int		fr_sim_global_init(void);

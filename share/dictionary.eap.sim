@@ -14,7 +14,7 @@ ATTRIBUTE	EAP-SIM-Res				3	octets
 ATTRIBUTE	EAP-SIM-Auts				4	octets
 ATTRIBUTE	EAP-SIM-Nonce-MT			7	octets
 ATTRIBUTE	EAP-SIM-Permanent-ID-Req		10	bool
-ATTRIBUTE	EAP-SIM-Mac				11	octets
+ATTRIBUTE	EAP-SIM-Mac				11	octets[20]
 ATTRIBUTE	EAP-SIM-Notification			12	short
 
 VALUE	EAP-SIM-Notification		General-Failure-After-Authentication 0

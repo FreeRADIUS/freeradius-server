@@ -78,3 +78,16 @@ data 82 05 00 00 3f b8 34 1f f8 26 e0 4d 4a f3 f9 61 3c a9 84 26 0d 01 00 00 82 
 
 decode-pair.tp_decode_sim -
 data EAP-SIM-Next-Pseudonym = "testing123", EAP-SIM-Any-ID-Req = yes, EAP-SIM-Counter-Too-Small = yes
+
+# Array (one element)
+encode-pair.tp_encode_sim EAP-SIM-Version-List = 1
+data 0f 02 00 02 00 01 00 00
+
+# Array (multiple elements, with padding)
+encode-pair.tp_encode_sim EAP-SIM-Version-List = 1, EAP-SIM-Version-List = 2, EAP-SIM-Version-List = 3
+data 0f 03 00 06 00 01 00 02 00 03 00 00
+
+# Array (multiple elements, with no padding)
+encode-pair.tp_encode_sim EAP-SIM-Version-List = 1, EAP-SIM-Version-List = 2, EAP-SIM-Version-List = 3, EAP-SIM-Version-List = 4
+data 0f 03 00 08 00 01 00 02 00 03 00 04
+

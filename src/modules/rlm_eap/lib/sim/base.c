@@ -40,6 +40,50 @@ RCSID("$Id$")
 fr_dict_attr_t const *dict_sim_root;
 fr_dict_attr_t const *dict_aka_root;
 
+/** SIM AT on-the-wire format attribute sizes
+ *
+ * Holds the min/max sizes of all supported SIM AT attribute values as they
+ * would be found in a SIM AT packet.
+ *
+ * These sizes may be different than the sizes of INTERNAL formats, PRESENTATION
+ * formats and generic NETWORK formats.
+ */
+size_t const fr_sim_attr_sizes[FR_TYPE_MAX + 1][2] = {
+	[FR_TYPE_INVALID]		= {~0, 0},
+
+	[FR_TYPE_STRING]		= {0, ~0},
+	[FR_TYPE_OCTETS]		= {0, ~0},
+
+	[FR_TYPE_BOOL]			= {2, 2},
+	[FR_TYPE_UINT8]			= {1, 1},
+	[FR_TYPE_UINT16]		= {2, 2},
+	[FR_TYPE_UINT32]		= {4, 4},
+	[FR_TYPE_UINT64]		= {8, 8},
+
+	[FR_TYPE_TLV]			= {2, ~0},
+
+	[FR_TYPE_MAX]			= {~0, 0}	//!< Ensure array covers all types.
+};
+
+/** Return the on-the-wire length of an attribute value
+ *
+ * @param[in] vp to return the length of.
+ * @return the length of the attribute.
+ */
+size_t fr_sim_attr_len(VALUE_PAIR const *vp)
+{
+	switch (vp->vp_type) {
+	case FR_TYPE_VARIABLE_SIZE:
+		return vp->vp_length;
+
+	default:
+		return fr_radius_attr_sizes[vp->vp_type][0];
+
+	case FR_TYPE_STRUCTURAL:
+		if (!fr_cond_assert(0)) return 0;
+	}
+}
+
 /*
  * definitions changed to take a buffer for unknowns
  * as this is more thread safe.
