@@ -287,7 +287,8 @@ static int fr_sim_array_members(size_t *out, size_t len, fr_dict_attr_t const *d
  * @param[in] cursor		to addd new attributes to.
  * @param[in] parent		the current attribute TLV attribute we're processing.
  * @param[in] data		to parse. Points to the data field of the attribute.
- * @param[in] data_len		length of packet_ctx TLV.
+ * @param[in] attr_len		length of the TLV attribute.
+ * @param[in] data_len		remaining data in the packet.
  * @param[in] decoder_ctx	IVs, keys etc...
  * @return
  *	- Length on success.
@@ -697,7 +698,6 @@ ssize_t fr_sim_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor,
  * SIM/AKA/AKA' packet.
  *
  * @param[in] request		the current request.
- * @param[in] parent		the root of the dictionary.
  * @param[in] decoded		where to write decoded attributes.
  * @param[in] data		to convert to pairs.
  * @param[in] data_len		length of data to convert.
