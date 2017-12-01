@@ -124,6 +124,7 @@ struct value_box {
 #define vb_ifid					datum.ifid
 #define vb_ether				datum.ether
 
+#define vb_bool					datum.boolean
 #define vb_uint8				datum.uint8
 #define vb_uint16				datum.uint16
 #define vb_uint32				datum.uint32

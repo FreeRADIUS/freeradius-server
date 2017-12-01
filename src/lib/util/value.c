@@ -3635,6 +3635,9 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 				data->vb_ether[2], data->vb_ether[3],
 				data->vb_ether[4], data->vb_ether[5]);
 
+	case FR_TYPE_BOOL:
+		return snprintf(out, outlen, "%s", data->vb_bool ? "yes" : "no");
+
 	case FR_TYPE_UINT8:
 		return snprintf(out, outlen, "%u", data->vb_uint8);
 
@@ -3751,7 +3754,6 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 	case FR_TYPE_EVS:
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
-	case FR_TYPE_BOOL:
 	case FR_TYPE_STRUCT:
 	case FR_TYPE_MAX:
 		(void)fr_cond_assert(0);
