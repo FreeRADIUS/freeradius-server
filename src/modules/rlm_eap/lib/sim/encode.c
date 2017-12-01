@@ -509,11 +509,20 @@ static inline ssize_t encode_tlv(uint8_t *out, size_t outlen,
 				 vp_cursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t			slen;
-	uint8_t			*p = out, *end = p + outlen;
+	uint8_t			*p = out, *end = p + outlen, *value;
 	VALUE_PAIR const	*vp = fr_pair_cursor_current(cursor);
 	fr_dict_attr_t const	*da = tlv_stack[depth];
 
-	while (outlen > 4) {
+	if (outlen < 2) {
+		fr_strerror_printf("Insufficient space for TLV");
+		return -1;
+	}
+
+	*p++ = 0;	/* Reserved (0) */
+	*p++ = 0;	/* Reserved (1) */
+	value = p;
+
+	while ((end - p) > 4) {
 		size_t sublen;
 		FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
@@ -555,10 +564,10 @@ static inline ssize_t encode_tlv(uint8_t *out, size_t outlen,
 	 *	or another encryption algorithm.
 	 */
 	if (da->flags.encrypt) {
-		slen = encode_encrypted_value(out, outlen, out, p - out, encoder_ctx);
+		slen = encode_encrypted_value(value, end - value, value, p - value, encoder_ctx);
 		if (slen < 0) return -1;
 
-		p = out + slen;
+		p = value + slen;
 	}
 
 	FR_PROTO_HEX_DUMP("Done TLV", out, p - out);
@@ -606,7 +615,7 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 	if (outlen > SIM_MAX_ATTRIBUTE_VALUE_LEN) outlen = SIM_MAX_ATTRIBUTE_VALUE_LEN;
 
 	da = tlv_stack[depth];
-	len = encode_tlv(p + 4, outlen - 4, tlv_stack, depth, cursor, encoder_ctx);
+	len = encode_tlv(p + 2, outlen - 2, tlv_stack, depth, cursor, encoder_ctx);
 	if (len <= 0) return len;
 
 	/*
@@ -614,11 +623,9 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 	 *	of four, and setup the attribute header and
 	 *	length field in the buffer.
 	 */
-	rounded_len = (len + 4 + 3) & ~3;
+	rounded_len = (len + 2 + 3) & ~3;
 	p[0] = da->attr & 0xff;			/* Type */
 	p[1] = rounded_len >> 2;		/* Length */
-	p[2] = 0;				/* Reserved (0) */
-	p[3] = 0;				/* Reserved (1) */
 
 	FR_PROTO_HEX_DUMP("Done TLV attribute", out, rounded_len);
 
