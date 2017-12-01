@@ -1,87 +1,89 @@
+load radius
+
 #
-#  We can't look at the data here, because the encoded Tunnel-Password has a 2 byte
+#  We can't look at the data here, because the encode-paird Tunnel-Password has a 2 byte
 #  random salt
 #
-encode Tunnel-Password:0 = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxabc"
-decode -
+encode-pair Tunnel-Password:0 = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxabc"
+decode-pair -
 data Tunnel-Password:0 = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxabc"
 
-encode Tunnel-Password:0 = "0"
-decode -
+encode-pair Tunnel-Password:0 = "0"
+decode-pair -
 data Tunnel-Password:0 = "0"
 
-encode Tunnel-Password:0 = "01"
-decode -
+encode-pair Tunnel-Password:0 = "01"
+decode-pair -
 data Tunnel-Password:0 = "01"
 
-encode Tunnel-Password:0 = "012"
-decode -
+encode-pair Tunnel-Password:0 = "012"
+decode-pair -
 data Tunnel-Password:0 = "012"
 
-encode Tunnel-Password:0 = "0123"
-decode -
+encode-pair Tunnel-Password:0 = "0123"
+decode-pair -
 data Tunnel-Password:0 = "0123"
 
-encode Tunnel-Password:0 = "01234"
-decode -
+encode-pair Tunnel-Password:0 = "01234"
+decode-pair -
 data Tunnel-Password:0 = "01234"
 
-encode Tunnel-Password:0 = "012345"
-decode -
+encode-pair Tunnel-Password:0 = "012345"
+decode-pair -
 data Tunnel-Password:0 = "012345"
 
-encode Tunnel-Password:0 = "0123456"
-decode -
+encode-pair Tunnel-Password:0 = "0123456"
+decode-pair -
 data Tunnel-Password:0 = "0123456"
 
-encode Tunnel-Password:0 = "01234567"
-decode -
+encode-pair Tunnel-Password:0 = "01234567"
+decode-pair -
 data Tunnel-Password:0 = "01234567"
 
-encode Tunnel-Password:0 = "012345678"
-decode -
+encode-pair Tunnel-Password:0 = "012345678"
+decode-pair -
 data Tunnel-Password:0 = "012345678"
 
-encode Tunnel-Password:0 = "0123456789"
-decode -
+encode-pair Tunnel-Password:0 = "0123456789"
+decode-pair -
 data Tunnel-Password:0 = "0123456789"
 
-encode Tunnel-Password:0 = "0123456789a"
-decode -
+encode-pair Tunnel-Password:0 = "0123456789a"
+decode-pair -
 data Tunnel-Password:0 = "0123456789a"
 
-encode Tunnel-Password:0 = "0123456789ab"
-decode -
+encode-pair Tunnel-Password:0 = "0123456789ab"
+decode-pair -
 data Tunnel-Password:0 = "0123456789ab"
 
-encode Tunnel-Password:0 = "0123456789abc"
-decode -
+encode-pair Tunnel-Password:0 = "0123456789abc"
+decode-pair -
 data Tunnel-Password:0 = "0123456789abc"
 
-encode Tunnel-Password:0 = "0123456789abcd"
-decode -
+encode-pair Tunnel-Password:0 = "0123456789abcd"
+decode-pair -
 data Tunnel-Password:0 = "0123456789abcd"
 
-encode Tunnel-Password:0 = "0123456789abcde"
-decode -
+encode-pair Tunnel-Password:0 = "0123456789abcde"
+decode-pair -
 data Tunnel-Password:0 = "0123456789abcde"
 
-encode Tunnel-Password:0 = "0123456789abcdef"
-decode -
+encode-pair Tunnel-Password:0 = "0123456789abcdef"
+decode-pair -
 data Tunnel-Password:0 = "0123456789abcdef"
 
 #
-#  We can't look at the data here, because the encoded Tunnel-Password has a 2 byte
+#  We can't look at the data here, because the encode-paird Tunnel-Password has a 2 byte
 #  random salt
 #
-encode Tunnel-Password:0 := "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-decode -
+encode-pair Tunnel-Password:0 := "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+decode-pair -
 data Tunnel-Password:0 = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
 #
 #  1 octet for the tag.  2 octets for salt.  One octet for encrypted length.
 #  249 octets left for real data.
 #
-encode Tunnel-Password:0 = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx123456789ab"
-decode -
+encode-pair Tunnel-Password:0 = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx123456789ab"
+decode-pair -
 data Tunnel-Password:0 = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx123456789"

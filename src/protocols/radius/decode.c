@@ -1499,23 +1499,22 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 /** Create a "normal" VALUE_PAIR from the given data
  *
  */
-ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
-			      uint8_t const *data, size_t data_len,
-			      void *decoder_ctx)
+ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor,
+			      uint8_t const *data, size_t data_len, void *decoder_ctx)
 {
-	ssize_t rcode;
-
-	fr_dict_attr_t const *da;
+	ssize_t			rcode;
+	fr_radius_ctx_t		*packet_ctx = decoder_ctx;
+	fr_dict_attr_t const	*da;
 
 	if ((data_len < 2) || (data[1] < 2) || (data[1] > data_len)) {
 		fr_strerror_printf("%s: Insufficient data", __FUNCTION__);
 		return -1;
 	}
 
-	da = fr_dict_attr_child_by_num(parent, data[0]);
+	da = fr_dict_attr_child_by_num(packet_ctx->root, data[0]);
 	if (!da) {
 		FR_PROTO_TRACE("Unknown attribute %u", data[0]);
-		da = fr_dict_unknown_afrom_fields(ctx, parent, 0, data[0]);
+		da = fr_dict_unknown_afrom_fields(ctx, packet_ctx->root, 0, data[0]);
 	}
 	if (!da) return -1;
 	FR_PROTO_TRACE("decode context changed %s -> %s",da->parent->name, da->name);
@@ -1526,7 +1525,7 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr
 	if (data_len == 2) {
 		VALUE_PAIR *vp;
 
-		if (!parent->flags.is_root) return 2;
+		if (!packet_ctx->root->flags.is_root) return 2;
 
 		if (data[0] != FR_CHARGEABLE_USER_IDENTITY) return 2;
 
@@ -1566,3 +1565,26 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr
 
 	return 2 + rcode;
 }
+
+static void *decode_test_ctx (TALLOC_CTX *ctx)
+{
+	static uint8_t vector[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
+
+	static fr_radius_ctx_t	test_ctx = {
+		.vector = vector
+	};
+
+	test_ctx.secret = talloc_strdup(ctx, "testing123");
+	test_ctx.root = fr_dict_root(fr_dict_internal);
+
+	return &test_ctx;
+}
+
+/*
+ *	Test points
+ */
+extern fr_test_point_pair_decode_t tp_decode;
+fr_test_point_pair_decode_t tp_decode = {
+	.test_ctx	= decode_test_ctx,
+	.func		= fr_radius_decode_pair
+};

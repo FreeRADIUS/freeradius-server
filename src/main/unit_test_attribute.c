@@ -76,16 +76,6 @@ static ssize_t xlat_test(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED size_
 	return 0;
 }
 
-static RADIUS_PACKET my_packet = {
-	.sockfd = -1,
-	.id = 0,
-	.code = FR_CODE_ACCESS_ACCEPT,
-	.vector = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f },
-};
-
-
-static char *my_secret = NULL;
-
 static char proto_name_prev[128];
 static void *dl_handle;
 
@@ -792,104 +782,133 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 			continue;
 		}
 
-		if (strcmp(test_type, "encode") == 0) {
-			vp_cursor_t cursor;
-			fr_radius_ctx_t encoder_ctx = { .vector = my_packet.vector,
-							.secret = my_secret };
+#ifdef WITH_TACACS
+		/*
+		 *	And some TACACS tests
+		 */
+		if (strcmp(test_type, "encode-tacacs") == 0) {
+			RADIUS_PACKET *packet = talloc(NULL, RADIUS_PACKET);
 
-			/*
-			 *	Encode the previous output
-			 */
-			if (strcmp(p + 7, "-") == 0) {
+			if (strcmp(p + 14, "-") == 0) {
+				WARN("cannot encode as client");
 				p = output;
 			} else {
-				p += 7;
+				p += 14;
 			}
 
-			if (fr_pair_list_afrom_str(NULL, p, &head) != T_EOL) {
+			if (fr_pair_list_afrom_str(packet, p, &head) != T_EOL) {
 				strlcpy(output, fr_strerror(), sizeof(output));
+				talloc_free(packet);
 				continue;
 			}
 
-			attr = data;
-			fr_pair_cursor_init(&cursor, &head);
-			while ((vp = fr_pair_cursor_current(&cursor))) {
-				len = fr_radius_encode_pair(attr, data + sizeof(data) - attr, &cursor, &encoder_ctx);
-				if (len < 0) {
-					fprintf(stderr, "Failed encoding %s: %s\n",
-						vp->da->name, fr_strerror());
-					exit(EXIT_FAILURE);
-				}
-
-				attr += len;
-				if (len == 0) break;
+			packet->vps = head;
+			if (tacacs_encode(packet, NULL) < 0) {
+				strlcpy(output, fr_strerror(), sizeof(output));
+				talloc_free(packet);
+				continue;
 			}
 
-			fr_pair_list_free(&head);
-			outlen = attr - data;
+			outlen = packet->data_len;
+			memcpy(data, packet->data, outlen);
+			talloc_free(packet);
+
 			goto print_hex;
 		}
 
-		if (strcmp(test_type, "decode") == 0) {
-			ssize_t		my_len;
-			vp_cursor_t 	cursor;
-			fr_radius_ctx_t decoder_ctx = { .vector = my_packet.vector,
-							.secret = my_secret };
-			if (strcmp(p + 7, "-") == 0) {
+		if (strcmp(test_type, "decode-tacacs") == 0) {
+			vp_cursor_t cursor;
+			RADIUS_PACKET *packet = talloc(NULL, RADIUS_PACKET);
+
+			if (strcmp(p + 14, "-") == 0) {
+				WARN("cannot decode as client");
 				attr = data;
 				len = data_len;
 			} else {
 				attr = data;
-				len = encode_hex(p + 7, data, sizeof(data));
+				len = encode_hex(p + 14, data, sizeof(data));
 				if (len == 0) {
 					fprintf(stderr, "Failed decoding hex string at line %d of %s\n", lineno, directory);
 					exit(EXIT_FAILURE);
 				}
 			}
 
-			fr_pair_cursor_init(&cursor, &head);
-			my_len = 0;
-			while (len > 0) {
-				my_len = fr_radius_decode_pair(NULL, &cursor, fr_dict_root(fr_dict_internal), attr, len,
-							       &decoder_ctx);
-				if (my_len < 0) {
-					fr_pair_list_free(&head);
-					break;
-				}
+			packet->vps = NULL;
+			packet->data = attr;
+			packet->data_len = len;
 
-				if (my_len > len) {
-					fprintf(stderr, "Internal sanity check failed at %d\n", __LINE__);
-					exit(EXIT_FAILURE);
-				}
-
-				attr += my_len;
-				len -= my_len;
-			}
-
-			/*
-			 *	Output may be an error, and we ignore
-			 *	it if so.
-			 */
-			if (head) {
-				p = output;
-				for (vp = fr_pair_cursor_first(&cursor);
-				     vp;
-				     vp = fr_pair_cursor_next(&cursor)) {
-					fr_pair_snprint(p, sizeof(output) - (p - output), vp);
-					p += strlen(p);
-
-					if (vp->next) {strcpy(p, ", ");
-						p += 2;
-					}
-				}
-
-				fr_pair_list_free(&head);
-			} else if (my_len < 0) {
+			if (tacacs_decode(packet) < 0) {
 				strlcpy(output, fr_strerror(), sizeof(output));
-
-			} else { /* zero-length attribute */
-				*output = '\0';
+				talloc_free(packet);
+				continue;
 			}
+
+			fr_pair_cursor_init(&cursor, &packet->vps);
+			p = output;
+			for (vp = fr_pair_cursor_first(&cursor); vp; vp = fr_pair_cursor_next(&cursor)) {
+				fr_pair_snprint(p, sizeof(output) - (p - output), vp);
+				p += strlen(p);
+
+				if (vp->next) {
+					strcpy(p, ", ");
+					p += 2;
+				}
+			}
+
+			talloc_free(packet);
+			continue;
+		}
+#endif	/* WITH_TACACS */
+
+		if (strcmp(test_type, "attribute") == 0) {
+			p += 10;
+
+			if (fr_pair_list_afrom_str(NULL, p, &head) != T_EOL) {
+				strlcpy(output, fr_strerror(), sizeof(output));
+				continue;
+			}
+
+			fr_pair_snprint(output, sizeof(output), head);
+			fr_pair_list_free(&head);
+			continue;
+		}
+
+		if (strcmp(test_type, "dictionary") == 0) {
+			p += 11;
+
+			if (fr_dict_parse_str(dict, p, fr_dict_root(dict), 0) < 0) {
+				strlcpy(output, fr_strerror(), sizeof(output));
+				continue;
+			}
+
+			strlcpy(output, "ok", sizeof(output));
+			continue;
+		}
+
+		if (strcmp(test_type, "$INCLUDE") == 0) {
+			p += 9;
+			while (isspace((int) *p)) p++;
+
+			q = strrchr(directory, '/');
+			if (q) {
+				*q = '\0';
+				process_file(features, dict, directory, p);
+				*q = '/';
+			} else {
+				process_file(features, dict, NULL, p);
+			}
+			continue;
+		}
+
+		if (strcmp(test_type, "condition") == 0) {
+			p += 10;
+			parse_condition(p, output, sizeof(output));
+			continue;
+		}
+
+		if (strcmp(test_type, "xlat") == 0) {
+			p += 5;
+			parse_xlat(p, output, sizeof(output));
 			continue;
 		}
 
@@ -1368,8 +1387,6 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Failed registering xlat");
 		return 1;
 	}
-
-	my_secret = talloc_strdup(autofree, "testing123");
 
 	if (argc < 2) {
 		process_file(features, dict, NULL, "-");

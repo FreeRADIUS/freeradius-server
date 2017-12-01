@@ -1,8 +1,10 @@
 #
 #  Bad attributes
 #
-decode 01 04 00
+load radius
+
+decode-pair 01 04 00
 data fr_radius_decode_pair: Insufficient data
 
-decode 01 01 00
+decode-pair 01 01 00
 data fr_radius_decode_pair: Insufficient data
