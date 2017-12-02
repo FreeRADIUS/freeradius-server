@@ -969,14 +969,14 @@ static void *encode_test_ctx_aka(UNUSED TALLOC_CTX *ctx)
 /*
  *	Test points
  */
-extern fr_test_point_pair_encode_t tp_encode_sim;
-fr_test_point_pair_encode_t tp_encode_sim = {
+extern fr_test_point_pair_encode_t sim_tp_encode;
+fr_test_point_pair_encode_t sim_tp_encode = {
 	.test_ctx	= encode_test_ctx_sim,
 	.func		= fr_sim_encode_pair
 };
 
-extern fr_test_point_pair_encode_t tp_encode_aka;
-fr_test_point_pair_encode_t tp_encode_aka = {
+extern fr_test_point_pair_encode_t aka_tp_encode;
+fr_test_point_pair_encode_t aka_tp_encode = {
 	.test_ctx	= encode_test_ctx_aka,
 	.func		= fr_sim_encode_pair
 };

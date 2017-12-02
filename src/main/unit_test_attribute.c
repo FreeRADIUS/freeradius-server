@@ -607,9 +607,10 @@ static size_t load_proto_library(char const *proto_name)
 
 static size_t load_test_point_by_command(void **symbol, char *command, size_t offset, char const *dflt_symbol)
 {
-	char const *p, *q;
-	char const *symbol_name;
-	void *dl_symbol;
+	char		buffer[128];
+	char const	*p, *q;
+	char const	*symbol_name;
+	void		*dl_symbol;
 
 	if (!dl_handle) {
 		fprintf(stderr, "No protocol library loaded. Specify library with \"load <proto name>\"\n");
@@ -622,10 +623,11 @@ static size_t load_test_point_by_command(void **symbol, char *command, size_t of
 	/*
 	 *	Use the dflt_symbol name as the test point
 	 */
-	if (!q) {
-		symbol_name = dflt_symbol;
-	} else {
+	if (q) {
 		symbol_name = q + 1;
+	} else {
+		snprintf(buffer, sizeof(buffer), "%s_%s", proto_name_prev, dflt_symbol);
+		symbol_name = buffer;
 	}
 
 	dl_symbol = dlsym(dl_handle, symbol_name);
@@ -909,108 +911,6 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 		if (strcmp(test_type, "xlat") == 0) {
 			p += 5;
 			parse_xlat(p, output, sizeof(output));
-			continue;
-		}
-
-		/*
-		 *	And some DHCP tests
-		 */
-		if (strcmp(test_type, "encode-dhcp") == 0) {
-			vp_cursor_t cursor;
-
-			if (strcmp(p + 12, "-") == 0) {
-				p = output;
-			} else {
-				p += 12;
-			}
-
-			if (fr_pair_list_afrom_str(NULL, p, &head) != T_EOL) {
-				strlcpy(output, fr_strerror(), sizeof(output));
-				continue;
-			}
-
-			fr_pair_cursor_init(&cursor, &head);
-
-			attr = data;
-			while ((vp = fr_pair_cursor_current(&cursor))) {
-				len = fr_dhcpv4_encode_option(attr, sizeof(data) - (data -attr), &cursor, NULL);
-				if (len < 0) {
-					fprintf(stderr, "Failed encoding %s: %s\n",
-						vp->da->name, fr_strerror());
-					exit(EXIT_FAILURE);
-				}
-				attr += len;
-			};
-
-			fr_pair_list_free(&head);
-			outlen = attr - data;
-			goto print_hex;
-		}
-
-		if (strcmp(test_type, "decode-dhcp") == 0) {
-			vp_cursor_t cursor;
-			ssize_t my_len = 0;
-
-			if (strcmp(p + 12, "-") == 0) {
-				attr = data;
-				len = data_len;
-			} else {
-				attr = data;
-				len = encode_hex(p + 12, data, sizeof(data));
-				if (len == 0) {
-					fprintf(stderr, "Failed decoding hex string at line %d of %s\n", lineno, directory);
-					exit(EXIT_FAILURE);
-				}
-			}
-
-			{
-				uint8_t const *end, *option_p;
-
-				option_p = attr;
-				end = option_p + len;
-
-				fr_pair_cursor_init(&cursor, &head);
-
-				/*
-				 *	Loop over all the options data
-				 */
-				while (option_p < end) {
-					vp = NULL;
-					my_len = fr_dhcpv4_decode_option(NULL, &cursor,
-								       fr_dict_root(fr_dict_internal), option_p,
-								       end - option_p, NULL);
-					if (my_len <= 0) {
-						fr_pair_list_free(&head);
-						break;
-					}
-					option_p += my_len;
-				}
-			}
-
-			/*
-			 *	Output may be an error, and we ignore
-			 *	it if so.
-			 */
-			if (head) {
-				p = output;
-				for (vp = fr_pair_cursor_first(&cursor);
-				     vp;
-				     vp = fr_pair_cursor_next(&cursor)) {
-					fr_pair_snprint(p, sizeof(output) - (p - output), vp);
-					p += strlen(p);
-
-					if (vp->next) {strcpy(p, ", ");
-						p += 2;
-					}
-				}
-
-				fr_pair_list_free(&head);
-			} else if (my_len < 0) {
-				strlcpy(output, fr_strerror(), sizeof(output));
-
-			} else { /* zero-length attribute */
-				*output = '\0';
-			}
 			continue;
 		}
 

@@ -31,6 +31,7 @@
 #include <freeradius-devel/types.h>
 #include <freeradius-devel/proto.h>
 #include <freeradius-devel/dhcpv4/dhcpv4.h>
+#include <freeradius-devel/io/test_point.h>
 
 /** Write DHCP option value into buffer
  *
@@ -328,3 +329,11 @@ ssize_t fr_dhcpv4_encode_option(uint8_t *out, size_t outlen, vp_cursor_t *cursor
 
 	return len;
 }
+
+/*
+ *	Test points
+ */
+extern fr_test_point_pair_encode_t dhcpv4_tp_encode;
+fr_test_point_pair_encode_t dhcpv4_tp_encode = {
+	.func		= fr_dhcpv4_encode_option
+};

@@ -135,6 +135,13 @@ extern fr_dict_attr_t const *dhcp_option_82;
 }
 #endif
 
+/** Used as the decoder ctx
+ *
+ */
+typedef struct {
+	fr_dict_attr_t const *root;
+} fr_dhcp_decoder_ctx_t;
+
 RADIUS_PACKET *fr_dhcpv4_udp_packet_recv(int sockfd);
 int fr_dhcpv4_udp_packet_send(RADIUS_PACKET *packet);
 
@@ -152,8 +159,7 @@ int		fr_dhcpv4_init(void);
  *	decode.c
  */
 ssize_t		fr_dhcpv4_decode_option(TALLOC_CTX *ctx, vp_cursor_t *cursor,
-					fr_dict_attr_t const *parent, uint8_t const *data, size_t len,
-					void *decoder_ctx);
+					uint8_t const *data, size_t len, void *decoder_ctx);
 
 /*
  *	encode.c

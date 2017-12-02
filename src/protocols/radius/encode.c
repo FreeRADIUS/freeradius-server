@@ -1655,8 +1655,8 @@ static void *encode_test_ctx (UNUSED TALLOC_CTX *ctx)
 /*
  *	Test points
  */
-extern fr_test_point_pair_encode_t tp_encode;
-fr_test_point_pair_encode_t tp_encode = {
+extern fr_test_point_pair_encode_t radius_tp_encode;
+fr_test_point_pair_encode_t radius_tp_encode = {
 	.test_ctx	= encode_test_ctx,
 	.func		= fr_radius_encode_pair
 };

@@ -1583,8 +1583,8 @@ static void *decode_test_ctx (TALLOC_CTX *ctx)
 /*
  *	Test points
  */
-extern fr_test_point_pair_decode_t tp_decode;
-fr_test_point_pair_decode_t tp_decode = {
+extern fr_test_point_pair_decode_t radius_tp_decode;
+fr_test_point_pair_decode_t radius_tp_decode = {
 	.test_ctx	= decode_test_ctx,
 	.func		= fr_radius_decode_pair
 };

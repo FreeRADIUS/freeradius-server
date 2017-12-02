@@ -816,14 +816,14 @@ static void *decode_test_ctx_aka(UNUSED TALLOC_CTX *ctx)
 /*
  *	Test points
  */
-extern fr_test_point_pair_decode_t tp_decode_sim;
-fr_test_point_pair_decode_t tp_decode_sim = {
+extern fr_test_point_pair_decode_t sim_tp_decode;
+fr_test_point_pair_decode_t sim_tp_decode = {
 	.test_ctx	= decode_test_ctx_sim,
 	.func		= fr_sim_decode_pair
 };
 
-extern fr_test_point_pair_decode_t tp_decode_aka;
-fr_test_point_pair_decode_t tp_decode_aka = {
+extern fr_test_point_pair_decode_t aka_tp_decode;
+fr_test_point_pair_decode_t aka_tp_decode = {
 	.test_ctx	= decode_test_ctx_aka,
 	.func		= fr_sim_decode_pair
 };

@@ -58,6 +58,9 @@ static ssize_t dhcp_options_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 	VALUE_PAIR	*vp, *head = NULL;
 	int		decoded = 0;
 	ssize_t		slen;
+	fr_dhcp_decoder_ctx_t	packet_ctx = {
+				.root = fr_dict_root(fr_dict_internal)
+			};
 
 	while (isspace((int) *fmt)) fmt++;
 
@@ -95,8 +98,7 @@ static ssize_t dhcp_options_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 		 *	Loop over all the options data
 		 */
 		while (p < end) {
-			len = fr_dhcpv4_decode_option(request->packet, &options_cursor,
-						    fr_dict_root(fr_dict_internal), p, end - p, NULL);
+			len = fr_dhcpv4_decode_option(request->packet, &options_cursor, p, end - p, &packet_ctx);
 			if (len <= 0) {
 				RWDEBUG("DHCP option decoding failed: %s", fr_strerror());
 				fr_pair_list_free(&head);

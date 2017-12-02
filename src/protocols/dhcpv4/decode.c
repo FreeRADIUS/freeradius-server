@@ -31,6 +31,7 @@
 #include <freeradius-devel/types.h>
 #include <freeradius-devel/proto.h>
 #include <freeradius-devel/dhcpv4/dhcpv4.h>
+#include <freeradius-devel/io/test_point.h>
 
 static ssize_t decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
 			  uint8_t const *data, size_t data_len);
@@ -350,18 +351,18 @@ static ssize_t decode_value(TALLOC_CTX *ctx, vp_cursor_t *cursor,
  *
  * @param[in] ctx context to alloc new attributes in.
  * @param[in,out] cursor Where to write the decoded options.
- * @param[in] parent The root of the protocol dictionary used to decode DHCP attributes.
  * @param[in] data to parse.
  * @param[in] data_len of data to parse.
  * @param[in] decoder_ctx Unused.
  */
 ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, vp_cursor_t *cursor,
-			        fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len,
-			        UNUSED void *decoder_ctx)
+			        uint8_t const *data, size_t data_len, void *decoder_ctx)
 {
 	ssize_t			ret;
 	uint8_t const		*p = data;
 	fr_dict_attr_t const	*child;
+	fr_dhcp_decoder_ctx_t	*packet_ctx = decoder_ctx;
+	fr_dict_attr_t const	*parent;
 
 	FR_PROTO_TRACE("%s called to parse %zu byte(s)", __FUNCTION__, data_len);
 
@@ -372,7 +373,7 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	/*
 	 *	Stupid hacks until we have protocol specific dictionaries
 	 */
-	parent = fr_dict_attr_child_by_num(parent, FR_VENDOR_SPECIFIC);
+	parent = fr_dict_attr_child_by_num(packet_ctx->root, FR_VENDOR_SPECIFIC);
 	if (!parent) {
 		fr_strerror_printf("Can't find Vendor-Specific (26)");
 		return -1;
@@ -430,3 +431,21 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	FR_PROTO_TRACE("decoding option complete, returning %zu byte(s)", ret);
 	return ret;
 }
+
+static void *decode_test_ctx(UNUSED TALLOC_CTX *ctx)
+{
+	static fr_dhcp_decoder_ctx_t test_ctx;
+
+	test_ctx.root = fr_dict_root(fr_dict_internal);
+
+	return &test_ctx;
+}
+
+/*
+ *	Test points
+ */
+extern fr_test_point_pair_decode_t dhcpv4_tp_decode;
+fr_test_point_pair_decode_t dhcpv4_tp_decode = {
+	.test_ctx	= decode_test_ctx,
+	.func		= fr_dhcpv4_decode_option
+};
