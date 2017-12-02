@@ -1154,7 +1154,7 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 			void				*decoder_ctx;
 
 			p += load_test_point_by_command((void **)&tp, test_type, 11, "tp_decode") + 1;
-			decoder_ctx = tp->test_ctx(tp_ctx);
+			if (tp->test_ctx) decoder_ctx = tp->test_ctx(tp_ctx);
 
 			if (strcmp(p, "-") == 0) {
 				attr = data;
@@ -1222,7 +1222,7 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 			void				*encoder_ctx;
 
 			p += load_test_point_by_command((void **)&tp, test_type, 11, "tp_encode") + 1;
-			encoder_ctx = tp->test_ctx(tp_ctx);
+			if (tp->test_ctx) encoder_ctx = tp->test_ctx(tp_ctx);
 
 			/*
 			 *	Encode the previous output
