@@ -7,21 +7,21 @@
 #  functionality from earlier tests.
 #
 FILES  := \
-	rfc.txt \
+	radius_rfc.txt \
+	radius_errors.txt \
+	radius_extended.txt \
+	radius_lucent.txt \
+	radius_wimax.txt \
+	radius_vendor.txt \
 	eap-sim.txt \
-	errors.txt \
-	extended.txt \
-	lucent.txt \
-	wimax.txt \
-	escape.txt \
-	condition.txt \
-	xlat.txt \
-	vendor.txt \
 	dhcp.txt \
 	tlv.txt \
 	tunnel.txt \
 	dict.txt \
 	regex.txt \
+	escape.txt \
+	condition.txt \
+	xlat.txt \
 	ethernet.txt
 
 #
