@@ -420,6 +420,11 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 			return rcode;
 		}
 
+		if (sim_at_len == 0) {
+			fr_strerror_printf("%s: Malformed nested attribute %d: Length field 0", __FUNCTION__, sim_at);
+			goto error;
+		}
+
 		/*
 		 *	Padding attributes are cleartext inside of
 		 *	encrypted TLVs to pad out the value to the
