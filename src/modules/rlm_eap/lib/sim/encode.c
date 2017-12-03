@@ -172,11 +172,12 @@ static ssize_t encode_iv(uint8_t *out, size_t outlen, void *encoder_ctx)
 static ssize_t encode_encrypted_value(uint8_t *out, size_t outlen,
 			     	      uint8_t const *in, size_t inlen, void *encoder_ctx)
 {
-	size_t			rounded_len, pad_len, need_len, encr_len, len = 0;
+	size_t			rounded_len, pad_len, encr_len, len = 0;
 	uint8_t			*p = out, *encr = NULL;
-	EVP_CIPHER_CTX		*evp_ctx;
 	fr_sim_encode_ctx_t	*packet_ctx = encoder_ctx;
-
+	EVP_CIPHER_CTX		*evp_ctx;
+	EVP_CIPHER const	*evp_cipher = EVP_aes_128_cbc();
+	size_t			block_size = EVP_CIPHER_block_size(evp_cipher);
 	/*
 	 *	Needs to be a multiple of 4 else we can't
 	 *	pad with AT_PADDING correctly as its
@@ -187,13 +188,12 @@ static ssize_t encode_encrypted_value(uint8_t *out, size_t outlen,
 		return -1;
 	}
 
-	rounded_len = (inlen + 15) & ~15;		/* Round input length to block size (16) */
+	rounded_len = (inlen + (block_size - 1)) & ~(block_size - 1);	/* Round input length to block size (16) */
 	pad_len = (rounded_len - inlen);		/* How much we need to pad */
-	need_len = rounded_len + 16;			/* AES-CBC-128 always pads if we're on a 16byte boundary */
 
-	if (need_len > outlen) {
+	if (rounded_len > outlen) {
 		fr_strerror_printf("%s: Insufficient buffer space, need %zu bytes, have %zu bytes",
-				   __FUNCTION__, need_len, outlen);
+				   __FUNCTION__, rounded_len, outlen);
 		return -1;
 	}
 
@@ -219,7 +219,7 @@ static ssize_t encode_encrypted_value(uint8_t *out, size_t outlen,
 		return -1;
 	}
 
-	if (unlikely(EVP_EncryptInit_ex(evp_ctx, EVP_aes_128_cbc(), NULL,
+	if (unlikely(EVP_EncryptInit_ex(evp_ctx, evp_cipher, NULL,
 					packet_ctx->keys->k_encr, packet_ctx->iv) != 1)) {
 		tls_strerror_printf(true, "Failed initialising AES-128-ECB context");
 	error:
