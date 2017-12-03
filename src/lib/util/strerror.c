@@ -229,6 +229,24 @@ char const *fr_strerror(void)
 	return entry->msg;
 }
 
+/** Get the last library error
+ *
+ * @return library error or zero length string.
+ */
+char const *fr_strerror_peek(void)
+{
+	fr_log_buffer_t		*buffer;
+	fr_log_entry_t		*entry;
+
+	buffer = fr_strerror_buffer;
+	if (!buffer) return "";
+
+	entry = fr_cursor_head(&buffer->cursor);
+	if (!entry) return "";
+
+	return entry->msg;
+}
+
 /** Pop the last library error
  *
  * Return the first message added to the error stack using #fr_strerror_printf
