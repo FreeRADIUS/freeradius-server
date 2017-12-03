@@ -1124,7 +1124,7 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 		 *	Generic pair encode test point
 		 */
 		if (strncmp(test_type, "encode-pair", 11) == 0) {
-			fr_test_point_pair_encode_t	*tp;
+			fr_test_point_pair_encode_t	*tp = NULL;
 			ssize_t				enc_len = 0;
 			vp_cursor_t			cursor;
 			void				*encoder_ctx = NULL;
