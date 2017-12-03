@@ -213,9 +213,9 @@ static ssize_t sim_value_decrypt(TALLOC_CTX *ctx, uint8_t **out,
 	 *	Note: packet_ctx implicitly validates the length of the padding
 	 *	attribute (if present), so we don't have to do it later.
 	 */
-	if (decr_len % 16) {
-		fr_strerror_printf("%s: Expected decrypted value length to be multiple of 16, got %zu",
-				   __FUNCTION__, decr_len);
+	if (decr_len % block_size) {
+		fr_strerror_printf("%s: Expected decrypted value length to be multiple of %zu, got %zu",
+				   __FUNCTION__, block_size, decr_len);
 		goto error;
 	}
 
