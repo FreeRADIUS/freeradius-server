@@ -2,7 +2,7 @@
 # Copyright (C) 2016 The FreeRADIUS Server project and contributors
 ##############################################################################
 #
-#	EAP-AKA Protocol attributes
+#	EAP-AKA and EAP-AKA' Protocol attributes
 #
 ##############################################################################
 #
@@ -27,13 +27,13 @@ ATTRIBUTE	EAP-AKA-Identity			14	string
 
 ATTRIBUTE	EAP-AKA-Fullauth-ID-Req			17	bool
 ATTRIBUTE	EAP-AKA-Client-Error-Code		22	short
+
+VALUE	EAP-AKA-Client-Error-Code	Unable-To-Process-Packet		0
+
 ATTRIBUTE	EAP-AKA-KDF-Input			23	string
 ATTRIBUTE	EAP-AKA-KDF				24	short
 
-VALUE	EAP-AKA-Client-Error-Code	Unable-To-Process-Packet	0
-VALUE	EAP-AKA-Client-Error-Code	Unsupported-Version		1
-VALUE	EAP-AKA-Client-Error-Code	Insufficient-Challenges		2
-VALUE	EAP-AKA-Client-Error-Code	RANDS-Not-Fresh			3
+VALUE	EAP-AKA-KDF			EAP-AKA-Prime-With-CK-Prime-IK-Prime	1
 
 #
 #  Skippable-Attributes
@@ -45,7 +45,7 @@ ATTRIBUTE	EAP-AKA-Encr-Data			130	tlv encrypt=4
 #  These attributes are reversibly encrypted
 #
 BEGIN-TLV	EAP-AKA-Encr-Data
-ATTRIBUTE	EAP-AKA-Padding				6	octets		# 4, 8, 12 bytes length
+ATTRIBUTE	EAP-AKA-Padding				6	octets		# 4, 8, 12 bytes
 ATTRIBUTE	EAP-AKA-Counter				19	short
 ATTRIBUTE	EAP-AKA-Counter-Too-Small		20	bool
 ATTRIBUTE	EAP-AKA-Nonce-S				21	octets[16]
@@ -53,7 +53,13 @@ ATTRIBUTE	EAP-AKA-Next-Pseudonym			132	string
 ATTRIBUTE	EAP-AKA-Next-Reauth-ID			133	string
 END-TLV		EAP-AKA-Encr-Data
 
-ATTRIBUTE	EAP-AKA-Checkcode			134	octets		# Zero or Twenty bytes
+ATTRIBUTE	EAP-AKA-Checkcode			134	octets		# 0, 20 or 32 bytes
+
+ATTRIBUTE	EAP-AKA-Bidding				136	short
+
+VALUE	EAP-AKA-Bidding			Prefer-AKA				0
+VALUE	EAP-AKA-Bidding			Prefer-AKA-Prime			32768	# D Bit
+
 ATTRIBUTE	EAP-AKA-Result-Ind			137	bool
 
 #
@@ -62,13 +68,13 @@ ATTRIBUTE	EAP-AKA-Result-Ind			137	bool
 FLAGS	internal
 ATTRIBUTE	EAP-AKA-Subtype				256	integer
 
-VALUE	EAP-AKA-Subtype			AKA-Challenge			1
-VALUE	EAP-AKA-Subtype			AKA-Authentication-Reject	2
-VALUE	EAP-AKA-Subtype			AKA-Synchronization-Failure	4
-VALUE	EAP-AKA-Subtype			AKA-Identity			5
-VALUE	EAP-AKA-Subtype			AKA-Notification		12
-VALUE	EAP-AKA-Subtype			AKA-Reauthentication		13
-VALUE	EAP-AKA-Subtype			AKA-Client-Error		14
+VALUE	EAP-AKA-Subtype			AKA-Challenge				1
+VALUE	EAP-AKA-Subtype			AKA-Authentication-Reject		2
+VALUE	EAP-AKA-Subtype			AKA-Synchronization-Failure		4
+VALUE	EAP-AKA-Subtype			AKA-Identity				5
+VALUE	EAP-AKA-Subtype			AKA-Notification			12
+VALUE	EAP-AKA-Subtype			AKA-Reauthentication			13
+VALUE	EAP-AKA-Subtype			AKA-Client-Error			14
 
 ATTRIBUTE	EAP-AKA-HMAC				257	string
 ATTRIBUTE	EAP-AKA-Key				258	octets
