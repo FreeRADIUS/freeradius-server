@@ -33,3 +33,7 @@ data sim_decode_pair_value: RES Length field value must be between 32-128 bits, 
 # AKA_RES with invalid number of bits (too big - exceed limit)
 decode-pair.aka_tp_decode 03 05 00 7f aa bb cc dd aa bb cc dd aa bb cc dd aa bb cc dd
 data sim_decode_pair_value: RES Length (127) is not a multiple of 8
+
+# AKA Rand only contains a single attribute
+decode-pair.aka_tp_decode 01 09 00 00 00 11 22 33 44 55 66 77 00 11 22 33 44 55 66 77 00 11 22 33 44 55 66 77 00 11 22 33 44 55 66 78
+data sim_decode_pair_value: Failed parsing non-skippable attribute 'EAP-AKA-RAND': sim_decode_pair_value: Attribute "EAP-AKA-RAND" needs a value of exactly 16 bytes, but value was 34 bytes

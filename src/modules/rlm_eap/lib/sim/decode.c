@@ -645,7 +645,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 		wrong_len:
 			fr_strerror_printf("%s: Attribute \"%s\" needs a value of exactly %zu bytes, "
 					   "but value was %zu bytes", __FUNCTION__,
-					   parent->name, (size_t)parent->flags.length + prefix, attr_len);
+					   parent->name, (size_t)parent->flags.length, attr_len);
 			goto raw;
 		}
 		break;
