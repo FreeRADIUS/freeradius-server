@@ -28,10 +28,10 @@ ATTRIBUTE	EAP-SIM-Selected-Version		16	short
 ATTRIBUTE	EAP-SIM-Fullauth-ID-Req			17	bool
 ATTRIBUTE	EAP-SIM-Client-Error-Code		22	short
 
-VALUE	EAP-SIM-Client-Error-Code	Unable-To-Process-Packet	0
-VALUE	EAP-SIM-Client-Error-Code	Unsupported-Version		1
-VALUE	EAP-SIM-Client-Error-Code	Insufficient-Challenges		2
-VALUE	EAP-SIM-Client-Error-Code	RANDS-Not-Fresh			3
+VALUE	EAP-SIM-Client-Error-Code	Unable-To-Process-Packet		0
+VALUE	EAP-SIM-Client-Error-Code	Unsupported-Version			1
+VALUE	EAP-SIM-Client-Error-Code	Insufficient-Challenges			2
+VALUE	EAP-SIM-Client-Error-Code	RANDS-Not-Fresh				3
 
 #
 #  Skippable-Attributes
@@ -59,11 +59,11 @@ ATTRIBUTE	EAP-SIM-Result-Ind			137	bool
 FLAGS	internal
 ATTRIBUTE	EAP-SIM-Subtype				256	integer
 
-VALUE	EAP-SIM-Subtype			SIM-Start		10
-VALUE	EAP-SIM-Subtype			SIM-Challenge		11
-VALUE	EAP-SIM-Subtype			SIM-Notification	12
-VALUE	EAP-SIM-Subtype			SIM-Reauthentication	13
-VALUE	EAP-SIM-Subtype			SIM-Client-Error	14
+VALUE	EAP-SIM-Subtype			SIM-Start				10
+VALUE	EAP-SIM-Subtype			SIM-Challenge				11
+VALUE	EAP-SIM-Subtype			SIM-Notification			12
+VALUE	EAP-SIM-Subtype			SIM-Reauthentication			13
+VALUE	EAP-SIM-Subtype			SIM-Client-Error			14
 
 ATTRIBUTE	EAP-SIM-HMAC				257	string
 ATTRIBUTE	EAP-SIM-Key				258	octets
