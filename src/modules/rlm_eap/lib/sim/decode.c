@@ -610,6 +610,30 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 	}
 		goto done;
 
+	/*
+	 *	AT_CHECKCODE - Special case (Variable length with no length field)
+	 *
+	 *   	0                   1                   2                   3
+	 *	0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+	 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 *	| AT_CHECKCODE  | Length        |           Reserved            |
+	 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 *	|                                                               |
+	 *	|                     Checkcode (0 or 20 bytes)                 |
+	 *	|                                                               |
+	 *	|                                                               |
+	 *	|                                                               |
+	 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 */
+	case FR_EAP_AKA_CHECKCODE:
+		if (attr_len < 2) goto raw;	/* Need at least two bytes for reserved field */
+
+		vp = fr_pair_afrom_da(ctx, parent);
+		if (!vp) return -1;
+
+		fr_pair_value_memcpy(vp, p + 2, attr_len - 2);
+		goto done;
+
 	default:
 		break;
 	}

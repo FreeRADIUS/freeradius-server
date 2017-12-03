@@ -392,6 +392,37 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	}
 		goto done;
 
+	/*
+	 *	AT_CHECKCODE - Special case (Variable length with no length field)
+	 *
+	 *   	0                   1                   2                   3
+	 *	0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+	 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 *	| AT_CHECKCODE  | Length        |           Reserved            |
+	 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 *	|                                                               |
+	 *	|                     Checkcode (0 or 20 bytes)                 |
+	 *	|                                                               |
+	 *	|                                                               |
+	 *	|                                                               |
+	 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 */
+	case FR_EAP_AKA_CHECKCODE:
+	{
+		uint8_t	*p = out;
+
+		if ((vp->vp_length + 2) > outlen) goto oos;
+
+		*p++ = '\0';	/* Reserved */
+		*p++ = '\0';	/* Reserved */
+
+		memcpy(p, vp->vp_octets, vp->vp_length);
+		p += vp->vp_length;
+
+		len = p - out;
+	}
+		goto done;
+
 	default:
 		break;
 	}
