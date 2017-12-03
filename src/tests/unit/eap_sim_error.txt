@@ -70,3 +70,7 @@ data Attr-1220.130 = 0x000000000000
 # TLV encrypted data multiple of 16, zeroed out
 decode-pair.sim_tp_decode 82 05 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
 data Attr-1220.130 = 0x000000000000000000000000000000000000
+
+# RFC4186 A.10. example - With IV absent
+decode-pair.sim_tp_decode_rfc4186 82 05 00 00 b6 ed d3 82 79 e2 a1 42 3c 1a fc 5c 45 5c 7d 56 0b 05 00 00 fa f7 6b 71 fb e2 d2 55 b9 6a 35 66 c9 15 c6 17
+data Attr-1220.130 = 0x0000b6edd38279e2a1423c1afc5c455c7d56, EAP-SIM-MAC = 0xfaf76b71fbe2d255b96a3566c915c617

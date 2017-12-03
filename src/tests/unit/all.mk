@@ -17,6 +17,7 @@ FILES  := \
 	radius_tlv.txt \
 	eap_aka_encode.txt \
 	eap_aka_decode.txt \
+	eap_aka_error.txt \
 	eap_sim_encode.txt \
 	eap_sim_decode.txt \
 	eap_sim_error.txt \
