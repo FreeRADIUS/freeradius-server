@@ -74,6 +74,17 @@ data
 decode-pair.sim_tp_decode 82 01 00 00
 data
 
+# Non-encrypted skippable attribute found inside AT_ENCR_DATA
+decode-pair.sim_tp_decode 82 05 00 00 e1 8b 0e ec 5a bf 10 ac 81 ac e3 f2 ae 71 cb ef
+data Attr-1220.130.255 = 0x0000000000000000000000000000
+
+# Mixture of known and than skippable unknown
+decode-pair.sim_tp_decode 82 05 00 00 47 bd f4 5e 3d c5 69 da e8 fa 73 2a 69 44 a8 78
+data EAP-SIM-Counter = 0, Attr-1220.130.255 = 0x00000000000000000000
+
+decode-pair.sim_tp_decode 82 05 00 00 b2 dd 1d a3 e1 fc 91 3d 94 6b 3f a1 ba 5d 73 e2
+data Attr-1220.130.255 = 0x00000000000000000000, EAP-SIM-Counter = 0
+
 # RFC4186 A.3. example
 decode-pair.sim_tp_decode_rfc4186 0f 02 00 02 00 01 00 00
 data EAP-SIM-Version-List = 1

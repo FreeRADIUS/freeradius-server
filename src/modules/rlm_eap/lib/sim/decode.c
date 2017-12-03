@@ -360,8 +360,7 @@ static ssize_t sim_decode_array(TALLOC_CTX *ctx, vp_cursor_t *cursor,
  * @param[in] decoder_ctx	IVs, keys etc...
  * @return
  *	- Length on success.
- *	- -1 on malformed child attribute.
- *	- -2 on malformed TLV (this is ok > 128).
+ *	- < 0 on malformed attribute.
  */
 static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 			      fr_dict_attr_t const *parent,
@@ -374,11 +373,11 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	fr_dict_attr_t const	*child;
 	VALUE_PAIR		*head = NULL;
 	vp_cursor_t		tlv_cursor;
-	ssize_t			rcode = -2;
+	ssize_t			rcode;
 
 	if (data_len < 2) {
 		fr_strerror_printf("%s: Insufficient data", __FUNCTION__);
-		return -2; /* minimum attr size */
+		return -1; /* minimum attr size */
 	}
 
 	/*
@@ -394,7 +393,7 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 
 		decr_len = sim_value_decrypt(ctx, &decr, p + 2,
 					     attr_len - 2, data_len - 2, decoder_ctx);	/* Skip reserved */
-		if (decr_len < 0) return -2;
+		if (decr_len < 0) return -1;
 
 		p = decr;
 		end = p + decr_len;
@@ -420,7 +419,7 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 		error:
 			talloc_free(decr);
 			fr_pair_list_free(&head);
-			return rcode;
+			return -1;
 		}
 
 		if (sim_at_len == 0) {
@@ -524,7 +523,6 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 {
 	VALUE_PAIR		*vp;
 	uint8_t const		*p = data;
-	ssize_t			rcode;
 
 	fr_sim_decode_ctx_t	*packet_ctx = decoder_ctx;
 
@@ -674,26 +672,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 		 *	attribute, OR they've already been grouped
 		 *	into a contiguous memory buffer.
 		 */
-		rcode = sim_decode_tlv(ctx, cursor, parent, p, attr_len, data_len, decoder_ctx);
-		switch (rcode) {
-		case 0:
-			break;
-
-		/*
-		 *	TLV malformed (this is OK, we decode as raw)
-		 *	as required for attribute numbers > 128.
-		 */
-		case -2:
-			FR_PROTO_TRACE("Failed decoding TLV: %s", fr_strerror_peek());
-			goto raw;
-
-		/*
-		 *	Child attribute caused error (this is fatal)
-		 */
-		default:
-			return rcode;
-		}
-
+		return sim_decode_tlv(ctx, cursor, parent, p, attr_len, data_len, decoder_ctx);
 
 	default:
 	raw:
@@ -714,7 +693,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 		 */
 		parent = fr_dict_unknown_afrom_fields(ctx, parent->parent, parent->vendor, parent->attr);
 		if (!parent) {
-			fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
+			fr_strerror_printf_push("%s[%d]: Internal sanity check failed", __FUNCTION__, __LINE__);
 			return -1;
 		}
 	}
@@ -817,7 +796,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 
 	default:
 		fr_pair_list_free(&vp);
-		fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
+		fr_strerror_printf_push("%s[%d]: Internal sanity check failed", __FUNCTION__, __LINE__);
 		return -1;
 	}
 
