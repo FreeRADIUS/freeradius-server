@@ -151,7 +151,7 @@ int fr_dhcpv4_udp_packet_send(RADIUS_PACKET *packet);
 int8_t		fr_dhcpv4_attr_cmp(void const *a, void const *b);
 
 RADIUS_PACKET	*fr_dhcpv4_packet_ok(uint8_t const *data, ssize_t data_len, fr_ipaddr_t src_ipaddr,
-				   uint16_t src_port, fr_ipaddr_t dst_ipaddr, uint16_t dst_port);
+				     uint16_t src_port, fr_ipaddr_t dst_ipaddr, uint16_t dst_port);
 
 int		fr_dhcpv4_init(void);
 
