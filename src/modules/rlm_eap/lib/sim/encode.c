@@ -172,7 +172,7 @@ static ssize_t encode_iv(uint8_t *out, size_t outlen, void *encoder_ctx)
 static ssize_t encode_encrypted_value(uint8_t *out, size_t outlen,
 			     	      uint8_t const *in, size_t inlen, void *encoder_ctx)
 {
-	size_t			rounded_len, pad_len, encr_len, len = 0;
+	size_t			total_len, pad_len, encr_len, len = 0;
 	uint8_t			*p = out, *encr = NULL;
 	fr_sim_encode_ctx_t	*packet_ctx = encoder_ctx;
 	EVP_CIPHER_CTX		*evp_ctx;
@@ -188,12 +188,12 @@ static ssize_t encode_encrypted_value(uint8_t *out, size_t outlen,
 		return -1;
 	}
 
-	rounded_len = (inlen + (block_size - 1)) & ~(block_size - 1);	/* Round input length to block size (16) */
-	pad_len = (rounded_len - inlen);		/* How much we need to pad */
+	total_len = (inlen + (block_size - 1)) & ~(block_size - 1);	/* Round input length to block size (16) */
+	pad_len = (total_len - inlen);		/* How much we need to pad */
 
-	if (rounded_len > outlen) {
+	if (total_len > outlen) {
 		fr_strerror_printf("%s: Insufficient buffer space, need %zu bytes, have %zu bytes",
-				   __FUNCTION__, rounded_len, outlen);
+				   __FUNCTION__, total_len, outlen);
 		return -1;
 	}
 
@@ -228,7 +228,7 @@ static ssize_t encode_encrypted_value(uint8_t *out, size_t outlen,
 		return -1;
 	}
 
-	encr = talloc_array(NULL, uint8_t, rounded_len);
+	encr = talloc_array(NULL, uint8_t, total_len);
 	if (!encr) {
 		fr_strerror_printf("%s: Failed allocating temporary buffer", __FUNCTION__);
 		goto error;
@@ -236,7 +236,7 @@ static ssize_t encode_encrypted_value(uint8_t *out, size_t outlen,
 
 	p = out;	/* Because we're using out to store our plaintext (and out usually == in) */
 
-	FR_PROTO_HEX_DUMP("plaintext", p, rounded_len);
+	FR_PROTO_HEX_DUMP("plaintext", p, total_len);
 
 	/*
 	 *	By default OpenSSL expects 16 bytes of plaintext
@@ -248,7 +248,7 @@ static ssize_t encode_encrypted_value(uint8_t *out, size_t outlen,
 	 *	inform OpenSSL explicitly that there's no padding.
 	 */
 	EVP_CIPHER_CTX_set_padding(evp_ctx, 0);
-	if (unlikely(EVP_EncryptUpdate(evp_ctx, encr, (int *)&len, p, rounded_len) != 1)) {
+	if (unlikely(EVP_EncryptUpdate(evp_ctx, encr, (int *)&len, p, total_len) != 1)) {
 		tls_strerror_printf(true, "%s: Failed encrypting attribute", __FUNCTION__);
 		goto error;
 	}
@@ -263,9 +263,9 @@ static ssize_t encode_encrypted_value(uint8_t *out, size_t outlen,
 	/*
 	 *	Plaintext should be same length as plaintext.
 	 */
-	if (unlikely(encr_len != rounded_len)) {
+	if (unlikely(encr_len != total_len)) {
 		fr_strerror_printf("%s: Invalid plaintext length, expected %zu, got %zu",
-				   __FUNCTION__, rounded_len, encr_len);
+				   __FUNCTION__, total_len, encr_len);
 		goto error;
 	}
 
@@ -367,8 +367,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case FR_EAP_AKA_RES:
 	{
 		uint16_t	res_len = htons(vp->vp_length * 8);	/* Get length in bits */
-		size_t	 	rounded_len = (vp->vp_length + 3) & ~3;
-		size_t	 	pad_len = rounded_len - vp->vp_length;
+
 		uint8_t		*p = out;
 
 		if ((vp->vp_length < 4) || (vp->vp_length > 16)) {
@@ -377,7 +376,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 			return -1;
 		}
 
-		if ((rounded_len + 2) > outlen) {
+		if ((vp->vp_length + 2) > outlen) {
 		oos:
 			fr_strerror_printf("%s: Attribute exceeds available buffer space", __FUNCTION__);
 			return -1;
@@ -389,39 +388,8 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		memcpy(p, vp->vp_octets, vp->vp_length);
 		p += vp->vp_length;
 
-		if (pad_len) {
-			memset(p, 0, pad_len);
-			p += pad_len;
-		}
-
 		len = p - out;
 	}
-		goto done;
-
-	/*
-	 *	AT_AUTS - Octets type with no reserved field
-	 *
-	 *	0                   1                   2                   3
-	 *	0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-	 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+|
-	 *	|    AT_AUTS    | Length = 4    |                               |
-	 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               |
-	 *	|                                                               |
-	 *	|                             AUTS                              |
-	 *	|                                                               |
-	 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-	 */
-	case FR_EAP_AKA_AUTS:
-		if (vp->da->flags.length && (da->flags.length != vp->vp_length)) {
-			fr_strerror_printf("%s: Attribute \"%s\" needs a value of exactly %zu bytes, "
-					   "but value was %zu bytes", __FUNCTION__,
-					   da->name, (size_t)da->flags.length, vp->vp_length);
-			return -1;
-		}
-		if (vp->vp_length > outlen) goto oos;
-
-		memcpy(out, vp->vp_octets, vp->vp_length);
-		len = vp->vp_length;
 		goto done;
 
 	default:
@@ -429,48 +397,6 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	}
 
 	switch (da->type) {
-	case FR_TYPE_OCTETS:
-	{
-		size_t	 	rounded_len;
-		size_t	 	pad_len;
-		uint8_t		*p = out;
-
-		/*
-		 *	Autopad attributes
-		 */
-		if (vp->da->flags.length && (vp->vp_length != vp->da->flags.length)) {
-			rounded_len = (vp->vp_length + (vp->da->flags.length - 1)) & ~(vp->da->flags.length - 1);
-			pad_len = rounded_len - vp->vp_length;
-		} else {
-			rounded_len = (vp->vp_length + 3) & ~3;
-			pad_len = rounded_len - vp->vp_length;
-		}
-
-		/*
-		 *	Non-array attributes have a 2 byte padding
-		 */
-		if (!vp->da->flags.array) {
-			if ((rounded_len + 2) > outlen) goto oos;
-
-			*p++ = 0;	/* Reserved */
-			*p++ = 0;	/* Reserved */
-		/*
-		 *	Fixed length array attributes have no padding
-		 */
-		} else if (rounded_len > outlen) goto oos;
-
-		memcpy(p, vp->vp_octets, vp->vp_length);
-		p += vp->vp_length;
-
-		if (pad_len) {
-			memset(p, 0, pad_len);
-			p += pad_len;
-		}
-
-		len = p - out;
-	}
-		break;
-
 	/*
 	 *	In order to represent the string length properly we include a second
 	 *	16bit length field with the real string length.
@@ -491,11 +417,9 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case FR_TYPE_STRING:
 	{
 		uint16_t 	actual_len = htons((vp->vp_length & UINT16_MAX));
-		size_t	 	rounded_len = (vp->vp_length + 3) & ~3;
-		size_t	 	pad_len = rounded_len - vp->vp_length;
 		uint8_t		*p = out;
 
-		if ((rounded_len + 2) > outlen) goto oos;
+		if ((vp->vp_length + 2) > outlen) goto oos;
 
 		if (vp->da->flags.length && (vp->vp_length != vp->da->flags.length)) {
 			fr_strerror_printf("%s: Attribute \"%s\" needs a value of exactly %zu bytes, "
@@ -510,9 +434,70 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		memcpy(p, vp->vp_strvalue, vp->vp_length);
 		p += vp->vp_length;
 
-		if (pad_len) {
-			memset(p, 0, pad_len);
-			p += pad_len;
+		len = p - out;
+	}
+		break;
+
+	case FR_TYPE_OCTETS:
+	{
+		uint8_t		*p = out;
+
+		/*
+		 *	Fixed length attribute
+		 */
+		if (vp->da->flags.length) {
+			size_t prefix = fr_sim_octets_prefix_len(vp->da);
+			size_t pad_len;
+			size_t value_len_rounded;
+
+			if (vp->vp_length > vp->da->flags.length) {
+				fr_strerror_printf("%s: Attribute \"%s\" needs a value of <= %zu bytes, "
+						   "but value was %zu bytes", __FUNCTION__,
+						   vp->da->name, (size_t)vp->da->flags.length, vp->vp_length);
+				return -1;
+			}
+
+			/*
+			 *	Calculate value padding (autopad)
+			 */
+			value_len_rounded = ROUND_UP(vp->vp_length, (size_t)vp->da->flags.length);
+			if ((value_len_rounded + prefix) > outlen) goto oos;
+
+			/*
+			 *	Zero out reserved bytes
+			 */
+			if (prefix) {
+				memset(p, 0, prefix);
+				p += prefix;
+			}
+
+			/*
+			 *	Copy in value
+			 */
+			memcpy(p, vp->vp_octets, vp->vp_length);
+			p += vp->vp_length;
+
+			/*
+			 *	Pad out the value
+			 */
+			pad_len = value_len_rounded - vp->vp_length;
+			if (pad_len) {
+				memset(p, 0, pad_len);
+				p += pad_len;
+			}
+		/*
+		 *	Variable length attribute
+		 */
+		} else {
+			uint16_t actual_len = htons((vp->vp_length & UINT16_MAX));
+
+			if ((vp->vp_length + 2) > outlen) goto oos;		/* +2 for len */
+
+			memcpy(p, &actual_len, sizeof(actual_len));		/* Big endian real string length */
+			p += sizeof(actual_len);
+
+			memcpy(p, vp->vp_strvalue, vp->vp_length);
+			p += vp->vp_length;
 		}
 
 		len = p - out;
@@ -650,10 +635,15 @@ static ssize_t encode_array(uint8_t *out, size_t outlen,
 	}
 
 	/*
-	 *	Pad value a multiple of 4
+	 *	Pad value to multiple of 4
 	 */
-	pad_len = (((p - value) + 3) & ~3) - (p - value);
+	pad_len = ROUND_UP_POW2(p - value, 4) - (p - value);
 	if (pad_len) {
+		if (pad_len > (size_t)(end - p)) {
+			fr_strerror_printf("Insufficient space");
+			return -1;
+		}
+
 		memset(p, 0, pad_len);
 		p += pad_len;
 	}
@@ -670,7 +660,8 @@ static ssize_t encode_array(uint8_t *out, size_t outlen,
 static ssize_t encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const **tlv_stack, unsigned int depth,
 			      vp_cursor_t *cursor, void *encoder_ctx)
 {
-	size_t			rounded_len;
+	size_t			pad_len;
+	uint8_t			*p = out, *end = p + outlen;
 	fr_dict_attr_t const	*da;
 	ssize_t			slen;
 
@@ -705,24 +696,35 @@ static ssize_t encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const 
 	 */
 	da = tlv_stack[depth];
 
+	p += 2;	/* Leave space for attr + len */
 	if (da->flags.array) {
-		slen = encode_array(out + 2, outlen - 2, tlv_stack, depth, cursor, encoder_ctx);
+		slen = encode_array(p, end - p, tlv_stack, depth, cursor, encoder_ctx);
 	} else {
-		slen = encode_value(out + 2, outlen - 2, tlv_stack, depth, cursor, encoder_ctx);
+		slen = encode_value(p, end - p, tlv_stack, depth, cursor, encoder_ctx);
 	}
 	if (slen <= 0) return slen;
+	p += slen;
+
 	/*
-	 *	Round attr + len + data length out to a multiple
-	 *	of four, and setup the attribute header and
-	 *	length field in the buffer.
+	 *	Pad value to multiple of 4
 	 */
-	rounded_len = (slen + 2 + 3) & ~3;
+	pad_len = ROUND_UP_POW2(p - out, 4) - (p - out);
+	if (pad_len) {
+		if (pad_len > (size_t)(end - p)) {
+			fr_strerror_printf("Insufficient space");
+			return -1;
+		}
+
+		memset(p, 0, pad_len);
+		p += pad_len;
+	}
+
 	out[0] = da->attr & 0xff;
-	out[1] = rounded_len >> 2;
+	out[1] = (p - out) >> 2;
 
-	FR_PROTO_HEX_DUMP("Done RFC attribute", out, rounded_len);
+	FR_PROTO_HEX_DUMP("Done RFC attribute", out, (p - out));
 
-	return rounded_len;	/* AT + Length + Data */
+	return (p - out);	/* AT + Length + Data */
 }
 
 static inline ssize_t encode_tlv(uint8_t *out, size_t outlen,
@@ -800,7 +802,7 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 			      fr_dict_attr_t const **tlv_stack, unsigned int depth,
 			      vp_cursor_t *cursor, void *encoder_ctx)
 {
-	unsigned int		rounded_len;
+	unsigned int		total_len;
 	ssize_t			len;
 	uint8_t			*p = out;
 	fr_dict_attr_t const	*da;
@@ -844,13 +846,13 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 	 *	of four, and setup the attribute header and
 	 *	length field in the buffer.
 	 */
-	rounded_len = (len + 2 + 3) & ~3;
+	total_len = ROUND_UP_POW2(len + 2, 4);
 	p[0] = da->attr & 0xff;			/* Type */
-	p[1] = rounded_len >> 2;		/* Length */
+	p[1] = total_len >> 2;		/* Length */
 
-	FR_PROTO_HEX_DUMP("Done TLV attribute", out, rounded_len);
+	FR_PROTO_HEX_DUMP("Done TLV attribute", out, total_len);
 
-	return rounded_len;	/* AT_IV + AT_*(TLV) */
+	return total_len;	/* AT_IV + AT_*(TLV) */
 }
 
 ssize_t fr_sim_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void *encoder_ctx)

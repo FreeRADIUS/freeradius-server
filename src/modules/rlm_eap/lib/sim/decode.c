@@ -523,6 +523,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 {
 	VALUE_PAIR		*vp;
 	uint8_t const		*p = data;
+	size_t			prefix = 0;
 
 	fr_sim_decode_ctx_t	*packet_ctx = decoder_ctx;
 
@@ -609,31 +610,6 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 	}
 		goto done;
 
-	/*
-	 *	AT_AUTS - Octets type with no reserved field
-	 *
-	 *	0                   1                   2                   3
-	 *	0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-	 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+|
-	 *	|    AT_AUTS    | Length = 4    |                               |
-	 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               |
-	 *	|                                                               |
-	 *	|                             AUTS                              |
-	 *	|                                                               |
-	 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-	 */
-	case FR_EAP_AKA_AUTS:
-		if (parent->flags.length != attr_len) {
-		wrong_len:
-			fr_strerror_printf("%s: Attribute \"%s\" needs a value of exactly %zu bytes, "
-					   "but value was %zu bytes", __FUNCTION__,
-					   parent->name, (size_t)parent->flags.length, attr_len);
-			goto raw;
-		}
-		vp = fr_pair_afrom_da(ctx, parent);
-		fr_pair_value_memcpy(vp, p, attr_len);
-		goto done;
-
 	default:
 		break;
 	}
@@ -641,19 +617,22 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 	switch (parent->type) {
 	case FR_TYPE_STRING:
 		if (attr_len < 2) goto raw;	/* Need at least two bytes for the length field */
-		if (parent->flags.length && (attr_len != parent->flags.length)) goto wrong_len;
+		if (parent->flags.length && (attr_len != parent->flags.length)) {
+		wrong_len:
+			fr_strerror_printf("%s: Attribute \"%s\" needs a value of exactly %zu bytes, "
+					   "but value was %zu bytes", __FUNCTION__,
+					   parent->name, (size_t)parent->flags.length + prefix, attr_len);
+			goto raw;
+		}
 		break;
 
 	case FR_TYPE_OCTETS:
 		/*
-		 *	If it's not an array, then the octets fields
-		 *	have a two byte reserved prefix.
+		 *	Get the number of bytes we expect before the value
 		 */
-		if (!parent->flags.array) {
-			if (parent->flags.length && (attr_len != (parent->flags.length + 2))) goto wrong_len;
-		} else {
-			if (parent->flags.length && (attr_len != (parent->flags.length))) goto wrong_len;
-		}
+		prefix = fr_sim_octets_prefix_len(parent);
+		if (attr_len < prefix) goto raw;
+		if (parent->flags.length && (attr_len != (parent->flags.length + prefix))) goto wrong_len;
 		break;
 
 	case FR_TYPE_BOOL:
@@ -740,12 +719,23 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 
 	case FR_TYPE_OCTETS:
 		/*
-		 *	Non-array attributes have a 2 byte padding
+		 *	Variable length octets buffer
 		 */
-		if (!vp->da->flags.array) {
-			fr_pair_value_memcpy(vp, p + 2, attr_len - 2);	/* -2 for reserved field */
+		if (!parent->flags.length) {
+			uint16_t actual_len = (p[0] << 8) | p[1];
+
+			if (actual_len > (attr_len - prefix)) {
+				fr_strerror_printf("%s: Actual length field value (%hu) > attribute value length (%zu)",
+						   __FUNCTION__, actual_len, attr_len - 2);
+				return -1;
+			}
+
+			fr_pair_value_memcpy(vp, p + prefix, actual_len);
+		/*
+		 *	Fixed length octets buffer
+		 */
 		} else {
-			fr_pair_value_memcpy(vp, p, attr_len);
+			fr_pair_value_memcpy(vp, p + prefix, attr_len - prefix);
 		}
 		break;
 

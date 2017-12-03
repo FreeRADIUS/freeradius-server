@@ -84,6 +84,17 @@ size_t fr_sim_attr_len(VALUE_PAIR const *vp)
 	}
 }
 
+/** Return the number of bytes before the octets value
+ *
+ */
+size_t fr_sim_octets_prefix_len(fr_dict_attr_t const *da)
+{
+	if (da->flags.array) return 0;		/* Array elements have no padding */
+	if (!da->flags.length) return 2;	/* Variable length attributes need length field */
+	if (!(da->flags.length % 4)) return 2;	/* Values that are multiples of four have 2 reserved bytes */
+	return 0;				/* Everything else has zero padding bytes */
+}
+
 /*
  * definitions changed to take a buffer for unknowns
  * as this is more thread safe.
