@@ -144,11 +144,16 @@ static ssize_t sim_value_decrypt(TALLOC_CTX *ctx, uint8_t **out,
 	 */
 	if (!packet_ctx->have_iv) {
 		uint8_t const	*p = data + attr_len;	/* Skip to the end of packet_ctx attribute */
-		uint8_t const	*end = p + data_len;
+		uint8_t const	*end = data + data_len;
 
 		while ((size_t)(end - p) >= sizeof(uint32_t)) {
 			uint8_t	 sim_at = p[0];
 			size_t	 sim_at_len = p[1] * sizeof(uint32_t);
+
+			if (sim_at_len == 0) {
+				fr_strerror_printf("%s: Failed IV search.  AT Length field is zero", __FUNCTION__);
+				return -1;
+			}
 
 			if (sim_at == FR_SIM_IV) {
 				if (sim_iv_extract(&(packet_ctx->iv[0]), p, sim_at_len) < 0) return -1;
