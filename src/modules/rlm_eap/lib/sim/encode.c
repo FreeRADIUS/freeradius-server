@@ -729,9 +729,9 @@ static ssize_t encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const 
 
 	p += 2;	/* Leave space for attr + len */
 	if (da->flags.array) {
-		slen = encode_array(p, end - p, tlv_stack, depth, cursor, encoder_ctx);
+		slen = encode_array(p, outlen - (p - out), tlv_stack, depth, cursor, encoder_ctx);
 	} else {
-		slen = encode_value(p, end - p, tlv_stack, depth, cursor, encoder_ctx);
+		slen = encode_value(p, outlen - (p - out), tlv_stack, depth, cursor, encoder_ctx);
 	}
 	if (slen <= 0) return slen;
 	p += slen;
