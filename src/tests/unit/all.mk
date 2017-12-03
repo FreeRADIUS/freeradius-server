@@ -13,7 +13,11 @@ FILES  := \
 	radius_lucent.txt \
 	radius_wimax.txt \
 	radius_vendor.txt \
-	eap-sim.txt \
+	eap_aka_encode.txt \
+	eap_aka_decode.txt \
+	eap_sim_encode.txt \
+	eap_sim_decode.txt \
+	eap_sim_error.txt \
 	dhcp.txt \
 	tlv.txt \
 	tunnel.txt \

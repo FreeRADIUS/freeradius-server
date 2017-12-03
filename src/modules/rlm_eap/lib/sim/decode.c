@@ -56,7 +56,7 @@ RCSID("$Id$")
  * of 32 bits, and includes the Type/Length fields.
  */
 
-static ssize_t fr_sim_decode_pair_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
+static ssize_t sim_decode_pair_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
 					   uint8_t const *data, size_t data_len, void *decoder_ctx);
 
 static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
@@ -240,18 +240,19 @@ static ssize_t sim_value_decrypt(TALLOC_CTX *ctx, uint8_t **out,
  *	- The number of elements in the array on success.
  *	- < 0 on error (array length not a multiple of element size).
  */
-static int fr_sim_array_members(size_t *out, size_t len, fr_dict_attr_t const *da)
+static int sim_array_members(size_t *out, size_t len, fr_dict_attr_t const *da)
 {
 	size_t		element_len;
-
-	*out = len;
 
 	/*
 	 *	Could be an array of bytes, integers, etc.
 	 */
 	switch (da->type) {
 	case FR_TYPE_OCTETS:
-		if (da->flags.length == 0) return 1;
+		if (da->flags.length == 0) {
+			fr_strerror_printf("%s: Octets array must have fixed length elements", __FUNCTION__);
+			return -1;
+		}
 		element_len = da->flags.length;
 		break;
 
@@ -260,7 +261,10 @@ static int fr_sim_array_members(size_t *out, size_t len, fr_dict_attr_t const *d
 		break;
 	}
 
-	if (element_len == 1) return 1;	/* Fast path */
+	if (element_len == 1) {
+		*out = 1;
+		return 1;	/* Fast path */
+	}
 
 	if (!fr_cond_assert(element_len > 0)) return -1;
 
@@ -274,11 +278,71 @@ static int fr_sim_array_members(size_t *out, size_t len, fr_dict_attr_t const *d
 	 *	Number of elements must divide exactly
 	 */
 	if (len % element_len) {
-		fr_strerror_printf("%s: Expected array value length to be multiple of %zu, got %zu",
+		fr_strerror_printf("%s: Expected array actual length to be multiple of %zu, got %zu",
 				   __FUNCTION__, element_len, len);
 		return -1;
 	}
+	*out = element_len;
+
 	return len / element_len;
+}
+
+static ssize_t sim_decode_array(TALLOC_CTX *ctx, vp_cursor_t *cursor,
+				fr_dict_attr_t const *parent,
+				uint8_t const *data, size_t const attr_len, UNUSED size_t data_len,
+				void *decoder_ctx)
+{
+	uint8_t const	*p = data, *end = p + attr_len;
+	uint16_t	actual_len;
+	int		elements, i;
+	size_t		element_len;
+	ssize_t		rcode;
+
+	FR_PROTO_TRACE("Array attribute");
+
+	rad_assert(parent->flags.array);
+	rad_assert(attr_len >= 2);		/* Should have been caught earlier */
+
+	/*
+	 *	Arrays with fixed length members that
+	 *	are a multiple of 4 don't need an
+	 *	actual_len value, as we can get the
+	 *	number of elements from the attribute
+	 *	length.
+	 */
+	if (!parent->flags.length || (parent->flags.length % 4)) {
+		actual_len = (p[0] << 8) | p[1];
+		if (actual_len > (attr_len - 2)) {
+			fr_strerror_printf("%s: Actual length field value (%hu) > attribute value length (%zu)",
+					   __FUNCTION__, actual_len, attr_len - 2);
+			return -1;
+		}
+	} else {
+		actual_len = attr_len - 2;	/* -2 for the reserved bytes */
+	}
+	p += 2;
+
+	/*
+	 *	Zero length array
+	 */
+	if (!actual_len) return p - data;
+
+	/*
+	 *	Get the number of elements
+	 */
+	elements = sim_array_members(&element_len, actual_len, parent);
+	if (elements < 0) return elements;
+
+	for (i = 0; i < elements; i++) {
+		rcode = sim_decode_pair_value(ctx, cursor, parent, p, element_len, end - p, decoder_ctx);
+		if (rcode < 0) return rcode;
+
+		p += rcode;
+
+		if (!fr_cond_assert(p <= end)) break;
+	}
+
+	return attr_len;	/* Say we consumed attr_len because it may have padding */
 }
 
 /** Break apart a TLV attribute into individual attributes
@@ -292,7 +356,8 @@ static int fr_sim_array_members(size_t *out, size_t len, fr_dict_attr_t const *d
  * @param[in] decoder_ctx	IVs, keys etc...
  * @return
  *	- Length on success.
- *	- -1 on failure.
+ *	- -1 on malformed child attribute.
+ *	- -2 on malformed TLV (this is ok > 128).
  */
 static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 			      fr_dict_attr_t const *parent,
@@ -305,11 +370,11 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	fr_dict_attr_t const	*child;
 	VALUE_PAIR		*head = NULL;
 	vp_cursor_t		tlv_cursor;
-	ssize_t			rcode;
+	ssize_t			rcode = -2;
 
 	if (data_len < 2) {
-		fr_strerror_printf("Insufficient data");
-		return -1; /* minimum attr size */
+		fr_strerror_printf("%s: Insufficient data", __FUNCTION__);
+		return -2; /* minimum attr size */
 	}
 
 	/*
@@ -324,8 +389,8 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 		FR_PROTO_TRACE("found encrypted attribute '%s'", parent->name);
 
 		decr_len = sim_value_decrypt(ctx, &decr, p + 2,
-						  attr_len - 2, data_len - 2, decoder_ctx);	/* Skip reserved */
-		if (decr_len < 0) return decr_len;
+					     attr_len - 2, data_len - 2, decoder_ctx);	/* Skip reserved */
+		if (decr_len < 0) return -2;
 
 		p = decr;
 		end = p + decr_len;
@@ -348,7 +413,7 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 		error:
 			talloc_free(decr);
 			fr_pair_list_free(&head);
-			return -1;
+			return rcode;
 		}
 
 		/*
@@ -358,18 +423,31 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 		 *	(16 in the case of AES-128-CBC).
 		 */
 		if (sim_at == FR_SIM_PADDING) {
+			uint8_t zero = 0;
+			uint8_t i;
+
 			if (!parent->flags.encrypt) {
 				fr_strerror_printf("%s: Found padding attribute outside of an encrypted TLV",
 						   __FUNCTION__);
-				return -1;
+				goto error;
 			}
 
-			if (!fr_cond_assert(data_len % 4)) return -1;
+			if (!fr_cond_assert(data_len % 4)) goto error;
 
 			if (sim_at_len > 12) {
 				fr_strerror_printf("%s: Expected padding attribute length <= 12 bytes, got %zu bytes",
 						   __FUNCTION__, sim_at_len);
-				return -1;
+				goto error;
+			}
+
+			/*
+			 *	RFC says we MUST verify that FR_SIM_PADDING
+			 *	data is zeroed out.
+			 */
+			for (i = 2; i < sim_at_len; i++) zero |= p[i];
+			if (zero) {
+				fr_strerror_printf("%s: Padding attribute value not zeroed", __FUNCTION__);
+				goto error;
 			}
 
 			p += sim_at_len;
@@ -433,7 +511,6 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 {
 	VALUE_PAIR		*vp;
 	uint8_t const		*p = data;
-	uint8_t const		*end = p + data_len;
 	ssize_t			rcode;
 
 	fr_sim_decode_ctx_t	*packet_ctx = decoder_ctx;
@@ -444,77 +521,130 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 	FR_PROTO_TRACE("Parent %s len %zu", parent->name, attr_len);
 	FR_PROTO_HEX_DUMP(__FUNCTION__ , data, attr_len);
 
+	FR_PROTO_TRACE("Type \"%s\" (%u)", fr_int2str(dict_attr_types, parent->type, "?Unknown?"), parent->type);
+
 	/*
-	 *	It's an array type attribute with a fixed length,
+	 *	Special cases, attributes that either have odd formats, or need
+	 *	have information we need to decode the packet.
 	 */
-	if (parent->flags.array) {
-		uint16_t	actual_len;
-		int		elements, i;
-		size_t		element_len;
-
-		FR_PROTO_TRACE("Array attribute");
-
-		if (attr_len < 2) {
-			fr_strerror_printf("%s: Missing length field", __FUNCTION__);
-			return -1;
-		}
-
-		actual_len = (p[0] << 8) | p[1];
-		if (actual_len > (attr_len - 2)) {
-			fr_strerror_printf("%s: Actual length field value (%hu) > attribute value length (%zu)",
-					   __FUNCTION__, actual_len, attr_len - 2);
-			return -1;
-		}
-
-		/*
-		 *	Get the number of elements
-		 */
-		elements = fr_sim_array_members(&element_len, actual_len, parent);
-		if (elements < 0) return elements;
-
-		for (i = 0; i < elements; i++) {
-			rcode = sim_decode_pair_value(ctx, cursor, parent, p, element_len, end - p, decoder_ctx);
-			if (rcode < 0) return rcode;
-
-			p += rcode;
-
-			if (!fr_cond_assert(p <= end)) break;
-		}
-
-		return p - data;
-	}
-
+	switch (parent->attr) {
 	/*
 	 *	We need to record packet_ctx so we can decrypt AT_ENCR attributes.
 	 *
 	 *	If we don't find it before, then that's fine, we'll try and
 	 *	find it in the rest of the packet after the encrypted
 	 *	attribute.
+	 *
+	 *	0                   1                   2                   3
+	 *	0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+	 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 *	|     AT_IV     | Length = 5    |           Reserved            |
+	 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 *	|                                                               |
+	 *	|                 Initialization Vector                         |
+	 *	|                                                               |
+	 *	|                                                               |
+	 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 	 */
-	if (parent->attr == FR_SIM_IV) {
+	case FR_SIM_IV:
 		if (sim_iv_extract(&packet_ctx->iv[0], data, attr_len) < 0) return -1;
 		packet_ctx->have_iv = true;
-		return attr_len;
-	}
+		break;	/* Now create the attribute */
 
-	FR_PROTO_TRACE("Type \"%s\" (%u)", fr_int2str(dict_attr_types, parent->type, "?Unknown?"), parent->type);
-	switch (parent->type) {
-	case FR_TYPE_STRING:
-	case FR_TYPE_OCTETS:
-		if (parent->flags.length && (attr_len != parent->flags.length)) {
+	/*
+	 *	AT_RES - Special case (RES length is in bits)
+	 *
+	 *	0                   1                   2                   3
+	 *	0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+	 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 *	|     AT_RES    |    Length     |          RES Length           |
+	 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-|
+	 *	|                                                               |
+	 *	|                             RES                               |
+	 *	|                                                               |
+	 *	|                                                               |
+	 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 */
+	case FR_EAP_AKA_RES:
+	{
+		uint16_t res_len;
+
+		if (attr_len < 2) goto raw;	/* Need at least two bytes for the length field */
+
+		res_len = (p[0] << 8) | p[1];
+		if (res_len % 8) {
+			fr_strerror_printf("%s: RES Length (%hu) is not a multiple of 8",
+					   __FUNCTION__, res_len);
+			return -1;
+		}
+		res_len /= 8;
+
+		if (res_len > (attr_len - 2)) {
+			fr_strerror_printf("%s: RES Length field value (%hu) > attribute value length (%zu)",
+					   __FUNCTION__, res_len, (attr_len - 2));
+			return -1;
+		}
+
+		vp = fr_pair_afrom_da(ctx, parent);
+		if (!vp) return -1;
+
+		fr_pair_value_memcpy(vp, p + 2, attr_len - 2);
+	}
+		goto done;
+
+	/*
+	 *	AT_AUTS - Octets type with no reserved field
+	 *
+	 *	0                   1                   2                   3
+	 *	0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+	 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+|
+	 *	|    AT_AUTS    | Length = 4    |                               |
+	 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+                               |
+	 *	|                                                               |
+	 *	|                             AUTS                              |
+	 *	|                                                               |
+	 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 */
+	case FR_EAP_AKA_AUTS:
+		if (parent->flags.length != attr_len) {
+		wrong_len:
 			fr_strerror_printf("%s: Attribute \"%s\" needs a value of exactly %zu bytes, "
 					   "but value was %zu bytes", __FUNCTION__,
 					   parent->name, (size_t)parent->flags.length, attr_len);
 			goto raw;
 		}
+		vp = fr_pair_afrom_da(ctx, parent);
+		fr_pair_value_memcpy(vp, p, attr_len);
+		goto done;
+
+	default:
+		break;
+	}
+
+	switch (parent->type) {
+	case FR_TYPE_STRING:
+		if (attr_len < 2) goto raw;	/* Need at least two bytes for the length field */
+		if (parent->flags.length && (attr_len != parent->flags.length)) goto wrong_len;
+		break;
+
+	case FR_TYPE_OCTETS:
+		/*
+		 *	If it's not an array, then the octets fields
+		 *	have a two byte reserved prefix.
+		 */
+		if (!parent->flags.array) {
+			if (parent->flags.length && (attr_len != (parent->flags.length + 2))) goto wrong_len;
+		} else {
+			if (parent->flags.length && (attr_len != (parent->flags.length))) goto wrong_len;
+		}
 		break;
 
 	case FR_TYPE_BOOL:
-		if (attr_len != 2) goto raw;
-		break;
-
+	case FR_TYPE_UINT8:
 	case FR_TYPE_UINT16:
-		if (attr_len != 2) goto raw;
+	case FR_TYPE_UINT32:
+	case FR_TYPE_UINT64:
+		if (attr_len != fr_sim_attr_sizes[parent->type][0]) goto raw;
 		break;
 
 	case FR_TYPE_TLV:
@@ -525,12 +655,26 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 		 *	attribute, OR they've already been grouped
 		 *	into a contiguous memory buffer.
 		 */
-		rcode = sim_decode_tlv(ctx, cursor, parent, p, attr_len, data_len, decoder_ctx);	/* +2 for reserved */
-		if (rcode < 0) {
-			FR_PROTO_TRACE("Failed decoding TLV: %s", fr_strerror());
+		rcode = sim_decode_tlv(ctx, cursor, parent, p, attr_len, data_len, decoder_ctx);
+		switch (rcode) {
+		case 0:
+			break;
+
+		/*
+		 *	TLV malformed (this is OK, we decode as raw)
+		 *	as required for attribute numbers > 128.
+		 */
+		case -2:
+			FR_PROTO_TRACE("Failed decoding TLV: %s", fr_strerror_peek());
 			goto raw;
+
+		/*
+		 *	Child attribute caused error (this is fatal)
+		 */
+		default:
+			return rcode;
 		}
-		return rcode;
+
 
 	default:
 	raw:
@@ -539,8 +683,8 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 		 *	as we're prohibited from continuing by the SIM RFCs.
 		 */
 		if (parent->attr <= SIM_SKIPPABLE_MAX) {
-			fr_strerror_printf("%s: Failed parsing non-skippable attribute '%s'",
-					   __FUNCTION__, parent->name);
+			fr_strerror_printf_push("%s: Failed parsing non-skippable attribute '%s'",
+						__FUNCTION__, parent->name);
 			return -1;
 		}
 
@@ -559,28 +703,52 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 	vp = fr_pair_afrom_da(ctx, parent);
 	if (!vp) return -1;
 
+	/*
+	 *	For unknown attributes copy the entire value, not skipping
+	 *	any reserved bytes.
+	 */
+	if (parent->flags.is_unknown || parent->flags.is_raw) {
+		fr_pair_value_memcpy(vp, p, attr_len);
+		vp->vp_length = attr_len;
+		goto done;
+	}
+
 	switch (parent->type) {
 	/*
-	 *	Strings have a two byte 'real length' field in front of the
-	 *	actual value, and that gives us the length of the string value.
+	 *	0                   1                   2                   3
+	 *	0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+	 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 *	| AT_<STRING>   | Length        |    Actual <STRING> Length     |
+	 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 *	|                                                               |
+	 *	.                           String                              .
+	 *	.                                                               .
+	 *	|                                                               |
+	 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 	 */
 	case FR_TYPE_STRING:
 	{
-		uint16_t str_len = (p[0] << 8) | p[1];
+		uint16_t actual_len = (p[0] << 8) | p[1];
 
-		if (str_len > (attr_len - 2)) {
-			fr_strerror_printf("%s: String value length (%hu) > attribute value length (%zu)",
-					   __FUNCTION__, str_len, attr_len - 2);
+		if (actual_len > (attr_len - 2)) {
+			fr_strerror_printf("%s: Actual length field value (%hu) > attribute value length (%zu)",
+					   __FUNCTION__, actual_len, attr_len - 2);
 			return -1;
 		}
 
-		fr_pair_value_bstrncpy(vp, p + 2, str_len);
+		fr_pair_value_bstrncpy(vp, p + 2, actual_len);
 	}
 		break;
 
 	case FR_TYPE_OCTETS:
-		fr_pair_value_memcpy(vp, p + 2, attr_len - 2);	/* -2 for reserved field */
-		vp->vp_length = attr_len - 2;
+		/*
+		 *	Non-array attributes have a 2 byte padding
+		 */
+		if (!vp->da->flags.array) {
+			fr_pair_value_memcpy(vp, p + 2, attr_len - 2);	/* -2 for reserved field */
+		} else {
+			fr_pair_value_memcpy(vp, p, attr_len);
+		}
 		break;
 
 	/*
@@ -597,8 +765,35 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 		vp->vp_bool = true;
 		break;
 
+	/*
+	 *	Numbers are network byte order.
+	 *
+	 *	In the base RFCs only short (16bit) unsigned integers are used.
+	 *	We add support for more, just for completeness.
+	 *
+	 *	0                   1                   2                   3
+	 *	0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+	 *	+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	 *	|   AT_<SHORT>  | Length = 1    |    Short 1    |    Short 2    |
+	 *	+---------------+---------------+-------------------------------+
+	 */
+	case FR_TYPE_UINT8:
+		vp->vp_uint8 = p[0];
+		break;
+
 	case FR_TYPE_UINT16:
-		vp->vp_uint16 = (p[0] << 8) | p[1];
+		memcpy(&vp->vp_uint16, p, sizeof(vp->vp_uint16));
+		vp->vp_uint16 = ntohs(vp->vp_uint32);
+		break;
+
+	case FR_TYPE_UINT32:
+		memcpy(&vp->vp_uint32, p, sizeof(vp->vp_uint32));
+		vp->vp_uint32 = ntohl(vp->vp_uint32);
+		break;
+
+	case FR_TYPE_UINT64:
+		memcpy(&vp->vp_uint64, p, sizeof(vp->vp_uint64));
+		vp->vp_uint64 = ntohll(vp->vp_uint64);
 		break;
 
 	default:
@@ -607,6 +802,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 		return -1;
 	}
 
+done:
 	vp->type = VT_DATA;
 	fr_pair_cursor_append(cursor, vp);
 
@@ -627,8 +823,8 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
  *	- The number of bytes parsed.
  *	- -1 on error.
  */
-static ssize_t fr_sim_decode_pair_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
-					   uint8_t const *data, size_t data_len, void *decoder_ctx)
+static ssize_t sim_decode_pair_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
+					uint8_t const *data, size_t data_len, void *decoder_ctx)
 {
 	uint8_t			sim_at;
 	size_t			sim_at_len;
@@ -636,16 +832,28 @@ static ssize_t fr_sim_decode_pair_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	ssize_t			rcode;
 	fr_dict_attr_t const	*da;
 
-	sim_at_len = ((size_t)data[1]) << 2;
 
-	if ((data_len < sizeof(uint32_t)) || (sim_at_len > data_len)) {
-		fr_strerror_printf("%s: Insufficient data", __FUNCTION__);
+	/*
+	 *	We need at least 2 bytes.  We really need 4 but it's
+	 *	useful to print the attribute number in the errors.
+	 */
+	if (data_len < 2) {
+		fr_strerror_printf("%s: Insufficient data: Expected >= 2 bytes, got %zu bytes",
+				   __FUNCTION__, data_len);
 		return -1;
 	}
 
 	sim_at = data[0];
+
+	sim_at_len = ((size_t)data[1]) << 2;
+	if (sim_at_len > data_len) {
+		fr_strerror_printf("%s: Insufficient data for attribute %d: Length field %zu, remaining data %zu",
+				   __FUNCTION__, sim_at, sim_at_len, data_len);
+		return -1;
+	}
+
 	if (sim_at_len == 0) {
-		fr_strerror_printf("%s: Malformed attribute %d: Length field is zero", __FUNCTION__, sim_at);
+		fr_strerror_printf("%s: Malformed attribute %d: Length field 0", __FUNCTION__, sim_at);
 		return -1;
 	}
 
@@ -669,7 +877,11 @@ static ssize_t fr_sim_decode_pair_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 
 	FR_PROTO_TRACE("decode context changed %s -> %s", da->parent->name, da->name);
 
-	rcode = sim_decode_pair_value(ctx, cursor, da, data + 2, sim_at_len - 2, data_len - 2, decoder_ctx);
+	if (da->flags.array) {
+		rcode = sim_decode_array(ctx, cursor, da, data + 2, sim_at_len - 2, data_len - 2, decoder_ctx);
+	} else {
+		rcode = sim_decode_pair_value(ctx, cursor, da, data + 2, sim_at_len - 2, data_len - 2, decoder_ctx);
+	}
 	if (rcode < 0) return rcode;
 
 	return 2 + rcode;
@@ -693,7 +905,7 @@ ssize_t fr_sim_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 {
 	fr_sim_decode_ctx_t	*packet_ctx = decoder_ctx;
 
-	return fr_sim_decode_pair_internal(ctx, cursor, packet_ctx->root, data, data_len, decoder_ctx);
+	return sim_decode_pair_internal(ctx, cursor, packet_ctx->root, data, data_len, decoder_ctx);
 }
 
 /** Decode SIM/AKA/AKA' specific packet data
@@ -813,12 +1025,33 @@ static void *decode_test_ctx_aka(UNUSED TALLOC_CTX *ctx)
 	return &test_ctx;
 }
 
+static void *decode_test_ctx_sim_rfc4186(UNUSED TALLOC_CTX *ctx)
+{
+	static fr_sim_decode_ctx_t	test_ctx;
+	static fr_sim_keys_t		keys = {
+						.k_encr = { 0x53, 0x6e, 0x5e, 0xbc, 0x44 ,0x65, 0x58, 0x2a,
+							    0xa6, 0xa8, 0xec, 0x99, 0x86, 0xeb, 0xb6, 0x20 }
+					};
+	fr_sim_global_init();
+
+	test_ctx.root = dict_sim_root;
+	test_ctx.keys = &keys;
+
+	return &test_ctx;
+}
+
 /*
  *	Test points
  */
 extern fr_test_point_pair_decode_t sim_tp_decode;
 fr_test_point_pair_decode_t sim_tp_decode = {
 	.test_ctx	= decode_test_ctx_sim,
+	.func		= fr_sim_decode_pair
+};
+
+extern fr_test_point_pair_decode_t sim_tp_decode_rfc4186;
+fr_test_point_pair_decode_t sim_tp_decode_rfc4186 = {
+	.test_ctx	= decode_test_ctx_sim_rfc4186,
 	.func		= fr_sim_decode_pair
 };
 

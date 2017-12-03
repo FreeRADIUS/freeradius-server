@@ -1,0 +1,72 @@
+#
+#  Tests for the EAP-SIM/AKA/AKA' encoder and decoder
+#
+
+# Encrypted attributes tested in eap_sim_encode
+
+# Only run the tests if we have TLS support
+need-feature tls
+
+# Load the EAP-SIM module
+load eap-sim
+
+# Zero length attribute
+decode-pair.sim_tp_decode 0d 00
+data sim_decode_pair_internal: Malformed attribute 13: Length field 0
+
+# No length field
+decode-pair.sim_tp_decode 0d
+data sim_decode_pair_internal: Insufficient data: Expected >= 2 bytes, got 1 bytes
+
+# Boolean attribute (without reserved bytes)
+decode-pair.sim_tp_decode 0d 01
+data sim_decode_pair_internal: Insufficient data for attribute 13: Length field 4, remaining data 2
+
+# Boolean attribute (invalid length field)
+decode-pair.sim_tp_decode 0d 00 00 00
+data sim_decode_pair_internal: Malformed attribute 13: Length field 0
+
+# Boolean attribute (invalid length field)
+decode-pair.sim_tp_decode 0d 02 00 00
+data sim_decode_pair_internal: Insufficient data for attribute 13: Length field 8, remaining data 4
+
+# Unknown non-skippable attribute (99)
+decode-pair.sim_tp_decode 63 01 00 00
+data Unknown (non-skippable) attribute 99
+
+# Unknown skippable attribute (150) - Ensure the 'reserved bytes' in a normal octets
+# attribute are not skipped.
+decode-pair.sim_tp_decode 96 02 00 00 ff ff ff ff
+data Attr-1220.150 = 0x0000ffffffff
+
+# Array missing length field
+decode-pair.sim_tp_decode 0f 01
+data sim_decode_pair_internal: Insufficient data for attribute 15: Length field 4, remaining data 2
+
+# Array actual length field > remaining data
+decode-pair.sim_tp_decode 0f 01 00 01
+data sim_decode_array: Actual length field value (1) > attribute value length (0)
+
+# Array actual length not a multiple of the data type
+decode-pair.sim_tp_decode 0f 02 00 03 00 00 00 00
+data sim_array_members: Expected array actual length to be multiple of 2, got 3
+
+# Array actual length < element length
+decode-pair.sim_tp_decode 0f 02 00 01 00 00 00 00
+data sim_array_members: Element length (2) > array length (1)
+
+# String actual length greater than value length
+decode-pair.sim_tp_decode 0e 05 00 11 74 65 73 74 69 6e 67 31 32 33 40 73 69 00 00 00
+data sim_decode_pair_value: Actual length field value (17) > attribute value length (16)
+
+# String actual length (possible overflow)
+decode-pair.sim_tp_decode 0e 05 ff ff 74 65 73 74 69 6e 67 31 32 33 40 73 69 00 00 00
+data sim_decode_pair_value: Actual length field value (65535) > attribute value length (16)
+
+# TLV encrypted data not a multiple of 16 (raw attribute)
+decode-pair.sim_tp_decode 82 02 00 00 00 00 00 00
+data Attr-1220.130 = 0x000000000000
+
+# TLV encrypted data multiple of 16, zeroed out
+decode-pair.sim_tp_decode 82 05 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+data Attr-1220.130 = 0x000000000000000000000000000000000000
