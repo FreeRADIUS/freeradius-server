@@ -587,6 +587,9 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 		if (res_len > (attr_len - 2)) {
 			fr_strerror_printf("%s: RES Length field value (%hu) > attribute value length (%zu)",
 					   __FUNCTION__, res_len, (attr_len - 2));
+		if ((res_len < 4) || (res_len > 16)) {
+			fr_strerror_printf("%s: RES Length field value must be between 32-128 bits, got %u bits",
+					   __FUNCTION__, (res_len * 8));
 			return -1;
 		}
 
