@@ -413,7 +413,10 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 		size_t	sim_at_len = ((size_t)p[1]) << 2;
 
 		if ((p + sim_at_len) > end) {
-			fr_strerror_printf("Sub-TLV longer than remaining data in parent");
+			fr_strerror_printf("%s: Malformed nested attribute %d: Length field (%zu bytes) value "
+					   "longer than remaining data in parent (%zu bytes)",
+					   __FUNCTION__, sim_at, sim_at_len, end - p);
+
 		error:
 			talloc_free(decr);
 			fr_pair_list_free(&head);
