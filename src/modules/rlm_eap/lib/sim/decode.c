@@ -89,8 +89,7 @@ static inline int sim_iv_extract(uint8_t out[SIM_IV_SIZE], uint8_t const *in, si
 	}
 
 	if ((in[0] != 0x00) || (in[1] != 0x00)) {
-		fr_strerror_printf("%s: Reserved bytes in IV are not zeroed",
-				   __FUNCTION__);
+		fr_strerror_printf("%s: Reserved bytes in IV are not zeroed", __FUNCTION__);
 		return -1;
 	}
 
