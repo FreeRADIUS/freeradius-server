@@ -1104,7 +1104,15 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 
 				fr_pair_list_free(&head);
 			} else if (dec_len < 0) {
-				strlcpy(output, fr_strerror(), sizeof(output));
+				char *out_p = output, *out_end = out_p + sizeof(output);
+				char const *err;
+
+				snprintf(output, sizeof(output), "%zd", dec_len);	/* Overwritten with real error */
+
+				while ((err = fr_strerror_pop()) && (out_p < out_end)) {
+					if (out_p != output) out_p += strlcpy(out_p, ": ", out_end - out_p);
+					out_p += strlcpy(out_p, err, out_end - out_p);
+				}
 			} else { /* zero-length attribute */
 				*output = '\0';
 			}
@@ -1139,8 +1147,18 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 			while ((vp = fr_pair_cursor_current(&cursor))) {
 				enc_len = tp->func(attr, data + sizeof(data) - attr, &cursor, encoder_ctx);
 				if (enc_len < 0) {
-					fprintf(stderr, "Failed encoding %s: %s\n", vp->da->name, fr_strerror());
-					exit(EXIT_FAILURE);
+					char *out_p = output, *out_end = out_p + sizeof(output);
+					char const *err;
+
+					snprintf(output, sizeof(output), "%zd", enc_len);	/* Overwritten with real error */
+
+					while ((err = fr_strerror_pop()) && (out_p < out_end)) {
+						if (out_p != output) out_p += strlcpy(out_p, ": ", out_end - out_p);
+						out_p += strlcpy(out_p, err, out_end - out_p);
+					}
+					fr_pair_list_free(&head);
+					talloc_free_children(tp_ctx);
+					goto next;
 				}
 
 				attr += enc_len;
@@ -1179,6 +1197,9 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 		fprintf(stderr, "Unknown input at line %d of %s: %s\n", lineno, directory, p);
 
 		exit(EXIT_FAILURE);
+
+	next:
+		continue;
 	}
 
 	if (fp != stdin) fclose(fp);
