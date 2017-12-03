@@ -158,7 +158,6 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	eap_aka_session_t	*eap_aka_session = talloc_get_type_abort(eap_session->opaque, eap_aka_session_t);
 	VALUE_PAIR		**to_client, *vp;
 	RADIUS_PACKET		*packet;
-	uint8_t			*p, *rand;
 
 	rad_assert(request);
 	rad_assert(request->reply);
@@ -173,10 +172,7 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	 *	Okay, we got the challenge! Put it into an attribute.
 	 */
 	MEM(vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_RAND));
-	MEM(p = rand = talloc_array(vp, uint8_t, 2 + SIM_VECTOR_UMTS_RAND_SIZE));
-	memset(p, 0, 2); /* clear reserved bytes */
-	memcpy(p + 2, eap_aka_session->keys.umts.vector.rand, SIM_VECTOR_UMTS_RAND_SIZE);
-	fr_pair_value_memsteal(vp, rand);
+	fr_pair_value_memcpy(vp, eap_aka_session->keys.umts.vector.rand, SIM_VECTOR_UMTS_RAND_SIZE);
 	fr_pair_add(to_client, vp);
 
 	/*
@@ -184,10 +180,7 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	 *	whoever has knowledge of the Ki.
 	 */
 	MEM(vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_AUTN));
-	MEM(p = talloc_array(vp, uint8_t, 2 + SIM_VECTOR_UMTS_AUTN_SIZE));
-	memset(p, 0, 2); /* clear reserved bytes */
-	memcpy(p + 2, eap_aka_session->keys.umts.vector.autn, SIM_VECTOR_UMTS_AUTN_SIZE);
-	fr_pair_value_memsteal(vp, p);
+	fr_pair_value_memcpy(vp, eap_aka_session->keys.umts.vector.autn, SIM_VECTOR_UMTS_AUTN_SIZE);
 	fr_pair_add(to_client, vp);
 
 	/*
@@ -338,15 +331,15 @@ static int process_eap_aka_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 		return -1;
 	}
 
-	if ((vp->vp_length - 2) != eap_aka_session->keys.umts.vector.xres_len) {
+	if (vp->vp_length != eap_aka_session->keys.umts.vector.xres_len) {
 		REDEBUG("EAP-AKA-RES length (%zu) does not match XRES length (%zu)",
-			(vp->vp_length - 2), eap_aka_session->keys.umts.vector.xres_len);
+			vp->vp_length, eap_aka_session->keys.umts.vector.xres_len);
 		return -1;
 	}
 
-  	if (memcmp(&vp->vp_octets[2], eap_aka_session->keys.umts.vector.xres, vp->vp_length - 2)) {
+  	if (memcmp(vp->vp_octets, eap_aka_session->keys.umts.vector.xres, vp->vp_length)) {
     		REDEBUG("EAP-AKA-RES from client does match XRES");
-		RHEXDUMP_INLINE(L_DBG_LVL_2, &vp->vp_octets[2], vp->vp_length, "RES  :");
+		RHEXDUMP_INLINE(L_DBG_LVL_2, vp->vp_octets, vp->vp_length, "RES  :");
 		RHEXDUMP_INLINE(L_DBG_LVL_2, eap_aka_session->keys.umts.vector.xres,
 				eap_aka_session->keys.umts.vector.xres_len, "XRES :");
 		return -1;
@@ -428,7 +421,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 					"has not supplied a client error code");
 			} else {
 				REDEBUG("Client rejected AKA-Challenge with error: %s (%i)",
-					fr_pair_value_enum(vp, &buff[0]), vp->vp_uint16);
+					fr_pair_value_enum(vp, buff), vp->vp_uint16);
 			}
 			return RLM_MODULE_REJECT;
 		}

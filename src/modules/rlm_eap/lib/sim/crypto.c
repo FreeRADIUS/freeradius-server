@@ -42,7 +42,7 @@ RCSID("$Id$")
  *
  */
 int fr_sim_crypto_mac_verify(TALLOC_CTX *ctx, fr_dict_attr_t const *root,
-			     VALUE_PAIR *rvps,
+			     VALUE_PAIR *reply,
 			     eap_packet_raw_t *packet,
 			     uint8_t key[EAP_SIM_AUTH_SIZE],
 			     uint8_t *extra, int extra_len, uint8_t calc_mac[20])
@@ -59,8 +59,8 @@ int fr_sim_crypto_mac_verify(TALLOC_CTX *ctx, fr_dict_attr_t const *root,
 		return -1;
 	}
 
-	mac = fr_pair_find_by_da(rvps, da, TAG_ANY);
-	if (!mac || mac->vp_length != 18) {
+	mac = fr_pair_find_by_da(reply, da, TAG_ANY);
+	if (!mac || mac->vp_length != 16) {
 		/* can't check a packet with no AT_MAC attribute */
 		return 0;
 	}
@@ -107,7 +107,7 @@ int fr_sim_crypto_mac_verify(TALLOC_CTX *ctx, fr_dict_attr_t const *root,
 	/* now, HMAC-SHA1 it with the key. */
 	fr_hmac_sha1(calc_mac, buffer, len, key, 16);
 
-	ret = memcmp(&mac->vp_strvalue[2], calc_mac, 16) == 0 ? 1 : 0;		//-V512
+	ret = memcmp(&mac->vp_strvalue, calc_mac, 16) == 0 ? 1 : 0;		//-V512
  done:
 	talloc_free(buffer);
 	return ret;
