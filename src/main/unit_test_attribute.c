@@ -1048,10 +1048,10 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 		 *	Generic pair decode test point
 		 */
 		if (strncmp(test_type, "decode-pair", 11) == 0) {
-			fr_test_point_pair_decode_t	*tp;
+			fr_test_point_pair_decode_t	*tp = NULL;
 			ssize_t				dec_len = 0;
 			vp_cursor_t 			cursor;
-			void				*decoder_ctx;
+			void				*decoder_ctx = NULL;
 
 			p += load_test_point_by_command((void **)&tp, test_type, 11, "tp_decode") + 1;
 			if (tp->test_ctx) decoder_ctx = tp->test_ctx(tp_ctx);
@@ -1127,7 +1127,7 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 			fr_test_point_pair_encode_t	*tp;
 			ssize_t				enc_len = 0;
 			vp_cursor_t			cursor;
-			void				*encoder_ctx;
+			void				*encoder_ctx = NULL;
 
 			p += load_test_point_by_command((void **)&tp, test_type, 11, "tp_encode") + 1;
 			if (tp->test_ctx) encoder_ctx = tp->test_ctx(tp_ctx);
