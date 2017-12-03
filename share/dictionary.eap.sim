@@ -9,7 +9,7 @@
 #  Non-Skippable attributes
 #
 ATTRIBUTE	EAP-SIM-RAND				1	octets[16] array
-ATTRIBUTE	EAP-SIM-Nonce-MT			7	octets
+ATTRIBUTE	EAP-SIM-Nonce-MT			7	octets[16]
 ATTRIBUTE	EAP-SIM-Permanent-ID-Req		10	bool
 ATTRIBUTE	EAP-SIM-MAC				11	octets[16]
 ATTRIBUTE	EAP-SIM-Notification			12	short
