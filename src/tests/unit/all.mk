@@ -12,15 +12,15 @@ FILES  := \
 	radius_extended.txt \
 	radius_lucent.txt \
 	radius_wimax.txt \
+	radius_tunnel.txt \
 	radius_vendor.txt \
+	radius_tlv.txt \
 	eap_aka_encode.txt \
 	eap_aka_decode.txt \
 	eap_sim_encode.txt \
 	eap_sim_decode.txt \
 	eap_sim_error.txt \
 	dhcp.txt \
-	tlv.txt \
-	tunnel.txt \
 	dict.txt \
 	regex.txt \
 	escape.txt \
