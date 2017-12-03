@@ -585,8 +585,11 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 		res_len /= 8;
 
 		if (res_len > (attr_len - 2)) {
-			fr_strerror_printf("%s: RES Length field value (%hu) > attribute value length (%zu)",
-					   __FUNCTION__, res_len, (attr_len - 2));
+			fr_strerror_printf("%s: RES Length field value (%u bits) > attribute value length (%zu bits)",
+					   __FUNCTION__, res_len * 8, (attr_len - 2) * 8);
+			return -1;
+		}
+
 		if ((res_len < 4) || (res_len > 16)) {
 			fr_strerror_printf("%s: RES Length field value must be between 32-128 bits, got %u bits",
 					   __FUNCTION__, (res_len * 8));
@@ -596,7 +599,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 		vp = fr_pair_afrom_da(ctx, parent);
 		if (!vp) return -1;
 
-		fr_pair_value_memcpy(vp, p + 2, attr_len - 2);
+		fr_pair_value_memcpy(vp, p + 2, res_len);
 	}
 		goto done;
 
