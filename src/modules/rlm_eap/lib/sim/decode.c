@@ -455,7 +455,8 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 			 */
 			for (i = 2; i < sim_at_len; i++) zero |= p[i];
 			if (zero) {
-				fr_strerror_printf("%s: Padding attribute value not zeroed", __FUNCTION__);
+				fr_strerror_printf("%s: Padding attribute value not zeroed %pV", __FUNCTION__,
+						   fr_box_octets(p + 2, sim_at_len - 2));
 				goto error;
 			}
 
