@@ -135,7 +135,6 @@ ssize_t fr_sim_3gpp_root_nai_domain_mcc_mnc(uint16_t *mnc, uint16_t *mcc,
   *					this ID or which one to start.
   * @param[out] type	What type of identity this is:
   *	- SIM_ID_TYPE_PERMANENT		if the ID is an IMSI.
-  *	- SIM_ID_TYPE_3GPP_PSEUDONYM	if the ID is a 3GPP pseudonym (not validated).
   *	- SIM_ID_TYPE_PSEUDONYM		if the ID is a freeform pseudonym.
   *	- SIM_ID_TYPE_FASTAUTH		if the ID is a fastauth identity.
   *	- SIM_ID_TYPE_UNKNOWN		if we can't determine what sort of ID this is.
@@ -163,71 +162,64 @@ int fr_sim_id_type(fr_sim_id_type_t *type, fr_sim_method_hint_t *hint,
 
 		if (i == id_len) {
 			switch (id[0]) {
-			case SIM_ID_TAG_PERMANENT_AKA:
-				*hint = SIM_METHOD_HINT_AKA;
-				*type = SIM_ID_TYPE_PERMANENT;	/* All digits */
-				return 0;
+
 
 			case SIM_ID_TAG_PERMANENT_SIM:
 				*hint = SIM_METHOD_HINT_SIM;
 				*type = SIM_ID_TYPE_PERMANENT;	/* All digits */
 				return 0;
 
-			default:
-				break;
-			}
-
-		}
-	}
-
-	/*
-	 *	3GPP Pseudonym
-	 */
-	if (id_len == SIM_3GPP_PSEUDONYM_LEN) {
-		for (i = 1; i < id_len; i++) if (!fr_is_base64(id[i])) break;
-
-		if (i == id_len) {
-			switch (id[0]) {
-			case SIM_ID_TAG_3GPP_PSEUDONYM_AKA:
+			case SIM_ID_TAG_PERMANENT_AKA:
 				*hint = SIM_METHOD_HINT_AKA;
-				*type = SIM_ID_TYPE_3GPP_PSEUDONYM;
+				*type = SIM_ID_TYPE_PERMANENT;	/* All digits */
 				return 0;
 
-			case SIM_ID_TAG_3GPP_PSEUDONYM_SIM:
-				*hint = SIM_METHOD_HINT_SIM;
-				*type = SIM_ID_TYPE_3GPP_PSEUDONYM;
+			case SIM_ID_TAG_PERMANENT_AKA_PRIME:
+				*hint = SIM_METHOD_HINT_AKA_PRIME;
+				*type = SIM_ID_TYPE_PERMANENT;	/* All Digits */
 				return 0;
 
 			default:
 				break;
 			}
+
 		}
 	}
 
 	/*
-	 *	User assigned pseudonym
+	 *	Pseudonym
 	 */
 	switch (id[0]) {
+	case SIM_ID_TAG_PSEUDONYM_SIM:
+		*hint = SIM_METHOD_HINT_SIM;
+		*type = SIM_ID_TYPE_PSEUDONYM;
+		return 0;
+
 	case SIM_ID_TAG_PSEUDONYM_AKA:
 		*hint = SIM_METHOD_HINT_AKA;
 		*type = SIM_ID_TYPE_PSEUDONYM;
 		return 0;
 
-	case SIM_ID_TAG_PSEUDONYM_SIM:
-		*hint = SIM_METHOD_HINT_SIM;
+	case SIM_ID_TAG_PSEUDONYM_AKA_PRIME:
+		*hint = SIM_METHOD_HINT_AKA_PRIME;
 		*type = SIM_ID_TYPE_PSEUDONYM;
 		return 0;
 
 	/*
 	 *	Fast reauth identity
 	 */
+	case SIM_ID_TAG_FASTAUTH_SIM:
+		*hint = SIM_METHOD_HINT_SIM;
+		*type = SIM_ID_TYPE_FASTAUTH;
+		return 0;
+
 	case SIM_ID_TAG_FASTAUTH_AKA:
 		*hint = SIM_METHOD_HINT_AKA;
 		*type = SIM_ID_TYPE_FASTAUTH;
 		return 0;
 
-	case SIM_ID_TAG_FASTAUTH_SIM:
-		*hint = SIM_METHOD_HINT_SIM;
+	case SIM_ID_TAG_FASTAUTH_AKA_PRIME:
+		*hint = SIM_METHOD_HINT_AKA_PRIME;
 		*type = SIM_ID_TYPE_FASTAUTH;
 		return 0;
 

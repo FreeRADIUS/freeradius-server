@@ -509,7 +509,6 @@ static rlm_rcode_t mod_session_init(UNUSED void *instance, eap_session_t *eap_se
 	 *	These types need to be transformed into something
 	 *	usable before we can do anything.
 	 */
-	case SIM_ID_TYPE_3GPP_PSEUDONYM:
 	case SIM_ID_TYPE_PSEUDONYM:
 	case SIM_ID_TYPE_FASTAUTH:
 	case SIM_ID_TYPE_UNKNOWN:

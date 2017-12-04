@@ -270,12 +270,16 @@ static ssize_t sim_xlat_3gpp_pseudonym_decrypt_nai(TALLOC_CTX *ctx, char **out, 
 
 	tag = fr_sim_id_3gpp_pseudonym_tag(id);
 	switch (tag) {
-	case 59:		/* 7 in the base64 alphabet (SIM) */
+	case SIM_ID_TAG_PSEUDONYM_SIM_B64:
 		out_tag = SIM_ID_TAG_PERMANENT_SIM;
 		break;
 
-	case 58:		/* 6 in the base64 alphabet (AKA) */
+	case SIM_ID_TAG_PSEUDONYM_AKA_B64:
 		out_tag = SIM_ID_TAG_PERMANENT_AKA;
+		break;
+
+	case SIM_ID_TAG_PSEUDONYM_AKA_PRIME_B64:
+		out_tag = SIM_ID_TAG_PERMANENT_AKA_PRIME;
 		break;
 
 	default:
@@ -405,11 +409,15 @@ static ssize_t sim_xlat_3gpp_pseudonym_encrypt_nai(TALLOC_CTX *ctx, char **out, 
 
 	switch (method_hint) {
 	case SIM_METHOD_HINT_SIM:
-		tag = 59;	/* 7 in the base64 alphabet */
+		tag = SIM_ID_TAG_PSEUDONYM_SIM_B64;
 		break;
 
 	case SIM_METHOD_HINT_AKA:
-		tag = 58;	/* 6 in the base64 alphabet */
+		tag = SIM_ID_TAG_PSEUDONYM_AKA_B64;
+		break;
+
+	case SIM_METHOD_HINT_AKA_PRIME:
+		tag = SIM_ID_TAG_PSEUDONYM_AKA_PRIME_B64;
 		break;
 
 	case SIM_METHOD_HINT_UNKNOWN:
