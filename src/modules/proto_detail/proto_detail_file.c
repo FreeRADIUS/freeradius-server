@@ -325,10 +325,6 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 
 	memcpy(work, inst->parent->work_submodule->data, sizeof(*work));
 
-	/*
-	 *	Tell the worker to clean itself up.
-	 */
-	work->free_on_close = true;
 	work->ev = NULL;
 
 	work->fd = dup(fd);
@@ -422,6 +418,11 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 		talloc_free(listen);
 		return -1;
 	}
+
+	/*
+	 *	Tell the worker to clean itself up.
+	 */
+	work->free_on_close = true;
 
 	inst->vnode_fd = fd;
 
