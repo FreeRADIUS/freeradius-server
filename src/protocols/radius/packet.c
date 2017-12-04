@@ -134,11 +134,14 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	case FR_CODE_COA_NAK:
 	case FR_CODE_DISCONNECT_ACK:
 	case FR_CODE_DISCONNECT_NAK:
-		if (!original) {
-			fr_strerror_printf("Cannot decode response without request");
-			return -1;
+		/*
+		 *	radsniff doesn't always have a response
+		 */
+		if (original) {
+ 			packet_ctx.vector = original->vector;
+		} else {
+			memset(packet->vector, 0, sizeof(packet->vector));
 		}
-		packet_ctx.vector = original->vector;
 		break;
 
 	case FR_CODE_ACCOUNTING_REQUEST:
