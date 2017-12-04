@@ -689,7 +689,9 @@ static int mod_close(void *instance)
 	inst->fd = -1;
 
 	if (inst->free_on_close) {
-		talloc_free(talloc_parent(inst));
+		fr_listen_t *listen = talloc_get_type_abort(talloc_parent(inst), fr_listen_t);
+
+		talloc_free(listen);
 	}
 
 	return 0;
