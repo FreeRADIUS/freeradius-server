@@ -438,7 +438,11 @@ static void mod_vnode_delete(fr_event_list_t *el, int fd, UNUSED int fflags, voi
 
 	DEBUG("proto_detail (%s): Deleted %s", inst->name, inst->filename_work);
 
-	rad_assert(fd == inst->vnode_fd);
+	if (fd != inst->vnode_fd) {
+		ERROR("Received DELETE for FD %d, when we were expecting one on FD %d - ignoring it",
+		      fd, inst->vnode_fd);
+		return;
+	}
 
 	if (fr_event_fd_delete(el, fd, FR_EVENT_FILTER_VNODE) < 0) {
 		ERROR("Failed removing DELETE callback after deletion: %s", fr_strerror());
