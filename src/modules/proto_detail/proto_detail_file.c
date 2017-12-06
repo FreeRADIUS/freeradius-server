@@ -438,6 +438,13 @@ static void mod_vnode_delete(fr_event_list_t *el, int fd, UNUSED int fflags, voi
 
 	DEBUG("proto_detail (%s): Deleted %s", inst->name, inst->filename_work);
 
+	/*
+	 *	Silently ignore notifications from the directory.  We
+	 *	didn't ask for them, but libkqueue delivers them to
+	 *	us.
+	 */
+	if (fd == inst->fd) return;
+
 	if (fd != inst->vnode_fd) {
 		ERROR("Received DELETE for FD %d, when we were expecting one on FD %d - ignoring it",
 		      fd, inst->vnode_fd);
