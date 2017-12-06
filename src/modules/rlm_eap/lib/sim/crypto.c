@@ -476,7 +476,6 @@ int fr_sim_crypto_derive_ck_ik_prime(fr_sim_keys_t *keys)
 
 	l1 = htons(SIM_SQN_AK_LEN);
 	memcpy(p, &l1, sizeof(l1));
-	p += sizeof(l1);
 
 	/*
 	 *	CK || IK
@@ -541,7 +540,6 @@ int fr_sim_crypto_kdf_1_umts(fr_sim_keys_t *keys)
 	p += sizeof(KDF_1_S_STATIC) - 1;
 
 	memcpy(p, keys->identity, keys->identity_len);
-	p += keys->identity_len;
 
 	/*
 	 *	build k, a concatenation of IK' and CK'
@@ -551,7 +549,6 @@ int fr_sim_crypto_kdf_1_umts(fr_sim_keys_t *keys)
 	p += sizeof(keys->ck_prime);
 
 	memcpy(p, keys->ik_prime, sizeof(keys->ik_prime));
-	p += sizeof(keys->ik_prime);
 
 	/*
 	 *	Feed into PRF
