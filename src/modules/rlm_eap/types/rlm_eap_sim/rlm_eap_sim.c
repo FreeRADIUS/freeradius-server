@@ -174,14 +174,11 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	 *	Make a copy of the identity
 	 */
 	} else {
-		if (eap_sim_session->keys.identity) talloc_free(eap_sim_session->keys.identity);
+		if (eap_sim_session->keys.identity) talloc_const_free(eap_sim_session->keys.identity);
 
-		eap_sim_session->keys.identity_len = strlen(eap_session->identity);
-
-		MEM(eap_sim_session->keys.identity = talloc_array(eap_sim_session, uint8_t,
-								  eap_sim_session->keys.identity_len));
-		memcpy(eap_sim_session->keys.identity, eap_session->identity,
-		       eap_sim_session->keys.identity_len);
+		eap_sim_session->keys.identity_len = talloc_array_length(eap_session->identity) - 1;
+		MEM(eap_sim_session->keys.identity = talloc_memdup(eap_sim_session, eap_session->identity,
+								   eap_sim_session->keys.identity_len));
 	}
 
 	/*

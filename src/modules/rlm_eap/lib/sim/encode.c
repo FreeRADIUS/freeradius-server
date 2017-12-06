@@ -1075,7 +1075,7 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 		*p++ = 0x00;
 
 		slen = fr_sim_crypto_sign_packet(p, eap_packet,
-				       		 keys->k_aut, sizeof(keys->k_aut),
+				       		 keys->k_aut, keys->k_aut_len,
 				       		 keys->vector_type == SIM_VECTOR_GSM ? keys->gsm.nonce_mt : NULL,
 				       		 keys->vector_type == SIM_VECTOR_GSM ? sizeof(keys->gsm.nonce_mt) : 0);
 		if (slen < 0) goto error;

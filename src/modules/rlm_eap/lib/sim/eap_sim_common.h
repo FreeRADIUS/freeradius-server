@@ -30,7 +30,10 @@
 
 #define EAP_SIM_VERSION			1
 #define EAP_SIM_NONCE_MT_SIZE		16	//!< Length of challenge from SIM client.
+
 #define EAP_SIM_AUTH_SIZE		16
+#define EAP_AKA_AUTH_SIZE		16
+#define EAP_AKA_PRIME_AUTH_SIZE		32
 
 typedef enum eap_sim_subtype {
 	EAP_SIM_START			= 10,	//!< Start packet used for version negotiation.

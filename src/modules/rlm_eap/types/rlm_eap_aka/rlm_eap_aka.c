@@ -497,11 +497,8 @@ static rlm_rcode_t mod_session_init(UNUSED void *instance, eap_session_t *eap_se
 	 */
 	case SIM_ID_TYPE_PERMANENT:
 		eap_aka_session->keys.identity_len = talloc_array_length(eap_session->identity) - 1;
-		MEM(eap_aka_session->keys.identity = talloc_array(eap_aka_session, uint8_t,
-								  eap_aka_session->keys.identity_len));
-		memcpy(eap_aka_session->keys.identity,
-		       eap_session->identity,
-		       eap_aka_session->keys.identity_len);
+		MEM(eap_aka_session->keys.identity = talloc_memdup(eap_aka_session, eap_session->identity,
+								   eap_aka_session->keys.identity_len));
 		eap_aka_state_enter(eap_session, eap_aka_session, EAP_AKA_SERVER_CHALLENGE);
 		return RLM_MODULE_OK;
 

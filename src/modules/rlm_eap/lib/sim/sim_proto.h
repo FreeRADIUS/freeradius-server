@@ -40,6 +40,8 @@ RCSIDH(sim_h, "$Id$")
 #define SIM_IV_SIZE			16		//!< Length of the IV used when processing AT_ENCR.
 #define SIM_CALC_MAC_SIZE		20		//!< Length of MAC used to prevent packet modification.
 #define SIM_AUTH_SIZE			16
+#define SIM_SQN_AK_LEN			6
+
 #define SIM_SKIPPABLE_MAX		127		//!< The last non-skippable attribute.
 
 #define SIM_VECTOR_GSM_RAND_SIZE	16		//!< Length of RAND in GSM triplet.
@@ -52,6 +54,9 @@ RCSIDH(sim_h, "$Id$")
 #define SIM_VECTOR_UMTS_RAND_SIZE	16
 #define SIM_VECTOR_UMTS_XRES_MAX_SIZE	16
 #define SIM_VECTOR_UMTS_RES_MAX_SIZE	16
+
+
+
 
 /** Round up - Only works if _mul is a power of 2 but avoids division
  */
@@ -114,8 +119,16 @@ typedef struct {
  *
  */
 typedef struct {
-	uint8_t		*identity;				//!< Identity from AT_IDENTITY.
+	/*
+	 *	Inputs
+	 */
+	uint8_t	const	*identity;				//!< Identity from AT_IDENTITY.
 	size_t		identity_len;				//!< Length of the identity.
+
+	uint8_t const	*network;				//!< Network name (EAP-AKA-Prime only).
+	size_t		network_len;				//!< Length of the network name (EAP-AKA-Prime only).
+
+	uint64_t sqn;						//!< Sequence number
 
 	/*
 	 *	The vectors we acquired during the challenge phase.
@@ -143,12 +156,21 @@ typedef struct {
 
 	fr_sim_vector_type_t	vector_type;			//!< What type of authentication vector
 								//!< we're using to authenticate the SIM.
+
+	/*
+	 *	Intermediates
+	 */
+	uint8_t		ck_prime[SIM_VECTOR_UMTS_CK_SIZE];
+	uint8_t		ik_prime[SIM_VECTOR_UMTS_IK_SIZE];
+
 	/*
 	 *	Outputs
 	 */
 	uint8_t		master_key[20];				//!< Master key from session attributes.
 
-	uint8_t		k_aut[SIM_AUTH_SIZE];			//!< Derived authentication key.
+	uint8_t		k_aut[32];				//!< Derived authentication key.
+	size_t		k_aut_len;				//!< Length of k_aut.  16 for AKA/SIM, 32 for AKA'.
+	uint8_t		k_re[32];				//!< Derived reauthentication key.
 	uint8_t		k_encr[16];				//!< Derived encryption key.
 
 	uint8_t		msk[64];				//!< Derived master session key.
@@ -219,9 +241,13 @@ int		fr_sim_crypto_mac_verify(TALLOC_CTX *ctx, fr_dict_attr_t const *root,
 					 CC_BOUNDED(__size__, 3, 8, 8)
 					 CC_BOUNDED(__size__, 6, 20, 20);
 
-void		fr_sim_crypto_kdf_0_gsm(fr_sim_keys_t *keys);
+int		fr_sim_crypto_kdf_0_gsm(fr_sim_keys_t *keys);
 
-void		fr_sim_crypto_kdf_0_umts(fr_sim_keys_t *keys);
+int		fr_sim_crypto_kdf_0_umts(fr_sim_keys_t *keys);
+
+int		fr_sim_crypto_derive_ck_ik_prime(fr_sim_keys_t *keys);
+
+int		fr_sim_crypto_kdf_1_umts(fr_sim_keys_t *keys);
 
 void		fr_sim_crypto_keys_log(REQUEST *request, fr_sim_keys_t *keys);
 
