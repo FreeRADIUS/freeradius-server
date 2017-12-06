@@ -37,7 +37,7 @@ static ssize_t sim_xlat_id_method(TALLOC_CTX *ctx, char **out, UNUSED size_t out
 {
 	vp_tmpl_t		*vpt;
 	TALLOC_CTX		*our_ctx = talloc_init("sim_xlat");
-	ssize_t			slen, len, id_len;
+	ssize_t			slen, id_len;
 	char const		*p = fmt, *id, *method;
 	fr_sim_id_type_t	type_hint;
 	fr_sim_method_hint_t	method_hint;
@@ -62,13 +62,7 @@ static ssize_t sim_xlat_id_method(TALLOC_CTX *ctx, char **out, UNUSED size_t out
 	}
 
 	id_len = talloc_array_length(id) - 1;
-	len = fr_sim_id_user_len(id, id_len);
-	if (len == id_len ) {
-		RPEDEBUG2("SIM ID \"%pS\" is not an NAI", id);
-		goto error;
-	}
-
-	if (fr_sim_id_type(&type_hint, &method_hint, id, len) < 0) {
+	if (fr_sim_id_type(&type_hint, &method_hint, id, id_len) < 0) {
 		RPEDEBUG2("SIM ID \"%pS\" has unrecognised format", id);
 		goto error;
 	}
@@ -100,7 +94,7 @@ static ssize_t sim_xlat_id_type(TALLOC_CTX *ctx, char **out, UNUSED size_t outle
 {
 	vp_tmpl_t		*vpt;
 	TALLOC_CTX		*our_ctx = talloc_init("sim_xlat");
-	ssize_t			slen, user_len, id_len;
+	ssize_t			slen, id_len;
 	char const		*p = fmt, *id, *method;
 	fr_sim_id_type_t	type_hint;
 	fr_sim_method_hint_t	method_hint;
@@ -125,13 +119,7 @@ static ssize_t sim_xlat_id_type(TALLOC_CTX *ctx, char **out, UNUSED size_t outle
 	}
 
 	id_len = talloc_array_length(id) - 1;
-	user_len = fr_sim_id_user_len(id, id_len);
-	if (user_len == id_len ) {
-		RPEDEBUG2("SIM ID \"%pS\" is not an NAI", id);
-		goto error;
-	}
-
-	if (fr_sim_id_type(&type_hint, &method_hint, id, user_len) < 0) {
+	if (fr_sim_id_type(&type_hint, &method_hint, id, id_len) < 0) {
 		RPEDEBUG2("SIM ID \"%pS\" has unrecognised format", id);
 		goto error;
 	}
@@ -164,7 +152,7 @@ static ssize_t sim_xlat_3gpp_pseudonym_key_index(TALLOC_CTX *ctx, char **out, UN
 {
 	vp_tmpl_t	*vpt;
 	TALLOC_CTX	*our_ctx = talloc_init("sim_xlat");
-	ssize_t		slen, user_len, id_len;
+	ssize_t		slen, id_len;
 	char const	*p = fmt, *id;
 
 	/*
@@ -186,10 +174,9 @@ static ssize_t sim_xlat_3gpp_pseudonym_key_index(TALLOC_CTX *ctx, char **out, UN
 	}
 
 	id_len = talloc_array_length(id) - 1;
-	user_len = fr_sim_id_user_len(id, id_len);
-	if (user_len != SIM_3GPP_PSEUDONYM_LEN) {
+	if (id_len != SIM_3GPP_PSEUDONYM_LEN) {
 		REDEBUG2("3gpp pseudonym incorrect length, expected %i bytes, got %zu bytes",
-			 SIM_3GPP_PSEUDONYM_LEN, user_len);
+			 SIM_3GPP_PSEUDONYM_LEN, id_len);
 		goto error;
 	}
 
@@ -199,18 +186,13 @@ static ssize_t sim_xlat_3gpp_pseudonym_key_index(TALLOC_CTX *ctx, char **out, UN
 	return talloc_array_length(*out) - 1;
 }
 
-/** Decrypts a 3gpp pseudonym
- *
- *	%{sim_id_3gpp_pseudonym_decrypt_nai:&id_attr &key_attr}
- *
- */
-static ssize_t sim_xlat_3gpp_pseudonym_decrypt_nai(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
-						   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-						   REQUEST *request, char const *fmt)
+static ssize_t sim_xlat_3gpp_pseudonym_decrypt(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
+					       UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+					       REQUEST *request, char const *fmt)
 {
 	vp_tmpl_t	*id_vpt, *key_vpt;
 	TALLOC_CTX	*our_ctx = talloc_init("sim_xlat");
-	ssize_t		slen, user_len, id_len, key_len;
+	ssize_t		slen, id_len, key_len;
 	uint8_t		tag;
 	char		out_tag;
 	uint8_t		*key;
@@ -255,10 +237,9 @@ static ssize_t sim_xlat_3gpp_pseudonym_decrypt_nai(TALLOC_CTX *ctx, char **out, 
 	}
 
 	id_len = talloc_array_length(id);
-	user_len = fr_sim_id_user_len(id, id_len);
-	if (user_len != SIM_3GPP_PSEUDONYM_LEN) {
+	if (id_len != (SIM_3GPP_PSEUDONYM_LEN + 1)) {
 		REDEBUG2("3gpp pseudonym incorrect length, expected %i bytes, got %zu bytes",
-			 SIM_3GPP_PSEUDONYM_LEN, user_len);
+			 SIM_3GPP_PSEUDONYM_LEN + 1, id_len);
 		return -1;
 	}
 
@@ -287,16 +268,16 @@ static ssize_t sim_xlat_3gpp_pseudonym_decrypt_nai(TALLOC_CTX *ctx, char **out, 
 		return -1;
 	}
 
-	RDEBUG2("Decrypting \"%.*s\"", (int)user_len, id);
+	RDEBUG2("Decrypting \"%pS\"", id);
 	if (fr_sim_id_3gpp_pseudonym_decrypt(decrypted, id, key) < 0) {
 		RPEDEBUG2("Failed decrypting SIM ID");
 		return -1;
 	}
 
 	/*
-	 *	Recombine unencrypted IMSI with @domain
+	 *	Recombine unencrypted IMSI with tag
 	 */
-	MEM(*out = talloc_typed_asprintf(ctx, "%c%s%s", out_tag, decrypted, id + user_len));
+	MEM(*out = talloc_typed_asprintf(ctx, "%c%s", out_tag, decrypted));
 	talloc_free(our_ctx);
 
 	return talloc_array_length(*out) - 1;
@@ -307,13 +288,13 @@ static ssize_t sim_xlat_3gpp_pseudonym_decrypt_nai(TALLOC_CTX *ctx, char **out, 
  *	%{sim_id_3gpp_pseudonym_encrypt:&id_attr &key_attr key_index}
  *
  */
-static ssize_t sim_xlat_3gpp_pseudonym_encrypt_nai(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
-						   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-						   REQUEST *request, char const *fmt)
+static ssize_t sim_xlat_3gpp_pseudonym_encrypt(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
+					       UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+					       REQUEST *request, char const *fmt)
 {
 	vp_tmpl_t		*id_vpt, *key_vpt;
 	TALLOC_CTX		*our_ctx = talloc_init("sim_xlat");
-	ssize_t			slen, user_len, id_len, key_len;
+	ssize_t			slen, id_len, key_len;
 	uint8_t			*key, tag = 0;
 	unsigned long		key_index;
 	char			encrypted[SIM_3GPP_PSEUDONYM_LEN + 1];
@@ -371,14 +352,6 @@ static ssize_t sim_xlat_3gpp_pseudonym_encrypt_nai(TALLOC_CTX *ctx, char **out, 
 		goto error;
 	}
 
-	id_len = talloc_array_length(id) - 1;
-	user_len = fr_sim_id_user_len(id, id_len);
-	if (user_len > (SIM_IMSI_MAX_LEN + 1)) {	/* +1 for tag */
-		REDEBUG2("3gpp pseudonym incorrect length, expected less than %i bytes, got %zu bytes",
-			 SIM_IMSI_MAX_LEN + 1, user_len);
-		return -1;
-	}
-
 	/*
 	 *	Get the key
 	 */
@@ -397,7 +370,14 @@ static ssize_t sim_xlat_3gpp_pseudonym_encrypt_nai(TALLOC_CTX *ctx, char **out, 
 	 *	Determine what type/method hints are in
 	 *	the current ID.
 	 */
-	if (fr_sim_id_type(&type_hint, &method_hint, id, user_len) < 0) {
+	id_len = talloc_array_length(id) - 1;
+	if (id_len != (SIM_IMSI_MAX_LEN + 1)) {	/* +1 for ID tag */
+		REDEBUG2("IMSI incorrect length, expected %i bytes, got %zu bytes",
+			 SIM_IMSI_MAX_LEN + 1, id_len);
+		return -1;
+	}
+
+	if (fr_sim_id_type(&type_hint, &method_hint, id, id_len) < 0) {
 		RPEDEBUG2("SIM ID \"%pS\" has unrecognised format", id);
 		goto error;
 	}
@@ -430,15 +410,12 @@ static ssize_t sim_xlat_3gpp_pseudonym_encrypt_nai(TALLOC_CTX *ctx, char **out, 
 	 *
 	 *	Strip existing tag from the permanent id
 	 */
-	if (fr_sim_id_3gpp_pseudonym_encrypt(encrypted, id + 1, user_len - 1, tag, (uint8_t)key_index, key) < 0) {
+	if (fr_sim_id_3gpp_pseudonym_encrypt(encrypted, id + 1, id_len - 1, tag, (uint8_t)key_index, key) < 0) {
 		RPEDEBUG2("Failed encrypting SIM ID \"%pS\"", id);
 		return -1;
 	}
 
-	/*
-	 *	Recombine encrypted IMSI with @domain
-	 */
-	MEM(*out = talloc_typed_asprintf(ctx, "%s%s", encrypted, id + user_len));
+	MEM(*out = talloc_typed_asprintf(ctx, "%s", encrypted));
 	talloc_free(our_ctx);
 
 	return talloc_array_length(*out) - 1;
@@ -455,10 +432,10 @@ void sim_xlat_register(void)
 	xlat_register(NULL, "sim_id_type", sim_xlat_id_type, NULL, NULL, 0, 0, true);
 	xlat_register(NULL, "3gpp_pseudonym_key_index",
 		      sim_xlat_3gpp_pseudonym_key_index, NULL, NULL, 0, 0, true);
-	xlat_register(NULL, "3gpp_pseudonym_decrypt_nai",
-		      sim_xlat_3gpp_pseudonym_decrypt_nai, NULL, NULL, 0, 0, true);
-	xlat_register(NULL, "3gpp_pseudonym_encrypt_nai",
-		      sim_xlat_3gpp_pseudonym_encrypt_nai, NULL, NULL, 0, 0, true);
+	xlat_register(NULL, "3gpp_pseudonym_decrypt",
+		      sim_xlat_3gpp_pseudonym_decrypt, NULL, NULL, 0, 0, true);
+	xlat_register(NULL, "3gpp_pseudonym_encrypt",
+		      sim_xlat_3gpp_pseudonym_encrypt, NULL, NULL, 0, 0, true);
 	sim_xlat_refs = 1;
 }
 
@@ -472,7 +449,7 @@ void sim_xlat_unregister(void)
 	xlat_unregister("sim_id_method");
 	xlat_unregister("sim_id_type");
 	xlat_unregister("3gpp_pseudonym_key_index");
-	xlat_unregister("3gpp_pseudonym_decrypt_nai");
-	xlat_unregister("3gpp_pseudonym_encrypt_nai");
+	xlat_unregister("3gpp_pseudonym_decrypt");
+	xlat_unregister("3gpp_pseudonym_encrypt");
 	sim_xlat_refs = 0;
 }

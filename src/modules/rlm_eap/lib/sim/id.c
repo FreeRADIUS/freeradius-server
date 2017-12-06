@@ -143,14 +143,14 @@ ssize_t fr_sim_3gpp_root_nai_domain_mcc_mnc(uint16_t *mnc, uint16_t *mcc,
   *			See #fr_sim_id_user_len.
   * @return Length of the ID written to out.
   */
-int fr_sim_id_type(fr_sim_id_type_t *type, fr_sim_method_hint_t *hint,
-		   char const *id, size_t id_len)
+int fr_sim_id_type(fr_sim_id_type_t *type, fr_sim_method_hint_t *hint, char const *id, size_t id_len)
 {
 	size_t i;
 
 	if (id_len < 1) {
 		*hint = SIM_METHOD_HINT_UNKNOWN;
 		*type = SIM_ID_TYPE_UNKNOWN;
+		fr_strerror_printf("ID length too short");
 		return -1;
 	}
 
@@ -162,7 +162,6 @@ int fr_sim_id_type(fr_sim_id_type_t *type, fr_sim_method_hint_t *hint,
 
 		if (i == id_len) {
 			switch (id[0]) {
-
 
 			case SIM_ID_TAG_PERMANENT_SIM:
 				*hint = SIM_METHOD_HINT_SIM;
@@ -226,6 +225,7 @@ int fr_sim_id_type(fr_sim_id_type_t *type, fr_sim_method_hint_t *hint,
 	default:
 		*hint = SIM_METHOD_HINT_UNKNOWN;
 		*type = SIM_ID_TYPE_UNKNOWN;
+		fr_strerror_printf("Unrecognised tag '%c'", id[0]);
 		return -1;
 	}
 }
@@ -273,7 +273,7 @@ int fr_sim_id_3gpp_pseudonym_encrypt(char out[SIM_3GPP_PSEUDONYM_LEN + 1],
 		fr_strerror_printf("Invalid tag value, expected value between 0-63, got %u", tag);
 		return -1;
 	}
-	if (unlikely(imsi_len != 15)) {
+	if (unlikely(imsi_len != SIM_IMSI_MAX_LEN)) {
 		fr_strerror_printf("Invalid ID len, expected length of 15, got %zu", imsi_len);
 		return -1;
 	}
@@ -451,7 +451,7 @@ int fr_sim_id_3gpp_pseudonym_decrypt(char out[SIM_IMSI_MAX_LEN + 1],
 
 	for (i = 0; i < SIM_3GPP_PSEUDONYM_LEN; i++) {
 		if (!fr_is_base64(encr_id[i])) {
-			fr_strerror_printf("Encrypted IMSI contains non-base64 char");
+			fr_strerror_printf("Encrypted IMSI contains non-base64 char '%c'", encr_id[i]);
 			return -1;
 		}
 	}
