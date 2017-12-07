@@ -45,13 +45,34 @@ RCSID("$Id$")
 static int eap_sim_compose(eap_session_t *eap_session)
 {
 	eap_sim_session_t	*eap_sim_session = talloc_get_type_abort(eap_session->opaque, eap_sim_session_t);
+	vp_cursor_t		cursor;
+	vp_cursor_t		to_encode;
+	VALUE_PAIR		*head = NULL, *vp;
+	REQUEST			*request = eap_session->request;
+	ssize_t			ret;
 
 	/* we will set the ID on requests, since we have to HMAC it */
 	eap_session->this_round->set_request_id = true;
 
-	return fr_sim_encode(eap_session->request, dict_sim_root, FR_EAP_SIM,
-			     eap_session->request->reply->vps, eap_session->this_round->request,
-			     &eap_sim_session->keys);
+	fr_pair_cursor_init(&cursor, &eap_session->request->reply->vps);
+	fr_pair_cursor_init(&to_encode, &head);
+
+	while ((fr_pair_cursor_next_by_ancestor(&cursor, dict_sim_root, TAG_ANY))) {
+		vp = fr_pair_cursor_remove(&cursor);
+		fr_pair_cursor_append(&to_encode, vp);
+	}
+
+	RDEBUG2("Encoding EAP-SIM attributes");
+	rdebug_pair_list(L_DBG_LVL_2, request, head, NULL);
+
+	ret = fr_sim_encode(eap_session->request, dict_sim_root, FR_EAP_SIM,
+			    head, eap_session->this_round->request,
+			    &eap_sim_session->keys);
+	fr_pair_cursor_first(&to_encode);
+	fr_pair_cursor_free(&to_encode);
+
+	if (ret < 0) return -1;
+	return 0;
 }
 
 static int eap_sim_send_state(eap_session_t *eap_session)
@@ -409,7 +430,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 
 	int			ret;
 
-	memset(&ctx, 0, sizeof(ctx));
+	rad_assert(dict_sim_root);
 
 	/*
 	 *	VPS is the data from the client
@@ -427,7 +448,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 
 	vp = fr_pair_cursor_next(&cursor);
 	if (vp && RDEBUG_ENABLED2) {
-		RDEBUG2("EAP-SIM decoded attributes");
+		RDEBUG2("Eecoded EAP-SIM attributes");
 		rdebug_pair_list(L_DBG_LVL_2, request, vp, NULL);
 	}
 

@@ -944,6 +944,8 @@ int fr_sim_decode(REQUEST *request, vp_cursor_t *decoded,
 	uint8_t const		*end = p + data_len;
 	fr_sim_decode_ctx_t	*packet_ctx = decoder_ctx;
 
+	rad_assert(packet_ctx->root);
+
 	fr_strerror();
 
 	/*

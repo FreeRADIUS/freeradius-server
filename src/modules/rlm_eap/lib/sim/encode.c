@@ -909,8 +909,10 @@ ssize_t fr_sim_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, voi
 		return -1;
 	}
 
-	if (vp->da->attr == FR_EAP_SIM_MAC) return 0;
-
+	if (vp->da->attr == FR_EAP_SIM_MAC) {
+		next_encodable(cursor, encoder_ctx);
+		return 0;
+	}
 	/*
 	 *	Nested structures of attributes can't be longer than
 	 *	4 * 255 bytes, so each call to an encode function can
@@ -996,13 +998,13 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 	}
 	subtype = vp->vp_uint16;
 
-	vp = fr_pair_find_by_num(to_encode, 0, FR_EAP_ID, TAG_ANY);
+	vp = fr_pair_find_by_child_num(to_encode, parent, FR_EAP_ID, TAG_ANY);
 	id = vp ? vp->vp_uint32 : ((int)getpid() & 0xff);
 
-	vp = fr_pair_find_by_num(to_encode, 0, FR_EAP_CODE, TAG_ANY);
+	vp = fr_pair_find_by_child_num(to_encode, parent, FR_EAP_CODE, TAG_ANY);
 	eap_code = vp ? vp->vp_uint32 : FR_EAP_CODE_REQUEST;
 
-	vp = fr_pair_find_by_num(to_encode, 0, FR_EAP_SIM_MAC, TAG_ANY);
+	vp = fr_pair_find_by_child_num(to_encode, parent, FR_EAP_SIM_MAC, TAG_ANY);
 	if (vp) do_hmac = true;
 
 	/*
@@ -1060,12 +1062,14 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 		rad_assert(p < end);	/* We messed up a check somewhere in the encoder */
 	}
 
-	eap_packet->type.length = p - end;
+	eap_packet->type.length = p - buff;
+	eap_packet->type.data = buff;
 
 	/*
 	 *	Calculate a SHA1-HMAC over the complete EAP packet
 	 */
 	if (do_hmac) {
+		uint8_t *start = p;
 		/*
 		 *	We left some room earlier...
 		 */
@@ -1079,7 +1083,10 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 				       		 keys->vector_type == SIM_VECTOR_GSM ? keys->gsm.nonce_mt : NULL,
 				       		 keys->vector_type == SIM_VECTOR_GSM ? sizeof(keys->gsm.nonce_mt) : 0);
 		if (slen < 0) goto error;
+		p += slen;
+
 		eap_packet->type.length += SIM_CALC_MAC_SIZE;
+		FR_PROTO_HEX_DUMP("hmac attribute", start, p - start);
 	}
 	FR_PROTO_HEX_DUMP("sim packet", buff, eap_packet->type.length);
 
@@ -1087,14 +1094,12 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 	 *	Shrink buffer to the correct size
 	 */
 	if (eap_packet->type.length != talloc_array_length(buff)) {
-		uint8_t *new;
+		uint8_t *realloced;
 
-		new = talloc_realloc(eap_packet, buff, uint8_t, eap_packet->type.length);
-		if (!new) goto error;
+		realloced = talloc_realloc(eap_packet, buff, uint8_t, eap_packet->type.length);
+		if (!realloced) goto error;
 
-		eap_packet->type.data = new;
-	} else {
-		eap_packet->type.data = buff;
+		eap_packet->type.data = realloced;
 	}
 
 	return len;
