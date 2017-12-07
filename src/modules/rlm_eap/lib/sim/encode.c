@@ -1069,7 +1069,10 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 	 *	Calculate a SHA1-HMAC over the complete EAP packet
 	 */
 	if (do_hmac) {
+#ifndef NDEBUG
 		uint8_t *start = p;
+#endif
+
 		/*
 		 *	We left some room earlier...
 		 */
