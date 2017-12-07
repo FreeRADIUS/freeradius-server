@@ -1086,10 +1086,9 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 				       		 keys->vector_type == SIM_VECTOR_GSM ? keys->gsm.nonce_mt : NULL,
 				       		 keys->vector_type == SIM_VECTOR_GSM ? sizeof(keys->gsm.nonce_mt) : 0);
 		if (slen < 0) goto error;
-		p += slen;
 
 		eap_packet->type.length += SIM_CALC_MAC_SIZE;
-		FR_PROTO_HEX_DUMP("hmac attribute", start, p - start);
+		FR_PROTO_HEX_DUMP("hmac attribute", start, (p - start) + slen);
 	}
 	FR_PROTO_HEX_DUMP("sim packet", buff, eap_packet->type.length);
 
