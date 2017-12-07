@@ -658,6 +658,8 @@ static fr_message_t *fr_message_ring_alloc(fr_message_set_t *ms, fr_ring_buffer_
 	 *	Grab a new message from the underlying ring buffer.
 	 */
 	m = (fr_message_t *) fr_ring_buffer_alloc(mr, ms->message_size);
+	if (!m) return NULL;
+
 #ifndef NDEBUG
 	memset(m, 0, ms->message_size);
 #endif
