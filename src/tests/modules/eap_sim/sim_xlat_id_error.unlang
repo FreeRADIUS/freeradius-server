@@ -1,0 +1,25 @@
+#
+#  No domain separator
+#
+update request {
+	User-Name := '1420032219455258wlan.mnc003.mcc420.3gppnetwork.org'
+}
+
+if ("%{sim_id_method:&User-Name}" != '') {
+	test_fail
+} else {
+	test_pass
+}
+
+#
+#  Zero length ID
+#
+update request {
+	User-Name := ''
+}
+
+if ("%{sim_id_method:&User-Name}" != '') {
+	test_fail
+} else {
+	test_pass
+}

@@ -1528,6 +1528,7 @@ static ssize_t explode_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 	    	vp = fr_cursor_next(&cursor);
 	}
 
+	fr_cursor_head(&to_merge);
 	fr_cursor_merge(&cursor, &to_merge);
 	talloc_free(vpt);
 

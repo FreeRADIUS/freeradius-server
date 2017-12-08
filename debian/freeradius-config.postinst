@@ -22,6 +22,10 @@ case "$1" in
           # Create snakoil certificates on initial install
           make -C /etc/freeradius/certs/
 
+          if ! dpkg-statoverride --list | grep -qw /etc/freeradius/certs/server.pem$; then
+            dpkg-statoverride --add --update root freerad 0640 /etc/freeradius/certs/server.pem
+          fi
+
           # Create links for default modules
           for mod in always attr_filter cache_eap chap \
               detail detail.log digest dynamic_clients eap \

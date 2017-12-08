@@ -64,7 +64,6 @@ struct fr_ring_buffer_t {
 fr_ring_buffer_t *fr_ring_buffer_create(TALLOC_CTX *ctx, size_t size)
 {
 	fr_ring_buffer_t	*rb;
-	size_t			pow;
 
 	rb = talloc_zero(ctx, fr_ring_buffer_t);
 	if (!rb) {
@@ -73,14 +72,26 @@ fr_ring_buffer_t *fr_ring_buffer_create(TALLOC_CTX *ctx, size_t size)
 		return NULL;
 	}
 
+	if (size < 1024) {
+		fr_strerror_printf("Ring buffer size must be at least 1024");
+		return NULL;
+	}
+
+	if (size > (1 << 30)) {
+		fr_strerror_printf("Ring buffer size must be no more than (1 << 30)");
+		return NULL;
+	}
+
 	/*
-	 *	Find the nearest power of 2 (rounding up)
+	 *	Round up to the nearest power of 2.
 	 */
-	for (pow = 0x00000001;
-	     pow < size;
-	     pow <<= 1);
-	size = pow;
 	size--;
+	size |= size >> 1;
+	size |= size >> 2;
+	size |= size >> 4;
+	size |= size >> 8;
+	size |= size >> 16;
+	size++;
 
 	rb->buffer = talloc_array(rb, uint8_t, size);
 	if (!rb->buffer) {

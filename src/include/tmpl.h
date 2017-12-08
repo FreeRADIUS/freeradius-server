@@ -415,7 +415,7 @@ ssize_t			_tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 
 VALUE_PAIR		*tmpl_cursor_init(int *err, fr_cursor_t *cursor, REQUEST *request,
 					  vp_tmpl_t const *vpt);
-					  
+
 int			tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 				      vp_tmpl_t const *vpt);
 

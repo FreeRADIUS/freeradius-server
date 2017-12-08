@@ -111,7 +111,11 @@ static fr_event_func_map_t io_func_map[] = {
 		.name		= "read",
 		.filter		= EVFILT_READ,
 		.flags		= EV_ADD | EV_ENABLE,
+#ifdef NOTE_NONE
+		.fflags		= NOTE_NONE,
+#else
 		.fflags		= 0,
+#endif
 		.type		= FR_EVENT_FD_SOCKET | FR_EVENT_FD_FILE | FR_EVENT_FD_PCAP
 	},
 	{
@@ -360,7 +364,7 @@ int fr_event_list_num_fds(fr_event_list_t *el)
  * @param[in] el to return timer events for.
  * @return number of timer events.
  */
-int fr_event_list_num_elements(fr_event_list_t *el)
+int fr_event_list_num_timers(fr_event_list_t *el)
 {
 	if (unlikely(!el)) return -1;
 
@@ -1896,7 +1900,7 @@ int main(int argc, char **argv)
 		fr_event_timer_insert(NULL, el, &array[i], print_time, &array[i]);
 	}
 
-	while (fr_event_list_num_elements(el)) {
+	while (fr_event_list_num_timers(el)) {
 		gettimeofday(&now, NULL);
 		when = now;
 		if (!fr_event_timer_run(el, &when)) {

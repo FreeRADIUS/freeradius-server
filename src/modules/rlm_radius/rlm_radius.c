@@ -488,19 +488,24 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	 *	signaling.
 	 */
 	if (request->packet->code == FR_CODE_STATUS_SERVER) {
-		RDEBUG("Cannot proxy Status-Server packets");
+		REDEBUG("Cannot proxy Status-Server packets");
 		return RLM_MODULE_FAIL;
 	}
 
 	if ((request->packet->code >= FR_MAX_PACKET_CODE) ||
 	    !inst->retry[request->packet->code].irt) { /* can't be zero */
-		RDEBUG("Invalid packet code %d", request->packet->code);
+		REDEBUG("Invalid packet code %d", request->packet->code);
 		return RLM_MODULE_FAIL;
 	}
 
 	if (!inst->allowed[request->packet->code]) {
-		RDEBUG("Packet code %s is disallowed by the configuration",
+		REDEBUG("Packet code %s is disallowed by the configuration",
 		       fr_packet_codes[request->packet->code]);
+		return RLM_MODULE_FAIL;
+	}
+
+	if (request->client->dynamic && !request->client->active) {
+		REDEBUG("Cannot proxy packets which define dynamic clients");
 		return RLM_MODULE_FAIL;
 	}
 
@@ -523,7 +528,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	}
 
 	link->request = request;
-	fr_dlist_insert_tail(&t->running, &link->entry);
 
 	link->rcode = RLM_MODULE_FAIL;
 
@@ -533,6 +537,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 	 *	- do CHAP-Challenge fixups
 	 */
 	radius_fixups(inst, request);
+
+	fr_dlist_insert_tail(&t->running, &link->entry);
+	talloc_set_destructor(link, mod_link_free);
 
 	/*
 	 *	Push the request and it's link to the IO submodule.
@@ -546,8 +553,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 		talloc_free(link);
 		return rcode;
 	}
-
-	talloc_set_destructor(link, mod_link_free);
 
 	return unlang_module_yield(request, mod_radius_resume, mod_radius_signal, link);
 }

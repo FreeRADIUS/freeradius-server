@@ -87,6 +87,8 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PAR
 	fr_dict_attr_t const	*da;
 	fr_dict_enum_t const	*type_enum;
 	uint32_t		code;
+	dl_instance_t		*process_dl;
+	proto_detail_process_t	*process_inst;
 
 	rad_assert(listen_cs && (strcmp(cf_section_name1(listen_cs), "listen") == 0));
 
@@ -125,7 +127,30 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PAR
 	/*
 	 *	Parent dl_instance_t added in virtual_servers.c (listen_parse)
 	 */
-	return dl_instance(ctx, out, listen_cs,	parent_inst, "process", DL_TYPE_SUBMODULE);
+	if (dl_instance(ctx, out, listen_cs, parent_inst, "process", DL_TYPE_SUBMODULE) < 0) {
+		return -1;
+	}
+
+	process_dl = *(dl_instance_t **) out;
+	process_inst = process_dl->data;
+
+	switch (code) {
+	default:
+		return -1;
+
+	case FR_CODE_ACCOUNTING_REQUEST:
+		process_inst->recv_type = MOD_PREACCT;
+		process_inst->send_type = MOD_ACCOUNTING;
+		break;
+
+	case FR_CODE_COA_REQUEST:
+	case FR_CODE_DISCONNECT_REQUEST:
+		process_inst->recv_type = MOD_RECV_COA;
+		process_inst->send_type = MOD_SEND_COA;
+		break;
+	}
+
+	return 0;
 }
 
 /** Wrapper around dl_instance
@@ -177,6 +202,17 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	}
 
 	request->packet->code = inst->code;
+
+	/*
+	 *	Set default addresses
+	 */
+	request->packet->sockfd = -1;
+	request->packet->src_ipaddr.af = AF_INET;
+	request->packet->src_ipaddr.addr.v4.s_addr = htonl(INADDR_NONE);
+	request->packet->dst_ipaddr = request->packet->src_ipaddr;
+
+	request->reply->src_ipaddr = request->packet->src_ipaddr;
+	request->reply->dst_ipaddr = request->packet->src_ipaddr;
 
 	end = data + data_len;
 
@@ -285,11 +321,11 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 				break;
 
 			case FR_PACKET_SRC_PORT:
-				request->packet->src_port = vp->vp_uint32;
+				request->packet->src_port = vp->vp_uint16;
 				break;
 
 			case FR_PACKET_DST_PORT:
-				request->packet->dst_port = vp->vp_uint32;
+				request->packet->dst_port = vp->vp_uint16;
 				break;
 		}
 
@@ -338,18 +374,7 @@ static ssize_t mod_encode(UNUSED void const *instance, REQUEST *request, uint8_t
 {
 	if (buffer_len < 1) return -1;
 
-	/*
-	 *	"Do not respond"
-	 */
-	if (request->reply->code == FR_CODE_DO_NOT_RESPOND) {
-		*buffer = 0;
-		return 1;
-	}
-
-	/*
-	 *	Do respond.
-	 */
-	*buffer = 1;
+	*buffer = request->reply->code;
 	return 1;
 }
 
@@ -640,6 +665,29 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		}
 	}
 
+#ifdef HAVE_PTHREAD_H
+	(void) pthread_mutex_init(&inst->worker_mutex, NULL);
+#endif
+
+	return 0;
+}
+
+/** Detach the application
+ *
+ *
+ * @param[in] instance	Ctx data for this application.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int mod_detach(void *instance)
+{
+	proto_detail_t		*inst = talloc_get_type_abort(instance, proto_detail_t);
+
+#ifdef HAVE_PTHREAD_H
+	pthread_mutex_destroy(&inst->worker_mutex);
+#endif
+
 	return 0;
 }
 
@@ -651,6 +699,7 @@ fr_app_t proto_detail = {
 
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
+	.detach		= mod_detach,
 	.open		= mod_open,
 	.decode		= mod_decode,
 	.encode		= mod_encode,

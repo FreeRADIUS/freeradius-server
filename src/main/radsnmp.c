@@ -113,7 +113,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -P <proto>             Use proto (tcp or udp) for transport.\n");
 #endif
 
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 
 #define RESPOND_STATIC(_cmd) \
@@ -250,7 +250,7 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, vp_c
 		 *	We've skipped over the index attribute, and
 		 *	the index number should be available in attr.
 		 */
-		vp = fr_pair_afrom_da(ctx, index_attr);
+		MEM(vp = fr_pair_afrom_da(ctx, index_attr));
 		vp->vp_uint32 = attr;
 
 		fr_pair_cursor_append(cursor, vp);
@@ -333,6 +333,10 @@ static ssize_t radsnmp_pair_from_oid(TALLOC_CTX *ctx, radsnmp_conf_t *conf, vp_c
 	}
 
 	vp = fr_pair_afrom_da(ctx, conf->snmp_type);
+	if (!vp) {
+		slen = -(slen);
+		goto error;
+	}
 	vp->vp_uint32 = type;
 
 	fr_pair_cursor_append(cursor, vp);
@@ -1061,7 +1065,7 @@ int main(int argc, char **argv)
 	 */
 	if (fr_inet_pton_port(&conf->server_ipaddr, &conf->server_port, argv[1], -1, force_af, true, true) < 0) {
 		ERROR("%s", fr_strerror());
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	/*
@@ -1080,7 +1084,7 @@ int main(int argc, char **argv)
 			ERROR("Incomplete dictionary: Missing definition for Extended-Attribute-1");
 		dict_error:
 			talloc_free(conf);
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 		parent = fr_dict_attr_child_by_num(parent, FR_VENDOR_SPECIFIC);
 		if (!parent) {

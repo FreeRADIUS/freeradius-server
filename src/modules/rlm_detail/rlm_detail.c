@@ -70,7 +70,7 @@ typedef struct detail_instance {
 } rlm_detail_t;
 
 static const CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_OUTPUT | FR_TYPE_REQUIRED | FR_TYPE_XLAT, rlm_detail_t, filename), .dflt = "%A/%{Client-IP-Address}/detail" },
+	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_OUTPUT | FR_TYPE_REQUIRED | FR_TYPE_XLAT, rlm_detail_t, filename), .dflt = "%A/%{Packet-Src-IP-Address}/detail" },
 	{ FR_CONF_OFFSET("header", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_detail_t, header), .dflt = "%t" },
 	{ FR_CONF_OFFSET("permissions", FR_TYPE_UINT32, rlm_detail_t, perm), .dflt = "0600" },
 	{ FR_CONF_OFFSET("group", FR_TYPE_STRING, rlm_detail_t, group) },
@@ -263,19 +263,18 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 		switch (packet->src_ipaddr.af) {
 		case AF_INET:
 			src_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_SRC_IP_ADDRESS);
-			src_vp.vp_ipv4addr = packet->src_ipaddr.addr.v4.s_addr;
+			fr_value_box_shallow(&src_vp.data, &packet->src_ipaddr, true);
 
 			dst_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_DST_IP_ADDRESS);
-			dst_vp.vp_ipv4addr = packet->dst_ipaddr.addr.v4.s_addr;
+			fr_value_box_shallow(&dst_vp.data, &packet->dst_ipaddr, true);
 			break;
 
 		case AF_INET6:
 			src_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_SRC_IPV6_ADDRESS);
-			memcpy(&src_vp.vp_ipv6addr, &packet->src_ipaddr.addr.v6,
-			       sizeof(packet->src_ipaddr.addr.v6));
+			fr_value_box_shallow(&src_vp.data, &packet->src_ipaddr, true);
+
 			dst_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_DST_IPV6_ADDRESS);
-			memcpy(&dst_vp.vp_ipv6addr, &packet->dst_ipaddr.addr.v6,
-			       sizeof(packet->dst_ipaddr.addr.v6));
+			fr_value_box_shallow(&dst_vp.data, &packet->dst_ipaddr, true);
 			break;
 
 		default:
@@ -286,9 +285,10 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 		detail_fr_pair_fprint(request, out, &dst_vp);
 
 		src_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_SRC_PORT);
-		src_vp.vp_uint32 = packet->src_port;
+		fr_value_box_shallow(&src_vp.data, packet->src_port, true);
+
 		dst_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_DST_PORT);
-		dst_vp.vp_uint32 = packet->dst_port;
+		fr_value_box_shallow(&dst_vp.data, packet->dst_port, true);
 
 		detail_fr_pair_fprint(request, out, &src_vp);
 		detail_fr_pair_fprint(request, out, &dst_vp);

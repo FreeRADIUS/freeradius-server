@@ -1,0 +1,68 @@
+#
+#  PRE: parallel
+#
+
+#
+#  Ensure that a failing item causes the parallel section to return by default [1/2]
+#
+group {
+	parallel {
+		fail	# Runs
+		ok	# Should not run (would override fail - same priority)
+		ok
+	}
+
+	actions {
+		fail = 1
+	}
+}
+if (!fail) {
+	test_fail
+}
+
+#
+#  Ensure that a failing item causes the parallel section to return by default [2/2]
+#
+group {
+	parallel {
+		fail
+		update request {	# This should *NOT* be dispatched
+			Tmp-String-0 := 'foo'
+		}
+	}
+	actions {
+		fail = 1
+	}
+}
+if (!fail) {
+	test_fail
+}
+if (&request:Tmp-String-0) {
+	test_fail
+}
+
+#
+#  If the rcode for the failing item is no longer action return, all items should be
+#  executed.
+#
+group {
+	parallel {
+		fail {
+			fail = 10	# Higher priority than ok and no longer action return
+		}
+		update request {	# This should now be dispatched
+			Tmp-String-0 := 'foo'
+		}
+	}
+	actions {
+		fail = 1
+	}
+}
+if (!fail) {
+	test_fail
+}
+if (&request:Tmp-String-0 != 'foo') {
+	test_fail
+}
+
+success

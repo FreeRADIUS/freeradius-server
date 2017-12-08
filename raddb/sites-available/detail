@@ -137,6 +137,67 @@ virtual_server detail {
 			#  is done from the file.
 			#
 			max_entry_size = 65536
+
+			#
+			#  Whether or not the module retransmits
+			#  packets which have failed.
+			#
+			#  default = yes
+			#
+			retransmit = yes
+
+			#
+			#  Limits for the files, retransmissions, etc.
+			#
+			limit {
+				#
+				#  Number of simultaneous packets it will
+				#  read from the file.
+				#
+				#  Useful values: 1..256
+				maximum_outstanding = 1
+
+				#
+				#  Initial retransmit time: 1..60
+				#
+				#  If there is no response within this time,
+				#  the module will retransmit the packet.
+				#
+				initial_retransmission_time = 1
+
+				#
+				#  Maximum Retransmit Time: 5..30
+				#
+				#  The maximum time between retransmissions.
+				#
+				maximum_retransmission_time = 30
+
+				#
+				#  The following are maximums that *all* apply.
+				#  i.e. if any one of the limits is hit, the
+				#  retransmission stops.
+				#
+
+				#
+				#  Maximum Retransmit Count: 0..20
+				#
+				#  How many times the module will send the packet
+				#  before giving up.
+				#
+				#  A special value of "0" means "retransmit forever".
+				#
+				maximum_retransmission_count = 6
+
+				#
+				#  Maximum Retransmit Duration: 0..600
+				#
+				#  The total length of time the module will try to
+				#  retransit the packet
+				#
+				#  A special value of "0" means "retransmit forever".
+				#
+				maximum_retransmission_duration = 40
+			}
 		}
 	}
 
@@ -145,49 +206,50 @@ virtual_server detail {
 #  'recv' section.  Note that there is no second name to the section.
 #
 recv {
+
+	#
+	#  We handled the packet successfully.  Run the "send ok" section.
+	#
 	ok
+
+	#
+	#  If the "recv" section returns "ok" or "updated", it
+	#  will run the "send ok" section to send the reply.
+	#
+	#  All other return codes (e.g. "fail") will cause it to run
+	#  the "send fail" section.
+	#
 }
 
 #
 #  All successful packets sent by the detail listener are processed through the
-#  'send' section.  Note that the name is the same for all packet types.
+#  'send ok' section.  Note that the name is the same for all packet types.
 #
 #  If the listener is configured with 'track = yes', then the entry in
 #  the detail file is marked up as being "done".  Subsequent re-reads
 #  of the same detail file (e.g. on server re-start) will skip the
 #  "done" entries.
 #
-send success {
+send ok {
 	ok
 }
 
 #
 #  All failed packets sent by the detail listener are processed through the
-#  'send' section.  Note that the name is the same for all packet types.
+#  'send fail' section.  Note that the name is the same for all packet types.
 #
 #  If the listener is configured with 'track = yes', then the packet
-#  should be retransmitted by the detail file reader, until the packet
-#  returns "success".
-#
-#  Note that the retransmission is not yet implemented.
+#  will be retransmitted by the detail file reader, until the packet
+#  returns "success".  See the "limit" subsection above for retransmission
+#  configuration.
 #
 send fail {
 	ok
 }
 
 #
-#  If we are not supposed to respond, run this section.
+#  Note that unlike other listeners, there is no "send Do-Not-Respond"
+#  section.  You should just return "fail" instead.
 #
-#  i.e. do not mark the packet as "done".
-#
-#  If the listener is configured with 'track = yes', then the packet
-#  should be retransmitted by the detail file reader, until the packet
-#  returns "success".
-#
-#  Note that the retransmission is not yet implemented.
-#
-send Do-Not-Respond {
-	ok
-}
 
 } # virtual server "detail"

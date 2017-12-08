@@ -218,6 +218,15 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	RADCLIENT *client;
 
 	/*
+	 *	If the app_io encodes the packet, then we don't need
+	 *	to do that.
+	 */
+	if (inst->app_io->encode) {
+		data_len = inst->app_io->encode(inst->app_io_instance, request, buffer, buffer_len);
+		if (data_len > 0) return data_len;
+	}
+
+	/*
 	 *	"Do not respond"
 	 */
 	if (request->reply->code == FR_CODE_DO_NOT_RESPOND) {
@@ -271,6 +280,14 @@ static void mod_process_set(void const *instance, REQUEST *request)
 	rad_assert(request->packet->code < FR_CODE_MAX);
 
 	request->server_cs = inst->server_cs;
+
+	/*
+	 *	New packets get processed through proto_radius_dynamic_client
+	 */
+	if (request->client->dynamic && !request->client->active) {
+		rad_assert(request->async->process != NULL);
+		return;
+	}
 
 	process = inst->process_by_code[request->packet->code];
 	if (!process) {

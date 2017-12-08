@@ -35,7 +35,7 @@ typedef enum eap_aka_subtype {
 	EAP_AKA_CHALLENGE 		= 1,	//!< Challenge packet for distributing NONCE and RAND values.
 	EAP_AKA_AUTHENTICATION_REJECT	= 2,
 	EAP_AKA_SYNCHRONIZATION_FAILURE	= 4,
-	EAP_AKA_IDENTITY 		= 5,	//!< Fast Re-Authentication.
+	EAP_AKA_IDENTITY 		= 5,	//!< Fast Re-Authentication and pseudonyms.
 	EAP_AKA_NOTIFICATION		= 12,	//!< Notification packet.
 	EAP_AKA_REAUTHENTICATION	= 13,
 	EAP_AKA_CLIENT_ERROR		= 14,

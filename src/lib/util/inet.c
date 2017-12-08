@@ -1203,7 +1203,7 @@ int fr_ipaddr_from_sockaddr(struct sockaddr_storage const *sa, socklen_t salen,
 #endif
 
 	} else {
-		fr_strerror_printf("Unsupported address famility %d", sa->ss_family);
+		fr_strerror_printf("Unsupported address family %d", sa->ss_family);
 		return -1;
 	}
 

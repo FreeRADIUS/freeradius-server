@@ -225,7 +225,7 @@ static int mruby_vps_to_array(REQUEST *request, mrb_value *out, mrb_state *mrb, 
 
 		tmp = mrb_ary_new_capa(mrb, 2);
 		if (vp->da->flags.has_tag) {
-			str = talloc_asprintf(request, "%s:%d", vp->da->name, vp->tag);
+			str = talloc_typed_asprintf(request, "%s:%d", vp->da->name, vp->tag);
 			key = mrb_str_new(mrb, str, talloc_array_length(str) - 1);
 			talloc_free(str);
 		} else {

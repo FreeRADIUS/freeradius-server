@@ -739,7 +739,7 @@ static bool pass2_cond_callback(void *ctx, fr_cond_t *c)
 		char *fmt;
 		ssize_t slen;
 
-		fmt = talloc_asprintf(map->lhs, "%%{%s}", map->lhs->name);
+		fmt = talloc_typed_asprintf(map->lhs, "%%{%s}", map->lhs->name);
 		slen = tmpl_afrom_str(map, &vpt, fmt, talloc_array_length(fmt) - 1,
 				      T_DOUBLE_QUOTED_STRING, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
 		if (slen < 0) {
@@ -1304,14 +1304,14 @@ static int compile_map_name(unlang_group_t *g)
 		quoted_str = talloc_array(g, char, quoted_len);
 		fr_snprint(quoted_str, quoted_len, g->vpt->name, g->vpt->len, quote);
 
-		g->self.name = talloc_asprintf(g, "map %s %s", cf_section_name2(g->cs), quoted_str);
+		g->self.name = talloc_typed_asprintf(g, "map %s %s", cf_section_name2(g->cs), quoted_str);
 		g->self.debug_name = g->self.name;
 		talloc_free(quoted_str);
 
 		return 0;
 	}
 
-	g->self.name = talloc_asprintf(g, "map %s", cf_section_name2(g->cs));
+	g->self.name = talloc_typed_asprintf(g, "map %s", cf_section_name2(g->cs));
 	g->self.debug_name = g->self.name;
 
 	return 0;
@@ -1463,7 +1463,7 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 	if (name2) {
 		c->name = name2;
-		c->debug_name = talloc_asprintf(c, "update %s", name2);
+		c->debug_name = talloc_typed_asprintf(c, "update %s", name2);
 	} else {
 		c->name = unlang_ops[c->type].name;
 		c->debug_name = unlang_ops[c->type].name;
@@ -1597,7 +1597,7 @@ static unlang_t *compile_empty(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 			c->debug_name = c->name;
 		} else {
 			c->name = name2;
-			c->debug_name = talloc_asprintf(c, "%s %s", unlang_ops[c->type].name, name2);
+			c->debug_name = talloc_typed_asprintf(c, "%s %s", unlang_ops[c->type].name, name2);
 		}
 	}
 
@@ -1891,7 +1891,7 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 
 	c = unlang_group_to_generic(g);
 	c->name = unlang_ops[c->type].name;
-	c->debug_name = talloc_asprintf(c, "%s %s", unlang_ops[c->type].name, cf_section_name2(cs));
+	c->debug_name = talloc_typed_asprintf(c, "%s %s", unlang_ops[c->type].name, cf_section_name2(cs));
 
 	/*
 	 *	Fixup the template before compiling the children.
@@ -2014,7 +2014,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	if (!name2) {
 		c->debug_name = unlang_ops[c->type].name;
 	} else {
-		c->debug_name = talloc_asprintf(c, "%s %s", unlang_ops[c->type].name, name2);
+		c->debug_name = talloc_typed_asprintf(c, "%s %s", unlang_ops[c->type].name, name2);
 	}
 
 	g = unlang_generic_to_group(c);
@@ -2104,7 +2104,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	}
 
 	c->name = unlang_ops[c->type].name;
-	c->debug_name = talloc_asprintf(c, "%s %s", unlang_ops[c->type].name, name2);
+	c->debug_name = talloc_typed_asprintf(c, "%s %s", unlang_ops[c->type].name, name2);
 
 	g = unlang_generic_to_group(c);
 	g->vpt = vpt;
@@ -2153,7 +2153,7 @@ static unlang_t *compile_detach(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 #endif
 
 static unlang_t *compile_xlat_inline(unlang_t *parent,
-				     unlang_compile_t *unlang_ctx, char const *fmt)
+				     unlang_compile_t *unlang_ctx, CONF_PAIR const *cp)
 {
 	unlang_t *c;
 	unlang_xlat_inline_t *mx;
@@ -2169,12 +2169,22 @@ static unlang_t *compile_xlat_inline(unlang_t *parent,
 
 	(void) compile_action_defaults(c, unlang_ctx, UNLANG_GROUP_TYPE_SIMPLE);
 
-	mx->xlat_name = talloc_typed_strdup(mx, fmt);
-	if (fmt[0] != '%') {
+	mx->xlat_name = talloc_typed_strdup(mx, cf_pair_attr(cp));
+	if (mx->xlat_name[0] == '%') {
+		ssize_t		slen;
+		char const	*error;
+
+		slen = xlat_tokenize(mx, mx->xlat_name, &mx->exp, &error);
+		if (slen < 0) {
+			cf_log_err(cp, "%s", error);
+			talloc_free(mx);
+			return NULL;
+		}
+	} else {
 		char *p;
 		mx->exec = true;
 
-		strcpy(mx->xlat_name, fmt + 1);
+		memmove(mx->xlat_name, mx->xlat_name + 1, strlen(mx->xlat_name)); /* including trailing NUL */
 		p = strrchr(mx->xlat_name, '`');
 		if (p) *p = '\0';
 	}
@@ -2217,7 +2227,7 @@ static unlang_t *compile_if(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF
 	if (!c) return NULL;
 
 	c->name = unlang_ops[c->type].name;
-	c->debug_name = talloc_asprintf(c, "%s %s", unlang_ops[c->type].name, cf_section_name2(cs));
+	c->debug_name = talloc_typed_asprintf(c, "%s %s", unlang_ops[c->type].name, cf_section_name2(cs));
 
 	g = unlang_generic_to_group(c);
 	g->cond = cond;
@@ -2455,7 +2465,7 @@ static unlang_t *compile_load_balance(unlang_t *parent, unlang_compile_t *unlang
 			return NULL;
 		}
 
-		c->debug_name = talloc_asprintf(c, "%s %s", unlang_ops[c->type].name, name2);
+		c->debug_name = talloc_typed_asprintf(c, "%s %s", unlang_ops[c->type].name, name2);
 		rad_assert(g->vpt != NULL);
 
 		/*
@@ -2683,7 +2693,7 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 
 	c = unlang_group_to_generic(g);
 	c->name = unlang_ops[c->type].name;
-	c->debug_name = talloc_asprintf(c, "%s %s", c->name, server);
+	c->debug_name = talloc_typed_asprintf(c, "%s %s", c->name, server);
 
 	return compile_children(g, parent, unlang_ctx, group_type, parentgroup_type);
 }
@@ -2958,7 +2968,7 @@ static unlang_t *compile_item(unlang_t *parent,
 		 */
 		if (((modrefname[0] == '%') && (modrefname[1] == '{')) ||
 		    (modrefname[0] == '`')) {
-			return compile_xlat_inline(parent, unlang_ctx, modrefname);
+			return compile_xlat_inline(parent, unlang_ctx, cp);
 		}
 	}
 
@@ -3178,7 +3188,7 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component)
 	if (!name2) {
 		c->debug_name = name1;
 	} else {
-		c->debug_name = talloc_asprintf(c, "%s %s", name1, name2);
+		c->debug_name = talloc_typed_asprintf(c, "%s %s", name1, name2);
 	}
 
 	if (rad_debug_lvl > 3) {

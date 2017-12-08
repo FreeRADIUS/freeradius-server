@@ -287,7 +287,7 @@ static int dl_symbol_init_walk(dl_t const *dl_module)
 		if (init->symbol) {
 			char *sym_name = NULL;
 
-			MEM(sym_name = talloc_asprintf(NULL, "%s_%s", dl_module->name, init->symbol));
+			MEM(sym_name = talloc_typed_asprintf(NULL, "%s_%s", dl_module->name, init->symbol));
 			sym = dlsym(dl_module->handle, sym_name);
 			talloc_free(sym_name);
 
@@ -321,7 +321,7 @@ static void dl_symbol_free_walk(dl_t const *dl_module)
 		if (free->symbol) {
 			char *sym_name = NULL;
 
-			MEM(sym_name = talloc_asprintf(NULL, "%s_%s", dl_module->name, free->symbol));
+			MEM(sym_name = talloc_typed_asprintf(NULL, "%s_%s", dl_module->name, free->symbol));
 			sym = dlsym(dl_module->handle, sym_name);
 			talloc_free(sym_name);
 
@@ -566,7 +566,7 @@ void *dl_by_name(char const *name)
 			p = strrchr(path, '/');
 			if (p && ((p[1] == '\0') || (p[1] == ':'))) *p = '\0';
 
-			path = talloc_asprintf(ctx, "%s/%s%s", path, name, DL_EXTENSION);
+			path = talloc_typed_asprintf(ctx, "%s/%s%s", path, name, DL_EXTENSION);
 
 			DEBUG4("Loading %s with path: %s", name, path);
 
@@ -672,11 +672,11 @@ dl_t const *dl_module(CONF_SECTION *conf, dl_t const *parent, char const *name, 
 	if (!dl) dl_init();
 
 	if (parent) {
-		to_find.name = module_name = talloc_asprintf(NULL, "%s_%s_%s",
+		to_find.name = module_name = talloc_typed_asprintf(NULL, "%s_%s_%s",
 							     fr_int2str(dl_type_prefix, parent->type, "<INVALID>"),
 							     parent->common->name, name);
 	} else {
-		to_find.name = module_name = talloc_asprintf(NULL, "%s_%s",
+		to_find.name = module_name = talloc_typed_asprintf(NULL, "%s_%s",
 							     fr_int2str(dl_type_prefix, type, "<INVALID>"),
 							     name);
 	}

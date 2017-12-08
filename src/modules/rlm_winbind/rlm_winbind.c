@@ -131,7 +131,7 @@ static int winbind_group_cmp(void *instance, REQUEST *request, VALUE_PAIR *attr,
 	}
 
 	if (domain) {
-		username = username_buff = talloc_asprintf(request, "%s\\%s", domain, user);
+		username = username_buff = talloc_typed_asprintf(request, "%s\\%s", domain, user);
 	} else {
 		username = user;
 	}

@@ -73,6 +73,7 @@ typedef enum {
 #endif
 	UNLANG_TYPE_POLICY,			//!< Policy section.
 	UNLANG_TYPE_XLAT_INLINE,		//!< xlat statement, inline in "unlang"
+	UNLANG_TYPE_XLAT,			//!< Represents one level of an xlat expansion.
 	UNLANG_TYPE_RESUME,			//!< where to resume processing
 	UNLANG_TYPE_MAX
 } unlang_type_t;
@@ -87,8 +88,20 @@ typedef enum {
 	UNLANG_ACTION_PUSHED_CHILD,		//!< #unlang_t pushed a new child onto the stack,
 						//!< execute it instead of continuing.
 	UNLANG_ACTION_BREAK,			//!< Break out of the current group.
+	UNLANG_ACTION_YIELD,			//!< Temporarily pause execution until an event occurs.
 	UNLANG_ACTION_STOP_PROCESSING		//!< Break out of processing the current request (unwind).
 } unlang_action_t;
+
+/** Allows the frame evaluator to signal the interpreter
+ *
+ */
+typedef enum {
+	UNLANG_FRAME_ACTION_POP = 1,		//!< Pop the current frame, and check the next one further
+						///< up in the stack for what to do next.
+	UNLANG_FRAME_ACTION_CONTINUE,		//!< Process the next instruction at this level.
+	UNLANG_FRAME_ACTION_YIELD		//!< Temporarily return control back to the caller on the C
+						///< stack.
+} unlang_frame_action_t;
 
 typedef enum {
 	UNLANG_GROUP_TYPE_SIMPLE = 0,		//!< Execute each of the children sequentially, until we execute
@@ -183,22 +196,20 @@ typedef struct {
  */
 typedef struct {
 	unlang_t			self;
-	unlang_type_t			parent_type;	//!< type of the parent
+	unlang_t			*parent;		//!< The original instruction.
 
-	module_instance_t		*module_instance; //!< as described
+	void    			*callback;		//!< Function the yielding code indicated should
+								//!< be called when the request could be resumed.
 
-	fr_unlang_resume_callback_t    callback;	//!< Function the yielding code indicated should
-							//!< be called when the request could be resumed.
+	fr_unlang_action_t		signal_callback;	//!< Function the yielding module indicated should
+								//!< be called when the request is poked via an action
+								//!< may be removed in future.
 
-	fr_unlang_action_t		signal_callback;  //!< Function the yielding module indicated should
-							//!< be called when the request is poked via an action
-							//!< may be removed in future.
-
-
-	void				*resume_ctx;   	//!< Context data for the callback.  Usually represents
-							//!< the module's internal state at the time of yielding.
-	void const			*instance;	//!< instance data
-	void     			*thread;	//!< thread data
+	void				*resume_ctx;   		//!< Context data for the callback.  Usually represents
+								///< the module's internal state at the time of
+								///< <yielding.
+	void const			*instance;		//!< instance data
+	void     			*thread;		//!< thread data
 } unlang_resume_t;
 
 /** A naked xlat
@@ -209,6 +220,7 @@ typedef struct {
 	unlang_t		self;
 	int			exec;
 	char			*xlat_name;
+	 xlat_exp_t		*exp;			//!< First xlat node to execute.
 } unlang_xlat_inline_t;
 
 /** A module stack entry
@@ -216,19 +228,19 @@ typedef struct {
  * Represents a single module call.
  */
 typedef struct {
-	module_thread_instance_t *thread;	//!< thread-local data for this module
+	module_thread_instance_t *thread;		//!< thread-local data for this module
 } unlang_stack_state_modcall_t;
 
 /** State of a foreach loop
  *
  */
 typedef struct {
-	vp_cursor_t		cursor;		//!< Used to track our place in the list we're iterating over.
-	VALUE_PAIR 		*vps;		//!< List containing the attribute(s) we're iterating over.
-	VALUE_PAIR		*variable;	//!< Attribute we update the value of.
-	int			depth;		//!< Level of nesting of this foreach loop.
+	vp_cursor_t		cursor;			//!< Used to track our place in the list we're iterating over.
+	VALUE_PAIR 		*vps;			//!< List containing the attribute(s) we're iterating over.
+	VALUE_PAIR		*variable;		//!< Attribute we update the value of.
+	int			depth;			//!< Level of nesting of this foreach loop.
 #ifndef NDEBUG
-	int			indent;		//!< for catching indentation issues
+	int			indent;			//!< for catching indentation issues
 #endif
 } unlang_stack_state_foreach_t;
 
@@ -239,6 +251,34 @@ typedef struct {
 	unlang_t 		*child;
 	unlang_t		*found;
 } unlang_stack_state_redundant_t;
+
+/** Hold the result of an inline xlat expansion
+ *
+ */
+typedef struct {
+	fr_value_box_t		*result;			//!< Where to store the result of the
+								///< xlat expansion. This is usually discarded.
+} unlang_stack_state_xlat_inline_t;
+
+/** State of an xlat expansion
+ *
+ * State of one level of nesting within an xlat expansion.
+ */
+typedef struct {
+	TALLOC_CTX		*ctx;				//!< to allocate boxes and values in.
+	xlat_exp_t const	*exp;
+	fr_cursor_t		values;				//!< Values aggregated so far.
+
+	/*
+	 *	For func and alternate
+	 */
+	fr_value_box_t		*rhead;				//!< Head of the result of a nested
+								///< expansion.
+	fr_cursor_t		result;				//!< Result cursor, mainly useful for
+								///< asynchronous xlat functions.
+	bool			alternate;			//!< record which alternate branch we
+								///< previously took.
+} unlang_stack_state_xlat_t;
 
 /** Our interpreter stack, as distinct from the C stack
  *
@@ -277,7 +317,8 @@ typedef struct {
 	unlang_type_t		unwind;				//!< Unwind to this one if it exists.
 								///< This is used for break and return.
 
-	bool			resume : 1;			//!< resume the current section after calling a sub-section
+	bool			repeat : 1;			//!< Call the action callback again on our way
+								//!< back up the stack.
 	bool			top_frame : 1;			//!< are we the top frame of the stack?
 
 	union {

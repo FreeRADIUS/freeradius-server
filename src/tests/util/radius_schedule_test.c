@@ -119,12 +119,12 @@ static int test_open(void *ctx)
 	io_ctx->sockfd = fr_socket_server_udp(&io_ctx->ipaddr, &io_ctx->port, NULL, true);
 	if (io_ctx->sockfd < 0) {
 		fprintf(stderr, "radius_test: Failed creating socket: %s\n", fr_strerror());
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	if (fr_socket_bind(io_ctx->sockfd, &io_ctx->ipaddr, &io_ctx->port, NULL) < 0) {
 		fprintf(stderr, "radius_test: Failed binding to socket: %s\n", fr_strerror());
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	return 0;
@@ -211,7 +211,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -s <secret>            Set shared secret.\n");
 	fprintf(stderr, "  -x                     Debugging mode.\n");
 
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 
 int main(int argc, char *argv[])
@@ -242,7 +242,7 @@ int main(int argc, char *argv[])
 		case 'i':
 			if (fr_inet_pton_port(&my_ipaddr, &port16, optarg, -1, AF_INET, true, false) < 0) {
 				fprintf(stderr, "Failed parsing ipaddr: %s\n", fr_strerror());
-				exit(1);
+				exit(EXIT_FAILURE);
 			}
 			my_port = port16;
 			break;
@@ -282,10 +282,10 @@ int main(int argc, char *argv[])
 	sched = fr_schedule_create(autofree, NULL, &default_log, debug_lvl, num_networks, num_workers, NULL, NULL);
 	if (!sched) {
 		fprintf(stderr, "schedule_test: Failed to create scheduler\n");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
-	if (listen.app_io->open(listen.app_io_instance) < 0) exit(1);
+	if (listen.app_io->open(listen.app_io_instance) < 0) exit(EXIT_FAILURE);
 
 #if 0
 	/*
@@ -294,7 +294,7 @@ int main(int argc, char *argv[])
 	EV_SET(&events[0], sockfd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
 	if (kevent(kq_master, events, 1, NULL, 0, NULL) < 0) {
 		fprintf(stderr, "Failed setting KQ for EVFILT_READ: %s\n", fr_strerror());
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 #endif
 

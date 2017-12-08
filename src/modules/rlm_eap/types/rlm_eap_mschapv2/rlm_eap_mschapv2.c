@@ -797,7 +797,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 		return -1;
 	}
 
-	if (!inst->identity) inst->identity = talloc_asprintf(inst, "freeradius-%s", RADIUSD_VERSION_STRING);
+	if (!inst->identity) inst->identity = talloc_typed_asprintf(inst, "freeradius-%s", RADIUSD_VERSION_STRING);
 
 	enumv = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE), "MS-CHAP");
 	if (!enumv) enumv = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE), "MSCHAP");

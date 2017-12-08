@@ -46,7 +46,7 @@
 static const uint8_t pong[] = { 0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_PONG };
 static const uint8_t id_ack[] = { 0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_ACK };
 static const uint8_t id_req[] = { 0, 17, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_GET,
-					0x01, IPAC_IDTAG_UNIT, 
+					0x01, IPAC_IDTAG_UNIT,
 					0x01, IPAC_IDTAG_MACADDR,
 					0x01, IPAC_IDTAG_LOCATION1,
 					0x01, IPAC_IDTAG_LOCATION2,

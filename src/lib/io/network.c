@@ -72,6 +72,9 @@ typedef struct fr_network_worker_t {
 typedef struct fr_network_socket_t {
 	int			fd;			//!< file descriptor
 
+	bool			dead;			//!< is it dead?
+
+	size_t			outstanding;		//!< number of outstanding packets sent to the worker
 	fr_listen_t const	*listen;		//!< I/O ctx and functions.
 
 	fr_message_set_t	*ms;			//!< message buffers for this socket.
@@ -354,8 +357,6 @@ next_message:
 	data_size = s->listen->app_io->read(s->listen->app_io_instance, &cd->packet_ctx, &recv_time,
 					    cd->m.data, cd->m.rb_size, &s->leftover, &cd->priority);
 	if (data_size == 0) {
-//		fr_log(nr->log, L_DBG_ERR, "got no data from transport read");
-
 		/*
 		 *	Cache the message for later.  This is
 		 *	important for stream sockets, which can do
@@ -422,7 +423,17 @@ next_message:
 	}
 
 	/*
+	 *	One more packet sent to a worker.
+	 */
+	s->outstanding++;
+
+	/*
 	 *	If there is a next message, go read it from the buffer.
+	 *
+	 *	@todo - note that this calls read(), even if the
+	 *	app_io has paused the reader.  We likely want to be
+	 *	able to check that, too.  We might just remove this
+	 *	"goto"...
 	 */
 	if (next) {
 		cd = next;
@@ -454,6 +465,24 @@ static void fr_network_vnode_extend(UNUSED fr_event_list_t *el, int sockfd, int 
 	s->listen->app_io->vnode(s->listen->app_io_instance, fflags);
 }
 
+/*
+ *	Mark it as dead, but DON'T free it until all of the replies
+ *	have come in.
+ */
+static void fr_network_socket_dead(fr_network_t *nr, fr_network_socket_t *s)
+{
+	fr_event_fd_delete(nr->el, s->fd, FR_EVENT_FILTER_IO);
+
+	/*
+	 *	Leave it in the RBtree so we can catch pending replies.
+	 */
+
+	if (!s->outstanding) {
+		talloc_free(s);
+		return;
+	}
+}
+
 
 /** Handle errors for a socket.
  *
@@ -469,7 +498,7 @@ static void fr_network_error(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 	fr_network_socket_t *s = ctx;
 
 	s->listen->app_io->error(s->listen->app_io_instance);
-	talloc_free(s);
+	fr_network_socket_dead(talloc_parent(s), s);
 }
 
 
@@ -517,7 +546,7 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 			}
 
 			ERROR("Failed writing to socket %d: %s", s->fd, fr_strerror());
-			talloc_free(s);
+			fr_network_socket_dead(nr, s);
 			return;
 		}
 
@@ -527,7 +556,10 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 		 *	As a special case, allow write() to return
 		 *	"0", which means "close the socket".
 		 */
-		if (rcode == 0) talloc_free(s);
+		if (rcode == 0) {
+			fr_network_socket_dead(nr, s);
+			return;
+		}
 	}
 
 	/*
@@ -540,7 +572,7 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 			       listen->app_io->error ? fr_network_error : NULL,
 			       s) < 0) {
 		ERROR("Failed adding new socket to event loop: %s", fr_strerror());
-		talloc_free(s);
+		fr_network_socket_dead(nr, s);
 	}
 }
 
@@ -610,15 +642,6 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 	 */
 	size = s->listen->default_message_size * s->listen->num_messages;
 	if (!size) size = (1 << 17);
-	if (size > (1 << 30)) size = (1 << 30);
-
-	size--;
-	size |= size >> 1;
-	size |= size >> 2;
-	size |= size >> 4;
-	size |= size >> 8;
-	size |= size >> 16;
-	size++;
 
 	/*
 	 *	Allocate the ring buffer for messages and packets.
@@ -634,7 +657,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 
 	app_io = s->listen->app_io;
 
-	if (app_io->event_list_set) app_io->event_list_set(s->listen->app_io_instance, nr->el);
+	if (app_io->event_list_set) app_io->event_list_set(s->listen->app_io_instance, nr->el, nr);
 
 	rad_assert(app_io->fd);
 	s->fd = app_io->fd(s->listen->app_io_instance);
@@ -695,7 +718,7 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 
 	app_io = s->listen->app_io;
 
-	if (app_io->event_list_set) app_io->event_list_set(s->listen->app_io_instance, nr->el);
+	if (app_io->event_list_set) app_io->event_list_set(s->listen->app_io_instance, nr->el, nr);
 
 	rad_assert(app_io->fd);
 	s->fd = app_io->fd(s->listen->app_io_instance);
@@ -734,12 +757,11 @@ static void fr_network_worker_callback(void *ctx, void const *data, size_t data_
 	memcpy(&worker, data, data_size);
 	(void) talloc_get_type_abort(worker, fr_worker_t);
 
-	w = talloc_zero(nr, fr_network_worker_t);
-	if (!w) _exit(1);
+	MEM(w = talloc_zero(nr, fr_network_worker_t));
 
 	w->worker = worker;
 	w->channel = fr_worker_channel_create(worker, w, nr->control);
-	if (!w->channel) _exit(1);
+	if (!w->channel) fr_exit_now(1);
 
 	fr_channel_master_ctx_add(w->channel, w);
 
@@ -951,9 +973,6 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 {
 	fr_channel_data_t *cd;
 	fr_network_t *nr = talloc_get_type_abort(uctx, fr_network_t);
-	fr_dlist_t died, *entry;
-
-	FR_DLIST_INIT(died);
 
 	while ((cd = fr_heap_pop(nr->replies)) != NULL) {
 		ssize_t rcode;
@@ -971,10 +990,30 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 		s = rbtree_finddata(nr->sockets, &my_socket);
 
 		/*
-		 *	Socket is dead.  Ignore all packets for it.
+		 *	This shouldn't happen, but be safe...
 		 */
 		if (!s) {
 			fr_message_done(&cd->m);
+			continue;
+		}
+
+		rad_assert(s->outstanding > 0);
+		s->outstanding--;
+
+		/*
+		 *	Just mark the message done, and skip it.
+		 */
+		if (s->dead) {
+			fr_message_done(&cd->m);
+
+			/*
+			 *	No more packets, it's safe to delete
+			 *	the socket.
+			 */
+			if (!s->outstanding) {
+				talloc_free(s);
+			}
+
 			continue;
 		}
 
@@ -1054,8 +1093,7 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 			fr_message_done(&cd->m);
 			if (listen->app_io->error) listen->app_io->error(listen->app_io_instance);
 
-			rbtree_deletebydata(nr->sockets, s);
-			fr_dlist_insert_tail(&died, &s->entry);
+			fr_network_socket_dead(nr, s);
 			continue;
 		}
 
@@ -1073,20 +1111,8 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 		 *	As a special case, allow write() to return
 		 *	"0", which means "close the socket".
 		 */
-		if (rcode == 0) talloc_free(s);
+		if (rcode == 0) fr_network_socket_dead(nr, s);
 	}
-
-	/*
-	 *	Walk over the dead sockets, and delete them.
-	 */
-	while ((entry = FR_DLIST_FIRST(died)) != NULL) {
-		fr_network_socket_t *s;
-
-		s = fr_ptr_to_type(fr_network_socket_t, entry, entry);
-		fr_dlist_remove(&s->entry);
-		talloc_free(s);
-	}
-
 }
 
 
@@ -1193,4 +1219,26 @@ int fr_network_worker_add(fr_network_t *nr, fr_worker_t *worker)
 	PTHREAD_MUTEX_UNLOCK(&nr->mutex);
 
 	return rcode;
+}
+
+/** Signal the network to read from a listener
+ *
+ * @param nr the network
+ * @param listen the listener to read from
+ */
+void fr_network_listen_read(fr_network_t *nr, fr_listen_t const *listen)
+{
+	fr_network_socket_t my_socket, *s;
+
+	(void) talloc_get_type_abort(nr, fr_network_t);
+	(void) talloc_get_type_abort_const(listen, fr_listen_t);
+
+	my_socket.listen = listen;
+	s = rbtree_finddata(nr->sockets, &my_socket);
+	if (!s) return;
+
+	/*
+	 *	Go read the socket.
+	 */
+	fr_network_read(nr->el, s->fd, 0, s);
 }

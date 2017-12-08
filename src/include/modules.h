@@ -207,20 +207,6 @@ int		virtual_servers_bootstrap(CONF_SECTION *config);
 CONF_SECTION	*virtual_server_find(char const *name);
 void		fr_request_async_bootstrap(REQUEST *request, fr_event_list_t *el); /* for unit_test_module */
 
-/*
- *	In unlang_interpret.c, but here for public consumption.
- */
-void		unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t default_action);
-
-rlm_rcode_t	unlang_interpret_continue(REQUEST *request);
-
-rlm_rcode_t	unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t default_action);
-
-rlm_rcode_t	unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action);
-
-int		unlang_compile(CONF_SECTION *cs, rlm_components_t component);
-int		unlang_compile_subsection(CONF_SECTION *server_cs, char const *name1, char const *name2, rlm_components_t component);
-
 /** A callback when the the timeout occurs
  *
  * Used when a module needs wait for an event.
@@ -232,10 +218,10 @@ int		unlang_compile_subsection(CONF_SECTION *server_cs, char const *name1, char 
  * @param[in] request		the request.
  * @param[in] instance		the module instance.
  * @param[in] thread		data specific to this module instance.
- * @param[in] ctx		a local context for the callback.
+ * @param[in] rctx		a local context for the callback.
  * @param[in] fired		the time the timeout event actually fired.
  */
-typedef	void (*fr_unlang_timeout_callback_t)(REQUEST *request, void *instance, void *thread, void *ctx,
+typedef	void (*fr_unlang_timeout_callback_t)(REQUEST *request, void *instance, void *thread, void *rctx,
 					     struct timeval *fired);
 
 /** A callback when the FD is ready for reading
@@ -248,10 +234,10 @@ typedef	void (*fr_unlang_timeout_callback_t)(REQUEST *request, void *instance, v
  * @param[in] request		the current request.
  * @param[in] instance		the module instance.
  * @param[in] thread		data specific to this module instance.
- * @param[in] ctx		a local context for the callback.
+ * @param[in] rctx		a local context for the callback.
  * @param[in] fd		the file descriptor.
  */
-typedef void (*fr_unlang_fd_callback_t)(REQUEST *request, void *instance, void *thread, void *ctx, int fd);
+typedef void (*fr_unlang_fd_callback_t)(REQUEST *request, void *instance, void *thread, void *rctx, int fd);
 
 /** A callback for when the request is resumed.
  *
@@ -260,10 +246,10 @@ typedef void (*fr_unlang_fd_callback_t)(REQUEST *request, void *instance, void *
  * @param[in] request		the current request.
  * @param[in] instance		The module instance.
  * @param[in] thread		data specific to this module instance.
- * @param[in] ctx		a local context for the callback.
+ * @param[in] rctx		a local context for the callback.
  * @return a normal rlm_rcode_t.
  */
-typedef rlm_rcode_t (*fr_unlang_resume_callback_t)(REQUEST *request, void *instance, void *thread, void *ctx);
+typedef rlm_rcode_t (*fr_unlang_resume_callback_t)(REQUEST *request, void *instance, void *thread, void *rctx);
 
 /** A callback when the request gets a fr_state_action_t.
  *
@@ -275,11 +261,30 @@ typedef rlm_rcode_t (*fr_unlang_resume_callback_t)(REQUEST *request, void *insta
  * @param[in] request		The current request.
  * @param[in] instance		The module instance.
  * @param[in] thread		data specific to this module instance.
- * @param[in] ctx		for the callback.
+ * @param[in] rctx		for the callback.
  * @param[in] action		which is signalling the request.
  */
-typedef void (*fr_unlang_action_t)(REQUEST *request, void *instance, void *thread, void *ctx,
+typedef void (*fr_unlang_action_t)(REQUEST *request, void *instance, void *thread, void *rctx,
 				   fr_state_action_t action);
+
+/*
+ *	In unlang_interpret.c, but here for public consumption.
+ */
+void		unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t default_action);
+
+rlm_rcode_t	unlang_push_module_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
+					REQUEST *request, xlat_exp_t const *xlat,
+					fr_unlang_resume_callback_t callback,
+					fr_unlang_action_t signal_callback, void *uctx);
+
+rlm_rcode_t	unlang_interpret_continue(REQUEST *request);
+
+rlm_rcode_t	unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t default_action);
+
+rlm_rcode_t	unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action);
+
+int		unlang_compile(CONF_SECTION *cs, rlm_components_t component);
+int		unlang_compile_subsection(CONF_SECTION *server_cs, char const *name1, char const *name2, rlm_components_t component);
 
 int		unlang_event_timeout_add(REQUEST *request, fr_unlang_timeout_callback_t callback,
 					 void const *ctx, struct timeval *timeout);
@@ -298,8 +303,13 @@ void		unlang_resumable(REQUEST *request);
 
 void		unlang_signal(REQUEST *request, fr_state_action_t action);
 
-rlm_rcode_t	unlang_module_yield(REQUEST *request, fr_unlang_resume_callback_t callback, fr_unlang_action_t signal_callback,
-			     void *ctx);
+int		unlang_stack_depth(REQUEST *request);
+
+rlm_rcode_t	unlang_module_yield(REQUEST *request, fr_unlang_resume_callback_t callback,
+				    fr_unlang_action_t signal_callback, void *ctx);
+xlat_action_t	unlang_xlat_yield(REQUEST *request, xlat_resume_callback_t callback,
+			          fr_unlang_action_t signal_callback, void *rctx);
+
 
 int		unlang_initialize(void);
 

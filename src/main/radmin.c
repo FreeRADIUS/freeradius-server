@@ -172,14 +172,14 @@ static int client_socket(char const *server)
 	if (fr_inet_hton(&ipaddr, AF_INET, buffer, false) < 0) {
 		fprintf(stderr, "%s: Failed looking up host %s: %s\n",
 			progname, buffer, fr_syserror(errno));
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	sockfd = fr_socket_client_tcp(NULL, &ipaddr, port, false);
 	if (sockfd < 0) {
 		fprintf(stderr, "%s: Failed opening socket %s: %s\n",
 			progname, server, fr_syserror(errno));
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	return sockfd;
@@ -202,7 +202,7 @@ static ssize_t do_challenge(int sockfd)
 	if ((r != 16) || (conduit != FR_CONDUIT_AUTH_CHALLENGE)) {
 		fprintf(stderr, "%s: Failed to read challenge.\n",
 			progname);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	fr_hmac_md5(challenge, (uint8_t const *) secret, strlen(secret),
@@ -428,11 +428,11 @@ int main(int argc, char **argv)
 		case 'd':
 			if (file) {
 				fprintf(stderr, "%s: -d and -f cannot be used together.\n", progname);
-				exit(1);
+				exit(EXIT_FAILURE);
 			}
 			if (server) {
 				fprintf(stderr, "%s: -d and -s cannot be used together.\n", progname);
-				exit(1);
+				exit(EXIT_FAILURE);
 			}
 			radius_dir = optarg;
 			break;
@@ -446,7 +446,7 @@ int main(int argc, char **argv)
 			if (num_commands >= MAX_COMMANDS) {
 				fprintf(stderr, "%s: Too many '-e'\n",
 					progname);
-				exit(1);
+				exit(EXIT_FAILURE);
 			}
 
 			commands[num_commands] = optarg;
@@ -509,7 +509,7 @@ int main(int argc, char **argv)
 	 */
 	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
 		fr_perror("radmin");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	if (radius_dir) {
@@ -541,7 +541,7 @@ int main(int argc, char **argv)
 		}
 
 		cs = cf_section_alloc(NULL, NULL, "main", NULL);
-		if (!cs) exit(1);
+		if (!cs) exit(EXIT_FAILURE);
 
 		if (cf_file_read(cs, buffer) < 0) {
 			fprintf(stderr, "%s: Errors reading or parsing %s\n", progname, buffer);
@@ -571,7 +571,7 @@ int main(int argc, char **argv)
 					      FR_ITEM_POINTER(FR_TYPE_STRING, &file), NULL, T_DOUBLE_QUOTED_STRING);
 			if (rcode < 0) {
 				fprintf(stderr, "%s: Failed parsing listen section 'socket'\n", progname);
-				exit(1);
+				exit(EXIT_FAILURE);
 			}
 
 			if (!file) {
@@ -591,7 +591,7 @@ int main(int argc, char **argv)
 					      FR_ITEM_POINTER(FR_TYPE_STRING, &uid_name), NULL, T_DOUBLE_QUOTED_STRING);
 			if (rcode < 0) {
 				fprintf(stderr, "%s: Failed parsing listen section 'uid'\n", progname);
-				exit(1);
+				exit(EXIT_FAILURE);
 			}
 
 			if (!uid_name) break;
@@ -599,7 +599,7 @@ int main(int argc, char **argv)
 			pwd = getpwnam(uid_name);
 			if (!pwd) {
 				fprintf(stderr, "%s: Failed getting UID for user %s: %s\n", progname, uid_name, strerror(errno));
-				exit(1);
+				exit(EXIT_FAILURE);
 			}
 
 			if (uid != pwd->pw_uid) continue;
@@ -608,7 +608,7 @@ int main(int argc, char **argv)
 					      FR_ITEM_POINTER(FR_TYPE_STRING, &gid_name), NULL, T_DOUBLE_QUOTED_STRING);
 			if (rcode < 0) {
 				fprintf(stderr, "%s: Failed parsing listen section 'gid'\n", progname);
-				exit(1);
+				exit(EXIT_FAILURE);
 			}
 
 			if (!gid_name) break;
@@ -617,7 +617,7 @@ int main(int argc, char **argv)
 			if (!grp) {
 				fprintf(stderr, "%s: Failed resolving gid of group %s: %s\n",
 					progname, gid_name, strerror(errno));
-				exit(1);
+				exit(EXIT_FAILURE);
 			}
 
 			if (gid != grp->gr_gid) continue;
@@ -627,7 +627,7 @@ int main(int argc, char **argv)
 
 		if (!file) {
 			fprintf(stderr, "%s: Could not find control socket in %s\n", progname, buffer);
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 
 		/*
@@ -642,7 +642,7 @@ int main(int argc, char **argv)
 
 					if (!radmin_log.file) {
 						fprintf(stderr, "%s: Invalid value for 'radmin' log destination", progname);
-						exit(1);
+						exit(EXIT_FAILURE);
 					}
 				}
 			}
@@ -652,7 +652,7 @@ int main(int argc, char **argv)
 			radmin_log.fd = open(radmin_log.file, O_APPEND | O_CREAT, S_IRUSR | S_IWUSR);
 			if (radmin_log.fd < 0) {
 				fprintf(stderr, "%s: Failed opening %s: %s\n", progname, radmin_log.file, fr_syserror(errno));
-				exit(1);
+				exit(EXIT_FAILURE);
 			}
 
 			radmin_log.dst = L_DST_FILES;
@@ -663,14 +663,14 @@ int main(int argc, char **argv)
 		inputfp = fopen(input_file, "r");
 		if (!inputfp) {
 			fprintf(stderr, "%s: Failed opening %s: %s\n", progname, input_file, fr_syserror(errno));
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 	}
 
 	if (!file && !server) {
 		fprintf(stderr, "%s: Must use one of '-d' or '-f' or '-s'\n",
 			progname);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	/*
@@ -692,7 +692,7 @@ int main(int argc, char **argv)
 	 */
 	signal(SIGPIPE, SIG_IGN);
 
-	if (do_connect(&sockfd, file, server) < 0) exit(1);
+	if (do_connect(&sockfd, file, server) < 0) exit(EXIT_FAILURE);
 
 	/*
 	 *	Run commans from the command-line.
@@ -702,7 +702,7 @@ int main(int argc, char **argv)
 
 		for (i = 0; i <= num_commands; i++) {
 			len = run_command(sockfd, commands[i], buffer, sizeof(buffer));
-			if (len < 0) exit(1);
+			if (len < 0) exit(EXIT_FAILURE);
 
 			if (len == FR_CONDUIT_FAIL) exit_status = EXIT_FAILURE;
 		}
@@ -759,7 +759,7 @@ int main(int argc, char **argv)
 			if (!p) {
 				fprintf(stderr, "%s: Input line too long\n",
 					progname);
-				exit(1);
+				exit(EXIT_FAILURE);
 			}
 
 			*p = '\0';
@@ -800,7 +800,7 @@ int main(int argc, char **argv)
 		}
 
 		if (strcmp(line, "reconnect") == 0) {
-			if (do_connect(&sockfd, file, server) < 0) exit(1);
+			if (do_connect(&sockfd, file, server) < 0) exit(EXIT_FAILURE);
 			line = NULL;
 			continue;
 		}
@@ -843,14 +843,14 @@ int main(int argc, char **argv)
 			if (!quiet) fprintf(stderr, "... reconnecting ...\n");
 
 			if (do_connect(&sockfd, file, server) < 0) {
-				exit(1);
+				exit(EXIT_FAILURE);
 			}
 
 			retries++;
 			if (retries < 2) goto retry;
 
 			fprintf(stderr, "Failed to connect to server\n");
-			exit(1);
+			exit(EXIT_FAILURE);
 
 		} else if (len == FR_CONDUIT_SUCCESS) {
 			break;

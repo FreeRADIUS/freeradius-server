@@ -1363,7 +1363,7 @@ int main(int argc, char *argv[])
 
 	conf = talloc_zero(NULL, ippool_tool_t);
 	conf->cs = cf_section_alloc(NULL, NULL, "main", NULL);
-	if (!conf->cs) exit(1);
+	if (!conf->cs) exit(EXIT_FAILURE);
 
 	trigger_exec_init(conf->cs);
 
@@ -1450,7 +1450,7 @@ do { \
 		break;
 
 	case 'f':
-		if (cf_file_read(conf->cs, optarg) < 0) exit(1);
+		if (cf_file_read(conf->cs, optarg) < 0) exit(EXIT_FAILURE);
 		break;
 
 	default:
@@ -1472,7 +1472,7 @@ do { \
 	cp = cf_pair_alloc(conf->cs, "server", argv[0], T_OP_EQ, T_BARE_WORD, T_DOUBLE_QUOTED_STRING);
 	if (!cp) {
 		ERROR("Failed creating server pair");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 	cf_pair_add(conf->cs, cp);
 
@@ -1508,7 +1508,7 @@ do { \
 
 	if (!do_import && !do_export && !list_pools && !print_stats && (p == ops)) {
 		ERROR("Nothing to do!");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	/*
@@ -1537,7 +1537,7 @@ do { \
 
 	if (driver_init(conf, conf->cs, &conf->driver) < 0) {
 		ERROR("Driver initialisation failed");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	if (do_import) {
@@ -1560,7 +1560,7 @@ do { \
 			pools[0] = pool_arg;
 		} else {
 			slen = driver_get_pools(conf, &pools, conf->driver);
-			if (slen < 0) exit(1);
+			if (slen < 0) exit(EXIT_FAILURE);
 		}
 
 		for (i = 0; i < (size_t)slen; i++) {
@@ -1568,7 +1568,7 @@ do { \
 			uint64_t acum = 0;
 
 			if (driver_get_stats(&stats, conf->driver,
-					     pools[i], talloc_array_length(pools[i])) < 0) exit(1);
+					     pools[i], talloc_array_length(pools[i])) < 0) exit(EXIT_FAILURE);
 
 			pool_str = fr_asprint(conf, (char *)pools[i], talloc_array_length(pools[i]), '"');
 			INFO("pool             : %s", pool_str);
@@ -1600,7 +1600,7 @@ do { \
 		uint8_t 	**pools;
 
 		slen = driver_get_pools(conf, &pools, conf->driver);
-		if (slen < 0) exit(1);
+		if (slen < 0) exit(EXIT_FAILURE);
 		if (slen > 0) {
 			for (i = 0; i < (size_t)slen; i++) {
 				char *pool_str;
@@ -1640,7 +1640,7 @@ do { \
 		uint64_t count = 0;
 
 		if (driver_add_lease(&count, conf->driver, p) < 0) {
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 		INFO("Added %" PRIu64 " address(es)/prefix(es)", count);
 	}
@@ -1651,7 +1651,7 @@ do { \
 		uint64_t count = 0;
 
 		if (driver_remove_lease(&count, conf->driver, p) < 0) {
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 		INFO("Removed %" PRIu64 " address(es)/prefix(es)", count);
 	}
@@ -1662,7 +1662,7 @@ do { \
 		uint64_t count = 0;
 
 		if (driver_release_lease(&count, conf->driver, p) < 0) {
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 		INFO("Released %" PRIu64 " address(es)/prefix(es)", count);
 	}
@@ -1674,7 +1674,7 @@ do { \
 		size_t len, i;
 
 		if (driver_show_lease(&leases, conf->driver, p) < 0) {
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 		rad_assert(leases);
 
@@ -1739,7 +1739,7 @@ do { \
 		uint64_t count = 0;
 
 		if (driver_modify_lease(&count, conf->driver, p) < 0) {
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 		INFO("Modified %" PRIu64 " address(es)/prefix(es)", count);
 	}

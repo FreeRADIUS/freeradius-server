@@ -97,8 +97,11 @@ static rlm_rcode_t delay_add(rlm_delay_t const *inst, REQUEST *request)
 	struct timeval	when;
 	int cmp;
 
-	if (tmpl_aexpand(request, &delay, request, inst->delay, NULL, NULL) < 0) return RLM_MODULE_FAIL;
-
+	if (inst->delay) {
+		if (tmpl_aexpand(request, &delay, request, inst->delay, NULL, NULL) < 0) return RLM_MODULE_FAIL;
+	} else {
+		memset(&delay, 0, sizeof(delay));
+	}
 	/*
 	 *	Delay is zero (and reschedule is not forced)
 	 */
@@ -140,6 +143,16 @@ static rlm_rcode_t delay_add(rlm_delay_t const *inst, REQUEST *request)
 	return RLM_MODULE_YIELD;
 }
 
+static void delay_cancel(REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *ctx,
+			 fr_state_action_t action)
+{
+	if (action != FR_ACTION_DONE) return;
+
+	RDEBUG2("Cancelling delay");
+
+	if (!fr_cond_assert(unlang_event_timeout_delete(request, ctx) < 0)) return;
+}
+
 static rlm_rcode_t CC_HINT(nonnull) mod_delay(void *instance, UNUSED void *thread, REQUEST *request)
 {
 	rlm_delay_t const	*inst = instance;
@@ -154,7 +167,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_delay(void *instance, UNUSED void *threa
 	/*
 	 *	Yield, setting delay_return as the next state
 	 */
-	return unlang_module_yield(request, delay_return, NULL, NULL);
+	return unlang_module_yield(request, delay_return, delay_cancel, NULL);
 }
 
 extern rad_module_t rlm_delay;

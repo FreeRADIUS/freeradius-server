@@ -94,14 +94,17 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 static void mod_vnode_extend(void *instance, UNUSED uint32_t fflags)
 {
 	proto_detail_file_t *inst = talloc_get_type_abort(instance, proto_detail_file_t);
+	bool has_worker = false;
 
-	DEBUG("Directory %s changed", inst->directory);
+	PTHREAD_MUTEX_LOCK(&inst->parent->worker_mutex);
+	has_worker = (inst->parent->num_workers != 0);
+	PTHREAD_MUTEX_UNLOCK(&inst->parent->worker_mutex);
 
-	/*
-	 *	@todo - troll for detail.work file.  Allocate new
-	 *	proto_detail_work_t, fill it in, and start up the new
-	 *	detail worker.
-	 */
+	if (has_worker) return;
+
+	if (inst->ev) fr_event_timer_delete(inst->el, &inst->ev);
+
+	work_init(inst);
 }
 
 /** Open a detail listener
@@ -129,7 +132,7 @@ static int mod_open(void *instance)
 	}
 
 	rad_assert(inst->name == NULL);
-	inst->name = talloc_asprintf(inst, "detail directory %s", inst->directory);
+	inst->name = talloc_typed_asprintf(inst, "detail directory %s", inst->directory);
 
 	DEBUG("Listening on %s bound to virtual server %s FD %d",
 	      inst->name, cf_section_name2(inst->parent->server_cs), inst->fd);
@@ -167,7 +170,8 @@ static int work_rename(proto_detail_file_t *inst)
 	memset(&files, 0, sizeof(files));
 	if (glob(inst->filename, 0, NULL, &files) != 0) {
 	noop:
-		// @todo - insert timers to re-do the rename
+		DEBUG3("proto_detail (%s): no matching files for %s",
+		       inst->name, inst->filename);
 		globfree(&files);
 		return -1;
 	}
@@ -207,9 +211,9 @@ static int work_rename(proto_detail_file_t *inst)
 	globfree(&files);	/* Shouldn't be using anything in files now */
 
 	/*
-	 *	The file should now exist.
+	 *	The file should now exist, return the open'd FD.
 	 */
-	return 0;
+	return open(inst->filename_work, inst->mode);
 }
 
 /*
@@ -225,12 +229,16 @@ static void work_retry_timer(UNUSED fr_event_list_t *el, UNUSED struct timeval *
 /*
  *	The "detail.work" file exists.
  */
-static void work_exists(proto_detail_file_t *inst, int fd)
+static int work_exists(proto_detail_file_t *inst, int fd)
 {
+	bool			opened = false;
 	proto_detail_work_t	*work;
-	fr_listen_t		*listen;
+	fr_listen_t		*listen = NULL;
+	struct stat		st;
 
 	fr_event_vnode_func_t	funcs = { .delete = mod_vnode_delete };
+
+	DEBUG3("proto_detail (%s): Trying to lock %s", inst->name, inst->filename_work);
 
 	/*
 	 *	"detail.work" exists, try to lock it.
@@ -238,15 +246,22 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 	if (rad_lockfd_nonblock(fd, 0) < 0) {
 		struct timeval when, now;
 
-		DEBUG("Failed locking %s: %s", inst->filename_work, fr_syserror(errno));
+		DEBUG3("proto_detail (%s): Failed locking %s: %s",
+		       inst->name, inst->filename_work, fr_syserror(errno));
 
 		close(fd);
 
-		when.tv_sec = 0;
-		when.tv_usec = USEC / 10;
+		when.tv_usec = inst->lock_interval % USEC;
+		when.tv_sec = inst->lock_interval / USEC;
 
-		DEBUG3("Waiting %d.%06ds for lock on file %s",
-		       (int) when.tv_sec, (int) when.tv_usec, inst->filename_work);
+		/*
+		 *	Ensure that we don't do massive busy-polling.
+		 */
+		inst->lock_interval += inst->lock_interval / 2;
+		if (inst->lock_interval > (30 * USEC)) inst->lock_interval = 30 * USEC;
+
+		DEBUG3("proto_detail (%s): Waiting %d.%06ds for lock on file %s",
+		       inst->name, (int) when.tv_sec, (int) when.tv_usec, inst->filename_work);
 
 		gettimeofday(&now, NULL);
 		fr_timeval_add(&when, &when, &now);
@@ -255,19 +270,57 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 					  &when, work_retry_timer, inst) < 0) {
 			ERROR("Failed inserting retry timer for %s", inst->filename_work);
 		}
-		return;
+		return 0;
 	}
 
-	DEBUG3("Obtained lock and processing file %s", inst->filename_work);
+	DEBUG3("proto_detail (%s): Obtained lock and starting to process file %s",
+	       inst->name, inst->filename_work);
+
+	/*
+	 *	Ignore empty files.
+	 */
+	if (fstat(fd, &st) < 0) {
+		ERROR("Failed opening %s: %s", inst->filename_work,
+		      fr_syserror(errno));
+		unlink(inst->filename_work);
+		close(fd);
+		return -1;
+	}
+
+	if (!st.st_size) {
+		DEBUG3("proto_detail (%s): %s file is empty, ignoring it.",
+		       inst->name, inst->filename_work);
+		unlink(inst->filename_work);
+		close(fd);
+		return -1;
+	}
+
+	MEM(listen = talloc_zero(NULL, fr_listen_t));
+
+	/*
+	 *	Create a new listener, and insert it into the
+	 *	scheduler.  Shamelessly copied from proto_detail.c
+	 *	mod_open(), with changes.
+	 *
+	 *	This listener is parented from the worker.  So that
+	 *	when the worker goes away, so does the listener.
+	 */
+	listen->app_io = inst->parent->work_io;
+
+	listen->app = inst->parent->self;
+	listen->app_instance = inst->parent;
+	listen->server_cs = inst->parent->server_cs;
 
 	/*
 	 *	The worker may be in a different thread, so avoid
 	 *	talloc threading issues by using a NULL TALLOC_CTX.
 	 */
-	work = talloc(NULL, proto_detail_work_t);
+	listen->app_io_instance = work = talloc(listen, proto_detail_work_t);
 	if (!work) {
+		talloc_free(listen);
+		close(fd);
 		DEBUG("Failed allocating memory");
-		return;
+		return -1;
 	}
 
 	memcpy(work, inst->parent->work_submodule->data, sizeof(*work));
@@ -276,22 +329,23 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 	 *	Tell the worker to clean itself up.
 	 */
 	work->free_on_close = true;
+	work->ev = NULL;
 
 	work->fd = dup(fd);
 	if (work->fd < 0) {
 		struct timeval when, now;
 
-
-		DEBUG("Failed opening %s: %s", inst->filename_work, fr_syserror(errno));
+		DEBUG("proto_detail (%s): Failed opening %s: %s",
+		      inst->name, inst->filename_work, fr_syserror(errno));
 
 		close(fd);
-		talloc_free(work);
+		talloc_free(listen);
 
 		when.tv_sec = 0;
 		when.tv_usec = 10; /* hard-code! */
 
-		DEBUG3("Waiting %d.%06ds for lock on file %s",
-		       (int) when.tv_sec, (int) when.tv_usec, inst->filename_work);
+		DEBUG3("proto_detail (%s): Waiting %d.%06ds for lock on file %s",
+		       inst->name, (int) when.tv_sec, (int) when.tv_usec, inst->filename_work);
 
 		gettimeofday(&now, NULL);
 		fr_timeval_add(&when, &when, &now);
@@ -300,7 +354,7 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 					  &when, work_retry_timer, inst) < 0) {
 			ERROR("Failed inserting retry timer for %s", inst->filename_work);
 		}
-		return;
+		return 0;
 	}
 
 	/*
@@ -312,25 +366,9 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 	if (fr_event_filter_insert(inst, inst->el, fd, FR_EVENT_FILTER_VNODE,
 				   &funcs, NULL, inst) < 0) {
 		ERROR("Failed adding work socket to event loop: %s", fr_strerror());
-		goto error;
+		close(fd);
+		goto detach;
 	}
-
-	/*
-	 *	Create a new listener, and insert it into the
-	 *	scheduler.  Shameless copied from proto_detail.c
-	 *	mod_open(), with changes.
-	 *
-	 *	This listener is parented from the worker.  So that
-	 *	when the worker goes away, so does the listener.
-	 */
-	listen = talloc_zero(work, fr_listen_t);
-
-	listen->app_io = inst->parent->work_io;
-	listen->app_io_instance = work;
-
-	listen->app = inst->parent->self;
-	listen->app_instance = inst->parent;
-	listen->server_cs = inst->parent->server_cs;
 
 	/*
 	 *	Yuck.
@@ -345,6 +383,20 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 	listen->default_message_size = inst->parent->max_packet_size;
 	listen->num_messages = inst->parent->num_messages;
 
+	PTHREAD_MUTEX_LOCK(&inst->parent->worker_mutex);
+	inst->parent->num_workers++;
+	PTHREAD_MUTEX_UNLOCK(&inst->parent->worker_mutex);
+
+	/*
+	 *	Instantiate the new worker.
+	 */
+	if (listen->app_io->instantiate &&
+	    (listen->app_io->instantiate(listen->app_io_instance,
+					 inst->parent->work_io_conf) < 0)) {
+		ERROR("Failed instantiating %s", listen->app_io->name);
+		goto error;
+	}
+
 	/*
 	 *	Open the detail.work file.
 	 */
@@ -352,20 +404,28 @@ static void work_exists(proto_detail_file_t *inst, int fd)
 		ERROR("Failed opening %s", listen->app_io->name);
 		goto error;
 	}
+	opened = true;
 
 	if (!fr_schedule_socket_add(inst->parent->sc, listen)) {
 	error:
 		(void) fr_event_fd_delete(inst->el, fd, FR_EVENT_FILTER_VNODE);
-		close(fd);
 
-		(void) fr_event_fd_delete(inst->el, work->fd, FR_EVENT_FILTER_VNODE);
-		(void) fr_event_fd_delete(inst->el, work->fd, FR_EVENT_FILTER_IO);
-		close(work->fd);
-		talloc_free(work);
-		return;
+		if (opened) {
+			(void) listen->app_io->close(listen->app_io_instance);
+			listen = NULL;
+		} else {
+			close(fd);
+		}
+
+	detach:
+		if (listen) (void) listen->app_io->detach(listen->app_io_instance);
+		talloc_free(listen);
+		return -1;
 	}
 
-	return;
+	inst->vnode_fd = fd;
+
+	return 0;
 }
 
 
@@ -373,15 +433,11 @@ static void mod_vnode_delete(fr_event_list_t *el, int fd, UNUSED int fflags, voi
 {
 	proto_detail_file_t *inst = talloc_get_type_abort(ctx, proto_detail_file_t);
 
-	DEBUG("Deleted %s", inst->filename_work);
+	DEBUG("proto_detail (%s): Deleted %s", inst->name, inst->filename_work);
 
 	(void) fr_event_fd_delete(el, fd, FR_EVENT_FILTER_VNODE);
-
-	/*
-	 *	The worker may or may not still exist if the file was
-	 *	deleted.
-	 */
-	inst->parent->work_io_instance = NULL;
+	close(fd);
+	inst->vnode_fd = -1;
 
 	/*
 	 *	Re-initialize the state machine.
@@ -396,28 +452,62 @@ static void mod_vnode_delete(fr_event_list_t *el, int fd, UNUSED int fflags, voi
 
 static void work_init(proto_detail_file_t *inst)
 {
-	int fd, tries;
+	int fd;
+	bool has_worker;
 
-	tries = 0;
+	PTHREAD_MUTEX_LOCK(&inst->parent->worker_mutex);
+	has_worker = (inst->parent->num_workers != 0);
+	PTHREAD_MUTEX_UNLOCK(&inst->parent->worker_mutex);
+
+	/*
+	 *	The worker is still processing the file, poll until
+	 *	it's done.
+	 */
+	if (has_worker) {
+		DEBUG3("proto_detail (%s): worker %s is still alive, waiting for it to finish.",
+		       inst->name, inst->filename_work);
+		goto delay;
+	}
 
 	/*
 	 *	See if there is a "detail.work" file.  If not, try to
 	 *	rename an existing file to "detail.work".
 	 */
-redo:
 	DEBUG3("Trying to open %s", inst->filename_work);
 	fd = open(inst->filename_work, inst->mode);
+
+	/*
+	 *	If the work file didn't exist, try to rename detail* ->
+	 *	detail.work, and return the newly opened file.
+	 */
+	if (fd < 0) {
+		if (errno != ENOENT) {
+			DEBUG("proto_detail (%s): Failed opening %s: %s",
+			      inst->name, inst->filename_work,
+			      fr_syserror(errno));
+			goto delay;
+		}
+
+		fd = work_rename(inst);
+	}
+
+	/*
+	 *	The work file still doesn't exist.  Go set up timers,
+	 *	or wait for an event which signals us that something
+	 *	in the directory changed.
+	 */
 	if (fd < 0) {
 		struct timeval when, now;
 
+#ifdef __linux__
 		/*
-		 *	Rename a "detail*" to "detail.work" file.
+		 *	Wait for the directory to change before
+		 *	looking for another "detail" file.
 		 */
-		if (work_rename(inst) == 0) {
-			tries++;
-			if (tries < 5) goto redo;
-		}
+		if (!inst->poll_interval) return;
+#endif
 
+delay:
 		/*
 		 *	Check every N seconds.
 		 */
@@ -438,13 +528,15 @@ redo:
 		return;
 	}
 
+	inst->lock_interval = USEC / 10;
+
 	/*
 	 *	It exists, go process it!
 	 *
 	 *	We will get back to the main loop when the
 	 *	"detail.work" file is deleted.
 	 */
-	work_exists(inst, fd);
+	if (work_exists(inst, fd) < 0) goto delay;
 }
 
 
@@ -452,17 +544,48 @@ redo:
  *
  * @param[in] instance of the detail worker
  * @param[in] el the event list
+ * @param[in] nr context from the network side
  */
-static void mod_event_list_set(void *instance, fr_event_list_t *el)
+static void mod_event_list_set(void *instance, fr_event_list_t *el, UNUSED void *nr)
 {
 	proto_detail_file_t	*inst = talloc_get_type_abort(instance, proto_detail_file_t);
+#ifdef __linux__
+	struct timeval when;
+#endif
 
 	inst->el = el;
 
 	/*
 	 *	Initialize the work state machine.
 	 */
+#ifndef __linux__
 	work_init(inst);
+#else
+
+	/*
+	 *	We're not changing UID, etc.  Start processing the
+	 *	detail files now.
+	 */
+	if (!main_config.allow_core_dumps) {
+		work_init(inst);
+		return;
+	}
+
+	/*
+	 *	Delay for a bit, before reading the detail files.
+	 *	This gives the server time to call
+	 *	rad_suid_down_permanent(), and for /proc/PID to
+	 *	therefore change permissions, so that libkqueue can
+	 *	read it.
+	 */
+	gettimeofday(&when, NULL);
+	when.tv_sec +=1;
+
+	if (fr_event_timer_insert(inst, inst->el, &inst->ev,
+				  &when, work_retry_timer, inst) < 0) {
+		ERROR("Failed inserting poll timer for %s", inst->filename_work);
+	}
+#endif
 }
 
 
@@ -480,6 +603,28 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	dl_instance_t const	*dl_inst;
 	char			*p;
 
+#ifdef __linux__
+	/*
+	 *	The kqueue API takes an FD, but inotify requires a filename.
+	 *	libkqueue uses /proc/PID/fd/# to look up the FD -> filename mapping.
+	 *
+	 *	However, if you start the server as "root", and then swap to "radiusd",
+	 *	/proc/PID will be owned by "root" for security reasons.  The only way
+	 *	to make /proc/PID owned by "radiusd" is to set the DUMPABLE flag.
+	 *
+	 *	Instead of making the poor sysadmin figure this out,
+	 *	we check for this situation, and give them a
+	 *	descriptive message telling them what to do.
+	 */
+	if (!main_config.allow_core_dumps &&
+	    main_config.uid_name && *main_config.uid_name &&
+	    main_config.server_uid != 0) {
+		cf_log_err(cs, "Cannot start detail file reader due to Linux limitations.");
+		cf_log_err(cs, "Please set 'allow_core_dumps = true' in the main configuration file.");
+		return -1;
+	}
+#endif
+
 	/*
 	 *	Find the dl_instance_t holding our instance data
 	 *	so we can find out what the parent of our instance
@@ -488,12 +633,18 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	dl_inst = dl_instance_find(instance);
 	rad_assert(dl_inst);
 
+#ifndef __linux__
+	/*
+	 *	Linux inotify works.  So we allow poll_interval==0
+	 */
 	FR_INTEGER_BOUND_CHECK("poll_interval", inst->poll_interval, >=, 1);
+#endif
 	FR_INTEGER_BOUND_CHECK("poll_interval", inst->poll_interval, <=, 3600);
 
 	inst->parent = talloc_get_type_abort(dl_inst->parent->data, proto_detail_t);
 	inst->cs = cs;
 	inst->fd = -1;
+	inst->vnode = true;
 
 	inst->directory = p = talloc_strdup(inst, inst->filename);
 
@@ -505,10 +656,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 
 	*p = '\0';
 
-	DEBUG("Directory %s", inst->directory);
-
 	if (!inst->filename_work) {
-		inst->filename_work = talloc_asprintf(inst, "%s/detail.work", inst->directory);
+		inst->filename_work = talloc_typed_asprintf(inst, "%s/detail.work", inst->directory);
 	}
 
 	/*
@@ -528,8 +677,13 @@ static int mod_detach(void *instance)
 	 *	"copy timer from -> to, which means we only have to
 	 *	delete our child event loop from the parent on close.
 	 */
-
 	close(inst->fd);
+
+	if (inst->vnode_fd >= 0) {
+		(void) fr_event_fd_delete(inst->el, inst->vnode_fd, FR_EVENT_FILTER_VNODE);
+		close(inst->vnode_fd);
+	}
+
 	return 0;
 }
 
@@ -547,7 +701,7 @@ fr_app_io_t proto_detail_file = {
 	.bootstrap		= mod_bootstrap,
 	.instantiate		= mod_instantiate,
 
-	.default_message_size	= 256,
+	.default_message_size	= 65536,
 	.default_reply_size	= 32,
 
 	.open			= mod_open,

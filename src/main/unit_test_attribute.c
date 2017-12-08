@@ -655,7 +655,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 		if (!fp) {
 			fprintf(stderr, "Error opening %s: %s\n",
 				directory, fr_syserror(errno));
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 
 		filename = directory;
@@ -676,7 +676,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 			if (!feof(fp)) {
 				fprintf(stderr, "Line %d too long in %s\n",
 					lineno, directory);
-				exit(1);
+				exit(EXIT_FAILURE);
 			}
 		} else {
 			*p = '\0';
@@ -700,7 +700,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 		q = strchr(p, ' ');
 		if ((size_t)(q - p) > (sizeof(test_type) - 1)) {
 			fprintf(stderr, "Verb \"%.*s\" is too long\n", (int)(q - p), p);
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 
 		strlcpy(test_type, p, (q - p) + 1);
@@ -710,7 +710,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 			if (outlen == 0) {
 				fprintf(stderr, "Parse error in line %d of %s\n",
 					lineno, directory);
-				exit(1);
+				exit(EXIT_FAILURE);
 			}
 
 		print_hex:
@@ -739,7 +739,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 			if (strcmp(p + 5, output) != 0) {
 				fprintf(stderr, "Mismatch at line %d of %s\n\tgot      : %s\n\texpected : %s\n",
 					lineno, directory, output, p + 5);
-				exit(1);
+				exit(EXIT_FAILURE);
 			}
 			continue;
 		}
@@ -770,7 +770,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 				if (len < 0) {
 					fprintf(stderr, "Failed encoding %s: %s\n",
 						vp->da->name, fr_strerror());
-					exit(1);
+					exit(EXIT_FAILURE);
 				}
 
 				attr += len;
@@ -795,7 +795,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 				len = encode_hex(p + 7, data, sizeof(data));
 				if (len == 0) {
 					fprintf(stderr, "Failed decoding hex string at line %d of %s\n", lineno, directory);
-					exit(1);
+					exit(EXIT_FAILURE);
 				}
 			}
 
@@ -811,7 +811,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 
 				if (my_len > len) {
 					fprintf(stderr, "Internal sanity check failed at %d\n", __LINE__);
-					exit(1);
+					exit(EXIT_FAILURE);
 				}
 
 				attr += my_len;
@@ -870,7 +870,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 				if (len < 0) {
 					fprintf(stderr, "Failed encoding %s: %s\n",
 						vp->da->name, fr_strerror());
-					exit(1);
+					exit(EXIT_FAILURE);
 				}
 				attr += len;
 			};
@@ -892,7 +892,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 				len = encode_hex(p + 12, data, sizeof(data));
 				if (len == 0) {
 					fprintf(stderr, "Failed decoding hex string at line %d of %s\n", lineno, directory);
-					exit(1);
+					exit(EXIT_FAILURE);
 				}
 			}
 
@@ -994,7 +994,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 				len = encode_hex(p + 14, data, sizeof(data));
 				if (len == 0) {
 					fprintf(stderr, "Failed decoding hex string at line %d of %s\n", lineno, directory);
-					exit(1);
+					exit(EXIT_FAILURE);
 				}
 			}
 
@@ -1099,7 +1099,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 
 		fprintf(stderr, "Unknown input at line %d of %s\n", lineno, directory);
 
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	if (fp != stdin) fclose(fp);
@@ -1115,7 +1115,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -x                     Debugging mode.\n");
 	fprintf(stderr, "  -M                     Show talloc memory report.\n");
 
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 
 int main(int argc, char *argv[])

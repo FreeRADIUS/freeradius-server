@@ -809,12 +809,12 @@ check_active:
 	original[0] = rr->code;
 	original[1] = 0;	/* not looked at by fr_radius_verify() */
 	original[2] = 0;
-	original[3] = 0;
+	original[3] = 20;	/* for debugging */
 	memcpy(original + 4, rr->vector, sizeof(rr->vector));
 
 	if (fr_radius_verify(c->buffer, original,
 			     (uint8_t const *) c->inst->secret, strlen(c->inst->secret)) < 0) {
-		RWDEBUG("Ignoring response with invalid signature");
+		RWDEBUG("Ignoring response with invalid signature: %s", fr_strerror());
 		goto redo;
 	}
 
@@ -1059,9 +1059,13 @@ done:
 
 static int retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 {
+	bool				resign = false;
 	int				rcode;
 	rlm_radius_udp_connection_t	*c = u->c;
 	REQUEST				*request = u->link->request;
+
+	rad_assert(u->packet != NULL);
+	rad_assert(u->packet_len >= 20);
 
 	/*
 	 *	RADIUS layer fixups for Accounting-Request packets.
@@ -1120,14 +1124,7 @@ static int retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 			delay = htonl(delay);
 			memcpy(u->acct_delay_time, &delay, 4);
 
-			/*
-			 *	Recalculate the packet signature again.
-			 */
-			if (fr_radius_sign(u->packet, NULL, (uint8_t const *) c->inst->secret,
-					   strlen(c->inst->secret)) < 0) {
-				REDEBUG("Failed re-signing packet");
-				return -1;
-			}
+			resign = true;
 		}
 	}
 
@@ -1143,23 +1140,29 @@ static int retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 
 		while (attr < end) {
 			if (attr[0] != FR_EVENT_TIMESTAMP) {
-				attr += attr[2];
+				attr += attr[1];
+				continue;
 			}
 
 			event_time = htonl(time(NULL));
 			rad_assert(attr[1] == 6);
 			memcpy(attr + 2, &event_time, 4);
 
-			/*
-			 *	Recalculate the packet signature again.
-			 */
-			if (fr_radius_sign(u->packet, NULL, (uint8_t const *) c->inst->secret,
-					   strlen(c->inst->secret)) < 0) {
-				REDEBUG("Failed re-signing packet");
-				return -1;
-			}
+			resign = true;
 			break;
 		}
+	}
+
+	/*
+	 *	Recalculate the packet signature again.
+	 */
+	if (resign) {
+		if (fr_radius_sign(u->packet, NULL, (uint8_t const *) c->inst->secret,
+				   strlen(c->inst->secret)) < 0) {
+			REDEBUG("Failed re-signing packet");
+			return -1;
+		}
+		memcpy(u->rr->vector, u->packet + 4, AUTH_VECTOR_LEN);
 	}
 
 	RDEBUG("Retransmitting request (%d/%d).  Expecting response within %d.%06ds",
@@ -1534,6 +1537,8 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 		return -1;
 	}
 
+	memcpy(u->rr->vector, c->buffer + 4, AUTH_VECTOR_LEN);
+
 	/*
 	 *	Print out the actual value of the Message-Authenticator attribute
 	 */
@@ -1582,14 +1587,17 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 		return 2;
 	}
 
-	if (u != c->status_u) {
-		/*
-		 *	Only copy the packet if we're not replicating,
-		 *	and we're not doing Status-Server checks.
-		 */
-		MEM(u->packet = talloc_memdup(u, c->buffer, packet_len));
-		u->packet_len = packet_len;
+	/*
+	 *	Copy the packet in case it needs retransmitting.
+	 */
+	MEM(u->packet = talloc_memdup(u, c->buffer, packet_len));
+	u->packet_len = packet_len;
 
+	/*
+	 *	Print out helpful debugging messages for non-status
+	 *	checks.
+	 */
+	if (u != c->status_u) {
 		if (!c->inst->parent->synchronous) {
 			RDEBUG("Proxying request.  Expecting response within %d.%06ds",
 			       u->timer.rt / USEC, u->timer.rt % USEC);
@@ -1615,6 +1623,9 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	 *	Status-Server only checks.
 	 */
 	if (u->timer.count == 0) {
+		u->link->time_sent = fr_time();
+		fr_time_to_timeval(&u->timer.start, u->link->time_sent);
+
 		if (rr_track_start(&u->timer) < 0) {
 			RDEBUG("%s - Failed starting retransmit tracking for connection %s",
 			       c->inst->parent->name, c->name);
@@ -2449,6 +2460,7 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 
 	case PACKET_STATE_RESUMABLE: /* was replicated */
 		state_transition(u, PACKET_STATE_FINISHED);
+		/* FALL-THROUGH */
 
 	case PACKET_STATE_FINISHED:
 		rcode = RLM_MODULE_OK;

@@ -1065,7 +1065,7 @@ static int proto_ldap_socket_parse(CONF_SECTION *cs, rad_listen_t *listen)
 	talloc_set_type(inst, proto_ldap_inst_t);
 
 	rad_assert(inst->handle_config.server_str[0]);
-	inst->handle_config.name = talloc_asprintf(inst, "proto_ldap_conn (%s)", listen->server);
+	inst->handle_config.name = talloc_typed_asprintf(inst, "proto_ldap_conn (%s)", listen->server);
 
 	memcpy(&inst->handle_config.server, &inst->handle_config.server_str[0], sizeof(inst->handle_config.server));
 

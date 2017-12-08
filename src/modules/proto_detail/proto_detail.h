@@ -25,6 +25,8 @@
  */
 RCSIDH(detail_h, "$Id$")
 
+#include <freeradius-devel/modules.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -60,7 +62,12 @@ typedef struct proto_detail_t {
 	fr_schedule_t			*sc;				//!< the scheduler, where we insert new readers
 
 	fr_listen_t const		*listen;			//!< The listener structure which describes
-									///< the I/O path.
+									//!< the I/O path.
+#ifdef HAVE_PTHREAD_H
+	pthread_mutex_t			worker_mutex;			//!< for the workers
+#endif
+	int				num_workers;			//!< number of workers
+
 } proto_detail_t;
 
 /*
@@ -72,6 +79,7 @@ typedef struct proto_detail_work_t {
 	char const			*name;			//!< debug name for printing
 
 	int				fd;			//!< file descriptor
+	int				vnode_fd;      		//!< file descriptor for vnode_delete
 
 	fr_event_list_t			*el;			//!< for various timers
 
@@ -81,17 +89,30 @@ typedef struct proto_detail_work_t {
 
 	uint32_t			poll_interval;		//!< interval between polling
 
+	uint32_t			lock_interval;		//!< interval between trying the locks.
+
+	uint32_t			irt;
+	uint32_t			mrt;
+	uint32_t			mrc;
+	uint32_t			mrd;
+	uint32_t			max_outstanding;	//!< number of packets to run in parallel
+	uint32_t       			outstanding;		//!< number of currently outstanding records;
+
+	fr_dlist_t			list;			//!< for retransmissions
+
 	bool				vnode;			//!< are we the vnode instance,
 								//!< or the filename_work instance?
 	bool				eof;			//!< are we at EOF on reading?
 	bool				closing;		//!< we should be closing the file
 
 	bool				track_progress;		//!< do we track progress by writing?
+	bool				retransmit;		//!< are we retransmitting on error?
+	bool				paused;			//!< Is reading paused?
 	bool				free_on_close;		//!< free the worker on close
 
 	int				mode;			//!< O_RDWR or O_RDONLY
 
-	int				outstanding;		//!< number of outstanding records;
+	int				count;			//!< number of packets we read from this file.
 
 	size_t				last_search;		//!< where we last searched in the buffer
 								//!< MUST be offset, as the buffers can change.
@@ -101,7 +122,25 @@ typedef struct proto_detail_work_t {
 	off_t				read_offset;		//!< where we're reading from in filename_work
 
 	fr_event_timer_t const		*ev;			//!< for detail file timers.
+	RADCLIENT			*client;		//!< so the rest of the server doesn't complain
+
+	fr_network_t			*nr;			//!< for Linux-specific callbacks
 } proto_detail_work_t;
+
+typedef struct proto_detail_process_t {
+	rlm_components_t	recv_type;
+	rlm_components_t	send_type;
+} proto_detail_process_t;
+
+#ifdef HAVE_PTHREAD_H
+#include <pthread.h>
+#define PTHREAD_MUTEX_LOCK   pthread_mutex_lock
+#define PTHREAD_MUTEX_UNLOCK pthread_mutex_unlock
+
+#else
+#define PTHREAD_MUTEX_LOCK
+#define PTHREAD_MUTEX_UNLOCK
+#endif
 
 #ifdef __cplusplus
 }

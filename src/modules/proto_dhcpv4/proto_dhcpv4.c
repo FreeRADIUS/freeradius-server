@@ -300,7 +300,7 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 	}
 
 	packet->vps = request->packet->vps; /* hackity hack */
-	
+
 	/*
 	 *	Our response doesn't go through process.c
 	 */
@@ -595,7 +595,7 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 		request->reply->dst_port = request->packet->dst_port;
 
 		vp = fr_pair_find_by_num(request->reply->vps, 0, FR_PACKET_DST_PORT, TAG_ANY);
-		if (vp) request->reply->dst_port = vp->vp_uint32;
+		if (vp) request->reply->dst_port = vp->vp_uint16;
 
 		return RLM_MODULE_OK;
 	}

@@ -1,4 +1,4 @@
-FROM freeradius/debian7-source
+FROM freeradius/debian7-deps
 
 WORKDIR /usr/local/src/repositories/freeradius-server
 RUN git checkout v3.0.x
@@ -11,7 +11,7 @@ WORKDIR certs
 RUN make
 WORKDIR /
 
-FROM freeradius/debian7-source
+FROM freeradius/debian7-deps
 COPY --from=0 /opt/freeradius /opt/freeradius
 
 EXPOSE 1812/udp 1813/udp

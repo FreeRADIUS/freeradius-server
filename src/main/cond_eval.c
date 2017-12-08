@@ -287,7 +287,7 @@ static int cond_cmp_values(REQUEST *request, fr_cond_t const *c, fr_value_box_t 
 		EVAL_DEBUG("CMP WITH PAIRCOMPARE");
 		rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
 
-		vp = fr_pair_afrom_da(request, map->lhs->tmpl_da);
+		MEM(vp = fr_pair_afrom_da(request, map->lhs->tmpl_da));
 		vp->op = c->data.map->op;
 
 		fr_value_box_copy(vp, &vp->data, rhs);

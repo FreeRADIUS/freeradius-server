@@ -1,0 +1,17 @@
+#
+#  PRE: parallel
+#
+
+# Ensure if one module yields, the rest execute
+parallel {
+	reschedule
+	update request {
+		Tmp-String-0 := 'foo'
+	}
+}
+
+if (&Tmp-String-0 != 'foo') {
+	test_fail
+}
+
+success

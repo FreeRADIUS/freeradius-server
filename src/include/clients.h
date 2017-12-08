@@ -29,6 +29,9 @@ RCSIDH(clients_h, "$Id$")
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#include <freeradius-devel/io/time.h>
+
 /** Describes a host allowed to send packets to the server
  *
  */
@@ -43,6 +46,14 @@ typedef struct radclient {
 	char const		*secret;		//!< Secret PSK.
 
 	bool			message_authenticator;	//!< Require RADIUS message authenticator in requests.
+	bool			dynamic;		//!< Whether the client was dynamically defined.
+	bool			active;			//!< for dynamic clients
+	bool			negative;		//!< negative cache entry
+	bool			expired;		//!< has it expired?
+
+#ifdef WITH_TLS
+	bool			tls_required;		//!< whether TLS encryption is required.
+#endif
 
 	char const		*nas_type;		//!< Type of client (arbitrary).
 
@@ -70,22 +81,15 @@ typedef struct radclient {
 #ifdef WITH_TCP
 	fr_socket_limit_t	limit;			//!< Connections per client (TCP clients only).
 #endif
-#ifdef WITH_TLS
-	bool			tls_required;		//!< whether TLS encryption is required.
-#endif
 
 #ifdef WITH_DYNAMIC_CLIENTS
-	uint32_t		lifetime;		//!< How long before the client is removed.
-	uint32_t		dynamic;		//!< Whether the client was dynamically defined.
+	fr_dlist_t		pending;		//!< if !active, ordered list of pending clients
+	fr_dlist_t		packets;		//!< list of pending packets
+	uint32_t		outstanding;		//!< number of requests outstanding
 	time_t			created;		//!< When the client was created.
-
-	time_t			last_new_client;	//!< Used for relate limiting addition and deletion of
-							//!< dynamic clients.
-
-	char const		*client_server;		//!< Name of the virtual server for creating dynamic clients
-	CONF_SECTION		*client_server_cs;	//!< Virtual server for creating dynamic clients
-
-	bool			rate_limit;		//!< Where addition of clients should be rate limited.
+	fr_ipaddr_t		network;		//!< encapsulating network
+	void			*ctx;			//!< for timeouts
+	fr_event_timer_t const	*ev;			//!< cleanup timer for dynamic clients
 #endif
 } RADCLIENT;
 
@@ -136,7 +140,7 @@ bool		client_add(RADCLIENT_LIST *clients, RADCLIENT *client);
 #ifdef WITH_DYNAMIC_CLIENTS
 void		client_delete(RADCLIENT_LIST *clients, RADCLIENT *client);
 
-RADCLIENT	*client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request);
+RADCLIENT	*client_afrom_request(TALLOC_CTX *ctx, REQUEST *request);
 #endif
 
 int		client_map_section(CONF_SECTION *out, CONF_SECTION const *map, client_value_cb_t func, void *data);
@@ -150,10 +154,6 @@ RADCLIENT	*client_afrom_query(TALLOC_CTX *ctx, char const *identifier, char cons
 RADCLIENT	*client_find(RADCLIENT_LIST const *clients, fr_ipaddr_t const *ipaddr, int proto);
 
 RADCLIENT	*client_findbynumber(RADCLIENT_LIST const *clients, int number);
-
-RADCLIENT	*client_find_old(fr_ipaddr_t const *ipaddr);
-
-bool		client_add_dynamic(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c);
 
 RADCLIENT	*client_read(char const *filename, CONF_SECTION *server_cs, bool check_dns);
 #ifdef __cplusplus

@@ -154,6 +154,13 @@ typedef struct main_config {
 
 	bool		write_pid;			//!< write the PID file
 
+#ifdef HAVE_SETUID
+	uid_t		server_uid;			//!< UID we run as
+	gid_t		server_gid;			//!< GID we run as
+	char const	*uid_name;
+	char const	*gid_name;
+#endif
+
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 	char const	*allow_vulnerable_openssl;	//!< The CVE number of the last security issue acknowledged.
 #endif
@@ -381,7 +388,6 @@ void		rdebug_proto_pair_list(fr_log_lvl_t level, REQUEST *request, VALUE_PAIR *v
 int		log_err (char *);
 
 /* util.c */
-#define MEM(x) if (!(x)) { ERROR("%s[%u] OUT OF MEMORY", __FILE__, __LINE__); _fr_exit_now(__FILE__, __LINE__, 1); }
 void (*reset_signal(int signo, void (*func)(int)))(int);
 int		rad_mkdir(char *directory, mode_t mode, uid_t uid, gid_t gid);
 size_t		rad_filename_make_safe(UNUSED REQUEST *request, char *out, size_t outlen,

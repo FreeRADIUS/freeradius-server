@@ -459,7 +459,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				break;
 
 			case FR_PACKET_DST_PORT:
-				request->packet->dst_port = (vp->vp_uint32 & 0xffff);
+				request->packet->dst_port = vp->vp_uint16;
 				break;
 
 			case FR_PACKET_DST_IP_ADDRESS:
@@ -468,12 +468,11 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				break;
 
 			case FR_PACKET_SRC_PORT:
-				if ((vp->vp_uint32 < 1024) ||
-				    (vp->vp_uint32 > 65535)) {
-					ERROR("Invalid value '%u' for Packet-Src-Port", vp->vp_uint32);
+				if (vp->vp_uint16 < 1024) {
+					ERROR("Invalid value '%u' for Packet-Src-Port", vp->vp_uint16);
 					goto error;
 				}
-				request->packet->src_port = (vp->vp_uint32 & 0xffff);
+				request->packet->src_port = vp->vp_uint16;
 				break;
 
 			case FR_PACKET_SRC_IP_ADDRESS:

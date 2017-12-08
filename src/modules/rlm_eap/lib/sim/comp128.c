@@ -396,7 +396,7 @@ static int hextoint(char x)
 
 	fprintf(stderr, "Bad input.\n");
 
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 
 int main(int argc, char **argv)
@@ -411,7 +411,7 @@ int main(int argc, char **argv)
 	    !(version = atoi(argv[3]))) {
 		error:
 		fprintf(stderr, "Usage: %s 0x<key> 0x<rand> [1|2|3]\n", argv[0]);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	for (i = 0; i < 16; i++) {

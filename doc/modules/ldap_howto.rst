@@ -1093,7 +1093,7 @@ the machine.  The first one is done in a regular detail file as defined in the
 following::
 
     detail detail1 {
-        filename = ${radacctdir}/%{Client-IP-Address}/detail-%Y%m%d
+        filename = ${radacctdir}/%{Packet-Src-IP-Address}/detail-%Y%m%d
         permissions = 0600
         dir_permissions = 0755
     }

@@ -1477,7 +1477,7 @@ static size_t rest_response_body(void *ptr, size_t size, size_t nmemb, void *use
 
 	char const *p = ptr, *q;
 	char *tmp;
-	
+
 	size_t const t = (size * nmemb);
 	size_t needed;
 

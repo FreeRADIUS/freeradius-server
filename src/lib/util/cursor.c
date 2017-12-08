@@ -257,8 +257,6 @@ void CC_HINT(hot) fr_cursor_prepend(fr_cursor_t *cursor, void *v)
 
 		*NEXT_PTR(v) = NULL;				/* Only insert one at a time */
 
-		fr_cursor_next(cursor);				/* Update current */
-
 		return;
 	}
 
@@ -291,8 +289,6 @@ void CC_HINT(hot) fr_cursor_append(fr_cursor_t *cursor, void *v)
 	if (!*(cursor->head)) {
 		*cursor->head = v;
 		*NEXT_PTR(v) = NULL;				/* Only insert one at a time */
-
-		fr_cursor_next(cursor);				/* Update current */
 
 		return;
 	}
@@ -771,7 +767,8 @@ void test_cursor_append_empty(void)
 	fr_cursor_append(&cursor, &item1);
 
 	item_p = fr_cursor_current(&cursor);
-	TEST_CHECK(item_p == &item1);
+	TEST_CHECK(!item_p);
+	TEST_CHECK(fr_cursor_next_peek(&cursor) == &item1);
 	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == NULL);
 }
 
@@ -790,7 +787,8 @@ void test_cursor_append_empty_3(void)
 	fr_cursor_append(&cursor, &item3);
 
 	item_p = fr_cursor_current(&cursor);
-	TEST_CHECK(item_p == &item1);
+	TEST_CHECK(!item_p);
+	TEST_CHECK(fr_cursor_next(&cursor) == &item1);
 	TEST_CHECK(fr_cursor_next(&cursor) == &item2);
 	TEST_CHECK(fr_cursor_tail(&cursor) == &item3);
 }
@@ -806,7 +804,8 @@ void test_cursor_prepend_empty(void)
 	fr_cursor_prepend(&cursor, &item1);
 
 	item_p = fr_cursor_current(&cursor);
-	TEST_CHECK(item_p == &item1);
+	TEST_CHECK(!item_p);
+	TEST_CHECK(fr_cursor_next_peek(&cursor) == &item1);
 	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == NULL);
 }
 
@@ -821,7 +820,8 @@ void test_cursor_insert_into_empty(void)
 	fr_cursor_insert(&cursor, &item1);
 
 	item_p = fr_cursor_current(&cursor);
-	TEST_CHECK(item_p == &item1);
+	TEST_CHECK(!item_p);
+	TEST_CHECK(fr_cursor_next_peek(&cursor) == &item1);
 	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == NULL);
 }
 
@@ -840,9 +840,10 @@ void test_cursor_insert_into_empty_3(void)
 	fr_cursor_insert(&cursor, &item3);
 
 	item_p = fr_cursor_current(&cursor);
-	TEST_CHECK(item_p == &item1);
-	TEST_CHECK(fr_cursor_next(&cursor) == &item3);
-	TEST_CHECK(fr_cursor_tail(&cursor) == &item2);
+	TEST_CHECK(!item_p);
+	TEST_CHECK(fr_cursor_next(&cursor) == &item1);
+	TEST_CHECK(fr_cursor_next(&cursor) == &item2);
+	TEST_CHECK(fr_cursor_tail(&cursor) == &item3);
 }
 
 void test_cursor_replace_in_empty(void)
@@ -856,7 +857,8 @@ void test_cursor_replace_in_empty(void)
 	TEST_CHECK(!fr_cursor_replace(&cursor, &item1));
 
 	item_p = fr_cursor_current(&cursor);
-	TEST_CHECK(item_p == &item1);
+	TEST_CHECK(!item_p);
+	TEST_CHECK(fr_cursor_next_peek(&cursor) == &item1);
 	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == NULL);
 }
 
@@ -1665,9 +1667,9 @@ void test_cursor_free(void)
 	fr_cursor_list_free(&cursor);
 
 	TEST_CHECK(fr_cursor_current(&cursor) == NULL);
-	TEST_CHECK(fr_cursor_list_prev_peek(&cursor) == item1);
-	TEST_CHECK(fr_cursor_tail(&cursor) == item1);
-	TEST_CHECK(fr_cursor_head(&cursor) == item1);
+	TEST_CHECK(!fr_cursor_list_prev_peek(&cursor));
+	TEST_CHECK(!fr_cursor_tail(&cursor));
+	TEST_CHECK(!fr_cursor_head(&cursor));
 
 	item_p = fr_cursor_remove(&cursor);
 	talloc_free(item_p);

@@ -149,16 +149,6 @@ fr_message_set_t *fr_message_set_create(TALLOC_CTX *ctx, int num_messages, size_
 		return NULL;
 	}
 
-	if (ring_buffer_size < 1024) {
-		fr_strerror_printf("Ring buffer size must be at least 1024");
-		return NULL;
-	}
-
-	if ((ring_buffer_size & (ring_buffer_size - 1)) != 0) {
-		fr_strerror_printf("Ring buffer size must be a power of 2, not %zd", ring_buffer_size);
-		return NULL;
-	}
-
 	ms = talloc_zero(ctx, fr_message_set_t);
 	if (!ms) {
 	nomem:
@@ -273,8 +263,10 @@ fr_message_t *fr_message_localize(TALLOC_CTX *ctx, fr_message_t *m, size_t messa
 		return NULL;
 	}
 
+	l->data = NULL;
+
 	if (l->data_size) {
-		l->data = talloc_memdup(l, l->data, l->data_size);
+		l->data = talloc_memdup(l, m->data, l->data_size);
 		if (!l->data) {
 			talloc_free(l);
 			goto nomem;

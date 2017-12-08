@@ -615,16 +615,16 @@ static void *_pair_iter_by_da(void **prev, void *curr, void *ctx)
 {
 	VALUE_PAIR	*c, *p;
 	fr_dict_attr_t	*da = ctx;
-	
+
 	if (!curr) return NULL;
-	
+
 	for (p = *prev, c = curr; c; p = c, c = c->next) {
 		VP_VERIFY(c);
 		if (c->da == da) break;
 	}
-	
+
 	*prev = p;
-	
+
 	return c;
 }
 
@@ -637,7 +637,7 @@ static void *_pair_iter_by_da(void **prev, void *curr, void *ctx)
  *	- The first VALUE_PAIR in the list matching da
  */
 VALUE_PAIR *fr_pair_cursor_init_by_da(fr_cursor_t *cursor, VALUE_PAIR **head, fr_dict_attr_t const *da)
-{	
+{
 	return fr_cursor_talloc_iter_init(cursor, head, _pair_iter_by_da, da, VALUE_PAIR);
 }
 
@@ -2478,15 +2478,15 @@ char *fr_pair_asprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
 
 	if (vp->da->flags.has_tag) {
 		if (quote && (vp->vp_type == FR_TYPE_STRING)) {
-			str = talloc_asprintf(ctx, "%s:%d %s %c%s%c", vp->da->name, vp->tag, token, quote, value, quote);
+			str = talloc_typed_asprintf(ctx, "%s:%d %s %c%s%c", vp->da->name, vp->tag, token, quote, value, quote);
 		} else {
-			str = talloc_asprintf(ctx, "%s:%d %s %s", vp->da->name, vp->tag, token, value);
+			str = talloc_typed_asprintf(ctx, "%s:%d %s %s", vp->da->name, vp->tag, token, value);
 		}
 	} else {
 		if (quote && (vp->vp_type == FR_TYPE_STRING)) {
-			str = talloc_asprintf(ctx, "%s %s %c%s%c", vp->da->name, token, quote, value, quote);
+			str = talloc_typed_asprintf(ctx, "%s %s %c%s%c", vp->da->name, token, quote, value, quote);
 		} else {
-			str = talloc_asprintf(ctx, "%s %s %s", vp->da->name, token, value);
+			str = talloc_typed_asprintf(ctx, "%s %s %s", vp->da->name, token, value);
 		}
 	}
 

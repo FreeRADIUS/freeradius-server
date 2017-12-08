@@ -556,7 +556,7 @@ static int _module_thread_instantiate(void *instance, void *ctx)
 		 *	Fixup the type name, incase something calls
 		 *	talloc_get_type_abort() on it...
 		 */
-		MEM(type_name = talloc_asprintf(NULL, "rlm_%s_thread_t", mod_inst->module->name));
+		MEM(type_name = talloc_typed_asprintf(NULL, "rlm_%s_thread_t", mod_inst->module->name));
 		talloc_set_name(thread_inst->data, "%s", type_name);
 		talloc_free(type_name);
 
@@ -765,7 +765,7 @@ static int _module_instance_free(module_instance_t *mod_inst)
 	 *	Remove all xlat's registered to module instance.
 	 */
 	if (mod_inst->dl_inst && mod_inst->dl_inst->data) {
-		xlat_unregister(mod_inst->dl_inst->data, mod_inst->name, NULL);
+		xlat_unregister(mod_inst->name);
 		/*
 		 *	Remove any registered paircompares.
 		 */

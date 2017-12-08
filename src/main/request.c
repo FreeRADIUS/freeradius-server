@@ -135,7 +135,7 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 static REQUEST *request_init_fake(REQUEST *request, REQUEST *fake)
 {
 	fake->number = request->child_number++;
-	fake->name = talloc_asprintf(fake, "%s.%" PRIu64 , request->name, fake->number);
+	fake->name = talloc_typed_asprintf(fake, "%s.%" PRIu64 , request->name, fake->number);
 
 	fake->seq_start = 0;	/* children always start with their own sequence */
 

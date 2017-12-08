@@ -187,14 +187,17 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 
 	if ((flags & UDP_FLAGS_PEEK) != 0) sock_flags |= MSG_PEEK;
 
-	/*
-	 *	Connected sockets already know src/dst IP/port
-	 */
-	if ((flags & UDP_FLAGS_CONNECTED) != 0) return recv(sockfd, data, data_len, sock_flags);
-
 	if (when) {
 		when->tv_sec = 0;
 		when->tv_usec = 0;
+	}
+
+	/*
+	 *	Connected sockets already know src/dst IP/port
+	 */
+	if ((flags & UDP_FLAGS_CONNECTED) != 0) {
+		received = recv(sockfd, data, data_len, sock_flags);
+		goto done;
 	}
 
 	/*
@@ -207,33 +210,48 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 				      (struct sockaddr *)&src, &sizeof_src,
 				      (struct sockaddr *)&dst, &sizeof_dst,
 				      if_index, when);
+		if (received <= 0) goto done;
 	} else {
 		received = recvfrom(sockfd, data, data_len, sock_flags,
 				    (struct sockaddr *)&src, &sizeof_src);
+		if (received <= 0) goto done;
 	}
 #else
 	received = recvfrom(sockfd, data, data_len, sock_flags,
 			    (struct sockaddr *)&src, &sizeof_src);
+	if (received <= 0) goto done;
 
 	/*
 	 *	Get the destination address, if requested.
 	 */
-	if (dst_ipaddr && (getsockname(sockfd, (struct sockaddr *)&dst, &sizeof_dst) < 0)) return -1;
+	if (dst_ipaddr && (getsockname(sockfd, (struct sockaddr *)&dst, &sizeof_dst) < 0)) {
+		return -1;
+	}
 
 	if (if_index) *if_index = 0;
 #endif
 
-	if (received < 0) return received;
+	if (fr_ipaddr_from_sockaddr(&src, sizeof_src, src_ipaddr, &port) < 0) {
+		fr_strerror_printf("Failed converting sockaddr to ipaddr: %s", fr_strerror());
+		return -1;
+	}
 
-	if (fr_ipaddr_from_sockaddr(&src, sizeof_src, src_ipaddr, &port) < 0) return -1;
 	*src_port = port;
-
-	if (when && !when->tv_sec) gettimeofday(when, NULL);
 
 	if (dst_ipaddr) {
 		fr_ipaddr_from_sockaddr(&dst, sizeof_dst, dst_ipaddr, &port);
 		*dst_port = port;
 	}
+
+done:
+	if (received < 0) {
+		if ((errno == EWOULDBLOCK) || (errno == EAGAIN)) return 0;
+
+		fr_strerror_printf("Failed reading socket: %s", fr_syserror(errno));
+		return received;
+	}
+
+	if (when && !when->tv_sec) gettimeofday(when, NULL);
 
 	return received;
 }

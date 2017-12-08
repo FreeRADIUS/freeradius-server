@@ -112,16 +112,6 @@ struct ldap_inst_s {
 							//!< rlm_ldap module.
 
 	/*
-	 *	Dynamic clients
-	 */
-	char const	*clientobj_filter;		//!< Filter to retrieve only client objects.
-	char const	*clientobj_base_dn;		//!< DN to search for clients under.
-	char const	*clientobj_scope_str;		//!< Scope (sub, one, base).
-	int		clientobj_scope;		//!< Search scope.
-
-	bool		do_clients;			//!< If true, attempt to load clients on instantiation.
-
-	/*
 	 *	Profiles
 	 */
 	vp_tmpl_t	*default_profile;		//!< If this is set, we will search for a profile object
@@ -195,9 +185,4 @@ fr_ldap_connection_t	*mod_conn_get(rlm_ldap_t const *inst, REQUEST *request);
 void		mod_conn_release(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t *conn);
 
 void		*mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout);
-
-/*
- *	clients.c - Dynamic clients (bulk load).
- */
-int  rlm_ldap_client_load(rlm_ldap_t const *inst, CONF_SECTION *tmpl, CONF_SECTION *cs);
 #endif

@@ -784,12 +784,12 @@ static int cluster_map_node_validate(redisReply *node, int map_idx, int node_idx
 	 *  As per the redis docs: https://redis.io/commands/cluster-slots
 	 *
 	 *  Newer versions of Redis Cluster will output, for each Redis instance,
-	 *  not just the IP and port, but also the node ID as third element of the 
-	 *  array. In future versions there could be more elements describing the 
-	 *  node better. In general a client implementation should just rely on 
+	 *  not just the IP and port, but also the node ID as third element of the
+	 *  array. In future versions there could be more elements describing the
+	 *  node better. In general a client implementation should just rely on
 	 *  the fact that certain parameters are at fixed positions as specified,
 	 *  but more parameters may follow and should be ignored.
-	 *  Similarly a client library should try if possible to cope with the fact 
+	 *  Similarly a client library should try if possible to cope with the fact
 	 *  that older versions may just have the IP and port parameter.
 	 */
 	if (node->elements < 2) {
@@ -2233,7 +2233,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 		 *	Setup trigger prefix
 		 */
 		if (!trigger_prefix) {
-			cluster->trigger_prefix = talloc_asprintf(cluster, "modules.%s.pool", cs_name1);
+			cluster->trigger_prefix = talloc_typed_asprintf(cluster, "modules.%s.pool", cs_name1);
 		} else {
 			cluster->trigger_prefix = talloc_strdup(cluster, trigger_prefix);
 		}
@@ -2249,7 +2249,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 	 */
 	if (!log_prefix) {
 		if (!cs_name2) cs_name2 = cs_name1;
-		cluster->log_prefix = talloc_asprintf(conf, "rlm_%s (%s)", cs_name1, cs_name2);
+		cluster->log_prefix = talloc_typed_asprintf(conf, "rlm_%s (%s)", cs_name1, cs_name2);
 	} else {
 		cluster->log_prefix = talloc_strdup(cluster, log_prefix);
 	}

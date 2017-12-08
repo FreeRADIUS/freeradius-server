@@ -146,6 +146,8 @@ size_t const fr_value_box_field_sizes[] = {
 	[FR_TYPE_IPV4_PREFIX]			= SIZEOF_MEMBER(fr_value_box_t, vb_ip),
 	[FR_TYPE_IPV6_ADDR]			= SIZEOF_MEMBER(fr_value_box_t, vb_ip),
 	[FR_TYPE_IPV6_PREFIX]			= SIZEOF_MEMBER(fr_value_box_t, vb_ip),
+	[FR_TYPE_COMBO_IP_ADDR]			= SIZEOF_MEMBER(fr_value_box_t, vb_ip),
+	[FR_TYPE_COMBO_IP_PREFIX]	       	= SIZEOF_MEMBER(fr_value_box_t, vb_ip),
 	[FR_TYPE_IFID]				= SIZEOF_MEMBER(fr_value_box_t, vb_ifid),
 	[FR_TYPE_ETHERNET]			= SIZEOF_MEMBER(fr_value_box_t, vb_ether),
 
@@ -186,6 +188,8 @@ size_t const fr_value_box_offsets[] = {
 	[FR_TYPE_IPV4_PREFIX]			= offsetof(fr_value_box_t, vb_ip),
 	[FR_TYPE_IPV6_ADDR]			= offsetof(fr_value_box_t, vb_ip),
 	[FR_TYPE_IPV6_PREFIX]			= offsetof(fr_value_box_t, vb_ip),
+	[FR_TYPE_COMBO_IP_ADDR]			= offsetof(fr_value_box_t, vb_ip),
+	[FR_TYPE_COMBO_IP_PREFIX]	       	= offsetof(fr_value_box_t, vb_ip),
 	[FR_TYPE_IFID]				= offsetof(fr_value_box_t, vb_ifid),
 	[FR_TYPE_ETHERNET]			= offsetof(fr_value_box_t, vb_ether),
 
@@ -3485,6 +3489,55 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 	}
 
 	return p;
+}
+
+/** Concatenate the string representations of a list of value boxes together
+ *
+ * @param[in] ctx	to allocate the buffer in.
+ * @param[in] head	of the list of value boxes.
+ * @param[in] delim	to insert between value box values.
+ * @param[in] quote	character used set unescape mode.  @see value_str_unescape.
+ * @return
+ *	- NULL on error.
+ *	- The concatenation of the string values of the value box list on success.
+ */
+char *fr_value_box_list_asprint(TALLOC_CTX *ctx, fr_value_box_t const *head, char const *delim, char quote)
+{
+	fr_value_box_t const	*v = head;
+	char			*aggr, *td = NULL;
+	TALLOC_CTX		*pool = NULL;
+
+	if (!head) return NULL;
+
+	aggr = fr_value_box_asprint(ctx, v, quote);
+	if (!aggr) return NULL;
+	if (!v->next) return aggr;
+
+	/*
+	 *	If we're aggregating more values,
+	 *	allocate a temporary pool.
+	 */
+	pool = talloc_pool(NULL, 256);
+	if (delim) td = talloc_strdup(pool, delim);
+
+	while ((v = v->next)) {
+		char *str, *new_aggr;
+
+		str = fr_value_box_asprint(pool, v, quote);
+		if (!str) continue;
+
+		new_aggr = talloc_buffer_append_variadic_buffer(aggr, 2, td, str);
+		if (!new_aggr) {
+			talloc_free(aggr);
+			talloc_free(pool);
+			return NULL;
+		}
+		aggr = new_aggr;
+		talloc_free(str);
+	}
+	talloc_free(pool);
+
+	return aggr;
 }
 
 /** Print the value of an attribute to a string

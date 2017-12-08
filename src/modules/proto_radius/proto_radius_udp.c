@@ -31,6 +31,7 @@
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/track.h>
 #include <freeradius-devel/io/listen.h>
+#include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/rad_assert.h>
 #include "proto_radius.h"
 
@@ -48,6 +49,26 @@ typedef struct {
 	RADCLIENT			*client;
 } proto_radius_udp_address_t;
 
+typedef struct dynamic_client_t {
+	dl_instance_t			*submodule;		//!< proto_radius_dynamic_client
+	fr_ipaddr_t			*network;		//!< dynamic networks to allow
+
+	RADCLIENT_LIST			*clients;		//!< local clients
+	RADCLIENT_LIST			*expired;		//!< expired local clients
+
+	fr_dlist_t			packets;       		//!< list of accepted packets
+	fr_dlist_t			pending;		//!< pending clients
+
+	uint32_t			max_clients;		//!< maximum number of dynamic clients
+	uint32_t			num_clients;		//!< total number of active clients
+	uint32_t			max_pending_clients;	//!< maximum number of pending clients
+	uint32_t			num_pending_clients;	//!< number of pending clients
+	uint32_t			max_pending_packets;	//!< maximum accepted pending packets
+	uint32_t			num_pending_packets;	//!< how many packets are received, but not accepted
+
+	uint32_t			lifetime;		//!< of the dynamic client, in seconds.
+} dynamic_client_t;
+
 typedef struct {
 	proto_radius_t	const		*parent;		//!< The module that spawned us!
 	char const			*name;			//!< socket name
@@ -55,6 +76,7 @@ typedef struct {
 	int				sockfd;
 
 	fr_event_list_t			*el;			//!< for cleanup timers on Access-Request
+	fr_network_t			*nr;			//!< for fr_network_listen_read();
 
 	fr_ipaddr_t			ipaddr;			//!< Ipaddr to listen on.
 
@@ -71,8 +93,31 @@ typedef struct {
 
 	fr_stats_t			stats;			//!< statistics for this socket
 
+	bool				dynamic_clients_is_set;	//!< set if we have dynamic clients
+	dynamic_client_t		dynamic_clients;	//!< dynamic client infromation
+
 	uint32_t			priorities[FR_MAX_PACKET_CODE];	//!< priorities for individual packets
 } proto_radius_udp_t;
+
+
+typedef struct dynamic_packet_t {
+	uint8_t			*packet;
+	fr_tracking_entry_t	*track;
+	fr_dlist_t		entry;
+} dynamic_packet_t;
+
+static const CONF_PARSER dynamic_client_config[] = {
+	{ FR_CONF_OFFSET("network", FR_TYPE_COMBO_IP_PREFIX | FR_TYPE_MULTI, dynamic_client_t, network) },
+
+	{ FR_CONF_OFFSET("max_clients", FR_TYPE_UINT32, dynamic_client_t, max_clients), .dflt = "65536" },
+	{ FR_CONF_OFFSET("max_pending_clients", FR_TYPE_UINT32, dynamic_client_t, max_pending_clients), .dflt = "256" },
+	{ FR_CONF_OFFSET("max_pending_packets", FR_TYPE_UINT32, dynamic_client_t, max_pending_packets), .dflt = "65536" },
+
+	{ FR_CONF_OFFSET("lifetime", FR_TYPE_UINT32, dynamic_client_t, lifetime), .dflt = "600" },
+
+	CONF_PARSER_TERMINATOR
+};
+
 
 static const CONF_PARSER udp_listen_config[] = {
 	{ FR_CONF_OFFSET("ipaddr", FR_TYPE_COMBO_IP_ADDR, proto_radius_udp_t, ipaddr) },
@@ -87,6 +132,13 @@ static const CONF_PARSER udp_listen_config[] = {
 
 	{ FR_CONF_OFFSET("cleanup_delay", FR_TYPE_UINT32, proto_radius_udp_t, cleanup_delay), .dflt = "5" },
 
+	/*
+	 *	Note that we have to pass offset of dynamic_client to get the "IS_SET" functionality.
+	 *	But that screws up the entries in the dynamic_client_config, which are now offset
+	 *	from THIS offset, instead of offset from the start of proto_radius_udp_t;
+	 */
+	{ FR_CONF_IS_SET_OFFSET("dynamic_clients", FR_TYPE_SUBSECTION | FR_TYPE_OK_MISSING, proto_radius_udp_t, dynamic_clients),
+	  .subcs = (void const *) dynamic_client_config },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -114,7 +166,6 @@ static const CONF_PARSER priority_config[] = {
 	  .dflt = STRINGIFY(PRIORITY_NORMAL) },
 	{ FR_CONF_OFFSET("Status-Server", FR_TYPE_UINT32, proto_radius_udp_t, priorities[FR_CODE_STATUS_SERVER]),
 	  .dflt = STRINGIFY(PRIORITY_NOW) },
-
 
 	CONF_PARSER_TERMINATOR
 };
@@ -185,9 +236,53 @@ static RADCLIENT *mod_client(UNUSED void const *instance, void const *packet_ctx
 	return address->client;
 }
 
-static int mod_decode(UNUSED void const *instance, REQUEST *request, UNUSED uint8_t *const data, UNUSED size_t data_len)
-{
 
+static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
+{
+	proto_radius_udp_t const		*inst = instance;
+	fr_tracking_entry_t const		*track = request->async->packet_ctx;
+	proto_radius_udp_address_t const	*address = track->src_dst;
+	RADCLIENT				*client;
+
+	/*
+	 *	Not a dynamic client, or it's an active one.  Let
+	 *	proto_radius do all of the work.
+	 */
+	if (!inst->dynamic_clients_is_set || !address->client->dynamic || address->client->active) return 0;
+
+	/*
+	 *	This will never happen...
+	 */
+	if (buffer_len < sizeof(client)) {
+		buffer[0] = 1;
+		return 1;
+	}
+
+	/*
+	 *	Allocate the client.  If that fails, send back a NAK.
+	 *
+	 *	@todo - deal with NUMA zones?  Or just deal with this
+	 *	client being in different memory.
+	 *
+	 *	Maybe we should create a CONF_SECTION from the client,
+	 *	and pass *that* back to mod_write(), which can then
+	 *	parse it to create the actual client....
+	 */
+	client = client_afrom_request(NULL, request);
+	if (!client) {
+		ERROR("Failed creating new client: %s", fr_strerror());
+		buffer[0] = 1;
+		return 1;
+	}
+
+	memcpy(buffer, &client, sizeof(client));
+	return sizeof(client);
+}
+
+
+static int mod_decode(void const *instance, REQUEST *request, UNUSED uint8_t *const data, UNUSED size_t data_len)
+{
+	proto_radius_udp_t const			*inst = instance;
 	fr_tracking_entry_t const		*track = request->async->packet_ctx;
 	proto_radius_udp_address_t const	*address = track->src_dst;
 
@@ -209,7 +304,317 @@ static int mod_decode(UNUSED void const *instance, REQUEST *request, UNUSED uint
 	request->root = &main_config;
 	REQUEST_VERIFY(request);
 
+	if (request->client->dynamic && !request->client->active) {
+		fr_app_process_t const	*app_process;
+		vp_cursor_t cursor;
+		VALUE_PAIR *vp;
+
+		app_process = (fr_app_process_t const *) inst->dynamic_clients.submodule->module->common;
+
+		request->async->process = app_process->process;
+
+		/*
+		 *	Mash all encrypted attributes to sane
+		 *	(i.e. non-hurtful) values.
+		 */
+		for (vp = fr_pair_cursor_init(&cursor, &request->packet->vps);
+		     vp != NULL;
+		     vp = fr_pair_cursor_next(&cursor)) {
+			if (vp->da->flags.encrypt != FLAG_ENCRYPT_NONE) {
+				switch (vp->da->type) {
+				default:
+					break;
+
+				case FR_TYPE_UINT32:
+					vp->vp_uint32 = 0;
+					break;
+
+				case FR_TYPE_IPV4_ADDR:
+					vp->vp_ipv4addr = INADDR_ANY;
+					break;
+
+				case FR_TYPE_OCTETS:
+					fr_pair_value_memcpy(vp, (uint8_t const *) "", 1);
+					break;
+
+				case FR_TYPE_STRING:
+					fr_pair_value_strcpy(vp, "");
+					break;
+				}
+			}
+		}
+	}
+
 	return 0;
+}
+
+static ssize_t dynamic_client_packet_restore(proto_radius_udp_t *inst, uint8_t *buffer, size_t buffer_len,
+					     fr_tracking_entry_t **track)
+{
+	fr_dlist_t		*entry;
+	dynamic_packet_t	*saved;
+	size_t			packet_len;
+
+	entry = FR_DLIST_FIRST(inst->dynamic_clients.packets);
+	if (!entry) return -1;
+	fr_dlist_remove(entry);
+
+	saved = fr_ptr_to_type(dynamic_packet_t, entry, entry);
+	rad_assert(saved);
+	rad_assert(saved->packet != NULL);
+	rad_assert(saved->track != NULL);
+
+	/*
+	 *	Can't copy the packet over, there's nothing more we
+	 *	can do.
+	 */
+	packet_len = talloc_array_length(saved->packet);
+	if (packet_len > buffer_len) {
+		(void) fr_radius_tracking_entry_delete(inst->ft, saved->track);
+		talloc_free(saved);
+		return -1;
+	}
+
+	/*
+	 *	Copy the saved packet back to the output buffer.
+	 */
+	memcpy(buffer, saved->packet, packet_len);
+	*track = saved->track;
+	talloc_free(saved);
+
+	return packet_len;
+}
+
+
+static int dynamic_client_packet_save(proto_radius_udp_t *inst, uint8_t *packet, size_t packet_len,
+				      proto_radius_udp_address_t *address, fr_tracking_entry_t **track)
+{
+	dynamic_packet_t	*saved;
+	fr_tracking_status_t	tracking_status;
+
+	if (inst->dynamic_clients.num_pending_packets >= inst->dynamic_clients.max_pending_packets) {
+		DEBUG("Too many pending packets - ignoring packet.");
+		return -1;
+	}
+
+	tracking_status = fr_radius_tracking_entry_insert(track, inst->ft, packet, fr_time(), address);
+	switch (tracking_status) {
+	case FR_TRACKING_ERROR:
+	case FR_TRACKING_UNUSED:
+		rad_assert(0 == 1);
+		return 0;	/* shouldn't happen */
+
+		/*
+		 *	Retransmit of the same packet.  There's
+		 *	nothing we can do.
+		 */
+	case FR_TRACKING_SAME:
+		return 0;
+
+		/*
+		 *	We're done the old packet, and have received a
+		 *	new packet.  This shouldn't happen here.  If
+		 *	we're done the old packet, we shouldn't be calling this function.
+		 */
+	case FR_TRACKING_UPDATED:
+		DEBUG3("UPDATED packet");
+		rad_assert(0 == 1);
+		return 0;
+
+		/*
+		 *	We're NOT done the old packet, and have
+		 *	received a new packet.  This can happen if the
+		 *	old packet is taking too long.  Oh well... we
+		 *	will just discard the old one in mod_write()
+		 */
+	case FR_TRACKING_CONFLICTING:
+		DEBUG3("CONFLICTING packet ID %d", packet[1]);
+		break;
+
+		/*
+		 *	We have a brand new packet.  Remember it!
+		 */
+	case FR_TRACKING_NEW:
+		DEBUG3("NEW packet");
+		break;
+	}
+
+	MEM(saved = talloc_zero(inst, dynamic_packet_t));
+	MEM(saved->packet = talloc_memdup(saved, packet, packet_len));
+	saved->track = *track;
+	fr_dlist_insert_tail(&address->client->packets, &saved->entry);
+
+	inst->dynamic_clients.num_pending_packets++;
+
+	return 0;
+}
+
+
+static ssize_t dynamic_client_alloc(proto_radius_udp_t *inst, uint8_t *packet, size_t packet_len,
+				    proto_radius_udp_address_t *address, fr_tracking_entry_t **track, fr_ipaddr_t *network)
+{
+	RADCLIENT *client;
+
+	/*
+	 *	Limit the total number of clients.
+	 */
+	if (inst->dynamic_clients.num_clients >= inst->dynamic_clients.max_clients) {
+		DEBUG("Too many dynamic clients - ignoring packet.");
+		return 0;
+	}
+
+	/*
+	 *	Limit the total number of pending clients.
+	 */
+	if (inst->dynamic_clients.num_pending_clients >= inst->dynamic_clients.max_pending_clients) {
+		DEBUG("Too many pending dynamic clients");
+		return 0;
+	}
+
+	/*
+	 *	Allocate the bare client, and fill in some basic fields.
+	 */
+	client = talloc_zero(inst, RADCLIENT);
+	if (!client) {
+		return 0;
+	}
+
+	FR_DLIST_INIT(client->packets);
+	client->active = false;
+	client->dynamic = true;
+	client->secret = client->longname = client->shortname = client->nas_type = talloc_strdup(client, "");
+
+	client->ipaddr = address->src_ipaddr;
+	client->src_ipaddr = address->dst_ipaddr;
+	client->network = *network;
+
+	address->client = client;
+
+	/*
+	 *	Save a copy of this packet in the client, so that we
+	 *	can re-play it once we accept the client.
+	 */
+	if (dynamic_client_packet_save(inst, packet, packet_len, address, track) < 0) {
+		talloc_free(client);
+		return 0;
+	}
+
+	/*
+	 *	It's now one of our clients (pending).
+	 *
+	 *	We can rely on the worker enforcing max_request_time,
+	 *	so we don't need to do something similar here.
+	 *
+	 *	i.e. if the client takes 30s to define, well, too
+	 *	bad...
+	 */
+	if (!client_add(inst->dynamic_clients.clients, client)) {
+		talloc_free(client);
+		return -1;
+	}
+
+	fr_dlist_insert_tail(&inst->dynamic_clients.pending, &client->pending);
+
+	inst->dynamic_clients.num_pending_clients++;
+
+	/*
+	 *	Check for the case of renewing an expired client.  If
+	 *	so, delete it's expiration timer.
+	 *
+	 *	We'll do the same checks when we create or NAK the
+	 *	client in mod_write().  If it matches, we'll just
+	 *	renew the existing client, instead of defining a new
+	 *	one.  That allows for *renewal* instead of deletion
+	 *	and re-creation.
+	 */
+	client = client_find(inst->dynamic_clients.expired, &address->src_ipaddr, IPPROTO_UDP);
+	if (client && client->ev) (void) fr_event_timer_delete(inst->el, &client->ev);
+
+	return packet_len;
+}
+
+static void dynamic_client_timer(proto_radius_udp_t *inst, RADCLIENT *client, uint32_t timer);
+
+static void dynamic_client_expire(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
+{
+	RADCLIENT *client = uctx;
+	proto_radius_udp_t *inst = client->ctx;
+
+	DEBUG("TIMER - checking dynamic client %s for expiration.", client->shortname);
+
+	/*
+	 *	The client has expired, and no one is using it.
+	 *	Remove it from the expired list, and free it.
+	 */
+	if (client->expired) {
+		DEBUG("%s - deleting client %s.", inst->name, client->shortname);
+		(void) client_delete(inst->dynamic_clients.expired, client);
+		rad_assert(client->outstanding == 0);
+		client_free(client);
+		return;
+	}
+
+	/*
+	 *	Mark the client as "expired", so that any new packets
+	 *	will result in us trying to re-define it.  Remove it
+	 *	from the main list, BUT add it to the "expired" list.
+	 */
+	client->expired = true;
+	client_delete(inst->dynamic_clients.clients, client);
+	client_add(inst->dynamic_clients.expired, client);
+
+	/*
+	 *	There are no active requests using this client.  It
+	 *	can be deleted.  However, we only free the client when
+	 *	we're sure that all packets associated with the client
+	 *	have timed out.
+	 *
+	 *	@todo - move to a tracking table per client (or per
+	 *	connection).  That way we know that when we delete the
+	 *	client or close the connection, we can free all
+	 *	packets associated with it.  Even if the packets are
+	 *	in "cleanup_delay" state.
+	 */
+	if (client->outstanding == 0) {
+		DEBUG("%s - marking dynamic client %s for deletion.", inst->name, client->shortname);
+		dynamic_client_timer(inst, client, inst->cleanup_delay + 5);
+		return;
+	}
+
+	/*
+	 *	Else there are still packets in the workers, wake up
+	 *	in another 30 seconds and try again.
+	 */
+	DEBUG("%s - there are still outstanding packets for client %s, will try again in 30s.",
+	      inst->name, client->shortname);
+	dynamic_client_timer(inst, client, 30);
+}
+
+static void dynamic_client_timer(proto_radius_udp_t *inst, RADCLIENT *client, uint32_t timer)
+{
+	struct timeval when;
+
+	/*
+	 *	It's not active, AND it's not a negative cache.  We
+	 *	had some other error trying to insert a "good" client
+	 *	into the list of known clients.  Just nuke it, and
+	 *	allow another packet to try to recreate it.
+	 */
+	if (!client->expired && !client->active && !client->negative) {
+		talloc_free(client);
+		return;
+	}
+
+	gettimeofday(&when, NULL);
+	when.tv_sec += timer;
+
+	client->ctx = inst;	/* nowhere else to put this... */
+
+	if (fr_event_timer_insert(client, inst->el, &client->ev,
+				  &when, dynamic_client_expire, client) < 0) {
+		ERROR("Failed adding timeout for dynamic client.  It will be permanent!");
+		return;
+	}
 }
 
 static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority)
@@ -222,8 +627,28 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 
 	struct timeval			timestamp;
 	fr_tracking_status_t		tracking_status;
-	fr_tracking_entry_t		*track;
+	fr_tracking_entry_t		*track = NULL;
 	proto_radius_udp_address_t	address;
+	fr_dlist_t			*entry;
+
+	/*
+	 *	There are saved packets.  Go read them.
+	 */
+	entry = FR_DLIST_FIRST(inst->dynamic_clients.packets);
+	if (entry) {
+		data_size = dynamic_client_packet_restore(inst, buffer, buffer_len, &track);
+		if (data_size < 0) {
+			rad_assert(0 == 1);
+			return 0;
+		}
+
+		packet_len = data_size;
+
+		rad_assert(track != NULL);
+		rad_assert(track->src_dst != NULL);
+		address.client = ((proto_radius_udp_address_t *)track->src_dst)->client;
+		goto received_packet;
+	}
 
 	*leftover = 0;
 
@@ -231,9 +656,14 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 			     &address.src_ipaddr, &address.src_port,
 			     &address.dst_ipaddr, &address.dst_port,
 			     &address.if_index, &timestamp);
-	if (data_size <= 0) {
-		DEBUG2("proto_radius_udp got read error %zd", data_size);
+	if (data_size < 0) {
+		DEBUG2("proto_radius_udp got read error %zd: %s", data_size, fr_strerror());
 		return data_size;
+	}
+
+	if (!data_size) {
+		DEBUG2("proto_radius_udp got no data: ignoring");
+		return 0;
 	}
 
 	packet_len = data_size;
@@ -260,68 +690,11 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	 *	If it's not a RADIUS packet, ignore it.
 	 */
 	if (!fr_radius_ok(buffer, &packet_len, inst->parent->max_attributes, false, &reason)) {
+		/*
+		 *	@todo - check for F5 load balancer packets.  <sigh>
+		 */
 		DEBUG2("proto_radius_udp got a packet which isn't RADIUS");
 		inst->stats.total_malformed_requests++;
-		return 0;
-	}
-
-	/*
-	 *	Lookup the client - Must exist to continue.
-	 */
-	address.client = client_find(NULL, &address.src_ipaddr, IPPROTO_UDP);
-	if (!address.client) {
-		ERROR("Unknown client at address %pV:%u.  Ignoring...",
-		      fr_box_ipaddr(address.src_ipaddr), address.src_port);
-		inst->stats.total_invalid_requests++;
-		return 0;
-	}
-
-	/*
-	 *	@todo - allow for dynamic clients.
-	 *
-	 * 	- cache packets from the unknown client, ideally in a
-	 *   	  separate tracking table for this source IP/port.
-	 *
-	 *	- make it configurable for src IP, or src IP/port
-	 *
-	 *	- if new packets come in from that same source, add
-	 *	  them to the tracking table, but DON'T process them.
-	 *
-	 *	- run the packet through a proto_radius_client processor
-	 *
-	 *	- if there's a good reply, add the client to the local
-	 *	  dynamic client list, with timeouts, max # of
-	 *	  entries, etc.
-	 *
-	 *	- find a way for the "write" function to trigger a re-read,
-	 *	  ideally via an fr_event_t callback
-	 *
-	 * 	- probably have each read set "leftover", to the total
-	 *	  amount of data associated with packets we've cached.
-	 *
-	 *	- which makes the network code drain this socket.
-	 *
-	 *	- the # of cached packets SHOULD be small enough that
-	 *	  this fast read doesn't matter too much.  If we care,
-	 *	  we can later fix the network code to call the read()
-	 *	  routine if there is pending data.  e.g. like the
-	 *	  issues with the detail file reader reading 64K of
-	 *	  data when each packet is only 200 bytes, and then
-	 *	  processin (64K/200) number of packets all at once.
-	 *
-	 *	- and ideally find a *generic* way to do this, so that
-	 *	  we can re-use the code for TCP, and possibly other
-	 *	  protocols.
-	 */
-
-	/*
-	 *	If the signature fails validation, ignore it.
-	 */
-	if (fr_radius_verify(buffer, NULL,
-			     (uint8_t const *)address.client->secret,
-			     talloc_array_length(address.client->secret)) < 0) {
-		DEBUG2("proto_radius_udp packet failed verification");
-		inst->stats.total_bad_authenticators++;
 		return 0;
 	}
 
@@ -330,6 +703,105 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	 */
 	address.code = buffer[0];
 	address.id = buffer[1];
+
+	/*
+	 *	Look up the client.  It either exists, or we create
+	 *	it.
+	 */
+	address.client = client_find(NULL, &address.src_ipaddr, IPPROTO_UDP);
+	if (!address.client) {
+		size_t i, num;
+
+		if (!inst->dynamic_clients_is_set) {
+		unknown:
+			ERROR("Packet from unknown client at address %pV:%u - ignoring.",
+			      fr_box_ipaddr(address.src_ipaddr), address.src_port);
+			inst->stats.total_invalid_requests++;
+			return 0;
+		}
+
+		/*
+		 *	We have dynamic clients.  Try to find the
+		 *	client in the dynamic client set.
+		 */
+		address.client = client_find(inst->dynamic_clients.clients, &address.src_ipaddr, IPPROTO_UDP);
+		if (address.client) {
+			if (!address.client->dynamic || address.client->active) goto found;
+
+			if (address.client->negative) {
+				goto unknown;
+			}
+
+			/*
+			 *	It's dynamic, but inactive.  Save the
+			 *	packet in the client, and return.
+			 *
+			 *	When the client becomes active, the
+			 *	packet will be removed from the list,
+			 *	and sent to the network side.
+			 */
+			if (dynamic_client_packet_save(inst, buffer, packet_len, &address, &track) < 0) {
+				goto unknown;
+			}
+
+			return 0;
+		}
+
+		/*
+		 *	The client wasn't found.  It MIGHT be allowed.
+		 *	Search through the allowed networks, to see if
+		 *	the source IP matches a listed network.
+		 *
+		 *	@todo - put the networks && clients into a
+		 *	patricia tree, so we only do one search for
+		 *	them, instead of N searches.
+		 */
+		num = talloc_array_length(inst->dynamic_clients.network);
+		for (i = 0; i < num; i++) {
+			fr_ipaddr_t ipaddr;
+
+			/*
+			 *	fr_ipaddr_cmp() compares prefixes,
+			 *	too.  So we have to mask the source
+			 *	IP.
+			 */
+			ipaddr = address.src_ipaddr;
+			fr_ipaddr_mask(&ipaddr, inst->dynamic_clients.network[i].prefix);
+
+			if (fr_ipaddr_cmp(&ipaddr, &inst->dynamic_clients.network[i]) == 0) {
+				DEBUG("Found matching network.  Checking for dynamic client definition.");
+				if (dynamic_client_alloc(inst, buffer, packet_len, &address, &track,
+							 &inst->dynamic_clients.network[i]) < 0) {
+					DEBUG("Failed allocating dynamic client");
+					goto unknown;
+				}
+
+				/*
+				 *	Return the packet, but it's
+				 *	ALREADY been inserted into the
+				 *	tracking table.
+				 */
+				goto return_packet;
+			}
+		}
+
+		/*
+		 *	No match, it's definitely unknown;
+		 */
+		goto unknown;
+	}
+
+found:
+	/*
+	 *	If the signature fails validation, ignore it.
+	 */
+	if (fr_radius_verify(buffer, NULL,
+			     (uint8_t const *)address.client->secret,
+			     talloc_array_length(address.client->secret) - 1) < 0) {
+		DEBUG2("proto_radius_udp packet failed verification: %s", fr_strerror());
+		inst->stats.total_bad_authenticators++;
+		return 0;
+	}
 
 	tracking_status = fr_radius_tracking_entry_insert(&track, inst->ft, buffer, fr_time(), &address);
 	switch (tracking_status) {
@@ -392,25 +864,216 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 		break;
 	}
 
+received_packet:
+	inst->stats.total_requests++;
+	rad_assert(address.client != NULL);
+	address.client->outstanding++;
+
+return_packet:
 	*packet_ctx = track;
 	*recv_time = &track->timestamp;
 	*priority = priorities[buffer[0]];
 
-	inst->stats.total_requests++;
-
 	return packet_len;
 }
+
 
 static ssize_t mod_write(void *instance, void *packet_ctx,
 			 fr_time_t request_time, uint8_t *buffer, size_t buffer_len)
 {
 	proto_radius_udp_t		*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
 	fr_tracking_entry_t		*track = packet_ctx;
-	proto_radius_udp_address_t const *address = track->src_dst;
+	proto_radius_udp_address_t	*address = track->src_dst;
 
 	ssize_t				data_size;
 	fr_time_t			reply_time;
 	struct timeval			tv;
+
+	/*
+	 *	Check for the first packet back from a dynamic client
+	 *	definition.  If we find it, add the client (or not),
+	 *	as required.
+	 */
+	if (inst->dynamic_clients_is_set && address->client->dynamic && !address->client->active) {
+		RADCLIENT *client = address->client;
+		RADCLIENT *newclient, *expired = NULL;
+		fr_dlist_t *entry;
+		dynamic_packet_t *saved;
+
+		/*
+		 *	@todo - maybe just duplicate the new client fields,
+		 *	and talloc_free(newclient).
+		 */
+		inst->dynamic_clients.num_pending_clients--;
+
+		/*
+		 *	NAK: drop all packets.
+		 *
+		 *	If it's an explicit NAK, then add the source
+		 *	IP to a negative cache as a DoS prevention.
+		 */
+		if (buffer_len == 1) {
+			client->negative = true;
+
+		nak:
+			while ((entry = FR_DLIST_FIRST(client->packets)) != NULL) {
+				saved = fr_ptr_to_type(dynamic_packet_t, entry, entry);
+				(void) fr_radius_tracking_entry_delete(inst->ft, saved->track);
+				fr_dlist_remove(&saved->entry);
+				talloc_free(saved);
+				inst->dynamic_clients.num_pending_packets--;
+			}
+
+			/*
+			 *	If we were renewing an expired client,
+			 *	then delete the expired one, and add
+			 *	the new definition.
+			 */
+			if (!expired) {
+				expired = client_find(inst->dynamic_clients.expired, &client->ipaddr, IPPROTO_UDP);
+				if (expired) {
+					rad_assert(expired->outstanding == 0);
+					client_delete(inst->dynamic_clients.expired, expired);
+					talloc_free(expired);
+				}
+			}
+
+			dynamic_client_timer(inst, client, 30);
+			return buffer_len;
+		}
+
+		rad_assert(buffer_len == sizeof(newclient));
+		memcpy(&newclient, buffer, sizeof(newclient));
+
+		/*
+		 *	Delete the "pending" client from the client list.
+		 */
+		client_delete(inst->dynamic_clients.clients, client);
+
+		/*
+		 *	See if we had a previously expired client.  If
+		 *	not, just create a new one.
+		 */
+		expired = client_find(inst->dynamic_clients.expired, &newclient->ipaddr, IPPROTO_UDP);
+		if (!expired) {
+			DEBUG("%s - Defining new client %s", inst->name, client->shortname);
+			newclient->dynamic = true;
+
+			/*
+			 *	If we can't add it, then clean it up.  BUT
+			 *	allow other packets to come from the same IP.
+			 */
+			if (!client_add(inst->dynamic_clients.clients, newclient)) {
+				talloc_free(newclient);
+				client->negative = false;
+				goto nak;
+			}
+
+			newclient->active = true;
+			inst->dynamic_clients.num_clients++;
+
+		} else {
+			ssize_t elen, nlen;
+
+			elen = talloc_array_length(expired->secret);
+			nlen = talloc_array_length(newclient->secret);
+
+			/*
+			 *	Catch stupid administrator issues.
+			 */
+			if ((elen != nlen) || (memcmp(expired->secret, newclient->secret, elen) != 0)) {
+				ERROR("Shared secret for clients cannot be changed until all outstanding packets have been processed");
+				expired->active = false;
+				goto nak;
+			}
+
+			if (fr_ipaddr_cmp(&expired->ipaddr, &newclient->ipaddr) != 0) {
+				ERROR("IP / netmask for clients cannot be changed until all outstanding packets have been processed");
+				expired->active = false;
+				goto nak;
+			}
+
+			DEBUG("%s - Renewing client %s", inst->name, expired->shortname);
+			rad_assert(expired->ev == NULL);
+
+			talloc_free(newclient);
+			newclient = expired;
+			newclient->expired = false;
+
+			client_delete(inst->dynamic_clients.expired, expired);
+			if (!client_add(inst->dynamic_clients.clients, newclient)) {
+				talloc_free(newclient);
+				newclient->negative = false;
+				goto nak;
+			}
+
+			rad_assert(newclient->active == true);
+			rad_assert(newclient->negative == false);
+		}
+
+		/*
+		 *	This particular packet had a later one
+		 *	over-ride it.  We still add the client, but
+		 *	don't send the packet on towards mod_read()
+		 */
+		if (track->timestamp != request_time) {
+			DEBUG3("First packet was too late, discarding it.");
+
+			entry = FR_DLIST_FIRST(client->packets);
+			rad_assert(entry != NULL);
+			saved = fr_ptr_to_type(dynamic_packet_t, entry, entry);
+
+			fr_dlist_remove(&saved->entry);
+			/* leave the tracking table entry - it's used by a later packet */
+			rad_assert(saved->track == track);
+			talloc_free(saved);
+			inst->dynamic_clients.num_pending_packets--;
+		}
+
+		/*
+		 *	Move the packets over to the pending list, and
+		 *	re-write their client pointers to be the newly
+		 *	allocated one.
+		 */
+		while ((entry = FR_DLIST_FIRST(client->packets)) != NULL) {
+			DEBUG3("Restoring packet...");
+
+			saved = fr_ptr_to_type(dynamic_packet_t, entry, entry);
+			fr_dlist_remove(&saved->entry);
+			fr_dlist_insert_tail(&inst->dynamic_clients.packets, &saved->entry);
+
+			address = saved->track->src_dst;
+			address->client = newclient;
+
+			rad_assert(inst->dynamic_clients.num_pending_packets > 0);
+			inst->dynamic_clients.num_pending_packets--;
+		}
+
+		/*
+		 *	Set up the lifetime for the newly defined
+		 *	client.
+		 */
+		dynamic_client_timer(inst, newclient, inst->dynamic_clients.lifetime);
+		fr_dlist_remove(&client->pending);
+		talloc_free(client);
+
+		/*
+		 *	Tell the network side to call mod_read(), if necessary.
+		 */
+		entry = FR_DLIST_FIRST(inst->dynamic_clients.packets);
+		if (entry) {
+			DEBUG3("Emptying pending queue");
+			fr_network_listen_read(inst->nr, inst->parent->listen);
+		}
+
+		return buffer_len;
+	}
+
+	/*
+	 *	One less packet outstanding.
+	 */
+	rad_assert(address->client->outstanding > 0);
+	address->client->outstanding--;
 
 	/*
 	 *	The original packet has changed.  Suppress the write,
@@ -419,6 +1082,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	 *	But since we still own the tracking entry, we have to delete it.
 	 */
 	if (track->timestamp != request_time) {
+		inst->stats.total_packets_dropped++;
 		DEBUG3("Suppressing reply as we have a newer packet");
 		rad_assert(track->ev == NULL);
 		(void) fr_radius_tracking_entry_delete(inst->ft, track);
@@ -545,7 +1209,7 @@ static int mod_open(void *instance)
 	}
 
 	rad_assert(inst->name == NULL);
-	inst->name = talloc_asprintf(inst, "proto udp address %s port %u",
+	inst->name = talloc_typed_asprintf(inst, "proto udp address %s port %u",
 				     src_buf, port);
 	inst->sockfd = sockfd;
 
@@ -573,8 +1237,9 @@ static int mod_fd(void const *instance)
  *
  * @param[in] instance of the RADIUS UDP I/O path.
  * @param[in] el the event list
+ * @param[in] nr context from the network side
  */
-static void mod_event_list_set(void *instance, fr_event_list_t *el)
+static void mod_event_list_set(void *instance, fr_event_list_t *el, void *nr)
 {
 	proto_radius_udp_t *inst;
 
@@ -583,16 +1248,22 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el)
 	inst = talloc_get_type_abort(instance, proto_radius_udp_t);
 
 	/*
-	 *	Only Access-Request gets a cleanup delay.
+	 *	Dynamic clients require an event list for cleanups.
 	 */
-	if (!inst->parent->code_allowed[FR_CODE_ACCESS_REQUEST]) return;
+	if (!inst->dynamic_clients_is_set) {
+		/*
+		 *	Only Access-Request gets a cleanup delay.
+		 */
+		if (!inst->parent->code_allowed[FR_CODE_ACCESS_REQUEST]) return;
 
-	/*
-	 *	And then, only if it is non-zero.
-	 */
-	if (!inst->cleanup_delay) return;
+		/*
+		 *	And then, only if it is non-zero.
+		 */
+		if (!inst->cleanup_delay) return;
+	}
 
 	inst->el = el;
+	inst->nr = nr;
 }
 
 
@@ -635,6 +1306,21 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	inst->ft = fr_radius_tracking_create(inst, sizeof(proto_radius_udp_address_t), inst->parent->code_allowed);
 	if (!inst->ft) {
 		cf_log_err(cs, "Failed to create tracking table: %s", fr_strerror());
+		return -1;
+	}
+
+	/*
+	 *	Instantiate proto_radius_dynamic_client
+	 */
+	if (inst->dynamic_clients_is_set) {
+		fr_app_process_t const	*app_process;
+
+		app_process = (fr_app_process_t const *)inst->dynamic_clients.submodule->module->common;
+		if (app_process->instantiate && (app_process->instantiate(inst->dynamic_clients.submodule->data,
+									  cf_item_to_section(cf_parent(cs))) < 0)) {
+			cf_log_err(cs, "Instantiation failed for \"%s\"", app_process->name);
+			return -1;
+		}
 	}
 
 	return 0;
@@ -670,6 +1356,58 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		memcpy(&inst->priorities, &priorities, sizeof(priorities));
 	}
 
+	if (inst->dynamic_clients_is_set) {
+		size_t i, num;
+		dl_instance_t *parent_inst;
+
+		if (!inst->dynamic_clients.network) {
+			cf_log_err(cs, "One or more 'network' entries MUST be specified for dynamic clients.");
+			return -1;
+		}
+
+		num = talloc_array_length(inst->dynamic_clients.network);
+		for (i = 0; i < num; i++) {
+			if (inst->dynamic_clients.network[i].af != inst->ipaddr.af) {
+				char buffer[256];
+
+				fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(inst->dynamic_clients.network[i]), 0);
+
+				cf_log_err(cs, "Address family in entry %zd - 'network = %s' does not match 'ipaddr'", i + 1, buffer);
+				return -1;
+			}
+		}
+
+		parent_inst = cf_data_value(cf_data_find(cf_parent(cs), dl_instance_t, "proto_radius"));
+		rad_assert(parent_inst != NULL);
+
+		if (dl_instance(inst, &inst->dynamic_clients.submodule,
+				cs, parent_inst, "dynamic_client", DL_TYPE_SUBMODULE) < 0) {
+			cf_log_err(cs, "Failed finding proto_radius_dynamic_client: %s", fr_strerror());
+			return -1;
+		}
+
+		FR_DLIST_INIT(inst->dynamic_clients.pending);
+		FR_DLIST_INIT(inst->dynamic_clients.packets);
+
+		/*
+		 *	Allow static clients for this virtual server.
+		 */
+		inst->dynamic_clients.clients = client_list_init(NULL); // client_list_parse_section(inst->parent->server_cs, false);
+		inst->dynamic_clients.expired = client_list_init(NULL);
+
+		FR_INTEGER_BOUND_CHECK("max_clients", inst->dynamic_clients.max_clients, >=, 1);
+		FR_INTEGER_BOUND_CHECK("max_clients", inst->dynamic_clients.max_clients, <=, (1 << 20));
+
+		FR_INTEGER_BOUND_CHECK("max_pending_clients", inst->dynamic_clients.max_pending_clients, >=, 4);
+		FR_INTEGER_BOUND_CHECK("max_pending_clients", inst->dynamic_clients.max_pending_clients, <=, 2048);
+
+		FR_INTEGER_BOUND_CHECK("max_pending_packets", inst->dynamic_clients.max_pending_clients, >=, 256);
+		FR_INTEGER_BOUND_CHECK("max_pending_packets", inst->dynamic_clients.max_pending_clients, <=, 65536);
+
+		FR_INTEGER_BOUND_CHECK("lifetime", inst->dynamic_clients.lifetime, >=, 30);
+		FR_INTEGER_BOUND_CHECK("lifetime", inst->dynamic_clients.lifetime, <=, 86400);
+	}
+
 	return 0;
 }
 
@@ -682,6 +1420,8 @@ static int mod_detach(void *instance)
 	 *	"copy timer from -> to, which means we only have to
 	 *	delete our child event loop from the parent on close.
 	 */
+
+	if (inst->dynamic_clients.clients) TALLOC_FREE(inst->dynamic_clients.clients);
 
 	close(inst->sockfd);
 	return 0;
@@ -714,6 +1454,7 @@ fr_app_io_t proto_radius_udp = {
 	.open			= mod_open,
 	.read			= mod_read,
 	.decode			= mod_decode,
+	.encode			= mod_encode, /* only for dynamic client creation */
 	.write			= mod_write,
 	.fd			= mod_fd,
 	.event_list_set		= mod_event_list_set,

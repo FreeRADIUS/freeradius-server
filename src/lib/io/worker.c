@@ -125,6 +125,8 @@ struct fr_worker_t {
 	int                     message_set_size; //!< default start number of messages
 	int                     ring_buffer_size; //!< default start size for the ring buffers
 
+	int			max_request_time; //!< maximum time a request can be processed
+
 	size_t			talloc_pool_size; //!< for each REQUEST
 
 	fr_time_t		checked_timeout; //!< when we last checked the tails of the queues
@@ -557,8 +559,6 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 #endif
 
 	talloc_free(request);
-
-	if (!worker->num_active) worker_reset_timer(worker);
 }
 
 
@@ -610,8 +610,6 @@ static void fr_worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED struct
 	while ((request = fr_heap_peek_tail(worker->time_order)) != NULL) {
 		waiting = now - request->async->recv_time;
 
-		if (waiting < NANOSEC) break;
-
 		/*
 		 *	Waiting too long, delete it.
 		 */
@@ -624,7 +622,7 @@ static void fr_worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED struct
 		fr_worker_send_reply(worker, request, 0);
 	}
 
-	worker_reset_timer(worker);
+	if (!worker->num_active) worker_reset_timer(worker);
 }
 
 /** See when we next need to service the time_order heap for "too old"
@@ -638,18 +636,10 @@ static void worker_reset_timer(fr_worker_t *worker)
 	REQUEST *request;
 
 	request = fr_heap_peek_tail(worker->time_order);
-	if (!request) {
-		rad_assert(worker->num_active == 0);
-		if (worker->ev_cleanup) {
-			DEBUG3("Worker has nothing to do, deleting cleanup timer.");
-			fr_event_timer_delete(worker->el, &worker->ev_cleanup);
-		}
-		worker->next_cleanup = 0;
-		return;
-	}
+	if (!request) return;
 	rad_assert(worker->num_active > 0);
 
-	cleanup = 30;
+	cleanup = worker->max_request_time;
 	cleanup *= NANOSEC;
 	cleanup += request->async->recv_time;
 	fr_time_to_timeval(&when, cleanup);
@@ -659,14 +649,14 @@ static void worker_reset_timer(fr_worker_t *worker)
 	 *	previous one.
 	 */
 	if (worker->ev_cleanup) {
-		rad_assert(cleanup >= worker->next_cleanup);
-		if ((cleanup - worker->next_cleanup) <= NANOSEC) return;
+		if ((cleanup > worker->next_cleanup) &&
+		    (cleanup - worker->next_cleanup) <= NANOSEC) return;
 	}
 
 	worker->next_cleanup = cleanup;
 	fr_time_to_timeval(&when, cleanup);
 
-	DEBUG2("Resetting worker cleanup timer to +30s");
+	DEBUG2("Resetting worker cleanup timer to +%ds", worker->max_request_time);
 	if (fr_event_timer_insert(worker, worker->el, &worker->ev_cleanup,
 				  &when, fr_worker_max_request_time, worker) < 0) {
 		ERROR("Failed inserting max_request_time timer.");
@@ -701,7 +691,7 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
 		cd = fr_ptr_to_type(fr_channel_data_t, request.list, entry);
 		waiting = now - cd->m.when;
 
-		if (waiting < NANOSEC) break;
+		if (waiting < ((worker->max_request_time - 2) * (fr_time_t) NANOSEC)) break;
 
 		/*
 		 *	Waiting too long, delete it.
@@ -774,6 +764,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	 */
 	request = fr_heap_pop(worker->runnable);
 	if (request) {
+		DEBUG3("Worker found runnable request.");
 		REQUEST_VERIFY(request);
 		rad_assert(request->runnable_id < 0);
 		fr_time_tracking_resume(&request->async->tracking, now);
@@ -789,8 +780,12 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 		if (!cd) {
 			WORKER_HEAP_POP(to_decode, cd, request.list);
 		}
-		if (!cd) return NULL;
+		if (!cd) {
+			DEBUG3("Worker localized and decode lists are empty.");
+			return NULL;
+		}
 
+		DEBUG3("Worker found request to decode.");
 		worker->num_decoded++;
 	} while (!cd);
 
@@ -829,7 +824,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	request->async->recv_time = *request->async->original_recv_time;
 	request->async->el = worker->el;
 	request->number = worker->number++;
-	request->name = talloc_asprintf(request, "%" PRIu64 , request->number);
+	request->name = talloc_typed_asprintf(request, "%" PRIu64 , request->number);
 
 	request->async->listen = cd->listen;
 	request->async->packet_ctx = cd->packet_ctx;
@@ -1035,6 +1030,7 @@ static void fr_worker_run_request(fr_worker_t *worker, REQUEST *request)
 	(void) rbtree_deletebydata(worker->dedup, request);
 
 	fr_worker_send_reply(worker, request, size);
+	if (!worker->num_active) worker_reset_timer(worker);
 }
 
 /** Run the event loop 'pre' callback
@@ -1055,14 +1051,6 @@ static int fr_worker_pre_event(void *ctx, struct timeval *wake)
 	WORKER_VERIFY;
 
 	/*
-	 *	The application is polling the event loop, but has
-	 *	other work to do.  Don't do anything special here, as
-	 *	we will get called again on the next round of the
-	 *	event loop.
-	 */
-	if (wake && ((wake->tv_sec == 0) && (wake->tv_usec == 0))) return 0;
-
-	/*
 	 *	See if we need to sleep, because if there's nothing
 	 *	more to do, we need to tell the other end of the
 	 *	channels that we're sleeping.
@@ -1079,6 +1067,16 @@ static int fr_worker_pre_event(void *ctx, struct timeval *wake)
 	if (!sleeping) {
 		worker->was_sleeping = false;
 		return 1;
+	}
+
+	/*
+	 *	The application is polling the event loop, but has
+	 *	other work to do.  Don't do anything special here, as
+	 *	we will get called again on the next round of the
+	 *	event loop.
+	 */
+	if (wake && ((wake->tv_sec == 0) && (wake->tv_usec == 0))) {
+		return 0;
 	}
 
 	DEBUG3("\t%ssleeping running %zd, localized %zd, to_decode %zd",
@@ -1279,6 +1277,7 @@ nomem:
 	worker->talloc_pool_size = 4096; /* at least enough for a REQUEST */
 	worker->message_set_size = 1024;
 	worker->ring_buffer_size = (1 << 16);
+	worker->max_request_time = 30;
 
 	if (fr_event_pre_insert(worker->el, fr_worker_pre_event, worker) < 0) {
 		fr_strerror_printf("Failed adding pre-check to event list");

@@ -330,20 +330,17 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 
 		switch (packet[0]) {
 		case FR_CODE_ACCOUNTING_RESPONSE:
-			if (!original) goto need_original;
-			if (original[0] == FR_CODE_STATUS_SERVER) goto do_ack;
-			goto do_response;
-
-		case FR_CODE_ACCOUNTING_REQUEST:
-		case FR_CODE_DISCONNECT_REQUEST:
 		case FR_CODE_DISCONNECT_ACK:
 		case FR_CODE_DISCONNECT_NAK:
-		case FR_CODE_COA_REQUEST:
 		case FR_CODE_COA_ACK:
 		case FR_CODE_COA_NAK:
 			if (!original) goto need_original;
+			if (original[0] == FR_CODE_STATUS_SERVER) goto do_ack;
+			/* FALL-THROUGH */
 
-		do_response:
+		case FR_CODE_ACCOUNTING_REQUEST:
+		case FR_CODE_DISCONNECT_REQUEST:
+		case FR_CODE_COA_REQUEST:
 			memset(packet + 4, 0, AUTH_VECTOR_LEN);
 			break;
 
@@ -766,7 +763,7 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 	 */
 	rcode = fr_radius_sign(packet, original, secret, secret_len);
 	if (rcode < 0) {
-		fr_strerror_printf("unknown packet code");
+		fr_strerror_printf("Failed calculating correct authenticator: %s", fr_strerror());
 		return -1;
 	}
 
@@ -804,6 +801,7 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 		} else {
 			fr_strerror_printf("invalid Request Authenticator (shared secret is incorrect)");
 		}
+		return -1;
 	}
 
 	return 0;

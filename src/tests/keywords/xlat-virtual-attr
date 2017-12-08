@@ -10,10 +10,6 @@ if ("%{Virtual-Server}" != 'default') {
 	test_fail
 }
 
-if ("%{Module-Return-Code}" != '') {
-	test_fail
-}
-
 ok
 if ("%{Module-Return-Code}" != 'ok') {
 	test_fail

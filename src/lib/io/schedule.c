@@ -457,7 +457,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		fr_log(sc->log, L_DBG, "Waiting for semaphore from worker %d/%d\n", i, sc->num_workers);
 		SEM_WAIT_INTR(&sc->semaphore);
 	}
-	
+
 	/*
 	 *	See if all of the workers have started.
 	 */
