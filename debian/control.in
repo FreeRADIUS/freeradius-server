@@ -30,6 +30,7 @@ Build-Depends: @BUILDDEPS@ debhelper (>= 9),
  libhiredis-dev,
  python-dev,
  samba-dev,
+ dh-systemd,
  unixodbc-dev
 Section: net
 Priority: optional
