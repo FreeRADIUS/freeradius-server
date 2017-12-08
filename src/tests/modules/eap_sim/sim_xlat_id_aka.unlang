@@ -14,10 +14,10 @@ if ("%{sim_id_type:&User-Name}" != 'Permanent') {
 #  Encrypt the permanent ID
 #
 update control {
-	Tmp-String-0 := '12345678'
+	Tmp-String-0 := '1420032219455258'
 }
 update control {
-	User-Name := "%{3gpp_pseudonym_encrypt_nai:&User-Name &control:Tmp-String-0 6}"
+	User-Name := "%{3gpp_pseudonym_encrypt:&User-Name &control:Tmp-String-0 6}"
 }
 
 #
@@ -32,7 +32,7 @@ if ("%{sim_id_method:&control:User-Name}" != 'AKA') {
 #
 #  Can we identify the encrypted blob correctly?
 #
-if ("%{sim_id_type:&control:User-Name}" != '3GPP-Pseudonym') {
+if ("%{sim_id_type:&control:User-Name}" != 'Pseudonym') {
 	test_fail
 } else {
 	test_pass
@@ -41,7 +41,7 @@ if ("%{sim_id_type:&control:User-Name}" != '3GPP-Pseudonym') {
 #
 #  We should refuse to re-encrypt an encrypted NAI
 #
-if ("%{3gpp_pseudonym_encrypt_nai:&control:User-Name &control:Tmp-String-0 6}" != '') {
+if ("%{3gpp_pseudonym_encrypt:&control:User-Name &control:Tmp-String-0 6}" != '') {
 	test_fail
 } else {
 	test_pass
@@ -51,7 +51,7 @@ if ("%{3gpp_pseudonym_encrypt_nai:&control:User-Name &control:Tmp-String-0 6}" !
 #  Get the original IMSI back again
 #
 update control {
-	Tmp-String-1 := "%{3gpp_pseudonym_decrypt_nai:&control:User-Name &control:Tmp-String-0}"
+	Tmp-String-1 := "%{3gpp_pseudonym_decrypt:&control:User-Name &control:Tmp-String-0}"
 }
 
 if (&control:Tmp-String-1 != &User-Name) {

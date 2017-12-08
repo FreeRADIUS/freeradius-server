@@ -325,10 +325,6 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 
 	memcpy(work, inst->parent->work_submodule->data, sizeof(*work));
 
-	/*
-	 *	Tell the worker to clean itself up.
-	 */
-	work->free_on_close = true;
 	work->ev = NULL;
 
 	work->fd = dup(fd);
@@ -408,7 +404,9 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 
 	if (!fr_schedule_socket_add(inst->parent->sc, listen)) {
 	error:
-		(void) fr_event_fd_delete(inst->el, fd, FR_EVENT_FILTER_VNODE);
+		if (fr_event_fd_delete(inst->el, fd, FR_EVENT_FILTER_VNODE) < 0) {
+			ERROR("Failed removing DELETE callback on add: %s", fr_strerror());
+		}
 
 		if (opened) {
 			(void) listen->app_io->close(listen->app_io_instance);
@@ -423,6 +421,11 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 		return -1;
 	}
 
+	/*
+	 *	Tell the worker to clean itself up.
+	 */
+	work->free_on_close = true;
+
 	inst->vnode_fd = fd;
 
 	return 0;
@@ -435,7 +438,22 @@ static void mod_vnode_delete(fr_event_list_t *el, int fd, UNUSED int fflags, voi
 
 	DEBUG("proto_detail (%s): Deleted %s", inst->name, inst->filename_work);
 
-	(void) fr_event_fd_delete(el, fd, FR_EVENT_FILTER_VNODE);
+	/*
+	 *	Silently ignore notifications from the directory.  We
+	 *	didn't ask for them, but libkqueue delivers them to
+	 *	us.
+	 */
+	if (fd == inst->fd) return;
+
+	if (fd != inst->vnode_fd) {
+		ERROR("Received DELETE for FD %d, when we were expecting one on FD %d - ignoring it",
+		      fd, inst->vnode_fd);
+		return;
+	}
+
+	if (fr_event_fd_delete(el, fd, FR_EVENT_FILTER_VNODE) < 0) {
+		ERROR("Failed removing DELETE callback after deletion: %s", fr_strerror());
+	}
 	close(fd);
 	inst->vnode_fd = -1;
 
@@ -680,8 +698,11 @@ static int mod_detach(void *instance)
 	close(inst->fd);
 
 	if (inst->vnode_fd >= 0) {
-		(void) fr_event_fd_delete(inst->el, inst->vnode_fd, FR_EVENT_FILTER_VNODE);
+		if (fr_event_fd_delete(inst->el, inst->vnode_fd, FR_EVENT_FILTER_VNODE) < 0) {
+			ERROR("Failed removing DELETE callback on detach: %s", fr_strerror());
+		}
 		close(inst->vnode_fd);
+		inst->vnode_fd = -1;
 	}
 
 	return 0;

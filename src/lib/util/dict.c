@@ -1001,7 +1001,7 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 	 *	'octets[n]' can only be used in a few limited situations.
 	 */
 	if (flags.length) {
-		if (flags.array || flags.has_value || flags.virtual) {
+		if (flags.has_value || flags.virtual) {
 			fr_strerror_printf("The 'octets[...]' syntax cannot be used any other flag");
 			goto error;
 		}
@@ -1070,6 +1070,7 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 		case FR_TYPE_UINT32:
 		case FR_TYPE_DATE:
 		case FR_TYPE_STRING:
+		case FR_TYPE_OCTETS:
 			break;
 		}
 

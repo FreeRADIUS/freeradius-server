@@ -36,8 +36,9 @@ typedef enum {
 	SIM_METHOD_HINT_UNKNOWN			= 0,	//!< We don't know what method the identity hints at.
 	SIM_METHOD_HINT_SIM			= 1,	//!< The identity hints the supplicant wants to use
 							///< EAP-SIM.
-	SIM_METHOD_HINT_AKA			= 2	//!< The identity hints the supplicant wants to use
+	SIM_METHOD_HINT_AKA			= 2,	//!< The identity hints the supplicant wants to use
 							///< EAP-AKA.
+	SIM_METHOD_HINT_AKA_PRIME		= 3
 } fr_sim_method_hint_t;
 
 /** SIM/AKA identity type hints
@@ -48,20 +49,26 @@ typedef enum {
 	SIM_ID_TYPE_UNKNOWN			= 0,	//!< We don't know what type of identity this is.
 	SIM_ID_TYPE_PERMANENT			= 1,	//!< This is a permanent identity (the IMSI of the SIM).
 	SIM_ID_TYPE_PSEUDONYM			= 2,	//!< This is a custom pseudonym.
-	SIM_ID_TYPE_3GPP_PSEUDONYM		= 3,	//!< This is a reversibly encrypted 3gpp pseudonym.
-	SIM_ID_TYPE_FASTAUTH			= 4	//!< This is a fastauth (session-resumption) id.
+	SIM_ID_TYPE_FASTAUTH			= 5	//!< This is a fastauth (session-resumption) id.
 } fr_sim_id_type_t;
 
 typedef enum {
-	SIM_ID_TAG_PERMANENT_AKA		= '0',
-	SIM_ID_TAG_PERMANENT_SIM		= '1',
-	SIM_ID_TAG_PSEUDONYM_AKA		= '2',
-	SIM_ID_TAG_PSEUDONYM_SIM		= '3',
-	SIM_ID_TAG_3GPP_PSEUDONYM_AKA		= '6',
-	SIM_ID_TAG_3GPP_PSEUDONYM_SIM		= '7',
-	SIM_ID_TAG_FASTAUTH_AKA			= '4',
-	SIM_ID_TAG_FASTAUTH_SIM			= '5'
+	SIM_ID_TAG_PERMANENT_SIM		= '1',  //!< IMSI, and hint that client wants to do EAP-SIM
+	SIM_ID_TAG_PSEUDONYM_SIM		= '4',	//!< Pseudonym, continue EAP-SIM
+	SIM_ID_TAG_FASTAUTH_SIM			= '5',	//!< Fastauth, continue EAP-SIM
+
+	SIM_ID_TAG_PERMANENT_AKA		= '0',	//!< IMSI, and hint that client wants to do EAP-AKA
+	SIM_ID_TAG_PSEUDONYM_AKA		= '2',	//!< Pseudonym, continue EAP-AKA
+	SIM_ID_TAG_FASTAUTH_AKA			= '3',	//!< Fastauth, continue EAP-AKA
+
+	SIM_ID_TAG_PERMANENT_AKA_PRIME          = '6',	//!< IMSI, and hint that client wants to do EAP-AKA-Prime.
+	SIM_ID_TAG_PSEUDONYM_AKA_PRIME		= '7',	//!< Pseudonym, continue EAP-AKA-Prime
+	SIM_ID_TAG_FASTAUTH_AKA_PRIME		= '8'	//!< Fastuath, continue EAP-AKA-Prime
 } fr_sim_id_tag_t;
+
+#define SIM_ID_TAG_PSEUDONYM_SIM_B64		56
+#define SIM_ID_TAG_PSEUDONYM_AKA_B64		54
+#define SIM_ID_TAG_PSEUDONYM_AKA_PRIME_B64	59
 
 size_t		fr_sim_id_user_len(char const *nai, size_t nai_len);
 
@@ -75,12 +82,12 @@ int		fr_sim_id_type(fr_sim_id_type_t *type, fr_sim_method_hint_t *hint,
 
 int		fr_sim_id_3gpp_pseudonym_encrypt(char out[SIM_3GPP_PSEUDONYM_LEN + 1],
 						 char const *imsi, size_t imsi_len,
-						 uint8_t tag,  uint8_t key_ind, uint8_t const key[8]);
+						 uint8_t tag,  uint8_t key_ind, uint8_t const key[16]);
 
 uint8_t		fr_sim_id_3gpp_pseudonym_tag(char const encr_id[SIM_3GPP_PSEUDONYM_LEN]);
 
 uint8_t		fr_sim_id_3gpp_pseudonym_key_index(char const encr_id[SIM_3GPP_PSEUDONYM_LEN]);
 
 int		fr_sim_id_3gpp_pseudonym_decrypt(char out[SIM_IMSI_MAX_LEN],
-				     		 char const encr_id[SIM_3GPP_PSEUDONYM_LEN], uint8_t const key[8]);
+				     		 char const encr_id[SIM_3GPP_PSEUDONYM_LEN], uint8_t const key[16]);
 #endif	/* _EAP_SIM_ID_TYPE_H */

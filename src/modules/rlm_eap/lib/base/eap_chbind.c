@@ -193,11 +193,14 @@ FR_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 
 		fr_pair_cursor_init(&cursor, &fake->packet->vps);
 		while (data_len > 0) {
+			fr_radius_ctx_t decoder_ctx = {
+				.root = fr_dict_root(fr_dict_internal)
+			};
+
 			ssize_t attr_len;
 
 			attr_len = fr_radius_decode_pair(fake->packet, &cursor,
-							 fr_dict_root(fr_dict_internal),
-							 attr_data, data_len, NULL);
+							 attr_data, data_len, &decoder_ctx);
 			if (attr_len <= 0) {
 				/*
 				 *	If fr_radius_decode_pair fails, return NULL string for

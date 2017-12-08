@@ -385,14 +385,14 @@ ATTRIBUTE	SIM-Method-Hint				1203	integer
 VALUE		SIM-Method-Hint		Unknown			0
 VALUE		SIM-Method-Hint		SIM			1
 VALUE		SIM-Method-Hint		AKA			2
+VALUE		SIM-Method-Hint		AKA-Prime		3
 
 ATTRIBUTE	SIM-Identity-Type			1204	integer
 
 VALUE		SIM-Identity-Type	Unknown			0
 VALUE		SIM-Identity-Type	Permanent		1
 VALUE		SIM-Identity-Type	Pseudonym		2
-VALUE		SIM-Identity-Type	3GPP-Pseudonym		3
-VALUE		SIM-Identity-Type	Fastauth		4
+VALUE		SIM-Identity-Type	Fastauth		3
 
 #
 #	Range:	1210-1219

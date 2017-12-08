@@ -1931,7 +1931,7 @@ static int status_udp_request_free(rlm_radius_udp_request_t *u)
  * @param[in] state	the connection was in when it failed.
  * @param[in] uctx	the connection.
  */
-static fr_connection_state_t _conn_failed(int fd, fr_connection_state_t state, void *uctx)
+static fr_connection_state_t _conn_failed(UNUSED int fd, fr_connection_state_t state, void *uctx)
 {
 	rlm_radius_udp_connection_t	*c = talloc_get_type_abort(uctx, rlm_radius_udp_connection_t);
 
@@ -1975,8 +1975,6 @@ static fr_connection_state_t _conn_failed(int fd, fr_connection_state_t state, v
 			u = fr_ptr_to_type(rlm_radius_udp_request_t, entry, entry);
 			state_transition(u, PACKET_STATE_THREAD);
 		}
-
-		fr_event_fd_delete(c->thread->el, fd, FR_EVENT_FILTER_IO);
 	}
 
 	conn_transition(c, CONN_OPENING);

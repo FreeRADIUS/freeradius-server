@@ -120,7 +120,7 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	packet_ctx.secret = secret;
 	packet_ctx.vector = packet->vector;
 	packet_ctx.tunnel_password_zeros = tunnel_password_zeros;
-
+	packet_ctx.root = fr_dict_root(fr_dict_internal);
 	switch (packet->code) {
 	case FR_CODE_ACCESS_REQUEST:
 	case FR_CODE_STATUS_SERVER:
@@ -134,11 +134,14 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	case FR_CODE_COA_NAK:
 	case FR_CODE_DISCONNECT_ACK:
 	case FR_CODE_DISCONNECT_NAK:
-		if (!original) {
-			fr_strerror_printf("Cannot decode response without request");
-			return -1;
+		/*
+		 *	radsniff doesn't always have a response
+		 */
+		if (original) {
+ 			packet_ctx.vector = original->vector;
+		} else {
+			memset(packet->vector, 0, sizeof(packet->vector));
 		}
-		packet_ctx.vector = original->vector;
 		break;
 
 	case FR_CODE_ACCOUNTING_REQUEST:
@@ -174,8 +177,7 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		/*
 		 *	This may return many VPs
 		 */
-		my_len = fr_radius_decode_pair(packet, &cursor, fr_dict_root(fr_dict_internal),
-					       ptr, packet_length, &packet_ctx);
+		my_len = fr_radius_decode_pair(packet, &cursor, ptr, packet_length, &packet_ctx);
 		if (my_len < 0) {
 			fr_pair_list_free(&head);
 			return -1;

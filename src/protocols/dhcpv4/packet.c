@@ -210,8 +210,11 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 	 *	it'll need to find the new tail...
 	 */
 	{
-		uint8_t const *end;
-		ssize_t len;
+		uint8_t const	*end;
+		ssize_t		len;
+		fr_dhcp_decoder_ctx_t	packet_ctx = {
+					.root = fr_dict_root(fr_dict_internal)
+				};
 
 		p = packet->data + 240;
 		end = p + (packet->data_len - 240);
@@ -220,8 +223,8 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 		 *	Loop over all the options data
 		 */
 		while (p < end) {
-			len = fr_dhcpv4_decode_option(packet, &cursor, fr_dict_root(fr_dict_internal),
-						    p, ((end - p) > UINT8_MAX) ? UINT8_MAX : (end - p), NULL);
+			len = fr_dhcpv4_decode_option(packet, &cursor, p,
+						      ((end - p) > UINT8_MAX) ? UINT8_MAX : (end - p), &packet_ctx);
 			if (len <= 0) {
 				fr_pair_list_free(&head);
 				return len;

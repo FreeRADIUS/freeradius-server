@@ -45,22 +45,42 @@ RCSID("$Id$")
 static int eap_sim_compose(eap_session_t *eap_session)
 {
 	eap_sim_session_t	*eap_sim_session = talloc_get_type_abort(eap_session->opaque, eap_sim_session_t);
+	vp_cursor_t		cursor;
+	vp_cursor_t		to_encode;
+	VALUE_PAIR		*head = NULL, *vp;
+	REQUEST			*request = eap_session->request;
+	ssize_t			ret;
 
 	/* we will set the ID on requests, since we have to HMAC it */
 	eap_session->this_round->set_request_id = true;
 
-	return fr_sim_encode(eap_session->request, dict_sim_root, FR_EAP_SIM,
-			     eap_session->request->reply->vps, eap_session->this_round->request,
-			     eap_sim_session->keys.gsm.nonce_mt, sizeof(eap_sim_session->keys.gsm.nonce_mt));
+	fr_pair_cursor_init(&cursor, &eap_session->request->reply->vps);
+	fr_pair_cursor_init(&to_encode, &head);
+
+	while ((fr_pair_cursor_next_by_ancestor(&cursor, dict_sim_root, TAG_ANY))) {
+		vp = fr_pair_cursor_remove(&cursor);
+		fr_pair_cursor_append(&to_encode, vp);
+	}
+
+	RDEBUG2("Encoding EAP-SIM attributes");
+	rdebug_pair_list(L_DBG_LVL_2, request, head, NULL);
+
+	ret = fr_sim_encode(eap_session->request, dict_sim_root, FR_EAP_SIM,
+			    head, eap_session->this_round->request,
+			    &eap_sim_session->keys);
+	fr_pair_cursor_first(&to_encode);
+	fr_pair_cursor_free(&to_encode);
+
+	if (ret < 0) return -1;
+	return 0;
 }
 
 static int eap_sim_send_state(eap_session_t *eap_session)
 {
-	VALUE_PAIR		**vps, *newvp;
-	uint16_t		words[3];
+	VALUE_PAIR		**vps, *vp;
+	uint16_t		version;
 	eap_sim_session_t	*eap_sim_session = talloc_get_type_abort(eap_session->opaque, eap_sim_session_t);
 	RADIUS_PACKET		*packet;
-	uint8_t			*p;
 
 	rad_assert(eap_session->request != NULL);
 	rad_assert(eap_session->request->reply);
@@ -73,38 +93,29 @@ static int eap_sim_send_state(eap_session_t *eap_session)
 	/*
 	 *	Add appropriate TLVs for the EAP things we wish to send.
 	 */
-
-	/* the version list. We support only version 1. */
-	words[0] = htons(sizeof(words[1]));
-	words[1] = htons(EAP_SIM_VERSION);
-	words[2] = 0;
-
-	newvp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_VERSION_LIST);
-	fr_pair_value_memcpy(newvp, (uint8_t const *) words, sizeof(words));
-
-	fr_pair_add(vps, newvp);
-
-	/* set the EAP_ID - new value */
-	newvp = fr_pair_afrom_child_num(packet, fr_dict_root(fr_dict_internal), FR_EAP_ID);
-	newvp->vp_uint32 = eap_sim_session->sim_id++;
-	fr_pair_replace(vps, newvp);
+	vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_VERSION_LIST);
+	vp->vp_uint16 = EAP_SIM_VERSION;
+	fr_pair_add(vps, vp);
 
 	/* record it in the ess */
+	version = htons(EAP_SIM_VERSION);
+	memcpy(eap_sim_session->keys.gsm.version_list, &version, sizeof(version));
 	eap_sim_session->keys.gsm.version_list_len = 2;
-	memcpy(eap_sim_session->keys.gsm.version_list, words + 1, eap_sim_session->keys.gsm.version_list_len);
+
+	/* set the EAP_ID - new value */
+	vp = fr_pair_afrom_child_num(packet, fr_dict_root(fr_dict_internal), FR_EAP_ID);
+	vp->vp_uint32 = eap_sim_session->sim_id++;
+	fr_pair_replace(vps, vp);
 
 	/* the ANY_ID attribute. We do not support re-auth or pseudonym */
-	MEM(newvp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_FULLAUTH_ID_REQ));
-	MEM(p = talloc_array(newvp, uint8_t, 2));
-	p[0] = 0;
-	p[1] = 1;
-	fr_pair_value_memsteal(newvp, p);
-	fr_pair_add(vps, newvp);
+	MEM(vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_FULLAUTH_ID_REQ));
+	vp->vp_bool = true;
+	fr_pair_add(vps, vp);
 
 	/* the SUBTYPE, set to start. */
-	newvp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_SUBTYPE);
-	newvp->vp_uint32 = EAP_SIM_START;
-	fr_pair_replace(vps, newvp);
+	vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_SUBTYPE);
+	vp->vp_uint32 = EAP_SIM_START;
+	fr_pair_replace(vps, vp);
 
 	return 0;
 }
@@ -133,7 +144,6 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	eap_sim_session_t	*eap_sim_session;
 	VALUE_PAIR		**from_client, **to_client, *vp;
 	RADIUS_PACKET		*packet;
-	uint8_t			*p, *rand;
 
 	eap_sim_session = talloc_get_type_abort(eap_session->opaque, eap_sim_session_t);
 	rad_assert(eap_session->request != NULL);
@@ -152,18 +162,18 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	to_client = &packet->vps;
 
 	/*
-	 *	Okay, we got the challenges! Put them into an attribute.
+	 *	Okay, we got the challenges! Put them into attributes.
 	 */
 	MEM(vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_RAND));
-	MEM(p = rand = talloc_array(vp, uint8_t, 2 + (SIM_VECTOR_GSM_RAND_SIZE * 3)));
-	memset(p, 0, 2); /* clear reserved bytes */
-	p += 2;
-	memcpy(p, eap_sim_session->keys.gsm.vector[0].rand, SIM_VECTOR_GSM_RAND_SIZE);
-	p += SIM_VECTOR_GSM_RAND_SIZE;
-	memcpy(p, eap_sim_session->keys.gsm.vector[1].rand, SIM_VECTOR_GSM_RAND_SIZE);
-	p += SIM_VECTOR_GSM_RAND_SIZE;
-	memcpy(p, eap_sim_session->keys.gsm.vector[2].rand, SIM_VECTOR_GSM_RAND_SIZE);
-	fr_pair_value_memsteal(vp, rand);
+	fr_pair_value_memcpy(vp, eap_sim_session->keys.gsm.vector[0].rand, SIM_VECTOR_GSM_RAND_SIZE);
+	fr_pair_add(to_client, vp);
+
+	MEM(vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_RAND));
+	fr_pair_value_memcpy(vp, eap_sim_session->keys.gsm.vector[1].rand, SIM_VECTOR_GSM_RAND_SIZE);
+	fr_pair_add(to_client, vp);
+
+	MEM(vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_RAND));
+	fr_pair_value_memcpy(vp, eap_sim_session->keys.gsm.vector[2].rand, SIM_VECTOR_GSM_RAND_SIZE);
 	fr_pair_add(to_client, vp);
 
 	/*
@@ -185,14 +195,11 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	 *	Make a copy of the identity
 	 */
 	} else {
-		if (eap_sim_session->keys.identity) talloc_free(eap_sim_session->keys.identity);
+		if (eap_sim_session->keys.identity) talloc_const_free(eap_sim_session->keys.identity);
 
-		eap_sim_session->keys.identity_len = strlen(eap_session->identity);
-
-		MEM(eap_sim_session->keys.identity = talloc_array(eap_sim_session, uint8_t,
-								  eap_sim_session->keys.identity_len));
-		memcpy(eap_sim_session->keys.identity, eap_session->identity,
-		       eap_sim_session->keys.identity_len);
+		eap_sim_session->keys.identity_len = talloc_array_length(eap_session->identity) - 1;
+		MEM(eap_sim_session->keys.identity = talloc_memdup(eap_sim_session, eap_session->identity,
+								   eap_sim_session->keys.identity_len));
 	}
 
 	/*
@@ -208,10 +215,6 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	 */
 	vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_MAC);
 	fr_pair_value_memcpy(vp, hmac_zero, sizeof(hmac_zero));
-	fr_pair_replace(to_client, vp);
-
-	vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_KEY);
-	fr_pair_value_memcpy(vp, eap_sim_session->keys.k_aut, 16);
 	fr_pair_replace(to_client, vp);
 
 	/*
@@ -333,16 +336,17 @@ static int process_eap_sim_start(eap_session_t *eap_session, VALUE_PAIR *vps)
 	 *	Record it for later keying
 	 */
 	eap_sim_version = htons(eap_sim_version);
-	memcpy(eap_sim_session->keys.gsm.version_select, &eap_sim_version, sizeof(eap_sim_session->keys.gsm.version_select));
+	memcpy(eap_sim_session->keys.gsm.version_select,
+	       &eap_sim_version, sizeof(eap_sim_session->keys.gsm.version_select));
 
 	/*
 	 *	Double check the nonce size.
 	 */
-	if (nonce_vp->vp_length != 18) {
-		REDEBUG("EAP-SIM nonce_mt must be 16 bytes (+2 bytes padding), not %zu bytes", nonce_vp->vp_length);
+	if (nonce_vp->vp_length != 16) {
+		REDEBUG("EAP-SIM nonce_mt must be 16 bytes, not %zu bytes", nonce_vp->vp_length);
 		return -1;
 	}
-	memcpy(eap_sim_session->keys.gsm.nonce_mt, nonce_vp->vp_octets + 2, 16);
+	memcpy(eap_sim_session->keys.gsm.nonce_mt, nonce_vp->vp_octets, 16);
 
 	/*
 	 *	Everything looks good, change states
@@ -377,6 +381,7 @@ static int process_eap_sim_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 	 *	Verify the MAC, now that we have all the keys
 	 */
 	if (fr_sim_crypto_mac_verify(eap_session, dict_sim_root, vps,
+				     (eap_packet_raw_t *)eap_session->this_round->response->packet,
 				     eap_sim_session->keys.k_aut,
 				     sres_cat, sizeof(sres_cat), calc_mac)) {
 		RDEBUG2("MAC check succeed");
@@ -414,7 +419,10 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	REQUEST			*request = eap_session->request;
 	eap_sim_session_t	*eap_sim_session = talloc_get_type_abort(eap_session->opaque, eap_sim_session_t);
 
-	fr_sim_decode_ctx_t	ctx;
+	fr_sim_decode_ctx_t	ctx = {
+					.keys = &eap_sim_session->keys,
+					.root = dict_sim_root
+				};
 	VALUE_PAIR		*vp, *vps;
 	vp_cursor_t		cursor;
 
@@ -422,7 +430,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 
 	int			ret;
 
-	memset(&ctx, 0, sizeof(ctx));
+	rad_assert(dict_sim_root);
 
 	/*
 	 *	VPS is the data from the client
@@ -431,9 +439,8 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 
 	fr_pair_cursor_init(&cursor, &request->packet->vps);
 
-	ctx.keys = &(eap_sim_session->keys);
 	ret = fr_sim_decode(eap_session->request,
-			    &cursor, dict_sim_root,
+			    &cursor,
 			    eap_session->this_round->response->type.data,
 			    eap_session->this_round->response->type.length,
 			    &ctx);
@@ -441,7 +448,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 
 	vp = fr_pair_cursor_next(&cursor);
 	if (vp && RDEBUG_ENABLED2) {
-		RDEBUG2("EAP-SIM decoded attributes");
+		RDEBUG2("Eecoded EAP-SIM attributes");
 		rdebug_pair_list(L_DBG_LVL_2, request, vp, NULL);
 	}
 

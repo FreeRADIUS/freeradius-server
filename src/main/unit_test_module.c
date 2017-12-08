@@ -761,7 +761,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (rad_debug_lvl) version_print();
+	if (rad_debug_lvl) dependency_version_print();
 	fr_debug_lvl = rad_debug_lvl;
 
 	/*

@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/md5.h>
+#include <freeradius-devel/io/test_point.h>
 
 static unsigned int salt_offset = 0;
 
@@ -892,9 +893,9 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 			       vp_cursor_t *cursor, void *encoder_ctx)
 {
 	int			len;
-	fr_type_t			attr_type;
+	fr_type_t		attr_type;
 #ifndef NDEBUG
-	fr_type_t			vsa_type;
+	fr_type_t		vsa_type;
 #endif
 	uint8_t			*start = out;
 	VALUE_PAIR const	*vp = fr_pair_cursor_current(cursor);
@@ -1636,3 +1637,26 @@ ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, 
 
 	return ret;
 }
+
+static void *encode_test_ctx (UNUSED TALLOC_CTX *ctx)
+{
+	static uint8_t vector[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
+
+	static fr_radius_ctx_t	test_ctx = {
+		.vector = vector
+	};
+
+	test_ctx.secret = talloc_strdup(ctx, "testing123");
+	test_ctx.root = fr_dict_root(fr_dict_internal);
+
+	return &test_ctx;
+}
+
+/*
+ *	Test points
+ */
+extern fr_test_point_pair_encode_t radius_tp_encode;
+fr_test_point_pair_encode_t radius_tp_encode = {
+	.test_ctx	= encode_test_ctx,
+	.func		= fr_radius_encode_pair
+};

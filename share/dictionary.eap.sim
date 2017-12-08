@@ -8,46 +8,49 @@
 #
 #  Non-Skippable attributes
 #
-ATTRIBUTE	EAP-SIM-Rand				1	octets
-ATTRIBUTE	EAP-SIM-Autn				2	octets
-ATTRIBUTE	EAP-SIM-Res				3	octets
-ATTRIBUTE	EAP-SIM-Auts				4	octets
-ATTRIBUTE	EAP-SIM-Padding				6	octets
-ATTRIBUTE	EAP-SIM-Nonce-MT			7	octets
+ATTRIBUTE	EAP-SIM-RAND				1	octets[16] array
+ATTRIBUTE	EAP-SIM-Nonce-MT			7	octets[16]
 ATTRIBUTE	EAP-SIM-Permanent-ID-Req		10	bool
-ATTRIBUTE	EAP-SIM-Mac				11	octets
+ATTRIBUTE	EAP-SIM-MAC				11	octets[16]
 ATTRIBUTE	EAP-SIM-Notification			12	short
 
-VALUE	EAP-SIM-Notification		General-Failure-After-Authentication 0
-VALUE	EAP-SIM-Notification		Temporarily-Denied	1026
-VALUE	EAP-SIM-Notification		Not-Subscribed		1031
-VALUE	EAP-SIM-Notification		General-Failure		16384
-VALUE	EAP-SIM-Notification		Success			32768
+VALUE	EAP-SIM-Notification		General-Failure-After-Authentication	0
+VALUE	EAP-SIM-Notification		Temporarily-Denied			1026
+VALUE	EAP-SIM-Notification		Not-Subscribed				1031
+VALUE	EAP-SIM-Notification		General-Failure				16384
+VALUE	EAP-SIM-Notification		Success					32768
 
 ATTRIBUTE	EAP-SIM-Any-ID-Req			13	bool
 ATTRIBUTE	EAP-SIM-Identity			14	string
-ATTRIBUTE	EAP-SIM-Version-List			15	octets
+ATTRIBUTE	EAP-SIM-Version-List			15	short array
 
 ATTRIBUTE	EAP-SIM-Selected-Version		16	short
 ATTRIBUTE	EAP-SIM-Fullauth-ID-Req			17	bool
-ATTRIBUTE	EAP-SIM-Counter				19	short
-ATTRIBUTE	EAP-SIM-Counter-Too-Small		20	bool
-ATTRIBUTE	EAP-SIM-Nonce-S				21	octets
 ATTRIBUTE	EAP-SIM-Client-Error-Code		22	short
 
-VALUE	EAP-SIM-Client-Error-Code	Unable-To-Process-Packet 0
-VALUE	EAP-SIM-Client-Error-Code	Unsupported-Version	1
-VALUE	EAP-SIM-Client-Error-Code	Insufficient-Challenges	2
-VALUE	EAP-SIM-Client-Error-Code	RANDS-Not-Fresh		3
+VALUE	EAP-SIM-Client-Error-Code	Unable-To-Process-Packet		0
+VALUE	EAP-SIM-Client-Error-Code	Unsupported-Version			1
+VALUE	EAP-SIM-Client-Error-Code	Insufficient-Challenges			2
+VALUE	EAP-SIM-Client-Error-Code	RANDS-Not-Fresh				3
 
 #
 #  Skippable-Attributes
 #
-ATTRIBUTE	EAP-SIM-IV				129	octets
+ATTRIBUTE	EAP-SIM-IV				129	octets[16]
 ATTRIBUTE	EAP-SIM-Encr-Data			130	tlv encrypt=4
+
+#
+#  These attributes are reversibly encrypted
+#
+BEGIN-TLV	EAP-SIM-Encr-Data
+ATTRIBUTE	EAP-SIM-Padding				6	octets		# 4, 8, 12 bytes length
+ATTRIBUTE	EAP-SIM-Counter				19	short
+ATTRIBUTE	EAP-SIM-Counter-Too-Small		20	bool
+ATTRIBUTE	EAP-SIM-Nonce-S				21	octets[16]
 ATTRIBUTE	EAP-SIM-Next-Pseudonym			132	string
 ATTRIBUTE	EAP-SIM-Next-Reauth-ID			133	string
-ATTRIBUTE	EAP-SIM-Checkcode			134	octets
+END-TLV		EAP-SIM-Encr-Data
+
 ATTRIBUTE	EAP-SIM-Result-Ind			137	bool
 
 #
@@ -56,11 +59,11 @@ ATTRIBUTE	EAP-SIM-Result-Ind			137	bool
 FLAGS	internal
 ATTRIBUTE	EAP-SIM-Subtype				256	integer
 
-VALUE	EAP-SIM-Subtype			SIM-Start		10
-VALUE	EAP-SIM-Subtype			SIM-Challenge		11
-VALUE	EAP-SIM-Subtype			SIM-Notification	12
-VALUE	EAP-SIM-Subtype			SIM-Reauthentication	13
-VALUE	EAP-SIM-Subtype			SIM-Client-Error	14
+VALUE	EAP-SIM-Subtype			SIM-Start				10
+VALUE	EAP-SIM-Subtype			SIM-Challenge				11
+VALUE	EAP-SIM-Subtype			SIM-Notification			12
+VALUE	EAP-SIM-Subtype			SIM-Reauthentication			13
+VALUE	EAP-SIM-Subtype			SIM-Client-Error			14
 
 ATTRIBUTE	EAP-SIM-HMAC				257	string
 ATTRIBUTE	EAP-SIM-Key				258	octets

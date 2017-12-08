@@ -100,16 +100,12 @@ typedef struct sql_config {
 	char const		*default_profile;		//!< Default profile to use if no other
 								//!< profiles were configured.
 
-	char const		*client_query;			//!< Query used to get FreeRADIUS client
-								//!< definitions.
-
 	char const		*authorize_check_query;		//!< Query used get check VPs for a user.
 	char const 		*authorize_reply_query;		//!< Query used get reply VPs for a user.
 	char const		*authorize_group_check_query;	//!< Query used get check VPs for a group.
 	char const		*authorize_group_reply_query;	//!< Query used get reply VPs for a group.
 	char const 		*groupmemb_query;		//!< Query to determine group membership.
 
-	bool			do_clients;			//!< Read clients from SQL database.
 	bool			read_groups;			//!< Read user groups by default.
 								//!< If false, Fall-Through = yes is required
 								//!< in the previous reply list to process

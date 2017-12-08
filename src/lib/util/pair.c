@@ -2032,15 +2032,17 @@ void fr_pair_value_memcpy(VALUE_PAIR *vp, uint8_t const *src, size_t size)
 {
 	uint8_t *p = NULL;
 
-	p = talloc_memdup(vp, src, size);
-	if (!p) return;
+	if (size) {
+		p = talloc_memdup(vp, src, size);
+		if (!p) return;
+		talloc_set_type(p, uint8_t);
+	}
 
 	fr_value_box_clear(&vp->data);
 
 	vp->vp_octets = p;
 	vp->vp_length = size;
 	vp->vp_type = FR_TYPE_OCTETS;
-	talloc_set_type(vp->vp_ptr, uint8_t);
 
 	vp->type = VT_DATA;
 

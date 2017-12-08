@@ -596,7 +596,6 @@ static void worker_stop_request(fr_worker_t *worker, REQUEST *request, fr_time_t
  */
 static void fr_worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED struct timeval *when, void *uctx)
 {
-	fr_time_t waiting;
 	fr_time_t now = fr_time();
 	REQUEST *request;
 	fr_worker_t *worker = talloc_get_type_abort(uctx, fr_worker_t);
@@ -608,8 +607,6 @@ static void fr_worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED struct
 	 *	be deleted.
 	 */
 	while ((request = fr_heap_peek_tail(worker->time_order)) != NULL) {
-		waiting = now - request->async->recv_time;
-
 		/*
 		 *	Waiting too long, delete it.
 		 */

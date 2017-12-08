@@ -45,11 +45,6 @@ struct radclient_list {
 	uint32_t       	min_prefix;
 };
 
-#ifdef WITH_STATS
-static rbtree_t		*tree_num = NULL;	//!< client numbers 0..N.
-static int		tree_num_max = 0;
-#endif
-
 static RADCLIENT_LIST	*root_clients = NULL;	//!< Global client list.
 
 void client_list_free(void)
@@ -93,18 +88,6 @@ static int client_ipaddr_cmp(void const *one, void const *two)
 	return (a->proto - b->proto);
 #endif
 }
-
-#ifdef WITH_STATS
-/** Compare clients by number
- *
- */
-static int client_num_cmp(void const *one, void const *two)
-{
-	RADCLIENT const *a = one, *b = two;
-
-	return (a->number - b->number);
-}
-#endif
 
 /** Return a new client list
  *
@@ -263,16 +246,6 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		return false;
 	}
 
-#ifdef WITH_STATS
-	if (!tree_num) {
-		tree_num = rbtree_create(clients, client_num_cmp, NULL, 0);
-	}
-
-	client->number = tree_num_max;
-	tree_num_max++;
-	if (tree_num) rbtree_insert(tree_num, client);
-#endif
-
 	if (client->ipaddr.prefix < clients->min_prefix) {
 		clients->min_prefix = client->ipaddr.prefix;
 	}
@@ -292,42 +265,14 @@ void client_delete(RADCLIENT_LIST *clients, RADCLIENT *client)
 
 	rad_assert(client->ipaddr.prefix <= 128);
 
-#ifdef WITH_STATS
-	rbtree_deletebydata(tree_num, client);
-#endif
 	rbtree_deletebydata(clients->trees[client->ipaddr.prefix], client);
 }
 #endif
 
-#ifdef WITH_STATS
-/*
- *	Find a client in the RADCLIENTS list by number.
- *	This is a support function for the statistics code.
- */
-RADCLIENT *client_findbynumber(RADCLIENT_LIST const *clients, int number)
-{
-	if (!clients) clients = root_clients;
-
-	if (!clients) return NULL;
-
-	if (number >= tree_num_max) return NULL;
-
-	if (tree_num) {
-		RADCLIENT myclient;
-
-		myclient.number = number;
-
-		return rbtree_finddata(tree_num, &myclient);
-	}
-
-	return NULL;
-}
-#else
 RADCLIENT *client_findbynumber(UNUSED const RADCLIENT_LIST *clients, UNUSED int number)
 {
 	return NULL;
 }
-#endif
 
 
 /*
@@ -916,6 +861,11 @@ RADCLIENT *client_afrom_request(TALLOC_CTX *ctx, REQUEST *request)
 
 		case FR_FREERADIUS_CLIENT_SECRET:
 			attr = "secret";
+			value = vp->vp_strvalue;
+			break;
+
+		case FR_FREERADIUS_CLIENT_NAS_TYPE:
+			attr = "nas_type";
 			value = vp->vp_strvalue;
 			break;
 

@@ -7,6 +7,7 @@ SOURCES	:=	cond_eval.c \
 		cf_util.c \
 		connection.c \
 		dl.c \
+		dependency.c \
 		exec.c \
 		exfile.c \
 		log.c \
@@ -18,7 +19,6 @@ SOURCES	:=	cond_eval.c \
 		trigger.c \
 		tmpl.c \
 		util.c \
-		version.c \
    		virtual_servers.c \
 		pair.c \
 		pool.c \

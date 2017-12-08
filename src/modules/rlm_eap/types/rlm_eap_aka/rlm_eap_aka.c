@@ -39,17 +39,99 @@ RCSID("$Id$")
 
 static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session);
 
+static CONF_PARSER submodule_config[] = {
+	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING, rlm_eap_aka_t, virtual_server) },
+	CONF_PARSER_TERMINATOR
+};
+
 /*
  *	build a reply to be sent.
  */
 static int eap_aka_compose(eap_session_t *eap_session)
 {
+	eap_aka_session_t	*eap_aka_session = talloc_get_type_abort(eap_session->opaque, eap_aka_session_t);
+
 	/* we will set the ID on requests, since we have to HMAC it */
 	eap_session->this_round->set_request_id = true;
 
 	return fr_sim_encode(eap_session->request, dict_aka_root, FR_EAP_AKA,
 			     eap_session->request->reply->vps, eap_session->this_round->request,
-			     NULL, 0);
+			     &eap_aka_session->keys);
+}
+
+/** Send an EAP-AKA identity request to the supplicant
+ *
+ * There are three types of user identities that can be implemented
+ * - Permanent identities such as 0123456789098765@myoperator.com
+ *   Permanent identities can be identified by the leading zero followed by
+ *   by 15 digits (the IMSI number).
+ * - Ephemeral identities (pseudonyms).  These are identities assigned for
+ *   identity privacy so the user can't be tracked.  These can identities
+ *   can either be generated as per the 3GPP 'Security aspects of non-3GPP accesses'
+ *   document section 14, where a set of up to 16 encryption keys are used
+ *   to reversibly encrypt the IMSI. Alternatively the pseudonym can be completely
+ *   randomised and stored in a datastore.
+ * - A fast resumption ID which resolves to data used for fast resumption.
+ *
+ * In order to perform full authentication the original IMSI is required for
+ * forwarding to the HLR. In the case where we can't match/decrypt the pseudonym,
+ * or can't perform fast resumption, we need to request the full identity from
+ * the supplicant.
+ *
+ * @param[in] eap_session	to continue.
+ * @param[in] id_req_type	what type of identity we need returned.
+ * @return
+ *	- 0 on success.
+ *	- <0 on failure.
+ */
+static int eap_aka_send_identity_request(eap_session_t *eap_session, int id_req_type)
+{
+	REQUEST			*request = eap_session->request;
+	eap_aka_session_t	*eap_aka_session = talloc_get_type_abort(eap_session->opaque, eap_aka_session_t);
+	VALUE_PAIR		*vp;
+	RADIUS_PACKET		*packet;
+	fr_cursor_t		cursor;
+
+	packet = request->reply;
+	fr_cursor_init(&cursor, &packet->vps);
+
+	/*
+	 *	Set the subtype to identity request
+	 */
+	vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_SUBTYPE);
+	vp->vp_uint32 = FR_EAP_AKA_SUBTYPE_VALUE_AKA_IDENTITY;
+	fr_cursor_append(&cursor, vp);
+
+	/*
+	 *	Set the EAP_ID
+	 */
+	vp = fr_pair_afrom_child_num(packet, fr_dict_root(fr_dict_internal), FR_EAP_ID);
+	vp->vp_uint32 = eap_aka_session->aka_id++;
+	fr_cursor_append(&cursor, vp);
+
+	/*
+	 *	Select the right type of identity request attribute
+	 */
+	switch (id_req_type) {
+	case SIM_ANY_ID:
+		vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_ANY_ID_REQ);
+		break;
+
+	case SIM_PERMANENT_ID_REQ:
+		vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_PERMANENT_ID_REQ);
+		break;
+
+	case SIM_FULLAUTH_ID_REQ:
+		vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_FULLAUTH_ID_REQ);
+		break;
+
+	default:
+		rad_assert(0);
+	}
+	vp->vp_bool = true;
+	fr_cursor_append(&cursor, vp);
+
+	return 0;
 }
 
 /** Send the challenge itself
@@ -73,14 +155,12 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	static uint8_t		hmac_zero[16] = { 0x00 };
 
 	REQUEST			*request = eap_session->request;
-	eap_aka_session_t	*eap_aka_session;
+	eap_aka_session_t	*eap_aka_session = talloc_get_type_abort(eap_session->opaque, eap_aka_session_t);
 	VALUE_PAIR		**to_client, *vp;
 	RADIUS_PACKET		*packet;
-	uint8_t			*p, *rand;
 
-	eap_aka_session = talloc_get_type_abort(eap_session->opaque, eap_aka_session_t);
-	rad_assert(eap_session->request != NULL);
-	rad_assert(eap_session->request->reply);
+	rad_assert(request);
+	rad_assert(request->reply);
 
 	/*
 	 *	to_client is the data to the client
@@ -92,10 +172,7 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	 *	Okay, we got the challenge! Put it into an attribute.
 	 */
 	MEM(vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_RAND));
-	MEM(p = rand = talloc_array(vp, uint8_t, 2 + SIM_VECTOR_UMTS_RAND_SIZE));
-	memset(p, 0, 2); /* clear reserved bytes */
-	memcpy(p + 2, eap_aka_session->keys.umts.vector.rand, SIM_VECTOR_UMTS_RAND_SIZE);
-	fr_pair_value_memsteal(vp, rand);
+	fr_pair_value_memcpy(vp, eap_aka_session->keys.umts.vector.rand, SIM_VECTOR_UMTS_RAND_SIZE);
 	fr_pair_add(to_client, vp);
 
 	/*
@@ -103,10 +180,7 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	 *	whoever has knowledge of the Ki.
 	 */
 	MEM(vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_AUTN));
-	MEM(p = talloc_array(vp, uint8_t, 2 + SIM_VECTOR_UMTS_AUTN_SIZE));
-	memset(p, 0, 2); /* clear reserved bytes */
-	memcpy(p + 2, eap_aka_session->keys.umts.vector.autn, SIM_VECTOR_UMTS_AUTN_SIZE);
-	fr_pair_value_memsteal(vp, p);
+	fr_pair_value_memcpy(vp, eap_aka_session->keys.umts.vector.autn, SIM_VECTOR_UMTS_AUTN_SIZE);
 	fr_pair_add(to_client, vp);
 
 	/*
@@ -115,17 +189,6 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	vp = fr_pair_afrom_child_num(packet, fr_dict_root(fr_dict_internal), FR_EAP_ID);
 	vp->vp_uint32 = eap_aka_session->aka_id++;
 	fr_pair_replace(to_client, vp);
-
-	/*
-	 *	Grab the outer identity and add it to the keying material
-	 */
-	if (eap_aka_session->keys.identity) talloc_free(eap_aka_session->keys.identity);
-
-	eap_aka_session->keys.identity_len = strlen(eap_session->identity);
-	MEM(eap_aka_session->keys.identity = talloc_array(eap_aka_session, uint8_t,
-							  eap_aka_session->keys.identity_len));
-	memcpy(eap_aka_session->keys.identity, eap_session->identity,
-	       eap_aka_session->keys.identity_len);
 
 	/*
 	 *	All set, calculate keys!
@@ -140,10 +203,6 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	 */
 	vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_MAC);
 	fr_pair_value_memcpy(vp, hmac_zero, sizeof(hmac_zero));
-	fr_pair_replace(to_client, vp);
-
-	vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_KEY);
-	fr_pair_value_memcpy(vp, eap_aka_session->keys.k_aut, 16);
 	fr_pair_replace(to_client, vp);
 
 	/* the SUBTYPE, set to challenge. */
@@ -193,6 +252,14 @@ static void eap_aka_state_enter(eap_session_t *eap_session,
 {
 	switch (new_state) {
 	/*
+	 *	Send an EAP-AKA Identity request
+	 */
+	case EAP_AKA_SERVER_IDENTITY:
+		eap_aka_send_identity_request(eap_session, SIM_PERMANENT_ID_REQ);
+		eap_aka_compose(eap_session);
+		break;
+
+	/*
 	 *	Send the EAP-AKA Challenge message.
 	 */
 	case EAP_AKA_SERVER_CHALLENGE:
@@ -235,6 +302,7 @@ static int process_eap_aka_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 	 *	Verify the MAC, now that we have all the keys
 	 */
 	if (fr_sim_crypto_mac_verify(eap_session, dict_aka_root, vps,
+				     (eap_packet_raw_t *)eap_session->this_round->response->packet,
 				     eap_aka_session->keys.k_aut,
 				     NULL, 0, calc_mac)) {
 		RDEBUG2("MAC check succeed");
@@ -263,15 +331,15 @@ static int process_eap_aka_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 		return -1;
 	}
 
-	if ((vp->vp_length - 2) != eap_aka_session->keys.umts.vector.xres_len) {
+	if (vp->vp_length != eap_aka_session->keys.umts.vector.xres_len) {
 		REDEBUG("EAP-AKA-RES length (%zu) does not match XRES length (%zu)",
-			(vp->vp_length - 2), eap_aka_session->keys.umts.vector.xres_len);
+			vp->vp_length, eap_aka_session->keys.umts.vector.xres_len);
 		return -1;
 	}
 
-  	if (memcmp(&vp->vp_octets[2], eap_aka_session->keys.umts.vector.xres, vp->vp_length - 2)) {
+  	if (memcmp(vp->vp_octets, eap_aka_session->keys.umts.vector.xres, vp->vp_length)) {
     		REDEBUG("EAP-AKA-RES from client does match XRES");
-		RHEXDUMP_INLINE(L_DBG_LVL_2, &vp->vp_octets[2], vp->vp_length, "RES  :");
+		RHEXDUMP_INLINE(L_DBG_LVL_2, vp->vp_octets, vp->vp_length, "RES  :");
 		RHEXDUMP_INLINE(L_DBG_LVL_2, eap_aka_session->keys.umts.vector.xres,
 				eap_aka_session->keys.umts.vector.xres_len, "XRES :");
 		return -1;
@@ -293,7 +361,10 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	REQUEST			*request = eap_session->request;
 	eap_aka_session_t	*eap_aka_session = talloc_get_type_abort(eap_session->opaque, eap_aka_session_t);
 
-	fr_sim_decode_ctx_t	ctx;
+	fr_sim_decode_ctx_t	ctx = {
+					.keys = &eap_aka_session->keys,
+					.root = dict_aka_root
+				};
 	VALUE_PAIR		*vp, *vps;
 	vp_cursor_t		cursor;
 
@@ -306,9 +377,8 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 
 	fr_pair_cursor_init(&cursor, &request->packet->vps);
 
-	ctx.keys = &(eap_aka_session->keys);
 	ret = fr_sim_decode(eap_session->request,
-			    &cursor, dict_aka_root,
+			    &cursor,
 			    eap_session->this_round->response->type.data,
 			    eap_session->this_round->response->type.length,
 			    &ctx);
@@ -324,8 +394,11 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	subtype = vp->vp_uint32;
 
 	switch (eap_aka_session->state) {
+	case EAP_AKA_SERVER_IDENTITY:
+		break;
+
 	case EAP_AKA_SERVER_CHALLENGE:
-		switch(subtype) {
+		switch (subtype) {
 		default:
 			eap_aka_state_enter(eap_session, eap_aka_session, EAP_AKA_SERVER_CHALLENGE);
 			return RLM_MODULE_HANDLED;
@@ -348,7 +421,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 					"has not supplied a client error code");
 			} else {
 				REDEBUG("Client rejected AKA-Challenge with error: %s (%i)",
-					fr_pair_value_enum(vp, &buff[0]), vp->vp_uint16);
+					fr_pair_value_enum(vp, buff), vp->vp_uint16);
 			}
 			return RLM_MODULE_REJECT;
 		}
@@ -361,6 +434,8 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		REDEBUG("Illegal-unknown state reached");
 		return RLM_MODULE_FAIL;
 	}
+
+	return RLM_MODULE_OK;
 }
 
 /** Initiate the EAP-SIM session by starting the state machine
@@ -368,17 +443,20 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
  */
 static rlm_rcode_t mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
 {
-	REQUEST			*request = eap_session->request;
-	eap_aka_session_t	*eap_aka_session;
-	time_t			n;
-	fr_sim_vector_src_t	src = SIM_VECTOR_SRC_AUTO;
+	REQUEST				*request = eap_session->request;
+	eap_aka_session_t		*eap_aka_session;
+	time_t				n;
+	fr_sim_vector_src_t		src = SIM_VECTOR_SRC_AUTO;
+	fr_sim_id_type_t		type;
+	fr_sim_method_hint_t		method;
 
 	MEM(eap_aka_session = talloc_zero(eap_session, eap_aka_session_t));
 
 	eap_session->opaque = eap_aka_session;
 
 	/*
-	 *	Save the keying material, because it could change on a subsequent retrieval.
+	 *	Save the keying material, because it could
+	 *	change on a subsequent retrieval.
 	 */
 	RDEBUG2("New EAP-AKA session.  Acquiring AKA vectors");
 	if (fr_sim_vector_umts_from_attrs(eap_session, request->control, &eap_aka_session->keys, &src) < 0) {
@@ -387,14 +465,53 @@ static rlm_rcode_t mod_session_init(UNUSED void *instance, eap_session_t *eap_se
 	}
 
 	/*
-	 *	This value doesn't have be strong, but it is good if it is different now and then.
+	 *	This value doesn't have be strong, but it is
+	 *	good if it is different now and then.
 	 */
 	time(&n);
 	eap_aka_session->aka_id = (n & 0xff);
-
-	eap_aka_state_enter(eap_session, eap_aka_session, EAP_AKA_SERVER_CHALLENGE);
-
 	eap_session->process = mod_process;
+
+	/*
+	 *	Process the identity that we received in the
+	 *	EAP-Identity-Response and use it to determine
+	 *	the initial request we send to the Supplicant.
+	 */
+	if (fr_sim_id_type(&type, &method,
+			   eap_session->identity, talloc_array_length(eap_session->identity) - 1) < 0) {
+		eap_aka_state_enter(eap_session, eap_aka_session, EAP_AKA_SERVER_IDENTITY);
+		return RLM_MODULE_OK;
+	}
+
+	if (method != SIM_METHOD_HINT_AKA) WARN("EAP-Identity-Response hints that EAP-SIM "
+						"should be started, but we're attempting EAP-AKA");
+
+	/*
+	 *	Figure out what type of identity we have
+	 *	and use it to determine the initial
+	 *	request we send.
+	 */
+	switch (type) {
+	/*
+	 *	Permanent ID means we can just send the challenge
+	 */
+	case SIM_ID_TYPE_PERMANENT:
+		eap_aka_session->keys.identity_len = talloc_array_length(eap_session->identity) - 1;
+		MEM(eap_aka_session->keys.identity = talloc_memdup(eap_aka_session, eap_session->identity,
+								   eap_aka_session->keys.identity_len));
+		eap_aka_state_enter(eap_session, eap_aka_session, EAP_AKA_SERVER_CHALLENGE);
+		return RLM_MODULE_OK;
+
+	/*
+	 *	These types need to be transformed into something
+	 *	usable before we can do anything.
+	 */
+	case SIM_ID_TYPE_PSEUDONYM:
+	case SIM_ID_TYPE_FASTAUTH:
+	case SIM_ID_TYPE_UNKNOWN:
+		ERROR("Not yet implemented");
+		return RLM_MODULE_FAIL;
+	}
 
 	return RLM_MODULE_OK;
 }
@@ -425,6 +542,10 @@ extern rlm_eap_submodule_t rlm_eap_aka;
 rlm_eap_submodule_t rlm_eap_aka = {
 	.name		= "eap_aka",
 	.magic		= RLM_MODULE_INIT,
+
+	.inst_size	= sizeof(rlm_eap_aka_t),
+	.config		= submodule_config,
+
 	.load		= mod_load,
 	.unload		= mod_unload,
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */
