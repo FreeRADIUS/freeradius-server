@@ -187,7 +187,9 @@ binary-common:
 	dh_installexamples
 	dh_installlogrotate
 	dh_installpam --name=radiusd
+	dh_systemd_enable
 	dh_installinit --noscripts
+	dh_systemd_start
 	dh_installman
 	dh_lintian
 	dh_link
