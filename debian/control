@@ -28,6 +28,7 @@ Build-Depends: debhelper (>= 9),
  libmemcached-dev,
  libhiredis-dev,
  python-dev,
+ dh-systemd,
  samba-dev | samba4-dev
 Section: net
 Priority: optional
