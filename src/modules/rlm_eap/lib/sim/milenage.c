@@ -112,7 +112,7 @@ static int milenage_f1(uint8_t mac_a[8], uint8_t mac_s[8],
 	/*
 	 *	f1 || f1* = E_K(tmp3) XOR OP_c
 	 */
- 	if (aes_128_encrypt_block(evp_ctx, NULL, tmp3, tmp1) < 0) goto error; /* Reuses existing key */
+ 	if (aes_128_encrypt_block(evp_ctx, k, tmp3, tmp1) < 0) goto error; /* Reuses existing key */
 
 	for (i = 0; i < 16; i++) tmp1[i] ^= opc[i];
 
@@ -126,19 +126,19 @@ static int milenage_f1(uint8_t mac_a[8], uint8_t mac_s[8],
 
 /** milenage_f2345 - Milenage f2, f3, f4, f5, f5* algorithms
  *
- * @param[out] res	Buffer for RES = 64-bit signed response (f2), or NULL
- * @param[out] ck	Buffer for CK = 128-bit confidentiality key (f3), or NULL
- * @param[out] ik	Buffer for IK = 128-bit integrity key (f4), or NULL
- * @param[out] ak	Buffer for AK = 48-bit anonymity key (f5), or NULL
- * @param[out] akstar	Buffer for AK = 48-bit anonymity key (f5*), or NULL
- * @param[in] opc	128-bit value derived from OP and K.
- * @param[in] k		128-bit subscriber key
- * @param[in] rand	128-bit random challenge
+ * @param[out] res		Buffer for RES = 64-bit signed response (f2), or NULL
+ * @param[out] ck		Buffer for CK = 128-bit confidentiality key (f3), or NULL
+ * @param[out] ik		Buffer for IK = 128-bit integrity key (f4), or NULL
+ * @param[out] ak		Buffer for AK = 48-bit anonymity key (f5), or NULL
+ * @param[out] ak_resync	Buffer for AK = 48-bit anonymity key (f5*), or NULL
+ * @param[in] opc		128-bit value derived from OP and K.
+ * @param[in] k			128-bit subscriber key
+ * @param[in] rand		128-bit random challenge
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int milenage_f2345(uint8_t res[8], uint8_t ck[16], uint8_t ik[16], uint8_t ak[6], uint8_t akstar[6],
+static int milenage_f2345(uint8_t res[8], uint8_t ck[16], uint8_t ik[16], uint8_t ak[6], uint8_t ak_resync[6],
 			  uint8_t const opc[16], uint8_t const k[16], uint8_t const rand[16])
 {
 	uint8_t		tmp1[16], tmp2[16], tmp3[16];
@@ -171,7 +171,7 @@ static int milenage_f2345(uint8_t res[8], uint8_t ck[16], uint8_t ik[16], uint8_
 	tmp1[15] ^= 1; /* XOR c2 (= ..01) */
 	/* f5 || f2 = E_K(tmp1) XOR OP_c */
 
-	if (aes_128_encrypt_block(evp_ctx, NULL, tmp1, tmp3) < 0) goto error;
+	if (aes_128_encrypt_block(evp_ctx, k, tmp1, tmp3) < 0) goto error;
 
 	for (i = 0; i < 16; i++) tmp3[i] ^= opc[i];
 	if (res) memcpy(res, tmp3 + 8, 8); /* f2 */
@@ -183,7 +183,7 @@ static int milenage_f2345(uint8_t res[8], uint8_t ck[16], uint8_t ik[16], uint8_
 		for (i = 0; i < 16; i++) tmp1[(i + 12) % 16] = tmp2[i] ^ opc[i];
 		tmp1[15] ^= 2; /* XOR c3 (= ..02) */
 
-		if (aes_128_encrypt_block(evp_ctx, NULL, tmp1, ck) < 0) goto error;
+		if (aes_128_encrypt_block(evp_ctx, k, tmp1, ck) < 0) goto error;
 
 		for (i = 0; i < 16; i++) ck[i] ^= opc[i];
 	}
@@ -194,20 +194,20 @@ static int milenage_f2345(uint8_t res[8], uint8_t ck[16], uint8_t ik[16], uint8_
 		for (i = 0; i < 16; i++) tmp1[(i + 8) % 16] = tmp2[i] ^ opc[i];
 		tmp1[15] ^= 4; /* XOR c4 (= ..04) */
 
-		if (aes_128_encrypt_block(evp_ctx, NULL, tmp1, ik) < 0) goto error;
+		if (aes_128_encrypt_block(evp_ctx, k, tmp1, ik) < 0) goto error;
 
 		for (i = 0; i < 16; i++) ik[i] ^= opc[i];
 	}
 
 	/* f5* */
-	if (akstar) {
+	if (ak_resync) {
 		/* rotate by r5 = 0x60 = 12 bytes */
 		for (i = 0; i < 16; i++) tmp1[(i + 4) % 16] = tmp2[i] ^ opc[i];
 		tmp1[15] ^= 8; /* XOR c5 (= ..08) */
 
 		if (aes_128_encrypt_block(evp_ctx, k, tmp1, tmp1) < 0) goto error;
 
-		for (i = 0; i < 6; i++) akstar[i] = tmp1[i] ^ opc[i];
+		for (i = 0; i < 6; i++) ak_resync[i] = tmp1[i] ^ opc[i];
 	}
 	EVP_CIPHER_CTX_free(evp_ctx);
 
@@ -220,26 +220,24 @@ static int milenage_f2345(uint8_t res[8], uint8_t ck[16], uint8_t ik[16], uint8_
  * @param[out] ik	Buffer for IK = 128-bit integrity key (f4), or NULL.
  * @param[out] ck	Buffer for CK = 128-bit confidentiality key (f3), or NULL.
  * @param[out] res	Buffer for RES = 64-bit signed response (f2), or NULL.
- * @param[in] res_len	Max length for res; set to used length or 0 on failure.
  * @param[in] opc	128-bit operator variant algorithm configuration field (encr.).
  * @param[in] amf	16-bit authentication management field.
  * @param[in] k		128-bit subscriber key.
  * @param[in] sqn	48-bit sequence number.
  * @param[in] rand	128-bit random challenge.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-int milenage_umts_generate(uint8_t autn[16], uint8_t ik[16], uint8_t ck[16], uint8_t *res, size_t *res_len,
+int milenage_umts_generate(uint8_t autn[16], uint8_t ik[16], uint8_t ck[16], uint8_t res[8],
 			   uint8_t const opc[16], uint8_t const amf[2], uint8_t const k[16],
 			   uint8_t const sqn[6], uint8_t const rand[16])
 {
 	int	i;
 	uint8_t	mac_a[8], ak[6];
 
-	*res_len = 0;
-
-	if (*res_len < 8) return - 1;
 	if ((milenage_f1(mac_a, NULL, opc, k, rand, sqn, amf) < 0) ||
 	    (milenage_f2345(res, ck, ik, ak, NULL, opc, k, rand) < 0)) return -1;
-	*res_len = 8;
 
 	/* AUTN = (SQN ^ AK) || AMF || MAC */
 	for (i = 0; i < 6; i++) autn[i] = sqn[i] ^ ak[i];
@@ -373,3 +371,157 @@ int milenage_check(uint8_t ik[16], uint8_t ck[16], uint8_t *res, size_t *res_len
 
 	return 0;
 }
+
+#ifdef TESTING_MILENAGE
+/*
+ *  cc id.c -g3 -Wall -DHAVE_DLFCN_H -DTESTING_MILENAGE -DWITH_TLS -I../../../../ -I../../../ -I ../base/ -I /usr/local/opt/openssl/include/ -include ../include/build.h -L /usr/local/opt/openssl/lib/ -l ssl -l crypto -l talloc -L ../../../../../build/lib/local/.libs/ -lfreeradius-server -lfreeradius-tls -lfreeradius-util -o test_milenage && ./test_milenage
+ */
+#include <freeradius-devel/cutest.h>
+
+void test_set_1(void)
+{
+	/*
+	 *	Inputs
+	 */
+	uint8_t k[]		= { 0x46, 0x5b, 0x5c, 0xe8, 0xb1, 0x99, 0xb4, 0x9f,
+				    0xaa, 0x5f, 0x0a, 0x2e, 0xe2, 0x38, 0xa6, 0xbc };
+	uint8_t rand[]		= { 0x23, 0x55, 0x3c, 0xbe, 0x96, 0x37, 0xa8, 0x9d,
+				    0x21, 0x8a, 0xe6, 0x4d, 0xae, 0x47, 0xbf, 0x35  };
+	uint8_t sqn[]		= { 0xff, 0x9b, 0xb4, 0xd0, 0xb6, 0x07 };
+	uint8_t amf[]		= { 0xb9, 0xb9 };
+	uint8_t opc[]		= { 0xcd, 0x63, 0xcb, 0x71, 0x95, 0x4a, 0x9f, 0x4e,
+				    0x48, 0xa5, 0x99, 0x4e, 0x37, 0xa0, 0x2b, 0xaf };
+
+	/*
+	 *	Outputs
+	 */
+	uint8_t	mac_a_out[8];
+	uint8_t	mac_s_out[8];
+	uint8_t res_out[8];
+	uint8_t ck_out[16];
+	uint8_t ik_out[16];
+	uint8_t ak_out[6];
+	uint8_t ak_resync_out[6];
+
+	/* function 1 */
+	uint8_t mac_a[8]	= { 0x4a, 0x9f, 0xfa, 0xc3, 0x54, 0xdf, 0xaf, 0xb3 };
+	/* function 1* */
+	uint8_t mac_s[8]	= { 0x01, 0xcf, 0xaf, 0x9e, 0xc4, 0xe8, 0x71, 0xe9 };
+	/* function 2 */
+	uint8_t res[8]		= { 0xa5, 0x42, 0x11, 0xd5, 0xe3, 0xba, 0x50, 0xbf };
+	/* function 3 */
+	uint8_t ck[16]		= { 0xb4, 0x0b, 0xa9, 0xa3, 0xc5, 0x8b, 0x2a, 0x05,
+				    0xbb, 0xf0, 0xd9, 0x87, 0xb2, 0x1b, 0xf8, 0xcb };
+	/* function 4 */
+	uint8_t ik[16]		= { 0xf7, 0x69, 0xbc, 0xd7, 0x51, 0x04, 0x46, 0x04,
+			    	    0x12, 0x76, 0x72, 0x71, 0x1c, 0x6d, 0x34, 0x41 };
+	/* function 5 */
+	uint8_t ak[6]		= { 0xaa, 0x68, 0x9c, 0x64, 0x83, 0x70 };
+	/* function 5* */
+	uint8_t ak_resync[6]	= { 0x45, 0x1e, 0x8b, 0xec, 0xa4, 0x3b };
+
+	int ret = 0;
+
+/*
+	fr_log_fp = stdout;
+	fr_debug_lvl = 4;
+*/
+
+	if ((milenage_f1(mac_a_out, mac_s_out, opc, k, rand, sqn, amf) < 0) ||
+	    (milenage_f2345(res_out, ck_out, ik_out, ak_out, ak_resync_out, opc, k, rand) < 0)) ret = -1;
+
+	FR_PROTO_HEX_DUMP("mac_a", mac_a, sizeof(mac_a_out));
+	FR_PROTO_HEX_DUMP("mac_s", mac_s, sizeof(mac_s_out));
+	FR_PROTO_HEX_DUMP("ik", ik_out, sizeof(ik_out));
+	FR_PROTO_HEX_DUMP("ck", ck_out, sizeof(ck_out));
+	FR_PROTO_HEX_DUMP("res", res_out, sizeof(res_out));
+	FR_PROTO_HEX_DUMP("ak", ak_out, sizeof(ak_out));
+	FR_PROTO_HEX_DUMP("ak_resync", ak_resync_out, sizeof(ak_resync_out));
+
+	TEST_CHECK(ret == 0);
+	TEST_CHECK(memcmp(mac_a_out, mac_a, sizeof(mac_a_out)) == 0);
+	TEST_CHECK(memcmp(mac_s_out, mac_s, sizeof(mac_s_out)) == 0);
+	TEST_CHECK(memcmp(res_out, res, sizeof(res_out)) == 0);
+	TEST_CHECK(memcmp(ck_out, ck, sizeof(ck_out)) == 0);
+	TEST_CHECK(memcmp(ik_out, ik, sizeof(ik_out)) == 0);
+	TEST_CHECK(memcmp(ak_out, ak, sizeof(ak_out)) == 0);
+	TEST_CHECK(memcmp(ak_resync, ak_resync, sizeof(ak_resync_out)) == 0);
+}
+
+void test_set_19(void)
+{
+	/*
+	 *	Inputs
+	 */
+	uint8_t k[]		= { 0x51, 0x22, 0x25, 0x02, 0x14, 0xc3, 0x3e, 0x72,
+				    0x3a, 0x5d, 0xd5, 0x23, 0xfc, 0x14, 0x5f, 0xc0 };
+	uint8_t rand[]		= { 0x81, 0xe9, 0x2b, 0x6c, 0x0e, 0xe0, 0xe1, 0x2e,
+				    0xbc, 0xeb, 0xa8, 0xd9, 0x2a, 0x99, 0xdf, 0xa5 };
+	uint8_t sqn[]		= { 0x16, 0xf3, 0xb3, 0xf7, 0x0f, 0xc2 };
+	uint8_t amf[]		= { 0xc3, 0xab };
+	uint8_t opc[]		= { 0x98, 0x1d, 0x46, 0x4c, 0x7c, 0x52, 0xeb, 0x6e,
+				    0x50, 0x36, 0x23, 0x49, 0x84, 0xad, 0x0b, 0xcf };
+
+
+	/*
+	 *	Outputs
+	 */
+	uint8_t	mac_a_out[8];
+	uint8_t	mac_s_out[8];
+	uint8_t res_out[8];
+	uint8_t ck_out[16];
+	uint8_t ik_out[16];
+	uint8_t ak_out[6];
+	uint8_t ak_resync_out[6];
+
+	/* function 1 */
+	uint8_t mac_a[8]	= { 0x2a, 0x5c, 0x23, 0xd1, 0x5e, 0xe3, 0x51, 0xd5 };
+	/* function 1* */
+	uint8_t mac_s[8]	= { 0x62, 0xda, 0xe3, 0x85, 0x3f, 0x3a, 0xf9, 0xd2 };
+	/* function 2 */
+	uint8_t res[8]		= { 0x28, 0xd7, 0xb0, 0xf2, 0xa2, 0xec, 0x3d, 0xe5 };
+	/* function 3 */
+	uint8_t ck[16]		= { 0x53, 0x49, 0xfb, 0xe0, 0x98, 0x64, 0x9f, 0x94,
+				    0x8f, 0x5d, 0x2e, 0x97, 0x3a, 0x81, 0xc0, 0x0f };
+	/* function 4 */
+	uint8_t ik[16]		= { 0x97, 0x44, 0x87, 0x1a, 0xd3, 0x2b, 0xf9, 0xbb,
+				    0xd1, 0xdd, 0x5c, 0xe5, 0x4e, 0x3e, 0x2e, 0x5a };
+	/* function 5 */
+	uint8_t ak[6]		= { 0xad, 0xa1, 0x5a, 0xeb, 0x7b, 0xb8 };
+	/* function 5* */
+	uint8_t ak_resync[6]	= { 0xd4, 0x61, 0xbc, 0x15, 0x47, 0x5d };
+
+	int ret = 0;
+
+/*
+	fr_log_fp = stdout;
+	fr_debug_lvl = 4;
+*/
+
+	if ((milenage_f1(mac_a_out, mac_s_out, opc, k, rand, sqn, amf) < 0) ||
+	    (milenage_f2345(res_out, ck_out, ik_out, ak_out, ak_resync_out, opc, k, rand) < 0)) ret = -1;
+
+	FR_PROTO_HEX_DUMP("mac_a", mac_a, sizeof(mac_a_out));
+	FR_PROTO_HEX_DUMP("mac_s", mac_s, sizeof(mac_s_out));
+	FR_PROTO_HEX_DUMP("ik", ik_out, sizeof(ik_out));
+	FR_PROTO_HEX_DUMP("ck", ck_out, sizeof(ck_out));
+	FR_PROTO_HEX_DUMP("res", res_out, sizeof(res_out));
+	FR_PROTO_HEX_DUMP("ak", ak_out, sizeof(ak_out));
+	FR_PROTO_HEX_DUMP("ak_resync", ak_resync_out, sizeof(ak_resync_out));
+
+	TEST_CHECK(ret == 0);
+	TEST_CHECK(memcmp(mac_a_out, mac_a, sizeof(mac_a_out)) == 0);
+	TEST_CHECK(memcmp(mac_s_out, mac_s, sizeof(mac_s_out)) == 0);
+	TEST_CHECK(memcmp(res_out, res, sizeof(res_out)) == 0);
+	TEST_CHECK(memcmp(ck_out, ck, sizeof(ck_out)) == 0);
+	TEST_CHECK(memcmp(ik_out, ik, sizeof(ik_out)) == 0);
+	TEST_CHECK(memcmp(ak_out, ak, sizeof(ak_out)) == 0);
+	TEST_CHECK(memcmp(ak_resync, ak_resync, sizeof(ak_resync_out)) == 0);
+}
+
+TEST_LIST = {
+	{ "test_set_1",		test_set_1 },
+	{ "test_set_19",	test_set_19 },
+	{ NULL }
+};
+#endif

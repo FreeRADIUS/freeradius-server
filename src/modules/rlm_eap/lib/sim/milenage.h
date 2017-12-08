@@ -19,7 +19,7 @@
  */
 #include <stddef.h>
 
-int	milenage_umts_generate(uint8_t autn[16], uint8_t ik[16], uint8_t ck[16], uint8_t *res, size_t *res_len,
+int	milenage_umts_generate(uint8_t autn[16], uint8_t ik[16], uint8_t ck[16], uint8_t res[8],
 			       uint8_t const opc[16], uint8_t const amf[2], uint8_t const k[16],
 			       uint8_t const sqn[6], uint8_t const rand[16]);
 
