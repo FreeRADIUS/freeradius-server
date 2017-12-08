@@ -137,7 +137,8 @@ static uint8_t const comp128v23_t0[] = {
 	206, 97,  166, 44,  14,  90,  236, 239, 230, 244, 223, 108, 102, 119, 148, 251,
 	29,  216, 8,   9,   249, 208, 24,  105, 94,  34,  64,  95,  115, 72,  134, 204,
 	43,  247, 243, 218, 47,  58,  73,  107, 241, 179, 116, 66,  36,  143, 81,  250,
-	139, 19,  13,  142, 140, 129, 192, 99,  171, 157, 136, 41,  75,  35,  165, 26};
+	139, 19,  13,  142, 140, 129, 192, 99,  171, 157, 136, 41,  75,  35,  165, 26
+};
 
 /* 256 bytes */
 static uint8_t const comp128v23_t1[] = {
@@ -156,7 +157,8 @@ static uint8_t const comp128v23_t1[] = {
 	181, 29,  91,  64,  221, 255, 48,  155, 192, 111, 180, 210, 182, 247, 203, 148,
 	209, 98,  173, 11,  75,  123, 250, 118, 32,  47,  240, 202, 74,  177, 100, 80,
 	196, 33,  248, 86,  157, 137, 120, 130, 84,  204, 122, 81,  242, 188, 200, 149,
-	226, 218, 160, 187, 106, 35,  87,  105, 96,  145, 199, 159, 12,  121, 103, 112};
+	226, 218, 160, 187, 106, 35,  87,  105, 96,  145, 199, 159, 12,  121, 103, 112
+};
 
 static inline void _comp128_compression_round(uint8_t *x, int n, const uint8_t *tbl)
 {
@@ -231,12 +233,12 @@ static inline void _comp128_permutation(uint8_t *x, uint8_t *bits)
  * derived, but that was also easily discovered with reverse engineering.)
  * All of these typos have been corrected in the following code.
  *
- * @param[out] sres 4 byte value derived from ki and rand.
- * @param[out] kc 12 byte value derived from ki and rand.
- * @param[in] ki known only by the SIM and AuC (us in this case).
- * @param[in] rand 16 bytes of randomness.
+ * @param[out] sres	4 byte value derived from ki and rand.
+ * @param[out] kc	8 byte value derived from ki and rand.
+ * @param[in] ki	known only by the SIM and AuC (us in this case).
+ * @param[in] rand	16 bytes of randomness.
  */
-void comp128v1(uint8_t *sres, uint8_t *kc, uint8_t const *ki, uint8_t const *rand)
+void comp128v1(uint8_t sres[4], uint8_t kc[8], uint8_t const ki[16], uint8_t const rand[16])
 {
 	int i;
 	uint8_t x[32], bits[128];
@@ -247,7 +249,7 @@ void comp128v1(uint8_t *sres, uint8_t *kc, uint8_t const *ki, uint8_t const *ran
 	/*
 	 *	Round 1-7
 	 */
-	for (i=0; i < 7; i++) {
+	for (i = 0; i < 7; i++) {
 		/* x[0-15] = Ki */
 		memcpy(x, ki, 16);	//-V512
 
@@ -271,9 +273,7 @@ void comp128v1(uint8_t *sres, uint8_t *kc, uint8_t const *ki, uint8_t const *ran
 	_comp128_compression(x);
 
 	/* Output stage */
-	for (i = 0; i < 8; i += 2) {
-		sres[i >> 1] = x[i] << 4 | x[i + 1];
-	}
+	for (i = 0; i < 8; i += 2) sres[i >> 1] = x[i] << 4 | x[i + 1];
 
 	for (i = 0; i < 12; i += 2) {
 		kc[i>>1] = (x[i + 18] << 6) |
@@ -326,13 +326,13 @@ static void _comp128v23(uint8_t *rand, uint8_t const *kxor)
 
 /** Calculate comp128v2 or comp128v3 sres and kc from ki and rand
  *
- * @param[out] sres 4 byte value derived from ki and rand.
- * @param[out] kc 8 byte value derived from ki and rand.
- * @param[in] ki known only by the SIM and AuC (us in this case).
- * @param[in] rand 16 bytes of randomness.
- * @param[in] v2 if true we use version comp128-2 else we use comp128-3.
+ * @param[out] sres	4 byte value derived from ki and rand.
+ * @param[out] kc	8 byte value derived from ki and rand.
+ * @param[in] ki	known only by the SIM and AuC (us in this case).
+ * @param[in] rand	16 bytes of randomness.
+ * @param[in] v2	if true we use version comp128-2 else we use comp128-3.
  */
-void comp128v23(uint8_t *sres, uint8_t *kc, uint8_t const *ki, uint8_t const *rand, bool v2)
+void comp128v23(uint8_t sres[4], uint8_t kc[8], uint8_t const ki[16], uint8_t const rand[16], bool v2)
 {
 	uint8_t k_mix[16];
 	uint8_t rand_mix[16];

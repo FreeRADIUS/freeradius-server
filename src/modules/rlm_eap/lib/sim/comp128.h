@@ -32,7 +32,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-void comp128v1(uint8_t *sres, uint8_t *kc, const uint8_t *ki, const uint8_t *rand);
-void comp128v23(uint8_t *sres, uint8_t *kc, uint8_t const *ki, uint8_t const *rand, bool v2);
+void comp128v1(uint8_t sres[4], uint8_t kc[8], uint8_t const ki[16], uint8_t const rand[16]);
+void comp128v23(uint8_t sres[4], uint8_t kc[8], uint8_t const ki[16], uint8_t const rand[16], bool v2);
 
 #endif
