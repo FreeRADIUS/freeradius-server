@@ -15,7 +15,7 @@
  * See README for more details.
  *
  * @copyright 2017 The FreeRADIUS server project
- * @Copyright 2006-2007 <j@w1.fi>
+ * @copyright 2006-2007 <j@w1.fi>
  */
 #include <stddef.h>
 
