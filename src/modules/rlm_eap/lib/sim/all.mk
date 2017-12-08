@@ -10,6 +10,7 @@ SOURCES	:= \
 	encode.c \
 	fips186prf.c \
 	id.c \
+	milenage.c \
 	vector.c \
 	xlat.c
 
