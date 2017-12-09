@@ -54,19 +54,19 @@ typedef enum {
 
 typedef enum {
 	SIM_ID_TAG_PERMANENT_SIM		= '1',  //!< IMSI, and hint that client wants to do EAP-SIM
-	SIM_ID_TAG_PSEUDONYM_SIM		= '4',	//!< Pseudonym, continue EAP-SIM
+	SIM_ID_TAG_PSEUDONYM_SIM		= '3',	//!< Pseudonym, continue EAP-SIM
 	SIM_ID_TAG_FASTAUTH_SIM			= '5',	//!< Fastauth, continue EAP-SIM
 
 	SIM_ID_TAG_PERMANENT_AKA		= '0',	//!< IMSI, and hint that client wants to do EAP-AKA
 	SIM_ID_TAG_PSEUDONYM_AKA		= '2',	//!< Pseudonym, continue EAP-AKA
-	SIM_ID_TAG_FASTAUTH_AKA			= '3',	//!< Fastauth, continue EAP-AKA
+	SIM_ID_TAG_FASTAUTH_AKA			= '4',	//!< Fastauth, continue EAP-AKA
 
 	SIM_ID_TAG_PERMANENT_AKA_PRIME          = '6',	//!< IMSI, and hint that client wants to do EAP-AKA-Prime.
 	SIM_ID_TAG_PSEUDONYM_AKA_PRIME		= '7',	//!< Pseudonym, continue EAP-AKA-Prime
 	SIM_ID_TAG_FASTAUTH_AKA_PRIME		= '8'	//!< Fastuath, continue EAP-AKA-Prime
 } fr_sim_id_tag_t;
 
-#define SIM_ID_TAG_PSEUDONYM_SIM_B64		56
+#define SIM_ID_TAG_PSEUDONYM_SIM_B64		55
 #define SIM_ID_TAG_PSEUDONYM_AKA_B64		54
 #define SIM_ID_TAG_PSEUDONYM_AKA_PRIME_B64	59
 
