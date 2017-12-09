@@ -55,8 +55,10 @@ RCSIDH(sim_h, "$Id$")
 #define SIM_VECTOR_UMTS_XRES_MAX_SIZE	16
 #define SIM_VECTOR_UMTS_RES_MAX_SIZE	16
 
-
-
+#define SIM_MILENAGE_KI_SIZE		16
+#define SIM_MILENAGE_OPC_SIZE		16
+#define SIM_MILENAGE_AMF_SIZE		2
+#define SIM_MILENAGE_SQN_SIZE		6
 
 /** Round up - Only works if _mul is a power of 2 but avoids division
  */
@@ -128,7 +130,7 @@ typedef struct {
 	uint8_t const	*network;				//!< Network name (EAP-AKA-Prime only).
 	size_t		network_len;				//!< Length of the network name (EAP-AKA-Prime only).
 
-	uint64_t sqn;						//!< Sequence number
+	uint64_t	sqn;					//!< Sequence number
 
 	/*
 	 *	The vectors we acquired during the challenge phase.
