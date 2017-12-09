@@ -38,7 +38,8 @@ static int vector_gsm_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps,
 			      int idx, fr_sim_keys_t *keys)
 {
 	REQUEST		*request = eap_session->request;
-	VALUE_PAIR	*ki, *version;
+	VALUE_PAIR	*ki, *opc, *version_vp;
+	uint32_t	version;
 	int		i;
 
 	/*
@@ -57,10 +58,21 @@ static int vector_gsm_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps,
 	 *	Check to see if have a Ki for the IMSI, this allows us to generate the rest
 	 *	of the triplets.
 	 */
-	version = fr_pair_find_by_child_num(vps, fr_dict_root(fr_dict_internal), FR_SIM_ALGO_VERSION, TAG_ANY);
-	if (!version) {
-		RDEBUG3("No &control:SIM-Algo-Version found, not generating triplets locally");
-		return 1;
+	version_vp = fr_pair_find_by_child_num(vps, fr_dict_root(fr_dict_internal), FR_SIM_ALGO_VERSION, TAG_ANY);
+	if (!version_vp) {
+		opc = fr_pair_find_by_child_num(vps, fr_dict_root(fr_dict_internal), FR_SIM_OPC, TAG_ANY);
+		if (!opc) {
+			version = 3;	/* No OPC - not a virtual USIM default to comp128v3 */
+		}
+		else if (opc->vp_length != SIM_MILENAGE_OPC_SIZE) {
+			REDEBUG("&control:SIM-OPc has incorrect length, expected %u bytes got %zu bytes",
+				SIM_MILENAGE_OPC_SIZE, opc->vp_length);
+			return -1;
+		} else {
+			version = 4;	/* Ki and OPC - default to Milenage */
+		}
+	} else {
+		version = version_vp->vp_uint32;
 	}
 
 	for (i = 0; i < SIM_VECTOR_GSM_RAND_SIZE; i += sizeof(uint32_t)) {
@@ -68,7 +80,7 @@ static int vector_gsm_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps,
 		memcpy(&keys->gsm.vector[idx].rand[i], &rand, sizeof(rand));
 	}
 
-	switch (version->vp_uint32) {
+	switch (version) {
 	case 1:
 		comp128v1(keys->gsm.vector[idx].sres,
 			  keys->gsm.vector[idx].kc,
@@ -91,20 +103,6 @@ static int vector_gsm_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps,
 		break;
 
 	case 4:
-	{
-		VALUE_PAIR *opc;
-
-		opc = fr_pair_find_by_child_num(vps, fr_dict_root(fr_dict_internal), FR_SIM_OPC, TAG_ANY);
-		if (!opc) {
-			RDEBUG3("No &control:SIM-OPc not generating triplets locally");
-			return 1;
-		}
-		else if (opc->vp_length != SIM_MILENAGE_OPC_SIZE) {
-			REDEBUG("&control:SIM-OPc has incorrect length, expected %u bytes got %zu bytes",
-				SIM_MILENAGE_OPC_SIZE, opc->vp_length);
-			return -1;
-		}
-
 		if (milenage_gsm_generate(keys->gsm.vector[idx].sres,
 					  keys->gsm.vector[idx].kc,
 					  opc->vp_octets,
@@ -113,11 +111,10 @@ static int vector_gsm_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps,
 			RPEDEBUG2("Failed deriving GSM triplet");
 			return -1;
 		}
-	}
-		return 1;
+		return 0;
 
 	default:
-		REDEBUG("Unknown/unsupported algorithm %i", version->vp_uint32);
+		REDEBUG("Unknown/unsupported algorithm %i", version);
 		return -1;
 	}
 	return 0;
@@ -374,7 +371,7 @@ static int vector_umts_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, fr_s
 
 	ki = fr_pair_find_by_child_num(vps, fr_dict_root(fr_dict_internal), FR_SIM_KI, TAG_ANY);
 	if (!ki) {
-		RDEBUG3("No &control:SIM-Ki found, not generating triplets locally");
+		RDEBUG3("No &control:SIM-Ki found, not generating quintuplets locally");
 		return 1;
 	} else if (ki->vp_length != SIM_MILENAGE_KI_SIZE) {
 		REDEBUG("&control:SIM-Ki has incorrect length, expected %u bytes got %zu bytes",
@@ -384,7 +381,7 @@ static int vector_umts_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, fr_s
 
 	opc = fr_pair_find_by_child_num(vps, fr_dict_root(fr_dict_internal), FR_SIM_OPC, TAG_ANY);
 	if (!opc) {
-		RDEBUG3("No &control:SIM-OPc not generating  quintuplets locally");
+		RDEBUG3("No &control:SIM-OPc not generating quintuplets locally");
 		return 1;
 	} else if (opc->vp_length != SIM_MILENAGE_OPC_SIZE) {
 		REDEBUG("&control:SIM-OPc has incorrect length, expected %u bytes got %zu bytes",
@@ -437,7 +434,7 @@ static int vector_umts_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, fr_s
 			return -1;
 		}
 		keys->umts.vector.xres_len = 8;
-		return 1;
+		return 0;
 
 	case 1:
 	case 2:
