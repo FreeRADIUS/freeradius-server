@@ -972,7 +972,7 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 
 	unsigned int		id, eap_code;
 
-	uint8_t			*buff, *p, *end;
+	uint8_t			*buff, *p, *end, *hmac = NULL;
 	size_t			len = 0;
 	ssize_t			slen;
 
@@ -998,14 +998,8 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 	}
 	subtype = vp->vp_uint16;
 
-	vp = fr_pair_find_by_child_num(to_encode, parent, FR_EAP_ID, TAG_ANY);
-	id = vp ? vp->vp_uint32 : ((int)getpid() & 0xff);
-
 	vp = fr_pair_find_by_child_num(to_encode, parent, FR_EAP_CODE, TAG_ANY);
 	eap_code = vp ? vp->vp_uint32 : FR_EAP_CODE_REQUEST;
-
-	vp = fr_pair_find_by_child_num(to_encode, parent, FR_EAP_SIM_MAC, TAG_ANY);
-	if (vp) do_hmac = true;
 
 	/*
 	 *	Fill in some bits in the EAP packet
@@ -1013,7 +1007,6 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 	 *	These are needed even if we're sending an almost empty packet.
 	 */
 	if (eap_packet->code != FR_EAP_CODE_SUCCESS) eap_packet->code = eap_code;
-	eap_packet->id = (id & 0xff);
 	eap_packet->type.num = type;
 
 	/*
@@ -1041,11 +1034,31 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 
 	MEM(p = buff = talloc_zero_array(eap_packet, uint8_t, 1024));	/* We'll shrink this later */
 	end = p + talloc_array_length(p);
-	if (do_hmac) end -= SIM_CALC_MAC_SIZE;
 
 	*p++ = subtype;			/* Subtype */
 	*p++ = 0;			/* Reserved (0) */
 	*p++ = 0;			/* Reserved (1) */
+
+	/*
+	 *	Add space in the packet for AT_MAC
+	 */
+	vp = fr_pair_find_by_child_num(to_encode, parent, FR_EAP_SIM_MAC, TAG_ANY);
+	if (vp) {
+		if ((end - p) < SIM_MAC_SIZE) {
+			fr_strerror_printf("Insufficient space to store AT_MAC");
+			return -1;
+		}
+
+		do_hmac = true;
+
+		*p++ = FR_SIM_MAC;
+		*p++ = (SIM_MAC_SIZE >> 2);
+		*p++ = 0x00;
+		*p++ = 0x00;
+		hmac = p;
+		memset(p, 0, 16);
+		p += 16;
+	}
 
 	/*
 	 *	Encode all the things...
@@ -1069,26 +1082,12 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 	 *	Calculate a SHA1-HMAC over the complete EAP packet
 	 */
 	if (do_hmac) {
-#ifndef NDEBUG
-		uint8_t *start = p;
-#endif
-
-		/*
-		 *	We left some room earlier...
-		 */
-		*p++ = FR_SIM_MAC;
-		*p++ = (SIM_CALC_MAC_SIZE >> 2);
-		*p++ = 0x00;
-		*p++ = 0x00;
-
-		slen = fr_sim_crypto_sign_packet(p, eap_packet,
-				       		 keys->k_aut, keys->k_aut_len,
+		slen = fr_sim_crypto_sign_packet(hmac, eap_packet, false,
+						 keys->k_aut, keys->k_aut_len,
 				       		 keys->vector_type == SIM_VECTOR_GSM ? keys->gsm.nonce_mt : NULL,
 				       		 keys->vector_type == SIM_VECTOR_GSM ? sizeof(keys->gsm.nonce_mt) : 0);
 		if (slen < 0) goto error;
-
-		eap_packet->type.length += SIM_CALC_MAC_SIZE;
-		FR_PROTO_HEX_DUMP("hmac attribute", start, (p - start) + slen);
+		FR_PROTO_HEX_DUMP("hmac attribute", hmac - 4, SIM_MAC_SIZE);
 	}
 	FR_PROTO_HEX_DUMP("sim packet", buff, eap_packet->type.length);
 

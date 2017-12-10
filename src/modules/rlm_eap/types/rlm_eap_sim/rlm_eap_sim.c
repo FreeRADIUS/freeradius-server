@@ -366,13 +366,15 @@ static int process_eap_sim_start(eap_session_t *eap_session, VALUE_PAIR *vps)
  */
 static int process_eap_sim_challenge(eap_session_t *eap_session, VALUE_PAIR *vps)
 {
-	REQUEST *request = eap_session->request;
-	eap_sim_session_t *eap_sim_session = talloc_get_type_abort(eap_session->opaque, eap_sim_session_t);
+	REQUEST			*request = eap_session->request;
+	eap_sim_session_t	*eap_sim_session = talloc_get_type_abort(eap_session->opaque, eap_sim_session_t);
 
-	uint8_t sres_cat[SIM_VECTOR_GSM_SRES_SIZE * 3];
-	uint8_t *p = sres_cat;
+	uint8_t			sres_cat[SIM_VECTOR_GSM_SRES_SIZE * 3];
+	uint8_t			*p = sres_cat;
 
-	uint8_t calc_mac[SIM_CALC_MAC_SIZE];
+	uint8_t			calc_mac[SIM_MAC_SIZE];
+	ssize_t			slen;
+	VALUE_PAIR		*mac;
 
 	memcpy(p, eap_sim_session->keys.gsm.vector[0].sres, SIM_VECTOR_GSM_SRES_SIZE);
 	p += SIM_VECTOR_GSM_SRES_SIZE;
@@ -380,30 +382,36 @@ static int process_eap_sim_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 	p += SIM_VECTOR_GSM_SRES_SIZE;
 	memcpy(p, eap_sim_session->keys.gsm.vector[2].sres, SIM_VECTOR_GSM_SRES_SIZE);
 
-	/*
-	 *	Verify the MAC, now that we have all the keys
-	 */
-	if (fr_sim_crypto_mac_verify(eap_session, dict_sim_root, vps,
-				     (eap_packet_raw_t *)eap_session->this_round->response->packet,
-				     eap_sim_session->keys.k_aut,
-				     sres_cat, sizeof(sres_cat), calc_mac)) {
+	mac = fr_pair_find_by_child_num(vps, dict_aka_root, FR_EAP_AKA_RES, TAG_ANY);
+	if (!mac) {
+		REDEBUG("Missing AT_MAC attribute");
+		return -1;
+	}
+	if (mac->vp_length != SIM_MAC_SIZE) {
+		REDEBUG("AT_MAC incorrect length, expected %u bytes got %zu bytes",
+			SIM_MAC_SIZE, mac->vp_length);
+		return -1;
+	}
+
+	slen = fr_sim_crypto_sign_packet(calc_mac, eap_session->this_round->response, true,
+					 eap_sim_session->keys.k_aut, sizeof(eap_sim_session->keys.k_aut),
+					 NULL, 0);
+	if (slen < 0) {
+		RPEDEBUG("Failed calculating MAC");
+		return -1;
+	}
+
+	if (slen == 0) {
+		REDEBUG("Missing AT_MAC attribute in packet buffer");
+		return -1;
+	}
+
+	if (memcmp(mac->vp_octets, calc_mac, sizeof(calc_mac)) == 0) {
 		RDEBUG2("MAC check succeed");
 	} else {
-		int i, j;
-		char macline[20*3];
-		char *m = macline;
-
-		for (i = 0, j = 0; i < SIM_CALC_MAC_SIZE; i++) {
-			if (j == 4) {
-				*m++ = '_';
-				j=0;
-			}
-			j++;
-
-			sprintf(m, "%02x", calc_mac[i]);
-			m = m + strlen(m);
-		}
-		REDEBUG("Calculated MAC (%s) did not match", macline);
+		REDEBUG("MAC checked failed");
+		RHEXDUMP_INLINE(L_DBG_LVL_2, mac->vp_octets, SIM_MAC_SIZE, "Received");
+		RHEXDUMP_INLINE(L_DBG_LVL_2, calc_mac, SIM_MAC_SIZE, "Expected");
 		return -1;
 	}
 
@@ -441,6 +449,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	vps = eap_session->request->packet->vps;
 
 	fr_pair_cursor_init(&cursor, &request->packet->vps);
+	fr_pair_cursor_last(&cursor);
 
 	ret = fr_sim_decode(eap_session->request,
 			    &cursor,
@@ -449,9 +458,9 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 			    &ctx);
 	if (ret < 0) return 0;
 
-	vp = fr_pair_cursor_next(&cursor);
+	vp = fr_pair_cursor_current(&cursor);
 	if (vp && RDEBUG_ENABLED2) {
-		RDEBUG2("Eecoded EAP-SIM attributes");
+		RDEBUG2("Decoded EAP-SIM attributes");
 		rdebug_pair_list(L_DBG_LVL_2, request, vp, NULL);
 	}
 

@@ -415,7 +415,7 @@ static int process_eap_aka_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 	ssize_t			slen;
 	VALUE_PAIR		*vp = NULL, *mac;
 
-	mac = fr_pair_find_by_child_num(vps, dict_aka_root, FR_EAP_AKA_RES, TAG_ANY);
+	mac = fr_pair_find_by_child_num(vps, dict_aka_root, FR_EAP_AKA_MAC, TAG_ANY);
 	if (!mac) {
 		REDEBUG("Missing AT_MAC attribute");
 		return -1;

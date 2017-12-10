@@ -35,91 +35,52 @@ RCSID("$Id$")
 #include <freeradius-devel/eap.sim.h>
 #include <openssl/evp.h>
 
-/*
- * calculate the MAC for the EAP message, given the key.
- * The "extra" will be appended to the EAP message and included in the
- * HMAC.
+/** Locate the start of the AT_MAC value in the buffer
  *
+ * @param[in,out] data	to search for the AT_MAC in.
+ * @param[in] data_len	size of the data.
+ * @return
+ *	- 1 if we couldn't find a MAC.
+ *	- 0 if we found and zeroed out the mac field.
+ *	- -1 if the field was malformed.
  */
-int fr_sim_crypto_mac_verify(TALLOC_CTX *ctx, fr_dict_attr_t const *root,
-			     VALUE_PAIR *reply,
-			     eap_packet_raw_t *packet,
-			     uint8_t key[EAP_SIM_AUTH_SIZE],
-			     uint8_t *extra, int extra_len, uint8_t calc_mac[20])
+static int fr_sim_find_mac(uint8_t const **out, uint8_t *data, size_t data_len)
 {
-	int			ret;
-	uint8_t			*buffer;
-	int			elen, len;
-	VALUE_PAIR		*mac;
-	fr_dict_attr_t const	*da;
+	uint8_t *p = data, *end = p + data_len;
+	size_t len;
 
-	da = fr_dict_attr_child_by_num(root, FR_EAP_SIM_MAC);
-	if (!da) {
-		fr_strerror_printf("Missing definition for EAP-SIM-MAC");
-		return -1;
-	}
+	*out = NULL;
 
-	mac = fr_pair_find_by_da(reply, da, TAG_ANY);
-	if (!mac || mac->vp_length != 16) {
-		/* can't check a packet with no AT_MAC attribute */
-		return 0;
-	}
-
-	/* make copy big enough for everything */
-	elen = (packet->length[0] * 256) + packet->length[1];
-	len = elen + extra_len;
-
-	buffer = talloc_array(ctx, uint8_t, len);
-	if (!buffer) return 0;
-
-	memcpy(buffer, packet, elen);
-	memcpy(buffer + elen, extra, extra_len);
-
-	/*
-	 * now look for the AT_MAC attribute in the copy of the buffer
-	 * and make sure that the checksum is zero.
-	 *
-	 */
-	{
-		uint8_t *attr;
-
-		/* first attribute is 8 bytes into the EAP packet.
-		 * 4 bytes for EAP, 1 for type, 1 for subtype, 2 reserved.
-		 */
-		attr = buffer + 8;
-		while (attr < (buffer + elen)) {
-			if (attr[0] == FR_EAP_SIM_MAC) {
-				/* zero the data portion, after making sure
-				 * the size is >=5. Maybe future versions.
-				 * will use more bytes, so be liberal.
-				 */
-				if (attr[1] < 5) {
-					ret = 0;
-					goto done;
-				}
-				memset(&attr[4], 0, (attr[1]-1)*4);
+	p += 3;	/* Skip header */
+	while ((p + 2) < end) {
+		if (p[0] == FR_SIM_MAC) {
+			len = p[1] << 2;
+			if ((p + len) > end) {
+				fr_strerror_printf("Malformed AT_MAC: Length (%zu) exceeds buffer (%zu)", len, end - p);
+				return -1;
 			}
-			/* advance the pointer */
-			attr += attr[1]*4;
+
+			if (len != SIM_MAC_SIZE) {
+				fr_strerror_printf("Malformed AT_MAC: Length (%zu) incorrect (%u)",
+						   len, SIM_MAC_SIZE);
+				return -1;
+			}
+			*out = p + 4;
+
+			return 0;
 		}
+		p += p[1] << 2;		/* Advance */
 	}
 
-	/* now, HMAC-SHA1 it with the key. */
-	fr_hmac_sha1(calc_mac, buffer, len, key, 16);
+	fr_strerror_printf("No MAC attribute found");
 
-	ret = memcmp(&mac->vp_strvalue, calc_mac, 16) == 0 ? 1 : 0;		//-V512
- done:
-	talloc_free(buffer);
-	return ret;
+	return 1;
 }
-
 
 /** Append AT_MAC to the end a packet.
  *
  * Run SHA1 digest over a fake EAP header, the entire SIM packet and any extra HMAC data,
  * writing out the complete AT_HMAC and digest to out.
- *
- * @note out must point to (buff) end - 20.  It's easier to write AT_MAC last.
  *
  * @param[out] out		Where to write the digest.
  * @param[in] eap_packet	to extract header values from.
@@ -129,19 +90,22 @@ int fr_sim_crypto_mac_verify(TALLOC_CTX *ctx, fr_dict_attr_t const *root,
  *				(may be NULL).
  * @param[in] hmac_extra_len	Length of hmac_extra.
  * @return
- *	- <= 0 on failure.
+ *	- < 0 on failure.
+ *	- 0 if there's no MAC attribute to verify.
  *	- > 0 the number of bytes written to out.
  */
-ssize_t fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet,
+ssize_t fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet, bool zero_mac,
 				  uint8_t const *key, size_t const key_len,
 				  uint8_t const *hmac_extra, size_t const hmac_extra_len)
 {
 	EVP_MD_CTX		*md_ctx = NULL;
-	EVP_MD const		*md = EVP_get_digestbyname("SHA1");
+	EVP_MD const		*md = EVP_sha1();
 	EVP_PKEY		*pkey;
 
 	uint8_t			digest[SHA1_DIGEST_LENGTH];
 	size_t			digest_len = 0;
+	uint8_t	const		*mac;
+	uint8_t			*p = eap_packet->type.data, *end = p + eap_packet->type.length;
 
 	eap_packet_raw_t	eap_hdr;
 	uint16_t		packet_len;
@@ -184,11 +148,51 @@ ssize_t fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet,
 	}
 
 	/*
-	 *	Digest most of the packet, except the bit at
-	 *	the end we're leaving for the HMAC.
+	 *	Digest the packet up to the AT_MAC, value, then
+	 *	ingest 16 bytes of zero.
 	 */
-	FR_PROTO_HEX_DUMP("hmac input sim_body", eap_packet->type.data, eap_packet->type.length);
-	if (EVP_DigestSignUpdate(md_ctx, eap_packet->type.data, eap_packet->type.length) != 1) {
+	if (zero_mac) {
+		switch (fr_sim_find_mac(&mac, p, end - p)) {
+		case 0:
+		{
+			uint8_t zero[16] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+			/*
+			 *	Digest everything up to the hash
+			 *	part of the AT_MAC, including
+			 *	AT_MAC header and reserved bytes.
+			 */
+			if (EVP_DigestSignUpdate(md_ctx, p, mac - p) != 1) {
+				tls_strerror_printf(true, "Failed digesting header");
+				goto error;
+			}
+			p += mac - p;
+
+			/*
+			 *	Feed in 16 bytes of zeroes to
+			 *	simulated the zeroed out Mac.
+			 */
+			if (EVP_DigestSignUpdate(md_ctx, zero, sizeof(zero)) != 1) {
+				tls_strerror_printf(true, "Failed zeroes mac");
+				goto error;
+			}
+			p += sizeof(zero);
+		}
+			break;
+
+		case 1:
+			return 0;
+
+		case -1:
+			rad_assert(0);	/* Should have been checked by encoder or decoder */
+			goto error;
+		}
+	}
+
+	/*
+	 *	Digest the rest of the packet.
+	 */
+	if (EVP_DigestSignUpdate(md_ctx, p, end - p) != 1) {
 		tls_strerror_printf(true, "Failed digesting body");
 		goto error;
 	}
@@ -584,11 +588,11 @@ int fr_sim_crypto_kdf_1_umts(fr_sim_keys_t *keys)
  */
 void fr_sim_crypto_keys_log(REQUEST *request, fr_sim_keys_t *keys)
 {
-	RDEBUG3("Key data from AuC/static vectors");
+	RDEBUG3("Cryptographic inputs");
 
 	RINDENT();
 	RHEXDUMP_INLINE(L_DBG_LVL_3, keys->identity, keys->identity_len,
-			"identity     :");
+			"Identity     :");
 	switch (keys->vector_type) {
 	case SIM_VECTOR_GSM:
 	{

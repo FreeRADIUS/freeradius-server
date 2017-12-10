@@ -222,18 +222,9 @@ int		fr_sim_global_init(void);
 /*
  *	crypto.c
  */
-ssize_t		fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet,
+ssize_t		fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet, bool zero_mac,
 					  uint8_t const *key, size_t const key_len,
 					  uint8_t const *hmac_extra, size_t const hmac_extra_len);
-
-int		fr_sim_crypto_mac_verify(TALLOC_CTX *ctx, fr_dict_attr_t const *root,
-					 VALUE_PAIR *rvps,
-					 eap_packet_raw_t *packet,
-					 uint8_t key[8],
-					 uint8_t *extra, int extra_len,
-					 uint8_t calc_mac[20])
-					 CC_BOUNDED(__size__, 3, 8, 8)
-					 CC_BOUNDED(__size__, 6, 20, 20);
 
 int		fr_sim_crypto_kdf_0_gsm(fr_sim_keys_t *keys);
 
