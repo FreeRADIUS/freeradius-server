@@ -344,15 +344,12 @@ static void eap_aka_send_eap_success(eap_session_t *eap_session)
 	REQUEST			*request = eap_session->request;
 	uint8_t			*p;
 	eap_aka_session_t	*eap_aka_session;
-	RADIUS_PACKET		*packet;
 
 	RDEBUG2("Sending Success");
 
 	eap_session->this_round->request->code = FR_EAP_CODE_SUCCESS;
 	eap_session->finished = true;
 
-	/* to_peer is the data to the client. */
-	packet = eap_session->request->reply;
 	eap_aka_session = talloc_get_type_abort(eap_session->opaque, eap_aka_session_t);
 
 	p = eap_aka_session->keys.msk;
@@ -480,14 +477,19 @@ static int process_eap_aka_identity(eap_session_t *eap_session, VALUE_PAIR *vps)
 	 *	See if we got an AT_IDENTITY
 	 */
 	id = fr_pair_find_by_child_num(vps, dict_aka_root, FR_EAP_AKA_IDENTITY, TAG_ANY);
-	if (id && fr_sim_id_type(&type, &method,
-				 eap_session->identity, talloc_array_length(eap_session->identity) - 1) == 0) {
-		RDEBUG2("Failed parsing identity: %s", fr_strerror());
+	if (id)
+	 	if (fr_sim_id_type(&type, &method,
+				   eap_session->identity, talloc_array_length(eap_session->identity) - 1) == 0) {
+		RWDEBUG2("Failed parsing identity: %s", fr_strerror());
+
+		/*
+		 *	Update cryptographic identity
+		 */
+		talloc_const_free(eap_aka_session->keys.identity);
+		eap_aka_session->keys.identity_len = id->vp_length;
+		MEM(eap_aka_session->keys.identity = talloc_memdup(eap_aka_session, id->vp_strvalue, id->vp_length));
 	}
 
-	talloc_const_free(eap_aka_session->keys.identity);
-	eap_aka_session->keys.identity_len = id->vp_length;
-	MEM(eap_aka_session->keys.identity = talloc_memdup(eap_aka_session, id->vp_strvalue, id->vp_length));
 
 	/*
 	 *	Negotiate the next permissive form
