@@ -38,7 +38,8 @@ RCSIDH(sim_h, "$Id$")
 #include "eap_aka_common.h"
 
 #define SIM_IV_SIZE			16		//!< Length of the IV used when processing AT_ENCR.
-#define SIM_CALC_MAC_SIZE		20		//!< Length of MAC used to prevent packet modification.
+#define SIM_MAC_HASH_SIZE		16		//!< Length of MAC used to prevent packet modification.
+#define SIM_MAC_SIZE			20		//!< Length of MAC used to prevent packet modification.
 #define SIM_AUTH_SIZE			16
 #define SIM_SQN_AK_LEN			6
 
