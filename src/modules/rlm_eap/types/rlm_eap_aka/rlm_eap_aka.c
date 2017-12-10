@@ -50,7 +50,7 @@ FR_NAME_NUMBER const aka_state_table[] = {
 static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session);
 
 static CONF_PARSER submodule_config[] = {
-	{ FR_CONF_OFFSET("request_identity", FR_TYPE_BOOL, rlm_eap_aka_t, request_identity ) },
+	{ FR_CONF_OFFSET("request_identity", FR_TYPE_BOOL, rlm_eap_aka_t, request_identity ), .dflt = "yes" },
 	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING, rlm_eap_aka_t, virtual_server) },
 	CONF_PARSER_TERMINATOR
 };
@@ -63,11 +63,24 @@ static int eap_aka_compose(eap_session_t *eap_session)
 	VALUE_PAIR		*head = NULL, *vp;
 	REQUEST			*request = eap_session->request;
 	ssize_t			ret;
+	fr_sim_encode_ctx_t	encoder_ctx = {
+					.root = dict_aka_root,
+					.keys = &eap_aka_session->keys,
+
+					.iv = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+						0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
+					.iv_included = false,
+
+					.hmac_md = EVP_sha1(),
+					.eap_packet = eap_session->this_round->request,
+					.hmac_extra = NULL,
+					.hmac_extra_len = 0
+				};
 
 	fr_pair_cursor_init(&cursor, &eap_session->request->reply->vps);
 	fr_pair_cursor_init(&to_encode, &head);
 
-	while ((fr_pair_cursor_next_by_ancestor(&cursor, dict_sim_root, TAG_ANY))) {
+	while ((fr_pair_cursor_next_by_ancestor(&cursor, dict_aka_root, TAG_ANY))) {
 		vp = fr_pair_cursor_remove(&cursor);
 		fr_pair_cursor_append(&to_encode, vp);
 	}
@@ -75,12 +88,11 @@ static int eap_aka_compose(eap_session_t *eap_session)
 	RDEBUG2("Encoding EAP-AKA attributes");
 	rdebug_pair_list(L_DBG_LVL_2, request, head, NULL);
 
+	eap_session->this_round->request->type.num = FR_EAP_AKA;
 	eap_session->this_round->request->id = eap_aka_session->aka_id++ & 0xff;
 	eap_session->this_round->set_request_id = true;
 
-	ret = fr_sim_encode(eap_session->request, dict_aka_root, FR_EAP_AKA,
-			    head, eap_session->this_round->request,
-			    &eap_aka_session->keys);
+	ret = fr_sim_encode(eap_session->request, head, &encoder_ctx);
 	fr_pair_cursor_first(&to_encode);
 	fr_pair_cursor_free(&to_encode);
 
@@ -124,6 +136,7 @@ static int eap_aka_send_identity_request(eap_session_t *eap_session)
 	fr_cursor_t		cursor;
 
 	RDEBUG2("Sending AKA-Identity (%s)", fr_int2str(sim_id_request_table, eap_aka_session->id_req, "<INVALID>"));
+	eap_session->this_round->request->code = FR_EAP_CODE_REQUEST;
 
 	packet = request->reply;
 	fr_cursor_init(&cursor, &packet->vps);
@@ -157,6 +170,24 @@ static int eap_aka_send_identity_request(eap_session_t *eap_session)
 	vp->vp_bool = true;
 	fr_cursor_append(&cursor, vp);
 
+	/*
+	 *	Encode the packet
+	 */
+	if (eap_aka_compose(eap_session) < 0) return -1;
+
+	/*
+	 *	Digest the packet contents, updating our checkcode.
+	 */
+	if (!eap_aka_session->checkcode_state &&
+	    fr_sim_crypto_init_checkcode(eap_aka_session, &eap_aka_session->checkcode_state, EVP_sha1()) < 0) {
+		RPEDEBUG("Failed initialising checkcode");
+		return -1;
+	}
+	if (fr_sim_crypto_update_checkcode(eap_aka_session->checkcode_state, eap_session->this_round->request) < 0) {
+		RPEDEBUG("Failed updating checkcode");
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -182,7 +213,7 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 
 	REQUEST			*request = eap_session->request;
 	eap_aka_session_t	*eap_aka_session = talloc_get_type_abort(eap_session->opaque, eap_aka_session_t);
-	VALUE_PAIR		**to_client, *vp;
+	VALUE_PAIR		**to_peer, *vp;
 	RADIUS_PACKET		*packet;
 	fr_sim_vector_src_t	src = SIM_VECTOR_SRC_AUTO;
 
@@ -196,26 +227,34 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	}
 
 	RDEBUG2("Sending AKA-Challenge");
+	eap_session->this_round->request->code = FR_EAP_CODE_REQUEST;
 
 	/*
-	 *	to_client is the data to the client
+	 *	to_peer is the data to the client
 	 */
 	packet = eap_session->request->reply;
-	to_client = &packet->vps;
+	to_peer = &packet->vps;
 
 	/*
 	 *	Set the subtype to challenge
 	 */
-	vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_SUBTYPE);
+	MEM(vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_SUBTYPE));
 	vp->vp_uint32 = FR_EAP_AKA_SUBTYPE_VALUE_AKA_CHALLENGE;
-	fr_pair_replace(to_client, vp);
+	fr_pair_replace(to_peer, vp);
+
+	/*
+	 *	Indicate we'd like to use protected success messages
+	 */
+	MEM(vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_RESULT_IND));
+	vp->vp_bool = true;
+	fr_pair_replace(to_peer, vp);
 
 	/*
 	 *	Okay, we got the challenge! Put it into an attribute.
 	 */
 	MEM(vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_RAND));
 	fr_pair_value_memcpy(vp, eap_aka_session->keys.umts.vector.rand, SIM_VECTOR_UMTS_RAND_SIZE);
-	fr_pair_add(to_client, vp);
+	fr_pair_replace(to_peer, vp);
 
 	/*
 	 *	Send the AUTN value to the client, so it can authenticate
@@ -223,7 +262,41 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	 */
 	MEM(vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_AUTN));
 	fr_pair_value_memcpy(vp, eap_aka_session->keys.umts.vector.autn, SIM_VECTOR_UMTS_AUTN_SIZE);
-	fr_pair_add(to_client, vp);
+	fr_pair_replace(to_peer, vp);
+
+	/*
+	 *	need to include an AT_MAC attribute so that it will get
+	 *	calculated.
+	 */
+	MEM(vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_MAC));
+	fr_pair_value_memcpy(vp, hmac_zero, sizeof(hmac_zero));
+	fr_pair_replace(to_peer, vp);
+
+	/*
+	 *	If we have checkcode data, send that to the peer
+	 *	for validation.
+	 */
+	if (eap_aka_session->checkcode_state) {
+		ssize_t	slen;
+
+		slen = fr_sim_crypto_finalise_checkcode(eap_aka_session->checkcode, &eap_aka_session->checkcode_state);
+		if (slen < 0) {
+			RPEDEBUG("Failed calculating checkcode");
+			return -1;
+		}
+		eap_aka_session->checkcode_len = slen;
+
+		MEM(vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_CHECKCODE));
+		fr_pair_value_memcpy(vp, eap_aka_session->checkcode, slen);
+	/*
+	 *	If we don't have checkcode data, then we exchanged
+	 *	no identity packets, so checkcode is zero.
+	 */
+	} else {
+		MEM(vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_CHECKCODE));
+		eap_aka_session->checkcode_len = 0;
+	}
+	fr_pair_replace(to_peer, vp);
 
 	/*
 	 *	All set, calculate keys!
@@ -231,23 +304,42 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	fr_sim_crypto_kdf_0_umts(&eap_aka_session->keys);
 	if (RDEBUG_ENABLED3) fr_sim_crypto_keys_log(request, &eap_aka_session->keys);
 
-	/*
-	 *	need to include an AT_MAC attribute so that it will get
-	 *	calculated.
-	 */
-	vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_MAC);
-	fr_pair_value_memcpy(vp, hmac_zero, sizeof(hmac_zero));
-	fr_pair_replace(to_client, vp);
-
 	return 1;
 }
 
-/** Send a success message
+/** Send a success notification
+ *
+ */
+static void eap_aka_send_eap_success_notification(eap_session_t *eap_session)
+{
+	REQUEST		*request = eap_session->request;
+	RADIUS_PACKET	*packet = eap_session->request->reply;
+	fr_cursor_t	cursor;
+	VALUE_PAIR	*vp;
+
+	RDEBUG2("Sending AKA-Notification (Success)");
+	eap_session->this_round->request->code = FR_EAP_CODE_REQUEST;
+
+	fr_cursor_init(&cursor, &packet->vps);
+
+	/*
+	 *	Set the subtype to notification
+	 */
+	vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_SUBTYPE);
+	vp->vp_uint32 = FR_EAP_AKA_SUBTYPE_VALUE_AKA_NOTIFICATION;
+	fr_cursor_append(&cursor, vp);
+
+	vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_NOTIFICATION);
+	vp->vp_uint32 = FR_EAP_AKA_NOTIFICATION_VALUE_SUCCESS;
+	fr_cursor_append(&cursor, vp);
+}
+
+/** Send a success message with MPPE-keys
  *
  * The only work to be done is the add the appropriate SEND/RECV
  * attributes derived from the MSK.
  */
-static void eap_aka_send_success(eap_session_t *eap_session)
+static void eap_aka_send_eap_success(eap_session_t *eap_session)
 {
 	REQUEST			*request = eap_session->request;
 	uint8_t			*p;
@@ -259,7 +351,7 @@ static void eap_aka_send_success(eap_session_t *eap_session)
 	eap_session->this_round->request->code = FR_EAP_CODE_SUCCESS;
 	eap_session->finished = true;
 
-	/* to_client is the data to the client. */
+	/* to_peer is the data to the client. */
 	packet = eap_session->request->reply;
 	eap_aka_session = talloc_get_type_abort(eap_session->opaque, eap_aka_session_t);
 
@@ -269,10 +361,10 @@ static void eap_aka_send_success(eap_session_t *eap_session)
 	eap_add_reply(eap_session->request, "MS-MPPE-Send-Key", p, EAP_TLS_MPPE_KEY_LEN);
 }
 
-/** Send a success message
+/** Send a failure message
  *
  */
-static void eap_aka_send_general_failure(eap_session_t *eap_session)
+static void eap_aka_send_eap_failure_notification(eap_session_t *eap_session)
 {
 	REQUEST		*request = eap_session->request;
 	RADIUS_PACKET	*packet = eap_session->request->reply;
@@ -280,10 +372,9 @@ static void eap_aka_send_general_failure(eap_session_t *eap_session)
 	VALUE_PAIR	*vp;
 
 	RDEBUG2("Sending AKA-Notification (General-Failure)");
+	eap_session->this_round->request->code = FR_EAP_CODE_REQUEST;
 
 	fr_cursor_init(&cursor, &packet->vps);
-
-	eap_session->this_round->request->code = FR_EAP_CODE_REQUEST;
 
 	/*
 	 *	Set the subtype to notification
@@ -297,7 +388,7 @@ static void eap_aka_send_general_failure(eap_session_t *eap_session)
 	fr_cursor_append(&cursor, vp);
 }
 
-static void eap_aka_send_failure(eap_session_t *eap_session)
+static void eap_aka_send_eap_failure(eap_session_t *eap_session)
 {
 	eap_session->this_round->request->code = FR_EAP_CODE_FAILURE;
 }
@@ -327,7 +418,6 @@ static void eap_aka_state_enter(eap_session_t *eap_session,
 	 */
 	case EAP_AKA_SERVER_IDENTITY:
 		eap_aka_send_identity_request(eap_session);
-		eap_aka_compose(eap_session);
 		break;
 
 	/*
@@ -339,17 +429,25 @@ static void eap_aka_state_enter(eap_session_t *eap_session,
 		break;
 
 	/*
+	 *	Sent a protected success notification
+	 */
+	case EAP_AKA_SERVER_SUCCESS_NOTIFICATION:
+		eap_aka_send_eap_success_notification(eap_session);
+		eap_aka_compose(eap_session);
+		break;
+
+	/*
 	 *	Send the EAP Success message
 	 */
 	case EAP_AKA_SERVER_SUCCESS:
-		eap_aka_send_success(eap_session);
+		eap_aka_send_eap_success(eap_session);
 		return;
 
 	/*
 	 *	Send a general failure notification
 	 */
-	case EAP_AKA_SERVER_GENERAL_FAILURE:
-		eap_aka_send_general_failure(eap_session);
+	case EAP_AKA_SERVER_GENERAL_FAILURE_NOTIFICATION:
+		eap_aka_send_eap_failure_notification(eap_session);
 		eap_aka_compose(eap_session);
 		return;
 
@@ -371,13 +469,25 @@ static int process_eap_aka_identity(eap_session_t *eap_session, VALUE_PAIR *vps)
 	fr_sim_method_hint_t	method = SIM_METHOD_HINT_UNKNOWN;
 
 	/*
+	 *	Digest the identity response
+	 */
+	if (fr_sim_crypto_update_checkcode(eap_aka_session->checkcode_state, eap_session->this_round->response) < 0) {
+		RPEDEBUG("Failed updating checkcode");
+		return -1;
+	}
+
+	/*
 	 *	See if we got an AT_IDENTITY
 	 */
 	id = fr_pair_find_by_child_num(vps, dict_aka_root, FR_EAP_AKA_IDENTITY, TAG_ANY);
 	if (id && fr_sim_id_type(&type, &method,
-				 eap_session->identity, talloc_array_length(eap_session->identity) - 1) < 0) {
+				 eap_session->identity, talloc_array_length(eap_session->identity) - 1) == 0) {
 		RDEBUG2("Failed parsing identity: %s", fr_strerror());
 	}
+
+	talloc_const_free(eap_aka_session->keys.identity);
+	eap_aka_session->keys.identity_len = id->vp_length;
+	MEM(eap_aka_session->keys.identity = talloc_memdup(eap_aka_session, id->vp_strvalue, id->vp_length));
 
 	/*
 	 *	Negotiate the next permissive form
@@ -395,8 +505,9 @@ static int process_eap_aka_identity(eap_session_t *eap_session, VALUE_PAIR *vps)
 		break;
 
 	case SIM_PERMANENT_ID_REQ:
+		eap_aka_state_enter(eap_session, eap_aka_session, EAP_AKA_SERVER_CHALLENGE);
 		REDEBUG2("Failed to negotiate a usable identity");
-		eap_aka_state_enter(eap_session, eap_aka_session, EAP_AKA_SERVER_GENERAL_FAILURE);
+//		eap_aka_state_enter(eap_session, eap_aka_session, EAP_AKA_SERVER_GENERAL_FAILURE_NOTIFICATION);
 		break;
 	}
 
@@ -414,7 +525,7 @@ static int process_eap_aka_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 
 	uint8_t			calc_mac[SIM_MAC_HASH_SIZE];
 	ssize_t			slen;
-	VALUE_PAIR		*vp = NULL, *mac;
+	VALUE_PAIR		*vp = NULL, *mac, *checkcode;
 
 	mac = fr_pair_find_by_child_num(vps, dict_aka_root, FR_EAP_AKA_MAC, TAG_ANY);
 	if (!mac) {
@@ -428,7 +539,7 @@ static int process_eap_aka_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 	}
 
 	slen = fr_sim_crypto_sign_packet(calc_mac, eap_session->this_round->response, true,
-					 eap_aka_session->keys.k_aut, sizeof(eap_aka_session->keys.k_aut),
+					 EVP_sha1(), eap_aka_session->keys.k_aut, sizeof(eap_aka_session->keys.k_aut),
 					 NULL, 0);
 	if (slen < 0) {
 		RPEDEBUG("Failed calculating MAC");
@@ -436,17 +547,46 @@ static int process_eap_aka_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 	}
 
 	if (slen == 0) {
-		REDEBUG("Missing AT_MAC attribute in packet buffer");
+		REDEBUG("Missing EAP-AKA-MAC attribute in packet buffer");
 		return -1;
 	}
 
 	if (memcmp(mac->vp_octets, calc_mac, sizeof(calc_mac)) == 0) {
-		RDEBUG2("MAC check succeed");
+		RDEBUG2("EAP-AKA-MAC matches calculated MAC");
 	} else {
-		REDEBUG("MAC checked failed");
+		REDEBUG("EAP-AKA-MAC does not match calculated MAC");
 		RHEXDUMP_INLINE(L_DBG_LVL_2, mac->vp_octets, SIM_MAC_HASH_SIZE, "Received");
 		RHEXDUMP_INLINE(L_DBG_LVL_2, calc_mac, SIM_MAC_HASH_SIZE, "Expected");
 		return -1;
+	}
+
+	/*
+	 *	If the peer doesn't include a checkcode then that
+	 *	means they don't support it, and we can't validate
+	 *	their view of the identity packets.
+	 */
+	checkcode = fr_pair_find_by_child_num(vps, dict_aka_root, FR_EAP_AKA_CHECKCODE, TAG_ANY);
+	if (checkcode) {
+		if (checkcode->vp_length != eap_aka_session->checkcode_len) {
+			REDEBUG("Checkcode length (%zu) does not match calculated checkcode length (%zu)",
+				checkcode->vp_length, eap_aka_session->checkcode_len);
+			return -1;
+		}
+
+		if (memcmp(checkcode->vp_octets, eap_aka_session->checkcode, eap_aka_session->checkcode_len) == 0) {
+			RDEBUG("EAP-AKA-Checkcode matches calculated checkcode");
+		} else {
+			REDEBUG("EAP-AKA-Checkcode does not match calculated checkcode");
+			RHEXDUMP_INLINE(L_DBG_LVL_2, checkcode->vp_octets, checkcode->vp_length, "Received");
+			RHEXDUMP_INLINE(L_DBG_LVL_2, eap_aka_session->checkcode,
+					eap_aka_session->checkcode_len, "Expected");
+			return -1;
+		}
+	/*
+	 *	Only print something if we calculated a checkcode
+	 */
+	} else if (eap_aka_session->checkcode_len > 0){
+		RDEBUG2("Peer didn't include EAP-AKA-Checkcode, skipping checkcode validation");
 	}
 
 	vp = fr_pair_find_by_child_num(vps, dict_aka_root, FR_EAP_AKA_RES, TAG_ANY);
@@ -471,8 +611,16 @@ static int process_eap_aka_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 
 	RDEBUG2("EAP-AKA-RES matches XRES");
 
-	/* everything looks good, change states */
-	eap_aka_state_enter(eap_session, eap_aka_session, EAP_AKA_SERVER_SUCCESS);
+	/*
+	 *	If the peer wants a Success notification, then
+	 *	send a success notification, otherwise send a
+	 *	normal EAP-Success.
+	 */
+	if (fr_pair_find_by_child_num(vps, dict_aka_root, FR_EAP_AKA_RESULT_IND, TAG_ANY)) {
+		eap_aka_state_enter(eap_session, eap_aka_session, EAP_AKA_SERVER_SUCCESS_NOTIFICATION);
+	} else {
+		eap_aka_state_enter(eap_session, eap_aka_session, EAP_AKA_SERVER_SUCCESS);
+	}
 
 	return 0;
 }
@@ -540,7 +688,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		case EAP_AKA_SYNCHRONIZATION_FAILURE:
 			REDEBUG("EAP-AKA Peer synchronization failure");
 		failure:
-			eap_aka_send_failure(eap_session);
+			eap_aka_send_eap_failure(eap_session);
 			return RLM_MODULE_REJECT;
 
 		case EAP_AKA_AUTHENTICATION_REJECT:
@@ -566,7 +714,15 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 			return process_eap_aka_challenge(eap_session, vps) < 0 ? RLM_MODULE_FAIL : RLM_MODULE_HANDLED;
 		}
 
-	case EAP_AKA_SERVER_GENERAL_FAILURE:
+	/*
+	 *	RFC says we ignore the ACK from the peer
+	 *	and always send a success.
+	 */
+	case EAP_AKA_SERVER_SUCCESS_NOTIFICATION:
+		eap_aka_state_enter(eap_session, eap_aka_session, EAP_AKA_SERVER_SUCCESS);
+		break;
+
+	case EAP_AKA_SERVER_GENERAL_FAILURE_NOTIFICATION:
 		if (subtype == EAP_AKA_NOTIFICATION) {
 			RDEBUG2("AKA-Notification ACKed, sending EAP-Failure");
 		} else {

@@ -35,6 +35,120 @@ RCSID("$Id$")
 #include <freeradius-devel/eap.sim.h>
 #include <openssl/evp.h>
 
+/** Free OpenSSL memory associated with our checkcode ctx
+ *
+ * @param[in] checkcode to free.
+ * @return 0
+ */
+static int _fr_sim_crypto_free_checkcode(fr_sim_checkcode_t *checkcode)
+{
+	if (checkcode->md_ctx) EVP_MD_CTX_destroy(checkcode->md_ctx);
+	return 0;
+}
+
+/** Initialise checkcode message digest
+ *
+ * @param[in] ctx		to allocate checkcode structure in.
+ * @param[out] checkcode	a new checkcode structure.
+ * @param[in] md		to use when calculating the checkcode,
+ *				either EVP_sha1(), or EVP_sha256().
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_sim_crypto_init_checkcode(TALLOC_CTX *ctx, fr_sim_checkcode_t **checkcode, EVP_MD const *md)
+{
+	*checkcode = talloc_zero(ctx, fr_sim_checkcode_t);
+	if (!*checkcode) {
+		fr_strerror_printf("Out of memory");
+		return -1;
+	}
+
+	(*checkcode)->md_ctx = EVP_MD_CTX_create();
+	if (!(*checkcode)->md_ctx) {
+		tls_strerror_printf(true, "Failed creating MD ctx");
+	error:
+		TALLOC_FREE(*checkcode);
+		return -1;
+	}
+	if (EVP_DigestInit_ex((*checkcode)->md_ctx, md, NULL) != 1) {
+		tls_strerror_printf(true, "Failed intialising MD ctx");
+		goto error;
+	}
+
+	talloc_set_destructor(*checkcode, _fr_sim_crypto_free_checkcode);
+
+	return 0;
+}
+
+/** Digest a packet, updating the checkcode
+ *
+ * Call #fr_sim_crypto_finalise_checkcode to obtain the final checkcode value.
+ *
+ * @param[in,out] checkcode	if *checkcode is NULL, a new checkcode structure
+ *				will be allocated and the message digest context
+ *				will be initialised before the provided
+ *				#eap_packet is fed into the digest.
+ * @param[in] eap_packet	to digest.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_sim_crypto_update_checkcode(fr_sim_checkcode_t *checkcode, eap_packet_t *eap_packet)
+{
+	uint16_t		packet_len;
+	eap_packet_raw_t	eap_hdr;
+
+	eap_hdr.code = eap_packet->code;
+	eap_hdr.id = eap_packet->id;
+	packet_len = htons((sizeof(eap_hdr) + eap_packet->type.length) & UINT16_MAX); /* EAP Header + Method + SIM data */
+	memcpy(&eap_hdr.length, &packet_len, sizeof(packet_len));
+	eap_hdr.data[0] = eap_packet->type.num;
+
+	/*
+	 *	Digest the header
+	 */
+	if (EVP_DigestUpdate(checkcode->md_ctx, &eap_hdr, sizeof(eap_hdr)) != 1) {
+		tls_strerror_printf(true, "Failed digesting EAP header");
+		return -1;
+	}
+
+	/*
+	 *	Digest the packet
+	 */
+	if (EVP_DigestUpdate(checkcode->md_ctx, eap_packet->type.data, eap_packet->type.length) != 1) {
+		tls_strerror_printf(true, "Failed digesting packet data");
+		return -1;
+	}
+
+	return 0;
+}
+
+/** Write out the final checkcode value
+ *
+ * @param[out] out		Where to write the checkcode value.  Must be at least 20
+ *				bytes if MD was SHA1, or 32 bytes if MD was SHA256.
+ * @param[in] outlen		Length of the output buffer.
+ * @param[in,out] checkcode	structure to get final digest from and to tree.
+ * @return
+ *	- <= 0 on failure.
+ *	- > 0 the number of bytes written to out.
+ */
+ssize_t fr_sim_crypto_finalise_checkcode(uint8_t *out, fr_sim_checkcode_t **checkcode)
+{
+	unsigned int len;
+
+	if (EVP_DigestFinal_ex((*checkcode)->md_ctx, out, &len) != 1) {
+		tls_strerror_printf(true, "Failed finalising checkcode digest");
+		TALLOC_FREE(*checkcode);
+		return -1;
+	}
+
+	TALLOC_FREE(*checkcode);
+
+	return len;
+}
+
 /** Locate the start of the AT_MAC value in the buffer
  *
  * @param[in,out] data	to search for the AT_MAC in.
@@ -77,29 +191,35 @@ static int fr_sim_find_mac(uint8_t const **out, uint8_t *data, size_t data_len)
 	return 1;
 }
 
-/** Append AT_MAC to the end a packet.
+/** Calculate the digest value for a packet
  *
- * Run SHA1 digest over a fake EAP header, the entire SIM packet and any extra HMAC data,
- * writing out the complete AT_HMAC and digest to out.
+ * Run a digest over a fake EAP header, the entire SIM packet and any extra HMAC data,
+ * writing a truncated (16 byte) digest value to out.
+ *
+ * @note The 16 byte digest field in the packet must have either been zeroed out before
+ *	 this function is called (as it is when encoding data), or #zero_mac must be set
+ *	 to true.
  *
  * @param[out] out		Where to write the digest.
  * @param[in] eap_packet	to extract header values from.
+ * @param[in] zero_mac		Assume the mac field is not zeroed (i.e. received packet)
+ *				and skip it during mac calculation feeding in 16 zeroed
+ *				bytes in its place.
  * @param[in] key		to use to sign the packet.
  * @param[in] key_len		Length of the key.
  * @param[in] hmac_extra	data to concatenate with the packet when calculating the HMAC
  *				(may be NULL).
- * @param[in] hmac_extra_len	Length of hmac_extra.
+ * @param[in] hmac_extra_len	Length of hmac_extra (may be zero).
  * @return
  *	- < 0 on failure.
  *	- 0 if there's no MAC attribute to verify.
  *	- > 0 the number of bytes written to out.
  */
 ssize_t fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet, bool zero_mac,
-				  uint8_t const *key, size_t const key_len,
+				  EVP_MD const *md, uint8_t const *key, size_t const key_len,
 				  uint8_t const *hmac_extra, size_t const hmac_extra_len)
 {
 	EVP_MD_CTX		*md_ctx = NULL;
-	EVP_MD const		*md = EVP_sha1();
 	EVP_PKEY		*pkey;
 
 	uint8_t			digest[SHA1_DIGEST_LENGTH];
@@ -143,13 +263,13 @@ ssize_t fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet, boo
 
 	FR_PROTO_HEX_DUMP("hmac input eap_hdr", (uint8_t *)&eap_hdr, sizeof(eap_hdr));
 	if (EVP_DigestSignUpdate(md_ctx, &eap_hdr, sizeof(eap_hdr)) != 1) {
-		tls_strerror_printf(true, "Failed digesting EAP header");
+		tls_strerror_printf(true, "Failed digesting EAP data");
 		goto error;
 	}
 
 	/*
 	 *	Digest the packet up to the AT_MAC, value, then
-	 *	ingest 16 bytes of zero.
+	 *	digest 16 bytes of zero.
 	 */
 	if (zero_mac) {
 		switch (fr_sim_find_mac(&mac, p, end - p)) {
@@ -163,7 +283,7 @@ ssize_t fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet, boo
 			 *	AT_MAC header and reserved bytes.
 			 */
 			if (EVP_DigestSignUpdate(md_ctx, p, mac - p) != 1) {
-				tls_strerror_printf(true, "Failed digesting header");
+				tls_strerror_printf(true, "Failed digesting packet data (before MAC)");
 				goto error;
 			}
 			p += mac - p;
@@ -173,7 +293,7 @@ ssize_t fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet, boo
 			 *	simulated the zeroed out Mac.
 			 */
 			if (EVP_DigestSignUpdate(md_ctx, zero, sizeof(zero)) != 1) {
-				tls_strerror_printf(true, "Failed zeroes mac");
+				tls_strerror_printf(true, "Failed digesting zeroed MAC");
 				goto error;
 			}
 			p += sizeof(zero);
@@ -193,7 +313,7 @@ ssize_t fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet, boo
 	 *	Digest the rest of the packet.
 	 */
 	if (EVP_DigestSignUpdate(md_ctx, p, end - p) != 1) {
-		tls_strerror_printf(true, "Failed digesting body");
+		tls_strerror_printf(true, "Failed digesting packet data");
 		goto error;
 	}
 
@@ -382,45 +502,6 @@ int fr_sim_crypto_kdf_0_umts(fr_sim_keys_t *keys)
 	return 0;
 }
 
-static int fr_sim_crypto_aka_prime_prf(uint8_t *out, size_t outlen,
-				       uint8_t const *key, size_t key_len, uint8_t const *in, size_t in_len)
-{
-	uint8_t		*p = out, *end = p + outlen;
-	uint8_t		c = 0;
-	uint8_t		digest[SHA256_DIGEST_LENGTH];
-	HMAC_CTX	*hmac;
-
-	MEM(hmac = HMAC_CTX_new());
-	if (HMAC_Init_ex(hmac, key, key_len, EVP_sha256(), NULL) != 1) {
-	error:
-		tls_strerror_printf(true, "HMAC failure");
-		HMAC_CTX_free(hmac);
-		return -1;
-	}
-
-	while (p < end) {
-		unsigned int len = sizeof(digest);
-		size_t copy;
-
-		c++;
-
-		if (HMAC_Init_ex(hmac, NULL, 0, EVP_sha256(), NULL) != 1) goto error;
-		if ((p != out) && HMAC_Update(hmac, digest, sizeof(digest)) != 1) goto error;	/* Ingest last round */
-		if (HMAC_Update(hmac, in, in_len) != 1) goto error;				/* Ingest s */
-		if (HMAC_Update(hmac, &c, sizeof(c)) != 1) goto error;				/* Ingest round number */
-		if (HMAC_Final(hmac, digest, &len) != 1) goto error;				/* Output T(i) */
-
-		copy = p - end;
-		if (copy > SHA256_DIGEST_LENGTH) copy = SHA256_DIGEST_LENGTH;
-
-		memcpy(p, digest, copy);
-		p += copy;
-	}
-	HMAC_CTX_free(hmac);
-
-	return 0;
-}
-
 /** EAP-AKA Prime CK Prime IK Prime derivation function
  *
  * @note expects keys to contain a SIM_VECTOR_UMTS.
@@ -502,6 +583,45 @@ int fr_sim_crypto_derive_ck_ik_prime(fr_sim_keys_t *keys)
 	memcpy(keys->ck_prime, digest, sizeof(keys->ck_prime));
 	memcpy(keys->ik_prime, digest + sizeof(keys->ck_prime), sizeof(keys->ik_prime));
 
+	HMAC_CTX_free(hmac);
+
+	return 0;
+}
+
+static int fr_sim_crypto_aka_prime_prf(uint8_t *out, size_t outlen,
+				       uint8_t const *key, size_t key_len, uint8_t const *in, size_t in_len)
+{
+	uint8_t		*p = out, *end = p + outlen;
+	uint8_t		c = 0;
+	uint8_t		digest[SHA256_DIGEST_LENGTH];
+	HMAC_CTX	*hmac;
+
+	MEM(hmac = HMAC_CTX_new());
+	if (HMAC_Init_ex(hmac, key, key_len, EVP_sha256(), NULL) != 1) {
+	error:
+		tls_strerror_printf(true, "HMAC failure");
+		HMAC_CTX_free(hmac);
+		return -1;
+	}
+
+	while (p < end) {
+		unsigned int len = sizeof(digest);
+		size_t copy;
+
+		c++;
+
+		if (HMAC_Init_ex(hmac, NULL, 0, EVP_sha256(), NULL) != 1) goto error;
+		if ((p != out) && HMAC_Update(hmac, digest, sizeof(digest)) != 1) goto error;	/* Ingest last round */
+		if (HMAC_Update(hmac, in, in_len) != 1) goto error;				/* Ingest s */
+		if (HMAC_Update(hmac, &c, sizeof(c)) != 1) goto error;				/* Ingest round number */
+		if (HMAC_Final(hmac, digest, &len) != 1) goto error;				/* Output T(i) */
+
+		copy = p - end;
+		if (copy > SHA256_DIGEST_LENGTH) copy = SHA256_DIGEST_LENGTH;
+
+		memcpy(p, digest, copy);
+		p += copy;
+	}
 	HMAC_CTX_free(hmac);
 
 	return 0;

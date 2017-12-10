@@ -33,12 +33,13 @@ RCSIDH(rlm_eap_aka_eap_aka_h, "$Id$")
  * In server_start, we send a EAP-AKA Start message.
  */
 typedef enum {
-	EAP_AKA_SERVER_START		= 0,			//!< Initial state.
-	EAP_AKA_SERVER_IDENTITY		= 5,			//!< Attempting to discover permanent
+	EAP_AKA_SERVER_START = 0,				//!< Initial state.
+	EAP_AKA_SERVER_IDENTITY,				//!< Attempting to discover permanent
 								///< identity of the supplicant.
-	EAP_AKA_SERVER_CHALLENGE	= 1,			//!< We've challenged the supplicant.
-	EAP_AKA_SERVER_SUCCESS		= 2,			//!< Authentication completed successfully.
-	EAP_AKA_SERVER_GENERAL_FAILURE,
+	EAP_AKA_SERVER_CHALLENGE,				//!< We've challenged the supplicant.
+	EAP_AKA_SERVER_SUCCESS_NOTIFICATION,			//!< Send success notification.
+	EAP_AKA_SERVER_SUCCESS,					//!< Authentication completed successfully.
+	EAP_AKA_SERVER_GENERAL_FAILURE_NOTIFICATION,		//!< Send failure notification.
 	EAP_AKA_SERVER_MAX_STATES
 } eap_aka_server_state_t;
 
@@ -47,6 +48,11 @@ typedef struct {
 								///< or previously requested.
 	eap_aka_server_state_t		state;			//!< Current session state.
 	fr_sim_keys_t			keys;			//!< Various EAP-AKA keys.
+
+	fr_sim_checkcode_t		*checkcode_state;	//!< Digest of all identity packets we've seen.
+	uint8_t				checkcode[32];		//!< Checkcode we calculated.
+	size_t				checkcode_len;		//!< 0, 20 or 32 bytes.
+
 	int  				aka_id;			//!< Packet ID. (replay protection).
 } eap_aka_session_t;
 

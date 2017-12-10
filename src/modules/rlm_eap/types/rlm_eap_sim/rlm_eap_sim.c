@@ -49,6 +49,20 @@ static int eap_sim_compose(eap_session_t *eap_session)
 	vp_cursor_t		to_encode;
 	VALUE_PAIR		*head = NULL, *vp;
 	REQUEST			*request = eap_session->request;
+	fr_sim_encode_ctx_t	encoder_ctx = {
+					.root = dict_sim_root,
+					.keys = &eap_sim_session->keys,
+
+					.iv = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+						0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
+					.iv_included = false,
+
+					.hmac_md = EVP_sha1(),
+					.eap_packet = eap_session->this_round->request,
+					.hmac_extra = eap_sim_session->keys.gsm.nonce_mt,
+					.hmac_extra_len = sizeof(eap_sim_session->keys.gsm.nonce_mt)
+				};
+
 	ssize_t			ret;
 
 	/* we will set the ID on requests, since we have to HMAC it */
@@ -65,9 +79,11 @@ static int eap_sim_compose(eap_session_t *eap_session)
 	RDEBUG2("Encoding EAP-SIM attributes");
 	rdebug_pair_list(L_DBG_LVL_2, request, head, NULL);
 
-	ret = fr_sim_encode(eap_session->request, dict_sim_root, FR_EAP_SIM,
-			    head, eap_session->this_round->request,
-			    &eap_sim_session->keys);
+	eap_session->this_round->request->type.num = FR_EAP_SIM;
+	eap_session->this_round->request->id = eap_sim_session->sim_id++ & 0xff;
+	eap_session->this_round->set_request_id = true;
+
+	ret = fr_sim_encode(eap_session->request, head, &encoder_ctx);
 	fr_pair_cursor_first(&to_encode);
 	fr_pair_cursor_free(&to_encode);
 
@@ -80,6 +96,7 @@ static int eap_sim_compose(eap_session_t *eap_session)
 
 static int eap_sim_send_state(eap_session_t *eap_session)
 {
+	REQUEST			*request = eap_session->request;
 	VALUE_PAIR		**vps, *vp;
 	uint16_t		version;
 	eap_sim_session_t	*eap_sim_session = talloc_get_type_abort(eap_session->opaque, eap_sim_session_t);
@@ -87,6 +104,9 @@ static int eap_sim_send_state(eap_session_t *eap_session)
 
 	rad_assert(eap_session->request != NULL);
 	rad_assert(eap_session->request->reply);
+
+	RDEBUG2("Sending SIM-State");
+	eap_session->this_round->request->code = FR_EAP_CODE_REQUEST;
 
 	/* these are the outgoing attributes */
 	packet = eap_session->request->reply;
@@ -145,18 +165,21 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 
 	REQUEST			*request = eap_session->request;
 	eap_sim_session_t	*eap_sim_session;
-	VALUE_PAIR		**from_client, **to_client, *vp;
+	VALUE_PAIR		**from_peer, **to_client, *vp;
 	RADIUS_PACKET		*packet;
 
 	eap_sim_session = talloc_get_type_abort(eap_session->opaque, eap_sim_session_t);
 	rad_assert(eap_session->request != NULL);
 	rad_assert(eap_session->request->reply);
 
+	RDEBUG2("Sending SIM-Challenge");
+	eap_session->this_round->request->code = FR_EAP_CODE_REQUEST;
+
 	/*
-	 *	from_client is the data from the client but this is for non-protocol data here.
+	 *	from_peer is the data from the client but this is for non-protocol data here.
 	 *	We should already have consumed any client originated data.
 	 */
-	from_client = &eap_session->request->packet->vps;
+	from_peer = &eap_session->request->packet->vps;
 
 	/*
 	 *	to_client is the data to the client
@@ -189,7 +212,7 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	/*
 	 *	Use the SIM identity, if available
 	 */
-	vp = fr_pair_find_by_child_num(*from_client, dict_sim_root, FR_EAP_SIM_IDENTITY, TAG_ANY);
+	vp = fr_pair_find_by_child_num(*from_peer, dict_sim_root, FR_EAP_SIM_IDENTITY, TAG_ANY);
 	if (vp) {
 		MEM(eap_sim_session->keys.identity = (uint8_t *)talloc_bstrndup(eap_sim_session,
 										vp->vp_strvalue, vp->vp_length));
@@ -238,10 +261,13 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 static int eap_sim_send_success(eap_session_t *eap_session)
 {
 	uint8_t			*p;
+
+	REQUEST			*request = eap_session->request;
 	eap_sim_session_t	*eap_sim_session;
 	VALUE_PAIR		*vp;
 	RADIUS_PACKET		*packet;
 
+	RDEBUG2("Sending SIM-Success");
 	eap_session->this_round->request->code = FR_EAP_CODE_SUCCESS;
 	eap_session->finished = true;
 
@@ -393,7 +419,7 @@ static int process_eap_sim_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 		return -1;
 	}
 
-	slen = fr_sim_crypto_sign_packet(calc_mac, eap_session->this_round->response, true,
+	slen = fr_sim_crypto_sign_packet(calc_mac, eap_session->this_round->response, true, EVP_sha1(),
 					 eap_sim_session->keys.k_aut, sizeof(eap_sim_session->keys.k_aut),
 					 NULL, 0);
 	if (slen < 0) {
@@ -402,14 +428,14 @@ static int process_eap_sim_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 	}
 
 	if (slen == 0) {
-		REDEBUG("Missing AT_MAC attribute in packet buffer");
+		REDEBUG("Missing EAP-SIM-MAC attribute in packet buffer");
 		return -1;
 	}
 
 	if (memcmp(mac->vp_octets, calc_mac, sizeof(calc_mac)) == 0) {
-		RDEBUG2("MAC check succeed");
+		RDEBUG2("EAP-SIM-MAC matches calculated MAC");
 	} else {
-		REDEBUG("MAC checked failed");
+		REDEBUG("EAP-SIM-MAC does not match calculated MAC");
 		RHEXDUMP_INLINE(L_DBG_LVL_2, mac->vp_octets, SIM_MAC_SIZE, "Received");
 		RHEXDUMP_INLINE(L_DBG_LVL_2, calc_mac, SIM_MAC_SIZE, "Expected");
 		return -1;

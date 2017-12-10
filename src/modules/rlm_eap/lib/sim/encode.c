@@ -965,12 +965,9 @@ ssize_t fr_sim_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, voi
 	return ret;
 }
 
-ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t type,
-		      VALUE_PAIR *to_encode, eap_packet_t *eap_packet, fr_sim_keys_t const *keys)
+ssize_t fr_sim_encode(REQUEST *request, VALUE_PAIR *to_encode, void *encode_ctx)
 {
 	VALUE_PAIR		*vp;
-
-	unsigned int		id, eap_code;
 
 	uint8_t			*buff, *p, *end, *hmac = NULL;
 	size_t			len = 0;
@@ -980,34 +977,20 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 
 	unsigned char		subtype;
 	vp_cursor_t		cursor;
-	fr_sim_encode_ctx_t	packet_ctx = {
-					.root = parent,
-					.keys = keys,
-					.iv_included = false
-				};
+	fr_sim_encode_ctx_t	*packet_ctx = encode_ctx;
+	eap_packet_t		*eap_packet = packet_ctx->eap_packet;
 
 	/*
 	 *	Encoded_msg is now an EAP-SIM message.
 	 *	It might be too big for putting into an
 	 *	EAP packet.
 	 */
-	vp = fr_pair_find_by_child_num(to_encode, parent, FR_SIM_SUBTYPE, TAG_ANY);
+	vp = fr_pair_find_by_child_num(to_encode, packet_ctx->root, FR_SIM_SUBTYPE, TAG_ANY);
 	if (!vp) {
 		REDEBUG("Missing subtype attribute");
 		return -1;
 	}
 	subtype = vp->vp_uint16;
-
-	vp = fr_pair_find_by_child_num(to_encode, parent, FR_EAP_CODE, TAG_ANY);
-	eap_code = vp ? vp->vp_uint32 : FR_EAP_CODE_REQUEST;
-
-	/*
-	 *	Fill in some bits in the EAP packet
-	 *
-	 *	These are needed even if we're sending an almost empty packet.
-	 */
-	if (eap_packet->code != FR_EAP_CODE_SUCCESS) eap_packet->code = eap_code;
-	eap_packet->type.num = type;
 
 	/*
 	 *	Group attributes with similar lineages together
@@ -1018,7 +1001,7 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 	/*
 	 *	Fast path...
 	 */
-	if (!next_encodable(&cursor, &packet_ctx)) {
+	if (!next_encodable(&cursor, packet_ctx)) {
 		MEM(buff = talloc_array(eap_packet, uint8_t, 3));
 
 		buff[0] = subtype;	/* SIM or AKA subtype */
@@ -1042,7 +1025,7 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 	/*
 	 *	Add space in the packet for AT_MAC
 	 */
-	vp = fr_pair_find_by_child_num(to_encode, parent, FR_EAP_SIM_MAC, TAG_ANY);
+	vp = fr_pair_find_by_child_num(to_encode, packet_ctx->root, FR_EAP_SIM_MAC, TAG_ANY);
 	if (vp) {
 		if ((end - p) < SIM_MAC_SIZE) {
 			fr_strerror_printf("Insufficient space to store AT_MAC");
@@ -1065,7 +1048,7 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 	 */
 	(void)fr_pair_cursor_first(&cursor);
 	while ((vp = fr_pair_cursor_current(&cursor))) {
-		slen = fr_sim_encode_pair(p, end - p, &cursor, &packet_ctx);
+		slen = fr_sim_encode_pair(p, end - p, &cursor, packet_ctx);
 		if (slen < 0) {
 		error:
 			talloc_free(buff);
@@ -1083,9 +1066,9 @@ ssize_t fr_sim_encode(REQUEST *request, fr_dict_attr_t const *parent, uint8_t ty
 	 */
 	if (do_hmac) {
 		slen = fr_sim_crypto_sign_packet(hmac, eap_packet, false,
-						 keys->k_aut, keys->k_aut_len,
-				       		 keys->vector_type == SIM_VECTOR_GSM ? keys->gsm.nonce_mt : NULL,
-				       		 keys->vector_type == SIM_VECTOR_GSM ? sizeof(keys->gsm.nonce_mt) : 0);
+						 packet_ctx->hmac_md,
+						 packet_ctx->keys->k_aut, packet_ctx->keys->k_aut_len,
+						 packet_ctx->hmac_extra, packet_ctx->hmac_extra_len);
 		if (slen < 0) goto error;
 		FR_PROTO_HEX_DUMP("hmac attribute", hmac - 4, SIM_MAC_SIZE);
 	}
