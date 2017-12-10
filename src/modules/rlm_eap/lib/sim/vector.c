@@ -426,6 +426,25 @@ static int vector_umts_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, fr_s
 
 	switch (version) {
 	case 4:
+		RDEBUG3("Milenage inputs");
+		RINDENT();
+		/*
+		 *	Don't change colon indent, matches other messages later...
+		 */
+		RHEXDUMP_INLINE(L_DBG_LVL_3,
+				ki->vp_octets, SIM_MILENAGE_KI_SIZE,
+				"Ki           :");
+		RHEXDUMP_INLINE(L_DBG_LVL_3,
+				opc->vp_octets, SIM_MILENAGE_OPC_SIZE,
+				"OPc          :");
+		RHEXDUMP_INLINE(L_DBG_LVL_3,
+				sqn_p, SIM_MILENAGE_SQN_SIZE,
+				"SQN          :");
+		RHEXDUMP_INLINE(L_DBG_LVL_3,
+				amf_p, SIM_MILENAGE_AMF_SIZE,
+				"AMF          :");
+		REXDENT();
+
 		if (milenage_umts_generate(keys->umts.vector.autn,
 					   keys->umts.vector.ik, keys->umts.vector.ck, keys->umts.vector.xres,
 					   opc->vp_octets, amf_p, ki->vp_octets,
