@@ -71,7 +71,10 @@ static int eap_sim_compose(eap_session_t *eap_session)
 	fr_pair_cursor_first(&to_encode);
 	fr_pair_cursor_free(&to_encode);
 
-	if (ret < 0) return -1;
+	if (ret < 0) {
+		RPEDEBUG("Failed encoding EAP-SIM data");
+		return -1;
+	}
 	return 0;
 }
 

@@ -57,6 +57,10 @@ static int eap_aka_compose(eap_session_t *eap_session)
 	return fr_sim_encode(eap_session->request, dict_aka_root, FR_EAP_AKA,
 			     eap_session->request->reply->vps, eap_session->this_round->request,
 			     &eap_aka_session->keys);
+	if (ret < 0) {
+		RPEDEBUG("Failed encoding EAP-AKA data");
+		return -1;
+	}
 }
 
 /** Send an EAP-AKA identity request to the supplicant
