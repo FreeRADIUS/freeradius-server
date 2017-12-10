@@ -118,12 +118,8 @@ typedef struct {
  * sequence of packets.
  */
 typedef struct {
-	EVP_MD const	*md;					//!< Type of message digest, either EVP_Sha1() AKA
-								///< or EVP_Sha256() AKA'.
 	EVP_MD_CTX	*md_ctx;				//!< Context to hold state of digest as we
 								///< consume packets.
-	uint8_t		checkcode[32];				//!< Final digest value 20 bytes for SHA1,
-								///< 32 bytes for SHA-256
 } fr_sim_checkcode_t;
 
 /** Master key state struct for all SIMlike EAP protocols
@@ -162,6 +158,7 @@ typedef struct {
 		 */
 		struct {
 			fr_sim_vector_umts_t	vector;		//!< UMTS vector.
+			uint16_t		kdf_selected;
 		} umts;
 	};
 

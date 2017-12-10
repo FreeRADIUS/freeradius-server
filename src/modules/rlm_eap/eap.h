@@ -35,6 +35,8 @@ RCSIDH(eap_h, "$Id$")
 /* TLS configuration name */
 #define TLS_CONFIG_SECTION "tls-config"
 
+#define MAX_PROVIDED_METHODS	10
+
 /** Contains a pair of request and response packets
  *
  * Helps with formulating/correlating requests to responses we've received.
@@ -42,7 +44,7 @@ RCSIDH(eap_h, "$Id$")
 typedef struct eap_round {
 	eap_packet_t	*response;			//!< Packet we received from the peer.
 	eap_packet_t	*request;			//!< Packet we will send to the peer.
-	bool		set_request_id;
+	bool		set_request_id;			//!< Whether the EAP-Method already set the next request ID.
 } eap_round_t;
 
 typedef struct _eap_session eap_session_t;
@@ -93,8 +95,11 @@ struct _eap_session {
 typedef struct rlm_eap_submodule {
 	RAD_MODULE_COMMON;					//!< Common fields to all loadable modules.
 
+	eap_type_t		provides[MAX_PROVIDED_METHODS];	//!< Allow the module to register itself for more
+								///< than one EAP-Method.
+
 	module_instantiate_t	bootstrap;			//!< Register any attributes required for the module
-								//!< to function, and perform library intit.
+
 	module_instantiate_t	instantiate;			//!< Create a new submodule instance.
 	eap_process_t		session_init;			//!< Callback for creating a new #eap_session_t.
 	eap_process_t		process;			//!< Callback for processing the next #eap_round_t of an

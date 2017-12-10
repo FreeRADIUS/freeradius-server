@@ -224,7 +224,7 @@ ssize_t fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet, boo
 	EVP_MD_CTX		*md_ctx = NULL;
 	EVP_PKEY		*pkey;
 
-	uint8_t			digest[SHA1_DIGEST_LENGTH];
+	uint8_t			digest[SHA256_DIGEST_LENGTH];
 	size_t			digest_len = 0;
 	uint8_t	const		*mac;
 	uint8_t			*p = eap_packet->type.data, *end = p + eap_packet->type.length;
@@ -338,7 +338,7 @@ ssize_t fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet, boo
 		goto error;
 	}
 
-	if (!fr_cond_assert(digest_len == sizeof(digest))) goto error;
+	if (!fr_cond_assert(digest_len >= sizeof(digest))) goto error;
 
 	FR_PROTO_HEX_DUMP("hmac output", digest, digest_len);
 
@@ -648,6 +648,8 @@ int fr_sim_crypto_kdf_1_umts(fr_sim_keys_t *keys)
 	uint8_t	mk[1664];
 	size_t	s_len;
 
+	fr_sim_crypto_derive_ck_ik_prime(keys);
+
 	if (!fr_cond_assert(keys->vector_type == SIM_VECTOR_UMTS)) return -1;
 
 #define KDF_1_S_STATIC	"EAP-AKA'"
@@ -688,7 +690,7 @@ int fr_sim_crypto_kdf_1_umts(fr_sim_keys_t *keys)
 	memcpy(keys->k_encr, p, 16);    			/* 128 bits for encryption    */
 	p += 16;
 
-	memcpy(keys->k_aut,  p, EAP_AKA_PRIME_AUTH_SIZE);	/* 256 bits for auth */
+	memcpy(keys->k_aut,  p, EAP_AKA_PRIME_AUTH_SIZE);	/* 256 bits for aut */
 	p += EAP_AKA_PRIME_AUTH_SIZE;
 	keys->k_aut_len = EAP_AKA_PRIME_AUTH_SIZE;
 
@@ -752,6 +754,12 @@ void fr_sim_crypto_keys_log(REQUEST *request, fr_sim_keys_t *keys)
 
 		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->umts.vector.xres, keys->umts.vector.xres_len,
 				"XRES         :");
+
+		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->ck_prime, SIM_VECTOR_UMTS_CK_SIZE,
+				"CK'          :");
+
+		RHEXDUMP_INLINE(L_DBG_LVL_3, keys->ik_prime, SIM_VECTOR_UMTS_IK_SIZE,
+				"IK'          :");
 		break;
 
 	case SIM_VECTOR_NONE:

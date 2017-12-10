@@ -375,27 +375,27 @@ $INCLUDE dictionary.ethernet
 # The Ki for a specific SIM card.
 ATTRIBUTE	SIM-Ki					1200	octets[16]
 ATTRIBUTE	SIM-OPc					1201	octets[16]
-ATTRIBUTE	SIM-AMF					1202	octets[2]
-ATTRIBUTE	SIM-SQN					1203	octets[4]
+ATTRIBUTE	SIM-SQN					1202	octets[6]
+ATTRIBUTE	SIM-AMF					1204	short
 
 # The IMSI number of a SIM.
-ATTRIBUTE	SIM-IMSI				1204	string
+ATTRIBUTE	SIM-IMSI				1205	string
 
 # The algorithm the SIM card uses (Milenage for UMTS, COMP128 for others)
-ATTRIBUTE	SIM-Algo-Version			1205	integer
+ATTRIBUTE	SIM-Algo-Version			1206	integer
 VALUE		SIM-Algo-Version	Comp128v1		0
 VALUE		SIM-Algo-Version	Comp128v2		1
 VALUE		SIM-Algo-Version	Comp128v3		2
 VALUE		SIM-Algo-Version	Milenage		3
 
-ATTRIBUTE	SIM-Method-Hint				1206	integer
+ATTRIBUTE	SIM-Method-Hint				1207	integer
 
 VALUE		SIM-Method-Hint		Unknown			0
 VALUE		SIM-Method-Hint		SIM			1
 VALUE		SIM-Method-Hint		AKA			2
 VALUE		SIM-Method-Hint		AKA-Prime		3
 
-ATTRIBUTE	SIM-Identity-Type			1207	integer
+ATTRIBUTE	SIM-Identity-Type			1208	integer
 
 VALUE		SIM-Identity-Type	Unknown			0
 VALUE		SIM-Identity-Type	Permanent		1

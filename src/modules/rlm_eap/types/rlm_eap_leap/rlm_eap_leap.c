@@ -186,6 +186,8 @@ extern rlm_eap_submodule_t rlm_eap_leap;
 rlm_eap_submodule_t rlm_eap_leap = {
 	.name		= "eap_leap",
 	.magic		= RLM_MODULE_INIT,
+
+	.provides	= { FR_EAP_LEAP },
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */
 	.process	= mod_process		/* Process next round of EAP method */
 };

@@ -69,14 +69,16 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
  */
 static int submodule_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
-	char const		*name = cf_pair_value(cf_item_to_pair(ci));
-	CONF_SECTION		*eap_cs = cf_item_to_section(cf_parent(ci));
-	CONF_SECTION		*submodule_cs;
-	eap_type_t		method;
-	dl_instance_t		*parent_inst;
-	dl_instance_t		*dl_inst;
-	rlm_eap_t		*inst;
-	int			ret;
+	char const			*name = cf_pair_value(cf_item_to_pair(ci));
+	CONF_SECTION			*eap_cs = cf_item_to_section(cf_parent(ci));
+	CONF_SECTION			*submodule_cs;
+	eap_type_t			method;
+	dl_instance_t			*parent_inst;
+	dl_instance_t			*dl_inst;
+	rlm_eap_submodule_t const	*submodule;
+	rlm_eap_t			*inst;
+	int				ret;
+	uint8_t				i;
 
 	method = eap_name2type(name);
 	if (method == FR_EAP_INVALID) {
@@ -90,17 +92,6 @@ static int submodule_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
 	parent_inst = cf_data_value(cf_data_find(eap_cs, dl_instance_t, "rlm_eap"));
 	rad_assert(parent_inst);
 	inst = talloc_get_type_abort(parent_inst->data, rlm_eap_t);
-
-	/*
-	 *	Check for duplicates
-	 */
-	if (inst->methods[method].submodule) {
-		CONF_SECTION *conf = inst->methods[method].submodule_inst->conf;
-
-		cf_log_err(ci, "Duplicate EAP-Type %s.  Conflicting entry %s[%u]", name,
-			   cf_filename(conf), cf_lineno(conf));
-		return -1;
-	}
 
 #if !defined(HAVE_OPENSSL_SSL_H) || !defined(HAVE_LIBSSL)
 	/*
@@ -146,8 +137,32 @@ static int submodule_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
 	if (ret < 0) return -1;
 
 
-	inst->methods[method].submodule_inst = dl_inst;
-	inst->methods[method].submodule = (rlm_eap_submodule_t const *)dl_inst->module->common;
+	submodule = (rlm_eap_submodule_t const *)dl_inst->module->common;
+
+	/*
+	 *	Add the methods the submodule provides
+	 */
+	for (i = 0; i < MAX_PROVIDED_METHODS; i++) {
+		if (!submodule->provides[i]) break;
+
+		method = submodule->provides[i];
+		/*
+		 *	Check for duplicates
+		 */
+		if (inst->methods[method].submodule) {
+			CONF_SECTION *conf = inst->methods[method].submodule_inst->conf;
+
+			cf_log_err(ci, "Duplicate EAP-Type %s.  Conflicting entry %s[%u]", name,
+				   cf_filename(conf), cf_lineno(conf));
+			talloc_free(dl_inst);
+			return -1;
+		}
+
+		inst->methods[method].submodule_inst = dl_inst;
+		inst->methods[method].submodule = submodule;
+	}
+
+	rad_assert(i > 0);	/* Yes this is a fatal error */
 
 	*(void **)out = dl_inst;
 

@@ -562,6 +562,7 @@ rlm_eap_submodule_t rlm_eap_fast = {
 	.name		= "eap_fast",
 	.magic		= RLM_MODULE_INIT,
 
+	.provides	= { FR_EAP_FAST },
 	.inst_size	= sizeof(rlm_eap_fast_t),
 	.config		= submodule_config,
 	.instantiate	= mod_instantiate,	/* Create new submodule instance */

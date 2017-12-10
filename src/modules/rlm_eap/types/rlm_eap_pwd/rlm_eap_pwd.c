@@ -542,6 +542,7 @@ rlm_eap_submodule_t rlm_eap_pwd = {
 	.name		= "eap_pwd",
 	.magic		= RLM_MODULE_INIT,
 
+	.provides	= { FR_EAP_PWD },
 	.inst_size	= sizeof(rlm_eap_pwd_t),
 	.config		= submodule_config,
 	.instantiate	= mod_instantiate,	/* Create new submodule instance */

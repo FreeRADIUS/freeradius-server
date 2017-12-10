@@ -362,7 +362,6 @@ static int vector_umts_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, fr_s
 	REQUEST		*request = eap_session->request;
 	VALUE_PAIR	*ki, *opc, *amf, *sqn, *version_vp;
 	uint8_t		amf_buff[SIM_MILENAGE_AMF_SIZE];
-	uint8_t const	*amf_p;
 	uint8_t		sqn_buff[SIM_MILENAGE_SQN_SIZE];
 	uint8_t const	*sqn_p;
 	uint32_t	version = 4;
@@ -392,13 +391,9 @@ static int vector_umts_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, fr_s
 	amf = fr_pair_find_by_child_num(vps, fr_dict_root(fr_dict_internal), FR_SIM_AMF, TAG_ANY);
 	if (!amf) {
 		memset(&amf_buff, 0, sizeof(amf_buff));
-		amf_p = amf_buff;
-	} else if (amf->vp_length != SIM_MILENAGE_AMF_SIZE) {
-		REDEBUG("&control:SIM-AMF has incorrect length, expected %u bytes got %zu bytes",
-			SIM_MILENAGE_AMF_SIZE, amf->vp_length);
-		return -1;
 	} else {
-		amf_p = amf->vp_octets;
+		uint16_t amf_v = htons(amf->vp_uint16);
+		memcpy(amf_buff, &amf_v, sizeof(amf_buff));
 	}
 
 	sqn = fr_pair_find_by_child_num(vps, fr_dict_root(fr_dict_internal), FR_SIM_SQN, TAG_ANY);
@@ -441,13 +436,13 @@ static int vector_umts_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, fr_s
 				sqn_p, SIM_MILENAGE_SQN_SIZE,
 				"SQN          :");
 		RHEXDUMP_INLINE(L_DBG_LVL_3,
-				amf_p, SIM_MILENAGE_AMF_SIZE,
+				amf_buff, SIM_MILENAGE_AMF_SIZE,
 				"AMF          :");
 		REXDENT();
 
 		if (milenage_umts_generate(keys->umts.vector.autn,
 					   keys->umts.vector.ik, keys->umts.vector.ck, keys->umts.vector.xres,
-					   opc->vp_octets, amf_p, ki->vp_octets,
+					   opc->vp_octets, amf_buff, ki->vp_octets,
 					   sqn_p, keys->umts.vector.rand) < 0) {
 			RPEDEBUG2("Failed deriving UMTS Quintuplet");
 			return -1;

@@ -334,6 +334,7 @@ rlm_eap_submodule_t rlm_eap_peap = {
 	.name		= "eap_peap",
 	.magic		= RLM_MODULE_INIT,
 
+	.provides	= { FR_EAP_PEAP },
 	.inst_size	= sizeof(rlm_eap_peap_t),
 	.config		= submodule_config,
 	.instantiate	= mod_instantiate,

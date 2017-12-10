@@ -420,7 +420,7 @@ static int process_eap_sim_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 	}
 
 	slen = fr_sim_crypto_sign_packet(calc_mac, eap_session->this_round->response, true, EVP_sha1(),
-					 eap_sim_session->keys.k_aut, sizeof(eap_sim_session->keys.k_aut),
+					 eap_sim_session->keys.k_aut, eap_sim_session->keys.k_aut_len,
 					 NULL, 0);
 	if (slen < 0) {
 		RPEDEBUG("Failed calculating MAC");
@@ -652,6 +652,8 @@ extern rlm_eap_submodule_t rlm_eap_sim;
 rlm_eap_submodule_t rlm_eap_sim = {
 	.name		= "eap_sim",
 	.magic		= RLM_MODULE_INIT,
+
+	.provides	= { FR_EAP_SIM },
 	.load		= mod_load,
 	.unload		= mod_unload,
 	.instantiate	= mod_instantiate,	/* Create new submodule instance */

@@ -51,6 +51,7 @@ FR_NAME_NUMBER const aka_state_table[] = {
 static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session);
 
 static CONF_PARSER submodule_config[] = {
+	{ FR_CONF_OFFSET("network_id", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_eap_aka_t, network_id ) },
 	{ FR_CONF_OFFSET("request_identity", FR_TYPE_BOOL, rlm_eap_aka_t, request_identity ), .dflt = "yes" },
 	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING, rlm_eap_aka_t, virtual_server) },
 	CONF_PARSER_TERMINATOR
@@ -72,7 +73,7 @@ static int eap_aka_compose(eap_session_t *eap_session)
 						0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
 					.iv_included = false,
 
-					.hmac_md = EVP_sha1(),
+					.hmac_md = eap_aka_session->mac_md,
 					.eap_packet = eap_session->this_round->request,
 					.hmac_extra = NULL,
 					.hmac_extra_len = 0
@@ -89,7 +90,7 @@ static int eap_aka_compose(eap_session_t *eap_session)
 	RDEBUG2("Encoding EAP-AKA attributes");
 	rdebug_pair_list(L_DBG_LVL_2, request, head, NULL);
 
-	eap_session->this_round->request->type.num = FR_EAP_AKA;
+	eap_session->this_round->request->type.num = eap_aka_session->type;
 	eap_session->this_round->request->id = eap_aka_session->aka_id++ & 0xff;
 	eap_session->this_round->set_request_id = true;
 
@@ -174,19 +175,24 @@ static int eap_aka_send_identity_request(eap_session_t *eap_session)
 	/*
 	 *	Encode the packet
 	 */
-	if (eap_aka_compose(eap_session) < 0) return -1;
+	if (eap_aka_compose(eap_session) < 0) {
+	failure:
+		fr_pair_list_free(&packet->vps);
+		return -1;
+	}
 
 	/*
 	 *	Digest the packet contents, updating our checkcode.
 	 */
 	if (!eap_aka_session->checkcode_state &&
-	    fr_sim_crypto_init_checkcode(eap_aka_session, &eap_aka_session->checkcode_state, EVP_sha1()) < 0) {
+	    fr_sim_crypto_init_checkcode(eap_aka_session, &eap_aka_session->checkcode_state,
+	    				 eap_aka_session->checkcode_md) < 0) {
 		RPEDEBUG("Failed initialising checkcode");
-		return -1;
+		goto failure;
 	}
 	if (fr_sim_crypto_update_checkcode(eap_aka_session->checkcode_state, eap_session->this_round->request) < 0) {
 		RPEDEBUG("Failed updating checkcode");
-		return -1;
+		goto failure;
 	}
 
 	return 0;
@@ -221,20 +227,39 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	rad_assert(request);
 	rad_assert(request->reply);
 
-	RDEBUG2("Acquiring UMTS vector(s)");
-	if (fr_sim_vector_umts_from_attrs(eap_session, request->control, &eap_aka_session->keys, &src) < 0) {
-	    	REDEBUG("Failed retrieving UMTS vectors");
-		return RLM_MODULE_FAIL;
-	}
-
-	RDEBUG2("Sending AKA-Challenge");
-	eap_session->this_round->request->code = FR_EAP_CODE_REQUEST;
-
 	/*
 	 *	to_peer is the data to the client
 	 */
 	packet = eap_session->request->reply;
 	to_peer = &packet->vps;
+
+	RDEBUG2("Acquiring UMTS vector(s)");
+
+	vp = fr_pair_afrom_child_num(packet, fr_dict_root(fr_dict_internal), FR_SIM_AMF);
+	vp->vp_uint16 = 0x8000;	/* Set the AMF separation bit high */
+	fr_pair_replace(&request->control, vp);
+
+	if (fr_sim_vector_umts_from_attrs(eap_session, request->control, &eap_aka_session->keys, &src) < 0) {
+	    	REDEBUG("Failed retrieving UMTS vectors");
+		return RLM_MODULE_FAIL;
+	}
+
+	/*
+	 *	All set, calculate keys!
+	 */
+	switch (eap_aka_session->kdf) {
+	case FR_EAP_AKA_KDF_VALUE_EAP_AKA_PRIME_WITH_CK_PRIME_IK_PRIME:
+		fr_sim_crypto_kdf_1_umts(&eap_aka_session->keys);
+		break;
+
+	default:
+		fr_sim_crypto_kdf_0_umts(&eap_aka_session->keys);
+		break;
+	}
+	if (RDEBUG_ENABLED3) fr_sim_crypto_keys_log(request, &eap_aka_session->keys);
+
+	RDEBUG2("Sending AKA-Challenge");
+	eap_session->this_round->request->code = FR_EAP_CODE_REQUEST;
 
 	/*
 	 *	Set the subtype to challenge
@@ -246,9 +271,40 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	/*
 	 *	Indicate we'd like to use protected success messages
 	 */
-	MEM(vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_RESULT_IND));
-	vp->vp_bool = true;
-	fr_pair_replace(to_peer, vp);
+	if (eap_aka_session->send_result_ind) {
+		MEM(vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_RESULT_IND));
+		vp->vp_bool = true;
+		fr_pair_replace(to_peer, vp);
+	}
+
+	/*
+	 *	We support EAP-AKA' and the peer should use that
+	 *	if it's able to...
+	 */
+	if (eap_aka_session->send_at_bidding) {
+		MEM(vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_BIDDING));
+		vp->vp_uint16 = FR_EAP_AKA_BIDDING_VALUE_PREFER_AKA_PRIME;
+		fr_pair_replace(to_peer, vp);
+	}
+
+	/*
+	 *	Send the network name and KDF to the peer
+	 */
+	if (eap_aka_session->type == FR_EAP_AKA_PRIME) {
+		if (!eap_aka_session->keys.network_len) {
+			REDEBUG2("No network name available, can't set EAP-AKA-KDF-Input");
+		failure:
+			fr_pair_list_free(&packet->vps);
+			return -1;
+		}
+		MEM(vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_KDF_INPUT));
+		fr_pair_value_bstrncpy(vp, eap_aka_session->keys.network, eap_aka_session->keys.network_len);
+		fr_pair_replace(to_peer, vp);
+
+		MEM(vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_KDF));
+		vp->vp_uint16 = eap_aka_session->kdf;
+		fr_pair_replace(to_peer, vp);
+	}
 
 	/*
 	 *	Okay, we got the challenge! Put it into an attribute.
@@ -283,7 +339,7 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 		slen = fr_sim_crypto_finalise_checkcode(eap_aka_session->checkcode, &eap_aka_session->checkcode_state);
 		if (slen < 0) {
 			RPEDEBUG("Failed calculating checkcode");
-			return -1;
+			goto failure;
 		}
 		eap_aka_session->checkcode_len = slen;
 
@@ -300,15 +356,9 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	fr_pair_replace(to_peer, vp);
 
 	/*
-	 *	All set, calculate keys!
-	 */
-	fr_sim_crypto_kdf_0_umts(&eap_aka_session->keys);
-	if (RDEBUG_ENABLED3) fr_sim_crypto_keys_log(request, &eap_aka_session->keys);
-
-	/*
 	 *	Encode the packet
 	 */
-	if (eap_aka_compose(eap_session) < 0) return -1;
+	if (eap_aka_compose(eap_session) < 0) goto failure;
 
 	return 0;
 }
@@ -342,7 +392,10 @@ static int eap_aka_send_eap_success_notification(eap_session_t *eap_session)
 	/*
 	 *	Encode the packet
 	 */
-	if (eap_aka_compose(eap_session) < 0) return -1;
+	if (eap_aka_compose(eap_session) < 0) {
+		fr_pair_list_free(&packet->vps);
+		return -1;
+	}
 
 	return 0;
 }
@@ -402,7 +455,10 @@ static int eap_aka_send_eap_failure_notification(eap_session_t *eap_session)
 	/*
 	 *	Encode the packet
 	 */
-	if (eap_aka_compose(eap_session) < 0) return -1;
+	if (eap_aka_compose(eap_session) < 0) {
+		fr_pair_list_free(&packet->vps);
+		return -1;
+	}
 
 	return 0;
 }
@@ -577,7 +633,8 @@ static int process_eap_aka_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 	}
 
 	slen = fr_sim_crypto_sign_packet(calc_mac, eap_session->this_round->response, true,
-					 EVP_sha1(), eap_aka_session->keys.k_aut, sizeof(eap_aka_session->keys.k_aut),
+					 eap_aka_session->mac_md,
+					 eap_aka_session->keys.k_aut, eap_aka_session->keys.k_aut_len,
 					 NULL, 0);
 	if (slen < 0) {
 		RPEDEBUG("Failed calculating MAC");
@@ -896,16 +953,43 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 	eap_session->opaque = eap_aka_session;
 
 	/*
-	 *	Save the keying material, because it could
-	 *	change on a subsequent retrieval.
+	 *	Set default configuration, we may allow these
+	 *	to be toggled by attributes later.
 	 */
-	RDEBUG2("New EAP-AKA session");
+	eap_aka_session->request_identity = inst->request_identity;
+	eap_aka_session->send_result_ind = true;
 
 	/*
 	 *	This value doesn't have be strong, but it is
 	 *	good if it is different now and then.
 	 */
 	eap_aka_session->aka_id = (fr_rand() & 0xff);
+
+	/*
+	 *	Unless AKA-Prime is explicitly disabled,
+	 *	use it... It has stronger keying, and
+	 *	binds authentication to the network.
+	 */
+	switch (eap_session->type) {
+	case FR_EAP_AKA_PRIME:
+	default:
+		RDEBUG2("New EAP-AKA' session");
+		eap_aka_session->type = FR_EAP_AKA_PRIME;
+		eap_aka_session->kdf = FR_EAP_AKA_KDF_VALUE_EAP_AKA_PRIME_WITH_CK_PRIME_IK_PRIME;
+		eap_aka_session->checkcode_md = eap_aka_session->mac_md = EVP_sha256();
+		eap_aka_session->keys.network = (uint8_t *) talloc_bstrndup(eap_aka_session, inst->network_id,
+									    talloc_array_length(inst->network_id) - 1);
+		eap_aka_session->keys.network_len = talloc_array_length(eap_aka_session->keys.network) - 1;
+		break;
+
+	case FR_EAP_AKA:
+		RDEBUG2("New EAP-AKA session");
+		eap_aka_session->type = FR_EAP_AKA;
+		eap_aka_session->kdf = 0;
+		eap_aka_session->checkcode_md = eap_aka_session->mac_md = EVP_sha1();
+		eap_aka_session->send_at_bidding = true;
+		break;
+	}
 	eap_session->process = mod_process;
 
 	/*
@@ -1005,6 +1089,7 @@ rlm_eap_submodule_t rlm_eap_aka = {
 	.name		= "eap_aka",
 	.magic		= RLM_MODULE_INIT,
 
+	.provides	= { FR_EAP_AKA, FR_EAP_AKA_PRIME },
 	.inst_size	= sizeof(rlm_eap_aka_t),
 	.config		= submodule_config,
 

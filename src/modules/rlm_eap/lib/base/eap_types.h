@@ -94,7 +94,7 @@ typedef enum eap_method {
 	FR_EAP_PSK,			/* 47 */
 	FR_EAP_SAKE,			/* 48 */
 	FR_EAP_IKEV2,			/* 49 */
-	FR_EAP_AKA2,			/* 50 */
+	FR_EAP_AKA_PRIME,		/* 50 */
 	FR_EAP_GPSK,			/* 51 */
 	FR_EAP_PWD,			/* 52 */
 	FR_EAP_EKE,			/* 53 */
