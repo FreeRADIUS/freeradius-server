@@ -40,6 +40,7 @@ typedef enum {
 	EAP_AKA_SERVER_SUCCESS_NOTIFICATION,			//!< Send success notification.
 	EAP_AKA_SERVER_SUCCESS,					//!< Authentication completed successfully.
 	EAP_AKA_SERVER_GENERAL_FAILURE_NOTIFICATION,		//!< Send failure notification.
+	EAP_AKA_SERVER_FAILURE,					//!< Send an EAP-Failure.
 	EAP_AKA_SERVER_MAX_STATES
 } eap_aka_server_state_t;
 
