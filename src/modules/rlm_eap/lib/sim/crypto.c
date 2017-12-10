@@ -151,7 +151,8 @@ ssize_t fr_sim_crypto_finalise_checkcode(uint8_t *out, fr_sim_checkcode_t **chec
 
 /** Locate the start of the AT_MAC value in the buffer
  *
- * @param[in,out] data	to search for the AT_MAC in.
+ * @param[out] out	The start of the digest portion of the AT_MAC attribute.
+ * @param[in] data	to search for the AT_MAC in.
  * @param[in] data_len	size of the data.
  * @return
  *	- 1 if we couldn't find a MAC.
@@ -197,7 +198,7 @@ static int fr_sim_find_mac(uint8_t const **out, uint8_t *data, size_t data_len)
  * writing a truncated (16 byte) digest value to out.
  *
  * @note The 16 byte digest field in the packet must have either been zeroed out before
- *	 this function is called (as it is when encoding data), or #zero_mac must be set
+ *	 this function is called (as it is when encoding data), or zero_mac must be set
  *	 to true.
  *
  * @param[out] out		Where to write the digest.
@@ -205,6 +206,7 @@ static int fr_sim_find_mac(uint8_t const **out, uint8_t *data, size_t data_len)
  * @param[in] zero_mac		Assume the mac field is not zeroed (i.e. received packet)
  *				and skip it during mac calculation feeding in 16 zeroed
  *				bytes in its place.
+ * @param[in] md		to use to create the HMAC.
  * @param[in] key		to use to sign the packet.
  * @param[in] key_len		Length of the key.
  * @param[in] hmac_extra	data to concatenate with the packet when calculating the HMAC
