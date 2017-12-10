@@ -927,6 +927,16 @@ ssize_t fr_sim_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor,
  * Extracts the SUBTYPE and adds it an attribute, then decodes any TLVs in the
  * SIM/AKA/AKA' packet.
  *
+ *   0                   1                   2                   3
+ *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  |     Code      |  Identifier   |            Length             |
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  |     Type      |    Subtype    |           Reserved            |
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *
+ * The first byte of the data pointer should be the subtype.
+ *
  * @param[in] request		the current request.
  * @param[in] decoded		where to write decoded attributes.
  * @param[in] data		to convert to pairs.
@@ -955,12 +965,17 @@ int fr_sim_decode(REQUEST *request, vp_cursor_t *decoded,
 	fr_pair_cursor_end(decoded);
 
 	/*
-	 *	Check if we have enough data for a single attribute
-	 *	Minimum attribute size is 4 bytes, then + 3 for
-	 *	subtype and the reserved bytes.
+	 *	We need at least enough data for the subtype
+	 *	and reserved bytes.
+	 *
+	 *	Note: Not all packets should contain attrs.
+	 *	When the client acknowledges an
+	 *	AKA-Notification from the server, the
+	 *	AKA-Notification is returns contains no
+	 *	attributes.
 	 */
-	if (data_len < (3 + sizeof(uint32_t))) {
-		fr_strerror_printf("Packet data too small: %zu < %zu" , data_len, 3 + sizeof(uint32_t));
+	if (data_len < 3) {
+		fr_strerror_printf("Packet data too small, expected at least 3 bytes got %zu bytes", data_len);
 		return -1;
 	}
 	p += 3;
