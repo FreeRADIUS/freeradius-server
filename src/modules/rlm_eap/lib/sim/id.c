@@ -28,6 +28,12 @@
 
 #define us(x) (uint8_t) x
 
+FR_NAME_NUMBER const sim_id_request_table[] = {
+	{ "Id-Any-Req",		SIM_ANY_ID		},
+	{ "Permanent-Id-Req",	SIM_PERMANENT_ID_REQ	},
+	{ "FullAuth-Id-Req",	SIM_FULLAUTH_ID_REQ	},
+	{ NULL }
+};
 
 /** Find where the identity ends
  *

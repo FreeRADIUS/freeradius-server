@@ -24,6 +24,7 @@
 #define _EAP_SIM_ID_TYPE_H
 
 #include <sys/types.h>
+#include <freeradius-devel/token.h>
 
 #define SIM_3GPP_PSEUDONYM_LEN			23	//!< Length of a base64 encoded 3gpp pseudonym.
 #define SIM_IMSI_MAX_LEN			15	//!< Length of an IMSI number in ASCII.
@@ -65,6 +66,16 @@ typedef enum {
 	SIM_ID_TAG_PSEUDONYM_AKA_PRIME		= '7',	//!< Pseudonym, continue EAP-AKA-Prime
 	SIM_ID_TAG_FASTAUTH_AKA_PRIME		= '8'	//!< Fastuath, continue EAP-AKA-Prime
 } fr_sim_id_tag_t;
+
+/** Identity request types
+ */
+typedef enum {
+	SIM_ANY_ID,					//!< Request IMSI, Pseudonym or Fast-reauth.
+	SIM_PERMANENT_ID_REQ,				//!< Request IMSI.
+	SIM_FULLAUTH_ID_REQ				//!< Request IMSI or Pseudonym.
+} fr_sim_id_req_type_t;
+
+extern FR_NAME_NUMBER const sim_id_request_table[];
 
 #define SIM_ID_TAG_PSEUDONYM_SIM_B64		55
 #define SIM_ID_TAG_PSEUDONYM_AKA_B64		54

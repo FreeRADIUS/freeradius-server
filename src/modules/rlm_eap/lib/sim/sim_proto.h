@@ -86,15 +86,6 @@ typedef enum {
 	SIM_VECTOR_SRC_KI					//!< Should generate triplets locally using a Ki.
 } fr_sim_vector_src_t;
 
-
-/** Identity request types
- */
-typedef enum {
-	SIM_ANY_ID,						//!< Request IMSI, Pseudonym or Fast-reauth.
-	SIM_PERMANENT_ID_REQ,					//!< Request IMSI.
-	SIM_FULLAUTH_ID_REQ					//!< Request IMSI or Pseudonym.
-} fr_sim_identity_req_type_t;
-
 typedef struct {
 	uint8_t		rand[SIM_VECTOR_GSM_RAND_SIZE];		//!< RAND challenge to the SIM.
 	union {
