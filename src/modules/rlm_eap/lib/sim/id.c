@@ -228,6 +228,18 @@ int fr_sim_id_type(fr_sim_id_type_t *type, fr_sim_method_hint_t *hint, char cons
 		*type = SIM_ID_TYPE_FASTAUTH;
 		return 0;
 
+	case SIM_ID_TAG_PERMANENT_SIM:
+		*hint = SIM_METHOD_HINT_UNKNOWN;
+		*type = SIM_ID_TYPE_UNKNOWN;
+		fr_strerror_printf("Got SIM-Permanent-ID tag, but identity is not a permanent ID");
+		return -1;
+
+	case SIM_ID_TAG_PERMANENT_AKA:
+		*hint = SIM_METHOD_HINT_UNKNOWN;
+		*type = SIM_ID_TYPE_UNKNOWN;
+		fr_strerror_printf("Got AKA-Permanent-ID tag, but identity is not a permanent ID");
+		return -1;
+
 	default:
 		*hint = SIM_METHOD_HINT_UNKNOWN;
 		*type = SIM_ID_TYPE_UNKNOWN;
