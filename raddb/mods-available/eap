@@ -63,7 +63,7 @@ eap {
 	type = mschapv2
 	type = peap
 #	type = fast
-	type = aka
+#	type = aka
 	type = sim
 
 	#
