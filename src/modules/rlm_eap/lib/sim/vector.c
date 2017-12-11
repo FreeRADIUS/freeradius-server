@@ -387,11 +387,12 @@ static int vector_umts_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, fr_s
 	}
 
 	amf_vp = fr_pair_find_by_child_num(vps, fr_dict_root(fr_dict_internal), FR_SIM_AMF, TAG_ANY);
-	if (amf_vp && (amf_vp->vp_length != sizeof(amf_buff))) {
-		REDEBUG("&control:SIM-AMF has incorrect length, expected %u bytes got %zu bytes",
-			MILENAGE_AMF_SIZE, amf_vp->vp_length);
-		return -1;
-	} else {
+	if (amf_vp) {
+		if (amf_vp->vp_length != sizeof(amf_buff)) {
+			REDEBUG("&control:SIM-AMF has incorrect length, expected %u bytes got %zu bytes",
+				MILENAGE_AMF_SIZE, amf_vp->vp_length);
+			return -1;
+		}
 		memcpy(amf_buff, amf_vp->vp_octets, sizeof(amf_buff));
 	}
 
