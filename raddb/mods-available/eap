@@ -1044,4 +1044,14 @@ eap {
 		#
 		virtual_server = inner-tunnel
 	}
+
+	## EAP-SIM
+	#
+	#  This module takes no configuration.
+	#
+	#  Instead, just set the SIM-Ki attribute to the 16-octet key
+	#
+	sim {
+
+	}
 }
