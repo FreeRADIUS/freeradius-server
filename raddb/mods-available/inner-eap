@@ -45,6 +45,15 @@ eap inner-eap {
 	#  You SHOULD use different certificates than are used
 	#  for the outer EAP configuration!
 	#
+	#  You can create the "inner-server.pem" file by doing:
+	#
+	#	cd raddb/certs
+	#	vi inner-server.cnf
+	#	make inner-server
+	#
+	#  The certificate MUST be different from the "server.cnf"
+	#  file.
+	#
 	#  Support for PEAP/TLS and RFC 5176 TLS/TLS is experimental.
 	#  It might work, or it might not.
 	#

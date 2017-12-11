@@ -34,11 +34,15 @@ ca: ca.der
 .PHONY: server
 server: server.pem server.vrfy
 
+.PHONY: inner-server
+inner-server: inner-server.pem inner-server.vrfy
+
 .PHONY: verify
 verify: server.vrfy client.vrfy
 
-passwords.mk: server.cnf ca.cnf client.cnf
+passwords.mk: server.cnf ca.cnf client.cnf inner-server.cnf
 	@echo "PASSWORD_SERVER	= '$(shell grep output_password server.cnf | sed 's/.*=//;s/^ *//')'"		> $@
+	@echo "PASSWORD_INNER	= '$(shell grep output_password inner-server.cnf | sed 's/.*=//;s/^ *//')'"	>> $@
 	@echo "PASSWORD_CA	= '$(shell grep output_password ca.cnf | sed 's/.*=//;s/^ *//')'"		>> $@
 	@echo "PASSWORD_CLIENT	= '$(shell grep output_password client.cnf | sed 's/.*=//;s/^ *//')'"		>> $@
 	@echo "USER_NAME	= '$(shell grep emailAddress client.cnf | grep '@' | sed 's/.*=//;s/^ *//')'"	>> $@
@@ -117,6 +121,30 @@ client.pem: client.p12
 client.vrfy: ca.pem client.pem
 	c_rehash .
 	$(OPENSSL) verify -CApath . client.pem
+
+######################################################################
+#
+#  Create a new inner-server certificate, signed by the above CA.
+#
+######################################################################
+inner-server.csr inner-server.key: inner-server.cnf
+	$(OPENSSL) req -new  -out inner-server.csr -keyout inner-server.key -config ./inner-server.cnf
+	chmod g+r inner-server.key
+
+inner-server.crt: inner-server.csr ca.key ca.pem
+	$(OPENSSL) ca -batch -keyfile ca.key -cert ca.pem -in inner-server.csr  -key $(PASSWORD_CA) -out inner-server.crt -extensions xpserver_ext -extfile xpextensions -config ./inner-server.cnf
+
+inner-server.p12: inner-server.crt
+	$(OPENSSL) pkcs12 -export -in inner-server.crt -inkey inner-server.key -out inner-server.p12  -passin pass:$(PASSWORD_INNER) -passout pass:$(PASSWORD_INNER)
+	chmod g+r inner-server.p12
+
+inner-server.pem: inner-server.p12
+	$(OPENSSL) pkcs12 -in inner-server.p12 -out inner-server.pem -passin pass:$(PASSWORD_INNER) -passout pass:$(PASSWORD_INNER)
+	chmod g+r inner-server.pem
+
+.PHONY: inner-server.vrfy
+inner-server.vrfy: ca.pem
+	@$(OPENSSL) verify -CAfile ca.pem inner-server.pem
 
 ######################################################################
 #
