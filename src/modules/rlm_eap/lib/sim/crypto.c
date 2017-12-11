@@ -129,7 +129,6 @@ int fr_sim_crypto_update_checkcode(fr_sim_checkcode_t *checkcode, eap_packet_t *
  *
  * @param[out] out		Where to write the checkcode value.  Must be at least 20
  *				bytes if MD was SHA1, or 32 bytes if MD was SHA256.
- * @param[in] outlen		Length of the output buffer.
  * @param[in,out] checkcode	structure to get final digest from and to tree.
  * @return
  *	- <= 0 on failure.
