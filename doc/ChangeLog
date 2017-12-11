@@ -33,6 +33,9 @@ FreeRADIUS 3.0.16 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	* Explain why many LDAP connections are closed.
 	  Fixes #1969.
 	* Debian build / package issues fixed by Matthew Newton.
+	* dictionary.patton updates from Brice Schaffner.  Fixes #2137.
+	* Added scripts to build "inner-server.pem", and updated
+	  mods-config/inner-eap and certs/README to match.
 
 	Bug fixes
 	* Bind the lifetime of program name and python path to the module
@@ -64,7 +67,7 @@ FreeRADIUS 3.0.16 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	* Fix occasional crash when using
 	  cisco_accounting_username_bug = yes
 	* EAP-FAST fixes from Isaac Boukris.
-	  #2078, #2076, and #2082.
+	  #2078, #2076, and #2082, #2126.
 	* DHCP fixes, relay, #2092, add run-time check, #2028
 	* Decode multiple RADIUS packets at a time in highly loaded
 	  RadSec connections.  Patch from Jan Tomasek.  #2106.
@@ -73,7 +76,6 @@ FreeRADIUS 3.0.16 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	* sql log now opens the expanded filename, not the input one.
 	  This was a regression introduced in 3.0.15.
 	* Remove unnecessary UNIQUE constrain in Oracle schemas.
-	* EAP-FAST fixes from Isaac Boukris.  Fixes #2127.
 	* Fix SSL thread and locking issues when modules also use SSL.
 	  Fixes #2125 and #2129.
 
