@@ -217,6 +217,7 @@ static int eap_aka_send_identity_request(eap_session_t *eap_session)
 static int eap_aka_send_challenge(eap_session_t *eap_session)
 {
 	static uint8_t		hmac_zero[16] = { 0x00 };
+	uint8_t			amf_buff[2] = { 0x80, 0x00 };	/* Set the AMF separation bit high */
 
 	REQUEST			*request = eap_session->request;
 	eap_aka_session_t	*eap_aka_session = talloc_get_type_abort(eap_session->opaque, eap_aka_session_t);
@@ -236,13 +237,19 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	RDEBUG2("Acquiring UMTS vector(s)");
 
 	vp = fr_pair_afrom_child_num(packet, fr_dict_root(fr_dict_internal), FR_SIM_AMF);
-	vp->vp_uint16 = 0x8000;	/* Set the AMF separation bit high */
+	fr_pair_value_memcpy(vp, amf_buff, sizeof(amf_buff));
 	fr_pair_replace(&request->control, vp);
 
+	/*
+	 *	Get vectors from attribute or generate
+	 *	them using COMP128-* or Milenage.
+	 */
 	if (fr_sim_vector_umts_from_attrs(eap_session, request->control, &eap_aka_session->keys, &src) < 0) {
 	    	REDEBUG("Failed retrieving UMTS vectors");
 		return RLM_MODULE_FAIL;
 	}
+
+	fr_pair_delete_by_num(&request->control, 0, FR_SIM_AMF, TAG_ANY);
 
 	/*
 	 *	All set, calculate keys!

@@ -138,7 +138,7 @@ static int milenage_f1(uint8_t mac_a[8], uint8_t mac_s[8],
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int milenage_f2345(uint8_t res[8], uint8_t ck[16], uint8_t ik[16], uint8_t ak[6], uint8_t ak_resync[6],
+static int milenage_f2345(uint8_t res[8], uint8_t ik[16], uint8_t ck[16], uint8_t ak[6], uint8_t ak_resync[6],
 			  uint8_t const opc[16], uint8_t const k[16], uint8_t const rand[16])
 {
 	uint8_t		tmp1[16], tmp2[16], tmp3[16];
@@ -219,6 +219,7 @@ static int milenage_f2345(uint8_t res[8], uint8_t ck[16], uint8_t ik[16], uint8_
  * @param[out] autn	Buffer for AUTN = 128-bit authentication token.
  * @param[out] ik	Buffer for IK = 128-bit integrity key (f4), or NULL.
  * @param[out] ck	Buffer for CK = 128-bit confidentiality key (f3), or NULL.
+ * @param[out] ak	Buffer for AK = 48-bit anonymity key (f5), or NULL
  * @param[out] res	Buffer for RES = 64-bit signed response (f2), or NULL.
  * @param[in] opc	128-bit operator variant algorithm configuration field (encr.).
  * @param[in] amf	16-bit authentication management field.
@@ -229,20 +230,24 @@ static int milenage_f2345(uint8_t res[8], uint8_t ck[16], uint8_t ik[16], uint8_
  *	- 0 on success.
  *	- -1 on failure.
  */
-int milenage_umts_generate(uint8_t autn[16], uint8_t ik[16], uint8_t ck[16], uint8_t res[8],
-			   uint8_t const opc[16], uint8_t const amf[2], uint8_t const k[16],
-			   uint8_t const sqn[6], uint8_t const rand[16])
+int milenage_umts_generate(uint8_t autn[16], uint8_t ik[16], uint8_t ck[16], uint8_t ak[6], uint8_t res[8],
+			   uint8_t const opc[16], uint8_t amf[2], uint8_t const k[16],
+			   uint64_t sqn, uint8_t const rand[16])
 {
-	int	i;
-	uint8_t	mac_a[8], ak[6];
+	int		i;
+	uint8_t		mac_a[8], ak_buff[6];
+	uint8_t		sqn_buff[MILENAGE_SQN_SIZE];
 
-	if ((milenage_f1(mac_a, NULL, opc, k, rand, sqn, amf) < 0) ||
-	    (milenage_f2345(res, ck, ik, ak, NULL, opc, k, rand) < 0)) return -1;
+	if ((milenage_f1(mac_a, NULL, opc, k, rand,
+			 uint48_to_buff(sqn_buff, sqn), amf) < 0) ||
+	    (milenage_f2345(res, ik, ck, ak_buff, NULL, opc, k, rand) < 0)) return -1;
 
 	/* AUTN = (SQN ^ AK) || AMF || MAC */
-	for (i = 0; i < 6; i++) autn[i] = sqn[i] ^ ak[i];
+	for (i = 0; i < 6; i++) autn[i] = sqn_buff[i] ^ ak_buff[i];
 	memcpy(autn + 6, amf, 2);
 	memcpy(autn + 8, mac_a, 8);
+
+	if (ak) memcpy(ak, ak_buff, sizeof(ak_buff));
 
 	return 0;
 }
@@ -261,9 +266,9 @@ int milenage_umts_generate(uint8_t autn[16], uint8_t ik[16], uint8_t ck[16], uin
 int milenage_auts(uint8_t sqn[6],
 		  uint8_t const opc[16], uint8_t const k[16], uint8_t const rand[16], uint8_t const auts[14])
 {
-	uint8_t amf[2] = { 0x00, 0x00 }; /* TS 33.102 v7.0.0, 6.3.3 */
-	uint8_t ak[6], mac_s[8];
-	int i;
+	uint8_t		amf[2] = { 0x00, 0x00 }; /* TS 33.102 v7.0.0, 6.3.3 */
+	uint8_t		ak[6], mac_s[8];
+	int		i;
 
 	if (milenage_f2345(NULL, NULL, NULL, NULL, ak, opc, k, rand)) return -1;
 	for (i = 0; i < 6; i++) sqn[i] = auts[i] ^ ak[i];
@@ -286,8 +291,8 @@ int milenage_auts(uint8_t sqn[6],
 int milenage_gsm_generate(uint8_t sres[4], uint8_t kc[8],
 			  uint8_t const opc[16], uint8_t const k[16], uint8_t const rand[16])
 {
-	uint8_t res[8], ck[16], ik[16];
-	int i;
+	uint8_t		res[8], ck[16], ik[16];
+	int		i;
 
 	if (milenage_f2345(res, ck, ik, NULL, NULL, opc, k, rand)) return -1;
 

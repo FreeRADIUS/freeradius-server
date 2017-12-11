@@ -375,8 +375,8 @@ $INCLUDE dictionary.ethernet
 # The Ki for a specific SIM card.
 ATTRIBUTE	SIM-Ki					1200	octets[16]
 ATTRIBUTE	SIM-OPc					1201	octets[16]
-ATTRIBUTE	SIM-SQN					1202	octets[6]
-ATTRIBUTE	SIM-AMF					1204	short
+ATTRIBUTE	SIM-SQN					1202	integer64	# Only 48 bits, but we don't have one of those
+ATTRIBUTE	SIM-AMF					1204	octets[2]	# This is just a bit field not an integer
 
 # The IMSI number of a SIM.
 ATTRIBUTE	SIM-IMSI				1205	string

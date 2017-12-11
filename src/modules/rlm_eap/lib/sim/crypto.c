@@ -31,6 +31,7 @@ RCSID("$Id$")
 
 #include "eap_types.h"
 #include "sim_proto.h"
+#include "milenage.h"
 #include <freeradius-devel/sha1.h>
 #include <freeradius-devel/eap.sim.h>
 #include <openssl/evp.h>
@@ -200,6 +201,10 @@ static int fr_sim_find_mac(uint8_t const **out, uint8_t *data, size_t data_len)
  * @note The 16 byte digest field in the packet must have either been zeroed out before
  *	 this function is called (as it is when encoding data), or zero_mac must be set
  *	 to true.
+ *
+ * @note This function uses the EVP_* signing functions.  Do not be tempted to swap them
+ *	 for the HMAC functions, as the EVP interface may be hardware accelerated but
+ *	 the HMAC interface is purely a software implementation.
  *
  * @param[out] out		Where to write the digest.
  * @param[in] eap_packet	to extract header values from.
@@ -526,19 +531,22 @@ int fr_sim_crypto_kdf_0_umts(fr_sim_keys_t *keys)
 int fr_sim_crypto_derive_ck_ik_prime(fr_sim_keys_t *keys)
 {
 	uint8_t		digest[sizeof(keys->ik_prime) + sizeof(keys->ck_prime)];
-	unsigned int	len = sizeof(digest);
+	size_t		len;
 
 	uint8_t		k[sizeof(keys->umts.vector.ik) + sizeof(keys->umts.vector.ck)];
 
 	uint8_t		s[384];
 	uint8_t		*p = s;
 
-	uint64_t	sqn_be = htonll(keys->sqn);
+	uint8_t		sqn_ak_buff[MILENAGE_SQN_SIZE];
 	uint16_t	l0, l1;
 	size_t		s_len;
-	HMAC_CTX	*hmac;
+	EVP_PKEY	*pkey;
+	EVP_MD_CTX	*md_ctx = NULL;
 
 	if (!fr_cond_assert(keys->vector_type == SIM_VECTOR_UMTS)) return -1;
+
+	uint48_to_buff(sqn_ak_buff, keys->sqn ^ uint48_from_buff(keys->umts.vector.ak));
 
 	s_len = sizeof(uint8_t) + keys->network_len + sizeof(l0) + SIM_SQN_AK_LEN + sizeof(l1);
 	if (s_len > sizeof(s)) {
@@ -546,6 +554,11 @@ int fr_sim_crypto_derive_ck_ik_prime(fr_sim_keys_t *keys)
 				   s_len, sizeof(s));
 		return -1;
 	}
+
+	FR_PROTO_HEX_DUMP("Network", keys->network, keys->network_len);
+	FR_PROTO_HEX_DUMP("CK", keys->umts.vector.ck, sizeof(keys->umts.vector.ck));
+	FR_PROTO_HEX_DUMP("IK", keys->umts.vector.ik, sizeof(keys->umts.vector.ik));
+	FR_PROTO_HEX_DUMP("SQN ⊕ AK", sqn_ak_buff, SIM_SQN_AK_LEN);
 
 	/*
 	 *	FC || P0 || L0 || P1 || L1 || ... || Pn || Ln
@@ -558,11 +571,13 @@ int fr_sim_crypto_derive_ck_ik_prime(fr_sim_keys_t *keys)
 	memcpy(p, &l0, sizeof(l0));
 	p += sizeof(l0);
 
-	memcpy(p, ((uint8_t *)&sqn_be) + 2, SIM_SQN_AK_LEN);
+	memcpy(p, sqn_ak_buff, SIM_SQN_AK_LEN);
 	p += SIM_SQN_AK_LEN;
 
 	l1 = htons(SIM_SQN_AK_LEN);
 	memcpy(p, &l1, sizeof(l1));
+
+	FR_PROTO_HEX_DUMP("FC || P0 || L0 || P1 || L1 || ... || Pn || Ln", s, s_len);
 
 	/*
 	 *	CK || IK
@@ -572,20 +587,39 @@ int fr_sim_crypto_derive_ck_ik_prime(fr_sim_keys_t *keys)
 	p += sizeof(keys->umts.vector.ck);
 	memcpy(p, keys->umts.vector.ik, sizeof(keys->umts.vector.ik));
 
-	MEM(hmac = HMAC_CTX_new());
-	if (HMAC_Init_ex(hmac, k, sizeof(k), EVP_sha256(), NULL) != 1) {
+	FR_PROTO_HEX_DUMP("CK || IK", k, sizeof(k));
+
+	pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, k, sizeof(k));
+	if (!pkey) {
+		tls_strerror_printf(true, "Failed creating HMAC signing key");
 	error:
-		tls_strerror_printf(true, "HMAC failure");
-		HMAC_CTX_free(hmac);
+		if (pkey) EVP_PKEY_free(pkey);
+		if (md_ctx) EVP_MD_CTX_destroy(md_ctx);
 		return -1;
 	}
-	if (HMAC_Update(hmac, s, s_len) != 1) goto error;
-	if (HMAC_Final(hmac, digest, &len) != 1) goto error;
 
-	memcpy(keys->ck_prime, digest, sizeof(keys->ck_prime));
-	memcpy(keys->ik_prime, digest + sizeof(keys->ck_prime), sizeof(keys->ik_prime));
+	md_ctx = EVP_MD_CTX_create();
+	if (!md_ctx) {
+		tls_strerror_printf(true, "Failed creating HMAC ctx");
+		goto error;
+	}
 
-	HMAC_CTX_free(hmac);
+	if (EVP_DigestSignInit(md_ctx, NULL, EVP_sha256(), NULL, pkey) != 1) {
+		tls_strerror_printf(true, "Failed initialising digest");
+		goto error;
+	}
+
+	if (EVP_DigestSignUpdate(md_ctx, s, s_len) != 1) goto error;
+	if (EVP_DigestSignFinal(md_ctx, digest, &len) != 1) goto error;
+
+	memcpy(keys->ik_prime, digest, sizeof(keys->ik_prime));
+	memcpy(keys->ck_prime, digest + sizeof(keys->ik_prime), sizeof(keys->ck_prime));
+
+	FR_PROTO_HEX_DUMP("CK'", keys->ck_prime, sizeof(keys->ck_prime));
+	FR_PROTO_HEX_DUMP("IK'", keys->ik_prime, sizeof(keys->ik_prime));
+
+	EVP_MD_CTX_destroy(md_ctx);;
+	EVP_PKEY_free(pkey);
 
 	return 0;
 }
@@ -596,27 +630,40 @@ static int fr_sim_crypto_aka_prime_prf(uint8_t *out, size_t outlen,
 	uint8_t		*p = out, *end = p + outlen;
 	uint8_t		c = 0;
 	uint8_t		digest[SHA256_DIGEST_LENGTH];
-	HMAC_CTX	*hmac;
+	EVP_PKEY	*pkey;
+	EVP_MD_CTX	*md_ctx = NULL;
 
-	MEM(hmac = HMAC_CTX_new());
-	if (HMAC_Init_ex(hmac, key, key_len, EVP_sha256(), NULL) != 1) {
+	pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, key, key_len);
+	if (!pkey) {
+		tls_strerror_printf(true, "Failed creating HMAC signing key");
 	error:
-		tls_strerror_printf(true, "HMAC failure");
-		HMAC_CTX_free(hmac);
+		if (pkey) EVP_PKEY_free(pkey);
+		if (md_ctx) EVP_MD_CTX_destroy(md_ctx);
 		return -1;
 	}
 
+	md_ctx = EVP_MD_CTX_create();
+	if (!md_ctx) {
+		tls_strerror_printf(true, "Failed creating HMAC ctx");
+		goto error;
+	}
+
+	if (EVP_DigestSignInit(md_ctx, NULL, EVP_sha256(), NULL, pkey) != 1) {
+		tls_strerror_printf(true, "Failed initialising digest");
+		goto error;
+	}
+
 	while (p < end) {
-		unsigned int len = sizeof(digest);
+		size_t len;
 		size_t copy;
 
 		c++;
 
-		if (HMAC_Init_ex(hmac, NULL, 0, EVP_sha256(), NULL) != 1) goto error;
-		if ((p != out) && HMAC_Update(hmac, digest, sizeof(digest)) != 1) goto error;	/* Ingest last round */
-		if (HMAC_Update(hmac, in, in_len) != 1) goto error;				/* Ingest s */
-		if (HMAC_Update(hmac, &c, sizeof(c)) != 1) goto error;				/* Ingest round number */
-		if (HMAC_Final(hmac, digest, &len) != 1) goto error;				/* Output T(i) */
+		if (EVP_DigestSignInit(md_ctx, NULL, EVP_sha256(), NULL, pkey) != 1) goto error;
+		if ((p != out) && EVP_DigestSignUpdate(md_ctx, digest, sizeof(digest)) != 1) goto error;/* Ingest last round */
+		if (EVP_DigestSignUpdate(md_ctx, in, in_len) != 1) goto error;				/* Ingest s */
+		if (EVP_DigestSignUpdate(md_ctx, &c, sizeof(c)) != 1) goto error;			/* Ingest round number */
+		if (EVP_DigestSignFinal(md_ctx, digest, &len) != 1) goto error;					/* Output T(i) */
 
 		copy = p - end;
 		if (copy > SHA256_DIGEST_LENGTH) copy = SHA256_DIGEST_LENGTH;
@@ -624,7 +671,9 @@ static int fr_sim_crypto_aka_prime_prf(uint8_t *out, size_t outlen,
 		memcpy(p, digest, copy);
 		p += copy;
 	}
-	HMAC_CTX_free(hmac);
+
+	EVP_MD_CTX_destroy(md_ctx);;
+	EVP_PKEY_free(pkey);
 
 	return 0;
 }
@@ -889,9 +938,10 @@ static void test_eap_aka_derive_ck_ik(void)
 	int		ret;
 	fr_log_fp = stdout;
 
-
+/*
 	fr_log_fp = stdout;
 	fr_debug_lvl = 4;
+*/
 
 	memcpy(&keys, &rfc5448_vector0_in, sizeof(keys));
 	ret = fr_sim_crypto_derive_ck_ik_prime(&keys);
@@ -905,7 +955,7 @@ TEST_LIST = {
 	 *	Initialisation
 	 */
 	{ "test_eap_aka_kdf_1_umts",	test_eap_aka_kdf_1_umts },
-/*	{ "test_eap_aka_derive_ck_ik",	test_eap_aka_derive_ck_ik },  Fails for unknown reason	*/
+	{ "test_eap_aka_derive_ck_ik",	test_eap_aka_derive_ck_ik },
 
 	{ NULL }
 };

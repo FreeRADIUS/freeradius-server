@@ -52,14 +52,10 @@ RCSIDH(sim_h, "$Id$")
 #define SIM_VECTOR_UMTS_AUTN_SIZE	16
 #define SIM_VECTOR_UMTS_CK_SIZE		16
 #define SIM_VECTOR_UMTS_IK_SIZE		16
+#define SIM_VECTOR_UMTS_AK_SIZE		6
 #define SIM_VECTOR_UMTS_RAND_SIZE	16
 #define SIM_VECTOR_UMTS_XRES_MAX_SIZE	16
 #define SIM_VECTOR_UMTS_RES_MAX_SIZE	16
-
-#define SIM_MILENAGE_KI_SIZE		16
-#define SIM_MILENAGE_OPC_SIZE		16
-#define SIM_MILENAGE_AMF_SIZE		2
-#define SIM_MILENAGE_SQN_SIZE		6
 
 /** Round up - Only works if _mul is a power of 2 but avoids division
  */
@@ -104,6 +100,7 @@ typedef struct {
 	uint8_t		autn[SIM_VECTOR_UMTS_AUTN_SIZE];	//!< Authentication vector from the AuC.
 	uint8_t		ck[SIM_VECTOR_UMTS_CK_SIZE];		//!< Ciphering key.
 	uint8_t		ik[SIM_VECTOR_UMTS_IK_SIZE];		//!< Integrity key.
+	uint8_t		ak[SIM_VECTOR_UMTS_AK_SIZE];		//!< Anonymity key.
 	uint8_t		rand[SIM_VECTOR_UMTS_RAND_SIZE];	//!< RAND challenge to the SIM.
 	uint8_t		xres[SIM_VECTOR_UMTS_RES_MAX_SIZE];	//!< Signing response.
 	size_t		xres_len;				//!< Length of res (it's variable).
