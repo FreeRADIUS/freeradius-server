@@ -37,7 +37,7 @@ RCSID("$Id$")
 static int vector_gsm_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, int idx, fr_sim_keys_t *keys)
 {
 	REQUEST		*request = eap_session->request;
-	VALUE_PAIR	*ki, *opc, *version_vp;
+	VALUE_PAIR	*ki, *version_vp, *opc = NULL;
 	uint32_t	version;
 	int		i;
 
@@ -102,6 +102,11 @@ static int vector_gsm_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, int i
 		break;
 
 	case 4:
+		if (!opc) {
+			RPEDEBUG2("No SIM-OPc");
+			return -1;
+		}
+
 		if (milenage_gsm_generate(keys->gsm.vector[idx].sres,
 					  keys->gsm.vector[idx].kc,
 					  opc->vp_octets,
