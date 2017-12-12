@@ -501,7 +501,8 @@ static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, char const *name,
  *	- -1 on error.
  *	- -2 if deprecated.
  */
-static int cf_pair_parse_internal(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CONF_PARSER const *rule)
+static int CC_HINT(nonnull(2,3,4)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *out,
+							  CONF_SECTION *cs, CONF_PARSER const *rule)
 {
 	bool		multi, required, deprecated;
 	size_t		count = 0;
@@ -627,9 +628,9 @@ static int cf_pair_parse_internal(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, 
 		}
 
 		for (i = 0; i < count; i++, cp = cf_pair_find_next(cs, cp, rule->name)) {
-			int ret;
-			cf_parse_t func = cf_pair_parse_value;
-			void *entry;
+			int		ret;
+			cf_parse_t	func = cf_pair_parse_value;
+			void		*entry;
 
 			if (rule->func) {
 				cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces,
@@ -1062,7 +1063,7 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs)
 {
 	int		ret = 0;
-	void		*data;
+	void		*data = NULL;
 	CONF_DATA const	*rule_cd = NULL;
 
 	if (!cs->name2) {
@@ -1086,8 +1087,11 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs)
 			data = rule->data; /* prefer this. */
 		} else if (base) {
 			data = ((uint8_t *)base) + rule->offset;
-		} else {
-			data = NULL;
+		}
+
+		if (!data) {
+			cf_log_err(cs, "Rule doesn't specify output destination");
+			return -1;
 		}
 
 		/*

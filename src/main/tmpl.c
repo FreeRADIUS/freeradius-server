@@ -831,6 +831,8 @@ ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name,
 	slen = tmpl_afrom_attr_substr(ctx, out, name, request_def, list_def, allow_unknown, allow_undefined);
 	if (slen <= 0) return slen;
 
+	if (!fr_cond_assert(*out)) return -1;
+
 	if (slen != (ssize_t)strlen(name)) {
 		/* This looks wrong, but it produces meaningful errors for unknown attrs with tags */
 		fr_strerror_printf("Unexpected text after %s", fr_int2str(tmpl_names, (*out)->type, "<INVALID>"));
