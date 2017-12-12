@@ -33,8 +33,7 @@ RCSIDH(rlm_eap_aka_eap_aka_h, "$Id$")
  * In server_start, we send a EAP-AKA Start message.
  */
 typedef enum {
-	EAP_AKA_SERVER_START = 0,				//!< Initial state.
-	EAP_AKA_SERVER_IDENTITY,				//!< Attempting to discover permanent
+	EAP_AKA_SERVER_IDENTITY = 0,				//!< Attempting to discover permanent
 								///< identity of the supplicant.
 	EAP_AKA_SERVER_CHALLENGE,				//!< We've challenged the supplicant.
 	EAP_AKA_SERVER_SUCCESS_NOTIFICATION,			//!< Send success notification.
