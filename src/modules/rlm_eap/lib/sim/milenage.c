@@ -75,8 +75,8 @@ static int milenage_f1(uint8_t mac_a[8], uint8_t mac_s[8],
 		       uint8_t const opc[16], uint8_t const k[16], uint8_t const rand[16],
 		       uint8_t const sqn[6], uint8_t const amf[2])
 {
-	uint8_t	tmp1[16], tmp2[16], tmp3[16];
-	int	i;
+	uint8_t		tmp1[16], tmp2[16], tmp3[16];
+	int		i;
 	EVP_CIPHER_CTX	*evp_ctx;
 
 	/* tmp1 = TEMP = E_K(RAND XOR OP_C) */
@@ -144,8 +144,8 @@ static int milenage_f1(uint8_t mac_a[8], uint8_t mac_s[8],
 static int milenage_f2345(uint8_t res[8], uint8_t ik[16], uint8_t ck[16], uint8_t ak[6], uint8_t ak_resync[6],
 			  uint8_t const opc[16], uint8_t const k[16], uint8_t const rand[16])
 {
-	uint8_t		tmp1[16], tmp2[16], tmp3[16];
-	int		i;
+	uint8_t			tmp1[16], tmp2[16], tmp3[16];
+	int			i;
 	EVP_CIPHER_CTX		*evp_ctx;
 
 	/* tmp2 = TEMP = E_K(RAND XOR OP_C) */
@@ -217,7 +217,40 @@ static int milenage_f2345(uint8_t res[8], uint8_t ik[16], uint8_t ck[16], uint8_
 	return 0;
 }
 
-/** milenage_generate - Generate AKA AUTN, IK, CK, RES
+/** Derive OPc from OP and Ki
+ *
+ * @param[out] opc	The derived Operator Code used as an input to other Milenage
+ *			functions.
+ * @param[in] op	Operator Code.
+ * @param[in] ki	Subscriber key.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int milenage_opc_generate(uint8_t opc[MILENAGE_OPC_SIZE],
+			  uint8_t op[MILENAGE_OP_SIZE],
+			  uint8_t ki[MILENAGE_KI_SIZE])
+{
+	int		ret;
+	uint8_t		tmp[MILENAGE_OPC_SIZE];
+	EVP_CIPHER_CTX	*evp_ctx;
+	size_t		i;
+
+	evp_ctx = EVP_CIPHER_CTX_new();
+	if (!evp_ctx) {
+		tls_strerror_printf(true, "Failed allocating EVP context");
+		return -1;
+	}
+ 	ret = aes_128_encrypt_block(evp_ctx, ki, op, tmp);
+ 	EVP_CIPHER_CTX_free(evp_ctx);
+	if (ret < 0) return ret;
+
+ 	for (i = 0; i < sizeof(tmp); i++) opc[i] = op[i] ^ tmp[i];
+
+ 	return 0;
+}
+
+/** Generate AKA AUTN, IK, CK, RES
  *
  * @param[out] autn	Buffer for AUTN = 128-bit authentication token.
  * @param[out] ik	Buffer for IK = 128-bit integrity key (f4), or NULL.
@@ -226,7 +259,7 @@ static int milenage_f2345(uint8_t res[8], uint8_t ik[16], uint8_t ck[16], uint8_
  * @param[out] res	Buffer for RES = 64-bit signed response (f2), or NULL.
  * @param[in] opc	128-bit operator variant algorithm configuration field (encr.).
  * @param[in] amf	16-bit authentication management field.
- * @param[in] ki		128-bit subscriber key.
+ * @param[in] ki	128-bit subscriber key.
  * @param[in] sqn	48-bit sequence number (host byte order).
  * @param[in] rand	128-bit random challenge.
  * @return
@@ -269,7 +302,7 @@ int milenage_umts_generate(uint8_t autn[MILENAGE_AUTN_SIZE],
 	return 0;
 }
 
-/** milenage_auts - Milenage AUTS validation
+/** Milenage AUTS validation
  *
  * @param[out] sqn	Buffer for SQN = 48-bit sequence number (host byte order).
  * @param[in] opc	128-bit operator variant algorithm configuration field (encr.).
@@ -300,7 +333,7 @@ int milenage_auts(uint64_t sqn,
 	return 0;
 }
 
-/** gsm_milenage - Generate GSM-Milenage (3GPP TS 55.205) authentication triplet
+/** Generate GSM-Milenage (3GPP TS 55.205) authentication triplet
  *
  * @param[out] sres	Buffer for SRES = 32-bit SRES.
  * @param[out] kc	64-bit Kc.
@@ -332,7 +365,7 @@ int milenage_gsm_generate(uint8_t sres[MILENAGE_SRES_SIZE], uint8_t kc[MILENAGE_
 	return 0;
 }
 
-/** milenage check
+/** Milenage check
  *
  * @param[out] ik	Buffer for IK = 128-bit integrity key (f4), or NULL.
  * @param[out] ck	Buffer for CK = 128-bit confidentiality key (f3), or NULL.
@@ -410,7 +443,7 @@ int milenage_check(uint8_t ik[MILENAGE_IK_SIZE],
 
 #ifdef TESTING_MILENAGE
 /*
- *  cc id.c -g3 -Wall -DHAVE_DLFCN_H -DTESTING_MILENAGE -DWITH_TLS -I../../../../ -I../../../ -I ../base/ -I /usr/local/opt/openssl/include/ -include ../include/build.h -L /usr/local/opt/openssl/lib/ -l ssl -l crypto -l talloc -L ../../../../../build/lib/local/.libs/ -lfreeradius-server -lfreeradius-tls -lfreeradius-util -o test_milenage && ./test_milenage
+ *  cc milenage.c -g3 -Wall -DHAVE_DLFCN_H -DTESTING_MILENAGE -DWITH_TLS -I../../../../ -I../../../ -I ../base/ -I /usr/local/opt/openssl/include/ -include ../include/build.h -L /usr/local/opt/openssl/lib/ -l ssl -l crypto -l talloc -L ../../../../../build/lib/local/.libs/ -lfreeradius-server -lfreeradius-tls -lfreeradius-util -o test_milenage && ./test_milenage
  */
 #include <freeradius-devel/cutest.h>
 
@@ -419,25 +452,28 @@ void test_set_1(void)
 	/*
 	 *	Inputs
 	 */
-	uint8_t k[]		= { 0x46, 0x5b, 0x5c, 0xe8, 0xb1, 0x99, 0xb4, 0x9f,
+	uint8_t ki[]		= { 0x46, 0x5b, 0x5c, 0xe8, 0xb1, 0x99, 0xb4, 0x9f,
 				    0xaa, 0x5f, 0x0a, 0x2e, 0xe2, 0x38, 0xa6, 0xbc };
 	uint8_t rand[]		= { 0x23, 0x55, 0x3c, 0xbe, 0x96, 0x37, 0xa8, 0x9d,
 				    0x21, 0x8a, 0xe6, 0x4d, 0xae, 0x47, 0xbf, 0x35  };
 	uint8_t sqn[]		= { 0xff, 0x9b, 0xb4, 0xd0, 0xb6, 0x07 };
 	uint8_t amf[]		= { 0xb9, 0xb9 };
+	uint8_t op[]		= { 0xcd, 0xc2, 0x02, 0xd5, 0x12, 0x3e, 0x20, 0xf6,
+				    0x2b, 0x6d, 0x67, 0x6a, 0xc7, 0x2c, 0xb3, 0x18 };
 	uint8_t opc[]		= { 0xcd, 0x63, 0xcb, 0x71, 0x95, 0x4a, 0x9f, 0x4e,
 				    0x48, 0xa5, 0x99, 0x4e, 0x37, 0xa0, 0x2b, 0xaf };
 
 	/*
 	 *	Outputs
 	 */
-	uint8_t	mac_a_out[8];
-	uint8_t	mac_s_out[8];
-	uint8_t res_out[8];
-	uint8_t ck_out[16];
-	uint8_t ik_out[16];
-	uint8_t ak_out[6];
-	uint8_t ak_resync_out[6];
+	uint8_t opc_out[MILENAGE_OPC_SIZE];
+	uint8_t	mac_a_out[MILENAGE_MAC_A_SIZE];
+	uint8_t	mac_s_out[MILENAGE_MAC_S_SIZE];
+	uint8_t res_out[MILENAGE_RES_SIZE];
+	uint8_t ck_out[MILENAGE_CK_SIZE];
+	uint8_t ik_out[MILENAGE_IK_SIZE];
+	uint8_t ak_out[MILENAGE_AK_SIZE];
+	uint8_t ak_resync_out[MILENAGE_AK_SIZE];
 
 	/* function 1 */
 	uint8_t mac_a[]		= { 0x4a, 0x9f, 0xfa, 0xc3, 0x54, 0xdf, 0xaf, 0xb3 };
@@ -462,9 +498,15 @@ void test_set_1(void)
 	fr_log_fp = stdout;
 	fr_debug_lvl = 4;
 */
+	ret = milenage_opc_generate(opc_out, op, ki);
+	TEST_CHECK(ret == 0);
 
-	if ((milenage_f1(mac_a_out, mac_s_out, opc, k, rand, sqn, amf) < 0) ||
-	    (milenage_f2345(res_out, ck_out, ik_out, ak_out, ak_resync_out, opc, k, rand) < 0)) ret = -1;
+	FR_PROTO_HEX_DUMP("opc", opc_out, sizeof(opc_out));
+
+	TEST_CHECK(memcmp(opc_out, opc, sizeof(opc_out)) == 0);
+
+	if ((milenage_f1(mac_a_out, mac_s_out, opc, ki, rand, sqn, amf) < 0) ||
+	    (milenage_f2345(res_out, ik_out, ck_out, ak_out, ak_resync_out, opc, ki, rand) < 0)) ret = -1;
 
 	FR_PROTO_HEX_DUMP("mac_a", mac_a, sizeof(mac_a_out));
 	FR_PROTO_HEX_DUMP("mac_s", mac_s, sizeof(mac_s_out));
@@ -489,26 +531,28 @@ void test_set_19(void)
 	/*
 	 *	Inputs
 	 */
-	uint8_t k[]		= { 0x51, 0x22, 0x25, 0x02, 0x14, 0xc3, 0x3e, 0x72,
+	uint8_t ki[]		= { 0x51, 0x22, 0x25, 0x02, 0x14, 0xc3, 0x3e, 0x72,
 				    0x3a, 0x5d, 0xd5, 0x23, 0xfc, 0x14, 0x5f, 0xc0 };
 	uint8_t rand[]		= { 0x81, 0xe9, 0x2b, 0x6c, 0x0e, 0xe0, 0xe1, 0x2e,
 				    0xbc, 0xeb, 0xa8, 0xd9, 0x2a, 0x99, 0xdf, 0xa5 };
 	uint8_t sqn[]		= { 0x16, 0xf3, 0xb3, 0xf7, 0x0f, 0xc2 };
 	uint8_t amf[]		= { 0xc3, 0xab };
+	uint8_t op[]		= { 0xc9, 0xe8, 0x76, 0x32, 0x86, 0xb5, 0xb9, 0xff,
+				    0xbd, 0xf5, 0x6e, 0x12, 0x97, 0xd0, 0x88, 0x7b };
 	uint8_t opc[]		= { 0x98, 0x1d, 0x46, 0x4c, 0x7c, 0x52, 0xeb, 0x6e,
 				    0x50, 0x36, 0x23, 0x49, 0x84, 0xad, 0x0b, 0xcf };
-
 
 	/*
 	 *	Outputs
 	 */
-	uint8_t	mac_a_out[8];
-	uint8_t	mac_s_out[8];
-	uint8_t res_out[8];
-	uint8_t ck_out[16];
-	uint8_t ik_out[16];
-	uint8_t ak_out[6];
-	uint8_t ak_resync_out[6];
+	uint8_t opc_out[MILENAGE_OPC_SIZE];
+	uint8_t	mac_a_out[MILENAGE_MAC_A_SIZE];
+	uint8_t	mac_s_out[MILENAGE_MAC_S_SIZE];
+	uint8_t res_out[MILENAGE_RES_SIZE];
+	uint8_t ck_out[MILENAGE_CK_SIZE];
+	uint8_t ik_out[MILENAGE_IK_SIZE];
+	uint8_t ak_out[MILENAGE_AK_SIZE];
+	uint8_t ak_resync_out[MILENAGE_AK_SIZE];
 
 	/* function 1 */
 	uint8_t mac_a[]		= { 0x2a, 0x5c, 0x23, 0xd1, 0x5e, 0xe3, 0x51, 0xd5 };
@@ -534,8 +578,15 @@ void test_set_19(void)
 	fr_debug_lvl = 4;
 */
 
-	if ((milenage_f1(mac_a_out, mac_s_out, opc, k, rand, sqn, amf) < 0) ||
-	    (milenage_f2345(res_out, ck_out, ik_out, ak_out, ak_resync_out, opc, k, rand) < 0)) ret = -1;
+	ret = milenage_opc_generate(opc_out, op, ki);
+	TEST_CHECK(ret == 0);
+
+	FR_PROTO_HEX_DUMP("opc", opc_out, sizeof(opc_out));
+
+	TEST_CHECK(memcmp(opc_out, opc, sizeof(opc_out)) == 0);
+
+	if ((milenage_f1(mac_a_out, mac_s_out, opc, ki, rand, sqn, amf) < 0) ||
+	    (milenage_f2345(res_out, ik_out, ck_out, ak_out, ak_resync_out, opc, ki, rand) < 0)) ret = -1;
 
 	FR_PROTO_HEX_DUMP("mac_a", mac_a, sizeof(mac_a_out));
 	FR_PROTO_HEX_DUMP("mac_s", mac_s, sizeof(mac_s_out));

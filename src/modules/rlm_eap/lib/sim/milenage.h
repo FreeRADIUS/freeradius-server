@@ -23,7 +23,8 @@
  *	Inputs
  */
 #define MILENAGE_KI_SIZE	16		//!< Subscriber key.
-#define MILENAGE_OPC_SIZE	16		//!< Operator code (unique to the operator).
+#define MILENAGE_OP_SIZE	16		//!< Operator code (unique to the operator)
+#define MILENAGE_OPC_SIZE	16		//!< Derived operator code (unique to the operator and subscriber).
 #define MILENAGE_AMF_SIZE	2		//!< Authentication management field.
 #define MILENAGE_SQN_SIZE	6		//!< Sequence number.
 #define MILENAGE_RAND_SIZE	16		//!< Random challenge.
@@ -82,6 +83,10 @@ static inline uint64_t uint48_from_buff(uint8_t const in[6])
 
 	return i;
 }
+
+int	milenage_opc_generate(uint8_t opc[MILENAGE_OPC_SIZE],
+			      uint8_t op[MILENAGE_OP_SIZE],
+			      uint8_t ki[MILENAGE_KI_SIZE]);
 
 int	milenage_umts_generate(uint8_t autn[MILENAGE_AUTN_SIZE],
 			       uint8_t ik[MILENAGE_IK_SIZE],
