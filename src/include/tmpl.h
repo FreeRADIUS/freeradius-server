@@ -384,7 +384,7 @@ ssize_t			tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *n
 ssize_t			tmpl_afrom_attr_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name,
 					    request_refs_t request_def,
 					    pair_lists_t list_def,
-					    bool allow_unknown, bool allow_undefined);
+					    bool allow_unknown, bool allow_undefined) CC_HINT(nonnull (2, 3));
 
 ssize_t			tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name, size_t inlen,
 				       FR_TOKEN type, request_refs_t request_def, pair_lists_t list_def, bool do_escape);

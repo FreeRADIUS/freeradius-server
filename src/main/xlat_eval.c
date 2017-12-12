@@ -520,11 +520,13 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 		{
 			fr_value_box_t	*value;
 			char		*str;
-			char		*result_str;
+			char		*result_str = NULL;
 			ssize_t		slen;
 
-			result_str = fr_value_box_list_asprint(NULL, fr_cursor_head(result), NULL, '\0');
-			if (!result_str) return XLAT_ACTION_FAIL;
+			if (result) {
+				result_str = fr_value_box_list_asprint(NULL, fr_cursor_head(result), NULL, '\0');
+				if (!result_str) return XLAT_ACTION_FAIL;
+			}
 
 			if (node->xlat->buf_len > 0) {
 				str = talloc_array(ctx, char, node->xlat->buf_len);
