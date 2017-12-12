@@ -408,7 +408,7 @@ static int vector_umts_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, fr_s
 	}
 
 	sqn_vp = fr_pair_find_by_child_num(vps, fr_dict_root(fr_dict_internal), FR_SIM_SQN, TAG_ANY);
-	sqn = sqn_vp ? sqn_vp->vp_uint64 : 0;
+	sqn = sqn_vp ? sqn_vp->vp_uint64 : 2;
 
 	/*
 	 *	We default to milenage
