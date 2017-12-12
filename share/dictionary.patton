@@ -26,7 +26,6 @@ ATTRIBUTE	Patton-Called-IP-Address		49	ipaddr
 ATTRIBUTE	Patton-Called-Numbering-Plan		50	string
 ATTRIBUTE	Patton-Called-Type-Of-Number		51	string
 ATTRIBUTE	Patton-Called-Name			52	string
-ATTRIBUTE	Patton-Called-Station-Id		53	string
 ATTRIBUTE	Patton-Called-Rx-Octets			64	integer
 ATTRIBUTE	Patton-Called-Tx-Octets			65	integer
 ATTRIBUTE	Patton-Called-Rx-Packets		66	integer
@@ -49,7 +48,6 @@ ATTRIBUTE	Patton-Calling-Type-Of-Number		83	string
 ATTRIBUTE	Patton-Calling-Presentation-Indicator	88	string
 ATTRIBUTE	Patton-Calling-Screening-Indicator	89	string
 ATTRIBUTE	Patton-Calling-Name			84	string
-ATTRIBUTE	Patton-Calling-Station-Id		85	string
 ATTRIBUTE	Patton-Calling-Rx-Octets		96	integer
 ATTRIBUTE	Patton-Calling-Tx-Octets		97	integer
 ATTRIBUTE	Patton-Calling-Rx-Packets		98	integer
