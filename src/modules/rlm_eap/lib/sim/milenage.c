@@ -228,8 +228,8 @@ static int milenage_f2345(uint8_t res[8], uint8_t ik[16], uint8_t ck[16], uint8_
  *	- -1 on failure.
  */
 int milenage_opc_generate(uint8_t opc[MILENAGE_OPC_SIZE],
-			  uint8_t op[MILENAGE_OP_SIZE],
-			  uint8_t ki[MILENAGE_KI_SIZE])
+			  uint8_t const op[MILENAGE_OP_SIZE],
+			  uint8_t const ki[MILENAGE_KI_SIZE])
 {
 	int		ret;
 	uint8_t		tmp[MILENAGE_OPC_SIZE];

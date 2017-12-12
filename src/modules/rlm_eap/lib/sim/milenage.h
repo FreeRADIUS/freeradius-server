@@ -85,8 +85,8 @@ static inline uint64_t uint48_from_buff(uint8_t const in[6])
 }
 
 int	milenage_opc_generate(uint8_t opc[MILENAGE_OPC_SIZE],
-			      uint8_t op[MILENAGE_OP_SIZE],
-			      uint8_t ki[MILENAGE_KI_SIZE]);
+			      uint8_t const op[MILENAGE_OP_SIZE],
+			      uint8_t const ki[MILENAGE_KI_SIZE]);
 
 int	milenage_umts_generate(uint8_t autn[MILENAGE_AUTN_SIZE],
 			       uint8_t ik[MILENAGE_IK_SIZE],

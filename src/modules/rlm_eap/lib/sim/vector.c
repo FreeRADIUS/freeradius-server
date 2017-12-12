@@ -34,10 +34,48 @@ RCSID("$Id$")
 
 #include <freeradius-devel/rad_assert.h>
 
+static int vector_opc_from_op(REQUEST *request, uint8_t const **out, uint8_t opc_buff[MILENAGE_OPC_SIZE],
+			      VALUE_PAIR *list, uint8_t const ki[MILENAGE_KI_SIZE])
+{
+	VALUE_PAIR	*opc_vp;
+	VALUE_PAIR	*op_vp;
+
+	opc_vp = fr_pair_find_by_child_num(list, fr_dict_root(fr_dict_internal), FR_SIM_OPC, TAG_ANY);
+	if (opc_vp) {
+		if (opc_vp->vp_length != MILENAGE_OPC_SIZE) {
+			REDEBUG("&control:SIM-OPc has incorrect length, expected %u bytes got %zu bytes",
+				MILENAGE_OPC_SIZE, opc_vp->vp_length);
+			return -1;
+		}
+		*out = opc_vp->vp_octets;
+		return 0;
+	}
+
+	op_vp = fr_pair_find_by_child_num(list, fr_dict_root(fr_dict_internal), FR_SIM_OP, TAG_ANY);
+	if (op_vp) {
+		if (op_vp->vp_length != MILENAGE_OP_SIZE) {
+			REDEBUG("&control:SIM-OP has incorrect length, expected %u bytes got %zu bytes",
+				MILENAGE_OP_SIZE, op_vp->vp_length);
+			return -1;
+		}
+		if (milenage_opc_generate(opc_buff, op_vp->vp_octets, ki) < 0) {
+			RPEDEBUG("Deriving OPc failed");
+			return -1;
+		}
+		*out = opc_buff;
+		return 0;
+	}
+
+	*out = NULL;
+	return 1;
+}
+
 static int vector_gsm_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, int idx, fr_sim_keys_t *keys)
 {
 	REQUEST		*request = eap_session->request;
-	VALUE_PAIR	*ki_vp, *version_vp, *opc_vp = NULL;
+	VALUE_PAIR	*ki_vp, *version_vp;
+	uint8_t		opc_buff[MILENAGE_OPC_SIZE];
+	uint8_t	const	*opc_p;
 	uint32_t	version;
 	int		i;
 
@@ -59,17 +97,8 @@ static int vector_gsm_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, int i
 	 */
 	version_vp = fr_pair_find_by_child_num(vps, fr_dict_root(fr_dict_internal), FR_SIM_ALGO_VERSION, TAG_ANY);
 	if (!version_vp) {
-		opc_vp = fr_pair_find_by_child_num(vps, fr_dict_root(fr_dict_internal), FR_SIM_OPC, TAG_ANY);
-		if (!opc_vp) {
-			version = 3;	/* No OPC - not a virtual USIM, default to comp128v3 */
-		}
-		else if (opc_vp->vp_length != MILENAGE_OPC_SIZE) {
-			REDEBUG("&control:SIM-OPc has incorrect length, expected %u bytes got %zu bytes",
-				MILENAGE_OPC_SIZE, opc_vp->vp_length);
-			return -1;
-		} else {
-			version = 4;	/* Ki and OPC - default to Milenage */
-		}
+		if (vector_opc_from_op(request, &opc_p, opc_buff, vps, ki_vp->vp_octets) < 0) return -1;
+		version = opc_p ? 4 : 3;
 	/*
 	 *	Version we explicitly specified, see if we can find the prerequisite
 	 *	attributes.
@@ -77,9 +106,10 @@ static int vector_gsm_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, int i
 	} else {
 		version = version_vp->vp_uint32;
 		if (version == 4) {
-			opc_vp = fr_pair_find_by_child_num(vps, fr_dict_root(fr_dict_internal), FR_SIM_OPC, TAG_ANY);
-			if (!opc_vp) {
-				RPEDEBUG2("No &control:SIM-OPc found, can't run Milenage (COMP128-4)");
+			if (vector_opc_from_op(request, &opc_p, opc_buff, vps, ki_vp->vp_octets) < 0) return -1;
+			if (!opc_p) {
+				RPEDEBUG2("No &control:SIM-OP or &control:SIM-OPc found, "
+					  "can't run Milenage (COMP128-4)");
 				return -1;
 			}
 		}
@@ -115,7 +145,7 @@ static int vector_gsm_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, int i
 	case 4:
 		if (milenage_gsm_generate(keys->gsm.vector[idx].sres,
 					  keys->gsm.vector[idx].kc,
-					  opc_vp->vp_octets,
+					  opc_p,
 					  ki_vp->vp_octets,
 					  keys->gsm.vector[idx].rand) < 0) {
 			RPEDEBUG2("Failed deriving GSM triplet");
@@ -370,10 +400,12 @@ int fr_sim_vector_gsm_from_attrs(eap_session_t *eap_session, VALUE_PAIR *vps,
 static int vector_umts_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, fr_sim_keys_t *keys)
 {
 	REQUEST		*request = eap_session->request;
-	VALUE_PAIR	*ki_vp, *opc_vp, *amf_vp, *sqn_vp, *version_vp;
+	VALUE_PAIR	*ki_vp, *amf_vp, *sqn_vp, *version_vp;
 
 	uint64_t	sqn;
 	uint8_t		amf_buff[MILENAGE_AMF_SIZE] = { 0x00, 0x00 };
+	uint8_t 	opc_buff[MILENAGE_OPC_SIZE];
+	uint8_t	const	*opc_p;
 	uint32_t	version = 4;
 	int		i;
 
@@ -387,15 +419,7 @@ static int vector_umts_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, fr_s
 		return -1;
 	}
 
-	opc_vp = fr_pair_find_by_child_num(vps, fr_dict_root(fr_dict_internal), FR_SIM_OPC, TAG_ANY);
-	if (!opc_vp) {
-		RDEBUG3("No &control:SIM-OPc not generating quintuplets locally");
-		return 1;
-	} else if (opc_vp->vp_length != MILENAGE_OPC_SIZE) {
-		REDEBUG("&control:SIM-OPc has incorrect length, expected %u bytes got %zu bytes",
-			MILENAGE_OPC_SIZE, opc_vp->vp_length);
-		return -1;
-	}
+	if (vector_opc_from_op(request, &opc_p, opc_buff, vps, ki_vp->vp_octets) < 0) return -1;
 
 	amf_vp = fr_pair_find_by_child_num(vps, fr_dict_root(fr_dict_internal), FR_SIM_AMF, TAG_ANY);
 	if (amf_vp) {
@@ -435,7 +459,7 @@ static int vector_umts_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, fr_s
 				ki_vp->vp_octets, MILENAGE_KI_SIZE,
 				"Ki           :");
 		RHEXDUMP_INLINE(L_DBG_LVL_3,
-				opc_vp->vp_octets, MILENAGE_OPC_SIZE,
+				opc_p, MILENAGE_OPC_SIZE,
 				"OPc          :");
 		RHEXDUMP_INLINE(L_DBG_LVL_3,
 				sqn_buff, MILENAGE_SQN_SIZE,
@@ -450,7 +474,7 @@ static int vector_umts_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, fr_s
 					   keys->umts.vector.ck,
 					   keys->umts.vector.ak,
 					   keys->umts.vector.xres,
-					   opc_vp->vp_octets,
+					   opc_p,
 					   amf_buff,
 					   ki_vp->vp_octets,
 					   sqn,
