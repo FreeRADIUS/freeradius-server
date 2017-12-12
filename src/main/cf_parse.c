@@ -1089,11 +1089,6 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs)
 			data = ((uint8_t *)base) + rule->offset;
 		}
 
-		if (!data) {
-			cf_log_err(cs, "Rule doesn't specify output destination");
-			return -1;
-		}
-
 		/*
 		 *	Handle subsections specially
 		 */
@@ -1102,6 +1097,16 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs)
 			if (ret < 0) goto finish;
 			continue;
 		} /* else it's a CONF_PAIR */
+
+		/*
+		 *	Pair either needs an output destination or
+		 *	there needs to be a function associated with
+		 *	it.
+		 */
+		if (!data && !rule->func) {
+			cf_log_err(cs, "Rule doesn't specify output destination");
+			return -1;
+		}
 
 		/*
 		 *	Get pointer to where we need to write out
