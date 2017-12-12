@@ -153,7 +153,7 @@ static int eap_aka_send_identity_request(eap_session_t *eap_session)
 	 *	Select the right type of identity request attribute
 	 */
 	switch (eap_aka_session->id_req) {
-	case SIM_ANY_ID:
+	case SIM_ANY_ID_REQ:
 		vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_ANY_ID_REQ);
 		break;
 
@@ -584,11 +584,11 @@ static int process_eap_aka_identity(eap_session_t *eap_session, VALUE_PAIR *vps)
 	 *	See if we got an AT_IDENTITY
 	 */
 	id = fr_pair_find_by_child_num(vps, dict_aka_root, FR_EAP_AKA_IDENTITY, TAG_ANY);
-	if (id)
+	if (id) {
 	 	if (fr_sim_id_type(&type, &method,
-				   eap_session->identity, talloc_array_length(eap_session->identity) - 1) == 0) {
-		RWDEBUG2("Failed parsing identity: %s", fr_strerror());
-
+				   eap_session->identity, talloc_array_length(eap_session->identity) - 1) < 0) {
+			RWDEBUG2("Failed parsing identity: %s", fr_strerror());
+		}
 		/*
 		 *	Update cryptographic identity
 		 */
@@ -597,13 +597,18 @@ static int process_eap_aka_identity(eap_session_t *eap_session, VALUE_PAIR *vps)
 		MEM(eap_aka_session->keys.identity = talloc_memdup(eap_aka_session, id->vp_strvalue, id->vp_length));
 	}
 
+	/*
+	 *	@TODO Run a virtual server to see if we can use the
+	 *	identity we just acquired, or whether we need to
+	 *	negotiate the next permissive ID.
+	 */
 
 	/*
 	 *	Negotiate the next permissive form
 	 *	if identity, or fail.
 	 */
 	switch (eap_aka_session->id_req) {
-	case SIM_ANY_ID:
+	case SIM_ANY_ID_REQ:
 		eap_aka_session->id_req = SIM_FULLAUTH_ID_REQ;
 		eap_aka_state_enter(eap_session, EAP_AKA_SERVER_IDENTITY);
 		break;
@@ -615,9 +620,13 @@ static int process_eap_aka_identity(eap_session_t *eap_session, VALUE_PAIR *vps)
 
 	case SIM_PERMANENT_ID_REQ:
 		eap_aka_state_enter(eap_session, EAP_AKA_SERVER_CHALLENGE);
-		REDEBUG2("Failed to negotiate a usable identity");
+//		REDEBUG2("Failed to negotiate a usable identity");
 //		eap_aka_state_enter(eap_session, eap_aka_session, EAP_AKA_SERVER_GENERAL_FAILURE_NOTIFICATION);
 		break;
+
+	case SIM_NO_ID_REQ:
+		rad_assert(0);
+		return -1;
 	}
 
 	return 0;
@@ -632,7 +641,7 @@ static int process_eap_aka_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 	REQUEST			*request = eap_session->request;
 	eap_aka_session_t	*eap_aka_session = talloc_get_type_abort(eap_session->opaque, eap_aka_session_t);
 
-	uint8_t			calc_mac[SIM_MAC_HASH_SIZE];
+	uint8_t			calc_mac[SIM_MAC_DIGEST_SIZE];
 	ssize_t			slen;
 	VALUE_PAIR		*vp = NULL, *mac, *checkcode;
 
@@ -641,9 +650,9 @@ static int process_eap_aka_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 		REDEBUG("Missing AT_MAC attribute");
 		return -1;
 	}
-	if (mac->vp_length != SIM_MAC_HASH_SIZE) {
-		REDEBUG("AT_MAC incorrect length, expected %u bytes got %zu bytes",
-			SIM_MAC_HASH_SIZE, mac->vp_length);
+	if (mac->vp_length != SIM_MAC_DIGEST_SIZE) {
+		REDEBUG("EAP-AKA-MAC has incorrect length, expected %u bytes got %zu bytes",
+			SIM_MAC_DIGEST_SIZE, mac->vp_length);
 		return -1;
 	}
 
@@ -654,9 +663,7 @@ static int process_eap_aka_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 	if (slen < 0) {
 		RPEDEBUG("Failed calculating MAC");
 		return -1;
-	}
-
-	if (slen == 0) {
+	} else if (slen == 0) {
 		REDEBUG("Missing EAP-AKA-MAC attribute in packet buffer");
 		return -1;
 	}
@@ -665,8 +672,8 @@ static int process_eap_aka_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 		RDEBUG2("EAP-AKA-MAC matches calculated MAC");
 	} else {
 		REDEBUG("EAP-AKA-MAC does not match calculated MAC");
-		RHEXDUMP_INLINE(L_DBG_LVL_2, mac->vp_octets, SIM_MAC_HASH_SIZE, "Received");
-		RHEXDUMP_INLINE(L_DBG_LVL_2, calc_mac, SIM_MAC_HASH_SIZE, "Expected");
+		RHEXDUMP_INLINE(L_DBG_LVL_2, mac->vp_octets, SIM_MAC_DIGEST_SIZE, "Received");
+		RHEXDUMP_INLINE(L_DBG_LVL_2, calc_mac, SIM_MAC_DIGEST_SIZE, "Expected");
 		return -1;
 	}
 
@@ -792,7 +799,12 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		rdebug_pair_list(L_DBG_LVL_2, request, vp, NULL);
 	}
 
-	MEM(subtype_vp = fr_pair_find_by_child_num(vps, dict_aka_root, FR_EAP_AKA_SUBTYPE, TAG_ANY));
+	subtype_vp = fr_pair_find_by_child_num(vps, dict_aka_root, FR_EAP_AKA_SUBTYPE, TAG_ANY);
+	if (!subtype_vp) {
+		REDEBUG("Missing EAP-AKA-Subtype");
+		eap_aka_state_enter(eap_session, EAP_AKA_SERVER_GENERAL_FAILURE_NOTIFICATION);
+		return RLM_MODULE_HANDLED;				/* We need to process more packets */
+	}
 	subtype = subtype_vp->vp_uint32;
 
 	switch (eap_aka_session->state) {
@@ -881,6 +893,11 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	 */
 	case EAP_AKA_SERVER_CHALLENGE:
 		switch (subtype) {
+		case EAP_AKA_CHALLENGE:
+			if (process_eap_aka_challenge(eap_session, vps) == 0) return RLM_MODULE_HANDLED;
+			eap_aka_state_enter(eap_session, EAP_AKA_SERVER_GENERAL_FAILURE_NOTIFICATION);
+			return RLM_MODULE_HANDLED;				/* We need to process more packets */
+
 		case EAP_AKA_SYNCHRONIZATION_FAILURE:
 			REDEBUG("EAP-AKA Peer synchronization failure");	/* We can't handle these yet */
 			eap_aka_state_enter(eap_session, EAP_AKA_SERVER_GENERAL_FAILURE_NOTIFICATION);
@@ -912,14 +929,6 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 			REDEBUG("EAP-AKA Peer Rejected AUTN");
 			eap_aka_state_enter(eap_session, EAP_AKA_SERVER_FAILURE);
 			return RLM_MODULE_REJECT;
-
-		/*
-		 *	Process peer's challenge response
-		 */
-		case EAP_AKA_CHALLENGE:
-			if (process_eap_aka_challenge(eap_session, vps) == 0) return RLM_MODULE_HANDLED;
-			eap_aka_state_enter(eap_session, EAP_AKA_SERVER_GENERAL_FAILURE_NOTIFICATION);
-			return RLM_MODULE_HANDLED;				/* We need to process more packets */
 
 		case EAP_AKA_NOTIFICATION:
 			goto notification;
@@ -973,12 +982,23 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 	 */
 	eap_aka_session->request_identity = inst->request_identity;
 	eap_aka_session->send_result_ind = true;
+	eap_aka_session->id_req = SIM_NO_ID_REQ;	/* Set the default */
 
 	/*
 	 *	This value doesn't have be strong, but it is
 	 *	good if it is different now and then.
 	 */
 	eap_aka_session->aka_id = (fr_rand() & 0xff);
+
+	/*
+	 *	Process the identity that we received in the
+	 *	EAP-Identity-Response and use it to determine
+	 *	the initial request we send to the Supplicant.
+	 */
+	if (fr_sim_id_type(&type, &method,
+			   eap_session->identity, talloc_array_length(eap_session->identity) - 1) < 0) {
+		RDEBUG2("Failed parsing identity, continuing anyway: %s", fr_strerror());
+	}
 
 	/*
 	 *	Unless AKA-Prime is explicitly disabled,
@@ -995,6 +1015,16 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 		eap_aka_session->keys.network = (uint8_t *) talloc_bstrndup(eap_aka_session, inst->network_id,
 									    talloc_array_length(inst->network_id) - 1);
 		eap_aka_session->keys.network_len = talloc_array_length(eap_aka_session->keys.network) - 1;
+		switch (method) {
+		default:
+			RWDEBUG("EAP-Identity-Response hints that EAP-%s should be started, but we're "
+				"attempting EAP-AKA'", fr_int2str(sim_id_method_hint_table, method, "<INVALID>"));
+			break;
+
+		case SIM_METHOD_HINT_AKA_PRIME:
+		case SIM_METHOD_HINT_UNKNOWN:
+			break;
+		}
 		break;
 
 	case FR_EAP_AKA:
@@ -1003,22 +1033,19 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 		eap_aka_session->kdf = 0;
 		eap_aka_session->checkcode_md = eap_aka_session->mac_md = EVP_sha1();
 		eap_aka_session->send_at_bidding = true;
+		switch (method) {
+		default:
+			RWDEBUG("EAP-Identity-Response hints that EAP-%s should be started, but we're "
+				"attempting EAP-AKA", fr_int2str(sim_id_method_hint_table, method, "<INVALID>"));
+			break;
+
+		case SIM_METHOD_HINT_AKA:
+		case SIM_METHOD_HINT_UNKNOWN:
+			break;
+		}
 		break;
 	}
 	eap_session->process = mod_process;
-
-	/*
-	 *	Process the identity that we received in the
-	 *	EAP-Identity-Response and use it to determine
-	 *	the initial request we send to the Supplicant.
-	 */
-	if (fr_sim_id_type(&type, &method,
-			   eap_session->identity, talloc_array_length(eap_session->identity) - 1) < 0) {
-		RDEBUG2("Failed parsing identity, continuing anyway: %s", fr_strerror());
-	}
-
-	if (method == SIM_METHOD_HINT_SIM) WARN("EAP-Identity-Response hints that EAP-SIM "
-						"should be started, but we're attempting EAP-AKA");
 
 	/*
 	 *	Admin wants us to always request an identity
@@ -1034,7 +1061,7 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 		 *	any ID initially as we can
 		 *	always negotiate down.
 		 */
-		eap_aka_session->id_req = SIM_ANY_ID;
+		eap_aka_session->id_req = SIM_ANY_ID_REQ;
 		eap_aka_state_enter(eap_session, EAP_AKA_SERVER_IDENTITY);
 		return RLM_MODULE_OK;
 	}
@@ -1070,7 +1097,6 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 	 */
 	case SIM_ID_TYPE_PSEUDONYM:
 	case SIM_ID_TYPE_FASTAUTH:
-
 		return RLM_MODULE_OK;
 	}
 
