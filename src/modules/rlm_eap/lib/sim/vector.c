@@ -37,19 +37,19 @@ RCSID("$Id$")
 static int vector_gsm_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, int idx, fr_sim_keys_t *keys)
 {
 	REQUEST		*request = eap_session->request;
-	VALUE_PAIR	*ki, *version_vp, *opc = NULL;
+	VALUE_PAIR	*ki_vp, *version_vp, *opc_vp = NULL;
 	uint32_t	version;
 	int		i;
 
 	/*
 	 *	Generate a new RAND value, and derive Kc and SRES from Ki
 	 */
-	ki = fr_pair_find_by_child_num(vps, fr_dict_root(fr_dict_internal), FR_SIM_KI, TAG_ANY);
-	if (!ki) {
+	ki_vp = fr_pair_find_by_child_num(vps, fr_dict_root(fr_dict_internal), FR_SIM_KI, TAG_ANY);
+	if (!ki_vp) {
 		RDEBUG3("No &control:SIM-Ki found, not generating triplets locally");
 		return 1;
-	} else if (ki->vp_length != MILENAGE_KI_SIZE) {
-		REDEBUG("&control:SIM-Ki has incorrect length, expected 16 bytes got %zu bytes", ki->vp_length);
+	} else if (ki_vp->vp_length != MILENAGE_KI_SIZE) {
+		REDEBUG("&control:SIM-Ki has incorrect length, expected 16 bytes got %zu bytes", ki_vp->vp_length);
 		return -1;
 	}
 
@@ -59,19 +59,30 @@ static int vector_gsm_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, int i
 	 */
 	version_vp = fr_pair_find_by_child_num(vps, fr_dict_root(fr_dict_internal), FR_SIM_ALGO_VERSION, TAG_ANY);
 	if (!version_vp) {
-		opc = fr_pair_find_by_child_num(vps, fr_dict_root(fr_dict_internal), FR_SIM_OPC, TAG_ANY);
-		if (!opc) {
-			version = 3;	/* No OPC - not a virtual USIM default to comp128v3 */
+		opc_vp = fr_pair_find_by_child_num(vps, fr_dict_root(fr_dict_internal), FR_SIM_OPC, TAG_ANY);
+		if (!opc_vp) {
+			version = 3;	/* No OPC - not a virtual USIM, default to comp128v3 */
 		}
-		else if (opc->vp_length != MILENAGE_OPC_SIZE) {
+		else if (opc_vp->vp_length != MILENAGE_OPC_SIZE) {
 			REDEBUG("&control:SIM-OPc has incorrect length, expected %u bytes got %zu bytes",
-				MILENAGE_OPC_SIZE, opc->vp_length);
+				MILENAGE_OPC_SIZE, opc_vp->vp_length);
 			return -1;
 		} else {
 			version = 4;	/* Ki and OPC - default to Milenage */
 		}
+	/*
+	 *	Version we explicitly specified, see if we can find the prerequisite
+	 *	attributes.
+	 */
 	} else {
 		version = version_vp->vp_uint32;
+		if (version == 4) {
+			opc_vp = fr_pair_find_by_child_num(vps, fr_dict_root(fr_dict_internal), FR_SIM_OPC, TAG_ANY);
+			if (!opc_vp) {
+				RPEDEBUG2("No &control:SIM-OPc found, can't run Milenage (COMP128-4)");
+				return -1;
+			}
+		}
 	}
 
 	for (i = 0; i < SIM_VECTOR_GSM_RAND_SIZE; i += sizeof(uint32_t)) {
@@ -83,34 +94,29 @@ static int vector_gsm_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, int i
 	case 1:
 		comp128v1(keys->gsm.vector[idx].sres,
 			  keys->gsm.vector[idx].kc,
-			  ki->vp_octets,
+			  ki_vp->vp_octets,
 			  keys->gsm.vector[idx].rand);
 		break;
 
 	case 2:
 		comp128v23(keys->gsm.vector[idx].sres,
 			   keys->gsm.vector[idx].kc,
-			   ki->vp_octets,
+			   ki_vp->vp_octets,
 			   keys->gsm.vector[idx].rand, true);
 		break;
 
 	case 3:
 		comp128v23(keys->gsm.vector[idx].sres,
 			   keys->gsm.vector[idx].kc,
-			   ki->vp_octets,
+			   ki_vp->vp_octets,
 			   keys->gsm.vector[idx].rand, false);
 		break;
 
 	case 4:
-		if (!opc) {
-			RPEDEBUG2("No SIM-OPc");
-			return -1;
-		}
-
 		if (milenage_gsm_generate(keys->gsm.vector[idx].sres,
 					  keys->gsm.vector[idx].kc,
-					  opc->vp_octets,
-					  ki->vp_octets,
+					  opc_vp->vp_octets,
+					  ki_vp->vp_octets,
 					  keys->gsm.vector[idx].rand) < 0) {
 			RPEDEBUG2("Failed deriving GSM triplet");
 			return -1;
