@@ -19,11 +19,30 @@
  */
 #include <stddef.h>
 
-#define MILENAGE_KI_SIZE	16
-#define MILENAGE_OPC_SIZE	16
-#define MILENAGE_AMF_SIZE	2
-#define MILENAGE_SQN_SIZE	6
-#define MILENAGE_AK_SIZE	6
+/*
+ *	Inputs
+ */
+#define MILENAGE_KI_SIZE	16		//!< Subscriber key.
+#define MILENAGE_OPC_SIZE	16		//!< Operator code (unique to the operator).
+#define MILENAGE_AMF_SIZE	2		//!< Authentication management field.
+#define MILENAGE_SQN_SIZE	6		//!< Sequence number.
+#define MILENAGE_RAND_SIZE	16		//!< Random challenge.
+
+/*
+ *	UMTS Outputs
+ */
+#define MILENAGE_AK_SIZE	6		//!< Anonymisation key.
+#define MILENAGE_AUTN_SIZE	16		//!< Network authentication key.
+#define MILENAGE_IK_SIZE	16		//!< Integrity key.
+#define	MILENAGE_CK_SIZE	16		//!< Ciphering key.
+#define MILENAGE_RES_SIZE	8
+#define MILENAGE_AUTS_SIZE	14
+
+/*
+ *	GSM (COMP128-4) outputs
+ */
+#define MILENAGE_SRES_SIZE	4
+#define MILENAGE_KC_SIZE	8
 
 /** Copy a 48bit value from a 64bit integer into a uint8_t buff in big endian byte order
  *
@@ -64,16 +83,34 @@ static inline uint64_t uint48_from_buff(uint8_t const in[6])
 	return i;
 }
 
-int	milenage_umts_generate(uint8_t autn[16], uint8_t ik[16], uint8_t ck[16], uint8_t ak[6], uint8_t res[8],
-			       uint8_t const opc[16], uint8_t amf[2], uint8_t const k[16],
-			       uint64_t sqn, uint8_t const rand[16]);
+int	milenage_umts_generate(uint8_t autn[MILENAGE_AUTN_SIZE],
+			       uint8_t ik[MILENAGE_IK_SIZE],
+			       uint8_t ck[MILENAGE_CK_SIZE],
+			       uint8_t ak[MILENAGE_AK_SIZE],
+			       uint8_t res[MILENAGE_RES_SIZE],
+			       uint8_t const opc[MILENAGE_OPC_SIZE],
+			       uint8_t const amf[MILENAGE_AMF_SIZE],
+			       uint8_t const ki[MILENAGE_KI_SIZE],
+			       uint64_t sqn,
+			       uint8_t const rand[MILENAGE_RAND_SIZE]);
 
-int	milenage_auts(uint8_t sqn[6],
-		      uint8_t const opc[16], uint8_t const k[16], uint8_t const rand[16], uint8_t const auts[14]);
+int	milenage_auts(uint64_t sqn,
+		      uint8_t const opc[MILENAGE_OPC_SIZE],
+		      uint8_t const ki[MILENAGE_KI_SIZE],
+		      uint8_t const rand[MILENAGE_RAND_SIZE],
+		      uint8_t const auts[MILENAGE_AUTS_SIZE]);
 
-int	milenage_gsm_generate(uint8_t sres[4], uint8_t kc[8],
-			      uint8_t const opc[16], uint8_t const k[16], uint8_t const rand[16]);
+int	milenage_gsm_generate(uint8_t sres[MILENAGE_SRES_SIZE], uint8_t kc[MILENAGE_KC_SIZE],
+			      uint8_t const opc[MILENAGE_OPC_SIZE],
+			      uint8_t const ki[MILENAGE_KI_SIZE],
+			      uint8_t const rand[MILENAGE_RAND_SIZE]);
 
-int	milenage_check(uint8_t ik[16], uint8_t ck[16], uint8_t *res, size_t *res_len, uint8_t *auts,
-		       uint8_t const opc[16], uint8_t const k[16], uint8_t const sqn[6],
-		       uint8_t const rand[16], uint8_t const autn[16]);
+int	milenage_check(uint8_t ik[MILENAGE_IK_SIZE],
+		       uint8_t ck[MILENAGE_CK_SIZE],
+		       uint8_t res[MILENAGE_RES_SIZE],
+		       uint8_t auts[MILENAGE_AUTS_SIZE],
+		       uint8_t const opc[MILENAGE_OPC_SIZE],
+		       uint8_t const ki[MILENAGE_KI_SIZE],
+		       uint64_t sqn,
+		       uint8_t const rand[MILENAGE_RAND_SIZE],
+		       uint8_t const autn[MILENAGE_AUTN_SIZE]);

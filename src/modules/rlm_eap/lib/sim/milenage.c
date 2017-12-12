@@ -25,6 +25,9 @@
 #include <openssl/evp.h>
 #include "milenage.h"
 
+#define MILENAGE_MAC_A_SIZE	8
+#define MILENAGE_MAC_S_SIZE	8
+
 static inline int aes_128_encrypt_block(EVP_CIPHER_CTX *evp_ctx,
 					uint8_t const key[16], uint8_t const in[16], uint8_t out[16])
 {
@@ -224,29 +227,43 @@ static int milenage_f2345(uint8_t res[8], uint8_t ik[16], uint8_t ck[16], uint8_
  * @param[in] opc	128-bit operator variant algorithm configuration field (encr.).
  * @param[in] amf	16-bit authentication management field.
  * @param[in] k		128-bit subscriber key.
- * @param[in] sqn	48-bit sequence number.
+ * @param[in] sqn	48-bit sequence number (host byte order).
  * @param[in] rand	128-bit random challenge.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int milenage_umts_generate(uint8_t autn[16], uint8_t ik[16], uint8_t ck[16], uint8_t ak[6], uint8_t res[8],
-			   uint8_t const opc[16], uint8_t amf[2], uint8_t const k[16],
-			   uint64_t sqn, uint8_t const rand[16])
+int milenage_umts_generate(uint8_t autn[MILENAGE_AUTN_SIZE],
+			   uint8_t ik[MILENAGE_IK_SIZE],
+			   uint8_t ck[MILENAGE_CK_SIZE],
+			   uint8_t ak[MILENAGE_AK_SIZE],
+			   uint8_t res[MILENAGE_RES_SIZE],
+			   uint8_t const opc[MILENAGE_OPC_SIZE],
+			   uint8_t const amf[MILENAGE_AMF_SIZE],
+			   uint8_t const ki[MILENAGE_KI_SIZE],
+			   uint64_t sqn,
+			   uint8_t const rand[MILENAGE_RAND_SIZE])
 {
-	int		i;
-	uint8_t		mac_a[8], ak_buff[6];
+	uint8_t		mac_a[8], ak_buff[MILENAGE_AK_SIZE];
 	uint8_t		sqn_buff[MILENAGE_SQN_SIZE];
+	uint8_t		*p = autn;
+	size_t		i;
 
-	if ((milenage_f1(mac_a, NULL, opc, k, rand,
+	if ((milenage_f1(mac_a, NULL, opc, ki, rand,
 			 uint48_to_buff(sqn_buff, sqn), amf) < 0) ||
-	    (milenage_f2345(res, ik, ck, ak_buff, NULL, opc, k, rand) < 0)) return -1;
+	    (milenage_f2345(res, ik, ck, ak_buff, NULL, opc, ki, rand) < 0)) return -1;
 
-	/* AUTN = (SQN ^ AK) || AMF || MAC */
-	for (i = 0; i < 6; i++) autn[i] = sqn_buff[i] ^ ak_buff[i];
-	memcpy(autn + 6, amf, 2);
-	memcpy(autn + 8, mac_a, 8);
+	/*
+	 *	AUTN = (SQN ^ AK) || AMF || MAC
+	 */
+	for (i = 0; i < sizeof(sqn_buff); i++) *p++ = sqn_buff[i] ^ ak_buff[i];
+	memcpy(p, amf, MILENAGE_AMF_SIZE);
+	p += MILENAGE_AMF_SIZE;
+	memcpy(p, mac_a, sizeof(mac_a));
 
+	/*
+	 *	Output the anonymity key if required
+	 */
 	if (ak) memcpy(ak, ak_buff, sizeof(ak_buff));
 
 	return 0;
@@ -254,7 +271,7 @@ int milenage_umts_generate(uint8_t autn[16], uint8_t ik[16], uint8_t ck[16], uin
 
 /** milenage_auts - Milenage AUTS validation
  *
- * @param[out] sqn	Buffer for SQN = 48-bit sequence number.
+ * @param[out] sqn	Buffer for SQN = 48-bit sequence number (host byte order).
  * @param[in] opc	128-bit operator variant algorithm configuration field (encr.).
  * @param[in] k		128-bit subscriber key.
  * @param[in] rand	128-bit random challenge.
@@ -263,17 +280,23 @@ int milenage_umts_generate(uint8_t autn[16], uint8_t ik[16], uint8_t ck[16], uin
  *	- 0 on success with sqn filled.
  *	- -1 on failure.
  */
-int milenage_auts(uint8_t sqn[6],
-		  uint8_t const opc[16], uint8_t const k[16], uint8_t const rand[16], uint8_t const auts[14])
+int milenage_auts(uint64_t sqn,
+		  uint8_t const opc[MILENAGE_OPC_SIZE],
+		  uint8_t const ki[MILENAGE_KI_SIZE],
+		  uint8_t const rand[MILENAGE_RAND_SIZE],
+		  uint8_t const auts[MILENAGE_AUTS_SIZE])
 {
-	uint8_t		amf[2] = { 0x00, 0x00 }; /* TS 33.102 v7.0.0, 6.3.3 */
-	uint8_t		ak[6], mac_s[8];
-	int		i;
+	uint8_t		amf[MILENAGE_AMF_SIZE] = { 0x00, 0x00 }; /* TS 33.102 v7.0.0, 6.3.3 */
+	uint8_t		ak[MILENAGE_AK_SIZE], mac_s[MILENAGE_MAC_S_SIZE];
+	uint8_t		sqn_buff[MILENAGE_SQN_SIZE];
+	size_t		i;
 
-	if (milenage_f2345(NULL, NULL, NULL, NULL, ak, opc, k, rand)) return -1;
-	for (i = 0; i < 6; i++) sqn[i] = auts[i] ^ ak[i];
+	uint48_to_buff(sqn_buff, sqn);
 
-	if (milenage_f1(NULL, mac_s, opc, k, rand, sqn, amf) || CRYPTO_memcmp(mac_s, auts + 6, 8) != 0) return -1;
+	if (milenage_f2345(NULL, NULL, NULL, NULL, ak, opc, ki, rand)) return -1;
+	for (i = 0; i < sizeof(sqn_buff); i++) sqn_buff[i] = auts[i] ^ ak[i];
+
+	if (milenage_f1(NULL, mac_s, opc, ki, rand, sqn_buff, amf) || CRYPTO_memcmp(mac_s, auts + 6, 8) != 0) return -1;
 	return 0;
 }
 
@@ -288,13 +311,15 @@ int milenage_auts(uint8_t sqn[6],
  *	- 0 on success.
  *	- -1 on failure.
  */
-int milenage_gsm_generate(uint8_t sres[4], uint8_t kc[8],
-			  uint8_t const opc[16], uint8_t const k[16], uint8_t const rand[16])
+int milenage_gsm_generate(uint8_t sres[MILENAGE_SRES_SIZE], uint8_t kc[MILENAGE_KC_SIZE],
+			  uint8_t const opc[MILENAGE_OPC_SIZE],
+			  uint8_t const ki[MILENAGE_KI_SIZE],
+			  uint8_t const rand[MILENAGE_RAND_SIZE])
 {
-	uint8_t		res[8], ck[16], ik[16];
+	uint8_t		res[MILENAGE_RES_SIZE], ck[MILENAGE_CK_SIZE], ik[MILENAGE_IK_SIZE];
 	int		i;
 
-	if (milenage_f2345(res, ck, ik, NULL, NULL, opc, k, rand)) return -1;
+	if (milenage_f2345(res, ck, ik, NULL, NULL, opc, ki, rand)) return -1;
 
 	for (i = 0; i < 8; i++) kc[i] = ck[i] ^ ck[i + 8] ^ ik[i] ^ ik[i + 8];
 
@@ -312,7 +337,6 @@ int milenage_gsm_generate(uint8_t sres[4], uint8_t kc[8],
  * @param[out] ik	Buffer for IK = 128-bit integrity key (f4), or NULL.
  * @param[out] ck	Buffer for CK = 128-bit confidentiality key (f3), or NULL.
  * @param[out] res	Buffer for RES = 64-bit signed response (f2), or NULL.
- * @param[in] res_len	Variable that will be set to RES length.
  * @param[in] auts	112-bit buffer for AUTS.
  * @param[in] opc	128-bit operator variant algorithm configuration field (encr.).
  * @param[in] k		128-bit subscriber key.
@@ -324,53 +348,60 @@ int milenage_gsm_generate(uint8_t sres[4], uint8_t kc[8],
  *	- -1 on failure.
  *	- -2 on synchronization failure
  */
-int milenage_check(uint8_t ik[16], uint8_t ck[16], uint8_t *res, size_t *res_len, uint8_t *auts,
-		   uint8_t const opc[16], uint8_t const k[16], uint8_t const sqn[6],
-		   uint8_t const rand[16], uint8_t const autn[16])
+int milenage_check(uint8_t ik[MILENAGE_IK_SIZE],
+		   uint8_t ck[MILENAGE_CK_SIZE],
+		   uint8_t res[MILENAGE_RES_SIZE],
+		   uint8_t auts[MILENAGE_AUTS_SIZE],
+		   uint8_t const opc[MILENAGE_OPC_SIZE],
+		   uint8_t const ki[MILENAGE_KI_SIZE],
+		   uint64_t sqn,
+		   uint8_t const rand[MILENAGE_RAND_SIZE],
+		   uint8_t const autn[MILENAGE_AUTN_SIZE])
 {
-	int i;
-	uint8_t mac_a[8], ak[6], rx_sqn[6];
+
+	uint8_t mac_a[MILENAGE_MAC_A_SIZE], ak[MILENAGE_AK_SIZE], rx_sqn[MILENAGE_SQN_SIZE];
+	uint8_t sqn_buff[MILENAGE_SQN_SIZE];
 	const uint8_t *amf;
+	size_t i;
 
-	FR_PROTO_HEX_DUMP("AUTN", autn, 16);
-	FR_PROTO_HEX_DUMP("RAND", rand, 16);
+	uint48_to_buff(sqn_buff, sqn);
 
-	if (milenage_f2345(res, ck, ik, ak, NULL, opc, k, rand))
-		return -1;
+	FR_PROTO_HEX_DUMP("AUTN", autn, MILENAGE_AUTN_SIZE);
+	FR_PROTO_HEX_DUMP("RAND", rand, MILENAGE_RAND_SIZE);
 
-	*res_len = 8;
-	FR_PROTO_HEX_DUMP("RES", res, *res_len);
-	FR_PROTO_HEX_DUMP("CK", ck, 16);
-	FR_PROTO_HEX_DUMP("IK", ik, 16);
-	FR_PROTO_HEX_DUMP("AK", ak, 6);
+	if (milenage_f2345(res, ck, ik, ak, NULL, opc, ki, rand)) return -1;
+
+	FR_PROTO_HEX_DUMP("RES", res, MILENAGE_RES_SIZE);
+	FR_PROTO_HEX_DUMP("CK", ck, MILENAGE_CK_SIZE);
+	FR_PROTO_HEX_DUMP("IK", ik, MILENAGE_IK_SIZE);
+	FR_PROTO_HEX_DUMP("AK", ak, MILENAGE_AK_SIZE);
 
 	/* AUTN = (SQN ^ AK) || AMF || MAC */
-	for (i = 0; i < 6; i++)
-		rx_sqn[i] = autn[i] ^ ak[i];
-	FR_PROTO_HEX_DUMP("SQN", rx_sqn, 6);
+	for (i = 0; i < 6; i++) rx_sqn[i] = autn[i] ^ ak[i];
+	FR_PROTO_HEX_DUMP("SQN", rx_sqn, MILENAGE_SQN_SIZE);
 
-	if (memcmp(rx_sqn, sqn, 6) <= 0) {
-		uint8_t auts_amf[2] = { 0x00, 0x00 }; /* TS 33.102 v7.0.0, 6.3.3 */
+	if (memcmp(rx_sqn, sqn_buff, sizeof(rx_sqn)) <= 0) {
+		uint8_t auts_amf[MILENAGE_AMF_SIZE] = { 0x00, 0x00 }; /* TS 33.102 v7.0.0, 6.3.3 */
 
-		if (milenage_f2345(NULL, NULL, NULL, NULL, ak, opc, k, rand)) return -1;
+		if (milenage_f2345(NULL, NULL, NULL, NULL, ak, opc, ki, rand)) return -1;
 
-		FR_PROTO_HEX_DUMP("AK*", ak, 6);
-		for (i = 0; i < 6; i++) auts[i] = sqn[i] ^ ak[i];
+		FR_PROTO_HEX_DUMP("AK*", ak, sizeof(ak));
+		for (i = 0; i < 6; i++) auts[i] = sqn_buff[i] ^ ak[i];
 
-		if (milenage_f1(NULL, auts + 6, opc, k, rand, sqn, auts_amf) < 0) return -1;
+		if (milenage_f1(NULL, auts + 6, opc, ki, rand, sqn_buff, auts_amf) < 0) return -1;
 		FR_PROTO_HEX_DUMP("AUTS", auts, 14);
 		return -2;
 	}
 
 	amf = autn + 6;
-	FR_PROTO_HEX_DUMP("AMF", amf, 2);
-	if (milenage_f1(mac_a, NULL, opc, k, rand, rx_sqn, amf) < 0) return -1;
+	FR_PROTO_HEX_DUMP("AMF", amf, MILENAGE_AMF_SIZE);
+	if (milenage_f1(mac_a, NULL, opc, ki, rand, rx_sqn, amf) < 0) return -1;
 
-	FR_PROTO_HEX_DUMP("MAC_A", mac_a, 8);
+	FR_PROTO_HEX_DUMP("MAC_A", mac_a, MILENAGE_MAC_A_SIZE);
 
 	if (CRYPTO_memcmp(mac_a, autn + 8, 8) != 0) {
-		fr_strerror_printf("MAC mismatch");
 		FR_PROTO_HEX_DUMP("Received MAC_A", autn + 8, 8);
+		fr_strerror_printf("MAC mismatch");
 		return -1;
 	}
 
@@ -409,21 +440,21 @@ void test_set_1(void)
 	uint8_t ak_resync_out[6];
 
 	/* function 1 */
-	uint8_t mac_a[8]	= { 0x4a, 0x9f, 0xfa, 0xc3, 0x54, 0xdf, 0xaf, 0xb3 };
+	uint8_t mac_a[]		= { 0x4a, 0x9f, 0xfa, 0xc3, 0x54, 0xdf, 0xaf, 0xb3 };
 	/* function 1* */
-	uint8_t mac_s[8]	= { 0x01, 0xcf, 0xaf, 0x9e, 0xc4, 0xe8, 0x71, 0xe9 };
+	uint8_t mac_s[]		= { 0x01, 0xcf, 0xaf, 0x9e, 0xc4, 0xe8, 0x71, 0xe9 };
 	/* function 2 */
-	uint8_t res[8]		= { 0xa5, 0x42, 0x11, 0xd5, 0xe3, 0xba, 0x50, 0xbf };
+	uint8_t res[]		= { 0xa5, 0x42, 0x11, 0xd5, 0xe3, 0xba, 0x50, 0xbf };
 	/* function 3 */
-	uint8_t ck[16]		= { 0xb4, 0x0b, 0xa9, 0xa3, 0xc5, 0x8b, 0x2a, 0x05,
+	uint8_t ck[]		= { 0xb4, 0x0b, 0xa9, 0xa3, 0xc5, 0x8b, 0x2a, 0x05,
 				    0xbb, 0xf0, 0xd9, 0x87, 0xb2, 0x1b, 0xf8, 0xcb };
 	/* function 4 */
-	uint8_t ik[16]		= { 0xf7, 0x69, 0xbc, 0xd7, 0x51, 0x04, 0x46, 0x04,
+	uint8_t ik[]		= { 0xf7, 0x69, 0xbc, 0xd7, 0x51, 0x04, 0x46, 0x04,
 			    	    0x12, 0x76, 0x72, 0x71, 0x1c, 0x6d, 0x34, 0x41 };
 	/* function 5 */
-	uint8_t ak[6]		= { 0xaa, 0x68, 0x9c, 0x64, 0x83, 0x70 };
+	uint8_t ak[]		= { 0xaa, 0x68, 0x9c, 0x64, 0x83, 0x70 };
 	/* function 5* */
-	uint8_t ak_resync[6]	= { 0x45, 0x1e, 0x8b, 0xec, 0xa4, 0x3b };
+	uint8_t ak_resync[]	= { 0x45, 0x1e, 0x8b, 0xec, 0xa4, 0x3b };
 
 	int ret = 0;
 
@@ -480,21 +511,21 @@ void test_set_19(void)
 	uint8_t ak_resync_out[6];
 
 	/* function 1 */
-	uint8_t mac_a[8]	= { 0x2a, 0x5c, 0x23, 0xd1, 0x5e, 0xe3, 0x51, 0xd5 };
+	uint8_t mac_a[]		= { 0x2a, 0x5c, 0x23, 0xd1, 0x5e, 0xe3, 0x51, 0xd5 };
 	/* function 1* */
-	uint8_t mac_s[8]	= { 0x62, 0xda, 0xe3, 0x85, 0x3f, 0x3a, 0xf9, 0xd2 };
+	uint8_t mac_s[]		= { 0x62, 0xda, 0xe3, 0x85, 0x3f, 0x3a, 0xf9, 0xd2 };
 	/* function 2 */
-	uint8_t res[8]		= { 0x28, 0xd7, 0xb0, 0xf2, 0xa2, 0xec, 0x3d, 0xe5 };
+	uint8_t res[]		= { 0x28, 0xd7, 0xb0, 0xf2, 0xa2, 0xec, 0x3d, 0xe5 };
 	/* function 3 */
-	uint8_t ck[16]		= { 0x53, 0x49, 0xfb, 0xe0, 0x98, 0x64, 0x9f, 0x94,
+	uint8_t ck[]		= { 0x53, 0x49, 0xfb, 0xe0, 0x98, 0x64, 0x9f, 0x94,
 				    0x8f, 0x5d, 0x2e, 0x97, 0x3a, 0x81, 0xc0, 0x0f };
 	/* function 4 */
-	uint8_t ik[16]		= { 0x97, 0x44, 0x87, 0x1a, 0xd3, 0x2b, 0xf9, 0xbb,
+	uint8_t ik[]		= { 0x97, 0x44, 0x87, 0x1a, 0xd3, 0x2b, 0xf9, 0xbb,
 				    0xd1, 0xdd, 0x5c, 0xe5, 0x4e, 0x3e, 0x2e, 0x5a };
 	/* function 5 */
-	uint8_t ak[6]		= { 0xad, 0xa1, 0x5a, 0xeb, 0x7b, 0xb8 };
+	uint8_t ak[]		= { 0xad, 0xa1, 0x5a, 0xeb, 0x7b, 0xb8 };
 	/* function 5* */
-	uint8_t ak_resync[6]	= { 0xd4, 0x61, 0xbc, 0x15, 0x47, 0x5d };
+	uint8_t ak_resync[]	= { 0xd4, 0x61, 0xbc, 0x15, 0x47, 0x5d };
 
 	int ret = 0;
 
