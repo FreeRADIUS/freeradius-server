@@ -50,7 +50,9 @@ typedef struct {
 	fr_sim_keys_t			keys;			//!< Various EAP-AKA keys.
 
 	eap_type_t			type;			//!< Either FR_TYPE_AKA, or FR_TYPE_AKA_PRIME.
-	uint16_t			kdf;
+	uint16_t			kdf;			//!< The key derivation function used to derive
+								///< session keys.
+
 	/*
 	 *	Per-session configuration
 	 */
