@@ -273,7 +273,7 @@ int milenage_umts_generate(uint8_t autn[MILENAGE_AUTN_SIZE],
  *
  * @param[out] sqn	Buffer for SQN = 48-bit sequence number (host byte order).
  * @param[in] opc	128-bit operator variant algorithm configuration field (encr.).
- * @param[in] k		128-bit subscriber key.
+ * @param[in] ki		128-bit subscriber key.
  * @param[in] rand	128-bit random challenge.
  * @param[in] auts	112-bit authentication token from client.
  * @return
@@ -305,7 +305,7 @@ int milenage_auts(uint64_t sqn,
  * @param[out] sres	Buffer for SRES = 32-bit SRES.
  * @param[out] kc	64-bit Kc.
  * @param[in] opc	128-bit operator variant algorithm configuration field (encr.).
- * @param[in] k		128-bit subscriber key.
+ * @param[in] ki	128-bit subscriber key.
  * @param[in] rand	128-bit random challenge.
  * @return
  *	- 0 on success.
@@ -339,7 +339,7 @@ int milenage_gsm_generate(uint8_t sres[MILENAGE_SRES_SIZE], uint8_t kc[MILENAGE_
  * @param[out] res	Buffer for RES = 64-bit signed response (f2), or NULL.
  * @param[in] auts	112-bit buffer for AUTS.
  * @param[in] opc	128-bit operator variant algorithm configuration field (encr.).
- * @param[in] k		128-bit subscriber key.
+ * @param[in] ki	128-bit subscriber key.
  * @param[in] sqn	48-bit sequence number.
  * @param[in] rand	128-bit random challenge.
  * @param[in] autn	128-bit authentication token.
