@@ -29,9 +29,16 @@
 #define us(x) (uint8_t) x
 
 FR_NAME_NUMBER const sim_id_request_table[] = {
-	{ "Id-Any-Req",		SIM_ANY_ID		},
-	{ "Permanent-Id-Req",	SIM_PERMANENT_ID_REQ	},
-	{ "FullAuth-Id-Req",	SIM_FULLAUTH_ID_REQ	},
+	{ "Id-Any-Req",		SIM_ANY_ID_REQ			},
+	{ "Permanent-Id-Req",	SIM_PERMANENT_ID_REQ		},
+	{ "FullAuth-Id-Req",	SIM_FULLAUTH_ID_REQ		},
+	{ NULL }
+};
+
+FR_NAME_NUMBER const sim_id_method_hint_table[] = {
+	{ "SIM",		SIM_METHOD_HINT_SIM		},
+	{ "AKA",		SIM_METHOD_HINT_AKA		},
+	{ "AKA'",		SIM_METHOD_HINT_AKA_PRIME	},
 	{ NULL }
 };
 

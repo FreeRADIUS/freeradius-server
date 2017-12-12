@@ -70,12 +70,14 @@ typedef enum {
 /** Identity request types
  */
 typedef enum {
-	SIM_ANY_ID,					//!< Request IMSI, Pseudonym or Fast-reauth.
-	SIM_PERMANENT_ID_REQ,				//!< Request IMSI.
-	SIM_FULLAUTH_ID_REQ				//!< Request IMSI or Pseudonym.
+	SIM_NO_ID_REQ = 0,			//!< We're not requesting any ID.
+	SIM_ANY_ID_REQ,				//!< Request IMSI, Pseudonym or Fast-reauth.
+	SIM_PERMANENT_ID_REQ,			//!< Request IMSI.
+	SIM_FULLAUTH_ID_REQ			//!< Request IMSI or Pseudonym.
 } fr_sim_id_req_type_t;
 
 extern FR_NAME_NUMBER const sim_id_request_table[];
+extern FR_NAME_NUMBER const sim_id_method_hint_table[];
 
 #define SIM_ID_TAG_PSEUDONYM_SIM_B64		55
 #define SIM_ID_TAG_PSEUDONYM_AKA_B64		54
