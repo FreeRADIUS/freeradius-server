@@ -402,7 +402,7 @@ static bool ipaddr_next(fr_ipaddr_t *ipaddr, fr_ipaddr_t const *end, uint8_t pre
 	{
 		uint128_t ip_curr, ip_end;
 
-		rad_assert((prefix > 0) && (prefix <= 128));
+		if (!fr_cond_assert((prefix > 0) && (prefix <= 128))) return false;
 
 		/* Don't be tempted to cast */
 		memcpy(&ip_curr, ipaddr->addr.v6.s6_addr, sizeof(ip_curr));
@@ -425,7 +425,7 @@ static bool ipaddr_next(fr_ipaddr_t *ipaddr, fr_ipaddr_t const *end, uint8_t pre
 	{
 		uint32_t ip_curr, ip_end;
 
-		rad_assert((prefix > 0) && (prefix <= 32));
+		if (!fr_conf_assert((prefix > 0) && (prefix <= 32))) return false;
 
 		ip_curr = ntohl(ipaddr->addr.v4.s_addr);
 		ip_end = ntohl(end->addr.v4.s_addr);
