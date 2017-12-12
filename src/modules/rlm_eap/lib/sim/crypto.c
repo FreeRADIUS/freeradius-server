@@ -236,6 +236,22 @@ ssize_t fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet, boo
 	eap_packet_raw_t	eap_hdr;
 	uint16_t		packet_len;
 
+	if (unlikely(!eap_packet)) {
+		fr_strerror_printf("Invalid argument: eap_packet is NULL");
+		return -1;
+	}
+
+	if (unlikely(!md)) {
+		fr_strerror_printf("Invalid argument: md is NULL");
+		return -1;
+	}
+
+	if (unlikely(!key) || (key_len == 0)) {
+		fr_strerror_printf("Invalid argument: key is NULL");
+		return -1;
+	}
+
+	FR_PROTO_HEX_DUMP("MAC key", key, key_len);
 	pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, key, key_len);
 	if (!pkey) {
 		tls_strerror_printf(true, "Failed creating HMAC signing key");
@@ -267,7 +283,7 @@ ssize_t fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet, boo
 	memcpy(&eap_hdr.length, &packet_len, sizeof(packet_len));
 	eap_hdr.data[0] = eap_packet->type.num;
 
-	FR_PROTO_HEX_DUMP("hmac input eap_hdr", (uint8_t *)&eap_hdr, sizeof(eap_hdr));
+	FR_PROTO_HEX_DUMP("MAC digest input (eap header)", (uint8_t *)&eap_hdr, sizeof(eap_hdr));
 	if (EVP_DigestSignUpdate(md_ctx, &eap_hdr, sizeof(eap_hdr)) != 1) {
 		tls_strerror_printf(true, "Failed digesting EAP data");
 		goto error;
@@ -283,6 +299,9 @@ ssize_t fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet, boo
 		{
 			uint8_t zero[16] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 					     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+
+			FR_PROTO_HEX_DUMP("MAC digest input", p, mac - p);
+
 			/*
 			 *	Digest everything up to the hash
 			 *	part of the AT_MAC, including
@@ -294,6 +313,8 @@ ssize_t fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet, boo
 			}
 			p += mac - p;
 
+
+			FR_PROTO_HEX_DUMP("MAC digest input", zero, sizeof(zero));
 			/*
 			 *	Feed in 16 bytes of zeroes to
 			 *	simulated the zeroed out Mac.
@@ -315,12 +336,17 @@ ssize_t fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet, boo
 		}
 	}
 
-	/*
-	 *	Digest the rest of the packet.
-	 */
-	if (EVP_DigestSignUpdate(md_ctx, p, end - p) != 1) {
-		tls_strerror_printf(true, "Failed digesting packet data");
-		goto error;
+
+	if (p < end) {
+		FR_PROTO_HEX_DUMP("MAC digest input", p, (end - p));
+
+		/*
+		 *	Digest the rest of the packet.
+		 */
+		if (EVP_DigestSignUpdate(md_ctx, p, end - p) != 1) {
+			tls_strerror_printf(true, "Failed digesting packet data");
+			goto error;
+		}
 	}
 
 	/*
@@ -330,7 +356,7 @@ ssize_t fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet, boo
 	 *	a concatenation of packet data, and something extra...
 	 */
 	if (hmac_extra) {
-		FR_PROTO_HEX_DUMP("hmac input hmac_extra", hmac_extra, hmac_extra_len);
+		FR_PROTO_HEX_DUMP("MAC digest input (extra)", hmac_extra, hmac_extra_len);
 		if (EVP_DigestSignUpdate(md_ctx, hmac_extra, hmac_extra_len) != 1) {
 			tls_strerror_printf(true, "Failed digesting HMAC extra data");
 			goto error;
@@ -342,9 +368,7 @@ ssize_t fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet, boo
 		goto error;
 	}
 
-	if (!fr_cond_assert(digest_len >= sizeof(digest))) goto error;
-
-	FR_PROTO_HEX_DUMP("hmac output", digest, digest_len);
+	FR_PROTO_HEX_DUMP("MAC", digest, digest_len);
 
 	/*
 	 *	Truncate by four bytes.
@@ -662,7 +686,7 @@ static int fr_sim_crypto_aka_prime_prf(uint8_t *out, size_t outlen,
 		if ((p != out) && EVP_DigestSignUpdate(md_ctx, digest, sizeof(digest)) != 1) goto error;/* Ingest last round */
 		if (EVP_DigestSignUpdate(md_ctx, in, in_len) != 1) goto error;				/* Ingest s */
 		if (EVP_DigestSignUpdate(md_ctx, &c, sizeof(c)) != 1) goto error;			/* Ingest round number */
-		if (EVP_DigestSignFinal(md_ctx, digest, &len) != 1) goto error;					/* Output T(i) */
+		if (EVP_DigestSignFinal(md_ctx, digest, &len) != 1) goto error;				/* Output T(i) */
 
 		copy = p - end;
 		if (copy > SHA256_DIGEST_LENGTH) copy = SHA256_DIGEST_LENGTH;
