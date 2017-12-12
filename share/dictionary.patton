@@ -15,6 +15,8 @@ VENDOR		Patton				1768
 BEGIN-VENDOR	Patton
 
 ATTRIBUTE	Patton-Protocol				16	string
+ATTRIBUTE	Patton-Group				17	string
+ATTRIBUTE	Patton-Web-Privilege-Level		18	string
 ATTRIBUTE	Patton-Setup-Time			32	string
 ATTRIBUTE	Patton-Connect-Time			33	string
 ATTRIBUTE	Patton-Disconnect-Time			34	string
