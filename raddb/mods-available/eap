@@ -1047,11 +1047,58 @@ eap {
 
 	## EAP-SIM
 	#
-	#  This module takes no configuration.
+	#  Triplets can be provided using control attributes:
 	#
-	#  Instead, just set the SIM-Ki attribute to the 16-octet key
+	#  - &control:EAP-SIM-KC
+	#  - &control:EAP-SIM-RAND
+	#  - &control:EAP-SIM-SRES
+	#
+	#  Note: Three instances of each attribute must be provided.
+	#
+	#  Alternatively triplets can be generated locally using
+	#  control attributes:
+	#
+	#  - &control:SIM-Ki
+	#  - &control:SIM-OPc
+	#  - &control:SIM-Algo-Version (optional - see defaults below)
+	#
+	#  UMTS Milenage inputs (AMF, SQN) are ignored.
+	#
+	#  &control:SIM-Algo-Version selects the SIM algorithm used,
+	#  it must match the algorithm used by the SIM.
+	#
+	#  Accepted values for SIM-Algo-Versio are:
+	#
+	#  - Comp128v1
+	#  - Comp128v2
+	#  - Comp128v3 (default if no &control:SIM-OPc)
+	#  - Milenage (default if &control:SIM-OPc is available)
+	#
+	#  Note: In general operators will not provide the Ki (subscriber
+	#  key) for their SIM cards, as the Ki is considered highly
+	#  sensitive.
+	#
+	#  Local triplet generation is intended for testing and
+	#  research purposes where programmable or virtual SIM cards
+	#  are in use.
 	#
 	sim {
+		## Send a protected success message
+		#
+		#  If true - indicate to the peer that we'd like to send
+		#  a protected success message.  If the peer agrees and
+		#  authentication succeeds, send a SIM-Notification (Success)
+		#  packet protected with an AT_MAC attribute.
+		#
+		#  After the Notification is ACKed by the peer, we send
+		#  the final EAP-Success packet containing MPPE keys.
+#		send_result_ind = yes
+	}
+
+	## EAP-AKA
+	#
+	#
+	aka {
 
 	}
 }
