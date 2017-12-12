@@ -38,6 +38,17 @@ else
     Q=
 endif
 
+#
+#  If you want HTML output of the scanner to be rendered to the terminal:
+#
+#	$ ANALYZE_C_DUMP=1 make ... args ...
+#
+ifeq "${ANALYZE_C_DUMP}" ""
+    ANALYZE_C_DUMP=false
+else
+    ANALYZE_C_DUMP=true
+endif
+
 # ADD_CLEAN_RULE - Parameterized "function" that adds a new rule and phony
 #   target for cleaning the specified target (removing its build-generated
 #   files).
@@ -290,6 +301,7 @@ define ANALYZE_C_CMDS
 	$(Q)$(ECHO) SCAN $<
 	$(Q)$(strip ${ANALYZE.c} --analyze -Xanalyzer -analyzer-output=html -c $< -o $@ ${CPPFLAGS} \
 	    ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} $(addprefix -I,${SRC_INCDIRS}) ${SRC_DEFS} ${DEFS}) || (rm -f $@ && false)
+        $(Q)$(ANALYZE_C_DUMP) && which lynx > /dev/null && test -d $@ && lynx -width=200 -dump $@/*.html
 	$(Q)touch $@
 endef
 
