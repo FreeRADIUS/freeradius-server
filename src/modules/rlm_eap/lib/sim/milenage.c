@@ -226,7 +226,7 @@ static int milenage_f2345(uint8_t res[8], uint8_t ik[16], uint8_t ck[16], uint8_
  * @param[out] res	Buffer for RES = 64-bit signed response (f2), or NULL.
  * @param[in] opc	128-bit operator variant algorithm configuration field (encr.).
  * @param[in] amf	16-bit authentication management field.
- * @param[in] k		128-bit subscriber key.
+ * @param[in] ki		128-bit subscriber key.
  * @param[in] sqn	48-bit sequence number (host byte order).
  * @param[in] rand	128-bit random challenge.
  * @return
