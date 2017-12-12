@@ -97,6 +97,8 @@ addons:
     - libyubikey-dev
     # Needed for llvm-symbolizer
     - llvm-3.9
+    # For rendering clang scan results
+    - lynx
     - slapd
     - ldap-utils
 services:

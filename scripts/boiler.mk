@@ -301,7 +301,7 @@ define ANALYZE_C_CMDS
 	$(Q)$(ECHO) SCAN $<
 	$(Q)$(strip ${ANALYZE.c} --analyze -Xanalyzer -analyzer-output=html -c $< -o $@ ${CPPFLAGS} \
 	    ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} $(addprefix -I,${SRC_INCDIRS}) ${SRC_DEFS} ${DEFS}) || (rm -f $@ && false)
-	$(Q)$(ANALYZE_C_DUMP) && which lynx > /dev/null && test -d $@ && lynx -width=200 -dump $@/*.html
+	$(Q)if $(ANALYZE_C_DUMP) && which lynx > /dev/null && test -d "$@"; then lynx -width=200 -dump $@/*.html; fi
 	$(Q)touch $@
 endef
 
