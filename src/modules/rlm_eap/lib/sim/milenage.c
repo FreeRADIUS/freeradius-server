@@ -352,7 +352,7 @@ int milenage_gsm_generate(uint8_t sres[MILENAGE_SRES_SIZE], uint8_t kc[MILENAGE_
 	uint8_t		res[MILENAGE_RES_SIZE], ck[MILENAGE_CK_SIZE], ik[MILENAGE_IK_SIZE];
 	int		i;
 
-	if (milenage_f2345(res, ck, ik, NULL, NULL, opc, ki, rand)) return -1;
+	if (milenage_f2345(res, ik, ck, NULL, NULL, opc, ki, rand)) return -1;
 
 	for (i = 0; i < 8; i++) kc[i] = ck[i] ^ ck[i + 8] ^ ik[i] ^ ik[i + 8];
 
