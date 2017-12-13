@@ -146,7 +146,7 @@ static int eap_aka_send_identity_request(eap_session_t *eap_session)
 	 *	Set the subtype to identity request
 	 */
 	vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_SUBTYPE);
-	vp->vp_uint32 = FR_EAP_AKA_SUBTYPE_VALUE_AKA_IDENTITY;
+	vp->vp_uint16 = FR_EAP_AKA_SUBTYPE_VALUE_AKA_IDENTITY;
 	fr_cursor_append(&cursor, vp);
 
 	/*
@@ -280,7 +280,7 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	 *	Set the subtype to challenge
 	 */
 	MEM(vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_SUBTYPE));
-	vp->vp_uint32 = FR_EAP_AKA_SUBTYPE_VALUE_AKA_CHALLENGE;
+	vp->vp_uint16 = FR_EAP_AKA_SUBTYPE_VALUE_AKA_CHALLENGE;
 	fr_pair_replace(to_peer, vp);
 
 	/*
@@ -400,11 +400,11 @@ static int eap_aka_send_eap_success_notification(eap_session_t *eap_session)
 	 *	Set the subtype to notification
 	 */
 	vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_SUBTYPE);
-	vp->vp_uint32 = FR_EAP_AKA_SUBTYPE_VALUE_AKA_NOTIFICATION;
+	vp->vp_uint16 = FR_EAP_AKA_SUBTYPE_VALUE_AKA_NOTIFICATION;
 	fr_cursor_append(&cursor, vp);
 
 	vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_NOTIFICATION);
-	vp->vp_uint32 = FR_EAP_AKA_NOTIFICATION_VALUE_SUCCESS;
+	vp->vp_uint16 = FR_EAP_AKA_NOTIFICATION_VALUE_SUCCESS;
 	fr_cursor_append(&cursor, vp);
 
 	/*
@@ -480,6 +480,7 @@ static int eap_aka_send_eap_failure_notification(eap_session_t *eap_session)
 	} else {
 		vp->vp_uint16 |= 0x4000;	/* Set phase bit */
 	}
+	vp->vp_uint16 &= ~0x8000;		/* In both cases success bit should be low */
 
 	RDEBUG2("Sending AKA-Notification (%pV)", &vp->data);
 	eap_session->this_round->request->code = FR_EAP_CODE_REQUEST;
@@ -488,7 +489,7 @@ static int eap_aka_send_eap_failure_notification(eap_session_t *eap_session)
 	 *	Set the subtype to notification
 	 */
 	vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_SUBTYPE);
-	vp->vp_uint32 = FR_EAP_AKA_SUBTYPE_VALUE_AKA_NOTIFICATION;
+	vp->vp_uint16 = FR_EAP_AKA_SUBTYPE_VALUE_AKA_NOTIFICATION;
 	fr_cursor_append(&cursor, vp);
 
 	/*
@@ -841,7 +842,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		eap_aka_state_enter(eap_session, EAP_AKA_SERVER_FAILURE_NOTIFICATION);
 		return RLM_MODULE_HANDLED;				/* We need to process more packets */
 	}
-	subtype = subtype_vp->vp_uint32;
+	subtype = subtype_vp->vp_uint16;
 
 	switch (eap_aka_session->state) {
 	/*

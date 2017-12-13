@@ -140,11 +140,6 @@ static int eap_sim_send_start(eap_session_t *eap_session)
 	memcpy(eap_sim_session->keys.gsm.version_list, &version, sizeof(version));
 	eap_sim_session->keys.gsm.version_list_len = 2;
 
-	/* set the EAP_ID - new value */
-	vp = fr_pair_afrom_child_num(packet, fr_dict_root(fr_dict_internal), FR_EAP_ID);
-	vp->vp_uint32 = eap_sim_session->sim_id++;
-	fr_pair_replace(vps, vp);
-
 	/*
 	 *	Select the right type of identity request attribute
 	 */
@@ -169,7 +164,7 @@ static int eap_sim_send_start(eap_session_t *eap_session)
 
 	/* the SUBTYPE, set to start. */
 	vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_SUBTYPE);
-	vp->vp_uint32 = EAP_SIM_START;
+	vp->vp_uint16 = EAP_SIM_START;
 	fr_pair_replace(vps, vp);
 
 	/*
@@ -252,7 +247,7 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	 *	Set subtype to challenge.
 	 */
 	vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_SUBTYPE);
-	vp->vp_uint32 = EAP_SIM_CHALLENGE;
+	vp->vp_uint16 = EAP_SIM_CHALLENGE;
 	fr_pair_replace(to_peer, vp);
 
 	/*
@@ -305,11 +300,11 @@ static int eap_sim_send_eap_success_notification(eap_session_t *eap_session)
 	 *	Set the subtype to notification
 	 */
 	vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_SUBTYPE);
-	vp->vp_uint32 = FR_EAP_SIM_SUBTYPE_VALUE_SIM_NOTIFICATION;
+	vp->vp_uint16 = FR_EAP_SIM_SUBTYPE_VALUE_SIM_NOTIFICATION;
 	fr_cursor_append(&cursor, vp);
 
 	vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_NOTIFICATION);
-	vp->vp_uint32 = FR_EAP_SIM_NOTIFICATION_VALUE_SUCCESS;
+	vp->vp_uint16 = FR_EAP_SIM_NOTIFICATION_VALUE_SUCCESS;
 	fr_cursor_append(&cursor, vp);
 
 	/*
@@ -382,6 +377,7 @@ static int eap_sim_send_eap_failure_notification(eap_session_t *eap_session)
 	} else {
 		vp->vp_uint16 |= 0x4000;	/* Set phase bit */
 	}
+	vp->vp_uint16 &= ~0x8000;               /* In both cases success bit should be low */
 
 	RDEBUG2("Sending SIM-Notification (%pV)", &vp->data);
 	eap_session->this_round->request->code = FR_EAP_CODE_REQUEST;
@@ -390,7 +386,7 @@ static int eap_sim_send_eap_failure_notification(eap_session_t *eap_session)
 	 *	Set the subtype to notification
 	 */
 	vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_SUBTYPE);
-	vp->vp_uint32 = FR_EAP_SIM_SUBTYPE_VALUE_SIM_NOTIFICATION;
+	vp->vp_uint16 = FR_EAP_SIM_SUBTYPE_VALUE_SIM_NOTIFICATION;
 	fr_cursor_append(&cursor, vp);
 
 	/*
@@ -730,7 +726,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		eap_sim_state_enter(eap_session, EAP_SIM_SERVER_FAILURE_NOTIFICATION);
 		return RLM_MODULE_HANDLED;				/* We need to process more packets */
 	}
-	subtype = subtype_vp->vp_uint32;
+	subtype = subtype_vp->vp_uint16;
 
 	switch (eap_sim_session->state) {
 	/*
