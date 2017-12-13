@@ -287,7 +287,7 @@ int milenage_umts_generate(uint8_t autn[MILENAGE_AUTN_SIZE],
 	    (milenage_f2345(res, ik, ck, ak_buff, NULL, opc, ki, rand) < 0)) return -1;
 
 	/*
-	 *	AUTN = (SQN ^ AK) || AMF || MAC
+	 *	AUTN = (SQN ^ AK) || AMF || MAC_A
 	 */
 	for (i = 0; i < sizeof(sqn_buff); i++) *p++ = sqn_buff[i] ^ ak_buff[i];
 	memcpy(p, amf, MILENAGE_AMF_SIZE);

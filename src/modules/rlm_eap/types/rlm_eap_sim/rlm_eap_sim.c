@@ -630,7 +630,7 @@ static int process_eap_sim_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 	 *	send a success notification, otherwise send a
 	 *	normal EAP-Success.
 	 */
-	if (fr_pair_find_by_child_num(vps, dict_aka_root, FR_EAP_SIM_RESULT_IND, TAG_ANY)) {
+	if (fr_pair_find_by_child_num(vps, dict_sim_root, FR_EAP_SIM_RESULT_IND, TAG_ANY)) {
 		eap_sim_state_enter(eap_session, EAP_SIM_SERVER_SUCCESS_NOTIFICATION);
 	} else {
 		eap_sim_state_enter(eap_session, EAP_SIM_SERVER_SUCCESS);
@@ -740,7 +740,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		{
 			char buff[20];
 
-			vp = fr_pair_afrom_child_num(from_peer, dict_aka_root, FR_EAP_SIM_NOTIFICATION);
+			vp = fr_pair_afrom_child_num(from_peer, dict_sim_root, FR_EAP_SIM_NOTIFICATION);
 			if (!vp) {
 				REDEBUG2("Received SIM-Notification with no notification code");
 				eap_sim_state_enter(eap_session, EAP_SIM_SERVER_GENERAL_FAILURE_NOTIFICATION);
@@ -792,7 +792,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		{
 			char buff[20];
 
-			vp = fr_pair_find_by_child_num(from_peer, dict_aka_root, FR_EAP_SIM_CLIENT_ERROR_CODE, TAG_ANY);
+			vp = fr_pair_find_by_child_num(from_peer, dict_sim_root, FR_EAP_SIM_CLIENT_ERROR_CODE, TAG_ANY);
 			if (!vp) {
 				REDEBUG("EAP-SIM Peer rejected SIM-Challenge with client-error message but "
 					"has not supplied a client error code");
