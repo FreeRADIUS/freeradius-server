@@ -599,7 +599,7 @@ static size_t load_proto_library(char const *proto_name)
 			return -1;
 		}
 
-		strcpy(proto_name_prev, proto_name);
+		strlcpy(proto_name_prev, proto_name, sizeof(proto_name_prev));
 	}
 
 	return strlen(proto_name);
