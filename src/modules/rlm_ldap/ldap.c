@@ -598,8 +598,12 @@ process_error:
 		goto error_string;
 
 	case LDAP_OPERATIONS_ERROR:
-		*error = "Please set 'chase_referrals=yes' and 'rebind=yes'. See the ldap module configuration "
-			 "for details.";
+		if (inst->chase_referrals) {
+			*error = "Operations error with LDAP database.  Please see the LDAP server configuration / documentation for more information.";
+		} else {
+			*error = "Please set 'chase_referrals=yes' and 'rebind=yes'. See the ldap module configuration "
+				"for details.";
+		}
 
 		/* FALL-THROUGH */
 	default:
