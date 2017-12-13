@@ -864,8 +864,8 @@ static cluster_rcode_t cluster_map_get(redisReply **out, fr_redis_conn_t *conn)
 	case REDIS_RCODE_ERROR:
 	default:
 		if (reply && reply->type == REDIS_REPLY_ERROR) {
-			fr_redis_reply_free(reply);
 			fr_strerror_printf("%.*s", (int)reply->len, reply->str);
+			fr_redis_reply_free(reply);
 			return CLUSTER_OP_IGNORED;
 		}
 		fr_strerror_printf("Unknown client error");
