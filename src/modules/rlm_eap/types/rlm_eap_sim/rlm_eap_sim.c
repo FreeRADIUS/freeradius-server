@@ -378,9 +378,9 @@ static int eap_sim_send_eap_failure_notification(eap_session_t *eap_session)
 	 *	we are in the state machine.
 	 */
 	if (eap_sim_session->challenge_success) {
-		vp->vp_uint16 &= ~0x40000;	/* Unset phase bit */
+		vp->vp_uint16 &= ~0x4000;	/* Unset phase bit */
 	} else {
-		vp->vp_uint16 |= 0x40000;	/* Set phase bit */
+		vp->vp_uint16 |= 0x4000;	/* Set phase bit */
 	}
 
 	RDEBUG2("Sending SIM-Notification (%pV)", &vp->data);
