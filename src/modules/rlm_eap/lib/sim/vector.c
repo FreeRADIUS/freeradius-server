@@ -450,6 +450,9 @@ static int vector_umts_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, fr_s
 	{
 		uint8_t sqn_buff[MILENAGE_SQN_SIZE];
 
+		keys->sqn = sqn_vp ? sqn_vp->vp_uint64 : 0;
+		uint48_to_buff(sqn_buff, keys->sqn);
+
 		RDEBUG3("Milenage inputs");
 		RINDENT();
 		/*
@@ -482,7 +485,7 @@ static int vector_umts_from_ki(eap_session_t *eap_session, VALUE_PAIR *vps, fr_s
 			RPEDEBUG2("Failed deriving UMTS Quintuplet");
 			return -1;
 		}
-		keys->sqn = sqn_vp ? sqn_vp->vp_uint64 : 0;
+
 		keys->umts.vector.xres_len = 8;
 	}
 		return 0;
