@@ -37,16 +37,20 @@ typedef enum {
 	EAP_SIM_SERVER_CHALLENGE,
 	EAP_SIM_SERVER_SUCCESS_NOTIFICATION,
 	EAP_SIM_SERVER_SUCCESS,
-	EAP_SIM_SERVER_GENERAL_FAILURE_NOTIFICATION,
+	EAP_SIM_SERVER_FAILURE_NOTIFICATION,
 	EAP_SIM_SERVER_FAILURE,
 	EAP_SIM_SERVER_MAX_STATES
 } eap_sim_server_state_t;
 
-typedef struct eap_aka_session {
+typedef struct {
 	eap_sim_server_state_t		state;			//!< Current session state.
+	bool				challenge_success;	//!< Whether we received the correct
+								///< challenge response.
+
 	fr_sim_keys_t			keys;			//!< Various EAP-AKA keys.
 	fr_sim_id_req_type_t		id_req;			//!< The type of identity we're requesting
 								///< or previously requested.
+
 
 	bool				request_identity;	//!< Always send an identity request before a
 								///< challenge.

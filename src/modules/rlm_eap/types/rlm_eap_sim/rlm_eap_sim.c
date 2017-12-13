@@ -44,7 +44,7 @@ FR_NAME_NUMBER const sim_state_table[] = {
 	{ "CHALLENGE",				EAP_SIM_SERVER_CHALLENGE			},
 	{ "SUCCESS-NOTIFICATION",		EAP_SIM_SERVER_SUCCESS_NOTIFICATION 		},
 	{ "SUCCESS",				EAP_SIM_SERVER_SUCCESS				},
-	{ "GENERAL-FAILURE-NOTIFICATION",	EAP_SIM_SERVER_GENERAL_FAILURE_NOTIFICATION	},
+	{ "FAILURE-NOTIFICATION",		EAP_SIM_SERVER_FAILURE_NOTIFICATION		},
 	{ "FAILURE",				EAP_SIM_SERVER_FAILURE				},
 	{ NULL }
 };
@@ -57,7 +57,7 @@ static CONF_PARSER submodule_config[] = {
 /*
  *	build a reply to be sent.
  */
-static int eap_sim_compose(eap_session_t *eap_session)
+static int eap_sim_compose(eap_session_t *eap_session, uint8_t const *hmac_extra, size_t hmac_extra_len)
 {
 	eap_sim_session_t	*eap_sim_session = talloc_get_type_abort(eap_session->opaque, eap_sim_session_t);
 	vp_cursor_t		cursor;
@@ -74,8 +74,8 @@ static int eap_sim_compose(eap_session_t *eap_session)
 
 					.hmac_md = EVP_sha1(),
 					.eap_packet = eap_session->this_round->request,
-					.hmac_extra = eap_sim_session->keys.gsm.nonce_mt,
-					.hmac_extra_len = sizeof(eap_sim_session->keys.gsm.nonce_mt)
+					.hmac_extra = hmac_extra,
+					.hmac_extra_len = hmac_extra_len
 				};
 
 	ssize_t			ret;
@@ -175,7 +175,7 @@ static int eap_sim_send_start(eap_session_t *eap_session)
 	/*
 	 *	Encode the packet
 	 */
-	if (eap_sim_compose(eap_session) < 0) {
+	if (eap_sim_compose(eap_session, NULL, 0) < 0) {
 		fr_pair_list_free(&packet->vps);
 		return -1;
 	}
@@ -201,8 +201,6 @@ static int eap_sim_send_start(eap_session_t *eap_session)
  */
 static int eap_sim_send_challenge(eap_session_t *eap_session)
 {
-	static uint8_t		hmac_zero[16] = { 0x00 };
-
 	REQUEST			*request = eap_session->request;
 	eap_sim_session_t	*eap_sim_session = talloc_get_type_abort(eap_session->opaque, eap_sim_session_t);
 	VALUE_PAIR		**to_peer, *vp;
@@ -271,13 +269,13 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	 *	calculated.
 	 */
 	vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_MAC);
-	fr_pair_value_memcpy(vp, hmac_zero, sizeof(hmac_zero));
 	fr_pair_replace(to_peer, vp);
 
 	/*
 	 *	Encode the packet
 	 */
-	if (eap_sim_compose(eap_session) < 0) {
+	if (eap_sim_compose(eap_session,
+			    eap_sim_session->keys.gsm.nonce_mt, sizeof(eap_sim_session->keys.gsm.nonce_mt)) < 0) {
 		fr_pair_list_free(&packet->vps);
 		return -1;
 	}
@@ -290,13 +288,16 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
  */
 static int eap_sim_send_eap_success_notification(eap_session_t *eap_session)
 {
-	REQUEST		*request = eap_session->request;
-	RADIUS_PACKET	*packet = eap_session->request->reply;
-	fr_cursor_t	cursor;
-	VALUE_PAIR	*vp;
+	REQUEST			*request = eap_session->request;
+	RADIUS_PACKET		*packet = eap_session->request->reply;
+	eap_sim_session_t	*eap_sim_session = talloc_get_type_abort(eap_session->opaque, eap_sim_session_t);
+	fr_cursor_t		cursor;
+	VALUE_PAIR		*vp;
 
 	RDEBUG2("Sending SIM-Notification (Success)");
 	eap_session->this_round->request->code = FR_EAP_CODE_REQUEST;
+
+	if (!fr_cond_assert(eap_sim_session->challenge_success)) return -1;
 
 	fr_cursor_init(&cursor, &packet->vps);
 
@@ -312,9 +313,16 @@ static int eap_sim_send_eap_success_notification(eap_session_t *eap_session)
 	fr_cursor_append(&cursor, vp);
 
 	/*
+	 *	Need to include an AT_MAC attribute so that it will get
+	 *	calculated.
+	 */
+	vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_MAC);
+	fr_pair_replace(&packet->vps, vp);
+
+	/*
 	 *	Encode the packet
 	 */
-	if (eap_sim_compose(eap_session) < 0) {
+	if (eap_sim_compose(eap_session, NULL, 0) < 0) {
 		fr_pair_list_free(&packet->vps);
 		return -1;
 	}
@@ -350,15 +358,33 @@ static int eap_sim_send_eap_success(eap_session_t *eap_session)
  */
 static int eap_sim_send_eap_failure_notification(eap_session_t *eap_session)
 {
-	REQUEST		*request = eap_session->request;
-	RADIUS_PACKET	*packet = eap_session->request->reply;
-	fr_cursor_t	cursor;
-	VALUE_PAIR	*vp;
-
-	RDEBUG2("Sending SIM-Notification (General-Failure)");
-	eap_session->this_round->request->code = FR_EAP_CODE_REQUEST;
+	REQUEST			*request = eap_session->request;
+	RADIUS_PACKET		*packet = eap_session->request->reply;
+	fr_cursor_t		cursor;
+	VALUE_PAIR		*vp;
+	eap_sim_session_t	*eap_sim_session = talloc_get_type_abort(eap_session->opaque, eap_sim_session_t);
 
 	fr_cursor_init(&cursor, &packet->vps);
+
+	vp = fr_pair_find_by_child_num(packet->vps, dict_sim_root, FR_EAP_SIM_NOTIFICATION, TAG_ANY);
+	if (!vp) {
+		vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_NOTIFICATION);
+		vp->vp_uint16 = FR_EAP_SIM_NOTIFICATION_VALUE_GENERAL_FAILURE;
+		fr_cursor_append(&cursor, vp);
+	}
+
+	/*
+	 *	Change the failure notification depending where
+	 *	we are in the state machine.
+	 */
+	if (eap_sim_session->challenge_success) {
+		vp->vp_uint16 &= ~0x40000;	/* Unset phase bit */
+	} else {
+		vp->vp_uint16 |= 0x40000;	/* Set phase bit */
+	}
+
+	RDEBUG2("Sending SIM-Notification (%pV)", &vp->data);
+	eap_session->this_round->request->code = FR_EAP_CODE_REQUEST;
 
 	/*
 	 *	Set the subtype to notification
@@ -367,14 +393,20 @@ static int eap_sim_send_eap_failure_notification(eap_session_t *eap_session)
 	vp->vp_uint32 = FR_EAP_SIM_SUBTYPE_VALUE_SIM_NOTIFICATION;
 	fr_cursor_append(&cursor, vp);
 
-	vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_NOTIFICATION);
-	vp->vp_uint32 = FR_EAP_SIM_NOTIFICATION_VALUE_GENERAL_FAILURE;
-	fr_cursor_append(&cursor, vp);
+	/*
+	 *	If we're after the challenge phase
+	 *	then we need to include a MAC to
+	 *	protect notifications.
+	 */
+	if (eap_sim_session->challenge_success) {
+		vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_MAC);
+		fr_pair_replace(&packet->vps, vp);
+	}
 
 	/*
 	 *	Encode the packet
 	 */
-	if (eap_sim_compose(eap_session) < 0) {
+	if (eap_sim_compose(eap_session, NULL, 0) < 0) {
 		fr_pair_list_free(&packet->vps);
 		return -1;
 	}
@@ -419,7 +451,7 @@ static void eap_sim_state_enter(eap_session_t *eap_session, eap_sim_server_state
 	case EAP_SIM_SERVER_START:
 		if (eap_sim_send_start(eap_session) < 0) {
 		notify_failure:
-			eap_sim_state_enter(eap_session, EAP_SIM_SERVER_GENERAL_FAILURE_NOTIFICATION);
+			eap_sim_state_enter(eap_session, EAP_SIM_SERVER_FAILURE_NOTIFICATION);
 			return;
 		}
 		break;
@@ -448,7 +480,7 @@ static void eap_sim_state_enter(eap_session_t *eap_session, eap_sim_server_state
 	/*
 	 *	Send a general failure notification
 	 */
-	case EAP_SIM_SERVER_GENERAL_FAILURE_NOTIFICATION:
+	case EAP_SIM_SERVER_FAILURE_NOTIFICATION:
 		if (eap_sim_send_eap_failure_notification(eap_session) < 0) {	/* Fallback to EAP-Failure */
 			eap_sim_state_enter(eap_session, EAP_SIM_SERVER_FAILURE);
 		}
@@ -463,7 +495,7 @@ static void eap_sim_state_enter(eap_session_t *eap_session, eap_sim_server_state
 
 	default:
 		rad_assert(0);	/* Invalid transition */
-		eap_sim_state_enter(eap_session, EAP_SIM_SERVER_GENERAL_FAILURE_NOTIFICATION);
+		eap_sim_state_enter(eap_session, EAP_SIM_SERVER_FAILURE_NOTIFICATION);
 		return;
 	}
 }
@@ -563,7 +595,7 @@ static int process_eap_sim_start(eap_session_t *eap_session, VALUE_PAIR *vps)
 	case SIM_PERMANENT_ID_REQ:
 		eap_sim_state_enter(eap_session, EAP_SIM_SERVER_CHALLENGE);
 //		REDEBUG2("Failed to negotiate a usable identity");
-//		eap_sim_state_enter(eap_session, eap_sim_session, EAP_SIM_SERVER_GENERAL_FAILURE_NOTIFICATION);
+//		eap_sim_state_enter(eap_session, eap_sim_session, EAP_SIM_SERVER_FAILURE_NOTIFICATION);
 		break;
 	}
 
@@ -625,6 +657,8 @@ static int process_eap_sim_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 		return -1;
 	}
 
+	eap_sim_session->challenge_success = true;
+
 	/*
 	 *	If the peer wants a Success notification, then
 	 *	send a success notification, otherwise send a
@@ -680,7 +714,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	 */
 	if (ret < 0) {
 		RPEDEBUG2("Failed decoding EAP-SIM attributes");
-		eap_sim_state_enter(eap_session, EAP_SIM_SERVER_GENERAL_FAILURE_NOTIFICATION);
+		eap_sim_state_enter(eap_session, EAP_SIM_SERVER_FAILURE_NOTIFICATION);
 		return RLM_MODULE_HANDLED;	/* We need to process more packets */
 	}
 
@@ -693,7 +727,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	subtype_vp = fr_pair_find_by_child_num(from_peer, dict_sim_root, FR_EAP_SIM_SUBTYPE, TAG_ANY);
 	if (!subtype_vp) {
 		REDEBUG("Missing EAP-SIM-Subtype");
-		eap_sim_state_enter(eap_session, EAP_SIM_SERVER_GENERAL_FAILURE_NOTIFICATION);
+		eap_sim_state_enter(eap_session, EAP_SIM_SERVER_FAILURE_NOTIFICATION);
 		return RLM_MODULE_HANDLED;				/* We need to process more packets */
 	}
 	subtype = subtype_vp->vp_uint32;
@@ -707,7 +741,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		switch (subtype) {
 		case EAP_SIM_START:
 			if (process_eap_sim_start(eap_session, from_peer) == 0) return RLM_MODULE_HANDLED;
-			eap_sim_state_enter(eap_session, EAP_SIM_SERVER_GENERAL_FAILURE_NOTIFICATION);
+			eap_sim_state_enter(eap_session, EAP_SIM_SERVER_FAILURE_NOTIFICATION);
 			return RLM_MODULE_HANDLED;	/* We need to process more packets */
 
 		/*
@@ -743,7 +777,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 			vp = fr_pair_afrom_child_num(from_peer, dict_sim_root, FR_EAP_SIM_NOTIFICATION);
 			if (!vp) {
 				REDEBUG2("Received SIM-Notification with no notification code");
-				eap_sim_state_enter(eap_session, EAP_SIM_SERVER_GENERAL_FAILURE_NOTIFICATION);
+				eap_sim_state_enter(eap_session, EAP_SIM_SERVER_FAILURE_NOTIFICATION);
 				return RLM_MODULE_HANDLED;			/* We need to process more packets */
 			}
 
@@ -772,7 +806,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 			 *	send an EAP-Failure in this case.
 			 */
 			REDEBUG("Unexpected subtype %pV", &subtype_vp->data);
-			eap_sim_state_enter(eap_session, EAP_SIM_SERVER_GENERAL_FAILURE_NOTIFICATION);
+			eap_sim_state_enter(eap_session, EAP_SIM_SERVER_FAILURE_NOTIFICATION);
 			return RLM_MODULE_HANDLED;				/* We need to process more packets */
 		}
 		}
@@ -814,7 +848,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	/*
 	 *	Peer acked our failure
 	 */
-	case EAP_SIM_SERVER_GENERAL_FAILURE_NOTIFICATION:
+	case EAP_SIM_SERVER_FAILURE_NOTIFICATION:
 		switch (subtype) {
 		case EAP_SIM_NOTIFICATION:
 			RDEBUG2("SIM-Notification ACKed, sending EAP-Failure");
@@ -830,7 +864,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	 */
 	default:
 		rad_assert(0);
-		eap_sim_state_enter(eap_session, EAP_SIM_SERVER_GENERAL_FAILURE_NOTIFICATION);
+		eap_sim_state_enter(eap_session, EAP_SIM_SERVER_FAILURE_NOTIFICATION);
 		return RLM_MODULE_HANDLED;				/* We need to process more packets */
 	}
 

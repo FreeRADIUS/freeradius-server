@@ -42,7 +42,7 @@ FR_NAME_NUMBER const aka_state_table[] = {
 	{ "CHALLENGE",				EAP_AKA_SERVER_CHALLENGE			},
 	{ "SUCCESS-NOTIFICATION",		EAP_AKA_SERVER_SUCCESS_NOTIFICATION 		},
 	{ "SUCCESS",				EAP_AKA_SERVER_SUCCESS				},
-	{ "GENERAL-FAILURE-NOTIFICATION",	EAP_AKA_SERVER_GENERAL_FAILURE_NOTIFICATION	},
+	{ "FAILURE-NOTIFICATION",		EAP_AKA_SERVER_FAILURE_NOTIFICATION		},
 	{ "FAILURE",				EAP_AKA_SERVER_FAILURE				},
 	{ NULL }
 };
@@ -201,7 +201,7 @@ static int eap_aka_send_identity_request(eap_session_t *eap_session)
  *
  * Challenges will come from one of three places eventually:
  *
- * 1  from attributes like FR_EAP_SIM_RANDx
+ * 1  from attributes like FR_EAP_AKA_RANDx
  *	    (these might be retrieved from a database)
  *
  * 2  from internally implemented SIM authenticators
@@ -383,13 +383,16 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
  */
 static int eap_aka_send_eap_success_notification(eap_session_t *eap_session)
 {
-	REQUEST		*request = eap_session->request;
-	RADIUS_PACKET	*packet = eap_session->request->reply;
-	fr_cursor_t	cursor;
-	VALUE_PAIR	*vp;
+	REQUEST			*request = eap_session->request;
+	RADIUS_PACKET		*packet = eap_session->request->reply;
+	eap_aka_session_t	*eap_aka_session = talloc_get_type_abort(eap_session->opaque, eap_aka_session_t);
+	fr_cursor_t		cursor;
+	VALUE_PAIR		*vp;
 
 	RDEBUG2("Sending AKA-Notification (Success)");
 	eap_session->this_round->request->code = FR_EAP_CODE_REQUEST;
+
+	if (!fr_cond_assert(eap_aka_session->challenge_success)) return -1;
 
 	fr_cursor_init(&cursor, &packet->vps);
 
@@ -403,6 +406,13 @@ static int eap_aka_send_eap_success_notification(eap_session_t *eap_session)
 	vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_NOTIFICATION);
 	vp->vp_uint32 = FR_EAP_AKA_NOTIFICATION_VALUE_SUCCESS;
 	fr_cursor_append(&cursor, vp);
+
+	/*
+	 *	Need to include an AT_MAC attribute so that it will get
+	 *	calculated.
+	 */
+	vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_MAC);
+	fr_pair_replace(&packet->vps, vp);
 
 	/*
 	 *	Encode the packet
@@ -446,15 +456,33 @@ static int eap_aka_send_eap_success(eap_session_t *eap_session)
  */
 static int eap_aka_send_eap_failure_notification(eap_session_t *eap_session)
 {
-	REQUEST		*request = eap_session->request;
-	RADIUS_PACKET	*packet = eap_session->request->reply;
-	fr_cursor_t	cursor;
-	VALUE_PAIR	*vp;
-
-	RDEBUG2("Sending AKA-Notification (General-Failure)");
-	eap_session->this_round->request->code = FR_EAP_CODE_REQUEST;
+	REQUEST			*request = eap_session->request;
+	RADIUS_PACKET		*packet = eap_session->request->reply;
+	fr_cursor_t		cursor;
+	VALUE_PAIR		*vp;
+	eap_aka_session_t	*eap_aka_session = talloc_get_type_abort(eap_session->opaque, eap_aka_session_t);
 
 	fr_cursor_init(&cursor, &packet->vps);
+
+	vp = fr_pair_find_by_child_num(packet->vps, dict_sim_root, FR_EAP_AKA_NOTIFICATION, TAG_ANY);
+	if (!vp) {
+		vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_AKA_NOTIFICATION);
+		vp->vp_uint16 = FR_EAP_AKA_NOTIFICATION_VALUE_GENERAL_FAILURE;
+		fr_cursor_append(&cursor, vp);
+	}
+
+	/*
+	 *	Change the failure notification depending where
+	 *	we are in the state machine.
+	 */
+	if (eap_aka_session->challenge_success) {
+		vp->vp_uint16 &= ~0x40000;	/* Unset phase bit */
+	} else {
+		vp->vp_uint16 |= 0x40000;	/* Set phase bit */
+	}
+
+	RDEBUG2("Sending AKA-Notification (%pV)", &vp->data);
+	eap_session->this_round->request->code = FR_EAP_CODE_REQUEST;
 
 	/*
 	 *	Set the subtype to notification
@@ -463,9 +491,15 @@ static int eap_aka_send_eap_failure_notification(eap_session_t *eap_session)
 	vp->vp_uint32 = FR_EAP_AKA_SUBTYPE_VALUE_AKA_NOTIFICATION;
 	fr_cursor_append(&cursor, vp);
 
-	vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_NOTIFICATION);
-	vp->vp_uint32 = FR_EAP_AKA_NOTIFICATION_VALUE_GENERAL_FAILURE;
-	fr_cursor_append(&cursor, vp);
+	/*
+	 *	If we're after the challenge phase
+	 *	then we need to include a MAC to
+	 *	protect notifications.
+	 */
+	if (eap_aka_session->challenge_success) {
+		vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_AKA_MAC);
+		fr_pair_replace(&packet->vps, vp);
+	}
 
 	/*
 	 *	Encode the packet
@@ -515,7 +549,7 @@ static void eap_aka_state_enter(eap_session_t *eap_session, eap_aka_server_state
 	case EAP_AKA_SERVER_IDENTITY:
 		if (eap_aka_send_identity_request(eap_session) < 0) {
 		notify_failure:
-			eap_aka_state_enter(eap_session, EAP_AKA_SERVER_GENERAL_FAILURE_NOTIFICATION);
+			eap_aka_state_enter(eap_session, EAP_AKA_SERVER_FAILURE_NOTIFICATION);
 			return;
 		}
 		break;
@@ -544,7 +578,7 @@ static void eap_aka_state_enter(eap_session_t *eap_session, eap_aka_server_state
 	/*
 	 *	Send a general failure notification
 	 */
-	case EAP_AKA_SERVER_GENERAL_FAILURE_NOTIFICATION:
+	case EAP_AKA_SERVER_FAILURE_NOTIFICATION:
 		if (eap_aka_send_eap_failure_notification(eap_session) < 0) {	/* Fallback to EAP-Failure */
 			eap_aka_state_enter(eap_session, EAP_AKA_SERVER_FAILURE);
 		}
@@ -559,7 +593,7 @@ static void eap_aka_state_enter(eap_session_t *eap_session, eap_aka_server_state
 
 	default:
 		rad_assert(0);	/* Invalid transition */
-		eap_aka_state_enter(eap_session, EAP_AKA_SERVER_GENERAL_FAILURE_NOTIFICATION);
+		eap_aka_state_enter(eap_session, EAP_AKA_SERVER_FAILURE_NOTIFICATION);
 		return;
 	}
 }
@@ -621,7 +655,7 @@ static int process_eap_aka_identity(eap_session_t *eap_session, VALUE_PAIR *vps)
 	case SIM_PERMANENT_ID_REQ:
 		eap_aka_state_enter(eap_session, EAP_AKA_SERVER_CHALLENGE);
 //		REDEBUG2("Failed to negotiate a usable identity");
-//		eap_aka_state_enter(eap_session, eap_aka_session, EAP_AKA_SERVER_GENERAL_FAILURE_NOTIFICATION);
+//		eap_aka_state_enter(eap_session, eap_aka_session, EAP_AKA_SERVER_FAILURE_NOTIFICATION);
 		break;
 
 	case SIM_NO_ID_REQ:
@@ -728,6 +762,8 @@ static int process_eap_aka_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 
 	RDEBUG2("EAP-AKA-RES matches XRES");
 
+	eap_aka_session->challenge_success = true;
+
 	/*
 	 *	If the peer wants a Success notification, then
 	 *	send a success notification, otherwise send a
@@ -789,7 +825,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	 */
 	if (ret < 0) {
 		RPEDEBUG2("Failed decoding EAP-AKA attributes");
-		eap_aka_state_enter(eap_session, EAP_AKA_SERVER_GENERAL_FAILURE_NOTIFICATION);
+		eap_aka_state_enter(eap_session, EAP_AKA_SERVER_FAILURE_NOTIFICATION);
 		return RLM_MODULE_HANDLED;	/* We need to process more packets */
 	}
 
@@ -802,7 +838,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	subtype_vp = fr_pair_find_by_child_num(vps, dict_aka_root, FR_EAP_AKA_SUBTYPE, TAG_ANY);
 	if (!subtype_vp) {
 		REDEBUG("Missing EAP-AKA-Subtype");
-		eap_aka_state_enter(eap_session, EAP_AKA_SERVER_GENERAL_FAILURE_NOTIFICATION);
+		eap_aka_state_enter(eap_session, EAP_AKA_SERVER_FAILURE_NOTIFICATION);
 		return RLM_MODULE_HANDLED;				/* We need to process more packets */
 	}
 	subtype = subtype_vp->vp_uint32;
@@ -816,7 +852,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		switch (subtype) {
 		case EAP_AKA_IDENTITY:
 			if (process_eap_aka_identity(eap_session, vps) == 0) return RLM_MODULE_HANDLED;
-			eap_aka_state_enter(eap_session, EAP_AKA_SERVER_GENERAL_FAILURE_NOTIFICATION);
+			eap_aka_state_enter(eap_session, EAP_AKA_SERVER_FAILURE_NOTIFICATION);
 			return RLM_MODULE_HANDLED;	/* We need to process more packets */
 
 		/*
@@ -852,7 +888,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 			vp = fr_pair_afrom_child_num(vps, dict_aka_root, FR_EAP_AKA_NOTIFICATION);
 			if (!vp) {
 				REDEBUG2("Received AKA-Notification with no notification code");
-				eap_aka_state_enter(eap_session, EAP_AKA_SERVER_GENERAL_FAILURE_NOTIFICATION);
+				eap_aka_state_enter(eap_session, EAP_AKA_SERVER_FAILURE_NOTIFICATION);
 				return RLM_MODULE_HANDLED;			/* We need to process more packets */
 			}
 
@@ -882,7 +918,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 			 *	send an EAP-Failure in this case.
 			 */
 			REDEBUG("Unexpected subtype %pV", &subtype_vp->data);
-			eap_aka_state_enter(eap_session, EAP_AKA_SERVER_GENERAL_FAILURE_NOTIFICATION);
+			eap_aka_state_enter(eap_session, EAP_AKA_SERVER_FAILURE_NOTIFICATION);
 			return RLM_MODULE_HANDLED;				/* We need to process more packets */
 		}
 
@@ -895,12 +931,12 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		switch (subtype) {
 		case EAP_AKA_CHALLENGE:
 			if (process_eap_aka_challenge(eap_session, vps) == 0) return RLM_MODULE_HANDLED;
-			eap_aka_state_enter(eap_session, EAP_AKA_SERVER_GENERAL_FAILURE_NOTIFICATION);
+			eap_aka_state_enter(eap_session, EAP_AKA_SERVER_FAILURE_NOTIFICATION);
 			return RLM_MODULE_HANDLED;				/* We need to process more packets */
 
 		case EAP_AKA_SYNCHRONIZATION_FAILURE:
 			REDEBUG("EAP-AKA Peer synchronization failure");	/* We can't handle these yet */
-			eap_aka_state_enter(eap_session, EAP_AKA_SERVER_GENERAL_FAILURE_NOTIFICATION);
+			eap_aka_state_enter(eap_session, EAP_AKA_SERVER_FAILURE_NOTIFICATION);
 			return RLM_MODULE_HANDLED;				/* We need to process more packets */
 
 		/*
@@ -940,7 +976,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	/*
 	 *	Peer acked our failure
 	 */
-	case EAP_AKA_SERVER_GENERAL_FAILURE_NOTIFICATION:
+	case EAP_AKA_SERVER_FAILURE_NOTIFICATION:
 		switch (subtype) {
 		case EAP_AKA_NOTIFICATION:
 			RDEBUG2("AKA-Notification ACKed, sending EAP-Failure");
@@ -956,7 +992,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	 */
 	default:
 		rad_assert(0);
-		eap_aka_state_enter(eap_session, EAP_AKA_SERVER_GENERAL_FAILURE_NOTIFICATION);
+		eap_aka_state_enter(eap_session, EAP_AKA_SERVER_FAILURE_NOTIFICATION);
 		return RLM_MODULE_HANDLED;				/* We need to process more packets */
 	}
 }
