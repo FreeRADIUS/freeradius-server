@@ -838,7 +838,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 			return RLM_MODULE_REJECT;
 		}
 
-		case EAP_AKA_NOTIFICATION:
+		case EAP_SIM_NOTIFICATION:
 			goto notification;
 
 		default:
