@@ -1,8 +1,9 @@
 FROM freeradius/debian7-deps
+ARG cc=gcc
 
 WORKDIR /usr/local/src/repositories/freeradius-server
 RUN git checkout v3.0.x
-RUN ./configure --prefix=/opt/freeradius
+RUN CC=${cc} ./configure --prefix=/opt/freeradius
 RUN make -j2
 RUN make install
 WORKDIR /opt/freeradius/etc/raddb
