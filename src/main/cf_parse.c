@@ -501,7 +501,7 @@ static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, char const *name,
  *	- -1 on error.
  *	- -2 if deprecated.
  */
-static int CC_HINT(nonnull(2,3,4)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *out,
+static int CC_HINT(nonnull(3,4)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *out,
 							CONF_SECTION *cs, CONF_PARSER const *rule)
 {
 	bool		multi, required, deprecated;
