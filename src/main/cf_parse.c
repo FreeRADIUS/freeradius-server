@@ -570,9 +570,20 @@ static int CC_HINT(nonnull(3,4)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 		}
 
 		/*
+		 *	Functions don't necessarily *need* to write
+		 *	anywhere, so their data pointer can be NULL.
+		 */
+		if (!out) {
+			if (!rule->func) {
+				cf_log_err(cs, "Rule doesn't specify output destination");
+				return -1;
+			}
+			array = NULL;
+		}
+		/*
 		 *	Tmpl is outside normal range
 		 */
-		if (type & FR_TYPE_TMPL) {
+		else if (type & FR_TYPE_TMPL) {
 			array = (void **)talloc_zero_array(ctx, vp_tmpl_t *, count);
 		/*
 		 *	Allocate an array of values.
@@ -645,7 +656,7 @@ static int CC_HINT(nonnull(3,4)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 				entry = ((uint8_t *) array) + i * fr_value_box_field_sizes[FR_BASE_TYPE(type)];
 			}
 
-			ret = func(ctx, entry, cf_pair_to_item(cp), rule);
+			ret = func(array ? array : ctx, entry, cf_pair_to_item(cp), rule);
 			if (ret < 0) {
 				talloc_free(array);
 				talloc_free(dflt_cp);
@@ -654,7 +665,7 @@ static int CC_HINT(nonnull(3,4)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 			cp->parsed = true;
 		}
 
-		*(void **)out = array;
+		if (out) *(void **)out = array;
 	/*
 	 *	Single valued config item gets written to
 	 *	the data pointer directly.
