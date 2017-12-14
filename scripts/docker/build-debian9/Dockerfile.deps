@@ -1,32 +1,47 @@
 FROM debian:stretch
 
-RUN apt-get update && apt-get install -y devscripts equivs git quilt software-properties-common python-software-properties
+ARG gccver=6
+ARG clangver=5.0
+ARG osname=stretch
 
 #
-#  Stretch uses GCC 4.9 by default, so we don't need to install any additional compilers to get C11 functionality
+#  Install add-apt-repository
 #
+RUN apt-get update && \
+    apt-get install -y software-properties-common && \
+    apt-get clean && \
+    rm -r /var/lib/apt/lists/*
 
-#
-#  For clang 5.0
-#
-RUN add-apt-repository "deb http://apt.llvm.org/stretch/ llvm-toolchain-stretch-5.0 main"
-RUN apt-key adv --fetch-keys http://apt.llvm.org/llvm-snapshot.gpg.key
-RUN apt-get update
-RUN apt-get install -y llvm-5.0 clang-5.0 lldb-5.0
+#  Stretch uses GCC-6.3 by default, so it doesn't need to be updated to get C11 functionality.
 
-RUN update-alternatives --install /usr/bin/clang clang /usr/bin/clang-5.0 60 && update-alternatives --config clang
-RUN update-alternatives --install /usr/bin/lldb lldb /usr/bin/lldb-5.0 60 && update-alternatives --config lldb
+#  For clang
+RUN add-apt-repository -y "deb http://apt.llvm.org/${osname}/ llvm-toolchain-${osname}-${clangver} main" && \
+    apt-key adv --fetch-keys http://apt.llvm.org/llvm-snapshot.gpg.key
 
-#
-#  Install eapol_test dependencies
-#
-RUN apt-get install -y libnl-3-dev libnl-genl-3-dev
+RUN apt-get update && \
+#  Development utilities
+    apt-get install -y devscripts equivs git quilt && \
+#  Compilers
+    apt-get install -y g++-${gccver} llvm-${clangver} clang-${clangver} lldb-${clangver} && \
+#  eapol_test dependencies
+    apt-get install -y libnl-3-dev libnl-genl-3-dev
+
+RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${gccver} 50 \
+                        --slave /usr/bin/g++ g++ /usr/bin/g++-${gccver} && \
+    update-alternatives --config gcc
+
+RUN update-alternatives --install /usr/bin/clang clang /usr/bin/clang-${clangver} 60 && \
+    update-alternatives --config clang
+
+RUN update-alternatives --install /usr/bin/lldb lldb /usr/bin/lldb-${clangver} 60 && \
+    update-alternatives --config lldb
+
 
 #
 #  Setup a src dir in /usr/local
 #
 RUN mkdir -p /usr/local/src/repositories
-WORKDIR /usr/local/src
+WORKDIR /usr/local/src/repositories
 
 #
 #  Get a modern version of cmake.  We need 3.8.2 or later to build libkqueue rpms
@@ -39,18 +54,19 @@ RUN sh cmake.sh --skip-license --prefix=/usr/local
 #  Grab libkqueue and build
 #
 WORKDIR /usr/local/src/repositories
-# Fixme: Change to the main repo when they merge this branch
 RUN git clone --branch master --depth=1 https://github.com/mheily/libkqueue.git
+
 WORKDIR libkqueue
 RUN cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib ./ && \
     make && \
-    cpack -P libkqueue-dev -G DEB
-RUN apt-get install -y ./*.deb
+    cpack -P libkqueue-dev -G DEB && \
+    dpkg -i --force-all ./libkqueue-*deb
+
+WORKDIR /usr/local/src/repositories
 
 #
 #  Shallow clone the FreeRADIUS source
 #
-WORKDIR /usr/local/src/repositories
 ARG source=https://github.com/FreeRADIUS/freeradius-server.git
 RUN git clone --depth 1 --no-single-branch ${source}
 WORKDIR freeradius-server
@@ -61,6 +77,6 @@ WORKDIR freeradius-server
 RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 2>/dev/null | sed -e 's#origin/##' | egrep "^v[0-9]*\.[0-9x]*\.x$");\
 	do \
 		git checkout $i; \
-		[ -e ./debian/control.in ] && debian/rules debian/control && echo 'y' | mk-build-deps -irt'apt-get -yV' debian/control; \
+		if [ -e ./debian/control.in ] ; then debian/rules debian/control ; fi ; echo 'y' | mk-build-deps -irt'apt-get -yV' debian/control ; \
 	done
 
