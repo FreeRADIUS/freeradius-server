@@ -41,6 +41,7 @@ WORKDIR /usr/local/src/repositories
 # Fixme: Change to the main repo when they merge this branch
 RUN git clone --branch master --depth=1 https://github.com/mheily/libkqueue.git
 WORKDIR libkqueue
+RUN sed -i -e 's/SO_GET_FILTER/SO_ATTACH_FILTER/' src/linux/platform.c
 RUN cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib ./ && \
     make && \
     cpack -G RPM
