@@ -273,6 +273,14 @@ int tls_global_version_check(char const *acknowledged)
 	bool bad = false;
 	size_t i;
 
+	/*
+	 *	Didn't get passed anything, that's an error.
+	 */
+	if (!acknowledged || !*acknowledged) {
+		ERROR("Refusing to start until 'allow_vulnerable_openssl' is given a value");
+		return -1;
+	}
+
 	if (strcmp(acknowledged, "yes") == 0) return 0;
 
 	/* Check for bad versions */
