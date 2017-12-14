@@ -39,14 +39,14 @@ addons:
   postgresql: '9.4'
   apt:
     sources:
-    - couchbase-precise
-    - llvm-toolchain-precise-3.9
+    - couchbase-trusty
+    - llvm-toolchain-trusty-5.0
     # For newer libkqueue
     - sourceline: ppa:rjvbertin/misc
     packages:
     - autoconf
     - build-essential
-    - clang-3.9
+    - clang-5.0
     - debhelper
     - devscripts
     - dh-make
@@ -96,7 +96,7 @@ addons:
     - libykclient-dev
     - libyubikey-dev
     # Needed for llvm-symbolizer
-    - llvm-3.9
+    - llvm-5.0
     # For rendering clang scan results
     - lynx
     - slapd
@@ -108,8 +108,8 @@ services:
 before_install:
 - rvm --install --default --binary use 2.4
 - if [ "${CC}" == 'gcc' ]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 60 && sudo update-alternatives --config gcc; fi
-- if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-3.9 60 && sudo update-alternatives --config clang; fi
-- if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-3.9 60 && sudo update-alternatives --config llvm-symbolizer; fi
+- if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-5.0 60 && sudo update-alternatives --config clang; fi
+- if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-5.0 60 && sudo update-alternatives --config llvm-symbolizer; fi
 - $CC --version
 before_script:
 - ./scripts/travis/build.sh
