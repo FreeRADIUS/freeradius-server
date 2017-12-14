@@ -99,15 +99,16 @@ static inline int CC_HINT(nonnull) fr_item_validate_ipaddr(CONF_SECTION *cs, cha
  * @copybrief cf_pair_value
  * @see cf_pair_value
  *
- * @param[out] out	Where to write the parsed value.
  * @param[in] ctx	to allocate any dynamic buffers in.
+ * @param[out] out	Where to write the parsed value.
  * @param[in] ci	to parse.
  * @param[in] rule	to parse to.  May contain flags.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int CC_HINT(nonnull) cf_pair_parse_value(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule)
+static int CC_HINT(nonnull(2, 3, 4)) cf_pair_parse_value(TALLOC_CTX *ctx, void *out,
+							 CONF_ITEM *ci, CONF_PARSER const *rule)
 {
 	int		rcode = 0;
 	bool		attribute, required, secret, file_input, cant_be_empty, tmpl, file_exists;
