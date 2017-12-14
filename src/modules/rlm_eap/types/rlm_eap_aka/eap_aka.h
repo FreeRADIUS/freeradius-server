@@ -45,6 +45,7 @@ typedef enum {
 
 typedef struct {
 	eap_aka_server_state_t		state;			//!< Current session state.
+	bool				allow_encrypted;	//!< Whether we can send encrypted attributes.
 	bool				challenge_success;	//!< Whether we received the correct
 								///< challenge response.
 

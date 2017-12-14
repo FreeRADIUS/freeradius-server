@@ -78,12 +78,25 @@ static int eap_aka_compose(eap_session_t *eap_session)
 					.hmac_extra = NULL,
 					.hmac_extra_len = 0
 				};
+	fr_dict_attr_t const	*encr = fr_dict_attr_child_by_num(dict_sim_root, FR_EAP_AKA_ENCR_DATA);
 
 	fr_pair_cursor_init(&cursor, &eap_session->request->reply->vps);
 	fr_pair_cursor_init(&to_encode, &head);
 
 	while ((fr_pair_cursor_next_by_ancestor(&cursor, dict_aka_root, TAG_ANY))) {
 		vp = fr_pair_cursor_remove(&cursor);
+
+		/*
+		 *	Silently discard encrypted attributes until
+		 *	the peer should have k_encr.  These can be
+		 *	added by policy, and seem to cause
+		 *	wpa_supplicant to fail if sent before the challenge.
+		 */
+		if (!eap_aka_session->allow_encrypted && fr_dict_parent_common(encr, vp->da, true)) {
+			talloc_free(vp);
+			continue;
+		}
+
 		fr_pair_cursor_append(&to_encode, vp);
 	}
 
@@ -139,6 +152,7 @@ static int eap_aka_send_identity_request(eap_session_t *eap_session)
 
 	RDEBUG2("Sending AKA-Identity (%s)", fr_int2str(sim_id_request_table, eap_aka_session->id_req, "<INVALID>"));
 	eap_session->this_round->request->code = FR_EAP_CODE_REQUEST;
+	eap_aka_session->allow_encrypted = false;	/* In case this is after failed fast-resumption */
 
 	packet = request->reply;
 	fr_cursor_init(&cursor, &packet->vps);
@@ -370,6 +384,12 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 		eap_aka_session->checkcode_len = 0;
 	}
 	fr_pair_replace(to_peer, vp);
+
+	/*
+	 *	We've sent the challenge so the peer should now be able
+	 *	to accept encrypted attributes.
+	 */
+	eap_aka_session->allow_encrypted = true;
 
 	/*
 	 *	Encode the packet

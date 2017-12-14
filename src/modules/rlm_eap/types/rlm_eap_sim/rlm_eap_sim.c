@@ -80,6 +80,7 @@ static int eap_sim_compose(eap_session_t *eap_session, uint8_t const *hmac_extra
 				};
 
 	ssize_t			ret;
+	fr_dict_attr_t const	*encr = fr_dict_attr_child_by_num(dict_sim_root, FR_EAP_SIM_ENCR_DATA);
 
 	/* we will set the ID on requests, since we have to HMAC it */
 	eap_session->this_round->set_request_id = true;
@@ -89,6 +90,18 @@ static int eap_sim_compose(eap_session_t *eap_session, uint8_t const *hmac_extra
 
 	while ((fr_pair_cursor_next_by_ancestor(&cursor, dict_sim_root, TAG_ANY))) {
 		vp = fr_pair_cursor_remove(&cursor);
+
+		/*
+		 *	Silently discard encrypted attributes until
+		 *	the peer should have k_encr.  These can be
+		 *	added by policy, and seem to cause
+		 *	wpa_supplicant to fail if sent before the challenge.
+		 */
+		if (!eap_sim_session->allow_encrypted && fr_dict_parent_common(encr, vp->da, true)) {
+			talloc_free(vp);
+			continue;
+		}
+
 		fr_pair_cursor_append(&to_encode, vp);
 	}
 
@@ -123,6 +136,7 @@ static int eap_sim_send_start(eap_session_t *eap_session)
 
 	RDEBUG2("Sending SIM-State");
 	eap_session->this_round->request->code = FR_EAP_CODE_REQUEST;
+	eap_sim_session->allow_encrypted = false;	/* In case this is after failed fast-resumption */
 
 	/* these are the outgoing attributes */
 	packet = eap_session->request->reply;
@@ -266,6 +280,12 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	 */
 	vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_MAC);
 	fr_pair_replace(to_peer, vp);
+
+	/*
+	 *	We've sent the challenge so the peer should now be able
+	 *	to accept encrypted attributes.
+	 */
+	eap_sim_session->allow_encrypted = true;
 
 	/*
 	 *	Encode the packet
