@@ -51,6 +51,7 @@ FR_NAME_NUMBER const sim_state_table[] = {
 
 static CONF_PARSER submodule_config[] = {
 	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING, rlm_eap_sim_t, virtual_server) },
+	{ FR_CONF_OFFSET("protected_success", FR_TYPE_BOOL, rlm_eap_sim_t, protected_success ), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -875,7 +876,7 @@ static rlm_rcode_t mod_session_init(UNUSED void *instance, eap_session_t *eap_se
 {
 	REQUEST				*request = eap_session->request;
 	eap_sim_session_t		*eap_sim_session;
-//	rlm_eap_sim_t			*inst = instance;
+	rlm_eap_sim_t			*inst = instance;
 	fr_sim_id_type_t		type;
 	fr_sim_method_hint_t		method;
 
@@ -887,7 +888,7 @@ static rlm_rcode_t mod_session_init(UNUSED void *instance, eap_session_t *eap_se
 	 *	Set default configuration, we may allow these
 	 *	to be toggled by attributes later.
 	 */
-	eap_sim_session->send_result_ind = true;
+	eap_sim_session->send_result_ind = inst->protected_success;
 	eap_sim_session->id_req = SIM_ANY_ID_REQ;	/* Set the default */
 
 	/*

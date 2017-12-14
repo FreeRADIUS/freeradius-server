@@ -81,8 +81,9 @@ typedef struct {
 } eap_aka_session_t;
 
 typedef struct {
-	char const			*virtual_server;	//!< Virtual server for HLR integration.
 	char const			*network_id;		//!< Network ID as described by RFC 5448.
 	bool				request_identity;	//!< Whether we always request the identity of
 								///< the subscriber.
+	char const			*virtual_server;	//!< Virtual server for HLR integration.
+	bool				protected_success;
 } rlm_eap_aka_t;

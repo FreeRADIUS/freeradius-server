@@ -51,10 +51,6 @@ typedef struct {
 	fr_sim_id_req_type_t		id_req;			//!< The type of identity we're requesting
 								///< or previously requested.
 
-
-	bool				request_identity;	//!< Always send an identity request before a
-								///< challenge.
-
 	bool				send_result_ind;	//!< Say that we would like to use protected result
 								///< indications (SIM-Notification-Success).
 
@@ -64,6 +60,5 @@ typedef struct {
 
 typedef struct {
 	char const			*virtual_server;	//!< Virtual server for HLR integration.
-	bool				request_identity;	//!< Whether we always request the identity of
-								///< the subscriber.
+	bool				protected_success;	//!< Send protected success messages.
 } rlm_eap_sim_t;

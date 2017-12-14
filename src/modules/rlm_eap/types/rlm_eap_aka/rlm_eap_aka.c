@@ -51,7 +51,8 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session);
 
 static CONF_PARSER submodule_config[] = {
 	{ FR_CONF_OFFSET("network_id", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_eap_aka_t, network_id ) },
-	{ FR_CONF_OFFSET("request_identity", FR_TYPE_BOOL, rlm_eap_aka_t, request_identity ), .dflt = "yes" },
+	{ FR_CONF_OFFSET("request_identity", FR_TYPE_BOOL, rlm_eap_aka_t, request_identity ), .dflt = "no" },
+	{ FR_CONF_OFFSET("protected_success", FR_TYPE_BOOL, rlm_eap_aka_t, protected_success ), .dflt = "no" },
 	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING, rlm_eap_aka_t, virtual_server) },
 	CONF_PARSER_TERMINATOR
 };
@@ -1018,7 +1019,7 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 	 *	to be toggled by attributes later.
 	 */
 	eap_aka_session->request_identity = inst->request_identity;
-	eap_aka_session->send_result_ind = true;
+	eap_aka_session->send_result_ind = inst->protected_success;
 	eap_aka_session->id_req = SIM_NO_ID_REQ;	/* Set the default */
 
 	/*
