@@ -1099,15 +1099,6 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs)
 		} /* else it's a CONF_PAIR */
 
 		/*
-		 *	Nowhere to put the parsed data, ignore it.
-		 */
-		if (!data) {
-			WARN("%s[%d]: The item '%s' has nowhere to put its data",
-			     cs->item.filename, cs->item.lineno, rule->name);
-			continue;
-		}
-
-		/*
 		 *	Pair either needs an output destination or
 		 *	there needs to be a function associated with
 		 *	it.
