@@ -1137,7 +1137,15 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 	 *	Request the unmolested identity
 	 */
 	case SIM_ID_TYPE_UNKNOWN:
+		RWDEBUG("Identity format unknown, sending Identity request");
 		goto request_id;
+
+	/*
+	 *	These types need to be transformed into something
+	 *	usable before we can do anything.
+	 */
+	case SIM_ID_TYPE_PSEUDONYM:
+	case SIM_ID_TYPE_FASTAUTH:
 
 	/*
 	 *	Permanent ID means we can just send the challenge
@@ -1147,14 +1155,6 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 		MEM(eap_aka_session->keys.identity = talloc_memdup(eap_aka_session, eap_session->identity,
 								   eap_aka_session->keys.identity_len));
 		eap_aka_state_enter(eap_session, EAP_AKA_SERVER_CHALLENGE);
-		return RLM_MODULE_OK;
-
-	/*
-	 *	These types need to be transformed into something
-	 *	usable before we can do anything.
-	 */
-	case SIM_ID_TYPE_PSEUDONYM:
-	case SIM_ID_TYPE_FASTAUTH:
 		return RLM_MODULE_OK;
 	}
 
