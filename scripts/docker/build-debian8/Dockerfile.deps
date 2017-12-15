@@ -1,12 +1,23 @@
 FROM debian:jessie
 
-RUN apt-get update && apt-get install -y devscripts equivs git quilt
+RUN apt-get update && apt-get install -y devscripts equivs git quilt software-properties-common python-software-properties
 
 #
-#  Install GCC-4.9 as it has the requisite support for C11 keywords and atomics
+#   For GCC 4.9
 #
 RUN apt-get install -y g++-4.9
 RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 50 --slave /usr/bin/g++ g++ /usr/bin/g++-4.9 && update-alternatives --config gcc
+
+#
+#   For clang 5.0
+#
+RUN add-apt-repository "http://apt.llvm.org/jessie/ llvm-toolchain-jessie-5.0 main"
+RUN apt-key adv --fetch-keys http://apt.llvm.org/llvm-snapshot.gpg.key
+RUN apt-get update
+RUN apt-get install -y llvm-5.0 clang-5.0 lldb-5.0
+
+RUN update-alternatives --install /usr/bin/clang clang /usr/bin/clang-5.0 60 && update-alternatives --config clang
+RUN update-alternatives --install /usr/bin/lldb lldb /usr/bin/lldb-5.0 60 && update-alternatives --config lldb
 
 #
 #  Install eapol_test dependencies
