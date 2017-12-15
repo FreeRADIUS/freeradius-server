@@ -98,6 +98,8 @@ static int eap_sim_compose(eap_session_t *eap_session, uint8_t const *hmac_extra
 		 *	wpa_supplicant to fail if sent before the challenge.
 		 */
 		if (!eap_sim_session->allow_encrypted && fr_dict_parent_common(encr, vp->da, true)) {
+			RWDEBUG("Silently discarding &reply:%s: Encrypted attributes not allowed in this round",
+				vp->da->name);
 			talloc_free(vp);
 			continue;
 		}
