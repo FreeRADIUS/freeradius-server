@@ -47,6 +47,7 @@ typedef struct rlm_redis_t {
 	uint16_t		port;
 	uint32_t		database;
 	char const		*password;
+	uint16_t		query_timeout;
 	fr_connection_pool_t	*pool;
 
 	int (*redis_query)(REDISSOCK **dissocket_p, REDIS_INST *inst, char const *query, REQUEST *request);
