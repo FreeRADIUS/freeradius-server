@@ -141,8 +141,12 @@ static ssize_t encode_iv(uint8_t *out, size_t outlen, void *encoder_ctx)
 
 	*p++ = FR_SIM_IV;
 	*p++ = (4 + SIM_IV_SIZE) >> 2;
+	*p++ = 0;
+	*p++ = 0;
 	memcpy(p, packet_ctx->iv, sizeof(packet_ctx->iv));
 	p += sizeof(packet_ctx->iv);
+
+	FR_PROTO_HEX_DUMP("Initialisation vector", out, p - out);
 
 	packet_ctx->iv_included = true;
 
