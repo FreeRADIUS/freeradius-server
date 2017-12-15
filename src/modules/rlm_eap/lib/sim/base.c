@@ -95,22 +95,6 @@ size_t fr_sim_octets_prefix_len(fr_dict_attr_t const *da)
 	return 0;				/* Everything else has zero padding bytes */
 }
 
-/*
- * definitions changed to take a buffer for unknowns
- * as this is more thread safe.
- */
-char const *fr_sim_session_to_name(char *out, size_t outlen, eap_sim_client_states_t state)
-{
-	static char const *sim_states[] = { "init", "start", NULL };
-
-	if (state >= EAP_SIM_CLIENT_MAX_STATES) {
-		snprintf(out, outlen, "eapstate:%d", state);
-		return out;
-	}
-
-	return sim_states[state];
-}
-
 int fr_sim_global_init(void)
 {
 	static bool done_init;

@@ -247,8 +247,6 @@ size_t		fr_sim_attr_len(VALUE_PAIR const *vp);
 
 size_t		fr_sim_octets_prefix_len(fr_dict_attr_t const *da);
 
-char const	*fr_sim_session_to_name(char *out, size_t outlen, eap_sim_client_states_t state);
-
 int		fr_sim_global_init(void);
 
 /*
