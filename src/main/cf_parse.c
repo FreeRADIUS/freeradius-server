@@ -575,6 +575,7 @@ static int CC_HINT(nonnull(3,4)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 		 */
 		if (!out) {
 			if (!rule->func) {
+			no_out:
 				cf_log_err(cs, "Rule doesn't specify output destination");
 				return -1;
 			}
@@ -641,22 +642,35 @@ static int CC_HINT(nonnull(3,4)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 
 		for (i = 0; i < count; i++, cp = cf_pair_find_next(cs, cp, rule->name)) {
 			int		ret;
-			cf_parse_t	func = cf_pair_parse_value;
+			cf_parse_t	func;
 			void		*entry;
+			TALLOC_CTX	*value_ctx = array ? array : ctx;
 
-			if (rule->func) {
-				cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces,
-					     cf_pair_attr(cp), cp->value);
-				func = rule->func;
-			}
-
-			if (FR_BASE_TYPE(type) == FR_TYPE_VOID) {
+			/*
+			 *	Figure out where to write the output
+			 */
+			if (!array) {
+				entry = NULL;
+			} else if (FR_BASE_TYPE(type) == FR_TYPE_VOID) {
 				entry = &array[i];
 			} else {
 				entry = ((uint8_t *) array) + i * fr_value_box_field_sizes[FR_BASE_TYPE(type)];
 			}
 
-			ret = func(array ? array : ctx, entry, cf_pair_to_item(cp), rule);
+			/*
+			 *	Switch between customer parsing function
+			 *	and the standard value parsing function.
+			 */
+			if (rule->func) {
+				cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces,
+					     cf_pair_attr(cp), cp->value);
+				func = rule->func;
+			} else {
+				if (!entry) goto no_out;
+				func = cf_pair_parse_value;
+			}
+
+			ret = func(value_ctx, entry, cf_pair_to_item(cp), rule);
 			if (ret < 0) {
 				talloc_free(array);
 				talloc_free(dflt_cp);

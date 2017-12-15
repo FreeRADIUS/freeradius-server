@@ -188,7 +188,7 @@ static void fr_network_drain_input(fr_network_t *nr, fr_channel_t *ch, fr_channe
 
 	do {
 		nr->num_replies++;
-		DEBUG3("received reply %zd", nr->num_replies);
+		DEBUG3("received reply %" PRIu64, nr->num_replies);
 
 		cd->channel.ch = ch;
 

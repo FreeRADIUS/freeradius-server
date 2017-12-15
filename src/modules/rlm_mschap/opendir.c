@@ -238,9 +238,9 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	tDataBuffer		*pStepBuff	 = NULL;
 	tDataNode		*pAuthType	 = NULL;
 	uint32_t		uiCurr		 = 0;
-	uint32_t		uiLen		 = 0;
+	uint32_t		user_id_len		 = 0;
 	char			*username_string = NULL;
-	char			*shortUserName	 = NULL;
+	char			*short_user_name	 = NULL;
 	VALUE_PAIR		*response	 = fr_pair_find_by_num(request->packet->vps, VENDORPEC_MICROSOFT,
 									  FR_MSCHAP2_RESPONSE, TAG_ANY);
 #ifndef NDEBUG
@@ -260,7 +260,7 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 		return RLM_MODULE_FAIL;
 	}
 
-	rcode = getUserNodeRef(request, username_string, &shortUserName, &userNodeRef, dsRef);
+	rcode = getUserNodeRef(request, username_string, &short_user_name, &userNodeRef, dsRef);
 	if (rcode != RLM_MODULE_OK) {
 		if (rcode != RLM_MODULE_NOOP) {
 			RDEBUG2("od_mschap_auth: getUserNodeRef() failed");
@@ -299,14 +299,16 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	pAuthType = dsDataNodeAllocateString(dsRef, kDSStdAuthMSCHAP2);
 	uiCurr = 0;
 
-	RDEBUG2("OD username_string = %s, OD shortUserName=%s (length = %lu)\n", username_string, shortUserName, strlen(shortUserName));
+	user_id_len = (uint32_t)short_user_name ? strlen(short_user_name) : 0;
+
+	RDEBUG2("OD username_string = %s, OD short_user_name=%s (length = %u)",
+		username_string, short_user_name, user_id_len);
 
 	/* User name length + username */
-	uiLen = (uint32_t)strlen(shortUserName);
-	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(uiLen));
-	uiCurr += sizeof(uiLen);
-	memcpy(&(tDataBuff->fBufferData[uiCurr]), shortUserName, uiLen);
-	uiCurr += uiLen;
+	memcpy(&(tDataBuff->fBufferData[uiCurr]), &user_id_len, sizeof(user_id_len));
+	uiCurr += sizeof(user_id_len);
+	memcpy(&(tDataBuff->fBufferData[uiCurr]), short_user_name, user_id_len);
+	uiCurr += user_id_len;
 #ifndef NDEBUG
 	RINDENT();
 	RDEBUG2("Stepbuf server challenge : ");
@@ -317,12 +319,12 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 #endif
 
 	/* server challenge (ie. my (freeRADIUS) challenge) */
-	uiLen = 16;
-	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(uiLen));
-	uiCurr += sizeof(uiLen);
+	user_id_len = 16;
+	memcpy(&(tDataBuff->fBufferData[uiCurr]), &user_id_len, sizeof(user_id_len));
+	uiCurr += sizeof(user_id_len);
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), &(challenge->vp_strvalue[0]),
-	       uiLen);
-	uiCurr += uiLen;
+	       user_id_len);
+	uiCurr += user_id_len;
 
 #ifndef NDEBUG
 	RDEBUG2("Stepbuf peer challenge   : ");
@@ -333,12 +335,12 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 #endif
 
 	/* peer challenge (ie. the client-generated response) */
-	uiLen = 16;
-	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(uiLen));
-	uiCurr += sizeof(uiLen);
+	user_id_len = 16;
+	memcpy(&(tDataBuff->fBufferData[uiCurr]), &user_id_len, sizeof(user_id_len));
+	uiCurr += sizeof(user_id_len);
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), &(response->vp_strvalue[2]),
-	       uiLen);
-	uiCurr += uiLen;
+	       user_id_len);
+	uiCurr += user_id_len;
 
 #ifndef NDEBUG
 	RDEBUG2("Stepbuf p24              : ");
@@ -350,19 +352,19 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 #endif
 
 	/* p24 (ie. second part of client-generated response) */
-	uiLen =  24; /* strlen(&(response->vp_strvalue[26])); may contain NULL byte in the middle. */
-	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(uiLen));
-	uiCurr += sizeof(uiLen);
+	user_id_len =  24; /* strlen(&(response->vp_strvalue[26])); may contain NULL byte in the middle. */
+	memcpy(&(tDataBuff->fBufferData[uiCurr]), &user_id_len, sizeof(user_id_len));
+	uiCurr += sizeof(user_id_len);
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), &(response->vp_strvalue[26]),
-	       uiLen);
-	uiCurr += uiLen;
+	       user_id_len);
+	uiCurr += user_id_len;
 
 	/* Client generated use name (short name?) */
-	uiLen =  (uint32_t)strlen(username_string);
-	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(uiLen));
-	uiCurr += sizeof(uiLen);
-	memcpy(&(tDataBuff->fBufferData[uiCurr]), username_string, uiLen);
-	uiCurr += uiLen;
+	user_id_len =  (uint32_t)strlen(username_string);
+	memcpy(&(tDataBuff->fBufferData[uiCurr]), &user_id_len, sizeof(user_id_len));
+	uiCurr += sizeof(user_id_len);
+	memcpy(&(tDataBuff->fBufferData[uiCurr]), username_string, user_id_len);
+	uiCurr += user_id_len;
 
 	tDataBuff->fBufferLength = uiCurr;
 
@@ -391,8 +393,8 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	/* clean up */
 	if (username_string != NULL)
 		talloc_free(username_string);
-	if (shortUserName != NULL)
-		talloc_free(shortUserName);
+	if (short_user_name != NULL)
+		talloc_free(short_user_name);
 
 	if (tDataBuff != NULL)
 		dsDataBufferDeAllocate(dsRef, tDataBuff);

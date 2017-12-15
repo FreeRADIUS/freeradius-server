@@ -258,8 +258,8 @@ redo:
 		 *	record, every line MUST have a leading tab.
 		 */
 		if (p[1] != '\t') {
-			ERROR("proto_detail (%s): Malformed line found at offset %zd in file %s",
-			      inst->name, (size_t) (p - buffer) + inst->header_offset,
+			ERROR("proto_detail (%s): Malformed line found at offset %zu in file %s",
+			      inst->name, (size_t)((p - buffer) + inst->header_offset),
 			      inst->filename_work);
 			return -1;
 		}
@@ -300,9 +300,9 @@ redo:
 		 *	this, it's malformed.
 		 */
 		if (memcmp(p, " = ", 3) != 0) {
-			ERROR("proto_detail (%s): Malformed line found at offset %zd: %.*s of file %s",
+			ERROR("proto_detail (%s): Malformed line found at offset %zu: %.*s of file %s",
 			      inst->name,
-			      (size_t) (p - buffer) + inst->header_offset, (int) (end - p), p,
+			      (size_t)((p - buffer) + inst->header_offset), (int) (end - p), p,
 			      inst->filename_work);
 			return -1;
 		}
