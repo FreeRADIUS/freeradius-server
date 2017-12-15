@@ -481,32 +481,16 @@ int fr_sim_crypto_kdf_0_gsm(fr_sim_keys_t *keys)
  * @param[in] identity		reauthentication identity.
  * @param[in] identity_len	length of the reauthentication identity.
  * @param[in] counter		re-authentication counter.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
  */
-int fr_sim_crypto_keys_init_kdf_0_reauth(TALLOC_CTX *ctx, fr_sim_keys_t *keys,
-					 uint8_t const *master_key[20],
-					 char const *identity, size_t identity_len, uint16_t counter)
+void fr_sim_crypto_keys_init_kdf_0_reauth(fr_sim_keys_t *keys,
+					  uint8_t const master_key[SIM_MK_SIZE], uint16_t counter)
 {
 	uint32_t nonce_s[4];
-
-	/*
-	 *	Zero out keys
-	 */
-	memset(keys, 0, sizeof(*keys));
 
 	/*
 	 *	Copy in master key
 	 */
 	memcpy(keys->master_key, master_key, sizeof(keys->master_key));
-
-	keys->identity = (uint8_t const *)talloc_bstrndup(ctx, identity, identity_len);
-	if (!keys->identity) {
-		fr_strerror_printf("Out of memory");
-		return -1;
-	}
-	keys->identity_len = identity_len;
 
 	keys->reauth.counter = counter;
 
@@ -515,8 +499,6 @@ int fr_sim_crypto_keys_init_kdf_0_reauth(TALLOC_CTX *ctx, fr_sim_keys_t *keys,
 	nonce_s[2] = fr_rand();
 	nonce_s[3] = fr_rand();
 	memcpy(keys->reauth.nonce_s, (uint8_t *)&nonce_s, sizeof(keys->reauth.nonce_s));
-
-	return 0;
 }
 
 /** Re-Derive keys from the master key

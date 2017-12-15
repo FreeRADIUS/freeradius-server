@@ -44,6 +44,8 @@ RCSIDH(sim_h, "$Id$")
 #define SIM_SQN_AK_SIZE			6
 #define SIM_NONCE_S_SIZE		16		//!< Length of re-authentication nonce
 
+#define SIM_MK_SIZE			20		//!< Master key size
+
 #define SIM_SKIPPABLE_MAX		127		//!< The last non-skippable attribute.
 
 #define SIM_VECTOR_GSM_RAND_SIZE	16		//!< Length of RAND in GSM triplet.
@@ -184,7 +186,7 @@ typedef struct {
 	/*
 	 *	Outputs
 	 */
-	uint8_t		master_key[20];				//!< Master key from session attributes.
+	uint8_t		master_key[SIM_MK_SIZE];		//!< Master key from session attributes.
 
 	uint8_t		k_aut[32];				//!< Derived authentication key.
 	size_t		k_aut_len;				//!< Length of k_aut.  16 for AKA/SIM, 32 for AKA'.
@@ -264,9 +266,8 @@ ssize_t		fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet, bo
 
 int		fr_sim_crypto_kdf_0_gsm(fr_sim_keys_t *keys);
 
-int		fr_sim_crypto_keys_init_kdf_0_reauth(TALLOC_CTX *ctx, fr_sim_keys_t *keys,
-						     uint8_t const *master_key[20],
-						     char const *identity, size_t identity_len, uint16_t counter);
+void		fr_sim_crypto_keys_init_kdf_0_reauth(fr_sim_keys_t *keys,
+						     uint8_t const master_key[SIM_MK_SIZE], uint16_t counter);
 
 int		fr_sim_crypto_kdf_0_reauth(fr_sim_keys_t *keys);
 
