@@ -36,6 +36,7 @@ static const CONF_PARSER module_config[] = {
 	{ "port", FR_CONF_OFFSET(PW_TYPE_SHORT, REDIS_INST, port), "6379" },
 	{ "database", FR_CONF_OFFSET(PW_TYPE_INTEGER, REDIS_INST, database), "0" },
 	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, REDIS_INST, password), NULL },
+	{ "query_timeout", FR_CONF_OFFSET(PW_TYPE_SHORT, REDIS_INST, query_timeout), "5" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -61,17 +62,26 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	redisContext *conn;
 	redisReply *reply = NULL;
 	char buffer[1024];
+	struct timeval tv;
+	tv.tv_sec = inst->query_timeout;
+	tv.tv_usec = 0;
 
-	conn = redisConnect(inst->hostname, inst->port);
+	conn = redisConnectWithTimeout(inst->hostname, inst->port, tv);
 	if (!conn) {
-		ERROR("rlm_redis (%s): Failed calling redisConnect('%s', %d)",
-		      inst->xlat_name, inst->hostname, inst->port);
+		ERROR("rlm_redis (%s): Failed calling redisConnectWithTimeout('%s', %d, %d)",
+		      inst->xlat_name, inst->hostname, inst->port, inst->query_timeout);
 		return NULL;
 	}
 
 	if (conn && conn->err) {
-		ERROR("rlm_redis (%s): Problems with redisConnect('%s', %d), %s",
-				inst->xlat_name, inst->hostname, inst->port, redisReplyReaderGetError(conn));
+		ERROR("rlm_redis (%s): Problems with redisConnectWithTimeout('%s', %d, %d), %s",
+				inst->xlat_name, inst->hostname, inst->port, inst->query_timeout, redisReplyReaderGetError(conn));
+		redisFree(conn);
+		return NULL;
+	}
+
+	if ( redisSetTimeout(conn, tv) == REDIS_ERR ) {
+		ERROR("rlm_redis (%s): redisSetTimeout('%s', %d) returned REDIS_ERR", inst->xlat_name, inst->hostname, inst->port);
 		redisFree(conn);
 		return NULL;
 	}
@@ -215,6 +225,9 @@ int rlm_redis_query(REDISSOCK **dissocket_p, REDIS_INST *inst,
 	int argc;
 	char const *argv[MAX_REDIS_ARGS];
 	char argv_buf[MAX_QUERY_LEN];
+	struct timeval tv;
+	tv.tv_sec = inst->query_timeout;
+	tv.tv_usec = 0;
 
 	if (!query || !*query || !inst || !dissocket_p) {
 		return -1;
@@ -239,7 +252,7 @@ int rlm_redis_query(REDISSOCK **dissocket_p, REDIS_INST *inst,
 			return -1;
 		}
 
-		dissocket->reply = redisCommand(dissocket->conn, query);
+		dissocket->reply = redisCommand(dissocket->conn, query, tv);
 		if (!dissocket->reply) {
 			RERROR("Failed after re-connect");
 			fr_connection_close(inst->pool, dissocket, NULL);
