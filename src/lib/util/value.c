@@ -3341,6 +3341,8 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 		if (data->vb_octets) {
 			fr_bin2hex(p + 2, data->vb_octets, data->datum.length);
 			p[2 + (data->datum.length * 2)] = '\0';
+		} else {
+			p[2] = '\0';
 		}
 		break;
 
