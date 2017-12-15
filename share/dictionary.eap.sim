@@ -65,10 +65,6 @@ VALUE	EAP-SIM-Subtype			SIM-Notification			12
 VALUE	EAP-SIM-Subtype			SIM-Reauthentication			13
 VALUE	EAP-SIM-Subtype			SIM-Client-Error			14
 
-ATTRIBUTE	EAP-SIM-HMAC				257	string
-ATTRIBUTE	EAP-SIM-Key				258	octets
-ATTRIBUTE	EAP-SIM-Extra				259	octets
-
 ATTRIBUTE	EAP-SIM-SRES				1222	octets
 ATTRIBUTE	EAP-SIM-KC				1223	octets
 ATTRIBUTE	EAP-SIM-State				1224	integer

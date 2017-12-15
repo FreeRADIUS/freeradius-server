@@ -76,10 +76,6 @@ VALUE	EAP-AKA-Subtype			AKA-Notification			12
 VALUE	EAP-AKA-Subtype			AKA-Reauthentication			13
 VALUE	EAP-AKA-Subtype			AKA-Client-Error			14
 
-ATTRIBUTE	EAP-AKA-HMAC				257	string
-ATTRIBUTE	EAP-AKA-Key				258	octets
-ATTRIBUTE	EAP-AKA-Extra				259	octets
-
 ATTRIBUTE	EAP-AKA-XRES				260	octets
 ATTRIBUTE	EAP-AKA-CK				261	octets
 ATTRIBUTE	EAP-AKA-IK				262	octets
