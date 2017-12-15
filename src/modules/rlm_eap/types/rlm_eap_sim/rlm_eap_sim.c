@@ -299,6 +299,96 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	return 0;
 }
 
+static int eap_sim_send_reauthentication(eap_session_t *eap_session)
+{
+	REQUEST			*request = eap_session->request;
+	eap_sim_session_t	*eap_sim_session = talloc_get_type_abort(eap_session->opaque, eap_sim_session_t);
+	VALUE_PAIR		**to_peer, *vp;
+	RADIUS_PACKET		*packet;
+	fr_sim_vector_src_t	src = SIM_VECTOR_SRC_AUTO;
+
+	rad_assert(eap_session->request != NULL);
+	rad_assert(eap_session->request->reply);
+
+	RDEBUG2("Acquiring GSM vector(s)");
+	if ((fr_sim_vector_gsm_from_attrs(eap_session, request->control, 0, &eap_sim_session->keys, &src) != 0) ||
+	    (fr_sim_vector_gsm_from_attrs(eap_session, request->control, 1, &eap_sim_session->keys, &src) != 0) ||
+	    (fr_sim_vector_gsm_from_attrs(eap_session, request->control, 2, &eap_sim_session->keys, &src) != 0)) {
+	    	REDEBUG("Failed retrieving SIM vectors");
+		return RLM_MODULE_FAIL;
+	}
+
+	/*
+	 *	All set, calculate keys!
+	 */
+	fr_sim_crypto_kdf_0_gsm(&eap_sim_session->keys);
+	if (RDEBUG_ENABLED3) fr_sim_crypto_keys_log(request, &eap_sim_session->keys);
+
+	RDEBUG2("Sending SIM-Challenge");
+	eap_session->this_round->request->code = FR_EAP_CODE_REQUEST;
+
+	/*
+	 *	to_peer is the data to the client
+	 */
+	packet = eap_session->request->reply;
+	to_peer = &packet->vps;
+
+	/*
+	 *	Okay, we got the challenges! Put them into attributes.
+	 */
+	MEM(vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_RAND));
+	fr_pair_value_memcpy(vp, eap_sim_session->keys.gsm.vector[0].rand, SIM_VECTOR_GSM_RAND_SIZE);
+	fr_pair_add(to_peer, vp);
+
+	MEM(vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_RAND));
+	fr_pair_value_memcpy(vp, eap_sim_session->keys.gsm.vector[1].rand, SIM_VECTOR_GSM_RAND_SIZE);
+	fr_pair_add(to_peer, vp);
+
+	MEM(vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_RAND));
+	fr_pair_value_memcpy(vp, eap_sim_session->keys.gsm.vector[2].rand, SIM_VECTOR_GSM_RAND_SIZE);
+	fr_pair_add(to_peer, vp);
+
+	/*
+	 *	Set subtype to challenge.
+	 */
+	vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_SUBTYPE);
+	vp->vp_uint16 = EAP_SIM_CHALLENGE;
+	fr_pair_replace(to_peer, vp);
+
+	/*
+	 *	Indicate we'd like to use protected success messages
+	 */
+	if (eap_sim_session->send_result_ind) {
+		MEM(vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_RESULT_IND));
+		vp->vp_bool = true;
+		fr_pair_replace(to_peer, vp);
+	}
+
+	/*
+	 *	Need to include an AT_MAC attribute so that it will get
+	 *	calculated.
+	 */
+	vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_MAC);
+	fr_pair_replace(to_peer, vp);
+
+	/*
+	 *	We've sent the challenge so the peer should now be able
+	 *	to accept encrypted attributes.
+	 */
+	eap_sim_session->allow_encrypted = true;
+
+	/*
+	 *	Encode the packet
+	 */
+	if (eap_sim_compose(eap_session,
+			    eap_sim_session->keys.gsm.nonce_mt, sizeof(eap_sim_session->keys.gsm.nonce_mt)) < 0) {
+		fr_pair_list_free(&packet->vps);
+		return -1;
+	}
+
+	return 0;
+}
+
 /** Send a success notification
  *
  */

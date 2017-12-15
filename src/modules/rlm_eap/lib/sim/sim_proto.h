@@ -41,7 +41,8 @@ RCSIDH(sim_h, "$Id$")
 #define SIM_MAC_DIGEST_SIZE		16		//!< Length of MAC used to prevent packet modification.
 #define SIM_MAC_SIZE			20		//!< Length of MAC used to prevent packet modification.
 #define SIM_AUTH_SIZE			16
-#define SIM_SQN_AK_LEN			6
+#define SIM_SQN_AK_SIZE			6
+#define SIM_NONCE_S_SIZE		16		//!< Length of re-authentication nonce
 
 #define SIM_SKIPPABLE_MAX		127		//!< The last non-skippable attribute.
 
@@ -134,33 +135,45 @@ typedef struct {
 
 	uint64_t	sqn;					//!< Sequence number
 
-	/*
-	 *	The vectors we acquired during the challenge phase.
-	 */
 	union {
-		/** Input to kdf_0_gsm
+		/*
+		 *	Authentication vectors from HLR or local AuC
 		 */
 		struct {
-			fr_sim_vector_gsm_t	vector[3];			//!< GSM vectors.
-			uint32_t		num_vectors;			//!< Number of input vectors
+			union {
+				/** Input to kdf_0_gsm
+				 */
+				struct {
+					fr_sim_vector_gsm_t	vector[3];	//!< GSM vectors.
+					uint32_t		num_vectors;	//!< Number of input vectors
 										//!< we're using (2 or 3).
 
-			uint8_t			nonce_mt[EAP_SIM_NONCE_MT_SIZE];//!< Nonce provided by the client.
-			uint8_t			version_list[FR_MAX_STRING_LEN];//!< Version list from negotiation.
-			uint8_t			version_list_len;		//!< Length of version list.
-			uint8_t			version_select[2];		//!< Version we agreed.
-		} gsm;
+					uint8_t	nonce_mt[EAP_SIM_NONCE_MT_SIZE];//!< Nonce provided by the client.
+					uint8_t	version_list[FR_MAX_STRING_LEN];//!< Version list from negotiation.
+					uint8_t	version_list_len;		//!< Length of version list.
+					uint8_t	version_select[2];		//!< Version we agreed.
+				} gsm;
 
-		/** Input to kdf_*_umts
+				/** Input to kdf_*_umts
+				 */
+				struct {
+					fr_sim_vector_umts_t	vector;		//!< UMTS vector.
+					uint16_t		kdf_selected;
+				} umts;
+			};
+
+			fr_sim_vector_type_t	vector_type;		//!< What type of authentication vector
+									//!< we're using to authenticate the SIM.
+		};
+
+		/*
+		 *	Re-authentication data
 		 */
 		struct {
-			fr_sim_vector_umts_t	vector;		//!< UMTS vector.
-			uint16_t		kdf_selected;
-		} umts;
+			uint16_t	counter;			//!< Re-authentication counter.
+			uint8_t		nonce_s[SIM_NONCE_S_SIZE];	//!< Re-authentication challenge.
+		} reauth;
 	};
-
-	fr_sim_vector_type_t	vector_type;			//!< What type of authentication vector
-								//!< we're using to authenticate the SIM.
 
 	/*
 	 *	Intermediates
@@ -252,6 +265,12 @@ ssize_t		fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet, bo
 					  uint8_t const *hmac_extra, size_t const hmac_extra_len);
 
 int		fr_sim_crypto_kdf_0_gsm(fr_sim_keys_t *keys);
+
+int		fr_sim_crypto_keys_init_kdf_0_reauth(TALLOC_CTX *ctx, fr_sim_keys_t *keys,
+						     uint8_t const *master_key[20],
+						     char const *identity, size_t identity_len, uint16_t counter);
+
+int		fr_sim_crypto_kdf_0_reauth(fr_sim_keys_t *keys);
 
 int		fr_sim_crypto_kdf_0_umts(fr_sim_keys_t *keys);
 

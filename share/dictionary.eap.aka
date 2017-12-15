@@ -80,3 +80,8 @@ ATTRIBUTE	EAP-AKA-XRES				260	octets
 ATTRIBUTE	EAP-AKA-CK				261	octets
 ATTRIBUTE	EAP-AKA-IK				262	octets
 ATTRIBUTE	EAP-AKA-AK				263	octets
+
+#
+#  Keys to store for fast-reauthentication
+#
+ATTRIBUTE	EAP-SIM-MK				264	octets		# Master key

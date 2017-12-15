@@ -68,3 +68,8 @@ VALUE	EAP-SIM-Subtype			SIM-Client-Error			14
 ATTRIBUTE	EAP-SIM-SRES				1222	octets
 ATTRIBUTE	EAP-SIM-KC				1223	octets
 ATTRIBUTE	EAP-SIM-State				1224	integer
+
+#
+#  Keys to store for fast-reauthentication
+#
+ATTRIBUTE	EAP-AKA-MK				264	octets		# Master key
