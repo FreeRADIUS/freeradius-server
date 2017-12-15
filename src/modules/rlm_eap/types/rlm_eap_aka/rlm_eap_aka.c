@@ -232,8 +232,6 @@ static int eap_aka_send_identity_request(eap_session_t *eap_session)
  */
 static int eap_aka_send_challenge(eap_session_t *eap_session)
 {
-	static uint8_t		hmac_zero[16] = { 0x00 };
-
 	REQUEST			*request = eap_session->request;
 	eap_aka_session_t	*eap_aka_session = talloc_get_type_abort(eap_session->opaque, eap_aka_session_t);
 	VALUE_PAIR		**to_peer, *vp;
@@ -358,7 +356,6 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	 *	calculated.
 	 */
 	MEM(vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_MAC));
-	fr_pair_value_memcpy(vp, hmac_zero, sizeof(hmac_zero));
 	fr_pair_replace(to_peer, vp);
 
 	/*
