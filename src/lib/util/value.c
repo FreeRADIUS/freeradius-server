@@ -3338,8 +3338,10 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 		p[0] = '0';
 		p[1] = 'x';
 
-		fr_bin2hex(p + 2, data->vb_octets, data->datum.length);
-		p[2 + (data->datum.length * 2)] = '\0';
+		if (data->vb_octets) {
+			fr_bin2hex(p + 2, data->vb_octets, data->datum.length);
+			p[2 + (data->datum.length * 2)] = '\0';
+		}
 		break;
 
 	/*
@@ -3726,9 +3728,11 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 		}
 
 		/* Get maximum number of uint8s we can encode given freespace */
-		max = ((freespace % 2) ? freespace - 1 : freespace - 2) / 2;
-		fr_bin2hex(out, data->vb_octets,
-			   ((size_t)data->datum.length > max) ? max : (size_t)data->datum.length);
+		if (data->vb_octets) {
+			max = ((freespace % 2) ? freespace - 1 : freespace - 2) / 2;
+			fr_bin2hex(out, data->vb_octets,
+				   ((size_t)data->datum.length > max) ? max : (size_t)data->datum.length);
+		}
 	}
 		return len;
 
