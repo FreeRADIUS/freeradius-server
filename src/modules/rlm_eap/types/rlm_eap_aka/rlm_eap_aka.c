@@ -792,10 +792,10 @@ static int process_eap_aka_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 	 */
 	if (fr_pair_find_by_child_num(vps, dict_aka_root, FR_EAP_AKA_RESULT_IND, TAG_ANY)) {
 		eap_aka_state_enter(eap_session, EAP_AKA_SERVER_SUCCESS_NOTIFICATION);
-	} else {
-		eap_aka_state_enter(eap_session, EAP_AKA_SERVER_SUCCESS);
+		return 1;
 	}
 
+	eap_aka_state_enter(eap_session, EAP_AKA_SERVER_SUCCESS);
 	return 0;
 }
 
@@ -951,9 +951,18 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	case EAP_AKA_SERVER_CHALLENGE:
 		switch (subtype) {
 		case EAP_AKA_CHALLENGE:
-			if (process_eap_aka_challenge(eap_session, vps) == 0) return RLM_MODULE_HANDLED;
-			eap_aka_state_enter(eap_session, EAP_AKA_SERVER_FAILURE_NOTIFICATION);
-			return RLM_MODULE_HANDLED;				/* We need to process more packets */
+			switch (process_eap_aka_challenge(eap_session, vps)) {
+			case 1:
+				return RLM_MODULE_HANDLED;
+
+			case 0:
+				return RLM_MODULE_OK;
+
+			case -1:
+				eap_aka_state_enter(eap_session, EAP_AKA_SERVER_FAILURE_NOTIFICATION);
+				return RLM_MODULE_HANDLED;			/* We need to process more packets */
+			}
+
 
 		case EAP_AKA_SYNCHRONIZATION_FAILURE:
 			REDEBUG("EAP-AKA Peer synchronization failure");	/* We can't handle these yet */

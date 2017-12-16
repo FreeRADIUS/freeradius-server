@@ -788,10 +788,10 @@ static int process_eap_sim_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 	 */
 	if (fr_pair_find_by_child_num(vps, dict_sim_root, FR_EAP_SIM_RESULT_IND, TAG_ANY)) {
 		eap_sim_state_enter(eap_session, EAP_SIM_SERVER_SUCCESS_NOTIFICATION);
-	} else {
-		eap_sim_state_enter(eap_session, EAP_SIM_SERVER_SUCCESS);
+		return 1;
 	}
 
+	eap_sim_state_enter(eap_session, EAP_SIM_SERVER_SUCCESS);
 	return 0;
 }
 
@@ -942,7 +942,17 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		 *	A response to our EAP-Sim/Request/Challenge!
 		 */
 		case EAP_SIM_CHALLENGE:
-			return process_eap_sim_challenge(eap_session, from_peer);
+			switch (process_eap_sim_challenge(eap_session, from_peer)) {
+			case 1:
+				return RLM_MODULE_HANDLED;
+
+			case 0:
+				return RLM_MODULE_OK;
+
+			case -1:
+				eap_sim_state_enter(eap_session, EAP_SIM_SERVER_FAILURE_NOTIFICATION);
+				return RLM_MODULE_HANDLED;			/* We need to process more packets */
+			}
 
 		case EAP_SIM_CLIENT_ERROR:
 		{
