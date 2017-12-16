@@ -260,7 +260,7 @@ int		fr_sim_crypto_update_checkcode(fr_sim_checkcode_t *checkcode, eap_packet_t 
 
 ssize_t		fr_sim_crypto_finalise_checkcode(uint8_t *out, fr_sim_checkcode_t **checkcode);
 
-ssize_t		fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet, bool zero_mac,
+ssize_t		fr_sim_crypto_sign_packet(uint8_t out[SIM_MAC_DIGEST_SIZE], eap_packet_t *eap_packet, bool zero_mac,
 					  EVP_MD const *md, uint8_t const *key, size_t const key_len,
 					  uint8_t const *hmac_extra, size_t const hmac_extra_len);
 
@@ -276,6 +276,8 @@ int		fr_sim_crypto_kdf_0_umts(fr_sim_keys_t *keys);
 int		fr_sim_crypto_derive_ck_ik_prime(fr_sim_keys_t *keys);
 
 int		fr_sim_crypto_kdf_1_umts(fr_sim_keys_t *keys);
+
+int		fr_sim_crypto_kdf_1_reauth(fr_sim_keys_t *keys);
 
 void		fr_sim_crypto_keys_log(REQUEST *request, fr_sim_keys_t *keys);
 

@@ -500,7 +500,7 @@ void fr_sim_crypto_keys_init_kdf_0_reauth(fr_sim_keys_t *keys,
 
 /** Re-Derive keys from the master key
  *
- * @note expects keys to contain a populated master_key.
+ * @note expects keys to contain a populated master_key, none_s and counter values.
  *
  * Derives new MSK, EMSK, k_aut, k_encr
  *
@@ -566,15 +566,13 @@ int fr_sim_crypto_kdf_0_reauth(fr_sim_keys_t *keys)
 	memcpy(p, keys->identity, keys->identity_len);
 	p += keys->identity_len;
 	FR_PROTO_HEX_DUMP("identity", keys->identity, keys->identity_len);
-	FR_PROTO_HEX_DUMP("buff", buf, p - buf);
-
 
 	/*
 	 *	Counter
 	 */
 	*p++ = ((keys->reauth.counter & 0xff00) >> 8);
 	*p++ = (keys->reauth.counter & 0x00ff);
-	FR_PROTO_HEX_DUMP("buff", buf, p - buf);
+
 	/*
 	 *	nonce_s
 	 */
@@ -711,14 +709,14 @@ int fr_sim_crypto_kdf_0_umts(fr_sim_keys_t *keys)
  *
  * @note expects keys to contain a SIM_VECTOR_UMTS.
  *
- *	CK' || IK' = HMAC-SHA-256(Key, S)
- *	S = FC || P0 || L0 || P1 || L1 || ... || Pn || Ln
- *	Key = CK || IK
- *	FC = 0x20
- *	P0 = access network identity (3GPP TS 24.302)
- *	L0 = length of acceess network identity (2 octets, big endian)
- *	P1 = SQN xor AK (if AK is not used, AK is treated as 000..0
- *	L1 = 0x00 0x06
+ *  CK' || IK' = HMAC-SHA-256(Key, S)
+ *  S = FC || P0 || L0 || P1 || L1 || ... || Pn || Ln
+ *  Key = CK || IK
+ *  FC = 0x20
+ *  P0 = access network identity (3GPP TS 24.302)
+ *  L0 = length of acceess network identity (2 octets, big endian)
+ *  P1 = SQN xor AK (if AK is not used, AK is treated as 000..0
+ *  L1 = 0x00 0x06
  *
  * @param[in,out] keys		Contains the authentication vectors and the buffers
  *				to store the result of the derivation.
@@ -880,6 +878,13 @@ static int fr_sim_crypto_aka_prime_prf(uint8_t *out, size_t outlen,
  *
  * @note expects keys to contain a SIM_VECTOR_UMTS.
  *
+ *  MK = PRF'(IK'|CK',"EAP-AKA'"|Identity)
+ *  K_encr = MK[0..127]
+ *  K_aut  = MK[128..383]
+ *  K_re   = MK[384..639]
+ *  MSK    = MK[640..1151]
+ *  EMSK   = MK[1152..1663]
+ *
  * @param[in,out] keys		Contains the authentication vectors and the buffers
  *				to store the result of the derivation.
  * @return
@@ -892,7 +897,7 @@ int fr_sim_crypto_kdf_1_umts(fr_sim_keys_t *keys)
 	uint8_t s[384];
 	uint8_t *p = s;
 
-	uint8_t	mk[1664];
+	uint8_t	mk[208];
 	size_t	s_len;
 
 	fr_sim_crypto_derive_ck_ik_prime(keys);
@@ -944,10 +949,78 @@ int fr_sim_crypto_kdf_1_umts(fr_sim_keys_t *keys)
 	memcpy(keys->k_re, p, 32);				/* 256 bits for reauthentication key */
 	p += 32;
 
-	memcpy(keys->msk, p, 64);				/* 64 bytes for Master Session Key */
-	p += 64;
+	memcpy(keys->msk, p, sizeof(keys->msk));		/* 64 bytes for Master Session Key */
+	p += sizeof(keys->msk);
 
-	memcpy(keys->emsk, p, 64);				/* 64 bytes for Extended Master Session Key */
+	memcpy(keys->emsk, p, sizeof(keys->emsk));		/* 64 bytes for Extended Master Session Key */
+
+	return 0;
+}
+
+/** Derive fast-reauthentication keys
+ *
+ *  MK = PRF'(K_re,"EAP-AKA' re-auth"|Identity|counter|NONCE_S)
+ *  MSK  = MK[0..511]
+ *  EMSK = MK[512..1023]
+ *
+ * @param[in,out] keys		Contains the authentication vectors and the buffers
+ *				to store the result of the derivation.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_sim_crypto_kdf_1_reauth(fr_sim_keys_t *keys)
+{
+	uint8_t s[384];
+	uint8_t *p = s;
+
+	uint8_t	mk[128];
+	size_t	s_len;
+
+#define KDF_1_S_REAUTH_STATIC	"EAP-AKA' re-auth"
+
+	s_len = (sizeof(KDF_1_S_REAUTH_STATIC) - 1) + keys->identity_len + sizeof(uint16_t) + SIM_NONCE_S_SIZE;
+	if (s_len > sizeof(s)) {
+		fr_strerror_printf("Identity too long. PRF input is %zu bytes, input buffer is %zu bytes",
+				   s_len, sizeof(s));
+		return -1;
+	}
+
+	memcpy(p, KDF_1_S_STATIC, sizeof(KDF_1_S_STATIC) - 1);
+	p += sizeof(KDF_1_S_STATIC) - 1;
+
+	memcpy(p, keys->identity, keys->identity_len);
+	p += keys->identity_len;
+	FR_PROTO_HEX_DUMP("identity", keys->identity, keys->identity_len);
+
+	/*
+	 *	Counter
+	 */
+	*p++ = ((keys->reauth.counter & 0xff00) >> 8);
+	*p++ = (keys->reauth.counter & 0x00ff);
+
+	/*
+	 *	nonce_s
+	 */
+	memcpy(p, keys->reauth.nonce_s, sizeof(keys->reauth.nonce_s));
+	p += sizeof(keys->reauth.nonce_s);
+
+	FR_PROTO_HEX_DUMP("\"EAP-AKA' re-auth\" || Identity || counter || NONCE_S", s, p - s);
+
+	/*
+	 *	Feed into PRF
+	 */
+	if (fr_sim_crypto_aka_prime_prf(mk, sizeof(mk), keys->k_re, sizeof(keys->k_re), s, s_len) < 0) return -1;
+
+	FR_PROTO_HEX_DUMP("mk", mk, sizeof(mk));
+
+	p = mk;
+	memcpy(keys->msk, p, sizeof(keys->msk));			/* 64 bytes for Master Session Key */
+	p += sizeof(keys->msk);
+	FR_PROTO_HEX_DUMP("K_msk", keys->msk, sizeof(keys->msk));
+
+	memcpy(keys->emsk, p, sizeof(keys->msk));			/* 64 bytes for Extended Master Session Key */
+	FR_PROTO_HEX_DUMP("K_emsk", keys->emsk, sizeof(keys->emsk));
 
 	return 0;
 }
@@ -1304,6 +1377,84 @@ static void test_eap_aka_derive_ck_ik(void)
 	TEST_CHECK(memcmp(&rfc5448_vector0_out.ik_prime, keys.ik_prime, sizeof(keys.ik_prime)) == 0);
 }
 
+/*
+ *	EAP-AKA' (RFC5448) UMTS authentication vectors
+ */
+static fr_sim_keys_t const rfc5448_vector0_reauth_in = {
+	.identity = (uint8_t const *)"5555444333222111",
+	.identity_len = sizeof("5555444333222111") - 1,
+
+	.network = (uint8_t const *)"WLAN",
+	.network_len = sizeof("WLAN") - 1,
+
+	.reauth		= {
+				.counter = 1,
+				.nonce_s = { 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
+					     0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10 }
+			  },
+	.k_encr		= { 0x76, 0x6f, 0xa0, 0xa6, 0xc3, 0x17, 0x17, 0x4b,
+			    0x81, 0x2d, 0x52, 0xfb, 0xcd, 0x11, 0xa1, 0x79 },
+	.k_aut		= { 0x08, 0x42, 0xea, 0x72, 0x2f, 0xf6, 0x83, 0x5b,
+			    0xfa, 0x20, 0x32, 0x49, 0x9f, 0xc3, 0xec, 0x23,
+			    0xc2, 0xf0, 0xe3, 0x88, 0xb4, 0xf0, 0x75, 0x43,
+			    0xff, 0xc6, 0x77, 0xf1, 0x69, 0x6d, 0x71, 0xea },
+	.k_aut_len	= 32,
+	.k_re		= { 0xcf, 0x83, 0xaa, 0x8b, 0xc7, 0xe0, 0xac, 0xed,
+			    0x89, 0x2a, 0xcc, 0x98, 0xe7, 0x6a, 0x9b, 0x20,
+			    0x95, 0xb5, 0x58, 0xc7, 0x79, 0x5c, 0x70, 0x94,
+			    0x71, 0x5c, 0xb3, 0x39, 0x3a, 0xa7, 0xd1, 0x7a }
+};
+
+static fr_sim_keys_t const rfc5448_vector0_reauth_out = {
+	.k_encr		= { 0x76, 0x6f, 0xa0, 0xa6, 0xc3, 0x17, 0x17, 0x4b,
+			    0x81, 0x2d, 0x52, 0xfb, 0xcd, 0x11, 0xa1, 0x79 },
+	.k_aut		= { 0x08, 0x42, 0xea, 0x72, 0x2f, 0xf6, 0x83, 0x5b,
+			    0xfa, 0x20, 0x32, 0x49, 0x9f, 0xc3, 0xec, 0x23,
+			    0xc2, 0xf0, 0xe3, 0x88, 0xb4, 0xf0, 0x75, 0x43,
+			    0xff, 0xc6, 0x77, 0xf1, 0x69, 0x6d, 0x71, 0xea },
+	.k_aut_len	= 32,
+	.msk		= { 0x07, 0xec, 0x5d, 0x12, 0x94, 0xeb, 0xea, 0x22,
+			    0x0c, 0xa7, 0x11, 0x72, 0x24, 0x5d, 0x56, 0x9a,
+			    0x6c, 0x2f, 0x4a, 0xd0, 0x76, 0xcb, 0x54, 0x64,
+			    0x65, 0x4b, 0x52, 0x72, 0xbf, 0x09, 0xce, 0x7b,
+			    0xf7, 0xdc, 0x3f, 0x46, 0x4c, 0x95, 0xbc, 0x27,
+			    0x9a, 0x3c, 0x52, 0x42, 0x21, 0xf8, 0xaa, 0xa7,
+			    0x14, 0x97, 0xb4, 0x65, 0x18, 0x2d, 0x4f, 0x18,
+			    0xf7, 0xc4, 0xbe, 0xc4, 0xcf, 0xff, 0xd4, 0xf6 },
+	.emsk		= { 0xc4, 0x1e, 0xe2, 0xff, 0x51, 0xba, 0x46, 0xcd,
+			    0x80, 0xa9, 0x69, 0x15, 0x5c, 0x78, 0x34, 0x92,
+			    0xf2, 0x73, 0x5a, 0x0e, 0xc0, 0x35, 0x9b, 0x31,
+			    0xfa, 0xc9, 0x3b, 0x62, 0xc2, 0x2d, 0x56, 0x95,
+			    0x1a, 0x95, 0x20, 0x98, 0xe6, 0x23, 0x6d, 0xb7,
+			    0x3b, 0xde, 0x64, 0xfc, 0x80, 0xc1, 0x03, 0xa2,
+			    0x9d, 0xf8, 0x17, 0x09, 0x0c, 0x2f, 0x64, 0x19,
+			    0x97, 0x87, 0x5a, 0xcb, 0x0a, 0x64, 0x29, 0x32 }
+};
+
+static void test_eap_aka_kdf_1_umts_reauth(void)
+{
+	fr_sim_keys_t	keys;
+	int		ret;
+
+/*
+	fr_log_fp = stdout;
+	fr_debug_lvl = 4;
+	printf("\n");
+*/
+
+	memcpy(&keys, &rfc5448_vector0_reauth_in, sizeof(keys));
+
+	ret = fr_sim_crypto_kdf_1_reauth(&keys);
+	TEST_CHECK(ret == 0);
+
+	TEST_CHECK(memcmp(&rfc5448_vector0_reauth_out.k_encr, keys.k_encr, sizeof(keys.k_encr)) == 0);
+	TEST_CHECK(rfc5448_vector0_reauth_out.k_aut_len == keys.k_aut_len);
+	TEST_CHECK(memcmp(&rfc5448_vector0_reauth_out.k_aut, keys.k_aut, keys.k_aut_len) == 0);
+	TEST_CHECK(memcmp(&rfc5448_vector0_reauth_out.msk, keys.msk, sizeof(keys.msk)) == 0);
+	TEST_CHECK(memcmp(&rfc5448_vector0_reauth_out.emsk, keys.emsk, sizeof(keys.emsk)) == 0);
+}
+
+
 TEST_LIST = {
 	/*
 	 *	EAP-SIM
@@ -1316,6 +1467,8 @@ TEST_LIST = {
 	 */
 	{ "test_eap_aka_kdf_1_umts",		test_eap_aka_kdf_1_umts		},
 	{ "test_eap_aka_derive_ck_ik",		test_eap_aka_derive_ck_ik	},
+	{ "test_eap_aka_kdf_1_umts_reauth",	test_eap_aka_kdf_1_umts_reauth	},
+
 
 	{ NULL }
 };
