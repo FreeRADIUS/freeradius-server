@@ -1112,6 +1112,7 @@ static void test_eap_sim_kdf_0_gsm(void)
 /*
 	fr_log_fp = stdout;
 	fr_debug_lvl = 4;
+	printf("\n");
 */
 
 	memcpy(&keys, &rfc4186_vector0_in, sizeof(keys));
@@ -1130,8 +1131,8 @@ static void test_eap_sim_kdf_0_gsm(void)
  *	EAP-SIM (RFC4186) GSM re-authentication vectors
  */
 static fr_sim_keys_t const rfc4186_vector0_reauth_in = {
-	.identity	= (uint8_t const *)"uta0M0iyIsMwWp5TTdSdnOLvg2XDVf21OYt1vnfiMcs5dnIDHOIFVavIRzMRyzW6vFzdHW@eapsim.foo",
-	.identity_len	= sizeof("uta0M0iyIsMwWp5TTdSdnOLvg2XDVf21OYt1vnfiMcs5dnIDHOIFVavIRzMRyzW6vFzdHW@eapsim.foo") - 1,
+	.identity	= (uint8_t const *)"Y24fNSrz8BP274jOJaF17WfxI8YO7QX00pMXk9XMMVOw7broaNhTczuFq53aEpOkk3L0dm@eapsim.foo",
+	.identity_len	= sizeof("Y24fNSrz8BP274jOJaF17WfxI8YO7QX00pMXk9XMMVOw7broaNhTczuFq53aEpOkk3L0dm@eapsim.foo") - 1,
 
 	.reauth		= {
 				.counter = 1,
@@ -1173,8 +1174,11 @@ static void test_eap_sim_kdf_0_gsm_reauth(void)
 	fr_sim_keys_t	keys;
 	int		ret;
 
+/*
 	fr_log_fp = stdout;
 	fr_debug_lvl = 4;
+	printf("\n");
+*/
 
 	memcpy(&keys, &rfc4186_vector0_reauth_in, sizeof(keys));
 
@@ -1261,6 +1265,7 @@ static void test_eap_aka_kdf_1_umts(void)
 /*
 	fr_log_fp = stdout;
 	fr_debug_lvl = 4;
+	printf("\n");
 */
 
 	memcpy(&keys, &rfc5448_vector0_in, sizeof(keys));
@@ -1289,6 +1294,7 @@ static void test_eap_aka_derive_ck_ik(void)
 /*
 	fr_log_fp = stdout;
 	fr_debug_lvl = 4;
+	printf("\n");
 */
 
 	memcpy(&keys, &rfc5448_vector0_in, sizeof(keys));
