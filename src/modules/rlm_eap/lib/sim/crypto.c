@@ -475,11 +475,8 @@ int fr_sim_crypto_kdf_0_gsm(fr_sim_keys_t *keys)
 
 /** Initialise fr_sim_keys_t with EAP-SIM/EAP-AKA reauthentication data
  *
- * @param[in] ctx		to allocate duped buffers in.
  * @param[out] keys		structure to populate.
  * @param[in] master_key	from original authentication.
- * @param[in] identity		reauthentication identity.
- * @param[in] identity_len	length of the reauthentication identity.
  * @param[in] counter		re-authentication counter.
  */
 void fr_sim_crypto_keys_init_kdf_0_reauth(fr_sim_keys_t *keys,
