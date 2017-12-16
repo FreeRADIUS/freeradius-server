@@ -3561,11 +3561,11 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 {
 	char		buf[1024];	/* Interim buffer to use with poorly behaved printing functions */
 	char const	*a = NULL;
-	char		*p = out;
+	char		*p = out, *end = p + outlen;
 	time_t		t;
 	struct tm	s_tm;
 
-	size_t		len = 0, freespace = outlen;
+	size_t		len = 0;
 
 	if (!data) return 0;
 
@@ -3591,24 +3591,21 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 		 *	Ensure that WE add the quotation marks around the string.
 		 */
 		if (quote) {
-			if (freespace < 3) return data->datum.length + 2;
+			if ((end - p) < 3) return data->datum.length + 2;
 
 			*p++ = quote;
-			freespace--;
 
-			len = fr_snprint(p, freespace, data->vb_strvalue, data->datum.length, quote);
+			len = fr_snprint(p, (end - p), data->vb_strvalue, data->datum.length, quote);
 			/* always terminate the quoted string with another quote */
-			if (len >= (freespace - 1)) {
+			if ((len + 1) >= (size_t)(end - p)) {
 				/* Use out not p as we're operating on the entire buffer */
 				out[outlen - 2] = (char) quote;
 				out[outlen - 1] = '\0';
 				return len + 2;
 			}
 			p += len;
-			freespace -= len;
 
 			*p++ = (char) quote;
-			freespace--;
 			*p = '\0';
 
 			return len + 2;
@@ -3710,30 +3707,28 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 
 		/* Return the number of uint8s we would have written */
 		len = (data->datum.length * 2) + 2;
-		if (freespace <= 1) {
+		if ((end - p) <= 1) return len;
+
+
+		*p++ = '0';
+		if ((end - p) <= 1) {
+			*p = '\0';
 			return len;
 		}
 
-		*out++ = '0';
-		freespace--;
-
-		if (freespace <= 1) {
-			*out = '\0';
-			return len;
-		}
-		*out++ = 'x';
-		freespace--;
-
-		if (freespace <= 2) {
-			*out = '\0';
+		*p++ = 'x';
+		if ((end - p) <= 2) {
+			*p = '\0';
 			return len;
 		}
 
-		/* Get maximum number of uint8s we can encode given freespace */
+		/* Get maximum number of uint8s we can encode given (end - p) */
 		if (data->vb_octets) {
-			max = ((freespace % 2) ? freespace - 1 : freespace - 2) / 2;
-			fr_bin2hex(out, data->vb_octets,
+			max = (((end - p) % 2) ? (end - p) - 1 : (end - p) - 2) / 2;
+			fr_bin2hex(p, data->vb_octets,
 				   ((size_t)data->datum.length > max) ? max : (size_t)data->datum.length);
+		} else {
+			*p = '\0';
 		}
 	}
 		return len;
