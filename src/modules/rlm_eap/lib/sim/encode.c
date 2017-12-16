@@ -882,12 +882,13 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 	 *	length field in the buffer.
 	 */
 	total_len = ROUND_UP_POW2(len + 2, 4);
-	p[0] = da->attr & 0xff;			/* Type */
-	p[1] = total_len >> 2;		/* Length */
+	*p++ = da->attr & 0xff;			/* Type */
+	*p++ = total_len >> 2;			/* Length */
+	p += len;				/* Now increment */
 
-	FR_PROTO_HEX_DUMP("Done TLV attribute", out, total_len);
+	FR_PROTO_HEX_DUMP("Done TLV attribute", out, p - out);
 
-	return total_len;	/* AT_IV + AT_*(TLV) */
+	return p - out;	/* AT_IV + AT_*(TLV) - Can't use total_len, doesn't include IV */
 }
 
 ssize_t fr_sim_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void *encoder_ctx)
