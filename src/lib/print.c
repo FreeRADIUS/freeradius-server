@@ -336,7 +336,7 @@ size_t fr_prints(char *out, size_t outlen, char const *in, ssize_t inlen, char q
 			freespace = 0;
 
 		} else if (freespace > utf8) { /* room for char AND trailing zero */
-			memcpy(out + used, p, utf8);
+			if (out) memcpy(out + used, p, utf8);
 			freespace -= utf8;
 		}
 
