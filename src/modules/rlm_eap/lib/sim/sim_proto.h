@@ -266,14 +266,12 @@ ssize_t		fr_sim_crypto_sign_packet(uint8_t out[SIM_MAC_DIGEST_SIZE], eap_packet_
 
 int		fr_sim_crypto_kdf_0_gsm(fr_sim_keys_t *keys);
 
+int		fr_sim_crypto_kdf_0_umts(fr_sim_keys_t *keys);
+
 void		fr_sim_crypto_keys_init_kdf_0_reauth(fr_sim_keys_t *keys,
 						     uint8_t const master_key[SIM_MK_SIZE], uint16_t counter);
 
 int		fr_sim_crypto_kdf_0_reauth(fr_sim_keys_t *keys);
-
-int		fr_sim_crypto_kdf_0_umts(fr_sim_keys_t *keys);
-
-int		fr_sim_crypto_derive_ck_ik_prime(fr_sim_keys_t *keys);
 
 int		fr_sim_crypto_kdf_1_umts(fr_sim_keys_t *keys);
 

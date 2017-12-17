@@ -381,8 +381,16 @@ ssize_t fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet, boo
 	return 16;	/* AT_MAC (1), LEN (1), RESERVED (2) */
 }
 
-/** RFC4186 Key Derivation Function
+/** Key Derivation Function as described in RFC4186 (EAP-SIM) section 7
  *
+ @verbatim
+	MK     = SHA1(Identity|n*Kc| NONCE_MT| Version List| Selected Version)
+	FK     = PRF(MK)
+	K_encr = FK[0..127]
+	K_aut  = FK[128..255]
+	MSK    = FK[256..767]
+	EMSK   = FK[768..1279]
+ @endverbatim
  * @note expects keys to contain a SIM_VECTOR_GSM.
  *
  * @param[in,out] keys		Contains the authentication vectors and the buffers
@@ -473,6 +481,84 @@ int fr_sim_crypto_kdf_0_gsm(fr_sim_keys_t *keys)
 	return 0;
 }
 
+/** Key Derivation Function as described in RFC4187 (EAP-AKA) section 7
+ *
+ * @note expects keys to contain a SIM_VECTOR_UMTS.
+ *
+ @verbatim
+	MK     = SHA1(Identity|IK|CK)
+	FK     = PRF(MK)
+	K_encr = FK[0..127]
+	K_aut  = FK[128..255]
+	MSK    = FK[256..767]
+	EMSK   = FK[768..1279]
+ @endverbatim
+ *
+ * @param[in,out] keys		Contains the authentication vectors and the buffers
+ *				to store the result of the derivation.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_sim_crypto_kdf_0_umts(fr_sim_keys_t *keys)
+{
+	fr_sha1_ctx	context;
+	uint8_t		fk[160];
+	uint8_t		buf[384];
+	uint8_t		*p;
+	uint8_t		blen;
+	size_t		need;
+
+	if (!fr_cond_assert(keys->vector_type == SIM_VECTOR_UMTS)) return - 1;
+
+	need = keys->identity_len + sizeof(keys->umts.vector.ik) + sizeof(keys->umts.vector.ck);
+	if (need > sizeof(buf)) {
+		fr_strerror_printf("Identity too long. PRF input is %zu bytes, input buffer is %zu bytes",
+				   need, sizeof(buf));
+		return -1;
+	}
+
+	p = buf;
+	memcpy(p, keys->identity, keys->identity_len);
+	p += keys->identity_len;
+
+	memcpy(p, keys->umts.vector.ik, sizeof(keys->umts.vector.ik));
+	p += sizeof(keys->umts.vector.ik);
+
+	memcpy(p, keys->umts.vector.ck, sizeof(keys->umts.vector.ck));
+	p += sizeof(keys->umts.vector.ck);
+
+	blen = p - buf;
+
+	/* do the master key first */
+	fr_sha1_init(&context);
+	fr_sha1_update(&context, buf, blen);
+	fr_sha1_final(keys->master_key, &context);
+
+	/*
+   	 * now use the PRF to expand it, generated k_aut, k_encr,
+	 * MSK and EMSK.
+	 */
+	fr_sim_fips186_2prf(fk, keys->master_key);
+
+	/* split up the result */
+	p = fk;
+
+	memcpy(keys->k_encr, p, 16);				/* 128 bits for encryption    */
+	p += 16;
+
+	memcpy(keys->k_aut, p, EAP_AKA_AUTH_SIZE);		/* 128 bits for auth */
+	p += EAP_AKA_AUTH_SIZE;
+	keys->k_aut_len = EAP_AKA_AUTH_SIZE;
+
+	memcpy(keys->msk, p, 64);				/* 64 bytes for Master Session Key */
+	p += 64;
+
+	memcpy(keys->emsk, p, 64);				/* 64 bytes for Extended Master Session Key */
+
+	return 0;
+}
+
 /** Initialise fr_sim_keys_t with EAP-SIM/EAP-AKA reauthentication data
  *
  * @param[out] keys		structure to populate.
@@ -498,13 +584,20 @@ void fr_sim_crypto_keys_init_kdf_0_reauth(fr_sim_keys_t *keys,
 	memcpy(keys->reauth.nonce_s, (uint8_t *)&nonce_s, sizeof(keys->reauth.nonce_s));
 }
 
-/** Re-Derive keys from the master key
+/** Key Derivation Function (Fast-Reauthenitcation) as described in RFC4186/7 (EAP-SIM/AKA) section 7
  *
- * @note expects keys to contain a populated master_key, none_s and counter values.
+ @verbatim
+	XKEY' = SHA1(Identity|counter|NONCE_S| MK)
+	FK    = PRF(XKEY')
+	MSK   = FK[0..511]
+	EMSK  = FK[512..1023]
+ @endverbatim
  *
  * Derives new MSK, EMSK, k_aut, k_encr
  *
  * Use #fr_sim_crypto_keys_init_kdf_0_reauth to populate the #fr_sim_keys_t structure.
+ *
+ * @note expects keys to contain a populated master_key, none_s and counter values.
  *
  * @param[in,out] keys		Contains the authentication vectors and the buffers
  *				to store the result of the derivation.
@@ -626,17 +719,28 @@ int fr_sim_crypto_kdf_0_reauth(fr_sim_keys_t *keys)
 	 *	Split up the result
 	 */
 	p = fk;
-	memcpy(keys->msk,    p, 64);				/* 64 bytes for Master Session Key */
+	memcpy(keys->msk, p, 64);				/* 64 bytes for Master Session Key */
 	p += 64;
 	FR_PROTO_HEX_DUMP("K_msk", keys->msk, sizeof(keys->msk));
 
-	memcpy(keys->emsk,   p, 64);				/* 64 bytes for Extended Master Session Key */
+	memcpy(keys->emsk, p, 64);				/* 64 bytes for Extended Master Session Key */
 	FR_PROTO_HEX_DUMP("K_emsk", keys->emsk, sizeof(keys->emsk));
 
 	return 0;
 }
 
-/** RFC4187 Key derivation function
+/** Key Derivation Function (CK', IK') as specific in 3GPP.33.402
+ *
+ @verbatim
+	CK' || IK' = HMAC-SHA-256(Key, S)
+	S = FC || P0 || L0 || P1 || L1 || ... || Pn || Ln
+	Key = CK || IK
+	FC = 0x20
+	P0 = access network identity (3GPP TS 24.302)
+	L0 = length of acceess network identity (2 octets, big endian)
+	P1 = SQN xor AK (if AK is not used, AK is treated as 000..0
+	L1 = 0x00 0x06
+ @endverbatim
  *
  * @note expects keys to contain a SIM_VECTOR_UMTS.
  *
@@ -646,85 +750,7 @@ int fr_sim_crypto_kdf_0_reauth(fr_sim_keys_t *keys)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_sim_crypto_kdf_0_umts(fr_sim_keys_t *keys)
-{
-	fr_sha1_ctx	context;
-	uint8_t		fk[160];
-	uint8_t		buf[384];
-	uint8_t		*p;
-	uint8_t		blen;
-	size_t		need;
-
-	if (!fr_cond_assert(keys->vector_type == SIM_VECTOR_UMTS)) return - 1;
-
-	need = keys->identity_len + sizeof(keys->umts.vector.ik) + sizeof(keys->umts.vector.ck);
-	if (need > sizeof(buf)) {
-		fr_strerror_printf("Identity too long. PRF input is %zu bytes, input buffer is %zu bytes",
-				   need, sizeof(buf));
-		return -1;
-	}
-
-	p = buf;
-	memcpy(p, keys->identity, keys->identity_len);
-	p += keys->identity_len;
-
-	memcpy(p, keys->umts.vector.ik, sizeof(keys->umts.vector.ik));
-	p += sizeof(keys->umts.vector.ik);
-
-	memcpy(p, keys->umts.vector.ck, sizeof(keys->umts.vector.ck));
-	p += sizeof(keys->umts.vector.ck);
-
-	blen = p - buf;
-
-	/* do the master key first */
-	fr_sha1_init(&context);
-	fr_sha1_update(&context, buf, blen);
-	fr_sha1_final(keys->master_key, &context);
-
-	/*
-   	 * now use the PRF to expand it, generated k_aut, k_encr,
-	 * MSK and EMSK.
-	 */
-	fr_sim_fips186_2prf(fk, keys->master_key);
-
-	/* split up the result */
-	p = fk;
-
-	memcpy(keys->k_encr, p, 16);				/* 128 bits for encryption    */
-	p += 16;
-
-	memcpy(keys->k_aut, p, EAP_AKA_AUTH_SIZE);		/* 128 bits for auth */
-	p += EAP_AKA_AUTH_SIZE;
-	keys->k_aut_len = EAP_AKA_AUTH_SIZE;
-
-	memcpy(keys->msk, p, 64);				/* 64 bytes for Master Session Key */
-	p += 64;
-
-	memcpy(keys->emsk, p, 64);				/* 64 bytes for Extended Master Session Key */
-
-	return 0;
-}
-
-/** EAP-AKA Prime CK Prime IK Prime derivation function
- *
- * @note expects keys to contain a SIM_VECTOR_UMTS.
- *
- *  CK' || IK' = HMAC-SHA-256(Key, S)
- *  S = FC || P0 || L0 || P1 || L1 || ... || Pn || Ln
- *  Key = CK || IK
- *  FC = 0x20
- *  P0 = access network identity (3GPP TS 24.302)
- *  L0 = length of acceess network identity (2 octets, big endian)
- *  P1 = SQN xor AK (if AK is not used, AK is treated as 000..0
- *  L1 = 0x00 0x06
- *
- * @param[in,out] keys		Contains the authentication vectors and the buffers
- *				to store the result of the derivation.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int fr_sim_crypto_derive_ck_ik_prime(fr_sim_keys_t *keys)
+static int sim_crypto_derive_ck_ik_prime(fr_sim_keys_t *keys)
 {
 	uint8_t		digest[sizeof(keys->ik_prime) + sizeof(keys->ck_prime)];
 	size_t		len;
@@ -820,8 +846,33 @@ int fr_sim_crypto_derive_ck_ik_prime(fr_sim_keys_t *keys)
 	return 0;
 }
 
-static int fr_sim_crypto_aka_prime_prf(uint8_t *out, size_t outlen,
-				       uint8_t const *key, size_t key_len, uint8_t const *in, size_t in_len)
+/** PRF as described in RFC 5448 (EAP-AKA') section 3.4.1
+ *
+ @verbatim
+	PRF'(K,S) = T1 | T2 | T3 | T4 | ...
+
+	where:
+	T1 = HMAC-SHA-256 (K, S | 0x01)
+	T2 = HMAC-SHA-256 (K, T1 | S | 0x02)
+	T3 = HMAC-SHA-256 (K, T2 | S | 0x03)
+	T4 = HMAC-SHA-256 (K, T3 | S | 0x04)
+	...
+ @endverbatim
+ *
+ * PRF' produces as many bits of output as is needed.
+ *
+ * @param[out] out	Where to write the output of the PRF.
+ * @param[in] outlen	how many bytes need to be generated.
+ * @param[in] key	for the PRF (K).
+ * @param[in] key_len	Length of key data.
+ * @param[in] in	Data to feed into the PRF (S).
+ * @param[in] in_len	Length of input data.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int sim_crypto_aka_prime_prf(uint8_t *out, size_t outlen,
+				    uint8_t const *key, size_t key_len, uint8_t const *in, size_t in_len)
 {
 	uint8_t		*p = out, *end = p + outlen;
 	uint8_t		c = 0;
@@ -874,16 +925,18 @@ static int fr_sim_crypto_aka_prime_prf(uint8_t *out, size_t outlen,
 	return 0;
 }
 
-/** EAP-AKA Prime Key derivation function
+/** Key Derivation Function as described in RFC 5448 (EAP-AKA') section 3.3
+ *
+ @verbatim
+	MK     = PRF'(IK'|CK',"EAP-AKA'"|Identity)
+	K_encr = MK[0..127]
+	K_aut  = MK[128..383]
+	K_re   = MK[384..639]
+	MSK    = MK[640..1151]
+	EMSK   = MK[1152..1663]
+ @endverbatim
  *
  * @note expects keys to contain a SIM_VECTOR_UMTS.
- *
- *  MK = PRF'(IK'|CK',"EAP-AKA'"|Identity)
- *  K_encr = MK[0..127]
- *  K_aut  = MK[128..383]
- *  K_re   = MK[384..639]
- *  MSK    = MK[640..1151]
- *  EMSK   = MK[1152..1663]
  *
  * @param[in,out] keys		Contains the authentication vectors and the buffers
  *				to store the result of the derivation.
@@ -900,7 +953,7 @@ int fr_sim_crypto_kdf_1_umts(fr_sim_keys_t *keys)
 	uint8_t	mk[208];
 	size_t	s_len;
 
-	fr_sim_crypto_derive_ck_ik_prime(keys);
+	sim_crypto_derive_ck_ik_prime(keys);
 
 	if (!fr_cond_assert(keys->vector_type == SIM_VECTOR_UMTS)) return -1;
 
@@ -933,7 +986,7 @@ int fr_sim_crypto_kdf_1_umts(fr_sim_keys_t *keys)
 	/*
 	 *	Feed into PRF
 	 */
-	if (fr_sim_crypto_aka_prime_prf(mk, sizeof(mk), k, sizeof(k), s, s_len) < 0) return -1;
+	if (sim_crypto_aka_prime_prf(mk, sizeof(mk), k, sizeof(k), s, s_len) < 0) return -1;
 
 	/*
 	 *	Split the PRF output into separate keys
@@ -957,11 +1010,13 @@ int fr_sim_crypto_kdf_1_umts(fr_sim_keys_t *keys)
 	return 0;
 }
 
-/** Derive fast-reauthentication keys
+/** Key Derivation Function (Fast-Reauthentication) as described in RFC 5448 (EAP-AKA') section 3.3
  *
- *  MK = PRF'(K_re,"EAP-AKA' re-auth"|Identity|counter|NONCE_S)
- *  MSK  = MK[0..511]
- *  EMSK = MK[512..1023]
+ @verbatim
+	MK   = PRF'(K_re,"EAP-AKA' re-auth"|Identity|counter|NONCE_S)
+	MSK  = MK[0..511]
+	EMSK = MK[512..1023]
+ @endverbatim
  *
  * @param[in,out] keys		Contains the authentication vectors and the buffers
  *				to store the result of the derivation.
@@ -1010,7 +1065,7 @@ int fr_sim_crypto_kdf_1_reauth(fr_sim_keys_t *keys)
 	/*
 	 *	Feed into PRF
 	 */
-	if (fr_sim_crypto_aka_prime_prf(mk, sizeof(mk), keys->k_re, sizeof(keys->k_re), s, s_len) < 0) return -1;
+	if (sim_crypto_aka_prime_prf(mk, sizeof(mk), keys->k_re, sizeof(keys->k_re), s, s_len) < 0) return -1;
 
 	FR_PROTO_HEX_DUMP("mk", mk, sizeof(mk));
 
@@ -1371,7 +1426,7 @@ static void test_eap_aka_derive_ck_ik(void)
 */
 
 	memcpy(&keys, &rfc5448_vector0_in, sizeof(keys));
-	ret = fr_sim_crypto_derive_ck_ik_prime(&keys);
+	ret = sim_crypto_derive_ck_ik_prime(&keys);
 	TEST_CHECK(ret == 0);
 	TEST_CHECK(memcmp(&rfc5448_vector0_out.ck_prime, keys.ck_prime, sizeof(keys.ck_prime)) == 0);
 	TEST_CHECK(memcmp(&rfc5448_vector0_out.ik_prime, keys.ik_prime, sizeof(keys.ik_prime)) == 0);
