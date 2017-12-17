@@ -1740,7 +1740,7 @@ static ocsp_status_t ocsp_check(REQUEST *request, X509_STORE *store, X509 *issue
 	BIO		*cbio, *bio_out;
 	ocsp_status_t	ocsp_status = OCSP_STATUS_FAILED;
 	int		status;
-	ASN1_GENERALIZEDTIME *rev, *thisupd, *nextupd;
+	ASN1_GENERALIZEDTIME *rev = NULL, *thisupd, *nextupd;
 	int		reason;
 #if OPENSSL_VERSION_NUMBER >= 0x1000003f
 	OCSP_REQ_CTX	*ctx;
@@ -1939,7 +1939,7 @@ static ocsp_status_t ocsp_check(REQUEST *request, X509_STORE *store, X509 *issue
 		REDEBUG("ocsp: Cert status: %s", OCSP_cert_status_str(status));
 		if (reason != -1) REDEBUG("ocsp: Reason: %s", OCSP_crl_reason_str(reason));
 
-		if (bio_out) {
+		if (bio_out && rev) {
 			BIO_puts(bio_out, "\tRevocation Time: ");
 			ASN1_GENERALIZEDTIME_print(bio_out, rev);
 			BIO_puts(bio_out, "\n");
