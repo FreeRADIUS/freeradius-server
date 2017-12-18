@@ -1,7 +1,7 @@
 ARG from=freeradius/centos6-deps
-ARG cc=gcc
-
 FROM ${from}
+
+ARG cc=gcc
 
 WORKDIR /usr/local/src/repositories/freeradius-server
 RUN CC=${cc} ./configure --prefix=/opt/freeradius

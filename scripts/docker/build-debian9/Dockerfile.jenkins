@@ -1,7 +1,7 @@
 ARG from=freeradius/debian9-deps
-ARG osname=stretch
-
 FROM ${from}
+
+ARG osname=stretch
 
 #
 #  This is necessary for the jenkins server to talk to the docker instance

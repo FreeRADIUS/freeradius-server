@@ -1,7 +1,7 @@
 ARG from=freeradius/ubuntu14-deps
-ARG osname=trusty
-
 FROM ${from}
+
+ARG osname=trusty
 
 #
 #  This is necessary for the jenkins server to talk to the docker instance

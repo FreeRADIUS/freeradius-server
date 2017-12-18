@@ -1,7 +1,7 @@
 ARG from=freeradius/debiansid-deps
-ARG osname=sid
-
 FROM ${from}
+
+ARG osname=sid
 
 #
 #  This is necessary for the jenkins server to talk to the docker instance

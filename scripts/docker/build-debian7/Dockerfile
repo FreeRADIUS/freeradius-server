@@ -1,7 +1,7 @@
 ARG from=freeradius/debian7-deps
-ARG cc=gcc
-
 FROM ${from}
+
+ARG cc=gcc
 
 WORKDIR /usr/local/src/repositories/freeradius-server
 RUN git checkout v3.0.x

@@ -1,7 +1,7 @@
 ARG from=freeradius/ubuntu16-deps
-ARG osname=xenial
-
 FROM ${from}
+
+ARG osname=xenial
 
 #
 #  This is necessary for the jenkins server to talk to the docker instance

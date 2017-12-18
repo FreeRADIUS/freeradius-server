@@ -1,5 +1,4 @@
 ARG from=freeradius/centos7-deps
-
 FROM ${from}
 
 #

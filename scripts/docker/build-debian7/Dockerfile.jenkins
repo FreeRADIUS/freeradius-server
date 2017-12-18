@@ -1,7 +1,7 @@
 ARG from=freeradius/debian7-deps
-ARG osname=wheezy
-
 FROM ${from}
+
+ARG osname=wheezy
 
 #
 #  This is necessary for the jenkins server to talk to the docker instance
