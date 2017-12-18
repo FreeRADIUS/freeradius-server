@@ -1,4 +1,4 @@
-ARG from=freeradius/debian9-deps
+ARG from=freeradius/debiansid-deps
 ARG cc=gcc
 
 FROM ${from}

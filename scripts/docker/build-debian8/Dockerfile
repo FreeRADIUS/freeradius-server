@@ -1,5 +1,7 @@
-FROM freeradius/debian8-deps
+ARG from=freeradius/debian8-deps
 ARG cc=gcc
+
+FROM ${from}
 
 WORKDIR /usr/local/src/repositories/freeradius-server
 RUN CC=${cc} ./configure --prefix=/opt/freeradius
@@ -11,7 +13,7 @@ WORKDIR certs
 RUN make
 WORKDIR /
 
-FROM freeradius/debian8-deps
+FROM ${from}
 COPY --from=0 /opt/freeradius /opt/freeradius
 
 EXPOSE 1812/udp 1813/udp

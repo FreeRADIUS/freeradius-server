@@ -70,6 +70,14 @@ script, for example:
 $ ./dockerbuild build-centos7
 ```
 
+to build the server, and
+
+```bash
+$ ./dockerbuild -j build-centos7
+```
+
+to build the jenkins image.
+
 ### Running
 
 The ``docker run`` command is used to create new containers from

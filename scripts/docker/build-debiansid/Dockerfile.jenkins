@@ -1,5 +1,5 @@
-ARG from=freeradius/debian9-deps
-ARG osname=stretch
+ARG from=freeradius/debiansid-deps
+ARG osname=sid
 
 FROM ${from}
 
