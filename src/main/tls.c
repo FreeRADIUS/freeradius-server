@@ -1892,6 +1892,11 @@ static ocsp_status_t ocsp_check(REQUEST *request, X509_STORE *store, X509 *issue
 		goto ocsp_end;
 	}
 	bresp = OCSP_response_get1_basic(resp);
+	if (!bresp) {
+		RDEBUG("ocsp: Failed parsing response");
+		goto ocsp_end;
+	}
+
 	if (conf->ocsp_use_nonce && OCSP_check_nonce(req, bresp)!=1) {
 		REDEBUG("ocsp: Response has wrong nonce value");
 		goto ocsp_end;
