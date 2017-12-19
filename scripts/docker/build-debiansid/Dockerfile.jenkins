@@ -6,8 +6,9 @@ ARG osname=sid
 #
 #  This is necessary for the jenkins server to talk to the docker instance
 #
-RUN echo deb http://ftp.debian.org/debian ${osname}-backports main >> /etc/apt/sources.list
-RUN apt-get update && apt-get -t ${osname}-backports install -y openjdk-8-jre-headless
+# RUN echo deb http://ftp.debian.org/debian ${osname}-backports main >> /etc/apt/sources.list
+# RUN apt-get update && apt-get -t ${osname}-backports install -y openjdk-8-jre-headless
+RUN apt-get update && apt-get install -y openjdk-8-jre-headless
 RUN apt-get install -y openssh-server sudo
 
 RUN useradd -m jenkins
