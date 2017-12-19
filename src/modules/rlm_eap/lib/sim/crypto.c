@@ -919,7 +919,7 @@ static int sim_crypto_aka_prime_prf(uint8_t *out, size_t outlen,
 		if (EVP_DigestSignUpdate(md_ctx, &c, sizeof(c)) != 1) goto error;			/* Ingest round number */
 		if (EVP_DigestSignFinal(md_ctx, digest, &len) != 1) goto error;				/* Output T(i) */
 
-		copy = p - end;
+		copy = end - p;
 		if (copy > SHA256_DIGEST_LENGTH) copy = SHA256_DIGEST_LENGTH;
 
 		memcpy(p, digest, copy);
