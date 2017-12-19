@@ -29,7 +29,7 @@ couchbase {
 	#
 	# Element names should be single quoted.
 	#
-	# Note: Atrributes not in this map will not be recorded.
+	# Note: Attributes not in this map will not be recorded.
 	#
 	update {
 		Acct-Session-Id		= 'sessionId'
