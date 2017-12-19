@@ -37,6 +37,7 @@ RCSIDH(sim_h, "$Id$")
 #include "eap_sim_common.h"
 #include "eap_aka_common.h"
 
+#define SIM_MAX_STRING_LENGTH		1016		//!< Maximum size of a SIM/AKA['] string ((4 * 255) - 4).
 #define SIM_IV_SIZE			16		//!< Length of the IV used when processing AT_ENCR.
 #define SIM_MAC_DIGEST_SIZE		16		//!< Length of MAC used to prevent packet modification.
 #define SIM_MAC_SIZE			20		//!< Length of MAC used to prevent packet modification.

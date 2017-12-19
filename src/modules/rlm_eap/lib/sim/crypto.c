@@ -404,20 +404,20 @@ int fr_sim_crypto_kdf_0_gsm(fr_sim_keys_t *keys)
 	fr_sha1_ctx	context;
 	uint8_t		fk[160];
 
-	uint8_t		buf[384];
+	uint8_t		buf[SIM_MAX_STRING_LENGTH + sizeof(keys->gsm.nonce_mt) + 2 + sizeof(keys->gsm.version_select)];
 	uint8_t		*p;
-
-	size_t		need;
 
 	if (!fr_cond_assert(keys->vector_type == SIM_VECTOR_GSM)) return -1;
 
-	need = keys->identity_len + (SIM_VECTOR_GSM_KC_SIZE * 3) + sizeof(keys->gsm.nonce_mt) +
-	       keys->gsm.version_list_len + sizeof(keys->gsm.version_select);
-	if (need > sizeof(buf)) {
-		fr_strerror_printf("Identity too long. PRF input is %zu bytes, input buffer is %zu bytes",
-				   need, sizeof(buf));
-		return -1;
-	}
+	/*
+	 *	Our stack buffer should be large enough in
+	 *	all cases.
+	 */
+	if (!fr_cond_assert((keys->identity_len +
+			    (SIM_VECTOR_GSM_KC_SIZE * 3) +
+			    sizeof(keys->gsm.nonce_mt) +
+			    keys->gsm.version_list_len +
+			    sizeof(keys->gsm.version_select)) <= sizeof(buf))) return -1;
 
 	p = buf;
 	memcpy(p, keys->identity, keys->identity_len);
@@ -504,19 +504,19 @@ int fr_sim_crypto_kdf_0_umts(fr_sim_keys_t *keys)
 {
 	fr_sha1_ctx	context;
 	uint8_t		fk[160];
-	uint8_t		buf[384];
+	uint8_t		buf[SIM_MAX_STRING_LENGTH + sizeof(keys->umts.vector.ik) + sizeof(keys->umts.vector.ck)];
 	uint8_t		*p;
-	uint8_t		blen;
-	size_t		need;
+	size_t		blen;
 
 	if (!fr_cond_assert(keys->vector_type == SIM_VECTOR_UMTS)) return - 1;
 
-	need = keys->identity_len + sizeof(keys->umts.vector.ik) + sizeof(keys->umts.vector.ck);
-	if (need > sizeof(buf)) {
-		fr_strerror_printf("Identity too long. PRF input is %zu bytes, input buffer is %zu bytes",
-				   need, sizeof(buf));
-		return -1;
-	}
+	/*
+	 *	Our stack buffer should be large enough in
+	 *	all cases.
+	 */
+	if (!fr_cond_assert((keys->identity_len +
+			     sizeof(keys->umts.vector.ik) +
+			     sizeof(keys->umts.vector.ck)) <= sizeof(buf))) return -1;
 
 	p = buf;
 	memcpy(p, keys->identity, keys->identity_len);
@@ -755,13 +755,14 @@ static int sim_crypto_derive_ck_ik_prime(fr_sim_keys_t *keys)
 	uint8_t		digest[sizeof(keys->ik_prime) + sizeof(keys->ck_prime)];
 	size_t		len;
 
-	uint8_t		k[sizeof(keys->umts.vector.ik) + sizeof(keys->umts.vector.ck)];
-
-	uint8_t		s[384];
-	uint8_t		*p = s;
-
 	uint8_t		sqn_ak_buff[MILENAGE_SQN_SIZE];
 	uint16_t	l0, l1;
+
+	uint8_t		k[sizeof(keys->umts.vector.ik) + sizeof(keys->umts.vector.ck)];
+	uint8_t		s[sizeof(uint8_t) + SIM_MAX_STRING_LENGTH + sizeof(l0) + SIM_SQN_AK_SIZE + sizeof(l1)];
+
+	uint8_t		*p = s;
+
 	size_t		s_len;
 	EVP_PKEY	*pkey;
 	EVP_MD_CTX	*md_ctx = NULL;
@@ -770,12 +771,15 @@ static int sim_crypto_derive_ck_ik_prime(fr_sim_keys_t *keys)
 
 	uint48_to_buff(sqn_ak_buff, keys->sqn ^ uint48_from_buff(keys->umts.vector.ak));
 
-	s_len = sizeof(uint8_t) + keys->network_len + sizeof(l0) + SIM_SQN_AK_SIZE + sizeof(l1);
-	if (s_len > sizeof(s)) {
-		fr_strerror_printf("Network too long. PRF input is %zu bytes, input buffer is %zu bytes",
-				   s_len, sizeof(s));
-		return -1;
-	}
+	/*
+	 *	Our stack buffer should be large enough in
+	 *	all cases.
+	 */
+	if (!fr_cond_assert((sizeof(uint8_t) +
+			     keys->network_len +
+			     sizeof(l0) +
+			     SIM_SQN_AK_SIZE +
+			     sizeof(l1)) <= sizeof(s))) return -1;
 
 	FR_PROTO_HEX_DUMP("Network", keys->network, keys->network_len);
 	FR_PROTO_HEX_DUMP("CK", keys->umts.vector.ck, sizeof(keys->umts.vector.ck));
@@ -798,6 +802,9 @@ static int sim_crypto_derive_ck_ik_prime(fr_sim_keys_t *keys)
 
 	l1 = htons(SIM_SQN_AK_SIZE);
 	memcpy(p, &l1, sizeof(l1));
+	p += sizeof(l1);
+
+	s_len = p - s;
 
 	FR_PROTO_HEX_DUMP("FC || P0 || L0 || P1 || L1 || ... || Pn || Ln", s, s_len);
 
@@ -947,7 +954,8 @@ static int sim_crypto_aka_prime_prf(uint8_t *out, size_t outlen,
 int fr_sim_crypto_kdf_1_umts(fr_sim_keys_t *keys)
 {
 	uint8_t k[sizeof(keys->ck_prime) + sizeof(keys->ik_prime)];
-	uint8_t s[384];
+#define KDF_1_S_STATIC	"EAP-AKA'"
+	uint8_t s[(sizeof(KDF_1_S_STATIC) - 1) + SIM_MAX_STRING_LENGTH];
 	uint8_t *p = s;
 
 	uint8_t	mk[208];
@@ -957,22 +965,18 @@ int fr_sim_crypto_kdf_1_umts(fr_sim_keys_t *keys)
 
 	if (!fr_cond_assert(keys->vector_type == SIM_VECTOR_UMTS)) return -1;
 
-#define KDF_1_S_STATIC	"EAP-AKA'"
-
 	/*
 	 *	build s, a concatenation of EAP-AKA' and Identity
 	 */
-	s_len = (sizeof(KDF_1_S_STATIC) - 1) + keys->identity_len;
-	if (s_len > sizeof(s)) {
-		fr_strerror_printf("Identity too long. PRF input is %zu bytes, input buffer is %zu bytes",
-				   s_len, sizeof(s));
-		return -1;
-	}
+	if (!fr_cond_assert((sizeof(KDF_1_S_STATIC) - 1) + keys->identity_len <= sizeof(s))) return -1;
 
 	memcpy(p, KDF_1_S_STATIC, sizeof(KDF_1_S_STATIC) - 1);
 	p += sizeof(KDF_1_S_STATIC) - 1;
 
 	memcpy(p, keys->identity, keys->identity_len);
+	p += keys->identity_len;
+
+	s_len = p - s;
 
 	/*
 	 *	build k, a concatenation of IK' and CK'
