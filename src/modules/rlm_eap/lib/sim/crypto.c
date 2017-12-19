@@ -336,7 +336,6 @@ ssize_t fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet, boo
 		}
 	}
 
-
 	if (p < end) {
 		FR_PROTO_HEX_DUMP("MAC digest input", p, (end - p));
 
@@ -729,7 +728,7 @@ int fr_sim_crypto_kdf_0_reauth(fr_sim_keys_t *keys)
 	return 0;
 }
 
-/** Key Derivation Function (CK', IK') as specific in 3GPP.33.402
+/** Key Derivation Function (CK', IK') as specified in 3GPP.33.402
  *
  @verbatim
 	CK' || IK' = HMAC-SHA-256(Key, S)
