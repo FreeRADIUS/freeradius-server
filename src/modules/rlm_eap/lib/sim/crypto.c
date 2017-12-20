@@ -1029,20 +1029,16 @@ int fr_sim_crypto_kdf_1_umts(fr_sim_keys_t *keys)
  */
 int fr_sim_crypto_kdf_1_reauth(fr_sim_keys_t *keys)
 {
-	uint8_t s[384];
+#define KDF_1_S_REAUTH_STATIC	"EAP-AKA' re-auth"
+	uint8_t s[(sizeof(KDF_1_S_REAUTH_STATIC) - 1) + SIM_MAX_STRING_LENGTH + sizeof(uint16_t) + SIM_NONCE_S_SIZE];
 	uint8_t *p = s;
 
 	uint8_t	mk[128];
-	size_t	s_len;
 
-#define KDF_1_S_REAUTH_STATIC	"EAP-AKA' re-auth"
-
-	s_len = (sizeof(KDF_1_S_REAUTH_STATIC) - 1) + keys->identity_len + sizeof(uint16_t) + SIM_NONCE_S_SIZE;
-	if (s_len > sizeof(s)) {
-		fr_strerror_printf("Identity too long. PRF input is %zu bytes, input buffer is %zu bytes",
-				   s_len, sizeof(s));
-		return -1;
-	}
+	if (!fr_cond_assert(((sizeof(KDF_1_S_STATIC) - 1) +
+			     keys->identity_len +
+			     sizeof(uint16_t) +
+			     SIM_NONCE_S_SIZE) <= sizeof(s))) return -1;
 
 	memcpy(p, KDF_1_S_STATIC, sizeof(KDF_1_S_STATIC) - 1);
 	p += sizeof(KDF_1_S_STATIC) - 1;
@@ -1068,7 +1064,7 @@ int fr_sim_crypto_kdf_1_reauth(fr_sim_keys_t *keys)
 	/*
 	 *	Feed into PRF
 	 */
-	if (sim_crypto_aka_prime_prf(mk, sizeof(mk), keys->k_re, sizeof(keys->k_re), s, s_len) < 0) return -1;
+	if (sim_crypto_aka_prime_prf(mk, sizeof(mk), keys->k_re, sizeof(keys->k_re), s, p - s) < 0) return -1;
 
 	FR_PROTO_HEX_DUMP("mk", mk, sizeof(mk));
 
