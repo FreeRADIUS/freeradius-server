@@ -301,20 +301,21 @@ void eap_fast_tls_gen_challenge(SSL *s, uint8_t *buffer, uint8_t *scratch, size_
  *	Actually generates EAP-Session-Id, which is an internal server
  *	attribute.  Not all systems want to send EAP-Key-Name
  */
-void eap_tls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header)
+void eap_tls_gen_eap_key(RADIUS_PACKET *packet, SSL *ssl, uint32_t header)
 {
 	VALUE_PAIR *vp;
-	uint8_t *p;
+	uint8_t *buff, *p;
 
 	vp = fr_pair_afrom_num(packet, 0, FR_EAP_SESSION_ID);
 	if (!vp) return;
 
-	p = talloc_array(vp, uint8_t, 1 + 2 * SSL3_RANDOM_SIZE);
-	p[0] = header & 0xff;
+	MEM(buff = p = talloc_array(vp, uint8_t, 1 + (2 * SSL3_RANDOM_SIZE)));
+	*p++ = header & 0xff;
 
-	SSL_get_client_random(s, p + 1, SSL3_RANDOM_SIZE);
-	SSL_get_server_random(s, p + 1 + SSL3_RANDOM_SIZE, SSL3_RANDOM_SIZE);
+	SSL_get_client_random(ssl, p, SSL3_RANDOM_SIZE);
+	p += SSL3_RANDOM_SIZE;
+	SSL_get_server_random(ssl, p, SSL3_RANDOM_SIZE);
 
-	fr_pair_value_memsteal(vp, p);
+	fr_pair_value_memsteal(vp, buff);
 	fr_pair_add(&packet->vps, vp);
 }
