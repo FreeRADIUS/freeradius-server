@@ -2351,6 +2351,7 @@ static int add_for_runtime(command_t *cmd)
 	}
 	if (cmd->output == OUT_DYNAMIC_LIB_ONLY ||
 		cmd->output == OUT_LIB) {
+		int i;
 		FILE *f=fopen(cmd->fake_output_name,"w");
 		char *lib_so = basename((char *)cmd->module_name.normal);
 		count_chars *dep = cmd->shared_opts.dependencies;
@@ -2369,8 +2370,8 @@ static int add_for_runtime(command_t *cmd)
 
 		fprintf(f,"# Libraries that this one depends upon.\n");
 		fprintf(f,"dependency_libs='");
-		while (dep->num--) {
-			fprintf(f,"%s ", dep->vals[dep->num]);
+		for (i = 0; i < dep->num; i++) {
+			fprintf(f,"%s ", dep->vals[i]);
 		}
 		fprintf(f,"'\n\n");
 
