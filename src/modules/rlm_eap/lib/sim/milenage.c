@@ -71,9 +71,13 @@ static inline int aes_128_encrypt_block(EVP_CIPHER_CTX *evp_ctx,
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int milenage_f1(uint8_t mac_a[8], uint8_t mac_s[8],
-		       uint8_t const opc[16], uint8_t const k[16], uint8_t const rand[16],
-		       uint8_t const sqn[6], uint8_t const amf[2])
+static int milenage_f1(uint8_t mac_a[MILENAGE_MAC_A_SIZE],
+		       uint8_t mac_s[MILENAGE_MAC_S_SIZE],
+		       uint8_t const opc[MILENAGE_OPC_SIZE],
+		       uint8_t const k[MILENAGE_KI_SIZE],
+		       uint8_t const rand[MILENAGE_RAND_SIZE],
+		       uint8_t const sqn[MILENAGE_SQN_SIZE],
+		       uint8_t const amf[MILENAGE_AMF_SIZE])
 {
 	uint8_t		tmp1[16], tmp2[16], tmp3[16];
 	int		i;
@@ -141,8 +145,14 @@ static int milenage_f1(uint8_t mac_a[8], uint8_t mac_s[8],
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int milenage_f2345(uint8_t res[8], uint8_t ik[16], uint8_t ck[16], uint8_t ak[6], uint8_t ak_resync[6],
-			  uint8_t const opc[16], uint8_t const k[16], uint8_t const rand[16])
+static int milenage_f2345(uint8_t res[MILENAGE_RES_SIZE],
+			  uint8_t ik[MILENAGE_IK_SIZE],
+			  uint8_t ck[MILENAGE_CK_SIZE],
+			  uint8_t ak[MILENAGE_AK_SIZE],
+			  uint8_t ak_resync[MILENAGE_AK_SIZE],
+			  uint8_t const opc[MILENAGE_OPC_SIZE],
+			  uint8_t const k[MILENAGE_KI_SIZE],
+			  uint8_t const rand[MILENAGE_RAND_SIZE])
 {
 	uint8_t			tmp1[16], tmp2[16], tmp3[16];
 	int			i;
@@ -306,7 +316,7 @@ int milenage_umts_generate(uint8_t autn[MILENAGE_AUTN_SIZE],
  *
  * @param[out] sqn	Buffer for SQN = 48-bit sequence number (host byte order).
  * @param[in] opc	128-bit operator variant algorithm configuration field (encr.).
- * @param[in] ki		128-bit subscriber key.
+ * @param[in] ki	128-bit subscriber key.
  * @param[in] rand	128-bit random challenge.
  * @param[in] auts	112-bit authentication token from client.
  * @return
@@ -344,7 +354,8 @@ int milenage_auts(uint64_t sqn,
  *	- 0 on success.
  *	- -1 on failure.
  */
-int milenage_gsm_generate(uint8_t sres[MILENAGE_SRES_SIZE], uint8_t kc[MILENAGE_KC_SIZE],
+int milenage_gsm_generate(uint8_t sres[MILENAGE_SRES_SIZE],
+			  uint8_t kc[MILENAGE_KC_SIZE],
 			  uint8_t const opc[MILENAGE_OPC_SIZE],
 			  uint8_t const ki[MILENAGE_KI_SIZE],
 			  uint8_t const rand[MILENAGE_RAND_SIZE])
