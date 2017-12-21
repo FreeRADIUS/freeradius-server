@@ -29,7 +29,8 @@ SOURCES	:=	cond_eval.c \
 		xlat_tokenize.c
 
 # This lets the linker determine which version of the SSLeay functions to use.
-TGT_LDLIBS	:= $(LIBS) $(OPENSSL_LIBS) $(GPERFTOOLS_FLAGS) $(GPERFTOOLS_LIBS)
+TGT_LDLIBS	:= $(LIBS) $(GPERFTOOLS_LIBS)
+TGT_LDFLAGS	:= $(LDFLAGS) $(GPERFTOOLS_FLAGS)
 
 ifneq ($(OPENSSL_LIBS),)
 TGT_PREREQS	:= libfreeradius-tls.a
