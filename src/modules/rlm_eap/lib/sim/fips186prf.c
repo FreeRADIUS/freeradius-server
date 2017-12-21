@@ -165,6 +165,12 @@ void fr_sim_fips186_2prf(uint8_t out[160], uint8_t mk[20])
 	}
 }
 
+#ifdef TESTING_FIPS186_PRF
+/*
+ *  cc fips186prf.c -g3 -Wall -DTESTING_FIPS186_PRF -DHAVE_DLFCN_H -DWITH_TLS -I../../../../ -I../../../ -I ../base/ -I /usr/local/opt/openssl/include/ -include ../include/build.h -L /usr/local/opt/openssl/lib/ -l ssl -l crypto -l talloc -L ../../../../../build/lib/local/.libs/ -lfreeradius-server -lfreeradius-tls -lfreeradius-util -o test_fips186prf && ./test_fips186prf
+ */
+#include <freeradius-devel/cutest.h>
+
 /*
  * test vectors
  * from http://csrc.nist.gov/CryptoToolkit/dss/Examples-1024bit.pdf
@@ -212,50 +218,29 @@ void fr_sim_fips186_2prf(uint8_t out[160], uint8_t mk[20])
  *
  */
 
-#ifdef TEST_CASE
+static uint8_t xkey[]	= { 0xbd, 0x02, 0x9b, 0xbe, 0x7f, 0x51, 0x96, 0x0b,
+			    0xcf, 0x9e, 0xdb, 0x2b, 0x61, 0xf0, 0x6f, 0x0f,
+			    0xeb, 0x5a, 0x38, 0xb6 };
 
-#include <assert.h>
+static uint8_t exp[]	= { 0x20, 0x70, 0xb3, 0x22, 0x3d, 0xba, 0x37, 0x2f,
+			    0xde, 0x1c, 0x0f, 0xfc, 0x7b, 0x2e, 0x3b, 0x49,
+			    0x8b, 0x26, 0x06, 0x14, 0x3c, 0x6c, 0x18, 0xba,
+			    0xcb, 0x0f, 0x6c, 0x55, 0xba, 0xbb, 0x13, 0x78,
+			    0x8e, 0x20, 0xd7, 0x37, 0xa3, 0x27, 0x51, 0x16 };
 
-uint8_t mk[20]={ 0xbd, 0x02, 0x9b, 0xbe, 0x7f, 0x51, 0x96, 0x0b,
-		  0xcf, 0x9e, 0xdb, 0x2b, 0x61, 0xf0, 0x6f, 0x0f,
-		  0xeb, 0x5a, 0x38, 0xb6 };
-
-main(int argc, char *argv[])
+static void test_fips186prf(void)
 {
-	uint8_t finalkey[160];
-	int i, j, k;
+	uint8_t res[160];
 
-	fr_sim_fips186_2prf(mk, finalkey);
+	fr_sim_fips186_2prf(res, xkey);
 
-	printf("Input was: |");
-	j=0;
-	for (i = 0; i < 20; i++) {
-		if(j==4) {
-			printf("_");
-			j=0;
-		}
-		j++;
-
-		printf("%02x", mk[i]);
-	}
-
-	printf("|\nOutput was: ");
-	j=0; k=0;
-	for (i = 0; i < 160; i++) {
-		if(k==20) {
-			printf("\n	    ");
-			k=0;
-			j=0;
-		}
-		if(j==4) {
-			printf("_");
-			j=0;
-		}
-		k++;
-		j++;
-
-		printf("%02x", finalkey[i]);
-	}
-	printf("\n");
+	TEST_CHECK(memcmp(exp, res, sizeof(exp)) == 0);
 }
+
+
+TEST_LIST = {
+	{ "test_fips186prf",	test_fips186prf },
+	{ NULL }
+};
+
 #endif
