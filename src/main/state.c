@@ -449,7 +449,30 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
 	fr_state_t *state = &global_state;
 
 	if (!request->state) {
+		size_t i;
+		uint32_t x;
+		VALUE_PAIR *vp;
+		uint8_t buffer[16];
+
 		RDEBUG3("session-state: Nothing to cache");
+
+		if (packet->code != PW_CODE_ACCESS_CHALLENGE) return true;
+
+		vp = fr_pair_find_by_num(packet->vps, PW_STATE, 0, TAG_ANY);
+		if (vp) return true;
+
+		/*
+		 *
+		 */
+		for (i = 0; i < sizeof(buffer) / sizeof(x); i++) {
+			x = fr_rand();
+			memcpy(buffer + (i * 4), &x, sizeof(x));
+		}
+
+		vp = fr_pair_afrom_num(packet, PW_STATE, 0);
+		fr_pair_value_memcpy(vp, buffer, sizeof(buffer));
+		fr_pair_add(&packet->vps, vp);
+
 		return true;
 	}
 
