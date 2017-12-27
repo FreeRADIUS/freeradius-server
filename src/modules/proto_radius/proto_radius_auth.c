@@ -404,6 +404,30 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		if (!unlang) goto send_reply;
 
 	rerun_nak:
+		/*
+		 *	Access-Challenge packets require a State.  If
+		 *	there is none, create one here.  This is so
+		 *	that the State attribute is accessible in the
+		 *	"send Access-Challenge" section.
+		 */
+		if ((request->reply->code == FR_CODE_ACCESS_CHALLENGE) &&
+		    !(vp = fr_pair_find_by_num(request->reply->vps, 0, FR_STATE, TAG_ANY))) {
+			size_t i;
+			uint32_t x;
+			uint8_t buffer[16];
+
+			for (i = 0; i < sizeof(buffer) / sizeof(x); i++) {
+				x = fr_rand();
+				memcpy(buffer + (i * 4), &x, sizeof(x));
+			}
+
+			vp = fr_pair_afrom_num(request->reply, 0, FR_STATE);
+			if (vp) {
+				fr_pair_value_memcpy(vp, buffer, sizeof(buffer));
+				fr_pair_add(&request->reply->vps, vp);
+			}
+		}
+
 		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
 		unlang_push_section(request, unlang, RLM_MODULE_NOOP);
 
