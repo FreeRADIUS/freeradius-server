@@ -412,14 +412,9 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		 */
 		if ((request->reply->code == FR_CODE_ACCESS_CHALLENGE) &&
 		    !(vp = fr_pair_find_by_num(request->reply->vps, 0, FR_STATE, TAG_ANY))) {
-			size_t i;
-			uint32_t x;
 			uint8_t buffer[16];
 
-			for (i = 0; i < sizeof(buffer) / sizeof(x); i++) {
-				x = fr_rand();
-				memcpy(buffer + (i * 4), &x, sizeof(x));
-			}
+			fr_rand_buffer(buffer, sizeof(buffer));
 
 			vp = fr_pair_afrom_num(request->reply, 0, FR_STATE);
 			if (vp) {
