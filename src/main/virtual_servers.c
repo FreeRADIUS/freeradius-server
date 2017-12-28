@@ -400,7 +400,8 @@ int virtual_servers_instantiate(void)
 
 			if (listen->app->instantiate &&
 			    listen->app->instantiate(listen->proto_module->data, listen->proto_module->conf) < 0) {
-				cf_log_err(listen->proto_module->conf, "Instantiate failed");
+				cf_log_err(listen->proto_module->conf, "Could not load virtual server \"%s\".",
+					    cf_section_name2(listener[0]->server_cs));
 				return -1;
 			}
 		}
