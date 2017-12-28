@@ -1754,7 +1754,7 @@ static unlang_t *compile_children(unlang_group_t *g, UNUSED unlang_t *parent, un
 					}
 
 					cf_log_err(ci,
-						   "Failed to parse \"%s\" entry.",
+						   "Invalid keyword \"%s\".",
 						   attr);
 					talloc_free(c);
 					return NULL;
