@@ -3223,6 +3223,11 @@ int unlang_compile_subsection(CONF_SECTION *server_cs, char const *name1, char c
 	cs = cf_section_find(server_cs, name1, name2);
 	if (!cs) return 0;
 
+	/*
+	 *	Don't print out debug messages twice.
+	 */
+	if (cf_data_find(cs, unlang_group_t, NULL) != NULL) return 1;
+
 	if (!name2) name2 = "";
 
 	cf_log_debug(cs, "Compiling policies - %s %s {...}", name1, name2);
