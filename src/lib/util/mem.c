@@ -45,20 +45,8 @@ RADIUS_PACKET *fr_radius_alloc(TALLOC_CTX *ctx, bool new_vector)
 	rp->id = -1;
 
 	if (new_vector) {
-		int i;
-		uint32_t hash, base;
-
-		/*
-		 *	Don't expose the actual contents of the random
-		 *	pool.
-		 */
-		base = fr_rand();
-		for (i = 0; i < AUTH_VECTOR_LEN; i += sizeof(uint32_t)) {
-			hash = fr_rand() ^ base;
-			memcpy(rp->vector + i, &hash, sizeof(hash));
-		}
+		fr_rand_buffer(rp->vector, sizeof(rp->vector));
 	}
-	fr_rand();		/* stir the pool again */
 
 	return rp;
 }

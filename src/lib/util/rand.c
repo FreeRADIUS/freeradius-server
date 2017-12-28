@@ -108,3 +108,32 @@ uint32_t fr_rand(void)
 
 	return num;
 }
+
+void fr_rand_buffer(void *start, size_t length)
+{
+	uint32_t x;
+	uint8_t *buffer = start;
+	size_t buflen = length;
+
+	if (buflen > 4) {
+		size_t i;
+
+		for (i = 0; i < buflen; i += 4) {
+			x = fr_rand();
+			memcpy(buffer + i, &x, sizeof(x));
+		}
+
+		/*
+		 *	Keep only the last bytes in the word.
+		 */
+		i = buflen & ~0x03;
+		buffer += i;
+		buflen &= 0x03;
+	}
+
+	if (!buflen) return;
+
+	x = fr_rand();
+
+	memcpy(buffer, &x, buflen);
+}
