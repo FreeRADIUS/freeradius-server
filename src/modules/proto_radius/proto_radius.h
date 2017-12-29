@@ -72,7 +72,7 @@ typedef struct {
 
 	dl_instance_t			**type_submodule;		//!< Instance of the various types
 									//!< only one instance per type allowed.
-	fr_io_process_t			process_by_code[FR_CODE_MAX];	//!< Lookup process entry point by code.
+	fr_io_process_t			process_by_code[FR_CODE_MAX + 1];	//!< Lookup process entry point by code.
 
 	uint32_t			max_packet_size;		//!< for message ring buffer.
 	uint32_t			num_messages;			//!< for message ring buffer.
@@ -80,7 +80,7 @@ typedef struct {
 
 	bool				tunnel_password_zeros;
 
-	bool				code_allowed[FR_CODE_MAX];	//!< Lookup allowed packet codes.
+	bool				code_allowed[FR_CODE_MAX + 1];	//!< Lookup allowed packet codes.
 
 	fr_listen_t const		*listen;			//!< The listener structure which describes
 									///< the I/O path.

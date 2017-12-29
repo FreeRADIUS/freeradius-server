@@ -292,7 +292,7 @@ static void mod_process_set(void const *instance, REQUEST *request)
 	fr_io_process_t process;
 
 	rad_assert(request->packet->code != 0);
-	rad_assert(request->packet->code < FR_CODE_MAX);
+	rad_assert(request->packet->code <= FR_CODE_MAX);
 
 	request->server_cs = inst->server_cs;
 

@@ -155,7 +155,7 @@ char const *fr_packet_codes[FR_MAX_PACKET_CODE] = {
 	"Protocol-Error",
 };
 
-bool const fr_request_packets[FR_CODE_MAX] = {
+bool const fr_request_packets[FR_CODE_MAX + 1] = {
 	[FR_CODE_ACCESS_REQUEST] = true,
 	[FR_CODE_ACCOUNTING_REQUEST] = true,
 	[FR_CODE_STATUS_SERVER] = true,
