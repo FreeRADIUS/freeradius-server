@@ -155,6 +155,14 @@ char const *fr_packet_codes[FR_MAX_PACKET_CODE] = {
 	"Protocol-Error",
 };
 
+bool const fr_request_packets[FR_CODE_MAX] = {
+	[FR_CODE_ACCESS_REQUEST] = true,
+	[FR_CODE_ACCOUNTING_REQUEST] = true,
+	[FR_CODE_STATUS_SERVER] = true,
+	[FR_CODE_COA_REQUEST] = true,
+	[FR_CODE_DISCONNECT_REQUEST] = true,
+};
+
 /*
  *	For request packets which have the Request Authenticator being
  *	all zeros.  We need to decode attributes using a Request
