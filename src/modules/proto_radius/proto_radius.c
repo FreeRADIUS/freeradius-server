@@ -158,6 +158,14 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PAR
 	inst->code_allowed[code] = true;
 
 	/*
+	 *	Hacks for CoA, which also means Disconnect.  And
+	 *	they're both processed by the same handler.
+	 */
+	if (code == FR_CODE_COA_REQUEST) {
+		inst->code_allowed[FR_CODE_DISCONNECT_REQUEST] = true;
+	}
+
+	/*
 	 *	Parent dl_instance_t added in virtual_servers.c (listen_parse)
 	 */
 	return dl_instance(ctx, out, listen_cs,	parent_inst, name, DL_TYPE_SUBMODULE);
