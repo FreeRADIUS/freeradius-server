@@ -176,40 +176,9 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 }
 
 
-static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
-{
-	int rcode;
-	CONF_SECTION *server_cs;
-
-	rad_assert(listen_cs);
-
-	server_cs = cf_item_to_section(cf_parent(listen_cs));
-	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
-
-	rcode = unlang_compile_subsection(server_cs, "recv", "Accounting-Request", MOD_PREACCT);
-	if (rcode < 0) return rcode;
-	if (rcode == 0) {
-		cf_log_err(server_cs, "Failed finding 'recv Accounting-Request { ... }' section of virtual server %s",
-			      cf_section_name2(server_cs));
-		return -1;
-	}
-
-	rcode = unlang_compile_subsection(server_cs, "send", "Accounting-Response", MOD_ACCOUNTING);
-	if (rcode < 0) return rcode;
-
-	rcode = unlang_compile_subsection(server_cs, "send", "Do-Not-Respond", MOD_POST_AUTH);
-	if (rcode < 0) return rcode;
-
-	rcode = unlang_compile_subsection(server_cs, "send", "Protocol-Error", MOD_POST_AUTH);
-	if (rcode < 0) return rcode;
-
-	return 0;
-}
-
 extern fr_app_process_t proto_radius_acct;
 fr_app_process_t proto_radius_acct = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "radius_acct",
-	.instantiate	= mod_instantiate,
 	.process	= mod_process,
 };

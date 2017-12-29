@@ -536,35 +536,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
  */
 static int auth_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *listen_cs)
 {
-	int rcode;
 	CONF_SECTION *subcs = NULL;
-
-	rcode = unlang_compile_subsection(server_cs, "recv", "Access-Request", MOD_AUTHORIZE);
-	if (rcode < 0) return rcode;
-
-	if (rcode == 0) {
-		cf_log_err(server_cs, "Failed finding 'recv Access-Request { ... }' section of virtual server %s",
-			      cf_section_name2(server_cs));
-		return -1;
-	}
-
-	rcode = unlang_compile_subsection(server_cs, "send", "Access-Accept", MOD_POST_AUTH);
-	if (rcode < 0) return rcode;
-
-	rcode = unlang_compile_subsection(server_cs, "send", "Access-Reject", MOD_POST_AUTH);
-	if (rcode < 0) return rcode;
-
-	rcode = unlang_compile_subsection(server_cs, "send", "Do-Not-Respond", MOD_POST_AUTH);
-	if (rcode < 0) return rcode;
-
-	rcode = unlang_compile_subsection(server_cs, "send", "Protocol-Error", MOD_POST_AUTH);
-	if (rcode < 0) return rcode;
-
-	/*
-	 *	It's OK to not have an Access-Challenge section.
-	 */
-	rcode = unlang_compile_subsection(server_cs, "send", "Access-Challenge", MOD_POST_AUTH);
-	if (rcode < 0) return rcode;
 
 	while ((subcs = cf_section_find_next(server_cs, subcs, "authenticate", NULL))) {
 		char const *name2;

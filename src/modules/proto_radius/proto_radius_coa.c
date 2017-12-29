@@ -224,49 +224,9 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 }
 
 
-static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
-{
-	int rcode;
-	CONF_SECTION *server_cs;
-
-	rad_assert(listen_cs);
-
-	server_cs = cf_item_to_section(cf_parent(listen_cs));
-	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
-
-	rcode = unlang_compile_subsection(server_cs, "recv", "CoA-Request", MOD_RECV_COA);
-	if (rcode < 0) return rcode;
-	if (rcode == 1) {
-		rcode = unlang_compile_subsection(server_cs, "send", "CoA-ACK", MOD_SEND_COA);
-		if (rcode < 0) return rcode;
-
-		rcode = unlang_compile_subsection(server_cs, "send", "CoA-NAK", MOD_SEND_COA);
-		if (rcode < 0) return rcode;
-	}
-
-	rcode = unlang_compile_subsection(server_cs, "recv", "Disconnect-Request", MOD_RECV_COA);
-	if (rcode < 0) return rcode;
-	if (rcode == 1) {
-		rcode = unlang_compile_subsection(server_cs, "send", "Disconnect-ACK", MOD_SEND_COA);
-		if (rcode < 0) return rcode;
-
-		rcode = unlang_compile_subsection(server_cs, "send", "Disconnect-NAK", MOD_SEND_COA);
-		if (rcode < 0) return rcode;
-	}
-
-	rcode = unlang_compile_subsection(server_cs, "send", "Do-Not-Respond", MOD_POST_AUTH);
-	if (rcode < 0) return rcode;
-
-	rcode = unlang_compile_subsection(server_cs, "send", "Protocol-Error", MOD_POST_AUTH);
-	if (rcode < 0) return rcode;
-
-	return 0;
-}
-
 extern fr_app_process_t proto_radius_coa;
 fr_app_process_t proto_radius_coa = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "radius_coa",
-	.instantiate	= mod_instantiate,
 	.process	= mod_process,
 };
