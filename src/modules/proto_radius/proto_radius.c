@@ -25,6 +25,7 @@
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/io/listen.h>
+#include <freeradius-devel/modules.h>
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/rad_assert.h>
@@ -39,7 +40,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSE
  */
 static CONF_PARSER const proto_radius_config[] = {
 	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY, proto_radius_t,
-			  type_submodule), .dflt = "Status-Server", .func = type_parse },
+			  type_submodule), .func = type_parse },
 	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, proto_radius_t, io_submodule),
 	  .func = transport_parse },
 
@@ -81,6 +82,8 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PAR
 
 	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
 	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(ci));
+	CONF_SECTION		*server = cf_item_to_section(cf_parent(listen_cs));
+	proto_radius_t		*inst;
 	dl_instance_t		*parent_inst;
 	char const		*name = NULL;
 	fr_dict_attr_t const	*da;
@@ -146,6 +149,13 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PAR
 
 	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_instance_t, "proto_radius"));
 	rad_assert(parent_inst);
+
+	/*
+	 *	Set the allowed codes so that we can compile them as
+	 *	necessary.
+	 */
+	inst = talloc_get_type_abort(parent_inst->data, proto_radius_t);
+	inst->code_allowed[code] = true;
 
 	/*
 	 *	Parent dl_instance_t added in virtual_servers.c (listen_parse)
@@ -368,12 +378,35 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	return 0;
 }
 
+static rlm_components_t code2component[FR_CODE_DO_NOT_RESPOND + 1] = {
+	[FR_CODE_ACCESS_REQUEST] = MOD_AUTHORIZE,
+	[FR_CODE_ACCESS_ACCEPT] = MOD_POST_AUTH,
+	[FR_CODE_ACCESS_REJECT] = MOD_POST_AUTH,
+	[FR_CODE_ACCESS_CHALLENGE] = MOD_POST_AUTH,
+
+	[FR_CODE_STATUS_SERVER] = MOD_AUTHORIZE,
+
+	[FR_CODE_ACCOUNTING_REQUEST] = MOD_PREACCT,
+	[FR_CODE_ACCOUNTING_RESPONSE] = MOD_ACCOUNTING,
+
+	[FR_CODE_COA_REQUEST] = MOD_RECV_COA,
+	[FR_CODE_COA_ACK] = MOD_SEND_COA,
+	[FR_CODE_COA_NAK] = MOD_SEND_COA,
+
+	[FR_CODE_DISCONNECT_REQUEST] = MOD_RECV_COA,
+	[FR_CODE_DISCONNECT_ACK] = MOD_SEND_COA,
+	[FR_CODE_DISCONNECT_NAK] = MOD_SEND_COA,
+
+	[FR_CODE_PROTOCOL_ERROR] = MOD_POST_AUTH,
+	[FR_CODE_DO_NOT_RESPOND] = MOD_POST_AUTH,
+};
+
 /** Instantiate the application
  *
  * Instantiate I/O and type submodules.
  *
  * @param[in] instance	Ctx data for this application.
- * @param[in] conf	Listen section parsed to give us isntance.
+ * @param[in] conf	Listen section parsed to give us instance.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -385,6 +418,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 	fr_dict_attr_t const	*da;
 	CONF_PAIR		*cp = NULL;
+	CONF_ITEM		*ci;
+	CONF_SECTION		*server = cf_item_to_section(cf_parent(conf));
 
 	/*
 	 *	Instantiate the I/O module
@@ -406,6 +441,76 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	}
 
 	/*
+	 *	Compile each "send/recv + RADIUS packet type" section.
+	 *	This is so that the submodules don't need to do this.
+	 *
+	 *	@todo - this loop is run on the virtual server for
+	 *	every "listen" section in it.  Which isn't efficient.
+	 */
+	for (ci = cf_item_next(server, NULL);
+	     ci != NULL;
+	     ci = cf_item_next(server, ci)) {
+		fr_dict_enum_t const *dv;
+		char const *name, *packet_type;
+		CONF_SECTION *subcs;
+
+		if (!cf_item_is_section(ci)) continue;
+
+		subcs = cf_item_to_section(ci);
+		name = cf_section_name1(subcs);
+
+		/*
+		 *	We only process recv/send sections.
+		 *	proto_radius_auth will handle the
+		 *	"authenticate" sections.
+		 */
+		if ((strcmp(name, "recv") != 0) &&
+		    (strcmp(name, "send") != 0)) {
+			continue;
+		}
+
+		/*
+		 *	Skip a section if it was already compiled.
+		 */
+		if (cf_data_find(subcs, unlang_group_t, NULL) != NULL) continue;
+
+		/*
+		 *	Check that the packet type is known.
+		 */
+		packet_type = cf_section_name2(subcs);
+		dv = fr_dict_enum_by_alias(NULL, da, packet_type);
+		if (!dv || (dv->value->vb_uint32 > FR_CODE_DO_NOT_RESPOND) ||
+		    !code2component[dv->value->vb_uint32]) {
+			cf_log_err(subcs, "Invalid RADIUS packet type in '%s %s {...}'",
+				   name, packet_type);
+			return -1;
+		}
+
+		/*
+		 *	Skip 'recv foo' when it's a request packet
+		 *	that isn't used by this instance.  Note that
+		 *	we DO compile things like 'recv
+		 *	Access-Accept', so that rlm_radius can use it.
+		 */
+		if ((strcmp(name, "recv") == 0) && (dv->value->vb_uint32 <= FR_CODE_MAX) &&
+		    fr_request_packets[dv->value->vb_uint32] &&
+		    !inst->code_allowed[dv->value->vb_uint32]) {
+			cf_log_warn(subcs, "Skipping %s %s { ...}", name, packet_type);
+			continue;
+		}
+
+		/*
+		 *	Try to compile it, and fail if it doesn't work.
+		 */
+		cf_log_debug(subcs, "compiling - %s %s {...}", name, packet_type);
+
+		if (unlang_compile(subcs, code2component[dv->value->vb_uint32]) < 0) {
+			cf_log_err(subcs, "Failed compiling '%s %s { ... }' section", name, packet_type);
+			return -1;
+		}
+	}
+
+	/*
 	 *	Instantiate the process modules
 	 */
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
@@ -421,15 +526,25 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		}
 
 		/*
-		 *	We've already done bounds checking in the process_parse function
+		 *	We've already done bounds checking in the type_parse function
 		 */
 		enumv = cf_data_value(cf_data_find(cp, fr_dict_enum_t, NULL));
 		if (!fr_cond_assert(enumv)) return -1;
 
 		code = enumv->value->vb_uint32;
 		inst->process_by_code[code] = app_process->process;	/* Store the process function */
-		inst->code_allowed[code] = true;
+
+		rad_assert(inst->code_allowed[code] == true);
 		i++;
+	}
+
+	/*
+	 *	Disallow this?
+	 *
+	 *	Or just go through and compile all of the sections?
+	 */
+	if (!i) {
+		cf_log_warn(conf, "Poopy pants");
 	}
 
 	/*
