@@ -120,9 +120,24 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PAR
 	cf_data_add(ci, type_enum, NULL, false);
 
 	code = type_enum->value->vb_uint32;
-	if (code >= FR_CODE_MAX) {
+	if (code > FR_CODE_MAX) {
 	invalid_type:
 		cf_log_err(ci, "Unsupported 'type = %s'", type_str);
+		return -1;
+	}
+
+	if (!fr_request_packets[code]) {
+		cf_log_err(ci, "Cannot listen for 'type = %s'.  The packet MUST be a request.", type_str);
+		return -1;
+	}
+
+	/*
+	 *	Setting 'type = foo' means you MUST have at least a
+	 *	'recv foo' section.
+	 */
+	if (!cf_section_find(server, "recv", type_enum->alias)) {
+		cf_log_err(ci, "Failed finding 'recv %s {...} section of virtual server %s",
+			   type_enum->alias, cf_section_name2(server));
 		return -1;
 	}
 
