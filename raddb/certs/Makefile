@@ -44,7 +44,7 @@ verify: server.vrfy client.vrfy
 
 passwords.mk: server.cnf ca.cnf client.cnf inner-server.cnf ocsp.cnf
 	@echo "PASSWORD_SERVER	= '$(shell grep output_password server.cnf | sed 's/.*=//;s/^ *//')'"		> $@
-	@echo "PASSWORD_INNER	= '$(shell grep output_password inner-server.cnf | sed 's/.*=//;s/^ *//')'"	>> $@
+	@echo "PASSWORD_INNER	= '$(shell grep output_password inner-server.cnf | sed 's/.*=//;s/^ *//')'">> $@
 	@echo "PASSWORD_CA	= '$(shell grep output_password ca.cnf | sed 's/.*=//;s/^ *//')'"		>> $@
 	@echo "PASSWORD_CLIENT	= '$(shell grep output_password client.cnf | sed 's/.*=//;s/^ *//')'"		>> $@
 	@echo "PASSWORD_OCSP	= '$(shell grep output_password ocsp.cnf | sed 's/.*=//;s/^ *//')'"		>> $@
@@ -61,13 +61,31 @@ dh:
 
 ######################################################################
 #
+# Create a CA signing Request for external CA as SubCA use in FreeIPA
+#
+######################################################################
+ca.csr: SubCA.cnf
+	openssl req -new -sha256 -keyout ca.key -out ca.csr \
+		-days $(CA_DEFAULT_DAYS) -config ./SubCA.cnf
+	chmod g+r ca.key
+	@cp ca.key ca.key.sub
+	
+	@echo "*** Now sign the signing request and export from external source as ca.pem.sub"
+	@echo "Example:"
+	@echo "# ipa cert-request ca.csr --principal radius/ipa1.test.lan --profile-id caSubCertAuth3"
+	@echo "# ipa cert-show 23 --out ca.pem.sub >/dev/null"
+	@echo "# make all"
+#####################################################################
+#
 #  Create a new self-signed CA certificate
 #
 ######################################################################
 ca.key ca.pem: ca.cnf
 	@[ -f index.txt ] || $(MAKE) index.txt
 	@[ -f serial ] || $(MAKE) serial
-	openssl req -new -x509 -keyout ca.key -out ca.pem -config ./ca.cnf -days $(CA_DEFAULT_DAYS)
+	@[ -f ca.pem.sub ] && cp ca.pem.sub ca.pem \
+	|| openssl req -new -x509 -keyout ca.key -out ca.pem \
+	-config ./ca.cnf -days $(CA_DEFAULT_DAYS)
 
 ca.der: ca.pem
 	openssl x509 -inform PEM -outform DER -in ca.pem -out ca.der
@@ -78,7 +96,7 @@ ca.der: ca.pem
 #
 ######################################################################
 server.csr server.key: server.cnf
-	openssl req -new  -out server.csr -keyout server.key -config ./server.cnf
+	openssl req -new -out server.csr -keyout server.key -config ./server.cnf
 
 server.crt: server.csr ca.key ca.pem
 	openssl ca -batch -keyfile ca.key -cert ca.pem -in server.csr -key $(PASSWORD_CA) -out server.crt -config ./server.cnf
@@ -91,7 +109,8 @@ server.pem: server.p12
 
 .PHONY: server.vrfy
 server.vrfy: ca.pem
-	@openssl verify -CAfile ca.pem server.pem
+	@[ -f ca.key.sub ] && openssl verify -partial_chain -CAfile ca.pem server.pem \
+	|| openssl verify -CAfile ca.pem server.pem
 
 ######################################################################
 #
@@ -112,7 +131,8 @@ ocsp.pem: ocsp.p12
 
 .PHONY: ocsp.vrfy
 ocsp.vrfy: ca.pem
-	@openssl verify -CAfile ca.pem ocsp.pem
+	@[ -f ca.key.sub ] && openssl verify -partial_chain -CAfile ca.pem ocsp.pem \
+	|| openssl verify -CAfile ca.pem ocsp.pem
 
 ######################################################################
 #
@@ -159,7 +179,8 @@ inner-server.pem: inner-server.p12
 
 .PHONY: inner-server.vrfy
 inner-server.vrfy: ca.pem
-	@openssl verify -CAfile ca.pem inner-server.pem
+	@[ -f ca.key.sub ] && openssl verify -partial_chain -CAfile ca.pem inner-server.pem \
+	|| openssl verify -CAfile ca.pem inner-server.pem
 
 ######################################################################
 #
