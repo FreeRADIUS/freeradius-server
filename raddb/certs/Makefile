@@ -143,23 +143,23 @@ client.vrfy: ca.pem client.pem
 #
 ######################################################################
 inner-server.csr inner-server.key: inner-server.cnf
-	$(OPENSSL) req -new  -out inner-server.csr -keyout inner-server.key -config ./inner-server.cnf
+	openssl req -new  -out inner-server.csr -keyout inner-server.key -config ./inner-server.cnf
 	chmod g+r inner-server.key
 
 inner-server.crt: inner-server.csr ca.key ca.pem
-	$(OPENSSL) ca -batch -keyfile ca.key -cert ca.pem -in inner-server.csr  -key $(PASSWORD_CA) -out inner-server.crt -extensions xpserver_ext -extfile xpextensions -config ./inner-server.cnf
+	openssl ca -batch -keyfile ca.key -cert ca.pem -in inner-server.csr  -key $(PASSWORD_CA) -out inner-server.crt -extensions xpserver_ext -extfile xpextensions -config ./inner-server.cnf
 
 inner-server.p12: inner-server.crt
-	$(OPENSSL) pkcs12 -export -in inner-server.crt -inkey inner-server.key -out inner-server.p12  -passin pass:$(PASSWORD_INNER) -passout pass:$(PASSWORD_INNER)
+	openssl pkcs12 -export -in inner-server.crt -inkey inner-server.key -out inner-server.p12  -passin pass:$(PASSWORD_INNER) -passout pass:$(PASSWORD_INNER)
 	chmod g+r inner-server.p12
 
 inner-server.pem: inner-server.p12
-	$(OPENSSL) pkcs12 -in inner-server.p12 -out inner-server.pem -passin pass:$(PASSWORD_INNER) -passout pass:$(PASSWORD_INNER)
+	openssl pkcs12 -in inner-server.p12 -out inner-server.pem -passin pass:$(PASSWORD_INNER) -passout pass:$(PASSWORD_INNER)
 	chmod g+r inner-server.pem
 
 .PHONY: inner-server.vrfy
 inner-server.vrfy: ca.pem
-	@$(OPENSSL) verify -CAfile ca.pem inner-server.pem
+	@openssl verify -CAfile ca.pem inner-server.pem
 
 ######################################################################
 #
