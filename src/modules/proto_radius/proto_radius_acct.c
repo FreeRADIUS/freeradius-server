@@ -52,7 +52,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 	case REQUEST_INIT:
 		radlog_request(L_DBG, L_DBG_LVL_1, request, "Received %s ID %i",
 			       fr_packet_codes[request->packet->code], request->packet->id);
-		rdebug_proto_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
+		rdebug_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
 
 		request->component = "radius";
 
@@ -161,7 +161,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		if (request->parent) {
 			radlog_request(L_DBG, L_DBG_LVL_1, request, "Sent %s ID %i",
 				       fr_packet_codes[request->reply->code], request->reply->id);
-			rdebug_proto_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
+			rdebug_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
 			return FR_IO_DONE;
 		}
 
