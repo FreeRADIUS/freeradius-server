@@ -1,0 +1,83 @@
+[ ca ]
+default_ca		= CA_default
+
+[ CA_default ]
+host_name		  = ipa0
+HOST_DOMAIN		= ctuweb.com
+dir			      = ./
+certs			    = $dir
+crl_dir			  = $dir/crl
+database		  = $dir/index.txt
+new_certs_dir	= $dir
+certificate		= $dir/ca.pem
+serial			  = $dir/serial
+crl			      = $dir/crl.pem
+private_key		= $dir/ca.key
+RANDFILE		  = $dir/.rand
+name_opt		  = ca_default
+cert_opt		  = ca_default
+default_days	= 3650
+default_crl_days	= 30
+default_md		= sha256
+preserve		  = no
+policy			  = policy_match
+crlDistributionPoints	= URI:http://www.$HOST_DOMAIN/example_ca.crl
+crlnumber         = $dir/crlnumber
+crl               = $crl_dir/crl.pem
+crl_extensions    = crl_ext
+
+[ policy_match ]
+countryName		      = match
+stateOrProvinceName	= match
+organizationName	  = match
+organizationalUnitName	= optional
+commonName		      = supplied
+emailAddress		    = optional
+
+[ policy_anything ]
+countryName		      = optional
+stateOrProvinceName	= optional
+localityName		    = optional
+organizationName	  = optional
+organizationalUnitName	= optional
+commonName		      = supplied
+emailAddress		    = optional
+
+[ req ]
+prompt			        = no
+distinguished_name	= Sub_Radius_CA
+default_bits		    = 2048
+input_password		  = whatever
+output_password		  = whatever
+
+x509_extensions		  = v3_ca
+
+[Sub_Radius_CA]
+countryName		      = FR
+stateOrProvinceName	= Somewhere
+localityName		    = Radius
+organizationName	  = Example Inc
+emailAddress		    = admin@example.org
+commonName		      = "Example Certificate Authority"
+
+[v3_ca]
+subjectKeyIdentifier	  = hash
+authorityKeyIdentifier	= keyid:always,issuer:always
+basicConstraints	      = critical,CA:true
+crlDistributionPoints	  = URI:http://www.example.com/example_ca.crl
+
+[ v3_intermediate_ca ]
+# Extensions for a typical intermediate CA (`man x509v3_config`).
+subjectKeyIdentifier    = hash
+authorityKeyIdentifier  = keyid:always,issuer
+basicConstraints        = critical, CA:true, pathlen:0
+keyUsage                = critical, digitalSignature, cRLSign, keyCertSign
+crlDistributionPoints   = URI:http://www.example.com/example_ca.crl
+
+[ ocsp ]
+# Extension for OCSP signing certificates (`man ocsp`).
+basicConstraints        = CA:FALSE
+subjectKeyIdentifier    = hash
+authorityKeyIdentifier  = keyid,issuer
+keyUsage                = critical, digitalSignature
+extendedKeyUsage        = critical, OCSPSigning
