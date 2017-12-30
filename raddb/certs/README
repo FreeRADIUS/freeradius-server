@@ -59,6 +59,10 @@ running the following command:
 
 $ rm -f *.pem *.der *.csr *.crt *.key *.p12 serial* index.txt*
 
+or
+
+make distclean
+
   Then, follow the instructions below for creating real certificates.
 
   Once the final certificates have been created, you can delete the
@@ -91,7 +95,27 @@ $ make ca.der
   which is can be imported into Windows.
 
 
-		MAKING A SERVER CERTIFICATE
+
+	MAKING A SUBORDINATE CA SIGNED BY EXTERNAL CA
+
+Edit both ca.cnf and SubCA.cnf with matching passwords and correct
+Orginization, location, and CommonName.
+
+This step creates the certificate signing request:
+$ make ca.csr
+
+Sign the certificate on your external CA. Your CA signing profile 
+should have path len =0 not allowing your SubCA cert to create 
+anymore CA certs. A DogTag/FreeIPA profile is in the scripts/dogtag folder.
+Export your signed certificate as ca.pem.sub to the certs directory.
+
+The next step copies the new cert to the appropreate name and creates the ca.der:
+$ make ca.der
+	
+Follow the remainder of the process below as usual.
+
+
+	MAKING A SERVER CERTIFICATE
 
 
 The following steps will let you create a server certificate for use
