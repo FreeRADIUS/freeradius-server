@@ -76,7 +76,7 @@ _Generic((_cf), \
 
 typedef int (*cf_walker_t)(void *data, void *ctx);
 
-#define CF_IDENT_ANY "<any>"
+#define CF_IDENT_ANY (void *) (-1)
 
 /*
  *	Generic functions that apply to all types of #CONF_ITEM
