@@ -491,14 +491,17 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		gettimeofday(&request->reply->timestamp, NULL);
 
 		/*
-		 *	Save session-state list for Access-Challenge,
+		 *	Save session-state list for Access-Challenge from a NAS.
 		 *	discard it for everything else.
 		 */
-		if (request->reply->code == FR_CODE_ACCESS_CHALLENGE) {
-			if (!request->parent) fr_request_to_state(global_state, request, request->packet, request->reply);
+		if (!request->parent) {
+			if (request->reply->code == FR_CODE_ACCESS_CHALLENGE) {
+				fr_request_to_state(global_state, request, request->packet,
+						    request->reply);
 
-		} else {
-			if (!request->parent) fr_state_discard(global_state, request, request->packet);
+			} else {
+				fr_state_discard(global_state, request, request->packet);
+			}
 		}
 
 		/*
