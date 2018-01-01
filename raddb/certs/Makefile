@@ -12,7 +12,7 @@
 DH_KEY_SIZE	= 2048
 EXTERNAL_CA	= $(wildcard external_ca.*)
 
-ifne "$(EXTERNAL_CA)" ""
+ifneq "$(EXTERNAL_CA)" ""
 PARTIAL		= -partial_chain
 endif
 
