@@ -455,6 +455,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 *	@todo - this loop is run on the virtual server for
 	 *	every "listen" section in it.  Which isn't efficient.
 	 */
+	i = 0;
 	for (ci = cf_item_next(server, NULL);
 	     ci != NULL;
 	     ci = cf_item_next(server, ci)) {
@@ -476,6 +477,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		    (strcmp(name, "send") != 0)) {
 			continue;
 		}
+
+		i++;
 
 		/*
 		 *	Skip a section if it was already compiled.
@@ -516,6 +519,14 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 			cf_log_err(subcs, "Failed compiling '%s %s { ... }' section", name, packet_type);
 			return -1;
 		}
+	}
+
+	/*
+	 *	No 'recv' or 'send' sections.  That's an error.
+	 */
+	if (!i) {
+		cf_log_err(server, "Virtual servers cannot be empty.");
+		return -1;
 	}
 
 	/*
