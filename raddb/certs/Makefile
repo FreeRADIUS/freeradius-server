@@ -10,6 +10,12 @@
 ######################################################################
 
 DH_KEY_SIZE	= 2048
+EXTERNAL_CA	= $(wildcard external_ca.*)
+
+ifne "$(EXTERNAL_CA)" ""
+PARTIAL		= -partial_chain
+endif
+
 
 #
 #  Set the passwords
@@ -91,7 +97,7 @@ server.pem: server.p12
 
 .PHONY: server.vrfy
 server.vrfy: ca.pem
-	@openssl verify -CAfile ca.pem server.pem
+	@openssl verify $(PARTIAL) -CAfile ca.pem server.pem
 
 ######################################################################
 #
@@ -112,7 +118,7 @@ ocsp.pem: ocsp.p12
 
 .PHONY: ocsp.vrfy
 ocsp.vrfy: ca.pem
-	@openssl verify -CAfile ca.pem ocsp.pem
+	@openssl verify $(PARTIAL) -CAfile ca.pem ocsp.pem
 
 ######################################################################
 #
@@ -159,7 +165,7 @@ inner-server.pem: inner-server.p12
 
 .PHONY: inner-server.vrfy
 inner-server.vrfy: ca.pem
-	@$(OPENSSL) verify -CAfile ca.pem inner-server.pem
+	@$(OPENSSL) verify $(PARTIAL) -CAfile ca.pem inner-server.pem
 
 ######################################################################
 #
