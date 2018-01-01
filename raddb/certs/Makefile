@@ -78,6 +78,9 @@ ca.key ca.pem: ca.cnf
 ca.der: ca.pem
 	openssl x509 -inform PEM -outform DER -in ca.pem -out ca.der
 
+ca.csr: ca.cnf
+	openssl req -new -x509 -keyout ca.key -out ca.csr -config ./ca.cnf -days $(CA_DEFAULT_DAYS)
+
 ######################################################################
 #
 #  Create a new server certificate, signed by the above CA.
