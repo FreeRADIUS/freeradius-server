@@ -28,7 +28,7 @@ include passwords.mk
 #
 ######################################################################
 .PHONY: all
-all: index.txt serial dh server ca client ocsp
+all: index.txt serial dh server ca client
 
 .PHONY: client
 client: client.pem
@@ -38,9 +38,6 @@ ca: ca.der
 
 .PHONY: server
 server: server.pem server.vrfy
-
-.PHONY: ocsp
-ocsp: ocsp.pem ocsp.vrfy
 
 .PHONY: inner-server
 inner-server: inner-server.pem inner-server.vrfy
@@ -102,28 +99,6 @@ server.pem: server.p12
 .PHONY: server.vrfy
 server.vrfy: ca.pem
 	@$(OPENSSL) verify $(PARTIAL) -CAfile ca.pem server.pem
-
-
-######################################################################
-#
-#  Create a new ocsp certificate, signed by the above CA.
-#
-######################################################################
-ocsp.csr ocsp.key: ocsp.cnf
-	$(OPENSSL) req -new  -out ocsp.csr -keyout ocsp.key -config ./ocsp.cnf
-
-ocsp.crt: ocsp.csr ca.key ca.pem
-	$(OPENSSL) ca -batch -keyfile ca.key -cert ca.pem -in ocsp.csr -key $(PASSWORD_CA) -out ocsp.crt -config ./ocsp.cnf
-
-ocsp.p12: ocsp.crt
-	$(OPENSSL) pkcs12 -export -in ocsp.crt -inkey ocsp.key -out ocsp.p12  -passin pass:$(PASSWORD_OCSP) -passout pass:$(PASSWORD_OCSP)
-
-ocsp.pem: ocsp.p12
-	$(OPENSSL) pkcs12 -in ocsp.p12 -out ocsp.pem -passin pass:$(PASSWORD_OCSP) -passout pass:$(PASSWORD_OCSP)
-
-.PHONY: ocsp.vrfy
-ocsp.vrfy: ca.pem
-	@$(OPENSSL) verify $(PARTIAL) -CAfile ca.pem ocsp.pem
 
 ######################################################################
 #
