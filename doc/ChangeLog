@@ -36,6 +36,8 @@ FreeRADIUS 3.0.16 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	* dictionary.patton updates from Brice Schaffner.  Fixes #2137.
 	* Added scripts to build "inner-server.pem", and updated
 	  mods-config/inner-eap and certs/README to match.
+	* Added provisions for OCSP certs. See raddb/certs/
+	* Added provisiokns for using an external CA.  See raddb/certs/
 
 	Bug fixes
 	* Bind the lifetime of program name and python path to the module
