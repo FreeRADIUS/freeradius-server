@@ -2423,6 +2423,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 				if (!fr_cond_assert(0)) fr_exit_now(1);
 			}
 
+#if 0
 			if (vpt->tmpl_da->flags.has_tag &&
 			    (vpt->tmpl_tag == TAG_ANY)) {
 				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
@@ -2430,6 +2431,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 					     file, line);
 				if (!fr_cond_assert(0)) fr_exit_now(1);
 			}
+#endif
 
 			/*
 			 *	Attribute may be present with multiple names
