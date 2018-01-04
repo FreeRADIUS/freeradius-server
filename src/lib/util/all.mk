@@ -44,6 +44,7 @@ SOURCES		:= base64.c \
 		   socket.c \
 		   talloc.c \
 		   token.c \
+		   trie.c \
 		   udpfromto.c \
 		   udp.c \
 		   value.c \
