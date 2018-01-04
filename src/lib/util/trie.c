@@ -76,7 +76,9 @@ RCSID("$Id$")
  *  create a large number of intermediate 2^N-way nodes, all of which
  *  would have only one edge.
  */
+#ifndef NO_PATH_COMPRESSION
 #define WITH_PATH_COMPRESSION
+#endif
 
 /**  Internal sanity checks for debugging.
  *
@@ -183,8 +185,8 @@ struct fr_trie_t {
 #define PUT_PATH(_x)	((void *) (((uintptr_t) _x) | 0x03))
 
 static void *fr_trie_path_merge_paths(TALLOC_CTX *ctx, fr_trie_path_t *path1, fr_trie_path_t *path2, int depth) CC_HINT(nonnull);
-static int fr_trie_merge(TALLOC_CTX *ctx, void **out, void *a, void *b, int depth);
 #endif
+static int fr_trie_merge(TALLOC_CTX *ctx, void **out, void *a, void *b, int depth);
 
 static int fr_trie_key_insert(TALLOC_CTX *ctx, void **trie_p, uint8_t const *key, int start_bit, int end_bit, void *trie) CC_HINT(nonnull);
 
@@ -1045,7 +1047,6 @@ static uint16_t get_chunk(uint8_t const *key, int num_bits, int start_bit, int e
 }
 
 
-#ifdef WITH_PATH_COMPRESSION
 /** A generic merge routine
  *
  * @param ctx	the talloc ctx
@@ -1201,14 +1202,15 @@ static int fr_trie_merge(TALLOC_CTX *ctx, void **out, void *a, void *b, int dept
 			assert(bits < 8);
 
 			for (j = 0; j < (1 << bits); j++) {
-				void *trie;
-
 				/*
 				 *	If the entry in the larger
 				 *	node is empty, we don't need
 				 *	to do anything here.
 				 */
 				if (!node2->entry[(i << bits) + j]) continue;
+
+#ifdef WITH_PATH_COMPRESSION
+				void *trie;
 
 				/*
 				 *	Convert the entry in node2
@@ -1223,6 +1225,43 @@ static int fr_trie_merge(TALLOC_CTX *ctx, void **out, void *a, void *b, int dept
 						  node1->entry[i], trie, depth) < 0) {
 					return -1;
 				}
+#else
+				fr_trie_node_t	*sub;
+
+				/*
+				 *	Allocate a sub-node to fill
+				 *	the gap.
+				 */
+				if (!node1->entry[i]) {
+					sub = fr_trie_node_alloc(node1, bits);
+					assert(sub != NULL);
+					node1->entry[i] = sub;
+
+				} else if (IS_NODE(node1->entry[i])) {
+					sub = node1->entry[i];
+					assert(IS_NODE(sub));
+
+				} else {
+					fr_trie_user_t *user;
+
+					assert(IS_USER(node1->entry[i]));
+					user = GET_USER(node1->entry[i]);
+
+					sub = user->trie;
+					if (!sub) {
+						sub = fr_trie_node_alloc(user, bits);
+						assert(sub != NULL);
+						user->trie = sub;
+
+					} else {
+						assert(sub->size == bits);
+					}
+				}
+
+				if (fr_trie_merge(sub, &sub->entry[j], sub->entry[j], node2->entry[(i << bits) | j], depth) < 0) {
+					return -1;
+				}
+#endif
 			}
 		}
 
@@ -1237,7 +1276,6 @@ static int fr_trie_merge(TALLOC_CTX *ctx, void **out, void *a, void *b, int dept
 
 	return -1;
 }   
-#endif
 
 
 /** Match a key in a trie and return user ctx, if any
@@ -1377,26 +1415,23 @@ static int fr_trie_key_insert(TALLOC_CTX *ctx, void **trie_p, uint8_t const *key
 	fr_trie_node_t *node;
 
 	if (!trie) {
-		int size;
-
-#ifdef WITH_PATH_COMPRESSION
-		/*
-		 *	If we have key, just create a path.
-		 */
-		if (start_bit < end_bit) {
-			path = fr_trie_path_alloc(ctx, key, start_bit, end_bit, subtrie);
-			if (!path) return -1;
-
-			*trie_p = PUT_PATH(path);
-			return 0;
-		}
-#endif
-
 		if (start_bit == end_bit) {
 			reparent(ctx, subtrie);
 			*trie_p = subtrie;
 			return 0;
 		}
+
+#ifdef WITH_PATH_COMPRESSION
+		/*
+		 *	If we have key, just create a path.
+		 */
+		path = fr_trie_path_alloc(ctx, key, start_bit, end_bit, subtrie);
+		if (!path) return -1;
+
+		*trie_p = PUT_PATH(path);
+		return 0;
+#else
+		int size;
 
 		/*
 		 *	Avoid splitting the main node immediately
@@ -1407,9 +1442,10 @@ static int fr_trie_key_insert(TALLOC_CTX *ctx, void **trie_p, uint8_t const *key
 
 		node = fr_trie_node_alloc(ctx, size);
 		if (!node) return -1;
-		*trie_p = node;
-//		goto insert_node;
-		assert(0 == 1);
+
+		*trie_p = trie = node;
+		goto insert_node;
+#endif
 	}
 
 	/*
@@ -1517,6 +1553,8 @@ static int fr_trie_key_insert(TALLOC_CTX *ctx, void **trie_p, uint8_t const *key
 		*trie_p = trie;
 		return 0;
 	}
+#else
+insert_node:
 #endif
 
 	assert(IS_NODE(trie));

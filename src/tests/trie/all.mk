@@ -1,2 +1,2 @@
-SUBMAKEFILES := trie.mk test.mk
+SUBMAKEFILES := trie.mk nopc.mk test.mk
 
