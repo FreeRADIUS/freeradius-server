@@ -1984,7 +1984,7 @@ struct fr_trie_callback_t {
 static int fr_trie_key_walk(void *trie, fr_trie_callback_t *cb, int depth, bool more)
 {
 	int i, used;
-	uint16_t base, mask;
+	uint16_t base;
 	int bits_used;
 	uint8_t *out;
 	fr_trie_node_t *node;
@@ -2028,9 +2028,18 @@ static int fr_trie_key_walk(void *trie, fr_trie_callback_t *cb, int depth, bool 
 	 *	Mask out the low bits.  They may have been written to
 	 *	in a previous invocation of the function.
 	 */
-	base = out[0];
-	mask = ~((1 << (8 - bits_used)) - 1);
-	base &= mask;
+	if (bits_used > 0) {
+		uint16_t mask;
+
+		base = out[0];
+		mask = ~((1 << (8 - bits_used)) - 1);
+		base &= mask;
+	} else {
+		/*
+		 *	Nothing used in this byte.  Just set it to zero.
+		 */
+		base = 0;
+	}
 
 	// @todo - check end against cb->end so we don't have buffer overflows...
 
