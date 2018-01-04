@@ -855,7 +855,7 @@ static void *fr_trie_path_merge_paths(TALLOC_CTX *ctx, fr_trie_path_t *path1, fr
 		 *	We can insert, but we can't over-write an entry.
 		 */
 		if (IS_USER(path1->trie)) {
-			fprintf(stderr, "FAILED %d prefix %zd\n", __LINE__, prefix_len);
+			fprintf(stderr, "FAILED %d prefix %d\n", __LINE__, (int)prefix_len);
 			return NULL;
 		}
 
@@ -1622,7 +1622,7 @@ static void *fr_trie_key_remove(TALLOC_CTX *ctx, void **entry, uint8_t const *ke
 		 *	The key is too short for this trie.
 		 */
 		if ((start_bit + node->size) > end_bit) {
-			fprintf(stderr, "FAIL %d %zd + %zd = %zd, vs %zd\n", __LINE__,
+			fprintf(stderr, "FAIL %d %d + %d = %d, vs %d\n", __LINE__,
 				start_bit, node->size, start_bit + node->size, end_bit);
 			return NULL;
 		}
