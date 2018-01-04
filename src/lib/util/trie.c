@@ -80,6 +80,9 @@ RCSID("$Id$")
 #define WITH_PATH_COMPRESSION
 #endif
 
+#define MAX_KEY_BYTES (256)
+#define MAX_KEY_BITS (MAX_KEY_BYTES * 8)
+
 /**  Internal sanity checks for debugging.
  *
  *  Tries are complex.  So we have verification routines for every
@@ -372,9 +375,11 @@ static void fr_trie_verify(void *trie)
 	for (i = 0; i < (1 << node->size); i++) {
 		if (!node->entry[i]) continue;
 
+#ifdef TESTING
 		parent = trie_parent(node->entry[i]);
-
+#endif
 		assert(parent == node);
+
 		fr_trie_verify(node->entry[i]);
 	}
 }
@@ -599,7 +604,7 @@ static CC_HINT(nonnull) fr_trie_path_t *fr_trie_path_alloc(TALLOC_CTX *ctx, uint
 	fr_trie_path_t *path;
 	uint8_t *p;
 
-	assert(end_bit < (1 << 16));
+	assert(end_bit < MAX_KEY_BITS);
 	assert(end_bit > 0);
 	assert(start_bit < end_bit);
 	assert(!IS_PATH(trie));
@@ -1889,7 +1894,7 @@ int fr_trie_insert(fr_trie_t *ft, void const *key, size_t keylen, void *data)
 {
 	fr_trie_user_t *user;
 
-	if (keylen > (1 << 16)) return -1;
+	if (keylen > MAX_KEY_BITS) return -1;
 
 	/*
 	 *	Do a lookup before insertion.  If we tried to insert
@@ -1932,7 +1937,7 @@ int fr_trie_insert(fr_trie_t *ft, void const *key, size_t keylen, void *data)
  */
 void *fr_trie_remove(fr_trie_t *ft, void const *key, size_t keylen)
 {
-	if (keylen > (1 << 16)) return NULL;
+	if (keylen > MAX_KEY_BITS) return NULL;
 
 	if (!ft->trie) return NULL;
 
@@ -1953,7 +1958,7 @@ void *fr_trie_remove(fr_trie_t *ft, void const *key, size_t keylen)
  */
 void *fr_trie_lookup(fr_trie_t *ft, void const *key, size_t keylen)
 {
-	if (keylen > (1 << 16)) return NULL;
+	if (keylen > MAX_KEY_BITS) return NULL;
 
 	if (!ft->trie) return NULL;
 
@@ -2263,7 +2268,7 @@ static int fr_trie_user_cb(void *trie, fr_trie_callback_t *cb, int keylen, UNUSE
 int fr_trie_walk(fr_trie_t *ft, void *ctx, fr_trie_walk_t callback)
 {
 	fr_trie_callback_t my_cb;
-	uint8_t buffer[8192];
+	uint8_t buffer[MAX_KEY_BYTES + 1];
 
 	my_cb.ft = ft;
 	my_cb.start = buffer;
@@ -2271,6 +2276,8 @@ int fr_trie_walk(fr_trie_t *ft, void *ctx, fr_trie_walk_t callback)
 	my_cb.callback = fr_trie_user_cb;
 	my_cb.user_callback = callback;
 	my_cb.ctx = ctx;
+
+	memset(buffer, 0, sizeof(buffer));
 
 	/*
 	 *	Call the internal walk function to do the work.
@@ -2636,7 +2643,7 @@ static int command_print(fr_trie_t *ft, UNUSED int argc, UNUSED char **argv, cha
 {
 	fr_trie_callback_t my_cb;
 	fr_trie_sprint_ctx_t my_sprint;
-	uint8_t buffer[8192];	/* working buffer */
+	uint8_t buffer[MAX_KEY_BYTES + 1];
 
 	/*
 	 *	Where the output data goes.
@@ -2654,6 +2661,8 @@ static int command_print(fr_trie_t *ft, UNUSED int argc, UNUSED char **argv, cha
 	my_cb.callback = fr_trie_sprint_cb;
 	my_cb.user_callback = NULL;
 	my_cb.ctx = &my_sprint;
+
+	memset(buffer, 0, sizeof(buffer));
 
 	/*
 	 *	Call the internal walk function to do the work.
