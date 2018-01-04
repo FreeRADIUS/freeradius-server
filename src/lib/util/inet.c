@@ -40,7 +40,7 @@ int fr_ipaddr_is_inaddr_any(fr_ipaddr_t const *ipaddr)
 {
 
 	if (ipaddr->af == AF_INET) {
-		if (ipaddr->addr.v4.s_addr == INADDR_ANY) {
+		if (ipaddr->addr.v4.s_addr == htonl(INADDR_ANY)) {
 			return 1;
 		}
 
