@@ -47,8 +47,11 @@ static struct timeval tv_timeout;
 
 static int sockfd;
 
+#ifdef HAVE_LINUX_IF_PACKET_H
+struct sockaddr_ll ll;	/* Socket address structure */
 static char *iface = NULL;
 static int iface_ind = -1;
+#endif
 
 static RADIUS_PACKET *reply = NULL;
 
@@ -93,7 +96,9 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -d <directory>         Set the directory where the dictionaries are stored (defaults to " RADDBDIR ").\n");
 	fprintf(stderr, "  -D <dictdir>           Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(stderr, "  -f <file>              Read packets from file, not stdin.\n");
+#ifdef HAVE_LINUX_IF_PACKET_H
 	fprintf(stderr, "  -i <interface>         Use this interface to send/receive at packet level on a raw socket.\n");
+#endif
 	fprintf(stderr, "  -t <timeout>           Wait 'timeout' seconds for a reply (may be a floating point number).\n");
 	fprintf(stderr, "  -v                     Show program version information.\n");
 	fprintf(stderr, "  -x                     Debugging mode.\n");
@@ -292,12 +297,6 @@ static void print_hex(RADIUS_PACKET *packet)
 
 static void send_with_socket(RADIUS_PACKET *request)
 {
-	sockfd = fr_socket(&request->src_ipaddr, request->src_port);
-	if (sockfd < 0) {
-		fprintf(stderr, "dhcpclient: socket: %s\n", fr_strerror());
-		fr_exit_now(1);
-	}
-
 	/*
 	 *	Set option 'receive timeout' on socket.
 	 *	Note: in case of a timeout, the error will be "Resource temporarily unavailable".
@@ -340,9 +339,17 @@ int main(int argc, char **argv)
 	DICT_ATTR const		*da;
 	RADIUS_PACKET		*request = NULL;
 
+#ifdef HAVE_LINUX_IF_PACKET_H
+	bool raw_mode = false;
+#endif
+
 	fr_debug_lvl = 0;
 
-	while ((c = getopt(argc, argv, "d:D:f:hr:t:vxi:")) != EOF) switch(c) {
+	while ((c = getopt(argc, argv, "d:D:f:hr:t:vx"
+#ifdef HAVE_LINUX_IF_PACKET_H
+			   "i:"
+#endif
+			   )) != EOF) switch(c) {
 		case 'D':
 			dict_dir = optarg;
 			break;
@@ -353,9 +360,11 @@ int main(int argc, char **argv)
 		case 'f':
 			filename = optarg;
 			break;
+#ifdef HAVE_LINUX_IF_PACKET_H
 		case 'i':
 			iface = optarg;
 			break;
+#endif
 		case 'r':
 			if (!isdigit((int) *optarg))
 				usage();
@@ -440,6 +449,7 @@ int main(int argc, char **argv)
 	}
 	if (!server_port) server_port = 67;
 
+#ifdef HAVE_LINUX_IF_PACKET_H
 	/*
 	 *	set "raw mode" if an interface is specified and if destination
 	 *	IP address is the broadcast address.
@@ -452,9 +462,22 @@ int main(int argc, char **argv)
 		}
 
 		if (server_ipaddr.ipaddr.ip4addr.s_addr == 0xFFFFFFFF) {
-			fprintf(stderr, "dhcpclient: Sending broadcast packets is not supported\n");
-			exit(1);
+			DEBUG("dhcpclient: Using interface: %s (index: %d) in raw packet mode\n", iface, iface_ind);
+			raw_mode = true;
 		}
+	}
+
+	if (raw_mode) {
+		sockfd = fr_socket_packet(iface_ind, &ll);
+	} else
+#endif
+	{
+		sockfd = fr_socket(&client_ipaddr, server_port + 1);
+	}
+
+	if (sockfd < 0) {
+		fprintf(stderr, "dhcpclient: socket: %s\n", fr_strerror());
+		fr_exit_now(1);
 	}
 
 	request = request_init(filename);
