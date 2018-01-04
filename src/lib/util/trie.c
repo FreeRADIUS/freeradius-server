@@ -1729,7 +1729,9 @@ static void *fr_trie_key_remove(TALLOC_CTX *ctx, void **entry, uint8_t const *ke
 		 */
 #ifdef WITH_PATH_COMPRESSION
 		if (node->used == 1) {
+#ifdef TESTING
 			bool found;
+#endif
 			int i;
 			void *trie;
 
@@ -2005,8 +2007,6 @@ static int fr_trie_key_walk(void *trie, fr_trie_callback_t *cb, int depth, bool 
 
 		return fr_trie_key_walk(user->trie, cb, depth, more);
 	}
-
-	bytes = BYTES(depth);
 
 	/*
 	 *	Bits used in the last byte.
