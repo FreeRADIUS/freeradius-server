@@ -1737,7 +1737,7 @@ static void *fr_trie_key_remove(TALLOC_CTX *ctx, void **entry, uint8_t const *ke
 
 			for (i = 0; i < (1 << node->size); i++) {
 				if (node->entry[i]) {
-#ifdef WITH_TESTING
+#ifdef TESTING
 					found = true;
 #endif
 					chunk = i;
