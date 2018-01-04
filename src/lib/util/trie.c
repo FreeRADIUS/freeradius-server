@@ -790,6 +790,7 @@ static fr_trie_node_t *fr_trie_path_merge_disjoint(TALLOC_CTX *ctx, fr_trie_path
  * @param ctx the talloc ctx
  * @param path1 path from the existing tree.
  * @param path2 path from the insert.  MUST end in user ctx.
+ * @param depth the depth of the current node in the trie
  * @return
  *	- NULL on error.  path1 and path2 are left alone.
  *	- new trie on success.  path1 and path2 are freed
