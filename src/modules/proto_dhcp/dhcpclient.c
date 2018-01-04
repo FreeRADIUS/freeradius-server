@@ -51,6 +51,8 @@ static int sockfd;
 struct sockaddr_ll ll;	/* Socket address structure */
 static char *iface = NULL;
 static int iface_ind = -1;
+
+#  define DEBUG			if (fr_debug_lvl && fr_log_fp) fr_printf_log
 #endif
 
 static RADIUS_PACKET *reply = NULL;
@@ -312,7 +314,16 @@ static void send_with_socket(RADIUS_PACKET *request)
 		fprintf(stderr, "dhcpclient: Error receiving reply: %s\n", fr_strerror());
 		fr_exit_now(1);
 	}
+
+
+	if (fr_debug_lvl) print_hex(reply);
+
+	if (fr_dhcp_decode(reply) < 0) {
+		fprintf(stderr, "dhcpclient: failed decoding\n");
+		fr_exit_now(1);
+	}
 }
+
 
 int main(int argc, char **argv)
 {
@@ -508,6 +519,7 @@ int main(int argc, char **argv)
 		/*	These kind of packets do not get a reply, so don't wait for one. */
 		reply_expected = false;
 	}
+
 	/*
 	 *	Encode the packet
 	 */
@@ -517,13 +529,25 @@ int main(int argc, char **argv)
 	}
 	if (fr_debug_lvl) print_hex(request);
 
-	send_with_socket(request);
+#ifdef HAVE_LINUX_IF_PACKET_H
+	if (raw_mode) {
+		if (fr_dhcp_send_raw_packet(sockfd, &ll, request) < 0) {
+			fprintf(stderr, "dhcpclient: failed sending (fr_dhcp_send_raw_packet): %s\n",
+				fr_syserror(errno));
+			fr_exit_now(1);
+		}
 
-	if (reply && fr_debug_lvl) print_hex(reply);
-
-	if (reply && fr_dhcp_decode(reply) < 0) {
-		fprintf(stderr, "dhcpclient: failed decoding\n");
-		return 1;
+		if (reply_expected) {
+			reply = fr_dhcp_recv_raw_loop(sockfd, &ll, request);
+			if (!reply) {
+				fprintf(stderr, "dhcpclient: Error receiving reply (fr_dhcp_recv_raw_loop)\n");
+				fr_exit_now(1);
+			}
+		}
+	} else
+#endif
+	{
+		send_with_socket(request);
 	}
 
 	dict_free();
