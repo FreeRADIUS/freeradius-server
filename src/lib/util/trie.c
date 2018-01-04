@@ -1730,15 +1730,16 @@ static void *fr_trie_key_remove(TALLOC_CTX *ctx, void **entry, uint8_t const *ke
 #ifdef WITH_PATH_COMPRESSION
 		if (node->used == 1) {
 #ifdef TESTING
-			bool found;
+			bool found = false;
 #endif
 			int i;
 			void *trie;
 
-			found = false;
 			for (i = 0; i < (1 << node->size); i++) {
 				if (node->entry[i]) {
+#ifdef WITH_TESTING
 					found = true;
+#endif
 					chunk = i;
 					break;
 				}
@@ -1979,7 +1980,7 @@ static int fr_trie_key_walk(void *trie, fr_trie_callback_t *cb, int depth, bool 
 {
 	int i, used;
 	uint16_t base, mask;
-	int bytes, bits_used;
+	int bits_used;
 	uint8_t *out;
 	fr_trie_node_t *node;
 
@@ -2062,7 +2063,6 @@ static int fr_trie_key_walk(void *trie, fr_trie_callback_t *cb, int depth, bool 
 	/*
 	 *	Number of bytes we will have in the output buffer.
 	 */
-	bytes = BYTES(depth + node->size);
 	base <<= 8;
 	used = 0;
 
