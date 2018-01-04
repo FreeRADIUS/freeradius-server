@@ -30,6 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/cf_parse.h>
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/trie.h>
 
 #include <sys/stat.h>
 
@@ -41,8 +42,7 @@ RCSID("$Id$")
  */
 struct radclient_list {
 	char const	*name;			//!< Name of the client list.
-	rbtree_t	*trees[129];		//!< For 0..128, inclusive.
-	uint32_t       	min_prefix;
+	fr_trie_t	*trie;
 };
 
 static RADCLIENT_LIST	*root_clients = NULL;	//!< Global client list.
@@ -63,32 +63,6 @@ void client_free(RADCLIENT *client)
 	talloc_free(client);
 }
 
-/** Compare clients by IP address
- *
- */
-static int client_ipaddr_cmp(void const *one, void const *two)
-{
-	RADCLIENT const *a = one;
-	RADCLIENT const *b = two;
-#ifndef WITH_TCP
-
-	return fr_ipaddr_cmp(&a->ipaddr, &b->ipaddr);
-#else
-	int rcode;
-
-	rcode = fr_ipaddr_cmp(&a->ipaddr, &b->ipaddr);
-	if (rcode != 0) return rcode;
-
-	/*
-	 *	Wildcard match
-	 */
-	if ((a->proto == IPPROTO_IP) ||
-	    (b->proto == IPPROTO_IP)) return 0;
-
-	return (a->proto - b->proto);
-#endif
-}
-
 /** Return a new client list
  *
  * @note The container won't contain any clients.
@@ -104,7 +78,11 @@ RADCLIENT_LIST *client_list_init(CONF_SECTION *cs)
 	if (!clients) return NULL;
 
 	clients->name = talloc_strdup(clients, cs ? cf_section_name1(cs) : "root");
-	clients->min_prefix = 128;
+	clients->trie = fr_trie_alloc(clients);
+	if (!clients->trie) {
+		talloc_free(clients);
+		return NULL;
+	}
 
 	return clients;
 }
@@ -202,22 +180,12 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		}
 	}
 
-	/*
-	 *	Create a tree for it.
-	 */
-	if (!clients->trees[client->ipaddr.prefix]) {
-		clients->trees[client->ipaddr.prefix] = rbtree_create(clients, client_ipaddr_cmp, NULL, 0);
-		if (!clients->trees[client->ipaddr.prefix]) {
-			return false;
-		}
-	}
-
 #define namecmp(a) ((!old->a && !client->a) || (old->a && client->a && (strcmp(old->a, client->a) == 0)))
 
 	/*
 	 *	Cannot insert the same client twice.
 	 */
-	old = rbtree_finddata(clients->trees[client->ipaddr.prefix], client);
+	old = fr_trie_lookup(clients->trie, &client->ipaddr.addr, client->ipaddr.prefix);
 	if (old) {
 		/*
 		 *	If it's a complete duplicate, then free the new
@@ -242,12 +210,8 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	/*
 	 *	Other error adding client: likely is fatal.
 	 */
-	if (!rbtree_insert(clients->trees[client->ipaddr.prefix], client)) {
+	if (fr_trie_insert(clients->trie, &client->ipaddr.addr, client->ipaddr.prefix, client) < 0) {
 		return false;
-	}
-
-	if (client->ipaddr.prefix < clients->min_prefix) {
-		clients->min_prefix = client->ipaddr.prefix;
 	}
 
 	(void) talloc_steal(clients, client); /* reparent it */
@@ -265,7 +229,8 @@ void client_delete(RADCLIENT_LIST *clients, RADCLIENT *client)
 
 	rad_assert(client->ipaddr.prefix <= 128);
 
-	rbtree_deletebydata(clients->trees[client->ipaddr.prefix], client);
+	// @todo - free the client?
+	(void) fr_trie_remove(clients->trie, &client->ipaddr.addr, client->ipaddr.prefix);
 }
 #endif
 
@@ -278,48 +243,16 @@ RADCLIENT *client_findbynumber(UNUSED const RADCLIENT_LIST *clients, UNUSED int 
 /*
  *	Find a client in the RADCLIENTS list.
  */
-RADCLIENT *client_find(RADCLIENT_LIST const *clients, fr_ipaddr_t const *ipaddr, int proto)
+RADCLIENT *client_find(RADCLIENT_LIST const *clients, fr_ipaddr_t const *ipaddr, UNUSED int proto)
 {
-	int32_t i, max_prefix;
-	RADCLIENT myclient;
-
 	if (!clients) clients = root_clients;
 
 	if (!clients || !ipaddr) return NULL;
 
-	switch (ipaddr->af) {
-	case AF_INET:
-		max_prefix = 32;
-		break;
-
-	case AF_INET6:
-		max_prefix = 128;
-		break;
-
-	default :
-		return NULL;
-	}
-
 	/*
-	 *	If we're told to look for client 192.168/16, then look for that,
-	 *	and don't start at /32.
+	 *	@todo - have different tries for UDP and TCP
 	 */
-	if (ipaddr->prefix < max_prefix) max_prefix = ipaddr->prefix;
-
-	for (i = max_prefix; i >= (int32_t) clients->min_prefix; i--) {
-		void *data;
-
-		if (!clients->trees[i]) continue;
-
-		myclient.ipaddr = *ipaddr;
-		myclient.proto = proto;
-		fr_ipaddr_mask(&myclient.ipaddr, i);
-
-		data = rbtree_finddata(clients->trees[i], &myclient);
-		if (data) return data;
-	}
-
-	return NULL;
+	return fr_trie_lookup(clients->trie, &ipaddr->addr, ipaddr->prefix);
 }
 
 static fr_ipaddr_t cl_ipaddr;
