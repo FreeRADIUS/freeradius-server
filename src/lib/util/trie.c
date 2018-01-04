@@ -115,7 +115,10 @@ RCSID("$Id$")
 
 // @todo - make this configurable in fr_trie_t, and pass fr_trei_t to
 // all internal function.
+
+#ifndef DEFAULT_SIZE
 #define DEFAULT_SIZE	(4)
+#endif
 
 /*
  *	Macros to swap one for the other.
@@ -230,6 +233,10 @@ static fr_trie_node_t *fr_trie_node_alloc(TALLOC_CTX *ctx, int size)
 		fprintf(stderr, "FAILED %d - %d\n", __LINE__, (int) size);
 		return NULL;
 	}
+
+#ifndef WITH_PATH_COMPRESSION
+	if (size > DEFAULT_SIZE) size = DEFAULT_SIZE;
+#endif
 
 	node_size = sizeof(fr_trie_node_t) + (sizeof(node->entry[0]) * (1 << size));
 	node = talloc_zero_size(ctx, node_size);
