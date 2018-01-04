@@ -297,16 +297,6 @@ static void print_hex(RADIUS_PACKET *packet)
 
 static void send_with_socket(RADIUS_PACKET *request)
 {
-	/*
-	 *	Set option 'receive timeout' on socket.
-	 *	Note: in case of a timeout, the error will be "Resource temporarily unavailable".
-	 */
-	if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv_timeout,sizeof(struct timeval)) == -1) {
-		fprintf(stderr, "dhcpclient: failed setting socket timeout: %s\n",
-			fr_syserror(errno));
-		fr_exit_now(1);
-	}
-
 	request->sockfd = sockfd;
 
 	if (fr_dhcp_send(request) < 0) {
@@ -477,6 +467,16 @@ int main(int argc, char **argv)
 
 	if (sockfd < 0) {
 		fprintf(stderr, "dhcpclient: socket: %s\n", fr_strerror());
+		fr_exit_now(1);
+	}
+
+	/*
+	 *	Set option 'receive timeout' on socket.
+	 *	Note: in case of a timeout, the error will be "Resource temporarily unavailable".
+	 */
+	if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv_timeout,sizeof(struct timeval)) == -1) {
+		fprintf(stderr, "dhcpclient: failed setting socket timeout: %s\n",
+			fr_syserror(errno));
 		fr_exit_now(1);
 	}
 
