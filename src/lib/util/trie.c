@@ -1576,8 +1576,8 @@ static int fr_trie_key_insert(TALLOC_CTX *ctx, void **trie_p, uint8_t const *key
  *
  *  The key length MUST match the entries in the trie.
  *
- * @param ft	 	the trie
- * @param[in,out]
+ * @param ctx	 	the talloc ctx
+ * @param[in,out]	entry where the updated output is stored
  * @param key	 	the key
  * @param start_bit	the start bit 
  * @param end_bit	the end bit 
