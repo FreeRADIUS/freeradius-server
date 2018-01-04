@@ -280,7 +280,7 @@ static void fr_trie_node_verify(fr_trie_node_t const *node)
 {
 	int i, used;
 
-	(void) talloc_get_type_abort(node, fr_trie_node_t);
+	(void) talloc_get_type_abort_const(node, fr_trie_node_t);
 
 	assert(node->size > 0);
 	assert(node->size <= 8);
@@ -305,7 +305,7 @@ static void fr_trie_path_verify(fr_trie_path_t const *path)
 {
 	void *parent;
 
-	(void) talloc_get_type_abort(path, fr_trie_path_t);
+	(void) talloc_get_type_abort_const(path, fr_trie_path_t);
 
 	assert(path->start_bit >= 0);
 	assert(path->start_bit < 8);
