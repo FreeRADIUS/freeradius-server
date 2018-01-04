@@ -2410,7 +2410,7 @@ static int command_insert(fr_trie_t *ft, UNUSED int argc, char **argv, UNUSED ch
 	}
 
 	if (answer != data) {
-		fprintf(stderr, "Inserted %s, but looked up %s\n", argv[1], answer);
+		fprintf(stderr, "Inserted %s, but looked up %s\n", argv[1], (char const *) answer);
 		return -1;
 	}
 
@@ -2690,7 +2690,7 @@ static int command_path(fr_trie_t *ft, UNUSED int argc, char **argv, char *out, 
 	}
 
 	if (answer != data) {
-		fprintf(stderr, "Expected to find %s, got %s\n", argv[1], answer);
+		fprintf(stderr, "Expected to find %s, got %s\n", argv[1], (char const *) answer);
 		return -1;
 	}
 
@@ -2706,7 +2706,7 @@ static int command_path(fr_trie_t *ft, UNUSED int argc, char **argv, char *out, 
 	}
 
 	if (answer != data) {
-		fprintf(stderr, "Expected to remove %s, got %s\n", argv[1], answer);
+		fprintf(stderr, "Expected to remove %s, got %s\n", argv[1], (char const *) answer);
 		return -1;
 	}
 
