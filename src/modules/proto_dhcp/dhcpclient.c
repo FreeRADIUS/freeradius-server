@@ -325,9 +325,101 @@ static void send_with_socket(RADIUS_PACKET *request)
 }
 
 
+#ifdef HAVE_LINUX_IF_PACKET_H
+/*
+ *	Loop waiting for DHCP replies until timer expires.
+ *	Note that there may be more than one reply: multiple DHCP servers can respond to a broadcast discover.
+ *	A real client would pick one of the proposed replies.
+ *	We'll just return the first eligible reply, and display the others.
+ */
+static RADIUS_PACKET *fr_dhcp_recv_raw_loop(int sockfd, struct sockaddr_ll *p_ll, RADIUS_PACKET *request_p)
+{
+	struct timeval tval;
+	RADIUS_PACKET *reply_p = NULL;
+	RADIUS_PACKET *cur_reply_p = NULL;
+	int num_replies = 0;
+	int num_offers = 0;
+	dc_offer_t *offer_list = NULL;
+	fd_set read_fd;
+	int retval;
+
+	memcpy(&tval, &tv_timeout, sizeof(struct timeval));
+
+	/* Loop waiting for DHCP replies until timer expires */
+	while (timerisset(&tval)) {
+		if ((!reply_p) || (cur_reply_p)) { // only debug at start and each time we get a valid DHCP reply on raw socket
+			DEBUG("Waiting for%sDHCP replies for: %d.%06d\n",
+				(num_replies>0)?" additional ":" ", (int)tval.tv_sec, (int)tval.tv_usec);
+		}
+
+		cur_reply_p = NULL;
+		FD_ZERO(&read_fd);
+		FD_SET(sockfd, &read_fd);
+		retval = select(sockfd + 1, &read_fd, NULL, NULL, &tval);
+
+		if (retval < 0) {
+			fr_strerror_printf("Select on DHCP socket failed: %s", fr_syserror(errno));
+			return NULL;
+		}
+
+		if ( retval > 0 && FD_ISSET(sockfd, &read_fd)) {
+			/* There is something to read on our socket */
+			cur_reply_p = fr_dhcp_recv_raw_packet(sockfd, p_ll, request_p);
+		}
+
+		if (cur_reply_p) {
+			num_replies ++;
+
+			if (fr_debug_lvl) print_hex(cur_reply_p);
+
+			if (fr_dhcp_decode(cur_reply_p) < 0) {
+				fprintf(stderr, "dhcpclient: failed decoding reply\n");
+				return NULL;
+			}
+
+			if (!reply_p) reply_p = cur_reply_p;
+
+			if (cur_reply_p->code == PW_DHCP_OFFER) {
+				VALUE_PAIR *vp1 = fr_pair_find_by_num(cur_reply_p->vps, 54,  DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-DHCP-Server-Identifier */
+				VALUE_PAIR *vp2 = fr_pair_find_by_num(cur_reply_p->vps, 264, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Your-IP-address */
+
+				if (vp1 && vp2) {
+					num_offers ++;
+					offer_list = talloc_realloc(request_p, offer_list, dc_offer_t, num_offers);
+					offer_list[num_offers-1].server_addr = vp1->vp_ipaddr;
+					offer_list[num_offers-1].offered_addr = vp2->vp_ipaddr;
+				}
+			}
+		}
+	}
+
+	if (!num_replies) {
+		fr_strerror_printf("No valid DHCP reply received");
+		return NULL;
+	}
+
+	/* display offer(s) received */
+	if (num_offers > 0 ) {
+		DEBUG("Received %d DHCP Offer(s):\n", num_offers);
+		int i;
+		for (i = 0; i < num_replies; i++) {
+			char server_addr_buf[INET6_ADDRSTRLEN];
+			char offered_addr_buf[INET6_ADDRSTRLEN];
+
+			DEBUG("IP address: %s offered by DHCP server: %s\n",
+				inet_ntop(AF_INET, &offer_list[i].offered_addr, offered_addr_buf, sizeof(offered_addr_buf)),
+				inet_ntop(AF_INET, &offer_list[i].server_addr, server_addr_buf, sizeof(server_addr_buf))
+			);
+		}
+	}
+
+	return reply_p;
+}
+#endif
+
+
 int main(int argc, char **argv)
 {
-
 	static uint16_t		server_port = 0;
 	static int		packet_code = 0;
 	static fr_ipaddr_t	server_ipaddr;
