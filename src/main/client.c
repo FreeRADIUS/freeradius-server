@@ -42,7 +42,10 @@ RCSID("$Id$")
  */
 struct radclient_list {
 	char const	*name;			//!< Name of the client list.
-	fr_trie_t	*trie;
+	fr_trie_t	*udp;
+#ifdef WITH_TCP
+	fr_trie_t	*tcp;
+#endif
 };
 
 static RADCLIENT_LIST	*root_clients = NULL;	//!< Global client list.
@@ -78,11 +81,19 @@ RADCLIENT_LIST *client_list_init(CONF_SECTION *cs)
 	if (!clients) return NULL;
 
 	clients->name = talloc_strdup(clients, cs ? cf_section_name1(cs) : "root");
-	clients->trie = fr_trie_alloc(clients);
-	if (!clients->trie) {
+	clients->udp = fr_trie_alloc(clients);
+	if (!clients->udp) {
 		talloc_free(clients);
 		return NULL;
 	}
+
+#ifdef WITH_TCP
+	clients->tcp = fr_trie_alloc(clients);
+	if (!clients->tcp) {
+		talloc_free(clients);
+		return NULL;
+	}
+#endif
 
 	return clients;
 }
@@ -97,6 +108,7 @@ RADCLIENT_LIST *client_list_init(CONF_SECTION *cs)
  */
 bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 {
+	fr_trie_t *trie;
 	RADCLIENT *old;
 	char buffer[FR_IPADDR_PREFIX_STRLEN];
 
@@ -182,10 +194,15 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 
 #define namecmp(a) ((!old->a && !client->a) || (old->a && client->a && (strcmp(old->a, client->a) == 0)))
 
+	trie = clients->udp;
+#ifdef WITH_TCP
+	if (client->proto == IPPROTO_TCP) trie = clients->tcp;
+#endif
+
 	/*
 	 *	Cannot insert the same client twice.
 	 */
-	old = fr_trie_lookup(clients->trie, &client->ipaddr.addr, client->ipaddr.prefix);
+	old = fr_trie_lookup(trie, &client->ipaddr.addr, client->ipaddr.prefix);
 	if (old) {
 		/*
 		 *	If it's a complete duplicate, then free the new
@@ -210,7 +227,7 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	/*
 	 *	Other error adding client: likely is fatal.
 	 */
-	if (fr_trie_insert(clients->trie, &client->ipaddr.addr, client->ipaddr.prefix, client) < 0) {
+	if (fr_trie_insert(trie, &client->ipaddr.addr, client->ipaddr.prefix, client) < 0) {
 		return false;
 	}
 
@@ -223,14 +240,23 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 #ifdef WITH_DYNAMIC_CLIENTS
 void client_delete(RADCLIENT_LIST *clients, RADCLIENT *client)
 {
+	fr_trie_t *trie;
+
 	if (!client) return;
 
 	if (!clients) clients = root_clients;
 
 	rad_assert(client->ipaddr.prefix <= 128);
 
-	// @todo - free the client?
-	(void) fr_trie_remove(clients->trie, &client->ipaddr.addr, client->ipaddr.prefix);
+	trie = clients->udp;
+#ifdef WITH_TCP
+	if (client->proto == IPPROTO_TCP) trie = clients->tcp;
+#endif
+
+	/*
+	 *	Don't free the client.  The caller is responsible for that.
+	 */
+	(void) fr_trie_remove(trie, &client->ipaddr.addr, client->ipaddr.prefix);
 }
 #endif
 
@@ -243,16 +269,20 @@ RADCLIENT *client_findbynumber(UNUSED const RADCLIENT_LIST *clients, UNUSED int 
 /*
  *	Find a client in the RADCLIENTS list.
  */
-RADCLIENT *client_find(RADCLIENT_LIST const *clients, fr_ipaddr_t const *ipaddr, UNUSED int proto)
+RADCLIENT *client_find(RADCLIENT_LIST const *clients, fr_ipaddr_t const *ipaddr, int proto)
 {
+	fr_trie_t *trie;
+
 	if (!clients) clients = root_clients;
 
 	if (!clients || !ipaddr) return NULL;
 
-	/*
-	 *	@todo - have different tries for UDP and TCP
-	 */
-	return fr_trie_lookup(clients->trie, &ipaddr->addr, ipaddr->prefix);
+	trie = clients->udp;
+#ifdef WITH_TCP
+	if (proto == IPPROTO_TCP) trie = clients->tcp;
+#endif
+
+	return fr_trie_lookup(trie, &ipaddr->addr, ipaddr->prefix);
 }
 
 static fr_ipaddr_t cl_ipaddr;
