@@ -1951,6 +1951,26 @@ void *fr_trie_lookup(fr_trie_t *ft, void const *key, size_t keylen)
 	return fr_trie_key_match(ft->trie, key, 0, keylen, false);
 }
 
+/** Match a key and length in a trie and return user ctx, if any
+ *
+ * Only the exact match is returned.
+ *
+ * @param ft	 the trie
+ * @param key	 the key bytes
+ * @param keylen length in bits of the key
+ * @return
+ *	- NULL on not found
+ *	- void* user ctx on found
+ */
+void *fr_trie_match(fr_trie_t *ft, void const *key, size_t keylen)
+{
+	if (keylen > MAX_KEY_BITS) return NULL;
+
+	if (!ft->trie) return NULL;
+
+	return fr_trie_key_match(ft->trie, key, 0, keylen, true);
+}
+
 typedef struct fr_trie_callback_t fr_trie_callback_t;
 
 typedef int (*fr_trie_key_walk_t)(void *trie, fr_trie_callback_t *cb, int depth, bool more);
