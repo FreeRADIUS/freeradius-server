@@ -237,8 +237,8 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	/*
 	 *	Cannot insert the same client twice.
 	 */
-	old = fr_trie_lookup(trie, &client->ipaddr.addr, client->ipaddr.prefix);
-	if (old && (old->ipaddr.prefix >= client->ipaddr.prefix)) {
+	old = fr_trie_match(trie, &client->ipaddr.addr, client->ipaddr.prefix);
+	if (old) {
 		/*
 		 *	If it's a complete duplicate, then free the new
 		 *	one, and return "OK".
