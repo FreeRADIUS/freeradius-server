@@ -79,6 +79,7 @@ FreeRADIUS 3.0.16 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	* Remove unnecessary UNIQUE constrain in Oracle schemas.
 	* Fix SSL thread and locking issues when modules also use SSL.
 	  Fixes #2125 and #2129.
+	* Re-add dhcpclient "raw packet" changes.
 
 FreeRADIUS 3.0.15 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	Feature improvements
