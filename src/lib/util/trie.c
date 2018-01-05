@@ -352,7 +352,9 @@ static void fr_trie_verify(void *trie)
 {
 	int i;
 	fr_trie_node_t *node;
+#ifdef TESTING
 	void *parent;
+#endif
 
 	if (IS_USER(trie)) return;
 
@@ -362,8 +364,10 @@ static void fr_trie_verify(void *trie)
 
 		fr_trie_path_verify(path);
 
+#ifdef TESTING
 		parent = trie_parent(path->trie);
 		assert(parent == path);
+#endif
 		fr_trie_verify(path->trie);
 		return;
 	}
@@ -377,8 +381,8 @@ static void fr_trie_verify(void *trie)
 
 #ifdef TESTING
 		parent = trie_parent(node->entry[i]);
-#endif
 		assert(parent == node);
+#endif
 
 		fr_trie_verify(node->entry[i]);
 	}
