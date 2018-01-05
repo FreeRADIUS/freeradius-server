@@ -352,9 +352,6 @@ static void fr_trie_verify(void *trie)
 {
 	int i;
 	fr_trie_node_t *node;
-#ifdef TESTING
-	void *parent;
-#endif
 
 	if (IS_USER(trie)) return;
 
@@ -364,10 +361,7 @@ static void fr_trie_verify(void *trie)
 
 		fr_trie_path_verify(path);
 
-#ifdef TESTING
-		parent = trie_parent(path->trie);
-		assert(parent == path);
-#endif
+		assert(trie_parent(path->trie) == path);
 		fr_trie_verify(path->trie);
 		return;
 	}
@@ -379,10 +373,7 @@ static void fr_trie_verify(void *trie)
 	for (i = 0; i < (1 << node->size); i++) {
 		if (!node->entry[i]) continue;
 
-#ifdef TESTING
-		parent = trie_parent(node->entry[i]);
-		assert(parent == node);
-#endif
+		assert(trie_parent(node->entry[i]) == node);
 
 		fr_trie_verify(node->entry[i]);
 	}
@@ -1738,23 +1729,17 @@ static void *fr_trie_key_remove(TALLOC_CTX *ctx, void **entry, uint8_t const *ke
 		 */
 #ifdef WITH_PATH_COMPRESSION
 		if (node->used == 1) {
-#ifdef TESTING
-			bool found = false;
-#endif
 			int i;
 			void *trie;
 
 			for (i = 0; i < (1 << node->size); i++) {
 				if (node->entry[i]) {
-#ifdef TESTING
-					found = true;
-#endif
 					chunk = i;
 					break;
 				}
 			}
 
-			assert(found);
+			assert(i < (1 << node->size));
 
 collapse_chunk:
 			/*
