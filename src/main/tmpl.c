@@ -2416,7 +2416,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 			fr_dict_attr_t const *da;
 
 			if (!vpt->tmpl_da->flags.has_tag &&
-			    (vpt->tmpl_tag != TAG_ANY)) {
+			    TAG_VALID_ZERO(vpt->tmpl_tag)) {
 				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 					     "da is marked as not having a tag, but the template has a tag",
 					     file, line);
@@ -2425,9 +2425,9 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 
 #if 0
 			if (vpt->tmpl_da->flags.has_tag &&
-			    (vpt->tmpl_tag == TAG_ANY)) {
+			    !TAG_VALID_ZERO(vpt->tmpl_tag)) {
 				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
-					     "da is marked as having a tag, but the template has no tag",
+					     "da is marked as not having a tag, but the template has an invalid tag",
 					     file, line);
 				if (!fr_cond_assert(0)) fr_exit_now(1);
 			}
