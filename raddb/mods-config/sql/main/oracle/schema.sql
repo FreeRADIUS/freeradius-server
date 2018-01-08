@@ -15,7 +15,6 @@ CREATE TABLE radacct (
 	acctsessionid		VARCHAR(96) NOT NULL,
 	acctuniqueid		VARCHAR(32),
 	username		VARCHAR(64) NOT NULL,
-	groupname		VARCHAR(32),
 	realm			VARCHAR(30),
 	nasipaddress		VARCHAR(15) NOT NULL,
 	nasportid		VARCHAR(32),
