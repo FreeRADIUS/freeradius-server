@@ -2000,7 +2000,7 @@ finish:
 	return (out_p - out);
 }
 
-#define TMPL_TAG_MATCH(_a, _t) ((_a->da == _t->tmpl_da) && (!_a->da->flags.has_tag || TAG_EQ(_t->tmpl_tag, _a->tag)))
+#define TMPL_TAG_MATCH(_a, _t) ((_a->da == _t->tmpl_da) && ATTR_TAG_MATCH(_a, _t->tmpl_tag))
 
 static void *_tmpl_cursor_next(void **prev, void *curr, void *ctx)
 {

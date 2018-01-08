@@ -758,7 +758,7 @@ void fr_pair_replace(VALUE_PAIR **head, VALUE_PAIR *replace)
 		 *	Found the head attribute, replace it,
 		 *	and return.
 		 */
-		if ((i->da == replace->da) && (!i->da->flags.has_tag || TAG_EQ(replace->tag, i->tag))) {
+		if ((i->da == replace->da) && ATTR_TAG_MATCH(i, replace->tag)) {
 			*prev = replace;
 
 			/*
@@ -844,7 +844,7 @@ void fr_pair_delete_by_num(VALUE_PAIR **head, unsigned int vendor, unsigned int 
 			next = i->next;
 			if (i->da->parent->flags.is_root &&
 			    (i->da->attr == attr) && (i->da->vendor == 0) &&
-			    (!i->da->flags.has_tag || TAG_EQ(tag, i->tag))) {
+			    ATTR_TAG_MATCH(i, tag)) {
 				*last = next;
 				talloc_free(i);
 			} else {
@@ -857,7 +857,7 @@ void fr_pair_delete_by_num(VALUE_PAIR **head, unsigned int vendor, unsigned int 
 			next = i->next;
 			if ((i->da->parent->type == FR_TYPE_VENDOR) &&
 			    (i->da->attr == attr) && (i->da->vendor == vendor) &&
-			    (!i->da->flags.has_tag || TAG_EQ(tag, i->tag))) {
+			    ATTR_TAG_MATCH(i, tag)) {
 				*last = next;
 				talloc_free(i);
 			} else {
@@ -1213,7 +1213,7 @@ void fr_pair_validate_debug(TALLOC_CTX *ctx, VALUE_PAIR const *failed[2])
 		return;
 	}
 
-	if (!TAG_EQ(filter->tag, list->tag)) {
+	if (!ATTR_TAG_MATCH(list, filter->tag)) {
 		fr_strerror_printf("Attribute \"%s\" tag \"%i\" didn't match filter tag \"%i\"",
 				   list->da->name, list->tag, filter->tag);
 		return;
@@ -1564,7 +1564,7 @@ VALUE_PAIR *fr_pair_list_copy_by_num(TALLOC_CTX *ctx, VALUE_PAIR *from,
 	     vp = fr_pair_cursor_next(&src)) {
 		VP_VERIFY(vp);
 
-		if (vp->da->flags.has_tag && !TAG_EQ(tag, vp->tag)) {
+		if (!ATTR_TAG_MATCH(vp, tag)) {
 			continue;
 		}
 
@@ -1837,7 +1837,7 @@ static void fr_pair_list_move_by_num_internal(TALLOC_CTX *ctx, VALUE_PAIR **to, 
 		VP_VERIFY(i);
 		next = i->next;
 
-		if (i->da->flags.has_tag && !TAG_EQ(tag, i->tag)) {
+		if (!ATTR_TAG_MATCH(i, tag)) {
 			iprev = i;
 			continue;
 		}
