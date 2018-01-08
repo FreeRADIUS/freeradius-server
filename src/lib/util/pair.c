@@ -421,34 +421,6 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 		return vp;
 	}
 
-	/*      Check for a tag in the 'Merit' format of:
-	 *      :Tag:Value.  Print an error if we already found
-	 *      a tag in the Attribute.
-	 */
-
-	if (value && (*value == ':' && da->flags.has_tag)) {
-		/* If we already found a tag, this is invalid */
-		if(found_tag) {
-			fr_strerror_printf("Duplicate tag %s for attribute %s",
-				   value, da->name);
-			DEBUG("Duplicate tag %s for attribute %s\n",
-				   value, da->name);
-			return NULL;
-		}
-		/* Colon found and attribute allows a tag */
-		if (value[1] == '*' && value[2] == ':') {
-		       /* Wildcard tag for check items */
-		       tag = TAG_ANY;
-		       value += 3;
-		} else {
-		       /* Real tag */
-		       tag = strtol(value + 1, &tc, 0);
-		       if (tc && *tc==':' && TAG_VALID_ZERO(tag))
-			    value = tc + 1;
-		       else tag = 0;
-		}
-	}
-
 	vp = fr_pair_afrom_da(ctx, da);
 	if (!vp) return NULL;
 	vp->op = (op == 0) ? T_OP_EQ : op;
