@@ -442,10 +442,10 @@ condition <ipaddr>&Class == &Framed-IP-Address
 data <ipaddr>&Class == &Framed-IP-Address
 
 #
-#  Tags of zero mean restrict to attributes with no tag
+#  Tags of zero mean there's no tag
 #
 condition &Tunnel-Password:0 == "Hello"
-data &Tunnel-Password:0 == "Hello"
+data &Tunnel-Password == "Hello"
 
 condition &Tunnel-Password:1 == "Hello"
 data &Tunnel-Password:1 == "Hello"
