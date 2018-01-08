@@ -167,7 +167,7 @@ typedef struct value_pair_raw {
 				} while(0)
 
 #define TAG_VALID(x)		((x) > 0 && (x) < 0x20)
-#define TAG_VALID_ZERO(x)	((x) < 0x20)
+#define TAG_VALID_ZERO(x)      	((x) >= 0 && (x) < 0x20)
 #define TAG_ANY			INT8_MIN
 #define TAG_NONE		0
 /** Check if tags are equal
