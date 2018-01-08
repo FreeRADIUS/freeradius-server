@@ -746,15 +746,24 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 			goto error;
 		}
 
-		num = strtol(p + 1, &q, 10);
-		if (!TAG_VALID_ZERO(num)) {
-			fr_strerror_printf("Invalid tag value '%li' (should be between 0-31)", num);
-			slen = -((p + 1) - name);
-			goto error;
-		}
+		/*
+		 *	Allow '*' as an explicit wildcard.
+		 */
+		if (p[1] == '*') {
+			vpt->tmpl_tag = TAG_ANY;
+			p += 2;
 
-		vpt->tmpl_tag = num;
-		p = q;
+		} else {
+			num = strtol(p + 1, &q, 10);
+			if (!TAG_VALID_ZERO(num)) {
+				fr_strerror_printf("Invalid tag value '%li' (should be between 0-31)", num);
+				slen = -((p + 1) - name);
+				goto error;
+			}
+
+			vpt->tmpl_tag = num;
+			p = q;
+		}
 
 		/*
 		 *	The attribute is tagged, but the admin didn't
