@@ -2000,6 +2000,8 @@ finish:
 	return (out_p - out);
 }
 
+#define TMPL_TAG_MATCH(_a, _t) ((_a->da == _t->tmpl_da) && (!_a->da->flags.has_tag || TAG_EQ(_t->tmpl_tag, _a->tag)))
+
 static void *_tmpl_cursor_next(void **prev, void *curr, void *ctx)
 {
 	VALUE_PAIR	*c, *p, *fc = NULL, *fp = NULL;
@@ -2023,8 +2025,7 @@ static void *_tmpl_cursor_next(void **prev, void *curr, void *ctx)
 		case NUM_COUNT:				/* Iterator is called multiple time to get the count */
 			for (c = curr, p = *prev; c; p = c, c = c->next) {
 			     	VP_VERIFY(c);
-				if ((c->da == vpt->tmpl_da) &&
-				    (!c->da->flags.has_tag || TAG_EQ(vpt->tmpl_tag, c->tag))) {
+				if (TMPL_TAG_MATCH(c, vpt)) {
 					*prev = p;
 					return c;
 				}
@@ -2034,8 +2035,7 @@ static void *_tmpl_cursor_next(void **prev, void *curr, void *ctx)
 		case NUM_LAST:				/* Get the last instance of a VALUE_PAIR */
 			for (c = curr, p = *prev; c; p = c, c = c->next) {
 			     	VP_VERIFY(c);
-				if ((c->da == vpt->tmpl_da) &&
-				    (!c->da->flags.has_tag || TAG_EQ(vpt->tmpl_tag, c->tag))) {
+				if (TMPL_TAG_MATCH(c, vpt)) {
 				    	fp = p;
 					fc = c;
 				}
@@ -2049,8 +2049,7 @@ static void *_tmpl_cursor_next(void **prev, void *curr, void *ctx)
 			     c && (num >= 0);
 			     p = c, c = c->next) {
 			     	VP_VERIFY(c);
-				if ((c->da == vpt->tmpl_da) && (!c->da->flags.has_tag ||
-				    TAG_EQ(vpt->tmpl_tag, c->tag))) {
+				if (TMPL_TAG_MATCH(c, vpt)) {
 					fp = p;
 					fc = c;
 					num--;
