@@ -673,8 +673,7 @@ size_t xlat_snprint(char *buffer, size_t bufsize, xlat_exp_t const *node)
 			p += strlen(p);
 
 			if (TAG_VALID(node->attr->tmpl_tag)) {
-				*(p++) = ':';
-				snprintf(p, end - p, "%d", node->attr->tmpl_tag);
+				snprintf(p, end - p, ":%d", node->attr->tmpl_tag);
 				p += strlen(p);
 			}
 
