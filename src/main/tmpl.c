@@ -1916,7 +1916,7 @@ size_t tmpl_snprint(char *out, size_t outlen, vp_tmpl_t const *vpt)
 		RETURN_IF_TRUNCATED(out_p, len, end - out_p);
 
 	inst_and_tag:
-		if (vpt->tmpl_tag != TAG_ANY) {
+		if (TAG_VALID(vpt->tmpl_tag)) {
 			len = snprintf(out_p, end - out_p, ":%d", vpt->tmpl_tag);
 			RETURN_IF_TRUNCATED(out_p, len, end - out_p);
 		}
