@@ -366,46 +366,52 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 {
 	fr_dict_attr_t const *da;
 	VALUE_PAIR	*vp;
-	char		*tc, *ts;
+	char		*p;
 	int8_t		tag;
-	bool		found_tag;
-	char		buffer[256];
 	char const	*attrname = attribute;
 
 	/*
 	 *    Check for tags in 'Attribute:Tag' format.
 	 */
-	found_tag = false;
-	tag = TAG_ANY;
+	tag = TAG_NONE;
 
-	ts = strrchr(attribute, ':');
-	if (ts && !ts[1]) {
-		fr_strerror_printf("Invalid tag for attribute %s", attribute);
-		return NULL;
-	}
+	p = strchr(attribute, ':');
+	if (p) {
+		char *end;
+		char buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1 + 32];
 
-	if (ts && ts[1]) {
+		if (!p[1]) {
+			fr_strerror_printf("Invalid tag for attribute %s", attribute);
+			return NULL;
+		}
+
 		strlcpy(buffer, attribute, sizeof(buffer));
-		attrname = buffer;
-		ts = strrchr(attrname, ':');
-		if (!ts) return NULL;
 
-		 /* Colon found with something behind it */
-		 if (ts[1] == '*' && ts[2] == 0) {
-			 /* Wildcard tag for check items */
-			 tag = TAG_ANY;
-			 *ts = '\0';
-		 } else if ((ts[1] >= '0') && (ts[1] <= '9')) {
-			 /* It's not a wild card tag */
-			 tag = strtol(ts + 1, &tc, 0);
-			 if (tc && !*tc && TAG_VALID_ZERO(tag))
-				 *ts = '\0';
-			 else tag = TAG_ANY;
-		 } else {
-			 fr_strerror_printf("Invalid tag for attribute %s", attribute);
-			 return NULL;
-		 }
-		 found_tag = true;
+		p = buffer + (p - attrname);
+		attrname = buffer;
+
+		/* Colon found with something behind it */
+		if ((p[1] == '*') && !p[2]) {
+			/* Wildcard tag for check items */
+			tag = TAG_ANY;
+		} else {
+			/* It's not a wild card tag */
+			tag = strtol(p + 1, &end, 10);
+			if (*end) {
+				fr_strerror_printf("Unexpected text after tag for attribute %s", attribute);
+				return NULL;
+			}
+
+			if (!TAG_VALID_ZERO(tag)) {
+				fr_strerror_printf("Invalid tag for attribute %s", attribute);
+				return NULL;
+			}
+		}
+
+		/*
+		 *	Leave only the attribute name in the buffer.
+		 */
+		*p = '\0';
 	}
 
 	/*
@@ -414,11 +420,24 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 	 */
 	da = fr_dict_attr_by_name(NULL, attrname);
 	if (!da) {
+		if (tag != TAG_NONE) {
+			fr_strerror_printf("Invalid tag for attribute %s", attribute);
+			return NULL;
+		}
+
 		vp = fr_pair_make_unknown(ctx, attrname, value, op);
 		if (!vp) return NULL;
 
 		if (vps) fr_pair_add(vps, vp);
 		return vp;
+	}
+
+	/*
+	 *	Untagged attributes can't have a tag.
+	 */
+	if (!da->flags.has_tag && (tag != TAG_NONE)) {
+		fr_strerror_printf("Invalid tag for attribute %s", attribute);
+		return NULL;
 	}
 
 	vp = fr_pair_afrom_da(ctx, da);
