@@ -522,7 +522,15 @@ void tmpl_from_da(vp_tmpl_t *vpt, fr_dict_attr_t const *da, int8_t tag, int num,
 
 	vpt->tmpl_request = request;
 	vpt->tmpl_list = list;
-	vpt->tmpl_tag = tag;
+
+	/*
+	 *	No tags can't have any tags
+	 */
+	if (!vpt->tmpl_da->flags.has_tag) {
+		vpt->tmpl_tag = TAG_NONE;
+	} else {
+		vpt->tmpl_tag = tag;
+	}
 	vpt->tmpl_num = num;
 }
 
@@ -628,7 +636,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 		goto error;
 	}
 
-	vpt->tmpl_tag = TAG_ANY;
+	vpt->tmpl_tag = TAG_NONE;
 	vpt->tmpl_num = NUM_ANY;
 	vpt->type = TMPL_TYPE_ATTR;
 
@@ -723,19 +731,23 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 	}
 
 	/*
-	 *	The string MIGHT have a tag.
+	 *	If it's an attribute, look for a tag.
+	 *
+	 *	Note that we check for tags even if the attribute
+	 *	isn't tagged.  This lets us print more useful error
+	 *	messages.
 	 */
-	if (*p == ':') {
+	else if (*p == ':') {
 		char *q;
 
-		if (vpt->tmpl_da && !vpt->tmpl_da->flags.has_tag) { /* Lists don't have a da */
+		if (!vpt->tmpl_da->flags.has_tag) { /* Lists don't have a da */
 			fr_strerror_printf("Attribute '%s' cannot have a tag", vpt->tmpl_da->name);
 			slen = -(p - name);
 			goto error;
 		}
 
 		num = strtol(p + 1, &q, 10);
-		if ((num > 0x1f) || (num < 0)) {
+		if (!TAG_VALID_ZERO(num)) {
 			fr_strerror_printf("Invalid tag value '%li' (should be between 0-31)", num);
 			slen = -((p + 1) - name);
 			goto error;
@@ -743,6 +755,15 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 
 		vpt->tmpl_tag = num;
 		p = q;
+
+		/*
+		 *	The attribute is tagged, but the admin didn't
+		 *	specify one.  This means it's likely a
+		 *	"search" thingy.. i.e. "find me ANY attribute,
+		 *	no matter what the tag".
+		 */
+	} else if (vpt->tmpl_da->flags.has_tag) {
+		vpt->tmpl_tag = TAG_ANY;
 	}
 
 do_num:
@@ -2415,7 +2436,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 			fr_dict_attr_t const *da;
 
 			if (!vpt->tmpl_da->flags.has_tag &&
-			    TAG_VALID(vpt->tmpl_tag)) {
+			    (vpt->tmpl_tag != TAG_NONE)) {
 				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 					     "da is marked as not having a tag, but the template has a tag",
 					     file, line);
