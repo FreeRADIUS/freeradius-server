@@ -26,6 +26,7 @@
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/protocol.h>
 #include <freeradius-devel/udp.h>
+#include <freeradius-devel/trie.h>
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/io/io.h>
 #include <freeradius-devel/io/application.h>
@@ -52,6 +53,7 @@ typedef struct {
 typedef struct fr_radius_dynamic_client_t {
 	dl_instance_t			*submodule;		//!< proto_radius_dynamic_client
 	fr_ipaddr_t			*network;		//!< dynamic networks to allow
+	fr_trie_t			*trie;			//!< track networks for dynamic clients
 
 	RADCLIENT_LIST			*clients;		//!< local clients
 	RADCLIENT_LIST			*expired;		//!< expired local clients
@@ -95,7 +97,7 @@ typedef struct {
 
 	fr_stats_t			stats;			//!< statistics for this socket
 
-	fr_radius_dynamic_client_t		dynamic_clients;	//!< dynamic client infromation
+	fr_radius_dynamic_client_t	dynamic_clients;	//!< dynamic client infromation
 
 	bool				dynamic_clients_is_set;	//!< set if we have dynamic clients
 	bool				recv_buff_is_set;	//!< Whether we were provided with a receive
@@ -721,7 +723,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	 */
 	address.client = client_find(NULL, &address.src_ipaddr, IPPROTO_UDP);
 	if (!address.client) {
-		size_t i, num;
+		fr_ipaddr_t *network;
 
 		if (!inst->dynamic_clients_is_set) {
 		unknown:
@@ -759,47 +761,26 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 		}
 
 		/*
-		 *	The client wasn't found.  It MIGHT be allowed.
-		 *	Search through the allowed networks, to see if
-		 *	the source IP matches a listed network.
-		 *
-		 *	@todo - put the networks && clients into a
-		 *	patricia tree, so we only do one search for
-		 *	them, instead of N searches.
+		 *	No static client.  No dynamic client.  Maybe
+		 *	it's from a known network?  Look up the packet
+		 *	source address, returning the longest prefix
+		 *	match with a known network.
 		 */
-		num = talloc_array_length(inst->dynamic_clients.network);
-		for (i = 0; i < num; i++) {
-			fr_ipaddr_t ipaddr;
+		network = fr_trie_lookup(inst->dynamic_clients.trie, &address.src_ipaddr, address.src_ipaddr.prefix);
+		if (!network) goto unknown;
 
-			/*
-			 *	fr_ipaddr_cmp() compares prefixes,
-			 *	too.  So we have to mask the source
-			 *	IP.
-			 */
-			ipaddr = address.src_ipaddr;
-			fr_ipaddr_mask(&ipaddr, inst->dynamic_clients.network[i].prefix);
-
-			if (fr_ipaddr_cmp(&ipaddr, &inst->dynamic_clients.network[i]) == 0) {
-				DEBUG("Found matching network.  Checking for dynamic client definition.");
-				if (dynamic_client_alloc(inst, buffer, packet_len, &address, &track,
-							 &inst->dynamic_clients.network[i]) < 0) {
-					DEBUG("Failed allocating dynamic client");
-					goto unknown;
-				}
-
-				/*
-				 *	Return the packet, but it's
-				 *	ALREADY been inserted into the
-				 *	tracking table.
-				 */
-				goto return_packet;
-			}
+		DEBUG("Found matching network.  Checking for dynamic client definition.");
+		if (dynamic_client_alloc(inst, buffer, packet_len, &address, &track, network) < 0) {
+			DEBUG("Failed allocating dynamic client");
+			goto unknown;
 		}
 
 		/*
-		 *	No match, it's definitely unknown;
+		 *	Return the packet, but it's ALREADY been
+		 *	inserted into the tracking table via
+		 *	dynamic_client_alloc().
 		 */
-		goto unknown;
+		goto return_packet;
 	}
 
 found:
@@ -1396,14 +1377,45 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			return -1;
 		}
 
+		inst->dynamic_clients.trie = fr_trie_alloc(inst);
+		if (!inst->dynamic_clients.trie) {
+			cf_log_err(cs, "Failed creating network trie.");
+			return -1;
+		}
+
 		num = talloc_array_length(inst->dynamic_clients.network);
 		for (i = 0; i < num; i++) {
+			char buffer[256];
+
+			/*
+			 *	Can't add v4 networks to a v6 socket, or vice versa.
+			 */
 			if (inst->dynamic_clients.network[i].af != inst->ipaddr.af) {
-				char buffer[256];
-
 				fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(inst->dynamic_clients.network[i]), 0);
-
 				cf_log_err(cs, "Address family in entry %zd - 'network = %s' does not match 'ipaddr'", i + 1, buffer);
+				return -1;
+			}
+
+			/*
+			 *	Duplicates are bad.
+			 */
+			if (fr_trie_match(inst->dynamic_clients.trie,
+					   &inst->dynamic_clients.network[i].addr, inst->dynamic_clients.network[i].prefix) != NULL) {
+				fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(inst->dynamic_clients.network[i]), 0);
+				cf_log_err(cs, "Cannot add duplicate entry 'network = %s'", buffer);
+				return -1;
+			}
+
+			/*
+			 *	Insert the network into the trie.
+			 *	Lookups will return the fr_ipaddr_t of
+			 *	the network.
+			 */
+			if (fr_trie_insert(inst->dynamic_clients.trie,
+					   &inst->dynamic_clients.network[i].addr, inst->dynamic_clients.network[i].prefix,
+					   &inst->dynamic_clients.network[i]) < 0) {
+				fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(inst->dynamic_clients.network[i]), 0);
+				cf_log_err(cs, "Failed adding 'network = %s' to tracking table.", buffer);
 				return -1;
 			}
 		}
