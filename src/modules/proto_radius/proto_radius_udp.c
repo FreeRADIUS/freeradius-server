@@ -1188,7 +1188,6 @@ static int mod_open(void *instance)
 
 	int				sockfd = 0;
 	uint16_t			port = inst->port;
-	char				src_buf[128];
 
 	sockfd = fr_socket_server_udp(&inst->ipaddr, &port, inst->port_name, true);
 	if (sockfd < 0) {
@@ -1202,20 +1201,6 @@ static int mod_open(void *instance)
 		goto error;
 	}
 
-	if (fr_ipaddr_is_inaddr_any(&inst->ipaddr)) {
-		if (inst->ipaddr.af == AF_INET) {
-			strlcpy(src_buf, "*", sizeof(src_buf));
-		} else {
-			rad_assert(inst->ipaddr.af == AF_INET6);
-			strlcpy(src_buf, "::", sizeof(src_buf));
-		}
-	} else {
-		fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(inst->ipaddr), 0);
-	}
-
-	rad_assert(inst->name == NULL);
-	inst->name = talloc_typed_asprintf(inst, "proto udp address %s port %u",
-				     src_buf, port);
 	inst->sockfd = sockfd;
 
 	// @todo - also print out auth / acct / coa, etc.
@@ -1275,6 +1260,7 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el, void *nr)
 static int mod_instantiate(void *instance, CONF_SECTION *cs)
 {
 	proto_radius_udp_t *inst = talloc_get_type_abort(instance, proto_radius_udp_t);
+	char		    dst_buf[128];
 
 	/*
 	 *	Complain if no "ipaddr" is set.
@@ -1328,6 +1314,23 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 		}
 	}
 
+	/*
+	 *	Get our name.
+	 */
+	if (fr_ipaddr_is_inaddr_any(&inst->ipaddr)) {
+		if (inst->ipaddr.af == AF_INET) {
+			strlcpy(dst_buf, "*", sizeof(dst_buf));
+		} else {
+			rad_assert(inst->ipaddr.af == AF_INET6);
+			strlcpy(dst_buf, "::", sizeof(dst_buf));
+		}
+	} else {
+		fr_value_box_snprint(dst_buf, sizeof(dst_buf), fr_box_ipaddr(inst->ipaddr), 0);
+	}
+
+	rad_assert(inst->name == NULL);
+	inst->name = talloc_typed_asprintf(inst, "proto udp address %s port %u",
+				     dst_buf, inst->port);
 	return 0;
 }
 
