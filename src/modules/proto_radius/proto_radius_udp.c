@@ -78,12 +78,16 @@ typedef struct {
 	fr_event_list_t			*el;			//!< for cleanup timers on Access-Request
 	fr_network_t			*nr;			//!< for fr_network_listen_read();
 
-	fr_ipaddr_t			ipaddr;			//!< Ipaddr to listen on.
+	fr_ipaddr_t			ipaddr;			//!< IP address to listen on.
+	fr_ipaddr_t			src_ipaddr;		//!< source IP for connected sockets
+
 
 	char const			*interface;		//!< Interface to bind to.
 	char const			*port_name;		//!< Name of the port for getservent().
 
 	uint16_t			port;			//!< Port to listen on.
+	uint16_t			src_port;      		//!< Source port for connected sockets.
+
 	uint32_t			recv_buff;		//!< How big the kernel's receive buffer should be.
 
 	fr_tracking_t			*ft;			//!< tracking table
@@ -96,6 +100,8 @@ typedef struct {
 	bool				dynamic_clients_is_set;	//!< set if we have dynamic clients
 	bool				recv_buff_is_set;	//!< Whether we were provided with a receive
 								//!< buffer value.
+	bool				connected;		//!< is this a connected socket?
+
 	uint32_t			priorities[FR_MAX_PACKET_CODE];	//!< priorities for individual packets
 } proto_radius_udp_t;
 
@@ -1301,6 +1307,12 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	}
 
 	/*
+	 *	Connected sockets can't have dynamic clients.  They're
+	 *	only connected to one client.
+	 */
+	if (inst->connected) inst->dynamic_clients_is_set = false;
+
+	/*
 	 *	Instantiate proto_radius_dynamic_client
 	 */
 	if (inst->dynamic_clients_is_set) {
@@ -1317,6 +1329,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	/*
 	 *	Get our name.
 	 */
+	rad_assert(inst->name == NULL);
+
 	if (fr_ipaddr_is_inaddr_any(&inst->ipaddr)) {
 		if (inst->ipaddr.af == AF_INET) {
 			strlcpy(dst_buf, "*", sizeof(dst_buf));
@@ -1328,9 +1342,18 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 		fr_value_box_snprint(dst_buf, sizeof(dst_buf), fr_box_ipaddr(inst->ipaddr), 0);
 	}
 
-	rad_assert(inst->name == NULL);
-	inst->name = talloc_typed_asprintf(inst, "proto udp address %s port %u",
-				     dst_buf, inst->port);
+	if (!inst->connected) {
+		inst->name = talloc_typed_asprintf(inst, "proto udp address %s port %u",
+						   dst_buf, inst->port);
+	} else {
+		char src_buf[128];
+
+		fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(inst->src_ipaddr), 0);
+
+		inst->name = talloc_typed_asprintf(inst, "proto udp client %s port %u to address %s port %u",
+						   src_buf, inst->src_port, dst_buf, inst->port);
+	}
+
 	return 0;
 }
 
