@@ -37,6 +37,7 @@ FreeRADIUS 3.0.16 Mon 17 Jul 2017 09:00:00 EDT urgency=high
 	* Added scripts to build "inner-server.pem", and updated
 	  mods-config/inner-eap and certs/README to match.
 	* Added provisions for using an external CA.  See raddb/certs/
+	* Include dhcpclient binary in freeradius-dhcp debian packge.
 
 	Bug fixes
 	* Bind the lifetime of program name and python path to the module
