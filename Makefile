@@ -43,7 +43,9 @@ endif
 export DESTDIR := $(R)
 
 # And over-ride all of the other magic.
+ifneq "$(MAKECMDGOALS)" "deb"
 include scripts/boiler.mk
+endif
 
 #
 #  To work around OpenSSL issues with travis.
