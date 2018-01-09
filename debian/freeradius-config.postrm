@@ -22,7 +22,7 @@ case "$1" in
 			dpkg-statoverride --remove /etc/freeradius
 		fi
 
-		rmdir --ignore-fail-on-non-empty /etc/freeradius
+		test -d /etc/freeradius && rmdir --ignore-fail-on-non-empty /etc/freeradius
 		;;
 	*)
 		;;
