@@ -316,16 +316,27 @@ static bool fr_network_send_request(fr_network_t *nr, fr_channel_data_t *cd)
  */
 static void fr_network_socket_dead(fr_network_t *nr, fr_network_socket_t *s)
 {
+	if (s->dead) return;
+
+	s->dead = true;
+
 	fr_event_fd_delete(nr->el, s->fd, FR_EVENT_FILTER_IO);
 
 	/*
-	 *	Leave it in the RBtree so we can catch pending replies.
+	 *	If there are no outstanding packets, then we can free
+	 *	it now.
 	 */
-
 	if (!s->outstanding) {
 		talloc_free(s);
 		return;
 	}
+
+	/*
+	 *	There are still outstanding packets.  Leave it in the
+	 *	socket tree, so that replies from the worker can find
+	 *	it.  When we've received all of the replies, then
+	 *	fr_network_post_event() will clean up this socket.
+	 */
 }
 
 
@@ -582,7 +593,9 @@ static int _network_socket_free(fr_network_socket_t *s)
 	fr_network_t *nr = talloc_parent(s);
 	fr_channel_data_t *cd;
 
-	fr_event_fd_delete(nr->el, s->fd, FR_EVENT_FILTER_IO);
+	if (!s->dead) {
+		fr_event_fd_delete(nr->el, s->fd, FR_EVENT_FILTER_IO);
+	}
 
 	rbtree_deletebydata(nr->sockets, s);
 
