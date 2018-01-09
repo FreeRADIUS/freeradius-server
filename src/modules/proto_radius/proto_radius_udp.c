@@ -49,7 +49,7 @@ typedef struct {
 	RADCLIENT			*client;
 } proto_radius_udp_address_t;
 
-typedef struct dynamic_client_t {
+typedef struct fr_radius_dynamic_client_t {
 	dl_instance_t			*submodule;		//!< proto_radius_dynamic_client
 	fr_ipaddr_t			*network;		//!< dynamic networks to allow
 
@@ -67,7 +67,7 @@ typedef struct dynamic_client_t {
 	uint32_t			num_pending_packets;	//!< how many packets are received, but not accepted
 
 	uint32_t			lifetime;		//!< of the dynamic client, in seconds.
-} dynamic_client_t;
+} fr_radius_dynamic_client_t;
 
 typedef struct {
 	proto_radius_t	const		*parent;		//!< The module that spawned us!
@@ -95,7 +95,7 @@ typedef struct {
 
 	fr_stats_t			stats;			//!< statistics for this socket
 
-	dynamic_client_t		dynamic_clients;	//!< dynamic client infromation
+	fr_radius_dynamic_client_t		dynamic_clients;	//!< dynamic client infromation
 
 	bool				dynamic_clients_is_set;	//!< set if we have dynamic clients
 	bool				recv_buff_is_set;	//!< Whether we were provided with a receive
@@ -113,13 +113,13 @@ typedef struct dynamic_packet_t {
 } dynamic_packet_t;
 
 static const CONF_PARSER dynamic_client_config[] = {
-	{ FR_CONF_OFFSET("network", FR_TYPE_COMBO_IP_PREFIX | FR_TYPE_MULTI, dynamic_client_t, network) },
+	{ FR_CONF_OFFSET("network", FR_TYPE_COMBO_IP_PREFIX | FR_TYPE_MULTI, fr_radius_dynamic_client_t, network) },
 
-	{ FR_CONF_OFFSET("max_clients", FR_TYPE_UINT32, dynamic_client_t, max_clients), .dflt = "65536" },
-	{ FR_CONF_OFFSET("max_pending_clients", FR_TYPE_UINT32, dynamic_client_t, max_pending_clients), .dflt = "256" },
-	{ FR_CONF_OFFSET("max_pending_packets", FR_TYPE_UINT32, dynamic_client_t, max_pending_packets), .dflt = "65536" },
+	{ FR_CONF_OFFSET("max_clients", FR_TYPE_UINT32, fr_radius_dynamic_client_t, max_clients), .dflt = "65536" },
+	{ FR_CONF_OFFSET("max_pending_clients", FR_TYPE_UINT32, fr_radius_dynamic_client_t, max_pending_clients), .dflt = "256" },
+	{ FR_CONF_OFFSET("max_pending_packets", FR_TYPE_UINT32, fr_radius_dynamic_client_t, max_pending_packets), .dflt = "65536" },
 
-	{ FR_CONF_OFFSET("lifetime", FR_TYPE_UINT32, dynamic_client_t, lifetime), .dflt = "600" },
+	{ FR_CONF_OFFSET("lifetime", FR_TYPE_UINT32, fr_radius_dynamic_client_t, lifetime), .dflt = "600" },
 
 	CONF_PARSER_TERMINATOR
 };
