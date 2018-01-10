@@ -60,6 +60,9 @@
 /* Define to 1 if you have the <sys/capability.h> header file. */
 #undef HAVE_CAPABILITY_H
 
+/* Define to 1 if you have the <linux/if_packet.h> header file. */
+#undef HAVE_LINUX_IF_PACKET_H
+
 /* Define to 1 if you have the `clock_gettime' function. */
 #undef HAVE_CLOCK_GETTIME
 
