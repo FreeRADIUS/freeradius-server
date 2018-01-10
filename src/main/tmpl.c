@@ -522,7 +522,15 @@ void tmpl_from_da(vp_tmpl_t *vpt, fr_dict_attr_t const *da, int8_t tag, int num,
 
 	vpt->tmpl_request = request;
 	vpt->tmpl_list = list;
-	vpt->tmpl_tag = tag;
+
+	/*
+	 *	No tags can't have any tags
+	 */
+	if (!vpt->tmpl_da->flags.has_tag) {
+		vpt->tmpl_tag = TAG_NONE;
+	} else {
+		vpt->tmpl_tag = tag;
+	}
 	vpt->tmpl_num = num;
 }
 
@@ -628,7 +636,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 		goto error;
 	}
 
-	vpt->tmpl_tag = TAG_ANY;
+	vpt->tmpl_tag = TAG_NONE;
 	vpt->tmpl_num = NUM_ANY;
 	vpt->type = TMPL_TYPE_ATTR;
 
@@ -723,26 +731,48 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 	}
 
 	/*
-	 *	The string MIGHT have a tag.
+	 *	If it's an attribute, look for a tag.
+	 *
+	 *	Note that we check for tags even if the attribute
+	 *	isn't tagged.  This lets us print more useful error
+	 *	messages.
 	 */
-	if (*p == ':') {
+	else if (*p == ':') {
 		char *q;
 
-		if (vpt->tmpl_da && !vpt->tmpl_da->flags.has_tag) { /* Lists don't have a da */
+		if (!vpt->tmpl_da->flags.has_tag) { /* Lists don't have a da */
 			fr_strerror_printf("Attribute '%s' cannot have a tag", vpt->tmpl_da->name);
 			slen = -(p - name);
 			goto error;
 		}
 
-		num = strtol(p + 1, &q, 10);
-		if ((num > 0x1f) || (num < 0)) {
-			fr_strerror_printf("Invalid tag value '%li' (should be between 0-31)", num);
-			slen = -((p + 1) - name);
-			goto error;
+		/*
+		 *	Allow '*' as an explicit wildcard.
+		 */
+		if (p[1] == '*') {
+			vpt->tmpl_tag = TAG_ANY;
+			p += 2;
+
+		} else {
+			num = strtol(p + 1, &q, 10);
+			if (!TAG_VALID_ZERO(num)) {
+				fr_strerror_printf("Invalid tag value '%li' (should be between 0-31)", num);
+				slen = -((p + 1) - name);
+				goto error;
+			}
+
+			vpt->tmpl_tag = num;
+			p = q;
 		}
 
-		vpt->tmpl_tag = num;
-		p = q;
+		/*
+		 *	The attribute is tagged, but the admin didn't
+		 *	specify one.  This means it's likely a
+		 *	"search" thingy.. i.e. "find me ANY attribute,
+		 *	no matter what the tag".
+		 */
+	} else if (vpt->tmpl_da->flags.has_tag) {
+		vpt->tmpl_tag = TAG_ANY;
 	}
 
 do_num:
@@ -1916,7 +1946,7 @@ size_t tmpl_snprint(char *out, size_t outlen, vp_tmpl_t const *vpt)
 		RETURN_IF_TRUNCATED(out_p, len, end - out_p);
 
 	inst_and_tag:
-		if (vpt->tmpl_tag != TAG_ANY) {
+		if (TAG_VALID(vpt->tmpl_tag)) {
 			len = snprintf(out_p, end - out_p, ":%d", vpt->tmpl_tag);
 			RETURN_IF_TRUNCATED(out_p, len, end - out_p);
 		}
@@ -2000,6 +2030,8 @@ finish:
 	return (out_p - out);
 }
 
+#define TMPL_TAG_MATCH(_a, _t) ((_a->da == _t->tmpl_da) && ATTR_TAG_MATCH(_a, _t->tmpl_tag))
+
 static void *_tmpl_cursor_next(void **prev, void *curr, void *ctx)
 {
 	VALUE_PAIR	*c, *p, *fc = NULL, *fp = NULL;
@@ -2023,8 +2055,7 @@ static void *_tmpl_cursor_next(void **prev, void *curr, void *ctx)
 		case NUM_COUNT:				/* Iterator is called multiple time to get the count */
 			for (c = curr, p = *prev; c; p = c, c = c->next) {
 			     	VP_VERIFY(c);
-				if ((c->da == vpt->tmpl_da) &&
-				    (!c->da->flags.has_tag || TAG_EQ(vpt->tmpl_tag, c->tag))) {
+				if (TMPL_TAG_MATCH(c, vpt)) {
 					*prev = p;
 					return c;
 				}
@@ -2034,8 +2065,7 @@ static void *_tmpl_cursor_next(void **prev, void *curr, void *ctx)
 		case NUM_LAST:				/* Get the last instance of a VALUE_PAIR */
 			for (c = curr, p = *prev; c; p = c, c = c->next) {
 			     	VP_VERIFY(c);
-				if ((c->da == vpt->tmpl_da) &&
-				    (!c->da->flags.has_tag || TAG_EQ(vpt->tmpl_tag, c->tag))) {
+				if (TMPL_TAG_MATCH(c, vpt)) {
 				    	fp = p;
 					fc = c;
 				}
@@ -2049,8 +2079,7 @@ static void *_tmpl_cursor_next(void **prev, void *curr, void *ctx)
 			     c && (num >= 0);
 			     p = c, c = c->next) {
 			     	VP_VERIFY(c);
-				if ((c->da == vpt->tmpl_da) && (!c->da->flags.has_tag ||
-				    TAG_EQ(vpt->tmpl_tag, c->tag))) {
+				if (TMPL_TAG_MATCH(c, vpt)) {
 					fp = p;
 					fc = c;
 					num--;
@@ -2414,6 +2443,24 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 
 		} else {
 			fr_dict_attr_t const *da;
+
+			if (!vpt->tmpl_da->flags.has_tag &&
+			    (vpt->tmpl_tag != TAG_NONE)) {
+				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
+					     "da is marked as not having a tag, but the template has a tag",
+					     file, line);
+				if (!fr_cond_assert(0)) fr_exit_now(1);
+			}
+
+#if 0
+			if (vpt->tmpl_da->flags.has_tag &&
+			    !TAG_VALID_ZERO(vpt->tmpl_tag)) {
+				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
+					     "da is marked as not having a tag, but the template has an invalid tag",
+					     file, line);
+				if (!fr_cond_assert(0)) fr_exit_now(1);
+			}
+#endif
 
 			/*
 			 *	Attribute may be present with multiple names

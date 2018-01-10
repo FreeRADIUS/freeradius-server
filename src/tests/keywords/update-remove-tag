@@ -20,7 +20,7 @@ update {
 }
 
 # Check [#] is working correctly (should probably be another set of tests)
-if (("%{request:Tunnel-Server-Endpoint[#]}" != 8) || \
+if (("%{request:Tunnel-Server-Endpoint:*[#]}" != 8) || \
     ("%{request:Tunnel-Server-Endpoint:0[#]}" != 2) || \
     ("%{request:Tunnel-Server-Endpoint:1[#]}" != 1) || \
     ("%{request:Tunnel-Server-Endpoint:2[#]}" != 2) || \
@@ -33,7 +33,7 @@ update {
 }
 
 # List should now be empty
-if ("%{request:Tunnel-Server-Endpoint[#]}" != 0) {
+if ("%{request:Tunnel-Server-Endpoint:*[#]}" != 0) {
 	test_fail
 }
 
@@ -47,7 +47,7 @@ update {
 	Tunnel-Server-Endpoint:2 !* ANY
 }
 
-if (("%{request:Tunnel-Server-Endpoint[#]}" != 6) || \
+if (("%{request:Tunnel-Server-Endpoint:*[#]}" != 6) || \
     ("%{request:Tunnel-Server-Endpoint:0[#]}" != 2) || \
     ("%{request:Tunnel-Server-Endpoint:1[#]}" != 1) || \
     ("%{request:Tunnel-Server-Endpoint:2[#]}" != 0) || \
@@ -60,7 +60,7 @@ update {
 	Tunnel-Server-Endpoint:0 !* ANY
 }
 
-if (("%{request:Tunnel-Server-Endpoint[#]}" != 4) || \
+if (("%{request:Tunnel-Server-Endpoint:*[#]}" != 4) || \
     ("%{request:Tunnel-Server-Endpoint:0[#]}" != 0) || \
     ("%{request:Tunnel-Server-Endpoint:1[#]}" != 1) || \
     ("%{request:Tunnel-Server-Endpoint:2[#]}" != 0) || \
@@ -73,7 +73,7 @@ update {
 	Tunnel-Server-Endpoint:3 !* ANY
 }
 
-if (("%{request:Tunnel-Server-Endpoint[#]}" != 1) || \
+if (("%{request:Tunnel-Server-Endpoint:*[#]}" != 1) || \
     ("%{request:Tunnel-Server-Endpoint:0[#]}" != 0) || \
     ("%{request:Tunnel-Server-Endpoint:1[#]}" != 1) || \
     ("%{request:Tunnel-Server-Endpoint:2[#]}" != 0) || \
@@ -86,7 +86,7 @@ update {
 	Tunnel-Server-Endpoint:1 !* ANY
 }
 
-if (("%{request:Tunnel-Server-Endpoint[#]}" != 0) || \
+if (("%{request:Tunnel-Server-Endpoint:*[#]}" != 0) || \
     ("%{request:Tunnel-Server-Endpoint:0[#]}" != 0) || \
     ("%{request:Tunnel-Server-Endpoint:1[#]}" != 0) || \
     ("%{request:Tunnel-Server-Endpoint:2[#]}" != 0) || \

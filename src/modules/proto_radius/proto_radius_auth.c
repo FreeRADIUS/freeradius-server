@@ -139,7 +139,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 	case REQUEST_INIT:
 		radlog_request(L_DBG, L_DBG_LVL_1, request, "Received %s ID %i",
 			       fr_packet_codes[request->packet->code], request->packet->id);
-		rdebug_proto_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
+		rdebug_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
 
 		request->component = "radius";
 
@@ -491,14 +491,17 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		gettimeofday(&request->reply->timestamp, NULL);
 
 		/*
-		 *	Save session-state list for Access-Challenge,
+		 *	Save session-state list for Access-Challenge from a NAS.
 		 *	discard it for everything else.
 		 */
-		if (request->reply->code == FR_CODE_ACCESS_CHALLENGE) {
-			if (!request->parent) fr_request_to_state(global_state, request, request->packet, request->reply);
+		if (!request->parent) {
+			if (request->reply->code == FR_CODE_ACCESS_CHALLENGE) {
+				fr_request_to_state(global_state, request, request->packet,
+						    request->reply);
 
-		} else {
-			if (!request->parent) fr_state_discard(global_state, request, request->packet);
+			} else {
+				fr_state_discard(global_state, request, request->packet);
+			}
 		}
 
 		/*
@@ -516,7 +519,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		if (request->parent) {
 			radlog_request(L_DBG, L_DBG_LVL_1, request, "Sent %s ID %i",
 				       fr_packet_codes[request->reply->code], request->reply->id);
-			rdebug_proto_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
+			rdebug_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
 			return FR_IO_REPLY;
 		}
 
@@ -530,33 +533,6 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 	return FR_IO_REPLY;
 }
 
-
-/*
- *	Ensure that the "recv Access-Request" etc. sections are compiled.
- */
-static int auth_listen_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *listen_cs)
-{
-	CONF_SECTION *subcs = NULL;
-
-	while ((subcs = cf_section_find_next(server_cs, subcs, "authenticate", NULL))) {
-		char const *name2;
-
-		name2 = cf_section_name2(subcs);
-		if (!name2) {
-			cf_log_err(subcs, "A second name is required for the 'authenticate { ... }' section");
-			return -1;
-		}
-
-		cf_log_debug(subcs, "Loading authenticate %s {...}", name2);
-
-		if (unlang_compile(subcs, MOD_AUTHENTICATE) < 0) {
-			cf_log_err(subcs, "Failed compiling 'authenticate %s { ... }' section", name2);
-			return -1;
-		}
-	}
-
-	return 0;
-}
 
 static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *listen_cs)
 {
@@ -588,8 +564,6 @@ static int mod_instantiate(UNUSED void *instance, CONF_SECTION *listen_cs)
 
 	server_cs = cf_item_to_section(cf_parent(listen_cs));
 	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
-
-	if (auth_listen_compile(server_cs, listen_cs) < 0) return -1;
 
 	while ((subcs = cf_section_find_next(server_cs, subcs, "authenticate", CF_IDENT_ANY))) {
 		int rcode;

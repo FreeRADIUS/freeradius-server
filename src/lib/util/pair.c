@@ -366,46 +366,52 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 {
 	fr_dict_attr_t const *da;
 	VALUE_PAIR	*vp;
-	char		*tc, *ts;
+	char		*p;
 	int8_t		tag;
-	bool		found_tag;
-	char		buffer[256];
 	char const	*attrname = attribute;
 
 	/*
 	 *    Check for tags in 'Attribute:Tag' format.
 	 */
-	found_tag = false;
-	tag = TAG_ANY;
+	tag = TAG_NONE;
 
-	ts = strrchr(attribute, ':');
-	if (ts && !ts[1]) {
-		fr_strerror_printf("Invalid tag for attribute %s", attribute);
-		return NULL;
-	}
+	p = strchr(attribute, ':');
+	if (p) {
+		char *end;
+		char buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1 + 32];
 
-	if (ts && ts[1]) {
+		if (!p[1]) {
+			fr_strerror_printf("Invalid tag for attribute %s", attribute);
+			return NULL;
+		}
+
 		strlcpy(buffer, attribute, sizeof(buffer));
-		attrname = buffer;
-		ts = strrchr(attrname, ':');
-		if (!ts) return NULL;
 
-		 /* Colon found with something behind it */
-		 if (ts[1] == '*' && ts[2] == 0) {
-			 /* Wildcard tag for check items */
-			 tag = TAG_ANY;
-			 *ts = '\0';
-		 } else if ((ts[1] >= '0') && (ts[1] <= '9')) {
-			 /* It's not a wild card tag */
-			 tag = strtol(ts + 1, &tc, 0);
-			 if (tc && !*tc && TAG_VALID_ZERO(tag))
-				 *ts = '\0';
-			 else tag = TAG_ANY;
-		 } else {
-			 fr_strerror_printf("Invalid tag for attribute %s", attribute);
-			 return NULL;
-		 }
-		 found_tag = true;
+		p = buffer + (p - attrname);
+		attrname = buffer;
+
+		/* Colon found with something behind it */
+		if ((p[1] == '*') && !p[2]) {
+			/* Wildcard tag for check items */
+			tag = TAG_ANY;
+		} else {
+			/* It's not a wild card tag */
+			tag = strtol(p + 1, &end, 10);
+			if (*end) {
+				fr_strerror_printf("Unexpected text after tag for attribute %s", attribute);
+				return NULL;
+			}
+
+			if (!TAG_VALID_ZERO(tag)) {
+				fr_strerror_printf("Invalid tag for attribute %s", attribute);
+				return NULL;
+			}
+		}
+
+		/*
+		 *	Leave only the attribute name in the buffer.
+		 */
+		*p = '\0';
 	}
 
 	/*
@@ -414,6 +420,11 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 	 */
 	da = fr_dict_attr_by_name(NULL, attrname);
 	if (!da) {
+		if (tag != TAG_NONE) {
+			fr_strerror_printf("Invalid tag for attribute %s", attribute);
+			return NULL;
+		}
+
 		vp = fr_pair_make_unknown(ctx, attrname, value, op);
 		if (!vp) return NULL;
 
@@ -421,32 +432,12 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 		return vp;
 	}
 
-	/*      Check for a tag in the 'Merit' format of:
-	 *      :Tag:Value.  Print an error if we already found
-	 *      a tag in the Attribute.
+	/*
+	 *	Untagged attributes can't have a tag.
 	 */
-
-	if (value && (*value == ':' && da->flags.has_tag)) {
-		/* If we already found a tag, this is invalid */
-		if(found_tag) {
-			fr_strerror_printf("Duplicate tag %s for attribute %s",
-				   value, da->name);
-			DEBUG("Duplicate tag %s for attribute %s\n",
-				   value, da->name);
-			return NULL;
-		}
-		/* Colon found and attribute allows a tag */
-		if (value[1] == '*' && value[2] == ':') {
-		       /* Wildcard tag for check items */
-		       tag = TAG_ANY;
-		       value += 3;
-		} else {
-		       /* Real tag */
-		       tag = strtol(value + 1, &tc, 0);
-		       if (tc && *tc==':' && TAG_VALID_ZERO(tag))
-			    value = tc + 1;
-		       else tag = 0;
-		}
+	if (!da->flags.has_tag && (tag != TAG_NONE)) {
+		fr_strerror_printf("Invalid tag for attribute %s", attribute);
+		return NULL;
 	}
 
 	vp = fr_pair_afrom_da(ctx, da);
@@ -758,7 +749,7 @@ void fr_pair_replace(VALUE_PAIR **head, VALUE_PAIR *replace)
 		 *	Found the head attribute, replace it,
 		 *	and return.
 		 */
-		if ((i->da == replace->da) && (!i->da->flags.has_tag || TAG_EQ(replace->tag, i->tag))) {
+		if ((i->da == replace->da) && ATTR_TAG_MATCH(i, replace->tag)) {
 			*prev = replace;
 
 			/*
@@ -844,7 +835,7 @@ void fr_pair_delete_by_num(VALUE_PAIR **head, unsigned int vendor, unsigned int 
 			next = i->next;
 			if (i->da->parent->flags.is_root &&
 			    (i->da->attr == attr) && (i->da->vendor == 0) &&
-			    (!i->da->flags.has_tag || TAG_EQ(tag, i->tag))) {
+			    ATTR_TAG_MATCH(i, tag)) {
 				*last = next;
 				talloc_free(i);
 			} else {
@@ -857,7 +848,7 @@ void fr_pair_delete_by_num(VALUE_PAIR **head, unsigned int vendor, unsigned int 
 			next = i->next;
 			if ((i->da->parent->type == FR_TYPE_VENDOR) &&
 			    (i->da->attr == attr) && (i->da->vendor == vendor) &&
-			    (!i->da->flags.has_tag || TAG_EQ(tag, i->tag))) {
+			    ATTR_TAG_MATCH(i, tag)) {
 				*last = next;
 				talloc_free(i);
 			} else {
@@ -1213,7 +1204,7 @@ void fr_pair_validate_debug(TALLOC_CTX *ctx, VALUE_PAIR const *failed[2])
 		return;
 	}
 
-	if (!TAG_EQ(filter->tag, list->tag)) {
+	if (!ATTR_TAG_MATCH(list, filter->tag)) {
 		fr_strerror_printf("Attribute \"%s\" tag \"%i\" didn't match filter tag \"%i\"",
 				   list->da->name, list->tag, filter->tag);
 		return;
@@ -1564,7 +1555,7 @@ VALUE_PAIR *fr_pair_list_copy_by_num(TALLOC_CTX *ctx, VALUE_PAIR *from,
 	     vp = fr_pair_cursor_next(&src)) {
 		VP_VERIFY(vp);
 
-		if (vp->da->flags.has_tag && !TAG_EQ(tag, vp->tag)) {
+		if (!ATTR_TAG_MATCH(vp, tag)) {
 			continue;
 		}
 
@@ -1837,7 +1828,7 @@ static void fr_pair_list_move_by_num_internal(TALLOC_CTX *ctx, VALUE_PAIR **to, 
 		VP_VERIFY(i);
 		next = i->next;
 
-		if (i->da->flags.has_tag && !TAG_EQ(tag, i->tag)) {
+		if (!ATTR_TAG_MATCH(i, tag)) {
 			iprev = i;
 			continue;
 		}

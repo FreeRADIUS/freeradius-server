@@ -30,6 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/cf_parse.h>
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/trie.h>
 
 #include <sys/stat.h>
 
@@ -41,8 +42,12 @@ RCSID("$Id$")
  */
 struct radclient_list {
 	char const	*name;			//!< Name of the client list.
-	rbtree_t	*trees[129];		//!< For 0..128, inclusive.
-	uint32_t       	min_prefix;
+	fr_trie_t	*v4_udp;
+	fr_trie_t	*v6_udp;
+#ifdef WITH_TCP
+	fr_trie_t	*v4_tcp;
+	fr_trie_t	*v6_tcp;
+#endif
 };
 
 static RADCLIENT_LIST	*root_clients = NULL;	//!< Global client list.
@@ -63,32 +68,6 @@ void client_free(RADCLIENT *client)
 	talloc_free(client);
 }
 
-/** Compare clients by IP address
- *
- */
-static int client_ipaddr_cmp(void const *one, void const *two)
-{
-	RADCLIENT const *a = one;
-	RADCLIENT const *b = two;
-#ifndef WITH_TCP
-
-	return fr_ipaddr_cmp(&a->ipaddr, &b->ipaddr);
-#else
-	int rcode;
-
-	rcode = fr_ipaddr_cmp(&a->ipaddr, &b->ipaddr);
-	if (rcode != 0) return rcode;
-
-	/*
-	 *	Wildcard match
-	 */
-	if ((a->proto == IPPROTO_IP) ||
-	    (b->proto == IPPROTO_IP)) return 0;
-
-	return (a->proto - b->proto);
-#endif
-}
-
 /** Return a new client list
  *
  * @note The container won't contain any clients.
@@ -104,10 +83,58 @@ RADCLIENT_LIST *client_list_init(CONF_SECTION *cs)
 	if (!clients) return NULL;
 
 	clients->name = talloc_strdup(clients, cs ? cf_section_name1(cs) : "root");
-	clients->min_prefix = 128;
+	clients->v4_udp = fr_trie_alloc(clients);
+	if (!clients->v4_udp) {
+		talloc_free(clients);
+		return NULL;
+	}
+
+	clients->v6_udp = fr_trie_alloc(clients);
+	if (!clients->v6_udp) {
+		talloc_free(clients);
+		return NULL;
+	}
+
+#ifdef WITH_TCP
+	clients->v4_tcp = fr_trie_alloc(clients);
+	if (!clients->v4_tcp) {
+		talloc_free(clients);
+		return NULL;
+	}
+
+	clients->v6_tcp = fr_trie_alloc(clients);
+	if (!clients->v6_tcp) {
+		talloc_free(clients);
+		return NULL;
+	}
+#endif
 
 	return clients;
 }
+
+static fr_trie_t *clients_trie(RADCLIENT_LIST const *clients, fr_ipaddr_t const *ipaddr,
+#ifndef WITH_TCP
+			       UNUSED
+#endif
+			       int proto)
+{
+	if (ipaddr->af == AF_INET) {
+#ifdef WITH_TCP
+		if (proto == IPPROTO_TCP) return clients->v4_tcp;
+#endif
+
+		return clients->v4_udp;
+	}
+
+	rad_assert(ipaddr->af == AF_INET6);
+
+#ifdef WITH_TCP
+	if (proto == IPPROTO_TCP) return clients->v6_tcp;
+#endif
+
+	return clients->v6_udp;
+}
+
 
 /** Add a client to a RADCLIENT_LIST
  *
@@ -119,6 +146,7 @@ RADCLIENT_LIST *client_list_init(CONF_SECTION *cs)
  */
 bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 {
+	fr_trie_t *trie;
 	RADCLIENT *old;
 	char buffer[FR_IPADDR_PREFIX_STRLEN];
 
@@ -202,30 +230,20 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		}
 	}
 
-	/*
-	 *	Create a tree for it.
-	 */
-	if (!clients->trees[client->ipaddr.prefix]) {
-		clients->trees[client->ipaddr.prefix] = rbtree_create(clients, client_ipaddr_cmp, NULL, 0);
-		if (!clients->trees[client->ipaddr.prefix]) {
-			return false;
-		}
-	}
-
 #define namecmp(a) ((!old->a && !client->a) || (old->a && client->a && (strcmp(old->a, client->a) == 0)))
+
+	trie = clients_trie(clients, &client->ipaddr, client->proto);
 
 	/*
 	 *	Cannot insert the same client twice.
 	 */
-	old = rbtree_finddata(clients->trees[client->ipaddr.prefix], client);
+	old = fr_trie_match(trie, &client->ipaddr.addr, client->ipaddr.prefix);
 	if (old) {
 		/*
 		 *	If it's a complete duplicate, then free the new
 		 *	one, and return "OK".
 		 */
-		if ((fr_ipaddr_cmp(&old->ipaddr, &client->ipaddr) == 0) &&
-		    (old->ipaddr.prefix == client->ipaddr.prefix) &&
-		    namecmp(longname) && namecmp(secret) &&
+		if (namecmp(longname) && namecmp(secret) &&
 		    namecmp(shortname) && namecmp(nas_type) &&
 		    namecmp(server) &&
 		    (old->message_authenticator == client->message_authenticator)) {
@@ -242,12 +260,8 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	/*
 	 *	Other error adding client: likely is fatal.
 	 */
-	if (!rbtree_insert(clients->trees[client->ipaddr.prefix], client)) {
+	if (fr_trie_insert(trie, &client->ipaddr.addr, client->ipaddr.prefix, client) < 0) {
 		return false;
-	}
-
-	if (client->ipaddr.prefix < clients->min_prefix) {
-		clients->min_prefix = client->ipaddr.prefix;
 	}
 
 	(void) talloc_steal(clients, client); /* reparent it */
@@ -259,13 +273,20 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 #ifdef WITH_DYNAMIC_CLIENTS
 void client_delete(RADCLIENT_LIST *clients, RADCLIENT *client)
 {
+	fr_trie_t *trie;
+
 	if (!client) return;
 
 	if (!clients) clients = root_clients;
 
 	rad_assert(client->ipaddr.prefix <= 128);
 
-	rbtree_deletebydata(clients->trees[client->ipaddr.prefix], client);
+	trie = clients_trie(clients, &client->ipaddr, client->proto);
+
+	/*
+	 *	Don't free the client.  The caller is responsible for that.
+	 */
+	(void) fr_trie_remove(trie, &client->ipaddr.addr, client->ipaddr.prefix);
 }
 #endif
 
@@ -280,46 +301,15 @@ RADCLIENT *client_findbynumber(UNUSED const RADCLIENT_LIST *clients, UNUSED int 
  */
 RADCLIENT *client_find(RADCLIENT_LIST const *clients, fr_ipaddr_t const *ipaddr, int proto)
 {
-	int32_t i, max_prefix;
-	RADCLIENT myclient;
+	fr_trie_t *trie;
 
 	if (!clients) clients = root_clients;
 
 	if (!clients || !ipaddr) return NULL;
 
-	switch (ipaddr->af) {
-	case AF_INET:
-		max_prefix = 32;
-		break;
+	trie = clients_trie(clients, ipaddr, proto);
 
-	case AF_INET6:
-		max_prefix = 128;
-		break;
-
-	default :
-		return NULL;
-	}
-
-	/*
-	 *	If we're told to look for client 192.168/16, then look for that,
-	 *	and don't start at /32.
-	 */
-	if (ipaddr->prefix < max_prefix) max_prefix = ipaddr->prefix;
-
-	for (i = max_prefix; i >= (int32_t) clients->min_prefix; i--) {
-		void *data;
-
-		if (!clients->trees[i]) continue;
-
-		myclient.ipaddr = *ipaddr;
-		myclient.proto = proto;
-		fr_ipaddr_mask(&myclient.ipaddr, i);
-
-		data = rbtree_finddata(clients->trees[i], &myclient);
-		if (data) return data;
-	}
-
-	return NULL;
+	return fr_trie_lookup(trie, &ipaddr->addr, ipaddr->prefix);
 }
 
 static fr_ipaddr_t cl_ipaddr;

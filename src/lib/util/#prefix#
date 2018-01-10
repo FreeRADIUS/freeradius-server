@@ -1,0 +1,74 @@
+/** Convert node->entry[chunk] into a path
+ */
+static void fr_trie_path_add_prefix(void **entry, fr_trie_node_t *node, uint16_t chunk, size_t start_bit)
+{
+	uint16_t base, mask;
+	size_t end_bit;
+	fr_trie_path_t *path;
+
+	base = chunk;
+	mask = (1 << node->size) - 1;
+
+	/*
+	 *	Convert this chunk to a
+	 *	fr_trie_path_t, and return that up the
+	 *	trie.
+	 */
+	if (IS_DATA(node->entry[chunk])) {
+		uint8_t key[2];
+
+		/*
+		 *	Get start/end bits for the key.
+		 */
+		start_bit &= 0x07;
+		end_bit = start_bit + node->size;
+		assert(end_bit < 16);
+
+		/*
+		 *	Shift the chunk into position
+		 *
+		 *	@todo - shift in the top bits, too???
+		 */
+		chunk <<= (16 - start_bit - node->size);
+		key[0] = chunk >> 8;
+		key[1] = chunk & 0xff;
+
+		path = fr_trie_path_alloc(talloc_parent(node), key, start_bit, end_bit, node->entry[chunk]);
+		if (!path) return;
+
+		talloc_free(node);
+		*entry = path;
+		return;		
+	}
+
+	/*
+	 *	Extend the child fr_trie_path_t with
+	 *	this chunk, and return that back up
+	 *	the trie.
+	 */
+	if (IS_PATH(node->entry[chunk])) {
+		path = GET_PATH(node->entry[chunk]);
+
+		assert(start_bit == path->start_bit);
+
+		if (BYTEOF(start_bit) == BYTEOF(start_bit + node->size)) {
+			fprintf(stderr, "EXTEND PATH SAME BYTE AFTER COLLAPSE %zd %zd, %zd, %zd\n",
+				start_bit, node->size, path->start_bit, path->length);
+			// path->start_bit -= node->size
+			// move path over
+			// ensure that the higher bits are what we need
+					
+		} else {
+			fprintf(stderr, "EXTEND PATH DIFF BYTE AFTER COLLAPSE\n");
+		}
+	}
+
+}
+
+
+#if 0
+			if (!IS_NODE(node->entry[chunk])) {
+				fr_trie_path_add_prefix(entry, node, chunk, start_bit);
+				return data;
+			}
+#endif

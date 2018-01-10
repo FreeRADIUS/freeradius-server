@@ -212,7 +212,7 @@ VALUE_PAIR *fr_pair_cursor_next_by_num(vp_cursor_t *cursor, unsigned int vendor,
 			VP_VERIFY(i);
 			if (i->da->parent->flags.is_root &&
 			    (i->da->attr == attr) && (i->da->vendor == 0) &&
-			    (!i->da->flags.has_tag || TAG_EQ(tag, i->tag))) {
+			    ATTR_TAG_MATCH(i, tag)) {
 				break;
 			}
 		}
@@ -223,7 +223,7 @@ VALUE_PAIR *fr_pair_cursor_next_by_num(vp_cursor_t *cursor, unsigned int vendor,
 			VP_VERIFY(i);
 			if ((i->da->parent->type == FR_TYPE_VENDOR) &&
 			    (i->da->attr == attr) && (i->da->vendor == vendor) &&
-			    (!i->da->flags.has_tag || TAG_EQ(tag, i->tag))) {
+			    ATTR_TAG_MATCH(i, tag)) {
 				break;
 			}
 		}
@@ -266,8 +266,7 @@ VALUE_PAIR *fr_pair_cursor_next_by_child_num(vp_cursor_t *cursor,
 	     i != NULL;
 	     i = i->next) {
 		VP_VERIFY(i);
-		if ((i->da == da) &&
-		    (!i->da->flags.has_tag || TAG_EQ(tag, i->tag))) {
+		if ((i->da == da) && ATTR_TAG_MATCH(i, tag)) {
 			break;
 		}
 	}
@@ -303,8 +302,7 @@ VALUE_PAIR *fr_pair_cursor_next_by_da(vp_cursor_t *cursor, fr_dict_attr_t const 
 	     i != NULL;
 	     i = i->next) {
 		VP_VERIFY(i);
-		if ((i->da == da) &&
-		    (!i->da->flags.has_tag || TAG_EQ(tag, i->tag))) {
+		if ((i->da == da) && ATTR_TAG_MATCH(i, tag)) {
 			break;
 		}
 	}
@@ -339,7 +337,9 @@ VALUE_PAIR *fr_pair_cursor_next_by_ancestor(vp_cursor_t *cursor, fr_dict_attr_t 
 	     i = i->next) {
 		VP_VERIFY(i);
 		if (fr_dict_parent_common(ancestor, i->da, true) &&
-		    (!i->da->flags.has_tag || TAG_EQ(tag, i->tag))) break;
+		    ATTR_TAG_MATCH(i, tag)) {
+			break;
+		}
 	}
 
 	return fr_pair_cursor_update(cursor, i);
