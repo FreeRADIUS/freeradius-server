@@ -636,13 +636,13 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 	fr_app_io_t const	*app_io;
 	size_t			size;
 
-	rad_assert(data_size == sizeof(*s));
+	rad_assert(data_size == sizeof(s->listen));
 
-	if (data_size != sizeof(*s)) return;
+	if (data_size != sizeof(s->listen)) return;
 
-	s = talloc(nr, fr_network_socket_t);
+	s = talloc_zero(nr, fr_network_socket_t);
 	rad_assert(s != NULL);
-	memcpy(s, data, sizeof(*s));
+	memcpy(&s->listen, data, sizeof(s->listen));
 
 	MEM(s->waiting = fr_heap_create(waiting_cmp, offsetof(fr_channel_data_t, channel.heap_id)));
 	FR_DLIST_INIT(s->entry);
@@ -705,13 +705,13 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 	fr_app_io_t const	*app_io;
 	fr_event_vnode_func_t	funcs = { .extend = fr_network_vnode_extend };
 
-	rad_assert(data_size == sizeof(*s));
+	rad_assert(data_size == sizeof(s->listen));
 
-	if (data_size != sizeof(*s)) return;
+	if (data_size != sizeof(s->listen)) return;
 
-	s = talloc(nr, fr_network_socket_t);
+	s = talloc_zero(nr, fr_network_socket_t);
 	rad_assert(s != NULL);
-	memcpy(s, data, sizeof(*s));
+	memcpy(&s->listen, data, sizeof(s->listen));
 
 	MEM(s->waiting = fr_heap_create(waiting_cmp, offsetof(fr_channel_data_t, channel.heap_id)));
 	FR_DLIST_INIT(s->entry);
@@ -1184,13 +1184,9 @@ void fr_network_exit(fr_network_t *nr)
 int fr_network_socket_add(fr_network_t *nr, fr_listen_t const *listen)
 {
 	int rcode;
-	fr_network_socket_t m;
-
-	memset(&m, 0, sizeof(m));
-	m.listen = listen;
 
 	PTHREAD_MUTEX_LOCK(&nr->mutex);
-	rcode = fr_control_message_send(nr->control, nr->rb, FR_CONTROL_ID_SOCKET, &m, sizeof(m));
+	rcode = fr_control_message_send(nr->control, nr->rb, FR_CONTROL_ID_SOCKET, &listen, sizeof(listen));
 	PTHREAD_MUTEX_UNLOCK(&nr->mutex);
 
 	return rcode;
@@ -1204,13 +1200,9 @@ int fr_network_socket_add(fr_network_t *nr, fr_listen_t const *listen)
 int fr_network_directory_add(fr_network_t *nr, fr_listen_t const *listen)
 {
 	int rcode;
-	fr_network_socket_t m;
-
-	memset(&m, 0, sizeof(m));
-	m.listen = listen;
 
 	PTHREAD_MUTEX_LOCK(&nr->mutex);
-	rcode = fr_control_message_send(nr->control, nr->rb, FR_CONTROL_ID_DIRECTORY, &m, sizeof(m));
+	rcode = fr_control_message_send(nr->control, nr->rb, FR_CONTROL_ID_DIRECTORY, &listen, sizeof(listen));
 	PTHREAD_MUTEX_UNLOCK(&nr->mutex);
 
 	return rcode;
