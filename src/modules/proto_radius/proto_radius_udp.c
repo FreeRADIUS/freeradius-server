@@ -1249,38 +1249,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	proto_radius_udp_t *inst = talloc_get_type_abort(instance, proto_radius_udp_t);
 	char		    dst_buf[128];
 
-	/*
-	 *	Complain if no "ipaddr" is set.
-	 */
-	if (inst->ipaddr.af == AF_UNSPEC) {
-		cf_log_err(cs, "No 'ipaddr' was specified in the 'udp' section");
-		return -1;
-	}
-
-	if (inst->recv_buff_is_set) {
-		FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, >=, 32);
-		FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, <=, INT_MAX);
-	}
-
-	if (!inst->port) {
-		struct servent *s;
-
-		if (!inst->port_name) {
-			cf_log_err(cs, "No 'port' was specified in the 'udp' section");
-			return -1;
-		}
-
-		s = getservbyname(inst->port_name, "udp");
-		if (!s) {
-			cf_log_err(cs, "Unknown value for 'port_name = %s", inst->port_name);
-			return -1;
-		}
-
-		inst->port = ntohl(s->s_port);
-	}
-
-	FR_INTEGER_BOUND_CHECK("cleanup_delay", inst->cleanup_delay, <=, 30);
-
 	inst->ft = fr_radius_tracking_create(inst, sizeof(proto_radius_udp_address_t), inst->parent->code_allowed);
 	if (!inst->ft) {
 		cf_log_err(cs, "Failed to create tracking table: %s", fr_strerror());
@@ -1367,6 +1335,38 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		rad_assert(sizeof(inst->priorities) == sizeof(priorities));
 		memcpy(&inst->priorities, &priorities, sizeof(priorities));
 	}
+
+	/*
+	 *	Complain if no "ipaddr" is set.
+	 */
+	if (inst->ipaddr.af == AF_UNSPEC) {
+		cf_log_err(cs, "No 'ipaddr' was specified in the 'udp' section");
+		return -1;
+	}
+
+	if (inst->recv_buff_is_set) {
+		FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, >=, 32);
+		FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, <=, INT_MAX);
+	}
+
+	if (!inst->port) {
+		struct servent *s;
+
+		if (!inst->port_name) {
+			cf_log_err(cs, "No 'port' was specified in the 'udp' section");
+			return -1;
+		}
+
+		s = getservbyname(inst->port_name, "udp");
+		if (!s) {
+			cf_log_err(cs, "Unknown value for 'port_name = %s", inst->port_name);
+			return -1;
+		}
+
+		inst->port = ntohl(s->s_port);
+	}
+
+	FR_INTEGER_BOUND_CHECK("cleanup_delay", inst->cleanup_delay, <=, 30);
 
 	if (inst->dynamic_clients_is_set) {
 		size_t i, num;
