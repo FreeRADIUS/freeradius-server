@@ -1033,6 +1033,7 @@ AC_CHECK_HEADERS( \
   grp.h \
   inttypes.h \
   limits.h \
+  linux/if_packet.h \
   malloc.h \
   netdb.h \
   netinet/in.h \

@@ -332,7 +332,7 @@ static void send_with_socket(RADIUS_PACKET *request)
  *	A real client would pick one of the proposed replies.
  *	We'll just return the first eligible reply, and display the others.
  */
-static RADIUS_PACKET *fr_dhcp_recv_raw_loop(int sockfd, struct sockaddr_ll *p_ll, RADIUS_PACKET *request_p)
+static RADIUS_PACKET *fr_dhcp_recv_raw_loop(int sockfd_r, struct sockaddr_ll *p_ll, RADIUS_PACKET *request_p)
 {
 	struct timeval tval;
 	RADIUS_PACKET *reply_p = NULL;
@@ -354,17 +354,17 @@ static RADIUS_PACKET *fr_dhcp_recv_raw_loop(int sockfd, struct sockaddr_ll *p_ll
 
 		cur_reply_p = NULL;
 		FD_ZERO(&read_fd);
-		FD_SET(sockfd, &read_fd);
-		retval = select(sockfd + 1, &read_fd, NULL, NULL, &tval);
+		FD_SET(sockfd_r, &read_fd);
+		retval = select(sockfd_r + 1, &read_fd, NULL, NULL, &tval);
 
 		if (retval < 0) {
 			fr_strerror_printf("Select on DHCP socket failed: %s", fr_syserror(errno));
 			return NULL;
 		}
 
-		if ( retval > 0 && FD_ISSET(sockfd, &read_fd)) {
+		if ( retval > 0 && FD_ISSET(sockfd_r, &read_fd)) {
 			/* There is something to read on our socket */
-			cur_reply_p = fr_dhcp_recv_raw_packet(sockfd, p_ll, request_p);
+			cur_reply_p = fr_dhcp_recv_raw_packet(sockfd_r, p_ll, request_p);
 		}
 
 		if (cur_reply_p) {

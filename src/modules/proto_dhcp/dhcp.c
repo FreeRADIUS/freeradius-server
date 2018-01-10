@@ -1942,7 +1942,7 @@ int fr_dhcp_send_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RADIUS_PACKET 
 /*
  *	print an ethernet address in a buffer
  */
-char * ether_addr_print(const uint8_t *addr, char *buf)
+static char * ether_addr_print(const uint8_t *addr, char *buf)
 {
 	sprintf (buf, "%02x:%02x:%02x:%02x:%02x:%02x",
 		addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]);
@@ -1971,9 +1971,7 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RAD
 	uint16_t		udp_src_port;
 	uint16_t		udp_dst_port;
 	size_t			dhcp_data_len;
-	int			retval;
 	socklen_t		sock_len;
-	fd_set 			read_fd;
 
 	packet = rad_alloc(NULL, false);
 	if (!packet) {
@@ -2054,8 +2052,8 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RAD
 	/* d. Check DHCP layer data */
 	dhcp_data_len = data_len - data_offset;
 
-	if (dhcp_data_len < MIN_PACKET_SIZE) DISCARD_RP("DHCP packet is too small (%d < %d)", dhcp_data_len, MIN_PACKET_SIZE);
-	if (dhcp_data_len > MAX_PACKET_SIZE) DISCARD_RP("DHCP packet is too large (%d > %d)", dhcp_data_len, MAX_PACKET_SIZE);
+	if (dhcp_data_len < MIN_PACKET_SIZE) DISCARD_RP("DHCP packet is too small (%zu < %d)", dhcp_data_len, MIN_PACKET_SIZE);
+	if (dhcp_data_len > MAX_PACKET_SIZE) DISCARD_RP("DHCP packet is too large (%zu > %d)", dhcp_data_len, MAX_PACKET_SIZE);
 
 	dhcp_hdr = (dhcp_packet_t *)(raw_packet + ETH_HDR_SIZE + IP_HDR_SIZE + UDP_HDR_SIZE);
 
