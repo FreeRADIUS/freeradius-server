@@ -1407,6 +1407,15 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			}
 
 			/*
+			 *	@todo - look for 192.168/16 followed
+			 *	by 192.168.1/24, or vice-versa.
+			 *	i.e. the networks MUST be disjoint!
+			 *
+			 *	Or maybe that can be added as a flag
+			 *	to fr_trie_alloc() ?
+			 */
+
+			/*
 			 *	Insert the network into the trie.
 			 *	Lookups will return the fr_ipaddr_t of
 			 *	the network.
