@@ -189,7 +189,7 @@ inner-server.pem: inner-server.p12
 .PHONY: inner-server.vrfy
 inner-server.vrfy: ca.pem
 
-	@$(OPENSSL) verify $(PARTIAL) -CAfile ca.pem inner-server.pem
+	openssl verify $(PARTIAL) -CAfile ca.pem inner-server.pem
 
 ######################################################################
 #
