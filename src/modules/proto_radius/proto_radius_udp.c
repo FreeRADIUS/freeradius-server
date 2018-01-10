@@ -1256,12 +1256,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	}
 
 	/*
-	 *	Connected sockets can't have dynamic clients.  They're
-	 *	only connected to one client.
-	 */
-	if (inst->connected) inst->dynamic_clients_is_set = false;
-
-	/*
 	 *	Instantiate proto_radius_dynamic_client
 	 */
 	if (inst->dynamic_clients_is_set) {
@@ -1367,6 +1361,12 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	}
 
 	FR_INTEGER_BOUND_CHECK("cleanup_delay", inst->cleanup_delay, <=, 30);
+
+	/*
+	 *	Connected sockets can't have dynamic clients.  They're
+	 *	only connected to one client.
+	 */
+	if (inst->connected) inst->dynamic_clients_is_set = false;
 
 	if (inst->dynamic_clients_is_set) {
 		size_t i, num;
