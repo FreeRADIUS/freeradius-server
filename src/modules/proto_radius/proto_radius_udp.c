@@ -1385,6 +1385,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 
 		num = talloc_array_length(inst->dynamic_clients.network);
 		for (i = 0; i < num; i++) {
+			fr_ipaddr_t *network;
 			char buffer[256];
 
 			/*
@@ -1399,21 +1400,33 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			/*
 			 *	Duplicates are bad.
 			 */
-			if (fr_trie_match(inst->dynamic_clients.trie,
-					   &inst->dynamic_clients.network[i].addr, inst->dynamic_clients.network[i].prefix) != NULL) {
+			network = fr_trie_match(inst->dynamic_clients.trie,
+					   &inst->dynamic_clients.network[i].addr, inst->dynamic_clients.network[i].prefix);
+			if (network) {
 				fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(inst->dynamic_clients.network[i]), 0);
 				cf_log_err(cs, "Cannot add duplicate entry 'network = %s'", buffer);
 				return -1;
 			}
 
 			/*
-			 *	@todo - look for 192.168/16 followed
-			 *	by 192.168.1/24, or vice-versa.
-			 *	i.e. the networks MUST be disjoint!
+			 *	Look for overlapping entries.
+			 *	i.e. the networks MUST be disjoint.
 			 *
-			 *	Or maybe that can be added as a flag
-			 *	to fr_trie_alloc() ?
+			 *	Note that this catches 192.168.1/24
+			 *	followed by 192.168/16, but NOT the
+			 *	other way around.  The best fix is
+			 *	likely to add a flag to
+			 *	fr_trie_alloc() saying "we can only
+			 *	have terminal fr_trie_user_t nodes"
 			 */
+			network = fr_trie_lookup(inst->dynamic_clients.trie,
+					   &inst->dynamic_clients.network[i].addr, inst->dynamic_clients.network[i].prefix);
+			if (network && (network->prefix <= inst->dynamic_clients.network[i].prefix)) {
+				fr_value_box_snprint(buffer, sizeof(buffer), fr_box_ipaddr(inst->dynamic_clients.network[i]), 0);
+				cf_log_err(cs, "Cannot add overlapping entry 'network = %s'", buffer);
+				cf_log_err(cs, "Entry is completely enclosed inside of a previously defined network.");
+				return -1;
+			}
 
 			/*
 			 *	Insert the network into the trie.
