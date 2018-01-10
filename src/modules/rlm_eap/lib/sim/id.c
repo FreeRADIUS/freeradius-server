@@ -271,7 +271,7 @@ int fr_sim_id_type(fr_sim_id_type_t *type, fr_sim_method_hint_t *hint, char cons
  *			Must be 128 bits (16 bytes).
  * @return
  *	- 0 on success.
- *	- -1 if any of the parameters were invalimsi.
+ *	- -1 if any of the parameters were invalid.
  */
 int fr_sim_id_3gpp_pseudonym_encrypt(char out[SIM_3GPP_PSEUDONYM_LEN + 1],
 				     char const *imsi, size_t imsi_len,
@@ -321,7 +321,7 @@ int fr_sim_id_3gpp_pseudonym_encrypt(char out[SIM_3GPP_PSEUDONYM_LEN + 1],
 	 */
 	while (p < end) {
 		if (unlikely(!isdigit((char)p[0]) || !isdigit((char)p[1]))) {
-			fr_strerror_printf("IMSI contains invalimsi character");
+			fr_strerror_printf("IMSI contains invalid character");
 			return -1;
 		}
 
@@ -413,7 +413,7 @@ int fr_sim_id_3gpp_pseudonym_encrypt(char out[SIM_3GPP_PSEUDONYM_LEN + 1],
 		u_p += 3;
 	}
 	if ((out_p - out) != SIM_3GPP_PSEUDONYM_LEN) {
-		fr_strerror_printf("Base64 output length invalimsi, expected %i bytes, got %zu bytes",
+		fr_strerror_printf("Base64 output length invalid, expected %i bytes, got %zu bytes",
 				   SIM_3GPP_PSEUDONYM_LEN, out_p - out);
 		return -1;
 	}
