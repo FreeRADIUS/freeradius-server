@@ -85,17 +85,17 @@ typedef struct {
 
 	uint16_t			port;			//!< Port to listen on.
 	uint32_t			recv_buff;		//!< How big the kernel's receive buffer should be.
-	bool				recv_buff_is_set;	//!< Whether we were provided with a receive
-								//!< buffer value.
 
 	fr_tracking_t			*ft;			//!< tracking table
 	uint32_t			cleanup_delay;		//!< cleanup delay for Access-Request packets
 
 	fr_stats_t			stats;			//!< statistics for this socket
 
-	bool				dynamic_clients_is_set;	//!< set if we have dynamic clients
 	dynamic_client_t		dynamic_clients;	//!< dynamic client infromation
 
+	bool				dynamic_clients_is_set;	//!< set if we have dynamic clients
+	bool				recv_buff_is_set;	//!< Whether we were provided with a receive
+								//!< buffer value.
 	uint32_t			priorities[FR_MAX_PACKET_CODE];	//!< priorities for individual packets
 } proto_radius_udp_t;
 

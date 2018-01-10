@@ -167,7 +167,7 @@ typedef struct value_pair_raw {
 				} while(0)
 
 #define TAG_VALID(x)		((x) > 0 && (x) < 0x20)
-#define TAG_VALID_ZERO(x)	((x) < 0x20)
+#define TAG_VALID_ZERO(x)      	((x) >= 0 && (x) < 0x20)
 #define TAG_ANY			INT8_MIN
 #define TAG_NONE		0
 /** Check if tags are equal
@@ -176,6 +176,7 @@ typedef struct value_pair_raw {
  * @param _y tag belonging to the attribute were checking.
  */
 #define TAG_EQ(_x, _y) ((_x == _y) || (_x == TAG_ANY) || ((_x == TAG_NONE) && (_y == TAG_ANY)))
+#define ATTR_TAG_MATCH(_a, _t) (!_a->da->flags.has_tag || TAG_EQ(_t, _a->tag))
 #define ATTRIBUTE_EQ(_x, _y) ((_x && _y) && (_x->da == _y->da) && (!_x->da->flags.has_tag || TAG_EQ(_x->tag, _y->tag)))
 
 #define NUM_ANY			INT_MIN

@@ -422,7 +422,7 @@ static rlm_components_t code2component[FR_CODE_DO_NOT_RESPOND + 1] = {
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	proto_radius_t		*inst = talloc_get_type_abort(instance, proto_radius_t);
-	size_t			i = 0;
+	size_t			i;
 
 	fr_dict_attr_t const	*da;
 	CONF_PAIR		*cp = NULL;
@@ -455,6 +455,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 *	@todo - this loop is run on the virtual server for
 	 *	every "listen" section in it.  Which isn't efficient.
 	 */
+	i = 0;
 	for (ci = cf_item_next(server, NULL);
 	     ci != NULL;
 	     ci = cf_item_next(server, ci)) {
@@ -476,6 +477,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		    (strcmp(name, "send") != 0)) {
 			continue;
 		}
+
+		i++;
 
 		/*
 		 *	Skip a section if it was already compiled.
@@ -519,8 +522,17 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	}
 
 	/*
+	 *	No 'recv' or 'send' sections.  That's an error.
+	 */
+	if (!i) {
+		cf_log_err(server, "Virtual servers cannot be empty.");
+		return -1;
+	}
+
+	/*
 	 *	Instantiate the process modules
 	 */
+	i = 0;
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
 		fr_app_process_t const	*app_process;
 		fr_dict_enum_t const	*enumv;
@@ -544,15 +556,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 		rad_assert(inst->code_allowed[code] == true);
 		i++;
-	}
-
-	/*
-	 *	Disallow this?
-	 *
-	 *	Or just go through and compile all of the sections?
-	 */
-	if (!i) {
-		cf_log_warn(conf, "Poopy pants");
 	}
 
 	/*

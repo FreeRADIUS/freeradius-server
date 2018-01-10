@@ -653,6 +653,9 @@ size_t xlat_snprint(char *buffer, size_t bufsize, xlat_exp_t const *node)
 			*(p++) = '%';
 			*(p++) = '{';
 
+			/*
+			 *	@todo - just call tmpl_snprint() ??
+			 */
 			if (node->attr->tmpl_request != REQUEST_CURRENT) {
 				strlcpy(p, fr_int2str(request_refs, node->attr->tmpl_request, "??"), end - p);
 				p += strlen(p);
@@ -669,9 +672,8 @@ size_t xlat_snprint(char *buffer, size_t bufsize, xlat_exp_t const *node)
 			strlcpy(p, node->attr->tmpl_da->name, end - p);
 			p += strlen(p);
 
-			if (node->attr->tmpl_tag != TAG_ANY) {
-				*(p++) = ':';
-				snprintf(p, end - p, "%u", node->attr->tmpl_tag);
+			if (TAG_VALID(node->attr->tmpl_tag)) {
+				snprintf(p, end - p, ":%d", node->attr->tmpl_tag);
 				p += strlen(p);
 			}
 

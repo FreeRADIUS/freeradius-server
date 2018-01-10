@@ -1,0 +1,13 @@
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.old
+*.attr
+ca.der
+dh
+index.txt
+random
+serial
+passwords.mk

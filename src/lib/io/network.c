@@ -310,6 +310,36 @@ static bool fr_network_send_request(fr_network_t *nr, fr_channel_data_t *cd)
 }
 
 
+/*
+ *	Mark it as dead, but DON'T free it until all of the replies
+ *	have come in.
+ */
+static void fr_network_socket_dead(fr_network_t *nr, fr_network_socket_t *s)
+{
+	if (s->dead) return;
+
+	s->dead = true;
+
+	fr_event_fd_delete(nr->el, s->fd, FR_EVENT_FILTER_IO);
+
+	/*
+	 *	If there are no outstanding packets, then we can free
+	 *	it now.
+	 */
+	if (!s->outstanding) {
+		talloc_free(s);
+		return;
+	}
+
+	/*
+	 *	There are still outstanding packets.  Leave it in the
+	 *	socket tree, so that replies from the worker can find
+	 *	it.  When we've received all of the replies, then
+	 *	fr_network_post_event() will clean up this socket.
+	 */
+}
+
+
 /** Read a packet from the network.
  *
  * @param[in] el	the event list.
@@ -333,7 +363,7 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int f
 		cd = (fr_channel_data_t *) fr_message_reserve(s->ms, s->listen->default_message_size);
 		if (!cd) {
 			fr_log(nr->log, L_ERR, "Failed allocating message size %zd! - Closing socket", s->listen->default_message_size);
-			talloc_free(s);
+			fr_network_socket_dead(nr, s);
 			return;
 		}
 	} else {
@@ -377,7 +407,7 @@ next_message:
 	 */
 	if (data_size < 0) {
 		fr_log(nr->log, L_DBG_ERR, "error from transport read on socket %d", sockfd);
-		talloc_free(s);
+		fr_network_socket_dead(nr, s);
 		return;
 	}
 	s->cd = NULL;
@@ -463,24 +493,6 @@ static void fr_network_vnode_extend(UNUSED fr_event_list_t *el, int sockfd, int 
 	 *	file.
 	 */
 	s->listen->app_io->vnode(s->listen->app_io_instance, fflags);
-}
-
-/*
- *	Mark it as dead, but DON'T free it until all of the replies
- *	have come in.
- */
-static void fr_network_socket_dead(fr_network_t *nr, fr_network_socket_t *s)
-{
-	fr_event_fd_delete(nr->el, s->fd, FR_EVENT_FILTER_IO);
-
-	/*
-	 *	Leave it in the RBtree so we can catch pending replies.
-	 */
-
-	if (!s->outstanding) {
-		talloc_free(s);
-		return;
-	}
 }
 
 
@@ -581,7 +593,9 @@ static int _network_socket_free(fr_network_socket_t *s)
 	fr_network_t *nr = talloc_parent(s);
 	fr_channel_data_t *cd;
 
-	fr_event_fd_delete(nr->el, s->fd, FR_EVENT_FILTER_IO);
+	if (!s->dead) {
+		fr_event_fd_delete(nr->el, s->fd, FR_EVENT_FILTER_IO);
+	}
 
 	rbtree_deletebydata(nr->sockets, s);
 

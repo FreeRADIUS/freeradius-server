@@ -1,0 +1,228 @@
+lcp	a	b	6
+lcp	a	a	8
+lcp	a	A	2
+lcp	a	C	2
+lcp	aa	ab	14
+lcp	aaa	aab	22
+lcp	aaa	aaab	24
+lcp	aaaaaaa	aaaaaab	54
+lcp	a	aaa	8
+lcp	aaa	a	8
+
+#
+#  LCP with offsets
+#
+#  Note that 'length' is length beginning from 'start'
+#
+#	string	length	string	length	start	result
+lcp	a	8	b	8	0	6
+lcp	a	4	b	4	4	2
+lcp	a	3	b	3	5	1
+lcp	a	8	A	8	0	2
+lcp	a	2	A	2	0	2
+lcp	a	4	A	4	0	2
+lcp	a	1	A	1	0	1
+
+lcp	aaa	24	aab	24	4	18
+
+#
+#  Insert a path and user data
+#  Look up the key, and ensure that the user data matches
+#  print the whole trie
+#  remove the path we inserted
+#  ensure that the trie is empty
+#
+path	aaa	1	aaa=1
+path	a	2	a=2
+path	bbbb	1	bbbb=1
+
+#
+#  Insert a key, followed by user data.
+#  The key doesn't have to be alphabetical, it can be anything.
+#  The user data doesn't have to be a numeric.
+#  But doing so makes things easier.
+#
+insert	aaa	1
+print	aaa=1
+lookup	aaa	1
+remove	aaa	1
+print	{}
+
+#
+#  Insert disjoint keys.
+#
+insert	a	1
+insert	b	2
+
+print	a=1,b=2
+lookup	a	1
+lookup	b	2
+
+remove	a	1
+print	b=2
+lookup	b	2
+remove	b	2
+print	{}
+
+#
+#  "lookup" is "find longest match"
+#  "match" is "find exact match"
+#
+insert	a	1
+insert	aa	2
+print	a=1,aa=2
+lookup	c	{}	# isn't in the trie
+lookup	ab	1	# gets shortest match
+match	ab	{}	# exact match doesn't exist
+
+remove	a	1
+print	aa=2
+remove	aa	2
+print	{}
+
+
+
+insert	aaab	1
+insert	aaac	2
+insert	b	3
+insert	c	4
+print	aaab=1,aaac=2,b=3,c=4
+remove	c	4
+print	aaab=1,aaac=2,b=3
+remove	aaab	1
+print	aaac=2,b=3
+
+remove	aaac	2
+print	b=3
+remove	b	3
+print	{}
+
+insert	a	1
+remove	a	1
+insert	a	1
+verify
+
+insert	ab	2
+print	a=1,ab=2
+remove	ab	2
+insert	ab	2
+verify
+
+insert	aaabb	3
+remove	aaabb	3
+insert	aaabb	3
+verify
+
+insert	aabcd	4
+remove	aabcd	4
+insert	aabcd	4
+verify
+
+insert	ad	5
+remove	ad	5
+insert	ad	5
+verify
+
+print	a=1,aaabb=3,aabcd=4,ab=2,ad=5
+insert	abd	6
+match	abd	6
+print	a=1,aaabb=3,aabcd=4,ab=2,abd=6,ad=5
+verify
+remove	abd	6
+verify
+insert	abd	6
+verify
+
+insert	b	7
+remove	b	7
+insert	b	7
+
+insert	c	8
+remove	c	8
+insert	c	8
+
+match	ab	2
+match	aabcd	4
+match	aaabb	3
+remove	b	7
+remove	a	1
+match	c	8
+remove	ab	2
+remove	aaabb	3
+remove	c	8
+
+match	ad	5
+
+print	aabcd=4,abd=6,ad=5
+remove	ad	5
+
+print	aabcd=4,abd=6
+#dump
+
+remove	abd	6
+
+remove	aabcd	4
+
+lookup	abd	{}
+print	{}
+
+insert	a	1
+insert	aa	2
+insert	aaa	3
+lookup	aaa	3
+lookup	aa	2
+lookup	a	1
+lookup	b	{}
+lookup	ab	1
+
+insert	bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb	5
+print	a=1,aa=2,aaa=3,bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb=5
+clear
+print	{}
+
+#
+#  Tests for node splitting
+#
+insert	a	1
+insert	b	2
+insert	c	3
+insert	d	4
+
+#
+#  Insert with short bits
+#
+#	{6} means "use only 6 bits of the following key"
+#
+insert	{6}a	5
+
+#
+#  Upper 6 bits of 'a' are 0x60, or `
+#
+print	`=5,a=1,b=2,c=3,d=4
+
+match	{6}a	5
+match	{7}a	{}	# exact match isn't available
+lookup	{7}a	5	# but shortest prefix match is available
+lookup	a	1	# this is an exact match
+lookup	aa	1	# this is a longest prefix match
+lookup	{1}a	{}	# nothing matches yet
+match	a	1
+insert	{0}a	0
+lookup	{0}a	0
+lookup	{1}a	0
+lookup	{2}a	0
+remove	{0}a	0
+
+remove	a	1
+print	`=5,b=2,c=3,d=4
+
+remove	{6}a	5	
+print	b=2,c=3,d=4
+remove	b	2
+remove	c	3
+remove	d	4
+print	{}
+
+insert	a	1
+insert	ab	2
+print	a=1,ab=2
