@@ -105,6 +105,7 @@ typedef struct fr_app_io_t {
 	fr_io_get_fd_t			fd;		//!< Return the file descriptor from the instance.
 	fr_io_data_read_t		read;		//!< Read from a socket to a data buffer
 	fr_io_data_write_t		write;		//!< Write from a data buffer to a socket
+	fr_io_data_inject_t		inject;		//!< Inject a packet into a socket.
 	fr_io_data_vnode_t		vnode;		//!< Handle notifications that the VNODE has changed
 	fr_io_decode_t			decode;		//!< Translate raw bytes into VALUE_PAIRs and metadata.
 	fr_io_encode_t			encode;		//!< Pack VALUE_PAIRs back into a byte array.

@@ -216,6 +216,36 @@ typedef ssize_t (*fr_io_data_read_t)(void *instance, void **packet_ctx, fr_time_
 typedef ssize_t (*fr_io_data_write_t)(void *instance, void *packet_ctx, fr_time_t request_time,
 				      uint8_t *buffer, size_t buffer_len);
 
+/** Inject data into a socket.
+ *
+ *  This function allows callers to inject data into a socket, just as if the data
+ *  was read from a socket.
+ *
+ *  Note that this function is NOT an analog to fr_io_data_read_t.
+ *  That is, the called function MUST copy the packet pointer into an
+ *  internal list, so that subsequent calls to read() will return this
+ *  packet.
+ *
+ *  The network side ensures that the packet buffer remains available
+ *  to the called function for the duration of an inject() and read()
+ *  call.  i.e. the packet contents do NOT have to be saved, and the
+ *  code can instead save the pointer to the buffer.
+ *
+ *  However, this buffer MUST be immediately returned on a subsequent
+ *  call to read().  If it is not returned, the memory is still freed,
+ *  and the pointer becomes invalid.  Subsequent access to the buffer
+ *  will result in crashes.
+ *
+ * @param[in] instance		the context for this function
+ * @param[in] buffer		the buffer where the raw packet to be injected
+ * @param[in] buffer_len	the length of the buffer
+ * @param[in] recv_time		when the packet was received
+ * @return
+ *	- <0 on error
+ *	- 0 on success
+ */
+typedef int (*fr_io_data_inject_t)(void *instance,uint8_t *buffer, size_t buffer_len, fr_time_t recv_time);
+
 /** Tell the IO handler that a VNODE has changed
  *
  * @param[in] instance		the context for this function

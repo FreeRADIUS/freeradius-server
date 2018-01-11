@@ -60,6 +60,13 @@ RCSID("$Id$")
 
 #define MAX_WORKERS 32
 
+typedef struct fr_network_inject_t {
+	fr_listen_t	*listen;
+	uint8_t		*packet;
+	size_t		packet_len;
+	fr_time_t	recv_time;
+} fr_network_inject_t;
+
 typedef struct fr_network_worker_t {
 	int			heap_id;		//!< workers are in a heap
 	fr_time_t		cpu_time;		//!< how much CPU time this worker has spent
@@ -797,6 +804,42 @@ static void fr_network_worker_callback(void *ctx, void const *data, size_t data_
 }
 
 
+/** Handle a network control message callback for a packet sent to a socket
+ *
+ * @param[in] ctx the network
+ * @param[in] data the message
+ * @param[in] data_size size of the data
+ * @param[in] now the current time
+ */
+static void fr_network_inject_callback(void *ctx, void const *data, size_t data_size, UNUSED fr_time_t now)
+{
+	fr_network_t *nr = ctx;
+	fr_network_inject_t my_inject;
+	fr_network_socket_t *s, my_socket;
+
+	rad_assert(data_size == sizeof(my_inject));
+
+	memcpy(&my_inject, data, data_size);
+
+	my_socket.listen = my_inject.listen;
+	s = rbtree_finddata(nr->sockets, &my_socket);
+	if (!s) {
+		talloc_free(my_inject.packet); /* MUST be it's own TALLOC_CTX */
+		return;
+	}
+
+	/*
+	 *	Inject the packet, and then read it back from the
+	 *	network.
+	 */
+	if (s->listen->app_io->inject(s->listen->app_io_instance, my_inject.packet, my_inject.packet_len, my_inject.recv_time) == 0) {
+		fr_network_read(nr->el, s->fd, 0, s);
+	}
+
+	talloc_free(my_inject.packet);
+}
+
+
 /** Service a control-plane event.
  *
  * @param[in] kq the kq to service
@@ -895,6 +938,11 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t c
 
 	if (fr_control_callback_add(nr->control, FR_CONTROL_ID_WORKER, nr, fr_network_worker_callback) < 0) {
 		fr_strerror_printf("Failed adding worker callback: %s", fr_strerror());
+		goto fail2;
+	}
+
+	if (fr_control_callback_add(nr->control, FR_CONTROL_ID_INJECT, nr, fr_network_inject_callback) < 0) {
+		fr_strerror_printf("Failed adding packet injection callback: %s", fr_strerror());
 		goto fail2;
 	}
 
@@ -1247,4 +1295,40 @@ void fr_network_listen_read(fr_network_t *nr, fr_listen_t const *listen)
 	 *	Go read the socket.
 	 */
 	fr_network_read(nr->el, s->fd, 0, s);
+}
+
+/** Inject a packet for a listener
+ *
+ * @param nr		the network
+ * @param listen	the listener where the packet is being injected
+ * @param packet	the packet to be injected
+ * @param packet_len	the length of the packet
+ * @param recv_time	when the packet was received.
+ * @return
+ *	- <0 on error
+ *	- 0 on success
+ */
+int fr_network_listen_inject(fr_network_t *nr, fr_listen_t *listen, uint8_t *packet, size_t packet_len, fr_time_t recv_time)
+{
+	int rcode;
+	fr_network_inject_t my_inject;
+
+	(void) talloc_get_type_abort(nr, fr_network_t);
+	(void) talloc_get_type_abort(listen, fr_listen_t);
+
+	/*
+	 *	Can't inject to injection-less destinations.
+	 */
+	if (!listen->app_io->inject) return -1;
+
+	my_inject.listen = listen;
+	my_inject.packet = packet;
+	my_inject.packet_len = packet_len;
+	my_inject.recv_time = recv_time;
+
+	PTHREAD_MUTEX_LOCK(&nr->mutex);
+	rcode = fr_control_message_send(nr->control, nr->rb, FR_CONTROL_ID_INJECT, &my_inject, sizeof(my_inject));
+	PTHREAD_MUTEX_UNLOCK(&nr->mutex);
+
+	return rcode;
 }

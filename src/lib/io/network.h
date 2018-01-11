@@ -42,6 +42,7 @@ int fr_network_socket_add(fr_network_t *nr, fr_listen_t const *io) CC_HINT(nonnu
 int fr_network_directory_add(fr_network_t *nr, fr_listen_t const *listen) CC_HINT(nonnull);
 int fr_network_worker_add(fr_network_t *nr, fr_worker_t *worker) CC_HINT(nonnull);
 void fr_network_listen_read(fr_network_t *nr, fr_listen_t const *listen) CC_HINT(nonnull);
+int fr_network_listen_inject(fr_network_t *nr, fr_listen_t *listen, uint8_t *packet, size_t packet_len, fr_time_t recv_time);
 
 #ifdef __cplusplus
 }
