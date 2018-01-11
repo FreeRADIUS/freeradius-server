@@ -71,7 +71,41 @@ typedef struct fr_radius_dynamic_client_t {
 	uint32_t			lifetime;		//!< of the dynamic client, in seconds.
 } fr_radius_dynamic_client_t;
 
-typedef struct {
+#ifdef HAVE_PTHREAD_H
+#define PTHREAD_MUTEX_LOCK   pthread_mutex_lock
+#define PTHREAD_MUTEX_UNLOCK pthread_mutex_unlock
+
+#else
+#define PTHREAD_MUTEX_LOCK
+#define PTHREAD_MUTEX_UNLOCK
+#endif
+
+/*
+ *	Structure only in the master.
+ */
+typedef struct proto_radius_udp_master_t {
+	TALLOC_CTX			*ctx;			//!< for the hash table
+	fr_hash_table_t			*ht;			//!< for child sockets
+	int				max_children;		//!< maximum number of children we allow
+#ifdef HAVE_PTHREAD_H
+	pthread_mutex_t			mutex;			//!< so the children can remove themselves from the table
+#endif
+} proto_radius_udp_master_t;
+
+/*
+ *	Structure only in the child.
+ */
+typedef struct proto_radius_udp_child_t {
+	fr_ipaddr_t			src_ipaddr;		//!< source IP for connected sockets
+	uint16_t			src_port;      		//!< Source port for connected sockets.
+
+	uint8_t const			*packet;		//!< for injection
+	size_t				packet_len;		//!< length of the packet
+	fr_time_t			recv_time;		//!< of the packet
+	struct proto_radius_udp_t	*master;		//!< for the master socket.
+} proto_radius_udp_child_t;
+
+typedef struct proto_radius_udp_t {
 	proto_radius_t	const		*parent;		//!< The module that spawned us!
 	char const			*name;			//!< socket name
 
@@ -81,14 +115,9 @@ typedef struct {
 	fr_network_t			*nr;			//!< for fr_network_listen_read();
 
 	fr_ipaddr_t			ipaddr;			//!< IP address to listen on.
-	fr_ipaddr_t			src_ipaddr;		//!< source IP for connected sockets
-
 
 	char const			*interface;		//!< Interface to bind to.
 	char const			*port_name;		//!< Name of the port for getservent().
-
-	uint16_t			port;			//!< Port to listen on.
-	uint16_t			src_port;      		//!< Source port for connected sockets.
 
 	uint32_t			recv_buff;		//!< How big the kernel's receive buffer should be.
 
@@ -99,10 +128,18 @@ typedef struct {
 
 	fr_radius_dynamic_client_t	dynamic_clients;	//!< dynamic client infromation
 
+	uint16_t			port;			//!< Port to listen on.
+
 	bool				dynamic_clients_is_set;	//!< set if we have dynamic clients
 	bool				recv_buff_is_set;	//!< Whether we were provided with a receive
 								//!< buffer value.
+	bool				use_connected;		//!< do we use connected sockets
 	bool				connected;		//!< is this a connected socket?
+
+	union {
+		proto_radius_udp_child_t	child;			//!< information only for the child
+		proto_radius_udp_master_t	master;			//!< information only for the master
+	};
 
 	uint32_t			priorities[FR_MAX_PACKET_CODE];	//!< priorities for individual packets
 } proto_radius_udp_t;
@@ -1291,10 +1328,10 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	} else {
 		char src_buf[128];
 
-		fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(inst->src_ipaddr), 0);
+		fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(inst->child.src_ipaddr), 0);
 
 		inst->name = talloc_typed_asprintf(inst, "proto udp client %s port %u to address %s port %u",
-						   src_buf, inst->src_port, dst_buf, inst->port);
+						   src_buf, inst->child.src_port, dst_buf, inst->port);
 	}
 
 	return 0;
