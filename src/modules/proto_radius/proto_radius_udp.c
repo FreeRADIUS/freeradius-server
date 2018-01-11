@@ -86,7 +86,6 @@ typedef struct fr_radius_dynamic_client_t {
 typedef struct proto_radius_udp_master_t {
 	TALLOC_CTX			*ctx;			//!< for the hash table
 	fr_hash_table_t			*ht;			//!< for child sockets
-	int				max_children;		//!< maximum number of children we allow
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t			mutex;			//!< so the children can remove themselves from the table
 #endif
@@ -136,6 +135,8 @@ typedef struct proto_radius_udp_t {
 	bool				use_connected;		//!< do we use connected sockets
 	bool				connected;		//!< is this a connected socket?
 
+	uint32_t	       		max_connections;	//!< maximum number of child connections we allow
+
 	union {
 		proto_radius_udp_child_t	child;			//!< information only for the child
 		proto_radius_udp_master_t	master;			//!< information only for the master
@@ -176,6 +177,9 @@ static const CONF_PARSER udp_listen_config[] = {
 	{ FR_CONF_IS_SET_OFFSET("recv_buff", FR_TYPE_UINT32, proto_radius_udp_t, recv_buff) },
 
 	{ FR_CONF_OFFSET("cleanup_delay", FR_TYPE_UINT32, proto_radius_udp_t, cleanup_delay), .dflt = "5" },
+
+	{ FR_CONF_OFFSET("connected", FR_TYPE_BOOL, proto_radius_udp_t, use_connected), .dflt = "no" },
+	{ FR_CONF_OFFSET("max_connections", FR_TYPE_UINT32, proto_radius_udp_t, max_connections) },
 
 	/*
 	 *	Note that we have to pass offset of dynamic_client to get the "IS_SET" functionality.
@@ -1337,6 +1341,20 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	return 0;
 }
 
+static uint32_t udp_hash_inst(void const *instance)
+{
+	return fr_hash(&instance, sizeof(instance));
+}
+
+static int udp_cmp_inst(void const *one, void const *two)
+{
+	proto_radius_udp_t const *a = one;
+	proto_radius_udp_t const *b = two;
+
+	return (a - b);
+}
+
+
 static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 {
 	proto_radius_udp_t	*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
@@ -1512,8 +1530,51 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		}
 	}
 
+	/*
+	 *	Using connected sockets?  Initialize more information.
+	 */
+	if (inst->use_connected) {
+		if (!inst->connected) {
+#ifdef HAVE_PTHREAD_H
+			(void) pthread_mutex_init(&inst->master.mutex, NULL);
+#endif
+			inst->master.ctx = talloc_init("proto_radius_udp_master_t");
+			if (!inst->master.ctx) {
+			nomem:
+				cf_log_err(cs, "Failed initializing data structures.");
+				return -1;
+			}
+			inst->master.ht = fr_hash_table_create(inst->master.ctx, udp_hash_inst, udp_cmp_inst, NULL);
+			if (!inst->master.ht) goto nomem;
+
+			FR_INTEGER_BOUND_CHECK("max_connections", inst->max_connections, >=, 4);
+			FR_INTEGER_BOUND_CHECK("max_connections", inst->max_connections, <=, 65536);
+
+		} else {
+			/*
+			 *	We MUST have been initialized to point
+			 *	to the master.
+			 */
+			rad_assert(inst->child.master != NULL);
+
+			/*
+			 *	We MUST already have an open socket.
+			 */
+			rad_assert(inst->sockfd >= 0);
+		}
+	}
+
 	return 0;
 }
+
+static int divorce_children(UNUSED void *ctx, void *data)
+{
+	proto_radius_udp_t *child = data;
+
+	child->child.master = NULL;
+	return 0;
+}
+
 
 static int mod_detach(void *instance)
 {
@@ -1526,6 +1587,37 @@ static int mod_detach(void *instance)
 	 */
 
 	if (inst->dynamic_clients.clients) TALLOC_FREE(inst->dynamic_clients.clients);
+
+	/*
+	 *	Clean up extra tracking information when using
+	 *	connected sockets.
+	 */
+	if (inst->use_connected) {
+		/*
+		 *	If we're the master, tell the children to
+		 *	forget about us, and then clean up the hash
+		 *	table and mutexes.
+		 */
+		if (!inst->connected) {
+			PTHREAD_MUTEX_LOCK(&inst->master.mutex);
+			(void) fr_hash_table_walk(inst->master.ht, divorce_children, inst);
+			TALLOC_FREE(inst->master.ctx);
+			PTHREAD_MUTEX_UNLOCK(&inst->master.mutex);
+#ifdef HAVE_PTHREAD_H
+			(void) pthread_mutex_destroy(&inst->master.mutex);
+#endif
+
+		} else {
+			/*
+			 *	We're the child, tell the master to
+			 *	forget about us.
+			 */
+			PTHREAD_MUTEX_LOCK(&inst->master.mutex);
+			(void) fr_hash_table_delete(inst->master.ht, inst);
+			TALLOC_FREE(inst->master.ctx);
+			PTHREAD_MUTEX_UNLOCK(&inst->master.mutex);
+		}
+	}
 
 	close(inst->sockfd);
 	return 0;
