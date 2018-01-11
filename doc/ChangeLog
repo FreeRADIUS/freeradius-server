@@ -1,3 +1,7 @@
+FreeRADIUS 3.0.17 Thu 11 Jan 2018 12:00:00 EST urgency=low
+	Feature improvements
+	Bug fixes
+
 FreeRADIUS 3.0.16 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	Feature improvements
 	* rlm_python now supports multiple lists.  From #2031.
