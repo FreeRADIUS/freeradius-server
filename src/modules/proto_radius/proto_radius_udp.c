@@ -101,6 +101,7 @@ typedef struct proto_radius_udp_child_t {
 	uint8_t const			*packet;		//!< for injection
 	size_t				packet_len;		//!< length of the packet
 	fr_time_t			recv_time;		//!< of the packet
+	RADCLIENT			*client;		//!< static client for this connection
 	struct proto_radius_udp_t	*master;		//!< for the master socket.
 } proto_radius_udp_child_t;
 
@@ -675,15 +676,40 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 {
 	proto_radius_udp_t		*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
 
+	int				flags;
 	ssize_t				data_size;
 	size_t				packet_len;
 	decode_fail_t			reason;
+	fr_time_t			packet_time;
 
 	struct timeval			timestamp;
 	fr_tracking_status_t		tracking_status;
 	fr_tracking_entry_t		*track = NULL;
 	proto_radius_udp_address_t	address;
 	fr_dlist_t			*entry;
+
+	/*
+	 *	Check for injected packets first.
+	 */
+	if (inst->connected && (inst->child.packet != NULL)) {
+		/*
+		 *	Packet is too large, ignore it.
+		 */
+		if (buffer_len < inst->child.packet_len) {
+			inst->child.packet = NULL;
+			return 0;
+		}
+
+		memcpy(buffer, inst->child.packet, inst->child.packet_len);
+		data_size = inst->child.packet_len;
+
+		address.code = buffer[0];
+		address.id = buffer[1];
+
+		inst->child.packet = NULL;
+		packet_time = inst->child.recv_time;
+		goto connected;
+	}
 
 	/*
 	 *	There are saved packets.  Go read them.
@@ -706,7 +732,12 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 
 	*leftover = 0;
 
-	data_size = udp_recv(inst->sockfd, buffer, buffer_len, 0,
+	/*
+	 *	Tell udp_recv if we're connected or not.
+	 */
+	flags = UDP_FLAGS_CONNECTED * inst->connected;
+
+	data_size = udp_recv(inst->sockfd, buffer, buffer_len, flags,
 			     &address.src_ipaddr, &address.src_port,
 			     &address.dst_ipaddr, &address.dst_port,
 			     &address.if_index, &timestamp);
@@ -824,6 +855,17 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 		goto return_packet;
 	}
 
+	packet_time = fr_time();
+
+	if (inst->connected) {
+connected:
+		address.src_ipaddr = inst->child.src_ipaddr;
+		address.src_port = inst->child.src_port;
+		address.dst_ipaddr = inst->ipaddr;
+		address.dst_port = inst->port;
+
+		address.client = inst->child.client;
+	}
 found:
 	/*
 	 *	If the signature fails validation, ignore it.
@@ -836,7 +878,7 @@ found:
 		return 0;
 	}
 
-	tracking_status = fr_radius_tracking_entry_insert(&track, inst->ft, buffer, fr_time(), &address);
+	tracking_status = fr_radius_tracking_entry_insert(&track, inst->ft, buffer, packet_time, &address);
 	switch (tracking_status) {
 	case FR_TRACKING_ERROR:
 	case FR_TRACKING_UNUSED:
@@ -910,6 +952,64 @@ return_packet:
 	return packet_len;
 }
 
+
+static int mod_inject(void *instance, uint8_t *buffer, size_t buffer_len, fr_time_t recv_time)
+{
+	proto_radius_udp_t		*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
+	size_t				packet_len;
+	decode_fail_t			reason;
+
+	if (!inst->connected) {
+		DEBUG2("proto_radius_udp received injected packet for an unconnected socket.");
+		inst->stats.total_packets_dropped++;
+		return -1;
+	}
+
+	if (inst->child.packet != NULL) {
+		DEBUG2("proto_radius_udp received two injected packets in a row.");
+		inst->stats.total_packets_dropped++;
+		return -1;
+	}
+
+	/*
+	 *	We should still sanity check the packet.
+	 */
+	if (buffer_len < 20) {
+		DEBUG2("proto_radius_udp got 'too short' packet size %zd", buffer_len);
+		inst->stats.total_malformed_requests++;
+		return -1;
+	}
+
+	if ((buffer[0] == 0) || (buffer[0] > FR_MAX_PACKET_CODE)) {
+		DEBUG("proto_radius_udp got invalid packet code %d", buffer[0]);
+		inst->stats.total_unknown_types++;
+		return -1;
+	}
+
+	if (!inst->parent->process_by_code[buffer[0]]) {
+		DEBUG("proto_radius_udp got unexpected packet code %d", buffer[0]);
+		inst->stats.total_unknown_types++;
+		return -1;
+	}
+
+	/*
+	 *	If it's not a RADIUS packet, ignore it.
+	 */
+	if (!fr_radius_ok(buffer, &packet_len, inst->parent->max_attributes, false, &reason)) {
+		/*
+		 *	@todo - check for F5 load balancer packets.  <sigh>
+		 */
+		DEBUG2("proto_radius_udp got a packet which isn't RADIUS");
+		inst->stats.total_malformed_requests++;
+		return -1;
+	}
+
+	inst->child.packet = buffer;
+	inst->child.packet_len = packet_len;
+	inst->child.recv_time = recv_time;
+
+	return 0;
+}
 
 static ssize_t mod_write(void *instance, void *packet_ctx,
 			 fr_time_t request_time, uint8_t *buffer, size_t buffer_len)
@@ -1547,6 +1647,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			inst->master.ht = fr_hash_table_create(inst->master.ctx, udp_hash_inst, udp_cmp_inst, NULL);
 			if (!inst->master.ht) goto nomem;
 
+			if (!inst->max_connections) inst->max_connections = 65536;
+
 			FR_INTEGER_BOUND_CHECK("max_connections", inst->max_connections, >=, 4);
 			FR_INTEGER_BOUND_CHECK("max_connections", inst->max_connections, <=, 65536);
 
@@ -1649,9 +1751,10 @@ fr_app_io_t proto_radius_udp = {
 
 	.open			= mod_open,
 	.read			= mod_read,
+	.write			= mod_write,
+	.inject			= mod_inject,
 	.decode			= mod_decode,
 	.encode			= mod_encode, /* only for dynamic client creation */
-	.write			= mod_write,
 	.fd			= mod_fd,
 	.event_list_set		= mod_event_list_set,
 };
