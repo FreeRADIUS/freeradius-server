@@ -11,8 +11,8 @@
 VENDOR		ZTE				3902
 BEGIN-VENDOR	ZTE
 
-ATTRIBUTE	ZTE-Client-DNS-Pri			1	integer
-ATTRIBUTE	ZTE-Client-DNS-Sec			2	integer
+ATTRIBUTE	ZTE-Client-DNS-Pri			1	string
+ATTRIBUTE	ZTE-Client-DNS-Sec			2	string
 ATTRIBUTE	ZTE-Context-Name			4	string
 ATTRIBUTE	ZTE-Tunnel-Max-Sessions			21	integer
 ATTRIBUTE	ZTE-Tunnel-Max-Tunnels			22	integer
