@@ -84,6 +84,7 @@ typedef struct fr_radius_dynamic_client_t {
  *	Structure only in the master.
  */
 typedef struct proto_radius_udp_master_t {
+	dl_instance_t const    		*parent_dl_inst;	//!< for reloading ourselves
 	TALLOC_CTX			*ctx;			//!< for the hash table
 	fr_hash_table_t			*ht;			//!< for child sockets
 #ifdef HAVE_PTHREAD_H
@@ -102,6 +103,7 @@ typedef struct proto_radius_udp_child_t {
 	size_t				packet_len;		//!< length of the packet
 	fr_time_t			recv_time;		//!< of the packet
 	RADCLIENT			*client;		//!< static client for this connection
+	dl_instance_t	  		*dl_inst;		//!< our library instance
 	struct proto_radius_udp_t	*master;		//!< for the master socket.
 } proto_radius_udp_child_t;
 
@@ -672,6 +674,91 @@ static void dynamic_client_timer(proto_radius_udp_t *inst, RADCLIENT *client, ui
 	}
 }
 
+#if 0
+static int mod_clone(proto_radius_udp_t *inst, int sockfd, proto_radius_udp_address_t *address)
+{
+	int rcode;
+	proto_radius_udp_t	*child;
+	dl_instance_t		*dl_inst;
+	fr_listen_t		*listen;
+
+	/*
+	 *	Reload ourselves as a "new" library.  This causes the
+	 *	link count for the library to be correct.  It also
+	 *	allocates a new instance data for the library.
+	 *	Passing CONF_SECTION of NULL ensures that there's no
+	 *	config for it, as we'll just clone it's contents from
+	 *	the parent.  It also means that detach should be
+	 *	called when the instance data is freed.
+	 */
+	if (dl_instance(NULL, &dl_inst, NULL, inst->master.parent_dl_inst, "proto_radius_udp", DL_TYPE_SUBMODULE) < 0) {
+		return -1;
+	}
+
+	child = talloc_get_type_abort(dl_inst->data, proto_radius_udp_t);
+
+	/*
+	 *	Copy the basic configuration, and then modify it.
+	 */
+	memcpy(child, inst, sizeof(*child));
+
+	child->connected = true;
+	child->sockfd = sockfd;
+	child->el = NULL;
+	child->nr = NULL;
+	child->ft = NULL;
+	child->dynamic_clients_is_set = false;
+	memset(&child->master, 0, sizeof(child->master));
+
+	child->child.master = inst;
+	child->child.dl_inst = dl_inst;
+	child->child.src_ipaddr = address->src_ipaddr;
+	child->child.src_port = address->src_port;
+
+	// @todo - clone the client, too
+
+	/*
+	 *	Create the new listener, and populate it's children.
+	 */
+	listen = talloc(child, fr_listen_t);
+	if (!listen) {
+		talloc_free(dl_inst);
+		return -1;
+	}
+
+	memcpy(listen, inst->parent->listen, sizeof(*listen));
+	listen->app_io_instance = child;
+
+	/*
+	 *	Attach it to the parent hash table, so that the child
+	 *	can find itself there when it starts running.
+	 */
+	PTHREAD_MUTEX_LOCK(&inst->master.mutex);
+	rcode = fr_hash_table_insert(inst->master.ht, &child);
+	PTHREAD_MUTEX_UNLOCK(&inst->master.mutex);
+
+	if (rcode < 0) {
+		talloc_free(dl_inst);
+		return -1;
+	}
+
+	/*
+	 *	Add the child to the network side.  If that doesn't
+	 *	work, remove it from the hash table.
+	 */
+	child->nr = fr_schedule_socket_add(inst->parent->sc, listen);
+	if (!child->nr) {
+		PTHREAD_MUTEX_LOCK(&inst->master.mutex);
+		(void) fr_hash_table_delete(inst->master.ht, &child);
+		PTHREAD_MUTEX_UNLOCK(&inst->master.mutex);
+		talloc_free(dl_inst);
+		return -1;
+	}
+
+	return 0;
+}
+#endif
+
 static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority)
 {
 	proto_radius_udp_t		*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
@@ -940,6 +1027,21 @@ found:
 	}
 
 received_packet:
+	/*
+	 *	@todo - check for a socket that SHOULD be connected.
+	 *	If so, either create the socket, OR find it in the
+	 *	list of sockets, and send the packet there.
+	 *
+	 *	We can then REMOVE the tracking table entry for this
+	 *	packet, as it is no longer used.  We ALSO need to mark
+	 *	up the client as "connected", so that packets to it go
+	 *	to the child socket.  And, somehow... clean up the
+	 *	client when there are no more packets for it?
+	 *
+	 *	i.e. if there's a client but no child socket, go back
+	 *	and create a child socket...
+	 */
+
 	inst->stats.total_requests++;
 	rad_assert(address.client != NULL);
 	address.client->outstanding++;
@@ -1303,6 +1405,31 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	return data_size;
 }
 
+
+/** Open a UDP listener for RADIUS
+ *
+ * @param[in] instance of the RADIUS UDP I/O path.
+ * @return
+ *	- <0 on error
+ *	- 0 on success
+ */
+static int mod_close(void *instance)
+{
+	proto_radius_udp_t *inst = talloc_get_type_abort_const(instance, proto_radius_udp_t);
+
+	close(inst->sockfd);
+
+	/*
+	 *	If we're the child, then free the module instance, on
+	 *	close.  And, remove the link to the dl library.
+	 */
+	if (inst->connected) {
+		talloc_free(inst->child.dl_inst);
+	}
+
+	return 0;
+}
+
 /** Open a UDP listener for RADIUS
  *
  * @param[in] instance of the RADIUS UDP I/O path.
@@ -1470,6 +1597,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	rad_assert(dl_inst);
 
 	inst->parent = talloc_get_type_abort(dl_inst->parent->data, proto_radius_t);
+	inst->master.parent_dl_inst = dl_inst->parent;
 
 	/*
 	 *	Hide this for now.  It's only for people who know what
@@ -1516,12 +1644,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	}
 
 	FR_INTEGER_BOUND_CHECK("cleanup_delay", inst->cleanup_delay, <=, 30);
-
-	/*
-	 *	Connected sockets can't have dynamic clients.  They're
-	 *	only connected to one client.
-	 */
-	if (inst->connected) inst->dynamic_clients_is_set = false;
 
 	if (inst->dynamic_clients_is_set) {
 		size_t i, num;
@@ -1682,11 +1804,7 @@ static int mod_detach(void *instance)
 {
 	proto_radius_udp_t	*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
 
-	/*
-	 *	@todo - have our OWN event loop for timers, and a
-	 *	"copy timer from -> to, which means we only have to
-	 *	delete our child event loop from the parent on close.
-	 */
+	close(inst->sockfd);
 
 	if (inst->dynamic_clients.clients) TALLOC_FREE(inst->dynamic_clients.clients);
 
@@ -1715,13 +1833,11 @@ static int mod_detach(void *instance)
 			 *	forget about us.
 			 */
 			PTHREAD_MUTEX_LOCK(&inst->master.mutex);
-			(void) fr_hash_table_delete(inst->master.ht, inst);
-			TALLOC_FREE(inst->master.ctx);
+			(void) fr_hash_table_delete(inst->master.ht, &inst);
 			PTHREAD_MUTEX_UNLOCK(&inst->master.mutex);
 		}
 	}
 
-	close(inst->sockfd);
 	return 0;
 }
 
@@ -1755,6 +1871,7 @@ fr_app_io_t proto_radius_udp = {
 	.inject			= mod_inject,
 	.decode			= mod_decode,
 	.encode			= mod_encode, /* only for dynamic client creation */
+	.close			= mod_close,
 	.fd			= mod_fd,
 	.event_list_set		= mod_event_list_set,
 };
