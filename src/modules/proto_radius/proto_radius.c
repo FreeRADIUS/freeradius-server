@@ -382,6 +382,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	}
 
 	inst->listen = listen;	/* Probably won't need it, but doesn't hurt */
+	inst->sc = sc;
 
 	return 0;
 }

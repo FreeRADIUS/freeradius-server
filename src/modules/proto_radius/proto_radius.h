@@ -84,6 +84,8 @@ typedef struct {
 
 	fr_listen_t const		*listen;			//!< The listener structure which describes
 									///< the I/O path.
+	fr_schedule_t			*sc;				//!< the scheduler
+
 } proto_radius_t;
 
 #endif	/* _PROTO_RADIUS_H */
