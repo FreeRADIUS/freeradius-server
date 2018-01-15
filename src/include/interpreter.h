@@ -195,21 +195,21 @@ typedef struct {
  * without being straightjacketed.
  */
 typedef struct {
-	unlang_t			self;
-	unlang_t			*parent;		//!< The original instruction.
+	unlang_t		self;
+	unlang_t		*parent;			//!< The original instruction.
 
-	void    			*callback;		//!< Function the yielding code indicated should
+	void    		*callback;			//!< Function the yielding code indicated should
 								//!< be called when the request could be resumed.
 
 	fr_unlang_action_t		signal_callback;	//!< Function the yielding module indicated should
 								//!< be called when the request is poked via an action
 								//!< may be removed in future.
 
-	void				*resume_ctx;   		//!< Context data for the callback.  Usually represents
-								///< the module's internal state at the time of
-								///< <yielding.
 	void const			*instance;		//!< instance data
 	void     			*thread;		//!< thread data
+	void			*resume_ctx;   			//!< Context data for the callback.  Usually represents
+								///< the function's internal state at the time of
+								///< yielding.
 } unlang_resume_t;
 
 /** A naked xlat
@@ -220,7 +220,7 @@ typedef struct {
 	unlang_t		self;
 	int			exec;
 	char			*xlat_name;
-	 xlat_exp_t		*exp;			//!< First xlat node to execute.
+	xlat_exp_t		*exp;				//!< First xlat node to execute.
 } unlang_xlat_inline_t;
 
 /** A module stack entry
@@ -228,19 +228,21 @@ typedef struct {
  * Represents a single module call.
  */
 typedef struct {
-	module_thread_instance_t *thread;		//!< thread-local data for this module
+	module_thread_instance_t *thread;			//!< thread-local data for this module
 } unlang_stack_state_modcall_t;
 
 /** State of a foreach loop
  *
  */
 typedef struct {
-	vp_cursor_t		cursor;			//!< Used to track our place in the list we're iterating over.
-	VALUE_PAIR 		*vps;			//!< List containing the attribute(s) we're iterating over.
-	VALUE_PAIR		*variable;		//!< Attribute we update the value of.
-	int			depth;			//!< Level of nesting of this foreach loop.
+	vp_cursor_t		cursor;				//!< Used to track our place in the list
+								///< we're iterating over.
+	VALUE_PAIR 		*vps;				//!< List containing the attribute(s) we're
+								///< iterating over.
+	VALUE_PAIR		*variable;			//!< Attribute we update the value of.
+	int			depth;				//!< Level of nesting of this foreach loop.
 #ifndef NDEBUG
-	int			indent;			//!< for catching indentation issues
+	int			indent;				//!< for catching indentation issues
 #endif
 } unlang_stack_state_foreach_t;
 
@@ -290,7 +292,7 @@ typedef struct {
  *
  * Each request as an unlang interpreter stack associated with it, which represents its progress
  * through the server.  Because the interpreter stack is distinct from the C stack, we can have
- * a single system thread with many thousands of pending requests
+ * a single system thread with many thousands of pending requests.
  */
 typedef struct {
 	unlang_t		*instruction;			//!< The unlang node we're evaluating.
@@ -331,7 +333,7 @@ typedef struct {
  *
  */
 typedef struct {
-	int			depth;		//!< Current depth we're executing at.
+	int			depth;				//!< Current depth we're executing at.
 	unlang_stack_frame_t	frame[UNLANG_STACK_MAX];	//!< The stack...
 } unlang_stack_t;
 
