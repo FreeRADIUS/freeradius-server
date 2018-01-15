@@ -704,6 +704,9 @@ static int mod_clone(proto_radius_udp_t *inst, int sockfd, proto_radius_udp_addr
 
 	child->child.master = inst;
 	child->child.dl_inst = dl_inst;
+
+	child->ipaddr = address->dst_ipaddr;
+	child->port = address->dst_port;
 	child->child.src_ipaddr = address->src_ipaddr;
 	child->child.src_port = address->src_port;
 
@@ -1558,15 +1561,33 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 
 static uint32_t udp_hash_inst(void const *instance)
 {
-	return fr_hash(&instance, sizeof(instance));
+	uint32_t hash;
+	proto_radius_udp_t const *inst = instance;
+
+	hash = fr_hash(&inst->ipaddr, sizeof(inst->ipaddr));
+	hash = fr_hash_update(&inst->port, sizeof(inst->port), hash);
+
+	hash = fr_hash_update(&inst->child.src_ipaddr, sizeof(inst->child.src_ipaddr), hash);
+
+	return fr_hash_update(&inst->child.src_port, sizeof(inst->child.src_port), hash);
 }
 
 static int udp_cmp_inst(void const *one, void const *two)
 {
+	int rcode;
 	proto_radius_udp_t const *a = one;
 	proto_radius_udp_t const *b = two;
 
-	return (a - b);
+	rcode = (a->child.src_port - b->child.src_port);
+	if (rcode != 0) return rcode;
+
+	rcode = (a->port - b->port);
+	if (rcode != 0) return rcode;
+
+	rcode = fr_ipaddr_cmp(&a->ipaddr, &b->ipaddr);
+	if (rcode != 0) return rcode;
+
+	return fr_ipaddr_cmp(&a->child.src_ipaddr, &b->child.src_ipaddr);
 }
 
 
