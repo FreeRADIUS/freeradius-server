@@ -867,6 +867,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	 */
 	address.code = buffer[0];
 	address.id = buffer[1];
+	packet_time = fr_time();
 
 	/*
 	 *	Look up the client.  It either exists, or we create
@@ -933,8 +934,6 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 		 */
 		goto return_packet;
 	}
-
-	packet_time = fr_time();
 
 	if (inst->connected) {
 connected:
