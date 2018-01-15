@@ -164,6 +164,24 @@ AC_DEFUN([AX_CC_WDOCUMENTATION_FLAG],[
   ])
 ])
 
+AC_DEFUN([AX_CC_NO_DATE_TIME_FLAG],[
+  AC_CACHE_CHECK([for the compiler flag "-Wno-date-time"], [ax_cv_cc_no_date_time_flag],[
+
+    CFLAGS_SAVED=$CFLAGS
+    CFLAGS="$CFLAGS -Werror -Wno-date-time"
+
+    AC_LANG_PUSH(C)
+    AC_TRY_COMPILE(
+      [],
+      [return 0;],
+      [ax_cv_cc_no_date_time_flag="yes"],
+      [ax_cv_cc_no_date_time_flag="no"])
+    AC_LANG_POP
+
+    CFLAGS="$CFLAGS_SAVED"
+  ])
+])
+
 AC_DEFUN([AX_CC_PTHREAD_FLAG],[
   AC_CACHE_CHECK([for the compiler flag "-pthread"], [ax_cv_cc_pthread_flag],[
 
