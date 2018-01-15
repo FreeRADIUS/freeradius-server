@@ -787,8 +787,7 @@ int xlat_async_register(TALLOC_CTX *ctx,
 	DEBUG3("%s: %s", c->name, __FUNCTION__);
 
 	if (new && !rbtree_insert(xlat_root, c)) {
-		ERROR("Failed inserting xlat registration for %s",
-		      c->name);
+		ERROR("%s: Failed inserting xlat registration for %s", __FUNCTION__, c->name);
 		talloc_free(c);
 		return -1;
 	}
