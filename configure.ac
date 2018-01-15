@@ -165,6 +165,12 @@ if test "x$ax_cv_cc_qunused_arguments_flag" = "xyes"; then
 fi
 
 dnl #
+dnl # Check for presence of -Wno-date-time warning. Older compilers
+dnl # don't have it, and newer compilers warn without it...
+dnl #
+AX_CC_NO_DATE_TIME_FLAG
+
+dnl #
 dnl #  Compile in large (2G+) file support.
 dnl #
 AC_SYS_LARGEFILE
@@ -2244,7 +2250,7 @@ dnl #
 dnl #  If reproducible builds are not enabled, disable
 dnl #  -Wdate-time so the compiler doesn't croak.
 dnl #
-if test "x$reproducible_builds" != "xyes"; then
+if test "x$ax_cv_cc_no_date_time_flag" = "xyes" && test "x$reproducible_builds" != "xyes"; then
   CFLAGS="-Wno-date-time $CFLAGS"
 fi
 
