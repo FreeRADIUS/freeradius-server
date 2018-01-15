@@ -780,13 +780,13 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 		}
 
 		memcpy(buffer, inst->child.packet, inst->child.packet_len);
-		data_size = inst->child.packet_len;
 
 		address.code = buffer[0];
 		address.id = buffer[1];
 
 		inst->child.packet = NULL;
 		packet_time = inst->child.recv_time;
+		packet_len = inst->child.packet_len;
 		goto connected;
 	}
 
