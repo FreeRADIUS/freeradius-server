@@ -335,8 +335,37 @@ typedef struct {
 	unlang_stack_frame_t	frame[UNLANG_STACK_MAX];	//!< The stack...
 } unlang_stack_t;
 
-typedef unlang_action_t (*unlang_op_func_t)(REQUEST *request,
-					    rlm_rcode_t *presult, int *priority);
+/** Function to call when first evaluating a frame
+ *
+ * @param[in] request		The current request.
+ * @param[in,out] presult	Pointer to the current rcode, may be modified by the function.
+ * @param[in,out] priority	Pointer to the current priority, may be modified by the function.
+ * @return an action for the interpreter to perform.
+ */
+typedef unlang_action_t (*unlang_op_func_t)(REQUEST *request, rlm_rcode_t *presult, int *priority);
+
+/** Function to call if the initial function yielded and the request was signalled
+ *
+ * This is the operation specific cancellation function.  This function will usually
+ * either call a more specialised cancellation function set when something like a module yielded,
+ * or just cleanup the state of the original #unlang_op_func_t.
+ *
+ * @param[in] request		The current request.
+ * @param[in] resume_ctx	A structure allocated by the initial #unlang_op_func_t to store
+ *				the result of the async execution.
+ * @param[in] action		We're being signalled with.
+ */
+typedef void (*unlang_op_func_signal_t)(REQUEST *request, void *resume_ctx, fr_state_action_t action);
+
+/** Function to call if the initial function yielded and the request is resumable
+ *
+ * @param[in] request		The current request.
+ * @param[in,out] presult	Pointer to the current rcode, may be modified by the function.
+ * @param[in] resume_ctx	A structure allocated by the initial #unlang_op_func_t to store
+ *				the result of the async execution.
+ * @return an action for the interpreter to perform.
+ */
+typedef unlang_action_t (*unlang_op_func_resume_t)(REQUEST *request, rlm_rcode_t *presult, void *resume_ctx);
 
 /** An unlang operation
  *
@@ -344,9 +373,16 @@ typedef unlang_action_t (*unlang_op_func_t)(REQUEST *request,
  * will return an #unlang_action_t, which determines what the interpreter does next.
  */
 typedef struct {
-	char const		*name;		//!< Name of the operation.
-	unlang_op_func_t	func;		//!< Function pointer, that we call to perform the operation.
-	bool			debug_braces;	//!< Whether the operation needs to print braces in debug mode
+	char const		*name;				//!< Name of the operation.
+	unlang_op_func_t	func;				//!< Called when we start the operation.
+
+	unlang_op_func_signal_t signal;				//!< Called if the request is to be destroyed
+								///< and we need to cleanup any residual state.
+
+	unlang_op_func_resume_t	resume;				//!< Called if func yielded and we need
+								///< to continue processing.
+	bool			debug_braces;			//!< Whether the operation needs to print braces
+								///< in debug mode.
 } unlang_op_t;
 
 extern unlang_op_t unlang_ops[];
