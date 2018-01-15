@@ -18,7 +18,7 @@
  * $Id$
  *
  * @brief RADIUS packet tracking
- * @file io/track.c
+ * @file proto_radius/track.c
  *
  * @copyright 2016 Alan DeKok <aland@freeradius.org>
  */
