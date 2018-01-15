@@ -104,6 +104,7 @@ typedef struct proto_radius_udp_child_t {
 	fr_time_t			recv_time;		//!< of the packet
 	RADCLIENT			*client;		//!< static client for this connection
 	dl_instance_t	  		*dl_inst;		//!< our library instance
+	fr_listen_t			*listen;		//!< listener for this socket
 	struct proto_radius_udp_t	*master;		//!< for the master socket.
 } proto_radius_udp_child_t;
 
@@ -666,10 +667,9 @@ static void dynamic_client_timer(proto_radius_udp_t *inst, RADCLIENT *client, ui
 	}
 }
 
-#if 0
-static int mod_clone(proto_radius_udp_t *inst, int sockfd, proto_radius_udp_address_t *address)
+static int mod_clone(proto_radius_udp_t *inst, proto_radius_udp_address_t *address)
 {
-	int rcode;
+	int			rcode, sockfd;
 	proto_radius_udp_t	*child;
 	dl_instance_t		*dl_inst;
 	fr_listen_t		*listen;
@@ -686,6 +686,11 @@ static int mod_clone(proto_radius_udp_t *inst, int sockfd, proto_radius_udp_addr
 	if (dl_instance(NULL, &dl_inst, NULL, inst->master.parent_dl_inst, "proto_radius_udp", DL_TYPE_SUBMODULE) < 0) {
 		return -1;
 	}
+
+	/*
+	 *	@todo - open a new socket
+	 */
+	sockfd = -1;
 
 	child = talloc_get_type_abort(dl_inst->data, proto_radius_udp_t);
 
@@ -715,7 +720,7 @@ static int mod_clone(proto_radius_udp_t *inst, int sockfd, proto_radius_udp_addr
 	/*
 	 *	Create the new listener, and populate it's children.
 	 */
-	listen = talloc(child, fr_listen_t);
+	listen = child->child.listen = talloc(child, fr_listen_t);
 	if (!listen) {
 		talloc_free(dl_inst);
 		return -1;
@@ -752,7 +757,6 @@ static int mod_clone(proto_radius_udp_t *inst, int sockfd, proto_radius_udp_addr
 
 	return 0;
 }
-#endif
 
 static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority)
 {
@@ -769,6 +773,13 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	fr_tracking_entry_t		*track = NULL;
 	proto_radius_udp_address_t	address;
 	fr_dlist_t			*entry;
+
+	/*
+	 *	@todo - have a way to change the read() routine for
+	 *	this listener.  That avoids all of this if / then /
+	 *	else nonsense.  Maybe we just put a new routine into
+	 *	"inst", and call that "good enough".
+	 */
 
 	/*
 	 *	Check for injected packets first.
@@ -1022,9 +1033,9 @@ found:
 
 received_packet:
 	/*
-	 *	@todo - check for a socket that SHOULD be connected.
-	 *	If so, either create the socket, OR find it in the
-	 *	list of sockets, and send the packet there.
+	 *	Check for a socket that SHOULD be connected.  If so,
+	 *	either create the socket, OR find it in the list of
+	 *	sockets, and send the packet there.
 	 *
 	 *	We can then REMOVE the tracking table entry for this
 	 *	packet, as it is no longer used.  We ALSO need to mark
@@ -1035,6 +1046,50 @@ received_packet:
 	 *	i.e. if there's a client but no child socket, go back
 	 *	and create a child socket...
 	 */
+	if (inst->use_connected) {
+		proto_radius_udp_t *child, my_child;
+
+		my_child.ipaddr = address.dst_ipaddr;
+		my_child.port = address.dst_port;
+
+		my_child.child.src_ipaddr = address.src_ipaddr;
+		my_child.child.src_port = address.src_port;
+
+		PTHREAD_MUTEX_LOCK(&inst->master.mutex);
+		child = fr_hash_table_finddata(inst->master.ht, &my_child);
+		if (child) {
+			(void) fr_network_listen_inject(child->nr, child->child.listen,
+							buffer, packet_len, track->timestamp);
+		}
+		PTHREAD_MUTEX_UNLOCK(&inst->master.mutex);
+
+		/*
+		 *	If the child exists, remove the tracking table
+		 *	entry for this packet.  The child will take
+		 *	care of dealing with the packet.
+		 */
+		if (child) goto untrack;
+
+		/*
+		 *	Try to clone us into a child.  If that
+		 *	succeeds, send the packet to the child.
+		 */
+		if (mod_clone(inst, &address) == 0) {
+			PTHREAD_MUTEX_LOCK(&inst->master.mutex);
+			(void) fr_network_listen_inject(child->nr, child->child.listen,
+							buffer, packet_len, track->timestamp);
+			PTHREAD_MUTEX_UNLOCK(&inst->master.mutex);
+		}
+
+untrack:
+		/*
+		 *	We're no longer tracking this packet.
+		 *	Instead, the client is.  So we just discard it
+		 *	now.
+		 */
+		(void) fr_radius_tracking_entry_delete(track->ft, track);
+		return 0;
+	}
 
 	inst->stats.total_requests++;
 	rad_assert(address.client != NULL);
