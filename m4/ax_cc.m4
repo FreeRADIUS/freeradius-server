@@ -102,7 +102,7 @@ AC_DEFUN([AX_CC_QUNUSED_ARGUMENTS_FLAG],[
 ])
 
 AC_DEFUN([AX_CC_NO_UNKNOWN_WARNING_OPTION_FLAG],[
-  AC_CACHE_CHECK([or the compiler flag "-Wno-unknown-warning-option"], [ax_cv_cc_no_unknown_warning_option_flag],[
+  AC_CACHE_CHECK([for the compiler flag "-Wno-unknown-warning-option"], [ax_cv_cc_no_unknown_warning_option_flag],[
 
   CFLAGS_SAVED=$CFLAGS
   CFLAGS="-Werror -Wno-unknown-warning-option"
