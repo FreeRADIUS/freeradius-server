@@ -4,6 +4,6 @@ ifneq "$(TARGETNAME)" ""
 TARGET		:= $(TARGETNAME).a
 endif
 
-SOURCES		:= proto_radius_udp.c
+SOURCES		:= proto_radius_udp.c track.c
 
 TGT_PREREQS	:= libfreeradius-util.a libfreeradius-radius.a

@@ -28,7 +28,6 @@
 #include <freeradius-devel/udp.h>
 #include <freeradius-devel/io/io.h>
 #include <freeradius-devel/io/application.h>
-#include <freeradius-devel/io/track.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/rad_assert.h>
 #include "proto_vmps.h"

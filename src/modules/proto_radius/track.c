@@ -24,9 +24,9 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/io/track.h>
 #include <freeradius-devel/rbtree.h>
 #include <freeradius-devel/rad_assert.h>
+#include "track.h"
 
 /**
  *  RADIUS-specific tracking table.

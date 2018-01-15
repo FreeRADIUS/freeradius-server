@@ -30,11 +30,11 @@
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/io/io.h>
 #include <freeradius-devel/io/application.h>
-#include <freeradius-devel/io/track.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/rad_assert.h>
 #include "proto_radius.h"
+#include "track.h"
 
 typedef struct {
 	int				if_index;
