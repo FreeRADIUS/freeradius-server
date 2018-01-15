@@ -393,7 +393,7 @@ int radius_readfrom_program(int fd, pid_t pid, int timeout,
 		}
 
 		flags |= O_NONBLOCK;
-		if( fcntl(fd, F_SETFL, flags) < 0) {
+		if (fcntl(fd, F_SETFL, flags) < 0) {
 			nonblock = false;
 			break;
 		}
