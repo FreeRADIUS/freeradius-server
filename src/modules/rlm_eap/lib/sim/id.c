@@ -262,11 +262,10 @@ int fr_sim_id_type(fr_sim_id_type_t *type, fr_sim_method_hint_t *hint, char cons
  * @param[in] imsi	Permanent ID to derive pseudonym from.  Note: If the IMSI is less than
  *			15 digits it will be rpadded with zeros.
  * @param[in] imsi_len	Length of the IMSI. Must be between 1-15.
- * @param[in] tag	Tag value to prepend to the pseudonym. This field is 6 bits wimsie
- *			(0-63).
+ * @param[in] tag	Tag value to prepend to the pseudonym. This field is 6 bits (0-63).
  * @param[in] key_ind	Key indicator (or key index), the key number used to produce
  *			the encr ID.  There may be up to 16 keys in use at any one
- *			time. This field is 4 bits wimsie (0-15).
+ *			time. This field is 4 bits (0-15).
  * @param[in] key	as described by the 'Security aspects of non-3GPP accesses' document.
  *			Must be 128 bits (16 bytes).
  * @return
@@ -290,11 +289,11 @@ int fr_sim_id_3gpp_pseudonym_encrypt(char out[SIM_3GPP_PSEUDONYM_LEN + 1],
 
 	EVP_CIPHER_CTX	*evp_ctx;
 
-	if (unlikely(key_ind > 15)) {				/* 4 bits wimsie */
+	if (unlikely(key_ind > 15)) {				/* 4 bits */
 		fr_strerror_printf("Invalid key indicator value, expected value between 0-15, got %u", key_ind);
 		return -1;
 	}
-	if (unlikely(tag > 63)) {				/* 6 bits wimsie */
+	if (unlikely(tag > 63)) {				/* 6 bits */
 		fr_strerror_printf("Invalid tag value, expected value between 0-63, got %u", tag);
 		return -1;
 	}
@@ -397,8 +396,8 @@ int fr_sim_id_3gpp_pseudonym_encrypt(char out[SIM_3GPP_PSEUDONYM_LEN + 1],
 	/*
 	 *	Consume tag (6 bits) + key_ind (4 bits) + encr[0] (8 bits) = 18 bits (or 3 bytes of b64)
 	 */
-	*out_p++ = fr_base64_str[tag & 0x3f];						/* 6 bits tag */
-	*out_p++ = fr_base64_str[((key_ind & 0x0f) << 2) | ((u_p[0] & 0xc0) >> 6)];	/* 4 bits key_ind + 2 high bits encr[0] */
+	*out_p++ = fr_base64_str[tag & 0x3f];							/* 6 bits tag */
+	*out_p++ = fr_base64_str[((key_ind & 0x0f) << 2) | ((u_p[0] & 0xc0) >> 6)];		/* 4 bits key_ind + 2 high bits encr[0] */
 	*out_p++ = fr_base64_str[u_p[0] & 0x3f];						/* 6 low bits of encr[0] */
 	u_p++;
 
@@ -406,9 +405,9 @@ int fr_sim_id_3gpp_pseudonym_encrypt(char out[SIM_3GPP_PSEUDONYM_LEN + 1],
 	 *	Consume 3 bytes of input for 4 bytes of b64 (5 iterations)
 	 */
 	while (u_p < u_end) {
-		*out_p++ = fr_base64_str[(u_p[0] & 0xfc) >> 2];				/* 6 high bits of p[0] */
-		*out_p++ = fr_base64_str[((u_p[0] & 0x03) << 4) | ((u_p[1] & 0xf0) >> 4)];/* 2 low bits of p[0] + 4 high bits of p[1] */
-		*out_p++ = fr_base64_str[((u_p[1] & 0x0f) << 2) | ((u_p[2] & 0xc0) >> 6)];/* 4 low bits of p[1] + 2 high bits of p[2] */
+		*out_p++ = fr_base64_str[(u_p[0] & 0xfc) >> 2];					/* 6 high bits of p[0] */
+		*out_p++ = fr_base64_str[((u_p[0] & 0x03) << 4) | ((u_p[1] & 0xf0) >> 4)];	/* 2 low bits of p[0] + 4 high bits of p[1] */
+		*out_p++ = fr_base64_str[((u_p[1] & 0x0f) << 2) | ((u_p[2] & 0xc0) >> 6)];	/* 4 low bits of p[1] + 2 high bits of p[2] */
 		*out_p++ = fr_base64_str[u_p[2] & 0x3f];					/* 6 low bits of p[2] */
 		u_p += 3;
 	}
