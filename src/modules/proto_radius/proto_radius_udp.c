@@ -245,9 +245,7 @@ static void mod_cleanup_delay(UNUSED fr_event_list_t *el, UNUSED struct timeval 
 static int mod_src_address(fr_socket_addr_t *src, UNUSED void const *instance, void const *packet_ctx)
 {
 	fr_tracking_entry_t const		*track = packet_ctx;
-	proto_radius_udp_address_t const	*address = track->src_dst;
-
-	rad_assert(track->src_dst_size == sizeof(proto_radius_udp_address_t));
+	proto_radius_udp_address_t const	*address = (proto_radius_udp_address_t const *) &track->src_dst[0];
 
 	memset(src, 0, sizeof(*src));
 
@@ -263,9 +261,7 @@ static int mod_src_address(fr_socket_addr_t *src, UNUSED void const *instance, v
 static int mod_dst_address(fr_socket_addr_t *dst, UNUSED void const *instance, void const *packet_ctx)
 {
 	fr_tracking_entry_t const		*track = packet_ctx;
-	proto_radius_udp_address_t const	*address = track->src_dst;
-
-	rad_assert(track->src_dst_size == sizeof(proto_radius_udp_address_t));
+	proto_radius_udp_address_t const	*address = (proto_radius_udp_address_t const *) &track->src_dst[0];
 
 	memset(dst, 0, sizeof(*dst));
 
@@ -281,9 +277,7 @@ static int mod_dst_address(fr_socket_addr_t *dst, UNUSED void const *instance, v
 static RADCLIENT *mod_client(UNUSED void const *instance, void const *packet_ctx)
 {
 	fr_tracking_entry_t const		*track = packet_ctx;
-	proto_radius_udp_address_t const	*address = track->src_dst;
-
-	rad_assert(track->src_dst_size == sizeof(proto_radius_udp_address_t));
+	proto_radius_udp_address_t const	*address = (proto_radius_udp_address_t const *) &track->src_dst[0];
 
 	return address->client;
 }
@@ -293,7 +287,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 {
 	proto_radius_udp_t const		*inst = instance;
 	fr_tracking_entry_t const		*track = request->async->packet_ctx;
-	proto_radius_udp_address_t const	*address = track->src_dst;
+	proto_radius_udp_address_t const	*address = (proto_radius_udp_address_t const *) &track->src_dst[0];
 	RADCLIENT				*client;
 
 	/*
@@ -336,9 +330,7 @@ static int mod_decode(void const *instance, REQUEST *request, UNUSED uint8_t *co
 {
 	proto_radius_udp_t const			*inst = instance;
 	fr_tracking_entry_t const		*track = request->async->packet_ctx;
-	proto_radius_udp_address_t const	*address = track->src_dst;
-
-	rad_assert(track->src_dst_size == sizeof(proto_radius_udp_address_t));
+	proto_radius_udp_address_t const	*address = (proto_radius_udp_address_t const *) &track->src_dst[0];
 
 	request->client = address->client;
 	request->packet->if_index = address->if_index;
@@ -1118,7 +1110,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 {
 	proto_radius_udp_t		*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
 	fr_tracking_entry_t		*track = packet_ctx;
-	proto_radius_udp_address_t	*address = track->src_dst;
+	proto_radius_udp_address_t	*address = (proto_radius_udp_address_t *) &track->src_dst[0];
 
 	ssize_t				data_size;
 	fr_time_t			reply_time;
@@ -1277,7 +1269,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			fr_dlist_remove(&saved->entry);
 			fr_dlist_insert_tail(&inst->dynamic_clients.packets, &saved->entry);
 
-			address = saved->track->src_dst;
+			address = (proto_radius_udp_address_t *) &saved->track->src_dst[0];
 			address->client = newclient;
 
 			rad_assert(inst->dynamic_clients.num_pending_packets > 0);

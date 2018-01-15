@@ -45,12 +45,12 @@ typedef struct fr_tracking_entry_t {
 	fr_tracking_t		*ft;		//!< for cleanup_delay
 	fr_event_timer_t const	*ev;		//!< for cleanup_delay
 
+	size_t			src_dst_size;   //!< size of the data in src_dst
 	fr_time_t		timestamp;	//!< when the request was received
-	void			*src_dst;	//!< information about src/dst IP/port
-	size_t			src_dst_size;	//!< size of the data in src_dst
 	uint8_t const		*reply;		//!< the response (if any);
 	size_t			reply_len;	//!< the length of the response
 	uint8_t			data[20];	//!< the full RADIUS packet header
+	uint64_t       		src_dst[0];	//!< information about src/dst IP/port
 } fr_tracking_entry_t;
 
 /**

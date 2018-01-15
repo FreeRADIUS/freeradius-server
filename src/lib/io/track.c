@@ -100,8 +100,6 @@ fr_tracking_t *fr_radius_tracking_create(TALLOC_CTX *ctx, size_t src_dst_size,
 	ft = talloc_zero(ctx, fr_tracking_t);
 	if (!ft) return NULL;
 
-	memset(ft, 0, sizeof(*ft));
-
 	ft->num_entries = 0;
 	ft->src_dst_size = src_dst_size;
 
@@ -167,7 +165,7 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_entry_t **p_ent
 						     void *src_dst)
 {
 	fr_tracking_entry_t	*entry;
-	fr_tracking_entry_t my_entry;
+	uint64_t		buffer[256];
 
 	(void) talloc_get_type_abort(ft, fr_tracking_t);
 
@@ -177,38 +175,29 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_entry_t **p_ent
 	 *	See if we're adding a duplicate, or
 	 *	over-writing an existing one.
 	 */
-	my_entry.src_dst = src_dst;
-	my_entry.src_dst_size = ft->src_dst_size;
-	memcpy(my_entry.data, packet, sizeof(my_entry.data));
+	entry = (fr_tracking_entry_t *) buffer;
+	memcpy(entry->src_dst, src_dst, ft->src_dst_size);
+	entry->src_dst_size = ft->src_dst_size;
+	memcpy(entry->data, packet, sizeof(entry->data));
 
-	entry = rbtree_finddata(ft->tree, &my_entry);
+	entry = rbtree_finddata(ft->tree, entry);
 	if (!entry) {
-		size_t align;
-		uint8_t *p;
-
-		/*
-		 *	Ensure that structures are aligned.
-		 */
-		align = sizeof(fr_tracking_entry_t);
-		align += 15;
-		align &= ~(15);
-
 		/*
 		 *	No existing entry, create a new one.
 		 */
-		entry = talloc_size(ft->tree, align + ft->src_dst_size);
+		entry = talloc_zero_size(ft->tree, sizeof(*entry) + ft->src_dst_size);
 		if (!entry) return FR_TRACKING_ERROR;
 
-		memset(entry, 0, align + ft->src_dst_size);
+		talloc_set_name_const(entry, "fr_tracking_entry_t");
+
 		entry->ft = ft;
 		entry->timestamp = timestamp;
 
 		/*
 		 *	Copy the src_dst information over to the entry.
 		 */
-		entry->src_dst = p = ((uint8_t *) entry) + align;
 		entry->src_dst_size = ft->src_dst_size;
-		memcpy(p, src_dst, entry->src_dst_size);
+		memcpy(entry->src_dst, src_dst, entry->src_dst_size);
 
 		/*
 		 *	Copy the new packet over.
@@ -256,14 +245,6 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_entry_t **p_ent
 		entry->reply = NULL;
 		entry->reply_len = 0;
 	}
-
-	/*
-	 *	Don't change any of the fields we need
-	 *	for the RB tree.
-	 */
-	rad_assert(memcmp(my_entry.src_dst, src_dst, ft->src_dst_size) == 0);
-	rad_assert(my_entry.data[0] == entry->data[0]);
-	rad_assert(my_entry.data[1] == entry->data[1]);
 
 	/*
 	 *	Don't change src_dst.  It MUST have
