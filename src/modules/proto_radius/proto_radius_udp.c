@@ -1402,9 +1402,10 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
  */
 static int mod_close(void *instance)
 {
-	proto_radius_udp_t *inst = talloc_get_type_abort_const(instance, proto_radius_udp_t);
+	proto_radius_udp_t *inst = talloc_get_type_abort(instance, proto_radius_udp_t);
 
 	close(inst->sockfd);
+	inst->sockfd = -1;
 
 	/*
 	 *	If we're the child, then free the module instance, on
