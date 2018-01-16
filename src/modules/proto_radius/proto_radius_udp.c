@@ -98,6 +98,7 @@ typedef struct proto_radius_udp_master_t {
 typedef struct proto_radius_udp_child_t {
 	fr_ipaddr_t			src_ipaddr;		//!< source IP for connected sockets
 	uint16_t			src_port;      		//!< Source port for connected sockets.
+	bool				expired;		//!< is this socket expired?
 
 	uint8_t const			*packet;		//!< for injection
 	size_t				packet_len;		//!< length of the packet
@@ -105,6 +106,7 @@ typedef struct proto_radius_udp_child_t {
 	RADCLIENT			*client;		//!< static client for this connection
 	dl_instance_t	  		*dl_inst;		//!< our library instance
 	fr_listen_t			*listen;		//!< listener for this socket
+	fr_event_timer_t const		*ev;			//!< when we clean up the child socket.
 	struct proto_radius_udp_t	*master;		//!< for the master socket.
 } proto_radius_udp_child_t;
 
@@ -806,7 +808,11 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	/*
 	 *	Check for injected packets first.
 	 */
-	if (inst->connected && (inst->child.packet != NULL)) {
+	if (inst->connected) {
+		if (inst->child.expired) return -1;
+
+		if (!inst->child.packet) goto do_read;
+
 		/*
 		 *	Packet is too large, ignore it.
 		 */
@@ -845,6 +851,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 		goto received_packet;
 	}
 
+do_read:
 	*leftover = 0;
 
 	/*
@@ -1114,6 +1121,19 @@ untrack:
 		return 0;
 	}
 
+	/*
+	 *	Remove the cleanup timer if we receive a new packet
+	 *	for this connection.
+	 */
+	if (inst->connected) {
+		/*
+		 *	@todo - check if this packet src/dst matches
+		 *	the ones in the client.  If not, inject it
+		 *	back to the master.
+		 */
+		if (inst->child.ev) fr_event_timer_delete(inst->el, &inst->child.ev);
+	}
+
 	inst->stats.total_requests++;
 	rad_assert(address.client != NULL);
 	address.client->outstanding++;
@@ -1189,6 +1209,17 @@ static int mod_inject(void *instance, uint8_t *buffer, size_t buffer_len, fr_tim
 
 	return 0;
 }
+
+static void connection_expire(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
+{
+	proto_radius_udp_t *inst = uctx;
+
+	inst->child.expired = true;
+
+	DEBUG("TIMER - expiring socket %s", inst->name);
+	fr_network_listen_read(inst->nr, inst->child.listen);
+}
+
 
 static ssize_t mod_write(void *instance, void *packet_ctx,
 			 fr_time_t request_time, uint8_t *buffer, size_t buffer_len)
@@ -1392,8 +1423,15 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	 *	We may need to clean up this socket.
 	 */
 	if ((address->client->outstanding == 0) && (inst->connected)) {
-		// @todo - set up idle timer for 30s, so that the
-		// socket is cleaned up.
+		struct timeval when;
+
+		gettimeofday(&when, NULL);
+		when.tv_sec += 30;
+
+		if (fr_event_timer_insert(inst, inst->el, &inst->child.ev,
+					  &when, connection_expire, inst) < 0) {
+			ERROR("Failed adding timeout for connected socket.  It will be permanent!");
+		}
 	}
 
 	/*
