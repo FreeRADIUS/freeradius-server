@@ -325,6 +325,12 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 		return 1;
 	}
 
+	/*
+	 *	If we're not using connected sockets, we can't have
+	 *	clients behind a NAT.
+	 */
+	if (!inst->use_connected) client->behind_nat = false;
+
 	memcpy(buffer, &client, sizeof(client));
 	return sizeof(client);
 }
@@ -428,6 +434,8 @@ static ssize_t dynamic_client_packet_restore(proto_radius_udp_t *inst, uint8_t *
 	 */
 	memcpy(buffer, saved->packet, packet_len);
 	*track = saved->track;
+
+	((proto_radius_udp_address_t *)saved->track->src_dst)->client->received--;
 	talloc_free(saved);
 
 	return packet_len;
@@ -492,6 +500,7 @@ static int dynamic_client_packet_save(proto_radius_udp_t *inst, uint8_t *packet,
 	saved->track = *track;
 	fr_dlist_insert_tail(&address->client->packets, &saved->entry);
 
+	((proto_radius_udp_address_t *)saved->track->src_dst)->client->received++;
 	inst->dynamic_clients.num_pending_packets++;
 
 	return 0;
@@ -1112,6 +1121,26 @@ received_packet:
 		}
 
 untrack:
+
+		/*
+		 *	If the client is dynamic, AND is behind a NAT,
+		 *	AND we've processed all pending packets for
+		 *	it, THEN delete the dynamic client.  This
+		 *	means that the next packet from that IP will
+		 *	cause a new client to be defined.
+		 *
+		 *	i.e. each connection has it's own client.
+		 */
+		if (address.client->dynamic && address.client->behind_nat &&
+		    (address.client->received == 0)) {
+			RADCLIENT *client = address.client;
+
+			rad_assert(client->outstanding == 0);
+			(void) client_delete(inst->dynamic_clients.clients, client);
+			rad_assert(client->outstanding == 0);
+			client_free(client);
+		}
+
 		/*
 		 *	We're no longer tracking this packet.
 		 *	Instead, the client is.  So we just discard it

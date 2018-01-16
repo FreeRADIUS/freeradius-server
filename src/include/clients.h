@@ -87,6 +87,7 @@ typedef struct radclient {
 	fr_dlist_t		pending;		//!< if !active, ordered list of pending clients
 	fr_dlist_t		packets;		//!< list of pending packets
 	uint32_t		outstanding;		//!< number of requests outstanding
+	uint32_t		received;		//!< number of requests received but not yet processed
 	time_t			created;		//!< When the client was created.
 	fr_ipaddr_t		network;		//!< encapsulating network
 	void			*ctx;			//!< for timeouts
