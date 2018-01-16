@@ -2376,11 +2376,10 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 		if (argc == 0) continue;
 
 		if (argc == 1) {
-			fr_strerror_printf_push("Invalid entry");
+			fr_strerror_printf("Invalid entry");
 
 		error:
-			fr_strerror_printf_push("Error in %s[%d] - %s",
-						fn, line, fr_strerror_pop());
+			fr_strerror_printf_push("Error reading %s[%d]", fn, line);
 			fclose(fp);
 			return -1;
 		}
