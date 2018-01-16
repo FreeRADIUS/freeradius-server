@@ -203,11 +203,7 @@ ATTRIBUTE	FreeRADIUS-Client-IP-Address		1120	ipaddr
 ATTRIBUTE	FreeRADIUS-Client-IPv6-Address		1121	ipv6addr
 
 # The rest of the FreeRADIUS-Client-* attributes are at 1150...
-ATTRIBUTE	FreeRADIUS-Client-Require-MA		1122	integer
-
-VALUE	FreeRADIUS-Client-Require-MA	no			0
-VALUE	FreeRADIUS-Client-Require-MA	yes			1
-
+ATTRIBUTE	FreeRADIUS-Client-Require-MA		1122	bool
 ATTRIBUTE	FreeRADIUS-Client-Secret		1123	string
 ATTRIBUTE	FreeRADIUS-Client-Shortname		1124	string
 ATTRIBUTE	FreeRADIUS-Client-NAS-Type		1125	string
@@ -263,6 +259,7 @@ ATTRIBUTE	FreeRADIUS-Response-Delay		1152	integer
 ATTRIBUTE	FreeRADIUS-Client-Src-IP-Address	1153	ipaddr
 ATTRIBUTE	FreeRADIUS-Client-Src-IPv6-Address	1154	ipv6addr
 ATTRIBUTE	FreeRADIUS-Response-Delay-USec		1155	integer
+ATTRIBUTE	FreeRADIUS-Client-Behind-NAT		1156	bool
 
 ATTRIBUTE	REST-HTTP-Header			1160	string
 ATTRIBUTE	REST-HTTP-Body				1161	string
@@ -289,6 +286,8 @@ VALUE	Cache-Allow-Merge		yes			1
 
 VALUE	Cache-Allow-Insert		no			0
 VALUE	Cache-Allow-Insert		yes			1
+
+# 1178-1179 - unused
 
 ATTRIBUTE	SSHA2-224-Password			1180	octets
 ATTRIBUTE	SSHA2-256-Password			1181	octets

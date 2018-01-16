@@ -346,6 +346,11 @@ static const CONF_PARSER client_config[] = {
 	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING, RADCLIENT, server) },
 	{ FR_CONF_OFFSET("response_window", FR_TYPE_TIMEVAL, RADCLIENT, response_window) },
 
+	/*
+	 *	This should only be set for dynamic clients.
+	 */
+	{ FR_CONF_OFFSET("natted", FR_TYPE_BOOL, RADCLIENT, behind_nat) },
+
 #ifdef WITH_TCP
 	{ FR_CONF_POINTER("proto", FR_TYPE_STRING, &hs_proto) },
 	{ FR_CONF_POINTER("limit", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) limit_config },
@@ -862,6 +867,15 @@ RADCLIENT *client_afrom_request(TALLOC_CTX *ctx, REQUEST *request)
 		case FR_FREERADIUS_CLIENT_SHORTNAME:
 			attr = "shortname";
 			value = vp->vp_strvalue;
+			break;
+
+		case FR_FREERADIUS_CLIENT_BEHIND_NAT:
+			attr = "natted";
+			if (vp->vp_bool) {
+				value = "yes";
+			} else {
+				value = "no";
+			}
 			break;
 
 		default:
