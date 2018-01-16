@@ -856,7 +856,7 @@ int dl_instance(TALLOC_CTX *ctx, dl_instance_t **out,
 	 */
 	cf_data_add(conf, dl_inst, dl_inst->module->name, false);
 
-	if (dl_inst->module->common->config) {
+	if (dl_inst->module->common->config && conf) {
 		if ((cf_section_rules_push(conf, dl_inst->module->common->config)) < 0 ||
 		    (cf_section_parse(dl_inst->data, dl_inst->data, conf) < 0)) {
 			cf_log_err(conf, "Failed evaluating configuration for module \"%s\"", dl_inst->module->name);
