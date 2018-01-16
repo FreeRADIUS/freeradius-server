@@ -369,6 +369,7 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 	char		*p;
 	int8_t		tag;
 	char const	*attrname = attribute;
+	char		buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1 + 32];
 
 	/*
 	 *    Check for tags in 'Attribute:Tag' format.
@@ -378,7 +379,6 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 	p = strchr(attribute, ':');
 	if (p) {
 		char *end;
-		char buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1 + 32];
 
 		if (!p[1]) {
 			fr_strerror_printf("Invalid tag for attribute %s", attribute);
