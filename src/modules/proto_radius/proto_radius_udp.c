@@ -1497,6 +1497,15 @@ static int mod_open(void *instance)
 		return -1;
 	}
 
+	if (inst->use_connected) {
+		int on = 1;
+
+		if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on)) < 0) {
+			WARN("Failed to set socket 'reuseport': disabling connected sockets.");
+			inst->use_connected = false;
+		}
+	}
+
 	if (fr_socket_bind(sockfd, &inst->ipaddr, &port, inst->interface) < 0) {
 		ERROR("Failed binding socket: %s", fr_strerror());
 		goto error;
