@@ -413,7 +413,7 @@ next_message:
 	 *	Error: close the connection, and remove the fr_listen_t
 	 */
 	if (data_size < 0) {
-		fr_log(nr->log, L_DBG_ERR, "error from transport read on socket %d", sockfd);
+//		fr_log(nr->log, L_DBG_ERR, "error from transport read on socket %d", sockfd);
 		fr_network_socket_dead(nr, s);
 		return;
 	}
