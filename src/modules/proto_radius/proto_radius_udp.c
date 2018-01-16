@@ -711,7 +711,20 @@ static int mod_clone(proto_radius_udp_t *inst, proto_radius_udp_address_t *addre
 	child->child.src_ipaddr = address->src_ipaddr;
 	child->child.src_port = address->src_port;
 
-	// @todo - clone the client, too
+	child->child.client = client_clone(child, address->client);
+	if (!child->child.client) {
+		talloc_free(dl_inst);
+		return -1;
+	}
+
+	/*
+	 *	These fields may be different from the ones in the
+	 *	template client.  Further "ipaddr" is the IP address
+	 *	of the client.  And "src_ipaddr" is the address that
+	 *	packets are sent from.
+	 */
+	child->child.client->src_ipaddr = address->dst_ipaddr;
+	child->child.client->ipaddr = address->src_ipaddr;
 
 	/*
 	 *	Create the new listener, and populate it's children.
