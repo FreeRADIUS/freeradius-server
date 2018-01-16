@@ -1878,6 +1878,7 @@ done:
  * If there is no #fr_unlang_module_signal_t callback defined, the action is ignored.
  *
  * @param[in] request		The current request.
+ * @param[in] resume_ctx	createed by #unlang_module_call.
  * @param[in] action		to signal.
  */
 static void unlang_module_signal(REQUEST *request, void *resume_ctx, fr_state_action_t action)
