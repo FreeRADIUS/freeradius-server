@@ -668,11 +668,11 @@ static void dynamic_client_timer(proto_radius_udp_t *inst, RADCLIENT *client, ui
 	}
 }
 
-static int mod_clone(proto_radius_udp_t *inst, proto_radius_udp_address_t *address)
+static proto_radius_udp_t *mod_clone(proto_radius_udp_t *inst, proto_radius_udp_address_t *address)
 {
 	int			rcode;
 	proto_radius_udp_t	*child;
-	dl_instance_t		*dl_inst;
+	dl_instance_t		*dl_inst = NULL;
 	fr_listen_t		*listen;
 
 	/*
@@ -684,8 +684,8 @@ static int mod_clone(proto_radius_udp_t *inst, proto_radius_udp_address_t *addre
 	 *	the parent.  It also means that detach should be
 	 *	called when the instance data is freed.
 	 */
-	if (dl_instance(NULL, &dl_inst, NULL, inst->master.parent_dl_inst, "proto_radius_udp", DL_TYPE_SUBMODULE) < 0) {
-		return -1;
+	if (dl_instance(NULL, &dl_inst, NULL, inst->master.parent_dl_inst, "udp", DL_TYPE_SUBMODULE) < 0) {
+		return NULL;
 	}
 
 	child = talloc_get_type_abort(dl_inst->data, proto_radius_udp_t);
@@ -697,6 +697,7 @@ static int mod_clone(proto_radius_udp_t *inst, proto_radius_udp_address_t *addre
 
 	child->connected = true;
 	child->sockfd = -1;
+	child->name = NULL;
 	child->el = NULL;
 	child->nr = NULL;
 	child->ft = NULL;
@@ -713,8 +714,9 @@ static int mod_clone(proto_radius_udp_t *inst, proto_radius_udp_address_t *addre
 
 	child->child.client = client_clone(child, address->client);
 	if (!child->child.client) {
+		ERROR("Failed cloning client");
 		talloc_free(dl_inst);
-		return -1;
+		return NULL;
 	}
 
 	/*
@@ -732,7 +734,7 @@ static int mod_clone(proto_radius_udp_t *inst, proto_radius_udp_address_t *addre
 	listen = child->child.listen = talloc(child, fr_listen_t);
 	if (!listen) {
 		talloc_free(dl_inst);
-		return -1;
+		return NULL;
 	}
 
 	memcpy(listen, inst->parent->listen, sizeof(*listen));
@@ -744,7 +746,7 @@ static int mod_clone(proto_radius_udp_t *inst, proto_radius_udp_address_t *addre
 	if ((listen->app_io->instantiate(child, inst->cs) < 0) ||
 	    (listen->app_io->open(child) < 0)) {
 		talloc_free(dl_inst);
-		return -1;
+		return NULL;
 	}
 
 	/*
@@ -752,12 +754,13 @@ static int mod_clone(proto_radius_udp_t *inst, proto_radius_udp_address_t *addre
 	 *	can find itself there when it starts running.
 	 */
 	PTHREAD_MUTEX_LOCK(&inst->master.mutex);
-	rcode = fr_hash_table_insert(inst->master.ht, &child);
+	rcode = fr_hash_table_insert(inst->master.ht, child);
 	PTHREAD_MUTEX_UNLOCK(&inst->master.mutex);
 
 	if (rcode < 0) {
+		ERROR("Failed inserting child socket into hash table.");
 		talloc_free(dl_inst);
-		return -1;
+		return NULL;
 	}
 
 	/*
@@ -766,14 +769,15 @@ static int mod_clone(proto_radius_udp_t *inst, proto_radius_udp_address_t *addre
 	 */
 	child->nr = fr_schedule_socket_add(inst->parent->sc, listen);
 	if (!child->nr) {
+		ERROR("Failed adding child socket to scheduler.");
 		PTHREAD_MUTEX_LOCK(&inst->master.mutex);
-		(void) fr_hash_table_delete(inst->master.ht, &child);
+		(void) fr_hash_table_delete(inst->master.ht, child);
 		PTHREAD_MUTEX_UNLOCK(&inst->master.mutex);
 		talloc_free(dl_inst);
-		return -1;
+		return NULL;
 	}
 
-	return 0;
+	return child;
 }
 
 static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority)
@@ -1064,7 +1068,7 @@ received_packet:
 	 *	i.e. if there's a client but no child socket, go back
 	 *	and create a child socket...
 	 */
-	if (inst->use_connected) {
+	if (inst->use_connected && !inst->connected) {
 		proto_radius_udp_t *child, my_child;
 
 		my_child.ipaddr = address.dst_ipaddr;
@@ -1092,7 +1096,8 @@ received_packet:
 		 *	Try to clone us into a child.  If that
 		 *	succeeds, send the packet to the child.
 		 */
-		if (mod_clone(inst, &address) == 0) {
+		child = mod_clone(inst, &address);
+		if (child) {
 			PTHREAD_MUTEX_LOCK(&inst->master.mutex);
 			(void) fr_network_listen_inject(child->nr, child->child.listen,
 							buffer, packet_len, track->timestamp);
@@ -1162,6 +1167,11 @@ static int mod_inject(void *instance, uint8_t *buffer, size_t buffer_len, fr_tim
 	}
 
 	/*
+	 *	Initialize the packet length.
+	 */
+	packet_len = buffer_len;
+
+	/*
 	 *	If it's not a RADIUS packet, ignore it.
 	 */
 	if (!fr_radius_ok(buffer, &packet_len, inst->parent->max_attributes, false, &reason)) {
@@ -1187,6 +1197,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	fr_tracking_entry_t		*track = packet_ctx;
 	proto_radius_udp_address_t	*address = (proto_radius_udp_address_t *) &track->src_dst[0];
 
+	int				flags;
 	ssize_t				data_size;
 	fr_time_t			reply_time;
 	struct timeval			tv;
@@ -1378,6 +1389,14 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	address->client->outstanding--;
 
 	/*
+	 *	We may need to clean up this socket.
+	 */
+	if ((address->client->outstanding == 0) && (inst->connected)) {
+		// @todo - set up idle timer for 30s, so that the
+		// socket is cleaned up.
+	}
+
+	/*
 	 *	The original packet has changed.  Suppress the write,
 	 *	as the client will never accept the response.
 	 */
@@ -1394,12 +1413,14 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	 */
 	 reply_time = fr_time();
 
+	 flags = UDP_FLAGS_CONNECTED * inst->connected;
+
 	/*
 	 *	Only write replies if they're RADIUS packets.
 	 *	sometimes we want to NOT send a reply...
 	 */
 	if (buffer_len >= 20) {
-		data_size = udp_send(inst->sockfd, buffer, buffer_len, 0,
+		data_size = udp_send(inst->sockfd, buffer, buffer_len, flags,
 				     &address->dst_ipaddr, address->dst_port,
 				     address->if_index,
 				     &address->src_ipaddr, address->src_port);
@@ -1660,7 +1681,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 
 		fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(inst->child.src_ipaddr), 0);
 
-		inst->name = talloc_typed_asprintf(inst, "proto udp client %s port %u to address %s port %u",
+		inst->name = talloc_typed_asprintf(inst, "proto udp connexted socket from client %s port %u to address %s port %u",
 						   src_buf, inst->child.src_port, dst_buf, inst->port);
 	}
 
@@ -1951,7 +1972,7 @@ static int mod_detach(void *instance)
 			 *	forget about us.
 			 */
 			PTHREAD_MUTEX_LOCK(&inst->master.mutex);
-			(void) fr_hash_table_delete(inst->master.ht, &inst);
+			(void) fr_hash_table_delete(inst->child.master->master.ht, inst);
 			PTHREAD_MUTEX_UNLOCK(&inst->master.mutex);
 		}
 	}
