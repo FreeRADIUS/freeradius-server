@@ -68,6 +68,7 @@ static void entry_free(void *data)
 {
 	fr_tracking_entry_t *entry = data;
 
+	if (entry->ev) talloc_free(entry->ev);
 	talloc_free(entry);
 }
 
