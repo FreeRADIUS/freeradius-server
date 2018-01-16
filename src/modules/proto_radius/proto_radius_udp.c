@@ -127,6 +127,7 @@ typedef struct proto_radius_udp_t {
 	fr_tracking_t			*ft;			//!< tracking table
 	uint32_t			cleanup_delay;		//!< cleanup delay for Access-Request packets
 
+	CONF_SECTION			*cs;			//!< mainly for connected sockets
 	fr_stats_t			stats;			//!< statistics for this socket
 
 	fr_radius_dynamic_client_t	dynamic_clients;	//!< dynamic client infromation
@@ -669,7 +670,7 @@ static void dynamic_client_timer(proto_radius_udp_t *inst, RADCLIENT *client, ui
 
 static int mod_clone(proto_radius_udp_t *inst, proto_radius_udp_address_t *address)
 {
-	int			rcode, sockfd;
+	int			rcode;
 	proto_radius_udp_t	*child;
 	dl_instance_t		*dl_inst;
 	fr_listen_t		*listen;
@@ -687,11 +688,6 @@ static int mod_clone(proto_radius_udp_t *inst, proto_radius_udp_address_t *addre
 		return -1;
 	}
 
-	/*
-	 *	@todo - open a new socket
-	 */
-	sockfd = -1;
-
 	child = talloc_get_type_abort(dl_inst->data, proto_radius_udp_t);
 
 	/*
@@ -700,7 +696,7 @@ static int mod_clone(proto_radius_udp_t *inst, proto_radius_udp_address_t *addre
 	memcpy(child, inst, sizeof(*child));
 
 	child->connected = true;
-	child->sockfd = sockfd;
+	child->sockfd = -1;
 	child->el = NULL;
 	child->nr = NULL;
 	child->ft = NULL;
@@ -728,6 +724,15 @@ static int mod_clone(proto_radius_udp_t *inst, proto_radius_udp_address_t *addre
 
 	memcpy(listen, inst->parent->listen, sizeof(*listen));
 	listen->app_io_instance = child;
+
+	/*
+	 *	Instantiate the child, and open the socket.
+	 */
+	if ((listen->app_io->instantiate(child, inst->cs) < 0) ||
+	    (listen->app_io->open(child) < 0)) {
+		talloc_free(dl_inst);
+		return -1;
+	}
 
 	/*
 	 *	Attach it to the parent hash table, so that the child
@@ -1697,6 +1702,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 
 	inst->parent = talloc_get_type_abort(dl_inst->parent->data, proto_radius_t);
 	inst->master.parent_dl_inst = dl_inst->parent;
+	inst->cs = cs;
 
 	/*
 	 *	Hide this for now.  It's only for people who know what
