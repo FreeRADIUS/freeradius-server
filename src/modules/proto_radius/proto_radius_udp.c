@@ -1497,6 +1497,10 @@ static int mod_open(void *instance)
 		return -1;
 	}
 
+	/*
+	 *	Set SO_REUSEPORT before bind, so that all packets can
+	 *	listen on the same destination IP address.
+	 */
 	if (inst->use_connected) {
 		int on = 1;
 
@@ -1507,8 +1511,30 @@ static int mod_open(void *instance)
 	}
 
 	if (fr_socket_bind(sockfd, &inst->ipaddr, &port, inst->interface) < 0) {
+		close(sockfd);
 		ERROR("Failed binding socket: %s", fr_strerror());
 		goto error;
+	}
+
+	/*
+	 *	Connect to the client for child sockets.
+	 */
+	if (inst->use_connected && inst->connected) {
+		socklen_t salen;
+		struct sockaddr_storage src;
+
+		if (fr_ipaddr_to_sockaddr(&inst->child.src_ipaddr, inst->child.src_port,
+					  &src, &salen) < 0) {
+			close(sockfd);
+			ERROR("Failed getting IP address");
+			goto error;
+		}
+
+		if (connect(sockfd, (struct sockaddr *) &src, salen) < 0) {
+			close(sockfd);
+			ERROR("Failed in connect: %s", fr_syserror(errno));
+			goto error;
+		}
 	}
 
 	inst->sockfd = sockfd;
