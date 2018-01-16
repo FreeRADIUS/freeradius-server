@@ -987,6 +987,8 @@ RADCLIENT *client_clone(TALLOC_CTX *ctx, RADCLIENT const *parent)
 {
 	RADCLIENT *c;
 
+	if (!parent) return NULL;
+
 	c = talloc_zero(ctx, RADCLIENT);
 	if (!c) return NULL;
 
@@ -994,7 +996,7 @@ RADCLIENT *client_clone(TALLOC_CTX *ctx, RADCLIENT const *parent)
 	 *	Do NOT set ipaddr or src_ipaddr.  The caller MUST do this!
 	 */
 
-#define DUP_FIELD(_x) c->_x = talloc_strdup(c, parent->_x); if (!c->_x) goto error
+#define DUP_FIELD(_x) do { if (parent->_x) {c->_x = talloc_strdup(c, parent->_x); if (!c->_x) {goto error;}}} while (0)
 #define COPY_FIELD(_x) c->_x = parent->_x
 
 	DUP_FIELD(longname);
@@ -1014,15 +1016,13 @@ RADCLIENT *client_clone(TALLOC_CTX *ctx, RADCLIENT const *parent)
 	COPY_FIELD(tls_required);
 #endif
 
+	return c;
+
 	/*
 	 *	@todo - fill in other fields, too!
 	 */
 
-	if (0) {
-	error:
-		talloc_free(c);
-		return NULL;
-	}
-
-	return c;
+error:
+	talloc_free(c);
+	return NULL;
 }
