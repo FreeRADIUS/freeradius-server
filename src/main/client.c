@@ -983,3 +983,46 @@ RADCLIENT *client_read(char const *filename, CONF_SECTION *server_cs, bool check
 }
 #endif
 
+RADCLIENT *client_clone(TALLOC_CTX *ctx, RADCLIENT const *parent)
+{
+	RADCLIENT *c;
+
+	c = talloc_zero(ctx, RADCLIENT);
+	if (!c) return NULL;
+
+	/*
+	 *	Do NOT set ipaddr or src_ipaddr.  The caller MUST do this!
+	 */
+
+#define DUP_FIELD(_x) c->_x = talloc_strdup(c, parent->_x); if (!c->_x) goto error
+#define COPY_FIELD(_x) c->_x = parent->_x
+
+	DUP_FIELD(longname);
+	DUP_FIELD(shortname);
+	DUP_FIELD(secret);
+	DUP_FIELD(nas_type);
+	DUP_FIELD(server);
+	DUP_FIELD(nas_type);
+
+	COPY_FIELD(message_authenticator);
+	/* dynamic MUST be false */
+	COPY_FIELD(server_cs);
+	COPY_FIELD(cs);
+	COPY_FIELD(proto);
+
+#ifdef WITH_TLS
+	COPY_FIELD(tls_required);
+#endif
+
+	/*
+	 *	@todo - fill in other fields, too!
+	 */
+
+	if (0) {
+	error:
+		talloc_free(c);
+		return NULL;
+	}
+
+	return c;
+}
