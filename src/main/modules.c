@@ -30,27 +30,14 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modpriv.h>
-#include <freeradius-devel/interpreter.h>
 #include <freeradius-devel/parser.h>
+#include <freeradius-devel/unlang.h>
 
 fr_thread_local_setup(rbtree_t *, module_thread_inst_tree)
 
 static TALLOC_CTX *instance_ctx = NULL;
 
 static int module_instantiate(CONF_SECTION *root, char const *name);
-
-static bool is_reserved_word(const char *name)
-{
-	int i;
-
-	if (!name || !*name) return false;
-
-	for (i = 1; unlang_ops[i].name != NULL; i++) {
-		if (strcmp(name, unlang_ops[i].name) == 0) return true;
-	}
-
-	return false;
-}
 
 /** Initialise a module specific exfile handle
  *
@@ -803,7 +790,6 @@ static int _module_instance_free(module_instance_t *mod_inst)
  */
 static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *cs)
 {
-	int			i;
 	char const		*name1, *inst_name;
 	module_instance_t	*mod_inst;
 
@@ -814,15 +800,9 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	inst_name = cf_section_name2(cs);
 	if (!inst_name) inst_name = name1;
 
-	/*
-	 *	Don't allow modules to use reserved words.
-	 */
-	for (i = 1; unlang_ops[i].name != NULL; i++) {
-		if (strcmp(inst_name, unlang_ops[i].name) == 0) {
-			ERROR("Module names cannot use a reserved word \"%s\"",
-			      unlang_ops[i].name);
-			return NULL;
-		}
+	if (unlang_keyword(inst_name)) {
+		ERROR("Module names cannot use a reserved word \"%s\"", inst_name);
+		return NULL;
 	}
 
 	/*
@@ -906,7 +886,7 @@ static int virtual_module_bootstrap(CONF_SECTION *modules, CONF_SECTION *vm_cs)
 			return -1;
 		}
 
-		if (is_reserved_word(name)) {
+		if (unlang_keyword(name)) {
 		is_reserved:
 			cf_log_err(vm_cs, "Virtual modules cannot overload unlang keywords");
 			return -1;
@@ -1016,7 +996,7 @@ int modules_bootstrap(CONF_SECTION *root)
 
 		name1 = cf_section_name1(subcs);
 
-		if (is_reserved_word(name1)) {
+		if (unlang_keyword(name1)) {
 			cf_log_err(subcs, "Modules cannot overload unlang keywords");
 			return -1;
 		}

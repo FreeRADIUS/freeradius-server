@@ -26,8 +26,9 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modpriv.h>
-#include <freeradius-devel/interpreter.h>
 #include <freeradius-devel/parser.h>
+#include <freeradius-devel/unlang.h>
+#include "unlang_priv.h"
 
 /* Here's where we recognize all of our keywords: first the rcodes, then the
  * actions */
@@ -3238,4 +3239,24 @@ int unlang_compile_subsection(CONF_SECTION *server_cs, char const *name1, char c
 	}
 
 	return 1;
+}
+
+/** Check if name is an unlang keyword
+ *
+ * @param[in] name	to check.
+ * @return
+ *	- true if it is a keyword.
+ *	- false if it's not a keyword.
+ */
+bool unlang_keyword(const char *name)
+{
+	int i;
+
+	if (!name || !*name) return false;
+
+	for (i = 1; compile_table[i].name != NULL; i++) {
+		if (strcmp(name, compile_table[i].name) == 0) return true;
+	}
+
+	return false;
 }

@@ -29,7 +29,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modpriv.h>
-#include <freeradius-devel/interpreter.h>
+#include <freeradius-devel/unlang.h>
 #include <freeradius-devel/parser.h>
 #include <freeradius-devel/protocol.h>
 #include <freeradius-devel/io/listen.h>

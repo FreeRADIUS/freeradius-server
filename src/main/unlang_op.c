@@ -26,10 +26,11 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modpriv.h>
-#include <freeradius-devel/interpreter.h>
 #include <freeradius-devel/parser.h>
 #include <freeradius-devel/xlat.h>
 #include <freeradius-devel/io/listen.h>
+
+#include "unlang_priv.h"
 
 /*
  *	Some functions differ mainly in their parsing
@@ -1489,7 +1490,7 @@ static unlang_action_t unlang_foreach(REQUEST *request,
 
 		/*
 		 *	Copy the VPs from the original request, this ensures deterministic
-		 *	behaviour if someone decides to add or remove VPs in the set were
+		 *	behaviour if someone decides to add or remove VPs in the set we're
 		 *	iterating over.
 		 */
 		if (tmpl_copy_vps(request, &vps, request, g->vpt) < 0) {	/* nothing to loop over */
@@ -1984,186 +1985,158 @@ static unlang_action_t unlang_if(REQUEST *request,
 }
 
 
-/** Callback for handling resumption frames
- *
- * Resumption frames are added to track when a module, or other construct
- * has yielded control back to the interpreter.
- *
- * This function is called when the request has been marked as resumable
- * and a resumption frame was previously placed on the stack, i.e. when
- * the work that caused the request to be yielded initially has completed.
- *
- * @param[in] request	to be resumed.
- * @param[out] presult	the rcode returned by the resume function.
- * @param[out] priority associated with the rcode.
- */
-static unlang_action_t unlang_resume(REQUEST *request, rlm_rcode_t *presult, int *priority)
+void unlang_op_initialize(void)
 {
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_t			*instruction = frame->instruction;
-	unlang_resume_t			*mr = unlang_generic_to_resume(instruction);
-	unlang_action_t			action;
+	unlang_op_register(UNLANG_TYPE_MODULE_CALL,
+			   &(unlang_op_t){
+			   	.name = "module",
+			   	.func = unlang_module_call,
+			   	.signal = unlang_module_signal,
+			   	.resume = unlang_module_resume
+			   });
 
-	RDEBUG3("Resuming in %s", mr->self.debug_name);
+	unlang_op_register(UNLANG_TYPE_GROUP,
+			   &(unlang_op_t){
+			   	.name = "group",
+			   	.func = unlang_group,
+			   	.debug_braces = true
+			   });
 
-	if (!unlang_ops[mr->parent->type].resume) {
-		*presult = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
+	unlang_op_register(UNLANG_TYPE_LOAD_BALANCE,
+			   &(unlang_op_t){
+			   	.name = "load-balance group",
+			   	.func = unlang_load_balance,
+			   	.debug_braces = true
+			   });
 
-	request->module = mr->self.debug_name;
+	unlang_op_register(UNLANG_TYPE_REDUNDANT_LOAD_BALANCE,
+			   &(unlang_op_t){
+				.name = "redundant-load-balance group",
+				.func = unlang_redundant_load_balance,
+				.debug_braces = true
+			   });
 
-	/*
-	 *	Run the resume callback associated with
-	 *	the original frame which was used to
-	 *	create this resumption frame.
-	 */
-	action = unlang_ops[mr->parent->type].resume(request, presult, mr->resume_ctx);
+	unlang_op_register(UNLANG_TYPE_PARALLEL,
+			   &(unlang_op_t){
+				.name = "parallel",
+				.func = unlang_parallel,
+				.signal = unlang_parallel_signal,
+				.resumable = unlang_parallel_resumable,
+				.resume = unlang_parallel_resume,
+				.debug_braces = true
+			   });
 
-	request->module = NULL;
-
-	/*
-	 *	Leave mr alone, it will be freed when the request is done.
-	 */
-
-	/*
-	 *	Is now marked as "stop" when it wasn't before, we must have been blocked.
-	 */
-	if (request->master_state == REQUEST_STOP_PROCESSING) {
-		RWARN("Module %s became unblocked", mr->self.debug_name);
-		return UNLANG_ACTION_STOP_PROCESSING;
-	}
-
-	if (*presult != RLM_MODULE_YIELD) {
-		rad_assert(*presult >= RLM_MODULE_REJECT);
-		rad_assert(*presult < RLM_MODULE_NUMCODES);
-		*priority = instruction->actions[*presult];
-	}
-
-	return action;
-}
-
-unlang_op_t unlang_ops[] = {
-	[UNLANG_TYPE_MODULE_CALL] = {
-		.name = "module-call",
-		.func = unlang_module_call,
-		.signal = unlang_module_signal,
-		.resume = unlang_module_resume,
-		.debug_braces = false
-	},
-	[UNLANG_TYPE_GROUP] = {
-		.name = "group",
-		.func = unlang_group,
-		.debug_braces = true
-	},
-	[UNLANG_TYPE_LOAD_BALANCE] = {
-		.name = "load-balance group",
-		.func = unlang_load_balance,
-		.debug_braces = true
-	},
-	[UNLANG_TYPE_REDUNDANT_LOAD_BALANCE] = {
-		.name = "redundant-load-balance group",
-		.func = unlang_redundant_load_balance,
-		.debug_braces = true
-	},
-	[UNLANG_TYPE_PARALLEL] = {
-		.name = "parallel",
-		.func = unlang_parallel,
-		.signal = unlang_parallel_signal,
-		.resumable = unlang_parallel_resumable,
-		.resume = unlang_parallel_resume,
-		.debug_braces = true
-	},
 #ifdef WITH_UNLANG
-	[UNLANG_TYPE_IF] = {
-		.name = "if",
-		.func = unlang_if,
-		.debug_braces = true
-	},
-	[UNLANG_TYPE_ELSE] = {
-		.name = "else",
-		.func = unlang_group,
-		.debug_braces = true
-	},
-	[UNLANG_TYPE_ELSIF] = {
-		.name = "elsif",
-		.func = unlang_if,
-		.debug_braces = true
-	},
-	[UNLANG_TYPE_UPDATE] = {
-		.name = "update",
-		.func = unlang_update,
-		.debug_braces = true
-	},
-	[UNLANG_TYPE_SWITCH] = {
-		.name = "switch",
-		.func = unlang_switch,
-		.debug_braces = true
-	},
-	[UNLANG_TYPE_CASE] = {
-		.name = "case",
-		.func = unlang_case,
-		.debug_braces = true
-	},
-	[UNLANG_TYPE_FOREACH] = {
-		.name = "foreach",
-		.func = unlang_foreach,
-		.debug_braces = true
-	},
-	[UNLANG_TYPE_BREAK] = {
-		.name = "break",
-		.func = unlang_break,
-		.debug_braces = false
-	},
-	[UNLANG_TYPE_RETURN] = {
-		.name = "return",
-		.func = unlang_return,
-		.debug_braces = false
-	},
-	[UNLANG_TYPE_MAP] = {
-		.name = "map",
-		.func = unlang_map,
-		.debug_braces = true
-	},
-	[UNLANG_TYPE_POLICY] = {
-		.name = "policy",
-		.func = unlang_policy,
-		.debug_braces = true
-	},
-	[UNLANG_TYPE_SUBREQUEST] = {
-		.name = "subrequest",
-		.func = unlang_subrequest,
-		.signal = unlang_subrequest_signal,
-		.resume = unlang_subrequest_resume,
-		.debug_braces = true
-	},
-	[UNLANG_TYPE_DETACH] = {
-		.name = "detach",
-		.func = unlang_detach,
-		.debug_braces = false
-	},
-	[UNLANG_TYPE_CALL] = {
-		.name = "call",
-		.func = unlang_call,
-		.debug_braces = true
-	},
+	unlang_op_register(UNLANG_TYPE_IF,
+			   &(unlang_op_t){
+				.name = "if",
+				.func = unlang_if,
+				.debug_braces = true
+			   });
+
+	unlang_op_register(UNLANG_TYPE_ELSE,
+			   &(unlang_op_t){
+				.name = "else",
+				.func = unlang_group,
+				.debug_braces = true
+			   });
+
+	unlang_op_register(UNLANG_TYPE_ELSIF,
+			   &(unlang_op_t){
+				.name = "elseif",
+				.func = unlang_if,
+				.debug_braces = true
+			   });
+
+	unlang_op_register(UNLANG_TYPE_UPDATE,
+			   &(unlang_op_t){
+				.name = "update",
+				.func = unlang_update,
+				.debug_braces = true
+			   });
+
+	unlang_op_register(UNLANG_TYPE_SWITCH,
+			   &(unlang_op_t){
+				.name = "switch",
+				.func = unlang_switch,
+				.debug_braces = true
+			   });
+
+	unlang_op_register(UNLANG_TYPE_CASE,
+			   &(unlang_op_t){
+				.name = "case",
+				.func = unlang_case,
+				.debug_braces = true
+			   });
+
+	unlang_op_register(UNLANG_TYPE_FOREACH,
+			   &(unlang_op_t){
+				.name = "foreach",
+				.func = unlang_foreach,
+				.debug_braces = true
+			   });
+
+	unlang_op_register(UNLANG_TYPE_BREAK,
+			   &(unlang_op_t){
+				.name = "break",
+				.func = unlang_break,
+			   });
+
+	unlang_op_register(UNLANG_TYPE_RETURN,
+			   &(unlang_op_t){
+				.name = "return",
+				.func = unlang_return,
+			   });
+
+	unlang_op_register(UNLANG_TYPE_MAP,
+			   &(unlang_op_t){
+				.name = "map",
+				.func = unlang_map,
+			   });
+
+
+	unlang_op_register(UNLANG_TYPE_POLICY,
+			   &(unlang_op_t){
+				.name = "policy",
+				.func = unlang_policy,
+			   });
+
+
+	unlang_op_register(UNLANG_TYPE_SUBREQUEST,
+			   &(unlang_op_t){
+				.name = "subrequest",
+				.func = unlang_subrequest,
+				.signal = unlang_subrequest_signal,
+				.resume = unlang_subrequest_resume,
+				.debug_braces = true
+			   });
+
+	unlang_op_register(UNLANG_TYPE_DETACH,
+			   &(unlang_op_t){
+				.name = "detach",
+				.func = unlang_detach,
+			   });
+
+	unlang_op_register(UNLANG_TYPE_CALL,
+			   &(unlang_op_t){
+				.name = "call",
+				.func = unlang_call,
+				.debug_braces = true
+			   });
 #endif
-	[UNLANG_TYPE_XLAT_INLINE] = {
-		.name = "xlat_inline",
-		.func = unlang_xlat_inline,
-		.debug_braces = false
-	},
-	[UNLANG_TYPE_XLAT] = {
-		.name = "xlat_eval",
-		.func = unlang_xlat,
-		.resume = unlang_xlat_resume,
-		.debug_braces = false
-	},
-	[UNLANG_TYPE_RESUME] = {
-		.name = "resume",
-		.func = unlang_resume,
-		.debug_braces = false
-	},
-	[UNLANG_TYPE_MAX] = { NULL, NULL, NULL, NULL, false }
-};
+
+	unlang_op_register(UNLANG_TYPE_XLAT_INLINE,
+			   &(unlang_op_t){
+				.name = "xlat_inline",
+				.func = unlang_xlat_inline,
+				.debug_braces = false
+			   });
+
+	unlang_op_register(UNLANG_TYPE_XLAT,
+			   &(unlang_op_t){
+				.name = "xlat_eval",
+				.func = unlang_xlat,
+				.resume = unlang_xlat_resume,
+				.debug_braces = false
+			   });
+}

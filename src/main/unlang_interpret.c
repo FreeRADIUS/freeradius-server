@@ -26,10 +26,11 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modpriv.h>
-#include <freeradius-devel/interpreter.h>
 #include <freeradius-devel/parser.h>
 #include <freeradius-devel/xlat.h>
 #include <freeradius-devel/io/listen.h>
+
+#include "unlang_priv.h"
 
 static FR_NAME_NUMBER unlang_action_table[] = {
 	{ "calculate-result",	UNLANG_ACTION_CALCULATE_RESULT },
@@ -94,6 +95,10 @@ static void unlang_dump_stack(REQUEST *request)
 #else
 #define DUMP_STACK
 #endif
+
+/** Different operations the interpreter can execute
+ */
+unlang_op_t unlang_ops[UNLANG_TYPE_MAX];
 
 /** Allocates and initializes an unlang_resume_t
  *
@@ -790,6 +795,35 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 	return rcode;
 }
 
+/** Allocate a new unlang stack
+ *
+ * @param[in] ctx	to allocate stack in.
+ * @return
+ *	- A new stack on success.
+ *	- NULL on OOM.
+ */
+void *unlang_stack_alloc(TALLOC_CTX *ctx)
+{
+#ifdef HAVE_TALLOC_POOLED_OBJECT
+	/*
+	 *	If we have talloc_pooled_object allocate the
+	 *	stack as a combined chunk/pool, with memory
+	 *	to hold at mutable data for at least a quarter
+	 *	of the maximum number of stack frames.
+	 *
+	 *	Having a dedicated pool for mutable stack data
+	 *	means we don't have memory fragmentations issues
+	 *	as we would if request were used as the pool.
+	 *
+	 *	This number is pretty arbitrary, but it seems
+	 *	like too low level to make into a tuneable.
+	 */
+	return talloc_pooled_object(ctx, unlang_stack_t, UNLANG_STACK_MAX / 4, sizeof(unlang_stack_state_t));
+#else
+	return talloc_zero(ctx, unlang_stack_t);
+#endif
+}
+
 /** Wrap an #fr_event_timer_t providing data needed for unlang events
  *
  */
@@ -1257,6 +1291,66 @@ void unlang_resumable(REQUEST *request)
 	if (request->runnable_id < 0) fr_heap_insert(request->backlog, request);
 }
 
+/** Callback for handling resumption frames
+ *
+ * Resumption frames are added to track when a module, or other construct
+ * has yielded control back to the interpreter.
+ *
+ * This function is called when the request has been marked as resumable
+ * and a resumption frame was previously placed on the stack, i.e. when
+ * the work that caused the request to be yielded initially has completed.
+ *
+ * @param[in] request	to be resumed.
+ * @param[out] presult	the rcode returned by the resume function.
+ * @param[out] priority associated with the rcode.
+ */
+static unlang_action_t unlang_resume(REQUEST *request, rlm_rcode_t *presult, int *priority)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_t			*instruction = frame->instruction;
+	unlang_resume_t			*mr = unlang_generic_to_resume(instruction);
+	unlang_action_t			action;
+
+	RDEBUG3("Resuming in %s", mr->self.debug_name);
+
+	if (!unlang_ops[mr->parent->type].resume) {
+		*presult = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	request->module = mr->self.debug_name;
+
+	/*
+	 *	Run the resume callback associated with
+	 *	the original frame which was used to
+	 *	create this resumption frame.
+	 */
+	action = unlang_ops[mr->parent->type].resume(request, presult, mr->resume_ctx);
+
+	request->module = NULL;
+
+	/*
+	 *	Leave mr alone, it will be freed when the request is done.
+	 */
+
+	/*
+	 *	Is now marked as "stop" when it wasn't before, we must have been blocked.
+	 */
+	if (request->master_state == REQUEST_STOP_PROCESSING) {
+		RWARN("Module %s became unblocked", mr->self.debug_name);
+		return UNLANG_ACTION_STOP_PROCESSING;
+	}
+
+	if (*presult != RLM_MODULE_YIELD) {
+		rad_assert(*presult >= RLM_MODULE_REJECT);
+		rad_assert(*presult < RLM_MODULE_NUMCODES);
+		*priority = instruction->actions[*presult];
+	}
+
+	return action;
+}
+
 /** Yield a request back to the interpreter from within a module
  *
  * This passes control of the request back to the unlang interpreter, setting
@@ -1461,6 +1555,30 @@ static ssize_t xlat_interpreter(UNUSED TALLOC_CTX *ctx, char **out, size_t outle
 	return 0;
 }
 
+/** Register an operation with the interpreter
+ *
+ * The main purpose of this registration API is to avoid intermixing the xlat,
+ * condition, map APIs with the interpreter, i.e. the callbacks needed for that
+ * functionality can be in their own source files, and we don't need to include
+ * supporting types and function declarations in the interpreter.
+ *
+ * Later, this could potentially be used to register custom operations for modules.
+ *
+ * The reason why there's a function instead of accessing the unlang_op array
+ * directly, is because 'type' really needs to go away, as needing to add ops to
+ * the unlang_type_t enum breaks the pluggable module model. If there's no
+ * explicit/consistent type values we need to enumerate the operations ourselves.
+ *
+ * @param[in] type		Operation identifier.  Used to map compiled unlang code
+ *				to operations.
+ * @param[in] op		unlang_op to register.
+ */
+void unlang_op_register(int type, unlang_op_t *op)
+{
+	rad_assert(type < UNLANG_TYPE_MAX);	/* Unlang max isn't a valid type */
+
+	memcpy(&unlang_ops[type], op, sizeof(unlang_ops[type]));
+}
 
 /** Initialize the unlang compiler / interpreter.
  *
@@ -1469,6 +1587,9 @@ static ssize_t xlat_interpreter(UNUSED TALLOC_CTX *ctx, char **out, size_t outle
 int unlang_initialize(void)
 {
 	(void) xlat_register(NULL, "interpreter", xlat_interpreter, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+
+	unlang_op_register(UNLANG_TYPE_RESUME, &(unlang_op_t){ .name = "resume", .func = unlang_resume });
+	unlang_op_initialize();	/* Register operations for the default keywords */
 
 	return 0;
 }
