@@ -349,7 +349,7 @@ static const CONF_PARSER client_config[] = {
 	/*
 	 *	This should only be set for dynamic clients.
 	 */
-	{ FR_CONF_OFFSET("natted", FR_TYPE_BOOL, RADCLIENT, behind_nat) },
+	{ FR_CONF_OFFSET("behind_nat", FR_TYPE_BOOL, RADCLIENT, behind_nat) },
 
 #ifdef WITH_TCP
 	{ FR_CONF_POINTER("proto", FR_TYPE_STRING, &hs_proto) },
@@ -870,7 +870,7 @@ RADCLIENT *client_afrom_request(TALLOC_CTX *ctx, REQUEST *request)
 			break;
 
 		case FR_FREERADIUS_CLIENT_BEHIND_NAT:
-			attr = "natted";
+			attr = "behind_nat";
 			if (vp->vp_bool) {
 				value = "yes";
 			} else {

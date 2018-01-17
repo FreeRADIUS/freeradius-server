@@ -50,6 +50,7 @@ typedef struct radclient {
 	bool			active;			//!< for dynamic clients
 	bool			negative;		//!< negative cache entry
 	bool			expired;		//!< has it expired?
+	bool			is_nat;			//!< is this client a NATed one?
 	bool			behind_nat;		//!< is the dynamic client behind a NAT?
 
 #ifdef WITH_TLS
