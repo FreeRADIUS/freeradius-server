@@ -152,6 +152,11 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 
 	if (!client) return false;
 
+	if (client->behind_nat) {
+		ERROR("Clients cannot be defined to be behind a NAT.");
+		return false;
+	}
+
 	/*
 	 *	Hack to fixup wildcard clients
 	 *
