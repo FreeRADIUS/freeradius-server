@@ -335,9 +335,14 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_
 
 	/*
 	 *	Tell the other end that there is new data ready.
+	 *
+	 *	Ignore errors on signalling.  The worker already has
+	 *	the packet in its inbound queue, so at some point, it
+	 *	will pick up the message.
 	 */
 	MPRINT("MASTER SIGNALS\n");
-	return fr_channel_data_ready(ch, when, master, FR_CHANNEL_SIGNAL_DATA_TO_WORKER);
+	(void) fr_channel_data_ready(ch, when, master, FR_CHANNEL_SIGNAL_DATA_TO_WORKER);
+	return 0;
 }
 
 /** Receive a reply message from the channel
@@ -495,7 +500,8 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 	 *	thread.
 	 */
 	if (worker->num_outstanding == 0) {
-		return fr_channel_data_ready(ch, when, worker, FR_CHANNEL_SIGNAL_DATA_DONE_WORKER);
+		(void) fr_channel_data_ready(ch, when, worker, FR_CHANNEL_SIGNAL_DATA_DONE_WORKER);
+		return 0;
 	}
 
 	MPRINT("\twhen - last_read_other = %zd - %zd = %zd\n", when, worker->last_read_other, when - worker->last_read_other);
@@ -534,7 +540,8 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd, fr_channel_da
 #endif
 
 	MPRINT("\tWORKER SIGNALS num_outstanding %zd\n", worker->num_outstanding);
-	return fr_channel_data_ready(ch, when, worker, FR_CHANNEL_SIGNAL_DATA_FROM_WORKER);
+	(void) fr_channel_data_ready(ch, when, worker, FR_CHANNEL_SIGNAL_DATA_FROM_WORKER);
+	return 0;
 }
 
 
