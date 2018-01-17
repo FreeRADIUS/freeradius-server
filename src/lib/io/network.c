@@ -271,19 +271,32 @@ static void fr_network_channel_callback(void *ctx, void const *data, size_t data
  */
 static bool fr_network_send_request(fr_network_t *nr, fr_channel_data_t *cd)
 {
-	uint32_t one, two;
 	fr_network_worker_t *worker;
 	fr_channel_data_t *reply;
 
 	(void) talloc_get_type_abort(nr, fr_network_t);
 
-	one = fr_rand() % nr->num_workers;
-	two = fr_rand() % nr->num_workers;
+	if (nr->num_workers == 1) {
+		worker = nr->workers[0];
 
-	if (nr->workers[one]->cpu_time < nr->workers[two]->cpu_time) {
-		worker = nr->workers[one];
 	} else {
-		worker = nr->workers[two];
+		uint32_t one, two;
+
+		if (nr->num_workers == 2) {
+			one = 0;
+			two = 1;
+		} else {
+			one = fr_rand() % nr->num_workers;
+			do {
+				two = fr_rand() % nr->num_workers;
+			} while (two == one);
+		}
+
+		if (nr->workers[one]->cpu_time < nr->workers[two]->cpu_time) {
+			worker = nr->workers[one];
+		} else {
+			worker = nr->workers[two];
+		}
 	}
 
 	(void) talloc_get_type_abort(worker, fr_network_worker_t);
