@@ -314,7 +314,7 @@ void fr_strerror_free(void)
 
 #ifdef TESTING_STRERROR
 /*
- *  cc strerror.c cursor.c -g3 -Wall -DTESTING_STRERROR -L/usr/local/lib -I/usr/local/include -I../../ -I../ -include ../include/build.h -l talloc -o test_strerror && ./test_strerror
+ *  cc strerror.c -g3 -Wall -DTESTING_STRERROR -L/usr/local/lib -L ../../../build/lib/local/.libs/ -lfreeradius-util -I/usr/local/include -I../../ -I../ -include ../include/build.h -l talloc -o test_strerror && ./test_strerror
  */
 #include <stddef.h>
 #include <freeradius-devel/cutest.h>
@@ -456,6 +456,22 @@ void test_strerror_printf_push_append(void)
 	TEST_CHECK(error[0] == '\0');
 }
 
+void test_strerror_printf_push_append2(void)
+{
+	char const *error;
+
+	fr_strerror_printf_push("Testing %i", 1);
+	fr_strerror_printf("%s Testing %i", fr_strerror_pop(), 2);
+
+	error = fr_strerror();
+	TEST_CHECK(error != NULL);
+	TEST_CHECK(strcmp(error, "Testing 1 Testing 2") == 0);
+
+	error = fr_strerror();
+	TEST_CHECK(error != NULL);
+	TEST_CHECK(error[0] == '\0');
+}
+
 TEST_LIST = {
 	{ "test_strerror_uninit",			test_strerror_uninit },
 	{ "test_strerror_pop_uninit",			test_strerror_pop_uninit },
@@ -468,6 +484,7 @@ TEST_LIST = {
 	{ "test_strerror_printf_push_strerror_multi",	test_strerror_printf_push_strerror_multi },
 	{ "test_strerror_printf_strerror_append",	test_strerror_printf_strerror_append },
 	{ "test_strerror_printf_push_append",		test_strerror_printf_push_append },
+	{ "test_strerror_printf_push_append2",		test_strerror_printf_push_append2 },
 
 	{ 0 }
 };
