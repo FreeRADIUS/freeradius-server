@@ -166,6 +166,16 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	}
 
 	/*
+	 *	Once a socket is ready, the network side tries to read
+	 *	many packets.  So if we want to stop it from reading,
+	 *	we have to check this ourselves.
+	 */
+	if (inst->outstanding >= inst->max_outstanding) {
+		rad_assert(inst->paused);
+		return 0;
+	}
+
+	/*
 	 *	Seek to the current read offset.
 	 */
 	(void) lseek(inst->fd, inst->read_offset, SEEK_SET);
