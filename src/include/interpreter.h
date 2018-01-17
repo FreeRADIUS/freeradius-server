@@ -111,6 +111,15 @@ typedef enum {
 	UNLANG_GROUP_TYPE_MAX			//!< Number of group types.
 } unlang_group_type_t;
 
+#define UNLANG_NEXT_STOP (false)
+#define UNLANG_NEXT_CONTINUE (true)
+
+#define UNLANG_TOP_FRAME (true)
+#define UNLANG_SUB_FRAME (false)
+
+#define UNLANG_DETACHABLE (true)
+#define UNLANG_NORMAL_CHILD (false)
+
 /** A node in a graph of #unlang_op_t (s) that we execute
  *
  * The interpreter acts like a turing machine, with #unlang_t nodes forming the tape
@@ -357,6 +366,19 @@ typedef unlang_action_t (*unlang_op_func_t)(REQUEST *request, rlm_rcode_t *presu
  */
 typedef void (*unlang_op_func_signal_t)(REQUEST *request, void *resume_ctx, fr_state_action_t action);
 
+/** Function to call when a request becomes resumable
+ *
+ * When an event occurs that means we can continue processing the request, this function is called
+ * first. This callback is usually used to remove timeout events, unregister interest in file
+ * descriptors, and generally cleanup after the yielding function.
+ *
+ * @param[in] request		The current request.
+ * @param[in] resume_ctx	A structure allocated by the initial #unlang_op_func_t to store
+ *				the result of the async execution.
+ * @param[in] action		We're being signalled with.
+ */
+typedef void (*unlang_op_func_resumable_t)(REQUEST *request, void *resume_ctx);
+
 /** Function to call if the initial function yielded and the request is resumable
  *
  * @param[in] request		The current request.
@@ -379,8 +401,11 @@ typedef struct {
 	unlang_op_func_signal_t signal;				//!< Called if the request is to be destroyed
 								///< and we need to cleanup any residual state.
 
-	unlang_op_func_resume_t	resume;				//!< Called if func yielded and we need
-								///< to continue processing.
+	unlang_op_func_resumable_t resumable;			//!< Called as soon as the interpreter is informed
+								///< that a request is resumable.
+
+	unlang_op_func_resume_t	resume;				//!< Called if we're continuing processing
+								///< a request.
 	bool			debug_braces;			//!< Whether the operation needs to print braces
 								///< in debug mode.
 } unlang_op_t;
@@ -443,6 +468,13 @@ static inline unlang_t *unlang_resume_to_generic(unlang_resume_t *p)
 	return (unlang_t *)p;
 }
 /* @} **/
+
+/*
+ *	Internal interpreter functions needed by ops
+ */
+void		unlang_push(unlang_stack_t *stack, unlang_t *program, rlm_rcode_t result,
+			    bool do_next_sibling, bool top_frame);
+rlm_rcode_t	unlang_run(REQUEST *request);
 
 #ifdef __cplusplus
 }

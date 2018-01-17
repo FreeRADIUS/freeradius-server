@@ -24,6 +24,7 @@ SOURCES	:=	cond_eval.c \
 		pool.c \
     		unlang_compile.c \
     		unlang_interpret.c \
+ 		unlang_op.c \
 		xlat_eval.c \
 		xlat_func.c \
 		xlat_tokenize.c
