@@ -155,6 +155,7 @@ typedef struct proto_radius_udp_t {
 
 typedef struct dynamic_packet_t {
 	uint8_t			*packet;
+	fr_time_t		timestamp;
 	fr_tracking_entry_t	*track;
 	fr_dlist_t		entry;
 } dynamic_packet_t;
@@ -409,8 +410,9 @@ static ssize_t dynamic_client_packet_restore(proto_radius_udp_t *inst, uint8_t *
 	dynamic_packet_t	*saved;
 	size_t			packet_len;
 
+redo:
 	entry = FR_DLIST_FIRST(inst->dynamic_clients.packets);
-	if (!entry) return -1;
+	if (!entry) return 0;
 	fr_dlist_remove(entry);
 
 	saved = fr_ptr_to_type(dynamic_packet_t, entry, entry);
@@ -419,14 +421,24 @@ static ssize_t dynamic_client_packet_restore(proto_radius_udp_t *inst, uint8_t *
 	rad_assert(saved->track != NULL);
 
 	/*
+	 *	The saved packet subsequently got a conflicting
+	 *	packet.  We therefore ignore the older one.
+	 */
+	if (saved->timestamp != saved->track->timestamp) {
+	drop_packet:
+		((proto_radius_udp_address_t *)saved->track->src_dst)->client->received--;
+		talloc_free(saved);
+		goto redo;
+	}
+
+	/*
 	 *	Can't copy the packet over, there's nothing more we
 	 *	can do.
 	 */
 	packet_len = talloc_array_length(saved->packet);
 	if (packet_len > buffer_len) {
 		(void) fr_radius_tracking_entry_delete(inst->ft, saved->track);
-		talloc_free(saved);
-		return -1;
+		goto drop_packet;
 	}
 
 	/*
@@ -498,6 +510,7 @@ static int dynamic_client_packet_save(proto_radius_udp_t *inst, uint8_t *packet,
 	MEM(saved = talloc_zero(inst, dynamic_packet_t));
 	MEM(saved->packet = talloc_memdup(saved, packet, packet_len));
 	saved->track = *track;
+	saved->timestamp = saved->track->timestamp;
 	fr_dlist_insert_tail(&address->client->packets, &saved->entry);
 
 	((proto_radius_udp_address_t *)saved->track->src_dst)->client->received++;
@@ -543,6 +556,7 @@ static ssize_t dynamic_client_alloc(proto_radius_udp_t *inst, uint8_t *packet, s
 
 	client->ipaddr = address->src_ipaddr;
 	client->src_ipaddr = address->dst_ipaddr;
+
 	client->network = *network;
 
 	address->client = client;
@@ -847,10 +861,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	entry = FR_DLIST_FIRST(inst->dynamic_clients.packets);
 	if (entry) {
 		data_size = dynamic_client_packet_restore(inst, buffer, buffer_len, &track);
-		if (data_size < 0) {
-			rad_assert(0 == 1);
-			return 0;
-		}
+		if (!data_size) goto do_read;
 
 		packet_len = data_size;
 
@@ -1382,25 +1393,6 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 
 			rad_assert(newclient->active == true);
 			rad_assert(newclient->negative == false);
-		}
-
-		/*
-		 *	This particular packet had a later one
-		 *	over-ride it.  We still add the client, but
-		 *	don't send the packet on towards mod_read()
-		 */
-		if (track->timestamp != request_time) {
-			DEBUG3("First packet was too late, discarding it.");
-
-			entry = FR_DLIST_FIRST(client->packets);
-			rad_assert(entry != NULL);
-			saved = fr_ptr_to_type(dynamic_packet_t, entry, entry);
-
-			fr_dlist_remove(&saved->entry);
-			/* leave the tracking table entry - it's used by a later packet */
-			rad_assert(saved->track == track);
-			talloc_free(saved);
-			inst->dynamic_clients.num_pending_packets--;
 		}
 
 		/*
