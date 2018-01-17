@@ -611,11 +611,16 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *nam
 	ssize_t		slen;
 	vp_tmpl_t	*vpt;
 
-	MEM(vpt = talloc_zero(ctx, vp_tmpl_t));
-
 	p = name;
 
 	if (*p == '&') p++;
+
+	if (!*p) {
+		fr_strerror_printf("Invalid attribute name.");
+		return -1;
+	}
+
+	MEM(vpt = talloc_zero(ctx, vp_tmpl_t));
 
 	p += radius_request_name(&vpt->tmpl_request, p, request_def);
 	if (vpt->tmpl_request == REQUEST_UNKNOWN) {
