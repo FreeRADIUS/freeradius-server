@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/connection.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/unlang.h>
 
 #include "rlm_radius.h"
 #include "track.h"

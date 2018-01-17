@@ -26,6 +26,7 @@
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/unlang.h>
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/rad_assert.h>

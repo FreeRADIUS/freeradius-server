@@ -24,6 +24,7 @@
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
+#include <freeradius-devel/unlang.h>
 #include "eap_peap.h"
 
 static int setup_fake_request(REQUEST *request, REQUEST *fake, peap_tunnel_t *t);

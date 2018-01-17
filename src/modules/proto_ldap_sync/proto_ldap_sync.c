@@ -25,10 +25,12 @@
  */
 #include <freeradius-devel/ldap/libfreeradius-ldap.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/unlang.h>
 #include <freeradius-devel/protocol.h>
 #include <freeradius-devel/process.h>
 #include <freeradius-devel/rad_assert.h>
 #include <sys/socket.h>
+
 #include "sync.h"
 
 /** Configuration for listen instance of the proto_ldap_conn

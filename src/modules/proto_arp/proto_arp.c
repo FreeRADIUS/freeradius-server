@@ -23,6 +23,7 @@
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/protocol.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/unlang.h>
 #include <freeradius-devel/process.h>
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/pcap.h>
