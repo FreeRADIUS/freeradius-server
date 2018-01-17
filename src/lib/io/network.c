@@ -369,6 +369,7 @@ static void fr_network_socket_dead(fr_network_t *nr, fr_network_socket_t *s)
  */
 static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int flags, void *ctx)
 {
+	int num_messages = 0;
 	fr_network_socket_t *s = ctx;
 	fr_network_t *nr = talloc_parent(s);
 	ssize_t data_size;
@@ -393,6 +394,16 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int f
 	rad_assert(cd->m.data != NULL);
 	rad_assert(cd->m.rb_size >= 256);
 
+next_message:
+	/*
+	 *	Poll this socket, but not too often.  We have to go
+	 *	service other sockets, too.
+	 */
+	if (num_messages > 16) {
+		s->cd = cd;
+		return;
+	}
+
 	/*
 	 *	Read data from the network.
 	 *
@@ -403,7 +414,6 @@ static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int f
 	 *	network side knows that it needs to close the
 	 *	connection.
 	 */
-next_message:
 	data_size = s->listen->app_io->read(s->listen->app_io_instance, &cd->packet_ctx, &recv_time,
 					    cd->m.data, cd->m.rb_size, &s->leftover, &cd->priority);
 	if (data_size == 0) {
@@ -487,6 +497,7 @@ next_message:
 	 */
 	if (next) {
 		cd = next;
+		num_messages++;
 		goto next_message;
 	}
 }
