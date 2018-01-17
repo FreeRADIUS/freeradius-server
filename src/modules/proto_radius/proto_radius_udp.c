@@ -1310,6 +1310,59 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		memcpy(&newclient, buffer, sizeof(newclient));
 
 		/*
+		 *	This client is ONLY for a particular
+		 *	connection.  We have to find all matching
+		 *	packets by src/dst IP/port, and send them to
+		 *	the new connection.
+		 */
+		if (newclient->behind_nat) {
+			client->is_nat = true;
+
+			while ((entry = FR_DLIST_FIRST(client->packets)) != NULL) {
+				proto_radius_udp_address_t *newaddress;
+
+				saved = fr_ptr_to_type(dynamic_packet_t, entry, entry);
+				fr_dlist_remove(&saved->entry);
+				fr_dlist_insert_tail(&inst->dynamic_clients.packets, &saved->entry);
+
+				newaddress = (proto_radius_udp_address_t *) &saved->track->src_dst[0];
+				if ((newaddress->src_port == address->src_port) &&
+				    (newaddress->dst_port == address->dst_port) &&
+				    (fr_ipaddr_cmp(&newaddress->src_ipaddr, &address->src_ipaddr) == 0) &&
+				    (fr_ipaddr_cmp(&newaddress->dst_ipaddr, &address->dst_ipaddr) == 0)) {
+					newaddress->client = newclient;
+				}
+
+				rad_assert(inst->dynamic_clients.num_pending_packets > 0);
+				inst->dynamic_clients.num_pending_packets--;
+			}
+
+			/*
+			 *	There are still saved packets from this source IP.  Panic!
+			 *
+			 *	@todo - figure out what to do here
+			 */
+			if ((entry = FR_DLIST_FIRST(client->packets)) != NULL) {
+				rad_assert(0 == 1);
+				fr_exit_now(EXIT_FAILURE);
+			}
+
+			/*
+			 *	No packets are outstanding for this
+			 *	dynamic client.  Delete it.
+			 */
+			client_delete(inst->dynamic_clients.clients, client);
+			fr_dlist_remove(&client->pending);
+			talloc_free(client);
+
+			newclient->dynamic = true;
+			newclient->active = true;
+
+			fr_network_listen_read(inst->nr, inst->parent->listen);
+			return buffer_len;
+		}
+
+		/*
 		 *	Delete the "pending" client from the client list.
 		 */
 		client_delete(inst->dynamic_clients.clients, client);
@@ -1381,8 +1434,6 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		 *	allocated one.
 		 */
 		while ((entry = FR_DLIST_FIRST(client->packets)) != NULL) {
-			DEBUG3("Restoring packet...");
-
 			saved = fr_ptr_to_type(dynamic_packet_t, entry, entry);
 			fr_dlist_remove(&saved->entry);
 			fr_dlist_insert_tail(&inst->dynamic_clients.packets, &saved->entry);
