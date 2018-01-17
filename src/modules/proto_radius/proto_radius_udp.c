@@ -330,7 +330,10 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	 *	If we're not using connected sockets, we can't have
 	 *	clients behind a NAT.
 	 */
-	if (!inst->use_connected) client->behind_nat = false;
+	if (!inst->use_connected) {
+		client->is_nat = false;
+		client->behind_nat = false;
+	}
 
 	memcpy(buffer, &client, sizeof(client));
 	return sizeof(client);
@@ -991,11 +994,23 @@ do_read:
 		}
 
 		/*
-		 *	Return the packet, but it's ALREADY been
+		 *	Return the packet, as it's ALREADY been
 		 *	inserted into the tracking table via
 		 *	dynamic_client_alloc().
 		 */
 		goto return_packet;
+	}
+
+	/*
+	 *	We can only do NAT gateways if we're using connected
+	 *	sockets.  This code catches *statically* defined
+	 *	clients, not dynamic ones.
+	 */
+	if ((address.client->is_nat || address.client->behind_nat) && !inst->use_connected) {
+		WARN("Ignoring NAT settings for client %s as we are not using connected sockets for listener %s",
+			address.client->shortname, inst->name);
+		address.client->is_nat = false;
+		address.client->behind_nat = false;
 	}
 
 	if (inst->connected) {
@@ -1007,6 +1022,7 @@ connected:
 
 		address.client = inst->child.client;
 	}
+
 found:
 	/*
 	 *	If the signature fails validation, ignore it.
@@ -1133,9 +1149,19 @@ received_packet:
 
 untrack:
 		/*
+		 *	This dynamic client is behind a NAT.  We've
+		 *	read all of the outstanding packets for it, so
+		 *	we just delete the client now.
+		 */
+		if (address.client->dynamic && address.client->behind_nat &&
+		    (address.client->received == 0)) {
+			talloc_free(address.client);
+		}
+
+		/*
 		 *	We're no longer tracking this packet.
-		 *	Instead, the client is.  So we just discard it
-		 *	now.
+		 *	Instead, the client is.  So we just discard
+		 *	the packet.
 		 */
 		(void) fr_radius_tracking_entry_delete(track->ft, track);
 		return 0;
@@ -1330,7 +1356,9 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 				    (newaddress->dst_port == address->dst_port) &&
 				    (fr_ipaddr_cmp(&newaddress->src_ipaddr, &address->src_ipaddr) == 0) &&
 				    (fr_ipaddr_cmp(&newaddress->dst_ipaddr, &address->dst_ipaddr) == 0)) {
+					newaddress->client->received--;
 					newaddress->client = newclient;
+					newaddress->client->received++;
 				}
 
 				rad_assert(inst->dynamic_clients.num_pending_packets > 0);
@@ -1338,9 +1366,9 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			}
 
 			/*
-			 *	There are still saved packets from this source IP.  Panic!
+			 *	There are still saved packets from this source IP.
 			 *
-			 *	@todo - figure out what to do here
+			 *	@todo - figure out what to do here.
 			 */
 			if ((entry = FR_DLIST_FIRST(client->packets)) != NULL) {
 				rad_assert(0 == 1);
@@ -1355,6 +1383,11 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			fr_dlist_remove(&client->pending);
 			talloc_free(client);
 
+			/*
+			 *	Note that we do NOT add it to any
+			 *	list.  Instead, mod_read() will clean
+			 *	it up.
+			 */
 			newclient->dynamic = true;
 			newclient->active = true;
 
