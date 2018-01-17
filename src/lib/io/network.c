@@ -367,7 +367,7 @@ static void fr_network_socket_dead(fr_network_t *nr, fr_network_socket_t *s)
  * @param[in] flags	from kevent.
  * @param[in] ctx	the network socket context.
  */
-static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int flags, void *ctx)
+static void fr_network_read(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED int flags, void *ctx)
 {
 	int num_messages = 0;
 	fr_network_socket_t *s = ctx;
