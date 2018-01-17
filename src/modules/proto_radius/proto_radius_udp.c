@@ -1132,26 +1132,6 @@ received_packet:
 		}
 
 untrack:
-
-		/*
-		 *	If the client is dynamic, AND is behind a NAT,
-		 *	AND we've processed all pending packets for
-		 *	it, THEN delete the dynamic client.  This
-		 *	means that the next packet from that IP will
-		 *	cause a new client to be defined.
-		 *
-		 *	i.e. each connection has it's own client.
-		 */
-		if (address.client->dynamic && address.client->behind_nat &&
-		    (address.client->received == 0)) {
-			RADCLIENT *client = address.client;
-
-			rad_assert(client->outstanding == 0);
-			(void) client_delete(inst->dynamic_clients.clients, client);
-			rad_assert(client->outstanding == 0);
-			client_free(client);
-		}
-
 		/*
 		 *	We're no longer tracking this packet.
 		 *	Instead, the client is.  So we just discard it
