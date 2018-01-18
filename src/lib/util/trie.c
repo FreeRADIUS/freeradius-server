@@ -1250,7 +1250,7 @@ static int fr_trie_merge(TALLOC_CTX *ctx, void **trie_p, void *a, void *b, int d
 						/*
 						 *	No path compression here.
 						 */
-						assert(IS_NODE(subtrie));
+						rad_assert(IS_NODE(subtrie));
 						subnode = subtrie;
 						rad_assert(subnode->size == bits);
 					}
@@ -2162,7 +2162,7 @@ static int fr_trie_dump_cb(void *trie, fr_trie_callback_t *cb, int keylen, UNUSE
 
 		fprintf(fp, "{ NODE-%d\n", user->number);
 		fprintf(fp, "\ttype\tUSER\n");
-		fprintf(fp, "\tkey\t{%d}%.*s\n", keylen, bytes, cb->start);
+		fprintf(fp, "\tinput\t{%d}%.*s\n", keylen, bytes, cb->start);
 
 		fprintf(fp, "\tdata\t\"%s\"\n", (char const *) user->data);
 		if (!user->trie) {
@@ -2181,7 +2181,7 @@ static int fr_trie_dump_cb(void *trie, fr_trie_callback_t *cb, int keylen, UNUSE
 		fr_trie_path_t *path = GET_PATH(trie);
 		fprintf(fp, "{ NODE-%d\n", path->number);
 		fprintf(fp, "\ttype\tPATH\n");
-		fprintf(fp, "\tkey\t{%d}%.*s\n", keylen, bytes, cb->start);
+		fprintf(fp, "\tinput\t{%d}%.*s\n", keylen, bytes, cb->start);
 
 		fprintf(fp, "\tstart\t%d\n", (int) path->start_bit);
 		fprintf(fp, "\tend\t%d\n", (int) path->end_bit);
@@ -2209,7 +2209,7 @@ static int fr_trie_dump_cb(void *trie, fr_trie_callback_t *cb, int keylen, UNUSE
 
 	fprintf(fp, "{ NODE-%d\n", node->number);
 	fprintf(fp, "\ttype\tTRIE\n");
-	fprintf(fp, "\tkey\t{%d}%.*s\n", keylen, bytes, cb->start);
+	fprintf(fp, "\tinput\t{%d}%.*s\n", keylen, bytes, cb->start);
 
 	fprintf(fp, "\tbits\t%d\n", node->size);
 	fprintf(fp, "\tused\t%d\n", node->used);
