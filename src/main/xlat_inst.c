@@ -284,7 +284,7 @@ static int _xlat_instantiate_request_walker(xlat_exp_t *node, UNUSED void *uctx)
 
 /** Create instance data for "ephemeral" xlats
  *
- * @node This must only be used for xlats created at runtime.
+ * @note This must only be used for xlats created at runtime.
  *
  * @param[in] root of xlat tree to create instance data for.
  */
@@ -335,7 +335,7 @@ static int _xlat_instantiate_walker(xlat_exp_t *node, UNUSED void *uctx)
  *
  * @note This must only be used for xlats created during startup.
  *	 IF THIS IS CALLED FOR XLATS TOKENIZED AT RUNTIME YOU WILL LEAK LARGE AMOUNTS OF MEMORY.
- *	 USE #xlat_instantiate_request INSTEAD.
+ *	 USE xlat_instantiate_request() INSTEAD.
  *
  * @param[in] root of xlat tree to create instance data for.
  */
