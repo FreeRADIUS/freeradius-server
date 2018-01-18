@@ -37,6 +37,8 @@ struct rbnode_t {
 	rbnode_t		*right;		//!< Right child
 	rbnode_t		*parent;	//!< Parent
 	node_colour_t		colour;		//!< Node colour (BLACK, RED)
+	bool			being_freed;	//!< Disable frees if we're currently calling
+						///< a free function.
 	void			*data;		//!< data stored in node
 };
 
@@ -54,6 +56,7 @@ struct rbtree_t {
 	bool			replace;
 	bool			lock;
 	pthread_mutex_t		mutex;
+	bool			being_freed;	//!< Prevent double frees in talloc_destructor.
 
 	TALLOC_CTX		*node_ctx;	//!< Freed last by the destructor, to ensure
 						//!< the tree is still functional.
@@ -62,6 +65,14 @@ struct rbtree_t {
 #ifndef NDEBUG
 #  define RBTREE_MAGIC (0x5ad09c42)
 #endif
+
+static inline void rbtree_free_data(rbtree_t *tree, rbnode_t *node)
+{
+	if (!tree->free || unlikely(node->being_freed)) return;
+	node->being_freed = true;
+	tree->free(node->data);
+	node->being_freed = false;
+}
 
 /** Walks the tree to delete all nodes Does NOT re-balance it!
  *
@@ -73,7 +84,7 @@ static void free_walker(rbtree_t *tree, rbnode_t *x)
 	if (x->left != NIL) free_walker(tree, x->left);
 	if (x->right != NIL) free_walker(tree, x->right);
 
-	if (tree->free) tree->free(x->data);
+	rbtree_free_data(tree, x);
 	talloc_free(x);
 }
 
@@ -96,10 +107,18 @@ void rbtree_node_talloc_free(void *data)
  *	which gets called before any of the nodes are deleted.
  *
  * @param[in] tree to tree.
- * @return 0
+ * @return
+ *	- 0 if tree was freed.
+ *	- -1 if tree is already being freed.
  */
 static int _tree_free(rbtree_t *tree)
 {
+	/*
+	 *	Prevent duplicate frees
+	 */
+	if (unlikely(tree->being_freed)) return -1;
+	tree->being_freed = true;
+
 	/*
 	 *	walk the tree, deleting the nodes...
 	 */
@@ -108,7 +127,7 @@ static int _tree_free(rbtree_t *tree)
 #ifndef NDEBUG
 	tree->magic = 0;
 #endif
-	tree->root = NULL;
+	tree->root = NIL;
 	tree->num_elements = 0;
 
 	/*
@@ -279,7 +298,7 @@ rbnode_t *rbtree_insert_node(rbtree_t *tree, void *data)
 {
 	rbnode_t *current, *parent, *x;
 
-	if (!tree->root) return NULL;
+	if (unlikely(tree->being_freed)) return NULL;
 	if (tree->lock) pthread_mutex_lock(&tree->mutex);
 
 	/* find where node belongs */
@@ -304,7 +323,7 @@ rbnode_t *rbtree_insert_node(rbtree_t *tree, void *data)
 			/*
 			 *	Do replace the entry.
 			 */
-			if (tree->free) tree->free(current->data);
+			rbtree_free_data(tree, current->data);
 			current->data = data;
 			if (tree->lock) pthread_mutex_unlock(&tree->mutex);
 			return current;
@@ -351,7 +370,7 @@ bool rbtree_insert(rbtree_t *tree, void const *data)
 {
 	void *mutable;
 
-	if (!tree->root) return NULL;
+	if (unlikely(tree->being_freed)) return NULL;
 
 	memcpy(&mutable, &data, sizeof(mutable));
 
@@ -470,7 +489,7 @@ static void rbtree_delete_internal(rbtree_t *tree, rbnode_t *z, bool skiplock)
 	}
 
 	if (y != z) {
-		if (tree->free) tree->free(z->data);
+		rbtree_free_data(tree, z);
 		z->data = y->data;
 		y->data = NULL;
 
@@ -499,7 +518,7 @@ static void rbtree_delete_internal(rbtree_t *tree, rbnode_t *z, bool skiplock)
 		talloc_free(z);
 
 	} else {
-		if (tree->free) tree->free(y->data);
+		rbtree_free_data(tree, y);
 
 		if (y->colour == BLACK)
 			delete_fixup(tree, x, parent);
@@ -515,7 +534,7 @@ static void rbtree_delete_internal(rbtree_t *tree, rbnode_t *z, bool skiplock)
 
 void rbtree_delete(rbtree_t *tree, rbnode_t *z)
 {
-	if (!tree->root) return;
+	if (unlikely(tree->being_freed) || unlikely(z->being_freed)) return;
 
 	rbtree_delete_internal(tree, z, false);
 }
@@ -528,7 +547,7 @@ bool rbtree_deletebydata(rbtree_t *tree, void const *data)
 {
 	rbnode_t *node;
 
-	if (!tree->root) return false;
+	if (unlikely(tree->being_freed)) return false;
 
 	node = rbtree_find(tree, data);
 	if (!node) return false;
@@ -546,7 +565,7 @@ rbnode_t *rbtree_find(rbtree_t *tree, void const *data)
 {
 	rbnode_t *current;
 
-	if (!tree->root) return NULL;
+	if (unlikely(tree->being_freed)) return NULL;
 
 	if (tree->lock) pthread_mutex_lock(&tree->mutex);
 	current = tree->root;
@@ -574,7 +593,7 @@ void *rbtree_finddata(rbtree_t *tree, void const *data)
 {
 	rbnode_t *x;
 
-	if (!tree->root) return NULL;
+	if (unlikely(tree->being_freed)) return NULL;
 
 	x = rbtree_find(tree, data);
 	if (!x) return NULL;
