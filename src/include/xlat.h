@@ -134,6 +134,35 @@ typedef int (*xlat_instantiate_t)(void *xlat_inst, xlat_exp_t const *exp, void *
 typedef int (*xlat_thread_instantiate_t)(void *xlat_inst, void *xlat_thread_inst,
 					 xlat_exp_t const *exp, void *uctx);
 
+/** xlat detach callback
+ *
+ * Is called whenever an xlat_node_t is freed.
+ *
+ * Detach should close all handles associated with the xlat instance, and
+ * free any memory allocated during instantiate.
+ *
+ * @param[in] instance to free.
+ * @return
+ *	- 0 on success.
+ *	- -1 if detach failed.
+ */
+typedef int (*xlat_detach_t)(void *xlat_inst, void *uctx);
+
+/** xlat thread detach callback
+ *
+ * Is called whenever an xlat_node_t is freed (if ephemeral),
+ * or when a thread exits.
+ *
+ * Detach should close all handles associated with the xlat instance, and
+ * free any memory allocated during instantiate.
+ *
+ * @param[in] instance to free.
+ * @return
+ *	- 0 on success.
+ *	- -1 if detach failed.
+ */
+typedef int (*xlat_thread_detach_t)(void *xlat_thread_inst, void *uctx);
+
 xlat_action_t	xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				       xlat_exp_t const **child, bool *alternate,
 				       REQUEST *request, xlat_exp_t const **in,
@@ -172,7 +201,9 @@ int		xlat_register(void *mod_inst, char const *name,
 int		xlat_async_register(TALLOC_CTX *ctx,
 				    char const *name, xlat_func_async_t func,
 				    xlat_instantiate_t instantiate, size_t inst_size,
+				    xlat_detach_t detach,
 				    xlat_thread_instantiate_t thread_instantiate, size_t thread_inst_size,
+				    xlat_thread_detach_t thread_detach,
 				    void *uctx);
 
 void		xlat_unregister(char const *name);
@@ -180,6 +211,19 @@ void		xlat_unregister_module(void *instance);
 int		xlat_register_redundant(CONF_SECTION *cs);
 int		xlat_init(void);
 void		xlat_free(void);
+
+/*
+ *	xlat_inst.c
+ */
+int		xlat_thread_instantiate(void);
+
+int		xlat_instatiate_request(xlat_exp_t *root);
+
+int		xlat_instantiate(xlat_exp_t *root);
+
+int		xlat_inst_init(void);
+
+void		xlat_inst_free(void);
 
 #ifdef __cplusplus
 }

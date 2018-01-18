@@ -30,7 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 
 #include <ctype.h>
-#include "xlat.h"
+#include "xlat_priv.h"
 
 #undef XLAT_DEBUG
 #ifdef DEBUG_XLAT
@@ -261,7 +261,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 	 */
 	if (*q == ':') {
 		*q = '\0';
-		node->xlat = xlat_find(node->fmt);
+		node->xlat = xlat_func_find(node->fmt);
 		if (node->xlat) {
 			/*
 			 *	%{mod:foo}
@@ -317,7 +317,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 	 *	Might be a virtual XLAT attribute
 	 */
 	if (node->attr->type == TMPL_TYPE_ATTR_UNDEFINED) {
-		node->xlat = xlat_find(node->attr->tmpl_unknown_name);
+		node->xlat = xlat_func_find(node->attr->tmpl_unknown_name);
 		if (node->xlat && node->xlat->mod_inst && !node->xlat->internal) {
 			talloc_free(node);
 			*error = "Missing content in expansion";

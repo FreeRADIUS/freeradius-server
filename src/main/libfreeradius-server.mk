@@ -27,6 +27,7 @@ SOURCES	:=	cond_eval.c \
  		unlang_op.c \
 		xlat_eval.c \
 		xlat_func.c \
+		xlat_inst.c \
 		xlat_tokenize.c
 
 # This lets the linker determine which version of the SSLeay functions to use.

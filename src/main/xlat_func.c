@@ -32,7 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/base64.h>
 
 #include <ctype.h>
-#include "xlat.h"
+#include "xlat_priv.h"
 
 static rbtree_t *xlat_root = NULL;
 
@@ -595,7 +595,7 @@ static int xlat_cmp(void const *one, void const *two)
 /*
  *	find the appropriate registered xlat function.
  */
-xlat_t *xlat_find(char const *name)
+xlat_t *xlat_func_find(char const *name)
 {
 	xlat_t find;
 	xlat_t *found;
@@ -718,12 +718,15 @@ static int _xlat_free(xlat_t *xlat)
  * @param[in] inst_size			The size of the instance struct.
  *					Pre-allocated for use by the instantiate function.
  *					If 0, no memory will be allocated.
+ * @param[in] detach			Called when an xlat_exp_t is freed.
  * @param[in] thread_instantiate	thread_instantiation_function. Called whenever a
  *					a thread is started to create thread local instance
  *					data.
  * @param[in] thread_inst_size		The size of the thread instance struct.
  *					Pre-allocated for use by the thread instance function.
  *					If 0, no memory will be allocated.
+ * @param[in] thread_detach		Called when an xlat_exp_t is freed (if ephemeral),
+ *					or when a thread exits.
  * @param[in] uctx			To pass to instantiate callbacks and the xlat function
  *					when it's called.  Usually the module instance that
  *					registered the xlat.
@@ -734,7 +737,9 @@ static int _xlat_free(xlat_t *xlat)
 int xlat_async_register(TALLOC_CTX *ctx,
 			char const *name, xlat_func_async_t func,
 			xlat_instantiate_t instantiate, size_t inst_size,
+			xlat_detach_t detach,
 			xlat_thread_instantiate_t thread_instantiate, size_t thread_inst_size,
+			xlat_thread_detach_t thread_detach,
 			void *uctx)
 {
 	xlat_t	*c;
@@ -775,10 +780,16 @@ int xlat_async_register(TALLOC_CTX *ctx,
 
 	c->func.async = func;
 	c->type = XLAT_FUNC_ASYNC;
+
 	c->instantiate = instantiate;
 	c->thread_instantiate = thread_instantiate;
+
 	c->inst_size = inst_size;
 	c->thread_inst_size = thread_inst_size;
+
+	c->detach = detach;
+	c->thread_detach = thread_detach;
+
 	c->async_safe = false;	/* async safe in this case means it might yield */
 	c->uctx = uctx;
 
@@ -878,7 +889,7 @@ static ssize_t xlat_redundant(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size_t 
 		name = cf_pair_attr(cf_item_to_pair(ci));
 		rad_assert(name != NULL);
 
-		xlat = xlat_find(name);
+		xlat = xlat_func_find(name);
 		if (!xlat) continue;
 
 		if (xlat->buf_len > 0) {
@@ -943,7 +954,7 @@ static ssize_t xlat_load_balance(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size
 		name = cf_pair_attr(cf_item_to_pair(found));
 		rad_assert(name != NULL);
 
-		xlat = xlat_find(name);
+		xlat = xlat_func_find(name);
 		if (!xlat) return -1;
 
 		if (xlat->buf_len > 0) {
@@ -969,7 +980,7 @@ static ssize_t xlat_load_balance(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size
 		name = cf_pair_attr(cf_item_to_pair(ci));
 		rad_assert(name != NULL);
 
-		xlat = xlat_find(name);
+		xlat = xlat_func_find(name);
 		if (xlat) {
 			ssize_t rcode;
 
@@ -1017,7 +1028,7 @@ int xlat_register_redundant(CONF_SECTION *cs)
 	name1 = cf_section_name1(cs);
 	name2 = cf_section_name2(cs);
 
-	if (xlat_find(name2)) {
+	if (xlat_func_find(name2)) {
 		cf_log_err(cs, "An expansion is already registered for this name");
 		return -1;
 	}
@@ -1060,7 +1071,7 @@ int xlat_register_redundant(CONF_SECTION *cs)
 			 *	This is ok, it just means the module
 			 *	doesn't have an xlat method.
 			 */
-			if (!xlat_find(attr)) {
+			if (!xlat_func_find(attr)) {
 				talloc_free(xr);
 				return 1;
 			}
@@ -1105,14 +1116,14 @@ int xlat_init(void)
 #ifdef WITH_UNLANG
 	for (i = 0; xlat_foreach_names[i] != NULL; i++) {
 		xlat_register(&xlat_foreach_inst[i], xlat_foreach_names[i], xlat_foreach, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-		c = xlat_find(xlat_foreach_names[i]);
+		c = xlat_func_find(xlat_foreach_names[i]);
 		rad_assert(c != NULL);
 		c->internal = true;
 	}
 #endif
 
 #define XLAT_REGISTER(_x) xlat_register(NULL, STRINGIFY(_x), xlat_ ## _x, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true); \
-	c = xlat_find(STRINGIFY(_x)); \
+	c = xlat_func_find(STRINGIFY(_x)); \
 	rad_assert(c != NULL); \
 	c->internal = true
 
@@ -1131,7 +1142,7 @@ int xlat_init(void)
 #endif
 
 	xlat_register(&xlat_foreach_inst[0], "debug", xlat_debug, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-	c = xlat_find("debug");
+	c = xlat_func_find("debug");
 	rad_assert(c != NULL);
 	c->internal = true;
 

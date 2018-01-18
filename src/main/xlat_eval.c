@@ -32,7 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 
 #include <ctype.h>
-#include "xlat.h"
+#include "xlat_priv.h"
 
 FR_NAME_NUMBER const xlat_action_table[] = {
 	{ "push-child",	XLAT_ACTION_PUSH_CHILD	},
@@ -45,7 +45,6 @@ FR_NAME_NUMBER const xlat_action_table[] = {
 
 static size_t xlat_process(TALLOC_CTX *ctx, char **out, REQUEST *request, xlat_exp_t const * const head,
 			   xlat_escape_t escape, void  const *escape_ctx);
-
 
 /** One letter expansions
  *
@@ -569,8 +568,10 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 		{
 			xlat_action_t action;
 
-			/* Fixme - Pass in instance and thread instance */
-			action = node->xlat->func.async(ctx, out, request, NULL, NULL, result);
+			/* Fixme - We should always have node->inst and node->thread_inst */
+			action = node->xlat->func.async(ctx, out, request,
+							node->inst ? node->inst->data : NULL,
+							node->thread_inst ? node->thread_inst->data : NULL, result);
 			switch (action) {
 			case XLAT_ACTION_PUSH_CHILD:
 			case XLAT_ACTION_YIELD:
@@ -1237,4 +1238,63 @@ ssize_t xlat_aeval_compiled(TALLOC_CTX *ctx, char **out, REQUEST *request,
 {
 	*out = NULL;
 	return _xlat_eval_compiled(ctx, out, 0, request, xlat, escape, escape_ctx);
+}
+
+/** Walk over all xlat nodes (depth first) in a xlat expansion, calling a callback
+ *
+ * @param[in] exp	to evaluate.
+ * @param[in] walker	callback to pass nodes to.
+ * @param[in] type	if > 0 a mask of types to call walker for.
+ * @param[in] uctx	to pass to walker.
+ * @return
+ *	- 0 on success (walker always returned 0).
+ *	- <0 if walker returned <0.
+ */
+int xlat_eval_walk(xlat_exp_t *exp, xlat_walker_t walker, xlat_state_t type, void *uctx)
+{
+	xlat_exp_t	*node;
+	int		ret;
+
+	/*
+	 *	Iterate over nodes at the same depth
+	 */
+	for (node = exp; node; node = node->next) {
+		switch (node->type){
+		case XLAT_FUNC:
+			if (!type || (type & XLAT_FUNC)) {
+				ret = walker(node, uctx);
+				if (ret < 0) return ret;
+			}
+
+			/*
+			 *	Now evaluate the function's arguments
+			 */
+			if (node->child) {
+				ret = xlat_eval_walk(node->child, walker, type, uctx);
+				if (ret < 0) return ret;
+			}
+			break;
+
+		case XLAT_ALTERNATE:
+			if (!type || (type & XLAT_ALTERNATE)) {
+				ret = walker(node, uctx);
+				if (ret < 0) return ret;
+			}
+
+			/*
+			 *	Evaluate the alternate expansion path
+			 */
+			ret = xlat_eval_walk(node->alternate, walker, type, uctx);
+			if (ret < 0) return ret;
+			break;
+
+		default:
+			if (!type || (type & node->type)) {
+				ret = walker(node, uctx);
+				if (ret < 0) return ret;
+			}
+		}
+	}
+
+	return 0;
 }
