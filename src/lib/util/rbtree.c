@@ -109,6 +109,7 @@ static int _tree_free(rbtree_t *tree)
 	tree->magic = 0;
 #endif
 	tree->root = NULL;
+	tree->num_elements = 0;
 
 	/*
 	 *	Ensure all dependents on the tree run their
