@@ -455,14 +455,11 @@ module_instance_t *module_find_with_method(rlm_components_t *method, CONF_SECTIO
  *	- Thread specific instance data on success.
  *	- NULL if module has no thread instance data.
  */
-void *module_thread_instance_find(void *instance)
+module_thread_instance_t *module_thread_instance_find(void *instance)
 {
 	module_instance_t		*mod_inst = talloc_get_type_abort(instance, module_instance_t);
 	rbtree_t			*tree = module_thread_inst_tree;
-	module_thread_instance_t	find;
-
-	memset(&find, 0, sizeof(find));
-	find.inst = mod_inst;
+	module_thread_instance_t	find = { .inst = mod_inst };
 
 	return rbtree_finddata(tree, &find);
 }

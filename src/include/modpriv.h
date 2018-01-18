@@ -33,44 +33,6 @@ RCSIDH(modpriv_h, "$Id$")
 extern "C" {
 #endif
 
-/** Per instance data
- *
- * Per-instance data structure, to correlate the modules with the
- * instance names (may NOT be the module names!), and the per-instance
- * data structures.
- */
-typedef struct {
-	char const			*name;		//!< Instance name e.g. user_database.
-
-	dl_instance_t			*dl_inst;	//!< Structure containing the module's instance data,
-							//!< configuration, and dl handle.
-
-	rad_module_t const		*module;	//!< Public module structure.  Cached for convenience.
-
-	pthread_mutex_t			*mutex;
-
-	bool				instantiated;	//!< Whether the module has been instantiated yet.
-
-	bool				force;		//!< Force the module to return a specific code.
-							//!< Usually set via an administrative interface.
-
-	rlm_rcode_t			code;		//!< Code module will return when 'force' has
-							//!< has been set to true.
-} module_instance_t;
-
-/** Per thread per instance data
- *
- * Stores module and thread specific data.
- */
-typedef struct {
-	module_instance_t		*inst;		//!< Non-thread local instance of this
-
-	void				*data;		//!< Thread specific instance data.
-
-	uint64_t			total_calls;	//! total number of times we've been called
-	uint64_t			active_callers; //! number of active callers.  i.e. number of current yields
-} module_thread_instance_t;
-
 module_instance_t	*module_find_with_method(rlm_components_t *method,
 						 CONF_SECTION *modules, char const *asked_name);
 module_instance_t	*module_find(CONF_SECTION *modules, char const *asked_name);
