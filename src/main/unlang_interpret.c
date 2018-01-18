@@ -1382,7 +1382,9 @@ rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_module_resume_t call
 	switch (frame->instruction->type) {
 	case UNLANG_TYPE_MODULE_CALL:
 		mr = unlang_resume_alloc(request, callback, cancel, resume_ctx);
-		rad_assert(mr != NULL);;
+		if (!fr_cond_assert(mr)) {
+			return RLM_MODULE_FAIL;
+		}
 		return RLM_MODULE_YIELD;
 
 	case UNLANG_TYPE_RESUME:
@@ -1435,7 +1437,9 @@ xlat_action_t unlang_xlat_yield(REQUEST *request,
 	case UNLANG_TYPE_XLAT:
 	{
 		mr = unlang_resume_alloc(request, callback, signal, resume_ctx);
-		rad_assert(mr != NULL);
+		if (!fr_cond_assert(mr)) {
+			return XLAT_ACTION_FAIL;
+		}
 	}
 		return XLAT_ACTION_YIELD;
 
