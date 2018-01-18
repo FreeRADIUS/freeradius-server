@@ -35,7 +35,6 @@ RCSID("$Id$")
 #include "xlat_priv.h"
 
 static rbtree_t *xlat_root = NULL;
-static bool freeing_tree = false;
 
 #ifdef WITH_UNLANG
 static char const * const xlat_foreach_names[] = {"Foreach-Variable-0",
@@ -616,17 +615,9 @@ xlat_t *xlat_func_find(char const *name)
  */
 static int _xlat_free(xlat_t *xlat)
 {
-	bool found;
+	if (!xlat_root) return 0;
 
-	if (!xlat_root || freeing_tree) return 0;
-
-	found = rbtree_deletebydata(xlat_root, xlat);
-	if (!fr_cond_assert(found)) return -1;
-
-	/*
-	 *	Automatically remove the tree
-	 *	if all xlats have been de-registered.
-	 */
+	rbtree_deletebydata(xlat_root, xlat);
 	if (rbtree_num_elements(xlat_root) == 0) TALLOC_FREE(xlat_root);
 
 	return 0;
@@ -1153,9 +1144,7 @@ int xlat_init(void)
  */
 void xlat_free(void)
 {
-	freeing_tree = true;
 	TALLOC_FREE(xlat_root);
-	freeing_tree = false;
 }
 
 
