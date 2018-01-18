@@ -35,6 +35,7 @@ RCSID("$Id$")
 #include "xlat_priv.h"
 
 static rbtree_t *xlat_root = NULL;
+static bool freeing_tree = false;
 
 #ifdef WITH_UNLANG
 static char const * const xlat_foreach_names[] = {"Foreach-Variable-0",
@@ -608,6 +609,29 @@ xlat_t *xlat_func_find(char const *name)
 	return found;
 }
 
+/** Remove an xlat function from the function tree
+ *
+ * @param[in] xlat	to free.
+ * @return 0
+ */
+static int _xlat_free(xlat_t *xlat)
+{
+	bool found;
+
+	if (!xlat_root || freeing_tree) return 0;
+
+	found = rbtree_deletebydata(xlat_root, xlat);
+	if (!fr_cond_assert(found)) return -1;
+
+	/*
+	 *	Automatically remove the tree
+	 *	if all xlats have been de-registered.
+	 */
+	if (rbtree_num_elements(xlat_root) == 0) TALLOC_FREE(xlat_root);
+
+	return 0;
+}
+
 /** Register an xlat function.
  *
  * @param[in] mod_inst		Instance of module that's registering the xlat function.
@@ -661,6 +685,7 @@ int xlat_register(void *mod_inst, char const *name,
 	} else {
 		c = talloc_zero(xlat_root, xlat_t);
 		c->name = talloc_typed_strdup(c, name);
+		talloc_set_destructor(c, _xlat_free);
 		new = true;
 	}
 
@@ -681,27 +706,6 @@ int xlat_register(void *mod_inst, char const *name,
 		talloc_free(c);
 		return -1;
 	}
-
-	return 0;
-}
-
-/** Remove an xlat function from the function tree
- *
- * @param[in] xlat	to free.
- * @return 0
- */
-static int _xlat_free(xlat_t *xlat)
-{
-	xlat_t *c;
-
-	if (!xlat_root) return 0;
-
-	c = rbtree_finddata(xlat_root, xlat);
-	if (!c) return 0;
-
-	rbtree_deletebydata(xlat_root, c);
-
-	if (rbtree_num_elements(xlat_root) == 0) TALLOC_FREE(xlat_root);
 
 	return 0;
 }
@@ -775,6 +779,7 @@ int xlat_async_register(TALLOC_CTX *ctx,
 	} else {
 		c = talloc_zero(ctx, xlat_t);
 		c->name = talloc_typed_strdup(c, name);
+		talloc_set_destructor(c, _xlat_free);
 		new = true;
 	}
 
@@ -792,8 +797,6 @@ int xlat_async_register(TALLOC_CTX *ctx,
 
 	c->async_safe = false;	/* async safe in this case means it might yield */
 	c->uctx = uctx;
-
-	talloc_set_destructor(c, _xlat_free);
 
 	DEBUG3("%s: %s", c->name, __FUNCTION__);
 
@@ -816,17 +819,16 @@ int xlat_async_register(TALLOC_CTX *ctx,
 void xlat_unregister(char const *name)
 {
 	xlat_t	*c;
-	xlat_t	find;
+	xlat_t	find = { .name = name };
 
 	if (!name || !xlat_root) return;
 
-	find.name = name;
 	c = rbtree_finddata(xlat_root, &find);
 	if (!c) return;
 
-	rbtree_deletebydata(xlat_root, c);
+	(void) talloc_get_type_abort(c, xlat_t);
 
-	if (rbtree_num_elements(xlat_root) == 0) TALLOC_FREE(xlat_root);
+	talloc_free(c);	/* Should also remove from tree */
 }
 
 static int _xlat_unregister_callback(void *mod_inst, void *data)
@@ -843,8 +845,6 @@ void xlat_unregister_module(void *instance)
 	if (!xlat_root) return;	/* All xlats have already been freed */
 
 	rbtree_walk(xlat_root, RBTREE_DELETE_ORDER, _xlat_unregister_callback, instance);
-
-	if (rbtree_num_elements(xlat_root) == 0) TALLOC_FREE(xlat_root);
 }
 
 /*
@@ -862,7 +862,6 @@ typedef struct xlat_redundant_t {
 	uint32_t			count;
 	CONF_SECTION const		*cs;
 } xlat_redundant_t;
-
 
 static ssize_t xlat_redundant(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size_t outlen,
 			      void const *mod_inst, UNUSED void const *xlat_inst,
@@ -1149,12 +1148,14 @@ int xlat_init(void)
 	return 0;
 }
 
-/** De-register all xlat functions, used mainly for debugging.
+/** De-register all xlat functions we created
  *
  */
 void xlat_free(void)
 {
+	freeing_tree = true;
 	TALLOC_FREE(xlat_root);
+	freeing_tree = false;
 }
 
 

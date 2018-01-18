@@ -826,6 +826,11 @@ int main(int argc, char *argv[])
 							    main_config.config, "server", "unit_test"));
 
 	/*
+	 *	Initialise the interpreter, registering operations.
+	 */
+	if (unlang_initialize() < 0) exit(EXIT_FAILURE);
+
+	/*
 	 *	Initialize Auth-Type, etc. in the virtual servers
 	 *	before loading the modules.  Some modules need those
 	 *	to be defined.
@@ -846,6 +851,11 @@ int main(int argc, char *argv[])
 	if (modules_instantiate(main_config.config) < 0) goto exit_failure;
 
 	/*
+	 *	Call xlat instantiation functions.
+	 */
+	if (xlat_instantiate() < 0) exit(EXIT_FAILURE);
+
+	/*
 	 *	Create a dummy event list
 	 */
 	el = fr_event_list_alloc(NULL, NULL, NULL);
@@ -855,6 +865,7 @@ int main(int argc, char *argv[])
 	 *	Perform any thread specific instantiation
 	 */
 	if (modules_thread_instantiate(main_config.config, el) < 0) goto exit_failure;
+	if (xlat_thread_instantiate() < 0) goto exit_failure;
 
 	/*
 	 *	And then load the virtual servers.
@@ -1056,12 +1067,20 @@ finish:
 	talloc_free(request);
 	talloc_free(state);
 
-	xlat_unregister("poke");
-
 	/*
 	 *	Free the event list.
 	 */
 	talloc_free(el);
+
+	/*
+	 *	Free xlat instance data, and call any detach methods
+	 */
+	xlat_instances_free();
+
+	/*
+	 *	Unregister poke *after* freeing instances that depend on it
+	 */
+	xlat_unregister("poke");
 
 	/*
 	 *	Detach modules, connection pools, registered xlats / paircompares / maps.

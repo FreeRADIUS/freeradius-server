@@ -31,6 +31,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/unlang.h>
 #include <freeradius-devel/state.h>
 #include <freeradius-devel/map_proc.h>
 #include <freeradius-devel/rad_assert.h>
@@ -125,6 +126,17 @@ static int talloc_config_set(main_config_t *config)
 			return -1;
 		}
 	}
+
+	return 0;
+}
+
+/** Create module and xlat per-thread instances
+ *
+ */
+static int thread_instantiate(void *ctx, fr_event_list_t *el)
+{
+	if (modules_thread_instantiate(ctx, el) < 0) return -1;
+	if (xlat_thread_instantiate() < 0) return -1;
 
 	return 0;
 }
@@ -527,6 +539,11 @@ int main(int argc, char *argv[])
 	radius_pid = getpid();
 
 	/*
+	 *	Initialise the interpreter, registering operations.
+	 */
+	if (unlang_initialize() < 0) exit(EXIT_FAILURE);
+
+	/*
 	 *	Initialize Auth-Type, etc. in the virtual servers
 	 *	before loading the modules.  Some modules need those
 	 *	to be defined.
@@ -557,6 +574,11 @@ int main(int argc, char *argv[])
 	 *	connection pools and open connections to external resources.
 	 */
 	if (modules_instantiate(main_config.config) < 0) exit(EXIT_FAILURE);
+
+	/*
+	 *	Instantiate "permanent" xlats
+	 */
+	if (xlat_instantiate() < 0) exit(EXIT_FAILURE);
 
 	/*
 	 *  Everything seems to have loaded OK, exit gracefully.
@@ -612,7 +634,7 @@ int main(int argc, char *argv[])
 
 		sc = fr_schedule_create(NULL, el, &default_log, rad_debug_lvl,
 					networks, workers,
-					(fr_schedule_thread_instantiate_t) modules_thread_instantiate,
+					thread_instantiate,
 					main_config.config);
 		if (!sc) {
 			exit(EXIT_FAILURE);
@@ -785,6 +807,11 @@ int main(int argc, char *argv[])
 	talloc_free(global_state);	/* Free state entries */
 
 cleanup:
+	/*
+	 *	Free xlat instance data, and call any detach methods
+	 */
+	xlat_instances_free();
+
 	/*
 	 *	Detach modules, connection pools, registered xlats / paircompares / maps.
 	 */

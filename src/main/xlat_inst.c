@@ -35,6 +35,7 @@ RCSID("$Id$")
 /** Holds instance data created by xlat_instantiate
  */
 static rbtree_t *xlat_inst_tree;
+static bool freeing_tree = false;
 
 /** Holds thread specific instance data created by xlat_instantiate
  */
@@ -55,7 +56,10 @@ static int _xlat_inst_free(xlat_inst_t *inst)
 	/*
 	 *	Remove permanent data from the instance tree.
 	 */
-	if (!inst->node->ephemeral) rbtree_deletebydata(xlat_inst_tree, inst);
+	if (!inst->node->ephemeral && !freeing_tree) {
+		rbtree_deletebydata(xlat_inst_tree, inst);
+		if (rbtree_num_elements(xlat_inst_tree) == 0) TALLOC_FREE(xlat_inst_tree);
+	}
 
 	if (inst->node->xlat->detach) (void) inst->node->xlat->detach(inst->data, inst->node->xlat->uctx);
 
@@ -128,7 +132,7 @@ static void _xlat_thread_inst_tree_free(void *to_free)
 
 /** Create thread instances where needed
  *
- * @param[in] node	to perform thread instantiation for.
+ * @param[in] node	to allocate instance data for.
  * @return
  *	- 0 on success.  The node/thread specific data will be inserted
  *	  into xlat_thread_inst_tree.
@@ -137,11 +141,18 @@ static void _xlat_thread_inst_tree_free(void *to_free)
 static xlat_thread_inst_t *xlat_thread_inst_alloc(xlat_exp_t *node)
 {
 	xlat_thread_inst_t	*thread_inst = NULL;
-	int			ret;
 
 	(void)talloc_get_type_abort(node, xlat_exp_t);
 
-	MEM(thread_inst = talloc_zero(NULL, xlat_thread_inst_t));
+#ifdef HAVE_TALLOC_POOLED_OBJECT
+	if (node->xlat->thread_inst_size) {
+		MEM(thread_inst = talloc_pooled_object(NULL, xlat_thread_inst_t, node->xlat->thread_inst_size))
+	} else
+#endif
+		MEM(thread_inst = talloc_zero(NULL, xlat_thread_inst_t));
+#ifdef HAVE_TALLOC_POOLED_OBJECT
+	}
+#endif
 	thread_inst->node = node;
 
 	rad_assert(node->type == XLAT_FUNC);
@@ -159,59 +170,7 @@ static xlat_thread_inst_t *xlat_thread_inst_alloc(xlat_exp_t *node)
 #endif
 	}
 
-	if (node->xlat->thread_instantiate) {
-		ret = node->xlat->thread_instantiate(node->inst, thread_inst->data, node, node->xlat->uctx);
-		if (ret < 0) {
-			talloc_free(thread_inst);
-			return NULL;
-		}
-	}
-
 	return thread_inst;
-}
-
-/** Walker callback for xlat_inst_tree
- *
- */
-static int _xlat_thread_instantiate(UNUSED void *ctx, void *data)
-{
-	xlat_thread_inst_t	*thread_inst;
-
-	thread_inst = xlat_thread_inst_alloc(data);
-	if (!thread_inst) return -1;
-
-	rbtree_insert(xlat_thread_inst_tree, thread_inst);
-
-	return 0;
-}
-
-/** Create thread specific instance tree and create thread instances
- *
- * This should be called directly after the module_thread_instantiate function.
- *
- * Memory will be freed automatically when the thread exits.
- */
-int xlat_thread_instantiate(void)
-{
-	int ret;
-
-	if (!xlat_thread_inst_tree) {
-		MEM(xlat_thread_inst_tree = rbtree_create(NULL, _xlat_thread_inst_cmp, _xlat_thread_inst_free, 0));
-		fr_thread_local_set_destructor(xlat_thread_inst_tree,
-					       _xlat_thread_inst_tree_free, xlat_thread_inst_tree);
-	}
-
-	/*
-	 *	Walk the inst tree, creating thread
-	 *	specific instances.
-	 */
-	ret = rbtree_walk(xlat_inst_tree, RBTREE_PRE_ORDER, _xlat_thread_instantiate, NULL);
-	if (ret < 0) {
-		TALLOC_FREE(xlat_thread_inst_tree);	/* Destroy the thread_inst_tree if instantiation fails */
-		return -1;
-	}
-
-	return 0;
 }
 
 /** Allocate instance data for an xlat expansion
@@ -226,13 +185,23 @@ static xlat_inst_t *xlat_inst_alloc(xlat_exp_t *node)
 	rad_assert(node->type == XLAT_FUNC);
 	rad_assert(!node->inst);
 
+#ifdef HAVE_TALLOC_POOLED_OBJECT
+	if (node->xlat->inst_size) {
+		MEM(inst = talloc_pooled_object(node, xlat_inst_t, node->xlat->inst_size))
+	} else
+#endif
+		MEM(inst = talloc_zero(node, xlat_inst_t));
+#ifdef HAVE_TALLOC_POOLED_OBJECT
+	}
+#endif
+
+	inst->node = node;
+
 	/*
 	 *	Instance data is freed when the
 	 *	node is freed.
 	 */
-	MEM(inst = talloc_zero(node, xlat_inst_t));
 	talloc_set_destructor(inst, _xlat_inst_free);
-
 	if (node->xlat->inst_size) {
 		MEM(inst->data = talloc_zero_array(inst, uint8_t, node->xlat->inst_size));
 
@@ -245,20 +214,12 @@ static xlat_inst_t *xlat_inst_alloc(xlat_exp_t *node)
 #endif
 	}
 
-	if (node->xlat->instantiate) {
-		int ret;
-
-		ret = node->xlat->instantiate(inst->data, node, node->xlat->uctx);
-		if (ret < 0) {
-			talloc_free(inst);
-			return NULL;
-		}
-	}
-
 	return inst;
 }
 
 /** Callback for creating "ephemeral" instance data for a #xlat_exp_t
+ *
+ * @note Epehemeral xlats must not be shared between requests.
  *
  * @param[in] node	to create "ephemeral" instance data for.
  * @param[in] uctx	UNUSED.
@@ -266,18 +227,39 @@ static xlat_inst_t *xlat_inst_alloc(xlat_exp_t *node)
  *	- 0 if instantiation functions were successful.
  *	- -1 if either instantiation function failed.
  */
-static int _xlat_instantiate_request_walker(xlat_exp_t *node, UNUSED void *uctx)
+static int _xlat_instantiate_ephemeral_walker(xlat_exp_t *node, UNUSED void *uctx)
 {
 	rad_assert(!node->inst && !node->thread_inst);
 
 	node->inst = xlat_inst_alloc(node);
 	if (!node->inst) return -1;
 
-	node->thread_inst = xlat_thread_inst_alloc(node);
-	if (!node->thread_inst) {
+	/*
+	 *	Instantiate immediately unlike permanent XLATs
+	 *	Where it's a separate phase.
+	 */
+	if (node->xlat->instantiate &&
+	    (node->xlat->instantiate(node->inst->data, node, node->xlat->uctx) < 0)) {
+	error:
 		TALLOC_FREE(node->inst);
 		return -1;
 	}
+
+	/*
+	 *	Create a thread instance too.
+	 */
+	node->thread_inst = xlat_thread_inst_alloc(node);
+	if (!node->thread_inst) goto error;
+	talloc_set_destructor(node->thread_inst, (int (*)(xlat_thread_inst_t *))_xlat_thread_inst_free);
+
+	if (node->xlat->thread_instantiate &&
+	    node->xlat->thread_instantiate(node->inst, node->thread_inst->data, node, node->xlat->uctx) < 0) goto error;
+
+	/*
+	 *	Mark this up as an ephemeral node, so the destructors
+	 *	don't search for it in the xlat_inst_tree.
+	 */
+	node->ephemeral = true;
 
 	return 0;
 }
@@ -288,12 +270,138 @@ static int _xlat_instantiate_request_walker(xlat_exp_t *node, UNUSED void *uctx)
  *
  * @param[in] root of xlat tree to create instance data for.
  */
-int xlat_instatiate_request(xlat_exp_t *root)
+int xlat_instantiate_ephemeral(xlat_exp_t *root)
 {
-	return xlat_eval_walk(root, _xlat_instantiate_request_walker, XLAT_FUNC, NULL);
+	return xlat_eval_walk(root, _xlat_instantiate_ephemeral_walker, XLAT_FUNC, NULL);
+}
+
+/** Walker callback for xlat_inst_tree
+ *
+ */
+static int _xlat_thread_instantiate(UNUSED void *ctx, void *data)
+{
+	xlat_thread_inst_t	*thread_inst;
+	xlat_exp_t		*node = talloc_get_type_abort(data, xlat_exp_t);
+
+	thread_inst = xlat_thread_inst_alloc(data);
+	if (!thread_inst) return -1;
+
+	if (node->xlat->thread_instantiate) {
+		int ret;
+
+		ret = node->xlat->thread_instantiate(node->inst, thread_inst->data, node, node->xlat->uctx);
+		if (ret < 0) {
+			talloc_free(thread_inst);
+			return -1;
+		}
+	}
+
+	rbtree_insert(xlat_thread_inst_tree, thread_inst);
+
+	return 0;
+}
+
+/** Retrieve xlat/thread specific instance data
+ *
+ * @param[in] node to find thread specific data for.
+ * @return
+ *	- Thread specific data on success.
+ *	- NULL if the xlat has no thread instance data (should not happen).
+ */
+xlat_thread_inst_t *xlat_thread_instance_find(xlat_exp_t const *node)
+{
+	xlat_thread_inst_t	*found;
+
+	rad_assert(xlat_thread_inst_tree);
+
+	rad_assert(node->type == XLAT_FUNC);
+
+	if (node->ephemeral) return node->thread_inst;
+
+	{
+		xlat_thread_inst_t find = { .node = node };
+
+		found = rbtree_finddata(xlat_thread_inst_tree, &find);
+	}
+
+	rad_assert(found);
+
+	return found;
+}
+
+/** Create thread specific instance tree and create thread instances
+ *
+ * This should be called directly after the modules_thread_instantiate() function.
+ *
+ * Memory will be freed automatically when the thread exits.
+ */
+int xlat_thread_instantiate(void)
+{
+	int ret;
+
+	if (!xlat_inst_tree) return 0;
+
+	if (!xlat_thread_inst_tree) {
+		MEM(xlat_thread_inst_tree = rbtree_create(NULL, _xlat_thread_inst_cmp, _xlat_thread_inst_free, 0));
+		fr_thread_local_set_destructor(xlat_thread_inst_tree,
+					       _xlat_thread_inst_tree_free, xlat_thread_inst_tree);
+	}
+
+	/*
+	 *	Walk the inst tree, creating thread
+	 *	specific instances.
+	 */
+	ret = rbtree_walk(xlat_inst_tree, RBTREE_PRE_ORDER, _xlat_thread_instantiate, NULL);
+	if (ret < 0) {
+		_xlat_thread_inst_tree_free(xlat_thread_inst_tree);	/* Destroy the thread_inst_tree if instantiation fails */
+		return -1;
+	}
+
+	return 0;
+}
+
+/** Walk over #xlat_exp_t that require instantiation
+ *
+ * @param[in] ctx	UNUSED.
+ * @param[in] data	node to perform
+ */
+static int _xlat_instantiate_walker(UNUSED void *ctx, void *data)
+{
+	xlat_inst_t *inst = talloc_get_type_abort(data, xlat_inst_t);
+
+	if (inst->node->xlat->instantiate &&
+	    (inst->node->xlat->instantiate(inst->data, inst->node, inst->node->xlat->uctx) < 0)) return -1;
+
+	return 0;
+}
+
+/** Initialise the xlat inst code
+ *
+ */
+static int xlat_instantiate_init(void)
+{
+	xlat_inst_tree = rbtree_create(NULL, _xlat_inst_cmp, NULL, RBTREE_FLAG_NONE);
+	if (!xlat_inst_tree) return -1;
+
+	return 0;
+}
+
+/** Call instantiation functions for "permanent" xlats
+ *
+ * Should be called after module instantiation is complete.
+ */
+int xlat_instantiate(void)
+{
+	if (!xlat_inst_tree) xlat_instantiate_init();
+
+	return rbtree_walk(xlat_inst_tree, RBTREE_PRE_ORDER, _xlat_instantiate_walker, NULL);
 }
 
 /** Callback for creating "permanent" instance data for a #xlat_exp_t
+ *
+ * This function records the #xlat_exp_t requiring instantiation but does
+ * not call the instantiation function.  This is to allow for a clear separation
+ * between the module instantiation phase and the xlat instantiation phase.
  *
  * @param[in] node	to create "permanent" instance data for.
  * @param[in] uctx	UNUSED.
@@ -301,9 +409,8 @@ int xlat_instatiate_request(xlat_exp_t *root)
  *	- 0 if instantiation functions were successful.
  *	- -1 if either instantiation function failed.
  */
-static int _xlat_instantiate_walker(xlat_exp_t *node, UNUSED void *uctx)
+static int _xlat_bootstrap_walker(xlat_exp_t *node, UNUSED void *uctx)
 {
-	xlat_thread_inst_t *thread_inst;
 	bool ret;
 
 	rad_assert(!node->inst && !node->thread_inst);
@@ -311,22 +418,11 @@ static int _xlat_instantiate_walker(xlat_exp_t *node, UNUSED void *uctx)
 	node->inst = xlat_inst_alloc(node);
 	if (!node->inst) return -1;
 
-	thread_inst = xlat_thread_inst_alloc(node);
-	if (!thread_inst) {
-		TALLOC_FREE(node->inst);
-		return -1;
-	}
-
 	ret = rbtree_insert(xlat_inst_tree, node->inst);
 	if (!fr_cond_assert(ret)) {
-	insert_error:
 		TALLOC_FREE(node->inst);
-		talloc_free(thread_inst);
 		return -1;
 	}
-
-	ret = rbtree_insert(xlat_thread_inst_tree, thread_inst);
-	if (!ret) goto insert_error;
 
 	return 0;
 }
@@ -339,36 +435,31 @@ static int _xlat_instantiate_walker(xlat_exp_t *node, UNUSED void *uctx)
  *
  * @param[in] root of xlat tree to create instance data for.
  */
-int xlat_instantiate(xlat_exp_t *root)
+int xlat_bootstrap(xlat_exp_t *root)
 {
-	return xlat_eval_walk(root, _xlat_instantiate_walker, XLAT_FUNC, NULL);
+	if (!xlat_inst_tree) xlat_instantiate_init();
+
+	return xlat_eval_walk(root, _xlat_bootstrap_walker, XLAT_FUNC, NULL);
 }
 
-/** Initialise the xlat inst code
- *
- * Call xlat_inst_free when done.
- */
-int xlat_inst_init(void)
+static int _xlat_instance_free_walker(UNUSED void *ctx, void *data)
 {
-	if (xlat_inst_tree) return 0;
-
-	xlat_inst_tree = rbtree_create(NULL, _xlat_inst_cmp, NULL, RBTREE_FLAG_NONE);
-	if (!xlat_inst_tree) return -1;
-
-	return 0;
+	return talloc_free(data);
 }
 
-/** Free the main xlat instance tree
+/** Walk over all registered instance data and free them explicitly
  *
- * @note Will not free thread/expansion specific data.  This will be freed as threads
- *	 exit.
+ * This must be called before any modules or xlats are deregistered/unloaded and before
+ * the mainconfig is freed, as the xlat_t need to still exist in order to call
+ * the detach functions within them.
  */
-void xlat_inst_free(void)
+void xlat_instances_free(void)
 {
-	/*
-	 *	All xlat_exp_t should have been freed
-	 *	before xlat_inst_free is called.
-	 */
-	rad_assert(rbtree_num_elements(xlat_inst_tree) == 0);
-	talloc_free(xlat_inst_tree);
+	if (!xlat_inst_tree) return;
+
+	freeing_tree = true;
+	rbtree_walk(xlat_inst_tree, RBTREE_DELETE_ORDER, _xlat_instance_free_walker, NULL);
+	freeing_tree = false;
+
+	TALLOC_FREE(xlat_inst_tree);
 }

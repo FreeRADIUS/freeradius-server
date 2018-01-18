@@ -566,12 +566,11 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 		case XLAT_FUNC_ASYNC:
 		{
-			xlat_action_t action;
+			xlat_action_t		action;
+			xlat_thread_inst_t	*thread_inst;
 
-			/* Fixme - We should always have node->inst and node->thread_inst */
-			action = node->xlat->func.async(ctx, out, request,
-							node->inst ? node->inst->data : NULL,
-							node->thread_inst ? node->thread_inst->data : NULL, result);
+			thread_inst = xlat_thread_instance_find(node);
+			action = node->xlat->func.async(ctx, out, request, node->inst, thread_inst->data, result);
 			switch (action) {
 			case XLAT_ACTION_PUSH_CHILD:
 			case XLAT_ACTION_YIELD:
@@ -1188,7 +1187,7 @@ static ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, REQUEST *r
 	/*
 	 *	Give better errors than the old code.
 	 */
-	len = xlat_tokenize_request(ctx, request, fmt, &node);
+	len = xlat_tokenize_ephemeral(ctx, request, fmt, &node);
 	if (len == 0) {
 		if (*out) {
 			**out = '\0';

@@ -88,26 +88,6 @@ typedef enum {
 	XLAT_ALTERNATE		= 0x12		//!< xlat conditional syntax :-
 } xlat_state_t;
 
-
-/** Instance data for an xlat expansion node
- *
- */
-typedef struct {
-	xlat_exp_t	*node;			//!< Node this data relates to.
-	void		*data;			//!< xlat node specific instance data.
-} xlat_inst_t;
-
-/** Thread specific instance data for xlat expansion node
- *
- */
-typedef struct {
-	xlat_exp_t	*node;			//!< Node this data relates to.
- 	void		*data;			//!< Thread specific instance data.
-
-	uint64_t	total_calls;		//! total number of times we've been called
-	uint64_t	active_callers; 	//! number of active callers.  i.e. number of current yields
-} xlat_thread_inst_t;
-
 /** An xlat expansion node
  *
  * These nodes form a tree which represents one or more nested expansions.
@@ -162,7 +142,7 @@ typedef int (*xlat_walker_t)(xlat_exp_t *exp, void *uctx);
 /*
  *	xlat_tokenize.c
  */
-ssize_t	xlat_tokenize_request(TALLOC_CTX *ctx, REQUEST *request, char const *fmt, xlat_exp_t **head);
+ssize_t	xlat_tokenize_ephemeral(TALLOC_CTX *ctx, REQUEST *request, char const *fmt, xlat_exp_t **head);
 
 /*
  *	xlat_func.c

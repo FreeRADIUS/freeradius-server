@@ -366,7 +366,12 @@ int radius_event_start(UNUSED bool have_children)
 	if (!spawn_workers) {
 		if (modules_thread_instantiate(main_config.config, event_list) < 0) {
 			ERROR("Failed to instantiate thread-specific data for modules");
-			return 0;
+			return -1;
+		}
+
+		if (xlat_thread_instantiate() < 0) {
+			ERROR("Failed to instantiate thread-specific data for xlats");
+			return -1;
 		}
 	}
 

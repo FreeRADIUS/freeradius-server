@@ -759,8 +759,12 @@ size_t xlat_snprint(char *buffer, size_t bufsize, xlat_exp_t const *node)
  * @param[in] request	the input request.  Memory will be attached here.
  * @param[in] fmt	the format string to expand.
  * @param[out] head	the head of the xlat list / tree structure.
+ * @return
+ *	- <= -1 on error.  Return value is negative offset of where parsing
+ *	  error occured.
+ *	- >= 0 on success.  The number of bytes parsed.
  */
-ssize_t xlat_tokenize_request(TALLOC_CTX *ctx, REQUEST *request, char const *fmt, xlat_exp_t **head)
+ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, REQUEST *request, char const *fmt, xlat_exp_t **head)
 {
 	ssize_t		slen;
 	char		*tokens;
@@ -813,6 +817,16 @@ ssize_t xlat_tokenize_request(TALLOC_CTX *ctx, REQUEST *request, char const *fmt
 	 */
 	(void) talloc_steal(*head, tokens);
 
+	/*
+	 *	Create ephemeral instance data for the xlat
+	 */
+	if (xlat_instantiate_ephemeral(*head) < 0) {
+		talloc_free(*head);
+
+		REDEBUG("Failed performing ephemeral instantiation for xlat");
+		return -1;
+	}
+
 	return slen;
 }
 
@@ -822,9 +836,26 @@ ssize_t xlat_tokenize_request(TALLOC_CTX *ctx, REQUEST *request, char const *fmt
  * @param[in] fmt	the format string to expand.
  * @param[out] head	the head of the xlat list / tree structure.
  * @param[out] error	where to write a point to error messages.
+ * @return
+ *	- <0 on error.
+ *	- 0 on success.
  */
 ssize_t xlat_tokenize(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head, char const **error)
 {
-	return xlat_tokenize_literal(ctx, fmt, head, false, error);
+	int ret;
+
+	ret = xlat_tokenize_literal(ctx, fmt, head, false, error);
+	if (ret < 0) return ret;
+
+	/*
+	 *	Add nodes that need to be bootstrapped to
+	 *	the registry.
+	 */
+	if (xlat_bootstrap(*head) < 0) {
+		TALLOC_FREE(*head);
+		return -1;
+	}
+
+	return ret;
 }
 

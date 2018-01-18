@@ -460,8 +460,6 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 
 	virtual_server_root = config;
 
-	(void) unlang_initialize();
-
 	if (virtual_servers) {
 		/*
 		 *	Check the talloc hierarchy is sane

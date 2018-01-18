@@ -40,6 +40,26 @@ typedef enum {
 	XLAT_ACTION_FAIL		//!< An xlat function failed.
 } xlat_action_t;
 
+/** Instance data for an xlat expansion node
+ *
+ */
+typedef struct {
+	xlat_exp_t const	*node;		//!< Node this data relates to.
+	void			*data;		//!< xlat node specific instance data.
+} xlat_inst_t;
+
+/** Thread specific instance data for xlat expansion node
+ *
+ */
+typedef struct {
+	xlat_exp_t const	*node;		//!< Node this data relates to.
+ 	void			*data;		//!< Thread specific instance data.
+
+	uint64_t		total_calls;	//! total number of times we've been called
+	uint64_t		active_callers; //! number of active callers.  i.e. number of current yields
+} xlat_thread_inst_t;
+
+
 extern FR_NAME_NUMBER const xlat_action_table[];
 
 typedef size_t (*xlat_escape_t)(REQUEST *request, char *out, size_t outlen, char const *in, void *arg);
@@ -215,15 +235,17 @@ void		xlat_free(void);
 /*
  *	xlat_inst.c
  */
+int		xlat_instantiate_ephemeral(xlat_exp_t *root);
+
+xlat_thread_inst_t *xlat_thread_instance_find(xlat_exp_t const *node);
+
 int		xlat_thread_instantiate(void);
 
-int		xlat_instatiate_request(xlat_exp_t *root);
+int		xlat_instantiate(void);
 
-int		xlat_instantiate(xlat_exp_t *root);
+int		xlat_bootstrap(xlat_exp_t *root);
 
-int		xlat_inst_init(void);
-
-void		xlat_inst_free(void);
+void		xlat_instances_free(void);
 
 #ifdef __cplusplus
 }
