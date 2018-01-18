@@ -196,7 +196,7 @@ static int fr_trie_merge(TALLOC_CTX *ctx, void **out, void *a, void *b, int dept
 
 static int fr_trie_key_insert(TALLOC_CTX *ctx, void **trie_p, uint8_t const *key, int start_bit, int end_bit, void *trie) CC_HINT(nonnull);
 
-static void reparent(TALLOC_CTX *ctx, void *trie)
+static void *reparent(TALLOC_CTX *ctx, void *trie)
 {
 	/*
 	 *	Ensure that things are parented correctly, so that
@@ -204,19 +204,19 @@ static void reparent(TALLOC_CTX *ctx, void *trie)
 	 */
 	if (IS_USER(trie)) {
 		(void) talloc_steal(ctx, GET_USER(trie));
-		return;
+		return trie;
 
 	}
 #ifdef WITH_PATH_COMPRESSION
 	if (IS_PATH(trie)) {
 		(void) talloc_steal(ctx, GET_PATH(trie));
-		return;
+		return trie;
 	}
 #endif
 
 	rad_assert(IS_NODE(trie));
 	(void) talloc_steal(ctx, trie);
-
+	return trie;
 }
 
 /** Allocate a 2^N way node
@@ -644,8 +644,7 @@ static CC_HINT(nonnull) fr_trie_path_t *fr_trie_path_alloc(TALLOC_CTX *ctx, uint
 	 *	Ensure that things are parented correctly, so that
 	 *	freeing nodes works.
 	 */
-	reparent(path, trie);
-	path->trie = trie;
+	path->trie = reparent(path, trie);
 
 	fr_trie_path_verify(path);
 
@@ -905,8 +904,7 @@ static void *fr_trie_path_merge_paths(TALLOC_CTX *ctx, fr_trie_path_t *path1, fr
 	
 	fr_trie_node_verify(node);
 
-	reparent(prefix, node);
-	prefix->trie = node;
+	prefix->trie = reparent(prefix, node);
 
 done:
 	talloc_free(path1);
@@ -1059,22 +1057,20 @@ static uint16_t get_chunk(uint8_t const *key, int num_bits, int start_bit, int e
  * @param b	second mangled trie
  * @param depth bit depth where the trie starts
  */
-static int fr_trie_merge(TALLOC_CTX *ctx, void **out, void *a, void *b, int depth)
+static int fr_trie_merge(TALLOC_CTX *ctx, void **trie, void *a, void *b, int depth)
 {
 	if (!a && !b) {
-		*out = NULL;
+		*trie = NULL;
 		return 0;
 	}
 
 	if (!a) {
-		reparent(ctx, b);
-		*out = b;
+		*trie = reparent(ctx, b);
 		return 0;
 	}
 
 	if (!b) {
-		reparent(ctx, a);
-		*out = a;
+		*trie = reparent(ctx, a);
 		return 0;
 	}
 
@@ -1094,8 +1090,7 @@ static int fr_trie_merge(TALLOC_CTX *ctx, void **out, void *a, void *b, int dept
 			return -1;
 		}
 
-		reparent(ctx, a);
-		*out = a;
+		*trie = reparent(ctx, a);
 		return 0;
 	}
 
@@ -1106,8 +1101,7 @@ static int fr_trie_merge(TALLOC_CTX *ctx, void **out, void *a, void *b, int dept
 			return -1;
 		}
 
-		reparent(ctx, b);
-		*out = b;
+		*trie = reparent(ctx, b);
 		return 0;
 	}
 
@@ -1116,8 +1110,8 @@ static int fr_trie_merge(TALLOC_CTX *ctx, void **out, void *a, void *b, int dept
 		/*
 		 *	Do LCP and split it off.
 		 */
-		*out = fr_trie_path_merge_paths(ctx, GET_PATH(a), GET_PATH(b), depth);
-		if (!*out) {
+		*trie = fr_trie_path_merge_paths(ctx, GET_PATH(a), GET_PATH(b), depth);
+		if (!*trie) {
 			printf("FAIL %d\n", __LINE__);
 			return -1;
 		}
@@ -1139,8 +1133,7 @@ static int fr_trie_merge(TALLOC_CTX *ctx, void **out, void *a, void *b, int dept
 			return -1;
 		}
 
-		reparent(ctx, node);
-		*out = node;
+		*trie = reparent(ctx, node);
 		return 0;
 	}
 
@@ -1153,8 +1146,7 @@ static int fr_trie_merge(TALLOC_CTX *ctx, void **out, void *a, void *b, int dept
 			return -1;
 		}
 
-		reparent(ctx, node);
-		*out = node;
+		*trie = reparent(ctx, node);
 		return 0;
 	}
 #endif
@@ -1180,8 +1172,7 @@ static int fr_trie_merge(TALLOC_CTX *ctx, void **out, void *a, void *b, int dept
 			talloc_free(node2);
 			fr_trie_node_verify(node1);
 
-			reparent(ctx, node1);
-			*out = node1;
+			*trie = reparent(ctx, node1);
 			return 0;
 		}
 
@@ -1206,6 +1197,8 @@ static int fr_trie_merge(TALLOC_CTX *ctx, void **out, void *a, void *b, int dept
 			rad_assert(bits < 8);
 
 			for (j = 0; j < (1 << bits); j++) {
+				void *subtrie;
+
 				/*
 				 *	If the entry in the larger
 				 *	node is empty, we don't need
@@ -1214,36 +1207,33 @@ static int fr_trie_merge(TALLOC_CTX *ctx, void **out, void *a, void *b, int dept
 				if (!node2->trie[(i << bits) + j]) continue;
 
 #ifdef WITH_PATH_COMPRESSION
-				void *trie;
-
 				/*
 				 *	Convert the entry in node2
 				 *	into a path + trailing
 				 *	information.
 				 */
-				trie = fr_trie_path_prefix_add(node1, node2->trie[(i << bits) | j],
-							       bits, j, depth);
-				rad_assert(trie != NULL);
+				subtrie = fr_trie_path_prefix_add(node1, node2->trie[(i << bits) | j],
+								  bits, j, depth);
+				rad_assert(subtrie != NULL);
 
 				if (fr_trie_merge(node1, &node1->trie[i],
-						  node1->trie[i], trie, depth) < 0) {
+						  node1->trie[i], subtrie, depth) < 0) {
 					return -1;
 				}
 #else
-				fr_trie_node_t	*sub;
+				fr_trie_node_t	*subnode;
 
 				/*
 				 *	Allocate a sub-node to fill
 				 *	the gap.
 				 */
 				if (!node1->trie[i]) {
-					sub = fr_trie_node_alloc(node1, bits);
-					rad_assert(sub != NULL);
-					node1->trie[i] = sub;
+					subnode = node1->trie[i] = fr_trie_node_alloc(node1, bits);
+					rad_assert(subnode != NULL);
 
 				} else if (IS_NODE(node1->trie[i])) {
-					sub = node1->trie[i];
-					rad_assert(IS_NODE(sub));
+					subnode = node1->trie[i];
+					rad_assert(IS_NODE(subnode));
 
 				} else {
 					fr_trie_user_t *user;
@@ -1251,18 +1241,23 @@ static int fr_trie_merge(TALLOC_CTX *ctx, void **out, void *a, void *b, int dept
 					rad_assert(IS_USER(node1->trie[i]));
 					user = GET_USER(node1->trie[i]);
 
-					sub = user->trie;
-					if (!sub) {
-						sub = fr_trie_node_alloc(user, bits);
-						rad_assert(sub != NULL);
-						user->trie = sub;
+					subtrie = user->trie;
+					if (!subtrie) {
+						subnode = user->trie = fr_trie_node_alloc(user, bits);
+						rad_assert(subnode != NULL);
 
 					} else {
-						rad_assert(sub->size == bits);
+						/*
+						 *	No path compression here.
+						 */
+						assert(IS_NODE(subtrie));
+						subnode = subtrie;
+						rad_assert(subnode->size == bits);
 					}
 				}
 
-				if (fr_trie_merge(sub, &sub->trie[j], sub->trie[j], node2->trie[(i << bits) | j], depth) < 0) {
+				if (fr_trie_merge(subnode, &subnode->trie[j], subnode->trie[j],
+						  node2->trie[(i << bits) | j], depth) < 0) {
 					return -1;
 				}
 #endif
@@ -1271,8 +1266,7 @@ static int fr_trie_merge(TALLOC_CTX *ctx, void **out, void *a, void *b, int dept
 
 		talloc_free(node2);
 
-		reparent(ctx, node1);
-		*out = node1;
+		*trie = reparent(ctx, node1);
 		return 0;
 	}
 
@@ -1420,8 +1414,7 @@ static int fr_trie_key_insert(TALLOC_CTX *ctx, void **trie_p, uint8_t const *key
 
 	if (!trie) {
 		if (start_bit == end_bit) {
-			reparent(ctx, subtrie);
-			*trie_p = subtrie;
+			*trie_p = reparent(ctx, subtrie);
 			return 0;
 		}
 
@@ -1491,11 +1484,8 @@ static int fr_trie_key_insert(TALLOC_CTX *ctx, void **trie_p, uint8_t const *key
 		 *	appropriately.
 		 */
 		if (!user->trie) {
-			reparent(ctx, subtrie);
-			*trie_p = subtrie;
-
-			reparent(user, trie);
-			user->trie = trie;
+			*trie_p = reparent(ctx, subtrie);
+			user->trie = reparent(user, trie);
 			return 0;
 		}
 
@@ -1506,8 +1496,7 @@ static int fr_trie_key_insert(TALLOC_CTX *ctx, void **trie_p, uint8_t const *key
 			return -1;
 		}
 	
-		reparent(ctx, subtrie);
-		*trie_p = subtrie;
+		*trie_p = reparent(ctx, subtrie);
 		return 0;
 	}
 
@@ -1587,8 +1576,7 @@ insert_node:
 		}
 
 		chunk = get_chunk(key, size, start_bit, end_bit);
-		reparent(node2, subtrie);
-		node2->trie[chunk] = subtrie;
+		node2->trie[chunk] = reparent(node2, subtrie);
 		node2->used = 1;
 
 		if (fr_trie_merge(ctx, trie_p, node2, node, start_bit) < 0) {
@@ -1647,9 +1635,12 @@ static void *fr_trie_key_remove(TALLOC_CTX *ctx, void **entry, uint8_t const *ke
 			return fr_trie_key_remove(user, &user->trie, key, start_bit, end_bit);
 		}
 
-		if (user->trie) reparent(ctx, user->trie);
+		if (user->trie) {
+			*entry = reparent(ctx, user->trie);
+		} else {
+			*entry = NULL;
+		}
 
-		*entry = user->trie;
 		data = user->data;
 		talloc_free(user);
 		return data;
@@ -1810,8 +1801,7 @@ collapse_chunk:
 
 			if (fr_trie_path_concatenate(path, path->key, path->start_bit, path->length,
 						     suffix->key, suffix->start_bit, suffix->length) == 0) {
-				reparent(path, suffix->trie);
-				path->trie = suffix->trie;
+				path->trie = reparent(path, suffix->trie);
 
 				talloc_free(suffix);
 				fr_trie_path_verify(path);
