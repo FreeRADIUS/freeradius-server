@@ -192,7 +192,7 @@ struct fr_trie_t {
 
 static void *fr_trie_path_merge_paths(TALLOC_CTX *ctx, fr_trie_path_t *path1, fr_trie_path_t *path2, int depth) CC_HINT(nonnull);
 #endif
-static int fr_trie_merge(TALLOC_CTX *ctx, void **out, void *a, void *b, int depth);
+static int fr_trie_merge(TALLOC_CTX *ctx, void **trie_p, void *a, void *b, int depth);
 
 static int fr_trie_key_insert(TALLOC_CTX *ctx, void **trie_p, uint8_t const *key, int start_bit, int end_bit, void *trie) CC_HINT(nonnull);
 
@@ -684,25 +684,25 @@ static int fr_trie_path_merge(TALLOC_CTX *ctx, fr_trie_node_t **node_p, fr_trie_
 	 */
 	if (node->size > path->length) {
 		fr_trie_node_t *small;
-		void *out;
+		void *trie;
 
 		small = fr_trie_node_alloc(ctx, path->length);
 		if (!small) return -1;
 
-		if (fr_trie_merge(ctx, &out, small, PUT_PATH(path), depth) < 0) {
+		if (fr_trie_merge(ctx, &trie, small, PUT_PATH(path), depth) < 0) {
 			talloc_free(small);
 			return -1;
 		}
 
-		rad_assert(out == small);
+		rad_assert(trie == small);
 		fr_trie_node_verify(small);
 
-		if (fr_trie_merge(ctx, &out, small, node, depth) < 0) {
+		if (fr_trie_merge(ctx, &trie, small, node, depth) < 0) {
 			talloc_free(small);
 			return -1;
 		}
 
-		rad_assert(out == small);
+		rad_assert(trie == small);
 		fr_trie_node_verify(small);
 		*node_p = small;
 
@@ -1052,25 +1052,25 @@ static uint16_t get_chunk(uint8_t const *key, int num_bits, int start_bit, int e
 /** A generic merge routine
  *
  * @param ctx	the talloc ctx
- * @param out	where the output trie is stored
+ * @param trie_p where the output trie is stored
  * @param a	first mangled trie
  * @param b	second mangled trie
  * @param depth bit depth where the trie starts
  */
-static int fr_trie_merge(TALLOC_CTX *ctx, void **trie, void *a, void *b, int depth)
+static int fr_trie_merge(TALLOC_CTX *ctx, void **trie_p, void *a, void *b, int depth)
 {
 	if (!a && !b) {
-		*trie = NULL;
+		*trie_p = NULL;
 		return 0;
 	}
 
 	if (!a) {
-		*trie = reparent(ctx, b);
+		*trie_p = reparent(ctx, b);
 		return 0;
 	}
 
 	if (!b) {
-		*trie = reparent(ctx, a);
+		*trie_p = reparent(ctx, a);
 		return 0;
 	}
 
@@ -1090,7 +1090,7 @@ static int fr_trie_merge(TALLOC_CTX *ctx, void **trie, void *a, void *b, int dep
 			return -1;
 		}
 
-		*trie = reparent(ctx, a);
+		*trie_p = reparent(ctx, a);
 		return 0;
 	}
 
@@ -1101,7 +1101,7 @@ static int fr_trie_merge(TALLOC_CTX *ctx, void **trie, void *a, void *b, int dep
 			return -1;
 		}
 
-		*trie = reparent(ctx, b);
+		*trie_p = reparent(ctx, b);
 		return 0;
 	}
 
@@ -1110,8 +1110,8 @@ static int fr_trie_merge(TALLOC_CTX *ctx, void **trie, void *a, void *b, int dep
 		/*
 		 *	Do LCP and split it off.
 		 */
-		*trie = fr_trie_path_merge_paths(ctx, GET_PATH(a), GET_PATH(b), depth);
-		if (!*trie) {
+		*trie_p = fr_trie_path_merge_paths(ctx, GET_PATH(a), GET_PATH(b), depth);
+		if (!*trie_p) {
 			printf("FAIL %d\n", __LINE__);
 			return -1;
 		}
@@ -1133,7 +1133,7 @@ static int fr_trie_merge(TALLOC_CTX *ctx, void **trie, void *a, void *b, int dep
 			return -1;
 		}
 
-		*trie = reparent(ctx, node);
+		*trie_p = reparent(ctx, node);
 		return 0;
 	}
 
@@ -1146,7 +1146,7 @@ static int fr_trie_merge(TALLOC_CTX *ctx, void **trie, void *a, void *b, int dep
 			return -1;
 		}
 
-		*trie = reparent(ctx, node);
+		*trie_p = reparent(ctx, node);
 		return 0;
 	}
 #endif
@@ -1172,7 +1172,7 @@ static int fr_trie_merge(TALLOC_CTX *ctx, void **trie, void *a, void *b, int dep
 			talloc_free(node2);
 			fr_trie_node_verify(node1);
 
-			*trie = reparent(ctx, node1);
+			*trie_p = reparent(ctx, node1);
 			return 0;
 		}
 
@@ -1266,7 +1266,7 @@ static int fr_trie_merge(TALLOC_CTX *ctx, void **trie, void *a, void *b, int dep
 
 		talloc_free(node2);
 
-		*trie = reparent(ctx, node1);
+		*trie_p = reparent(ctx, node1);
 		return 0;
 	}
 
@@ -1608,7 +1608,7 @@ insert_node:
  *  The key length MUST match the entries in the trie.
  *
  * @param ctx	 	the talloc ctx
- * @param[in,out]	entry where the updated output is stored
+ * @param[in,out]	trie_p where the updated output is stored
  * @param key	 	the key
  * @param start_bit	the start bit 
  * @param end_bit	the end bit 
@@ -1619,14 +1619,14 @@ insert_node:
  *  We delete the nodes as we going down the stack, and then collapse
  *  empty nodes going back up the stack.
  */
-static void *fr_trie_key_remove(TALLOC_CTX *ctx, void **entry, uint8_t const *key, int start_bit, int end_bit)
+static void *fr_trie_key_remove(TALLOC_CTX *ctx, void **trie_p, uint8_t const *key, int start_bit, int end_bit)
 {
 	void *data;
 
-	if (IS_USER(*entry)) {
+	if (IS_USER(*trie_p)) {
 		fr_trie_user_t *user;
 
-		user = GET_USER(*entry);
+		user = GET_USER(*trie_p);
 
 		/*
 		 *	Still have bits to eat, go get them.
@@ -1636,9 +1636,9 @@ static void *fr_trie_key_remove(TALLOC_CTX *ctx, void **entry, uint8_t const *ke
 		}
 
 		if (user->trie) {
-			*entry = reparent(ctx, user->trie);
+			*trie_p = reparent(ctx, user->trie);
 		} else {
-			*entry = NULL;
+			*trie_p = NULL;
 		}
 
 		data = user->data;
@@ -1646,9 +1646,9 @@ static void *fr_trie_key_remove(TALLOC_CTX *ctx, void **entry, uint8_t const *ke
 		return data;
 	}
 
-	if (IS_NODE(*entry)) {
+	if (IS_NODE(*trie_p)) {
 		uint16_t chunk;
-		fr_trie_node_t *node = *entry;
+		fr_trie_node_t *node = *trie_p;
 
 		fr_trie_node_verify(node);
 
@@ -1737,7 +1737,7 @@ collapse_chunk:
 						       node->size, chunk, start_bit);
 			if (trie != NULL) {
 				talloc_free(node);
-				*entry = trie;
+				*trie_p = trie;
 			}
 			return data;
 		}
@@ -1753,14 +1753,14 @@ collapse_chunk:
 		 *	and tell our parent that we're empty.
 		 */
 		talloc_free(node);
-		*entry = NULL;
+		*trie_p = NULL;
 		return data;
 	}
 
 #ifdef WITH_PATH_COMPRESSION
-	if (IS_PATH(*entry)) {
+	if (IS_PATH(*trie_p)) {
 		int lcp;
-		fr_trie_path_t *path = GET_PATH(*entry);
+		fr_trie_path_t *path = GET_PATH(*trie_p);
 
 		fr_trie_path_verify(path);
 
@@ -1818,7 +1818,7 @@ collapse_chunk:
 		}
 
 		talloc_free(path);
-		*entry = NULL;
+		*trie_p = NULL;
 		return data;
 	}
 #endif
