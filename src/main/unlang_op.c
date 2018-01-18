@@ -548,37 +548,6 @@ static unlang_action_t unlang_subrequest_resume(UNUSED REQUEST *request, rlm_rco
 	return UNLANG_ACTION_YIELD;
 }
 
-static unlang_action_t unlang_xlat_resume(REQUEST *request, UNUSED rlm_rcode_t *presult, UNUSED void *resume_ctx)
-{
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_t			*instruction = frame->instruction;
-	unlang_resume_t			*mr = unlang_generic_to_resume(instruction);
-	unlang_stack_state_xlat_t	*xs = talloc_get_type_abort(frame->state, unlang_stack_state_xlat_t);
-	xlat_action_t			xa;
-
-	xa = ((xlat_resume_callback_t)mr->callback)(xs->ctx, &xs->values, request, NULL, NULL,
-						    &xs->result, mr->resume_ctx);
-	switch (xa) {
-	case XLAT_ACTION_YIELD:
-		return UNLANG_ACTION_YIELD;
-
-	case XLAT_ACTION_DONE:
-		return UNLANG_ACTION_CALCULATE_RESULT;
-
-	case XLAT_ACTION_PUSH_CHILD:
-		rad_assert(0);
-		/* FALL-THROUGH */
-
-	case XLAT_ACTION_FAIL:
-		*presult = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
-
-	rad_assert(0);
-	return UNLANG_ACTION_CALCULATE_RESULT;
-}
-
 static void unlang_max_request_time(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
 {
 	REQUEST *request = talloc_get_type_abort(uctx, REQUEST);
@@ -891,6 +860,65 @@ static unlang_action_t unlang_xlat(REQUEST *request,
 
 	rad_assert(0);
 	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+static unlang_action_t unlang_xlat_resume(REQUEST *request, UNUSED rlm_rcode_t *presult, UNUSED void *resume_ctx)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_t			*instruction = frame->instruction;
+	unlang_resume_t			*mr = unlang_generic_to_resume(instruction);
+	unlang_stack_state_xlat_t	*xs = talloc_get_type_abort(frame->state, unlang_stack_state_xlat_t);
+	xlat_action_t			xa;
+
+	xa = ((xlat_resume_callback_t)mr->callback)(xs->ctx, &xs->values, request, NULL, NULL,
+						    &xs->result, mr->resume_ctx);
+	switch (xa) {
+	case XLAT_ACTION_YIELD:
+		return UNLANG_ACTION_YIELD;
+
+	case XLAT_ACTION_DONE:
+		return UNLANG_ACTION_CALCULATE_RESULT;
+
+	case XLAT_ACTION_PUSH_CHILD:
+		rad_assert(0);
+		/* FALL-THROUGH */
+
+	case XLAT_ACTION_FAIL:
+		*presult = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	rad_assert(0);
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+/** Evaluates "naked" xlats in the config
+ *
+ */
+static unlang_action_t unlang_xlat_inline(REQUEST *request,
+					  UNUSED rlm_rcode_t *presult, UNUSED int *priority)
+{
+	unlang_stack_t		*stack = request->stack;
+	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
+	unlang_t		*instruction = frame->instruction;
+	unlang_xlat_inline_t	*mx = unlang_generic_to_xlat_inline(instruction);
+
+	if (!mx->exec) {
+		TALLOC_CTX *pool;
+		unlang_stack_state_xlat_inline_t *state;
+
+		MEM(frame->state = state = talloc_zero(stack, unlang_stack_state_xlat_inline_t));
+		MEM(pool = talloc_pool(frame->state, 1024));	/* Pool to absorb some allocs */
+
+		unlang_push_xlat(pool, &state->result, request, mx->exp, false);
+		return UNLANG_ACTION_PUSHED_CHILD;
+	} else {
+		RDEBUG("`%s`", mx->xlat_name);
+		radius_exec_program(request, NULL, 0, NULL, request, mx->xlat_name, request->packet->vps,
+				    false, true, EXEC_TIMEOUT);
+		return UNLANG_ACTION_CONTINUE;
+	}
 }
 
 static unlang_action_t unlang_subrequest(REQUEST *request,
@@ -1572,31 +1600,6 @@ static unlang_action_t unlang_foreach(REQUEST *request,
 	unlang_push(stack, g->children, frame->result, UNLANG_NEXT_CONTINUE, UNLANG_SUB_FRAME);
 	frame->repeat = true;
 	return UNLANG_ACTION_PUSHED_CHILD;
-}
-
-static unlang_action_t unlang_xlat_inline(REQUEST *request,
-					  UNUSED rlm_rcode_t *presult, UNUSED int *priority)
-{
-	unlang_stack_t		*stack = request->stack;
-	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*instruction = frame->instruction;
-	unlang_xlat_inline_t	*mx = unlang_generic_to_xlat_inline(instruction);
-
-	if (!mx->exec) {
-		TALLOC_CTX *pool;
-		unlang_stack_state_xlat_inline_t *state;
-
-		MEM(frame->state = state = talloc_zero(stack, unlang_stack_state_xlat_inline_t));
-		MEM(pool = talloc_pool(frame->state, 1024));	/* Pool to absorb some allocs */
-
-		unlang_push_xlat(pool, &state->result, request, mx->exp, false);
-		return UNLANG_ACTION_PUSHED_CHILD;
-	} else {
-		RDEBUG("`%s`", mx->xlat_name);
-		radius_exec_program(request, NULL, 0, NULL, request, mx->xlat_name, request->packet->vps,
-				    false, true, EXEC_TIMEOUT);
-		return UNLANG_ACTION_CONTINUE;
-	}
 }
 
 static unlang_action_t unlang_switch(REQUEST *request,
