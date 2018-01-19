@@ -1922,11 +1922,15 @@ size_t tmpl_snprint(char *out, size_t outlen, vp_tmpl_t const *vpt)
 		goto inst_and_tag;
 
 	case TMPL_TYPE_ATTR_UNDEFINED:
+		*out_p++ = '&';
+		p = vpt->tmpl_unknown_name;
+		goto print_name;
+
 	case TMPL_TYPE_ATTR:
 		*out_p++ = '&';
+		p = vpt->tmpl_da->name;
 
-		p = vpt->type == TMPL_TYPE_ATTR ? vpt->tmpl_da->name : vpt->tmpl_unknown_name;
-
+	print_name:
 		/*
 		 *	Don't add &current.
 		 */
