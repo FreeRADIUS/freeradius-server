@@ -152,7 +152,21 @@ xlat_t	*xlat_func_find(char const *name);
 /*
  *	xlat_eval.c
  */
-int	xlat_eval_walk(xlat_exp_t *exp, xlat_walker_t walker, xlat_state_t type, void *uctx);
+xlat_action_t	xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
+				       xlat_resume_callback_t resume, xlat_exp_t const *exp,
+				       REQUEST *request, fr_cursor_t *result, void *rctx);
+
+xlat_action_t	xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
+				       xlat_exp_t const **child, bool *alternate,
+				       REQUEST *request, xlat_exp_t const **in,
+				       fr_cursor_t *result);
+
+xlat_action_t	xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t const **child,
+				REQUEST *request, xlat_exp_t const **in);
+
+int		xlat_eval_walk(xlat_exp_t *exp, xlat_walker_t walker, xlat_state_t type, void *uctx);
+
+void		xlat_unlang_init(void);
 
 #ifdef __cplusplus
 }

@@ -1097,6 +1097,14 @@ int xlat_init(void)
 	int i;
 #endif
 
+	/*
+	 *	Registers async xlat operations
+	 */
+	xlat_unlang_init();
+
+	/*
+	 *	Create the function tree
+	 */
 	xlat_root = rbtree_create(NULL, xlat_cmp, NULL, RBTREE_FLAG_REPLACE);
 	if (!xlat_root) {
 		ERROR("%s: Failed to create tree", __FUNCTION__);

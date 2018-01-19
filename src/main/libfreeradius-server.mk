@@ -28,7 +28,8 @@ SOURCES	:=	cond_eval.c \
 		xlat_eval.c \
 		xlat_func.c \
 		xlat_inst.c \
-		xlat_tokenize.c
+		xlat_tokenize.c \
+		xlat_unlang.c
 
 # This lets the linker determine which version of the SSLeay functions to use.
 TGT_LDLIBS	:= $(LIBS) $(GPERFTOOLS_LIBS)

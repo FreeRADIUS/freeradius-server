@@ -248,34 +248,6 @@ typedef struct {
 	unlang_t		*found;
 } unlang_stack_state_redundant_t;
 
-/** Hold the result of an inline xlat expansion
- *
- */
-typedef struct {
-	fr_value_box_t		*result;			//!< Where to store the result of the
-								///< xlat expansion. This is usually discarded.
-} unlang_stack_state_xlat_inline_t;
-
-/** State of an xlat expansion
- *
- * State of one level of nesting within an xlat expansion.
- */
-typedef struct {
-	TALLOC_CTX		*ctx;				//!< to allocate boxes and values in.
-	xlat_exp_t const	*exp;
-	fr_cursor_t		values;				//!< Values aggregated so far.
-
-	/*
-	 *	For func and alternate
-	 */
-	fr_value_box_t		*rhead;				//!< Head of the result of a nested
-								///< expansion.
-	fr_cursor_t		result;				//!< Result cursor, mainly useful for
-								///< asynchronous xlat functions.
-	bool			alternate;			//!< record which alternate branch we
-								///< previously took.
-} unlang_stack_state_xlat_t;
-
 /** Our interpreter stack, as distinct from the C stack
  *
  * We don't call the modules recursively.  Instead we iterate over a list of #unlang_t and

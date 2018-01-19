@@ -183,14 +183,6 @@ typedef int (*xlat_detach_t)(void *xlat_inst, void *uctx);
  */
 typedef int (*xlat_thread_detach_t)(void *xlat_thread_inst, void *uctx);
 
-xlat_action_t	xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
-				       xlat_exp_t const **child, bool *alternate,
-				       REQUEST *request, xlat_exp_t const **in,
-				       fr_cursor_t *result);
-
-xlat_action_t	xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t const **child,
-				REQUEST *request, xlat_exp_t const **in);
-
 ssize_t		xlat_eval(char *out, size_t outlen, REQUEST *request, char const *fmt, xlat_escape_t escape,
 			  void const *escape_ctx)
 			  CC_HINT(nonnull (1 ,3 ,4));

@@ -126,7 +126,9 @@ static xlat_thread_inst_t *xlat_thread_inst_alloc(xlat_inst_t *inst)
 
 #ifdef HAVE_TALLOC_POOLED_OBJECT
 	if (inst->node->xlat->thread_inst_size) {
-		MEM(thread_inst = talloc_pooled_object(NULL, xlat_thread_inst_t, inst->node->xlat->thread_inst_size))
+		MEM(thread_inst = talloc_pooled_object(NULL, xlat_thread_inst_t,
+						       1, inst->node->xlat->thread_inst_size));
+		memset(thread_inst, 0, sizeof(*thread_inst));
 	} else
 #endif
 		MEM(thread_inst = talloc_zero(NULL, xlat_thread_inst_t));
@@ -202,7 +204,8 @@ static xlat_inst_t *xlat_inst_alloc(xlat_exp_t *node)
 
 #ifdef HAVE_TALLOC_POOLED_OBJECT
 	if (node->xlat->inst_size) {
-		MEM(inst = talloc_pooled_object(node, xlat_inst_t, node->xlat->inst_size))
+		MEM(inst = talloc_pooled_object(node, xlat_inst_t, 1, node->xlat->inst_size));
+		memset(inst, 0, sizeof(*inst));
 	} else
 #endif
 		MEM(inst = talloc_zero(node, xlat_inst_t));

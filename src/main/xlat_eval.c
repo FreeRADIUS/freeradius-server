@@ -484,6 +484,35 @@ static xlat_action_t xlat_eval_pair(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *
 static const char xlat_spaces[] = "                                                                                                                                                                                                                                                                ";
 #endif
 
+xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
+				     xlat_resume_callback_t resume, xlat_exp_t const *exp,
+				     REQUEST *request, fr_cursor_t *result, void *rctx)
+{
+	xlat_thread_inst_t	*thread_inst = xlat_thread_instance_find(exp);
+	xlat_action_t		xa;
+
+	xa = resume(ctx, out, request, exp->inst, thread_inst->data, result, rctx);
+	switch (xa) {
+	default:
+		break;
+
+	case XLAT_ACTION_DONE:
+		fr_cursor_next(out);		/* Wind to the start of this functions output */
+		RDEBUG2("EXPAND %%{%s:%pM}", exp->xlat->name, fr_cursor_head(result));
+		if (fr_cursor_current(out)) {
+			RDEBUG2("   --> %pM", fr_cursor_current(out));
+		} else {
+			RDEBUG2("   -->");
+		}
+		break;
+
+	case XLAT_ACTION_FAIL:
+		REDEBUG("EXPANSION FAILED %%{%s:%pM}", exp->xlat->name, fr_cursor_head(result));
+		break;
+	}
+
+	return xa;
+}
 /** Process the result of a previous nested expansion
  *
  * @param[in] ctx		to allocate value boxes in.
@@ -572,18 +601,27 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			thread_inst = xlat_thread_instance_find(node);
 			action = node->xlat->func.async(ctx, out, request, node->inst, thread_inst->data, result);
 			switch (action) {
+			case XLAT_ACTION_FAIL:
+				REDEBUG("EXPANSION FAILED %%{%s:%pM}", node->xlat->name, fr_cursor_head(result));
+				/* FALL-THROUGH */
+
 			case XLAT_ACTION_PUSH_CHILD:
 			case XLAT_ACTION_YIELD:
-			case XLAT_ACTION_FAIL:
 				return action;
 
 			case XLAT_ACTION_DONE:		/* Process the result */
 				break;
 			}
 
-			RDEBUG2("EXPAND %%{%s:...}", node->xlat->name);
+			fr_cursor_next(out);		/* Wind to the start of this functions output */
+
+			/*
+			 *	Print output if the function didn't yield
+			 *	else we need to print it in xlat_resume
+			 */
+			RDEBUG2("EXPAND %%{%s:%pM}", node->xlat->name, fr_cursor_head(result));
 			if (fr_cursor_current(out)) {
-				RDEBUG2("   --> %pV", fr_cursor_current(out));	/* Fixme - print multiple values */
+				RDEBUG2("   --> %pM", fr_cursor_head(out));
 			} else {
 				RDEBUG2("   -->");
 			}
@@ -1297,3 +1335,4 @@ int xlat_eval_walk(xlat_exp_t *exp, xlat_walker_t walker, xlat_state_t type, voi
 
 	return 0;
 }
+
