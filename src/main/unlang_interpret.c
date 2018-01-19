@@ -1319,16 +1319,12 @@ static unlang_action_t unlang_resume(REQUEST *request, rlm_rcode_t *presult, int
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	request->module = mr->self.debug_name;
-
 	/*
 	 *	Run the resume callback associated with
 	 *	the original frame which was used to
 	 *	create this resumption frame.
 	 */
 	action = unlang_ops[mr->parent->type].resume(request, presult, mr->resume_ctx);
-
-	request->module = NULL;
 
 	/*
 	 *	Leave mr alone, it will be freed when the request is done.
