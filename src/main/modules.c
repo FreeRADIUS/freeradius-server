@@ -113,7 +113,7 @@ int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char c
 	CONF_DATA const		*cd;
 
 
-	module_instance_t	*mod_inst;
+	module_instance_t	*mi;
 	char const		*inst_name;
 
 #define FIND_SIBLING_CF_KEY "find_sibling"
@@ -149,14 +149,14 @@ int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char c
 	 *	instantiation order issues.
 	 */
 	inst_name = cf_pair_value(cp);
-	mod_inst = module_find(cf_item_to_section(cf_parent(module)), inst_name);
-	if (!mod_inst) {
+	mi = module_find(cf_item_to_section(cf_parent(module)), inst_name);
+	if (!mi) {
 		cf_log_err(cp, "Unknown module instance \"%s\"", inst_name);
 
 		return -1;
 	}
 
-	if (!mod_inst->instantiated) {
+	if (!mi->instantiated) {
 		CONF_SECTION *parent = module;
 
 		/*
@@ -183,14 +183,14 @@ int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char c
 	/*
 	 *	Check the module instances are of the same type.
 	 */
-	if (strcmp(cf_section_name1(mod_inst->dl_inst->conf), cf_section_name1(module)) != 0) {
+	if (strcmp(cf_section_name1(mi->dl_inst->conf), cf_section_name1(module)) != 0) {
 		cf_log_err(cp, "Referenced module is a rlm_%s instance, must be a rlm_%s instance",
-			      cf_section_name1(mod_inst->dl_inst->conf), cf_section_name1(module));
+			      cf_section_name1(mi->dl_inst->conf), cf_section_name1(module));
 
 		return -1;
 	}
 
-	*out = cf_section_find(mod_inst->dl_inst->conf, name, NULL);
+	*out = cf_section_find(mi->dl_inst->conf, name, NULL);
 
 	return 1;
 }
@@ -402,14 +402,14 @@ module_instance_t *module_find_with_method(rlm_components_t *method, CONF_SECTIO
 {
 	char			*p;
 	rlm_components_t	i;
-	module_instance_t	*mod_inst;
+	module_instance_t	*mi;
 
 	/*
 	 *	Module names are allowed to contain '.'
 	 *	so we search for the bare module name first.
 	 */
-	mod_inst = module_find(modules, name);
-	if (mod_inst) return mod_inst;
+	mi = module_find(modules, name);
+	if (mi) return mi;
 
 	/*
 	 *	Find out if the instance name contains
@@ -427,45 +427,45 @@ module_instance_t *module_find_with_method(rlm_components_t *method, CONF_SECTIO
 			char *inst_name;
 
 			inst_name = talloc_bstrndup(NULL, name, p - name);
-			mod_inst = module_find(modules, inst_name);
-			if (!mod_inst) return NULL;
+			mi = module_find(modules, inst_name);
+			if (!mi) return NULL;
 
 			/*
 			 *	Verify the module actually implements
 			 *	the specified method.
 			 */
-			if (!mod_inst->module->methods[i]) {
+			if (!mi->module->methods[i]) {
 				cf_log_debug(modules, "%s does not implement method \"%s\"",
-					     mod_inst->module->name, p + 1);
+					     mi->module->name, p + 1);
 				return NULL;
 			}
 			if (method) *method = i;
 
-			return mod_inst;
+			return mi;
 		}
 	}
 
-	return mod_inst;
+	return mi;
 }
 
 /** Retrieve module/thread specific instance data for a module
  *
- * @param[in] instance	to find thread specific data for.
+ * @param[in] mi		to find thread specific data for.
  * @return
  *	- Thread specific instance data on success.
  *	- NULL if module has no thread instance data.
  */
-module_thread_instance_t *module_thread_instance_find(module_instance_t *instance)
+module_thread_instance_t *module_thread_instance_find(module_instance_t *mi)
 {
 	rbtree_t			*tree = module_thread_inst_tree;
-	module_thread_instance_t	find = { .mod_inst = instance->dl_inst->data };
+	module_thread_instance_t	find = { .mod_inst = mi->dl_inst->data };
 
 	return rbtree_finddata(tree, &find);
 }
 
 /** Retrieve module/thread specific instance data for a module
  *
- * @param[in] mod_data		Module specific instance to find thread_data for.
+ * @param[in] mod_inst		Module specific instance to find thread_data for.
  * @return
  *	- Thread specific instance data on success.
  *	- NULL if module has no thread instance data.
@@ -489,13 +489,13 @@ void *module_thread_instance_by_data(void *mod_inst)
  */
 static void _module_thread_instance_free(void *to_free)
 {
-	module_thread_instance_t *thread_inst = talloc_get_type_abort(to_free, module_thread_instance_t);
+	module_thread_instance_t *ti = talloc_get_type_abort(to_free, module_thread_instance_t);
 
-	if (thread_inst->inst->module->thread_detach) {
-		(void) thread_inst->inst->module->thread_detach(thread_inst->data);
+	if (ti->inst->module->thread_detach) {
+		(void) ti->inst->module->thread_detach(ti->data);
 	}
 
-	talloc_free(thread_inst);
+	talloc_free(ti);
 }
 
 /** Frees the thread local instance free and any thread local instance data
@@ -540,42 +540,42 @@ typedef struct {
  */
 static int _module_thread_instantiate(void *instance, void *ctx)
 {
-	module_instance_t		*mod_inst = talloc_get_type_abort(instance, module_instance_t);
-	module_thread_instance_t	*thread_inst;
+	module_instance_t		*mi = talloc_get_type_abort(instance, module_instance_t);
+	module_thread_instance_t	*ti;
 	_thread_intantiate_ctx_t	*thread_inst_ctx = ctx;
 	int				ret;
 
-	MEM(thread_inst = talloc_zero(NULL, module_thread_instance_t));
-	thread_inst->inst = mod_inst;
-	thread_inst->mod_inst = mod_inst->dl_inst->data;	/* For efficient lookups */
+	MEM(ti = talloc_zero(NULL, module_thread_instance_t));
+	ti->inst = mi;
+	ti->mod_inst = mi->dl_inst->data;	/* For efficient lookups */
 
-	if (mod_inst->module->thread_inst_size) {
+	if (mi->module->thread_inst_size) {
 		char *type_name;
 
-		MEM(thread_inst->data = talloc_zero_array(thread_inst, uint8_t, mod_inst->module->thread_inst_size));
+		MEM(ti->data = talloc_zero_array(ti, uint8_t, mi->module->thread_inst_size));
 
 		/*
 		 *	Fixup the type name, incase something calls
 		 *	talloc_get_type_abort() on it...
 		 */
-		MEM(type_name = talloc_typed_asprintf(NULL, "rlm_%s_thread_t", mod_inst->module->name));
-		talloc_set_name(thread_inst->data, "%s", type_name);
+		MEM(type_name = talloc_typed_asprintf(NULL, "rlm_%s_thread_t", mi->module->name));
+		talloc_set_name(ti->data, "%s", type_name);
 		talloc_free(type_name);
 
 	}
 
-	if (mod_inst->module->thread_instantiate) {
-		ret = mod_inst->module->thread_instantiate(mod_inst->dl_inst->conf, mod_inst->dl_inst->data,
-							   thread_inst_ctx->el, thread_inst->data);
+	if (mi->module->thread_instantiate) {
+		ret = mi->module->thread_instantiate(mi->dl_inst->conf, mi->dl_inst->data,
+							   thread_inst_ctx->el, ti->data);
 		if (ret < 0) {
 			ERROR("Thread instantiation failed for module \"%s\"",
-			      mod_inst->name);
+			      mi->name);
 			return -1;
 		}
 	}
 
 
-	rbtree_insert(thread_inst_ctx->tree, thread_inst);
+	rbtree_insert(thread_inst_ctx->tree, ti);
 
 	return 0;
 }
@@ -629,29 +629,29 @@ int modules_thread_instantiate(CONF_SECTION *root, fr_event_list_t *el)
  */
 static int _module_instantiate(void *instance, UNUSED void *ctx)
 {
-	module_instance_t *mod_inst = talloc_get_type_abort(instance, module_instance_t);
+	module_instance_t *mi = talloc_get_type_abort(instance, module_instance_t);
 
-	if (mod_inst->instantiated) return 0;
+	if (mi->instantiated) return 0;
 
 	/*
 	 *	Now that ALL modules are instantiated, and ALL xlats
 	 *	are defined, go compile the config items marked as XLAT.
 	 */
-	if (mod_inst->module->config && (cf_section_parse_pass2(mod_inst->dl_inst->data,
-								mod_inst->dl_inst->conf) < 0)) return -1;
+	if (mi->module->config && (cf_section_parse_pass2(mi->dl_inst->data,
+								mi->dl_inst->conf) < 0)) return -1;
 
 	/*
 	 *	Call the instantiate method, if any.
 	 */
-	if (mod_inst->module->instantiate) {
-		cf_log_debug(mod_inst->dl_inst->conf, "Instantiating module \"%s\"", mod_inst->name);
+	if (mi->module->instantiate) {
+		cf_log_debug(mi->dl_inst->conf, "Instantiating module \"%s\"", mi->name);
 
 		/*
 		 *	Call the module's instantiation routine.
 		 */
-		if ((mod_inst->module->instantiate)(mod_inst->dl_inst->data, mod_inst->dl_inst->conf) < 0) {
-			cf_log_err(mod_inst->dl_inst->conf, "Instantiation failed for module \"%s\"",
-				   mod_inst->name);
+		if ((mi->module->instantiate)(mi->dl_inst->data, mi->dl_inst->conf) < 0) {
+			cf_log_err(mi->dl_inst->conf, "Instantiation failed for module \"%s\"",
+				   mi->name);
 
 			return -1;
 		}
@@ -662,20 +662,20 @@ static int _module_instantiate(void *instance, UNUSED void *ctx)
 	 *
 	 *	If it isn't, we create a mutex.
 	 */
-	if ((mod_inst->module->type & RLM_TYPE_THREAD_UNSAFE) != 0) {
-		mod_inst->mutex = talloc_zero(mod_inst, pthread_mutex_t);
+	if ((mi->module->type & RLM_TYPE_THREAD_UNSAFE) != 0) {
+		mi->mutex = talloc_zero(mi, pthread_mutex_t);
 
 		/*
 		 *	Initialize the mutex.
 		 */
-		pthread_mutex_init(mod_inst->mutex, NULL);
+		pthread_mutex_init(mi->mutex, NULL);
 	}
 
 #ifndef NDEBUG
-	if (mod_inst->dl_inst->data) module_instance_read_only(mod_inst->dl_inst->data, mod_inst->name);
+	if (mi->dl_inst->data) module_instance_read_only(mi->dl_inst->data, mi->name);
 #endif
 
-	mod_inst->instantiated = true;
+	mi->instantiated = true;
 
 	return 0;
 }
@@ -698,16 +698,16 @@ static int _module_instantiate(void *instance, UNUSED void *ctx)
  */
 static int module_instantiate(CONF_SECTION *root, char const *name)
 {
-	module_instance_t	*mod_inst;
+	module_instance_t	*mi;
 	CONF_SECTION		*modules;
 
 	modules = cf_section_find(root, "modules", NULL);
 	if (!modules) return 0;
 
-	mod_inst = cf_data_value(cf_data_find(modules, module_instance_t, name));
-	if (!mod_inst) return -1;
+	mi = cf_data_value(cf_data_find(modules, module_instance_t, name));
+	if (!mi) return -1;
 
-	return _module_instantiate(mod_inst, NULL);
+	return _module_instantiate(mi, NULL);
 }
 
 /** Completes instantiation of modules
@@ -750,30 +750,30 @@ int modules_instantiate(CONF_SECTION *root)
 
 /** Free module's instance data, and any xlats or paircompares
  *
- * @param[in] mod_inst to free.
+ * @param[in] mi to free.
  * @return 0
  */
-static int _module_instance_free(module_instance_t *mod_inst)
+static int _module_instance_free(module_instance_t *mi)
 {
-	if (mod_inst->mutex) {
+	if (mi->mutex) {
 		/*
 		 *	FIXME
 		 *	The mutex MIGHT be locked...
 		 *	we'll check for that later, I guess.
 		 */
-		pthread_mutex_destroy(mod_inst->mutex);
+		pthread_mutex_destroy(mi->mutex);
 	}
 
 	/*
 	 *	Remove all xlat's registered to module instance.
 	 */
-	if (mod_inst->dl_inst && mod_inst->dl_inst->data) {
-		xlat_unregister(mod_inst->name);
+	if (mi->dl_inst && mi->dl_inst->data) {
+		xlat_unregister(mi->name);
 		/*
 		 *	Remove any registered paircompares.
 		 */
-		paircompare_unregister_instance(mod_inst->dl_inst->data);
-		xlat_unregister_module(mod_inst->dl_inst->data);
+		paircompare_unregister_instance(mi->dl_inst->data);
+		xlat_unregister_module(mi->dl_inst->data);
 	}
 
 	/*
@@ -784,7 +784,7 @@ static int _module_instance_free(module_instance_t *mod_inst)
 	 *	If we don't do this, we get a SEGV deep inside the talloc code
 	 *	when it tries to call a destructor that no longer exists.
 	 */
-	talloc_free_children(mod_inst);
+	talloc_free_children(mi);
 
 	return 0;
 }
@@ -807,7 +807,7 @@ static int _module_instance_free(module_instance_t *mod_inst)
 static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *cs)
 {
 	char const		*name1, *inst_name;
-	module_instance_t	*mod_inst;
+	module_instance_t	*mi;
 
 	/*
 	 *	Figure out which module we want to load.
@@ -824,50 +824,50 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	/*
 	 *	See if the module already exists.
 	 */
-	mod_inst = module_find(modules, inst_name);
-	if (mod_inst) {
+	mi = module_find(modules, inst_name);
+	if (mi) {
 		ERROR("Duplicate module \"%s\", in file %s:%d and file %s:%d",
 		      inst_name,
 		      cf_filename(cs),
 		      cf_lineno(cs),
-		      cf_filename(mod_inst->dl_inst->conf),
-		      cf_lineno(mod_inst->dl_inst->conf));
+		      cf_filename(mi->dl_inst->conf),
+		      cf_lineno(mi->dl_inst->conf));
 		return NULL;
 	}
 
-	MEM(mod_inst = talloc_zero(instance_ctx, module_instance_t));
-	talloc_set_destructor(mod_inst, _module_instance_free);
+	MEM(mi = talloc_zero(instance_ctx, module_instance_t));
+	talloc_set_destructor(mi, _module_instance_free);
 
-	if (dl_instance(mod_inst, &mod_inst->dl_inst, cs, NULL, name1, DL_TYPE_MODULE) < 0) {
-		talloc_free(mod_inst);
+	if (dl_instance(mi, &mi->dl_inst, cs, NULL, name1, DL_TYPE_MODULE) < 0) {
+		talloc_free(mi);
 		return NULL;
 	}
 
-	mod_inst->module = (rad_module_t const *)mod_inst->dl_inst->module->common;
-	if (!mod_inst->module) {
+	mi->module = (rad_module_t const *)mi->dl_inst->module->common;
+	if (!mi->module) {
 		cf_log_err(cs, "Missing module public structure for \"%s\"", inst_name);
-		talloc_free(mod_inst);
+		talloc_free(mi);
 		return NULL;
 	}
 
 	/*
 	 *	Bootstrap the module.
 	 */
-	if (mod_inst->module->bootstrap &&
-	    ((mod_inst->module->bootstrap)(mod_inst->dl_inst->data, cs) < 0)) {
+	if (mi->module->bootstrap &&
+	    ((mi->module->bootstrap)(mi->dl_inst->data, cs) < 0)) {
 		cf_log_err(cs, "Bootstrap failed for module \"%s\"", inst_name);
-		talloc_free(mod_inst);
+		talloc_free(mi);
 		return NULL;
 	}
 
-	mod_inst->name = talloc_strdup(mod_inst, inst_name);
+	mi->name = talloc_strdup(mi, inst_name);
 
 	/*
 	 *	Remember the module for later.
 	 */
-	cf_data_add(modules, mod_inst, mod_inst->name, false);
+	cf_data_add(modules, mi, mi->name, false);
 
-	return mod_inst;
+	return mi;
 }
 
 /** Bootstrap a virtual module from an instantiate section
