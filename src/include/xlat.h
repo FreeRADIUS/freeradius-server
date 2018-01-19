@@ -105,7 +105,7 @@ typedef ssize_t (*xlat_func_sync_t)(TALLOC_CTX *ctx, char **out, size_t outlen,
  */
 typedef xlat_action_t (*xlat_func_async_t)(TALLOC_CTX *ctx, fr_cursor_t *out,
 					   REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
-					   fr_cursor_t const *in);
+					   fr_cursor_t *in);
 
 /** Async xlat callback function
  *
@@ -140,7 +140,7 @@ typedef xlat_action_t (*xlat_resume_callback_t)(TALLOC_CTX *ctx, fr_cursor_t *ou
  */
 typedef int (*xlat_instantiate_t)(void *xlat_inst, xlat_exp_t const *exp, void *uctx);
 
-/** Allocate new tread instance data for an xlat instance
+/** Allocate new trhead instance data for an xlat instance
  *
  * @param[in] xlat_inst		Previously instantiated xlat instance.
  * @param[out] xlat_thread_inst	Thread specific structure to populate.

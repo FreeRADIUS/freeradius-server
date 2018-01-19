@@ -118,36 +118,36 @@ static void _xlat_thread_inst_tree_free(void *to_free)
  *	  into xlat_thread_inst_tree.
  *	- -1 on failure.
  */
-static xlat_thread_inst_t *xlat_thread_inst_alloc(xlat_exp_t *node)
+static xlat_thread_inst_t *xlat_thread_inst_alloc(xlat_inst_t *inst)
 {
 	xlat_thread_inst_t	*thread_inst = NULL;
 
-	(void)talloc_get_type_abort(node, xlat_exp_t);
+	(void)talloc_get_type_abort(inst, xlat_inst_t);
 
 #ifdef HAVE_TALLOC_POOLED_OBJECT
-	if (node->xlat->thread_inst_size) {
-		MEM(thread_inst = talloc_pooled_object(NULL, xlat_thread_inst_t, node->xlat->thread_inst_size))
+	if (inst->node->xlat->thread_inst_size) {
+		MEM(thread_inst = talloc_pooled_object(NULL, xlat_thread_inst_t, inst->node->xlat->thread_inst_size))
 	} else
 #endif
 		MEM(thread_inst = talloc_zero(NULL, xlat_thread_inst_t));
 #ifdef HAVE_TALLOC_POOLED_OBJECT
 	}
 #endif
-	thread_inst->node = node;
+	thread_inst->node = inst->node;
 
-	rad_assert(node->type == XLAT_FUNC);
-	rad_assert(!node->thread_inst);		/* May be missing inst, but this is OK */
+	rad_assert(inst->node->type == XLAT_FUNC);
+	rad_assert(!inst->node->thread_inst);		/* May be missing inst, but this is OK */
 
 	talloc_set_destructor(thread_inst, _xlat_thread_inst_detach);
-	if (node->xlat->thread_inst_size) {
-		MEM(thread_inst->data = talloc_zero_array(thread_inst, uint8_t, node->xlat->thread_inst_size));
+	if (inst->node->xlat->thread_inst_size) {
+		MEM(thread_inst->data = talloc_zero_array(thread_inst, uint8_t, inst->node->xlat->thread_inst_size));
 
 		/*
 		 *	This is expensive, only do it if we might
 		 *	might be using it.
 		 */
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
-		talloc_set_name(thread_inst, "%s_thread_inst_t", node->xlat->name);
+		talloc_set_name(thread_inst->data, "%s_xlat_thread_inst_t", inst->node->xlat->name);
 #endif
 	}
 
@@ -225,7 +225,7 @@ static xlat_inst_t *xlat_inst_alloc(xlat_exp_t *node)
 		 *	might be using it.
 		 */
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
-		talloc_set_name(inst, "%s_inst_t", node->xlat->name);
+		talloc_set_name(inst->data, "%s_xlat_inst_t", node->xlat->name);
 #endif
 	}
 
@@ -263,7 +263,7 @@ static int _xlat_instantiate_ephemeral_walker(xlat_exp_t *node, UNUSED void *uct
 	/*
 	 *	Create a thread instance too.
 	 */
-	node->thread_inst = xlat_thread_inst_alloc(node);
+	node->thread_inst = xlat_thread_inst_alloc(node->inst);
 	if (!node->thread_inst) goto error;
 
 	if (node->xlat->thread_instantiate &&
@@ -295,15 +295,15 @@ int xlat_instantiate_ephemeral(xlat_exp_t *root)
 static int _xlat_thread_instantiate(UNUSED void *ctx, void *data)
 {
 	xlat_thread_inst_t	*thread_inst;
-	xlat_exp_t		*node = talloc_get_type_abort(data, xlat_exp_t);
+	xlat_inst_t		*inst = talloc_get_type_abort(data, xlat_inst_t);
 
 	thread_inst = xlat_thread_inst_alloc(data);
 	if (!thread_inst) return -1;
 
-	if (node->xlat->thread_instantiate) {
+	if (inst->node->xlat->thread_instantiate) {
 		int ret;
 
-		ret = node->xlat->thread_instantiate(node->inst, thread_inst->data, node, node->xlat->uctx);
+		ret = inst->node->xlat->thread_instantiate(inst, thread_inst->data, inst->node, inst->node->xlat->uctx);
 		if (ret < 0) {
 			talloc_free(thread_inst);
 			return -1;
