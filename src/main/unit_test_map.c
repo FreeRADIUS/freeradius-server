@@ -52,7 +52,7 @@ module_instance_t *module_find_with_method(UNUSED rlm_components_t *method,
 
 main_config_t		main_config;				//!< Main server configuration.
 
-module_thread_instance_t *module_thread_instance_find(UNUSED module_instance_t *instance)
+module_thread_instance_t *module_thread_instance_find(UNUSED module_instance_t *mi)
 {
 	return NULL;
 }

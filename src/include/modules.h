@@ -218,7 +218,7 @@ exfile_t *module_exfile_init(TALLOC_CTX *ctx,
 /*
  *	Create free and destroy module instances
  */
-module_thread_instance_t *module_thread_instance_find(module_instance_t *instance);
+module_thread_instance_t *module_thread_instance_find(module_instance_t *mi);
 void		*module_thread_instance_by_data(void *mod_data);
 int		modules_thread_instantiate(CONF_SECTION *root, fr_event_list_t *el) CC_HINT(nonnull);
 int		modules_instantiate(CONF_SECTION *root) CC_HINT(nonnull);
