@@ -112,7 +112,7 @@ static void _xlat_thread_inst_tree_free(void *to_free)
 
 /** Create thread instances where needed
  *
- * @param[in] node	to allocate instance data for.
+ * @param[in] inst	to allocate thread-instance data for.
  * @return
  *	- 0 on success.  The node/thread specific data will be inserted
  *	  into xlat_thread_inst_tree.
