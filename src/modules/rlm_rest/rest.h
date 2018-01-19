@@ -172,6 +172,14 @@ typedef struct {
 						//!< we think there are.
 } rlm_rest_thread_t;
 
+/** Wrapper around the module thread stuct for individual xlats
+ *
+ */
+typedef struct {
+	rlm_rest_t const	*inst;		//!< Instance of rlm_rest.
+	rlm_rest_thread_t	*t;		//!< rlm_rest thread instance.
+} rest_xlat_thread_inst_t;
+
 /*
  *	States for stream based attribute encoders
  */

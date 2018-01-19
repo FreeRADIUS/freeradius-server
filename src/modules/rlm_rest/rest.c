@@ -2304,7 +2304,7 @@ ssize_t rest_uri_build(char **out, rlm_rest_t const *inst, REQUEST *request, cha
 	p = strchr(p, ':');
 	if (!p || (*++p != '/') || (*++p != '/')) {
 		malformed:
-		REDEBUG("Error URI is malformed, can't find start of path");
+		REDEBUG("Error URI \"%s\" is malformed, can't find start of path", uri);
 		return -1;
 	}
 	p = strchr(p + 1, '/');
@@ -2377,7 +2377,7 @@ ssize_t rest_uri_host_unescape(char **out, rlm_rest_t const *inst, REQUEST *requ
 	p = strchr(p, ':');
 	if (!p || (*++p != '/') || (*++p != '/')) {
 	malformed:
-		REDEBUG("Error URI is malformed, can't find start of path");
+		REDEBUG("URI \"%s\" is malformed, can't find start of path", uri);
 		return -1;
 	}
 	p = strchr(p + 1, '/');
