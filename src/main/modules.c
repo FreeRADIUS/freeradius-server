@@ -455,13 +455,30 @@ module_instance_t *module_find_with_method(rlm_components_t *method, CONF_SECTIO
  *	- Thread specific instance data on success.
  *	- NULL if module has no thread instance data.
  */
-module_thread_instance_t *module_thread_instance_find(void *instance)
+module_thread_instance_t *module_thread_instance_find(module_instance_t *instance)
 {
-	module_instance_t		*mod_inst = talloc_get_type_abort(instance, module_instance_t);
 	rbtree_t			*tree = module_thread_inst_tree;
-	module_thread_instance_t	find = { .inst = mod_inst };
+	module_thread_instance_t	find = { .mod_inst = instance->dl_inst->data };
 
 	return rbtree_finddata(tree, &find);
+}
+
+/** Retrieve module/thread specific instance data for a module
+ *
+ * @param[in] mod_data		Module specific instance to find thread_data for.
+ * @return
+ *	- Thread specific instance data on success.
+ *	- NULL if module has no thread instance data.
+ */
+void *module_thread_instance_by_data(void *mod_inst)
+{
+	rbtree_t			*tree = module_thread_inst_tree;
+	module_thread_instance_t	find = { .mod_inst = mod_inst }, *found;
+
+	found = rbtree_finddata(tree, &find);
+	if (!found) return NULL;
+
+	return found->data;
 }
 
 /** Destructor for module_thread_instance_t
@@ -505,7 +522,7 @@ static int _module_thread_inst_tree_cmp(void const *a, void const *b)
 {
 	module_thread_instance_t const *my_a = a, *my_b = b;
 
-	return (my_a->inst > my_b->inst) - (my_a->inst < my_b->inst);
+	return (my_a->mod_inst > my_b->mod_inst) - (my_a->mod_inst < my_b->mod_inst);
 }
 
 typedef struct {
@@ -530,6 +547,7 @@ static int _module_thread_instantiate(void *instance, void *ctx)
 
 	MEM(thread_inst = talloc_zero(NULL, module_thread_instance_t));
 	thread_inst->inst = mod_inst;
+	thread_inst->mod_inst = mod_inst->dl_inst->data;	/* For efficient lookups */
 
 	if (mod_inst->module->thread_inst_size) {
 		char *type_name;
@@ -555,6 +573,7 @@ static int _module_thread_instantiate(void *instance, void *ctx)
 			return -1;
 		}
 	}
+
 
 	rbtree_insert(thread_inst_ctx->tree, thread_inst);
 

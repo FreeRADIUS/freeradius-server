@@ -187,6 +187,9 @@ typedef struct {
  * Stores module and thread specific data.
  */
 typedef struct {
+	void				*mod_inst;	//!< Avoids thread_inst->inst->dl_inst->data.
+							///< This is in the hot path, so it makes sense.
+
 	module_instance_t		*inst;		//!< Non-thread local instance of this
 
 	void				*data;		//!< Thread specific instance data.
@@ -215,7 +218,8 @@ exfile_t *module_exfile_init(TALLOC_CTX *ctx,
 /*
  *	Create free and destroy module instances
  */
-module_thread_instance_t *module_thread_instance_find(void *inst);
+module_thread_instance_t *module_thread_instance_find(module_instance_t *instance);
+void		*module_thread_instance_by_data(void *mod_data);
 int		modules_thread_instantiate(CONF_SECTION *root, fr_event_list_t *el) CC_HINT(nonnull);
 int		modules_instantiate(CONF_SECTION *root) CC_HINT(nonnull);
 int		modules_bootstrap(CONF_SECTION *root) CC_HINT(nonnull);
