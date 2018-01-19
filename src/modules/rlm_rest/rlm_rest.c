@@ -192,11 +192,10 @@ static xlat_action_t rest_xlat_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
 	char const			*body;
 	xlat_action_t			xa = XLAT_ACTION_DONE;
 
-	rlm_rest_handle_t		*handle = our_rctx->handle;
+	rlm_rest_handle_t		*handle = talloc_get_type_abort(our_rctx->handle, rlm_rest_handle_t);
 	rlm_rest_section_t		*section = &our_rctx->section;
 
-	if (section->tls_extract_cert_attrs) rest_response_certinfo(mod_inst, section,
-								    request, handle);
+	if (section->tls_extract_cert_attrs) rest_response_certinfo(mod_inst, section, request, handle);
 
 	if (rlm_rest_status_update(request, handle) < 0) {
 		xa = XLAT_ACTION_FAIL;
@@ -323,7 +322,7 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	 */
 	while (isspace(*p) && p++);
 
-	handle = fr_pool_connection_get(t->pool, request);
+	handle = rctx->handle = fr_pool_connection_get(t->pool, request);
 	if (!handle) return -1;
 
 	/*
