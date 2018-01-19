@@ -246,8 +246,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 		}
 
 		if (tmpl_define_unknown_attr(map->lhs) < 0) {
-			cf_log_err(cp, "Failed creating attribute %s: %s",
-				      map->lhs->name, fr_strerror());
+			cf_log_perr(cp, "Failed creating attribute %s", map->lhs->name);
 			goto error;
 		}
 
@@ -267,12 +266,12 @@ int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 		slen = tmpl_afrom_str(map, &map->rhs, value, strlen(value), type, src_request_def, src_list_def, true);
 		if (slen < 0) goto marker;
 		if (tmpl_define_unknown_attr(map->rhs) < 0) {
-			cf_log_err(cp, "Failed creating attribute %s: %s", map->rhs->name, fr_strerror());
+			cf_log_perr(cp, "Failed creating attribute %s", map->rhs->name);
 			goto error;
 		}
 	}
 	if (!map->rhs) {
-		cf_log_err(cp, "Failed parsing RHS: %s", fr_strerror());
+		cf_log_perr(cp, "Failed parsing RHS");
 		goto error;
 	}
 
@@ -1027,8 +1026,8 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 		slen = tmpl_afrom_attr_str(tmp_ctx, &exp_lhs, attr_str,
 					   REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
 		if (slen <= 0) {
-			REDEBUG("Left side \"%.*s\" expansion to \"%s\" not an attribute reference: %s",
-				(int)map->lhs->len, map->lhs->name, attr_str, fr_strerror());
+			RPEDEBUG("Left side \"%.*s\" expansion to \"%s\" not an attribute reference",
+				(int)map->lhs->len, map->lhs->name, attr_str);
 			talloc_free(attr_str);
 			rcode = -1;
 			goto finish;
