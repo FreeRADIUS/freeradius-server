@@ -37,20 +37,46 @@ RCSID("$Id$")
 #include <ctype.h>
 #include <fcntl.h>
 
+#define WITH_TRIE (1)
+
 /** Group of clients
  *
  */
 struct radclient_list {
 	char const	*name;			//!< Name of the client list.
+#ifdef WITH_TRIE
 	fr_trie_t	*v4_udp;
 	fr_trie_t	*v6_udp;
 #ifdef WITH_TCP
 	fr_trie_t	*v4_tcp;
 	fr_trie_t	*v6_tcp;
 #endif
+#else
+	rbtree_t	*tree[129];
+#endif
 };
 
 static RADCLIENT_LIST	*root_clients = NULL;	//!< Global client list.
+
+#ifndef WITH_TRIE
+static int client_cmp(void const *one, void const *two)
+{
+	int rcode;
+	RADCLIENT const *a = one;
+	RADCLIENT const *b = two;
+
+	rcode = fr_ipaddr_cmp(&a->ipaddr, &b->ipaddr);
+	if (rcode != 0) return rcode;
+
+	/*
+	 *	0 is "wildcard", or "both" protocols
+	 */
+	if ((a->proto == IPPROTO_IP) || (b->proto == IPPROTO_IP)) return 0;
+
+	return a->proto - b->proto;
+}
+
+#endif
 
 void client_list_free(void)
 {
@@ -83,6 +109,8 @@ RADCLIENT_LIST *client_list_init(CONF_SECTION *cs)
 	if (!clients) return NULL;
 
 	clients->name = talloc_strdup(clients, cs ? cf_section_name1(cs) : "root");
+
+#ifdef WITH_TRIE
 	clients->v4_udp = fr_trie_alloc(clients);
 	if (!clients->v4_udp) {
 		talloc_free(clients);
@@ -108,10 +136,23 @@ RADCLIENT_LIST *client_list_init(CONF_SECTION *cs)
 		return NULL;
 	}
 #endif
+#endif	/* WITH_TRIE */
 
 	return clients;
 }
 
+#ifdef WITH_TRIE
+/*
+ *	@todo - either support client definitions where "proto = *",
+ *	or udpate this code to allow for that.  i.e. we create yet
+ *	another set of v4/v6 tries, for "proto = *" clients.  And then
+ *	do lookups there, too.  Or, just unify the udp/tcp tries, and
+ *	instead do post-processing?  Though those two clients can have
+ *	different secrets... and the trie code doesn't allow 2
+ *	fr_trie_user_t nodes in a row.  So we would have to instead
+ *	handle that ourselves, with a wrapper around the RADCLIENT
+ *	structure that does udp/tcp/wildcard demultiplexing
+ */
 static fr_trie_t *clients_trie(RADCLIENT_LIST const *clients, fr_ipaddr_t const *ipaddr,
 #ifndef WITH_TCP
 			       UNUSED
@@ -134,7 +175,7 @@ static fr_trie_t *clients_trie(RADCLIENT_LIST const *clients, fr_ipaddr_t const 
 
 	return clients->v6_udp;
 }
-
+#endif	/* WITH_TRIE */
 
 /** Add a client to a RADCLIENT_LIST
  *
@@ -146,7 +187,10 @@ static fr_trie_t *clients_trie(RADCLIENT_LIST const *clients, fr_ipaddr_t const 
  */
 bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 {
+#ifdef WITH_TRIE
 	fr_trie_t *trie;
+#else
+#endif
 	RADCLIENT *old;
 	char buffer[FR_IPADDR_PREFIX_STRLEN];
 
@@ -237,12 +281,25 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 
 #define namecmp(a) ((!old->a && !client->a) || (old->a && client->a && (strcmp(old->a, client->a) == 0)))
 
+#ifdef WITH_TRIE
 	trie = clients_trie(clients, &client->ipaddr, client->proto);
 
 	/*
 	 *	Cannot insert the same client twice.
 	 */
 	old = fr_trie_match(trie, &client->ipaddr.addr, client->ipaddr.prefix);
+
+#else  /* WITH_TRIE */
+
+	if (!clients->tree[client->ipaddr.prefix]) {
+		clients->tree[client->ipaddr.prefix] = rbtree_create(clients, client_cmp, NULL, RBTREE_FLAG_NONE);
+		if (!clients->tree[client->ipaddr.prefix]) {
+			return NULL;
+		}
+	}
+
+	old = rbtree_finddata(clients->tree[client->ipaddr.prefix], client);
+#endif
 	if (old) {
 		/*
 		 *	If it's a complete duplicate, then free the new
@@ -262,13 +319,20 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	}
 #undef namecmp
 
+#ifdef WITH_TRIE
 	/*
 	 *	Other error adding client: likely is fatal.
 	 */
 	if (fr_trie_insert(trie, &client->ipaddr.addr, client->ipaddr.prefix, client) < 0) {
 		return false;
 	}
+#else
+	if (!rbtree_insert(clients->tree[client->ipaddr.prefix], client)) return false;
+#endif
 
+	/*
+	 *	@todo - do we want to do this for dynamic clients?
+	 */
 	(void) talloc_steal(clients, client); /* reparent it */
 
 	return true;
@@ -278,7 +342,9 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 #ifdef WITH_DYNAMIC_CLIENTS
 void client_delete(RADCLIENT_LIST *clients, RADCLIENT *client)
 {
+#ifdef WITH_TRIE
 	fr_trie_t *trie;
+#endif
 
 	if (!client) return;
 
@@ -286,12 +352,19 @@ void client_delete(RADCLIENT_LIST *clients, RADCLIENT *client)
 
 	rad_assert(client->ipaddr.prefix <= 128);
 
+#ifdef WITH_TRIE
 	trie = clients_trie(clients, &client->ipaddr, client->proto);
 
 	/*
 	 *	Don't free the client.  The caller is responsible for that.
 	 */
 	(void) fr_trie_remove(trie, &client->ipaddr.addr, client->ipaddr.prefix);
+#else
+
+	if (!clients->tree[client->ipaddr.prefix]) return;
+
+	(void) rbtree_deletebydata(clients->tree[client->ipaddr.prefix], client);
+#endif
 }
 #endif
 
@@ -306,15 +379,49 @@ RADCLIENT *client_findbynumber(UNUSED const RADCLIENT_LIST *clients, UNUSED int 
  */
 RADCLIENT *client_find(RADCLIENT_LIST const *clients, fr_ipaddr_t const *ipaddr, int proto)
 {
+#ifdef WITH_TRIE
 	fr_trie_t *trie;
+#else
+	int i, max;
+	RADCLIENT my_client, *client;
+#endif
 
 	if (!clients) clients = root_clients;
 
 	if (!clients || !ipaddr) return NULL;
 
+#ifdef WITH_TRIE
 	trie = clients_trie(clients, ipaddr, proto);
 
 	return fr_trie_lookup(trie, &ipaddr->addr, ipaddr->prefix);
+#else
+
+	if (proto == AF_INET) {
+		max = 32;
+	} else {
+		max = 128;
+	}
+
+	if (max > ipaddr->prefix) max = ipaddr->prefix;
+
+	my_client.proto = proto;
+	for (i = max; i >= 0; i--) {
+		if (!clients->tree[i]) continue;
+
+		my_client.ipaddr = *ipaddr;
+		fr_ipaddr_mask(&my_client.ipaddr, i);
+
+		DEBUG("CHECKING prefix %d", i);
+
+		client = rbtree_finddata(clients->tree[i], &my_client);
+		if (client) {
+			DEBUG("FOUND CLIENT %s", client->shortname);
+			return client;
+		}
+	}
+
+	return NULL;
+#endif
 }
 
 static fr_ipaddr_t cl_ipaddr;
