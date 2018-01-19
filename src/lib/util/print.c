@@ -693,6 +693,36 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 			}
 				break;
 
+			case 'M':
+			{
+				fr_value_box_t const *in = va_arg(ap_q, fr_value_box_t const *);
+				char *tmp, *n;
+
+				subst = talloc_strdup(NULL, "");
+				do {
+					/*
+					 *	Allocations that are not part of the output
+					 *	string need to occur in the NULL ctx so we don't fragment
+					 *	any pool associated with it.
+					 */
+					tmp = fr_value_box_asprint(NULL, in, '"');
+					if (!tmp) {
+					merror:
+						talloc_free(subst);
+						talloc_free(out);
+						va_end(ap_p);
+						va_end(ap_q);
+						return NULL;
+					}
+					n = talloc_buffer_append_buffer(subst, tmp);
+					talloc_free(tmp);
+					if (!n) goto merror;
+					subst = n;
+				} while ((in = in->next));
+
+				goto do_splice;
+			}
+
 			case 'H':
 			{
 				uint8_t const *in = va_arg(ap_q, uint8_t const *);
