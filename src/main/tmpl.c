@@ -1269,7 +1269,7 @@ int tmpl_define_unknown_attr(vp_tmpl_t *vpt)
 
 	if (!vpt->tmpl_da->flags.is_unknown) return 1;
 
-	da = fr_dict_unknown_add(NULL, vpt->tmpl_da);
+	da = fr_dict_unknown_add(fr_dict_internal, vpt->tmpl_da);
 	if (!da) return -1;
 	vpt->tmpl_da = da;
 

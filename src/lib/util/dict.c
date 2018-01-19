@@ -2948,9 +2948,9 @@ fr_dict_attr_t *fr_dict_unknown_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
  *
  * Does not free old #fr_dict_attr_t, that is left up to the caller.
  *
- * @param[in] dict of protocol context we're operating in.  If NULL the internal
- *	dictionary will be used.
- * @param[in] old unknown attribute to add.
+ * @param[in] dict	of protocol context we're operating in.  If NULL the internal
+ *			dictionary will be used.
+ * @param[in] old	unknown attribute to add.
  * @return
  *	- Existing #fr_dict_attr_t if old was found in a dictionary.
  *	- A new entry representing old.
@@ -2969,8 +2969,12 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 	/*
 	 *	Define the complete unknown hierarchy
 	 */
-	if (old->parent->flags.is_unknown) {
+	if (old->parent && old->parent->flags.is_unknown) {
 		parent = fr_dict_unknown_add(dict, old->parent);
+		if (!parent) {
+			fr_strerror_printf_push("Failed adding parent \"%s\"", old->parent->name);
+			return NULL;
+		}
 	} else {
 		parent = old->parent;
 	}
@@ -2980,10 +2984,26 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 	flags.is_raw = true;
 
 	/*
-	 *	Ensure the vendor is present in the
-	 *	vendor hash.
+	 *	If this is a vendor, we skip most of the sanity
+	 *	checks and add it to the vendor hash, and add it
+	 *	as a child attribute to the Vendor-Specific
+	 *	container.
 	 */
-	if (old->type == FR_TYPE_VENDOR) if (fr_dict_vendor_add(dict, old->name, old->attr) < 0) return NULL;
+	if (old->type == FR_TYPE_VENDOR) {
+		fr_dict_attr_t *mutable, *n;
+
+		if (fr_dict_vendor_add(dict, old->name, old->attr) < 0) return NULL;
+
+		n = fr_dict_attr_alloc(dict->pool, parent, old->name, old->vendor, old->attr, old->type, &flags);
+
+		/*
+		 *	Setup parenting for the attribute
+		 */
+		memcpy(&mutable, &old->parent, sizeof(mutable));
+		if (fr_dict_attr_child_add(mutable, n) < 0) return NULL;
+
+		return n;
+	}
 
 	/*
 	 *	Look up the attribute by number.  If it doesn't exist,
