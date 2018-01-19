@@ -690,7 +690,7 @@ void mschap_add_reply(REQUEST *request, uint8_t ident,
 
 	vp = pair_make_reply(name, NULL, T_OP_EQ);
 	if (!vp) {
-		REDEBUG("Failed to create attribute %s: %s", name, fr_strerror());
+		RPEDEBUG("Failed to create attribute %s", name);
 		return;
 	}
 
@@ -721,7 +721,7 @@ static void mppe_add_reply(REQUEST *request, char const* name, uint8_t const * v
 
        vp = pair_make_reply(name, NULL, T_OP_EQ);
        if (!vp) {
-	       REDEBUG("mppe_add_reply failed to create attribute %s: %s", name, fr_strerror());
+	       RPEDEBUG("mppe_add_reply failed to create attribute %s", name);
 	       return;
        }
 

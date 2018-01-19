@@ -181,7 +181,7 @@ fr_channel_t *fr_channel_create(TALLOC_CTX *ctx, fr_control_t *master, fr_contro
 	ch->end[TO_WORKER].rb = fr_ring_buffer_create(ch, FR_CONTROL_MAX_MESSAGES * FR_CONTROL_MAX_SIZE);
 	if (!ch->end[TO_WORKER].rb) {
 	rb_nomem:
-		fr_strerror_printf("Failed allocating ring buffer: %s", fr_strerror());
+		fr_strerror_printf_push("Failed allocating ring buffer");
 		talloc_free(ch);
 		return NULL;
 	}

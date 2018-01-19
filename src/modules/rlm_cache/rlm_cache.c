@@ -818,7 +818,7 @@ static ssize_t cache_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t freespace,
 
 	slen = tmpl_afrom_attr_substr(ctx, &target, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
 	if (slen <= 0) {
-		REDEBUG("%s", fr_strerror());
+		RPEDEBUG("Invalid key");
 		return -1;
 	}
 

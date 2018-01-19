@@ -1303,20 +1303,20 @@ nomem:
 
 	worker->aq_ident = fr_event_user_insert(worker->el, fr_worker_evfilt_user, worker);
 	if (!worker->aq_ident) {
-		fr_strerror_printf("Failed updating event list: %s", fr_strerror());
+		fr_strerror_printf_push("Failed updating event list");
 		goto fail;
 	}
 
 	worker->control = fr_control_create(worker, worker->kq, worker->aq_control, worker->aq_ident);
 	if (!worker->control) {
-		fr_strerror_printf("Failed creating control plane: %s", fr_strerror());
+		fr_strerror_printf_push("Failed creating control plane");
 	fail2:
 		(void) fr_event_user_delete(worker->el, fr_worker_evfilt_user, worker);
 		goto fail;
 	}
 
 	if (fr_control_callback_add(worker->control, FR_CONTROL_ID_CHANNEL, worker, fr_worker_channel_callback) < 0) {
-		fr_strerror_printf("Failed adding control channel: %s", fr_strerror());
+		fr_strerror_printf_push("Failed adding control channel");
 		goto fail2;
 	}
 
@@ -1462,7 +1462,7 @@ void fr_worker(fr_worker_t *worker)
 		if (num_events < 0) {
 			if (worker->exiting) return; /* don't complain if we're exiting */
 
-			ERROR("Failed corraling events: %s", fr_strerror());
+			PERROR("Failed corraling events");
 			break;
 		}
 

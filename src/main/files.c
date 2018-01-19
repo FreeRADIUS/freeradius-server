@@ -210,8 +210,7 @@ parse_again:
 			parsecode = fr_pair_list_afrom_str(ctx, ptr, &check_tmp);
 			if (parsecode == T_INVALID) {
 				pairlist_free(&pl);
-				ERROR("%s[%d]: Parse error (check) for entry %s: %s",
-					file, lineno, entry, fr_strerror());
+				PERROR("%s[%d]: Parse error (check) for entry %s", file, lineno, entry);
 				fclose(fp);
 				return -1;
 			}
@@ -237,8 +236,8 @@ parse_again:
 				    (vp->vp_type != FR_TYPE_STRING)) {
 					pairlist_free(&pl);
 					talloc_free(check_tmp);
-					ERROR("%s[%d]: Cannot use regular expressions for non-string attributes in entry %s",
-					      file, lineno, entry);
+					ERROR("%s[%d]: Cannot use regular expressions for non-string "
+					      "attributes in entry %s", file, lineno, entry);
 					fclose(fp);
 					return -1;
 				}
@@ -296,8 +295,7 @@ parse_again:
 			pairlist_free(&pl);
 			talloc_free(check_tmp);
 			talloc_free(reply_tmp);
-			ERROR("%s[%d]: Parse error (reply) for entry %s: %s",
-			      file, lineno, entry, fr_strerror());
+			PERROR("%s[%d]: Parse error (reply) for entry %s", file, lineno, entry);
 			fclose(fp);
 			return -1;
 		}

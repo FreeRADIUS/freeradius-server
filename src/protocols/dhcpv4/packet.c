@@ -124,9 +124,7 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 
 		vp = fr_pair_make(packet, NULL, dhcp_header_names[i], NULL, T_OP_EQ);
 		if (!vp) {
-			char buffer[256];
-			strlcpy(buffer, fr_strerror(), sizeof(buffer));
-			fr_strerror_printf("Cannot decode packet due to internal error: %s", buffer);
+			fr_strerror_printf_push("Cannot decode packet due to internal error");
 			fr_pair_list_free(&head);
 			return -1;
 		}

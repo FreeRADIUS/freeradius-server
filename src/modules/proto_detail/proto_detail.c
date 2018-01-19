@@ -646,8 +646,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 		if (dl_instance(inst->cs, &inst->work_submodule, transport_cs,
 				parent_inst, "work", DL_TYPE_SUBMODULE) < 0) {
-			cf_log_err(inst->cs, "Failed to load proto_detail_work: %s",
-				   fr_strerror());
+			cf_log_perr(inst->cs, "Failed to load proto_detail_work");
 			return -1;
 		}
 

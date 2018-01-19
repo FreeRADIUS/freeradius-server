@@ -588,7 +588,7 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 				return;
 			}
 
-			ERROR("Failed writing to socket %d: %s", s->fd, fr_strerror());
+			PERROR("Failed writing to socket %d", s->fd);
 			fr_network_socket_dead(nr, s);
 			return;
 		}
@@ -614,7 +614,7 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 			       NULL,
 			       listen->app_io->error ? fr_network_error : NULL,
 			       s) < 0) {
-		ERROR("Failed adding new socket to event loop: %s", fr_strerror());
+		PERROR("Failed adding new socket to event loop");
 		fr_network_socket_dead(nr, s);
 	}
 }
@@ -712,7 +712,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 			       NULL,
 			       app_io->error ? fr_network_error : NULL,
 			       s) < 0) {
-		ERROR("Failed adding new socket to event loop: %s", fr_strerror());
+		PERROR("Failed adding new socket to event loop");
 		talloc_free(s);
 		return;
 	}
@@ -772,7 +772,7 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 				   &funcs,
 				   app_io->error ? fr_network_error : NULL,
 				   s) < 0) {
-		ERROR("Failed adding new socket to event loop: %s", fr_strerror());
+		PERROR("Failed adding new socket to event loop");
 		talloc_free(s);
 		return;
 	}
@@ -922,7 +922,7 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t c
 
 	nr->aq_ident = fr_event_user_insert(nr->el, fr_network_evfilt_user, nr);
 	if (!nr->aq_ident) {
-		fr_strerror_printf("Failed updating event list: %s", fr_strerror());
+		fr_strerror_printf_push("Failed updating event list");
 		talloc_free(nr);
 		return NULL;
 	}
@@ -930,7 +930,7 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t c
 
 	nr->control = fr_control_create(nr, nr->kq, nr->aq_control, nr->aq_ident);
 	if (!nr->control) {
-		fr_strerror_printf("Failed creating control queue: %s", fr_strerror());
+		fr_strerror_printf_push("Failed creating control queue");
 	fail:
 		(void) fr_event_user_delete(nr->el, fr_network_evfilt_user, nr);
 		talloc_free(nr);
@@ -939,34 +939,34 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t c
 
 	nr->rb = fr_ring_buffer_create(nr, FR_CONTROL_MAX_MESSAGES * FR_CONTROL_MAX_SIZE);
 	if (!nr->rb) {
-		fr_strerror_printf("Failed creating ring buffer: %s", fr_strerror());
+		fr_strerror_printf_push("Failed creating ring buffer");
 	fail2:
 		fr_control_free(nr->control);
 		goto fail;
 	}
 
 	if (fr_control_callback_add(nr->control, FR_CONTROL_ID_CHANNEL, nr, fr_network_channel_callback) < 0) {
-		fr_strerror_printf("Failed adding channel callback: %s", fr_strerror());
+		fr_strerror_printf_push("Failed adding channel callback");
 		goto fail2;
 	}
 
 	if (fr_control_callback_add(nr->control, FR_CONTROL_ID_SOCKET, nr, fr_network_socket_callback) < 0) {
-		fr_strerror_printf("Failed adding socket callback: %s", fr_strerror());
+		fr_strerror_printf_push("Failed adding socket callback");
 		goto fail2;
 	}
 
 	if (fr_control_callback_add(nr->control, FR_CONTROL_ID_DIRECTORY, nr, fr_network_directory_callback) < 0) {
-		fr_strerror_printf("Failed adding socket callback: %s", fr_strerror());
+		fr_strerror_printf_push("Failed adding socket callback");
 		goto fail2;
 	}
 
 	if (fr_control_callback_add(nr->control, FR_CONTROL_ID_WORKER, nr, fr_network_worker_callback) < 0) {
-		fr_strerror_printf("Failed adding worker callback: %s", fr_strerror());
+		fr_strerror_printf_push("Failed adding worker callback");
 		goto fail2;
 	}
 
 	if (fr_control_callback_add(nr->control, FR_CONTROL_ID_INJECT, nr, fr_network_inject_callback) < 0) {
-		fr_strerror_printf("Failed adding packet injection callback: %s", fr_strerror());
+		fr_strerror_printf_push("Failed adding packet injection callback");
 		goto fail2;
 	}
 
@@ -975,13 +975,13 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t c
 	 */
 	nr->sockets = rbtree_create(nr, socket_cmp, NULL, RBTREE_FLAG_NONE);
 	if (!nr->sockets) {
-		fr_strerror_printf("Failed creating tree for sockets: %s", fr_strerror());
+		fr_strerror_printf_push("Failed creating tree for sockets");
 		goto fail2;
 	}
 
 	nr->replies = fr_heap_create(reply_cmp, offsetof(fr_channel_data_t, channel.heap_id));
 	if (!nr->replies) {
-		fr_strerror_printf("Failed creating heap for replies: %s", fr_strerror());
+		fr_strerror_printf_push("Failed creating heap for replies");
 		goto fail2;
 	}
 
@@ -1147,7 +1147,7 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 						       fr_network_write,
 						       listen->app_io->error ? fr_network_error : NULL,
 						       s) < 0) {
-					ERROR("Failed adding write callback to event loop: %s", fr_strerror());
+					PERROR("Failed adding write callback to event loop");
 					goto error;
 				}
 
@@ -1174,7 +1174,7 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED struct time
 			 *	Don't call close, as that will be done
 			 *	in the destructor.
 			 */
-			ERROR("Failed writing to socket %d: %s", s->fd, fr_strerror());
+			PERROR("Failed writing to socket %d", s->fd);
 		error:
 			fr_message_done(&cd->m);
 			if (listen->app_io->error) listen->app_io->error(listen->app_io_instance);

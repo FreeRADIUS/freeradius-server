@@ -85,7 +85,7 @@ size_t const fr_radius_attr_sizes[FR_TYPE_MAX + 1][2] = {
 /*
  *	Some messages get printed out only in debugging mode.
  */
-#define FR_DEBUG_STRERROR_PRINTF if (fr_debug_lvl) fr_strerror_printf
+#define FR_DEBUG_STRERROR_PRINTF if (fr_debug_lvl) fr_strerror_printf_push
 
 FR_NAME_NUMBER const fr_request_types[] = {
 	{ "auth",	FR_CODE_ACCESS_REQUEST },
@@ -244,9 +244,8 @@ ssize_t fr_radius_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src
 
 		FR_DEBUG_STRERROR_PRINTF("Expected at least 4 bytes of header data, got %zu bytes", data_len);
 invalid:
-		FR_DEBUG_STRERROR_PRINTF("Invalid data from %s: %s",
-					 inet_ntop(src_ipaddr->af, &src_ipaddr->addr, buffer, sizeof(buffer)),
-					 fr_strerror());
+		FR_DEBUG_STRERROR_PRINTF("Invalid data from %s",
+					 inet_ntop(src_ipaddr->af, &src_ipaddr->addr, buffer, sizeof(buffer)));
 		(void) udp_recv_discard(sockfd);
 
 		return 0;
@@ -771,7 +770,7 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 	 */
 	rcode = fr_radius_sign(packet, original, secret, secret_len);
 	if (rcode < 0) {
-		fr_strerror_printf("Failed calculating correct authenticator: %s", fr_strerror());
+		fr_strerror_printf_push("Failed calculating correct authenticator");
 		return -1;
 	}
 

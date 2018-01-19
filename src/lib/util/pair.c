@@ -477,8 +477,7 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 
 		slen = regex_compile(ctx, &preg, value, strlen(value), false, false, false, true);
 		if (slen <= 0) {
-			fr_strerror_printf("Error at offset %zu compiling regex for %s: %s", -slen,
-					   attribute, fr_strerror());
+			fr_strerror_printf_push("Error at offset %zu compiling regex for %s", -slen, attribute);
 			return NULL;
 		}
 		talloc_free(preg);
@@ -1009,10 +1008,11 @@ int fr_pair_cmp(VALUE_PAIR *a, VALUE_PAIR *b)
 
 			if (!fr_cond_assert(a->vp_type == FR_TYPE_STRING)) return -1;
 
-			slen = regex_compile(NULL, &preg, a->xlat, talloc_array_length(a->xlat) - 1, false, false, false, true);
+			slen = regex_compile(NULL, &preg, a->xlat, talloc_array_length(a->xlat) - 1,
+					     false, false, false, true);
 			if (slen <= 0) {
-				fr_strerror_printf("Error at offset %zu compiling regex for %s: %s",
-						   -slen, a->da->name, fr_strerror());
+				fr_strerror_printf_push("Error at offset %zu compiling regex for %s", -slen,
+							a->da->name);
 				return -1;
 			}
 			value = fr_pair_asprint(NULL, b, '\0');

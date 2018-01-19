@@ -956,8 +956,6 @@ int fr_sim_decode(REQUEST *request, vp_cursor_t *decoded,
 
 	rad_assert(packet_ctx->root);
 
-	fr_strerror();
-
 	/*
 	 *	Move the cursor to the end, so we know if
 	 *	any additional attributes were added.
@@ -988,7 +986,7 @@ int fr_sim_decode(REQUEST *request, vp_cursor_t *decoded,
 	while (p < end) {
 		rcode = fr_sim_decode_pair(request->packet, decoded, p, end - p, decoder_ctx);
 		if (rcode <= 0) {
-			REDEBUG("%s", fr_strerror());
+			RPEDEBUG("Failed decoding AT");
 		error:
 			fr_pair_cursor_free(decoded);	/* Free any attributes we added */
 			return -1;

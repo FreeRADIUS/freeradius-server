@@ -231,7 +231,7 @@ static fr_control_message_t *fr_control_message_alloc(fr_control_t *c, fr_ring_b
 		(void) fr_control_gc(c, rb);
 		m = (fr_control_message_t *) fr_ring_buffer_alloc(rb, message_size);
 		if (!m) {
-			fr_strerror_printf("Failed allocating from ring buffer: %s", fr_strerror());
+			fr_strerror_printf_push("Failed allocating from ring buffer");
 			return NULL;
 		}
 	}

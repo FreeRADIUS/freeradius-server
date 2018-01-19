@@ -143,7 +143,7 @@ RADIUS_PACKET *fr_dhcpv4_pcap_recv(fr_pcap_t *pcap)
 
 	link_len = fr_link_layer_offset(data, header->caplen, pcap->link_layer);
 	if (link_len < 0) {
-		fr_strerror_printf("Failed determining link layer header offset: %s", fr_strerror());
+		fr_strerror_printf_push("Failed determining link layer header offset");
 		return NULL;
 	}
 

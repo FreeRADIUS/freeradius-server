@@ -2142,7 +2142,7 @@ static fr_connection_state_t _conn_init(int *fd_out, void *uctx)
 	 */
 	fd = fr_socket_client_udp(&c->src_ipaddr, &c->src_port, &c->dst_ipaddr, c->dst_port, true);
 	if (fd < 0) {
-		ERROR("%s - Failed opening socket: %s", c->inst->parent->name, fr_strerror());
+		PERROR("%s - Failed opening socket", c->inst->parent->name);
 		return FR_CONNECTION_STATE_FAILED;
 	}
 

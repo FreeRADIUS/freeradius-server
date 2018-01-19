@@ -907,7 +907,7 @@ static int dhcp_socket_recv(rad_listen_t *listener)
 
 	if (!packet) {
 		FR_STATS_INC(auth, total_malformed_requests);
-		ERROR("%s", fr_strerror());
+		PERROR("Failed receiving packet");
 		return 0;
 	}
 
@@ -1105,7 +1105,7 @@ static int dhcp_load(void)
 
 	ret = fr_dict_read(main_config.dict, main_config.dictionary_dir, "dictionary.dhcp");
 	if (fr_dhcpv4_init() < 0) {
-		ERROR("%s", fr_strerror());
+		PERROR("Failed initialising DHCP");
 		return -1;
 	}
 

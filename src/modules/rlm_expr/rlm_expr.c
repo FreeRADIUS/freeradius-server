@@ -234,7 +234,7 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 
 		slen = tmpl_afrom_attr_substr(request, &vpt, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
 		if (slen <= 0) {
-			REDEBUG("Failed parsing attribute name '%s': %s", p, fr_strerror());
+			RPEDEBUG("Failed parsing attribute name '%s'", p);
 			return false;
 		}
 
@@ -261,8 +261,8 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 				fr_value_box_t	value;
 
 				if (fr_value_box_cast(vp, &value, FR_TYPE_UINT64, NULL, &vp->data) < 0) {
-					REDEBUG("Failed converting &%.*s to an integer value: %s", (int) vpt->len,
-						vpt->name, fr_strerror());
+					RPEDEBUG("Failed converting &%.*s to an integer value", (int) vpt->len,
+						 vpt->name);
 					return false;
 				}
 				if (value.vb_uint64 > INT64_MAX) {
@@ -1290,7 +1290,7 @@ static ssize_t pairs_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 	VALUE_PAIR *vp;
 
 	if (tmpl_afrom_attr_str(ctx, &vpt, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false) <= 0) {
-		REDEBUG("%s", fr_strerror());
+		RPEDEBUG("Invalid input");
 		return -1;
 	}
 
@@ -1418,7 +1418,7 @@ static ssize_t explode_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 
 	slen = tmpl_afrom_attr_substr(ctx, &vpt, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
 	if (slen <= 0) {
-		REDEBUG("%s", fr_strerror());
+		RPEDEBUG("Invalid input");
 		return -1;
 	}
 
@@ -1648,7 +1648,7 @@ static ssize_t parse_pad(vp_tmpl_t **vpt_p, size_t *pad_len_p, char *pad_char_p,
 
 	slen = tmpl_afrom_attr_substr(request, &vpt, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
 	if (slen <= 0) {
-		RDEBUG("Failed parsing input string: %s", fr_strerror());
+		RPEDEBUG("Failed parsing input string");
 		return slen;
 	}
 

@@ -577,7 +577,7 @@ void *dl_by_name(char const *name)
 			}
 			error = dlerror();
 
-			fr_strerror_printf("%s%s\n", fr_strerror(), error);
+			fr_strerror_printf_push("%s", error);
 #ifndef __COVERITY__
 			/*
 			 *	There's no version of dlopen() which takes
@@ -635,7 +635,7 @@ void *dl_by_name(char const *name)
 		/*
 		 *	Append the error
 		 */
-		fr_strerror_printf("%s: %s", fr_strerror(), error);
+		fr_strerror_printf_push("%s", error);
 		return NULL;
 	}
 	return handle;
@@ -698,7 +698,7 @@ dl_t const *dl_module(CONF_SECTION *conf, dl_t const *parent, char const *name, 
 	 */
 	handle = dl_by_name(module_name);
 	if (!handle) {
-		cf_log_err(conf, "Failed to link to module \"%s\": %s", module_name, fr_strerror());
+		cf_log_perr(conf, "Failed to link to module \"%s\"", module_name);
 		cf_log_err(conf, "Make sure it (and all its dependent libraries!) are in the search path"
 			      " of your system's ld");
 	error:

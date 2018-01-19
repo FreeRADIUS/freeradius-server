@@ -848,7 +848,7 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 	if (namelen >= FR_DICT_ATTR_MAX_NAME_LEN) {
 		fr_strerror_printf("Attribute name too long");
 	error:
-		fr_strerror_printf("fr_dict_attr_add: Failed adding '%s': %s", name, fr_strerror());
+		fr_strerror_printf_push("fr_dict_attr_add: Failed adding '%s'", name);
 		return NULL;
 	}
 

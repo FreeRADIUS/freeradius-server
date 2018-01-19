@@ -1073,8 +1073,7 @@ static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_parse(REQUEST *reques
 		(void)fr_strerror();
 		slen = fr_base64_decode((uint8_t *)&iterations, sizeof(iterations), (char const *)p, q - p);
 		if (slen < 0) {
-			REDEBUG("Failed decoding PBKDF2-Password iterations component (%.*s): %s", (int)(q - p), p,
-				fr_strerror());
+			RPEDEBUG("Failed decoding PBKDF2-Password iterations component (%.*s)", (int)(q - p), p);
 			goto finish;
 		}
 		if (slen != sizeof(iterations)) {
@@ -1099,7 +1098,7 @@ static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_parse(REQUEST *reques
 	MEM(salt = talloc_array(request, uint8_t, FR_BASE64_DEC_LENGTH(q - p)));
 	slen = fr_base64_decode(salt, talloc_array_length(salt), (char const *) p, q - p);
 	if (slen < 0) {
-		REDEBUG("Failed decoding PBKDF2-Password salt component: %s", fr_strerror());
+		RPEDEBUG("Failed decoding PBKDF2-Password salt component");
 		goto finish;
 	}
 	salt_len = (size_t)slen;
@@ -1113,7 +1112,7 @@ static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_parse(REQUEST *reques
 
 	slen = fr_base64_decode(hash, sizeof(hash), (char const *)p, end - p);
 	if (slen < 0) {
-		REDEBUG("Failed decoding PBKDF2-Password hash component: %s", fr_strerror());
+		RPEDEBUG("Failed decoding PBKDF2-Password hash component");
 		goto finish;
 	}
 

@@ -631,8 +631,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 	if ((!vp) || (vp->vp_uint32 != FR_AUTH_TYPE_REJECT)) {
 		vp = pair_make_config("Auth-Type", inst->name, T_OP_EQ);
 		if (!vp) {
-			RDEBUG2("Failed to create Auth-Type %s: %s\n",
-				inst->name, fr_strerror());
+			RPEDEBUG("Failed to create Auth-Type %s", inst->name);
 			return RLM_MODULE_FAIL;
 		}
 	} else {

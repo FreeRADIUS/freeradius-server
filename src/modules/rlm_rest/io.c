@@ -273,8 +273,8 @@ static int _rest_io_event_modify(UNUSED CURL *easy, curl_socket_t fd, int what, 
 				       NULL,
 				       _rest_io_service_errored,
 				       thread) < 0) {
-			ERROR("multi-handle %p registration failed for read+error events on FD %i: %s",
-			      thread->mandle, fd, fr_strerror());
+			PERROR("multi-handle %p registration failed for read+error events on FD %i",
+			       thread->mandle, fd);
 			return -1;
 		}
 		DEBUG4("multi-handle %p registered for read+error events on FD %i", thread->mandle, fd);
@@ -286,8 +286,8 @@ static int _rest_io_event_modify(UNUSED CURL *easy, curl_socket_t fd, int what, 
 				       _rest_io_service_writable,
 				       _rest_io_service_errored,
 				       thread) < 0) {
-			ERROR("multi-handle %p registration failed for write+error events on FD %i: %s",
-			      thread->mandle, fd, fr_strerror());
+			PERROR("multi-handle %p registration failed for write+error events on FD %i",
+			       thread->mandle, fd);
 			return -1;
 		}
 		DEBUG4("multi-handle %p registered for write+error events on FD %i", thread->mandle, fd);
@@ -299,8 +299,8 @@ static int _rest_io_event_modify(UNUSED CURL *easy, curl_socket_t fd, int what, 
 				       _rest_io_service_writable,
 				       _rest_io_service_errored,
 				       thread) < 0) {
-			ERROR("multi-handle %p registration failed for read+write+error events on FD %i: %s",
-			      thread->mandle, fd, fr_strerror());
+			PERROR("multi-handle %p registration failed for read+write+error events on FD %i",
+			      thread->mandle, fd);
 			return -1;
 		}
 		DEBUG4("multi-handle %p registered for read+write+error events on FD %i", thread->mandle, fd);
@@ -308,7 +308,7 @@ static int _rest_io_event_modify(UNUSED CURL *easy, curl_socket_t fd, int what, 
 
 	case CURL_POLL_REMOVE:
 		if (fr_event_fd_delete(thread->el, fd, FR_EVENT_FILTER_IO) < 0) {
-			ERROR("multi-handle %p de-registration failed for FD %i %s", thread->mandle, fd, fr_strerror());
+			PERROR("multi-handle %p de-registration failed for FD %i", thread->mandle, fd);
 			return -1;
 		}
 		DEBUG4("multi-handle %p unregistered events for FD %i", thread->mandle, fd);

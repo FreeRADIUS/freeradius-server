@@ -229,13 +229,13 @@ static int mod_open(void *instance)
 
 	sockfd = fr_socket_server_udp(&inst->ipaddr, &port, inst->port_name, true);
 	if (sockfd < 0) {
-		ERROR("%s", fr_strerror());
+		PERROR("Failed creating UDP socket");
 	error:
 		return -1;
 	}
 
 	if (fr_socket_bind(sockfd, &inst->ipaddr, &port, inst->interface) < 0) {
-		ERROR("Failed binding socket: %s", fr_strerror());
+		PERROR("Failed binding socket");
 		goto error;
 	}
 

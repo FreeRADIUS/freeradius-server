@@ -436,8 +436,7 @@ static int switch_users(CONF_SECTION *cs)
 		struct passwd *user;
 
 		if (rad_getpwnam(cs, &user, main_config.uid_name) < 0) {
-			fprintf(stderr, "%s: Cannot get passwd entry for user %s: %s\n",
-				main_config.name, main_config.uid_name, fr_strerror());
+			fr_perror("Cannot get passwd entry for user %s: %s", main_config.name, main_config.uid_name);
 			return 0;
 		}
 
@@ -599,7 +598,7 @@ static int switch_users(CONF_SECTION *cs)
 	 *	aren't allowed.
 	 */
 	if (fr_set_dumpable(main_config.allow_core_dumps) < 0) {
-		ERROR("%s", fr_strerror());
+		PERROR("Failed enabling core dumps");
 	}
 
 	if (main_config.allow_core_dumps) {
@@ -701,7 +700,7 @@ int main_config_init(void)
 do {\
 	switch (fr_dict_read(main_config.dict, _d, _n)) {\
 	case -1:\
-		ERROR("Error reading %s/%s: %s", _d, _n, fr_strerror());\
+		PERROR("Error reading %s/%s", _d, _n);\
 		return -1;\
 	case 0:\
 		DEBUG2("Including dictionary file \"%s/%s\"", _d,_n);\

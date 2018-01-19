@@ -1115,7 +1115,7 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, REQUEST *request, 
 		}
 
 		if (fr_inet_pton(&ip, ip_str, -1, AF_UNSPEC, false, true) < 0) {
-			REDEBUG("%s", fr_strerror());
+			RPEDEBUG("Failed parsing address");
 			return RLM_MODULE_FAIL;
 		}
 
@@ -1183,7 +1183,7 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t const *inst, REQUEST *request, 
 		}
 
 		if (fr_inet_pton(&ip, ip_str, -1, AF_UNSPEC, false, true) < 0) {
-			REDEBUG("%s", fr_strerror());
+			RPEDEBUG("Failed parsing address");
 			return RLM_MODULE_FAIL;
 		}
 
@@ -1303,7 +1303,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	if (!inst->cluster) return -1;
 
 	if (!fr_redis_cluster_min_version(inst->cluster, "3.0.2")) {
-		ERROR("%s", fr_strerror());
+		PERROR("Cluster error");
 		return -1;
 	}
 

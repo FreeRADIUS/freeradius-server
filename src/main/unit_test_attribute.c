@@ -79,6 +79,23 @@ static ssize_t xlat_test(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED size_
 static char proto_name_prev[128];
 static void *dl_handle;
 
+/** Concatenate error stack
+ */
+static inline void strerror_concat(char *out, size_t outlen)
+{
+	char *end = out + outlen;
+	char *p = out;
+	char const *err;
+
+	while ((p < end) && (err = fr_strerror_pop())) {
+		if (*fr_strerror_peek()) {
+			p += snprintf(p, end - p, "%s: ", err);
+		} else {
+			p += strlcpy(p, err, end - p);
+		}
+	}
+}
+
 /*
  *	End of hacks for xlat
  *
@@ -800,14 +817,15 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 			}
 
 			if (fr_pair_list_afrom_str(packet, p, &head) != T_EOL) {
-				strlcpy(output, fr_strerror(), sizeof(output));
+				strerror_concat(output, sizeof(output));
+
 				talloc_free(packet);
 				continue;
 			}
 
 			packet->vps = head;
 			if (tacacs_encode(packet, NULL) < 0) {
-				strlcpy(output, fr_strerror(), sizeof(output));
+				strerror_concat(output, sizeof(output));
 				talloc_free(packet);
 				continue;
 			}
@@ -841,7 +859,7 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 			packet->data_len = len;
 
 			if (tacacs_decode(packet) < 0) {
-				strlcpy(output, fr_strerror(), sizeof(output));
+				strerror_concat(output, sizeof(output));
 				talloc_free(packet);
 				continue;
 			}
@@ -867,7 +885,7 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 			p += 10;
 
 			if (fr_pair_list_afrom_str(NULL, p, &head) != T_EOL) {
-				strlcpy(output, fr_strerror(), sizeof(output));
+				strerror_concat(output, sizeof(output));
 				continue;
 			}
 
@@ -880,7 +898,7 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 			p += 11;
 
 			if (fr_dict_parse_str(dict, p, fr_dict_root(dict), 0) < 0) {
-				strlcpy(output, fr_strerror(), sizeof(output));
+				strerror_concat(output, sizeof(output));
 				continue;
 			}
 
@@ -930,14 +948,14 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 			}
 
 			if (fr_pair_list_afrom_str(packet, p, &head) != T_EOL) {
-				strlcpy(output, fr_strerror(), sizeof(output));
+				strerror_concat(output, sizeof(output));
 				talloc_free(packet);
 				continue;
 			}
 
 			packet->vps = head;
 			if (tacacs_encode(packet, NULL) < 0) {
-				strlcpy(output, fr_strerror(), sizeof(output));
+				strerror_concat(output, sizeof(output));
 				talloc_free(packet);
 				continue;
 			}
@@ -971,7 +989,7 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 			packet->data_len = len;
 
 			if (tacacs_decode(packet) < 0) {
-				strlcpy(output, fr_strerror(), sizeof(output));
+				strerror_concat(output, sizeof(output));
 				talloc_free(packet);
 				continue;
 			}
@@ -997,7 +1015,7 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 			p += 10;
 
 			if (fr_pair_list_afrom_str(NULL, p, &head) != T_EOL) {
-				strlcpy(output, fr_strerror(), sizeof(output));
+				strerror_concat(output, sizeof(output));
 				continue;
 			}
 
@@ -1010,7 +1028,7 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 			p += 11;
 
 			if (fr_dict_parse_str(dict, p, fr_dict_root(dict), 0) < 0) {
-				strlcpy(output, fr_strerror(), sizeof(output));
+				strerror_concat(output, sizeof(output));
 				continue;
 			}
 
@@ -1139,7 +1157,7 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 			if (strcmp(p, "-") == 0) p = output;
 
 			if (fr_pair_list_afrom_str(tp_ctx, p, &head) != T_EOL) {
-				strlcpy(output, fr_strerror(), sizeof(output));
+				strerror_concat(output, sizeof(output));
 				continue;
 			}
 

@@ -919,7 +919,7 @@ static ssize_t driver_get_pools(TALLOC_CTX *ctx, uint8_t **out[], void *instance
 			}
 			fr_redis_reply_print(L_DBG_LVL_3, reply, request, 0);
 			if (fr_redis_command_status(conn, reply) != REDIS_RCODE_SUCCESS) {
-				ERROR("Error retrieving keys %s: %s", cursor, fr_strerror());
+				PERROR("Error retrieving keys %s", cursor);
 
 			reply_error:
 				fr_pool_connection_release(pool, request, conn);
@@ -1207,12 +1207,12 @@ static int parse_ip_range(fr_ipaddr_t *start_out, fr_ipaddr_t *end_out, char con
 		}
 
 		if (fr_inet_pton(&start, start_buff, -1, AF_UNSPEC, false, true) < 0) {
-			ERROR("Failed parsing \"%s\" as start address: %s", start_buff, fr_strerror());
+			PERROR("Failed parsing \"%s\" as start address", start_buff);
 			return -1;
 		}
 
 		if (fr_inet_pton(&end, end_buff, -1, AF_UNSPEC, false, true) < 0) {
-			ERROR("Failed parsing \"%s\" end address: %s", end_buff, fr_strerror());
+			PERROR("Failed parsing \"%s\" end address", end_buff);
 			return -1;
 		}
 

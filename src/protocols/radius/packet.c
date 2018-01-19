@@ -46,7 +46,7 @@ typedef struct radius_packet_t {
 /*
  *	Some messages get printed out only in debugging mode.
  */
-#define FR_DEBUG_STRERROR_PRINTF if (fr_debug_lvl) fr_strerror_printf
+#define FR_DEBUG_STRERROR_PRINTF if (fr_debug_lvl) fr_strerror_printf_push
 
 
 /** Encode a packet
@@ -248,11 +248,9 @@ bool fr_radius_packet_ok(RADIUS_PACKET *packet, uint32_t max_attributes, bool re
 	char host_ipaddr[INET6_ADDRSTRLEN];
 
 	if (!fr_radius_ok(packet->data, &packet->data_len, max_attributes, require_ma, reason)) {
-		FR_DEBUG_STRERROR_PRINTF("Bad packet received from host %s - %s",
-					 inet_ntop(packet->src_ipaddr.af,
-						   &packet->src_ipaddr.addr,
-						   host_ipaddr, sizeof(host_ipaddr)),
-					 fr_strerror());
+		FR_DEBUG_STRERROR_PRINTF("Bad packet received from host %s",
+					 inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.addr,
+						   host_ipaddr, sizeof(host_ipaddr)));
 		return false;
 	}
 
@@ -284,10 +282,9 @@ int fr_radius_packet_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char
 
 	if (fr_radius_verify(packet->data, original_data,
 			     (uint8_t const *) secret, talloc_array_length(secret) - 1) < 0) {
-		fr_strerror_printf("Received packet from %s with %s",
-				   inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.addr,
-					     buffer, sizeof(buffer)),
-				   fr_strerror());
+		fr_strerror_printf_push("Received invalid packet from %s",
+					inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.addr,
+						  buffer, sizeof(buffer)));
 		return -1;
 	}
 

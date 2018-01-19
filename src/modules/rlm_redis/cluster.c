@@ -1262,8 +1262,7 @@ static cluster_rcode_t cluster_node_ping(REQUEST *request, cluster_node_t *node,
 	reply = redisCommand(conn->handle, "PING");
 	rcode = fr_redis_command_status(conn, reply);
 	if (rcode != REDIS_RCODE_SUCCESS) {
-		RERROR("[%i] PING failed to %s:%i: %s", node->id, node->name,
-		       node->addr.port, fr_strerror());
+		RPERROR("[%i] PING failed to %s:%i", node->id, node->name, node->addr.port);
 		fr_redis_reply_free(reply);
 		return CLUSTER_OP_NO_CONNECTION;
 	}
@@ -1823,7 +1822,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 	 */
 	case REDIS_RCODE_NO_SCRIPT:
 	case REDIS_RCODE_ERROR:
-		REDEBUG("[%i] Command failed: %s", state->node->id, fr_strerror());
+		RPEDEBUG("[%i] Command failed", state->node->id);
 		fr_pool_connection_release(state->node->pool, request, *conn);
 		*conn = NULL;
 		return REDIS_RCODE_ERROR;
@@ -2360,7 +2359,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 		server = cf_pair_value(cp);
 		if (fr_inet_pton_port(&node->pending_addr.ipaddr, &node->pending_addr.port, server,
 				 talloc_array_length(server) - 1, af, true, true) < 0) {
-			ERROR("%s: Failed parsing server \"%s\": %s", cluster->log_prefix, server, fr_strerror());
+			PERROR("%s: Failed parsing server \"%s\"", cluster->log_prefix, server);
 			goto error;
 		}
 		if (!node->pending_addr.port) node->pending_addr.port = conf->port;

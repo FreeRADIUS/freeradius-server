@@ -272,8 +272,7 @@ static int CC_HINT(nonnull(2, 3, 4)) cf_pair_parse_value(TALLOC_CTX *ctx, void *
 	case FR_TYPE_SIZE:
 	{
 		if (fr_size_from_str((size_t *)out, cp->value) < 0) {
-			cf_log_err(cs, "Invalid value \"%s\" for variable %s: %s", cp->value,
-				   cf_pair_attr(cp), fr_strerror());
+			cf_log_perr(cs, "Invalid value \"%s\" for variable %s", cp->value, cf_pair_attr(cp));
 			rcode = -1;
 			goto error;
 		}
@@ -328,7 +327,7 @@ static int CC_HINT(nonnull(2, 3, 4)) cf_pair_parse_value(TALLOC_CTX *ctx, void *
 		ipaddr = out;
 
 		if (fr_inet_pton4(ipaddr, cp->value, -1, true, false, true) < 0) {
-			cf_log_err(cp, "%s", fr_strerror());
+			cf_log_perr(cp, "");
 			rcode = -1;
 			goto error;
 		}
@@ -344,7 +343,7 @@ static int CC_HINT(nonnull(2, 3, 4)) cf_pair_parse_value(TALLOC_CTX *ctx, void *
 		ipaddr = out;
 
 		if (fr_inet_pton6(ipaddr, cp->value, -1, true, false, true) < 0) {
-			cf_log_err(cp, "%s", fr_strerror());
+			cf_log_perr(cp, "");
 			rcode = -1;
 			goto error;
 		}
@@ -360,7 +359,7 @@ static int CC_HINT(nonnull(2, 3, 4)) cf_pair_parse_value(TALLOC_CTX *ctx, void *
 		ipaddr = out;
 
 		if (fr_inet_pton(ipaddr, cp->value, -1, AF_UNSPEC, true, true) < 0) {
-			cf_log_err(cp, "%s", fr_strerror());
+			cf_log_perr(cp, "");
 			rcode = -1;
 			goto error;
 		}
@@ -376,7 +375,7 @@ static int CC_HINT(nonnull(2, 3, 4)) cf_pair_parse_value(TALLOC_CTX *ctx, void *
 		struct timeval tv;
 
 		if (fr_timeval_from_str(&tv, cp->value) < 0) {
-			cf_log_err(cp, "%s", fr_strerror());
+			cf_log_perr(cp, "");
 			rcode = -1;
 			goto error;
 		}

@@ -403,7 +403,7 @@ send_reply:
 		if (RDEBUG_ENABLED) tacacs_packet_debug(request, request->reply, false);
 
 		if (tacacs_send(request->reply, request->packet, request->client->secret) < 0) {
-			RDEBUG("Failed sending TACACS reply: %s", fr_strerror());
+			RPEDEBUG("Failed sending TACACS reply");
 			goto done;
 		}
 
@@ -485,9 +485,8 @@ static int tacacs_socket_recv(rad_listen_t *listener)
 	if (rcode == -1) {		/* error reading packet */
 		char buffer[256];
 
-		ERROR("Invalid packet from %s port %d, closing socket: %s",
-		       fr_inet_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
-		       packet->src_port, fr_strerror());
+		PERROR("Invalid packet from %s port %d, closing socket",
+		       fr_inet_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)), packet->src_port);
 	}
 	if (rcode < 0) {		/* error or connection reset */
 		DEBUG("Client has closed connection");

@@ -259,7 +259,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval con
 			DEBUG2("Blocking until connection complete...");
 		}
 		if (fr_socket_wait_for_connect(sockfd, timeout) < 0) {
-			ERROR("%s", fr_strerror());
+			PERROR("Failed connecting to log destination");
 			close(sockfd);
 			return NULL;
 		}

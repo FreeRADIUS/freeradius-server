@@ -485,7 +485,7 @@ fr_redis_rcode_t fr_redis_pipeline_result(unsigned int *pipelined, fr_redis_rcod
 			/*
 			 *	Append the hiredis error
 			 */
-			if (conn->handle->errstr[0]) fr_strerror_printf("%s: %s", fr_strerror(), conn->handle->errstr);
+			if (conn->handle->errstr[0]) fr_strerror_printf_push("%s", conn->handle->errstr);
 
 			/*
 			 *	Free everything that came before the bad reply

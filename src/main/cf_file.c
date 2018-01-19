@@ -500,7 +500,7 @@ bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_perms)
 		if (stat(filename, &file->buf) < 0) {
 		perm_error:
 			rad_file_error(errno);	/* Write error and euid/egid to error buff */
-			ERROR("Unable to open file \"%s\": %s", filename, fr_strerror());
+			PERROR("Unable to open file \"%s\"", filename);
 		error:
 			if (fd >= 0) close(fd);
 			talloc_free(file);
@@ -1399,7 +1399,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			}
 
 			if (t3 == T_INVALID) {
-				ERROR("%s[%d]: Parse error: %s", filename, *lineno, fr_strerror());
+				PERROR("%s[%d]: Parse error", filename, *lineno);
 				goto error;
 			}
 
@@ -1531,7 +1531,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			break;
 
 		case T_INVALID:
-			ERROR("%s[%d]: Syntax error in '%s': %s", filename, *lineno, ptr, fr_strerror());
+			PERROR("%s[%d]: Syntax error in '%s'", filename, *lineno, ptr);
 
 			goto error;
 

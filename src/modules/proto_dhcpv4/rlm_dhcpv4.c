@@ -208,7 +208,7 @@ static int dhcp_load(void)
 
 	ret = fr_dict_read(main_config.dict, main_config.dictionary_dir, "dictionary.dhcp");
 	if (fr_dhcpv4_init() < 0) {
-		ERROR("%s", fr_strerror());
+		PERROR("Failed loading DHCP dictionary");
 		return -1;
 	}
 

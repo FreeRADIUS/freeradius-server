@@ -180,7 +180,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	ret = cache_deserialize(c, from_store, len);
 	free(from_store);
 	if (ret < 0) {
-		RERROR("%s", fr_strerror());
+		RPERROR("Invalid entry");
 		talloc_free(c);
 		return CACHE_ERROR;
 	}

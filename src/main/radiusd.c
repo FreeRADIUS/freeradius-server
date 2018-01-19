@@ -261,7 +261,7 @@ int main(int argc, char *argv[])
 			size_t limit;
 
 			if (fr_size_from_str(&limit, optarg) < 0) {
-				fprintf(stderr, "%s: Invalid memory limit: %s\n", main_config.name, fr_strerror());
+				fr_perror("%s: Invalid memory limit", main_config.name);
 				exit(EXIT_FAILURE);
 			}
 

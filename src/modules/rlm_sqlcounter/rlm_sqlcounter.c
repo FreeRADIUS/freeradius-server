@@ -577,31 +577,29 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	memset(&flags, 0, sizeof(flags));
 	flags.compare = 1;	/* ugly hack */
 	if (tmpl_define_undefined_attr(inst->paircmp_attr, FR_TYPE_UINT64, &flags) < 0) {
-		cf_log_err(conf, "Failed defining counter attribute: %s", fr_strerror());
+		cf_log_perr(conf, "Failed defining counter attribute");
 		return -1;
 	}
 
 	flags.compare = 0;
 	if (tmpl_define_undefined_attr(inst->limit_attr, FR_TYPE_UINT64, &flags) < 0) {
-		cf_log_err(conf, "Failed defining check attribute: %s", fr_strerror());
+		cf_log_perr(conf, "Failed defining check attribute");
 		return -1;
 	}
 
 	if (inst->paircmp_attr->tmpl_da->type != FR_TYPE_UINT64) {
-		cf_log_err(conf, "Counter attribute %s MUST be uint64",
-			      inst->paircmp_attr->tmpl_da->name);
+		cf_log_err(conf, "Counter attribute %s MUST be uint64", inst->paircmp_attr->tmpl_da->name);
 		return -1;
 	}
 	if (paircompare_register_byname(inst->paircmp_attr->tmpl_da->name, NULL, true,
 					counter_cmp, inst) < 0) {
-		cf_log_err(conf, "Failed registering comparison function for counter attribute %s: %s",
-			      inst->paircmp_attr->tmpl_da->name, fr_strerror());
+		cf_log_perr(conf, "Failed registering comparison function for counter attribute %s",
+			    inst->paircmp_attr->tmpl_da->name);
 		return -1;
 	}
 
 	if (inst->limit_attr->tmpl_da->type != FR_TYPE_UINT64) {
-		cf_log_err(conf, "Check attribute %s MUST be uint64",
-			      inst->limit_attr->tmpl_da->name);
+		cf_log_err(conf, "Check attribute %s MUST be uint64", inst->limit_attr->tmpl_da->name);
 		return -1;
 	}
 

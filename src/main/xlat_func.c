@@ -191,7 +191,7 @@ static ssize_t xlat_hex(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	 */
 	} else {
 		if (fr_value_box_cast(request, &dst, FR_TYPE_OCTETS, NULL, &vp->data) < 0) {
-			REDEBUG("%s", fr_strerror());
+			RPEDEBUG("Invalid cast");
 			goto error;
 		}
 		len = (size_t)dst.datum.length;
@@ -257,7 +257,7 @@ static ssize_t xlat_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED
 	while (isspace((int) *fmt)) fmt++;
 
 	if (tmpl_afrom_attr_str(request, &vpt, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false) <= 0) {
-		RDEBUG("%s", fr_strerror());
+		RPEDEBUG("Invalid input");
 		return -1;
 	}
 
@@ -375,7 +375,7 @@ static ssize_t xlat_map(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	if (map_afrom_attr_str(request, &map, fmt,
 			       REQUEST_CURRENT, PAIR_LIST_REQUEST,
 			       REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
-		REDEBUG("Failed parsing \"%s\" as map: %s", fmt, fr_strerror());
+		RPEDEBUG("Failed parsing \"%s\" as map", fmt);
 		return -1;
 	}
 

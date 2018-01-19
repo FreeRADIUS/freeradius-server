@@ -748,7 +748,7 @@ static fr_message_t *fr_message_get_message(fr_message_set_t *ms, bool *p_cleane
 	 *	room to allocate another array, we're dead.
 	 */
 	if ((ms->mr_max + 1) >= MSG_ARRAY_SIZE) {
-		fr_strerror_printf("All message arrays are full.");
+		fr_strerror_printf("All message arrays are full");
 		return NULL;
 	}
 
@@ -758,7 +758,7 @@ static fr_message_t *fr_message_get_message(fr_message_set_t *ms, bool *p_cleane
 	 */
 	mr = fr_ring_buffer_create(ms, fr_ring_buffer_size(ms->mr_array[ms->mr_max]) * 2);
 	if (!mr) {
-		fr_strerror_printf("Failed allocating ring buffer: %s", fr_strerror());
+		fr_strerror_printf_push("Failed allocating ring buffer");
 		return NULL;
 	}
 
@@ -881,7 +881,7 @@ alloc_rb:
 	 */
 	rb = fr_ring_buffer_create(ms, fr_ring_buffer_size(ms->rb_array[ms->rb_max]) * 2);
 	if (!rb) {
-		fr_strerror_printf("Failed allocating ring buffer: %s", fr_strerror());
+		fr_strerror_printf_push("Failed allocating ring buffer");
 		goto cleanup;
 	}
 
@@ -1010,7 +1010,7 @@ fr_message_t *fr_message_alloc(fr_message_set_t *ms, fr_message_t *m, size_t act
 	p = fr_ring_buffer_alloc(m->rb, actual_packet_size);
 	rad_assert(p != NULL);
 	if (!p) {
-		fr_strerror_printf("Failed allocating from ring buffer: %s", fr_strerror());
+		fr_strerror_printf_push("Failed allocating from ring buffer");
 		return NULL;
 	}
 
@@ -1087,7 +1087,7 @@ fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, si
 	p = fr_ring_buffer_alloc(m->rb, actual_packet_size);
 	rad_assert(p != NULL);
 	if (!p) {
-		fr_strerror_printf("Failed allocating from ring buffer: %s", fr_strerror());
+		fr_strerror_printf_push("Failed allocating from ring buffer");
 		return NULL;
 	}
 
@@ -1225,7 +1225,7 @@ fr_message_t *fr_message_alloc_aligned(fr_message_set_t *ms, fr_message_t *m, si
 	p = fr_ring_buffer_alloc(m->rb, aligned_size);
 	rad_assert(p != NULL);
 	if (!p) {
-		fr_strerror_printf("Failed allocating from ring buffer: %s", fr_strerror());
+		fr_strerror_printf_push("Failed allocating from ring buffer");
 		return NULL;
 	}
 

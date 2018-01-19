@@ -344,7 +344,7 @@ process_error:
 					   ldap_err2string(srv_errno), srv_errno);
 		}
 
-		if (srv_err) fr_strerror_printf("%s. Server said: %s", fr_strerror(), srv_err);
+		if (srv_err) fr_strerror_printf_push("Server said: %s", srv_err);
 
 		break;
 	}

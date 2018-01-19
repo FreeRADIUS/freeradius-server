@@ -116,7 +116,7 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 
 		slen = regex_exec(preg, value_p, talloc_array_length(value_p) - 1, rxmatch, &nmatch);
 		if (slen < 0) {
-			RERROR("%s", fr_strerror());
+			RPERROR("Invalid regex");
 
 			goto regex_error;
 		}
@@ -366,7 +366,7 @@ int paircompare_register_byname(char const *name, fr_dict_attr_t const *from,
 		}
 	} else if (from) {
 		if (fr_dict_attr_add(NULL, fr_dict_root(fr_dict_internal), name, -1, from->type, flags) < 0) {
-			fr_strerror_printf("Failed creating attribute '%s': %s", name, fr_strerror());
+			fr_strerror_printf_push("Failed creating attribute '%s'", name);
 			return -1;
 		}
 

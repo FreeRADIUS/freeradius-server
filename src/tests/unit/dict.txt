@@ -6,16 +6,16 @@
 #  VALUEs
 #
 dictionary VALUE	Service-Type	Foo	bar
-data Invalid VALUE for ATTRIBUTE "Service-Type"
+data Invalid VALUE for ATTRIBUTE "Service-Type": Invalid integer value "bar"
 
 dictionary VALUE	Unit-Byte	TooBig	256
-data Invalid VALUE for ATTRIBUTE "Unit-Byte"
+data Invalid VALUE for ATTRIBUTE "Unit-Byte": Value 256 is invalid for type uint8 (must be in range 0-255)
 
 dictionary VALUE	Unit-Byte	Too-Small	-1
-data Invalid VALUE for ATTRIBUTE "Unit-Byte"
+data Invalid VALUE for ATTRIBUTE "Unit-Byte": Value 18446744073709551615 is invalid for type uint8 (must be in range 0-255)
 
 dictionary VALUE	Unit-Short	Too-Big	65537
-data Invalid VALUE for ATTRIBUTE "Unit-Short"
+data Invalid VALUE for ATTRIBUTE "Unit-Short": Value 65537 is invalid for type uint16 (must be in range 0-65535)
 
 # Check non-uint32 types
 dictionary VALUE	Unit-Integer64	OK	   1

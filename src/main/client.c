@@ -676,14 +676,14 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 		switch (c->ipaddr.af) {
 		case AF_INET:
 			if (fr_inet_pton4(&c->src_ipaddr, cl_srcipaddr, -1, true, false, true) < 0) {
-				cf_log_err(cs, "Failed parsing src_ipaddr: %s", fr_strerror());
+				cf_log_perr(cs, "Failed parsing src_ipaddr");
 				goto error;
 			}
 			break;
 
 		case AF_INET6:
 			if (fr_inet_pton6(&c->src_ipaddr, cl_srcipaddr, -1, true, false, true) < 0) {
-				cf_log_err(cs, "Failed parsing src_ipaddr: %s", fr_strerror());
+				cf_log_perr(cs, "Failed parsing src_ipaddr");
 				goto error;
 			}
 			break;
@@ -774,7 +774,7 @@ RADCLIENT *client_afrom_query(TALLOC_CTX *ctx, char const *identifier, char cons
 	c = talloc_zero(ctx, RADCLIENT);
 
 	if (fr_inet_pton(&c->ipaddr, identifier, -1, AF_UNSPEC, true, true) < 0) {
-		ERROR("%s", fr_strerror());
+		PERROR("");
 		talloc_free(c);
 
 		return NULL;

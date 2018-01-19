@@ -118,12 +118,12 @@ static int test_open(void *ctx)
 
 	io_ctx->sockfd = fr_socket_server_udp(&io_ctx->ipaddr, &io_ctx->port, NULL, true);
 	if (io_ctx->sockfd < 0) {
-		fprintf(stderr, "radius_test: Failed creating socket: %s\n", fr_strerror());
+		fr_perror("radius_test: Failed creating socket");
 		exit(EXIT_FAILURE);
 	}
 
 	if (fr_socket_bind(io_ctx->sockfd, &io_ctx->ipaddr, &io_ctx->port, NULL) < 0) {
-		fprintf(stderr, "radius_test: Failed binding to socket: %s\n", fr_strerror());
+		fr_perror("radius_test: Failed binding to socket");
 		exit(EXIT_FAILURE);
 	}
 
@@ -241,7 +241,7 @@ int main(int argc, char *argv[])
 	while ((c = getopt(argc, argv, "i:n:s:w:x")) != EOF) switch (c) {
 		case 'i':
 			if (fr_inet_pton_port(&my_ipaddr, &port16, optarg, -1, AF_INET, true, false) < 0) {
-				fprintf(stderr, "Failed parsing ipaddr: %s\n", fr_strerror());
+				fr_perror("Failed parsing ipaddr");
 				exit(EXIT_FAILURE);
 			}
 			my_port = port16;
@@ -293,7 +293,7 @@ int main(int argc, char *argv[])
 	 */
 	EV_SET(&events[0], sockfd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
 	if (kevent(kq_master, events, 1, NULL, 0, NULL) < 0) {
-		fprintf(stderr, "Failed setting KQ for EVFILT_READ: %s\n", fr_strerror());
+		fr_perror("Failed setting KQ for EVFILT_READ");
 		exit(EXIT_FAILURE);
 	}
 #endif

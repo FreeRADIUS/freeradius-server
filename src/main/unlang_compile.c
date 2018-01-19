@@ -1198,7 +1198,7 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 		 *	Don't escape anything.
 		 */
 		if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) {
-			cf_log_err(map->ci, "%s", fr_strerror());
+			cf_log_perr(map->ci, "");
 			return -1;
 		}
 
@@ -1366,7 +1366,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		slen = tmpl_afrom_str(cs, &vpt, tmpl_str, talloc_array_length(tmpl_str) - 1,
 				      type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
 		if (slen < 0) {
-			cf_log_err(cs, "Failed parsing map: %s", fr_strerror());
+			cf_log_perr(cs, "Failed parsing map");
 			return NULL;
 		}
 

@@ -394,7 +394,7 @@ do {\
 			   fr_int2str(dict_attr_types, _s->type, "<INVALID>"),\
 			   fr_int2str(dict_attr_types, cast_type, "<INVALID>"));\
 		if (fr_value_box_cast(request, &_s ## _cast, cast_type, cast, _s) < 0) {\
-			REDEBUG("Failed casting " #_s " operand: %s", fr_strerror());\
+			RPEDEBUG("Failed casting " #_s " operand");\
 			rcode = -1;\
 			goto finish;\
 		}\

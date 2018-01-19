@@ -234,7 +234,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 
 	if (fr_radius_packet_decode(request->packet, NULL,
 				    inst->max_attributes, inst->tunnel_password_zeros, client->secret) < 0) {
-		RDEBUG("Failed decoding packet: %s", fr_strerror());
+		RPEDEBUG("Failed decoding packet");
 		return -1;
 	}
 
@@ -287,13 +287,13 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 				    client->secret, talloc_array_length(client->secret) - 1,
 				    request->reply->code, request->reply->id, request->reply->vps);
 	if (data_len < 0) {
-		RDEBUG("Failed encoding RADIUS reply: %s", fr_strerror());
+		RPEDEBUG("Failed encoding RADIUS reply");
 		return -1;
 	}
 
 	if (fr_radius_sign(buffer, request->packet->data,
 			   (uint8_t const *) client->secret, talloc_array_length(client->secret) - 1) < 0) {
-		RDEBUG("Failed signing RADIUS reply: %s", fr_strerror());
+		RPEDEBUG("Failed signing RADIUS reply");
 		return -1;
 	}
 

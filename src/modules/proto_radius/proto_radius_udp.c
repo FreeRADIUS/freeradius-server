@@ -321,7 +321,7 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	 */
 	client = client_afrom_request(NULL, request);
 	if (!client) {
-		ERROR("Failed creating new client: %s", fr_strerror());
+		PERROR("Failed creating new client");
 		buffer[0] = 1;
 		return 1;
 	}
@@ -1654,7 +1654,7 @@ static int mod_open(void *instance)
 
 	sockfd = fr_socket_server_udp(&inst->ipaddr, &port, inst->port_name, true);
 	if (sockfd < 0) {
-		ERROR("Failed opening UDP socket: %s", fr_strerror());
+		PERROR("Failed opening UDP socket");
 	error:
 		return -1;
 	}
@@ -1674,7 +1674,7 @@ static int mod_open(void *instance)
 
 	if (fr_socket_bind(sockfd, &inst->ipaddr, &port, inst->interface) < 0) {
 		close(sockfd);
-		ERROR("Failed binding socket: %s", fr_strerror());
+		PERROR("Failed binding socket");
 		goto error;
 	}
 
@@ -1762,7 +1762,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 
 	inst->ft = fr_radius_tracking_create(inst, sizeof(proto_radius_udp_address_t), inst->parent->code_allowed);
 	if (!inst->ft) {
-		cf_log_err(cs, "Failed to create tracking table: %s", fr_strerror());
+		cf_log_perr(cs, "Failed to create tracking table");
 		return -1;
 	}
 
@@ -1986,7 +1986,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 
 		if (dl_instance(inst, &inst->dynamic_clients.submodule,
 				cs, parent_inst, "dynamic_client", DL_TYPE_SUBMODULE) < 0) {
-			cf_log_err(cs, "Failed finding proto_radius_dynamic_client: %s", fr_strerror());
+			cf_log_perr(cs, "Failed finding proto_radius_dynamic_client");
 			return -1;
 		}
 

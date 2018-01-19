@@ -277,7 +277,7 @@ int tls_cache_write(REQUEST *request, tls_session_t *tls_session)
 	 */
 	vp = fr_pair_afrom_num(request->state_ctx, 0, FR_TLS_SESSION_DATA);
 	if (!vp) {
-		REDEBUG("%s", fr_strerror());
+		RPEDEBUG("Failed allocating &TLS-Session-Data");
 		return -1;
 	}
 

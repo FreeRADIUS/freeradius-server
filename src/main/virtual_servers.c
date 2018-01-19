@@ -310,7 +310,7 @@ int virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const 
 
 		cf_log_debug(subcs, "Creating %s = %s", da->name, name2);
 		if (fr_dict_enum_add_alias(da, name2, &value, true, false) < 0) {
-			ERROR("%s", fr_strerror());
+			PERROR("Failed adding section value");
 			return -1;
 		}
 	}

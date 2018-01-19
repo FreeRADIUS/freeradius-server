@@ -336,8 +336,7 @@ void *mod_json_object_to_value_pairs(json_object *json, const char *section, REQ
 						fr_str2int(fr_tokens_table, json_object_get_string(jop), 0));
 					/* check pair */
 					if (!vp) {
-						RERROR("could not build value pair for '%s' attribute (%s)",
-						       attribute, fr_strerror());
+						RPERROR("could not build value pair for '%s'", attribute);
 						/* return */
 						return NULL;
 					}
