@@ -1220,11 +1220,12 @@ static unlang_action_t unlang_return(REQUEST *request,
 static unlang_action_t unlang_foreach(REQUEST *request,
 				      rlm_rcode_t *presult, int *priority)
 {
-	VALUE_PAIR		*vp;
-	unlang_stack_t		*stack = request->stack;
-	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*instruction = frame->instruction;
-	unlang_group_t	*g;
+	VALUE_PAIR			*vp;
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_t			*instruction = frame->instruction;
+	unlang_frame_state_foreach_t	*foreach = NULL;
+	unlang_group_t			*g;
 
 	g = unlang_generic_to_group(instruction);
 
@@ -1268,19 +1269,23 @@ static unlang_action_t unlang_foreach(REQUEST *request,
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 
-		rad_assert(vps != NULL);
-		fr_pair_cursor_init(&frame->foreach.cursor, &vps);
+		MEM(frame->state = foreach = talloc_zero(stack, unlang_frame_state_foreach_t));
 
-		frame->foreach.depth = foreach_depth;
-		frame->foreach.vps = vps;
+		rad_assert(vps != NULL);
+		fr_pair_cursor_init(&foreach->cursor, &vps);
+
+		foreach->depth = foreach_depth;
+		foreach->vps = vps;
 #ifndef NDEBUG
-		frame->foreach.indent = request->log.unlang_indent;
+		foreach->indent = request->log.unlang_indent;
 #endif
 
-		vp = fr_pair_cursor_first(&frame->foreach.cursor);
+		vp = fr_pair_cursor_first(&foreach->cursor);
 
 	} else {
-		vp = fr_pair_cursor_next(&frame->foreach.cursor);
+		foreach = talloc_get_type_abort(frame->state, unlang_frame_state_foreach_t);
+
+		vp = fr_pair_cursor_next(&foreach->cursor);
 
 		/*
 		 *	We've been asked to unwind to the
@@ -1305,13 +1310,13 @@ static unlang_action_t unlang_foreach(REQUEST *request,
 			 *	If we don't remove the request data, something could call
 			 *	the xlat outside of a foreach loop and trigger a segv.
 			 */
-			fr_pair_list_free(&frame->foreach.vps);
-			request_data_get(request, (void *)radius_get_vp, frame->foreach.depth);
+			fr_pair_list_free(&foreach->vps);
+			request_data_get(request, (void *)radius_get_vp, foreach->depth);
 
 			*presult = frame->result;
 			if (*presult != RLM_MODULE_UNKNOWN) *priority = instruction->actions[*presult];
 #ifndef NDEBUG
-			rad_assert(frame->foreach.indent == request->log.unlang_indent);
+			rad_assert(foreach->indent == request->log.unlang_indent);
 #endif
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
@@ -1323,16 +1328,18 @@ static unlang_action_t unlang_foreach(REQUEST *request,
 
 			fr_pair_value_snprint(buffer, sizeof(buffer), vp, '"');
 			RDEBUG2("");
-			RDEBUG2("# looping with: Foreach-Variable-%d = %s", frame->foreach.depth, buffer);
+			RDEBUG2("# looping with: Foreach-Variable-%d = %s", foreach->depth, buffer);
 		}
 #endif
+
+	rad_assert(vp);
 
 	/*
 	 *	Add the vp to the request, so that
 	 *	xlat.c, xlat_foreach() can find it.
 	 */
-	frame->foreach.variable = vp;
-	request_data_add(request, (void *)radius_get_vp, frame->foreach.depth, &frame->foreach.variable,
+	foreach->variable = vp;
+	request_data_add(request, (void *)radius_get_vp, foreach->depth, &foreach->variable,
 			 false, false, false);
 
 	/*
@@ -1340,6 +1347,7 @@ static unlang_action_t unlang_foreach(REQUEST *request,
 	 */
 	unlang_push(stack, g->children, frame->result, UNLANG_NEXT_CONTINUE, UNLANG_SUB_FRAME);
 	frame->repeat = true;
+
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 

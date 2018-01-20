@@ -291,7 +291,6 @@ typedef struct {
 	bool			top_frame : 1;			//!< are we the top frame of the stack?
 
 	union {
-		unlang_frame_state_foreach_t	foreach;	//!< Foreach iterator state.
 		unlang_frame_state_redundant_t	redundant;	//!< Redundant section state.
 	};
 } unlang_stack_frame_t;
