@@ -816,7 +816,7 @@ void *unlang_stack_alloc(TALLOC_CTX *ctx)
 	 *	This number is pretty arbitrary, but it seems
 	 *	like too low level to make into a tuneable.
 	 */
-	return talloc_pooled_object(ctx, unlang_stack_t, UNLANG_STACK_MAX / 4, sizeof(unlang_stack_state_t));
+	return talloc_pooled_object(ctx, unlang_stack_t, UNLANG_STACK_MAX / 4, sizeof(unlang_frame_state_t));
 #else
 	return talloc_zero(ctx, unlang_stack_t);
 #endif
@@ -965,8 +965,8 @@ int unlang_event_timeout_add(REQUEST *request, fr_unlang_module_timeout_t callba
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_event_t			*ev;
 	unlang_module_call_t		*sp;
-	unlang_stack_state_modcall_t	*ms = talloc_get_type_abort(frame->state,
-								    unlang_stack_state_modcall_t);
+	unlang_frame_state_modcall_t	*ms = talloc_get_type_abort(frame->state,
+								    unlang_frame_state_modcall_t);
 
 	rad_assert(stack->depth > 0);
 	rad_assert((frame->instruction->type == UNLANG_TYPE_MODULE_CALL) ||
@@ -1047,8 +1047,8 @@ int unlang_event_fd_add(REQUEST *request,
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_event_t			*ev;
 	unlang_module_call_t		*sp;
-	unlang_stack_state_modcall_t	*ms = talloc_get_type_abort(frame->state,
-									       unlang_stack_state_modcall_t);
+	unlang_frame_state_modcall_t	*ms = talloc_get_type_abort(frame->state,
+									       unlang_frame_state_modcall_t);
 
 	rad_assert(stack->depth > 0);
 

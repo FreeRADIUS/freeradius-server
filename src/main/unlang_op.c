@@ -1532,7 +1532,7 @@ static unlang_action_t unlang_module_call(REQUEST *request,
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
-	unlang_stack_state_modcall_t	*ms;
+	unlang_frame_state_modcall_t	*ms;
 
 #ifndef NDEBUG
 	int unlang_indent		= request->log.unlang_indent;
@@ -1556,7 +1556,7 @@ static unlang_action_t unlang_module_call(REQUEST *request,
 		goto done;
 	}
 
-	frame->state = ms = talloc_zero(stack, unlang_stack_state_modcall_t);
+	frame->state = ms = talloc_zero(stack, unlang_frame_state_modcall_t);
 
 	/*
 	 *	Grab the thread/module specific data if any exists.
@@ -1625,7 +1625,7 @@ static void unlang_module_signal(REQUEST *request, void *rctx, fr_state_signal_t
 	unlang_resume_t			*mr;
 	unlang_module_call_t		*mc;
 
-	unlang_stack_state_modcall_t	*ms = NULL;
+	unlang_frame_state_modcall_t	*ms = NULL;
 
 	rad_assert(stack->depth > 0);
 
@@ -1635,7 +1635,7 @@ static void unlang_module_signal(REQUEST *request, void *rctx, fr_state_signal_t
 	if (!mr->signal) return;
 
 	mc = unlang_generic_to_module_call(mr->parent);
-	ms = talloc_get_type_abort(frame->state, unlang_stack_state_modcall_t);
+	ms = talloc_get_type_abort(frame->state, unlang_frame_state_modcall_t);
 
 	((fr_unlang_module_signal_t)mr->signal)(request,
 						mc->module_instance->dl_inst->data, ms->thread->data,
@@ -1650,11 +1650,11 @@ static unlang_action_t unlang_module_resume(REQUEST *request, rlm_rcode_t *presu
 	unlang_resume_t			*mr = unlang_generic_to_resume(instruction);
 	unlang_module_call_t		*mc = unlang_generic_to_module_call(mr->parent);
 
-	unlang_stack_state_modcall_t	*ms = NULL;
+	unlang_frame_state_modcall_t	*ms = NULL;
 
 	rad_assert(mr->parent->type == UNLANG_TYPE_MODULE_CALL);
 
-	ms = talloc_get_type_abort(frame->state, unlang_stack_state_modcall_t);
+	ms = talloc_get_type_abort(frame->state, unlang_frame_state_modcall_t);
 
 	/*
 	 *	Lock is noop unless instance->mutex is set.

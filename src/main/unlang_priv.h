@@ -224,7 +224,7 @@ typedef struct {
  */
 typedef struct {
 	module_thread_instance_t *thread;			//!< thread-local data for this module
-} unlang_stack_state_modcall_t;
+} unlang_frame_state_modcall_t;
 
 /** State of a foreach loop
  *
@@ -239,7 +239,7 @@ typedef struct {
 #ifndef NDEBUG
 	int			indent;				//!< for catching indentation issues
 #endif
-} unlang_stack_state_foreach_t;
+} unlang_frame_state_foreach_t;
 
 /** State of a redundant operation
  *
@@ -247,7 +247,7 @@ typedef struct {
 typedef struct {
 	unlang_t 		*child;
 	unlang_t		*found;
-} unlang_stack_state_redundant_t;
+} unlang_frame_state_redundant_t;
 
 /** Our interpreter stack, as distinct from the C stack
  *
@@ -291,8 +291,8 @@ typedef struct {
 	bool			top_frame : 1;			//!< are we the top frame of the stack?
 
 	union {
-		unlang_stack_state_foreach_t	foreach;	//!< Foreach iterator state.
-		unlang_stack_state_redundant_t	redundant;	//!< Redundant section state.
+		unlang_frame_state_foreach_t	foreach;	//!< Foreach iterator state.
+		unlang_frame_state_redundant_t	redundant;	//!< Redundant section state.
 	};
 } unlang_stack_frame_t;
 

@@ -38,7 +38,7 @@ RCSID("$Id$")
 typedef struct {
 	fr_value_box_t		*result;			//!< Where to store the result of the
 								///< xlat expansion. This is usually discarded.
-} unlang_stack_state_xlat_inline_t;
+} unlang_frame_state_xlat_inline_t;
 
 /** State of an xlat expansion
  *
@@ -58,7 +58,7 @@ typedef struct {
 								///< asynchronous xlat functions.
 	bool			alternate;			//!< record which alternate branch we
 								///< previously took.
-} unlang_stack_state_xlat_t;
+} unlang_frame_state_xlat_t;
 
 /** Static instruction for performing xlat evaluations
  *
@@ -93,7 +93,7 @@ void xlat_unlang_push(TALLOC_CTX *ctx, fr_value_box_t **out,
 		      REQUEST *request, xlat_exp_t const *exp, bool top_frame)
 {
 
-	unlang_stack_state_xlat_t	*state;
+	unlang_frame_state_xlat_t	*state;
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame;
 
@@ -106,7 +106,7 @@ void xlat_unlang_push(TALLOC_CTX *ctx, fr_value_box_t **out,
 	/*
 	 *	Allocate its state, and setup a cursor for the xlat nodes
 	 */
-	frame->state = state = talloc_zero(stack, unlang_stack_state_xlat_t);
+	frame->state = state = talloc_zero(stack, unlang_frame_state_xlat_t);
 	state->exp = exp;
 
 	fr_cursor_init(&state->values, out);
@@ -124,7 +124,7 @@ static unlang_action_t xlat_unlang(REQUEST *request,
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_stack_state_xlat_t	*xs = talloc_get_type_abort(frame->state, unlang_stack_state_xlat_t);
+	unlang_frame_state_xlat_t	*xs = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
 	xlat_exp_t const		*child = NULL;
 	xlat_action_t			xa;
 
@@ -233,7 +233,7 @@ static unlang_action_t xlat_unlang_resume(REQUEST *request, rlm_rcode_t *presult
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
 	unlang_resume_t			*mr = unlang_generic_to_resume(instruction);
-	unlang_stack_state_xlat_t	*xs = talloc_get_type_abort(frame->state, unlang_stack_state_xlat_t);
+	unlang_frame_state_xlat_t	*xs = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
 	xlat_action_t			xa;
 
 	xa = xlat_frame_eval_resume(xs->ctx, &xs->values, mr->callback, xs->exp, request, &xs->result, rctx);
@@ -274,9 +274,9 @@ static unlang_action_t xlat_unlang_inline(REQUEST *request,
 
 	if (!mx->exec) {
 		TALLOC_CTX *pool;
-		unlang_stack_state_xlat_inline_t *state;
+		unlang_frame_state_xlat_inline_t *state;
 
-		MEM(frame->state = state = talloc_zero(stack, unlang_stack_state_xlat_inline_t));
+		MEM(frame->state = state = talloc_zero(stack, unlang_frame_state_xlat_inline_t));
 		MEM(pool = talloc_pool(frame->state, 1024));	/* Pool to absorb some allocs */
 
 		xlat_unlang_push(pool, &state->result, request, mx->exp, false);
