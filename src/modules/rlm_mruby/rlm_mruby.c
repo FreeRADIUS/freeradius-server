@@ -330,7 +330,8 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, mr
 		}
 
 		if (RARRAY_LEN(tuple) != 2 && RARRAY_LEN(tuple) != 3) {
-			REDEBUG("add_vp_tuple, %s: array with incorrect length passed at index %i, expected 2 or 3, got %i", function_name, i, RARRAY_LEN(tuple));
+			REDEBUG("add_vp_tuple, %s: array with incorrect length passed at index "
+				"%i, expected 2 or 3, got %"PRId64, function_name, i, RARRAY_LEN(tuple));
 			continue;
 		}
 
@@ -439,7 +440,7 @@ static rlm_rcode_t CC_HINT(nonnull) do_mruby(REQUEST *request, rlm_mruby_t const
 		case MRB_TT_ARRAY:
 			/* Must have exactly three items */
 			if (RARRAY_LEN(mruby_result) != 3) {
-				ERROR("Expected array to have exactly three values, got %i instead", RARRAY_LEN(mruby_result));
+				ERROR("Expected array to have exactly three values, got %" PRId64 " instead", RARRAY_LEN(mruby_result));
 				return RLM_MODULE_FAIL;
 			}
 
