@@ -489,6 +489,7 @@ static const char xlat_spaces[] = "                                             
  * @param[in] ctx		to allocate value boxes in.
  * @param[out] out		a list of #fr_value_box_t to append to.
  * @param[in] resume		function to call.
+ * @param[in] exp		Xlat node currently being processed.
  * @param[in] request		the current request.
  * @param[in] result		Previously expanded arguments to this xlat function.
  * @param[in] rctx		Opaque (to us), resume ctx provided by xlat function
