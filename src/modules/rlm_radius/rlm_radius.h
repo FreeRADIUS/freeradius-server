@@ -53,7 +53,7 @@ typedef struct rlm_radius_link_t rlm_radius_link_t;
  *
  */
 typedef rlm_rcode_t (*fr_radius_io_push_t)(void *instance, REQUEST *request, rlm_radius_link_t *link, void *thread);
-typedef void (*fr_radius_io_signal_t)(REQUEST *request, void *instance, void *thread, rlm_radius_link_t *link, fr_state_action_t action);
+typedef void (*fr_radius_io_signal_t)(REQUEST *request, void *instance, void *thread, rlm_radius_link_t *link, fr_state_signal_t action);
 typedef int (*fr_radius_io_instantiate_t)(rlm_radius_t *inst, void *io_instance, CONF_SECTION *cs);
 
 

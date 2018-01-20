@@ -373,7 +373,7 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	ret = rest_io_request_enqueue(t, request, handle);
 	if (ret < 0) goto error;
 
-	return unlang_xlat_yield(request, rest_xlat_resume, NULL, rctx);
+	return xlat_unlang_yield(request, rest_xlat_resume, NULL, rctx);
 }
 
 static rlm_rcode_t mod_authorize_result(REQUEST *request, void *instance, void *thread, void *ctx)

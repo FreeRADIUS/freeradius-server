@@ -342,58 +342,6 @@ static unlang_action_t unlang_group(REQUEST *request,
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-/** Allocates and initializes an unlang_resume_t
- *
- * @param[in] request		The current request.
- * @param[in] callback		to call on unlang_resumable().
- * @param[in] signal		call on unlang_action().
- * @param[in] resume_ctx		to pass to the callbacks.
- * @return
- *	unlang_resume_t on success
- *	NULL on error
- */
-static unlang_resume_t *unlang_resume_alloc(REQUEST *request,
-					    void *callback,
-					    fr_unlang_module_signal_t signal, void *resume_ctx)
-{
-	unlang_resume_t 		*mr;
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-
-	mr = talloc_zero(request, unlang_resume_t);
-	if (!mr) return NULL;
-
-	/*
-	 *	Remember the parent.
-	 */
-	mr->parent = frame->instruction;
-
-	/*
-	 *	Initialize parent ptr, next ptr, name, debug_name,
-	 *	type, actions, etc.
-	 */
-	memcpy(&mr->self, frame->instruction, sizeof(mr->self));
-
-	/*
-	 *	But note that we're of type RESUME
-	 */
-	mr->self.type = UNLANG_TYPE_RESUME;
-
-	/*
-	 *	Fill in the signal handlers and resumption ctx
-	 */
-	mr->callback = callback;
-	mr->signal = signal;
-	mr->resume_ctx = resume_ctx;
-
-	/*
-	 *	Replaces the current stack frame with a RESUME frame.
-	 */
-	frame->instruction = unlang_resume_to_generic(mr);
-
-	return mr;
-}
-
 /** Continue after creating a subrequest.
  *
  *  Just run some "unlang", but don't do anything else.
@@ -409,7 +357,7 @@ static fr_io_final_t unlang_process_continue(REQUEST *request, fr_io_action_t ac
 	 *	is waiting for something to happen.
 	 */
 	if (action != FR_IO_ACTION_RUN) {
-		unlang_signal(request, (fr_state_action_t) action);
+		unlang_signal(request, (fr_state_signal_t) action);
 		return FR_IO_DONE;
 	}
 
@@ -494,7 +442,7 @@ static REQUEST *unlang_child_alloc(REQUEST *request, unlang_t *instruction, rlm_
 /** Send a signal from parent request to subrequest
  *
  */
-static void unlang_subrequest_signal(UNUSED REQUEST *request, void *ctx, fr_state_action_t action)
+static void unlang_subrequest_signal(UNUSED REQUEST *request, void *ctx, fr_state_signal_t action)
 {
 	REQUEST			*child = talloc_get_type_abort(ctx, REQUEST);
 
@@ -505,9 +453,9 @@ static void unlang_subrequest_signal(UNUSED REQUEST *request, void *ctx, fr_stat
 /** Resume a subrequest
  *
  */
-static unlang_action_t unlang_subrequest_resume(UNUSED REQUEST *request, rlm_rcode_t *presult, void *resume_ctx)
+static unlang_action_t unlang_subrequest_resume(UNUSED REQUEST *request, rlm_rcode_t *presult, void *rctx)
 {
-	REQUEST			*child = talloc_get_type_abort(resume_ctx, REQUEST);
+	REQUEST			*child = talloc_get_type_abort(rctx, REQUEST);
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame;
 #ifndef NDEBUG
@@ -537,7 +485,7 @@ static unlang_action_t unlang_subrequest_resume(UNUSED REQUEST *request, rlm_rco
 	(void) talloc_get_type_abort(mr, unlang_resume_t);
 
 	rad_assert(mr->callback == NULL);
-	rad_assert(mr->resume_ctx == child);
+	rad_assert(mr->rctx == child);
 #endif
 
 	/*
@@ -1011,7 +959,7 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 			 *	stopped.  This tells any child modules
 			 *	to clean up timers, etc.
 			 */
-			unlang_signal(state->children[i].child, FR_ACTION_DONE);
+			unlang_signal(state->children[i].child, FR_SIGNAL_DONE);
 			TALLOC_FREE(state->children[i].child);
 			/* FALL-THROUGH */
 
@@ -1034,10 +982,10 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 /** Send a signal from parent request to all of it's children
  *
  */
-static void unlang_parallel_signal(UNUSED REQUEST *request, void *resume_ctx, fr_state_action_t action)
+static void unlang_parallel_signal(UNUSED REQUEST *request, void *rctx, fr_state_signal_t action)
 {
 	int			i;
-	unlang_parallel_t	*state = talloc_get_type_abort(resume_ctx, unlang_parallel_t);
+	unlang_parallel_t	*state = talloc_get_type_abort(rctx, unlang_parallel_t);
 
 	/*
 	 *	Signal all of the children, if they exist.
@@ -1057,7 +1005,7 @@ static void unlang_parallel_signal(UNUSED REQUEST *request, void *resume_ctx, fr
 	}
 }
 
-static void unlang_parallel_resumable(REQUEST *request, UNUSED void *resume_ctx)
+static void unlang_parallel_resumable(REQUEST *request, UNUSED void *rctx)
 {
 	unlang_stack_t			*stack;
 	unlang_stack_frame_t		*frame;
@@ -1089,7 +1037,7 @@ static void unlang_parallel_resumable(REQUEST *request, UNUSED void *resume_ctx)
 
 	mr = unlang_generic_to_resume(frame->instruction);
 	(void) talloc_get_type_abort(mr, unlang_resume_t);
-	state = mr->resume_ctx;
+	state = mr->rctx;
 
 	/*
 	 *	Find the child and mark it resumable
@@ -1107,9 +1055,9 @@ static void unlang_parallel_resumable(REQUEST *request, UNUSED void *resume_ctx)
 	rad_assert(found);
 }
 
-static unlang_action_t unlang_parallel_resume(REQUEST *request, rlm_rcode_t *presult, void *resume_ctx)
+static unlang_action_t unlang_parallel_resume(REQUEST *request, rlm_rcode_t *presult, void *rctx)
 {
-	unlang_parallel_t	*state = talloc_get_type_abort(resume_ctx, unlang_parallel_t);
+	unlang_parallel_t	*state = talloc_get_type_abort(rctx, unlang_parallel_t);
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 
@@ -1136,7 +1084,7 @@ static unlang_action_t unlang_parallel_resume(REQUEST *request, rlm_rcode_t *pre
 	(void) talloc_get_type_abort(mr, unlang_resume_t);
 
 	rad_assert(mr->callback == NULL);
-	rad_assert(mr->resume_ctx == state);
+	rad_assert(mr->rctx == state);
 #endif
 
 	/*
@@ -1667,10 +1615,10 @@ done:
  * If there is no #fr_unlang_module_signal_t callback defined, the action is ignored.
  *
  * @param[in] request		The current request.
- * @param[in] resume_ctx	createed by #unlang_module_call.
+ * @param[in] rctx	createed by #unlang_module_call.
  * @param[in] action		to signal.
  */
-static void unlang_module_signal(REQUEST *request, void *resume_ctx, fr_state_action_t action)
+static void unlang_module_signal(REQUEST *request, void *rctx, fr_state_signal_t action)
 {
 	unlang_stack_frame_t		*frame;
 	unlang_stack_t			*stack = request->stack;
@@ -1691,10 +1639,10 @@ static void unlang_module_signal(REQUEST *request, void *resume_ctx, fr_state_ac
 
 	((fr_unlang_module_signal_t)mr->signal)(request,
 						mc->module_instance->dl_inst->data, ms->thread->data,
-						resume_ctx, action);
+						rctx, action);
 }
 
-static unlang_action_t unlang_module_resume(REQUEST *request, rlm_rcode_t *presult, UNUSED void *resume_ctx)
+static unlang_action_t unlang_module_resume(REQUEST *request, rlm_rcode_t *presult, UNUSED void *rctx)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -1714,7 +1662,7 @@ static unlang_action_t unlang_module_resume(REQUEST *request, rlm_rcode_t *presu
 	safe_lock(mc->module_instance);
 	*presult = request->rcode = ((fr_unlang_module_resume_t)mr->callback)(request,
 									      mc->module_instance->dl_inst->data,
-									      ms->thread->data, mr->resume_ctx);
+									      ms->thread->data, mr->rctx);
 	safe_unlock(mc->module_instance);
 
 	if (*presult != RLM_MODULE_YIELD) ms->thread->active_callers--;

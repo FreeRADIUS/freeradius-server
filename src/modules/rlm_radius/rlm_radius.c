@@ -377,7 +377,7 @@ static int mod_link_free(rlm_radius_link_t *link)
 }
 
 static void mod_radius_signal(REQUEST *request, void *instance, void *thread, void *ctx,
-			      fr_state_action_t action)
+			      fr_state_signal_t action)
 {
 	rlm_radius_t const *inst = talloc_get_type_abort_const(instance, rlm_radius_t);
 	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
@@ -392,7 +392,7 @@ static void mod_radius_signal(REQUEST *request, void *instance, void *thread, vo
 	 *	the IO modules to do additional debugging if
 	 *	necessary.
 	 */
-	if (action == FR_ACTION_DONE) {
+	if (action == FR_SIGNAL_DONE) {
 		talloc_free(link);
 		return;
 	}
@@ -402,7 +402,7 @@ static void mod_radius_signal(REQUEST *request, void *instance, void *thread, vo
 	 *	synchronous proxying.  Ignore the dup, and rely on the
 	 *	IO submodule to time it's own retransmissions.
 	 */
-	if ((action == FR_ACTION_DUP) && !inst->synchronous) return;
+	if ((action == FR_SIGNAL_DUP) && !inst->synchronous) return;
 
 	if (!inst->io->signal) return;
 

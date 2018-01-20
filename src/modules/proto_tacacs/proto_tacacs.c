@@ -146,7 +146,7 @@ static void state_add(REQUEST *request, RADIUS_PACKET *packet)
 	fr_pair_add(&packet->vps, vp);
 }
 
-static void tacacs_running(REQUEST *request, fr_state_action_t action)
+static void tacacs_running(REQUEST *request, fr_state_signal_t action)
 {
 	rlm_rcode_t rcode;
 	CONF_SECTION *unlang;
@@ -159,7 +159,7 @@ static void tacacs_running(REQUEST *request, fr_state_action_t action)
 	REQUEST_VERIFY(request);
 
 	switch (action) {
-	case FR_ACTION_DONE:
+	case FR_SIGNAL_DONE:
 		goto done;
 
 	default:
@@ -417,17 +417,17 @@ done:
 	}
 }
 
-static void tacacs_queued(REQUEST *request, fr_state_action_t action)
+static void tacacs_queued(REQUEST *request, fr_state_signal_t action)
 {
 	REQUEST_VERIFY(request);
 
 	switch (action) {
-	case FR_ACTION_RUN:
+	case FR_SIGNAL_RUN:
 		request->process = tacacs_running;
 		request->process(request, action);
 		break;
 
-	case FR_ACTION_DONE:
+	case FR_SIGNAL_DONE:
 		(void) fr_heap_extract(request->backlog, request);
 		request_delete(request);
 		break;

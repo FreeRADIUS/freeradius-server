@@ -89,8 +89,8 @@ static unlang_t xlat_instruction = {
  * @param[in] top_frame		Set to UNLANG_TOP_FRAME if this is the shallowest nesting level.
  *				Set to UNLANG_SUB_FRAME if this is a nested expansion.
  */
-static void unlang_push_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
-			     REQUEST *request, xlat_exp_t const *exp, bool top_frame)
+void xlat_unlang_push(TALLOC_CTX *ctx, fr_value_box_t **out,
+		      REQUEST *request, xlat_exp_t const *exp, bool top_frame)
 {
 
 	unlang_stack_state_xlat_t	*state;
@@ -114,59 +114,12 @@ static void unlang_push_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
 	state->ctx = ctx;
 }
 
-/** Push a pre-compiled xlat and resumption state onto the stack for evaluation
- *
- * In order to use the async unlang processor the calling module needs to establish
- * a resumption point, as the call to an xlat function may require yielding control
- * back to the interpreter.
- *
- * To simplify the calling conventions, this function is provided to first push a
- * resumption stack frame for the module, and then push an xlat stack frame.
- *
- * After pushing those frames the function updates the stack pointer to jump over
- * the resumption frame and execute the xlat interpreter.
- *
- * When the xlat interpreter finishes, and pops the xlat frame, the unlang interpreter
- * will then call the module resumption frame, allowing the module to continue exectuion.
- *
- * @param[in] ctx		To allocate value boxes and values in.
- * @param[out] out		Where to write the result of the expansion.
- * @param[in] request		The current request.
- * @param[in] xlat		to evaluate.
- * @param[in] callback		to call on unlang_resumable().
- * @param[in] signal		to call on unlang_action().
- * @param[in] uctx		to pass to the callbacks.
- * @return
- *	- RLM_MODULE_YIELD if the xlat would perform blocking I/O
- *	- A return code representing the result of the xla
- */
-rlm_rcode_t unlang_push_module_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
-				    REQUEST *request, xlat_exp_t const *xlat,
-				    fr_unlang_module_resume_t callback,
-				    fr_unlang_module_signal_t signal, void *uctx)
-{
-	/*
-	 *	Push the resumption point
-	 */
-	(void) unlang_module_yield(request, callback, signal, uctx);
-
-	/*
-	 *	Push the xlat function
-	 */
-	unlang_push_xlat(ctx, out, request, xlat, true);
-
-	/*
-	 *	Execute the xlat frame we just pushed onto the stack.
-	 */
-	return unlang_run(request);
-}
-
 /** Stub function for calling the xlat interpreter
  *
  * Calls the xlat interpreter and translates its wants and needs into
  * unlang_action_t codes.
  */
-static unlang_action_t unlang_xlat(REQUEST *request,
+static unlang_action_t xlat_unlang(REQUEST *request,
 				   rlm_rcode_t *presult, UNUSED int *priority)
 {
 	unlang_stack_t			*stack = request->stack;
@@ -177,10 +130,8 @@ static unlang_action_t unlang_xlat(REQUEST *request,
 
 	if (frame->repeat) {
 		fr_cursor_init(&xs->result, &xs->rhead);
-		xa = xlat_frame_eval_repeat(xs->ctx, &xs->values,
-					    &child, &xs->alternate,
-					    request, &xs->exp,
-					    &xs->result);
+		xa = xlat_frame_eval_repeat(xs->ctx, &xs->values, &child,
+					    &xs->alternate, request, &xs->exp, &xs->result);
 	} else {
 		xa = xlat_frame_eval(xs->ctx, &xs->values, &child, request, &xs->exp);
 	}
@@ -190,7 +141,7 @@ static unlang_action_t unlang_xlat(REQUEST *request,
 		rad_assert(child);
 
 		frame->repeat = true;
-		unlang_push_xlat(xs->ctx, &xs->rhead, request, child, false);
+		xlat_unlang_push(xs->ctx, &xs->rhead, request, child, false);
 		return UNLANG_ACTION_PUSHED_CHILD;
 
 	case XLAT_ACTION_YIELD:
@@ -208,6 +159,61 @@ static unlang_action_t unlang_xlat(REQUEST *request,
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
+/** Yield a request back to the interpreter from within a module
+ *
+ * This passes control of the request back to the unlang interpreter, setting
+ * callbacks to execute when the request is 'signalled' asynchronously, or whatever
+ * timer or I/O event the module was waiting for occurs.
+ *
+ * @note The module function which calls #unlang_module_yield should return control
+ *	of the C stack to the unlang interpreter immediately after calling #unlang_module_yield.
+ *	A common pattern is to use ``return unlang_module_yield(...)``.
+ *
+ * @param[in] request		The current request.
+ * @param[in] callback		to call on unlang_resumable().
+ * @param[in] signal		to call on unlang_action().
+ * @param[in] rctx	to pass to the callbacks.
+ * @return always returns RLM_MODULE_YIELD.
+ */
+xlat_action_t xlat_unlang_yield(REQUEST *request,
+				xlat_func_resume_t callback, xlat_func_signal_t signal,
+				void *rctx)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_resume_t			*mr;
+
+	rad_assert(stack->depth > 0);
+
+	switch (frame->instruction->type) {
+	case UNLANG_TYPE_XLAT:
+	{
+		mr = unlang_resume_alloc(request, callback, signal, rctx);
+		if (!fr_cond_assert(mr)) {
+			return XLAT_ACTION_FAIL;
+		}
+	}
+		return XLAT_ACTION_YIELD;
+
+	case UNLANG_TYPE_RESUME:
+		mr = talloc_get_type_abort(frame->instruction, unlang_resume_t);
+		rad_assert(mr->parent->type == UNLANG_TYPE_XLAT);
+
+		/*
+		 *	Re-use the current RESUME frame, but override
+		 *	the callbacks and context.
+		 */
+		mr->callback = callback;
+		mr->signal = signal;
+		mr->rctx = rctx;
+		return XLAT_ACTION_YIELD;
+
+	default:
+		rad_assert(0);
+		return XLAT_ACTION_FAIL;
+	}
+}
+
 /** Called when we're ready to resume processing the request
  *
  * @param[in] request		to resume processing.
@@ -216,12 +222,12 @@ static unlang_action_t unlang_xlat(REQUEST *request,
  *				- RLM_MODULE_FAIL on failure.
  *				- RLM_MODULE_YIELD if additional asynchronous operations
  *				  need to be performed.
- * @param[in] resume_ctx	provided by xlat function.
+ * @param[in] rctx	provided by xlat function.
  * @return
  *	- UNLANG_ACTION_YIELD	if yielding.
  *	- UNLANG_ACTION_CALCULATE_RESULT if done.
  */
-static unlang_action_t unlang_xlat_resume(REQUEST *request, rlm_rcode_t *presult, void *resume_ctx)
+static unlang_action_t xlat_unlang_resume(REQUEST *request, rlm_rcode_t *presult, void *rctx)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -230,7 +236,7 @@ static unlang_action_t unlang_xlat_resume(REQUEST *request, rlm_rcode_t *presult
 	unlang_stack_state_xlat_t	*xs = talloc_get_type_abort(frame->state, unlang_stack_state_xlat_t);
 	xlat_action_t			xa;
 
-	xa = xlat_frame_eval_resume(xs->ctx, &xs->values, mr->callback, xs->exp, request, &xs->result, resume_ctx);
+	xa = xlat_frame_eval_resume(xs->ctx, &xs->values, mr->callback, xs->exp, request, &xs->result, rctx);
 	switch (xa) {
 	case XLAT_ACTION_YIELD:
 		*presult = RLM_MODULE_YIELD;
@@ -258,13 +264,13 @@ static unlang_action_t unlang_xlat_resume(REQUEST *request, rlm_rcode_t *presult
 /** Evaluates "naked" xlats in the config
  *
  */
-static unlang_action_t unlang_xlat_inline(REQUEST *request,
+static unlang_action_t xlat_unlang_inline(REQUEST *request,
 					  UNUSED rlm_rcode_t *presult, UNUSED int *priority)
 {
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
-	unlang_xlat_inline_t	*mx = unlang_generic_to_xlat_inline(instruction);
+	xlat_unlang_inline_t	*mx = unlang_generic_to_xlat_inline(instruction);
 
 	if (!mx->exec) {
 		TALLOC_CTX *pool;
@@ -273,7 +279,7 @@ static unlang_action_t unlang_xlat_inline(REQUEST *request,
 		MEM(frame->state = state = talloc_zero(stack, unlang_stack_state_xlat_inline_t));
 		MEM(pool = talloc_pool(frame->state, 1024));	/* Pool to absorb some allocs */
 
-		unlang_push_xlat(pool, &state->result, request, mx->exp, false);
+		xlat_unlang_push(pool, &state->result, request, mx->exp, false);
 		return UNLANG_ACTION_PUSHED_CHILD;
 	} else {
 		RDEBUG("`%s`", mx->xlat_name);
@@ -291,8 +297,8 @@ void xlat_unlang_init(void)
 	unlang_op_register(UNLANG_TYPE_XLAT,
 			   &(unlang_op_t){
 				.name = "xlat_eval",
-				.func = unlang_xlat,
-				.resume = unlang_xlat_resume,
+				.func = xlat_unlang,
+				.resume = xlat_unlang_resume,
 				.debug_braces = false
 			   });
 
@@ -300,7 +306,7 @@ void xlat_unlang_init(void)
 	unlang_op_register(UNLANG_TYPE_XLAT_INLINE,
 			   &(unlang_op_t){
 				.name = "xlat_inline",
-				.func = unlang_xlat_inline,
+				.func = xlat_unlang_inline,
 				.debug_braces = false
 			   });
 }

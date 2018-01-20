@@ -495,7 +495,7 @@ static const char xlat_spaces[] = "                                             
  *				when it yielded.
  */
 xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
-				     xlat_resume_callback_t resume, xlat_exp_t const *exp,
+				     xlat_func_resume_t resume, xlat_exp_t const *exp,
 				     REQUEST *request, fr_cursor_t *result, void *rctx)
 {
 	xlat_thread_inst_t	*thread_inst = xlat_thread_instance_find(exp);

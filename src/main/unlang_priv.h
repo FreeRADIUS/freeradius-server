@@ -192,6 +192,7 @@ typedef struct {
  */
 typedef struct {
 	unlang_t		self;
+
 	unlang_t		*parent;			//!< The original instruction.
 
 	void    		*callback;			//!< Function the yielding code indicated should
@@ -201,7 +202,7 @@ typedef struct {
 								///< be called if the request is destroyed in
 								///< the middle of an async operation.
 
-	void			*resume_ctx;   			//!< Context data for the callback.  Usually represents
+	void			*rctx;   			//!< Context data for the callback.  Usually represents
 								///< the function's internal state at the time of
 								///< yielding.
 } unlang_resume_t;
@@ -215,7 +216,7 @@ typedef struct {
 	int			exec;
 	char			*xlat_name;
 	xlat_exp_t		*exp;				//!< First xlat node to execute.
-} unlang_xlat_inline_t;
+} xlat_unlang_inline_t;
 
 /** A module stack entry
  *
@@ -341,13 +342,13 @@ static inline unlang_t *unlang_group_to_generic(unlang_group_t *p)
 	return (unlang_t *)p;
 }
 
-static inline unlang_xlat_inline_t *unlang_generic_to_xlat_inline(unlang_t *p)
+static inline xlat_unlang_inline_t *unlang_generic_to_xlat_inline(unlang_t *p)
 {
 	rad_assert(p->type == UNLANG_TYPE_XLAT_INLINE);
-	return talloc_get_type_abort(p, unlang_xlat_inline_t);
+	return talloc_get_type_abort(p, xlat_unlang_inline_t);
 }
 
-static inline unlang_t *unlang_xlat_inline_to_generic(unlang_xlat_inline_t *p)
+static inline unlang_t *xlat_unlang_inline_to_generic(xlat_unlang_inline_t *p)
 {
 	return (unlang_t *)p;
 }
@@ -370,6 +371,8 @@ static inline unlang_t *unlang_resume_to_generic(unlang_resume_t *p)
 void		unlang_push(unlang_stack_t *stack, unlang_t *program, rlm_rcode_t result,
 			    bool do_next_sibling, bool top_frame);
 rlm_rcode_t	unlang_run(REQUEST *request);
+
+unlang_resume_t *unlang_resume_alloc(REQUEST *request, void *callback, void *signal, void *rctx);
 
 void		unlang_op_initialize(void);
 

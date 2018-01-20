@@ -2470,12 +2470,12 @@ static rlm_rcode_t mod_push(void *instance, REQUEST *request, rlm_radius_link_t 
 }
 
 
-static void mod_signal(REQUEST *request, UNUSED void *instance, UNUSED void *thread, rlm_radius_link_t *link, fr_state_action_t action)
+static void mod_signal(REQUEST *request, UNUSED void *instance, UNUSED void *thread, rlm_radius_link_t *link, fr_state_signal_t action)
 {
 	rlm_radius_udp_request_t *u = link->request_io_ctx;
 	struct timeval now;
 
-	if (action != FR_ACTION_DUP) return;
+	if (action != FR_SIGNAL_DUP) return;
 
 	/*
 	 *	Sychronous mode means that we don't do any

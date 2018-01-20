@@ -304,7 +304,7 @@ ssize_t rest_uri_host_unescape(char **out, UNUSED rlm_rest_t const *mod_inst, RE
 /*
  *	Async IO helpers
  */
-void rest_io_action(REQUEST *request, void *instance, void *thread, void *ctx, fr_state_action_t action);
+void rest_io_action(REQUEST *request, void *instance, void *thread, void *ctx, fr_state_signal_t action);
 int rest_io_request_enqueue(rlm_rest_thread_t *thread, REQUEST *request, void *handle);
 int rest_io_init(rlm_rest_thread_t *thread);
 

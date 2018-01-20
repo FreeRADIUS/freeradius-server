@@ -300,7 +300,7 @@ static void proto_ldap_packet_debug(REQUEST *request, RADIUS_PACKET *packet, boo
  * @param[in] action	If something has signalled that the request should stop
  *			being processed.
  */
-static void request_running(REQUEST *request, fr_state_action_t action)
+static void request_running(REQUEST *request, fr_state_signal_t action)
 {
 	CONF_SECTION	*unlang;
 	char const	*verb;
@@ -312,12 +312,12 @@ static void request_running(REQUEST *request, fr_state_action_t action)
 	/*
 	 *	Async (in the same thread, tho) signal to be done.
 	 */
-	if (action == FR_ACTION_DONE) goto done;
+	if (action == FR_SIGNAL_DONE) goto done;
 
 	/*
 	 *	We ignore all other actions.
 	 */
-	if (action != FR_ACTION_RUN) return;
+	if (action != FR_SIGNAL_RUN) return;
 
 	switch (request->request_state) {
 	case REQUEST_INIT:
@@ -418,17 +418,17 @@ static void request_running(REQUEST *request, fr_state_action_t action)
  * @param[in] action	If something has signalled that the request should stop
  *			being processed.
  */
-static void request_queued(REQUEST *request, fr_state_action_t action)
+static void request_queued(REQUEST *request, fr_state_signal_t action)
 {
 	REQUEST_VERIFY(request);
 
 	switch (action) {
-	case FR_ACTION_RUN:
+	case FR_SIGNAL_RUN:
 		request->process = request_running;
 		request->process(request, action);
 		break;
 
-	case FR_ACTION_DONE:
+	case FR_SIGNAL_DONE:
 		(void) fr_heap_extract(request->backlog, request);
 		request_delete(request);
 		break;

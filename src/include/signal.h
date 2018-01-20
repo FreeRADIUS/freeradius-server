@@ -13,41 +13,37 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_PROCESS_H
-#define _FR_PROCESS_H
+#ifndef _FR_SIGNAL_H
+#define _FR_SIGNAL_H
 /**
  * $Id$
  *
- * @file include/process.h
- * @brief State machine for a server to process packets.
+ * @file include/signal.h
+ * @brief Signals that can be sent to a request.
  *
- * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
- * @copyright  2012 The FreeRADIUS server project
- * @copyright  2012 Alan DeKok <aland@deployingradius.com
+ * @copyright  2018 The FreeRADIUS server project
+ * @copyright  2018 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
-RCSIDH(process_h, "$Id$")
+RCSIDH(signal_h, "$Id$")
 
-#include <freeradius-devel/clients.h>
-#include <freeradius-devel/listen.h>
-#include <freeradius-devel/signal.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/*
- *  Function handler for requests.
+/** Signals that can be generated/processed by request signal handlers
+ *
  */
-typedef	void (*fr_request_process_t)(REQUEST *, fr_state_signal_t);
-
-extern time_t fr_start_time;
-
-/*
- *	More state machine helper functions.
- */
-void request_delete(REQUEST *request);
+typedef enum fr_state_signal_t {	/* server action */
+	FR_SIGNAL_INVALID = 0,
+	FR_SIGNAL_RUN,
+	FR_SIGNAL_DONE,			//!< Request is completed.  If a module is signalled
+					///< with this, the module should stop processing
+					///< the request and cleanup.
+	FR_SIGNAL_DUP,			//!< A duplicate request was received.
+} fr_state_signal_t;
 
 #ifdef __cplusplus
 }
 #endif
-#endif /* _FR_PROCESS_H */
+#endif /* _FR_SIGNAL_H */

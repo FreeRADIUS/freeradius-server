@@ -2157,11 +2157,11 @@ static unlang_t *compile_xlat_inline(unlang_t *parent,
 				     unlang_compile_t *unlang_ctx, CONF_PAIR const *cp)
 {
 	unlang_t *c;
-	unlang_xlat_inline_t *mx;
+	xlat_unlang_inline_t *mx;
 
-	mx = talloc_zero(parent, unlang_xlat_inline_t);
+	mx = talloc_zero(parent, xlat_unlang_inline_t);
 
-	c = unlang_xlat_inline_to_generic(mx);
+	c = xlat_unlang_inline_to_generic(mx);
 	c->parent = parent;
 	c->next = NULL;
 	c->name = "expand";

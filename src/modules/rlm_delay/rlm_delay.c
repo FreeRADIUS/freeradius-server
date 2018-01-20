@@ -144,9 +144,9 @@ static rlm_rcode_t delay_add(rlm_delay_t const *inst, REQUEST *request)
 }
 
 static void delay_cancel(REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *ctx,
-			 fr_state_action_t action)
+			 fr_state_signal_t action)
 {
-	if (action != FR_ACTION_DONE) return;
+	if (action != FR_SIGNAL_DONE) return;
 
 	RDEBUG2("Cancelling delay");
 

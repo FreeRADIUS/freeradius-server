@@ -153,7 +153,7 @@ xlat_t	*xlat_func_find(char const *name);
  *	xlat_eval.c
  */
 xlat_action_t	xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
-				       xlat_resume_callback_t resume, xlat_exp_t const *exp,
+				       xlat_func_resume_t resume, xlat_exp_t const *exp,
 				       REQUEST *request, fr_cursor_t *result, void *rctx);
 
 xlat_action_t	xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,

@@ -125,9 +125,22 @@ typedef xlat_action_t (*xlat_func_async_t)(TALLOC_CTX *ctx, fr_cursor_t *out,
  *				mean it turned a result.
  *	- XLAT_ACTION_FAIL	the xlat function failed.
  */
-typedef xlat_action_t (*xlat_resume_callback_t)(TALLOC_CTX *ctx, fr_cursor_t *out,
-						REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
-						fr_cursor_t *in, void *rctx);
+typedef xlat_action_t (*xlat_func_resume_t)(TALLOC_CTX *ctx, fr_cursor_t *out,
+					    REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
+					    fr_cursor_t *in, void *rctx);
+
+/** A callback when the request gets a fr_state_signal_t.
+ *
+ * @note The callback is automatically removed on unlang_resumable().
+ *
+ * @param[in] request		The current request.
+ * @param[in] instance		The module instance.
+ * @param[in] thread		data specific to this module instance.
+ * @param[in] rctx		Resume ctx for the callback.
+ * @param[in] action		which is signalling the request.
+ */
+typedef void (*xlat_func_signal_t)(REQUEST *request, void *instance, void *thread,
+				   void *rctx, int action);
 
 /** Allocate new instance data for an xlat instance
  *
@@ -239,6 +252,15 @@ int		xlat_bootstrap(xlat_exp_t *root);
 
 void		xlat_instances_free(void);
 
+/*
+ *	xlat_unlang.c
+ */
+void		xlat_unlang_push(TALLOC_CTX *ctx, fr_value_box_t **out,
+				 REQUEST *request, xlat_exp_t const *exp, bool top_frame);
+
+xlat_action_t	xlat_unlang_yield(REQUEST *request,
+				  xlat_func_resume_t callback, xlat_func_signal_t signal,
+				  void *rctx);
 #ifdef __cplusplus
 }
 #endif
