@@ -108,9 +108,10 @@ static uint64_t unlang_active_callers(unlang_t *instruction)
 static unlang_action_t unlang_load_balance(REQUEST *request,
 					   rlm_rcode_t *presult, UNUSED int *priority)
 {
-	unlang_stack_t		*stack = request->stack;
-	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*instruction = frame->instruction;
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_t			*instruction = frame->instruction;
+	unlang_frame_state_redundant_t	*redundant;
 	unlang_group_t		*g;
 
 	uint32_t count = 0;
@@ -124,6 +125,8 @@ static unlang_action_t unlang_load_balance(REQUEST *request,
 	 */
 	if (!frame->repeat) {
 		RDEBUG4("%s setting up", frame->instruction->debug_name);
+
+		frame->state = redundant = talloc_zero(stack, unlang_frame_state_redundant_t);
 
 		if (g->vpt) {
 			uint32_t hash, start;
@@ -184,12 +187,12 @@ static unlang_action_t unlang_load_balance(REQUEST *request,
 			RDEBUG3("load-balance starting at child %d", (int) start);
 
 			count = 0;
-			for (frame->redundant.child = frame->redundant.found = g->children;
-			     frame->redundant.child != NULL;
-			     frame->redundant.child = frame->redundant.child->next) {
+			for (redundant->child = redundant->found = g->children;
+			     redundant->child != NULL;
+			     redundant->child = redundant->child->next) {
 				count++;
 				if (count == start) {
-					frame->redundant.found = frame->redundant.child;
+					redundant->found = redundant->child;
 					break;
 				}
 			}
@@ -204,11 +207,11 @@ static unlang_action_t unlang_load_balance(REQUEST *request,
 			/*
 			 *	Choose a child at random.
 			 */
-			for (frame->redundant.child = frame->redundant.found = g->children, num = 0;
-			     frame->redundant.child != NULL;
-			     frame->redundant.child = frame->redundant.child->next, num++) {
+			for (redundant->child = redundant->found = g->children, num = 0;
+			     redundant->child != NULL;
+			     redundant->child = redundant->child->next, num++) {
 				uint64_t active_callers;
-				unlang_t *child = frame->redundant.child;
+				unlang_t *child = redundant->child;
 
 				if (child->type != UNLANG_TYPE_MODULE_CALL) {
 					active_callers = unlang_active_callers(child);
@@ -240,7 +243,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request,
 
 					count = 1;
 					lowest_active_callers = active_callers;
-					frame->redundant.found = frame->redundant.child;
+					redundant->found = redundant->child;
 					continue;
 				}
 
@@ -259,23 +262,24 @@ static unlang_action_t unlang_load_balance(REQUEST *request,
 
 				if ((count * (fr_rand() & 0xffff)) < (uint32_t) 0x10000) {
 					RDEBUG3("load-balance choosing random child %d", num);
-					frame->redundant.found = frame->redundant.child;
+					redundant->found = redundant->child;
 				}
 			}
 		}
 
 		if (instruction->type == UNLANG_TYPE_LOAD_BALANCE) {
-			unlang_push(stack, frame->redundant.found, frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME);
+			unlang_push(stack, redundant->found, frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME);
 			return UNLANG_ACTION_PUSHED_CHILD;
 		}
 
 		/*
 		 *	redundant-load-balance starts at this one.
 		 */
-		frame->redundant.child = frame->redundant.found;
+		redundant->child = redundant->found;
 
 	} else {
 		RDEBUG4("%s resuming", frame->instruction->debug_name);
+		redundant = talloc_get_type_abort(frame->state, unlang_frame_state_redundant_t);
 
 		/*
 		 *	We are in a resumed frame.  The module we
@@ -288,7 +292,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request,
 		/*
 		 *	We were called again.  See if we're done.
 		 */
-		if (frame->redundant.child->actions[*presult] == MOD_ACTION_RETURN) {
+		if (redundant->child->actions[*presult] == MOD_ACTION_RETURN) {
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 
@@ -301,10 +305,10 @@ static unlang_action_t unlang_load_balance(REQUEST *request,
 		 *	uint64_t and bit mask for simplicity.
 		 */
 
-		frame->redundant.child = frame->redundant.child->next;
-		if (!frame->redundant.child) frame->redundant.child = g->children;
+		redundant->child = redundant->child->next;
+		if (!redundant->child) redundant->child = g->children;
 
-		if (frame->redundant.child == frame->redundant.found) {
+		if (redundant->child == redundant->found) {
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 	}
@@ -312,7 +316,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request,
 	/*
 	 *	Push the child, and yield for a later return.
 	 */
-	unlang_push(stack, frame->redundant.child, frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME);
+	unlang_push(stack, redundant->child, frame->result, UNLANG_NEXT_STOP, UNLANG_SUB_FRAME);
 	frame->repeat = true;
 
 	return UNLANG_ACTION_PUSHED_CHILD;

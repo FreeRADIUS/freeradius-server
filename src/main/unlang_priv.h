@@ -289,10 +289,6 @@ typedef struct {
 	bool			repeat : 1;			//!< Call the action callback again on our way
 								//!< back up the stack.
 	bool			top_frame : 1;			//!< are we the top frame of the stack?
-
-	union {
-		unlang_frame_state_redundant_t	redundant;	//!< Redundant section state.
-	};
 } unlang_stack_frame_t;
 
 /** An unlang stack associated with a request
