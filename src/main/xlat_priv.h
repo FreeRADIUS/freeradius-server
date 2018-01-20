@@ -159,7 +159,7 @@ xlat_action_t	xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
 xlat_action_t	xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				       xlat_exp_t const **child, bool *alternate,
 				       REQUEST *request, xlat_exp_t const **in,
-				       fr_cursor_t *result);
+				       fr_cursor_t *result) CC_HINT(nonnull(1,2,3,5,6));
 
 xlat_action_t	xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t const **child,
 				REQUEST *request, xlat_exp_t const **in);

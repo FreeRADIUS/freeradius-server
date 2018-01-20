@@ -484,6 +484,16 @@ static xlat_action_t xlat_eval_pair(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *
 static const char xlat_spaces[] = "                                                                                                                                                                                                                                                                ";
 #endif
 
+/** Call an xlat's resumption method
+ *
+ * @param[in] ctx		to allocate value boxes in.
+ * @param[out] out		a list of #fr_value_box_t to append to.
+ * @param[in] resume		function to call.
+ * @param[in] request		the current request.
+ * @param[in] result		Previously expanded arguments to this xlat function.
+ * @param[in] rctx		Opaque (to us), resume ctx provided by xlat function
+ *				when it yielded.
+ */
 xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
 				     xlat_resume_callback_t resume, xlat_exp_t const *exp,
 				     REQUEST *request, fr_cursor_t *result, void *rctx)
@@ -537,8 +547,6 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 {
 	xlat_exp_t const *node = *in;
 
-	rad_assert(in && *in);
-
 	fr_cursor_tail(out);	/* Needed for reentrant behaviour and debugging */
 
 	switch (node->type) {
@@ -551,7 +559,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			char		*result_str = NULL;
 			ssize_t		slen;
 
-			if (result) {
+			if (fr_cursor_head(result)) {
 				result_str = fr_value_box_list_asprint(NULL, fr_cursor_head(result), NULL, '\0');
 				if (!result_str) return XLAT_ACTION_FAIL;
 			}
@@ -586,7 +594,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			MEM(value = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
 			fr_value_box_strdup_buffer_shallow(value, value, NULL, talloc_steal(value, str), false);
 
-			RDEBUG2("EXPAND %%{%s:...}", node->xlat->name);
+			RDEBUG2("EXPAND %%{%s:%pS}", node->fmt, result_str);
 			RDEBUG2("   --> %pV", value);
 			fr_cursor_append(out, value);	/* Append the result of the expansion */
 			talloc_free(result_str);
@@ -613,7 +621,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				break;
 			}
 
-			fr_cursor_next(out);		/* Wind to the start of this functions output */
+			fr_cursor_next(out);		/* Wind to the start of this function's output */
 
 			/*
 			 *	Print output if the function didn't yield
@@ -638,7 +646,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 		/*
 		 *	No result from the first child, try the alternate
 		 */
-		if (!result) {
+		if (!fr_cursor_head(result)) {
 			/*
 			 *	Already tried the alternate
 			 */

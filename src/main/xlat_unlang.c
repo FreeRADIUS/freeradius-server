@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 
 #include <ctype.h>
+#include "xlat_priv.h"
 #include "unlang_priv.h"	/* Fixme - Should create a proper semi-public interface for the interpret */
 
 /** Hold the result of an inline xlat expansion
@@ -207,7 +208,20 @@ static unlang_action_t unlang_xlat(REQUEST *request,
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-static unlang_action_t unlang_xlat_resume(REQUEST *request, rlm_rcode_t *presult, UNUSED void *resume_ctx)
+/** Called when we're ready to resume processing the request
+ *
+ * @param[in] request		to resume processing.
+ * @param[in] presult		the result of the xlat function.
+ *				- RLM_MODULE_OK on success.
+ *				- RLM_MODULE_FAIL on failure.
+ *				- RLM_MODULE_YIELD if additional asynchronous operations
+ *				  need to be performed.
+ * @param[in] resume_ctx	provided by xlat function.
+ * @return
+ *	- UNLANG_ACTION_YIELD	if yielding.
+ *	- UNLANG_ACTION_CALCULATE_RESULT if done.
+ */
+static unlang_action_t unlang_xlat_resume(REQUEST *request, rlm_rcode_t *presult, void *resume_ctx)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -216,7 +230,7 @@ static unlang_action_t unlang_xlat_resume(REQUEST *request, rlm_rcode_t *presult
 	unlang_stack_state_xlat_t	*xs = talloc_get_type_abort(frame->state, unlang_stack_state_xlat_t);
 	xlat_action_t			xa;
 
-	xa = xlat_frame_eval_resume(xs->ctx, &xs->values, mr->callback, xs->exp, request, &xs->result, mr->resume_ctx);
+	xa = xlat_frame_eval_resume(xs->ctx, &xs->values, mr->callback, xs->exp, request, &xs->result, resume_ctx);
 	switch (xa) {
 	case XLAT_ACTION_YIELD:
 		*presult = RLM_MODULE_YIELD;
@@ -233,12 +247,11 @@ static unlang_action_t unlang_xlat_resume(REQUEST *request, rlm_rcode_t *presult
 	case XLAT_ACTION_FAIL:
 		*presult = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
-	/* Don't set default */
+	/* DON'T SET DEFAULT */
 	}
 
-	/* garbage xlat action */
+	rad_assert(0);		/* Garbage xlat action */
 
-	rad_assert(0);
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
