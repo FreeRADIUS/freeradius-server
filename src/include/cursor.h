@@ -53,19 +53,19 @@ typedef struct fr_cursor_s {
 
 void fr_cursor_copy(fr_cursor_t *out, fr_cursor_t const *in) CC_HINT(nonnull);
 
-void *fr_cursor_head(fr_cursor_t *cursor) CC_HINT(nonnull);
+void *fr_cursor_head(fr_cursor_t *cursor);
 
-void *fr_cursor_tail(fr_cursor_t *cursor) CC_HINT(nonnull);
+void *fr_cursor_tail(fr_cursor_t *cursor);
 
-void *fr_cursor_next(fr_cursor_t *cursor) CC_HINT(nonnull);
+void *fr_cursor_next(fr_cursor_t *cursor);
 
-void *fr_cursor_next_peek(fr_cursor_t *cursor) CC_HINT(nonnull);
+void *fr_cursor_next_peek(fr_cursor_t *cursor);
 
-void *fr_cursor_list_next_peek(fr_cursor_t *cursor) CC_HINT(nonnull);
+void *fr_cursor_list_next_peek(fr_cursor_t *cursor);
 
-void *fr_cursor_list_prev_peek(fr_cursor_t *cursor) CC_HINT(nonnull);
+void *fr_cursor_list_prev_peek(fr_cursor_t *cursor);
 
-void *fr_cursor_current(fr_cursor_t *cursor) CC_HINT(nonnull);
+void *fr_cursor_current(fr_cursor_t *cursor);
 
 void fr_cursor_prepend(fr_cursor_t *cursor, void *v) CC_HINT(nonnull);
 

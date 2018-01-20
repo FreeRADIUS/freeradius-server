@@ -136,6 +136,8 @@ void fr_cursor_copy(fr_cursor_t *out, fr_cursor_t const *in)
  */
 void *fr_cursor_head(fr_cursor_t *cursor)
 {
+	if (!cursor) return NULL;
+
 	cursor->current = *cursor->head;
 	cursor->prev = NULL;
 
@@ -149,7 +151,7 @@ void *fr_cursor_head(fr_cursor_t *cursor)
  */
 void *fr_cursor_tail(fr_cursor_t *cursor)
 {
-	if (!*cursor->head) return NULL;
+	if (!cursor || !*cursor->head) return NULL;
 
 	cursor->current = cursor_tail(&cursor->prev, cursor, cursor->current);
 	cursor->tail = cursor->current;				/* my as well update our insertion tail */
@@ -166,7 +168,7 @@ void *fr_cursor_tail(fr_cursor_t *cursor)
  */
 void * CC_HINT(hot) fr_cursor_next(fr_cursor_t *cursor)
 {
-	if (!*cursor->head) return NULL;
+	if (!cursor || !*cursor->head) return NULL;
 
 	cursor->current = cursor_next(&cursor->prev, cursor, cursor->current);
 
@@ -198,7 +200,7 @@ void *fr_cursor_next_peek(fr_cursor_t *cursor)
  */
  void *fr_cursor_list_next_peek(fr_cursor_t *cursor)
 {
-	if (!cursor->current) return NULL;
+	if (!cursor || !cursor->current) return NULL;
 
 	return *NEXT_PTR(cursor->current);
 }
@@ -215,6 +217,8 @@ void *fr_cursor_next_peek(fr_cursor_t *cursor)
  */
 void *fr_cursor_list_prev_peek(fr_cursor_t *cursor)
 {
+	if (!cursor) return NULL;
+
 	return cursor->prev;
 }
 
@@ -227,6 +231,8 @@ void *fr_cursor_list_prev_peek(fr_cursor_t *cursor)
  */
 void * CC_HINT(hot) fr_cursor_current(fr_cursor_t *cursor)
 {
+	if (!cursor) return NULL;
+
 	return cursor->current;
 }
 
