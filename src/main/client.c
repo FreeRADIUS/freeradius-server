@@ -37,7 +37,7 @@ RCSID("$Id$")
 #include <ctype.h>
 #include <fcntl.h>
 
-#define WITH_TRIE (1)
+//#define WITH_TRIE (1)
 
 /** Group of clients
  *
