@@ -450,7 +450,6 @@ void realm_home_server_sanitize(home_server_t *home, CONF_SECTION *cs)
 
 	FR_INTEGER_BOUND_CHECK("zombie_period", home->zombie_period, >=, 1);
 	FR_INTEGER_BOUND_CHECK("zombie_period", home->zombie_period, <=, 120);
-	FR_INTEGER_BOUND_CHECK("zombie_period", home->zombie_period, >=, (uint32_t) home->response_window.tv_sec);
 
 	FR_INTEGER_BOUND_CHECK("num_pings_to_alive", home->num_pings_to_alive, >=, 3);
 	FR_INTEGER_BOUND_CHECK("num_pings_to_alive", home->num_pings_to_alive, <=, 10);
