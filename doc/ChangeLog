@@ -1,6 +1,8 @@
 FreeRADIUS 3.0.17 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	Feature improvements
 	Bug fixes
+	* Don't call post-proxy twice when proxying to
+	  a virtual server.  Matthew Newton, #2161.
 
 FreeRADIUS 3.0.16 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	Feature improvements
