@@ -2402,6 +2402,59 @@ int fr_value_box_bstrndup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t c
 	return 0;
 }
 
+/** Append a buffer to an existing fr_value_box_t
+ *
+ * @param[in] dst	value box to append to.
+ * @param[in] src	octets data to append.
+ * @param[in] len	length of octets data.
+ * @param[in] tainted	Whether src is tainted.
+ * @return
+ *	- 0 on success.
+ * 	- -1 on failure.
+ */
+int fr_value_box_bstrnappend(fr_value_box_t *dst, char const *src, size_t len, bool tainted)
+{
+	char *ptr, *nptr;
+	size_t nlen;
+
+	if (len == 0) return 0;
+
+	if (dst->type != FR_TYPE_STRING) {
+		fr_strerror_printf("%s: Expected dst of type %s, got type %s", __FUNCTION__,
+				   fr_int2str(dict_attr_types, FR_TYPE_STRING, "<INVALID>"),
+				   fr_int2str(dict_attr_types, dst->type, "<INVALID>"));
+		return -1;
+	}
+
+	memcpy(&ptr, &dst->datum.ptr, sizeof(ptr));	/* defeat const */
+	rad_assert(ptr);
+
+	if (talloc_reference_count(ptr) > 0) {
+		fr_strerror_printf("%s: Boxed value has two many references", __FUNCTION__);
+		return -1;
+	}
+
+	nlen = dst->vb_length + len + 1;
+	nptr = talloc_realloc(talloc_parent(ptr), ptr, char, dst->vb_length + len + 1);
+	if (!nptr) {
+		fr_strerror_printf("%s: Realloc of %s array from %zu to %zu bytes failed",
+				   __FUNCTION__, talloc_get_name(ptr), talloc_array_length(ptr), nlen);
+		return -1;
+	}
+	ptr = nptr;
+
+	memcpy(ptr + dst->vb_length, src, len);	/* Copy data into the realloced buffer */
+
+	dst->datum.ptr = ptr;
+	dst->vb_length += len;
+
+	ptr[dst->vb_length] = '\0';
+
+	if (tainted) dst->tainted = true;
+
+	return 0;
+}
+
 /** Copy a nul terminated talloced buffer to a #fr_value_box_t
  *
  * Copy a talloced nul terminated buffer, setting fields in the dst value box appropriately.
@@ -2581,6 +2634,57 @@ int fr_value_box_memdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t con
 	dst->datum.length = len;
 	dst->enumv = enumv;
 	dst->next = NULL;
+
+	return 0;
+}
+
+/** Append a buffer to an existing fr_value_box_t
+ *
+ * @param[in] dst	value box to append to.
+ * @param[in] src	octets data to append.
+ * @param[in] len	length of octets data.
+ * @param[in] tainted	Whether src is tainted.
+ * @return
+ *	- 0 on success.
+ * 	- -1 on failure.
+ */
+int fr_value_box_memappend(fr_value_box_t *dst, uint8_t const *src, size_t len, bool tainted)
+{
+	uint8_t *ptr, *nptr;
+	size_t nlen;
+
+	if (len == 0) return 0;
+
+	if (dst->type != FR_TYPE_OCTETS) {
+		fr_strerror_printf("%s: Expected dst of type %s, got type %s", __FUNCTION__,
+				   fr_int2str(dict_attr_types, FR_TYPE_OCTETS, "<INVALID>"),
+				   fr_int2str(dict_attr_types, dst->type, "<INVALID>"));
+		return -1;
+	}
+
+	memcpy(&ptr, &dst->datum.ptr, sizeof(ptr));	/* defeat const */
+	rad_assert(ptr);
+
+	if (talloc_reference_count(ptr) > 0) {
+		fr_strerror_printf("%s: Boxed value has two many references", __FUNCTION__);
+		return -1;
+	}
+
+	nlen = dst->vb_length + len;
+	nptr = talloc_realloc(talloc_parent(ptr), ptr, uint8_t, dst->vb_length + len);
+	if (!nptr) {
+		fr_strerror_printf("%s: Realloc of %s array from %zu to %zu bytes failed",
+				   __FUNCTION__, talloc_get_name(ptr), talloc_array_length(ptr), nlen);
+		return -1;
+	}
+	ptr = nptr;
+
+	memcpy(ptr + dst->vb_length, src, len);	/* Copy data into the realloced buffer */
+
+	dst->datum.ptr = ptr;
+	dst->vb_length += len;
+
+	if (tainted) dst->tainted = true;
 
 	return 0;
 }
@@ -3508,15 +3612,15 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
  */
 char *fr_value_box_list_asprint(TALLOC_CTX *ctx, fr_value_box_t const *head, char const *delim, char quote)
 {
-	fr_value_box_t const	*v = head;
+	fr_value_box_t const	*vb = head;
 	char			*aggr, *td = NULL;
 	TALLOC_CTX		*pool = NULL;
 
 	if (!head) return NULL;
 
-	aggr = fr_value_box_asprint(ctx, v, quote);
+	aggr = fr_value_box_asprint(ctx, vb, quote);
 	if (!aggr) return NULL;
-	if (!v->next) return aggr;
+	if (!vb->next) return aggr;
 
 	/*
 	 *	If we're aggregating more values,
@@ -3525,14 +3629,14 @@ char *fr_value_box_list_asprint(TALLOC_CTX *ctx, fr_value_box_t const *head, cha
 	pool = talloc_pool(NULL, 256);
 	if (delim) td = talloc_strdup(pool, delim);
 
-	while ((v = v->next)) {
+	while ((vb = vb->next)) {
 		char *str, *new_aggr;
 
-		str = fr_value_box_asprint(pool, v, quote);
+		str = fr_value_box_asprint(pool, vb, quote);
 		if (!str) continue;
 
 		new_aggr = talloc_buffer_append_variadic_buffer(aggr, 2, td, str);
-		if (!new_aggr) {
+		if (unlikely(!new_aggr)) {
 			talloc_free(aggr);
 			talloc_free(pool);
 			return NULL;
@@ -3543,6 +3647,114 @@ char *fr_value_box_list_asprint(TALLOC_CTX *ctx, fr_value_box_t const *head, cha
 	talloc_free(pool);
 
 	return aggr;
+}
+
+/** Concatenate a list of value boxes together
+ *
+ * @param[in] ctx		to allocate new value buffer in.
+ * @param[out] out		Where to write the resulting box.
+ * @param[in] list		to concatenate together.
+ * @param[in] type		May be #FR_TYPE_STRING or #FR_TYPE_OCTETS, no other types are
+ *				supported.
+ * @param[in] free_input	If true, free the input boxes.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_value_box_list_concat(TALLOC_CTX *ctx,
+			     fr_value_box_t *out, fr_value_box_t *list, fr_type_t type,
+			     bool free_input, bool in_place)
+{
+	TALLOC_CTX		*pool;
+	fr_cursor_t		cursor;
+	fr_value_box_t const	*vb;
+	fr_value_box_t		*to_free;
+
+	if (!list) {
+		fr_strerror_printf("Invalid arguments.  List was NULL");
+		return -1;
+	}
+
+	switch (type) {
+	case FR_TYPE_STRING:
+	case FR_TYPE_OCTETS:
+		break;
+
+	default:
+		fr_strerror_printf("Invalid argument.  Can't concatenate %s types",
+				   fr_int2str(dict_attr_types, type, "<INVALID>"));
+		return -1;
+	}
+
+	fr_cursor_init(&cursor, &list);
+
+	/*
+	 *	Allow imploding in place...
+	 */
+	if (!in_place) {
+		if (fr_value_box_cast(ctx, out, type, NULL, list) < 0) return -1;	/* Decomposes to copy */
+
+		if (free_input) {
+			to_free = fr_cursor_remove(&cursor);				/* Advances cursor */
+			talloc_free(to_free);
+		} else {
+			fr_cursor_next(&cursor);
+		}
+	} else {
+		fr_cursor_next(&cursor);
+	}
+
+	/*
+	 *	Imploding a one element list.
+	 */
+	if (!fr_cursor_current(&cursor)) return 0;
+
+	pool = talloc_pool(NULL, 255);	/* To absorb the temporary strings */
+
+	/*
+	 *	Join the remaining values
+	 */
+	while ((vb = fr_cursor_current(&cursor))) {
+	     	fr_value_box_t from_cast;
+	     	fr_value_box_t const *n;
+
+		if (vb->type != type) {
+			talloc_free_children(pool);			/* Clear out previous buffers */
+			memset(&from_cast, 0, sizeof(from_cast));
+
+			if (fr_value_box_cast(pool, &from_cast, type, NULL, vb) < 0) {
+			error:
+				talloc_free(pool);
+				return -1;
+			}
+
+			n = &from_cast;
+		} else {
+			n = vb;
+		}
+
+		/*
+		 *	Append the next value
+		 */
+		if (type == FR_TYPE_STRING) {
+			if (fr_value_box_bstrnappend(out, n->vb_strvalue,
+						     n->vb_length, n->tainted) < 0) goto error;
+		} else {
+			if (fr_value_box_memappend(out, n->vb_octets,
+						   n->vb_length, n->tainted) < 0) goto error;
+		}
+
+		if (free_input) {
+			to_free = fr_cursor_remove(&cursor);		/* Advances cursor */
+			talloc_free(to_free);
+		} else {
+			fr_cursor_next(&cursor);
+		}
+	}
+
+	talloc_free(pool);
+
+	return 0;
 }
 
 /** Print the value of an attribute to a string
