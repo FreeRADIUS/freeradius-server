@@ -857,6 +857,28 @@ void fr_pair_delete_by_num(VALUE_PAIR **head, unsigned int vendor, unsigned int 
 	}
 }
 
+/** An iterator for use by #fr_cursor_iter_init or #fr_cursor_talloc_iter_init
+ *
+ * @note The #fr_dict_attr_t to match should be passed in as the uctx value when initialising the iterator.
+ */
+void *fr_pair_iter_next_by_da(void **prev, void *to_eval, void *uctx)
+{
+	fr_dict_attr_t const *da = uctx;
+	VALUE_PAIR *c, *p;
+
+	if (!to_eval) return NULL;
+
+	for (c = to_eval, p = *prev; c; p = c, c = c->next) {
+		if (c->da == da) {
+			*prev = p;
+			return c;
+		}
+	}
+
+	*prev = to_eval;
+	return NULL;
+}
+
 /** Order attributes by their da, and tag
  *
  * Useful where attributes need to be aggregated, but not necessarily

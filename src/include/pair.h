@@ -221,6 +221,8 @@ int		fr_pair_update_by_num(TALLOC_CTX *ctx, VALUE_PAIR **list,
 
 void		fr_pair_delete_by_num(VALUE_PAIR **head, unsigned int vendor, unsigned int attr, int8_t tag);
 
+void		*fr_pair_iter_next_by_da(void **prev, void *to_eval, void *uctx);
+
 /* Sorting */
 typedef		int8_t (*fr_cmp_t)(void const *a, void const *b);
 
