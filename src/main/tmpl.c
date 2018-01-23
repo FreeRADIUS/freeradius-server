@@ -2174,18 +2174,29 @@ VALUE_PAIR *tmpl_cursor_init(int *err, fr_cursor_t *cursor, REQUEST *request, vp
 	if (err) *err = 0;
 
 	if (radius_request(&request, vpt->tmpl_request) < 0) {
-		if (err) *err = -3;
+		if (err) {
+			*err = -3;
+			fr_strerror_printf("Request context \"%s\" not available",
+					   fr_int2str(request_refs, vpt->tmpl_request, "<INVALID>"));
+		}
 		return NULL;
 	}
 	vps = radius_list(request, vpt->tmpl_list);
 	if (!vps) {
-		if (err) *err = -2;
+		if (err) {
+			*err = -2;
+			fr_strerror_printf("List \"%s\" not available in this context",
+					   fr_int2str(pair_lists, vpt->tmpl_list, "<INVALID>"));
+		}
 		return NULL;
 	}
 
 	vp = fr_cursor_talloc_iter_init(cursor, vps, _tmpl_cursor_next, vpt, VALUE_PAIR);
 	if (!vp) {
-		if (err) *err = -1;
+		if (err) {
+			*err = -1;
+			fr_strerror_printf("No matching \"%s\" pairs found", vpt->tmpl_da->name);
+		}
 		return NULL;
 	}
 
@@ -2228,6 +2239,7 @@ int tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_tmpl_t
 		vp = fr_pair_copy(ctx, vp);
 		if (!vp) {
 			fr_pair_list_free(out);
+			fr_strerror_printf("Out of memory");
 			return -4;
 		}
 		fr_cursor_append(&to, vp);
