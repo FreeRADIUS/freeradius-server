@@ -593,7 +593,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			 *	output of the function to a box.
 			 */
 			MEM(value = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
-			fr_value_box_strdup_buffer_shallow(value, value, NULL, talloc_steal(value, str), false);
+			fr_value_box_strsteal(value, value, NULL, str, false);
 
 			RDEBUG2("EXPAND %%{%s:%pS}", node->fmt, result_str);
 			RDEBUG2("   --> %pV", value);
@@ -728,11 +728,11 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 			XLAT_DEBUG("** [%i] %s(literal) - %s", unlang_stack_depth(request), __FUNCTION__, node->fmt);
 
 			/*
-			 *	We don't need to strdup the buffer we can
-			 *	just assign a pointer to it.
+			 *	We unfortunately need to dup the buffer
+			 *	because references aren't threadsafe.
 			 */
 			MEM(value = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
-			fr_value_box_strdup_buffer_shallow(value, value, NULL, node->fmt, false);
+			fr_value_box_strdup_buffer(value, value, NULL, node->fmt, false);
 			fr_cursor_append(out, value);
 			continue;
 
@@ -774,7 +774,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 			if (slen == 0) continue;
 
 			MEM(value = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
-			fr_value_box_strdup_buffer_shallow(value, value, NULL, str, false);
+			fr_value_box_strsteal(value, value, NULL, str, false);
 			fr_cursor_append(out, value);
 
 			RDEBUG2("EXPAND %%{%s}", node->xlat->name);
@@ -818,7 +818,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 			 *	and box it.
 			 */
 			MEM(value = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
-			fr_value_box_strdup_buffer_shallow(value, value, NULL, talloc_steal(value, str), false);
+			fr_value_box_strsteal(value, value, NULL, str, false);
 			fr_cursor_append(out, value);
 
 			RDEBUG2("EXPAND %%{%s}", node->fmt);
