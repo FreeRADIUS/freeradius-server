@@ -268,6 +268,7 @@ static inline void fr_value_box_copy_meta(fr_value_box_t *dst, fr_value_box_t co
 	dst->enumv = src->enumv;
 	dst->type = src->type;
 	dst->tainted = src->tainted;
+	dst->next = NULL;	/* copy one */
 }
 
 /** Compare two values
