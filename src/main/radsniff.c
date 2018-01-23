@@ -920,8 +920,8 @@ static int rs_install_stats_processor(rs_stats_t *stats, fr_event_list_t *el,
 		rs_tv_add_ms(now, conf->stats.timeout, &(stats->quiet));
 	}
 
-	if (fr_event_timer_insert(NULL, events, (void *) &update,
-				  now, rs_stats_process, &event) < 0) {
+	if (fr_event_timer_insert(NULL, events, (void *) &event,
+				  now, rs_stats_process, &update) < 0) {
 		ERROR("Failed inserting stats event");
 		return -1;
 	}
