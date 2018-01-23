@@ -31,7 +31,7 @@ typedef struct value_box fr_value_box_t;
 extern size_t const fr_value_box_field_sizes[];
 extern size_t const fr_value_box_offsets[];
 
-#define fr_value_box_foreach(_v, _iv) for (fr_value_box_t *_iv = v; _iv; _iv = _iv->next)
+#define fr_value_box_foreach(_v, _iv) for (fr_value_box_t *_iv = _v; _iv; _iv = _iv->next)
 
 /** Union containing all data types supported by the server
  *
