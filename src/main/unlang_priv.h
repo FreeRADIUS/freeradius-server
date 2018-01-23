@@ -249,6 +249,16 @@ typedef struct {
 	unlang_t		*found;
 } unlang_frame_state_redundant_t;
 
+/** State of an update block
+ *
+ */
+typedef struct {
+	fr_cursor_t		maps;				//!< Cursor of maps to evaluate.
+	fr_cursor_t		result;				//!< Cursor of results produced by evaluating maps.
+
+	vp_map_t		*rhead;				//!< First result map.
+} unlang_frame_state_update_t;
+
 /** Our interpreter stack, as distinct from the C stack
  *
  * We don't call the modules recursively.  Instead we iterate over a list of #unlang_t and

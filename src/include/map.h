@@ -48,12 +48,22 @@ typedef struct vp_map {
 	vp_tmpl_t		*rhs;   //!< Typically describes a literal value or a src attribute to copy or compare.
 
 	FR_TOKEN		op; 	//!< The operator that controls insertion of the dst attribute.
+	fr_type_t		cast;	//!< Cast value to this type.
 
 	CONF_ITEM		*ci;	//!< Config item that the map was created from. Mainly used for
 					//!< logging validation errors.
 
 	struct vp_map		*next;	//!< The next valuepair map.
 } vp_map_t;
+
+/** A list modification
+ *
+ */
+typedef struct {
+	vp_map_t const		*map;	//!< Original map describing the change to be made.
+	vp_map_t		*mod;	//!< New map containing the destination (LHS) and
+					///< values (RHS).
+} vp_list_mod_t;
 
 #ifndef WITH_VERIFY_PTR
 #  define MAP_VERIFY(_x) rad_assert((_x)->lhs)
@@ -90,10 +100,13 @@ void		map_sort(vp_map_t **maps, fr_cmp_t cmp);
 int		map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 			  vp_map_t const *map, void *uctx) CC_HINT(nonnull (2,3,4));
 
+int		map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm);
+
+int		map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
+				REQUEST *request, vp_map_t const *map, fr_value_box_t **result);
+
 int		map_to_request(REQUEST *request, vp_map_t const *map,
 			       radius_map_getvalue_t func, void *ctx);
-
-bool		map_dst_valid(REQUEST *request, vp_map_t const *map);
 
 size_t		map_snprint(char *out, size_t outlen, vp_map_t const *map);
 

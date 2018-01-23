@@ -1498,16 +1498,33 @@ do_null_case:
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-
+/** Execute an update block
+ *
+ * Update blocks execute in two phases, first there's an evaluation phase where
+ * each input map is evaluated, outputting one or more modification maps. The modification
+ * maps detail a change that should be made to a list in the current request.
+ * The request is not modified during this phase.
+ *
+ * The second phase applies those modification maps to the current request.
+ * This re-enables the atomic functionality of update blocks provided in v2.x.x.
+ * If one map fails in the evaluation phase, no more maps are processed, and the current
+ * result is discarded.
+ */
 static unlang_action_t unlang_update(REQUEST *request,
 				     rlm_rcode_t *presult, int *priority)
 {
 	int rcode;
-	unlang_stack_t		*stack = request->stack;
-	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*instruction = frame->instruction;
-	unlang_group_t		*g = unlang_generic_to_group(instruction);
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_t			*instruction = frame->instruction;
+	unlang_group_t			*g = unlang_generic_to_group(instruction);
+	unlang_frame_state_update_t	*update;
 	vp_map_t *map;
+
+	if (!frame->repeat) {
+		MEM(frame->state = update = talloc_zero(stack, unlang_frame_state_update_t));
+		fr_cursor_init(&update->maps, &g->map);
+	}
 
 	for (map = g->map; map != NULL; map = map->next) {
 		rcode = map_to_request(request, map, map_to_vp, NULL);
