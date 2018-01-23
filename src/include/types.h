@@ -199,4 +199,12 @@ typedef enum {
 	case FR_TYPE_IPV6_ADDR: \
 	case FR_TYPE_IPV6_PREFIX
 
+/** Types which should be wrapped in double quotes when printed
+ *
+ */
+#define FR_TYPE_QUOTED \
+	FR_TYPE_STRING: \
+	case FR_TYPE_DATE: \
+	case FR_TYPE_ABINARY
+
 #endif /* _FR_TYPES_H */
