@@ -722,6 +722,7 @@ static inline vp_list_mod_t *map_list_mod_afrom_map(TALLOC_CTX *ctx, vp_map_t co
  *
  * @param[in] request	to resolve in the list in.
  * @param[in] map	to check
+ * @param[in] src_dst	a lhs or rhs tmpl to check.
  * @return
  *	- true if destination list is OK.
  *	- false if destination list is invalid.
@@ -1204,7 +1205,7 @@ static VALUE_PAIR *map_list_mod_to_vps(TALLOC_CTX *ctx, vp_list_mod_t const *vlm
 
 /** Apply the output of #map_to_list_mod to a request
  *
- * @parem request	to modify.
+ * @param request	to modify.
  * @param vlm		VP List Modification to apply.
  */
 int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
