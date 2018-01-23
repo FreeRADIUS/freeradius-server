@@ -86,8 +86,8 @@ static unlang_t xlat_instruction = {
  * @param[out] out		Where to write the result of the expansion.
  * @param[in] request		to push xlat onto.
  * @param[in] exp		node to evaluate.
- * @param[in] top_frame		Set to UNLANG_TOP_FRAME if this is the shallowest nesting level.
- *				Set to UNLANG_SUB_FRAME if this is a nested expansion.
+ * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
+ *				Set to UNLANG_SUB_FRAME if the interprer should continue.
  */
 void xlat_unlang_push(TALLOC_CTX *ctx, fr_value_box_t **out,
 		      REQUEST *request, xlat_exp_t const *exp, bool top_frame)
