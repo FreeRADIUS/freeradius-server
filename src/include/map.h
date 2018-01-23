@@ -59,10 +59,11 @@ typedef struct vp_map {
 /** A list modification
  *
  */
-typedef struct {
+typedef struct vp_list_mod {
 	vp_map_t const		*map;	//!< Original map describing the change to be made.
 	vp_map_t		*mod;	//!< New map containing the destination (LHS) and
 					///< values (RHS).
+	struct vp_list_mod	*next;
 } vp_list_mod_t;
 
 #ifndef WITH_VERIFY_PTR
