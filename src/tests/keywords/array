@@ -9,6 +9,8 @@ update request {
        Class += 0x090a0b0c
 }
 
+debug_request
+
 if (&Class != 0x01020304) {
 	test_fail
 }
