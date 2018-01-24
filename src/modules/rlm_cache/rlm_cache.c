@@ -320,7 +320,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 	 *	Alloc a pool so we don't have excessive allocs when
 	 *	gathering VALUE_PAIRs to cache.
 	 */
-	pool = talloc_pool(NULL, 8192);
+	pool = talloc_pool(NULL, 2048);
 	for (map = inst->maps; map != NULL; map = map->next) {
 		VALUE_PAIR	*to_cache = NULL;
 		fr_cursor_t	cursor;
