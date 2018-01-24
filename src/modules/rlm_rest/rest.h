@@ -131,6 +131,7 @@ typedef struct rlm_rest_section_t {
 	char const		*tls_private_key_file;
 	char const		*tls_private_key_password;
 	char const		*tls_ca_file;
+	char const		*tls_ca_info_file;
 	char const		*tls_ca_path;
 	char const		*tls_random_file;
 	bool			tls_check_cert;
