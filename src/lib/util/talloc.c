@@ -231,7 +231,7 @@ char *talloc_buffer_append_variadic_buffer(char *to, int argc, ...)
 	for (i = 0; i < argc; i++) {
 		char *arg;
 
-		arg = va_arg(ap_val, char *);
+		arg = va_arg(ap_len, char *);
 		if (!arg) continue;
 
 		from_len += (talloc_array_length(arg) - 1);
