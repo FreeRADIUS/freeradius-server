@@ -427,12 +427,11 @@ static ssize_t xlat_regex(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
  *
  * @see modcall()
  */
-static ssize_t xlat_foreach(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
+static ssize_t xlat_foreach(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 			    void const *mod_inst, UNUSED void const *xlat_inst,
 			    REQUEST *request, UNUSED char const *fmt)
 {
 	VALUE_PAIR	**pvp;
-	size_t		len;
 
 	/*
 	 *	See modcall, "FOREACH" for how this works.
@@ -440,13 +439,8 @@ static ssize_t xlat_foreach(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	pvp = (VALUE_PAIR **) request_data_reference(request, (void *)radius_get_vp, *(int const *) mod_inst);
 	if (!pvp || !*pvp) return 0;
 
-	len = fr_pair_value_snprint(*out, outlen, *pvp, 0);
-	if (is_truncated(len, outlen)) {
-		RDEBUG("Insufficient buffer space to write foreach value");
-		return -1;
-	}
-
-	return len;
+	*out = fr_pair_value_asprint(ctx, *pvp, '\0');
+	return 	talloc_array_length(*out) - 1;
 }
 #endif
 
@@ -1113,7 +1107,7 @@ int xlat_init(void)
 
 #ifdef WITH_UNLANG
 	for (i = 0; xlat_foreach_names[i] != NULL; i++) {
-		xlat_register(&xlat_foreach_inst[i], xlat_foreach_names[i], xlat_foreach, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+		xlat_register(&xlat_foreach_inst[i], xlat_foreach_names[i], xlat_foreach, NULL, NULL, 0, 0, true);
 		c = xlat_func_find(xlat_foreach_names[i]);
 		rad_assert(c != NULL);
 		c->internal = true;
