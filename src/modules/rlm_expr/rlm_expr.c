@@ -457,7 +457,8 @@ static bool get_operator(REQUEST *request, char const **string, expr_token_t *op
 		return true;
 	}
 
-	RDEBUG("Expected operator at \"%s\"", p);
+	REDEBUG("Expected operator at \"%s\"", p);
+
 	return false;
 }
 
