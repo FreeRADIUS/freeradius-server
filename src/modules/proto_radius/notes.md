@@ -131,6 +131,27 @@ connection" code, and proceed as before.
 
 ## proto_radius_connected_udp
 
+Pretty much implemented as documented below.
+
+### NAT
+
+NAT mostly works.  The main limitation left is that the client list is
+by source IP, and NOT by src/dst ip/port.  So we probably need a
+*separate* rbtree for NATed clients.
+
+i.e. `src/main/client.c`, struct `radclient_list` has to have a `rbtree_t *nat`
+
+Which is used ONLY if `client->behind_nat == true`.
+
+and the rbtree callback function compares src/dst ip/port.
+
+Since all of the calls are abstracted behind `client_add()`, etc.  We
+can just update `client.c`, and have it all automagically work.
+
+The one caveat is we don't
+
+### how it works
+
 uses the `proto_radius_udp_t` for simplicity
 
 Which has added:

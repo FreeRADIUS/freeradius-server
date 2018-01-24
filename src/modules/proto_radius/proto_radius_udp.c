@@ -1334,6 +1334,8 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 
 		rad_assert(buffer_len == sizeof(newclient));
 		memcpy(&newclient, buffer, sizeof(newclient));
+		FR_DLIST_INIT(newclient->pending);
+		FR_DLIST_INIT(newclient->packets);
 
 		/*
 		 *	This client is ONLY for a particular
