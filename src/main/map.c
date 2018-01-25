@@ -527,7 +527,66 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *vp_str,
 	return 0;
 }
 
+/** Convert a VALUE_PAIR into a map
+ *
+ * @param[in] ctx		where to allocate the map.
+ * @param[out] out		Where to write the new map (must be freed with talloc_free()).
+ * @param[in] vp		to convert.
+ * @param[in] request_def	request context to assign to LHS.
+ * @param[in] list_def		list context to assign to RHS.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int map_afrom_vp(TALLOC_CTX *ctx, vp_map_t **out, VALUE_PAIR *vp, request_refs_t request_def, pair_lists_t list_def)
 {
+	char buffer[256];
+
+	vp_map_t *map;
+
+	map = map_alloc(ctx);
+	if (!map) {
+	oom:
+		fr_strerror_printf("Out of memory");
+		return -1;
+	}
+
+	map->lhs = tmpl_alloc(map, TMPL_TYPE_ATTR, NULL, -1, T_BARE_WORD);
+	if (!map->lhs) goto oom;
+
+	map->lhs->tmpl_da = vp->da;
+	map->lhs->tmpl_request = request_def;
+	map->lhs->tmpl_list = list_def;
+	map->lhs->tmpl_num = NUM_ANY;
+	map->lhs->tmpl_tag = vp->tag;
+
+	tmpl_snprint(buffer, sizeof(buffer), map->lhs);
+	map->lhs->name = talloc_strdup(map->lhs, buffer);
+	map->lhs->len = talloc_array_length(map->lhs->name) - 1;
+	map->lhs->quote = T_BARE_WORD;
+
+	map->rhs = tmpl_alloc(map, TMPL_TYPE_DATA, NULL, -1, T_BARE_WORD);
+	if (!map->lhs) goto oom;
+
+	switch (vp->vp_type) {
+	case FR_TYPE_QUOTED:
+		map->rhs->name = fr_value_box_asprint(map->rhs, &vp->data, '"');
+		map->rhs->len = talloc_array_length(map->rhs->name) - 1;
+		map->rhs->quote = T_DOUBLE_QUOTED_STRING;
+		break;
+
+	default:
+		map->rhs->name = fr_value_box_asprint(map->rhs, &vp->data, '\0');
+		map->rhs->len = talloc_array_length(map->rhs->name) - 1;
+		map->rhs->quote = T_BARE_WORD;
+		break;
+	}
+
+	fr_value_box_copy(map->rhs, &map->rhs->tmpl_value, &vp->data);
+
+	*out = map;
+
+	return 0;
 }
 
 static void map_sort_split(vp_map_t *source, vp_map_t **front, vp_map_t **back)
