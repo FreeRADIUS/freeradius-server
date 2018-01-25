@@ -1308,7 +1308,10 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		nak:
 			while ((entry = FR_DLIST_FIRST(client->packets)) != NULL) {
 				saved = fr_ptr_to_type(dynamic_packet_t, entry, entry);
-				(void) fr_radius_tracking_entry_delete(inst->ft, saved->track);
+
+				if (saved->timestamp == saved->track->timestamp) {
+					(void) fr_radius_tracking_entry_delete(inst->ft, saved->track);
+				}
 				fr_dlist_remove(&saved->entry);
 				talloc_free(saved);
 				inst->dynamic_clients.num_pending_packets--;
