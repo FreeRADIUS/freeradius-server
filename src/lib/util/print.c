@@ -687,6 +687,11 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 
 					va_end(ap_p);		/* one time use only */
 					va_copy(ap_p, ap_q);	/* already advanced to the next argument */
+				} else {
+					out_tmp = talloc_strdup_append_buffer(out, subst);
+					TALLOC_FREE(subst);
+					if (!out_tmp) goto oom;
+					out = out_tmp;
 				}
 
 				fmt_p = p + 1;
