@@ -208,6 +208,8 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 	}
 
 	fr_cursor_append(out, value);
+	fr_cursor_next(out);				/* Advance to our first value */
+
 	return XLAT_ACTION_DONE;
 }
 
@@ -369,6 +371,7 @@ static xlat_action_t xlat_eval_pair_virtual(TALLOC_CTX *ctx, fr_cursor_t *out, R
 
 done:
 	fr_cursor_append(out, value);
+	fr_cursor_next(out);				/* Advance to our first value */
 
 	return XLAT_ACTION_DONE;
 }
@@ -420,6 +423,7 @@ static xlat_action_t xlat_eval_pair(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *
 			}
 			value->datum.int32 = 0;
 			fr_cursor_append(out, value);
+			fr_cursor_next(out);			/* Advance to our first value */
 
 			return XLAT_ACTION_DONE;
 		}
@@ -443,6 +447,7 @@ static xlat_action_t xlat_eval_pair(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *
 		value = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL, false);
 		value->datum.uint32 = count;
 		fr_cursor_append(out, value);
+		fr_cursor_next(out);				/* Advance to our first value */
 
 		return XLAT_ACTION_DONE;
 	}
@@ -464,6 +469,7 @@ static xlat_action_t xlat_eval_pair(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *
 			fr_value_box_copy(value, value, &vp->data);
 			fr_cursor_append(out, value);
 		}
+		fr_cursor_next(out);				/* Advance to our first value */
 
 		return XLAT_ACTION_DONE;
 
@@ -475,8 +481,11 @@ static xlat_action_t xlat_eval_pair(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *
 		vp = fr_cursor_current(&cursor);			/* NULLness checked above */
 		value = fr_value_box_alloc(ctx, vp->data.type, vp->da, vp->data.tainted);
 		if (!value) goto oom;
+
 		fr_value_box_copy(value, value, &vp->data);	/* Also dups taint */
 		fr_cursor_append(out, value);
+		fr_cursor_next(out);				/* Advance to our first value */
+
 		return XLAT_ACTION_DONE;
 	}
 }
