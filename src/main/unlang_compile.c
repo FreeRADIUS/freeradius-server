@@ -1091,6 +1091,32 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 	}
 
 	/*
+	 *	Fixup LHS attribute references to change NUM_ANY to NUM_ALL.
+	 */
+	switch (map->lhs->type) {
+	case TMPL_TYPE_ATTR:
+	case TMPL_TYPE_LIST:
+		if (map->lhs->tmpl_num == NUM_ANY) map->lhs->tmpl_num = NUM_ALL;
+		break;
+
+	default:
+		break;
+	}
+
+	/*
+	 *	Fixup RHS attribute references to change NUM_ANY to NUM_ALL.
+	 */
+	switch (map->rhs->type) {
+	case TMPL_TYPE_ATTR:
+	case TMPL_TYPE_LIST:
+		if (map->rhs->tmpl_num == NUM_ANY) map->rhs->tmpl_num = NUM_ALL;
+		break;
+
+	default:
+		break;
+	}
+
+	/*
 	 *	Values used by unary operators should be literal ANY
 	 *
 	 *	We then free the template and alloc a NULL one instead.
