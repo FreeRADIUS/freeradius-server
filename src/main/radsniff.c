@@ -572,7 +572,7 @@ static void rs_stats_process_counters(rs_latency_t *stats)
 	stats->interval.reused = ((long double) stats->interval.reused_total) / conf->stats.interval;
 	stats->interval.lost = ((long double) stats->interval.lost_total) / conf->stats.interval;
 
-	for (i = 0; i < RS_RETRANSMIT_MAX; i++) {
+	for (i = 1; i < RS_RETRANSMIT_MAX; i++) {
 		stats->interval.rt[i] = ((long double) stats->interval.rt_total[i]) / conf->stats.interval;
 	}
 }
@@ -582,7 +582,7 @@ static void rs_stats_print_code_fancy(rs_latency_t *stats, FR_CODE code)
 	int i;
 	bool have_rt = false;
 
-	for (i = 0; i <= RS_RETRANSMIT_MAX; i++) if (stats->interval.rt[i]) have_rt = true;
+	for (i = 1; i <= RS_RETRANSMIT_MAX; i++) if (stats->interval.rt[i]) have_rt = true;
 
 	if (!stats->interval.received && !have_rt && !stats->interval.reused) return;
 
@@ -609,7 +609,7 @@ static void rs_stats_print_code_fancy(rs_latency_t *stats, FR_CODE code)
 		if (stats->interval.lost)	INFO("\tLost      : %.3lf/s", stats->interval.lost);
 		if (stats->interval.reused)	INFO("\tID Reused : %.3lf/s", stats->interval.reused);
 
-		for (i = 0; i <= RS_RETRANSMIT_MAX; i++) {
+		for (i = 1; i <= RS_RETRANSMIT_MAX; i++) {
 			if (!stats->interval.rt[i]) continue;
 
 			if (i != RS_RETRANSMIT_MAX) {
@@ -733,7 +733,7 @@ static ssize_t rs_stats_print_code_csv(char *out, size_t outlen, rs_latency_t *s
 		      stats->interval.reused);
 	if (p >= end) return -1;
 
-	for (i = 0; i <= RS_RETRANSMIT_MAX; i++) {
+	for (i = 1; i <= RS_RETRANSMIT_MAX; i++) {
 		p += snprintf(p, outlen - (p - out), ",%.3lf", stats->interval.rt[i]);
 		if (p >= end) return -1;
 	}
@@ -1052,10 +1052,12 @@ static void rs_packet_cleanup(rs_request_t *request)
 	/*
 	 *	Now the request is done, we can update the retransmission stats
 	 */
-	if (request->rt_req > RS_RETRANSMIT_MAX) {
-		request->stats_req->interval.rt_total[RS_RETRANSMIT_MAX]++;
-	} else {
-		request->stats_req->interval.rt_total[request->rt_req]++;
+	if (request->rt_req) {
+		if (request->rt_req > RS_RETRANSMIT_MAX) {
+			request->stats_req->interval.rt_total[RS_RETRANSMIT_MAX]++;
+		} else {
+			request->stats_req->interval.rt_total[request->rt_req]++;
+		}
 	}
 
 	if (request->rt_rsp) {
