@@ -13,5 +13,5 @@ TGT_PREREQS	:= libfreeradius-util.a
 #  But it's useful for the test code to access internal functions /
 #  definitions in the trie library.
 #
-${top_srcdir}/src/tests/trie/trie.c: ${top_srcdir}/src/lib/util/trie.c
+src/tests/trie/trie.c: ${top_srcdir}/src/lib/util/trie.c
 	@[ -e $@ ] || ln -s $^ $(dir $@)
