@@ -1052,10 +1052,12 @@ static void rs_packet_cleanup(rs_request_t *request)
 	/*
 	 *	Now the request is done, we can update the retransmission stats
 	 */
-	if (request->rt_req > RS_RETRANSMIT_MAX) {
-		request->stats_req->interval.rt_total[RS_RETRANSMIT_MAX]++;
-	} else {
-		request->stats_req->interval.rt_total[request->rt_req]++;
+	if (request->rt_req) {
+		if (request->rt_req > RS_RETRANSMIT_MAX) {
+			request->stats_req->interval.rt_total[RS_RETRANSMIT_MAX]++;
+		} else {
+			request->stats_req->interval.rt_total[request->rt_req]++;
+		}
 	}
 
 	if (request->rt_rsp) {
