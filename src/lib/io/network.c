@@ -1332,7 +1332,7 @@ void fr_network_listen_read(fr_network_t *nr, fr_listen_t const *listen)
  *	- <0 on error
  *	- 0 on success
  */
-int fr_network_listen_inject(fr_network_t *nr, fr_listen_t *listen, uint8_t *packet, size_t packet_len, fr_time_t recv_time)
+int fr_network_listen_inject(fr_network_t *nr, fr_listen_t *listen, uint8_t const *packet, size_t packet_len, fr_time_t recv_time)
 {
 	int rcode;
 	fr_network_inject_t my_inject;
@@ -1346,7 +1346,7 @@ int fr_network_listen_inject(fr_network_t *nr, fr_listen_t *listen, uint8_t *pac
 	if (!listen->app_io->inject) return -1;
 
 	my_inject.listen = listen;
-	my_inject.packet = packet;
+	my_inject.packet = talloc_memdup(NULL, packet, packet_len);
 	my_inject.packet_len = packet_len;
 	my_inject.recv_time = recv_time;
 
