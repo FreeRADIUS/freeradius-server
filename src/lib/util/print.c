@@ -703,8 +703,15 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 				break;
 
 			case 'M':
-				subst = fr_value_box_list_asprint(NULL,
-								  va_arg(ap_q, fr_value_box_t const *), NULL, '"');
+			{
+				fr_value_box_t const *in = va_arg(ap_q, fr_value_box_t const *);
+
+				if (in) {
+					subst = fr_value_box_list_asprint(NULL, in, NULL, '"');
+				} else {
+					subst = talloc_strdup(NULL, "(null)");
+				}
+			}
 				goto do_splice;
 
 			case 'H':
