@@ -461,13 +461,13 @@ int map_afrom_fields(TALLOC_CTX *ctx, vp_map_t **out, char const *lhs, FR_TOKEN 
  * Takes a valuepair string with list and request qualifiers and converts it into a
  * #vp_map_t.
  *
- * @param ctx where to allocate the map.
- * @param out Where to write the new map (must be freed with talloc_free()).
- * @param vp_str string to parse.
- * @param dst_request_def to use if attribute isn't qualified.
- * @param dst_list_def to use if attribute isn't qualified.
- * @param src_request_def to use if attribute isn't qualified.
- * @param src_list_def to use if attribute isn't qualified.
+ * @param ctx			where to allocate the map.
+ * @param out			Where to write the new map (must be freed with talloc_free()).
+ * @param vp_str		string to parse.
+ * @param dst_request_def	to use if attribute isn't qualified.
+ * @param dst_list_def		to use if attribute isn't qualified.
+ * @param src_request_def	to use if attribute isn't qualified.
+ * @param src_list_def		to use if attribute isn't qualified.
  * @return
  *	- 0 on success.
  *	- < 0 on error.
