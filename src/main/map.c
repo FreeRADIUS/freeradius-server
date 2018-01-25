@@ -823,12 +823,15 @@ static inline VALUE_PAIR **map_attr_value_check_src_dst(REQUEST *request, vp_map
  * @param[in,out] ctx		to allocate modification maps in.
  * @param[out] out		Where to write the #VALUE_PAIR (s), which may be NULL if not found
  * @param[in] request		The current request.
- * @param[in] map		the map. The LHS (dst) has to be #TMPL_TYPE_ATTR or #TMPL_TYPE_LIST.
- * @param[in] result		of previous stack based rhs evaluation.
+ * @param[in] map_in		the map. The LHS (dst) has to be #TMPL_TYPE_ATTR or #TMPL_TYPE_LIST.
+ * @param[in] result_lhs	of previous stack based rhs evaluation.
  *				Must be provided for rhs types:
  *				- TMPL_TYPE_XLAT_STRUCT
- *				- TMPL_TYPE_XLAT
- *				- TMPL_TYPE_EXEC
+ *				- TMPL_TYPE_EXEC (in future)
+ * @param[in] result_rhs	of previous stack based rhs evaluation.
+ *				Must be provided for rhs types:
+ *				- TMPL_TYPE_XLAT_STRUCT
+ *				- TMPL_TYPE_EXEC (in future)
  *				Once this function returns result will be invalidated even
  *				if this function errors.
  * @return
@@ -1379,7 +1382,9 @@ static VALUE_PAIR *map_list_mod_to_vps(TALLOC_CTX *ctx, vp_list_mod_t const *vlm
 /** Print debug for a modification map
  *
  * @param[in] request	being modified.
- * @param[in] map	to print.
+ * @param[in] map	The original map.
+ * @param[in] mod	The ephemeral map which describes the change.
+ * @param[in] vb	The value in the ephemeral map.
  */
 static inline void map_list_mod_debug(REQUEST *request,
 				      vp_map_t const *map, vp_map_t const *mod, fr_value_box_t const *vb)

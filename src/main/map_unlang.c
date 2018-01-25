@@ -121,6 +121,9 @@ static unlang_action_t unlang_update(REQUEST *request, rlm_rcode_t *presult, int
 			case TMPL_TYPE_XLAT:
 				rad_assert(0);
 			error:
+				talloc_list_free(&update->lhs_result);
+				talloc_list_free(&update->rhs_result);
+
 				*presult = RLM_MODULE_FAIL;
 				*priority = instruction->actions[*presult];
 				return UNLANG_ACTION_CALCULATE_RESULT;
@@ -159,10 +162,6 @@ static unlang_action_t unlang_update(REQUEST *request, rlm_rcode_t *presult, int
 		case UNLANG_UPDATE_MAP_EXPANDED_RHS:
 			update->state = UNLANG_UPDATE_MAP_INIT;
 
-			fr_value_box_foreach(update->rhs_result, value) {
-				RDEBUG2("Individual %pV", value);
-			}
-
 			/*
 			 *	Concat the top level results together
 			 */
@@ -173,15 +172,16 @@ static unlang_action_t unlang_update(REQUEST *request, rlm_rcode_t *presult, int
 				goto error;
 			}
 
-			RDEBUG2("Aggregated %pV", update->rhs_result);
-
 			if (map_to_list_mod(update, update->vlm_next,
 					    request, map, &update->lhs_result, &update->rhs_result) < 0) goto error;
+
+			talloc_list_free(&update->lhs_result);
+			talloc_list_free(&update->rhs_result);
 
 			/*
 			 *	Wind to the end...
 			 */
-			while (*(update->vlm_next)) update->vlm_next = &(*(update->vlm_next))->next;
+			while (*update->vlm_next) update->vlm_next = &(*(update->vlm_next))->next;
 			break;
 		}
 	} while ((map = fr_cursor_next(&update->maps)));
@@ -190,7 +190,7 @@ static unlang_action_t unlang_update(REQUEST *request, rlm_rcode_t *presult, int
 	 *	No modifications...
 	 */
 	if (!update->vlm_head) {
-		RDEBUG2("Nothing to update, skipping...");
+		RDEBUG2("Nothing to update");
 		goto done;
 	}
 
