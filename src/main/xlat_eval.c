@@ -460,7 +460,7 @@ static xlat_action_t xlat_eval_pair(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
 		     	value = fr_value_box_alloc(ctx, vp->data.type, vp->da, vp->data.tainted);
-			fr_value_box_copy_shallow(value, value, &vp->data);
+			fr_value_box_copy(value, value, &vp->data);
 			fr_cursor_append(out, value);
 		}
 
@@ -474,7 +474,7 @@ static xlat_action_t xlat_eval_pair(TALLOC_CTX *ctx, fr_cursor_t *out, REQUEST *
 		vp = fr_cursor_current(&cursor);			/* NULLness checked above */
 		value = fr_value_box_alloc(ctx, vp->data.type, vp->da, vp->data.tainted);
 		if (!value) goto oom;
-		fr_value_box_copy_shallow(value, value, &vp->data);	/* Also dups taint */
+		fr_value_box_copy(value, value, &vp->data);	/* Also dups taint */
 		fr_cursor_append(out, value);
 		return XLAT_ACTION_DONE;
 	}
