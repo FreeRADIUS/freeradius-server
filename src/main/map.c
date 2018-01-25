@@ -796,7 +796,11 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		if (!n) return -1;
 
 		n->map = map;
-		memcpy(&n->mod, &map, sizeof(n->mod));
+		n->mod = map_alloc(n);	/* Need to duplicate input map, so next pointer is NULL */
+		n->mod->lhs = map->lhs;
+		n->mod->op = map->op;
+		n->mod->rhs = map->rhs;
+
 		*out = n;
 
 		return 0;
