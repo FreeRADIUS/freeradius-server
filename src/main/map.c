@@ -824,11 +824,11 @@ static inline VALUE_PAIR **map_attr_value_check_src_dst(REQUEST *request, vp_map
  * @param[out] out		Where to write the #VALUE_PAIR (s), which may be NULL if not found
  * @param[in] request		The current request.
  * @param[in] map_in		the map. The LHS (dst) has to be #TMPL_TYPE_ATTR or #TMPL_TYPE_LIST.
- * @param[in] result_lhs	of previous stack based rhs evaluation.
+ * @param[in] lhs_result	of previous stack based rhs evaluation.
  *				Must be provided for rhs types:
  *				- TMPL_TYPE_XLAT_STRUCT
  *				- TMPL_TYPE_EXEC (in future)
- * @param[in] result_rhs	of previous stack based rhs evaluation.
+ * @param[in] rhs_result	of previous stack based rhs evaluation.
  *				Must be provided for rhs types:
  *				- TMPL_TYPE_XLAT_STRUCT
  *				- TMPL_TYPE_EXEC (in future)
