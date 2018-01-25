@@ -39,10 +39,10 @@ update request {
 }
 
 #
-#  Copy the first instance (implicitly) of class
+#  Copy the first instance of class
 #
 update request {
-	Proxy-State += &Class
+	Proxy-State += &Class[0]
 }
 
 if (&Proxy-State[0] != 0x01020304) {
