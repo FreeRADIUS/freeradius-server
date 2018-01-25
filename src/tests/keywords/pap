@@ -1,5 +1,5 @@
 #
-# PRE: update if
+# PRE: update update-remove-any if
 #
 update {
 	control: !* ANY
@@ -73,7 +73,7 @@ update {
 
 # To Binary
 update {
-	control:Tmp-Octets-0 := "0x%{control:Tmp-String-1}"
+	control:Tmp-Octets-0 := "%{bin:%{control:Tmp-String-1}}"
 }
 
 # To Base64
@@ -106,7 +106,7 @@ update {
 
 # To Binary
 update {
-	control:Tmp-Octets-0 := "0x%{control:Tmp-String-1}"
+	control:Tmp-Octets-0 := "%{bin:%{control:Tmp-String-1}}"
 }
 
 # To Base64
