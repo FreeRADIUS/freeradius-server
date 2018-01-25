@@ -24,8 +24,30 @@ sqlippool {
 	# IP lease duration. (Leases expire even if Acct Stop packet is lost)
 	lease_duration = 3600
 
-	# protocol to use.  The default is IPv4.
-#	ipv6 = yes
+	#
+	#  As of 3.0.16, the 'ipv6 = yes' configuration is deprecated.
+	#  You should use the "attribute_name" configuration item
+	#  below, instead.
+	#
+
+	#
+	#  The attribute to use for IP address assignment.  The
+	#  default is Framed-IP-Address.  You can change this to any
+	#  attribute which is IPv4 or IPv6.
+	#
+	#  e.g. Framed-IPv6-Prefix, or Delegated-IPv6-Prefix.
+	#
+	#  As of 3.0.16, all of the default queries have been updated to use
+	#  this attribute_name.  So you can do IPv6 address assignment simply
+	#  by putting IPv6 addresses into the pool, and changing the following
+	#  line to "Framed-IPv6-Prefix"
+	#
+	attribute_name = Framed-IP-Address
+
+	#
+	#  Assign the IP address, even if the attribute already exists
+	#
+#	allow_duplicates = no
 
 	# Attribute which should be considered unique per NAS
 	#
@@ -53,11 +75,11 @@ sqlippool {
 	#  which writes Module-Success-Message message.
 	#
 	messages {
-		exists = "Existing IP: %{reply:Framed-IP-Address} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+		exists = "Existing IP: %{reply:${..attribute_name}} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
 
-		success = "Allocated IP: %{reply:Framed-IP-Address} from %{control:Pool-Name} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+		success = "Allocated IP: %{reply:${..attribute_name}} from %{control:Pool-Name} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
 
-		clear = "Released IP %{Framed-IP-Address} (did %{Called-Station-Id} cli %{Calling-Station-Id} user %{User-Name})"
+		clear = "Released IP ${..attribute_name} (did %{Called-Station-Id} cli %{Calling-Station-Id} user %{User-Name})"
 
 		failed = "IP Allocation FAILED from %{control:Pool-Name} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
 

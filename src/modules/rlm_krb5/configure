@@ -2939,7 +2939,7 @@ $as_echo_n "checking krb5-config reported version... " >&6; }
 		krb5_version_raw=$($krb5_config --version)
 
 				krb5_version=$(echo "$krb5_version_raw" | head -n 1 | \
-			awk '{split($(4),v,"."); if (v["3"] == "") v["3"] = "0"; print v["1"]v["2"]v["3"] }')
+			awk '{split($(4),v,"."); if (v["3"] = "") v["3"] = "0"; print v["1"]v["2"]v["3"] }')
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: ${krb5_version_raw} ($krb5_version)" >&5
 $as_echo "${krb5_version_raw} ($krb5_version)" >&6; }
 
@@ -3913,7 +3913,7 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
-		if test "x$ac_cv_lib_krb5_krb5_verify_user_opt" == xyes; then
+		if test "x$ac_cv_lib_krb5_krb5_verify_user_opt" = xyes; then
 			krb5_api_type='heimdal'
 		else
 			krb5_api_type='mit'
@@ -4114,13 +4114,13 @@ _ACEOF
 fi
 done
 
-	if test "x$ac_cv_func_krb5_get_error_message" == xyes; then
+	if test "x$ac_cv_func_krb5_get_error_message" = xyes; then
 		krb5mod_cflags="${krb5mod_cflags} -DHAVE_KRB5_GET_ERROR_MESSAGE"
 	fi
-	if test "x$ac_cv_func_krb5_free_error_message" == xyes; then
+	if test "x$ac_cv_func_krb5_free_error_message" = xyes; then
 		krb5mod_cflags="${krb5mod_cflags} -DHAVE_KRB5_FREE_ERROR_MESSAGE"
 	fi
-	if test "x$ac_cv_func_krb5_free_error_string" == xyes; then
+	if test "x$ac_cv_func_krb5_free_error_string" = xyes; then
 		krb5mod_cflags="${krb5mod_cflags} -DHAVE_KRB5_FREE_ERROR_STRING"
 	fi
 
@@ -4301,7 +4301,7 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
-		if test "x$ac_cv_lib_krb5_krb5_is_thread_safe" == xyes; then
+		if test "x$ac_cv_lib_krb5_krb5_is_thread_safe" = xyes; then
 			if test "$cross_compiling" = yes; then :
   { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
 $as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
@@ -4334,7 +4334,7 @@ fi
 		krb5threadsafe=""
 	fi
 
-	if test "$krb5_api_type" == "mit"; then
+	if test "$krb5_api_type" = "mit"; then
 
 
 ac_safe=`echo "com_err.h" | sed 'y%./+-%__pm%'`

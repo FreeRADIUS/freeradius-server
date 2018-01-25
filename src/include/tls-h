@@ -137,6 +137,7 @@ typedef struct _tls_session_t {
 	unsigned int 	(*record_minus)(record_t *buf, void *ptr, unsigned int size);
 
 	bool		invalid_hb_used;		//!< Whether heartbleed attack was detected.
+	bool		connected;			//!< whether the outgoing socket is connected
 
 	/*
 	 *	Framed-MTU attribute in RADIUS, if present, can also be used to set this
@@ -293,8 +294,11 @@ void 		cbtls_msg(int write_p, int msg_version, int content_type, void const *buf
 			  void *arg);
 int		cbtls_verify(int ok, X509_STORE_CTX *ctx);
 
+/* threads.c */
+int		tls_mutexes_init(void);
+
 /* TLS */
-void		tls_global_init(void);
+int		tls_global_init(bool spawn_flag, bool check);
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 int		tls_global_version_check(char const *acknowledged);
 #endif
@@ -308,6 +312,7 @@ tls_session_t	*tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 tls_session_t	*tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, int fd);
 fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs);
 fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs);
+fr_tls_server_conf_t *tls_server_conf_alloc(TALLOC_CTX *ctx);
 SSL_CTX		*tls_init_ctx(fr_tls_server_conf_t *conf, int client);
 int 		tls_handshake_recv(REQUEST *, tls_session_t *ssn);
 int 		tls_handshake_send(REQUEST *, tls_session_t *ssn);
@@ -355,6 +360,9 @@ struct fr_tls_server_conf_t {
 	bool		disable_tlsv1_1;
 	bool		disable_tlsv1_2;
 
+	char const	*tls_min_version;
+	char const	*tls_max_version;
+
 	/*
 	 *	Always < 4096 (due to radius limit), 0 by default = 1024
 	 */
@@ -364,6 +372,7 @@ struct fr_tls_server_conf_t {
 	bool		allow_expired_crl;
 	char const	*check_cert_cn;
 	char const	*cipher_list;
+	bool		cipher_server_preference;
 	char const	*check_cert_issuer;
 
 	bool     	session_cache_enable;

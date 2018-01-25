@@ -145,6 +145,17 @@ if test "x$GCC" = "xyes"; then
 fi
 
 dnl #
+dnl # -Wno-unknown-warning-option means the compiler doesn't complain about diag pragmas
+dnl # for warnings it doesn't understand.  This may sound like a bad idea, but consider
+dnl # the number of different compiler versions we build under, and the fact that the
+dnl # more anally retentive warnings are likely to be added in later versions.
+dnl #
+AX_CC_NO_UNKNOWN_WARNING_OPTION_FLAG
+if test "x$ax_cv_cc_no_unknown_warning_option_flag" = "xyes"; then
+  CFLAGS="$CFLAGS -Wno-unknown-warning-option"
+fi
+
+dnl #
 dnl #  -Qunused-arguments means the compiler won't complain about unsupported arguments
 dnl #
 AX_CC_QUNUSED_ARGUMENTS_FLAG
@@ -152,6 +163,12 @@ if test "x$ax_cv_cc_qunused_arguments_flag" = "xyes"; then
   CFLAGS="$CFLAGS -Qunused-arguments"
   LDFLAGS="$LDFLAGS -Qunused-arguments"
 fi
+
+dnl #
+dnl # Check for presence of -Wno-date-time warning. Older compilers
+dnl # don't have it, and newer compilers warn without it...
+dnl #
+AX_CC_NO_DATE_TIME_FLAG
 
 dnl #
 dnl #  Compile in large (2G+) file support.
@@ -430,6 +447,7 @@ AC_ARG_WITH(dhcp,
 if test "x$WITH_DHCP" = "xyes"; then
   AC_DEFINE(WITH_DHCP, [1], [define if you want DHCP support])
 fi
+AC_SUBST(WITH_DHCP)
 
 dnl #
 dnl #  Allow the user to specify a list of modules to be linked
@@ -596,6 +614,23 @@ else
   openssl_version_check_config=
 fi
 AC_SUBST([openssl_version_check_config])
+
+dnl #
+dnl #  extra argument: --enable-reproducible-builds
+dnl #
+AC_ARG_ENABLE(reproducible-builds,
+[AS_HELP_STRING([--enable-reproducible-builds],
+                [ensure the build does not change each time])],
+[ case "$enableval" in
+  yes)
+    AC_DEFINE(ENABLE_REPRODUCIBLE_BUILDS, [1],
+              [Define to ensure each build is the same])
+    reproducible_builds=yes
+    ;;
+  *)
+    reproducible_builds=no
+  esac ]
+)
 
 
 dnl #############################################################
@@ -1004,6 +1039,7 @@ AC_CHECK_HEADERS( \
   grp.h \
   inttypes.h \
   limits.h \
+  linux/if_packet.h \
   malloc.h \
   netdb.h \
   netinet/in.h \
@@ -1104,9 +1140,12 @@ if test "x$WITH_OPENSSL" = xyes; then
     AC_DEFINE(HAVE_OPENSSL_SSL_H, 1, [Define to 1 if you have the <openssl/ssl.h> header file.])
 
     AC_CHECK_HEADERS( \
+      openssl/asn1.h \
+      openssl/conf.h \
       openssl/crypto.h \
       openssl/err.h \
       openssl/evp.h \
+      openssl/hmac.h \
       openssl/md5.h \
       openssl/md4.h \
       openssl/sha.h \
@@ -1174,6 +1213,20 @@ if test "x$WITH_OPENSSL" = xyes; then
         AC_MSG_RESULT([cross-compiling (assuming yes)])
       ]
     )
+    dnl #
+    dnl #  Check if the new HMAC_CTX interface is defined
+    dnl #
+    AC_CHECK_FUNCS( \
+      SSL_get_client_random \
+      SSL_get_server_random \
+      SSL_SESSION_get_master_key \
+      HMAC_CTX_new \
+      HMAC_CTX_free \
+      ASN1_STRING_get0_data \
+      CONF_modules_load_file \
+      CRYPTO_set_id_callback \
+      CRYPTO_set_locking_callback
+    )
     CPPFLAGS="$old_CPPFLAGS"
   fi
 
@@ -1182,7 +1235,6 @@ if test "x$WITH_OPENSSL" = xyes; then
   AC_SUBST(OPENSSL_LDFLAGS)
   AC_SUBST(OPENSSL_CPPFLAGS)
   export OPENSSL_LIBS OPENSSL_LDFLAGS OPENSSL_CPPFLAGS
-  AC_CHECK_FUNCS(SSL_get_client_random,SSL_get_server_random)
 fi
 
 dnl #
@@ -1196,7 +1248,7 @@ else
   dnl #
   smart_try_dir="$pcap_include_dir"
   FR_SMART_CHECK_INCLUDE([pcap.h])
-  if test "x$ac_cv_header_pcap_h" == "xyes"; then
+  if test "x$ac_cv_header_pcap_h" = "xyes"; then
     AC_DEFINE(HAVE_PCAP_H, 1, [Define to 1 if you have the <pcap.h> header file.])
     AC_SUBST(PCAP_LIBS)
     AC_SUBST(PCAP_LDFLAGS)
@@ -1214,7 +1266,7 @@ else
   dnl #
   smart_try_dir="$collectdclient_include_dir"
   FR_SMART_CHECK_INCLUDE([collectd/client.h])
-  if test "x$ac_cv_header_collectd_client_h" == "xyes"; then
+  if test "x$ac_cv_header_collectd_client_h" = "xyes"; then
     AC_DEFINE(HAVE_COLLECTDC_H, 1, [Define to 1 if you have the `collectdclient' library (-lcollectdclient).])
     AC_SUBST(COLLECTDC_LIBS)
     AC_SUBST(COLLECTDC_LDFLAGS)
@@ -1234,7 +1286,7 @@ else
   dnl #
   smart_try_dir="$cap_include_dir"
   FR_SMART_CHECK_INCLUDE([sys/capability.h])
-  if test "x$ac_cv_header_sys_capability_h" == "xyes"; then
+  if test "x$ac_cv_header_sys_capability_h" = "xyes"; then
     AC_DEFINE(HAVE_CAPABILITY_H, 1, [Define to 1 if you have the <sys/capability.h> header file.])
   else
     AC_MSG_WARN([cap headers not found, will not perform debugger checks. Use --with-cap-include-dir=<path>.])
@@ -1481,7 +1533,7 @@ AC_TYPE_SIGNAL
 dnl #
 dnl #  Check if we have utmpx.h
 dnl #  if so, check if struct utmpx has entry ut_xtime
-dnl #  if not, set it to define ut_xtime == ut_tv.tv_sec
+dnl #  if not, set it to define ut_xtime = ut_tv.tv_sec
 dnl #
 if test "x$ac_cv_header_utmpx_h" = "xyes"; then
  FR_CHECK_STRUCT_HAS_MEMBER([#include <utmpx.h>], [struct utmpx], ut_xtime)
@@ -2194,13 +2246,21 @@ dnl #
 AC_CONFIG_SUBDIRS($mysubdirs)
 AC_SUBST(MODULES)
 
+dnl #
+dnl #  If reproducible builds are not enabled, disable
+dnl #  -Wdate-time so the compiler doesn't croak.
+dnl #
+if test "x$ax_cv_cc_no_date_time_flag" = "xyes" && test "x$reproducible_builds" != "xyes"; then
+  CFLAGS="-Wno-date-time $CFLAGS"
+fi
+
 dnl #############################################################
 dnl #
 dnl #  Add -Werror last, so it doesn't interfere with autoconf's
 dnl #  test programs.
 dnl #
 dnl #############################################################
-if test "x$werror" == "xyes"; then
+if test "x$werror" = "xyes"; then
   CFLAGS="-Werror $CFLAGS"
 fi
 

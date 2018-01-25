@@ -1,0 +1,10 @@
+# Use this if you want to be able to apply radiusprofile
+# Auxiliary class directly to Users in the directory.
+# Install with:
+#    ldbmodify -H /usr/local/samba/private/sam.ldb \
+#     user.ldif \
+#     --option="dsdb:schema update allowed"=true
+dn: CN=User,CN=Schema,CN=Configuration,dc=samba4,dc=internal
+changetype: modify
+add: auxiliaryClass
+auxiliaryClass: radiusprofile

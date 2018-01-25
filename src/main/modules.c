@@ -155,7 +155,7 @@ static int check_module_magic(CONF_SECTION *cs, module_t const *module)
 	return 0;
 }
 
-lt_dlhandle lt_dlopenext(char const *name)
+fr_dlhandle fr_dlopenext(char const *name)
 {
 	int		flags = RTLD_NOW;
 	void		*handle;
@@ -273,19 +273,19 @@ lt_dlhandle lt_dlopenext(char const *name)
 	return handle;
 }
 
-void *lt_dlsym(lt_dlhandle handle, char const *symbol)
+void *fr_dlsym(fr_dlhandle handle, char const *symbol)
 {
 	return dlsym(handle, symbol);
 }
 
-int lt_dlclose(lt_dlhandle handle)
+int fr_dlclose(fr_dlhandle handle)
 {
 	if (!handle) return 0;
 
 	return dlclose(handle);
 }
 
-char const *lt_dlerror(void)
+char const *fr_dlerror(void)
 {
 	return dlerror();
 }
@@ -516,7 +516,7 @@ static module_entry_t *module_dlopen(CONF_SECTION *cs, char const *module_name)
 	/*
 	 *	Keep the handle around so we can dlclose() it.
 	 */
-	handle = lt_dlopenext(module_name);
+	handle = fr_dlopenext(module_name);
 	if (!handle) {
 		cf_log_err_cs(cs, "Failed to link to module '%s': %s", module_name, fr_strerror());
 		return NULL;
@@ -578,7 +578,7 @@ static int module_conf_parse(module_instance_t *node, void **handle)
 	 */
 	if (node->entry->module->inst_size) {
 		*handle = talloc_zero_array(node, uint8_t, node->entry->module->inst_size);
-		rad_assert(handle);
+		rad_assert(*handle);
 
 		talloc_set_name(*handle, "rlm_%s_t",
 				node->entry->module->name ? node->entry->module->name : "config");
@@ -1248,7 +1248,8 @@ static int load_component_section(CONF_SECTION *cs,
 
 static int load_byserver(CONF_SECTION *cs)
 {
-	rlm_components_t comp, found;
+	rlm_components_t comp;
+	bool found;
 	char const *name = cf_section_name2(cs);
 	rbtree_t *components;
 	virtual_server_t *server = NULL;
@@ -1286,7 +1287,7 @@ static int load_byserver(CONF_SECTION *cs)
 	 *	Loop over all of the known components, finding their
 	 *	configuration section, and loading it.
 	 */
-	found = 0;
+	found = false;
 	for (comp = 0; comp < MOD_COUNT; ++comp) {
 		CONF_SECTION *subcs;
 
@@ -1346,7 +1347,7 @@ static int load_byserver(CONF_SECTION *cs)
 
 		server->subcs[comp] = subcs;
 
-		found = 1;
+		found = true;
 	} /* loop over components */
 
 	/*

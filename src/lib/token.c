@@ -182,10 +182,10 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 
 	/* Skip whitespace */
 	p = *ptr;
-	while (*p && isspace((int) *p))
-		p++;
 
-	if (*p == 0) {
+	while (*p && isspace((int) *p)) p++;
+
+	if (!*p) {
 		*ptr = p;
 		return T_EOL;
 	}
@@ -197,105 +197,15 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 		if (TOKEN_MATCH(p, t->name)) {
 			strcpy(buf, t->name);
 			p += strlen(t->name);
-			while (isspace((int) *p))
-				p++;
-			*ptr = p;
-			return (FR_TOKEN) t->number;
+
+			rcode = t->number;
+			goto done;
 		}
 	}
 
 	/* Read word. */
 	quote = '\0';
-	if ((*p == '"') ||
-	    (*p == '\'') ||
-	    (*p == '`')) {
-		quote = *p;
-		end = false;
-		p++;
-	}
-	s = buf;
-
-	while (*p && buflen-- > 1) {
-		if (unescape && quote && (*p == '\\')) {
-			p++;
-
-			switch (*p) {
-				case 'r':
-					*s++ = '\r';
-					break;
-				case 'n':
-					*s++ = '\n';
-					break;
-				case 't':
-					*s++ = '\t';
-					break;
-				case '\0':
-					*s++ = '\\';
-					p--; /* force EOS */
-					break;
-				default:
-					if (*p >= '0' && *p <= '9' &&
-					    sscanf(p, "%3o", &x) == 1) {
-						*s++ = x;
-						p += 2;
-					} else
-						*s++ = *p;
-					break;
-			}
-			p++;
-			continue;
-		}
-
-		/*
-		 *	Deal with quotes and escapes, but don't mash
-		 *	escaped characters into their non-escaped
-		 *	equivalent.
-		 */
-		if (!unescape && quote && (*p == '\\')) {
-			if (!p[1]) continue; /* force end of string */
-
-			if (p[1] == quote) { /* convert '\'' --> ' */
-				p++;
-			} else {
-				*(s++) = *(p++);
-			}
-			*(s++) = *(p++);
-			continue;
-		}
-
-		if (quote && (*p == quote)) {
-			end = true;
-			p++;
-			break;
-		}
-		if (!quote) {
-			if (isspace((int) *p))
-				break;
-			if (tok) {
-				for (t = tokenlist; t->name; t++)
-					if (TOKEN_MATCH(p, t->name))
-						break;
-				if (t->name != NULL)
-					break;
-			}
-			if (*p == ',') break; /* hack */
-		}
-		*s++ = *p++;
-	}
-	*s++ = 0;
-
-	if (quote && !end) {
-		fr_strerror_printf("Unterminated string");
-		return T_INVALID;
-	}
-
-	/* Skip whitespace again. */
-	while (*p && isspace((int) *p))
-		p++;
-	*ptr = p;
-
-	/* we got SOME form of output string, even if it is empty */
-	switch (quote) {
+	switch (*p) {
 	default:
 		rcode = T_BARE_WORD;
 		break;
@@ -312,6 +222,123 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 		rcode = T_BACK_QUOTED_STRING;
 		break;
 	}
+
+	if (rcode != T_BARE_WORD) {
+		quote = *p;
+		end = false;
+		p++;
+	}
+	s = buf;
+
+	while (*p && buflen-- > 1) {
+		/*
+		 *	We're looking for strings.  Stop on spaces, or
+		 *	(if given a token list), on a token, or on a
+		 *	comma.
+		 */
+		if (!quote) {
+			if (isspace((int) *p)) {
+				break;
+			}
+
+			if (tok) {
+				for (t = tokenlist; t->name; t++) {
+					if (TOKEN_MATCH(p, t->name)) {
+						*s++ = 0;
+						goto done;
+					}
+				}
+			}
+			if (*p == ',') break;
+
+			/*
+			 *	Copy the character over.
+			 */
+			*s++ = *p++;
+			continue;
+		} /* else there was a quotation character */
+
+		/*
+		 *	Un-escaped quote character.  We're done.
+		 */
+		if (*p == quote) {
+			end = true;
+			p++;
+			break;
+		}
+
+		/*
+		 *	Everything but backslash gets copied over.
+		 */
+		if (*p != '\\') {
+			*s++ = *p++;
+			continue;
+		}
+
+		/*
+		 *	There's nothing after the backslash, it's an error.
+		 */
+		if (!p[1]) {
+			fr_strerror_printf("Unterminated string");
+			return T_INVALID;
+		}
+
+		if (unescape) {
+			p++;
+
+			switch (*p) {
+				case 'r':
+					*s++ = '\r';
+					break;
+				case 'n':
+					*s++ = '\n';
+					break;
+				case 't':
+					*s++ = '\t';
+					break;
+
+				default:
+					if (*p >= '0' && *p <= '9' &&
+					    sscanf(p, "%3o", &x) == 1) {
+						*s++ = x;
+						p += 2;
+					} else
+						*s++ = *p;
+					break;
+			}
+			p++;
+
+		} else {
+			/*
+			 *	Convert backslash-quote to quote, but
+			 *	leave everything else alone.
+			 */
+			if (p[1] == quote) { /* convert '\'' --> ' */
+				p++;
+			} else {
+				if (buflen < 2) {
+					fr_strerror_printf("Truncated input");
+					return T_INVALID;
+				}
+
+				*(s++) = *(p++);
+			}
+			*(s++) = *(p++);
+		}
+	}
+
+	*s++ = 0;
+
+	if (quote && !end) {
+		fr_strerror_printf("Unterminated string");
+		return T_INVALID;
+	}
+
+done:
+	/* Skip whitespace again. */
+	while (*p && isspace((int) *p)) p++;
+
+	*ptr = p;
 
 	return rcode;
 }
@@ -369,7 +396,7 @@ FR_TOKEN getstring(char const **ptr, char *buf, int buflen, bool unescape)
 		return gettoken(ptr, buf, buflen, unescape);
 	}
 
-	return getthing(ptr, buf, buflen, 0, fr_tokens, unescape);
+	return getthing(ptr, buf, buflen, false, fr_tokens, unescape);
 }
 
 /*

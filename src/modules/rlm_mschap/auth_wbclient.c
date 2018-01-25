@@ -35,6 +35,42 @@ RCSID("$Id$")
 
 #define NT_LENGTH 24
 
+/** Use Winbind to normalise a username
+ *
+ * @param[in] tctx The talloc context where the result is parented from
+ * @param[in] ctx The winbind context
+ * @param[in] dom_name The domain of the user
+ * @param[in] name The username (without the domain) to be normalised
+ * @return The username with the casing according to the Winbind remote server,
+ *         or NULL if the username could not be found.
+ */
+static char *wbclient_normalise_username(TALLOC_CTX *tctx, struct wbcContext *ctx, char const *dom_name, char const *name)
+{
+	struct wbcDomainSid sid;
+	enum wbcSidType name_type;
+	wbcErr err;
+	char *res_domain = NULL;
+	char *res_name = NULL;
+	char *res = NULL;
+
+	/* Step 1: Convert a name to a sid */
+	err = wbcCtxLookupName(ctx, dom_name, name, &sid, &name_type);
+	if (!WBC_ERROR_IS_OK(err))
+		return NULL;
+
+	/* Step 2: Convert the sid back to a name */
+	err = wbcCtxLookupSid(ctx, &sid, &res_domain, &res_name, &name_type);
+	if (!WBC_ERROR_IS_OK(err))
+		return NULL;
+
+	MEM(res = talloc_strdup(tctx, res_name));
+
+	wbcFreeMemory(res_domain);
+	wbcFreeMemory(res_name);
+
+	return res;
+}
+
 /*
  *	Check NTLM authentication direct to winbind via
  *	Samba's libwbclient library
@@ -42,6 +78,7 @@ RCSID("$Id$")
  *	Returns:
  *	 0    success
  *	 -1   auth failure
+ *	 -2   failed connecting to AD
  *	 -648 password expired
  */
 int do_auth_wbclient(rlm_mschap_t *inst, REQUEST *request,
@@ -49,7 +86,7 @@ int do_auth_wbclient(rlm_mschap_t *inst, REQUEST *request,
 		     uint8_t nthashhash[NT_DIGEST_LENGTH])
 {
 	int rcode = -1;
-	struct wbcContext *wb_ctx;
+	struct wbcContext *wb_ctx = NULL;
 	struct wbcAuthUserParams authparams;
 	wbcErr err;
 	int len;
@@ -124,8 +161,45 @@ int do_auth_wbclient(rlm_mschap_t *inst, REQUEST *request,
 
 	err = wbcCtxAuthenticateUserEx(wb_ctx, &authparams, &info, &error);
 
-	fr_connection_release(inst->wb_pool, wb_ctx);
+	if (err == WBC_ERR_AUTH_ERROR && inst->wb_retry_with_normalised_username) {
+		VALUE_PAIR *vp_response, *vp_challenge;
+		char *normalised_username = wbclient_normalise_username(request, wb_ctx, authparams.domain_name, authparams.account_name);
+		if (normalised_username) {
+			RDEBUG2("Starting retry, normalised username %s to %s", authparams.account_name, normalised_username);
+			if (strcmp(authparams.account_name, normalised_username) != 0) {
+				authparams.account_name = normalised_username;
 
+				/* Set PW_MS_CHAP_USER_NAME */
+				if (!fr_pair_make(request->packet, &request->packet->vps, "MS-CHAP-User-Name", normalised_username, T_OP_SET)) {
+					RERROR("Failed creating MS-CHAP-User-Name");
+					goto normalised_username_retry_failure;
+				}
+
+				RDEBUG2("retrying authentication request user='%s' domain='%s'", authparams.account_name,
+												authparams.domain_name);
+
+				/* Recalculate hash */
+				if (!(vp_challenge = fr_pair_find_by_num(request->packet->vps, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT, TAG_ANY))) {
+					RERROR("Unable to get MS-CHAP-Challenge");
+					goto normalised_username_retry_failure;
+				}
+				if (!(vp_response = fr_pair_find_by_num(request->packet->vps, PW_MSCHAP2_RESPONSE, VENDORPEC_MICROSOFT, TAG_ANY))) {
+					RERROR("Unable to get MS-CHAP2-Response");
+					goto normalised_username_retry_failure;
+				}
+				mschap_challenge_hash(vp_response->vp_octets + 2,
+									vp_challenge->vp_octets,
+									normalised_username,
+									authparams.password.response.challenge);
+
+				err = wbcCtxAuthenticateUserEx(wb_ctx, &authparams, &info, &error);
+			}
+normalised_username_retry_failure:
+			talloc_free(normalised_username);
+		}
+	}
+
+	fr_connection_release(inst->wb_pool, wb_ctx);
 
 	/*
 	 * Try and give some useful feedback on what happened. There are only
@@ -139,6 +213,7 @@ int do_auth_wbclient(rlm_mschap_t *inst, REQUEST *request,
 		memcpy(nthashhash, info->user_session_key, NT_DIGEST_LENGTH);
 		break;
 	case WBC_ERR_WINBIND_NOT_AVAILABLE:
+		rcode = -2;
 		RERROR("Unable to contact winbind!");
 		RDEBUG2("Check that winbind is running and that FreeRADIUS has");
 		RDEBUG2("permission to connect to the winbind privileged socket.");
@@ -155,8 +230,8 @@ int do_auth_wbclient(rlm_mschap_t *inst, REQUEST *request,
 		/*
 		 * The password needs to be changed, so set rcode appropriately.
 		 */
-		if (error->nt_status & NT_STATUS_PASSWORD_EXPIRED ||
-		    error->nt_status & NT_STATUS_PASSWORD_MUST_CHANGE) {
+		if (error->nt_status == NT_STATUS_PASSWORD_EXPIRED ||
+		    error->nt_status == NT_STATUS_PASSWORD_MUST_CHANGE) {
 			rcode = -648;
 		}
 
@@ -176,6 +251,7 @@ int do_auth_wbclient(rlm_mschap_t *inst, REQUEST *request,
 		 *   WBC_ERR_NO_MEMORY
 		 * neither of which are particularly likely.
 		 */
+		rcode = -2;
 		if (error && error->display_string) {
 			REDEBUG2("libwbclient error: wbcErr %d (%s)", err, error->display_string);
 		} else {

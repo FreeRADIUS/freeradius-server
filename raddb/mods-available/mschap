@@ -78,6 +78,15 @@ mschap {
 #	winbind_username = "%{mschap:User-Name}"
 #	winbind_domain = "%{mschap:NT-Domain}"
 
+	# When using single sign-on with a winbind connection and the
+	# client uses a different casing for the username than the
+	# casing is according to the backend, reauth may fail because
+	# of some Windows internals. This switch tries to find the
+	# user in the correct casing in the backend, and retry
+	# authentication with that username.
+	#
+#	winbind_retry_with_normalised_username = no
+
 	#
 	#  Information for the winbind connection pool.  The configuration
 	#  items below are the same for all modules which use the new

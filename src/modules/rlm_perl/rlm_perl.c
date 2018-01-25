@@ -124,6 +124,8 @@ static const CONF_PARSER module_config[] = {
  */
 EXTERN_C void boot_DynaLoader(pTHX_ CV* cv);
 
+static int perl_sys_init3_called = 0;
+
 #ifdef USE_ITHREADS
 #  define dl_librefs "DynaLoader::dl_librefs"
 #  define dl_modules "DynaLoader::dl_modules"
@@ -295,6 +297,44 @@ static XS(XS_radiusd_radlog)
 	XSRETURN_NO;
 }
 
+/*
+ *	This is a wraper for radius_axlat
+ *	Now users are able to get data that is accessible only via xlat
+ *	e.g. %{client:...}
+ *	Call syntax is radiusd::xlat(string), string will be handled the
+ *	same way it is described in EXPANSIONS section of man unlang
+ */
+static XS(XS_radiusd_xlat)
+{
+	dXSARGS;
+	char *in_str;
+	char *expanded;
+	ssize_t slen;
+	SV *rad_requestp_sv;
+	REQUEST *request;
+
+	if (items != 1) croak("Usage: radiusd::xlat(string)");
+
+	rad_requestp_sv = get_sv("RAD___REQUESTP", 0);
+	if (rad_requestp_sv == NULL) croak("Can not evalue xlat, RAD___REQUESTP is not set!");
+
+	request = INT2PTR(REQUEST *, SvIV(rad_requestp_sv));
+
+	in_str = (char *) SvPV(ST(0), PL_na);
+	expanded = NULL;
+	slen = radius_axlat(&expanded, request, in_str, NULL, NULL);
+
+	if (slen < 0) {
+		REDEBUG("Error parsing xlat '%s'", in_str);
+		XSRETURN_UNDEF;
+	}
+
+
+	XST_mPV(0, expanded);
+	talloc_free(expanded);
+	XSRETURN(1);
+}
+
 static void xs_init(pTHX)
 {
 	char const *file = __FILE__;
@@ -303,6 +343,7 @@ static void xs_init(pTHX)
 	newXS("DynaLoader::boot_DynaLoader", boot_DynaLoader, file);
 
 	newXS("radiusd::radlog",XS_radiusd_radlog, "rlm_perl");
+	newXS("radiusd::xlat",XS_radiusd_xlat, "rlm_perl");
 }
 
 /*
@@ -527,7 +568,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Create tweak the server's environment to support
 	 *	perl. Docs say only call this once... Oops.
 	 */
-	PERL_SYS_INIT3(&argc, &embed, &envp);
+	if (!perl_sys_init3_called) {
+		PERL_SYS_INIT3(&argc, &embed, &envp);
+		perl_sys_init3_called = 1;
+	}
 
 	/*
 	 *	Allocate a new perl interpreter to do the parsing
@@ -610,10 +654,24 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 			   const char *hash_name, const char *list_name)
 {
 	VALUE_PAIR *vp;
+	char *tbuff;
+	size_t tbufflen = 1024;
 
 	hv_undef(rad_hv);
 
 	vp_cursor_t cursor;
+
+	/*
+	 *	Find out how much room to allocate.
+	 */
+	for (vp = fr_cursor_init(&cursor, vps);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
+		if (((vp->length * 2) + 3) > tbufflen) {
+			tbufflen = (vp->vp_length * 2) + 3;
+		}
+	}
+	tbuff = talloc_array(request, char, tbufflen);
 
 	RINDENT();
 	fr_pair_list_sort(vps, fr_pair_cmp_by_da_tag);
@@ -621,12 +679,9 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 	     	VALUE_PAIR *next;
-
 	     	char const *name;
-		char namebuf[256];
-		char buffer[1024];
-
 		size_t len;
+		char namebuf[256];
 
 		/*
 		 *	Tagged attributes are added to the hash with name
@@ -671,15 +726,17 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 			break;
 
 		default:
-			len = vp_prints_value(buffer, sizeof(buffer), vp, 0);
+			len = vp_prints_value(tbuff, tbufflen, vp, 0);
 			RDEBUG("$%s{'%s'} = &%s:%s -> '%s'", hash_name, vp->da->name,
-			       list_name, vp->da->name, buffer);
+			       list_name, vp->da->name, tbuff);
 			(void)hv_store(rad_hv, name, strlen(name),
-				       newSVpvn(buffer, truncate_len(len, sizeof(buffer))), 0);
+				       newSVpvn(tbuff, truncate_len(len, tbufflen)), 0);
 			break;
 		}
 	}
 	REXDENT();
+
+	talloc_free(tbuff);
 }
 
 /*
@@ -696,14 +753,20 @@ static void pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char
 	STRLEN len;
 
 	if (!SvOK(sv)) {
-	fail:
-		REDEBUG("Failed to create pair &%s:%s %s $%s{'%s'} -> '%s'", list_name, key,
+		REDEBUG("Internal failure creating pair &%s:%s %s $%s{'%s'} -> '%s'", list_name, key,
 			fr_int2str(fr_tokens, op, "<INVALID>"), hash_name, key, (val ? val : "undef"));
 		return;
 	}
+
 	val = SvPV(sv, len);
 	vp = fr_pair_make(ctx, vps, key, NULL, op);
-	if (!vp) goto fail;
+	if (!vp) {
+	fail:
+		REDEBUG("Failed to create pair - %s", fr_strerror());
+		REDEBUG("    &%s:%s %s $%s{'%s'} -> '%s'", list_name, key,
+			fr_int2str(fr_tokens, op, "<INVALID>"), hash_name, key, (val ? val : "undef"));
+		return;
+	}
 
 	switch (vp->da->type) {
 	case PW_TYPE_STRING:
@@ -711,6 +774,8 @@ static void pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char
 		break;
 
 	default:
+		VERIFY_VP(vp);
+
 		if (fr_pair_value_from_str(vp, val, len) < 0) goto fail;
 	}
 
@@ -743,6 +808,8 @@ static void get_hv_content(TALLOC_CTX *ctx, REQUEST *request, HV *my_hv, VALUE_P
 			pairadd_sv(ctx, request, vps, key, res_sv, T_OP_EQ, hash_name, list_name);
 		}
 	}
+
+	if (*vps) VERIFY_LIST(*vps);
 }
 
 /*
@@ -767,6 +834,7 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 	HV		*rad_request_proxy_hv;
 	HV		*rad_request_proxy_reply_hv;
 #endif
+	SV		*rad_requestp_sv;
 
 	/*
 	 *	Radius has told us to call this function, but none
@@ -801,6 +869,7 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 		rad_config_hv = get_hv("RAD_CONFIG", 1);
 		rad_request_hv = get_hv("RAD_REQUEST", 1);
 		rad_state_hv = get_hv("RAD_STATE", 1);
+		rad_requestp_sv = get_sv("RAD___REQUESTP", 1);
 
 		perl_store_vps(request->packet, request, &request->packet->vps, rad_request_hv, "RAD_REQUEST", "request");
 		perl_store_vps(request->reply, request, &request->reply->vps, rad_reply_hv, "RAD_REPLY", "reply");
@@ -827,6 +896,15 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 		}
 #endif
 
+		/*
+		 * Store pointer to request structure globally so xlat works
+		 * We mark it read-only for interpreter so end users will not be
+		 * in posession to change it and crash radiusd with bogus pointer
+		 */
+		SvREADONLY_off(rad_requestp_sv);
+		sv_setiv(rad_requestp_sv, PTR2IV(request));
+		SvREADONLY_on(rad_requestp_sv);
+
 		PUSHMARK(SP);
 		/*
 		 * This way %RAD_xx can be pushed onto stack as sub parameters.
@@ -844,6 +922,8 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 			RDEBUG("perl_embed:: module = %s , func = %s exit status= %s\n",
 			       inst->module, function_name, SvPV(ERRSV,n_a));
 			(void)POPs;
+			count = 0;
+			exitstatus = RLM_MODULE_FAIL;
 		}
 
 		if (count == 1) {
@@ -995,12 +1075,13 @@ static int mod_detach(void *instance)
 	rlm_perl_t	*inst = (rlm_perl_t *) instance;
 	int 		exitstatus = 0, count = 0;
 
-	if (inst->rad_perlconf_hv != NULL) hv_undef(inst->rad_perlconf_hv);
 
-	if (inst->perl_parsed && inst->func_detach) {
+	if (inst->perl_parsed) {
 		dTHXa(inst->perl);
 		PERL_SET_CONTEXT(inst->perl);
-		{
+		if (inst->rad_perlconf_hv != NULL) hv_undef(inst->rad_perlconf_hv);
+
+		if (inst->func_detach) {
 			dSP; ENTER; SAVETMPS;
 			PUSHMARK(SP);
 
@@ -1027,7 +1108,12 @@ static int mod_detach(void *instance)
 	perl_free(inst->perl);
 #endif
 
-	PERL_SYS_TERM();
+	/*
+	 *	Hope this is not really needed.
+	 *	Is only allowed to be called once just before exit().
+	 *
+	 PERL_SYS_TERM();
+	*/
 	return exitstatus;
 }
 DIAG_ON(nested-externs)

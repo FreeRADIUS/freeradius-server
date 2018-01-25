@@ -99,7 +99,7 @@ int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth, vp_t
 		 *	The VPT *doesn't* have a "bare word" type,
 		 *	which arguably it should.
 		 */
-		rcode = (vpt->name != '\0');
+		rcode = (*vpt->name != '\0');
 		break;
 
 	case TMPL_TYPE_ATTR:
@@ -164,8 +164,7 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 	regmatch_t	rxmatch[REQUEST_MAX_REGEX + 1];	/* +1 for %{0} (whole match) capture group */
 	size_t		nmatch = sizeof(rxmatch) / sizeof(regmatch_t);
 
-	rad_assert(lhs_type == PW_TYPE_STRING);
-	rad_assert(lhs != NULL);
+	if (!lhs || (lhs_type != PW_TYPE_STRING)) return -1;
 
 	EVAL_DEBUG("CMP WITH REGEX %s %s",
 		   map->rhs->tmpl_iflag ? "CASE INSENSITIVE" : "CASE SENSITIVE",
@@ -363,8 +362,6 @@ static size_t regex_escape(UNUSED REQUEST *request, char *out, size_t outlen, ch
 		case '[':	/* we don't list close braces */
 		case '{':
 		case '(':
-			if (outlen < 3) goto done;
-
 			*(p++) = '\\';
 			outlen--;
 			/* FALL-THROUGH */
@@ -376,7 +373,6 @@ static size_t regex_escape(UNUSED REQUEST *request, char *out, size_t outlen, ch
 		}
 	}
 
-done:
 	*(p++) = '\0';
 	return p - out;
 }

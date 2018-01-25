@@ -12,6 +12,9 @@
 /* Define to 1 to have OpenSSL version check enabled */
 #undef ENABLE_OPENSSL_VERSION_CHECK
 
+/* Define to ensure each build is the same */
+#undef ENABLE_REPRODUCIBLE_BUILDS
+
 /* Define if your processor stores words with the most significant byte first
    */
 #undef FR_BIG_ENDIAN
@@ -31,6 +34,9 @@
 
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 #undef HAVE_ARPA_INET_H
+
+/* Define to 1 if you have the `ASN1_STRING_get0_data' function. */
+#undef HAVE_ASN1_STRING_GET0_DATA
 
 /* Define if your compiler supports the __bounded__ attribute (usually OpenBSD
    gcc). */
@@ -54,6 +60,9 @@
 /* Define to 1 if you have the <sys/capability.h> header file. */
 #undef HAVE_CAPABILITY_H
 
+/* Define to 1 if you have the <linux/if_packet.h> header file. */
+#undef HAVE_LINUX_IF_PACKET_H
+
 /* Define to 1 if you have the `clock_gettime' function. */
 #undef HAVE_CLOCK_GETTIME
 
@@ -63,8 +72,17 @@
 /* Define to 1 if you have the `collectdclient' library (-lcollectdclient). */
 #undef HAVE_COLLECTDC_H
 
+/* Define to 1 if you have the `CONF_modules_load_file' function. */
+#undef HAVE_CONF_MODULES_LOAD_FILE
+
 /* Do we have the crypt function */
 #undef HAVE_CRYPT
+
+/* Define to 1 if you have the `CRYPTO_set_id_callback' function. */
+#undef HAVE_CRYPTO_SET_ID_CALLBACK
+
+/* Define to 1 if you have the `CRYPTO_set_locking_callback' function. */
+#undef HAVE_CRYPTO_SET_LOCKING_CALLBACK
 
 /* Define to 1 if you have the <crypt.h> header file. */
 #undef HAVE_CRYPT_H
@@ -151,6 +169,12 @@
 
 /* Define to 1 if you have the <history.h> header file. */
 #undef HAVE_HISTORY_H
+
+/* Define to 1 if you have the `HMAC_CTX_free' function. */
+#undef HAVE_HMAC_CTX_FREE
+
+/* Define to 1 if you have the `HMAC_CTX_new' function. */
+#undef HAVE_HMAC_CTX_NEW
 
 /* Define if the function (or macro) htonll exists. */
 #undef HAVE_HTONLL
@@ -248,6 +272,12 @@
 /* Define to 1 if you have the `openat' function. */
 #undef HAVE_OPENAT
 
+/* Define to 1 if you have the <openssl/asn1.h> header file. */
+#undef HAVE_OPENSSL_ASN1_H
+
+/* Define to 1 if you have the <openssl/conf.h> header file. */
+#undef HAVE_OPENSSL_CONF_H
+
 /* Define to 1 if you have the <openssl/crypto.h> header file. */
 #undef HAVE_OPENSSL_CRYPTO_H
 
@@ -259,6 +289,9 @@
 
 /* Define to 1 if you have the <openssl/evp.h> header file. */
 #undef HAVE_OPENSSL_EVP_H
+
+/* Define to 1 if you have the <openssl/hmac.h> header file. */
+#undef HAVE_OPENSSL_HMAC_H
 
 /* Define to 1 if you have the <openssl/md4.h> header file. */
 #undef HAVE_OPENSSL_MD4_H
@@ -373,6 +406,12 @@
 
 /* Define to 1 if you have the `SSL_get_client_random' function. */
 #undef HAVE_SSL_GET_CLIENT_RANDOM
+
+/* Define to 1 if you have the `SSL_get_server_random' function. */
+#undef HAVE_SSL_GET_SERVER_RANDOM
+
+/* Define to 1 if you have the `SSL_SESSION_get_master_key' function. */
+#undef HAVE_SSL_SESSION_GET_MASTER_KEY
 
 /* Define to 1 if you have the <stdbool.h> header file. */
 #undef HAVE_STDBOOL_H

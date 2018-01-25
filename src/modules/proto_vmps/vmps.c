@@ -37,6 +37,7 @@ static int vmps_process(REQUEST *request)
 	process_post_auth(0, request);
 	DEBUG2("Done VMPS");
 
+	request->packet->code = 0; /* hack for VMPS */
 	request->reply->code = PW_CODE_ACCESS_ACCEPT;
 
 	return 0;

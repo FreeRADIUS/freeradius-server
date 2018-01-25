@@ -7,4 +7,5 @@ BEGIN-VENDOR TEST
 ATTRIBUTE	Test-Name		1 string
 ATTRIBUTE	Test-Number		2 integer
 ATTRIBUTE	Test-Server-Port	3 integer
+ATTRIBUTE	Test-Signed		4 signed
 END-VENDOR TEST

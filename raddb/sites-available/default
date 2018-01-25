@@ -85,16 +85,35 @@ listen {
 	#  proxy listeners are automatically created.
 
 	#  ipaddr/ipv4addr/ipv6addr - IP address on which to listen.
-	#  Out of several options the first one will be used.
+	#  If multiple ones are listed, only the first one will
+	#  be used, and the others will be ignored.
 	#
-	#  Allowed values are:
-	#	IPv4 address (e.g. 1.2.3.4, for ipv4addr/ipaddr)
-	#	IPv6 address (e.g. 2001:db8::1, for ipv6addr/ipaddr)
-	#	hostname     (radius.example.com,
-	#			A record for ipv4addr,
-	#       		AAAA record for ipv6addr,
-	#			A or AAAA record for ipaddr)
-	#       wildcard     (*)
+	#  The configuration options accept the following syntax:
+	#
+	#  ipv4addr - IPv4 address (e.g.192.0.2.3)
+	#  	    - wildcard (i.e. *)
+	#  	    - hostname (radius.example.com)
+	#  	      Only the A record for the host name is used.
+	#	      If there is no A record, an error is returned,
+	#	      and the server fails to start.
+	#
+	#  ipv6addr - IPv6 address (e.g. 2001:db8::1)
+	#  	    - wildcard (i.e. *)
+	#  	    - hostname (radius.example.com)
+	#  	      Only the AAAA record for the host name is used.
+	#	      If there is no AAAA record, an error is returned,
+	#	      and the server fails to start.
+	#
+	#  ipaddr   - IPv4 address as above
+	#  	    - IPv6 address as above
+	#  	    - wildcard (i.e. *), which means IPv4 wildcard.
+	#	    - hostname
+	#	      If there is only one A or AAAA record returned
+	#	      for the host name, it is used.
+	#	      If multiple A or AAAA records are returned
+	#	      for the host name, only the first one is used.
+	#	      If both A and AAAA records are returned
+	#	      for the host name, only the A record is used.
 	#
 	# ipv4addr = *
 	# ipv6addr = *
@@ -347,17 +366,22 @@ authorize {
 	#  It also sets the EAP-Type attribute in the request
 	#  attribute list to the EAP type from the packet.
 	#
-	#  The EAP module returns "ok" if it is not yet ready to
-	#  authenticate the user.  The configuration below checks for
-	#  that code, and stops processing the "authorize" section if
-	#  so.
+	#  The EAP module returns "ok" or "updated" if it is not yet ready
+	#  to authenticate the user.  The configuration below checks for
+	#  "ok", and stops processing the "authorize" section if so.
 	#
 	#  Any LDAP and/or SQL servers will not be queried for the
 	#  initial set of packets that go back and forth to set up
 	#  TTLS or PEAP.
 	#
+	#  The "updated" check is commented out for compatibility with
+	#  previous versions of this configuration, but you may wish to
+	#  uncomment it as well; this will further reduce the number of
+	#  LDAP and/or SQL queries for TTLS or PEAP.
+	#
 	eap {
 		ok = return
+#		updated = return
 	}
 
 	#
@@ -474,6 +498,11 @@ authenticate {
 	}
 
 	#
+	#  For old names, too.
+	#
+	mschap
+
+	#
 	#  If you have a Cisco SIP server authenticating against
 	#  FreeRADIUS, uncomment the following line, and the 'digest'
 	#  line in the 'authorize' section.
@@ -548,7 +577,7 @@ preacct {
 	#
 
 #	update request {
-#	  	FreeRADIUS-Acct-Session-Start-Time = "%{expr: %l - %{%{Acct-Session-Time}:-0} - %{%{Acct-Delay-Time}:-0}}"
+#	  	&FreeRADIUS-Acct-Session-Start-Time = "%{expr: %l - %{%{Acct-Session-Time}:-0} - %{%{Acct-Delay-Time}:-0}}"
 #	}
 
 
@@ -623,12 +652,6 @@ accounting {
 #	if (noop) {
 #		ok
 #	}
-
-	#
-	#  Instead of sending the query to the SQL server,
-	#  write it into a log file.
-	#
-#	sql_log
 
 	#  Cisco VoIP specific bulk accounting
 #	pgsql-voip
@@ -707,12 +730,6 @@ post-auth {
 	#
 	#  See "Authentication Logging Queries" in mods-available/sql
 	-sql
-
-	#
-	#  Instead of sending the query to the SQL server,
-	#  write it into a log file.
-	#
-#	sql_log
 
 	#
 	#  Un-comment the following if you want to modify the user's object
@@ -822,6 +839,15 @@ post-auth {
 		#  Remove reply message if the response contains an EAP-Message
 		remove_reply_message_if_eap
 	}
+
+	#
+	#  Filter access challenges.
+	#
+	Post-Auth-Type Challenge {
+#		remove_reply_message_if_eap
+#		attr_filter.access_challenge.post-auth
+	}
+
 }
 
 #

@@ -366,6 +366,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply) CC_HINT(n
 static void remove_from_proxy_hash(REQUEST *request) CC_HINT(nonnull);
 static void remove_from_proxy_hash_nl(REQUEST *request, bool yank) CC_HINT(nonnull);
 static int insert_into_proxy_hash(REQUEST *request) CC_HINT(nonnull);
+static int setup_post_proxy_fail(REQUEST *request);
 #endif
 
 static REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *packet,
@@ -415,6 +416,14 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, bool received)
 	if (!packet) return;
 	if (!RDEBUG_ENABLED) return;
 
+#ifdef WITH_DETAIL
+	/*
+	 *	Don't print IP addresses for detail files.
+	 */
+	if (request->listener &&
+	    (request->listener->type == RAD_LISTEN_DETAIL)) return;
+
+#endif
 	/*
 	 *	Client-specific debugging re-prints the input
 	 *	packet into the client log.
@@ -477,6 +486,8 @@ static struct timeval *request_response_window(REQUEST *request)
 {
 	VERIFY_REQUEST(request);
 
+	rad_assert(request->home_server != NULL);
+
 	if (request->client) {
 		/*
 		 *	The client hasn't set the response window.  Return
@@ -492,7 +503,6 @@ static struct timeval *request_response_window(REQUEST *request)
 		}
 	}
 
-	rad_assert(request->home_server != NULL);
 	return &request->home_server->response_window;
 }
 
@@ -1154,7 +1164,7 @@ static void request_response_delay(REQUEST *request, int action)
 
 	switch (action) {
 	case FR_ACTION_DUP:
-		ERROR("(%u) Discarding duplicate request from "
+		RDEBUG("(%u) Discarding duplicate request from "
 		      "client %s port %d - ID: %u due to delayed response",
 		      request->number, request->client->shortname,
 		      request->packet->src_port,request->packet->id);
@@ -1530,8 +1540,7 @@ static void request_running(REQUEST *request, int action)
 		/*
 		 *	We may need to send a proxied request.
 		 */
-		if ((action == FR_ACTION_RUN) &&
-		    request_will_proxy(request)) {
+		if (request_will_proxy(request)) {
 #ifdef DEBUG_STATE_MACHINE
 			if (rad_debug_lvl) printf("(%u) ********\tWill Proxy\t********\n", request->number);
 #endif
@@ -1541,7 +1550,13 @@ static void request_running(REQUEST *request, int action)
 			 *	up the post proxy fail
 			 *	handler.
 			 */
-			if (request_proxy(request) < 0) goto req_finished;
+			if (request_proxy(request) < 0) {
+				if (request->home_server && request->home_server->server) goto req_finished;
+
+				(void) setup_post_proxy_fail(request);
+				process_proxy_reply(request, NULL);
+				goto req_finished;
+			}
 		} else
 #endif
 		{
@@ -2114,8 +2129,9 @@ static void remove_from_proxy_hash_nl(REQUEST *request, bool yank)
 	}
 
 #ifdef WITH_TCP
-	rad_assert(request->proxy_listener != NULL);
-	request->proxy_listener->count--;
+	if (request->proxy_listener) {
+		request->proxy_listener->count--;
+	}
 #endif
 	request->proxy_listener = NULL;
 
@@ -2277,7 +2293,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	/*
 	 *	There may be a proxy reply, but it may be too late.
 	 */
-	if (!request->home_server->server && !request->proxy_listener) return 0;
+	if ((request->home_server && !request->home_server->server) && !request->proxy_listener) return 0;
 
 	/*
 	 *	Delete any reply we had accumulated until now.
@@ -2376,7 +2392,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	}
 
 #ifdef WITH_COA
-	if (request->packet->code == request->proxy->code) {
+	if (request->proxy && request->packet->code == request->proxy->code) {
 	  /*
 	   *	Don't run the next bit if we originated a CoA
 	   *	packet, after receiving an Access-Request or
@@ -2561,8 +2577,6 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 
 #ifdef WITH_ACCOUNTING
 	case PW_CODE_ACCOUNTING_REQUEST:
-		proxy_acct_stats.last_packet = packet->timestamp.tv_sec;
-
 		request->proxy_listener->stats.total_responses++;
 		proxy_acct_stats.last_packet = packet->timestamp.tv_sec;
 		break;
@@ -2611,23 +2625,26 @@ static int setup_post_proxy_fail(REQUEST *request)
 {
 	DICT_VALUE const *dval = NULL;
 	VALUE_PAIR *vp;
+	RADIUS_PACKET *packet;
 
 	VERIFY_REQUEST(request);
 
-	if (request->proxy->code == PW_CODE_ACCESS_REQUEST) {
+	packet = request->proxy ? request->proxy : request->packet;
+
+	if (packet->code == PW_CODE_ACCESS_REQUEST) {
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0,
 				      "Fail-Authentication");
 #ifdef WITH_ACCOUNTING
-	} else if (request->proxy->code == PW_CODE_ACCOUNTING_REQUEST) {
+	} else if (packet->code == PW_CODE_ACCOUNTING_REQUEST) {
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0,
 				      "Fail-Accounting");
 #endif
 
 #ifdef WITH_COA
-	} else if (request->proxy->code == PW_CODE_COA_REQUEST) {
+	} else if (packet->code == PW_CODE_COA_REQUEST) {
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, "Fail-CoA");
 
-	} else if (request->proxy->code == PW_CODE_DISCONNECT_REQUEST) {
+	} else if (packet->code == PW_CODE_DISCONNECT_REQUEST) {
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, "Fail-Disconnect");
 #endif
 	} else {
@@ -2809,16 +2826,19 @@ static int request_will_proxy(REQUEST *request)
 		 *	Figure out which pool to use.
 		 */
 		if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
+			DEBUG3("Using home pool auth for realm %s", realm->name);
 			pool = realm->auth_pool;
 
 #ifdef WITH_ACCOUNTING
 		} else if (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) {
+			DEBUG3("Using home pool acct for realm %s", realm->name);
 			pool = realm->acct_pool;
 #endif
 
 #ifdef WITH_COA
 		} else if ((request->packet->code == PW_CODE_COA_REQUEST) ||
 			   (request->packet->code == PW_CODE_DISCONNECT_REQUEST)) {
+			DEBUG3("Using home pool coa for realm %s", realm->name);
 			pool = realm->coa_pool;
 #endif
 
@@ -2828,6 +2848,8 @@ static int request_will_proxy(REQUEST *request)
 
 	} else if ((vp = fr_pair_find_by_num(request->config, PW_HOME_SERVER_POOL, 0, TAG_ANY)) != NULL) {
 		int pool_type;
+
+		DEBUG3("Using Home-Server-Pool %s", vp->vp_strvalue);
 
 		switch (request->packet->code) {
 		case PW_CODE_ACCESS_REQUEST:
@@ -2903,9 +2925,9 @@ static int request_will_proxy(REQUEST *request)
 		if (!home) {
 			char buffer[256];
 
-			WARN("No such home server %s port %u",
-			     inet_ntop(dst_ipaddr.af, &dst_ipaddr.ipaddr, buffer, sizeof(buffer)),
-			     (unsigned int) dst_port);
+			RWDEBUG("No such home server %s port %u",
+				inet_ntop(dst_ipaddr.af, &dst_ipaddr.ipaddr, buffer, sizeof(buffer)),
+				(unsigned int) dst_port);
 			return 0;
 		}
 
@@ -2943,7 +2965,7 @@ static int request_will_proxy(REQUEST *request)
 
 	if (!home) {
 		REDEBUG2("Failed to find live home server: Cancelling proxy");
-		return 0;
+		return 1;
 	}
 
 do_home:
@@ -3057,6 +3079,14 @@ do_home:
 
 		request->server = old_server;
 	} else {
+		char buffer[128];
+
+		RDEBUG2("Starting proxy to home server %s port %d",
+			inet_ntop(request->proxy->dst_ipaddr.af,
+				  &request->proxy->dst_ipaddr.ipaddr,
+				  buffer, sizeof(buffer)),
+			request->proxy->dst_port);
+
 		rcode = process_pre_proxy(pre_proxy_type, request);
 	}
 
@@ -3151,7 +3181,6 @@ static int request_proxy(REQUEST *request)
 	VERIFY_REQUEST(request);
 
 	rad_assert(request->parent == NULL);
-	rad_assert(request->home_server != NULL);
 
 	if (request->master_state == REQUEST_STOP_PROCESSING) return 0;
 
@@ -3161,6 +3190,11 @@ static int request_proxy(REQUEST *request)
 		request_done(request->coa, FR_ACTION_DONE);
 	}
 #endif
+
+	if (!request->home_server) {
+		RWDEBUG("No home server selected");
+		return -1;
+	}
 
 	/*
 	 *	The request may need sending to a virtual server.
@@ -3352,6 +3386,7 @@ static void request_ping(REQUEST *request, int action)
 				 &request->proxy->dst_ipaddr.ipaddr,
 				 buffer, sizeof(buffer)),
 		       request->proxy->dst_port);
+		remove_from_proxy_hash(request);
 		break;
 
 	case FR_ACTION_PROXY_REPLY:
@@ -3399,6 +3434,7 @@ static void request_ping(REQUEST *request, int action)
 	}
 
 	rad_assert(!request->in_request_hash);
+	rad_assert(!request->in_proxy_hash);
 	rad_assert(request->ev == NULL);
 	NO_CHILD_THREAD;
 	request_done(request, FR_ACTION_DONE);
@@ -4026,6 +4062,12 @@ static void request_coa_originate(REQUEST *request)
 			TALLOC_FREE(request->coa);
 			return;
 		}
+	}
+
+	if (!main_config.proxy_requests) {
+		RWDEBUG("Cannot originate CoA packets unless 'proxy_requests = yes'");
+			TALLOC_FREE(request->coa);
+		return;
 	}
 
 	coa = request->coa;
@@ -5150,6 +5192,10 @@ static void handle_signal_self(int flag)
 #ifndef HAVE_PTHREAD_H
 void radius_signal_self(int flag)
 {
+	if (flag == RADIUS_SIGNAL_SELF_TERM) {
+		main_config.exiting = true;
+	}
+
 	return handle_signal_self(flag);
 }
 
@@ -5163,6 +5209,10 @@ void radius_signal_self(int flag)
 {
 	ssize_t rcode;
 	uint8_t buffer[16];
+
+	if (flag == RADIUS_SIGNAL_SELF_TERM) {
+		main_config.exiting = true;
+	}
 
 	/*
 	 *	The read MUST be non-blocking for this to work.
@@ -5289,7 +5339,9 @@ static void check_proxy(rad_listen_t *head)
 	if (check_config) return;
 	if (!main_config.proxy_requests) return;
 	if (!head) return;
+#ifdef WITH_TCP
 	if (!home_servers_udp) return;
+#endif
 
 	/*
 	 *	We passed "-i" on the command line.  Use that address

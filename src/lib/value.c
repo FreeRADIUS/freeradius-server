@@ -586,6 +586,9 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		return -1;
 
 	/* raw octets: 0x01020304... */
+#ifndef WITH_ASCEND_BINARY
+	do_octets:
+#endif
 	case PW_TYPE_OCTETS:
 	{
 		uint8_t	*p;
@@ -632,7 +635,7 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 				return -1;
 			}
 
-			bin = fr_hex2bin((uint8_t *) &dst->filter, ret, src + 2, len);
+			bin = fr_hex2bin((uint8_t *) &dst->filter, ret, src + 2, len - 2);
 			if (bin < ret) {
 				memset(((uint8_t *) &dst->filter) + bin, 0, ret - bin);
 			}
@@ -1527,6 +1530,7 @@ char *value_data_aprints(TALLOC_CTX *ctx,
 		p[1] = 'x';
 
 		fr_bin2hex(p + 2, data->octets, inlen);
+		p[2 + (inlen * 2)] = '\0';
 		break;
 
 	case PW_TYPE_DATE:
@@ -1734,34 +1738,67 @@ print_int:
 	case PW_TYPE_OCTETS:
 	case PW_TYPE_TLV:
 	{
-		size_t max;
+		size_t binlen;
+		size_t hexlen;
 
-		/* Return the number of bytes we would have written */
-		len = (inlen * 2) + 2;
-		if (freespace <= 1) {
-			return len;
+		binlen = inlen;
+		hexlen = (binlen * 2) + 2; /* NOT accounting for trailing NUL */
+
+		/*
+		 *	If the buffer is too small, put something into
+		 *	it, and return how much we should have written
+		 *
+		 *	0 + x + H + H + NUL = 5
+		 */
+		if (freespace < 5) {
+			switch (freespace) {
+			case '4':
+			case '3':
+				out[0] = '0';
+				out[1] = 'x';
+				out[2] = '\0';
+				return hexlen;
+
+			case 2:
+				*out = '0';
+				out++;
+				/* FALL-THROUGH */
+
+			case 1:
+				*out = '\0';
+				break;
+
+			case 0:
+				break;
+			}
+
+			return hexlen;
 		}
 
-		*out++ = '0';
-		freespace--;
+		/*
+		 *	The output buffer is at least 5 bytes, we haev
+		 *	room for '0xHH' plus a trailing NUL byte.
+		 */
+		out[0] = '0';
+		out[1] = 'x';
 
-		if (freespace <= 1) {
-			*out = '\0';
-			return len;
+		/*
+		 *	Get maximum number of bytes we can encode
+		 *	given freespace, ensuring we account for '0',
+		 *	'x', and the trailing NUL in the buffer.
+		 *
+		 *	Note that we can't have "freespace = 0" after
+		 *	this, as 'freespace' has to be at least 5.
+		 */
+		freespace -= 3;
+		freespace /= 2;
+		if (binlen > freespace) {
+			binlen = freespace;
 		}
-		*out++ = 'x';
-		freespace--;
 
-		if (freespace <= 2) {
-			*out = '\0';
-			return len;
-		}
-
-		/* Get maximum number of bytes we can encode given freespace */
-		max = ((freespace % 2) ? freespace - 1 : freespace - 2) / 2;
-		fr_bin2hex(out, data->octets, ((size_t)inlen > max) ? max : (size_t)inlen);
+		fr_bin2hex(out + 2, data->octets, binlen);
+		return hexlen;
 	}
-		return len;
 
 	case PW_TYPE_IFID:
 		a = ifid_ntoa(buf, sizeof(buf), data->ifid);

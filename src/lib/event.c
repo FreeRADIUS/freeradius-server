@@ -402,6 +402,14 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 
 #else  /* HAVE_KQUEUE */
 
+	/*
+	 *	select() has limits.
+	 */
+	if (fd > FD_SETSIZE) {
+		fprintf(stderr, "FD is larger than FD_SETSIZE");
+		return 0;
+	}
+
 	for (i = 0; i <= el->max_readers; i++) {
 		/*
 		 *	Be fail-safe on multiple inserts.

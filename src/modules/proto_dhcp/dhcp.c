@@ -1,3 +1,4 @@
+
 /*
  * dhcp.c	Functions to send/receive dhcp packets.
  *
@@ -628,6 +629,24 @@ static int fr_dhcp_decode_suboption(TALLOC_CTX *ctx, VALUE_PAIR **tlv, uint8_t c
 		uint32_t	attr;
 
 		/*
+		 *	Not enough room for the option header, it's a
+		 *	bad packet.
+		 */
+		if ((p + 2) > (data + len)) {
+			fr_pair_list_free(&head);
+			return -1;
+		}
+
+		/*
+		 *	Not enough room for the option header + data,
+		 *	it's a bad packet.
+		 */
+		if ((p + 2 + p[1]) > (data + len)) {
+			fr_pair_list_free(&head);
+			return -1;
+		}
+
+		/*
 		 *	The initial OID string looks like:
 		 *	<iana>.0
 		 *
@@ -773,25 +792,23 @@ static int fr_dhcp_attr2vp(TALLOC_CTX *ctx, VALUE_PAIR **vp_p, uint8_t const *da
 		 *	multiple additional VPs
 		 */
 		fr_cursor_init(&cursor, vp_p);
-		for (;;) {
-			q = memchr(p, '\0', q - p);
+		while (p < end) {
+			q = memchr(p, '\0', end - p);
 			/* Malformed but recoverable */
 			if (!q) q = end;
 
 			fr_pair_value_bstrncpy(vp, (char const *)p, q - p);
 			p = q + 1;
 
+			if (p >= end) break;
+
 			/* Need another VP for the next round */
-			if (p < end) {
-				vp = fr_pair_afrom_da(ctx, vp->da);
-				if (!vp) {
-					fr_pair_list_free(vp_p);
-					return -1;
-				}
-				fr_cursor_insert(&cursor, vp);
-				continue;
+			vp = fr_pair_afrom_da(ctx, vp->da);
+			if (!vp) {
+				fr_pair_list_free(vp_p);
+				return -1;
 			}
-			break;
+			fr_cursor_insert(&cursor, vp);
 		}
 	}
 		break;
@@ -1089,15 +1106,15 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	memcpy(&giaddr, packet->data + 24, sizeof(giaddr));
 	if (giaddr == htonl(INADDR_ANY)) {
 		/*
-		 *	DHCP Opcode is request
+		 *	DHCP-Message-Type is request
 		 */
-		vp = fr_pair_find_by_num(head, 256, DHCP_MAGIC_VENDOR, TAG_ANY);
-		if (vp && vp->vp_integer == 3) {
+		vp = fr_pair_find_by_num(head, 53, DHCP_MAGIC_VENDOR, TAG_ANY);
+		if (vp && vp->vp_byte == 3) {
 			/*
 			 *	Vendor is "MSFT 98"
 			 */
-			vp = fr_pair_find_by_num(head, 63, DHCP_MAGIC_VENDOR, TAG_ANY);
-			if (vp && (strcmp(vp->vp_strvalue, "MSFT 98") == 0)) {
+			vp = fr_pair_find_by_num(head, 60, DHCP_MAGIC_VENDOR, TAG_ANY);
+			if (vp && (vp->vp_length >= 7) && (memcmp(vp->vp_octets, "MSFT 98", 7) == 0)) {
 				vp = fr_pair_find_by_num(head, 262, DHCP_MAGIC_VENDOR, TAG_ANY);
 
 				/*
@@ -1155,11 +1172,13 @@ int8_t fr_dhcp_attr_cmp(void const *a, void const *b)
 	 *	DHCP-Message-Type is first, for simplicity.
 	 */
 	if ((my_a->da->attr == PW_DHCP_MESSAGE_TYPE) && (my_b->da->attr != PW_DHCP_MESSAGE_TYPE)) return -1;
+	if ((my_a->da->attr != PW_DHCP_MESSAGE_TYPE) && (my_b->da->attr == PW_DHCP_MESSAGE_TYPE)) return +1;
 
 	/*
 	 *	Relay-Agent is last
 	 */
-	if ((my_a->da->attr == PW_DHCP_OPTION_82) && (my_b->da->attr != PW_DHCP_OPTION_82)) return 1;
+	if ((my_a->da->attr == PW_DHCP_OPTION_82) && (my_b->da->attr != PW_DHCP_OPTION_82)) return +1;
+	if ((my_a->da->attr != PW_DHCP_OPTION_82) && (my_b->da->attr == PW_DHCP_OPTION_82)) return -1;
 
 	if (my_a->da->attr < my_b->da->attr) return -1;
 	if (my_a->da->attr > my_b->da->attr) return 1;
@@ -1923,7 +1942,7 @@ int fr_dhcp_send_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RADIUS_PACKET 
 /*
  *	print an ethernet address in a buffer
  */
-char * ether_addr_print(const uint8_t *addr, char *buf)
+static char * ether_addr_print(const uint8_t *addr, char *buf)
 {
 	sprintf (buf, "%02x:%02x:%02x:%02x:%02x:%02x",
 		addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]);
@@ -1952,9 +1971,7 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RAD
 	uint16_t		udp_src_port;
 	uint16_t		udp_dst_port;
 	size_t			dhcp_data_len;
-	int			retval;
 	socklen_t		sock_len;
-	fd_set 			read_fd;
 
 	packet = rad_alloc(NULL, false);
 	if (!packet) {
@@ -2035,8 +2052,8 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RAD
 	/* d. Check DHCP layer data */
 	dhcp_data_len = data_len - data_offset;
 
-	if (dhcp_data_len < MIN_PACKET_SIZE) DISCARD_RP("DHCP packet is too small (%d < %d)", dhcp_data_len, MIN_PACKET_SIZE);
-	if (dhcp_data_len > MAX_PACKET_SIZE) DISCARD_RP("DHCP packet is too large (%d > %d)", dhcp_data_len, MAX_PACKET_SIZE);
+	if (dhcp_data_len < MIN_PACKET_SIZE) DISCARD_RP("DHCP packet is too small (%zu < %d)", dhcp_data_len, MIN_PACKET_SIZE);
+	if (dhcp_data_len > MAX_PACKET_SIZE) DISCARD_RP("DHCP packet is too large (%zu > %d)", dhcp_data_len, MAX_PACKET_SIZE);
 
 	dhcp_hdr = (dhcp_packet_t *)(raw_packet + ETH_HDR_SIZE + IP_HDR_SIZE + UDP_HDR_SIZE);
 

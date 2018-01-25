@@ -60,4 +60,6 @@ DEFAULT
 	NAS-IP-Address =* ANY,
 	NAS-Identifier =* ANY,
 	Operator-Name =* ANY,
+	Calling-Station-Id =* ANY,
+	Chargeable-User-Identity =* ANY,
 	Proxy-State =* ANY

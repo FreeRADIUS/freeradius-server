@@ -1,0 +1,57 @@
+# -*- text -*-
+#
+#  $Id$
+
+#
+#  Write Moonshot-*-TargetedId (MSTID) to the database.
+#
+#  Schema	raddb/sql/moonshot-targeted-ids/<DB>/schema.sql
+#  Queries	raddb/sql/moonshot-targeted-ids/<DB>/queries.conf
+#
+sql moonshot_tid_sql {
+
+	# The dialect of SQL you want to use, this should usually match
+	# the driver below.
+	#
+	# If you're using rlm_sql_null, then it should be the type of
+	# database the logged queries are going to be executed against.
+	dialect = "sqlite"
+
+	# The sub-module to use to execute queries. This should match
+	# the database you're attempting to connect to.
+	#
+	# There are MSTID queries available for:
+	#    * rlm_sql_mysql
+	#    * rlm_sql_postgresql
+	#    * rlm_sql_sqlite
+	#    * rlm_sql_null (log queries to disk)
+	#
+	driver = "rlm_sql_${dialect}"
+
+	sqlite {
+		filename = ${radacctdir}/moonshot-targeted-ids.sqlite
+		bootstrap = ${modconfdir}/${..:name}/moonshot-targeted-ids/sqlite/schema.sql
+	}
+
+	# Write MSTID queries to a logfile. Useful for debugging.
+#	logfile = ${logdir}/moonshot-targeted-id-log.sql
+
+	pool {
+		start = 5
+		min = 4
+		max = 10
+		spare = 3
+		uses = 0
+		lifetime = 0
+		idle_timeout = 60
+	}
+
+	#  If you adjust the table name here, you must also modify the table name in
+	#  the moonshot_get_targeted_id.post-auth policy in policy.d/moonshot-targeted-ids
+	#  and the schema.sql files in the mods-config/sql/moonshot-targeted-ids tree.
+	#
+	moonshot_tid_table = "moonshot_targeted_ids"
+	sql_user_name = "%{User-Name}"
+
+	$INCLUDE ${modconfdir}/${.:name}/moonshot-targeted-ids/${dialect}/queries.conf
+}

@@ -1676,10 +1676,10 @@ size_t tmpl_prints(char *out, size_t outlen, vp_tmpl_t const *vpt, DICT_ATTR con
 	case TMPL_TYPE_LIST:
 		out[0] = '&';
 		if (vpt->tmpl_request == REQUEST_CURRENT) {
-			snprintf(out + 1, outlen - 1, "%s",
+			snprintf(out + 1, outlen - 1, "%s:",
 				 fr_int2str(pair_lists, vpt->tmpl_list, ""));
 		} else {
-			snprintf(out + 1, outlen - 1, "%s.%s",
+			snprintf(out + 1, outlen - 1, "%s.%s:",
 				 fr_int2str(request_refs, vpt->tmpl_request, ""),
 				 fr_int2str(pair_lists, vpt->tmpl_list, ""));
 		}

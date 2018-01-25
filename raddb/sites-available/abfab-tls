@@ -24,7 +24,8 @@ listen {
 		cache {
 			enable = no
 			lifetime = 24 # hours
-			max_entries = 255
+			name = "abfab-tls"
+#			persist_dir = ${logdir}/abfab-tls
 		}
 
 		require_client_cert = yes

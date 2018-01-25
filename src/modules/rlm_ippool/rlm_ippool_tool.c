@@ -446,6 +446,7 @@ void viewdb(char *sessiondbname, char *indexdbname, char *ipaddress, int old) {
 		return;
 	}
 
+	memset(&key, 0, sizeof(key));	/* -Winitialize */
 	memset(key_str, 0,17);
 
 	key_datum = gdbm_firstkey(sessiondb);

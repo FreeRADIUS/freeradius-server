@@ -1373,6 +1373,9 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 		return -(p - fmt);
 	}
 
+	/*
+	 *	Might be a list, too...
+	 */
 	node->type = XLAT_ATTRIBUTE;
 	p += slen;
 
@@ -1623,10 +1626,10 @@ static void xlat_tokenize_debug(xlat_exp_t const *node, int lvl)
 #endif
 
 		case XLAT_ALTERNATE:
-			DEBUG("%.*sif {", lvl, xlat_tabs);
+			DEBUG("%.*sXLAT-IF {", lvl, xlat_tabs);
 			xlat_tokenize_debug(node->child, lvl + 1);
 			DEBUG("%.*s}", lvl, xlat_tabs);
-			DEBUG("%.*selse {", lvl, xlat_tabs);
+			DEBUG("%.*sXLAT-ELSE {", lvl, xlat_tabs);
 			xlat_tokenize_debug(node->alternate, lvl + 1);
 			DEBUG("%.*s}", lvl, xlat_tabs);
 			break;
@@ -1665,45 +1668,15 @@ size_t xlat_sprint(char *buffer, size_t bufsize, xlat_exp_t const *node)
 			*(p++) = '%';
 			*(p++) = '{';
 
-			if (node->attr.tmpl_request != REQUEST_CURRENT) {
-				strlcpy(p, fr_int2str(request_refs, node->attr.tmpl_request, "??"), end - p);
-				p += strlen(p);
-				*(p++) = '.';
+			/*
+			 *	The node MAY NOT be an attribute.  It
+			 *	may be a list.
+			 */
+			tmpl_prints(p, end - p, &node->attr, NULL);
+			if (*p == '&') {
+				memmove(p, p + 1, strlen(p + 1) + 1);
 			}
-
-			if ((node->attr.tmpl_request != REQUEST_CURRENT) ||
-			    (node->attr.tmpl_list != PAIR_LIST_REQUEST)) {
-				strlcpy(p, fr_int2str(pair_lists, node->attr.tmpl_list, "??"), end - p);
-				p += strlen(p);
-				*(p++) = ':';
-			}
-
-			strlcpy(p, node->attr.tmpl_da->name, end - p);
 			p += strlen(p);
-
-			if (node->attr.tmpl_tag != TAG_ANY) {
-				*(p++) = ':';
-				snprintf(p, end - p, "%u", node->attr.tmpl_tag);
-				p += strlen(p);
-			}
-
-			if (node->attr.tmpl_num != NUM_ANY) {
-				*(p++) = '[';
-				switch (node->attr.tmpl_num) {
-				case NUM_COUNT:
-					*(p++) = '#';
-					break;
-
-				case NUM_ALL:
-					*(p++) = '*';
-					break;
-
-				default:
-					snprintf(p, end - p, "%i", node->attr.tmpl_num);
-					p += strlen(p);
-				}
-				*(p++) = ']';
-			}
 			*(p++) = '}';
 			break;
 #ifdef HAVE_REGEX
@@ -1787,7 +1760,10 @@ static ssize_t xlat_tokenize_request(REQUEST *request, char const *fmt, xlat_exp
 	 *	much faster.
 	 */
 	tokens = talloc_typed_strdup(request, fmt);
-	if (!tokens) return -1;
+	if (!tokens) {
+		error = "Out of memory";
+		return -1;
+	}
 
 	slen = xlat_tokenize_literal(request, tokens, head, false, &error);
 
@@ -1806,7 +1782,8 @@ static ssize_t xlat_tokenize_request(REQUEST *request, char const *fmt, xlat_exp
 	 */
 	if (slen < 0) {
 		talloc_free(tokens);
-		rad_assert(error != NULL);
+
+		if (!error) error = "Unknown error";
 
 		REMARKER(fmt, -slen, error);
 		return slen;
@@ -2104,7 +2081,11 @@ static const char xlat_spaces[] = "                                             
 #endif
 
 static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * const node,
-			 xlat_escape_t escape, void *escape_ctx, int lvl)
+			 xlat_escape_t escape, void *escape_ctx,
+#ifndef DEBUG_XLAT
+			 UNUSED
+#endif
+			 int lvl)
 {
 	ssize_t rcode;
 	char *str = NULL, *child;
@@ -2117,7 +2098,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		 *	Don't escape this.
 		 */
 	case XLAT_LITERAL:
-		XLAT_DEBUG("xlat_aprint LITERAL");
+		XLAT_DEBUG("%.*sxlat_aprint LITERAL", lvl, xlat_spaces);
 		return talloc_typed_strdup(ctx, node->fmt);
 
 		/*
@@ -2129,15 +2110,18 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		size_t freespace = 256;
 		struct tm ts;
 		time_t when;
+		int usec;
 
-		XLAT_DEBUG("xlat_aprint PERCENT");
+		XLAT_DEBUG("%.*sxlat_aprint PERCENT", lvl, xlat_spaces);
 
 		str = talloc_array(ctx, char, freespace); /* @todo do better allocation */
 		p = node->fmt;
 
 		when = request->timestamp;
+		usec = 0;
 		if (request->packet) {
 			when = request->packet->timestamp.tv_sec;
+			usec = request->packet->timestamp.tv_usec;
 		}
 
 		switch (*p) {
@@ -2199,7 +2183,9 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 
 		case 'T': /* request timestamp */
 			if (!localtime_r(&when, &ts)) goto error;
-			strftime(str, freespace, "%Y-%m-%d-%H.%M.%S.000000", &ts);
+			nl = str + strftime(str, freespace, "%Y-%m-%d-%H.%M.%S", &ts);
+			rad_assert(((str + freespace) - nl) >= 8);
+			snprintf(nl, (str + freespace) - nl, ".%06d",  usec);
 			break;
 
 		case 'Y': /* request year */
@@ -2225,15 +2211,15 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		break;
 
 	case XLAT_ATTRIBUTE:
-		XLAT_DEBUG("xlat_aprint ATTRIBUTE");
+		XLAT_DEBUG("%.*sxlat_aprint ATTRIBUTE", lvl, xlat_spaces);
 
 		/*
 		 *	Some attributes are virtual <sigh>
 		 */
 		str = xlat_getvp(ctx, request, &node->attr, escape ? false : true, true);
 		if (str) {
-			XLAT_DEBUG("EXPAND attr %s", node->attr.tmpl_da->name);
-			XLAT_DEBUG("       ---> %s", str);
+			XLAT_DEBUG("%.*sEXPAND attr %s", lvl, xlat_spaces, node->attr.tmpl_da->name);
+			XLAT_DEBUG("%.*s       ---> %s", lvl ,xlat_spaces, str);
 		}
 		break;
 
@@ -2327,27 +2313,29 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 
 #ifdef HAVE_REGEX
 	case XLAT_REGEX:
-		XLAT_DEBUG("xlat_aprint REGEX");
+		XLAT_DEBUG("%.*sxlat_aprint REGEX", lvl, xlat_spaces);
 		if (regex_request_to_sub(ctx, &str, request, node->attr.tmpl_num) < 0) return NULL;
 
 		break;
 #endif
 
 	case XLAT_ALTERNATE:
-		XLAT_DEBUG("xlat_aprint ALTERNATE");
+		XLAT_DEBUG("%.*sxlat_aprint ALTERNATE", lvl, xlat_spaces);
 		rad_assert(node->child != NULL);
 		rad_assert(node->alternate != NULL);
 
-		str = xlat_aprint(ctx, request, node->child, escape, escape_ctx, lvl);
-		if (str) {
-			XLAT_DEBUG("ALTERNATE got string: %s", str);
-			break;
+		/*
+		 *	Call xlat_process recursively.  The child /
+		 *	alternate nodes may have "next" pointers, and
+		 *	those need to be expanded.
+		 */
+		if (xlat_process(&str, request, node->child, escape, escape_ctx) > 0) {
+			XLAT_DEBUG("%.*sALTERNATE got first string: %s", lvl, xlat_spaces, str);
+		} else {
+			(void) xlat_process(&str, request, node->alternate, escape, escape_ctx);
+			XLAT_DEBUG("%.*sALTERNATE got alternate string %s", lvl, xlat_spaces, str);
 		}
-
-		XLAT_DEBUG("ALTERNATE going to alternate");
-		str = xlat_aprint(ctx, request, node->alternate, escape, escape_ctx, lvl);
 		break;
-
 	}
 
 	/*
@@ -2613,10 +2601,12 @@ ssize_t radius_xlat_struct(char *out, size_t outlen, REQUEST *request, xlat_exp_
 
 ssize_t radius_axlat(char **out, REQUEST *request, char const *fmt, xlat_escape_t escape, void *ctx)
 {
+	*out = NULL;
 	return xlat_expand(out, 0, request, fmt, escape, ctx);
 }
 
 ssize_t radius_axlat_struct(char **out, REQUEST *request, xlat_exp_t const *xlat, xlat_escape_t escape, void *ctx)
 {
+	*out = NULL;
 	return xlat_expand_struct(out, 0, request, xlat, escape, ctx);
 }

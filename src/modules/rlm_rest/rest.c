@@ -1546,11 +1546,21 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 	http_body_type_t type;
 
 	/*
-	 *  Curl seems to throw these (\r\n) in before the next set of headers when
-	 *  looks like it's just a body separator and safe to ignore after we
-	 *  receive a 100 Continue.
+	 *  This seems to be curl's indication there are no more header lines.
 	 */
-	if (t == 2 && ((p[0] == '\r') && (p[1] == '\n'))) return t;
+	if (t == 2 && ((p[0] == '\r') && (p[1] == '\n'))) {
+		/*
+		 *  If we got a 100 Continue, we need to send additional payload data.
+		 *  reset the state to WRITE_STATE_INIT, so that when were called again
+		 *  we overwrite previous header data with that from the proper header.
+		 */
+		if (ctx->code == 100) {
+			RDEBUG2("Continuing...");
+			ctx->state = WRITE_STATE_INIT;
+		}
+
+		return t;
+	}
 
 	switch (ctx->state) {
 	case WRITE_STATE_INIT:
@@ -1698,16 +1708,6 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 		break;
 	}
 
-	/*
-	 *  If we got a 100 Continue, we need to send additional payload data.
-	 *  reset the state to WRITE_STATE_INIT, so that when were called again
-	 *  we overwrite previous header data with that from the proper header.
-	 */
-	if (ctx->code == 100) {
-		RDEBUG2("Continuing...");
-		ctx->state = WRITE_STATE_INIT;
-	}
-
 	return t;
 
 malformed:
@@ -1741,8 +1741,9 @@ static size_t rest_response_body(void *ptr, size_t size, size_t nmemb, void *use
 
 	char const *p = ptr, *q;
 	char *tmp;
-
+	
 	size_t const t = (size * nmemb);
+	size_t needed;
 
 	if (t == 0) return 0;
 
@@ -1781,8 +1782,11 @@ static size_t rest_response_body(void *ptr, size_t size, size_t nmemb, void *use
 		return t;
 
 	default:
-		if (t > (ctx->alloc - ctx->used)) {
-			ctx->alloc += ((t + 1) > REST_BODY_INIT) ? t + 1 : REST_BODY_INIT;
+		needed = ctx->used + t + 1;
+		if (needed < REST_BODY_INIT) needed = REST_BODY_INIT;
+
+		if (needed > ctx->alloc) {
+			ctx->alloc = needed;
 
 			tmp = ctx->buffer;
 
@@ -1790,12 +1794,12 @@ static size_t rest_response_body(void *ptr, size_t size, size_t nmemb, void *use
 
 			/* If data has been written previously */
 			if (tmp) {
-				strlcpy(ctx->buffer, tmp, (ctx->used + 1));
+				memcpy(ctx->buffer, tmp, ctx->used);
 				free(tmp);
 			}
 		}
 		strlcpy(ctx->buffer + ctx->used, p, t + 1);
-		ctx->used += t;
+		ctx->used += t;	/* don't include the trailing zero */
 
 		break;
 	}
@@ -2142,6 +2146,10 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 
 	if (section->tls_ca_file) {
 		SET_OPTION(CURLOPT_ISSUERCERT, section->tls_ca_file);
+	}
+
+	if (section->tls_ca_info_file) {
+		SET_OPTION(CURLOPT_CAINFO, section->tls_ca_info_file);
 	}
 
 	if (section->tls_ca_path) {

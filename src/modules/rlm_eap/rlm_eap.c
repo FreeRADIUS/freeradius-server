@@ -30,6 +30,8 @@ RCSID("$Id$")
 
 #include "rlm_eap.h"
 
+#include <sys/stat.h>
+
 static const CONF_PARSER module_config[] = {
 	{ "default_eap_type", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_t, default_method_name), "md5" },
 	{ "timer_expire", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_eap_t, timer_limit), "60" },
@@ -82,8 +84,14 @@ static int eap_handler_cmp(void const *a, void const *b)
 	 *	EAP work.
 	 */
 	if (fr_ipaddr_cmp(&one->src_ipaddr, &two->src_ipaddr) != 0) {
-		WARN("EAP packets are arriving from two different upstream "
-		       "servers.  Has there been a proxy fail-over?");
+		char src1[64], src2[64];
+
+		fr_ntop(src1, sizeof(src1), &one->src_ipaddr);
+		fr_ntop(src2, sizeof(src2), &two->src_ipaddr);
+		
+		RATE_LIMIT(WARN("EAP packets for one session are arriving from two different upstream"
+				"servers (%s and %s).  Has there been a proxy fail-over?",
+				src1, src2));
 	}
 
 	return 0;
@@ -406,6 +414,26 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		}
 
 	} else {
+		/*
+		 *	Enable the cached entry on success.
+		 */
+		if (handler->eap_ds->request->code == PW_EAP_SUCCESS) {
+			VALUE_PAIR *vp;
+
+			vp = fr_pair_find_by_num(request->state, PW_TLS_CACHE_FILENAME, 0, TAG_ANY);
+			if (vp) (void) chmod(vp->vp_strvalue, S_IRUSR | S_IWUSR);
+		}
+
+		/*
+		 *	Disable the cached entry on failure.
+		 */
+		if (handler->eap_ds->request->code == PW_EAP_FAILURE) {
+			VALUE_PAIR *vp;
+
+			vp = fr_pair_find_by_num(request->state, PW_TLS_CACHE_FILENAME, 0, TAG_ANY);
+			if (vp) (void) unlink(vp->vp_strvalue);
+		}
+
 		RDEBUG2("Freeing handler");
 		/* handler is not required any more, free it now */
 		talloc_free(handler);
@@ -431,17 +459,27 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 
 		/*
 		 *	Cisco AP1230 has a bug and needs a zero
-		 *	terminated string in Access-Accept.
+		 *	terminated string in Access-Accept.  This
+		 *	means it requires 2 trailing zeros.  One to
+		 *	send in the RADIUS packet, and the other to
+		 *	convince the rest of the server that
+		 *	vp->vp_strvalue is still a NUL-terminated C
+		 *	string.
 		 */
 		if (inst->mod_accounting_username_bug) {
 			char const *old = vp->vp_strvalue;
-			char *new = talloc_zero_array(vp, char, vp->vp_length + 1);
+			char *new;
+
+			vp->vp_length++; /* account for an additional zero */
+
+			new = talloc_array(vp, char, vp->vp_length + 1);
 
 			memcpy(new, old, vp->vp_length);
+			new[vp->length] = '\0';
 			vp->vp_strvalue = new;
-			vp->vp_length++;
 
 			rad_const_free(old);
+			VERIFY_VP(vp);
 		}
 	}
 

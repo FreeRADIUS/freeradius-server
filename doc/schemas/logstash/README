@@ -5,11 +5,11 @@ So you've got all these RADIUS logs, but how do you analyse them? What is the
 easiest way to query the logs, find out when a client connected or disconnected,
 or view the top ten clients logging into the system over the last six hours?
 
-The logstash/elasticsearch/kibana stack is designed and built to do just that.
-elasticsearch is a search engine; logstash is commonly used to feed data in,
-and kibana the web interface to query the logs in near real time.
+The elastic stack is designed and built to do just that. elasticsearch is a
+search engine; logstash is commonly used to feed data in, and kibana the web
+interface to query the logs in near real time.
 
-Installing the ELK stack is beyond the scope of this document, but can be done
+Installing the elastic stack is beyond the scope of this document, but can be done
 in a short amount of time by any competent sysadmin. Then comes getting the
 logs in.
 
@@ -42,15 +42,15 @@ logstash-radius.conf
   tab-delimited key-value pairs out. Some additional data is then extracted
   from certain key attributes.
 
-  The file will need to be edited at least to set the input method: for
-  experimentation the given input (stdin) may be used. If logstash is running on
-  the RADIUS server then 'file' input may be appropriate, otherwise a different
-  input such as log-courier or logstash-forwarder may be better to get the data
-  over the network to the logstash server.
+  The logstash config will need to be edited at least to set the input method:
+  for experimentation the given input (file) may be used. If logstash is running
+  on the RADIUS server itself then this example input may be appropriate,
+  otherwise a different input such as log-courier or filebeat may be better to
+  get the data over the network to logstash.
 
   It would be best to use an input method that can join the multiple lines of
   the detail file together and feed them to logstash as a single entry, rather
-  than using the logstash multiline filter.
+  than using the logstash multiline codec.
 
 log-courier.conf
 
@@ -58,26 +58,24 @@ log-courier.conf
 
 kibana4-dashboard.json
 
-  Basic RADIUS dashboard for Kibana4.
+  Basic RADIUS dashboard for Kibana 4 and Kibana 5.
 
   To import the dashboard first create a new index called "radius-*" in
   Settings/Indices. Then go to Kibana's Settings page, "Objects" and "Import".
   Once imported open the "RADIUS detail" dashboard.
-
-kibana3-dashboard.json
-
-  Basic RADIUS dashboard for Kibana3. To import the dashboard go to Load,
-  Advanced and "Choose File".
 
 
 Example usage
 -------------
 
 Install mapping (only needs to be done once):
-$ ./radius-mapping.sh
 
-Feed a detail file in:
-$ /path/to/logstash -f logstash-radius.conf < acct-detail
+    $ ./radius-mapping.sh
+
+Edit logstash-radius.conf to point to the correct file, then feed a detail file
+in:
+
+    # /usr/share/logstash/bin/logstash --path.settings=/etc/logstash -f logstash-radius.conf
 
 
 See also
@@ -89,11 +87,11 @@ The configuration examples presented here have been tested with the
 following software versions (note that elasticsearch 2.x may not yet
 work with this config).
 
-  elasticsearch 1.7.4
-  logstash 1.4.5
-  kibana 4.1.2
-  kibana 3.1.0
+  elasticsearch 5.1.2
+  logstash 5.1.2
+  kibana 5.1.2
+  kibana 4.1.11
 
 Matthew Newton
-January 2016
+January 2017
 

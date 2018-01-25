@@ -1,4 +1,276 @@
-FreeRADIUS 3.0.12 Mon 25 Jan 2016 14:00:00 EST urgency=medium
+FreeRADIUS 3.0.17 Thu 11 Jan 2018 12:00:00 EST urgency=low
+	Feature improvements
+	Bug fixes
+	* Don't call post-proxy twice when proxying to
+	  a virtual server.  Matthew Newton, #2161.
+
+FreeRADIUS 3.0.16 Thu 11 Jan 2018 12:00:00 EST urgency=low
+	Feature improvements
+	* rlm_python now supports multiple lists.  From #2031.
+	* Add trust router re-keying.  From #2007.
+	* Add support for Samba / AD LDAP schema.
+	  See doc/schemas/ldap/samba/README.txt and
+	  doc/schemas/ldap/samba/
+	* Add "tls_min_version" and "tls_max_version" to EAP module
+	  for Debian OpenSSL issues.
+	* Better documentation for client certificates in PEAP and TTLS:
+	  it usually doesn't work.  Fixes #2068.
+	* Distinguish login failure from AD unavailable.  Fixes #2069.
+	* Update RH spec files.  Fixes #2070.
+	* Run Post-Proxy-Type if all home servers are dead.
+	  Fixes #2072.
+	* Print offending IP addresses when EAP sessions come from
+	  two upstream home servers, and rate-limit the messages.
+	* Minor packaging updates.
+	* Better documentation for rlm_rest.
+	* EAP-FAST now has it's own "cipher_list", so that it is
+	  easier to configure.
+	* EAP-FAST now forcibly disables TLS1.2, until such time
+	  as we implement the new keying mechanism from TLS1.2.
+	* Add documentation for allow_expired_crl.
+	* Update Debian logrotation.  #2093 and #2101.
+	* DHCP relay can now drop responses.  #2095.
+	* rlm_sqlippool can now assign Delegated-IPv6-Prefix.
+	  It also now can assign any IPv4 or IPv6 address.
+	  Based on patches from maximumG.  #2094.
+	  See raddb/mods-available/sqlippool for changes.
+	* radeapclient can now use EAP-SIM-Ki to dynamically
+	  create the necessary triplets.
+	* Explain why many LDAP connections are closed.
+	  Fixes #1969.
+	* Debian build / package issues fixed by Matthew Newton.
+	* dictionary.patton updates from Brice Schaffner.  Fixes #2137.
+	* Added scripts to build "inner-server.pem", and updated
+	  mods-config/inner-eap and certs/README to match.
+	* Added provisions for using an external CA.  See raddb/certs/
+	* Include dhcpclient binary in freeradius-dhcp debian packge.
+
+	Bug fixes
+	* Bind the lifetime of program name and python path to the module
+	  FR-AD-002 (redone)
+	* Pass correct statement length into sqlite3_prepare[_v2]
+	  FR-AD-003 (redone)
+	* Allow 100-Continue responses with additional headers in rlm_rest.
+	* fix corner case where detail files were not being locked
+	  correctly.
+	* Fix (SQL-Group == "%{...}") checks, and same for LDAP-Group.
+	  Fixes #1947
+	* Clean up exfile code.  Which should help to avoid issues
+	  with reading / writing 100's of detail files.
+	* Fix build for winbind.  Patch from Alex Clouter.
+	* Fix checkrad for Mikrotik.  Patch from Muchael Ducharme.
+	* Fix home server stats lookup.  Patch from Phil Mayers.
+	* Add libjson-c3 as an optional dependency.
+	* Require LTB OpenLDAP on CentOS / Redhat, to avoid linking
+	  against NSS, which breaks the server.  Fixes #2040.
+	* rlm_python fixes.  Fixes #2041
+	* Typos in "man" pages.  Fixes #2045
+	* Expand "next" in %{%{...}:-%{...}}.  Fixes #2048
+	* Don't add TLS attributes twice.  Fixes #2050.
+	* Fix memory allocation in rlm_rest.  Fixes #2051.
+	* Update trustrouter for new API. Fixes #2059.
+	* Fix SQLite issues on FreeBSD.  Fixes #2060
+	* Don't do debug logging of bad passwords.  Fixes #2064.
+	* More graceful handling of "die" in rlm_perl.  Fixes #2073.
+	* Fix occasional crash when using
+	  cisco_accounting_username_bug = yes
+	* EAP-FAST fixes from Isaac Boukris.
+	  #2078, #2076, and #2082, #2126.
+	* DHCP fixes, relay, #2092, add run-time check, #2028
+	* Decode multiple RADIUS packets at a time in highly loaded
+	  RadSec connections.  Patch from Jan Tomasek.  #2106.
+	* TunnelPassword is not "single value" in LDAP schema.
+	  Fixes #2061.
+	* sql log now opens the expanded filename, not the input one.
+	  This was a regression introduced in 3.0.15.
+	* Remove unnecessary UNIQUE constrain in Oracle schemas.
+	* Fix SSL thread and locking issues when modules also use SSL.
+	  Fixes #2125 and #2129.
+	* Re-add dhcpclient "raw packet" changes.  Patches from
+	  Nicolas Chaigne and Matthew Newton.  Fixes #2155.
+
+FreeRADIUS 3.0.15 Mon 17 Jul 2017 09:00:00 EDT urgency=high
+	Feature improvements
+	* Provide HOSTNAME in default systemd files.
+	* Incorporate RedHat specific files
+	* Update dictionary.starent, dictionary.ruckus
+	* Allow builds without TCP or DHCP
+
+	Bug fixes
+	* Fix multiple issues.  See this web page for details:
+	  http://freeradius.org/security/fuzzer-2017.html
+	* Pass correct statement length into sqlite3_prepare[_v2]
+	* Bind the lifetime of program name and python path to the module
+	* Check input / output length in make_secret().
+	  FR-GV-201
+	* Fix read overflow when decoding DHCP option 63
+	  FR-GV-206
+	* Fix write overflow in data2vp_wimax()
+	  FR-GV-301
+	* Fix infinite loop and memory exhaustion with 'concat' attributes
+	  FR-GV-302
+	* Fix infinite read in dhcp_attr2vp()
+	  FR-GV-303
+	* Fix buffer over-read in fr_dhcp_decode_suboptions()
+	  FR-GV-304
+	* Decode 'signed' attributes correctly.
+	  FR-GV-305
+	* use strncmp() instead of memcmp() for bounded data
+	  FR-AD-001
+	* Bind the lifetime of program name and python path to the module
+	  FR-AD-002
+	* Pass correct statement length into sqlite3_prepare[_v2]
+	  FR-AD-003
+	* print messages when we see deprecated configuration
+	  items
+	* show reasons why we couldn't parse a certificate
+	  expiry time
+	* be more accepting about truncated ASN1 times.
+	* Fix OpenSSL API issue which could leak small amounts
+	  of memory.  Issue reported by Guido Vranken.
+	* For Access-Reject, call rad_authlog() after running
+	  the post-auth section, just like for Access-Accept.
+	* don't crash when reading corrupted data from session
+	  resumption cache.  Fixes #1999.
+	* Parse port in dhcpclient.  Fixes #2000.
+	* Don't leak memory for OpenSSL.
+	  Patch from Guido Vranken.
+	* Portability fixes taken from OpenBSD port collection.
+	* run rad_authlog after post-auth for Access-Reject.
+	* Don't process VMPS packets twice.
+	* Fix attribute truncation in rlm_perl
+	* Fix bug when processing huntgroups.
+
+FreeRADIUS 3.0.14 Fri 26 May 2017 13:00:00 EDT urgency=medium
+	Feature improvements
+	* Enforce TLS client certificate expiration on
+	  session resumption, and Session-Timeout.
+	  See CVE-2017-9148.
+	* Updated dictionary.cisco.vpn3000, dictionary.patton
+	* Added dictionary.dellemc
+	* Lowered the log output for failed PEAP sessions.
+	* ALlow utc in rlm_date.  Patch from
+	  Peter Lambrechtsen.
+	* The internal OpenSSL session cache has been
+	  disabled.  Please see mods-available/eap
+	* Update detail reader documentation.
+	  Patch from Matthew Newton.  Fixes #1973.
+	* Make outgoing RadSec connections non-blocking.
+	* Add SQL backing to Moonshot-*-TargetedId
+	  generation.  Patch from Stefan Paetow.
+
+	Bug fixes
+	* radtest uses Cleartext-Password for EAP, not
+	  User-Password.
+	* Update documentation for mods-enabled/ linking.
+	* Enhanced checks for moonshot salt.  Fixes #1933.
+	* Allow session resumption for RadSec connections.
+	  Fixes #1936.
+	* Update "huntgroups" file to note that port ranges
+	  are not supported.
+	* Fix OpenSSL permissions issues on default key files.
+	  Fixes #1941.
+	* Certificates are not required when PSK is used.
+	* Allow SubjectAltName as first extension in cert.
+	  Fixes #1946.
+	* Fixed talloc issue with TLS session resumption.
+	  Fixes #1980.
+	* "&Attr-26 := 0x01" now produces useful error messages.
+	* Handle connection error in rlm_ldap_cacheable_groupobj.
+	  Fixes #1951.
+	* Fix endian issues in DHCP.
+	* Multiple minor fixes for Coverity complaints.
+	* Handle unexpected regex.  Fixes #1959.
+	* Fix minor issues in dictionaries.
+	* Fix typos and grammar.  Patches from Alan Buxey.
+	* Fix erroneous VP creation in rlm_preproces.
+	* Fix MIB.  Patch from Jeff Gehlbach.
+	* Trust router updates from Alejandro Perez.
+	* Allow build with LibreSSL.  Fixes #1989
+	* Use correct packet for channel bindings.  Fixes #1990.
+	* Many fixes found by PVS-Studio.  Thanks to PVS-Studio
+	  for giving us a test license.  Please see the git commit
+	  history for more information.
+	* Fix incorrect length check in EAP-PWD.  This may
+	  be exploitable.
+
+FreeRADIUS 3.0.13 Mon 06 Mar 2017 13:00:00 EDT urgency=medium
+	Feature improvements
+	* Add dictionary.rfc7930.  Note that we do not implement
+	  the RFC.
+	* Added 'cipher_server_preference' to mods-available/eap
+	  Patch from #1797.
+	* OpenSSL 1.1.0 compatibility fixes.
+	* rlm_perl: radiusd::xlat to evaluate xlat string
+	  within perl script
+	* Allow authentication retry in winbind. Patch from
+	  Herwin Weststrate. See raddb/mods-available/mschap.
+	* Added "recv-coa" method to rlm_rest.  It behaves the
+	  same as "authorize".
+	* Document Trust Router tr_port option.  Patch from
+	  Stefan Paetow.
+	* Update elasticsearch/logstash examples so that they work
+	  with elastic stack v5.  Patch from Matthew Newton.
+	* Print information about packets, replies, and contents
+	  in the detail file reader.
+	* Update abfab-tr policy.  Pull request #1893
+	  from Stefan Paetow.
+	* Reject packets which contain User-Password and
+	  EAP-Message.
+	* Add example for filtering Access-Challenge.
+	  See sites-enabled/default.
+	* Pull symlink fixes from v4.0.x.  Fixes #1859.
+	* Add systemd reload.  Not everything is reloaded, but
+	  some is.  Fixes #1662.
+	* Better documentation for listen "ipaddr".  Fixes #1921
+	* Add dictionary.cnergee, updated dictionary.nomadix.
+	* radclient no longer needs -x to print statistics with -s.
+
+	Bug fixes
+	* Minor typos.  Fixes #1763
+	* Fix typo in RPM build.  Closes #1767.
+	* rlm_mschap check for password expiry only
+	  if password was correct.  Fixes #1762.
+	* Update debian build.
+	* update rlm_counter "man" page.  Fixes #1775.
+	* Remove erroneous assert.  Fixes #1778.
+	* fix mschap password change test.  Fixes #1792.
+	* Cleanup config file on data remove.  Fixes #1795.
+	* passwd module returns "notfound" if not found.
+	* Check for old OpenSSL, and don't build rlm_eap_fast
+	  if it necessary.  Fixes #1803
+	* Cleanup memory better after ldap version query.
+	  Patch from Aleksey Katargin.
+	* Rename lt_* functions to avoid linker issues with
+	  libtool.  Fixes #1277
+	* Many miscellaneous fixes and typos.
+	* Allow long strings in %{%{foo} bar:-%{baz} blah".
+	  Fixes #1866
+	* Fix filtering operators, along with more documentation and
+	  more tests for them.
+	* Fix OpenSSL fixes.  Fixes #1876.
+	* Finish SQL select queries even when SELECT returns no rows.
+	  Fixes #1879.
+	* Set Module-Failure-Message for more EAP errors.
+	* Correct typo in dictionary.rfc5580.  Fixes #1882
+	* Remove obselete systemd syslog.target.
+	* Client-Port-Balance load-balancing now uses client port.
+	* Radrelay examples fixed from Alex Clouter.
+	* Update systemd target.  Pull request #1896.
+	* Trim starting whitespace in xlat strings.
+	* Get MySQL result lengths using normal API.
+	* suid down after fchown().  Fixes #1914.
+	* Fix cases of comparing pointer to NUL character.  Fixes #1915.
+	* OpenSSL v1.1 fixes.  Pull request #1921.
+	* Better Handle v4/v6 host names.  Pull request #1919.
+	* Remove "Auth-Type = System" from docs and examples.
+	* Don't crash on malformed %{home_server}.  Fixes #1922
+	* fix erroneous use of talloc destructor in rlm_eap
+	* Issue trigger modules.sql.fail.  Fixes #1923
+	* Document python_path gotcha's.  Fixes #1845
+	* dlopen() the specific version of Python.  Fixes #1592
+
+FreeRADIUS 3.0.12 Thur 29 Sep 2016 13:00:00 EDT urgency=medium
 	Feature improvements
 	* Add support for =~ and !~ in update sections.
 	  See "man unlang"
@@ -14,12 +286,23 @@ FreeRADIUS 3.0.12 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	  Herwin Weststrate.
 	* Allow extended attributes to have "encrypt=2"
 	* Update dictionary.aruba.
+	* Add support for EAP-FAST.  This is an isolated
+	  feature which does not affect anything else.
+	* Update OpenSSL vulnerability list.  Use a version
+	  of OpenSSL released after September 20, 2016.
+	* EAP certificate verification is now done when
+	  "verify" is enabled and "ocsp" is disabled.
+	* New dhcpclient and rlm_rad_counter man pages.
+	* Minor abfab and moonshot additions.
+	* Pass CFLAGS through from environment in RPM builds.
+	  Allows more custom builds.
+	* Build with Heimdal in addition to libkrb5.
 
 	Bug fixes
 	* Use correct typedef for older versions of sqlite.
 	* Update mssql schema to add priority
-	* don't complain on /dev/urandom in ldap
-	* fix == operator in update sections
+	* Don't complain on /dev/urandom in ldap
+	* Fix == operator in update sections
 	* Don't create DHCP strings with many trailing zeros.
 	  Patch from Nicolas C.  Fixes #1526.
 	* Allow MS-CHAP change passwords instead of complaining
@@ -67,6 +350,23 @@ FreeRADIUS 3.0.12 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	  Patch from Alan Buxey, #1655.
 	* Don't crash if SQL connection becomes unavailable.
 	  Fixes #1640.
+	* Disallow originate_coa when proxy_requests = no
+	  Fixes #1684.
+	* Free rad_perlconf_hv in correct perl context.
+	  Fixes #1675.
+	* Multiple fixes for Debian builds.  #1510, among
+	  others.
+	* Set OpenSSL FIPS compatibility flag when necessary.
+	* Pulled fixes for the build system over from other
+	  branches.
+	* Fix OCSP for RADIUS over TLS.
+	* Fix skip_if_ocsp_ok behavior.
+	* Better fixes for systems without closefrom() but
+	  which have /proc.  Fixes #1757.
+	* Minor build fixes back-ported from v4.0.x.
+	* build --whout-ascend-binary.  Fixes #1761.
+	* Be more aggressive about not opening new connections
+	  in debug mode after CTRL-C.  Address #1604.
 
 FreeRADIUS 3.0.11 Mon 25 Jan 2016 14:00:00 EST urgency=medium
 	Feature improvements
@@ -355,7 +655,7 @@ FreeRADIUS 3.0.9 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 
 FreeRADIUS 3.0.8 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	Feature improvements
-        * Allow syslog_severity to be set in rlm_linelog.
+	* Allow syslog_severity to be set in rlm_linelog.
 	* Allow defaults to be set for bulk clients in LDAP and couchbase.
 	* Updates to dhcpclient.  Patches from Nicolas C.
 	* rlm_mschap now supports direct connections to winbind, which
@@ -1248,7 +1548,7 @@ FreeRADIUS 3.0.0 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	* Added EAP-PWD implementation from Dan Harkins
 	* Added connection pools for modules. This unifies connection
 	  management which was previously different for different modules.
- 	* SQL now uses the connection pool.  See mods-available/sql
+	* SQL now uses the connection pool.  See mods-available/sql
 	* SQL now supports arbitrary Acct-Status-Types.
 	  These changes are not compatible with 2.x.
 	* SQL now has full support for SQLite.  See raddb/sql/main/sqlite/

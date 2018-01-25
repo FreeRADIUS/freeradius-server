@@ -217,7 +217,7 @@ static int genericcmp(UNUSED void *instance,
 	/*
 	 *	Will do the xlat for us
 	 */
-	return radius_compare_vps(request, check, NULL);
+	return radius_compare_vps(request, check, req);
 }
 
 static int generic_attrs[] = {

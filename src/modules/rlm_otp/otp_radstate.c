@@ -110,7 +110,7 @@ size_t otp_gen_state(char state[OTP_MAX_RADSTATE_LEN],
 		     size_t clen,
 		     int32_t flags, int32_t when, uint8_t const key[16])
 {
-	HMAC_CTX hmac_ctx;
+	HMAC_CTX *hmac_ctx;
 	uint8_t hmac[MD5_DIGEST_LENGTH];
 	char *p;
 
@@ -120,12 +120,13 @@ size_t otp_gen_state(char state[OTP_MAX_RADSTATE_LEN],
 	 *	having to collect the data to be signed into one
 	 *	contiguous piece.
 	 */
-	HMAC_Init(&hmac_ctx, key, sizeof(key[0]) * 16, EVP_md5());
-	HMAC_Update(&hmac_ctx, (uint8_t const *) challenge, clen);
-	HMAC_Update(&hmac_ctx, (uint8_t *) &flags, 4);
-	HMAC_Update(&hmac_ctx, (uint8_t *) &when, 4);
-	HMAC_Final(&hmac_ctx, hmac, NULL);
-	HMAC_cleanup(&hmac_ctx);
+	hmac_ctx = HMAC_CTX_new();
+	HMAC_Init_ex(hmac_ctx, key, sizeof(key[0]) * 16, EVP_md5(), NULL);
+	HMAC_Update(hmac_ctx, (uint8_t const *) challenge, clen);
+	HMAC_Update(hmac_ctx, (uint8_t *) &flags, 4);
+	HMAC_Update(hmac_ctx, (uint8_t *) &when, 4);
+	HMAC_Final(hmac_ctx, hmac, NULL);
+	HMAC_CTX_free(hmac_ctx);
 
 	/*
 	 *	Generate the state.

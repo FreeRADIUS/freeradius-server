@@ -36,6 +36,7 @@ RCSID("$Id$")
  */
 static CONF_PARSER tls_config[] = {
 	{ "ca_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_rest_section_t, tls_ca_file), NULL },
+	{ "ca_info_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_rest_section_t, tls_ca_info_file), NULL },
 	{ "ca_path", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_rest_section_t, tls_ca_path), NULL },
 	{ "certificate_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_rest_section_t, tls_certificate_file), NULL },
 	{ "private_key_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_rest_section_t, tls_private_key_file), NULL },
@@ -174,7 +175,7 @@ static ssize_t jsonquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 				break;
 
 			case '\n':
-				*out++ = 'b';
+				*out++ = 'n';
 				freespace--;
 				break;
 
@@ -189,7 +190,7 @@ static ssize_t jsonquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 				break;
 
 			default:
-				len = snprintf(out, freespace, "u%04X", *p);
+				len = snprintf(out, freespace, "u%04X", (uint8_t) *p);
 				if (is_truncated(len, freespace)) return (outlen - freespace) + len;
 				out += len;
 				freespace -= len;
@@ -652,6 +653,97 @@ finish:
 	return rcode;
 }
 
+#ifdef WITH_COA
+/*
+ *	Create the set of attribute-value pairs to check and reply
+ *	with for this user from the database.
+ */
+static rlm_rcode_t CC_HINT(nonnull) mod_recv_coa(void *instance, REQUEST *request)
+{
+	rlm_rest_t *inst = instance;
+	rlm_rest_section_t *section = &inst->recv_coa;
+
+	void *handle;
+	int hcode;
+	int rcode = RLM_MODULE_OK;
+	int ret;
+
+	if (!section->name) return RLM_MODULE_NOOP;
+
+	handle = fr_connection_get(inst->pool);
+	if (!handle) return RLM_MODULE_FAIL;
+
+	ret = rlm_rest_perform(instance, section, handle, request, NULL, NULL);
+	if (ret < 0) {
+		rcode = RLM_MODULE_FAIL;
+		goto finish;
+	}
+
+	hcode = rest_get_handle_code(handle);
+	switch (hcode) {
+	case 404:
+	case 410:
+		rcode = RLM_MODULE_NOTFOUND;
+		break;
+
+	case 403:
+		rcode = RLM_MODULE_USERLOCK;
+		break;
+
+	case 401:
+		/*
+		 *	Attempt to parse content if there was any.
+		 */
+		ret = rest_response_decode(inst, section, request, handle);
+		if (ret < 0) {
+			rcode = RLM_MODULE_FAIL;
+			break;
+		}
+
+		rcode = RLM_MODULE_REJECT;
+		break;
+
+	case 204:
+		rcode = RLM_MODULE_OK;
+		break;
+
+	default:
+		/*
+		 *	Attempt to parse content if there was any.
+		 */
+		if ((hcode >= 200) && (hcode < 300)) {
+			ret = rest_response_decode(inst, section, request, handle);
+			if (ret < 0) 	   rcode = RLM_MODULE_FAIL;
+			else if (ret == 0) rcode = RLM_MODULE_OK;
+			else		   rcode = RLM_MODULE_UPDATED;
+			break;
+		} else if (hcode < 500) {
+			rcode = RLM_MODULE_INVALID;
+		} else {
+			rcode = RLM_MODULE_FAIL;
+		}
+	}
+
+finish:
+	switch (rcode) {
+	case RLM_MODULE_INVALID:
+	case RLM_MODULE_FAIL:
+	case RLM_MODULE_USERLOCK:
+		rest_response_error(request, handle);
+		break;
+
+	default:
+		break;
+	}
+
+	rlm_rest_cleanup(instance, section, handle);
+
+	fr_connection_release(inst->pool, handle);
+
+	return rcode;
+}
+#endif
+
 static int parse_sub_section(CONF_SECTION *parent, rlm_rest_section_t *config, rlm_components_t comp)
 {
 	CONF_SECTION *cs;
@@ -824,6 +916,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		(parse_sub_section(conf, &inst->authenticate, MOD_AUTHENTICATE) < 0) ||
 		(parse_sub_section(conf, &inst->accounting, MOD_ACCOUNTING) < 0) ||
 
+#ifdef WITH_COA
+		(parse_sub_section(conf, &inst->recv_coa, MOD_RECV_COA) < 0) ||
+#endif
+
 /* @todo add behaviour for checksimul */
 /*		(parse_sub_section(conf, &inst->checksimul, MOD_SESSION) < 0) || */
 		(parse_sub_section(conf, &inst->post_auth, MOD_POST_AUTH) < 0))
@@ -885,6 +981,9 @@ module_t rlm_rest = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_ACCOUNTING]	= mod_accounting,
-		[MOD_POST_AUTH]		= mod_post_auth
+		[MOD_POST_AUTH]		= mod_post_auth,
+#ifdef WITH_COA
+		[MOD_RECV_COA]		= mod_recv_coa
+#endif
 	},
 };

@@ -19,6 +19,9 @@ redis {
 	#  We recommend using a strong password.
 #	password = thisisreallysecretandhardtoguess
 
+	#  Set connection and query timeout for rlm_redis
+	query_timeout = 5
+
 	#
 	#  Information for the connection pool.  The configuration items
 	#  below are the same for all modules which use the new

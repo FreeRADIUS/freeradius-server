@@ -589,6 +589,10 @@ else
     BUILD_DIR := $(call CANONICAL_PATH,${BUILD_DIR})
 endif
 
+.PHONY: $(BUILD_DIR)
+$(BUILD_DIR):
+	@mkdir -p $@
+
 # Define compilers and linkers
 #
 BOOTSTRAP_BUILD = 
@@ -647,6 +651,11 @@ ifneq "$(MAKECMDGOALS)" "clean"
     $(foreach TGT,${ALL_TGTS},\
       $(eval -include ${${TGT}_DEPS}))
 endif
+
+# Build rules for installation subdirectories
+$(foreach D,$(patsubst %/,%,$(sort $(dir ${ALL_INSTALL}))),\
+  $(eval $(call ADD_INSTALL_RULE.dir,${D})))
+
 
 scan: ${ALL_PLISTS}
 

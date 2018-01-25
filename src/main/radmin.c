@@ -40,6 +40,7 @@ RCSID("$Id$")
 
 #ifdef HAVE_LIBREADLINE
 
+# include <stdio.h>
 #if defined(HAVE_READLINE_READLINE_H)
 #  include <readline/readline.h>
 #  define USE_READLINE (1)
@@ -69,7 +70,10 @@ static char const *radmin_version = "radmin version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
 " (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"
 #endif
-", built on " __DATE__ " at " __TIME__;
+#ifndef ENABLE_REPRODUCIBLE_BUILDS
+", built on " __DATE__ " at " __TIME__
+#endif
+;
 
 
 /*
@@ -83,12 +87,12 @@ static bool echo = false;
 static char const *secret = "testing123";
 
 #include <sys/wait.h>
+
+#ifdef HAVE_PTHREAD_H
 pid_t rad_fork(void)
 {
 	return fork();
 }
-
-#ifdef HAVE_PTHREAD_H
 pid_t rad_waitpid(pid_t pid, int *status)
 {
 	return waitpid(pid, status, 0);
@@ -603,7 +607,7 @@ int main(int argc, char **argv)
 
 	if (!quiet) {
 		printf("%s - FreeRADIUS Server administration tool.\n", radmin_version);
-		printf("Copyright (C) 2008-2016 The FreeRADIUS server project and contributors.\n");
+		printf("Copyright (C) 2008-2017 The FreeRADIUS server project and contributors.\n");
 		printf("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\n");
 		printf("PARTICULAR PURPOSE.\n");
 		printf("You may redistribute copies of FreeRADIUS under the terms of the\n");

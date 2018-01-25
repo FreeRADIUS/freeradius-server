@@ -119,7 +119,7 @@ static size_t chbind_get_data(chbind_packet_t const *packet,
 	}
 
 	ptr = (uint8_t const *) packet;
-	end = ptr + talloc_array_length(packet);
+	end = ptr + talloc_array_length((uint8_t const *) packet);
 
 	ptr++;			/* skip the code at the start of the packet */
 	while (ptr < end) {
@@ -182,7 +182,7 @@ PW_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 	/* Add the channel binding attributes to the fake packet */
 	data_len = chbind_get_data(chbind->request, CHBIND_NSID_RADIUS, &attr_data);
 	if (data_len) {
-		rad_assert(data_len <= talloc_array_length(chbind->request));
+		rad_assert(data_len <= talloc_array_length((uint8_t const *) chbind->request));
 
 		while (data_len > 0) {
 			int attr_len = rad_attr2vp(fake->packet, NULL, NULL, NULL, attr_data, data_len, &vp);
@@ -207,9 +207,7 @@ PW_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 	fake->server = "channel_bindings";
 	fake->packet->code = PW_CODE_ACCESS_REQUEST;
 
-	rcode = rad_virtual_server(fake);
-
-	switch (rcode) {
+	switch (rad_virtual_server(fake)) {
 		/* If rad_authenticate succeeded, build a reply */
 	case RLM_MODULE_OK:
 	case RLM_MODULE_HANDLED:
@@ -280,15 +278,15 @@ chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	return packet;
 }
 
-VALUE_PAIR *eap_chbind_packet2vp(REQUEST *request, chbind_packet_t *packet)
+VALUE_PAIR *eap_chbind_packet2vp(RADIUS_PACKET *packet, chbind_packet_t *chbind)
 {
 	VALUE_PAIR	*vp;
 
-	if (!packet) return NULL; /* don't produce garbage */
+	if (!chbind) return NULL; /* don't produce garbage */
 
-	vp = fr_pair_afrom_num(request->packet, PW_UKERNA_CHBIND, VENDORPEC_UKERNA);
+	vp = fr_pair_afrom_num(packet, PW_UKERNA_CHBIND, VENDORPEC_UKERNA);
 	if (!vp) return NULL;
-	fr_pair_value_memcpy(vp, (uint8_t *) packet, talloc_array_length((uint8_t *)packet));
+	fr_pair_value_memcpy(vp, (uint8_t *) chbind, talloc_array_length((uint8_t *)chbind));
 
 	return vp;
 }

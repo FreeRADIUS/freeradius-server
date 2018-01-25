@@ -85,6 +85,9 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 	} else {
 		int rtt;
 		struct timeval now;
+
+		RDEBUG("detail (%s): Done %s packet.", data->name, fr_packet_codes[request->packet->code]);
+
 		/*
 		 *	We call gettimeofday a lot.  But it should be OK,
 		 *	because there's nothing else to do.
@@ -333,7 +336,6 @@ int detail_recv(rad_listen_t *listener)
 		vp_cursor_t cursor;
 
 		DEBUG2("detail (%s): Read packet from %s", data->name, data->filename_work);
-
 		for (vp = fr_cursor_init(&cursor, &packet->vps);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
@@ -383,6 +385,8 @@ int detail_recv(rad_listen_t *listener)
 	rcode = read(data->master_pipe[0], &packet, sizeof(packet));
 	if (rcode <= 0) return rcode;
 
+	rad_assert(packet != NULL);
+
 	if (DEBUG_ENABLED2) {
 		VALUE_PAIR *vp;
 		vp_cursor_t cursor;
@@ -394,7 +398,6 @@ int detail_recv(rad_listen_t *listener)
 			debug_pair(vp);
 		}
 	}
-	rad_assert(packet != NULL);
 
 	switch (packet->code) {
 	case PW_CODE_ACCOUNTING_REQUEST:
@@ -431,6 +434,7 @@ int detail_recv(rad_listen_t *listener)
 
 static RADIUS_PACKET *detail_poll(rad_listen_t *listener)
 {
+	int		y;
 	char		key[256], op[8], value[1024];
 	vp_cursor_t	cursor;
 	VALUE_PAIR	*vp;
@@ -551,7 +555,28 @@ open_file:
 		/*
 		 *	Else go read something.
 		 */
-		break;
+		if (!fgets(buffer, sizeof(buffer), data->fp)) {
+			DEBUG("detail (%s): Failed reading header from file - %s",
+			      data->name, data->filename_work);
+			goto cleanup;
+		}
+
+		/*
+		 *	Badly formatted file: delete it.
+		 */
+		if (!strchr(buffer, '\n')) {
+			DEBUG("detail (%s): Invalid line without trailing LF - %s", data->name, buffer);
+			goto cleanup;
+		}
+
+		if (!sscanf(buffer, "%*s %*s %*d %*d:%*d:%*d %d", &y)) {
+			DEBUG("detail (%s): Failed reading detail file header in line - %s", data->name, buffer);
+			goto cleanup;
+		}
+
+		data->state = STATE_READING;
+		/* FALL-THROUGH */
+
 
 	/*
 	 *	Read more value-pair's, unless we're
@@ -559,10 +584,145 @@ open_file:
 	 *	we have.
 	 */
 	case STATE_READING:
-		if (data->fp && !feof(data->fp)) break;
-		data->state = STATE_QUEUED;
+		rad_assert(data->fp != NULL);
 
-		/* FALL-THROUGH */
+		fr_cursor_init(&cursor, &data->vps);
+
+		/*
+		 *	Read a header, OR a value-pair.
+		 */
+		while (fgets(buffer, sizeof(buffer), data->fp)) {
+			data->last_offset = data->offset;
+			data->offset = ftell(data->fp); /* for statistics */
+
+			/*
+			 *	Badly formatted file: delete it.
+			 */
+			if (!strchr(buffer, '\n')) {
+				WARN("detail (%s): Skipping line without trailing LF - %s", data->name, buffer);
+				fr_pair_list_free(&data->vps);
+				goto cleanup;
+			}
+
+			/*
+			 *	We're reading VP's, and got a blank line.
+			 *	That indicates the end of an entry.  Queue the
+			 *	packet.
+			 */
+			if (buffer[0] == '\n') {
+				data->state = STATE_QUEUED;
+				data->tries = 0;
+				data->packets++;
+				goto alloc_packet;
+			}
+
+			/*
+			 *	We have a full "attribute = value" line.
+			 *	If it doesn't look reasonable, skip it.
+			 *
+			 *	FIXME: print an error for badly formatted attributes?
+			 */
+			if (sscanf(buffer, "%255s %7s %1023s", key, op, value) != 3) {
+				DEBUG("detail (%s): Skipping badly formatted line - %s", data->name, buffer);
+				continue;
+			}
+
+			/*
+			 *	Should be =, :=, +=, ...
+			 */
+			if (!strchr(op, '=')) {
+				DEBUG("detail (%s): Skipping line without operator - %s", data->name, buffer);
+				continue;
+			}
+
+			/*
+			 *	Skip non-protocol attributes.
+			 */
+			if (!strcasecmp(key, "Request-Authenticator")) continue;
+
+			/*
+			 *	Set the original client IP address, based on
+			 *	what's in the detail file.
+			 *
+			 *	Hmm... we don't set the server IP address.
+			 *	or port.  Oh well.
+			 */
+			if (!strcasecmp(key, "Client-IP-Address")) {
+				data->client_ip.af = AF_INET;
+				if (ip_hton(&data->client_ip, AF_INET, value, false) < 0) {
+					DEBUG("detail (%s): Failed parsing Client-IP-Address", data->name);
+					fr_pair_list_free(&data->vps);
+					goto cleanup;
+				}
+				continue;
+			}
+
+			/*
+			 *	The original time at which we received the
+			 *	packet.  We need this to properly calculate
+			 *	Acct-Delay-Time.
+			 */
+			if (!strcasecmp(key, "Timestamp")) {
+				data->timestamp = atoi(value);
+				data->timestamp_offset = data->last_offset;
+
+				vp = fr_pair_afrom_num(data, PW_PACKET_ORIGINAL_TIMESTAMP, 0);
+				if (vp) {
+					vp->vp_date = (uint32_t) data->timestamp;
+					vp->type = VT_DATA;
+					fr_cursor_insert(&cursor, vp);
+				}
+				continue;
+			}
+
+			if (!strcasecmp(key, "Donestamp")) {
+				data->timestamp = atoi(value);
+				data->done_entry = true;
+				continue;
+			}
+
+			DEBUG3("detail (%s): Trying to read VP from line - %s", data->name, buffer);
+
+			/*
+			 *	Read one VP.
+			 *
+			 *	FIXME: do we want to check for non-protocol
+			 *	attributes like radsqlrelay does?
+			 */
+			vp = NULL;
+			if ((fr_pair_list_afrom_str(data, buffer, &vp) > 0) &&
+			    (vp != NULL)) {
+				fr_cursor_merge(&cursor, vp);
+			} else {
+				DEBUG("detail (%s): Failed reading VP from line - %s", data->name, buffer);
+				goto cleanup;
+			}
+		}
+
+		/*
+		 *	The writer doesn't check that the
+		 *	record was completely written.  If the
+		 *	disk is full, this can result in a
+		 *	truncated record which has no trailing
+		 *	blank line.  When that happens, it's a
+		 *	bad record, and we ignore it.
+		 */
+		if (feof(data->fp)) {
+			DEBUG("detail (%s): Truncated record: treating it as EOF for detail file %s",
+			      data->name, data->filename_work);
+			fr_pair_list_free(&data->vps);
+			goto cleanup;
+		}
+
+		/*
+		 *	Some kind of non-eof error.
+		 *
+		 *	FIXME: Leave the file in-place, and warn the
+		 *	administrator?
+		 */
+		DEBUG("detail (%s): Unknown error, deleting detail file %s",
+		      data->name, data->filename_work);
+		goto cleanup;
 
 	case STATE_QUEUED:
 		goto alloc_packet;
@@ -598,18 +758,18 @@ open_file:
 			rad_assert(data->fp != NULL);
 
 			if (fseek(data->fp, data->timestamp_offset, SEEK_SET) < 0) {
-				WARN("detail (%s): Failed seeking to timestamp offset: %s",
+				DEBUG("detail (%s): Failed seeking to timestamp offset: %s",
 				     data->name, fr_syserror(errno));
 			} else if (fwrite("\tDone", 1, 5, data->fp) < 5) {
-				WARN("detail (%s): Failed marking request as done: %s",
+				DEBUG("detail (%s): Failed marking request as done: %s",
 				     data->name, fr_syserror(errno));
 			} else if (fflush(data->fp) != 0) {
-				WARN("detail (%s): Failed flushing marked detail file to disk: %s",
+				DEBUG("detail (%s): Failed flushing marked detail file to disk: %s",
 				     data->name, fr_syserror(errno));
 			}
 
 			if (fseek(data->fp, data->offset, SEEK_SET) < 0) {
-				WARN("detail (%s): Failed seeking to next detail request: %s",
+				DEBUG("detail (%s): Failed seeking to next detail request: %s",
 				     data->name, fr_syserror(errno));
 			}
 		}
@@ -618,136 +778,6 @@ open_file:
 		data->state = STATE_HEADER;
 		goto do_header;
 	}
-
-	fr_cursor_init(&cursor, &data->vps);
-
-	/*
-	 *	Read a header, OR a value-pair.
-	 */
-	while (fgets(buffer, sizeof(buffer), data->fp)) {
-		data->last_offset = data->offset;
-		data->offset = ftell(data->fp); /* for statistics */
-
-		/*
-		 *	Badly formatted file: delete it.
-		 *
-		 *	FIXME: Maybe flag an error?
-		 */
-		if (!strchr(buffer, '\n')) {
-			fr_pair_list_free(&data->vps);
-			goto cleanup;
-		}
-
-		/*
-		 *	We're reading VP's, and got a blank line.
-		 *	Queue the packet.
-		 */
-		if ((data->state == STATE_READING) &&
-		    (buffer[0] == '\n')) {
-			data->state = STATE_QUEUED;
-			break;
-		}
-
-		/*
-		 *	Look for date/time header, and read VP's if
-		 *	found.  If not, keep reading lines until we
-		 *	find one.
-		 */
-		if (data->state == STATE_HEADER) {
-			int y;
-
-			if (sscanf(buffer, "%*s %*s %*d %*d:%*d:%*d %d", &y)) {
-				data->state = STATE_READING;
-			}
-			continue;
-		}
-
-		/*
-		 *	We have a full "attribute = value" line.
-		 *	If it doesn't look reasonable, skip it.
-		 *
-		 *	FIXME: print an error for badly formatted attributes?
-		 */
-		if (sscanf(buffer, "%255s %7s %1023s", key, op, value) != 3) {
-			WARN("detail (%s): Skipping badly formatted line %s", data->name, buffer);
-			continue;
-		}
-
-		/*
-		 *	Should be =, :=, +=, ...
-		 */
-		if (!strchr(op, '=')) continue;
-
-		/*
-		 *	Skip non-protocol attributes.
-		 */
-		if (!strcasecmp(key, "Request-Authenticator")) continue;
-
-		/*
-		 *	Set the original client IP address, based on
-		 *	what's in the detail file.
-		 *
-		 *	Hmm... we don't set the server IP address.
-		 *	or port.  Oh well.
-		 */
-		if (!strcasecmp(key, "Client-IP-Address")) {
-			data->client_ip.af = AF_INET;
-			if (ip_hton(&data->client_ip, AF_INET, value, false) < 0) {
-				ERROR("detail (%s): Failed parsing Client-IP-Address", data->name);
-
-				fr_pair_list_free(&data->vps);
-				goto cleanup;
-			}
-			continue;
-		}
-
-		/*
-		 *	The original time at which we received the
-		 *	packet.  We need this to properly calculate
-		 *	Acct-Delay-Time.
-		 */
-		if (!strcasecmp(key, "Timestamp")) {
-			data->timestamp = atoi(value);
-			data->timestamp_offset = data->last_offset;
-
-			vp = fr_pair_afrom_num(data, PW_PACKET_ORIGINAL_TIMESTAMP, 0);
-			if (vp) {
-				vp->vp_date = (uint32_t) data->timestamp;
-				vp->type = VT_DATA;
-				fr_cursor_insert(&cursor, vp);
-			}
-			continue;
-		}
-
-		if (!strcasecmp(key, "Donestamp")) {
-			data->timestamp = atoi(value);
-			data->done_entry = true;
-			continue;
-		}
-
-		/*
-		 *	Read one VP.
-		 *
-		 *	FIXME: do we want to check for non-protocol
-		 *	attributes like radsqlrelay does?
-		 */
-		vp = NULL;
-		if ((fr_pair_list_afrom_str(data, buffer, &vp) > 0) &&
-		    (vp != NULL)) {
-			fr_cursor_merge(&cursor, vp);
-		}
-	}
-
-	/*
-	 *	Some kind of error.
-	 *
-	 *	FIXME: Leave the file in-place, and warn the
-	 *	administrator?
-	 */
-	if (ferror(data->fp)) goto cleanup;
-
-	data->tries = 0;
-	data->packets++;
 
 	/*
 	 *	Process the packet.
@@ -763,25 +793,13 @@ open_file:
 	data->tries++;
 
 	/*
-	 *	The writer doesn't check that the record was
-	 *	completely written.  If the disk is full, this can
-	 *	result in a truncated record.  When that happens,
-	 *	treat it as EOF.
-	 */
-	if (data->state != STATE_QUEUED) {
-		ERROR("detail (%s): Truncated record: treating it as EOF for detail file %s",
-		      data->name, data->filename_work);
-		fr_pair_list_free(&data->vps);
-		goto cleanup;
-	}
-
-	/*
 	 *	We're done reading the file, but we didn't read
 	 *	anything.  Clean up, and don't return anything.
 	 */
 	if (!data->vps) {
+		WARN("detail (%s): Read empty packet from file %s",
+		     data->name, data->filename_work);
 		data->state = STATE_HEADER;
-		if (!data->fp || feof(data->fp)) goto cleanup;
 		return NULL;
 	}
 
@@ -1024,12 +1042,24 @@ int detail_encode(UNUSED rad_listen_t *this, UNUSED REQUEST *request)
 /*
  *	Overloaded to return "should we fix delay times"
  */
-int detail_decode(UNUSED rad_listen_t *this, UNUSED REQUEST *request)
+int detail_decode(rad_listen_t *this, REQUEST *request)
 {
 #ifdef WITH_DETAIL_THREAD
+	listen_detail_t *data = this->data;
+
+	RDEBUG("Received %s from detail file %s",
+	       fr_packet_codes[request->packet->code], data->filename_work);
+
+	rdebug_pair_list(L_DBG_LVL_1, request, request->packet->vps, "\t");
+
 	return 0;
 #else
 	listen_detail_t *data = this->data;
+
+	RDEBUG("Received %s from detail file %s",
+	       fr_packet_codes[request->packet->code], data->filename_work);
+
+	rdebug_pair_list(L_DBG_LVL_1, request, request->packet->vps, "\t");
 
 	return data->signal;
 #endif

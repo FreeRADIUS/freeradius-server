@@ -436,7 +436,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 		char const *p;
 
 		p = fmt + 8;	/* 7 is the length of 'NT-Hash' */
-		if ((p == '\0')	 || (outlen <= 32))
+		if ((*p == '\0') || (outlen <= 32))
 			return 0;
 
 		while (isspace(*p)) p++;
@@ -459,7 +459,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 		char const *p;
 
 		p = fmt + 8;	/* 7 is the length of 'LM-Hash' */
-		if ((p == '\0') || (outlen <= 32))
+		if ((*p == '\0') || (outlen <= 32))
 			return 0;
 
 		while (isspace(*p)) p++;
@@ -560,6 +560,7 @@ static const CONF_PARSER module_config[] = {
 	{ "retry_msg", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_mschap_t, retry_msg), NULL },
 	{ "winbind_username", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_TMPL, rlm_mschap_t, wb_username), NULL },
 	{ "winbind_domain", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_TMPL, rlm_mschap_t, wb_domain), NULL },
+	{ "winbind_retry_with_normalised_username", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_mschap_t, wb_retry_with_normalised_username), "no" },
 #ifdef __APPLE__
 	{ "use_open_directory", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_mschap_t, open_directory), "yes" },
 #endif
@@ -1175,6 +1176,18 @@ static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUES
 				return -691;
 			}
 
+			if (strcasestr(buffer, "No logon servers") ||
+			    strcasestr(buffer, "0xC000005E")) {
+				REDEBUG2("%s", buffer);
+				return -2;
+			}
+
+			if (strcasestr(buffer, "could not obtain winbind separator") ||
+			    strcasestr(buffer, "Reading winbind reply failed")) {
+				REDEBUG2("%s", buffer);
+				return -2;
+			}
+
 			RDEBUG2("External script failed");
 			p = strchr(buffer, '\n');
 			if (p) *p = '\0';
@@ -1213,7 +1226,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUES
 			return -1;
 		}
 		break;
-		}
+	}
 
 #ifdef WITH_AUTH_WINBIND
 		/*
@@ -1405,7 +1418,8 @@ static rlm_rcode_t mschap_error(rlm_mschap_t *inst, REQUEST *request, unsigned c
 	char		*p;
 
 	if ((mschap_result == -648) ||
-	    (smb_ctrl && ((smb_ctrl->vp_integer & ACB_PW_EXPIRED) != 0))) {
+	    ((mschap_result == 0) &&
+	     (smb_ctrl && ((smb_ctrl->vp_integer & ACB_PW_EXPIRED) != 0)))) {
 		REDEBUG("Password has expired.  User should retry authentication");
 		error = 648;
 
@@ -1444,12 +1458,18 @@ static rlm_rcode_t mschap_error(rlm_mschap_t *inst, REQUEST *request, unsigned c
 		retry = 0;
 		message = "Account locked out";
 		rcode = RLM_MODULE_USERLOCK;
+	} else if (mschap_result == -2) {
+		RDEBUG("Authentication failed");
+		error = 691;
+		retry = inst->allow_retry;
+		message = "Authentication failed";
+		rcode = RLM_MODULE_FAIL;
 
 	} else if (mschap_result < 0) {
 		REDEBUG("MS-CHAP2-Response is incorrect");
 		error = 691;
 		retry = inst->allow_retry;
-		message = "Authentication failed";
+		message = "Authentication rejected";
 		rcode = RLM_MODULE_REJECT;
 	}
 
@@ -1469,7 +1489,7 @@ static rlm_rcode_t mschap_error(rlm_mschap_t *inst, REQUEST *request, unsigned c
 		break;
 
 	default:
-		rad_assert(0);
+		return RLM_MODULE_FAIL;
 	}
 	mschap_add_reply(request, ident, "MS-CHAP-Error", buffer, strlen(buffer));
 
@@ -1867,8 +1887,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	} else if ((response = fr_pair_find_by_num(request->packet->vps, PW_MSCHAP2_RESPONSE,
 						   VENDORPEC_MICROSOFT, TAG_ANY)) != NULL) {
 		uint8_t		mschapv1_challenge[16];
-		VALUE_PAIR	*name_attr, *response_name;
+		VALUE_PAIR	*name_attr, *response_name, *peer_challenge_attr;
 		rlm_rcode_t	rcode;
+		uint8_t const *peer_challenge;
 
 		mschap_version = 2;
 
@@ -1950,6 +1971,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 			}
 		}
 #endif
+		peer_challenge = response->vp_octets + 2;
+
+		peer_challenge_attr = fr_pair_find_by_num(request->config, PW_MS_CHAP_PEER_CHALLENGE, 0, TAG_ANY);
+		if (peer_challenge_attr) {
+			RDEBUG2("Overriding peer challenge");
+			peer_challenge = peer_challenge_attr->vp_octets;
+		}
+
 		/*
 		 *	The old "mschapv2" function has been moved to
 		 *	here.
@@ -1958,7 +1987,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		 *	MS-CHAPv1 challenge, and then does MS-CHAPv1.
 		 */
 		RDEBUG2("Creating challenge hash with username: %s", username_string);
-		mschap_challenge_hash(response->vp_octets + 2,	/* peer challenge */
+		mschap_challenge_hash(peer_challenge,		/* peer challenge */
 				      challenge->vp_octets,	/* our challenge */
 				      username_string,		/* user name */
 				      mschapv1_challenge);	/* resulting challenge */
@@ -1970,10 +1999,21 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 				     mschap_result, mschap_version, smb_ctrl);
 		if (rcode != RLM_MODULE_OK) return rcode;
 
+#ifdef WITH_AUTH_WINBIND
+		if (inst->wb_retry_with_normalised_username) {
+			if ((response_name = fr_pair_find_by_num(request->packet->vps, PW_MS_CHAP_USER_NAME, 0, TAG_ANY))) {
+				if (strcmp(username_string, response_name->vp_strvalue)) {
+					RDEBUG2("Changing username %s to %s", username_string, response_name->vp_strvalue);
+					username_string = response_name->vp_strvalue;
+				}
+			}
+		}
+#endif
+
 		mschap_auth_response(username_string,		/* without the domain */
 				     nthashhash,		/* nt-hash-hash */
 				     response->vp_octets + 26,	/* peer response */
-				     response->vp_octets + 2,	/* peer challenge */
+				     peer_challenge,		/* peer challenge */
 				     challenge->vp_octets,	/* our challenge */
 				     msch2resp);		/* calculated MPPE key */
 		mschap_add_reply(request, *response->vp_octets, "MS-CHAP2-Success", msch2resp, 42);

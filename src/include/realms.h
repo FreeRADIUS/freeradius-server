@@ -130,6 +130,10 @@ typedef struct home_server {
 
 	fr_stats_ema_t  	ema;
 #endif
+#ifdef HAVE_TRUST_ROUTER_TR_DH_H
+	time_t			expiration;
+#endif
+
 } home_server_t;
 
 

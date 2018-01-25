@@ -10,7 +10,7 @@
 .RE
 .sp
 ..
-.TH unlang 5 "05 February 2016" "" "FreeRADIUS Processing un-language"
+.TH unlang 5 "06 December 2017" "" "FreeRADIUS Processing un-language"
 .SH NAME
 unlang \- FreeRADIUS Processing un\-language
 .SH DESCRIPTION
@@ -165,7 +165,6 @@ comparison.
 .br
 	}
 .DE
-
 A default entry can be defined by omitting the argument, as given
 below.  This entry will be used if no other "case" entry matches.
 Only one default entry can exist in a "switch" section.
@@ -191,7 +190,6 @@ the current block.
 .br
 	}
 .DE
-
 The <list> can be one of "request", "reply", "proxy-request",
 "proxy-reply", "coa", "disconnect", "session-state", or "control".  As
 of Version 3, the <list> can be omitted, in which case "request" is
@@ -272,7 +270,6 @@ or update an attribute list.
 .br
 	}
 .DE
-
 In general, we recommend using "redundant-load-balance" instead of
 "load-balance".
 .IP redundant-load-balance
@@ -290,7 +287,8 @@ the same request.
 
 Load-balance sections can contain only a list of modules, and cannot
 contain keywords that perform conditional operations (if, else, etc)
-or update an attribute list.
+or update an attribute list. Please see raddb/radiusd.conf 
+"instantiate" section for more configuration examples.
 
 .DS
 	redundant-load-balance {
@@ -301,7 +299,6 @@ or update an attribute list.
 .br
 	}
 .DE
-
 .IP return
 .br
 Returns from the current top-level section, e.g. "authorize" or
@@ -396,7 +393,6 @@ conditions
 .DS
 	(foo)
 .DE
-
 Evalutes to true if 'foo' is a non-empty string (single quotes, double
 quotes, or back-quoted).  Also evaluates to true if 'foo' is a
 non-zero number.  Note that the language is poorly typed, so the
@@ -418,7 +414,6 @@ codes are given in MODULE RETURN CODES, below.
 .DS
 	(!foo)
 .DE
-
 Evalutes to true if 'foo' evaluates to false, and vice-versa.
 .PP
 Short-circuit operators
@@ -429,7 +424,6 @@ Short-circuit operators
 .br
 	(foo && bar)
 .DE
-
 "&&" and "||" are short-circuit operators.  "&&" evaluates the first
 condition, and evaluates the second condition if and only if the
 result of the first condition is true.  "||" is similar, but executes
@@ -440,27 +434,40 @@ false.
 .DS
 	(foo == bar)
 .DE
-
 Compares 'foo' to 'bar', and evaluates to true if the comparison holds
 true.  Valid comparison operators are "==", "!=", "<", "<=", ">",
-">=", "=~", and "!~", all with their usual meanings.  Invalid
-comparison operators are ":=" and "=".
+">=", "=~", and "!~", all with their usual meanings.  The operators
+":=" and "=" are assignment operators, and are not allowed for
+comparisons.
+
+The operators "<", "<=", ">", and ">=" are also allowed for checking
+that an IP address is contained within a network.  For example:
+.DS
+	if (<ipaddr>192.0.2.1 < 192.0.2.0/24) {
+.DE
+This comparison succeeds, because the address 192.0.2.1 is contained
+within the network 192.0.2.0/24.
 .RE
 .IP "Attribute Comparisons"
+When doing attribute comparisons, the data type of the attribute is
+used to determine the data type of the right-hand side argument.
 .DS
 	(&User-Name == "foo")
 .DE
-
 Compares the value of the User-Name attribute to the string 'foo', and
-evaluates to true if the comparison holds true.  The comparison is
-done by printing the attribute to a string, and then doing a string
-comparison of the two sides of the condition.
+evaluates to true if the comparison holds true.
+
+Similarly,
+.DS
+	(&Framed-IP-Address == 192.0.2.1)
+.DE
+Compares the value of the Framed-IP-Address attribute to the IP
+address 192.0.2.1.  This IP address does not need to be quoted.
 .RE
 .IP "Inter-Attribute Comparisons"
 .DS
 	(&User-Name == &Filter-Id)
 .DE
-
 Compares the value of the User-Name attribute to the contents of the
 Filter-Id attribute, and evaluates to true if the comparison holds
 true.  Unlike the previous example, this comparison is done in a
@@ -487,7 +494,6 @@ syntax should be used:
 .DS
 	(&Attribute-Name[*] == "foo")
 .DE
-
 Using the "[*]" syntax means that it checks all of the instances of
 the named attribute.  If one attribute matches, the condition
 succeeds.  If none match, the condition fails.
@@ -497,7 +503,6 @@ succeeds.  If none match, the condition fails.
 .DS
 	(<type>foo == bar)
 .DE
-
 The left-hand-side of a condition can be "cast" to a specific data
 type.  The data type must be one which is valid for the dictionaries.
 e.g. "integer", "ipaddr", etc.
@@ -760,20 +765,29 @@ to match in order for the attribute to remain in the list.
 
 Note that this operator is very different than the '=' operator listed
 above!
+.IP !=
+Keep all attributes with matching name, and value not equal to the
+given one.
+.IP <
+Keep all attributes having values less than the value
+given here.  Any larger value is replaced by the value given here.  If
+no attribute exists, it is added with the value given here, as with
+"+=".
 .IP <=
 Keep all attributes having values less than, or equal to, the value
 given here.  Any larger value is replaced by the value given here.  If
 no attribute exists, it is added with the value given here, as with
 "+=".
-
-This operator is valid only for attributes of integer type.
-.IP >=
-Keep all attributes having values greater than, or equal to, the value
-given here.  Any larger value is replaced by the value given here.  If
+.IP >
+Keep all attributes having values greater than the value
+given here.  Any smaller value is replaced by the value given here.  If
 no attribute exists, it is added with the value given here, as with
 "+=".
-
-This operator is valid only for attributes of integer type.
+.IP >=
+Keep all attributes having values greater than, or equal to, the value
+given here.  Any smaller value is replaced by the value given here.  If
+no attribute exists, it is added with the value given here, as with
+"+=".
 .IP !*
 Delete all occurances of the named attribute, no matter what the
 value.

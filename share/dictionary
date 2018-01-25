@@ -114,6 +114,7 @@ $INCLUDE dictionary.rfc7055
 $INCLUDE dictionary.rfc7155
 $INCLUDE dictionary.rfc7268
 $INCLUDE dictionary.rfc7499
+$INCLUDE dictionary.rfc7930
 
 #
 #	Mostly values which have been allocated by IANA under
@@ -170,10 +171,12 @@ $INCLUDE dictionary.cisco.vpn5000
 $INCLUDE dictionary.cisco.bbsm
 $INCLUDE dictionary.citrix
 $INCLUDE dictionary.clavister
+$INCLUDE dictionary.cnergee
 $INCLUDE dictionary.colubris
 $INCLUDE dictionary.compatible
 $INCLUDE dictionary.cosine
 $INCLUDE dictionary.dante
+$INCLUDE dictionary.dellemc
 $INCLUDE dictionary.dlink
 $INCLUDE dictionary.digium
 $INCLUDE dictionary.dragonwave
@@ -216,6 +219,7 @@ $INCLUDE dictionary.meinberg
 $INCLUDE dictionary.meraki
 $INCLUDE dictionary.merit
 $INCLUDE dictionary.meru
+$INCLUDE dictionary.microsemi
 $INCLUDE dictionary.microsoft
 $INCLUDE dictionary.mikrotik
 $INCLUDE dictionary.motorola

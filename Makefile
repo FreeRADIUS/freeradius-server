@@ -7,9 +7,30 @@
 # Version:	$Id$
 #
 
+#
+#  The default rule is "all".
+#
+all:
+
+#
+#  Catch people who try to use BSD make
+#
+ifeq "0" "1"
+.error GNU Make is required to build FreeRADIUS
+endif
+
+#
+#  We require Make.inc, UNLESS the target is "make deb"
+#
+#  Since "make deb" re-runs configure... there's no point in
+#  requiring the developer to run configure *before* making
+#  the debian packages.
+#
+ifneq "$(MAKECMDGOALS)" "deb"
 $(if $(wildcard Make.inc),,$(error Missing 'Make.inc' Run './configure [options]' and retry))
 
 include Make.inc
+endif
 
 MFLAGS += --no-print-directory
 
@@ -22,7 +43,9 @@ endif
 export DESTDIR := $(R)
 
 # And over-ride all of the other magic.
+ifneq "$(MAKECMDGOALS)" "deb"
 include scripts/boiler.mk
+endif
 
 #
 #  To work around OpenSSL issues with travis.
@@ -85,23 +108,6 @@ endif
 #
 export DESTDIR := $(R)
 
-.PHONY: install.bindir
-install.bindir:
-	@[ -d $(R)$(bindir) ] || $(INSTALL) -d -m 755 $(R)$(bindir)
-
-.PHONY: install.sbindir
-install.sbindir:
-	@[ -d $(R)$(sbindir) ] || $(INSTALL) -d -m 755 $(R)$(sbindir)
-
-.PHONY: install.dirs
-install.dirs: install.bindir install.sbindir
-	@$(INSTALL) -d -m 755	$(R)$(mandir)
-	@$(INSTALL) -d -m 755	$(R)$(RUNDIR)
-	@$(INSTALL) -d -m 700	$(R)$(logdir)
-	@$(INSTALL) -d -m 700	$(R)$(radacctdir)
-	@$(INSTALL) -d -m 755	$(R)$(datadir)
-	@$(INSTALL) -d -m 755	$(R)$(dictdir)
-
 DICTIONARIES := $(wildcard share/dictionary*)
 install.share: $(addprefix $(R)$(dictdir)/,$(notdir $(DICTIONARIES)))
 
@@ -125,7 +131,9 @@ $(R)$(mandir)/%: man/%
 #
 ALL_INSTALL := $(patsubst %rlm_test.la,,$(ALL_INSTALL))
 
-install: install.dirs install.share install.man
+install: install.share install.man
+	@$(INSTALL) -d -m 700	$(R)$(logdir)
+	@$(INSTALL) -d -m 700	$(R)$(radacctdir)
 
 ifneq ($(RADMIN),)
 ifneq ($(RGROUP),)
@@ -253,14 +261,11 @@ BRANCH = $(shell git rev-parse --abbrev-ref HEAD)
 freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz: .git
 	git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION_STRING)/ $(BRANCH) | gzip > $@
 
-freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz.sig: freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz
-	gpg --default-key aland@freeradius.org -b $<
-
 freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2: .git
 	git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION_STRING)/ $(BRANCH) | bzip2 > $@
 
-freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2.sig: freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2
-	gpg --default-key aland@freeradius.org -b $<
+%.sig: %
+	gpg --default-key packages@freeradius.org -b $<
 
 # high-level targets
 .PHONY: dist-check
@@ -306,7 +311,7 @@ deb:
 # Developer checks
 .PHONY: warnings
 warnings:
-	@(make clean all 2>&1) | egrep -v '^/|deprecated|^In file included|: In function|   from |^HEADER|^CC|^LINK' > warnings.txt
+	@(make clean all 2>&1) | egrep -v '^/|deprecated|^In file included|: In function|   from |^HEADER|^CC|^LN' > warnings.txt
 	@wc -l warnings.txt
 
 #

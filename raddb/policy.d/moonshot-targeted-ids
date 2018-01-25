@@ -1,0 +1,231 @@
+#
+#  The following policies generate targeted IDs for ABFAB (Moonshot)
+#
+#  This policy requires that the UUID package is installed on your platform
+#  and that this is called from the inner-tunnel
+#
+#  The following string attributes need to exist in the UKERNA dictionary
+#  Moonshot-Host-TargetedId (138)
+#  Moonshot-Realm-TargetedId (139)
+#  Moonshot-TR-COI-TargetedId (140)
+#  Moonshot-MSTID-GSS-Acceptor (141)
+#  Moonshot-MSTID-Namespace (142)
+#  Moonshot-MSTID-TargetedId (143)
+#
+#  These attributes should also be listed in the attr_filter policies
+#  post-proxy and pre-proxy when you use attribute filtering:
+#       Moonshot-Host-TargetedId =* ANY,
+#       Moonshot-Realm-TargetedId =* ANY,
+#       Moonshot-TR-COI-TargetedId =* ANY,
+#
+ 
+#
+#  targeted_id_salt definition
+#  This salt serves the purpose of protecting targeted IDs against
+#  dictionary attacks, therefore should be chosen as a "random"
+#  string and kept secret.
+#
+#  If you use special characters %, { and }, escape them with a \ first
+#
+targeted_id_salt = 'changeme'
+
+#
+#  Moonshot namespaces
+#  These namespaces are used for UUID generation.
+#  They should not be changed by implementors
+#
+moonshot_host_namespace = 'a574a04e-b7ff-4850-aa24-a8599c7de1c6'
+moonshot_realm_namespace = 'dea5f26d-a013-4444-977d-d09fc990d2e6'
+moonshot_coi_namespace = '145d7e7e-7d54-43ee-bbcb-3c6ad9428247'
+
+
+#  This policy generates a host-specific TargetedId
+#
+moonshot_host_tid.post-auth {
+	#  retrieve or generate a UUID for Moonshot-Host-TargetedId
+	if (&outer.request:GSS-Acceptor-Host-Name) {
+		# prep some variables (used regardless of SQL backing or not!)
+		update control {
+			Moonshot-MSTID-GSS-Acceptor := "%{tolower:%{outer.request:GSS-Acceptor-Host-Name}}"
+			Moonshot-MSTID-Namespace := "${policy.moonshot_host_namespace}"
+		}
+
+		#  if you want to use SQL-based backing, remove the comment from
+		#  this line. You also have to configure and enable the 
+		#  moonshot-targeted-ids sql module in mods-enabled. 
+		#
+#		moonshot_get_targeted_id
+
+		#  generate a UUID for Moonshot-Host-TargetedId
+		if (!&control:Moonshot-MSTID-TargetedId) {
+			#  generate the TID
+			moonshot_make_targeted_id
+
+			#  if you want to store your TargetedId in SQL-based backing, 
+			#  remove the comment from this line. You also have to configure 
+			#  and enable the moonshot-targeted-ids sql module in mods-enabled.
+			#
+#			moonshot_tid_sql
+		}
+
+		#  set the actual TargetedId in the session-state list
+		if (&control:Moonshot-MSTID-TargetedId) {
+			update outer.session-state {
+				Moonshot-Host-TargetedId := &control:Moonshot-MSTID-TargetedId
+			}
+			update control {
+				Moonshot-MSTID-TargetedId !* ANY
+			}
+		}
+	}
+}
+
+#  This policy generates a realm-specific TargetedId
+#
+moonshot_realm_tid.post-auth {
+	#  retrieve or generate a UUID for Moonshot-Realm-TargetedId
+	if (&outer.request:GSS-Acceptor-Realm-Name) {
+		# prep some variables (used regardless of SQL backing or not!)
+		update control {
+			Moonshot-MSTID-GSS-Acceptor := "%{tolower:%{outer.request:GSS-Acceptor-Realm-Name}}"
+			Moonshot-MSTID-Namespace := "${policy.moonshot_realm_namespace}"
+		}
+
+		#  if you want to use SQL-based backing, remove the comment from
+		#  this line. You also have to configure and enable the 
+		#  moonshot-targeted-ids sql module in mods-enabled. 
+		#
+#		moonshot_get_targeted_id
+
+		#  generate a UUID for Moonshot-Realm-TargetedId
+		if (!&control:Moonshot-MSTID-TargetedId) {
+			#  generate the TID
+			moonshot_make_targeted_id
+
+			#  if you want to store your TargetedId in SQL-based backing, 
+			#  remove the comment from this line. You also have to configure 
+			#  and enable the moonshot-targeted-ids sql module in mods-enabled.
+			#
+#			moonshot_tid_sql
+		}
+
+		#  set the actual TargetedId in the session-state list
+		if (&control:Moonshot-MSTID-TargetedId) {
+			update outer.session-state {
+				Moonshot-Realm-TargetedId := &control:Moonshot-MSTID-TargetedId
+			}
+			update control {
+				Moonshot-MSTID-TargetedId !* ANY
+			}
+		}
+	}
+}
+
+#  This policy generates a COI-specific targeted ID
+#
+moonshot_coi_tid.post-auth {
+	#  retrieve or generate a UUID for Moonshot-TR-COI-TargetedId
+	if (&outer.request:Trust-Router-COI) {
+		# prep some variables (used regardless of SQL backing or not!)
+		update control {
+			Moonshot-MSTID-GSS-Acceptor := "%{tolower:%{outer.request:Trust-Router-COI}}"
+			Moonshot-MSTID-Namespace := "${policy.moonshot_coi_namespace}"
+		}
+
+		#  if you want to use SQL-based backing, remove the comment from
+		#  this line. You also have to configure and enable the 
+		#  moonshot-targeted-ids sql module in mods-enabled. 
+		#
+#		moonshot_get_targeted_id
+
+		#  generate a UUID for Moonshot-TR-COI-TargetedId
+		if (!&control:Moonshot-MSTID-TargetedId) {
+			#  generate the TID
+			moonshot_make_targeted_id
+
+			#  if you want to store your TargetedId in SQL-based backing, 
+			#  remove the comment from this line. You also have to configure 
+			#  and enable the moonshot-targeted-ids sql module in mods-enabled.
+			#
+#			moonshot_tid_sql
+		}
+
+		#  set the actual TargetedId in the session-state list
+		if (&control:Moonshot-MSTID-TargetedId) {
+			update outer.session-state {
+				Moonshot-TR-COI-TargetedId := &control:Moonshot-MSTID-TargetedId
+			}
+			update control {
+				Moonshot-MSTID-TargetedId !* ANY
+			}
+		}
+	}
+}
+
+#  This is the generic generation policy. It requires moonshot_host_tid, moonshot_realm_tid, or moonshot_coi_tid to set variables
+#
+moonshot_make_targeted_id.post-auth {
+	#  uses variables set in the control list
+	#
+	if (&control:Moonshot-MSTID-Namespace && &control:Moonshot-MSTID-GSS-Acceptor) {
+		#  targeted id = (uuid -v 5 [namespace] [username][salt][GSS acceptor value])@[IdP realm name]
+		#
+		if ("%{echo:/usr/bin/uuid -v 5 %{control:Moonshot-MSTID-Namespace} %{tolower:%{User-Name}}${policy.targeted_id_salt}%{control:Moonshot-MSTID-GSS-Acceptor}}" =~ /^([^ ]+)([ ]*)$/) {
+			update control {
+				Moonshot-MSTID-TargetedId := "%{1}@%{tolower:%{request:Realm}}"
+			}
+			if (&control:Moonshot-MSTID-TargetedId =~ /([\%\{\}]+)/) {
+				update control {
+					Moonshot-MSTID-TargetedId !* ANY
+				}
+				update outer.session-state {
+					Module-Failure-Message = 'Invalid TargetedId generated, check your targeted_id_salt!'
+				}
+				reject
+			}
+		}
+		else {
+			#  we simply return the 'echo' error message as the Module-Failure-Message, usually a lack of 'uuid'
+			reject
+		}
+	}
+	else {
+		#  Our variables were not set, so we'll throw an error because there's no point in continuing!
+		update outer.session-state {
+			Module-Failure-Message = 'Required variables for moonshot_make_targeted_id not set!'
+		}
+		reject
+	}
+}
+
+#  This is the generic retrieval policy. It requires moonshot_host_tid, moonshot_realm_tid, or moonshot_coi_tid to set variables
+#
+moonshot_get_targeted_id.post-auth {
+	#  uses variables set in the control list
+	#
+	if (&control:Moonshot-MSTID-Namespace && &control:Moonshot-MSTID-GSS-Acceptor) {
+		#  retrieve the TargetedId
+		#
+		update control {
+			Moonshot-MSTID-TargetedId := "%{moonshot_tid_sql:\
+				SELECT targeted_id FROM moonshot_targeted_ids \
+				WHERE gss_acceptor = '%{control:Moonshot-MSTID-GSS-Acceptor}' \
+				AND namespace = '%{control:Moonshot-MSTID-Namespace}' \
+				AND username = '%{tolower:%{User-Name}}'}"
+		}
+
+		#  if the value is empty, there's no point in setting it and delete it from the control list!
+		if (&control:Moonshot-MSTID-TargetedId == '') {
+			update control {
+				Moonshot-MSTID-TargetedId !* ANY
+			}
+		}
+	}
+	else {
+		#  Our variables were not set, so we'll throw an error because there's no point in continuing!
+		update outer.session-state {
+			Module-Failure-Message = 'Required variables for moonshot_get_targeted_id not set!'
+		}
+		reject
+	}
+}

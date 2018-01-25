@@ -233,7 +233,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 	ssize_t		len;
 	int		statement_cnt = 0;
 	char		*buffer;
-	char		*p, *q, *s;
+	char		*p, *q;
 	int		cl;
 	FILE		*f;
 	struct stat	finfo;
@@ -321,20 +321,18 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 	/*
 	 *	Statement delimiter is ;\n
 	 */
-	s = p = buffer;
+	p = buffer;
 	while ((q = strchr(p, ';'))) {
-		if (q[1] != '\n') {
+		if ((q[1] != '\n') && (q[1] != '\0')) {
 			p = q + 1;
 			statement_cnt++;
 			continue;
 		}
 
-		*q = '\0';
-
 #ifdef HAVE_SQLITE3_PREPARE_V2
-		status = sqlite3_prepare_v2(db, s, len, &statement, &z_tail);
+		status = sqlite3_prepare_v2(db, p, q - p, &statement, &z_tail);
 #else
-		status = sqlite3_prepare(db, s, len, &statement, &z_tail);
+		status = sqlite3_prepare(db, p, q - p, &statement, &z_tail);
 #endif
 
 		if (sql_check_error(db, status) != RLM_SQL_OK) {
@@ -359,7 +357,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 		}
 
 		statement_cnt++;
-		p = s = q + 1;
+		p = q + 1;
 	}
 
 	talloc_free(buffer);
@@ -678,9 +676,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *con
 	/*
 	 *	No more rows to process (were done)
 	 */
-	if (status == SQLITE_DONE) {
-		return 1;
-	}
+	if (status == SQLITE_DONE) return RLM_SQL_NO_MORE_ROWS;
 
 	/*
 	 *	We only need to do this once per result set, because
@@ -732,7 +728,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *con
 		}
 	}
 
-	return 0;
+	return RLM_SQL_OK;
 }
 
 static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
@@ -754,7 +750,7 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
 	 *	It's just the last error that occurred processing the
 	 *	statement.
 	 */
-	return 0;
+	return RLM_SQL_OK;
 }
 
 /** Retrieves any errors associated with the connection handle
@@ -795,9 +791,7 @@ static int sql_affected_rows(rlm_sql_handle_t *handle,
 {
 	rlm_sql_sqlite_conn_t *conn = handle->conn;
 
-	if (conn->db) {
-		return sqlite3_changes(conn->db);
-	}
+	if (conn->db) return sqlite3_changes(conn->db);
 
 	return -1;
 }

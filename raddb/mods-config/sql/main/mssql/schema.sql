@@ -19,7 +19,6 @@ CREATE TABLE [radacct] (
 	[AcctSessionId] [varchar] (64) DEFAULT ('') FOR [AcctSessionId],
 	[AcctUniqueId] [varchar] (32) DEFAULT ('') FOR [AcctUniqueId],
 	[UserName] [varchar] (64) DEFAULT ('') FOR [UserName],
-	[GroupName] [varchar] (64) DEFAULT ('') FOR [GroupName],
 	[Realm] [varchar] (64) DEFAULT ('') FOR [Realm],
 	[NASIPAddress] [varchar] (15) DEFAULT ('') FOR [NASIPAddress],
 	[NASPortId] [varchar] (15) NULL ,

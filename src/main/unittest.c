@@ -48,7 +48,11 @@ char const *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
 " (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"
 #endif
-", for host " HOSTINFO ", built on " __DATE__ " at " __TIME__;
+", for host " HOSTINFO
+#ifndef ENABLE_REPRODUCIBLE_BUILDS
+", built on " __DATE__ " at " __TIME__
+#endif
+;
 
 /*
  *	Static functions.
@@ -748,7 +752,7 @@ int main(int argc, char *argv[])
 	 *  Initialising OpenSSL once, here, is safer than having individual modules do it.
 	 */
 #ifdef HAVE_OPENSSL_CRYPTO_H
-	tls_global_init();
+	tls_global_init(false, false);
 #endif
 
 	if (xlat_register("poke", xlat_poke, NULL, NULL) < 0) {

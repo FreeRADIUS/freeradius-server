@@ -160,7 +160,7 @@ const size_t dict_attr_sizes[PW_TYPE_MAX][2] = {
 int const fr_attr_max_tlv = MAX_TLV_NEST;
 int const fr_attr_shift[MAX_TLV_NEST + 1] = { 0, 8, 16, 24, 29 };
 
-int const fr_attr_mask[MAX_TLV_NEST + 1] = { 0xff, 0xff, 0xff, 0x1f, 0x07 };
+unsigned const fr_attr_mask[MAX_TLV_NEST + 1] = { 0xff, 0xff, 0xff, 0x1f, 0x07 };
 
 /*
  *	attr & fr_attr_parent_mask[i] == Nth parent of attr
@@ -641,17 +641,27 @@ int dict_valid_name(char const *name)
 
 
 /*
- *	Bamboo skewers under the fingernails in 5, 4, 3, 2, ...
+ *	Find the parent of the attr/vendor.
  */
-static DICT_ATTR const *dict_parent(unsigned int attr, unsigned int vendor)
+DICT_ATTR const *dict_parent(unsigned int attr, unsigned int vendor)
 {
 	int i;
 	unsigned int base_vendor;
 
 	/*
-	 *	RFC attributes can't be of type "tlv".
+	 *	RFC attributes can't be of type "tlv", except for dictionary.rfc6930
 	 */
-	if (!vendor) return NULL;
+	if (!vendor) {
+#ifdef PW_IPV6_6RD_CONFIGURATION
+		if (attr == PW_IPV6_6RD_CONFIGURATION) return NULL;
+
+		if (((attr & 0xff) == PW_IPV6_6RD_CONFIGURATION) &&
+		    (attr >> 8) < 4) {
+			return dict_attrbyvalue(PW_IPV6_6RD_CONFIGURATION, 0);
+		}
+#endif
+		return NULL;
+	}
 
 	base_vendor = vendor & (FR_MAX_VENDOR - 1);
 
@@ -1350,6 +1360,8 @@ static int sscanf_i(char const *str, unsigned int *pvalue)
  *
  *	Remember, the packing format is weird.
  *
+ *	Vendor  Attribute
+ *	------  ---------
  *	00VID	000000AA	normal VSA for vendor VID
  *	00VID	AABBCCDD	normal VSAs with TLVs
  *	EE000   000000AA	extended attr (241.1)
@@ -1363,8 +1375,12 @@ int dict_str2oid(char const *ptr, unsigned int *pvalue, unsigned int *pvendor,
 		 int tlv_depth)
 {
 	char const *p;
-	unsigned int value;
-	DICT_ATTR const *da = NULL;
+	unsigned int attr;
+	
+#ifdef WITH_DICT_OID_DEBUG
+	fprintf(stderr, "PARSING %s tlv_depth %d pvalue %08x pvendor %08x\n", ptr,
+		tlv_depth, *pvalue, *pvendor);
+#endif
 
 	if (tlv_depth > fr_attr_max_tlv) {
 		fr_strerror_printf("Too many sub-attributes");
@@ -1372,103 +1388,197 @@ int dict_str2oid(char const *ptr, unsigned int *pvalue, unsigned int *pvendor,
 	}
 
 	/*
-	 *	If *pvalue is set, check if the attribute exists.
-	 *	Otherwise, check that the vendor exists.
+	 *	No vendor, try to do basic parsing.
 	 */
-	if (*pvalue) {
-		da = dict_attrbyvalue(*pvalue, *pvendor);
-		if (!da) {
-			fr_strerror_printf("Parent attribute is undefined");
+	if (!*pvendor && !*pvalue) {
+		/*
+		 *	Can't call us with a pre-parsed value and no vendor.
+		 */
+		if (tlv_depth != 0) {
+			fr_strerror_printf("Invalid call with wrong TLV depth %d", tlv_depth);
 			return -1;
 		}
 
-		if (!da->flags.has_tlv && !da->flags.extended) {
-			fr_strerror_printf("Parent attribute %s cannot have sub-attributes",
-					   da->name);
-			return -1;
-		}
-
-	} else if ((*pvendor & (FR_MAX_VENDOR - 1)) != 0) {
-		if (!dict_vendorbyvalue(*pvendor & (FR_MAX_VENDOR - 1))) {
-			fr_strerror_printf("Unknown vendor %u",
-					   *pvendor & (FR_MAX_VENDOR - 1));
-			return -1;
-		}
-	}
-
-	p = strchr(ptr, '.');
-
-	/*
-	 *	Look for 26.VID.x.y
-	 *
-	 *	If we find it, re-write the parameters, and recurse.
-	 */
-	if (!*pvendor && (tlv_depth == 0) && (*pvalue == PW_VENDOR_SPECIFIC)) {
-		DICT_VENDOR const *dv;
-
-		if (!p) {
-			fr_strerror_printf("VSA needs to have sub-attribute");
-			return -1;
-		}
-
-		if (!sscanf_i(ptr, pvendor)) {
-			fr_strerror_printf("Invalid number in attribute");
-			return -1;
-		}
-
-		if (*pvendor >= FR_MAX_VENDOR) {
-			fr_strerror_printf("Cannot handle vendor ID larger than 2^24");
-
-			return -1;
-		}
-
-		dv = dict_vendorbyvalue(*pvendor & (FR_MAX_VENDOR - 1));
-		if (!dv) {
-			fr_strerror_printf("Unknown vendor \"%u\" ",
-					   *pvendor  & (FR_MAX_VENDOR - 1));
+		p = strchr(ptr, '.');
+		if (!sscanf_i(ptr, &attr)) {
+			fr_strerror_printf("Invalid data '%s' in attribute identifier", ptr);
 			return -1;
 		}
 
 		/*
-		 *	Start off with (attr=0, vendor=VID), and
-		 *	recurse.  This causes the various checks above
-		 *	to be done.
+		 *	Normal attribute with no OID.  Return it.
 		 */
-		*pvalue = 0;
-		return dict_str2oid(p + 1, pvalue, pvendor, 0);
-	}
+		if (!p) {
+			*pvalue = attr;
+			goto done;
+		}
 
-	if (!sscanf_i(ptr, &value)) {
-		fr_strerror_printf("Invalid number in attribute");
-		return -1;
-	}
+		/*
+		 *	We have an OID, look up the attribute to see what it is.
+		 */
+		if (attr != PW_VENDOR_SPECIFIC) {
+			DICT_ATTR const *da;
 
-	if (!*pvendor && (tlv_depth == 1) && da &&
-	    (da->flags.has_tlv || da->flags.extended)) {
+			da = dict_attrbyvalue(attr, 0);
+			if (!da) {
+				*pvalue = attr;
+				goto done;
+			}
 
+			/*
+			 *	Standard attributes (including internal
+			 *	ones) can have TLVs, but only for some
+			 *	of them.
+			 */
+			if (!da->flags.extended) {
+#ifdef PW_IPV6_6RD_CONFIGURATION
+				if (attr == PW_IPV6_6RD_CONFIGURATION) {
+					*pvalue = attr;
+					ptr = p + 1;
+					tlv_depth = 1;
+					goto keep_parsing;
+				}
+#endif
+				fr_strerror_printf("Standard attributes cannot use OIDs");
+				return -1;
+			}
 
-		*pvendor = *pvalue * FR_MAX_VENDOR;
-		*pvalue = value;
+			*pvendor = attr * FR_MAX_VENDOR;
+			ptr = p + 1;
+		} /* and fall through to re-parsing the VSA */
 
-		if (!p) return 0;
-		return dict_str2oid(p + 1, pvalue, pvendor, 1);
+		/*
+		 *	Look for the attribute number.
+		 */
+		if (!sscanf_i(ptr, &attr)) {
+			fr_strerror_printf("Invalid data '%s' in attribute identifier", ptr);
+			return -1;
+		}
+
+		p = strchr(ptr, '.');
+
+		/*
+		 *	Handle VSAs.  Either in the normal space, or in the extended space.
+		 */
+		if (attr == PW_VENDOR_SPECIFIC) {
+			if (!p) {
+				*pvalue = attr;
+				goto done;
+			}
+			ptr = p + 1;
+
+			if (!sscanf_i(ptr, &attr)) {
+				fr_strerror_printf("Invalid data '%s' in vendor identifier", ptr);
+				return -1;
+			}
+
+			p = strchr(ptr, '.');
+			if (!p) {
+				fr_strerror_printf("Cannot define VENDOR in an ATTRIBUTE");
+				return -1;
+			}
+			ptr = p + 1;
+
+			*pvendor |= attr;
+		} else {
+			*pvalue = attr;
+		}
+	} /* fall through to processing an OID with pre-defined *pvendor and *pvalue */
+
+keep_parsing:
+#ifdef WITH_DICT_OID_DEBUG
+	fprintf(stderr, "KEEP PARSING %s tlv_depth %d pvalue %08x pvendor %08x\n", ptr,
+		tlv_depth, *pvalue, *pvendor);
+#endif
+
+	/*
+	 *	Check the vendor.  Only RFC format attributes can have TLVs.
+	 */
+	if (*pvendor) {
+		DICT_VENDOR const *dv = NULL;
+
+		dv = dict_vendorbyvalue(*pvendor);
+		if (dv && (dv->type != 1)) {
+			if (*pvalue || (tlv_depth != 0)) {
+				fr_strerror_printf("Attribute cannot have TLVs");
+				return -1;
+			}
+
+			if (!sscanf_i(ptr, &attr)) {
+				fr_strerror_printf("Invalid data '%s' in attribute identifier", ptr);
+				return -1;
+			}
+
+			if ((dv->type < 3) && (attr > (unsigned int) (1 << (8 * dv->type)))) {
+				fr_strerror_printf("Number '%s' out of allowed range in attribute identifier", ptr);
+				return -1;
+			}
+			
+			*pvalue = attr;
+
+#ifdef WITH_DHCP
+			/*
+			 *	DHCP attributes can have TLVs. <sigh>
+			 */
+			if (*pvendor == 54) goto dhcp_skip;
+#endif
+			goto done;
+		}
 	}
 
 	/*
-	 *	And pack the data according to the scheme described in
-	 *	the comments at the start of this function.
+	 *	Parse the rest of the TLVs.
 	 */
-	if (*pvalue) {
-		*pvalue |= (value & fr_attr_mask[tlv_depth]) << fr_attr_shift[tlv_depth];
-	} else {
-		*pvalue = value;
+	while (tlv_depth <= fr_attr_max_tlv) {
+#ifdef WITH_DICT_OID_DEBUG
+		fprintf(stderr, "TLV  PARSING %s tlv_depth %d pvalue %08x pvendor %08x\n", ptr,
+			tlv_depth, *pvalue, *pvendor);
+#endif
+
+		if (!sscanf_i(ptr, &attr)) {
+			fr_strerror_printf("Invalid data '%s' in attribute identifier", ptr);
+			return -1;
+		}
+
+		if (attr > fr_attr_mask[tlv_depth]) {
+			fr_strerror_printf("Number '%s' out of allowed range in attribute identifier", ptr);
+			return -1;
+		}
+
+		attr <<= fr_attr_shift[tlv_depth];
+
+#ifdef WITH_DICT_OID_DEBUG
+		if (*pvendor) {
+			DICT_ATTR const *da;
+
+			da = dict_parent(*pvalue | attr, *pvendor);
+			if (!da) {
+				fprintf(stderr, "STR2OID FAILED PARENT %08x | %08x, %08x\n",
+					*pvalue, attr, *pvendor);
+			} else if ((da->attr != *pvalue) || (da->vendor != *pvendor)) {
+				fprintf(stderr, "STR2OID DISAGREEMENT WITH PARENT %08x, %08x\t%08x, %08x\n",
+					*pvalue, *pvendor, da->attr, da->vendor);
+			}
+		}
+#endif
+
+		*pvalue |= attr;
+
+#ifdef WITH_DHCP
+	dhcp_skip:
+#endif
+		p = strchr(ptr, '.');
+		if (!p) break;
+
+		ptr = p + 1;
+		tlv_depth++;
 	}
 
-	if (p) {
-		return dict_str2oid(p + 1, pvalue, pvendor, tlv_depth + 1);
-	}
-
-	return tlv_depth;
+done:
+#ifdef WITH_DICT_OID_DEBUG
+	fprintf(stderr, "RETURNING %08x %08x\n", *pvalue, *pvendor);
+#endif
+	return 0;
 }
 
 
@@ -1508,26 +1618,23 @@ static int process_attribute(char const* fn, int const line,
 	/*
 	 *	Look for OIDs before doing anything else.
 	 */
-	p = strchr(argv[1], '.');
-	if (p) oid = 1;
+	if (strchr(argv[1], '.') != NULL) oid = 1;
 
-	/*
-	 *	Validate all entries
-	 */
-	if (!sscanf_i(argv[1], &value)) {
-		fr_strerror_printf("dict_init: %s[%d]: invalid value", fn, line);
-		return -1;
-	}
-
-	if (oid) {
+	{
 		DICT_ATTR const *da;
 
 		vendor = block_vendor;
 
+		if (!block_tlv) {
+			value = 0;
+		} else {
+			value = block_tlv->attr;
+		}
+
 		/*
-		 *	Parse the rest of the OID.
+		 *	Parse OID.
 		 */
-		if (dict_str2oid(p + 1, &value, &vendor, tlv_depth + 1) < 0) {
+		if (dict_str2oid(argv[1], &value, &vendor, tlv_depth) < 0) {
 			char buffer[256];
 
 			strlcpy(buffer, fr_strerror(), sizeof(buffer));
@@ -1537,19 +1644,21 @@ static int process_attribute(char const* fn, int const line,
 		}
 		block_vendor = vendor;
 
-		/*
-		 *	Set the flags based on the parents flags.
-		 */
-		da = dict_parent(value, vendor);
-		if (!da) {
-			fr_strerror_printf("dict_init: %s[%d]: Parent attribute is undefined.", fn, line);
-			return -1;
-		}
+		if (oid) {
+			/*
+			 *	Set the flags based on the parents flags.
+			 */
+			da = dict_parent(value, vendor);
+			if (!da) {
+				fr_strerror_printf("dict_init: %s[%d]: Parent attribute for %08x,%08x is undefined.", fn, line, value, vendor);
+				return -1;
+			}
 
-		flags.extended = da->flags.extended;
-		flags.long_extended = da->flags.long_extended;
-		flags.evs = da->flags.evs;
-		if (da->flags.has_tlv) flags.is_tlv = 1;
+			flags.extended = da->flags.extended;
+			flags.long_extended = da->flags.long_extended;
+			flags.evs = da->flags.evs;
+			if (da->flags.has_tlv) flags.is_tlv = 1;
+		}
 	}
 
 	if (strncmp(argv[2], "octets[", 7) != 0) {
@@ -2853,14 +2962,10 @@ DICT_ATTR const *dict_unknown_afrom_fields(TALLOC_CTX *ctx, unsigned int attr, u
  */
 int dict_unknown_from_str(DICT_ATTR *da, char const *name)
 {
-	unsigned int   	attr, vendor = 0;
-	unsigned int    dv_type = 1;	/* The type of vendor field */
+	unsigned int   	attr = 0, vendor = 0;
 
 	char const	*p = name;
 	char		*q;
-
-	DICT_VENDOR	*dv;
-	DICT_ATTR const	*found;
 
 	if (dict_valid_name(name) < 0) return -1;
 
@@ -2925,127 +3030,10 @@ int dict_unknown_from_str(DICT_ATTR *da, char const *name)
 		return -1;
 	}
 
-	attr = strtol(p + 5, &q, 10);
-
 	/*
-	 *	Invalid name.
+	 *	Parse the OID, with a (possibly) pre-defined vendor.
 	 */
-	if (attr == 0) {
-		fr_strerror_printf("Invalid value in attribute name \"%s\"", name);
-
-		return -1;
-	}
-
-	p = q;
-
-	/*
-	 *	Vendor-%d-Attr-%d
-	 *	VendorName-Attr-%d
-	 *	Attr-%d
-	 *	Attr-%d.
-	 *
-	 *	Anything else is invalid.
-	 */
-	if (((vendor != 0) && (*p != '\0')) ||
-	    ((vendor == 0) && *p && (*p != '.'))) {
-	invalid:
-		fr_strerror_printf("Invalid OID");
-		return -1;
-	}
-
-	/*
-	 *	Look for OIDs.  Require the "Attr-26.Vendor-Id.type"
-	 *	format, and disallow "Vendor-%d-Attr-%d" and
-	 *	"VendorName-Attr-%d"
-	 *
-	 *	This section parses the Vendor-Id portion of
-	 *	Attr-%d.%d.  where the first number is 26, *or* an
-	 *	extended name of the "evs" foundta type.
-	 */
-	if (*p == '.') {
-		found = dict_attrbyvalue(attr, 0);
-		if (!found) {
-			fr_strerror_printf("Cannot parse names without dictionaries");
-
-			return -1;
-		}
-
-		if ((attr != PW_VENDOR_SPECIFIC) &&
-		    !(found->flags.extended || found->flags.long_extended)) {
-			fr_strerror_printf("Standard attributes cannot use OIDs");
-
-			return -1;
-		}
-
-		if ((attr == PW_VENDOR_SPECIFIC) || found->flags.evs) {
-			vendor = strtol(p + 1, &q, 10);
-			if ((vendor == 0) || (vendor > FR_MAX_VENDOR)) {
-				fr_strerror_printf("Invalid vendor");
-
-				return -1;
-			}
-
-			if (*q != '.') goto invalid;
-
-			p = q;
-
-			if (found->flags.evs) vendor |= attr * FR_MAX_VENDOR;
-			attr = 0;
-		} /* else the second number is a TLV number */
-	}
-
-	/*
-	 *	Get the expected maximum size of the name.
-	 */
-	if (vendor) {
-		dv = dict_vendorbyvalue(vendor & (FR_MAX_VENDOR - 1));
-		if (dv) {
-			dv_type = dv->type;
-			if (dv_type > 3) dv_type = 3; /* hack */
-		}
-	}
-
-	/*
-	 *	Parse the next number.  It could be a Vendor-Type
-	 *	of 1..2^24, or it could be a TLV.
-	 */
-	if (*p == '.') {
-		attr = strtol(p + 1, &q, 10);
-		if (attr == 0) {
-			fr_strerror_printf("Invalid name number");
-			return -1;
-		}
-
-		if (*q) {
-			if (*q != '.') {
-				goto invalid;
-			}
-
-			if (dv_type != 1) {
-				goto invalid;
-			}
-		}
-
-		p = q;
-	}
-
-	/*
-	 *	Enforce a maximum value on the attribute number.
-	 */
-	if ((vendor > 0) && (attr >= (unsigned) (1 << (dv_type << 3)))) goto invalid;
-
-	if (*p == '.') {
-		if (dict_str2oid(p + 1, &attr, &vendor, 1) < 0) {
-			return -1;
-		}
-	}
-
-	/*
-	 *	If the caller doesn't provide a DICT_ATTR
-	 *	we can't call dict_unknown_from_fields.
-	 */
-	if (!da) {
-		fr_strerror_printf("Unknown attributes disallowed");
+	if (dict_str2oid(p + 5, &attr, &vendor, 0) < 0) {
 		return -1;
 	}
 

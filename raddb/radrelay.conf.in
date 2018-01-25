@@ -73,13 +73,15 @@ security {
 
 	# reject_delay && status_server don't apply when we are
 	# only reading accounting packets from the detail file
+
+@openssl_version_check_config@
 }
 
 #
 #  If you need more modules, add them here.
 #
 modules {
-	$INCLUDE ${confdir}/modules/always
+	$INCLUDE ${confdir}/mods-enabled/always
 }
 
 #
@@ -135,32 +137,34 @@ realm radrelay {
 	acct_pool = radrelay
 }
 
-#
-#  Read the detail file.
-#
-listen {
-	type = detail
+server radrelay {
+	#
+	#  Read the detail file.
+	#
+	listen {
+		type = detail
+
+		#
+		#  The filename here should be the same as the one used by the
+		#  main radiusd program.  It writes the file using the "detail"
+		#  module (see raddb/modules/detail).
+		#
+		filename = ${radacctdir}/detail
+		load_factor = 90
+	}
 
 	#
-	#  The filename here should be the same as the one used by the
-	#  main radiusd program.  It writes the file using the "detail"
-	#  module (see raddb/modules/detail).
+	#  See also raddb/sites-available/copy-acct-to-home-server
+	#  for additional description.
 	#
-	filename = ${radacctdir}/detail
-	load_factor = 90
-}
-
-#
-#  See also raddb/sites-available/copy-acct-to-home-server
-#  for additional description.
-#
-preacct {
-	#
-	#  Proxy the packet using the given realm.
-	#  Note that we do not use the realm for anything else such
-	#  as prefix/suffix stripping or comparisons.
-	#
-	update control {
-		Proxy-To-Realm := "radrelay"
+	preacct {
+		#
+		#  Proxy the packet using the given realm.
+		#  Note that we do not use the realm for anything else such
+		#  as prefix/suffix stripping or comparisons.
+		#
+		update control {
+			Proxy-To-Realm := "radrelay"
+		}
 	}
 }

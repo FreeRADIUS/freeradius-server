@@ -66,7 +66,6 @@ typedef struct rlm_sql_mysql_conn {
 	MYSQL		db;
 	MYSQL		*sock;
 	MYSQL_RES	*result;
-	rlm_sql_row_t	row;
 } rlm_sql_mysql_conn_t;
 
 typedef struct rlm_sql_mysql_config {
@@ -369,7 +368,8 @@ static sql_rcode_t sql_store_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_con
 	}
 
 retry_store_result:
-	if (!(conn->result = mysql_store_result(conn->sock))) {
+	conn->result = mysql_store_result(conn->sock);
+	if (!conn->result) {
 		rcode = sql_check_error(conn->sock, 0);
 		if (rcode != RLM_SQL_OK) return rcode;
 #if (MYSQL_VERSION_ID >= 40100)
@@ -378,6 +378,7 @@ retry_store_result:
 			/* there are more results */
 			goto retry_store_result;
 		} else if (ret > 0) return sql_check_error(NULL, ret);
+		/* ret == -1 signals no more results */
 #endif
 	}
 	return RLM_SQL_OK;
@@ -466,9 +467,12 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUS
 
 static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
-	rlm_sql_mysql_conn_t *conn = handle->conn;
-	sql_rcode_t rcode;
-	int ret;
+	rlm_sql_mysql_conn_t	*conn = handle->conn;
+	sql_rcode_t		rcode;
+	MYSQL_ROW		row;
+	int			ret;
+	unsigned int		num_fields, i;
+	unsigned long		*field_lens;
 
 	/*
 	 *  Check pointer before de-referencing it.
@@ -477,9 +481,11 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *con
 		return RLM_SQL_RECONNECT;
 	}
 
+	TALLOC_FREE(handle->row);		/* Clear previous row set */
+
 retry_fetch_row:
-	handle->row = mysql_fetch_row(conn->result);
-	if (!handle->row) {
+	row = mysql_fetch_row(conn->result);
+	if (!row) {
 		rcode = sql_check_error(conn->sock, 0);
 		if (rcode != RLM_SQL_OK) return rcode;
 
@@ -493,8 +499,21 @@ retry_fetch_row:
 				goto retry_fetch_row;
 			}
 		} else if (ret > 0) return sql_check_error(NULL, ret);
+		/* If ret is -1 then there are no more rows */
 #endif
+		return RLM_SQL_NO_MORE_ROWS;
 	}
+
+	num_fields = mysql_num_fields(conn->result);
+	if (!num_fields) return RLM_SQL_NO_MORE_ROWS;
+
+	field_lens = mysql_fetch_lengths(conn->result);
+
+	MEM(handle->row = talloc_zero_array(handle, char *, num_fields + 1));
+	for (i = 0; i < num_fields; i++) {
+		MEM(handle->row[i] = talloc_bstrndup(handle->row, row[i], field_lens[i]));
+	}
+
 	return RLM_SQL_OK;
 }
 
@@ -506,6 +525,7 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
 		mysql_free_result(conn->result);
 		conn->result = NULL;
 	}
+	TALLOC_FREE(handle->row);
 
 	return RLM_SQL_OK;
 }

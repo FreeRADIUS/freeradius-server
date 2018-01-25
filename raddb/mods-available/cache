@@ -63,15 +63,6 @@ cache {
 	#  This value should be between 10 and 86400.
 	ttl = 10
 
-	#  You can flush the cache via
-	#
-	#	radmin -e "set module config cache epoch 123456789"
-	#
-	#  Where last value is a 32-bit Unix timestamp.  Cache entries older
-	#  than this are expired, as new entries added.
-	#
-	#  You should never set the "epoch" configuration item in this file.
-
 	#  If yes the following attributes will be added to the request:
 	#      * &request:Cache-Entry-Hits - The number of times this entry
 	#				     has been retrieved.
@@ -98,7 +89,7 @@ cache {
 		# <list>:<attribute> <op> <value>
 
 		# Cache all instances of Reply-Message in the reply list
-		&reply:Reply-Message += &reply:Reply-Message
+		&reply:Reply-Message += &reply:Reply-Message[*]
 
 		# Add our own to show when the cache was last updated
 		&reply:Reply-Message += "Cache last updated at %t"

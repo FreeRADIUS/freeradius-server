@@ -197,7 +197,7 @@ static int CC_HINT(nonnull) rad_check_password(REQUEST *request)
 	 *	Warn if more than one Auth-Type was found, because only the last
 	 *	one found will actually be used.
 	 */
-	if ((auth_type_count > 1) && (rad_debug_lvl)) {
+	if ((auth_type_count > 1) && (rad_debug_lvl) && request->username) {
 		RERROR("Warning:  Found %d auth-types on request for user '%s'",
 			auth_type_count, request->username->vp_strvalue);
 	}
@@ -332,6 +332,7 @@ int rad_postauth(REQUEST *request)
 		if (request->reply->code != PW_CODE_ACCESS_REJECT) {
 			RDEBUG("Using Post-Auth-Type Reject");
 
+			request->reply->code = PW_CODE_ACCESS_REJECT;
 			process_post_auth(PW_POST_AUTH_TYPE_REJECT, request);
 		}
 
@@ -373,6 +374,18 @@ int rad_postauth(REQUEST *request)
 			rad_authlog("Rejected in post-auth", request, 0);
 		}
 		request->reply->code = PW_CODE_ACCESS_REJECT;
+	}
+
+	if (request->reply->code == PW_CODE_ACCESS_REJECT) {
+		if ((vp = fr_pair_find_by_num(request->packet->vps, PW_MODULE_FAILURE_MESSAGE, 0, TAG_ANY)) != NULL) {
+			char msg[MAX_STRING_LEN+19];
+
+			snprintf(msg, sizeof(msg), "Login incorrect (%s)",
+				 vp->vp_strvalue);
+			rad_authlog(msg, request, 0);
+		} else {
+			rad_authlog("Login incorrect", request, 0);
+		}
 	}
 
 	/*
@@ -584,16 +597,6 @@ authenticate:
 	if (result < 0) {
 		RDEBUG2("Failed to authenticate the user");
 		request->reply->code = PW_CODE_ACCESS_REJECT;
-
-		if ((module_msg = fr_pair_find_by_num(request->packet->vps, PW_MODULE_FAILURE_MESSAGE, 0, TAG_ANY)) != NULL){
-			char msg[MAX_STRING_LEN+19];
-
-			snprintf(msg, sizeof(msg), "Login incorrect (%s)",
-				 module_msg->vp_strvalue);
-			rad_authlog(msg, request, 0);
-		} else {
-			rad_authlog("Login incorrect", request, 0);
-		}
 
 		if (request->password) {
 			VERIFY_VP(request->password);

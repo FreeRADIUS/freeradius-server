@@ -336,7 +336,7 @@ size_t fr_prints(char *out, size_t outlen, char const *in, ssize_t inlen, char q
 			freespace = 0;
 
 		} else if (freespace > utf8) { /* room for char AND trailing zero */
-			memcpy(out + used, p, utf8);
+			if (out) memcpy(out + used, p, utf8);
 			freespace -= utf8;
 		}
 
@@ -569,7 +569,7 @@ size_t vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp)
 					break;
 
 				case '\n':
-					*out++ = 'b';
+					*out++ = 'n';
 					freespace--;
 					break;
 
@@ -583,7 +583,7 @@ size_t vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp)
 					freespace--;
 					break;
 				default:
-					len = snprintf(out, freespace, "u%04X", *q);
+					len = snprintf(out, freespace, "u%04X", (uint8_t) *q);
 					if (is_truncated(len, freespace)) return (outlen - freespace) + len;
 					out += len;
 					freespace -= len;

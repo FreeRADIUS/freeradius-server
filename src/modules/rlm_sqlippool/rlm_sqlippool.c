@@ -17,7 +17,7 @@
 /**
  * $Id$
  * @file rlm_sqlippool.c
- * @brief Allocates an IPv4 address from pools stored in SQL.
+ * @brief Allocates an IP address / prefix from pools stored in SQL.
  *
  * @copyright 2002  Globe.Net Communications Limited
  * @copyright 2006  The FreeRADIUS server project
@@ -46,7 +46,10 @@ typedef struct rlm_sqlippool_t {
 
 	char const	*pool_name;
 	bool		ipv6;			//!< Whether or not we do IPv6 pools.
-	int		framed_ip_address; 	//!< the attribute number for Framed-IP(v6)-Address
+	bool		allow_duplicates;	//!< assign even if it already exists
+	char const	*attribute_name;	//!< name of the IP address attribute
+
+	DICT_ATTR const *framed_ip_address; 	//!< the attribute for IP address allocation
 
 	time_t		last_clear;		//!< So we only do it once a second.
 	char const	*allocate_begin;	//!< SQL query to begin.
@@ -127,6 +130,8 @@ static CONF_PARSER module_config[] = {
 
 
 	{ "ipv6", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sqlippool_t, ipv6), NULL},
+	{ "allow_duplicates", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sqlippool_t, allow_duplicates), NULL},
+	{ "attribute_name", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, attribute_name), NULL},
 
 	{ "allocate-begin", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, allocate_begin), NULL },
 	{ "allocate_begin", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sqlippool_t, allocate_begin), "START TRANSACTION" },
@@ -421,10 +426,40 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
-	if (!inst->ipv6) {
-		inst->framed_ip_address = PW_FRAMED_IP_ADDRESS;
+	if (inst->attribute_name) {
+		DICT_ATTR const *da;
+
+		da = dict_attrbyname(inst->attribute_name);
+		if (!da) {
+		fail:
+			cf_log_err_cs(conf, "Unknown attribute 'attribute_name = %s'", inst->attribute_name);
+			return -1;
+		}
+
+		switch (da->type) {
+		default:
+			cf_log_err_cs(conf, "Cannot use non-IP attributes for 'attribute_name = %s'", inst->attribute_name);
+			return -1;
+
+		case PW_TYPE_IPV4_ADDR:
+		case PW_TYPE_IPV6_ADDR:
+		case PW_TYPE_IPV4_PREFIX:
+		case PW_TYPE_IPV6_PREFIX:
+			break;
+
+		}
+
+		inst->framed_ip_address = da;
 	} else {
-		inst->framed_ip_address = PW_FRAMED_IPV6_PREFIX;
+		if (!inst->ipv6) {
+			inst->attribute_name = "Framed-IP-Address";
+			inst->framed_ip_address = dict_attrbyvalue(PW_FRAMED_IP_ADDRESS, 0);
+		} else {
+			inst->attribute_name = "Framed-IPv6-Prefix";
+			inst->framed_ip_address = dict_attrbyvalue(PW_FRAMED_IPV6_PREFIX, 0);
+		}
+
+		if (!inst->framed_ip_address) goto fail;
 	}
 
 	if (strcmp(sql_inst->entry->name, "rlm_sql") != 0) {
@@ -474,10 +509,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	time_t now;
 
 	/*
-	 *	If there is a Framed-IP-Address attribute in the reply do nothing
+	 *	If there is already an attribute in the reply do nothing
 	 */
-	if (fr_pair_find_by_num(request->reply->vps, inst->framed_ip_address, 0, TAG_ANY) != NULL) {
-		RDEBUG("Framed-IP-Address already exists");
+	if (!inst->allow_duplicates && (fr_pair_find_by_num(request->reply->vps, inst->framed_ip_address->attr, inst->framed_ip_address->vendor, TAG_ANY) != NULL)) {
+		RDEBUG("%s already exists", inst->attribute_name);
 
 		return do_logging(request, inst->log_exists, RLM_MODULE_NOOP);
 	}
@@ -577,7 +612,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	 *	See if we can create the VP from the returned data.  If not,
 	 *	error out.  If so, add it to the list.
 	 */
-	vp = fr_pair_afrom_num(request->reply, inst->framed_ip_address, 0);
+	vp = fr_pair_afrom_num(request->reply, inst->framed_ip_address->attr, inst->framed_ip_address->vendor);
 	if (fr_pair_value_from_str(vp, allocation, allocation_len) < 0) {
 		DO_PART(allocate_commit);
 

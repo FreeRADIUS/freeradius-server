@@ -42,17 +42,18 @@ RCSIDH(rlm_sql_h, "$Id$")
 
 /* SQL Errors */
 typedef enum {
-	RLM_SQL_QUERY_INVALID = -3,	//!< Query syntax error
-	RLM_SQL_ERROR = -2,		//!< General connection/server error
-	RLM_SQL_OK = 0,			//!< Success
-	RLM_SQL_RECONNECT = 1,		//!< Stale connection, should reconnect
-	RLM_SQL_ALT_QUERY = 2		//!< Key constraint violation
+	RLM_SQL_QUERY_INVALID = -3,	//!< Query syntax error.
+	RLM_SQL_ERROR = -2,		//!< General connection/server error.
+	RLM_SQL_OK = 0,			//!< Success.
+	RLM_SQL_RECONNECT = 1,		//!< Stale connection, should reconnect.
+	RLM_SQL_ALT_QUERY,		//!< Key constraint violation, use an alternative query.
+	RLM_SQL_NO_MORE_ROWS,		//!< No more rows available
 } sql_rcode_t;
 
 typedef enum {
-	FALL_THROUGH_DEFAULT = 0,
+	FALL_THROUGH_NO = 0,
 	FALL_THROUGH_YES,
-	FALL_THROUGH_NO
+	FALL_THROUGH_DEFAULT,
 } sql_fall_through_t;
 
 
@@ -241,7 +242,6 @@ typedef struct sql_grouplist {
 	struct sql_grouplist	*next;
 } rlm_sql_grouplist_t;
 
-void		*mod_conn_create(TALLOC_CTX *ctx, void *instance);
 int		sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **first_pair, rlm_sql_row_t row);
 int		sql_read_realms(rlm_sql_handle_t *handle);
 int		sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle, VALUE_PAIR **pair, char const *query);

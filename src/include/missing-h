@@ -83,6 +83,22 @@ RCSIDH(missing_h, "$Id$")
 #  endif
 #endif
 
+#ifdef HAVE_OPENSSL_SSL_H
+#  include <openssl/ssl.h>
+#endif
+
+#ifdef HAVE_OPENSSL_HMAC_H
+#  include <openssl/hmac.h>
+#endif
+
+#ifdef HAVE_OPENSSL_ASN1_H
+#  include <openssl/asn1.h>
+#endif
+
+#ifdef HAVE_OPENSSL_CONF_H
+#  include <openssl/conf.h>
+#endif
+
 /*
  *	Don't look for winsock.h if we're on cygwin.
  */
@@ -436,8 +452,68 @@ uint128_t ntohlll(uint128_t num);
 typedef void(*sig_t)(int);
 #endif
 
+#ifdef HAVE_OPENSSL_HMAC_H
+#  ifndef HAVE_HMAC_CTX_NEW
+HMAC_CTX *HMAC_CTX_new(void);
+#  endif
+#  ifndef HAVE_HMAC_CTX_FREE
+void HMAC_CTX_free(HMAC_CTX *ctx);
+#  endif
+#endif
+
+#ifdef HAVE_OPENSSL_ASN1_H
+#  ifndef HAVE_ASN1_STRING_GET0_DATA
+static inline const unsigned char *ASN1_STRING_get0_data(const ASN1_STRING *x)
+{
+	/*
+	 * Trick the compiler into not issuing the warning on qualifier stripping.
+	 * We know that ASN1_STRING_data doesn't change x, and we're casting
+	 * the return value back to const immediately, so it's OK.
+	 */
+	union {
+		const ASN1_STRING	*c;
+		ASN1_STRING		*nc;
+	} const_strip = {.c = x};
+	return ASN1_STRING_data(const_strip.nc);
+}
+#  endif
+#endif
+
+#ifdef HAVE_OPENSSL_CONF_H
+#  ifndef HAVE_CONF_MODULES_LOAD_FILE
+static inline int CONF_modules_load_file(const char *filename,
+					 const char *appname,
+					 unsigned long flags)
+{
+	(void)filename;
+	(void)flags;
+	return OPENSSL_config(appname);
+}
+#  endif
+#endif
+
 #ifdef __cplusplus
 }
+#endif
+
+#ifdef HAVE_OPENSSL_SSL_H
+#  ifndef HAVE_SSL_GET_CLIENT_RANDOM
+size_t SSL_get_client_random(const SSL *s, unsigned char *out, size_t outlen);
+#  endif
+#  ifndef HAVE_SSL_GET_SERVER_RANDOM
+size_t SSL_get_server_random(const SSL *s, unsigned char *out, size_t outlen);
+#  endif
+#  ifndef HAVE_SSL_SESSION_GET_MASTER_KEY
+size_t SSL_SESSION_get_master_key(const SSL_SESSION *s,
+				  unsigned char *out, size_t outlen);
+#  endif
+#endif
+
+/*
+ *  NetBSD doesn't have O_DIRECTORY.
+ */
+#ifndef O_DIRECTORY
+#define O_DIRECTORY 0
 #endif
 
 /*

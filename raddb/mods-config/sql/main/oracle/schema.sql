@@ -15,7 +15,6 @@ CREATE TABLE radacct (
 	acctsessionid		VARCHAR(96) NOT NULL,
 	acctuniqueid		VARCHAR(32),
 	username		VARCHAR(64) NOT NULL,
-	groupname		VARCHAR(32),
 	realm			VARCHAR(30),
 	nasipaddress		VARCHAR(15) NOT NULL,
 	nasportid		VARCHAR(32),
@@ -86,7 +85,7 @@ CREATE OR REPLACE TRIGGER radcheck_serialnumber
  */
 CREATE TABLE radgroupcheck (
 	id 		INT PRIMARY KEY,
-	groupname	VARCHAR(20) UNIQUE NOT NULL,
+	groupname	VARCHAR(20) NOT NULL,
 	attribute	VARCHAR(64),
 	op		CHAR(2) NOT NULL,
 	value		VARCHAR(40)
@@ -98,7 +97,7 @@ CREATE SEQUENCE radgroupcheck_seq START WITH 1 INCREMENT BY 1;
  */
 CREATE TABLE radgroupreply (
 	id		INT PRIMARY KEY,
-	GroupName	VARCHAR(20) UNIQUE NOT NULL,
+	GroupName	VARCHAR(20) NOT NULL,
 	Attribute	VARCHAR(64),
 	op		CHAR(2) NOT NULL,
 	Value		VARCHAR(40)
@@ -134,7 +133,7 @@ CREATE OR REPLACE TRIGGER radreply_serialnumber
  */
 CREATE TABLE radusergroup (
 	id		INT PRIMARY KEY,
-	UserName	VARCHAR(30) UNIQUE NOT NULL,
+	UserName	VARCHAR(30) NOT NULL,
 	GroupName	VARCHAR(30)
 );
 CREATE SEQUENCE radusergroup_seq START WITH 1 INCREMENT BY 1;
@@ -150,43 +149,6 @@ CREATE OR REPLACE TRIGGER radusergroup_serialnumber
 	END;
 /
 
-
-/*
- * Table structure for table 'realmgroup'
- */
-CREATE TABLE realmgroup (
-	id 		INT PRIMARY KEY,
-	RealmName	VARCHAR(30) UNIQUE NOT NULL,
-	GroupName	VARCHAR(30)
-);
-CREATE SEQUENCE realmgroup_seq START WITH 1 INCREMENT BY 1;
-
-CREATE TABLE realms (
-	id		INT PRIMARY KEY,
-	realmname	VARCHAR(64),
-	nas		VARCHAR(128),
-	authport	INT,
-	options		VARCHAR(128)
-);
-CREATE SEQUENCE realms_seq START WITH 1 INCREMENT BY 1;
-
-CREATE TABLE radhuntgroup (
-	id              INT PRIMARY KEY,
-	GroupName VARCHAR(64) NOT NULL,
-	Nasipaddress VARCHAR(15) UNIQUE NOT NULL,
-	NASPortID VARCHAR(15)
-);
-
-CREATE SEQUENCE radhuntgroup_seq START WITH 1 INCREMENT BY 1;
-
-CREATE OR REPLACE TRIGGER radhuntgroup_serialnumber
-	BEFORE INSERT OR UPDATE OF id ON radhuntgroup
-	FOR EACH ROW
-	BEGIN
-		if ( :new.id = 0 or :new.id is null ) then
-			SELECT radhuntgroup_seq.nextval into :new.id from dual;
-		end if;
-	END;
 
 CREATE TABLE radpostauth (
 	  id            INT PRIMARY KEY,

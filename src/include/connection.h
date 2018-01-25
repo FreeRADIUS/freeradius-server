@@ -109,7 +109,7 @@ void	fr_connection_release(fr_connection_pool_t *pool, void *conn);
 
 void	*fr_connection_reconnect(fr_connection_pool_t *pool, void *conn);
 
-int	fr_connection_close(fr_connection_pool_t *pool, void *conn);
+int	fr_connection_close(fr_connection_pool_t *pool, void *conn, char const *msg);
 
 #ifdef __cplusplus
 }

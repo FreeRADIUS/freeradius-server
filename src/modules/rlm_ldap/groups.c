@@ -461,8 +461,10 @@ rlm_rcode_t rlm_ldap_cacheable_groupobj(rlm_ldap_t const *inst, REQUEST *request
 
 	case LDAP_PROC_NO_RESULT:
 		RDEBUG2("No cacheable group memberships found in group objects");
+		goto finish;
 
 	default:
+		rcode = RLM_MODULE_FAIL;
 		goto finish;
 	}
 

@@ -1199,7 +1199,7 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 				ERROR("%s[%d]: Reference \"%s\" type is invalid", cf, *lineno, input);
 				return NULL;
 			}
-		} else if (memcmp(ptr, "$ENV{", 5) == 0) {
+		} else if (strncmp(ptr, "$ENV{", 5) == 0) {
 			char *env;
 
 			ptr += 5;
@@ -1393,9 +1393,11 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	CONF_PAIR *cp = NULL;
 	fr_ipaddr_t *ipaddr;
 	char buffer[8192];
-	CONF_ITEM *c_item = &cs->item;
+	CONF_ITEM *c_item;
 
 	if (!cs) return -1;
+
+	c_item = &cs->item;
 
 	deprecated = (type & PW_TYPE_DEPRECATED);
 	required = (type & PW_TYPE_REQUIRED);
@@ -1474,7 +1476,6 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 
 	if (!value) {
 		if (required) {
-		is_required:
 			cf_log_err(c_item, "Configuration item \"%s\" must have a value", name);
 
 			return -1;
@@ -1620,7 +1621,6 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 			}
 		}
 
-		if (required && !value) goto is_required;
 		if (cant_be_empty && (value[0] == '\0')) goto cant_be_empty;
 
 		if (attribute) {
@@ -1928,6 +1928,8 @@ int cf_section_parse(CONF_SECTION *cs, void *base, CONF_PARSER const *variables)
 			    (variables[i + 1].data == variables[i].data)) {
 				cf_log_err(&(cs->item), "Replace \"%s\" with \"%s\"", variables[i].name,
 					   variables[i + 1].name);
+			} else {
+				cf_log_err(&(cs->item), "Cannot use deprecated configuration item \"%s\"", variables[i].name);
 			}
 			goto finish;
 		}
@@ -3624,6 +3626,7 @@ void *cf_data_remove(CONF_SECTION *cs, char const *name)
 {
 	CONF_DATA mycd;
 	CONF_DATA *cd;
+	CONF_ITEM *ci, *it;
 	void *data;
 
 	if (!cs || !name) return NULL;
@@ -3636,6 +3639,20 @@ void *cf_data_remove(CONF_SECTION *cs, char const *name)
 	mycd.flag = 0;
 	cd = rbtree_finddata(cs->data_tree, &mycd);
 	if (!cd) return NULL;
+
+	ci = cf_data_to_item(cd);
+	if (cs->children == ci) {
+		cs->children = ci->next;
+		if (cs->tail == ci) cs->tail = NULL;
+	} else {
+		for (it = cs->children; it; it = it->next) {
+			if (it->next == ci) {
+				it->next = ci->next;
+				if (cs->tail == ci) cs->tail = it;
+				break;
+			}
+		}
+	}
 
 	talloc_set_destructor(cd, NULL);	/* Disarm the destructor */
 	rbtree_deletebydata(cs->data_tree, &mycd);

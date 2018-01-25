@@ -26,17 +26,22 @@
 
 Summary: High-performance and highly configurable free RADIUS server
 Name: freeradius
-Version: 3.0.12
+Version: 3.0.17
 Release: 2%{?dist}
 License: GPLv2+ and LGPLv2+
 Group: System Environment/Daemons
 URL: http://www.freeradius.org/
 
 Source0: ftp://ftp.freeradius.org/pub/radius/freeradius-server-%{version}.tar.bz2
+%if %{?_unitdir:1}%{!?_unitdir:0}
+Source100: radiusd.service
+%else
 Source100: freeradius-radiusd-init
+%define initddir %{?_initddir:%{_initddir}}%{!?_initddir:%{_initrddir}}
+%endif
+
 Source102: freeradius-logrotate
 Source103: freeradius-pam-conf
-Source104: radiusd.service
 
 Obsoletes: freeradius-devel
 Obsoletes: freeradius-libs
@@ -48,13 +53,13 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires: autoconf
 BuildRequires: gdbm-devel
-BuildRequires: libtool
-BuildRequires: libtool-ltdl-devel
-BuildRequires: openssl-devel
+BuildRequires: openssl, openssl-devel
 BuildRequires: pam-devel
 BuildRequires: zlib-devel
 BuildRequires: net-snmp-devel
 BuildRequires: net-snmp-utils
+%{?el7:BuildRequires: samba-winbind-devel}
+%{?el6:BuildRequires: samba4-devel}
 BuildRequires: readline-devel
 BuildRequires: libpcap-devel
 BuildRequires: libtalloc-devel
@@ -69,6 +74,10 @@ Requires: libpcap
 Requires: readline
 Requires: libtalloc
 Requires: net-snmp
+%{?el7:Requires: samba-libs}
+%{?el7:Requires: samba-winbind-clients}
+%{?el6:Requires: samba4-libs}
+%{?el6:Requires: samba4-winbind-clients}
 Requires: zlib
 Requires: pam
 
@@ -138,8 +147,8 @@ attributes Selecting a particular configuration Authentication methods
 Summary: LDAP support for FreeRADIUS
 Group: System Environment/Daemons
 Requires: %{name} = %{version}-%{release}
-Requires: openldap
-BuildRequires: openldap-devel
+Requires: openldap-ltb
+BuildRequires: openldap-ltb
 
 %description ldap
 This plugin provides LDAP support for the FreeRADIUS server project.
@@ -304,10 +313,10 @@ find $RPM_BUILD_DIR/freeradius-server-%{version} \( -name '*.c' -o -name '*.h' \
 
 
 %build
-%ifarch s390 s390x
-export CFLAGS="$RPM_OPT_FLAGS -fPIC"
-%else
-export CFLAGS="$RPM_OPT_FLAGS -fpic"
+# Retain CFLAGS from the environment...
+%if %{?_with_developer:1}%{!?_with_developer:0}
+export CFLAGS="$CFLAGS -fpic"
+export CXXFLAGS="$CFLAGS"
 %endif
 
 # Need to pass these explicitly for clang, else rpmbuilder bails when trying to extract debug info from
@@ -317,12 +326,13 @@ export LDFLAGS="-Wl,--build-id"
 
 %configure \
         --libdir=%{_libdir}/freeradius \
-        --with-system-libtool \
         --disable-ltdl-install \
         --with-gnu-ld \
         --with-threads \
         --with-thread-pool \
         --with-docdir=%{docdir} \
+        --with-rlm-ldap-include-dir=/usr/local/openldap/include \
+        --with-rlm-ldap-lib-dir=/usr/local/openldap/lib64 \
         --with-rlm-sql_postgresql-include-dir=/usr/include/pgsql \
         --with-rlm-sql-postgresql-lib-dir=%{_libdir} \
         --with-rlm-sql_mysql-include-dir=/usr/include/mysql \
@@ -336,6 +346,8 @@ export LDFLAGS="-Wl,--build-id"
         --without-rlm_sql_db2 \
         --with-jsonc-lib-dir=%{_libdir} \
         --with-jsonc-include-dir=/usr/include/json \
+        --with-winbind-include-dir=/usr/include/samba-4.0 \
+        --with-winbind-lib-dir=/usr/lib64/samba \
         %{?_with_rlm_yubikey} \
         %{?_without_rlm_yubikey} \
         %{?_with_rlm_sql_oracle} \
@@ -358,19 +370,12 @@ export LDFLAGS="-Wl,--build-id"
         %{?_without_rlm_cache_memcached} \
 #        --with-modules="rlm_wimax" \
 
-%if "%{_lib}" == "lib64"
-perl -pi -e 's:sys_lib_search_path_spec=.*:sys_lib_search_path_spec="/lib64 /usr/lib64 /usr/local/lib64":' libtool
-%endif
-
-make
-
+make %_smp_mflags
 
 %install
 rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/var/run/radiusd
 mkdir -p $RPM_BUILD_ROOT/var/lib/radiusd
-# fix for bad libtool bug - can not rebuild dependent libs and bins
-#FIXME export LD_LIBRARY_PATH=$RPM_BUILD_ROOT/%{_libdir}
 make install R=$RPM_BUILD_ROOT
 # modify default configuration
 RADDB=$RPM_BUILD_ROOT%{_sysconfdir}/raddb
@@ -382,14 +387,14 @@ touch $RPM_BUILD_ROOT/var/log/radius/{radutmp,radius.log}
 
 # For systemd based systems, that define _unitdir, install the radiusd unit
 %if %{?_unitdir:1}%{!?_unitdir:0}
-install -D -m 755 %{SOURCE104} $RPM_BUILD_ROOT/%{_unitdir}/radiusd.service
+install -D -m 755 redhat/radiusd.service $RPM_BUILD_ROOT/%{_unitdir}/radiusd.service
 # For SystemV install the init script
 %else
-install -D -m 755 %{SOURCE100} $RPM_BUILD_ROOT/%{initddir}/radiusd
+install -D -m 755 redhat/freeradius-radiusd-init $RPM_BUILD_ROOT/%{initddir}/radiusd
 %endif
 
-install -D -m 644 %{SOURCE102} $RPM_BUILD_ROOT/%{_sysconfdir}/logrotate.d/radiusd
-install -D -m 644 %{SOURCE103} $RPM_BUILD_ROOT/%{_sysconfdir}/pam.d/radiusd
+install -D -m 644 redhat/freeradius-logrotate $RPM_BUILD_ROOT/%{_sysconfdir}/logrotate.d/radiusd
+install -D -m 644 redhat/freeradius-pam-conf $RPM_BUILD_ROOT/%{_sysconfdir}/pam.d/radiusd
 
 # remove unneeded stuff
 rm -rf doc/00-OLD
@@ -473,10 +478,12 @@ fi
 
 %preun
 if [ $1 = 0 ]; then
-  /sbin/service radiusd stop > /dev/null 2>&1
+%if %{?_unitdir:1}%{!?_unitdir:0}
+  /bin/systemctl disable radiusd
+%else
   /sbin/chkconfig --del radiusd
+%endif
 fi
-
 
 %postun
 if [ $1 -ge 1 ]; then
@@ -562,6 +569,7 @@ fi
 %{_libdir}/freeradius/rlm_digest.so
 %{_libdir}/freeradius/rlm_dynamic_clients.so
 %{_libdir}/freeradius/rlm_eap.so
+%{_libdir}/freeradius/rlm_eap_fast.so
 %{_libdir}/freeradius/rlm_eap_gtc.so
 %{_libdir}/freeradius/rlm_eap_leap.so
 %{_libdir}/freeradius/rlm_eap_md5.so
@@ -593,6 +601,11 @@ fi
 %{_libdir}/freeradius/rlm_sql_sqlite.so
 %{_libdir}/freeradius/rlm_sqlcounter.so
 %{_libdir}/freeradius/rlm_sqlippool.so
+
+%if %{?_with_developer:1}%{!?_with_developer:0}
+%{_libdir}/freeradius/rlm_sqlhpwippool.so
+%endif
+
 %{_libdir}/freeradius/rlm_unpack.so
 %{_libdir}/freeradius/rlm_unix.so
 %{_libdir}/freeradius/rlm_utf8.so
@@ -664,6 +677,8 @@ fi
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/main/mysql/*
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/main/ndb
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/main/ndb/*
+%dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/moonshot-targeted-ids/mysql
+%attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/moonshot-targeted-ids/mysql/*
 # postgres
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/counter/postgresql
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/counter/postgresql/*
@@ -673,6 +688,8 @@ fi
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/ippool/postgresql/*
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/main/postgresql
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/main/postgresql/*
+%dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/moonshot-targeted-ids/postgresql
+%attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/moonshot-targeted-ids/postgresql/*
 # sqlite
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/counter/sqlite
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/counter/sqlite/*
@@ -685,6 +702,8 @@ fi
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/ippool/sqlite/*
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/main/sqlite
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/main/sqlite/*
+%dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/moonshot-targeted-ids/sqlite
+%attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/moonshot-targeted-ids/sqlite/*
 # ruby
 %if %{?_with_rlm_ruby:1}%{!?_with_rlm_ruby:0}
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/ruby
@@ -711,7 +730,9 @@ fi
 %defattr(-,root,root)
 /usr/bin/*
 # man-pages
+%doc %{_mandir}/man1/dhcpclient.1.gz
 %doc %{_mandir}/man1/radclient.1.gz
+%doc %{_mandir}/man1/rad_counter.1.gz
 %doc %{_mandir}/man1/radeapclient.1.gz
 %doc %{_mandir}/man1/radlast.1.gz
 %doc %{_mandir}/man1/radtest.1.gz
@@ -788,7 +809,6 @@ fi
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_yubikey.so
 %endif
-
 
 %changelog
 * Wed Sep 25 2013 Alan DeKok <aland@freeradius.org> - 3.0.0

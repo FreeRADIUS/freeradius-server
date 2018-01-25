@@ -31,6 +31,28 @@ RCSID("$Id$")
 #include <pwd.h>
 #include <sys/uio.h>
 
+#ifdef HAVE_DIRENT_H
+#include <dirent.h>
+
+/*
+ *	Some versions of Linux don't have closefrom(), but they will
+ *	have /proc.
+ *
+ *	BSD systems will generally have closefrom(), but not proc.
+ *
+ *	OSX doesn't have closefrom() or /proc/self/fd, but it does
+ *	have /dev/fd
+ */
+#ifdef __linux__
+#define CLOSEFROM_DIR "/proc/self/fd"
+#elif defined(__APPLE__)
+#define CLOSEFROM_DIR "/dev/fd"
+#else
+#undef HAVE_DIRENT_H
+#endif
+
+#endif
+
 #define FR_PUT_LE16(a, val)\
 	do {\
 		a[1] = ((uint16_t) (val)) >> 8;\
@@ -57,6 +79,8 @@ typedef struct fr_talloc_link {
  * @param sig to set handler for.
  * @param func handler to set.
  */
+DIAG_OPTIONAL
+DIAG_OFF(disabled-macro-expansion)
 int fr_set_signal(int sig, sig_t func)
 {
 #ifdef HAVE_SIGACTION
@@ -79,6 +103,7 @@ int fr_set_signal(int sig, sig_t func)
 #endif
 	return 0;
 }
+DIAG_ON(disabled-macro-expansion)
 
 /** Uninstall a signal for a specific handler
  *
@@ -86,6 +111,8 @@ int fr_set_signal(int sig, sig_t func)
  *
  * @param sig SIGNAL
  */
+DIAG_OPTIONAL
+DIAG_OFF(disabled-macro-expansion)
 int fr_unset_signal(int sig)
 {
 #ifdef HAVE_SIGACTION
@@ -101,6 +128,7 @@ int fr_unset_signal(int sig)
         return signal(sig, SIG_DFL);
 #endif
 }
+DIAG_ON(disabled-macro-expansion)
 
 static int _fr_trigger_talloc_ctx_free(fr_talloc_link_t *trigger)
 {
@@ -280,10 +308,12 @@ static int ip_prefix_from_str(char const *str, uint32_t *paddr)
 }
 
 
-/** Parse an IPv4 address or IPv4 prefix in presentation format (and others)
+/**
+ * Parse an IPv4 address, IPv4 prefix in presentation format (and others), or
+ * a hostname.
  *
  * @param out Where to write the ip address value.
- * @param value to parse, may be dotted quad [+ prefix], or integer, or octal number, or '*' (INADDR_ANY).
+ * @param value to parse, may be dotted quad [+ prefix], or integer, or octal number, or '*' (INADDR_ANY), or a hostname.
  * @param inlen Length of value, if value is \0 terminated inlen may be -1.
  * @param resolve If true and value doesn't look like an IP address, try and resolve value as a hostname.
  * @param fallback to IPv6 resolution if no A records can be found.
@@ -295,8 +325,8 @@ int fr_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
 	unsigned int mask;
 	char *eptr;
 
-	/* Dotted quad + / + [0-9]{1,2} */
-	char buffer[INET_ADDRSTRLEN + 3];
+	/* Dotted quad + / + [0-9]{1,2} or a hostname (RFC1035 2.3.4 Size limits) */
+	char buffer[256];
 
 	/*
 	 *	Copy to intermediary buffer if we were given a length
@@ -378,7 +408,9 @@ int fr_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
 	return 0;
 }
 
-/** Parse an IPv6 address or IPv6 prefix in presentation format (and others)
+/**
+ * Parse an IPv6 address or IPv6 prefix in presentation format (and others),
+ * or a hostname.
  *
  * @param out Where to write the ip address value.
  * @param value to parse.
@@ -393,8 +425,8 @@ int fr_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
 	unsigned int prefix;
 	char *eptr;
 
-	/* IPv6  + / + [0-9]{1,3} */
-	char buffer[INET6_ADDRSTRLEN + 4];
+	/* IPv6  + / + [0-9]{1,3} or a hostname (RFC1035 2.3.4 Size limits) */
+	char buffer[256];
 
 	/*
 	 *	Copy to intermediary buffer if we were given a length
@@ -600,7 +632,7 @@ do_port:
 	 *	input length indicates there are more than 5 chars
 	 *	after the ':' then there's an issue.
 	 */
-	if (inlen > ((q + sizeof(buffer)) - value)) {
+	if (len > (size_t) ((q + sizeof(buffer)) - value)) {
 	error:
 		fr_strerror_printf("IP string contains trailing garbage after port delimiter");
 		return -1;
@@ -621,7 +653,7 @@ do_port:
 	return 0;
 }
 
-int fr_ntop(char *out, size_t outlen, fr_ipaddr_t *addr)
+int fr_ntop(char *out, size_t outlen, fr_ipaddr_t const *addr)
 {
 	char buffer[INET6_ADDRSTRLEN];
 
@@ -1359,20 +1391,63 @@ int closefrom(int fd)
 {
 	int i;
 	int maxfd = 256;
+#ifdef HAVE_DIRENT_H
+	DIR *dir;
+#endif
+
+#ifdef F_CLOSEM
+	if (fcntl(fd, F_CLOSEM) == 0) {
+		return 0;
+	}
+#endif
+
+#ifdef F_MAXFD
+	maxfd = fcntl(fd, F_F_MAXFD);
+	if (maxfd >= 0) goto do_close;
+#endif
 
 #ifdef _SC_OPEN_MAX
 	maxfd = sysconf(_SC_OPEN_MAX);
 	if (maxfd < 0) {
-	  maxfd = 256;
+		maxfd = 256;
 	}
+#endif
+
+#ifdef HAVE_DIRENT_H
+	/*
+	 *	Use /proc/self/fd directory if it exists.
+	 */
+	dir = opendir(CLOSEFROM_DIR);
+	if (dir != NULL) {
+		long my_fd;
+		char *endp;
+		struct dirent *dp;
+
+		while ((dp = readdir(dir)) != NULL) {
+			my_fd = strtol(dp->d_name, &endp, 10);
+			if (my_fd <= 0) continue;
+
+			if (*endp) continue;
+
+			if (my_fd == dirfd(dir)) continue;
+
+			if ((my_fd >= fd) && (my_fd <= maxfd)) {
+				(void) close((int) my_fd);
+			}
+		}
+		(void) closedir(dir);
+		return 0;
+	}
+#endif
+
+#ifdef F_MAXFD
+do_close:
 #endif
 
 	if (fd > maxfd) return 0;
 
 	/*
 	 *	FIXME: return EINTR?
-	 *
-	 *	Use F_CLOSEM?
 	 */
 	for (i = fd; i < maxfd; i++) {
 		close(i);
@@ -1802,7 +1877,7 @@ static char *mystrtok(char **ptr, char const *sep)
  */
 int fr_get_time(char const *date_str, time_t *date)
 {
-	int		i;
+	int		i, j;
 	time_t		t;
 	struct tm	*tm, s_tm;
 	char		buf[64];
@@ -1859,9 +1934,9 @@ int fr_get_time(char const *date_str, time_t *date)
 			f[0] = f[i];
 			f[i] = p;
 
-			for (i = 0; i < 12; i++) {
-				if (strncasecmp(months[i], f[0], 3) == 0) {
-					tm->tm_mon = i;
+			for (j = 0; j < 12; j++) {
+				if (strncasecmp(months[j], f[0], 3) == 0) {
+					tm->tm_mon = j;
 					break;
 				}
 			}

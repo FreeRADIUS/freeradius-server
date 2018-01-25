@@ -84,6 +84,10 @@ listen {
 		private_key_password = whatever
 		private_key_file = ${certdir}/server.pem
 
+		# Accept an expired Certificate Revocation List
+		#
+	#	allow_expired_crl = no
+
 		#  If Private key & Certificate are located in
 		#  the same file, then private_key_file &
 		#  certificate_file must contain the same file
@@ -169,10 +173,9 @@ listen {
 	       #  match, the certificate verification will fail,
 	       #  rejecting the user.
 	       #
-	       #  In 2.1.10 and later, this check can be done
-	       #  more generally by checking the value of the
-	       #  TLS-Client-Cert-Issuer attribute.  This check
-	       #  can be done via any mechanism you choose.
+	       #  This check can be done more generally by checking
+	       #  the value of the TLS-Client-Cert-Issuer attribute.
+	       #  This check can be done via any mechanism you choose.
 	       #
 	#       check_cert_issuer = "/C=GB/ST=Berkshire/L=Newbury/O=My Company Ltd"
 
@@ -198,6 +201,14 @@ listen {
 		# TLS cipher suites.  The format is listed
 		# in "man 1 ciphers".
 		cipher_list = "DEFAULT"
+
+		# If enabled, OpenSSL will use server cipher list
+		# (possibly defined by cipher_list option above)
+		# for choosing right cipher suite rather than
+		# using client-specified list which is OpenSSl default
+		# behavior. Having it set to yes is a current best practice
+		# for TLS
+		cipher_server_preference = no
 
 		#
 		#  Session resumption / fast reauthentication
@@ -231,6 +242,13 @@ listen {
 		      #  Deleting the entire "cache" subsection
 		      #  Also disables caching.
 		      #
+			#
+			#  As of version 3.0.14, the session cache requires the use
+			#  of the "name" and "persist_dir" configuration items, below.
+			#
+			#  The internal OpenSSL session cache has been permanently
+			#  disabled.
+			#
 		      #  You can disallow resumption for a
 		      #  particular user by adding the following
 		      #  attribute to the control item list:
@@ -249,15 +267,6 @@ listen {
 		      #  time.
 		      #
 		      lifetime = 24 # hours
-
-		      #
-		      #  The maximum number of entries in the
-		      #  cache.  Set to "0" for "infinite".
-		      #
-		      #  This could be set to the number of users
-		      #  who are logged in... which can be a LOT.
-		      #
-		      max_entries = 255
 
 		      #
 		      #  Internal "name" of the session cache.

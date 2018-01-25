@@ -81,7 +81,7 @@ do
 				PASSWORD="MS-CHAP-Password"
 				;;
 			eap-md5)
-				PASSWORD="User-Password"
+				PASSWORD="Cleartext-Password"
 				if [ ! -x "$radeapclient" ]
 				then
 				    echo "radtest: No 'radeapclient' program was found.  Cannot perform EAP-MD5." >&1

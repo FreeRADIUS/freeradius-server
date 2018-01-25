@@ -222,6 +222,11 @@ authenticate {
 	}
 
 	#
+	#  For old names, too.
+	#
+	mschap
+
+	#
 	#  Pluggable Authentication Modules.
 #	pam
 
@@ -297,12 +302,6 @@ post-auth {
 	-sql
 
 	#
-	#  Instead of sending the query to the SQL server,
-	#  write it into a log file.
-	#
-#	sql_log
-
-	#
 	#  Un-comment the following if you have set
 	#  'edir_account_policy_check = yes' in the ldap module sub-section of
 	#  the 'modules' section.
@@ -311,30 +310,50 @@ post-auth {
 
 
 	#
-	#  Instead of "use_tunneled_reply", uncomment the
-	#  next two "update" blocks.
+	#  Un-comment the following if you want to generate Moonshot (ABFAB) TargetedIds
 	#
-#	update {
-#		&outer.session-state: += &reply:
-#	}
+	#  IMPORTANT: This requires the UUID package to be installed, and a targeted_id_salt
+	#             to be configured.
+	#
+	#  This functionality also supports SQL backing. To use this functionality, enable
+	#  and configure the moonshot-targeted-ids SQL module in the mods-enabled directory.
+	#  Then remove the comments from the appropriate lines in each of the below
+	#  policies in the policy.d/moonshot-targeted-ids file.
+	#
+#	moonshot_host_tid
+#	moonshot_realm_tid
+#	moonshot_coi_tid
 
 	#
-	#  These attributes are for the inner session only.
-	#  They MUST NOT be sent in the outer reply.
+	#  Instead of "use_tunneled_reply", change this "if (0)" to an
+	#  "if (1)".
 	#
-	#  If you uncomment the previous block and leave
-	#  this one commented out, WiFi WILL NOT WORK,
-	#  because the client will get two MS-MPPE-keys
-	#
-#	update outer.session-state {
-#		MS-MPPE-Encryption-Policy !* ANY
-#		MS-MPPE-Encryption-Types !* ANY
-#		MS-MPPE-Send-Key !* ANY
-#		MS-MPPE-Recv-Key !* ANY
-#		Message-Authenticator !* ANY
-#		EAP-Message !* ANY
-#		Proxy-State !* ANY
-#	}
+	if (0) {
+		#
+		#  These attributes are for the inner-tunnel only,
+		#  and MUST NOT be copied to the outer reply.
+		#
+		update reply {
+			User-Name !* ANY
+			Message-Authenticator !* ANY
+			EAP-Message !* ANY
+			Proxy-State !* ANY
+			MS-MPPE-Encryption-Types !* ANY
+			MS-MPPE-Encryption-Policy !* ANY
+			MS-MPPE-Send-Key !* ANY
+			MS-MPPE-Recv-Key !* ANY
+		}
+
+		#
+		#  Copy the inner reply attributes to the outer
+		#  session-state list.  The post-auth policy will take
+		#  care of copying the outer session-state list to the
+		#  outer reply.
+		#
+		update {
+			&outer.session-state: += &reply:
+		}
+	}
 
 	#
 	#  Access-Reject packets are sent through the REJECT sub-section of the

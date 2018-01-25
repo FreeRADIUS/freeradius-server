@@ -90,8 +90,6 @@ static int _eap_handler_free(eap_handler_t *handler)
 	handler->opaque = NULL;
 	handler->free_opaque = NULL;
 
-	if (handler->certs) fr_pair_list_free(&handler->certs);
-
 	/*
 	 *	Give helpful debug messages if:
 	 *
@@ -102,17 +100,19 @@ static int _eap_handler_free(eap_handler_t *handler)
 	if (fr_debug_lvl && handler->tls && !handler->finished &&
 	    (time(NULL) > (handler->timestamp + 3))) {
 		WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-		WARN("!! EAP session with state 0x%02x%02x%02x%02x%02x%02x%02x%02x did not finish!                  !!",
+		WARN("!! EAP session with state 0x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x did not finish!                  !!",
 		     handler->state[0], handler->state[1],
 		     handler->state[2], handler->state[3],
 		     handler->state[4], handler->state[5],
-		     handler->state[6], handler->state[7]);
+		     handler->state[6], handler->state[7],
+		     handler->state[8], handler->state[9],
+		     handler->state[10], handler->state[11],
+		     handler->state[12], handler->state[13],
+		     handler->state[14], handler->state[15]);
 
 		WARN("!! Please read http://wiki.freeradius.org/guide/Certificate_Compatibility     !!");
 		WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 	}
-
-	talloc_free(handler);
 	
 	return 0;
 }
@@ -436,7 +436,7 @@ eap_handler_t *eaplist_find(rlm_eap_t *inst, REQUEST *request,
 	 *	Might not have been there.
 	 */
 	if (!handler) {
-		ERROR("rlm_eap (%s): No EAP session matching state "
+		RERROR("rlm_eap (%s): No EAP session matching state "
 		       "0x%02x%02x%02x%02x%02x%02x%02x%02x",
 		       inst->xlat_name,
 		       state->vp_octets[0], state->vp_octets[1],
@@ -447,7 +447,7 @@ eap_handler_t *eaplist_find(rlm_eap_t *inst, REQUEST *request,
 	}
 
 	if (handler->trips >= 50) {
-		ERROR("rlm_eap (%s): Aborting! More than 50 roundtrips "
+		RERROR("rlm_eap (%s): Aborting! More than 50 roundtrips "
 		       "made in session with state "
 		       "0x%02x%02x%02x%02x%02x%02x%02x%02x",
 		       inst->xlat_name,

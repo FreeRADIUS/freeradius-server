@@ -1,0 +1,42 @@
+.TH RAD_COUNTER 1 "19 September 2016" "" "FreeRADIUS Daemon"
+.SH NAME
+rad_counter - Query and maintain FreeRADIUS rlm_counter DB file.
+
+This tool is deprecated
+
+.SH SYNOPSIS
+.B rad_counter
+.RB [ \--file
+.IR counter_filename ]
+.RB [ \--user
+.IR username ]
+.RB [ \--match
+.IR <regex> ]
+.RB [ \--reset 
+.IR number]
+.RB [ \--help ]
+.RB [ \-\-hours | \-\-minutes | \-\-seconds ]
+
+.SH DESCRIPTION
+\fBrad_counter\fP is a tool that can query and maintain FreeRADIUS rlm_counter DB files.
+.PP
+
+.SH OPTIONS
+
+.IP \--file=
+Counter DB filename.
+.IP \--user=\ \fIusername\fP
+Information for specific user.
+.IP \--match=\ \fI<regex>\fP
+Information for matching users.
+.IP \--reset=\ \fInumber\fP
+Reset counter to <number>. If divisor is set use it, else <number> means seconds.
+.IP \--help
+Show the help screen.
+.IP \--(hours\ |\ minutes\ |\ seconds)
+Specify information divisor.
+
+.SH SEE ALSO
+radiusd(8)
+.SH AUTHORS
+Alan DeKok <aland@freeradius.org>

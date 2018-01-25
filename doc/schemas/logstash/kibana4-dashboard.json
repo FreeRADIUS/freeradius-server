@@ -1,5 +1,29 @@
 [
   {
+    "_id": "RADIUS-data",
+    "_type": "search",
+    "_source": {
+      "title": "RADIUS data",
+      "description": "",
+      "hits": 0,
+      "columns": [
+        "User-Name",
+        "Calling-Station-Id",
+        "Called-Station-Id",
+        "Framed-IP-Address",
+        "NAS-Identifier"
+      ],
+      "sort": [
+        "@timestamp",
+        "desc"
+      ],
+      "version": 1,
+      "kibanaSavedObjectMeta": {
+        "searchSourceJSON": "{\"index\":\"radius-*\",\"query\":{\"query_string\":{\"analyze_wildcard\":true,\"query\":\"*\"}},\"highlight\":{\"pre_tags\":[\"@kibana-highlighted-field@\"],\"post_tags\":[\"@/kibana-highlighted-field@\"],\"fields\":{\"*\":{}},\"fragment_size\":2147483647},\"filter\":[]}"
+      }
+    }
+  },
+  {
     "_id": "RADIUS-detail",
     "_type": "dashboard",
     "_source": {
@@ -37,30 +61,6 @@
       "version": 1,
       "kibanaSavedObjectMeta": {
         "searchSourceJSON": "{\"index\":\"radius-*\",\"query\":{\"query_string\":{\"analyze_wildcard\":true,\"query\":\"*\"}},\"highlight\":{\"pre_tags\":[\"@kibana-highlighted-field@\"],\"post_tags\":[\"@/kibana-highlighted-field@\"],\"fields\":{\"*\":{}},\"fragment_size\":2147483647},\"filter\":[{\"meta\":{\"negate\":false,\"index\":\"radius-*\",\"key\":\"Acct-Status-Type\",\"value\":\"Start\",\"disabled\":false},\"query\":{\"match\":{\"Acct-Status-Type\":{\"query\":\"Start\",\"type\":\"phrase\"}}}}]}"
-      }
-    }
-  },
-  {
-    "_id": "RADIUS-data",
-    "_type": "search",
-    "_source": {
-      "title": "RADIUS data",
-      "description": "",
-      "hits": 0,
-      "columns": [
-        "User-Name",
-        "Calling-Station-Id",
-        "Called-Station-Id",
-        "Framed-IP-Address",
-        "NAS-Identifier"
-      ],
-      "sort": [
-        "@timestamp",
-        "desc"
-      ],
-      "version": 1,
-      "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"index\":\"radius-*\",\"query\":{\"query_string\":{\"analyze_wildcard\":true,\"query\":\"*\"}},\"highlight\":{\"pre_tags\":[\"@kibana-highlighted-field@\"],\"post_tags\":[\"@/kibana-highlighted-field@\"],\"fields\":{\"*\":{}},\"fragment_size\":2147483647},\"filter\":[]}"
       }
     }
   },

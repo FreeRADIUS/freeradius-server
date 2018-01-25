@@ -29,6 +29,11 @@ server copy-acct-to-home-server {
 	listen {
 		type = detail
 
+		#
+		#  See sites-available/buffered-sql for more details on
+		#  all the options available for the detail reader.
+		#
+
 		######################################################
 		#
 		#  !!!! WARNING !!!!
@@ -63,6 +68,7 @@ server copy-acct-to-home-server {
 		#  one large file.  File globbing also means that with
 		#  a common naming scheme for detail files, then you can
 		#  have many detail file writers, and only one reader.
+		#
 		filename = ${radacctdir}/detail
 
 		#

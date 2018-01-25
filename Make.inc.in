@@ -47,11 +47,11 @@ MAKEFLAGS	= @FR_MAKEFLAGS@
 
 CC		= @CC@
 RANLIB		= @RANLIB@
-INCLUDE		= -I${top_srcdir} -I${top_srcdir}/src \
-		  -include ${top_srcdir}/src/freeradius-devel/autoconf.h \
-		  -include ${top_srcdir}/src/freeradius-devel/build.h \
-		  -include ${top_srcdir}/src/freeradius-devel/features.h \
-		  -include ${top_srcdir}/src/freeradius-devel/radpaths.h
+INCLUDE		= -I. -Isrc \
+		  -include src/freeradius-devel/autoconf.h \
+		  -include src/freeradius-devel/build.h \
+		  -include src/freeradius-devel/features.h \
+		  -include src/freeradius-devel/radpaths.h
 CFLAGS		= $(INCLUDE) -fno-strict-aliasing @CFLAGS@
 CPPFLAGS	= @CPPFLAGS@
 LIBPREFIX	= @LIBPREFIX@
@@ -107,6 +107,8 @@ bm_static_libs  = @USE_STATIC_LIBS@
 
 STATIC_MODULES	= @STATIC_MODULES@
 LIBREADLINE	= @LIBREADLINE@
+
+WITH_DHCP	= @WITH_DHCP@
 
 #
 #  Version to use for packaging and other Make related things

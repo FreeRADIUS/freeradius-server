@@ -56,7 +56,7 @@ endif
 ifeq ($(shell dpkg-vendor --derives-from Ubuntu && echo yes),yes)
        SUBSTVARS = -Vdist:Depends="libssl1.0.0 (>= 1.0.1f-1ubuntu2)"
 else
-       SUBSTVARS = -Vdist:Depends="libssl1.0.0 (>= 1.0.1e-2+deb7u5)"
+       SUBSTVARS = -Vdist:Depends="libssl1.0.0 (>= 1.0.1e-2+deb7u5) | libssl1.0.2"
 endif
 
 include /usr/share/quilt/quilt.make
@@ -99,7 +99,8 @@ endif
 		--with-iodbc-include-dir='/usr/include/iodbc' \
 		--without-rlm_eap_ikev2 \
 		--without-rlm_sql_oracle \
-		--without-rlm_sql_unixodbc
+		--without-rlm_sql_unixodbc \
+		--enable-reproducible-builds
 
 	rm config.guess
 	mv config.guess.dist config.guess
@@ -186,7 +187,9 @@ binary-common:
 	dh_installexamples
 	dh_installlogrotate
 	dh_installpam --name=radiusd
+	dh_systemd_enable
 	dh_installinit --noscripts
+	dh_systemd_start
 	dh_installman
 	dh_lintian
 	dh_link

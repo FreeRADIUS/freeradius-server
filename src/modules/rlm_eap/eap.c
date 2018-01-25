@@ -125,7 +125,7 @@ int eap_module_instantiate(rlm_eap_t *inst, eap_module_t **m_inst, eap_type_t nu
 	/*
 	 *	Link the loaded EAP-Type
 	 */
-	method->handle = lt_dlopenext(mod_name);
+	method->handle = fr_dlopenext(mod_name);
 	if (!method->handle) {
 		ERROR("rlm_eap (%s): Failed to link %s: %s", inst->xlat_name, mod_name, fr_strerror());
 

@@ -7,8 +7,8 @@ LOCAL_FILES :=		clients.conf dictionary templates.conf experimental.conf \
 DEFAULT_SITES :=	default inner-tunnel
 LOCAL_SITES :=		$(addprefix raddb/sites-enabled/,$(DEFAULT_SITES))
 
-DEFAULT_MODULES :=	always attr_filter cache_eap chap \
-			detail detail.log digest dhcp dynamic_clients eap \
+DEFAULT_MODULES :=	always attr_filter cache_eap chap date \
+			detail detail.log digest dynamic_clients eap \
 			echo exec expiration expr files linelog logintime \
 			mschap ntlm_auth pap passwd preprocess radutmp realm \
 			replicate soh sradutmp unix unpack utf8
@@ -16,10 +16,19 @@ DEFAULT_MODULES :=	always attr_filter cache_eap chap \
 LOCAL_MODULES :=	$(addprefix raddb/mods-enabled/,$(DEFAULT_MODULES))
 
 LOCAL_CERT_FILES :=	Makefile README xpextensions \
-			ca.cnf server.cnf client.cnf bootstrap
+			ca.cnf server.cnf inner-server.cnf \
+			client.cnf bootstrap
 
+#
+#  We don't create the installed certs if we're building a package,
+#  OR if OpenSSL is not available.
+#
+ifeq "$(PACKAGE)" ""
+ifneq "$(OPENSSL_LIBS)" ""
 LOCAL_CERT_PRODUCTS :=	$(addprefix $(R)$(raddbdir)/certs/,ca.key ca.pem \
 			client.key client.pem server.key server.pem)
+endif
+endif
 
 LEGACY_LINKS :=		$(addprefix $(R)$(raddbdir)/,users huntgroups hints)
 
@@ -112,7 +121,7 @@ $(R)$(raddbdir)/users: $(R)$(modconfdir)/files/authorize
 	@[ -e $@ ] || echo LN-S $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
 	@[ -e $@ ] || ln -s $(patsubst $(R)$(raddbdir)/%,./%,$<) $@
 
-ifeq ("$(PACKAGE)","")
+ifneq "$(LOCAL_CERT_PRODUCTS)" ""
 $(LOCAL_CERT_PRODUCTS):
 	@echo BOOTSTRAP raddb/certs/
 	@$(MAKE) -C $(R)$(raddbdir)/certs/

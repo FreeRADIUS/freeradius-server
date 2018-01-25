@@ -32,10 +32,12 @@
 typedef struct rlm_date_t {
 	char const *xlat_name;
 	char const *fmt;
+	bool utc;
 } rlm_date_t;
 
 static const CONF_PARSER module_config[] = {
 	{ "format", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_date_t, fmt), "%b %e %Y %H:%M:%S %Z" },
+	{ "utc", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_date_t, utc), "no" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -46,6 +48,8 @@ static ssize_t xlat_date_convert(void *instance, REQUEST *request, char const *f
 	time_t date = 0;
 	struct tm tminfo;
 	VALUE_PAIR *vp;
+
+	memset(&tminfo, 0, sizeof(tminfo));
 
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
 		*out = '\0';
@@ -67,9 +71,16 @@ static ssize_t xlat_date_convert(void *instance, REQUEST *request, char const *f
 		date = (time_t) vp->vp_integer;
 
 	encode:
-		if (localtime_r(&date, &tminfo) == NULL) {
-			REDEBUG("Failed converting time string to localtime");
-			goto error;
+		if (!inst->utc) {
+			if (localtime_r(&date, &tminfo) == NULL) {
+				REDEBUG("Failed converting time string to localtime");
+				goto error;
+			}
+		} else {
+			if (gmtime_r(&date, &tminfo) == NULL) {
+				REDEBUG("Failed converting time string to gmtime");
+				goto error;
+			}
 		}
 		return strftime(out, outlen, inst->fmt, &tminfo);
 

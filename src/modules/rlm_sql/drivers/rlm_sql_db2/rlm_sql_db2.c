@@ -189,12 +189,14 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *con
 	memset(retval, 0, c*sizeof(char*)+1);
 
 	/* advance cursor */
-	if(SQLFetch(conn->stmt) == SQL_NO_DATA_FOUND) {
+	if (SQLFetch(conn->stmt) == SQL_NO_DATA_FOUND) {
 		handle->row = NULL;
-		goto error;
+		for (i = 0; i < c; i++) free(retval[i]);
+		free(retval);
+		return RLM_SQL_NO_MORE_ROWS;
 	}
 
-	for(i = 0; i < c; i++) {
+	for (i = 0; i < c; i++) {
 		/* get column length */
 		SQLColAttribute(conn->stmt, i+1, SQL_DESC_DISPLAY_SIZE, NULL, 0, NULL, &len);
 
@@ -209,14 +211,6 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *con
 
 	handle->row = retval;
 	return RLM_SQL_OK;
-
-error:
-	for(i = 0; i < c; i++) {
-		free(retval[i]);
-	}
-	free(retval);
-
-	return RLM_SQL_ERROR;
 }
 
 static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)

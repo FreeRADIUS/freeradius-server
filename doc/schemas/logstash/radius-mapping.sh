@@ -1,11 +1,13 @@
 #! /bin/sh
 
-# Create a template mapping for RADIUS data
+# Create an elasticsearch template mapping for RADIUS data
 # Matthew Newton
 # April 2015
 
 # This should be run on an elasticsearch node. Alternatively,
 # adjust the curl URI below.
+
+# This version has been tested on elasticsearch 5.1.2
 
 # The template will be called "radius", and will apply to all
 # indices prefixed with "radius-" that contain data type "detail".
@@ -15,7 +17,7 @@
 #
 #   Acct-Input- or Acct-Output- attributes are numbers;
 #   Acct-Session-Time is a number;
-#   Everything else is a string.
+#   Everything else is a keyword, which is a non-analysed string.
 
 # Additionally, the supplied logstash config will try and extract
 # MAC addresses, IP addresses and ports from the data. These are
@@ -41,11 +43,11 @@ curl -XPUT '127.0.0.1:9200/_template/radius' -d '
     "detail":{
 
       "properties": {
-        "@timestamp": { "format": "dateOptionalTime", "type": "date" },
-        "@version": { "type" : "string" },
-        "message": { "type" : "string" },
-        "Acct-Session-Time": { "type" : "long", "doc_values": true },
-        "offset": { "type" : "long", "doc_values": true }
+        "@timestamp": { "format" : "date_optional_time", "type" : "date" },
+        "@version": { "type" : "keyword" },
+        "message": { "type" : "text" },
+        "Acct-Session-Time": { "type" : "long" },
+        "offset": { "type" : "long" }
       },
 
       "dynamic_templates": [
@@ -54,8 +56,7 @@ curl -XPUT '127.0.0.1:9200/_template/radius' -d '
             "match_pattern": "regex",
             "match": "^Acct-(Input|Output)-.*$",
             "mapping": {
-              "type": "long",
-              "doc_values": true
+              "type": "long"
             }
           }
         },
@@ -63,8 +64,7 @@ curl -XPUT '127.0.0.1:9200/_template/radius' -d '
         { "ipv4_address": {
             "path_match": "*_ip",
             "mapping": {
-              "type": "ip",
-              "doc_values": true
+              "type": "ip"
             }
           }
         },
@@ -72,8 +72,7 @@ curl -XPUT '127.0.0.1:9200/_template/radius' -d '
         { "network_port": {
             "path_match": "*_port",
             "mapping": {
-              "type": "integer",
-              "doc_values": true
+              "type": "integer"
             }
           }
         },
@@ -81,8 +80,7 @@ curl -XPUT '127.0.0.1:9200/_template/radius' -d '
         { "long_number": {
             "path_match": "*_long",
             "mapping": {
-              "type": "integer",
-              "doc_values": true
+              "type": "long"
             }
           }
         },
@@ -90,9 +88,7 @@ curl -XPUT '127.0.0.1:9200/_template/radius' -d '
         { "no_analyze_strings": {
             "match": "*",
             "mapping": {
-              "type": "string",
-              "index": "not_analyzed",
-              "doc_values": true
+              "type": "keyword"
             }
           }
         }

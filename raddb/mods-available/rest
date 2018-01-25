@@ -5,8 +5,18 @@ rest {
 	#  server.
 	#
 	tls {
-#		ca_file	= ${certdir}/cacert.pem
-#		ca_path	= ${certdir}
+		#  Certificate Authorities:
+		#  "ca_file" (libcurl option CURLOPT_ISSUERCERT).
+		#    File containing a single CA, which is the issuer of the server
+		#    certificate.
+		#  "ca_info_file" (libcurl option CURLOPT_CAINFO).
+		#    File containing a bundle of certificates, which allow to handle
+		#    certificate chain validation.
+		#  "ca_path" (libcurl option CURLOPT_CAPATH).
+		#    Directory holding CA certificates to verify the peer with.
+#		ca_file = ${certdir}/cacert.pem
+#		ca_info_file = ${certdir}/cacert_bundle.pem
+#		ca_path = ${certdir}
 
 #		certificate_file        = /path/to/radius.crt
 #		private_key_file	= /path/to/radius.key
@@ -105,7 +115,10 @@ rest {
 	#  - is_json	If true, any nested JSON data will be copied to the attribute
 	#               in string form. Defaults to true.
 	#  - op	        Controls how the attribute is inserted into the target list.
-	#               Defaults to ':='.
+	#               Defaults to ':='. To create multiple attributes from multiple
+	#               values, this should be set to '+=', otherwise only the last
+	#               value will be used, and it will be assigned to a single
+	#               attribute.
 	#  {
 	#      "<attribute0>":{
 	#          "is_json":<bool>,
@@ -114,7 +127,10 @@ rest {
 	#          "value":[<value0>,<value1>,<valueN>]
 	#      },
 	#      "<attribute1>":"value",
-	#      "<attributeN>":[<value0>,<value1>,<valueN>]
+	#      "<attributeN>":{
+	#          "value":[<value0>,<value1>,<valueN>],
+	#          "op":"+="
+	#      }
 	#  }
 
 	#

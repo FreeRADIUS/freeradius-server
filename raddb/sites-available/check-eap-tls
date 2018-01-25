@@ -1,5 +1,10 @@
 # This virtual server allows EAP-TLS to reject access requests
-# based on some certificate attributes.
+# based on some attributes of the certificates involved.
+#
+# To use this virtual server, you must enable it in the tls
+# section of mods-enabled/eap as well as adding a link to this
+# file in sites-enabled/.
+#
 #
 # Value-pairs that are available for checking include:
 #
@@ -13,12 +18,14 @@
 # passed in to this virtual server.
 #
 #
-# This virtual server is also useful when using EAP-TLS as it is only called
-# once, just before the final Accept is about to be returned from eap, whereas
-# the outer authorize section is called multiple times for each challenge /
-# response. For this reason, here may be a good location to put authentication
-# logging, and modules that check for further authorization, especially if they
+# This virtual server is also useful when using EAP-TLS as it is
+# only called once, just before the final Accept is about to be
+# returned from eap, whereas the outer authorize section is called
+# multiple times for each challenge / response. For this reason,
+# here may be a good location to put authentication logging, and
+# modules that check for further authorization, especially if they
 # hit external services such as sql or ldap.
+
 
 server check-eap-tls {
 
@@ -60,7 +67,7 @@ authorize {
 	#
 	# Check the client certificate common name against the supplied User-Name
 	#
-#	if ("host/%{TLS-Client-Cert-Common-Name}" == &User-Name) {
+#	if (&User-Name == "host/%{TLS-Client-Cert-Common-Name}") {
 #		update config {
 #			&Auth-Type := Accept
 #		}

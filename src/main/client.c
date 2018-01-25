@@ -749,9 +749,13 @@ bool client_add_dynamic(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c
 	c->created = time(NULL);
 	c->longname = talloc_typed_strdup(c, c->shortname);
 
-	INFO("Adding client %s/%i with shared secret \"%s\"",
-	     ip_ntoh(&c->ipaddr, buffer, sizeof(buffer)), c->ipaddr.prefix, c->secret);
-
+	if (rad_debug_lvl <= 2) {
+		INFO("Adding client %s/%i",
+		     ip_ntoh(&c->ipaddr, buffer, sizeof(buffer)), c->ipaddr.prefix);
+	} else {
+		INFO("Adding client %s/%i with shared secret \"%s\"",
+		     ip_ntoh(&c->ipaddr, buffer, sizeof(buffer)), c->ipaddr.prefix, c->secret);
+	}
 	return true;
 
 error:
@@ -1166,9 +1170,6 @@ RADCLIENT *client_afrom_query(TALLOC_CTX *ctx, char const *identifier, char cons
 	RADCLIENT *c;
 	char buffer[128];
 
-	rad_assert(identifier);
-	rad_assert(secret);
-
 	c = talloc_zero(ctx, RADCLIENT);
 
 	if (fr_pton(&c->ipaddr, identifier, -1, AF_UNSPEC, true) < 0) {
@@ -1354,7 +1355,8 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 			for (parse = client_config; parse->name; parse++) {
 				if (parse->offset == dynamic_config[i].offset) break;
 			}
-			rad_assert(parse);
+
+			if (!parse) break;
 
 			cp = cf_pair_alloc(c->cs, parse->name, strvalue, T_OP_SET, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
 		}
@@ -1373,7 +1375,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 			for (parse = client_config; parse->name; parse++) {
 				if (parse->offset == dynamic_config[i].offset) break;
 			}
-			rad_assert(parse);
+			if (!parse) break;
 
 			cp = cf_pair_alloc(c->cs, parse->name, strvalue, T_OP_SET, T_BARE_WORD, T_BARE_WORD);
 		}

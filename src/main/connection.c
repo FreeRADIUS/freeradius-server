@@ -643,9 +643,11 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 	 *	have fewer than "min".  When that happens, open more
 	 *	connections to enforce "min".
 	 */
-	if ((pool->num + pool->pending) <= pool->min) {
+	if ((pool->num + pool->pending) < pool->min) {
 		spawn = pool->min - (pool->num + pool->pending);
 		extra = 0;
+
+		INFO("Need %i more connections to reach min connections (%i)", spawn, pool->min);
 
 	/*
 	 *	If we're about to create more than "max",
@@ -666,7 +668,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 	 *	AND we don't have enough idle connections.
 	 *	Open some more.
 	 */
-	} else if (idle <= pool->spare) {
+	} else if (idle < pool->spare) {
 		/*
 		 *	Not enough spare connections.  Spawn a few.
 		 *	But cap the pool size at "max"
@@ -677,6 +679,8 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 		if ((pool->num + pool->pending + spawn) > pool->max) {
 			spawn = pool->max - (pool->num + pool->pending);
 		}
+
+		INFO("Need %i more connections to reach %i spares", spawn, pool->spare);
 
 	/*
 	 *	min < num < max
@@ -712,8 +716,6 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 	 *	a connection. Avoids spurious log messages.
 	 */
 	if (spawn) {
-		INFO("%s: Need %i more connections to reach %i spares",
-		     pool->log_prefix, spawn, pool->spare);
 		pthread_mutex_unlock(&pool->mutex);
 		fr_connection_spawn(pool, now, false); /* ignore return code */
 		pthread_mutex_lock(&pool->mutex);
@@ -784,6 +786,11 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn)
 
 	if (!pool) return NULL;
 
+	/*
+	 *	Allow CTRL-C to kill the server in debugging mode.
+	 */
+	if (main_config.exiting) return NULL;
+
 #ifdef HAVE_PTHREAD_H
 	if (spawn) pthread_mutex_lock(&pool->mutex);
 #endif
@@ -816,11 +823,6 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn)
 	 */
 	if (!spawn) return NULL;
 
-	/*
-	 *	We don't have a connection.  Try to open a new one.
-	 */
-	rad_assert(pool->active == pool->num);
-
 	if (pool->num == pool->max) {
 		bool complain = false;
 
@@ -833,7 +835,7 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn)
 		}
 
 		pthread_mutex_unlock(&pool->mutex);
-		
+
 		if (!RATE_LIMIT_ENABLED || complain) {
 			ERROR("%s: No connections available and at max connection limit", pool->log_prefix);
 		}
@@ -1405,6 +1407,15 @@ void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn)
 	if (!pool || !conn) return NULL;
 
 	/*
+	 *	Don't allow opening of new connections if we're trying
+	 *	to exit.
+	 */
+	if (main_config.exiting) {
+		fr_connection_release(pool, conn);
+		return NULL;
+	}
+
+	/*
 	 *	If fr_connection_find is successful the pool is now locked
 	 */
 	this = fr_connection_find(pool, conn);
@@ -1425,18 +1436,23 @@ void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn)
  *
  * @param[in,out] pool Connection pool to modify.
  * @param[in] conn to delete.
+ * @param[in] msg why the connection was closed.
  * @return
  *	- 0 If the connection could not be found.
  *	- 1 if the connection was deleted.
  */
-int fr_connection_close(fr_connection_pool_t *pool, void *conn)
+int fr_connection_close(fr_connection_pool_t *pool, void *conn, char const *msg)
 {
 	fr_connection_t *this;
 
 	this = fr_connection_find(pool, conn);
 	if (!this) return 0;
 
-	INFO("%s: Deleting connection (%" PRIu64 ")", pool->log_prefix, this->number);
+	if (!msg) {
+		INFO("%s: Deleting connection (%" PRIu64 ")", pool->log_prefix, this->number);
+	} else {
+		INFO("%s: Deleting connection (%" PRIu64 ") - %s", pool->log_prefix, this->number, msg);
+	}
 
 	fr_connection_close_internal(pool, this);
 	fr_connection_pool_check(pool);

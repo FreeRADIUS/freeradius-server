@@ -192,9 +192,16 @@ static int home_pool_name_cmp(void const *one, void const *two)
 }
 
 
-static size_t CC_HINT(nonnull) xlat_cs(CONF_SECTION *cs, char const *fmt, char *out, size_t outlen)
+static size_t xlat_cs(CONF_SECTION *cs, char const *fmt, char *out, size_t outlen)
 {
 	char const *value = NULL;
+
+	if (!fmt) {
+		DEBUG("No configuration item requested.  Ignoring.");
+
+		*out = '\0';
+		return 0;
+	}
 
 	/*
 	 *	Instance name
@@ -224,11 +231,18 @@ static size_t CC_HINT(nonnull) xlat_cs(CONF_SECTION *cs, char const *fmt, char *
 /*
  *	Xlat for %{home_server:foo}
  */
-static ssize_t CC_HINT(nonnull) xlat_home_server(UNUSED void *instance, REQUEST *request,
-						 char const *fmt, char *out, size_t outlen)
+static ssize_t xlat_home_server(UNUSED void *instance, REQUEST *request,
+				char const *fmt, char *out, size_t outlen)
 {
 	if (!request->home_server) {
 		RWDEBUG("No home_server associated with this request");
+
+		*out = '\0';
+		return 0;
+	}
+
+	if (!fmt) {
+		RWDEBUG("No configuration item requested.  Ignoring.");
 
 		*out = '\0';
 		return 0;
@@ -266,11 +280,18 @@ static ssize_t CC_HINT(nonnull) xlat_home_server(UNUSED void *instance, REQUEST 
 /*
  *	Xlat for %{home_server_pool:foo}
  */
-static ssize_t CC_HINT(nonnull) xlat_server_pool(UNUSED void *instance, REQUEST *request,
-						 char const *fmt, char *out, size_t outlen)
+static ssize_t xlat_server_pool(UNUSED void *instance, REQUEST *request,
+				char const *fmt, char *out, size_t outlen)
 {
 	if (!request->home_pool) {
 		RWDEBUG("No home_pool associated with this request");
+
+		*out = '\0';
+		return 0;
+	}
+
+	if (!fmt) {
+		RWDEBUG("No configuration item requested.  Ignoring.");
 
 		*out = '\0';
 		return 0;
@@ -412,9 +433,9 @@ void realm_home_server_sanitize(home_server_t *home, CONF_SECTION *cs)
 	FR_INTEGER_BOUND_CHECK("ping_interval", home->ping_interval, <=, 120);
 
 	FR_TIMEVAL_BOUND_CHECK("response_window", &home->response_window, >=, 0, 1000);
-	FR_TIMEVAL_BOUND_CHECK("response_window", &home->response_window, <=, 60, 0);
 	FR_TIMEVAL_BOUND_CHECK("response_window", &home->response_window, <=,
 			       main_config.max_request_time, 0);
+	FR_TIMEVAL_BOUND_CHECK("response_window", &home->response_window, <=, 60, 0);
 
 	FR_INTEGER_BOUND_CHECK("response_timeouts", home->max_response_timeouts, >=, 1);
 	FR_INTEGER_BOUND_CHECK("response_timeouts", home->max_response_timeouts, <=, 1000);
@@ -746,7 +767,9 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 
 		switch (proto) {
 		case IPPROTO_UDP:
+#ifdef WITH_TCP
 			home_servers_udp = true;
+#endif
 			break;
 
 		case IPPROTO_TCP:
@@ -845,6 +868,11 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 				rad_assert(0);
 				/* FALL-THROUGH */
 
+			/*
+			 *	One is added to get the accounting port
+			 *	for home->dual.
+			 */
+			case HOME_TYPE_AUTH_ACCT:
 			case HOME_TYPE_AUTH:
 				home->port = PW_AUTH_UDP_PORT;
 				break;
@@ -1135,7 +1163,7 @@ void realm_pool_free(home_pool_t *pool)
 	}
 
 	this->next = NULL;
-	this->when = now + 60;
+	this->when = now + 300;
 	this->pool = pool;
 	pthread_mutex_unlock(&pool_free_mutex);
 }
@@ -2443,8 +2471,8 @@ home_server_t *home_server_ldb(char const *realmname,
 			hash = 0;
 			break;
 		}
-		fr_hash_update(&request->packet->src_port,
-				 sizeof(request->packet->src_port), hash);
+		hash = fr_hash_update(&request->packet->src_port,
+				      sizeof(request->packet->src_port), hash);
 		start = hash % pool->num_home_servers;
 		break;
 

@@ -1,0 +1,71 @@
+.TH DHCPCLIENT 1 "19 September 2016" "" "FreeRADIUS Daemon"
+.SH NAME
+dhcpclient - Send a DHCP request with provided RADIUS attributes and get the output response.
+.SH SYNOPSIS
+.B dhcpclient
+.RB [ \-d
+.IR raddb_directory ]
+.RB [ \-D
+.IR dictionary_directory ]
+.RB [ \-f
+.IR file ]
+.RB [ \-h ]
+.RB [ \-i
+.IR interface ]
+.RB [ \-t
+.IR timeout ]
+.RB [ \-v ]
+.RB [ \-x ]
+\fIserver[:port] {discover|request|decline|release|inform|auto}\fP
+.SH DESCRIPTION
+\fBdhcpclient\fP is a DHCP test client program. It can send arbitrary DHCP
+packets to the FreeRADIUS server running as DHCP server, then shows the reply.
+It can be used to test changes you made in the configuration of the radius server,
+or it can be used to monitor if a radius server is up.
+.PP
+\fBdhcpclient\fP reads radius attribute/value pairs from its standard
+input, or from a file specified on the command line. It then encodes
+these attribute/value pairs using the dictionary, and sends them
+to the local/remote server.
+.PP
+
+.SH OPTIONS
+
+.IP \-d\ \fIraddb_directory\fP
+The directory that contains the user dictionary file. Defaults to
+\fI/etc/raddb\fP.
+.IP \-D\ \fIdictionary_directory\fP
+The directory that contains the main dictionary file. Defaults to
+\fI/usr/share/freeradius\fP.
+.IP \-f\ \fIfile[:file]\fP
+File to read the attribute/value pairs from. If this is not specified,
+they are read from stdin.  This option can be specified multiple
+times, in which case packets are sent in order by file, and within
+each file, by first packet to last packet.  A blank line separates
+logical packets within a file.
+.IP \-h
+Print usage help information.
+.IP \-i\ \fIinterface\fP
+Select which interface to send/receive at packet level on a raw socket.
+.IP \-t\ \fItimeout\fP
+Wait \fItimeout\fP seconds before deciding that the NAS has not
+responded to a request, and re-sending the packet. This may be a floating
+point number, e.g. 2.2.
+.IP \-v
+Print out program version information.
+.IP \-x
+Print out debugging information.
+.IP server[:port]
+The hostname or IP address of the remote server. Optionally a UDP port
+can be specified. If no UDP port is specified, it is looked up in
+\fI/etc/services\fP. The service name looked for is \fBradacct\fP for
+accounting packets, and \fBradius\fP for all other requests. If a
+service is not found in \fI/etc/services\fP, 1813 and 1812 are used
+respectively.
+.IP discover\ |\ request\ |\ decline\ |\ release\ |\ inform\ |\ auto
+DHCP options - use the type relevant for testing
+
+.SH SEE ALSO
+radiusd(8)
+.SH AUTHORS
+Alan DeKok <aland@freeradius.org>

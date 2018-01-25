@@ -9,8 +9,6 @@
 #  It works in conjunction with otpd, which implements token
 #  management and OTP verification functions; and lsmd or gsmd,
 #  which implements synchronous state management functions.
-#  otpd, lsmd and gsmd are available from TRI-D Systems:
-#              <http://www.tri-dsystems.com/>
 
 #  You must list this module in BOTH the authorize and authenticate
 #  sections in order to use it.

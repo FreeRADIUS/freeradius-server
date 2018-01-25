@@ -149,7 +149,7 @@ int eaptls_success(eap_handler_t *handler, int peap_flag)
 	if (tls_session->prf_label) {
 		eaptls_gen_mppe_keys(handler->request,
 				     tls_session->ssl, tls_session->prf_label);
-	} else {
+	} else if (handler->type != PW_EAP_FAST) {
 		RWDEBUG("Not adding MPPE keys because there is no PRF label");
 	}
 
@@ -325,13 +325,15 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 	if (prev_eap_ds && prev_eap_ds->response)
 		eaptls_prev = (eaptls_packet_t *)prev_eap_ds->response->type.data;
 
-	/*
-	 *	First output the flags (for debugging)
-	 */
-	RDEBUG3("Peer sent flags %c%c%c",
-		TLS_START(eaptls_packet->flags) ? 'S' : '-',
-		TLS_MORE_FRAGMENTS(eaptls_packet->flags) ? 'M' : '-',
-		TLS_LENGTH_INCLUDED(eaptls_packet->flags) ? 'L' : '-');
+	if (eaptls_packet) {
+		/*
+		 *	First output the flags (for debugging)
+		 */
+		RDEBUG3("Peer sent flags %c%c%c",
+			TLS_START(eaptls_packet->flags) ? 'S' : '-',
+			TLS_MORE_FRAGMENTS(eaptls_packet->flags) ? 'M' : '-',
+			TLS_LENGTH_INCLUDED(eaptls_packet->flags) ? 'L' : '-');
+	}
 
 	/*
 	 *	check for ACK

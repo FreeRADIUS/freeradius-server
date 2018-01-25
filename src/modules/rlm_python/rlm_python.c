@@ -29,12 +29,19 @@ RCSID("$Id$")
 
 #define LOG_PREFIX "rlm_python - "
 
+#include "config.h"
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
 
 #include <Python.h>
 #include <dlfcn.h>
+#ifdef HAVE_DL_ITERATE_PHDR
+#include <link.h>
+#endif
+
+#define LIBPYTHON_LINKER_NAME \
+	"libpython" STRINGIFY(PY_MAJOR_VERSION) "." STRINGIFY(PY_MINOR_VERSION) ".so"
 
 static uint32_t		python_instances = 0;
 static void		*python_dlhandle;
@@ -60,6 +67,11 @@ typedef struct rlm_python_t {
 	char const	*name;			//!< Name of the module instance
 	PyThreadState	*sub_interpreter;	//!< The main interpreter/thread used for this instance.
 	char const	*python_path;		//!< Path to search for python files in.
+
+#if PY_VERSION_HEX > 0x03050000
+	wchar_t		*wide_name;		//!< Special wide char encoding of radiusd name.
+	wchar_t		*wide_path;		//!< Special wide char encoding of radiusd path.
+#endif
 	PyObject	*module;		//!< Local, interpreter specific module, containing
 						//!< FreeRADIUS functions.
 	bool		cext_compat;		//!< Whether or not to create sub-interpreters per module
@@ -83,6 +95,7 @@ typedef struct rlm_python_t {
 
 	PyObject	*pythonconf_dict;	//!< Configuration parameters defined in the module
 						//!< made available to the python script.
+	bool 		pass_all_vps;		//!< Pass all VPS lists (request, reply, config, state, proxy_req, proxy_reply)
 } rlm_python_t;
 
 /** Tracks a python module inst/thread state pair
@@ -122,6 +135,7 @@ static CONF_PARSER module_config[] = {
 
 	{ "python_path", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_python_t, python_path), NULL },
 	{ "cext_compat", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_python_t, cext_compat), "yes" },
+	{ "pass_all_vps", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_python_t, pass_all_vps), "no" },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -139,7 +153,6 @@ static struct {
 	A(L_INFO)
 	A(L_ERR)
 	A(L_PROXY)
-	A(L_WARN)
 	A(L_ACCT)
 	A(L_DBG_WARN)
 	A(L_DBG_ERR)
@@ -364,67 +377,119 @@ static int mod_populate_vptuple(PyObject *pPair, VALUE_PAIR *vp)
 	return 0;
 }
 
-static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char const *funcname)
+/*
+ * This function generates a tuple representing a given VPS and inserts it into
+ * the indicated position in the tuple pArgs.
+ * Returns false on error.
+ */
+static bool mod_populate_vps(PyObject* pArgs, const int pos, VALUE_PAIR *vps)
 {
+	PyObject *vps_tuple = NULL;
+	int tuplelen = 0;
+	int i = 0;
 	vp_cursor_t	cursor;
-	VALUE_PAIR      *vp;
-	PyObject	*pRet = NULL;
-	PyObject	*pArgs = NULL;
-	int		tuplelen;
-	int		ret;
+	VALUE_PAIR 	*vp;
 
-	/* Default return value is "OK, continue" */
-	ret = RLM_MODULE_OK;
+	/* If vps is NULL, return None */
+	if (vps == NULL) {
+		Py_INCREF(Py_None);
+		PyTuple_SET_ITEM(pArgs, pos, Py_None);
+		return true;
+	}
 
 	/*
 	 *	We will pass a tuple containing (name, value) tuples
 	 *	We can safely use the Python function to build up a
 	 *	tuple, since the tuple is not used elsewhere.
 	 *
-	 *	Determine the size of our tuple by walking through the packet.
-	 *	If request is NULL, pass None.
+	 *	Determine the size of our tuple by walking through the vps.
 	 */
-	tuplelen = 0;
-	if (request != NULL) {
-		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
-		     vp;
-		     vp = fr_cursor_next(&cursor)) tuplelen++;
+	for (vp = fr_cursor_init(&cursor, &vps); vp; vp = fr_cursor_next(&cursor))
+		tuplelen++;
+
+	if ((vps_tuple = PyTuple_New(tuplelen)) == NULL) goto error;
+
+	for (vp = fr_cursor_init(&cursor, &vps); vp; vp = fr_cursor_next(&cursor), i++) {
+		PyObject *pPair = NULL;
+
+		/* The inside tuple has two only: */
+		if ((pPair = PyTuple_New(2)) == NULL) goto error;
+
+		if (mod_populate_vptuple(pPair, vp) == 0) {
+			/* Put the tuple inside the container */
+			PyTuple_SET_ITEM(vps_tuple, i, pPair);
+		} else {
+			Py_INCREF(Py_None);
+			PyTuple_SET_ITEM(vps_tuple, i, Py_None);
+			Py_DECREF(pPair);
+		}
+	}
+	PyTuple_SET_ITEM(pArgs, pos, vps_tuple);
+	return true;
+
+error:
+	Py_XDECREF(vps_tuple);
+	return false;
+}
+
+static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char const *funcname, bool pass_all_vps)
+{
+	PyObject	*pRet = NULL;
+	PyObject	*pArgs = NULL;
+	int		ret;
+	int 		i;
+
+	/* Default return value is "OK, continue" */
+	ret = RLM_MODULE_OK;
+
+	/*
+	 * pArgs is a 6-tuple with (Request, Reply, Config, State, Proxy-Request, Proxy-Reply)
+	 * If some list is not available, NONE is used instead
+	 */
+	if ((pArgs = PyTuple_New(6)) == NULL) {
+		ret = RLM_MODULE_FAIL;
+		goto finish;
 	}
 
-	if (tuplelen == 0) {
-		Py_INCREF(Py_None);
-		pArgs = Py_None;
-	} else {
-		int i = 0;
-		if ((pArgs = PyTuple_New(tuplelen)) == NULL) {
+	/* If there is a request, fill in the first 4 attribute lists */
+	if (request != NULL) {
+		if (!mod_populate_vps(pArgs, 0, request->packet->vps) ||
+		    !mod_populate_vps(pArgs, 1, request->reply->vps) ||
+		    !mod_populate_vps(pArgs, 2, request->config) ||
+		    !mod_populate_vps(pArgs, 3, request->state)) {
 			ret = RLM_MODULE_FAIL;
 			goto finish;
 		}
 
-		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
-		     vp;
-		     vp = fr_cursor_next(&cursor), i++) {
-			PyObject *pPair;
-
-			/* The inside tuple has two only: */
-			if ((pPair = PyTuple_New(2)) == NULL) {
+		/* fill proxy vps */
+		if (request->proxy) {
+			if (!mod_populate_vps(pArgs, 4, request->proxy->vps) ||
+			    !mod_populate_vps(pArgs, 5, request->proxy_reply->vps)) {
 				ret = RLM_MODULE_FAIL;
 				goto finish;
 			}
-
-			if (mod_populate_vptuple(pPair, vp) == 0) {
-				/* Put the tuple inside the container */
-				PyTuple_SET_ITEM(pArgs, i, pPair);
-			} else {
-				Py_INCREF(Py_None);
-				PyTuple_SET_ITEM(pArgs, i, Py_None);
-				Py_DECREF(pPair);
-			}
 		}
-	}
+		/* If there are no proxy lists */
+		else {
+			mod_populate_vps(pArgs, 4, NULL);
+			mod_populate_vps(pArgs, 5, NULL);
+		}
 
-	/* Call Python function. */
-	pRet = PyObject_CallFunctionObjArgs(pFunc, pArgs, NULL);
+	}
+	/* If there is no request, set all the elements to None */
+	else for (i = 0; i < 6; i++) mod_populate_vps(pArgs, i, NULL);
+
+	/*
+	 * Call Python function. If pass_all_vps is true, a 6-tuple representing
+	 * (Request, Reply, Config, State, Proxy-Request, Proxy-Reply) is passed
+	 * as argument to the module callback.
+	 * Otherwise, a tuple representing just the request is passed.
+	 */
+	if (pass_all_vps)
+		pRet = PyObject_CallFunctionObjArgs(pFunc, pArgs, NULL);
+	else
+		pRet = PyObject_CallFunctionObjArgs(pFunc, PyTuple_GET_ITEM(pArgs, 0), NULL);
+
 	if (!pRet) {
 		ret = RLM_MODULE_FAIL;
 		goto finish;
@@ -620,7 +685,7 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 	RDEBUG3("Using thread state %p", this_thread->state);
 
 	PyEval_RestoreThread(this_thread->state);	/* Swap in our local thread state */
-	ret = do_python_single(request, pFunc, funcname);
+	ret = do_python_single(request, pFunc, funcname, inst->pass_all_vps);
 	PyEval_SaveThread();
 
 	return ret;
@@ -768,6 +833,68 @@ static void python_parse_config(CONF_SECTION *cs, int lvl, PyObject *dict)
 	DEBUG("%*s}", indent_section, " ");
 }
 
+#ifdef HAVE_DL_ITERATE_PHDR
+static int dlopen_libpython_cb(struct dl_phdr_info *info,
+					UNUSED size_t size, void *data)
+{
+	const char *pattern = "/" LIBPYTHON_LINKER_NAME;
+	char **ppath = (char **)data;
+
+	if (strstr(info->dlpi_name, pattern) != NULL) {
+		if (*ppath != NULL) {
+			talloc_free(*ppath);
+			*ppath = NULL;
+			return EEXIST;
+		} else {
+			*ppath = talloc_strdup(NULL, info->dlpi_name);
+			if (*ppath == NULL) {
+				return errno;
+			}
+		}
+	}
+	return 0;
+}
+
+/* Dlopen the already linked libpython */
+static void *dlopen_libpython(int flags)
+{
+	char *path = NULL;
+	int rc;
+	void *handle;
+
+	/* Find the linked libpython path */
+	rc = dl_iterate_phdr(dlopen_libpython_cb, &path);
+	if (rc != 0) {
+		WARN("Failed searching for libpython "
+			"among linked libraries: %s", strerror(rc));
+		return NULL;
+	} else if (path == NULL) {
+		WARN("Libpython is not found among linked libraries");
+		return NULL;
+	}
+
+	/* Dlopen the found library */
+	handle = dlopen(path, flags);
+	if (handle == NULL) {
+		WARN("Failed loading %s: %s", path, dlerror());
+	}
+	talloc_free(path);
+	return handle;
+}
+#else	/* ! HAVE_DL_ITERATE_PHDR */
+/* Dlopen libpython by its linker name (bare soname) */
+static void *dlopen_libpython(int flags)
+{
+	const char *name = LIBPYTHON_LINKER_NAME;
+	void *handle;
+	handle = dlopen(name, flags);
+	if (handle == NULL) {
+		WARN("Failed loading %s: %s", name, dlerror());
+	}
+	return handle;
+}
+#endif	/* ! HAVE_DL_ITERATE_PHDR */
+
 /** Initialises a separate python interpreter for this module instance
  *
  */
@@ -781,25 +908,20 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 	if (python_instances == 0) {
 		INFO("Python version: %s", Py_GetVersion());
 
-		python_dlhandle = dlopen("libpython" STRINGIFY(PY_MAJOR_VERSION) "." STRINGIFY(PY_MINOR_VERSION) ".so",
-					 RTLD_NOW | RTLD_GLOBAL);
-		if (!python_dlhandle) WARN("Failed loading libpython symbols into global symbol table: %s", dlerror());
+		python_dlhandle = dlopen_libpython(RTLD_NOW | RTLD_GLOBAL);
+		if (!python_dlhandle) WARN("Failed loading libpython symbols into global symbol table");
 
 #if PY_VERSION_HEX > 0x03050000
 		{
-			wchar_t *name;
-
-			wide_name = Py_DecodeLocale(main_config.name, strlen(main_config.name));
-			Py_SetProgramName(name);		/* The value of argv[0] as a wide char string */
-			PyMem_RawFree(name);
+			inst->wide_name = Py_DecodeLocale(main_config.name, strlen(main_config.name));
+			Py_SetProgramName(inst->wide_name);		/* The value of argv[0] as a wide char string */
 		}
 #else
 		{
 			char *name;
 
-			name = talloc_strdup(NULL, main_config.name);
+			memcpy(&name, &main_config.name, sizeof(name));
 			Py_SetProgramName(name);		/* The value of argv[0] as a wide char string */
-			talloc_free(name);
 		}
 #endif
 
@@ -835,23 +957,23 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 
 		/*
 		 *	Set the python search path
+		 *
+		 *	The path buffer does not appear to be dup'd
+		 *	so its lifetime should really be bound to
+		 *	the lifetime of the module.
 		 */
 		if (inst->python_path) {
 #if PY_VERSION_HEX > 0x03050000
 			{
-				wchar_t *name;
-
-				path = Py_DecodeLocale(inst->python_path, strlen(inst->python_path));
-				PySys_SetPath(path);
-				PyMem_RawFree(path);
+				inst->wide_path = Py_DecodeLocale(inst->python_path, strlen(inst->python_path));
+				PySys_SetPath(inst->wide_path);
 			}
 #else
 			{
 				char *path;
 
-				path = talloc_strdup(NULL, inst->python_path);
+				memcpy(&path, &inst->python_path, sizeof(path));
 				PySys_SetPath(path);
-				talloc_free(path);
 			}
 #endif
 		}
@@ -963,7 +1085,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Call the instantiate function.
 	 */
-	code = do_python_single(NULL, inst->instantiate.function, "instantiate");
+	code = do_python_single(NULL, inst->instantiate.function, "instantiate", inst->pass_all_vps);
 	if (code < 0) {
 	error:
 		python_error_log();	/* Needs valid thread with GIL */
@@ -985,7 +1107,7 @@ static int mod_detach(void *instance)
 	 */
 	PyEval_RestoreThread(inst->sub_interpreter);
 
-	ret = do_python_single(NULL, inst->detach.function, "detach");
+	ret = do_python_single(NULL, inst->detach.function, "detach", inst->pass_all_vps);
 
 #define PYTHON_FUNC_DESTROY(_x) python_function_destroy(&inst->_x)
 	PYTHON_FUNC_DESTROY(instantiate);
@@ -1019,7 +1141,13 @@ static int mod_detach(void *instance)
 		PyThreadState_Swap(main_interpreter); /* Swap to the main thread */
 		Py_Finalize();
 		dlclose(python_dlhandle);
+
+#if PY_VERSION_HEX > 0x03050000
+		if (inst->wide_name) PyMem_RawFree(inst->wide_name);
+		if (inst->wide_path) PyMem_RawFree(inst->wide_path);
+#endif
 	}
+
 
 	return ret;
 }

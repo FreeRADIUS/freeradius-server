@@ -24,49 +24,66 @@ psk_authorize {
 }
 
 abfab_client_check {
-	# check that the acceptor host name is correct
-	if ("%{client:gss_acceptor_host_name}" && &gss-acceptor-host-name) {
-		if ("%{client:gss_acceptor_host_name}" != "%{gss-acceptor-host-name}") {
-			update reply {
-			        Reply-Message = "GSS-Acceptor-Host-Name incorrect"
-				}
-			reject
+	# check that GSS-Acceptor-Host-Name is correct
+	if ("%{client:gss_acceptor_host_name}") {
+		if (&request:GSS-Acceptor-Host-Name) {
+			if (&request:GSS-Acceptor-Host-Name != "%{client:gss_acceptor_host_name}") {
+				update reply {
+				        Reply-Message = "GSS-Acceptor-Host-Name incorrect"
+					}
+				reject
+			}
+		}
+		else {
+			# set GSS-Acceptor-Host-Name if it is not set by the mechanism 
+			# but it is defined in the client configuration
+			update request {
+				GSS-Acceptor-Host-Name = "%{client:gss_acceptor_host_name}"
+			}
 		}
 	}
 
-	# set trust-router-coi attribute from the client configuration
+	# set Trust-Router-COI attribute from the client configuration
 	if ("%{client:trust_router_coi}") {
 		update request {
 			Trust-Router-COI := "%{client:trust_router_coi}"
 		}
 	}
 
-	# set gss-acceptor-realm-name attribute from the client configuration
+	# set GSS-Acceptor-Realm-Name attribute from the client configuration
 	if ("%{client:gss_acceptor_realm_name}") {
 		update request {
 			GSS-Acceptor-Realm-Name := "%{client:gss_acceptor_realm_name}"
 		}
 	}
+	
+	# set GSS-Acceptor-Service-Name attribute from the client configuration
+	if ("%{client:gss_acceptor_service_name}") {
+		update request {
+			GSS-Acceptor-Service-Name = "%{client:gss_acceptor_service_name}"
+		}
+	}
+
 }
 
 #  A policy which is used to validate channel-bindings.
 #
 abfab_channel_bindings {
-	if (GSS-Acceptor-Service-Name && (outer.request:GSS-Acceptor-Service-Name != GSS-Acceptor-Service-Name)) {
+	if (&GSS-Acceptor-Service-Name && (&outer.request:GSS-Acceptor-Service-Name != &GSS-Acceptor-Service-Name)) {
 		reject
 	}
 
-	if (GSS-Acceptor-Host-Name && outer.request:GSS-Acceptor-Host-Name != GSS-Acceptor-Host-Name ) {
+	if (&GSS-Acceptor-Host-Name && &outer.request:GSS-Acceptor-Host-Name != &GSS-Acceptor-Host-Name ) {
 		reject
 	}
 
-	if (GSS-Acceptor-Realm-Name && outer.request:GSS-Acceptor-Realm-Name != GSS-Acceptor-Realm-Name ) {
+	if (&GSS-Acceptor-Realm-Name && &outer.request:GSS-Acceptor-Realm-Name != &GSS-Acceptor-Realm-Name ) {
 		reject
 	}
 
-	if (GSS-Acceptor-Service-Name || GSS-Acceptor-Realm-Name || GSS-Acceptor-Host-Name) {
+	if (&GSS-Acceptor-Service-Name || &GSS-Acceptor-Realm-Name || &GSS-Acceptor-Host-Name) {
 		update control {
-			Chbind-Response-Code := success
+			&Chbind-Response-Code := success
 		}
 
 		#
@@ -76,9 +93,9 @@ abfab_channel_bindings {
 		#  then they won't be copied to the reply.
 		#
 		update reply {
-			GSS-Acceptor-Service-Name = &GSS-Acceptor-Service-Name
-			GSS-Acceptor-Host-Name = &GSS-Acceptor-Host-Name
-			GSS-Acceptor-Realm-Name = &GSS-Acceptor-Realm-Name
+			&GSS-Acceptor-Service-Name = &GSS-Acceptor-Service-Name
+			&GSS-Acceptor-Host-Name = &GSS-Acceptor-Host-Name
+			&GSS-Acceptor-Realm-Name = &GSS-Acceptor-Realm-Name
 		}
 	}
 

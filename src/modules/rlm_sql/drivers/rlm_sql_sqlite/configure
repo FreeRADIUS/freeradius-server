@@ -2933,7 +2933,7 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
-        LDFLAGS="$SMART_LIBS"
+        LDFLAGS="${LDFLAGS} ${SMART_LIBS}"
     if test "x$ac_cv_lib_sqlite3_sqlite3_open" != "xyes"
     then
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Sqlite libraries not found. Use --with-sqlite-lib-dir=<path>." >&5

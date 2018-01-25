@@ -126,7 +126,12 @@ sub authenticate {
 		return RLM_MODULE_REJECT;
 	} else {
 		# Accept user and set some attribute
-		$RAD_REPLY{'h323-credit-amount'} = "100";
+		if (&radiusd::xlat("%{client:group}") eq 'UltraAllInclusive') {
+			# User called from NAS with unlim plan set, set higher limits
+			$RAD_REPLY{'h323-credit-amount'} = "1000000";
+		} else {
+			$RAD_REPLY{'h323-credit-amount'} = "100";
+		}
 		return RLM_MODULE_OK;
 	}
 }

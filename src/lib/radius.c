@@ -542,17 +542,17 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags,
  * encrypting passwords to RADIUS.
  */
 static void make_secret(uint8_t *digest, uint8_t const *vector,
-			char const *secret, uint8_t const *value)
+			char const *secret, uint8_t const *value, size_t length)
 {
 	FR_MD5_CTX context;
-	int	     i;
+	size_t	     i;
 
 	fr_md5_init(&context);
 	fr_md5_update(&context, vector, AUTH_VECTOR_LEN);
 	fr_md5_update(&context, (uint8_t const *) secret, strlen(secret));
 	fr_md5_final(digest, &context);
 
-	for ( i = 0; i < AUTH_VECTOR_LEN; i++ ) {
+	for ( i = 0; i < length; i++ ) {
 		digest[i] ^= value[i];
 	}
 }
@@ -1010,8 +1010,8 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 		 *	always fits.
 		 */
 	case FLAG_ENCRYPT_ASCEND_SECRET:
-		if (len != 16) return 0;
-		make_secret(ptr, packet->vector, secret, data);
+		if (len > AUTH_VECTOR_LEN) len = AUTH_VECTOR_LEN;
+		make_secret(ptr, packet->vector, secret, data, len);
 		len = AUTH_VECTOR_LEN;
 		break;
 
@@ -1606,7 +1606,7 @@ int rad_vp2rfc(RADIUS_PACKET const *packet,
 	/*
 	 *	Message-Authenticator is hard-coded.
 	 */
-	if (!vp->da->vendor && (vp->da->attr == PW_MESSAGE_AUTHENTICATOR)) {
+	if (vp->da->attr == PW_MESSAGE_AUTHENTICATOR) {
 		if (room < 18) return -1;
 
 		ptr[0] = PW_MESSAGE_AUTHENTICATOR;
@@ -2344,6 +2344,8 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	bool			seen_ma = false;
 	uint32_t		num_attributes;
 	decode_fail_t		failure = DECODE_FAIL_NONE;
+	bool			eap = false;
+	bool			non_eap = false;
 
 	/*
 	 *	Check for packets smaller than the packet header.
@@ -2549,6 +2551,13 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 			 */
 		case PW_EAP_MESSAGE:
 			require_ma = true;
+			eap = true;
+			break;
+
+		case PW_USER_PASSWORD:
+		case PW_CHAP_PASSWORD:
+		case PW_ARAP_PASSWORD:
+			non_eap = true;
 			break;
 
 		case PW_MESSAGE_AUTHENTICATOR:
@@ -2623,6 +2632,15 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)));
 		failure = DECODE_FAIL_MA_MISSING;
+		goto finish;
+	}
+
+	if (eap && non_eap) {
+		FR_DEBUG_STRERROR_PRINTF("Bad packet from host %s:  Packet contains EAP-Message and non-EAP authentication attribute",
+			   inet_ntop(packet->src_ipaddr.af,
+				     &packet->src_ipaddr.ipaddr,
+				     host_ipaddr, sizeof(host_ipaddr)));
+		failure = DECODE_FAIL_TOO_MANY_AUTH;
 		goto finish;
 	}
 
@@ -2934,15 +2952,22 @@ static ssize_t data2vp_concat(TALLOC_CTX *ctx,
 	 *	don't care about walking off of the end of it.
 	 */
 	while (ptr < end) {
+		if (ptr[1] < 2) return -1;
+		if ((ptr + ptr[1]) > end) return -1;
+
 		total += ptr[1] - 2;
 
 		ptr += ptr[1];
+
+		if (ptr == end) break;
 
 		/*
 		 *	Attributes MUST be consecutive.
 		 */
 		if (ptr[0] != attr) break;
 	}
+
+	end = ptr;
 
 	vp = fr_pair_afrom_da(ctx, da);
 	if (!vp) return -1;
@@ -2956,7 +2981,7 @@ static ssize_t data2vp_concat(TALLOC_CTX *ctx,
 
 	total = 0;
 	ptr = start;
-	while (total < vp->vp_length) {
+	while (ptr < end) {
 		memcpy(p, ptr + 2, ptr[1] - 2);
 		p += ptr[1] - 2;
 		total += ptr[1] - 2;
@@ -2964,6 +2989,7 @@ static ssize_t data2vp_concat(TALLOC_CTX *ctx,
 	}
 
 	*pvp = vp;
+
 	return ptr - start;
 }
 
@@ -3135,75 +3161,148 @@ static ssize_t data2vp_extended(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 				VALUE_PAIR **pvp)
 {
 	ssize_t rcode;
-	size_t fraglen;
+	size_t ext_len;
+	bool more;
 	uint8_t *head, *tail;
-	uint8_t const *frag, *end;
-	uint8_t const *attr;
-	int fragments;
-	bool last_frag;
+	uint8_t const *attr, *end;
+	DICT_ATTR const *child;
 
-	if (attrlen < 3) return -1;
+	/*
+	 *	data = Ext-Attr Flag ...
+	 */
+
+	/*
+	 *	Not enough room for Ext-Attr + Flag + data, it's a bad
+	 *	attribute.
+	 */
+	if (attrlen < 3) {
+	raw:
+		/*
+		 *	It's not an Extended attribute, it's unknown...
+		 */
+		child = dict_unknown_afrom_fields(ctx, (da->vendor/ FR_MAX_VENDOR) & 0xff, 0);
+		if (!child) {
+			fr_strerror_printf("Internal sanity check %d", __LINE__);
+			return -1;
+		}
+
+		rcode = data2vp(ctx, packet, original, secret, child,
+				data, attrlen, attrlen, pvp);
+		if (rcode < 0) return rcode;
+		return attrlen;
+	}
+
+	/*
+	 *	No continued data, just decode the attribute in place.
+	 */
+	if ((data[1] & 0x80) == 0) {
+		rcode = data2vp(ctx, packet, original, secret, da,
+				data + 2, attrlen - 2, attrlen - 2,
+				pvp);
+
+		if ((rcode < 0) || (((size_t) rcode + 2) != attrlen)) goto raw; /* didn't decode all of the data */
+		return attrlen;
+	}
+
+	/*
+	 *	It's continued, but there are no subsequent fragments,
+	 *	it's bad.
+	 */
+	if (attrlen >= packetlen) goto raw;
 
 	/*
 	 *	Calculate the length of all of the fragments.  For
 	 *	now, they MUST be contiguous in the packet, and they
-	 *	MUST be all of the same TYPE and EXTENDED-TYPE
+	 *	MUST be all of the same Type and Ext-Type
+	 *
+	 *	We skip the first fragment, which doesn't have a
+	 *	RADIUS attribute header.
 	 */
-	attr = data - 2;
-	fraglen = attrlen - 2;
-	frag = data + attrlen;
+	ext_len = attrlen - 2;
+	attr = data + attrlen;
 	end = data + packetlen;
-	fragments = 1;
-	last_frag = false;
 
-	while (frag < end) {
-		if (last_frag ||
-		    (frag[0] != attr[0]) ||
-		    (frag[1] < 4) ||		       /* too short for long-extended */
-		    (frag[2] != attr[2]) ||
-		    ((frag + frag[1]) > end)) {		/* overflow */
-			end = frag;
-			break;
-		}
+	while (attr < end) {
+		/*
+		 *	Not enough room for Attr + length + Ext-Attr
+		 *	continuation, it's bad.
+		 */
+		if ((end - attr) < 4) goto raw;
 
-		last_frag = ((frag[3] & 0x80) == 0);
+		if (attr[1] < 4) goto raw;
 
-		fraglen += frag[1] - 4;
-		frag += frag[1];
-		fragments++;
+		/*
+		 *	If the attribute overflows the packet, it's
+		 *	bad.
+		 */
+		if ((attr + attr[1]) > end) goto raw;
+
+		if (attr[0] != ((da->vendor / FR_MAX_VENDOR) & 0xff)) goto raw; /* not the same Extended-Attribute-X */
+
+		if (attr[2] != data[0]) goto raw; /* Not the same Ext-Attr */
+
+		/*
+		 *	Check the continuation flag.
+		 */
+		more = ((attr[2] & 0x80) != 0);
+
+		/*
+		 *	Or, there's no more data, in which case we
+		 *	shorten "end" to finish at this attribute.
+		 */
+		if (!more) end = attr + attr[1];
+
+		/*
+		 *	There's more data, but we're at the end of the
+		 *	packet.  The attribute is malformed!
+		 */
+		if (more && ((attr + attr[1]) == end)) goto raw;
+
+		/*
+		 *	Add in the length of the data we need to
+		 *	concatenate together.
+		 */
+		ext_len += attr[1] - 4;
+
+		/*
+		 *	Go to the next attribute, and stop if there's
+		 *	no more.
+		 */
+		attr += attr[1];
+		if (!more) break;
 	}
 
-	head = tail = malloc(fraglen);
-	if (!head) return -1;
+	if (!ext_len) goto raw;
 
-	VP_TRACE("Fragments %d, total length %d\n", fragments, (int) fraglen);
+	head = tail = malloc(ext_len);
+	if (!head) goto raw;
 
 	/*
-	 *	And again, but faster and looser.
-	 *
-	 *	We copy the first fragment, followed by the rest of
-	 *	the fragments.
+	 *	Copy the data over, this time trusting the attribute
+	 *	contents.
 	 */
-	frag = attr;
+	attr = data;
+	memcpy(tail, attr + 2, attrlen - 2);
+	tail += attrlen - 2;
+	attr += attrlen;
 
-	while (fragments >  0) {
-		memcpy(tail, frag + 4, frag[1] - 4);
-		tail += frag[1] - 4;
-		frag += frag[1];
-		fragments--;
+	while (attr < end) {
+		memcpy(tail, attr + 4, attr[1] - 4);
+		tail += attr[1] - 4;
+		attr += attr[1]; /* skip VID+WiMax header */
 	}
 
-	VP_HEXDUMP("long-extended fragments", head, fraglen);
+	VP_HEXDUMP("long-extended fragments", head, ext_len);
 
 	rcode = data2vp(ctx, packet, original, secret, da,
-			head, fraglen, fraglen, pvp);
+			head, ext_len, ext_len, pvp);
 	free(head);
-	if (rcode < 0) return rcode;
+	if (rcode < 0) goto raw;
 
 	return end - data;
 }
 
-/** Convert a Vendor-Specific WIMAX to vps
+/** Convert a Vendor-Specific WIMAX to VPs
  *
  * @note Called ONLY for Vendor-Specific
  */
@@ -3215,25 +3314,54 @@ static ssize_t data2vp_wimax(TALLOC_CTX *ctx,
 			     VALUE_PAIR **pvp)
 {
 	ssize_t rcode;
-	size_t fraglen;
-	bool last_frag;
+	size_t wimax_len;
+	bool more;
 	uint8_t *head, *tail;
-	uint8_t const *frag, *end;
+	uint8_t const *attr, *end;
 	DICT_ATTR const *child;
 
-	if (attrlen < 8) return -1;
+	/*
+	 *	data = VID VID VID VID WiMAX-Attr WimAX-Len Continuation ...
+	 */
 
-	if (((size_t) (data[5] + 4)) != attrlen) return -1;
+	/*
+	 *	Not enough room for WiMAX Vendor + Wimax attr + length
+	 *	+ continuation, it's a bad attribute.
+	 */
+	if (attrlen < 8) {
+	raw:		
+		/*
+		 *	It's not a Vendor-Specific, it's unknown...
+		 */
+		child = dict_unknown_afrom_fields(ctx, PW_VENDOR_SPECIFIC, 0);
+		if (!child) {
+			fr_strerror_printf("Internal sanity check %d", __LINE__);
+			return -1;
+		}
+
+		rcode = data2vp(ctx, packet, original, secret, child,
+				data, attrlen, attrlen, pvp);
+		if (rcode < 0) return rcode;
+		return attrlen;
+	}
+
+	if (data[5] < 3) goto raw;		/* WiMAX-Length is too small */
 
 	child = dict_attrbyvalue(data[4], vendor);
-	if (!child) return -1;
+	if (!child) goto raw;
 
+	/*
+	 *	No continued data, just decode the attribute in place.
+	 */
 	if ((data[6] & 0x80) == 0) {
+		if (((size_t) (data[5] + 4)) != attrlen) goto raw; /* WiMAX attribute doesn't fill Vendor-Specific */
+
 		rcode = data2vp(ctx, packet, original, secret, child,
 				data + 7, data[5] - 3, data[5] - 3,
 				pvp);
-		if (rcode < 0) return -1;
-		return 7 + rcode;
+
+		if ((rcode < 0) || (((size_t) rcode + 7) != attrlen)) goto raw; /* didn't decode all of the data */
+		return attrlen;
 	}
 
 	/*
@@ -3242,61 +3370,115 @@ static ssize_t data2vp_wimax(TALLOC_CTX *ctx,
 	 *	MUST be all of the same VSA, WiMAX, and WiMAX-attr.
 	 *
 	 *	The first fragment doesn't have a RADIUS attribute
-	 *	header, so it needs to be treated a little special.
+	 *	header.
 	 */
-	fraglen = data[5] - 3;
-	frag = data + attrlen;
+	wimax_len = 0;
+	attr = data + 4;
 	end = data + packetlen;
-	last_frag = false;
 
-	while (frag < end) {
-		if (last_frag ||
-		    (frag[0] != PW_VENDOR_SPECIFIC) ||
-		    (frag[1] < 9) ||		       /* too short for wimax */
-		    ((frag + frag[1]) > end) ||		/* overflow */
-		    (memcmp(frag + 2, data, 4) != 0) || /* not wimax */
-		    (frag[6] != data[4]) || /* not the same wimax attr */
-		    ((frag[7] + 6) != frag[1])) { /* doesn't fill the attr */
-			end = frag;
-			break;
-		}
+	while (attr < end) {
+		/*
+		 *	Not enough room for Attribute + length +
+		 *	continuation, it's bad.
+		 */
+		if ((end - attr) < 3) goto raw;
 
-		last_frag = ((frag[8] & 0x80) == 0);
+		/*
+		 *	Must have non-zero data in the attribute.
+		 */
+		if (attr[1] <= 3) goto raw;
 
-		fraglen += frag[7] - 3;
-		frag += frag[1];
+		/*
+		 *	If the WiMAX attribute overflows the packet,
+		 *	it's bad.
+		 */
+		if ((attr + attr[1]) > end) goto raw;
+
+		/*
+		 *	Check the continuation flag.
+		 */
+		more = ((attr[2] & 0x80) != 0);
+
+		/*
+		 *	Or, there's no more data, in which case we
+		 *	shorten "end" to finish at this attribute.
+		 */
+		if (!more) end = attr + attr[1];
+
+		/*
+		 *	There's more data, but we're at the end of the
+		 *	packet.  The attribute is malformed!
+		 */
+		if (more && ((attr + attr[1]) == end)) goto raw;
+
+		/*
+		 *	Add in the length of the data we need to
+		 *	concatenate together.
+		 */
+		wimax_len += attr[1] - 3;
+
+		/*
+		 *	Go to the next attribute, and stop if there's
+		 *	no more.
+		 */
+		attr += attr[1];
+		if (!more) break;
+
+		/*
+		 *	data = VID VID VID VID WiMAX-Attr WimAX-Len Continuation ...
+		 *
+		 *	attr = Vendor-Specific VSA-Length VID VID VID VID WiMAX-Attr WimAX-Len Continuation ...
+		 *
+		 */
+
+		/*
+		 *	No room for Vendor-Specific + length +
+		 *	Vendor(4) + attr + length + continuation + data
+		 */
+		if ((end - attr) < 9) goto raw;
+
+		if (attr[0] != PW_VENDOR_SPECIFIC) goto raw;
+		if (attr[1] < 9) goto raw;
+		if ((attr + attr[1]) > end) goto raw;
+		if (memcmp(data, attr + 2, 4) != 0) goto raw; /* not WiMAX Vendor ID */
+
+		if (attr[1] != (attr[7] + 6)) goto raw; /* WiMAX attr doesn't exactly fill the VSA */
+
+		if (data[4] != attr[6]) goto raw; /* different WiMAX attribute */
+
+		/*
+		 *	Skip over the Vendor-Specific header, and
+		 *	continue with the WiMAX attributes.
+		 */
+		attr += 6;
 	}
 
-	head = tail = malloc(fraglen);
+	/*
+	 *	No data in the WiMAX attribute, make a "raw" one.
+	 */
+	if (!wimax_len) goto raw;
+
+	head = tail = malloc(wimax_len);
 	if (!head) return -1;
 
 	/*
-	 *	And again, but faster and looser.
-	 *
-	 *	We copy the first fragment, followed by the rest of
-	 *	the fragments.
+	 *	Copy the data over, this time trusting the attribute
+	 *	contents.
 	 */
-	frag = data;
+	attr = data;
+	while (attr < end) {
+		memcpy(tail, attr + 4 + 3, attr[4 + 1] - 3);
+		tail += attr[4 + 1] - 3;
+		attr += 4 + attr[4 + 1]; /* skip VID+WiMax header */
+		attr += 2;		 /* skip Vendor-Specific header */
+	}
 
-	memcpy(tail, frag + 4 + 3, frag[4 + 1] - 3);
-	tail += frag[4 + 1] - 3;
-	frag += attrlen;	/* should be frag[1] - 7 */
-
-	/*
-	 *	frag now points to RADIUS attributes
-	 */
-	do {
-		memcpy(tail, frag + 2 + 4 + 3, frag[2 + 4 + 1] - 3);
-		tail += frag[2 + 4 + 1] - 3;
-		frag += frag[1];
-	} while (frag < end);
-
-	VP_HEXDUMP("wimax fragments", head, fraglen);
+	VP_HEXDUMP("wimax fragments", head, wimax_len);
 
 	rcode = data2vp(ctx, packet, original, secret, child,
-			head, fraglen, fraglen, pvp);
+			head, wimax_len, wimax_len, pvp);
 	free(head);
-	if (rcode < 0) return rcode;
+	if (rcode < 0) goto raw;
 
 	return end - data;
 }
@@ -3587,9 +3769,14 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 				goto raw;
 			} else {
 				uint8_t my_digest[AUTH_VECTOR_LEN];
+				size_t secret_len;
+
+				secret_len = datalen;
+				if (secret_len > AUTH_VECTOR_LEN) secret_len = AUTH_VECTOR_LEN;
+
 				make_secret(my_digest,
 					    original->vector,
-					    secret, data);
+					    secret, data, secret_len);
 				memcpy(buffer, my_digest,
 				       AUTH_VECTOR_LEN );
 				buffer[AUTH_VECTOR_LEN] = '\0';
@@ -3715,19 +3902,6 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 				fr_strerror_printf("Internal sanity check %d", __LINE__);
 				return -1;
 			}
-		}
-
-		/*
-		 *	If there no more fragments, then the contents
-		 *	have to be a well-known data type.
-		 *
-		 */
-		if ((data[1] & 0x80) == 0) {
-			rcode = data2vp(ctx, packet, original, secret, child,
-					data + 2, attrlen - 2, attrlen - 2,
-					pvp);
-			if (rcode < 0) goto raw;
-			return 2 + rcode;
 		}
 
 		/*
@@ -3912,7 +4086,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		break;
 
 	case PW_TYPE_SIGNED:	/* overloaded with vp_integer */
-		memcpy(&vp->vp_integer, buffer, 4);
+		memcpy(&vp->vp_integer, data, 4);
 		vp->vp_integer = ntohl(vp->vp_integer);
 		break;
 
