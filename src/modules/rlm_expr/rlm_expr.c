@@ -1003,11 +1003,7 @@ static int fr_value_box_from_fmt(fr_value_box_t *out, REQUEST *request, char con
 	 */
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return -1;
 
-	/*
-	 *	These are large types.  Return pointers to the
-	 *	data instead of copying the data.
-	 */
-	fr_value_box_copy_shallow(NULL, out, &vp->data);
+	fr_value_box_copy(NULL, out, &vp->data);
 
 	return 0;
 }
