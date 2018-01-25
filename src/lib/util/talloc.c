@@ -215,7 +215,7 @@ char *talloc_buffer_append_variadic_buffer(char *to, int argc, ...)
 	va_list		ap_val, ap_len;
 	int		i;
 
-	size_t		to_len, from_len = 0, total_len;
+	size_t		to_len, total_len = 0;
 	char		*out, *p;
 
 	if (!to) return NULL;
@@ -223,7 +223,7 @@ char *talloc_buffer_append_variadic_buffer(char *to, int argc, ...)
 	va_start(ap_val, argc);
 	va_copy(ap_len, ap_val);
 
-	to_len = talloc_array_length(to);
+	total_len += to_len = talloc_array_length(to) - 1;
 
 	/*
 	 *	Figure out how much we need to realloc
@@ -234,19 +234,22 @@ char *talloc_buffer_append_variadic_buffer(char *to, int argc, ...)
 		arg = va_arg(ap_len, char *);
 		if (!arg) continue;
 
-		from_len += (talloc_array_length(arg) - 1);
+		total_len += (talloc_array_length(arg) - 1);
 	}
-	total_len = to_len + from_len;
+
+	/*
+	 *	It's a noop...
+	 */
 	if (total_len == to_len) {
 		va_end(ap_val);
 		va_end(ap_len);
 		return to;
 	}
 
-	out = talloc_realloc(talloc_parent(to), to, char, total_len);
+	out = talloc_realloc(talloc_parent(to), to, char, total_len + 1);
 	if (!out) goto finish;
 
-	p = out + (to_len - 1);
+	p = out + to_len;
 
 	/*
 	 *	Copy the args in
@@ -258,11 +261,12 @@ char *talloc_buffer_append_variadic_buffer(char *to, int argc, ...)
 		arg = va_arg(ap_val, char *);
 		if (!arg) continue;
 
-		len = talloc_array_length(arg);
+		len = talloc_array_length(arg) - 1;
 
-		memcpy(p, arg, len - 1);
-		p += (len - 1);
+		memcpy(p, arg, len);
+		p += len;
 	}
+	*p = '\0';
 
 finish:
 	va_end(ap_val);
