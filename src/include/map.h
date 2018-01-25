@@ -109,7 +109,8 @@ int		map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 int		map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm);
 
 int		map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
-				REQUEST *request, vp_map_t const *map, fr_value_box_t **result);
+				REQUEST *request, vp_map_t const *map,
+				fr_value_box_t **lhs_result, fr_value_box_t **rhs_result);
 
 int		map_to_request(REQUEST *request, vp_map_t const *map,
 			       radius_map_getvalue_t func, void *ctx);
