@@ -9,7 +9,7 @@ if (1) {
 	#  we have to set this ourselves.
 	#
 	update control {
-		Auth-Type := pap
+		&Auth-Type := pap
 	}
 
 	# not at the end of a section

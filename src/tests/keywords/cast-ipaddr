@@ -2,16 +2,16 @@
 #  PRE: update if redundant
 #
 update {
-       control:Cleartext-Password := 'hello'
-       request:NAS-IP-Address := 127.0.0.1
-       request:Tmp-Integer-0 := 2130706433
+	&control:Cleartext-Password	:= 'hello'
+	&request:NAS-IP-Address		:= 127.0.0.1
+	&request:Tmp-Integer-0		:= 2130706433
 }
 
 update request {
-	Tmp-String-0 := "%{request:NAS-IP-Address}"
+	&Tmp-String-0[0] := "%{request:NAS-IP-Address}"
 }
 
-if (<ipaddr>Tmp-Integer-0 != NAS-IP-Address) {
+if (<ipaddr>&Tmp-Integer-0[0] != NAS-IP-Address) {
 	test_fail
 }
 
@@ -21,24 +21,24 @@ if (<ipaddr>Tmp-Integer-0 != NAS-IP-Address) {
 #  the cast, and looking at the results.
 #
 update request {
-	Tmp-Cast-Ipaddr	 := 203.0.113.1
-	Tmp-Cast-IPv4Prefix := 203.0.113.0/24
-	Tmp-Cast-IPv4Prefix += 203.0.113.1/32
-	Tmp-Cast-IPv6Addr := 2001:DB8::1
-	Tmp-Cast-IPv6Addr += ::ffff:203.0.113.1
-	Tmp-Cast-IPv6Prefix := 2001:DB8::/32
-	Tmp-Cast-IPv6Prefix += ::ffff:203.0.113.1/128
-	Tmp-Cast-IPv6Prefix += ::ffff:203.0.113.1/64
+	&Tmp-Cast-Ipaddr	:= 203.0.113.1
+	&Tmp-Cast-IPv4Prefix	:= 203.0.113.0/24
+	&Tmp-Cast-IPv4Prefix	+= 203.0.113.1/32
+	&Tmp-Cast-IPv6Addr	:= 2001:DB8::1
+	&Tmp-Cast-IPv6Addr	+= ::ffff:203.0.113.1
+	&Tmp-Cast-IPv6Prefix	:= 2001:DB8::/32
+	&Tmp-Cast-IPv6Prefix	+= ::ffff:203.0.113.1/128
+	&Tmp-Cast-IPv6Prefix	+= ::ffff:203.0.113.1/64
 }
 
 #
 #  IPv4 address to IPv6 address
 #
 update control {
-	Tmp-Cast-IPv6addr[0] := &Tmp-Cast-IPaddr[0]
+	&Tmp-Cast-IPv6addr	:= &Tmp-Cast-IPaddr[0]
 }
 
-if (&control:Tmp-Cast-IPv6addr != ::ffff:203.0.113.1) {
+if (&control:Tmp-Cast-IPv6addr[0] != ::ffff:203.0.113.1) {
 	test_fail
 }
 
@@ -46,10 +46,10 @@ if (&control:Tmp-Cast-IPv6addr != ::ffff:203.0.113.1) {
 #  IPv6 address to IPv4 address
 #
 update control {
-	Tmp-Cast-IPaddr[0] := &control:Tmp-Cast-IPv6addr[0]
+	&Tmp-Cast-IPaddr[0]	:= &control:Tmp-Cast-IPv6addr[0]
 }
 
-if (&control:Tmp-Cast-IPaddr != 203.0.113.1) {
+if (&control:Tmp-Cast-IPaddr[0] != 203.0.113.1) {
 	test_fail
 }
 
@@ -57,10 +57,10 @@ if (&control:Tmp-Cast-IPaddr != 203.0.113.1) {
 #  IPv4 prefix to IPv6 prefix
 #
 update control {
-	Tmp-Cast-IPv6Prefix[0] := &Tmp-Cast-IPv4Prefix[0]
+	&Tmp-Cast-IPv6Prefix[0] := &Tmp-Cast-IPv4Prefix[0]
 }
 
-if (&control:Tmp-Cast-IPv6Prefix != ::ffff:203.0.113.0/120) {
+if (&control:Tmp-Cast-IPv6Prefix[0] != ::ffff:203.0.113.0/120) {
 	test_fail
 }
 
@@ -68,10 +68,10 @@ if (&control:Tmp-Cast-IPv6Prefix != ::ffff:203.0.113.0/120) {
 #  IPv6 prefix to IPv4 prefix
 #
 update control {
-	Tmp-Cast-IPv4Prefix[0] := &control:Tmp-Cast-IPv6Prefix[0]
+	&Tmp-Cast-IPv4Prefix[0] := &control:Tmp-Cast-IPv6Prefix[0]
 }
 
-if (&control:Tmp-Cast-IPv4Prefix != 203.0.113.1/24) {
+if (&control:Tmp-Cast-IPv4Prefix[0] != 203.0.113.1/24) {
 	test_fail
 }
 
@@ -79,10 +79,10 @@ if (&control:Tmp-Cast-IPv4Prefix != 203.0.113.1/24) {
 #  IPv4 prefix (32) to IPv6 address
 #
 update control {
-	Tmp-Cast-IPv6Addr[0] := &Tmp-Cast-IPv4Prefix[1]
+	&Tmp-Cast-IPv6Addr := &Tmp-Cast-IPv4Prefix[1]
 }
 
-if (&control:Tmp-Cast-IPv6Addr != ::ffff:203.0.113.1) {
+if (&control:Tmp-Cast-IPv6Addr[0] != ::ffff:203.0.113.1) {
 	test_fail
 }
 
@@ -90,10 +90,10 @@ if (&control:Tmp-Cast-IPv6Addr != ::ffff:203.0.113.1) {
 #  IPv6 prefix (128) to IPv4 address
 #
 update control {
-	Tmp-Cast-Ipaddr[0] := &Tmp-Cast-IPv6Prefix[1]
+	&Tmp-Cast-Ipaddr := &Tmp-Cast-IPv6Prefix[1]
 }
 
-if (&control:Tmp-Cast-Ipaddr != 203.0.113.1/32) {
+if (&control:Tmp-Cast-Ipaddr[0] != 203.0.113.1/32) {
 	test_fail
 }
 
@@ -101,7 +101,7 @@ if (&control:Tmp-Cast-Ipaddr != 203.0.113.1/32) {
 #  IPv4 address to IPv6 prefix (128)
 #
 update control {
-	Tmp-Cast-IPv6Prefix[0] := &Tmp-Cast-Ipaddr[0]
+	&Tmp-Cast-IPv6Prefix := &Tmp-Cast-Ipaddr[0]
 }
 
 if (&control:Tmp-Cast-IPv6Prefix != ::ffff:203.0.113.1/128) {
@@ -123,7 +123,7 @@ if (&control:Tmp-Cast-IPv4Prefix != 203.0.113.1/32) {
 #  IPv4 address to IPv4 prefix (32)
 #
 update control {
-	Tmp-Cast-IPv4Prefix[0] := &Tmp-Cast-Ipaddr[0]
+	&Tmp-Cast-IPv4Prefix := &Tmp-Cast-Ipaddr[0]
 }
 
 if (&control:Tmp-Cast-IPv4Prefix != 203.0.113.1/32) {
@@ -134,7 +134,7 @@ if (&control:Tmp-Cast-IPv4Prefix != 203.0.113.1/32) {
 #  IPv6 address to IPv6 prefix (128)
 #
 update control {
-	Tmp-Cast-IPv6Prefix[0] := Tmp-Cast-Ipv6addr[0]
+	&Tmp-Cast-IPv6Prefix := &Tmp-Cast-Ipv6addr[0]
 }
 
 if (&control:Tmp-Cast-IPv6Prefix != 2001:DB8::1/128) {
@@ -145,7 +145,7 @@ if (&control:Tmp-Cast-IPv6Prefix != 2001:DB8::1/128) {
 #  IPv4 prefix (32) to IPv4 address
 #
 update control {
-	Tmp-Cast-Ipaddr[0] := &Tmp-Cast-IPv4Prefix[1]
+	&Tmp-Cast-Ipaddr := &Tmp-Cast-IPv4Prefix[1]
 }
 
 if (&control:Tmp-Cast-Ipaddr != 203.0.113.1) {
@@ -156,7 +156,7 @@ if (&control:Tmp-Cast-Ipaddr != 203.0.113.1) {
 #  IPv6 prefix (128) to IPv6 address
 #
 update control {
-	Tmp-Cast-IPv6Addr[0] := &Tmp-Cast-IPv6Prefix[1]
+	&Tmp-Cast-IPv6Addr := &Tmp-Cast-IPv6Prefix[1]
 }
 
 if (&control:Tmp-Cast-IPv6Addr != ::ffff:203.0.113.1) {
@@ -173,7 +173,7 @@ if (&control:Tmp-Cast-IPv6Addr != ::ffff:203.0.113.1) {
 redundant {
 	group {
 		update control {
-			Tmp-Cast-IPv6Addr[0] := Tmp-Cast-IPv6Prefix[0]
+			&Tmp-Cast-IPv6Addr := Tmp-Cast-IPv6Prefix[0]
 		}
 		test_fail
 	}
@@ -194,7 +194,7 @@ redundant {
 redundant {
 	group {
 		update control {
-			Tmp-Cast-Ipaddr[0] := &Tmp-Cast-IPv6Prefix[2]
+			&Tmp-Cast-Ipaddr := &Tmp-Cast-IPv6Prefix[2]
 		}
 		test_fail
 	}
@@ -215,7 +215,7 @@ redundant {
 redundant {
 	group {
 		update control {
-			Tmp-Cast-Ipv4Prefix[0] := &Tmp-Cast-IPv6Prefix[2]
+			&Tmp-Cast-Ipv4Prefix := &Tmp-Cast-IPv6Prefix[2]
 		}
 		test_fail
 	}
@@ -224,7 +224,7 @@ redundant {
 			test_fail
 		}
 		update request {
-			Module-Failure-Message !* ANY
+			&Module-Failure-Message !* ANY
 		}
 		ok
 	}
@@ -236,7 +236,7 @@ redundant {
 redundant {
 	group {
 		update control {
-			Tmp-Cast-IPv6Addr[0] := &Tmp-Cast-IPv4Prefix[0]
+			&Tmp-Cast-IPv6Addr := &Tmp-Cast-IPv4Prefix[0]
 		}
 		test_fail
 	}
@@ -245,7 +245,7 @@ redundant {
 			test_fail
 		}
 		update request {
-			Module-Failure-Message !* ANY
+			&Module-Failure-Message !* ANY
 		}
 		ok
 	}
@@ -257,7 +257,7 @@ redundant {
 redundant {
 	group {
 		update control {
-			Tmp-Cast-Ipaddr[0] := &Tmp-Cast-IPv4Prefix[0]
+			&Tmp-Cast-Ipaddr := &Tmp-Cast-IPv4Prefix[0]
 		}
 		test_fail
 	}
@@ -266,7 +266,7 @@ redundant {
 			test_fail
 		}
 		update request {
-			Module-Failure-Message !* ANY
+			&Module-Failure-Message !* ANY
 		}
 		ok
 	}
@@ -278,7 +278,7 @@ redundant {
 redundant {
 	group {
 		update control {
-			Tmp-Cast-Ipaddr[0] := &Tmp-Cast-IPv6Prefix[0]
+			&Tmp-Cast-Ipaddr := &Tmp-Cast-IPv6Prefix[0]
 		}
 		test_fail
 	}
@@ -287,7 +287,7 @@ redundant {
 			test_fail
 		}
 		update request {
-			Module-Failure-Message !* ANY
+			&Module-Failure-Message !* ANY
 		}
 		ok
 	}
@@ -299,7 +299,7 @@ redundant {
 redundant {
 	group {
 		update control {
-			Tmp-Cast-IPv4Prefix[0] := &Tmp-Cast-IPv6Prefix[0]
+			&Tmp-Cast-IPv4Prefix := &Tmp-Cast-IPv6Prefix[0]
 		}
 		test_fail
 	}
@@ -308,7 +308,7 @@ redundant {
 			test_fail
 		}
 		update request {
-			Module-Failure-Message !* ANY
+			&Module-Failure-Message !* ANY
 		}
 		ok
 	}
@@ -320,7 +320,7 @@ redundant {
 redundant {
 	group {
 		update control {
-			Tmp-Cast-Ipaddr[0] := &Tmp-Cast-IPv6Addr[0]
+			&Tmp-Cast-Ipaddr := &Tmp-Cast-IPv6Addr[0]
 		}
 		test_fail
 	}
@@ -329,7 +329,7 @@ redundant {
 			test_fail
 		}
 		update request {
-			Module-Failure-Message !* ANY
+			&Module-Failure-Message !* ANY
 		}
 		ok
 	}
@@ -341,7 +341,7 @@ redundant {
 redundant {
 	group {
 		update control {
-			Tmp-Cast-IPv4Prefix[0] := &Tmp-Cast-IPv6Addr[0]
+			&Tmp-Cast-IPv4Prefix := &Tmp-Cast-IPv6Addr[0]
 		}
 		test_fail
 	}
@@ -350,7 +350,7 @@ redundant {
 			test_fail
 		}
 		update request {
-			Module-Failure-Message !* ANY
+			&Module-Failure-Message !* ANY
 		}
 		ok
 	}

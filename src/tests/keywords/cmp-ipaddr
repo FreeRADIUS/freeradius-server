@@ -2,12 +2,12 @@
 #  PRE: update
 #
 update control {
-       Cleartext-Password := 'hello'
+       &Cleartext-Password := 'hello'
 }
 
 update request {
-       NAS-IP-Address    := 127.0.0.1
-       Framed-IP-Address := 127.0.0.1
+       &NAS-IP-Address    := 127.0.0.1
+       &Framed-IP-Address := 127.0.0.1
 }
 
 #
@@ -18,19 +18,19 @@ if (!(NAS-IP-Address == &Framed-IP-Address)) {
 }
 
 update request {
-       NAS-IP-Address    := 0.0.0.0
-       Framed-IP-Address := 255.255.255.255
+       &NAS-IP-Address    := 0.0.0.0
+       &Framed-IP-Address := 255.255.255.255
 }
 
-if (!(NAS-IP-Address != &Framed-IP-Address)) {
+if (!(&NAS-IP-Address != &Framed-IP-Address)) {
 	test_fail
 }
 
-if (!(NAS-IP-Address < &Framed-IP-Address)) {
+if (!(&NAS-IP-Address < &Framed-IP-Address)) {
 	test_fail
 }
 
-if (NAS-IP-Address > &Framed-IP-Address) {
+if (&NAS-IP-Address > &Framed-IP-Address) {
 	test_fail
 }
 
