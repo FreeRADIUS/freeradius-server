@@ -3664,13 +3664,13 @@ char *fr_value_box_list_asprint(TALLOC_CTX *ctx, fr_value_box_t const *head, cha
  *	- -1 on failure.
  */
 int fr_value_box_list_concat(TALLOC_CTX *ctx,
-			     fr_value_box_t *out, fr_value_box_t *list, fr_type_t type, bool free_input)
+			     fr_value_box_t *out, fr_value_box_t **list, fr_type_t type, bool free_input)
 {
 	TALLOC_CTX		*pool;
 	fr_cursor_t		cursor;
 	fr_value_box_t const	*vb;
 
-	if (!list) {
+	if (!list || !*list) {
 		fr_strerror_printf("Invalid arguments.  List was NULL");
 		return -1;
 	}
@@ -3686,13 +3686,13 @@ int fr_value_box_list_concat(TALLOC_CTX *ctx,
 		return -1;
 	}
 
-	fr_cursor_init(&cursor, &list);
+	fr_cursor_init(&cursor, list);
 
 	/*
 	 *	Allow concatenating in place
 	 */
-	if (out == list) {
-		if (list->type != type) {
+	if (out == *list) {
+		if ((*list)->type != type) {
 			fr_value_box_t from_cast;
 			fr_value_box_t *next = out->next;
 
@@ -3706,7 +3706,7 @@ int fr_value_box_list_concat(TALLOC_CTX *ctx,
 		}
 		fr_cursor_next(&cursor);
 	} else {
-		if (fr_value_box_cast(ctx, out, type, NULL, list) < 0) return -1;	/* Decomposes to copy */
+		if (fr_value_box_cast(ctx, out, type, NULL, *list) < 0) return -1;	/* Decomposes to copy */
 
 		if (free_input) {
 			fr_cursor_free_item(&cursor);		/* Advances cursor */
