@@ -158,7 +158,7 @@ static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		if ((end - p) < 8) {
 			fr_strerror_printf("Malformed diameter VPs.  Needed at least 8 bytes, got %zu bytes", end - p);
 		error:
-			fr_cursor_list_free(cursor);
+			fr_cursor_free_list(cursor);
 			return -1;
 		}
 

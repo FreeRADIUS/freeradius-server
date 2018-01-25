@@ -937,10 +937,10 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 				if (!n_vb) {
 				xlat_error:
 					fr_cursor_head(&from);
-					fr_cursor_free(&from);
+					fr_cursor_free_list(&from);
 
 					fr_cursor_head(&values);
-					fr_cursor_free(&values);
+					fr_cursor_free_list(&values);
 					goto error;
 				}
 
@@ -1005,7 +1005,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			if (!n_vb) {
 			attr_error:
 				fr_cursor_head(&values);
-				fr_cursor_free(&values);
+				fr_cursor_free_list(&values);
 				goto error;
 			}
 
@@ -1045,7 +1045,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			if (!n_vb) {
 			data_error:
 				fr_cursor_head(&values);
-				fr_cursor_free(&values);
+				fr_cursor_free_list(&values);
 				goto error;
 			}
 			/*
@@ -1201,7 +1201,7 @@ static VALUE_PAIR *map_list_mod_to_vps(TALLOC_CTX *ctx, vp_list_mod_t const *vlm
 			vp = map_list_mod_to_vp(ctx, mod->lhs, vb);
 			if (!vp) {
 				fr_cursor_head(&cursor);
-				fr_cursor_free(&cursor);
+				fr_cursor_free_list(&cursor);
 				return NULL;
 			}
 			fr_cursor_insert(&cursor, vp);

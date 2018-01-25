@@ -741,7 +741,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 				   node->fmt);
 			if (xlat_eval_one_letter(ctx, out, request, node->fmt[0]) == XLAT_ACTION_FAIL) {
 			fail:
-				fr_cursor_free(out);	/* Only frees what we've added during this call */
+				fr_cursor_free_list(out);	/* Only frees what we've added during this call */
 				xa = XLAT_ACTION_FAIL;
 				goto finish;
 			}
@@ -884,11 +884,11 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		 */
 		if (fr_value_box_cast(ctx, &string, FR_TYPE_STRING, NULL, head) < 0) {
 			RPERROR("Casting one letter expansion to string failed");
-			fr_cursor_free(&cursor);
+			fr_cursor_free_list(&cursor);
 			return NULL;
 		}
 		memcpy(&str, &string.vb_strvalue, sizeof(str));
-		fr_cursor_free(&cursor);
+		fr_cursor_free_list(&cursor);
 		break;
 
 	case XLAT_ATTRIBUTE:
@@ -907,7 +907,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		if (!str) {
 		attr_error:
 			RPERROR("Printing box to string failed");
-			fr_cursor_free(&cursor);
+			fr_cursor_free_list(&cursor);
 			return NULL;
 		}
 
@@ -925,7 +925,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			str = talloc_strdup_append_buffer(str, more);
 			talloc_free(more);
 		}
-		fr_cursor_free(&cursor);
+		fr_cursor_free_list(&cursor);
 		break;
 
 	case XLAT_VIRTUAL:

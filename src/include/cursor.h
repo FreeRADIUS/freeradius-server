@@ -81,7 +81,7 @@ void *fr_cursor_remove(fr_cursor_t *cursor) CC_HINT(nonnull);
 
 void *fr_cursor_replace(fr_cursor_t *cursor, void *r) CC_HINT(nonnull);
 
-void fr_cursor_list_free(fr_cursor_t *cursor) CC_HINT(nonnull);
+void fr_cursor_free_list(fr_cursor_t *cursor) CC_HINT(nonnull);
 
 /** Initialise a cursor with runtime talloc type safety checks and a custom iterator
  *
@@ -138,14 +138,14 @@ void fr_cursor_list_free(fr_cursor_t *cursor) CC_HINT(nonnull);
 void *_fr_cursor_init(fr_cursor_t *cursor, void * const *head, size_t offset,
 		      fr_cursor_iter_t iter, void const *ctx, char const *type);
 
-/** talloc_free the current item, and all subsequent items
+/** talloc_free the current item
  *
  * @param[in] cursor	to free items from.
  */
-static inline void fr_cursor_free(fr_cursor_t *cursor)
+static inline void fr_cursor_free_item(fr_cursor_t *cursor)
 {
-	void *v;
 	if (!cursor) return;
-	while ((v = fr_cursor_remove(cursor))) talloc_free(v);
+
+	talloc_free(fr_cursor_remove(cursor));
 }
 #endif

@@ -521,11 +521,11 @@ void * CC_HINT(hot) fr_cursor_replace(fr_cursor_t *cursor, void *r)
  *
  * @param[in] cursor to free items in.
  */
-void fr_cursor_list_free(fr_cursor_t *cursor)
+void fr_cursor_free_list(fr_cursor_t *cursor)
 {
 	void *v;
 
-	if (!*cursor->head) return;	/* noop */
+	if (!*(cursor->head)) return;	/* noop */
 
 	do {
 		v = fr_cursor_remove(cursor);
@@ -1670,7 +1670,7 @@ void test_cursor_free(void)
 	fr_cursor_append(&cursor, item3);
 
 	fr_cursor_next(&cursor);
-	fr_cursor_list_free(&cursor);
+	fr_cursor_free_list(&cursor);
 
 	TEST_CHECK(fr_cursor_current(&cursor) == NULL);
 	TEST_CHECK(!fr_cursor_list_prev_peek(&cursor));
