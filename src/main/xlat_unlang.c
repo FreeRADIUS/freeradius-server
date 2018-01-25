@@ -144,7 +144,7 @@ static unlang_action_t xlat_unlang(REQUEST *request,
 		 *	at this level.  A frame may be used to evaluate
 		 *	multiple sibling nodes.
 		 */
-		fr_value_box_list_free(&xs->rhead);
+		talloc_list_free(&xs->rhead);
 
 		xlat_unlang_push(xs->ctx, &xs->rhead, request, child, false);
 		return UNLANG_ACTION_PUSHED_CHILD;

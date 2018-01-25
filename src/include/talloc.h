@@ -20,6 +20,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <ctype.h>
+#include <freeradius-devel/missing.h>
 
 void		*talloc_null_ctx(void);
 
@@ -48,6 +49,24 @@ void		**talloc_array_null_terminate(void **array);
 void		**talloc_array_null_strip(void **array);
 
 void		talloc_const_free(void const *ptr);
+
+/** Free a list of talloced structures containing a next field
+ *
+ * @param[in] _head	of list to free.  Will set memory it points to to be NULL.
+ */
+#define		talloc_list_free(_head) _talloc_list_free((void **)_head, offsetof(__typeof__(**(_head)), next))
+
+static inline void _talloc_list_free(void **head, size_t offset)
+{
+	void *v = *head, *n;
+
+	while (v) {
+		n = *((void **)(((uint8_t *)(v)) + offset));
+		talloc_free(v);
+		v = n;
+	}
+	*head = NULL;
+}
 
 /*
  *	talloc portability issues.  'const' is not part of the talloc

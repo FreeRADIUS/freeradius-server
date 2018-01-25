@@ -3765,22 +3765,6 @@ int fr_value_box_list_concat(TALLOC_CTX *ctx,
 	return 0;
 }
 
-/** Free all boxes in a list
- *
- * @param[in] head	of the list to free.
- */
-void fr_value_box_list_free(fr_value_box_t **head)
-{
-	fr_value_box_t *v = *head, *next;
-
-	while (v) {
-		next = v->next;
-		talloc_free(v);
-		v = next;
-	}
-	*head = NULL;
-}
-
 /** Print the value of an attribute to a string
  *
  * @note return value should be checked with is_truncated.
