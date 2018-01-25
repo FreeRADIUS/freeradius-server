@@ -896,7 +896,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 
 		if (fr_value_box_from_str(n->mod, &n->mod->rhs->tmpl_value, &type, map->lhs->tmpl_da,
 					  map->rhs->name, map->rhs->len, map->rhs->quote, false)) {
-			RPEDEBUG("Assigning value to \"'%s\" failed", map->lhs->tmpl_da->name);
+			RPEDEBUG("Assigning value to \"%s\" failed", map->lhs->tmpl_da->name);
 			goto error;
 		}
 
@@ -947,7 +947,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 				if (fr_value_box_cast(n_vb, n_vb,
 						      map->cast ? map->cast : map->lhs->tmpl_da->type,
 						      map->lhs->tmpl_da, vb) < 0) {
-					RPEDEBUG("Assigning value to \"'%s\" failed", map->lhs->tmpl_da->name);
+					RPEDEBUG("Assigning value to \"%s\" failed", map->lhs->tmpl_da->name);
 					goto xlat_error;
 				}
 				talloc_free(vb);
@@ -1013,7 +1013,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 				if (fr_value_box_cast(n_vb, n_vb,
 						      map->cast ? map->cast : map->lhs->tmpl_da->type,
 						      map->lhs->tmpl_da, &vp->data) < 0) {
-					RPEDEBUG("Assigning value to \"'%s\" failed", map->lhs->tmpl_da->name);
+					RPEDEBUG("Assigning value to \"%s\" failed", map->lhs->tmpl_da->name);
 					goto attr_error;
 				}
 			} else {
