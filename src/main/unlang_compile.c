@@ -837,6 +837,17 @@ static bool pass2_fixup_update(unlang_group_t *g)
 	vp_map_t *map;
 
 	for (map = g->map; map != NULL; map = map->next) {
+		if (map->lhs->type == TMPL_TYPE_XLAT) {
+			rad_assert(map->lhs->tmpl_xlat == NULL);
+
+			/*
+			 *	FIXME: compile to attribute && handle
+			 *	the conversion in map_to_vp().
+			 */
+			if (!pass2_fixup_xlat(map->ci, &map->lhs, false, NULL)) {
+				return false;
+			}
+		}
 		if (map->rhs->type == TMPL_TYPE_XLAT) {
 			rad_assert(map->rhs->tmpl_xlat == NULL);
 
