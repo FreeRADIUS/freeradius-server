@@ -1312,6 +1312,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		nak:
 			while ((entry = FR_DLIST_FIRST(client->packets)) != NULL) {
 				saved = fr_ptr_to_type(dynamic_packet_t, entry, entry);
+				(void) talloc_get_type_abort(saved, dynamic_packet_t);
 
 				if (saved->timestamp == saved->track->timestamp) {
 					(void) fr_radius_tracking_entry_delete(inst->ft, saved->track);
@@ -1357,6 +1358,8 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 				proto_radius_udp_address_t *newaddress;
 
 				saved = fr_ptr_to_type(dynamic_packet_t, entry, entry);
+				(void) talloc_get_type_abort(saved, dynamic_packet_t);
+
 				fr_dlist_remove(&saved->entry);
 				fr_dlist_insert_tail(&inst->dynamic_clients.packets, &saved->entry);
 
@@ -1477,6 +1480,8 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		 */
 		while ((entry = FR_DLIST_FIRST(client->packets)) != NULL) {
 			saved = fr_ptr_to_type(dynamic_packet_t, entry, entry);
+			(void) talloc_get_type_abort(saved, dynamic_packet_t);
+
 			fr_dlist_remove(&saved->entry);
 			fr_dlist_insert_tail(&inst->dynamic_clients.packets, &saved->entry);
 
