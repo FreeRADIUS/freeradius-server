@@ -1089,7 +1089,7 @@ found:
 
 	case FR_TRACKING_CONFLICTING:
 		DEBUG3("CONFLICTING packet ID %d", buffer[1]);
-		return 0;	/* discard it */
+		break;
 
 	case FR_TRACKING_NEW:
 		DEBUG3("NEW packet");
