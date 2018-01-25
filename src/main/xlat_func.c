@@ -898,6 +898,94 @@ static ssize_t xlat_redundant(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size_t 
 	return 0;
 }
 
+static xlat_action_t xlat_concat(TALLOC_CTX *ctx, fr_cursor_t *out,
+				 REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				 fr_cursor_t *in)
+{
+	fr_value_box_t *result;
+	char *buff;
+
+	/*
+	 *	If there's no input, there's no output
+	 */
+	if (!fr_cursor_current(in)) return XLAT_ACTION_DONE;
+
+	/*
+	 *	Otherwise, join the boxes together commas
+	 *	FIXME It'd be nice to set a custom delimiter
+	 */
+	result = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false);
+	if (!result) {
+	error:
+		RPEDEBUG("Failed concatenating input");
+		return XLAT_ACTION_FAIL;
+	}
+
+	buff = fr_value_box_list_asprint(result, fr_cursor_head(in), ",", '\0');
+	if (!buff) goto error;
+
+	fr_value_box_strsteal(result, result, NULL, buff, true);	/* Fixme - It may not be tainted */
+
+	fr_cursor_insert(out, result);
+
+	return XLAT_ACTION_DONE;
+}
+
+static xlat_action_t xlat_bin(TALLOC_CTX *ctx, fr_cursor_t *out,
+			      REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+			      fr_cursor_t *in)
+{
+	fr_value_box_t	*result;
+	char		*buff = NULL, *p, *end;
+	uint8_t		*bin;
+	size_t		len, outlen;
+
+	/*
+	 *	If there's no input, there's no output
+	 */
+	if (!fr_cursor_current(in)) return XLAT_ACTION_DONE;
+
+	result = fr_value_box_alloc(ctx, FR_TYPE_OCTETS, NULL, false);
+	if (!result) {
+		RPEDEBUG("Failed converting input");
+	error:
+		talloc_free(buff);
+		return XLAT_ACTION_FAIL;
+	}
+
+	buff = fr_value_box_list_asprint(result, fr_cursor_head(in), NULL, '\0');
+	if (!buff) goto error;
+
+	len = talloc_array_length(buff) - 1;
+	if ((len > 1) && (len & 0x01)) {
+		REDEBUG("Input data length must be >1 and even, got %zu", len);
+		goto error;
+	}
+	end = buff + len;
+
+	/*
+	 *	Zero length octets string
+	 */
+	p = buff;
+	if ((p[0] == '0') && (p[1] == 'x')) p += 2;
+	if (p == end) return XLAT_ACTION_DONE;
+
+	result = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false);
+	if (!result) {
+		REDEBUG("Failed allocating output");
+		goto error;
+	}
+
+	outlen = len / 2;
+
+	bin = talloc_array(result, uint8_t, outlen);
+	fr_hex2bin(bin, outlen, p, end - p);
+	fr_value_box_memsteal(result, result, NULL, bin, true);		/* Fixme - It may not be tainted */
+	fr_cursor_insert(out, result);
+
+	return XLAT_ACTION_DONE;
+}
+
 
 static ssize_t xlat_load_balance(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size_t outlen,
 				 void const *mod_inst, UNUSED void const *xlat_inst,
@@ -1137,6 +1225,9 @@ int xlat_init(void)
 	c = xlat_func_find("debug");
 	rad_assert(c != NULL);
 	c->internal = true;
+
+	xlat_async_register(NULL, "concat", xlat_concat, NULL, 0, NULL, NULL, 0, NULL, NULL);
+	xlat_async_register(NULL, "bin", xlat_bin, NULL, 0, NULL, NULL, 0, NULL, NULL);
 
 	return 0;
 }
