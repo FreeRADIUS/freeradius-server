@@ -2412,7 +2412,7 @@ int fr_value_box_bstrndup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t c
  *	- 0 on success.
  * 	- -1 on failure.
  */
-int fr_value_box_bstrnappend(fr_value_box_t *dst, char const *src, size_t len, bool tainted)
+int fr_value_box_append_bstr(fr_value_box_t *dst, char const *src, size_t len, bool tainted)
 {
 	char *ptr, *nptr;
 	size_t nlen;
@@ -2420,7 +2420,7 @@ int fr_value_box_bstrnappend(fr_value_box_t *dst, char const *src, size_t len, b
 	if (len == 0) return 0;
 
 	if (dst->type != FR_TYPE_STRING) {
-		fr_strerror_printf("%s: Expected dst of type %s, got type %s", __FUNCTION__,
+		fr_strerror_printf("%s: Expected boxed value of type %s, got type %s", __FUNCTION__,
 				   fr_int2str(dict_attr_types, FR_TYPE_STRING, "<INVALID>"),
 				   fr_int2str(dict_attr_types, dst->type, "<INVALID>"));
 		return -1;
@@ -2648,7 +2648,7 @@ int fr_value_box_memdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t con
  *	- 0 on success.
  * 	- -1 on failure.
  */
-int fr_value_box_memappend(fr_value_box_t *dst, uint8_t const *src, size_t len, bool tainted)
+int fr_value_box_append_mem(fr_value_box_t *dst, uint8_t const *src, size_t len, bool tainted)
 {
 	uint8_t *ptr, *nptr;
 	size_t nlen;
@@ -2656,7 +2656,7 @@ int fr_value_box_memappend(fr_value_box_t *dst, uint8_t const *src, size_t len, 
 	if (len == 0) return 0;
 
 	if (dst->type != FR_TYPE_OCTETS) {
-		fr_strerror_printf("%s: Expected dst of type %s, got type %s", __FUNCTION__,
+		fr_strerror_printf("%s: Expected boxed value of type %s, got type %s", __FUNCTION__,
 				   fr_int2str(dict_attr_types, FR_TYPE_OCTETS, "<INVALID>"),
 				   fr_int2str(dict_attr_types, dst->type, "<INVALID>"));
 		return -1;
@@ -3626,7 +3626,7 @@ char *fr_value_box_list_asprint(TALLOC_CTX *ctx, fr_value_box_t const *head, cha
 	 *	If we're aggregating more values,
 	 *	allocate a temporary pool.
 	 */
-	pool = talloc_pool(NULL, 256);
+	pool = talloc_pool(NULL, 255);
 	if (delim) td = talloc_strdup(pool, delim);
 
 	while ((vb = vb->next)) {
@@ -3649,7 +3649,9 @@ char *fr_value_box_list_asprint(TALLOC_CTX *ctx, fr_value_box_t const *head, cha
 	return aggr;
 }
 
-/** Concatenate a list of value boxes together
+/** Concatenate a list of value boxes
+ *
+ * @note Will automatically cast all #fr_value_box_t to type specified.
  *
  * @param[in] ctx		to allocate new value buffer in.
  * @param[out] out		Where to write the resulting box.
@@ -3662,13 +3664,11 @@ char *fr_value_box_list_asprint(TALLOC_CTX *ctx, fr_value_box_t const *head, cha
  *	- -1 on failure.
  */
 int fr_value_box_list_concat(TALLOC_CTX *ctx,
-			     fr_value_box_t *out, fr_value_box_t *list, fr_type_t type,
-			     bool free_input, bool in_place)
+			     fr_value_box_t *out, fr_value_box_t *list, fr_type_t type, bool free_input)
 {
 	TALLOC_CTX		*pool;
 	fr_cursor_t		cursor;
 	fr_value_box_t const	*vb;
-	fr_value_box_t		*to_free;
 
 	if (!list) {
 		fr_strerror_printf("Invalid arguments.  List was NULL");
@@ -3681,7 +3681,7 @@ int fr_value_box_list_concat(TALLOC_CTX *ctx,
 		break;
 
 	default:
-		fr_strerror_printf("Invalid argument.  Can't concatenate %s types",
+		fr_strerror_printf("Invalid argument.  Can't concatenate boxes to type %s",
 				   fr_int2str(dict_attr_types, type, "<INVALID>"));
 		return -1;
 	}
@@ -3689,19 +3689,30 @@ int fr_value_box_list_concat(TALLOC_CTX *ctx,
 	fr_cursor_init(&cursor, &list);
 
 	/*
-	 *	Allow imploding in place...
+	 *	Allow concatenating in place
 	 */
-	if (!in_place) {
+	if (out == list) {
+		if (list->type != type) {
+			fr_value_box_t from_cast;
+			fr_value_box_t *next = out->next;
+
+			/*
+			 *	Two phase, as the casting code doesn't
+			 *	allow 'cast-in-place'.
+			 */
+			if (fr_value_box_cast(ctx, &from_cast, type, NULL, out) < 0) return -1;
+			if (fr_value_box_copy(ctx, out, &from_cast) < 0) return -1;
+			out->next = next;			/* Restore the next pointer */
+		}
+		fr_cursor_next(&cursor);
+	} else {
 		if (fr_value_box_cast(ctx, out, type, NULL, list) < 0) return -1;	/* Decomposes to copy */
 
 		if (free_input) {
-			to_free = fr_cursor_remove(&cursor);				/* Advances cursor */
-			talloc_free(to_free);
+			fr_cursor_free_item(&cursor);		/* Advances cursor */
 		} else {
 			fr_cursor_next(&cursor);
 		}
-	} else {
-		fr_cursor_next(&cursor);
 	}
 
 	/*
@@ -3719,7 +3730,7 @@ int fr_value_box_list_concat(TALLOC_CTX *ctx,
 	     	fr_value_box_t const *n;
 
 		if (vb->type != type) {
-			talloc_free_children(pool);			/* Clear out previous buffers */
+			talloc_free_children(pool);		/* Clear out previous buffers */
 			memset(&from_cast, 0, sizeof(from_cast));
 
 			if (fr_value_box_cast(pool, &from_cast, type, NULL, vb) < 0) {
@@ -3737,16 +3748,13 @@ int fr_value_box_list_concat(TALLOC_CTX *ctx,
 		 *	Append the next value
 		 */
 		if (type == FR_TYPE_STRING) {
-			if (fr_value_box_bstrnappend(out, n->vb_strvalue,
-						     n->vb_length, n->tainted) < 0) goto error;
+			if (fr_value_box_append_bstr(out, n->vb_strvalue, n->vb_length, n->tainted) < 0) goto error;
 		} else {
-			if (fr_value_box_memappend(out, n->vb_octets,
-						   n->vb_length, n->tainted) < 0) goto error;
+			if (fr_value_box_append_mem(out, n->vb_octets, n->vb_length, n->tainted) < 0) goto error;
 		}
 
 		if (free_input) {
-			to_free = fr_cursor_remove(&cursor);		/* Advances cursor */
-			talloc_free(to_free);
+			fr_cursor_free_item(&cursor);		/* Advances cursor */
 		} else {
 			fr_cursor_next(&cursor);
 		}
