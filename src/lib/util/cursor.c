@@ -357,14 +357,35 @@ void fr_cursor_insert(fr_cursor_t *cursor, void *v)
  */
 void fr_cursor_merge(fr_cursor_t *cursor, fr_cursor_t *to_append)
 {
-	void		*v;
+	void		*head = NULL, *next, *v;
 
 	/*
-	 *	We have to do it the expensive way, as to_append
-	 *	may use a custom iterator function, and so we only
-	 *	merge a subset of the items.
+	 *	Build the complete list (in reverse)
 	 */
-	while ((v = fr_cursor_remove(to_append))) fr_cursor_append(cursor, v);
+	while ((v = fr_cursor_remove(to_append))) {
+		*NEXT_PTR(v) = head;
+		head = v;
+	}
+
+	if (!head) return;
+
+	/*
+	 *	Now insert - The elements end up in
+	 *	the correct order without advancing
+	 *	the cursor.
+	 */
+	v = head;
+	if (cursor->current) {
+		do {
+			next = *NEXT_PTR(v);
+			fr_cursor_insert(cursor, v);
+		} while ((v = next));
+	} else {
+		do {
+			next = *NEXT_PTR(v);
+			fr_cursor_prepend(cursor, v);
+		} while ((v = next));
+	}
 }
 
 /** Remove the current item
