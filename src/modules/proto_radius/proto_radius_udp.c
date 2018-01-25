@@ -473,7 +473,7 @@ static int dynamic_client_packet_save(proto_radius_udp_t *inst, uint8_t *packet,
 	case FR_TRACKING_ERROR:
 	case FR_TRACKING_UNUSED:
 		rad_assert(0 == 1);
-		return 0;	/* shouldn't happen */
+		return -1;	/* shouldn't happen */
 
 		/*
 		 *	Retransmit of the same packet.  There's
@@ -490,7 +490,7 @@ static int dynamic_client_packet_save(proto_radius_udp_t *inst, uint8_t *packet,
 	case FR_TRACKING_UPDATED:
 		DEBUG3("UPDATED packet");
 		rad_assert(0 == 1);
-		return 0;
+		return -1;
 
 		/*
 		 *	We're NOT done the old packet, and have
