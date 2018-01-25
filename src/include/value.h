@@ -494,13 +494,18 @@ int		fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				      char const *src, ssize_t src_len, char quote, bool tainted);
 
 /*
- *	Printing
+ *	Lists
  */
-char		*fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quote);
-
 int		fr_value_box_list_concat(TALLOC_CTX *ctx,
 					 fr_value_box_t *out, fr_value_box_t *list,
 					 fr_type_t type, bool free_input);
+
+void		fr_value_box_list_free(fr_value_box_t **head);
+
+/*
+ *	Printing
+ */
+char		*fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quote);
 
 size_t		fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data, char quote);
 
