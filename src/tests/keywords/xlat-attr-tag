@@ -44,20 +44,12 @@ if ("%{tag:Tunnel-Server-Endpoint[6]}" != '') {
 	test_fail
 }
 
-if ("%{tag:control:Cleartext-Password}" != '') {
+if ("%{tag:control:Cleartext-Password[0]}" != '') {
 	test_fail
 }
 
 # Check that access attributes by tag works first
 if ("%{Tunnel-Server-Endpoint:2}" != '192.0.3.1') {
-	test_fail
-}
-
-if ("%{Tunnel-Server-Endpoint:2}" == '192.0.3.2') {
-	test_fail
-}
-
-if ("%{Tunnel-Server-Endpoint:1}" != '192.0.2.1') {
 	test_fail
 }
 
@@ -106,14 +98,14 @@ if ("%{Tunnel-Server-Endpoint[2]}" != '192.0.2.1') {
 # Assignment (xlat)
 #
 update request {
-	Tmp-String-0 += "%{Tunnel-Server-Endpoint:2}"		#0
-	Tmp-String-0 += "%{Tunnel-Server-Endpoint:2}"		#1
-	Tmp-String-0 += "%{Tunnel-Server-Endpoint:1}"		#2
+	Tmp-String-0 += "%{Tunnel-Server-Endpoint:2[0]}"	#0
+	Tmp-String-0 += "%{Tunnel-Server-Endpoint:2[0]}"	#1
+	Tmp-String-0 += "%{Tunnel-Server-Endpoint:1[0]}"	#2
 	Tmp-String-0 += "%{Tunnel-Server-Endpoint:2[0]}"	#3
 	Tmp-String-0 += "%{Tunnel-Server-Endpoint:2[1]}"	#4
 	Tmp-String-0 += "%{Tunnel-Server-Endpoint:0[0]}"	#5
 	Tmp-String-0 += "%{Tunnel-Server-Endpoint:0[1]}"	#6
-	Tmp-String-0 += "%{Tunnel-Server-Endpoint:0[2]}"	#7
+	Tmp-String-0 += "%{Tunnel-Server-Endpoint:0[2]}"	#7 - Empty
 	Tmp-String-0 += "%{Tunnel-Server-Endpoint[0]}"		#8
 	Tmp-String-0 += "%{Tunnel-Server-Endpoint[1]}"		#9
 	Tmp-String-0 += "%{Tunnel-Server-Endpoint[2]}"		#10
