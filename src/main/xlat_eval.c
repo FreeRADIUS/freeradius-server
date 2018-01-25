@@ -498,7 +498,7 @@ static const char xlat_spaces[] = "                                             
  */
 xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
 				     xlat_func_resume_t resume, xlat_exp_t const *exp,
-				     REQUEST *request, fr_cursor_t *result, void *rctx)
+				     REQUEST *request, fr_value_box_t *result, void *rctx)
 {
 	xlat_thread_inst_t	*thread_inst = xlat_thread_instance_find(exp);
 	xlat_action_t		xa;
@@ -510,7 +510,7 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	case XLAT_ACTION_DONE:
 		fr_cursor_next(out);		/* Wind to the start of this functions output */
-		RDEBUG2("EXPAND %%{%s:%pM}", exp->xlat->name, fr_cursor_head(result));
+		RDEBUG2("EXPAND %%{%s:%pM}", exp->xlat->name, result);
 		if (fr_cursor_current(out)) {
 			RDEBUG2("   --> %pM", fr_cursor_current(out));
 		} else {
@@ -519,7 +519,7 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
 		break;
 
 	case XLAT_ACTION_FAIL:
-		REDEBUG("EXPANSION FAILED %%{%s:%pM}", exp->xlat->name, fr_cursor_head(result));
+		REDEBUG("EXPANSION FAILED %%{%s:%pM}", exp->xlat->name, result);
 		break;
 	}
 
@@ -545,7 +545,7 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
 xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				     xlat_exp_t const **child, bool *alternate,
 				     REQUEST *request, xlat_exp_t const **in,
-				     fr_cursor_t *result)
+				     fr_value_box_t *result)
 {
 	xlat_exp_t const *node = *in;
 
@@ -561,8 +561,8 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			char		*result_str = NULL;
 			ssize_t		slen;
 
-			if (fr_cursor_head(result)) {
-				result_str = fr_value_box_list_asprint(NULL, fr_cursor_head(result), NULL, '\0');
+			if (result) {
+				result_str = fr_value_box_list_asprint(NULL, result, NULL, '\0');
 				if (!result_str) return XLAT_ACTION_FAIL;
 			}
 
@@ -612,7 +612,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			action = node->xlat->func.async(ctx, out, request, node->inst, thread_inst->data, result);
 			switch (action) {
 			case XLAT_ACTION_FAIL:
-				REDEBUG("EXPANSION FAILED %%{%s:%pM}", node->xlat->name, fr_cursor_head(result));
+				REDEBUG("EXPANSION FAILED %%{%s:%pM}", node->xlat->name, result);
 				/* FALL-THROUGH */
 
 			case XLAT_ACTION_PUSH_CHILD:
@@ -629,7 +629,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			 *	Print output if the function didn't yield
 			 *	else we need to print it in xlat_resume
 			 */
-			RDEBUG2("EXPAND %%{%s:%pM}", node->xlat->name, fr_cursor_head(result));
+			RDEBUG2("EXPAND %%{%s:%pM}", node->xlat->name, result);
 			if (fr_cursor_current(out)) {
 				RDEBUG2("   --> %pM", fr_cursor_head(out));
 			} else {
@@ -642,13 +642,16 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	case XLAT_ALTERNATE:
 	{
+		fr_cursor_t cursor;
+		fr_cursor_init(&cursor, &result);
+
 		rad_assert(alternate);
 		rad_assert(child);
 
 		/*
 		 *	No result from the first child, try the alternate
 		 */
-		if (!fr_cursor_head(result)) {
+		if (!result) {
 			/*
 			 *	Already tried the alternate
 			 */
@@ -665,7 +668,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 			return XLAT_ACTION_PUSH_CHILD;
 		}
-		fr_cursor_merge(out, result);
+		fr_cursor_merge(out, &cursor);
 	}
 		break;
 

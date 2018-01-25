@@ -54,8 +54,6 @@ typedef struct {
 	 */
 	fr_value_box_t		*rhead;				//!< Head of the result of a nested
 								///< expansion.
-	fr_cursor_t		result;				//!< Result cursor, mainly useful for
-								///< asynchronous xlat functions.
 	bool			alternate;			//!< record which alternate branch we
 								///< previously took.
 } unlang_frame_state_xlat_t;
@@ -129,9 +127,8 @@ static unlang_action_t xlat_unlang(REQUEST *request,
 	xlat_action_t			xa;
 
 	if (frame->repeat) {
-		fr_cursor_init(&xs->result, &xs->rhead);
 		xa = xlat_frame_eval_repeat(xs->ctx, &xs->values, &child,
-					    &xs->alternate, request, &xs->exp, &xs->result);
+					    &xs->alternate, request, &xs->exp, xs->rhead);
 	} else {
 		xa = xlat_frame_eval(xs->ctx, &xs->values, &child, request, &xs->exp);
 	}
@@ -141,6 +138,14 @@ static unlang_action_t xlat_unlang(REQUEST *request,
 		rad_assert(child);
 
 		frame->repeat = true;
+
+		/*
+		 *	Clear out the results of any previous expansions
+		 *	at this level.  A frame may be used to evaluate
+		 *	multiple sibling nodes.
+		 */
+		fr_value_box_list_free(&xs->rhead);
+
 		xlat_unlang_push(xs->ctx, &xs->rhead, request, child, false);
 		return UNLANG_ACTION_PUSHED_CHILD;
 
@@ -236,7 +241,7 @@ static unlang_action_t xlat_unlang_resume(REQUEST *request, rlm_rcode_t *presult
 	unlang_frame_state_xlat_t	*xs = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
 	xlat_action_t			xa;
 
-	xa = xlat_frame_eval_resume(xs->ctx, &xs->values, mr->callback, xs->exp, request, &xs->result, rctx);
+	xa = xlat_frame_eval_resume(xs->ctx, &xs->values, mr->callback, xs->exp, request, xs->rhead, rctx);
 	switch (xa) {
 	case XLAT_ACTION_YIELD:
 		*presult = RLM_MODULE_YIELD;

@@ -180,7 +180,7 @@ typedef struct {
 
 static xlat_action_t rest_xlat_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
 				      REQUEST *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
-				      UNUSED fr_cursor_t *in, void *rctx)
+				      UNUSED fr_value_box_t *in, void *rctx)
 {
 	rest_xlat_thread_inst_t		*xti = talloc_get_type_abort(xlat_thread_inst, rest_xlat_thread_inst_t);
 	rlm_rest_t const		*mod_inst = xti->inst;
@@ -256,7 +256,7 @@ finish:
  */
 static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 			       REQUEST *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
-			       fr_cursor_t *in)
+			       fr_value_box_t *in)
 {
 	rest_xlat_thread_inst_t		*xti = talloc_get_type_abort(xlat_thread_inst, rest_xlat_thread_inst_t);
 	rlm_rest_t const		*mod_inst = xti->inst;
@@ -268,18 +268,16 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	char				*uri = NULL;
 	char const			*p = NULL, *q;
 	http_method_t			method;
-	fr_value_box_t			*head;
 
 	/* There are no configurable parameters other than the URI */
 	rlm_rest_xlat_rctx_t		*rctx;
 	rlm_rest_section_t		*section;
 
-	head = fr_cursor_head(in);
-	if (head->type != FR_TYPE_STRING) {
+	if (in->type != FR_TYPE_STRING) {
 		REDEBUG("rest xlat only accepts string inputs");
 		return XLAT_ACTION_FAIL;
 	}
-	p = head->vb_strvalue;
+	p = in->vb_strvalue;
 
 	MEM(rctx = talloc(request, rlm_rest_xlat_rctx_t));
 	section = &rctx->section;

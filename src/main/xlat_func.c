@@ -900,7 +900,7 @@ static ssize_t xlat_redundant(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size_t 
 
 static xlat_action_t xlat_concat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				 REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				 fr_cursor_t *in)
+				 fr_value_box_t *in)
 {
 	fr_value_box_t *result;
 	char *buff;
@@ -908,7 +908,7 @@ static xlat_action_t xlat_concat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	/*
 	 *	If there's no input, there's no output
 	 */
-	if (!fr_cursor_current(in)) return XLAT_ACTION_DONE;
+	if (!in) return XLAT_ACTION_DONE;
 
 	/*
 	 *	Otherwise, join the boxes together commas
@@ -921,7 +921,7 @@ static xlat_action_t xlat_concat(TALLOC_CTX *ctx, fr_cursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	buff = fr_value_box_list_asprint(result, fr_cursor_head(in), ",", '\0');
+	buff = fr_value_box_list_asprint(result, in, ",", '\0');
 	if (!buff) goto error;
 
 	fr_value_box_strsteal(result, result, NULL, buff, true);	/* Fixme - It may not be tainted */
@@ -933,7 +933,7 @@ static xlat_action_t xlat_concat(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 static xlat_action_t xlat_bin(TALLOC_CTX *ctx, fr_cursor_t *out,
 			      REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-			      fr_cursor_t *in)
+			      fr_value_box_t *in)
 {
 	fr_value_box_t	*result;
 	char		*buff = NULL, *p, *end;
@@ -943,7 +943,7 @@ static xlat_action_t xlat_bin(TALLOC_CTX *ctx, fr_cursor_t *out,
 	/*
 	 *	If there's no input, there's no output
 	 */
-	if (!fr_cursor_current(in)) return XLAT_ACTION_DONE;
+	if (!in) return XLAT_ACTION_DONE;
 
 	result = fr_value_box_alloc(ctx, FR_TYPE_OCTETS, NULL, false);
 	if (!result) {
@@ -953,7 +953,7 @@ static xlat_action_t xlat_bin(TALLOC_CTX *ctx, fr_cursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	buff = fr_value_box_list_asprint(result, fr_cursor_head(in), NULL, '\0');
+	buff = fr_value_box_list_asprint(result, in, NULL, '\0');
 	if (!buff) goto error;
 
 	len = talloc_array_length(buff) - 1;
