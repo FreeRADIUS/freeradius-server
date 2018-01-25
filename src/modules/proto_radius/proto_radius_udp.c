@@ -740,6 +740,10 @@ static proto_radius_udp_t *mod_clone(proto_radius_udp_t *inst, proto_radius_udp_
 	child->child.src_ipaddr = address->src_ipaddr;
 	child->child.src_port = address->src_port;
 
+	child->dynamic_clients.clients = NULL;
+	child->dynamic_clients.expired = NULL;
+	child->dynamic_clients.trie = NULL;
+
 	child->child.client = client_clone(child, address->client);
 	if (!child->child.client) {
 		ERROR("Failed cloning client");
@@ -2073,8 +2077,6 @@ static int mod_detach(void *instance)
 
 	close(inst->sockfd);
 
-	if (inst->dynamic_clients.clients) TALLOC_FREE(inst->dynamic_clients.clients);
-
 	/*
 	 *	Clean up extra tracking information when using
 	 *	connected sockets.
@@ -2103,6 +2105,12 @@ static int mod_detach(void *instance)
 			(void) fr_hash_table_delete(inst->child.master->master.ht, inst);
 			PTHREAD_MUTEX_UNLOCK(&inst->master.mutex);
 		}
+	}
+
+	if (inst->dynamic_clients_is_set) {
+		TALLOC_FREE(inst->dynamic_clients.clients);
+		TALLOC_FREE(inst->dynamic_clients.expired);
+		TALLOC_FREE(inst->dynamic_clients.trie);
 	}
 
 	return 0;
