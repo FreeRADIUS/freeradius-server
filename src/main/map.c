@@ -653,6 +653,7 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, v
 				     true, true, EXEC_TIMEOUT);
 	talloc_free(expanded);
 	if (result != 0) {
+		REDEBUG("Exec failed with code (%i)", result);
 		talloc_free(output_pairs);
 		return -1;
 	}
@@ -671,10 +672,14 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, v
 		VALUE_PAIR *vp;
 
 		vp = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
-		if (!vp) return -1;
+		if (!vp) {
+			REDEBUG("Out of memory");
+			return -1;
+		}
 		vp->op = map->op;
 		vp->tag = map->lhs->tmpl_tag;
 		if (fr_pair_value_from_str(vp, answer, -1) < 0) {
+			RPEDEBUG("Failed parsing exec output");
 			fr_pair_list_free(&vp);
 			return -2;
 		}
@@ -685,9 +690,8 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, v
 
 	default:
 		rad_assert(0);
+		return -1;
 	}
-
-	return -1;
 }
 
 /** Allocate a map for map_to_attr_value
@@ -697,18 +701,19 @@ static inline vp_list_mod_t *map_list_mod_afrom_map(TALLOC_CTX *ctx, vp_map_t co
 {
 	vp_list_mod_t *n;
 
-	n = talloc(ctx, vp_list_mod_t);
+	n = list_mod_alloc(ctx);
 	if (!n) return NULL;
 
 	n->map = map;
-
 	n->mod = map_alloc(n);
 	if (!n->mod) return NULL;
+
+	n->next = NULL;
 
 	n->mod->lhs = map->lhs;
 	n->mod->op = map->op;
 	n->mod->rhs = tmpl_alloc(n->mod, TMPL_TYPE_DATA, NULL, -1,
-				 map->rhs->tmpl_da->type == FR_TYPE_STRING ? T_DOUBLE_QUOTED_STRING : T_BARE_WORD);
+				 map->lhs->tmpl_da->type == FR_TYPE_STRING ? T_DOUBLE_QUOTED_STRING : T_BARE_WORD);
 	if (!n->mod->rhs) {
 		talloc_free(n);
 		return NULL;
