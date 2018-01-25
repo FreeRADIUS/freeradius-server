@@ -35,7 +35,7 @@ update request {
 #  IPv4 address to IPv6 address
 #
 update control {
-	Tmp-Cast-IPv6addr := &Tmp-Cast-IPaddr
+	Tmp-Cast-IPv6addr[0] := &Tmp-Cast-IPaddr[0]
 }
 
 if (&control:Tmp-Cast-IPv6addr != ::ffff:203.0.113.1) {
@@ -46,7 +46,7 @@ if (&control:Tmp-Cast-IPv6addr != ::ffff:203.0.113.1) {
 #  IPv6 address to IPv4 address
 #
 update control {
-	Tmp-Cast-IPaddr := &control:Tmp-Cast-IPv6addr
+	Tmp-Cast-IPaddr[0] := &control:Tmp-Cast-IPv6addr[0]
 }
 
 if (&control:Tmp-Cast-IPaddr != 203.0.113.1) {
@@ -57,7 +57,7 @@ if (&control:Tmp-Cast-IPaddr != 203.0.113.1) {
 #  IPv4 prefix to IPv6 prefix
 #
 update control {
-	Tmp-Cast-IPv6Prefix := &Tmp-Cast-IPv4Prefix
+	Tmp-Cast-IPv6Prefix[0] := &Tmp-Cast-IPv4Prefix[0]
 }
 
 if (&control:Tmp-Cast-IPv6Prefix != ::ffff:203.0.113.0/120) {
@@ -68,7 +68,7 @@ if (&control:Tmp-Cast-IPv6Prefix != ::ffff:203.0.113.0/120) {
 #  IPv6 prefix to IPv4 prefix
 #
 update control {
-	Tmp-Cast-IPv4Prefix := &control:Tmp-Cast-IPv6Prefix
+	Tmp-Cast-IPv4Prefix[0] := &control:Tmp-Cast-IPv6Prefix[0]
 }
 
 if (&control:Tmp-Cast-IPv4Prefix != 203.0.113.1/24) {
@@ -79,7 +79,7 @@ if (&control:Tmp-Cast-IPv4Prefix != 203.0.113.1/24) {
 #  IPv4 prefix (32) to IPv6 address
 #
 update control {
-	Tmp-Cast-IPv6Addr := &Tmp-Cast-IPv4Prefix[1]
+	Tmp-Cast-IPv6Addr[0] := &Tmp-Cast-IPv4Prefix[1]
 }
 
 if (&control:Tmp-Cast-IPv6Addr != ::ffff:203.0.113.1) {
@@ -90,7 +90,7 @@ if (&control:Tmp-Cast-IPv6Addr != ::ffff:203.0.113.1) {
 #  IPv6 prefix (128) to IPv4 address
 #
 update control {
-	Tmp-Cast-Ipaddr := &Tmp-Cast-IPv6Prefix[1]
+	Tmp-Cast-Ipaddr[0] := &Tmp-Cast-IPv6Prefix[1]
 }
 
 if (&control:Tmp-Cast-Ipaddr != 203.0.113.1/32) {
@@ -101,7 +101,7 @@ if (&control:Tmp-Cast-Ipaddr != 203.0.113.1/32) {
 #  IPv4 address to IPv6 prefix (128)
 #
 update control {
-	Tmp-Cast-IPv6Prefix := &Tmp-Cast-Ipaddr
+	Tmp-Cast-IPv6Prefix[0] := &Tmp-Cast-Ipaddr[0]
 }
 
 if (&control:Tmp-Cast-IPv6Prefix != ::ffff:203.0.113.1/128) {
@@ -112,7 +112,7 @@ if (&control:Tmp-Cast-IPv6Prefix != ::ffff:203.0.113.1/128) {
 #  IPv6 address to IPv4 prefix (32)
 #
 update control {
-	Tmp-Cast-IPv4Prefix := &Tmp-Cast-IPv6Addr[1]
+	Tmp-Cast-IPv4Prefix[0] := &Tmp-Cast-IPv6Addr[1]
 }
 
 if (&control:Tmp-Cast-IPv4Prefix != 203.0.113.1/32) {
@@ -123,7 +123,7 @@ if (&control:Tmp-Cast-IPv4Prefix != 203.0.113.1/32) {
 #  IPv4 address to IPv4 prefix (32)
 #
 update control {
-	Tmp-Cast-IPv4Prefix := &Tmp-Cast-Ipaddr
+	Tmp-Cast-IPv4Prefix[0] := &Tmp-Cast-Ipaddr[0]
 }
 
 if (&control:Tmp-Cast-IPv4Prefix != 203.0.113.1/32) {
@@ -134,7 +134,7 @@ if (&control:Tmp-Cast-IPv4Prefix != 203.0.113.1/32) {
 #  IPv6 address to IPv6 prefix (128)
 #
 update control {
-	Tmp-Cast-IPv6Prefix := Tmp-Cast-Ipv6addr
+	Tmp-Cast-IPv6Prefix[0] := Tmp-Cast-Ipv6addr[0]
 }
 
 if (&control:Tmp-Cast-IPv6Prefix != 2001:DB8::1/128) {
@@ -145,7 +145,7 @@ if (&control:Tmp-Cast-IPv6Prefix != 2001:DB8::1/128) {
 #  IPv4 prefix (32) to IPv4 address
 #
 update control {
-	Tmp-Cast-Ipaddr := &Tmp-Cast-IPv4Prefix[1]
+	Tmp-Cast-Ipaddr[0] := &Tmp-Cast-IPv4Prefix[1]
 }
 
 if (&control:Tmp-Cast-Ipaddr != 203.0.113.1) {
@@ -156,7 +156,7 @@ if (&control:Tmp-Cast-Ipaddr != 203.0.113.1) {
 #  IPv6 prefix (128) to IPv6 address
 #
 update control {
-	Tmp-Cast-IPv6Addr := &Tmp-Cast-IPv6Prefix[1]
+	Tmp-Cast-IPv6Addr[0] := &Tmp-Cast-IPv6Prefix[1]
 }
 
 if (&control:Tmp-Cast-IPv6Addr != ::ffff:203.0.113.1) {
@@ -173,12 +173,12 @@ if (&control:Tmp-Cast-IPv6Addr != ::ffff:203.0.113.1) {
 redundant {
 	group {
 		update control {
-			Tmp-Cast-IPv6Addr := Tmp-Cast-IPv6Prefix
+			Tmp-Cast-IPv6Addr[0] := Tmp-Cast-IPv6Prefix[0]
 		}
 		test_fail
 	}
 	group {
-		if ("%{Module-Failure-Message}" != 'Attribute conversion failed: Invalid cast from ipv6prefix to ipv6addr.  Only /128 (not /32) prefixes may be cast to IP address types') {
+		if ("%{Module-Failure-Message}" != 'Assigning value to "Tmp-Cast-ipv6addr" failed: Invalid cast from ipv6prefix to ipv6addr.  Only /128 (not /32) prefixes may be cast to IP address types') {
 			test_fail
 		}
 		update request {
@@ -194,12 +194,12 @@ redundant {
 redundant {
 	group {
 		update control {
-			Tmp-Cast-Ipaddr := &Tmp-Cast-IPv6Prefix[2]
+			Tmp-Cast-Ipaddr[0] := &Tmp-Cast-IPv6Prefix[2]
 		}
 		test_fail
 	}
 	group {
-		if ("%{Module-Failure-Message}" != 'Attribute conversion failed: Invalid cast from ipv6prefix to ipaddr.  Only /128 (not /64) prefixes may be cast to IP address types') {
+		if ("%{Module-Failure-Message}" != 'Assigning value to "Tmp-Cast-ipaddr" failed: Invalid cast from ipv6prefix to ipaddr.  Only /128 (not /64) prefixes may be cast to IP address types') {
 			test_fail
 		}
 		update request {
@@ -215,12 +215,12 @@ redundant {
 redundant {
 	group {
 		update control {
-			Tmp-Cast-Ipv4Prefix := &Tmp-Cast-IPv6Prefix[2]
+			Tmp-Cast-Ipv4Prefix[0] := &Tmp-Cast-IPv6Prefix[2]
 		}
 		test_fail
 	}
 	group {
-		if ("%{Module-Failure-Message}" != 'Attribute conversion failed: Invalid cast from ipv6prefix to ipv4prefix.  No IPv4-IPv6 mapping prefix') {
+		if ("%{Module-Failure-Message}" != 'Assigning value to "Tmp-Cast-ipv4prefix" failed: Invalid cast from ipv6prefix to ipv4prefix.  No IPv4-IPv6 mapping prefix') {
 			test_fail
 		}
 		update request {
@@ -236,12 +236,12 @@ redundant {
 redundant {
 	group {
 		update control {
-			Tmp-Cast-IPv6Addr := &Tmp-Cast-IPv4Prefix
+			Tmp-Cast-IPv6Addr[0] := &Tmp-Cast-IPv4Prefix[0]
 		}
 		test_fail
 	}
 	group {
-		if ("%{Module-Failure-Message}" != 'Attribute conversion failed: Invalid cast from ipv4prefix to ipv6addr.  Only /32 (not /24) prefixes may be cast to IP address types') {
+		if ("%{Module-Failure-Message}" != 'Assigning value to "Tmp-Cast-ipv6addr" failed: Invalid cast from ipv4prefix to ipv6addr.  Only /32 (not /24) prefixes may be cast to IP address types') {
 			test_fail
 		}
 		update request {
@@ -257,12 +257,12 @@ redundant {
 redundant {
 	group {
 		update control {
-			Tmp-Cast-Ipaddr := &Tmp-Cast-IPv4Prefix
+			Tmp-Cast-Ipaddr[0] := &Tmp-Cast-IPv4Prefix[0]
 		}
 		test_fail
 	}
 	group {
-		if ("%{Module-Failure-Message}" != 'Attribute conversion failed: Invalid cast from ipv4prefix to ipaddr.  Only /32 (not 24/) prefixes may be cast to IP address types') {
+		if ("%{Module-Failure-Message}" != 'Assigning value to "Tmp-Cast-ipaddr" failed: Invalid cast from ipv4prefix to ipaddr.  Only /32 (not 24/) prefixes may be cast to IP address types') {
 			test_fail
 		}
 		update request {
@@ -278,12 +278,12 @@ redundant {
 redundant {
 	group {
 		update control {
-			Tmp-Cast-Ipaddr := &Tmp-Cast-IPv6Prefix
+			Tmp-Cast-Ipaddr[0] := &Tmp-Cast-IPv6Prefix[0]
 		}
 		test_fail
 	}
 	group {
-		if ("%{Module-Failure-Message}" != 'Attribute conversion failed: Invalid cast from ipv6prefix to ipaddr.  Only /128 (not /32) prefixes may be cast to IP address types') {
+		if ("%{Module-Failure-Message}" != 'Assigning value to "Tmp-Cast-ipaddr" failed: Invalid cast from ipv6prefix to ipaddr.  Only /128 (not /32) prefixes may be cast to IP address types') {
 			test_fail
 		}
 		update request {
@@ -299,12 +299,12 @@ redundant {
 redundant {
 	group {
 		update control {
-			Tmp-Cast-IPv4Prefix := &Tmp-Cast-IPv6Prefix
+			Tmp-Cast-IPv4Prefix[0] := &Tmp-Cast-IPv6Prefix[0]
 		}
 		test_fail
 	}
 	group {
-		if ("%{Module-Failure-Message}" != 'Attribute conversion failed: Invalid cast from ipv6prefix to ipv4prefix.  No IPv4-IPv6 mapping prefix') {
+		if ("%{Module-Failure-Message}" != 'Assigning value to "Tmp-Cast-ipv4prefix" failed: Invalid cast from ipv6prefix to ipv4prefix.  No IPv4-IPv6 mapping prefix') {
 			test_fail
 		}
 		update request {
@@ -320,12 +320,12 @@ redundant {
 redundant {
 	group {
 		update control {
-			Tmp-Cast-Ipaddr := &Tmp-Cast-IPv6Addr
+			Tmp-Cast-Ipaddr[0] := &Tmp-Cast-IPv6Addr[0]
 		}
 		test_fail
 	}
 	group {
-		if ("%{Module-Failure-Message}" != 'Attribute conversion failed: Invalid cast from ipv6addr to ipaddr.  No IPv4-IPv6 mapping prefix') {
+		if ("%{Module-Failure-Message}" != 'Assigning value to "Tmp-Cast-ipaddr" failed: Invalid cast from ipv6addr to ipaddr.  No IPv4-IPv6 mapping prefix') {
 			test_fail
 		}
 		update request {
@@ -341,12 +341,12 @@ redundant {
 redundant {
 	group {
 		update control {
-			Tmp-Cast-IPv4Prefix := &Tmp-Cast-IPv6Addr
+			Tmp-Cast-IPv4Prefix[0] := &Tmp-Cast-IPv6Addr[0]
 		}
 		test_fail
 	}
 	group {
-		if ("%{Module-Failure-Message}" != 'Attribute conversion failed: Invalid cast from ipv6addr to ipv4prefix.  No IPv4-IPv6 mapping prefix') {
+		if ("%{Module-Failure-Message}" != 'Assigning value to "Tmp-Cast-ipv4prefix" failed: Invalid cast from ipv6addr to ipv4prefix.  No IPv4-IPv6 mapping prefix') {
 			test_fail
 		}
 		update request {
