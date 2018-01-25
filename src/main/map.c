@@ -174,17 +174,17 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
  *
  * Return must be freed with talloc_free
  *
- * @param[in] ctx for talloc.
- * @param[in] out Where to write the pointer to the new #vp_map_t.
- * @param[in] cp to convert to map.
- * @param[in] dst_request_def The default request to insert unqualified
- *	attributes into.
- * @param[in] dst_list_def The default list to insert unqualified attributes
- *	into.
- * @param[in] src_request_def The default request to resolve attribute
- *	references in.
- * @param[in] src_list_def The default list to resolve unqualified attributes
- *	in.
+ * @param[in] ctx		for talloc.
+ * @param[in] out		Where to write the pointer to the new #vp_map_t.
+ * @param[in] cp		to convert to map.
+ * @param[in] dst_request_def	The default request to insert unqualified
+ *				attributes into.
+ * @param[in] dst_list_def	The default list to insert unqualified attributes
+ *				into.
+ * @param[in] src_request_def	The default request to resolve attribute
+ *				references in.
+ * @param[in] src_list_def	The default list to resolve unqualified attributes
+ *				in.
  * @return
  *	- #vp_map_t if successful.
  *	- NULL on error.
@@ -249,7 +249,6 @@ int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 			cf_log_perr(cp, "Failed creating attribute %s", map->lhs->name);
 			goto error;
 		}
-
 		break;
 	}
 
