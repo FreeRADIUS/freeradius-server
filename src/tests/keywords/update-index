@@ -4,13 +4,13 @@
 #  A more generic "update" mechanism
 #
 update {
-	control:Cleartext-Password := 'hello'
+	&control:Cleartext-Password := 'hello'
 }
 
 update {
-	control:Reply-Message += 'a'
-	control:Reply-Message += 'b'
-	control:Reply-Message += 'c'
+	&control:Reply-Message += 'a'
+	&control:Reply-Message += 'b'
+	&control:Reply-Message += 'c'
 }
 
 if ((&control:Reply-Message[0] != 'a') || (&control:Reply-Message[1] != 'b') || (&control:Reply-Message[2] != 'c')) {
