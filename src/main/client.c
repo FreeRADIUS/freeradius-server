@@ -410,12 +410,8 @@ RADCLIENT *client_find(RADCLIENT_LIST const *clients, fr_ipaddr_t const *ipaddr,
 
 		my_client.ipaddr = *ipaddr;
 		fr_ipaddr_mask(&my_client.ipaddr, i);
-
-		DEBUG("CHECKING prefix %d", i);
-
 		client = rbtree_finddata(clients->tree[i], &my_client);
 		if (client) {
-			DEBUG("FOUND CLIENT %s", client->shortname);
 			return client;
 		}
 	}
