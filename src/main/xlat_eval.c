@@ -564,6 +564,8 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			if (result) {
 				result_str = fr_value_box_list_asprint(NULL, result, NULL, '\0');
 				if (!result_str) return XLAT_ACTION_FAIL;
+			} else {
+				result_str = talloc_typed_strdup(NULL, "");
 			}
 
 			if (node->xlat->buf_len > 0) {
