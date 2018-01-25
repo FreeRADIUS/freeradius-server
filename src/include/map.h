@@ -44,25 +44,27 @@ extern "C" {
  * @see vp_tmpl_t
  */
 typedef struct vp_map {
-	vp_tmpl_t		*lhs;	//!< Typically describes the attribute to add, modify or compare.
-	vp_tmpl_t		*rhs;   //!< Typically describes a literal value or a src attribute to copy or compare.
+	vp_tmpl_t		*lhs;		//!< Typically describes the attribute to add, modify or compare.
+	vp_tmpl_t		*rhs;   	//!< Typically describes a literal value or a src attribute
+						///< to copy or compare.
 
-	FR_TOKEN		op; 	//!< The operator that controls insertion of the dst attribute.
-	fr_type_t		cast;	//!< Cast value to this type.
+	FR_TOKEN		op; 		//!< The operator that controls insertion of the dst attribute.
+	fr_type_t		cast;		//!< Cast value to this type.
 
-	CONF_ITEM		*ci;	//!< Config item that the map was created from. Mainly used for
-					//!< logging validation errors.
+	CONF_ITEM		*ci;		//!< Config item that the map was created from. Mainly used for
+						//!< logging validation errors.
 
-	struct vp_map		*next;	//!< The next valuepair map.
+	struct vp_map		*next;		//!< The next valuepair map.
 } vp_map_t;
 
 /** A list modification
  *
  */
 typedef struct vp_list_mod {
-	vp_map_t const		*map;	//!< Original map describing the change to be made.
-	vp_map_t		*mod;	//!< New map containing the destination (LHS) and
-					///< values (RHS).
+	vp_map_t const		*map;		//!< Original map describing the change to be made.
+
+	vp_map_t		*mod;		//!< New map containing the destination (LHS) and
+						///< values (RHS).
 	struct vp_list_mod	*next;
 } vp_list_mod_t;
 
