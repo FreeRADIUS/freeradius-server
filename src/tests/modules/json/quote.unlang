@@ -4,6 +4,8 @@
 
 update request {
 	&Tmp-String-0 := 'foo/bar'
+}
+update request {
 	&Tmp-String-1 := "%{jsonquote:%{Tmp-String-0}}"
 }
 
