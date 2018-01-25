@@ -558,7 +558,7 @@ void *dl_by_name(char const *name)
 
 		fr_strerror();
 
-		ctx = paths = talloc_strdup(NULL, search_path);
+		ctx = paths = talloc_typed_strdup(NULL, search_path);
 		while ((path = strsep(&paths, ":")) != NULL) {
 			/*
 			 *	Trim the trailing slash

@@ -168,7 +168,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 			fr_pair_value_snprint(buffer + n, sizeof(buffer) - n, vp, shell_escape ? '"' : 0);
 
 			DEBUG3("export %s", buffer);
-			envp[envlen++] = talloc_strdup(input_ctx, buffer);
+			envp[envlen++] = talloc_typed_strdup(input_ctx, buffer);
 		}
 
 		fr_pair_cursor_init(&cursor, radius_list(request, PAIR_LIST_CONTROL));

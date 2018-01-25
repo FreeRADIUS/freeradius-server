@@ -295,7 +295,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt);
    RADIUS_LIST_AND_CTX(ctx, head, request, CURRENT_REQUEST, PAIR_LIST_REQUEST);
    if (!list) return -1; // error
 
-   value.strvalue = talloc_strdup(NULL, "my new username");
+   value.strvalue = talloc_typed_strdup(NULL, "my new username");
    value.length = talloc_array_length(value.strvalue) - 1;
 
    if (fr_pair_update_by_num(ctx, head, FR_USERNAME, 0, TAG_ANY, FR_TYPE_STRING, &value) < 0) return -1; // error

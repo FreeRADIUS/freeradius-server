@@ -860,7 +860,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 		return NULL;
 	}
 
-	mi->name = talloc_strdup(mi, inst_name);
+	mi->name = talloc_typed_strdup(mi, inst_name);
 
 	/*
 	 *	Remember the module for later.

@@ -216,7 +216,7 @@ static int exfile_open_mkdir(exfile_t *ef, char const *filename, mode_t permissi
 		 *	Maybe the directory doesn't exist.  Try to
 		 *	create it.
 		 */
-		dir = talloc_strdup(ef, filename);
+		dir = talloc_typed_strdup(ef, filename);
 		if (!dir) return -1;
 		p = strrchr(dir, FR_DIR_SEP);
 		if (!p) {
@@ -372,7 +372,7 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 	i = unused;
 
 	ef->entries[i].hash = hash;
-	ef->entries[i].filename = talloc_strdup(ef->entries, filename);
+	ef->entries[i].filename = talloc_typed_strdup(ef->entries, filename);
 	ef->entries[i].fd = -1;
 
 reopen:

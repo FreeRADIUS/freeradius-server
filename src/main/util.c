@@ -1230,7 +1230,7 @@ char *rad_asprint_uid(TALLOC_CTX *ctx, uid_t uid)
 	char *out;
 
 	if (rad_getpwuid(ctx, &result, uid) < 0) return NULL;
-	out = talloc_strdup(ctx, result->pw_name);
+	out = talloc_typed_strdup(ctx, result->pw_name);
 	talloc_free(result);
 
 	return out;
@@ -1249,7 +1249,7 @@ char *rad_asprint_gid(TALLOC_CTX *ctx, uid_t gid){
 	char *out;
 
 	if (rad_getgrgid(ctx, &result, gid) < 0) return NULL;
-	out = talloc_strdup(ctx, result->gr_name);
+	out = talloc_typed_strdup(ctx, result->gr_name);
 	talloc_free(result);
 
 	return out;

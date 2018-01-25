@@ -658,7 +658,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 						return NULL;
 					}
 				} else {
-					subst = talloc_strdup(NULL, "(null)");
+					subst = talloc_typed_strdup(NULL, "(null)");
 				}
 
 			do_splice:

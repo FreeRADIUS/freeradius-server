@@ -526,7 +526,7 @@ static int switch_users(CONF_SECTION *cs)
 		 *	The freeradius user should be the only one
 		 *	allowed to write to this directory however.
 		 */
-		my_dir = talloc_strdup(NULL, run_dir);
+		my_dir = talloc_typed_strdup(NULL, run_dir);
 		if (rad_mkdir(my_dir, 0755, main_config.server_uid, main_config.server_gid) < 0) {
 			DEBUG("Failed to create run_dir %s: %s",
 			      my_dir, strerror(errno));
@@ -543,7 +543,7 @@ static int switch_users(CONF_SECTION *cs)
 		 *	mean the actual files should be world
 		 *	readable.
 		 */
-		my_dir = talloc_strdup(NULL, radlog_dir);
+		my_dir = talloc_typed_strdup(NULL, radlog_dir);
 		if (rad_mkdir(my_dir, 0755, main_config.server_uid, main_config.server_gid) < 0) {
 			DEBUG("Failed to create logdir %s: %s",
 			      my_dir, strerror(errno));

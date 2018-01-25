@@ -743,7 +743,7 @@ void _cf_filename_set(CONF_ITEM *ci, char const *filename)
 {
 	talloc_const_free(ci->filename);
 
-	ci->filename = talloc_strdup(ci, filename);
+	ci->filename = talloc_typed_strdup(ci, filename);
 }
 
 /** Set the line number of a #CONF_ITEM

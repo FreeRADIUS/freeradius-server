@@ -181,7 +181,7 @@ static rlm_csv_entry_t *file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno
 		 *	This is the key field.
 		 */
 		if (i == inst->key_field) {
-			e->key = talloc_strdup(e, p);
+			e->key = talloc_typed_strdup(e, p);
 			continue;
 		}
 
@@ -190,7 +190,7 @@ static rlm_csv_entry_t *file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno
 		 */
 		if (inst->field_offsets[i] < 0) continue;
 
-		MEM(e->data[inst->field_offsets[i]] = talloc_strdup(e, p));
+		MEM(e->data[inst->field_offsets[i]] = talloc_typed_strdup(e, p));
 	}
 
 	if (i < inst->num_fields) {
@@ -314,7 +314,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Get a writable copy of the header
 	 */
-	header = talloc_strdup(inst, inst->header);
+	header = talloc_typed_strdup(inst, inst->header);
 	if (!header) goto oom;
 
 	/*

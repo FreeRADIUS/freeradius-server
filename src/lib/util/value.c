@@ -3627,7 +3627,7 @@ char *fr_value_box_list_asprint(TALLOC_CTX *ctx, fr_value_box_t const *head, cha
 	 *	allocate a temporary pool.
 	 */
 	pool = talloc_pool(NULL, 255);
-	if (delim) td = talloc_strdup(pool, delim);
+	if (delim) td = talloc_typed_strdup(pool, delim);
 
 	while ((vb = vb->next)) {
 		char *str, *new_aggr;

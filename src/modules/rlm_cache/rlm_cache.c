@@ -420,7 +420,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 					goto error;
 				}
 				c_map->lhs->len = len;
-				c_map->lhs->name = talloc_strdup(c_map->lhs, attr);
+				c_map->lhs->name = talloc_typed_strdup(c_map->lhs, attr);
 			}
 				goto do_rhs;
 
