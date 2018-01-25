@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/parser.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/unlang.h>
 #include <freeradius-devel/rad_assert.h>
 
 #include <ctype.h>
@@ -748,7 +749,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 
 			RDEBUG2("EXPAND %s", node->fmt);
 			if (fr_cursor_next(out)) {
-				RDEBUG2("   --> %pV", fr_cursor_current(out));
+				RDEBUG2("   --> %pM", fr_cursor_current(out));
 			} else {
 				RDEBUG2("   -->");
 			}
@@ -758,6 +759,8 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 			XLAT_DEBUG("** [%i] %s(attribute) - %%{%s}", unlang_stack_depth(request), __FUNCTION__,
 				   node->fmt);
 			if (xlat_eval_pair(ctx, out, request, node->attr) == XLAT_ACTION_FAIL) goto fail;
+			RDEBUG2("EXPAND %%{%s}", node->fmt);
+			RDEBUG2("   --> %pM", fr_cursor_current(out));
 			continue;
 
 		case XLAT_VIRTUAL:
@@ -769,7 +772,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 				   node->fmt);
 
 			slen = node->xlat->func.sync(ctx, &str, node->xlat->buf_len, node->xlat->mod_inst,
-						NULL, request, NULL);
+						     NULL, request, NULL);
 			if (slen < 0) goto fail;
 			if (slen == 0) continue;
 
