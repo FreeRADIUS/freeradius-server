@@ -649,12 +649,16 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 				 *	string need to occur in the NULL ctx so we don't fragment
 				 *	any pool associated with it.
 				 */
-				subst = fr_value_box_asprint(NULL, in, '"');
-				if (!subst) {
-					talloc_free(out);
-					va_end(ap_p);
-					va_end(ap_q);
-					return NULL;
+				if (in) {
+					subst = fr_value_box_asprint(NULL, in, '"');
+					if (!subst) {
+						talloc_free(out);
+						va_end(ap_p);
+						va_end(ap_q);
+						return NULL;
+					}
+				} else {
+					subst = talloc_strdup(NULL, "(null)");
 				}
 
 			do_splice:
