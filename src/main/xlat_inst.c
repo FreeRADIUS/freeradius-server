@@ -330,7 +330,6 @@ xlat_thread_inst_t *xlat_thread_instance_find(xlat_exp_t const *node)
 	xlat_thread_inst_t	*found;
 
 	rad_assert(xlat_thread_inst_tree);
-
 	rad_assert(node->type == XLAT_FUNC);
 
 	if (node->ephemeral) return node->thread_inst;
@@ -339,9 +338,8 @@ xlat_thread_inst_t *xlat_thread_instance_find(xlat_exp_t const *node)
 		xlat_thread_inst_t find = { .node = node };
 
 		found = rbtree_finddata(xlat_thread_inst_tree, &find);
+		rad_assert(found);
 	}
-
-	rad_assert(found);
 
 	return found;
 }
@@ -396,6 +394,8 @@ static int _xlat_instantiate_walker(UNUSED void *ctx, void *data)
  */
 static int xlat_instantiate_init(void)
 {
+	if (xlat_inst_tree) return 0;
+
 	xlat_inst_tree = rbtree_create(NULL, _xlat_inst_cmp, _xlat_inst_free, RBTREE_FLAG_NONE);
 	if (!xlat_inst_tree) return -1;
 
