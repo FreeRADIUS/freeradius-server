@@ -16,6 +16,8 @@ update {
 	request:Tunnel-Server-Endpoint:3 += '192.0.3.1'
 	request:Tunnel-Server-Endpoint:3 += '192.0.3.2'
 	request:Tunnel-Server-Endpoint:3 += '192.0.3.3'
+}
+update {
 	control: += request:
 }
 
@@ -39,6 +41,7 @@ if ("%{request:Tunnel-Server-Endpoint:*[#]}" != 0) {
 
 # Reset the list
 update {
+	request: !* ANY
 	request: += control:
 }
 
@@ -96,6 +99,7 @@ if (("%{request:Tunnel-Server-Endpoint:*[#]}" != 0) || \
 
 # Reset the list
 update {
+	request: !* ANY
 	request: += control:
 }
 
@@ -159,8 +163,6 @@ if (request:Tunnel-Server-Endpoint:3[1] != '192.0.3.3') {
 # Reset the list
 update {
 	request: !* ANY
-}
-update {
 	request: += control:
 }
 
@@ -176,8 +178,6 @@ if (request:Tunnel-Server-Endpoint:0[0] != '192.0.1.1') {
 # Reset the list
 update {
 	request: !* ANY
-}
-update {
 	request: += control:
 }
 
@@ -206,8 +206,6 @@ if (Tunnel-Server-Endpoint:3[1] != '192.0.3.3') {
 # Reset the list
 update {
 	request: !* ANY
-}
-update {
 	request: += control:
 }
 
