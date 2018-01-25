@@ -46,6 +46,15 @@ static void map_dump(REQUEST *request, vp_map_t const *map)
 }
 #endif
 
+static inline vp_map_t *map_alloc(TALLOC_CTX *ctx)
+{
+	return talloc_zero(ctx, vp_map_t);
+}
+
+static inline vp_list_mod_t *list_mod_alloc(TALLOC_CTX *ctx)
+{
+	return talloc_zero(ctx, vp_list_mod_t);
+}
 
 /** re-parse a map where the lhs is an unknown attribute.
  *
@@ -518,9 +527,7 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *vp_str,
 	return 0;
 }
 
-static vp_map_t *map_alloc(TALLOC_CTX *ctx)
 {
-	return talloc_zero(ctx, vp_map_t);
 }
 
 static void map_sort_split(vp_map_t *source, vp_map_t **front, vp_map_t **back)
