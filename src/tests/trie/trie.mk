@@ -14,4 +14,4 @@ TGT_PREREQS	:= libfreeradius-util.a
 #  definitions in the trie library.
 #
 src/tests/trie/trie.c: ${top_srcdir}/src/lib/util/trie.c
-	@[-e $@ ] || ln -s $^ $(dir $@)
+	@[ -e $@ ] || ln -s $^ $(dir $@)
