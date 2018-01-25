@@ -76,25 +76,6 @@ update control {
 }
 
 #
-#  Copy the first attribute with tag 2 (implicit)
-#
-update request {
-       control:Tunnel-Server-Endpoint += &Tunnel-Server-Endpoint:2
-}
-
-if ((&control:Tunnel-Server-Endpoint[0] != '192.0.2.1') || \
-    &control:Tunnel-Server-Endpoint[1]) {
-	test_fail
-}
-
-#
-#  Clear out control attributes...
-#
-update control {
-	Tunnel-Server-Endpoint !* ANY
-}
-
-#
 #  Copy the first attribute with tag 2 (explicit)
 #
 update request {
