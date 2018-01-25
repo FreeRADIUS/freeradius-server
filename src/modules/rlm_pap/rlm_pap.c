@@ -617,7 +617,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_md5(rlm_pap_t const *inst, REQUEST 
 		normify(request, vp, 16);
 	}
 	if (vp->vp_length != 16) {
-		REDEBUG("\"known-good\" MD5 password has incorrect length");
+		REDEBUG("\"known-good\" MD5 password has incorrect length, expected 16 got %zu", vp->vp_length);
 		return RLM_MODULE_INVALID;
 	}
 
@@ -646,7 +646,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_smd5(rlm_pap_t const *inst, REQUEST
 		normify(request, vp, 16);
 	}
 	if (vp->vp_length <= 16) {
-		REDEBUG("\"known-good\" SMD5-Password has incorrect length");
+		REDEBUG("\"known-good\" SMD5-Password has incorrect length, expected 16 got %zu", vp->vp_length);
 		return RLM_MODULE_INVALID;
 	}
 
@@ -678,7 +678,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha(rlm_pap_t const *inst, REQUEST 
 		normify(request, vp, 20);
 	}
 	if (vp->vp_length != 20) {
-		REDEBUG("\"known-good\" SHA1-password has incorrect length");
+		REDEBUG("\"known-good\" SHA1-password has incorrect length, expected 20 got %zu", vp->vp_length);
 		return RLM_MODULE_INVALID;
 	}
 
@@ -706,7 +706,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha(rlm_pap_t const *inst, REQUEST
 		normify(request, vp, 20);
 	}
 	if (vp->vp_length <= 20) {
-		REDEBUG("\"known-good\" SSHA-Password has incorrect length");
+		REDEBUG("\"known-good\" SSHA-Password has incorrect length, expected > 20 got %zu", vp->vp_length);
 		return RLM_MODULE_INVALID;
 	}
 
@@ -1231,7 +1231,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_nt(rlm_pap_t const *inst, REQUEST *
 	}
 
 	if (vp->vp_length != 16) {
-		REDEBUG("\"known good\" NT-Password has incorrect length");
+		REDEBUG("\"known good\" NT-Password has incorrect length, expected 16 got %zu", vp->vp_length);
 		return RLM_MODULE_INVALID;
 	}
 
@@ -1264,7 +1264,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_lm(rlm_pap_t const *inst, REQUEST *
 		normify(request, vp, 16);
 	}
 	if (vp->vp_length != 16) {
-		REDEBUG("\"known good\" LM-Password has incorrect length");
+		REDEBUG("\"known good\" LM-Password has incorrect length, expected 16 got %zu", vp->vp_length);
 		return RLM_MODULE_INVALID;
 	}
 
@@ -1292,7 +1292,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ns_mta_md5(UNUSED rlm_pap_t const *
 	RDEBUG("Using NT-MTA-MD5-Password");
 
 	if (vp->vp_length != 64) {
-		REDEBUG("\"known good\" NS-MTA-MD5-Password has incorrect length");
+		REDEBUG("\"known good\" NS-MTA-MD5-Password has incorrect length, expected 64 got %zu", vp->vp_length);
 		return RLM_MODULE_INVALID;
 	}
 
