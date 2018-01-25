@@ -303,6 +303,9 @@ static int _xlat_thread_instantiate(UNUSED void *ctx, void *data)
 	thread_inst = xlat_thread_inst_alloc(data);
 	if (!thread_inst) return -1;
 
+	DEBUG3("Instantiating xlat \"%s\" node %p, instance %p, new thread instance %p",
+	       inst->node->xlat->name, inst->node, inst, thread_inst);
+
 	if (inst->node->xlat->thread_instantiate) {
 		int ret;
 
@@ -433,6 +436,8 @@ static int _xlat_bootstrap_walker(xlat_exp_t *node, UNUSED void *uctx)
 
 	node->inst = xlat_inst_alloc(node);
 	if (!node->inst) return -1;
+
+	DEBUG3("Instantiating xlat \"%s\" node %p, new instance %p", node->xlat->name, node, node->inst);
 
 	ret = rbtree_insert(xlat_inst_tree, node->inst);
 	if (!fr_cond_assert(ret)) {
