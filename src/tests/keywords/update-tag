@@ -74,9 +74,9 @@ if (Tunnel-Server-Endpoint:2[1] != '192.0.3.2') {
 # Assignment (bare)
 #
 update request {
-	Tmp-String-1 += &Tunnel-Server-Endpoint:2		# 0
-	Tmp-String-1 += &Tunnel-Server-Endpoint:2		# 1
-	Tmp-String-1 += &Tunnel-Server-Endpoint:1		# 2
+	Tmp-String-1 += &Tunnel-Server-Endpoint:2[0]		# 0
+	Tmp-String-1 += &Tunnel-Server-Endpoint:2[0]		# 1
+	Tmp-String-1 += &Tunnel-Server-Endpoint:1[0]		# 2
 	Tmp-String-1 += &Tunnel-Server-Endpoint:2[0]		# 3
 	Tmp-String-1 += &Tunnel-Server-Endpoint:2[1]		# 4
 	Tmp-String-1 += &Tunnel-Server-Endpoint:0[0]		# 5
