@@ -1,8 +1,14 @@
 FreeRADIUS 3.0.17 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	Feature improvements
+	* Add CURLOPT_CAINFO.  Patch from Nicolas C.
+	  #2167
+
 	Bug fixes
 	* Don't call post-proxy twice when proxying to
 	  a virtual server.  Matthew Newton, #2161.
+	* Use "raw" string value for shared secrets and dynamic clients.
+	  It now parses strings with backslashes and "special characters"
+	  correctly.  Fixes #2168.
 
 FreeRADIUS 3.0.16 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	Feature improvements
