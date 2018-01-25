@@ -186,9 +186,8 @@ char *fr_json_from_string(TALLOC_CTX *ctx, char const *s, bool include_quotes)
 		if (include_quotes) {
 			out = talloc_typed_strdup(ctx, p);
 		} else {
-			len = strlen(p) - 1;
-			out = talloc_strndup(ctx, p+1, len);
-			if (out) out[len-1] = '\0';
+			len = strlen(p);
+			out = talloc_bstrndup(ctx, p + 1, len - 2);	/* to_json_string adds quotes (") */
 		}
 	}
 
