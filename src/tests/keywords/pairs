@@ -2,12 +2,12 @@
 # PRE: update if
 #
 update {
-       control:Cleartext-Password := 'hello'
-       request:Tmp-String-0 := "This is a string"
-       request:Tmp-String-0 += "This is another one"
-       request:Tmp-Octets-0 := 0x000504030201
-       request:Tmp-Integer-0 := 7331
-       request:Tunnel-Private-Group-Id:5 = 127.0.0.1
+       &control:Cleartext-Password := 'hello'
+       &request:Tmp-String-0 := "This is a string"
+       &request:Tmp-String-0 += "This is another one"
+       &request:Tmp-Octets-0 := 0x000504030201
+       &request:Tmp-Integer-0 := 7331
+       &request:Tunnel-Private-Group-Id:5 = 127.0.0.1
 }
 
 if ("%{pairs:request:[*]}" != "User-Name = \"bob\", User-Password = \"hello\", Tmp-String-0 = \"This is a string\", Tmp-String-0 = \"This is another one\", Tmp-Octets-0 = 0x000504030201, Tmp-Integer-0 = 7331, Tunnel-Private-Group-Id:5 = \"127.0.0.1\"") {
