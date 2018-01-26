@@ -252,6 +252,7 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_entry_t **p_ent
 	 *	to operate, and let the caller figure out what to do.
 	 */
 	if (entry->reply_len == 0) {
+		*p_entry = entry;
 		return FR_TRACKING_CONFLICTING;
 	}
 
