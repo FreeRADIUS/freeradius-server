@@ -332,7 +332,9 @@ do {\
 		 uint16_t *: FR_TYPE_UINT16, \
 		 uint32_t *: FR_TYPE_UINT32, \
 		 uint64_t *: FR_TYPE_UINT64, \
-		 struct timeval *: FR_TYPE_TIMEVAL)
+		 struct timeval *: FR_TYPE_TIMEVAL, \
+		 fr_value_box_t **: FR_TYPE_VALUE_BOX, \
+		 fr_value_box_t const **: FR_TYPE_VALUE_BOX)
 
 /** Expand a tmpl to a C type, using existing storage to hold variably sized types
  *

@@ -1840,6 +1840,24 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	}
 
 	/*
+	 *	Special case where we just copy the boxed value
+	 *	directly instead of casting it.
+	 */
+	if (dst_type == FR_TYPE_VALUE_BOX) {
+		fr_value_box_t	**vb_out = (fr_value_box_t **)out;
+
+		MEM(*vb_out = fr_value_box_alloc_null(ctx));
+
+		ret = needs_dup ? fr_value_box_copy(ctx, *vb_out, to_cast) : fr_value_box_steal(ctx, *vb_out, to_cast);
+		if (ret < 0) {
+			RPEDEBUG("Failed copying data to output box");
+			return -1;
+		}
+		talloc_free(tmp_ctx);
+		return 0;
+	}
+
+	/*
 	 *	Don't dup the buffers unless we need to.
 	 */
 	if ((to_cast->type != dst_type) || needs_dup) {

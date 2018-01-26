@@ -174,6 +174,9 @@ size_t const fr_value_box_field_sizes[] = {
 	[FR_TYPE_SIZE]				= SIZEOF_MEMBER(fr_value_box_t, datum.size),
 
 	[FR_TYPE_ABINARY]			= SIZEOF_MEMBER(fr_value_box_t, datum.filter),
+
+	[FR_TYPE_VALUE_BOX]			= sizeof(fr_value_box_t),
+
 	[FR_TYPE_MAX]				= 0	//!< Ensure array covers all types.
 };
 
@@ -216,6 +219,9 @@ size_t const fr_value_box_offsets[] = {
 	[FR_TYPE_SIZE]				= offsetof(fr_value_box_t, datum.size),
 
 	[FR_TYPE_ABINARY]			= offsetof(fr_value_box_t, datum.filter),
+
+	[FR_TYPE_VALUE_BOX]			= 0,
+
 	[FR_TYPE_MAX]				= 0	//!< Ensure array covers all types.
 };
 
@@ -1873,6 +1879,7 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	/*
 	 *	Invalid types for casting (should have been caught earlier)
 	 */
+	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_STRUCTURAL:
 	case FR_TYPE_INVALID:
 	case FR_TYPE_MAX:
@@ -3375,7 +3382,8 @@ parse:
 	case FR_TYPE_COMBO_IP_PREFIX:
 		break;
 
-	case FR_TYPE_VARIABLE_SIZE:		/* Should have been dealt with above */
+	case FR_TYPE_VALUE_BOX:
+	case FR_TYPE_VARIABLE_SIZE:	/* Should have been dealt with above */
 	case FR_TYPE_STRUCTURAL:	/* Listed again to suppress compiler warnings */
 	case FR_TYPE_BAD:
 		fr_strerror_printf("Unknown attribute dst_type %d", *dst_type);
@@ -3592,6 +3600,7 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 	case FR_TYPE_COMBO_IP_ADDR:
 	case FR_TYPE_COMBO_IP_PREFIX:
 	case FR_TYPE_STRUCTURAL:
+	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_BAD:
 		(void)fr_cond_assert(0);
 		return NULL;
@@ -3977,6 +3986,7 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
 	case FR_TYPE_STRUCT:
+	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_MAX:
 		(void)fr_cond_assert(0);
 		*out = '\0';
