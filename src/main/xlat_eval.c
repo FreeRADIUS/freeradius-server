@@ -512,7 +512,15 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
 	xlat_thread_inst_t	*thread_inst = xlat_thread_instance_find(exp);
 	xlat_action_t		xa;
 
+	/*
+	 *	It's important that callbacks leave the result list
+	 *	in a valid state, as it leads to all kinds of hard
+	 *	to debug problems if they free or change elements
+	 *	and don't remove them from the list.
+	 */
+	if (*result) (void) talloc_list_get_type_abort(*result, fr_value_box_t);
 	xa = resume(ctx, out, request, exp->inst, thread_inst->data, result, rctx);
+	if (*result) (void) talloc_list_get_type_abort(*result, fr_value_box_t);
 	switch (xa) {
 	default:
 		break;
@@ -570,6 +578,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			ssize_t		slen;
 
 			if (*result) {
+				(void) talloc_list_get_type_abort(*result, fr_value_box_t);
 				result_str = fr_value_box_list_asprint(NULL, *result, NULL, '\0');
 				if (!result_str) return XLAT_ACTION_FAIL;
 			} else {
@@ -591,8 +600,8 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				talloc_free(str);
 				return XLAT_ACTION_FAIL;
 			}
-			if (slen == 0) break;	/* Zero length result */
-			(void)talloc_get_type_abort(str, char);
+			if (slen == 0) break;				/* Zero length result */
+			(void)talloc_get_type_abort(str, char);		/* Check output buffer is sane */
 
 			/*
 			 *	Shrink the buffer
@@ -608,37 +617,32 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 			RDEBUG2("EXPAND %%{%s:%pS}", node->fmt, result_str);
 			RDEBUG2("   --> %pV", value);
-			fr_cursor_append(out, value);	/* Append the result of the expansion */
+			fr_cursor_append(out, value);			/* Append the result of the expansion */
 			talloc_free(result_str);
 		}
 			break;
 
 		case XLAT_FUNC_ASYNC:
 		{
-			xlat_action_t		action;
+			xlat_action_t		xa;
 			xlat_thread_inst_t	*thread_inst;
 
 			RDEBUG2("EXPAND %%{%s:%pM}", node->xlat->name, *result);
 
 			thread_inst = xlat_thread_instance_find(node);
-			action = node->xlat->func.async(ctx, out, request, node->inst, thread_inst->data, result);
-			switch (action) {
+
+			if (*result) (void) talloc_list_get_type_abort(*result, fr_value_box_t);
+			xa = node->xlat->func.async(ctx, out, request, node->inst, thread_inst->data, result);
+			if (*result) (void) talloc_list_get_type_abort(*result, fr_value_box_t);
+			switch (xa) {
 			case XLAT_ACTION_FAIL:
 			case XLAT_ACTION_PUSH_CHILD:
 			case XLAT_ACTION_YIELD:
-				return action;
+				return xa;
 
-			case XLAT_ACTION_DONE:		/* Process the result */
+			case XLAT_ACTION_DONE:				/* Process the result */
 				break;
 			}
-
-			fr_cursor_next(out);		/* Wind to the start of this function's output */
-
-			/*
-			 *	Print output if the function didn't yield
-			 *	else we need to print it in xlat_resume
-			 */
-
 			break;
 		}
 		}
@@ -671,6 +675,8 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 			return XLAT_ACTION_PUSH_CHILD;
 		}
+
+		if (*result) (void) talloc_list_get_type_abort(*result, fr_value_box_t);
 		fr_cursor_init(&from, result);
 		fr_cursor_merge(out, &from);
 	}
@@ -796,7 +802,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 		{
 			fr_value_box_t *result = NULL;
 
-			XLAT_DEBUG("** [%i] %s(func) - %%{%s: }", unlang_stack_depth(request), __FUNCTION__,
+			XLAT_DEBUG("** [%i] %s(func) - %%{%s:...}", unlang_stack_depth(request), __FUNCTION__,
 				   node->fmt);
 
 			/*

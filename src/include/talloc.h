@@ -54,7 +54,7 @@ void		talloc_const_free(void const *ptr);
  *
  * @param[in] _head	of list to free.  Will set memory it points to to be NULL.
  */
-#define		talloc_list_free(_head) _talloc_list_free((void **)_head, offsetof(__typeof__(**(_head)), next))
+#define	talloc_list_free(_head) _talloc_list_free((void **)_head, offsetof(__typeof__(**(_head)), next))
 
 static inline void _talloc_list_free(void **head, size_t offset)
 {
@@ -67,6 +67,31 @@ static inline void _talloc_list_free(void **head, size_t offset)
 	}
 	*head = NULL;
 }
+
+/** Verify a list of talloced structures are the correct type and are still valid
+ *
+ * @param[in] _head	of list to check.
+ * @param[in] _type	of talloced chunk we expect.
+ */
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+#  define talloc_list_get_type_abort(_head, _type) (_type *)_talloc_list_get_type_abort(_head, offsetof(__typeof__(*(_head)), next), #_type, __location__)
+static inline void *_talloc_list_get_type_abort(void *head, size_t offset, char const *type, char const *location)
+{
+	void *v = head, *n;
+
+	if (!v) _talloc_get_type_abort(v, type, location);	/* Behave like the normal talloc_get_type_abort function */
+
+	while (v) {
+		n = *((void **)(((uint8_t *)(v)) + offset));
+		_talloc_get_type_abort(v, type, location);
+		v = n;
+	}
+
+	return head;
+}
+#else
+#  define talloc_get_type_abort(_head, _type)
+#endif
 
 /*
  *	talloc portability issues.  'const' is not part of the talloc
