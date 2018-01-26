@@ -28,30 +28,9 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/map_proc.h>
+#include "map_proc_priv.h"
 
 static rbtree_t *map_proc_root = NULL;
-
-/** Map processor registration
- */
-struct map_proc {
-	void			*mod_inst;		//!< Module instance.
-	char			name[FR_MAX_STRING_LEN];	//!< Name of the map function.
-	int			length;			//!< Length of name.
-
-	map_proc_func_t		evaluate;		//!< Module's map processor function.
-	map_proc_instantiate_t	instantiate;		//!< Callback to create new instance struct.
-	size_t			inst_size;		//!< Size of map_proc instance data to allocate.
-};
-
-/** Map processor instance
- */
-struct map_proc_inst {
-	map_proc_t const	*proc;			//!< Map processor.
-	vp_tmpl_t const		*src;			//!< Evaluated to provide source value for map processor.
-	vp_map_t const		*maps;			//!< Head of the map list.
-	void			*data;			//!< Instance data created by #map_proc_instantiate
-};
 
 /** Compare two map_proc_t structs, based ONLY on the name
  *

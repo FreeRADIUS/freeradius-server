@@ -31,6 +31,8 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/map.h>
 #include <freeradius-devel/xlat.h>
+
+#include "map_proc_priv.h"
 #include "unlang_priv.h"
 
 typedef enum {
