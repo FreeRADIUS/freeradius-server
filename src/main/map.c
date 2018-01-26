@@ -1080,20 +1080,33 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
 		rad_assert(map->lhs->tmpl_da);		/* We need to know which attribute to create */
 
-		n = map_list_mod_afrom_map(ctx, map_in, map);
-		if (!n) goto error;
-
 		/*
-		 *	Fixup zero length result to be an empty string
+		 *	Empty value
 		 */
 		if (!rhs_result || !*rhs_result) {
-			n_vb = fr_value_box_alloc(n->mod->rhs, FR_TYPE_STRING, NULL, false);
-			if (!n_vb) goto error;
+			switch (map->lhs->tmpl_da->type) {
+			case FR_TYPE_STRING:
+				n = map_list_mod_afrom_map(ctx, map_in, map);
+				if (!n) goto error;
 
-			if (fr_value_box_strdup(n_vb, n_vb, NULL, "", false) < 0) goto error;
-			fr_cursor_append(&values, n_vb);
+				n_vb = fr_value_box_alloc(n->mod->rhs, FR_TYPE_STRING, NULL, false);
+				if (!n_vb) goto error;
+
+				if (fr_value_box_strdup(n_vb, n_vb, NULL, "", false) < 0) goto error;
+				fr_cursor_append(&values, n_vb);
+				break;
+
+			default:
+				goto finish;	/* Hmm we could error out? */
+			}
 			break;
 		}
+
+		/*
+		 *	Non-Empty value
+		 */
+		n = map_list_mod_afrom_map(ctx, map_in, map);
+		if (!n) goto error;
 
 		(void)fr_cursor_init(&from, rhs_result);
 		while ((vb = fr_cursor_remove(&from))) {
@@ -1303,7 +1316,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	talloc_free(head);
 
 finish:
-	*out = n;
+	if (n) *out = n;
 
 	/*
 	 *	Reparent ephemeral LHS to the vp_list_mod_t.
@@ -1331,6 +1344,7 @@ static inline VALUE_PAIR *map_list_mod_to_vp(TALLOC_CTX *ctx, vp_tmpl_t const *a
 		talloc_free(vp);
 		return NULL;
 	}
+	VP_VERIFY(vp);		/* Check we created something sane */
 
 	return vp;
 }

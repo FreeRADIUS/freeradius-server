@@ -1,0 +1,34 @@
+#
+#  Reply message doesn't exist, so Tmp-Integer-0 shouldn't be created
+#
+update request {
+	Tmp-Integer-0 := "%{Reply-Message}"
+}
+if (&Tmp-Integer-0) {
+	fail
+}
+
+#
+#  NULL valued strings get converted to empty length strings
+#
+update request {
+	Tmp-String-0 := "%{Reply-Message}"
+}
+if (!&Tmp-String-0) {
+	fail
+}
+if (&Tmp-String-0 != '') {
+	fail
+}
+
+#
+#  NULL valued octet strings get nothing
+#
+update request {
+	Tmp-Octets-0 := "%{Reply-Message}"
+}
+if (&Tmp-Octets-0) {
+	fail
+}
+
+success
