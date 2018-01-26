@@ -124,8 +124,6 @@ int fr_radius_tracking_entry_delete(fr_tracking_t *ft, fr_tracking_entry_t *entr
 {
 	(void) talloc_get_type_abort(ft, fr_tracking_t);
 
-	if (entry->timestamp == 0) return -1;
-
 	rad_assert(entry->uses > 0);
 	entry->uses--;
 
