@@ -1513,7 +1513,7 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 	 *	All this has been checked by #map_to_list_mod
 	 */
 	context = request;
-	if (!fr_cond_assert(radius_request(&context, mod->lhs->tmpl_request) == 0)) return -1;
+	if (!fr_cond_assert(mod && radius_request(&context, mod->lhs->tmpl_request) == 0)) return -1;
 
 	vp_list = radius_list(context, mod->lhs->tmpl_list);
 	if (!fr_cond_assert(vp_list)) return -1;
