@@ -264,8 +264,6 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_entry_t **p_ent
 	memcpy(&entry->data[0], packet, sizeof(entry->data));
 	*p_entry = entry;
 
-	rbtree_insert(ft->tree, entry);
-
 	return FR_TRACKING_UPDATED;
 }
 
