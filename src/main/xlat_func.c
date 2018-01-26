@@ -945,44 +945,36 @@ static xlat_action_t xlat_bin(TALLOC_CTX *ctx, fr_cursor_t *out,
 	 */
 	if (!*in) return XLAT_ACTION_DONE;
 
-	result = fr_value_box_alloc(ctx, FR_TYPE_OCTETS, NULL, false);
-	if (!result) {
-		RPEDEBUG("Failed converting input");
-	error:
-		talloc_free(buff);
-		return XLAT_ACTION_FAIL;
-	}
-
-	buff = fr_value_box_list_asprint(result, *in, NULL, '\0');
-	if (!buff) goto error;
+	buff = fr_value_box_list_asprint(NULL, *in, NULL, '\0');
+	if (!buff) return XLAT_ACTION_FAIL;
 
 	len = talloc_array_length(buff) - 1;
 	if ((len > 1) && (len & 0x01)) {
 		REDEBUG("Input data length must be >1 and even, got %zu", len);
-		goto error;
+		talloc_free(buff);
+		return XLAT_ACTION_FAIL;
 	}
-	end = buff + len;
+
+	p = buff;
+	end = p + len;
 
 	/*
 	 *	Zero length octets string
 	 */
-	p = buff;
 	if ((p[0] == '0') && (p[1] == 'x')) p += 2;
-	if (p == end) return XLAT_ACTION_DONE;
-
-	result = fr_value_box_alloc_null(ctx);
-	if (!result) {
-		REDEBUG("Failed allocating output");
-		goto error;
-	}
+	if (p == end) goto finish;
 
 	outlen = len / 2;
 
-	bin = talloc_array(result, uint8_t, outlen);
+	MEM(result = fr_value_box_alloc_null(ctx));
+	MEM(bin = talloc_array(result, uint8_t, outlen));
+
 	fr_hex2bin(bin, outlen, p, end - p);
-	fr_value_box_memsteal(result, result, NULL, bin, true);		/* Fixme - It may not be tainted */
+	fr_value_box_memsteal(result, result, NULL, bin, fr_value_box_list_tainted(*in));
 	fr_cursor_insert(out, result);
 
+finish:
+	talloc_free(buff);
 	return XLAT_ACTION_DONE;
 }
 
