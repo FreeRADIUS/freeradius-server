@@ -85,10 +85,8 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		case RLM_MODULE_NOOP:
 		case RLM_MODULE_OK:
 		case RLM_MODULE_UPDATED:
-			request->reply->code = FR_CODE_ACCOUNTING_RESPONSE;
-			break;
-
 		case RLM_MODULE_HANDLED:
+			request->reply->code = FR_CODE_ACCOUNTING_RESPONSE;
 			break;
 
 		/*
