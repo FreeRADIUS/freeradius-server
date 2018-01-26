@@ -47,6 +47,7 @@ typedef struct fr_tracking_entry_t {
 
 	size_t			src_dst_size;   //!< size of the data in src_dst
 	fr_time_t		timestamp;	//!< when the request was received
+	int			uses;		//!< how many packets are using us
 	uint8_t const		*reply;		//!< the response (if any);
 	size_t			reply_len;	//!< the length of the response
 	uint8_t			data[20];	//!< the full RADIUS packet header

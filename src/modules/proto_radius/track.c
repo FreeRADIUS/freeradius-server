@@ -126,10 +126,16 @@ int fr_radius_tracking_entry_delete(fr_tracking_t *ft, fr_tracking_entry_t *entr
 
 	if (entry->timestamp == 0) return -1;
 
+	rad_assert(entry->uses > 0);
+	entry->uses--;
+
 	/*
 	 *	Someone else is using it, so we don't delete it.
 	 */
-	if (recv_time != entry->timestamp) return 0;
+	if (recv_time != entry->timestamp) {
+		if (entry->uses == 0) goto delete;
+		return 0;
+	}
 
 	/*
 	 *	Mark the reply (if any) as done.
@@ -143,6 +149,12 @@ int fr_radius_tracking_entry_delete(fr_tracking_t *ft, fr_tracking_entry_t *entr
 	rad_assert(entry->ev == NULL);
 	entry->timestamp = 0;
 
+	/*
+	 *	Don't delete it.  Someone else is still using it.
+	 */
+	if (entry->uses > 0) return 0;
+
+delete:
 	/*
 	 *	We are tracking src/dst ip/port, we have to remove
 	 *	this entry from the tracking tree, and then free it.
@@ -199,6 +211,7 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_entry_t **p_ent
 
 		entry->ft = ft;
 		entry->timestamp = timestamp;
+		entry->uses = 1;
 
 		/*
 		 *	Copy the src_dst information over to the entry.
@@ -234,18 +247,15 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_entry_t **p_ent
 	 *	Over-write an existing entry.
 	 */
 	entry->timestamp = timestamp;
+	entry->uses++;
 
 	/*
-	 *	Toss the conflicting packet (for now).
+	 *	The new packet conflicts with the old one.  Allow BOTH
+	 *	to operate, and let the caller figure out what to do.
 	 */
 	if (entry->reply_len == 0) {
 		return FR_TRACKING_CONFLICTING;
 	}
-
-	/*
-	 *	Over-write an existing entry.
-	 */
-	entry->timestamp = timestamp;
 
 	if (entry->reply) {
 		talloc_const_free(entry->reply);
