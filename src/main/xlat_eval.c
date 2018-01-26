@@ -519,7 +519,7 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 	case XLAT_ACTION_DONE:
 		fr_cursor_next(out);		/* Wind to the start of this functions output */
-		RDEBUG2("EXPAND %%{%s:%pM}", exp->xlat->name, result);
+		RDEBUG2("RESULT %%{%s:...}", exp->xlat->name);
 		if (fr_cursor_current(out)) {
 			RDEBUG2("   --> %pM", fr_cursor_current(out));
 		} else {
@@ -528,7 +528,6 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
 		break;
 
 	case XLAT_ACTION_FAIL:
-		REDEBUG("EXPANSION FAILED %%{%s:%pM}", exp->xlat->name, result);
 		break;
 	}
 
@@ -619,13 +618,12 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			xlat_action_t		action;
 			xlat_thread_inst_t	*thread_inst;
 
+			RDEBUG2("EXPAND %%{%s:%pM}", node->xlat->name, *result);
+
 			thread_inst = xlat_thread_instance_find(node);
 			action = node->xlat->func.async(ctx, out, request, node->inst, thread_inst->data, result);
 			switch (action) {
 			case XLAT_ACTION_FAIL:
-				REDEBUG("EXPANSION FAILED %%{%s:%pM}", node->xlat->name, *result);
-				/* FALL-THROUGH */
-
 			case XLAT_ACTION_PUSH_CHILD:
 			case XLAT_ACTION_YIELD:
 				return action;
@@ -640,12 +638,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			 *	Print output if the function didn't yield
 			 *	else we need to print it in xlat_resume
 			 */
-			RDEBUG2("EXPAND %%{%s:%pM}", node->xlat->name, *result);
-			if (fr_cursor_current(out)) {
-				RDEBUG2("   --> %pM", fr_cursor_head(out));
-			} else {
-				RDEBUG2("   -->");
-			}
+
 			break;
 		}
 		}
