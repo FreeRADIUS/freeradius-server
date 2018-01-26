@@ -2287,8 +2287,11 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
  * @param[in] ctx	to add reference from.  If NULL no reference will be added.
  * @param[in] dst	to copy value to.
  * @param[in] src	to copy value from.
+ * @param[in] incre_ref	Increment the reference count on the src buffer.
+ *			Only do this if you KNOW the src box/buffer was allocated by
+ *			this thread and will only ever be used by this thread.
  */
-void fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *src)
+void fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *src, bool incr_ref)
 {
 	switch (src->type) {
 	default:
@@ -2297,7 +2300,7 @@ void fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
 
 	case FR_TYPE_STRING:
 	case FR_TYPE_OCTETS:
-		dst->datum.ptr = ctx ? talloc_reference(ctx, src->datum.ptr) : src->datum.ptr;
+		dst->datum.ptr = ctx && incr_ref ? talloc_reference(ctx, src->datum.ptr) : src->datum.ptr;
 		fr_value_box_copy_meta(dst, src);
 		break;
 	}

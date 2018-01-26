@@ -470,7 +470,8 @@ int		fr_value_unbox_ipaddr(fr_ipaddr_t *dst, fr_value_box_t *src);
  */
 int		fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t *src);
 
-void		fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t *src);
+void		fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst,
+					  const fr_value_box_t *src, bool incr_ref);
 
 int		fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *src);
 
