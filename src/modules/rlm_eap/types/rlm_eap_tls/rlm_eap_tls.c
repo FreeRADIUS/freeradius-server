@@ -41,6 +41,8 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #  include <sys/stat.h>
 #endif
 
+#include <freeradius-devel/unlang.h>
+
 static CONF_PARSER submodule_config[] = {
 	{ FR_CONF_OFFSET("tls", FR_TYPE_STRING, rlm_eap_tls_t, tls_conf_name) },
 
@@ -216,6 +218,30 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	if (!inst->tls_conf) {
 		ERROR("Failed initializing SSL context");
 		return -1;
+	}
+
+	/*
+	 *	Compile virtual server sections.
+	 *
+	 *	FIXME - We can use proper section names now instead of relying on Autz-Type
+	 */
+	if (inst->virtual_server) {
+		CONF_SECTION	*server_cs;
+		int		ret;
+
+		server_cs = virtual_server_find(inst->virtual_server);
+		if (!server_cs) {
+			ERROR("Can't find virtual server \"%s\"", inst->virtual_server);
+			return -1;
+		}
+
+		ret = unlang_compile_subsection(server_cs, "recv", "Access-Request", MOD_AUTHORIZE);
+		if (ret == 0) {
+			cf_log_err(server_cs, "Failed finding 'recv Access-Request { ... }' "
+				   "section of virtual server %s", cf_section_name2(server_cs));
+			return -1;
+		}
+		if (ret < 0) return -1;
 	}
 
 	return 0;
