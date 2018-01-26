@@ -116,6 +116,7 @@ static int rlm_rest_status_update(REQUEST *request, void *handle)
 	RDEBUG2("&REST-HTTP-Status-Code := %i", code);
 	REXDENT();
 
+	memset(&value, 0, sizeof(value));	/* Required to zero out next/enumv fields */
 	value.type = FR_TYPE_UINT32;
 	value.vb_uint32 = code;
 
