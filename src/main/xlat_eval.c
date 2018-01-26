@@ -800,6 +800,9 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 			continue;
 
 		case XLAT_FUNC:
+		{
+			fr_value_box_t empty;
+
 			XLAT_DEBUG("** [%i] %s(func) - %%{%s: }", unlang_stack_depth(request), __FUNCTION__,
 				   node->fmt);
 
@@ -812,12 +815,16 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 				xa = XLAT_ACTION_PUSH_CHILD;
 				goto finish;
 			}
+
+			memset(&empty, 0, sizeof(empty));
+
 			/*
 			 *	If there's no children we can just
 			 *	call the function directly.
 			 */
 			if (xlat_frame_eval_repeat(ctx, out, child, NULL,
-						   request, in, NULL) == XLAT_ACTION_FAIL) goto fail;
+						   request, in, &empty) == XLAT_ACTION_FAIL) goto fail;
+		}
 			continue;
 
 #ifdef HAVE_REGEX
