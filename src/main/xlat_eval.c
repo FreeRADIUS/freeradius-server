@@ -968,6 +968,11 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 	case XLAT_FUNC:
 		XLAT_DEBUG("xlat_aprint MODULE");
 
+		if (node->xlat->type == XLAT_FUNC_ASYNC) {
+			REDEBUG("Async XLAT function (%s) not allowed here", node->xlat->name);
+			return NULL;
+		}
+
 		if (node->child) {
 			if (xlat_process(ctx, &child, request,
 					 node->child, node->xlat->escape, node->xlat->mod_inst) == 0) {
