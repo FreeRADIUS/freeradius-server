@@ -260,6 +260,23 @@ static inline fr_value_box_t *fr_value_box_alloc(TALLOC_CTX *ctx, fr_type_t type
 	return value;
 }
 
+/** Allocate a value box for later use with a value assignment function
+ *
+ * @param[in] ctx	to allocate the value_box in.
+ * @return
+ *	- A new fr_value_box_t.
+ *	- NULL on error.
+ */
+static inline fr_value_box_t *fr_value_box_alloc_null(TALLOC_CTX *ctx)
+{
+	fr_value_box_t *value;
+
+	value = talloc_zero(ctx, fr_value_box_t);
+	value->type = FR_TYPE_INVALID;
+
+	return value;
+}
+
 /** Box an ethernet value (6 bytes, network byte order)
  *
  * @param[in] dst	Where to copy the ethernet address to.

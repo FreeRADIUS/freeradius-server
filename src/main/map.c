@@ -1089,7 +1089,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 				n = map_list_mod_afrom_map(ctx, map_in, map);
 				if (!n) goto error;
 
-				n_vb = fr_value_box_alloc(n->mod->rhs, FR_TYPE_STRING, NULL, false);
+				n_vb = fr_value_box_alloc_null(n->mod->rhs);
 				if (!n_vb) goto error;
 
 				if (fr_value_box_strdup(n_vb, n_vb, NULL, "", false) < 0) goto error;

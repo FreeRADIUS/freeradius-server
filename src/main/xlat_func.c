@@ -914,7 +914,7 @@ static xlat_action_t xlat_concat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	 *	Otherwise, join the boxes together commas
 	 *	FIXME It'd be nice to set a custom delimiter
 	 */
-	result = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false);
+	result = fr_value_box_alloc_null(ctx);
 	if (!result) {
 	error:
 		RPEDEBUG("Failed concatenating input");
@@ -924,7 +924,7 @@ static xlat_action_t xlat_concat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	buff = fr_value_box_list_asprint(result, *in, ",", '\0');
 	if (!buff) goto error;
 
-	fr_value_box_strsteal(result, result, NULL, buff, true);	/* Fixme - It may not be tainted */
+	fr_value_box_strsteal(result, result, NULL, buff, fr_value_box_list_tainted(*in));
 
 	fr_cursor_insert(out, result);
 
@@ -970,7 +970,7 @@ static xlat_action_t xlat_bin(TALLOC_CTX *ctx, fr_cursor_t *out,
 	if ((p[0] == '0') && (p[1] == 'x')) p += 2;
 	if (p == end) return XLAT_ACTION_DONE;
 
-	result = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false);
+	result = fr_value_box_alloc_null(ctx);
 	if (!result) {
 		REDEBUG("Failed allocating output");
 		goto error;

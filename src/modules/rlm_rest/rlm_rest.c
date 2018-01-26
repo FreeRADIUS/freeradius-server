@@ -237,7 +237,7 @@ error:
 	if (len > 0) {
 		fr_value_box_t *vb;
 
-		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, true));
+		MEM(vb = fr_value_box_alloc_null(ctx));
 		fr_value_box_bstrndup(vb, vb, NULL, body, len, true);
 		fr_cursor_insert(out, vb);
 	}

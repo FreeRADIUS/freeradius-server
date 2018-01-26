@@ -68,7 +68,7 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 
 	switch (letter) {
 	case '%':
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+		MEM(value = fr_value_box_alloc_null(ctx));
 		if (fr_value_box_strdup(value, value, NULL, "%", false) < 0) return XLAT_ACTION_FAIL;
 		break;
 
@@ -91,7 +91,7 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 		}
 		strftime(buffer, sizeof(buffer), "%d", &ts);
 
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+		MEM(value = fr_value_box_alloc_null(ctx));
 		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) return XLAT_ACTION_FAIL;
 		break;
 
@@ -132,7 +132,7 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 		p = strchr(buffer, '\n');
 		if (p) *p = '\0';
 
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+		MEM(value = fr_value_box_alloc_null(ctx));
 		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
 	}
 		break;
@@ -151,7 +151,7 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 		if (!localtime_r(&when, &ts)) goto error;
 		strftime(buffer, sizeof(buffer), "%Y%m%d", &ts);
 
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+		MEM(value = fr_value_box_alloc_null(ctx));
 		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
 		break;
 
@@ -183,7 +183,7 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 		if (!localtime_r(&when, &ts)) goto error;
 		strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &ts);
 
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+		MEM(value = fr_value_box_alloc_null(ctx));
 		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
 		break;
 
@@ -191,7 +191,7 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 		if (!localtime_r(&when, &ts)) goto error;
 		strftime(buffer, sizeof(buffer), "%Y-%m-%d-%H.%M.%S.000000", &ts);
 
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+		MEM(value = fr_value_box_alloc_null(ctx));
 		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
 		break;
 
@@ -612,7 +612,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			 *	Fixup talloc lineage and assign the
 			 *	output of the function to a box.
 			 */
-			MEM(value = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+			MEM(value = fr_value_box_alloc_null(ctx));
 			fr_value_box_strsteal(value, value, NULL, str, false);
 
 			RDEBUG2("EXPAND %%{%s:%pS}", node->fmt, result_str);
@@ -745,7 +745,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 			 *	We unfortunately need to dup the buffer
 			 *	because references aren't threadsafe.
 			 */
-			MEM(value = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+			MEM(value = fr_value_box_alloc_null(ctx));
 			fr_value_box_strdup_buffer(value, value, NULL, node->fmt, false);
 			fr_cursor_append(out, value);
 			continue;
@@ -789,7 +789,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 			if (slen < 0) goto fail;
 			if (slen == 0) continue;
 
-			MEM(value = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+			MEM(value = fr_value_box_alloc_null(ctx));
 			fr_value_box_strsteal(value, value, NULL, str, false);
 			fr_cursor_append(out, value);
 
@@ -838,7 +838,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 			 *	we just need to fix up the talloc lineage
 			 *	and box it.
 			 */
-			MEM(value = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+			MEM(value = fr_value_box_alloc_null(ctx));
 			fr_value_box_strsteal(value, value, NULL, str, false);
 			fr_cursor_append(out, value);
 
