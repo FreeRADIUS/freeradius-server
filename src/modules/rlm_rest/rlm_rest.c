@@ -273,8 +273,13 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	rlm_rest_xlat_rctx_t		*rctx;
 	rlm_rest_section_t		*section;
 
-	if ((*in)->type != FR_TYPE_STRING) {
-		REDEBUG("rest xlat only accepts string inputs");
+	if (*in) {
+		REDEBUG("Got empty URL string");
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
+		REDEBUG("Failed concatenating arguments into URL string");
 		return XLAT_ACTION_FAIL;
 	}
 	p = (*in)->vb_strvalue;
