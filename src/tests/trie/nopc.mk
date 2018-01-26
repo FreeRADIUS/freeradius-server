@@ -15,3 +15,6 @@ TGT_PREREQS	:= libfreeradius-util.a
 #
 src/tests/trie/nopc.c: ${top_srcdir}/src/lib/util/trie.c
 	@[ -e $@ ] || ln -s $^ $@
+
+${top_srcdir}/src/tests/trie/nopc.c: ${top_srcdir}/src/lib/util/trie.c
+	@[ -e $@ ] || ln -s $^ $@
