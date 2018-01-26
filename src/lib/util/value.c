@@ -3661,6 +3661,24 @@ char *fr_value_box_list_asprint(TALLOC_CTX *ctx, fr_value_box_t const *head, cha
 	return aggr;
 }
 
+/** Check to see if any list members are tainted
+ *
+ * @param[in] head	of list to check.
+ * @return
+ *	- true if a list member is tainted.
+ *	- false if no list members are tainted.
+ */
+bool fr_value_box_list_tainted(fr_value_box_t const *head)
+{
+	if (!head) return false;
+
+	do {
+		if (head->tainted) return true;
+	} while ((head = head->next));
+
+	return false;
+}
+
 /** Concatenate a list of value boxes
  *
  * @note Will automatically cast all #fr_value_box_t to type specified.
