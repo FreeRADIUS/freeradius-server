@@ -273,7 +273,7 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	rlm_rest_xlat_rctx_t		*rctx;
 	rlm_rest_section_t		*section;
 
-	if (*in) {
+	if (!*in) {
 		REDEBUG("Got empty URL string");
 		return XLAT_ACTION_FAIL;
 	}
