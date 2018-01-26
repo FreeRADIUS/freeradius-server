@@ -115,15 +115,21 @@ fr_tracking_t *fr_radius_tracking_create(TALLOC_CTX *ctx, size_t src_dst_size,
  *
  * @param[in] ft	The tracking table.
  * @param[in] entry	to delete.
+ * @param[in] recv_time	when the caller thinks the entry was allocated.
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-int fr_radius_tracking_entry_delete(fr_tracking_t *ft, fr_tracking_entry_t *entry)
+int fr_radius_tracking_entry_delete(fr_tracking_t *ft, fr_tracking_entry_t *entry, fr_time_t recv_time)
 {
 	(void) talloc_get_type_abort(ft, fr_tracking_t);
 
 	if (entry->timestamp == 0) return -1;
+
+	/*
+	 *	Someone else is using it, so we don't delete it.
+	 */
+	if (recv_time != entry->timestamp) return 0;
 
 	/*
 	 *	Mark the reply (if any) as done.

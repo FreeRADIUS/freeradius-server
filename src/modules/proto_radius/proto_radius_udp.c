@@ -227,7 +227,6 @@ static const CONF_PARSER priority_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-
 /*
  *	@todo - put packets to be cleaned up in a heap or linked list,
  *	and then have one cleanup delay per rlm_radius_udp_t.  That
@@ -241,7 +240,7 @@ static void mod_cleanup_delay(UNUSED fr_event_list_t *el, UNUSED struct timeval 
 
 	DEBUG2("TIMER - proto_radius cleanup delay for ID %d", track->data[1]);
 
-	(void) fr_radius_tracking_entry_delete(track->ft, track);
+	(void) fr_radius_tracking_entry_delete(track->ft, track, track->timestamp);
 }
 
 /** Return the src address associated with the packet_ctx
@@ -429,6 +428,7 @@ redo:
 	 */
 	if (saved->timestamp != saved->track->timestamp) {
 	drop_packet:
+		(void) fr_radius_tracking_entry_delete(inst->ft, saved->track, saved->timestamp);
 		((proto_radius_udp_address_t *)saved->track->src_dst)->client->received--;
 		talloc_free(saved);
 		goto redo;
@@ -440,7 +440,6 @@ redo:
 	 */
 	packet_len = talloc_array_length(saved->packet);
 	if (packet_len > buffer_len) {
-		(void) fr_radius_tracking_entry_delete(inst->ft, saved->track);
 		goto drop_packet;
 	}
 
@@ -1057,6 +1056,7 @@ found:
 		if (track->ev) {
 			struct timeval tv;
 
+
 			gettimeofday(&tv, NULL);
 			tv.tv_sec += inst->cleanup_delay;
 
@@ -1092,10 +1092,12 @@ found:
 		break;
 
 	case FR_TRACKING_CONFLICTING:
+		if (track->ev) (void) fr_event_timer_delete(inst->el, &track->ev);
 		DEBUG3("CONFLICTING packet ID %d", buffer[1]);
 		break;
 
 	case FR_TRACKING_NEW:
+		rad_assert(track->ev == NULL);
 		DEBUG3("NEW packet");
 		break;
 	}
@@ -1167,7 +1169,7 @@ untrack:
 		 *	Instead, the client is.  So we just discard
 		 *	the packet.
 		 */
-		(void) fr_radius_tracking_entry_delete(track->ft, track);
+		(void) fr_radius_tracking_entry_delete(track->ft, track, track->timestamp);
 		return 0;
 	}
 
@@ -1313,10 +1315,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			while ((entry = FR_DLIST_FIRST(client->packets)) != NULL) {
 				saved = fr_ptr_to_type(dynamic_packet_t, entry, entry);
 				(void) talloc_get_type_abort(saved, dynamic_packet_t);
-
-				if (saved->timestamp == saved->track->timestamp) {
-					(void) fr_radius_tracking_entry_delete(inst->ft, saved->track);
-				}
+				(void) fr_radius_tracking_entry_delete(inst->ft, saved->track, saved->timestamp);
 				fr_dlist_remove(&saved->entry);
 				talloc_free(saved);
 				inst->dynamic_clients.num_pending_packets--;
@@ -1566,7 +1565,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		if (data_size < 0) {
 		done:
 			if (track->ev) (void) fr_event_timer_delete(inst->el, &track->ev);
-			(void) fr_radius_tracking_entry_delete(inst->ft, track);
+			(void) fr_radius_tracking_entry_delete(inst->ft, track, track->timestamp);
 			return data_size;
 		}
 
