@@ -105,7 +105,7 @@ typedef ssize_t (*xlat_func_sync_t)(TALLOC_CTX *ctx, char **out, size_t outlen,
  */
 typedef xlat_action_t (*xlat_func_async_t)(TALLOC_CTX *ctx, fr_cursor_t *out,
 					   REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
-					   fr_value_box_t *in);
+					   fr_value_box_t **in);
 
 /** Async xlat callback function
  *
@@ -127,7 +127,7 @@ typedef xlat_action_t (*xlat_func_async_t)(TALLOC_CTX *ctx, fr_cursor_t *out,
  */
 typedef xlat_action_t (*xlat_func_resume_t)(TALLOC_CTX *ctx, fr_cursor_t *out,
 					    REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
-					    fr_value_box_t *in, void *rctx);
+					    fr_value_box_t **in, void *rctx);
 
 /** A callback when the request gets a fr_state_signal_t.
  *

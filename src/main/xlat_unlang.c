@@ -128,7 +128,7 @@ static unlang_action_t xlat_unlang(REQUEST *request,
 
 	if (frame->repeat) {
 		xa = xlat_frame_eval_repeat(xs->ctx, &xs->values, &child,
-					    &xs->alternate, request, &xs->exp, xs->rhead);
+					    &xs->alternate, request, &xs->exp, &xs->rhead);
 	} else {
 		xa = xlat_frame_eval(xs->ctx, &xs->values, &child, request, &xs->exp);
 	}
@@ -145,7 +145,7 @@ static unlang_action_t xlat_unlang(REQUEST *request,
 		 *	multiple sibling nodes.
 		 */
 		talloc_list_free(&xs->rhead);
-
+		xs->alternate = false;
 		xlat_unlang_push(xs->ctx, &xs->rhead, request, child, false);
 		return UNLANG_ACTION_PUSHED_CHILD;
 
@@ -241,7 +241,7 @@ static unlang_action_t xlat_unlang_resume(REQUEST *request, rlm_rcode_t *presult
 	unlang_frame_state_xlat_t	*xs = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
 	xlat_action_t			xa;
 
-	xa = xlat_frame_eval_resume(xs->ctx, &xs->values, mr->callback, xs->exp, request, xs->rhead, rctx);
+	xa = xlat_frame_eval_resume(xs->ctx, &xs->values, mr->callback, xs->exp, request, &xs->rhead, rctx);
 	switch (xa) {
 	case XLAT_ACTION_YIELD:
 		*presult = RLM_MODULE_YIELD;
