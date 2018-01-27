@@ -573,7 +573,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 		case XLAT_FUNC_SYNC:
 		{
 			fr_value_box_t	*value;
-			char		*str;
+			char		*str = NULL;
 			char		*result_str = NULL;
 			ssize_t		slen;
 

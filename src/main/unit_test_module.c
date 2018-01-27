@@ -640,7 +640,7 @@ static int map_proc_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void 
 }
 
 static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, UNUSED void *proc_inst, UNUSED REQUEST *request,
-			      	UNUSED vp_tmpl_t const *src, UNUSED vp_map_t const *maps)
+			      	UNUSED fr_value_box_t **src, UNUSED vp_map_t const *maps)
 {
 	return RLM_MODULE_FAIL;
 }

@@ -1262,7 +1262,7 @@ int unlang_fixup_update(vp_map_t *map, UNUSED void *ctx)
 
 
 static unlang_group_t *group_allocate(unlang_t *parent, CONF_SECTION *cs,
-				unlang_group_type_t group_type, unlang_type_t mod_type)
+				      unlang_group_type_t group_type, unlang_type_t mod_type)
 {
 	unlang_group_t *g;
 	unlang_t *c;

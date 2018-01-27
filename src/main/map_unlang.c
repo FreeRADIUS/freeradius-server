@@ -56,6 +56,13 @@ typedef struct {
 	unlang_update_state_t	state;				//!< What we're currently doing.
 } unlang_frame_state_update_t;
 
+/** State of a map block
+ *
+ */
+typedef struct {
+	fr_value_box_t		*src_result;			//!< Result of expanding the map source.
+} unlang_frame_state_map_proc_t;
+
 /** Execute an update block
  *
  * Update blocks execute in two phases, first there's an evaluation phase where
@@ -74,7 +81,7 @@ static unlang_action_t unlang_update(REQUEST *request, rlm_rcode_t *presult, int
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
 	unlang_group_t			*g = unlang_generic_to_group(instruction);
-	unlang_frame_state_update_t	*update = frame->state;
+	unlang_frame_state_update_t	*update_state = frame->state;
 	vp_map_t			*map;
 
 	/*
@@ -85,37 +92,40 @@ static unlang_action_t unlang_update(REQUEST *request, rlm_rcode_t *presult, int
 		int cnt = 0;
 		for (map = g->map; map; map = map->next) cnt++;
 
-		MEM(frame->state = update = talloc_pooled_object(stack, unlang_frame_State_update_t,
-								 (sizeof(vp_map_t) + (sizeof(vp_tmpl_t) * 2) + 128),
-								 cnt));	/* 128 is for string buffers */
+		MEM(frame->state = update_state = talloc_pooled_object(stack, unlang_frame_state_update_t,
+								       (sizeof(vp_map_t) +
+								       (sizeof(vp_tmpl_t) * 2) + 128),
+								       cnt));	/* 128 is for string buffers */
 
 #else
-		MEM(frame->state = update = talloc_zero(stack, unlang_frame_state_update_t));
+		MEM(frame->state = update_state = talloc_zero(stack, unlang_frame_state_update_t));
 #endif
 
-		fr_cursor_init(&update->maps, &g->map);
-		update->vlm_next = &update->vlm_head;
+		fr_cursor_init(&update_state->maps, &g->map);
+		update_state->vlm_next = &update_state->vlm_head;
 		frame->repeat = true;
 	}
 
 	/*
 	 *	Iterate over the maps producing a set of modifications to apply.
 	 */
-	map = fr_cursor_current(&update->maps);
-	do {
-		switch (update->state) {
+	for (map = fr_cursor_current(&update_state->maps);
+	     map;
+	     map = fr_cursor_next(&update_state->maps)) {
+		switch (update_state->state) {
 		case UNLANG_UPDATE_MAP_INIT:
-			update->state = UNLANG_UPDATE_MAP_EXPANDED_LHS;
+			update_state->state = UNLANG_UPDATE_MAP_EXPANDED_LHS;
 
-			rad_assert(!update->lhs_result);	/* Should have been consumed */
-			rad_assert(!update->rhs_result);	/* Should have been consumed */
+			rad_assert(!update_state->lhs_result);	/* Should have been consumed */
+			rad_assert(!update_state->rhs_result);	/* Should have been consumed */
 
 			switch (map->lhs->type) {
 			default:
 				break;
 
 			case TMPL_TYPE_XLAT_STRUCT:
-				xlat_unlang_push(update, &update->lhs_result, request, map->lhs->tmpl_xlat, false);
+				xlat_unlang_push(update_state, &update_state->lhs_result,
+						 request, map->lhs->tmpl_xlat, false);
 				return UNLANG_ACTION_PUSHED_CHILD;
 
 			case TMPL_TYPE_REGEX:
@@ -123,23 +133,24 @@ static unlang_action_t unlang_update(REQUEST *request, rlm_rcode_t *presult, int
 			case TMPL_TYPE_XLAT:
 				rad_assert(0);
 			error:
-				talloc_list_free(&update->lhs_result);
-				talloc_list_free(&update->rhs_result);
+				talloc_list_free(&update_state->lhs_result);
+				talloc_list_free(&update_state->rhs_result);
 
 				*presult = RLM_MODULE_FAIL;
 				*priority = instruction->actions[*presult];
+
 				return UNLANG_ACTION_CALCULATE_RESULT;
 			}
 			/* FALL-THROUGH */
 
 		case UNLANG_UPDATE_MAP_EXPANDED_LHS:
-			update->state = UNLANG_UPDATE_MAP_EXPANDED_RHS;
+			update_state->state = UNLANG_UPDATE_MAP_EXPANDED_RHS;
 
 			/*
 			 *	Concat the top level results together
 			 */
-			if (update->lhs_result &&
-			    (fr_value_box_list_concat(update, update->lhs_result, &update->lhs_result,
+			if (update_state->lhs_result &&
+			    (fr_value_box_list_concat(update_state, update_state->lhs_result, &update_state->lhs_result,
 			    			      FR_TYPE_STRING, true) < 0)) {
 				RPEDEBUG("Failed concatenating LHS expansion results");
 				goto error;
@@ -150,7 +161,8 @@ static unlang_action_t unlang_update(REQUEST *request, rlm_rcode_t *presult, int
 				break;
 
 			case TMPL_TYPE_XLAT_STRUCT:
-				xlat_unlang_push(update, &update->rhs_result, request, map->rhs->tmpl_xlat, false);
+				xlat_unlang_push(update_state, &update_state->rhs_result,
+						 request, map->rhs->tmpl_xlat, false);
 				return UNLANG_ACTION_PUSHED_CHILD;
 
 			case TMPL_TYPE_REGEX:
@@ -162,36 +174,37 @@ static unlang_action_t unlang_update(REQUEST *request, rlm_rcode_t *presult, int
 			/* FALL-THROUGH */
 
 		case UNLANG_UPDATE_MAP_EXPANDED_RHS:
-			update->state = UNLANG_UPDATE_MAP_INIT;
+			update_state->state = UNLANG_UPDATE_MAP_INIT;
 
 			/*
 			 *	Concat the top level results together
 			 */
-			if (update->rhs_result &&
-			    (fr_value_box_list_concat(update, update->rhs_result, &update->rhs_result,
+			if (update_state->rhs_result &&
+			    (fr_value_box_list_concat(update_state, update_state->rhs_result, &update_state->rhs_result,
 			    			      FR_TYPE_STRING, true) < 0)) {
 				RPEDEBUG("Failed concatenating RHS expansion results");
 				goto error;
 			}
 
-			if (map_to_list_mod(update, update->vlm_next,
-					    request, map, &update->lhs_result, &update->rhs_result) < 0) goto error;
+			if (map_to_list_mod(update_state, update_state->vlm_next,
+					    request, map,
+					    &update_state->lhs_result, &update_state->rhs_result) < 0) goto error;
 
-			talloc_list_free(&update->lhs_result);
-			talloc_list_free(&update->rhs_result);
+			talloc_list_free(&update_state->lhs_result);
+			talloc_list_free(&update_state->rhs_result);
 
 			/*
 			 *	Wind to the end...
 			 */
-			while (*update->vlm_next) update->vlm_next = &(*(update->vlm_next))->next;
+			while (*update_state->vlm_next) update_state->vlm_next = &(*(update_state->vlm_next))->next;
 			break;
 		}
-	} while ((map = fr_cursor_next(&update->maps)));
+	};
 
 	/*
 	 *	No modifications...
 	 */
-	if (!update->vlm_head) {
+	if (!update_state->vlm_head) {
 		RDEBUG2("Nothing to update");
 		goto done;
 	}
@@ -203,7 +216,7 @@ static unlang_action_t unlang_update(REQUEST *request, rlm_rcode_t *presult, int
 	{
 		vp_list_mod_t const *vlm;
 
-		for (vlm = update->vlm_head;
+		for (vlm = update_state->vlm_head;
 		     vlm;
 		     vlm = vlm->next) {
 			int ret;
@@ -220,15 +233,61 @@ done:
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-static unlang_action_t unlang_map(REQUEST *request,
-				  rlm_rcode_t *presult, UNUSED int *priority)
+static unlang_action_t unlang_map(REQUEST *request, rlm_rcode_t *presult, int *priority)
 {
-	unlang_stack_t		*stack = request->stack;
-	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*instruction = frame->instruction;
-	unlang_group_t		*g = unlang_generic_to_group(instruction);
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_t			*instruction = frame->instruction;
+	unlang_group_t			*g = unlang_generic_to_group(instruction);
+	map_proc_inst_t			*inst = g->proc_inst;
+	unlang_frame_state_map_proc_t	*map_proc_state;
 
-	*presult = map_proc(request, g->proc_inst);
+	/*
+	 *	Initialise the frame state
+	 */
+	if (!frame->repeat) {
+		MEM(frame->state = map_proc_state = talloc_zero(stack, unlang_frame_state_map_proc_t));
+		frame->repeat = true;
+
+		/*
+		 *	Expand the map source
+		 */
+		if (inst->src) switch (inst->src->type) {
+		default:
+			if (tmpl_aexpand(frame->state, &map_proc_state->src_result,
+					 request, inst->src, NULL, NULL) < 0) {
+				REDEBUG("Failed expanding map src");
+			error:
+				*presult = RLM_MODULE_FAIL;
+				*priority = instruction->actions[*presult];
+
+				return UNLANG_ACTION_CALCULATE_RESULT;
+			}
+			break;
+
+		case TMPL_TYPE_XLAT_STRUCT:
+			xlat_unlang_push(map_proc_state, &map_proc_state->src_result,
+					 request, inst->src->tmpl_xlat, false);
+			return UNLANG_ACTION_PUSHED_CHILD;
+
+		case TMPL_TYPE_REGEX:
+		case TMPL_TYPE_REGEX_STRUCT:
+		case TMPL_TYPE_XLAT:
+			rad_assert(0);
+			goto error;
+		}
+	} else {
+		map_proc_state = talloc_get_type_abort(frame->state, unlang_frame_state_map_proc_t);
+	}
+
+	RDEBUG2("MAP %s \"%pM\"", inst->proc->name, map_proc_state->src_result);
+
+	/*
+	 *	FIXME - We don't yet support async LHS/RHS expansions for map procs
+	 */
+	if (map_proc_state->src_result) talloc_list_get_type_abort(map_proc_state->src_result, fr_value_box_t);
+	*presult = map_proc(request, g->proc_inst, &map_proc_state->src_result);
+	if (map_proc_state->src_result) talloc_list_get_type_abort(map_proc_state->src_result, fr_value_box_t);
 
 	return *presult == RLM_MODULE_YIELD ? UNLANG_ACTION_YIELD : UNLANG_ACTION_CALCULATE_RESULT;
 }

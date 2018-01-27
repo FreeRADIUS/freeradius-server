@@ -31,7 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/map_proc.h>
 
 static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST *request,
-				vp_tmpl_t const *key, vp_map_t const *maps);
+				fr_value_box_t **key, vp_map_t const *maps);
 
 /*
  *	Define a structure for our module configuration.
@@ -470,17 +470,23 @@ static int csv_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
 static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST *request,
-				vp_tmpl_t const *key, vp_map_t const *maps)
+				fr_value_box_t **key, vp_map_t const *maps)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
 	rlm_csv_t		*inst = talloc_get_type_abort(mod_inst, rlm_csv_t);
 	rlm_csv_entry_t		*e, my_entry;
 	vp_map_t const		*map;
-	char			*key_str = NULL;
 
-	if (tmpl_aexpand(request, &key_str, request, key, NULL, NULL) < 0) return RLM_MODULE_FAIL;
+	if (!*key) {
+		REDEBUG("CSV key cannot be (null)");
+		return RLM_MODULE_FAIL;
+	}
 
-	my_entry.key = key_str;
+	if (fr_value_box_list_concat(request, *key, key, FR_TYPE_STRING, true) < 0) {
+		REDEBUG("Failed concatenating key elements");
+		return RLM_MODULE_FAIL;
+	}
+	my_entry.key = (*key)->vb_strvalue;
 
 	e = rbtree_finddata(inst->tree, &my_entry);
 	if (!e) {
@@ -534,7 +540,6 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	REXDENT();
 
 finish:
-	talloc_free(key_str);
 	return rcode;
 }
 

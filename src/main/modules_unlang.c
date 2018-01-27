@@ -51,7 +51,7 @@ RCSID("$Id$")
  * @param[in] ctx		To allocate value boxes and values in.
  * @param[out] out		Where to write the result of the expansion.
  * @param[in] request		The current request.
- * @param[in] xlat		to evaluate.
+ * @param[in] exp		to evaluate.
  * @param[in] callback		to call on unlang_resumable().
  * @param[in] signal		to call on unlang_action().
  * @param[in] uctx		to pass to the callbacks.
@@ -60,7 +60,7 @@ RCSID("$Id$")
  *	- A return code representing the result of the xla
  */
 rlm_rcode_t module_unlang_push_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
-				    REQUEST *request, xlat_exp_t const *xlat,
+				    REQUEST *request, xlat_exp_t const *exp,
 				    fr_unlang_module_resume_t callback,
 				    fr_unlang_module_signal_t signal, void *uctx)
 {
@@ -72,7 +72,7 @@ rlm_rcode_t module_unlang_push_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
 	/*
 	 *	Push the xlat function
 	 */
-	xlat_unlang_push(ctx, out, request, xlat, true);
+	xlat_unlang_push(ctx, out, request, exp, true);
 
 	/*
 	 *	Execute the xlat frame we just pushed onto the stack.

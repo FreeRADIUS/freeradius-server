@@ -298,7 +298,7 @@ static int sql_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void *
  *	- #RLM_MODULE_FAIL if a fault occurred.
  */
 static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST *request,
-				vp_tmpl_t const *query, vp_map_t const *maps)
+				fr_value_box_t **query, vp_map_t const *maps)
 {
 	rlm_sql_t		*inst = talloc_get_type_abort(mod_inst, rlm_sql_t);
 	rlm_sql_handle_t	*handle = NULL;
@@ -317,7 +317,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	char const		**fields = NULL, *map_rhs;
 	char			map_rhs_buff[128];
 
-	char			*query_str = NULL;
+	char const		*query_str = NULL;
 
 #define MAX_SQL_FIELD_INDEX (64)
 
@@ -326,9 +326,16 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 
 	rad_assert(inst->driver->sql_fields);		/* Should have been caught during validation... */
 
-	if (tmpl_aexpand(request, &query_str, request, query, sql_escape_for_xlat_func, inst) < 0) {
+	if (!*query) {
+		REDEBUG("Query cannot be (null)");
 		return RLM_MODULE_FAIL;
 	}
+
+	if (fr_value_box_list_concat(request, *query, query, FR_TYPE_STRING, true) < 0) {
+		RPEDEBUG("Failed concatenating input string");
+		return RLM_MODULE_FAIL;
+	}
+	query_str = (*query)->vb_strvalue;
 
 	for (i = 0; i < MAX_SQL_FIELD_INDEX; i++) field_index[i] = -1;
 
@@ -450,7 +457,6 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	(inst->driver->sql_finish_select_query)(handle, inst->config);
 
 finish:
-	talloc_free(query_str);
 	talloc_free(fields);
 	fr_pool_connection_release(inst->pool, request, handle);
 
