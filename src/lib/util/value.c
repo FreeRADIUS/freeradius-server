@@ -2287,7 +2287,7 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
  * @param[in] ctx	to add reference from.  If NULL no reference will be added.
  * @param[in] dst	to copy value to.
  * @param[in] src	to copy value from.
- * @param[in] incre_ref	Increment the reference count on the src buffer.
+ * @param[in] incr_ref	Increment the reference count on the src buffer.
  *			Only do this if you KNOW the src box/buffer was allocated by
  *			this thread and will only ever be used by this thread.
  */
