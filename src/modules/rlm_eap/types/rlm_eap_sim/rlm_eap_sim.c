@@ -681,7 +681,7 @@ static int process_eap_sim_start(eap_session_t *eap_session, VALUE_PAIR *vps)
 	if (id) {
 	 	if (fr_sim_id_type(&type, &method,
 				   eap_session->identity, talloc_array_length(eap_session->identity) - 1) < 0) {
-			RWDEBUG2("Failed parsing identity: %s", fr_strerror());
+			RPWDEBUG2("Failed parsing identity");
 		}
 
 		/*
@@ -1044,7 +1044,7 @@ static rlm_rcode_t mod_session_init(UNUSED void *instance, eap_session_t *eap_se
 	 */
 	if (fr_sim_id_type(&type, &method,
 			   eap_session->identity, talloc_array_length(eap_session->identity) - 1) < 0) {
-		RWDEBUG2("Failed parsing identity, continuing anyway: %s", fr_strerror());
+		RPWDEBUG2("Failed parsing identity, continuing anyway");
 	}
 
 	switch (method) {

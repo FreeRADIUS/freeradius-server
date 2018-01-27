@@ -902,13 +902,13 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 	fr_value_box_t	src;
 
 	if (fr_json_object_is_type(leaf, json_type_null)) {
-		RDEBUG3("Got null value for attribute \"%s\", skipping...", da->name);
+		RDEBUG3("Got null value for attribute \"%s\" (skipping)", da->name);
 		return NULL;
 	}
 
 	vp = fr_pair_afrom_da(ctx, da);
 	if (!vp) {
-		RWDEBUG("Failed creating valuepair for attribute \"%s\", skipping...", da->name);
+		RWDEBUG("Failed creating valuepair for attribute \"%s\" (skipping)", da->name);
 		talloc_free(expanded);
 
 		return NULL;
@@ -953,7 +953,7 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 		 */
 		src.vb_strvalue = json_object_get_string(leaf);
 		if (!src.vb_strvalue) {
-			RWDEBUG("Failed getting string value for attribute \"%s\", skipping...", da->name);
+			RWDEBUG("Failed getting string value for attribute \"%s\" (skipping)", da->name);
 
 			return NULL;
 		}
@@ -964,7 +964,7 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 	ret = fr_value_box_cast(vp, &vp->data, da->type, da, &src);
 	talloc_free(expanded);
 	if (ret < 0) {
-		RWDEBUG("Failed parsing value for attribute \"%s\" (skipping): %s", da->name, fr_strerror());
+		RWDEBUG("Failed parsing value for attribute \"%s\" (skipping)", da->name);
 		talloc_free(vp);
 		return NULL;
 	}
@@ -1035,11 +1035,11 @@ static int json_pair_make(rlm_rest_t const *instance, rlm_rest_section_t const *
 	if (!fr_json_object_is_type(object, json_type_object)) {
 #ifdef HAVE_JSON_TYPE_TO_NAME
 		REDEBUG("Can't process VP container, expected JSON object"
-			"got \"%s\", skipping...",
+			"got \"%s\" (skipping)",
 			json_type_to_name(json_object_get_type(object)));
 #else
 		REDEBUG("Can't process VP container, expected JSON object"
-			", skipping...");
+			" (skipping)");
 #endif
 		return -1;
 	}
@@ -1069,18 +1069,18 @@ static int json_pair_make(rlm_rest_t const *instance, rlm_rest_section_t const *
 		RDEBUG2("Parsing attribute \"%s\"", name);
 
 		if (tmpl_afrom_attr_str(request, &dst, name, REQUEST_CURRENT, PAIR_LIST_REPLY, false, false) <= 0) {
-			RWDEBUG("Failed parsing attribute: %s, skipping...", fr_strerror());
+			RPWDEBUG("Failed parsing attribute: %s (skipping)");
 			continue;
 		}
 
 		if (radius_request(&current, dst->tmpl_request) < 0) {
-			RWDEBUG("Attribute name refers to outer request but not in a tunnel, skipping...");
+			RWDEBUG("Attribute name refers to outer request but not in a tunnel (skipping)");
 			continue;
 		}
 
 		vps = radius_list(current, dst->tmpl_list);
 		if (!vps) {
-			RWDEBUG("List not valid in this context, skipping...");
+			RWDEBUG("List not valid in this context (skipping)");
 			continue;
 		}
 		ctx = radius_list_ctx(current, dst->tmpl_list);
@@ -1108,7 +1108,7 @@ static int json_pair_make(rlm_rest_t const *instance, rlm_rest_section_t const *
 			if (json_object_object_get_ex(value, "op", &tmp)) {
 				flags.op = fr_str2int(fr_tokens_table, json_object_get_string(tmp), 0);
 				if (!flags.op) {
-					RWDEBUG("Invalid operator value \"%s\", skipping...",
+					RWDEBUG("Invalid operator value \"%s\" (skipping)",
 						json_object_get_string(tmp));
 					continue;
 				}
@@ -1132,7 +1132,7 @@ static int json_pair_make(rlm_rest_t const *instance, rlm_rest_section_t const *
 			 *  Value key must be present if were using the expanded syntax.
 			 */
 			if (!json_object_object_get_ex(value, "value", &tmp)) {
-				RWDEBUG("Value key missing, skipping...");
+				RWDEBUG("Value key missing (skipping)");
 				continue;
 			}
 		}
@@ -1143,7 +1143,7 @@ static int json_pair_make(rlm_rest_t const *instance, rlm_rest_section_t const *
 		if (!flags.is_json && fr_json_object_is_type(value, json_type_array)) {
 			elements = json_object_array_length(value);
 			if (!elements) {
-				RWDEBUG("Zero length value array, skipping...");
+				RWDEBUG("Zero length value array (skipping)");
 				continue;
 			}
 			element = json_object_array_get_idx(value, 0);
@@ -1171,7 +1171,7 @@ static int json_pair_make(rlm_rest_t const *instance, rlm_rest_section_t const *
 
 			if (fr_json_object_is_type(element, json_type_object) && !flags.is_json) {
 				/* TODO: Insert nested VP into VP structure...*/
-				RWDEBUG("Found nested VP, these are not yet supported, skipping...");
+				RWDEBUG("Found nested VP, these are not yet supported (skipping)");
 
 				continue;
 

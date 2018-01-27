@@ -154,7 +154,9 @@ ssize_t fr_sim_3gpp_root_nai_domain_mcc_mnc(uint16_t *mnc, uint16_t *mcc,
   * @param[in] id	the NAI string provided.
   * @param[in] id_len	the length of the user portion of the NAI string.
   *			See #fr_sim_id_user_len.
-  * @return Length of the ID written to out.
+  * @return
+  *	- 0 on success.
+  *	- -1 on failure.
   */
 int fr_sim_id_type(fr_sim_id_type_t *type, fr_sim_method_hint_t *hint, char const *id, size_t id_len)
 {
@@ -168,36 +170,49 @@ int fr_sim_id_type(fr_sim_id_type_t *type, fr_sim_method_hint_t *hint, char cons
 	}
 
 	/*
-	 *	Permanent ID (< 15 digits)
+	 *	Permanent ID format check
 	 */
-	if ((id_len <= 16) && (id_len > 1)) {
-		for (i = 1; i < id_len; i++) if (!isdigit(id[i])) break;
-
-		if (i == id_len) {
-			switch (id[0]) {
-
-			case SIM_ID_TAG_PERMANENT_SIM:
-				*hint = SIM_METHOD_HINT_SIM;
-				*type = SIM_ID_TYPE_PERMANENT;	/* All digits */
-				return 0;
-
-			case SIM_ID_TAG_PERMANENT_AKA:
-				*hint = SIM_METHOD_HINT_AKA;
-				*type = SIM_ID_TYPE_PERMANENT;	/* All digits */
-				return 0;
-
-			case SIM_ID_TAG_PERMANENT_AKA_PRIME:
-				*hint = SIM_METHOD_HINT_AKA_PRIME;
-				*type = SIM_ID_TYPE_PERMANENT;	/* All Digits */
-				return 0;
-
-			default:
-				break;
-			}
-
+	switch (id[0]) {
+	case SIM_ID_TAG_PERMANENT_SIM:
+	case SIM_ID_TAG_PERMANENT_AKA:
+	case SIM_ID_TAG_PERMANENT_AKA_PRIME:
+		if (id_len > 16) {
+			fr_strerror_printf("IMSI too long, expected <= 16 bytes got %zu bytes", id_len);
+			goto bad_format;
 		}
+
+		for (i = 1; i < id_len; i++) {
+			if (!isdigit(id[i])) {
+				fr_strerror_printf("Invalid digit '%c' in IMSI \"%.*s\"", id[i], (int)id_len, id);
+				goto bad_format;
+			}
+		}
+
+		switch (id[0]) {
+		case SIM_ID_TAG_PERMANENT_SIM:
+			*hint = SIM_METHOD_HINT_SIM;
+			*type = SIM_ID_TYPE_PERMANENT;	/* All digits */
+			return 0;
+
+		case SIM_ID_TAG_PERMANENT_AKA:
+			*hint = SIM_METHOD_HINT_AKA;
+			*type = SIM_ID_TYPE_PERMANENT;	/* All digits */
+			return 0;
+
+		case SIM_ID_TAG_PERMANENT_AKA_PRIME:
+			*hint = SIM_METHOD_HINT_AKA_PRIME;
+			*type = SIM_ID_TYPE_PERMANENT;	/* All Digits */
+			return 0;
+
+		default:
+			break;
+		}
+
+	default:
+		break;
 	}
 
+bad_format:
 	/*
 	 *	Pseudonym
 	 */
@@ -238,19 +253,19 @@ int fr_sim_id_type(fr_sim_id_type_t *type, fr_sim_method_hint_t *hint, char cons
 	case SIM_ID_TAG_PERMANENT_SIM:
 		*hint = SIM_METHOD_HINT_UNKNOWN;
 		*type = SIM_ID_TYPE_UNKNOWN;
-		fr_strerror_printf("Got SIM-Permanent-ID tag, but identity is not a permanent ID");
+		fr_strerror_printf_push("Got SIM-Permanent-ID tag, but identity is not a permanent ID");
 		return -1;
 
 	case SIM_ID_TAG_PERMANENT_AKA:
 		*hint = SIM_METHOD_HINT_UNKNOWN;
 		*type = SIM_ID_TYPE_UNKNOWN;
-		fr_strerror_printf("Got AKA-Permanent-ID tag, but identity is not a permanent ID");
+		fr_strerror_printf_push("Got AKA-Permanent-ID tag, but identity is not a permanent ID");
 		return -1;
 
 	default:
 		*hint = SIM_METHOD_HINT_UNKNOWN;
 		*type = SIM_ID_TYPE_UNKNOWN;
-		fr_strerror_printf("Unrecognised tag '%c'", id[0]);
+		fr_strerror_printf_push("Unrecognised tag '%c'", id[0]);
 		return -1;
 	}
 }

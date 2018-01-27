@@ -815,7 +815,7 @@ check_active:
 
 	if (fr_radius_verify(c->buffer, original,
 			     (uint8_t const *) c->inst->secret, strlen(c->inst->secret)) < 0) {
-		RWDEBUG("Ignoring response with invalid signature: %s", fr_strerror());
+		RPWDEBUG("Ignoring response with invalid signature");
 		goto redo;
 	}
 

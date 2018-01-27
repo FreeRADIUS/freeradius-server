@@ -872,7 +872,7 @@ do { \
 	if (_vp) { \
 		fr_pair_cursor_append(cursor, _vp); \
 	} else { \
-		RWDEBUG("Failed creating attribute %s: %s", _name, fr_strerror()); \
+		RPWDEBUG("Failed creating attribute %s", _name); \
 	} \
 } while (0)
 
