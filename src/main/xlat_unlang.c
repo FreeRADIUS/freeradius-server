@@ -105,7 +105,7 @@ void xlat_unlang_push(TALLOC_CTX *ctx, fr_value_box_t **out,
 	 *	Allocate its state, and setup a cursor for the xlat nodes
 	 */
 	MEM(frame->state = state = talloc_zero(stack, unlang_frame_state_xlat_t));
-	state->exp = talloc_get_type_abort(exp, xlat_exp_t);	/* Ensure the node is valid */
+	state->exp = talloc_get_type_abort_const(exp, xlat_exp_t);	/* Ensure the node is valid */
 
 	fr_cursor_init(&state->values, out);
 
