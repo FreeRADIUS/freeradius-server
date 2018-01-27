@@ -381,7 +381,7 @@ void eap_add_reply(REQUEST *request,
 
 	vp = pair_make_reply(name, NULL, T_OP_EQ);
 	if (!vp) {
-		RPEDEBUG("Did not create attribute %s");
+		RPEDEBUG("Did not create attribute %s", vp->da->name);
 		return;
 	}
 
