@@ -458,6 +458,12 @@ static int _xlat_bootstrap_walker(xlat_exp_t *node, UNUSED void *uctx)
  */
 int xlat_bootstrap(xlat_exp_t *root)
 {
+	/*
+	 *	If thread instantiate has been called, it's too late to
+	 *	bootstrap new xlats.
+	 */
+	rad_assert(!xlat_thread_inst_tree);
+
 	if (!xlat_inst_tree) xlat_instantiate_init();
 
 	return xlat_eval_walk(root, _xlat_bootstrap_walker, XLAT_FUNC, NULL);
