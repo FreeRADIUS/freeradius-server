@@ -1069,7 +1069,7 @@ static int json_pair_make(rlm_rest_t const *instance, rlm_rest_section_t const *
 		RDEBUG2("Parsing attribute \"%s\"", name);
 
 		if (tmpl_afrom_attr_str(request, &dst, name, REQUEST_CURRENT, PAIR_LIST_REPLY, false, false) <= 0) {
-			RPWDEBUG("Failed parsing attribute: %s (skipping)");
+			RPWDEBUG("Failed parsing attribute (skipping)");
 			continue;
 		}
 
