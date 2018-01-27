@@ -90,7 +90,7 @@ static inline void *_talloc_list_get_type_abort(void *head, size_t offset, char 
 	return head;
 }
 #else
-#  define talloc_list_get_type_abort(_head, _type)
+#  define talloc_list_get_type_abort(_head, _type) (_type *)(_head)
 #endif
 
 /*
