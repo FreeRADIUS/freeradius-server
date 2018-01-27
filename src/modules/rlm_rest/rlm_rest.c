@@ -110,11 +110,15 @@ static int rlm_rest_status_update(REQUEST *request, void *handle)
 	int		code;
 	fr_value_box_t	value;
 
+	RADIUS_LIST_AND_CTX(ctx, list, request, REQUEST_CURRENT, PAIR_LIST_REQUEST);
 	code = rest_get_handle_code(handle);
+	if (!code) {
+		fr_pair_delete_by_num(list, 0, FR_REST_HTTP_STATUS_CODE, TAG_ANY);
+		RDEBUG2("&REST-HTTP-Status-Code !* ANY");
+		return -1;
+	}
 
-	RINDENT();
 	RDEBUG2("&REST-HTTP-Status-Code := %i", code);
-	REXDENT();
 
 	memset(&value, 0, sizeof(value));	/* Required to zero out next/enumv fields */
 	value.type = FR_TYPE_UINT32;
@@ -124,7 +128,6 @@ static int rlm_rest_status_update(REQUEST *request, void *handle)
 	 *	Find the reply list, and appropriate context in the
 	 *	current request.
 	 */
-	RADIUS_LIST_AND_CTX(ctx, list, request, REQUEST_CURRENT, PAIR_LIST_REQUEST);
 	if (!list || (fr_pair_update_by_num(ctx, list, 0, FR_REST_HTTP_STATUS_CODE, TAG_ANY, &value) < 0)) {
 		REDEBUG("Failed updating &REST-HTTP-Status-Code");
 		return -1;
