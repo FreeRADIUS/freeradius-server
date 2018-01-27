@@ -174,14 +174,6 @@ static int rlm_rest_perform(rlm_rest_t const *instance, rlm_rest_thread_t *threa
 	return 0;
 }
 
-/** Stores the state of a yielded xlat
- *
- */
-typedef struct {
-	rlm_rest_section_t		section;	//!< Our mutated section config.
-	rlm_rest_handle_t		*handle;	//!< curl easy handle servicing our request.
-} rlm_rest_xlat_rctx_t;
-
 static xlat_action_t rest_xlat_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
 				      REQUEST *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
 				      UNUSED fr_value_box_t **in, void *rctx)
@@ -380,7 +372,7 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	ret = rest_io_request_enqueue(t, request, handle);
 	if (ret < 0) goto error;
 
-	return xlat_unlang_yield(request, rest_xlat_resume, NULL, rctx);
+	return xlat_unlang_yield(request, rest_xlat_resume, rest_io_xlat_action, rctx);
 }
 
 static rlm_rcode_t mod_authorize_result(REQUEST *request, void *instance, void *thread, void *ctx)
@@ -493,7 +485,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, void *thread, 
 		return RLM_MODULE_FAIL;
 	}
 
-	return unlang_module_yield(request, mod_authorize_result, rest_io_action, handle);
+	return unlang_module_yield(request, mod_authorize_result, rest_io_module_action, handle);
 }
 
 static rlm_rcode_t mod_authenticate_result(REQUEST *request, void *instance, void *thread, void *ctx)

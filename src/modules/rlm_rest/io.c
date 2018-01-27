@@ -300,7 +300,7 @@ static int _rest_io_event_modify(UNUSED CURL *easy, curl_socket_t fd, int what, 
 				       _rest_io_service_errored,
 				       thread) < 0) {
 			PERROR("multi-handle %p registration failed for read+write+error events on FD %i",
-			      thread->mandle, fd);
+			       thread->mandle, fd);
 			return -1;
 		}
 		DEBUG4("multi-handle %p registered for read+write+error events on FD %i", thread->mandle, fd);
@@ -333,9 +333,9 @@ static int _rest_io_event_modify(UNUSED CURL *easy, curl_socket_t fd, int what, 
  * @param[in] ctx	rlm_rest_handle_t currently used by the request.
  * @param[in] action	What happened.
  */
-void rest_io_action(REQUEST *request, void *instance, void *thread, void *ctx, fr_state_signal_t action)
+void rest_io_module_action(REQUEST *request, void *instance, void *thread, void *rctx, fr_state_signal_t action)
 {
-	rlm_rest_handle_t	*randle = talloc_get_type_abort(ctx, rlm_rest_handle_t);
+	rlm_rest_handle_t	*randle = talloc_get_type_abort(rctx, rlm_rest_handle_t);
 	rlm_rest_thread_t	*t = thread;
 	CURLMcode		ret;
 
@@ -352,6 +352,29 @@ void rest_io_action(REQUEST *request, void *instance, void *thread, void *ctx, f
 
 	rest_request_cleanup(instance, randle);
 	fr_pool_connection_release(t->pool, request, randle);
+}
+
+/** Handle asynchronous cancellation of a request
+ *
+ * If we're signalled that the request has been cancelled (FR_SIGNAL_DONE).
+ * Cleanup any pending state and release the connection handle back into the pool.
+ *
+ * @param[in] request	being cancelled.
+ * @param[in] instance	of rlm_rest.
+ * @param[in] thread	Thread specific module instance.
+ * @param[in] ctx	rlm_rest_handle_t currently used by the request.
+ * @param[in] action	What happened.
+ */
+void rest_io_xlat_action(REQUEST *request, UNUSED void *instance, void *thread, void *rctx, fr_state_signal_t action)
+{
+	rest_xlat_thread_inst_t		*xti = talloc_get_type_abort(thread, rest_xlat_thread_inst_t);
+	rlm_rest_t			*mod_inst = xti->inst;
+	rlm_rest_thread_t		*t = xti->t;
+
+	rlm_rest_xlat_rctx_t		*our_rctx = talloc_get_type_abort(rctx, rlm_rest_xlat_rctx_t);
+	rlm_rest_handle_t		*randle = talloc_get_type_abort(our_rctx->handle, rlm_rest_handle_t);
+
+	rest_io_module_action(request, mod_inst, t, randle, action);
 }
 
 /** Sends a REST (HTTP) request.

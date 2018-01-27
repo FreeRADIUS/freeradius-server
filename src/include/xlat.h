@@ -30,6 +30,7 @@ extern "C" {
 #endif
 
 #include <freeradius-devel/cf_util.h>
+#include <freeradius-devel/signal.h>
 
 typedef struct xlat_exp xlat_exp_t;
 
@@ -140,7 +141,7 @@ typedef xlat_action_t (*xlat_func_resume_t)(TALLOC_CTX *ctx, fr_cursor_t *out,
  * @param[in] action		which is signalling the request.
  */
 typedef void (*xlat_func_signal_t)(REQUEST *request, void *instance, void *thread,
-				   void *rctx, int action);
+				   void *rctx, fr_state_signal_t action);
 
 /** Allocate new instance data for an xlat instance
  *
