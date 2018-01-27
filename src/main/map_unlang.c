@@ -285,9 +285,13 @@ static unlang_action_t unlang_map(REQUEST *request, rlm_rcode_t *presult, int *p
 	/*
 	 *	FIXME - We don't yet support async LHS/RHS expansions for map procs
 	 */
+#ifndef NDEBUG
 	if (map_proc_state->src_result) talloc_list_get_type_abort(map_proc_state->src_result, fr_value_box_t);
+#endif
 	*presult = map_proc(request, g->proc_inst, &map_proc_state->src_result);
+#ifndef NDEBUG
 	if (map_proc_state->src_result) talloc_list_get_type_abort(map_proc_state->src_result, fr_value_box_t);
+#endif
 
 	return *presult == RLM_MODULE_YIELD ? UNLANG_ACTION_YIELD : UNLANG_ACTION_CALCULATE_RESULT;
 }
