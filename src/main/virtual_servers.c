@@ -170,7 +170,7 @@ static rlm_rcode_t module_method_call(rlm_components_t comp, int idx, REQUEST *r
 	server_cs = request->server_cs;
 	cs = cf_section_find(request->server_cs, section_type_value[comp].section, NULL);
 	if (!cs) {
-		RDEBUG2("Empty %s section in virtual server \"%s\".  Using default return value %s.",
+		RDEBUG2("Empty %s section in virtual server \"%s\".  Using default return value (%s)",
 			section_type_value[comp].section, cf_section_name2(request->server_cs),
 			fr_int2str(mod_rcode_table, default_component_results[comp], "<invalid>"));
 		return default_component_results[comp];
