@@ -1528,22 +1528,14 @@ static inline void map_list_mod_debug(REQUEST *request,
 				      vp_map_t const *map, vp_map_t const *mod, fr_value_box_t const *vb)
 {
 	char *rhs = NULL;
-	char const *quote;
+	char const *quote = "";
 
 	if (!rad_cond_assert(map->lhs != NULL)) return;
 	if (!rad_cond_assert(map->rhs != NULL)) return;
 
 	rad_assert(mod || (map->rhs->type == TMPL_TYPE_NULL));
 
-	if (vb) switch (vb->type) {
-	case FR_TYPE_QUOTED:
-		quote = "\"";
-		break;
-
-	default:
-		quote = "";
-		break;
-	}
+	if (vb && (vb->type == FR_TYPE_STRING)) quote = "\"";
 
 	/*
 	 *	If it's an exec, ignore the list
