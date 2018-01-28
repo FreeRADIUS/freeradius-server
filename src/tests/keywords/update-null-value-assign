@@ -1,8 +1,13 @@
 #
-#  Reply message doesn't exist, so Tmp-Integer-0 shouldn't be created
+#  REVISIT THIS WHEN WE HAVE SOME CLEAR RULES ABOUT NULL ASSIGNMENTS
+#
+
+
+#
+#  Tmp-Octets-1 doesn't exist, so Tmp-Octets-0 shouldn't be created
 #
 update request {
-	Tmp-Integer-0 := "%{Reply-Message}"
+	Tmp-Octets-0 := "%{Tmp-Octets-1}"
 }
 if (&Tmp-Integer-0) {
 	fail
@@ -22,12 +27,12 @@ if (&Tmp-String-0 != '') {
 }
 
 #
-#  NULL valued octet strings get nothing
+#  NULL valued octet strings get converted to zero length octets strings?!
 #
 update request {
 	Tmp-Octets-0 := "%{Reply-Message}"
 }
-if (&Tmp-Octets-0) {
+if (&Tmp-Octets-0 != "") {
 	fail
 }
 
