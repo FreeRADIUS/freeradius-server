@@ -655,13 +655,18 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
 	if (*result) (void) talloc_list_get_type_abort(*result, fr_value_box_t);
 	xa = resume(ctx, out, request, exp->inst, thread_inst->data, result, rctx);
 	if (*result) (void) talloc_list_get_type_abort(*result, fr_value_box_t);
+
+	RDEBUG2("EXPAND %%{%s:...}", exp->xlat->name);
 	switch (xa) {
 	default:
 		break;
 
+	case XLAT_ACTION_YIELD:
+		RDEBUG2("   -- YIELD");
+		break;
+
 	case XLAT_ACTION_DONE:
 		fr_cursor_next(out);		/* Wind to the start of this functions output */
-		RDEBUG2("EXPAND %%{%s:...}", exp->xlat->name);
 		RDEBUG2("   --> %pM", fr_cursor_current(out));
 		break;
 
