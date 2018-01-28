@@ -575,14 +575,13 @@ static bool do_xlats(char const *filename, FILE *fp)
 		 */
 		if (strncmp(input, "xlat ", 5) == 0) {
 			ssize_t slen;
-			char const *error = NULL;
 			char *fmt = talloc_typed_strdup(NULL, input + 5);
 			xlat_exp_t *head;
 
-			slen = xlat_tokenize(fmt, fmt, &head, &error);
+			slen = xlat_tokenize_ephemeral(fmt, request, fmt, &head);
 			if (slen <= 0) {
 				talloc_free(fmt);
-				snprintf(output, sizeof(output), "ERROR offset %d '%s'", (int) -slen, error);
+				snprintf(output, sizeof(output), "ERROR offset %d '%s'", (int) -slen, fr_strerror());
 				continue;
 			}
 

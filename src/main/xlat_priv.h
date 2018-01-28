@@ -140,11 +140,6 @@ typedef struct xlat_out {
 typedef int (*xlat_walker_t)(xlat_exp_t *exp, void *uctx);
 
 /*
- *	xlat_tokenize.c
- */
-ssize_t	xlat_tokenize_ephemeral(TALLOC_CTX *ctx, REQUEST *request, char const *fmt, xlat_exp_t **head);
-
-/*
  *	xlat_func.c
  */
 xlat_t	*xlat_func_find(char const *name);
