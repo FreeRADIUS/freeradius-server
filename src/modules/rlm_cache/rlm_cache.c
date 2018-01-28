@@ -402,6 +402,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 				c_map->lhs->tmpl_da = vp->da;
 				if (vp->da->flags.is_unknown) { /* for tmpl_verify() */
 					c_map->lhs->tmpl_unknown = fr_dict_unknown_acopy(c_map->lhs, vp->da);
+					c_map->lhs->tmpl_da = c_map->lhs->tmpl_unknown;
 				}
 
 				c_map->lhs->tmpl_tag = vp->tag;
