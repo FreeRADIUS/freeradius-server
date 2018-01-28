@@ -3612,73 +3612,6 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 	return p;
 }
 
-/** Concatenate the string representations of a list of value boxes together
- *
- * @param[in] ctx	to allocate the buffer in.
- * @param[in] head	of the list of value boxes.
- * @param[in] delim	to insert between value box values.
- * @param[in] quote	character used set unescape mode.  @see value_str_unescape.
- * @return
- *	- NULL on error.
- *	- The concatenation of the string values of the value box list on success.
- */
-char *fr_value_box_list_asprint(TALLOC_CTX *ctx, fr_value_box_t const *head, char const *delim, char quote)
-{
-	fr_value_box_t const	*vb = head;
-	char			*aggr, *td = NULL;
-	TALLOC_CTX		*pool = NULL;
-
-	if (!head) return NULL;
-
-	aggr = fr_value_box_asprint(ctx, vb, quote);
-	if (!aggr) return NULL;
-	if (!vb->next) return aggr;
-
-	/*
-	 *	If we're aggregating more values,
-	 *	allocate a temporary pool.
-	 */
-	pool = talloc_pool(NULL, 255);
-	if (delim) td = talloc_typed_strdup(pool, delim);
-
-	while ((vb = vb->next)) {
-		char *str, *new_aggr;
-
-		str = fr_value_box_asprint(pool, vb, quote);
-		if (!str) continue;
-
-		new_aggr = talloc_buffer_append_variadic_buffer(aggr, 2, td, str);
-		if (unlikely(!new_aggr)) {
-			talloc_free(aggr);
-			talloc_free(pool);
-			return NULL;
-		}
-		aggr = new_aggr;
-		talloc_free(str);
-	}
-	talloc_free(pool);
-
-	return aggr;
-}
-
-/** Check to see if any list members are tainted
- *
- * @param[in] head	of list to check.
- * @return
- *	- true if a list member is tainted.
- *	- false if no list members are tainted.
- */
-bool fr_value_box_list_tainted(fr_value_box_t const *head)
-{
-	if (!head) return false;
-
-	do {
-		if (head->tainted) return true;
-	} while ((head = head->next));
-
-	return false;
-}
-
 /** Concatenate a list of value boxes
  *
  * @note Will automatically cast all #fr_value_box_t to type specified.
@@ -3793,6 +3726,111 @@ int fr_value_box_list_concat(TALLOC_CTX *ctx,
 	talloc_free(pool);
 
 	return 0;
+}
+
+/** Concatenate the string representations of a list of value boxes together
+ *
+ * @param[in] ctx	to allocate the buffer in.
+ * @param[in] head	of the list of value boxes.
+ * @param[in] delim	to insert between value box values.
+ * @param[in] quote	character used set unescape mode.  @see value_str_unescape.
+ * @return
+ *	- NULL on error.
+ *	- The concatenation of the string values of the value box list on success.
+ */
+char *fr_value_box_list_asprint(TALLOC_CTX *ctx, fr_value_box_t const *head, char const *delim, char quote)
+{
+	fr_value_box_t const	*vb = head;
+	char			*aggr, *td = NULL;
+	TALLOC_CTX		*pool = NULL;
+
+	if (!head) return NULL;
+
+	aggr = fr_value_box_asprint(ctx, vb, quote);
+	if (!aggr) return NULL;
+	if (!vb->next) return aggr;
+
+	/*
+	 *	If we're aggregating more values,
+	 *	allocate a temporary pool.
+	 */
+	pool = talloc_pool(NULL, 255);
+	if (delim) td = talloc_typed_strdup(pool, delim);
+
+	while ((vb = vb->next)) {
+		char *str, *new_aggr;
+
+		str = fr_value_box_asprint(pool, vb, quote);
+		if (!str) continue;
+
+		new_aggr = talloc_buffer_append_variadic_buffer(aggr, 2, td, str);
+		if (unlikely(!new_aggr)) {
+			talloc_free(aggr);
+			talloc_free(pool);
+			return NULL;
+		}
+		aggr = new_aggr;
+		talloc_free(str);
+	}
+	talloc_free(pool);
+
+	return aggr;
+}
+
+/** Do a full copy of a list of value boxes
+ *
+ * @param[in] ctx	to allocate boxes in.
+ * @param[out] out	Where to write the head of the new list.
+ * @param[in] in	boxes to copy.
+ * @return
+ *	- A duplicate list of value boxes, allocated in the context of 'ctx'
+ *	- NULL on error, or empty input list.
+ */
+int fr_value_box_list_acopy(TALLOC_CTX *ctx, fr_value_box_t **out, fr_value_box_t const *in)
+{
+	fr_value_box_t const *in_p;
+	fr_cursor_t cursor;
+
+	*out = NULL;
+
+	fr_cursor_init(&cursor, out);
+
+	for (in_p = in;
+	     in_p;
+	     in_p = in_p->next) {
+	     	fr_value_box_t *n = NULL;
+
+		n = fr_value_box_alloc_null(ctx);
+		if (!n) {
+		error:
+			fr_cursor_head(&cursor);
+			fr_cursor_free_list(&cursor);
+			return -1;
+		}
+
+		if (fr_value_box_copy(n, n, in_p) < 0) goto error;
+		fr_cursor_append(&cursor, n);
+	}
+
+	return 0;
+}
+
+/** Check to see if any list members are tainted
+ *
+ * @param[in] head	of list to check.
+ * @return
+ *	- true if a list member is tainted.
+ *	- false if no list members are tainted.
+ */
+bool fr_value_box_list_tainted(fr_value_box_t const *head)
+{
+	if (!head) return false;
+
+	do {
+		if (head->tainted) return true;
+	} while ((head = head->next));
+
+	return false;
 }
 
 /** Print the value of an attribute to a string

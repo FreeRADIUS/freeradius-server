@@ -520,6 +520,8 @@ int		fr_value_box_list_concat(TALLOC_CTX *ctx,
 
 char		*fr_value_box_list_asprint(TALLOC_CTX *ctx, fr_value_box_t const *head, char const *delim, char quote);
 
+int		fr_value_box_list_acopy(TALLOC_CTX *ctx, fr_value_box_t **out, fr_value_box_t const *in);
+
 bool		fr_value_box_list_tainted(fr_value_box_t const *head);
 
 /*
