@@ -665,6 +665,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			if (*alternate) {
 				XLAT_DEBUG("** [%i] %s(alt-second) - string empty, null expansion, continuing...",
 					   unlang_stack_depth(request), __FUNCTION__);
+				*alternate = false;	/* Reset */
 				break;
 			}
 

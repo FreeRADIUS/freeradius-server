@@ -145,7 +145,6 @@ static unlang_action_t xlat_unlang(REQUEST *request,
 		 *	multiple sibling nodes.
 		 */
 		talloc_list_free(&xs->rhead);
-		xs->alternate = false;
 		xlat_unlang_push(xs->ctx, &xs->rhead, request, child, false);
 		return UNLANG_ACTION_PUSHED_CHILD;
 
