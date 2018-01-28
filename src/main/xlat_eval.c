@@ -836,13 +836,15 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			return XLAT_ACTION_PUSH_CHILD;
 		}
 
+		*alternate = false;	/* Reset */
+
 		xlat_debug_log_expansion(request, *in, NULL);
 		xlat_debug_log_result(request, *result);
 
-		if (*result) (void) talloc_list_get_type_abort(*result, fr_value_box_t);
+		(void) talloc_list_get_type_abort(*result, fr_value_box_t);
 		fr_cursor_init(&from, result);
 		fr_cursor_merge(out, &from);
-
+		rad_assert(!*result);
 	}
 		break;
 
