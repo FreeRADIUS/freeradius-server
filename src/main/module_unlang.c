@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file modules_unlang.c
+ * @file module_unlang.c
  * @brief Defines functions for calling modules asynchronously
  *
  * @copyright 2018 The FreeRADIUS server project
