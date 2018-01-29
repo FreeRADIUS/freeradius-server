@@ -85,6 +85,16 @@ typedef void (*unlang_op_resumable_t)(REQUEST *request, void *rctx);
  */
 typedef unlang_action_t (*unlang_op_resume_t)(REQUEST *request, rlm_rcode_t *presult, void *rctx);
 
+/** A generic function pushed by a module or xlat to functions deeper in the C call stack to create resumption points
+ *
+ * @param[in] request		The current request.
+ * @param[in,out] uctx		Provided by whatever pushed the function.  Is opaque to the
+ *				interpreter, but should be usable by the function.
+ *				All input (args) and output will be done using this structure.
+ * @return an action for the interpreter to perform.
+ */
+typedef unlang_action_t (*unlang_function_t)(REQUEST *request, void *uctx);
+
 /** An unlang operation
  *
  * These are like the opcodes in other interpreters.  Each operation, when executed
@@ -107,6 +117,8 @@ typedef struct {
 	bool			debug_braces;			//!< Whether the operation needs to print braces
 								///< in debug mode.
 } unlang_op_t;
+
+void		unlang_push_function(REQUEST *request, unlang_function_t func, void *uctx);
 
 void		unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t default_action);
 

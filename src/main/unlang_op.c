@@ -89,6 +89,92 @@ static uint64_t unlang_active_callers(unlang_t *instruction)
 	return active_callers;
 }
 
+typedef struct {
+	unlang_function_t		func;			//!< To call.
+	void				*uctx;			//!< Uctx to pass to function.
+} unlang_frame_state_func_t;
+
+/** Static instruction for allowing modules/xlats to call functions within themselves, or submodules
+ *
+ */
+static unlang_t function_instruction = {
+	.type = UNLANG_TYPE_FUNCTION,
+	.name = "function",
+	.debug_name = "function",
+	.actions = {
+		[RLM_MODULE_REJECT]	= 0,
+		[RLM_MODULE_FAIL]	= 0,
+		[RLM_MODULE_OK]		= 0,
+		[RLM_MODULE_HANDLED]	= 0,
+		[RLM_MODULE_INVALID]	= 0,
+		[RLM_MODULE_USERLOCK]	= 0,
+		[RLM_MODULE_NOTFOUND]	= 0,
+		[RLM_MODULE_NOOP]	= 0,
+		[RLM_MODULE_UPDATED]	= 0
+	},
+};
+
+/** Call a generic function
+ *
+ * @param[in] request	The current request.
+ * @param[out] presult	The frame result.  Always set to RLM_MODULE_OK (fixme?).
+ * @param[out] priority of the result.
+ */
+static unlang_action_t unlang_function_call(REQUEST *request,
+					    rlm_rcode_t *presult, int *priority)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_frame_state_func_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_func_t);
+	unlang_t			*instruction = frame->instruction;
+	unlang_action_t			ua;
+
+	ua = state->func(request, state->uctx);
+
+	/*
+	 *	The success/failure of these functions
+	 *	should not affect the rcode in any way.
+	 *
+	 *	Only the module/xlat which pushed the
+	 *	function can interpret its result,
+	 *	which will be written to uf->uctx.
+	 */
+	*presult = RLM_MODULE_OK;
+	*priority = instruction->actions[*presult];
+
+	return ua;
+}
+
+/** Push a generic function onto the unlang stack
+ *
+ * These can be pushed by any other type of unlang op to allow a submodule or function
+ * deeper in the C call stack to establish a new resumption point.
+ *
+ * @param[in] request	The current request.
+ * @param[in] func	to call.
+ * @param[in] uctx	to pass to func.
+ */
+void unlang_push_function(REQUEST *request, unlang_function_t func, void *uctx)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame;
+	unlang_frame_state_func_t	*state;
+
+	/*
+	 *	Push module's function
+	 */
+	unlang_push(stack, &function_instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, true);
+	frame = &stack->frame[stack->depth];
+
+	/*
+	 *	Allocate state
+	 */
+	MEM(frame->state = state = talloc_zero(stack, unlang_frame_state_func_t));
+
+	state->func = func;
+	state->uctx = uctx;
+}
+
 static unlang_action_t unlang_load_balance(REQUEST *request,
 					   rlm_rcode_t *presult, UNUSED int *priority)
 {
@@ -1539,7 +1625,11 @@ static unlang_action_t unlang_if(REQUEST *request,
 
 void unlang_op_initialize(void)
 {
+	unlang_op_register(UNLANG_TYPE_FUNCTION,
 			   &(unlang_op_t){
+			   	.name = "function",
+			   	.func = unlang_function_call,
+			   	.debug_braces = false
 			   });
 
 	unlang_op_register(UNLANG_TYPE_GROUP,
