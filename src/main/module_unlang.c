@@ -169,9 +169,11 @@ static void module_unlang_signal(REQUEST *request, void *rctx, fr_state_signal_t
 	mc = unlang_generic_to_module_call(mr->parent);
 	ms = talloc_get_type_abort(frame->state, unlang_frame_state_modcall_t);
 
+	request->module = mc->module_instance->name;
 	((fr_module_unlang_signal_t)mr->signal)(request,
 						mc->module_instance->dl_inst->data, ms->thread->data,
 						rctx, action);
+	request->module = NULL;
 }
 
 static unlang_action_t module_unlang_resume(REQUEST *request, rlm_rcode_t *presult, UNUSED void *rctx)
@@ -192,11 +194,13 @@ static unlang_action_t module_unlang_resume(REQUEST *request, rlm_rcode_t *presu
 	/*
 	 *	Lock is noop unless instance->mutex is set.
 	 */
+	request->module = mc->module_instance->name;
 	safe_lock(mc->module_instance);
 	*presult = request->rcode = ((fr_module_unlang_resume_t)mr->callback)(request,
 									      mc->module_instance->dl_inst->data,
 									      ms->thread->data, mr->rctx);
 	safe_unlock(mc->module_instance);
+	request->module = NULL;
 
 	if (*presult != RLM_MODULE_YIELD) ms->thread->active_callers--;
 
