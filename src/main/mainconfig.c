@@ -756,6 +756,49 @@ do {\
 	}
 
 	/*
+	 *	Parse environment variables first.
+	 */
+	subcs = cf_section_find(cs, "ENV", NULL);
+	if (subcs) {
+		char const *attr, *value;
+		CONF_PAIR *cp;
+		CONF_ITEM *ci;
+
+		for (ci = cf_item_next(subcs, NULL);
+		     ci != NULL;
+		     ci = cf_item_next(subcs, ci)) {
+			if (!cf_item_is_pair(ci)) {
+				cf_log_err(ci, "Unexpected item in ENV section");
+				talloc_free(cs);
+				return -1;
+			}
+
+			cp = cf_item_to_pair(ci);
+			if (cf_pair_operator(cp) != T_OP_EQ) {
+				cf_log_err(ci, "Invalid operator for item in ENV section");
+				talloc_free(cs);
+				return -1;
+			}
+
+			attr = cf_pair_attr(cp);
+			value = cf_pair_value(cp);
+			if (!value) {
+				if (unsetenv(attr) < 0) {
+					cf_log_err(ci, "Failed deleting environment variable %s: %s", attr, fr_syserror(errno));
+					talloc_free(cs);
+					return -1;
+				}
+			} else {
+				if (setenv(attr, value, 1) < 0) {
+					cf_log_err(ci, "Failed setting environment variable %s: %s", attr, fr_syserror(errno));
+					talloc_free(cs);
+					return -1;
+				}
+			}
+		} /* loop over pairs in ENV */
+	} /* there's an ENV subsection */
+
+	/*
 	 *	If there was no log destination set on the command line,
 	 *	set it now.
 	 */
