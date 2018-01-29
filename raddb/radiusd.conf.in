@@ -323,9 +323,6 @@ log {
 	msg_denied = "You are already logged in - access denied"
 }
 
-#  The program to execute to do concurrency checks.
-checkrad = ${sbindir}/checkrad
-
 # SECURITY CONFIGURATION
 #
 #  There may be multiple methods of attacking on the server.  This
