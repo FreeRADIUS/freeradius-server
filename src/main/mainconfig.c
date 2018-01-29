@@ -794,6 +794,16 @@ do {\
 					talloc_free(cs);
 					return -1;
 				}
+
+				/*
+				 *	Hacks for LD_PRELOAD.
+				 */
+				if ((strcmp(attr, "LD_PRELOAD") == 0) &&
+				    (dlopen(value, RTLD_GLOBAL) == NULL)) {
+					cf_log_err(ci, "Failed loading library %s: %s", value, fr_syserror(errno));
+					talloc_free(cs);
+					return -1;
+				}				
 			}
 		} /* loop over pairs in ENV */
 	} /* there's an ENV subsection */
