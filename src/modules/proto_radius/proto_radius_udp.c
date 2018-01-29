@@ -1514,6 +1514,16 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	}
 
 	/*
+	 *	The original packet has changed.  Suppress the write,
+	 *	as the client will never accept the response.
+	 */
+	if ((track->timestamp != request_time) || !address->client) {
+		inst->stats.total_packets_dropped++;
+		DEBUG3("Suppressing reply as we have a newer packet");
+		return buffer_len;
+	}
+
+	/*
 	 *	One less packet outstanding.
 	 */
 	rad_assert(address->client->outstanding > 0);
@@ -1522,7 +1532,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	/*
 	 *	We may need to clean up this socket.
 	 */
-	if ((address->client->outstanding == 0) && (inst->connected)) {
+	if (inst->connected && !address->client->outstanding) {
 		struct timeval when;
 
 		gettimeofday(&when, NULL);
@@ -1532,16 +1542,6 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 					  &when, connection_expire, inst) < 0) {
 			ERROR("Failed adding timeout for connected socket.  It will be permanent!");
 		}
-	}
-
-	/*
-	 *	The original packet has changed.  Suppress the write,
-	 *	as the client will never accept the response.
-	 */
-	if (track->timestamp != request_time) {
-		inst->stats.total_packets_dropped++;
-		DEBUG3("Suppressing reply as we have a newer packet");
-		return buffer_len;
 	}
 
 	inst->stats.total_responses++;
