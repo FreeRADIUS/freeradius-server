@@ -683,7 +683,7 @@ int xlat_register(void *mod_inst, char const *name,
 	c->inst_size = inst_size;
 	c->async_safe = async_safe;
 
-	DEBUG3("%s: %s", c->name, __FUNCTION__);
+	DEBUG3("%s: %s", __FUNCTION__, c->name);
 
 	if (new && !rbtree_insert(xlat_root, c)) {
 		ERROR("Failed inserting xlat registration for %s",
@@ -783,7 +783,7 @@ int xlat_async_register(TALLOC_CTX *ctx,
 	c->async_safe = false;	/* async safe in this case means it might yield */
 	c->uctx = uctx;
 
-	DEBUG3("%s: %s", c->name, __FUNCTION__);
+	DEBUG3("%s: %s", __FUNCTION__, c->name);
 
 	if (new && !rbtree_insert(xlat_root, c)) {
 		ERROR("%s: Failed inserting xlat registration for %s", __FUNCTION__, c->name);
