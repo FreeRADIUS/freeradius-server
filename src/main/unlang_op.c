@@ -40,22 +40,6 @@ RCSID("$Id$")
 #define unlang_break unlang_return
 
 /*
- *	Lock the mutex for the module
- */
-static inline void safe_lock(module_instance_t *instance)
-{
-	if (instance->mutex) pthread_mutex_lock(instance->mutex);
-}
-
-/*
- *	Unlock the mutex for the module
- */
-static inline void safe_unlock(module_instance_t *instance)
-{
-	if (instance->mutex) pthread_mutex_unlock(instance->mutex);
-}
-
-/*
  *	Recursively collect active callers.  Slow, but correct.
  */
 static uint64_t unlang_active_callers(unlang_t *instruction)
@@ -71,7 +55,7 @@ static uint64_t unlang_active_callers(unlang_t *instruction)
 	case UNLANG_TYPE_MODULE_CALL:
 	{
 		module_thread_instance_t *thread;
-		unlang_module_call_t *sp;
+		module_unlang_call_t *sp;
 
 		sp = unlang_generic_to_module_call(instruction);
 		rad_assert(sp != NULL);
@@ -112,7 +96,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request,
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
 	unlang_frame_state_redundant_t	*redundant;
-	unlang_group_t		*g;
+	unlang_group_t			*g;
 
 	uint32_t count = 0;
 
@@ -219,7 +203,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request,
 
 				} else {
 					module_thread_instance_t *thread;
-					unlang_module_call_t *sp;
+					module_unlang_call_t *sp;
 
 					sp = unlang_generic_to_module_call(child);
 					rad_assert(sp != NULL);
@@ -1498,154 +1482,6 @@ do_null_case:
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-static unlang_action_t unlang_module_call(REQUEST *request,
-				     	  rlm_rcode_t *presult, int *priority)
-{
-	unlang_module_call_t		*sp;
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_t			*instruction = frame->instruction;
-	unlang_frame_state_modcall_t	*ms;
-
-#ifndef NDEBUG
-	int unlang_indent		= request->log.unlang_indent;
-#endif
-
-	/*
-	 *	Process a stand-alone child, and fall through
-	 *	to dealing with it's parent.
-	 */
-	sp = unlang_generic_to_module_call(instruction);
-	rad_assert(sp);
-
-	RDEBUG4("[%i] %s - %s (%s)", stack->depth, __FUNCTION__,
-		sp->module_instance->name, sp->module_instance->module->name);
-
-	/*
-	 *	Return administratively configured return code
-	 */
-	if (sp->module_instance->force) {
-		*presult = request->rcode = sp->module_instance->code;
-		goto done;
-	}
-
-	frame->state = ms = talloc_zero(stack, unlang_frame_state_modcall_t);
-
-	/*
-	 *	Grab the thread/module specific data if any exists.
-	 */
-	ms->thread = module_thread_instance_find(sp->module_instance);
-	rad_assert(ms->thread != NULL);
-
-	/*
-	 *	For logging unresponsive children.
-	 */
-	request->module = sp->module_instance->name;
-	ms->thread->total_calls++;
-
-	/*
-	 *	Lock is noop unless instance->mutex is set.
-	 */
-	safe_lock(sp->module_instance);
-	*presult = sp->method(sp->module_instance->dl_inst->data, ms->thread->data, request);
-	safe_unlock(sp->module_instance);
-
-	request->module = NULL;
-
-	/*
-	 *	Is now marked as "stop" when it wasn't before, we must have been blocked.
-	 */
-	if (request->master_state == REQUEST_STOP_PROCESSING) {
-		RWARN("Module %s became unblocked",
-		      sp->module_instance->module->name);
-		return UNLANG_ACTION_STOP_PROCESSING;
-	}
-
-	if (*presult == RLM_MODULE_YIELD) {
-		ms->thread->active_callers++;
-	} else {
-		rad_assert(unlang_indent == request->log.unlang_indent);
-
-		rad_assert(*presult >= RLM_MODULE_REJECT);
-		rad_assert(*presult < RLM_MODULE_NUMCODES);
-		*priority = instruction->actions[*presult];
-
-		request->rcode = *presult;
-	}
-
-done:
-	RDEBUG2("%s (%s)", instruction->name ? instruction->name : "",
-		fr_int2str(mod_rcode_table, *presult, "<invalid>"));
-
-	return *presult == RLM_MODULE_YIELD ? UNLANG_ACTION_YIELD : UNLANG_ACTION_CALCULATE_RESULT;
-}
-
-/** Send a signal (usually stop) to a request
- *
- * This is typically called via an "async" action, i.e. an action
- * outside of the normal processing of the request.
- *
- * If there is no #fr_unlang_module_signal_t callback defined, the action is ignored.
- *
- * @param[in] request		The current request.
- * @param[in] rctx	createed by #unlang_module_call.
- * @param[in] action		to signal.
- */
-static void unlang_module_signal(REQUEST *request, void *rctx, fr_state_signal_t action)
-{
-	unlang_stack_frame_t		*frame;
-	unlang_stack_t			*stack = request->stack;
-	unlang_resume_t			*mr;
-	unlang_module_call_t		*mc;
-
-	unlang_frame_state_modcall_t	*ms = NULL;
-
-	rad_assert(stack->depth > 0);
-
-	frame = &stack->frame[stack->depth];
-
-	mr = unlang_generic_to_resume(frame->instruction);
-	if (!mr->signal) return;
-
-	mc = unlang_generic_to_module_call(mr->parent);
-	ms = talloc_get_type_abort(frame->state, unlang_frame_state_modcall_t);
-
-	((fr_unlang_module_signal_t)mr->signal)(request,
-						mc->module_instance->dl_inst->data, ms->thread->data,
-						rctx, action);
-}
-
-static unlang_action_t unlang_module_resume(REQUEST *request, rlm_rcode_t *presult, UNUSED void *rctx)
-{
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_t			*instruction = frame->instruction;
-	unlang_resume_t			*mr = unlang_generic_to_resume(instruction);
-	unlang_module_call_t		*mc = unlang_generic_to_module_call(mr->parent);
-
-	unlang_frame_state_modcall_t	*ms = NULL;
-
-	rad_assert(mr->parent->type == UNLANG_TYPE_MODULE_CALL);
-
-	ms = talloc_get_type_abort(frame->state, unlang_frame_state_modcall_t);
-
-	/*
-	 *	Lock is noop unless instance->mutex is set.
-	 */
-	safe_lock(mc->module_instance);
-	*presult = request->rcode = ((fr_unlang_module_resume_t)mr->callback)(request,
-									      mc->module_instance->dl_inst->data,
-									      ms->thread->data, mr->rctx);
-	safe_unlock(mc->module_instance);
-
-	if (*presult != RLM_MODULE_YIELD) ms->thread->active_callers--;
-
-	RDEBUG2("%s (%s)", instruction->name ? instruction->name : "",
-		fr_int2str(mod_rcode_table, *presult, "<invalid>"));
-
-	return *presult == RLM_MODULE_YIELD ? UNLANG_ACTION_YIELD : UNLANG_ACTION_CALCULATE_RESULT;
-}
-
 static unlang_action_t unlang_if(REQUEST *request,
 				   rlm_rcode_t *presult, int *priority)
 {
@@ -1701,15 +1537,9 @@ static unlang_action_t unlang_if(REQUEST *request,
 	return unlang_group(request, presult, priority);
 }
 
-
 void unlang_op_initialize(void)
 {
-	unlang_op_register(UNLANG_TYPE_MODULE_CALL,
 			   &(unlang_op_t){
-			   	.name = "module",
-			   	.func = unlang_module_call,
-			   	.signal = unlang_module_signal,
-			   	.resume = unlang_module_resume
 			   });
 
 	unlang_op_register(UNLANG_TYPE_GROUP,
@@ -1828,5 +1658,6 @@ void unlang_op_initialize(void)
 			   });
 
 	map_unlang_init();
+	module_unlang_init();
 #endif
 }

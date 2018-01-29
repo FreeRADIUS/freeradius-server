@@ -46,12 +46,13 @@ extern "C" {
 
 /** Types of unlang_t nodes
  *
- * Here are our basic types: unlang_t, unlang_group_t, and unlang_module_call_t. For an
+ * Here are our basic types: unlang_t, unlang_group_t, and module_unlang_call_t. For an
  * explanation of what they are all about, see doc/configurable_failover.rst
  */
 typedef enum {
 	UNLANG_TYPE_NULL = 0,			//!< Modcallable type not set.
 	UNLANG_TYPE_MODULE_CALL = 1,		//!< Module method.
+	UNLANG_TYPE_FUNCTION,		//!< Internal module call to a function or submodule.
 	UNLANG_TYPE_GROUP,			//!< Grouping section.
 	UNLANG_TYPE_LOAD_BALANCE,		//!< Load balance section.
 	UNLANG_TYPE_REDUNDANT_LOAD_BALANCE,	//!< Redundant load balance section.
@@ -172,7 +173,7 @@ typedef struct {
 	unlang_t		self;
 	module_instance_t	*module_instance;	//!< Instance of the module we're calling.
 	module_method_t		method;
-} unlang_module_call_t;
+} module_unlang_call_t;
 
 /** Pushed onto the interpreter stack by a yielding module, indicates the resumption point
  *
@@ -309,15 +310,15 @@ extern char const *const comp2str[];
 
 /** @name Conversion functions for converting #unlang_t to its specialisations
  *
- * Simple conversions: #unlang_module_call_t and #unlang_group_t are subclasses of #unlang_t,
+ * Simple conversions: #module_unlang_call_t and #unlang_group_t are subclasses of #unlang_t,
  * so we often want to go back and forth between them.
  *
  * @{
  */
-static inline unlang_module_call_t *unlang_generic_to_module_call(unlang_t *p)
+static inline module_unlang_call_t *unlang_generic_to_module_call(unlang_t *p)
 {
 	rad_assert(p->type == UNLANG_TYPE_MODULE_CALL);
-	return talloc_get_type_abort(p, unlang_module_call_t);
+	return talloc_get_type_abort(p, module_unlang_call_t);
 }
 
 static inline unlang_group_t *unlang_generic_to_group(unlang_t *p)
@@ -327,7 +328,7 @@ static inline unlang_group_t *unlang_generic_to_group(unlang_t *p)
 	return (unlang_group_t *)p;
 }
 
-static inline unlang_t *unlang_module_call_to_generic(unlang_module_call_t *p)
+static inline unlang_t *module_unlang_call_to_generic(module_unlang_call_t *p)
 {
 	return (unlang_t *)p;
 }

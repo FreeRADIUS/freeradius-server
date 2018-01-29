@@ -19,7 +19,7 @@
  * $Id$
  *
  * @file modpriv.h
- * @brief Stuff needed by both modules.c and modcall.c, but should not be
+ * @brief Stuff needed by both module.c but should not be
  *	accessed from anywhere else.
  *
  * @copyright 2015 The FreeRADIUS server project

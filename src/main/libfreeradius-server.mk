@@ -14,8 +14,8 @@ SOURCES	:=	cond_eval.c \
 		map_proc.c \
 		map.c \
 		map_unlang.c \
-   		modules.c \
-   		modules_unlang.c \
+   		module.c \
+   		module_unlang.c \
 		regex.c \
 		request.c \
 		trigger.c \

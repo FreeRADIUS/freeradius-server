@@ -31,35 +31,18 @@ RCSIDH(modules_h, "$Id$")
 #include <freeradius-devel/pool.h>
 #include <freeradius-devel/exfile.h>
 #include <freeradius-devel/io/schedule.h>
+#include <freeradius-devel/components.h>
+#include <freeradius-devel/unlang.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/** The different section components of the server
- *
- * Used as indexes in the methods array in the rad_module_t struct.
- */
-typedef enum rlm_components {
-	MOD_AUTHENTICATE = 0,			//!< 0 methods index for authenticate section.
-	MOD_AUTHORIZE,				//!< 1 methods index for authorize section.
-	MOD_PREACCT,				//!< 2 methods index for preacct section.
-	MOD_ACCOUNTING,				//!< 3 methods index for accounting section.
-	MOD_PRE_PROXY,				//!< 5 methods index for preproxy section.
-	MOD_POST_PROXY,				//!< 6 methods index for postproxy section.
-	MOD_POST_AUTH,				//!< 7 methods index for postauth section.
-#ifdef WITH_COA
-	MOD_RECV_COA,				//!< 8 methods index for recvcoa section.
-	MOD_SEND_COA,				//!< 9 methods index for sendcoa section.
-#endif
-	MOD_COUNT				//!< 10 how many components there are.
-} rlm_components_t;
-
 extern const FR_NAME_NUMBER mod_rcode_table[];
 
 /** Map a section name, to a section typename, to an attribute number
  *
- * Used by modules.c to define the mappings between names, types and control
+ * Used by module.c to define the mappings between names, types and control
  * attributes.
  */
 typedef struct section_type_value_t {
@@ -70,7 +53,7 @@ typedef struct section_type_value_t {
 
 /** Mappings between section names, typenames and control attributes
  *
- * Defined in modules.c.
+ * Defined in module.c.
  */
 extern const section_type_value_t section_type_value[];
 
@@ -179,7 +162,7 @@ typedef void (*fr_unlang_module_fd_event_t)(REQUEST *request, void *instance, vo
  * @param[in] rctx		a local context for the callback.
  * @return a normal rlm_rcode_t.
  */
-typedef rlm_rcode_t (*fr_unlang_module_resume_t)(REQUEST *request, void *instance, void *thread, void *rctx);
+typedef rlm_rcode_t (*fr_module_unlang_resume_t)(REQUEST *request, void *instance, void *thread, void *rctx);
 
 /** A callback when the request gets a fr_state_signal_t.
  *
@@ -194,7 +177,7 @@ typedef rlm_rcode_t (*fr_unlang_module_resume_t)(REQUEST *request, void *instanc
  * @param[in] rctx		Resume ctx for the callback.
  * @param[in] action		which is signalling the request.
  */
-typedef void (*fr_unlang_module_signal_t)(REQUEST *request, void *instance, void *thread,
+typedef void (*fr_module_unlang_signal_t)(REQUEST *request, void *instance, void *thread,
 					  void *rctx, fr_state_signal_t action);
 
 /** Struct exported by a rlm_* module
@@ -311,13 +294,35 @@ CONF_SECTION	*virtual_server_find(char const *name);
 void		fr_request_async_bootstrap(REQUEST *request, fr_event_list_t *el); /* for unit_test_module */
 
 /*
- *	modules_unlang.c
+ *	module_unlang.c
  */
+int		unlang_event_timeout_add(REQUEST *request, fr_unlang_module_timeout_t callback,
+					 void const *ctx, struct timeval *timeout);
+
+int 		unlang_event_fd_add(REQUEST *request,
+				    fr_unlang_module_fd_event_t read,
+				    fr_unlang_module_fd_event_t write,
+				    fr_unlang_module_fd_event_t error,
+				    void const *ctx, int fd);
+
+int		unlang_event_timeout_delete(REQUEST *request, void const *ctx);
+
+int		unlang_event_fd_delete(REQUEST *request, void const *ctx, int fd);
+
+rlm_rcode_t	module_unlang_push_function(REQUEST *request,
+					    unlang_function_t func,
+					    fr_module_unlang_resume_t resume,
+					    fr_module_unlang_signal_t signal, void *rctx);
 
 rlm_rcode_t	module_unlang_push_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
 					REQUEST *request, xlat_exp_t const *xlat,
-					fr_unlang_module_resume_t callback,
-					fr_unlang_module_signal_t signal_callback, void *uctx);
+					fr_module_unlang_resume_t callback,
+					fr_module_unlang_signal_t signal_callback, void *uctx);
+
+rlm_rcode_t	unlang_module_yield(REQUEST *request, fr_module_unlang_resume_t callback,
+				    fr_module_unlang_signal_t signal_callback, void *ctx);
+
+void		module_unlang_init(void);
 #ifdef __cplusplus
 }
 #endif

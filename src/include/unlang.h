@@ -23,7 +23,7 @@
  *
  */
 #include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
+#include <freeradius-devel/components.h>
 #include <freeradius-devel/signal.h>
 
 /** Returned by #unlang_op_t calls, determine the next action of the interpreter
@@ -69,7 +69,7 @@ typedef void (*unlang_op_signal_t)(REQUEST *request, void *rctx, fr_state_signal
  * descriptors, and generally cleanup after the yielding function.
  *
  * @param[in] request		The current request.
- * @param[in] rctx	A structure allocated by the initial #unlang_op_call_t to store
+ * @param[in] rctx		A structure allocated by the initial #unlang_op_call_t to store
  *				the result of the async execution.
  * @param[in] action		We're being signalled with.
  */
@@ -79,7 +79,7 @@ typedef void (*unlang_op_resumable_t)(REQUEST *request, void *rctx);
  *
  * @param[in] request		The current request.
  * @param[in,out] presult	Pointer to the current rcode, may be modified by the function.
- * @param[in] rctx	A structure allocated by the initial #unlang_op_call_t to store
+ * @param[in] rctx		A structure allocated by the initial #unlang_op_call_t to store
  *				the result of the async execution.
  * @return an action for the interpreter to perform.
  */
@@ -126,28 +126,11 @@ int		unlang_compile_subsection(CONF_SECTION *server_cs, char const *name1, char 
 
 bool		unlang_keyword(const char *name);
 
-int		unlang_event_timeout_add(REQUEST *request, fr_unlang_module_timeout_t callback,
-					 void const *ctx, struct timeval *timeout);
-
-int 		unlang_event_fd_add(REQUEST *request,
-				    fr_unlang_module_fd_event_t read,
-				    fr_unlang_module_fd_event_t write,
-				    fr_unlang_module_fd_event_t error,
-				    void const *ctx, int fd);
-
-int		unlang_event_timeout_delete(REQUEST *request, void const *ctx);
-
-int		unlang_event_fd_delete(REQUEST *request, void const *ctx, int fd);
-
 void		unlang_resumable(REQUEST *request);
 
 void		unlang_signal(REQUEST *request, fr_state_signal_t action);
 
 int		unlang_stack_depth(REQUEST *request);
-
-rlm_rcode_t	unlang_module_yield(REQUEST *request, fr_unlang_module_resume_t callback,
-				    fr_unlang_module_signal_t signal_callback, void *ctx);
-
 
 int		unlang_initialize(void);
 #endif /* _FR_UNLANG_H */

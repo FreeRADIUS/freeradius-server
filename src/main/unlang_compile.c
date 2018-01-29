@@ -97,7 +97,7 @@ static void dump_mc(unlang_t *c, int indent)
 	int i;
 
 	if(c->type==UNLANG_TYPE_MODULE_CALL) {
-		unlang_module_call_t *single = unlang_generic_to_module_call(c);
+		module_unlang_call_t *single = unlang_generic_to_module_call(c);
 		DEBUG("%.*s%s {", indent, "\t\t\t\t\t\t\t\t\t\t\t",
 			single->module_instance->name);
 	} else if ((c->type > UNLANG_TYPE_MODULE_CALL) && (c->type <= UNLANG_TYPE_POLICY)) {
@@ -909,7 +909,7 @@ static void unlang_dump(unlang_t *mc, int depth)
 			break;
 
 		case UNLANG_TYPE_MODULE_CALL: {
-			unlang_module_call_t *single = unlang_generic_to_module_call(this);
+			module_unlang_call_t *single = unlang_generic_to_module_call(this);
 
 			DEBUG("%.*s%s", depth, modcall_spaces,
 				single->module_instance->name);
@@ -2832,7 +2832,7 @@ static CONF_SECTION *virtual_module_find_cs(CONF_SECTION *conf_root, rlm_compone
 static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci, module_instance_t *this, unlang_group_type_t parentgroup_type, char const *realname)
 {
 	unlang_t *c;
-	unlang_module_call_t *single;
+	module_unlang_call_t *single;
 
 	/*
 	 *	Check if the module in question has the necessary
@@ -2850,11 +2850,11 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		return NULL;
 	}
 
-	single = talloc_zero(parent, unlang_module_call_t);
+	single = talloc_zero(parent, module_unlang_call_t);
 	single->module_instance = this;
 	single->method = this->module->methods[unlang_ctx->component];
 
-	c = unlang_module_call_to_generic(single);
+	c = module_unlang_call_to_generic(single);
 	c->parent = parent;
 	c->next = NULL;
 
@@ -3101,7 +3101,7 @@ static unlang_t *compile_item(unlang_t *parent,
 	 */
 	if (subcs) {
 		/*
-		 *	modules.c takes care of ensuring that this is:
+		 *	module.c takes care of ensuring that this is:
 		 *
 		 *	group foo { ...
 		 *	load-balance foo { ...

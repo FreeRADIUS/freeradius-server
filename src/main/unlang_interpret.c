@@ -964,7 +964,7 @@ int unlang_event_timeout_add(REQUEST *request, fr_unlang_module_timeout_t callba
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_event_t			*ev;
-	unlang_module_call_t		*sp;
+	module_unlang_call_t		*sp;
 	unlang_frame_state_modcall_t	*ms = talloc_get_type_abort(frame->state,
 								    unlang_frame_state_modcall_t);
 
@@ -1046,7 +1046,7 @@ int unlang_event_fd_add(REQUEST *request,
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_event_t			*ev;
-	unlang_module_call_t		*sp;
+	module_unlang_call_t		*sp;
 	unlang_frame_state_modcall_t	*ms = talloc_get_type_abort(frame->state,
 									       unlang_frame_state_modcall_t);
 
@@ -1110,34 +1110,46 @@ int unlang_event_fd_delete(REQUEST *request, void const *ctx, int fd)
  * This is typically called via an "async" action, i.e. an action
  * outside of the normal processing of the request.
  *
- * If there is no #fr_unlang_module_signal_t callback defined, the action is ignored.
+ * If there is no #fr_module_unlang_signal_t callback defined, the action is ignored.
  *
  * @param[in] request		The current request.
  * @param[in] action		to signal.
  */
 void unlang_signal(REQUEST *request, fr_state_signal_t action)
 {
-	unlang_stack_frame_t		*frame;
-	unlang_stack_t			*stack = request->stack;
-	unlang_resume_t			*mr;
+	unlang_stack_frame_t	*frame;
+	unlang_stack_t		*stack = request->stack;
+	unlang_resume_t		*mr;
+	int			i;
 
 	rad_assert(stack->depth > 0);
 
-	frame = &stack->frame[stack->depth];
-
 	/*
-	 *	Be gracious in errors.
+	 *	Walk back up the stack, calling signal handlers
+	 *	to cancel any pending operations and free/release
+	 *	any resources.
+	 *
+	 *	There may be multiple resumption points in the
+	 *	stack, as modules can push xlats and function
+	 *	calls.
 	 */
-	if (frame->instruction->type != UNLANG_TYPE_RESUME) return;
+	for (i = stack->depth; i > 0; i--) {
+		frame = &stack->frame[i];
 
-	mr = unlang_generic_to_resume(frame->instruction);
+		/*
+		 *	Be gracious in errors.
+		 */
+		if (frame->instruction->type != UNLANG_TYPE_RESUME) continue;
 
-	/*
-	 *	No signal handler for this frame type
-	 */
-	if (!unlang_ops[mr->parent->type].signal) return;
+		mr = unlang_generic_to_resume(frame->instruction);
 
-	unlang_ops[mr->parent->type].signal(request, mr->rctx, action);
+		/*
+		 *	No signal handler for this frame type
+		 */
+		if (!unlang_ops[mr->parent->type].signal) continue;
+
+		unlang_ops[mr->parent->type].signal(request, mr->rctx, action);
+	}
 }
 
 int unlang_stack_depth(REQUEST *request)
@@ -1364,8 +1376,8 @@ static unlang_action_t unlang_resume(REQUEST *request, rlm_rcode_t *presult, int
  *	- RLM_MODULE_FAIL (or asserts) if the current frame is not a module call or
  *	  resume frame.
  */
-rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_module_resume_t callback,
-				fr_unlang_module_signal_t cancel, void *rctx)
+rlm_rcode_t unlang_module_yield(REQUEST *request, fr_module_unlang_resume_t callback,
+				fr_module_unlang_signal_t cancel, void *rctx)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
