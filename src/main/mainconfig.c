@@ -799,8 +799,8 @@ do {\
 				 *	Hacks for LD_PRELOAD.
 				 */
 				if ((strcmp(attr, "LD_PRELOAD") == 0) &&
-				    (dlopen(value, RTLD_GLOBAL) == NULL)) {
-					cf_log_err(ci, "Failed loading library %s: %s", value, fr_syserror(errno));
+				    (dlopen(value, RTLD_NOW | RTLD_GLOBAL) == NULL)) {
+					cf_log_err(ci, "Failed loading library %s: %s", value, dlerror());
 					talloc_free(cs);
 					return -1;
 				}				
