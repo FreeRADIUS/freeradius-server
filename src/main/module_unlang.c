@@ -108,8 +108,7 @@ static unlang_action_t module_unlang_call(REQUEST *request,
 	 *	Is now marked as "stop" when it wasn't before, we must have been blocked.
 	 */
 	if (request->master_state == REQUEST_STOP_PROCESSING) {
-		RWARN("Module %s became unblocked",
-		      sp->module_instance->module->name);
+		RWARN("Module %s became unblocked", sp->module_instance->module->name);
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}
 
