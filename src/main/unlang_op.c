@@ -163,7 +163,7 @@ void unlang_push_function(REQUEST *request, unlang_function_t func, void *uctx)
 	/*
 	 *	Push module's function
 	 */
-	unlang_push(stack, &function_instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, true);
+	unlang_push(stack, &function_instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_STOP, false);
 	frame = &stack->frame[stack->depth];
 
 	/*

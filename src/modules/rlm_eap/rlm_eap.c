@@ -35,6 +35,16 @@ RCSID("$Id$")
 
 extern rad_module_t rlm_eap;
 
+/** Resume context for calling a submodule
+ *
+ */
+typedef struct {
+	char const	*caller;		//!< Original caller.
+	rlm_eap_t	*inst;			//!< Instance of the rlm_eap module.
+	eap_session_t	*eap_session;		//!< The eap_session we're continuing.
+	rlm_rcode_t	rcode;			//!< The result of the submodule.
+} eap_auth_rctx_t;
+
 static int submodule_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 static int eap_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 
@@ -289,42 +299,175 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 			continue;
 		}
 
-		RDEBUG("Found mutually acceptable type %s (%d)",
-		       eap_type2name(nak->data[i]), nak->data[i]);
+		RDEBUG("Found mutually acceptable type %s (%d)", eap_type2name(nak->data[i]), nak->data[i]);
 
 		method = nak->data[i];
 
 		break;
 	}
 
-	if (method == FR_EAP_INVALID) {
-		REDEBUG("No mutually acceptable types found");
-	}
+	if (method == FR_EAP_INVALID) REDEBUG("No mutually acceptable types found");
 
 	return method;
 }
 
+/** Process the result of calling a submodule
+ *
+ * @param[in] request	The current request.
+ * @param[in] instance	of the rlm_eap module.
+ * @param[in] thread	UNUSED.
+ * @param[in] uctx	containing the result of calling the submodule.
+ * @return
+ *	- RLM_MODULE_INVALID	if the request or EAP session state is invalid.
+ *	- RLM_MODULE_OK		if this round succeeded.
+ *	- RLM_MODULE_HANDLED	if we're done with this round.
+ *	- RLM_MODULE_REJECT	if the user should be rejected.
+ */
+static rlm_rcode_t mod_authenticate_result(REQUEST *request, void *instance, UNUSED void *thread, void *uctx)
+{
+	rlm_eap_t		*inst = talloc_get_type_abort(instance, rlm_eap_t);
+	eap_auth_rctx_t		*rctx = talloc_get_type_abort(uctx, eap_auth_rctx_t);
+	eap_session_t		*eap_session = rctx->eap_session;
+	rlm_eap_method_t	*method = &inst->methods[eap_session->type];
+	rlm_rcode_t		rcode;
+
+	rad_assert(rctx->rcode != RLM_MODULE_UNKNOWN);
+
+	request->module = rctx->caller;		/* Restore original module name */
+	RDEBUG2("Submodule %s returned", method->submodule->name);
+
+	/*
+	 *	The submodule failed.  Die.
+	 */
+	if (rctx->rcode == RLM_MODULE_INVALID) {
+		eap_fail(eap_session);
+		eap_session_destroy(&eap_session);
+
+		return RLM_MODULE_INVALID;
+	}
+
+	/*
+	 *	We are done, wrap the EAP-request in RADIUS to send
+	 *	with all other required radius attributes
+	 */
+	rcode = eap_compose(eap_session);
+
+	/*
+	 *	Add to the list only if it is EAP-Request, OR if
+	 *	it's LEAP, and a response.
+	 */
+	if (((eap_session->this_round->request->code == FR_EAP_CODE_REQUEST) &&
+	    (eap_session->this_round->request->type.num >= FR_EAP_MD5)) ||
+
+		/*
+		 *	LEAP is a little different.  At Stage 4,
+		 *	it sends an EAP-Success message, but we still
+		 *	need to keep the State attribute & session
+		 *	data structure around for the AP Challenge.
+		 *
+		 *	At stage 6, LEAP sends an EAP-Response, which
+		 *	isn't put into the list.
+		 */
+	    ((eap_session->this_round->response->code == FR_EAP_CODE_RESPONSE) &&
+	     (eap_session->this_round->response->type.num == FR_EAP_LEAP) &&
+	     (eap_session->this_round->request->code == FR_EAP_CODE_SUCCESS) &&
+	     (eap_session->this_round->request->type.num == 0))) {
+		talloc_free(eap_session->prev_round);
+		eap_session->prev_round = eap_session->this_round;
+		eap_session->this_round = NULL;
+	} else {
+		RDEBUG2("Cleaning up EAP session");
+		eap_session_destroy(&eap_session);
+	}
+
+	/*
+	 *	If it's an Access-Accept, RFC 2869, Section 2.3.1
+	 *	says that we MUST include a User-Name attribute in the
+	 *	Access-Accept.
+	 */
+	if ((request->reply->code == FR_CODE_ACCESS_ACCEPT) && request->username) {
+		VALUE_PAIR *vp;
+
+		/*
+		 *	Doesn't exist, add it in.
+		 */
+		vp = fr_pair_find_by_num(request->reply->vps, 0, FR_USER_NAME, TAG_ANY);
+		if (!vp) {
+			vp = fr_pair_copy(request->reply, request->username);
+			fr_pair_add(&request->reply->vps, vp);
+		}
+
+		/*
+		 *	Cisco AP1230 has a bug and needs a zero
+		 *	terminated string in Access-Accept.
+		 */
+		if (inst->cisco_accounting_username_bug) {
+			char *new;
+
+			new = talloc_zero_array(vp, char, vp->vp_length + 1 + 1);	/* \0 + \0 */
+			memcpy(new, vp->vp_strvalue, vp->vp_length);
+			fr_pair_value_strsteal(vp, new);        /* Also frees existing buffer */
+		}
+	}
+
+	/*
+	 *	Freeze the eap_session so we can continue
+	 *	the authentication session later.
+	 */
+	eap_session_freeze(&eap_session);
+
+	return rcode;
+}
+
+/** Call an eap submodule using the unlang stack
+ *
+ * @param[in] request	The current request.
+ * @param[in] uctx	Describing the module to call.
+ * @return
+ *	- UNLANG_ACTION_CALCULATE_RESULT.
+ *	- UNLANG_ACTION_YIELD.
+ */
+static unlang_action_t eap_call_submodule(UNUSED REQUEST *request, void *uctx)
+{
+	eap_auth_rctx_t		*rctx = talloc_get_type_abort(uctx, eap_auth_rctx_t);
+	rlm_eap_t		*inst = rctx->inst;
+	eap_session_t		*eap_session = rctx->eap_session;
+	rlm_eap_method_t	*method = &inst->methods[eap_session->type];
+
+	request->module = rctx->caller;
+	RDEBUG2("Calling submodule %s", method->submodule->name);
+
+	request->module = method->submodule->name;
+	rctx->rcode = eap_session->process(method->submodule_inst->data, eap_session);
+	request->module = NULL;
+
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
 /** Select the correct callback based on a response
  *
- * Based on the EAP response from the supplicant, call the appropriate
- * method callback.
+ * Based on the EAP response from the supplicant, and setup a call on the
+ * unlang stack to the appropriate submodule.
  *
  * Default to the configured EAP-Type for all Unsupported EAP-Types.
  *
- * @param inst Configuration data for this instance of rlm_eap.
- * @param eap_session State data that persists over multiple rounds of EAP.
- * @return a status code.
+ * @param[in] inst		Configuration data for this instance of rlm_eap.
+ * @param[in] eap_session	State data that persists over multiple rounds of EAP.
+ * @return
+ *	- RLM_MODULE_INVALID	destroy the EAP session as its invalid.
+ *	- RLM_MODULE_YIELD	Yield control back to the interpreter so it can
+ *				call the submodule.
  */
 static rlm_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session)
 {
-	rlm_rcode_t		rcode = RLM_MODULE_OK;
-	char const		*caller;
 	rlm_eap_method_t	*method;
 	eap_type_data_t		*type = &eap_session->this_round->response->type;
 	REQUEST			*request = eap_session->request;
 
 	eap_type_t		next = inst->default_method;
 	VALUE_PAIR		*vp;
+
+	eap_auth_rctx_t		*rctx;
 
 	/*
 	 *	Session must have been thawed...
@@ -414,43 +557,31 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session
 	 *	Key off of the configured sub-modules.
 	 */
 	default:
-		/*
-		 *	We haven't configured it, it doesn't exit.
-		 */
-		if (!inst->methods[type->num].submodule) {
-			REDEBUG2("Client asked for unsupported EAP type %s (%d)", eap_type2name(type->num), type->num);
-
-			return RLM_MODULE_INVALID;
-		}
-
-		eap_session->type = type->num;
-
-	module_call:
-		method = &inst->methods[eap_session->type];
-
-		RDEBUG2("Calling submodule %s", method->submodule->name);
-
-		caller = request->module;
-		request->module = method->submodule->name;
-		rcode = eap_session->process(method->submodule_inst->data, eap_session);
-		request->module = caller;
-
-		switch (rcode) {
-		default:
-			REDEBUG2("Failed in EAP %s (%d) session.  EAP sub-module failed",
-				 eap_type2name(eap_session->type), eap_session->type);
-			break;
-
-		case RLM_MODULE_OK:
-		case RLM_MODULE_NOOP:
-		case RLM_MODULE_UPDATED:
-		case RLM_MODULE_HANDLED:
-			break;
-		}
 		break;
 	}
 
-	return rcode;
+	/*
+	 *	We haven't configured it, it doesn't exit.
+	 */
+	if (!inst->methods[type->num].submodule) {
+		REDEBUG2("Client asked for unsupported EAP type %s (%d)", eap_type2name(type->num), type->num);
+
+		return RLM_MODULE_INVALID;
+	}
+
+	eap_session->type = type->num;
+
+module_call:
+	method = &inst->methods[eap_session->type];
+
+	MEM(rctx = talloc(request, eap_auth_rctx_t));
+	rctx->caller = request->module;
+	rctx->inst = inst;
+	rctx->eap_session = eap_session;
+	rctx->rcode = RLM_MODULE_UNKNOWN;
+
+	request->module = method->submodule->name;
+	return module_unlang_push_function(request, eap_call_submodule, mod_authenticate_result, NULL, rctx);
 }
 
 static rlm_rcode_t mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
@@ -458,7 +589,6 @@ static rlm_rcode_t mod_authenticate(void *instance, UNUSED void *thread, REQUEST
 	rlm_eap_t		*inst = talloc_get_type_abort(instance, rlm_eap_t);
 	eap_session_t		*eap_session;
 	eap_packet_raw_t	*eap_packet;
-	rlm_rcode_t		rcode;
 
 	if (!fr_pair_find_by_num(request->packet->vps, 0, FR_EAP_MESSAGE, TAG_ANY)) {
 		REDEBUG("You set 'Auth-Type = EAP' for a request that does not contain an EAP-Message attribute!");
@@ -493,89 +623,14 @@ static rlm_rcode_t mod_authenticate(void *instance, UNUSED void *thread, REQUEST
 	 *	or with simple types like Identity and NAK,
 	 *	process it ourselves.
 	 */
-	rcode = eap_method_select(inst, eap_session);
-
-	/*
-	 *	The submodule failed.  Die.
-	 */
-	if (rcode == RLM_MODULE_INVALID) {
+	if (eap_method_select(inst, eap_session) != RLM_MODULE_YIELD) {
+		RDEBUG2("Cleaning up EAP session");
 		eap_fail(eap_session);
 		eap_session_destroy(&eap_session);
-		goto finish;
+		return RLM_MODULE_INVALID;
 	}
 
-	/*
-	 *	We are done, wrap the EAP-request in RADIUS to send
-	 *	with all other required radius attributes
-	 */
-	rcode = eap_compose(eap_session);
-
-	/*
-	 *	Add to the list only if it is EAP-Request, OR if
-	 *	it's LEAP, and a response.
-	 */
-	if (((eap_session->this_round->request->code == FR_EAP_CODE_REQUEST) &&
-	    (eap_session->this_round->request->type.num >= FR_EAP_MD5)) ||
-
-		/*
-		 *	LEAP is a little different.  At Stage 4,
-		 *	it sends an EAP-Success message, but we still
-		 *	need to keep the State attribute & session
-		 *	data structure around for the AP Challenge.
-		 *
-		 *	At stage 6, LEAP sends an EAP-Response, which
-		 *	isn't put into the list.
-		 */
-	    ((eap_session->this_round->response->code == FR_EAP_CODE_RESPONSE) &&
-	     (eap_session->this_round->response->type.num == FR_EAP_LEAP) &&
-	     (eap_session->this_round->request->code == FR_EAP_CODE_SUCCESS) &&
-	     (eap_session->this_round->request->type.num == 0))) {
-		talloc_free(eap_session->prev_round);
-		eap_session->prev_round = eap_session->this_round;
-		eap_session->this_round = NULL;
-	} else {
-		RDEBUG2("Cleaning up EAP session");
-		eap_session_destroy(&eap_session);
-	}
-
-	/*
-	 *	If it's an Access-Accept, RFC 2869, Section 2.3.1
-	 *	says that we MUST include a User-Name attribute in the
-	 *	Access-Accept.
-	 */
-	if ((request->reply->code == FR_CODE_ACCESS_ACCEPT) && request->username) {
-		VALUE_PAIR *vp;
-
-		/*
-		 *	Doesn't exist, add it in.
-		 */
-		vp = fr_pair_find_by_num(request->reply->vps, 0, FR_USER_NAME, TAG_ANY);
-		if (!vp) {
-			vp = fr_pair_copy(request->reply, request->username);
-			fr_pair_add(&request->reply->vps, vp);
-		}
-
-		/*
-		 *	Cisco AP1230 has a bug and needs a zero
-		 *	terminated string in Access-Accept.
-		 */
-		if (inst->cisco_accounting_username_bug) {
-			char *new;
-
-			new = talloc_zero_array(vp, char, vp->vp_length + 1 + 1);	/* \0 + \0 */
-			memcpy(new, vp->vp_strvalue, vp->vp_length);
-			fr_pair_value_strsteal(vp, new);        /* Also frees existing buffer */
-		}
-	}
-
-finish:
-	/*
-	 *	Freeze the eap_session so we can continue
-	 *	the authentication session later.
-	 */
-	eap_session_freeze(&eap_session);
-
-	return rcode;
+	return RLM_MODULE_YIELD;
 }
 
 /*
