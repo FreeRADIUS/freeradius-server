@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file module.c
+ * @file main/module.c
  * @brief Defines functions for module (re-)initialisation.
  *
  * @copyright 2003,2006,2016  The FreeRADIUS server project
