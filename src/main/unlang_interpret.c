@@ -1132,6 +1132,8 @@ void unlang_signal(REQUEST *request, fr_state_signal_t action)
 	for (i = stack->depth; i > 0; i--) {
 		frame = &stack->frame[i];
 
+		if (!frame->instruction) break;
+
 		/*
 		 *	Be gracious in errors.
 		 */
