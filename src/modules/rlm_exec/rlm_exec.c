@@ -195,6 +195,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	char const *p;
 	rlm_exec_t	*inst = instance;
 
+	if (!inst->wait) {
+		cf_log_err(conf, "'wait = yes' is unsupported.");
+		return -1;
+	}
+
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) {
 		inst->name = cf_section_name1(conf);

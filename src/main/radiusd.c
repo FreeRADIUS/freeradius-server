@@ -684,6 +684,12 @@ int main(int argc, char *argv[])
 #endif
 
 	/*
+	 *	Don't allow "exec wait" until we integrate it into the
+	 *	main event loop.
+	 */
+	signal(SIGCHLD, SIG_IGN);
+
+	/*
 	 *  Now that we've set everything up, we can install the signal
 	 *  handlers.  Before this, if we get any signal, we don't know
 	 *  what to do, so we might as well do the default, and die.
