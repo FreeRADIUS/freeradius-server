@@ -480,7 +480,6 @@ static unlang_action_t eap_call_submodule(UNUSED REQUEST *request, void *uctx)
  */
 static rlm_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session)
 {
-	rlm_eap_method_t	*method;
 	eap_type_data_t		*type = &eap_session->this_round->response->type;
 	REQUEST			*request = eap_session->request;
 
@@ -592,8 +591,6 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session
 	eap_session->type = type->num;
 
 module_call:
-	method = &inst->methods[eap_session->type];
-
 	MEM(rctx = talloc(request, eap_auth_rctx_t));
 	rctx->caller = request->module;
 	rctx->inst = inst;
