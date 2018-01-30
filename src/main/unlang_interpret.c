@@ -146,6 +146,7 @@ unlang_resume_t *unlang_resume_alloc(REQUEST *request, void *callback, void *sig
 	 *	Replaces the current stack frame with a RESUME frame.
 	 */
 	frame->instruction = unlang_resume_to_generic(mr);
+	frame->repeat = true;
 
 	return mr;
 }
