@@ -118,7 +118,7 @@ typedef struct {
 								///< in debug mode.
 } unlang_op_t;
 
-void		unlang_push_function(REQUEST *request, unlang_function_t func, void *uctx);
+void		unlang_push_function(REQUEST *request, unlang_function_t func, unlang_function_t repeat, void *uctx);
 
 void		unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t default_action);
 

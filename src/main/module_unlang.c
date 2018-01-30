@@ -229,7 +229,7 @@ static unlang_action_t module_unlang_resume(REQUEST *request, rlm_rcode_t *presu
  *	- RLM_MODULE_YIELD.
  */
 rlm_rcode_t module_unlang_push_function(REQUEST *request,
-					unlang_function_t func,
+					unlang_function_t func, unlang_function_t repeat,
 				        fr_module_unlang_resume_t resume,
 				        fr_module_unlang_signal_t signal, void *rctx)
 {
@@ -238,7 +238,7 @@ rlm_rcode_t module_unlang_push_function(REQUEST *request,
 	 */
 	(void) unlang_module_yield(request, resume, signal, rctx);
 
-	unlang_push_function(request, func, rctx);
+	unlang_push_function(request, func, repeat, rctx);
 
 	return RLM_MODULE_YIELD;	/* This may allow us to do optimisations in future */
 }

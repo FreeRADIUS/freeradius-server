@@ -90,7 +90,8 @@ static uint64_t unlang_active_callers(unlang_t *instruction)
 }
 
 typedef struct {
-	unlang_function_t		func;			//!< To call.
+	unlang_function_t		func;			//!< To call when going down the stack.
+	unlang_function_t		repeat;			//!< To call when going back up the stack.
 	void				*uctx;			//!< Uctx to pass to function.
 } unlang_frame_state_func_t;
 
@@ -129,7 +130,11 @@ static unlang_action_t unlang_function_call(REQUEST *request,
 	unlang_t			*instruction = frame->instruction;
 	unlang_action_t			ua;
 
-	ua = state->func(request, state->uctx);
+	if (!frame->repeat) {
+		ua = state->func(request, state->uctx);
+	} else {
+		ua = state->repeat(request, state->uctx);
+	}
 
 	/*
 	 *	The success/failure of these functions
@@ -151,10 +156,12 @@ static unlang_action_t unlang_function_call(REQUEST *request,
  * deeper in the C call stack to establish a new resumption point.
  *
  * @param[in] request	The current request.
- * @param[in] func	to call.
+ * @param[in] func	to call going up the stack.
+ * @param[in] repeat	function to call going back down the stack (may be NULL).
+ *			This may be the same as #func.
  * @param[in] uctx	to pass to func.
  */
-void unlang_push_function(REQUEST *request, unlang_function_t func, void *uctx)
+void unlang_push_function(REQUEST *request, unlang_function_t func, unlang_function_t repeat, void *uctx)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame;
@@ -167,11 +174,18 @@ void unlang_push_function(REQUEST *request, unlang_function_t func, void *uctx)
 	frame = &stack->frame[stack->depth];
 
 	/*
+	 *	Tell the interpreter to call unlang_function_call
+	 *	again when going back up the stack.
+	 */
+	if (repeat) frame->repeat = true;
+
+	/*
 	 *	Allocate state
 	 */
 	MEM(frame->state = state = talloc_zero(stack, unlang_frame_state_func_t));
 
 	state->func = func;
+	state->repeat = repeat;
 	state->uctx = uctx;
 }
 

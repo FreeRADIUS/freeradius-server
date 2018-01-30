@@ -581,7 +581,8 @@ module_call:
 	rctx->rcode = RLM_MODULE_UNKNOWN;
 
 	request->module = method->submodule->name;
-	return module_unlang_push_function(request, eap_call_submodule, mod_authenticate_result, NULL, rctx);
+	return module_unlang_push_function(request, eap_call_submodule, eap_call_submodule,
+					   mod_authenticate_result, NULL, rctx);
 }
 
 static rlm_rcode_t mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
