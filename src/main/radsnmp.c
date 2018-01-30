@@ -999,7 +999,7 @@ int main(int argc, char **argv)
 
 		case 't':
 			if (fr_timeval_from_str(&conf->timeout, optarg) < 0) {
-				ERROR("Failed parsing timeout valueL %s", fr_strerror());
+				ERROR("Failed parsing timeout value %s", fr_strerror());
 				exit(EXIT_FAILURE);
 			}
 			break;
