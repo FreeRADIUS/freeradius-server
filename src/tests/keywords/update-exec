@@ -6,15 +6,6 @@ update control {
 }
 
 #
-# Disable this until we support exec-wait.
-#
-# The code is there and it mostly works, but
-# it has not been integrated into the main event loop.
-#
-success
-return
-
-#
 # Exec with script output to attribute
 #
 update request {

@@ -105,11 +105,6 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 	TALLOC_CTX	*input_ctx = NULL;
 	fr_dlist_t	*list;
 
-	if (exec_wait) {
-		ERROR("Exec 'wait' is unsupported.");
-		return -1;
-	}
-
 	/*
 	 *	Stupid array decomposition...
 	 *
