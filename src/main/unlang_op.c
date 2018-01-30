@@ -610,6 +610,8 @@ static unlang_action_t unlang_detach(REQUEST *request,
 	rad_assert(instruction->parent->type == UNLANG_TYPE_SUBREQUEST);
 	RDEBUG2("%s", unlang_ops[instruction->type].name);
 
+	rad_assert(request->parent != NULL);
+
 	if (request_detach(request) < 0) {
 		ERROR("Failed detaching child");
 		*presult = RLM_MODULE_FAIL;
@@ -652,7 +654,7 @@ static unlang_action_t unlang_detach(REQUEST *request,
 	/*
 	 *	request_detach() doesn't set the "detached" flag, but
 	 *	it does set the backlog...
-	 */
+	 */	
 	request->async->detached = true;
 	rad_assert(request->backlog != NULL);
 
