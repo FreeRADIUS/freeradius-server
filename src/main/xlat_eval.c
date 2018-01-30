@@ -787,11 +787,11 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				return xa;
 
 			case XLAT_ACTION_PUSH_CHILD:
-				RDEBUG2("  -- CHILD");
+				RDEBUG2("   -- CHILD");
 				return xa;
 
 			case XLAT_ACTION_YIELD:
-				RDEBUG2("  -- YIELD");
+				RDEBUG2("   -- YIELD");
 				return xa;
 
 			case XLAT_ACTION_DONE:				/* Process the result */
