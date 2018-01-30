@@ -53,6 +53,19 @@ static pid_t waitpid_wrapper(pid_t pid, int *status)
 pid_t (*rad_fork)(void) = fork;
 pid_t (*rad_waitpid)(pid_t pid, int *status) = waitpid_wrapper;
 
+typedef struct fr_child_t {
+	fr_dlist_t	entry;
+	pid_t		pid;
+} fr_child_t;
+
+fr_thread_local_setup(fr_dlist_t *, fr_children); /* macro */
+
+static void _fr_children_free(void *arg)
+{
+	talloc_free(arg);
+}
+
+
 /** Start a process
  *
  * @param cmd Command to execute. This is parsed into argv[] parts, then each individual argv
@@ -90,6 +103,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 	char		*envp[MAX_ENVP];
 	size_t		envlen = 0;
 	TALLOC_CTX	*input_ctx = NULL;
+	fr_dlist_t	*list;
 
 	if (exec_wait) {
 		ERROR("Exec 'wait' is unsupported.");
@@ -111,6 +125,43 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 
 	if (DEBUG_ENABLED3) {
 		for (i = 0; i < argc; i++) DEBUG3("arg[%d] %s", i, argv[i]);
+	}
+
+	list = fr_children;
+	if (!list) {
+		list = talloc_zero(NULL, fr_dlist_t);
+		if (!list) {
+			ERROR("Out of memory");
+			return -1;
+		}
+
+		list->prev = list->next = list;
+
+		fr_thread_local_set_destructor(fr_children, _fr_children_free, list);
+	} else {
+		fr_dlist_t *entry, *next;
+
+		entry = list->next;
+
+		/*
+		 *	Clean up the children.  ALL of them.  This is
+		 *	slow as heck, but correct. :(
+		 */
+		while (entry != list) {
+			int status;
+			fr_child_t *child;
+
+			next = entry->next;
+
+			child = fr_ptr_to_type(fr_child_t, entry, entry);
+			pid = waitpid(child->pid, &status, WNOHANG);
+			if (pid != 0) {
+				fr_dlist_remove(entry);
+				talloc_free(child);
+			}
+
+			entry = next;
+		}
 	}
 
 #ifndef __MINGW32__
@@ -306,7 +357,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 	}
 
 	/*
-	 *	We're not waiting, exit, and ignore any child's status.
+	 *	We're done.  Do any necessary cleanups.
 	 */
 	if (exec_wait) {
 		/*
@@ -322,6 +373,13 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 			*output_fd = from_child[0];
 			close(from_child[1]);
 		}
+
+	} else {
+		fr_child_t *child;
+
+		MEM(child = talloc_zero(fr_children, fr_child_t));
+		fr_dlist_insert_tail(fr_children, &child->entry);
+		child->pid = pid;
 	}
 
 	return pid;
