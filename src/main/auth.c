@@ -556,8 +556,8 @@ static rlm_rcode_t virtual_server_async(REQUEST *request, bool parent)
 	fr_io_final_t final;
 
 	if (parent) {
-		request->async = talloc_memdup(request, request->parent->async,
-					       sizeof(fr_async_t));
+		request->async = talloc_memdup(request, request->parent->async, sizeof(fr_async_t));
+		talloc_set_name_const(request->async, talloc_get_name(request->parent->async));
 	}
 
 	RDEBUG("server %s {", cf_section_name2(request->server_cs));
