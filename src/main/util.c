@@ -910,6 +910,11 @@ void request_verify(char const *file, int line, REQUEST const *request)
 	}
 #endif
 
+	if (request->async) {
+		(void) talloc_get_type_abort(request->async, fr_async_t);
+		rad_assert(talloc_parent(request->async) == request);
+	}
+
 }
 #endif
 
