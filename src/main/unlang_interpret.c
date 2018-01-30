@@ -515,7 +515,6 @@ rlm_rcode_t unlang_run(REQUEST *request)
 	/*
 	 *	We don't have a return code yet.
 	 */
-	rlm_rcode_t		result = RLM_MODULE_UNKNOWN;
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];	/* Quiet static analysis */
 
@@ -537,7 +536,7 @@ rlm_rcode_t unlang_run(REQUEST *request)
 			rad_assert(stack->depth < UNLANG_STACK_MAX);
 
 			frame = &stack->frame[stack->depth];
-			fa = unlang_frame_eval(request, frame, &result, &priority);
+			fa = unlang_frame_eval(request, frame, &stack->result, &priority);
 
 			/*
 			 *	We were executing a frame, unlang_frame_eval()
@@ -554,7 +553,7 @@ rlm_rcode_t unlang_run(REQUEST *request)
 			 *	and made into our current result / priority, as
 			 *	if we had performed a module call.
 			 */
-			result = frame->result;
+			stack->result = frame->result;
 			priority = frame->priority;
 
 			/*
@@ -575,7 +574,7 @@ rlm_rcode_t unlang_run(REQUEST *request)
 			}
 
 			/*
-			 *	If we're done, merge the last result / priority in.
+			 *	If we're done, merge the last stack->result / priority in.
 			 */
 			if (frame->top_frame) break;	/* return */
 
@@ -585,10 +584,10 @@ rlm_rcode_t unlang_run(REQUEST *request)
 			if (unlang_ops[frame->instruction->type].debug_braces) {
 				REXDENT();
 				RDEBUG2("} # %s (%s)", frame->instruction->debug_name,
-					fr_int2str(mod_rcode_table, result, "<invalid>"));
+					fr_int2str(mod_rcode_table, stack->result, "<invalid>"));
 			}
 
-			fa = unlang_calculate_result(request, frame, &result, &priority);
+			fa = unlang_calculate_result(request, frame, &stack->result, &priority);
 			/*
 			 *	If we're continuing after popping a frame
 			 *	then we advance the instruction else we
@@ -597,7 +596,7 @@ rlm_rcode_t unlang_run(REQUEST *request)
 			if (fa == UNLANG_FRAME_ACTION_CONTINUE) {
 				RDEBUG4("** [%i] %s - continuing after subsection with (%s %d)",
 					stack->depth, __FUNCTION__,
-					fr_int2str(mod_rcode_table, result, "<invalid>"),
+					fr_int2str(mod_rcode_table, stack->result, "<invalid>"),
 					priority);
 				frame->instruction = frame->next;
 				if (frame->instruction) frame->next = frame->instruction->next;
@@ -614,27 +613,27 @@ rlm_rcode_t unlang_run(REQUEST *request)
 			continue;
 
 		case UNLANG_FRAME_ACTION_YIELD:
-			rad_assert(result == RLM_MODULE_YIELD);
-			return result;
+			rad_assert(stack->result == RLM_MODULE_YIELD);
+			return stack->result;
 		}
 		break;
 	}
 
 	/*
-	 *	Nothing in this section, use the top frame result.
+	 *	Nothing in this section, use the top frame stack->result.
 	 */
-	if ((priority < 0) || (result == RLM_MODULE_UNKNOWN)) {
-		result = frame->result;
+	if ((priority < 0) || (stack->result == RLM_MODULE_UNKNOWN)) {
+		stack->result = frame->result;
 		priority = frame->priority;
 	}
 
 	if (priority > frame->priority) {
-		frame->result = result;
+		frame->result = stack->result;
 		frame->priority = priority;
 
-		RDEBUG4("** [%i] %s - over-riding result from higher priority to (%s %d)",
+		RDEBUG4("** [%i] %s - over-riding stack->result from higher priority to (%s %d)",
 			stack->depth, __FUNCTION__,
-			fr_int2str(mod_rcode_table, result, "<invalid>"),
+			fr_int2str(mod_rcode_table, stack->result, "<invalid>"),
 			priority);
 	}
 
@@ -644,11 +643,11 @@ rlm_rcode_t unlang_run(REQUEST *request)
 	 */
 	RDEBUG4("** [%i] %s - interpreter exiting, returning %s", stack->depth, __FUNCTION__,
 		fr_int2str(mod_rcode_table, frame->result, "<invalid>"));
-	result = frame->result;
+	stack->result = frame->result;
 	stack->depth--;
 	DUMP_STACK;
 
-	return result;
+	return stack->result;
 }
 
 static unlang_group_t empty_group = {
@@ -813,6 +812,8 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
  */
 void *unlang_stack_alloc(TALLOC_CTX *ctx)
 {
+	unlang_stack_t *stack;
+
 #ifdef HAVE_TALLOC_POOLED_OBJECT
 	/*
 	 *	If we have talloc_pooled_object allocate the
@@ -827,10 +828,14 @@ void *unlang_stack_alloc(TALLOC_CTX *ctx)
 	 *	This number is pretty arbitrary, but it seems
 	 *	like too low level to make into a tuneable.
 	 */
-	return talloc_pooled_object(ctx, unlang_stack_t, UNLANG_STACK_MAX / 4, sizeof(unlang_frame_state_t));
+	stack = talloc_pooled_object(ctx, unlang_stack_t, UNLANG_STACK_MAX / 4, sizeof(unlang_frame_state_t));
 #else
-	return talloc_zero(ctx, unlang_stack_t);
+	stack = talloc_zero(ctx, unlang_stack_t);
 #endif
+
+	stack->result = RLM_MODULE_UNKNOWN;
+
+	return stack;
 }
 
 /** Wrap an #fr_event_timer_t providing data needed for unlang events
@@ -1172,6 +1177,22 @@ int unlang_stack_depth(REQUEST *request)
 	unlang_stack_t	*stack = request->stack;
 
 	return stack->depth;
+}
+
+/** Get the current rcode for the frame
+ *
+ * This can be useful for getting the result of unlang_function_t pushed
+ * onto the stack for evaluation.
+ *
+ * @param[in] request	The current request.
+ * @return the current rcode for the frame.
+ */
+rlm_rcode_t unlang_stack_result(REQUEST *request)
+{
+
+	unlang_stack_t		*stack = request->stack;
+
+	return stack->result;
 }
 
 /*

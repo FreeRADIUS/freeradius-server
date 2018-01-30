@@ -149,5 +149,7 @@ void		unlang_signal(REQUEST *request, fr_state_signal_t action);
 
 int		unlang_stack_depth(REQUEST *request);
 
+rlm_rcode_t	unlang_stack_result(REQUEST *request);
+
 int		unlang_initialize(void);
 #endif /* _FR_UNLANG_H */

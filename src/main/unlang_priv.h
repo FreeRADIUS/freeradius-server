@@ -102,9 +102,6 @@ typedef enum {
 #define UNLANG_NEXT_STOP (false)
 #define UNLANG_NEXT_CONTINUE (true)
 
-#define UNLANG_TOP_FRAME (true)
-#define UNLANG_SUB_FRAME (false)
-
 #define UNLANG_DETACHABLE (true)
 #define UNLANG_NORMAL_CHILD (false)
 
@@ -296,6 +293,7 @@ typedef struct {
  *
  */
 typedef struct {
+	rlm_rcode_t		result;				//!< The current stack rcode.
 	int			depth;				//!< Current depth we're executing at.
 	unlang_stack_frame_t	frame[UNLANG_STACK_MAX];	//!< The stack...
 } unlang_stack_t;
