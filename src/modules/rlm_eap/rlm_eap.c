@@ -422,6 +422,23 @@ finish:
 	return rcode;
 }
 
+/** Destroy an EAP session if the request currently processing it is destroyed
+ *
+ * We do this so we don't leak EAP sessions.
+ *
+ */
+static void mod_authenticate_signal(UNUSED REQUEST *request, UNUSED void *instance, UNUSED void *thread,
+				    void *uctx, fr_state_signal_t action)
+{
+	eap_auth_rctx_t		*rctx = talloc_get_type_abort(uctx, eap_auth_rctx_t);
+	eap_session_t		*eap_session = rctx->eap_session;
+
+	if (action != FR_SIGNAL_DONE) return;
+
+	eap_session_destroy(&eap_session);
+	talloc_free(rctx);	/* Would be cleaned up anyway but doesn't hurt */
+}
+
 /** Call an eap submodule using the unlang stack
  *
  * @param[in] request	The current request.
@@ -587,8 +604,8 @@ module_call:
 	 *	mod_authenticate_result will be called after
 	 *	eap_call_submodule finishes.
 	 */
-	unlang_module_yield(request, mod_authenticate_result, NULL, rctx);
-	unlang_push_function(request, eap_call_submodule, eap_call_submodule, rctx);
+	unlang_module_yield(request, mod_authenticate_result, mod_authenticate_signal, rctx);
+	unlang_push_function(request, eap_call_submodule, NULL, rctx);
 
 	return RLM_MODULE_YIELD;
 }
