@@ -983,8 +983,8 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_cursor_t *out, xlat_exp_t cons
 			 *	If there's no children we can just
 			 *	call the function directly.
 			 */
-			if (xlat_frame_eval_repeat(ctx, out, child, NULL,
-						   request, in, &result) == XLAT_ACTION_FAIL) goto fail;
+			xa = xlat_frame_eval_repeat(ctx, out, child, NULL, request, in, &result);
+			if (xa != XLAT_ACTION_DONE) goto finish;
 		}
 			continue;
 
