@@ -65,6 +65,38 @@ extern FR_NAME_NUMBER const xlat_action_table[];
 
 typedef size_t (*xlat_escape_t)(REQUEST *request, char *out, size_t outlen, char const *in, void *arg);
 
+/** A callback when the the timeout occurs
+ *
+ * Used when a xlat needs wait for an event.
+ * Typically the callback is set, and then the xlat returns unlang_xlat_yield().
+ *
+ * @note The callback is automatically removed on unlang_resumable(), i.e. if an event
+ *	on a registered FD occurs before the timeout event fires.
+ *
+ * @param[in] request		the request.
+ * @param[in] instance		the xlat instance.
+ * @param[in] thread		data specific to this xlat instance.
+ * @param[in] rctx		a local context for the callback.
+ * @param[in] fired		the time the timeout event actually fired.
+ */
+typedef	void (*fr_xlat_unlang_timeout_t)(REQUEST *request, void *instance, void *thread, void *rctx,
+					 struct timeval *fired);
+
+/** A callback when the FD is ready for reading
+ *
+ * Used when a xlat needs to read from an FD.  Typically the callback is set, and then the
+ * xlat returns unlang_xlat_yield().
+ *
+ * @note The callback is automatically removed on unlang_resumable(), so
+ *
+ * @param[in] request		the current request.
+ * @param[in] instance		the xlat instance.
+ * @param[in] thread		data specific to this xlat instance.
+ * @param[in] rctx		a local context for the callback.
+ * @param[in] fd		the file descriptor.
+ */
+typedef void (*fr_xlat_unlang_fd_event_t)(REQUEST *request, void *instance, void *thread, void *rctx, int fd);
+
 /** xlat callback function
  *
  * Should write the result of expanding the fmt string to the output buffer.
@@ -78,7 +110,7 @@ typedef size_t (*xlat_escape_t)(REQUEST *request, char *out, size_t outlen, char
  * @param[in] ctx to allocate any dynamic buffers in.
  * @param[in,out] out Where to write either a pointer to a new buffer, or data to an existing buffer.
  * @param[in] outlen Length of pre-allocated buffer, or 0 if function should allocate its own buffer.
- * @param[in] mod_inst Instance data provided by the module that registered the xlat.
+ * @param[in] mod_inst Instance data provided by the xlat that registered the xlat.
  * @param[in] xlat_inst Instance data created by the xlat instantiation function.
  * @param[in] request The current request.
  * @param[in] fmt string to expand.
@@ -135,8 +167,8 @@ typedef xlat_action_t (*xlat_func_resume_t)(TALLOC_CTX *ctx, fr_cursor_t *out,
  * @note The callback is automatically removed on unlang_resumable().
  *
  * @param[in] request		The current request.
- * @param[in] instance		The module instance.
- * @param[in] thread		data specific to this module instance.
+ * @param[in] instance		The xlat instance.
+ * @param[in] thread		data specific to this xlat instance.
  * @param[in] rctx		Resume ctx for the callback.
  * @param[in] action		which is signalling the request.
  */
@@ -258,6 +290,9 @@ void		xlat_instances_free(void);
 /*
  *	xlat_unlang.c
  */
+int		xlat_unlang_event_timeout_add(REQUEST *request, fr_xlat_unlang_timeout_t callback,
+					      void const *ctx, struct timeval *when);
+
 void		xlat_unlang_push(TALLOC_CTX *ctx, fr_value_box_t **out,
 				 REQUEST *request, xlat_exp_t const *exp, bool top_frame);
 

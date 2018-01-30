@@ -58,6 +58,23 @@ typedef struct {
 								///< previously took.
 } unlang_frame_state_xlat_t;
 
+/** Wrap an #fr_event_timer_t providing data needed for unlang events
+ *
+ */
+typedef struct {
+	REQUEST				*request;			//!< Request this event pertains to.
+	int				fd;				//!< File descriptor to wait on.
+	fr_xlat_unlang_timeout_t	timeout;			//!< Function to call on timeout.
+	fr_xlat_unlang_fd_event_t	fd_read;			//!< Function to call when FD is readable.
+	fr_xlat_unlang_fd_event_t	fd_write;			//!< Function to call when FD is writable.
+	fr_xlat_unlang_fd_event_t	fd_error;			//!< Function to call when FD has errored.
+	void const			*inst;				//!< Module instance to pass to callbacks.
+	void				*thread;			//!< Thread specific xlat instance.
+	void const			*ctx;				//!< ctx data to pass to callbacks.
+	fr_event_timer_t const		*ev;				//!< Event in this worker's event heap.
+} xlat_unlang_event_t;
+
+
 /** Static instruction for performing xlat evaluations
  *
  */
@@ -77,6 +94,82 @@ static unlang_t xlat_instruction = {
 		[RLM_MODULE_UPDATED]	= 0
 	},
 };
+
+/** Frees an unlang event, removing it from the request's event loop
+ *
+ * @param[in] ev	The event to free.
+ *
+ * @return 0
+ */
+static int _xlat_unlang_event_free(xlat_unlang_event_t *ev)
+{
+	if (ev->ev) {
+		(void) fr_event_timer_delete(ev->request->el, &(ev->ev));
+		return 0;
+	}
+
+	if (ev->fd >= 0) {
+		(void) fr_event_fd_delete(ev->request->el, ev->fd, FR_EVENT_FILTER_IO);
+	}
+
+	return 0;
+}
+
+/** Call the callback registered for a timeout event
+ *
+ * @param[in] el	the event timer was inserted into.
+ * @param[in] now	The current time, as held by the event_list.
+ * @param[in] ctx	unlang_event_t structure holding callbacks.
+ *
+ */
+static void xlat_unlang_event_timeout_handler(UNUSED fr_event_list_t *el, struct timeval *now, void *ctx)
+{
+	xlat_unlang_event_t *ev = talloc_get_type_abort(ctx, xlat_unlang_event_t);
+	void *mutable_ctx;
+	void *mutable_inst;
+
+	memcpy(&mutable_ctx, &ev->ctx, sizeof(mutable_ctx));
+	memcpy(&mutable_inst, &ev->inst, sizeof(mutable_inst));
+
+	ev->timeout(ev->request, mutable_inst, ev->thread, mutable_ctx, now);
+	talloc_free(ev);
+}
+
+int xlat_unlang_event_timeout_add(REQUEST *request, fr_xlat_unlang_timeout_t callback,
+				  void const *ctx, struct timeval *when)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	xlat_unlang_event_t		*ev;
+	unlang_frame_state_xlat_t	*xs = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
+
+	rad_assert(stack->depth > 0);
+	rad_assert(frame->instruction->type == UNLANG_TYPE_XLAT);
+
+	ev = talloc_zero(request, xlat_unlang_event_t);
+	if (!ev) return -1;
+
+	ev->request = request;
+	ev->fd = -1;
+	ev->timeout = callback;
+	ev->inst = xs->exp->inst;
+	ev->thread = xlat_thread_instance_find(xs->exp);
+	ev->ctx = ctx;
+
+	if (fr_event_timer_insert(request, request->el, &ev->ev,
+				  when, xlat_unlang_event_timeout_handler, ev) < 0) {
+		RPEDEBUG("Failed inserting event");
+		talloc_free(ev);
+		return -1;
+	}
+
+	(void) request_data_add(request, ctx, -1, ev, true, false, false);
+
+	talloc_set_destructor(ev, _xlat_unlang_event_free);
+
+	return 0;
+}
+
 
 /** Push a pre-compiled xlat onto the stack for evaluation
  *
