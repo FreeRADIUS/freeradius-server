@@ -296,8 +296,8 @@ void		fr_request_async_bootstrap(REQUEST *request, fr_event_list_t *el); /* for 
 /*
  *	module_unlang.c
  */
-int		unlang_event_timeout_add(REQUEST *request, fr_unlang_module_timeout_t callback,
-					 void const *ctx, struct timeval *timeout);
+int		unlang_event_module_timeout_add(REQUEST *request, fr_unlang_module_timeout_t callback,
+						void const *ctx, struct timeval *timeout);
 
 int 		unlang_event_fd_add(REQUEST *request,
 				    fr_unlang_module_fd_event_t read,

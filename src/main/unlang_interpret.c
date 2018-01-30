@@ -974,8 +974,8 @@ static void unlang_event_fd_error_handler(UNUSED fr_event_list_t *el, int fd,
  *	- 0 on success.
  *	- <0 on error.
  */
-int unlang_event_timeout_add(REQUEST *request, fr_unlang_module_timeout_t callback,
-			     void const *ctx, struct timeval *when)
+int unlang_event_module_timeout_add(REQUEST *request, fr_unlang_module_timeout_t callback,
+				    void const *ctx, struct timeval *when)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -1015,8 +1015,11 @@ int unlang_event_timeout_add(REQUEST *request, fr_unlang_module_timeout_t callba
 
 /** Delete a previously set timeout callback
  *
- * param[in] request the request
- * param[in] ctx a local context for the callback
+ * @param[in] request	The current request.
+ * @param[in] ctx	a local context for the callback.
+ * @return
+ *	- -1 on error.
+ *	- 0 on success.
  */
 int unlang_event_timeout_delete(REQUEST *request, void const *ctx)
 {
@@ -1024,8 +1027,8 @@ int unlang_event_timeout_delete(REQUEST *request, void const *ctx)
 
 	ev = request_data_get(request, ctx, -1);
 	if (!ev) return -1;
-
 	talloc_free(ev);
+
 	return 0;
 }
 
