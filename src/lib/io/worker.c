@@ -560,6 +560,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	request->async->listen = NULL;
 #endif
 
+	DEBUG3("freeing request");
 	talloc_free(request);
 }
 
