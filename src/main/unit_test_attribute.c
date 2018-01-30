@@ -736,6 +736,8 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 			exit(EXIT_FAILURE);
 		}
 
+		if (!q) q = p + strlen(p);
+
 		strlcpy(test_type, p, (q - p) + 1);
 
 		if (strcmp(test_type, "load") == 0) {
