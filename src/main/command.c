@@ -1546,7 +1546,7 @@ static home_server_t *get_home_server(rad_listen_t *listener, int argc,
 		break;
 	}
 
-	home = home_server_find(&ipaddr, port, proto);
+	home = home_server_find_bysrc(&ipaddr, port, proto, &src_ipaddr);
 	if (!home) {
 		cprintf_error(listener, "No such home server\n");
 		return NULL;

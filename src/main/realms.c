@@ -2742,6 +2742,30 @@ home_server_t *home_server_find(fr_ipaddr_t *ipaddr, uint16_t port,
 	return rbtree_finddata(home_servers_byaddr, &myhome);
 }
 
+home_server_t *home_server_find_bysrc(fr_ipaddr_t *ipaddr, uint16_t port,
+				int proto,
+				fr_ipaddr_t *src_ipaddr)
+{
+	home_server_t myhome;
+
+	if (!src_ipaddr) return home_server_find(ipaddr, port, proto);
+
+	if (src_ipaddr->af != ipaddr->af) return NULL;
+
+	memset(&myhome, 0, sizeof(myhome));
+	myhome.ipaddr = *ipaddr;
+	myhome.src_ipaddr = *src_ipaddr;
+	myhome.port = port;
+#ifdef WITH_TCP
+	myhome.proto = proto;
+#else
+	myhome.proto = IPPROTO_UDP;
+#endif
+	myhome.server = NULL;	/* we're not called for internal proxying */
+
+	return rbtree_finddata(home_servers_byaddr, &myhome);
+}
+
 #ifdef WITH_COA
 home_server_t *home_server_byname(char const *name, int type)
 {
