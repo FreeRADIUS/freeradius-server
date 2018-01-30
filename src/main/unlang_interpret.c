@@ -663,6 +663,23 @@ static unlang_group_t empty_group = {
 	.group_type = UNLANG_GROUP_TYPE_SIMPLE,
 };
 
+/** Return whether a section has unlang data associated with it
+ *
+ * @param[in] cs	to check.
+ * @return
+ *	- true if it has data.
+ *	- false if it doesn't have data.
+ */
+bool unlang_section(CONF_SECTION *cs)
+{
+	unlang_t	*instruction = NULL;
+
+	instruction = (unlang_t *)cf_data_value(cf_data_find(cs, unlang_group_t, NULL));
+	if (instruction) return true;
+
+	return false;
+}
+
 /** Push a configuration section onto the request stack for later interpretation.
  *
  */

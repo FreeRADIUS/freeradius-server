@@ -123,6 +123,8 @@ typedef struct {
 
 void		unlang_push_function(REQUEST *request, unlang_function_t func, unlang_function_t repeat, void *uctx);
 
+bool		unlang_section(CONF_SECTION *cs);
+
 void		unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t default_action, bool top_frame);
 
 rlm_rcode_t	unlang_interpret_continue(REQUEST *request);
