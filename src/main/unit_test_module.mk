@@ -5,7 +5,6 @@ SOURCES := \
 	crypt.c \
 	files.c \
 	mainconfig.c \
-	module.c \
 	unit_test_module.c \
 	soh.c \
 	state.c \
