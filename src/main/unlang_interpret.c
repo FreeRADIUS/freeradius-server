@@ -1123,6 +1123,8 @@ void unlang_signal(REQUEST *request, fr_state_signal_t action)
 	unlang_resume_t		*mr;
 	int			i;
 
+	(void)talloc_get_type_abort(request, REQUEST);	/* Check the request hasn't already been freed */
+
 	rad_assert(stack->depth > 0);
 
 	/*
