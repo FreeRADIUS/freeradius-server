@@ -775,7 +775,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			if (RDEBUG_ENABLED2) fr_value_box_list_acopy(NULL, &result_copy, *result);
 
 			if (*result) (void) talloc_list_get_type_abort(*result, fr_value_box_t);
-			xa = node->xlat->func.async(ctx, out, request, node->inst, thread_inst->data, result);
+			xa = node->xlat->func.async(ctx, out, request, node->inst->data, thread_inst->data, result);
 			if (*result) (void) talloc_list_get_type_abort(*result, fr_value_box_t);
 
 			if (RDEBUG_ENABLED2) {
