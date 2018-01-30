@@ -1305,7 +1305,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 
 				fr_canonicalize_error(cs, &spaces, &text, slen, cp->value);
 
-				cf_log_err(cp, "Failed parsing expanded string:");
+				cf_log_err(cp, "Failed parsing expansion string:");
 				cf_log_err(cp, "%s", text);
 				cf_log_err(cp, "%s^ %s", spaces, error);
 

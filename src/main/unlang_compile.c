@@ -403,7 +403,7 @@ static bool pass2_fixup_xlat(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert
 
 		fr_canonicalize_error(vpt, &spaces, &text, slen, vpt->name);
 
-		cf_log_err(ci, "Failed parsing expanded string:");
+		cf_log_err(ci, "Failed parsing expansion string:");
 		cf_log_err(ci, "%s", text);
 		cf_log_err(ci, "%s^ %s", spaces, error);
 
