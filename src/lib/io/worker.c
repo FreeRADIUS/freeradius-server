@@ -448,6 +448,8 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	fr_channel_t *ch;
 	fr_message_set_t *ms;
 
+	REQUEST_VERIFY(request);
+
 	/*
 	 *	If we're sending a reply, then it's no longer runnable.
 	 */
@@ -607,6 +609,8 @@ static void fr_worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED struct
 	 *	be deleted.
 	 */
 	while ((request = fr_heap_peek_tail(worker->time_order)) != NULL) {
+		REQUEST_VERIFY(request);
+
 		/*
 		 *	Waiting too long, delete it.
 		 */
