@@ -156,12 +156,12 @@ static unlang_action_t unlang_function_call(REQUEST *request,
  * deeper in the C call stack to establish a new resumption point.
  *
  * @param[in] request	The current request.
- * @param[in] func	to call going up the stack.
+ * @param[in] cb	to call going up the stack.
  * @param[in] repeat	function to call going back down the stack (may be NULL).
  *			This may be the same as #func.
  * @param[in] uctx	to pass to func.
  */
-void unlang_push_function(REQUEST *request, unlang_function_t func, unlang_function_t repeat, void *uctx)
+void unlang_push_function(REQUEST *request, unlang_function_t cb, unlang_function_t repeat, void *uctx)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame;
@@ -184,7 +184,7 @@ void unlang_push_function(REQUEST *request, unlang_function_t func, unlang_funct
 	 */
 	MEM(frame->state = state = talloc_zero(stack, unlang_frame_state_func_t));
 
-	state->func = func;
+	state->func = cb;
 	state->repeat = repeat;
 	state->uctx = uctx;
 }
