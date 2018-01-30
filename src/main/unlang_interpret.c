@@ -524,13 +524,6 @@ rlm_rcode_t unlang_run(REQUEST *request)
 	DUMP_STACK;
 #endif
 
-	/*
-	 *	If we're called from a module, re-set this so that the
-	 *	indentation works correctly...
-	 *
-	 *	@todo - save / restore this across frames?
-	 */
-	request->module = NULL;
 	rad_assert(request->runnable_id < 0);
 
 	RDEBUG4("** [%i] %s - interpreter entered", stack->depth, __FUNCTION__);
