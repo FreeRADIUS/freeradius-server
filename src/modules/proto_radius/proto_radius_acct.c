@@ -64,7 +64,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		}
 
 		RDEBUG("Running 'recv Accounting-Request' from file %s", cf_filename(unlang));
-		unlang_push_section(request, unlang, RLM_MODULE_NOOP);
+		unlang_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
 
 		request->request_state = REQUEST_RECV;
 		/* FALL-THROUGH */
@@ -118,7 +118,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		if (!unlang) goto send_reply;
 
 		RDEBUG("Running 'send %s' from file %s", cf_section_name2(unlang), cf_filename(unlang));
-		unlang_push_section(request, unlang, RLM_MODULE_NOOP);
+		unlang_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
 
 		request->request_state = REQUEST_SEND;
 		/* FALL-THROUGH */

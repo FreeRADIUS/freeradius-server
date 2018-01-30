@@ -939,7 +939,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 				if (!unlang) {
 					rcode = process_authenticate(enumv->value->vb_uint32, fake);
 				} else {
-					unlang_push_section(request, unlang, RLM_MODULE_FAIL);
+					unlang_push_section(request, unlang, RLM_MODULE_FAIL, UNLANG_TOP_FRAME);
 					rcode = unlang_interpret_continue(request);
 				}
 

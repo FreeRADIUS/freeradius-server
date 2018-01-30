@@ -670,7 +670,7 @@ packet_ready:
 	if (!unlang) {
 		rcode = process_authenticate(inst->auth_type_mschap, request);
 	} else {
-		unlang_push_section(request, unlang, RLM_MODULE_FAIL);
+		unlang_push_section(request, unlang, RLM_MODULE_FAIL, UNLANG_TOP_FRAME);
 		rcode = unlang_interpret_continue(request);
 
 		/*

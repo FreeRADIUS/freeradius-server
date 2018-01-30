@@ -143,7 +143,7 @@ static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 		return RLM_MODULE_OK;
 	}
 
-	unlang_push_section(request, unlang, RLM_MODULE_FAIL);
+	unlang_push_section(request, unlang, RLM_MODULE_FAIL, UNLANG_TOP_FRAME);
 
 	eap_session->process = mod_process_auth_type;
 

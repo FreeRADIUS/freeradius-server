@@ -666,7 +666,7 @@ static unlang_group_t empty_group = {
 /** Push a configuration section onto the request stack for later interpretation.
  *
  */
-void unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
+void unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action, bool top_frame)
 {
 	unlang_t	*instruction = NULL;
 	unlang_stack_t	*stack = request->stack;
@@ -678,7 +678,7 @@ void unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
 	if (cs) {
 		instruction = (unlang_t *)cf_data_value(cf_data_find(cs, unlang_group_t, NULL));
 		if (!instruction) {
-			RPEDEBUG("Failed to find pre-compiled unlang for section %s %s { ... }",
+			REDEBUG("Failed to find pre-compiled unlang for section %s %s { ... }",
 				cf_section_name1(cs), cf_section_name2(cs));
 		}
 	}
@@ -689,7 +689,7 @@ void unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t action)
 	 *	Push the default action, and the instruction which has
 	 *	no action.
 	 */
-	unlang_push(stack, NULL, action, UNLANG_NEXT_STOP, UNLANG_TOP_FRAME);
+	if (top_frame) unlang_push(stack, NULL, action, UNLANG_NEXT_STOP, UNLANG_TOP_FRAME);
 	if (instruction) unlang_push(stack, instruction, RLM_MODULE_UNKNOWN, UNLANG_NEXT_CONTINUE, UNLANG_SUB_FRAME);
 
 	RDEBUG4("** [%i] %s - substack begins", stack->depth, __FUNCTION__);
@@ -715,7 +715,7 @@ rlm_rcode_t unlang_interpret(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t act
 	 *	This pushes a new frame onto the stack, which is the
 	 *	start of a new unlang section...
 	 */
-	unlang_push_section(request, cs, action);
+	unlang_push_section(request, cs, action, UNLANG_TOP_FRAME);
 
 	return unlang_run(request);
 }

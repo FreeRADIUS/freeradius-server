@@ -374,7 +374,7 @@ static void request_running(REQUEST *request, fr_state_signal_t action)
 
 		RDEBUG("Running '%s %s' from file %s", cf_section_name1(unlang),
 		       cf_section_name2(unlang), cf_filename(unlang));
-		unlang_push_section(request, unlang, RLM_MODULE_NOOP);
+		unlang_push_section(request, unlang, RLM_MODULE_NOOP, UNLANG_TOP_FRAME);
 
 		request->request_state = REQUEST_RECV;
 		/* FALL-THROUGH */

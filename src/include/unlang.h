@@ -40,6 +40,9 @@ typedef enum {
 	UNLANG_ACTION_STOP_PROCESSING		//!< Break out of processing the current request (unwind).
 } unlang_action_t;
 
+#define UNLANG_TOP_FRAME (true)
+#define UNLANG_SUB_FRAME (false)
+
 /** Function to call when first evaluating a frame
  *
  * @param[in] request		The current request.
@@ -120,7 +123,7 @@ typedef struct {
 
 void		unlang_push_function(REQUEST *request, unlang_function_t func, unlang_function_t repeat, void *uctx);
 
-void		unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t default_action);
+void		unlang_push_section(REQUEST *request, CONF_SECTION *cs, rlm_rcode_t default_action, bool top_frame);
 
 rlm_rcode_t	unlang_interpret_continue(REQUEST *request);
 
