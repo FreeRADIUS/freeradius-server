@@ -461,9 +461,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	 */
 	if (request->async->detached) {
 		fr_time_tracking_end(&request->async->tracking, fr_time(), &worker->tracking);
-		RDEBUG("finished request.");
-		talloc_free(request);
-		return;
+		goto finished;
 	}
 
 	/*
@@ -549,6 +547,10 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	 */
 	if (request->time_order_id >= 0) (void) fr_heap_extract(worker->time_order, request);
 	if (request->runnable_id >= 0) (void) fr_heap_extract(worker->runnable, request);
+
+finished:
+	rad_assert(request->time_order_id < 0);
+	rad_assert(request->runnable_id < 0);
 
 #ifndef NDEBUG
 	request->async->original_recv_time = NULL;
