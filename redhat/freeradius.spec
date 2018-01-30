@@ -58,7 +58,8 @@ BuildRequires: pam-devel
 BuildRequires: zlib-devel
 BuildRequires: net-snmp-devel
 BuildRequires: net-snmp-utils
-%{?el7:BuildRequires: samba-winbind-devel}
+%{?el7:BuildRequires: libwbclient-devel}
+%{?el7:BuildRequires: samba-devel}
 %{?el6:BuildRequires: samba4-devel}
 BuildRequires: readline-devel
 BuildRequires: libpcap-devel
@@ -74,8 +75,7 @@ Requires: libpcap
 Requires: readline
 Requires: libtalloc
 Requires: net-snmp
-%{?el7:Requires: samba-libs}
-%{?el7:Requires: samba-winbind-clients}
+%{?el7:Requires: libwbclient}
 %{?el6:Requires: samba4-libs}
 %{?el6:Requires: samba4-winbind-clients}
 Requires: zlib

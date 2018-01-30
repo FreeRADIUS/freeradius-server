@@ -1486,7 +1486,7 @@ static home_server_t *get_home_server(rad_listen_t *listener, int argc,
 	home_server_t *home;
 	uint16_t port;
 	int proto = IPPROTO_UDP;
-	fr_ipaddr_t ipaddr;
+	fr_ipaddr_t ipaddr, src_ipaddr;
 
 	if (argc < 2) {
 		cprintf_error(listener, "Must specify <ipaddr> <port> [udp|tcp]\n");
@@ -1498,6 +1498,9 @@ static home_server_t *get_home_server(rad_listen_t *listener, int argc,
 			fr_strerror());
 		return NULL;
 	}
+
+	memset(&src_ipaddr, 0, sizeof(src_ipaddr));
+	src_ipaddr.af = ipaddr.af;
 
 	port = atoi(argv[1]);
 
@@ -1519,12 +1522,31 @@ static home_server_t *get_home_server(rad_listen_t *listener, int argc,
 #endif
 
 		/*
+		 *	Allow the caller to specify src, too.
+		 */
+		if (strcmp(argv[myarg], "src_ipaddr") == 0) {
+			if ((myarg + 2) < argc) {
+				cprintf_error(listener, "You must specify an address after 'src' \n");
+				return NULL;
+			}
+
+			if (ip_hton(&src_ipaddr, ipaddr.af, argv[myarg + 1], false) < 0) {
+				cprintf_error(listener, "Failed parsing IP address; %s\n",
+					      fr_strerror());
+				return NULL;
+			}
+
+			myarg += 2;
+			continue;
+		}
+
+		/*
 		 *	Unknown argument.  Leave it for the caller.
 		 */
 		break;
 	}
 
-	home = home_server_find(&ipaddr, port, proto);
+	home = home_server_find_bysrc(&ipaddr, port, proto, &src_ipaddr);
 	if (!home) {
 		cprintf_error(listener, "No such home server\n");
 		return NULL;
@@ -1962,7 +1984,7 @@ static fr_command_table_t command_table_show_home[] = {
 	  "show home_server list - shows list of home servers",
 	  command_show_home_servers, NULL },
 	{ "state", FR_READ,
-	  "show home_server state <ipaddr> <port> [udp|tcp] - shows state of given home server",
+	  "show home_server state <ipaddr> <port> [udp|tcp] [src <ipaddr>] - shows state of given home server",
 	  command_show_home_server_state, NULL },
 
 	{ NULL, 0, NULL, NULL, NULL }
@@ -2554,7 +2576,7 @@ static fr_command_table_t command_table_add[] = {
 #ifdef WITH_PROXY
 static fr_command_table_t command_table_set_home[] = {
 	{ "state", FR_WRITE,
-	  "set home_server state <ipaddr> <port> [udp|tcp] [alive|dead] - set state for given home server",
+	  "set home_server state <ipaddr> <port> [udp|tcp] [src <ipaddr>] [alive|dead] - set state for given home server",
 	  command_set_home_server_state, NULL },
 
 	{ NULL, 0, NULL, NULL, NULL }
@@ -2603,7 +2625,7 @@ static fr_command_table_t command_table_stats[] = {
 
 #ifdef WITH_PROXY
 	{ "home_server", FR_READ,
-	  "stats home_server [<ipaddr>|auth|acct|coa|disconnect] <port> [udp|tcp] - show statistics for given home server (ipaddr and port), or for all home servers (auth or acct)",
+	  "stats home_server [<ipaddr>|auth|acct|coa|disconnect] <port> [udp|tcp] [src <ipaddr>] - show statistics for given home server (ipaddr and port), or for all home servers (auth or acct)",
 	  command_stats_home_server, NULL },
 #endif
 
