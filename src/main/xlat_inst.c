@@ -166,6 +166,7 @@ static xlat_thread_inst_t *xlat_thread_inst_alloc(xlat_inst_t *inst)
  */
 static int _xlat_inst_detach(xlat_inst_t *inst)
 {
+	(void)talloc_get_type_abort(inst->node, xlat_exp_t);
 	rad_assert(inst->node->type == XLAT_FUNC);
 
 	/*
@@ -197,6 +198,8 @@ static void _xlat_inst_free(void *to_free)
 static xlat_inst_t *xlat_inst_alloc(xlat_exp_t *node)
 {
 	xlat_inst_t		*inst = NULL;
+
+	(void)talloc_get_type_abort(node, xlat_exp_t);
 
 	rad_assert(xlat_inst_tree);		/* xlat_inst_init must have been called */
 	rad_assert(node->type == XLAT_FUNC);
@@ -309,7 +312,7 @@ static int _xlat_thread_instantiate(UNUSED void *ctx, void *data)
 	if (inst->node->xlat->thread_instantiate) {
 		int ret;
 
-		ret = inst->node->xlat->thread_instantiate(inst, thread_inst->data, inst->node, inst->node->xlat->uctx);
+		ret = inst->node->xlat->thread_instantiate(inst->data, thread_inst->data, inst->node, inst->node->xlat->uctx);
 		if (ret < 0) {
 			talloc_free(thread_inst);
 			return -1;
@@ -432,6 +435,7 @@ static int _xlat_bootstrap_walker(xlat_exp_t *node, UNUSED void *uctx)
 {
 	bool ret;
 
+	rad_assert(node->type == XLAT_FUNC);
 	rad_assert(!node->inst && !node->thread_inst);
 
 	node->inst = xlat_inst_alloc(node);
