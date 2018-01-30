@@ -14,19 +14,19 @@ SOURCES	:=	cond_eval.c \
 		map_proc.c \
 		map.c \
 		map_unlang.c \
-   		module.c \
-   		module_unlang.c \
+		module.c \
+		module_unlang.c \
 		regex.c \
 		request.c \
 		trigger.c \
 		tmpl.c \
 		util.c \
-   		virtual_servers.c \
+		virtual_servers.c \
 		pair.c \
 		pool.c \
-    		unlang_compile.c \
-    		unlang_interpret.c \
- 		unlang_op.c \
+		unlang_compile.c \
+		unlang_interpret.c \
+		unlang_op.c \
 		xlat_eval.c \
 		xlat_func.c \
 		xlat_inst.c \
