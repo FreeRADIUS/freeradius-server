@@ -309,12 +309,6 @@ int		unlang_event_timeout_delete(REQUEST *request, void const *ctx);
 
 int		unlang_event_fd_delete(REQUEST *request, void const *ctx, int fd);
 
-rlm_rcode_t	module_unlang_push_function(REQUEST *request,
-					    unlang_function_t func,
-					    unlang_function_t repeat,
-					    fr_module_unlang_resume_t resume,
-					    fr_module_unlang_signal_t signal, void *rctx);
-
 rlm_rcode_t	module_unlang_push_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
 					REQUEST *request, xlat_exp_t const *xlat,
 					fr_module_unlang_resume_t callback,

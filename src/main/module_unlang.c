@@ -218,31 +218,6 @@ static unlang_action_t module_unlang_resume(REQUEST *request, rlm_rcode_t *presu
 	}
 }
 
-/** Push a function onto the stack for execution and a resumption function to call after it completes
- *
- * @param[in] request		The current request.
- * @param[in] func		to call.
- * @param[in] resume		function to call when the function we pushed is complete.
- * @param[in] signal		function to call if a signal is received.
- * @param[in] rctx		to pass to the pushed function and resume()/signal() callbacks.
- * @return
- *	- RLM_MODULE_YIELD.
- */
-rlm_rcode_t module_unlang_push_function(REQUEST *request,
-					unlang_function_t func, unlang_function_t repeat,
-				        fr_module_unlang_resume_t resume,
-				        fr_module_unlang_signal_t signal, void *rctx)
-{
-	/*
-	 *	Push the resumption point
-	 */
-	(void) unlang_module_yield(request, resume, signal, rctx);
-
-	unlang_push_function(request, func, repeat, rctx);
-
-	return RLM_MODULE_YIELD;	/* This may allow us to do optimisations in future */
-}
-
 /** Push a pre-compiled xlat and resumption state onto the stack for evaluation
  *
  * In order to use the async unlang processor the calling module needs to establish
