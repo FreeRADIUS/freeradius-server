@@ -166,7 +166,7 @@ static xlat_thread_inst_t *xlat_thread_inst_alloc(xlat_inst_t *inst)
  */
 static int _xlat_inst_detach(xlat_inst_t *inst)
 {
-	(void)talloc_get_type_abort(inst->node, xlat_exp_t);
+	(void)talloc_get_type_abort_const(inst->node, xlat_exp_t);
 	rad_assert(inst->node->type == XLAT_FUNC);
 
 	/*
