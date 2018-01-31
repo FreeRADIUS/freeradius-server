@@ -298,7 +298,7 @@ int fr_radius_tracking_entry_reply(fr_tracking_t *ft, fr_tracking_entry_t *entry
 	 *	If there *is* a logic error somewhere
 	 *	don't leak memory.
 	 */
-	if (!fr_cond_assert(entry->reply == NULL)) talloc_free(entry->reply);
+	if (!fr_cond_assert(entry->reply == NULL)) talloc_const_free(entry->reply);
 
 	/*
 	 *	Bad packets are "don't reply"
