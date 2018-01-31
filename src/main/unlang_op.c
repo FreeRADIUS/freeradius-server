@@ -502,7 +502,7 @@ static REQUEST *unlang_child_alloc(REQUEST *request, unlang_t *instruction, rlm_
 #define COPY_FIELD(_x) child->async->_x = request->async->_x
 	COPY_FIELD(listen);
 	COPY_FIELD(recv_time);
-	child->async->original_recv_time = child->async->recv_time;
+	child->async->original_recv_time = &child->async->recv_time;
 
 	/*
 	 *	Always set the "process" function to the local
