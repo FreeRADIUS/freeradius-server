@@ -1077,11 +1077,11 @@ have_client:
 
 		/*
 		 *	Otherwise it's a duplicate packet.  Send the
-		 *	whole thing over to the network stack, noting
-		 *	that the tracking code ensures we get
-		 *	"recv_time" from the ORIGINAL packet, and not
-		 *	from now.
+		 *	whole thing over to the network stack, while
+		 *	updating the "packet recv time" to be when the
+		 *	original packet was received.
 		 */
+		packet_time = track->timestamp;
 		break;
 
 	/*
