@@ -152,8 +152,7 @@ ssize_t fr_sim_3gpp_root_nai_domain_mcc_mnc(uint16_t *mnc, uint16_t *mcc,
   *	- SIM_ID_TYPE_FASTAUTH		if the ID is a fastauth identity.
   *	- SIM_ID_TYPE_UNKNOWN		if we can't determine what sort of ID this is.
   * @param[in] id	the NAI string provided.
-  * @param[in] id_len	the length of the user portion of the NAI string.
-  *			See #fr_sim_id_user_len.
+  * @param[in] id_len	the length of the NAI string.
   * @return
   *	- 0 on success.
   *	- -1 on failure.
@@ -168,6 +167,14 @@ int fr_sim_id_type(fr_sim_id_type_t *type, fr_sim_method_hint_t *hint, char cons
 		fr_strerror_printf("ID length too short");
 		return -1;
 	}
+
+	/*
+	 *	Just get the length of the ID between the start
+	 *	and the first '@'.  Returns the length of the
+	 *	entire string if no '@' found, so works with
+	 *	full NAI strings and Stripped-User-Name.
+	 */
+	id_len = fr_sim_id_user_len(id, id_len);
 
 	/*
 	 *	Permanent ID format check
