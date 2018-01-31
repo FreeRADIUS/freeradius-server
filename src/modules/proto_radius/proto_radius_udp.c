@@ -1336,6 +1336,11 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 				}
 			}
 
+			/*
+			 *	Do NOT delete the tracking table
+			 *	entry.  The packet has to be
+			 *	re-injected!.
+			 */
 			dynamic_client_timer(inst, client, 30);
 			return buffer_len;
 		}
@@ -1403,6 +1408,11 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			newclient->dynamic = true;
 			newclient->active = true;
 
+			/*
+			 *	Do NOT delete the tracking table
+			 *	entry.  The packet has to be
+			 *	re-injected!.
+			 */
 			fr_network_listen_read(inst->nr, inst->parent->listen);
 			return buffer_len;
 		}
@@ -1511,6 +1521,11 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			fr_network_listen_read(inst->nr, inst->parent->listen);
 		}
 
+		/*
+		 *	Do NOT delete the tracking table
+		 *	entry.  The packet has to be
+		 *	re-injected!.
+		 */
 		return buffer_len;
 	}
 
@@ -1521,6 +1536,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	if ((track->timestamp != request_time) || !address->client) {
 		inst->stats.total_packets_dropped++;
 		DEBUG3("Suppressing reply as we have a newer packet");
+		(void) fr_radius_tracking_entry_delete(inst->ft, track, request_time);
 		return buffer_len;
 	}
 
@@ -1566,7 +1582,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		if (data_size < 0) {
 		done:
 			if (track->ev) (void) fr_event_timer_delete(inst->el, &track->ev);
-			(void) fr_radius_tracking_entry_delete(inst->ft, track, track->timestamp);
+			(void) fr_radius_tracking_entry_delete(inst->ft, track, request_time);
 			return data_size;
 		}
 
