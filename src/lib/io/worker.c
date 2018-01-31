@@ -901,7 +901,7 @@ nak:
 		 *	depth, and not sequence / ack.
 		 */
 		if (old->async->recv_time == request->async->recv_time) {
-			RWDEBUG("Discarding duplicate of request (%"PRIu64")", old->number);
+			RWARN("Discarding duplicate of request (%"PRIu64")", old->number);
 
 			fr_channel_null_reply(request->async->channel);
 			talloc_free(request);
@@ -925,7 +925,7 @@ nak:
 		 *	Stop the old request, and decrement the number
 		 *	of active requests.
 		 */
-		RWDEBUG("Got duplicate of request (%" PRIu64 "), telling old request to stop", old->number);
+		RWARN("Got duplicate of request (%" PRIu64 "), telling old request to stop", old->number);
 
 		worker_stop_request(worker, old, now);
 		rad_assert(worker->num_active > 0);
