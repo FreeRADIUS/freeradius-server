@@ -264,7 +264,7 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	 *	Get vectors from attribute or generate
 	 *	them using COMP128-* or Milenage.
 	 */
-	if (fr_sim_vector_umts_from_attrs(eap_session, request->control, &eap_aka_session->keys, &src) < 0) {
+	if (fr_sim_vector_umts_from_attrs(eap_session, request->control, &eap_aka_session->keys, &src) != 0) {
 	    	REDEBUG("Failed retrieving UMTS vectors");
 		return RLM_MODULE_FAIL;
 	}
