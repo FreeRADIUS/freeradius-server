@@ -877,7 +877,7 @@ RADCLIENT *client_afrom_query(TALLOC_CTX *ctx, char const *identifier, char cons
 	c = talloc_zero(ctx, RADCLIENT);
 
 	if (fr_inet_pton(&c->ipaddr, identifier, -1, AF_UNSPEC, true, true) < 0) {
-		PERROR("");
+		PERROR("Failed parsing client IP");
 		talloc_free(c);
 
 		return NULL;

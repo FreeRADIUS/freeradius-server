@@ -327,7 +327,7 @@ static int CC_HINT(nonnull(2, 3, 4)) cf_pair_parse_value(TALLOC_CTX *ctx, void *
 		ipaddr = out;
 
 		if (fr_inet_pton4(ipaddr, cp->value, -1, true, false, true) < 0) {
-			cf_log_perr(cp, "");
+			cf_log_perr(cp, "Failed parsing config item");
 			rcode = -1;
 			goto error;
 		}
@@ -343,7 +343,7 @@ static int CC_HINT(nonnull(2, 3, 4)) cf_pair_parse_value(TALLOC_CTX *ctx, void *
 		ipaddr = out;
 
 		if (fr_inet_pton6(ipaddr, cp->value, -1, true, false, true) < 0) {
-			cf_log_perr(cp, "");
+			cf_log_perr(cp, "Failed parsing config item");
 			rcode = -1;
 			goto error;
 		}
@@ -359,7 +359,7 @@ static int CC_HINT(nonnull(2, 3, 4)) cf_pair_parse_value(TALLOC_CTX *ctx, void *
 		ipaddr = out;
 
 		if (fr_inet_pton(ipaddr, cp->value, -1, AF_UNSPEC, true, true) < 0) {
-			cf_log_perr(cp, "");
+			cf_log_perr(cp, "Failed parsing config item");
 			rcode = -1;
 			goto error;
 		}
@@ -375,7 +375,7 @@ static int CC_HINT(nonnull(2, 3, 4)) cf_pair_parse_value(TALLOC_CTX *ctx, void *
 		struct timeval tv;
 
 		if (fr_timeval_from_str(&tv, cp->value) < 0) {
-			cf_log_perr(cp, "");
+			cf_log_perr(cp, "Failed parsing config item");
 			rcode = -1;
 			goto error;
 		}
