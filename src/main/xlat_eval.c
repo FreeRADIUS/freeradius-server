@@ -736,7 +736,10 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 				talloc_free(str);
 				return XLAT_ACTION_FAIL;
 			}
-			if (slen == 0) break;				/* Zero length result */
+			if (slen == 0) {				/* Zero length result */
+				talloc_free(result_str);
+				break;
+			}
 			(void)talloc_get_type_abort(str, char);		/* Check output buffer is sane */
 
 			/*
@@ -752,7 +755,6 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 			fr_value_box_strsteal(value, value, NULL, str, false);
 			fr_cursor_append(out, value);			/* Append the result of the expansion */
 			talloc_free(result_str);
-
 			xlat_debug_log_result(request, value);
 		}
 			break;
