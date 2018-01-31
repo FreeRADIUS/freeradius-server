@@ -295,6 +295,12 @@ int fr_radius_tracking_entry_reply(fr_tracking_t *ft, fr_tracking_entry_t *entry
 	(void) talloc_get_type_abort(ft, fr_tracking_t);
 
 	/*
+	 *	If there *is* a logic error somewhere
+	 *	don't leak memory.
+	 */
+	if (!fr_cond_assert(entry->reply == NULL)) talloc_free(entry->reply);
+
+	/*
 	 *	Bad packets are "don't reply"
 	 */
 	if (reply_len < 20) {
@@ -303,7 +309,6 @@ int fr_radius_tracking_entry_reply(fr_tracking_t *ft, fr_tracking_entry_t *entry
 		return 0;
 	}
 
-	rad_assert(entry->reply == NULL);
 	entry->reply = talloc_memdup(ft, reply, reply_len);
 	entry->reply_len = reply_len;
 
