@@ -143,7 +143,7 @@ typedef struct CC_HINT(__packed__) eap_packet_raw {
 eap_type_t		eap_name2type(char const *name);
 char const		*eap_type2name(eap_type_t method);
 int			eap_wireformat(eap_packet_t *reply);
-int			eap_basic_compose(RADIUS_PACKET *packet, eap_packet_t *reply);
+
 VALUE_PAIR		*eap_packet2vp(RADIUS_PACKET *packet, eap_packet_raw_t const *reply);
 eap_packet_raw_t	*eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps);
 void			eap_add_reply(REQUEST *request, char const *name, uint8_t const *value, int len);
