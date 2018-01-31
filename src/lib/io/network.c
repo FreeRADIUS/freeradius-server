@@ -667,6 +667,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 	fr_network_socket_t	*s;
 	fr_app_io_t const	*app_io;
 	size_t			size;
+	int			num_messages;
 
 	rad_assert(data_size == sizeof(s->listen));
 
@@ -686,13 +687,16 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 	 *	round it up to the nearest power of 2, which is
 	 *	required by the ring buffer code.
 	 */
-	size = s->listen->default_message_size * s->listen->num_messages;
+	num_messages = s->listen->num_messages;
+	if (num_messages < 8) num_messages = 8;
+
+	size = s->listen->default_message_size * num_messages;
 	if (!size) size = (1 << 17);
 
 	/*
 	 *	Allocate the ring buffer for messages and packets.
 	 */
-	s->ms = fr_message_set_create(s, s->listen->num_messages,
+	s->ms = fr_message_set_create(s, num_messages,
 				      sizeof(fr_channel_data_t),
 				      size);
 	if (!s->ms) {
