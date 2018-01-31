@@ -1129,7 +1129,7 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 		 */
 		eap_aka_session->id_req = SIM_ANY_ID_REQ;
 		eap_aka_state_enter(eap_session, EAP_AKA_SERVER_IDENTITY);
-		return RLM_MODULE_OK;
+		return RLM_MODULE_HANDLED;
 	}
 	/*
 	 *	Figure out what type of identity we have
@@ -1163,10 +1163,10 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 		MEM(eap_aka_session->keys.identity = talloc_memdup(eap_aka_session, eap_session->identity,
 								   eap_aka_session->keys.identity_len));
 		eap_aka_state_enter(eap_session, EAP_AKA_SERVER_CHALLENGE);
-		return RLM_MODULE_OK;
+		return RLM_MODULE_HANDLED;
 	}
 
-	return RLM_MODULE_OK;
+	return RLM_MODULE_HANDLED;
 }
 
 static int mod_load(void)

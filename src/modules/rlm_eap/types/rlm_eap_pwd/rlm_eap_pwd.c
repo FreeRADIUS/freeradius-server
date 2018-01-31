@@ -492,7 +492,7 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 
 	eap_session->process = mod_process;
 
-	return RLM_MODULE_OK;
+	return RLM_MODULE_HANDLED;
 }
 
 static int mod_detach(void *arg)

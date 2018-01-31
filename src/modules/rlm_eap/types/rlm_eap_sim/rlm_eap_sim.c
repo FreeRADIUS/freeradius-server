@@ -1080,10 +1080,10 @@ static rlm_rcode_t mod_session_init(UNUSED void *instance, eap_session_t *eap_se
 		MEM(eap_sim_session->keys.identity = talloc_memdup(eap_sim_session, eap_session->identity,
 								   eap_sim_session->keys.identity_len));
 		eap_sim_state_enter(eap_session, EAP_SIM_SERVER_START);
-		return RLM_MODULE_OK;
+		return RLM_MODULE_HANDLED;
 	}
 
-	return RLM_MODULE_OK;
+	return RLM_MODULE_HANDLED;
 }
 
 static int mod_load(void)

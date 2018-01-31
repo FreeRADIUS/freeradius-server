@@ -263,7 +263,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED 
 	request->reply->code = FR_CODE_ACCESS_CHALLENGE;
 	fr_pair_list_free(&response);
 
-	return RLM_MODULE_OK;
+	return RLM_MODULE_HANDLED;
 }
 #endif
 
@@ -782,7 +782,7 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 	 */
 	eap_session->process = mod_process;
 
-	return RLM_MODULE_OK;
+	return RLM_MODULE_HANDLED;
 }
 
 /*

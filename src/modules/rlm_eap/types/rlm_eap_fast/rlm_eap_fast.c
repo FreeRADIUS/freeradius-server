@@ -549,7 +549,7 @@ static rlm_rcode_t mod_session_init(void *type_arg, eap_session_t *eap_session)
 		return RLM_MODULE_FAIL;
 	}
 
-	return RLM_MODULE_OK;
+	return RLM_MODULE_HANDLED;
 }
 
 
