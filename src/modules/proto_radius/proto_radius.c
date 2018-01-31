@@ -219,7 +219,10 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	}
 
 	client = inst->app_io_private->client(inst->app_io, request->async->packet_ctx);
-	rad_assert(client);
+	if (!client) {
+		RPEDEBUG("Failed getting client from packet");
+		return -1;
+	}
 
 	/*
 	 *	Hacks for now until we have a lower-level decode routine.
