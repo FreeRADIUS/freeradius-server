@@ -1076,6 +1076,22 @@ have_client:
 		}
 
 		/*
+		 *	If there is a reply, just resend that.
+		 */
+		if (track->reply) {
+			void *packet;
+
+			flags = UDP_FLAGS_CONNECTED * inst->connected;
+			memcpy(&packet, &track->reply, sizeof(packet)); /* const issues */
+
+			(void) udp_send(inst->sockfd, packet, track->reply_len, flags,
+					&address.dst_ipaddr, address.dst_port,
+					address.if_index,
+					&address.src_ipaddr, address.src_port);
+			return 0;
+		}
+
+		/*
 		 *	Otherwise it's a duplicate packet.  Send the
 		 *	whole thing over to the network stack, while
 		 *	updating the "packet recv time" to be when the
