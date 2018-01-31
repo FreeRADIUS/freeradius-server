@@ -1524,7 +1524,7 @@ static home_server_t *get_home_server(rad_listen_t *listener, int argc,
 		/*
 		 *	Allow the caller to specify src, too.
 		 */
-		if (strcmp(argv[myarg], "src_ipaddr") == 0) {
+		if (strcmp(argv[myarg], "src") == 0) {
 			if ((myarg + 2) < argc) {
 				cprintf_error(listener, "You must specify an address after 'src' \n");
 				return NULL;
