@@ -1030,7 +1030,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 	xlat_async_register(inst, inst->xlat_name, rest_xlat,
 			    NULL, 0, NULL,
-			    mod_xlat_thread_instantiate, sizeof(rest_xlat_thread_inst_t), NULL,
+			    mod_xlat_thread_instantiate, rest_xlat_thread_inst_t, NULL,
 			    inst);
 
 	return 0;
