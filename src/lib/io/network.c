@@ -731,6 +731,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
  */
 static void fr_network_directory_callback(void *ctx, void const *data, size_t data_size, UNUSED fr_time_t now)
 {
+	int			num_messages;
 	fr_network_t		*nr = ctx;
 	fr_network_socket_t	*s;
 	fr_app_io_t const	*app_io;
@@ -752,11 +753,14 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 	/*
 	 *	Allocate the ring buffer for messages and packets.
 	 */
-	s->ms = fr_message_set_create(s, s->listen->num_messages,
+	num_messages = s->listen->num_messages;
+	if (num_messages < 8) num_messages = 8;
+
+	s->ms = fr_message_set_create(s, num_messages,
 				      sizeof(fr_channel_data_t),
 				      s->listen->default_message_size * s->listen->num_messages);
 	if (!s->ms) {
-		fr_log(nr->log, L_ERR, "Failed creating message buffers for directory IO.  Closing socket.");
+		fr_log(nr->log, L_ERR, "Failed creating message buffers for directory IO: %s", fr_strerror());
 		talloc_free(s);
 		return;
 	}

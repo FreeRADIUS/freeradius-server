@@ -151,7 +151,6 @@ fr_message_set_t *fr_message_set_create(TALLOC_CTX *ctx, int num_messages, size_
 
 	ms = talloc_zero(ctx, fr_message_set_t);
 	if (!ms) {
-	nomem:
 		fr_strerror_printf("Failed allocating memory");
 		return NULL;
 	}
@@ -163,14 +162,14 @@ fr_message_set_t *fr_message_set_create(TALLOC_CTX *ctx, int num_messages, size_
 	ms->rb_array[0] = fr_ring_buffer_create(ms, ring_buffer_size);
 	if (!ms->rb_array[0]) {
 		talloc_free(ms);
-		goto nomem;
+		return NULL;
 	}
 	ms->rb_max = 0;
 
 	ms->mr_array[0] = fr_ring_buffer_create(ms, num_messages * message_size);
 	if (!ms->mr_array[0]) {
 		talloc_free(ms);
-		goto nomem;
+		return NULL;
 	}
 
 	ms->max_allocation = ring_buffer_size / 2;

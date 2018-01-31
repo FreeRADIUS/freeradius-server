@@ -72,10 +72,7 @@ fr_ring_buffer_t *fr_ring_buffer_create(TALLOC_CTX *ctx, size_t size)
 		return NULL;
 	}
 
-	if (size < 1024) {
-		fr_strerror_printf("Ring buffer size must be at least 1024");
-		return NULL;
-	}
+	if (size < 1024) size = 1024;
 
 	if (size > (1 << 30)) {
 		fr_strerror_printf("Ring buffer size must be no more than (1 << 30)");
