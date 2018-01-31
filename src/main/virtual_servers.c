@@ -432,14 +432,7 @@ int virtual_servers_instantiate(void)
 				name2 = cf_section_name2(subcs);
 				if (!name2) name2 = "";
 
-				if (check_config) {
-					cf_log_err(subcs, "%s %s { ... } section is unused",
-						    name, name2);
-					return -1;
-				}
-
-				cf_log_warn(subcs, "%s %s { ... } section is unused",
-					name, name2);
+				cf_log_warn(subcs, "%s %s { ... } section is unused", name, name2);
 			}
 		}
 	}
