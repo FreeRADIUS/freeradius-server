@@ -282,7 +282,7 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_entry_t **p_ent
  * @param[in] ft		the tracking table.
  * @param[in] entry the		original entry for the request packet
  * @param[in] reply_time	when the reply was sent.
- * @param[in] reply the		reply packet.
+ * @param[in] reply		the reply packet.
  * @param[in] reply_len		the length of the reply message.
  * @return
  *	- <0 on error
