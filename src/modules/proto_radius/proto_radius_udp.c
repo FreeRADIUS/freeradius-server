@@ -406,7 +406,8 @@ static int mod_decode(void const *instance, REQUEST *request, UNUSED uint8_t *co
 }
 
 static ssize_t dynamic_client_packet_restore(proto_radius_udp_t *inst, uint8_t *buffer, size_t buffer_len,
-					     fr_tracking_entry_t **track)
+					     fr_time_t *packet_time,
+					     proto_radius_udp_address_t *address, fr_tracking_entry_t **track)
 {
 	fr_dlist_t		*entry;
 	dynamic_packet_t	*saved;
@@ -449,14 +450,16 @@ redo:
 	memcpy(buffer, saved->packet, packet_len);
 	*track = saved->track;
 
-	((proto_radius_udp_address_t *)saved->track->src_dst)->client->received--;
+	memcpy(address, saved->track->src_dst, sizeof(*address));
+	address->client->received--;
+	*packet_time = saved->timestamp;
 	talloc_free(saved);
 
 	return packet_len;
 }
 
 
-static int dynamic_client_packet_save(proto_radius_udp_t *inst, uint8_t *packet, size_t packet_len,
+static int dynamic_client_packet_save(proto_radius_udp_t *inst, uint8_t *packet, size_t packet_len, fr_time_t packet_time,
 				      proto_radius_udp_address_t *address, fr_tracking_entry_t **track)
 {
 	dynamic_packet_t	*saved;
@@ -467,7 +470,7 @@ static int dynamic_client_packet_save(proto_radius_udp_t *inst, uint8_t *packet,
 		return -1;
 	}
 
-	tracking_status = fr_radius_tracking_entry_insert(track, inst->ft, packet, fr_time(), address);
+	tracking_status = fr_radius_tracking_entry_insert(track, inst->ft, packet, packet_time, address);
 	switch (tracking_status) {
 	case FR_TRACKING_ERROR:
 	case FR_TRACKING_UNUSED:
@@ -512,17 +515,16 @@ static int dynamic_client_packet_save(proto_radius_udp_t *inst, uint8_t *packet,
 	MEM(saved = talloc_zero(inst, dynamic_packet_t));
 	MEM(saved->packet = talloc_memdup(saved, packet, packet_len));
 	saved->track = *track;
-	saved->timestamp = saved->track->timestamp;
+	saved->timestamp = packet_time;
 	fr_dlist_insert_tail(&address->client->packets, &saved->entry);
-
-	((proto_radius_udp_address_t *)saved->track->src_dst)->client->received++;
+	address->client->received++;
 	inst->dynamic_clients.num_pending_packets++;
 
 	return 0;
 }
 
 
-static ssize_t dynamic_client_alloc(proto_radius_udp_t *inst, uint8_t *packet, size_t packet_len,
+static ssize_t dynamic_client_alloc(proto_radius_udp_t *inst, uint8_t *packet, size_t packet_len, fr_time_t packet_time,
 				    proto_radius_udp_address_t *address, fr_tracking_entry_t **track, fr_ipaddr_t *network)
 {
 	RADCLIENT *client;
@@ -567,7 +569,7 @@ static ssize_t dynamic_client_alloc(proto_radius_udp_t *inst, uint8_t *packet, s
 	 *	Save a copy of this packet in the client, so that we
 	 *	can re-play it once we accept the client.
 	 */
-	if (dynamic_client_packet_save(inst, packet, packet_len, address, track) < 0) {
+	if (dynamic_client_packet_save(inst, packet, packet_len, packet_time, address, track) < 0) {
 		talloc_free(client);
 		return 0;
 	}
@@ -811,6 +813,7 @@ static proto_radius_udp_t *mod_clone(proto_radius_udp_t *inst, proto_radius_udp_
 	return child;
 }
 
+
 static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority)
 {
 	proto_radius_udp_t		*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
@@ -819,8 +822,8 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	ssize_t				data_size;
 	size_t				packet_len;
 	decode_fail_t			reason;
-	fr_time_t			packet_time;
 
+	fr_time_t			packet_time;
 	struct timeval			timestamp;
 	fr_tracking_status_t		tracking_status;
 	fr_tracking_entry_t		*track = NULL;
@@ -834,14 +837,12 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	 *	"inst", and call that "good enough".
 	 */
 
+	*leftover = 0;		/* always for UDP */
+
 	/*
 	 *	Check for injected packets first.
 	 */
-	if (inst->connected) {
-		if (inst->child.expired) return -1;
-
-		if (!inst->child.packet) goto do_read;
-
+	if (inst->child.packet) {
 		/*
 		 *	Packet is too large, ignore it.
 		 */
@@ -854,9 +855,9 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 
 		address.code = buffer[0];
 		address.id = buffer[1];
+		packet_time = inst->child.recv_time;
 
 		inst->child.packet = NULL;
-		packet_time = inst->child.recv_time;
 		packet_len = inst->child.packet_len;
 		goto connected;
 	}
@@ -866,20 +867,17 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	 */
 	entry = FR_DLIST_FIRST(inst->dynamic_clients.packets);
 	if (entry) {
-		data_size = dynamic_client_packet_restore(inst, buffer, buffer_len, &track);
+		data_size = dynamic_client_packet_restore(inst, buffer, buffer_len, &packet_time, &address, &track);
 		if (!data_size) goto do_read;
 
 		packet_len = data_size;
 
 		rad_assert(track != NULL);
 		rad_assert(track->src_dst != NULL);
-		memcpy(&address, track->src_dst, sizeof(address));
 		goto received_packet;
 	}
 
 do_read:
-	*leftover = 0;
-
 	/*
 	 *	Tell udp_recv if we're connected or not.
 	 */
@@ -939,6 +937,19 @@ do_read:
 	packet_time = fr_time();
 
 	/*
+	 *	Skip client lookups for connected sockets.
+	 */
+	if (inst->connected) {
+connected:
+		address.src_ipaddr = inst->child.src_ipaddr;
+		address.src_port = inst->child.src_port;
+		address.dst_ipaddr = inst->ipaddr;
+		address.dst_port = inst->port;
+
+		address.client = inst->child.client;
+		goto have_client;
+	}
+	/*
 	 *	Look up the client.  It either exists, or we create
 	 *	it.
 	 */
@@ -960,7 +971,7 @@ do_read:
 		 */
 		address.client = client_find(inst->dynamic_clients.clients, &address.src_ipaddr, IPPROTO_UDP);
 		if (address.client) {
-			if (!address.client->dynamic || address.client->active) goto found;
+			if (!address.client->dynamic || address.client->active) goto have_client;
 
 			if (address.client->negative) {
 				goto unknown;
@@ -974,7 +985,7 @@ do_read:
 			 *	packet will be removed from the list,
 			 *	and sent to the network side.
 			 */
-			if (dynamic_client_packet_save(inst, buffer, packet_len, &address, &track) < 0) {
+			if (dynamic_client_packet_save(inst, buffer, packet_len, packet_time, &address, &track) < 0) {
 				goto unknown;
 			}
 
@@ -991,7 +1002,7 @@ do_read:
 		if (!network) goto unknown;
 
 		DEBUG("Found matching network.  Checking for dynamic client definition.");
-		if (dynamic_client_alloc(inst, buffer, packet_len, &address, &track, network) < 0) {
+		if (dynamic_client_alloc(inst, buffer, packet_len, packet_time, &address, &track, network) < 0) {
 			DEBUG("Failed allocating dynamic client");
 			goto unknown;
 		}
@@ -1016,17 +1027,7 @@ do_read:
 		address.client->behind_nat = false;
 	}
 
-	if (inst->connected) {
-connected:
-		address.src_ipaddr = inst->child.src_ipaddr;
-		address.src_port = inst->child.src_port;
-		address.dst_ipaddr = inst->ipaddr;
-		address.dst_port = inst->port;
-
-		address.client = inst->child.client;
-	}
-
-found:
+have_client:
 	/*
 	 *	If the signature fails validation, ignore it.
 	 */
