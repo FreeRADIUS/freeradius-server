@@ -258,13 +258,24 @@ int		xlat_register(void *mod_inst, char const *name,
 			      xlat_instantiate_t instantiate, size_t inst_size,
 			      size_t buf_len, bool async_safe);
 
-int		xlat_async_register(TALLOC_CTX *ctx,
-				    char const *name, xlat_func_async_t func,
-				    xlat_instantiate_t instantiate, size_t inst_size,
-				    xlat_detach_t detach,
-				    xlat_thread_instantiate_t thread_instantiate, size_t thread_inst_size,
-				    xlat_thread_detach_t thread_detach,
-				    void *uctx);
+#define		xlat_async_register(_ctx, \
+				     _name, _func, \
+				    _instantiate, _inst_struct, _detach, \
+				    _thread_instantiate, _thread_inst_struct, _thread_detach, _uctx) \
+		_xlat_async_register(_ctx, \
+				     _name, _func, \
+				     _instantiate, #_inst_struct, sizeof(_inst_struct), _detach, \
+				     _thread_instantiate, #_thread_inst_struct, sizeof(_thread_inst_struct), _thread_detach, \
+				     _uctx)
+
+int		_xlat_async_register(TALLOC_CTX *ctx,
+				     char const *name, xlat_func_async_t func,
+				     xlat_instantiate_t instantiate, char const *inst_name, size_t inst_size,
+				     xlat_detach_t detach,
+				     xlat_thread_instantiate_t thread_instantiate, char const *thread_inst_name,
+				     size_t thread_inst_size,
+				     xlat_thread_detach_t thread_detach,
+				     void *uctx);
 
 void		xlat_unregister(char const *name);
 void		xlat_unregister_module(void *instance);

@@ -704,6 +704,7 @@ int xlat_register(void *mod_inst, char const *name,
  * @param[in] func			to register.
  * @param[in] instantiate		Instantiation function. Called whenever a xlat is
  *					compiled.
+ * @param[in] inst_type			Name of the instance structure.
  * @param[in] inst_size			The size of the instance struct.
  *					Pre-allocated for use by the instantiate function.
  *					If 0, no memory will be allocated.
@@ -711,6 +712,7 @@ int xlat_register(void *mod_inst, char const *name,
  * @param[in] thread_instantiate	thread_instantiation_function. Called whenever a
  *					a thread is started to create thread local instance
  *					data.
+ * @param[in] thread_inst_type		Name of the thread instance structure.
  * @param[in] thread_inst_size		The size of the thread instance struct.
  *					Pre-allocated for use by the thread instance function.
  *					If 0, no memory will be allocated.
@@ -723,13 +725,14 @@ int xlat_register(void *mod_inst, char const *name,
  *	- 0 on success.
  *	- -1 on failure.
  */
-int xlat_async_register(TALLOC_CTX *ctx,
-			char const *name, xlat_func_async_t func,
-			xlat_instantiate_t instantiate, size_t inst_size,
-			xlat_detach_t detach,
-			xlat_thread_instantiate_t thread_instantiate, size_t thread_inst_size,
-			xlat_thread_detach_t thread_detach,
-			void *uctx)
+int _xlat_async_register(TALLOC_CTX *ctx,
+			 char const *name, xlat_func_async_t func,
+			 xlat_instantiate_t instantiate, char const *inst_type, size_t inst_size,
+			 xlat_detach_t detach,
+			 xlat_thread_instantiate_t thread_instantiate,
+			 char const *thread_inst_type, size_t thread_inst_size,
+			 xlat_thread_detach_t thread_detach,
+			 void *uctx)
 {
 	xlat_t	*c;
 	xlat_t	find;
@@ -774,7 +777,10 @@ int xlat_async_register(TALLOC_CTX *ctx,
 	c->instantiate = instantiate;
 	c->thread_instantiate = thread_instantiate;
 
+	c->inst_type = inst_type;
 	c->inst_size = inst_size;
+
+	c->thread_inst_type = thread_inst_type;
 	c->thread_inst_size = thread_inst_size;
 
 	c->detach = detach;
@@ -1218,8 +1224,8 @@ int xlat_init(void)
 	rad_assert(c != NULL);
 	c->internal = true;
 
-	xlat_async_register(NULL, "concat", xlat_concat, NULL, 0, NULL, NULL, 0, NULL, NULL);
-	xlat_async_register(NULL, "bin", xlat_bin, NULL, 0, NULL, NULL, 0, NULL, NULL);
+	xlat_async_register(NULL, "concat", xlat_concat, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+	xlat_async_register(NULL, "bin", xlat_bin, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 	return 0;
 }

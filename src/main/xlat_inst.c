@@ -149,7 +149,7 @@ static xlat_thread_inst_t *xlat_thread_inst_alloc(xlat_inst_t *inst)
 		 *	might be using it.
 		 */
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
-		talloc_set_name(thread_inst->data, "%s_xlat_thread_inst_t", inst->node->xlat->name);
+		talloc_set_name_const(thread_inst->data, inst->node->xlat->thread_inst_type);
 #endif
 	}
 
@@ -231,7 +231,7 @@ static xlat_inst_t *xlat_inst_alloc(xlat_exp_t *node)
 		 *	might be using it.
 		 */
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
-		talloc_set_name(inst->data, "%s_xlat_inst_t", node->xlat->name);
+		talloc_set_name_const(inst->data, node->xlat->inst_type);
 #endif
 	}
 

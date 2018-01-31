@@ -64,7 +64,10 @@ typedef struct xlat_t {
 
 	bool			internal;			//!< If true, cannot be redefined.
 
+	char const		*inst_type;			//!< C name of instance structure.
 	size_t			inst_size;			//!< Size of instance data to pre-allocate.
+
+	char const		*thread_inst_type;		//!< C name of thread instance structure.
 	size_t			thread_inst_size;		//!< Size of the thread instance data to pre-allocate.
 
 	bool			async_safe;			//!< If true, is async safe
