@@ -497,9 +497,13 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		 */
 		if (!request->parent) {
 			if (request->reply->code == FR_CODE_ACCESS_CHALLENGE) {
-				fr_request_to_state(global_state, request, request->packet,
-						    request->reply);
-
+				/*
+				 *	We can't create a valid response
+				 */
+				if (fr_request_to_state(global_state, request, request->packet, request->reply) < 0) {
+					request->reply->code = FR_CODE_DO_NOT_RESPOND;
+					return FR_IO_REPLY;
+				}
 			} else {
 				fr_state_discard(global_state, request, request->packet);
 			}

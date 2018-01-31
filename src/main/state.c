@@ -326,7 +326,11 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 		break;
 	}
 
-	if (rbtree_num_elements(state->tree) >= (uint32_t) state->max_sessions) return NULL;
+	if (rbtree_num_elements(state->tree) >= (uint32_t) state->max_sessions) {
+		RERROR("Failed inserting state entry - At maximum ongoing session limit (%u)",
+		       state->max_sessions);
+		return NULL;
+	}
 
 	/*
 	 *	Record the information from the old state, we may base the
@@ -453,6 +457,10 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
 	if (rbtree_num_elements(state->tree) >= (uint32_t)state->max_sessions) {
+		RERROR("Failed inserting state entry (post alloc) - At maximum ongoing session limit (%u)",
+		       state->max_sessions);
+	failed:
+		fr_pair_delete_by_num(&packet->vps, 0, FR_STATE, TAG_ANY);
 		talloc_free(entry);
 		return NULL;
 	}
@@ -466,8 +474,8 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 	*((uint32_t *)(&entry->state_comp.server_hash)) ^= fr_hash_string(cf_section_name2(request->server_cs));
 
 	if (!rbtree_insert(state->tree, entry)) {
-		talloc_free(entry);
-		return NULL;
+		RERROR("Failed inserting state entry - Insertion into state tree failed");
+		goto failed;
 	}
 
 	/*
@@ -616,14 +624,14 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET
  *
  * Also creates a new state entry.
  */
-bool fr_request_to_state(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *packet)
+int fr_request_to_state(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *packet)
 {
 	fr_state_entry_t *entry, *old;
 	request_data_t *data;
 
 	request_data_by_persistance(&data, request, true);
 
-	if (!request->state && !data) return true;
+	if (!request->state && !data) return 0;
 
 	if (request->state) {
 		RDEBUG2("Saving &session-state");
@@ -632,13 +640,14 @@ bool fr_request_to_state(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
 
-	old = original ? state_entry_find(state, request, original) :
-			 NULL;
+	old = original ? state_entry_find(state, request, original) : NULL;
 
 	entry = state_entry_create(state, request, packet, old);
 	if (!entry) {
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
-		return false;
+		RERROR("Creating state entry failed");
+		request_data_restore(request, data);	/* Put it back again */
+		return -1;
 	}
 
 	rad_assert(entry->ctx == NULL);
