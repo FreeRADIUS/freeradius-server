@@ -129,10 +129,7 @@ fr_message_set_t *fr_message_set_create(TALLOC_CTX *ctx, int num_messages, size_
 	/*
 	 *	Too small, or not a power of 2.
 	 */
-	if (num_messages < 8) {
-		fr_strerror_printf("Minimum number of messages must be 8");
-		return NULL;
-	}
+	if (num_messages < 8) num_messages = 8;
 
 	if ((num_messages & (num_messages - 1)) != 0) {
 		fr_strerror_printf("Number of messages must be a power of 2");
