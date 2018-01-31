@@ -426,10 +426,18 @@ int eap_start(rlm_eap_t const *inst, REQUEST *request)
 	return RLM_MODULE_NOTFOUND;
 }
 
+rlm_rcode_t eap_continue(eap_session_t *eap_session)
+{
+	eap_session->this_round->request->code = FR_EAP_CODE_REQUEST;
+	eap_session->finished = false;
+
+	return eap_compose(eap_session);
+}
+
 /*
  *	compose EAP FAILURE packet in EAP-Message
  */
-void eap_fail(eap_session_t *eap_session)
+rlm_rcode_t eap_fail(eap_session_t *eap_session)
 {
 	/*
 	 *	Delete any previous replies.
@@ -441,17 +449,19 @@ void eap_fail(eap_session_t *eap_session)
 	eap_session->this_round->request = talloc_zero(eap_session->this_round, eap_packet_t);
 	eap_session->this_round->request->code = FR_EAP_CODE_FAILURE;
 	eap_session->finished = true;
-	eap_compose(eap_session);
+
+	return eap_compose(eap_session);
 }
 
 /*
  *	compose EAP SUCCESS packet in EAP-Message
  */
-void eap_success(eap_session_t *eap_session)
+rlm_rcode_t eap_success(eap_session_t *eap_session)
 {
 	eap_session->this_round->request->code = FR_EAP_CODE_SUCCESS;
 	eap_session->finished = true;
-	eap_compose(eap_session);
+
+	return eap_compose(eap_session);
 }
 
 /*
