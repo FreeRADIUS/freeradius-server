@@ -316,7 +316,8 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
  * @param[in] request	The current request.
  * @param[in] instance	of the rlm_eap module.
  * @param[in] thread	UNUSED.
- * @param[in] uctx	containing the result of calling the submodule.
+ * @param[in] eap_session the EAP session
+ * @param[in] result	the input result from the submodule
  * @return
  *	- RLM_MODULE_INVALID	if the request or EAP session state is invalid.
  *	- RLM_MODULE_OK		if this round succeeded.
