@@ -60,6 +60,16 @@ typedef struct proto_detail_work_t proto_detail_file_t;
 static void work_init(proto_detail_file_t *inst);
 static void mod_vnode_delete(fr_event_list_t *el, int fd, UNUSED int fflags, void *ctx);
 
+static CONF_PARSER limit_config[] = {
+	{ FR_CONF_OFFSET("initial_retransmission_time", FR_TYPE_UINT32, proto_detail_work_t, irt), .dflt = STRINGIFY(2) },
+	{ FR_CONF_OFFSET("maximum_retransmission_time", FR_TYPE_UINT32, proto_detail_work_t, mrt), .dflt = STRINGIFY(16) },
+	{ FR_CONF_OFFSET("maximum_retransmission_count", FR_TYPE_UINT32, proto_detail_work_t, mrc), .dflt = STRINGIFY(5) },
+	{ FR_CONF_OFFSET("maximum_retransmission_duration", FR_TYPE_UINT32, proto_detail_work_t, mrd), .dflt = STRINGIFY(30) },
+	{ FR_CONF_OFFSET("maximum_outstanding", FR_TYPE_UINT32, proto_detail_work_t, max_outstanding), .dflt = STRINGIFY(1) },
+	CONF_PARSER_TERMINATOR
+};
+
+
 static const CONF_PARSER file_listen_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_STRING | FR_TYPE_REQUIRED, proto_detail_file_t, filename ) },
 
@@ -68,6 +78,13 @@ static const CONF_PARSER file_listen_config[] = {
 	{ FR_CONF_OFFSET("track", FR_TYPE_BOOL, proto_detail_file_t, track_progress), .dflt = "yes" },
 
 	{ FR_CONF_OFFSET("poll_interval", FR_TYPE_UINT32, proto_detail_file_t, poll_interval), .dflt = "5" },
+
+	/*
+	 *	These are copied to the worker.
+	 */
+	{ FR_CONF_OFFSET("retransmit", FR_TYPE_BOOL, proto_detail_work_t, retransmit ), .dflt = "yes" },
+
+	{ FR_CONF_POINTER("limit", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) limit_config },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -690,6 +707,26 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	 *	We need this for the lock.
 	 */
 	inst->mode = O_RDWR;
+
+	if (inst->retransmit) {
+		FR_INTEGER_BOUND_CHECK("limit.initial_retransmission_time", inst->irt, >=, 1);
+		FR_INTEGER_BOUND_CHECK("limit.initial_retransmission_time", inst->irt, <=, 60);
+
+		/*
+		 *	If you need more than this, just set it to
+		 *	"0", and check Packet-Transmit-Count manually.
+		 */
+		FR_INTEGER_BOUND_CHECK("limit.maximum_retransmission_count", inst->mrc, <=, 20);
+		FR_INTEGER_BOUND_CHECK("limit.maximum_retransmission_duration", inst->mrd, <=, 600);
+
+		/*
+		 *	This is a reasonable value.
+		 */
+		FR_INTEGER_BOUND_CHECK("limit.maximum_retransmission_timer", inst->mrt, <=, 30);
+	}
+
+	FR_INTEGER_BOUND_CHECK("limit.maximum_outstanding", inst->max_outstanding, >=, 1);
+	FR_INTEGER_BOUND_CHECK("limit.maximum_outstanding", inst->max_outstanding, <=, 256);
 
 	return 0;
 }
