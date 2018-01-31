@@ -67,7 +67,7 @@ static void _delay_done(REQUEST *request, UNUSED void *instance, UNUSED void *th
 	 *	timeout should never be *before* the scheduled time,
 	 *	if it is, something is very broken.
 	 */
-	rad_assert(fr_timeval_cmp(fired, yielded) >= 0);
+	if (!fr_cond_assert(fr_timeval_cmp(fired, yielded) >= 0)) REDEBUG("Unexpected resume time");
 
 	unlang_resumable(request);
 }
@@ -218,8 +218,13 @@ static xlat_action_t xlat_delay(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 				REQUEST *request, void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				fr_value_box_t **in)
 {
-	rlm_delay_t const	*inst = talloc_get_type_abort(*((void const * const *)xlat_inst), rlm_delay_t);
+	rlm_delay_t const	*inst;
+	void			*instance;
 	struct timeval		resume_at, delay, *yielded_at;
+
+	memcpy(&instance, xlat_inst, sizeof(instance));	/* Stupid const issues */
+
+	inst = talloc_get_type_abort(instance, rlm_delay_t);
 
 	/*
 	 *	Record the time that we yielded the request
