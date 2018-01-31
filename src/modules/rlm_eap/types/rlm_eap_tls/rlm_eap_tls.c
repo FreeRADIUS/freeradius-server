@@ -56,15 +56,85 @@ static CONF_PARSER submodule_config[] = {
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
-static rlm_rcode_t mod_process(void *type_arg, eap_session_t *eap_session)
+
+static unlang_action_t eap_tls_virtual_server_result(REQUEST *request, rlm_rcode_t *presult,
+						     UNUSED int *priority, void *uctx)
+{
+	eap_session_t	*eap_session = talloc_get_type_abort(uctx, eap_session_t);
+
+	switch (*presult) {
+	case RLM_MODULE_OK:
+	case RLM_MODULE_UPDATED:
+		if (eap_tls_success(eap_session) < 0) *presult = RLM_MODULE_FAIL;
+		break;
+
+	default:
+		REDEBUG2("Certificate rejected by the virtual server");
+		eap_tls_fail(eap_session);
+		*presult = RLM_MODULE_REJECT;
+		break;
+	}
+
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+static rlm_rcode_t eap_tls_virtual_server(rlm_eap_tls_t *inst, eap_session_t *eap_session)
+{
+	REQUEST		*request = eap_session->request;
+	CONF_SECTION	*server_cs;
+	CONF_SECTION	*section;
+	VALUE_PAIR	*vp;
+
+	/* set the virtual server to use */
+	vp = fr_pair_find_by_num(request->control, 0, FR_VIRTUAL_SERVER, TAG_ANY);
+	if (vp) {
+		server_cs = virtual_server_find(vp->vp_strvalue);
+		if (!server_cs) {
+			REDEBUG2("Virtual server \"%s\" not found", vp->vp_strvalue);
+		error:
+			eap_tls_fail(eap_session);
+			return RLM_MODULE_INVALID;
+		}
+	} else {
+		server_cs = virtual_server_find(inst->virtual_server);
+		rad_assert(server_cs);
+	}
+
+	section = cf_section_find(server_cs, "recv", "Access-Request");
+	if (!section) {
+		REDEBUG2("Failed finding 'recv Access-Request { ... }' section of virtual server %s",
+			 cf_section_name2(server_cs));
+		goto error;
+	}
+
+	if (!unlang_section(section)) {
+		REDEBUG("Failed to find pre-compiled unlang for section %s %s { ... }",
+			cf_section_name1(server_cs), cf_section_name2(server_cs));
+		goto error;
+	}
+
+	RDEBUG2("Validating certificate");
+
+	/*
+	 *	Catch the interpreter on the way back up the stack
+	 */
+	unlang_push_function(request, NULL, eap_tls_virtual_server_result, eap_session);
+
+	/*
+	 *	Push unlang instructions for the virtual server section
+	 */
+	unlang_push_section(request, section, RLM_MODULE_NOOP, UNLANG_SUB_FRAME);
+
+	return RLM_MODULE_YIELD;
+}
+
+static rlm_rcode_t mod_process(void *instance, eap_session_t *eap_session)
 {
 	eap_tls_status_t	status;
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	tls_session_t		*tls_session = eap_tls_session->tls_session;
 	REQUEST			*request = eap_session->request;
-	rlm_eap_tls_t		*inst;
-
-	inst = type_arg;
+	rlm_eap_tls_t		*inst = talloc_get_type_abort(instance, rlm_eap_tls_t);
 
 	status = eap_tls_process(eap_session);
 	if ((status == EAP_TLS_INVALID) || (status == EAP_TLS_FAIL)) {
@@ -82,49 +152,10 @@ static rlm_rcode_t mod_process(void *type_arg, eap_session_t *eap_session)
 	 *	it accepts the certificates, too.
 	 */
 	case EAP_TLS_ESTABLISHED:
-		if (inst->virtual_server) {
-			VALUE_PAIR *vp;
-			REQUEST *fake;
+		if (inst->virtual_server) return eap_tls_virtual_server(inst, eap_session);
+		if (eap_tls_success(eap_session) < 0) return RLM_MODULE_FAIL;
 
-			/* create a fake request */
-			fake = request_alloc_fake(request);
-			rad_assert(!fake->packet->vps);
-
-			fake->packet->vps = fr_pair_list_copy(fake->packet, request->packet->vps);
-
-			/* set the virtual server to use */
-			if ((vp = fr_pair_find_by_num(request->control, 0, FR_VIRTUAL_SERVER, TAG_ANY)) != NULL) {
-				fake->server_cs = virtual_server_find(vp->vp_strvalue);
-				if (!fake->server_cs) {
-					REDEBUG2("Virtual server \"%s\" not found", vp->vp_strvalue);
-					talloc_free(fake);
-					eap_tls_fail(eap_session);
-					return RLM_MODULE_INVALID;
-				}
-			} else {
-				fake->server_cs = virtual_server_find(inst->virtual_server);
-				rad_assert(fake->server_cs);
-			}
-
-			RDEBUG2("Validating certificate");
-			rad_virtual_server(fake);
-
-			/* copy the reply vps back to our reply */
-			fr_pair_list_mcopy_by_num(request->reply, &request->reply->vps, &fake->reply->vps, 0, 0,
-						  TAG_ANY);
-
-			/* reject if virtual server didn't return accept */
-			if (fake->reply->code != FR_CODE_ACCESS_ACCEPT) {
-				RDEBUG2("Certificate rejected by the virtual server");
-				talloc_free(fake);
-				eap_tls_fail(eap_session);
-				return RLM_MODULE_REJECT;
-			}
-
-			talloc_free(fake);
-			/* success */
-		}
-		break;
+		return RLM_MODULE_OK;
 
 	/*
 	 *	The TLS code is still working on the TLS
@@ -155,19 +186,15 @@ static rlm_rcode_t mod_process(void *type_arg, eap_session_t *eap_session)
 
 		return RLM_MODULE_REJECT;
 	}
-
-	if (eap_tls_success(eap_session) < 0) return RLM_MODULE_FAIL;
-
-	return RLM_MODULE_OK;
 }
 
 /*
  *	Send an initial eap-tls request to the peer, using the libeap functions.
  */
-static rlm_rcode_t mod_session_init(void *type_arg, eap_session_t *eap_session)
+static rlm_rcode_t mod_session_init(void *uctx, eap_session_t *eap_session)
 {
 	eap_tls_session_t	*eap_tls_session;
-	rlm_eap_tls_t		*inst = talloc_get_type_abort(type_arg, rlm_eap_tls_t);
+	rlm_eap_tls_t		*inst = talloc_get_type_abort(uctx, rlm_eap_tls_t);
 	VALUE_PAIR		*vp;
 	bool			client_cert;
 
@@ -204,7 +231,7 @@ static rlm_rcode_t mod_session_init(void *type_arg, eap_session_t *eap_session)
 
 	eap_session->process = mod_process;
 
-	return RLM_MODULE_OK;
+	return RLM_MODULE_HANDLED;
 }
 
 /*

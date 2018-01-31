@@ -323,23 +323,19 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
  *	- RLM_MODULE_HANDLED	if we're done with this round.
  *	- RLM_MODULE_REJECT	if the user should be rejected.
  */
-static rlm_rcode_t mod_authenticate_result(REQUEST *request, void *instance, UNUSED void *thread, void *uctx)
+static rlm_rcode_t mod_authenticate_result(REQUEST *request, void *instance, UNUSED void *thread,
+					   eap_session_t *eap_session, rlm_rcode_t result)
 {
 	rlm_eap_t		*inst = talloc_get_type_abort(instance, rlm_eap_t);
-	eap_auth_rctx_t		*rctx = talloc_get_type_abort(uctx, eap_auth_rctx_t);
-	eap_session_t		*eap_session = rctx->eap_session;
 	rlm_eap_method_t	*method = &inst->methods[eap_session->type];
 	rlm_rcode_t		rcode;
 
-	rad_assert(rctx->rcode != RLM_MODULE_UNKNOWN);
-
-	request->module = rctx->caller;		/* Restore original module name */
 	RDEBUG2("Submodule %s returned", method->submodule->name);
 
 	/*
 	 *	The submodule failed.  Die.
 	 */
-	if (rctx->rcode == RLM_MODULE_INVALID) {
+	if (result == RLM_MODULE_INVALID) {
 		eap_fail(eap_session);
 		eap_session_destroy(&eap_session);
 
@@ -418,50 +414,23 @@ static rlm_rcode_t mod_authenticate_result(REQUEST *request, void *instance, UNU
 	eap_session_freeze(&eap_session);
 
 finish:
-	talloc_free(rctx);	/* Free rctx */
 	return rcode;
 }
 
-/** Destroy an EAP session if the request currently processing it is destroyed
- *
- * We do this so we don't leak EAP sessions.
- *
- */
-static void mod_authenticate_signal(UNUSED REQUEST *request, UNUSED void *instance, UNUSED void *thread,
-				    void *uctx, fr_state_signal_t action)
-{
-	eap_auth_rctx_t		*rctx = talloc_get_type_abort(uctx, eap_auth_rctx_t);
-	eap_session_t		*eap_session = rctx->eap_session;
-
-	if (action != FR_SIGNAL_DONE) return;
-
-	eap_session_destroy(&eap_session);
-	talloc_free(rctx);	/* Would be cleaned up anyway but doesn't hurt */
-}
-
-/** Call an eap submodule using the unlang stack
+/** Call mod_authenticate_result asynchronously from the unlang interpreter
  *
  * @param[in] request	The current request.
- * @param[in] uctx	Describing the module to call.
- * @return
- *	- UNLANG_ACTION_CALCULATE_RESULT.
- *	- UNLANG_ACTION_YIELD.
+ * @param[in] instance	of rlm_eap.
+ * @param[in] thread	UNUSED.
+ * @param[in] uctx	the eap_session_t.
+ * @return The result of this round of authentication.
  */
-static unlang_action_t eap_call_submodule(UNUSED REQUEST *request, void *uctx)
+static rlm_rcode_t mod_authenticate_result_async(REQUEST *request, void *instance, void *thread, void *uctx)
 {
-	eap_auth_rctx_t		*rctx = talloc_get_type_abort(uctx, eap_auth_rctx_t);
-	rlm_eap_t		*inst = rctx->inst;
-	eap_session_t		*eap_session = rctx->eap_session;
-	rlm_eap_method_t	*method = &inst->methods[eap_session->type];
+	eap_session_t	*eap_session = talloc_get_type_abort(uctx, eap_session_t);
+	rlm_rcode_t	result = unlang_stack_result(request);
 
-	request->module = rctx->caller;
-	RDEBUG2("Calling submodule %s", method->submodule->name);
-
-	request->module = method->submodule->name;
-	rctx->rcode = eap_session->process(method->submodule_inst->data, eap_session);
-	request->module = NULL;
-
-	return UNLANG_ACTION_CALCULATE_RESULT;
+	return mod_authenticate_result(request, instance, thread, eap_session, result);
 }
 
 /** Select the correct callback based on a response
@@ -478,15 +447,17 @@ static unlang_action_t eap_call_submodule(UNUSED REQUEST *request, void *uctx)
  *	- RLM_MODULE_YIELD	Yield control back to the interpreter so it can
  *				call the submodule.
  */
-static rlm_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session)
+static rlm_rcode_t eap_method_select(rlm_eap_t *inst, void *thread, eap_session_t *eap_session)
 {
-	eap_type_data_t		*type = &eap_session->this_round->response->type;
-	REQUEST			*request = eap_session->request;
+	eap_type_data_t			*type = &eap_session->this_round->response->type;
+	REQUEST				*request = eap_session->request;
 
-	eap_type_t		next = inst->default_method;
-	VALUE_PAIR		*vp;
+	rlm_eap_method_t const		*method;
 
-	eap_auth_rctx_t		*rctx;
+	eap_type_t			next = inst->default_method;
+	VALUE_PAIR			*vp;
+
+	rlm_rcode_t			rcode;
 
 	/*
 	 *	Session must have been thawed...
@@ -591,23 +562,34 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session
 	eap_session->type = type->num;
 
 module_call:
-	MEM(rctx = talloc(request, eap_auth_rctx_t));
-	rctx->caller = request->module;
-	rctx->inst = inst;
-	rctx->eap_session = eap_session;
-	rctx->rcode = RLM_MODULE_UNKNOWN;
+	method = &inst->methods[eap_session->type];
+
+	unlang_module_yield(request, mod_authenticate_result_async, NULL, eap_session);
 
 	/*
 	 *	mod_authenticate_result will be called after
 	 *	eap_call_submodule finishes.
 	 */
-	unlang_module_yield(request, mod_authenticate_result, mod_authenticate_signal, rctx);
-	unlang_push_function(request, eap_call_submodule, NULL, rctx);
+	RDEBUG2("Calling submodule %s", method->submodule->name);
+//	caller = request->module;
+//	request->module = method->submodule->name;
+	rcode = eap_session->process(method->submodule_inst->data, eap_session);
+//	request->module = caller;
 
-	return RLM_MODULE_YIELD;
+	/*
+	 *	If the submodule yielded, then setup a resumption
+	 *	frame for when it finishes.
+	 */
+	if (rcode == RLM_MODULE_YIELD) return RLM_MODULE_YIELD;
+
+	/*
+	 *	If the submodule didn't yield call the result
+	 *	function directly using the C stack.
+	 */
+	return mod_authenticate_result(request, inst, thread, eap_session, rcode);
 }
 
-static rlm_rcode_t mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t mod_authenticate(void *instance, void *thread, REQUEST *request)
 {
 	rlm_eap_t		*inst = talloc_get_type_abort(instance, rlm_eap_t);
 	eap_session_t		*eap_session;
@@ -646,14 +628,7 @@ static rlm_rcode_t mod_authenticate(void *instance, UNUSED void *thread, REQUEST
 	 *	or with simple types like Identity and NAK,
 	 *	process it ourselves.
 	 */
-	if (eap_method_select(inst, eap_session) != RLM_MODULE_YIELD) {
-		RDEBUG2("Cleaning up EAP session");
-		eap_fail(eap_session);
-		eap_session_destroy(&eap_session);
-		return RLM_MODULE_INVALID;
-	}
-
-	return RLM_MODULE_YIELD;
+	return eap_method_select(inst, thread, eap_session);
 }
 
 /*

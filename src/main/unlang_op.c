@@ -129,23 +129,22 @@ static unlang_action_t unlang_function_call(REQUEST *request,
 	unlang_frame_state_func_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_func_t);
 	unlang_t			*instruction = frame->instruction;
 	unlang_action_t			ua;
+	char const 			*caller;
 
-	if (!frame->repeat) {
-		ua = state->func(request, state->uctx);
-	} else {
-		ua = state->repeat(request, state->uctx);
-	}
+	*priority = instruction->actions[*presult];
 
 	/*
-	 *	The success/failure of these functions
-	 *	should not affect the rcode in any way.
-	 *
-	 *	Only the module/xlat which pushed the
-	 *	function can interpret its result,
-	 *	which will be written to uf->uctx.
+	 *	Don't let the callback mess with the current
+	 *	module permanently.
 	 */
-	*presult = RLM_MODULE_OK;
-	*priority = instruction->actions[*presult];
+	caller = request->module;
+	request->module = NULL;
+	if (!frame->repeat) {
+		ua = state->func(request, presult, priority, state->uctx);
+	} else {
+		ua = state->repeat(request, presult, priority, state->uctx);
+	}
+	request->module = caller;
 
 	return ua;
 }

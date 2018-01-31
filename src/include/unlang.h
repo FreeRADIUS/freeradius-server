@@ -94,9 +94,9 @@ typedef unlang_action_t (*unlang_op_resume_t)(REQUEST *request, rlm_rcode_t *pre
  * @param[in,out] uctx		Provided by whatever pushed the function.  Is opaque to the
  *				interpreter, but should be usable by the function.
  *				All input (args) and output will be done using this structure.
- * @return an action for the interpreter to perform.
+ * @return an #unlang_action_t.
  */
-typedef unlang_action_t (*unlang_function_t)(REQUEST *request, void *uctx);
+typedef unlang_action_t (*unlang_function_t)(REQUEST *request, rlm_rcode_t *presult, int *priority, void *uctx);
 
 /** An unlang operation
  *
@@ -121,7 +121,8 @@ typedef struct {
 								///< in debug mode.
 } unlang_op_t;
 
-void		unlang_push_function(REQUEST *request, unlang_function_t func, unlang_function_t repeat, void *uctx);
+void		unlang_push_function(REQUEST *request,
+				     unlang_function_t func, unlang_function_t repeat, void *uctx);
 
 bool		unlang_section(CONF_SECTION *cs);
 
