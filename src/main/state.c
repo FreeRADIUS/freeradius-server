@@ -104,6 +104,8 @@ typedef struct state_entry {
 	VALUE_PAIR		*vps;				//!< session-state VALUE_PAIRs, parented by ctx.
 
 	request_data_t		*data;				//!< Persistable request data, also parented ctx.
+
+	REQUEST			*thawed;			//!< The request that thawed this entry.
 } fr_state_entry_t;
 
 struct fr_state_tree_t {
@@ -586,7 +588,14 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET
 
 	entry = state_entry_find(state, request, packet);
 	if (entry) {
-		if (request->state_ctx) old_ctx = request->state_ctx;
+		(void)talloc_get_type_abort(entry, fr_state_entry_t);
+		if (entry->thawed) {
+			REDEBUG("State entry has already been thawed by a request %"PRIu64, entry->thawed->number);
+			return;
+		}
+		if (request->state_ctx) old_ctx = request->state_ctx;	/* Store for later freeing */
+
+		rad_assert(entry->ctx);
 
 		request->seq_start = entry->seq_start;
 		request->state_ctx = entry->ctx;
@@ -596,6 +605,7 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET
 		entry->ctx = NULL;
 		entry->vps = NULL;
 		entry->data = NULL;
+		entry->thawed = request;
 	}
 
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
