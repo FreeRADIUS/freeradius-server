@@ -78,6 +78,7 @@ typedef struct fr_network_worker_t {
 
 typedef struct fr_network_socket_t {
 	int			fd;			//!< file descriptor
+	fr_event_filter_t	filter;			//!< what type of filter it is
 
 	bool			dead;			//!< is it dead?
 
@@ -340,7 +341,7 @@ static void fr_network_socket_dead(fr_network_t *nr, fr_network_socket_t *s)
 
 	s->dead = true;
 
-	fr_event_fd_delete(nr->el, s->fd, FR_EVENT_FILTER_IO);
+	fr_event_fd_delete(nr->el, s->fd, s->filter);
 
 	/*
 	 *	If there are no outstanding packets, then we can free
@@ -625,7 +626,7 @@ static int _network_socket_free(fr_network_socket_t *s)
 	fr_channel_data_t *cd;
 
 	if (!s->dead) {
-		fr_event_fd_delete(nr->el, s->fd, FR_EVENT_FILTER_IO);
+		fr_event_fd_delete(nr->el, s->fd, s->filter);
 	}
 
 	rbtree_deletebydata(nr->sockets, s);
@@ -706,6 +707,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 
 	rad_assert(app_io->fd);
 	s->fd = app_io->fd(s->listen->app_io_instance);
+	s->filter = FR_EVENT_FILTER_IO;
 
 	if (fr_event_fd_insert(nr, nr->el, s->fd,
 			       fr_network_read,
@@ -771,8 +773,9 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 
 	rad_assert(app_io->fd);
 	s->fd = app_io->fd(s->listen->app_io_instance);
+	s->filter = FR_EVENT_FILTER_VNODE;
 
-	if (fr_event_filter_insert(nr, nr->el, s->fd, FR_EVENT_FILTER_VNODE,
+	if (fr_event_filter_insert(nr, nr->el, s->fd, s->filter,
 				   &funcs,
 				   app_io->error ? fr_network_error : NULL,
 				   s) < 0) {
@@ -1005,6 +1008,21 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t c
 }
 
 
+/*
+ *	Destroy sockets to ensure that they are deleted from the event
+ *	list before the modules are detached, and before the event
+ *	list is freed.
+ */
+static int fr_network_socket_destroy(void *ctx, void *data)
+{
+	fr_network_socket_t *s = data;
+	fr_network_t *nr = ctx;
+
+	fr_event_fd_delete(nr->el, s->fd, s->filter);
+
+	return 2;
+}
+
 /** Destroy a network
  *
  * @param[in] nr the network
@@ -1045,6 +1063,11 @@ int fr_network_destroy(fr_network_t *nr)
 	}
 
 	(void) fr_event_post_delete(nr->el, fr_network_post_event, nr);
+
+	/*
+	 *	Delete / close all of the sockets.
+	 */
+	(void) rbtree_walk(nr->sockets, RBTREE_DELETE_ORDER, fr_network_socket_destroy, nr);
 
 	/*
 	 *	The caller has to free 'nr'.
