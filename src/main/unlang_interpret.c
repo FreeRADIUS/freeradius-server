@@ -1139,7 +1139,7 @@ void unlang_signal(REQUEST *request, fr_state_signal_t action)
 	unlang_stack_frame_t	*frame;
 	unlang_stack_t		*stack = request->stack;
 	unlang_resume_t		*mr;
-	int			i;
+	int			i, depth = stack->depth;
 
 	(void)talloc_get_type_abort(request, REQUEST);	/* Check the request hasn't already been freed */
 
@@ -1154,10 +1154,11 @@ void unlang_signal(REQUEST *request, fr_state_signal_t action)
 	 *	stack, as modules can push xlats and function
 	 *	calls.
 	 */
-	for (i = stack->depth; i > 0; i--) {
-		frame = &stack->frame[i];
+	for (i = depth; i > 0; i--) {
+		stack->depth = i;			/* We could also pass in the frame to the signal function */
+		frame = &stack->frame[stack->depth];
 
-		if (!frame->instruction) break;
+		if (frame->top_frame) continue;		/* Skip top frames */
 
 		/*
 		 *	Be gracious in errors.
@@ -1173,6 +1174,7 @@ void unlang_signal(REQUEST *request, fr_state_signal_t action)
 
 		unlang_ops[mr->parent->type].signal(request, mr->rctx, action);
 	}
+	stack->depth = depth;				/* Reset */
 }
 
 int unlang_stack_depth(REQUEST *request)
