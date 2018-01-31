@@ -549,9 +549,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 */
 	if (!inst->max_packet_size) inst->max_packet_size = inst->app_io->default_message_size;
 
-	if (!inst->num_messages) inst->num_messages = 256;
+	if (!inst->num_messages) inst->num_messages = 2;
 
-	FR_INTEGER_BOUND_CHECK("num_messages", inst->num_messages, >=, 32);
+	FR_INTEGER_BOUND_CHECK("num_messages", inst->num_messages, >=, 2);
 	FR_INTEGER_BOUND_CHECK("num_messages", inst->num_messages, <=, 65535);
 
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 1024);

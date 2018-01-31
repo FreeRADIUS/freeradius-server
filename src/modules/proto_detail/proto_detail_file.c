@@ -394,6 +394,14 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 	}
 
 	/*
+	 *	Limit the number of messages, retransmission, etc.
+	 */
+	if (work->max_outstanding < listen->num_messages) {
+		listen->num_messages = work->max_outstanding;
+	}
+	if (work->max_outstanding <= 1) work->max_outstanding = 2;
+
+	/*
 	 *	Open the detail.work file.
 	 */
 	if (listen->app_io->open(listen->app_io_instance) < 0) {
