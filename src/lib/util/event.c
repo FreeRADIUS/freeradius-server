@@ -601,14 +601,20 @@ static int fr_event_fd_delete_internal(fr_event_fd_t *ef)
 	memset(&funcs, 0, sizeof(funcs));
 
 	el = talloc_parent(ef);
+	(void) talloc_get_type_abort(el, fr_event_list_t);
 
+	/*
+	 *	If this fails, it's a pretty catastrophic error.
+	 */
 	count = fr_event_build_evset(evset, sizeof(evset)/sizeof(*evset), &ef->active,
 				     ef, &funcs, &ef->active);
-	if (count < 0) return -1;
-
-	if (unlikely(kevent(el->kq, evset, count, NULL, 0, NULL) < 0)) {
-		fr_strerror_printf("Failed removing filters for FD %i: %s", ef->fd, fr_syserror(errno));
-		return -1;
+	if (count > 0) {
+		/*
+		 *	If this fails, assert on debug builds, but ignore it at run-time.
+		 */
+		if (kevent(el->kq, evset, count, NULL, 0, NULL) < 0) {
+			(void) rad_cond_assert("FD was closed without being removed from the KQ" == NULL);
+		}
 	}
 
 	rbtree_deletebydata(el->fds, ef);
