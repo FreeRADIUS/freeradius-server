@@ -1071,7 +1071,7 @@ have_client:
 		/*
 		 *	We are intentionally not responding.
 		 */
-		if (track->reply_len == 1) {
+		if (track->reply_len && !track->reply) {
 			return 0;
 		}
 
@@ -1083,6 +1083,7 @@ have_client:
 
 			flags = UDP_FLAGS_CONNECTED * inst->connected;
 			memcpy(&packet, &track->reply, sizeof(packet)); /* const issues */
+			rad_assert(track->reply_len >= 20);
 
 			(void) udp_send(inst->sockfd, packet, track->reply_len, flags,
 					&address.dst_ipaddr, address.dst_port,
