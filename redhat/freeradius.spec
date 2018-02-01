@@ -392,7 +392,7 @@ find $RPM_BUILD_DIR/freeradius-server-%{version} \( -name '*.c' -o -name '*.h' \
 %build
 # Retain CFLAGS from the environment...
 %if %{?_with_developer:1}%{!?_with_developer:0}
-export CFLAGS="$CFLAGS -fpic"
+export CFLAGS="$CFLAGS -g3 -fpic"
 export CXXFLAGS="$CFLAGS"
 %endif
 
