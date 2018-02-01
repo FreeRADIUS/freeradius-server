@@ -1012,21 +1012,6 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t c
 }
 
 
-/*
- *	Destroy sockets to ensure that they are deleted from the event
- *	list before the modules are detached, and before the event
- *	list is freed.
- */
-static int fr_network_socket_destroy(void *ctx, void *data)
-{
-	fr_network_socket_t *s = data;
-	fr_network_t *nr = ctx;
-
-	fr_event_fd_delete(nr->el, s->fd, s->filter);
-
-	return 2;
-}
-
 /** Destroy a network
  *
  * @param[in] nr the network
@@ -1067,11 +1052,6 @@ int fr_network_destroy(fr_network_t *nr)
 	}
 
 	(void) fr_event_post_delete(nr->el, fr_network_post_event, nr);
-
-	/*
-	 *	Delete / close all of the sockets.
-	 */
-	(void) rbtree_walk(nr->sockets, RBTREE_DELETE_ORDER, fr_network_socket_destroy, nr);
 
 	/*
 	 *	The caller has to free 'nr'.
