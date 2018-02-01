@@ -238,6 +238,7 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_entry_t **p_ent
 	 */
 	if (memcmp(&entry->data[0], packet, sizeof(entry->data)) == 0) {
 		*p_entry = entry;
+		entry->uses++;
 		return FR_TRACKING_SAME;
 	}
 
