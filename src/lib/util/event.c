@@ -431,6 +431,8 @@ static ssize_t fr_event_build_evset(struct kevent out_kev[], size_t outlen, fr_e
 {
 	struct kevent			*out = out_kev, *end = out + outlen;
 	fr_event_func_map_t const	*map;
+	struct kevent			add[10], *add_p = add;
+	size_t				i;
 
 	EVENT_DEBUG("Building new evset for FD %i (new %p, prev %p)", ef->fd, new, prev);
 
@@ -499,10 +501,14 @@ static ssize_t fr_event_build_evset(struct kevent out_kev[], size_t outlen, fr_e
 		if (has_current_func &&
 		    (!has_prev_func ||
 		     (has_prev_func && (current_fflags != prev_fflags)))) {
+		     	if ((size_t)(add_p - add) >= (sizeof(add) / sizeof(*add))) {
+		     		fr_strerror_printf("Out of memory to store kevent EV_ADD filters");
+		     		return -1;
+		     	}
 		     	EVENT_DEBUG("\tEV_SET EV_ADD filter %s (%i), flags %i, fflags %i",
 		     		    fr_int2str(kevent_filter_table, map->filter, "<INVALID>"),
 		     		    map->filter, map->flags, current_fflags);
-			EV_SET(out++, ef->fd, map->filter, map->flags, current_fflags, 0, ef);
+			EV_SET(add_p++, ef->fd, map->filter, map->flags, current_fflags, 0, ef);
 
 		/*
 		 *	Delete if we remove a function.
@@ -514,6 +520,14 @@ static ssize_t fr_event_build_evset(struct kevent out_kev[], size_t outlen, fr_e
 			EV_SET(out++, ef->fd, map->filter, EV_DELETE, 0, 0, 0);
 		}
 	}
+
+	/*
+	 *	kevent is fine with adds/deletes in the same operation
+	 *	on the same file descriptor, but libkqueue doesn't do
+	 *	any kind of coalescing or ordering so you get an EEXIST
+	 *	error.
+	 */
+	for (i = 0; i < (size_t)(add_p - add); i++) memcpy(out++, &add[i], sizeof(*out));
 
 	return out - out_kev;
 }
