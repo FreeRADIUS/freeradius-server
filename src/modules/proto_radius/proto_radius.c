@@ -266,7 +266,8 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	/*
 	 *	"Do not respond"
 	 */
-	if (request->reply->code == FR_CODE_DO_NOT_RESPOND) {
+	if ((request->reply->code == FR_CODE_DO_NOT_RESPOND) ||
+	    (request->reply->code == 0) || (request->reply->code >= FR_MAX_PACKET_CODE)) {
 		*buffer = 0;
 		return 1;
 	}
