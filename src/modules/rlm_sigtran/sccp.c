@@ -351,6 +351,8 @@ static void sigtran_sccp_outgoing(UNUSED struct sccp_connection *sscp_conn,
 	sigtran_conn_t *conn = talloc_get_type_abort(ctx, sigtran_conn_t);
 
 	mtp_link_set_submit_sccp_data(conn->mtp3_link_set, -1, msg->l2h, msgb_l2len(msg));
+
+	msgb_free(msg);	/* Apparently our responsibility to free this message */
 }
 
 /** Wrapper to pass data off to libsccp for processing
