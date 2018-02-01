@@ -442,6 +442,7 @@ static rlm_rcode_t mod_authenticate_result_async(REQUEST *request, void *instanc
  * Default to the configured EAP-Type for all Unsupported EAP-Types.
  *
  * @param[in] inst		Configuration data for this instance of rlm_eap.
+ * @param[in] thread		UNUSED.
  * @param[in] eap_session	State data that persists over multiple rounds of EAP.
  * @return
  *	- RLM_MODULE_INVALID	destroy the EAP session as its invalid.
