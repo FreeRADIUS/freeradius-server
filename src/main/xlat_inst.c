@@ -112,13 +112,14 @@ static void _xlat_thread_inst_tree_free(void *to_free)
 
 /** Create thread instances where needed
  *
+ * @param[in] ctx	to allocate thread instance data in.
  * @param[in] inst	to allocate thread-instance data for.
  * @return
  *	- 0 on success.  The node/thread specific data will be inserted
  *	  into xlat_thread_inst_tree.
  *	- -1 on failure.
  */
-static xlat_thread_inst_t *xlat_thread_inst_alloc(xlat_inst_t *inst)
+static xlat_thread_inst_t *xlat_thread_inst_alloc(TALLOC_CTX *ctx, xlat_inst_t *inst)
 {
 	xlat_thread_inst_t	*thread_inst = NULL;
 
@@ -126,12 +127,12 @@ static xlat_thread_inst_t *xlat_thread_inst_alloc(xlat_inst_t *inst)
 
 #ifdef HAVE_TALLOC_POOLED_OBJECT
 	if (inst->node->xlat->thread_inst_size) {
-		MEM(thread_inst = talloc_pooled_object(NULL, xlat_thread_inst_t,
+		MEM(thread_inst = talloc_pooled_object(ctx, xlat_thread_inst_t,
 						       1, inst->node->xlat->thread_inst_size));
 		memset(thread_inst, 0, sizeof(*thread_inst));
 	} else
 #endif
-		MEM(thread_inst = talloc_zero(NULL, xlat_thread_inst_t));
+		MEM(thread_inst = talloc_zero(ctx, xlat_thread_inst_t));
 #ifdef HAVE_TALLOC_POOLED_OBJECT
 	}
 #endif
@@ -269,7 +270,7 @@ static int _xlat_instantiate_ephemeral_walker(xlat_exp_t *node, UNUSED void *uct
 	/*
 	 *	Create a thread instance too.
 	 */
-	node->thread_inst = xlat_thread_inst_alloc(node->inst);
+	node->thread_inst = xlat_thread_inst_alloc(node, node->inst);
 	if (!node->thread_inst) goto error;
 
 	if (node->xlat->thread_instantiate &&
@@ -303,7 +304,7 @@ static int _xlat_thread_instantiate(UNUSED void *ctx, void *data)
 	xlat_thread_inst_t	*thread_inst;
 	xlat_inst_t		*inst = talloc_get_type_abort(data, xlat_inst_t);
 
-	thread_inst = xlat_thread_inst_alloc(data);
+	thread_inst = xlat_thread_inst_alloc(NULL, data);
 	if (!thread_inst) return -1;
 
 	DEBUG3("Instantiating xlat \"%s\" node %p, instance %p, new thread instance %p",
