@@ -44,8 +44,8 @@ typedef struct {
 	uint16_t			src_port;
 	uint16_t 			dst_port;
 
-	int				code;			//!< for duplicate detection
-	int				id;			//!< for duplicate detection
+	uint8_t				code;			//!< for duplicate detection
+	uint8_t				id;			//!< for duplicate detection
 
 	RADCLIENT			*client;
 } proto_radius_udp_address_t;
