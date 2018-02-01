@@ -141,7 +141,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 			break;
 
 		default:
-			request->reply->code = 0;
+			request->reply->code = FR_CODE_DO_NOT_RESPOND;
 			break;
 		}
 
