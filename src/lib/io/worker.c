@@ -492,7 +492,7 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 		}
 		if (slen < 0) {
 			DEBUG2("\t%sfails encode", worker->name);
-			rad_assert(0 == 1);
+			*reply->m.data = 0;
 			slen = 1;
 		}
 
