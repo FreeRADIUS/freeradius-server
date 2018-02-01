@@ -341,9 +341,15 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 
 static int mod_decode(void const *instance, REQUEST *request, UNUSED uint8_t *const data, UNUSED size_t data_len)
 {
-	proto_radius_udp_t const			*inst = instance;
+	proto_radius_udp_t const		*inst = instance;
 	fr_tracking_entry_t const		*track = request->async->packet_ctx;
 	proto_radius_udp_address_t const	*address = (proto_radius_udp_address_t const *) &track->src_dst[0];
+
+	if ((track->timestamp == request->async->recv_time) &&
+	    (track->reply_len > 0)) {
+		DEBUG("Suppressing dup.");
+		return -1;
+	}
 
 	request->client = address->client;
 	request->packet->if_index = address->if_index;
@@ -1097,6 +1103,17 @@ have_client:
 		 *	whole thing over to the network stack, while
 		 *	updating the "packet recv time" to be when the
 		 *	original packet was received.
+		 *
+		 *	@todo - we still have ordering issues!  The
+		 *	original packet MAY be done before this packet
+		 *	gets to the worker.  So the this packet ALSO
+		 *	needs to be marked up as "dup".  So that the
+		 *	worker just sends a new reply if it's
+		 *	available?  Instead of re-processing this
+		 *	packet... at which point we find that what we
+		 *	think is a new packet isn't really, and we
+		 *	already have track->reply... so we've done
+		 *	unnecessary (possibly wrong) work.
 		 */
 		packet_time = track->timestamp;
 		break;
@@ -1583,9 +1600,38 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	/*
 	 *	Figure out when we've sent the reply.
 	 */
-	 reply_time = fr_time();
+	reply_time = fr_time();
 
-	 flags = UDP_FLAGS_CONNECTED * inst->connected;
+	flags = UDP_FLAGS_CONNECTED * inst->connected;
+
+	/*
+	 *	This handles the race condition where we get a DUP,
+	 *	but the original packet replies before we're run.
+	 *	i.e. this packet isn't marked DUP, so we have to
+	 *	discover it's a dup later...
+	 *
+	 *	As such, if there's already a reply, then we ignore
+	 *	the encoded reply (which is probably going to be a
+	 *	NAK), and instead reply with the cached reply.
+	 */
+	if (track->reply_len) {
+		if (track->reply_len >= 20) {
+			char *packet;
+
+			memcpy(&packet, &track->reply, sizeof(packet)); /* const issues */
+
+			(void) udp_send(inst->sockfd, packet, track->reply_len, flags,
+					&address->dst_ipaddr, address->dst_port,
+					address->if_index,
+					&address->src_ipaddr, address->src_port);
+		}
+
+		/*
+		 *	Delete our extra copy of the tracking structure.
+		 */
+		(void) fr_radius_tracking_entry_delete(track->ft, track, track->timestamp);
+		return buffer_len;
+	}
 
 	/*
 	 *	Only write replies if they're RADIUS packets.
