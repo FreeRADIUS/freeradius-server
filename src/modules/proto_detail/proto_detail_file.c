@@ -332,13 +332,7 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 	 *	The worker may be in a different thread, so avoid
 	 *	talloc threading issues by using a NULL TALLOC_CTX.
 	 */
-	listen->app_io_instance = work = talloc(listen, proto_detail_work_t);
-	if (!work) {
-		talloc_free(listen);
-		close(fd);
-		DEBUG("Failed allocating memory");
-		return -1;
-	}
+	MEM(listen->app_io_instance = work = talloc(listen, proto_detail_work_t));
 
 	memcpy(work, inst->parent->work_submodule->data, sizeof(*work));
 
@@ -346,28 +340,12 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 
 	work->fd = dup(fd);
 	if (work->fd < 0) {
-		struct timeval when, now;
-
 		DEBUG("proto_detail (%s): Failed opening %s: %s",
 		      inst->name, inst->filename_work, fr_syserror(errno));
 
 		close(fd);
 		talloc_free(listen);
-
-		when.tv_sec = 0;
-		when.tv_usec = 10; /* hard-code! */
-
-		DEBUG3("proto_detail (%s): Waiting %d.%06ds for lock on file %s",
-		       inst->name, (int) when.tv_sec, (int) when.tv_usec, inst->filename_work);
-
-		gettimeofday(&now, NULL);
-		fr_timeval_add(&when, &when, &now);
-
-		if (fr_event_timer_insert(inst, inst->el, &inst->ev,
-					  &when, work_retry_timer, inst) < 0) {
-			ERROR("Failed inserting retry timer for %s", inst->filename_work);
-		}
-		return 0;
+		return -1;
 	}
 
 	/*
