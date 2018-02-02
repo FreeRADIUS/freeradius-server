@@ -1183,10 +1183,6 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 
 						if (c->data.map->lhs->name[i] == '-') {
 							hyphens++;
-							if (hyphens > 1) {
-								may_be_attr = false;
-								break;
-							}
 						}
 					}
 
