@@ -357,9 +357,13 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 	if (fr_event_filter_insert(inst, inst->el, fd, FR_EVENT_FILTER_VNODE,
 				   &funcs, NULL, inst) < 0) {
 		PERROR("Failed adding work socket to event loop");
-		close(fd);
 		goto detach;
 	}
+
+	/*
+	 *	Remember this for later.
+	 */
+	inst->vnode_fd = fd;
 
 	/*
 	 *	Yuck.
@@ -407,18 +411,19 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 
 	if (!fr_schedule_socket_add(inst->parent->sc, listen)) {
 	error:
-		if (fr_event_fd_delete(inst->el, fd, FR_EVENT_FILTER_VNODE) < 0) {
-			PERROR("Failed removing DELETE callback on add");
+		if ((inst->vnode_fd >= 0) &&
+		    (fr_event_fd_delete(inst->el, inst->vnode_fd, FR_EVENT_FILTER_VNODE) < 0)) {
+			PERROR("Failed removing DELETE callback when opening work file");
 		}
 
 		if (opened) {
 			(void) listen->app_io->close(listen->app_io_instance);
 			listen = NULL;
-		} else {
-			close(fd);
 		}
 
 	detach:
+		close(fd);	/* our FD for the work file */
+
 		if (listen) (void) listen->app_io->detach(listen->app_io_instance);
 		talloc_free(listen);
 		return -1;
@@ -428,8 +433,6 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 	 *	Tell the worker to clean itself up.
 	 */
 	work->free_on_close = true;
-
-	inst->vnode_fd = fd;
 
 	return 0;
 }
@@ -489,6 +492,8 @@ static void work_init(proto_detail_file_t *inst)
 		       inst->name, inst->filename_work);
 		goto delay;
 	}
+
+	rad_assert(inst->vnode_fd < 0);
 
 	/*
 	 *	See if there is a "detail.work" file.  If not, try to
@@ -697,6 +702,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	 *	We need this for the lock.
 	 */
 	inst->mode = O_RDWR;
+	inst->vnode_fd = -1;
 
 	if (inst->retransmit) {
 		FR_INTEGER_BOUND_CHECK("limit.initial_retransmission_time", inst->irt, >=, 1);
