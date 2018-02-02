@@ -244,7 +244,7 @@ static void work_retry_timer(UNUSED fr_event_list_t *el, UNUSED struct timeval *
 }
 
 /*
- *	The "detail.work" file exists.
+ *	The "detail.work" file exists, and is open in the 'fd'.
  */
 static int work_exists(proto_detail_file_t *inst, int fd)
 {
@@ -301,7 +301,7 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 		      fr_syserror(errno));
 		unlink(inst->filename_work);
 		close(fd);
-		return -1;
+		return 1;
 	}
 
 	if (!st.st_size) {
@@ -309,7 +309,7 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 		       inst->name, inst->filename_work);
 		unlink(inst->filename_work);
 		close(fd);
-		return -1;
+		return 1;
 	}
 
 	MEM(listen = talloc_zero(NULL, fr_listen_t));
@@ -495,7 +495,7 @@ static void mod_vnode_delete(fr_event_list_t *el, int fd, UNUSED int fflags, voi
 
 static void work_init(proto_detail_file_t *inst)
 {
-	int fd;
+	int fd, rcode;
 	bool has_worker;
 
 	PTHREAD_MUTEX_LOCK(&inst->parent->worker_mutex);
@@ -531,6 +531,7 @@ static void work_init(proto_detail_file_t *inst)
 			goto delay;
 		}
 
+retry:
 		fd = work_rename(inst);
 	}
 
@@ -579,7 +580,18 @@ delay:
 	 *	We will get back to the main loop when the
 	 *	"detail.work" file is deleted.
 	 */
-	if (work_exists(inst, fd) < 0) goto delay;
+	rcode = work_exists(inst, fd);
+	if (rcode < 0) goto delay;
+
+	/*
+	 *	The file was empty, so we try to get another one.
+	 */
+	if (rcode == 1) goto retry;
+
+	/*
+	 *	Otherwise the child is successfully processing the
+	 *	file.
+	 */
 }
 
 
