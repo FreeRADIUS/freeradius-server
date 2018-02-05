@@ -972,10 +972,13 @@ finish:
 /** Performs byte order reversal for types that need it
  *
  */
-static void value_data_hton(value_data_t *dst, PW_TYPE type, void const *src, size_t src_len)
+static int value_data_hton(value_data_t *dst, PW_TYPE dst_type, void const *src, size_t src_len)
 {
+	size_t dst_len;
+	uint8_t *dst_ptr;
+
 	/* 8 byte integers */
-	switch (type) {
+	switch (dst_type) {
 	case PW_TYPE_INTEGER64:
 		dst->integer64 = htonll(*(uint64_t const *)src);
 		break;
@@ -992,14 +995,50 @@ static void value_data_hton(value_data_t *dst, PW_TYPE type, void const *src, si
 		dst->ushort = htons(*(uint16_t const *)src);
 		break;
 
-	case PW_TYPE_OCTETS:
-	case PW_TYPE_STRING:
-		fr_assert(0);
-		return;		/* shouldn't happen */
+	case PW_TYPE_IPV4_ADDR:
+		dst_len = 4;
+		dst_ptr = (uint8_t *) &dst->ipaddr.s_addr;
+
+	copy:
+		/*
+		 *	Copy it over, but only so much as needed, and
+		 *	if the source is smaller than the destination,
+		 *	zero out the remaining bytes in the
+		 *	destination.
+		 */
+		if (src_len >= dst_len) {
+			memcpy(dst_ptr, src, dst_len);
+		} else {
+			memcpy(dst_ptr, src, src_len);
+			memset(dst_ptr + src_len, 0, dst_len - src_len);
+		}
+		break;
+
+	case PW_TYPE_ABINARY:
+		dst_len = sizeof(dst->filter);
+		dst_ptr = (uint8_t *) dst->filter;
+		goto copy;
+
+	case PW_TYPE_IFID:
+		dst_len = sizeof(dst->ifid);
+		dst_ptr = (uint8_t *) dst->ifid;
+		goto copy;
+
+	case PW_TYPE_IPV6_ADDR:
+		dst_len = sizeof(dst->ipv6addr);
+		dst_ptr = (uint8_t *) dst->ipv6addr.s6_addr;
+		goto copy;
+
+	case PW_TYPE_ETHERNET:
+		dst_len = sizeof(dst->ether);
+		dst_ptr = (uint8_t *) dst->ether;
+		goto copy;
 
 	default:
-		memcpy(dst, src, src_len);
+		return -1;	/* can't do it */
 	}
+
+	return 0;
 }
 
 /** Convert one type of value_data_t to another
@@ -1034,7 +1073,8 @@ ssize_t value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 	 *	Converts the src data to octets with no processing.
 	 */
 	if (dst_type == PW_TYPE_OCTETS) {
-		value_data_hton(dst, src_type, src, src_len);
+		if (value_data_hton(dst, src_type, src, src_len) < 0) return -1;
+
 		dst->octets = talloc_memdup(ctx, dst, src_len);
 		talloc_set_type(dst->octets, uint8_t);
 		return talloc_array_length(dst->strvalue);
@@ -1381,7 +1421,7 @@ ssize_t value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 
 	if (src_type == PW_TYPE_OCTETS) {
 	do_octets:
-		value_data_hton(dst, dst_type, src->octets, src_len);
+		if (value_data_hton(dst, dst_type, src->octets, src_len) < 0) return -1;
 		return src_len;
 	}
 
