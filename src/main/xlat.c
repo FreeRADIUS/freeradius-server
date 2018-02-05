@@ -484,6 +484,7 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 			RINDENT();
 			RDEBUG2("as %s%*s: %s", type->name, pad, " ", value);
 			REXDENT();
+			talloc_free(value);
 
 		next_type:
 			talloc_free(dst);
