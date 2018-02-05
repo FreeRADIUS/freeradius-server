@@ -1590,8 +1590,8 @@ char *value_data_aprints(TALLOC_CTX *ctx,
 
 		t = data->date;
 
-		p = talloc_array(ctx, char, 64);
-		strftime(p, 64, "%b %e %Y %H:%M:%S %Z",
+		p = talloc_zero_array(ctx, char, 64);
+		strftime(p, 63, "%b %e %Y %H:%M:%S %Z",
 			 localtime_r(&t, &s_tm));
 		break;
 	}
