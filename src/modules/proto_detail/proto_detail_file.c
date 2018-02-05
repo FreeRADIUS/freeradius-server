@@ -398,7 +398,7 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 	if (work->max_outstanding < listen->num_messages) {
 		listen->num_messages = work->max_outstanding;
 	}
-	if (work->max_outstanding <= 1) work->max_outstanding = 2;
+	if (work->max_outstanding < 1) work->max_outstanding = 1;
 
 	/*
 	 *	Open the detail.work file.
