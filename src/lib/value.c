@@ -980,6 +980,8 @@ static int value_data_hton(value_data_t *dst, PW_TYPE dst_type, void const *src,
 	/* 8 byte integers */
 	switch (dst_type) {
 	case PW_TYPE_INTEGER64:
+		if (src_len < sizeof(dst->integer64)) return -1;
+
 		dst->integer64 = htonll(*(uint64_t const *)src);
 		break;
 
@@ -987,11 +989,15 @@ static int value_data_hton(value_data_t *dst, PW_TYPE dst_type, void const *src,
 	case PW_TYPE_INTEGER:
 	case PW_TYPE_DATE:
 	case PW_TYPE_SIGNED:
+		if (src_len < sizeof(dst->integer)) return -1;
+
 		dst->integer = htonl(*(uint32_t const *)src);
 		break;
 
 	/* 2 byte integers */
 	case PW_TYPE_SHORT:
+		if (src_len < sizeof(dst->ushort)) return -1;
+
 		dst->ushort = htons(*(uint16_t const *)src);
 		break;
 
