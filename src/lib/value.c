@@ -1051,11 +1051,32 @@ static int value_data_hton(value_data_t *dst, PW_TYPE dst_type, void const *src,
 	case PW_TYPE_IPV4_PREFIX:
 		dst_len = sizeof(dst->ipv4prefix);
 		dst_ptr = (uint8_t *) dst->ipv4prefix;
+
+		if (src_len < dst_len) return -1;
+		if ((dst_ptr[1] & 0x3f) > 32) return -1;
 		goto copy;
 
 	case PW_TYPE_IPV6_PREFIX:
 		dst_len = sizeof(dst->ipv6prefix);		
 		dst_ptr = (uint8_t *) dst->ipv6prefix;
+
+		/*
+		 *	Smaller IPv6 prefixes are OK, too, so long as
+		 *	they're not too short.
+		 */
+		if (src_len < 2) return -1;
+
+		/*
+		 *	Prefix is too long.
+		 */
+		if (src[1] > 128) return -1;
+
+		if (src_len < dst_len) {
+			memcpy(dst_ptr, src, src_len);
+			memset(dst_ptr + src_len, 0, dst_len - src_len);			
+			break;
+		}
+
 		goto copy;
 
 	case PW_TYPE_ETHERNET:
