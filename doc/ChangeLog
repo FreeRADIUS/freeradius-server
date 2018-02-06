@@ -2,6 +2,8 @@ FreeRADIUS 3.0.17 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	Feature improvements
 	* Add CURLOPT_CAINFO.  Patch from Nicolas C.
 	  #2167
+	* "stats home server" now supports "src IPADDR",
+	  to specify home server also by source IP.  FIxes #2169.
 
 	Bug fixes
 	* Don't call post-proxy twice when proxying to
@@ -9,6 +11,11 @@ FreeRADIUS 3.0.17 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	* Use "raw" string value for shared secrets and dynamic clients.
 	  It now parses strings with backslashes and "special characters"
 	  correctly.  Fixes #2168.
+	* Fix RuntimeDirectory for RedHat, from Alan Buxey.
+	* Relax checks in 'if' parser from Isaac Bourkis
+	* Minor cleanups for %{debug_attr:&request} from Isaac Boukris.
+	* Be more aggressive about cleaning up cached certificate attributes,
+	  due to deficiencies in OpenSSL.  Reported by Nicolas Reich.
 
 FreeRADIUS 3.0.16 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	Feature improvements
