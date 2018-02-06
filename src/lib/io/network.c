@@ -728,6 +728,31 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 	DEBUG3("Using new socket with FD %d", s->fd);
 }
 
+/** Handle a network control message callback to delete a socket
+ *
+ * @param[in] ctx the network
+ * @param[in] data the message
+ * @param[in] data_size size of the data
+ * @param[in] now the current time
+ */
+static void fr_network_socket_delete_callback(void *ctx, void const *data, size_t data_size, UNUSED fr_time_t now)
+{
+	fr_network_t		*nr = ctx;
+	fr_network_socket_t *s, my_socket;
+
+	rad_assert(data_size == sizeof(s->listen));
+
+	if (data_size != sizeof(s->listen)) return;
+
+	memcpy(&my_socket.listen, data, sizeof(my_socket.listen));
+
+	s = rbtree_finddata(nr->sockets, &my_socket);
+	if (!s) return;
+
+	fr_network_socket_dead(nr, s);
+}
+
+
 /** Handle a network control message callback for a new "watch directory"
  *
  * @param[in] ctx the network
@@ -963,6 +988,11 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t c
 
 	if (fr_control_callback_add(nr->control, FR_CONTROL_ID_SOCKET, nr, fr_network_socket_callback) < 0) {
 		fr_strerror_printf_push("Failed adding socket callback");
+		goto fail2;
+	}
+
+	if (fr_control_callback_add(nr->control, FR_CONTROL_ID_SOCKET_DEL, nr, fr_network_socket_delete_callback) < 0) {
+		fr_strerror_printf_push("Failed adding socket delete callback");
 		goto fail2;
 	}
 
@@ -1276,24 +1306,20 @@ int fr_network_socket_add(fr_network_t *nr, fr_listen_t const *listen)
 }
 
 
-/** Delete a socket from a network.  MUST be called only by the listener itself!.
+/** Delete a socket from a network.
  *
  * @param nr		the network
  * @param listen	Functions and context.
  */
 int fr_network_socket_delete(fr_network_t *nr, fr_listen_t const *listen)
 {
-	fr_network_socket_t *s, my_socket;
+	int rcode;
 
-	my_socket.listen = listen;
-	s = rbtree_finddata(nr->sockets, &my_socket);
-	if (!s) {
-		return -1;
-	}
+	PTHREAD_MUTEX_LOCK(&nr->mutex);
+	rcode = fr_control_message_send(nr->control, nr->rb, FR_CONTROL_ID_SOCKET_DEL, &listen, sizeof(listen));
+	PTHREAD_MUTEX_UNLOCK(&nr->mutex);
 
-	fr_network_socket_dead(nr, s);
-
-	return 0;
+	return rcode;
 }
 
 /** Add a "watch directory" call to a network
