@@ -1001,6 +1001,13 @@ static int value_data_hton(value_data_t *dst, PW_TYPE dst_type, void const *src,
 		dst->ushort = htons(*(uint16_t const *)src);
 		break;
 
+	/* 1 byte integer */
+	case PW_TYPE_BYTE:
+		if (src_len < sizeof(dst->byte)) return -1;
+
+		dst->byte = *(uint8_t const *)src;
+		break;
+
 	case PW_TYPE_IPV4_ADDR:
 		dst_len = 4;
 		dst_ptr = (uint8_t *) &dst->ipaddr.s_addr;
@@ -1033,6 +1040,16 @@ static int value_data_hton(value_data_t *dst, PW_TYPE dst_type, void const *src,
 	case PW_TYPE_IPV6_ADDR:
 		dst_len = sizeof(dst->ipv6addr);
 		dst_ptr = (uint8_t *) dst->ipv6addr.s6_addr;
+		goto copy;
+
+	case PW_TYPE_IPV4_PREFIX:
+		dst_len = sizeof(dst->ipv4prefix);
+		dst_ptr = (uint8_t *) dst->ipv4prefix;
+		goto copy;
+
+	case PW_TYPE_IPV6_PREFIX:
+		dst_len = sizeof(dst->ipv6prefix);
+		dst_ptr = (uint8_t *) dst->ipv6prefix;
 		goto copy;
 
 	case PW_TYPE_ETHERNET:
