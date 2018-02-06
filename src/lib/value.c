@@ -1069,7 +1069,7 @@ static int value_data_hton(value_data_t *dst, PW_TYPE dst_type, void const *src,
 		/*
 		 *	Prefix is too long.
 		 */
-		if (src[1] > 128) return -1;
+		if (((uint8_t const *)src)[1] > 128) return -1;
 
 		if (src_len < dst_len) {
 			memcpy(dst_ptr, src, src_len);
