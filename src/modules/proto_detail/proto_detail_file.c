@@ -731,6 +731,8 @@ static int mod_detach(void *instance)
 {
 	proto_detail_file_t	*inst = talloc_get_type_abort(instance, proto_detail_file_t);
 
+	if (inst->nr) (void) fr_network_socket_delete(inst->nr, inst->parent->listen);
+
 	/*
 	 *	@todo - have our OWN event loop for timers, and a
 	 *	"copy timer from -> to, which means we only have to
@@ -739,8 +741,12 @@ static int mod_detach(void *instance)
 	close(inst->fd);
 
 	if (inst->vnode_fd >= 0) {
-		if (fr_event_fd_delete(inst->el, inst->vnode_fd, FR_EVENT_FILTER_VNODE) < 0) {
-			PERROR("Failed removing DELETE callback on detach");
+		if (inst->nr) {
+			(void) fr_network_socket_delete(inst->nr, inst->parent->listen);
+		} else {
+			if (fr_event_fd_delete(inst->el, inst->vnode_fd, FR_EVENT_FILTER_VNODE) < 0) {
+				PERROR("Failed removing DELETE callback on detach");
+			}
 		}
 		close(inst->vnode_fd);
 		inst->vnode_fd = -1;
