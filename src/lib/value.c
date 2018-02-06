@@ -1014,22 +1014,28 @@ static int value_data_hton(value_data_t *dst, PW_TYPE dst_type, void const *src,
 
 	copy:
 		/*
-		 *	Copy it over, but only so much as needed, and
-		 *	if the source is smaller than the destination,
-		 *	zero out the remaining bytes in the
-		 *	destination.
+		 *	Not enough information, die.
 		 */
-		if (src_len >= dst_len) {
-			memcpy(dst_ptr, src, dst_len);
-		} else {
-			memcpy(dst_ptr, src, src_len);
-			memset(dst_ptr + src_len, 0, dst_len - src_len);
-		}
+		if (src_len < dst_len) return -1;
+
+		/*
+		 *	Copy only as much as we need from the source.
+		 */
+		memcpy(dst_ptr, src, dst_len);
 		break;
 
 	case PW_TYPE_ABINARY:
 		dst_len = sizeof(dst->filter);
 		dst_ptr = (uint8_t *) dst->filter;
+
+		/*
+		 *	Too little data is OK here.
+		 */
+		if (src_len < dst_len) {
+			memcpy(dst_ptr, src, src_len);
+			memset(dst_ptr + src_len, 0, dst_len - src_len);			
+			break;
+		}
 		goto copy;
 
 	case PW_TYPE_IFID:
@@ -1048,7 +1054,7 @@ static int value_data_hton(value_data_t *dst, PW_TYPE dst_type, void const *src,
 		goto copy;
 
 	case PW_TYPE_IPV6_PREFIX:
-		dst_len = sizeof(dst->ipv6prefix);
+		dst_len = sizeof(dst->ipv6prefix);		
 		dst_ptr = (uint8_t *) dst->ipv6prefix;
 		goto copy;
 
