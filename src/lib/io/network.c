@@ -1275,6 +1275,27 @@ int fr_network_socket_add(fr_network_t *nr, fr_listen_t const *listen)
 	return rcode;
 }
 
+
+/** Delete a socket from a network.  MUST be called only by the listener itself!.
+ *
+ * @param nr		the network
+ * @param listen	Functions and context.
+ */
+int fr_network_socket_delete(fr_network_t *nr, fr_listen_t const *listen)
+{
+	fr_network_socket_t *s, my_socket;
+
+	my_socket.listen = listen;
+	s = rbtree_finddata(nr->sockets, &my_socket);
+	if (!s) {
+		return -1;
+	}
+
+	fr_network_socket_dead(nr, s);
+
+	return 0;
+}
+
 /** Add a "watch directory" call to a network
  *
  * @param nr		the network
