@@ -15,15 +15,10 @@ tacacs.h
 rfc*.h
 tls.h
 vqp.h
-protocol/*
-
-# Symlinks
-util
-radius
-ethernet
-dhcpv4
-dhcpv6
 
 # Build scripts
 build-radpaths-h
 stamp-h
+
+# Subdirectories - add exceptions if you need them
+**
