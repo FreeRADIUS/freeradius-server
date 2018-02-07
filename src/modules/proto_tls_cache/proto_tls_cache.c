@@ -29,6 +29,11 @@
 /** Compile various unlang sections
  *
  * @param[in] instance	Ctx data for this application.
+ * @param[in] conf	The listen section we're being called to instantiate.
+ *			In this case it it's likely a fake listen section,
+ *			and the server we need to compile is its parent...
+ *			FIXME Maybe? We could require listen sections to
+ *			enable the different types of cache?
  * @return
  *	- 0 on success.
  *	- -1 on failure.
