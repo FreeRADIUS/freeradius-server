@@ -18,7 +18,7 @@ define PROTO_INCLUDE
 $${libfreeradius-io.la_OBJS}: | src/include/${1}
 
 src/include/${1}:
-	$${Q}[ -e $$@ ] || ln -s $${top_srcdir}/src/protocols/${1} $$@
+	$${Q}[ -e $$@ ] || ln -sf $${top_srcdir}/src/protocols/${1} $$@
 	@echo LN-SF src/protocols/${1} $$@
 
 install.src.include: $(addprefix ${SRC_INCLUDE_DIR}/,${1}/${1}.h)
