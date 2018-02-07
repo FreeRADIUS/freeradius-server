@@ -760,6 +760,7 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 	fr_event_list_t *el, *old_el;
 	fr_heap_t	*backlog, *old_backlog;
 	rlm_rcode_t	rcode;
+	char const	*caller;
 
 	/*
 	 *	Don't talloc from the request
@@ -768,7 +769,9 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 	MEM(el = fr_event_list_alloc(NULL, NULL, NULL));
 	MEM(backlog = fr_heap_create(_unlang_request_ptr_cmp, offsetof(REQUEST, runnable_id)));
 	old_el = request->el;
-	old_backlog = backlog;
+	old_backlog = request->backlog;
+	caller = request->module;
+
 	request->el = el;
 	request->backlog = backlog;
 
@@ -799,6 +802,7 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 	request->el = old_el;
 	talloc_free(backlog);
 	request->backlog = old_backlog;
+	request->module = caller;
 
 	return rcode;
 }
