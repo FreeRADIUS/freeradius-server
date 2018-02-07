@@ -687,7 +687,7 @@ static int mod_close(void *instance)
 	inst->parent->num_workers--;
 	PTHREAD_MUTEX_UNLOCK(&inst->parent->worker_mutex);
 
-	DEBUG("Detail worker at EOF. Closing and deleting %s", inst->name);
+	DEBUG("Closing and deleting detail worker file %s", inst->name);
 
 #ifdef NOTE_REVOKE
 	fr_event_fd_delete(inst->el, inst->fd, FR_EVENT_FILTER_VNODE);
