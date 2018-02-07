@@ -138,6 +138,12 @@ typedef struct _tls_info_t {
 	int		version;
 } tls_info_t;
 
+typedef struct {
+	CONF_SECTION	*load;				//!< Load something from the cache (or NULL if disabled).
+	CONF_SECTION	*store;				//!< Store something in the cache (or NULL if disabled).
+	CONF_SECTION	*clear;				//!< Clear something from the cache (or NULL if disabled).
+} fr_tls_cache_t;
+
 /** Tracks the state of a TLS session
  *
  * Currently used for RADSEC and EAP-TLS + dependents (EAP-TTLS, EAP-PEAP etc...).
@@ -190,8 +196,7 @@ typedef struct _tls_session_t {
 /** OCSP Configuration
  *
  */
-typedef struct ft_tls_ocsp_conf {
-
+typedef struct {
 	bool		enable;				//!< Enable OCSP checks
 	char const	*cache_server;			//!< Virtual server to restore retrieved OCSP status.
 	bool		override_url;			//!< Always use the configured OCSP URL even if the
@@ -201,6 +206,10 @@ typedef struct ft_tls_ocsp_conf {
 	X509_STORE	*store;
 	uint32_t	timeout;
 	bool		softfail;
+
+
+	fr_tls_cache_t	cache;				//!< Cached cache section pointers.  Means we don't have
+							///< to look them up at runtime.
 } fr_tls_ocsp_conf_t;
 #endif
 
@@ -265,6 +274,9 @@ struct fr_tls_conf_t {
 	bool		session_cache_require_pfs;	//!< Only allow session resumption if a cipher suite that
 							//!< supports perfect forward secrecy.
 
+	fr_tls_cache_t	session_cache;		//!< Cached cache section pointers.  Means we don't have
+							///< to look them up at runtime.
+
 	char const	*verify_tmp_dir;
 	char const	*verify_client_cert_cmd;
 	bool		require_client_cert;
@@ -290,16 +302,6 @@ struct fr_tls_conf_t {
 };
 
 typedef struct fr_tls_conf_t fr_tls_conf_t;
-
-/** Macros that match the hardcoded values of the TLS-Session-Cache-Attribute
- */
-typedef enum {
-	CACHE_ACTION_SESSION_READ = 1,			//!< Retrieve session data from the cache.
-	CACHE_ACTION_SESSION_WRITE = 2,			//!< Write session data to the cache.
-	CACHE_ACTION_SESSION_DELETE = 3,		//!< Delete session data from the cache.
-	CACHE_ACTION_OCSP_READ = 4,			//!< Read cached OCSP status.
-	CACHE_ACTION_OCSP_WRITE = 5			//!< Write OCSP status.
-} tls_cache_action_t;
 
 /*
  *	Following enums from rfc2246
@@ -400,7 +402,9 @@ extern CONF_PARSER tls_client_config[];
 /*
  *	tls/cache.c
  */
-int		tls_cache_process(REQUEST *request, char const *virtual_server, int autz_type);
+int		tls_cache_process(REQUEST *request, CONF_SECTION *action);
+
+int		tls_cache_compile(fr_tls_cache_t *sections, char const *virtual_server);
 
 void		tls_cache_deny(tls_session_t *tls_session);
 
@@ -454,6 +458,10 @@ int		tls_ocsp_staple_cb(SSL *ssl, void *data);
 int		tls_ocsp_check(REQUEST *request, SSL *ssl,
 			       X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 			       fr_tls_ocsp_conf_t *conf, bool staple_response);
+
+int		tls_ocsp_state_cache_compile(fr_tls_cache_t *sections, char const *virtual_server);
+
+int		tls_ocsp_staple_cache_compile(fr_tls_cache_t *sections, char const *virtual_server);
 
 /*
  *	tls/session.c

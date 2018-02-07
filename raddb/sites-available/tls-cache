@@ -28,18 +28,6 @@
 #
 ######################################################################
 server tls-cache {
-
-#
-#  Only the "authorize" section is needed.
-#  Only the listed Autz-Types are used.
-#  Everything else in the virtual server is ignored.
-#
-#  The attribute &TLS-Session-Id is set to the identity
-#  of the session to read / write / delete from the cache.  This
-#  identity is an opaque blob.
-#
-recv Access-Request {
-
 	#
 	#  This section is run whenever the server needs to read an
 	#  entry from the TLS session cache.
@@ -53,7 +41,7 @@ recv Access-Request {
 	#  The return code has no real effect on session processing
 	#  and will just cause the server to emit a warning.
 	#
-	Autz-Type Session-Cache-Read {
+	load tls-session {
 		update control {
 			Cache-Allow-Insert := no
 		}
@@ -73,7 +61,7 @@ recv Access-Request {
 	#  The return code has no real effect on session processing
 	#  and will just cause the server to emit a warning.
 	#
-	Autz-Type Session-Cache-Write {
+	store tls-session {
 		update control {
 			Cache-TTL := 0
 		}
@@ -89,7 +77,7 @@ recv Access-Request {
 	#  The return code has no real effect on session processing
 	#  and will just cause the server to emit a warning.
 	#
-	Autz-Type Session-Cache-Delete {
+	clear tls-session {
 		update control {
 			Cache-TTL := 0
 			Cache-Allow-Insert := no
@@ -107,7 +95,7 @@ recv Access-Request {
 	#  On success it should return 'ok', 'updated', 'noop' or 'notfound'
 	#  To force OCSP validation failure, it should return 'reject'.
 	#
-	Autz-Type OCSP-Cache-Read {
+	load ocsp-state {
 		update control {
 			Cache-Allow-Insert := no
 		}
@@ -125,12 +113,11 @@ recv Access-Request {
 	#  The return code has no real effect on session processing
 	#  and will just cause the server to emit a warning.
 	#
-	Autz-Type OCSP-Cache-Write {
+	store ocsp-state {
 		update control {
 			Cache-TTL := "%{expr:&reply:TLS-OCSP-Next-Update * -1}"
 			Cache-Allow-Merge := no
 		}
 		cache_ocsp
 	}
-}
 }

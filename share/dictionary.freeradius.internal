@@ -675,13 +675,6 @@ ATTRIBUTE	TLS-Client-Cert-Expiration-Time		1935	date
 
 # 1940 - 1949: reserved for TLS session caching
 ATTRIBUTE	TLS-Session-Id				1940	octets
-ATTRIBUTE	TLS-Cache-Action			1941	integer
-VALUE	TLS-Cache-Action		Session-Read		1
-VALUE	TLS-Cache-Action		Session-Write		2
-VALUE	TLS-Cache-Action		Session-Delete		3
-VALUE	TLS-Cache-Action		OCSP-Read		4
-VALUE	TLS-Cache-Action		OCSP-Write		5
-
 ATTRIBUTE	TLS-Session-Data			1942	octets
 
 # Set and retrieved by EAP-TLS code
@@ -789,11 +782,6 @@ VALUE	Auth-Type			Accept			254
 #	Authorization type, too.
 #
 VALUE	Autz-Type			Local			1
-VALUE	Autz-Type			Session-Cache-Read	1001
-VALUE	Autz-Type			Session-Cache-Write	1002
-VALUE	Autz-Type			Session-Cache-Delete	1003
-VALUE	Autz-Type			OCSP-Cache-Read		1004
-VALUE	Autz-Type			OCSP-Cache-Write	1005
 
 #
 #	And accounting

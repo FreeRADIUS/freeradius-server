@@ -369,22 +369,31 @@ fr_tls_conf_t *tls_conf_parse_server(CONF_SECTION *cs)
 		goto error;
 	}
 
-	if (conf->session_cache_server &&
-	    !virtual_server_find(conf->session_cache_server)) {
-		ERROR("No such virtual server '%s'", conf->session_cache_server);
-		goto error;
+	if (conf->session_cache_server) {
+		if (!virtual_server_find(conf->session_cache_server)) {
+			ERROR("No such virtual server '%s'", conf->session_cache_server);
+			goto error;
+		}
+
+		if (tls_cache_compile(&conf->session_cache, conf->session_cache_server) < 0) goto error;
 	}
 
-	if (conf->ocsp.cache_server &&
-	    !virtual_server_find(conf->ocsp.cache_server)) {
-		ERROR("No such virtual server '%s'", conf->ocsp.cache_server);
-		goto error;
+	if (conf->ocsp.cache_server) {
+		if (!virtual_server_find(conf->ocsp.cache_server)) {
+			ERROR("No such virtual server '%s'", conf->ocsp.cache_server);
+			goto error;
+		}
+
+		if (tls_ocsp_state_cache_compile(&conf->ocsp.cache, conf->ocsp.cache_server) < 0) goto error;
 	}
 
-	if (conf->staple.cache_server &&
-	    !virtual_server_find(conf->staple.cache_server)) {
-		ERROR("No such virtual server '%s'", conf->staple.cache_server);
-		goto error;
+	if (conf->staple.cache_server) {
+		if (!virtual_server_find(conf->staple.cache_server)) {
+			ERROR("No such virtual server '%s'", conf->staple.cache_server);
+			goto error;
+		}
+
+		if (tls_ocsp_staple_cache_compile(&conf->staple.cache, conf->staple.cache_server) < 0) goto error;
 	}
 
 #ifdef SSL_OP_NO_TLSv1_2

@@ -54,20 +54,16 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
  * @param[in] request The current request.
  * @param[in] key Identifier for the session.
  * @param[in] key_len Length of the key.
- * @param[in] action being performed (written to &control:TLS-Session-Cache-Action).
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int tls_cache_attrs(REQUEST *request,
-			   uint8_t const *key,
-			   size_t key_len, tls_cache_action_t action)
+static int tls_cache_session_id_to_vp(REQUEST *request, uint8_t const *key, size_t key_len)
 {
 	VALUE_PAIR *vp;
 
 	fr_pair_delete_by_num(&request->packet->vps, 0, FR_TLS_SESSION_ID, TAG_ANY);
 
-	RDEBUG2("Setting TLS cache control attributes");
 	vp = fr_pair_afrom_num(request->packet, 0, FR_TLS_SESSION_ID);
 	if (!vp) return -1;
 
@@ -77,57 +73,38 @@ static int tls_cache_attrs(REQUEST *request,
 	rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 	REXDENT();
 
-	vp = fr_pair_afrom_num(request, 0, FR_TLS_CACHE_ACTION);
-	if (!vp) return -1;
-
-	vp->vp_uint32 = action;
-	fr_pair_add(&request->control, vp);
-	RINDENT();
 	rdebug_pair(L_DBG_LVL_2, request, vp, "&control:");
-	REXDENT();
 
 	return 0;
 }
 
 /** Execute the virtual server configured to perform cache actions
  *
- * @param[in] request The current request.
- * @param[in] virtual_server Name of the virtual server to execute.
- * @param[in] autz_type The authorize sub-section to execute.
+ * @param[in] request		The current request.
+ * @param[in] section		to execute.
  * @return the rcode from the virtual server.
  */
-int tls_cache_process(REQUEST *request, char const *virtual_server, int autz_type)
+int tls_cache_process(REQUEST *request, CONF_SECTION *action)
 {
 	rlm_rcode_t	rcode;
-	VALUE_PAIR	*vp;
+	CONF_SECTION	*server_cs;
+	char const	*module;
+	char const	*component;
 
 	/*
 	 *	Save the current status of the request.
 	 */
-	CONF_SECTION	*server_cs = request->server_cs;
-	char const	*module = request->module;
-	char const	*component = request->component;
-
-	/*
-	 *	Indicate what action we're performing
-	 */
-	vp = fr_pair_afrom_num(request, 0, FR_TLS_CACHE_ACTION);
-	if (!vp) return -1;
-
-	vp->vp_uint32 = autz_type;
-
-	fr_pair_add(&request->control, vp);
-	RINDENT();
-	rdebug_pair(L_DBG_LVL_2, request, vp, "&control:");
-	REXDENT();
+	server_cs = request->server_cs;
+	module = request->module;
+	component = request->component;
+	request->server_cs = cf_item_to_section(cf_parent(action));
+	request->module = NULL;
 
 	/*
 	 *	Run it through the appropriate virtual server.
+	 *	FIXME - This is still blocking.
 	 */
-	request->server_cs = virtual_server_find(virtual_server);
-	request->module = NULL;
-
-	rcode = process_authorize(autz_type + 1000, request);
+	rcode = unlang_interpret_synchronous(request, action, RLM_MODULE_NOOP);
 
 	/*
 	 *	Restore the original status of the request.
@@ -136,9 +113,44 @@ int tls_cache_process(REQUEST *request, char const *virtual_server, int autz_typ
 	request->module = module;
 	request->component = component;
 
-	fr_pair_delete_by_num(&request->control, 0, FR_TLS_CACHE_ACTION, TAG_ANY);
-
 	return rcode;
+}
+
+/** Pre-compile unlang cache sections and store pointers to them
+ *
+ * @param[out] actions		Structure to hold pointers to sections.
+ * @param[in] virtual_server	to lookup sections for.
+ * @return
+ *	- -1 on failure.
+ *	- 0 on success.
+ */
+int tls_cache_compile(fr_tls_cache_t *actions, char const *virtual_server)
+{
+	CONF_SECTION	*server;
+	bool		found = false;
+
+	server = virtual_server_find(virtual_server);
+	if (!server) {
+		ERROR("Virtual server \"%s\" not found", virtual_server);
+		return -1;
+	}
+
+#define FIND_SECTION(_out, _verb, _name) \
+do { \
+	_out = cf_section_find(server, _verb, _name);\
+	if ((_out)) found = true; \
+} while (0)
+
+	FIND_SECTION(actions->load, "load", "tls-session");
+	FIND_SECTION(actions->store, "store", "tls-session");
+	FIND_SECTION(actions->clear, "clear", "tls-session");
+
+	/*
+	 *	Warn if we couldn't find any sections.
+	 */
+	if (!found) cf_log_warn(server, "No TLS session cache sections found in virtual server \"%s\"", virtual_server);
+
+	return 0;
 }
 
 /** Retrieve session ID (in binary form) from the session
@@ -266,8 +278,8 @@ int tls_cache_write(REQUEST *request, tls_session_t *tls_session)
 		return 1;
 	}
 
-	if (tls_cache_attrs(request, tls_session->session_id, talloc_array_length(tls_session->session_id),
-			    CACHE_ACTION_SESSION_WRITE) < 0) {
+	if (tls_cache_session_id_to_vp(request, tls_session->session_id,
+				       talloc_array_length(tls_session->session_id)) < 0) {
 		RWDEBUG("Failed adding session key to the request");
 		return -1;
 	}
@@ -290,7 +302,7 @@ int tls_cache_write(REQUEST *request, tls_session_t *tls_session)
 	/*
 	 *	Call the virtual server to write the session
 	 */
-	switch (tls_cache_process(request, conf->session_cache_server, CACHE_ACTION_SESSION_WRITE)) {
+	switch (tls_cache_process(request, conf->session_cache.store)) {
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
 		break;
@@ -339,7 +351,7 @@ static SSL_SESSION *tls_cache_read(SSL *ssl,
 	request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 	conf = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
 
-	if (tls_cache_attrs(request, key, key_len, CACHE_ACTION_SESSION_READ) < 0) {
+	if (tls_cache_session_id_to_vp(request, key, key_len) < 0) {
 		RWDEBUG("Failed adding session key to the request");
 		return NULL;
 	}
@@ -349,7 +361,7 @@ static SSL_SESSION *tls_cache_read(SSL *ssl,
 	/*
 	 *	Call the virtual server to read the session
 	 */
-	switch (tls_cache_process(request, conf->session_cache_server, CACHE_ACTION_SESSION_READ)) {
+	switch (tls_cache_process(request, conf->session_cache.load)) {
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
 		break;
@@ -441,7 +453,7 @@ static void tls_cache_delete(SSL_CTX *ctx, SSL_SESSION *sess)
 		return;
 	}
 
-	if (tls_cache_attrs(request, key, (size_t)key_len, CACHE_ACTION_SESSION_DELETE) < 0) {
+	if (tls_cache_session_id_to_vp(request, key, (size_t)key_len) < 0) {
 		RWDEBUG("Failed adding session key to the request");
 		goto error;
 	}
@@ -449,7 +461,7 @@ static void tls_cache_delete(SSL_CTX *ctx, SSL_SESSION *sess)
 	/*
 	 *	Call the virtual server to delete the session
 	 */
-	switch (tls_cache_process(request, conf->session_cache_server, CACHE_ACTION_SESSION_DELETE)) {
+	switch (tls_cache_process(request, conf->session_cache.clear)) {
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
 	case RLM_MODULE_NOTFOUND:

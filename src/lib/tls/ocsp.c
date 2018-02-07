@@ -271,8 +271,7 @@ int tls_ocsp_check(REQUEST *request, SSL *ssl,
 	time_t		next;
 	VALUE_PAIR	*vp;
 
-	if (conf->cache_server) switch (tls_cache_process(request, conf->cache_server,
-							       CACHE_ACTION_OCSP_READ)) {
+	if (conf->cache_server) switch (tls_cache_process(request, conf->cache.load)) {
 	case RLM_MODULE_REJECT:
 		REDEBUG("Told to force OCSP validation failure from cached response");
 		return OCSP_STATUS_FAILED;
@@ -639,8 +638,7 @@ finish:
 		break;
 	}
 
-	if (conf->cache_server) switch (tls_cache_process(request, conf->cache_server,
-							  CACHE_ACTION_OCSP_WRITE)) {
+	if (conf->cache_server) switch (tls_cache_process(request, conf->cache.store)) {
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
 		break;
@@ -661,6 +659,76 @@ finish:
 	BIO_free(ssl_log);
 
 	return ocsp_status;
+}
+
+#define FIND_SECTION(_out, _verb, _name) \
+do { \
+	_out = cf_section_find(server, _verb, _name);\
+	if ((_out)) found = true; \
+} while (0)
+
+/** Pre-compile unlang cache actions and store pointers to them
+ *
+ * @param[out] actions		Structure to hold pointers to actions.
+ * @param[in] virtual_server	to lookup actions for.
+ * @return
+ *	- -1 on failure.
+ *	- 0 on success.
+ */
+int tls_ocsp_state_cache_compile(fr_tls_cache_t *actions, char const *virtual_server)
+{
+	CONF_SECTION	*server;
+	bool		found = false;
+
+	server = virtual_server_find(virtual_server);
+	if (!server) {
+		ERROR("Virtual server \"%s\" not found", virtual_server);
+		return -1;
+	}
+
+	FIND_SECTION(actions->load, "load", "ocsp-state");
+	FIND_SECTION(actions->store, "store", "ocsp-state");
+
+	/*
+	 *	Warn if we couldn't find any actions.
+	 */
+	if (!found) {
+		cf_log_warn(server, "No OCSP session cache actions found in virtual server \"%s\"", virtual_server);
+	}
+
+	return 0;
+}
+
+/** Pre-compile unlang cache actions and store pointers to them
+ *
+ * @param[out] actions		Structure to hold pointers to actions.
+ * @param[in] virtual_server	to lookup actions for.
+ * @return
+ *	- -1 on failure.
+ *	- 0 on success.
+ */
+int tls_ocsp_staple_cache_compile(fr_tls_cache_t *actions, char const *virtual_server)
+{
+	CONF_SECTION	*server;
+	bool		found = false;
+
+	server = virtual_server_find(virtual_server);
+	if (!server) {
+		ERROR("Virtual server \"%s\" not found", virtual_server);
+		return -1;
+	}
+
+	FIND_SECTION(actions->load, "load", "ocsp-staple");
+	FIND_SECTION(actions->store, "store", "ocsp-staple");
+
+	/*
+	 *	Warn if we couldn't find any actions.
+	 */
+	if (!found) {
+		cf_log_warn(server, "No OCSP session cache actions found in virtual server \"%s\"", virtual_server);
+	}
+
+	return 0;
 }
 #endif /* HAVE_OPENSSL_OCSP_H */
 #endif /* WITH_TLS */
