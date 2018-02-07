@@ -639,14 +639,14 @@ static int fr_fault_check_permissions(void)
  */
 NEVER_RETURNS void fr_fault(int sig)
 {
-	char cmd[sizeof(panic_action) + 20];
-	char *out = cmd;
-	size_t left = sizeof(cmd), ret;
+	char		cmd[sizeof(panic_action) + 20];
+	char		*out = cmd;
+	size_t		left = sizeof(cmd), ret;
 
-	char const *p = panic_action;
-	char const *q;
+	char const	*p = panic_action;
+	char const	*q;
 
-	int code;
+	int		code;
 
 	/*
 	 *	If a debugger is attached, we don't want to run the panic action,
@@ -665,14 +665,6 @@ NEVER_RETURNS void fr_fault(int sig)
 	memset(cmd, 0, sizeof(cmd));
 
 	FR_FAULT_LOG("CAUGHT SIGNAL: %s", strsignal(sig));
-
-	/*
-	 *	Check for administrator sanity.
-	 */
-	if (fr_fault_check_permissions() < 0) {
-		FR_FAULT_LOG("Refusing to execute panic action: %s", fr_strerror());
-		goto finish;
-	}
 
 	/*
 	 *	Run the callback if one was registered
@@ -703,6 +695,14 @@ NEVER_RETURNS void fr_fault(int sig)
 	/* No panic action set... */
 	if (panic_action[0] == '\0') {
 		FR_FAULT_LOG("No panic action set");
+		goto finish;
+	}
+
+	/*
+	 *	Check for administrator sanity.
+	 */
+	if (fr_fault_check_permissions() < 0) {
+		FR_FAULT_LOG("Refusing to execute panic action: %s", fr_strerror());
 		goto finish;
 	}
 
@@ -760,17 +760,16 @@ NEVER_RETURNS void fr_fault(int sig)
 		fr_exit_now(128 + sig);
 	}
 
-
 finish:
 	/*
 	 *	(Re-)Raise the signal, so that if we're running under
-	 *	a debugger, the debugger can break when it receives
-	 *	the signal.
+	 *	a debugger.
+	 *
+	 *	This allows debuggers to function normally and catch
+	 *	fatal signals.
 	 */
-	fr_unset_signal(sig);	/* Make sure we don't get into a loop */
-
+	fr_unset_signal(sig);		/* Make sure we don't get into a loop */
 	raise(sig);
-
 	fr_exit_now(128 + sig);		/* Function marked as noreturn */
 }
 
