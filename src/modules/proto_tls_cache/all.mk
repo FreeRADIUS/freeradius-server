@@ -1,6 +1,6 @@
 TARGETNAME	:= proto_tls_cache
 
-ifneq "$(TARGETNAME)" ""
+ifneq ($(OPENSSL_LIBS),)
 TARGET		:= $(TARGETNAME).a
 endif
 
