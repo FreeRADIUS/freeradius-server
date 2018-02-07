@@ -1092,7 +1092,7 @@ void fr_fault_set_log_fd(int fd)
  * @param[in] file	the assertion failed in.
  * @param[in] line	of the assertion in the file.
  * @param[in] expr	that was evaluated.
- * @param[in] fmt	Message to print (may be NULL).
+ * @param[in] msg	Message to print (may be NULL).
  * @param[in] ...	Arguments for msg string.
  * @return the value of cond.
  */
