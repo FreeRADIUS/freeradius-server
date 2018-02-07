@@ -28,6 +28,8 @@
 #
 ######################################################################
 server tls-cache {
+	namespace = tls_cache
+
 	#
 	#  This section is run whenever the server needs to read an
 	#  entry from the TLS session cache.

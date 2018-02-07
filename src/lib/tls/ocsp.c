@@ -661,39 +661,40 @@ finish:
 	return ocsp_status;
 }
 
-#define FIND_SECTION(_out, _verb, _name) \
+#define CACHE_SECTION(_out, _verb, _name) \
 do { \
-	_out = cf_section_find(server, _verb, _name);\
-	if ((_out)) found = true; \
+	CONF_SECTION *_tmp; \
+	_tmp = cf_section_find(server_cs, _verb, _name); \
+	if (_tmp) { \
+		if (unlang_compile(_tmp, MOD_AUTHORIZE) < 0) return -1; \
+		found = true; \
+	} \
+	if (actions) _out = _tmp; \
 } while (0)
 
 /** Pre-compile unlang cache actions and store pointers to them
  *
  * @param[out] actions		Structure to hold pointers to actions.
- * @param[in] virtual_server	to lookup actions for.
+ * @param[in] server_cs		to lookup actions for.
  * @return
  *	- -1 on failure.
  *	- 0 on success.
  */
-int tls_ocsp_state_cache_compile(fr_tls_cache_t *actions, char const *virtual_server)
+int tls_ocsp_state_cache_compile(fr_tls_cache_t *actions, CONF_SECTION *server_cs)
 {
-	CONF_SECTION	*server;
-	bool		found = false;
+	bool found = false;
 
-	server = virtual_server_find(virtual_server);
-	if (!server) {
-		ERROR("Virtual server \"%s\" not found", virtual_server);
-		return -1;
-	}
+	if (!fr_cond_assert(server_cs)) return -1;
 
-	FIND_SECTION(actions->load, "load", "ocsp-state");
-	FIND_SECTION(actions->store, "store", "ocsp-state");
+	CACHE_SECTION(actions->load, "load", "ocsp-state");
+	CACHE_SECTION(actions->store, "store", "ocsp-state");
 
 	/*
 	 *	Warn if we couldn't find any actions.
 	 */
 	if (!found) {
-		cf_log_warn(server, "No OCSP session cache actions found in virtual server \"%s\"", virtual_server);
+		cf_log_warn(server_cs, "No ocsp-state cache actions found in virtual server \"%s\"",
+			    cf_section_name2(server_cs));
 	}
 
 	return 0;
@@ -702,30 +703,26 @@ int tls_ocsp_state_cache_compile(fr_tls_cache_t *actions, char const *virtual_se
 /** Pre-compile unlang cache actions and store pointers to them
  *
  * @param[out] actions		Structure to hold pointers to actions.
- * @param[in] virtual_server	to lookup actions for.
+ * @param[in] server_cs		to lookup actions for.
  * @return
  *	- -1 on failure.
  *	- 0 on success.
  */
-int tls_ocsp_staple_cache_compile(fr_tls_cache_t *actions, char const *virtual_server)
+int tls_ocsp_staple_cache_compile(fr_tls_cache_t *actions, CONF_SECTION *server_cs)
 {
-	CONF_SECTION	*server;
-	bool		found = false;
+	bool found = false;
 
-	server = virtual_server_find(virtual_server);
-	if (!server) {
-		ERROR("Virtual server \"%s\" not found", virtual_server);
-		return -1;
-	}
+	if (!fr_cond_assert(server_cs)) return -1;
 
-	FIND_SECTION(actions->load, "load", "ocsp-staple");
-	FIND_SECTION(actions->store, "store", "ocsp-staple");
+	CACHE_SECTION(actions->load, "load", "ocsp-staple");
+	CACHE_SECTION(actions->store, "store", "ocsp-staple");
 
 	/*
 	 *	Warn if we couldn't find any actions.
 	 */
 	if (!found) {
-		cf_log_warn(server, "No OCSP session cache actions found in virtual server \"%s\"", virtual_server);
+		cf_log_warn(server_cs, "No ocsp-staple cache actions found in virtual server \"%s\"",
+			    cf_section_name2(server_cs));
 	}
 
 	return 0;

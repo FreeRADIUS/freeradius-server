@@ -119,36 +119,37 @@ int tls_cache_process(REQUEST *request, CONF_SECTION *action)
 /** Pre-compile unlang cache sections and store pointers to them
  *
  * @param[out] actions		Structure to hold pointers to sections.
- * @param[in] virtual_server	to lookup sections for.
+ * @param[in] server_cs		to lookup sections in.
  * @return
  *	- -1 on failure.
  *	- 0 on success.
  */
-int tls_cache_compile(fr_tls_cache_t *actions, char const *virtual_server)
+int tls_cache_compile(fr_tls_cache_t *actions, CONF_SECTION *server_cs)
 {
-	CONF_SECTION	*server;
 	bool		found = false;
 
-	server = virtual_server_find(virtual_server);
-	if (!server) {
-		ERROR("Virtual server \"%s\" not found", virtual_server);
-		return -1;
-	}
+	if (!fr_cond_assert(server_cs)) return -1;
 
-#define FIND_SECTION(_out, _verb, _name) \
+#define CACHE_SECTION(_out, _verb, _name) \
 do { \
-	_out = cf_section_find(server, _verb, _name);\
-	if ((_out)) found = true; \
+	CONF_SECTION *_tmp; \
+	_tmp = cf_section_find(server_cs, _verb, _name); \
+	if (_tmp) { \
+		if (unlang_compile(_tmp, MOD_AUTHORIZE) < 0) return -1; \
+		found = true; \
+	} \
+	if (actions) _out = _tmp; \
 } while (0)
 
-	FIND_SECTION(actions->load, "load", "tls-session");
-	FIND_SECTION(actions->store, "store", "tls-session");
-	FIND_SECTION(actions->clear, "clear", "tls-session");
+	CACHE_SECTION(actions->load, "load", "tls-session");
+	CACHE_SECTION(actions->store, "store", "tls-session");
+	CACHE_SECTION(actions->clear, "clear", "tls-session");
 
 	/*
 	 *	Warn if we couldn't find any sections.
 	 */
-	if (!found) cf_log_warn(server, "No TLS session cache sections found in virtual server \"%s\"", virtual_server);
+	if (actions && !found) cf_log_warn(server_cs, "No TLS session cache sections found in "
+					   "virtual server \"%s\"", cf_section_name2(server_cs));
 
 	return 0;
 }

@@ -404,7 +404,7 @@ extern CONF_PARSER tls_client_config[];
  */
 int		tls_cache_process(REQUEST *request, CONF_SECTION *action);
 
-int		tls_cache_compile(fr_tls_cache_t *sections, char const *virtual_server);
+int		tls_cache_compile(fr_tls_cache_t *sections, CONF_SECTION *server_cs);
 
 void		tls_cache_deny(tls_session_t *tls_session);
 
@@ -459,9 +459,9 @@ int		tls_ocsp_check(REQUEST *request, SSL *ssl,
 			       X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 			       fr_tls_ocsp_conf_t *conf, bool staple_response);
 
-int		tls_ocsp_state_cache_compile(fr_tls_cache_t *sections, char const *virtual_server);
+int		tls_ocsp_state_cache_compile(fr_tls_cache_t *sections, CONF_SECTION *server_cs);
 
-int		tls_ocsp_staple_cache_compile(fr_tls_cache_t *sections, char const *virtual_server);
+int		tls_ocsp_staple_cache_compile(fr_tls_cache_t *sections, CONF_SECTION *server_cs);
 
 /*
  *	tls/session.c
