@@ -101,7 +101,7 @@ if (Tmp-String-8 != '008000000000000000000000000039383739') {
 # byte
 if (Tmp-String-9 != '3a') {
 	update reply {
-		Filter-ID += 'fail 10'
+		Filter-ID += "fail 10 - expected 3a got %{Tmp-String-9}"
 	}
 }
 
@@ -136,6 +136,6 @@ if (Tmp-String-2 != '100000003938373d') {
 # ipv4prefix
 if (Tmp-String-3 != '00203938373e') {
 	update reply {
-		Filter-Id += 'fail 14'
+		Filter-Id += 'fail 14 expected 00203938373e got %{Tmp-String-3}'
 	}
 }
