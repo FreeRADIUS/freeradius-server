@@ -30,6 +30,7 @@ RCSIDH(time_h, "$Id$")
  */
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/debug.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <inttypes.h>
@@ -86,8 +87,8 @@ typedef struct fr_time_tracking_t {
 #define FR_DLIST_INIT(head) do { head.prev = head.next = &head; } while (0)
 static inline void fr_dlist_insert_head(fr_dlist_t *head, fr_dlist_t *entry)
 {
-	if (!rad_cond_assert(head->next != NULL)) return;
-	if (!rad_cond_assert(head->prev != NULL)) return;
+	if (!fr_cond_assert(head->next != NULL)) return;
+	if (!fr_cond_assert(head->prev != NULL)) return;
 
 	entry->prev = head;
 	entry->next = head->next;
@@ -97,8 +98,8 @@ static inline void fr_dlist_insert_head(fr_dlist_t *head, fr_dlist_t *entry)
 
 static inline void fr_dlist_insert_tail(fr_dlist_t *head, fr_dlist_t *entry)
 {
-	if (!rad_cond_assert(head->next != NULL)) return;
-	if (!rad_cond_assert(head->prev != NULL)) return;
+	if (!fr_cond_assert(head->next != NULL)) return;
+	if (!fr_cond_assert(head->prev != NULL)) return;
 
 	entry->next = head;
 	entry->prev = head->prev;
@@ -112,8 +113,8 @@ static inline void fr_dlist_insert_tail(fr_dlist_t *head, fr_dlist_t *entry)
  */
 static inline void fr_dlist_insert_tail_list(fr_dlist_t *head, fr_dlist_t *list)
 {
-	if (!rad_cond_assert(head->next != NULL)) return;
-	if (!rad_cond_assert(head->prev != NULL)) return;
+	if (!fr_cond_assert(head->next != NULL)) return;
+	if (!fr_cond_assert(head->prev != NULL)) return;
 
 	list->prev->next = head;
 	list->next->prev = head->prev;
@@ -127,8 +128,8 @@ static inline void fr_dlist_insert_tail_list(fr_dlist_t *head, fr_dlist_t *list)
 
 static inline void fr_dlist_remove(fr_dlist_t *entry)
 {
-	if (!rad_cond_assert(entry->next != NULL)) return;
-	if (!rad_cond_assert(entry->prev != NULL)) return;
+	if (!fr_cond_assert(entry->next != NULL)) return;
+	if (!fr_cond_assert(entry->prev != NULL)) return;
 
 	entry->prev->next = entry->next;
 	entry->next->prev = entry->prev;

@@ -289,7 +289,7 @@ static void fr_worker_channel_callback(void *ctx, void const *data, size_t data_
 			break;
 		}
 
-		rad_cond_assert(ok);
+		fr_cond_assert(ok);
 		break;
 
 	case FR_CHANNEL_CLOSE:
@@ -325,7 +325,7 @@ static void fr_worker_channel_callback(void *ctx, void const *data, size_t data_
 			break;
 		}
 
-		rad_cond_assert(ok);
+		fr_cond_assert(ok);
 		break;
 	}
 }

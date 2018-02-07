@@ -25,10 +25,11 @@
  */
 #include <stdbool.h>
 #include <stdint.h>
+#include <talloc.h>
 
 typedef struct fr_fring_buffer fr_fring_t;
 
-fr_fring_t	*fr_fring_alloc(TALLOC_CTX *ctx, uint32_t size, bool lock);
+fr_fring_t		*fr_fring_alloc(TALLOC_CTX *ctx, uint32_t size, bool lock);
 int			fr_fring_overwrite(fr_fring_t *fring, void *obj);
 int			fr_fring_insert(fr_fring_t *fring, void *obj);
 void			*fr_fring_next(fr_fring_t *fring);

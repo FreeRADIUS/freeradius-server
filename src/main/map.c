@@ -963,8 +963,8 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 
 	MAP_VERIFY(original);
 
-	if (!rad_cond_assert(original->lhs != NULL)) return -1;
-	if (!rad_cond_assert(original->rhs != NULL)) return -1;
+	if (!fr_cond_assert(original->lhs != NULL)) return -1;
+	if (!fr_cond_assert(original->rhs != NULL)) return -1;
 
 	rad_assert((original->lhs->type == TMPL_TYPE_LIST) ||
 		   (original->lhs->type == TMPL_TYPE_ATTR) ||
@@ -1530,8 +1530,8 @@ static inline void map_list_mod_debug(REQUEST *request,
 	char *rhs = NULL;
 	char const *quote = "";
 
-	if (!rad_cond_assert(map->lhs != NULL)) return;
-	if (!rad_cond_assert(map->rhs != NULL)) return;
+	if (!fr_cond_assert(map->lhs != NULL)) return;
+	if (!fr_cond_assert(map->rhs != NULL)) return;
 
 	rad_assert(mod || (map->rhs->type == TMPL_TYPE_NULL));
 
@@ -2011,8 +2011,8 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 	*out = NULL;
 
 	MAP_VERIFY(map);
-	if (!rad_cond_assert(map->lhs != NULL)) return -1;
-	if (!rad_cond_assert(map->rhs != NULL)) return -1;
+	if (!fr_cond_assert(map->lhs != NULL)) return -1;
+	if (!fr_cond_assert(map->rhs != NULL)) return -1;
 
 	rad_assert((map->lhs->type == TMPL_TYPE_LIST) || (map->lhs->type == TMPL_TYPE_ATTR));
 
@@ -2746,7 +2746,7 @@ size_t map_snprint(char *out, size_t outlen, vp_map_t const *map)
 		return p - out;
 	}
 
-	if (!rad_cond_assert(map->rhs != NULL)) return -1;
+	if (!fr_cond_assert(map->rhs != NULL)) return -1;
 
 	if ((map->lhs->type == TMPL_TYPE_ATTR) &&
 	    (map->lhs->tmpl_da->type == FR_TYPE_STRING) &&
@@ -2773,8 +2773,8 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 	char buffer[256];
 
 	MAP_VERIFY(map);
-	if (!rad_cond_assert(map->lhs != NULL)) return;
-	if (!rad_cond_assert(map->rhs != NULL)) return;
+	if (!fr_cond_assert(map->lhs != NULL)) return;
+	if (!fr_cond_assert(map->rhs != NULL)) return;
 
 	rad_assert(vp || (map->rhs->type == TMPL_TYPE_NULL));
 

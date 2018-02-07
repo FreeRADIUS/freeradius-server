@@ -1709,7 +1709,7 @@ static ssize_t lpad_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 
 	if (parse_pad(&vpt, &pad, &fill, request, fmt) <= 0) return 0;
 
-	if (!rad_cond_assert(vpt)) return 0;
+	if (!fr_cond_assert(vpt)) return 0;
 
 	/*
 	 *	Print the attribute (left justified).  If it's too
@@ -1761,7 +1761,7 @@ static ssize_t rpad_xlat(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 
 	if (parse_pad(&vpt, &pad, &fill, request, fmt) <= 0) return 0;
 
-	if (!rad_cond_assert(vpt)) return 0;
+	if (!fr_cond_assert(vpt)) return 0;
 
 	/*
 	 *	Print the attribute (left justified).  If it's too

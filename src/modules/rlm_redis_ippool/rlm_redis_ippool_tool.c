@@ -1305,7 +1305,7 @@ static int parse_ip_range(fr_ipaddr_t *start_out, fr_ipaddr_t *end_out, char con
 		uint128_t ip, p_mask;
 
 		/* cond assert to satisfy clang scan */
-		if (!rad_cond_assert((prefix > 0) && (prefix <= 128))) return -1;
+		if (!fr_cond_assert((prefix > 0) && (prefix <= 128))) return -1;
 
 		/* Don't be tempted to cast */
 		memcpy(&ip, start.addr.v6.s6_addr, sizeof(ip));
@@ -1322,7 +1322,7 @@ static int parse_ip_range(fr_ipaddr_t *start_out, fr_ipaddr_t *end_out, char con
 		uint32_t ip;
 
 		/* cond assert to satisfy clang scan */
-		if (!rad_cond_assert((prefix > 0) && (prefix <= 32))) return -1;
+		if (!fr_cond_assert((prefix > 0) && (prefix <= 32))) return -1;
 
 		ip = ntohl(start.addr.v4.s_addr);
 

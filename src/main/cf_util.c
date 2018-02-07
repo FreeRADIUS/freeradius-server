@@ -114,7 +114,7 @@ static CONF_ITEM *cf_find(CONF_ITEM const *parent, CONF_ITEM_TYPE type, char con
 		break;
 
 	default:
-		if (!rad_cond_assert(0)) return NULL;
+		if (!fr_cond_assert(0)) return NULL;
 	}
 
 	/*
@@ -200,7 +200,7 @@ static CONF_ITEM *cf_find_next(CONF_ITEM const *parent, CONF_ITEM const *prev,
 		break;
 
 	default:
-		if (!rad_cond_assert(0)) return NULL;
+		if (!fr_cond_assert(0)) return NULL;
 	}
 
 	if (IS_WILDCARD(ident1)) {
@@ -281,7 +281,7 @@ static inline int _cf_ident1_cmp(void const *a, void const *b)
 	}
 
 	default:
-		if (!rad_cond_assert(0)) return 0;
+		if (!fr_cond_assert(0)) return 0;
 	}
 }
 
@@ -330,7 +330,7 @@ static inline int cf_ident2_cmp(void const *a, void const *b)
 	}
 
 	default:
-		if (!rad_cond_assert(0)) return 0;
+		if (!fr_cond_assert(0)) return 0;
 	}
 }
 
@@ -413,7 +413,7 @@ static CONF_ITEM *cf_remove(CONF_ITEM *parent, CONF_ITEM *child)
 	 *	Fixup the linked list
 	 */
 	found = fr_cursor_remove(&parent->cursor);
-	if (!rad_cond_assert(found == child)) return NULL;
+	if (!fr_cond_assert(found == child)) return NULL;
 
 	in_ident1 = (rbtree_finddata(parent->ident1, child) == child);
 	if (in_ident1 && (!rbtree_deletebydata(parent->ident1, child))) {
@@ -1097,7 +1097,7 @@ int cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value)
 	 *	Remove the old CONF_PAIR
 	 */
 	ci = cf_remove(cf_section_to_item(cs), cf_pair_to_item(cp));
-	if (!rad_cond_assert(!ci || (ci == cf_pair_to_item(cp)))) return -1;
+	if (!fr_cond_assert(!ci || (ci == cf_pair_to_item(cp)))) return -1;
 
 	/*
 	 *	Add the new CONF_PAIR
@@ -1477,7 +1477,7 @@ void *_cf_data_remove(CONF_ITEM *parent, CONF_DATA const *cd)
 	if (!cd) return NULL;
 
 	ci = cf_remove(parent, cf_data_to_item(cd));
-	if (!rad_cond_assert(!ci || (ci == cf_data_to_item(cd)))) return NULL;
+	if (!fr_cond_assert(!ci || (ci == cf_data_to_item(cd)))) return NULL;
 	if (!ci) return NULL;
 
 	talloc_set_destructor(cd, NULL);	/* Disarm the destructor */

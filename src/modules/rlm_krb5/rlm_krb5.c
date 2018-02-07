@@ -229,7 +229,7 @@ static rlm_rcode_t krb5_parse_user(krb5_principal *client, rlm_krb5_t const *ins
 	krb5_error_code ret;
 	char *princ_name;
 
-	rad_cond_assert(inst);
+	fr_cond_assert(inst);
 
 	/*
 	 * 	We can only authenticate user requests which HAVE
@@ -291,8 +291,8 @@ static rlm_rcode_t krb5_process_error(rlm_krb5_t const *inst, REQUEST *request, 
 {
 	rad_assert(ret != 0);
 
-	if (!rad_cond_assert(inst)) return RLM_MODULE_FAIL;
-	if (!rad_cond_assert(conn)) return RLM_MODULE_FAIL;	/* Silences warnings */
+	if (!fr_cond_assert(inst)) return RLM_MODULE_FAIL;
+	if (!fr_cond_assert(conn)) return RLM_MODULE_FAIL;	/* Silences warnings */
 
 	switch (ret) {
 	case KRB5_LIBOS_BADPWDMATCH:

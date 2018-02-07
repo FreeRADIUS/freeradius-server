@@ -126,7 +126,7 @@ static int rediswho_command(rlm_rediswho_t const *inst, REQUEST *request, char c
 		fr_redis_reply_free(reply);
 		return -1;
 	}
-	if (!rad_cond_assert(reply)) goto error;
+	if (!fr_cond_assert(reply)) goto error;
 
 	switch (reply->type) {
 	case REDIS_REPLY_INTEGER:

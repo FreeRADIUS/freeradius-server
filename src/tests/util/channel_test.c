@@ -481,7 +481,7 @@ static void *channel_worker(void *arg)
 	 *	After the garbage collection, all messages marked "done" MUST also be marked "free".
 	 */
 	rcode = fr_message_set_messages_used(ms);
-	rad_cond_assert(rcode == 0);
+	fr_cond_assert(rcode == 0);
 
 	talloc_free(ctx);
 

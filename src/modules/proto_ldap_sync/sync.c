@@ -360,7 +360,7 @@ static int sync_intermediate(sync_state_t *sync, LDAPMessage *msg, UNUSED LDAPCo
 	int			refresh_done = false;
 
 	ret = ldap_parse_intermediate(sync->conn->handle, msg, &oid, &data, NULL, 0);
-	if (!rad_cond_assert(ret == LDAP_SUCCESS)) return -1;	/* should have been caught earlier */
+	if (!fr_cond_assert(ret == LDAP_SUCCESS)) return -1;	/* should have been caught earlier */
 
 	if (!oid || (strcmp(oid, LDAP_SYNC_INFO) != 0)) {
 		WARN("Ignoring intermediateResult with unexpected OID \"%s\"", oid ? oid : "<unknown>");

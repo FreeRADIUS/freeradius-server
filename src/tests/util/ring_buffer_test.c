@@ -26,9 +26,11 @@ RCSID("$Id$")
 #include <string.h>
 #include <freeradius-devel/hash.h>
 #include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/debug.h>
 
 #ifdef HAVE_GETOPT_H
-#	include <getopt.h>
+#  include <getopt.h>
 #endif
 
 #define ALLOC_SIZE (8)
@@ -88,10 +90,10 @@ static void  alloc_blocks(fr_ring_buffer_t *rb, uint32_t *seed, UNUSED int *star
 		array[index] = hash;
 		p = fr_ring_buffer_reserve(rb, 2048);
 
-		if (rad_cond_assert(!p)) exit(EXIT_FAILURE);
+		if (fr_cond_assert(!p)) exit(EXIT_FAILURE);
 
 		data[index] = fr_ring_buffer_alloc(rb, hash);
-		if (rad_cond_assert(data[index] != p)) exit(EXIT_FAILURE);
+		if (fr_cond_assert(data[index] != p)) exit(EXIT_FAILURE);
 
 		if (debug_lvl > 1) printf("%08x\t", hash);
 
@@ -113,7 +115,7 @@ static void  free_blocks(fr_ring_buffer_t *rb, UNUSED uint32_t *seed, int *start
 		index = (*start + i) & (ARRAY_SIZE - 1);
 
 		rcode = fr_ring_buffer_free(rb, array[index]);
-		if (!rad_cond_assert(rcode == 0)) exit(EXIT_FAILURE);
+		if (!fr_cond_assert(rcode == 0)) exit(EXIT_FAILURE);
 
 		used -= array[index];
 		rad_assert(fr_ring_buffer_used(rb) == used);

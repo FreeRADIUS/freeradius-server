@@ -353,7 +353,7 @@ const char *fr_json_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR **vps, const cha
 		/*
 		 *	If we do, get its value array...
 		 */
-		} else if (!rad_cond_assert(json_object_object_get_ex(vp_object, "value", &values))) {
+		} else if (!fr_cond_assert(json_object_object_get_ex(vp_object, "value", &values))) {
 			fr_strerror_printf("Inconsistent JSON tree");
 			json_object_put(obj);
 

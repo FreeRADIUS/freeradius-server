@@ -291,7 +291,7 @@ static ssize_t redis_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		goto finish;
 	}
 
-	if (!rad_cond_assert(reply)) {
+	if (!fr_cond_assert(reply)) {
 		ret = -1;
 		goto finish;
 	}

@@ -365,7 +365,7 @@ static cluster_rcode_t cluster_node_connect(fr_redis_cluster_t *cluster, cluster
 	 */
 	p = inet_ntop(node->pending_addr.ipaddr.af, &node->pending_addr.ipaddr.addr,
 		      node->name, sizeof(node->name));
-	if (!rad_cond_assert(p)) return CLUSTER_OP_FAILED;
+	if (!fr_cond_assert(p)) return CLUSTER_OP_FAILED;
 
 	/*
 	 *	Node has never been used before, needs a pool allocated for it.
@@ -1907,7 +1907,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 
 		fr_pool_connection_release(state->node->pool, request, *conn);	/* Always release the old connection */
 
-		if (!rad_cond_assert(*reply)) return REDIS_RCODE_ERROR;
+		if (!fr_cond_assert(*reply)) return REDIS_RCODE_ERROR;
 
 		RDEBUG("[%i] Processing redirect \"%s\"", state->node->id, (*reply)->str);
 		if (state->redirects++ >= cluster->conf->max_redirects) {

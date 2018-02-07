@@ -636,7 +636,7 @@ static int CC_HINT(nonnull(3,4)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 
 		default:
 			cf_log_err(cp, "Unsupported type %i (%i)", type, FR_BASE_TYPE(type));
-			if (!rad_cond_assert(0)) return -1;	/* Unsupported type */
+			if (!fr_cond_assert(0)) return -1;	/* Unsupported type */
 		}
 
 		for (i = 0; i < count; i++, cp = cf_pair_find_next(cs, cp, rule->name)) {
@@ -1499,7 +1499,7 @@ int _cf_section_rules_push(CONF_SECTION *cs, CONF_PARSER const *rules, char cons
 	 *	Ensure we have a proper terminator, type so we catch
 	 *	missing terminators reliably
 	 */
-	rad_cond_assert(rule_p->type == conf_term.type);
+	fr_cond_assert(rule_p->type == conf_term.type);
 
 	return 0;
 }

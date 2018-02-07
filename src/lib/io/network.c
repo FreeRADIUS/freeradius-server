@@ -516,7 +516,7 @@ static void fr_network_vnode_extend(UNUSED fr_event_list_t *el, int sockfd, int 
 	fr_network_socket_t *s = ctx;
 	fr_network_t *nr = talloc_parent(s);
 
-	rad_cond_assert(s->fd == sockfd);
+	fr_cond_assert(s->fd == sockfd);
 
 	DEBUG3("network vnode");
 

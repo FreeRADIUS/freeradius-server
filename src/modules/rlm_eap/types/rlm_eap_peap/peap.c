@@ -1015,7 +1015,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 			 */
 			ret = request_data_add(request, request->proxy, REQUEST_DATA_EAP_TUNNEL_CALLBACK,
 					       tunnel, false, false, false);
-			rad_cond_assert(ret == 0);
+			fr_cond_assert(ret == 0);
 
 			/*
 			 *	We're not proxying it as EAP, so we've got
@@ -1034,7 +1034,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 				ret = request_data_add(request, request->proxy,
 						       REQUEST_DATA_EAP_MSCHAP_TUNNEL_CALLBACK,
 						       fake, true, false, false);
-				rad_cond_assert(ret == 0);
+				fr_cond_assert(ret == 0);
 
 				/*
 				 *	Do NOT free the fake request!

@@ -60,8 +60,8 @@ static int _eap_session_free(eap_session_t *eap_session)
 	}
 
 #ifdef WITH_VERIFY_PTR
-	if (eap_session->prev_round) (void)rad_cond_assert(talloc_parent(eap_session->prev_round) == eap_session);
-	if (eap_session->this_round) (void)rad_cond_assert(talloc_parent(eap_session->this_round) == eap_session);
+	if (eap_session->prev_round) (void)fr_cond_assert(talloc_parent(eap_session->prev_round) == eap_session);
+	if (eap_session->this_round) (void)fr_cond_assert(talloc_parent(eap_session->this_round) == eap_session);
 #endif
 
 	/*

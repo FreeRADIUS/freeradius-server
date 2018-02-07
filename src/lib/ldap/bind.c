@@ -150,7 +150,7 @@ static void _ldap_bind_io_write(fr_event_list_t *el, int fd, UNUSED int flags, v
 	 */
 	case LDAP_X_CONNECTING:					/* Connection in progress - retry later */
 		ret = ldap_get_option(c->handle, LDAP_OPT_DESC, &fd);
-		if (!rad_cond_assert(ret == LDAP_OPT_SUCCESS)) {
+		if (!fr_cond_assert(ret == LDAP_OPT_SUCCESS)) {
 		error:
 			talloc_free(bind_ctx);
 			fr_ldap_connection_timeout_reset(c);
@@ -163,7 +163,7 @@ static void _ldap_bind_io_write(fr_event_list_t *el, int fd, UNUSED int flags, v
 					 _ldap_bind_io_write,	/* We'll be called again when the conn is open */
 					 _ldap_bind_io_error,
 					 bind_ctx);
-		if (!rad_cond_assert(ret == 0)) goto error;
+		if (!fr_cond_assert(ret == 0)) goto error;
 		break;
 
 	case LDAP_SUCCESS:
@@ -172,7 +172,7 @@ static void _ldap_bind_io_write(fr_event_list_t *el, int fd, UNUSED int flags, v
 					 NULL,
 					 _ldap_bind_io_error,
 					 bind_ctx);
-		if (!rad_cond_assert(ret == 0)) goto error;
+		if (!fr_cond_assert(ret == 0)) goto error;
 		break;
 
 	default:
@@ -225,7 +225,7 @@ int fr_ldap_bind_async(fr_ldap_connection_t *c,
 					 _ldap_bind_io_write,
 					 _ldap_bind_io_error,
 					 bind_ctx);
-		if (!rad_cond_assert(ret == 0)) {
+		if (!fr_cond_assert(ret == 0)) {
 			talloc_free(bind_ctx);
 			return -1;
 		}

@@ -149,7 +149,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 		return CACHE_ERROR;
 	}
 
-	if (!rad_cond_assert(reply)) goto error;
+	if (!fr_cond_assert(reply)) goto error;
 
 	if (reply->type != REDIS_REPLY_ARRAY) {
 		REDEBUG("Bad result type, expected array, got %s",
@@ -446,7 +446,7 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
 		fr_redis_reply_free(reply);
 		return CACHE_ERROR;
 	}
-	if (!rad_cond_assert(reply)) goto error;
+	if (!fr_cond_assert(reply)) goto error;
 
 	if (reply->type == REDIS_REPLY_INTEGER) {
 		cache_status = CACHE_MISS;

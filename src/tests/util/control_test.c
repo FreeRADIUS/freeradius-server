@@ -38,6 +38,7 @@ RCSID("$Id$")
 #  include <pthread.h>
 #endif
 
+#undef MEM
 #define MEM(x) if (!(x)) { fprintf(stderr, "%s[%u] OUT OF MEMORY\n", __FILE__, __LINE__); _exit(EXIT_FAILURE); }
 #define MPRINT1 if (debug_lvl) printf
 #define CONTROL_MAGIC 0xabcd6809

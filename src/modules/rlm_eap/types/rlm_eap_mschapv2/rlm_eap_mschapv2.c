@@ -238,7 +238,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED 
 	 *	Done doing EAP proxy stuff.
 	 */
 	request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
-	if (!rad_cond_assert(eap_session->inst)) return 0;
+	if (!fr_cond_assert(eap_session->inst)) return 0;
 	eapmschapv2_compose(eap_session->inst, eap_session, response);
 	data->code = FR_EAP_MSCHAPV2_SUCCESS;
 
@@ -374,7 +374,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *arg, eap_session_t *eap_se
 	REQUEST			*request = eap_session->request;
 	CONF_SECTION		*unlang;
 
-	if (!rad_cond_assert(eap_session->inst)) return 0;
+	if (!fr_cond_assert(eap_session->inst)) return 0;
 
 	/*
 	 *	Sanity check the response.
@@ -622,7 +622,7 @@ packet_ready:
 		 */
 		ret = request_data_add(request, request->proxy, REQUEST_DATA_EAP_TUNNEL_CALLBACK,
 				       tunnel, false, false, false);
-		rad_cond_assert(ret == 0);
+		fr_cond_assert(ret == 0);
 
 		/*
 		 *	The State attribute is NOT supposed to
@@ -699,7 +699,7 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 	uint8_t 		*p;
 	bool			created_auth_challenge;
 
-	if (!rad_cond_assert(instance)) return RLM_MODULE_FAIL;
+	if (!fr_cond_assert(instance)) return RLM_MODULE_FAIL;
 
 	auth_challenge = fr_pair_find_by_num(request->control, VENDORPEC_MICROSOFT, FR_MSCHAP_CHALLENGE, TAG_ANY);
 	if (auth_challenge && (auth_challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {

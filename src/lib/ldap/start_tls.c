@@ -172,7 +172,7 @@ static void _ldap_start_tls_io_write(fr_event_list_t *el, int fd, UNUSED int fla
 	switch (ret) {
 	case LDAP_X_CONNECTING:					/* Connection in progress - retry later */
 		ret = ldap_get_option(c->handle, LDAP_OPT_DESC, &fd);
-		if (!rad_cond_assert(ret == LDAP_OPT_SUCCESS)) {
+		if (!fr_cond_assert(ret == LDAP_OPT_SUCCESS)) {
 		error:
 			talloc_free(tls_ctx);
 			fr_ldap_connection_timeout_reset(c);
@@ -185,7 +185,7 @@ static void _ldap_start_tls_io_write(fr_event_list_t *el, int fd, UNUSED int fla
 					 _ldap_start_tls_io_write,	/* We'll be called again when the conn is open */
 					 _ldap_start_tls_io_error,
 					 tls_ctx);
-		if (!rad_cond_assert(ret == 0)) goto error;
+		if (!fr_cond_assert(ret == 0)) goto error;
 		break;
 
 	case LDAP_SUCCESS:
@@ -194,7 +194,7 @@ static void _ldap_start_tls_io_write(fr_event_list_t *el, int fd, UNUSED int fla
 					 NULL,
 					 _ldap_start_tls_io_error,
 					 tls_ctx);
-		if (!rad_cond_assert(ret == 0)) goto error;
+		if (!fr_cond_assert(ret == 0)) goto error;
 		break;
 
 	default:
@@ -238,7 +238,7 @@ int fr_ldap_start_tls_async(fr_ldap_connection_t *c, LDAPControl **serverctrls, 
 					 _ldap_start_tls_io_write,
 					 _ldap_start_tls_io_error,
 					 tls_ctx);
-		if (!rad_cond_assert(ret == 0)) {
+		if (!fr_cond_assert(ret == 0)) {
 			talloc_free(tls_ctx);
 			return -1;
 		}

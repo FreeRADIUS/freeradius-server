@@ -740,7 +740,7 @@ void tls_session_msg_cb(int write_p, int msg_version, int content_type,
 	/*
 	 *	Mostly to check for memory corruption...
 	 */
-	if (!rad_cond_assert(session->ssl = ssl)) {
+	if (!fr_cond_assert(session->ssl = ssl)) {
 		ERROR("tls_session_t and ssl arg do not match in tls_session_msg_cb");
 		session->invalid = true;
 		return;
@@ -752,7 +752,7 @@ void tls_session_msg_cb(int write_p, int msg_version, int content_type,
 	 *	We explicitly disable SSLv2/v3, hence the asserts.
 	 */
 #ifdef SSL2_VERSION
-	if (!rad_cond_assert(msg_version != SSL2_VERSION)) {
+	if (!fr_cond_assert(msg_version != SSL2_VERSION)) {
 		ERROR("Invalid version (SSLv2) in handshake");
 		session->invalid = true;
 		return;
@@ -760,7 +760,7 @@ void tls_session_msg_cb(int write_p, int msg_version, int content_type,
 #endif
 
 #ifdef SSL3_VERSION
-	if (!rad_cond_assert(msg_version != SSL3_VERSION)) {
+	if (!fr_cond_assert(msg_version != SSL3_VERSION)) {
 		ERROR("Invalid version (SSLv3) in handshake");
 		session->invalid = true;
 		return;

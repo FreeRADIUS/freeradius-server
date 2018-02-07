@@ -49,7 +49,7 @@ char const *rlm_krb5_error(rlm_krb5_t const *inst, krb5_context context, krb5_er
 	char const *msg;
 	char *buffer;
 
-	if (!rad_cond_assert(inst)) return NULL;
+	if (!fr_cond_assert(inst)) return NULL;
 
 	buffer = krb5_error_buffer;
 	if (!buffer) {

@@ -1110,14 +1110,14 @@ bool fr_cond_assert_fail(char const *file, int line, char const *expr)
  *
  */
 #ifndef NDEBUG
-bool fr_assert_fail(char const *file, unsigned int line, char const *expr)
+bool fr_assert_exit(char const *file, unsigned int line, char const *expr)
 {
 	FR_FAULT_LOG("ASSERT FAILED %s[%u]: %s", file, line, expr);
 	fr_fault(SIGABRT);
 	fr_exit_now(1);
 }
 #else
-bool fr_assert_fail(char const *file, unsigned int line, char const *expr)
+bool fr_assert_exit(char const *file, unsigned int line, char const *expr)
 {
 	FR_FAULT_LOG("ASSERT WOULD FAIL %s[%u]: %s", file, line, expr);
 	return false;

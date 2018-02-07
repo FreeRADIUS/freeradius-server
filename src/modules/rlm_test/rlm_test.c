@@ -194,7 +194,7 @@ static int mod_thread_detach(void *thread)
 
 	INFO("Performing detach for thread %p", (void *)t->value);
 
-	if (!rad_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
+	if (!fr_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
 
 	return 0;
 }
@@ -268,7 +268,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, void *t
 	REXDENT();
 	REDEBUG4("RDEBUG4 error message");
 
-	if (!rad_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
+	if (!fr_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
 
 	return RLM_MODULE_OK;
 }
@@ -280,7 +280,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, void
 {
 	rlm_test_thread_t *t = thread;
 
-	if (!rad_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
+	if (!fr_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
 
 	return RLM_MODULE_OK;
 }
@@ -293,7 +293,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_preacct(UNUSED void *instance, void *thr
 {
 	rlm_test_thread_t *t = thread;
 
-	if (!rad_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
+	if (!fr_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
 
 	return RLM_MODULE_OK;
 }
@@ -305,7 +305,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(UNUSED void *instance, void *
 {
 	rlm_test_thread_t *t = thread;
 
-	if (!rad_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
+	if (!fr_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
 
 	return RLM_MODULE_OK;
 }

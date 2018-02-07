@@ -768,7 +768,7 @@ eap_session_t *eap_session_thaw(REQUEST *request)
 		return NULL;
 	}
 
-	if (!rad_cond_assert(eap_session->inst)) return NULL;
+	if (!fr_cond_assert(eap_session->inst)) return NULL;
 
 	rad_assert(!eap_session->request);	/* If triggered, something didn't freeze the session */
 	eap_session->request = request;

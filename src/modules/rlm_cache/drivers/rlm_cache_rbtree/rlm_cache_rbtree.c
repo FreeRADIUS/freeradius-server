@@ -246,7 +246,7 @@ static cache_status_t cache_entry_insert(rlm_cache_config_t const *config, void 
 	 */
 	if (!rbtree_insert(driver->cache, my_c)) {
 		status = cache_entry_expire(config, instance, request, handle, c->key, c->key_len);
-		if ((status != CACHE_OK) && !rad_cond_assert(0)) return CACHE_ERROR;
+		if ((status != CACHE_OK) && !fr_cond_assert(0)) return CACHE_ERROR;
 
 		if (!rbtree_insert(driver->cache, my_c)) {
 			RERROR("Failed adding entry");

@@ -767,7 +767,7 @@ static int connection_check(fr_pool_t *pool, REQUEST *request)
 			}
 		}
 
-		if (!rad_cond_assert(found)) goto done;
+		if (!fr_cond_assert(found)) goto done;
 
 		ROPTIONAL(RDEBUG, DEBUG, "Closing connection (%" PRIu64 "), from %d unused connections",
 			  found->number, extra);
