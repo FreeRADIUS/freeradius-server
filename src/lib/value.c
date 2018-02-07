@@ -1053,7 +1053,7 @@ static int value_data_hton(value_data_t *dst, PW_TYPE dst_type, void const *src,
 		dst_ptr = (uint8_t *) dst->ipv4prefix;
 
 		if (src_len < dst_len) return -1;
-		if ((dst_ptr[1] & 0x3f) > 32) return -1;
+		if ((((uint8_t const *)src)[1] & 0x3f) > 32) return -1;
 		goto copy;
 
 	case PW_TYPE_IPV6_PREFIX:
