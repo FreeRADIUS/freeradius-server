@@ -21,6 +21,8 @@ protocol/*
 util
 radius
 ethernet
+dhcpv4
+dhcpv6
 
 # Build scripts
 build-radpaths-h
