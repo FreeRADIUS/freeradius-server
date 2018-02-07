@@ -1089,13 +1089,31 @@ void fr_fault_set_log_fd(int fd)
 
 /** A soft assertion which triggers the fault handler in debug builds
  *
- * @param file the assertion failed in.
- * @param line of the assertion in the file.
- * @param expr that was evaluated.
+ * @param[in] file	the assertion failed in.
+ * @param[in] line	of the assertion in the file.
+ * @param[in] expr	that was evaluated.
+ * @param[in] fmt	Message to print (may be NULL).
+ * @param[in] ...	Arguments for msg string.
  * @return the value of cond.
  */
-bool fr_cond_assert_fail(char const *file, int line, char const *expr)
+bool fr_cond_assert_fail(char const *file, int line, char const *expr, char const *msg, ...)
 {
+	if (msg) {
+		char str[256];		/* Decent compilers won't allocate this unless fmt is !NULL... */
+		va_list ap;
+
+		va_start(ap, msg);
+		(void)vsnprintf(str, sizeof(str), msg, ap);
+		va_end(ap);
+
+#ifndef NDEBUG
+		FR_FAULT_LOG("ASSERT FAILED %s[%u]: %s: %s", file, line, expr, str);
+		fr_fault(SIGABRT);
+#else
+		FR_FAULT_LOG("ASSERT WOULD FAIL %s[%u]: %s: %s", file, line, expr, str);
+#endif
+	}
+
 #ifndef NDEBUG
 	FR_FAULT_LOG("ASSERT FAILED %s[%u]: %s", file, line, expr);
 	fr_fault(SIGABRT);

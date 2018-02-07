@@ -72,7 +72,8 @@ int		fr_fault_setup(char const *cmd, char const *program);
 void		fr_fault_set_cb(fr_fault_cb_t func);
 void		fr_fault_set_log_fd(int fd);
 void		fr_fault_log(char const *msg, ...) CC_HINT(format (printf, 1, 2));
-bool		fr_cond_assert_fail(char const *file, int line, char const *expr);
+bool		fr_cond_assert_fail(char const *file, int line, char const *expr, char const *msg, ...)
+		CC_HINT(format (printf, 4, 5));
 
 /** Calls panic_action ifndef NDEBUG, else logs error and evaluates to value of _x
  *
@@ -87,7 +88,24 @@ bool		fr_cond_assert_fail(char const *file, int line, char const *expr);
  *
  * @param _x expression to test (should evaluate to true)
  */
-#define		fr_cond_assert(_x) likely((bool)((_x) ? true : (fr_cond_assert_fail(__FILE__, __LINE__, #_x) && false)))
+#define		fr_cond_assert(_x) likely((bool)((_x) ? true : (fr_cond_assert_fail(__FILE__, __LINE__, #_x, NULL) && false)))
+
+/** Calls panic_action ifndef NDEBUG, else logs error and evaluates to value of _x
+ *
+ * Should be wrapped in a condition, and if false, should cause function to return
+ * an error code.  This allows control to return to the caller if a precondition is
+ * not satisfied and we're not debugging.
+ *
+ * Example:
+ @verbatim
+   if (!fr_cond_assert_msg(request, "Bad stuff happened: %s", fr_syserror(errno)))) return -1
+ @endverbatim
+ *
+ * @param _x	expression to test (should evaluate to true)
+ * @param _fmt	of message to log.
+ * @param ...	fmt arguments.
+ */
+#define		fr_cond_assert_msg(_x, _fmt, ...) likely((bool)((_x) ? true : (fr_cond_assert_fail(__FILE__, __LINE__, #_x, _fmt, ## __VA_ARGS__) && false)))
 
 void		NEVER_RETURNS _fr_exit(char const *file, int line, int status);
 #  define	fr_exit(_x) _fr_exit(__FILE__, __LINE__, (_x))

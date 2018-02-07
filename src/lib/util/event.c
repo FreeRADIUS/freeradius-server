@@ -626,7 +626,8 @@ static int fr_event_fd_delete_internal(fr_event_fd_t *ef)
 		 *	If this fails, assert on debug builds, but ignore it at run-time.
 		 */
 		if (kevent(el->kq, evset, count, NULL, 0, NULL) < 0) {
-			(void) fr_cond_assert("FD was closed without being removed from the KQ" == NULL);
+			(void) fr_cond_assert_msg(false, "FD was closed without being removed from the KQ: %s",
+						  fr_syserror(errno));
 		}
 	}
 
