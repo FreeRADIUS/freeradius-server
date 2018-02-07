@@ -626,7 +626,9 @@ static int _network_socket_free(fr_network_socket_t *s)
 	fr_channel_data_t *cd;
 
 	if (!s->dead) {
-		fr_event_fd_delete(nr->el, s->fd, s->filter);
+		if (fr_event_fd_delete(nr->el, s->fd, s->filter) < 0) {
+			rad_assert("Failed removing socket FD from event loop in _network_socket_free" == NULL);
+		}
 	}
 
 	rbtree_deletebydata(nr->sockets, s);
