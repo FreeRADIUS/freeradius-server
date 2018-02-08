@@ -15,6 +15,20 @@
  */
 #ifndef _FR_VALUE_H
 #define _FR_VALUE_H
+/**
+ * $Id$
+ *
+ * @file include/value.h
+ * @brief Boxed values and functions to manipulate them.
+ *
+ * @copyright 2015-2018 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ */
+RCSIDH(value_h, "$Id$")
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <freeradius-devel/missing.h>		/* For uint128_t */
 #include <freeradius-devel/inet.h>
 #include <freeradius-devel/types.h>
@@ -531,4 +545,7 @@ char		*fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char qu
 
 size_t		fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data, char quote);
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* _FR_VALUE_H */

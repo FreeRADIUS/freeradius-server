@@ -14,15 +14,14 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/*
+/**
  * $Id$
  *
- * @file exec.c
+ * @file main/exec.c
  * @brief Execute external programs.
  *
  * @copyright 2000-2004,2006  The FreeRADIUS server project
  */
-
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>

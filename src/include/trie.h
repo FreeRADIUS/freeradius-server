@@ -15,7 +15,19 @@
  */
 #ifndef _FR_TRIE_H
 #define _FR_TRIE_H
+/**
+ * $Id$
+ *
+ * @file include/trie.h
+ * @brief Prefix trie.
+ *
+ * @copyright 2017 Alan DeKok <aland@freeradius.org>
+ */
+RCSIDH(trie_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 #include <talloc.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -31,4 +43,7 @@ void *fr_trie_match(fr_trie_t *ft, void const *key, size_t keylen) CC_HINT(nonnu
 void *fr_trie_remove(fr_trie_t *ft, void const *key, size_t keylen) CC_HINT(nonnull);
 int fr_trie_walk(fr_trie_t *ft, void *ctx, fr_trie_walk_t callback) CC_HINT(nonnull(1,3));
 
+#ifdef __cplusplus
+}
+#endif
 #endif	/* _FR_TRIE_H */

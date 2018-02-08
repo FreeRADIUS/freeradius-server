@@ -15,7 +15,9 @@
  */
 
 /**
- * @file src/main/dl.c
+ * $Id$
+ *
+ * @file main/dl.c
  * @brief Wrappers around dlopen to manage loading shared objects at runtime.
  *
  * @copyright 2016 The FreeRADIUS server project

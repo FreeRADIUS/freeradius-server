@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file src/main/map_proc_priv.h
+ * @file main/map_proc_priv.h
  * @brief Private map process structures and functions.
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>

@@ -20,7 +20,7 @@
  * @file radiusd.c
  * @brief Main loop of the radius server.
  *
- * @copyright 2000-2016 The FreeRADIUS server project
+ * @copyright 2000-2018 The FreeRADIUS server project
  * @copyright 1999,2000 Miquel van Smoorenburg <miquels@cistron.nl>
  * @copyright 2000 Alan DeKok <aland@ox.org>
  * @copyright 2000 Alan Curry <pacman-radius@cqc.com>
