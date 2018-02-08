@@ -91,6 +91,8 @@ int tls_cache_process(REQUEST *request, CONF_SECTION *action)
 	char const	*module;
 	char const	*component;
 
+	if (!action) return RLM_MODULE_NOOP;
+
 	/*
 	 *	Save the current status of the request.
 	 */
