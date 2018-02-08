@@ -29,8 +29,24 @@ RCSID("$Id$")
 
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
+	VALUE_PAIR *vp;
+
 	if (!fr_pair_find_by_num(request->packet->vps, 0, FR_CHAP_PASSWORD, TAG_ANY)) {
 		return RLM_MODULE_NOOP;
+	}
+
+	/*
+	 *	Create the CHAP-Challenge if it wasn't already in the packet.
+	 *
+	 *	This is so that the rest of the code does not need to
+	 *	understand CHAP.
+	 */
+	vp = fr_pair_find_by_num(request->packet->vps, 0, FR_CHAP_CHALLENGE, TAG_ANY);
+	if (!vp) {
+		RDEBUG("creating CHAP-Challenge from the request authenticator");
+		MEM(vp = fr_pair_afrom_num(request->packet, 0, FR_CHAP_CHALLENGE));
+		fr_pair_value_memcpy(vp, request->packet->vector, sizeof(request->packet->vector));
+		fr_pair_add(&request->packet->vps, vp);
 	}
 
 	if (fr_pair_find_by_num(request->control, 0, FR_AUTH_TYPE, TAG_ANY) != NULL) {
