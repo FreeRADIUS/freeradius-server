@@ -472,7 +472,7 @@ int	regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, ch
 #  endif
 #endif
 
-/* files.c */
+/* users_file.c */
 int		pairlist_read(TALLOC_CTX *ctx, char const *file, PAIR_LIST **list, int complain);
 void		pairlist_free(PAIR_LIST **);
 

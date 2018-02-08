@@ -1,8 +1,4 @@
 /*
- * mainconf.c	Handle the server's configuration.
- *
- * Version:	$Id$
- *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -16,11 +12,17 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * Copyright 2002,2006-2007  The FreeRADIUS server project
- * Copyright 2002  Alan DeKok <aland@ox.org>
  */
 
+/**
+ * $Id$
+ *
+ * @brief Handle the the main server's (radiusd) configuration.
+ * @file main/mainconfig.c
+ *
+ * @copyright 2002,2006-2007  The FreeRADIUS server project
+ * @copyright 2002  Alan DeKok <aland@ox.org>
+ */
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
@@ -803,7 +805,7 @@ do {\
 					cf_log_err(ci, "Failed loading library %s: %s", value, dlerror());
 					talloc_free(cs);
 					return -1;
-				}				
+				}
 			}
 		} /* loop over pairs in ENV */
 	} /* there's an ENV subsection */

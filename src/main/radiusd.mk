@@ -4,7 +4,7 @@ SOURCES := \
     conduit.c \
     client.c \
     crypt.c \
-    files.c \
+    users_file.c \
     mainconfig.c \
     radiusd.c \
     state.c \

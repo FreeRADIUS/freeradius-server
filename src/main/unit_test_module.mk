@@ -3,7 +3,7 @@ SOURCES := \
 	auth.c \
 	client.c \
 	crypt.c \
-	files.c \
+	users_file.c \
 	mainconfig.c \
 	unit_test_module.c \
 	soh.c \
