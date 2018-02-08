@@ -312,7 +312,7 @@ static void request_running(REQUEST *request, fr_state_signal_t action)
 	/*
 	 *	Async (in the same thread, tho) signal to be done.
 	 */
-	if (action == FR_SIGNAL_DONE) goto done;
+	if (action == FR_SIGNAL_CANCEL) goto done;
 
 	/*
 	 *	We ignore all other actions.
@@ -428,7 +428,7 @@ static void request_queued(REQUEST *request, fr_state_signal_t action)
 		request->process(request, action);
 		break;
 
-	case FR_SIGNAL_DONE:
+	case FR_SIGNAL_CANCEL:
 		(void) fr_heap_extract(request->backlog, request);
 		request_delete(request);
 		break;

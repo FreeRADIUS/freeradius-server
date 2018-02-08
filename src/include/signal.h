@@ -37,9 +37,9 @@ extern "C" {
 typedef enum fr_state_signal_t {	/* server action */
 	FR_SIGNAL_INVALID = 0,
 	FR_SIGNAL_RUN,
-	FR_SIGNAL_DONE,			//!< Request is completed.  If a module is signalled
+	FR_SIGNAL_CANCEL,		//!< Request has been cancelled.  If a module is signalled
 					///< with this, the module should stop processing
-					///< the request and cleanup.
+					///< the request and cleanup anything it's done.
 	FR_SIGNAL_DUP,			//!< A duplicate request was received.
 } fr_state_signal_t;
 

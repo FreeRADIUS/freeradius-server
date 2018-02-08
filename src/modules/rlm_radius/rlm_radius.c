@@ -392,7 +392,7 @@ static void mod_radius_signal(REQUEST *request, void *instance, void *thread, vo
 	 *	the IO modules to do additional debugging if
 	 *	necessary.
 	 */
-	if (action == FR_SIGNAL_DONE) {
+	if (action == FR_SIGNAL_CANCEL) {
 		talloc_free(link);
 		return;
 	}

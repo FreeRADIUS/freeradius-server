@@ -1047,7 +1047,7 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 			 *	stopped.  This tells any child modules
 			 *	to clean up timers, etc.
 			 */
-			unlang_signal(state->children[i].child, FR_SIGNAL_DONE);
+			unlang_signal(state->children[i].child, FR_SIGNAL_CANCEL);
 			TALLOC_FREE(state->children[i].child);
 			/* FALL-THROUGH */
 

@@ -324,7 +324,7 @@ static int _rest_io_event_modify(UNUSED CURL *easy, curl_socket_t fd, int what, 
 
 /** Handle asynchronous cancellation of a request
  *
- * If we're signalled that the request has been cancelled (FR_SIGNAL_DONE).
+ * If we're signalled that the request has been cancelled (FR_SIGNAL_CANCEL).
  * Cleanup any pending state and release the connection handle back into the pool.
  *
  * @param[in] request	being cancelled.
@@ -339,7 +339,7 @@ void rest_io_module_action(REQUEST *request, void *instance, void *thread, void 
 	rlm_rest_thread_t	*t = thread;
 	CURLMcode		ret;
 
-	if (action != FR_SIGNAL_DONE) return;
+	if (action != FR_SIGNAL_CANCEL) return;
 
 	RDEBUG("Forcefully cancelling pending REST request");
 
@@ -356,7 +356,7 @@ void rest_io_module_action(REQUEST *request, void *instance, void *thread, void 
 
 /** Handle asynchronous cancellation of a request
  *
- * If we're signalled that the request has been cancelled (FR_SIGNAL_DONE).
+ * If we're signalled that the request has been cancelled (FR_SIGNAL_CANCEL).
  * Cleanup any pending state and release the connection handle back into the pool.
  *
  * @param[in] request	being cancelled.

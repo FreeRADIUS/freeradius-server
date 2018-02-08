@@ -159,7 +159,7 @@ static void tacacs_running(REQUEST *request, fr_state_signal_t action)
 	REQUEST_VERIFY(request);
 
 	switch (action) {
-	case FR_SIGNAL_DONE:
+	case FR_SIGNAL_CANCEL:
 		goto done;
 
 	default:
@@ -427,7 +427,7 @@ static void tacacs_queued(REQUEST *request, fr_state_signal_t action)
 		request->process(request, action);
 		break;
 
-	case FR_SIGNAL_DONE:
+	case FR_SIGNAL_CANCEL:
 		(void) fr_heap_extract(request->backlog, request);
 		request_delete(request);
 		break;

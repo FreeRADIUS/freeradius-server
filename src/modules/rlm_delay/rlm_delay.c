@@ -137,7 +137,7 @@ static rlm_rcode_t mod_delay_return(UNUSED REQUEST *request,
 static void mod_delay_cancel(REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *ctx,
 			     fr_state_signal_t action)
 {
-	if (action != FR_SIGNAL_DONE) return;
+	if (action != FR_SIGNAL_CANCEL) return;
 
 	RDEBUG2("Cancelling delay");
 
@@ -207,7 +207,7 @@ static xlat_action_t xlat_delay_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
 static void xlat_delay_cancel(REQUEST *request, UNUSED void *instance, UNUSED void *thread,
 			      void *rctx, fr_state_signal_t action)
 {
-	if (action != FR_SIGNAL_DONE) return;
+	if (action != FR_SIGNAL_CANCEL) return;
 
 	RDEBUG2("Cancelling delay");
 
