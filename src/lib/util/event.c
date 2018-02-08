@@ -1794,7 +1794,7 @@ static int _event_list_free(fr_event_list_t *el)
 
 	talloc_free_children(el);
 
-	close(el->kq);
+	if (el->kq >= 0) close(el->kq);
 
 	return 0;
 }
@@ -1810,26 +1810,35 @@ static int _event_list_free(fr_event_list_t *el)
  */
 fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t status, void *status_uctx)
 {
-	fr_event_list_t *el;
-	struct kevent kev;
+	fr_event_list_t	*el;
+	struct kevent	kev;
 
 	el = talloc_zero(ctx, fr_event_list_t);
 	if (!fr_cond_assert(el)) {
+		fr_strerror_printf("Out of memory");
 		return NULL;
 	}
+	el->kq = -1;	/* So destructor can be used before kqueue() provides us with fd */
 	talloc_set_destructor(el, _event_list_free);
 
 	el->times = fr_heap_create(fr_event_timer_cmp, offsetof(fr_event_timer_t, heap));
 	if (!el->times) {
+		fr_strerror_printf("Failed allocating event heap");
+	error:
 		talloc_free(el);
 		return NULL;
 	}
+
 	el->fds = rbtree_create(el, fr_event_fd_cmp, NULL, 0);
+	if (!el->fds) {
+		fr_strerror_printf("Failed allocating FD tree");
+		goto error;
+	}
 
 	el->kq = kqueue();
 	if (el->kq < 0) {
-		talloc_free(el);
-		return NULL;
+		fr_strerror_printf("Failed allocating kqueue: %s", fr_syserror(errno));
+		goto error;
 	}
 
 	FR_DLIST_INIT(el->pre_callbacks);
@@ -1843,8 +1852,8 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 	 */
 	EV_SET(&kev, 0, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFNOP, 0, NULL);
 	if (kevent(el->kq, &kev, 1, NULL, 0, NULL) < 0) {
-		talloc_free(el);
-		return NULL;
+		fr_strerror_printf("Failed adding exit callback to kqueue: %s", fr_syserror(errno));
+		goto error;
 	}
 
 	return el;
