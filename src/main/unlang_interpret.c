@@ -766,7 +766,13 @@ rlm_rcode_t unlang_interpret_synchronous(REQUEST *request, CONF_SECTION *cs, rlm
 	 *	Don't talloc from the request
 	 *	as we'll almost certainly leave holes in the memory pool.
 	 */
-	MEM(el = fr_event_list_alloc(NULL, NULL, NULL));
+	el = fr_event_list_alloc(NULL, NULL, NULL);
+	if (!el) {
+		RPERROR("Failed creating temporary event loop");
+		rad_assert(0);		/* Cause debug builds to die */
+		return RLM_MODULE_FAIL;
+	}
+
 	MEM(backlog = fr_heap_create(_unlang_request_ptr_cmp, offsetof(REQUEST, runnable_id)));
 	old_el = request->el;
 	old_backlog = request->backlog;
