@@ -164,9 +164,6 @@ static int home_server_addr_cmp(void const *one, void const *two)
 	if (a->proto > b->proto) return +1;
 #endif
 
-	rcode = fr_ipaddr_cmp(&a->src_ipaddr, &b->src_ipaddr);
-	if (rcode != 0) return rcode;
-
 	return fr_ipaddr_cmp(&a->ipaddr, &b->ipaddr);
 }
 
