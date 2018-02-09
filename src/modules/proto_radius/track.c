@@ -144,7 +144,7 @@ int fr_radius_tracking_entry_delete(fr_tracking_t *ft, fr_tracking_entry_t *entr
 		entry->reply_len = 0;
 	}
 
-	rad_assert(entry->ev == NULL);
+	if (entry->ev) talloc_const_free(entry->ev);
 	entry->timestamp = 0;
 
 	/*
