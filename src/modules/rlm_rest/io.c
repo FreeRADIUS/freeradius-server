@@ -61,12 +61,14 @@ static inline void _rest_io_demux(rlm_rest_thread_t *thread, CURLM *mandle)
 
 			rad_assert(candle);
 
-			curl_multi_remove_handle(mandle, candle);
-
 			thread->transfers--;
 
 			ret = curl_easy_getinfo(candle, CURLINFO_PRIVATE, &request);
-			if (!fr_cond_assert(ret == CURLE_OK)) return;
+			if (!fr_cond_assert_msg(ret == CURLE_OK,
+						"Failed retrieving request data from CURL easy handle (candle)")) {
+				curl_multi_remove_handle(mandle, candle);
+				return;
+			}
 
 			REQUEST_VERIFY(request);
 
@@ -76,6 +78,12 @@ static inline void _rest_io_demux(rlm_rest_thread_t *thread, CURLM *mandle)
 			if (m->data.result != CURLE_OK) {
 				REDEBUG("%s (%i)", curl_easy_strerror(m->data.result), m->data.result);
 			}
+
+			/*
+			 *	Looks like this needs to be done last,
+			 *	else m->data.result ends up being junk.
+			 */
+			curl_multi_remove_handle(mandle, candle);
 
 			unlang_resumable(request);
 		}
