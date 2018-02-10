@@ -1271,6 +1271,61 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 	return len;
 }
 
+/** Convert octets to a fixed size value box value
+ *
+ * All fixed size types are allowed.
+ *
+ * @param ctx		unused.
+ * @param dst		Where to write result of casting.
+ * @param dst_type	to cast to.
+ * @param dst_enumv	enumeration values.
+ * @param src		Input data.
+ */
+static int fr_value_box_fixed_size_from_ocets(fr_value_box_t *dst,
+					      fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
+					      fr_value_box_t const *src)
+{
+	switch (dst_type) {
+	case FR_TYPE_FIXED_SIZE:
+		break;
+
+	default:
+		rad_assert(0);
+		return -1;
+	}
+
+	if (src->datum.length < fr_value_box_network_sizes[dst_type][0]) {
+		fr_strerror_printf("Invalid cast from %s to %s.  Source is length %zd is smaller than "
+				   "destination type size %zd",
+				   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
+				   fr_int2str(dict_attr_types, dst_type, "<INVALID>"),
+				   src->datum.length,
+				   fr_value_box_network_sizes[dst_type][0]);
+		return -1;
+	}
+
+	if (src->datum.length > fr_value_box_network_sizes[dst_type][1]) {
+		fr_strerror_printf("Invalid cast from %s to %s.  Source length %zd is greater than "
+				   "destination type size %zd",
+				   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
+				   fr_int2str(dict_attr_types, dst_type, "<INVALID>"),
+				   src->datum.length,
+				   fr_value_box_network_sizes[dst_type][1]);
+		return -1;
+	}
+
+	/*
+	 *	Copy the raw octets into the datum of a value_box
+	 *	inverting bytesex for uint32s (if LE).
+	 */
+	memcpy(&dst->datum, src->vb_octets, fr_value_box_field_sizes[dst_type]);
+	dst->type = dst_type;
+	dst->enumv = dst_enumv;
+	fr_value_box_hton(dst, dst);
+
+	return 0;
+}
+
 /** v4 to v6 mapping prefix
  *
  * Part of the IPv6 range is allocated to represent IPv4 addresses.
@@ -1285,11 +1340,11 @@ static uint8_t const v4_v6_map[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
  * @param ctx		unused.
  * @param dst		Where to write result of casting.
  * @param dst_type	to cast to.
- * @param dst_enumv	unused.
+ * @param dst_enumv	enumeration values.
  * @param src		Input data.
  */
 static inline int fr_value_box_cast_to_strvalue(TALLOC_CTX *ctx, fr_value_box_t *dst,
-						fr_type_t dst_type, UNUSED fr_dict_attr_t const *dst_enumv,
+						fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 						fr_value_box_t const *src)
 {
 	if (!fr_cond_assert(dst_type == FR_TYPE_STRING)) return -1;
@@ -1315,6 +1370,7 @@ static inline int fr_value_box_cast_to_strvalue(TALLOC_CTX *ctx, fr_value_box_t 
 
 	if (!dst->vb_strvalue) return -1;
 	dst->type = FR_TYPE_STRING;
+	dst->enumv = dst_enumv;
 
 	return 0;
 }
@@ -1326,7 +1382,7 @@ static inline int fr_value_box_cast_to_strvalue(TALLOC_CTX *ctx, fr_value_box_t 
  * @param ctx		unused.
  * @param dst		Where to write result of casting.
  * @param dst_type	to cast to.
- * @param dst_enumv	unused.
+ * @param dst_enumv	enumeration values.
  * @param src		Input data.
  */
 static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *dst,
@@ -1396,6 +1452,7 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 	talloc_set_type(bin, uint8_t);
 	fr_value_box_memsteal(ctx, dst, dst_enumv, bin, src->tainted);
 	dst->type = FR_TYPE_OCTETS;
+	dst->enumv = dst_enumv;
 
 	return 0;
 }
@@ -1412,7 +1469,7 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
  * @param ctx		unused.
  * @param dst		Where to write result of casting.
  * @param dst_type	to cast to.
- * @param dst_enumv	unused.
+ * @param dst_enumv	enumeration values.
  * @param src		Input data.
  */
 static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t *dst,
@@ -1499,6 +1556,7 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 	dst->vb_ip.prefix = 32;
 	dst->vb_ip.scope_id = 0;
 	dst->type = FR_TYPE_IPV4_ADDR;
+	dst->enumv = dst_enumv;
 
 	return 0;
 }
@@ -1514,7 +1572,7 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
  * @param ctx		unused.
  * @param dst		Where to write result of casting.
  * @param dst_type	to cast to.
- * @param dst_enumv	unused.
+ * @param dst_enumv	enumeration values.
  * @param src		Input data.
  */
 static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_t *dst,
@@ -1598,6 +1656,7 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 	dst->vb_ip.af = AF_INET;
 	dst->vb_ip.scope_id = 0;
 	dst->type = FR_TYPE_IPV4_PREFIX;
+	dst->enumv = dst_enumv;
 
 	return 0;
 }
@@ -1613,7 +1672,7 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
  * @param ctx		unused.
  * @param dst		Where to write result of casting.
  * @param dst_type	to cast to.
- * @param dst_enumv	unused.
+ * @param dst_enumv	enumeration values.
  * @param src		Input data.
  */
 static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t *dst,
@@ -1700,6 +1759,7 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
 	dst->vb_ip.af = AF_INET6;
 	dst->vb_ip.prefix = 128;
 	dst->type = FR_TYPE_IPV6_ADDR;
+	dst->enumv = dst_enumv;
 
 	return 0;
 }
@@ -1715,7 +1775,7 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
  * @param ctx		unused.
  * @param dst		Where to write result of casting.
  * @param dst_type	to cast to.
- * @param dst_enumv	unused.
+ * @param dst_enumv	enumeration values.
  * @param src		Input data.
  */
 static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_t *dst,
@@ -1781,6 +1841,284 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
 
 	dst->vb_ip.af = AF_INET6;
 	dst->type = FR_TYPE_IPV6_PREFIX;
+	dst->enumv = dst_enumv;
+
+	return 0;
+}
+
+/** Convert any supported type to a bool
+ *
+ * Allowed input types are:
+ * - FR_TYPE_STRING ("yes", "true", "no", "false")
+ *
+ * @param ctx		unused.
+ * @param dst		Where to write result of casting.
+ * @param dst_type	to cast to.
+ * @param dst_enumv	enumeration values.
+ * @param src		Input data.
+ */
+static inline int fr_value_box_cast_to_bool(TALLOC_CTX *ctx, fr_value_box_t *dst,
+					    fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
+					    fr_value_box_t const *src)
+{
+	switch (src->type) {
+	case FR_TYPE_STRING:
+		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
+				          src->vb_strvalue, src->datum.length, '\0', false) < 0) return -1;
+		break;
+
+
+	default:
+		break;
+	}
+
+	dst->type = FR_TYPE_BOOL;
+	dst->enumv = dst_enumv;
+
+	return 0;
+}
+
+/** Convert any supported type to a uint8
+ *
+ * Allowed input types are:
+ * - FR_TYPE_BOOL
+ * - FR_TYPE_INT8 (if positive)
+ * - FR_TYPE_STRING
+ * - FR_TYPE_OCTETS
+ *
+ * @param ctx		unused.
+ * @param dst		Where to write result of casting.
+ * @param dst_type	to cast to.
+ * @param dst_enumv	enumeration values.
+ * @param src		Input data.
+ */
+static inline int fr_value_box_cast_to_uint8(TALLOC_CTX *ctx, fr_value_box_t *dst,
+					     fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
+					     fr_value_box_t const *src)
+{
+	switch (src->type) {
+	case FR_TYPE_BOOL:
+		dst->vb_uint8 = (src->vb_bool == true) ? 1 : 0;
+		break;
+
+	case FR_TYPE_STRING:
+		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
+				          src->vb_strvalue, src->datum.length, '\0', false) < 0) return -1;
+		break;
+
+	default:
+		if (fr_value_box_fixed_size_from_ocets(dst, dst_type, dst_enumv, src) < 0) return -1;
+		break;
+	}
+
+	dst->type = FR_TYPE_UINT8;
+	dst->enumv = dst_enumv;
+
+	return 0;
+}
+
+/** Convert any supported type to a uint16
+ *
+ * Allowed input types are:
+ * - FR_TYPE_BOOL
+ * - FR_TYPE_UINT8
+ * - FR_TYPE_STRING
+ * - FR_TYPE_OCTETS
+ *
+ * @param ctx		unused.
+ * @param dst		Where to write result of casting.
+ * @param dst_type	to cast to.
+ * @param dst_enumv	enumeration values.
+ * @param src		Input data.
+ */
+static inline int fr_value_box_cast_to_uint16(TALLOC_CTX *ctx, fr_value_box_t *dst,
+					      fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
+					      fr_value_box_t const *src)
+{
+	switch (src->type) {
+	case FR_TYPE_BOOL:
+		dst->vb_uint16 = (src->vb_bool == true) ? 1 : 0;
+		break;
+
+	case FR_TYPE_UINT8:
+		dst->vb_uint16 = src->vb_uint8;
+		break;
+
+	case FR_TYPE_INT8:
+		if (src->vb_int8 < 0 ) {
+			fr_strerror_printf("Invalid cast: From int8 to uint8.  "
+					   "signed value %d is negative ", src->vb_int8);
+			return -1;
+		}
+		dst->vb_uint16 = (uint8_t)src->vb_int8;
+		break;
+
+	case FR_TYPE_STRING:
+		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
+				          src->vb_strvalue, src->datum.length, '\0', false) < 0) return -1;
+		break;
+
+	default:
+		if (fr_value_box_fixed_size_from_ocets(dst, dst_type, dst_enumv, src) < 0) return -1;
+		break;
+	}
+
+	dst->type = FR_TYPE_UINT16;
+	dst->enumv = dst_enumv;
+
+	return 0;
+}
+
+/** Convert any supported type to a uint32
+ *
+ * Allowed input types are:
+ * - FR_TYPE_BOOL
+ * - FR_TYPE_UINT8
+ * - FR_TYPE_UINT16
+ * - FR_TYPE_STRING
+ * - FR_TYPE_OCTETS
+ *
+ * @param ctx		unused.
+ * @param dst		Where to write result of casting.
+ * @param dst_type	to cast to.
+ * @param dst_enumv	enumeration values.
+ * @param src		Input data.
+ */
+static inline int fr_value_box_cast_to_uint32(TALLOC_CTX *ctx, fr_value_box_t *dst,
+					      fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
+					      fr_value_box_t const *src)
+{
+	switch (src->type) {
+	case FR_TYPE_BOOL:
+		dst->vb_uint32 = (src->vb_bool == true) ? 1 : 0;
+		break;
+
+	case FR_TYPE_UINT8:
+		dst->vb_uint32 = src->vb_uint8;
+		break;
+
+	case FR_TYPE_UINT16:
+		dst->vb_uint32 = src->vb_uint16;
+		break;
+
+	case FR_TYPE_INT8:
+		if (src->vb_int8 < 0 ) {
+			fr_strerror_printf("Invalid cast: From int8 to uint8.  "
+					   "signed value %d is negative ", src->vb_int8);
+			return -1;
+		}
+		dst->vb_uint32 = (uint8_t)src->vb_int8;
+		break;
+
+	case FR_TYPE_INT16:
+		if (src->vb_int16 < 0 ) {
+			fr_strerror_printf("Invalid cast: From int16 to uint16.  "
+					   "signed value %d is negative ", src->vb_int16);
+			return -1;
+		}
+		dst->vb_uint32 = (uint16_t)src->vb_int16;
+		break;
+
+	case FR_TYPE_DATE:
+		dst->vb_uint32 = src->vb_date;
+		break;
+
+	case FR_TYPE_STRING:
+		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
+				          src->vb_strvalue, src->datum.length, '\0', false) < 0) return -1;
+		break;
+
+	default:
+		if (fr_value_box_fixed_size_from_ocets(dst, dst_type, dst_enumv, src) < 0) return -1;
+		break;
+	}
+
+	dst->type = FR_TYPE_UINT32;
+	dst->enumv = dst_enumv;
+
+	return 0;
+}
+
+/** Convert any supported type to a uint64
+ *
+ * Allowed input types are:
+ * - FR_TYPE_BOOL
+ * - FR_TYPE_UINT8
+ * - FR_TYPE_UINT16
+ * - FR_TYPE_UINT32
+ * - FR_TYPE_STRING
+ * - FR_TYPE_OCTETS
+ *
+ * @param ctx		unused.
+ * @param dst		Where to write result of casting.
+ * @param dst_type	to cast to.
+ * @param dst_enumv	enumeration values.
+ * @param src		Input data.
+ */
+static inline int fr_value_box_cast_to_uint64(TALLOC_CTX *ctx, fr_value_box_t *dst,
+					      fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
+					      fr_value_box_t const *src)
+{
+	switch (src->type) {
+	case FR_TYPE_BOOL:
+		dst->vb_uint64 = (src->vb_bool == true) ? 1 : 0;
+		break;
+
+	case FR_TYPE_UINT8:
+		dst->vb_uint64 = src->vb_uint8;
+		break;
+
+	case FR_TYPE_UINT16:
+		dst->vb_uint64 = src->vb_uint16;
+		break;
+
+	case FR_TYPE_UINT32:
+		dst->vb_uint64 = src->vb_uint32;
+		break;
+
+	case FR_TYPE_INT8:
+		if (src->vb_int8 < 0 ) {
+			fr_strerror_printf("Invalid cast: From int8 to uint8.  "
+					   "signed value %d is negative ", src->vb_int8);
+			return -1;
+		}
+		dst->vb_uint64 = (uint8_t)src->vb_int8;
+		break;
+
+	case FR_TYPE_INT16:
+		if (src->vb_int16 < 0 ) {
+			fr_strerror_printf("Invalid cast: From int16 to uint16.  "
+					   "signed value %d is negative ", src->vb_int16);
+			return -1;
+		}
+		dst->vb_uint64 = (uint16_t)src->vb_int16;
+		break;
+
+	case FR_TYPE_INT32:
+		if (src->vb_int32 < 0 ) {
+			fr_strerror_printf("Invalid cast: From int32 to uint32.  "
+					   "signed value %d is negative ", src->vb_int32);
+			return -1;
+		}
+		dst->vb_uint64 = (uint32_t)src->vb_int32;
+		break;
+
+	case FR_TYPE_DATE:
+		dst->vb_uint64 = src->vb_date;
+		break;
+
+	case FR_TYPE_STRING:
+		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
+				          src->vb_strvalue, src->datum.length, '\0', false) < 0) return -1;
+		break;
+
+	default:
+		if (fr_value_box_fixed_size_from_ocets(dst, dst_type, dst_enumv, src) < 0) return -1;
+		break;
+	}
+
+	dst->type = FR_TYPE_UINT64;
+	dst->enumv = dst_enumv;
 
 	return 0;
 }
@@ -1856,10 +2194,20 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	case FR_TYPE_COMBO_IP_PREFIX:
 	case FR_TYPE_ETHERNET:
 	case FR_TYPE_BOOL:
+		return fr_value_box_cast_to_bool(ctx, dst, dst_type, dst_enumv, src);
+
 	case FR_TYPE_UINT8:
+		return fr_value_box_cast_to_uint8(ctx, dst, dst_type, dst_enumv, src);
+
 	case FR_TYPE_UINT16:
+		return fr_value_box_cast_to_uint16(ctx, dst, dst_type, dst_enumv, src);
+
 	case FR_TYPE_UINT32:
+		return fr_value_box_cast_to_uint32(ctx, dst, dst_type, dst_enumv, src);
+
 	case FR_TYPE_UINT64:
+		return fr_value_box_cast_to_uint64(ctx, dst, dst_type, dst_enumv, src);
+
 	case FR_TYPE_INT8:
 	case FR_TYPE_INT16:
 	case FR_TYPE_INT32:
@@ -1922,89 +2270,6 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		goto fixed_length;
 	}
 
-	if (dst_type == FR_TYPE_UINT16) {
-		switch (src->type) {
-		case FR_TYPE_UINT8:
-			dst->vb_uint16 = src->vb_uint8;
-			break;
-
-		case FR_TYPE_OCTETS:
-			goto do_octets;
-
-		default:
-			goto invalid_cast;
-		}
-		goto fixed_length;
-	}
-
-	/*
-	 *	We can cast LONG uint32s to SHORTER ones, so long
-	 *	as the long one is on the LHS.
-	 */
-	if (dst_type == FR_TYPE_UINT32) {
-		switch (src->type) {
-		case FR_TYPE_UINT8:
-			dst->vb_uint32 = src->vb_uint8;
-			break;
-
-		case FR_TYPE_UINT16:
-			dst->vb_uint32 = src->vb_uint16;
-			break;
-
-		case FR_TYPE_INT32:
-			if (src->vb_int32 < 0 ) {
-				fr_strerror_printf("Invalid cast: From signed to uint32.  "
-						   "signed value %d is negative ", src->vb_int32);
-				return -1;
-			}
-			dst->vb_uint32 = (uint32_t)src->vb_int32;
-			break;
-
-		case FR_TYPE_OCTETS:
-			goto do_octets;
-
-		default:
-			goto invalid_cast;
-		}
-		goto fixed_length;
-	}
-
-	/*
-	 *	For uint32s, we allow the casting of a SMALL type to
-	 *	a larger type, but not vice-versa.
-	 */
-	if (dst_type == FR_TYPE_UINT64) {
-		switch (src->type) {
-		case FR_TYPE_UINT8:
-			dst->vb_uint64 = src->vb_uint8;
-			break;
-
-		case FR_TYPE_UINT16:
-			dst->vb_uint64 = src->vb_uint16;
-			break;
-
-		case FR_TYPE_UINT32:
-			dst->vb_uint64 = src->vb_uint32;
-			break;
-
-		case FR_TYPE_DATE:
-			dst->vb_uint64 = src->vb_date;
-			break;
-
-		case FR_TYPE_OCTETS:
-			goto do_octets;
-
-		default:
-		invalid_cast:
-			fr_strerror_printf("Invalid cast from %s to %s",
-					   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
-					   fr_int2str(dict_attr_types, dst_type, "<INVALID>"));
-			return -1;
-
-		}
-		goto fixed_length;
-	}
-
 	/*
 	 *	We can cast uint32s less that < INT_MAX to signed
 	 */
@@ -2040,7 +2305,11 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 			goto do_octets;
 
 		default:
-			goto invalid_cast;
+		invalid_cast:
+			fr_strerror_printf("Invalid cast from %s to %s",
+					   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
+					   fr_int2str(dict_attr_types, dst_type, "<INVALID>"));
+			return -1;
 		}
 		goto fixed_length;
 	}
