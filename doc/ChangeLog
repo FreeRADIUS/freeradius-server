@@ -16,6 +16,8 @@ FreeRADIUS 3.0.17 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	* Minor cleanups for %{debug_attr:&request} from Isaac Boukris.
 	* Be more aggressive about cleaning up cached certificate attributes,
 	  due to deficiencies in OpenSSL.  Reported by Nicolas Reich.
+	* Be more accepting when parsing IPv6 addresses.  Bug noted
+	  by Klara Mall.
 
 FreeRADIUS 3.0.16 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	Feature improvements
