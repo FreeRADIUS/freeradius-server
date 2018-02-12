@@ -522,14 +522,21 @@ int fr_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, bool res
 	size_t len, i;
 
 	len = (inlen >= 0) ? (size_t)inlen : strlen(value);
-	for (i = 0; i < len; i++) switch (value[i]) {
+
 	/*
 	 *	':' is illegal in domain names and IPv4 addresses.
 	 *	Must be v6 and cannot be a domain.
 	 */
-	case ':':
-		return fr_pton6(out, value, inlen, false, false);
+	if (strchr(value, ':') != NULL) {
+		if (af == AF_INET) {
+			fr_strerror_printf("Invalid IPv4 address");
+			return -1;
+		}
 
+		return fr_pton6(out, value, inlen, false, false);
+	}
+
+	for (i = 0; i < len; i++) switch (value[i]) {
 	/*
 	 *	Chars which don't really tell us anything
 	 */
