@@ -520,63 +520,139 @@ int fr_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
 int fr_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, bool resolve)
 {
 	size_t len, i;
+	bool hostname = true;
+	bool ipv4 = true;
+	bool ipv6 = true;
 
 	len = (inlen >= 0) ? (size_t)inlen : strlen(value);
 
+	for (i = 0; i < len; i++) {
+		/*
+		 *	These are valid for IPv4, IPv6, and host names.
+		 */
+		if ((value[i] >= '0') && (value[i] <= '9')) {
+			continue;
+		}
+
+		/*
+		 *	These are invalid for IPv4, but OK for IPv6
+		 *	and host names.
+		 */
+		if ((value[i] >= 'a') && (value[i] <= 'f')) {
+			ipv4 = false;
+			continue;
+		}
+
+		/*
+		 *	These are invalid for IPv4, but OK for IPv6
+		 *	and host names.
+		 */
+		if ((value[i] >= 'A') && (value[i] <= 'F')) {
+			ipv4 = false;
+			continue;
+		}
+
+		/*
+		 *	This is only valid for IPv6 addresses.
+		 */
+		if (value[i] == ':') {
+			ipv4 = false;
+			hostname = false;
+			continue;
+		}
+
+		/*
+		 *	Valid for IPv4 and host names, not for IPv6.
+		 */
+		if (value[i] == '.') {
+			ipv6 = false;
+			continue;
+		}
+
+		/*
+		 *	Netmasks are allowed by us, and MUST come at
+		 *	the end of the address.
+		 */
+		if (value[i] == '/') {
+			break;
+		}
+
+		/*
+		 *	Any characters other than what are checked for
+		 *	above can't be IPv4 or IPv6 addresses.
+		 */
+		ipv4 = false;
+		ipv6 = false;
+	}
+
 	/*
-	 *	':' is illegal in domain names and IPv4 addresses.
-	 *	Must be v6 and cannot be a domain.
+	 *	It's not an IPv4 or IPv6 address.  It MUST be a host
+	 *	name.
 	 */
-	if (strchr(value, ':') != NULL) {
-		if (af == AF_INET) {
-			fr_strerror_printf("Invalid IPv4 address");
+	if (!ipv4 && !ipv6) {
+		/*
+		 *	Not an IPv4 or IPv6 address, and we weren't
+		 *	asked to do DNS resolution, we can't do it.
+		 */
+		if (!resolve) {
+			fr_strerror_printf("Not IPv4/6 address, and asked not to resolve");
 			return -1;
 		}
 
-		return fr_pton6(out, value, inlen, false, false);
+		/*
+		 *	It's not a hostname, either, so bail out
+		 *	early.
+		 */
+		if (!hostname) {
+			fr_strerror_printf("Invalid address");
+			return -1;
+		}
+
+		/*
+		 *	Fall through to resolving the address, using
+		 *	whatever address family they prefer.  If they
+		 *	don't specify an address family, force IPv4.
+		 */
+		if (af == AF_UNSPEC) af = AF_INET;
 	}
 
-	for (i = 0; i < len; i++) switch (value[i]) {
 	/*
-	 *	Chars which don't really tell us anything
+	 *	The name has a ':' in it.  Therefore it must be an
+	 *	IPv6 address.  Error out if the caller specified IPv4.
+	 *	Otherwise, force IPv6.
 	 */
-	case '.':
-	case '/':
-		continue;
+	if (ipv6) {
+		if (af == AF_INET) {
+			fr_strerror_printf("Invalid address");
+			return -1;
+		}
+
+		af = AF_INET6;
+	}
+
+	/*
+	 *	Use whatever the caller specified, OR what we
+	 *	insinuated above from looking at the name string.
+	 */
+	switch (af) {
+	case AF_UNSPEC:
+		return fr_pton4(out, value, inlen, resolve, true);
+
+	case AF_INET:
+		return fr_pton4(out, value, inlen, resolve, false);
+
+	case AF_INET6:
+		return fr_pton6(out, value, inlen, resolve, false);
 
 	default:
-		/*
-		 *	Outside the range of IPv4 chars, must be a domain
-		 *	Use A record in preference to AAAA record.
-		 */
-		if ((value[i] < '0') || (value[i] > '9')) {
-			if (!resolve) {
-				fr_strerror_printf("Not IPv4/6 address, and asked not to resolve");
-				return -1;
-			}
-			switch (af) {
-			case AF_UNSPEC:
-				return fr_pton4(out, value, inlen, resolve, true);
-
-			case AF_INET:
-				return fr_pton4(out, value, inlen, resolve, false);
-
-			case AF_INET6:
-				return fr_pton6(out, value, inlen, resolve, false);
-
-			default:
-				fr_strerror_printf("Invalid address family %i", af);
-				return -1;
-			}
-		}
 		break;
 	}
 
- 	/*
- 	 *	All chars were in the IPv4 set [0-9/.], must be an IPv4
- 	 *	address.
- 	 */
-	return fr_pton4(out, value, inlen, false, false);
+	/*
+	 *	No idea what it is...
+	 */
+	fr_strerror_printf("Invalid address family %i", af);
+	return -1;
 }
 
 /** Parses IPv4/6 address + port, to fr_ipaddr_t and integer
