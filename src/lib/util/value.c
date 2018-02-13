@@ -1275,7 +1275,6 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
  *
  * All fixed size types are allowed.
  *
- * @param ctx		unused.
  * @param dst		Where to write result of casting.
  * @param dst_type	to cast to.
  * @param dst_enumv	enumeration values.
