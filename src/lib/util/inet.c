@@ -741,8 +741,6 @@ int fr_inet_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, boo
 		af = AF_INET6;
 	}
 
-	fprintf(stderr, "AF %d %s\n", af, value);
-
 	/*
 	 *	Use whatever the caller specified, OR what we
 	 *	insinuated above from looking at the name string.
