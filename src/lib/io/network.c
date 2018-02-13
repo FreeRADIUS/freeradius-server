@@ -470,7 +470,8 @@ next_message:
 		 *	There are leftover bytes in the buffer, feed
 		 *	them to the next round of reading.
 		 */
-		next = (fr_channel_data_t *) fr_message_alloc_reserve(s->ms, &cd->m, data_size, s->listen->default_message_size);
+		next = (fr_channel_data_t *) fr_message_alloc_reserve(s->ms, &cd->m, data_size, s->leftover,
+								      s->listen->default_message_size);
 		if (!next) {
 			fr_log(nr->log, L_ERR, "Failed reserving partial packet.");
 			// @todo - probably close the socket...

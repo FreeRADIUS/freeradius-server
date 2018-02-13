@@ -1057,16 +1057,16 @@ fr_message_t *fr_message_alloc(fr_message_set_t *ms, fr_message_t *m, size_t act
  * @param[in] ms the message set
  * @param[in] m the message message to allocate packet data for
  * @param[in] actual_packet_size to use
+ * @param[in] leftover "dirty" bytes in the buffer
  * @param[in] reserve_size to reserve for new message
  * @return
  *      - NULL on error, and input message m is left alone
  *	- fr_message_t* on success.  Will always be a new message.
  */
 fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, size_t actual_packet_size,
-				       size_t reserve_size)
+				       size_t leftover, size_t reserve_size)
 {
 	bool cleaned_up;
-	size_t data_size;
 	uint8_t *p;
 	fr_message_t *m2;
 	size_t m_rb_size;
@@ -1090,7 +1090,6 @@ fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, si
 	rad_assert(p == m->data);
 
 	m_rb_size = m->rb_size;	/* for ring buffer cleanups */
-	data_size = m->rb_size - actual_packet_size;
 
 	/*
 	 *	The caller can change m->data size to something a bit
@@ -1103,7 +1102,7 @@ fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, si
 	 *	If we've allocated all of the reserved ring buffer
 	 *	data, then just reserve a brand new reservation.
 	 */
-	if (!data_size) return fr_message_reserve(ms, reserve_size);
+	if (!leftover) return fr_message_reserve(ms, reserve_size);
 
 	/*
 	 *	Allocate a new message.
@@ -1115,7 +1114,7 @@ fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, si
 	 *	Track how much data there is in the packet.
 	 */
 	m2->rb = m->rb;
-	m2->data_size = data_size;
+	m2->data_size = leftover;
 	m2->rb_size = reserve_size;
 
 	/*
@@ -1149,7 +1148,7 @@ fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, si
 	 *	one.  And ensure that the old message will properly
 	 *	clean up the ring buffer.
 	 */
-	memcpy(m2->data, m->data + actual_packet_size, data_size);
+	memcpy(m2->data, m->data + actual_packet_size, leftover);
 	m->rb_size = m_rb_size;
 	return m2;
 }
