@@ -1497,7 +1497,6 @@ static int acct_redundant(rlm_sql_t const *inst, REQUEST *request, sql_acct_sect
 		if (!*expanded) {
 			RDEBUG("Ignoring null query");
 			rcode = RLM_MODULE_NOOP;
-			talloc_free(expanded);
 
 			goto finish;
 		}
