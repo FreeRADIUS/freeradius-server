@@ -337,9 +337,9 @@ redo:
 		MPRINT("FOUND next at %zd, leftover is %zd", packet_len, *leftover);
 
 	} else if (!inst->eof) {
-		if ((end - buffer) == buffer_len) {
+		if ((size_t) (end - buffer) == buffer_len) {
 			ERROR("proto_detail (%s): Too large entry (>%d bytes) found at offset %zu: %.*s of file %s",
-			      inst->name, buffer_len,
+			      inst->name, (int) buffer_len,
 			      (size_t)((p - buffer) + inst->header_offset), (int) (end - p), p,
 			      inst->filename_work);
 			return -1;
