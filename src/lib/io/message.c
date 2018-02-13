@@ -1122,7 +1122,15 @@ fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, si
 	 *	return.
 	 */
 	m2->data = fr_ring_buffer_reserve(m2->rb, m2->rb_size);
-	if (m2->data) return m2;
+	if (m2->data) {
+		/*
+		 *	We've wrapped around in the reservation.  Copy the data over.
+		 */
+		if (m2->data != (m->data + actual_packet_size)) {
+			memcpy(m2->data, m->data + actual_packet_size, leftover);
+		}
+		return m2;
+	}
 
 	/*
 	 *	Reserve data from a new ring buffer.  If it doesn't
@@ -1135,6 +1143,14 @@ fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, si
 	}
 
 	/*
+	 *	If necessary, copy the remaining data from the old
+	 *	buffer to the new one.
+	 */
+	if (m2->data != (m->data + actual_packet_size)) {
+		memcpy(m2->data, m->data + actual_packet_size, leftover);
+	}
+
+	/*
 	 *	This shouldn't happen, but it's possible if the caller
 	 *	takes shortcuts, and doesn't check the things they
 	 *	need to check.
@@ -1144,11 +1160,9 @@ fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, si
 	}
 
 	/*
-	 *	Copy the remaining data from the old buffer to the new
-	 *	one.  And ensure that the old message will properly
-	 *	clean up the ring buffer.
+	 *	Ensure that the old message will properly clean up the
+	 *	ring buffer.
 	 */
-	memcpy(m2->data, m->data + actual_packet_size, leftover);
 	m->rb_size = m_rb_size;
 	return m2;
 }
