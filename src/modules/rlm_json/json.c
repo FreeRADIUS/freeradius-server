@@ -77,25 +77,30 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, json_objec
 		num = json_object_get_int(object);
 #else
 		num = json_object_get_int64(object);
-		if (num < INT32_MIN) {		/* 64bit signed (not supported)*/
-			fr_strerror_printf("Signed 64bit integers are not supported");
-			return -1;
-		}
-		if (num > UINT32_MAX) {		/* 64bit unsigned (supported) */
+		if (num < INT32_MIN) {			/* 64bit signed*/
+			in.type = FR_TYPE_INT64;
+			in.vb_int64 = (int64_t) num;
+		} else if (num > UINT32_MAX) {		/* 64bit unsigned */
 			in.type = FR_TYPE_UINT64;
 			in.vb_uint64 = (uint64_t) num;
 		} else
 #endif
-		if (num < 0) {			/* 32bit signed (supported) */
+		if (num < INT16_MIN) {			/* 32bit signed */
 			in.type = FR_TYPE_INT32;
-			in.vb_int32 = num;
-		} else if (num > UINT16_MAX) {	/* 32bit unsigned (supported) */
+			in.vb_int32 = (int32_t)num;
+		} else if (num < INT8_MIN) {		/* 16bit signed */
+			in.type = FR_TYPE_INT16;
+			in.vb_int16 = (int16_t)num;
+		} else if (num < 0) {			/* 8bit signed */
+			in.type = FR_TYPE_INT8;
+			in.vb_int8 = (int8_t)num;
+		} else if (num > UINT16_MAX) {		/* 32bit unsigned */
 			in.type = FR_TYPE_UINT32;
 			in.vb_uint32 = (uint32_t) num;
-		} else if (num > UINT8_MAX) {	/* 16bit unsigned (supported) */
+		} else if (num > UINT8_MAX) {		/* 16bit unsigned */
 			in.type = FR_TYPE_UINT16;
 			in.vb_uint16 = (uint16_t) num;
-		} else {		/* 8bit unsigned (supported) */
+		} else {				/* 8bit unsigned */
 			in.type = FR_TYPE_UINT8;
 			in.vb_uint8 = (uint8_t) num;
 		}
