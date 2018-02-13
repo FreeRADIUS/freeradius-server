@@ -345,6 +345,14 @@ uint8_t *fr_ring_buffer_reserve_split(fr_ring_buffer_t *dst, size_t reserve_size
 	if (!p) return NULL;
 
 	/*
+	 *	Alloc and reserve in the same ring buffer.  Maybe
+	 *	there's no need to memcpy() the data?
+	 */
+	if ((src == dst) && (p == (src->buffer + src->write_offset))) {
+		return 0;
+	}
+
+	/*
 	 *	Copy the data from the old buffer to the new one.
 	 */
 	memcpy(p, src->buffer + src->write_offset, move_size);
