@@ -107,97 +107,12 @@ virtual_server detail {
 			filename.work = "${confdir}/detail.work"
 
 			#
-			#  Track progress through the detail file.  When the detail
-			#  file is large, and the server is re-started, it will
-			#  read from the START of the file.
-			#
-			#  Setting "track = yes" means it will skip packets which
-			#  have already been processed.  The default is "no".
-			#
-			track = yes
-
-			#
 			#  If there are no detail files in the directory,
 			#  the listener will periodically wake up to check
 			#  for new entries.
 			#
 			#  Allowed values: 1 to 3600
 			poll_interval = 5
-
-			#
-			#  The maximum size (in bytes) of one entry in
-			#  the detail file.  If this setting is too
-			#  low, then the "too large" entries in the
-			#  detail file will be ignored.
-			#
-			#  Due to limitations in the detail file
-			#  reader, if multiple entries fit into this
-			#  size, then all of those entries will be
-			#  read and processed, before further reading
-			#  is done from the file.
-			#
-			max_entry_size = 65536
-
-			#
-			#  Whether or not the module retransmits
-			#  packets which have failed.
-			#
-			#  default = yes
-			#
-			retransmit = yes
-
-			#
-			#  Limits for the files, retransmissions, etc.
-			#
-			limit {
-				#
-				#  Number of simultaneous packets it will
-				#  read from the file.
-				#
-				#  Useful values: 1..256
-				maximum_outstanding = 1
-
-				#
-				#  Initial retransmit time: 1..60
-				#
-				#  If there is no response within this time,
-				#  the module will retransmit the packet.
-				#
-				initial_retransmission_time = 1
-
-				#
-				#  Maximum Retransmit Time: 5..30
-				#
-				#  The maximum time between retransmissions.
-				#
-				maximum_retransmission_time = 30
-
-				#
-				#  The following are maximums that *all* apply.
-				#  i.e. if any one of the limits is hit, the
-				#  retransmission stops.
-				#
-
-				#
-				#  Maximum Retransmit Count: 0..20
-				#
-				#  How many times the module will send the packet
-				#  before giving up.
-				#
-				#  A special value of "0" means "retransmit forever".
-				#
-				maximum_retransmission_count = 6
-
-				#
-				#  Maximum Retransmit Duration: 0..600
-				#
-				#  The total length of time the module will try to
-				#  retransit the packet
-				#
-				#  A special value of "0" means "retransmit forever".
-				#
-				maximum_retransmission_duration = 40
-			}
 		}
 	}
 
