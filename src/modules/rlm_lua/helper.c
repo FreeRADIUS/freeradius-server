@@ -15,8 +15,8 @@
 
 /**
  * $Id$
- * @file lua.c
- * @brief Auxiliary Lua land functions.
+ * @file helper.c
+ * @brief Helper Lua land functions.
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  *
