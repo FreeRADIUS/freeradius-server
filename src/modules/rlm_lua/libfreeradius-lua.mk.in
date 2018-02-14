@@ -17,7 +17,7 @@ ifneq "$(TARGETNAME)" ""
 TARGET		:= libfreeradius-lua.a
 endif
 
-SOURCES		:= aux.c
+SOURCES		:= helper.c
 
 SRC_CFLAGS	:= @lua_cflags@
 TGT_LDLIBS	:= @lua_ldflags@
