@@ -84,6 +84,8 @@ RCSIDH(missing_h, "$Id$")
 #  include <errno.h>
 #endif
 
+#include <limits.h>
+
 /*
  *  Check for inclusion of <time.h>, versus <sys/time.h>
  *  Taken verbatim from the autoconf manual.
@@ -421,6 +423,10 @@ int clock_gettime(int clk_id, struct timespec *t);
 
 void timeval2ntp(struct  timeval const *tv, uint8_t *ntp);
 void ntp2timeval(struct timeval *tv, char const *ntp);
+
+#ifndef SSIZE_MIN
+#  define SSIZE_MIN LONG_MIN
+#endif
 
 /*
  *	This is really hacky. Any code needing to perform operations on 128bit integers,
