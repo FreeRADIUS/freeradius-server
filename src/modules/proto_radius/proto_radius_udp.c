@@ -1014,6 +1014,20 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 		 *	looking up the client.
 		 */
 		PTHREAD_MUTEX_UNLOCK(&inst->master.mutex);
+
+		/*
+		 *	We have a dynamic client, AND we're using
+		 *	connected sockets.  BUT this packet isn't for
+		 *	any known connection.
+		 */
+		if (address.client && address.client->dynamic) {
+			/*
+			 *	@todo - do the whole dynamic client
+			 *	alloc thing again... set the client to
+			 *	inactive, and run the packet through
+			 *	the same logic.
+			 */
+		}
 	}
 
 	/*
@@ -1411,6 +1425,20 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		memcpy(&newclient, buffer, sizeof(newclient));
 		FR_DLIST_INIT(newclient->pending);
 		FR_DLIST_INIT(newclient->packets);
+
+		/*
+		 *	@todo - if we have connected sockets, then
+		 *	DON'T delete the old client.  Instead, move
+		 *	packets for this connection to the new client.
+		 *	Then, check if there are pending packets for
+		 *	the old client.  If not, delete it.  If so, do
+		 *	something intelligent...
+		 *
+		 *	For connected sockets, we don't set a cleanup
+		 *	timer on the client.  Instead, we just delete
+		 *	the client when the socket goes away...
+		 */
+		rad_assert(!inst->use_connected);
 
 		/*
 		 *	Delete the "pending" client from the client list.
@@ -1967,6 +1995,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		size_t i, num;
 		dl_instance_t *parent_inst;
 
+		if (inst->use_connected) {
+			cf_log_err(cs, "Cannot (yet) use dynamic clients and connected sockets.");
+			return -1;
+		}
+
 		if (!inst->dynamic_clients.network) {
 			cf_log_err(cs, "One or more 'network' entries MUST be specified for dynamic clients.");
 			return -1;
@@ -2154,6 +2187,13 @@ static int mod_detach(void *instance)
 			PTHREAD_MUTEX_LOCK(&inst->master.mutex);
 			(void) fr_hash_table_delete(inst->child.master->master.ht, inst);
 			PTHREAD_MUTEX_UNLOCK(&inst->master.mutex);
+
+			/*
+			 *	If it's a dynamic client, then we're
+			 *	the only one who knows about it.  So
+			 *	we need to free the client.
+			 */
+			if (inst->child.client->dynamic) talloc_free(inst->child.client);
 		}
 	}
 
