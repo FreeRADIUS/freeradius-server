@@ -144,6 +144,18 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 
 		fr_dlist_remove(&track->entry);
 
+		/*
+		 *	Don't over-write "leftover" bytes!
+		 */
+		if (*leftover) {
+			rad_assert(inst->leftover == 0);
+			if (!inst->leftover_buffer) MEM(inst->leftover_buffer = talloc_array(inst, uint8_t, buffer_len));
+
+			memcpy(inst->leftover_buffer, buffer, *leftover);
+			inst->leftover = *leftover;
+			*leftover = 0;
+		}
+
 		rad_assert(buffer_len >= track->packet_len);
 		memcpy(buffer, track->packet, track->packet_len);
 
@@ -173,6 +185,18 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	if (inst->outstanding >= inst->max_outstanding) {
 		rad_assert(inst->paused);
 		return 0;
+	}
+
+	/*
+	 *	If we've cached leftover data from the ring buffer,
+	 *	copy it back.
+	 */
+	if (inst->leftover) {
+		rad_assert(*leftover == 0);
+		rad_assert(inst->leftover < buffer_len);
+
+		memcpy(buffer, inst->leftover_buffer, inst->leftover);
+		*leftover = inst->leftover;
 	}
 
 	/*

@@ -114,6 +114,9 @@ typedef struct proto_detail_work_t {
 
 	int				count;			//!< number of packets we read from this file.
 
+	size_t				leftover;
+	uint8_t				*leftover_buffer;
+
 	size_t				last_search;		//!< where we last searched in the buffer
 								//!< MUST be offset, as the buffers can change.
 
