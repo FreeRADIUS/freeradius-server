@@ -34,6 +34,8 @@
 
 #include "dhcpv6.h"
 
+fr_dict_attr_t const *dhcpv6_root;
+
 size_t const fr_dhcpv6_attr_sizes[FR_TYPE_MAX + 1][2] = {
 	[FR_TYPE_INVALID]		= {~0, 0},	//!< Ensure array starts at 0 (umm?)
 
@@ -77,4 +79,21 @@ size_t fr_dhcpv6_option_len(VALUE_PAIR const *vp)
 	case FR_TYPE_STRUCTURAL:
 		if (!fr_cond_assert(0)) return 0;
 	}
+}
+
+int fr_dhcpv6_global_init(void)
+{
+	static bool done_init;
+
+	if (done_init) return 0;
+
+	dhcpv6_root = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_DHCPV6_ROOT);
+	if (!dhcpv6_root) {
+		fr_strerror_printf("Missing DHCPv6 root");
+		return -1;
+	}
+
+	done_init = true;
+
+	return 0;
 }

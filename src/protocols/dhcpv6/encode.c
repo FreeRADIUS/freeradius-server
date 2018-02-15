@@ -484,7 +484,7 @@ static inline ssize_t encode_tlv_internal(uint8_t *out, size_t outlen,
 					  fr_cursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t			slen;
-	uint8_t			*p = out, *end = p + outlen, *value;
+	uint8_t			*p = out, *end = p + outlen;
 	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const	*da = tlv_stack[depth];
 
@@ -854,3 +854,23 @@ ssize_t fr_dhcpv6_encode_option(uint8_t *out, size_t outlen, fr_cursor_t *cursor
 
 	return slen;
 }
+
+static void *encode_test_ctx (UNUSED TALLOC_CTX *ctx)
+{
+	static fr_dhcpv6_encode_ctx_t	test_ctx;
+
+	fr_dhcpv6_global_init();
+
+	test_ctx.root = dhcpv6_root;
+
+	return &test_ctx;
+}
+
+/*
+ *	Test points
+ */
+extern fr_test_point_pair_encode_t dhcpv6_tp_encode;
+fr_test_point_pair_encode_t dhcpv6_tp_encode = {
+	.test_ctx	= encode_test_ctx,
+	.func		= fr_dhcpv6_encode_option
+};
