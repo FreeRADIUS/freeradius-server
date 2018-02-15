@@ -255,6 +255,14 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	RADCLIENT *client;
 
 	/*
+	 *	The packet timed out.  Tell the network side that the packet is dead.
+	 */
+	if (buffer_len == 1) {
+		buffer[0] = 1;
+		return 1;
+	}
+
+	/*
 	 *	If the app_io encodes the packet, then we don't need
 	 *	to do that.
 	 */

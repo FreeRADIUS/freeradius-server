@@ -623,7 +623,7 @@ static void fr_worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED struct
 		/*
 		 *	Tell the network side that this request is done.
 		 */
-		fr_worker_send_reply(worker, request, 0);
+		fr_worker_send_reply(worker, request, 1);
 	}
 
 	if (!worker->num_active) worker_reset_timer(worker);
