@@ -326,15 +326,6 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 		return 1;
 	}
 
-	/*
-	 *	If we're not using connected sockets, we can't have
-	 *	clients behind a NAT.
-	 */
-	if (!inst->use_connected) {
-		client->is_nat = false;
-		client->behind_nat = false;
-	}
-
 	memcpy(buffer, &client, sizeof(client));
 	return sizeof(client);
 }
@@ -1103,18 +1094,6 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	}
 
 	/*
-	 *	We can only do NAT gateways if we're using connected
-	 *	sockets.  This code catches *statically* defined
-	 *	clients, not dynamic ones.
-	 */
-	if (!inst->use_connected && (address.client->is_nat || address.client->behind_nat)) {
-		WARN("Ignoring NAT settings for client %s as we are not using connected sockets for listener %s",
-			address.client->shortname, inst->name);
-		address.client->is_nat = false;
-		address.client->behind_nat = false;
-	}
-
-	/*
 	 *	Check for a socket that SHOULD be connected.  If so,
 	 *	either create the socket, OR find it in the list of
 	 *	sockets, and send the packet there.
@@ -1141,16 +1120,6 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 			(void) fr_network_listen_inject(child->nr, child->child.listen,
 							buffer, packet_len, packet_time);
 			PTHREAD_MUTEX_UNLOCK(&inst->master.mutex);
-		}
-
-		/*
-		 *	This dynamic client is behind a NAT.  We've
-		 *	read all of the outstanding packets for it, so
-		 *	we just delete the client now.
-		 */
-		if (address.client->dynamic && address.client->behind_nat &&
-		    (address.client->received == 0)) {
-			talloc_free(address.client);
 		}
 
 		/*

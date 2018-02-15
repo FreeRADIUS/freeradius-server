@@ -196,11 +196,6 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 
 	if (!client) return false;
 
-	if (client->behind_nat) {
-		ERROR("Clients cannot be defined to be behind a NAT.");
-		return false;
-	}
-
 	/*
 	 *	Hack to fixup wildcard clients
 	 *
@@ -453,11 +448,6 @@ static const CONF_PARSER client_config[] = {
 
 	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING, RADCLIENT, server) },
 	{ FR_CONF_OFFSET("response_window", FR_TYPE_TIMEVAL, RADCLIENT, response_window) },
-
-	/*
-	 *	This should only be set for dynamic clients.
-	 */
-	{ FR_CONF_OFFSET("behind_nat", FR_TYPE_BOOL, RADCLIENT, behind_nat) },
 
 #ifdef WITH_TCP
 	{ FR_CONF_POINTER("proto", FR_TYPE_STRING, &hs_proto) },
@@ -975,15 +965,6 @@ RADCLIENT *client_afrom_request(TALLOC_CTX *ctx, REQUEST *request)
 		case FR_FREERADIUS_CLIENT_SHORTNAME:
 			attr = "shortname";
 			value = vp->vp_strvalue;
-			break;
-
-		case FR_FREERADIUS_CLIENT_BEHIND_NAT:
-			attr = "behind_nat";
-			if (vp->vp_bool) {
-				value = "yes";
-			} else {
-				value = "no";
-			}
 			break;
 
 		default:
