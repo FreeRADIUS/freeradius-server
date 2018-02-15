@@ -114,7 +114,7 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	uint8_t			*ptr;
 	radius_packet_t		*hdr;
 	VALUE_PAIR		*head = NULL;
-	vp_cursor_t		cursor, out;
+	fr_cursor_t		cursor, out;
 	fr_radius_ctx_t		packet_ctx;
 
 	packet_ctx.secret = secret;
@@ -166,7 +166,7 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	packet_length = packet->data_len - RADIUS_HDR_LEN;
 	num_attributes = 0;
 
-	fr_pair_cursor_init(&cursor, &head);
+	fr_cursor_init(&cursor, &head);
 
 	/*
 	 *	Loop over the attributes, decoding them into VPs.
@@ -191,7 +191,7 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		/*
 		 *	Count the ones which were just added
 		 */
-		while (fr_pair_cursor_next(&cursor)) num_attributes++;
+		while (fr_cursor_next(&cursor)) num_attributes++;
 
 		/*
 		 *	VSA's may not have been counted properly in
@@ -216,9 +216,10 @@ int fr_radius_packet_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		packet_length -= my_len;
 	}
 
-	fr_pair_cursor_init(&out, &packet->vps);
-	fr_pair_cursor_last(&out);		/* Move insertion point to the end of the list */
-	fr_pair_cursor_merge(&out, head);
+	fr_cursor_init(&out, &packet->vps);
+	fr_cursor_tail(&out);		/* Move insertion point to the end of the list */
+	fr_cursor_head(&cursor);
+	fr_cursor_merge(&out, &cursor);
 
 	/*
 	 *	Merge information from the outside world into our

@@ -56,10 +56,10 @@ RCSID("$Id$")
  * of 32 bits, and includes the Type/Length fields.
  */
 
-static ssize_t sim_decode_pair_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
+static ssize_t sim_decode_pair_internal(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *parent,
 					   uint8_t const *data, size_t data_len, void *decoder_ctx);
 
-static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
+static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *parent,
 				     uint8_t const *data, size_t const attr_len, size_t const data_len,
 				     void *decoder_ctx);
 
@@ -291,7 +291,7 @@ static int sim_array_members(size_t *out, size_t len, fr_dict_attr_t const *da)
 	return len / element_len;
 }
 
-static ssize_t sim_decode_array(TALLOC_CTX *ctx, vp_cursor_t *cursor,
+static ssize_t sim_decode_array(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 				fr_dict_attr_t const *parent,
 				uint8_t const *data, size_t const attr_len, UNUSED size_t data_len,
 				void *decoder_ctx)
@@ -362,7 +362,7 @@ static ssize_t sim_decode_array(TALLOC_CTX *ctx, vp_cursor_t *cursor,
  *	- Length on success.
  *	- < 0 on malformed attribute.
  */
-static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
+static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 			      fr_dict_attr_t const *parent,
 			      uint8_t const *data, size_t const attr_len, size_t data_len,
 			      void *decoder_ctx)
@@ -372,7 +372,7 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	ssize_t			decr_len;
 	fr_dict_attr_t const	*child;
 	VALUE_PAIR		*head = NULL;
-	vp_cursor_t		tlv_cursor;
+	fr_cursor_t		tlv_cursor;
 	ssize_t			rcode;
 
 	if (data_len < 2) {
@@ -406,7 +406,7 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	/*
 	 *  Record where we were in the list when packet_ctx function was called
 	 */
-	fr_pair_cursor_init(&tlv_cursor, &head);
+	fr_cursor_init(&tlv_cursor, &head);
 	while ((size_t)(end - p) >= sizeof(uint32_t)) {
 		uint8_t	sim_at = p[0];
 		size_t	sim_at_len = ((size_t)p[1]) << 2;
@@ -498,7 +498,9 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 		if (rcode < 0) goto error;
 		p += sim_at_len;
 	}
-	fr_pair_cursor_merge(cursor, head);	/* Wind to the end of the new pairs */
+	fr_cursor_head(&tlv_cursor);
+	fr_cursor_tail(cursor);
+	fr_cursor_merge(cursor, &tlv_cursor);	/* Wind to the end of the new pairs */
 	talloc_free(decr);
 
 	return attr_len;
@@ -517,7 +519,7 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
  *	- Length on success.
  *	- -1 on failure.
  */
-static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
+static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *parent,
 				     uint8_t const *data, size_t const attr_len, size_t const data_len,
 				     void *decoder_ctx)
 {
@@ -816,7 +818,7 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 
 done:
 	vp->type = VT_DATA;
-	fr_pair_cursor_append(cursor, vp);
+	fr_cursor_append(cursor, vp);
 
 	return attr_len;
 }
@@ -835,7 +837,7 @@ done:
  *	- The number of bytes parsed.
  *	- -1 on error.
  */
-static ssize_t sim_decode_pair_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
+static ssize_t sim_decode_pair_internal(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *parent,
 					uint8_t const *data, size_t data_len, void *decoder_ctx)
 {
 	uint8_t			sim_at;
@@ -912,7 +914,7 @@ static ssize_t sim_decode_pair_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr
  *	- The number of bytes parsed.
  *	- -1 on error.
  */
-ssize_t fr_sim_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor,
+ssize_t fr_sim_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 			   uint8_t const *data, size_t data_len, void *decoder_ctx)
 {
 	fr_sim_decode_ctx_t	*packet_ctx = decoder_ctx;
@@ -946,7 +948,7 @@ ssize_t fr_sim_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor,
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_sim_decode(REQUEST *request, vp_cursor_t *decoded,
+int fr_sim_decode(REQUEST *request, fr_cursor_t *decoded,
 		  uint8_t const *data, size_t data_len, fr_sim_decode_ctx_t *decoder_ctx)
 {
 	ssize_t			rcode;
@@ -960,7 +962,7 @@ int fr_sim_decode(REQUEST *request, vp_cursor_t *decoded,
 	 *	Move the cursor to the end, so we know if
 	 *	any additional attributes were added.
 	 */
-	fr_pair_cursor_end(decoded);
+	fr_cursor_tail(decoded);
 
 	/*
 	 *	We need at least enough data for the subtype
@@ -988,7 +990,7 @@ int fr_sim_decode(REQUEST *request, vp_cursor_t *decoded,
 		if (rcode <= 0) {
 			RPEDEBUG("Failed decoding AT");
 		error:
-			fr_pair_cursor_free(decoded);	/* Free any attributes we added */
+			fr_cursor_free_list(decoded);	/* Free any attributes we added */
 			return -1;
 		}
 
@@ -1009,7 +1011,7 @@ int fr_sim_decode(REQUEST *request, vp_cursor_t *decoded,
 			goto error;
 		}
 		vp->vp_uint32 = data[0];
-		fr_pair_cursor_append(decoded, vp);
+		fr_cursor_append(decoded, vp);
 	}
 
 	return 0;

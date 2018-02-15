@@ -230,16 +230,16 @@ extern fr_dict_attr_t const *dict_aka_root;
 /*
  *	decode.c
  */
-ssize_t		fr_sim_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor,
+ssize_t		fr_sim_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 				   uint8_t const *data, size_t data_len, void *decoder_ctx);
 
-int		fr_sim_decode(REQUEST *request, vp_cursor_t *decoded,
+int		fr_sim_decode(REQUEST *request, fr_cursor_t *decoded,
 			      uint8_t const *data, size_t data_len, fr_sim_decode_ctx_t *ctx);
 
 /*
  *	encode.c
  */
-ssize_t		fr_sim_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void *encoder_ctx);
+ssize_t		fr_sim_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, void *encoder_ctx);
 
 ssize_t		fr_sim_encode(REQUEST *request, VALUE_PAIR *to_encode, void *encode_ctx);
 

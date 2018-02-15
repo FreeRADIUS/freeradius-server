@@ -840,7 +840,7 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 		}
 
 		if (strcmp(test_type, "decode-tacacs") == 0) {
-			vp_cursor_t cursor;
+			fr_cursor_t cursor;
 			RADIUS_PACKET *packet = talloc(NULL, RADIUS_PACKET);
 
 			if (strcmp(p + 14, "-") == 0) {
@@ -866,9 +866,9 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 				continue;
 			}
 
-			fr_pair_cursor_init(&cursor, &packet->vps);
+			fr_cursor_init(&cursor, &packet->vps);
 			p = output;
-			for (vp = fr_pair_cursor_first(&cursor); vp; vp = fr_pair_cursor_next(&cursor)) {
+			for (vp = fr_cursor_head(&cursor); vp; vp = fr_cursor_next(&cursor)) {
 				fr_pair_snprint(p, sizeof(output) - (p - output), vp);
 				p += strlen(p);
 
@@ -970,7 +970,7 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 		}
 
 		if (strcmp(test_type, "decode-tacacs") == 0) {
-			vp_cursor_t cursor;
+			fr_cursor_t cursor;
 			RADIUS_PACKET *packet = talloc(NULL, RADIUS_PACKET);
 
 			if (strcmp(p + 14, "-") == 0) {
@@ -996,9 +996,9 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 				continue;
 			}
 
-			fr_pair_cursor_init(&cursor, &packet->vps);
+			fr_cursor_init(&cursor, &packet->vps);
 			p = output;
-			for (vp = fr_pair_cursor_first(&cursor); vp; vp = fr_pair_cursor_next(&cursor)) {
+			for (vp = fr_cursor_head(&cursor); vp; vp = fr_cursor_next(&cursor)) {
 				fr_pair_snprint(p, sizeof(output) - (p - output), vp);
 				p += strlen(p);
 
@@ -1071,7 +1071,7 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 		if (strncmp(test_type, "decode-pair", 11) == 0) {
 			fr_test_point_pair_decode_t	*tp = NULL;
 			ssize_t				dec_len = 0;
-			vp_cursor_t 			cursor;
+			fr_cursor_t 			cursor;
 			void				*decoder_ctx = NULL;
 
 			p += load_test_point_by_command((void **)&tp, test_type, 11, "tp_decode") + 1;
@@ -1090,7 +1090,7 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 				}
 			}
 
-			fr_pair_cursor_init(&cursor, &head);
+			fr_cursor_init(&cursor, &head);
 			while (len > 0) {
 				dec_len = tp->func(tp_ctx, &cursor, attr, len, decoder_ctx);
 				if (dec_len < 0) {
@@ -1111,9 +1111,9 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 			 */
 			if (head) {
 				p = output;
-				for (vp = fr_pair_cursor_first(&cursor);
+				for (vp = fr_cursor_head(&cursor);
 				     vp;
-				     vp = fr_pair_cursor_next(&cursor)) {
+				     vp = fr_cursor_next(&cursor)) {
 					fr_pair_snprint(p, sizeof(output) - (p - output), vp);
 					p += strlen(p);
 
@@ -1147,7 +1147,7 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 		if (strncmp(test_type, "encode-pair", 11) == 0) {
 			fr_test_point_pair_encode_t	*tp = NULL;
 			ssize_t				enc_len = 0;
-			vp_cursor_t			cursor;
+			fr_cursor_t			cursor;
 			void				*encoder_ctx = NULL;
 
 			p += load_test_point_by_command((void **)&tp, test_type, 11, "tp_encode") + 1;
@@ -1164,8 +1164,8 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 			}
 
 			attr = data;
-			fr_pair_cursor_init(&cursor, &head);
-			while ((vp = fr_pair_cursor_current(&cursor))) {
+			fr_cursor_init(&cursor, &head);
+			while ((vp = fr_cursor_current(&cursor))) {
 				enc_len = tp->func(attr, data + sizeof(data) - attr, &cursor, encoder_ctx);
 				if (enc_len < 0) {
 					char *out_p = output, *out_end = out_p + sizeof(output);

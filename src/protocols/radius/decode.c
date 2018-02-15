@@ -327,7 +327,7 @@ int fr_radius_decode_tlv_ok(uint8_t const *data, size_t length, size_t dv_type, 
 /** Convert a "concatenated" attribute to one long VP
  *
  */
-static ssize_t decode_concat(TALLOC_CTX *ctx, vp_cursor_t *cursor,
+static ssize_t decode_concat(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 			     fr_dict_attr_t const *parent, uint8_t const *data,
 			     size_t const packet_len)
 {
@@ -387,7 +387,7 @@ static ssize_t decode_concat(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 		p += ptr[1] - 2;
 		ptr += ptr[1];
 	}
-	fr_pair_cursor_append(cursor, vp);
+	fr_cursor_append(cursor, vp);
 	return ptr - data;
 }
 
@@ -395,14 +395,14 @@ static ssize_t decode_concat(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 /** Convert TLVs to one or more VPs
  *
  */
-ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
+ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 			     fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len,
 			     void *decoder_ctx)
 {
 	uint8_t const		*p = data, *end = data + data_len;
 	fr_dict_attr_t const	*child;
 	VALUE_PAIR		*head = NULL;
-	vp_cursor_t		tlv_cursor;
+	fr_cursor_t		tlv_cursor;
 
 	if (data_len < 3) return -1; /* type, length, value */
 
@@ -413,7 +413,7 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	/*
 	 *  Record where we were in the list when this function was called
 	 */
-	fr_pair_cursor_init(&tlv_cursor, &head);
+	fr_cursor_init(&tlv_cursor, &head);
 	while (p < end) {
 		ssize_t tlv_len;
 
@@ -440,7 +440,9 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 		if (tlv_len < 0) goto error;
 		p += p[1];
 	}
-	fr_pair_cursor_merge(cursor, head);	/* Wind to the end of the new pairs */
+	fr_cursor_head(&tlv_cursor);
+	fr_cursor_tail(cursor);
+	fr_cursor_merge(cursor, &tlv_cursor);	/* Wind to the end of the new pairs */
 
 	return data_len;
 }
@@ -448,7 +450,7 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 /** Convert a STRUCT to one or more VPs
  *
  */
-static ssize_t fr_radius_decode_struct(TALLOC_CTX *ctx, vp_cursor_t *cursor,
+static ssize_t fr_radius_decode_struct(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 				       fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len,
 				       void *decoder_ctx)
 {
@@ -456,7 +458,7 @@ static ssize_t fr_radius_decode_struct(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	uint8_t const		*p = data, *end = data + data_len;
 	fr_dict_attr_t const	*child;
 	VALUE_PAIR		*head = NULL;
-	vp_cursor_t		child_cursor;
+	fr_cursor_t		child_cursor;
 
 	if (data_len < 1) return -1; /* at least one byte of data */
 
@@ -467,7 +469,7 @@ static ssize_t fr_radius_decode_struct(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 	/*
 	 *  Record where we were in the list when this function was called
 	 */
-	fr_pair_cursor_init(&child_cursor, &head);
+	fr_cursor_init(&child_cursor, &head);
 	child_num = 1;
 	while (p < end) {
 		ssize_t child_len;
@@ -492,7 +494,7 @@ static ssize_t fr_radius_decode_struct(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 
 		raw:
 			fr_pair_list_free(&head);
-			fr_pair_cursor_init(&child_cursor, &head);
+			fr_cursor_init(&child_cursor, &head);
 
 			/*
 			 *	Build an unknown attr of the entire STRUCT.
@@ -511,7 +513,9 @@ static ssize_t fr_radius_decode_struct(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 		p += child->flags.length;
 		child_num++;	/* go to the next child */
 	}
-	fr_pair_cursor_merge(cursor, head);	/* Wind to the end of the new pairs */
+	fr_cursor_head(&child_cursor);
+	fr_cursor_tail(cursor);
+	fr_cursor_merge(cursor, &child_cursor);	/* Wind to the end of the new pairs */
 
 	return data_len;
 }
@@ -520,7 +524,7 @@ static ssize_t fr_radius_decode_struct(TALLOC_CTX *ctx, vp_cursor_t *cursor,
  *
  * "length" can be LONGER than just this sub-vsa.
  */
-static ssize_t decode_vsa_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor,
+static ssize_t decode_vsa_internal(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 				   fr_dict_attr_t const *parent,
 				   uint8_t const *data, size_t data_len,
 				   void *decoder_ctx, fr_dict_vendor_t const *dv)
@@ -616,7 +620,7 @@ static ssize_t decode_vsa_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor,
  *
  * But for the first fragment, we get passed a pointer to the "extended-attr"
  */
-static ssize_t decode_extended(TALLOC_CTX *ctx, vp_cursor_t *cursor,
+static ssize_t decode_extended(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 			       fr_dict_attr_t const *parent,
 			       uint8_t const *data, size_t attr_len, size_t packet_len,
 			       void *decoder_ctx)
@@ -706,7 +710,7 @@ static ssize_t decode_extended(TALLOC_CTX *ctx, vp_cursor_t *cursor,
  *
  * @note Called ONLY for Vendor-Specific
  */
-static ssize_t decode_wimax(TALLOC_CTX *ctx, vp_cursor_t *cursor,
+static ssize_t decode_wimax(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 			    fr_dict_attr_t const *parent,
 			    uint8_t const *data, size_t attr_len, size_t packet_len, void *decoder_ctx, uint32_t vendor)
 {
@@ -868,7 +872,7 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 /** Convert a top-level VSA to one or more VPs
  *
  */
-static ssize_t decode_vsa(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
+static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *parent,
 			  uint8_t const *data, size_t attr_len, size_t packet_len,
 			  void *decoder_ctx)
 {
@@ -879,7 +883,7 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t c
 	VALUE_PAIR		*head = NULL;
 	fr_dict_vendor_t	my_dv;
 	fr_dict_attr_t const	*vendor_da;
-	vp_cursor_t		tlv_cursor;
+	fr_cursor_t		tlv_cursor;
 
 	/*
 	 *	Container must be a VSA
@@ -965,7 +969,7 @@ create_attrs:
 	packet_len -= 4;
 	total = 4;
 
-	fr_pair_cursor_init(&tlv_cursor, &head);
+	fr_cursor_init(&tlv_cursor, &head);
 	while (attr_len > 0) {
 		ssize_t vsa_len;
 
@@ -985,7 +989,9 @@ create_attrs:
 		packet_len -= vsa_len;
 		total += vsa_len;
 	}
-	fr_pair_cursor_merge(cursor, head);
+	fr_cursor_head(&tlv_cursor);
+	fr_cursor_tail(cursor);
+	fr_cursor_merge(cursor, &tlv_cursor);
 
 	/*
 	 *	When the unknown attributes were created by
@@ -1009,7 +1015,7 @@ create_attrs:
  *	- Length on success.
  *	- -1 on failure.
  */
-ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
+ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *parent,
 				    uint8_t const *data, size_t const attr_len, size_t const packet_len,
 				    void *decoder_ctx)
 {
@@ -1490,7 +1496,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 	}
 	vp->type = VT_DATA;
 	vp->vp_tainted = true;
-	fr_pair_cursor_append(cursor, vp);
+	fr_cursor_append(cursor, vp);
 
 	return attr_len;
 }
@@ -1499,7 +1505,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 /** Create a "normal" VALUE_PAIR from the given data
  *
  */
-ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor,
+ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 			      uint8_t const *data, size_t data_len, void *decoder_ctx)
 {
 	ssize_t			rcode;
@@ -1540,7 +1546,7 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 		 */
 		vp = fr_pair_afrom_da(ctx, da);
 		if (!vp) return -1;
-		fr_pair_cursor_append(cursor, vp);
+		fr_cursor_append(cursor, vp);
 		vp->vp_tainted = true;		/* not REALLY necessary, but what the heck */
 
 		return 2;

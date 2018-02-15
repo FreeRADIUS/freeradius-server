@@ -56,7 +56,7 @@ RCSID("$Id$")
 
 static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 			      fr_dict_attr_t const **tlv_stack, unsigned int depth,
-			      vp_cursor_t *cursor, void *encoder_ctx);
+			      fr_cursor_t *cursor, void *encoder_ctx);
 
 /** Find the next attribute to encode
  *
@@ -64,17 +64,17 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
  * @param encoder_ctx the context for the encoder
  * @return encodable VALUE_PAIR, or NULL if none available.
  */
-static inline VALUE_PAIR *next_encodable(vp_cursor_t *cursor, void *encoder_ctx)
+static inline VALUE_PAIR *next_encodable(fr_cursor_t *cursor, void *encoder_ctx)
 {
 	VALUE_PAIR		*vp;
 	fr_sim_encode_ctx_t	*packet_ctx = encoder_ctx;
 
-	for (;;) {
-		vp = fr_pair_cursor_next_by_ancestor(cursor, packet_ctx->root, TAG_ANY);
-		if (!vp || !vp->da->flags.internal) break;
+	while ((vp = fr_cursor_next(cursor))) {
+		if (vp->da->flags.internal) continue;
+		if (fr_dict_parent_common(packet_ctx->root, vp->da, true)) break;
 	}
 
-	return fr_pair_cursor_current(cursor);
+	return fr_cursor_current(cursor);
 }
 
 /** Determine if the current attribute is encodable, or find the first one that is
@@ -83,16 +83,13 @@ static inline VALUE_PAIR *next_encodable(vp_cursor_t *cursor, void *encoder_ctx)
  * @param encoder_ctx the context for the encoder
  * @return encodable VALUE_PAIR, or NULL if none available.
  */
-static inline VALUE_PAIR *first_encodable(vp_cursor_t *cursor, void *encoder_ctx)
+static inline VALUE_PAIR *first_encodable(fr_cursor_t *cursor, void *encoder_ctx)
 {
 	VALUE_PAIR		*vp;
 	fr_sim_encode_ctx_t	*packet_ctx = encoder_ctx;
 
-	vp = fr_pair_cursor_current(cursor);
-	if (vp && !vp->da->flags.internal && fr_dict_parent_common(packet_ctx->root, vp->da, true)) {
-		cursor->found = vp;
-		return vp;
-	}
+	vp = fr_cursor_current(cursor);
+	if (vp && !vp->da->flags.internal && fr_dict_parent_common(packet_ctx->root, vp->da, true)) return vp;
 
 	return next_encodable(cursor, encoder_ctx);
 }
@@ -297,10 +294,10 @@ static ssize_t encode_encrypted_value(uint8_t *out, size_t outlen,
  */
 static ssize_t encode_value(uint8_t *out, size_t outlen,
 			    fr_dict_attr_t const **tlv_stack, int depth,
-			    vp_cursor_t *cursor, void *encoder_ctx)
+			    fr_cursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t			len;
-	VALUE_PAIR const	*vp = fr_pair_cursor_current(cursor);
+	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const	*da = tlv_stack[depth];
 	fr_sim_encode_ctx_t	*packet_ctx = encoder_ctx;
 
@@ -554,7 +551,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		if (2 > outlen) goto oos;
 		out[0] = 0;
 		out[1] = 0;
-		len = 2;
+		len = 2;	/* Length of the reserved area */
 		break;
 
 	/*
@@ -613,7 +610,7 @@ done:
  */
 static ssize_t encode_array(uint8_t *out, size_t outlen,
 			    fr_dict_attr_t const **tlv_stack, int depth,
-			    vp_cursor_t *cursor, void *encoder_ctx)
+			    fr_cursor_t *cursor, void *encoder_ctx)
 {
 	uint8_t			*p = out, *end = p + outlen;
 	uint8_t			*value;
@@ -650,7 +647,7 @@ static ssize_t encode_array(uint8_t *out, size_t outlen,
 
 		p += slen;
 
-		vp = fr_pair_cursor_current(cursor);
+		vp = fr_cursor_current(cursor);
 		if (!vp || (vp->da != da)) break;		/* Stop if we have an attribute of a different type */
 	}
 
@@ -693,7 +690,7 @@ static ssize_t encode_array(uint8_t *out, size_t outlen,
  * Otherwise, attribute may be something else.
  */
 static ssize_t encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const **tlv_stack, unsigned int depth,
-			      vp_cursor_t *cursor, void *encoder_ctx)
+			      fr_cursor_t *cursor, void *encoder_ctx)
 {
 	size_t			pad_len;
 	uint8_t			*p = out, *end = p + outlen;
@@ -764,11 +761,11 @@ static ssize_t encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const 
 
 static inline ssize_t encode_tlv(uint8_t *out, size_t outlen,
 				 fr_dict_attr_t const **tlv_stack, unsigned int depth,
-				 vp_cursor_t *cursor, void *encoder_ctx)
+				 fr_cursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t			slen;
 	uint8_t			*p = out, *end = p + outlen, *value;
-	VALUE_PAIR const	*vp = fr_pair_cursor_current(cursor);
+	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const	*da = tlv_stack[depth];
 
 	if (outlen < 2) {
@@ -806,7 +803,7 @@ static inline ssize_t encode_tlv(uint8_t *out, size_t outlen,
 		/*
 		 *	If nothing updated the attribute, stop
 		 */
-		if (!fr_pair_cursor_current(cursor) || (vp == fr_pair_cursor_current(cursor))) break;
+		if (!fr_cursor_current(cursor) || (vp == fr_cursor_current(cursor))) break;
 
 		/*
 		 *	We can encode multiple sub TLVs, if after
@@ -814,7 +811,7 @@ static inline ssize_t encode_tlv(uint8_t *out, size_t outlen,
 		 *	at this depth is the same.
 		 */
 		if (da != tlv_stack[depth]) break;
-		vp = fr_pair_cursor_current(cursor);
+		vp = fr_cursor_current(cursor);
 	}
 
 	/*
@@ -835,14 +832,14 @@ static inline ssize_t encode_tlv(uint8_t *out, size_t outlen,
 
 static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 			      fr_dict_attr_t const **tlv_stack, unsigned int depth,
-			      vp_cursor_t *cursor, void *encoder_ctx)
+			      fr_cursor_t *cursor, void *encoder_ctx)
 {
 	unsigned int		total_len;
 	ssize_t			len;
 	uint8_t			*p = out;
 	fr_dict_attr_t const	*da;
 
-	VP_VERIFY(fr_pair_cursor_current(cursor));
+	VP_VERIFY(fr_cursor_current(cursor));
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
 	if (tlv_stack[depth]->type != FR_TYPE_TLV) {
@@ -891,7 +888,7 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 	return p - out;	/* AT_IV + AT_*(TLV) - Can't use total_len, doesn't include IV */
 }
 
-ssize_t fr_sim_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void *encoder_ctx)
+ssize_t fr_sim_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, void *encoder_ctx)
 {
 	VALUE_PAIR const	*vp;
 	int			ret;
@@ -962,7 +959,7 @@ ssize_t fr_sim_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, voi
 	/*
 	 *	We couldn't do it, so we didn't do anything.
 	 */
-	if (fr_pair_cursor_current(cursor) == vp) {
+	if (fr_cursor_current(cursor) == vp) {
 		fr_strerror_printf("%s: Nested attribute structure too large to encode", __FUNCTION__);
 		return -1;
 	}
@@ -981,7 +978,7 @@ ssize_t fr_sim_encode(REQUEST *request, VALUE_PAIR *to_encode, void *encode_ctx)
 	bool			do_hmac = false;
 
 	unsigned char		subtype;
-	vp_cursor_t		cursor;
+	fr_cursor_t		cursor;
 	fr_sim_encode_ctx_t	*packet_ctx = encode_ctx;
 	eap_packet_t		*eap_packet = packet_ctx->eap_packet;
 
@@ -1001,7 +998,7 @@ ssize_t fr_sim_encode(REQUEST *request, VALUE_PAIR *to_encode, void *encode_ctx)
 	 *	Group attributes with similar lineages together
 	 */
 	fr_pair_list_sort(&to_encode, fr_pair_cmp_by_parent_num_tag);
-	(void)fr_pair_cursor_init(&cursor, &to_encode);
+	(void)fr_cursor_init(&cursor, &to_encode);
 
 	/*
 	 *	Fast path...
@@ -1018,7 +1015,7 @@ ssize_t fr_sim_encode(REQUEST *request, VALUE_PAIR *to_encode, void *encode_ctx)
 
 		return 0;
 	}
-	fr_pair_cursor_first(&cursor);	/* Reset */
+	fr_cursor_head(&cursor);	/* Reset */
 
 	MEM(p = buff = talloc_zero_array(eap_packet, uint8_t, 1024));	/* We'll shrink this later */
 	end = p + talloc_array_length(p);
@@ -1051,8 +1048,8 @@ ssize_t fr_sim_encode(REQUEST *request, VALUE_PAIR *to_encode, void *encode_ctx)
 	/*
 	 *	Encode all the things...
 	 */
-	(void)fr_pair_cursor_first(&cursor);
-	while ((vp = fr_pair_cursor_current(&cursor))) {
+	(void)fr_cursor_head(&cursor);
+	while ((vp = fr_cursor_current(&cursor))) {
 		slen = fr_sim_encode_pair(p, end - p, &cursor, packet_ctx);
 		if (slen < 0) {
 		error:

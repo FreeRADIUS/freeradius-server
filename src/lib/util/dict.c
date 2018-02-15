@@ -3637,9 +3637,9 @@ void fr_dict_print(fr_dict_attr_t const *da, int depth)
 
 /** Find a common ancestor that two TLV type attributes share
  *
- * @param a first TLV attribute.
- * @param b second TLV attribute.
- * @param is_ancestor Enforce a->b relationship (a is parent or ancestor of b).
+ * @param a		first TLV attribute.
+ * @param b		second TLV attribute.
+ * @param is_ancestor	Enforce a->b relationship (a is parent or ancestor of b).
  * @return
  *	- Common ancestor if one exists.
  *	- NULL if no common ancestor exists.

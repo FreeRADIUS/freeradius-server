@@ -49,11 +49,11 @@
  */
 static ssize_t encode_value(uint8_t *out, size_t outlen,
 			    fr_dict_attr_t const **tlv_stack, unsigned int depth,
-			    vp_cursor_t *cursor)
+			    fr_cursor_t *cursor)
 {
 	uint32_t lvalue;
 
-	VALUE_PAIR *vp = fr_pair_cursor_current(cursor);
+	VALUE_PAIR *vp = fr_cursor_current(cursor);
 	uint8_t *p = out;
 
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
@@ -106,10 +106,10 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 
 	default:
 		fr_strerror_printf("Unsupported option type %d", vp->vp_type);
-		(void)fr_pair_cursor_next(cursor);
+		(void)fr_cursor_next(cursor);
 		return -2;
 	}
-	vp = fr_pair_cursor_next(cursor);	/* We encoded a leaf, advance the cursor */
+	vp = fr_cursor_next(cursor);	/* We encoded a leaf, advance the cursor */
 	fr_proto_tlv_stack_build(tlv_stack, vp ? vp->da : NULL);
 
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
@@ -133,12 +133,12 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
  *	- < 0 on error.
  */
 static ssize_t encode_rfc_hdr(uint8_t *out, ssize_t outlen,
-			      fr_dict_attr_t const **tlv_stack, unsigned int depth, vp_cursor_t *cursor)
+			      fr_dict_attr_t const **tlv_stack, unsigned int depth, fr_cursor_t *cursor)
 {
 	ssize_t			len;
 	uint8_t			*p = out;
 	fr_dict_attr_t const	*da = tlv_stack[depth];
-	VALUE_PAIR		*vp = fr_pair_cursor_current(cursor);
+	VALUE_PAIR		*vp = fr_cursor_current(cursor);
 
 	if (outlen < 3) return 0;	/* No space */
 
@@ -184,7 +184,7 @@ static ssize_t encode_rfc_hdr(uint8_t *out, ssize_t outlen,
 
 		FR_PROTO_TRACE("%zu byte(s) available in option", outlen - out[1]);
 
-		next = fr_pair_cursor_current(cursor);
+		next = fr_cursor_current(cursor);
 		if (!next || (vp->da != next->da)) break;
 		vp = next;
 	} while (vp->da->flags.array);
@@ -205,11 +205,11 @@ static ssize_t encode_rfc_hdr(uint8_t *out, ssize_t outlen,
  *	- < 0 on error.
  */
 static ssize_t encode_tlv_hdr(uint8_t *out, ssize_t outlen,
-			      fr_dict_attr_t const **tlv_stack, unsigned int depth, vp_cursor_t *cursor)
+			      fr_dict_attr_t const **tlv_stack, unsigned int depth, fr_cursor_t *cursor)
 {
 	ssize_t			len;
 	uint8_t			*p = out;
-	VALUE_PAIR const	*vp = fr_pair_cursor_current(cursor);
+	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const	*da = tlv_stack[depth];
 
 	if (outlen < 5) return 0;	/* No space */
@@ -254,7 +254,7 @@ static ssize_t encode_tlv_hdr(uint8_t *out, ssize_t outlen,
 		/*
 		 *	If nothing updated the attribute, stop
 		 */
-		if (!fr_pair_cursor_current(cursor) || (vp == fr_pair_cursor_current(cursor))) break;
+		if (!fr_cursor_current(cursor) || (vp == fr_cursor_current(cursor))) break;
 
 		/*
 	 	 *	We can encode multiple sub TLVs, if after
@@ -262,7 +262,7 @@ static ssize_t encode_tlv_hdr(uint8_t *out, ssize_t outlen,
 	 	 *	at this depth is the same.
 	 	 */
 		if (da != tlv_stack[depth]) break;
-		vp = fr_pair_cursor_current(cursor);
+		vp = fr_cursor_current(cursor);
 	}
 
 	return p - out;
@@ -279,14 +279,14 @@ static ssize_t encode_tlv_hdr(uint8_t *out, ssize_t outlen,
  *	- < 0 error.
  *	- 0 not valid option for DHCP (skipping).
  */
-ssize_t fr_dhcpv4_encode_option(uint8_t *out, size_t outlen, vp_cursor_t *cursor, UNUSED void *encoder_ctx)
+ssize_t fr_dhcpv4_encode_option(uint8_t *out, size_t outlen, fr_cursor_t *cursor, UNUSED void *encoder_ctx)
 {
 	VALUE_PAIR		*vp;
 	unsigned int		depth = 0;
 	fr_dict_attr_t const	*tlv_stack[FR_DICT_MAX_TLV_STACK + 1];
 	ssize_t			len;
 
-	vp = fr_pair_cursor_current(cursor);
+	vp = fr_cursor_current(cursor);
 	if (!vp) return -1;
 
 	if (vp->da->vendor != DHCP_MAGIC_VENDOR) goto next; /* not a DHCP option */
@@ -294,7 +294,7 @@ ssize_t fr_dhcpv4_encode_option(uint8_t *out, size_t outlen, vp_cursor_t *cursor
 	if ((vp->da->attr > 255) && (DHCP_BASE_ATTR(vp->da->attr) != FR_DHCPV4_OPTION_82)) {
 	next:
 		fr_strerror_printf("Attribute \"%s\" is not a DHCP option", vp->da->name);
-		fr_pair_cursor_next(cursor);
+		fr_cursor_next(cursor);
 		return 0;
 	}
 

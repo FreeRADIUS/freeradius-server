@@ -60,8 +60,8 @@ static CONF_PARSER submodule_config[] = {
 static int eap_aka_compose(eap_session_t *eap_session)
 {
 	eap_aka_session_t	*eap_aka_session = talloc_get_type_abort(eap_session->opaque, eap_aka_session_t);
-	vp_cursor_t		cursor;
-	vp_cursor_t		to_encode;
+	fr_cursor_t		cursor;
+	fr_cursor_t		to_encode;
 	VALUE_PAIR		*head = NULL, *vp;
 	REQUEST			*request = eap_session->request;
 	ssize_t			ret;
@@ -80,11 +80,15 @@ static int eap_aka_compose(eap_session_t *eap_session)
 				};
 	fr_dict_attr_t const	*encr = fr_dict_attr_child_by_num(dict_sim_root, FR_EAP_AKA_ENCR_DATA);
 
-	fr_pair_cursor_init(&cursor, &eap_session->request->reply->vps);
-	fr_pair_cursor_init(&to_encode, &head);
+	fr_cursor_init(&cursor, &eap_session->request->reply->vps);
+	fr_cursor_init(&to_encode, &head);
 
-	while ((fr_pair_cursor_next_by_ancestor(&cursor, dict_aka_root, TAG_ANY))) {
-		vp = fr_pair_cursor_remove(&cursor);
+	while ((vp = fr_cursor_current(&cursor))) {
+		if (!fr_dict_parent_common(dict_aka_root, vp->da, true)) {
+			fr_cursor_next(&cursor);
+			continue;
+		}
+		vp = fr_cursor_remove(&cursor);
 
 		/*
 		 *	Silently discard encrypted attributes until
@@ -99,7 +103,7 @@ static int eap_aka_compose(eap_session_t *eap_session)
 			continue;
 		}
 
-		fr_pair_cursor_append(&to_encode, vp);
+		fr_cursor_append(&to_encode, vp);
 	}
 
 	RDEBUG2("Encoding EAP-AKA attributes");
@@ -110,8 +114,8 @@ static int eap_aka_compose(eap_session_t *eap_session)
 	eap_session->this_round->set_request_id = true;
 
 	ret = fr_sim_encode(eap_session->request, head, &encoder_ctx);
-	fr_pair_cursor_first(&to_encode);
-	fr_pair_cursor_free(&to_encode);
+	fr_cursor_head(&to_encode);
+	fr_cursor_free_list(&to_encode);
 
 	if (ret < 0) {
 		RPEDEBUG("Failed encoding EAP-AKA data");
@@ -812,7 +816,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 					.root = dict_aka_root
 				};
 	VALUE_PAIR		*vp, *vps, *subtype_vp;
-	vp_cursor_t		cursor;
+	fr_cursor_t		cursor;
 
 	eap_aka_subtype_t	subtype;
 
@@ -831,8 +835,8 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	/* vps is the data from the client */
 	vps = request->packet->vps;
 
-	fr_pair_cursor_init(&cursor, &request->packet->vps);
-	fr_pair_cursor_last(&cursor);
+	fr_cursor_init(&cursor, &request->packet->vps);
+	fr_cursor_tail(&cursor);
 
 	ret = fr_sim_decode(eap_session->request,
 			    &cursor,
@@ -850,7 +854,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		return RLM_MODULE_HANDLED;	/* We need to process more packets */
 	}
 
-	vp = fr_pair_cursor_current(&cursor);
+	vp = fr_cursor_current(&cursor);
 	if (vp && RDEBUG_ENABLED2) {
 		RDEBUG2("EAP-AKA decoded attributes");
 		rdebug_pair_list(L_DBG_LVL_2, request, vp, NULL);

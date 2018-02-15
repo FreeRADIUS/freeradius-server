@@ -158,14 +158,14 @@ int		fr_dhcpv4_init(void);
 /*
  *	decode.c
  */
-ssize_t		fr_dhcpv4_decode_option(TALLOC_CTX *ctx, vp_cursor_t *cursor,
+ssize_t		fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 					uint8_t const *data, size_t len, void *decoder_ctx);
 
 /*
  *	encode.c
  */
 ssize_t		fr_dhcpv4_encode_option(uint8_t *out, size_t outlen,
-					vp_cursor_t *cursor, void *encoder_ctx);
+					fr_cursor_t *cursor, void *encoder_ctx);
 
 /*
  *	packet.c

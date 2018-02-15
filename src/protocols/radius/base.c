@@ -824,7 +824,7 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 	int			total_length;
 	int			len;
 	VALUE_PAIR const	*vp;
-	vp_cursor_t		cursor;
+	fr_cursor_t		cursor;
 	fr_radius_ctx_t		packet_ctx;
 
 	packet_ctx.secret = secret;
@@ -912,8 +912,8 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 	/*
 	 *	Loop over the reply attributes for the packet.
 	 */
-	fr_pair_cursor_init(&cursor, &vps);
-	while ((vp = fr_pair_cursor_current(&cursor))) {
+	fr_cursor_init(&cursor, &vps);
+	while ((vp = fr_cursor_current(&cursor))) {
 		size_t		last_len, room;
 		char const	*last_name = NULL;
 
@@ -942,11 +942,11 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 				}
 
 				memcpy(ptr, vp->vp_octets, len);
-				fr_pair_cursor_next(&cursor);
+				fr_cursor_next(&cursor);
 				goto next;
 			}
 #endif
-			fr_pair_cursor_next(&cursor);
+			fr_cursor_next(&cursor);
 			continue;
 		}
 
@@ -1007,7 +1007,7 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, uint8_t *packet, size_t packet_len, ui
 			 char const *secret, UNUSED size_t secret_len, VALUE_PAIR **vps)
 {
 	ssize_t			slen;
-	vp_cursor_t		cursor;
+	fr_cursor_t		cursor;
 	uint8_t const		*attr, *end;
 	fr_radius_ctx_t		packet_ctx;
 
@@ -1015,7 +1015,7 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, uint8_t *packet, size_t packet_len, ui
 	packet_ctx.vector = original + 4;
 	packet_ctx.root = fr_dict_root(fr_dict_internal);
 
-	fr_pair_cursor_init(&cursor, vps);
+	fr_cursor_init(&cursor, vps);
 
 	attr = packet + 20;
 	end = packet + packet_len;

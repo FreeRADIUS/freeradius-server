@@ -28,8 +28,27 @@
  */
 RCSIDH(dhcpv6_h, "$Id$")
 
+extern size_t const fr_dhcpv6_attr_sizes[FR_TYPE_MAX + 1][2];
+
+#define OPT_HDR_LEN	(sizeof(uint16_t) * 2)
+
+typedef struct {
+	fr_dict_attr_t const	*root;				//!< Root attribute of the dictionary.
+} fr_dhcpv6_encode_ctx_t;
+
+/*
+ *	base.c
+ */
+size_t		fr_dhcpv6_option_len(VALUE_PAIR const *vp);
+
+/*
+ *	encode.c
+ */
 ssize_t		fr_dhcpv6_encode_option(uint8_t *out, size_t outlen, fr_cursor_t *cursor, void *encoder_ctx);
 
+/*
+ *	decode.c
+ */
 ssize_t		fr_dhcpv6_decode_option(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 					uint8_t const *data, size_t data_len, void *decoder_ctx);
 #endif

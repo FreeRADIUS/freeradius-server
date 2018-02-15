@@ -33,10 +33,10 @@
 #include <freeradius-devel/dhcpv4/dhcpv4.h>
 #include <freeradius-devel/io/test_point.h>
 
-static ssize_t decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
+static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *parent,
 			  uint8_t const *data, size_t data_len);
 
-static ssize_t decode_value(TALLOC_CTX *ctx, vp_cursor_t *cursor,
+static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 			    fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len);
 
 /** Returns the number of array members for arrays with fixed element sizes
@@ -84,7 +84,7 @@ static int fr_dhcpv4_array_members(size_t *out, size_t len, fr_dict_attr_t const
 /*
  *	Decode ONE value into a VP
  */
-static ssize_t decode_value_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *da,
+static ssize_t decode_value_internal(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *da,
 				     uint8_t const *data, size_t data_len)
 {
 	VALUE_PAIR *vp;
@@ -131,7 +131,7 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 
 			/* Need another VP for the next round */
 			if (p < end) {
-				fr_pair_cursor_append(cursor, vp);
+				fr_cursor_append(cursor, vp);
 
 				vp = fr_pair_afrom_da(ctx, da);
 				if (!vp) return -1;
@@ -180,7 +180,7 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 
 finish:
 	FR_PROTO_TRACE("decoding value complete, adding new pair and returning %zu byte(s)", p - data);
-	fr_pair_cursor_append(cursor, vp);
+	fr_cursor_append(cursor, vp);
 
 	return p - data;
 }
@@ -220,7 +220,7 @@ finish:
  * @param[in] data to parse.
  * @param[in] data_len of data parsed.
  */
-static ssize_t decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
+static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *parent,
 			  uint8_t const *data, size_t data_len)
 {
 	uint8_t const		*p = data;
@@ -300,7 +300,7 @@ static ssize_t decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t c
 	return p - data;
 }
 
-static ssize_t decode_value(TALLOC_CTX *ctx, vp_cursor_t *cursor,
+static ssize_t decode_value(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 			    fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len)
 {
 	unsigned int	values, i;		/* How many values we need to decode */
@@ -355,7 +355,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, vp_cursor_t *cursor,
  * @param[in] data_len of data to parse.
  * @param[in] decoder_ctx Unused.
  */
-ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, vp_cursor_t *cursor,
+ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 			        uint8_t const *data, size_t data_len, void *decoder_ctx)
 {
 	ssize_t			ret;

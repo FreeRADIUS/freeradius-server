@@ -52,7 +52,7 @@ static ssize_t dhcp_options_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 			   	 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			   	 REQUEST *request, char const *fmt)
 {
-	vp_cursor_t	cursor;
+	fr_cursor_t	cursor;
 	fr_cursor_t	src_cursor;
 	vp_tmpl_t	*src;
 	VALUE_PAIR	*vp, *head = NULL;
@@ -83,7 +83,7 @@ static ssize_t dhcp_options_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 		goto error;
 	}
 
-	fr_pair_cursor_init(&cursor, &head);
+	fr_cursor_init(&cursor, &head);
 
 	for (vp = tmpl_cursor_init(NULL, &src_cursor, request, src);
 	     vp;
@@ -91,9 +91,9 @@ static ssize_t dhcp_options_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 		uint8_t const	*p = vp->vp_octets, *end = p + vp->vp_length;
 		ssize_t		len;
 		VALUE_PAIR	*vps = NULL;
-		vp_cursor_t	options_cursor;
+		fr_cursor_t	options_cursor;
 
-		fr_pair_cursor_init(&options_cursor, &vps);
+		fr_cursor_init(&options_cursor, &vps);
 		/*
 		 *	Loop over all the options data
 		 */
@@ -106,12 +106,13 @@ static ssize_t dhcp_options_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 			}
 			p += len;
 		}
-		fr_pair_cursor_merge(&cursor, vps);
+		fr_cursor_head(&options_cursor);
+		fr_cursor_merge(&cursor, &options_cursor);
 	}
 
-	for (vp = fr_pair_cursor_first(&cursor);
+	for (vp = fr_cursor_head(&cursor);
 	     vp;
-	     vp = fr_pair_cursor_next(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		rdebug_pair(L_DBG_LVL_2, request, vp, "dhcp_options: ");
 		decoded++;
 	}
@@ -132,7 +133,7 @@ static ssize_t dhcp_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			 REQUEST *request, char const *fmt)
 {
-	vp_cursor_t cursor;
+	fr_cursor_t cursor;
 	VALUE_PAIR *vp;
 	uint8_t binbuf[255];
 	ssize_t len;
@@ -140,7 +141,7 @@ static ssize_t dhcp_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	while (isspace((int) *fmt)) fmt++;
 
 	if ((radius_copy_vp(request, &vp, request, fmt) < 0) || !vp) return 0;
-	fr_pair_cursor_init(&cursor, &vp);
+	fr_cursor_init(&cursor, &vp);
 
 	len = fr_dhcpv4_encode_option(binbuf, sizeof(binbuf), &cursor, NULL);
 	talloc_free(vp);

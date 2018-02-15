@@ -62,8 +62,8 @@ static CONF_PARSER submodule_config[] = {
 static int eap_sim_compose(eap_session_t *eap_session, uint8_t const *hmac_extra, size_t hmac_extra_len)
 {
 	eap_sim_session_t	*eap_sim_session = talloc_get_type_abort(eap_session->opaque, eap_sim_session_t);
-	vp_cursor_t		cursor;
-	vp_cursor_t		to_encode;
+	fr_cursor_t		cursor;
+	fr_cursor_t		to_encode;
 	VALUE_PAIR		*head = NULL, *vp;
 	REQUEST			*request = eap_session->request;
 	fr_sim_encode_ctx_t	encoder_ctx = {
@@ -86,11 +86,15 @@ static int eap_sim_compose(eap_session_t *eap_session, uint8_t const *hmac_extra
 	/* we will set the ID on requests, since we have to HMAC it */
 	eap_session->this_round->set_request_id = true;
 
-	fr_pair_cursor_init(&cursor, &eap_session->request->reply->vps);
-	fr_pair_cursor_init(&to_encode, &head);
+	fr_cursor_init(&cursor, &eap_session->request->reply->vps);
+	fr_cursor_init(&to_encode, &head);
 
-	while ((fr_pair_cursor_next_by_ancestor(&cursor, dict_sim_root, TAG_ANY))) {
-		vp = fr_pair_cursor_remove(&cursor);
+	while ((vp = fr_cursor_current(&cursor))) {
+		if (!fr_dict_parent_common(dict_sim_root, vp->da, true)) {
+			fr_cursor_next(&cursor);
+			continue;
+		}
+		vp = fr_cursor_remove(&cursor);
 
 		/*
 		 *	Silently discard encrypted attributes until
@@ -105,7 +109,7 @@ static int eap_sim_compose(eap_session_t *eap_session, uint8_t const *hmac_extra
 			continue;
 		}
 
-		fr_pair_cursor_append(&to_encode, vp);
+		fr_cursor_append(&to_encode, vp);
 	}
 
 	RDEBUG2("Encoding EAP-SIM attributes");
@@ -116,8 +120,8 @@ static int eap_sim_compose(eap_session_t *eap_session, uint8_t const *hmac_extra
 	eap_session->this_round->set_request_id = true;
 
 	ret = fr_sim_encode(eap_session->request, head, &encoder_ctx);
-	fr_pair_cursor_first(&to_encode);
-	fr_pair_cursor_free(&to_encode);
+	fr_cursor_head(&to_encode);
+	fr_cursor_free_list(&to_encode);
 
 	if (ret < 0) {
 		RPEDEBUG("Failed encoding EAP-SIM data");
@@ -808,7 +812,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 					.root = dict_sim_root
 				};
 	VALUE_PAIR		*subtype_vp, *from_peer, *vp;
-	vp_cursor_t		cursor;
+	fr_cursor_t		cursor;
 
 	eap_sim_subtype_t	subtype;
 
@@ -821,8 +825,8 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	 */
 	from_peer = eap_session->request->packet->vps;
 
-	fr_pair_cursor_init(&cursor, &request->packet->vps);
-	fr_pair_cursor_last(&cursor);
+	fr_cursor_init(&cursor, &request->packet->vps);
+	fr_cursor_tail(&cursor);
 
 	ret = fr_sim_decode(eap_session->request,
 			    &cursor,
@@ -840,7 +844,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		return RLM_MODULE_HANDLED;	/* We need to process more packets */
 	}
 
-	vp = fr_pair_cursor_current(&cursor);
+	vp = fr_cursor_current(&cursor);
 	if (vp && RDEBUG_ENABLED2) {
 		RDEBUG2("Decoded EAP-SIM attributes");
 		rdebug_pair_list(L_DBG_LVL_2, request, vp, NULL);

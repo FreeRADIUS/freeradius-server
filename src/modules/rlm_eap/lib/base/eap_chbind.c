@@ -32,12 +32,12 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 	size_t			total;
 	uint8_t			*ptr, *end;
 	VALUE_PAIR		const *vp;
-	vp_cursor_t		cursor;
+	fr_cursor_t		cursor;
 
 	total = 0;
-	for (vp = fr_pair_cursor_init(&cursor, &request->reply->vps);
+	for (vp = fr_cursor_init(&cursor, &request->reply->vps);
 	     vp != NULL;
-	     vp = fr_pair_cursor_next(&cursor)) {
+	     vp = fr_cursor_next(&cursor)) {
 		/*
 		 *	Skip things which shouldn't be in channel bindings.
 		 */
@@ -83,14 +83,14 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 	ptr += 4;
 	end = ptr + total;
 
-	fr_pair_cursor_init(&cursor, &request->reply->vps);
-	while ((vp = fr_pair_cursor_current(&cursor)) && (ptr < end)) {
+	fr_cursor_init(&cursor, &request->reply->vps);
+	while ((vp = fr_cursor_current(&cursor)) && (ptr < end)) {
 		/*
 		 *	Skip things which shouldn't be in channel bindings.
 		 */
 		if (vp->da->flags.encrypt != FLAG_ENCRYPT_NONE) {
 		next:
-			fr_pair_cursor_next(&cursor);
+			fr_cursor_next(&cursor);
 			continue;
 		}
 		if (!vp->da->vendor && (vp->da->attr == FR_MESSAGE_AUTHENTICATOR)) goto next;
@@ -187,11 +187,11 @@ FR_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 	/* Add the channel binding attributes to the fake packet */
 	data_len = chbind_get_data(chbind->request, CHBIND_NSID_RADIUS, &attr_data);
 	if (data_len) {
-		vp_cursor_t cursor;
+		fr_cursor_t cursor;
 
 		rad_assert(data_len <= talloc_array_length((uint8_t const *) chbind->request));
 
-		fr_pair_cursor_init(&cursor, &fake->packet->vps);
+		fr_cursor_init(&cursor, &fake->packet->vps);
 		while (data_len > 0) {
 			fr_radius_ctx_t decoder_ctx = {
 				.root = fr_dict_root(fr_dict_internal)

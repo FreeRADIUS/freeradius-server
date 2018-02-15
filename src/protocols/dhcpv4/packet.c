@@ -104,11 +104,11 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 	size_t i;
 	uint8_t *p;
 	uint32_t giaddr;
-	vp_cursor_t cursor;
+	fr_cursor_t cursor;
 	VALUE_PAIR *head = NULL, *vp;
 	VALUE_PAIR *maxms, *mtu;
 
-	fr_pair_cursor_init(&cursor, &head);
+	fr_cursor_init(&cursor, &head);
 	p = packet->data;
 
 	if (packet->data[1] > 1) {
@@ -196,7 +196,7 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 
 		if (!vp) continue;
 
-		fr_pair_cursor_append(&cursor, vp);
+		fr_cursor_append(&cursor, vp);
 	}
 
 	/*
@@ -208,11 +208,11 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 	 *	it'll need to find the new tail...
 	 */
 	{
-		uint8_t const	*end;
-		ssize_t		len;
+		uint8_t const		*end;
+		ssize_t			len;
 		fr_dhcp_decoder_ctx_t	packet_ctx = {
-					.root = fr_dict_root(fr_dict_internal)
-				};
+						.root = fr_dict_root(fr_dict_internal)
+					};
 
 		p = packet->data + 240;
 		end = p + (packet->data_len - 240);
@@ -297,7 +297,7 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 int fr_dhcpv4_packet_encode(RADIUS_PACKET *packet)
 {
 	uint8_t		*p;
-	vp_cursor_t	cursor;
+	fr_cursor_t	cursor;
 	VALUE_PAIR	*vp;
 	uint32_t	lvalue;
 	uint16_t	svalue;
@@ -485,13 +485,13 @@ int fr_dhcpv4_packet_encode(RADIUS_PACKET *packet)
 	 *  operates correctly. This changes the order of the list, but never mind...
 	 */
 	fr_pair_list_sort(&packet->vps, fr_dhcpv4_attr_cmp);
-	fr_pair_cursor_init(&cursor, &packet->vps);
+	fr_cursor_init(&cursor, &packet->vps);
 
 	/*
 	 *  Each call to fr_dhcpv4_encode_option will encode one complete DHCP option,
 	 *  and sub options.
 	 */
-	while ((vp = fr_pair_cursor_current(&cursor))) {
+	while ((vp = fr_cursor_current(&cursor))) {
 		len = fr_dhcpv4_encode_option(p, packet->data_len - (p - packet->data), &cursor, NULL);
 		if (len < 0) break;
 		p += len;
