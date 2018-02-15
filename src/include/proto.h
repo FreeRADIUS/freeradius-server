@@ -31,6 +31,11 @@ RCSIDH(proto_h, "$Id$")
 extern "C" {
 #endif
 
+#define CHECK_FREESPACE(_have, _need) \
+do { \
+	if (unlikely((size_t)(_have) < (size_t)(_need))) return -((size_t)(_need) - (size_t)(_have)); \
+} while (0);
+
 #ifndef NDEBUG
 #  define FR_PROTO_TRACE(_x, ...)	if (fr_log_fp && (fr_debug_lvl > 3)) fr_proto_print(__FILE__, __LINE__, _x, ## __VA_ARGS__)
 #  define FR_PROTO_HEX_DUMP(_x, _y, _z)	if (fr_log_fp && (fr_debug_lvl > 3)) fr_proto_print_hex_data(__FILE__, __LINE__, _x, _y, _z)
