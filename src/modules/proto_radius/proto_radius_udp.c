@@ -1107,7 +1107,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	 *	sockets.  This code catches *statically* defined
 	 *	clients, not dynamic ones.
 	 */
-	if ((address.client->is_nat || address.client->behind_nat) && !inst->use_connected) {
+	if (!inst->use_connected && (address.client->is_nat || address.client->behind_nat)) {
 		WARN("Ignoring NAT settings for client %s as we are not using connected sockets for listener %s",
 			address.client->shortname, inst->name);
 		address.client->is_nat = false;
