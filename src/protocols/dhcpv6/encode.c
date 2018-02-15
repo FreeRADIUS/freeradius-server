@@ -588,9 +588,9 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
  *     .                                                               .
  *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
-static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
-				      fr_dict_attr_t const **tlv_stack, unsigned int depth,
-				      fr_cursor_t *cursor, void *encoder_ctx)
+static ssize_t encode_vsio_suboption_hdr(uint8_t *out, size_t outlen,
+					 fr_dict_attr_t const **tlv_stack, unsigned int depth,
+					 fr_cursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t			slen;
 	uint8_t			*p = out, *end = p + outlen, *len_field;
@@ -780,7 +780,7 @@ static ssize_t encode_vsio_hdr(uint8_t *out, size_t outlen,
 	 *	i.e. OPTION_VENDOR_OPTS and whatever the length of the vendor
 	 *	specific attribute was.
 	 */
-	slen = encode_vendor_attr_hdr(p, end - p, tlv_stack, depth, cursor, encoder_ctx);
+	slen = encode_vsio_suboption_hdr(p, end - p, tlv_stack, depth, cursor, encoder_ctx);
 	if (slen < 0) return slen;
 	p += slen;
 
