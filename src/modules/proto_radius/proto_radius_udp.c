@@ -100,8 +100,8 @@ typedef struct proto_radius_udp_child_t {
 	uint16_t			src_port;      		//!< Source port for connected sockets.
 	bool				expired;		//!< is this socket expired?
 
-	uint8_t const			*packet;		//!< for injection
-	size_t				packet_len;		//!< length of the packet
+	uint8_t const			*packet;		//!< for injected packets
+	size_t				packet_len;		//!< length of the injected packet
 	fr_time_t			recv_time;		//!< of the packet
 	RADCLIENT			*client;		//!< static client for this connection
 	dl_instance_t	  		*dl_inst;		//!< our library instance

@@ -136,19 +136,10 @@ Pretty much implemented as documented below.
 ### NAT
 
 NAT mostly works.  The main limitation left is that the client list is
-by source IP, and NOT by src/dst ip/port.  So we probably need a
-*separate* rbtree for NATed clients.
-
-i.e. `src/main/client.c`, struct `radclient_list` has to have a `rbtree_t *nat`
-
-Which is used ONLY if `client->behind_nat == true`.
-
-and the rbtree callback function compares src/dst ip/port.
-
-Since all of the calls are abstracted behind `client_add()`, etc.  We
-can just update `client.c`, and have it all automagically work.
-
-The one caveat is we don't
+by source IP, and NOT by src/dst ip/port.  The solution is to keep
+track of ongoing sessions (src/dst IP/port).  And then look up packets
+in THAT table / tree, first.  If there's a match, send it over.
+Otherwise, don't.
 
 ### how it works
 
