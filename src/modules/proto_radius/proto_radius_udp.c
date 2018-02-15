@@ -957,12 +957,35 @@ connected:
 
 		address.client = inst->child.client;
 		goto have_client;
-	}
 
-	/*
-	 *	@todo - Look up the packet in the connected hash.  If
-	 *	it's found, inject it to the child socket.
-	 */
+	} else if (inst->use_connected) {
+		proto_radius_udp_t *child, my_child;
+
+		/*
+		 *	There is a connection which matches this
+		 *	packet.  Send the packet there, and return.
+		 */
+		my_child.ipaddr = address.dst_ipaddr;
+		my_child.port = address.dst_port;
+
+		my_child.child.src_ipaddr = address.src_ipaddr;
+		my_child.child.src_port = address.src_port;
+
+		PTHREAD_MUTEX_LOCK(&inst->master.mutex);
+		child = fr_hash_table_finddata(inst->master.ht, &my_child);
+		if (child) {
+			(void) fr_network_listen_inject(child->nr, child->child.listen,
+							buffer, packet_len, track->timestamp);
+			PTHREAD_MUTEX_UNLOCK(&inst->master.mutex);
+			return 0;
+		}
+
+		/*
+		 *	There's no existing connection, fall back to
+		 *	looking up the client.
+		 */
+		PTHREAD_MUTEX_UNLOCK(&inst->master.mutex);
+	}
 
 	/*
 	 *	Look up the client.  It either exists, or we create
@@ -1162,32 +1185,7 @@ received_packet:
 	 *	and create a child socket...
 	 */
 	if (inst->use_connected && !inst->connected) {
-		proto_radius_udp_t *child, my_child;
-
-		my_child.ipaddr = address.dst_ipaddr;
-		my_child.port = address.dst_port;
-
-		my_child.child.src_ipaddr = address.src_ipaddr;
-		my_child.child.src_port = address.src_port;
-
-		/*
-		 *	@todo - move this code to before the
-		 *	client_find() call.
-		 */
-		PTHREAD_MUTEX_LOCK(&inst->master.mutex);
-		child = fr_hash_table_finddata(inst->master.ht, &my_child);
-		if (child) {
-			(void) fr_network_listen_inject(child->nr, child->child.listen,
-							buffer, packet_len, track->timestamp);
-		}
-		PTHREAD_MUTEX_UNLOCK(&inst->master.mutex);
-
-		/*
-		 *	If the child exists, remove the tracking table
-		 *	entry for this packet.  The child will take
-		 *	care of dealing with the packet.
-		 */
-		if (child) goto untrack;
+		proto_radius_udp_t *child;
 
 		/*
 		 *	Try to clone us into a child.  If that
@@ -1201,7 +1199,6 @@ received_packet:
 			PTHREAD_MUTEX_UNLOCK(&inst->master.mutex);
 		}
 
-untrack:
 		/*
 		 *	This dynamic client is behind a NAT.  We've
 		 *	read all of the outstanding packets for it, so
