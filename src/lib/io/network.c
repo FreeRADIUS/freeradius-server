@@ -190,6 +190,7 @@ static void fr_network_drain_input(fr_network_t *nr, fr_channel_t *ch, fr_channe
 	if (!cd) {
 		cd = fr_channel_recv_reply(ch);
 		if (!cd) {
+			DEBUG3("empty reply from worker");
 			return;
 		}
 	}
