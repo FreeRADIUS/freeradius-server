@@ -26,10 +26,55 @@
  *
  * @copyright 2017 The FreeRADIUS project
  */
+#define PAIR_ENCODE_SKIP	SSIZE_MIN + 1
+#define PAIR_ENCODE_ERROR	SSIZE_MIN
 
-typedef ssize_t (*fr_pair_encode_t)(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void *encoder_ctx);
+/** Generic interface for encoding one or more VALUE_PAIRs
+ *
+ * An encoding function should consume at most, one top level VALUE_PAIR and encode
+ * it in the appropriate wire format for the protocol, writing the encoded data to
+ * out, and returning the encoded length.
+ *
+ * The exception to processing one VALUE_PAIR is if multiple VALUE_PAIRs can be aggregated
+ * into a single TLV, in which case the encoder may consume as many VALUE_PAIRs as will
+ * fit into that TLV.
+ *
+ * Outlen provides the length of the buffer to write the encoded data to.  The return
+ * value must not be greater than outlen.
+ *
+ * The cursor is used to track how many pairs there are remaining.
+ *
+ * @param[out] out		Where to write encoded data.  The encoding function should
+ *				not assume that this buffer has been initialised, and must
+ *				zero out any portions used for padding.
+ * @param[in] outlen		The length of the buffer provided.
+ * @param[in] cursor		Cursor containing the list of attributes to process.
+ * @param[in] encoder_ctx	Any encoder specific data such as secrets or configurables.
+ * @return
+ *	- PAIR_ENCODE_SKIP - The current pair is not valid for encoding and should be skipped.
+ *	- PAIR_ENCODE_ERROR - Encoding failed in a fatal way. Encoding the packet should be
+ *	  aborted in its entirety.
+ *	- <0 - The encoder ran out of space and returned the number of bytes as a negative
+ *	  integer that would be required to encode the attribute.
+ *	- >0 - The number of bytes written to out.
+ */
+typedef ssize_t (*fr_pair_encode_t)(uint8_t *out, size_t outlen, fr_cursor_t *cursor, void *encoder_ctx);
 
-typedef ssize_t (*fr_pair_decode_t)(TALLOC_CTX *ctx, vp_cursor_t *cursor,
+/** A generic interface for decoding VALUE_PAIRs
+ *
+ * A decoding function should decode a single top level VALUE_PAIR from wire format.
+ * If this top level VALUE_PAIR is a TLV, multiple child attributes may also be decoded.
+ *
+ * @param[in] ctx		to allocate new pairs in.
+ * @param[in] cursor		to insert new pairs into.
+ * @param[in] data		to decode.
+ * @param[in] data_len		The length of the incoming data.
+ * @param[in] decoder_ctx	Any decode specific data such as secrets or configurable.
+ * @return
+ *	- <= 0 on error.  May be the offset (as a negative value) where the error occurred.
+ *	- > 0 on success.  How many bytes were decoded.
+ */
+typedef ssize_t (*fr_pair_decode_t)(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 				    uint8_t const *data, size_t data_len, void *decoder_ctx);
 
 #endif /* _FR_IO_PAIR_H */
