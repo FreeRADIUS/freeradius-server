@@ -791,6 +791,9 @@ static proto_radius_udp_t *mod_clone(proto_radius_udp_t *inst, proto_radius_udp_
 	/*
 	 *	Attach it to the parent hash table, so that the child
 	 *	can find itself there when it starts running.
+	 *
+	 *	@todo - remove the mutex lock, and have the master
+	 *	handle the tree.
 	 */
 	PTHREAD_MUTEX_LOCK(&inst->master.mutex);
 	rcode = fr_hash_table_insert(inst->master.ht, child);
@@ -955,6 +958,12 @@ connected:
 		address.client = inst->child.client;
 		goto have_client;
 	}
+
+	/*
+	 *	@todo - Look up the packet in the connected hash.  If
+	 *	it's found, inject it to the child socket.
+	 */
+
 	/*
 	 *	Look up the client.  It either exists, or we create
 	 *	it.
@@ -1161,6 +1170,10 @@ received_packet:
 		my_child.child.src_ipaddr = address.src_ipaddr;
 		my_child.child.src_port = address.src_port;
 
+		/*
+		 *	@todo - move this code to before the
+		 *	client_find() call.
+		 */
 		PTHREAD_MUTEX_LOCK(&inst->master.mutex);
 		child = fr_hash_table_finddata(inst->master.ht, &my_child);
 		if (child) {
@@ -2186,6 +2199,9 @@ static int mod_detach(void *instance)
 			/*
 			 *	We're the child, tell the master to
 			 *	forget about us.
+			 *
+			 *	@todo - mark ourselves dead, and let
+			 *	the master clean us up.
 			 */
 			PTHREAD_MUTEX_LOCK(&inst->master.mutex);
 			(void) fr_hash_table_delete(inst->child.master->master.ht, inst);
