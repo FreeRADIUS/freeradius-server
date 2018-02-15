@@ -411,7 +411,7 @@ static int mod_decode(void const *instance, REQUEST *request, UNUSED uint8_t *co
 	return 0;
 }
 
-static ssize_t dynamic_client_packet_restore(proto_radius_udp_t *inst, uint8_t *buffer, size_t buffer_len,
+static size_t dynamic_client_packet_restore(proto_radius_udp_t *inst, uint8_t *buffer, size_t buffer_len,
 					     fr_time_t *packet_time,
 					     proto_radius_udp_address_t *address, fr_tracking_entry_t **track)
 {
@@ -822,80 +822,70 @@ static proto_radius_udp_t *mod_clone(proto_radius_udp_t *inst, proto_radius_udp_
 	return child;
 }
 
-
-static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority)
+/** Get a packet from one of several possible places.
+ *
+ */
+static ssize_t mod_read_packet(proto_radius_udp_t *inst, uint8_t *buffer, size_t buffer_len,
+			       fr_time_t *packet_time,
+			       proto_radius_udp_address_t *address, fr_tracking_entry_t **track)
 {
-	proto_radius_udp_t		*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
-
 	int				flags;
+	fr_dlist_t			*entry;
 	ssize_t				data_size;
 	size_t				packet_len;
+	struct timeval			timestamp;
 	decode_fail_t			reason;
 
-	fr_time_t			packet_time;
-	struct timeval			timestamp;
-	fr_tracking_status_t		tracking_status;
-	fr_tracking_entry_t		*track = NULL;
-	proto_radius_udp_address_t	address;
-	fr_dlist_t			*entry;
-
 	/*
-	 *	@todo - have a way to change the read() routine for
-	 *	this listener.  That avoids all of this if / then /
-	 *	else nonsense.  Maybe we just put a new routine into
-	 *	"inst", and call that "good enough".
+	 *	Check for injected packets first.  This only works for
+	 *	connected sockets.
 	 */
-
-	*leftover = 0;		/* always for UDP */
-
-	/*
-	 *	Check for injected packets first.
-	 */
-	if (inst->child.packet) {
+	if (inst->connected && inst->child.packet) {
 		/*
 		 *	Packet is too large, ignore it.
 		 */
 		if (buffer_len < inst->child.packet_len) {
 			inst->child.packet = NULL;
-			return 0;
+			goto check_dynamic;
 		}
 
 		memcpy(buffer, inst->child.packet, inst->child.packet_len);
 
-		address.code = buffer[0];
-		address.id = buffer[1];
-		packet_time = inst->child.recv_time;
+		address->code = buffer[0];
+		address->id = buffer[1];
+		address->src_ipaddr = inst->child.src_ipaddr;
+		address->src_port = inst->child.src_port;
+		address->src_ipaddr = inst->ipaddr;
+		address->src_port = inst->port;
+		address->client = inst->child.client;
+		*packet_time = inst->child.recv_time;
 
 		inst->child.packet = NULL;
-		packet_len = inst->child.packet_len;
-		goto connected;
+		return inst->child.packet_len;
 	}
 
 	/*
 	 *	There are saved packets.  Go read them.
 	 */
+check_dynamic:
 	entry = FR_DLIST_FIRST(inst->dynamic_clients.packets);
 	if (entry) {
-		data_size = dynamic_client_packet_restore(inst, buffer, buffer_len, &packet_time, &address, &track);
-		if (!data_size) goto do_read;
-
-		packet_len = data_size;
-
-		rad_assert(track != NULL);
-		rad_assert(track->src_dst != NULL);
-		goto received_packet;
+		packet_len = dynamic_client_packet_restore(inst, buffer, buffer_len, packet_time, address, track);
+		if (packet_len > 0) {
+			rad_assert(track != NULL);
+			return packet_len;
+		}
 	}
 
-do_read:
 	/*
 	 *	Tell udp_recv if we're connected or not.
 	 */
 	flags = UDP_FLAGS_CONNECTED * inst->connected;
 
 	data_size = udp_recv(inst->sockfd, buffer, buffer_len, flags,
-			     &address.src_ipaddr, &address.src_port,
-			     &address.dst_ipaddr, &address.dst_port,
-			     &address.if_index, &timestamp);
+			     &address->src_ipaddr, &address->src_port,
+			     &address->dst_ipaddr, &address->dst_port,
+			     &address->if_index, &timestamp);
 	if (data_size < 0) {
 		DEBUG2("proto_radius_udp got read error %zd: %s", data_size, fr_strerror());
 		return data_size;
@@ -941,29 +931,50 @@ do_read:
 	/*
 	 *	Track the packet ID.
 	 */
-	address.code = buffer[0];
-	address.id = buffer[1];
-	packet_time = fr_time();
+	address->code = buffer[0];
+	address->id = buffer[1];
+	address->client = NULL;
+	*packet_time = fr_time();
+
+	return packet_len;
+}
+
+
+static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority)
+{
+	proto_radius_udp_t		*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
+
+	int				flags;
+	ssize_t				data_size;
+	size_t				packet_len;
+
+	fr_time_t			packet_time;
+	fr_tracking_status_t		tracking_status;
+	fr_tracking_entry_t		*track;
+	proto_radius_udp_address_t	address;
+
+	*leftover = 0;		/* always for UDP */
+	track = NULL;
 
 	/*
-	 *	Skip client lookups for connected sockets.
+	 *	Get a packet, using various magic.
 	 */
-	if (inst->connected) {
-connected:
-		address.src_ipaddr = inst->child.src_ipaddr;
-		address.src_port = inst->child.src_port;
-		address.dst_ipaddr = inst->ipaddr;
-		address.dst_port = inst->port;
+	data_size = mod_read_packet(inst, buffer, buffer_len, &packet_time, &address, &track);
+	if (data_size <= 0) return data_size;
 
-		address.client = inst->child.client;
-		goto have_client;
+	packet_len = data_size;
 
-	} else if (inst->use_connected) {
+	/*
+	 *	See if this packet is for a connected socket.  If so,
+	 *	send it to the connected socket.
+	 */
+	if (inst->use_connected && !inst->connected) {
 		proto_radius_udp_t *child, my_child;
 
 		/*
 		 *	There is a connection which matches this
-		 *	packet.  Send the packet there, and return.
+		 *	packet.  Inject the packet there, and remove
+		 *	any local tracking entry if it exists.
 		 */
 		my_child.ipaddr = address.dst_ipaddr;
 		my_child.port = address.dst_port;
@@ -971,12 +982,37 @@ connected:
 		my_child.child.src_ipaddr = address.src_ipaddr;
 		my_child.child.src_port = address.src_port;
 
+		/*
+		 *	@todo - find a way to remove this mutex.
+		 *
+		 *	The best way is probably to create a "linking"
+		 *	structure..  the parent puts the packet into
+		 *	the linking structure (which contains src/dst
+		 *	IP/port, and a pointer to the child).  But the
+		 *	parent NEVER dereferences the child?
+		 *
+		 *	The child can then free itself as needed, BUT
+		 *	first marks up the linking structure as "no
+		 *	longer necessary".  At which point it's
+		 *	cleaned up...
+		 *
+		 *	The parent will have to periodically walk
+		 *	through all children, to see if they are
+		 *	alive.  That work is likely less of an issue
+		 *	than locking a mutex for every packet.
+		 *	Especially if the work is done periodically,
+		 *	and is amortized over many packets...
+		 */
 		PTHREAD_MUTEX_LOCK(&inst->master.mutex);
 		child = fr_hash_table_finddata(inst->master.ht, &my_child);
 		if (child) {
 			(void) fr_network_listen_inject(child->nr, child->child.listen,
-							buffer, packet_len, track->timestamp);
+							buffer, packet_len, packet_time);
 			PTHREAD_MUTEX_UNLOCK(&inst->master.mutex);
+
+			if (track) {
+				(void) fr_radius_tracking_entry_delete(track->ft, track, packet_time);
+			}
 			return 0;
 		}
 
@@ -988,48 +1024,35 @@ connected:
 	}
 
 	/*
-	 *	Look up the client.  It either exists, or we create
-	 *	it.
+	 *	Look up the client.  The client may already exist if
+	 *	the packet was received from a dynamic client in the
+	 *	process of being created.
 	 */
-	address.client = client_find(NULL, &address.src_ipaddr, IPPROTO_UDP);
+	if (!address.client) address.client = client_find(NULL, &address.src_ipaddr, IPPROTO_UDP);
+
+	/*
+	 *	No client and no dynamic clients.  Discard the packet.
+	 */
+	if (!address.client && !inst->dynamic_clients_is_set) {
+	unknown:
+		ERROR("Packet from unknown client at address %pV:%u - ignoring.",
+		      fr_box_ipaddr(address.src_ipaddr), address.src_port);
+		inst->stats.total_invalid_requests++;
+		return 0;
+	}
+
+	/*
+	 *	Still no client (and we have dynamic clients), look up
+	 *	the client in the dynamic client list.
+	 */
+	if (!address.client) address.client = client_find(inst->dynamic_clients.clients, &address.src_ipaddr, IPPROTO_UDP);
+
+	/*
+	 *	Still no client (and we have dynamic clients), try to
+	 *	define the client.
+	 */
 	if (!address.client) {
 		fr_ipaddr_t *network;
-
-		if (!inst->dynamic_clients_is_set) {
-		unknown:
-			ERROR("Packet from unknown client at address %pV:%u - ignoring.",
-			      fr_box_ipaddr(address.src_ipaddr), address.src_port);
-			inst->stats.total_invalid_requests++;
-			return 0;
-		}
-
-		/*
-		 *	We have dynamic clients.  Try to find the
-		 *	client in the dynamic client set.
-		 */
-		address.client = client_find(inst->dynamic_clients.clients, &address.src_ipaddr, IPPROTO_UDP);
-		if (address.client) {
-			if (!address.client->dynamic || address.client->active) goto have_client;
-
-			if (address.client->negative) {
-				goto unknown;
-			}
-
-			/*
-			 *	It's dynamic, but inactive.  Save the
-			 *	packet in the client, and return.
-			 *
-			 *	When the client becomes active, the
-			 *	packet will be removed from the list,
-			 *	and sent to the network side.
-			 */
-			if (dynamic_client_packet_save(inst, buffer, packet_len, packet_time, &address, &track) < 0) {
-				goto unknown;
-			}
-
-			return 0;
-		}
-
 		/*
 		 *	No static client.  No dynamic client.  Maybe
 		 *	it's from a known network?  Look up the packet
@@ -1040,6 +1063,11 @@ connected:
 		if (!network) goto unknown;
 
 		DEBUG("Found matching network.  Checking for dynamic client definition.");
+
+		/*
+		 *	Allocate the dynamic client, and add the
+		 *	packet to the tracking table.
+		 */
 		if (dynamic_client_alloc(inst, buffer, packet_len, packet_time, &address, &track, network) < 0) {
 			DEBUG("Failed allocating dynamic client");
 			goto unknown;
@@ -1054,6 +1082,25 @@ connected:
 	}
 
 	/*
+	 *	The client is a negative cache entry.  Complain that
+	 *	it's unknown.
+	 */
+	if (address.client->negative) goto unknown;
+
+	/*
+	 *	It's a dynamic client, BUT not yet active.  Go save
+	 *	the packet until the client definition comes back
+	 *	either yay or nay.
+	 */
+	if (address.client->dynamic && !address.client->active) {
+		if (dynamic_client_packet_save(inst, buffer, packet_len, packet_time, &address, &track) < 0) {
+			goto unknown;
+		}
+
+		return 0;
+	}
+
+	/*
 	 *	We can only do NAT gateways if we're using connected
 	 *	sockets.  This code catches *statically* defined
 	 *	clients, not dynamic ones.
@@ -1065,111 +1112,6 @@ connected:
 		address.client->behind_nat = false;
 	}
 
-have_client:
-	/*
-	 *	If the signature fails validation, ignore it.
-	 */
-	if (fr_radius_verify(buffer, NULL,
-			     (uint8_t const *)address.client->secret,
-			     talloc_array_length(address.client->secret) - 1) < 0) {
-		DEBUG2("proto_radius_udp packet failed verification: %s", fr_strerror());
-		inst->stats.total_bad_authenticators++;
-		return 0;
-	}
-
-	tracking_status = fr_radius_tracking_entry_insert(&track, inst->ft, buffer, packet_time, &address);
-	switch (tracking_status) {
-	case FR_TRACKING_ERROR:
-	case FR_TRACKING_UNUSED:
-		inst->stats.total_packets_dropped++;
-		return -1;	/* Fatal */
-
-		/*
-		 *	If the entry already has a cleanup delay, we
-		 *	extend the cleanup delay.  i.e. the cleanup
-		 *	delay is from the last reply we sent, not from
-		 *	the first one.
-		 */
-	case FR_TRACKING_SAME:
-		DEBUG3("SAME packet");
-		if (track->ev) {
-			struct timeval tv;
-
-
-			gettimeofday(&tv, NULL);
-			tv.tv_sec += inst->cleanup_delay;
-
-			DEBUG3("SAME packet - cleanup");
-			(void) fr_event_timer_insert(NULL, inst->el, &track->ev,
-						     &tv, mod_cleanup_delay, track);
-		}
-
-		inst->stats.total_dup_requests++;
-
-		/*
-		 *	We are intentionally not responding.
-		 */
-		if (track->reply_len && !track->reply) {
-			return 0;
-		}
-
-		/*
-		 *	If there is a reply, just resend that.
-		 */
-		if (track->reply) {
-			void *packet;
-
-			flags = UDP_FLAGS_CONNECTED * inst->connected;
-			memcpy(&packet, &track->reply, sizeof(packet)); /* const issues */
-			rad_assert(track->reply_len >= 20);
-
-			(void) udp_send(inst->sockfd, packet, track->reply_len, flags,
-					&address.dst_ipaddr, address.dst_port,
-					address.if_index,
-					&address.src_ipaddr, address.src_port);
-			return 0;
-		}
-
-		/*
-		 *	Otherwise it's a duplicate packet.  Send the
-		 *	whole thing over to the network stack, while
-		 *	updating the "packet recv time" to be when the
-		 *	original packet was received.
-		 *
-		 *	@todo - we still have ordering issues!  The
-		 *	original packet MAY be done before this packet
-		 *	gets to the worker.  So the this packet ALSO
-		 *	needs to be marked up as "dup".  So that the
-		 *	worker just sends a new reply if it's
-		 *	available?  Instead of re-processing this
-		 *	packet... at which point we find that what we
-		 *	think is a new packet isn't really, and we
-		 *	already have track->reply... so we've done
-		 *	unnecessary (possibly wrong) work.
-		 */
-		packet_time = track->timestamp;
-		break;
-
-	/*
-	 *	Delete any pre-existing cleanup_delay timers.
-	 */
-	case FR_TRACKING_UPDATED:
-		DEBUG3("UPDATED packet");
-		if (track->ev) (void) fr_event_timer_delete(inst->el, &track->ev);
-		break;
-
-	case FR_TRACKING_CONFLICTING:
-		if (track->ev) (void) fr_event_timer_delete(inst->el, &track->ev);
-		DEBUG3("CONFLICTING packet ID %d", buffer[1]);
-		break;
-
-	case FR_TRACKING_NEW:
-		rad_assert(track->ev == NULL);
-		DEBUG3("NEW packet");
-		break;
-	}
-
-received_packet:
 	/*
 	 *	Check for a socket that SHOULD be connected.  If so,
 	 *	either create the socket, OR find it in the list of
@@ -1195,7 +1137,7 @@ received_packet:
 		if (child) {
 			PTHREAD_MUTEX_LOCK(&inst->master.mutex);
 			(void) fr_network_listen_inject(child->nr, child->child.listen,
-							buffer, packet_len, track->timestamp);
+							buffer, packet_len, packet_time);
 			PTHREAD_MUTEX_UNLOCK(&inst->master.mutex);
 		}
 
@@ -1211,24 +1153,129 @@ received_packet:
 
 		/*
 		 *	We're no longer tracking this packet.
-		 *	Instead, the client is.  So we just discard
-		 *	the packet.
+		 *	Instead, the child socket is.  So we just
+		 *	discard the packet.
 		 */
-		(void) fr_radius_tracking_entry_delete(track->ft, track, track->timestamp);
+		if (track) (void) fr_radius_tracking_entry_delete(track->ft, track, packet_time);
 		return 0;
+	}
+
+	/*
+	 *	If the packet signature fails validation, ignore it.
+	 */
+	if (fr_radius_verify(buffer, NULL,
+			     (uint8_t const *)address.client->secret,
+			     talloc_array_length(address.client->secret) - 1) < 0) {
+		DEBUG2("proto_radius_udp packet failed verification: %s", fr_strerror());
+		inst->stats.total_bad_authenticators++;
+		return 0;
+	}
+
+	/*
+	 *	If the packet is not already in the tracking table
+	 *	(e.g. dynamic clients have packets in the tracking
+	 *	table), then go check it now.
+	 */
+	if (!track) {
+		tracking_status = fr_radius_tracking_entry_insert(&track, inst->ft, buffer, packet_time, &address);
+		switch (tracking_status) {
+		case FR_TRACKING_ERROR:
+		case FR_TRACKING_UNUSED:
+			inst->stats.total_packets_dropped++;
+			return -1;	/* Fatal */
+
+			/*
+			 *	If the entry already has a cleanup delay, we
+			 *	extend the cleanup delay.  i.e. the cleanup
+			 *	delay is from the last reply we sent, not from
+			 *	the first one.
+			 */
+		case FR_TRACKING_SAME:
+			DEBUG3("SAME packet");
+			if (track->ev) {
+				struct timeval tv;
+
+
+				gettimeofday(&tv, NULL);
+				tv.tv_sec += inst->cleanup_delay;
+
+				DEBUG3("SAME packet - cleanup");
+				(void) fr_event_timer_insert(NULL, inst->el, &track->ev,
+							     &tv, mod_cleanup_delay, track);
+			}
+
+			inst->stats.total_dup_requests++;
+
+			/*
+			 *	We are intentionally not responding.
+			 */
+			if (track->reply_len && !track->reply) {
+				return 0;
+			}
+
+			/*
+			 *	If there is a reply, just resend that.
+			 */
+			if (track->reply) {
+				void *packet;
+
+				flags = UDP_FLAGS_CONNECTED * inst->connected;
+				memcpy(&packet, &track->reply, sizeof(packet)); /* const issues */
+				rad_assert(track->reply_len >= 20);
+
+				(void) udp_send(inst->sockfd, packet, track->reply_len, flags,
+						&address.dst_ipaddr, address.dst_port,
+						address.if_index,
+						&address.src_ipaddr, address.src_port);
+				return 0;
+			}
+
+			/*
+			 *	Otherwise it's a duplicate packet.  Send the
+			 *	whole thing over to the network stack, while
+			 *	updating the "packet recv time" to be when the
+			 *	original packet was received.
+			 *
+			 *	@todo - we still have ordering issues!  The
+			 *	original packet MAY be done before this packet
+			 *	gets to the worker.  So the this packet ALSO
+			 *	needs to be marked up as "dup".  So that the
+			 *	worker just sends a new reply if it's
+			 *	available?  Instead of re-processing this
+			 *	packet... at which point we find that what we
+			 *	think is a new packet isn't really, and we
+			 *	already have track->reply... so we've done
+			 *	unnecessary (possibly wrong) work.
+			 */
+			packet_time = track->timestamp;
+			break;
+
+			/*
+			 *	Delete any pre-existing cleanup_delay timers.
+			 */
+		case FR_TRACKING_UPDATED:
+			DEBUG3("UPDATED packet");
+			if (track->ev) (void) fr_event_timer_delete(inst->el, &track->ev);
+			break;
+
+		case FR_TRACKING_CONFLICTING:
+			if (track->ev) (void) fr_event_timer_delete(inst->el, &track->ev);
+			DEBUG3("CONFLICTING packet ID %d", buffer[1]);
+			break;
+
+		case FR_TRACKING_NEW:
+			rad_assert(track->ev == NULL);
+			DEBUG3("NEW packet");
+			break;
+		}
 	}
 
 	/*
 	 *	Remove the cleanup timer if we receive a new packet
 	 *	for this connection.
 	 */
-	if (inst->connected) {
-		/*
-		 *	@todo - check if this packet src/dst matches
-		 *	the ones in the client.  If not, inject it
-		 *	back to the master.
-		 */
-		if (inst->child.ev) fr_event_timer_delete(inst->el, &inst->child.ev);
+	if (inst->connected && inst->child.ev) {
+		fr_event_timer_delete(inst->el, &inst->child.ev);
 	}
 
 	inst->stats.total_requests++;
@@ -1909,7 +1956,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 
 		fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(inst->child.src_ipaddr), 0);
 
-		inst->name = talloc_typed_asprintf(inst, "proto udp connexted socket from client %s port %u to address %s port %u",
+		inst->name = talloc_typed_asprintf(inst, "proto udp connected socket from client %s port %u to address %s port %u",
 						   src_buf, inst->child.src_port, dst_buf, inst->port);
 	}
 
