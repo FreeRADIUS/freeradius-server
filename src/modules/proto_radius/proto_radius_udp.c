@@ -98,6 +98,7 @@ typedef struct proto_radius_udp_master_t {
 typedef struct proto_radius_udp_child_t {
 	fr_ipaddr_t			src_ipaddr;		//!< source IP for connected sockets
 	uint16_t			src_port;      		//!< Source port for connected sockets.
+	int				if_index;		//!< index of receiving interface
 	bool				expired;		//!< is this socket expired?
 
 	uint8_t const			*packet;		//!< for injected packets
@@ -744,6 +745,7 @@ static proto_radius_udp_t *mod_clone(proto_radius_udp_t *inst, proto_radius_udp_
 
 	child->ipaddr = address->dst_ipaddr;
 	child->port = address->dst_port;
+	child->child.if_index = address->if_index;
 	child->child.src_ipaddr = address->src_ipaddr;
 	child->child.src_port = address->src_port;
 
@@ -853,13 +855,13 @@ static ssize_t mod_read_packet(proto_radius_udp_t *inst, uint8_t *buffer, size_t
 
 		address->code = buffer[0];
 		address->id = buffer[1];
+		address->if_index = inst->child.if_index;
 		address->src_ipaddr = inst->child.src_ipaddr;
 		address->src_port = inst->child.src_port;
-		address->src_ipaddr = inst->ipaddr;
-		address->src_port = inst->port;
+		address->dst_ipaddr = inst->ipaddr;
+		address->dst_port = inst->port;
 		address->client = inst->child.client;
 		*packet_time = inst->child.recv_time;
-
 		inst->child.packet = NULL;
 		return inst->child.packet_len;
 	}
