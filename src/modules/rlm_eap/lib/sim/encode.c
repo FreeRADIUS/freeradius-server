@@ -58,6 +58,20 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 			      fr_dict_attr_t const **tlv_stack, unsigned int depth,
 			      fr_cursor_t *cursor, void *encoder_ctx);
 
+static inline bool is_encodable(fr_dict_attr_t const *root, VALUE_PAIR *vp)
+{
+	if (!vp) return false;
+	if (vp->da->flags.internal) return false;
+	/*
+	 *	Bool attribute presence is 'true' in SIM
+	 *	and absence is 'false'
+	 */
+	if ((vp->da->type == FR_TYPE_BOOL) && (vp->vp_bool == false)) return false;
+	if (!fr_dict_parent_common(root, vp->da, true)) return false;
+
+	return true;
+}
+
 /** Find the next attribute to encode
  *
  * @param cursor to iterate over.
@@ -69,11 +83,7 @@ static inline VALUE_PAIR *next_encodable(fr_cursor_t *cursor, void *encoder_ctx)
 	VALUE_PAIR		*vp;
 	fr_sim_encode_ctx_t	*packet_ctx = encoder_ctx;
 
-	while ((vp = fr_cursor_next(cursor))) {
-		if (vp->da->flags.internal) continue;
-		if (fr_dict_parent_common(packet_ctx->root, vp->da, true)) break;
-	}
-
+	while ((vp = fr_cursor_next(cursor))) if (is_encodable(packet_ctx->root, vp)) break;
 	return fr_cursor_current(cursor);
 }
 
@@ -89,7 +99,7 @@ static inline VALUE_PAIR *first_encodable(fr_cursor_t *cursor, void *encoder_ctx
 	fr_sim_encode_ctx_t	*packet_ctx = encoder_ctx;
 
 	vp = fr_cursor_current(cursor);
-	if (vp && !vp->da->flags.internal && fr_dict_parent_common(packet_ctx->root, vp->da, true)) return vp;
+	if (is_encodable(packet_ctx->root, vp)) return vp;
 
 	return next_encodable(cursor, encoder_ctx);
 }

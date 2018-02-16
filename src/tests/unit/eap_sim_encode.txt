@@ -12,6 +12,10 @@ load eap-sim
 encode-pair.sim_tp_encode EAP-SIM-Any-ID-Req = yes
 data 0d 01 00 00
 
+# False Boolean attribute (should produce no data)
+encode-pair.sim_tp_encode EAP-SIM-Any-ID-Req = no
+data
+
 # Short
 encode-pair.sim_tp_encode EAP-SIM-Selected-Version = 1
 data 10 01 00 01
