@@ -13,7 +13,6 @@
 #
 
 HEADERS_DY	:= attributes.h features.h missing.h radpaths.h tls.h
-SUBDIRS		:= util
 
 HEADERS	= \
 	build.h \
