@@ -801,6 +801,7 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 					lineno, directory, output, p + 5);
 				exit(EXIT_FAILURE);
 			}
+			fr_strerror();	/* Clear the error buffer */
 			continue;
 		}
 
