@@ -54,6 +54,12 @@ static inline VALUE_PAIR *next_encodable(fr_cursor_t *cursor, void *encoder_ctx)
 
 	while ((vp = fr_cursor_next(cursor))) {
 		if (vp->da->flags.internal) continue;
+
+		/*
+		 *	Bool attribute presence is 'true' in DHCPv6
+		 *	and absence is 'false'
+		 */
+		if ((vp->da->type == FR_TYPE_BOOL) && (vp->vp_bool == false)) continue;
 		if (fr_dict_parent_common(packet_ctx->root, vp->da, true)) break;
 	}
 
