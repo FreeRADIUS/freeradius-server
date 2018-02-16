@@ -70,7 +70,7 @@ size_t fr_dhcpv6_option_len(VALUE_PAIR const *vp)
 {
 	switch (vp->vp_type) {
 	case FR_TYPE_VARIABLE_SIZE:
-		if (da->flags.length) return da->flags.length;	/* Variable type with fixed length */
+		if (vp->da->flags.length) return vp->da->flags.length;	/* Variable type with fixed length */
 		return vp->vp_length;
 
 	default:

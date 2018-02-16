@@ -5,7 +5,8 @@
 #
 TARGET		:= libfreeradius-dhcpv6.a
 
-SOURCES		:= decode.c \
+SOURCES		:= base.c \
+		   decode.c \
 		   encode.c
 
 TGT_PREREQS	:= libfreeradius-util.a
