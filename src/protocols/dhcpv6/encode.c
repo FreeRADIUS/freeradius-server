@@ -39,45 +39,51 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 			      fr_dict_attr_t const **tlv_stack, unsigned int depth,
 			      fr_cursor_t *cursor, void *encoder_ctx);
 
+static inline bool is_encodable(fr_dict_attr_t const *root, VALUE_PAIR *vp)
+{
+	if (!vp) return false;
+	if (vp->da->flags.internal) return false;
+	/*
+	 *	Bool attribute presence is 'true' in SIM
+	 *	and absence is 'false'
+	 */
+	if ((vp->da->type == FR_TYPE_BOOL) && (vp->vp_bool == false)) return false;
+	if (!fr_dict_parent_common(root, vp->da, true)) return false;
+
+	return true;
+}
+
 /** Find the next attribute to encode
  *
- * @param[in] cursor		to iterate over.
- * @param[in] encoder_ctx	the context for the encoder.
- * @return
- *	- An encodable VALUE_PAIR.
- *	- NULL if no encodable VALUE_PAIRs are available.
+ * @param cursor to iterate over.
+ * @param encoder_ctx the context for the encoder
+ * @return encodable VALUE_PAIR, or NULL if none available.
  */
 static inline VALUE_PAIR *next_encodable(fr_cursor_t *cursor, void *encoder_ctx)
 {
 	VALUE_PAIR		*vp;
 	fr_dhcpv6_encode_ctx_t	*packet_ctx = encoder_ctx;
 
-	while ((vp = fr_cursor_next(cursor))) {
-		if (vp->da->flags.internal) continue;
-
-		/*
-		 *	Bool attribute presence is 'true' in DHCPv6
-		 *	and absence is 'false'
-		 */
-		if ((vp->da->type == FR_TYPE_BOOL) && (vp->vp_bool == false)) continue;
-		if (fr_dict_parent_common(packet_ctx->root, vp->da, true)) break;
-	}
-
-	return vp;
+	while ((vp = fr_cursor_next(cursor))) if (is_encodable(packet_ctx->root, vp)) break;
+	return fr_cursor_current(cursor);
 }
 
-/*
+/** Determine if the current attribute is encodable, or find the first one that is
+ *
+ * @param cursor to iterate over.
+ * @param encoder_ctx the context for the encoder
+ * @return encodable VALUE_PAIR, or NULL if none available.
+ */
 static inline VALUE_PAIR *first_encodable(fr_cursor_t *cursor, void *encoder_ctx)
 {
 	VALUE_PAIR		*vp;
 	fr_dhcpv6_encode_ctx_t	*packet_ctx = encoder_ctx;
 
 	vp = fr_cursor_current(cursor);
-	if (vp && !vp->da->flags.internal && fr_dict_parent_common(packet_ctx->root, vp->da, true)) return vp;
+	if (is_encodable(packet_ctx->root, vp)) return vp;
 
 	return next_encodable(cursor, encoder_ctx);
 }
-*/
 
 /** Macro-like function for encoding an option header
  *
@@ -108,6 +114,7 @@ static inline ssize_t encode_option_hdr(uint8_t *out, size_t outlen, uint16_t op
 	memcpy(p, &opt, sizeof(opt));
 	p += sizeof(opt);
 	memcpy(p, &len, sizeof(len));
+	p += sizeof(len);
 
 	return p - out;
 }
@@ -153,7 +160,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	switch (da->type) {
 	case FR_TYPE_STRUCTURAL:
 		fr_strerror_printf("%s: Called with structural type %s", __FUNCTION__,
-				   fr_int2str(dict_attr_types, tlv_stack[depth]->type, "?Unknown?"));
+				   fr_int2str(dict_attr_types, da->type, "?Unknown?"));
 		return PAIR_ENCODE_ERROR;
 
 	default:
@@ -271,7 +278,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 	 */
 	case FR_TYPE_BOOL:
-		return 0;	/* Bools are always true if present, so this is an empty option */
+		break;
 
 	/*
 	 *    0                   1                   2                   3
@@ -425,11 +432,9 @@ static ssize_t encode_rfc_hdr(uint8_t *out, size_t outlen,
 {
 	uint8_t			*p = out, *end = p + outlen;
 	ssize_t			slen;
-	fr_dict_attr_t const	*da;
+	fr_dict_attr_t const	*da = tlv_stack[depth];
 
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
-
-	da = tlv_stack[depth];
 
 	switch (da->type) {
 	case FR_TYPE_STRUCTURAL:
@@ -467,7 +472,7 @@ static ssize_t encode_rfc_hdr(uint8_t *out, size_t outlen,
 	/*
 	 *	Write out the option number and length (before the value we jus wrote)
 	 */
-	slen = encode_option_hdr(out, outlen, (uint16_t)tlv_stack[depth]->attr, (uint16_t)slen);
+	slen = encode_option_hdr(out, outlen, (uint16_t)da->attr, (uint16_t)slen);
 	if (slen < 0) return slen;
 
 #ifndef NDEBUG
@@ -530,7 +535,7 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 {
 	ssize_t			slen;
 	uint8_t			*p = out, *end = p + outlen;
-	fr_dict_attr_t const	*da;
+	fr_dict_attr_t const	*da = tlv_stack[depth];
 
 	VP_VERIFY(fr_cursor_current(cursor));
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
@@ -547,8 +552,6 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 	}
 
 	CHECK_FREESPACE(outlen, OPT_HDR_LEN);
-
-	da = tlv_stack[depth];	/* Remember this, stack might change */
 
 	p += OPT_HDR_LEN;	/* Make room for option header */
 	slen = encode_tlv_internal(p, end - p, tlv_stack, depth, cursor, encoder_ctx);
@@ -809,8 +812,8 @@ ssize_t fr_dhcpv6_encode_option(uint8_t *out, size_t outlen, fr_cursor_t *cursor
 	fr_dict_attr_t const	*tlv_stack[FR_DICT_MAX_TLV_STACK + 1];
 	ssize_t			slen;
 
-	vp = fr_cursor_current(cursor);
-	if (!vp) return PAIR_ENCODE_ERROR;
+	vp = first_encodable(cursor, encoder_ctx);
+	if (!vp) return 0;
 
 	if (vp->da->flags.internal) {
 		fr_strerror_printf("Attribute \"%s\" is not a DHCPv6 option", vp->da->name);
