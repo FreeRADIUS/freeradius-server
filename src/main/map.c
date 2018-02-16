@@ -1705,7 +1705,7 @@ int map_list_mod_apply(REQUEST *request, vp_list_mod_t const *vlm)
 			fr_cursor_tail(&to);
 			fr_cursor_merge(&to, &to_insert);	/* Do this last so we don't expand the 'to' set */
 		}
-		/* FALL-THROUGH */
+			goto update;
 
 		case T_OP_ADD:
 		{
