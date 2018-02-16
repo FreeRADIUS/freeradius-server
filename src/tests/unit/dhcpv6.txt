@@ -1,0 +1,111 @@
+#
+#  Test vectors for DHCP attributes
+#
+load dhcpv6
+
+#
+#  Simple octets type
+#
+encode-pair DHCPv6-Client-ID = 0x010203040506070809
+data 00 01 00 09 01 02 03 04 05 06 07 08 09
+
+encode-pair DHCPv6-Client-ID = 0x010101010101010101, DHCPv6-Server-ID = 0x02020202020202020202
+data 00 01 00 09 01 01 01 01 01 01 01 01 01 00 02 00 0a 02 02 02 02 02 02 02 02 02 02
+
+#
+#  Simple string type
+#
+encode-pair DHCPv6-Subscriber-ID = "fred"
+data 00 26 00 04 66 72 65 64
+
+encode-pair DHCPv6-Subscriber-ID = "bob", DHCPv6-New-Posix-Timezone = "GB"
+data 00 26 00 03 62 6f 62 00 29 00 02 47 42
+
+#
+#  Bool
+#
+encode-pair DHCPv6-Rapid-Commit = yes
+data 00 0e 00 00
+
+encode-pair DHCPv6-Rapid-Commit = no
+data
+
+#
+#  1 byte unsigned integer (uint8)
+#
+encode-pair DHCPv6-Preference = 255
+data 00 07 00 01 ff
+
+encode-pair DHCPv6-Preference = 0
+data 00 07 00 01 00
+
+#
+#  2 byte unsigned integer (uint16)
+#
+encode-pair DHCPv6-ANI-Access-Technology-Type = 3GPP2-NB-IOT
+data 00 69 00 02 00 0d
+
+#
+#  4 byte unsigned integer (uint32)
+#
+encode-pair DHCPv6-Information-Refresh-Time = 99
+data 00 20 00 04 00 00 00 63
+
+#
+#  Encode ipv6address
+#
+encode-pair DHCPv6-Unicast = 2001:0db8:85a3:0000:0000:8a2e:0370:7334
+data 00 0c 00 10 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34
+
+# Scope should be ignored
+encode-pair DHCPv6-Unicast = 2001:0db8:85a3:0000:0000:8a2e:0370:7334%en0
+data 00 0c 00 10 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34
+
+#
+#  Encode ipv6prefix
+#
+encode-pair DHCPv6-MIP6-Home-Net-Prefix = 2001:db8::/32
+data 00 47 00 05 20 20 01 0d b8
+
+# Prefix truncates address portion
+encode-pair DHCPv6-MIP6-Home-Net-Prefix = 2001:db8:00ff::/32
+data 00 47 00 05 20 20 01 0d b8
+
+# Prefix longer than address portion
+encode-pair DHCPv6-MIP6-Home-Net-Prefix = 2001:db8:00ff::/64
+data 00 47 00 09 40 20 01 0d b8 00 ff 00 00
+
+encode-pair DHCPv6-MIP6-Home-Net-Prefix = 2001:0db8:85a3:0000:0000:8a2e:0370:7334/128
+data 00 47 00 11 80 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34
+
+# Cast ipv6addr to 128bit prefix
+encode-pair DHCPv6-MIP6-Home-Net-Prefix = 2001:0db8:85a3:0000:0000:8a2e:0370:7334
+data 00 47 00 11 80 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34
+
+# 0 bit prefix
+encode-pair DHCPv6-MIP6-Home-Net-Prefix = ::/0
+data 00 47 00 01 00
+
+#
+#  Array of 16bit integers
+#
+encode-pair DHCPv6-Client-Arch-Type = x86-BIOS, DHCPv6-Client-Arch-Type = ARM-64-Uboot
+data 00 3d 00 04 00 00 00 16
+
+#
+#  Two different arrays of 16bit integers
+#
+encode-pair DHCPv6-Client-Arch-Type = x86-BIOS, DHCPv6-Client-Arch-Type = ARM-64-Uboot, DHCPv6-S46-Priority = DS-Lite, DHCPv6-S46-Priority = MAP-E
+data 00 3d 00 04 00 00 00 16 00 6f 00 04 00 40 00 5e
+
+#
+#  Array type with one element
+#
+encode-pair DHCPv6-Client-Arch-Type = x86-BIOS
+data 00 3d 00 02 00 00
+
+#
+#  Array of IPv6 addresses
+#
+encode-pair DHCPv6-SIP-Server-Address = 2001:0db8:85a3:0000:0000:8a2e:0370:7334, DHCPv6-SIP-Server-Address = 2001:0db8:85a3:0000:0000:8a2e:0370:7335
+data 00 16 00 20 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 35

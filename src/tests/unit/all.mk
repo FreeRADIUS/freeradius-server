@@ -22,6 +22,7 @@ FILES  := \
 	eap_sim_decode.txt \
 	eap_sim_error.txt \
 	dhcpv4.txt \
+	dhcpv6.txt \
 	dict.txt \
 	regex.txt \
 	escape.txt \
