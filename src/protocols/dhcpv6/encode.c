@@ -60,14 +60,6 @@ static inline VALUE_PAIR *next_encodable(fr_cursor_t *cursor, void *encoder_ctx)
 	return vp;
 }
 
-/** Determine if the current attribute is encodable, or find the first one that is
- *
- * @param[in] cursor		to iterate over.
- * @param[in] encoder_ctx	the context for the encoder.
- * @return
- *	- An encodable VALUE_PAIR.
- *	- NULL if no encodable VALUE_PAIRs are available.
- */
 /*
 static inline VALUE_PAIR *first_encodable(fr_cursor_t *cursor, void *encoder_ctx)
 {
