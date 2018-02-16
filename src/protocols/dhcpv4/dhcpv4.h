@@ -31,6 +31,7 @@ extern "C" {
 #endif
 
 #include <freeradius-devel/pcap.h>
+#include <freeradius-devel/packet.h>
 
 #define DHCP_CHADDR_LEN	(16)
 #define DHCP_SNAME_LEN	(64)
