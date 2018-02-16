@@ -357,7 +357,7 @@ static ssize_t encode_array(uint8_t *out, size_t outlen,
 				__FUNCTION__, da->name)) return PAIR_ENCODE_ERROR;
 
 	while (p < end) {
-		uint16_t 	*len_field;
+		uint16_t 	*len_field = NULL;	/* GCC is dumb */
 		VALUE_PAIR	*vp;
 
 		element_len = fr_dhcpv6_option_len(fr_cursor_current(cursor));
@@ -585,7 +585,7 @@ static ssize_t encode_vsio_suboption_hdr(uint8_t *out, size_t outlen,
 					 fr_cursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t			slen;
-	uint8_t			*p = out, *end = p + outlen, *len_field;
+	uint8_t			*p = out, *end = p + outlen, *len_field = NULL;		/* GCC is dumb */
 	size_t			hdr_len;
 	fr_dict_attr_t const	*da, *dv;
 
