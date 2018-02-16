@@ -109,3 +109,10 @@ data 00 3d 00 02 00 00
 #
 encode-pair DHCPv6-SIP-Server-Address = 2001:0db8:85a3:0000:0000:8a2e:0370:7334, DHCPv6-SIP-Server-Address = 2001:0db8:85a3:0000:0000:8a2e:0370:7335
 data 00 16 00 20 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 35
+
+#
+#  Array of strings, each substring should have a 16bit length field containing its length
+#
+encode-pair DHCPv6-Bootfile-Param = "I LIKE CHICKEN",  DHCPv6-Bootfile-Param = "I LIKE LIVER"
+data 00 3c 00 1e 00 0e 49 20 4c 49 4b 45 20 43 48 49 43 4b 45 4e 00 0c 49 20 4c 49 4b 45 20 4c 49 56 45 52
+

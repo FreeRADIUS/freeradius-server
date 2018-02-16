@@ -383,7 +383,7 @@ static ssize_t encode_array(uint8_t *out, size_t outlen,
 		 *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-...-+-+-+-+-+-+-+
 		 */
 		if (!da->flags.length) {
-			CHECK_FREESPACE(sizeof(uint16_t) + element_len, end - p);
+			CHECK_FREESPACE(end - p, sizeof(uint16_t) + element_len);
 			len_field = (uint16_t *)p;
 			p += sizeof(uint16_t);			/* Make room for the length field */
 		}
