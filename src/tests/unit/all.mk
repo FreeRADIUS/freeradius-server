@@ -21,7 +21,7 @@ FILES  := \
 	eap_sim_encode.txt \
 	eap_sim_decode.txt \
 	eap_sim_error.txt \
-	dhcp.txt \
+	dhcpv4.txt \
 	dict.txt \
 	regex.txt \
 	escape.txt \
