@@ -403,10 +403,7 @@ VALUE		SIM-Identity-Type	Pseudonym		2
 VALUE		SIM-Identity-Type	Fastauth		3
 
 #
-#	Range:	1210-1219
-#		EAP-AKA (and other EAP type) weirdness.
-#
-#	For EAP-AKA, some attribute definitions for database interface
+#	AKA - Temporary root until we have protocol specific dictionaries.
 #
 ATTRIBUTE	EAP-AKA-Root				1210	tlv
 BEGIN-TLV	EAP-AKA-Root
@@ -414,16 +411,28 @@ $INCLUDE dictionary.eap.aka
 END-TLV		EAP-AKA-Root
 
 #
-#	Range:	1220-1229
-#		EAP-SIM (and other EAP type) weirdness.
+#	SIM - Temporary root until we have protocol specific dictionaries.
 #
-#	For EAP-SIM, some attribute definitions for database interface
-#
-ATTRIBUTE	EAP-SIM-Root				1220	tlv
-
+ATTRIBUTE	EAP-SIM-Root				1211	tlv
 BEGIN-TLV	EAP-SIM-Root
 $INCLUDE dictionary.eap.sim
 END-TLV		EAP-SIM-Root
+
+#
+#	DHCPv6 - Temporary root until we have protocol specific dictionaries.
+#
+ATTRIBUTE	DHCPv6-Root				1212	tlv
+BEGIN-TLV	DHCPv6-Root
+$INCLUDE dictionary.dhcpv6
+END-TLV		DHCPv6-Root
+
+#
+#	TACACS+ - Temporary root until we have protocol specific dictionaries.
+#
+ATTRIBUTE	TACACS-Root				1213	tlv
+BEGIN-TLV	TACACS-Root
+$INCLUDE dictionary.tacacs
+END-TLV		TACACS-Root
 
 #
 #	Range:	1230-1239
@@ -432,17 +441,6 @@ END-TLV		EAP-SIM-Root
 ATTRIBUTE	Sigtran-MAP-Version			1230	integer
 ATTRIBUTE	Sigtran-Mobile-Network-Code		1231	integer
 ATTRIBUTE	Sigtran-Mobile-Country-Code		1232	integer
-
-#
-#	Range:	1240-1249
-#		Tacacs+
-#
-#	For TACACS+, some attribute definitions for database interface
-#
-ATTRIBUTE	TACACS-Root				1240	tlv
-BEGIN-TLV	TACACS-Root
-$INCLUDE dictionary.tacacs
-END-TLV		TACACS-Root
 
 #
 #  Server-side "listen type = foo"

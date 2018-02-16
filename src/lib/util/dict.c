@@ -1181,7 +1181,7 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 	 */
 	case FR_TYPE_EXTENDED:
 	case FR_TYPE_LONG_EXTENDED:
-	case FR_TYPE_VSA:
+//	case FR_TYPE_VSA:
 		if (!parent->flags.is_root) {
 			fr_strerror_printf("Attributes of type '%s' can only be used in the RFC space",
 					   fr_int2str(dict_attr_types, type, "?Unknown?"));

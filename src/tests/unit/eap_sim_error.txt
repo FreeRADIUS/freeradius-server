@@ -37,7 +37,7 @@ data Unknown (non-skippable) attribute 99
 # Unknown skippable attribute (150) - Ensure the 'reserved bytes' in a normal octets
 # attribute are not skipped.
 decode-pair.sim_tp_decode 96 02 00 00 ff ff ff ff
-data Attr-1220.150 = 0x0000ffffffff
+data Attr-1211.150 = 0x0000ffffffff
 
 # Array missing length field
 decode-pair.sim_tp_decode 0f 01
