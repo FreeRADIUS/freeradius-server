@@ -126,7 +126,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	ssize_t				data_size;
 	size_t				packet_len;
 	fr_detail_entry_t		*track;
-	uint8_t				*partial, *end, *next, *p;
+	uint8_t				*partial, *end, *next, *p, *record_end;
 	uint8_t				*stopped_search;
 	off_t				done_offset;
 	fr_dlist_t			*entry;
@@ -425,25 +425,25 @@ redo:
 	 *	Search for the "Timestamp" attribute.  We overload
 	 *	that to track which entries have been used.
 	 */
-	end = buffer + packet_len;
+	record_end = buffer + packet_len;
 	p = buffer;
 	done_offset = 0;
 
-	while (p < end) {
+	while (p < record_end) {
 		if (*p != '\0') {
 			p++;
 			continue;
 		}
 
 		p++;
-		if (p == end) break;
+		if (p == record_end) break;
 
-		if (((end - p) >= 5) &&
+		if (((record_end - p) >= 5) &&
 		    (memcmp(p, "\tDone", 5) == 0)) {
 			goto skip_record;
 		}
 
-		if (((end - p) > 10) &&
+		if (((record_end - p) > 10) &&
 		    (memcmp(p, "\tTimestamp", 10) == 0)) {
 			p++;
 			done_offset = inst->header_offset + (p - buffer);
