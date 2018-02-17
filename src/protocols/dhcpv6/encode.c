@@ -35,6 +35,14 @@
 
 #include "dhcpv6.h"
 
+static ssize_t encode_value(uint8_t *out, size_t outlen,
+			    fr_dict_attr_t const **tlv_stack, unsigned int depth,
+			    fr_cursor_t *cursor, void *encoder_ctx);
+
+static ssize_t encode_rfc_hdr(uint8_t *out, size_t outlen,
+			      fr_dict_attr_t const **tlv_stack, unsigned int depth,
+			      fr_cursor_t *cursor, void *encoder_ctx);
+
 static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 			      fr_dict_attr_t const **tlv_stack, unsigned int depth,
 			      fr_cursor_t *cursor, void *encoder_ctx);
@@ -119,6 +127,78 @@ static inline ssize_t encode_option_hdr(uint8_t *out, size_t outlen, uint16_t op
 	return p - out;
 }
 
+static ssize_t encode_struct(uint8_t *out, size_t outlen,
+			     fr_dict_attr_t const **tlv_stack, unsigned int depth,
+			     fr_cursor_t *cursor, void *encoder_ctx)
+{
+	ssize_t			slen;
+	unsigned int		child_num = 1;
+	uint8_t			*p = out, *end = p + outlen;
+	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
+	fr_dict_attr_t const	*struct_da = tlv_stack[depth];
+
+	VP_VERIFY(fr_cursor_current(cursor));
+	FR_PROTO_STACK_PRINT(tlv_stack, depth);
+
+	if (tlv_stack[depth]->type != FR_TYPE_STRUCT) {
+		fr_strerror_printf("%s: Expected type \"struct\" got \"%s\"", __FUNCTION__,
+				   fr_int2str(dict_attr_types, tlv_stack[depth]->type, "?Unknown?"));
+		return PAIR_ENCODE_ERROR;
+	}
+
+	if (!tlv_stack[depth + 1]) {
+		fr_strerror_printf("%s: Can't encode empty struct", __FUNCTION__);
+		return PAIR_ENCODE_ERROR;
+	}
+
+	while (p < end) {
+		fr_dict_attr_t const *field_da;
+
+		FR_PROTO_STACK_PRINT(tlv_stack, depth);
+
+		/*
+		 *	The field attributes should be in order.  If
+		 *	they're not, we fill the struct with zeroes.
+		 */
+		field_da = vp->da;
+		if (field_da->attr != child_num) {
+			field_da = fr_dict_attr_child_by_num(struct_da, child_num);
+			if (!field_da) break;	/* End of the struct */
+
+			CHECK_FREESPACE(outlen, field_da->flags.length);
+
+			slen = field_da->flags.length;
+			memset(p, 0, slen);
+			p += slen;
+			child_num++;
+			continue;
+		}
+
+		slen = encode_value(p, outlen, tlv_stack, depth + 1, cursor, encoder_ctx);
+		if (slen < 0) return slen;
+
+		p += slen;
+		child_num++;
+
+		/*
+		 *	If nothing updated the attribute, stop
+		 */
+		if (!fr_cursor_current(cursor) || (vp == fr_cursor_current(cursor))) break;
+
+		/*
+		 *	We can encode multiple struct members if
+		 *	after rebuilding the TLV Stack, the attribute
+		 *	at this depth is the same.
+		 */
+		if (struct_da != tlv_stack[depth]) break;
+		vp = fr_cursor_current(cursor);
+
+		FR_PROTO_HEX_DUMP("Done STRUCT", out, p - out);
+	}
+
+	return p - out;
+}
+
 static ssize_t encode_value(uint8_t *out, size_t outlen,
 			    fr_dict_attr_t const **tlv_stack, unsigned int depth,
 			    fr_cursor_t *cursor, void *encoder_ctx)
@@ -134,14 +214,14 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	/*
 	 *	Pack multiple attributes into into a single option
 	 */
-//	if (da->type == FR_TYPE_STRUCT) {
-//		len = encode_struct(out, outlen, tlv_stack, depth, cursor, encoder_ctx);
-//		if (len < 0) return len;
-//
-//		vp = next_encodable(cursor);
-//		fr_proto_tlv_stack_build(tlv_stack, vp ? vp->da : NULL);
-//		return len;
-//	}
+	if (da->type == FR_TYPE_STRUCT) {
+		slen = encode_struct(out, outlen, tlv_stack, depth, cursor, encoder_ctx);
+		if (slen < 0) return slen;
+
+		vp = next_encodable(cursor, encoder_ctx);
+		fr_proto_tlv_stack_build(tlv_stack, vp ? vp->da : NULL);
+		return slen;
+	}
 
 	/*
 	 *	If it's not a TLV, it should be a value type RFC
@@ -378,9 +458,9 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	return p - out;
 }
 
-static ssize_t encode_array(uint8_t *out, size_t outlen,
-			    fr_dict_attr_t const **tlv_stack, int depth,
-			    fr_cursor_t *cursor, void *encoder_ctx)
+static inline ssize_t encode_array(uint8_t *out, size_t outlen,
+				   fr_dict_attr_t const **tlv_stack, int depth,
+				   fr_cursor_t *cursor, void *encoder_ctx)
 {
 	uint8_t			*p = out, *end = p + outlen;
 	ssize_t			slen;
@@ -438,6 +518,53 @@ static ssize_t encode_array(uint8_t *out, size_t outlen,
 		vp = fr_cursor_current(cursor);
 		if (!vp || (vp->da != da)) break;		/* Stop if we have an attribute of a different type */
 	}
+
+	return p - out;
+}
+
+static ssize_t encode_tlv(uint8_t *out, size_t outlen,
+			  fr_dict_attr_t const **tlv_stack, unsigned int depth,
+			  fr_cursor_t *cursor, void *encoder_ctx)
+{
+	ssize_t			slen;
+	uint8_t			*p = out, *end = p + outlen;
+	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
+	fr_dict_attr_t const	*da = tlv_stack[depth];
+
+	CHECK_FREESPACE(outlen, OPT_HDR_LEN);
+
+	while ((size_t)(end - p) > OPT_HDR_LEN) {
+		FR_PROTO_STACK_PRINT(tlv_stack, depth);
+
+		/*
+		 *	Determine the nested type and call the appropriate encoder
+		 */
+		if (tlv_stack[depth + 1]->type == FR_TYPE_TLV) {
+			slen = encode_tlv_hdr(p, end - p, tlv_stack, depth + 1, cursor, encoder_ctx);
+		} else {
+			slen = encode_rfc_hdr(p, end - p, tlv_stack, depth + 1, cursor, encoder_ctx);
+		}
+		if (slen < 0) return slen;
+
+		p += slen;
+
+		/*
+		 *	If nothing updated the attribute, stop
+		 */
+		if (!fr_cursor_current(cursor) || (vp == fr_cursor_current(cursor))) break;
+
+		/*
+		 *	We can encode multiple sub TLVs, if after
+		 *	rebuilding the TLV Stack, the attribute
+		 *	at this depth is the same.
+		 */
+		if (da != tlv_stack[depth]) break;
+		vp = fr_cursor_current(cursor);
+	}
+
+#ifndef NDEBUG
+	FR_PROTO_HEX_DUMP("Done TLV body", out, p - out);
+#endif
 
 	return p - out;
 }
@@ -504,53 +631,6 @@ static ssize_t encode_rfc_hdr(uint8_t *out, size_t outlen,
 	return p - out;
 }
 
-static inline ssize_t encode_tlv_internal(uint8_t *out, size_t outlen,
-					  fr_dict_attr_t const **tlv_stack, unsigned int depth,
-					  fr_cursor_t *cursor, void *encoder_ctx)
-{
-	ssize_t			slen;
-	uint8_t			*p = out, *end = p + outlen;
-	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
-	fr_dict_attr_t const	*da = tlv_stack[depth];
-
-	CHECK_FREESPACE(outlen, OPT_HDR_LEN);
-
-	while ((size_t)(end - p) > OPT_HDR_LEN) {
-		FR_PROTO_STACK_PRINT(tlv_stack, depth);
-
-		/*
-		 *	Determine the nested type and call the appropriate encoder
-		 */
-		if (tlv_stack[depth + 1]->type == FR_TYPE_TLV) {
-			slen = encode_tlv_hdr(p, end - p, tlv_stack, depth + 1, cursor, encoder_ctx);
-		} else {
-			slen = encode_rfc_hdr(p, end - p, tlv_stack, depth + 1, cursor, encoder_ctx);
-		}
-		if (slen < 0) return slen;
-
-		p += slen;
-
-		/*
-		 *	If nothing updated the attribute, stop
-		 */
-		if (!fr_cursor_current(cursor) || (vp == fr_cursor_current(cursor))) break;
-
-		/*
-		 *	We can encode multiple sub TLVs, if after
-		 *	rebuilding the TLV Stack, the attribute
-		 *	at this depth is the same.
-		 */
-		if (da != tlv_stack[depth]) break;
-		vp = fr_cursor_current(cursor);
-	}
-
-#ifndef NDEBUG
-	FR_PROTO_HEX_DUMP("Done TLV body", out, p - out);
-#endif
-
-	return p - out;
-}
-
 static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 			      fr_dict_attr_t const **tlv_stack, unsigned int depth,
 			      fr_cursor_t *cursor, void *encoder_ctx)
@@ -576,7 +656,7 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 	CHECK_FREESPACE(outlen, OPT_HDR_LEN);
 
 	p += OPT_HDR_LEN;	/* Make room for option header */
-	slen = encode_tlv_internal(p, end - p, tlv_stack, depth, cursor, encoder_ctx);
+	slen = encode_tlv(p, end - p, tlv_stack, depth, cursor, encoder_ctx);
 	if (slen < 0) return slen;
 	p += slen;
 
@@ -704,7 +784,7 @@ static ssize_t encode_vsio_suboption_hdr(uint8_t *out, size_t outlen,
 	 *	internal tlv function, else we get a double TLV header.
 	 */
 	if (da->type == FR_TYPE_TLV) {
-		slen = encode_tlv_internal(p, end - p, tlv_stack, depth, cursor, encoder_ctx);
+		slen = encode_tlv(p, end - p, tlv_stack, depth, cursor, encoder_ctx);
 	/*
 	 *	Array of values inside a vendor option
 	 */
@@ -878,7 +958,7 @@ ssize_t fr_dhcpv6_encode_option(uint8_t *out, size_t outlen, fr_cursor_t *cursor
 	return slen;
 }
 
-static void *encode_test_ctx (UNUSED TALLOC_CTX *ctx)
+static void *encode_test_ctx(UNUSED TALLOC_CTX *ctx)
 {
 	static fr_dhcpv6_encode_ctx_t	test_ctx;
 
