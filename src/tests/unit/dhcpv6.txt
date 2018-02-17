@@ -12,6 +12,10 @@ data 00 01 00 09 01 02 03 04 05 06 07 08 09
 encode-pair DHCPv6-Client-ID = 0x010101010101010101, DHCPv6-Server-ID = 0x02020202020202020202
 data 00 01 00 09 01 01 01 01 01 01 01 01 01 00 02 00 0a 02 02 02 02 02 02 02 02 02 02
 
+# Zero length octets
+encode-pair DHCPv6-Client-ID = 0x
+data 00 01 00 00
+
 #
 #  Simple string type
 #
@@ -20,6 +24,10 @@ data 00 26 00 04 66 72 65 64
 
 encode-pair DHCPv6-Subscriber-ID = "bob", DHCPv6-New-Posix-Timezone = "GB"
 data 00 26 00 03 62 6f 62 00 29 00 02 47 42
+
+# Zero length string
+encode-pair DHCPv6-Subscriber-ID = ""
+data 00 26 00 00
 
 #
 #  Bool
@@ -116,3 +124,42 @@ data 00 16 00 20 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34 20 01 0d b8 85 
 encode-pair DHCPv6-Bootfile-Param = "I LIKE CHICKEN",  DHCPv6-Bootfile-Param = "I LIKE LIVER"
 data 00 3c 00 1e 00 0e 49 20 4c 49 4b 45 20 43 48 49 43 4b 45 4e 00 0c 49 20 4c 49 4b 45 20 4c 49 56 45 52
 
+# Still needs to add the length field with only one element
+encode-pair DHCPv6-Bootfile-Param = "MEOW MIX MEOW MIX"
+data 00 3c 00 13 00 11 4d 45 4f 57 20 4d 49 58 20 4d 45 4f 57 20 4d 49 58
+
+encode-pair DHCPv6-Bootfile-Param = ""
+data 00 3c 00 02 00 00
+
+encode-pair DHCPv6-Bootfile-Param = "",  DHCPv6-Bootfile-Param = "foo"
+data 00 3c 00 07 00 00 00 03 66 6f 6f
+
+#
+#  Variable length octets array
+#
+encode-pair DHCPv6-User-Class = 0x010203, DHCPv6-User-Class = 0x02040810
+data 00 0f 00 0b 00 03 01 02 03 00 04 02 04 08 10
+
+encode-pair DHCPv6-User-Class = 0x010203
+data 00 0f 00 05 00 03 01 02 03
+
+encode-pair DHCPv6-User-Class = 0x, DHCPv6-User-Class = 0x
+data 00 0f 00 04 00 00 00 00
+
+#
+#  TLV with array type values
+#
+encode-pair DHCPv6-MOS-Address-IS = 2001:0db8:85a3:0000:0000:8a2e:0370:7334
+data 00 36 00 14 00 01 00 10 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34
+
+encode-pair DHCPv6-MOS-Address-IS = 2001:0db8:85a3:0000:0000:8a2e:0370:7334, DHCPv6-MOS-Address-IS = 2001:0db8:85a3:0000:0000:8a2e:0370:7335
+data 00 36 00 24 00 01 00 20 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 35
+
+encode-pair DHCPv6-MOS-Address-IS = 2001:0db8:85a3:0000:0000:8a2e:0370:7334, DHCPv6-MOS-Address-ES = 2001:0db8:85a3:0000:0000:8a2e:0370:7335
+data 00 36 00 28 00 01 00 10 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34 00 03 00 10 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 35
+
+#
+#  TLV with single values
+#
+encode-pair DHCPv6-NTP-Server-Address = 2001:0db8:85a3:0000:0000:8a2e:0370:7334
+data 00 38 00 14 00 01 00 10 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34

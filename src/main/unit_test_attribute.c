@@ -796,6 +796,15 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 		}
 
 		if (strcmp(test_type, "data") == 0) {
+			/*
+			 *	Handle "no data expected"
+			 */
+			if (((p[4] == '\0') || (p[5] == '\0')) && (output[0] != '\0')) {
+				fprintf(stderr, "Mismatch at line %d of %s\n\tgot      : %s\n\texpected :\n",
+					lineno, directory, output);
+				exit(EXIT_FAILURE);
+			}
+
 			if (strcmp(p + 5, output) != 0) {
 				fprintf(stderr, "Mismatch at line %d of %s\n\tgot      : %s\n\texpected : %s\n",
 					lineno, directory, output, p + 5);
