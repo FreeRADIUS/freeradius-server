@@ -60,6 +60,23 @@ encode-pair DHCPv6-Information-Refresh-Time = 99
 data 00 20 00 04 00 00 00 63
 
 #
+#  Date. Like a 32bit unix timestamp but starts from 1st Jan 2000 instead of 1st Jan 1970
+#
+encode-pair DHCPv6-Failover-Expiration-Time = 0
+data 00 78 00 04 00 00 00 00
+
+# Still less than 946080000 (30 years), so still 0 (we can't represent dates earlier than 1st Jan 2000)
+encode-pair DHCPv6-Failover-Expiration-Time = 500
+data 00 78 00 04 00 00 00 00
+
+encode-pair DHCPv6-Failover-Expiration-Time = 946080000
+data 00 78 00 04 00 00 00 00
+
+# 1st second of 1st Jan 2000
+encode-pair DHCPv6-Failover-Expiration-Time = 946080001
+data 00 78 00 04 00 00 00 01
+
+#
 #  Encode ipv6address
 #
 encode-pair DHCPv6-Unicast = 2001:0db8:85a3:0000:0000:8a2e:0370:7334
@@ -163,3 +180,4 @@ data 00 36 00 28 00 01 00 10 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34 00 
 #
 encode-pair DHCPv6-NTP-Server-Address = 2001:0db8:85a3:0000:0000:8a2e:0370:7334
 data 00 38 00 14 00 01 00 10 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34
+

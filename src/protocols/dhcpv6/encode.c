@@ -316,11 +316,37 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case FR_TYPE_INT16:
 	case FR_TYPE_INT32:
 	case FR_TYPE_INT64:
-	case FR_TYPE_DATE:
 		CHECK_FREESPACE(outlen, fr_dhcpv6_option_len(vp));
 		slen = fr_value_box_to_network(NULL, p, end - p, &vp->data);
 		if (slen < 0) return PAIR_ENCODE_ERROR;
 		p += slen;
+		break;
+
+	/*
+	 *	A standard 32bit integer, but unlike normal UNIX timestamps
+	 *	starts from the 1st of January 2000.
+	 *
+	 *	In the decoder we add 946,080,000 seconds (30 years) to any
+	 *	values, so here we need to subtract 946,080,000 seconds, or
+	 *	if the value is less than 946,080,000 seconds, just encode
+	 *	a 0x0000000000 value.
+	 */
+	case FR_TYPE_DATE:
+	{
+		uint32_t adj_date;
+
+		CHECK_FREESPACE(outlen, fr_dhcpv6_option_len(vp));
+
+		if (vp->vp_date < 946080000) {	/* 30 years */
+			memset(p, 0, sizeof(uint32_t));
+			p += sizeof(uint32_t);
+			break;
+		}
+
+		adj_date = htonl(vp->vp_date - 946080000);
+		memcpy(p, &adj_date, sizeof(adj_date));
+		p += sizeof(adj_date);
+	}
 		break;
 
 	case FR_TYPE_INVALID:
