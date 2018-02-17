@@ -264,13 +264,6 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		break;
 
 	/*
-	 *	Normal data types use the common encoder.
-	 */
-	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_IFID:
-	case FR_TYPE_ETHERNET:	/* just in case */
-
-	/*
 	 *    0                   1                   2                   3
 	 *    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 	 *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -316,6 +309,9 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case FR_TYPE_INT16:
 	case FR_TYPE_INT32:
 	case FR_TYPE_INT64:
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IFID:
+	case FR_TYPE_ETHERNET:
 		CHECK_FREESPACE(outlen, fr_dhcpv6_option_len(vp));
 		slen = fr_value_box_to_network(NULL, p, end - p, &vp->data);
 		if (slen < 0) return PAIR_ENCODE_ERROR;
