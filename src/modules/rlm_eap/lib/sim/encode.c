@@ -130,11 +130,7 @@ static ssize_t encode_iv(uint8_t *out, size_t outlen, void *encoder_ctx)
 	 */
 	if (packet_ctx->iv_included) return 0;
 
-	if (outlen < (4 + SIM_IV_SIZE)) {	/* AT_IV + Length + Reserved(2) + IV */
-		fr_strerror_printf("%s: Insufficient buffer space, need %u bytes, have %zu bytes",
-				   __FUNCTION__, 4 + SIM_IV_SIZE, outlen);
-		return -1;
-	}
+	CHECK_FREESPACE(outlen, 4 + SIM_IV_SIZE);	/* AT_IV + Length + Reserved(2) + IV */
 
 	/*
 	 *	Generate IV
@@ -196,17 +192,13 @@ static ssize_t encode_encrypted_value(uint8_t *out, size_t outlen,
 	 */
 	if (unlikely(inlen % 4)) {
 		fr_strerror_printf("%s: Input data length is not a multiple of 4", __FUNCTION__);
-		return -1;
+		return PAIR_ENCODE_ERROR;
 	}
 
 	total_len = (inlen + (block_size - 1)) & ~(block_size - 1);	/* Round input length to block size (16) */
 	pad_len = (total_len - inlen);		/* How much we need to pad */
 
-	if (total_len > outlen) {
-		fr_strerror_printf("%s: Insufficient buffer space, need %zu bytes, have %zu bytes",
-				   __FUNCTION__, total_len, outlen);
-		return -1;
-	}
+	CHECK_FREESPACE(outlen, total_len);
 
 	/*
 	 *	Usually in and out will be the same buffer
@@ -227,7 +219,7 @@ static ssize_t encode_encrypted_value(uint8_t *out, size_t outlen,
 	evp_ctx = EVP_CIPHER_CTX_new();
 	if (!evp_ctx) {
 		tls_strerror_printf(true, "Failed allocating EVP context");
-		return -1;
+		return PAIR_ENCODE_ERROR;
 	}
 
 	if (unlikely(EVP_EncryptInit_ex(evp_ctx, evp_cipher, NULL,
@@ -236,7 +228,7 @@ static ssize_t encode_encrypted_value(uint8_t *out, size_t outlen,
 	error:
 		talloc_free(encr);
 		EVP_CIPHER_CTX_free(evp_ctx);
-		return -1;
+		return PAIR_ENCODE_ERROR;
 	}
 
 	encr = talloc_array(NULL, uint8_t, total_len);
@@ -314,21 +306,21 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	VP_VERIFY(vp);
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
-	if (tlv_stack[depth + 1] != NULL) {
+	if (unlikely(tlv_stack[depth + 1] != NULL)) {
 		fr_strerror_printf("%s: Encoding value but not at top of stack", __FUNCTION__);
-		return -1;
+		return PAIR_ENCODE_ERROR;
 	}
 
-	if (vp->da != da) {
+	if (unlikely(vp->da != da)) {
 		fr_strerror_printf("%s: Top of stack does not match vp->da", __FUNCTION__);
-		return -1;
+		return PAIR_ENCODE_ERROR;
 	}
 
 	switch (da->type) {
 	case FR_TYPE_STRUCTURAL:
 		fr_strerror_printf("%s: Called with structural type %s", __FUNCTION__,
 				   fr_int2str(dict_attr_types, tlv_stack[depth]->type, "?Unknown?"));
-		return -1;
+		return PAIR_ENCODE_ERROR;
 
 	default:
 		break;
@@ -355,7 +347,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 			fr_strerror_printf("%s: Attribute \"%s\" needs a value of exactly %zu bytes, "
 					   "but value was %zu bytes", __FUNCTION__,
 					   da->name, (size_t)da->flags.length, vp->vp_length);
-			return -1;
+			return PAIR_ENCODE_ERROR;
 		}
 		memcpy(packet_ctx->iv, vp->vp_octets, sizeof(packet_ctx->iv));
 		packet_ctx->iv_included = true;
@@ -384,14 +376,10 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		if ((vp->vp_length < 4) || (vp->vp_length > 16)) {
 			fr_strerror_printf("%s: AKA-RES Length must be between 4-16 bytes, got %zu bytes",
 					   __FUNCTION__, vp->vp_length);
-			return -1;
+			return PAIR_ENCODE_ERROR;
 		}
 
-		if ((vp->vp_length + 2) > outlen) {
-		oos:
-			fr_strerror_printf("%s: Attribute exceeds available buffer space", __FUNCTION__);
-			return -1;
-		}
+		CHECK_FREESPACE(outlen, vp->vp_length + 2);
 
 		memcpy(p, &res_len, sizeof(res_len));			/* RES Length (bits, big endian) */
 		p += sizeof(res_len);
@@ -422,7 +410,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	{
 		uint8_t	*p = out;
 
-		if ((vp->vp_length + 2) > outlen) goto oos;
+		CHECK_FREESPACE(outlen, vp->vp_length + 2);
 
 		*p++ = '\0';	/* Reserved */
 		*p++ = '\0';	/* Reserved */
@@ -461,13 +449,13 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		uint16_t 	actual_len = htons((vp->vp_length & UINT16_MAX));
 		uint8_t		*p = out;
 
-		if ((vp->vp_length + 2) > outlen) goto oos;
+		CHECK_FREESPACE(outlen, vp->vp_length + 2);
 
 		if (vp->da->flags.length && (vp->vp_length != vp->da->flags.length)) {
 			fr_strerror_printf("%s: Attribute \"%s\" needs a value of exactly %zu bytes, "
 					   "but value was %zu bytes", __FUNCTION__,
 					   vp->da->name, (size_t)vp->da->flags.length, vp->vp_length);
-			return -1;
+			return PAIR_ENCODE_ERROR;
 		}
 
 		memcpy(p, &actual_len, sizeof(actual_len));		/* Big endian real string length */
@@ -496,14 +484,14 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 				fr_strerror_printf("%s: Attribute \"%s\" needs a value of <= %zu bytes, "
 						   "but value was %zu bytes", __FUNCTION__,
 						   vp->da->name, (size_t)vp->da->flags.length, vp->vp_length);
-				return -1;
+				return PAIR_ENCODE_ERROR;
 			}
 
 			/*
 			 *	Calculate value padding (autopad)
 			 */
 			value_len_rounded = ROUND_UP(vp->vp_length, (size_t)vp->da->flags.length);
-			if ((value_len_rounded + prefix) > outlen) goto oos;
+			CHECK_FREESPACE(outlen, value_len_rounded + prefix);
 
 			/*
 			 *	Zero out reserved bytes
@@ -533,7 +521,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		} else {
 			uint16_t actual_len = htons((vp->vp_length & UINT16_MAX));
 
-			if ((vp->vp_length + 2) > outlen) goto oos;		/* +2 for len */
+			CHECK_FREESPACE(outlen, vp->vp_length + 2);		/* +2 for len */
 
 			memcpy(p, &actual_len, sizeof(actual_len));		/* Big endian real string length */
 			p += sizeof(actual_len);
@@ -558,7 +546,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 *	+---------------+---------------+-------------------------------+
 	 */
 	case FR_TYPE_BOOL:
-		if (2 > outlen) goto oos;
+		CHECK_FREESPACE(outlen, 2);
 		out[0] = 0;
 		out[1] = 0;
 		len = 2;	/* Length of the reserved area */
@@ -582,12 +570,12 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case FR_TYPE_UINT64:
 	case FR_TYPE_INT32:
 		len = fr_value_box_to_network(NULL, out, outlen, &vp->data);
-		if (len < 0) return -1;
+		if (len < 0) return len;
 		break;
 
 	default:
 		fr_strerror_printf("%s: Cannot encode attribute %s", __FUNCTION__, vp->da->name);
-		return -1;
+		return PAIR_ENCODE_ERROR;
 	}
 
 done:
@@ -633,11 +621,11 @@ static ssize_t encode_array(uint8_t *out, size_t outlen,
 	p += 2;
 	value = p;	/* Space for actual length */
 
-	if (da->type == FR_TYPE_OCTETS) {
+	if (unlikely(da->type == FR_TYPE_OCTETS)) {
 		if (!da->flags.length) {
 			fr_strerror_printf("Can't encode array type attribute \"%s\" as it does not "
 					   "have a fixed length", da->name);
-			return -1;
+			return PAIR_ENCODE_ERROR;
 		}
 		element_len = da->flags.length;
 	} else {
@@ -681,10 +669,7 @@ static ssize_t encode_array(uint8_t *out, size_t outlen,
 	 */
 	pad_len = ROUND_UP_POW2(p - value, 4) - (p - value);
 	if (pad_len) {
-		if (pad_len > (size_t)(end - p)) {
-			fr_strerror_printf("Insufficient space");
-			return -1;
-		}
+		CHECK_FREESPACE(end - p, pad_len);
 
 		memset(p, 0, pad_len);
 		p += pad_len;
@@ -713,14 +698,14 @@ static ssize_t encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const 
 	case FR_TYPE_STRUCTURAL:
 		fr_strerror_printf("%s: Called with structural type %s", __FUNCTION__,
 				   fr_int2str(dict_attr_types, tlv_stack[depth]->type, "?Unknown?"));
-		return -1;
+		return PAIR_ENCODE_ERROR;
 
 	default:
 		if (((tlv_stack[depth]->vendor == 0) && (tlv_stack[depth]->attr == 0)) ||
 		    (tlv_stack[depth]->attr > 255)) {
 			fr_strerror_printf("%s: Called with non-standard attribute %u", __FUNCTION__,
 					   tlv_stack[depth]->attr);
-			return -1;
+			return PAIR_ENCODE_ERROR;
 		}
 		break;
 	}
@@ -752,10 +737,7 @@ static ssize_t encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const 
 	 */
 	pad_len = ROUND_UP_POW2(p - out, 4) - (p - out);
 	if (pad_len) {
-		if (pad_len > (size_t)(end - p)) {
-			fr_strerror_printf("Insufficient space");
-			return -1;
-		}
+		CHECK_FREESPACE(end - p, pad_len);
 
 		memset(p, 0, pad_len);
 		p += pad_len;
@@ -764,25 +746,21 @@ static ssize_t encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const 
 	out[0] = da->attr & 0xff;
 	out[1] = (p - out) >> 2;
 
-	FR_PROTO_HEX_DUMP("Done RFC attribute", out, (p - out));
+	FR_PROTO_HEX_DUMP("Done RFC attribute", out, p - out);
 
 	return (p - out);	/* AT + Length + Data */
 }
 
-static inline ssize_t encode_tlv(uint8_t *out, size_t outlen,
-				 fr_dict_attr_t const **tlv_stack, unsigned int depth,
-				 fr_cursor_t *cursor, void *encoder_ctx)
+static inline ssize_t encode_tlv_internal(uint8_t *out, size_t outlen,
+					  fr_dict_attr_t const **tlv_stack, unsigned int depth,
+					  fr_cursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t			slen;
 	uint8_t			*p = out, *end = p + outlen, *value;
 	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const	*da = tlv_stack[depth];
 
-	if (outlen < 2) {
-		fr_strerror_printf("Insufficient space for TLV");
-		return -1;
-	}
-
+	CHECK_FREESPACE(outlen, 2);
 	*p++ = 0;	/* Reserved (0) */
 	*p++ = 0;	/* Reserved (1) */
 	value = p;
@@ -830,7 +808,7 @@ static inline ssize_t encode_tlv(uint8_t *out, size_t outlen,
 	 */
 	if (da->flags.encrypt) {
 		slen = encode_encrypted_value(value, end - value, value, p - value, encoder_ctx);
-		if (slen < 0) return -1;
+		if (slen < 0) return PAIR_ENCODE_ERROR;
 
 		p = value + slen;
 	}
@@ -855,12 +833,12 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 	if (tlv_stack[depth]->type != FR_TYPE_TLV) {
 		fr_strerror_printf("%s: Expected type \"tlv\" got \"%s\"", __FUNCTION__,
 				   fr_int2str(dict_attr_types, tlv_stack[depth]->type, "?Unknown?"));
-		return -1;
+		return PAIR_ENCODE_ERROR;
 	}
 
 	if (!tlv_stack[depth + 1]) {
 		fr_strerror_printf("%s: Can't encode empty TLV", __FUNCTION__);
-		return -1;
+		return PAIR_ENCODE_ERROR;
 	}
 
 	/*
@@ -870,7 +848,7 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 	 */
 	if (tlv_stack[depth]->flags.encrypt) {
 		len = encode_iv(out, outlen, encoder_ctx);
-		if (len < 0) return -1;
+		if (len < 0) return len;
 
 		p += len;
 		outlen -= len;
@@ -880,7 +858,7 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 	if (outlen > SIM_MAX_ATTRIBUTE_VALUE_LEN) outlen = SIM_MAX_ATTRIBUTE_VALUE_LEN;
 
 	da = tlv_stack[depth];
-	len = encode_tlv(p + 2, outlen - 2, tlv_stack, depth, cursor, encoder_ctx);
+	len = encode_tlv_internal(p + 2, outlen - 2, tlv_stack, depth, cursor, encoder_ctx);
 	if (len <= 0) return len;
 
 	/*
@@ -901,14 +879,16 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 ssize_t fr_sim_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, void *encoder_ctx)
 {
 	VALUE_PAIR const	*vp;
-	int			ret;
+	ssize_t			slen;
 	size_t			attr_len;
 
 	fr_dict_attr_t const	*tlv_stack[FR_DICT_MAX_TLV_STACK + 1];
 	fr_dict_attr_t const	*da = NULL;
 	fr_sim_encode_ctx_t	*packet_ctx = encoder_ctx;
 
-	if (!cursor || !out || (outlen < 4)) return -1;	/* Attributes lengths are always multiples of 4 */
+	if (!cursor || !out) return PAIR_ENCODE_ERROR;
+
+	CHECK_FREESPACE(outlen, 4);		/* Attributes lengths are always multiples of 4 */
 
 	vp = first_encodable(cursor, encoder_ctx);
 	if (!vp) return 0;
@@ -918,7 +898,7 @@ ssize_t fr_sim_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, voi
 	if (vp->da->depth > FR_DICT_MAX_TLV_STACK) {
 		fr_strerror_printf("%s: Attribute depth %i exceeds maximum nesting depth %i",
 				   __FUNCTION__, vp->da->depth, FR_DICT_MAX_TLV_STACK);
-		return -1;
+		return PAIR_ENCODE_ERROR;
 	}
 
 	if (vp->da->attr == FR_EAP_SIM_MAC) {
@@ -956,25 +936,25 @@ ssize_t fr_sim_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, voi
 	 *	Supported types
 	 */
 	default:
-		ret = encode_rfc_hdr(out, attr_len, tlv_stack, 1, cursor, encoder_ctx);
+		slen = encode_rfc_hdr(out, attr_len, tlv_stack, 1, cursor, encoder_ctx);
 		break;
 
 	case FR_TYPE_TLV:
-		ret = encode_tlv_hdr(out, attr_len, tlv_stack, 1, cursor, encoder_ctx);
+		slen = encode_tlv_hdr(out, attr_len, tlv_stack, 1, cursor, encoder_ctx);
 		break;
 	}
 
-	if (ret < 0) return ret;
+	if (slen < 0) return slen;
 
 	/*
 	 *	We couldn't do it, so we didn't do anything.
 	 */
 	if (fr_cursor_current(cursor) == vp) {
 		fr_strerror_printf("%s: Nested attribute structure too large to encode", __FUNCTION__);
-		return -1;
+		return PAIR_ENCODE_ERROR;
 	}
 
-	return ret;
+	return slen;
 }
 
 ssize_t fr_sim_encode(REQUEST *request, VALUE_PAIR *to_encode, void *encode_ctx)
@@ -1000,7 +980,7 @@ ssize_t fr_sim_encode(REQUEST *request, VALUE_PAIR *to_encode, void *encode_ctx)
 	vp = fr_pair_find_by_child_num(to_encode, packet_ctx->root, FR_SIM_SUBTYPE, TAG_ANY);
 	if (!vp) {
 		REDEBUG("Missing subtype attribute");
-		return -1;
+		return PAIR_ENCODE_ERROR;
 	}
 	subtype = vp->vp_uint16;
 
@@ -1039,10 +1019,7 @@ ssize_t fr_sim_encode(REQUEST *request, VALUE_PAIR *to_encode, void *encode_ctx)
 	 */
 	vp = fr_pair_find_by_child_num(to_encode, packet_ctx->root, FR_EAP_SIM_MAC, TAG_ANY);
 	if (vp) {
-		if ((end - p) < SIM_MAC_SIZE) {
-			fr_strerror_printf("Insufficient space to store AT_MAC");
-			return -1;
-		}
+		CHECK_FREESPACE(end - p, SIM_MAC_SIZE);
 
 		do_hmac = true;
 
@@ -1064,7 +1041,7 @@ ssize_t fr_sim_encode(REQUEST *request, VALUE_PAIR *to_encode, void *encode_ctx)
 		if (slen < 0) {
 		error:
 			talloc_free(buff);
-			return -1;
+			return PAIR_ENCODE_ERROR;
 		}
 		p += slen;
 		rad_assert(p < end);	/* We messed up a check somewhere in the encoder */
