@@ -82,8 +82,8 @@ data 00 78 00 04 00 00 00 01
 encode-pair DHCPv6-Unicast = 2001:0db8:85a3:0000:0000:8a2e:0370:7334
 data 00 0c 00 10 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34
 
-# Scope should be ignored
-encode-pair DHCPv6-Unicast = 2001:0db8:85a3:0000:0000:8a2e:0370:7334%en0
+# Scope should be ignored (numbered scopes work everywhere, interfaces don't)
+encode-pair DHCPv6-Unicast = 2001:0db8:85a3:0000:0000:8a2e:0370:7334%0
 data 00 0c 00 10 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34
 
 #
