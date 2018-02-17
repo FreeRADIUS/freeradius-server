@@ -111,6 +111,10 @@ data 00 47 00 11 80 20 01 0d b8 85 a3 00 00 00 00 8a 2e 03 70 73 34
 encode-pair DHCPv6-MIP6-Home-Net-Prefix = ::/0
 data 00 47 00 01 00
 
+# v4 address - Check the correct 4in6 prefix is added
+encode-pair DHCPv6-MIP6-Home-Net-Prefix = ::ffff:192.168.0.1
+data 00 47 00 11 80 00 00 00 00 00 00 00 00 00 00 ff ff c0 a8 00 01
+
 #
 #  Array of 16bit integers
 #
