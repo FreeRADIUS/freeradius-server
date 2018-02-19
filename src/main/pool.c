@@ -1154,6 +1154,16 @@ struct timeval fr_pool_timeout(fr_pool_t *pool)
 	return pool->connect_timeout;
 }
 
+/** Connection pool get start
+ *
+ * @param[in] pool to get connection start for.
+ * @return the connection start value configured for the pool.
+ */
+int fr_pool_start(fr_pool_t *pool)
+{
+	return pool->start;
+}
+
 /** Return the opaque data associated with a connection pool
  *
  * @param pool to return data for.
