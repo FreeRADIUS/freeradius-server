@@ -101,15 +101,14 @@ uint8_t const *fr_dhcpv4_packet_get_option(dhcp_packet_t const *packet, size_t p
 
 int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 {
-	size_t i;
-	uint8_t *p;
-	uint32_t giaddr;
-	fr_cursor_t cursor;
-	VALUE_PAIR *head = NULL, *vp;
-	VALUE_PAIR *maxms, *mtu;
+	size_t		i;
+	uint8_t		*p = packet->data;
+	uint32_t	giaddr;
+	fr_cursor_t	cursor;
+	VALUE_PAIR	*head = NULL, *vp;
+	VALUE_PAIR	*maxms, *mtu;
 
 	fr_cursor_init(&cursor, &head);
-	p = packet->data;
 
 	if (packet->data[1] > 1) {
 		fr_strerror_printf("Packet is not Ethernet: %u",
@@ -121,10 +120,11 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 	 *	Decode the header.
 	 */
 	for (i = 0; i < 14; i++) {
-
 		vp = fr_pair_make(packet, NULL, dhcp_header_names[i], NULL, T_OP_EQ);
 		if (!vp) {
 			fr_strerror_printf_push("Cannot decode packet due to internal error");
+		error:
+			talloc_free(vp);
 			fr_pair_list_free(&head);
 			return -1;
 		}
@@ -145,36 +145,18 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 		}
 
 		switch (vp->vp_type) {
-		case FR_TYPE_UINT8:
-			vp->vp_uint8 = p[0];
-			break;
-
-		case FR_TYPE_UINT16:
-			vp->vp_uint16 = (p[0] << 8) | p[1];
-			break;
-
-		case FR_TYPE_UINT32:
-			memcpy(&vp->vp_uint32, p, 4);
-			vp->vp_uint32 = ntohl(vp->vp_uint32);
-			break;
-
-		case FR_TYPE_IPV4_ADDR:
-			memcpy(&vp->vp_ipv4addr, p, 4);
-			break;
-
 		case FR_TYPE_STRING:
 			/*
 			 *	According to RFC 2131, these are null terminated strings.
 			 *	We don't trust everyone to abide by the RFC, though.
 			 */
 			if (*p != '\0') {
-				uint8_t *end;
-				int len;
-				end = memchr(p, '\0', dhcp_header_sizes[i]);
-				len = end ? end - p : dhcp_header_sizes[i];
-				fr_pair_value_bstrncpy(vp, p, len);
+				uint8_t *q;
+
+				q = memchr(p, '\0', dhcp_header_sizes[i]);
+				fr_pair_value_bstrncpy(vp, p, q ? q - p : dhcp_header_sizes[i]);
 			}
-			if (vp->vp_length == 0) fr_pair_list_free(&vp);
+			if (vp->vp_length == 0) talloc_free(vp);
 			break;
 
 		case FR_TYPE_OCTETS:
@@ -183,13 +165,9 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 			fr_pair_value_memcpy(vp, p, packet->data[2]);
 			break;
 
-		case FR_TYPE_ETHERNET:
-			memcpy(vp->vp_ether, p, sizeof(vp->vp_ether));
-			break;
-
 		default:
-			fr_strerror_printf("BAD TYPE %d", vp->vp_type);
-			fr_pair_list_free(&vp);
+			if (fr_value_box_from_network(vp, &vp->data, vp->vp_type, vp->da,
+						      p, dhcp_header_sizes[i], true) < 0) goto error;
 			break;
 		}
 		p += dhcp_header_sizes[i];
