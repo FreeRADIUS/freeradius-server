@@ -811,7 +811,6 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_cursor_t *out,
 		fr_cursor_t from;
 
 		rad_assert(alternate);
-		rad_assert(child);
 
 		/*
 		 *	No result from the first child, try the alternate

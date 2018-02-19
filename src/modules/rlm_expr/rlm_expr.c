@@ -92,13 +92,8 @@ static int64_t fr_pow(int64_t base, int64_t exp)
 	int64_t result = 1;
 
 	if (exp > 63) {
-		if (base == 1) {
-			return 1;
-		}
-
-		if (base == -1) {
-			return 1 - 2 * (exp & 1);
-		}
+		if (base == 1) return 1;
+		if (base == -1) return 1 - 2 * (exp & 1);
 		return 0;	/* overflow */
 	}
 
@@ -107,24 +102,30 @@ static int64_t fr_pow(int64_t base, int64_t exp)
 		if (exp & 1) result *= base;
 		exp >>= 1;
 		base *= base;
+		/* FALL-THROUGH */
 	case 5:
 		if (exp & 1) result *= base;
 		exp >>= 1;
 		base *= base;
+		/* FALL-THROUGH */
 	case 4:
 		if (exp & 1) result *= base;
 		exp >>= 1;
 		base *= base;
+		/* FALL-THROUGH */
 	case 3:
 		if (exp & 1) result *= base;
 		exp >>= 1;
 		base *= base;
+		/* FALL-THROUGH */
 	case 2:
 		if (exp & 1) result *= base;
 		exp >>= 1;
 		base *= base;
+		/* FALL-THROUGH */
 	case 1:
 		if (exp & 1) result *= base;
+		/* FALL-THROUGH */
 	default:
 		return result;
 	}
