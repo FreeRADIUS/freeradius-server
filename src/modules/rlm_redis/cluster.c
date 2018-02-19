@@ -2382,13 +2382,20 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 		if (af == AF_UNSPEC) af = node->addr.ipaddr.af;
 
 		/*
-		 *	Fine to leave this node configured, if we do find
-		 *	a live node, and it's not in the map, it'll be cleared out.
+		 * 	Only get cluster map config if required
 		 */
-		conn = fr_pool_connection_get(node->pool, NULL);
-		if (!conn) {
-			WARN("%s: Can't contact bootstrap server \"%s\"", cluster->log_prefix, server);
-			continue;
+		if (fr_pool_start(node->pool) > 0) {
+			/*
+			 *	Fine to leave this node configured, if we do find
+			 *	a live node, and it's not in the map, it'll be cleared out.
+			 */
+			conn = fr_pool_connection_get(node->pool, NULL);
+			if (!conn) {
+				WARN("%s: Can't contact bootstrap server \"%s\"", cluster->log_prefix, server);
+				continue;
+			}
+		} else {
+			break;
 		}
 
 		switch (cluster_map_get(&map, conn)) {
