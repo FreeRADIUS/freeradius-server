@@ -197,6 +197,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 
 		memcpy(buffer, inst->leftover_buffer, inst->leftover);
 		*leftover = inst->leftover;
+		inst->leftover = 0;
 	}
 
 	/*
