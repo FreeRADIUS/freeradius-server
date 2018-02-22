@@ -33,6 +33,6 @@ ${SRC_INCLUDE_DIR}/io:
 #
 .PHONY: src/freeradius-devel/io
 src/freeradius-devel/io:
-	${Q}[ -e $@ ] || ln -s ${top_srcdir}/src/lib/io src/include
+	${Q}[ -e $@ ] || ln -s ${top_srcdir}/src/lib/io ${top_srcdir}/src/include
 
 $(foreach x,$(HEADERS),$(eval $(call ADD_UTIL_HEADER,$x)))
