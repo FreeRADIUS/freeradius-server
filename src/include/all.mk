@@ -133,7 +133,7 @@ src/include/radpaths.h: src/include/build-radpaths-h
 src/freeradius-devel:
 	${Q}[ -e $@ ] || ln -s include $@
 	@echo LN-SF src/include src/freeradius-devel
-	${Q}[ -e src/include/io ] || ln -s src/lib/io ${top_srcdir}/src/include
+	${Q}[ -e src/include/io ] || ln -s ${top_srcdir}/src/lib/io ${top_srcdir}/src/include
 	@echo LN-SF src/include/io src/freeradius-devel/io
 
 #
