@@ -165,6 +165,15 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 			fr_pair_value_memcpy(vp, p, packet->data[2]);
 			break;
 
+			/*
+			 *	The DHCP header size for CHADDR is not
+			 *	6, so the value_box function doesn't
+			 *	like it.  Just do the copy manually.
+			 */
+		case FR_TYPE_ETHERNET:
+			memcpy(vp->vp_ether, p, sizeof(vp->vp_ether));
+			break;
+
 		default:
 			if (fr_value_box_from_network(vp, &vp->data, vp->vp_type, vp->da,
 						      p, dhcp_header_sizes[i], true) < 0) goto error;
