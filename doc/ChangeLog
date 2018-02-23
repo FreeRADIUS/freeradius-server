@@ -18,6 +18,9 @@ FreeRADIUS 3.0.17 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	  due to deficiencies in OpenSSL.  Reported by Nicolas Reich.
 	* Be more accepting when parsing IPv6 addresses.  Bug noted
 	  by Klara Mall.
+	* Fix double free in rlm_sql.  Fixes #2180.
+	* rlm_detail now writes empty Access-Accept packets.
+	* rlm_python can now create tagged attributes.
 
 FreeRADIUS 3.0.16 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	Feature improvements
