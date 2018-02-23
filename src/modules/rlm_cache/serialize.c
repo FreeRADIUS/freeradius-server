@@ -147,7 +147,7 @@ int cache_deserialize(rlm_cache_entry_t *c, char *in, ssize_t inlen)
 		 *	Pull out the special attributes, and set the
 		 *	relevant cache entry fields.
 		 */
-		if (map->lhs->tmpl_da->vendor == 0) switch (map->lhs->tmpl_da->attr) {
+		if (fr_dict_attr_is_top_level(map->lhs->tmpl_da)) switch (map->lhs->tmpl_da->attr) {
 		case FR_CACHE_CREATED:
 			c->created = map->rhs->tmpl_value.vb_date;
 			talloc_free(map);

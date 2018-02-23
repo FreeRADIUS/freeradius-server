@@ -1099,24 +1099,27 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 							       c->cast ? NULL : c->data.map->lhs->tmpl_da) < 0) {
 						fr_dict_attr_t const *da = c->data.map->lhs->tmpl_da;
 
-						if ((da->vendor == 0) &&
-						    ((da->attr == FR_AUTH_TYPE) ||
-						     (da->attr == FR_AUTZ_TYPE) ||
-						     (da->attr == FR_ACCT_TYPE) ||
-						     (da->attr == FR_SESSION_TYPE) ||
-						     (da->attr == FR_POST_AUTH_TYPE) ||
-						     (da->attr == FR_PRE_PROXY_TYPE) ||
-						     (da->attr == FR_POST_PROXY_TYPE) ||
-						     (da->attr == FR_PRE_ACCT_TYPE) ||
-						     (da->attr == FR_RECV_COA_TYPE) ||
-						     (da->attr == FR_SEND_COA_TYPE))) {
+						if (!fr_dict_attr_is_top_level(da)) goto bad_type;
+
+						switch (da->attr) {
+						case FR_AUTH_TYPE:
+						case FR_AUTZ_TYPE:
+						case FR_ACCT_TYPE:
+						case FR_SESSION_TYPE:
+						case FR_POST_AUTH_TYPE:
+						case FR_PRE_PROXY_TYPE:
+						case FR_POST_PROXY_TYPE:
+						case FR_PRE_ACCT_TYPE:
+						case FR_RECV_COA_TYPE:
+						case FR_SEND_COA_TYPE:
 							/*
 							 *	The types for these attributes are dynamically allocated
 							 *	by module.c, so we can't enforce strictness here.
 							 */
 							c->pass2_fixup = PASS2_FIXUP_TYPE;
 
-						} else {
+						default:
+						bad_type:
 							return_rhs("Failed to parse value for attribute");
 						}
 					}

@@ -1963,8 +1963,7 @@ update:
 		     vp;
 		     vp = fr_cursor_next(&list)) {
 
-			if (!vp->da->parent->flags.is_root) continue;
-			if (vp->da->vendor != 0) continue;
+			if (!fr_dict_attr_is_top_level(vp->da)) continue;
 			if (vp->da->flags.has_tag) continue;
 			if (vp->vp_type != FR_TYPE_STRING) continue;
 
@@ -2490,7 +2489,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 		 *	Wildcard: delete all of the matching ones, based on tag.
 		 */
 		if (map->lhs->tmpl_num == NUM_ANY) {
-			fr_pair_delete_by_num(list, map->lhs->tmpl_da->vendor, map->lhs->tmpl_da->attr,
+			fr_pair_delete_by_num(list, fr_dict_vendor_num_by_da(map->lhs->tmpl_da), map->lhs->tmpl_da->attr,
 					      map->lhs->tmpl_tag);
 			dst = NULL;
 		/*
@@ -2689,9 +2688,7 @@ update:
 		for (vp = fr_pair_cursor_init(&src_list, list);
 		     vp;
 		     vp = fr_pair_cursor_next(&src_list)) {
-
-			if (!vp->da->parent->flags.is_root) continue;
-			if (vp->da->vendor != 0) continue;
+			if (!fr_dict_attr_is_top_level(vp->da)) continue;
 			if (vp->da->flags.has_tag) continue;
 			if (vp->vp_type != FR_TYPE_STRING) continue;
 

@@ -187,7 +187,7 @@ VALUE_PAIR *fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *paren
 		 *	also fine...
 		 */
 		vendor = fr_dict_vendor_attr_by_da(parent);
-		if (vendor) vendor_id = vendor->vendor;
+		if (vendor) vendor_id = vendor->attr;
 
 		da = fr_dict_unknown_afrom_fields(ctx, parent,
 						  vendor_id, attr);
@@ -545,7 +545,7 @@ int fr_pair_to_unknown(VALUE_PAIR *vp)
 	VP_VERIFY(vp);
 	if (vp->da->flags.is_unknown) return 0;
 
-	da = fr_dict_unknown_afrom_fields(vp, vp->da->parent, vp->da->vendor, vp->da->attr);
+	da = fr_dict_unknown_afrom_fields(vp, vp->da->parent, fr_dict_vendor_num_by_da(vp->da), vp->da->attr);
 	if (!da) return -1;
 
 	fr_dict_unknown_free(&vp->da);	/* Only frees unknown attributes */
@@ -832,9 +832,7 @@ void fr_pair_delete_by_num(VALUE_PAIR **head, unsigned int vendor, unsigned int 
 		for(i = *head; i; i = next) {
 			VP_VERIFY(i);
 			next = i->next;
-			if (i->da->parent->flags.is_root &&
-			    (i->da->attr == attr) && (i->da->vendor == 0) &&
-			    ATTR_TAG_MATCH(i, tag)) {
+			if (fr_dict_attr_is_top_level(i->da) && (i->da->attr == attr) && ATTR_TAG_MATCH(i, tag)) {
 				*last = next;
 				talloc_free(i);
 			} else {
@@ -846,7 +844,7 @@ void fr_pair_delete_by_num(VALUE_PAIR **head, unsigned int vendor, unsigned int 
 			VP_VERIFY(i);
 			next = i->next;
 			if ((i->da->parent->type == FR_TYPE_VENDOR) &&
-			    (i->da->attr == attr) && (i->da->vendor == vendor) &&
+			    (i->da->attr == attr) && (fr_dict_vendor_num_by_da(i->da) == vendor) &&
 			    ATTR_TAG_MATCH(i, tag)) {
 				*last = next;
 				talloc_free(i);
@@ -1597,7 +1595,7 @@ VALUE_PAIR *fr_pair_list_copy_by_num(TALLOC_CTX *ctx, VALUE_PAIR *from,
 			/*
 			 *	It's a VSA: copy it over.
 			 */
-			if (vp->da->vendor != 0) goto do_copy;
+			if (!fr_dict_attr_is_top_level(vp->da)) goto do_copy;
 
 			/*
 			 *	It's Vendor-Specific: copy it over.
@@ -1611,13 +1609,10 @@ VALUE_PAIR *fr_pair_list_copy_by_num(TALLOC_CTX *ctx, VALUE_PAIR *from,
 		}
 
 		if (!vendor) {
-			if (!vp->da->parent->flags.is_root ||
-			    (vp->da->attr != attr) || (vp->da->vendor != 0)) {
-				continue;
-			}
+			if (!fr_dict_attr_is_top_level(vp->da) || (vp->da->attr != attr)) continue;
 		} else {
 			if ((vp->da->parent->type != FR_TYPE_VENDOR) ||
-			    (vp->da->attr != attr) || (vp->da->vendor != vendor)) {
+			    (vp->da->attr != attr) || (fr_dict_vendor_num_by_da(vp->da) != vendor)) {
 				continue;
 			}
 		}
@@ -1682,7 +1677,7 @@ void fr_pair_list_move(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 		/*
 		 *	We never move Fall-Through.
 		 */
-		if (!i->da->vendor && i->da->attr == FR_FALL_THROUGH && i->da->parent->flags.is_root) {
+		if (fr_dict_attr_is_top_level(i->da) && (i->da->attr == FR_FALL_THROUGH)) {
 			tail_from = &(i->next);
 			continue;
 		}
@@ -1756,7 +1751,8 @@ void fr_pair_list_move(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 			 *	Delete *all* of the attributes
 			 *	of the same number.
 			 */
-			fr_pair_delete_by_num(&found->next, found->da->vendor, found->da->attr, TAG_ANY);
+			fr_pair_delete_by_num(&found->next,
+					      fr_dict_vendor_num_by_da(found->da), found->da->attr, TAG_ANY);
 
 			/*
 			 *	Remove this attribute from the
@@ -1863,7 +1859,7 @@ static void fr_pair_list_move_by_num_internal(TALLOC_CTX *ctx, VALUE_PAIR **to, 
 			/*
 			 *	It's a VSA: move it over.
 			 */
-			if (i->da->vendor != 0) goto move;
+			if (!fr_dict_attr_is_top_level(i->da)) goto move;
 
 			/*
 			 *	It's Vendor-Specific: move it over.
@@ -1881,14 +1877,13 @@ static void fr_pair_list_move_by_num_internal(TALLOC_CTX *ctx, VALUE_PAIR **to, 
 		 *	If it isn't an exact match, ignore it.
 		 */
 		if (!vendor) {
-			if (!(i->da->parent->flags.is_root &&
-			      (i->da->attr == attr) && (i->da->vendor == 0))) {
+			if (!(fr_dict_attr_is_top_level(i->da) && (i->da->attr == attr))) {
 				iprev = i;
 				continue;
 			}
 		} else {
 			if (!((i->da->parent->type == FR_TYPE_VENDOR) &&
-			      (i->da->attr == attr) && (i->da->vendor == vendor))) {
+			      (i->da->attr == attr) && (fr_dict_vendor_num_by_da(i->da) == vendor))) {
 				iprev = i;
 				continue;
 			}

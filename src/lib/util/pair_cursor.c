@@ -210,9 +210,7 @@ VALUE_PAIR *fr_pair_cursor_next_by_num(vp_cursor_t *cursor, unsigned int vendor,
 		     i != NULL;
 		     i = i->next) {
 			VP_VERIFY(i);
-			if (i->da->parent->flags.is_root &&
-			    (i->da->attr == attr) && (i->da->vendor == 0) &&
-			    ATTR_TAG_MATCH(i, tag)) {
+			if (fr_dict_attr_is_top_level(i->da) && (i->da->attr == attr) && ATTR_TAG_MATCH(i, tag)) {
 				break;
 			}
 		}
@@ -222,7 +220,7 @@ VALUE_PAIR *fr_pair_cursor_next_by_num(vp_cursor_t *cursor, unsigned int vendor,
 		     i = i->next) {
 			VP_VERIFY(i);
 			if ((i->da->parent->type == FR_TYPE_VENDOR) &&
-			    (i->da->attr == attr) && (i->da->vendor == vendor) &&
+			    (i->da->attr == attr) && (fr_dict_vendor_num_by_da(i->da) == vendor) &&
 			    ATTR_TAG_MATCH(i, tag)) {
 				break;
 			}

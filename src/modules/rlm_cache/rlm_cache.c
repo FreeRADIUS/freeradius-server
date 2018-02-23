@@ -771,7 +771,9 @@ finish:
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 	     again:
-		if (vp->da->vendor == 0) switch (vp->da->attr) {
+		if (!fr_dict_attr_is_top_level(vp->da)) continue;
+
+		switch (vp->da->attr) {
 		case FR_CACHE_TTL:
 		case FR_CACHE_STATUS_ONLY:
 		case FR_CACHE_ALLOW_MERGE:

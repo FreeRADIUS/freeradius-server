@@ -253,8 +253,9 @@ do_value:
 		 *	challenge) But if the client gets the challenge correct,
 		 *	we're not too worried about the Id.
 		 */
-		if (((vp->da->vendor == 0) && (vp->da->attr == FR_CHAP_CHALLENGE)) ||
-		    ((vp->da->vendor == VENDORPEC_MICROSOFT) && (vp->da->attr == FR_MSCHAP_CHALLENGE))) {
+		if ((fr_dict_attr_is_top_level(vp->da) && (vp->da->attr == FR_CHAP_CHALLENGE)) ||
+		    ((fr_dict_vendor_num_by_da(vp->da) == VENDORPEC_MICROSOFT) && (vp->da->attr == FR_MSCHAP_CHALLENGE))
+		   ) {
 			uint8_t	challenge[16];
 			uint8_t	scratch[16];
 
@@ -329,7 +330,7 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 		 */
 
 		length = vp->vp_length;
-		vendor = vp->da->vendor;
+		vendor = fr_dict_vendor_num_by_da(vp->da);
 		if (vendor != 0) {
 			attr = vp->da->attr & 0xffff;
 			length |= ((uint32_t)1 << 31);
@@ -486,7 +487,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		for (vp = fr_cursor_init(&cursor, &reply->vps);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
-		     	switch (vp->da->vendor) {
+		     	switch (fr_dict_vendor_num_by_da(vp->da)) {
 			case VENDORPEC_MICROSOFT:
 				if (vp->da->attr == FR_MSCHAP2_SUCCESS) {
 					RDEBUG("Got MS-CHAP2-Success, tunneling it to the client in a challenge");
@@ -536,7 +537,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		for (vp = fr_cursor_init(&cursor, &reply->vps);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
-		     	switch (vp->da->vendor) {
+		     	switch (fr_dict_vendor_num_by_da(vp->da)) {
 			case VENDORPEC_UKERNA:
 				if (vp->da->attr == FR_UKERNA_CHBIND) {
 					fr_cursor_prepend(&to_tunnel, fr_pair_copy(tls_session, vp));

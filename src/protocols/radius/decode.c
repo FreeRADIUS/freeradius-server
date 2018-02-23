@@ -426,7 +426,8 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 			/*
 			 *	Build an unknown attr
 			 */
-			unknown_child = fr_dict_unknown_afrom_fields(ctx, parent, parent->vendor, p[0]);
+			unknown_child = fr_dict_unknown_afrom_fields(ctx, parent,
+								     fr_dict_vendor_num_by_da(parent), p[0]);
 			if (!unknown_child) {
 			error:
 				fr_pair_list_free(&head);
@@ -499,13 +500,15 @@ static ssize_t fr_radius_decode_struct(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 			/*
 			 *	Build an unknown attr of the entire STRUCT.
 			 */
-			child = fr_dict_unknown_afrom_fields(ctx, parent->parent, parent->vendor, parent->attr);
+			child = fr_dict_unknown_afrom_fields(ctx, parent->parent,
+							     fr_dict_vendor_num_by_da(parent), parent->attr);
 			if (!child) return -1;
 
 			/*
 			 *	Decode the whole STRUCT as an unknown attribute
 			 */
-			child_len = fr_radius_decode_pair_value(ctx, &child_cursor, child, data, data_len, data_len, decoder_ctx);
+			child_len = fr_radius_decode_pair_value(ctx, &child_cursor, child,
+								data, data_len, data_len, decoder_ctx);
 			if (child_len < 0) return child_len;
 			break;
 		}
@@ -1223,7 +1226,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		child = fr_dict_attr_child_by_num(parent, p[0]);
 		if (!child) {
 			if ((p[0] != FR_VENDOR_SPECIFIC) || (data_len < (3 + 4 + 1))) {
-				/* da->attr < 255, da->vendor == 0 */
+				/* da->attr < 255, fr_dict_vendor_num_by_da(da) == 0 */
 				child = fr_dict_unknown_afrom_fields(ctx, parent, 0, p[0]);
 			} else {
 				/*
@@ -1352,7 +1355,8 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dic
 		 *	therefore of type "octets", and will be
 		 *	handled below.
 		 */
-		parent = fr_dict_unknown_afrom_fields(ctx, parent->parent, parent->vendor, parent->attr);
+		parent = fr_dict_unknown_afrom_fields(ctx, parent->parent,
+						      fr_dict_vendor_num_by_da(parent), parent->attr);
 		if (!parent) {
 			fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
 			return -1;

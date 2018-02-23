@@ -505,7 +505,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		 * the rest to be cleaned up.
 		 */
 		for (vp = fr_pair_cursor_init(&cursor, &reply->vps); vp; vp = fr_pair_cursor_next(&cursor)) {
-			if (vp->da->vendor != VENDORPEC_MICROSOFT) continue;
+			if (fr_dict_vendor_num_by_da(vp->da) != VENDORPEC_MICROSOFT) continue;
 
 			/* FIXME must be a better way to capture/re-derive this later for ISK */
 			switch (vp->da->attr) {

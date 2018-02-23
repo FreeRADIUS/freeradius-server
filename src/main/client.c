@@ -924,7 +924,7 @@ RADCLIENT *client_afrom_request(TALLOC_CTX *ctx, REQUEST *request)
 		char const	*value;
 		char const	*attr;
 
-		if (vp->da->vendor != 0) continue;
+		if (!fr_dict_attr_is_top_level(vp->da)) continue;
 
 		if ((vp->da->attr < FR_FREERADIUS_CLIENT_IP_ADDRESS) ||
 		    (vp->da->attr > FR_FREERADIUS_CLIENT_NAS_TYPE)) {

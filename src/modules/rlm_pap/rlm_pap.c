@@ -1354,8 +1354,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	fr_cursor_t	cursor;
 	rlm_rcode_t	(*auth_func)(rlm_pap_t const *, REQUEST *, VALUE_PAIR *) = NULL;
 
-	if (!request->password ||
-	    (request->password->da->vendor != 0) ||
+	if (!request->password || !fr_dict_attr_is_top_level(request->password->da) ||
 	    (request->password->da->attr != FR_USER_PASSWORD)) {
 		REDEBUG("You set 'Auth-Type = PAP' for a request that does not contain a User-Password attribute!");
 		return RLM_MODULE_INVALID;
@@ -1384,7 +1383,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	for (vp = fr_cursor_init(&cursor, &request->control);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
-		if (!vp->da->vendor) switch (vp->da->attr) {
+		if (!fr_dict_attr_is_top_level(vp->da)) continue;
+
+		switch (vp->da->attr) {
 		case FR_CLEARTEXT_PASSWORD:
 			auth_func = &pap_auth_clear;
 			break;

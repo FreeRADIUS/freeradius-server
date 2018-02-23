@@ -1098,7 +1098,7 @@ static ssize_t encode_rfc_hdr_internal(uint8_t *out, size_t outlen,
 		return -1;
 
 	default:
-		if (((tlv_stack[depth]->vendor == 0) && (tlv_stack[depth]->attr == 0)) ||
+		if (((fr_dict_vendor_num_by_da(tlv_stack[depth]) == 0) && (tlv_stack[depth]->attr == 0)) ||
 		    (tlv_stack[depth]->attr > 255)) {
 			fr_strerror_printf("%s: Called with non-standard attribute %u", __FUNCTION__,
 					   tlv_stack[depth]->attr);
@@ -1305,7 +1305,7 @@ static int encode_wimax_hdr(uint8_t *out, size_t outlen,
 	out = start;
 	out[0] = FR_VENDOR_SPECIFIC;
 	out[1] = 9;
-	lvalue = htonl(vp->da->vendor);
+	lvalue = htonl(fr_dict_vendor_num_by_da(vp->da));
 	memcpy(out + 2, &lvalue, 4);
 
 	/*
@@ -1374,10 +1374,10 @@ static int encode_vsa_hdr(uint8_t *out, size_t outlen,
 	}
 
 	/*
-	 *	Double-check for WiMAX format.
+	 *	Double-check for WiMAX format
 	 */
-	if (da->vendor == VENDORPEC_WIMAX) {
-		return encode_wimax_hdr(out, outlen, tlv_stack, depth + 1, cursor, encoder_ctx);
+	if (fr_dict_vendor_num_by_da(tlv_stack[depth + 1]) == VENDORPEC_WIMAX) {
+		return encode_wimax_hdr(out, outlen, tlv_stack, depth, cursor, encoder_ctx);
 	}
 
 	/*
@@ -1450,7 +1450,7 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const **tl
 		 *	Attribute 0 is fine as a TLV leaf, or VSA, but not
 		 *	in the original standards space.
 		 */
-		if (((tlv_stack[depth]->vendor == 0) && (tlv_stack[depth]->attr == 0)) ||
+		if (((fr_dict_vendor_num_by_da(tlv_stack[depth]) == 0) && (tlv_stack[depth]->attr == 0)) ||
 		    (tlv_stack[depth]->attr > 255)) {
 			fr_strerror_printf("%s: Called with non-standard attribute %u", __FUNCTION__, vp->da->attr);
 			return -1;
@@ -1474,7 +1474,7 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const **tl
 	/*
 	 *	Message-Authenticator is hard-coded.
 	 */
-	if (!vp->da->vendor && (vp->da->attr == FR_MESSAGE_AUTHENTICATOR)) {
+	if (fr_dict_attr_is_top_level(vp->da) && (vp->da->attr == FR_MESSAGE_AUTHENTICATOR)) {
 		if (outlen < 18) return -1;
 
 		out[0] = FR_MESSAGE_AUTHENTICATOR;
@@ -1536,7 +1536,7 @@ ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, 
 	 *	attributes.
 	 */
 	if (fr_radius_attr_len(vp) == 0) {
-		if ((vp->da->vendor != 0) ||
+		if (!fr_dict_attr_is_top_level(vp->da) ||
 		    ((vp->da->attr != FR_CHARGEABLE_USER_IDENTITY) &&
 		     (vp->da->attr != FR_MESSAGE_AUTHENTICATOR))) {
 			next_encodable(cursor);
@@ -1584,7 +1584,7 @@ ssize_t fr_radius_encode_pair(uint8_t *out, size_t outlen, fr_cursor_t *cursor, 
 		break;
 
 	case FR_TYPE_VSA:
-		if (vp->da->vendor == VENDORPEC_WIMAX) {
+		if (fr_dict_vendor_num_by_da(da) == VENDORPEC_WIMAX) {
 			/*
 			 *	WiMAX has a non-standard format for
 			 *	its VSAs.  And, it can do "long"

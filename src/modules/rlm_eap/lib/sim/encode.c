@@ -701,7 +701,7 @@ static ssize_t encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const 
 		return PAIR_ENCODE_ERROR;
 
 	default:
-		if (((tlv_stack[depth]->vendor == 0) && (tlv_stack[depth]->attr == 0)) ||
+		if (((fr_dict_vendor_num_by_da(tlv_stack[depth]) == 0) && (tlv_stack[depth]->attr == 0)) ||
 		    (tlv_stack[depth]->attr > 255)) {
 			fr_strerror_printf("%s: Called with non-standard attribute %u", __FUNCTION__,
 					   tlv_stack[depth]->attr);

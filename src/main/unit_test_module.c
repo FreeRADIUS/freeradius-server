@@ -176,7 +176,7 @@ static REQUEST *request_from_file(FILE *fp, fr_event_list_t *el, RADCLIENT *clie
 			vp->type = VT_DATA;
 		}
 
-		if (!vp->da->vendor) switch (vp->da->attr) {
+		if (fr_dict_attr_is_top_level(vp->da)) switch (vp->da->attr) {
 		default:
 			break;
 

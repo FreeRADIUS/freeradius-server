@@ -1063,7 +1063,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 		fixup->password = NULL;
 
 		for (vp = fixup->packet->vps; vp != NULL; vp = vp->next) {
-			if (vp->da->vendor) continue;
+			if (!fr_dict_attr_is_top_level(vp->da)) continue;
 
 			if ((vp->da->attr == FR_USER_NAME) && !fixup->username) {
 				fixup->username = vp;

@@ -189,7 +189,7 @@ int fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, REQUEST *re
 	for (vp = fr_pair_cursor_init(&cursor, &request->packet->vps);
 	     vp;
 	     vp = fr_pair_cursor_next(&cursor)) {
-		if (vp->da->vendor == 0) switch (vp->da->attr) {
+		if (fr_dict_attr_is_top_level(vp->da)) switch (vp->da->attr) {
 		case FR_NAS_IP_ADDRESS:
 		case FR_NAS_IPV6_ADDRESS:
 			fr_pair_value_snprint(ipaddress, sizeof(ipaddress), vp, '\0');

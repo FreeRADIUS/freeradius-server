@@ -537,7 +537,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(void *instance, UNUSED void *
 
 	for (i = fr_pair_cursor_init(&cursor, &key);
 	     i;
-	     i = fr_pair_cursor_next_by_num(&cursor, inst->keyattr->vendor, inst->keyattr->attr, TAG_ANY)) {
+	     i = fr_pair_cursor_next_by_num(&cursor, fr_dict_vendor_num_by_da(inst->keyattr),
+	     				    inst->keyattr->attr, TAG_ANY)) {
 		/*
 		 *	Ensure we have the string form of the attribute
 		 */

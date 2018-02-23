@@ -267,8 +267,9 @@ static ssize_t xlat_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED
 	for (vp = tmpl_cursor_init(NULL, &cursor, request, vpt);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
-		FR_NAME_NUMBER const *type;
-		char *value;
+		fr_dict_vendor_t const	*vendor;
+		FR_NAME_NUMBER const	*type;
+		char			*value;
 
 		value = fr_pair_value_asprint(vp, vp, '\'');
 		if (vp->da->flags.has_tag) {
@@ -289,12 +290,8 @@ static ssize_t xlat_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED
 
 		if (!RDEBUG_ENABLED3) continue;
 
-		if (vp->da->vendor) {
-			fr_dict_vendor_t const *vendor;
-
-			vendor = fr_dict_vendor_by_num(NULL, vp->da->vendor);
-			RIDEBUG2("Vendor : %i (%s)", vp->da->vendor, vendor ? vendor->name : "unknown");
-		}
+		vendor = fr_dict_vendor_by_da(vp->da);
+		if (vendor) RIDEBUG2("Vendor : %i (%s)", vendor->vendorpec, vendor->name);
 		RIDEBUG2("Type   : %s", fr_int2str(dict_attr_types, vp->vp_type, "<INVALID>"));
 
 		switch (vp->vp_type) {

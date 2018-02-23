@@ -42,7 +42,7 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 		 *	Skip things which shouldn't be in channel bindings.
 		 */
 		if (vp->da->flags.encrypt != FLAG_ENCRYPT_NONE) continue;
-		if (!vp->da->vendor && (vp->da->attr == FR_MESSAGE_AUTHENTICATOR)) continue;
+		if (fr_dict_attr_is_top_level(vp->da) && (vp->da->attr == FR_MESSAGE_AUTHENTICATOR)) continue;
 
 		total += 2 + vp->vp_length;
 	}
@@ -93,7 +93,7 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 			fr_cursor_next(&cursor);
 			continue;
 		}
-		if (!vp->da->vendor && (vp->da->attr == FR_MESSAGE_AUTHENTICATOR)) goto next;
+		if (fr_dict_attr_is_top_level(vp->da) && (vp->da->attr == FR_MESSAGE_AUTHENTICATOR)) goto next;
 
 		length = fr_radius_encode_pair(ptr, end - ptr, &cursor, NULL);
 		ptr += length;

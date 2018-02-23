@@ -307,7 +307,7 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 			/*
 			 *	Don't print passwords in old format...
 			 */
-			if (compat && !vp->da->vendor && (vp->da->attr == FR_USER_PASSWORD)) continue;
+			if (compat && fr_dict_attr_is_top_level(vp->da) && (vp->da->attr == FR_USER_PASSWORD)) continue;
 
 			/*
 			 *	Print all of the attributes, operator should always be '='.

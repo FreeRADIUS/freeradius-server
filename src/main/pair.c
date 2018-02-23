@@ -502,7 +502,7 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 			continue;
 		}
 
-		if (!check_item->da->vendor) switch (check_item->da->attr) {
+		if (fr_dict_attr_is_top_level(check_item->da)) switch (check_item->da->attr) {
 		/*
 		 *	Attributes we skip during comparison.
 		 *	These are "server" check items.

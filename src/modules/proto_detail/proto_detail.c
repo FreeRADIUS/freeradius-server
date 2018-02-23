@@ -305,8 +305,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 		/*
 		 *	Set the original src/dst ip/port
 		 */
-		if (vp && (vp->da->vendor == 0) && (vp->da->attr >= FR_PACKET_SRC_IP_ADDRESS) &&
-		    (vp->da->attr <= FR_PACKET_DST_IPV6_ADDRESS)) switch (vp->da->attr) {
+		if (vp && fr_dict_attr_is_top_level(vp->da)) switch (vp->da->attr) {
 			default:
 				break;
 

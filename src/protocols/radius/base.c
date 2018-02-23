@@ -924,11 +924,8 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 		/*
 		 *	Ignore non-wire attributes, but allow extended
 		 *	attributes.
-		 *
-		 *	@fixme We should be able to get rid of this check
-		 *	and just look at da->flags.internal
 		 */
-		if (vp->da->flags.internal || ((vp->da->vendor == 0) && (vp->da->attr >= 256))) {
+		if (vp->da->flags.internal) {
 #ifndef NDEBUG
 			/*
 			 *	Permit the admin to send BADLY formatted
@@ -954,7 +951,7 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 		 *	Set the Message-Authenticator to the correct
 		 *	length and initial value.
 		 */
-		if (!vp->da->vendor && (vp->da->attr == FR_MESSAGE_AUTHENTICATOR)) {
+		if (fr_dict_attr_is_top_level(vp->da) && (vp->da->attr == FR_MESSAGE_AUTHENTICATOR)) {
 			last_len = 16;
 		} else {
 			last_len = vp->vp_length;

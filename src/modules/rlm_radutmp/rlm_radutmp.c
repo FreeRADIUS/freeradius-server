@@ -220,7 +220,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
-		if (!vp->da->vendor) switch (vp->da->attr) {
+		if (!fr_dict_attr_is_top_level(vp->da)) continue;
+
+		switch (vp->da->attr) {
 		case FR_LOGIN_IP_HOST:
 		case FR_FRAMED_IP_ADDRESS:
 			ut.framed_address = vp->vp_ipv4addr;

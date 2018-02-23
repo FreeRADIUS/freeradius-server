@@ -657,7 +657,7 @@ static inline int fr_dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t 
 		}
 
 		if (child_is_struct && !bin_is_struct) break;
-		else if (child->vendor <= (*bin)->vendor) break;	/* Prioritise RFC attributes */
+		else if (fr_dict_vendor_num_by_da(child) <= fr_dict_vendor_num_by_da(*bin)) break;	/* Prioritise RFC attributes */
 		else if (child->attr <= (*bin)->attr) break;
 
 		bin = &(*bin)->next;
@@ -762,7 +762,6 @@ static int fr_dict_attr_set_name(fr_dict_attr_t **da, char const *name)
  *				the dictionary root.
  * @param[in] name		of the attribute.  If NULL an OID string
  *				will be created and set as the name.
- * @param[in] vendor		of the attribute.  Deprecated.
  * @param[in] attr		number.
  * @param[in] type		of the attribute.
  * @param[in] flags		to assign.
@@ -772,7 +771,7 @@ static int fr_dict_attr_set_name(fr_dict_attr_t **da, char const *name)
  */
 static fr_dict_attr_t *fr_dict_attr_alloc(TALLOC_CTX *ctx,
 					  fr_dict_attr_t const *parent,
-				   	  char const *name, unsigned int vendor, int attr,
+				   	  char const *name, int attr,
 				   	  fr_type_t type, fr_dict_attr_flags_t const *flags)
 {
 	fr_dict_attr_t *da;
@@ -787,7 +786,6 @@ static fr_dict_attr_t *fr_dict_attr_alloc(TALLOC_CTX *ctx,
 	talloc_set_type(da, fr_dict_attr_t);
 
 	da->attr = attr;
-	da->vendor = vendor;
 	da->type = type;
 	memcpy(&da->flags, flags, sizeof(*flags));
 	da->parent = parent;
@@ -838,7 +836,6 @@ static fr_dict_attr_t *fr_dict_attr_alloc(TALLOC_CTX *ctx,
 static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t const *parent,
 						char const *name, int attr, fr_type_t type, fr_dict_attr_flags_t flags)
 {
-	unsigned int		vendor;
 	size_t			namelen;
 	fr_dict_attr_t		*n;
 	fr_dict_attr_t const	*v;
@@ -1405,16 +1402,7 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 		}
 	}
 
-	/*
-	 *	Propogate vendor down the attribute tree.
-	 */
-	if (parent->type == FR_TYPE_VENDOR) {
-		vendor = parent->attr;
-	} else {
-		vendor = parent->vendor;
-	}
-
-	n = fr_dict_attr_alloc(dict->pool, parent, name, vendor, attr, type, &flags);
+	n = fr_dict_attr_alloc(dict->pool, parent, name, attr, type, &flags);
 	if (!n) {
 	oom:
 		fr_strerror_printf("Out of memory");
@@ -2586,7 +2574,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 					memset(&flags, 0, sizeof(flags));
 
 					memcpy(&mutable, &ctx->parent, sizeof(mutable));
-					new = fr_dict_attr_alloc(mutable, fr_dict_root(ctx->dict), "Vendor-Specific", 0,
+					new = fr_dict_attr_alloc(mutable, fr_dict_root(ctx->dict), "Vendor-Specific",
 								 FR_VENDOR_SPECIFIC, FR_TYPE_VSA, &flags);
 					fr_dict_attr_child_add(mutable, new);
 					vsa_da = new;
@@ -2620,8 +2608,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 				}
 
 				memcpy(&mutable, &vsa_da, sizeof(mutable));
-				new = fr_dict_attr_alloc(mutable, ctx->parent,
-							 argv[1], 0, vendor, FR_TYPE_VENDOR, &flags);
+				new = fr_dict_attr_alloc(mutable, ctx->parent, argv[1], vendor, FR_TYPE_VENDOR, &flags);
 				fr_dict_attr_child_add(mutable, new);
 
 				vendor_da = new;
@@ -2797,7 +2784,7 @@ int fr_dict_from_file(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char co
 			type_name = talloc_typed_asprintf(dict->pool, "Tmp-Cast-%s", p->name);
 
 			n = fr_dict_attr_alloc(dict->pool, dict->root, type_name,
-					       0, FR_CAST_BASE + p->number, p->number, &flags);
+					       FR_CAST_BASE + p->number, p->number, &flags);
 			if (!n) goto error;
 
 			if (!fr_hash_table_insert(dict->attributes_by_name, n)) goto error;
@@ -2939,7 +2926,7 @@ fr_dict_attr_t *fr_dict_unknown_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 		parent = da->parent;
 	}
 
-	new = fr_dict_attr_alloc(ctx, parent, da->name, da->vendor, da->attr, da->type, &da->flags);
+	new = fr_dict_attr_alloc(ctx, parent, da->name, da->attr, da->type, &da->flags);
 	new->parent = parent;
 	new->depth = da->depth;
 
@@ -3001,7 +2988,7 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 
 		if (fr_dict_vendor_add(dict, old->name, old->attr) < 0) return NULL;
 
-		n = fr_dict_attr_alloc(dict->pool, parent, old->name, old->vendor, old->attr, old->type, &flags);
+		n = fr_dict_attr_alloc(dict->pool, parent, old->name, old->attr, old->type, &flags);
 
 		/*
 		 *	Setup parenting for the attribute
@@ -3065,7 +3052,7 @@ void fr_dict_unknown_free(fr_dict_attr_t const **da)
 
 /** Initialises an unknown attribute
  *
- * Initialises a dict attr for an unknown attribute/vendor/type without adding
+ * Initialises a dict attr for an unknown attribute/type without adding
  * it to dictionary pools/hashes.
  *
  * Unknown attributes are used to transparently pass undecodeable attributes
@@ -3078,8 +3065,7 @@ void fr_dict_unknown_free(fr_dict_attr_t const **da)
  * @param[in] vendor		number.
  * @return 0 on success.
  */
-static int fr_dict_unknown_from_fields(fr_dict_attr_t *da, fr_dict_attr_t const *parent,
-				       unsigned int vendor, unsigned int attr)
+static int fr_dict_unknown_from_fields(fr_dict_attr_t *da, fr_dict_attr_t const *parent, unsigned int attr)
 {
 	char *p;
 	size_t len = 0;
@@ -3093,7 +3079,6 @@ static int fr_dict_unknown_from_fields(fr_dict_attr_t *da, fr_dict_attr_t const 
 	memset(da, 0, FR_DICT_ATTR_SIZE);
 
 	da->attr = attr;
-	da->vendor = vendor;
 	da->type = FR_TYPE_OCTETS;
 	da->flags.is_unknown = true;
 	da->flags.is_raw = true;
@@ -3183,7 +3168,7 @@ fr_dict_attr_t const *fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr
 		return NULL;
 	}
 
-	if (fr_dict_unknown_from_fields(n, parent, vendor, attr) < 0) {
+	if (fr_dict_unknown_from_fields(n, parent, attr) < 0) {
 		talloc_free(p);
 		parent = new_parent;	/* Stupid const rules */
 		fr_dict_unknown_free(&parent);
@@ -3257,7 +3242,7 @@ int fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 	case FR_TYPE_EVS:
 		if (!fr_cond_assert(!parent->flags.is_unknown)) return -1;
 
-		*out = fr_dict_attr_alloc(ctx, parent, NULL, 0, vendor, FR_TYPE_VENDOR, &flags);
+		*out = fr_dict_attr_alloc(ctx, parent, NULL, vendor, FR_TYPE_VENDOR, &flags);
 
 		return 0;
 
@@ -3309,7 +3294,7 @@ static int fr_dict_unknown_attr_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 
 	if (parent->type == FR_TYPE_VENDOR) vendor = parent->attr;
 
-	da = fr_dict_attr_alloc(ctx, parent, NULL, vendor, num, FR_TYPE_OCTETS, &flags);
+	da = fr_dict_attr_alloc(ctx, parent, NULL, num, FR_TYPE_OCTETS, &flags);
 	if (!da) return -1;
 
 	*out = da;
@@ -3635,7 +3620,7 @@ void fr_dict_print(fr_dict_attr_t const *da, int depth)
 
 	printf("%u%.*s%s \"%s\" vendor: %x (%u), num: %x (%u), type: %s, flags: %s\n", da->depth, depth,
 	       "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t", name, da->name,
-	       da->vendor, da->vendor, da->attr, da->attr,
+	       fr_dict_vendor_num_by_da(da), fr_dict_vendor_num_by_da(da), da->attr, da->attr,
 	       fr_int2str(dict_attr_types, da->type, "?Unknown?"), buff);
 
 	if (da->children) for (i = 0; i < talloc_array_length(da->children); i++) {
@@ -3898,6 +3883,28 @@ fr_dict_vendor_t const *fr_dict_vendor_by_num(fr_dict_t const *dict, int vendorp
 	INTERNAL_IF_NULL(dict);
 
 	dv.vendorpec = vendorpec;
+
+	return fr_hash_table_finddata(dict->vendors_by_num, &dv);
+}
+
+/** Look up a vendor by its PEN
+ *
+ * @param[in] dict		of protocol context we're operating in.
+ *				If NULL the internal dictionary will be used.
+ * @param[in] vendorpec		to search for.
+ * @return
+ *	- The vendor.
+ *	- NULL if no vendor with that number was regitered for this protocol.
+ */
+fr_dict_vendor_t const *fr_dict_vendor_by_da(fr_dict_attr_t const *da)
+{
+	fr_dict_t 		*dict;
+	fr_dict_vendor_t	dv;
+
+	dv.vendorpec = fr_dict_vendor_num_by_da(da);
+	if (!dv.vendorpec) return NULL;
+
+	dict = fr_dict_by_da(da);
 
 	return fr_hash_table_finddata(dict->vendors_by_num, &dv);
 }
@@ -4319,7 +4326,7 @@ void fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da)
 	if ((!da->flags.is_root) && (da->depth == 0)) {
 		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t %s vendor: %i, attr %i: "
 			     "Is not root, but depth is 0",
-			     file, line, da->name, da->vendor, da->attr);
+			     file, line, da->name, fr_dict_vendor_num_by_da(da), da->attr);
 
 		if (!fr_cond_assert(0)) fr_exit_now(1);
 	}
@@ -4327,7 +4334,8 @@ void fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da)
 	if (da->depth > FR_DICT_MAX_TLV_STACK) {
 		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t %s vendor: %i, attr %i: "
 			     "Indicated depth (%u) greater than TLV stack depth (%u)",
-			     file, line, da->name, da->vendor, da->attr, da->depth, FR_DICT_MAX_TLV_STACK);
+			     file, line, da->name, fr_dict_vendor_num_by_da(da), da->attr,
+			     da->depth, FR_DICT_MAX_TLV_STACK);
 
 		if (!fr_cond_assert(0)) fr_exit_now(1);
 	}
@@ -4340,7 +4348,7 @@ void fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da)
 		if (i != (int)da_p->depth) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t %s vendor: %i, attr %i: "
 				     "Depth out of sequence, expected %i, got %u",
-				     file, line, da->name, da->vendor, da->attr, i, da_p->depth);
+				     file, line, da->name, fr_dict_vendor_num_by_da(da), da->attr, i, da_p->depth);
 
 			if (!fr_cond_assert(0)) fr_exit_now(1);
 		}

@@ -289,7 +289,7 @@ static ssize_t mschap_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 		 *	For MS-CHAPv1, the NT-Response exists only
 		 *	if the second octet says so.
 		 */
-		if ((response->da->vendor == VENDORPEC_MICROSOFT) &&
+		if ((fr_dict_vendor_num_by_da(response->da) == VENDORPEC_MICROSOFT) &&
 		    (response->da->attr == FR_MSCHAP_RESPONSE) &&
 		    ((response->vp_octets[1] & 0x01) == 0)) {
 			REDEBUG("No NT-Response in MS-CHAP-Response");
@@ -1139,8 +1139,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5 , 6)) do_mschap(rlm_mschap_t const *inst,
 		 *	then calculate the hash of the NT hash.  Doing this
 		 *	here minimizes work for later.
 		 */
-		if (!password->da->vendor &&
-		    (password->da->attr == FR_NT_PASSWORD)) {
+		if (fr_dict_attr_is_top_level(password->da) && (password->da->attr == FR_NT_PASSWORD)) {
 			fr_md4_calc(nthashhash, password->vp_octets, MD4_DIGEST_LENGTH);
 		}
 
@@ -1672,11 +1671,9 @@ static rlm_rcode_t CC_HINT(nonnull) process_cpw_request(rlm_mschap_t const *inst
 		for (nt_enc = fr_cursor_init(&cursor, &request->packet->vps);
 		     nt_enc;
 		     nt_enc = fr_cursor_next(&cursor)) {
-			if (nt_enc->da->vendor != VENDORPEC_MICROSOFT)
-				continue;
+			if (fr_dict_vendor_num_by_da(nt_enc->da) != VENDORPEC_MICROSOFT) continue;
 
-			if (nt_enc->da->attr != FR_MSCHAP_NT_ENC_PW)
-				continue;
+			if (nt_enc->da->attr != FR_MSCHAP_NT_ENC_PW) continue;
 
 			if (nt_enc->vp_length < 4) {
 				REDEBUG("MS-CHAP-NT-Enc-PW with invalid format");

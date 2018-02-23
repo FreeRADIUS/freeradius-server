@@ -487,7 +487,8 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 			/*
 			 *	Build an unknown attr
 			 */
-			unknown_child = fr_dict_unknown_afrom_fields(ctx, parent, parent->vendor, p[0]);
+			unknown_child = fr_dict_unknown_afrom_fields(ctx, parent,
+								     fr_dict_vendor_num_by_da(parent), p[0]);
 			if (!unknown_child) goto error;
 			child = unknown_child;
 		}
@@ -696,7 +697,8 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 		 *	therefore of type "octets", and will be
 		 *	handled below.
 		 */
-		parent = fr_dict_unknown_afrom_fields(ctx, parent->parent, parent->vendor, parent->attr);
+		parent = fr_dict_unknown_afrom_fields(ctx, parent->parent,
+						      fr_dict_vendor_num_by_da(parent), parent->attr);
 		if (!parent) {
 			fr_strerror_printf_push("%s[%d]: Internal sanity check failed", __FUNCTION__, __LINE__);
 			return -1;

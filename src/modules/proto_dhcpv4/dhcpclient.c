@@ -149,9 +149,9 @@ static RADIUS_PACKET *request_init(char const *filename)
 		/*
 		 *	Allow to set packet type using DHCP-Message-Type
 		 */
-		if (vp->da->vendor == DHCP_MAGIC_VENDOR && vp->da->attr == FR_DHCPV4_MESSAGE_TYPE) {
+		if ((fr_dict_vendor_num_by_da(vp->da) == DHCP_MAGIC_VENDOR) && vp->da->attr == FR_DHCPV4_MESSAGE_TYPE) {
 			request->code = vp->vp_uint32 + FR_DHCPV4_OFFSET;
-		} else if (!vp->da->vendor) switch (vp->da->attr) {
+		} else if (fr_dict_attr_is_top_level(vp->da)) switch (vp->da->attr) {
 		/*
 		 *	Allow it to set the packet type in
 		 *	the attributes read from the file.

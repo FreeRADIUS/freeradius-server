@@ -147,7 +147,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 				 *	or it's a wire protocol,
 				 *	ensure it has '=='.
 				 */
-				if ((vp->da->vendor != 0) ||
+				if ((fr_dict_vendor_num_by_da(vp->da) != 0) ||
 				    (vp->da->attr < 0x100)) {
 					WARN("[%s]:%d Changing '%s =' to '%s =='\n\tfor comparing RADIUS attribute in check item list for user %s",
 					     filename, entry->lineno,
@@ -175,8 +175,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 				 *	then bitch about it, giving a
 				 *	good warning message.
 				 */
-				 if ((vp->da->vendor == 0) &&
-					(vp->da->attr > 1000)) {
+				 if (fr_dict_attr_is_top_level(vp->da) && (vp->da->attr > 1000)) {
 					WARN("[%s]:%d Check item \"%s\"\n"
 					       "\tfound in reply item list for user \"%s\".\n"
 					       "\tThis attribute MUST go on the first line"

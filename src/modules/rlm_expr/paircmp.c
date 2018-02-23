@@ -81,7 +81,7 @@ static int presufcmp(UNUSED void *instance,
 	RDEBUG3("Comparing name \"%s\" and check value \"%s\"", name, check->vp_strvalue);
 
 	len = strlen(check->vp_strvalue);
-	if (check->da->vendor == 0) switch (check->da->attr) {
+	if (fr_dict_attr_is_top_level(check->da)) switch (check->da->attr) {
 	case FR_PREFIX:
 		ret = strncmp(name, check->vp_strvalue, len);
 		if (ret == 0)

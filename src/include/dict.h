@@ -88,7 +88,6 @@ extern fr_dict_t *fr_dict_internal;
 /** Dictionary attribute
  */
 struct dict_attr {
-	unsigned int		vendor;				//!< Vendor that defines this attribute.
 	unsigned int		attr;				//!< Attribute number.
 	fr_type_t		type;				//!< Value type.
 
@@ -229,11 +228,49 @@ ssize_t			fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
 /*
  *	Lookup
  */
+
+/** Return true if this attribute is parented directly off the dictionary root
+ *
+ * @param[in] da		to check.
+ * @return
+ *	- true if attribute is top level.
+ *	- false if attribute is not top level.
+ */
+static inline bool fr_dict_attr_is_top_level(fr_dict_attr_t const *da)
+{
+	if (unlikely(!da) || unlikely(!da->parent)) return false;
+	if (!da->parent->flags.is_root) return false;
+	return true;
+}
+
+/** Return the vendor number for an attribute
+ *
+ * @param[in] da		The dictionary attribute to find the
+ *				vendor for.
+ * @return
+ *	- 0 this isn't a vendor specific attribute.
+ *	- The vendor PEN.
+ */
+static inline uint32_t fr_dict_vendor_num_by_da(fr_dict_attr_t const *da)
+{
+	fr_dict_attr_t const *da_p = da;
+
+	while (da_p->parent) {
+		if (da_p->type == FR_TYPE_VENDOR) break;
+		da_p = da_p->parent;
+	}
+	if (da_p->type != FR_TYPE_VENDOR) return 0;
+
+	return da_p->attr;
+}
+
 fr_dict_t		*fr_dict_by_da(fr_dict_attr_t const *da);
 
 int			fr_dict_vendor_by_name(fr_dict_t const *dict, char const *name);
 
 fr_dict_vendor_t const	*fr_dict_vendor_by_num(fr_dict_t const *dict, int vendor);
+
+fr_dict_vendor_t const	*fr_dict_vendor_by_da(fr_dict_attr_t const *da);
 
 fr_dict_attr_t const	*fr_dict_vendor_attr_by_da(fr_dict_attr_t const *da);
 

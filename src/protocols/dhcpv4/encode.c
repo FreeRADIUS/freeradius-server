@@ -289,7 +289,7 @@ ssize_t fr_dhcpv4_encode_option(uint8_t *out, size_t outlen, fr_cursor_t *cursor
 	vp = fr_cursor_current(cursor);
 	if (!vp) return -1;
 
-	if (vp->da->vendor != DHCP_MAGIC_VENDOR) goto next; /* not a DHCP option */
+	if (fr_dict_vendor_num_by_da(vp->da) != DHCP_MAGIC_VENDOR) goto next; /* not a DHCP option */
 	if (vp->da->attr == FR_DHCPV4_MESSAGE_TYPE) goto next; /* already done */
 	if ((vp->da->attr > 255) && (DHCP_BASE_ATTR(vp->da->attr) != FR_DHCPV4_OPTION_82)) {
 	next:

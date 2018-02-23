@@ -469,8 +469,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	/*
 	 *	Check the admin hasn't been silly
 	 */
-	if (!request->password ||
-	    (request->password->da->vendor != 0) ||
+	if (!request->password || !fr_dict_attr_is_top_level(request->password->da) ||
 	    (request->password->da->attr != FR_USER_PASSWORD)) {
 		REDEBUG("You set 'Auth-Type = winbind' for a request that does not contain a User-Password attribute!");
 		return RLM_MODULE_INVALID;

@@ -110,8 +110,7 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, char const *filename, PAIR_LIST 
 		     * and we ignore Fall-Through,
 		     * then bitch about it, giving a good warning message.
 		     */
-		     if ((vp->da->vendor == 0) &&
-			 (vp->da->attr > 1000)) {
+		     if (fr_dict_attr_is_top_level(vp->da) && (vp->da->attr > 1000)) {
 			WARN("[%s]:%d Check item \"%s\"\n\tfound in filter list for realm \"%s\".\n",
 			       filename, entry->lineno, vp->da->name, entry->name);
 		    }
@@ -199,16 +198,21 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 		for (check_item = fr_pair_cursor_init(&check, &pl->check);
 		     check_item;
 		     check_item = fr_pair_cursor_next(&check)) {
-			if (!check_item->da->vendor &&
-			    (check_item->da->attr == FR_FALL_THROUGH) &&
-				(check_item->vp_uint32 == 1)) {
-				fall_through = 1;
-				continue;
-			}
-			else if (!check_item->da->vendor && check_item->da->attr == FR_RELAX_FILTER) {
+		     	if (fr_dict_attr_is_top_level(vp->da)) switch (check_item->da->attr) {
+			case FR_FALL_THROUGH:
+				if (check_item->vp_uint32 == 1) {
+					fall_through = 1;
+					continue;
+				}
+				break;
+
+			case FR_RELAX_FILTER:
 				relax_filter = check_item->vp_uint32;
 				continue;
-			}
+
+			default:
+				break;
+		     	}
 
 			/*
 			 *    If it is a SET operator, add the attribute to
@@ -216,9 +220,8 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 			 */
 			if (check_item->op == T_OP_SET ) {
 				vp = fr_pair_copy(packet, check_item);
-				if (!vp) {
-					goto error;
-				}
+				if (!vp) goto error;
+
 				xlat_eval_do(request, vp);
 				fr_pair_cursor_append(&out, vp);
 			}
@@ -247,7 +250,8 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 				 *  Vendor-Specific is special, and matches any VSA if the
 				 *  comparison is always true.
 				 */
-				if ((check_item->da->attr == FR_VENDOR_SPECIFIC) && (input_item->da->vendor != 0) &&
+				if ((check_item->da->attr == FR_VENDOR_SPECIFIC) &&
+				    (fr_dict_vendor_num_by_da(input_item->da) != 0) &&
 				    (check_item->op == T_OP_CMP_TRUE)) {
 					pass++;
 					continue;

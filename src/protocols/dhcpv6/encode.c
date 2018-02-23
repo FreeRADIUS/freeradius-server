@@ -585,21 +585,6 @@ static ssize_t encode_rfc_hdr(uint8_t *out, size_t outlen,
 
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
-	switch (da->type) {
-	case FR_TYPE_STRUCTURAL:
-		fr_strerror_printf("%s: Called with structural type %s", __FUNCTION__,
-				   fr_int2str(dict_attr_types, da->type, "?Unknown?"));
-		return PAIR_ENCODE_ERROR;
-
-	default:
-		if (((da->vendor == 0) && (da->attr == 0)) || (da->attr > UINT16_MAX)) {
-			fr_strerror_printf("%s: Called with non-standard attribute %u", __FUNCTION__,
-					   tlv_stack[depth]->attr);
-			return PAIR_ENCODE_ERROR;
-		}
-		break;
-	}
-
 	CHECK_FREESPACE(outlen, OPT_HDR_LEN);
 
 	/*

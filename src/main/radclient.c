@@ -409,7 +409,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 					vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
 				}
 
-				if (vp->da->vendor == 0 ) switch (vp->da->attr) {
+				if (fr_dict_attr_is_top_level(vp->da)) switch (vp->da->attr) {
 				case FR_RESPONSE_PACKET_TYPE:
 				case FR_PACKET_TYPE:
 					vp = fr_cursor_remove(&cursor);	/* so we don't break the filter */
@@ -445,7 +445,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
 			}
 
-			if (!vp->da->vendor) switch (vp->da->attr) {
+			if (fr_dict_attr_is_top_level(vp->da)) switch (vp->da->attr) {
 			default:
 				break;
 
