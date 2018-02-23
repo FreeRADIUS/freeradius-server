@@ -198,7 +198,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 		for (check_item = fr_pair_cursor_init(&check, &pl->check);
 		     check_item;
 		     check_item = fr_pair_cursor_next(&check)) {
-		     	if (fr_dict_attr_is_top_level(vp->da)) switch (check_item->da->attr) {
+		     	if (fr_dict_attr_is_top_level(check_item->da)) switch (check_item->da->attr) {
 			case FR_FALL_THROUGH:
 				if (check_item->vp_uint32 == 1) {
 					fall_through = 1;
