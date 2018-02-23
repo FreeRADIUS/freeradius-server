@@ -3062,7 +3062,6 @@ void fr_dict_unknown_free(fr_dict_attr_t const **da)
  *				FR_DICT_ATTR_SIZE bytes.
  * @param[in] parent		of the unknown attribute (may also be unknown).
  * @param[in] attr		number.
- * @param[in] vendor		number.
  * @return 0 on success.
  */
 static int fr_dict_unknown_from_fields(fr_dict_attr_t *da, fr_dict_attr_t const *parent, unsigned int attr)
@@ -3278,7 +3277,6 @@ static int fr_dict_unknown_attr_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 				     	  fr_dict_attr_t const *parent, unsigned long num)
 {
 	fr_dict_attr_t		*da;
-	unsigned long		vendor = 0;
 	fr_dict_attr_flags_t	flags = {
 					.is_unknown = true,
 					.is_raw = true,
@@ -3291,8 +3289,6 @@ static int fr_dict_unknown_attr_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 	}
 
 	*out = NULL;
-
-	if (parent->type == FR_TYPE_VENDOR) vendor = parent->attr;
 
 	da = fr_dict_attr_alloc(ctx, parent, NULL, num, FR_TYPE_OCTETS, &flags);
 	if (!da) return -1;
@@ -3887,11 +3883,9 @@ fr_dict_vendor_t const *fr_dict_vendor_by_num(fr_dict_t const *dict, int vendorp
 	return fr_hash_table_finddata(dict->vendors_by_num, &dv);
 }
 
-/** Look up a vendor by its PEN
+/** Look up a vendor by one of its child attributes
  *
- * @param[in] dict		of protocol context we're operating in.
- *				If NULL the internal dictionary will be used.
- * @param[in] vendorpec		to search for.
+ * @param[in] da	The vendor attribute.
  * @return
  *	- The vendor.
  *	- NULL if no vendor with that number was regitered for this protocol.
