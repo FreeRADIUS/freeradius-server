@@ -1,5 +1,5 @@
 /*
- * dhcpclient.c	General radius packet debug tool.
+ * dhcpclient.c	DHCP test client.
  *
  * Version:	$Id$
  *
