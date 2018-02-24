@@ -1447,14 +1447,13 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 		}
 
 		/*
-		 *	See if the home server is already listed
-		 *	in the pool.  If so, do nothing else.
+		 *	Don't check for duplicate home servers.  If
+		 *	the user specifies that, well, they can do it.
+		 *
+		 *	Allowing duplicates means that all of the
+		 *	realm->server[] entries are filled, which is
+		 *	what the rest of the code assumes.
 		 */
-		if (pool) for (i = 0; i < pool->num_home_servers; i++) {
-			if (pool->servers[i] == home) {
-				return 1;
-			}
-		}
 	}
 
 	/*
