@@ -8,7 +8,7 @@ ARG osname=stretch
 #  Install add-apt-repository
 #
 RUN apt-get update && \
-    apt-get install -y software-properties-common && \
+    apt-get install -y software-properties-common gnupg2 && \
     apt-get clean && \
     rm -r /var/lib/apt/lists/*
 
