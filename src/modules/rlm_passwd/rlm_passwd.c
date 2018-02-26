@@ -190,6 +190,7 @@ static struct hashtable * build_hash_table (char const * file, int nfields,
 	else ht->delimiter = ':';
 	if(!tablesize) return ht;
 	if(!(ht->fp = fopen(file,"r"))) {
+		ERROR("Failed opening %s - %s", file, fr_strerror());
 		free(ht->filename);
 		free(ht);
 		return NULL;
@@ -459,7 +460,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 	if (! (inst->ht = build_hash_table (inst->filename, nfields, keyfield, listable, inst->hash_size, inst->ignore_nislike, *inst->delimiter)) ){
-		ERROR("rlm_passwd: can't build hashtable from passwd file");
+		ERROR("rlm_passwd: failed reading file.");
 		return -1;
 	}
 	if (! (inst->pwdfmt = mypasswd_malloc(inst->format, nfields, &len)) ){

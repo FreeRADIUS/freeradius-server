@@ -621,7 +621,7 @@ int fr_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, bool res
 	 *	IPv6 address.  Error out if the caller specified IPv4.
 	 *	Otherwise, force IPv6.
 	 */
-	if (ipv6) {
+	if (ipv6 && !hostname) {
 		if (af == AF_INET) {
 			fr_strerror_printf("Invalid address");
 			return -1;
