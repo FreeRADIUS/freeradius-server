@@ -3656,7 +3656,7 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 	 *      data buffer.
 	 */
 	err = SSL_read(ssn->ssl, ssn->clean_out.data, sizeof(ssn->clean_out.data));
-	if (err < 0) {
+	if (err <= 0) {
 		int code;
 
 		RDEBUG("SSL_read Error");
@@ -3679,8 +3679,6 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 		}
 		return FR_TLS_FAIL;
 	}
-
-	if (err == 0) RWDEBUG("No data inside of the tunnel");
 
 	/*
 	 *	Passed all checks, successfully decrypted data
