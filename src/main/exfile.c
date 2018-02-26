@@ -34,6 +34,8 @@ typedef struct exfile_entry_t {
 	int			fd;			//!< File descriptor associated with an entry.
 	uint32_t		hash;			//!< Hash for cheap comparison.
 	time_t			last_used;		//!< Last time the entry was used.
+	dev_t			st_dev;			//!< device inode
+	ino_t			st_ino;			//!< inode number
 	char			*filename;		//!< Filename.
 } exfile_entry_t;
 
@@ -351,9 +353,25 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 	if (do_cleanup) ef->last_cleaned = now;
 
 	/*
-	 *	We found an existing entry, return that
+	 *	We found an existing entry, return that.
 	 */
 	if (found >= 0) {
+		if (fstat(ef->entries[i].fd, &st) < 0) {
+			fr_strerror_printf("Failed to stat file %s: %s", filename, strerror(errno));
+			goto error;
+		}
+
+		/*
+		 *	Maybe the file we opened is NOT the one we had
+		 *	cached.  If so, close the file and re-open it
+		 *	from scratch.
+		 */
+		if ((st.st_dev != ef->entries[i].st_dev) ||
+		    (st.st_ino != ef->entries[i].st_ino)) {
+			close(ef->entries[i].fd);
+			goto reopen;
+		}
+
 		i = found;
 		goto try_lock;
 	}
@@ -437,6 +455,13 @@ try_lock:
 		close(ef->entries[i].fd);
 		goto reopen;
 	}
+
+	/*
+	 *	Remember which device and inode this file is
+	 *	for.
+	 */
+	ef->entries[i].st_dev = st.st_dev;
+	ef->entries[i].st_ino = st.st_ino;
 
 	/*
 	 *	Seek to the end of the file before returning the FD to
