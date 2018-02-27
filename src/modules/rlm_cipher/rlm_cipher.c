@@ -449,8 +449,9 @@ static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 					     REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
 					     fr_value_box_t **in)
 {
-	rlm_cipher_t const		*inst = talloc_get_type_abort(*((void const * const *)xlat_inst), rlm_cipher_t);
-	rlm_cipher_rsa_thread_inst_t	*xt = talloc_get_type_abort(*((void const * const *)xlat_thread_inst),
+	rlm_cipher_t const		*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst),
+									    rlm_cipher_t);
+	rlm_cipher_rsa_thread_inst_t	*xt = talloc_get_type_abort(*((void **)xlat_thread_inst),
 								    rlm_cipher_rsa_thread_inst_t);
 
 	char const			*plaintext;
@@ -527,8 +528,9 @@ static xlat_action_t cipher_rsa_sign_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_curs
 					  REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
 					  fr_value_box_t **in)
 {
-	rlm_cipher_t const		*inst = talloc_get_type_abort(*((void const * const *)xlat_inst), rlm_cipher_t);
-	rlm_cipher_rsa_thread_inst_t	*xt = talloc_get_type_abort(*((void const * const *)xlat_thread_inst),
+	rlm_cipher_t const		*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst),
+									    rlm_cipher_t);
+	rlm_cipher_rsa_thread_inst_t	*xt = talloc_get_type_abort(*((void **)xlat_thread_inst),
 								    rlm_cipher_rsa_thread_inst_t);
 
 	char const			*msg;
@@ -630,8 +632,9 @@ static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t
 					     REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
 					     fr_value_box_t **in)
 {
-	rlm_cipher_t const		*inst = talloc_get_type_abort(*((void const * const *)xlat_inst), rlm_cipher_t);
-	rlm_cipher_rsa_thread_inst_t	*xt = talloc_get_type_abort(*((void const * const *)xlat_thread_inst),
+	rlm_cipher_t const		*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst),
+									    rlm_cipher_t);
+	rlm_cipher_rsa_thread_inst_t	*xt = talloc_get_type_abort(*((void **)xlat_thread_inst),
 								    rlm_cipher_rsa_thread_inst_t);
 
 	uint8_t	const			*ciphertext;
@@ -708,8 +711,9 @@ static xlat_action_t cipher_rsa_verify_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_cu
 					    REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
 					    fr_value_box_t **in)
 {
-	rlm_cipher_t const		*inst = talloc_get_type_abort(*((void const * const *)xlat_inst), rlm_cipher_t);
-	rlm_cipher_rsa_thread_inst_t	*xt = talloc_get_type_abort(*((void const * const *)xlat_thread_inst),
+	rlm_cipher_t const		*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst),
+									    rlm_cipher_t);
+	rlm_cipher_rsa_thread_inst_t	*xt = talloc_get_type_abort(*((void **)xlat_thread_inst),
 								    rlm_cipher_rsa_thread_inst_t);
 
 	uint8_t	const			*sig;
