@@ -161,10 +161,10 @@ static const CONF_PARSER module_config[] = {
 
 /** Calls EVP_get_digestbyname() to covert the digest type
  *
- * @label[in] ctx	to allocate data in (instance of proto_radius).
- * @label[out] out	EVP_MD representing the OpenSSL digest type.
- * @label[in] ci	#CONF_PAIR specifying the name of the digest.
- * @label[in] rule	unused.
+ * @param[in] ctx	to allocate data in (instance of proto_radius).
+ * @param[out] out	EVP_MD representing the OpenSSL digest type.
+ * @param[in] ci	#CONF_PAIR specifying the name of the digest.
+ * @param[in] rule	unused.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -188,10 +188,10 @@ static int digest_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, U
 
 /** Checks if the specified padding type is valid
  *
- * @label[in] ctx	to allocate data in (instance of proto_radius).
- * @label[out] out	Padding type.
- * @label[in] ci	#CONF_PAIR specifying the padding type..
- * @label[in] rule	unused.
+ * @param[in] ctx	to allocate data in (instance of proto_radius).
+ * @param[out] out	Padding type.
+ * @param[in] ci	#CONF_PAIR specifying the padding type..
+ * @param[in] rule	unused.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -216,10 +216,10 @@ static int cipher_rsa_padding_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF
 
 /** Checks if the specified cipher type is valid
  *
- * @label[in] ctx	to allocate data in (instance of proto_radius).
- * @label[out] out	Cipher enumeration type.
- * @label[in] ci	#CONF_PAIR specifying the name of the type module.
- * @label[in] rule	unused.
+ * @param[in] ctx	to allocate data in (instance of proto_radius).
+ * @param[out] out	Cipher enumeration type.
+ * @param[in] ci	#CONF_PAIR specifying the name of the type module.
+ * @param[in] rule	unused.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -247,12 +247,12 @@ static int cipher_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, U
 
 /** Return the static private key password we have configured
  *
- * @label[out] buf	Where to write the password to.
- * @label[in] num	The length of buf.
- * @label[in] rwflag
+ * @param[out] buf	Where to write the password to.
+ * @param[in] num	The length of buf.
+ * @param[in] rwflag
  *			- 0 if password used for decryption.
  *			- 1 if password used for encryption.
- * @label[in] userdata	The static password.
+ * @param[in] userdata	The static password.
  * @return
  *	- 0 on error.
  *	- >0 on success (the length of the password).
@@ -280,7 +280,7 @@ static int _get_private_key_password(char *buf, int size, UNUSED int rwflag, voi
 
 /** Talloc destructor for freeing an EVP_PKEY (representing a certificate)
  *
- * @label[in] pkey	to free.
+ * @param[in] pkey	to free.
  * @return 0
  */
 static int _evp_pkey_free(EVP_PKEY *pkey)
@@ -292,13 +292,13 @@ static int _evp_pkey_free(EVP_PKEY *pkey)
 
 /** Load and (optionally decrypt) an RSA private key using OpenSSL functions
  *
- * @label[in] ctx	UNUSED. Although the EVP_PKEY struct will be allocated
+ * @param[in] ctx	UNUSED. Although the EVP_PKEY struct will be allocated
  *			with talloc, we need to call the specialised free
  *			function anyway.
- * @label[out] out	Where to write the EVP_PKEY * representing the
+ * @param[out] out	Where to write the EVP_PKEY * representing the
  *			certificate we just loaded.
- * @label[in] ci	Config item containing the certificate path.
- * @label[in] rule	this callback was attached to.
+ * @param[in] ci	Config item containing the certificate path.
+ * @param[in] rule	this callback was attached to.
  * @return
  *	- -1 on failure.
  *	- 0 on success.
@@ -340,13 +340,13 @@ static int cipher_rsa_private_key_file_load(TALLOC_CTX *ctx, void *out, CONF_ITE
 
 /** Load an RSA public key using OpenSSL functions
  *
- * @label[in] ctx	UNUSED. Although the EVP_PKEY struct will be allocated
+ * @param[in] ctx	UNUSED. Although the EVP_PKEY struct will be allocated
  *			with talloc, we need to call the specialised free
  *			function anyway.
- * @label[out] out	Where to write the EVP_PKEY * representing the
+ * @param[out] out	Where to write the EVP_PKEY * representing the
  *			certificate we just loaded.
- * @label[in] ci	Config item containing the certificate path.
- * @label[in] rule	this callback was attached to.
+ * @param[in] ci	Config item containing the certificate path.
+ * @param[in] rule	this callback was attached to.
  * @return
  *	- -1 on failure.
  *	- 0 on success.
@@ -401,6 +401,7 @@ static int cipher_rsa_padding_params_set(REQUEST *request, EVP_PKEY_CTX *evp_pke
 	 *	Configure OAEP advanced padding options
 	 */
 	case RSA_PKCS1_OAEP_PADDING:
+/*
 		if (unlikely(EVP_PKEY_CTX_set_rsa_oaep_md(evp_pkey_ctx, rsa_inst->oaep->oaep_digest) <= 0)) {
 			tls_log_error(request, "Failed setting OAEP digest");
 			return -1;
@@ -422,6 +423,7 @@ static int cipher_rsa_padding_params_set(REQUEST *request, EVP_PKEY_CTX *evp_pke
 				return -1;
 			}
 		}
+*/
 		return 0;
 
 	default:
@@ -823,7 +825,7 @@ static xlat_action_t cipher_rsa_verify_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_cu
 
 /** Talloc destructor for freeing an EVP_PKEY_CTX
  *
- * @label[in] pkey	to free.
+ * @param[in] pkey	to free.
  * @return 0
  */
 static int _evp_pkey_ctx_free(EVP_PKEY_CTX *evp_pkey_ctx)
@@ -835,7 +837,7 @@ static int _evp_pkey_ctx_free(EVP_PKEY_CTX *evp_pkey_ctx)
 
 /** Talloc destructor for freeing an EVP_MD_CTX
  *
- * @label[in] pkey	to free.
+ * @param[in] pkey	to free.
  * @return 0
  */
 static int _evp_md_ctx_free(EVP_MD_CTX *evp_md_ctx)
