@@ -72,6 +72,7 @@ typedef struct {
 	uint8_t			*digest_buff;			//!< Pre-allocated digest buffer.
 } rlm_cipher_rsa_thread_inst_t;
 
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
 /** Configuration for the OAEP padding method
  *
  */
@@ -81,6 +82,7 @@ typedef struct {
 
 	char const		*label;				//!< Additional input to the hashing function.
 } cipher_rsa_oaep_t;
+#endif
 
 /** Configuration for RSA encryption/decryption/signing
  *
@@ -99,8 +101,9 @@ typedef struct {
 
 	EVP_MD			*sig_digest;			//!< Signature digest type.
 
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
 	cipher_rsa_oaep_t	*oaep;				//!< OAEP can use a configurable message digest type
-								///< and additional keying labeleter.
+#endif								///< and additional keying labeleter.
 } cipher_rsa_t;
 
 /** Instance configuration
@@ -118,6 +121,7 @@ typedef struct {
 	};
 } rlm_cipher_t;
 
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
 /** Configuration for the RSA-PCKS1-OAEP padding scheme
  *
  */
@@ -128,6 +132,7 @@ static const CONF_PARSER rsa_oaep_config[] = {
 
 	CONF_PARSER_TERMINATOR
 };
+#endif
 
 /** Configuration for the RSA cipher type
  *
@@ -142,9 +147,11 @@ static const CONF_PARSER rsa_config[] = {
 	{ FR_CONF_OFFSET("signature_digest", FR_TYPE_VOID | FR_TYPE_NOT_EMPTY, cipher_rsa_t, sig_digest), .func = digest_type_parse, .dflt = "sha256" },
 
 	{ FR_CONF_OFFSET("padding_type", FR_TYPE_VOID | FR_TYPE_NOT_EMPTY, cipher_rsa_t, padding), .func = cipher_rsa_padding_type_parse, .dflt = "pkcs" },
+
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
 	{ FR_CONF_OFFSET("oaep", FR_TYPE_SUBSECTION, cipher_rsa_t, oaep),
 			 .subcs_size = sizeof(cipher_rsa_oaep_t), .subcs_type = "cipher_rsa_oaep_t", .subcs = (void const *) rsa_oaep_config },
-
+#endif
 	CONF_PARSER_TERMINATOR
 };
 
@@ -401,7 +408,7 @@ static int cipher_rsa_padding_params_set(REQUEST *request, EVP_PKEY_CTX *evp_pke
 	 *	Configure OAEP advanced padding options
 	 */
 	case RSA_PKCS1_OAEP_PADDING:
-/*
+#if OPENSSL_VERSION_NUMBER >= 0x10001000L
 		if (unlikely(EVP_PKEY_CTX_set_rsa_oaep_md(evp_pkey_ctx, rsa_inst->oaep->oaep_digest) <= 0)) {
 			tls_log_error(request, "Failed setting OAEP digest");
 			return -1;
@@ -423,7 +430,7 @@ static int cipher_rsa_padding_params_set(REQUEST *request, EVP_PKEY_CTX *evp_pke
 				return -1;
 			}
 		}
-*/
+#endif
 		return 0;
 
 	default:
