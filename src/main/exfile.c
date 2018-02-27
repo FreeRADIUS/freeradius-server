@@ -356,16 +356,16 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 	 *	We found an existing entry, return that.
 	 */
 	if (found >= 0) {
-		if (fstat(ef->entries[i].fd, &st) < 0) {
+		/*
+		 *	Stat the *filename*, not the file we opened.
+		 *	If that's not the file we opened, then go back
+		 *	and re-open the file.
+		 */
+		if (stat(ef->entries[i].filename, &st) < 0) {
 			fr_strerror_printf("Failed to stat file %s: %s", filename, strerror(errno));
 			goto error;
 		}
 
-		/*
-		 *	Maybe the file we opened is NOT the one we had
-		 *	cached.  If so, close the file and re-open it
-		 *	from scratch.
-		 */
 		if ((st.st_dev != ef->entries[i].st_dev) ||
 		    (st.st_ino != ef->entries[i].st_ino)) {
 			close(ef->entries[i].fd);
