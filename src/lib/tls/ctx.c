@@ -246,10 +246,12 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 			return NULL;
 		}
 
-	} else if (!(SSL_CTX_use_certificate_file(ctx, conf->certificate_file, type))) {
-		tls_log_error(NULL, "Failed reading certificate file \"%s\"",
-			      conf->certificate_file);
-		return NULL;
+	} else {
+		if (!(SSL_CTX_use_certificate_file(ctx, conf->certificate_file, type))) {
+			tls_log_error(NULL, "Failed reading certificate file \"%s\"",
+				      conf->certificate_file);
+			return NULL;
+		}
 	}
 
 	if (conf->private_key_file) {
