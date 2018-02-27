@@ -2997,31 +2997,20 @@ int fr_value_box_memdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_att
  * @param[in] enumv	Aliases for values.
  * @param[in] src 	a talloced nul terminated buffer.
  * @param[in] tainted	Whether the value came from a trusted source.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
  */
-int fr_value_box_memsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-			  uint8_t const *src, bool tainted)
+void fr_value_box_memsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
+			   uint8_t const *src, bool tainted)
 {
-	uint8_t const	*bin;
-
 	(void) talloc_get_type_abort_const(src, uint8_t);
 
-	bin = talloc_steal(ctx, src);
-	if (!bin) {
-		fr_strerror_printf("Failed stealing buffer");
-		return -1;
-	}
+	(void) talloc_steal(ctx, src);	/* steal can never fail according to talloc docs */
 
 	dst->type = FR_TYPE_OCTETS;
 	dst->tainted = tainted;
-	dst->vb_octets = bin;
+	dst->vb_octets = src;
 	dst->datum.length = talloc_array_length(src);
 	dst->enumv = enumv;
 	dst->next = NULL;
-
-	return 0;
 }
 
 /** Assign a buffer to a box, but don't copy it
