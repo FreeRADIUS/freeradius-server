@@ -339,6 +339,19 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions)
 
 	} else {
 		i = found;
+
+		/*
+		 *	Stat the *filename*, not the file we opened.
+		 *	If that's not the file we opened, then go back
+		 *	and re-open the file.
+		 */
+		if (stat(ef->entries[i].filename, &st) == 0) {
+			if ((st.st_dev != ef->entries[i].st_dev) ||
+			    (st.st_ino != ef->entries[i].st_ino)) {
+				close(ef->entries[i].fd);
+				goto reopen;
+			}
+		}
 	}
 
 	/*
