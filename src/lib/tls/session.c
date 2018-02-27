@@ -126,12 +126,12 @@ inline static unsigned int record_to_buff(tls_record_t *record, void *out, unsig
  * @param[in] rwflag
  *			- 0 if password used for decryption.
  *			- 1 if password used for encryption.
- * @param[in] userdata	The static password.
+ * @param[in] u	The static password.
  * @return
  *	- 0 on error.
  *	- >0 on success (the length of the password).
  */
-int tls_session_password_cb(char *buf, int num, int rwflag UNUSED, void *userdata)
+int tls_session_password_cb(char *buf, int size, int rwflag UNUSED, void *u)
 {
 	size_t len;
 
@@ -140,14 +140,14 @@ int tls_session_password_cb(char *buf, int num, int rwflag UNUSED, void *userdat
 	 *	to ensure OpenSSL doesn't try and read a password
 	 *	from stdin (causes server to block).
 	 */
-	if (!userdata) {
+	if (!u) {
 		ERROR("Certificate encrypted but no private_key_password configured");
 		return 0;
 	}
 
-	len = strlcpy(buf, (char *)userdata, num);
-	if (len >= (size_t)num) {
-		ERROR("Password too long.  Maximum length is %i bytes", num);
+	len = strlcpy(buf, (char *)u, size);
+	if (len > (size_t)size) {
+		ERROR("Password too long.  Maximum length is %i bytes", size - 1);
 		return 0;
 	}
 
