@@ -255,11 +255,11 @@ static int cipher_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, U
 /** Return the static private key password we have configured
  *
  * @param[out] buf	Where to write the password to.
- * @param[in] num	The length of buf.
+ * @param[in] size	The length of buf.
  * @param[in] rwflag
  *			- 0 if password used for decryption.
  *			- 1 if password used for encryption.
- * @param[in] userdata	The static password.
+ * @param[in] u		The static password.
  * @return
  *	- 0 on error.
  *	- >0 on success (the length of the password).
@@ -520,7 +520,7 @@ static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 
 /** Sign input data
  *
- * Arguments are (<plaintext>...).
+ * Arguments are @verbatim(<plaintext>...)@endverbatim
  *
  * If multiple arguments are provided they will be concatenated.
  */
@@ -624,7 +624,7 @@ static xlat_action_t cipher_rsa_sign_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_curs
 
 /** Decrypt input data
  *
- * Arguments are (<ciphertext>...).
+ * Arguments are @verbatim(<ciphertext\>...)@endverbatim
  *
  * If multiple arguments are provided they will be concatenated.
  */
@@ -703,7 +703,7 @@ static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t
 
 /** Verify input data
  *
- * Arguments are (<signature>, <plaintext>...).
+ * Arguments are @verbatim(<signature>, <plaintext>...)@endverbatim
  *
  * If multiple arguments are provided (after <signature>) they will be concatenated.
  */
@@ -836,7 +836,7 @@ static xlat_action_t cipher_rsa_verify_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_cu
 
 /** Talloc destructor for freeing an EVP_PKEY_CTX
  *
- * @param[in] pkey	to free.
+ * @param[in] evp_pkey_ctx	to free.
  * @return 0
  */
 static int _evp_pkey_ctx_free(EVP_PKEY_CTX *evp_pkey_ctx)
@@ -848,7 +848,7 @@ static int _evp_pkey_ctx_free(EVP_PKEY_CTX *evp_pkey_ctx)
 
 /** Talloc destructor for freeing an EVP_MD_CTX
  *
- * @param[in] pkey	to free.
+ * @param[in] evp_md_ctx	to free.
  * @return 0
  */
 static int _evp_md_ctx_free(EVP_MD_CTX *evp_md_ctx)
