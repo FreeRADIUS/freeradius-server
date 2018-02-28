@@ -368,6 +368,7 @@ static int cipher_rsa_private_key_file_load(TALLOC_CTX *ctx, void *out, CONF_ITE
 		return -1;
 	}
 
+	talloc_set_type(pkey, EVP_PKEY);
 	(void)talloc_steal(ctx, pkey);			/* Bind lifetime to config */
 	talloc_set_destructor(pkey, _evp_pkey_free);	/* Free pkey correctly on chunk free */
 
@@ -439,6 +440,7 @@ static int cipher_rsa_certificate_file_load(UNUSED TALLOC_CTX *ctx, void *out, C
 		return -1;
 	}
 
+	talloc_set_type(pkey, EVP_PKEY);
 	(void)talloc_steal(ctx, pkey);			/* Bind lifetime to config */
 	talloc_set_destructor(pkey, _evp_pkey_free);	/* Free pkey correctly on chunk free */
 
@@ -944,6 +946,7 @@ static int cipher_rsa_thread_instantiate(UNUSED CONF_SECTION const *conf, void *
 		PERROR("%s: Failed allocating encrypt EVP_PKEY_CTX", __FUNCTION__);
 		return -1;
 	}
+	talloc_set_type(ti->evp_encrypt_ctx, EVP_PKEY_CTX);
 	ti->evp_encrypt_ctx = talloc_steal(ti, ti->evp_encrypt_ctx);		/* Bind lifetime to instance */
 	talloc_set_destructor(ti->evp_encrypt_ctx, _evp_pkey_ctx_free);		/* Free ctx correctly on chunk free */
 
@@ -969,6 +972,7 @@ static int cipher_rsa_thread_instantiate(UNUSED CONF_SECTION const *conf, void *
 		PERROR("%s: Failed allocating verify EVP_PKEY_CTX", __FUNCTION__);
 		return -1;
 	}
+	talloc_set_type(ti->evp_verify_ctx, EVP_PKEY_CTX);
 	ti->evp_verify_ctx = talloc_steal(ti, ti->evp_verify_ctx);		/* Bind lifetime to instance */
 	talloc_set_destructor(ti->evp_verify_ctx, _evp_pkey_ctx_free);		/* Free ctx correctly on chunk free */
 
@@ -1006,6 +1010,7 @@ static int cipher_rsa_thread_instantiate(UNUSED CONF_SECTION const *conf, void *
 		PERROR("%s: Failed allocating decrypt EVP_PKEY_CTX", __FUNCTION__);
 		return -1;
 	}
+	talloc_set_type(ti->evp_decrypt_ctx, EVP_PKEY_CTX);
 	ti->evp_decrypt_ctx = talloc_steal(ti, ti->evp_decrypt_ctx);		/* Bind lifetime to instance */
 	talloc_set_destructor(ti->evp_decrypt_ctx, _evp_pkey_ctx_free);		/* Free ctx correctly on chunk free */
 
@@ -1031,6 +1036,7 @@ static int cipher_rsa_thread_instantiate(UNUSED CONF_SECTION const *conf, void *
 		PERROR("%s: Failed allocating sign EVP_PKEY_CTX", __FUNCTION__);
 		return -1;
 	}
+	talloc_set_type(ti->evp_sign_ctx, EVP_PKEY_CTX);
 	ti->evp_sign_ctx = talloc_steal(ti, ti->evp_sign_ctx);			/* Bind lifetime to instance */
 	talloc_set_destructor(ti->evp_sign_ctx, _evp_pkey_ctx_free);		/* Free ctx correctly on chunk free */
 
@@ -1068,6 +1074,7 @@ static int cipher_rsa_thread_instantiate(UNUSED CONF_SECTION const *conf, void *
 		PERROR("%s: Failed allocating EVP_MD_CTX", __FUNCTION__);
 		return -1;
 	}
+	talloc_set_type(ti->evp_md_ctx, EVP_MD_CTX);
 	ti->evp_md_ctx = talloc_steal(ti, ti->evp_md_ctx);			/* Bind lifetime to instance */
 	talloc_set_destructor(ti->evp_md_ctx, _evp_md_ctx_free);		/* Free ctx correctly on chunk free */
 	MEM(ti->digest_buff = talloc_array(ti, uint8_t, EVP_MD_size(inst->rsa->sig_digest)));
