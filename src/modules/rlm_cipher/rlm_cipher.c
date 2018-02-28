@@ -51,7 +51,7 @@ typedef enum {
 /** Public key types
  *
  */
-const FR_NAME_NUMBER public_key_types[] = {
+const FR_NAME_NUMBER pkey_types[] = {
 	{ "RSA",	EVP_PKEY_RSA		},
 	{ "DSA",	EVP_PKEY_DSA		},
 	{ "DH",		EVP_PKEY_DH		},
@@ -331,6 +331,7 @@ static int cipher_rsa_private_key_file_load(TALLOC_CTX *ctx, void *out, CONF_ITE
 	cipher_rsa_t	*rsa_inst = talloc_get_type_abort(ctx, cipher_rsa_t);	/* Yeah this is a bit hacky */
 	EVP_PKEY	*pkey;
 	void		*pass;
+	int		pkey_type;
 
 	filename = cf_pair_value(cf_item_to_pair(ci));
 
@@ -349,6 +350,16 @@ static int cipher_rsa_private_key_file_load(TALLOC_CTX *ctx, void *out, CONF_ITE
 		tls_strerror_printf(true, NULL);
 		cf_log_perr(ci, "Error loading private certificate file \"%s\"", filename);
 
+		return -1;
+	}
+
+	pkey_type = EVP_PKEY_type(EVP_PKEY_id(pkey));
+	if (pkey_type != EVP_PKEY_RSA) {
+		cf_log_err(ci, "Expected certificate to contain %s private key, got %s private key",
+			   fr_int2str(pkey_types, EVP_PKEY_RSA, "?Unknown?"),
+			   fr_int2str(pkey_types, pkey_type, "?Unknown?"));
+
+		EVP_PKEY_free(pkey);
 		return -1;
 	}
 
@@ -416,10 +427,11 @@ static int cipher_rsa_certificate_file_load(UNUSED TALLOC_CTX *ctx, void *out, C
 	pkey_type = EVP_PKEY_type(EVP_PKEY_id(pkey));
 	if (pkey_type != EVP_PKEY_RSA) {
 		cf_log_err(ci, "Expected certificate to contain %s public key, got %s public key",
-			   fr_int2str(public_key_types, EVP_PKEY_RSA, "?Unknown?"),
-			   fr_int2str(public_key_types, pkey_type, "?Unknown?"));
+			   fr_int2str(pkey_types, EVP_PKEY_RSA, "?Unknown?"),
+			   fr_int2str(pkey_types, pkey_type, "?Unknown?"));
 
 		EVP_PKEY_free(pkey);
+		return -1;
 	}
 
 	(void)talloc_steal(ctx, pkey);			/* Bind lifetime to config */
