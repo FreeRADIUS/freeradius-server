@@ -408,7 +408,7 @@ static int cipher_rsa_padding_params_set(REQUEST *request, EVP_PKEY_CTX *evp_pke
 	 *	Configure OAEP advanced padding options
 	 */
 	case RSA_PKCS1_OAEP_PADDING:
-#if OPENSSL_VERSION_NUMBER >= 0x10001000L
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
 		if (unlikely(EVP_PKEY_CTX_set_rsa_oaep_md(evp_pkey_ctx, rsa_inst->oaep->oaep_digest) <= 0)) {
 			tls_log_error(request, "Failed setting OAEP digest");
 			return -1;
@@ -441,7 +441,7 @@ static int cipher_rsa_padding_params_set(REQUEST *request, EVP_PKEY_CTX *evp_pke
 
 /** Encrypt input data
  *
- * Arguments are (<plaintext>...).
+ * Arguments are @verbatim(<plaintext>...)@endverbatim
  *
  * If multiple arguments are provided they will be concatenated.
  */
@@ -705,7 +705,8 @@ static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t
  *
  * Arguments are @verbatim(<signature>, <plaintext>...)@endverbatim
  *
- * If multiple arguments are provided (after <signature>) they will be concatenated.
+ * If multiple arguments are provided (after @verbatim<signature>@endverbatim)
+ * they will be concatenated.
  */
 static xlat_action_t cipher_rsa_verify_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 					    REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
