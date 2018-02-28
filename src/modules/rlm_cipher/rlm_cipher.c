@@ -31,6 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
 
+#include <openssl/crypto.h>
 #include <openssl/pem.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
@@ -80,7 +81,11 @@ const FR_NAME_NUMBER cipher_type[] = {
 };
 
 typedef struct {
-	EVP_PKEY_CTX		*evp_pkey_ctx;			//!< Pre-allocated evp_pkey_ctx.
+	EVP_PKEY_CTX		*evp_encrypt_ctx;		//!< Pre-allocated evp_pkey_ctx.
+	EVP_PKEY_CTX		*evp_sign_ctx;			//!< Pre-allocated evp_pkey_ctx.
+	EVP_PKEY_CTX		*evp_decrypt_ctx;		//!< Pre-allocated evp_pkey_ctx.
+	EVP_PKEY_CTX		*evp_verify_ctx;		//!< Pre-allocated evp_pkey_ctx.
+
 	EVP_MD_CTX		*evp_md_ctx;			//!< Pre-allocated evp_md_ctx for sign and verify.
 	uint8_t			*digest_buff;			//!< Pre-allocated digest buffer.
 } rlm_cipher_rsa_thread_inst_t;
@@ -442,55 +447,6 @@ static int cipher_rsa_certificate_file_load(UNUSED TALLOC_CTX *ctx, void *out, C
 	return 0;
 }
 
-static int cipher_rsa_padding_params_set(REQUEST *request, EVP_PKEY_CTX *evp_pkey_ctx, cipher_rsa_t const *rsa_inst)
-{
-	if (unlikely(EVP_PKEY_CTX_set_rsa_padding(evp_pkey_ctx, rsa_inst->padding)) <= 0) {
-		tls_log_error(request, "Failed setting RSA padding type");
-		return -1;
-	}
-
-	switch (rsa_inst->padding) {
-	case RSA_NO_PADDING:
-	case RSA_X931_PADDING:
-	case RSA_SSLV23_PADDING:
-	case RSA_PKCS1_PADDING:
-		return 0;
-
-	/*
-	 *	Configure OAEP advanced padding options
-	 */
-	case RSA_PKCS1_OAEP_PADDING:
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
-		if (unlikely(EVP_PKEY_CTX_set_rsa_oaep_md(evp_pkey_ctx, rsa_inst->oaep->oaep_digest) <= 0)) {
-			tls_log_error(request, "Failed setting OAEP digest");
-			return -1;
-		}
-
-		if (unlikely(EVP_PKEY_CTX_set_rsa_mgf1_md(evp_pkey_ctx, rsa_inst->oaep->mgf1_digest) <= 0)) {
-			tls_log_error(request, "Failed setting MGF1 digest");
-			return -1;
-		}
-
-		if (rsa_inst->oaep->label) {
-			char *label;
-
-			memcpy(&label, &rsa_inst->oaep->label, sizeof(label));
-
-		    	if (unlikely(EVP_PKEY_CTX_set0_rsa_oaep_label(evp_pkey_ctx, label,
-								      talloc_array_length(label) - 1) <= 0)) {
-				tls_log_error(request, "Failed setting OAEP padding label");
-				return -1;
-			}
-		}
-#endif
-		return 0;
-
-	default:
-		rad_assert(0);
-		return -1;
-	}
-}
-
 /** Encrypt input data
  *
  * Arguments are @verbatim(<plaintext>...)@endverbatim
@@ -498,11 +454,9 @@ static int cipher_rsa_padding_params_set(REQUEST *request, EVP_PKEY_CTX *evp_pke
  * If multiple arguments are provided they will be concatenated.
  */
 static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
-					     REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
+					     REQUEST *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
 					     fr_value_box_t **in)
 {
-	rlm_cipher_t const		*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst),
-									    rlm_cipher_t);
 	rlm_cipher_rsa_thread_inst_t	*xt = talloc_get_type_abort(*((void **)xlat_thread_inst),
 								    rlm_cipher_rsa_thread_inst_t);
 
@@ -526,24 +480,17 @@ static xlat_action_t cipher_rsa_encrypt_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
 	plaintext = (*in)->vb_strvalue;
 	plaintext_len = (*in)->vb_length;
 
-	if (unlikely(EVP_PKEY_encrypt_init(xt->evp_pkey_ctx) <= 0)) {
-		tls_log_error(request, "Failed initialising EVP_PKEY_CTX");
-		return XLAT_ACTION_FAIL;
-	}
-
-	if (unlikely(cipher_rsa_padding_params_set(request, xt->evp_pkey_ctx, inst->rsa) < 0)) return XLAT_ACTION_FAIL;
-
 	/*
 	 *	Figure out the buffer we need
 	 */
-	if (EVP_PKEY_encrypt(xt->evp_pkey_ctx, NULL, &ciphertext_len,
+	if (EVP_PKEY_encrypt(xt->evp_encrypt_ctx, NULL, &ciphertext_len,
 			     (unsigned char const *)plaintext, plaintext_len) <= 0) {
-		tls_log_error(request, "Failed encrypting plaintext");
+		tls_log_error(request, "Failed getting length of encrypted plaintext");
 		return XLAT_ACTION_FAIL;
 	}
 
 	MEM(ciphertext = talloc_array(ctx, uint8_t, ciphertext_len));
-	if (EVP_PKEY_encrypt(xt->evp_pkey_ctx, ciphertext, &ciphertext_len,
+	if (EVP_PKEY_encrypt(xt->evp_encrypt_ctx, ciphertext, &ciphertext_len,
 			     (unsigned char const *)plaintext, plaintext_len) <= 0) {
 		tls_log_error(request, "Failed encrypting plaintext");
 		return XLAT_ACTION_FAIL;
@@ -604,19 +551,8 @@ static xlat_action_t cipher_rsa_sign_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_curs
 		REDEBUG("Failed concatenating arguments to form plaintext");
 		return XLAT_ACTION_FAIL;
 	}
-	msg = (*in)->next->vb_strvalue;
+	msg = (*in)->vb_strvalue;
 	msg_len = (*in)->vb_length;
-
-	if (unlikely(EVP_PKEY_sign_init(xt->evp_pkey_ctx) <= 0)) {
-		tls_log_error(request, "Failed initialising EVP_PKEY_CTX");
-		return XLAT_ACTION_FAIL;
-	}
-
-	if (unlikely(cipher_rsa_padding_params_set(request, xt->evp_pkey_ctx, inst->rsa) < 0)) return XLAT_ACTION_FAIL;
-	if (unlikely(EVP_PKEY_CTX_set_signature_md(xt->evp_pkey_ctx, inst->rsa->sig_digest)) <= 0) {
-		tls_log_error(request, "Failed setting signature digest type");
-		return XLAT_ACTION_FAIL;
-	}
 
 	/*
 	 *	First produce a digest of the message
@@ -639,13 +575,13 @@ static xlat_action_t cipher_rsa_sign_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_curs
 	/*
 	 *	Then sign the digest
 	 */
-	if (EVP_PKEY_sign(ctx, NULL, &sig_len, xt->digest_buff, digest_len) <= 0) {
-		tls_log_error(request, "Failed signing message digest");
+	if (EVP_PKEY_sign(xt->evp_sign_ctx, NULL, &sig_len, xt->digest_buff, digest_len) <= 0) {
+		tls_log_error(request, "Failed getting length of digest");
 		return XLAT_ACTION_FAIL;
 	}
 
 	MEM(sig = talloc_array(ctx, uint8_t, sig_len));
-	if (EVP_PKEY_sign(ctx, sig, &sig_len, xt->digest_buff, digest_len) <= 0) {
+	if (EVP_PKEY_sign(xt->evp_sign_ctx, sig, &sig_len, xt->digest_buff, digest_len) <= 0) {
 		tls_log_error(request, "Failed signing message digest");
 		return XLAT_ACTION_FAIL;
 	}
@@ -681,11 +617,9 @@ static xlat_action_t cipher_rsa_sign_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_curs
  * If multiple arguments are provided they will be concatenated.
  */
 static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
-					     REQUEST *request, void const *xlat_inst, void *xlat_thread_inst,
+					     REQUEST *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
 					     fr_value_box_t **in)
 {
-	rlm_cipher_t const		*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst),
-									    rlm_cipher_t);
 	rlm_cipher_rsa_thread_inst_t	*xt = talloc_get_type_abort(*((void **)xlat_thread_inst),
 								    rlm_cipher_rsa_thread_inst_t);
 
@@ -709,23 +643,17 @@ static xlat_action_t cipher_rsa_decrypt_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t
 	ciphertext = (*in)->vb_octets;
 	ciphertext_len = (*in)->vb_length;
 
-	if (unlikely(EVP_PKEY_decrypt_init(xt->evp_pkey_ctx) <= 0)) {
-		tls_log_error(request, "Failed initialising EVP_PKEY_CTX");
-		return XLAT_ACTION_FAIL;
-	}
-
-	if (unlikely(cipher_rsa_padding_params_set(request, xt->evp_pkey_ctx, inst->rsa) < 0)) return XLAT_ACTION_FAIL;
-
 	/*
 	 *	Decrypt the plaintext
 	 */
-	if (EVP_PKEY_decrypt(ctx, NULL, &plaintext_len, ciphertext, ciphertext_len) <= 0) {
-		tls_log_error(request, "Failed decrypting ciphertext");
+	if (EVP_PKEY_decrypt(xt->evp_decrypt_ctx, NULL, &plaintext_len, ciphertext, ciphertext_len) <= 0) {
+		tls_log_error(request, "Failed getting length of cleartext");
 		return XLAT_ACTION_FAIL;
 	}
 
 	MEM(plaintext = talloc_array(ctx, char, plaintext_len + 1));
-	if (EVP_PKEY_decrypt(ctx, (unsigned char *)plaintext, &plaintext_len, ciphertext, ciphertext_len) <= 0) {
+	if (EVP_PKEY_decrypt(xt->evp_decrypt_ctx, (unsigned char *)plaintext, &plaintext_len,
+			     ciphertext, ciphertext_len) <= 0) {
 		tls_log_error(request, "Failed decrypting ciphertext");
 		return XLAT_ACTION_FAIL;
 	}
@@ -834,17 +762,6 @@ static xlat_action_t cipher_rsa_verify_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_cu
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (unlikely(EVP_PKEY_verify_init(xt->evp_pkey_ctx) <= 0)) {
-		tls_log_error(request, "Failed initialising EVP_PKEY_CTX");
-		return XLAT_ACTION_FAIL;
-	}
-
-	if (unlikely(cipher_rsa_padding_params_set(request, xt->evp_pkey_ctx, inst->rsa) < 0)) return XLAT_ACTION_FAIL;
-	if (unlikely(EVP_PKEY_CTX_set_signature_md(xt->evp_pkey_ctx, inst->rsa->sig_digest)) <= 0) {
-		tls_log_error(request, "Failed setting signature digest type");
-		return XLAT_ACTION_FAIL;
-	}
-
 	/*
 	 *	First produce a digest of the message
 	 */
@@ -866,7 +783,7 @@ static xlat_action_t cipher_rsa_verify_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_cu
 	/*
 	 *	Now check the signature matches what we expected
 	 */
-	switch (EVP_PKEY_verify(ctx, sig, sig_len, xt->digest_buff, digest_len)) {
+	switch (EVP_PKEY_verify(xt->evp_verify_ctx, sig, sig_len, xt->digest_buff, digest_len)) {
 	case 1:		/* success (signature valid) */
 		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL, false));
 		vb->vb_bool = true;
@@ -936,6 +853,66 @@ static int cipher_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp
 }
 
 
+static int cipher_rsa_padding_params_set(EVP_PKEY_CTX *evp_pkey_ctx, cipher_rsa_t const *rsa_inst)
+{
+	if (unlikely(EVP_PKEY_CTX_set_rsa_padding(evp_pkey_ctx, rsa_inst->padding)) <= 0) {
+		tls_strerror_printf(true, NULL);
+		PERROR("%s: Failed setting RSA padding type", __FUNCTION__);
+		return -1;
+	}
+
+	switch (rsa_inst->padding) {
+	case RSA_NO_PADDING:
+	case RSA_X931_PADDING:
+	case RSA_SSLV23_PADDING:
+	case RSA_PKCS1_PADDING:
+		return 0;
+
+	/*
+	 *	Configure OAEP advanced padding options
+	 */
+	case RSA_PKCS1_OAEP_PADDING:
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+		if (unlikely(EVP_PKEY_CTX_set_rsa_oaep_md(evp_pkey_ctx, rsa_inst->oaep->oaep_digest) <= 0)) {
+			tls_strerror_printf(true, NULL);
+			PERROR("%s: Failed setting OAEP digest", __FUNCTION__);
+			return -1;
+		}
+
+		if (unlikely(EVP_PKEY_CTX_set_rsa_mgf1_md(evp_pkey_ctx, rsa_inst->oaep->mgf1_digest) <= 0)) {
+			tls_strerror_printf(true, NULL);
+			PERROR("%s: Failed setting MGF1 digest", __FUNCTION__);
+			return -1;
+		}
+
+		if (rsa_inst->oaep->label) {
+			char	*label;
+			size_t	label_len = talloc_array_length(rsa_inst->oaep->label) - 1;
+
+			/*
+			 *	OpenSSL does not duplicate the label when
+			 *	EVP_PKEY_CTX_set0_rsa_oaep_label is called,
+			 *	but happily frees it on subsequent calls
+			 *	or when the EVP_PKEY_CTX is freed,
+			 *	idiots...
+			 */
+			MEM(label = talloc_bstrndup(evp_pkey_ctx, rsa_inst->oaep->label, label_len));
+		    	if (unlikely(EVP_PKEY_CTX_set0_rsa_oaep_label(evp_pkey_ctx, label, label_len) <= 0)) {
+	   			tls_strerror_printf(true, NULL);
+				PERROR("%s: Failed setting OAEP padding label", __FUNCTION__);
+				OPENSSL_free(label);
+				return -1;
+			}
+		}
+#endif
+		return 0;
+
+	default:
+		rad_assert(0);
+		return -1;
+	}
+}
+
 /** Pre-initialises the EVP_PKEY_CTX necessary for performing RSA encryption/decryption/sign/verify
  *
  * If reference counting is used for EVP_PKEY structs, should also prevent any mutex contention
@@ -951,26 +928,148 @@ static int cipher_rsa_thread_instantiate(UNUSED CONF_SECTION const *conf, void *
 	rlm_cipher_t const		*inst = talloc_get_type_abort(instance, rlm_cipher_t);
 	rlm_cipher_rsa_thread_inst_t	*ti = thread;
 
-	ti->evp_pkey_ctx = EVP_PKEY_CTX_new(inst->rsa->certificate_file, NULL);
-	if (!ti->evp_pkey_ctx) {
+	/*
+	 *	Pre-allocate different contexts for the different operations
+	 *	The OpenSSL docs say this is fine, and it reduces the potential
+	 *	for SEGVs and other random errors due to trying to change the
+	 *	configuration of a context multiple times.
+	 */
+
+	/*
+	 *	Alloc encrypt
+	 */
+	ti->evp_encrypt_ctx = EVP_PKEY_CTX_new(inst->rsa->certificate_file, NULL);
+	if (!ti->evp_encrypt_ctx) {
 		tls_strerror_printf(true, NULL);
-		PERROR("%s: Failed allocating EVP_PKEY_CTX", __FUNCTION__);
+		PERROR("%s: Failed allocating encrypt EVP_PKEY_CTX", __FUNCTION__);
+		return -1;
+	}
+	ti->evp_encrypt_ctx = talloc_steal(ti, ti->evp_encrypt_ctx);		/* Bind lifetime to instance */
+	talloc_set_destructor(ti->evp_encrypt_ctx, _evp_pkey_ctx_free);		/* Free ctx correctly on chunk free */
+
+	/*
+	 *	Configure encrypt
+	 */
+	if (unlikely(EVP_PKEY_encrypt_init(ti->evp_encrypt_ctx) <= 0)) {
+		tls_strerror_printf(true, NULL);
+		PERROR("%s: Failed initialising encrypt EVP_PKEY_CTX", __FUNCTION__);
+		return XLAT_ACTION_FAIL;
+	}
+	if (unlikely(cipher_rsa_padding_params_set(ti->evp_encrypt_ctx, inst->rsa) < 0)) {
+		ERROR("%s: Failed setting padding for encrypt EVP_PKEY_CTX", __FUNCTION__);
 		return -1;
 	}
 
-	ti->evp_pkey_ctx = talloc_steal(ti, ti->evp_pkey_ctx);	/* Bind lifetime to instance */
-	talloc_set_destructor(ti->evp_pkey_ctx, _evp_pkey_ctx_free);	/* Free ctx correctly on chunk free */
+	/*
+	 *	Alloc verify
+	 */
+	ti->evp_verify_ctx = EVP_PKEY_CTX_new(inst->rsa->certificate_file, NULL);
+	if (!ti->evp_verify_ctx) {
+		tls_strerror_printf(true, NULL);
+		PERROR("%s: Failed allocating verify EVP_PKEY_CTX", __FUNCTION__);
+		return -1;
+	}
+	ti->evp_verify_ctx = talloc_steal(ti, ti->evp_verify_ctx);		/* Bind lifetime to instance */
+	talloc_set_destructor(ti->evp_verify_ctx, _evp_pkey_ctx_free);		/* Free ctx correctly on chunk free */
 
+	/*
+	 *	Configure verify
+	 */
+	if (unlikely(EVP_PKEY_verify_init(ti->evp_verify_ctx) <= 0)) {
+		tls_strerror_printf(true, NULL);
+		PERROR("%s: Failed initialising verify EVP_PKEY_CTX", __FUNCTION__);
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	OAEP not valid for signing or verification
+	 */
+	if (inst->rsa->padding != RSA_PKCS1_OAEP_PADDING) {
+		if (unlikely(cipher_rsa_padding_params_set(ti->evp_verify_ctx, inst->rsa) < 0)) {
+			ERROR("%s: Failed setting padding for verify EVP_PKEY_CTX", __FUNCTION__);
+			return -1;
+		}
+	}
+
+	if (unlikely(EVP_PKEY_CTX_set_signature_md(ti->evp_verify_ctx, inst->rsa->sig_digest)) <= 0) {
+		tls_strerror_printf(true, NULL);
+		PERROR("%s: Failed setting signature digest type", __FUNCTION__);
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	Alloc decrypt
+	 */
+	ti->evp_decrypt_ctx = EVP_PKEY_CTX_new(inst->rsa->private_key_file, NULL);
+	if (!ti->evp_decrypt_ctx) {
+		tls_strerror_printf(true, NULL);
+		PERROR("%s: Failed allocating decrypt EVP_PKEY_CTX", __FUNCTION__);
+		return -1;
+	}
+	ti->evp_decrypt_ctx = talloc_steal(ti, ti->evp_decrypt_ctx);		/* Bind lifetime to instance */
+	talloc_set_destructor(ti->evp_decrypt_ctx, _evp_pkey_ctx_free);		/* Free ctx correctly on chunk free */
+
+	/*
+	 *	Configure decrypt
+	 */
+	if (unlikely(EVP_PKEY_decrypt_init(ti->evp_decrypt_ctx) <= 0)) {
+		tls_strerror_printf(true, NULL);
+		PERROR("%s: Failed initialising decrypt EVP_PKEY_CTX", __FUNCTION__);
+		return XLAT_ACTION_FAIL;
+	}
+	if (unlikely(cipher_rsa_padding_params_set(ti->evp_decrypt_ctx, inst->rsa) < 0)) {
+		ERROR("%s: Failed setting padding for decrypt EVP_PKEY_CTX", __FUNCTION__);
+		return -1;
+	}
+
+	/*
+	 *	Alloc sign
+	 */
+	ti->evp_sign_ctx = EVP_PKEY_CTX_new(inst->rsa->private_key_file, NULL);
+	if (!ti->evp_sign_ctx) {
+		tls_strerror_printf(true, NULL);
+		PERROR("%s: Failed allocating sign EVP_PKEY_CTX", __FUNCTION__);
+		return -1;
+	}
+	ti->evp_sign_ctx = talloc_steal(ti, ti->evp_sign_ctx);			/* Bind lifetime to instance */
+	talloc_set_destructor(ti->evp_sign_ctx, _evp_pkey_ctx_free);		/* Free ctx correctly on chunk free */
+
+	/*
+	 *	Configure sign
+	 */
+	if (unlikely(EVP_PKEY_sign_init(ti->evp_sign_ctx) <= 0)) {
+		tls_strerror_printf(true, NULL);
+		PERROR("%s: Failed initialising sign EVP_PKEY_CTX", __FUNCTION__);
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	OAEP not valid for signing or verification
+	 */
+	if (inst->rsa->padding != RSA_PKCS1_OAEP_PADDING) {
+		if (unlikely(cipher_rsa_padding_params_set(ti->evp_sign_ctx, inst->rsa) < 0)) {
+			ERROR("%s: Failed setting padding for sign EVP_PKEY_CTX", __FUNCTION__);
+			return -1;
+		}
+	}
+
+	if (unlikely(EVP_PKEY_CTX_set_signature_md(ti->evp_sign_ctx, inst->rsa->sig_digest)) <= 0) {
+		tls_strerror_printf(true, NULL);
+		PERROR("%s: Failed setting signature digest type", __FUNCTION__);
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	Alloc digest ctx for signing and verification
+	 */
 	ti->evp_md_ctx = EVP_MD_CTX_create();
 	if (!ti->evp_md_ctx) {
 		tls_strerror_printf(true, NULL);
 		PERROR("%s: Failed allocating EVP_MD_CTX", __FUNCTION__);
 		return -1;
 	}
-
-	ti->evp_md_ctx = talloc_steal(ti, ti->evp_md_ctx);		/* Bind lifetime to instance */
+	ti->evp_md_ctx = talloc_steal(ti, ti->evp_md_ctx);			/* Bind lifetime to instance */
 	talloc_set_destructor(ti->evp_md_ctx, _evp_md_ctx_free);		/* Free ctx correctly on chunk free */
-
 	MEM(ti->digest_buff = talloc_array(ti, uint8_t, EVP_MD_size(inst->rsa->sig_digest)));
 
 	return 0;
