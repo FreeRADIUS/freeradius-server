@@ -1007,6 +1007,8 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, CONF_SECTION *cs, CON
 		}
 
 		if (out) *((uint8_t **)out) = buff;
+
+		return 0;
 	}
 
 	rad_assert(subcs_size);
@@ -1237,8 +1239,6 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 					}
 				}
 				continue;
-			} else if (rule->subcs_size) {
-				subcs_base = (*(uint8_t **)((uint8_t *)base) + rule->offset);
 			} else {
 				subcs_base = (uint8_t *)base + rule->offset;
 			}
