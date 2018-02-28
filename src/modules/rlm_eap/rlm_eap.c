@@ -453,8 +453,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		 */
 		vp = fr_pair_find_by_num(request->reply->vps, PW_USER_NAME, 0, TAG_ANY);
 		if (!vp) {
-			vp = fr_pair_copy(request->reply, request->username);
-			fr_pair_add(&request->reply->vps, vp);
+			vp = request->username;
+			if (vp->da->attr != PW_USER_NAME) {
+				vp = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
+			}
+			if (vp) {
+				vp = fr_pair_copy(request->reply, vp);
+				fr_pair_add(&request->reply->vps, vp);
+			}
 		}
 
 		/*
