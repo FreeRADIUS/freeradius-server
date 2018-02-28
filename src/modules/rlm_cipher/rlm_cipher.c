@@ -540,7 +540,7 @@ static xlat_action_t cipher_rsa_sign_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_curs
 	uint8_t				*sig;
 	size_t				sig_len;
 
-	size_t				digest_len;
+	unsigned int			digest_len = 0;
 
 	fr_value_box_t			*vb;
 
@@ -559,7 +559,7 @@ static xlat_action_t cipher_rsa_sign_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_curs
 	/*
 	 *	First produce a digest of the message
 	 */
-	if (unlikely(EVP_DigestInit(xt->evp_md_ctx, inst->rsa->sig_digest) <= 0)) {
+	if (unlikely(EVP_DigestInit_ex(xt->evp_md_ctx, inst->rsa->sig_digest, NULL) <= 0)) {
 		tls_log_error(request, "Failed initialising message digest");
 		return XLAT_ACTION_FAIL;
 	}
@@ -569,21 +569,22 @@ static xlat_action_t cipher_rsa_sign_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_curs
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (EVP_DigestFinal(xt->evp_md_ctx, xt->digest_buff, (unsigned int *)&digest_len) <= 0) {
+	if (EVP_DigestFinal_ex(xt->evp_md_ctx, xt->digest_buff, &digest_len) <= 0) {
 		tls_log_error(request, "Failed finalising message digest");
 		return XLAT_ACTION_FAIL;
 	}
+	rad_assert((size_t)digest_len == talloc_array_length(xt->digest_buff));
 
 	/*
 	 *	Then sign the digest
 	 */
-	if (EVP_PKEY_sign(xt->evp_sign_ctx, NULL, &sig_len, xt->digest_buff, digest_len) <= 0) {
+	if (EVP_PKEY_sign(xt->evp_sign_ctx, NULL, &sig_len, xt->digest_buff, (size_t)digest_len) <= 0) {
 		tls_log_error(request, "Failed getting length of digest");
 		return XLAT_ACTION_FAIL;
 	}
 
 	MEM(sig = talloc_array(ctx, uint8_t, sig_len));
-	if (EVP_PKEY_sign(xt->evp_sign_ctx, sig, &sig_len, xt->digest_buff, digest_len) <= 0) {
+	if (EVP_PKEY_sign(xt->evp_sign_ctx, sig, &sig_len, xt->digest_buff, (size_t)digest_len) <= 0) {
 		tls_log_error(request, "Failed signing message digest");
 		return XLAT_ACTION_FAIL;
 	}
@@ -705,7 +706,7 @@ static xlat_action_t cipher_rsa_verify_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_cu
 	char const			*msg;
 	size_t				msg_len;
 
-	size_t				digest_len;
+	unsigned int			digest_len = 0;
 
 	fr_value_box_t			*vb;
 
@@ -767,7 +768,7 @@ static xlat_action_t cipher_rsa_verify_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_cu
 	/*
 	 *	First produce a digest of the message
 	 */
-	if (unlikely(EVP_DigestInit(xt->evp_md_ctx, inst->rsa->sig_digest) <= 0)) {
+	if (unlikely(EVP_DigestInit_ex(xt->evp_md_ctx, inst->rsa->sig_digest, NULL) <= 0)) {
 		tls_log_error(request, "Failed initialising message digest");
 		return XLAT_ACTION_FAIL;
 	}
@@ -777,15 +778,16 @@ static xlat_action_t cipher_rsa_verify_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_cu
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (EVP_DigestFinal(xt->evp_md_ctx, xt->digest_buff, (unsigned int *)&digest_len) <= 0) {
+	if (EVP_DigestFinal_ex(xt->evp_md_ctx, xt->digest_buff, &digest_len) <= 0) {
 		tls_log_error(request, "Failed finalising message digest");
 		return XLAT_ACTION_FAIL;
 	}
+	rad_assert((size_t)digest_len == talloc_array_length(xt->digest_buff));
 
 	/*
 	 *	Now check the signature matches what we expected
 	 */
-	switch (EVP_PKEY_verify(xt->evp_verify_ctx, sig, sig_len, xt->digest_buff, digest_len)) {
+	switch (EVP_PKEY_verify(xt->evp_verify_ctx, sig, sig_len, xt->digest_buff, (size_t)digest_len)) {
 	case 1:		/* success (signature valid) */
 		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL, false));
 		vb->vb_bool = true;
