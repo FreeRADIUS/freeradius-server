@@ -23,6 +23,11 @@ FreeRADIUS 3.0.17 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	* rlm_python can now create tagged attributes.
 	* Don't crash on duplicate realm + authhost / accthost.
 	  Bug found by Richard Palmer.
+	* Allow partial certificate chain to trusted CA.  Fixes #2162
+	* Treat SSL_read() returning zero as error.  Fixes #2164.
+	* detail writer now checks if the file was renamed
+	* Add User-Name to Access-Accept if EAP-Message exists,
+	  instead of Stripped-User-Name.
 
 FreeRADIUS 3.0.16 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	Feature improvements
