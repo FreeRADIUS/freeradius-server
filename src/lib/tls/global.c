@@ -317,7 +317,6 @@ int tls_global_version_check(char const *acknowledged)
 }
 #endif
 
-#ifndef NDEBUG
 /** Allocate memory for OpenSSL in the NULL context
  *
  * @param len to alloc.
@@ -359,7 +358,6 @@ static void openssl_free(void *to_free)
 {
 	(void)talloc_free(to_free);
 }
-#endif
 
 /** Add all the default ciphers and message digests to our context.
  *
@@ -372,11 +370,9 @@ int tls_global_init(void)
 
 	if (tls_done_init) return 0;
 
-#ifndef NDEBUG
 	if (CRYPTO_set_mem_functions(openssl_talloc, openssl_realloc, openssl_free) != 1) {
 		WARN("Failed to set OpenSSL memory allocation functions.  OpenSSL mallocs will not be tracked");
 	}
-#endif
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 	SSL_load_error_strings();	/* Readable error messages (examples show call before library_init) */
