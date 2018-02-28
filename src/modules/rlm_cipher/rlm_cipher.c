@@ -949,7 +949,7 @@ static int cipher_rsa_thread_instantiate(UNUSED CONF_SECTION const *conf, void *
 					 UNUSED fr_event_list_t *el, void *thread)
 {
 	rlm_cipher_t const		*inst = talloc_get_type_abort(instance, rlm_cipher_t);
-	rlm_cipher_rsa_thread_inst_t	*ti = talloc_get_type_abort(thread, rlm_cipher_rsa_thread_inst_t);
+	rlm_cipher_rsa_thread_inst_t	*ti = thread;
 
 	ti->evp_pkey_ctx = EVP_PKEY_CTX_new(inst->rsa->certificate_file, NULL);
 	if (!ti->evp_pkey_ctx) {
@@ -983,6 +983,7 @@ static int mod_thread_instantiate(CONF_SECTION const *conf, void *instance,
 
 	switch (inst->type) {
 	case RLM_CIPHER_TYPE_RSA:
+		talloc_set_type(thread, rlm_cipher_rsa_thread_inst_t);
 		return cipher_rsa_thread_instantiate(conf, instance, el, thread);
 
 	case RLM_CIPHER_TYPE_INVALID:
@@ -1087,6 +1088,7 @@ rad_module_t rlm_cipher = {
 	.name			= "cipher",
 	.type			= RLM_TYPE_THREAD_SAFE,
 	.inst_size		= sizeof(rlm_cipher_t),
+	.thread_inst_size	= sizeof(rlm_cipher_rsa_thread_inst_t),
 	.config			= module_config,
 	.bootstrap		= mod_bootstrap,
 	.thread_instantiate	= mod_thread_instantiate,
