@@ -34,6 +34,7 @@ RCSID("$Id$")
 #include <openssl/pem.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
+#include <openssl/x509.h>
 
 static int digest_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 static int cipher_rsa_padding_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
@@ -46,6 +47,18 @@ typedef enum {
 	RLM_CIPHER_TYPE_INVALID = 0,
 	RLM_CIPHER_TYPE_RSA = 1,
 } cipher_type_t;
+
+/** Public key types
+ *
+ */
+const FR_NAME_NUMBER public_key_types[] = {
+	{ "RSA",	EVP_PKEY_RSA		},
+	{ "DSA",	EVP_PKEY_DSA		},
+	{ "DH",		EVP_PKEY_DH		},
+	{ "EC",		EVP_PKEY_EC		},
+
+	{ NULL, 0				},
+};
 
 /** The type of padding used
  *
@@ -363,7 +376,10 @@ static int cipher_rsa_certificate_file_load(UNUSED TALLOC_CTX *ctx, void *out, C
 {
 	FILE		*fp;
 	char const	*filename;
-	EVP_PKEY	*pkey;
+
+	X509		*cert;		/* X509 certificate */
+	EVP_PKEY	*pkey;		/* Wrapped public key */
+	int		pkey_type;
 
 	filename = cf_pair_value(cf_item_to_pair(ci));
 
@@ -373,25 +389,49 @@ static int cipher_rsa_certificate_file_load(UNUSED TALLOC_CTX *ctx, void *out, C
 		return -1;
 	}
 
-	pkey = PEM_read_PUBKEY(fp, (EVP_PKEY **)out, NULL, NULL);
-	fclose(fp);
-
-	if (!pkey) {
+	/*
+	 *	Load the PEM encoded X509 certificate
+	 */
+	cert = PEM_read_X509(fp, NULL, NULL, NULL);
+	if (!cert) {
 		tls_strerror_printf(true, NULL);
 		cf_log_perr(ci, "Error loading certificate file \"%s\"", filename);
 
 		return -1;
 	}
 
+	/*
+	 *	Extract the public key from the certificate
+	 */
+	pkey = X509_get_pubkey(cert);
+	X509_free(cert);	/* Decrease reference count or free cert */
+
+	if (!pkey) {
+		tls_strerror_printf(true, NULL);
+		cf_log_perr(ci, "Failed extracting public key from certificate");
+
+		return -1;
+	}
+
+	pkey_type = EVP_PKEY_type(EVP_PKEY_id(pkey));
+	if (pkey_type != EVP_PKEY_RSA) {
+		cf_log_err(ci, "Expected certificate to contain %s public key, got %s public key",
+			   fr_int2str(public_key_types, EVP_PKEY_RSA, "?Unknown?"),
+			   fr_int2str(public_key_types, pkey_type, "?Unknown?"));
+
+		EVP_PKEY_free(pkey);
+	}
+
 	(void)talloc_steal(ctx, pkey);			/* Bind lifetime to config */
 	talloc_set_destructor(pkey, _evp_pkey_free);	/* Free pkey correctly on chunk free */
+
+	*(EVP_PKEY **)out = pkey;
 
 	return 0;
 }
 
 static int cipher_rsa_padding_params_set(REQUEST *request, EVP_PKEY_CTX *evp_pkey_ctx, cipher_rsa_t const *rsa_inst)
 {
-
 	if (unlikely(EVP_PKEY_CTX_set_rsa_padding(evp_pkey_ctx, rsa_inst->padding)) <= 0) {
 		tls_log_error(request, "Failed setting RSA padding type");
 		return -1;
