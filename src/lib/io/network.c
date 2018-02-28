@@ -35,16 +35,6 @@ RCSID("$Id$")
 #include <freeradius-devel/io/network.h>
 #include <freeradius-devel/io/listen.h>
 
-#ifdef HAVE_PTHREAD_H
-#include <pthread.h>
-#define PTHREAD_MUTEX_LOCK   pthread_mutex_lock
-#define PTHREAD_MUTEX_UNLOCK pthread_mutex_unlock
-
-#else
-#define PTHREAD_MUTEX_LOCK
-#define PTHREAD_MUTEX_UNLOCK
-#endif
-
 /*
  *	Define our own debugging.
  */
@@ -59,6 +49,8 @@ RCSID("$Id$")
 #define ERROR(fmt, ...) fr_log(nr->log, L_ERR, fmt, ## __VA_ARGS__)
 
 #define MAX_WORKERS 32
+
+fr_thread_local_setup(fr_ring_buffer_t *, fr_network_rb);	/* macro */
 
 typedef struct fr_network_inject_t {
 	fr_listen_t	*listen;
@@ -131,10 +123,6 @@ struct fr_network_t {
 
 	rbtree_t		*sockets;		//!< list of sockets we're managing
 
-#ifdef HAVE_PTHREAD_H
-	pthread_mutex_t		mutex;			//!< for sending us control messages
-#endif
-
 	int			num_workers;		//!< number of active workers
 	int			max_workers;		//!< maximum number of allowed workers
 
@@ -173,6 +161,36 @@ static int socket_cmp(void const *one, void const *two)
 }
 
 
+/*
+ *	Explicitly cleanup the memory allocated to the ring buffer,
+ *	just in case valgrind complains about it.
+ */
+static void _fr_network_rb_free(void *arg)
+{
+	talloc_free(arg);
+}
+
+/** Initialise thread local storage
+ *
+ * @return fr_ring_buffer_t for messages
+ */
+static inline fr_ring_buffer_t *fr_network_rb_init(void)
+{
+	fr_ring_buffer_t *rb;
+
+	rb = fr_network_rb;
+	if (rb) return rb;
+
+	rb = fr_ring_buffer_create(NULL, FR_CONTROL_MAX_MESSAGES * FR_CONTROL_MAX_SIZE);
+	if (!rb) {
+		fr_perror("Failed allocating memory for network ring buffer");
+		return NULL;
+	}
+
+	fr_thread_local_set_destructor(fr_network_rb, _fr_network_rb_free, rb);
+
+	return rb;
+}
 
 #define IALPHA (8)
 #define RTT(_old, _new) ((_new + ((IALPHA - 1) * _old)) / IALPHA)
@@ -942,7 +960,6 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t c
 		return NULL;
 	}
 
-
 	nr->control = fr_control_create(nr, nr->kq, nr->aq_control, nr->aq_ident);
 	if (!nr->control) {
 		fr_strerror_printf_push("Failed creating control queue");
@@ -952,6 +969,12 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t c
 		return NULL;
 	}
 
+	/*
+	 *	@todo - rely on thread-local variables.  And then the
+	 *	various users of this can check if (rb == nr->rb), and
+	 *	if so, skip the whole control plane / kevent /
+	 *	whatever roundabout thing.
+	 */
 	nr->rb = fr_ring_buffer_create(nr, FR_CONTROL_MAX_MESSAGES * FR_CONTROL_MAX_SIZE);
 	if (!nr->rb) {
 		fr_strerror_printf_push("Failed creating ring buffer");
@@ -999,13 +1022,6 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t c
 		fr_strerror_printf_push("Failed creating heap for replies");
 		goto fail2;
 	}
-
-#ifdef HAVE_PTHREAD_H
-	if (pthread_mutex_init(&nr->mutex, NULL) != 0) {
-		fr_strerror_printf("Failed initializing mutex");
-		goto fail2;
-	}
-#endif
 
 	if (fr_event_post_insert(nr->el, fr_network_post_event, nr) < 0) {
 		fr_strerror_printf("Failed inserting post-processing event");
@@ -1270,13 +1286,12 @@ void fr_network_exit(fr_network_t *nr)
  */
 int fr_network_socket_add(fr_network_t *nr, fr_listen_t const *listen)
 {
-	int rcode;
+	fr_ring_buffer_t *rb;
 
-	PTHREAD_MUTEX_LOCK(&nr->mutex);
-	rcode = fr_control_message_send(nr->control, nr->rb, FR_CONTROL_ID_SOCKET, &listen, sizeof(listen));
-	PTHREAD_MUTEX_UNLOCK(&nr->mutex);
+	rb = fr_network_rb_init();
+	if (!rb) return -1;
 
-	return rcode;
+	return fr_control_message_send(nr->control, rb, FR_CONTROL_ID_SOCKET, &listen, sizeof(listen));
 }
 
 
@@ -1307,13 +1322,12 @@ int fr_network_socket_delete(fr_network_t *nr, fr_listen_t const *listen)
  */
 int fr_network_directory_add(fr_network_t *nr, fr_listen_t const *listen)
 {
-	int rcode;
+	fr_ring_buffer_t *rb;
 
-	PTHREAD_MUTEX_LOCK(&nr->mutex);
-	rcode = fr_control_message_send(nr->control, nr->rb, FR_CONTROL_ID_DIRECTORY, &listen, sizeof(listen));
-	PTHREAD_MUTEX_UNLOCK(&nr->mutex);
+	rb = fr_network_rb_init();
+	if (!rb) return -1;
 
-	return rcode;
+	return fr_control_message_send(nr->control, rb, FR_CONTROL_ID_DIRECTORY, &listen, sizeof(listen));
 }
 
 /** Add a worker to a network
@@ -1323,16 +1337,15 @@ int fr_network_directory_add(fr_network_t *nr, fr_listen_t const *listen)
  */
 int fr_network_worker_add(fr_network_t *nr, fr_worker_t *worker)
 {
-	int rcode;
+	fr_ring_buffer_t *rb;
+
+	rb = fr_network_rb_init();
+	if (!rb) return -1;
 
 	(void) talloc_get_type_abort(nr, fr_network_t);
 	(void) talloc_get_type_abort(worker, fr_worker_t);
 
-	PTHREAD_MUTEX_LOCK(&nr->mutex);
-	rcode = fr_control_message_send(nr->control, nr->rb, FR_CONTROL_ID_WORKER, &worker, sizeof(worker));
-	PTHREAD_MUTEX_UNLOCK(&nr->mutex);
-
-	return rcode;
+	return fr_control_message_send(nr->control, rb, FR_CONTROL_ID_WORKER, &worker, sizeof(worker));
 }
 
 /** Signal the network to read from a listener
@@ -1370,8 +1383,11 @@ void fr_network_listen_read(fr_network_t *nr, fr_listen_t const *listen)
  */
 int fr_network_listen_inject(fr_network_t *nr, fr_listen_t *listen, uint8_t const *packet, size_t packet_len, fr_time_t recv_time)
 {
-	int rcode;
+	fr_ring_buffer_t *rb;
 	fr_network_inject_t my_inject;
+
+	rb = fr_network_rb_init();
+	if (!rb) return -1;
 
 	(void) talloc_get_type_abort(nr, fr_network_t);
 	(void) talloc_get_type_abort(listen, fr_listen_t);
@@ -1386,9 +1402,5 @@ int fr_network_listen_inject(fr_network_t *nr, fr_listen_t *listen, uint8_t cons
 	my_inject.packet_len = packet_len;
 	my_inject.recv_time = recv_time;
 
-	PTHREAD_MUTEX_LOCK(&nr->mutex);
-	rcode = fr_control_message_send(nr->control, nr->rb, FR_CONTROL_ID_INJECT, &my_inject, sizeof(my_inject));
-	PTHREAD_MUTEX_UNLOCK(&nr->mutex);
-
-	return rcode;
+	return fr_control_message_send(nr->control, rb, FR_CONTROL_ID_INJECT, &my_inject, sizeof(my_inject));
 }
