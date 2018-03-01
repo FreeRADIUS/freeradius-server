@@ -1296,7 +1296,7 @@ static fr_sim_keys_t const rfc4186_vector0_reauth_out = {
 };
 
 
-static void test_eap_sim_kdf_0_gsm_reauth(void)
+static void test_eap_sim_kdf_0_reauth(void)
 {
 	fr_sim_keys_t	keys;
 	int		ret;
@@ -1485,7 +1485,7 @@ static fr_sim_keys_t const rfc5448_vector0_reauth_out = {
 			    0x97, 0x87, 0x5a, 0xcb, 0x0a, 0x64, 0x29, 0x32 }
 };
 
-static void test_eap_aka_kdf_1_umts_reauth(void)
+static void test_eap_aka_kdf_1_reauth(void)
 {
 	fr_sim_keys_t	keys;
 	int		ret;
@@ -1514,14 +1514,23 @@ TEST_LIST = {
 	 *	EAP-SIM
 	 */
 	{ "test_eap_sim_kdf_0_gsm",		test_eap_sim_kdf_0_gsm		},
-	{ "test_eap_sim_kdf_0_gsm_reauth",	test_eap_sim_kdf_0_gsm_reauth	},
+
+	/*
+	 *	EAP-AKA
+	 */
+/*	{ "test_eap_aka_kdf_0_umts",		test_eap_aka_kdf_0_umts		}, FIXME - Need test vectors */
+
+	/*
+	 *	EAP-SIM/EAP-AKA
+	 */
+	{ "test_eap_sim_kdf_0_reauth",		test_eap_sim_kdf_0_reauth	},
 
 	/*
 	 *	EAP-AKA'
 	 */
 	{ "test_eap_aka_kdf_1_umts",		test_eap_aka_kdf_1_umts		},
 	{ "test_eap_aka_derive_ck_ik",		test_eap_aka_derive_ck_ik	},
-	{ "test_eap_aka_kdf_1_umts_reauth",	test_eap_aka_kdf_1_umts_reauth	},
+	{ "test_eap_aka_kdf_1_reauth",		test_eap_aka_kdf_1_reauth	},
 
 
 	{ NULL }
