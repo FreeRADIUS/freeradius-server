@@ -18,11 +18,15 @@
  * @file rlm_eap/lib/sim/crypto.c
  * @brief Calculate keys from GSM vectors.
  *
- * The development of the EAP/SIM support was funded by Internet Foundation
- * Austria (http://www.nic.at/ipa).
+ * The development of the original EAP/SIM support was funded by Internet Foundation
+ * Austria (http://www.nic.at/ipa). The original EAP-SIM PRF functions were written
+ * by Michael Richardson <mcr@sandelman.ottawa.on.ca>, but these have since been
+ * replaced.
  *
- * @copyright 2003 Michael Richardson <mcr@sandelman.ottawa.on.ca>
- * @copyright 2003-2016 The FreeRADIUS server project
+ * @author Arran Cudbard-Bell \<a.cudbardb@freeradius.org\>
+ *
+ * @copyright 2003-2018 The FreeRADIUS server project
+ * @copyright 2016-2018 Network RADIUS \<info@networkradius.com\>
  */
 RCSID("$Id$")
 
