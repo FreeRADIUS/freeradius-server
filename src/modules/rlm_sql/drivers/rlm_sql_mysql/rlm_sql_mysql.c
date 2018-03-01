@@ -36,14 +36,12 @@ RCSID("$Id$")
 #include "config.h"
 
 #ifdef HAVE_MYSQL_MYSQL_H
-#  include <mysql/mysql_version.h>
 #  include <mysql/errmsg.h>
 DIAG_OFF(strict-prototypes)	/* Seen with homebrew mysql client 5.7.13 */
 #  include <mysql.h>
 DIAG_ON(strict-prototypes)
 #  include <mysql/mysqld_error.h>
 #elif defined(HAVE_MYSQL_H)
-#  include <mysql_version.h>
 #  include <errmsg.h>
 DIAG_OFF(strict-prototypes)	/* Seen with homebrew mysql client 5.7.13 */
 #  include <mysql.h>
