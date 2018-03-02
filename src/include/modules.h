@@ -285,12 +285,16 @@ rlm_rcode_t	process_post_auth(int type, REQUEST *request);
 #endif
 extern const CONF_PARSER virtual_servers_config[];
 
+typedef int (*fr_virtual_server_compile_t)(CONF_SECTION *server);
+
 int		virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const *subcs_name,
 							fr_dict_attr_t const *da);
 int		virtual_servers_open(fr_schedule_t *sc);
 int		virtual_servers_instantiate(void);
 int		virtual_servers_bootstrap(CONF_SECTION *config);
 CONF_SECTION	*virtual_server_find(char const *name);
+void		virtual_server_namespace_register(char const *namespace, fr_virtual_server_compile_t func);
+
 void		fr_request_async_bootstrap(REQUEST *request, fr_event_list_t *el); /* for unit_test_module */
 
 /*

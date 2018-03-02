@@ -70,14 +70,19 @@ static int default_component_results[MOD_COUNT] = {
 };
 
 typedef struct {
-	dl_instance_t		*proto_module;	//!< The proto_* module for a listen section.
-	fr_app_t const		*app;		//!< Easy access to the exported struct.
+	char const		*namespace;		//!< Namespace function is registered to.
+	fr_virtual_server_compile_t	func;		//!< Function to call to compile sections.
+} fr_virtual_namespace_t;
+
+typedef struct {
+	dl_instance_t		*proto_module;		//!< The proto_* module for a listen section.
+	fr_app_t const		*app;			//!< Easy access to the exported struct.
 } fr_virtual_listen_t;
 
 typedef struct {
-	CONF_SECTION		*server_cs;	//!< The server section.
-	char const		*namespace;	//!< Protocol namespace
-	fr_virtual_listen_t	**listener;	//!< Listeners in this virtual server.
+	CONF_SECTION		*server_cs;		//!< The server section.
+	char const		*namespace;		//!< Protocol namespace
+	fr_virtual_listen_t	**listener;		//!< Listeners in this virtual server.
 } fr_virtual_server_t;
 
 /** Top level structure holding all virtual servers
@@ -90,7 +95,7 @@ static fr_virtual_server_t **virtual_servers;
  * Set during the call to virtual_server_bootstrap and used by
  * other virtual server functions.
  */
-static CONF_SECTION const *virtual_server_root;
+static CONF_SECTION *virtual_server_root;
 
 static int listen_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int server_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
@@ -290,7 +295,6 @@ rlm_rcode_t process_post_auth(int postauth_type, REQUEST *request)
 	return module_method_call(MOD_POST_AUTH, postauth_type, request);
 }
 
-
 /** Define a values for Auth-Type attributes by the sections present in a virtual-server
  *
  * The ident2 value of any sections found will be converted into values of the specified da.
@@ -393,7 +397,6 @@ int virtual_servers_open(fr_schedule_t *sc)
 	return 0;
 }
 
-
 /** Instantiate all the virtual servers
  *
  * @return
@@ -402,7 +405,8 @@ int virtual_servers_open(fr_schedule_t *sc)
  */
 int virtual_servers_instantiate(void)
 {
-	size_t i, server_cnt = virtual_servers ? talloc_array_length(virtual_servers) : 0;
+	size_t		i, server_cnt = virtual_servers ? talloc_array_length(virtual_servers) : 0;
+	rbtree_t	*vns_tree = cf_data_value(cf_data_find(virtual_server_root, rbtree_t, "vns_tree"));
 
 	rad_assert(virtual_servers);
 
@@ -418,6 +422,14 @@ int virtual_servers_instantiate(void)
  		listen_cnt = talloc_array_length(listener);
 
 		DEBUG("Compiling policies in server %s { ... }", cf_section_name2(server_cs));
+
+		if (vns_tree) {
+			fr_virtual_namespace_t	find = { .namespace = cf_section_name2(server_cs) };
+			fr_virtual_namespace_t	*found;
+
+			found = rbtree_finddata(vns_tree, &find);
+			if (found && (found->func(server_cs) < 0)) return -1;
+		}
 
 		/*
 		 *	Not all virtual servers have listeners,
@@ -569,6 +581,50 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 CONF_SECTION *virtual_server_find(char const *name)
 {
 	return cf_section_find(virtual_server_root, "server", name);
+}
+
+/** Free a virtual namespace callback
+ *
+ */
+static void _virtual_namespace_free(void *data)
+{
+	talloc_free(data);
+}
+
+/** Compare two virtual namespace callbacks
+ *
+ */
+static int _virtual_namespace_cmp(void const *a, void const *b)
+{
+	fr_virtual_namespace_t const *ns_a = a;
+	fr_virtual_namespace_t const *ns_b = b;
+
+	return strcmp(ns_a->namespace, ns_b->namespace);
+}
+
+/** Add a callback for a specific namespace
+ *
+ *  This allows modules to register unlang compilation functions for specific namespaces
+ */
+void virtual_server_namespace_register(char const *namespace, fr_virtual_server_compile_t func)
+{
+	rbtree_t		*vns_tree;
+	fr_virtual_namespace_t	*vns;
+
+	rad_assert(virtual_server_root);	/* Virtual server bootstrap must be called first */
+
+	MEM(vns = talloc_zero(NULL, fr_virtual_namespace_t));
+	vns->namespace = namespace;
+	vns->func = func;
+
+	vns_tree = cf_data_value(cf_data_find(virtual_server_root, rbtree_t, "vns_tree"));
+	if (!vns_tree) {
+		MEM(vns_tree = rbtree_create(virtual_server_root,
+					     _virtual_namespace_cmp, _virtual_namespace_free, RBTREE_FLAG_REPLACE));
+		cf_data_add(virtual_server_root, vns_tree, "vns_tree", true);
+	}
+
+	rbtree_insert(vns_tree, vns);
 }
 
 /*

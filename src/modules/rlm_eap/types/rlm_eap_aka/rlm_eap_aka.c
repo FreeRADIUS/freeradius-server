@@ -1184,6 +1184,9 @@ do { \
 	if (actions) _out = _tmp; \
 } while (0)
 
+/** Compile virtual server sections
+ *
+ */
 static int mod_section_compile(eap_aka_actions_t *actions, CONF_SECTION *server_cs)
 {
 	bool found = false;
@@ -1262,8 +1265,18 @@ static int mod_section_compile(eap_aka_actions_t *actions, CONF_SECTION *server_
 	return 0;
 }
 
+/** Compile any virtual servers with the "eap-aka" namespace
+ *
+ */
+static int mod_namespace_load(CONF_SECTION *server_cs)
+{
+	return mod_section_compile(NULL, server_cs);
+}
+
 static int mod_load(void)
 {
+	virtual_server_namespace_register("eap-aka", mod_namespace_load);
+
 	dict_aka_root = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_EAP_AKA_ROOT);
 	if (!dict_aka_root) {
 		ERROR("Missing EAP-AKA-Root attribute");
