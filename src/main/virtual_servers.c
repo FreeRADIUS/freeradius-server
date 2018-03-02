@@ -421,18 +421,23 @@ int virtual_servers_instantiate(void)
 		for (ci = cf_item_next(cs, NULL);
 		     ci != NULL;
 		     ci = cf_item_next(cs, ci)) {
-			char const *name;
-			CONF_SECTION *subcs;
+			char const	*name;
+			CONF_SECTION	*subcs;
 
 			if (!cf_item_is_section(ci)) continue;
-
 
 			subcs = cf_item_to_section(ci);
 			name = cf_section_name1(subcs);
 
-			if ((strcmp(name, "recv") != 0) &&
-			    (strcmp(name, "send") != 0)) continue;
+			/*
+			 *	Skip listen sections
+			 */
+			if (strcmp(name, "listen") == 0) continue;
 
+			/*
+			 *	For every other section, warn if it hasn't
+			 *	been compiled.
+			 */
 			if (!cf_data_find(subcs, unlang_group_t, NULL)) {
 				char const *name2;
 
