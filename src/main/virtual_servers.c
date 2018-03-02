@@ -96,7 +96,8 @@ static int listen_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER c
 static const CONF_PARSER server_config[] = {
 	{ FR_CONF_OFFSET("namespace", FR_TYPE_STRING, fr_virtual_server_t, namespace) },
 
-	{ FR_CONF_OFFSET("listen", FR_TYPE_SUBSECTION | FR_TYPE_MULTI, fr_virtual_server_t, listener), \
+	{ FR_CONF_OFFSET("listen", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING,
+			 fr_virtual_server_t, listener), \
 			 .subcs_size = sizeof(fr_virtual_listen_t), .subcs_type = "fr_virtual_listen_t",
 			 .func = listen_parse},
 
@@ -388,6 +389,12 @@ int virtual_servers_instantiate(void)
 
  		listener = virtual_servers[i]->listener;
  		listen_cnt = talloc_array_length(listener);
+
+		/*
+		 *	Not all virtual servers have listeners,
+		 *	some are just used to wrap unlang logic.
+		 */
+		if (listen_cnt == 0) continue;
 
 		DEBUG("Compiling policies in server %s { ... }", cf_section_name2(listener[0]->server_cs));
 
