@@ -70,12 +70,12 @@ static int default_component_results[MOD_COUNT] = {
 };
 
 typedef struct {
-	CONF_SECTION		*server_cs;	//!< what a hack...
 	dl_instance_t		*proto_module;	//!< The proto_* module for a listen section.
 	fr_app_t const		*app;		//!< Easy access to the exported struct.
 } fr_virtual_listen_t;
 
 typedef struct {
+	CONF_SECTION		*server_cs;	//!< The server section.
 	char const		*namespace;	//!< Protocol namespace
 	fr_virtual_listen_t	**listener;	//!< Listeners in this virtual server.
 } fr_virtual_server_t;
@@ -93,13 +93,15 @@ static fr_virtual_server_t **virtual_servers;
 static CONF_SECTION const *virtual_server_root;
 
 static int listen_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int server_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+
 static const CONF_PARSER server_config[] = {
 	{ FR_CONF_OFFSET("namespace", FR_TYPE_STRING, fr_virtual_server_t, namespace) },
 
 	{ FR_CONF_OFFSET("listen", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING,
 			 fr_virtual_server_t, listener), \
 			 .subcs_size = sizeof(fr_virtual_listen_t), .subcs_type = "fr_virtual_listen_t",
-			 .func = listen_parse},
+			 .func = listen_parse },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -107,14 +109,15 @@ static const CONF_PARSER server_config[] = {
 const CONF_PARSER virtual_servers_config[] = {
 	{ FR_CONF_POINTER("server", FR_TYPE_SUBSECTION | FR_TYPE_MULTI, &virtual_servers), \
 			  .subcs_size = sizeof(fr_virtual_server_t), .subcs_type = "fr_virtual_server_t",
-			  .subcs = (void const *) server_config, .ident2 = CF_IDENT_ANY},
+			  .subcs = (void const *) server_config, .ident2 = CF_IDENT_ANY,
+			  .func = server_parse },
 
 	CONF_PARSER_TERMINATOR
 };
 
 /** dl_open a proto_* module
  *
- * @param[in] ctx	to allocate data in (instance of proto_radius).
+ * @param[in] ctx	to allocate data in.
  * @param[out] out	Where to our listen configuration.  Is a #fr_virtual_listen_t structure.
  * @param[in] ci	#CONF_SECTION containing the listen section.
  * @param[in] rule	unused.
@@ -124,26 +127,50 @@ const CONF_PARSER virtual_servers_config[] = {
  */
 static int listen_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
-	fr_virtual_listen_t	*listen = out;	/* Pre-allocated for us */
+	fr_virtual_listen_t	*listen = talloc_get_type_abort(out, fr_virtual_listen_t); /* Pre-allocated for us */
 	CONF_SECTION		*listen_cs = cf_item_to_section(ci);
-	CONF_SECTION		*server = cf_item_to_section(cf_parent(ci));
-	CONF_PAIR		*namespace;
-
-	namespace = cf_pair_find(server, "namespace");
-	if (!namespace) {
-		cf_log_err(server, "virtual server %s MUST contain a 'namespace' option",
-			   cf_section_name2(server));
-		return -1;
-	}
+	CONF_SECTION		*server_cs = cf_item_to_section(cf_parent(ci));
+	CONF_PAIR		*namespace = cf_pair_find(server_cs, "namespace");
 
 	if (DEBUG_ENABLED4) cf_log_debug(ci, "Loading %s listener into %p", cf_pair_value(namespace), out);
-
-	listen->server_cs = server;
 
 	if (dl_instance(ctx, &listen->proto_module, listen_cs, NULL, cf_pair_value(namespace), DL_TYPE_PROTO) < 0) {
 		cf_log_err(listen_cs, "Failed loading proto module");
 		return -1;
 	}
+
+	return 0;
+}
+
+/** Callback to validate the server section
+ *
+ * @param[in] ctx	to allocate data in.
+ * @param[out] out	Where to our listen configuration.  Is a #fr_virtual_server_t structure.
+ * @param[in] ci	#CONF_SECTION containing the listen section.
+ * @param[in] rule	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int server_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+	fr_virtual_server_t	*server = talloc_get_type_abort(out, fr_virtual_server_t);
+	CONF_SECTION		*server_cs = cf_item_to_section(ci);
+	CONF_PAIR		*namespace;
+
+	namespace = cf_pair_find(server_cs, "namespace");
+	if (!namespace) {
+		cf_log_err(server_cs, "virtual server %s MUST contain a 'namespace' option",
+			   cf_section_name2(server_cs));
+		return -1;
+	}
+
+	server->server_cs = server_cs;
+
+	/*
+	 *	Now parse the listeners
+	 */
+	cf_section_parse(out, server, server_cs);
 
 	return 0;
 }
@@ -384,19 +411,19 @@ int virtual_servers_instantiate(void)
 	for (i = 0; i < server_cnt; i++) {
 		fr_virtual_listen_t	**listener;
 		size_t			j, listen_cnt;
-		CONF_ITEM		*ci;
-		CONF_SECTION		*cs;
+		CONF_ITEM		*ci = NULL;
+		CONF_SECTION		*server_cs = virtual_servers[i]->server_cs;
 
  		listener = virtual_servers[i]->listener;
  		listen_cnt = talloc_array_length(listener);
+
+		DEBUG("Compiling policies in server %s { ... }", cf_section_name2(server_cs));
 
 		/*
 		 *	Not all virtual servers have listeners,
 		 *	some are just used to wrap unlang logic.
 		 */
 		if (listen_cnt == 0) continue;
-
-		DEBUG("Compiling policies in server %s { ... }", cf_section_name2(listener[0]->server_cs));
 
 		for (j = 0; j < listen_cnt; j++) {
 			fr_virtual_listen_t *listen = listener[j];
@@ -408,7 +435,7 @@ int virtual_servers_instantiate(void)
 			if (listen->app->instantiate &&
 			    listen->app->instantiate(listen->proto_module->data, listen->proto_module->conf) < 0) {
 				cf_log_err(listen->proto_module->conf, "Could not load virtual server \"%s\".",
-					    cf_section_name2(listener[0]->server_cs));
+					    cf_section_name2(server_cs));
 				return -1;
 			}
 		}
@@ -417,10 +444,7 @@ int virtual_servers_instantiate(void)
 		 *	Print out warnings for unused "recv" and
 		 *	"send" sections.
 		 */
-		cs = listener[0]->server_cs;
-		for (ci = cf_item_next(cs, NULL);
-		     ci != NULL;
-		     ci = cf_item_next(cs, ci)) {
+		while ((ci = cf_item_next(server_cs, ci))) {
 			char const	*name;
 			CONF_SECTION	*subcs;
 
