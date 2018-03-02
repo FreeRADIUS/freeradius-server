@@ -686,11 +686,15 @@ static int _cf_section_free(CONF_SECTION *cs)
  *			If parent is not NULL, the new section will be added as a child.
  * @param[in] name1	Primary name.
  * @param[in] name2	Secondary name.
+ * @param[in] filename	Caller file name for debugging.  May be overridden later.
+ * @param[in] lineno	Caller line number for debugging.  May be overridden later.
  * @return
  *	- NULL on error.
  *	- A new #CONF_SECTION parented by parent.
  */
-CONF_SECTION *cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent, char const *name1, char const *name2)
+CONF_SECTION *_cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent,
+				char const *name1, char const *name2,
+				char const *filename, int lineno)
 {
 	CONF_SECTION *cs;
 	char buffer[1024];
@@ -730,6 +734,8 @@ CONF_SECTION *cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent, char const
 	talloc_set_destructor(cs, _cf_section_free);
 
 	if (parent) cs->depth = parent->depth + 1;
+	if (filename) cf_filename_set(cs, filename);
+	if (lineno) cf_lineno_set(cs, lineno);
 
 	return cs;
 }

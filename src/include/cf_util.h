@@ -120,7 +120,16 @@ void		_cf_lineno_set(CONF_ITEM *cs, int lineno);
 /*
  *	Section manipulation and searching
  */
-CONF_SECTION	*cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent, char const *name1, char const *name2);
+#ifndef NDEBUG
+#  define	cf_section_alloc(_ctx, _parent, _name1, _name2) \
+			_cf_section_alloc(_ctx, _parent, _name1, _name2, __FILE__, __LINE__)
+#else
+#  define	cf_section_alloc(_ctx, _parent, _name1, _name2) \
+			_cf_section_alloc(_ctx, _parent, _name1, _name2, NULL, 0)
+#endif
+CONF_SECTION	*_cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent,
+				   char const *name1, char const *name2,
+				   char const *filename, int lineno);
 CONF_SECTION	*cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION const *cs,
 				char const *name1, char const *name2, bool copy_meta);
 void		cf_section_add(CONF_SECTION *parent, CONF_SECTION *cs);
