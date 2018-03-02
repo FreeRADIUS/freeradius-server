@@ -1173,6 +1173,95 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 	return RLM_MODULE_HANDLED;
 }
 
+#define ACTION_SECTION(_out, _verb, _name) \
+do { \
+	CONF_SECTION *_tmp; \
+	_tmp = cf_section_find(server_cs, _verb, _name); \
+	if (_tmp) { \
+		if (unlang_compile(_tmp, MOD_AUTHORIZE) < 0) return -1; \
+		found = true; \
+	} \
+	if (actions) _out = _tmp; \
+} while (0)
+
+static int mod_section_compile(eap_aka_actions_t *actions, CONF_SECTION *server_cs)
+{
+	bool found = false;
+
+	if (!fr_cond_assert(server_cs)) return -1;
+
+	/*
+	 *	Initial Identity-Response
+	 *
+	 *	We then either:
+	 *	- Request a new identity
+	 *	- Start full authentication
+	 *	- Start fast re-authentication
+	 *	- Fail...
+	 */
+	ACTION_SECTION(actions->recv_eap_identity_response, "recv", "EAP-Identity-Response");
+
+	/*
+	 *	Identity negotiation
+	 */
+	ACTION_SECTION(actions->send_identity_request, "send", "Identity-Request");
+	ACTION_SECTION(actions->recv_identity_response, "recv", "Identity-Response");
+
+	/*
+	 *	Full-Authentication
+	 */
+	ACTION_SECTION(actions->send_challenge_request, "send", "Challenge-Request");
+	ACTION_SECTION(actions->recv_challenge_response, "recv", "Challenge-Response");
+
+	/*
+	 *	Fast-Re-Authentication
+	 */
+	ACTION_SECTION(actions->send_fast_reauth_request, "send", "Fast-Reauth-Request");
+	ACTION_SECTION(actions->recv_fast_reauth_response, "recv", "Fast-Reauth-Response");
+
+	/*
+	 *	Failures originating from the supplicant
+	 */
+	ACTION_SECTION(actions->recv_client_error, "recv", "Client-Error");
+	ACTION_SECTION(actions->recv_authentication_reject, "recv", "Authentication-Reject");
+	ACTION_SECTION(actions->recv_syncronization_failure, "recv", "Syncronization-Failure");
+
+	/*
+	 *	Failure originating from the server
+	 */
+	ACTION_SECTION(actions->send_failure_notification, "send", "Failure-Notification");
+	ACTION_SECTION(actions->recv_failure_notification_ack, "recv", "Failure-Notification-ACK");
+
+	/*
+	 *	Protected success indication
+	 */
+	ACTION_SECTION(actions->send_success_notification, "send", "Success-Notification");
+	ACTION_SECTION(actions->recv_success_notification_ack, "recv", "Success-Notification-ACK");
+
+	/*
+	 *	Final EAP-Success and EAP-Failure messages
+	 */
+	ACTION_SECTION(actions->send_eap_success, "send", "EAP-Success");
+	ACTION_SECTION(actions->send_eap_failure, "send", "EAP-Failure");
+
+	/*
+	 *	Fast-Reauth vectors
+	 */
+	ACTION_SECTION(actions->load_session, "load", "session");
+	ACTION_SECTION(actions->store_session, "store", "session");
+	ACTION_SECTION(actions->clear_session, "clear", "session");
+
+	/*
+	 *	Warn if we couldn't find any actions.
+	 */
+	if (!found) {
+		cf_log_warn(server_cs, "No ocsp-state cache actions found in virtual server \"%s\"",
+			    cf_section_name2(server_cs));
+	}
+
+	return 0;
+}
+
 static int mod_load(void)
 {
 	dict_aka_root = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_EAP_AKA_ROOT);

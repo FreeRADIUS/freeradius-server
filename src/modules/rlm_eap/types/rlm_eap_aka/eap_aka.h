@@ -61,14 +61,15 @@ typedef struct {
 
 	CONF_SECTION			*send_identity_request;		//!< Called when we're about to request a
 									///< different identity.
+	CONF_SECTION			*recv_identity_response;	//!< Called when we receive a new identity.
+
 	CONF_SECTION			*send_challenge_request;	//!< Called when we're about to send a
 									///< a challenge.
-	CONF_SECTION			*send_fast_reauth_request;	//!< Called when we're about to send a
-									///< Fast-Reauth-Request.
-
-	CONF_SECTION			*recv_identity_response;	//!< Called when we receive a new identity.
 	CONF_SECTION			*recv_challenge_response;	//!< Called when we receive a response
 									///< to a previous challenge.
+
+	CONF_SECTION			*send_fast_reauth_request;	//!< Called when we're about to send a
+									///< Fast-Reauth-Request.
 	CONF_SECTION			*recv_fast_reauth_response;	//!< Called when we receive a response
 									///< to a previous Fast-Reauth-Request.
 
@@ -95,7 +96,7 @@ typedef struct {
 	CONF_SECTION			*load_session;			//!< Load cached authentication vectors.
 	CONF_SECTION			*store_session;			//!< Store authentication vectors.
 	CONF_SECTION			*clear_session;			//!< Clear authentication vectors.
-} eap_aka_sections_t;
+} eap_aka_actions_t;
 
 typedef struct {
 	eap_aka_server_state_t		state;				//!< Current session state.
@@ -142,4 +143,6 @@ typedef struct {
 									///< the subscriber.
 	char const			*virtual_server;		//!< Virtual server for HLR integration.
 	bool				protected_success;
+
+	eap_aka_actions_t		actions;			//!< Pre-compiled virtual server sections.
 } rlm_eap_aka_t;
