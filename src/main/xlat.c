@@ -68,11 +68,6 @@ struct xlat_exp {
 	xlat_t const *xlat;	//!< The xlat expansion to expand format with.
 };
 
-typedef struct xlat_out {
-	char const *out;	//!< Output data.
-	size_t len;		//!< Length of the output string.
-} xlat_out_t;
-
 static rbtree_t *xlat_root = NULL;
 
 #ifdef WITH_UNLANG
