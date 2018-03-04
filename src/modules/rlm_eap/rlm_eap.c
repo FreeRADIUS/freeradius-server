@@ -472,7 +472,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		 *	vp->vp_strvalue is still a NUL-terminated C
 		 *	string.
 		 */
-		if (inst->mod_accounting_username_bug) {
+		if (vp && inst->mod_accounting_username_bug) {
 			char const *old = vp->vp_strvalue;
 			char *new;
 
