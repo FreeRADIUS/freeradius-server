@@ -878,7 +878,18 @@ nak:
 		REQUEST *old;
 
 		old = rbtree_finddata(worker->dedup, request);
-		if (!old) goto insert_new;
+		if (!old) {
+			/*
+			 *	Ignore duplicate packets where we've
+			 *	already sent the reply.
+			 */
+			if (cd->request.is_dup) {
+				DEBUG("Got duplicate packet notice after we had sent a reply - ignoring");
+				fr_channel_null_reply(request->async->channel);
+				return NULL;
+			}
+			goto insert_new;
+		}
 
 		rad_assert(old->async->listen == request->async->listen);
 		rad_assert(old->async->channel == request->async->channel);

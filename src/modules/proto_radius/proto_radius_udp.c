@@ -933,7 +933,7 @@ check_dynamic:
 }
 
 
-static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority)
+static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority, bool *is_dup)
 {
 	proto_radius_udp_t		*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
 
@@ -947,6 +947,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	proto_radius_udp_address_t	address;
 
 	*leftover = 0;		/* always for UDP */
+	*is_dup = false;
 	track = NULL;
 
 	/*
@@ -1221,18 +1222,16 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 			 *	updating the "packet recv time" to be when the
 			 *	original packet was received.
 			 *
-			 *	@todo - we still have ordering issues!  The
-			 *	original packet MAY be done before this packet
-			 *	gets to the worker.  So the this packet ALSO
-			 *	needs to be marked up as "dup".  So that the
-			 *	worker just sends a new reply if it's
-			 *	available?  Instead of re-processing this
-			 *	packet... at which point we find that what we
-			 *	think is a new packet isn't really, and we
-			 *	already have track->reply... so we've done
-			 *	unnecessary (possibly wrong) work.
+			 *	We still have ordering issue.  The
+			 *	original packet MAY be done before
+			 *	this packet gets to the worker.  So
+			 *	the this packet is ALSO marked up as
+			 *	"dup".  The worker will then ignore
+			 *	the duplicate packet if it's already
+			 *	sent a reply.
 			 */
 			packet_time = track->timestamp;
+			*is_dup = true;
 			break;
 
 			/*

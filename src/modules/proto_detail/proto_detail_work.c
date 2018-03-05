@@ -119,7 +119,7 @@ static fr_event_update_t resume_read[] = {
 	{ 0 }
 };
 
-static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority)
+static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority, bool *is_dup)
 {
 	proto_detail_work_t		*inst = talloc_get_type_abort(instance, proto_detail_work_t);
 
@@ -133,6 +133,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 
 	rad_assert(*leftover < buffer_len);
 	rad_assert(inst->fd >= 0);
+	*is_dup = false;
 
 	/*
 	 *	Process retransmissions before anything else in the
