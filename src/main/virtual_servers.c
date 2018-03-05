@@ -619,9 +619,18 @@ void virtual_server_namespace_register(char const *namespace, fr_virtual_server_
 
 	vns_tree = cf_data_value(cf_data_find(virtual_server_root, rbtree_t, "vns_tree"));
 	if (!vns_tree) {
-		MEM(vns_tree = rbtree_create(virtual_server_root,
+		/*
+		 *	Tree will be freed when the cf_data is freed
+		 *	so it shouldn't be parented from
+		 *	virtual_server_root.
+		 */
+		MEM(vns_tree = rbtree_create(NULL,
 					     _virtual_namespace_cmp, _virtual_namespace_free, RBTREE_FLAG_REPLACE));
-		cf_data_add(virtual_server_root, vns_tree, "vns_tree", true);
+
+		if (!cf_data_add(virtual_server_root, vns_tree, "vns_tree", true)) {
+			talloc_free(vns_tree);
+			return;
+		}
 	}
 
 	rbtree_insert(vns_tree, vns);
