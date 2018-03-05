@@ -4209,7 +4209,11 @@ fr_dict_enum_t *fr_dict_enum_by_value(fr_dict_t *dict, fr_dict_attr_t const *da,
 
 	INTERNAL_IF_NULL(dict);
 
-	if (!fr_cond_assert(value->type == da->type)) return NULL;
+	/*
+	 *	Could be NULL or an unknown attribute, in which case
+	 *	we want to avoid the lookup gracefully...
+	 */
+	if (value->type != da->type) return NULL;
 
 	/*
 	 *	First, look up aliases.
