@@ -620,6 +620,12 @@ ATTRIBUTE	Tmp-Signed-7				1867	signed
 ATTRIBUTE	Tmp-Signed-8				1868	signed
 ATTRIBUTE	Tmp-Signed-9				1869	signed
 
+ATTRIBUTE	Tmp-Ethernet-0				1870	ether
+ATTRIBUTE	Tmp-Ethernet-1				1871	ether
+ATTRIBUTE	Tmp-Ethernet-2				1872	ether
+ATTRIBUTE	Tmp-Ethernet-3				1873	ether
+ATTRIBUTE	Tmp-Ethernet-4				1874	ether
+
 # 1870 - 1890, unused
 
 #
@@ -628,9 +634,9 @@ ATTRIBUTE	Tmp-Signed-9				1869	signed
 ATTRIBUTE	Tmp-String-Tagged-0			1891	string has_tag
 ATTRIBUTE	Tmp-String-Tagged-1			1892	string has_tag
 
-ATTRIBUTE	Log-Message				1893	string
-ATTRIBUTE	Log-Level				1894	integer
-ATTRIBUTE	Log-Type				1895	integer
+ATTRIBUTE	Log-Message				1894	string
+ATTRIBUTE	Log-Level				1895	integer
+ATTRIBUTE	Log-Type				1896	integer
 
 #	Range:	1900-1909
 #	WiMAX server-side attributes.

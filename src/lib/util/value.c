@@ -1649,7 +1649,10 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 	}
 
 	default:
-		break;
+		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
+				   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
+				   fr_int2str(dict_attr_types, dst_type, "<INVALID>"));
+		return -1;
 	}
 
 	dst->vb_ip.af = AF_INET;
@@ -1835,11 +1838,54 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
 		break;
 
 	default:
-		break;
+		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
+				   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
+				   fr_int2str(dict_attr_types, dst_type, "<INVALID>"));
+		return -1;
 	}
 
 	dst->vb_ip.af = AF_INET6;
 	dst->type = FR_TYPE_IPV6_PREFIX;
+	dst->enumv = dst_enumv;
+
+	return 0;
+}
+
+/** Convert any supported type to a bool
+ *
+ * Allowed input types are:
+ * - FR_TYPE_STRING ("00:11:22:33:44:55")
+ * - FR_TYPE_OCTETS (0x001122334455)
+ *
+ *
+ * @param ctx		unused.
+ * @param dst		Where to write result of casting.
+ * @param dst_type	to cast to.
+ * @param dst_enumv	enumeration values.
+ * @param src		Input data.
+ */
+static inline int fr_value_box_cast_to_ethernet(TALLOC_CTX *ctx, fr_value_box_t *dst,
+						fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
+						fr_value_box_t const *src)
+{
+	switch (src->type) {
+	case FR_TYPE_STRING:
+		if (fr_value_box_from_str(ctx, dst, &dst_type, dst_enumv,
+				          src->vb_strvalue, src->datum.length, '\0', false) < 0) return -1;
+		break;
+
+	case FR_TYPE_OCTETS:
+		if (fr_value_box_fixed_size_from_ocets(dst, dst_type, dst_enumv, src) < 0) return -1;
+		break;
+
+	default:
+		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
+				   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
+				   fr_int2str(dict_attr_types, dst_type, "<INVALID>"));
+		return -1;
+	}
+
+	dst->type = FR_TYPE_ETHERNET;
 	dst->enumv = dst_enumv;
 
 	return 0;
@@ -1866,9 +1912,11 @@ static inline int fr_value_box_cast_to_bool(TALLOC_CTX *ctx, fr_value_box_t *dst
 				          src->vb_strvalue, src->datum.length, '\0', false) < 0) return -1;
 		break;
 
-
 	default:
-		break;
+		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
+				   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
+				   fr_int2str(dict_attr_types, dst_type, "<INVALID>"));
+		return -1;
 	}
 
 	dst->type = FR_TYPE_BOOL;
@@ -1905,9 +1953,15 @@ static inline int fr_value_box_cast_to_uint8(TALLOC_CTX *ctx, fr_value_box_t *ds
 				          src->vb_strvalue, src->datum.length, '\0', false) < 0) return -1;
 		break;
 
-	default:
+	case FR_TYPE_OCTETS:
 		if (fr_value_box_fixed_size_from_ocets(dst, dst_type, dst_enumv, src) < 0) return -1;
 		break;
+
+	default:
+		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
+				   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
+				   fr_int2str(dict_attr_types, dst_type, "<INVALID>"));
+		return -1;
 	}
 
 	dst->type = FR_TYPE_UINT8;
@@ -1957,9 +2011,15 @@ static inline int fr_value_box_cast_to_uint16(TALLOC_CTX *ctx, fr_value_box_t *d
 				          src->vb_strvalue, src->datum.length, '\0', false) < 0) return -1;
 		break;
 
-	default:
+	case FR_TYPE_OCTETS:
 		if (fr_value_box_fixed_size_from_ocets(dst, dst_type, dst_enumv, src) < 0) return -1;
 		break;
+
+	default:
+		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
+				   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
+				   fr_int2str(dict_attr_types, dst_type, "<INVALID>"));
+		return -1;
 	}
 
 	dst->type = FR_TYPE_UINT16;
@@ -2027,9 +2087,15 @@ static inline int fr_value_box_cast_to_uint32(TALLOC_CTX *ctx, fr_value_box_t *d
 				          src->vb_strvalue, src->datum.length, '\0', false) < 0) return -1;
 		break;
 
-	default:
+	case FR_TYPE_OCTETS:
 		if (fr_value_box_fixed_size_from_ocets(dst, dst_type, dst_enumv, src) < 0) return -1;
 		break;
+
+	default:
+		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
+				   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
+				   fr_int2str(dict_attr_types, dst_type, "<INVALID>"));
+		return -1;
 	}
 
 	dst->type = FR_TYPE_UINT32;
@@ -2111,9 +2177,15 @@ static inline int fr_value_box_cast_to_uint64(TALLOC_CTX *ctx, fr_value_box_t *d
 				          src->vb_strvalue, src->datum.length, '\0', false) < 0) return -1;
 		break;
 
-	default:
+	case FR_TYPE_OCTETS:
 		if (fr_value_box_fixed_size_from_ocets(dst, dst_type, dst_enumv, src) < 0) return -1;
 		break;
+
+	default:
+		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
+				   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
+				   fr_int2str(dict_attr_types, dst_type, "<INVALID>"));
+		return -1;
 	}
 
 	dst->type = FR_TYPE_UINT64;
@@ -2191,7 +2263,11 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	case FR_TYPE_IFID:
 	case FR_TYPE_COMBO_IP_ADDR:
 	case FR_TYPE_COMBO_IP_PREFIX:
+		break;
+
 	case FR_TYPE_ETHERNET:
+		return fr_value_box_cast_to_ethernet(ctx, dst, dst_type, dst_enumv, src);
+
 	case FR_TYPE_BOOL:
 		return fr_value_box_cast_to_bool(ctx, dst, dst_type, dst_enumv, src);
 
