@@ -1,17 +1,15 @@
 ARG from=ubuntu:16.04
 FROM ${from}
 
+ARG source=https://github.com/FreeRADIUS/freeradius-server.git
 ARG release=v3.0.x
-ARG gccver=6
-ARG clangver=5.0
-ARG osname=trusty
 
 
 #
 #  Install build deps
 #
 RUN apt-get update && \
-    apt-get install -y devscripts equivs git quilt gcc-${gccver}
+    apt-get install -y devscripts equivs git quilt gcc
 
 
 #
@@ -24,7 +22,6 @@ WORKDIR /usr/local/src/repositories
 #
 #  Shallow clone the FreeRADIUS source
 #
-ARG source=https://github.com/FreeRADIUS/freeradius-server.git
 RUN git clone --depth 1 --single-branch --branch ${release} ${source}
 WORKDIR freeradius-server
 
