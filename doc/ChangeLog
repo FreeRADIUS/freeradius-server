@@ -4,6 +4,7 @@ FreeRADIUS 3.0.17 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	  #2167
 	* "stats home server" now supports "src IPADDR",
 	  to specify home server also by source IP.  FIxes #2169.
+	* Add Dockerfiles for a selection of common systems.
 
 	Bug fixes
 	* Don't call post-proxy twice when proxying to
