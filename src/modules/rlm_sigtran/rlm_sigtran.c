@@ -62,8 +62,6 @@ static uint32_t	sigtran_instances = 0;
 
 unsigned int __hack_opc, __hack_dpc;
 
-fr_thread_local_setup(int *, req_pipe);
-
 static const FR_NAME_NUMBER m3ua_traffic_mode_table[] = {
 	{ "override",  1 },
 	{ "loadshare", 2 },
@@ -156,43 +154,12 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-/** Signal the multiplexer that this thread is exiting
- *
- */
-static void _req_pipe_unregister(void *fd_ptr)
-{
-	int fd = *talloc_get_type_abort(fd_ptr, int);
-
-	sigtran_client_thread_unregister(fd);	/* Also closes our side */
-}
-
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, void *thread, REQUEST *request)
 {
 	rlm_sigtran_t const	*inst = instance;
-	int			*fd_ptr, fd;
 
-	/*
-	 *	Retrieve the thread specific pipe we use
-	 *	to communicate with the multiplexer.
-	 */
-	fd_ptr = req_pipe;
-	if (!fd_ptr) {
-		fd_ptr = talloc(NULL, int);
-		fd = sigtran_client_thread_register();
-		if (fd < 0) {
-			RERROR("Failed registering thread with multiplexer");
-			talloc_free(fd_ptr);
-			return RLM_MODULE_FAIL;
-		}
-		*fd_ptr = fd;
-		fr_thread_local_set_destructor(req_pipe, _req_pipe_unregister, fd_ptr);
-	} else {
-		fd = *fd_ptr;
-	}
-
-	return sigtran_client_map_send_auth_info(inst, request, inst->conn, fd);
+	return sigtran_client_map_send_auth_info(inst, request, inst->conn, *(int *)thread);
 }
-
 
 /** Convert our sccp address config structure into sockaddr_sccp
  *
@@ -300,6 +267,30 @@ static int sigtran_sccp_sockaddr_from_conf(TALLOC_CTX *ctx, rlm_sigtran_t *inst,
 	return 0;
 }
 
+static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, UNUSED void *instance,
+				  fr_event_list_t *el, void *thread)
+{
+	rlm_sigtran_t	*inst = instance;
+	int		fd;
+
+	fd = sigtran_client_thread_register(el);
+	if (fd < 0) {
+		ERROR("Failed registering thread with multiplexer");
+		return -1;
+	}
+
+	*((int *)thread) = fd;
+
+	return 0;
+}
+
+static int mod_thread_detach(fr_event_list_t *el, UNUSED void *thread)
+{
+	sigtran_client_thread_unregister(el, *(int *)thread);	/* Also closes our side */
+
+	return 0;
+}
+
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_sigtran_t *inst = instance;
@@ -384,13 +375,16 @@ static int mod_detach(UNUSED void *instance)
  */
 extern rad_module_t rlm_sigtran;
 rad_module_t rlm_sigtran = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "sigtran",
-	.type		= RLM_TYPE_THREAD_SAFE,
-	.inst_size	= sizeof(rlm_sigtran_t),
-	.config		= module_config,
-	.instantiate	= mod_instantiate,
-	.detach		= mod_detach,
+	.magic			= RLM_MODULE_INIT,
+	.name			= "sigtran",
+	.type			= RLM_TYPE_THREAD_SAFE | RLM_TYPE_RESUMABLE,
+	.inst_size		= sizeof(rlm_sigtran_t),
+	.thread_inst_size	= sizeof(int),
+	.config			= module_config,
+	.instantiate		= mod_instantiate,
+	.detach			= mod_detach,
+	.thread_instantiate	= mod_thread_instantiate,
+	.thread_detach		= mod_thread_detach,
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 	}

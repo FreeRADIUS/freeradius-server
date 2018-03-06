@@ -84,12 +84,15 @@ typedef struct sigtran_transaction {
 
 	struct {
 		REQUEST			*request;
-		struct osmo_fd		*ofd;		//!< The FD the txn was received on.
-		struct osmo_timer_list	timer;		//!< Timer data.
+		struct osmo_fd		*ofd;				//!< The FD the txn was received on.
+		struct osmo_timer_list	timer;				//!< Timer data.
 
 
-		uint32_t		otid;		//!< Transaction ID.
-		uint8_t			invoke_id;	//!< Sequence number (within transaction).
+		uint32_t		otid;				//!< Transaction ID.
+		uint8_t			invoke_id;			//!< Sequence number (within transaction).
+
+		bool			defunct;			//!< Response should be deleted and not
+									///< processed.
 	} ctx;
 } sigtran_transaction_t;
 
@@ -242,15 +245,15 @@ extern uint8_t const is_char_tbcd[];
  */
 int	sigtran_client_do_transaction(int fd, sigtran_transaction_t *txn);
 
-int	sigtran_client_thread_register(void);
+int	sigtran_client_thread_register(fr_event_list_t *el);
 
-int	sigtran_client_thread_unregister(int req_pipe_fd);
+int	sigtran_client_thread_unregister(fr_event_list_t *el, int req_pipe_fd);
 
 int	sigtran_client_link_up(sigtran_conn_t const **out, sigtran_conn_conf_t const *conf);
 
 int	sigtran_client_link_down(sigtran_conn_t const **conn);
 
-rlm_rcode_t sigtran_client_map_send_auth_info(rlm_sigtran_t *inst, REQUEST *request,
+rlm_rcode_t sigtran_client_map_send_auth_info(rlm_sigtran_t const *inst, REQUEST *request,
 					      sigtran_conn_t const *conn, int fd);
 
 /*

@@ -134,13 +134,13 @@ static int _mtp3_link_free(struct mtp_link *mtp3_link)
 /** Add a route to an m3ua_association
  *
  */
-static int sigtran_m3ua_route_from_conf(TALLOC_CTX *ctx,
+static int sigtran_m3ua_route_from_conf(UNUSED TALLOC_CTX *ctx,
 					struct mtp_m3ua_client_link *client,
 					sigtran_m3ua_route_t *conf)
 {
 	struct mtp_m3ua_reg_req *route;
 
-	size_t len, i;
+	size_t i;
 
 	route = mtp_m3ua_reg_req_add(client);
 	if (!route) return -1;
@@ -334,7 +334,7 @@ static int event_request_handle(struct osmo_fd *ofd, unsigned int what)
 	sigtran_transaction_t	*txn;
 
 	void			*ptr;
-	size_t			len;
+	ssize_t			len;
 
 	if (what & BSC_FD_EXCEPT) {
 		ERROR("pipe (%i) closed by server, eventer thread exiting", ofd->fd);

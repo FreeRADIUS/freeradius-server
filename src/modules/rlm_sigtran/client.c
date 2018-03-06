@@ -28,6 +28,8 @@
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/eap.aka.h>
 #include <freeradius-devel/eap.sim.h>
+#include <freeradius-devel/unlang.h>
+#include <freeradius-devel/modules.h>
 #include "sigtran.h"
 
 static pthread_mutex_t ctrl_pipe_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -88,13 +90,55 @@ static int sigtran_client_do_ctrl_transaction(sigtran_transaction_t *txn)
 	return ret;
 }
 
+/** This should never happen
+ *
+ */
+static void _sigtran_pipe_error(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, int fd_errno, UNUSED void *uctx)
+{
+	ERROR("ctrl_pipe (%i) read failed : %s", fd, fr_syserror(fd_errno));
+	rad_assert(0);
+}
+
+/** Drain any data we received
+ *
+ * We don't care about this data, we just don't want the kernel to
+ * signal the other side that our read buffer's full.
+ */
+static void _sigtran_pipe_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, UNUSED void *uctx)
+{
+	ssize_t			len;
+	void			*ptr;
+	sigtran_transaction_t	*txn;
+
+	len = read(fd, &ptr, sizeof(ptr));
+	if (len < 0) {
+		ERROR("ctrl_pipe (%i) read failed : %s", fd, fr_syserror(errno));
+		return;
+	}
+
+	if (len != sizeof(ptr)) {
+		ERROR("ctrl_pipe (%i) data too short, expected %zu bytes, got %zi bytes",
+		      fd, sizeof(ptr), len);
+		return;
+	}
+
+	/*
+	 *	Check talloc header is still OK
+	 */
+	txn = talloc_get_type_abort(ptr, sigtran_transaction_t);
+	if (txn->ctx.defunct) return;		/* Request was stopped */
+
+	rad_assert(txn->ctx.request);
+	unlang_resumable(txn->ctx.request);	/* Continue processing */
+}
+
 /** Called by a new thread to register a new req_pipe
  *
  * @return
  *	- The client side of the req_pipe on success.
  *	- -1 on error.
  */
-int sigtran_client_thread_register(void)
+int sigtran_client_thread_register(fr_event_list_t *el)
 {
 	int			req_pipe[2] = { -1, -1 };
 	sigtran_transaction_t	*txn;
@@ -116,7 +160,7 @@ int sigtran_client_thread_register(void)
 
 	if ((sigtran_client_do_ctrl_transaction(txn) < 0) || (txn->response.type != SIGTRAN_RESPONSE_OK)) {
 		ERROR("Failed registering thread");
-
+	error:
 		close(req_pipe[0]);
 		close(req_pipe[1]);
 		talloc_free(txn);
@@ -124,14 +168,25 @@ int sigtran_client_thread_register(void)
 	}
 	talloc_free(txn);
 
+	/*
+	 *	Read data coming back on the pipe,
+	 *	and resume requests which are
+	 *	waiting.
+	 */
+	if (fr_event_fd_insert(NULL, el, req_pipe[0], _sigtran_pipe_read, NULL, _sigtran_pipe_error, NULL) < 0) {
+		ERROR("Failed listening on osmocom pipe");
+		goto error;
+	}
+
 	return req_pipe[0];
 }
 
 /** Signal that libosmo should unregister the other side of the pipe
  *
- * @param req_pipe_fd The rlm_sigtran side of the req_pipe.
+ * @param[in] el		the request pipe was registered to.
+ * @param[in] req_pipe_fd	The rlm_sigtran side of the req_pipe.
  */
-int sigtran_client_thread_unregister(int req_pipe_fd)
+int sigtran_client_thread_unregister(fr_event_list_t *el, int req_pipe_fd)
 {
 	sigtran_transaction_t	*txn;
 
@@ -144,6 +199,8 @@ int sigtran_client_thread_unregister(int req_pipe_fd)
 		return -1;
 	}
 	talloc_free(txn);
+
+	fr_event_fd_delete(el, req_pipe_fd, EVFILT_READ);
 	close(req_pipe_fd);
 
 	return 0;
@@ -198,73 +255,19 @@ int sigtran_client_link_down(sigtran_conn_t const **conn)
 	return 0;
 }
 
-/** Create a MAP_SEND_AUTH_INFO request
- *
- * @param inst		of rlm_sigtran.
- * @param request	The current request.
- * @param conn		current connection.
- * @param fd		file descriptor on which the transaction is done
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-rlm_rcode_t sigtran_client_map_send_auth_info(rlm_sigtran_t *inst, REQUEST *request,
-					      sigtran_conn_t const *conn, int fd)
+static void sigtran_client_signal(UNUSED REQUEST *request, UNUSED void *instance,
+				  UNUSED void *thread, void *rctx, UNUSED fr_state_signal_t action)
 {
+	sigtran_transaction_t	*txn = talloc_get_type_abort(rctx, sigtran_transaction_t);
+
+	txn->ctx.defunct = true;	/* Mark the transaction up as needing to be freed */
+}
+
+static rlm_rcode_t sigtran_client_map_resume(REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *rctx)
+{
+	sigtran_transaction_t			*txn = talloc_get_type_abort(rctx, sigtran_transaction_t);
 	rlm_rcode_t				rcode;
-	sigtran_transaction_t			*txn;
-	sigtran_map_send_auth_info_req_t	*req;
-	char					*imsi;
-	size_t					len;
-
-	rad_assert((fd != ctrl_pipe[0]) && (fd != ctrl_pipe[1]));
-
-	txn = talloc_zero(NULL, sigtran_transaction_t);
-	txn->request.type = SIGTRAN_REQUEST_MAP_SEND_AUTH_INFO;
-
-	req = talloc(txn, sigtran_map_send_auth_info_req_t);
-	req->conn = conn;
-
-	if (tmpl_aexpand(request, &req->version, request, inst->conn_conf.map_version, NULL, NULL) < 0) {
-		ERROR("Failed retrieving version");
-	error:
-		talloc_free(txn);
-		return RLM_MODULE_FAIL;
-	}
-
-	switch (req->version) {
-	case 2:
-	case 3:
-		break;
-
-	default:
-		ERROR("%i is not a valid version", req->version);
-		goto error;
-	}
-
-	txn->request.data = req;
-	txn->ctx.request = request;
-
-	if (tmpl_aexpand(req, &imsi, request, inst->imsi, NULL, NULL) < 0) {
-		ERROR("Failed retrieving IMSI");
-		goto error;
-	}
-
-	len = talloc_array_length(imsi) - 1;
-	if ((len != 16) && (len != 15)) {
-		ERROR("IMSI must be 15 or 16 digits got %zu digits", len);
-		goto error;
-	}
-
-	if (sigtran_ascii_to_tbcd(req, &req->imsi, imsi) < 0) {
-		ERROR("Failed converting ASCII to BCD");
-		goto error;
-	}
-
-	if (sigtran_client_do_transaction(fd, txn) < 0) {
-		ERROR("Failed sending MAP_SEND_AUTH_INFO request");
-		goto error;
-	}
+	rad_assert(request == txn->ctx.request);
 
 	/*
 	 *	Process response
@@ -293,7 +296,9 @@ rlm_rcode_t sigtran_client_map_send_auth_info(rlm_sigtran_t *inst, REQUEST *requ
 				root = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_EAP_SIM_ROOT);
 				if (!root) {
 					REDEBUG("Can't find dict root for EAP-SIM");
-					goto error;
+				error:
+					talloc_free(txn);
+					return RLM_MODULE_FAIL;
 				}
 
 				RDEBUG2("SIM auth vector %i", i);
@@ -390,4 +395,77 @@ rlm_rcode_t sigtran_client_map_send_auth_info(rlm_sigtran_t *inst, REQUEST *requ
 	talloc_free(txn);
 
 	return rcode;
+}
+
+/** Create a MAP_SEND_AUTH_INFO request
+ *
+ * @param inst		of rlm_sigtran.
+ * @param request	The current request.
+ * @param conn		current connection.
+ * @param fd		file descriptor on which the transaction is done
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+rlm_rcode_t sigtran_client_map_send_auth_info(rlm_sigtran_t const *inst, REQUEST *request,
+					      sigtran_conn_t const *conn, int fd)
+{
+	sigtran_transaction_t			*txn;
+	sigtran_map_send_auth_info_req_t	*req;
+	char					*imsi;
+	size_t					len;
+
+	rad_assert((fd != ctrl_pipe[0]) && (fd != ctrl_pipe[1]));
+
+	txn = talloc_zero(NULL, sigtran_transaction_t);
+	txn->request.type = SIGTRAN_REQUEST_MAP_SEND_AUTH_INFO;
+
+	req = talloc(txn, sigtran_map_send_auth_info_req_t);
+	req->conn = conn;
+
+	if (tmpl_aexpand(request, &req->version, request, inst->conn_conf.map_version, NULL, NULL) < 0) {
+		ERROR("Failed retrieving version");
+	error:
+		talloc_free(txn);
+		return RLM_MODULE_FAIL;
+	}
+
+	switch (req->version) {
+	case 2:
+	case 3:
+		break;
+
+	default:
+		ERROR("%i is not a valid version", req->version);
+		goto error;
+	}
+
+	txn->request.data = req;
+	txn->ctx.request = request;
+
+	if (tmpl_aexpand(req, &imsi, request, inst->imsi, NULL, NULL) < 0) {
+		ERROR("Failed retrieving IMSI");
+		goto error;
+	}
+
+	len = talloc_array_length(imsi) - 1;
+	if ((len != 16) && (len != 15)) {
+		ERROR("IMSI must be 15 or 16 digits got %zu digits", len);
+		goto error;
+	}
+
+	if (sigtran_ascii_to_tbcd(req, &req->imsi, imsi) < 0) {
+		ERROR("Failed converting ASCII to BCD");
+		goto error;
+	}
+
+	/*
+	 *	FIXME - We shouldn't assume the pipe is always writable
+	 */
+	if (write(fd, &txn, sizeof(txn)) < 0) {
+		ERROR("ctrl_pipe (%i) write failed: %s", fd, fr_syserror(errno));
+		goto error;
+	}
+
+	return unlang_module_yield(request, sigtran_client_map_resume, sigtran_client_signal, txn);
 }
