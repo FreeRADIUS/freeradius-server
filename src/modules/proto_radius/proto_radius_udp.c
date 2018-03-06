@@ -427,7 +427,7 @@ redo:
 	 */
 	if (saved->timestamp != saved->track->timestamp) {
 	drop_packet:
-		(void) fr_radius_tracking_entry_delete(inst->ft, saved->track, saved->timestamp);
+		(void) fr_radius_tracking_entry_delete(saved->track->ft, saved->track, saved->timestamp);
 		((proto_radius_udp_address_t *)saved->track->src_dst)->client->received--;
 		talloc_free(saved);
 		goto redo;
@@ -1391,7 +1391,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			while ((entry = FR_DLIST_FIRST(client->packets)) != NULL) {
 				saved = fr_ptr_to_type(dynamic_packet_t, entry, entry);
 				(void) talloc_get_type_abort(saved, dynamic_packet_t);
-				(void) fr_radius_tracking_entry_delete(inst->ft, saved->track, saved->timestamp);
+				(void) fr_radius_tracking_entry_delete(saved->track->ft, saved->track, saved->timestamp);
 				fr_dlist_remove(&saved->entry);
 				talloc_free(saved);
 				inst->dynamic_clients.num_pending_packets--;
@@ -1558,7 +1558,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	if ((track->timestamp != request_time) || !address->client) {
 		inst->stats.total_packets_dropped++;
 		DEBUG3("Suppressing reply as we have a newer packet");
-		(void) fr_radius_tracking_entry_delete(inst->ft, track, request_time);
+		(void) fr_radius_tracking_entry_delete(track->ft, track, request_time);
 		return buffer_len;
 	}
 
@@ -1633,7 +1633,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		if (data_size < 0) {
 		done:
 			if (track->ev) (void) fr_event_timer_delete(inst->el, &track->ev);
-			(void) fr_radius_tracking_entry_delete(inst->ft, track, request_time);
+			(void) fr_radius_tracking_entry_delete(track->ft, track, request_time);
 			return data_size;
 		}
 
@@ -1666,7 +1666,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	/*
 	 *	Add the reply to the tracking entry.
 	 */
-	if (fr_radius_tracking_entry_reply(inst->ft, track, reply_time,
+	if (fr_radius_tracking_entry_reply(track->ft, track, reply_time,
 					   buffer, buffer_len) < 0) {
 		DEBUG3("Failed adding reply to tracking table");
 		goto done;
