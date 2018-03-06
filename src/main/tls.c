@@ -2882,6 +2882,9 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client)
 
 	/* Load the CAs we trust */
 load_ca:
+#if defined(X509_V_FLAG_PARTIAL_CHAIN)
+	X509_STORE_set_flags(SSL_CTX_get_cert_store(ctx), X509_V_FLAG_PARTIAL_CHAIN);
+#endif
 	if (conf->ca_file || conf->ca_path) {
 		if (!SSL_CTX_load_verify_locations(ctx, conf->ca_file, conf->ca_path)) {
 			tls_error_log(NULL, "Failed reading Trusted root CA list \"%s\"",
@@ -3653,7 +3656,7 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 	 *      data buffer.
 	 */
 	err = SSL_read(ssn->ssl, ssn->clean_out.data, sizeof(ssn->clean_out.data));
-	if (err < 0) {
+	if (err <= 0) {
 		int code;
 
 		RDEBUG("SSL_read Error");
@@ -3676,8 +3679,6 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 		}
 		return FR_TLS_FAIL;
 	}
-
-	if (err == 0) RWDEBUG("No data inside of the tunnel");
 
 	/*
 	 *	Passed all checks, successfully decrypted data
