@@ -1258,7 +1258,7 @@ static int mod_section_compile(eap_aka_actions_t *actions, CONF_SECTION *server_
 	 *	Warn if we couldn't find any actions.
 	 */
 	if (!found) {
-		cf_log_warn(server_cs, "No ocsp-state cache actions found in virtual server \"%s\"",
+		cf_log_warn(server_cs, "No \"eap-aka\" actions found in virtual server \"%s\"",
 			    cf_section_name2(server_cs));
 	}
 
