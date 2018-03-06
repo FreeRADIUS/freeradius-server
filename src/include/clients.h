@@ -83,7 +83,6 @@ typedef struct radclient {
 #endif
 
 #ifdef WITH_DYNAMIC_CLIENTS
-	fr_dlist_t		pending;		//!< if !active, ordered list of pending clients
 	fr_dlist_t		packets;		//!< list of pending packets
 	uint32_t		outstanding;		//!< number of requests outstanding
 	uint32_t		received;		//!< number of requests received but not yet processed

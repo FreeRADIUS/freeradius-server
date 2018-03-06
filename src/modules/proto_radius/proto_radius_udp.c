@@ -58,7 +58,6 @@ typedef struct fr_radius_dynamic_client_t {
 	RADCLIENT_LIST			*clients;		//!< local clients
 
 	fr_dlist_t			packets;       		//!< list of accepted packets
-	fr_dlist_t			pending;		//!< pending clients
 
 	uint32_t			max_clients;		//!< maximum number of dynamic clients
 	uint32_t			num_clients;		//!< total number of active clients
@@ -584,8 +583,6 @@ static ssize_t dynamic_client_alloc(proto_radius_udp_t *inst, uint8_t *packet, s
 		talloc_free(client);
 		return -1;
 	}
-
-	fr_dlist_insert_tail(&inst->dynamic_clients.pending, &client->pending);
 
 	inst->dynamic_clients.num_pending_clients++;
 
@@ -1391,7 +1388,6 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 
 		rad_assert(buffer_len == sizeof(newclient));
 		memcpy(&newclient, buffer, sizeof(newclient));
-		FR_DLIST_INIT(newclient->pending);
 		FR_DLIST_INIT(newclient->packets);
 
 		/*
@@ -1455,7 +1451,6 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		 *	client.
 		 */
 		dynamic_client_timer(inst, newclient, inst->dynamic_clients.lifetime);
-		fr_dlist_remove(&client->pending);
 		talloc_free(client);
 
 		/*
@@ -2002,7 +1997,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			return -1;
 		}
 
-		FR_DLIST_INIT(inst->dynamic_clients.pending);
 		FR_DLIST_INIT(inst->dynamic_clients.packets);
 
 		/*
