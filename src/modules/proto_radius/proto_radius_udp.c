@@ -56,6 +56,7 @@ typedef struct fr_radius_dynamic_client_t {
 	fr_trie_t			*trie;			//!< track networks for dynamic clients
 
 	RADCLIENT_LIST			*clients;		//!< local clients
+	RADCLIENT_LIST			*pending;		//!< pending local clients
 
 	fr_dlist_t			packets;       		//!< list of accepted packets
 
@@ -579,7 +580,7 @@ static ssize_t dynamic_client_alloc(proto_radius_udp_t *inst, uint8_t *packet, s
 	 *	i.e. if the client takes 30s to define, well, too
 	 *	bad...
 	 */
-	if (!client_add(inst->dynamic_clients.clients, client)) {
+	if (!client_add(inst->dynamic_clients.pending, client)) {
 		talloc_free(client);
 		return -1;
 	}
@@ -1036,6 +1037,22 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	if (!address.client) address.client = client_find(inst->dynamic_clients.clients, &address.src_ipaddr, IPPROTO_UDP);
 
 	/*
+	 *	Still no client, maybe it's pending?
+	 *
+	 *	If it's pending, save the packet for later processing and return.
+	 */
+	if (!address.client) {
+		address.client = client_find(inst->dynamic_clients.pending, &address.src_ipaddr, IPPROTO_UDP);
+		if (address.client) {
+			if (dynamic_client_packet_save(inst, buffer, packet_len, packet_time, &address, &track) < 0) {
+				goto unknown;
+			}
+
+			return 0;
+		}
+	}
+
+	/*
 	 *	Still no client (and we have dynamic clients), try to
 	 *	define the client.
 	 */
@@ -1074,19 +1091,6 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	 *	it's unknown.
 	 */
 	if (address.client->negative) goto unknown;
-
-	/*
-	 *	It's a dynamic client, BUT not yet active.  Go save
-	 *	the packet until the client definition comes back
-	 *	either yay or nay.
-	 */
-	if (address.client->dynamic && !address.client->active) {
-		if (dynamic_client_packet_save(inst, buffer, packet_len, packet_time, &address, &track) < 0) {
-			goto unknown;
-		}
-
-		return 0;
-	}
 
 	/*
 	 *	Check for a socket that SHOULD be connected.  If so,
@@ -1353,10 +1357,19 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		dynamic_packet_t *saved;
 
 		/*
-		 *	@todo - maybe just duplicate the new client fields,
-		 *	and talloc_free(newclient).
+		 *	@todo - maybe just duplicate the new client
+		 *	fields, and talloc_free(newclient).  That
+		 *	means we don't have to muck with pending
+		 *	packets.
 		 */
 		inst->dynamic_clients.num_pending_clients--;
+
+		/*
+		 *	Delete the "pending" client from the pending
+		 *	client list.  Whatever we do next, this client
+		 *	is no longer "pending".
+		 */
+		client_delete(inst->dynamic_clients.pending, address->client);
 
 		/*
 		 *	NAK: drop all packets.
@@ -1403,11 +1416,6 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		 *	the client when the socket goes away...
 		 */
 		rad_assert(!inst->use_connected);
-
-		/*
-		 *	Delete the "pending" client from the client list.
-		 */
-		client_delete(inst->dynamic_clients.clients, client);
 
 		DEBUG("%s - Defining new client %s", inst->name, client->shortname);
 		newclient->dynamic = true;
@@ -2003,6 +2011,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		 *	Allow static clients for this virtual server.
 		 */
 		inst->dynamic_clients.clients = client_list_init(NULL); // client_list_parse_section(inst->parent->server_cs, false);
+		inst->dynamic_clients.pending = client_list_init(NULL);
 
 		FR_INTEGER_BOUND_CHECK("max_clients", inst->dynamic_clients.max_clients, >=, 1);
 		FR_INTEGER_BOUND_CHECK("max_clients", inst->dynamic_clients.max_clients, <=, (1 << 20));
