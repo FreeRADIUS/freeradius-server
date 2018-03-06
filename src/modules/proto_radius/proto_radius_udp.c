@@ -56,7 +56,6 @@ typedef struct fr_radius_dynamic_client_t {
 	fr_trie_t			*trie;			//!< track networks for dynamic clients
 
 	RADCLIENT_LIST			*clients;		//!< local clients
-	RADCLIENT_LIST			*expired;		//!< expired local clients
 
 	fr_dlist_t			packets;       		//!< list of accepted packets
 	fr_dlist_t			pending;		//!< pending clients
@@ -590,19 +589,6 @@ static ssize_t dynamic_client_alloc(proto_radius_udp_t *inst, uint8_t *packet, s
 
 	inst->dynamic_clients.num_pending_clients++;
 
-	/*
-	 *	Check for the case of renewing an expired client.  If
-	 *	so, delete it's expiration timer.
-	 *
-	 *	We'll do the same checks when we create or NAK the
-	 *	client in mod_write().  If it matches, we'll just
-	 *	renew the existing client, instead of defining a new
-	 *	one.  That allows for *renewal* instead of deletion
-	 *	and re-creation.
-	 */
-	client = client_find(inst->dynamic_clients.expired, &address->src_ipaddr, IPPROTO_UDP);
-	if (client && client->ev) (void) fr_event_timer_delete(inst->el, &client->ev);
-
 	return packet_len;
 }
 
@@ -621,7 +607,6 @@ static void dynamic_client_expire(UNUSED fr_event_list_t *el, UNUSED struct time
 	 */
 	if (client->expired) {
 		DEBUG("%s - deleting client %s.", inst->name, client->shortname);
-		(void) client_delete(inst->dynamic_clients.expired, client);
 		rad_assert(client->outstanding == 0);
 		client_free(client);
 		return;
@@ -634,7 +619,6 @@ static void dynamic_client_expire(UNUSED fr_event_list_t *el, UNUSED struct time
 	 */
 	client->expired = true;
 	client_delete(inst->dynamic_clients.clients, client);
-	client_add(inst->dynamic_clients.expired, client);
 
 	/*
 	 *	There are no active requests using this client.  It
@@ -741,7 +725,6 @@ static proto_radius_udp_t *mod_clone(proto_radius_udp_t *inst, proto_radius_udp_
 	child->child.src_port = address->src_port;
 
 	child->dynamic_clients.clients = NULL;
-	child->dynamic_clients.expired = NULL;
 	child->dynamic_clients.trie = NULL;
 
 	child->child.client = client_clone(child, address->client);
@@ -1368,7 +1351,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	 */
 	if (inst->dynamic_clients_is_set && address->client->dynamic && !address->client->active) {
 		RADCLIENT *client = address->client;
-		RADCLIENT *newclient, *expired = NULL;
+		RADCLIENT *newclient;
 		fr_dlist_t *entry;
 		dynamic_packet_t *saved;
 
@@ -1395,20 +1378,6 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 				fr_dlist_remove(&saved->entry);
 				talloc_free(saved);
 				inst->dynamic_clients.num_pending_packets--;
-			}
-
-			/*
-			 *	If we were renewing an expired client,
-			 *	then delete the expired one, and add
-			 *	the new definition.
-			 */
-			if (!expired) {
-				expired = client_find(inst->dynamic_clients.expired, &client->ipaddr, IPPROTO_UDP);
-				if (expired) {
-					rad_assert(expired->outstanding == 0);
-					client_delete(inst->dynamic_clients.expired, expired);
-					talloc_free(expired);
-				}
 			}
 
 			/*
@@ -1444,66 +1413,21 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		 */
 		client_delete(inst->dynamic_clients.clients, client);
 
+		DEBUG("%s - Defining new client %s", inst->name, client->shortname);
+		newclient->dynamic = true;
+
 		/*
-		 *	See if we had a previously expired client.  If
-		 *	not, just create a new one.
+		 *	If we can't add it, then clean it up.  BUT
+		 *	allow other packets to come from the same IP.
 		 */
-		expired = client_find(inst->dynamic_clients.expired, &newclient->ipaddr, IPPROTO_UDP);
-		if (!expired) {
-			DEBUG("%s - Defining new client %s", inst->name, client->shortname);
-			newclient->dynamic = true;
-
-			/*
-			 *	If we can't add it, then clean it up.  BUT
-			 *	allow other packets to come from the same IP.
-			 */
-			if (!client_add(inst->dynamic_clients.clients, newclient)) {
-				talloc_free(newclient);
-				client->negative = false;
-				goto nak;
-			}
-
-			newclient->active = true;
-			inst->dynamic_clients.num_clients++;
-
-		} else {
-			ssize_t elen, nlen;
-
-			elen = talloc_array_length(expired->secret);
-			nlen = talloc_array_length(newclient->secret);
-
-			/*
-			 *	Catch stupid administrator issues.
-			 */
-			if ((elen != nlen) || (memcmp(expired->secret, newclient->secret, elen) != 0)) {
-				ERROR("Shared secret for clients cannot be changed until all outstanding packets have been processed");
-				expired->active = false;
-				goto nak;
-			}
-
-			if (fr_ipaddr_cmp(&expired->ipaddr, &newclient->ipaddr) != 0) {
-				ERROR("IP / netmask for clients cannot be changed until all outstanding packets have been processed");
-				expired->active = false;
-				goto nak;
-			}
-
-			DEBUG("%s - Renewing client %s", inst->name, expired->shortname);
-			rad_assert(expired->ev == NULL);
-
+		if (!client_add(inst->dynamic_clients.clients, newclient)) {
 			talloc_free(newclient);
-			newclient = expired;
-			newclient->expired = false;
-
-			client_delete(inst->dynamic_clients.expired, expired);
-			if (!client_add(inst->dynamic_clients.clients, newclient)) {
-				talloc_free(newclient);
-				newclient->negative = false;
-				goto nak;
-			}
-
-			rad_assert(newclient->active == true);
-			rad_assert(newclient->negative == false);
+			client->negative = false;
+			goto nak;
 		}
+
+		newclient->active = true;
+		inst->dynamic_clients.num_clients++;
 
 		/*
 		 *	Move the packets over to the pending list, and
@@ -2085,7 +2009,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		 *	Allow static clients for this virtual server.
 		 */
 		inst->dynamic_clients.clients = client_list_init(NULL); // client_list_parse_section(inst->parent->server_cs, false);
-		inst->dynamic_clients.expired = client_list_init(NULL);
 
 		FR_INTEGER_BOUND_CHECK("max_clients", inst->dynamic_clients.max_clients, >=, 1);
 		FR_INTEGER_BOUND_CHECK("max_clients", inst->dynamic_clients.max_clients, <=, (1 << 20));
@@ -2198,7 +2121,6 @@ static int mod_detach(void *instance)
 
 	if (inst->dynamic_clients_is_set) {
 		TALLOC_FREE(inst->dynamic_clients.clients);
-		TALLOC_FREE(inst->dynamic_clients.expired);
 		TALLOC_FREE(inst->dynamic_clients.trie);
 	}
 
