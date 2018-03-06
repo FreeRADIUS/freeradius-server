@@ -123,6 +123,8 @@ int securid_sessionlist_add(rlm_securid_t *inst,REQUEST *request, SECURID_SESSIO
 		session->session_id = inst->last_session_id;
 		RDEBUG2("Creating a new session with id=%d\n",session->session_id);
 	}
+
+	memset(session->state, 0, sizeof(session->state));
 	snprintf(session->state,sizeof(session->state)-1,"FRR-CH %d|%d",session->session_id,session->trips+1);
 	RDEBUG2("Inserting session id=%d identity='%s' state='%s' to the session list",
 			 session->session_id,SAFE_STR(session->identity),session->state);
@@ -132,9 +134,10 @@ int securid_sessionlist_add(rlm_securid_t *inst,REQUEST *request, SECURID_SESSIO
 	 *	Generate State, since we've been asked to add it to
 	 *	the list.
 	 */
-	state = pair_make_reply("State", session->state, T_OP_EQ);
+	state = fr_pair_make(request->reply, &request->reply->vps, "State", NULL, T_OP_EQ);
 	if (!state) return -1;
-	state->vp_length = SECURID_STATE_LEN;
+
+	fr_pair_value_memcpy(state, session->state, sizeof(session->state));
 
 	status = rbtree_insert(inst->session_tree, session);
 	if (status) {
