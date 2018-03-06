@@ -2610,7 +2610,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 /** Destroy thread data for the IO submodule.
  *
  */
-static int mod_thread_detach(void *thread)
+static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 {
 	rlm_radius_udp_thread_t *t = talloc_get_type_abort(thread, rlm_radius_udp_thread_t);
 	fr_dlist_t *entry;

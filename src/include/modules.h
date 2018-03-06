@@ -117,7 +117,7 @@ typedef int (*module_thread_t)(CONF_SECTION const *mod_cs, void *instance, fr_ev
  *	- 0 on success.
  *	- -1 if instantiation failed.
  */
-typedef int (*module_thread_detach_t)(void *thread);
+typedef int (*module_thread_detach_t)(fr_event_list_t *el, void *thread);
 
 
 /** A callback when the the timeout occurs
@@ -231,6 +231,8 @@ typedef struct {
  * Stores module and thread specific data.
  */
 typedef struct {
+	fr_event_list_t			*el;		//!< Event list associated with this thread.
+
 	void				*mod_inst;	//!< Avoids thread_inst->inst->dl_inst->data.
 							///< This is in the hot path, so it makes sense.
 

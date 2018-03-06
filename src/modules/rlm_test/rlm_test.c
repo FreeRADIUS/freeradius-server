@@ -188,7 +188,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION  const *cs, UNUSED void *i
 	return 0;
 }
 
-static int mod_thread_detach(void *thread)
+static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 {
 	rlm_test_thread_t *t = thread;
 

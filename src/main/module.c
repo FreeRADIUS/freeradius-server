@@ -492,7 +492,7 @@ static void _module_thread_instance_free(void *to_free)
 	module_thread_instance_t *ti = talloc_get_type_abort(to_free, module_thread_instance_t);
 
 	if (ti->inst->module->thread_detach) {
-		(void) ti->inst->module->thread_detach(ti->data);
+		(void) ti->inst->module->thread_detach(ti->el, ti->data);
 	}
 
 	talloc_free(ti);
@@ -546,6 +546,7 @@ static int _module_thread_instantiate(void *instance, void *ctx)
 	int				ret;
 
 	MEM(ti = talloc_zero(NULL, module_thread_instance_t));
+	ti->el = thread_inst_ctx->el;
 	ti->inst = mi;
 	ti->mod_inst = mi->dl_inst->data;	/* For efficient lookups */
 

@@ -820,7 +820,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 /** Destroy thread data for the submodule.
  *
  */
-static int mod_thread_detach(void *thread)
+static int mod_thread_detach(fr_event_list_t *el, void *thread)
 {
 	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
 	rlm_radius_t const *inst = t->inst;
@@ -831,7 +831,7 @@ static int mod_thread_detach(void *thread)
 	 *	connections.
 	 */
 	if (inst->io->thread_detach &&
-	    (inst->io->thread_detach(t->thread_io_ctx) < 0)) {
+	    (inst->io->thread_detach(el, t->thread_io_ctx) < 0)) {
 		return -1;
 	}
 

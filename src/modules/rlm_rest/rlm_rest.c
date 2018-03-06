@@ -972,7 +972,7 @@ static int mod_thread_instantiate(CONF_SECTION const *conf, void *instance, fr_e
  * @param[in] thread	specific data to destroy.
  * @return 0
  */
-static int mod_thread_detach(void *thread)
+static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 {
 	rlm_rest_thread_t	*t = thread;
 
