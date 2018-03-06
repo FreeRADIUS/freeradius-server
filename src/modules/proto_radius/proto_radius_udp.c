@@ -57,11 +57,13 @@ typedef struct fr_radius_dynamic_client_t {
 
 	RADCLIENT_LIST			*clients;		//!< local clients
 	RADCLIENT_LIST			*pending;		//!< pending local clients
+	RADCLIENT_LIST			*negative;		//!< negative cache of rejected clients
 
 	fr_dlist_t			packets;       		//!< list of accepted packets
 
 	uint32_t			max_clients;		//!< maximum number of dynamic clients
 	uint32_t			num_clients;		//!< total number of active clients
+	uint32_t			num_negative_clients;	//!< how many clients are in the negative cache
 	uint32_t			max_pending_clients;	//!< maximum number of pending clients
 	uint32_t			num_pending_clients;	//!< number of pending clients
 	uint32_t			max_pending_packets;	//!< maximum accepted pending packets
@@ -611,6 +613,17 @@ static void dynamic_client_expire(UNUSED fr_event_list_t *el, UNUSED struct time
 	}
 
 	/*
+	 *	It's a negative cache entry.  Just delete it.
+	 */
+	if (client->negative) {
+		rad_assert(client->outstanding == 0);
+		client_delete(inst->dynamic_clients.negative, client);
+		inst->dynamic_clients.num_negative_clients--;
+		client_free(client);
+		return;
+	}
+
+	/*
 	 *	Mark the client as "expired", so that any new packets
 	 *	will result in us trying to re-define it.  Remove it
 	 *	from the main list, BUT add it to the "expired" list.
@@ -723,6 +736,8 @@ static proto_radius_udp_t *mod_clone(proto_radius_udp_t *inst, proto_radius_udp_
 	child->child.src_port = address->src_port;
 
 	child->dynamic_clients.clients = NULL;
+	child->dynamic_clients.pending = NULL;
+	child->dynamic_clients.negative = NULL;
 	child->dynamic_clients.trie = NULL;
 
 	child->child.client = client_clone(child, address->client);
@@ -1087,12 +1102,6 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	}
 
 	/*
-	 *	The client is a negative cache entry.  Complain that
-	 *	it's unknown.
-	 */
-	if (address.client->negative) goto unknown;
-
-	/*
 	 *	Check for a socket that SHOULD be connected.  If so,
 	 *	either create the socket, OR find it in the list of
 	 *	sockets, and send the packet there.
@@ -1378,7 +1387,11 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		 *	IP to a negative cache as a DoS prevention.
 		 */
 		if (buffer_len == 1) {
-			client->negative = true;
+			if ((inst->dynamic_clients.num_negative_clients <= 1024) &&
+			    client_add(inst->dynamic_clients.negative, client)) {
+				client->negative = true;
+				inst->dynamic_clients.num_negative_clients++;
+			}
 
 		nak:
 			while ((entry = FR_DLIST_FIRST(client->packets)) != NULL) {
@@ -2012,6 +2025,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		 */
 		inst->dynamic_clients.clients = client_list_init(NULL); // client_list_parse_section(inst->parent->server_cs, false);
 		inst->dynamic_clients.pending = client_list_init(NULL);
+		inst->dynamic_clients.negative = client_list_init(NULL);
 
 		FR_INTEGER_BOUND_CHECK("max_clients", inst->dynamic_clients.max_clients, >=, 1);
 		FR_INTEGER_BOUND_CHECK("max_clients", inst->dynamic_clients.max_clients, <=, (1 << 20));
