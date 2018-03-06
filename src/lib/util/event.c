@@ -238,12 +238,6 @@ struct fr_event_fd {
 	bool			is_registered;		//!< Whether this fr_event_fd_t's FD has been registered with
 							///< kevent.  Mostly for debugging.
 
-	bool			in_handler;		//!< Event is currently being serviced.  Deletes should be
-							///< deferred until after the handlers complete.
-
-	bool			deferred_free;		//!< Deferred deletion flag.  Delete this event *after*
-							///< the handlers complete.
-
 	void			*uctx;			//!< Context pointer to pass to each file descriptor callback.
 	TALLOC_CTX		*linked_ctx;		//!< talloc ctx this event was bound to.
 
@@ -309,6 +303,9 @@ struct fr_event_list {
 	fr_dlist_t		post_callbacks;		//!< post-processing callbacks
 
 	struct kevent		events[FR_EV_BATCH_FDS]; /* so it doesn't go on the stack every time */
+
+	bool			in_handler;		//!< Deletes should be deferred until after the
+							///< handlers complete.
 
 	fr_event_fd_t		*fd_to_free;		//!< File descriptor events pending deletion.
 };
@@ -592,62 +589,64 @@ static int fr_event_fd_type_set(fr_event_fd_t *ef, int fd)
 	return 0;
 }
 
-/** Remove a file descriptor from the event loop and rbtree but don't free it
+/** Remove a file descriptor from the event loop and rbtree but don't explicitly free it
  *
- * This is used as the talloc destructor for events, and also called by
- * #fr_event_fd_delete to remove the event in case of deferred deletes.
  *
  * @param[in] ef	to remove.
  * @return
  *	- 0 on success.
  *	- -1 on error;
  */
-static int fr_event_fd_delete_internal(fr_event_fd_t *ef)
+static int _fr_event_fd_delete(fr_event_fd_t *ef)
 {
 	int i;
 	struct kevent		evset[10];
 	int			count = 0;
-	fr_event_list_t		*el;
+	fr_event_list_t		*el = talloc_get_type_abort(talloc_parent(ef), fr_event_list_t);
 	fr_event_funcs_t	funcs;
 
-	if (!ef->is_registered) return 0;
-
-	memset(&funcs, 0, sizeof(funcs));
-
-	el = talloc_parent(ef);
-	(void) talloc_get_type_abort(el, fr_event_list_t);
-
 	/*
-	 *	If this fails, it's a pretty catastrophic error.
+	 *	Already been removed from the various trees and
+	 *	the event loop.
 	 */
-	count = fr_event_build_evset(evset, sizeof(evset)/sizeof(*evset), &ef->active, ef, &funcs, &ef->active);
-	if (count > 0) {
+	if (ef->is_registered) {
+		memset(&funcs, 0, sizeof(funcs));
+
 		/*
-		 *	If this fails, assert on debug builds, but ignore it at run-time.
+		 *	If this fails, it's a pretty catastrophic error.
 		 */
-		if (kevent(el->kq, evset, count, NULL, 0, NULL) < 0) {
-			(void) fr_cond_assert_msg(false, "FD was closed without being removed from the KQ: %s",
-						  fr_syserror(errno));
+		count = fr_event_build_evset(evset, sizeof(evset)/sizeof(*evset), &ef->active, ef, &funcs, &ef->active);
+		if (count > 0) {
+			/*
+			 *	If this fails, assert on debug builds, but ignore it at run-time.
+			 */
+			if (kevent(el->kq, evset, count, NULL, 0, NULL) < 0) {
+				(void) fr_cond_assert_msg(false, "FD was closed without being removed from the KQ: %s",
+							  fr_syserror(errno));
+			}
 		}
-	}
 
-	rbtree_deletebydata(el->fds, ef);
-	ef->is_registered = false;
+		rbtree_deletebydata(el->fds, ef);
+		ef->is_registered = false;
+
+		/*
+		 *	If there are pending events for this FD set
+		 *	udata to NULL to mark them as deleted.
+		 */
+		for (i = 0; i < el->num_fd_events; i++) if (el->events[i].udata == ef) el->events[i].udata = NULL;
+
+		el->num_fds--;
+	}
 
 	/*
-	 *	If there are pending events for this FD, go mark them
-	 *	as deleted.
+	 *	Insert into the deferred free list, event will be
+	 *	freed later.
 	 */
-	for (i = 0; i < el->num_fd_events; i++) {
-		if (((el->events[i].filter == EVFILT_READ) ||
-		     (el->events[i].filter == EVFILT_WRITE) ||
-		     (el->events[i].filter == EVFILT_VNODE)) &&
-		    (el->events[i].udata == ef)) {
-			el->events[i].udata = NULL;
-		}
+	if (el->in_handler) {
+		ef->next = el->fd_to_free;	/* Link into the deferred free list */
+		el->fd_to_free = ef;
+		return 1;			/* Will be freed later */
 	}
-
-	el->num_fds--;
 
 	return 0;
 }
@@ -673,19 +672,6 @@ int fr_event_fd_delete(fr_event_list_t *el, int fd, fr_event_filter_t filter)
 	if (unlikely(!ef)) {
 		fr_strerror_printf("No events are registered for fd %i", fd);
 		return -1;
-	}
-
-	/*
-	 *	Defer the free, so we don't free
-	 *	an ef structure that might still be
-	 *	in use within fr_event_service.
-	 */
-	if (ef->in_handler) {
-		if (unlikely(fr_event_fd_delete_internal(ef)) < 0) return -1;	/* Removes from kevent/rbtree, does not free */
-		ef->deferred_free = true;
-		ef->next = el->fd_to_free;
-		el->fd_to_free = ef;
-		return 0;
 	}
 
 	/*
@@ -730,7 +716,7 @@ int fr_event_filter_update(fr_event_list_t *el, int fd, fr_event_filter_t filter
 	find.filter = filter;
 
 	ef = rbtree_finddata(el->fds, &find);
-	if (unlikely(!ef) || unlikely(ef->deferred_free)) {
+	if (unlikely(!ef)) {
 		fr_strerror_printf("No events are registered for fd %i", fd);
 		return -1;
 	}
@@ -827,10 +813,7 @@ int fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 	 *	This is generally bad.  If you hit this
 	 *	code path you probably screwed up somewhere.
 	 */
-	if (unlikely(ef && (ef->linked_ctx != ctx))) {
-		if (fr_event_fd_delete(el, fd, filter) < 0) return -1;
-		ef = NULL;
-	}
+	if (unlikely(ef && (ef->linked_ctx != ctx))) TALLOC_FREE(ef);
 
 	/*
 	 *	No pre-existing event.  Allocate an entry
@@ -842,7 +825,7 @@ int fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 			fr_strerror_printf("Out of memory");
 			return -1;
 		}
-		talloc_set_destructor(ef, fr_event_fd_delete_internal);
+		talloc_set_destructor(ef, _fr_event_fd_delete);
 		ef->linked_ctx = ctx;
 
 		/*
@@ -886,6 +869,8 @@ int fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 	 *	functions associated with the file descriptor.
 	 */
 	} else {
+		rad_assert(ef->is_registered == true);
+
 		/*
 		 *	Take a copy of the current set of active
 		 *	functions, so we can error out in a
@@ -911,7 +896,6 @@ int fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 	}
 
 	ef->error = error;
-	ef->deferred_free = false;
 	ef->uctx = uctx;
 
 	return 0;
@@ -1104,8 +1088,12 @@ int fr_event_timer_insert(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t
 	return 0;
 }
 
-
-static int event_pid_free(fr_event_pid_t *ev)
+/** Remove PID wait event from kevent if the fr_event_pid_t is freed
+ *
+ * @param[in] ev	to free.
+ * @return 0
+ */
+static int _event_pid_free(fr_event_pid_t *ev)
 {
 	struct kevent evset;
 
@@ -1153,7 +1141,7 @@ int fr_event_pid_wait(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_pid_t const
 		fr_strerror_printf("Failed adding waiter for PID %ld", (long) pid);
 		return -1;
 	}
-	talloc_set_destructor(ev, event_pid_free);
+	talloc_set_destructor(ev, _event_pid_free);
 
 	*ev_p = ev;
 	return 0;
@@ -1504,6 +1492,7 @@ void fr_event_service(fr_event_list_t *el)
 	/*
 	 *	Run all of the file descriptor events.
 	 */
+	el->in_handler = true;
 	for (i = 0; i < el->num_fd_events; i++) {
 		fr_event_fd_t	*ef;
 		int		fd_errno = 0;
@@ -1554,7 +1543,6 @@ void fr_event_service(fr_event_list_t *el)
 		ef = talloc_get_type_abort(el->events[i].udata, fr_event_fd_t);
 
 		if (!fr_cond_assert(ef->is_registered)) continue;
-		if (ef->deferred_free) continue;			/* Stale, ignore it */
 
                 if (unlikely(flags & EV_ERROR)) {
                 	fd_errno = el->events[i].data;
@@ -1563,7 +1551,7 @@ void fr_event_service(fr_event_list_t *el)
                          *      Call the error handler
                          */
                         if (ef->error) ef->error(el, ef->fd, flags, fd_errno, ef->uctx);
-                        fr_event_fd_delete(el, ef->fd, ef->filter);
+                        TALLOC_FREE(ef);
                         continue;
                 }
 
@@ -1601,7 +1589,7 @@ void fr_event_service(fr_event_list_t *el)
                 }
 
 service:
-		ef->in_handler = true;
+
 		/*
 		 *	If any of these callbacks are NULL, then
 		 *	there's a logic error somewhere.
@@ -1617,7 +1605,7 @@ service:
 			if (el->events[i].filter == EVFILT_READ) {
 				ef->active.io.read(el, ef->fd, flags, ef->uctx);
 			}
-			if ((el->events[i].filter == EVFILT_WRITE) && !ef->deferred_free) {
+			else if (el->events[i].filter == EVFILT_WRITE) {
 				ef->active.io.write(el, ef->fd, flags, ef->uctx);
 			}
 			break;
@@ -1678,8 +1666,8 @@ service:
 		default:
 			break;
 		}
-		ef->in_handler = false;
 	}
+	el->in_handler = false;
 
 	/*
 	 *	Process any deferred frees performed
@@ -1690,16 +1678,7 @@ service:
 	 *	deferred to allow stale events to be
 	 *	skipped sans SEGV.
 	 */
-	if (el->fd_to_free) {
-		fr_event_fd_t *to_free, *next;
-
-		for (to_free = el->fd_to_free; to_free; to_free = next) {
-			next = to_free->next;
-			talloc_free(to_free);
-		}
-
-		el->fd_to_free = NULL;	/* all gone */
-	}
+	talloc_list_free(&el->fd_to_free);
 
 	gettimeofday(&el->now, NULL);
 
