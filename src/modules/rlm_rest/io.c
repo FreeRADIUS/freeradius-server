@@ -76,7 +76,8 @@ static inline void _rest_io_demux(rlm_rest_thread_t *thread, CURLM *mandle)
 			 *	If the request failed, say why...
 			 */
 			if (m->data.result != CURLE_OK) {
-				REDEBUG("%s (%i)", curl_easy_strerror(m->data.result), m->data.result);
+				REDEBUG("REST request failed: %s (%i)",
+					curl_easy_strerror(m->data.result), m->data.result);
 			}
 
 			/*
