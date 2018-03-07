@@ -1275,7 +1275,7 @@ static int _cd_free(CONF_DATA *cd)
 {
 	void *to_free;
 
-	memcpy(&to_free, cd->data, sizeof(to_free));
+	memcpy(&to_free, &cd->data, sizeof(to_free));
 
 	if (cd->free) talloc_free(to_free);
 
