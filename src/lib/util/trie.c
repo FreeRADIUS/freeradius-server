@@ -42,7 +42,7 @@ RCSID("$Id$")
  *	https://www.nada.kth.se/~snilsson/publications/Dynamic-trie-compression-implementation/
  *
  *	The functionality has been extended to include intermediate
- *	nodes which consume 0 bits, but which user context data.
+ *	nodes which consume 0 bits, but which hold user context data.
  *	These intermediate nodes allow for "longest prefix" matching.
  *	For example, in networking, you can have a routing table entry
  *	with 0/0 leading to one destination, and 10/8 leading to a
@@ -56,7 +56,8 @@ RCSID("$Id$")
  *	network and associated destination.
  *
  *	As of yet, it does not do level compression.  This can be
- *	added without (hopefully) too much work
+ *	added without (hopefully) too much work.  That would require
+ *	an additional step to "normalize" the trie.
  *
  *	This code could be extended to do packet matching, through the
  *	inclusion of "don't care" paths.  e.g. parsing an IP header,
@@ -130,9 +131,6 @@ RCSID("$Id$")
 #define BYTEOF(_x)	((_x) >> 3)
 #define BYTES(_x)	(((_x) + 0x07) >> 3)
 
-// @todo - put this into fr_trie_t, and pass ft to all functions...
-static int node_number = 0;
-
 /** A data structure which holds a path-compressed key.
  *
  */
@@ -190,11 +188,11 @@ struct fr_trie_t {
 #define GET_PATH(_x)	((fr_trie_path_t *) (((uintptr_t) _x) & ~(uintptr_t) 0x03))
 #define PUT_PATH(_x)	((void *) (((uintptr_t) _x) | 0x03))
 
-static void *fr_trie_path_merge_paths(TALLOC_CTX *ctx, fr_trie_path_t *path1, fr_trie_path_t *path2, int depth) CC_HINT(nonnull);
+static void *fr_trie_path_merge_paths(fr_trie_t *ft, TALLOC_CTX *ctx, fr_trie_path_t *path1, fr_trie_path_t *path2, int depth) CC_HINT(nonnull);
 #endif
-static int fr_trie_merge(TALLOC_CTX *ctx, void **trie_p, void *a, void *b, int depth);
+static int fr_trie_merge(fr_trie_t *ft, TALLOC_CTX *ctx, void **trie_p, void *a, void *b, int depth);
 
-static int fr_trie_key_insert(TALLOC_CTX *ctx, void **trie_p, uint8_t const *key, int start_bit, int end_bit, void *trie) CC_HINT(nonnull);
+static int fr_trie_key_insert(fr_trie_t *ft, TALLOC_CTX *ctx, void **trie_p, uint8_t const *key, int start_bit, int end_bit, void *trie) CC_HINT(nonnull);
 
 static void *reparent(TALLOC_CTX *ctx, void *trie)
 {
@@ -207,6 +205,7 @@ static void *reparent(TALLOC_CTX *ctx, void *trie)
 		return trie;
 
 	}
+
 #ifdef WITH_PATH_COMPRESSION
 	if (IS_PATH(trie)) {
 		(void) talloc_steal(ctx, GET_PATH(trie));
@@ -221,13 +220,14 @@ static void *reparent(TALLOC_CTX *ctx, void *trie)
 
 /** Allocate a 2^N way node
  *
- * @param ctx	the talloc context, should be the parent node that points to this one.
- * @param size	the number of bits this node will consume
+ * @param ft		the root structure of the trie
+ * @param ctx		the talloc context, should be the parent node that points to this one.
+ * @param size		the number of bits this node will consume
  * @return
  *	- NULL on error
  *	- fr_trie_node_t* on success
  */
-static fr_trie_node_t *fr_trie_node_alloc(TALLOC_CTX *ctx, int size)
+static fr_trie_node_t *fr_trie_node_alloc(fr_trie_t *ft, TALLOC_CTX *ctx, int size)
 {
 	size_t		node_size;
 	fr_trie_node_t	*node;
@@ -248,7 +248,7 @@ static fr_trie_node_t *fr_trie_node_alloc(TALLOC_CTX *ctx, int size)
 	(void) talloc_set_name_const(node, "fr_trie_node_t");
 
 	node->size = size;
-	node->number = node_number++;
+	node->number = ft->number++;
 
 	return node;
 }
@@ -591,7 +591,7 @@ done:
 /** Allocate an fr_trie_path_t
  *
  */
-static CC_HINT(nonnull) fr_trie_path_t *fr_trie_path_alloc(TALLOC_CTX *ctx, uint8_t const *key, int start_bit, int end_bit, void *trie)
+static CC_HINT(nonnull) fr_trie_path_t *fr_trie_path_alloc(fr_trie_t *ft, TALLOC_CTX *ctx, uint8_t const *key, int start_bit, int end_bit, void *trie)
 {
 	fr_trie_path_t *path;
 	uint8_t *p;
@@ -610,7 +610,7 @@ static CC_HINT(nonnull) fr_trie_path_t *fr_trie_path_alloc(TALLOC_CTX *ctx, uint
 	path->length = end_bit - start_bit;
 	path->end_bit = path->start_bit + path->length;
 	rad_assert(path->length > 0);
-	path->number = node_number++;
+	path->number = ft->number++;
 
 	path->key = p = talloc_memdup(path, key + BYTEOF(start_bit), BYTES(path->end_bit));
 	if (!path->key) {
@@ -673,7 +673,7 @@ static void hex_dump(FILE *fp, char const *msg, uint8_t const *key, int start_bi
  *  Note that it may split the input node if the path->length is
  *  smaller than node->size
  */
-static int fr_trie_path_merge(TALLOC_CTX *ctx, fr_trie_node_t **node_p, fr_trie_path_t *path, int depth)
+static int fr_trie_path_merge(fr_trie_t *ft, TALLOC_CTX *ctx, fr_trie_node_t **node_p, fr_trie_path_t *path, int depth)
 {
 	fr_trie_node_t *node = *node_p;
 
@@ -686,10 +686,10 @@ static int fr_trie_path_merge(TALLOC_CTX *ctx, fr_trie_node_t **node_p, fr_trie_
 		fr_trie_node_t *small;
 		void *trie;
 
-		small = fr_trie_node_alloc(ctx, path->length);
+		small = fr_trie_node_alloc(ft, ctx, path->length);
 		if (!small) return -1;
 
-		if (fr_trie_merge(ctx, &trie, small, PUT_PATH(path), depth) < 0) {
+		if (fr_trie_merge(ft, ctx, &trie, small, PUT_PATH(path), depth) < 0) {
 			talloc_free(small);
 			return -1;
 		}
@@ -697,7 +697,7 @@ static int fr_trie_path_merge(TALLOC_CTX *ctx, fr_trie_node_t **node_p, fr_trie_
 		rad_assert(trie == small);
 		fr_trie_node_verify(small);
 
-		if (fr_trie_merge(ctx, &trie, small, node, depth) < 0) {
+		if (fr_trie_merge(ft, ctx, &trie, small, node, depth) < 0) {
 			talloc_free(small);
 			return -1;
 		}
@@ -709,7 +709,7 @@ static int fr_trie_path_merge(TALLOC_CTX *ctx, fr_trie_node_t **node_p, fr_trie_
 		return 0;
 	}
 
-	if (fr_trie_key_insert(ctx, (void **) node_p, path->key, path->start_bit, path->end_bit, path->trie) < 0) {
+	if (fr_trie_key_insert(ft, ctx, (void **) node_p, path->key, path->start_bit, path->end_bit, path->trie) < 0) {
 		return -1;
 	}
 
@@ -725,7 +725,8 @@ static int fr_trie_path_merge(TALLOC_CTX *ctx, fr_trie_node_t **node_p, fr_trie_
  *  This function allocates an fr_trie_node_t which is large enough, but not too large.
  *  And then merges the two paths into it.
  */
-static fr_trie_node_t *fr_trie_path_merge_disjoint(TALLOC_CTX *ctx, fr_trie_path_t *path1, fr_trie_path_t *path2, int depth)
+static fr_trie_node_t *fr_trie_path_merge_disjoint(fr_trie_t *ft, TALLOC_CTX *ctx,
+						   fr_trie_path_t *path1, fr_trie_path_t *path2, int depth)
 {
 	int size;
 	fr_trie_node_t *node;
@@ -756,7 +757,7 @@ static fr_trie_node_t *fr_trie_path_merge_disjoint(TALLOC_CTX *ctx, fr_trie_path
 	rad_assert(size > 0);
 	rad_assert(size <= 8);
 
-	node = fr_trie_node_alloc(ctx, size);
+	node = fr_trie_node_alloc(ft, ctx, size);
 	if (!node) {
 		fprintf(stderr, "FAILED %d\n", __LINE__);
 		return NULL;
@@ -765,7 +766,7 @@ static fr_trie_node_t *fr_trie_path_merge_disjoint(TALLOC_CTX *ctx, fr_trie_path
 	/*
 	 *	Fill the new node with the short key
 	 */
-	if (fr_trie_path_merge(ctx, &node, td_short, depth) < 0) {
+	if (fr_trie_path_merge(ft, ctx, &node, td_short, depth) < 0) {
 		fprintf(stderr, "FAILED %d\n", __LINE__);
 		talloc_free(node);
 		talloc_free(td_short);
@@ -777,7 +778,7 @@ static fr_trie_node_t *fr_trie_path_merge_disjoint(TALLOC_CTX *ctx, fr_trie_path
 	/*
 	 *	And then insert the longer of the two keys
 	 */
-	if (fr_trie_path_merge(ctx, &node, td_long, depth) < 0) {
+	if (fr_trie_path_merge(ft, ctx, &node, td_long, depth) < 0) {
 		fprintf(stderr, "FAILED %d\n", __LINE__);
 		talloc_free(node);
 		talloc_free(td_long);
@@ -792,15 +793,16 @@ static fr_trie_node_t *fr_trie_path_merge_disjoint(TALLOC_CTX *ctx, fr_trie_path
 
 /** Merge two paths
  *
- * @param ctx the talloc ctx
- * @param path1 path from the existing tree.
- * @param path2 path from the insert.  MUST end in user ctx.
- * @param depth the depth of the current node in the trie
+ * @param ft		the root structure of the trie
+ * @param ctx		the talloc ctx
+ * @param path1		path from the existing tree.
+ * @param path2		path from the insert.  MUST end in user ctx.
+ * @param depth		the depth of the current node in the trie
  * @return
  *	- NULL on error.  path1 and path2 are left alone.
  *	- new trie on success.  path1 and path2 are freed
  */
-static void *fr_trie_path_merge_paths(TALLOC_CTX *ctx, fr_trie_path_t *path1, fr_trie_path_t *path2, int depth)
+static void *fr_trie_path_merge_paths(fr_trie_t *ft, TALLOC_CTX *ctx, fr_trie_path_t *path1, fr_trie_path_t *path2, int depth)
 {
 	int prefix_len;
 	fr_trie_node_t *node;
@@ -821,10 +823,10 @@ static void *fr_trie_path_merge_paths(TALLOC_CTX *ctx, fr_trie_path_t *path1, fr
 	
 	prefix_len = fr_trie_path_lcp(path1->key, path1->length, path2->key, path2->length, path1->start_bit);
 	if (!prefix_len) {
-		return fr_trie_path_merge_disjoint(ctx, path1, path2, depth);
+		return fr_trie_path_merge_disjoint(ft, ctx, path1, path2, depth);
 	}
 	
-	prefix = fr_trie_path_alloc(ctx, path1->key, path1->start_bit, prefix_len + path1->start_bit, PUT_USER(NULL));
+	prefix = fr_trie_path_alloc(ft, ctx, path1->key, path1->start_bit, prefix_len + path1->start_bit, PUT_USER(NULL));
 	if (!prefix) {
 		return NULL;
 	}
@@ -836,14 +838,14 @@ static void *fr_trie_path_merge_paths(TALLOC_CTX *ctx, fr_trie_path_t *path1, fr
 	 *	nodes.
 	 */
 	if (prefix_len < path1->length) {
-		suffix1 = fr_trie_path_alloc(ctx, path1->key, path1->start_bit + prefix_len, path1->end_bit, path1->trie);
+		suffix1 = fr_trie_path_alloc(ft, ctx, path1->key, path1->start_bit + prefix_len, path1->end_bit, path1->trie);
 		if (!suffix1) return NULL;
 	} else {
 		suffix1 = NULL;
 	}
 	
 	if (prefix_len < path2->length) {
-		suffix2 = fr_trie_path_alloc(ctx, path2->key, path2->start_bit + prefix_len, path2->end_bit, path2->trie);
+		suffix2 = fr_trie_path_alloc(ft, ctx, path2->key, path2->start_bit + prefix_len, path2->end_bit, path2->trie);
 		if (!suffix2) {
 			talloc_free(suffix1);
 			return NULL;
@@ -865,7 +867,7 @@ static void *fr_trie_path_merge_paths(TALLOC_CTX *ctx, fr_trie_path_t *path1, fr
 			return NULL;
 		}
 
-		if (fr_trie_merge(prefix, &prefix->trie, path1->trie, path2->trie, depth + prefix_len) < 0) {
+		if (fr_trie_merge(ft, prefix, &prefix->trie, path1->trie, path2->trie, depth + prefix_len) < 0) {
 			return NULL;
 		}
 
@@ -875,7 +877,7 @@ static void *fr_trie_path_merge_paths(TALLOC_CTX *ctx, fr_trie_path_t *path1, fr
 	if (!suffix1) {
 		rad_assert(!IS_PATH(path1->trie));
 
-		if (fr_trie_merge(prefix, &prefix->trie, path1->trie, PUT_PATH(suffix2), depth + prefix->length) < 0) {
+		if (fr_trie_merge(ft, prefix, &prefix->trie, path1->trie, PUT_PATH(suffix2), depth + prefix->length) < 0) {
 			talloc_free(prefix);
 			talloc_free(suffix2);
 			return NULL;
@@ -883,7 +885,7 @@ static void *fr_trie_path_merge_paths(TALLOC_CTX *ctx, fr_trie_path_t *path1, fr
 		goto done;
 
 	} else if (!suffix2) {
-		if (fr_trie_merge(prefix, &prefix->trie, PUT_PATH(suffix1), path2->trie, depth + prefix->length) < 0) {
+		if (fr_trie_merge(ft, prefix, &prefix->trie, PUT_PATH(suffix1), path2->trie, depth + prefix->length) < 0) {
 			talloc_free(prefix);
 			talloc_free(suffix1);
 			return NULL;
@@ -891,7 +893,7 @@ static void *fr_trie_path_merge_paths(TALLOC_CTX *ctx, fr_trie_path_t *path1, fr
 		goto done;
 
 	} else {
-		node = fr_trie_path_merge_disjoint(prefix, suffix1, suffix2, depth + prefix->length);
+		node = fr_trie_path_merge_disjoint(ft, prefix, suffix1, suffix2, depth + prefix->length);
 		if (!node) {
 			talloc_free(prefix);
 			talloc_free(suffix1);
@@ -968,13 +970,14 @@ static int fr_trie_path_concatenate(fr_trie_path_t *path,
 
 /**  Add a prefix to a given trie
  *
+ * @param ft		the root structure of the trie
  * @param ctx		the talloc ctx
  * @param trie  	the trie which is the suffix
  * @param size		the number of bits in 'input'
  * @param input		the input bits which will be turned into a path / prefix
  * @param start_bit	The start bit in 'input' where the data is located.
  */
-static void *fr_trie_path_prefix_add(TALLOC_CTX *ctx, void *trie, int size, uint16_t input, int start_bit)
+static void *fr_trie_path_prefix_add(fr_trie_t *ft, TALLOC_CTX *ctx, void *trie, int size, uint16_t input, int start_bit)
 {
 	fr_trie_path_t *path;
 	int bits_used;
@@ -988,7 +991,7 @@ static void *fr_trie_path_prefix_add(TALLOC_CTX *ctx, void *trie, int size, uint
 	buffer[1] = chunk & 0xff;
 	
 	if (!IS_PATH(trie)) {
-		path = fr_trie_path_alloc(ctx, buffer, bits_used, bits_used + size, trie);
+		path = fr_trie_path_alloc(ft, ctx, buffer, bits_used, bits_used + size, trie);
 		if (!path) return NULL;
 
 		if (IS_NODE(trie)) (void) talloc_steal(path, trie);
@@ -1051,13 +1054,14 @@ static uint16_t get_chunk(uint8_t const *key, int num_bits, int start_bit, int e
 
 /** A generic merge routine
  *
- * @param ctx	the talloc ctx
- * @param trie_p where the output trie is stored
- * @param a	first mangled trie
- * @param b	second mangled trie
- * @param depth bit depth where the trie starts
+ * @param ft		the root structure of the trie
+ * @param ctx		the talloc ctx
+ * @param trie_p	where the output trie is stored
+ * @param a		first mangled trie
+ * @param b		second mangled trie
+ * @param depth 	bit depth where the trie starts
  */
-static int fr_trie_merge(TALLOC_CTX *ctx, void **trie_p, void *a, void *b, int depth)
+static int fr_trie_merge(fr_trie_t *ft, TALLOC_CTX *ctx, void **trie_p, void *a, void *b, int depth)
 {
 	if (!a && !b) {
 		*trie_p = NULL;
@@ -1086,7 +1090,7 @@ static int fr_trie_merge(TALLOC_CTX *ctx, void **trie_p, void *a, void *b, int d
 	if (IS_USER(a)) {
 		fr_trie_user_t *user = GET_USER(a);
 
-		if (fr_trie_merge(user, &user->trie, user->trie, b, depth) < 0) {
+		if (fr_trie_merge(ft, user, &user->trie, user->trie, b, depth) < 0) {
 			return -1;
 		}
 
@@ -1097,7 +1101,7 @@ static int fr_trie_merge(TALLOC_CTX *ctx, void **trie_p, void *a, void *b, int d
 	if (IS_USER(b)) {
 		fr_trie_user_t *user = GET_USER(b);
 
-		if (fr_trie_merge(user, &user->trie, user->trie, a, depth) < 0) {
+		if (fr_trie_merge(ft, user, &user->trie, user->trie, a, depth) < 0) {
 			return -1;
 		}
 
@@ -1110,7 +1114,7 @@ static int fr_trie_merge(TALLOC_CTX *ctx, void **trie_p, void *a, void *b, int d
 		/*
 		 *	Do LCP and split it off.
 		 */
-		*trie_p = fr_trie_path_merge_paths(ctx, GET_PATH(a), GET_PATH(b), depth);
+		*trie_p = fr_trie_path_merge_paths(ft, ctx, GET_PATH(a), GET_PATH(b), depth);
 		if (!*trie_p) {
 			printf("FAIL %d\n", __LINE__);
 			return -1;
@@ -1128,7 +1132,7 @@ static int fr_trie_merge(TALLOC_CTX *ctx, void **trie_p, void *a, void *b, int d
 		 *	recursively.
 		 */
 
-		if (fr_trie_path_merge(ctx, &node, path, depth) < 0) {
+		if (fr_trie_path_merge(ft, ctx, &node, path, depth) < 0) {
 			printf("FAIL %d\n", __LINE__);
 			return -1;
 		}
@@ -1141,7 +1145,7 @@ static int fr_trie_merge(TALLOC_CTX *ctx, void **trie_p, void *a, void *b, int d
 		fr_trie_path_t *path = GET_PATH(b);
 		fr_trie_node_t *node = a;
 
-		if (fr_trie_path_merge(ctx, &node, path, depth) < 0) {
+		if (fr_trie_path_merge(ft, ctx, &node, path, depth) < 0) {
 			printf("FAIL %d\n", __LINE__);
 			return -1;
 		}
@@ -1163,7 +1167,7 @@ static int fr_trie_merge(TALLOC_CTX *ctx, void **trie_p, void *a, void *b, int d
 			for (i = 0; i < (1 << node1->size); i++) {
 				if (!node1->trie[i] && !node2->trie[i]) continue;
 
-				if (fr_trie_merge(node1, &node1->trie[i], node1->trie[i],
+				if (fr_trie_merge(ft, node1, &node1->trie[i], node1->trie[i],
 						  node2->trie[i], depth) < 0) {
 					return -1;
 				}
@@ -1212,11 +1216,11 @@ static int fr_trie_merge(TALLOC_CTX *ctx, void **trie_p, void *a, void *b, int d
 				 *	into a path + trailing
 				 *	information.
 				 */
-				subtrie = fr_trie_path_prefix_add(node1, node2->trie[(i << bits) | j],
+				subtrie = fr_trie_path_prefix_add(ft, node1, node2->trie[(i << bits) | j],
 								  bits, j, depth);
 				rad_assert(subtrie != NULL);
 
-				if (fr_trie_merge(node1, &node1->trie[i],
+				if (fr_trie_merge(ft, node1, &node1->trie[i],
 						  node1->trie[i], subtrie, depth) < 0) {
 					return -1;
 				}
@@ -1228,7 +1232,7 @@ static int fr_trie_merge(TALLOC_CTX *ctx, void **trie_p, void *a, void *b, int d
 				 *	the gap.
 				 */
 				if (!node1->trie[i]) {
-					subnode = node1->trie[i] = fr_trie_node_alloc(node1, bits);
+					subnode = node1->trie[i] = fr_trie_node_alloc(ft, node1, bits);
 					rad_assert(subnode != NULL);
 
 				} else if (IS_NODE(node1->trie[i])) {
@@ -1243,7 +1247,7 @@ static int fr_trie_merge(TALLOC_CTX *ctx, void **trie_p, void *a, void *b, int d
 
 					subtrie = user->trie;
 					if (!subtrie) {
-						subnode = user->trie = fr_trie_node_alloc(user, bits);
+						subnode = user->trie = fr_trie_node_alloc(ft, user, bits);
 						rad_assert(subnode != NULL);
 
 					} else {
@@ -1256,7 +1260,7 @@ static int fr_trie_merge(TALLOC_CTX *ctx, void **trie_p, void *a, void *b, int d
 					}
 				}
 
-				if (fr_trie_merge(subnode, &subnode->trie[j], subnode->trie[j],
+				if (fr_trie_merge(ft, subnode, &subnode->trie[j], subnode->trie[j],
 						  node2->trie[(i << bits) | j], depth) < 0) {
 					return -1;
 				}
@@ -1391,6 +1395,7 @@ static void *fr_trie_key_match(void *trie, uint8_t const *key, int start_bit, in
  *
  *  The key must have at least ((start_bit + keylen) >> 3) bytes
  *
+ * @param ft		the root structure of the trie
  * @param ctx		the talloc ctx
  * @param trie_p	pointer to the trie to insert into
  * @param key		the binary key
@@ -1401,7 +1406,7 @@ static void *fr_trie_key_match(void *trie, uint8_t const *key, int start_bit, in
  *	- <0 on error
  *	- 0 on success
  */
-static int fr_trie_key_insert(TALLOC_CTX *ctx, void **trie_p, uint8_t const *key, int start_bit, int end_bit, void *subtrie)
+static int fr_trie_key_insert(fr_trie_t *ft, TALLOC_CTX *ctx, void **trie_p, uint8_t const *key, int start_bit, int end_bit, void *subtrie)
 {
 	int incr;
 	int rcode, next;
@@ -1422,7 +1427,7 @@ static int fr_trie_key_insert(TALLOC_CTX *ctx, void **trie_p, uint8_t const *key
 		/*
 		 *	If we have key, just create a path.
 		 */
-		path = fr_trie_path_alloc(ctx, key, start_bit, end_bit, subtrie);
+		path = fr_trie_path_alloc(ft, ctx, key, start_bit, end_bit, subtrie);
 		if (!path) return -1;
 
 		*trie_p = PUT_PATH(path);
@@ -1437,7 +1442,7 @@ static int fr_trie_key_insert(TALLOC_CTX *ctx, void **trie_p, uint8_t const *key
 		size = end_bit - start_bit;
 		if (size > DEFAULT_SIZE) size = DEFAULT_SIZE;
 
-		node = fr_trie_node_alloc(ctx, size);
+		node = fr_trie_node_alloc(ft, ctx, size);
 		if (!node) return -1;
 
 		*trie_p = trie = node;
@@ -1469,7 +1474,7 @@ static int fr_trie_key_insert(TALLOC_CTX *ctx, void **trie_p, uint8_t const *key
 		if (IS_USER(trie)) {
 			user = GET_USER(trie);
 
-			return fr_trie_merge(user, &user->trie, user->trie, subtrie, start_bit);
+			return fr_trie_merge(ft, user, &user->trie, user->trie, subtrie, start_bit);
 		}
 
 		/*
@@ -1492,7 +1497,7 @@ static int fr_trie_key_insert(TALLOC_CTX *ctx, void **trie_p, uint8_t const *key
 		/*
 		 *	Merge the two subtries.
 		 */
-		if (fr_trie_merge(user, &user->trie, user->trie, trie, start_bit) < 0) {
+		if (fr_trie_merge(ft, user, &user->trie, user->trie, trie, start_bit) < 0) {
 			return -1;
 		}
 	
@@ -1503,7 +1508,7 @@ static int fr_trie_key_insert(TALLOC_CTX *ctx, void **trie_p, uint8_t const *key
 	if (IS_USER(trie)) {
 		fr_trie_user_t *user = GET_USER(trie);
 
-		return fr_trie_key_insert(user, &user->trie, key, start_bit, end_bit, subtrie);
+		return fr_trie_key_insert(ft, user, &user->trie, key, start_bit, end_bit, subtrie);
 	}
 
 #ifdef WITH_PATH_COMPRESSION
@@ -1526,17 +1531,17 @@ static int fr_trie_key_insert(TALLOC_CTX *ctx, void **trie_p, uint8_t const *key
 		if (lcp == path->length) {
 			rad_assert(!IS_PATH(path->trie));
 
-			return fr_trie_key_insert(path, &path->trie,
+			return fr_trie_key_insert(ft, path, &path->trie,
 						  key, start_bit + lcp, end_bit, subtrie);
 		}
 
 		/*
 		 *	Create a prefix, and merge
 		 */
-		path2 = fr_trie_path_alloc(ctx, key, start_bit, end_bit, subtrie);
+		path2 = fr_trie_path_alloc(ft, ctx, key, start_bit, end_bit, subtrie);
 		if (!path2) return -1;
 
-		trie = fr_trie_path_merge_paths(ctx, path, path2, start_bit);
+		trie = fr_trie_path_merge_paths(ft, ctx, path, path2, start_bit);
 		if (!trie) {
 			printf("FAIL %d\n", __LINE__);
 			talloc_free(path2);
@@ -1568,7 +1573,7 @@ insert_node:
 		fr_trie_node_t *node2;
 		int size = end_bit - start_bit;
 
-		node2 = fr_trie_node_alloc(node, size);
+		node2 = fr_trie_node_alloc(ft, node, size);
 		if (!node2) {
 			rad_assert(0 == 1);
 			fprintf(stderr, "FAILED %d\n", __LINE__);
@@ -1579,7 +1584,7 @@ insert_node:
 		node2->trie[chunk] = reparent(node2, subtrie);
 		node2->used = 1;
 
-		if (fr_trie_merge(ctx, trie_p, node2, node, start_bit) < 0) {
+		if (fr_trie_merge(ft, ctx, trie_p, node2, node, start_bit) < 0) {
 			fprintf(stderr, "FAILED %d\n", __LINE__);
 			return -1;
 		}
@@ -1594,7 +1599,7 @@ insert_node:
 
 	incr = (node->trie[chunk] == NULL);
 
-	rcode = fr_trie_key_insert(node, &node->trie[chunk], key, next, end_bit, subtrie);
+	rcode = fr_trie_key_insert(ft, node, &node->trie[chunk], key, next, end_bit, subtrie);
 	if (rcode < 0) return rcode;
 
 	rad_assert(node->trie[chunk] != NULL);
@@ -1607,6 +1612,7 @@ insert_node:
  *
  *  The key length MUST match the entries in the trie.
  *
+ * @param ft		the root structure of the trie
  * @param ctx	 	the talloc ctx
  * @param[in,out]	trie_p where the updated output is stored
  * @param key	 	the key
@@ -1619,7 +1625,7 @@ insert_node:
  *  We delete the nodes as we going down the stack, and then collapse
  *  empty nodes going back up the stack.
  */
-static void *fr_trie_key_remove(TALLOC_CTX *ctx, void **trie_p, uint8_t const *key, int start_bit, int end_bit)
+static void *fr_trie_key_remove(fr_trie_t *ft, TALLOC_CTX *ctx, void **trie_p, uint8_t const *key, int start_bit, int end_bit)
 {
 	void *data;
 
@@ -1632,7 +1638,7 @@ static void *fr_trie_key_remove(TALLOC_CTX *ctx, void **trie_p, uint8_t const *k
 		 *	Still have bits to eat, go get them.
 		 */
 		if (start_bit < end_bit) {
-			return fr_trie_key_remove(user, &user->trie, key, start_bit, end_bit);
+			return fr_trie_key_remove(ft, user, &user->trie, key, start_bit, end_bit);
 		}
 
 		if (user->trie) {
@@ -1677,7 +1683,7 @@ static void *fr_trie_key_remove(TALLOC_CTX *ctx, void **trie_p, uint8_t const *k
 		 *	Recursively remove the key.  If that fails,
 		 *	return.
 		 */
-		data = fr_trie_key_remove(node, &node->trie[chunk], key, start_bit + node->size, end_bit);
+		data = fr_trie_key_remove(ft, node, &node->trie[chunk], key, start_bit + node->size, end_bit);
 		if (!data) {
 			fprintf(stderr, "FAIL %d\n", __LINE__);
 			return NULL;
@@ -1733,7 +1739,7 @@ collapse_chunk:
 			/*
 			 *	Convert the node to a PATH.
 			 */
-			trie = fr_trie_path_prefix_add(talloc_parent(node), node->trie[chunk],
+			trie = fr_trie_path_prefix_add(ft, talloc_parent(node), node->trie[chunk],
 						       node->size, chunk, start_bit);
 			if (trie != NULL) {
 				talloc_free(node);
@@ -1784,7 +1790,7 @@ collapse_chunk:
 		/*
 		 *	Remove the path recursively.  If not, we fail.
 		 */
-		data = fr_trie_key_remove(path, &path->trie, key, start_bit + path->length, end_bit);
+		data = fr_trie_key_remove(ft, path, &path->trie, key, start_bit + path->length, end_bit);
 		if (!data) {
 			fprintf(stderr, "FAIL %d\n", __LINE__);
 			return NULL;
@@ -1889,9 +1895,9 @@ int fr_trie_insert(fr_trie_t *ft, void const *key, size_t keylen, void *data)
 	if (!user) return -1;
 
 	user->data = data;
-	user->number = node_number++;
+	user->number = ft->number++;
 
-	if (fr_trie_key_insert(ft, &ft->trie, key, 0, keylen, PUT_USER(user)) < 0) {
+	if (fr_trie_key_insert(ft, ft, &ft->trie, key, 0, keylen, PUT_USER(user)) < 0) {
 		talloc_free(user);
 		return -1;
 	}
@@ -1917,7 +1923,7 @@ void *fr_trie_remove(fr_trie_t *ft, void const *key, size_t keylen)
 
 	if (!ft->trie) return NULL;
 
-	return fr_trie_key_remove(ft, (void **) &ft->trie, key, 0, (int) keylen);
+	return fr_trie_key_remove(ft, ft, (void **) &ft->trie, key, 0, (int) keylen);
 }
 
 /** Lookup a key in a trie and return user ctx, if any
