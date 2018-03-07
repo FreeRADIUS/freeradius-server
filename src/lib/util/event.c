@@ -597,7 +597,7 @@ static int fr_event_fd_type_set(fr_event_fd_t *ef, int fd)
  *	- 0 on success.
  *	- -1 on error;
  */
-static int _fr_event_fd_delete(fr_event_fd_t *ef)
+static int _event_fd_delete(fr_event_fd_t *ef)
 {
 	int i;
 	struct kevent		evset[10];
@@ -645,7 +645,7 @@ static int _fr_event_fd_delete(fr_event_fd_t *ef)
 	if (el->in_handler) {
 		ef->next = el->fd_to_free;	/* Link into the deferred free list */
 		el->fd_to_free = ef;
-		return 1;			/* Will be freed later */
+		return -1;			/* Will be freed later */
 	}
 
 	return 0;
@@ -660,7 +660,7 @@ static int _fr_event_fd_delete(fr_event_fd_t *ef)
  *	- 0 if file descriptor was removed.
  *	- <0 on error.
  */
-int fr_event_fd_delete(fr_event_list_t *el, int fd, fr_event_filter_t filter)
+int event_fd_delete(fr_event_list_t *el, int fd, fr_event_filter_t filter)
 {
 	fr_event_fd_t	*ef, find;
 
@@ -825,7 +825,7 @@ int fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
 			fr_strerror_printf("Out of memory");
 			return -1;
 		}
-		talloc_set_destructor(ef, _fr_event_fd_delete);
+		talloc_set_destructor(ef, _event_fd_delete);
 		ef->linked_ctx = ctx;
 
 		/*
