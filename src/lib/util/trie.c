@@ -94,6 +94,9 @@ RCSID("$Id$")
  */
 #ifdef TESTING
 #define WITH_TRIE_VERIFY
+#define MPRINT(...) fprintf(stderr, ## __VA_ARGS__)
+#else
+#define MPRINT(...)
 #endif
 
 #ifndef WITH_TRIE_VERIFY
@@ -190,9 +193,9 @@ struct fr_trie_t {
 
 static void *fr_trie_path_merge_paths(fr_trie_t *ft, TALLOC_CTX *ctx, fr_trie_path_t *path1, fr_trie_path_t *path2, int depth) CC_HINT(nonnull);
 #endif
-static int fr_trie_merge(fr_trie_t *ft, TALLOC_CTX *ctx, void **trie_p, void *a, void *b, int depth);
+static int fr_trie_merge(fr_trie_t *ft, TALLOC_CTX *ctx, void **parent_p, void *a, void *b, int depth);
 
-static int fr_trie_key_insert(fr_trie_t *ft, TALLOC_CTX *ctx, void **trie_p, uint8_t const *key, int start_bit, int end_bit, void *trie) CC_HINT(nonnull);
+static int fr_trie_key_insert(fr_trie_t *ft, TALLOC_CTX *ctx, void **parent_p, uint8_t const *key, int start_bit, int end_bit, void *trie) CC_HINT(nonnull);
 
 static void *reparent(TALLOC_CTX *ctx, void *trie)
 {
@@ -233,7 +236,7 @@ static fr_trie_node_t *fr_trie_node_alloc(fr_trie_t *ft, TALLOC_CTX *ctx, int si
 	fr_trie_node_t	*node;
 
 	if (!size || (size > 8)) {
-		fprintf(stderr, "FAILED %d - %d\n", __LINE__, (int) size);
+		MPRINT("FAILED %d - %d\n", __LINE__, (int) size);
 		return NULL;
 	}
 
@@ -759,7 +762,7 @@ static fr_trie_node_t *fr_trie_path_merge_disjoint(fr_trie_t *ft, TALLOC_CTX *ct
 
 	node = fr_trie_node_alloc(ft, ctx, size);
 	if (!node) {
-		fprintf(stderr, "FAILED %d\n", __LINE__);
+		MPRINT("FAILED %d\n", __LINE__);
 		return NULL;
 	}
 
@@ -767,7 +770,7 @@ static fr_trie_node_t *fr_trie_path_merge_disjoint(fr_trie_t *ft, TALLOC_CTX *ct
 	 *	Fill the new node with the short key
 	 */
 	if (fr_trie_path_merge(ft, ctx, &node, td_short, depth) < 0) {
-		fprintf(stderr, "FAILED %d\n", __LINE__);
+		MPRINT("FAILED %d\n", __LINE__);
 		talloc_free(node);
 		talloc_free(td_short);
 		return NULL;
@@ -779,7 +782,7 @@ static fr_trie_node_t *fr_trie_path_merge_disjoint(fr_trie_t *ft, TALLOC_CTX *ct
 	 *	And then insert the longer of the two keys
 	 */
 	if (fr_trie_path_merge(ft, ctx, &node, td_long, depth) < 0) {
-		fprintf(stderr, "FAILED %d\n", __LINE__);
+		MPRINT("FAILED %d\n", __LINE__);
 		talloc_free(node);
 		talloc_free(td_long);
 		return NULL;
@@ -863,7 +866,7 @@ static void *fr_trie_path_merge_paths(fr_trie_t *ft, TALLOC_CTX *ctx, fr_trie_pa
 		 *	We can insert, but we can't over-write an entry.
 		 */
 		if (IS_USER(path1->trie)) {
-			fprintf(stderr, "FAILED %d prefix %d\n", __LINE__, (int)prefix_len);
+			MPRINT("FAILED %d prefix %d\n", __LINE__, (int)prefix_len);
 			return NULL;
 		}
 
@@ -1061,20 +1064,20 @@ static uint16_t get_chunk(uint8_t const *key, int num_bits, int start_bit, int e
  * @param b		second mangled trie
  * @param depth 	bit depth where the trie starts
  */
-static int fr_trie_merge(fr_trie_t *ft, TALLOC_CTX *ctx, void **trie_p, void *a, void *b, int depth)
+static int fr_trie_merge(fr_trie_t *ft, TALLOC_CTX *ctx, void **parent_p, void *a, void *b, int depth)
 {
 	if (!a && !b) {
-		*trie_p = NULL;
+		*parent_p = NULL;
 		return 0;
 	}
 
 	if (!a) {
-		*trie_p = reparent(ctx, b);
+		*parent_p = reparent(ctx, b);
 		return 0;
 	}
 
 	if (!b) {
-		*trie_p = reparent(ctx, a);
+		*parent_p = reparent(ctx, a);
 		return 0;
 	}
 
@@ -1094,7 +1097,7 @@ static int fr_trie_merge(fr_trie_t *ft, TALLOC_CTX *ctx, void **trie_p, void *a,
 			return -1;
 		}
 
-		*trie_p = reparent(ctx, a);
+		*parent_p = reparent(ctx, a);
 		return 0;
 	}
 
@@ -1105,7 +1108,7 @@ static int fr_trie_merge(fr_trie_t *ft, TALLOC_CTX *ctx, void **trie_p, void *a,
 			return -1;
 		}
 
-		*trie_p = reparent(ctx, b);
+		*parent_p = reparent(ctx, b);
 		return 0;
 	}
 
@@ -1114,8 +1117,8 @@ static int fr_trie_merge(fr_trie_t *ft, TALLOC_CTX *ctx, void **trie_p, void *a,
 		/*
 		 *	Do LCP and split it off.
 		 */
-		*trie_p = fr_trie_path_merge_paths(ft, ctx, GET_PATH(a), GET_PATH(b), depth);
-		if (!*trie_p) {
+		*parent_p = fr_trie_path_merge_paths(ft, ctx, GET_PATH(a), GET_PATH(b), depth);
+		if (!*parent_p) {
 			printf("FAIL %d\n", __LINE__);
 			return -1;
 		}
@@ -1137,7 +1140,7 @@ static int fr_trie_merge(fr_trie_t *ft, TALLOC_CTX *ctx, void **trie_p, void *a,
 			return -1;
 		}
 
-		*trie_p = reparent(ctx, node);
+		*parent_p = reparent(ctx, node);
 		return 0;
 	}
 
@@ -1150,7 +1153,7 @@ static int fr_trie_merge(fr_trie_t *ft, TALLOC_CTX *ctx, void **trie_p, void *a,
 			return -1;
 		}
 
-		*trie_p = reparent(ctx, node);
+		*parent_p = reparent(ctx, node);
 		return 0;
 	}
 #endif
@@ -1176,7 +1179,7 @@ static int fr_trie_merge(fr_trie_t *ft, TALLOC_CTX *ctx, void **trie_p, void *a,
 			talloc_free(node2);
 			fr_trie_node_verify(node1);
 
-			*trie_p = reparent(ctx, node1);
+			*parent_p = reparent(ctx, node1);
 			return 0;
 		}
 
@@ -1270,7 +1273,7 @@ static int fr_trie_merge(fr_trie_t *ft, TALLOC_CTX *ctx, void **trie_p, void *a,
 
 		talloc_free(node2);
 
-		*trie_p = reparent(ctx, node1);
+		*parent_p = reparent(ctx, node1);
 		return 0;
 	}
 
@@ -1324,8 +1327,8 @@ static void *fr_trie_key_match(void *trie, uint8_t const *key, int start_bit, in
 		}
 
 		/*
-		 *	Keep matching.  If we have something, return
-		 *	that.
+		 *	Not the end of the input, keep matching.  If
+		 *	we have something, return that.
 		 */
 		data = fr_trie_key_match(user->trie, key, start_bit, end_bit, exact);
 		if (data) return data;
@@ -1343,6 +1346,12 @@ static void *fr_trie_key_match(void *trie, uint8_t const *key, int start_bit, in
 		return user->data;
 	}
 
+	/*
+	 *	No more key and it's not a user ctx node.  That's not
+	 *	a match.
+	 */
+	if (!key || (start_bit == end_bit)) return NULL;
+
 #ifdef WITH_PATH_COMPRESSION
 	/*
 	 *	Check the path, by checking the longest common prefix
@@ -1355,18 +1364,23 @@ static void *fr_trie_key_match(void *trie, uint8_t const *key, int start_bit, in
 		path = GET_PATH(trie);
 
 		/*
-		 *	Nothing to match, we're done.
+		 *	The key ends in the middle of this node.  That's not a
+		 *	match.
 		 */
-		if (!key || (start_bit == end_bit)) return NULL;
+		if ((end_bit - start_bit) < path->length) return NULL;
 
 		lcp = fr_trie_path_lcp(path->key, path->length,
 				       key + BYTEOF(start_bit), end_bit - start_bit, path->start_bit);
 
 		/*
-		 *	Too short: not a match.
+		 *	The key only matches part of the path.  That's
+		 *	not a match.
 		 */
 		if (lcp < path->length) return NULL;
 
+		/*
+		 *	Recurse to match the child trie.
+		 */
 		return fr_trie_key_match(path->trie, key, start_bit + path->length, end_bit, exact);
 	}
 #endif
@@ -1378,15 +1392,16 @@ static void *fr_trie_key_match(void *trie, uint8_t const *key, int start_bit, in
 	 *	The key ends in the middle of this node.  That's not a
 	 *	match.
 	 */
-	if ((start_bit + node->size) > end_bit) return NULL;
-	
+	if ((end_bit - start_bit) < node->size) return NULL;
+
+	/*
+	 *	Get a chink of data from the key.
+	 */
 	chunk = get_chunk(key, node->size, start_bit, end_bit);
 
 	/*
-	 *	No entry?  That's not a match.
+	 *	Recurse to match the child trie.
 	 */
-	if (!node->trie[chunk]) return NULL;
-
 	return fr_trie_key_match(node->trie[chunk], key, start_bit + node->size, end_bit, exact);
 }
 
@@ -1406,31 +1421,40 @@ static void *fr_trie_key_match(void *trie, uint8_t const *key, int start_bit, in
  *	- <0 on error
  *	- 0 on success
  */
-static int fr_trie_key_insert(fr_trie_t *ft, TALLOC_CTX *ctx, void **trie_p, uint8_t const *key, int start_bit, int end_bit, void *subtrie)
+static int fr_trie_key_insert(fr_trie_t *ft, TALLOC_CTX *ctx, void **parent_p,
+			      uint8_t const *key, int start_bit, int end_bit, void *subtrie)
 {
 	int incr;
 	int rcode, next;
 	uint16_t chunk;
-	void *trie = *trie_p;
+	void *trie = *parent_p;
 #ifdef WITH_PATH_COMPRESSION
 	fr_trie_path_t *path;
 #endif
 	fr_trie_node_t *node;
 
+	/*
+	 *	We've reached the end of the trie, but we may still
+	 *	have key bits to insert.
+	 */
 	if (!trie) {
+		/*
+		 *	Just at the end of the key, too.  Add in the
+		 *	subtrie to the current location.
+		 */
 		if (start_bit == end_bit) {
-			*trie_p = reparent(ctx, subtrie);
+			*parent_p = reparent(ctx, subtrie);
 			return 0;
 		}
 
 #ifdef WITH_PATH_COMPRESSION
 		/*
-		 *	If we have key, just create a path.
+		 *	Otherise, create a path.
 		 */
 		path = fr_trie_path_alloc(ft, ctx, key, start_bit, end_bit, subtrie);
 		if (!path) return -1;
 
-		*trie_p = PUT_PATH(path);
+		*parent_p = PUT_PATH(path);
 		return 0;
 #else
 		int size;
@@ -1445,7 +1469,7 @@ static int fr_trie_key_insert(fr_trie_t *ft, TALLOC_CTX *ctx, void **trie_p, uin
 		node = fr_trie_node_alloc(ft, ctx, size);
 		if (!node) return -1;
 
-		*trie_p = trie = node;
+		*parent_p = trie = node;
 		goto insert_node;
 #endif
 	}
@@ -1462,7 +1486,7 @@ static int fr_trie_key_insert(fr_trie_t *ft, TALLOC_CTX *ctx, void **trie_p, uin
 		 *	ctx.
 		 */
 		if (IS_USER(trie) && IS_USER(subtrie)) {
-			fprintf(stderr, "FAIL %d\n", __LINE__);
+			MPRINT("FAIL %d\n", __LINE__);
 			return -1;
 		}
 
@@ -1489,7 +1513,7 @@ static int fr_trie_key_insert(fr_trie_t *ft, TALLOC_CTX *ctx, void **trie_p, uin
 		 *	appropriately.
 		 */
 		if (!user->trie) {
-			*trie_p = reparent(ctx, subtrie);
+			*parent_p = reparent(ctx, subtrie);
 			user->trie = reparent(user, trie);
 			return 0;
 		}
@@ -1501,10 +1525,14 @@ static int fr_trie_key_insert(fr_trie_t *ft, TALLOC_CTX *ctx, void **trie_p, uin
 			return -1;
 		}
 	
-		*trie_p = reparent(ctx, subtrie);
+		*parent_p = reparent(ctx, subtrie);
 		return 0;
 	}
 
+	/*
+	 *	Asked to insert the key on top of a user ctx node.
+	 *	Instead skip it and insert the key into it's child.
+	 */
 	if (IS_USER(trie)) {
 		fr_trie_user_t *user = GET_USER(trie);
 
@@ -1513,8 +1541,8 @@ static int fr_trie_key_insert(fr_trie_t *ft, TALLOC_CTX *ctx, void **trie_p, uin
 
 #ifdef WITH_PATH_COMPRESSION
 	/*
-	 *	The trie is a path.  Create a path from the key, and
-	 *	merge it into the previous path.
+	 *	The current trie is a path.  Create a path from the
+	 *	key, and merge it into the previous path.
 	 */
 	if (IS_PATH(trie)) {
 		int lcp;
@@ -1524,10 +1552,18 @@ static int fr_trie_key_insert(fr_trie_t *ft, TALLOC_CTX *ctx, void **trie_p, uin
 
 		rad_assert((start_bit & 0x07) == path->start_bit);
 
+		/*
+		 *	See how long the common prefix is.
+		 */
 		lcp = fr_trie_path_lcp(path->key, path->length,
 				       key + BYTEOF(start_bit),
 				       end_bit - start_bit,
 				       path->start_bit);
+
+		/*
+		 *	The key matches this path exactly.  Skip the
+		 *	path, and insert the key into it's child.
+		 */
 		if (lcp == path->length) {
 			rad_assert(!IS_PATH(path->trie));
 
@@ -1536,7 +1572,8 @@ static int fr_trie_key_insert(fr_trie_t *ft, TALLOC_CTX *ctx, void **trie_p, uin
 		}
 
 		/*
-		 *	Create a prefix, and merge
+		 *	Create a prefix, and merge the two paths
+		 *	together.
 		 */
 		path2 = fr_trie_path_alloc(ft, ctx, key, start_bit, end_bit, subtrie);
 		if (!path2) return -1;
@@ -1548,7 +1585,7 @@ static int fr_trie_key_insert(fr_trie_t *ft, TALLOC_CTX *ctx, void **trie_p, uin
 			return -1;
 		}
 
-		*trie_p = trie;
+		*parent_p = trie;
 		return 0;
 	}
 #else
@@ -1576,7 +1613,7 @@ insert_node:
 		node2 = fr_trie_node_alloc(ft, node, size);
 		if (!node2) {
 			rad_assert(0 == 1);
-			fprintf(stderr, "FAILED %d\n", __LINE__);
+			MPRINT("FAILED %d\n", __LINE__);
 			return -1;
 		}
 
@@ -1584,8 +1621,8 @@ insert_node:
 		node2->trie[chunk] = reparent(node2, subtrie);
 		node2->used = 1;
 
-		if (fr_trie_merge(ft, ctx, trie_p, node2, node, start_bit) < 0) {
-			fprintf(stderr, "FAILED %d\n", __LINE__);
+		if (fr_trie_merge(ft, ctx, parent_p, node2, node, start_bit) < 0) {
+			MPRINT("FAILED %d\n", __LINE__);
 			return -1;
 		}
 
@@ -1608,6 +1645,7 @@ insert_node:
 	return 0;
 }
 
+
 /** Remove a key in a trie and return the removed user ctx, if any
  *
  *  The key length MUST match the entries in the trie.
@@ -1625,26 +1663,34 @@ insert_node:
  *  We delete the nodes as we going down the stack, and then collapse
  *  empty nodes going back up the stack.
  */
-static void *fr_trie_key_remove(fr_trie_t *ft, TALLOC_CTX *ctx, void **trie_p, uint8_t const *key, int start_bit, int end_bit)
+static void *fr_trie_key_remove(fr_trie_t *ft, TALLOC_CTX *ctx, void **parent_p, uint8_t const *key, int start_bit, int end_bit)
 {
 	void *data;
 
-	if (IS_USER(*trie_p)) {
+	/*
+	 *	Removing a key from a user node.
+	 */
+	if (IS_USER(*parent_p)) {
 		fr_trie_user_t *user;
 
-		user = GET_USER(*trie_p);
+		user = GET_USER(*parent_p);
 
 		/*
-		 *	Still have bits to eat, go get them.
+		 *	Still have bits to match, skip this node and
+		 *	remove the key from it's children.
 		 */
 		if (start_bit < end_bit) {
 			return fr_trie_key_remove(ft, user, &user->trie, key, start_bit, end_bit);
 		}
 
+		/*
+		 *	There may be a subtrie.  If so, reparent it to
+		 *	this nodes parent.
+		 */
 		if (user->trie) {
-			*trie_p = reparent(ctx, user->trie);
+			*parent_p = reparent(ctx, user->trie);
 		} else {
-			*trie_p = NULL;
+			*parent_p = NULL;
 		}
 
 		data = user->data;
@@ -1652,9 +1698,12 @@ static void *fr_trie_key_remove(fr_trie_t *ft, TALLOC_CTX *ctx, void **trie_p, u
 		return data;
 	}
 
-	if (IS_NODE(*trie_p)) {
+	/*
+	 *	Remove a key from a 2^N way node.
+	 */
+	if (IS_NODE(*parent_p)) {
 		uint16_t chunk;
-		fr_trie_node_t *node = *trie_p;
+		fr_trie_node_t *node = *parent_p;
 
 		fr_trie_node_verify(node);
 
@@ -1662,7 +1711,7 @@ static void *fr_trie_key_remove(fr_trie_t *ft, TALLOC_CTX *ctx, void **trie_p, u
 		 *	The key is too short for this trie.
 		 */
 		if ((start_bit + node->size) > end_bit) {
-			fprintf(stderr, "FAIL %d %d + %d = %d, vs %d\n", __LINE__,
+			MPRINT("FAIL %d %d + %d = %d, vs %d\n", __LINE__,
 				start_bit, node->size, start_bit + node->size, end_bit);
 			return NULL;
 		}
@@ -1673,11 +1722,9 @@ static void *fr_trie_key_remove(fr_trie_t *ft, TALLOC_CTX *ctx, void **trie_p, u
 		 *	This entry is empty, fail.
 		 */
 		if (!node->trie[chunk]) {
-			fprintf(stderr, "FAIL %d\n", __LINE__);
+			MPRINT("FAIL %d\n", __LINE__);
 			return NULL;
 		}
-
-		fr_trie_node_verify(node);
 
 		/*
 		 *	Recursively remove the key.  If that fails,
@@ -1685,43 +1732,32 @@ static void *fr_trie_key_remove(fr_trie_t *ft, TALLOC_CTX *ctx, void **trie_p, u
 		 */
 		data = fr_trie_key_remove(ft, node, &node->trie[chunk], key, start_bit + node->size, end_bit);
 		if (!data) {
-			fprintf(stderr, "FAIL %d\n", __LINE__);
+			MPRINT("FAIL %d\n", __LINE__);
 			return NULL;
 		}
 
 		/*
-		 *	The key was removed, but this entry still
-		 *	points to a non-empty trie.  See if we need to
-		 *	collapse it.
+		 *	One fewer entry is used.
 		 */
-		if (node->trie[chunk]) {
-#ifdef WITH_PATH_COMPRESSION
-			if (node->used == 1) {
-				goto collapse_chunk;
-			}
-#endif
-			return data;
+		if (!node->trie[chunk]) {
+			node->used--;
 		}
 
 		/*
-		 *	One fewer entry is used.  If there are still
-		 *	used entries or a default, just return the
-		 *	user ctx.
+		 *	Our node is completely empty.  Free ourselves,
+		 *	and tell our parent that we're empty.
 		 */
-		node->used--;
+		if (!node->used) {
+			talloc_free(node);
+			*parent_p = NULL;
+			return data;
+		}
 
-		/*
-		 *	@todo - reverse level compression?  if the
-		 *	node size is larger than the default, and less
-		 *	than half of the entries are used, split node
-		 *	into a smaller node, which points to children.
-		 */
-
+#ifdef WITH_PATH_COMPRESSION
 		/*
 		 *	Only one entry?  Try to convert the node into
 		 *	a path.
 		 */
-#ifdef WITH_PATH_COMPRESSION
 		if (node->used == 1) {
 			int i;
 			void *trie;
@@ -1735,38 +1771,34 @@ static void *fr_trie_key_remove(fr_trie_t *ft, TALLOC_CTX *ctx, void **trie_p, u
 
 			rad_assert(i < (1 << node->size));
 
-collapse_chunk:
 			/*
 			 *	Convert the node to a PATH.
 			 */
-			trie = fr_trie_path_prefix_add(ft, talloc_parent(node), node->trie[chunk],
+			trie = fr_trie_path_prefix_add(ft, ctx, node->trie[chunk],
 						       node->size, chunk, start_bit);
 			if (trie != NULL) {
 				talloc_free(node);
-				*trie_p = trie;
+				*parent_p = trie;
 			}
 			return data;
 		}
 #endif
 
-		if (node->used) {
-			fr_trie_node_verify(node);
-			return data;
-		}
-
 		/*
-		 *	Our node is completely empty.  Free ourselves,
-		 *	and tell our parent that we're empty.
+		 *	Multiple entries are still used.  Leave the
+		 *	node alone, and return.
+		 *
+		 *	@todo - normalize the trie by trying to squash
+		 *	it down again.
 		 */
-		talloc_free(node);
-		*trie_p = NULL;
+		fr_trie_node_verify(node);
 		return data;
 	}
 
 #ifdef WITH_PATH_COMPRESSION
-	if (IS_PATH(*trie_p)) {
+	if (IS_PATH(*parent_p)) {
 		int lcp;
-		fr_trie_path_t *path = GET_PATH(*trie_p);
+		fr_trie_path_t *path = GET_PATH(*parent_p);
 
 		fr_trie_path_verify(path);
 
@@ -1792,7 +1824,7 @@ collapse_chunk:
 		 */
 		data = fr_trie_key_remove(ft, path, &path->trie, key, start_bit + path->length, end_bit);
 		if (!data) {
-			fprintf(stderr, "FAIL %d\n", __LINE__);
+			MPRINT("FAIL %d\n", __LINE__);
 			return NULL;
 		}
 
@@ -1824,7 +1856,7 @@ collapse_chunk:
 		}
 
 		talloc_free(path);
-		*trie_p = NULL;
+		*parent_p = NULL;
 		return data;
 	}
 #endif
@@ -1887,7 +1919,7 @@ int fr_trie_insert(fr_trie_t *ft, void const *key, size_t keylen, void *data)
 	 */
 	if (ft->trie &&
 	    (fr_trie_key_match(ft->trie, key, 0, keylen, true) != NULL)) {
-		fprintf(stderr, "FAILED %d\n", __LINE__);
+		MPRINT("FAILED %d\n", __LINE__);
 		return -1;
 	}
 
@@ -2364,19 +2396,19 @@ static int arg2key(char *arg, char **key, int *length)
 
 	p = strchr(arg, '}');
 	if (!p) {
-		fprintf(stderr, "Failed to find end '}' for {bits}\n");
+		MPRINT("Failed to find end '}' for {bits}\n");
 		return -1;
 	}
 
 	bits = BITSOF(strlen(p + 1));
 	if (!bits) {
-		fprintf(stderr, "No key found in in '%s'\n", arg);
+		MPRINT("No key found in in '%s'\n", arg);
 		return -1;
 	}
 
 	size = atoi(arg + 1);	/* ignore end character... */
 	if (size > bits) {
-		fprintf(stderr, "Length '%d' is longer than bits in key %s",
+		MPRINT("Length '%d' is longer than bits in key %s",
 			size, p + 1);
 	}
 
@@ -2412,23 +2444,23 @@ static int command_insert(fr_trie_t *ft, UNUSED int argc, char **argv, UNUSED ch
 	 */
 	data = talloc_strdup(data_ctx, argv[1]);
 	if (!data) {
-		fprintf(stderr, "OOM\n");
+		MPRINT("OOM\n");
 		return -1;
 	}
 
 	if (fr_trie_insert(ft, key, bits, data) < 0) {
-		fprintf(stderr, "Failed inserting key %s=%s\n", key, argv[1]);
+		MPRINT("Failed inserting key %s=%s\n", key, argv[1]);
 		return -1;
 	}
 
 	answer = fr_trie_key_match(ft->trie, (uint8_t *) key, 0, bits, true);
 	if (!answer) {
-		fprintf(stderr, "Could not match key %s\n", key);
+		MPRINT("Could not match key %s\n", key);
 		return -1;
 	}
 
 	if (answer != data) {
-		fprintf(stderr, "Inserted %s, but looked up %s\n", argv[1], (char const *) answer);
+		MPRINT("Inserted %s, but looked up %s\n", argv[1], (char const *) answer);
 		return -1;
 	}
 
@@ -2622,7 +2654,7 @@ static int command_remove(fr_trie_t *ft, UNUSED int argc, char **argv, char *out
 
 	answer = fr_trie_remove(ft, key, bits);
 	if (!answer) {
-		fprintf(stderr, "Could not remove key %s\n", key);
+		MPRINT("Could not remove key %s\n", key);
 		return -1;
 	}
 
@@ -2636,7 +2668,7 @@ static int command_remove(fr_trie_t *ft, UNUSED int argc, char **argv, char *out
 	 */
 	answer = fr_trie_key_match(ft->trie, (uint8_t *) key, 0, bits, true);
 	if (answer) {
-		fprintf(stderr, "Still in trie after 'remove' for key %s, found data %s\n", key, (char const *) answer);
+		MPRINT("Still in trie after 'remove' for key %s, found data %s\n", key, (char const *) answer);
 		return -1;
 	}
 
@@ -2694,23 +2726,23 @@ static int command_path(fr_trie_t *ft, UNUSED int argc, char **argv, char *out, 
 
 	data = talloc_strdup(ft, argv[1]); /* has to be malloc'd data, sorry */
 	if (!data) {
-		fprintf(stderr, "OOM\n");
+		MPRINT("OOM\n");
 		return -1;
 	}
 
 	if (fr_trie_insert(ft, argv[0], BITSOF(strlen(argv[0])), data) < 0) {
-		fprintf(stderr, "Could not insert key %s=%s\n", argv[0], argv[1]);
+		MPRINT("Could not insert key %s=%s\n", argv[0], argv[1]);
 		return -1;
 	}
 
 	answer = fr_trie_lookup(ft, argv[0], BITSOF(strlen(argv[0])));
 	if (!answer) {
-		fprintf(stderr, "Could not look up key %s\n", argv[0]);
+		MPRINT("Could not look up key %s\n", argv[0]);
 		return -1;
 	}
 
 	if (answer != data) {
-		fprintf(stderr, "Expected to find %s, got %s\n", argv[1], (char const *) answer);
+		MPRINT("Expected to find %s, got %s\n", argv[1], (char const *) answer);
 		return -1;
 	}
 
@@ -2721,12 +2753,12 @@ static int command_path(fr_trie_t *ft, UNUSED int argc, char **argv, char *out, 
 
 	answer = fr_trie_remove(ft, (uint8_t const *) argv[0], BITSOF(strlen(argv[0])));
 	if (!answer) {
-		fprintf(stderr, "Could not remove key %s\n", argv[0]);
+		MPRINT("Could not remove key %s\n", argv[0]);
 		return -1;
 	}
 
 	if (answer != data) {
-		fprintf(stderr, "Expected to remove %s, got %s\n", argv[1], (char const *) answer);
+		MPRINT("Expected to remove %s, got %s\n", argv[1], (char const *) answer);
 		return -1;
 	}
 
@@ -2761,7 +2793,7 @@ static int command_lcp(UNUSED fr_trie_t *ft, UNUSED int argc, char **argv, char 
 		key1 = (uint8_t const *) argv[0];
 		keylen1 = atoi(argv[1]);
 		if ((keylen1 < 0) || (keylen1 > (int) BITSOF(strlen(argv[0])))) {
-			fprintf(stderr, "length of key1 %s is larger than string length %ld\n",
+			MPRINT("length of key1 %s is larger than string length %ld\n",
 				argv[1], BITSOF(strlen(argv[0])));
 			return -1;
 		}
@@ -2769,19 +2801,19 @@ static int command_lcp(UNUSED fr_trie_t *ft, UNUSED int argc, char **argv, char 
 		key2 = (uint8_t const *) argv[2];
 		keylen2 = atoi(argv[3]);
 		if ((keylen2 < 0) || (keylen2 > (int) BITSOF(strlen(argv[2])))) {
-			fprintf(stderr, "length of key2 %s is larger than string length %ld\n",
+			MPRINT("length of key2 %s is larger than string length %ld\n",
 				argv[3], BITSOF(strlen(argv[2])));
 			return -1;
 		}
 
 		start_bit = atoi(argv[4]);
 		if ((start_bit < 0) || (start_bit > 7)) {
-			fprintf(stderr, "start_bit has invalid value %s\n", argv[4]);
+			MPRINT("start_bit has invalid value %s\n", argv[4]);
 			return -1;
 		}
 
 	} else {
-		fprintf(stderr, "Invalid number of arguments\n");
+		MPRINT("Invalid number of arguments\n");
 		return -1;
 	}
 
