@@ -237,6 +237,7 @@ struct fr_event_fd {
 
 	bool			is_registered;		//!< Whether this fr_event_fd_t's FD has been registered with
 							///< kevent.  Mostly for debugging.
+	bool			in_fd_to_free;		//!< Whether this event is in the fd_to_free list.
 
 	void			*uctx;			//!< Context pointer to pass to each file descriptor callback.
 	TALLOC_CTX		*linked_ctx;		//!< talloc ctx this event was bound to.
@@ -643,9 +644,20 @@ static int _event_fd_delete(fr_event_fd_t *ef)
 	 *	freed later.
 	 */
 	if (el->in_handler) {
-		ef->next = el->fd_to_free;	/* Link into the deferred free list */
-		el->fd_to_free = ef;
-		return -1;			/* Will be freed later */
+		/*
+		 *	Don't allow the same event to be
+		 *	inserted into the free list multiple
+		 *	times.
+		 *
+		 *	This shouldn't happen and is mostly
+		 *	for paranoia and debugging.
+		 */
+		if (fr_cond_assert(!ef->in_fd_to_free)) {
+			ef->next = el->fd_to_free;	/* Link into the deferred free list */
+			el->fd_to_free = ef;
+			ef->in_fd_to_free = true;
+		}
+		return -1;				/* Will be freed later */
 	}
 
 	return 0;
