@@ -35,6 +35,7 @@ URL: http://www.freeradius.org/
 Source0: ftp://ftp.freeradius.org/pub/radius/freeradius-server-%{version}.tar.bz2
 %if %{?_unitdir:1}%{!?_unitdir:0}
 Source100: radiusd.service
+Source104: freeradius-tmpfiles-conf
 %else
 Source100: freeradius-radiusd-init
 %define initddir %{?_initddir:%{_initddir}}%{!?_initddir:%{_initrddir}}
@@ -42,7 +43,6 @@ Source100: freeradius-radiusd-init
 
 Source102: freeradius-logrotate
 Source103: freeradius-pam-conf
-Source104: freeradius-tmpfiles.conf
 
 Obsoletes: freeradius-devel
 Obsoletes: freeradius-libs
@@ -389,7 +389,7 @@ touch $RPM_BUILD_ROOT/var/log/radius/{radutmp,radius.log}
 # For systemd based systems, that define _unitdir, install the radiusd unit
 %if %{?_unitdir:1}%{!?_unitdir:0}
 install -D -m 755 redhat/radiusd.service $RPM_BUILD_ROOT/%{_unitdir}/radiusd.service
-install -D -m 0644 %{SOURCE104} $RPM_BUILD_ROOT/%{_prefix}/lib/tmpfiles.d/radiusd.conf
+install -D -m 644 %{SOURCE104} $RPM_BUILD_ROOT/%{_prefix}/lib/tmpfiles.d/radiusd.conf
 # For SystemV install the init script
 %else
 install -D -m 755 redhat/freeradius-radiusd-init $RPM_BUILD_ROOT/%{initddir}/radiusd
@@ -501,7 +501,7 @@ fi
 
 %if %{?_unitdir:1}%{!?_unitdir:0}
 %{_unitdir}/radiusd.service
-%{_prefix}/lib/tmpfiles.d/radiusd.conf
+%config(noreplace) %{_prefix}/lib/tmpfiles.d/radiusd.conf
 %else
 %{initddir}/radiusd
 %endif
