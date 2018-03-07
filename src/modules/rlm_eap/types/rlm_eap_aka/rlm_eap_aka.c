@@ -1275,7 +1275,7 @@ static int mod_namespace_load(CONF_SECTION *server_cs)
 
 static int mod_load(void)
 {
-	virtual_server_namespace_register("eap-aka", mod_namespace_load);
+	if (virtual_server_namespace_register("eap-aka", mod_namespace_load) < 0) return -1;
 
 	dict_aka_root = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_EAP_AKA_ROOT);
 	if (!dict_aka_root) {

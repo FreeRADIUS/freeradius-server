@@ -606,7 +606,7 @@ static int _virtual_namespace_cmp(void const *a, void const *b)
  *
  *  This allows modules to register unlang compilation functions for specific namespaces
  */
-void virtual_server_namespace_register(char const *namespace, fr_virtual_server_compile_t func)
+int virtual_server_namespace_register(char const *namespace, fr_virtual_server_compile_t func)
 {
 	rbtree_t		*vns_tree;
 	fr_virtual_namespace_t	*vns;
@@ -628,12 +628,18 @@ void virtual_server_namespace_register(char const *namespace, fr_virtual_server_
 					     _virtual_namespace_cmp, _virtual_namespace_free, RBTREE_FLAG_REPLACE));
 
 		if (!cf_data_add(virtual_server_root, vns_tree, "vns_tree", true)) {
+			ERROR("Failed adding namespace tree data to config");
 			talloc_free(vns_tree);
-			return;
+			return -1;
 		}
 	}
 
-	rbtree_insert(vns_tree, vns);
+	if (!rbtree_insert(vns_tree, vns)) {
+		ERROR("Failed inserting namespace into tree");
+		return -1;
+	}
+
+	return 0;
 }
 
 /*
