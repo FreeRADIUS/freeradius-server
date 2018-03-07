@@ -51,14 +51,6 @@ extern fr_log_t		debug_log;
 fr_cond_t		*debug_condition = NULL;		//!< Condition used to mark packets up for checking.
 fr_log_t		debug_log = { .fd = -1, .dst = L_DST_NULL };
 
-typedef struct cached_config_t {
-	struct cached_config_t *next;
-	time_t		created;
-	CONF_SECTION	*cs;
-} cached_config_t;
-
-static cached_config_t	*cs_cache = NULL;
-
 /*
  *	Temporary local variables for parsing the configuration
  *	file.
@@ -647,7 +639,6 @@ int main_config_init(void)
 	char const		*p = NULL;
 	CONF_SECTION		*cs, *subcs;
 	struct stat		statbuf;
-	cached_config_t 	*cc;
 	char			buffer[1024];
 
 	if (stat(radius_dir, &statbuf) < 0) {
@@ -1012,13 +1003,6 @@ do {\
 	}
 #endif
 
-	cc = talloc_zero(NULL, cached_config_t);
-	if (!cc) return -1;
-
-	cc->cs = talloc_steal(cc ,cs);
-	rad_assert(cs_cache == NULL);
-	cs_cache = cc;
-
 	/* Clear any unprocessed configuration errors */
 	(void) fr_strerror();
 
@@ -1039,7 +1023,7 @@ int main_config_free(void)
 	/*
 	 *	Frees current config and any previous configs.
 	 */
-	TALLOC_FREE(cs_cache);
+	TALLOC_FREE(main_config.config);
 	TALLOC_FREE(main_config.dict);
 
 	return 0;
