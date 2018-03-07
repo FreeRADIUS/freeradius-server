@@ -660,7 +660,7 @@ static int _event_fd_delete(fr_event_fd_t *ef)
  *	- 0 if file descriptor was removed.
  *	- <0 on error.
  */
-int event_fd_delete(fr_event_list_t *el, int fd, fr_event_filter_t filter)
+int fr_event_fd_delete(fr_event_list_t *el, int fd, fr_event_filter_t filter)
 {
 	fr_event_fd_t	*ef, find;
 
