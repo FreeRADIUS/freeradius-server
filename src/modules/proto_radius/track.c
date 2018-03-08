@@ -228,6 +228,7 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_entry_t **p_ent
 		}
 
 		*p_entry = entry;
+		ft->num_entries++;
 		return FR_TRACKING_NEW;
 	}
 
