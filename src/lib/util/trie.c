@@ -1059,7 +1059,7 @@ static uint16_t get_chunk(uint8_t const *key, int num_bits, int start_bit, int e
  *
  * @param ft		the root structure of the trie
  * @param ctx		the talloc ctx
- * @param trie_p	where the output trie is stored
+ * @param parent_p	where the output trie is stored
  * @param a		first mangled trie
  * @param b		second mangled trie
  * @param depth 	bit depth where the trie starts
@@ -1412,7 +1412,7 @@ static void *fr_trie_key_match(void *trie, uint8_t const *key, int start_bit, in
  *
  * @param ft		the root structure of the trie
  * @param ctx		the talloc ctx
- * @param trie_p	pointer to the trie to insert into
+ * @param parent_p	pointer to the trie to insert into
  * @param key		the binary key
  * @param start_bit	the start bit
  * @param end_bit	the end bit
@@ -1652,7 +1652,7 @@ insert_node:
  *
  * @param ft		the root structure of the trie
  * @param ctx	 	the talloc ctx
- * @param[in,out]	trie_p where the updated output is stored
+ * @param[in,out] parent_p where the updated output is stored
  * @param key	 	the key
  * @param start_bit	the start bit 
  * @param end_bit	the end bit 
@@ -1666,6 +1666,8 @@ insert_node:
 static void *fr_trie_key_remove(fr_trie_t *ft, TALLOC_CTX *ctx, void **parent_p, uint8_t const *key, int start_bit, int end_bit)
 {
 	void *data;
+
+	if (!*parent_p) return NULL;
 
 	/*
 	 *	Removing a key from a user node.
