@@ -316,3 +316,18 @@ int fr_radius_tracking_entry_reply(fr_tracking_t *ft, fr_tracking_entry_t *entry
 
 	return 0;
 }
+
+
+/** Return number of used entries in the tracking table.
+ *
+ * @param[in] ft		the tracking table.
+ * @return
+ *	- <0 on error
+ *	- >=0 number of entries in the tracking table
+ */
+int fr_radius_tracking_num(fr_tracking_t *ft)
+{
+	(void) talloc_get_type_abort(ft, fr_tracking_t);
+
+	return ft->num_entries;
+}
