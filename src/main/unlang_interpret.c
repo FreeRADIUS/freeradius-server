@@ -1436,6 +1436,8 @@ rlm_rcode_t unlang_module_yield(REQUEST *request, fr_module_unlang_resume_t call
 
 	rad_assert(stack->depth > 0);
 
+	VERIFY_REQUEST(request);	/* Check the yielded request is sane */
+
 	switch (frame->instruction->type) {
 	case UNLANG_TYPE_MODULE_CALL:
 		mr = unlang_resume_alloc(request, callback, cancel, rctx);
