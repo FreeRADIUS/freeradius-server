@@ -348,9 +348,19 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions)
 		if (stat(ef->entries[i].filename, &st) == 0) {
 			if ((st.st_dev != ef->entries[i].st_dev) ||
 			    (st.st_ino != ef->entries[i].st_ino)) {
+				/*
+				 *	No longer the same file; reopen.
+				 */
 				close(ef->entries[i].fd);
 				goto reopen;
 			}
+		} else {
+			/*
+			 *	Error calling stat, likely the
+			 *	file has been moved. Reopen it.
+			 */
+			close(ef->entries[i].fd);
+			goto reopen;
 		}
 	}
 
