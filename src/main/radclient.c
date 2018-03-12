@@ -58,7 +58,6 @@ static fr_ipaddr_t client_ipaddr;
 static uint16_t client_port = 0;
 
 static int sockfd;
-static int last_used_id = -1;
 
 #ifdef WITH_TCP
 static char const *proto = NULL;
@@ -96,7 +95,6 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "                         If a second file is provided, it will be used to verify responses\n");
 	fprintf(stderr, "  -F                     Print the file name, packet number and reply code.\n");
 	fprintf(stderr, "  -h                     Print usage help information.\n");
-	fprintf(stderr, "  -i <id>                Set request id to 'id'.  Values may be 0..255\n");
 	fprintf(stderr, "  -n <num>               Send N requests/s\n");
 	fprintf(stderr, "  -p <num>               Send 'num' packets from a file in parallel.\n");
 	fprintf(stderr, "  -q                     Do not print anything out.\n");
@@ -1195,7 +1193,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	while ((c = getopt(argc, argv, "46c:d:D:f:Fhi:n:p:qr:sS:t:vx"
+	while ((c = getopt(argc, argv, "46c:d:D:f:Fhn:p:qr:sS:t:vx"
 #ifdef WITH_TCP
 		"P:"
 #endif
@@ -1245,15 +1243,6 @@ int main(int argc, char **argv)
 
 		case 'F':
 			print_filename = true;
-			break;
-
-		case 'i':	/* currently broken */
-			if (!isdigit((int) *optarg))
-				usage();
-			last_used_id = atoi(optarg);
-			if ((last_used_id < 0) || (last_used_id > 255)) {
-				usage();
-			}
 			break;
 
 		case 'n':
