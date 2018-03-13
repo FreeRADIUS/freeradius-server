@@ -1660,17 +1660,17 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_conf_t *conf, REQ
 			return NULL;
 		}
 	/*
-	 *	Better to perform explicit checks, that rely
+	 *	Better to perform explicit checks, than rely
 	 *	on OpenSSL's opaque error messages.
 	 */
 	} else {
-		if (!conf->private_key_file) {
+		if (!conf->key_pairs || !conf->key_pairs[0]->private_key_file) {
 			ERROR("TLS Server requires a private key file");
 			talloc_free(session);
 			return NULL;
 		}
 
-		if (!conf->certificate_file) {
+		if (!conf->key_pairs || !conf->key_pairs[0]->certificate_file) {
 			ERROR("TLS Server requires a certificate file");
 			talloc_free(session);
 			return NULL;

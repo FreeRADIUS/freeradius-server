@@ -10,11 +10,14 @@ listen {
 	proto = tcp
 
 	tls {
-		private_key_password = whatever
-
 		# Moonshot tends to distribute certs separate from keys
-		private_key_file = ${certdir}/server.key
-		certificate_file = ${certdir}/server.pem
+		certificate {
+			private_key_file = ${certdir}/server.key
+			certificate_file = ${certdir}/server.pem
+
+			private_key_password = whatever
+		}
+
 		ca_file = ${cadir}/ca.pem
 		dh_file = ${certdir}/dh
 		fragment_size = 8192

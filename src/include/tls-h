@@ -213,6 +213,18 @@ typedef struct {
 } fr_tls_ocsp_conf_t;
 #endif
 
+/** Structure representing a single certificate
+ *
+ */
+typedef struct {
+	bool		pem_file_type;			//!< Whether the file is expected to be PEM encoded.
+							///< This allows us to load multiple chained PEM certificates
+							///< from a single file.
+	char const	*password;			//!< Password to decrypt the certificate(s).
+	char const	*certificate_file;		//!< Path to certificate.
+	char const	*private_key_file;		//!< Path to certificate.
+} fr_tls_conf_key_pair_t;
+
 /* configured values goes right here */
 struct fr_tls_conf_t {
 	SSL_CTX		**ctx;				//!< We use an array of contexts to reduce contention.
@@ -223,9 +235,8 @@ struct fr_tls_conf_t {
 
 	CONF_SECTION	*cs;
 
-	char const	*private_key_password;		//!< Password to decrypt the private key.
-	char const	*private_key_file;		//!< Private key file.
-	char const	*certificate_file;		//!< Public (certificate) file.
+	fr_tls_conf_key_pair_t	**key_pairs;		//!< One or more certificates
+
 	char const	*random_file;			//!< If set, we read 10K of data (or the complete file)
 							//!< and use it to seed OpenSSL's PRNG.
 	char const	*ca_path;
@@ -236,7 +247,6 @@ struct fr_tls_conf_t {
 	uint32_t	verify_depth;			//!< Maximum number of certificates we can traverse
 							//!< when attempting to reach the presented certificate
 							//!< from our Root CA.
-	bool		file_type;
 	bool		auto_chain;			//!< Allow OpenSSL to build certificate chains
 							//!< from all certificates it has available.
 							//!< If false, the complete chain must be provided in

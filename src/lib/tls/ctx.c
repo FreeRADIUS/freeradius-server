@@ -103,6 +103,73 @@ static int ctx_dh_params_load(SSL_CTX *ctx, char *file)
 	return 0;
 }
 
+static int tls_ctx_load_cert_key_pair(SSL_CTX *ctx, fr_tls_conf_key_pair_t const *key_pair)
+{
+	char *password;
+	int type;
+
+	/*
+	 *	Conf parser should ensure they're both populated
+	 */
+	rad_assert(key_pair->certificate_file && key_pair->private_key_file);
+
+	/*
+	 *	Identify the type of certificates that needs to be loaded
+	 */
+	if (key_pair->pem_file_type) {
+		type = SSL_FILETYPE_PEM;
+	} else {
+		type = SSL_FILETYPE_ASN1;
+	}
+
+	/*
+	 *	Set the password (this should have been retrieved earlier)
+	 */
+	memcpy(&password, &key_pair->password, sizeof(password));
+	SSL_CTX_set_default_passwd_cb_userdata(ctx, password);
+
+	/*
+	 *	Always set the callback as it provides useful debug
+	 *	output if the certificate isn't set.
+	 */
+	SSL_CTX_set_default_passwd_cb(ctx, tls_session_password_cb);
+
+	if (type == SSL_FILETYPE_PEM) {
+		if (!(SSL_CTX_use_certificate_chain_file(ctx, key_pair->certificate_file))) {
+			tls_log_error(NULL, "Failed reading certificate file \"%s\"",
+				      key_pair->certificate_file);
+			return -1;
+		}
+
+	} else {
+		if (!(SSL_CTX_use_certificate_file(ctx, key_pair->certificate_file, type))) {
+			tls_log_error(NULL, "Failed reading certificate file \"%s\"",
+				      key_pair->certificate_file);
+			return -1;
+		}
+	}
+
+	if (!(SSL_CTX_use_PrivateKey_file(ctx, key_pair->private_key_file, type))) {
+		tls_log_error(NULL, "Failed reading private key file \"%s\"",
+			      key_pair->private_key_file);
+		return -1;
+	}
+
+	/*
+	 *	Check if the last loaded private key matches one
+	 *	of the public certificates.
+	 *
+	 *	Note: The call to SSL_CTX_use_certificate_chain_file
+	 *	can load in a private key too.
+	 */
+	if (!SSL_CTX_check_private_key(ctx)) {
+		ERROR("Private key does not match the certificate public key");
+		return -1;
+	}
+
+	return 0;
+}
+
 /** Create SSL context
  *
  * - Load the trusted CAs
@@ -121,7 +188,6 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 	X509_STORE	*cert_vpstore;
 	int		verify_mode = SSL_VERIFY_NONE;
 	int		ctx_options = 0;
-	int		type;
 	void		*app_data_index;
 
 	ctx = SSL_CTX_new(SSLv23_method()); /* which is really "all known SSL / TLS methods".  Idiots. */
@@ -140,22 +206,6 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 	/*
 	 *	Identify the type of certificates that needs to be loaded
 	 */
-	if (conf->file_type) {
-		type = SSL_FILETYPE_PEM;
-	} else {
-		type = SSL_FILETYPE_ASN1;
-	}
-
-	/*
-	 *	Set the private key password (this should have been retrieved earlier)
-	 */
-	{
-		char *password;
-
-		memcpy(&password, &conf->private_key_password, sizeof(password));
-		SSL_CTX_set_default_passwd_cb_userdata(ctx, password);
-		SSL_CTX_set_default_passwd_cb(ctx, tls_session_password_cb);
-	}
 
 #ifdef PSK_MAX_IDENTITY_LEN
 	if (!client) {
@@ -195,9 +245,7 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 		size_t psk_len, hex_len;
 		uint8_t buffer[PSK_MAX_PSK_LEN];
 
-		if (conf->certificate_file ||
-		    conf->private_key_password || conf->private_key_file ||
-		    conf->ca_file || conf->ca_path) {
+		if (conf->key_pairs || conf->ca_file || conf->ca_path) {
 			ERROR("When PSKs are used, No certificate configuration is permitted");
 			return NULL;
 		}
@@ -237,44 +285,17 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 	 *	the cert chain needs to be given in PEM from
 	 *	openSSL.org
 	 */
-	if (!conf->certificate_file) goto load_ca;
+	if (conf->key_pairs) {
+		size_t i, cnt = talloc_array_length(conf->key_pairs);
 
-	if (type == SSL_FILETYPE_PEM) {
-		if (!(SSL_CTX_use_certificate_chain_file(ctx, conf->certificate_file))) {
-			tls_log_error(NULL, "Failed reading certificate file \"%s\"",
-				      conf->certificate_file);
-			return NULL;
-		}
-
-	} else {
-		if (!(SSL_CTX_use_certificate_file(ctx, conf->certificate_file, type))) {
-			tls_log_error(NULL, "Failed reading certificate file \"%s\"",
-				      conf->certificate_file);
-			return NULL;
-		}
-	}
-
-	if (conf->private_key_file) {
-		if (!(SSL_CTX_use_PrivateKey_file(ctx, conf->private_key_file, type))) {
-			tls_log_error(NULL, "Failed reading private key file \"%s\"",
-				      conf->private_key_file);
-			return NULL;
+		for (i = 0; i < cnt; i++) {
+			if (tls_ctx_load_cert_key_pair(ctx, conf->key_pairs[i]) < 0) return NULL;
 		}
 	}
 
 	/*
-	 *	Check if the loaded private key is the right one
-	 *
-	 *	Note: The call to SSL_CTX_use_certificate_chain_file
-	 *	can load in a private key too.
+	 *	Load the CAs we trust
 	 */
-	if (!SSL_CTX_check_private_key(ctx)) {
-		ERROR("Private key does not match the certificate public key");
-		return NULL;
-	}
-
-	/* Load the CAs we trust */
-load_ca:
 	if (conf->ca_file || conf->ca_path) {
 		if (!SSL_CTX_load_verify_locations(ctx, conf->ca_file, conf->ca_path)) {
 			tls_log_error(NULL, "Failed reading Trusted root CA list \"%s\"",

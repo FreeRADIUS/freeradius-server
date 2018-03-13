@@ -163,26 +163,32 @@ eap {
 	#  you want.
 	#
 	tls-config tls-common {
-		private_key_password = whatever
-		private_key_file = ${certdir}/server.pem
+		#
+		#  Multiple certificate sections may be specified to support
+		#  crypto agility with different key types.
+		#
+		certificate {
+			private_key_password = whatever
+			private_key_file = ${certdir}/server.key
 
-		#
-		#  If Private key & Certificate are located in the same file,
-		#  then private_key_file & certificate_file must contain the
-		#  same file name.
-		#
-		#  If ca_file (below) is not used, then the certificate_file
-		#  below MUST include not only the server certificate, but ALSO
-		#  all of the CA certificates used to sign the server
-		#  certificate.
-		#
-		#  Any certificate chain MUST be in order from server
-		#  certificate (first in the file) to intermediaries (second) to
-		#  root CA (last in the file) as per RFC 4346 (see
-		#  certificate_list
-		#  http://tools.ietf.org/html/rfc4346#section-7.4.2 )
-		#
-		certificate_file = ${certdir}/server.pem
+			#
+			#  If Private key & Certificate are located in the same file,
+			#  then private_key_file & certificate_file must contain the
+			#  same file name.
+			#
+			#  If ca_file (below) is not used, then the certificate_file
+			#  below MUST include not only the server certificate, but ALSO
+			#  all of the CA certificates used to sign the server
+			#  certificate.
+			#
+			#  Any certificate chain MUST be in order from server
+			#  certificate (first in the file) to intermediaries (second) to
+			#  root CA (last in the file) as per RFC 4346 (see
+			#  certificate_list
+			#  http://tools.ietf.org/html/rfc4346#section-7.4.2 )
+			#
+			certificate_file = ${certdir}/server.pem
+		}
 
 		#
 		#  Server certificate may also be specified at runtime on a per
