@@ -1226,14 +1226,10 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 				size_t		j, len;
 				uint8_t		**array;
 
-				array = (uint8_t **)((uint8_t *)base) + rule->offset;
+				array = *(uint8_t ***)(((uint8_t *)base) + rule->offset);
 				len = talloc_array_length(array);
 
-				for (j = 0; j < len; j++) {
-					if (cf_section_parse_pass2(array[j], subcs) < 0) {
-						return -1;
-					}
-				}
+				for (j = 0; j < len; j++) if (cf_section_parse_pass2(array[j], subcs) < 0) return -1;
 				continue;
 			} else {
 				subcs_base = (uint8_t *)base + rule->offset;
