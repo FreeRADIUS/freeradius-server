@@ -217,7 +217,7 @@ typedef struct {
  *
  */
 typedef struct {
-	bool		pem_file_type;			//!< Whether the file is expected to be PEM encoded.
+	int		file_format;			//!< Whether the file is expected to be PEM encoded.
 							///< This allows us to load multiple chained PEM certificates
 							///< from a single file.
 	char const	*password;			//!< Password to decrypt the certificate(s).

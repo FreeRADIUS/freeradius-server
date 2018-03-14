@@ -105,22 +105,12 @@ static int ctx_dh_params_load(SSL_CTX *ctx, char *file)
 
 static int tls_ctx_load_cert_key_pair(SSL_CTX *ctx, fr_tls_conf_key_pair_t const *key_pair)
 {
-	char *password;
-	int type;
+	char	*password;
 
 	/*
 	 *	Conf parser should ensure they're both populated
 	 */
 	rad_assert(key_pair->certificate_file && key_pair->private_key_file);
-
-	/*
-	 *	Identify the type of certificates that needs to be loaded
-	 */
-	if (key_pair->pem_file_type) {
-		type = SSL_FILETYPE_PEM;
-	} else {
-		type = SSL_FILETYPE_ASN1;
-	}
 
 	/*
 	 *	Set the password (this should have been retrieved earlier)
@@ -134,30 +124,37 @@ static int tls_ctx_load_cert_key_pair(SSL_CTX *ctx, fr_tls_conf_key_pair_t const
 	 */
 	SSL_CTX_set_default_passwd_cb(ctx, tls_session_password_cb);
 
-	if (type == SSL_FILETYPE_PEM) {
+	switch (key_pair->file_format) {
+	case SSL_FILETYPE_PEM:
 		if (!(SSL_CTX_use_certificate_chain_file(ctx, key_pair->certificate_file))) {
 			tls_log_error(NULL, "Failed reading certificate file \"%s\"",
 				      key_pair->certificate_file);
 			return -1;
 		}
+		break;
 
-	} else {
-		if (!(SSL_CTX_use_certificate_file(ctx, key_pair->certificate_file, type))) {
+	case SSL_FILETYPE_ASN1:
+		if (!(SSL_CTX_use_certificate_file(ctx, key_pair->certificate_file, key_pair->file_format))) {
 			tls_log_error(NULL, "Failed reading certificate file \"%s\"",
 				      key_pair->certificate_file);
 			return -1;
 		}
+		break;
+
+	default:
+		rad_assert(0);
+		break;
 	}
 
-	if (!(SSL_CTX_use_PrivateKey_file(ctx, key_pair->private_key_file, type))) {
+	if (!(SSL_CTX_use_PrivateKey_file(ctx, key_pair->private_key_file, key_pair->file_format))) {
 		tls_log_error(NULL, "Failed reading private key file \"%s\"",
 			      key_pair->private_key_file);
 		return -1;
 	}
 
 	/*
-	 *	Check if the last loaded private key matches one
-	 *	of the public certificates.
+	 *	Check if the last loaded private key matches the last
+	 *	loaded certificate.
 	 *
 	 *	Note: The call to SSL_CTX_use_certificate_chain_file
 	 *	can load in a private key too.

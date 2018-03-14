@@ -168,8 +168,12 @@ eap {
 		#  crypto agility with different key types.
 		#
 		certificate {
-			private_key_password = whatever
-			private_key_file = ${certdir}/server.key
+			#
+			#  The format of the certificate and private key file may be one of
+			#  PEM or ASN1.  If PEM format is used a complete certificate chain
+			#  may be provided in the 'certificate_file'.
+			#
+#			format = "PEM"
 
 			#
 			#  If Private key & Certificate are located in the same file,
@@ -188,6 +192,9 @@ eap {
 			#  http://tools.ietf.org/html/rfc4346#section-7.4.2 )
 			#
 			certificate_file = ${certdir}/server.pem
+
+			private_key_password = whatever
+			private_key_file = ${certdir}/server.key
 		}
 
 		#

@@ -39,6 +39,18 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
 
+/** Certificate formats
+ *
+ */
+const FR_NAME_NUMBER certificate_format_table[] = {
+	{ "PEM",	SSL_FILETYPE_PEM	},
+	{ "ASN1",	SSL_FILETYPE_ASN1	},
+
+	{ NULL,		0			},
+};
+
+static int certificate_format_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+
 static CONF_PARSER cache_config[] = {
 	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING, fr_tls_conf_t, session_cache_server) },
 	{ FR_CONF_OFFSET("name", FR_TYPE_TMPL, fr_tls_conf_t, session_id_name),
@@ -81,7 +93,7 @@ static CONF_PARSER ocsp_config[] = {
 #endif
 
 CONF_PARSER tls_cert_pair_config[] = {
-	{ FR_CONF_OFFSET("pem_file_type", FR_TYPE_BOOL, fr_tls_conf_key_pair_t, pem_file_type), .dflt = "yes" },
+	{ FR_CONF_OFFSET("format", FR_TYPE_BOOL, fr_tls_conf_key_pair_t, file_format), .dflt = "pem", .func = certificate_format_type_parse },
 	{ FR_CONF_OFFSET("certificate_file", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED , fr_tls_conf_key_pair_t, certificate_file) },
 	{ FR_CONF_OFFSET("private_key_password", FR_TYPE_STRING | FR_TYPE_SECRET, fr_tls_conf_key_pair_t, password) },
 	{ FR_CONF_OFFSET("private_key_file", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, fr_tls_conf_key_pair_t, private_key_file) },
@@ -181,6 +193,33 @@ CONF_PARSER tls_client_config[] = {
 
 	CONF_PARSER_TERMINATOR
 };
+
+/** Calls to convert format strings to OpenSSL macros
+ *
+ * @param[in] ctx	to allocate data in.
+ * @param[out] out	the OpenSSL macro representing the format.
+ * @param[in] ci	#CONF_PAIR specifying the name of the format.
+ * @param[in] rule	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int certificate_format_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+	int		type;
+	char const	*type_str;
+
+	type_str = cf_pair_value(cf_item_to_pair(ci));
+	type = fr_str2int(certificate_format_table, type_str, -1);
+	if (type == -1) {
+		cf_log_err(ci, "Invalid format \"%s\", expected either 'PEM' or 'ASN1'", type_str);
+		return -1;
+	}
+
+	*((int *)out) = type;
+
+	return 0;
+}
 
 #ifdef __APPLE__
 /*
