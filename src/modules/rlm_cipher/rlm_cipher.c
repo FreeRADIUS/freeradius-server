@@ -186,7 +186,7 @@ static const CONF_PARSER module_config[] = {
 
 /** Calls EVP_get_digestbyname() to covert the digest type
  *
- * @param[in] ctx	to allocate data in (instance of proto_radius).
+ * @param[in] ctx	to allocate data in.
  * @param[out] out	EVP_MD representing the OpenSSL digest type.
  * @param[in] ci	#CONF_PAIR specifying the name of the digest.
  * @param[in] rule	unused.
@@ -213,7 +213,7 @@ static int digest_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, U
 
 /** Checks if the specified padding type is valid
  *
- * @param[in] ctx	to allocate data in (instance of proto_radius).
+ * @param[in] ctx	to allocate data in.
  * @param[out] out	Padding type.
  * @param[in] ci	#CONF_PAIR specifying the padding type..
  * @param[in] rule	unused.
@@ -241,7 +241,7 @@ static int cipher_rsa_padding_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF
 
 /** Checks if the specified cipher type is valid
  *
- * @param[in] ctx	to allocate data in (instance of proto_radius).
+ * @param[in] ctx	to allocate data in.
  * @param[out] out	Cipher enumeration type.
  * @param[in] ci	#CONF_PAIR specifying the name of the type module.
  * @param[in] rule	unused.
