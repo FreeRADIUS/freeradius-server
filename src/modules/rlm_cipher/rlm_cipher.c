@@ -52,7 +52,7 @@ typedef enum {
 /** Public key types
  *
  */
-const FR_NAME_NUMBER pkey_types[] = {
+static const FR_NAME_NUMBER pkey_types[] = {
 	{ "RSA",	EVP_PKEY_RSA		},
 	{ "DSA",	EVP_PKEY_DSA		},
 	{ "DH",		EVP_PKEY_DH		},
@@ -64,7 +64,7 @@ const FR_NAME_NUMBER pkey_types[] = {
 /** The type of padding used
  *
  */
-const FR_NAME_NUMBER cipher_rsa_padding[] = {
+static const FR_NAME_NUMBER cipher_rsa_padding[] = {
 	{ "none",	RSA_NO_PADDING		},
 	{ "pkcs",	RSA_PKCS1_PADDING	},		/* PKCS 1.5 */
 	{ "oaep",	RSA_PKCS1_OAEP_PADDING	},		/* PKCS OAEP padding */
@@ -74,7 +74,7 @@ const FR_NAME_NUMBER cipher_rsa_padding[] = {
 	{ NULL, 0				},
 };
 
-const FR_NAME_NUMBER cipher_type[] = {
+static const FR_NAME_NUMBER cipher_type[] = {
 	{ "rsa",	RLM_CIPHER_TYPE_RSA	},
 
 	{ NULL, 0				}
@@ -361,8 +361,8 @@ static int cipher_rsa_private_key_file_load(TALLOC_CTX *ctx, void *out, CONF_ITE
 	pkey_type = EVP_PKEY_type(EVP_PKEY_id(pkey));
 	if (pkey_type != EVP_PKEY_RSA) {
 		cf_log_err(ci, "Expected certificate to contain %s private key, got %s private key",
-			   fr_int2str(pkey_types, EVP_PKEY_RSA, "?Unknown?"),
-			   fr_int2str(pkey_types, pkey_type, "?Unknown?"));
+			   fr_int2str(pkey_types, EVP_PKEY_RSA, OBJ_nid2sn(pkey_type)),
+			   fr_int2str(pkey_types, pkey_type, OBJ_nid2sn(pkey_type)));
 
 		EVP_PKEY_free(pkey);
 		return -1;
