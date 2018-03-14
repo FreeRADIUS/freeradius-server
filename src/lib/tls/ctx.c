@@ -115,6 +115,7 @@ static int ctx_dh_params_load(SSL_CTX *ctx, char *file)
 	return 0;
 }
 
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
 static void _tls_ctx_print_cert_line(int index, X509 *cert)
 {
 	char		subject[1024];
@@ -131,10 +132,11 @@ static void _tls_ctx_print_cert_line(int index, X509 *cert)
 
 	EVP_PKEY_free(pkey);
 }
+#endif
 
 static int tls_ctx_load_cert_key_pair(SSL_CTX *ctx, fr_tls_conf_key_pair_t const *key_pair)
 {
-	char	*password;
+	char		*password;
 
 	/*
 	 *	Conf parser should ensure they're both populated
