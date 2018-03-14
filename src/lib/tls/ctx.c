@@ -36,6 +36,18 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
 
+/** PKEY types (friendly names)
+ *
+ */
+static const FR_NAME_NUMBER pkey_types[] = {
+	{ "RSA",	EVP_PKEY_RSA		},
+	{ "DSA",	EVP_PKEY_DSA		},
+	{ "DH",		EVP_PKEY_DH		},
+	{ "EC",		EVP_PKEY_EC		},
+
+	{ NULL, 0				},
+};
+
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL
 #  ifndef OPENSSL_NO_ECDH
 static int ctx_ecdh_curve_set(SSL_CTX *ctx, char const *ecdh_curve, bool disable_single_dh_use)
@@ -103,6 +115,23 @@ static int ctx_dh_params_load(SSL_CTX *ctx, char *file)
 	return 0;
 }
 
+static void _tls_ctx_print_cert_line(int index, X509 *cert)
+{
+	char		subject[1024];
+	EVP_PKEY	*pkey;
+	int		pkey_type;
+
+	pkey = X509_get_pubkey(cert);
+
+	X509_NAME_oneline(X509_get_subject_name(cert), subject, sizeof(subject));
+	subject[sizeof(subject) - 1] = '\0';
+
+	pkey_type = EVP_PKEY_type(EVP_PKEY_id(pkey));
+	DEBUG2("[%i] %s %s", index, fr_int2str(pkey_types, pkey_type, OBJ_nid2sn(pkey_type)), subject);
+
+	EVP_PKEY_free(pkey);
+}
+
 static int tls_ctx_load_cert_key_pair(SSL_CTX *ctx, fr_tls_conf_key_pair_t const *key_pair)
 {
 	char	*password;
@@ -164,6 +193,37 @@ static int tls_ctx_load_cert_key_pair(SSL_CTX *ctx, fr_tls_conf_key_pair_t const
 		return -1;
 	}
 
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+	/*
+	 *	Explicitly check that the certificate chain
+	 *	we just loaded is sane.
+	 *
+	 *	This operates on the last loaded certificate.
+	 */
+	if (!SSL_CTX_build_cert_chain(ctx, SSL_BUILD_CHAIN_FLAG_CHECK)) {
+		tls_log_error(NULL, "Failed building certificate chain");
+		return -1;
+	}
+
+	/*
+	 *	Print out the chain we just created
+	 */
+	if (DEBUG_ENABLED2) {
+		STACK_OF(X509)	*our_chain;
+		int		i;
+
+		DEBUG2("Loaded certificate chain");
+		if (!SSL_CTX_get0_chain_certs(ctx, &our_chain)) {
+			tls_log_error(NULL, "Failed retrieving chain certificates");
+			return -1;
+		}
+
+		for (i = sk_X509_num(our_chain); i > 0 ; i--) {
+			_tls_ctx_print_cert_line(i, sk_X509_value(our_chain, i - 1));
+		}
+		_tls_ctx_print_cert_line(i, SSL_CTX_get0_certificate(ctx));
+	}
+#endif
 	return 0;
 }
 
