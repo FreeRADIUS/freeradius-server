@@ -1471,8 +1471,6 @@ tls_session_t *tls_session_init_client(TALLOC_CTX *ctx, fr_tls_conf_t *conf)
 	session->ctx = conf->ctx[(conf->ctx_count == 1) ? 0 : conf->ctx_next++ % conf->ctx_count];	/* mutex not needed */
 	rad_assert(session->ctx);
 
-	SSL_CTX_set_mode(session->ctx, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER | SSL_MODE_AUTO_RETRY);
-
 	session->ssl = SSL_new(session->ctx);
 	if (!session->ssl) {
 		talloc_free(session);

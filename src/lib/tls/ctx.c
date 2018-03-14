@@ -490,14 +490,22 @@ post_ca:
 #endif
 #endif
 
-	/*
-	 *	OpenSSL will automatically create certificate chains,
-	 *	unless we tell it to not do that.  The problem is that
-	 *	it sometimes gets the chains right from a certificate
-	 *	signature view, but wrong from the clients view.
-	 */
-	if (!conf->auto_chain) {
-		SSL_CTX_set_mode(ctx, SSL_MODE_NO_AUTO_CHAIN);
+	{
+		int mode = 0;
+
+		/*
+		 *	OpenSSL will automatically create certificate chains,
+		 *	unless we tell it to not do that.  The problem is that
+		 *	it sometimes gets the chains right from a certificate
+		 *	signature view, but wrong from the clients view.
+		 */
+		if (!conf->auto_chain) mode |= SSL_MODE_NO_AUTO_CHAIN;
+
+		if (client) {
+			mode |= SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER;
+			mode |= SSL_MODE_AUTO_RETRY;
+		}
+		SSL_CTX_set_mode(ctx, mode);
 	}
 
 	/* Set Info callback */
