@@ -45,6 +45,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 const FR_NAME_NUMBER certificate_format_table[] = {
 	{ "PEM",	SSL_FILETYPE_PEM	},
 	{ "ASN1",	SSL_FILETYPE_ASN1	},
+	{ "DER",	SSL_FILETYPE_ASN1	},	/* Alternate name for ASN1 */
 
 	{ NULL,		0			},
 };

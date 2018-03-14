@@ -170,8 +170,9 @@ eap {
 		certificate {
 			#
 			#  The format of the certificate and private key file may be one of
-			#  PEM or ASN1.  If PEM format is used a complete certificate chain
-			#  may be provided in the 'certificate_file'.
+			#  PEM, DER or ASN1 (ASN1 is an alias for DER).
+			#  If PEM format is used a complete certificate chain may be provided
+			#  in the 'certificate_file'.
 			#
 #			format = "PEM"
 

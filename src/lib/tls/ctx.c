@@ -300,6 +300,14 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 			return NULL;
 		}
 	}
+
+	/*
+	 *	Sets the list of CAs we send to the peer if we're
+	 *	requesting a certificate.
+	 *
+	 *	This does not change the trusted certificate authorities,
+	 *	those are set above with SSL_CTX_load_verify_locations.
+	 */
 	if (conf->ca_file && *conf->ca_file) SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(conf->ca_file));
 
 #ifdef PSK_MAX_IDENTITY_LEN
