@@ -235,6 +235,7 @@ int tls_ocsp_staple_cb(SSL *ssl, void *data)
 		break;
 	}
 
+	X509_free(issuer_cert);	/* Decrement reference count on issuer cert */
 	X509_STORE_CTX_free(server_store_ctx);
 
 	return ret;
