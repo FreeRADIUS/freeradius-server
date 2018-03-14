@@ -505,7 +505,8 @@ post_ca:
 			mode |= SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER;
 			mode |= SSL_MODE_AUTO_RETRY;
 		}
-		SSL_CTX_set_mode(ctx, mode);
+
+		if (mode) SSL_CTX_set_mode(ctx, mode);
 	}
 
 	/* Set Info callback */
