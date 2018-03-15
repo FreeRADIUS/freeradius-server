@@ -410,6 +410,8 @@ static int cipher_rsa_certificate_file_load(UNUSED TALLOC_CTX *ctx, void *out, C
 	 *	Load the PEM encoded X509 certificate
 	 */
 	cert = PEM_read_X509(fp, NULL, NULL, NULL);
+	fclose(fp);
+
 	if (!cert) {
 		tls_strerror_printf(NULL);
 		cf_log_perr(ci, "Error loading certificate file \"%s\"", filename);
