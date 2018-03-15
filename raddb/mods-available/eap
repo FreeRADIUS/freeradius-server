@@ -199,24 +199,27 @@ eap {
 
 			#
 			#  If PEM is being used the "certificate_file" specified below
-			#  should contain the server certificates, and any intermediary
-			#  CAs which are not available to the client.
+			#  should contain the server certificates, and any intermediary CAs
+			#  which are not available to the client.
+			#
+			#  If verify_mode (below) is set to "hard" or "soft" all
+			#  intermediary CAs and the Root CA should be included.
 			#
 			#  Any certificate chain MUST be in order from server
-			#  certificate (first in the file) to intermediaries (second) to
+			#  certificate (first in the file) to intermediary CAs (second) to
 			#  Root CA (last in the file) as per RFC 4346 (see certificate_list)
 			#  http://tools.ietf.org/html/rfc4346#section-7.4.2 )
 			#
 			#  If DER is being used the "certificate_file" should contain ONLY
 			#  the server's certificate, and one or more "ca_file" items should be
-			#  used to load intermediaries and the Root CA.
+			#  used to load intermediary CAs and the Root CA.
 			#
 			certificate_file = ${certdir}/server.pem
 
 			#
 			#  Only available with OpenSSL >= 1.0.2
 			#
-			#  Load an additional intermediary or Root CA for consideration in
+			#  Load an additional intermediary CA or Root CA for consideration in
 			#  chain compilation.  Multiple "ca_file" config items may be used
 			#  to load multiple certificates.
 			#
@@ -252,7 +255,7 @@ eap {
 			#  build a complete chain, but this will be done at runtime.
 			#
 			#  Note: "auto_chain" has no effect on which certificates are considered
-			#  for precompilation.  Only those listed in this chain {} section will be
+			#  for pre-compilation.  Only those listed in this chain {} section will be
 			#  used.
 			#
 #			verify_mode = "hard"
