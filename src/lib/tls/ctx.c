@@ -324,7 +324,26 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 #endif
 
 	/*
-	 *	Load our keys and certificates
+	 *	Set mode before processing any certifictes
+	 */
+	{
+		int mode = 0;
+
+		/*
+		 *	OpenSSL will automatically create certificate chains,
+		 *	unless we tell it to not do that.  The problem is that
+		 *	it sometimes gets the chains right from a certificate
+		 *	signature view, but wrong from the clients view.
+		 */
+		if (!conf->auto_chain) mode |= SSL_MODE_NO_AUTO_CHAIN;
+
+		if (client) {
+			mode |= SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER;
+			mode |= SSL_MODE_AUTO_RETRY;
+		}
+
+		if (mode) SSL_CTX_set_mode(ctx, mode);
+	}
 	 *
 	 *	If certificates are of type PEM then we can make use
 	 *	of cert chain authentication using openssl api call
@@ -539,25 +558,6 @@ post_ca:
 	}
 #endif
 #endif
-
-	{
-		int mode = 0;
-
-		/*
-		 *	OpenSSL will automatically create certificate chains,
-		 *	unless we tell it to not do that.  The problem is that
-		 *	it sometimes gets the chains right from a certificate
-		 *	signature view, but wrong from the clients view.
-		 */
-		if (!conf->auto_chain) mode |= SSL_MODE_NO_AUTO_CHAIN;
-
-		if (client) {
-			mode |= SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER;
-			mode |= SSL_MODE_AUTO_RETRY;
-		}
-
-		if (mode) SSL_CTX_set_mode(ctx, mode);
-	}
 
 	/* Set Info callback */
 	SSL_CTX_set_info_callback(ctx, tls_session_info_cb);
