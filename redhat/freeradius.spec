@@ -436,6 +436,7 @@ export RADIUSD_VERSION_RELEASE="%{release}"
 %endif
 %if %{?_with_developer:1}%{!?_with_developer:0}
         --enable-developer=yes \
+        --enable-llvm-address-sanitizer \
 %endif
         %{?_with_rlm_yubikey} \
         %{?_without_rlm_yubikey} \
