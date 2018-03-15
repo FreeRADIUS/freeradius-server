@@ -67,7 +67,7 @@ dh:
 
 ######################################################################
 #
-#  Create a new self-signed CA certificate
+#  Create a new self-signed RSA CA certificate
 #
 ######################################################################
 ca.key ca.pem: ca.cnf
@@ -83,7 +83,23 @@ ca.csr: ca.cnf
 
 ######################################################################
 #
-#  Create a new server certificate, signed by the above CA.
+#  Create a new self-signed ECC CA certificate
+#
+######################################################################
+ca_ecc.key: ca.cnf
+	openssl ecparam -out ca_ecc.key -name prime256v1 -genkey
+
+ca_ecc.der: ca_ecc.pem
+	openssl x509 -inform PEM -outform DER -in ca_ecc.pem -out ca_ecc.der
+
+ca_ecc.pem: ca_ecc.key ca.cnf
+	@[ -f index.txt ] || $(MAKE) index.txt
+	@[ -f serial ] || $(MAKE) serial
+	openssl req -new -x509 -key ca_ecc.key -out ca_ecc.pem -config ./ca.cnf -days $(CA_DEFAULT_DAYS)
+
+######################################################################
+#
+#  Create a new server certificate, signed by the above RSA CA.
 #
 ######################################################################
 server.csr server.key: server.cnf
@@ -104,7 +120,31 @@ server.vrfy: ca.pem
 
 ######################################################################
 #
-#  Create a new ocsp certificate, signed by the above CA.
+#  Create a new server certificate, signed by the above ECC CA.
+#
+######################################################################
+server_ecc.key: server.cnf
+	openssl ecparam -out server_ecc.key -name prime256v1 -genkey
+
+server_ecc.csr: server_ecc.key server.cnf
+	openssl req -new -out server_ecc.csr -key server_ecc.key -config ./server.cnf
+
+server_ecc.crt: server_ecc.csr ca_ecc.key ca_ecc.pem
+	openssl ca -batch -keyfile ca_ecc.key -cert ca_ecc.pem -in server_ecc.csr -key $(PASSWORD_CA) -out server_ecc.crt -config ./server.cnf
+
+server_ecc.p12: server_ecc.crt
+	openssl pkcs12 -export -in server_ecc.crt -inkey server_ecc.key -out server_ecc.p12  -passin pass:$(PASSWORD_SERVER) -passout pass:$(PASSWORD_SERVER)
+
+server_ecc.pem: server_ecc.p12
+	openssl pkcs12 -in server_ecc.p12 -out server_ecc.pem -passin pass:$(PASSWORD_SERVER) -passout pass:$(PASSWORD_SERVER)
+
+.PHONY: server_ecc.vrfy
+server_ecc.vrfy: ca_ecc.pem
+	@openssl verify $(PARTIAL) -CAfile ca_ecc.pem server_ecc.pem
+
+######################################################################
+#
+#  Create a new ocsp certificate, signed by the above RSA CA.
 #
 ######################################################################
 ocsp.csr ocsp.key: ocsp.cnf
@@ -125,7 +165,7 @@ ocsp.vrfy: ca.pem
 
 ######################################################################
 #
-#  Create a new client certificate, signed by the the above CA.
+#  Create a new client certificate, signed by the the above RSA CA.
 #
 ######################################################################
 client.csr client.key: client.cnf
@@ -148,7 +188,7 @@ client.vrfy: ca.pem client.pem
 
 ######################################################################
 #
-#  Create a new inner-server certificate, signed by the above CA.
+#  Create a new inner-server certificate, signed by the above RSA CA.
 #
 ######################################################################
 inner-server.csr inner-server.key: inner-server.cnf
