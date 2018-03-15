@@ -213,17 +213,41 @@ typedef struct {
 } fr_tls_ocsp_conf_t;
 #endif
 
-/** Structure representing a single certificate
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+/** Different chain building modes
+ *
+ */
+typedef enum {
+	FR_TLS_CHAIN_VERIFY_INVALID = 0,
+
+	FR_TLS_CHAIN_VERIFY_HARD,			//!< Fail if we can't build a complete chain from
+							///< the leaf cert back to a root.
+	FR_TLS_CHAIN_VERIFY_SOFT,			//!< Warn if we can't build a complete chain from
+							///< the leaf cert back to a root.
+	FR_TLS_CHAIN_VERIFY_NONE			//!< Don't verify/build the chain.
+} fr_tls_chain_verify_mode_t;
+#endif
+
+/** Structure representing a certificate chain configuration
  *
  */
 typedef struct {
 	int		file_format;			//!< Whether the file is expected to be PEM encoded.
 							///< This allows us to load multiple chained PEM certificates
 							///< from a single file.
-	char const	*password;			//!< Password to decrypt the certificate(s).
+
 	char const	*certificate_file;		//!< Path to certificate.
+
+	char const	*password;			//!< Password to decrypt the certificate(s).
 	char const	*private_key_file;		//!< Path to certificate.
-} fr_tls_conf_chain_t;
+
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+	char const	**ca_files;			//!< Extra certificates to load.
+	fr_tls_chain_verify_mode_t	verify_mode;	//!< How hard we try to build up a complete certificate
+							///< chain.
+#endif
+	bool		include_root_ca;		//!< Include the root ca in the chain we built.
+} fr_tls_chain_conf_t;
 
 /* configured values goes right here */
 struct fr_tls_conf_t {
@@ -235,7 +259,7 @@ struct fr_tls_conf_t {
 
 	CONF_SECTION	*cs;
 
-	fr_tls_conf_chain_t	**chains;		//!< One or more certificates
+	fr_tls_chain_conf_t	**chains;		//!< One or more certificates
 
 	char const	*random_file;			//!< If set, we read 10K of data (or the complete file)
 							//!< and use it to seed OpenSSL's PRNG.

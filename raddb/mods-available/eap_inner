@@ -65,6 +65,17 @@ eap inner-eap {
 	#
 	tls-config tls-peer {
 		#
+		#  OpenSSL will automatically create certificate chains, unless
+		#  we tell it to not do that.  The problem is that it sometimes
+		#  gets the chains right from a certificate signature view, but
+		#  wrong from the clients view.
+		#
+		#  When setting "auto_chain = no", the server chain {} stanza(s)
+		#  below MUST include the full certificate chain.
+		#
+#		auto_chain = yes
+
+		#
 		#  Multiple chain sections can be specified to allow
 		#  different chains for different key types (RSA, DSA, EC).
 		#
@@ -74,7 +85,7 @@ eap inner-eap {
 		#
 		chain {
 			certificate_file = ${certdir}/server.pem
-
+			ca_file = ${certdir}/ca.pem
 			private_key_password = whatever
 			private_key_file = ${certdir}/server.key
 		}
@@ -90,17 +101,6 @@ eap inner-eap {
 		#  or a self signed Root CA.
 		#
 		ca_file = ${cadir}/ca.pem
-
-		#
-		#  OpenSSL will automatically create certificate chains, unless
-		#  we tell it to not do that.  The problem is that it sometimes
-		#  gets the chains right from a certificate signature view, but
-		#  wrong from the clients view.
-		#
-		#  When setting "auto_chain = no", the server certificate file
-		#  MUST include the full certificate chain.
-		#
-#		auto_chain = yes
 
 		#
 		#  For DH cipher suites to work, you have to run OpenSSL to

@@ -103,9 +103,10 @@ static int ctx_dh_params_load(SSL_CTX *ctx, char *file)
 	return 0;
 }
 
-static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_conf_chain_t const *chain)
+static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t const *chain)
 {
 	char		*password;
+
 
 	/*
 	 *	Conf parser should ensure they're both populated
@@ -152,6 +153,55 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_conf_chain_t const *chai
 		return -1;
 	}
 
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+	{
+		size_t		extra_cnt, i;
+		/*
+		 *	Load additional chain certificates from other files
+		 *	This allows us to specify chains in DER format as
+		 *	well as PEM, and means we can keep the intermediaries
+		 *	CAs and client/server certs in separate files.
+		 */
+		extra_cnt = talloc_array_length(chain->ca_files);
+		for (i = 0; i < extra_cnt; i++) {
+			FILE		*fp;
+			X509		*cert;
+			char const	*filename = chain->ca_files[i];
+
+			fp = fopen(filename, "r");
+			if (!fp) {
+				ERROR("Failed opening file: %s", fr_syserror(errno));
+				return -1;
+			}
+
+			/*
+			 *	Load the PEM encoded X509 certificate
+			 */
+			switch (chain->file_format) {
+			case SSL_FILETYPE_PEM:
+				cert = PEM_read_X509(fp, NULL, NULL, NULL);
+				break;
+
+			case SSL_FILETYPE_ASN1:
+				cert = d2i_X509_fp(fp, NULL);
+				break;
+
+			default:
+				rad_assert(0);
+				fclose(fp);
+				return -1;
+			}
+			fclose(fp);
+
+			if (!cert) {
+				tls_log_error(NULL, "Failed reading certificate file \"%s\"", filename);
+				return -1;
+			}
+			SSL_CTX_add0_chain_cert(ctx, cert);
+		}
+	}
+#endif
+
 	/*
 	 *	Check if the last loaded private key matches the last
 	 *	loaded certificate.
@@ -165,15 +215,45 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_conf_chain_t const *chai
 	}
 
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
-	/*
-	 *	Explicitly check that the certificate chain
-	 *	we just loaded is sane.
-	 *
-	 *	This operates on the last loaded certificate.
-	 */
-	if (!SSL_CTX_build_cert_chain(ctx, SSL_BUILD_CHAIN_FLAG_CHECK)) {
-		tls_log_error(NULL, "Failed building certificate chain");
-		return -1;
+	{
+		int mode = SSL_BUILD_CHAIN_FLAG_CHECK;
+
+		if (!chain->include_root_ca) mode |= SSL_BUILD_CHAIN_FLAG_NO_ROOT;
+
+		/*
+		 *	Explicitly check that the certificate chain
+		 *	we just loaded is sane.
+		 *
+		 *	This operates on the last loaded certificate.
+		 */
+		switch (chain->verify_mode) {
+		case FR_TLS_CHAIN_VERIFY_NONE:
+			mode |= SSL_BUILD_CHAIN_FLAG_CLEAR_ERROR | SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR;
+			(void)SSL_CTX_build_cert_chain(ctx, mode);
+			break;
+
+		/*
+		 *	Seems to be a bug where
+		 *	SSL_BUILD_CHAIN_FLAG_IGNORE_ERROR trashes the error,
+		 *	so have the function fail as normal.
+		 */
+		case FR_TLS_CHAIN_VERIFY_SOFT:
+			if (!SSL_CTX_build_cert_chain(ctx, mode)) {
+				tls_strerror_printf(NULL);
+				PWARN("Failed verifying chain");
+			}
+			break;
+
+		case FR_TLS_CHAIN_VERIFY_HARD:
+			if (!SSL_CTX_build_cert_chain(ctx, mode)) {
+				tls_strerror_printf(NULL);
+				PERROR("Failed verifying chain");
+			}
+			break;
+
+		default:
+			break;
+		}
 	}
 #endif
 	return 0;
@@ -208,6 +288,10 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 {
 	SSL_CTX		*ctx;
 	X509_STORE	*cert_vpstore;
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+	X509_STORE	*chain_store;
+	X509_STORE 	*verify_store;
+#endif
 	int		verify_mode = SSL_VERIFY_NONE;
 	int		ctx_options = 0;
 	void		*app_data_index;
@@ -319,14 +403,43 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 
 		if (mode) SSL_CTX_set_mode(ctx, mode);
 	}
-	 *
-	 *	If certificates are of type PEM then we can make use
-	 *	of cert chain authentication using openssl api call
-	 *	SSL_CTX_use_certificate_chain_file.  Please see how
-	 *	the cert chain needs to be given in PEM from
-	 *	openSSL.org
-	 */
 
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+	/*
+	 *	If we're using a sufficiently new version of
+	 *	OpenSSL, initialise different stores for creating
+	 *	the certificate chains we present, and for
+	 *	holding certificates to verify the chain presented
+	 *	by the peer.
+	 *
+	 *	If we don't do this, a single store is used for
+	 *	both functions, which is confusing and annoying.
+	 *
+	 *	We use the set0 variant so that the stores are
+	 *	freed at the same time as the SSL_CTX.
+	 */
+	if (!conf->auto_chain) {
+		MEM(chain_store = X509_STORE_new());
+		SSL_CTX_set0_chain_cert_store(ctx, chain_store);
+
+		MEM(verify_store = X509_STORE_new());
+		SSL_CTX_set0_verify_cert_store(ctx, verify_store);
+	}
+#endif
+	/*
+	 *	Load the CAs we trust
+	 */
+	if (conf->ca_file || conf->ca_path) {
+		if (!SSL_CTX_load_verify_locations(ctx, conf->ca_file, conf->ca_path)) {
+			tls_log_error(NULL, "Failed reading Trusted root CA list \"%s\"",
+				      conf->ca_file);
+			return NULL;
+		}
+	}
+
+	/*
+	 *	Load our certificate chains and keys
+	 */
 	if (conf->chains) {
 		size_t chains_conf = talloc_array_length(conf->chains);
 
@@ -376,7 +489,7 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 			if (chains_set != chains_conf) {
 				WARN("Number of chains configured (%zu) does not match chains set (%zu)",
 				      chains_conf, chains_set);
-				WARN("Only one chain per key type is allowed, check config for duplicated");
+				WARN("Only one chain per key type is allowed, check config for duplicates");
 			}
 
 			for (ret = SSL_CTX_set_current_cert(ctx, SSL_CERT_SET_FIRST);
@@ -406,18 +519,7 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 			}
 			(void)SSL_CTX_set_current_cert(ctx, SSL_CERT_SET_FIRST);	/* Reset */
 		}
-	}
 #endif
-
-	/*
-	 *	Load the CAs we trust
-	 */
-	if (conf->ca_file || conf->ca_path) {
-		if (!SSL_CTX_load_verify_locations(ctx, conf->ca_file, conf->ca_path)) {
-			tls_log_error(NULL, "Failed reading Trusted root CA list \"%s\"",
-				      conf->ca_file);
-			return NULL;
-		}
 	}
 
 	/*

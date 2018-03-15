@@ -50,6 +50,18 @@ static const FR_NAME_NUMBER certificate_format_table[] = {
 	{ NULL,		0			},
 };
 
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+static const FR_NAME_NUMBER chain_verify_mode_table[] = {
+	{ "hard",	FR_TLS_CHAIN_VERIFY_HARD },
+	{ "soft",	FR_TLS_CHAIN_VERIFY_SOFT },
+	{ "none",	FR_TLS_CHAIN_VERIFY_NONE },
+	{ NULL,		0			 },
+};
+#endif
+
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+static int chain_verify_mode_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+#endif
 static int certificate_format_type_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 
 static CONF_PARSER cache_config[] = {
@@ -94,15 +106,27 @@ static CONF_PARSER ocsp_config[] = {
 #endif
 
 CONF_PARSER tls_chain_config[] = {
-	{ FR_CONF_OFFSET("format", FR_TYPE_VOID, fr_tls_conf_chain_t, file_format), .dflt = "pem", .func = certificate_format_type_parse },
-	{ FR_CONF_OFFSET("certificate_file", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED , fr_tls_conf_chain_t, certificate_file) },
-	{ FR_CONF_OFFSET("private_key_password", FR_TYPE_STRING | FR_TYPE_SECRET, fr_tls_conf_chain_t, password) },
-	{ FR_CONF_OFFSET("private_key_file", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, fr_tls_conf_chain_t, private_key_file) },
+	{ FR_CONF_OFFSET("format", FR_TYPE_VOID, fr_tls_chain_conf_t, file_format), .dflt = "pem", .func = certificate_format_type_parse },
+	{ FR_CONF_OFFSET("certificate_file", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED , fr_tls_chain_conf_t, certificate_file) },
+	{ FR_CONF_OFFSET("private_key_password", FR_TYPE_STRING | FR_TYPE_SECRET, fr_tls_chain_conf_t, password) },
+	{ FR_CONF_OFFSET("private_key_file", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, fr_tls_chain_conf_t, private_key_file) },
 
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+	{ FR_CONF_OFFSET("ca_file", FR_TYPE_FILE_INPUT | FR_TYPE_MULTI, fr_tls_chain_conf_t, ca_files) },
+
+	{ FR_CONF_OFFSET("verify_mode", FR_TYPE_VOID, fr_tls_chain_conf_t, verify_mode), .dflt = "hard", .func = chain_verify_mode_parse },
+	{ FR_CONF_OFFSET("include_root_ca", FR_TYPE_BOOL, fr_tls_chain_conf_t, include_root_ca), .dflt = "no" },
+#endif
 	CONF_PARSER_TERMINATOR
 };
 
 CONF_PARSER tls_server_config[] = {
+	{ FR_CONF_OFFSET("auto_chain", FR_TYPE_BOOL, fr_tls_conf_t, auto_chain), .dflt = "yes" },
+
+	{ FR_CONF_OFFSET("chain", FR_TYPE_SUBSECTION | FR_TYPE_MULTI, fr_tls_conf_t, chains),
+	  .subcs_size = sizeof(fr_tls_chain_conf_t), .subcs_type = "fr_tls_chain_conf_t",
+	  .subcs = tls_chain_config },
+
 	{ FR_CONF_DEPRECATED("pem_file_type", FR_TYPE_BOOL, fr_tls_conf_t, NULL) },
 	{ FR_CONF_DEPRECATED("certificate_file", FR_TYPE_FILE_INPUT, fr_tls_conf_t, NULL) },
 	{ FR_CONF_DEPRECATED("private_key_password", FR_TYPE_STRING | FR_TYPE_SECRET, fr_tls_conf_t, NULL) },
@@ -119,7 +143,7 @@ CONF_PARSER tls_server_config[] = {
 	{ FR_CONF_OFFSET("dh_file", FR_TYPE_FILE_INPUT, fr_tls_conf_t, dh_file) },
 	{ FR_CONF_OFFSET("random_file", FR_TYPE_FILE_EXISTS, fr_tls_conf_t, random_file) },
 	{ FR_CONF_OFFSET("fragment_size", FR_TYPE_UINT32, fr_tls_conf_t, fragment_size), .dflt = "1024" },
-	{ FR_CONF_OFFSET("auto_chain", FR_TYPE_BOOL, fr_tls_conf_t, auto_chain), .dflt = "no" },
+
 	{ FR_CONF_OFFSET("disable_single_dh_use", FR_TYPE_BOOL, fr_tls_conf_t, disable_single_dh_use) },
 	{ FR_CONF_OFFSET("check_crl", FR_TYPE_BOOL, fr_tls_conf_t, check_crl), .dflt = "no" },
 #ifdef X509_V_FLAG_CRL_CHECK_ALL
@@ -144,10 +168,6 @@ CONF_PARSER tls_server_config[] = {
 
 	{ FR_CONF_OFFSET("tls_min_version", FR_TYPE_FLOAT32, fr_tls_conf_t, tls_min_version), .dflt = "1.0" },
 
-	{ FR_CONF_OFFSET("chain", FR_TYPE_SUBSECTION | FR_TYPE_MULTI, fr_tls_conf_t, chains),
-	  .subcs_size = sizeof(fr_tls_conf_chain_t), .subcs_type = "fr_tls_conf_chain_t",
-	  .subcs = tls_chain_config },
-
 	{ FR_CONF_POINTER("cache", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) cache_config },
 
 	{ FR_CONF_POINTER("verify", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) verify_config },
@@ -161,6 +181,10 @@ CONF_PARSER tls_server_config[] = {
 };
 
 CONF_PARSER tls_client_config[] = {
+	{ FR_CONF_OFFSET("chain", FR_TYPE_SUBSECTION | FR_TYPE_MULTI, fr_tls_conf_t, chains),
+	  .subcs_size = sizeof(fr_tls_chain_conf_t), .subcs_type = "fr_tls_chain_conf_t",
+	  .subcs = tls_chain_config },
+
 	{ FR_CONF_DEPRECATED("pem_file_type", FR_TYPE_BOOL, fr_tls_conf_t, NULL) },
 	{ FR_CONF_DEPRECATED("certificate_file", FR_TYPE_FILE_INPUT, fr_tls_conf_t, NULL) },
 	{ FR_CONF_DEPRECATED("private_key_password", FR_TYPE_STRING | FR_TYPE_SECRET, fr_tls_conf_t, NULL) },
@@ -188,12 +212,37 @@ CONF_PARSER tls_client_config[] = {
 
 	{ FR_CONF_OFFSET("tls_min_version", FR_TYPE_FLOAT32, fr_tls_conf_t, tls_min_version), .dflt = "1.0" },
 
-	{ FR_CONF_OFFSET("chain", FR_TYPE_SUBSECTION | FR_TYPE_MULTI, fr_tls_conf_t, chains),
-	  .subcs_size = sizeof(fr_tls_conf_chain_t), .subcs_type = "fr_tls_conf_chain_t",
-	  .subcs = tls_chain_config },
-
 	CONF_PARSER_TERMINATOR
 };
+
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+/** Calls to convert verify_mode strings into macros
+ *
+ * @param[in] ctx	to allocate data in.
+ * @param[out] out	the verify_mode macro representing the mode.
+ * @param[in] ci	#CONF_PAIR specifying the name of the mode.
+ * @param[in] rule	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int chain_verify_mode_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+	fr_tls_chain_verify_mode_t	type;
+	char const			*type_str;
+
+	type_str = cf_pair_value(cf_item_to_pair(ci));
+	type = fr_str2int(chain_verify_mode_table, type_str, 0);
+	if (type == 0) {
+		cf_log_err(ci, "Invalid mode \"%s\", expected 'hard', 'soft' or 'none'", type_str);
+		return -1;
+	}
+
+	*((int *)out) = type;
+
+	return 0;
+}
+#endif
 
 /** Calls to convert format strings to OpenSSL macros
  *

@@ -164,28 +164,14 @@ eap {
 	#
 	tls-config tls-common {
 		#
-		#  If "auto_chain = no" (the default), only the certificates
-		#  specified in the chain subsection will be sent to the client.
+		#  OpenSSL will automatically create certificate chains, unless
+		#  we tell it to not do that.  The problem is that it sometimes
+		#  gets the chains right from a certificate signature view, but
+		#  wrong from the clients view.
 		#
-		#  You MUST include any intermediary certificates the client does
-		#  not posess.
+		#  When setting "auto_chain = no", the server chain {} section(s)
+		#  below MUST include the full certificate chain.
 		#
-	 	#  If "auto_chain = yes", we try and create a complete certificate
-	 	#  chain from the specified server certificate to a trusted root
-	 	#  CA.
-	 	#
-	 	#  Certificates used in this chain are drawn from all available
-	 	#  sources, including those specified in "ca_path" and "ca_file".
-	 	#
-	 	#  There are multiple issues with setting "auto_chain = yes":
-	 	#
-	 	#  - The complete chain including the rootCA is sent to the client.
-	 	#    This is both time and bandwidth inefficient.
-	 	#  - The chain may be "incorrect" from the client's perspective,
-	 	#    i.e. there may be multiple trust paths from the server cert
-	 	#    to the rootCA, and the automatically generated chain may
-	 	#    contain one the client does not expect.
-	 	#
 #		auto_chain = no
 
 		#
@@ -201,34 +187,87 @@ eap {
 		#  The key type does not need to be explicitly specified as
 		#  it is determined from the certificate provided.
 		#
+		#  Note: OpenSSL >= 1.0.2 is required for crypto agility to
+		#        function correctly.
+		#
 		chain {
 			#
-			#  The format of the certificate and private key file may be one of
-			#  PEM, DER or ASN1 (ASN1 is an alias for DER).
-			#  If PEM format is used a complete certificate chain may be provided
-			#  in the 'certificate_file'.
+			#  The format of the certificate(s) and private key file.
+			#  May be one of PEM, DER or ASN1 (ASN1 is an alias for DER).
 			#
 #			format = "PEM"
 
 			#
-			#  The 'certificate_file' specified below should contain the server
-			#  certificates, and any intermediary CAs which are not available
-			#  to the client.
+			#  If PEM is being used the "certificate_file" specified below
+			#  should contain the server certificates, and any intermediary
+			#  CAs which are not available to the client.
 			#
 			#  Any certificate chain MUST be in order from server
 			#  certificate (first in the file) to intermediaries (second) to
-			#  root CA (last in the file) as per RFC 4346 (see certificate_list)
+			#  Root CA (last in the file) as per RFC 4346 (see certificate_list)
 			#  http://tools.ietf.org/html/rfc4346#section-7.4.2 )
+			#
+			#  If DER is being used the "certificate_file" should contain ONLY
+			#  the server's certificate, and one or more "ca_file" items should be
+			#  used to load intermediaries and the Root CA.
 			#
 			certificate_file = ${certdir}/server.pem
 
+			#
+			#  Only available with OpenSSL >= 1.0.2
+			#
+			#  Load an additional intermediary or Root CA for consideration in
+			#  chain compilation.  Multiple "ca_file" config items may be used
+			#  to load multiple certificates.
+			#
+			ca_file = ${certdir}/ca.pem
+
+			#
+			#  Password used to encrypt the private key.  If the private key is
+			#  not encrypted, this config item will have no effect.
+			#
 			private_key_password = whatever
+
 			#
 			#  If the Private key & Certificate are located in the same file,
 			#  then 'private_key_file' & 'certificate_file' must contain the
 			#  same file name.
 			#
 			private_key_file = ${certdir}/server.key
+
+			#
+			#  With OpenSSL >= 1.0.2 we attempt to precompile the certificate chain
+			#  from server certificate to Root CA.  This configuration item specifies
+			#  what happens if compilation fails.
+			#
+			#    hard - Error out if we cannot build a complete certificate chain.
+			#    soft - Warn if we cannot build a complete certificate chain.
+			#    none - Stay silent if we cannot build a complete certificate chain.
+			#
+			#  The default is "hard".  The only time this should be changed is if
+			#  you want to limit the number of intermediary CAs sent to the
+			#  client by not including them in the chain.
+			#
+			#  Note: Depending on the value of "auto_chain" we may still be able to
+			#  build a complete chain, but this will be done at runtime.
+			#
+			#  Note: "auto_chain" has no effect on which certificates are considered
+			#  for precompilation.  Only those listed in this chain {} section will be
+			#  used.
+			#
+#			verify_mode = "hard"
+
+			#
+			#  Only available with OpenSSL >= 1.0.2
+			#
+			#  Omit the Root CA from the compiled certificate chain.
+			#  The Root CA should already be known/trusted by the client so it is
+			#  usually not needed unless the client is particularly poorly behaved.
+			#
+			#  Note: The Root CA must still be available for chain compilation to
+			#  succeed even if "include_root_ca = no".
+			#
+#			include_root_ca = no
 		}
 
 		#
