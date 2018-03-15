@@ -164,10 +164,44 @@ eap {
 	#
 	tls-config tls-common {
 		#
-		#  Multiple certificate sections may be specified to support
-		#  crypto agility with different key types.
+		#  If "auto_chain = no" (the default), only the certificates
+		#  specified in the chain subsection will be sent to the client.
 		#
-		certificate {
+		#  You MUST include any intermediary certificates the client does
+		#  not posess.
+		#
+	 	#  If "auto_chain = yes", we try and create a complete certificate
+	 	#  chain from the specified server certificate to a trusted root
+	 	#  CA.
+	 	#
+	 	#  Certificates used in this chain are drawn from all available
+	 	#  sources, including those specified in "ca_path" and "ca_file".
+	 	#
+	 	#  There are multiple issues with setting "auto_chain = yes":
+	 	#
+	 	#  - The complete chain including the rootCA is sent to the client.
+	 	#    This is both time and bandwidth inefficient.
+	 	#  - The chain may be "incorrect" from the client's perspective,
+	 	#    i.e. there may be multiple trust paths from the server cert
+	 	#    to the rootCA, and the automatically generated chain may
+	 	#    contain one the client does not expect.
+	 	#
+#		auto_chain = no
+
+		#
+		#  A chain of certificates to present to the client.
+		#
+		#  Multiple chain sections can be specified to allow different
+		#  chains for different key types (RSA, DSA, EC).
+		#
+		#  If multiple chains for the same key type are specified
+		#  the last chain to be processed will be used for that
+		#  key type.
+		#
+		#  The key type does not need to be explicitly specified as
+		#  it is determined from the certificate provided.
+		#
+		chain {
 			#
 			#  The format of the certificate and private key file may be one of
 			#  PEM, DER or ASN1 (ASN1 is an alias for DER).
@@ -177,24 +211,23 @@ eap {
 #			format = "PEM"
 
 			#
-			#  If Private key & Certificate are located in the same file,
-			#  then private_key_file & certificate_file must contain the
-			#  same file name.
-			#
-			#  If ca_file (below) is not used, then the certificate_file
-			#  below MUST include not only the server certificate, but ALSO
-			#  all of the CA certificates used to sign the server
-			#  certificate.
+			#  The 'certificate_file' specified below should contain the server
+			#  certificates, and any intermediary CAs which are not available
+			#  to the client.
 			#
 			#  Any certificate chain MUST be in order from server
 			#  certificate (first in the file) to intermediaries (second) to
-			#  root CA (last in the file) as per RFC 4346 (see
-			#  certificate_list
+			#  root CA (last in the file) as per RFC 4346 (see certificate_list)
 			#  http://tools.ietf.org/html/rfc4346#section-7.4.2 )
 			#
 			certificate_file = ${certdir}/server.pem
 
 			private_key_password = whatever
+			#
+			#  If the Private key & Certificate are located in the same file,
+			#  then 'private_key_file' & 'certificate_file' must contain the
+			#  same file name.
+			#
 			private_key_file = ${certdir}/server.key
 		}
 
@@ -231,17 +264,6 @@ eap {
 		#  or a self signed Root CA.
 		#
 		ca_file = ${cadir}/ca.pem
-
-		#
-	 	#  OpenSSL will automatically create certificate chains, unless
-	 	#  we tell it to not do that.  The problem is that it sometimes
-	 	#  gets the chains right from a certificate signature view, but
-	 	#  wrong from the clients view.
-	 	#
-		#  When setting "auto_chain = no", the server certificate file
-		#  MUST include the full certificate chain.
-		#
-#		auto_chain = yes
 
 		#
 		#  If OpenSSL supports TLS-PSK, then we can use a PSK identity

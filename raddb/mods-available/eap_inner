@@ -65,13 +65,18 @@ eap inner-eap {
 	#
 	tls-config tls-peer {
 		#
-		#  Multiple certificate sections may be specified to support
-		#  crypto agility with different key types.
+		#  Multiple chain sections can be specified to allow
+		#  different chains for different key types (RSA, DSA, EC).
 		#
-		certificate {
+		#  If multiple chains for the same key type are specified
+		#  the last chain to be processed will be used for that
+		#  key type.
+		#
+		chain {
+			certificate_file = ${certdir}/server.pem
+
 			private_key_password = whatever
 			private_key_file = ${certdir}/server.key
-			certificate_file = ${certdir}/server.pem
 		}
 
 		#

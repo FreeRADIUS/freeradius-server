@@ -93,11 +93,11 @@ static CONF_PARSER ocsp_config[] = {
 };
 #endif
 
-CONF_PARSER tls_cert_pair_config[] = {
-	{ FR_CONF_OFFSET("format", FR_TYPE_VOID, fr_tls_conf_key_pair_t, file_format), .dflt = "pem", .func = certificate_format_type_parse },
-	{ FR_CONF_OFFSET("certificate_file", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED , fr_tls_conf_key_pair_t, certificate_file) },
-	{ FR_CONF_OFFSET("private_key_password", FR_TYPE_STRING | FR_TYPE_SECRET, fr_tls_conf_key_pair_t, password) },
-	{ FR_CONF_OFFSET("private_key_file", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, fr_tls_conf_key_pair_t, private_key_file) },
+CONF_PARSER tls_chain_config[] = {
+	{ FR_CONF_OFFSET("format", FR_TYPE_VOID, fr_tls_conf_chain_t, file_format), .dflt = "pem", .func = certificate_format_type_parse },
+	{ FR_CONF_OFFSET("certificate_file", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED , fr_tls_conf_chain_t, certificate_file) },
+	{ FR_CONF_OFFSET("private_key_password", FR_TYPE_STRING | FR_TYPE_SECRET, fr_tls_conf_chain_t, password) },
+	{ FR_CONF_OFFSET("private_key_file", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, fr_tls_conf_chain_t, private_key_file) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -119,7 +119,7 @@ CONF_PARSER tls_server_config[] = {
 	{ FR_CONF_OFFSET("dh_file", FR_TYPE_FILE_INPUT, fr_tls_conf_t, dh_file) },
 	{ FR_CONF_OFFSET("random_file", FR_TYPE_FILE_EXISTS, fr_tls_conf_t, random_file) },
 	{ FR_CONF_OFFSET("fragment_size", FR_TYPE_UINT32, fr_tls_conf_t, fragment_size), .dflt = "1024" },
-	{ FR_CONF_OFFSET("auto_chain", FR_TYPE_BOOL, fr_tls_conf_t, auto_chain), .dflt = "yes" },
+	{ FR_CONF_OFFSET("auto_chain", FR_TYPE_BOOL, fr_tls_conf_t, auto_chain), .dflt = "no" },
 	{ FR_CONF_OFFSET("disable_single_dh_use", FR_TYPE_BOOL, fr_tls_conf_t, disable_single_dh_use) },
 	{ FR_CONF_OFFSET("check_crl", FR_TYPE_BOOL, fr_tls_conf_t, check_crl), .dflt = "no" },
 #ifdef X509_V_FLAG_CRL_CHECK_ALL
@@ -144,9 +144,9 @@ CONF_PARSER tls_server_config[] = {
 
 	{ FR_CONF_OFFSET("tls_min_version", FR_TYPE_FLOAT32, fr_tls_conf_t, tls_min_version), .dflt = "1.0" },
 
-	{ FR_CONF_OFFSET("certificate", FR_TYPE_SUBSECTION | FR_TYPE_MULTI, fr_tls_conf_t, key_pairs),
-	  .subcs_size = sizeof(fr_tls_conf_key_pair_t), .subcs_type = "fr_tls_conf_key_pair_t",
-	  .subcs = tls_cert_pair_config },
+	{ FR_CONF_OFFSET("chain", FR_TYPE_SUBSECTION | FR_TYPE_MULTI, fr_tls_conf_t, chains),
+	  .subcs_size = sizeof(fr_tls_conf_chain_t), .subcs_type = "fr_tls_conf_chain_t",
+	  .subcs = tls_chain_config },
 
 	{ FR_CONF_POINTER("cache", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) cache_config },
 
@@ -188,9 +188,9 @@ CONF_PARSER tls_client_config[] = {
 
 	{ FR_CONF_OFFSET("tls_min_version", FR_TYPE_FLOAT32, fr_tls_conf_t, tls_min_version), .dflt = "1.0" },
 
-	{ FR_CONF_OFFSET("certificate", FR_TYPE_SUBSECTION | FR_TYPE_MULTI, fr_tls_conf_t, key_pairs),
-	  .subcs_size = sizeof(fr_tls_conf_key_pair_t), .subcs_type = "fr_tls_conf_key_pair_t",
-	  .subcs = tls_cert_pair_config },
+	{ FR_CONF_OFFSET("chain", FR_TYPE_SUBSECTION | FR_TYPE_MULTI, fr_tls_conf_t, chains),
+	  .subcs_size = sizeof(fr_tls_conf_chain_t), .subcs_type = "fr_tls_conf_chain_t",
+	  .subcs = tls_chain_config },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -237,35 +237,35 @@ static int conf_cert_admin_password(fr_tls_conf_t *conf)
 {
 	size_t i, cnt;
 
-	if (!conf->key_pairs) return 0;
+	if (!conf->chains) return 0;
 
-	cnt = talloc_array_length(conf->key_pairs);
+	cnt = talloc_array_length(conf->chains);
 	for (i = 0; i < cnt; i++) {
 		char		cmd[256];
 		char		*password;
 		long const	max_password_len = 128;
 		FILE		*cmd_pipe;
 
-		if (!conf->key_pairs[i]->password) continue;
+		if (!conf->chains[i]->password) continue;
 
-		if (strncmp(conf->key_pairs[i]->password, special_string, strlen(special_string)) != 0) continue;
+		if (strncmp(conf->chains[i]->password, special_string, strlen(special_string)) != 0) continue;
 
 		snprintf(cmd, sizeof(cmd) - 1, "/usr/sbin/certadmin --get-private-key-passphrase \"%s\"",
-			 conf->key_pairs[i]->private_key_file);
+			 conf->chains[i]->private_key_file);
 
 		DEBUG2("Getting private key passphrase using command \"%s\"", cmd);
 
 		cmd_pipe = popen(cmd, "r");
 		if (!cmd_pipe) {
 			ERROR("%s command failed: Unable to get private_key_password", cmd);
-			ERROR("Error reading private_key_file %s", conf->key_pairs[i]->private_key_file);
+			ERROR("Error reading private_key_file %s", conf->chains[i]->private_key_file);
 			return -1;
 		}
 
 		password = talloc_array(conf, char, max_password_len);
 		if (!password) {
 			ERROR("Can't allocate space for private_key_password");
-			ERROR("Error reading private_key_file %s", conf->key_pairs[i]->private_key_file);
+			ERROR("Error reading private_key_file %s", conf->chains[i]->private_key_file);
 			pclose(cmd_pipe);
 			return -1;
 		}
@@ -277,8 +277,8 @@ static int conf_cert_admin_password(fr_tls_conf_t *conf)
 		password[strlen(password) - 1] = '\0';
 
 		DEBUG3("Password from command = \"%s\"", password);
-		talloc_const_free(conf->key_pairs[i]->password);
-		conf->key_pairs[i]->password = password;
+		talloc_const_free(conf->chains[i]->password);
+		conf->chains[i]->password = password;
 	}
 
 	return 0;

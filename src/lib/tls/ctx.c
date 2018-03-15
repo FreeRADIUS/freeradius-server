@@ -103,19 +103,19 @@ static int ctx_dh_params_load(SSL_CTX *ctx, char *file)
 	return 0;
 }
 
-static int tls_ctx_load_cert_key_pair(SSL_CTX *ctx, fr_tls_conf_key_pair_t const *key_pair)
+static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_conf_chain_t const *chain)
 {
 	char		*password;
 
 	/*
 	 *	Conf parser should ensure they're both populated
 	 */
-	rad_assert(key_pair->certificate_file && key_pair->private_key_file);
+	rad_assert(chain->certificate_file && chain->private_key_file);
 
 	/*
 	 *	Set the password (this should have been retrieved earlier)
 	 */
-	memcpy(&password, &key_pair->password, sizeof(password));
+	memcpy(&password, &chain->password, sizeof(password));
 	SSL_CTX_set_default_passwd_cb_userdata(ctx, password);
 
 	/*
@@ -124,19 +124,19 @@ static int tls_ctx_load_cert_key_pair(SSL_CTX *ctx, fr_tls_conf_key_pair_t const
 	 */
 	SSL_CTX_set_default_passwd_cb(ctx, tls_session_password_cb);
 
-	switch (key_pair->file_format) {
+	switch (chain->file_format) {
 	case SSL_FILETYPE_PEM:
-		if (!(SSL_CTX_use_certificate_chain_file(ctx, key_pair->certificate_file))) {
+		if (!(SSL_CTX_use_certificate_chain_file(ctx, chain->certificate_file))) {
 			tls_log_error(NULL, "Failed reading certificate file \"%s\"",
-				      key_pair->certificate_file);
+				      chain->certificate_file);
 			return -1;
 		}
 		break;
 
 	case SSL_FILETYPE_ASN1:
-		if (!(SSL_CTX_use_certificate_file(ctx, key_pair->certificate_file, key_pair->file_format))) {
+		if (!(SSL_CTX_use_certificate_file(ctx, chain->certificate_file, chain->file_format))) {
 			tls_log_error(NULL, "Failed reading certificate file \"%s\"",
-				      key_pair->certificate_file);
+				      chain->certificate_file);
 			return -1;
 		}
 		break;
@@ -146,9 +146,9 @@ static int tls_ctx_load_cert_key_pair(SSL_CTX *ctx, fr_tls_conf_key_pair_t const
 		break;
 	}
 
-	if (!(SSL_CTX_use_PrivateKey_file(ctx, key_pair->private_key_file, key_pair->file_format))) {
+	if (!(SSL_CTX_use_PrivateKey_file(ctx, chain->private_key_file, chain->file_format))) {
 		tls_log_error(NULL, "Failed reading private key file \"%s\"",
-			      key_pair->private_key_file);
+			      chain->private_key_file);
 		return -1;
 	}
 
@@ -267,7 +267,7 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 		size_t psk_len, hex_len;
 		uint8_t buffer[PSK_MAX_PSK_LEN];
 
-		if (conf->key_pairs || conf->ca_file || conf->ca_path) {
+		if (conf->chains || conf->ca_file || conf->ca_path) {
 			ERROR("When PSKs are used, No certificate configuration is permitted");
 			return NULL;
 		}
@@ -326,8 +326,9 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 	 *	the cert chain needs to be given in PEM from
 	 *	openSSL.org
 	 */
-	if (conf->key_pairs) {
-		size_t chains_conf = talloc_array_length(conf->key_pairs);
+
+	if (conf->chains) {
+		size_t chains_conf = talloc_array_length(conf->chains);
 
 		/*
 		 *	Load our keys and certificates
@@ -342,7 +343,7 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 			size_t i;
 
 			for (i = 0; i < chains_conf; i++) {
-				if (tls_ctx_load_cert_key_pair(ctx, conf->key_pairs[i]) < 0) return NULL;
+				if (tls_ctx_load_cert_chain(ctx, conf->chains[i]) < 0) return NULL;
 			}
 		}
 

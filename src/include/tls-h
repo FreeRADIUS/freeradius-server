@@ -223,7 +223,7 @@ typedef struct {
 	char const	*password;			//!< Password to decrypt the certificate(s).
 	char const	*certificate_file;		//!< Path to certificate.
 	char const	*private_key_file;		//!< Path to certificate.
-} fr_tls_conf_key_pair_t;
+} fr_tls_conf_chain_t;
 
 /* configured values goes right here */
 struct fr_tls_conf_t {
@@ -235,7 +235,7 @@ struct fr_tls_conf_t {
 
 	CONF_SECTION	*cs;
 
-	fr_tls_conf_key_pair_t	**key_pairs;		//!< One or more certificates
+	fr_tls_conf_chain_t	**chains;		//!< One or more certificates
 
 	char const	*random_file;			//!< If set, we read 10K of data (or the complete file)
 							//!< and use it to seed OpenSSL's PRNG.
