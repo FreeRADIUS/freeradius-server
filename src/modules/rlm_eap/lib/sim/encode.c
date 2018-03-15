@@ -218,13 +218,13 @@ static ssize_t encode_encrypted_value(uint8_t *out, size_t outlen,
 
 	evp_ctx = EVP_CIPHER_CTX_new();
 	if (!evp_ctx) {
-		tls_strerror_printf(true, "Failed allocating EVP context");
+		tls_strerror_printf("Failed allocating EVP context");
 		return PAIR_ENCODE_ERROR;
 	}
 
 	if (unlikely(EVP_EncryptInit_ex(evp_ctx, evp_cipher, NULL,
 					packet_ctx->keys->k_encr, packet_ctx->iv) != 1)) {
-		tls_strerror_printf(true, "Failed initialising AES-128-ECB context");
+		tls_strerror_printf("Failed initialising AES-128-ECB context");
 	error:
 		talloc_free(encr);
 		EVP_CIPHER_CTX_free(evp_ctx);
@@ -252,13 +252,13 @@ static ssize_t encode_encrypted_value(uint8_t *out, size_t outlen,
 	 */
 	EVP_CIPHER_CTX_set_padding(evp_ctx, 0);
 	if (unlikely(EVP_EncryptUpdate(evp_ctx, encr, (int *)&len, p, total_len) != 1)) {
-		tls_strerror_printf(true, "%s: Failed encrypting attribute", __FUNCTION__);
+		tls_strerror_printf("%s: Failed encrypting attribute", __FUNCTION__);
 		goto error;
 	}
 	encr_len = len;
 
 	if (unlikely(EVP_EncryptFinal_ex(evp_ctx, encr + encr_len, (int *)&len) != 1)) {
-		tls_strerror_printf(true, "%s: Failed finalising encrypted attribute", __FUNCTION__);
+		tls_strerror_printf("%s: Failed finalising encrypted attribute", __FUNCTION__);
 		goto error;
 	}
 	encr_len += len;

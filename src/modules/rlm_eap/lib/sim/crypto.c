@@ -71,13 +71,13 @@ int fr_sim_crypto_init_checkcode(TALLOC_CTX *ctx, fr_sim_checkcode_t **checkcode
 
 	(*checkcode)->md_ctx = EVP_MD_CTX_create();
 	if (!(*checkcode)->md_ctx) {
-		tls_strerror_printf(true, "Failed creating MD ctx");
+		tls_strerror_printf("Failed creating MD ctx");
 	error:
 		TALLOC_FREE(*checkcode);
 		return -1;
 	}
 	if (EVP_DigestInit_ex((*checkcode)->md_ctx, md, NULL) != 1) {
-		tls_strerror_printf(true, "Failed intialising MD ctx");
+		tls_strerror_printf("Failed intialising MD ctx");
 		goto error;
 	}
 
@@ -114,7 +114,7 @@ int fr_sim_crypto_update_checkcode(fr_sim_checkcode_t *checkcode, eap_packet_t *
 	 *	Digest the header
 	 */
 	if (EVP_DigestUpdate(checkcode->md_ctx, &eap_hdr, sizeof(eap_hdr)) != 1) {
-		tls_strerror_printf(true, "Failed digesting EAP header");
+		tls_strerror_printf("Failed digesting EAP header");
 		return -1;
 	}
 
@@ -122,7 +122,7 @@ int fr_sim_crypto_update_checkcode(fr_sim_checkcode_t *checkcode, eap_packet_t *
 	 *	Digest the packet
 	 */
 	if (EVP_DigestUpdate(checkcode->md_ctx, eap_packet->type.data, eap_packet->type.length) != 1) {
-		tls_strerror_printf(true, "Failed digesting packet data");
+		tls_strerror_printf("Failed digesting packet data");
 		return -1;
 	}
 
@@ -143,7 +143,7 @@ ssize_t fr_sim_crypto_finalise_checkcode(uint8_t *out, fr_sim_checkcode_t **chec
 	unsigned int len;
 
 	if (EVP_DigestFinal_ex((*checkcode)->md_ctx, out, &len) != 1) {
-		tls_strerror_printf(true, "Failed finalising checkcode digest");
+		tls_strerror_printf("Failed finalising checkcode digest");
 		TALLOC_FREE(*checkcode);
 		return -1;
 	}
@@ -258,7 +258,7 @@ ssize_t fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet, boo
 	FR_PROTO_HEX_DUMP("MAC key", key, key_len);
 	pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, key, key_len);
 	if (!pkey) {
-		tls_strerror_printf(true, "Failed creating HMAC signing key");
+		tls_strerror_printf("Failed creating HMAC signing key");
 	error:
 		if (pkey) EVP_PKEY_free(pkey);
 		if (md_ctx) EVP_MD_CTX_destroy(md_ctx);
@@ -267,12 +267,12 @@ ssize_t fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet, boo
 
 	md_ctx = EVP_MD_CTX_create();
 	if (!md_ctx) {
-		tls_strerror_printf(true, "Failed creating HMAC ctx");
+		tls_strerror_printf("Failed creating HMAC ctx");
 		goto error;
 	}
 
 	if (EVP_DigestSignInit(md_ctx, NULL, md, NULL, pkey) != 1) {
-		tls_strerror_printf(true, "Failed initialising digest");
+		tls_strerror_printf("Failed initialising digest");
 		goto error;
 	}
 
@@ -289,7 +289,7 @@ ssize_t fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet, boo
 
 	FR_PROTO_HEX_DUMP("MAC digest input (eap header)", (uint8_t *)&eap_hdr, sizeof(eap_hdr));
 	if (EVP_DigestSignUpdate(md_ctx, &eap_hdr, sizeof(eap_hdr)) != 1) {
-		tls_strerror_printf(true, "Failed digesting EAP data");
+		tls_strerror_printf("Failed digesting EAP data");
 		goto error;
 	}
 
@@ -312,7 +312,7 @@ ssize_t fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet, boo
 			 *	AT_MAC header and reserved bytes.
 			 */
 			if (EVP_DigestSignUpdate(md_ctx, p, mac - p) != 1) {
-				tls_strerror_printf(true, "Failed digesting packet data (before MAC)");
+				tls_strerror_printf("Failed digesting packet data (before MAC)");
 				goto error;
 			}
 			p += mac - p;
@@ -324,7 +324,7 @@ ssize_t fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet, boo
 			 *	simulated the zeroed out Mac.
 			 */
 			if (EVP_DigestSignUpdate(md_ctx, zero, sizeof(zero)) != 1) {
-				tls_strerror_printf(true, "Failed digesting zeroed MAC");
+				tls_strerror_printf("Failed digesting zeroed MAC");
 				goto error;
 			}
 			p += sizeof(zero);
@@ -347,7 +347,7 @@ ssize_t fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet, boo
 		 *	Digest the rest of the packet.
 		 */
 		if (EVP_DigestSignUpdate(md_ctx, p, end - p) != 1) {
-			tls_strerror_printf(true, "Failed digesting packet data");
+			tls_strerror_printf("Failed digesting packet data");
 			goto error;
 		}
 	}
@@ -361,13 +361,13 @@ ssize_t fr_sim_crypto_sign_packet(uint8_t out[16], eap_packet_t *eap_packet, boo
 	if (hmac_extra) {
 		FR_PROTO_HEX_DUMP("MAC digest input (extra)", hmac_extra, hmac_extra_len);
 		if (EVP_DigestSignUpdate(md_ctx, hmac_extra, hmac_extra_len) != 1) {
-			tls_strerror_printf(true, "Failed digesting HMAC extra data");
+			tls_strerror_printf("Failed digesting HMAC extra data");
 			goto error;
 		}
 	}
 
 	if (EVP_DigestSignFinal(md_ctx, digest, &digest_len) != 1) {
-		tls_strerror_printf(true, "Failed finalising digest");
+		tls_strerror_printf("Failed finalising digest");
 		goto error;
 	}
 
@@ -688,24 +688,24 @@ int fr_sim_crypto_kdf_0_reauth(fr_sim_keys_t *keys)
 	 */
 	md_ctx = EVP_MD_CTX_create();
 	if (!md_ctx) {
-		tls_strerror_printf(true, "Failed creating MD ctx");
+		tls_strerror_printf("Failed creating MD ctx");
 	error:
 		EVP_MD_CTX_destroy(md_ctx);
 		return -1;
 	}
 
 	if (EVP_DigestInit_ex(md_ctx, EVP_sha1(), NULL) != 1) {
-		tls_strerror_printf(true, "Failed initialising digest");
+		tls_strerror_printf("Failed initialising digest");
 		goto error;
 	}
 
 	if (EVP_DigestUpdate(md_ctx, buf, p - buf) != 1) {
-		tls_strerror_printf(true, "Failed digesting crypto data");
+		tls_strerror_printf("Failed digesting crypto data");
 		goto error;
 	}
 
 	if (EVP_DigestFinal_ex(md_ctx, xkey_prime, &len) != 1) {
-		tls_strerror_printf(true, "Failed finalising digest");
+		tls_strerror_printf("Failed finalising digest");
 		goto error;
 	}
 
@@ -823,7 +823,7 @@ static int sim_crypto_derive_ck_ik_prime(fr_sim_keys_t *keys)
 
 	pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, k, sizeof(k));
 	if (!pkey) {
-		tls_strerror_printf(true, "Failed creating HMAC signing key");
+		tls_strerror_printf("Failed creating HMAC signing key");
 	error:
 		if (pkey) EVP_PKEY_free(pkey);
 		if (md_ctx) EVP_MD_CTX_destroy(md_ctx);
@@ -832,12 +832,12 @@ static int sim_crypto_derive_ck_ik_prime(fr_sim_keys_t *keys)
 
 	md_ctx = EVP_MD_CTX_create();
 	if (!md_ctx) {
-		tls_strerror_printf(true, "Failed creating HMAC ctx");
+		tls_strerror_printf("Failed creating HMAC ctx");
 		goto error;
 	}
 
 	if (EVP_DigestSignInit(md_ctx, NULL, EVP_sha256(), NULL, pkey) != 1) {
-		tls_strerror_printf(true, "Failed initialising digest");
+		tls_strerror_printf("Failed initialising digest");
 		goto error;
 	}
 
@@ -892,7 +892,7 @@ static int sim_crypto_aka_prime_prf(uint8_t *out, size_t outlen,
 
 	pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, key, key_len);
 	if (!pkey) {
-		tls_strerror_printf(true, "Failed creating HMAC signing key");
+		tls_strerror_printf("Failed creating HMAC signing key");
 	error:
 		if (pkey) EVP_PKEY_free(pkey);
 		if (md_ctx) EVP_MD_CTX_destroy(md_ctx);
@@ -901,12 +901,12 @@ static int sim_crypto_aka_prime_prf(uint8_t *out, size_t outlen,
 
 	md_ctx = EVP_MD_CTX_create();
 	if (!md_ctx) {
-		tls_strerror_printf(true, "Failed creating HMAC ctx");
+		tls_strerror_printf("Failed creating HMAC ctx");
 		goto error;
 	}
 
 	if (EVP_DigestSignInit(md_ctx, NULL, EVP_sha256(), NULL, pkey) != 1) {
-		tls_strerror_printf(true, "Failed initialising digest");
+		tls_strerror_printf("Failed initialising digest");
 		goto error;
 	}
 

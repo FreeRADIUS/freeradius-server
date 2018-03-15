@@ -170,12 +170,12 @@ static ssize_t sim_value_decrypt(TALLOC_CTX *ctx, uint8_t **out,
 
 	evp_ctx = EVP_CIPHER_CTX_new();
 	if (!evp_ctx) {
-		tls_strerror_printf(true, "%s: Failed initialising EVP ctx", __FUNCTION__);
+		tls_strerror_printf("%s: Failed initialising EVP ctx", __FUNCTION__);
 		return -1;
 	}
 
 	if (!EVP_DecryptInit_ex(evp_ctx, evp_cipher, NULL, packet_ctx->keys->k_encr, packet_ctx->iv)) {
-		tls_strerror_printf(true, "%s: Failed setting decryption parameters", __FUNCTION__);
+		tls_strerror_printf("%s: Failed setting decryption parameters", __FUNCTION__);
 	error:
 		talloc_free(decr);
 		EVP_CIPHER_CTX_free(evp_ctx);
@@ -195,13 +195,13 @@ static ssize_t sim_value_decrypt(TALLOC_CTX *ctx, uint8_t **out,
 	 */
 	EVP_CIPHER_CTX_set_padding(evp_ctx, 0);
 	if (!EVP_DecryptUpdate(evp_ctx, decr, (int *)&len, data, attr_len)) {
-		tls_strerror_printf(true, "%s: Failed decrypting attribute", __FUNCTION__);
+		tls_strerror_printf("%s: Failed decrypting attribute", __FUNCTION__);
 		goto error;
 	}
 	decr_len = len;
 
 	if (!EVP_DecryptFinal_ex(evp_ctx, decr + decr_len, (int *)&len)) {
-		tls_strerror_printf(true, "%s: Failed decrypting attribute", __FUNCTION__);
+		tls_strerror_printf("%s: Failed decrypting attribute", __FUNCTION__);
 		goto error;
 	}
 	decr_len += len;

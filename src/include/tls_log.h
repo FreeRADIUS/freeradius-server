@@ -33,6 +33,8 @@ RCSIDH(tls_log_h, "$Id$")
 /*
  *	tls/log.c
  */
-int	tls_strerror_printf(bool drain_all, char const *msg, ...) CC_HINT(format (printf, 2, 3));
+void	tls_log_clear(void);
+
+int	tls_strerror_printf(char const *msg, ...) CC_HINT(format (printf, 1, 2));
 #endif
 #endif	/* _FR_TLS_LOG_H */

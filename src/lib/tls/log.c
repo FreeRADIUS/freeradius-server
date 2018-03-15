@@ -51,13 +51,16 @@ static int tls_log_error_va(REQUEST *request, char const *msg, va_list ap)
 
 	int		line;
 	char const	*file;
+	char const	*data;
+	int		flags = 0;
 
 	/*
 	 *	Pop the first error, so ERR_peek_error()
 	 *	can be used to determine if there are
 	 *	multiple errors.
 	 */
-	error = ERR_get_error_line(&file, &line);
+	error = ERR_get_error_line_data(&file, &line, &data, &flags);
+	if (!(flags & ERR_TXT_STRING)) data = NULL;
 
 	if (msg) {
 		p = talloc_vasprintf(request, msg, ap);
@@ -70,9 +73,11 @@ static int tls_log_error_va(REQUEST *request, char const *msg, va_list ap)
 
 			/* Extra verbose */
 			if ((request && RDEBUG_ENABLED3) || DEBUG_ENABLED3) {
-				ROPTIONAL(REDEBUG, ERROR, "%s: %s[%i]:%s", p, file, line, buffer);
+				ROPTIONAL(REDEBUG, ERROR, "%s: %s[%i]:%s%c%s", p, file, line, buffer,
+					  data ? ':' : '\0', data ? data : "");
 			} else {
-				ROPTIONAL(REDEBUG, ERROR, "%s: %s", p, buffer);
+				ROPTIONAL(REDEBUG, ERROR, "%s: %s%c%s", p, buffer,
+					  data ? ':' : '\0', data ? data : "");
 			}
 
 			talloc_free(p);
@@ -93,15 +98,19 @@ static int tls_log_error_va(REQUEST *request, char const *msg, va_list ap)
 	 */
 	if (!error) return 0;
 	do {
+		if (!(flags & ERR_TXT_STRING)) data = NULL;
+
 		ERR_error_string_n(error, buffer, sizeof(buffer));
 		/* Extra verbose */
 		if ((request && RDEBUG_ENABLED3) || DEBUG_ENABLED3) {
-			ROPTIONAL(REDEBUG, ERROR, "%s[%i]:%s", file, line, buffer);
+			ROPTIONAL(REDEBUG, ERROR, "%s[%i]:%s%c%s", file, line, buffer,
+				  data ? ':' : '\0', data ? data : "");
 		} else {
-			ROPTIONAL(REDEBUG, ERROR, "%s", buffer);
+			ROPTIONAL(REDEBUG, ERROR, "%s%c%s", buffer,
+				  data ? ':' : '\0', data ? data : "");
 		}
 		in_stack++;
-	} while ((error = ERR_get_error_line(&file, &line)));
+	} while ((error = ERR_get_error_line_data(&file, &line, &data, &flags)));
 
 	return in_stack;
 }
@@ -128,18 +137,25 @@ int tls_log_error(REQUEST *request, char const *msg, ...)
 	return ret;
 }
 
+/** Clear errors in the TLS thread local error stack
+ *
+ */
+void tls_log_clear(void)
+{
+	while (ERR_get_error() != 0);
+}
+
 DIAG_OFF(format-nonliteral)
 /** Print errors in the TLS thread local error stack
  *
  * Drains the thread local OpenSSL error queue, and prints out the first error
  * storing it in libfreeradius's error buffer.
  *
- * @param[in] drain_all	drain all errors in TLS stack.
  * @param[in] msg	Error message describing the operation being attempted.
  * @param[in] ap	Arguments for msg.
  * @return the number of errors drained from the stack.
  */
-static int tls_strerror_printf_va(bool drain_all, char const *msg, va_list ap)
+static int tls_strerror_printf_va(char const *msg, va_list ap)
 {
 	unsigned long	error;
 	char		*p = NULL;
@@ -148,13 +164,16 @@ static int tls_strerror_printf_va(bool drain_all, char const *msg, va_list ap)
 
 	int		line;
 	char const	*file;
+	char const	*data;
+	int		flags = 0;
 
 	/*
 	 *	Pop the first error, so ERR_peek_error()
 	 *	can be used to determine if there are
 	 *	multiple errors.
 	 */
-	error = ERR_get_error_line(&file, &line);
+	error = ERR_get_error_line_data(&file, &line, &data, &flags);
+	if (!(flags & ERR_TXT_STRING)) data = NULL;
 
 	if (msg) {
 		/*
@@ -164,7 +183,7 @@ static int tls_strerror_printf_va(bool drain_all, char const *msg, va_list ap)
 		p = talloc_vasprintf(NULL, msg, ap);
 		if (error) {
 			ERR_error_string_n(error, buffer, sizeof(buffer));
-			fr_strerror_printf("%s: %s", p, buffer);
+			fr_strerror_printf("%s: %s%c%s", p, buffer, data ? ':' : '\0', data ? data : "");
 			talloc_free(p);
 			drained++;
 		/*
@@ -177,15 +196,19 @@ static int tls_strerror_printf_va(bool drain_all, char const *msg, va_list ap)
 		}
 	} else if (error) {
 		ERR_error_string_n(error, buffer, sizeof(buffer));
-		fr_strerror_printf("%s", buffer);
+		fr_strerror_printf("%s%c%s", buffer, data ? ':' : '\0', data ? data : "");
 		drained++;
 	} else {
 		return 0;
 	}
 
-	if (!drain_all) return drained;
+	while ((error = ERR_get_error_line_data(&file, &line, &data, &flags))) {
+		if (!(flags & ERR_TXT_STRING)) data = NULL;
 
-	while ((error = ERR_get_error_line(&file, &line))) drained++;
+		ERR_error_string_n(error, buffer, sizeof(buffer));
+		fr_strerror_printf_push("%s%c%s", buffer, data ? ':' : '\0', data ? data : "");
+		drained++;
+	}
 
 	return drained;
 }
@@ -195,18 +218,17 @@ DIAG_ON(format-nonliteral)
  *
  * @note Will only drain the first error.
  *
- * @param[in] drain_all	drain all errors in TLS stack.
  * @param[in] msg	Error message describing the operation being attempted.
  * @param[in] ...	Arguments for msg.
  * @return the number of errors drained from the stack.
  */
-int tls_strerror_printf(bool drain_all, char const *msg, ...)
+int tls_strerror_printf(char const *msg, ...)
 {
 	va_list ap;
 	int ret;
 
 	va_start(ap, msg);
-	ret = tls_strerror_printf_va(drain_all, msg, ap);
+	ret = tls_strerror_printf_va(msg, ap);
 	va_end(ap);
 
 	return ret;

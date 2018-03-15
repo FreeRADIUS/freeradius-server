@@ -365,12 +365,12 @@ int fr_sim_id_3gpp_pseudonym_encrypt(char out[SIM_3GPP_PSEUDONYM_LEN + 1],
 	 */
 	evp_ctx = EVP_CIPHER_CTX_new();
 	if (!evp_ctx) {
-		tls_strerror_printf(true, "Failed allocating EVP context");
+		tls_strerror_printf("Failed allocating EVP context");
 		return -1;
 	}
 
 	if (unlikely(EVP_EncryptInit_ex(evp_ctx, EVP_aes_128_ecb(), NULL, key, NULL) != 1)) {
-		tls_strerror_printf(true, "Failed initialising AES-128-ECB context");
+		tls_strerror_printf("Failed initialising AES-128-ECB context");
 	error:
 		EVP_CIPHER_CTX_free(evp_ctx);
 		return -1;
@@ -388,13 +388,13 @@ int fr_sim_id_3gpp_pseudonym_encrypt(char out[SIM_3GPP_PSEUDONYM_LEN + 1],
 	 */
 	EVP_CIPHER_CTX_set_padding(evp_ctx, 0);
 	if (unlikely(EVP_EncryptUpdate(evp_ctx, encr, (int *)&len, padded, sizeof(padded)) != 1)) {
-		tls_strerror_printf(true, "Failed encrypting padded IMSI");
+		tls_strerror_printf("Failed encrypting padded IMSI");
 		goto error;
 	}
 	encr_len = len;
 
 	if (unlikely(EVP_EncryptFinal_ex(evp_ctx, encr + len, (int *)&len) != 1)) {
-		tls_strerror_printf(true, "Failed finalising encrypted IMSI");
+		tls_strerror_printf("Failed finalising encrypted IMSI");
 		goto error;
 	}
 	encr_len += len;
@@ -515,12 +515,12 @@ int fr_sim_id_3gpp_pseudonym_decrypt(char out[SIM_IMSI_MAX_LEN + 1],
 
 	evp_ctx = EVP_CIPHER_CTX_new();
 	if (!evp_ctx) {
-		tls_strerror_printf(true, "Failed allocating EVP context");
+		tls_strerror_printf("Failed allocating EVP context");
 		return -1;
 	}
 
 	if (unlikely(EVP_DecryptInit_ex(evp_ctx, EVP_aes_128_ecb(), NULL, key, NULL) != 1)) {
-		tls_strerror_printf(true, "Failed initialising AES-128-ECB context");
+		tls_strerror_printf("Failed initialising AES-128-ECB context");
 	error:
 		EVP_CIPHER_CTX_free(evp_ctx);
 		return -1;
@@ -537,13 +537,13 @@ int fr_sim_id_3gpp_pseudonym_decrypt(char out[SIM_IMSI_MAX_LEN + 1],
 	 */
 	EVP_CIPHER_CTX_set_padding(evp_ctx, 0);
 	if (unlikely(EVP_DecryptUpdate(evp_ctx, decr, (int *)&len, dec, sizeof(dec)) != 1)) {
-		tls_strerror_printf(true, "Failed decypting IMSI");
+		tls_strerror_printf("Failed decypting IMSI");
 		goto error;
 	}
 	decr_len = len;
 
 	if (unlikely(EVP_DecryptFinal_ex(evp_ctx, decr + len, (int *)&len) != 1)) {
-		tls_strerror_printf(true, "Failed finalising decypted IMSI");
+		tls_strerror_printf("Failed finalising decypted IMSI");
 		goto error;
 	}
 	decr_len += len;
