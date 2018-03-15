@@ -36,18 +36,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
 
-/** PKEY types (friendly names)
- *
- */
-static const FR_NAME_NUMBER pkey_types[] = {
-	{ "RSA",	EVP_PKEY_RSA		},
-	{ "DSA",	EVP_PKEY_DSA		},
-	{ "DH",		EVP_PKEY_DH		},
-	{ "EC",		EVP_PKEY_EC		},
-
-	{ NULL, 0				},
-};
-
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL
 #  ifndef OPENSSL_NO_ECDH
 static int ctx_ecdh_curve_set(SSL_CTX *ctx, char const *ecdh_curve, bool disable_single_dh_use)

@@ -1,6 +1,41 @@
 #include <openssl/ssl.h>
 #include <freeradius-devel/radiusd.h>
 
+/** PKEY types (friendly names)
+ *
+ */
+static const FR_NAME_NUMBER pkey_types[] = {
+	{ "RSA",	EVP_PKEY_RSA		},
+	{ "DSA",	EVP_PKEY_DSA		},
+	{ "DH",		EVP_PKEY_DH		},
+	{ "EC",		EVP_PKEY_EC		},
+
+	{ NULL, 0				},
+};
+
+/** Returns a friendly identifier for the public key type of a certificate
+ *
+ * @param[in] cert	The X509 cert to return the type of.
+ * @return the type string.
+ */
+char const *tls_utils_x509_pkey_type(X509 *cert)
+{
+	EVP_PKEY	*pkey;
+	int		pkey_type;
+	char const	*type_str;
+
+	if (!cert) return NULL;
+
+	pkey = X509_get_pubkey(cert);
+	if (!pkey) return NULL;
+
+	pkey_type = EVP_PKEY_type(EVP_PKEY_id(pkey));
+	type_str = fr_int2str(pkey_types, pkey_type, OBJ_nid2sn(pkey_type));
+	EVP_PKEY_free(pkey);
+
+	return type_str;
+}
+
 /** Returns the OpenSSL keyblock size
  *
  * Copyright (c) 2002-2016, Jouni Malinen <j@w1.fi> and contributors
