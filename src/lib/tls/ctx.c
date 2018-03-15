@@ -103,25 +103,6 @@ static int ctx_dh_params_load(SSL_CTX *ctx, char *file)
 	return 0;
 }
 
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
-static void _tls_ctx_print_cert_line(int index, X509 *cert)
-{
-	char		subject[1024];
-	EVP_PKEY	*pkey;
-	int		pkey_type;
-
-	pkey = X509_get_pubkey(cert);
-
-	X509_NAME_oneline(X509_get_subject_name(cert), subject, sizeof(subject));
-	subject[sizeof(subject) - 1] = '\0';
-
-	pkey_type = EVP_PKEY_type(EVP_PKEY_id(pkey));
-	DEBUG2("[%i] %s %s", index, fr_int2str(pkey_types, pkey_type, OBJ_nid2sn(pkey_type)), subject);
-
-	EVP_PKEY_free(pkey);
-}
-#endif
-
 static int tls_ctx_load_cert_key_pair(SSL_CTX *ctx, fr_tls_conf_key_pair_t const *key_pair)
 {
 	char		*password;
@@ -194,28 +175,22 @@ static int tls_ctx_load_cert_key_pair(SSL_CTX *ctx, fr_tls_conf_key_pair_t const
 		tls_log_error(NULL, "Failed building certificate chain");
 		return -1;
 	}
-
-	/*
-	 *	Print out the chain we just created
-	 */
-	if (DEBUG_ENABLED2) {
-		STACK_OF(X509)	*our_chain;
-		int		i;
-
-		DEBUG2("Loaded certificate chain");
-		if (!SSL_CTX_get0_chain_certs(ctx, &our_chain)) {
-			tls_log_error(NULL, "Failed retrieving chain certificates");
-			return -1;
-		}
-
-		for (i = sk_X509_num(our_chain); i > 0 ; i--) {
-			_tls_ctx_print_cert_line(i, sk_X509_value(our_chain, i - 1));
-		}
-		_tls_ctx_print_cert_line(i, SSL_CTX_get0_certificate(ctx));
-	}
 #endif
 	return 0;
 }
+
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+static void _tls_ctx_print_cert_line(int index, X509 *cert)
+{
+	char		subject[1024];
+
+	X509_NAME_oneline(X509_get_subject_name(cert), subject, sizeof(subject));
+	subject[sizeof(subject) - 1] = '\0';
+
+
+	DEBUG3("[%i] %s %s", index, tls_utils_x509_pkey_type(cert), subject);
+}
+#endif
 
 /** Create SSL context
  *
@@ -352,12 +327,86 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 	 *	openSSL.org
 	 */
 	if (conf->key_pairs) {
-		size_t i, cnt = talloc_array_length(conf->key_pairs);
+		size_t chains_conf = talloc_array_length(conf->key_pairs);
 
-		for (i = 0; i < cnt; i++) {
-			if (tls_ctx_load_cert_key_pair(ctx, conf->key_pairs[i]) < 0) return NULL;
+		/*
+		 *	Load our keys and certificates
+		 *
+		 *	If certificates are of type PEM then we can make use
+		 *	of cert chain authentication using openssl api call
+		 *	SSL_CTX_use_certificate_chain_file.  Please see how
+		 *	the cert chain needs to be given in PEM from
+		 *	openSSL.org
+		 */
+		{
+			size_t i;
+
+			for (i = 0; i < chains_conf; i++) {
+				if (tls_ctx_load_cert_key_pair(ctx, conf->key_pairs[i]) < 0) return NULL;
+			}
+		}
+
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+		/*
+		 *	Print out our certificate chains.
+		 *
+		 *	There may be up to three, one for RSA, DSA and ECC.
+		 *	OpenSSL internally and transparently stores completely
+		 *	separate and distinct RSA/DSA/ECC key pairs and chains.
+		 */
+		if (DEBUG_ENABLED2) {
+			size_t chains_set = 0;
+			int ret;
+
+			/*
+			 *	Iterate over the different chain types we have
+			 *	RSA, DSA, ECC etc...
+			 */
+			for (ret = SSL_CTX_set_current_cert(ctx, SSL_CERT_SET_FIRST);
+			     ret == 1;
+			     ret = SSL_CTX_set_current_cert(ctx, SSL_CERT_SET_NEXT)) chains_set++;
+
+			/*
+			 *	Check for discrepancies
+			 */
+
+			DEBUG3("Found %zu server certificate chain(s)", chains_set);
+
+			if (chains_set != chains_conf) {
+				WARN("Number of chains configured (%zu) does not match chains set (%zu)",
+				      chains_conf, chains_set);
+				WARN("Only one chain per key type is allowed, check config for duplicated");
+			}
+
+			for (ret = SSL_CTX_set_current_cert(ctx, SSL_CERT_SET_FIRST);
+			     ret == 1;
+			     ret = SSL_CTX_set_current_cert(ctx, SSL_CERT_SET_NEXT)) {
+			     	STACK_OF(X509)	*our_chain;
+				X509		*our_cert;
+				int		i;
+
+				our_cert = SSL_CTX_get0_certificate(ctx);
+
+				/*
+				 *	The pkey type of the server certificate
+				 *	determines which pkey slot OpenSSL
+				 *	uses to store the chain.
+				 */
+				DEBUG3("%s chain", tls_utils_x509_pkey_type(our_cert));
+				if (!SSL_CTX_get0_chain_certs(ctx, &our_chain)) {
+					tls_log_error(NULL, "Failed retrieving chain certificates");
+					return NULL;
+				}
+
+				for (i = sk_X509_num(our_chain); i > 0 ; i--) {
+					_tls_ctx_print_cert_line(i, sk_X509_value(our_chain, i - 1));
+				}
+				_tls_ctx_print_cert_line(i, our_cert);
+			}
+			(void)SSL_CTX_set_current_cert(ctx, SSL_CERT_SET_FIRST);	/* Reset */
 		}
 	}
+#endif
 
 	/*
 	 *	Load the CAs we trust
