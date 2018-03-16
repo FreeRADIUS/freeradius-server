@@ -489,7 +489,8 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 			if (chains_set != chains_conf) {
 				WARN("Number of chains configured (%zu) does not match chains set (%zu)",
 				      chains_conf, chains_set);
-				WARN("Only one chain per key type is allowed, check config for duplicates");
+				if (chains_conf > chains_set) WARN("Only one chain per key type is allowed, "
+								   "check config for duplicates");
 			}
 
 			for (ret = SSL_CTX_set_current_cert(ctx, SSL_CERT_SET_FIRST);
