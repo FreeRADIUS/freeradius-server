@@ -97,7 +97,7 @@ struct dict_attr {
 	unsigned int		depth;				//!< Depth of nesting for this attribute.
 
 	fr_dict_attr_flags_t	flags;				//!< Flags.
-	char			name[1];			//!< Attribute name.
+	char const		*name;				//!< Attribute name.
 };
 
 /** Value of an enumerated attribute

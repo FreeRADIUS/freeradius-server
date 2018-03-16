@@ -727,7 +727,7 @@ size_t dict_print_attr_oid(char *out, size_t outlen,
 	return p - out;
 }
 
-/** Grow or shrink a heap allocated fr_dict_attr_t and copy a new name string into its name buffer
+/** Allocate a dictionary attribute as a pool, and assign a name buffer
  *
  * @param[in] da		to set a new name for.
  * @param[in] name		to set.
@@ -735,24 +735,54 @@ size_t dict_print_attr_oid(char *out, size_t outlen,
  *	- 0 on success.
  *	- -1 on failure (memory allocation error).
  */
-static int fr_dict_attr_set_name(fr_dict_attr_t **da, char const *name)
+static fr_dict_attr_t *fr_dict_attr_alloc_name(TALLOC_CTX *ctx, char const *name)
 {
-	size_t		len;
-	fr_dict_attr_t	*new;
+	fr_dict_attr_t *da;
 
-	len = strlen(name);
+	if (!name) {
+		fr_strerror_printf("No attribute name provided");
+		return NULL;
+	}
 
-	talloc_set_type(*da, uint8_t);
-	new = (fr_dict_attr_t *)talloc_realloc(talloc_parent(*da), *da, uint8_t, sizeof(fr_dict_attr_t) + len + 1);
-	if (!new) return -1;
+#ifdef HAVE_TALLOC_POOLED_OBJECT
+	da = talloc_pooled_object(ctx, fr_dict_attr_t, 1, strlen(name) + 1);
+	memset(da, 0, sizeof(*da));
+#else
+	da = talloc_zero(ctx, fr_dict_attr_t);
+#endif
 
-	talloc_set_type(new, fr_dict_attr_t);
+	da->name = talloc_typed_strdup(da, name);
+	if (!da->name) {
+		talloc_free(da);
+		fr_strerror_printf("Out of memory");
+		return NULL;
+	}
 
-	strlcpy(new->name, name, len + 1);
+	return da;
+}
 
-	*da = new;
+/** Copy a an existing attribute
+ *
+ * @param[in] ctx		to allocate new attribute in.
+ * @param[in] in		attribute to copy.
+ * @return
+ *	- A copy of the input fr_dict_attr_t on success.
+ *	- NULL on failure.
+ */
+static fr_dict_attr_t *fr_dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in)
+{
+	fr_dict_attr_t *n;
 
-	return 0;
+	n = fr_dict_attr_alloc_name(ctx, in->name);
+	if (!n) return NULL;
+
+	n->attr = in->attr;
+	n->type = in->type;
+	n->flags = in->flags;
+	n->parent = in->parent;
+	n->depth = in->depth;
+
+	return n;
 }
 
 /** Allocate a dictionary attribute on the heap
@@ -774,22 +804,16 @@ static fr_dict_attr_t *fr_dict_attr_alloc(TALLOC_CTX *ctx,
 				   	  char const *name, int attr,
 				   	  fr_type_t type, fr_dict_attr_flags_t const *flags)
 {
-	fr_dict_attr_t *da;
+	fr_dict_attr_t	*da;
+	fr_dict_attr_t	new = {
+		.attr	= attr,
+		.type	= type,
+		.flags	= *flags,
+		.parent	= parent,
+		.depth	= parent->depth + 1,
+	};
 
 	if (!fr_cond_assert(parent)) return NULL;
-
-	da = (fr_dict_attr_t *)talloc_zero_array(ctx, uint8_t, sizeof(*da));
-	if (!da) {
-		fr_strerror_printf("Out of memory");
-		return NULL;
-	}
-	talloc_set_type(da, fr_dict_attr_t);
-
-	da->attr = attr;
-	da->type = type;
-	memcpy(&da->flags, flags, sizeof(*flags));
-	da->parent = parent;
-	da->depth = parent->depth + 1;
 
 	if (!name) {
 		char	buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1];
@@ -799,21 +823,19 @@ static fr_dict_attr_t *fr_dict_attr_alloc(TALLOC_CTX *ctx,
 		len = snprintf(p, sizeof(buffer), "Attr-");
 		p += len;
 
-		len = dict_print_attr_oid(p, sizeof(buffer) - (p - buffer), NULL, da);
+		len = dict_print_attr_oid(p, sizeof(buffer) - (p - buffer), NULL, &new);
 		if (is_truncated(len, sizeof(buffer) - (p - buffer))) {
 			fr_strerror_printf("OID string too long for unknown attribute");
 			return NULL;
 		}
 
-		if (fr_dict_attr_set_name(&da, buffer) < 0) {
-		error:
-			talloc_free(da);
-			return NULL;
-		}
-		return da;
+		da = fr_dict_attr_alloc_name(ctx, buffer);
+	} else {
+		da = fr_dict_attr_alloc_name(ctx, name);
 	}
 
-	if (fr_dict_attr_set_name(&da, name) < 0) goto error;
+	new.name = da->name;
+	memcpy(da, &new, sizeof(*da));
 
 	return da;
 }
@@ -1403,7 +1425,6 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 
 	n = fr_dict_attr_alloc(dict->pool, parent, name, attr, type, &flags);
 	if (!n) {
-	oom:
 		fr_strerror_printf("Out of memory");
 		goto error;
 	}
@@ -1449,19 +1470,19 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 	if (n->type == FR_TYPE_COMBO_IP_ADDR) {
 		fr_dict_attr_t *v4, *v6;
 
-		v4 = (fr_dict_attr_t *)talloc_zero_array(dict->pool, uint8_t, sizeof(*v4) + namelen);
-		if (!v4) goto oom;
-		talloc_set_type(v4, fr_dict_attr_t);
+		v4 = fr_dict_attr_acopy(dict->pool, n);
+		if (!v4) {
+			talloc_free(n);
+			goto error;
+		}
 
-		v6 = (fr_dict_attr_t *)talloc_zero_array(dict->pool, uint8_t, sizeof(*v6) + namelen);
-		if (!v6) goto oom;
-		talloc_set_type(v6, fr_dict_attr_t);
-
-		memcpy(v4, n, sizeof(*v4) + namelen);
+		v6 = fr_dict_attr_acopy(dict->pool, n);
+		if (!v6) {
+			talloc_free(n);
+			goto error;
+		}
 		v4->type = FR_TYPE_IPV4_ADDR;
 
-		memcpy(v6, n, sizeof(*v6) + namelen);
-		v6->type = FR_TYPE_IPV6_ADDR;
 		if (!fr_hash_table_replace(dict->attributes_combo, v4)) {
 			fr_strerror_printf("Failed inserting IPv4 version of combo attribute");
 			goto error;
@@ -2750,9 +2771,7 @@ int fr_dict_from_file(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char co
 	/*
 	 *	Magic dictionary root attribute
 	 */
-	dict->root = (fr_dict_attr_t *)talloc_zero_array(dict, uint8_t, sizeof(fr_dict_attr_t) + strlen(name));
-	strcpy(dict->root->name, name);
-	talloc_set_type(dict->root, fr_dict_attr_t);
+	dict->root = fr_dict_attr_alloc_name(dict, name);
 	dict->root->flags.is_root = 1;
 	dict->root->type = FR_TYPE_TLV;
 	dict->root->flags.type_size = 1;
@@ -2915,7 +2934,7 @@ fr_dict_attr_t const *fr_dict_root(fr_dict_t const *dict)
  */
 fr_dict_attr_t *fr_dict_unknown_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 {
-	fr_dict_attr_t *new, *new_parent = NULL;
+	fr_dict_attr_t *n, *new_parent = NULL;
 	fr_dict_attr_t const *parent;
 
 	if (da->parent->flags.is_unknown) {
@@ -2925,16 +2944,16 @@ fr_dict_attr_t *fr_dict_unknown_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 		parent = da->parent;
 	}
 
-	new = fr_dict_attr_alloc(ctx, parent, da->name, da->attr, da->type, &da->flags);
-	new->parent = parent;
-	new->depth = da->depth;
+	n = fr_dict_attr_alloc(ctx, parent, da->name, da->attr, da->type, &da->flags);
+	n->parent = parent;
+	n->depth = da->depth;
 
 	/*
 	 *	Inverted tallloc hierarchy.
 	 */
-	if (new_parent) talloc_steal(new, parent);
+	if (new_parent) talloc_steal(n, parent);
 
-	return new;
+	return n;
 }
 
 /** Converts an unknown to a known by adding it to the internal dictionaries.
@@ -3049,50 +3068,6 @@ void fr_dict_unknown_free(fr_dict_attr_t const **da)
 	*tmp = NULL;
 }
 
-/** Initialises an unknown attribute
- *
- * Initialises a dict attr for an unknown attribute/type without adding
- * it to dictionary pools/hashes.
- *
- * Unknown attributes are used to transparently pass undecodeable attributes
- * when we proxy requests.
- *
- * @param[in,out] da		struct to initialise, must be at least
- *				FR_DICT_ATTR_SIZE bytes.
- * @param[in] parent		of the unknown attribute (may also be unknown).
- * @param[in] attr		number.
- * @return 0 on success.
- */
-static int fr_dict_unknown_from_fields(fr_dict_attr_t *da, fr_dict_attr_t const *parent, unsigned int attr)
-{
-	char *p;
-	size_t len = 0;
-	size_t bufsize = FR_DICT_ATTR_MAX_NAME_LEN;
-
-	if (!fr_cond_assert(parent)) {
-		fr_strerror_printf("%s: Invalid argument - parent was NULL", __FUNCTION__);
-		return -1;
-	}
-
-	memset(da, 0, FR_DICT_ATTR_SIZE);
-
-	da->attr = attr;
-	da->type = FR_TYPE_OCTETS;
-	da->flags.is_unknown = true;
-	da->flags.is_raw = true;
-	da->parent = parent;
-	da->depth = parent->depth + 1;
-
-	p = da->name;
-
-	len = snprintf(p, bufsize, "Attr-");
-	p += len;
-	bufsize -= len;
-
-	dict_print_attr_oid(p, bufsize, NULL, da);
-	return 0;
-}
-
 /** Allocates an unknown attribute
  *
  * @copybrief fr_dict_unknown_from_fields
@@ -3110,10 +3085,13 @@ static int fr_dict_unknown_from_fields(fr_dict_attr_t *da, fr_dict_attr_t const 
 fr_dict_attr_t const *fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t const *parent,
 						   unsigned int vendor, unsigned int attr)
 {
-	uint8_t			*p;
 	fr_dict_attr_t const	*da;
 	fr_dict_attr_t		*n;
 	fr_dict_attr_t		*new_parent = NULL;
+	fr_dict_attr_flags_t	flags = {
+		.is_unknown	= true,
+		.is_raw		= true,
+	};
 
 	if (!fr_cond_assert(parent)) {
 		fr_strerror_printf("%s: Invalid argument - parent was NULL", __FUNCTION__);
@@ -3150,27 +3128,7 @@ fr_dict_attr_t const *fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr
 		parent = new_parent;
 	}
 
-	p = talloc_zero_array(ctx, uint8_t, FR_DICT_ATTR_SIZE);
-	if (!p) {
-		fr_strerror_printf("Out of memory");
-		parent = new_parent;	/* Stupid const rules */
-		fr_dict_unknown_free(&parent);
-		return NULL;
-	}
-	n = (fr_dict_attr_t *)p;
-	talloc_set_type(n, fr_dict_attr_t);
-
-	if (!fr_cond_assert(parent)) { /* coverity */
-		talloc_free(p);
-		return NULL;
-	}
-
-	if (fr_dict_unknown_from_fields(n, parent, attr) < 0) {
-		talloc_free(p);
-		parent = new_parent;	/* Stupid const rules */
-		fr_dict_unknown_free(&parent);
-		return NULL;
-	}
+	n = fr_dict_attr_alloc(ctx, parent, NULL, attr, FR_TYPE_OCTETS, &flags);
 
 	/*
 	 *	The config files may reference the unknown by name.
@@ -3995,16 +3953,15 @@ fr_dict_attr_t const *fr_dict_vendor_attr_by_num(fr_dict_t const *dict, unsigned
  */
 fr_dict_attr_t const *fr_dict_attr_by_name_substr(fr_dict_t const *dict, char const **name)
 {
-	fr_dict_attr_t *find;
-	fr_dict_attr_t const *da;
-	char const *p;
-	size_t len;
-	uint32_t buffer[(sizeof(*find) + FR_DICT_ATTR_MAX_NAME_LEN + 3) / 4];
+	fr_dict_attr_t		find;
+	fr_dict_attr_t const	*da;
+	char const		*p;
+	size_t			len;
 
 	if (!name || !*name) return NULL;
 	INTERNAL_IF_NULL(dict);
 
-	find = (fr_dict_attr_t *)buffer;
+	memset(&find, 0, sizeof(find));
 
 	/*
 	 *	Advance p until we get something that's not part of
@@ -4017,11 +3974,17 @@ fr_dict_attr_t const *fr_dict_attr_by_name_substr(fr_dict_t const *dict, char co
 		fr_strerror_printf("Attribute name too long");
 		return NULL;
 	}
-	strlcpy(find->name, *name, len + 1);
 
-	da = fr_hash_table_finddata(dict->attributes_by_name, find);
+	find.name = talloc_bstrndup(NULL, *name, len);
+	if (!find.name) {
+		fr_strerror_printf("Out of memory");
+		return NULL;
+	}
+	da = fr_hash_table_finddata(dict->attributes_by_name, &find);
+	talloc_const_free(find.name);
+
 	if (!da) {
-		fr_strerror_printf("Unknown attribute '%s'", find->name);
+		fr_strerror_printf("Unknown attribute '%.*s'", (int) len, *name);
 		return NULL;
 	}
 	*name = p;
@@ -4042,16 +4005,12 @@ fr_dict_attr_t const *fr_dict_attr_by_name_substr(fr_dict_t const *dict, char co
  */
 fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_t const *dict, char const *name)
 {
-	fr_dict_attr_t *da;
-	uint32_t buffer[(sizeof(*da) + FR_DICT_ATTR_MAX_NAME_LEN + 3) / 4];
+	fr_dict_attr_t find = { .name = name };
 
 	if (!name) return NULL;
 	INTERNAL_IF_NULL(dict);
 
-	da = (fr_dict_attr_t *)buffer;
-	strlcpy(da->name, name, FR_DICT_ATTR_MAX_NAME_LEN + 1);
-
-	return fr_hash_table_finddata(dict->attributes_by_name, da);
+	return fr_hash_table_finddata(dict->attributes_by_name, &find);
 }
 
 /** Lookup a #fr_dict_attr_t by its vendor and attribute numbers
