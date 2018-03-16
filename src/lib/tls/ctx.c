@@ -464,9 +464,9 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 		/*
 		 *	Print out our certificate chains.
 		 *
-		 *	There may be up to three, one for RSA, DSA and ECC.
+		 *	There may be up to three, one for RSA, DH, DSA and EC.
 		 *	OpenSSL internally and transparently stores completely
-		 *	separate and distinct RSA/DSA/ECC key pairs and chains.
+		 *	separate and distinct RSA/DSA/DH/ECC key pairs and chains.
 		 */
 		if (DEBUG_ENABLED2) {
 			size_t chains_set = 0;
@@ -474,7 +474,7 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 
 			/*
 			 *	Iterate over the different chain types we have
-			 *	RSA, DSA, ECC etc...
+			 *	RSA, DSA, DH, EC etc...
 			 */
 			for (ret = SSL_CTX_set_current_cert(ctx, SSL_CERT_SET_FIRST);
 			     ret == 1;

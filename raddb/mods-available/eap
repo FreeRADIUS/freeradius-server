@@ -178,7 +178,7 @@ eap {
 		#  A chain of certificates to present to the client.
 		#
 		#  Multiple chain sections can be specified to allow different
-		#  chains for different key types (RSA, DSA, EC).
+		#  chains for different key types (RSA, DSA, DH, EC).
 		#
 		#  If multiple chains for the same key type are specified
 		#  the last chain to be processed will be used for that
