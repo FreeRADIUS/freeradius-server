@@ -729,7 +729,7 @@ size_t dict_print_attr_oid(char *out, size_t outlen,
 
 /** Allocate a dictionary attribute as a pool, and assign a name buffer
  *
- * @param[in] da		to set a new name for.
+ * @param[in] ctx		to allocate attribute in.
  * @param[in] name		to set.
  * @return
  *	- 0 on success.
