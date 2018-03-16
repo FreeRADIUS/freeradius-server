@@ -50,13 +50,13 @@ extern "C" {
 
 /** Values of the encryption flags
  */
-typedef struct attr_flags {
+typedef struct {
 	unsigned int		is_root : 1;			//!< Is root of a dictionary.
 	unsigned int 		is_unknown : 1;			//!< Attribute number or vendor is unknown.
 	unsigned int		is_raw : 1;			//!< raw attribute, unknown or malformed
 
 	unsigned int		internal : 1;			//!< Internal attribute, should not be received
-								//!< in protocol packets, should not be encoded.
+								///< in protocol packets, should not be encoded.
 	unsigned int		has_tag : 1;			//!< Tagged attribute.
 	unsigned int		array : 1; 			//!< Pack multiples into 1 attr.
 	unsigned int		has_value : 1;			//!< Has a value.
@@ -104,7 +104,7 @@ struct dict_attr {
  *
  * Maps one of more string values to integers and vice versa.
  */
-typedef struct dict_enum {
+typedef struct {
 	fr_dict_attr_t const	*da;				//!< Dictionary attribute enum is associated with.
 	char const		*alias;				//!< Enum name.
 	fr_value_box_t const	*value;				//!< Enum value (what name maps to).
@@ -117,7 +117,7 @@ typedef struct dict_enum {
  * The width of the private enterprise number must be the same for all protocols
  * so we can represent a vendor with a single struct.
  */
-typedef struct dict_vendor {
+typedef struct {
 	unsigned int		vendorpec;			//!< Private enterprise number.
 	size_t			type; 				//!< Length of type data
 	size_t			length;				//!< Length of length data
