@@ -537,14 +537,19 @@ int fr_dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int num)
 		return -1;
 	}
 
-	vendor = (fr_dict_vendor_t *)talloc_zero_array(dict->pool, uint8_t, sizeof(*vendor) + len);
-	if (vendor == NULL) {
-		fr_strerror_printf("%s: Out of memory", __FUNCTION__);
+#ifdef HAVE_TALLOC_POOLED_OBJECT
+	vendor = talloc_pooled_object(dict, fr_dict_vendor_t, 1, strlen(name) + 1);
+	memset(vendor, 0, sizeof(*vendor));
+#else
+	vendor = talloc_zero(dict, fr_dict_vendor_t);
+#endif
+
+	vendor->name = talloc_typed_strdup(vendor, name);
+	if (!vendor->name) {
+		talloc_free(vendor);
+		fr_strerror_printf("Out of memory");
 		return -1;
 	}
-	talloc_set_type(vendor, fr_dict_vendor_t);
-
-	strlcpy(vendor->name, name, len + 1);
 	vendor->vendorpec = num;
 	vendor->type = vendor->length = 1; /* defaults */
 
@@ -3802,19 +3807,15 @@ fr_dict_t *fr_dict_by_da(fr_dict_attr_t const *da)
  */
 int fr_dict_vendor_by_name(fr_dict_t const *dict, char const *name)
 {
-	fr_dict_vendor_t *dv;
-	size_t buffer[(sizeof(*dv) + FR_DICT_VENDOR_MAX_NAME_LEN + sizeof(size_t) - 1) / sizeof(size_t)];
+	fr_dict_vendor_t find = { .name = name }, *found;
 
 	if (!name) return 0;
 	INTERNAL_IF_NULL(dict);
 
-	dv = (fr_dict_vendor_t *)buffer;
-	strlcpy(dv->name, name, FR_DICT_VENDOR_MAX_NAME_LEN + 1);
+	found = fr_hash_table_finddata(dict->vendors_by_name, &find);
+	if (!found) return 0;
 
-	dv = fr_hash_table_finddata(dict->vendors_by_name, dv);
-	if (!dv) return 0;
-
-	return dv->vendorpec;
+	return found->vendorpec;
 }
 
 /** Look up a vendor by its PEN

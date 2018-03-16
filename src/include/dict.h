@@ -122,7 +122,7 @@ typedef struct dict_vendor {
 	size_t			type; 				//!< Length of type data
 	size_t			length;				//!< Length of length data
 	size_t			flags;				//!< Vendor flags.
-	char			name[1];			//!< Vendor name.
+	char const		*name;				//!< Vendor name.
 } fr_dict_vendor_t;
 
 /*
