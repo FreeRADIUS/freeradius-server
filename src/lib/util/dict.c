@@ -1360,7 +1360,6 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 	case FR_TYPE_STRING:
 	case FR_TYPE_OCTETS:
 	case FR_TYPE_TLV:
-		flags.is_pointer = true;
 		break;
 
 	default:
@@ -3081,7 +3080,6 @@ static int fr_dict_unknown_from_fields(fr_dict_attr_t *da, fr_dict_attr_t const 
 	da->type = FR_TYPE_OCTETS;
 	da->flags.is_unknown = true;
 	da->flags.is_raw = true;
-	da->flags.is_pointer = true;
 	da->parent = parent;
 	da->depth = parent->depth + 1;
 
@@ -3280,7 +3278,6 @@ static int fr_dict_unknown_attr_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 	fr_dict_attr_flags_t	flags = {
 					.is_unknown = true,
 					.is_raw = true,
-					.is_pointer = true
 				};
 
 	if (!fr_cond_assert(parent)) {
@@ -3549,7 +3546,6 @@ do { \
 	FLAG_SET(array);
 	FLAG_SET(has_value);
 	FLAG_SET(concat);
-	FLAG_SET(is_pointer);
 	FLAG_SET(virtual);
 	FLAG_SET(compare);
 

@@ -62,7 +62,6 @@ typedef struct attr_flags {
 	unsigned int		has_value : 1;			//!< Has a value.
 
 	unsigned int		concat : 1;			//!< concatenate multiple instances
-	unsigned int		is_pointer : 1;			//!< data is a pointer
 
 	unsigned int		virtual : 1;			//!< for dynamic expansion
 

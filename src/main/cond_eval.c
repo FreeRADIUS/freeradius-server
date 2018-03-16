@@ -376,8 +376,8 @@ static int cond_normalise_and_cmp(REQUEST *request, fr_cond_t const *c, fr_value
 	fr_dict_attr_t const	*cast = NULL;
 	fr_type_t		cast_type = FR_TYPE_INVALID;
 
-	fr_value_box_t		lhs_cast, rhs_cast;
-	void			*lhs_cast_buff = NULL, *rhs_cast_buff = NULL;
+	fr_value_box_t		lhs_cast = { .type = FR_TYPE_INVALID };
+	fr_value_box_t		rhs_cast = { .type = FR_TYPE_INVALID };
 
 	xlat_escape_t		escape = NULL;
 
@@ -400,7 +400,6 @@ do {\
 			rcode = -1;\
 			goto finish;\
 		}\
-		if (cast && cast->flags.is_pointer) _s ## _cast_buff = _s ## _cast.datum.ptr;\
 		_s = &_s ## _cast;\
 	}\
 } while (0)
@@ -490,7 +489,7 @@ do {\
 			rcode = cond_cmp_values(request, c, lhs, rhs);
 			if (rcode != 0) break;
 
-			TALLOC_FREE(rhs_cast_buff);
+			fr_value_box_clear(&rhs_cast);
 		}
 	}
 		break;
@@ -570,8 +569,8 @@ do {\
 	}
 
 finish:
-	talloc_free(lhs_cast_buff);
-	talloc_free(rhs_cast_buff);
+	fr_value_box_clear(&lhs_cast);
+	fr_value_box_clear(&rhs_cast);
 
 	return rcode;
 }
