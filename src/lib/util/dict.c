@@ -2029,9 +2029,7 @@ static int dict_read_process_attribute(fr_dict_t *dict, fr_dict_attr_t const *pa
 	/*
 	 *	Add it in.
 	 */
-	if (fr_dict_attr_add(dict, parent, argv[0], attr, type, flags) < 0) {
-		return -1;
-	}
+	if (fr_dict_attr_add(dict, parent, argv[0], attr, type, flags) < 0) return -1;
 
 	return 0;
 }
