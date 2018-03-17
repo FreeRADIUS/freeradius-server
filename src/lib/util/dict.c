@@ -697,6 +697,8 @@ static inline int fr_dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t 
 	child->parent = parent;
 	child->depth = parent->depth + 1;
 
+	VERIFY_DA(child);
+
 	/*
 	 *	We only allocate the pointer array *if* the parent has children.
 	 */
@@ -955,6 +957,8 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 	fr_dict_attr_t const	*v;
 
 	INTERNAL_IF_NULL(dict);
+
+	VERIFY_DA(parent);
 
 	if (!fr_cond_assert(parent)) return NULL;
 
@@ -4096,6 +4100,8 @@ fr_dict_attr_t const *fr_dict_vendor_attr_by_da(fr_dict_attr_t const *da)
 {
 	fr_dict_attr_t const *da_p = da;
 
+	VERIFY_DA(da);
+
 	while (da_p->parent) {
 		if (da_p->type == FR_TYPE_VENDOR) break;
 		da_p = da_p->parent;
@@ -4302,6 +4308,8 @@ inline fr_dict_attr_t const *fr_dict_attr_child_by_da(fr_dict_attr_t const *pare
 {
 	fr_dict_attr_t const *bin;
 
+	VERIFY_DA(parent);
+
 	if (!parent->children) return NULL;
 
 	/*
@@ -4342,6 +4350,8 @@ inline fr_dict_attr_t const *fr_dict_attr_child_by_da(fr_dict_attr_t const *pare
 inline fr_dict_attr_t const *fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr)
 {
 	fr_dict_attr_t const *bin;
+
+	VERIFY_DA(parent);
 
 	if (!parent->children) return NULL;
 
