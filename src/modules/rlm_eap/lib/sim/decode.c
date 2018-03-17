@@ -692,6 +692,8 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_di
 			return -1;
 		}
 
+		rad_assert(parent->parent);
+
 		/*
 		 *	Re-write the attribute to be "raw".  It is
 		 *	therefore of type "octets", and will be
