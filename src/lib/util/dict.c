@@ -649,7 +649,7 @@ int fr_dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int num)
  * 	- 0 on success.
  * 	- -1 on failure.
  */
-static int fr_dict_protocol_add(fr_dict_t *dict)
+static int dict_protocol_add(fr_dict_t *dict)
 {
 	if (!dict->root) return -1;	/* Should always have root */
 
@@ -687,7 +687,7 @@ static int fr_dict_protocol_add(fr_dict_t *dict)
  *	- 0 on success.
  *	- -1 on failure (memory allocation error).
  */
-static inline int fr_dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child)
+static inline int dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child)
 {
 	fr_dict_attr_t const * const *bin;
 	fr_dict_attr_t **this;
@@ -775,7 +775,7 @@ static inline int fr_dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t 
  * @return the number of bytes written to the buffer.
  */
 size_t fr_dict_print_attr_oid(char *out, size_t outlen,
-			   fr_dict_attr_t const *ancestor, fr_dict_attr_t const *da)
+			      fr_dict_attr_t const *ancestor, fr_dict_attr_t const *da)
 {
 	size_t			len;
 	char			*p = out, *end = p + outlen;
@@ -830,7 +830,7 @@ size_t fr_dict_print_attr_oid(char *out, size_t outlen,
  *	- 0 on success.
  *	- -1 on failure (memory allocation error).
  */
-static fr_dict_attr_t *fr_dict_attr_alloc_name(TALLOC_CTX *ctx, char const *name)
+static fr_dict_attr_t *dict_attr_alloc_name(TALLOC_CTX *ctx, char const *name)
 {
 	fr_dict_attr_t *da;
 
@@ -864,11 +864,11 @@ static fr_dict_attr_t *fr_dict_attr_alloc_name(TALLOC_CTX *ctx, char const *name
  *	- A copy of the input fr_dict_attr_t on success.
  *	- NULL on failure.
  */
-static fr_dict_attr_t *fr_dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in)
+static fr_dict_attr_t *dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in)
 {
 	fr_dict_attr_t *n;
 
-	n = fr_dict_attr_alloc_name(ctx, in->name);
+	n = dict_attr_alloc_name(ctx, in->name);
 	if (!n) return NULL;
 
 	n->attr = in->attr;
@@ -894,10 +894,10 @@ static fr_dict_attr_t *fr_dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const 
  *	- A new fr_dict_attr_t on success.
  *	- NULL on failure.
  */
-static fr_dict_attr_t *fr_dict_attr_alloc(TALLOC_CTX *ctx,
-					  fr_dict_attr_t const *parent,
-				   	  char const *name, int attr,
-				   	  fr_type_t type, fr_dict_attr_flags_t const *flags)
+static fr_dict_attr_t *dict_attr_alloc(TALLOC_CTX *ctx,
+				       fr_dict_attr_t const *parent,
+				       char const *name, int attr,
+				       fr_type_t type, fr_dict_attr_flags_t const *flags)
 {
 	fr_dict_attr_t	*da;
 	fr_dict_attr_t	new = {
@@ -924,9 +924,9 @@ static fr_dict_attr_t *fr_dict_attr_alloc(TALLOC_CTX *ctx,
 			return NULL;
 		}
 
-		da = fr_dict_attr_alloc_name(ctx, buffer);
+		da = dict_attr_alloc_name(ctx, buffer);
 	} else {
-		da = fr_dict_attr_alloc_name(ctx, name);
+		da = dict_attr_alloc_name(ctx, name);
 	}
 
 	new.name = da->name;
@@ -950,8 +950,8 @@ static fr_dict_attr_t *fr_dict_attr_alloc(TALLOC_CTX *ctx,
  *	- fr_dict_attr_t on success
  *	- NULL on failure
  */
-static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t const *parent,
-						char const *name, int attr, fr_type_t type, fr_dict_attr_flags_t flags)
+static fr_dict_attr_t *dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t const *parent,
+					     char const *name, int attr, fr_type_t type, fr_dict_attr_flags_t flags)
 {
 	size_t			namelen;
 	fr_dict_attr_t		*n;
@@ -1520,7 +1520,7 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 		}
 	}
 
-	n = fr_dict_attr_alloc(dict->pool, parent, name, attr, type, &flags);
+	n = dict_attr_alloc(dict->pool, parent, name, attr, type, &flags);
 	if (!n) {
 		fr_strerror_printf("Out of memory");
 		goto error;
@@ -1567,13 +1567,13 @@ static fr_dict_attr_t *fr_dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t 
 	if (n->type == FR_TYPE_COMBO_IP_ADDR) {
 		fr_dict_attr_t *v4, *v6;
 
-		v4 = fr_dict_attr_acopy(dict->pool, n);
+		v4 = dict_attr_acopy(dict->pool, n);
 		if (!v4) {
 			talloc_free(n);
 			goto error;
 		}
 
-		v6 = fr_dict_attr_acopy(dict->pool, n);
+		v6 = dict_attr_acopy(dict->pool, n);
 		if (!v6) {
 			talloc_free(n);
 			goto error;
@@ -1615,7 +1615,7 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	fr_dict_attr_t *n;
 	fr_dict_attr_t *mutable;
 
-	n = fr_dict_attr_add_by_name(dict, parent, name, attr, type, flags);
+	n = dict_attr_add_by_name(dict, parent, name, attr, type, flags);
 	if (!n) return -1;
 
 	/*
@@ -1623,7 +1623,7 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 */
 	memcpy(&mutable, &parent, sizeof(mutable));
 
-	if (fr_dict_attr_child_add(mutable, n) < 0) return -1;
+	if (dict_attr_child_add(mutable, n) < 0) return -1;
 
 	return 0;
 }
@@ -1860,7 +1860,7 @@ static int dict_root_set(fr_dict_t *dict, char const *name, unsigned int proto_n
 		return -1;
 	}
 
-	dict->root = fr_dict_attr_alloc_name(dict, name);
+	dict->root = dict_attr_alloc_name(dict, name);
 	if (!dict->root) return -1;
 
 	dict->root->attr = proto_number;
@@ -1898,7 +1898,7 @@ typedef struct {
  * @return
  *	- NULL on memory allocation error.
  */
-static fr_dict_t *fr_dict_alloc(TALLOC_CTX *ctx)
+static fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 {
 	fr_dict_t *dict;
 
@@ -2417,14 +2417,14 @@ static int dict_read_process_protocol(char **argv, int argc)
 		return 0;
 	}
 
-	dict = fr_dict_alloc(NULL);
+	dict = dict_alloc(NULL);
 
 	/*
 	 *	Set the root attribute with the protocol name
 	 */
 	dict_root_set(dict, argv[0], value);
 
-	if (fr_dict_protocol_add(dict) < 0) return -1;
+	if (dict_protocol_add(dict) < 0) return -1;
 
 	return 0;
 }
@@ -2942,9 +2942,9 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 					memset(&flags, 0, sizeof(flags));
 
 					memcpy(&mutable, &ctx->parent, sizeof(mutable));
-					new = fr_dict_attr_alloc(mutable, fr_dict_root(ctx->dict), "Vendor-Specific",
+					new = dict_attr_alloc(mutable, fr_dict_root(ctx->dict), "Vendor-Specific",
 								 FR_VENDOR_SPECIFIC, FR_TYPE_VSA, &flags);
-					fr_dict_attr_child_add(mutable, new);
+					dict_attr_child_add(mutable, new);
 					vsa_da = new;
 				}
 			}
@@ -2976,8 +2976,8 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 				}
 
 				memcpy(&mutable, &vsa_da, sizeof(mutable));
-				new = fr_dict_attr_alloc(mutable, ctx->parent, argv[1], vendor, FR_TYPE_VENDOR, &flags);
-				fr_dict_attr_child_add(mutable, new);
+				new = dict_attr_alloc(mutable, ctx->parent, argv[1], vendor, FR_TYPE_VENDOR, &flags);
+				dict_attr_child_add(mutable, new);
 
 				vendor_da = new;
 			}
@@ -3042,7 +3042,7 @@ static int dict_from_file(fr_dict_t *dict,
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int fr_dict_global_init(TALLOC_CTX *ctx)
+static int dict_global_init(TALLOC_CTX *ctx)
 {
 	if (protocol_by_name && protocol_by_num) return 0;
 
@@ -3082,7 +3082,7 @@ int fr_dict_from_file(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char co
 	static bool	defined_cast_types;
 	fr_dict_t	*dict;
 
-	dict = fr_dict_alloc(ctx);
+	dict = dict_alloc(ctx);
 	if (!dict) return -1;
 
 	/*
@@ -3123,7 +3123,7 @@ int fr_dict_from_file(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char co
 
 			type_name = talloc_typed_asprintf(dict->pool, "Tmp-Cast-%s", p->name);
 
-			n = fr_dict_attr_alloc(dict->pool, dict->root, type_name,
+			n = dict_attr_alloc(dict->pool, dict->root, type_name,
 					       FR_CAST_BASE + p->number, p->number, &flags);
 			if (!n) {
 			error:
@@ -3136,7 +3136,7 @@ int fr_dict_from_file(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char co
 			/*
 			 *	Set up parenting for the attribute.
 			 */
-			if (fr_dict_attr_child_add(dict->root, n) < 0) goto error;
+			if (dict_attr_child_add(dict->root, n) < 0) goto error;
 
 			talloc_free(type_name);
 		}
@@ -3222,10 +3222,10 @@ int fr_dict_internal_afrom_file(TALLOC_CTX *ctx, fr_dict_t **out, char const *di
 	memcpy(&tmp, &dir, sizeof(tmp));
 	dict_dir = internal_name ? talloc_asprintf(NULL, "%s%c%s", dir, FR_DIR_SEP, internal_name) : tmp;
 
-	if ((!protocol_by_name || !protocol_by_num) && (fr_dict_global_init(ctx) < 0)) return -1;
+	if ((!protocol_by_name || !protocol_by_num) && (dict_global_init(ctx) < 0)) return -1;
 
 	if (!dict) {
-		dict = fr_dict_alloc(ctx);
+		dict = dict_alloc(ctx);
 		if (!dict) {
 		error:
 			if (!fr_dict_internal) talloc_free(dict);
@@ -3256,7 +3256,7 @@ int fr_dict_internal_afrom_file(TALLOC_CTX *ctx, fr_dict_t **out, char const *di
 
 		type_name = talloc_typed_asprintf(dict->pool, "Tmp-Cast-%s", p->name);
 
-		n = fr_dict_attr_alloc(dict->pool, dict->root, type_name,
+		n = dict_attr_alloc(dict->pool, dict->root, type_name,
 				       FR_CAST_BASE + p->number, p->number, &flags);
 		if (!n) goto error;
 
@@ -3268,7 +3268,7 @@ int fr_dict_internal_afrom_file(TALLOC_CTX *ctx, fr_dict_t **out, char const *di
 		/*
 		 *	Set up parenting for the attribute.
 		 */
-		if (fr_dict_attr_child_add(dict->root, n) < 0) goto error;
+		if (dict_attr_child_add(dict->root, n) < 0) goto error;
 
 		talloc_free(type_name);
 	}
@@ -3329,7 +3329,7 @@ int fr_dict_protocol_afrom_file(TALLOC_CTX *ctx, fr_dict_t **out,
 
 	dir = talloc_asprintf(proto_dir, "%s%c%s", base_dir, FR_DIR_SEP, proto_dir);
 	if (!*out) {
-		dict = fr_dict_alloc(ctx);
+		dict = dict_alloc(ctx);
 		if (!dict) {
 		error:
 			talloc_free(proto_dir);
@@ -3471,7 +3471,7 @@ fr_dict_attr_t *fr_dict_unknown_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 		parent = da->parent;
 	}
 
-	n = fr_dict_attr_alloc(ctx, parent, da->name, da->attr, da->type, &da->flags);
+	n = dict_attr_alloc(ctx, parent, da->name, da->attr, da->type, &da->flags);
 	n->parent = parent;
 	n->depth = da->depth;
 
@@ -3533,13 +3533,13 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 
 		if (fr_dict_vendor_add(dict, old->name, old->attr) < 0) return NULL;
 
-		n = fr_dict_attr_alloc(dict->pool, parent, old->name, old->attr, old->type, &flags);
+		n = dict_attr_alloc(dict->pool, parent, old->name, old->attr, old->type, &flags);
 
 		/*
 		 *	Setup parenting for the attribute
 		 */
 		memcpy(&mutable, &old->parent, sizeof(mutable));
-		if (fr_dict_attr_child_add(mutable, n) < 0) return NULL;
+		if (dict_attr_child_add(mutable, n) < 0) return NULL;
 
 		return n;
 	}
@@ -3557,7 +3557,7 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 		 *	is responsible for converting "Attr-26 = 0x..." to an actual attribute,
 		 *	if it so desires.
 		 */
-		return fr_dict_attr_add_by_name(dict, parent, old->name, old->attr, old->type, flags);
+		return dict_attr_add_by_name(dict, parent, old->name, old->attr, old->type, flags);
 	}
 
 	/*
@@ -3655,7 +3655,7 @@ fr_dict_attr_t const *fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr
 		parent = new_parent;
 	}
 
-	n = fr_dict_attr_alloc(ctx, parent, NULL, attr, FR_TYPE_OCTETS, &flags);
+	n = dict_attr_alloc(ctx, parent, NULL, attr, FR_TYPE_OCTETS, &flags);
 
 	/*
 	 *	The config files may reference the unknown by name.
@@ -3724,7 +3724,7 @@ int fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 	case FR_TYPE_EVS:
 		if (!fr_cond_assert(!parent->flags.is_unknown)) return -1;
 
-		*out = fr_dict_attr_alloc(ctx, parent, NULL, vendor, FR_TYPE_VENDOR, &flags);
+		*out = dict_attr_alloc(ctx, parent, NULL, vendor, FR_TYPE_VENDOR, &flags);
 
 		return 0;
 
@@ -3756,8 +3756,8 @@ int fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t **out,
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int fr_dict_unknown_attr_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t **out,
-				     	  fr_dict_attr_t const *parent, unsigned long num)
+static int dict_unknown_attr_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t **out,
+				       fr_dict_attr_t const *parent, unsigned long num)
 {
 	fr_dict_attr_t		*da;
 	fr_dict_attr_flags_t	flags = {
@@ -3772,7 +3772,7 @@ static int fr_dict_unknown_attr_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 
 	*out = NULL;
 
-	da = fr_dict_attr_alloc(ctx, parent, NULL, num, FR_TYPE_OCTETS, &flags);
+	da = dict_attr_alloc(ctx, parent, NULL, num, FR_TYPE_OCTETS, &flags);
 	if (!da) return -1;
 
 	*out = da;
@@ -3867,7 +3867,7 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 				case FR_TYPE_EXTENDED:
 				case FR_TYPE_LONG_EXTENDED:
 				is_root:
-					if (fr_dict_unknown_attr_afrom_num(our_ctx, &n, our_parent, num) < 0) {
+					if (dict_unknown_attr_afrom_num(our_ctx, &n, our_parent, num) < 0) {
 						goto error;
 					}
 
@@ -3900,7 +3900,7 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 		 *	Leaf attribute
 		 */
 		case '\0':
-			if (fr_dict_unknown_attr_afrom_num(our_ctx, &n, our_parent, num) < 0) goto error;
+			if (dict_unknown_attr_afrom_num(our_ctx, &n, our_parent, num) < 0) goto error;
 			break;
 		}
 		p++;
@@ -4008,7 +4008,7 @@ fr_dict_attr_t const *fr_dict_attr_known(fr_dict_t *dict, fr_dict_attr_t const *
 	return NULL;
 }
 
-static void fr_dict_snprint_flags(char *out, size_t outlen, fr_dict_attr_flags_t flags)
+static void dict_snprint_flags(char *out, size_t outlen, fr_dict_attr_flags_t flags)
 {
 	char *p = out, *end = p + outlen;
 	size_t len;
@@ -4059,7 +4059,7 @@ void fr_dict_print(fr_dict_attr_t const *da, int depth)
 	unsigned int i;
 	char const *name;
 
-	fr_dict_snprint_flags(buff, sizeof(buff), da->flags);
+	dict_snprint_flags(buff, sizeof(buff), da->flags);
 
 	switch (da->type) {
 	case FR_TYPE_VSA:
