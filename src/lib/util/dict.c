@@ -569,7 +569,7 @@ void fr_dict_dump(fr_dict_t *dict)
  * @note Must be called before any other dictionary functions.
  *
  *
- * @param ctx to allocate the hashes in.
+ * @param[in] ctx to allocate the hashes in.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -709,8 +709,10 @@ static fr_dict_attr_t *dict_attr_alloc(TALLOC_CTX *ctx,
  *
  * @note Must only be called once per dictionary.
  *
- * @param dict to modify.
- * @param name of dictionary root.
+ * @param[in] dict		to modify.
+ * @param[in] name		of dictionary root.
+ * @param[in] protocol_number	The artificial (or IANA allocated) number for the protocol.
+ *				This is only used for
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -798,8 +800,8 @@ static fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 
 /** Add a child to a parent.
  *
- * @param parent	we're adding a child to.
- * @param child		to add to parent.
+ * @param[in] parent	we're adding a child to.
+ * @param[in] child	to add to parent.
  * @return
  *	- 0 on success.
  *	- -1 on failure (memory allocation error).
@@ -3522,7 +3524,7 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
  * If the da was dynamically allocated it will be freed, else the function
  * will return without doing anything.
  *
- * @param da to free.
+ * @param[in] da to free.
  */
 void fr_dict_unknown_free(fr_dict_attr_t const **da)
 {
@@ -3930,8 +3932,8 @@ ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 
 /** Check to see if we can convert a nested TLV structure to known attributes
  *
- * @param dict			to search in.
- * @param da			Nested tlv structure to convert.
+ * @param[in] dict			to search in.
+ * @param[in] da			Nested tlv structure to convert.
  * @return
  *	- NULL if we can't.
  *	- Known attribute if we can.
@@ -4058,9 +4060,9 @@ void fr_dict_print(fr_dict_attr_t const *da, int depth)
 
 /** Find a common ancestor that two TLV type attributes share
  *
- * @param a			first TLV attribute.
- * @param b			second TLV attribute.
- * @param is_ancestor		Enforce a->b relationship (a is parent or ancestor of b).
+ * @param[in] a			first TLV attribute.
+ * @param[in] b			second TLV attribute.
+ * @param[in] is_ancestor	Enforce a->b relationship (a is parent or ancestor of b).
  * @return
  *	- Common ancestor if one exists.
  *	- NULL if no common ancestor exists.
@@ -4702,8 +4704,8 @@ fr_dict_attr_t const *fr_dict_attr_by_type(fr_dict_attr_t const *da, fr_type_t t
 
 /** Check if a child attribute exists in a parent using a pointer (da)
  *
- * @param parent		to check for child in.
- * @param child			to look for.
+ * @param[in] parent		to check for child in.
+ * @param[in] child		to look for.
  * @return
  *	- The child attribute on success.
  *	- NULL if the child attribute does not exist.
@@ -4745,8 +4747,8 @@ inline fr_dict_attr_t const *fr_dict_attr_child_by_da(fr_dict_attr_t const *pare
 
 /** Check if a child attribute exists in a parent using an attribute number
  *
- * @param parent		to check for child in.
- * @param attr			number to look for.
+ * @param[in] parent		to check for child in.
+ * @param[in] attr		number to look for.
  * @return
  *	- The child attribute on success.
  *	- NULL if the child attribute does not exist.
