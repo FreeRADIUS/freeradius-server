@@ -36,6 +36,10 @@ RCSID("$Id$")
 
 #define MAX_ARGV (16)
 
+
+fr_hash_table_t	*protocol_by_name = NULL;	//!< Hash containing names of all the registered protocols.
+fr_hash_table_t	*protocol_by_num = NULL;	//!< Hash containing numbers of all the registered protocols.
+
 /** Magic internal dictionary
  *
  * Internal dictionary is checked in addition to the protocol dictionary
@@ -66,6 +70,9 @@ typedef struct dict_enum_fixup_t {
 
 	struct dict_enum_fixup_t *next;	//!< Next in the linked list of fixups.
 } dict_enum_fixup_t;
+
+#define FR_PROTOCOL_UNSET	0		//!< No protocol specified.
+#define FR_PROTOCOL_INTERNAL	UINT32_MAX	//!< Magic internal protocol number.
 
 /** Vendors and attribute names
  *
@@ -281,6 +288,46 @@ static uint32_t dict_hash_name(char const *name)
 	}
 
 	return hash;
+}
+
+/** Wrap name hash function for fr_dict_protocol_t
+ *
+ * @param data fr_dict_attr_t to hash.
+ * @return the hash derived from the name of the attribute.
+ */
+static uint32_t dict_protocol_name_hash(void const *data)
+{
+	return dict_hash_name(((fr_dict_t const *)data)->root->name);
+}
+
+/** Compare two protocol names
+ *
+ */
+static int dict_protocol_name_cmp(void const *one, void const *two)
+{
+	fr_dict_t const *a = one;
+	fr_dict_t const *b = two;
+
+	return strcasecmp(a->root->name, b->root->name);
+}
+
+/** Hash a protocol number
+ *
+ */
+static uint32_t dict_protocol_num_hash(void const *data)
+{
+	return fr_hash(&(((fr_dict_t const *)data)->root->attr), sizeof(((fr_dict_t const *)data)->root->attr));
+}
+
+/** Compare two protocol numbers
+ *
+ */
+static int dict_protocol_num_cmp(void const *one, void const *two)
+{
+	fr_dict_t const *a = one;
+	fr_dict_t const *b = two;
+
+	return a->root->attr - b->root->attr;
 }
 
 /** Wrap name hash function for fr_dict_attr_t
@@ -585,6 +632,46 @@ int fr_dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int num)
 	 */
 	if (!fr_hash_table_replace(dict->vendors_by_num, vendor)) {
 		fr_strerror_printf("%s: Failed inserting vendor %s", __FUNCTION__, name);
+		return -1;
+	}
+
+	return 0;
+}
+
+/** Add a protocol to the global protocol table
+ *
+ * Inserts a protocol into the global protocol table.  Uses the root attributes
+ * of the dictionary for comparisons.
+ *
+ * @param[in] dict of protocol we're inserting.
+ * @return
+ * 	- 0 on success.
+ * 	- -1 on failure.
+ */
+static int fr_dict_protocol_add(fr_dict_t *dict)
+{
+	if (!dict->root) return -1;	/* Should always have root */
+
+	if (!fr_hash_table_insert(protocol_by_name, dict)) {
+		fr_dict_t *old_proto;
+
+		old_proto = fr_hash_table_finddata(protocol_by_name, dict);
+		if (!old_proto) {
+			fr_strerror_printf("%s: Failed inserting protocol name %s", __FUNCTION__, dict->root->name);
+			return -1;
+		}
+
+		if ((strcmp(old_proto->root->name, dict->root->name) == 0) &&
+		    (old_proto->root->name == dict->root->name)) {
+			fr_strerror_printf("%s: Duplicate protocol name %s", __FUNCTION__, dict->root->name);
+			return -1;
+		}
+
+		return 0;
+	}
+
+	if (!fr_hash_table_insert(protocol_by_num, dict)) {
+		fr_strerror_printf("%s: Duplicate protocol number %i", __FUNCTION__, dict->root->attr);
 		return -1;
 	}
 
@@ -1949,7 +2036,6 @@ static int dict_read_process_attribute(fr_dict_t *dict, fr_dict_attr_t const *pa
 	return 0;
 }
 
-
 /*
  *	Process the ATTRIBUTE command, where it only has a name.
  */
@@ -2694,6 +2780,34 @@ static int dict_from_file(fr_dict_t *dict,
 
 static bool defined_cast_types = false;
 
+/** Initialise the global protocol hashes
+ *
+ * @note Must be called before any other dictionary functions.
+ *
+ *
+ * @param ctx to allocate the hashes in.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int fr_dict_global_init(TALLOC_CTX *ctx)
+{
+	if (protocol_by_name && protocol_by_num) return 0;
+
+	protocol_by_name = fr_hash_table_create(ctx, dict_protocol_name_hash, dict_protocol_name_cmp, NULL);
+	if (!protocol_by_name) {
+		fr_strerror_printf("Failed initializing protocol_by_name hash");
+		return -1;
+	}
+	protocol_by_num = fr_hash_table_create(ctx, dict_protocol_num_hash, dict_protocol_num_cmp, NULL);
+	if (!protocol_by_num) {
+		fr_strerror_printf("Failed initializing protocol_by_num hash");
+		return -1;
+	}
+
+	return 0;
+}
+
 /** (re)initialize a protocol dictionary
  *
  * Initialize the directory, then fix the attr member of all attributes.
@@ -2783,7 +2897,6 @@ int fr_dict_from_file(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char co
 	dict->root->flags.length = 1;
 
 	dict->enum_fixup = NULL;        /* just to be safe. */
-
 	/*
 	 *	Add cast attributes.  We do it this way,
 	 *	so cast attributes get added automatically for new types.
@@ -3762,6 +3875,113 @@ ssize_t fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent, unsi
 		fr_strerror_printf("Malformed OID string, got trailing garbage '%s'", p);
 		return oid - p;
 	}
+}
+
+/** Lookup a protocol by its name
+ *
+ * @param[in] name of the protocol to locate.
+ * @return
+ * 	- Attribute matching name.
+ * 	- NULL if no matching protocolibute could be found.
+ */
+fr_dict_t *fr_dict_by_protocol_name(char const *name)
+{
+	fr_dict_attr_t	root = { .name = name };
+	fr_dict_t	find = { .root = &root };
+
+	if (!protocol_by_name || !name) return NULL;
+
+	return fr_hash_table_finddata(protocol_by_name, &find);
+}
+
+/** Lookup a protocol by its number.
+ *
+ * Returns the #fr_dict_t belonging to the protocol with the specified number
+ * if any have been registered.
+ *
+ * @param[in] num to search for.
+ * @return dictionary representing the protocol (if it exists).
+ */
+fr_dict_t *fr_dict_by_protocol_num(unsigned int num)
+{
+	fr_dict_t	find;
+	fr_dict_attr_t	root;
+
+	if (!protocol_by_num) return NULL;
+
+	memset(&find, 0, sizeof(find));
+	memset(&root, 0, sizeof(root));
+
+	find.root = &root;
+	root.attr = num;
+
+	return fr_hash_table_finddata(protocol_by_num, &find);
+}
+
+/** Dictionary/attribute ctx struct
+ *
+ */
+typedef struct dict_attr_search {
+	fr_dict_t 		*found_dict;	//!< Dictionary attribute found in.
+	fr_dict_attr_t const	*found_da;	//!< Resolved attribute.
+	fr_dict_attr_t const	*find;		//!< Attribute to find.
+} dict_attr_search_t;
+
+/** Search for an attribute name in all dictionaries
+ *
+ * @param[in] ctx	Attribute to search for.
+ * @param[in] data	Dictionary to search in.
+ * @return
+ *	- 0 if attribute not found in dictionary.
+ *	- 1 if attribute found in dictionary.
+ */
+static int _dict_attr_find_in_dicts(void *ctx, void *data)
+{
+	dict_attr_search_t	*search = ctx;
+	fr_dict_t		*dict;
+
+	if (!data) return 0;	/* We get called with NULL data */
+
+	dict = talloc_get_type_abort(data, fr_dict_t);
+
+	search->found_da = fr_hash_table_finddata(dict->attributes_by_name, search->find);
+	if (!search->found_da) return 0;
+
+	search->found_dict = data;
+
+	return 1;
+}
+
+/** Attempt to locate the protocol dictionary containing an attribute
+ *
+ * @note This is O(n) and will only return the first instance of the dictionary.
+ *
+ * @param[out] found	the attribute that was resolved from the name.
+ * @param[in] name	the name of the attribute.
+ * @return
+ *	- the dictionary the attribute was found in.
+ *	- NULL if an attribute with the specified name wasn't found in any dictionary.
+ */
+fr_dict_t *fr_dict_by_attr_name(fr_dict_attr_t const **found, char const *name)
+{
+	fr_dict_attr_t		find = {
+					.name = name
+				};
+	dict_attr_search_t	search = {
+					.find = &find
+				};
+	int			ret;
+
+	*found = NULL;
+
+	if (!name || !*name) return NULL;
+
+	ret = fr_hash_table_walk(protocol_by_name, _dict_attr_find_in_dicts, &search);
+	if (ret == 0) return NULL;
+
+	if (found) *found = search.found_da;
+
+	return search.found_dict;
 }
 
 /** Attempt to locate the protocol dictionary containing an attribute

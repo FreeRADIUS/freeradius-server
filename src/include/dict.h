@@ -227,6 +227,11 @@ ssize_t			fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
 /*
  *	Lookup
  */
+fr_dict_t		*fr_dict_by_protocol_name(char const *name);
+
+fr_dict_t		*fr_dict_by_protocol_num(unsigned int num);
+
+fr_dict_t		*fr_dict_by_attr_name(fr_dict_attr_t const **found, char const *name);
 
 /** Return true if this attribute is parented directly off the dictionary root
  *
