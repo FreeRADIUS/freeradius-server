@@ -2325,11 +2325,18 @@ static int dict_read_process_vendor(fr_dict_t *dict, char **argv, int argc)
  * Allows vendor and TLV context to persist across $INCLUDEs
  */
 typedef struct dict_from_file_ctx {
-	fr_dict_t		*dict;
-	unsigned int		block_vendor;
-	int			block_tlv_depth;
-	fr_dict_attr_t const	*parent;
-	fr_dict_attr_t const	*block_tlv[FR_DICT_TLV_NEST_MAX];
+	fr_dict_t		*dict;			//!< Protocol dictionary we're inserting attributes into.
+	fr_dict_attr_flags_t	base_flags;		//!< Flags set for all proceeding attributes.
+
+	unsigned int		block_vendor;		//!< Vendor block we're inserting attributes into.
+							//!< Can be removed once we remove the vendor field from
+							//!< #fr_dict_attr_t.
+
+	fr_dict_attr_t const	*block_tlv[FR_DICT_TLV_NEST_MAX];	//!< Nested TLV block's we're
+									//!< inserting attributes into.
+	int			block_tlv_depth;	//!< Nested TLV block index we're inserting into.
+
+	fr_dict_attr_t const	*parent;		//!< Current parent attribute (root/vendor/tlv).
 } dict_from_file_ctx_t;
 
 /*
