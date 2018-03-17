@@ -2160,7 +2160,6 @@ static int dict_read_process_value(fr_dict_t *dict, char **argv, int argc)
 	return 0;
 }
 
-
 /*
  *	Process the FLAGS command
  */
@@ -2187,7 +2186,6 @@ static int dict_read_process_flags(UNUSED fr_dict_t *dict, char **argv, int argc
 	fr_strerror_printf("Invalid FLAGS syntax");
 	return -1;
 }
-
 
 static int dict_read_parse_format(char const *format, unsigned int *pvalue, int *ptype, int *plength,
 				  bool *pcontinuation)
@@ -2776,12 +2774,10 @@ static int dict_from_file(fr_dict_t *dict,
 			  char const *dir_name, char const *filename,
 			  char const *src_file, int src_line)
 {
-	dict_from_file_ctx_t ctx;
-
-	memset(&ctx, 0, sizeof(ctx));
-
-	ctx.dict = dict;
-	ctx.parent = dict->root;
+	dict_from_file_ctx_t	ctx = {
+					.dict = dict,
+					.parent = dict->root
+				};
 
 	return _dict_from_file(&ctx, dir_name, filename, src_file, src_line);
 }
