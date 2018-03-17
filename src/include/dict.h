@@ -210,7 +210,7 @@ void			fr_dict_unknown_free(fr_dict_attr_t const **da);
 int			fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 							 fr_dict_attr_t const *parent, unsigned int vendor);
 
-size_t			dict_print_attr_oid(char *buffer, size_t outlen,
+size_t			fr_dict_print_attr_oid(char *buffer, size_t outlen,
 					    fr_dict_attr_t const *ancestor, fr_dict_attr_t const *da);
 
 fr_dict_attr_t const   	*fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t const *parent,

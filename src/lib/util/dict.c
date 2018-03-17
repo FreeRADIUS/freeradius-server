@@ -774,7 +774,7 @@ static inline int fr_dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t 
  * @param[in] da		to print OID string for.
  * @return the number of bytes written to the buffer.
  */
-size_t dict_print_attr_oid(char *out, size_t outlen,
+size_t fr_dict_print_attr_oid(char *out, size_t outlen,
 			   fr_dict_attr_t const *ancestor, fr_dict_attr_t const *da)
 {
 	size_t			len;
@@ -918,7 +918,7 @@ static fr_dict_attr_t *fr_dict_attr_alloc(TALLOC_CTX *ctx,
 		len = snprintf(p, sizeof(buffer), "Attr-");
 		p += len;
 
-		len = dict_print_attr_oid(p, sizeof(buffer) - (p - buffer), NULL, &new);
+		len = fr_dict_print_attr_oid(p, sizeof(buffer) - (p - buffer), NULL, &new);
 		if (is_truncated(len, sizeof(buffer) - (p - buffer))) {
 			fr_strerror_printf("OID string too long for unknown attribute");
 			return NULL;
