@@ -257,6 +257,10 @@ bool const fr_dict_non_data_types[FR_TYPE_MAX + 1] = {
 #  define INTERNAL_IF_NULL(_dict) if (!_dict) _dict = fr_dict_internal
 #endif
 
+static int dict_from_file(fr_dict_t *dict,
+			  char const *dir_name, char const *filename,
+			  char const *src_file, int src_line);
+
 /** Empty callback for hash table initialization
  *
  */
@@ -560,6 +564,675 @@ void fr_dict_dump(fr_dict_t *dict)
 	_fr_dict_dump(dict->root, 0);
 }
 
+/** Initialise the global protocol hashes
+ *
+ * @note Must be called before any other dictionary functions.
+ *
+ *
+ * @param ctx to allocate the hashes in.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int dict_global_init(TALLOC_CTX *ctx)
+{
+	if (protocol_by_name && protocol_by_num) return 0;
+
+	protocol_by_name = fr_hash_table_create(ctx, dict_protocol_name_hash, dict_protocol_name_cmp, NULL);
+	if (!protocol_by_name) {
+		fr_strerror_printf("Failed initializing protocol_by_name hash");
+		return -1;
+	}
+	protocol_by_num = fr_hash_table_create(ctx, dict_protocol_num_hash, dict_protocol_num_cmp, NULL);
+	if (!protocol_by_num) {
+		fr_strerror_printf("Failed initializing protocol_by_num hash");
+		return -1;
+	}
+
+	return 0;
+}
+
+/** Allocate a dictionary attribute as a pool, and assign a name buffer
+ *
+ * @param[in] ctx		to allocate attribute in.
+ * @param[in] name		to set.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure (memory allocation error).
+ */
+static fr_dict_attr_t *dict_attr_alloc_name(TALLOC_CTX *ctx, char const *name)
+{
+	fr_dict_attr_t *da;
+
+	if (!name) {
+		fr_strerror_printf("No attribute name provided");
+		return NULL;
+	}
+
+#ifdef HAVE_TALLOC_POOLED_OBJECT
+	da = talloc_pooled_object(ctx, fr_dict_attr_t, 1, strlen(name) + 1);
+	memset(da, 0, sizeof(*da));
+#else
+	da = talloc_zero(ctx, fr_dict_attr_t);
+#endif
+
+	da->name = talloc_typed_strdup(da, name);
+	if (!da->name) {
+		talloc_free(da);
+		fr_strerror_printf("Out of memory");
+		return NULL;
+	}
+
+	return da;
+}
+
+/** Copy a an existing attribute
+ *
+ * @param[in] ctx		to allocate new attribute in.
+ * @param[in] in		attribute to copy.
+ * @return
+ *	- A copy of the input fr_dict_attr_t on success.
+ *	- NULL on failure.
+ */
+static fr_dict_attr_t *dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in)
+{
+	fr_dict_attr_t *n;
+
+	n = dict_attr_alloc_name(ctx, in->name);
+	if (!n) return NULL;
+
+	n->attr = in->attr;
+	n->type = in->type;
+	n->flags = in->flags;
+	n->parent = in->parent;
+	n->depth = in->depth;
+
+	return n;
+}
+
+/** Allocate a dictionary attribute on the heap
+ *
+ * @param[in] ctx		to allocate the attribute in.
+ * @param[in] parent		of the attribute, if none, should be
+ *				the dictionary root.
+ * @param[in] name		of the attribute.  If NULL an OID string
+ *				will be created and set as the name.
+ * @param[in] attr		number.
+ * @param[in] type		of the attribute.
+ * @param[in] flags		to assign.
+ * @return
+ *	- A new fr_dict_attr_t on success.
+ *	- NULL on failure.
+ */
+static fr_dict_attr_t *dict_attr_alloc(TALLOC_CTX *ctx,
+				       fr_dict_attr_t const *parent,
+				       char const *name, int attr,
+				       fr_type_t type, fr_dict_attr_flags_t const *flags)
+{
+	fr_dict_attr_t	*da;
+	fr_dict_attr_t	new = {
+		.attr	= attr,
+		.type	= type,
+		.flags	= *flags,
+		.parent	= parent,
+		.depth	= parent->depth + 1,
+	};
+
+	if (!fr_cond_assert(parent)) return NULL;
+
+	if (!name) {
+		char	buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1];
+		char	*p = buffer;
+		size_t	len;
+
+		len = snprintf(p, sizeof(buffer), "Attr-");
+		p += len;
+
+		len = fr_dict_print_attr_oid(p, sizeof(buffer) - (p - buffer), NULL, &new);
+		if (is_truncated(len, sizeof(buffer) - (p - buffer))) {
+			fr_strerror_printf("OID string too long for unknown attribute");
+			return NULL;
+		}
+
+		da = dict_attr_alloc_name(ctx, buffer);
+	} else {
+		da = dict_attr_alloc_name(ctx, name);
+	}
+
+	new.name = da->name;
+	memcpy(da, &new, sizeof(*da));
+
+	return da;
+}
+
+/** Set a new root dictionary attribute
+ *
+ * @note Must only be called once per dictionary.
+ *
+ * @param dict to modify.
+ * @param name of dictionary root.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int dict_root_set(fr_dict_t *dict, char const *name, unsigned int proto_number)
+{
+	if (!fr_cond_assert(!dict->root)) {
+		fr_strerror_printf("Dictionary root already set");
+		return -1;
+	}
+
+	dict->root = dict_attr_alloc_name(dict, name);
+	if (!dict->root) return -1;
+
+	dict->root->attr = proto_number;
+	dict->root->flags.is_root = 1;
+	dict->root->type = FR_TYPE_TLV;
+	dict->root->flags.type_size = 1;
+	dict->root->flags.length = 1;
+	VERIFY_DA(dict->root);
+
+	return 0;
+}
+
+/** Allocate a new dictionary
+ *
+ * @param[in] ctx to allocate dictionary in.
+ * @return
+ *	- NULL on memory allocation error.
+ */
+static fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
+{
+	fr_dict_t *dict;
+
+	dict = talloc_zero(ctx, fr_dict_t);
+	if (!dict) {
+	error:
+		fr_strerror_printf("Failed allocating memory for dictionary");
+		talloc_free(dict);
+		return NULL;
+	}
+
+	/*
+	 *	Pre-Allocate 5MB of pool memory for rapid startup
+	 */
+	dict->pool = talloc_pool(dict, (1024 * 1024 * 5));
+	if (!dict->pool) goto error;
+
+	/*
+	 *	Create the table of vendor by name.   There MAY NOT
+	 *	be multiple vendors of the same name.
+	 */
+	dict->vendors_by_name = fr_hash_table_create(dict, dict_vendor_name_hash, dict_vendor_name_cmp, hash_pool_free);
+	if (!dict->vendors_by_name) goto error;
+
+	/*
+	 *	Create the table of vendors by value.  There MAY
+	 *	be vendors of the same value.  If there are, we
+	 *	pick the latest one.
+	 */
+	dict->vendors_by_num = fr_hash_table_create(dict, dict_vendor_vendorpec_hash, dict_vendor_vendorpec_cmp, NULL);
+	if (!dict->vendors_by_num) goto error;
+
+	/*
+	 *	Create the table of attributes by name.   There MAY NOT
+	 *	be multiple attributes of the same name.
+	 */
+	dict->attributes_by_name = fr_hash_table_create(dict, dict_attr_name_hash, dict_attr_name_cmp, NULL);
+	if (!dict->attributes_by_name) goto error;
+
+	/*
+	 *	Horrible hacks for combo-IP.
+	 */
+	dict->attributes_combo = fr_hash_table_create(dict, dict_attr_combo_hash, dict_attr_combo_cmp, hash_pool_free);
+	if (!dict->attributes_combo) goto error;
+
+	dict->values_by_alias = fr_hash_table_create(dict, dict_enum_alias_hash, dict_enum_alias_cmp, hash_pool_free);
+	if (!dict->values_by_alias) goto error;
+
+	dict->values_by_da = fr_hash_table_create(dict, dict_enum_value_hash, dict_enum_value_cmp, hash_pool_free);
+	if (!dict->values_by_da) goto error;
+
+	return dict;
+}
+
+/** Add a child to a parent.
+ *
+ * @param parent	we're adding a child to.
+ * @param child		to add to parent.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure (memory allocation error).
+ */
+static inline int dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child)
+{
+	fr_dict_attr_t const * const *bin;
+	fr_dict_attr_t **this;
+
+	/*
+	 *	Setup fields in the child
+	 */
+	child->parent = parent;
+	child->depth = parent->depth + 1;
+
+	VERIFY_DA(child);
+
+	/*
+	 *	We only allocate the pointer array *if* the parent has children.
+	 */
+	if (!parent->children) parent->children = talloc_zero_array(parent, fr_dict_attr_t const *, UINT8_MAX + 1);
+	if (!parent->children) return -1;
+
+	/*
+	 *	Treat the array as a hash of 255 bins, with attributes
+	 *	sorted into bins using num % 255.
+	 *
+	 *	Although the various protocols may define numbers higher than 255:
+	 *
+	 *	RADIUS/DHCPv4     - 1-255
+	 *	Diameter/Internal - 1-4294967295
+	 *	DHCPv6            - 1-65535
+	 *
+	 *	In reality very few will ever use attribute numbers > 500, so for
+	 *	the majority of lookups we get O(1) performance.
+	 *
+	 *	Attributes are inserted into the bin in order of their attribute
+	 *	numbers to allow slightly more efficient lookups.
+	 */
+	bin = &parent->children[child->attr & 0xff];
+	for (;;) {
+		bool child_is_struct = false;
+		bool bin_is_struct = false;
+
+		if (!*bin) break;
+
+		/*
+		 *	Workaround for vendors that overload the RFC space.
+		 *	Structural attributes always take priority.
+		 */
+		switch (child->type) {
+		case FR_TYPE_STRUCTURAL:
+			child_is_struct = true;
+			break;
+
+		default:
+			break;
+		}
+
+		switch ((*bin)->type) {
+		case FR_TYPE_STRUCTURAL:
+			bin_is_struct = true;
+			break;
+
+		default:
+			break;
+		}
+
+		if (child_is_struct && !bin_is_struct) break;
+		else if (fr_dict_vendor_num_by_da(child) <= fr_dict_vendor_num_by_da(*bin)) break;	/* Prioritise RFC attributes */
+		else if (child->attr <= (*bin)->attr) break;
+
+		bin = &(*bin)->next;
+	}
+
+	memcpy(&this, &bin, sizeof(this));
+	child->next = *this;
+	*this = child;
+
+	return 0;
+}
+
+/** (re)initialize a protocol dictionary
+ *
+ * Initialize the directory, then fix the attr member of all attributes.
+ *
+ * First dictionary initialised will be set as the default internal dictionary.
+ *
+ * @param[in] ctx		to allocate the dictionary from.
+ * @param[out] out		Where to write a pointer to the new dictionary.
+ *				Will free existing dictionary if files have
+ *				changed and *out is not NULL.
+ * @param[in] dir		to read dictionary files from.
+ * @param[in] fn		file name to read.
+ * @param[in] name		to use for the root attributes.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_dict_from_file(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *fn, char const *name)
+{
+	static bool	defined_cast_types;
+	fr_dict_t	*dict;
+
+	dict = dict_alloc(ctx);
+	if (!dict) return -1;
+
+	/*
+	 *	Free the old dictionaries
+	 */
+	if (*out == fr_dict_internal) fr_dict_internal = dict;
+	TALLOC_FREE(*out);
+
+	/*
+	 *	Remove this at some point...
+	 */
+	if (!fr_dict_internal) fr_dict_internal = dict;
+
+	/*
+	 *	Magic dictionary root attribute
+	 */
+	dict_root_set(dict, name, 0);
+
+	/*
+	 *	Add cast attributes.  We do it this way,
+	 *	so cast attributes get added automatically for new types.
+	 *
+	 *	We manually add the attributes to the dictionary, and bypass
+	 *	fr_dict_attr_add(), because we know what we're doing, and
+	 *	that function does too many checks.
+	 */
+	if (!defined_cast_types) {
+		FR_NAME_NUMBER const	*p;
+		fr_dict_attr_flags_t	flags;
+		char			*type_name;
+
+		memset(&flags, 0, sizeof(flags));
+
+		flags.internal = 1;
+
+		for (p = dict_attr_types; p->name; p++) {
+			fr_dict_attr_t *n;
+
+			type_name = talloc_typed_asprintf(dict->pool, "Tmp-Cast-%s", p->name);
+
+			n = dict_attr_alloc(dict->pool, dict->root, type_name,
+					       FR_CAST_BASE + p->number, p->number, &flags);
+			if (!n) {
+			error:
+				talloc_free(dict);
+				return -1;
+			}
+
+			if (!fr_hash_table_insert(dict->attributes_by_name, n)) goto error;
+
+			/*
+			 *	Set up parenting for the attribute.
+			 */
+			if (dict_attr_child_add(dict->root, n) < 0) goto error;
+
+			talloc_free(type_name);
+		}
+		defined_cast_types = true;
+	}
+
+	if (dict_from_file(dict, dir, fn, NULL, 0) < 0) goto error;
+
+	/*
+	 *	Resolve any VALUE aliases (enums) that were defined
+	 *	before the attributes they reference.
+	 */
+	if (dict->enum_fixup) {
+		fr_dict_attr_t const *da;
+		dict_enum_fixup_t *this, *next;
+
+		for (this = dict->enum_fixup; this != NULL; this = next) {
+			fr_value_box_t	value;
+			fr_type_t	type;
+
+			next = this->next;
+			da = fr_dict_attr_by_name(dict, this->attribute);
+			if (!da) {
+				fr_strerror_printf("No ATTRIBUTE '%s' defined for VALUE '%s'",
+						   this->attribute, this->alias);
+				goto error;
+			}
+			type = da->type;
+
+			if (fr_value_box_from_str(this, &value, &type, NULL,
+						  this->value, talloc_array_length(this->value) - 1, '\0', false) < 0) {
+				fr_strerror_printf_push("Invalid VALUE for ATTRIBUTE \"%s\"", da->name);
+				goto error;
+			}
+
+			if (fr_dict_enum_add_alias(da, this->alias, &value, false, false) < 0) goto error;
+
+			/*
+			 *	Just so we don't lose track of things.
+			 */
+			dict->enum_fixup = next;
+		}
+	}
+
+	/*
+	 *	Walk over all of the hash tables to ensure they're
+	 *	initialized.  We do this because the threads may perform
+	 *	lookups, and we don't want multi-threaded re-ordering
+	 *	of the table entries.  That would be bad.
+	 */
+	fr_hash_table_walk(dict->vendors_by_name, hash_null_callback, NULL);
+	fr_hash_table_walk(dict->vendors_by_num, hash_null_callback, NULL);
+
+	fr_hash_table_walk(dict->values_by_da, hash_null_callback, NULL);
+	fr_hash_table_walk(dict->values_by_alias, hash_null_callback, NULL);
+
+	*out = dict;
+
+	return 0;
+}
+
+/** (Re-)Initialize the special internal dictionary
+ *
+ * This dictionary has additional programatically generated attributes added to it.
+ *
+ * @param[in] ctx		to allocate dictionary in.
+ * @param[out] out		Where to write pointer to the internal dictionary.
+ * @param[in] dir		dictionary is located in.
+ * @param[in] internal_name	name of the internal dictionary dir (may be NULL).
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_dict_internal_afrom_file(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *internal_name)
+{
+	fr_dict_t		*dict = fr_dict_internal;
+	char			*dict_dir;
+	char			*tmp;
+	FR_NAME_NUMBER const	*p;
+	fr_dict_attr_flags_t	flags = { .internal = true };
+	char			*type_name;
+
+	memcpy(&tmp, &dir, sizeof(tmp));
+	dict_dir = internal_name ? talloc_asprintf(NULL, "%s%c%s", dir, FR_DIR_SEP, internal_name) : tmp;
+
+	if ((!protocol_by_name || !protocol_by_num) && (dict_global_init(ctx) < 0)) return -1;
+
+	if (!dict) {
+		dict = dict_alloc(ctx);
+		if (!dict) {
+		error:
+			if (!fr_dict_internal) talloc_free(dict);
+			if (internal_name) talloc_free(dict_dir);
+			return -1;
+		}
+
+		/*
+		 *	Set the root name of the dictionary
+		 */
+		dict_root_set(dict, "internal", 0);
+	} else {
+		if (dict_stat_check(dict, dir, FR_DICTIONARY_FILE)) {
+			if (internal_name) talloc_free(dict_dir);
+			return 0;
+		}
+	}
+	/*
+	 *	Add cast attributes.  We do it this way,
+	 *	so cast attributes get added automatically for new types.
+	 *
+	 *	We manually add the attributes to the dictionary, and bypass
+	 *	fr_dict_attr_add(), because we know what we're doing, and
+	 *	that function does too many checks.
+	 */
+	for (p = dict_attr_types; p->name; p++) {
+		fr_dict_attr_t *n;
+
+		type_name = talloc_typed_asprintf(dict->pool, "Tmp-Cast-%s", p->name);
+
+		n = dict_attr_alloc(dict->pool, dict->root, type_name,
+				       FR_CAST_BASE + p->number, p->number, &flags);
+		if (!n) goto error;
+
+		if (!fr_hash_table_insert(dict->attributes_by_name, n)) {
+			fr_strerror_printf("Failed inserting \"%s\" into internal dictionary", type_name);
+			goto error;
+		}
+
+		/*
+		 *	Set up parenting for the attribute.
+		 */
+		if (dict_attr_child_add(dict->root, n) < 0) goto error;
+
+		talloc_free(type_name);
+	}
+
+	if (dict_dir && dict_from_file(dict, dict_dir, FR_DICTIONARY_FILE, NULL, 0) < 0) goto error;
+
+	*out = dict;
+	if (!fr_dict_internal) fr_dict_internal = dict;
+
+	return 0;
+}
+
+/** (Re)-initialize a protocol dictionary
+ *
+ * Initialize the directory, then fix the attr member of all attributes.
+ *
+ * First dictionary initialised will be set as the default internal dictionary.
+ *
+ * @param[in] ctx		to allocate the dictionary from.
+ * @param[out] out		Where to write a pointer to the new dictionary.  Will free existing
+ *				dictionary if files have changed and *out is not NULL.
+ * @param[in] base_dir		containing all the protocol directories.
+ * @param[in] proto_name	that we're loading the dictionary for.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_dict_protocol_afrom_file(TALLOC_CTX *ctx, fr_dict_t **out,
+				char const *base_dir, char const *proto_name)
+{
+	fr_dict_t	*dict;
+	char		*dir;
+	char		*proto_dir;
+	char		*p;
+
+	if (!protocol_by_name || !protocol_by_num) {
+		fr_strerror_printf("Dictionary not yet initialized call fr_dict_internal_afrom_file first");
+		return -1;
+	}
+
+	/*
+	 *	Increment the reference count if the dictionary
+	 *	has already been loaded.
+	 */
+	if (!*out) {
+		*out = fr_dict_by_protocol_name(proto_name);
+		if (*out) {
+			 talloc_increase_ref_count(*out);
+			 return 0;
+		}
+	}
+
+	/*
+	 *	Replace '_' with '/'
+	 */
+	proto_dir = talloc_strdup(ctx, proto_name);
+	for (p = proto_dir; *p; p++) if (*p == '_') *p = FR_DIR_SEP;
+
+	dir = talloc_asprintf(proto_dir, "%s%c%s", base_dir, FR_DIR_SEP, proto_dir);
+	if (!*out) {
+		dict = dict_alloc(ctx);
+		if (!dict) {
+		error:
+			talloc_free(proto_dir);
+			return -1;
+		}
+	} else {
+		dict = *out;
+		if (dict_stat_check(dict, dir, FR_DICTIONARY_FILE)) return 0;
+	}
+
+	dict->enum_fixup = NULL;        /* just to be safe. */
+
+	if (dict_from_file(dict, dir, FR_DICTIONARY_FILE, NULL, 0) < 0) goto error;
+
+	talloc_free(proto_dir);
+
+	/*
+	 *	Resolve any VALUE aliases (enums) that were defined
+	 *	before the attributes they reference.
+	 */
+	if (dict->enum_fixup) {
+		fr_dict_attr_t const *da;
+		dict_enum_fixup_t *this, *next;
+
+		for (this = dict->enum_fixup; this != NULL; this = next) {
+			fr_value_box_t	value;
+			fr_type_t	type;
+
+			next = this->next;
+			da = fr_dict_attr_by_name(dict, this->attribute);
+			if (!da) {
+				fr_strerror_printf("No ATTRIBUTE '%s' defined for VALUE '%s'",
+						   this->attribute, this->alias);
+				goto error;
+			}
+			type = da->type;
+
+			if (fr_value_box_from_str(this, &value, &type, NULL,
+						  this->value, talloc_array_length(this->value) - 1, '\0', false) < 0) {
+				fr_strerror_printf_push("Invalid VALUE for ATTRIBUTE \"%s\"", da->name);
+				goto error;
+			}
+
+			if (fr_dict_enum_add_alias(da, this->alias, &value, false, false) < 0) goto error;
+
+			/*
+			 *	Just so we don't lose track of things.
+			 */
+			dict->enum_fixup = next;
+		}
+	}
+
+	/*
+	 *	Walk over all of the hash tables to ensure they're
+	 *	initialized.  We do this because the threads may perform
+	 *	lookups, and we don't want multi-threaded re-ordering
+	 *	of the table entries.  That would be bad.
+	 */
+	fr_hash_table_walk(dict->vendors_by_name, hash_null_callback, NULL);
+	fr_hash_table_walk(dict->vendors_by_num, hash_null_callback, NULL);
+
+	fr_hash_table_walk(dict->values_by_da, hash_null_callback, NULL);
+	fr_hash_table_walk(dict->values_by_alias, hash_null_callback, NULL);
+
+	*out = dict;
+
+	return 0;
+}
+
+int fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename)
+{
+	INTERNAL_IF_NULL(dict);
+
+	if (!dict->attributes_by_name) {
+		fr_strerror_printf("%s: Must call fr_dict_from_file() before fr_dict_read()", "Error reading dictionary");
+		return -1;
+	}
+
+	return dict_from_file(dict, dir, filename, NULL, 0);
+}
+
 /** Add a vendor to the dictionary
  *
  * Inserts a vendor entry into the vendor hash table.  This must be done before adding
@@ -677,262 +1350,6 @@ static int dict_protocol_add(fr_dict_t *dict)
 	}
 
 	return 0;
-}
-
-/** Add a child to a parent.
- *
- * @param parent	we're adding a child to.
- * @param child		to add to parent.
- * @return
- *	- 0 on success.
- *	- -1 on failure (memory allocation error).
- */
-static inline int dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child)
-{
-	fr_dict_attr_t const * const *bin;
-	fr_dict_attr_t **this;
-
-	/*
-	 *	Setup fields in the child
-	 */
-	child->parent = parent;
-	child->depth = parent->depth + 1;
-
-	VERIFY_DA(child);
-
-	/*
-	 *	We only allocate the pointer array *if* the parent has children.
-	 */
-	if (!parent->children) parent->children = talloc_zero_array(parent, fr_dict_attr_t const *, UINT8_MAX + 1);
-	if (!parent->children) return -1;
-
-	/*
-	 *	Treat the array as a hash of 255 bins, with attributes
-	 *	sorted into bins using num % 255.
-	 *
-	 *	Although the various protocols may define numbers higher than 255:
-	 *
-	 *	RADIUS/DHCPv4     - 1-255
-	 *	Diameter/Internal - 1-4294967295
-	 *	DHCPv6            - 1-65535
-	 *
-	 *	In reality very few will ever use attribute numbers > 500, so for
-	 *	the majority of lookups we get O(1) performance.
-	 *
-	 *	Attributes are inserted into the bin in order of their attribute
-	 *	numbers to allow slightly more efficient lookups.
-	 */
-	bin = &parent->children[child->attr & 0xff];
-	for (;;) {
-		bool child_is_struct = false;
-		bool bin_is_struct = false;
-
-		if (!*bin) break;
-
-		/*
-		 *	Workaround for vendors that overload the RFC space.
-		 *	Structural attributes always take priority.
-		 */
-		switch (child->type) {
-		case FR_TYPE_STRUCTURAL:
-			child_is_struct = true;
-			break;
-
-		default:
-			break;
-		}
-
-		switch ((*bin)->type) {
-		case FR_TYPE_STRUCTURAL:
-			bin_is_struct = true;
-			break;
-
-		default:
-			break;
-		}
-
-		if (child_is_struct && !bin_is_struct) break;
-		else if (fr_dict_vendor_num_by_da(child) <= fr_dict_vendor_num_by_da(*bin)) break;	/* Prioritise RFC attributes */
-		else if (child->attr <= (*bin)->attr) break;
-
-		bin = &(*bin)->next;
-	}
-
-	memcpy(&this, &bin, sizeof(this));
-	child->next = *this;
-	*this = child;
-
-	return 0;
-}
-
-/** Build the tlv_stack for the specified DA and encode the path in OID form
- *
- * @param[out] out		Where to write the OID.
- * @param[in] outlen		Length of the output buffer.
- * @param[in] ancestor		If not NULL, only print OID portion between
- *				ancestor and da.
- * @param[in] da		to print OID string for.
- * @return the number of bytes written to the buffer.
- */
-size_t fr_dict_print_attr_oid(char *out, size_t outlen,
-			      fr_dict_attr_t const *ancestor, fr_dict_attr_t const *da)
-{
-	size_t			len;
-	char			*p = out, *end = p + outlen;
-	int			i;
-	int			depth = 0;
-	fr_dict_attr_t const	*tlv_stack[FR_DICT_MAX_TLV_STACK + 1];
-
-	if (!outlen) return 0;
-
-	/*
-	 *	If the ancestor and the DA match, there's
-	 *	no OID string to print.
-	 */
-	if (ancestor == da) {
-		out[0] = '\0';
-		return 0;
-	}
-
-	fr_proto_tlv_stack_build(tlv_stack, da);
-
-	if (ancestor) {
-		if (tlv_stack[ancestor->depth - 1] != ancestor) {
-			fr_strerror_printf("Attribute \"%s\" is not a descendent of \"%s\"", da->name, ancestor->name);
-			return -1;
-		}
-		depth = ancestor->depth;
-	}
-
-	/*
-	 *	We don't print the ancestor, we print the OID
-	 *	between it and the da.
-	 */
-	len = snprintf(p, end - p, "%u", tlv_stack[depth]->attr);
-	if ((p + len) >= end) return p - out;
-	p += len;
-
-
-	for (i = depth + 1; i < (int)da->depth; i++) {
-		len = snprintf(p, end - p, ".%u", tlv_stack[i]->attr);
-		if ((p + len) >= end) return p - out;
-		p += len;
-	}
-
-	return p - out;
-}
-
-/** Allocate a dictionary attribute as a pool, and assign a name buffer
- *
- * @param[in] ctx		to allocate attribute in.
- * @param[in] name		to set.
- * @return
- *	- 0 on success.
- *	- -1 on failure (memory allocation error).
- */
-static fr_dict_attr_t *dict_attr_alloc_name(TALLOC_CTX *ctx, char const *name)
-{
-	fr_dict_attr_t *da;
-
-	if (!name) {
-		fr_strerror_printf("No attribute name provided");
-		return NULL;
-	}
-
-#ifdef HAVE_TALLOC_POOLED_OBJECT
-	da = talloc_pooled_object(ctx, fr_dict_attr_t, 1, strlen(name) + 1);
-	memset(da, 0, sizeof(*da));
-#else
-	da = talloc_zero(ctx, fr_dict_attr_t);
-#endif
-
-	da->name = talloc_typed_strdup(da, name);
-	if (!da->name) {
-		talloc_free(da);
-		fr_strerror_printf("Out of memory");
-		return NULL;
-	}
-
-	return da;
-}
-
-/** Copy a an existing attribute
- *
- * @param[in] ctx		to allocate new attribute in.
- * @param[in] in		attribute to copy.
- * @return
- *	- A copy of the input fr_dict_attr_t on success.
- *	- NULL on failure.
- */
-static fr_dict_attr_t *dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in)
-{
-	fr_dict_attr_t *n;
-
-	n = dict_attr_alloc_name(ctx, in->name);
-	if (!n) return NULL;
-
-	n->attr = in->attr;
-	n->type = in->type;
-	n->flags = in->flags;
-	n->parent = in->parent;
-	n->depth = in->depth;
-
-	return n;
-}
-
-/** Allocate a dictionary attribute on the heap
- *
- * @param[in] ctx		to allocate the attribute in.
- * @param[in] parent		of the attribute, if none, should be
- *				the dictionary root.
- * @param[in] name		of the attribute.  If NULL an OID string
- *				will be created and set as the name.
- * @param[in] attr		number.
- * @param[in] type		of the attribute.
- * @param[in] flags		to assign.
- * @return
- *	- A new fr_dict_attr_t on success.
- *	- NULL on failure.
- */
-static fr_dict_attr_t *dict_attr_alloc(TALLOC_CTX *ctx,
-				       fr_dict_attr_t const *parent,
-				       char const *name, int attr,
-				       fr_type_t type, fr_dict_attr_flags_t const *flags)
-{
-	fr_dict_attr_t	*da;
-	fr_dict_attr_t	new = {
-		.attr	= attr,
-		.type	= type,
-		.flags	= *flags,
-		.parent	= parent,
-		.depth	= parent->depth + 1,
-	};
-
-	if (!fr_cond_assert(parent)) return NULL;
-
-	if (!name) {
-		char	buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1];
-		char	*p = buffer;
-		size_t	len;
-
-		len = snprintf(p, sizeof(buffer), "Attr-");
-		p += len;
-
-		len = fr_dict_print_attr_oid(p, sizeof(buffer) - (p - buffer), NULL, &new);
-		if (is_truncated(len, sizeof(buffer) - (p - buffer))) {
-			fr_strerror_printf("OID string too long for unknown attribute");
-			return NULL;
-		}
-
-		da = dict_attr_alloc_name(ctx, buffer);
-	} else {
-		da = dict_attr_alloc_name(ctx, name);
-	}
-
-	new.name = da->name;
-	memcpy(da, &new, sizeof(*da));
-
-	return da;
 }
 
 /** Add an attribute to the name table for the dictionary.
@@ -1843,36 +2260,6 @@ static int dict_read_sscanf_i(unsigned int *pvalue, char const *str)
 	return 1;
 }
 
-/** Set a new root dictionary attribute
- *
- * @note Must only be called once per dictionary.
- *
- * @param dict to modify.
- * @param name of dictionary root.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int dict_root_set(fr_dict_t *dict, char const *name, unsigned int proto_number)
-{
-	if (!fr_cond_assert(!dict->root)) {
-		fr_strerror_printf("Dictionary root already set");
-		return -1;
-	}
-
-	dict->root = dict_attr_alloc_name(dict, name);
-	if (!dict->root) return -1;
-
-	dict->root->attr = proto_number;
-	dict->root->flags.is_root = 1;
-	dict->root->type = FR_TYPE_TLV;
-	dict->root->flags.type_size = 1;
-	dict->root->flags.length = 1;
-	VERIFY_DA(dict->root);
-
-	return 0;
-}
-
 /** Parser context for dict_from_file
  *
  * Allows vendor and TLV context to persist across $INCLUDEs
@@ -1891,68 +2278,6 @@ typedef struct {
 
 	fr_dict_attr_t const	*parent;		//!< Current parent attribute (root/vendor/tlv).
 } dict_from_file_ctx_t;
-
-/** Allocate a new dictionary
- *
- * @param[in] ctx to allocate dictionary in.
- * @return
- *	- NULL on memory allocation error.
- */
-static fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
-{
-	fr_dict_t *dict;
-
-	dict = talloc_zero(ctx, fr_dict_t);
-	if (!dict) {
-	error:
-		fr_strerror_printf("Failed allocating memory for dictionary");
-		talloc_free(dict);
-		return NULL;
-	}
-
-	/*
-	 *	Pre-Allocate 5MB of pool memory for rapid startup
-	 */
-	dict->pool = talloc_pool(dict, (1024 * 1024 * 5));
-	if (!dict->pool) goto error;
-
-	/*
-	 *	Create the table of vendor by name.   There MAY NOT
-	 *	be multiple vendors of the same name.
-	 */
-	dict->vendors_by_name = fr_hash_table_create(dict, dict_vendor_name_hash, dict_vendor_name_cmp, hash_pool_free);
-	if (!dict->vendors_by_name) goto error;
-
-	/*
-	 *	Create the table of vendors by value.  There MAY
-	 *	be vendors of the same value.  If there are, we
-	 *	pick the latest one.
-	 */
-	dict->vendors_by_num = fr_hash_table_create(dict, dict_vendor_vendorpec_hash, dict_vendor_vendorpec_cmp, NULL);
-	if (!dict->vendors_by_num) goto error;
-
-	/*
-	 *	Create the table of attributes by name.   There MAY NOT
-	 *	be multiple attributes of the same name.
-	 */
-	dict->attributes_by_name = fr_hash_table_create(dict, dict_attr_name_hash, dict_attr_name_cmp, NULL);
-	if (!dict->attributes_by_name) goto error;
-
-	/*
-	 *	Horrible hacks for combo-IP.
-	 */
-	dict->attributes_combo = fr_hash_table_create(dict, dict_attr_combo_hash, dict_attr_combo_cmp, hash_pool_free);
-	if (!dict->attributes_combo) goto error;
-
-	dict->values_by_alias = fr_hash_table_create(dict, dict_enum_alias_hash, dict_enum_alias_cmp, hash_pool_free);
-	if (!dict->values_by_alias) goto error;
-
-	dict->values_by_da = fr_hash_table_create(dict, dict_enum_value_hash, dict_enum_value_cmp, hash_pool_free);
-	if (!dict->values_by_da) goto error;
-
-	return dict;
-}
-
 
 /*
  *	Process the ATTRIBUTE command
@@ -3032,385 +3357,6 @@ static int dict_from_file(fr_dict_t *dict,
 	return _dict_from_file(&ctx, dir_name, filename, src_file, src_line);
 }
 
-/** Initialise the global protocol hashes
- *
- * @note Must be called before any other dictionary functions.
- *
- *
- * @param ctx to allocate the hashes in.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int dict_global_init(TALLOC_CTX *ctx)
-{
-	if (protocol_by_name && protocol_by_num) return 0;
-
-	protocol_by_name = fr_hash_table_create(ctx, dict_protocol_name_hash, dict_protocol_name_cmp, NULL);
-	if (!protocol_by_name) {
-		fr_strerror_printf("Failed initializing protocol_by_name hash");
-		return -1;
-	}
-	protocol_by_num = fr_hash_table_create(ctx, dict_protocol_num_hash, dict_protocol_num_cmp, NULL);
-	if (!protocol_by_num) {
-		fr_strerror_printf("Failed initializing protocol_by_num hash");
-		return -1;
-	}
-
-	return 0;
-}
-
-/** (re)initialize a protocol dictionary
- *
- * Initialize the directory, then fix the attr member of all attributes.
- *
- * First dictionary initialised will be set as the default internal dictionary.
- *
- * @param[in] ctx		to allocate the dictionary from.
- * @param[out] out		Where to write a pointer to the new dictionary.
- *				Will free existing dictionary if files have
- *				changed and *out is not NULL.
- * @param[in] dir		to read dictionary files from.
- * @param[in] fn		file name to read.
- * @param[in] name		to use for the root attributes.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int fr_dict_from_file(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *fn, char const *name)
-{
-	static bool	defined_cast_types;
-	fr_dict_t	*dict;
-
-	dict = dict_alloc(ctx);
-	if (!dict) return -1;
-
-	/*
-	 *	Free the old dictionaries
-	 */
-	if (*out == fr_dict_internal) fr_dict_internal = dict;
-	TALLOC_FREE(*out);
-
-	/*
-	 *	Remove this at some point...
-	 */
-	if (!fr_dict_internal) fr_dict_internal = dict;
-
-	/*
-	 *	Magic dictionary root attribute
-	 */
-	dict_root_set(dict, name, 0);
-
-	/*
-	 *	Add cast attributes.  We do it this way,
-	 *	so cast attributes get added automatically for new types.
-	 *
-	 *	We manually add the attributes to the dictionary, and bypass
-	 *	fr_dict_attr_add(), because we know what we're doing, and
-	 *	that function does too many checks.
-	 */
-	if (!defined_cast_types) {
-		FR_NAME_NUMBER const	*p;
-		fr_dict_attr_flags_t	flags;
-		char			*type_name;
-
-		memset(&flags, 0, sizeof(flags));
-
-		flags.internal = 1;
-
-		for (p = dict_attr_types; p->name; p++) {
-			fr_dict_attr_t *n;
-
-			type_name = talloc_typed_asprintf(dict->pool, "Tmp-Cast-%s", p->name);
-
-			n = dict_attr_alloc(dict->pool, dict->root, type_name,
-					       FR_CAST_BASE + p->number, p->number, &flags);
-			if (!n) {
-			error:
-				talloc_free(dict);
-				return -1;
-			}
-
-			if (!fr_hash_table_insert(dict->attributes_by_name, n)) goto error;
-
-			/*
-			 *	Set up parenting for the attribute.
-			 */
-			if (dict_attr_child_add(dict->root, n) < 0) goto error;
-
-			talloc_free(type_name);
-		}
-		defined_cast_types = true;
-	}
-
-	if (dict_from_file(dict, dir, fn, NULL, 0) < 0) goto error;
-
-	/*
-	 *	Resolve any VALUE aliases (enums) that were defined
-	 *	before the attributes they reference.
-	 */
-	if (dict->enum_fixup) {
-		fr_dict_attr_t const *da;
-		dict_enum_fixup_t *this, *next;
-
-		for (this = dict->enum_fixup; this != NULL; this = next) {
-			fr_value_box_t	value;
-			fr_type_t	type;
-
-			next = this->next;
-			da = fr_dict_attr_by_name(dict, this->attribute);
-			if (!da) {
-				fr_strerror_printf("No ATTRIBUTE '%s' defined for VALUE '%s'",
-						   this->attribute, this->alias);
-				goto error;
-			}
-			type = da->type;
-
-			if (fr_value_box_from_str(this, &value, &type, NULL,
-						  this->value, talloc_array_length(this->value) - 1, '\0', false) < 0) {
-				fr_strerror_printf_push("Invalid VALUE for ATTRIBUTE \"%s\"", da->name);
-				goto error;
-			}
-
-			if (fr_dict_enum_add_alias(da, this->alias, &value, false, false) < 0) goto error;
-
-			/*
-			 *	Just so we don't lose track of things.
-			 */
-			dict->enum_fixup = next;
-		}
-	}
-
-	/*
-	 *	Walk over all of the hash tables to ensure they're
-	 *	initialized.  We do this because the threads may perform
-	 *	lookups, and we don't want multi-threaded re-ordering
-	 *	of the table entries.  That would be bad.
-	 */
-	fr_hash_table_walk(dict->vendors_by_name, hash_null_callback, NULL);
-	fr_hash_table_walk(dict->vendors_by_num, hash_null_callback, NULL);
-
-	fr_hash_table_walk(dict->values_by_da, hash_null_callback, NULL);
-	fr_hash_table_walk(dict->values_by_alias, hash_null_callback, NULL);
-
-	*out = dict;
-
-	return 0;
-}
-
-/** (Re-)Initialize the special internal dictionary
- *
- * This dictionary has additional programatically generated attributes added to it.
- *
- * @param[in] ctx		to allocate dictionary in.
- * @param[out] out		Where to write pointer to the internal dictionary.
- * @param[in] dir		dictionary is located in.
- * @param[in] internal_name	name of the internal dictionary dir (may be NULL).
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int fr_dict_internal_afrom_file(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *internal_name)
-{
-	fr_dict_t		*dict = fr_dict_internal;
-	char			*dict_dir;
-	char			*tmp;
-	FR_NAME_NUMBER const	*p;
-	fr_dict_attr_flags_t	flags = { .internal = true };
-	char			*type_name;
-
-	memcpy(&tmp, &dir, sizeof(tmp));
-	dict_dir = internal_name ? talloc_asprintf(NULL, "%s%c%s", dir, FR_DIR_SEP, internal_name) : tmp;
-
-	if ((!protocol_by_name || !protocol_by_num) && (dict_global_init(ctx) < 0)) return -1;
-
-	if (!dict) {
-		dict = dict_alloc(ctx);
-		if (!dict) {
-		error:
-			if (!fr_dict_internal) talloc_free(dict);
-			if (internal_name) talloc_free(dict_dir);
-			return -1;
-		}
-
-		/*
-		 *	Set the root name of the dictionary
-		 */
-		dict_root_set(dict, "internal", 0);
-	} else {
-		if (dict_stat_check(dict, dir, FR_DICTIONARY_FILE)) {
-			if (internal_name) talloc_free(dict_dir);
-			return 0;
-		}
-	}
-	/*
-	 *	Add cast attributes.  We do it this way,
-	 *	so cast attributes get added automatically for new types.
-	 *
-	 *	We manually add the attributes to the dictionary, and bypass
-	 *	fr_dict_attr_add(), because we know what we're doing, and
-	 *	that function does too many checks.
-	 */
-	for (p = dict_attr_types; p->name; p++) {
-		fr_dict_attr_t *n;
-
-		type_name = talloc_typed_asprintf(dict->pool, "Tmp-Cast-%s", p->name);
-
-		n = dict_attr_alloc(dict->pool, dict->root, type_name,
-				       FR_CAST_BASE + p->number, p->number, &flags);
-		if (!n) goto error;
-
-		if (!fr_hash_table_insert(dict->attributes_by_name, n)) {
-			fr_strerror_printf("Failed inserting \"%s\" into internal dictionary", type_name);
-			goto error;
-		}
-
-		/*
-		 *	Set up parenting for the attribute.
-		 */
-		if (dict_attr_child_add(dict->root, n) < 0) goto error;
-
-		talloc_free(type_name);
-	}
-
-	if (dict_dir && dict_from_file(dict, dict_dir, FR_DICTIONARY_FILE, NULL, 0) < 0) goto error;
-
-	*out = dict;
-	if (!fr_dict_internal) fr_dict_internal = dict;
-
-	return 0;
-}
-
-/** (Re)-initialize a protocol dictionary
- *
- * Initialize the directory, then fix the attr member of all attributes.
- *
- * First dictionary initialised will be set as the default internal dictionary.
- *
- * @param[in] ctx		to allocate the dictionary from.
- * @param[out] out		Where to write a pointer to the new dictionary.  Will free existing
- *				dictionary if files have changed and *out is not NULL.
- * @param[in] base_dir		containing all the protocol directories.
- * @param[in] proto_name	that we're loading the dictionary for.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int fr_dict_protocol_afrom_file(TALLOC_CTX *ctx, fr_dict_t **out,
-				char const *base_dir, char const *proto_name)
-{
-	fr_dict_t	*dict;
-	char		*dir;
-	char		*proto_dir;
-	char		*p;
-
-	if (!protocol_by_name || !protocol_by_num) {
-		fr_strerror_printf("Dictionary not yet initialized call fr_dict_internal_afrom_file first");
-		return -1;
-	}
-
-	/*
-	 *	Increment the reference count if the dictionary
-	 *	has already been loaded.
-	 */
-	if (!*out) {
-		*out = fr_dict_by_protocol_name(proto_name);
-		if (*out) {
-			 talloc_increase_ref_count(*out);
-			 return 0;
-		}
-	}
-
-	/*
-	 *	Replace '_' with '/'
-	 */
-	proto_dir = talloc_strdup(ctx, proto_name);
-	for (p = proto_dir; *p; p++) if (*p == '_') *p = FR_DIR_SEP;
-
-	dir = talloc_asprintf(proto_dir, "%s%c%s", base_dir, FR_DIR_SEP, proto_dir);
-	if (!*out) {
-		dict = dict_alloc(ctx);
-		if (!dict) {
-		error:
-			talloc_free(proto_dir);
-			return -1;
-		}
-	} else {
-		dict = *out;
-		if (dict_stat_check(dict, dir, FR_DICTIONARY_FILE)) return 0;
-	}
-
-	dict->enum_fixup = NULL;        /* just to be safe. */
-
-	if (dict_from_file(dict, dir, FR_DICTIONARY_FILE, NULL, 0) < 0) goto error;
-
-	talloc_free(proto_dir);
-
-	/*
-	 *	Resolve any VALUE aliases (enums) that were defined
-	 *	before the attributes they reference.
-	 */
-	if (dict->enum_fixup) {
-		fr_dict_attr_t const *da;
-		dict_enum_fixup_t *this, *next;
-
-		for (this = dict->enum_fixup; this != NULL; this = next) {
-			fr_value_box_t	value;
-			fr_type_t	type;
-
-			next = this->next;
-			da = fr_dict_attr_by_name(dict, this->attribute);
-			if (!da) {
-				fr_strerror_printf("No ATTRIBUTE '%s' defined for VALUE '%s'",
-						   this->attribute, this->alias);
-				goto error;
-			}
-			type = da->type;
-
-			if (fr_value_box_from_str(this, &value, &type, NULL,
-						  this->value, talloc_array_length(this->value) - 1, '\0', false) < 0) {
-				fr_strerror_printf_push("Invalid VALUE for ATTRIBUTE \"%s\"", da->name);
-				goto error;
-			}
-
-			if (fr_dict_enum_add_alias(da, this->alias, &value, false, false) < 0) goto error;
-
-			/*
-			 *	Just so we don't lose track of things.
-			 */
-			dict->enum_fixup = next;
-		}
-	}
-
-	/*
-	 *	Walk over all of the hash tables to ensure they're
-	 *	initialized.  We do this because the threads may perform
-	 *	lookups, and we don't want multi-threaded re-ordering
-	 *	of the table entries.  That would be bad.
-	 */
-	fr_hash_table_walk(dict->vendors_by_name, hash_null_callback, NULL);
-	fr_hash_table_walk(dict->vendors_by_num, hash_null_callback, NULL);
-
-	fr_hash_table_walk(dict->values_by_da, hash_null_callback, NULL);
-	fr_hash_table_walk(dict->values_by_alias, hash_null_callback, NULL);
-
-	*out = dict;
-
-	return 0;
-}
-
-int fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename)
-{
-	INTERNAL_IF_NULL(dict);
-
-	if (!dict->attributes_by_name) {
-		fr_strerror_printf("%s: Must call fr_dict_from_file() before fr_dict_read()", "Error reading dictionary");
-		return -1;
-	}
-
-	return dict_from_file(dict, dir, filename, NULL, 0);
-}
-
 /*
  *	External API for testing
  */
@@ -3595,6 +3541,65 @@ void fr_dict_unknown_free(fr_dict_attr_t const **da)
 	*tmp = NULL;
 }
 
+
+/** Build an unknown vendor, parented by a VSA or EVS attribute
+ *
+ * This allows us to complete the path back to the dictionary root in the case
+ * of unknown attributes with unknown vendors.
+ *
+ * @note Will return known vendors attributes where possible.  Do not free directly,
+ *	use #fr_dict_unknown_free.
+ *
+ * @param[in] ctx to allocate the vendor attribute in.
+ * @param[out] out		Where to write point to new unknown dict attr
+ *				representing the unknown vendor.
+ * @param[in] parent		of the vendor attribute, either an EVS or VSA attribute.
+ * @param[in] vendor		id.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t **out,
+				     fr_dict_attr_t const *parent, unsigned int vendor)
+{
+	fr_dict_attr_flags_t	flags = {
+					.is_unknown = true,
+					.is_raw = true,
+					.type_size = true,
+					.length = true
+				};
+
+	if (!fr_cond_assert(parent)) {
+		fr_strerror_printf("%s: Invalid argument - parent was NULL", __FUNCTION__);
+		return -1;
+	}
+
+	*out = NULL;
+
+	/*
+	 *	Vendor attributes can occur under VSA or EVS attributes.
+	 */
+	switch (parent->type) {
+	case FR_TYPE_VSA:
+	case FR_TYPE_EVS:
+		if (!fr_cond_assert(!parent->flags.is_unknown)) return -1;
+
+		*out = dict_attr_alloc(ctx, parent, NULL, vendor, FR_TYPE_VENDOR, &flags);
+
+		return 0;
+
+	case FR_TYPE_VENDOR:
+		if (!fr_cond_assert(!parent->flags.is_unknown)) return -1;
+		fr_strerror_printf("Unknown vendor cannot be parented by another vendor");
+		return -1;
+
+	default:
+		fr_strerror_printf("Unknown vendors can only be parented by 'vsa' or 'evs' "
+				   "attributes, not '%s'", fr_int2str(dict_attr_types, parent->type, "?Unknown?"));
+		return -1;
+	}
+}
+
 /** Allocates an unknown attribute
  *
  * @copybrief fr_dict_unknown_from_fields
@@ -3680,64 +3685,6 @@ fr_dict_attr_t const *fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr
 	if (new_parent && new_parent->flags.is_unknown) talloc_steal(n, new_parent);
 
 	return n;
-}
-
-/** Build an unknown vendor, parented by a VSA or EVS attribute
- *
- * This allows us to complete the path back to the dictionary root in the case
- * of unknown attributes with unknown vendors.
- *
- * @note Will return known vendors attributes where possible.  Do not free directly,
- *	use #fr_dict_unknown_free.
- *
- * @param[in] ctx to allocate the vendor attribute in.
- * @param[out] out		Where to write point to new unknown dict attr
- *				representing the unknown vendor.
- * @param[in] parent		of the vendor attribute, either an EVS or VSA attribute.
- * @param[in] vendor		id.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t **out,
-				     fr_dict_attr_t const *parent, unsigned int vendor)
-{
-	fr_dict_attr_flags_t	flags = {
-					.is_unknown = true,
-					.is_raw = true,
-					.type_size = true,
-					.length = true
-				};
-
-	if (!fr_cond_assert(parent)) {
-		fr_strerror_printf("%s: Invalid argument - parent was NULL", __FUNCTION__);
-		return -1;
-	}
-
-	*out = NULL;
-
-	/*
-	 *	Vendor attributes can occur under VSA or EVS attributes.
-	 */
-	switch (parent->type) {
-	case FR_TYPE_VSA:
-	case FR_TYPE_EVS:
-		if (!fr_cond_assert(!parent->flags.is_unknown)) return -1;
-
-		*out = dict_attr_alloc(ctx, parent, NULL, vendor, FR_TYPE_VENDOR, &flags);
-
-		return 0;
-
-	case FR_TYPE_VENDOR:
-		if (!fr_cond_assert(!parent->flags.is_unknown)) return -1;
-		fr_strerror_printf("Unknown vendor cannot be parented by another vendor");
-		return -1;
-
-	default:
-		fr_strerror_printf("Unknown vendors can only be parented by 'vsa' or 'evs' "
-				   "attributes, not '%s'", fr_int2str(dict_attr_types, parent->type, "?Unknown?"));
-		return -1;
-	}
 }
 
 /** Initialise a fr_dict_attr_t from an ASCII attribute and value
@@ -4186,6 +4133,63 @@ int fr_dict_oid_component(unsigned int *out, char const **oid)
 		*out = 0;
 		return -1;
 	}
+}
+
+/** Build the tlv_stack for the specified DA and encode the path in OID form
+ *
+ * @param[out] out		Where to write the OID.
+ * @param[in] outlen		Length of the output buffer.
+ * @param[in] ancestor		If not NULL, only print OID portion between
+ *				ancestor and da.
+ * @param[in] da		to print OID string for.
+ * @return the number of bytes written to the buffer.
+ */
+size_t fr_dict_print_attr_oid(char *out, size_t outlen,
+			      fr_dict_attr_t const *ancestor, fr_dict_attr_t const *da)
+{
+	size_t			len;
+	char			*p = out, *end = p + outlen;
+	int			i;
+	int			depth = 0;
+	fr_dict_attr_t const	*tlv_stack[FR_DICT_MAX_TLV_STACK + 1];
+
+	if (!outlen) return 0;
+
+	/*
+	 *	If the ancestor and the DA match, there's
+	 *	no OID string to print.
+	 */
+	if (ancestor == da) {
+		out[0] = '\0';
+		return 0;
+	}
+
+	fr_proto_tlv_stack_build(tlv_stack, da);
+
+	if (ancestor) {
+		if (tlv_stack[ancestor->depth - 1] != ancestor) {
+			fr_strerror_printf("Attribute \"%s\" is not a descendent of \"%s\"", da->name, ancestor->name);
+			return -1;
+		}
+		depth = ancestor->depth;
+	}
+
+	/*
+	 *	We don't print the ancestor, we print the OID
+	 *	between it and the da.
+	 */
+	len = snprintf(p, end - p, "%u", tlv_stack[depth]->attr);
+	if ((p + len) >= end) return p - out;
+	p += len;
+
+
+	for (i = depth + 1; i < (int)da->depth; i++) {
+		len = snprintf(p, end - p, ".%u", tlv_stack[i]->attr);
+		if ((p + len) >= end) return p - out;
+		p += len;
+	}
+
+	return p - out;
 }
 
 /** Get the leaf attribute of an OID string
