@@ -159,10 +159,76 @@ size_t		fr_bin2hex(char *hex, uint8_t const *bin, size_t inlen);
 size_t		fr_hex2bin(uint8_t *bin, size_t outlen, char const *hex, size_t inlen);
 uint64_t	fr_strtoull(char const *value, char **end);
 int64_t		fr_strtoll(char const *value, char **end);
-bool		is_whitespace(char const *value);
-bool		is_printable(void const *value, size_t len);
-bool		is_integer(char const *value);
-bool		is_zero(char const *value);
+char		*fr_trim(char const *str, size_t size);
+
+/** Check whether the string is all whitespace
+ *
+ * @return
+ *	- true if the entirety of the string is whitespace.
+ *	- false if the string contains non whitespace.
+ */
+static inline bool is_whitespace(char const *value)
+{
+	do {
+		if (!isspace(*value)) return false;
+	} while (*++value);
+
+	return true;
+}
+
+/** Check whether the string is made up of printable UTF8 chars
+ *
+ * @param value to check.
+ * @param len of value.
+ *
+ * @return
+ *	- true if the string is printable.
+ *	- false if the string contains non printable chars
+ */
+ static inline bool is_printable(void const *value, size_t len)
+ {
+ 	uint8_t	const *p = value;
+ 	int	clen;
+ 	size_t	i;
+
+ 	for (i = 0; i < len; i++) {
+ 		clen = fr_utf8_char(p, len - i);
+ 		if (clen == 0) return false;
+ 		i += (size_t)clen;
+ 		p += clen;
+ 	}
+ 	return true;
+ }
+
+/** Check whether the string is all numbers
+ *
+ * @return
+ *	- true if the entirety of the string is number chars.
+ *	- false if string contains no number chars.
+ */
+static inline bool is_integer(char const *value)
+{
+	do {
+		if (!isdigit(*value)) return false;
+	} while (*++value);
+
+	return true;
+}
+
+/** Check whether the string is all zeros
+ *
+ * @return
+ *	- true if the entirety of the string is all zeros.
+ *	- false if string contains no zeros.
+ */
+static inline bool is_zero(char const *value)
+{
+	do {
+		if (*value != '0') return false;
+	} while (*++value);
+
+	return true;
+}
 
 int		fr_nonblock(int fd);
 int		fr_blocking(int fd);

@@ -402,73 +402,19 @@ int64_t fr_strtoll(char const *value, char **end)
 	return strtoll(value, end, 10);
 }
 
-/** Check whether the string is all whitespace
+/** Trim whitespace from the end of a string
  *
- * @return
- *	- true if the entirety of the string is whitespace.
- *	- false if the string contains non whitespace.
  */
-bool is_whitespace(char const *value)
+char *fr_trim(char const *str, size_t size)
 {
-	do {
-		if (!isspace(*value)) return false;
-	} while (*++value);
+	char *q;
 
-	return true;
-}
+	if (!str || !size) return NULL;
 
-/** Check whether the string is made up of printable UTF8 chars
- *
- * @param value to check.
- * @param len of value.
- *
- * @return
- *	- true if the string is printable.
- *	- false if the string contains non printable chars
- */
- bool is_printable(void const *value, size_t len)
- {
- 	uint8_t	const *p = value;
- 	int	clen;
- 	size_t	i;
+	memcpy(&q, &str, sizeof(q));
+	for (q = q + size; q > str && isspace(*q); q--);
 
- 	for (i = 0; i < len; i++) {
- 		clen = fr_utf8_char(p, len - i);
- 		if (clen == 0) return false;
- 		i += (size_t)clen;
- 		p += clen;
- 	}
- 	return true;
- }
-
-/** Check whether the string is all numbers
- *
- * @return
- *	- true if the entirety of the string is number chars.
- *	- false if string contains no number chars.
- */
-bool is_integer(char const *value)
-{
-	do {
-		if (!isdigit(*value)) return false;
-	} while (*++value);
-
-	return true;
-}
-
-/** Check whether the string is all zeros
- *
- * @return
- *	- true if the entirety of the string is all zeros.
- *	- false if string contains no zeros.
- */
-bool is_zero(char const *value)
-{
-	do {
-		if (*value != '0') return false;
-	} while (*++value);
-
-	return true;
+	return q;
 }
 
 /*
