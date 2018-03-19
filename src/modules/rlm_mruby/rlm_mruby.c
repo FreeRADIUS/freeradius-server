@@ -398,6 +398,8 @@ static inline int mruby_set_vps(REQUEST *request, mrb_state *mrb, mrb_value mrub
 {
 	mrb_value res;
 
+	memset(&res, 0, sizeof(res));	/* clang scan */
+
 	if (mruby_vps_to_array(request, &res, mrb, vps) < 0) return -1;
 
 	mrb_iv_set(mrb, mruby_request, mrb_intern_cstr(mrb, list_name), res);
