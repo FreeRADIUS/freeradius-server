@@ -356,6 +356,8 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 	 *	We found an existing entry, return that.
 	 */
 	if (found >= 0) {
+		i = found;
+
 		/*
 		 *	Stat the *filename*, not the file we opened.
 		 *	If that's not the file we opened, then go back
@@ -372,7 +374,6 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 			goto reopen;
 		}
 
-		i = found;
 		goto try_lock;
 	}
 
