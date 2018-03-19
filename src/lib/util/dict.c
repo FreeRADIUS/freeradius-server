@@ -1653,7 +1653,17 @@ static int dict_attr_ref_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 *	or a TLV attribute.
 	 */
 	if (!ref->flags.is_root && (ref->type != FR_TYPE_TLV)) {
-		fr_strerror_printf("Referenced attribute \"%s\" is not a TLV", ref->name);
+		fr_strerror_printf("Referenced attribute \"%s\" is a '%s' not a 'tlv'", ref->name,
+				   fr_int2str(dict_attr_types, ref->type, "<INVALID>"));
+		return -1;
+	}
+
+	/*
+	 *	Reference must go from a TLV to a TLV
+	 */
+	if (type != FR_TYPE_TLV) {
+		fr_strerror_printf("Reference attribute must be of type TLV, not type '%s'",
+				   fr_int2str(dict_attr_types, type, "<INVALID>"));
 		return -1;
 	}
 
