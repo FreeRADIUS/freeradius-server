@@ -1259,6 +1259,7 @@ static fr_dict_attr_t *dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in
  * @param[in] attr		number.
  * @param[in] type		of attribute.
  * @param[in] flags		to set in the attribute.
+ * @param[in] ref		This reference attribute is pointing to.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -1504,11 +1505,7 @@ static inline int dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *ch
  *
  * @param[in] dict		of protocol context we're operating in.
  *				If NULL the internal dictionary will be used.
- * @param[in] parent		to add attribute under.
- * @param[in] name		of the attribute.
- * @param[in] attr		number.
- * @param[in] type		of attribute.
- * @param[in] flags		to set in the attribute.
+ * @param[in] da		to add to the name lookup tables.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -3493,7 +3490,7 @@ static int dict_global_init(TALLOC_CTX *ctx)
  *
  * @param[in] dict		to modify.
  * @param[in] name		of dictionary root.
- * @param[in] protocol_number	The artificial (or IANA allocated) number for the protocol.
+ * @param[in] proto_number	The artificial (or IANA allocated) number for the protocol.
  *				This is only used for
  * @return
  *	- 0 on success.
@@ -3584,7 +3581,7 @@ static fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 
 /** Lookup a dictionary reference
  *
- * Format is [<proto>].[<attr>]
+ * Format is @verbatim[<proto>].[<attr>]@endverbatim
  *
  * If protocol is omitted lookup is in the current dictionary.
  *
