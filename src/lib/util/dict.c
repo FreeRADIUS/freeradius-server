@@ -2970,15 +2970,15 @@ fr_dict_vendor_t const *fr_dict_vendor_by_name(fr_dict_t const *dict, char const
  *	- The vendor.
  *	- NULL if no vendor with that number was regitered for this protocol.
  */
-fr_dict_vendor_t const *fr_dict_vendor_by_num(fr_dict_t const *dict, int pen)
+fr_dict_vendor_t const *fr_dict_vendor_by_num(fr_dict_t const *dict, uint32_t vendor_pen)
 {
-	fr_dict_vendor_t dv;
+	fr_dict_vendor_t 	find = {
+					.pen = vendor_pen
+				};
 
 	INTERNAL_IF_NULL(dict);
 
-	dv.pen = pen;
-
-	return fr_hash_table_finddata(dict->vendors_by_num, &dv);
+	return fr_hash_table_finddata(dict->vendors_by_num, &find);
 }
 
 /** Return the vendor that parents this attribute
@@ -3009,12 +3009,12 @@ fr_dict_attr_t const *fr_dict_vendor_attr_by_da(fr_dict_attr_t const *da)
  *
  * @param[in] dict		to search for the vendor in.
  * @param[in] vendor_root	of the vendor root attribute.  Could be 26 (for example) in RADIUS.
- * @param[in] vendor		to find.
+ * @param[in] vendor_pen	to find.
  * @return
  *	- NULL if vendor does not exist.
  *	- A fr_dict_attr_t representing the vendor in the dictionary hierarchy.
  */
-fr_dict_attr_t const *fr_dict_vendor_attr_by_num(fr_dict_t const *dict, unsigned int vendor_root, unsigned int vendor)
+fr_dict_attr_t const *fr_dict_vendor_attr_by_num(fr_dict_t const *dict, unsigned int vendor_root, uint32_t vendor_pen)
 {
 	fr_dict_attr_t const *da;
 
@@ -3039,9 +3039,9 @@ fr_dict_attr_t const *fr_dict_vendor_attr_by_num(fr_dict_t const *dict, unsigned
 		return NULL;
 	}
 
-	da = fr_dict_attr_child_by_num(da, vendor);
+	da = fr_dict_attr_child_by_num(da, vendor_pen);
 	if (!da) {
-		fr_strerror_printf("Vendor %i not defined", vendor);
+		fr_strerror_printf("Vendor %i not defined", vendor_pen);
 		return NULL;
 	}
 
