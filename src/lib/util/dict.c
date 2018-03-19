@@ -2964,7 +2964,7 @@ fr_dict_vendor_t const *fr_dict_vendor_by_name(fr_dict_t const *dict, char const
  *
  * @param[in] dict		of protocol context we're operating in.
  *				If NULL the internal dictionary will be used.
- * @param[in] pen		to search for.
+ * @param[in] vendor_pen	to search for.
  * @return
  *	- The vendor.
  *	- NULL if no vendor with that number was regitered for this protocol.
