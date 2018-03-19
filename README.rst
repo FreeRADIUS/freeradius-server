@@ -38,7 +38,7 @@ existing configuration should be carefully migrated to the new
 version, in order to take advantage of the new features which can
 greatly simply configuration.
 
-Please see http://freeradius.org and http://wiki.freeradius.org for
+Please see https://freeradius.org and https://wiki.freeradius.org for
 more information.
 
 
@@ -89,20 +89,18 @@ problems can be solved by carefully reading the debugging output,
 which includes WARNINGs about common issues, and suggestions for how
 they may be fixed.
 
-Read the FAQ.  Many questions are answered there.  See the Wiki
+Many questions are answered on the Wiki:
 
-http://wiki.freeradius.org
+https://wiki.freeradius.org
 
-Read the configuration files.  Many parts of the server have NO
-documentation, other than comments in the configuration file.
+Read the configuration files.  Many parts of the server are
+documented only with extensive comments in the configuration files.
 
-Search the mailing lists.  There is a Google link on the bottom of
-the page:
+Search the mailing lists. For example, using Google, searching
+"site:lists.freeradius.org <search term>" will return results from
+the FreeRADIUS mailing lists.
 
-http://www.freeradius.org/list/users.html
-
-Type some key words into the search box, and you should find
-discussions about common problems and solution.
+https://freeradius.org/support/
 
 
 Feedback, Defects, and Community Support
@@ -110,7 +108,7 @@ Feedback, Defects, and Community Support
 
 If you have any comments, or are having difficulty getting FreeRADIUS
 to do what you want, please post to the 'freeradius-users' list
-(see the URL above).  The FreeRADIUS mailing list is operated and
+(see the URL above).  The FreeRADIUS mailing list is operated, and
 contributed to, by the FreeRADIUS community. Users of the list will be
 more than happy to answer your questions, with the caveat that you've
 read documentation relevant to your issue first.
@@ -118,11 +116,14 @@ read documentation relevant to your issue first.
 If you suspect a defect in the server, would like to request a feature,
 or submit a code patch, please use the GitHub issue tracker for the
 freeradius-server `repository
-<https://github.com/FreeRADIUS/freeradius-server>`_.
+<https://github.com/FreeRADIUS/freeradius-server>`_. However, it
+is nearly always best to raise the issue on the mailing lists
+first to determine whether it really is a defect or missing
+feature..
 
 Instructions for gathering data for defect reports can be found in
 ``doc/bugs`` or on the `wiki
-<http://wiki.freeradius.org/project/bug-reports>`_.
+<https://wiki.freeradius.org/project/bug-reports>`_.
 
 Under no circumstances should the issue tracker be used for support
 requests, those questions belong on the user's mailing list.  If you
@@ -158,18 +159,17 @@ Books on RADIUS
 See ``doc/README`` for more information about FreeRADIUS.
 
 There is an O'Reilly book available.  It serves as a good
-introduction for anyone new to RADIUS.  However, it is almost 12 years
+introduction for anyone new to RADIUS.  However, it is almost 18 years
 old, and is not much more than a basic introduction to the subject.
 
-http://www.amazon.com/exec/obidos/ASIN/0596003226/freeradiusorg-20/
+https://www.amazon.com/exec/obidos/ASIN/0596003226/freeradiusorg-20/
 
 Commercial support
 ------------------
 
 Technical support, managed systems support, custom deployments,
 sponsored feature development and many other commercial services
-are available from `Network RADIUS
-<http://www.networkradius.com>`_.
+are available from `Network RADIUS <http://www.networkradius.com>`_.
 
 
 .. |CoverityStatus| image:: https://scan.coverity.com/projects/58/badge.svg?
