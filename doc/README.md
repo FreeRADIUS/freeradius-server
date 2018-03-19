@@ -31,7 +31,7 @@ When asking for help on the users list, be sure the include a
 detailed and clear description of the problem, together with
 full debug output from FreeRADIUS, obtained by running
 
-    $ radiusd -X
+    # radiusd -X
 
 Developers only discussion is to be had on the developers list:
 
@@ -87,7 +87,7 @@ If you have ANY problems, concerns, or surprises when running
 the server, then run it in debugging mode, as root, from the
 command line:
 
-    $ radiusd -X
+    # radiusd -X
 
 It will produce a large number of messages.  The answers to many
 questions, and the solution to many problems, can usually be found in
@@ -97,4 +97,4 @@ For further details, see:
 
 https://www.freeradius.org/faq/
 
-and the `bugs.md`  file, in this directory.
+and the `bugs.md` file, in this directory.

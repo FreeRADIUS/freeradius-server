@@ -80,23 +80,25 @@ problems can be solved by carefully reading the debugging output,
 which includes WARNINGs about common issues, and suggestions for how
 they may be fixed.
 
-Read the FAQ.  Many questions are answered there.  See the Wiki
+Many questions are answered on the Wiki:
 
 https://wiki.freeradius.org
 
-Read the configuration files.  Many parts of the server have NO
-documentation, other than comments in the configuration file.
+Read the configuration files.  Many parts of the server are
+documented only with extensive comments in the configuration files.
 
-Consult the users mailing lists. 
+Search the mailing lists. For example, using Google, searching
+"site:lists.freeradius.org <search term>" will return results from
+the FreeRADIUS mailing lists.
 
-https://www.freeradius.org/list/users.html
+https://freeradius.org/support/
 
 
 ## Feedback, Defects, and Community Support
 
 If you have any comments, or are having difficulty getting FreeRADIUS
 to do what you want, please post to the 'freeradius-users' list
-(see the URL above). The FreeRADIUS mailing list is operated and
+(see the URL above). The FreeRADIUS mailing list is operated, and
 contributed to, by the FreeRADIUS community. Users of the list will be
 more than happy to answer your questions, with the caveat that you've
 read documentation relevant to your issue first.
@@ -105,6 +107,9 @@ If you suspect a defect in the server, would like to request a feature,
 or submit a code patch, please use the GitHub issue tracker for the
 freeradius-server
 [repository](https://github.com/FreeRADIUS/freeradius-server).
+However, it is nearly always best to raise the issue on the
+mailing lists first to determine whether it really is a defect or
+missing feature.
 
 Instructions for gathering data for defect reports can be found in
 ``doc/bugs.md`` or on the [wiki](https://wiki.freeradius.org/project/bug-reports).
