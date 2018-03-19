@@ -174,25 +174,10 @@ typedef struct {
 extern bool const	fr_dict_attr_allowed_chars[UINT8_MAX];
 extern bool const	fr_dict_non_data_types[FR_TYPE_MAX + 1];
 
-/*
- *	Dictionary debug
+/** @name Programatically create dictionary attributes and values
+ *
+ * @{
  */
-void			fr_dict_dump(fr_dict_t *dict);
-
-/*
- *	Dictionary population
- */
-int			fr_dict_from_file(TALLOC_CTX *ctx, fr_dict_t **out,
-					  char const *dir, char const *fn, char const *name);
-
-int			fr_dict_internal_afrom_file(TALLOC_CTX *ctx, fr_dict_t **out,
-						    char const *dir, char const *internal_name);
-
-int			fr_dict_protocol_afrom_file(TALLOC_CTX *ctx, fr_dict_t **out,
-						    char const *dir, char const *proto_name);
-
-int			fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename);
-
 int			fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent, char const *name, int attr,
 					 fr_type_t type, fr_dict_attr_flags_t const *flags);
 
@@ -200,14 +185,11 @@ int			fr_dict_enum_add_alias(fr_dict_attr_t const *da, char const *alias,
 					       fr_value_box_t const *value, bool coerce, bool replace);
 
 int			fr_dict_str_to_argv(char *str, char **argv, int max_argc);
+/** @} */
 
-int			fr_dict_parse_str(fr_dict_t *dict, char *buf,
-					  fr_dict_attr_t const *parent, unsigned int vendor);
-
-fr_dict_attr_t const	*fr_dict_root(fr_dict_t const *dict);
-
-/*
- *	Unknown ephemeral attributes
+/** @name Unknown ephemeral attributes
+ *
+ * @{
  */
 fr_dict_attr_t		*fr_dict_unknown_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *da);
 
@@ -228,9 +210,11 @@ ssize_t			fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx, fr_dict_attr_t **out
 							 fr_dict_attr_t const *parent, char const *name);
 
 fr_dict_attr_t const	*fr_dict_attr_known(fr_dict_t *dict, fr_dict_attr_t const *da);
+/** @} */
 
-/*
- *	Lineage
+/** @name Attribute lineage
+ *
+ * @{
  */
 void			fr_dict_print(fr_dict_attr_t const *da, int depth);
 
@@ -243,10 +227,14 @@ size_t			fr_dict_print_attr_oid(char *buffer, size_t outlen,
 
 ssize_t			fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
 			   		    unsigned int *attr, char const *oid);
+/** @} */
 
-/*
- *	Lookup
+/** @name Attribute, vendor and dictionary lookup
+ *
+ * @{
  */
+fr_dict_attr_t const	*fr_dict_root(fr_dict_t const *dict);
+
 fr_dict_t		*fr_dict_by_protocol_name(char const *name);
 
 fr_dict_t		*fr_dict_by_protocol_num(unsigned int num);
@@ -320,13 +308,38 @@ char const		*fr_dict_enum_alias_by_value(fr_dict_t *dict, fr_dict_attr_t const *
 						     fr_value_box_t const *value);
 
 fr_dict_enum_t		*fr_dict_enum_by_alias(fr_dict_t *dict, fr_dict_attr_t const *da, char const *alias);
+/** @} */
 
-/*
- *	Validation
+/** @name Dictionary and protocol loading
+ *
+ * @{
  */
+int			fr_dict_from_file(TALLOC_CTX *ctx, fr_dict_t **out,
+					  char const *dir, char const *fn, char const *name);
+
+int			fr_dict_internal_afrom_file(TALLOC_CTX *ctx, fr_dict_t **out,
+						    char const *dir, char const *internal_name);
+
+int			fr_dict_protocol_afrom_file(TALLOC_CTX *ctx, fr_dict_t **out,
+						    char const *dir, char const *proto_name);
+
+int			fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename);
+/** @} */
+
+/** @name Dictionary testing and validation
+ *
+ * @{
+ */
+void			fr_dict_dump(fr_dict_t *dict);
+
+int			fr_dict_parse_str(fr_dict_t *dict, char *buf,
+					  fr_dict_attr_t const *parent, unsigned int vendor);
+
 ssize_t			fr_dict_valid_name(char const *name, ssize_t len);
 
 void			fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da);
+/** @} */
+
 #ifdef __cplusplus
 }
 #endif
