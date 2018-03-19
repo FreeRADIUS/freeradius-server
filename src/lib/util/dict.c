@@ -405,21 +405,21 @@ static int dict_vendor_name_cmp(void const *one, void const *two)
 /** Hash a vendor number
  *
  */
-static uint32_t dict_vendor_vendorpec_hash(void const *data)
+static uint32_t dict_vendor_pen_hash(void const *data)
 {
-	return fr_hash(&(((fr_dict_vendor_t const *)data)->vendorpec),
-		       sizeof(((fr_dict_vendor_t const *)data)->vendorpec));
+	return fr_hash(&(((fr_dict_vendor_t const *)data)->pen),
+		       sizeof(((fr_dict_vendor_t const *)data)->pen));
 }
 
 /** Compare two vendor numbers
  *
  */
-static int dict_vendor_vendorpec_cmp(void const *one, void const *two)
+static int dict_vendor_pen_cmp(void const *one, void const *two)
 {
 	fr_dict_vendor_t const *a = one;
 	fr_dict_vendor_t const *b = two;
 
-	return a->vendorpec - b->vendorpec;
+	return a->pen - b->pen;
 }
 
 /** Hash a dictionary name
@@ -1373,18 +1373,18 @@ static int dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int num)
 		fr_strerror_printf("Out of memory");
 		return -1;
 	}
-	vendor->vendorpec = num;
+	vendor->pen = num;
 	vendor->type = vendor->length = 1; /* defaults */
 
 	if (!fr_hash_table_insert(dict->vendors_by_name, vendor)) {
-		fr_dict_vendor_t *old_vendor;
+		fr_dict_vendor_t const *old_vendor;
 
 		old_vendor = fr_hash_table_finddata(dict->vendors_by_name, vendor);
 		if (!old_vendor) {
 			fr_strerror_printf("%s: Failed inserting vendor name %s", __FUNCTION__, name);
 			return -1;
 		}
-		if ((strcmp(old_vendor->name, vendor->name) == 0) && (old_vendor->vendorpec != vendor->vendorpec)) {
+		if ((strcmp(old_vendor->name, vendor->name) == 0) && (old_vendor->pen != vendor->pen)) {
 			fr_strerror_printf("%s: Duplicate vendor name %s", __FUNCTION__, name);
 			return -1;
 		}
@@ -2919,48 +2919,6 @@ fr_dict_t *fr_dict_by_attr_name(fr_dict_attr_t const **found, char const *name)
 	return search.found_dict;
 }
 
-/** Look up a vendor by its name
- *
- * @param[in] dict		of protocol context we're operating in.
- *				If NULL the internal dictionary will be used.
- * @param[in] name		to search for.
- * @return
- *	- The vendor.
- *	- NULL if no vendor with that name was regitered for this protocol.
- */
-int fr_dict_vendor_by_name(fr_dict_t const *dict, char const *name)
-{
-	fr_dict_vendor_t find = { .name = name }, *found;
-
-	if (!name) return 0;
-	INTERNAL_IF_NULL(dict);
-
-	found = fr_hash_table_finddata(dict->vendors_by_name, &find);
-	if (!found) return 0;
-
-	return found->vendorpec;
-}
-
-/** Look up a vendor by its PEN
- *
- * @param[in] dict		of protocol context we're operating in.
- *				If NULL the internal dictionary will be used.
- * @param[in] vendorpec		to search for.
- * @return
- *	- The vendor.
- *	- NULL if no vendor with that number was regitered for this protocol.
- */
-fr_dict_vendor_t const *fr_dict_vendor_by_num(fr_dict_t const *dict, int vendorpec)
-{
-	fr_dict_vendor_t dv;
-
-	INTERNAL_IF_NULL(dict);
-
-	dv.vendorpec = vendorpec;
-
-	return fr_hash_table_finddata(dict->vendors_by_num, &dv);
-}
-
 /** Look up a vendor by one of its child attributes
  *
  * @param[in] da	The vendor attribute.
@@ -2973,10 +2931,52 @@ fr_dict_vendor_t const *fr_dict_vendor_by_da(fr_dict_attr_t const *da)
 	fr_dict_t 		*dict;
 	fr_dict_vendor_t	dv;
 
-	dv.vendorpec = fr_dict_vendor_num_by_da(da);
-	if (!dv.vendorpec) return NULL;
+	dv.pen = fr_dict_vendor_num_by_da(da);
+	if (!dv.pen) return NULL;
 
 	dict = fr_dict_by_da(da);
+
+	return fr_hash_table_finddata(dict->vendors_by_num, &dv);
+}
+
+/** Look up a vendor by its name
+ *
+ * @param[in] dict		of protocol context we're operating in.
+ *				If NULL the internal dictionary will be used.
+ * @param[in] name		to search for.
+ * @return
+ *	- The vendor.
+ *	- NULL if no vendor with that name was regitered for this protocol.
+ */
+fr_dict_vendor_t const *fr_dict_vendor_by_name(fr_dict_t const *dict, char const *name)
+{
+	fr_dict_vendor_t find = { .name = name }, *found;
+
+	if (!name) return 0;
+	INTERNAL_IF_NULL(dict);
+
+	found = fr_hash_table_finddata(dict->vendors_by_name, &find);
+	if (!found) return 0;
+
+	return found;
+}
+
+/** Look up a vendor by its PEN
+ *
+ * @param[in] dict		of protocol context we're operating in.
+ *				If NULL the internal dictionary will be used.
+ * @param[in] pen		to search for.
+ * @return
+ *	- The vendor.
+ *	- NULL if no vendor with that number was regitered for this protocol.
+ */
+fr_dict_vendor_t const *fr_dict_vendor_by_num(fr_dict_t const *dict, int pen)
+{
+	fr_dict_vendor_t dv;
+
+	INTERNAL_IF_NULL(dict);
+
+	dv.pen = pen;
 
 	return fr_hash_table_finddata(dict->vendors_by_num, &dv);
 }
@@ -3005,7 +3005,7 @@ fr_dict_attr_t const *fr_dict_vendor_attr_by_da(fr_dict_attr_t const *da)
 	return da_p;
 }
 
-/** Return vendor attribute for the specified dictionary and vendorpec
+/** Return vendor attribute for the specified dictionary and pen
  *
  * @param[in] dict		to search for the vendor in.
  * @param[in] vendor_root	of the vendor root attribute.  Could be 26 (for example) in RADIUS.
@@ -3448,7 +3448,7 @@ typedef struct {
 	fr_dict_t		*dict;			//!< Protocol dictionary we're inserting attributes into.
 	fr_dict_t		*old_dict;		//!< The dictionary before the current BEGIN-PROTOCOL block.
 
-	unsigned int		block_vendor;		//!< Vendor block we're inserting attributes into.
+	fr_dict_vendor_t const	*block_vendor;		//!< Vendor block we're inserting attributes into.
 							//!< Can be removed once we remove the vendor field from
 							//!< #fr_dict_attr_t.
 
@@ -3557,7 +3557,7 @@ static fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	 *	be vendors of the same value.  If there are, we
 	 *	pick the latest one.
 	 */
-	dict->vendors_by_num = fr_hash_table_create(dict, dict_vendor_vendorpec_hash, dict_vendor_vendorpec_cmp, NULL);
+	dict->vendors_by_num = fr_hash_table_create(dict, dict_vendor_pen_hash, dict_vendor_pen_cmp, NULL);
 	if (!dict->vendors_by_num) goto error;
 
 	/*
@@ -3665,12 +3665,12 @@ static fr_dict_attr_t const *dict_resolve_reference(fr_dict_t *dict, char const 
  *	Process the ATTRIBUTE command
  */
 static int dict_read_process_attribute(fr_dict_t *dict, fr_dict_attr_t const *parent,
-			     	       unsigned int block_vendor, char **argv, int argc,
+			     	       fr_dict_vendor_t const *block_vendor, char **argv, int argc,
 				       fr_dict_attr_flags_t *base_flags)
 {
 	bool			oid = false;
 
-	unsigned int		vendor = 0;
+	fr_dict_vendor_t const	*vendor;
 	unsigned int		attr;
 
 	int			type;
@@ -4618,7 +4618,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 		} /* END-VENDOR */
 
 		if (strcasecmp(argv[0], "BEGIN-VENDOR") == 0) {
-			unsigned int		vendor;
+			fr_dict_vendor_t const	*vendor;
 			fr_dict_attr_flags_t	flags;
 
 			fr_dict_attr_t const	*vsa_da;
@@ -4678,7 +4678,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 
 					memcpy(&mutable, &ctx->parent, sizeof(mutable));
 					new = dict_attr_alloc(mutable, fr_dict_root(ctx->dict), "Vendor-Specific",
-								 FR_VENDOR_SPECIFIC, FR_TYPE_VSA, &flags);
+							      FR_VENDOR_SPECIFIC, FR_TYPE_VSA, &flags);
 					dict_attr_child_add(mutable, new);
 					vsa_da = new;
 				}
@@ -4688,14 +4688,14 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 			 *	Create a VENDOR attribute on the fly, either in the context
 			 *	of the EVS attribute, or the VSA (26) attribute.
 			 */
-			vendor_da = fr_dict_attr_child_by_num(vsa_da, vendor);
+			vendor_da = fr_dict_attr_child_by_num(vsa_da, vendor->pen);
 			if (!vendor_da) {
 				memset(&flags, 0, sizeof(flags));
 
 				if (vsa_da->type == FR_TYPE_VSA) {
 					fr_dict_vendor_t const *dv;
 
-					dv = fr_dict_vendor_by_num(ctx->dict, vendor);
+					dv = fr_dict_vendor_by_num(ctx->dict, vendor->pen);
 					if (dv) {
 						flags.type_size = dv->type;
 						flags.length = dv->length;
@@ -4711,7 +4711,8 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 				}
 
 				memcpy(&mutable, &vsa_da, sizeof(mutable));
-				new = dict_attr_alloc(mutable, ctx->parent, argv[1], vendor, FR_TYPE_VENDOR, &flags);
+				new = dict_attr_alloc(mutable, ctx->parent, argv[1],
+						      vendor->pen, FR_TYPE_VENDOR, &flags);
 				dict_attr_child_add(mutable, new);
 
 				vendor_da = new;
@@ -4722,7 +4723,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 		} /* BEGIN-VENDOR */
 
 		if (strcasecmp(argv[0], "END-VENDOR") == 0) {
-			unsigned int vendor;
+			fr_dict_vendor_t const *vendor;
 
 			if (argc != 2) {
 				fr_strerror_printf_push("Invalid END-VENDOR entry");
@@ -4741,7 +4742,7 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 				goto error;
 			}
 			ctx->parent = ctx->dict->root;
-			ctx->block_vendor = 0;
+			ctx->block_vendor = NULL;
 			continue;
 		} /* END-VENDOR */
 
@@ -5149,7 +5150,7 @@ void fr_dict_dump(fr_dict_t *dict)
 /*
  *	External API for testing
  */
-int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent, unsigned int vendor)
+int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent, unsigned int vendor_pen)
 {
 	int	argc;
 	char	*argv[MAX_ARGV];
@@ -5169,7 +5170,9 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent, 
 
 		memset(&base_flags, 0, sizeof(base_flags));
 
-		return dict_read_process_attribute(dict, parent, vendor, argv + 1, argc - 1, &base_flags);
+		return dict_read_process_attribute(dict, parent,
+						   fr_dict_vendor_by_num(dict, vendor_pen),
+						   argv + 1, argc - 1, &base_flags);
 	}
 
 	if (strcasecmp(argv[0], "VENDOR") == 0) {

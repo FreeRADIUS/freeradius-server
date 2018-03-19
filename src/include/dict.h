@@ -127,7 +127,7 @@ typedef struct {
  * so we can represent a vendor with a single struct.
  */
 typedef struct {
-	unsigned int		vendorpec;			//!< Private enterprise number.
+	unsigned int		pen;			//!< Private enterprise number.
 	size_t			type; 				//!< Length of type data
 	size_t			length;				//!< Length of length data
 	size_t			flags;				//!< Vendor flags.
@@ -278,11 +278,11 @@ static inline uint32_t fr_dict_vendor_num_by_da(fr_dict_attr_t const *da)
 	return da_p->attr;
 }
 
-int			fr_dict_vendor_by_name(fr_dict_t const *dict, char const *name);
+fr_dict_vendor_t const	*fr_dict_vendor_by_da(fr_dict_attr_t const *da);
+
+fr_dict_vendor_t const	*fr_dict_vendor_by_name(fr_dict_t const *dict, char const *name);
 
 fr_dict_vendor_t const	*fr_dict_vendor_by_num(fr_dict_t const *dict, int vendor);
-
-fr_dict_vendor_t const	*fr_dict_vendor_by_da(fr_dict_attr_t const *da);
 
 fr_dict_attr_t const	*fr_dict_vendor_attr_by_da(fr_dict_attr_t const *da);
 

@@ -598,7 +598,7 @@ static ssize_t decode_vsa_internal(TALLOC_CTX *ctx, fr_cursor_t *cursor,
 	 *	See if the VSA is known.
 	 */
 	da = fr_dict_attr_child_by_num(parent, attribute);
-	if (!da) da = fr_dict_unknown_afrom_fields(ctx, parent, dv->vendorpec, attribute);
+	if (!da) da = fr_dict_unknown_afrom_fields(ctx, parent, dv->pen, attribute);
 	if (!da) return -1;
 	FR_PROTO_TRACE("decode context changed %s -> %s", da->parent->name, da->name);
 
@@ -929,7 +929,7 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t c
 		 */
 		memset(&my_dv, 0, sizeof(my_dv));
 
-		my_dv.vendorpec = vendor;
+		my_dv.pen = vendor;
 		my_dv.type = 1;
 		my_dv.length = 1;
 

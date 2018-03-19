@@ -291,7 +291,7 @@ static ssize_t xlat_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED char **out, UNUSED
 		if (!RDEBUG_ENABLED3) continue;
 
 		vendor = fr_dict_vendor_by_da(vp->da);
-		if (vendor) RIDEBUG2("Vendor : %i (%s)", vendor->vendorpec, vendor->name);
+		if (vendor) RIDEBUG2("Vendor : %i (%s)", vendor->pen, vendor->name);
 		RIDEBUG2("Type   : %s", fr_int2str(dict_attr_types, vp->vp_type, "<INVALID>"));
 
 		switch (vp->vp_type) {
