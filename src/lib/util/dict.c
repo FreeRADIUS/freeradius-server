@@ -257,6 +257,7 @@ bool const fr_dict_non_data_types[FR_TYPE_MAX + 1] = {
 #  define INTERNAL_IF_NULL(_dict) if (!_dict) _dict = fr_dict_internal
 #endif
 
+static inline int dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child);
 static int dict_from_file(fr_dict_t *dict,
 			  char const *dir_name, char const *filename,
 			  char const *src_file, int src_line);
@@ -592,6 +593,588 @@ static int dict_global_init(TALLOC_CTX *ctx)
 	return 0;
 }
 
+/** Validate a new attribute definition
+ *
+ * @todo we need to check length of none vendor attributes.
+ *
+ * @param[in] dict		of protocol context we're operating in.
+ *				If NULL the internal dictionary will be used.
+ * @param[in] parent		to add attribute under.
+ * @param[in] name		of the attribute.
+ * @param[in] attr		number.
+ * @param[in] type		of attribute.
+ * @param[in] flags		to set in the attribute.
+ * @return
+ *	- true if attribute definition is valid.
+ *	- false if attribute definition is not valid.
+ */
+static bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
+				   char const *name, int *attr, fr_type_t type, fr_dict_attr_flags_t *flags)
+{
+	size_t			name_len;
+	fr_dict_attr_t const	*v;
+
+	if (!fr_cond_assert(parent)) return NULL;
+
+	name_len = strlen(name);
+	if (name_len >= FR_DICT_ATTR_MAX_NAME_LEN) {
+		fr_strerror_printf("Attribute name too long");
+	error:
+		fr_strerror_printf_push("Definition for '%s' is invalid", name);
+		return false;
+	}
+
+	if (fr_dict_valid_name(name, -1) < 0) return NULL;
+
+	/*
+	 *	type_size is used to limit the maximum attribute number, so it's checked first.
+	 */
+	if (flags->type_size) {
+		if ((type != FR_TYPE_TLV) && (type != FR_TYPE_VENDOR)) {
+			fr_strerror_printf("The 'format=' flag can only be used with attributes of type 'tlv'");
+			goto error;
+		}
+
+		if ((flags->type_size != 1) &&
+		    (flags->type_size != 2) &&
+		    (flags->type_size != 4)) {
+			fr_strerror_printf("The 'format=' flag can only be used with attributes of type size 1,2 or 4");
+			goto error;
+		}
+	}
+
+	/******************** sanity check attribute number ********************/
+
+	if (parent->flags.is_root) {
+		static unsigned int max_attr = UINT8_MAX + 1;
+
+		if (*attr == -1) {
+			if (fr_dict_attr_by_name(dict, name)) return 0; /* exists, don't add it again */
+			*attr = ++max_attr;
+			flags->internal = 1;
+
+		} else if (*attr <= 0) {
+			fr_strerror_printf("ATTRIBUTE number %i is invalid, must be greater than zero", *attr);
+			goto error;
+
+		} else if ((unsigned int) *attr > max_attr) {
+			max_attr = *attr;
+		}
+
+		/*
+		 *	Auto-set internal flags for raddb/dictionary.
+		 *	So that the end user doesn't have to know
+		 *	about internal implementation of the server.
+		 */
+		if ((parent->flags.type_size == 1) &&
+		    (*attr >= 3000) && (*attr < 4000)) {
+			flags->internal = true;
+		}
+	}
+
+	/*
+	 *	Any other negative attribute number is wrong.
+	 */
+	if (*attr < 0) {
+		fr_strerror_printf("ATTRIBUTE number %i is invalid, must be greater than zero", *attr);
+		goto error;
+	}
+
+	/*
+	 *	If attributes have number greater than 255, do sanity checks.
+	 *
+	 *	We assume that the root attribute is of type TLV, with
+	 *	the appropriate flags set for attributes in this
+	 *	space.
+	 */
+	if ((*attr > UINT8_MAX) && !flags->internal &&
+	    !((strncmp("VMPS", name, 4) == 0) || (strncmp("VQP", name, 3) == 0))) {	/* Fixme */
+		for (v = parent; v != NULL; v = v->parent) {
+			if ((v->type == FR_TYPE_TLV) || (v->type == FR_TYPE_VENDOR)) {
+				if ((v->flags.type_size < 4) &&
+				    (*attr >= (1 << (8 * v->flags.type_size)))) {
+					fr_strerror_printf("Attributes must have value between 1..%u",
+							   (1 << (8 * v->flags.type_size)) - 1);
+					goto error;
+				}
+				break;
+			}
+		}
+	}
+
+	/******************** sanity check flags ********************/
+
+	/*
+	 *	virtual attributes are special.
+	 */
+	if (flags->virtual) {
+		if (!parent->flags.is_root) {
+			fr_strerror_printf("The 'virtual' flag can only be used for normal attributes");
+			goto error;
+		}
+
+		if (*attr <= (1 << (8 * parent->flags.type_size))) {
+			fr_strerror_printf("The 'virtual' flag can only be used for non-protocol attributes");
+			goto error;
+		}
+	}
+
+	/*
+	 *	Tags can only be used in a few limited situations.
+	 */
+	if (flags->has_tag) {
+		if ((type != FR_TYPE_UINT32) && (type != FR_TYPE_STRING)) {
+			fr_strerror_printf("The 'has_tag' flag can only be used for attributes of type 'integer' "
+					   "or 'string'");
+			goto error;
+		}
+
+		if (!(parent->flags.is_root ||
+		      ((parent->type == FR_TYPE_VENDOR) &&
+		       (parent->parent && parent->parent->type == FR_TYPE_VSA)))) {
+			fr_strerror_printf("The 'has_tag' flag can only be used with RFC and VSA attributes");
+			goto error;
+		}
+
+		if (flags->array || flags->has_value || flags->concat || flags->virtual || flags->length) {
+			fr_strerror_printf("The 'has_tag' flag cannot be used with any other flag");
+			goto error;
+		}
+
+		if (flags->encrypt && (flags->encrypt != FLAG_ENCRYPT_TUNNEL_PASSWORD)) {
+			fr_strerror_printf("The 'has_tag' flag can only be used with 'encrypt=2'");
+			goto error;
+		}
+	}
+
+	/*
+	 *	'concat' can only be used in a few limited situations.
+	 */
+	if (flags->concat) {
+		if (type != FR_TYPE_OCTETS) {
+			fr_strerror_printf("The 'concat' flag can only be used for attributes of type 'octets'");
+			goto error;
+		}
+
+		if (!parent->flags.is_root) {
+			fr_strerror_printf("The 'concat' flag can only be used with RFC attributes");
+			goto error;
+		}
+
+		if (flags->array || flags->internal || flags->has_value || flags->virtual ||
+		    flags->encrypt || flags->length) {
+			fr_strerror_printf("The 'concat' flag cannot be used any other flag");
+			goto error;
+		}
+	}
+
+	/*
+	 *	'octets[n]' can only be used in a few limited situations.
+	 */
+	if (flags->length) {
+		if (flags->has_value || flags->virtual) {
+			fr_strerror_printf("The 'octets[...]' syntax cannot be used any other flag");
+			goto error;
+		}
+
+		if (flags->length > 253) {
+			fr_strerror_printf("Invalid length %d", flags->length);
+			return NULL;
+		}
+
+		if ((type == FR_TYPE_TLV) || (type == FR_TYPE_VENDOR)) {
+			if ((flags->length != 1) &&
+			    (flags->length != 2) &&
+			    (flags->length != 4)) {
+				fr_strerror_printf("The 'length' flag can only be used with attributes of TLV lengths of 1,2 or 4");
+				goto error;
+			}
+
+		} else if ((type != FR_TYPE_OCTETS) &&
+			   (type != FR_TYPE_STRUCT)) {
+			fr_strerror_printf("The 'length' flag can only be set for attributes of type 'octets' or 'struct'");
+			goto error;
+		}
+
+		if (type == FR_TYPE_STRUCT) {
+			if (flags->type_size != 0) {
+				fr_strerror_printf("Invalid initializer for type_size");
+				goto error;
+			}
+
+			/*
+			 *	Set maximum length for the struct, and
+			 *	initialize the current length to be zero.
+			 */
+			flags->type_size = flags->length;
+			flags->length = 0;
+		}
+	}
+
+	/*
+	 *	DHCP options allow for packing multiple values into one option.
+	 *
+	 *	We allow it for DHCP and FreeDHCP dictionaries.  Not anywhere else.
+	 */
+	if (flags->array) {
+		for (v = parent; v != NULL; v = v->parent) {
+			if (v->type != FR_TYPE_VENDOR) continue;
+
+			if ((v->attr != 34673) && /* freedhcp */
+			    (v->attr != DHCP_MAGIC_VENDOR)) {
+				fr_strerror_printf("The 'array' flag can only be used with DHCP options");
+				goto error;
+			}
+			break;
+		}
+
+		switch (type) {
+		default:
+			fr_strerror_printf("The 'array' flag cannot be used with attributes of type '%s'",
+					   fr_int2str(dict_attr_types, type, "<UNKNOWN>"));
+			goto error;
+
+		case FR_TYPE_IPV4_ADDR:
+		case FR_TYPE_IPV6_ADDR:
+		case FR_TYPE_UINT8:
+		case FR_TYPE_UINT16:
+		case FR_TYPE_UINT32:
+		case FR_TYPE_DATE:
+		case FR_TYPE_STRING:
+		case FR_TYPE_OCTETS:
+			break;
+		}
+
+		if (flags->internal || flags->has_value || flags->encrypt || flags->virtual) {
+			fr_strerror_printf("The 'array' flag cannot be used any other flag");
+			goto error;
+		}
+	}
+
+	/*
+	 *	'has_value' should only be set internally.  If the
+	 *	caller sets it, we still sanity check it.
+	 */
+	if (flags->has_value) {
+		if (type != FR_TYPE_UINT32) {
+			fr_strerror_printf("The 'has_value' flag can only be used with attributes "
+					   "of type 'integer'");
+			goto error;
+		}
+
+		if (flags->encrypt || flags->virtual) {
+			fr_strerror_printf("The 'has_value' flag cannot be used with any other flag");
+			goto error;
+		}
+	}
+
+	if (flags->encrypt) {
+		/*
+		 *	Stupid hacks for MS-CHAP-MPPE-Keys.  The User-Password
+		 *	encryption method has no provisions for encoding the
+		 *	length of the data.  For User-Password, the data is
+		 *	(presumably) all printable non-zero data.  For
+		 *	MS-CHAP-MPPE-Keys, the data is binary crap.  So... we
+		 *	MUST specify a length in the dictionary.
+		 */
+		if ((flags->encrypt == FLAG_ENCRYPT_USER_PASSWORD) && (type != FR_TYPE_STRING)) {
+			if (type != FR_TYPE_OCTETS) {
+				fr_strerror_printf("The 'encrypt=1' flag can only be used with "
+						   "attributes of type 'string'");
+				goto error;
+			}
+
+			if (flags->length == 0) {
+				fr_strerror_printf("The 'encrypt=1' flag MUST be used with an explicit length for "
+						   "'octets' data types");
+				goto error;
+			}
+		}
+
+		if (flags->encrypt > FLAG_ENCRYPT_OTHER) {
+			fr_strerror_printf("The 'encrypt' flag can only be 0..4");
+			goto error;
+		}
+
+		/*
+		 *	The Tunnel-Password encryption method can be used anywhere.
+		 *
+		 *	We forbid User-Password and Ascend-Send-Secret
+		 *	methods in the extended space.
+		 */
+		if ((flags->encrypt != FLAG_ENCRYPT_TUNNEL_PASSWORD) && !flags->internal && !parent->flags.internal) {
+			for (v = parent; v != NULL; v = v->parent) {
+				switch (v->type) {
+				case FR_TYPE_EXTENDED:
+				case FR_TYPE_LONG_EXTENDED:
+				case FR_TYPE_EVS:
+					fr_strerror_printf("The 'encrypt=%d' flag cannot be used with attributes "
+							   "of type '%s'", flags->encrypt,
+							   fr_int2str(dict_attr_types, type, "<UNKNOWN>"));
+					goto error;
+
+				default:
+					break;
+				}
+
+			}
+		}
+
+		switch (type) {
+		case FR_TYPE_TLV:
+			if (flags->internal || parent->flags.internal) break;
+			/* FALL-THROUGH */
+
+		default:
+		encrypt_fail:
+			fr_strerror_printf("The 'encrypt' flag cannot be used with attributes of type '%s'",
+					   fr_int2str(dict_attr_types, type, "<UNKNOWN>"));
+			goto error;
+
+		case FR_TYPE_IPV4_ADDR:
+		case FR_TYPE_UINT32:
+		case FR_TYPE_OCTETS:
+			if (flags->encrypt == FLAG_ENCRYPT_ASCEND_SECRET) goto encrypt_fail;
+
+		case FR_TYPE_STRING:
+			break;
+		}
+	}
+
+	/******************** sanity check data types and parents ********************/
+
+	/*
+	 *	Enforce restrictions on which data types can appear where.
+	 */
+	switch (type) {
+	/*
+	 *	These types may only be parented from the root of the dictionary
+	 */
+	case FR_TYPE_EXTENDED:
+	case FR_TYPE_LONG_EXTENDED:
+//	case FR_TYPE_VSA:
+		if (!parent->flags.is_root) {
+			fr_strerror_printf("Attributes of type '%s' can only be used in the RFC space",
+					   fr_int2str(dict_attr_types, type, "?Unknown?"));
+			goto error;
+		}
+		break;
+
+	/*
+	 *	EVS may only occur under extended and long extended.
+	 */
+	case FR_TYPE_EVS:
+		if ((parent->type != FR_TYPE_EXTENDED) && (parent->type != FR_TYPE_LONG_EXTENDED)) {
+			fr_strerror_printf("Attributes of type 'evs' MUST have a parent of type 'extended', "
+					   "instead of '%s'", fr_int2str(dict_attr_types, parent->type, "?Unknown?"));
+			goto error;
+		}
+		break;
+
+	case FR_TYPE_VENDOR:
+		if ((parent->type != FR_TYPE_VSA) && (parent->type != FR_TYPE_EVS)) {
+			fr_strerror_printf("Attributes of type 'vendor' MUST have a parent of type 'vsa' or "
+					   "'evs', instead of '%s'",
+					   fr_int2str(dict_attr_types, parent->type, "?Unknown?"));
+			goto error;
+		}
+
+		if (parent->type == FR_TYPE_VSA) {
+			fr_dict_vendor_t const *dv;
+
+			dv = fr_dict_vendor_by_num(dict, *attr);
+			if (dv) {
+				flags->type_size = dv->type;
+				flags->length = dv->length;
+			} else {
+				flags->type_size = 1;
+				flags->length = 1;
+			}
+		} else {
+			flags->type_size = 1;
+			flags->length = 1;
+		}
+		break;
+
+	case FR_TYPE_TLV:
+		/*
+		 *	Ensure that type_size and length are set.
+		 */
+		for (v = parent; v != NULL; v = v->parent) {
+			if ((v->type == FR_TYPE_TLV) || (v->type == FR_TYPE_VENDOR)) {
+				break;
+			}
+		}
+
+		/*
+		 *	root is always FR_TYPE_TLV, so we're OK.
+		 */
+		if (!v) {
+			fr_strerror_printf("Attributes of type '%s' require a parent attribute",
+					   fr_int2str(dict_attr_types, type, "?Unknown?"));
+			goto error;
+		}
+
+		/*
+		 *	Over-ride whatever was there before, so we
+		 *	don't have multiple formats of VSAs.
+		 */
+		flags->type_size = v->flags.type_size;
+		flags->length = v->flags.length;
+		break;
+
+	case FR_TYPE_COMBO_IP_ADDR:
+		/*
+		 *	RFC 6929 says that this is a terrible idea.
+		 */
+		for (v = parent; v != NULL; v = v->parent) {
+			if (v->type == FR_TYPE_VSA) {
+				break;
+			}
+		}
+
+		if (!v) {
+			fr_strerror_printf("Attributes of type '%s' can only be used in VSA dictionaries",
+					   fr_int2str(dict_attr_types, type, "?Unknown?"));
+			goto error;
+		}
+		break;
+
+	case FR_TYPE_INVALID:
+	case FR_TYPE_TIMEVAL:
+	case FR_TYPE_FLOAT64:
+	case FR_TYPE_COMBO_IP_PREFIX:
+		fr_strerror_printf("Attributes of type '%s' cannot be used in dictionaries",
+				   fr_int2str(dict_attr_types, type, "?Unknown?"));
+		goto error;
+
+	default:
+		break;
+	}
+
+	/*
+	 *	Force "length" for data types of fixed length;
+	 */
+	switch (type) {
+	case FR_TYPE_UINT8:
+	case FR_TYPE_BOOL:
+		flags->length = 1;
+		break;
+
+	case FR_TYPE_UINT16:
+		flags->length = 2;
+		break;
+
+	case FR_TYPE_DATE:
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_UINT32:
+	case FR_TYPE_INT32:
+		flags->length = 4;
+		break;
+
+	case FR_TYPE_UINT64:
+		flags->length = 8;
+		break;
+
+	case FR_TYPE_SIZE:
+		flags->length = sizeof(size_t);
+		break;
+
+	case FR_TYPE_ETHERNET:
+		flags->length = 6;
+		break;
+
+	case FR_TYPE_IFID:
+		flags->length = 8;
+		break;
+
+	case FR_TYPE_IPV6_ADDR:
+		flags->length = 16;
+		break;
+
+	case FR_TYPE_EXTENDED:
+		if (!parent->flags.is_root || (*attr < 241)) {
+			fr_strerror_printf("Attributes of type 'extended' MUST be "
+					   "RFC attributes with value >= 241.");
+			goto error;
+		}
+		flags->length = 0;
+		break;
+
+	case FR_TYPE_LONG_EXTENDED:
+		if (!parent->flags.is_root || (*attr < 241)) {
+			fr_strerror_printf("Attributes of type 'long-extended' MUST "
+					   "be RFC attributes with value >= 241.");
+			goto error;
+		}
+
+		flags->length = 0;
+		break;
+
+	case FR_TYPE_EVS:
+		if (*attr != FR_VENDOR_SPECIFIC) {
+			fr_strerror_printf("Attributes of type 'evs' MUST have attribute code 26, got %i", *attr);
+			goto error;
+		}
+
+		flags->length = 0;
+		break;
+
+		/*
+		 *	The length is calculated from th children, not
+		 *	input as the flags.
+		 */
+	case FR_TYPE_STRUCT:
+		flags->length = 0;
+		break;
+
+	case FR_TYPE_STRING:
+	case FR_TYPE_OCTETS:
+	case FR_TYPE_TLV:
+		break;
+
+	default:
+		break;
+	}
+
+	/*
+	 *	Validate attribute based on parent.
+	 */
+	if (parent->type == FR_TYPE_STRUCT) {
+		fr_dict_attr_t *mutable;
+
+		/*
+		 *	STRUCTs will have their length filled in later.
+		 */
+		if ((type != FR_TYPE_STRUCT) && (flags->length == 0)) {
+			fr_strerror_printf("Children of 'struct' type attributes MUST have fixed length.");
+			goto error;
+		}
+
+		if ((*attr > 1) && !parent->flags.length) {
+			fr_strerror_printf("Children of 'struct' type attributes MUST start with sub-attribute 1.");
+			goto error;
+		}
+
+		/*
+		 *	Sneak in the length of the children.
+		 */
+		memcpy(&mutable, &parent, sizeof(mutable));
+		mutable->flags.length += flags->length;
+
+		/*
+		 *	The struct has a maximum size.  Complain if we exceed it.
+		 */
+		if (mutable->flags.type_size && (mutable->flags.length > mutable->flags.type_size)) {
+			fr_strerror_printf("Child attribute causes struct to overflow maximum size of %d octets",
+					   mutable->flags.type_size);
+			goto error;
+		}
+	}
+
+	return true;
+}
+
 /** Allocate a dictionary attribute as a pool, and assign a name buffer
  *
  * @param[in] ctx		to allocate attribute in.
@@ -626,28 +1209,24 @@ static fr_dict_attr_t *dict_attr_alloc_name(TALLOC_CTX *ctx, char const *name)
 	return da;
 }
 
-/** Copy a an existing attribute
+/** Initialise fields in a dictionary attribute structure
  *
- * @param[in] ctx		to allocate new attribute in.
- * @param[in] in		attribute to copy.
- * @return
- *	- A copy of the input fr_dict_attr_t on success.
- *	- NULL on failure.
+ * @param[in] da		to initialise.
+ * @param[in] parent		of the attribute, if none, should be
+ *				the dictionary root.
+ * @param[in] attr		number.
+ * @param[in] type		of the attribute.
+ * @param[in] flags		to assign.
  */
-static fr_dict_attr_t *dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in)
+static inline void dict_attr_init(fr_dict_attr_t *da,
+				  fr_dict_attr_t const *parent, int attr,
+				  fr_type_t type, fr_dict_attr_flags_t const *flags)
 {
-	fr_dict_attr_t *n;
-
-	n = dict_attr_alloc_name(ctx, in->name);
-	if (!n) return NULL;
-
-	n->attr = in->attr;
-	n->type = in->type;
-	n->flags = in->flags;
-	n->parent = in->parent;
-	n->depth = in->depth;
-
-	return n;
+	da->attr = attr;
+	da->type = type;
+	da->flags = *flags;
+	da->parent = parent;
+	da->depth = parent ? parent->depth + 1 : 0;
 }
 
 /** Allocate a dictionary attribute on the heap
@@ -669,40 +1248,106 @@ static fr_dict_attr_t *dict_attr_alloc(TALLOC_CTX *ctx,
 				       char const *name, int attr,
 				       fr_type_t type, fr_dict_attr_flags_t const *flags)
 {
-	fr_dict_attr_t	*da;
-	fr_dict_attr_t	new = {
-		.attr	= attr,
-		.type	= type,
-		.flags	= *flags,
-		.parent	= parent,
-		.depth	= parent->depth + 1,
-	};
+	fr_dict_attr_t	*n;
 
 	if (!fr_cond_assert(parent)) return NULL;
 
+	/*
+	 *	Allocate a new attribute
+	 */
 	if (!name) {
-		char	buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1];
-		char	*p = buffer;
-		size_t	len;
+		char		buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1];
+		char		*p = buffer;
+		size_t		len;
+		fr_dict_attr_t	tmp;
+
+		memset(&tmp, 0, sizeof(tmp));
+		dict_attr_init(&tmp, parent, attr, type, flags);
 
 		len = snprintf(p, sizeof(buffer), "Attr-");
 		p += len;
 
-		len = fr_dict_print_attr_oid(p, sizeof(buffer) - (p - buffer), NULL, &new);
+		len = fr_dict_print_attr_oid(p, sizeof(buffer) - (p - buffer), NULL, &tmp);
 		if (is_truncated(len, sizeof(buffer) - (p - buffer))) {
 			fr_strerror_printf("OID string too long for unknown attribute");
 			return NULL;
 		}
 
-		da = dict_attr_alloc_name(ctx, buffer);
+		n = dict_attr_alloc_name(ctx, buffer);
 	} else {
-		da = dict_attr_alloc_name(ctx, name);
+		n = dict_attr_alloc_name(ctx, name);
 	}
 
-	new.name = da->name;
-	memcpy(da, &new, sizeof(*da));
+	dict_attr_init(n, parent, attr, type, flags);
+	VERIFY_DA(n);
 
-	return da;
+	return n;
+}
+
+/** Copy a an existing attribute
+ *
+ * @param[in] ctx		to allocate new attribute in.
+ * @param[in] in		attribute to copy.
+ * @return
+ *	- A copy of the input fr_dict_attr_t on success.
+ *	- NULL on failure.
+ */
+static fr_dict_attr_t *dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in)
+{
+	fr_dict_attr_t *n;
+
+	n = dict_attr_alloc_name(ctx, in->name);
+	if (!n) return NULL;
+
+	dict_attr_init(n, in->parent, in->attr, in->type, &in->flags);
+	VERIFY_DA(n);
+
+	return n;
+}
+
+/** Allocate a special "reference" attribute
+ *
+ * @param[in] dict		of protocol context we're operating in.
+ *				If NULL the internal dictionary will be used.
+ * @param[in] parent		to add attribute under.
+ * @param[in] name		of the attribute.
+ * @param[in] attr		number.
+ * @param[in] type		of attribute.
+ * @param[in] flags		to set in the attribute.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static fr_dict_attr_t *dict_attr_ref_alloc(fr_dict_t *dict, fr_dict_attr_t const *parent,
+					   char const *name, int attr, fr_type_t type,
+					   fr_dict_attr_flags_t const *flags, fr_dict_attr_t const *ref)
+{
+	fr_dict_attr_ref_t *ref_n;
+
+	if (!name) {
+		fr_strerror_printf("No attribute name provided");
+		return NULL;
+	}
+
+#ifdef HAVE_TALLOC_POOLED_OBJECT
+	ref_n = talloc_pooled_object(dict->pool, fr_dict_attr_ref_t, 1, strlen(name) + 1);
+	memset(ref_n, 0, sizeof(*ref_n));
+#else
+	ref_n = talloc_zero(dict->pool, fr_dict_attr_ref_t);
+#endif
+
+	ref_n->tlv.name = talloc_typed_strdup(ref, name);
+	if (!ref_n->tlv.name) {
+		talloc_free(ref_n);
+		fr_strerror_printf("Out of memory");
+		return NULL;
+	}
+
+	dict_attr_init(&ref_n->tlv, parent, attr, type, flags);
+	ref_n->dict = fr_dict_by_da(ref);	/* Cache the dictionary */
+	ref_n->to = ref;
+
+	return (fr_dict_attr_t *)ref_n;
 }
 
 /** Set a new root dictionary attribute
@@ -719,6 +1364,12 @@ static fr_dict_attr_t *dict_attr_alloc(TALLOC_CTX *ctx,
  */
 static int dict_root_set(fr_dict_t *dict, char const *name, unsigned int proto_number)
 {
+	fr_dict_attr_flags_t flags = {
+		.is_root = 1,
+		.type_size = 1,
+		.length = 1
+	};
+
 	if (!fr_cond_assert(!dict->root)) {
 		fr_strerror_printf("Dictionary root already set");
 		return -1;
@@ -727,11 +1378,7 @@ static int dict_root_set(fr_dict_t *dict, char const *name, unsigned int proto_n
 	dict->root = dict_attr_alloc_name(dict, name);
 	if (!dict->root) return -1;
 
-	dict->root->attr = proto_number;
-	dict->root->flags.is_root = 1;
-	dict->root->type = FR_TYPE_TLV;
-	dict->root->flags.type_size = 1;
-	dict->root->flags.length = 1;
+	dict_attr_init(dict->root, NULL, proto_number, FR_TYPE_TLV, &flags);
 	VERIFY_DA(dict->root);
 
 	return 0;
@@ -798,92 +1445,6 @@ static fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	return dict;
 }
 
-/** Add a child to a parent.
- *
- * @param[in] parent	we're adding a child to.
- * @param[in] child	to add to parent.
- * @return
- *	- 0 on success.
- *	- -1 on failure (memory allocation error).
- */
-static inline int dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child)
-{
-	fr_dict_attr_t const * const *bin;
-	fr_dict_attr_t **this;
-
-	/*
-	 *	Setup fields in the child
-	 */
-	child->parent = parent;
-	child->depth = parent->depth + 1;
-
-	VERIFY_DA(child);
-
-	/*
-	 *	We only allocate the pointer array *if* the parent has children.
-	 */
-	if (!parent->children) parent->children = talloc_zero_array(parent, fr_dict_attr_t const *, UINT8_MAX + 1);
-	if (!parent->children) return -1;
-
-	/*
-	 *	Treat the array as a hash of 255 bins, with attributes
-	 *	sorted into bins using num % 255.
-	 *
-	 *	Although the various protocols may define numbers higher than 255:
-	 *
-	 *	RADIUS/DHCPv4     - 1-255
-	 *	Diameter/Internal - 1-4294967295
-	 *	DHCPv6            - 1-65535
-	 *
-	 *	In reality very few will ever use attribute numbers > 500, so for
-	 *	the majority of lookups we get O(1) performance.
-	 *
-	 *	Attributes are inserted into the bin in order of their attribute
-	 *	numbers to allow slightly more efficient lookups.
-	 */
-	bin = &parent->children[child->attr & 0xff];
-	for (;;) {
-		bool child_is_struct = false;
-		bool bin_is_struct = false;
-
-		if (!*bin) break;
-
-		/*
-		 *	Workaround for vendors that overload the RFC space.
-		 *	Structural attributes always take priority.
-		 */
-		switch (child->type) {
-		case FR_TYPE_STRUCTURAL:
-			child_is_struct = true;
-			break;
-
-		default:
-			break;
-		}
-
-		switch ((*bin)->type) {
-		case FR_TYPE_STRUCTURAL:
-			bin_is_struct = true;
-			break;
-
-		default:
-			break;
-		}
-
-		if (child_is_struct && !bin_is_struct) break;
-		else if (fr_dict_vendor_num_by_da(child) <= fr_dict_vendor_num_by_da(*bin)) break;	/* Prioritise RFC attributes */
-		else if (child->attr <= (*bin)->attr) break;
-
-		bin = &(*bin)->next;
-	}
-
-	memcpy(&this, &bin, sizeof(this));
-	child->next = *this;
-	*this = child;
-
-	return 0;
-}
-
 /** (re)initialize a protocol dictionary
  *
  * Initialize the directory, then fix the attr member of all attributes.
@@ -948,7 +1509,7 @@ int fr_dict_from_file(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char co
 			type_name = talloc_typed_asprintf(dict->pool, "Tmp-Cast-%s", p->name);
 
 			n = dict_attr_alloc(dict->pool, dict->root, type_name,
-					       FR_CAST_BASE + p->number, p->number, &flags);
+					    FR_CAST_BASE + p->number, p->number, &flags);
 			if (!n) {
 			error:
 				talloc_free(dict);
@@ -1081,7 +1642,7 @@ int fr_dict_internal_afrom_file(TALLOC_CTX *ctx, fr_dict_t **out, char const *di
 		type_name = talloc_typed_asprintf(dict->pool, "Tmp-Cast-%s", p->name);
 
 		n = dict_attr_alloc(dict->pool, dict->root, type_name,
-				       FR_CAST_BASE + p->number, p->number, &flags);
+				    FR_CAST_BASE + p->number, p->number, &flags);
 		if (!n) goto error;
 
 		if (!fr_hash_table_insert(dict->attributes_by_name, n)) {
@@ -1223,16 +1784,62 @@ int fr_dict_protocol_afrom_file(TALLOC_CTX *ctx, fr_dict_t **out,
 	return 0;
 }
 
+/** Read supplementary attribute definitions into an existing dictionary
+ *
+ * @param[in] dict	Existing dictionary.
+ * @param[in] dir	dictionary is located in.
+ * @param[in] filename	of the dictionary.
+ */
 int fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename)
 {
 	INTERNAL_IF_NULL(dict);
 
 	if (!dict->attributes_by_name) {
-		fr_strerror_printf("%s: Must call fr_dict_from_file() before fr_dict_read()", "Error reading dictionary");
+		fr_strerror_printf("%s: Must call fr_dict_from_file() before fr_dict_read()", __FUNCTION__);
 		return -1;
 	}
 
 	return dict_from_file(dict, dir, filename, NULL, 0);
+}
+
+/** Add a protocol to the global protocol table
+ *
+ * Inserts a protocol into the global protocol table.  Uses the root attributes
+ * of the dictionary for comparisons.
+ *
+ * @param[in] dict of protocol we're inserting.
+ * @return
+ * 	- 0 on success.
+ * 	- -1 on failure.
+ */
+static int dict_protocol_add(fr_dict_t *dict)
+{
+	if (!dict->root) return -1;	/* Should always have root */
+
+	if (!fr_hash_table_insert(protocol_by_name, dict)) {
+		fr_dict_t *old_proto;
+
+		old_proto = fr_hash_table_finddata(protocol_by_name, dict);
+		if (!old_proto) {
+			fr_strerror_printf("%s: Failed inserting protocol name %s", __FUNCTION__, dict->root->name);
+			return -1;
+		}
+
+		if ((strcmp(old_proto->root->name, dict->root->name) == 0) &&
+		    (old_proto->root->name == dict->root->name)) {
+			fr_strerror_printf("%s: Duplicate protocol name %s", __FUNCTION__, dict->root->name);
+			return -1;
+		}
+
+		return 0;
+	}
+
+	if (!fr_hash_table_insert(protocol_by_num, dict)) {
+		fr_strerror_printf("%s: Duplicate protocol number %i", __FUNCTION__, dict->root->attr);
+		return -1;
+	}
+
+	return 0;
 }
 
 /** Add a vendor to the dictionary
@@ -1248,7 +1855,7 @@ int fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename)
  * 	- 0 on success.
  * 	- -1 on failure.
  */
-int fr_dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int num)
+static int dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int num)
 {
 	INTERNAL_IF_NULL(dict);
 	size_t			len;
@@ -1314,49 +1921,93 @@ int fr_dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int num)
 	return 0;
 }
 
-/** Add a protocol to the global protocol table
+/** Add a child to a parent.
  *
- * Inserts a protocol into the global protocol table.  Uses the root attributes
- * of the dictionary for comparisons.
- *
- * @param[in] dict of protocol we're inserting.
+ * @param[in] parent	we're adding a child to.
+ * @param[in] child	to add to parent.
  * @return
- * 	- 0 on success.
- * 	- -1 on failure.
+ *	- 0 on success.
+ *	- -1 on failure (memory allocation error).
  */
-static int dict_protocol_add(fr_dict_t *dict)
+static inline int dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child)
 {
-	if (!dict->root) return -1;	/* Should always have root */
+	fr_dict_attr_t const * const *bin;
+	fr_dict_attr_t **this;
 
-	if (!fr_hash_table_insert(protocol_by_name, dict)) {
-		fr_dict_t *old_proto;
+	/*
+	 *	Setup fields in the child
+	 */
+	child->parent = parent;
+	child->depth = parent->depth + 1;
 
-		old_proto = fr_hash_table_finddata(protocol_by_name, dict);
-		if (!old_proto) {
-			fr_strerror_printf("%s: Failed inserting protocol name %s", __FUNCTION__, dict->root->name);
-			return -1;
+	VERIFY_DA(child);
+
+	/*
+	 *	We only allocate the pointer array *if* the parent has children.
+	 */
+	if (!parent->children) parent->children = talloc_zero_array(parent, fr_dict_attr_t const *, UINT8_MAX + 1);
+	if (!parent->children) return -1;
+
+	/*
+	 *	Treat the array as a hash of 255 bins, with attributes
+	 *	sorted into bins using num % 255.
+	 *
+	 *	Although the various protocols may define numbers higher than 255:
+	 *
+	 *	RADIUS/DHCPv4     - 1-255
+	 *	Diameter/Internal - 1-4294967295
+	 *	DHCPv6            - 1-65535
+	 *
+	 *	In reality very few will ever use attribute numbers > 500, so for
+	 *	the majority of lookups we get O(1) performance.
+	 *
+	 *	Attributes are inserted into the bin in order of their attribute
+	 *	numbers to allow slightly more efficient lookups.
+	 */
+	bin = &parent->children[child->attr & 0xff];
+	for (;;) {
+		bool child_is_struct = false;
+		bool bin_is_struct = false;
+
+		if (!*bin) break;
+
+		/*
+		 *	Workaround for vendors that overload the RFC space.
+		 *	Structural attributes always take priority.
+		 */
+		switch (child->type) {
+		case FR_TYPE_STRUCTURAL:
+			child_is_struct = true;
+			break;
+
+		default:
+			break;
 		}
 
-		if ((strcmp(old_proto->root->name, dict->root->name) == 0) &&
-		    (old_proto->root->name == dict->root->name)) {
-			fr_strerror_printf("%s: Duplicate protocol name %s", __FUNCTION__, dict->root->name);
-			return -1;
+		switch ((*bin)->type) {
+		case FR_TYPE_STRUCTURAL:
+			bin_is_struct = true;
+			break;
+
+		default:
+			break;
 		}
 
-		return 0;
+		if (child_is_struct && !bin_is_struct) break;
+		else if (fr_dict_vendor_num_by_da(child) <= fr_dict_vendor_num_by_da(*bin)) break;	/* Prioritise RFC attributes */
+		else if (child->attr <= (*bin)->attr) break;
+
+		bin = &(*bin)->next;
 	}
 
-	if (!fr_hash_table_insert(protocol_by_num, dict)) {
-		fr_strerror_printf("%s: Duplicate protocol number %i", __FUNCTION__, dict->root->attr);
-		return -1;
-	}
+	memcpy(&this, &bin, sizeof(this));
+	child->next = *this;
+	*this = child;
 
 	return 0;
 }
 
 /** Add an attribute to the name table for the dictionary.
- *
- * @todo we need to check length of none vendor attributes.
  *
  * @param[in] dict		of protocol context we're operating in.
  *				If NULL the internal dictionary will be used.
@@ -1366,589 +2017,15 @@ static int dict_protocol_add(fr_dict_t *dict)
  * @param[in] type		of attribute.
  * @param[in] flags		to set in the attribute.
  * @return
- *	- fr_dict_attr_t on success
- *	- NULL on failure
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-static fr_dict_attr_t *dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t const *parent,
-					     char const *name, int attr, fr_type_t type, fr_dict_attr_flags_t flags)
+static int dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t *da)
 {
-	size_t			namelen;
-	fr_dict_attr_t		*n;
-	fr_dict_attr_t const	*v;
-
-	INTERNAL_IF_NULL(dict);
-
-	VERIFY_DA(parent);
-
-	if (!fr_cond_assert(parent)) return NULL;
-
-	namelen = strlen(name);
-	if (namelen >= FR_DICT_ATTR_MAX_NAME_LEN) {
-		fr_strerror_printf("Attribute name too long");
-	error:
-		fr_strerror_printf_push("fr_dict_attr_add: Failed adding '%s'", name);
-		return NULL;
-	}
-
-	if (fr_dict_valid_name(name, -1) < 0) return NULL;
-
-	/*
-	 *	type_size is used to limit the maximum attribute number, so it's checked first.
-	 */
-	if (flags.type_size) {
-		if ((type != FR_TYPE_TLV) && (type != FR_TYPE_VENDOR)) {
-			fr_strerror_printf("The 'format=' flag can only be used with attributes of type 'tlv'");
-			goto error;
-		}
-
-		if ((flags.type_size != 1) &&
-		    (flags.type_size != 2) &&
-		    (flags.type_size != 4)) {
-			fr_strerror_printf("The 'format=' flag can only be used with attributes of type size 1,2 or 4");
-			goto error;
-		}
-	}
-
-	/******************** sanity check attribute number ********************/
-
-	if (parent->flags.is_root) {
-		static unsigned int max_attr = UINT8_MAX + 1;
-
-		if (attr == -1) {
-			if (fr_dict_attr_by_name(dict, name)) return 0; /* exists, don't add it again */
-			attr = ++max_attr;
-			flags.internal = 1;
-
-		} else if (attr <= 0) {
-			fr_strerror_printf("ATTRIBUTE number %i is invalid, must be greater than zero", attr);
-			goto error;
-
-		} else if ((unsigned int) attr > max_attr) {
-			max_attr = attr;
-		}
-
-		/*
-		 *	Auto-set internal flags for raddb/dictionary.
-		 *	So that the end user doesn't have to know
-		 *	about internal implementation of the server.
-		 */
-		if ((parent->flags.type_size == 1) &&
-		    (attr >= 3000) && (attr < 4000)) {
-			flags.internal = true;
-		}
-	}
-
-	/*
-	 *	Any other negative attribute number is wrong.
-	 */
-	if (attr < 0) {
-		fr_strerror_printf("ATTRIBUTE number %i is invalid, must be greater than zero", attr);
-		goto error;
-	}
-
-	/*
-	 *	If attributes have number greater than 255, do sanity checks.
-	 *
-	 *	We assume that the root attribute is of type TLV, with
-	 *	the appropriate flags set for attributes in this
-	 *	space.
-	 */
-	if ((attr > UINT8_MAX) && !flags.internal &&
-	    !((strncmp("VMPS", name, 4) == 0) || (strncmp("VQP", name, 3) == 0))) {	/* Fixme */
-		for (v = parent; v != NULL; v = v->parent) {
-			if ((v->type == FR_TYPE_TLV) || (v->type == FR_TYPE_VENDOR)) {
-				if ((v->flags.type_size < 4) &&
-				    (attr >= (1 << (8 * v->flags.type_size)))) {
-					fr_strerror_printf("Attributes must have value between 1..%u",
-							   (1 << (8 * v->flags.type_size)) - 1);
-					goto error;
-				}
-				break;
-			}
-		}
-	}
-
-	/******************** sanity check flags ********************/
-
-	/*
-	 *	virtual attributes are special.
-	 */
-	if (flags.virtual) {
-		if (!parent->flags.is_root) {
-			fr_strerror_printf("The 'virtual' flag can only be used for normal attributes");
-			goto error;
-		}
-
-		if (attr <= (1 << (8 * parent->flags.type_size))) {
-			fr_strerror_printf("The 'virtual' flag can only be used for non-protocol attributes");
-			goto error;
-		}
-	}
-
-	/*
-	 *	Tags can only be used in a few limited situations.
-	 */
-	if (flags.has_tag) {
-		if ((type != FR_TYPE_UINT32) && (type != FR_TYPE_STRING)) {
-			fr_strerror_printf("The 'has_tag' flag can only be used for attributes of type 'integer' "
-					   "or 'string'");
-			goto error;
-		}
-
-		if (!(parent->flags.is_root ||
-		      ((parent->type == FR_TYPE_VENDOR) &&
-		       (parent->parent && parent->parent->type == FR_TYPE_VSA)))) {
-			fr_strerror_printf("The 'has_tag' flag can only be used with RFC and VSA attributes");
-			goto error;
-		}
-
-		if (flags.array || flags.has_value || flags.concat || flags.virtual ||
-		    flags.length) {
-			fr_strerror_printf("The 'has_tag' flag cannot be used with any other flag");
-			goto error;
-		}
-
-		if (flags.encrypt && (flags.encrypt != FLAG_ENCRYPT_TUNNEL_PASSWORD)) {
-			fr_strerror_printf("The 'has_tag' flag can only be used with 'encrypt=2'");
-			goto error;
-		}
-	}
-
-	/*
-	 *	'concat' can only be used in a few limited situations.
-	 */
-	if (flags.concat) {
-		if (type != FR_TYPE_OCTETS) {
-			fr_strerror_printf("The 'concat' flag can only be used for attributes of type 'octets'");
-			goto error;
-		}
-
-		if (!parent->flags.is_root) {
-			fr_strerror_printf("The 'concat' flag can only be used with RFC attributes");
-			goto error;
-		}
-
-		if (flags.array || flags.internal || flags.has_value || flags.virtual ||
-		    flags.encrypt || flags.length) {
-			fr_strerror_printf("The 'concat' flag cannot be used any other flag");
-			goto error;
-		}
-	}
-
-	/*
-	 *	'octets[n]' can only be used in a few limited situations.
-	 */
-	if (flags.length) {
-		if (flags.has_value || flags.virtual) {
-			fr_strerror_printf("The 'octets[...]' syntax cannot be used any other flag");
-			goto error;
-		}
-
-		if (flags.length > 253) {
-			fr_strerror_printf("Invalid length %d", flags.length);
-			return NULL;
-		}
-
-		if ((type == FR_TYPE_TLV) || (type == FR_TYPE_VENDOR)) {
-			if ((flags.length != 1) &&
-			    (flags.length != 2) &&
-			    (flags.length != 4)) {
-				fr_strerror_printf("The 'length' flag can only be used with attributes of TLV lengths of 1,2 or 4");
-				goto error;
-			}
-
-		} else if ((type != FR_TYPE_OCTETS) &&
-			   (type != FR_TYPE_STRUCT)) {
-			fr_strerror_printf("The 'length' flag can only be set for attributes of type 'octets' or 'struct'");
-			goto error;
-		}
-
-		if (type == FR_TYPE_STRUCT) {
-			if (flags.type_size != 0) {
-				fr_strerror_printf("Invalid initializer for type_size");
-				goto error;
-			}
-
-			/*
-			 *	Set maximum length for the struct, and
-			 *	initialize the current length to be zero.
-			 */
-			flags.type_size = flags.length;
-			flags.length = 0;
-		}
-	}
-
-	/*
-	 *	DHCP options allow for packing multiple values into one option.
-	 *
-	 *	We allow it for DHCP and FreeDHCP dictionaries.  Not anywhere else.
-	 */
-	if (flags.array) {
-		for (v = parent; v != NULL; v = v->parent) {
-			if (v->type != FR_TYPE_VENDOR) continue;
-
-			if ((v->attr != 34673) && /* freedhcp */
-			    (v->attr != DHCP_MAGIC_VENDOR)) {
-				fr_strerror_printf("The 'array' flag can only be used with DHCP options");
-				goto error;
-			}
-			break;
-		}
-
-		switch (type) {
-		default:
-			fr_strerror_printf("The 'array' flag cannot be used with attributes of type '%s'",
-					   fr_int2str(dict_attr_types, type, "<UNKNOWN>"));
-			goto error;
-
-		case FR_TYPE_IPV4_ADDR:
-		case FR_TYPE_IPV6_ADDR:
-		case FR_TYPE_UINT8:
-		case FR_TYPE_UINT16:
-		case FR_TYPE_UINT32:
-		case FR_TYPE_DATE:
-		case FR_TYPE_STRING:
-		case FR_TYPE_OCTETS:
-			break;
-		}
-
-		if (flags.internal || flags.has_value || flags.encrypt || flags.virtual) {
-			fr_strerror_printf("The 'array' flag cannot be used any other flag");
-			goto error;
-		}
-	}
-
-	/*
-	 *	'has_value' should only be set internally.  If the
-	 *	caller sets it, we still sanity check it.
-	 */
-	if (flags.has_value) {
-		if (type != FR_TYPE_UINT32) {
-			fr_strerror_printf("The 'has_value' flag can only be used with attributes "
-					   "of type 'integer'");
-			goto error;
-		}
-
-		if (flags.encrypt || flags.virtual) {
-			fr_strerror_printf("The 'has_value' flag cannot be used with any other flag");
-			goto error;
-		}
-	}
-
-	if (flags.encrypt) {
-		/*
-		 *	Stupid hacks for MS-CHAP-MPPE-Keys.  The User-Password
-		 *	encryption method has no provisions for encoding the
-		 *	length of the data.  For User-Password, the data is
-		 *	(presumably) all printable non-zero data.  For
-		 *	MS-CHAP-MPPE-Keys, the data is binary crap.  So... we
-		 *	MUST specify a length in the dictionary.
-		 */
-		if ((flags.encrypt == FLAG_ENCRYPT_USER_PASSWORD) && (type != FR_TYPE_STRING)) {
-			if (type != FR_TYPE_OCTETS) {
-				fr_strerror_printf("The 'encrypt=1' flag can only be used with "
-						   "attributes of type 'string'");
-				goto error;
-			}
-
-			if (flags.length == 0) {
-				fr_strerror_printf("The 'encrypt=1' flag MUST be used with an explicit length for "
-						   "'octets' data types");
-				goto error;
-			}
-		}
-
-		if (flags.encrypt > FLAG_ENCRYPT_OTHER) {
-			fr_strerror_printf("The 'encrypt' flag can only be 0..4");
-			goto error;
-		}
-
-		/*
-		 *	The Tunnel-Password encryption method can be used anywhere.
-		 *
-		 *	We forbid User-Password and Ascend-Send-Secret
-		 *	methods in the extended space.
-		 */
-		if ((flags.encrypt != FLAG_ENCRYPT_TUNNEL_PASSWORD) && !flags.internal && !parent->flags.internal) {
-			for (v = parent; v != NULL; v = v->parent) {
-				switch (v->type) {
-				case FR_TYPE_EXTENDED:
-				case FR_TYPE_LONG_EXTENDED:
-				case FR_TYPE_EVS:
-					fr_strerror_printf("The 'encrypt=%d' flag cannot be used with attributes "
-							   "of type '%s'", flags.encrypt,
-							   fr_int2str(dict_attr_types, type, "<UNKNOWN>"));
-					goto error;
-
-				default:
-					break;
-				}
-
-			}
-		}
-
-		switch (type) {
-		case FR_TYPE_TLV:
-			if (flags.internal || parent->flags.internal) break;
-			/* FALL-THROUGH */
-
-		default:
-		encrypt_fail:
-			fr_strerror_printf("The 'encrypt' flag cannot be used with attributes of type '%s'",
-					   fr_int2str(dict_attr_types, type, "<UNKNOWN>"));
-			goto error;
-
-		case FR_TYPE_IPV4_ADDR:
-		case FR_TYPE_UINT32:
-		case FR_TYPE_OCTETS:
-			if (flags.encrypt == FLAG_ENCRYPT_ASCEND_SECRET) goto encrypt_fail;
-
-		case FR_TYPE_STRING:
-			break;
-		}
-	}
-
-	/******************** sanity check data types and parents ********************/
-
-	/*
-	 *	Enforce restrictions on which data types can appear where.
-	 */
-	switch (type) {
-	/*
-	 *	These types may only be parented from the root of the dictionary
-	 */
-	case FR_TYPE_EXTENDED:
-	case FR_TYPE_LONG_EXTENDED:
-//	case FR_TYPE_VSA:
-		if (!parent->flags.is_root) {
-			fr_strerror_printf("Attributes of type '%s' can only be used in the RFC space",
-					   fr_int2str(dict_attr_types, type, "?Unknown?"));
-			goto error;
-		}
-		break;
-
-	/*
-	 *	EVS may only occur under extended and long extended.
-	 */
-	case FR_TYPE_EVS:
-		if ((parent->type != FR_TYPE_EXTENDED) && (parent->type != FR_TYPE_LONG_EXTENDED)) {
-			fr_strerror_printf("Attributes of type 'evs' MUST have a parent of type 'extended', "
-					   "instead of '%s'", fr_int2str(dict_attr_types, parent->type, "?Unknown?"));
-			goto error;
-		}
-		break;
-
-	case FR_TYPE_VENDOR:
-		if ((parent->type != FR_TYPE_VSA) && (parent->type != FR_TYPE_EVS)) {
-			fr_strerror_printf("Attributes of type 'vendor' MUST have a parent of type 'vsa' or "
-					   "'evs', instead of '%s'",
-					   fr_int2str(dict_attr_types, parent->type, "?Unknown?"));
-			goto error;
-		}
-
-		if (parent->type == FR_TYPE_VSA) {
-			fr_dict_vendor_t const *dv;
-
-			dv = fr_dict_vendor_by_num(dict, attr);
-			if (dv) {
-				flags.type_size = dv->type;
-				flags.length = dv->length;
-			} else {
-				flags.type_size = 1;
-				flags.length = 1;
-			}
-		} else {
-			flags.type_size = 1;
-			flags.length = 1;
-		}
-		break;
-
-	case FR_TYPE_TLV:
-		/*
-		 *	Ensure that type_size and length are set.
-		 */
-		for (v = parent; v != NULL; v = v->parent) {
-			if ((v->type == FR_TYPE_TLV) || (v->type == FR_TYPE_VENDOR)) {
-				break;
-			}
-		}
-
-		/*
-		 *	root is always FR_TYPE_TLV, so we're OK.
-		 */
-		if (!v) {
-			fr_strerror_printf("Attributes of type '%s' require a parent attribute",
-					   fr_int2str(dict_attr_types, type, "?Unknown?"));
-			goto error;
-		}
-
-		/*
-		 *	Over-ride whatever was there before, so we
-		 *	don't have multiple formats of VSAs.
-		 */
-		flags.type_size = v->flags.type_size;
-		flags.length = v->flags.length;
-		break;
-
-	case FR_TYPE_COMBO_IP_ADDR:
-		/*
-		 *	RFC 6929 says that this is a terrible idea.
-		 */
-		for (v = parent; v != NULL; v = v->parent) {
-			if (v->type == FR_TYPE_VSA) {
-				break;
-			}
-		}
-
-		if (!v) {
-			fr_strerror_printf("Attributes of type '%s' can only be used in VSA dictionaries",
-					   fr_int2str(dict_attr_types, type, "?Unknown?"));
-			goto error;
-		}
-		break;
-
-	case FR_TYPE_INVALID:
-	case FR_TYPE_TIMEVAL:
-	case FR_TYPE_FLOAT64:
-	case FR_TYPE_COMBO_IP_PREFIX:
-		fr_strerror_printf("Attributes of type '%s' cannot be used in dictionaries",
-				   fr_int2str(dict_attr_types, type, "?Unknown?"));
-		goto error;
-
-	default:
-		break;
-	}
-
-	/*
-	 *	Force "length" for data types of fixed length;
-	 */
-	switch (type) {
-	case FR_TYPE_UINT8:
-	case FR_TYPE_BOOL:
-		flags.length = 1;
-		break;
-
-	case FR_TYPE_UINT16:
-		flags.length = 2;
-		break;
-
-	case FR_TYPE_DATE:
-	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_UINT32:
-	case FR_TYPE_INT32:
-		flags.length = 4;
-		break;
-
-	case FR_TYPE_UINT64:
-		flags.length = 8;
-		break;
-
-	case FR_TYPE_SIZE:
-		flags.length = sizeof(size_t);
-		break;
-
-	case FR_TYPE_ETHERNET:
-		flags.length = 6;
-		break;
-
-	case FR_TYPE_IFID:
-		flags.length = 8;
-		break;
-
-	case FR_TYPE_IPV6_ADDR:
-		flags.length = 16;
-		break;
-
-	case FR_TYPE_EXTENDED:
-		if (!parent->flags.is_root || (attr < 241)) {
-			fr_strerror_printf("Attributes of type 'extended' MUST be "
-					   "RFC attributes with value >= 241.");
-			goto error;
-		}
-		flags.length = 0;
-		break;
-
-	case FR_TYPE_LONG_EXTENDED:
-		if (!parent->flags.is_root || (attr < 241)) {
-			fr_strerror_printf("Attributes of type 'long-extended' MUST "
-					   "be RFC attributes with value >= 241.");
-			goto error;
-		}
-
-		flags.length = 0;
-		break;
-
-	case FR_TYPE_EVS:
-		if (attr != FR_VENDOR_SPECIFIC) {
-			fr_strerror_printf("Attributes of type 'evs' MUST have attribute code 26, got %i", attr);
-			goto error;
-		}
-
-		flags.length = 0;
-		break;
-
-		/*
-		 *	The length is calculated from th children, not
-		 *	input as the flags.
-		 */
-	case FR_TYPE_STRUCT:
-		flags.length = 0;
-		break;
-
-	case FR_TYPE_STRING:
-	case FR_TYPE_OCTETS:
-	case FR_TYPE_TLV:
-		break;
-
-	default:
-		break;
-	}
-
-	/*
-	 *	Validate attribute based on parent.
-	 */
-	if (parent->type == FR_TYPE_STRUCT) {
-		fr_dict_attr_t *mutable;
-
-		/*
-		 *	STRUCTs will have their length filled in later.
-		 */
-		if ((type != FR_TYPE_STRUCT) && (flags.length == 0)) {
-			fr_strerror_printf("Children of 'struct' type attributes MUST have fixed length.");
-			goto error;
-		}
-
-		if ((attr > 1) && !parent->flags.length) {
-			fr_strerror_printf("Children of 'struct' type attributes MUST start with sub-attribute 1.");
-			goto error;
-		}
-
-		/*
-		 *	Sneak in the length of the children.
-		 */
-		memcpy(&mutable, &parent, sizeof(mutable));
-		mutable->flags.length += flags.length;
-
-		/*
-		 *	The struct has a maximum size.  Complain if we exceed it.
-		 */
-		if (mutable->flags.type_size && (mutable->flags.length > mutable->flags.type_size)) {
-			fr_strerror_printf("Child attribute causes struct to overflow maximum size of %d octets",
-					   mutable->flags.type_size);
-			goto error;
-		}
-	}
-
-	n = dict_attr_alloc(dict->pool, parent, name, attr, type, &flags);
-	if (!n) {
-		fr_strerror_printf("Out of memory");
-		goto error;
-	}
-
 	/*
 	 *	Insert the attribute, only if it's not a duplicate.
 	 */
-	if (!fr_hash_table_insert(dict->attributes_by_name, n)) {
+	if (!fr_hash_table_insert(dict->attributes_by_name, da)) {
 		fr_dict_attr_t *a;
 
 		/*
@@ -1956,12 +2033,12 @@ static fr_dict_attr_t *dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t con
 		 *	error out.  We don't allow duplicate attribute
 		 *	definitions.
 		 */
-		a = fr_hash_table_finddata(dict->attributes_by_name, n);
-		if (a && (strcasecmp(a->name, n->name) == 0)) {
-			if ((a->attr != n->attr) || (a->parent != n->parent)) {
+		a = fr_hash_table_finddata(dict->attributes_by_name, da);
+		if (a && (strcasecmp(a->name, da->name) == 0)) {
+			if ((a->attr != da->attr) || (a->parent != da->parent)) {
 				fr_strerror_printf("Duplicate attribute name");
-				talloc_free(n);
-				goto error;
+			error:
+				return -1;
 			}
 		}
 
@@ -1973,31 +2050,32 @@ static fr_dict_attr_t *dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t con
 		 *	dictionary but entry in the name hash table is
 		 *	updated to point to the new definition.
 		 */
-		if (!fr_hash_table_replace(dict->attributes_by_name, n)) {
+		if (!fr_hash_table_replace(dict->attributes_by_name, da)) {
 			fr_strerror_printf("Internal error storing attribute");
-			talloc_free(n);
 			goto error;
 		}
 	}
 
 	/*
-	 *	Hacks for combo-IP
+	 *	Insert copies of the attribute into the
+	 *	polymorphic attribute table.
+	 *
+	 *	This allows an abstract attribute type
+	 *	like combo IP to be resolved to a
+	 *	concrete one later.
 	 */
-	if (n->type == FR_TYPE_COMBO_IP_ADDR) {
+	switch (da->type) {
+	case FR_TYPE_COMBO_IP_ADDR:
+	{
 		fr_dict_attr_t *v4, *v6;
 
-		v4 = dict_attr_acopy(dict->pool, n);
-		if (!v4) {
-			talloc_free(n);
-			goto error;
-		}
-
-		v6 = dict_attr_acopy(dict->pool, n);
-		if (!v6) {
-			talloc_free(n);
-			goto error;
-		}
+		v4 = dict_attr_acopy(dict->pool, da);
+		if (!v4) goto error;
 		v4->type = FR_TYPE_IPV4_ADDR;
+
+		v6 = dict_attr_acopy(dict->pool, da);
+		if (!v6) goto error;
+		v6->type = FR_TYPE_IPV6_ADDR;
 
 		if (!fr_hash_table_replace(dict->attributes_combo, v4)) {
 			fr_strerror_printf("Failed inserting IPv4 version of combo attribute");
@@ -2010,12 +2088,108 @@ static fr_dict_attr_t *dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t con
 		}
 	}
 
-	return n;
+	case FR_TYPE_COMBO_IP_PREFIX:
+	{
+		fr_dict_attr_t *v4, *v6;
+
+		v4 = dict_attr_acopy(dict->pool, da);
+		if (!v4) goto error;
+		v4->type = FR_TYPE_IPV4_PREFIX;
+
+		v6 = dict_attr_acopy(dict->pool, da);
+		if (!v6) goto error;
+		v6->type = FR_TYPE_IPV6_PREFIX;
+
+		if (!fr_hash_table_replace(dict->attributes_combo, v4)) {
+			fr_strerror_printf("Failed inserting IPv4 version of combo attribute");
+			goto error;
+		}
+
+		if (!fr_hash_table_replace(dict->attributes_combo, v6)) {
+			fr_strerror_printf("Failed inserting IPv6 version of combo attribute");
+			goto error;
+		}
+	}
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+
+/** Add an reference to the dictionary
+ *
+ * @param[in] dict		of protocol context we're operating in.
+ *				If NULL the internal dictionary will be used.
+ * @param[in] parent		to add attribute under.
+ * @param[in] name		of the attribute.
+ * @param[in] attr		number.
+ * @param[in] type		of attribute.
+ * @param[in] flags		to set in the attribute.
+ * @param[in] ref		The attribute we're referencing.  May be in a foreign
+ *				dictionary.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int dict_attr_ref_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
+			     char const *name, int attr, fr_type_t type, fr_dict_attr_flags_t const *flags,
+			     fr_dict_attr_t const *ref)
+{
+	fr_dict_attr_t		*n;
+	fr_dict_attr_t		*mutable;
+	fr_dict_attr_flags_t	our_flags = *flags;
+
+	/*
+	 *	Check it's valid
+	 */
+	if (!dict_attr_fields_valid(dict, parent, name, &attr, type, &our_flags)) return -1;
+
+	/*
+	 *	Check we're not creating a direct loop
+	 */
+	if (ref->flags.is_reference) {
+		fr_dict_attr_ref_t const *to_ref = talloc_get_type_abort_const(ref, fr_dict_attr_ref_t);
+
+		if (to_ref->to == ref) {
+			fr_strerror_printf("Circular reference between \"%s\" and \"%s\"", name, ref->name);
+			return -1;
+		}
+	}
+
+	/*
+	 *	Check the referenced attribute is a root
+	 *	or a TLV attribute.
+	 */
+	if (!ref->flags.is_root && (ref->type != FR_TYPE_TLV)) {
+		fr_strerror_printf("Referenced attribute \"%s\" is not a TLV", ref->name);
+		return -1;
+	}
+
+	n = dict_attr_ref_alloc(dict->pool, parent, name, attr, type, &our_flags, ref);
+	if (!n) return -1;
+
+	if (dict_attr_add_by_name(dict, n) < 0) {
+	error:
+		talloc_free(n);
+		return -1;
+	}
+
+	/*
+	 *	Setup parenting for the attribute
+	 */
+	memcpy(&mutable, &parent, sizeof(mutable));
+
+	/*
+	 *	Add in by number
+	 */
+	if (dict_attr_child_add(mutable, n) < 0) goto error;
+
+	return 0;
 }
 
 /** Add an attribute to the dictionary
- *
- * @todo we need to check length of none vendor attributes.
  *
  * @param[in] dict		of protocol context we're operating in.
  *				If NULL the internal dictionary will be used.
@@ -2029,20 +2203,35 @@ static fr_dict_attr_t *dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t con
  *	- -1 on failure.
  */
 int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
-		     char const *name, int attr, fr_type_t type, fr_dict_attr_flags_t flags)
+		     char const *name, int attr, fr_type_t type, fr_dict_attr_flags_t const *flags)
 {
-	fr_dict_attr_t *n;
-	fr_dict_attr_t *mutable;
+	fr_dict_attr_t		*n;
+	fr_dict_attr_t		*mutable;
+	fr_dict_attr_flags_t	our_flags = *flags;
 
-	n = dict_attr_add_by_name(dict, parent, name, attr, type, flags);
+	/*
+	 *	Check it's valid
+	 */
+	if (!dict_attr_fields_valid(dict, parent, name, &attr, type, &our_flags)) return -1;
+
+	n = dict_attr_alloc(dict->pool, parent, name, attr, type, &our_flags);
 	if (!n) return -1;
+
+	if (dict_attr_add_by_name(dict, n) < 0) {
+	error:
+		talloc_free(n);
+		return -1;
+	}
 
 	/*
 	 *	Setup parenting for the attribute
 	 */
 	memcpy(&mutable, &parent, sizeof(mutable));
 
-	if (dict_attr_child_add(mutable, n) < 0) return -1;
+	/*
+	 *	Add in by number
+	 */
+	if (dict_attr_child_add(mutable, n) < 0) goto error;
 
 	return 0;
 }
@@ -2281,6 +2470,85 @@ typedef struct {
 	fr_dict_attr_t const	*parent;		//!< Current parent attribute (root/vendor/tlv).
 } dict_from_file_ctx_t;
 
+/** Lookup a dictionary reference
+ *
+ * Format is [<proto>].[<attr>]
+ *
+ * If protocol is omitted lookup is in the current dictionary.
+ *
+ * FIXME: Probably needs the dictionary equivalent of pass2, to fixup circular dependencies
+ *	DHCPv4->RADIUS and RADIUS->DHCPv4 are both valid.
+ *
+ * @param[in] dict	The current dictionary we're parsing.
+ * @param[in,out] ref	The reference string.  Pointer advanced to the end of the string.
+ * @return
+ *	- NULL if the reference is invalid.
+ *	- A local or foreign attribute representing the target of the reference.
+ */
+static fr_dict_attr_t const *dict_resolve_reference(fr_dict_t *dict, char const *ref)
+{
+	char const		*p = ref, *q, *end = p + strlen(ref);
+	fr_dict_t		*proto_dict;
+	fr_dict_attr_t const	*da;
+
+	/*
+	 *	If the reference does not begin with .
+	 *	then it's a reference into a foreign
+	 *	protocol.
+	 */
+	if (*p != '.') {
+		char buffer[FR_DICT_PROTO_MAX_NAME_LEN + 1];
+
+		q = strchr(p, '.');
+		if (!q) q = end;
+
+		if ((size_t)(q - p) > sizeof(buffer)) {
+			fr_strerror_printf("Protocol name too long");
+			return NULL;
+		}
+
+		strlcpy(buffer, p, (q - p + 1));
+		p = q;
+
+		dict = fr_dict_by_protocol_name(buffer);
+		if (!dict) {
+			fr_strerror_printf("Referenced protocol \"%s\" not found", buffer);
+			return NULL;
+		}
+
+		return NULL;
+	/*
+	 *	If the reference string begins with .
+	 *	then the reference is in the current
+	 *	dictionary.
+	 */
+	} else {
+		proto_dict = dict;
+	}
+
+	/*
+	 *	If there's a '.' after the dictionary, then
+	 *	the reference is to a specific attribute.
+	 */
+	if (*p == '.') {
+		p++;
+
+		da = fr_dict_attr_by_name_substr(proto_dict, &p);
+		if (!da) {
+			fr_strerror_printf("Referenced attribute \"%s\" not found", p);
+			return NULL;
+		}
+	}
+
+	da = fr_dict_root(proto_dict);
+	if (!da) {
+		fr_strerror_printf("Dictionary missing attribute root");
+		return NULL;
+	}
+
+	return da;
+}
+
 /*
  *	Process the ATTRIBUTE command
  */
@@ -2296,6 +2564,7 @@ static int dict_read_process_attribute(fr_dict_t *dict, fr_dict_attr_t const *pa
 	int			type;
 	unsigned int		length;
 	fr_dict_attr_flags_t	flags;
+	fr_dict_attr_t const	*ref = NULL;
 	char			*p;
 
 	if ((argc < 3) || (argc > 4)) {
@@ -2335,9 +2604,7 @@ static int dict_read_process_attribute(fr_dict_t *dict, fr_dict_attr_t const *pa
 		oid = true;
 
 		slen = fr_dict_attr_by_oid(dict, &parent, &attr, argv[1]);
-		if (slen <= 0) {
-			return -1;
-		}
+		if (slen <= 0) return -1;
 
 		if (!fr_cond_assert(parent)) return -1;	/* Should have provided us with a parent */
 	}
@@ -2366,7 +2633,7 @@ static int dict_read_process_attribute(fr_dict_t *dict, fr_dict_attr_t const *pa
 			return -1;
 		}
 
-		*q = 0;
+		*q = '\0';
 
 		if (!dict_read_sscanf_i(&length, p + 1)) {
 			fr_strerror_printf("Invalid length for '%s[...]'", argv[2]);
@@ -2385,53 +2652,83 @@ static int dict_read_process_attribute(fr_dict_t *dict, fr_dict_attr_t const *pa
 	 *	Parse options.
 	 */
 	if (argc >= 4) {
-		char *key, *next, *last;
+		char *q, *v;
 
-		key = argv[3];
+		p = argv[3];
 		do {
-			next = strchr(key, ',');
-			if (next) *(next++) = '\0';
+			char key[64], value[256];
+
+			q = strchr(p, ',');
+			if (!q) q = p + strlen(p);
+
+			/*
+			 *	Nothing after the trailing comma
+			 */
+			if (p == q) break;
+
+			if ((size_t)(q - p) > sizeof(key)) {
+				fr_strerror_printf("ATTRIBUTE option key too long");
+				return -1;
+			}
+
+			/*
+			 *	Copy key and value
+			 */
+			if (!(v = memchr(p, '=', q - p)) || (v == q)) {
+				value[0] = '\0';
+				strlcpy(key, p, (q - p) + 1);
+			} else {
+				strlcpy(key, p, (v - p) + 1);
+				strlcpy(value, v + 1, q - v);
+			}
 
 			/*
 			 *	Boolean flag, means this is a tagged
 			 *	attribute.
 			 */
-			if ((strcmp(key, "has_tag") == 0) || (strcmp(key, "has_tag=1") == 0)) {
+			if (strcmp(key, "has_tag") == 0) {
 				flags.has_tag = 1;
 
 			/*
 			 *	Encryption method.
 			 */
-			} else if (strncmp(key, "encrypt=", 8) == 0) {
-				flags.encrypt = strtol(key + 8, &last, 0);
-				if (*last) {
-					fr_strerror_printf("Invalid option %s", key);
+			} else if (strcmp(key, "encrypt") == 0) {
+				char *qq;
+
+				flags.encrypt = strtol(value, &qq, 0);
+				if (*qq) {
+					fr_strerror_printf("Invalid encrypt value \"%s\"", value);
 					return -1;
 				}
 
-				/*
-				 *	Marks the attribute up as internal.
-				 *	This means it can use numbers outside of the allowed
-				 *	protocol range, and also means it will not be included
-				 *	in replies or proxy requests.
-				 */
-			} else if (strncmp(key, "internal", 9) == 0) {
+			/*
+			 *	Marks the attribute up as internal.
+			 *	This means it can use numbers outside of the allowed
+			 *	protocol range, and also means it will not be included
+			 *	in replies or proxy requests.
+			 */
+			} else if (strcmp(key, "internal") == 0) {
 				flags.internal = 1;
 
-			} else if (strncmp(key, "array", 6) == 0) {
+			} else if (strcmp(key, "array") == 0) {
 				flags.array = 1;
 
-			} else if (strncmp(key, "concat", 7) == 0) {
+			} else if (strcmp(key, "concat") == 0) {
 				flags.concat = 1;
 
-			} else if (strncmp(key, "virtual", 8) == 0) {
+			} else if (strcmp(key, "virtual") == 0) {
 				flags.virtual = 1;
 
+			} else if (strcmp(key, "reference") == 0) {
+				ref = dict_resolve_reference(dict, value);
+				if (!ref) return -1;
+				flags.is_reference = 1;
+
 			/*
-			 *	The only thing is the vendor name,
-			 *	and it's a known name: allow it.
+			 *	The only thing is the vendor name, and it's a known name:
+			 *	allow it.
 			 */
-			} else if ((key == argv[3]) && !next) {
+			} else if ((argv[3] == p) && (*q == '\0')) {
 				if (oid) {
 					fr_strerror_printf("ATTRIBUTE cannot use a 'vendor' flag");
 					return -1;
@@ -2451,10 +2748,8 @@ static int dict_read_process_attribute(fr_dict_t *dict, fr_dict_attr_t const *pa
 				fr_strerror_printf("Unknown option '%s'", key);
 				return -1;
 			}
-
-			key = next;
-			if (key && !*key) break;
-		} while (key);
+			p = q;
+		} while (*p++);
 	}
 
 #ifdef WITH_DICTIONARY_WARNINGS
@@ -2470,9 +2765,16 @@ static int dict_read_process_attribute(fr_dict_t *dict, fr_dict_attr_t const *pa
 #endif
 
 	/*
-	 *	Add it in.
+	 *	Add in a normal attribute
 	 */
-	if (fr_dict_attr_add(dict, parent, argv[0], attr, type, flags) < 0) return -1;
+	if (!ref) {
+		if (fr_dict_attr_add(dict, parent, argv[0], attr, type, &flags) < 0) return -1;
+	/*
+	 *	Add in a special reference attribute
+	 */
+	} else {
+		if (dict_attr_ref_add(dict, parent, argv[0], attr, type, &flags, ref) < 0) return -1;
+	}
 
 	return 0;
 }
@@ -2482,7 +2784,7 @@ static int dict_read_process_attribute(fr_dict_t *dict, fr_dict_attr_t const *pa
  */
 static int dict_read_process_named_attribute(fr_dict_t *dict, fr_dict_attr_t const *parent,
 					     char **argv, int argc,
-					     fr_dict_attr_flags_t *base_flags)
+					     fr_dict_attr_flags_t const *base_flags)
 {
 	int type;
 	unsigned int attr;
@@ -2516,9 +2818,7 @@ static int dict_read_process_named_attribute(fr_dict_t *dict, fr_dict_attr_t con
 	/*
 	 *	Add it in.
 	 */
-	if (fr_dict_attr_add(dict, parent, argv[0], attr, type, *base_flags) < 0) {
-		return -1;
-	}
+	if (fr_dict_attr_add(dict, parent, argv[0], attr, type, base_flags) < 0) return -1;
 
 	return 0;
 }
@@ -2781,17 +3081,13 @@ static int dict_read_process_vendor(fr_dict_t *dict, char **argv, int argc)
 	}
 
 	/* Create a new VENDOR entry for the list */
-	if (fr_dict_vendor_add(dict, argv[0], value) < 0) {
-		return -1;
-	}
+	if (dict_vendor_add(dict, argv[0], value) < 0) return -1;
 
 	/*
 	 *	Look for a format statement.  Allow it to over-ride the hard-coded formats below.
 	 */
 	if (argc == 3) {
-		if (dict_read_parse_format(argv[2], &value, &type, &length, &continuation) < 0) {
-			return -1;
-		}
+		if (dict_read_parse_format(argv[2], &value, &type, &length, &continuation) < 0) return -1;
 
 	} else if (value == VENDORPEC_USR) { /* catch dictionary screw-ups */
 		type = 4;
@@ -3479,7 +3775,7 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 	if (old->type == FR_TYPE_VENDOR) {
 		fr_dict_attr_t *mutable, *n;
 
-		if (fr_dict_vendor_add(dict, old->name, old->attr) < 0) return NULL;
+		if (dict_vendor_add(dict, old->name, old->attr) < 0) return NULL;
 
 		n = dict_attr_alloc(dict->pool, parent, old->name, old->attr, old->type, &flags);
 
@@ -3499,19 +3795,29 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 	 */
 	da = fr_dict_attr_child_by_num(parent, old->attr);
 	if (da) {
+		fr_dict_attr_t *n;
+
+		n = dict_attr_alloc(dict->pool, parent, old->name, old->attr, old->type, &flags);
+		if (!n) return NULL;
+
 		/*
 		 *	Add the unknown by NAME.  e.g. if the admin does "Attr-26", we want
 		 *	to return "Attr-26", and NOT "Vendor-Specific".  The rest of the server
 		 *	is responsible for converting "Attr-26 = 0x..." to an actual attribute,
 		 *	if it so desires.
 		 */
-		return dict_attr_add_by_name(dict, parent, old->name, old->attr, old->type, flags);
+		if (dict_attr_add_by_name(dict, n) < 0) {
+			talloc_free(n);
+			return NULL;
+		}
+
+		return n;
 	}
 
 	/*
 	 *	Add the attribute by both name and number.
 	 */
-	if (fr_dict_attr_add(dict, parent, old->name, old->attr, old->type, flags) < 0) return NULL;
+	if (fr_dict_attr_add(dict, parent, old->name, old->attr, old->type, &flags) < 0) return NULL;
 
 	/*
 	 *	For paranoia, return it by name.
@@ -4891,7 +5197,7 @@ ssize_t fr_dict_valid_name(char const *name, ssize_t len)
 	end = p + len;
 
 	do {
-		if (!fr_dict_attr_allowed_chars[*p]) {
+		if (!fr_dict_attr_allowed_chars[(int)*p]) {
 			char buff[5];
 
 			fr_snprint(buff, sizeof(buff), (char const *)p, 1, '\'');

@@ -213,8 +213,11 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 {
 	rlm_test_t *inst = instance;
 
-	paircompare_register_byname("test-Paircmp", fr_dict_attr_by_num(NULL, 0, FR_USER_NAME), false,
-				    rlm_test_cmp, inst);
+	if (paircompare_register_byname("test-Paircmp", fr_dict_attr_by_num(NULL, 0, FR_USER_NAME), false,
+					rlm_test_cmp, inst) < 0) {
+		PERROR("Failed registering \"test-Paircmp\"");
+		return -1;
+	}
 
 	/*
 	 *	Log some messages

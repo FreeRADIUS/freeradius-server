@@ -1456,7 +1456,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 		memset(&flags, 0, sizeof(flags));
 		if (fr_dict_attr_add(NULL, fr_dict_root(fr_dict_internal), inst->cache_attribute, -1, FR_TYPE_STRING,
-				     flags) < 0) {
+				     &flags) < 0) {
 			PERROR("Error creating cache attribute");
 		error:
 			return -1;

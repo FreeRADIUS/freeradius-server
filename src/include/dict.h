@@ -54,7 +54,8 @@ typedef struct {
 	unsigned int		is_root : 1;			//!< Is root of a dictionary.
 	unsigned int 		is_unknown : 1;			//!< Attribute number or vendor is unknown.
 	unsigned int		is_raw : 1;			//!< raw attribute, unknown or malformed
-
+	unsigned int		is_reference : 1;		//!< Is reference to another point in the attribute
+								///< tree.
 	unsigned int		internal : 1;			//!< Internal attribute, should not be received
 								///< in protocol packets, should not be encoded.
 	unsigned int		has_tag : 1;			//!< Tagged attribute.
@@ -100,6 +101,14 @@ struct dict_attr {
 	char const		*name;				//!< Attribute name.
 };
 
+/** Dictionary reference
+ */
+typedef struct {
+	fr_dict_attr_t		tlv;				//!< Describes how to encode the local TLV.
+	fr_dict_t const		*dict;				//!< Cached dictionary pointer for "to".
+	fr_dict_attr_t const	*to;				//!< Pointed to attribute.
+} fr_dict_attr_ref_t;
+
 /** Value of an enumerated attribute
  *
  * Maps one of more string values to integers and vice versa.
@@ -128,6 +137,7 @@ typedef struct {
 /*
  *	Dictionary constants
  */
+#define FR_DICT_PROTO_MAX_NAME_LEN	(128)			//!< Maximum length of a protocol name.
 #define FR_DICT_ENUM_MAX_NAME_LEN	(128)			//!< Maximum length of a enum value.
 #define FR_DICT_VENDOR_MAX_NAME_LEN	(128)			//!< Maximum length of a vendor name.
 #define FR_DICT_ATTR_MAX_NAME_LEN	(128)			//!< Maximum length of a attribute name.
@@ -183,10 +193,8 @@ int			fr_dict_protocol_afrom_file(TALLOC_CTX *ctx, fr_dict_t **out,
 
 int			fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename);
 
-int			fr_dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int value);
-
 int			fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent, char const *name, int attr,
-					 fr_type_t type, fr_dict_attr_flags_t flags);
+					 fr_type_t type, fr_dict_attr_flags_t const *flags);
 
 int			fr_dict_enum_add_alias(fr_dict_attr_t const *da, char const *alias,
 					       fr_value_box_t const *value, bool coerce, bool replace);
