@@ -338,17 +338,15 @@ int fr_dhcpv4_packet_encode(RADIUS_PACKET *packet)
 
 	/* DHCP-Hardware-Type */
 	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 257, TAG_ANY))) {
-		*p++ = vp->vp_uint8;
-	} else {
-		*p++ = 1;		/* hardware type = ethernet */
+		*p = vp->vp_uint8;
 	}
+	p += 1;
 
 	/* DHCP-Hardware-Address-len */
 	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 258, TAG_ANY))) {
-		*p++ = vp->vp_uint8;
-	} else {
-		*p++ = 6;		/* 6 bytes of ethernet */
+		*p = vp->vp_uint8;
 	}
+	p += 1;
 
 	/* DHCP-Hop-Count */
 	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 259, TAG_ANY))) {
@@ -416,10 +414,9 @@ int fr_dhcpv4_packet_encode(RADIUS_PACKET *packet)
 		if (vp->vp_type == FR_TYPE_ETHERNET) {
 			/*
 			 *	Ensure that we mark the packet as being Ethernet.
-			 *	This is mainly for DHCP-Lease-Query responses.
 			 */
-			packet->data[1] = 1;
-			packet->data[2] = 6;
+			packet->data[1] = 1;	/* Hardware address type = Ethernet */
+			packet->data[2] = 6;	/* Hardware address length = 6 */
 
 			memcpy(p, vp->vp_ether, sizeof(vp->vp_ether));
 		} /* else ignore it */
