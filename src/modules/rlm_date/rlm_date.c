@@ -42,12 +42,52 @@ static const CONF_PARSER module_config[] = {
 };
 
 DIAG_OFF(format-nonliteral)
+static ssize_t date_convert_string(REQUEST *request, char **out, size_t outlen,
+				   const char *str, const char *fmt)
+{
+	struct tm tminfo;
+	time_t date = 0;
+
+	if (strptime(str, fmt, &tminfo) == NULL) {
+		REDEBUG("Failed to parse time string \"%s\" as format '%s'", str, fmt);
+		return -1;
+	}
+
+	date = mktime(&tminfo);
+	if (date < 0) {
+		REDEBUG("Failed converting parsed time into unix time");
+		return -1;
+	}
+
+	return snprintf(*out, outlen, "%" PRIu64, (uint64_t) date);
+}
+
+static ssize_t date_encode_strftime(char **out, size_t outlen, rlm_date_t const *inst,
+				    REQUEST *request, time_t date)
+{
+	struct tm tminfo;
+
+	if (inst->utc) {
+		if (gmtime_r(&date, &tminfo) == NULL) {
+			REDEBUG("Failed converting time string to gmtime");
+			return -1;
+		}
+	} else {
+		if (localtime_r(&date, &tminfo) == NULL) {
+			REDEBUG("Failed converting time string to localtime");
+			return -1;
+		}
+	}
+
+	return strftime(*out, outlen, inst->fmt, &tminfo);
+}
+DIAG_ON(format-nonliteral)
+
 static ssize_t xlat_date_convert(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 				 void const *mod_inst, UNUSED void const *xlat_inst,
 				 REQUEST *request, char const *fmt)
 {
 	rlm_date_t const *inst = mod_inst;
-	time_t date = 0;
 	struct tm tminfo;
 	VALUE_PAIR *vp;
 
@@ -62,26 +102,11 @@ static ssize_t xlat_date_convert(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 	 *	format as a string.
 	 */
 	case FR_TYPE_DATE:
-		date = vp->vp_date;
-		goto encode;
+		return date_encode_strftime(out, outlen, inst, request, vp->vp_date);
 
 	case FR_TYPE_UINT32:
 	case FR_TYPE_UINT64:
-		date = (time_t) vp->vp_uint32;
-
-	encode:
-		if (inst->utc) {
-			if (gmtime_r(&date, &tminfo) == NULL) {
-				REDEBUG("Failed converting time string to gmtime");
-				goto error;
-			}
-		} else {
-			if (localtime_r(&date, &tminfo) == NULL) {
-				REDEBUG("Failed converting time string to localtime");
-				goto error;
-			}
-		}
-		return strftime(*out, outlen, inst->fmt, &tminfo);
+		return date_encode_strftime(out, outlen, inst, request, (time_t) vp->vp_uint32);
 
 	/*
 	 *	These are 'from' types, i.e. we'll convert the input string
@@ -89,26 +114,14 @@ static ssize_t xlat_date_convert(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 	 *	unix timestamp.
 	 */
 	case FR_TYPE_STRING:
-		if (strptime(vp->vp_strvalue, inst->fmt, &tminfo) == NULL) {
-			REDEBUG("Failed to parse time string \"%s\" as format '%s'", vp->vp_strvalue, inst->fmt);
-			goto error;
-		}
-
-		date = mktime(&tminfo);
-		if (date < 0) {
-			REDEBUG("Failed converting parsed time into unix time");
-
-		}
-		return snprintf(*out, outlen, "%" PRIu64, (uint64_t) date);
+		return date_convert_string(request, out, outlen, vp->vp_strvalue, inst->fmt);
 
 	default:
 		REDEBUG("Can't convert type %s into date", fr_int2str(dict_attr_types, vp->da->type, "<INVALID>"));
 	}
 
-error:
 	return -1;
 }
-DIAG_ON(format-nonliteral)
 
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
