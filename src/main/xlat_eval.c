@@ -206,7 +206,7 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 		if (fr_value_box_strdup(value, value, NULL, "%", false) < 0) return XLAT_ACTION_FAIL;
 		break;
 
-	case 'c': /* current epoch time seconds */
+	case 'c': /* Current epoch time seconds */
 	{
 		struct timeval now;
 
@@ -217,31 +217,34 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 	}
 		break;
 
-	case 'd': /* request day */
+	case 'd': /* Request day */
 		if (!localtime_r(&when, &ts)) {
 		error:
 			REDEBUG("Failed converting packet timestamp to localtime: %s", fr_syserror(errno));
 			return XLAT_ACTION_FAIL;
 		}
+
 		strftime(buffer, sizeof(buffer), "%d", &ts);
 
 		MEM(value = fr_value_box_alloc_null(ctx));
 		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) return XLAT_ACTION_FAIL;
 		break;
 
-	case 'l': /* request timestamp */
+	case 'l': /* Request timestamp */
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_DATE, NULL, false));
 		value->datum.date = when;
 		break;
 
-	case 'm': /* request month */
+	case 'm': /* Request month */
 		if (!localtime_r(&when, &ts)) goto error;
 
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_INT8, NULL, false));
-		value->datum.uint8 = ts.tm_mon;
+		strftime(buffer, sizeof(buffer), "%m", &ts);
+
+		MEM(value = fr_value_box_alloc_null(ctx));
+		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
 		break;
 
-	case 'n': /* Request Number*/
+	case 'n': /* Request number */
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL, false));
 		value->datum.uint64 = request->number;
 		break;
@@ -254,11 +257,13 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 	case 'e': /* Request second */
 		if (!localtime_r(&when, &ts)) goto error;
 
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_INT8, NULL, false));
-		value->datum.uint8 = ts.tm_sec;
+		strftime(buffer, sizeof(buffer), "%S", &ts);
+
+		MEM(value = fr_value_box_alloc_null(ctx));
+		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
 		break;
 
-	case 't': /* request timestamp */
+	case 't': /* Request timestamp */
 	{
 		char *p;
 
@@ -271,36 +276,43 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 	}
 		break;
 
-	case 'C': /* curent epoch time microseconds */
+	case 'C': /* Curent epoch time microseconds */
 	{
 		struct timeval now;
 
 		gettimeofday(&now, NULL);
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL, false));
-		value->datum.uint64 = (uint64_t)now.tv_usec;
+
+		snprintf(buffer, sizeof(buffer), "%06ld", (uint64_t)now.tv_usec);
+		MEM(value = fr_value_box_alloc_null(ctx));
+		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
 	}
 		break;
 
-	case 'D': /* request date */
+	case 'D': /* Request date */
 		if (!localtime_r(&when, &ts)) goto error;
+
 		strftime(buffer, sizeof(buffer), "%Y%m%d", &ts);
 
 		MEM(value = fr_value_box_alloc_null(ctx));
 		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
 		break;
 
-	case 'G': /* request minute */
+	case 'G': /* Request minute */
 		if (!localtime_r(&when, &ts)) goto error;
 
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_INT8, NULL, false));
-		value->datum.uint8 = ts.tm_min;
+		strftime(buffer, sizeof(buffer), "%M", &ts);
+
+		MEM(value = fr_value_box_alloc_null(ctx));
+		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
 		break;
 
-	case 'H': /* request hour */
+	case 'H': /* Request hour */
 		if (!localtime_r(&when, &ts)) goto error;
 
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_INT8, NULL, false));
-		value->datum.uint8 = ts.tm_hour;
+		strftime(buffer, sizeof(buffer), "%H", &ts);
+
+		MEM(value = fr_value_box_alloc_null(ctx));
+		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
 		break;
 
 	case 'I': /* Request ID */
@@ -309,31 +321,47 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 		break;
 
 	case 'M': /* Request microsecond */
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL, false));
-		value->datum.uint64 = request->packet->timestamp.tv_usec;
+		snprintf(buffer, sizeof(buffer), "%06ld", request->packet->timestamp.tv_usec);
+
+		MEM(value = fr_value_box_alloc_null(ctx));
+		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
 		break;
 
-	case 'S': /* request timestamp in SQL format*/
+	case 'S': /* Request timestamp in SQL format */
 		if (!localtime_r(&when, &ts)) goto error;
+
 		strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &ts);
 
 		MEM(value = fr_value_box_alloc_null(ctx));
 		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
 		break;
 
-	case 'T': /* request timestamp */
-		if (!localtime_r(&when, &ts)) goto error;
-		strftime(buffer, sizeof(buffer), "%Y-%m-%d-%H.%M.%S.000000", &ts);
+	case 'T': /* Request timestamp in ISO format */
+	{
+		int len = 0;
+
+		if (!gmtime_r(&when, &ts)) goto error;
+
+		if (!(len = strftime(buffer, sizeof(buffer) - 1, "%Y-%m-%dT%H:%M:%S", &ts))) {
+			REDEBUG("Failed converting packet timestamp to gmtime: Buffer full");
+			return XLAT_ACTION_FAIL;
+		}
+		strcat(buffer, ".");
+		len++;
+		snprintf(buffer + len, sizeof(buffer) - len, "%03ldZ", request->packet->timestamp.tv_usec / 1000);
 
 		MEM(value = fr_value_box_alloc_null(ctx));
 		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
+	}
 		break;
 
-	case 'Y': /* request year */
+	case 'Y': /* Request year */
 		if (!localtime_r(&when, &ts)) goto error;
 
-		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT16, NULL, false));
-		value->datum.int16 = ts.tm_year;
+		strftime(buffer, sizeof(buffer), "%Y", &ts);
+
+		MEM(value = fr_value_box_alloc_null(ctx));
+		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
 		break;
 
 	default:
