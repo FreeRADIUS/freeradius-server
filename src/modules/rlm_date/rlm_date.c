@@ -32,10 +32,12 @@
 typedef struct rlm_date_t {
 	char const *xlat_name;
 	char const *fmt;
+	bool utc;
 } rlm_date_t;
 
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("format", FR_TYPE_STRING, rlm_date_t, fmt), .dflt = "%b %e %Y %H:%M:%S %Z" },
+	{ FR_CONF_OFFSET("utc", FR_TYPE_BOOL, rlm_date_t, utc), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -68,9 +70,16 @@ static ssize_t xlat_date_convert(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 		date = (time_t) vp->vp_uint32;
 
 	encode:
-		if (localtime_r(&date, &tminfo) == NULL) {
-			REDEBUG("Failed converting time string to localtime");
-			goto error;
+		if (inst->utc) {
+			if (gmtime_r(&date, &tminfo) == NULL) {
+				REDEBUG("Failed converting time string to gmtime");
+				goto error;
+			}
+		} else {
+			if (localtime_r(&date, &tminfo) == NULL) {
+				REDEBUG("Failed converting time string to localtime");
+				goto error;
+			}
 		}
 		return strftime(*out, outlen, inst->fmt, &tminfo);
 
