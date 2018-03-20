@@ -21,7 +21,7 @@
  * @author Artur Malinowski <artur@wow.com>
  *
  * @copyright 2013 Artur Malinowski <artur@wow.com>
- * @copyright 1999-2013 The FreeRADIUS Server Project.
+ * @copyright 1999-2018 The FreeRADIUS Server Project.
  */
 
 #include <freeradius-devel/radiusd.h>
@@ -89,9 +89,20 @@ static ssize_t xlat_date_convert(UNUSED TALLOC_CTX *ctx, char **out, size_t outl
 {
 	rlm_date_t const *inst = mod_inst;
 	struct tm tminfo;
+	struct timeval now;
 	VALUE_PAIR *vp;
 
 	memset(&tminfo, 0, sizeof(tminfo));
+
+	if (strcmp(fmt, "request") == 0) {
+		return date_encode_strftime(out, outlen, inst, request,
+					    request->packet->timestamp.tv_sec);
+	}
+
+	if (strcmp(fmt, "now") == 0) {
+		gettimeofday(&now, NULL);
+		return date_encode_strftime(out, outlen, inst, request, now.tv_sec);
+	}
 
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 
