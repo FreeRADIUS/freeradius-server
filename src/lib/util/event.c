@@ -649,10 +649,16 @@ static int _event_fd_delete(fr_event_fd_t *ef)
 		 *	inserted into the free list multiple
 		 *	times.
 		 *
-		 *	This shouldn't happen and is mostly
-		 *	for paranoia and debugging.
+		 *	This can happen if the same ef is
+		 *	delivered by multiple filters, i.e.
+		 *	if EVFILT_READ and EVFILT_WRITE
+		 *	were both high, and both handlers
+		 *	attempted to delete the event
+		 *	we'd need to prevent the event being
+		 *	inserted into the free list multiple
+		 *	times.
 		 */
-		if (fr_cond_assert(!ef->in_fd_to_free)) {
+		if (!ef->in_fd_to_free) {
 			ef->next = el->fd_to_free;	/* Link into the deferred free list */
 			el->fd_to_free = ef;
 			ef->in_fd_to_free = true;
