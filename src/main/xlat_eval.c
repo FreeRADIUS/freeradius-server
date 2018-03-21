@@ -224,10 +224,8 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 			return XLAT_ACTION_FAIL;
 		}
 
-		strftime(buffer, sizeof(buffer), "%d", &ts);
-
-		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) return XLAT_ACTION_FAIL;
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_INT8, NULL, false));
+		value->datum.uint8 = ts.tm_mday;
 		break;
 
 	case 'l': /* Request timestamp */
@@ -239,7 +237,7 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 		if (!localtime_r(&when, &ts)) goto error;
 
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_INT8, NULL, false));
-		value->datum.uint8 = ts.tm_mon;
+		value->datum.uint8 = ts.tm_mon + 1;
 		break;
 
 	case 'n': /* Request number */
@@ -259,7 +257,7 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 		value->datum.uint8 = ts.tm_sec;
 		break;
 
-	case 't': /* Request timestamp */
+	case 't': /* Request timestamp in CTIME format */
 	{
 		char *p;
 
@@ -272,11 +270,12 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 	}
 		break;
 
-	case 'C': /* Curent epoch time microseconds */
+	case 'C': /* Current epoch time microseconds */
 	{
 		struct timeval now;
 
 		gettimeofday(&now, NULL);
+
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL, false));
 		value->datum.uint64 = (uint64_t)now.tv_usec;
 	}
@@ -284,6 +283,7 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 
 	case 'D': /* Request date */
 		if (!localtime_r(&when, &ts)) goto error;
+
 		strftime(buffer, sizeof(buffer), "%Y%m%d", &ts);
 
 		MEM(value = fr_value_box_alloc_null(ctx));
@@ -316,6 +316,7 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 
 	case 'S': /* Request timestamp in SQL format */
 		if (!localtime_r(&when, &ts)) goto error;
+
 		strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &ts);
 
 		MEM(value = fr_value_box_alloc_null(ctx));
@@ -346,7 +347,7 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 
 		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT16, NULL, false));
 
-		value->datum.int16 = ts.tm_year;
+		value->datum.int16 = ts.tm_year + 1900;
 		break;
 
 	default:
