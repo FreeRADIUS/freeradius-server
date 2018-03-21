@@ -69,12 +69,12 @@ static ssize_t date_encode_strftime(char **out, size_t outlen, rlm_date_t const 
 
 	if (inst->utc) {
 		if (gmtime_r(&date, &tminfo) == NULL) {
-			REDEBUG("Failed converting time string to gmtime");
+			REDEBUG("Failed converting time string to gmtime: %s", fr_syserror(errno));
 			return -1;
 		}
 	} else {
 		if (localtime_r(&date, &tminfo) == NULL) {
-			REDEBUG("Failed converting time string to localtime");
+			REDEBUG("Failed converting time string to localtime: %s", fr_syserror(errno));
 			return -1;
 		}
 	}
