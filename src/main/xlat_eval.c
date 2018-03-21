@@ -238,10 +238,8 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 	case 'm': /* Request month */
 		if (!localtime_r(&when, &ts)) goto error;
 
-		strftime(buffer, sizeof(buffer), "%m", &ts);
-
-		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_INT8, NULL, false));
+		value->datum.uint8 = ts.tm_mon;
 		break;
 
 	case 'n': /* Request number */
@@ -257,10 +255,8 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 	case 'e': /* Request second */
 		if (!localtime_r(&when, &ts)) goto error;
 
-		strftime(buffer, sizeof(buffer), "%S", &ts);
-
-		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_INT8, NULL, false));
+		value->datum.uint8 = ts.tm_sec;
 		break;
 
 	case 't': /* Request timestamp */
@@ -281,16 +277,13 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 		struct timeval now;
 
 		gettimeofday(&now, NULL);
-
-		snprintf(buffer, sizeof(buffer), "%06ld", (uint64_t)now.tv_usec);
-		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL, false));
+		value->datum.uint64 = (uint64_t)now.tv_usec;
 	}
 		break;
 
 	case 'D': /* Request date */
 		if (!localtime_r(&when, &ts)) goto error;
-
 		strftime(buffer, sizeof(buffer), "%Y%m%d", &ts);
 
 		MEM(value = fr_value_box_alloc_null(ctx));
@@ -300,19 +293,15 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 	case 'G': /* Request minute */
 		if (!localtime_r(&when, &ts)) goto error;
 
-		strftime(buffer, sizeof(buffer), "%M", &ts);
-
-		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_INT8, NULL, false));
+		value->datum.uint8 = ts.tm_min;
 		break;
 
 	case 'H': /* Request hour */
 		if (!localtime_r(&when, &ts)) goto error;
 
-		strftime(buffer, sizeof(buffer), "%H", &ts);
-
-		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_INT8, NULL, false));
+		value->datum.uint8 = ts.tm_hour;
 		break;
 
 	case 'I': /* Request ID */
@@ -321,15 +310,12 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 		break;
 
 	case 'M': /* Request microsecond */
-		snprintf(buffer, sizeof(buffer), "%06ld", request->packet->timestamp.tv_usec);
-
-		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL, false));
+		value->datum.uint64 = request->packet->timestamp.tv_usec;
 		break;
 
 	case 'S': /* Request timestamp in SQL format */
 		if (!localtime_r(&when, &ts)) goto error;
-
 		strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &ts);
 
 		MEM(value = fr_value_box_alloc_null(ctx));
@@ -358,10 +344,9 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 	case 'Y': /* Request year */
 		if (!localtime_r(&when, &ts)) goto error;
 
-		strftime(buffer, sizeof(buffer), "%Y", &ts);
+		MEM(value = fr_value_box_alloc(ctx, FR_TYPE_UINT16, NULL, false));
 
-		MEM(value = fr_value_box_alloc_null(ctx));
-		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
+		value->datum.int16 = ts.tm_year;
 		break;
 
 	default:
