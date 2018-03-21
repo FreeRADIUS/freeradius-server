@@ -2213,7 +2213,11 @@ VALUE_PAIR *tmpl_cursor_init(int *err, fr_cursor_t *cursor, REQUEST *request, vp
 	if (!vp) {
 		if (err) {
 			*err = -1;
-			fr_strerror_printf("No matching \"%s\" pairs found", vpt->tmpl_da->name);
+			if (vpt->type == TMPL_TYPE_LIST) {
+				fr_strerror_printf("List \"%s\" is empty", vpt->name);
+			} else {
+				fr_strerror_printf("No matching \"%s\" pairs found", vpt->tmpl_da->name);
+			}
 		}
 		return NULL;
 	}
