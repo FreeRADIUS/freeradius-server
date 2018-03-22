@@ -7,6 +7,7 @@ dist: trusty
 env:
   global:
   - ASAN_OPTIONS="symbolize=1 detect_stack_use_after_return=1"
+  - LSAN_OPTIONS="fast_unwind_on_malloc=0:malloc_context_size=30"
   - LSAN_OPTIONS="exitcode=0"
   - KQUEUE_DEBUG="yes"
   - M_PERTURB=0x42
