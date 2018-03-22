@@ -364,8 +364,7 @@ int exfile_open(exfile_t *ef, REQUEST *request, char const *filename, mode_t per
 		 *	and re-open the file.
 		 */
 		if (stat(ef->entries[i].filename, &st) < 0) {
-			fr_strerror_printf("Failed to stat file %s: %s", filename, strerror(errno));
-			goto error;
+			goto reopen;
 		}
 
 		if ((st.st_dev != ef->entries[i].st_dev) ||
@@ -449,7 +448,7 @@ try_lock:
 	 */
 	if (fstat(ef->entries[i].fd, &st) < 0) {
 		fr_strerror_printf("Failed to stat file %s: %s", filename, strerror(errno));
-		goto error;
+		goto reopen;
 	}
 
 	if (st.st_nlink == 0) {
