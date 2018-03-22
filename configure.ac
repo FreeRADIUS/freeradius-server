@@ -99,8 +99,8 @@ if test "x$GIT" = "xyes" && git status 2>&1 > /dev/null; then
     AC_MSG_CHECKING([build release])
     RADIUSD_VERSION_RELEASE=`git describe | sed -e 's/^.*-\([[0-9]]*\)-g[[0-9a-f]]*/\1/'`
     AC_MSG_RESULT($RADIUSD_VERSION_RELEASE)
-  fi 
-  
+  fi
+
   if test "x$RADIUSD_VERSION_COMMIT" = "x"; then
     AC_MSG_CHECKING([build commit])
     RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1`
@@ -1615,7 +1615,12 @@ if test "x$developer" = "xyes"; then
   dnl #  If running with clang, add in ASAN
   dnl #
   if test "x$llvm_address_sanitizer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
-    devcflags="$devcflags -fsanitize=address -fno-omit-frame-pointer"
+    dnl #
+    dnl #  -fsanitize=address		- Build with address sanitizer support
+    dnl #  -fno-omit-frame-pointer	- Always keep the frame pointer in a register
+    dnl #  -fno-optimize-sibling-calls	- Don't optimize away tail recursion.
+    dnl #
+    devcflags="$devcflags -fsanitize=address -fno-omit-frame-pointer -fno-optimize-sibling-calls"
 
     AX_CC_SANITZE_ADDRESS_USE_AFTER_SCOPE_FLAG
     if test "x$ax_cv_cc_sanitize_address_use_after_scope" = "xyes"; then

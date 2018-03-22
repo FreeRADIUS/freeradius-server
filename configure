@@ -2472,6 +2472,8 @@ ac_config_headers="$ac_config_headers src/include/autoconf.h"
 
 
 
+
+
 #
 # SYNOPSIS
 #
@@ -12624,7 +12626,7 @@ $as_echo "$ax_cv_cc_weverything_flag" >&6; }
   fi
 
         if test "x$llvm_address_sanitizer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
-    devcflags="$devcflags -fsanitize=address -fno-omit-frame-pointer"
+                        devcflags="$devcflags -fsanitize=address -fno-omit-frame-pointer -fno-optimize-sibling-calls"
 
 
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for the compiler flag \"-fsanitize-address-use-after-scope\"" >&5
