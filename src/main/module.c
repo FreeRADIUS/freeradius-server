@@ -428,6 +428,7 @@ module_instance_t *module_find_with_method(rlm_components_t *method, CONF_SECTIO
 
 			inst_name = talloc_bstrndup(NULL, name, p - name);
 			mi = module_find(modules, inst_name);
+			talloc_free(inst_name);
 			if (!mi) return NULL;
 
 			/*
