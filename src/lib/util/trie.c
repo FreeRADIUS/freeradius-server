@@ -2889,7 +2889,7 @@ int main(int argc, char **argv)
 	/*
 	 *	Tell us if we leaked memory.
 	 */
-	talloc_enable_leak_report_full();
+	talloc_enable_null_tracking();
 
 	data_ctx = talloc_init("data_ctx");
 
@@ -2978,6 +2978,9 @@ int main(int argc, char **argv)
 
 	talloc_free(ft);
 	talloc_free(data_ctx);
+
+	talloc_report_full(NULL, stdout);	/* Print details of any leaked memory */
+	talloc_disable_null_tracking();		/* Cleanup talloc null tracking context */
 
 	return rcode;
 }
