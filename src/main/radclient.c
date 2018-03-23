@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radclient.h>
 #include <freeradius-devel/radpaths.h>
+#include <freeradius-devel/udpfromto.h>
 #include <freeradius-devel/conf.h>
 #include <ctype.h>
 
@@ -857,12 +858,23 @@ static int send_one_packet(rc_request_t *request)
 				mysockfd = fr_socket_client_tcp(NULL,
 								&request->packet->dst_ipaddr,
 								request->packet->dst_port, false);
+				if (mysockfd < 0) {
+					ERROR("Failed opening socket");
+					exit(1);
+				}
 			} else
 #endif
-			mysockfd = fr_socket(&client_ipaddr, 0);
-			if (mysockfd < 0) {
-				ERROR("Failed opening socket");
-				exit(1);
+			{
+				mysockfd = fr_socket(&client_ipaddr, 0);
+				if (mysockfd < 0) {
+					ERROR("Failed opening socket");
+					exit(1);
+				}
+
+				if (udpfromto_init(mysockfd) < 0) {
+					ERROR("Failed initializing socket");
+					exit(1);
+				}
 			}
 			if (!fr_packet_list_socket_add(pl, mysockfd, ipproto,
 						       &request->packet->dst_ipaddr,
@@ -1421,12 +1433,23 @@ int main(int argc, char **argv)
 #ifdef WITH_TCP
 	if (proto) {
 		sockfd = fr_socket_client_tcp(NULL, &server_ipaddr, server_port, false);
+		if (sockfd < 0) {
+			ERROR("Error opening socket");
+			exit(1);
+		}
 	} else
 #endif
-	sockfd = fr_socket(&client_ipaddr, client_port);
-	if (sockfd < 0) {
-		ERROR("Error opening socket");
-		exit(1);
+	{
+		sockfd = fr_socket(&client_ipaddr, client_port);
+		if (sockfd < 0) {
+			ERROR("Error opening socket");
+			exit(1);
+		}
+
+		if (udpfromto_init(sockfd) < 0) {
+			ERROR("Failed initializing socket");
+			exit(1);
+		}
 	}
 
 	pl = fr_packet_list_create(1);
