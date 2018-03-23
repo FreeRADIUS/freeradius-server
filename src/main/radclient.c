@@ -871,10 +871,12 @@ static int send_one_packet(rc_request_t *request)
 					exit(1);
 				}
 
+#ifdef WITH_UDPFROMTO
 				if (udpfromto_init(mysockfd) < 0) {
 					ERROR("Failed initializing socket");
 					exit(1);
 				}
+#endif
 			}
 			if (!fr_packet_list_socket_add(pl, mysockfd, ipproto,
 						       &request->packet->dst_ipaddr,
@@ -1446,10 +1448,12 @@ int main(int argc, char **argv)
 			exit(1);
 		}
 
+#ifdef WITH_UDPFROMTO
 		if (udpfromto_init(sockfd) < 0) {
 			ERROR("Failed initializing socket");
 			exit(1);
 		}
+#endif
 	}
 
 	pl = fr_packet_list_create(1);
