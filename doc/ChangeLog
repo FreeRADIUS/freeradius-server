@@ -26,7 +26,7 @@ FreeRADIUS 3.0.17 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	  Bug found by Richard Palmer.
 	* Allow partial certificate chain to trusted CA.  Fixes #2162
 	* Treat SSL_read() returning zero as error.  Fixes #2164.
-	* detail writer now checks if the file was renamed
+	* detail writer now checks if the file was renamed or deleted.
 	* Add User-Name to Access-Accept if EAP-Message exists,
 	  not Stripped-User-Name.
 	* RedHat Systemd updates.  Fixes #2184
