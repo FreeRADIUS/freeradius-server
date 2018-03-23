@@ -369,7 +369,7 @@ static void fr_trie_verify(void *trie)
 
 	node = trie;
 	fr_trie_node_verify(node);
-	
+
 	for (i = 0; i < (1 << node->size); i++) {
 		if (!node->trie[i]) continue;
 
@@ -662,7 +662,7 @@ static void hex_dump(FILE *fp, char const *msg, uint8_t const *key, int start_bi
 	int i;
 
 	fprintf(fp, "%s\ts=%zd e=%zd\t\t", msg, start_bit, end_bit);
-	
+
 	for (i = 0; i < BYTES(end_bit); i++) {
 		fprintf(fp, "%02x ", key[i]);
 	}
@@ -823,12 +823,12 @@ static void *fr_trie_path_merge_paths(fr_trie_t *ft, TALLOC_CTX *ctx, fr_trie_pa
 	rad_assert(IS_USER(path2->trie));
 
 	(void) talloc_get_type_abort(path1, fr_trie_path_t);
-	
+
 	prefix_len = fr_trie_path_lcp(path1->key, path1->length, path2->key, path2->length, path1->start_bit);
 	if (!prefix_len) {
 		return fr_trie_path_merge_disjoint(ft, ctx, path1, path2, depth);
 	}
-	
+
 	prefix = fr_trie_path_alloc(ft, ctx, path1->key, path1->start_bit, prefix_len + path1->start_bit, PUT_USER(NULL));
 	if (!prefix) {
 		return NULL;
@@ -846,7 +846,7 @@ static void *fr_trie_path_merge_paths(fr_trie_t *ft, TALLOC_CTX *ctx, fr_trie_pa
 	} else {
 		suffix1 = NULL;
 	}
-	
+
 	if (prefix_len < path2->length) {
 		suffix2 = fr_trie_path_alloc(ft, ctx, path2->key, path2->start_bit + prefix_len, path2->end_bit, path2->trie);
 		if (!suffix2) {
@@ -906,7 +906,7 @@ static void *fr_trie_path_merge_paths(fr_trie_t *ft, TALLOC_CTX *ctx, fr_trie_pa
 
 		(void) talloc_get_type_abort(node, fr_trie_node_t);
 	}
-	
+
 	fr_trie_node_verify(node);
 
 	prefix->trie = reparent(prefix, node);
@@ -948,7 +948,7 @@ static int fr_trie_path_concatenate(fr_trie_path_t *path,
 		int bytes2;
 
 		out = p + BYTEOF(start_bit1 + keylen1);
-		
+
 		mask = ((1 << (8 - start_bit2)) - 1);
 		out[0] &= ~mask;
 		out[0] |= (key2[0] & mask);
@@ -992,7 +992,7 @@ static void *fr_trie_path_prefix_add(fr_trie_t *ft, TALLOC_CTX *ctx, void *trie,
 	chunk <<= (16 - size - bits_used);
 	buffer[0] = chunk >> 8;
 	buffer[1] = chunk & 0xff;
-	
+
 	if (!IS_PATH(trie)) {
 		path = fr_trie_path_alloc(ft, ctx, buffer, bits_used, bits_used + size, trie);
 		if (!path) return NULL;
@@ -1174,7 +1174,7 @@ static int fr_trie_merge(fr_trie_t *ft, TALLOC_CTX *ctx, void **parent_p, void *
 						  node2->trie[i], depth) < 0) {
 					return -1;
 				}
-			}			
+			}
 
 			talloc_free(node2);
 			fr_trie_node_verify(node1);
@@ -1280,7 +1280,7 @@ static int fr_trie_merge(fr_trie_t *ft, TALLOC_CTX *ctx, void **parent_p, void *
 	rad_assert(0 == 1);
 
 	return -1;
-}   
+}
 
 
 /** Match a key in a trie and return user ctx, if any
@@ -1290,8 +1290,8 @@ static int fr_trie_merge(fr_trie_t *ft, TALLOC_CTX *ctx, void **parent_p, void *
  *
  * @param trie	 	the trie
  * @param key	 	the key
- * @param start_bit	the start bit 
- * @param end_bit	the end bit 
+ * @param start_bit	the start bit
+ * @param end_bit	the end bit
  * @param exact  	do we return an exact match, or the shortest one.
  * @return
  *	- NULL on not found
@@ -1524,7 +1524,7 @@ static int fr_trie_key_insert(fr_trie_t *ft, TALLOC_CTX *ctx, void **parent_p,
 		if (fr_trie_merge(ft, user, &user->trie, user->trie, trie, start_bit) < 0) {
 			return -1;
 		}
-	
+
 		*parent_p = reparent(ctx, subtrie);
 		return 0;
 	}
@@ -1630,7 +1630,7 @@ insert_node:
 
 		return 0;
 	}
-	
+
 	chunk = get_chunk(key, node->size, start_bit, end_bit);
 	rad_assert(chunk < (1 << node->size));
 
@@ -1654,8 +1654,8 @@ insert_node:
  * @param ctx	 	the talloc ctx
  * @param[in,out] parent_p where the updated output is stored
  * @param key	 	the key
- * @param start_bit	the start bit 
- * @param end_bit	the end bit 
+ * @param start_bit	the start bit
+ * @param end_bit	the end bit
  * @return
  *	- NULL on no matching key
  *	- void* user ctx for the removed key
@@ -1943,7 +1943,7 @@ int fr_trie_insert(fr_trie_t *ft, void const *key, size_t keylen, void *data)
 /** Remove a key and return the associated user ctx
  *
  *  The key must match EXACTLY.  This is not a prefix match.
- * 
+ *
  * @param ft	 the trie
  * @param key	 the key
  * @param keylen key length in bits
@@ -2215,7 +2215,7 @@ static int fr_trie_dump_cb(void *trie, fr_trie_callback_t *cb, int keylen, UNUSE
 		fprintf(fp, "}\n\n");
 		return 0;
 	}
-	
+
 #ifdef WITH_PATH_COMPRESSION
 	if (IS_PATH(trie)) {
 		fr_trie_path_t *path = GET_PATH(trie);
@@ -2286,7 +2286,7 @@ static int fr_trie_print_cb(void *trie, fr_trie_callback_t *cb, int keylen, UNUS
 	} else {
 		fprintf(fp, "%.*s\t%s\n", bytes, cb->start, (char const *) user->data);
 	}
-	
+
 	return 0;
 }
 #endif	/* TESTING */
@@ -2373,7 +2373,7 @@ static int fr_trie_sprint_cb(void *trie, fr_trie_callback_t *cb, int keylen, boo
 done:
 	ctx->buffer += len;
 	ctx->buflen -= len;
-	
+
 	return 0;
 }
 
@@ -2799,7 +2799,7 @@ static int command_lcp(UNUSED fr_trie_t *ft, UNUSED int argc, char **argv, char 
 				argv[1], BITSOF(strlen(argv[0])));
 			return -1;
 		}
-		
+
 		key2 = (uint8_t const *) argv[2];
 		keylen2 = atoi(argv[3]);
 		if ((keylen2 < 0) || (keylen2 > (int) BITSOF(strlen(argv[2])))) {
