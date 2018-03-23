@@ -847,7 +847,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 
 	if (ret < 0) {
 		RINDENT();
-		RDEBUG("%s FAILED decoding packet", worker->name);
+		REDEBUG("%s FAILED decoding packet", worker->name);
 		REXDENT();
 		talloc_free(ctx);
 nak:
@@ -862,7 +862,7 @@ nak:
 	listen->app->process_set(listen->app_instance, request);
 
 	if (!request->async->process) {
-		ERROR("Protocol failed to set 'process' function");
+		RERROR("Protocol failed to set 'process' function");
 		fr_worker_nak(worker, cd, now);
 		return NULL;
 	}
@@ -886,7 +886,7 @@ nak:
 			 *	already sent the reply.
 			 */
 			if (cd->request.is_dup) {
-				DEBUG("Got duplicate packet notice after we had sent a reply - ignoring");
+				RDEBUG("Got duplicate packet notice after we had sent a reply - ignoring");
 				fr_channel_null_reply(request->async->channel);
 				return NULL;
 			}
