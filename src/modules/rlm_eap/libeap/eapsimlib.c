@@ -147,7 +147,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 		ep->type.length = 3;
 		ep->type.data = encodedmsg;
 
-		return 0;
+		return 1;
 	}
 
 
