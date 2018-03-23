@@ -51,10 +51,12 @@ static int map_proc_cmp(void const *one, void const *two)
  *
  * @param[in] proc to unregister.
  */
-static int _map_proc_unregister(map_proc_t *proc)
+static int _map_proc_talloc_free(map_proc_t *proc)
 {
 	map_proc_t find;
 	map_proc_t *found;
+
+	if (!map_proc_root) return 0;
 
 	strlcpy(find.name, proc->name, sizeof(find.name));
 	find.length = strlen(find.name);
@@ -65,6 +67,11 @@ static int _map_proc_unregister(map_proc_t *proc)
 	rbtree_deletebydata(map_proc_root, found);
 
 	return 0;
+}
+
+static void _map_proc_tree_free(void *proc)
+{
+	talloc_free(proc);
 }
 
 /** Find a map processor by name
@@ -84,14 +91,6 @@ map_proc_t *map_proc_find(char const *name)
 	find.length = strlen(find.name);
 
 	return rbtree_finddata(map_proc_root, &find);
-}
-
-/** Free all map_processors unregistering them
- *
- */
-void map_proc_free(void)
-{
-	TALLOC_FREE(map_proc_root);
 }
 
 /** Register a map processor
@@ -116,7 +115,7 @@ int map_proc_register(void *mod_inst, char const *name,
 	rad_assert(name && name[0]);
 
 	if (!map_proc_root) {
-		map_proc_root = rbtree_create(NULL, map_proc_cmp, NULL, RBTREE_FLAG_REPLACE);
+		map_proc_root = rbtree_create(NULL, map_proc_cmp, _map_proc_tree_free, RBTREE_FLAG_REPLACE);
 		if (!map_proc_root) {
 			DEBUG("map_proc: Failed to create tree");
 			return -1;
@@ -140,7 +139,7 @@ int map_proc_register(void *mod_inst, char const *name,
 			return -1;
 		}
 
-		talloc_set_destructor(proc, _map_proc_unregister);
+		talloc_set_destructor(proc, _map_proc_talloc_free);
 	}
 
 	DEBUG3("map_proc_register: %s", proc->name);
@@ -204,4 +203,15 @@ map_proc_inst_t *map_proc_instantiate(TALLOC_CTX *ctx, map_proc_t const *proc,
 rlm_rcode_t map_proc(REQUEST *request, map_proc_inst_t const *inst, fr_value_box_t **result)
 {
 	return inst->proc->evaluate(inst->proc->mod_inst, inst->data, request, result, inst->maps);
+}
+
+/** Free all map_processors unregistering them
+ *
+ */
+void map_proc_free(void)
+{
+	rbtree_t *mpr = map_proc_root;
+
+	map_proc_root = NULL;
+	talloc_free(mpr);
 }

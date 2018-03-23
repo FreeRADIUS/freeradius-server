@@ -565,19 +565,23 @@ static void parse_condition(char const *input, char *output, size_t outlen)
 
 static void parse_xlat(char const *input, char *output, size_t outlen)
 {
-	ssize_t dec_len;
-	char const *error = NULL;
-	char *fmt = talloc_typed_strdup(NULL, input);
-	xlat_exp_t *head;
+	ssize_t		dec_len;
+	char const	*error = NULL;
+	char		*fmt;
+	xlat_exp_t	*head;
 
+	fmt = talloc_typed_strdup(NULL, input);
 	dec_len = xlat_tokenize(fmt, fmt, &head, &error);
+
 	if (dec_len <= 0) {
 		snprintf(output, outlen, "ERROR offset %d '%s'", (int) -dec_len, error);
+		talloc_free(fmt);
 		return;
 	}
 
 	if (input[dec_len] != '\0') {
 		snprintf(output, outlen, "ERROR offset %d 'Too much text'", (int) dec_len);
+		talloc_free(fmt);
 		return;
 	}
 
