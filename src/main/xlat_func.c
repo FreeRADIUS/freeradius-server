@@ -582,7 +582,6 @@ static int xlat_cmp(void const *one, void const *two)
 	return memcmp(a->name, b->name, a_len);
 }
 
-
 /*
  *	find the appropriate registered xlat function.
  */
@@ -604,7 +603,7 @@ xlat_t *xlat_func_find(char const *name)
  * @param[in] xlat	to free.
  * @return 0
  */
-static int _xlat_free(xlat_t *xlat)
+static int _xlat_func_talloc_free(xlat_t *xlat)
 {
 	if (!xlat_root) return 0;
 
@@ -612,6 +611,14 @@ static int _xlat_free(xlat_t *xlat)
 	if (rbtree_num_elements(xlat_root) == 0) TALLOC_FREE(xlat_root);
 
 	return 0;
+}
+
+/** Callback for the rbtree to clear out any xlats still registered
+ *
+ */
+static void _xlat_func_tree_free(void *xlat)
+{
+	talloc_free(xlat);
 }
 
 /** Register an xlat function.
@@ -667,7 +674,7 @@ int xlat_register(void *mod_inst, char const *name,
 	} else {
 		c = talloc_zero(xlat_root, xlat_t);
 		c->name = talloc_typed_strdup(c, name);
-		talloc_set_destructor(c, _xlat_free);
+		talloc_set_destructor(c, _xlat_func_talloc_free);
 		new = true;
 	}
 
@@ -764,7 +771,7 @@ int _xlat_async_register(TALLOC_CTX *ctx,
 	} else {
 		c = talloc_zero(ctx, xlat_t);
 		c->name = talloc_typed_strdup(c, name);
-		talloc_set_destructor(c, _xlat_free);
+		talloc_set_destructor(c, _xlat_func_talloc_free);
 		new = true;
 	}
 
@@ -1182,7 +1189,7 @@ int xlat_init(void)
 	/*
 	 *	Create the function tree
 	 */
-	xlat_root = rbtree_create(NULL, xlat_cmp, NULL, RBTREE_FLAG_REPLACE);
+	xlat_root = rbtree_create(NULL, xlat_cmp, _xlat_func_tree_free, RBTREE_FLAG_REPLACE);
 	if (!xlat_root) {
 		ERROR("%s: Failed to create tree", __FUNCTION__);
 		return -1;
@@ -1232,7 +1239,9 @@ int xlat_init(void)
  */
 void xlat_free(void)
 {
-	TALLOC_FREE(xlat_root);
+	rbtree_t *xr = xlat_root;		/* Make sure the tree can't be freed multiple times */
+	xlat_root = NULL;
+	talloc_free(xr);
 }
 
 
