@@ -790,7 +790,11 @@ post_ca:
 		}
 
 		DEBUG3("Configured ciphers (by priority)");
-		while ((cipher = SSL_get_cipher_list(ssl, i++))) DEBUG3("[%i] %s", i, cipher);
+
+		while ((cipher = SSL_get_cipher_list(ssl, i))) {
+			DEBUG3("[%i] %s", i, cipher);
+			i++;		/* Print index starting at zero */
+		}
 
 		SSL_free(ssl);
 	}
