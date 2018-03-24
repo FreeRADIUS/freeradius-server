@@ -349,7 +349,7 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
 			pl = default_pl;
 			default_pl = default_pl->next;
 
-		} else if (user_pl->lineno < default_pl->lineno) {
+		} else if (user_pl->order < default_pl->order) {
 			pl = user_pl;
 			user_pl = user_pl->next;
 
