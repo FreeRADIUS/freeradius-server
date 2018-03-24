@@ -776,6 +776,26 @@ post_ca:
 	}
 
 	/*
+	 *	Print the actual cipher list
+	 */
+	if (DEBUG_ENABLED3) {
+		SSL		*ssl;
+		unsigned int	i = 0;
+		char const	*cipher;
+
+		ssl = SSL_new(ctx);
+		if (!ssl) {
+			tls_log_error(NULL, "Failed creating temporary SSL session");
+			return NULL;
+		}
+
+		DEBUG3("Configured ciphers (by priority)");
+		while ((cipher = SSL_get_cipher_list(ssl, i++))) DEBUG3("[%i] %s", i, cipher);
+
+		SSL_free(ssl);
+	}
+
+	/*
 	 *	Setup session caching
 	 */
 	tls_cache_init(ctx, conf->session_cache_server ? true : false, conf->session_cache_lifetime);
