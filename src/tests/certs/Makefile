@@ -3,7 +3,7 @@
 #
 .PHONY: all
 all:
-	@rm -rf tmp
+	@rm -rf tmp rsa ecc
 	@mkdir -p tmp
 	@cp -a ../../../raddb/certs/ tmp/
 	@$(MAKE) -C tmp distclean
@@ -16,17 +16,17 @@ all:
 	@sed 's/^default_days.*= 60/default_days = 365/' < tmp/ocsp.cnf > tmp/foo
 	@mv tmp/foo tmp/ocsp.cnf
 	@$(MAKE) -C tmp
-	@cp tmp/ca.* tmp/server.* tmp/client.* tmp/ocsp.* tmp/dh .
+	@mv tmp/rsa tmp/ecc .
 
 .PHONY: print
 print:
-	@openssl x509 -text -in ca.pem
-	@openssl x509 -text -in server.pem
-	@openssl x509 -text -in client.pem
+	@openssl x509 -text -in rsa/ca.pem
+	@openssl x509 -text -in rsa/server.pem
+	@openssl x509 -text -in rsa/client.pem
 
 .PHONY: verify
 verify:
-	@openssl verify -CAfile ca.pem server.pem
-	@openssl verify -CAfile ca.pem ocsp.pem
+	@openssl verify -CAfile rsa/ca.pem rsa/server.pem
+	@openssl verify -CAfile rsa/ca.pem rsa/ocsp.pem
 	@c_rehash .
-	@openssl verify -CApath . client.pem
+	@openssl verify -CApath rsa rsa/client.pem
