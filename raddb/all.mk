@@ -154,8 +154,8 @@ ${top_srcdir}/src/tests/certs/ecc:
 ${top_srcdir}/raddb/certs/rsa:
 	@mkdir -p $@
 
-.PHONY: ${top_srcdir}/raddb/certs/rsa
-${top_srcdir}/raddb/certs/rsa:
+.PHONY: ${top_srcdir}/raddb/certs/ecc
+${top_srcdir}/raddb/certs/ecc:
 	@mkdir -p $@
 
 #
