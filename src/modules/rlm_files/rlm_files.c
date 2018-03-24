@@ -298,7 +298,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char const *filename, rbtree_t *tree,
 			       RADIUS_PACKET *request_packet, RADIUS_PACKET *reply_packet)
 {
-	char const	*name, *match;
+	char const	*name;
 	VALUE_PAIR	*check_tmp;
 	VALUE_PAIR	*reply_tmp;
 	PAIR_LIST const *user_pl, *default_pl;
@@ -343,22 +343,18 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
 
 		if (!default_pl && user_pl) {
 			pl = user_pl;
-			match = name;
 			user_pl = user_pl->next;
 
 		} else if (!user_pl && default_pl) {
 			pl = default_pl;
-			match = "DEFAULT";
 			default_pl = default_pl->next;
 
 		} else if (user_pl->lineno < default_pl->lineno) {
 			pl = user_pl;
-			match = name;
 			user_pl = user_pl->next;
 
 		} else {
 			pl = default_pl;
-			match = "DEFAULT";
 			default_pl = default_pl->next;
 		}
 
@@ -374,7 +370,7 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
 		}
 
 		if (paircompare(request, request_packet->vps, check_tmp, &reply_packet->vps) == 0) {
-			RDEBUG2("Found match \"%s\" one line %d of %s", match, pl->lineno, filename);
+			RDEBUG2("Found match \"%s\" one line %d of %s", pl->name, pl->lineno, filename);
 			found = true;
 
 			/* ctx may be reply or proxy */
