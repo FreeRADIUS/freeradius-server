@@ -347,7 +347,7 @@ static xlat_action_t xlat_eval_one_letter(TALLOC_CTX *ctx, fr_cursor_t *out, REQ
 		}
 		strcat(buffer, ".");
 		len++;
-		snprintf(buffer + len, sizeof(buffer) - len, "%03ldZ", request->packet->timestamp.tv_usec / 1000);
+		snprintf(buffer + len, sizeof(buffer) - len, "%03i", (int) request->packet->timestamp.tv_usec / 1000);
 
 		MEM(value = fr_value_box_alloc_null(ctx));
 		if (fr_value_box_strdup(value, value, NULL, buffer, false) < 0) goto error;
