@@ -112,7 +112,11 @@ static const CONF_PARSER server_config[] = {
 };
 
 const CONF_PARSER virtual_servers_config[] = {
-	{ FR_CONF_POINTER("server", FR_TYPE_SUBSECTION | FR_TYPE_MULTI, &virtual_servers), \
+	/*
+	 *	Not really ok if it's missing but we want to
+	 *	let logic elsewhere handle the issue.
+	 */
+	{ FR_CONF_POINTER("server", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING, &virtual_servers), \
 			  .subcs_size = sizeof(fr_virtual_server_t), .subcs_type = "fr_virtual_server_t",
 			  .subcs = (void const *) server_config, .ident2 = CF_IDENT_ANY,
 			  .func = server_parse },
@@ -501,13 +505,16 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 
 	virtual_server_root = config;
 
-	if (virtual_servers) {
-		/*
-		 *	Check the talloc hierarchy is sane
-		 */
-		talloc_get_type_abort(virtual_servers, fr_virtual_server_t *);
-		server_cnt = talloc_array_length(virtual_servers);
+	if (!virtual_servers) {
+		ERROR("No server { ... } sections found");
+		return -1;
 	}
+
+	/*
+	 *	Check the talloc hierarchy is sane
+	 */
+	talloc_get_type_abort(virtual_servers, fr_virtual_server_t *);
+	server_cnt = talloc_array_length(virtual_servers);
 
 	DEBUG2("#### Bootstrapping listeners ####");
 
