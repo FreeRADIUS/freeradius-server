@@ -32,6 +32,8 @@ FreeRADIUS 3.0.17 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	* RedHat Systemd updates.  Fixes #2184
 	* Use correct API for State variable in rlm_securid.
 	* Remove broken radclient option "-i".
+	* Fix "users" file (and hints, etc). So that it does not
+	  get confused about entry ordering with multiple $INCLUDEs.
 
 FreeRADIUS 3.0.16 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	Feature improvements
