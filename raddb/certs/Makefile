@@ -47,9 +47,6 @@ inner-server: rsa/inner-server.pem rsa/inner-server.vrfy ecc/inner-server.pem ec
 .PHONY: verify
 verify: rsa/server.vrfy rsa/client.vrfy ecc/server.vrfy ecc/client.vrfy
 
-.PHONY:
-output_dirs: rsa ecc
-
 passwords.mk: server.cnf ca.cnf client.cnf inner-server.cnf ocsp.cnf
 	@echo "PASSWORD_SERVER	= '$(shell grep output_password server.cnf | sed 's/.*=//;s/^ *//')'"		> $@
 	@echo "PASSWORD_INNER	= '$(shell grep output_password inner-server.cnf | sed 's/.*=//;s/^ *//')'"	>> $@
@@ -64,9 +61,13 @@ passwords.mk: server.cnf ca.cnf client.cnf inner-server.cnf ocsp.cnf
 #  Output directories
 #
 ######################################################################
+OUTPUT_DIRS := rsa ecc
+
+.PHONY: rsa
 rsa:
 	@mkdir -p $@
 
+.PHONY: rsa
 ecc:
 	@mkdir -p $@
 
@@ -83,7 +84,7 @@ dh:
 #  Create a new self-signed RSA CA certificate
 #
 ######################################################################
-rsa/ca.key rsa/ca.pem: ca.cnf | output_dirs
+rsa/ca.key rsa/ca.pem: ca.cnf | $(OUTPUT_DIRS)
 	@[ -f index.txt ] || $(MAKE) index.txt
 	@[ -f serial ] || $(MAKE) serial
 	openssl req -new -x509 -keyout rsa/ca.key -out rsa/ca.pem -config ./ca.cnf -days $(CA_DEFAULT_DAYS)
@@ -99,7 +100,7 @@ rsa/ca.csr: ca.cnf
 #  Create a new self-signed ECC CA certificate
 #
 ######################################################################
-ecc/ca.key: ca.cnf | output_dirs
+ecc/ca.key: ca.cnf | $(OUTPUT_DIRS)
 	openssl ecparam -out ecc/ca.key -name prime256v1 -genkey
 
 ecc/ca.der: ecc/ca.pem
@@ -115,7 +116,7 @@ ecc/ca.pem: ecc/ca.key ca.cnf
 #  Create a new server certificate, signed by the above RSA CA.
 #
 ######################################################################
-rsa/server.csr rsa/server.key: server.cnf | output_dirs
+rsa/server.csr rsa/server.key: server.cnf | $(OUTPUT_DIRS)
 	openssl req -new -out rsa/server.csr -keyout rsa/server.key -config ./server.cnf
 
 rsa/server.crt: rsa/server.csr rsa/ca.key rsa/ca.pem
@@ -136,7 +137,7 @@ rsa/server.vrfy: rsa/ca.pem
 #  Create a new server certificate, signed by the above ECC CA.
 #
 ######################################################################
-ecc/server.key: server.cnf | output_dirs
+ecc/server.key: server.cnf | $(OUTPUT_DIRS)
 	openssl ecparam -out ecc/server.key -name prime256v1 -genkey
 
 ecc/server.csr: ecc/server.key server.cnf
@@ -160,7 +161,7 @@ ecc/server.vrfy: ecc/ca.pem
 #  Create a new ocsp certificate, signed by the above RSA CA.
 #
 ######################################################################
-rsa/ocsp.csr rsa/ocsp.key: ocsp.cnf | output_dirs
+rsa/ocsp.csr rsa/ocsp.key: ocsp.cnf | $(OUTPUT_DIRS)
 	openssl req -new -out rsa/ocsp.csr -keyout rsa/ocsp.key -config ./ocsp.cnf
 
 rsa/ocsp.crt: rsa/ocsp.csr rsa/ca.key rsa/ca.pem
@@ -181,7 +182,7 @@ rsa/ocsp.vrfy: rsa/ca.pem
 #  Create a new ocsp certificate, signed by the above ECC CA.
 #
 ######################################################################
-ecc/ocsp.key: ocsp.cnf | output_dirs
+ecc/ocsp.key: ocsp.cnf | $(OUTPUT_DIRS)
 	openssl ecparam -out ecc/ocsp.key -name prime256v1 -genkey
 
 ecc/ocsp.csr: ecc/ocsp.key ocsp.cnf
@@ -205,7 +206,7 @@ ecc/ocsp.vrfy: ecc/ca.pem
 #  Create a new client certificate, signed by the the above RSA CA.
 #
 ######################################################################
-rsa/client.csr rsa/client.key: client.cnf | output_dirs
+rsa/client.csr rsa/client.key: client.cnf | $(OUTPUT_DIRS)
 	openssl req -new -out rsa/client.csr -keyout rsa/client.key -config ./client.cnf
 
 rsa/client.crt: rsa/client.csr rsa/ca.pem rsa/ca.key
@@ -228,7 +229,7 @@ rsa/client.vrfy: rsa/ca.pem rsa/client.pem
 #  Create a new client certificate, signed by the the above ECC CA.
 #
 ######################################################################
-ecc/client.key: client.cnf | output_dirs
+ecc/client.key: client.cnf | $(OUTPUT_DIRS)
 	openssl ecparam -out ecc/client.key -name prime256v1 -genkey
 
 ecc/client.csr: ecc/client.key client.cnf
@@ -254,7 +255,7 @@ ecc/client.vrfy: ecc/ca.pem ecc/client.pem
 #  Create a new inner-server certificate, signed by the above RSA CA.
 #
 ######################################################################
-rsa/inner-server.csr rsa/inner-server.key: inner-server.cnf | output_dirs
+rsa/inner-server.csr rsa/inner-server.key: inner-server.cnf | $(OUTPUT_DIRS)
 	openssl req -new -out rsa/inner-server.csr -keyout rsa/inner-server.key -config ./inner-server.cnf
 	chmod g+r rsa/inner-server.key
 
@@ -278,7 +279,7 @@ rsa/inner-server.vrfy: rsa/ca.pem
 #  Create a new inner-server certificate, signed by the above ECC CA.
 #
 ######################################################################
-ecc/inner-server.key: inner-server.cnf | output_dirs
+ecc/inner-server.key: inner-server.cnf | $(OUTPUT_DIRS)
 	openssl ecparam -out ecc/inner-server.key -name prime256v1 -genkey
 
 ecc/inner-server.csr: ecc/inner-server.key inner-server.cnf
