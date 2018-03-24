@@ -284,7 +284,7 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 		fp = fdopen(fd, "w");
 		if (!fp) {
 			close(fd);
-			RDEBUG("Failed opening file %s: %s", filename, fr_syserror(errno));
+			RDEBUG("Failed opening file \"%s\": %s", filename, fr_syserror(errno));
 			break;
 		}
 

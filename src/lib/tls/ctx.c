@@ -107,7 +107,6 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t const *chai
 {
 	char		*password;
 
-
 	/*
 	 *	Conf parser should ensure they're both populated
 	 */
@@ -170,7 +169,7 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t const *chai
 
 			fp = fopen(filename, "r");
 			if (!fp) {
-				ERROR("Failed opening file: %s", fr_syserror(errno));
+				ERROR("Failed opening ca_file \"%s\": %s", filename, fr_syserror(errno));
 				return -1;
 			}
 
@@ -267,7 +266,6 @@ static void _tls_ctx_print_cert_line(int index, X509 *cert)
 	X509_NAME_oneline(X509_get_subject_name(cert), subject, sizeof(subject));
 	subject[sizeof(subject) - 1] = '\0';
 
-
 	DEBUG3("[%i] %s %s", index, tls_utils_x509_pkey_type(cert), subject);
 }
 #endif
@@ -312,7 +310,6 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 	/*
 	 *	Identify the type of certificates that needs to be loaded
 	 */
-
 #ifdef PSK_MAX_IDENTITY_LEN
 	if (!client) {
 		/*

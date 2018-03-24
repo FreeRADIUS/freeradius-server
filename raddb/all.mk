@@ -19,8 +19,27 @@ INSTALL_CERT_FILES :=	Makefile README xpextensions \
 			ca.cnf server.cnf ocsp.cnf inner-server.cnf \
 			client.cnf bootstrap
 
-LOCAL_CERT_FILES :=	ca.key ca.pem client.crt client.key client.pem dh \
-			ocsp.key ocsp.pem server.crt server.key server.pem
+LOCAL_CERT_FILES :=	dh \
+			rsa/ca.key \
+			rsa/ca.pem \
+			rsa/client.crt \
+			rsa/client.key \
+			rsa/client.pem \
+			rsa/ocsp.key \
+			rsa/ocsp.pem \
+			rsa/server.crt \
+			rsa/server.key \
+			rsa/server.pem \
+			ecc/ca.key \
+			ecc/ca.pem \
+			ecc/client.crt \
+			ecc/client.key \
+			ecc/client.pem \
+			ecc/ocsp.key \
+			ecc/ocsp.pem \
+			ecc/server.crt \
+			ecc/server.key \
+			ecc/server.pem
 
 GENERATED_CERT_FILES := $(addprefix ${top_srcdir}/raddb/certs/,$(LOCAL_CERT_FILES))
 

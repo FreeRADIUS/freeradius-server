@@ -84,10 +84,10 @@ eap inner-eap {
 		#  key type.
 		#
 		chain {
-			certificate_file = ${certdir}/server.pem
-			ca_file = ${certdir}/ca.pem
+			certificate_file = ${certdir}/rsa/server.pem
+			ca_file = ${certdir}/rsa/ca.pem
 			private_key_password = whatever
-			private_key_file = ${certdir}/server.key
+			private_key_file = ${certdir}/rsa/server.key
 		}
 
 		#
@@ -100,7 +100,7 @@ eap inner-eap {
 		#  set to a certificate chain for your institution's CA
 		#  or a self signed Root CA.
 		#
-		ca_file = ${cadir}/ca.pem
+		ca_file = ${cadir}/rsa/ca.pem
 
 		#
 		#  For DH cipher suites to work, you have to run OpenSSL to

@@ -342,7 +342,7 @@ static int cipher_rsa_private_key_file_load(TALLOC_CTX *ctx, void *out, CONF_ITE
 
 	fp = fopen(filename, "r");
 	if (!fp) {
-		cf_log_err(ci, "Failed opening file: %s", fr_syserror(errno));
+		cf_log_err(ci, "Failed opening private_key file \"%s\": %s", filename, fr_syserror(errno));
 		return -1;
 	}
 
@@ -402,7 +402,7 @@ static int cipher_rsa_certificate_file_load(UNUSED TALLOC_CTX *ctx, void *out, C
 
 	fp = fopen(filename, "r");
 	if (!fp) {
-		cf_log_err(ci, "Failed opening file: %s", fr_syserror(errno));
+		cf_log_err(ci, "Failed opening certificate_file \"%s\": %s", filename, fr_syserror(errno));
 		return -1;
 	}
 

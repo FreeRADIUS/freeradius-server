@@ -214,7 +214,7 @@ eap {
 			#  the server's certificate, and one or more "ca_file" items should be
 			#  used to load intermediary CAs and the Root CA.
 			#
-			certificate_file = ${certdir}/server.pem
+			certificate_file = ${certdir}/rsa/server.pem
 
 			#
 			#  Only available with OpenSSL >= 1.0.2
@@ -223,7 +223,7 @@ eap {
 			#  chain compilation.  Multiple "ca_file" config items may be used
 			#  to load multiple certificates.
 			#
-			ca_file = ${certdir}/ca.pem
+			ca_file = ${certdir}/rsa/ca.pem
 
 			#
 			#  Password used to encrypt the private key.  If the private key is
@@ -236,7 +236,7 @@ eap {
 			#  then 'private_key_file' & 'certificate_file' must contain the
 			#  same file name.
 			#
-			private_key_file = ${certdir}/server.key
+			private_key_file = ${certdir}/rsa/server.key
 
 			#
 			#  With OpenSSL >= 1.0.2 we attempt to precompile the certificate chain
@@ -274,6 +274,16 @@ eap {
 		}
 
 		#
+		#  Load the ECC certificate chain for key agility
+		#
+		chain {
+			certificate_file = ${certdir}/ecc/server.pem
+			ca_file = ${certdir}/ecc/ca.pem
+			private_key_password = whatever
+			private_key_file = ${certdir}/ecc/server.key
+		}
+
+		#
 		#  Server certificate may also be specified at runtime on a per
 		#  session basis.  Here, the certificate file must consist
 		#  of the certificate and private key, PEM encoded, with no
@@ -305,7 +315,7 @@ eap {
 		#  set to a certificate chain for your institution's CA
 		#  or a self signed Root CA.
 		#
-		ca_file = ${cadir}/ca.pem
+		ca_file = ${cadir}/rsa/ca.pem
 
 		#
 		#  If OpenSSL supports TLS-PSK, then we can use a PSK identity
