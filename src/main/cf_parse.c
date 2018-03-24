@@ -836,7 +836,8 @@ static int cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER const
 	CONF_PAIR *cp;
 
 	if ((FR_BASE_TYPE(rule->type) == FR_TYPE_SUBSECTION)) {
-		CONF_SECTION *subcs;
+		char const	*name2 = NULL;
+		CONF_SECTION	*subcs;
 
 		subcs = cf_section_find(cs, rule->name, rule->ident2);
 
@@ -878,7 +879,9 @@ static int cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER const
 		   *	etc. allocated in the subsection.
 		   */
 		  if (DEBUG_ENABLED4) cf_log_debug(cs, "Allocating fake section \"%s\"", rule->name);
-		  subcs = cf_section_alloc(cs, cs, rule->name, rule->ident2);
+
+		  if (rule->ident2 != CF_IDENT_ANY) name2 = rule->ident2;
+		  subcs = cf_section_alloc(cs, cs, rule->name, name2);
 		  if (!subcs) return -1;
 
 		  cf_item_add(cs, &(subcs->item));
