@@ -2874,8 +2874,8 @@ int fr_value_box_strsteal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t c
 	char	*str;
 
 	len = talloc_array_length(src);
-	if ((len == 1) || (src[len - 1] != '\0')) {
-		fr_strerror_printf("Input buffer not \\0 terminated");
+	if ((len == 0) || (src[len - 1] != '\0')) {
+		fr_strerror_printf("Input buffer empty or not \\0 terminated");
 		return -1;
 	}
 

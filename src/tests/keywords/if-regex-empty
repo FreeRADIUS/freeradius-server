@@ -34,4 +34,21 @@ if ("%{1}") {
 	test_fail
 }
 
+#
+#  Check assignment of regex null-match
+#
+if (control:Cleartext-Password =~ /hell(o)(.*)/) {
+	update {
+		control:Tmp-String-1 := "%{2}"
+	}
+}
+
+if (!&control:Tmp-String-1) {
+	test_fail
+}
+
+if (&control:Tmp-String-1 != "") {
+	test_fail
+}
+
 success
