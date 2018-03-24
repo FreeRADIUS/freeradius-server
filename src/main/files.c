@@ -88,6 +88,7 @@ int pairlist_read(TALLOC_CTX *ctx, char const *file, PAIR_LIST **list, int compl
 	VALUE_PAIR *reply_tmp = NULL;
 	PAIR_LIST *pl = NULL, *t;
 	PAIR_LIST **last = &pl;
+	int order = 0;
 	int lineno = 0;
 	int entry_lineno = 0;
 	FR_TOKEN parsecode;
@@ -199,8 +200,10 @@ parse_again:
 				 *	of entries.  Go to the end of the
 				 *	list.
 				 */
-				while (*last)
+				while (*last) {
+					(*last)->order = order++;
 					last = &((*last)->next);
+				}
 				continue;
 			} /* $INCLUDE ... */
 
@@ -316,6 +319,7 @@ parse_again:
 		t->check = check_tmp;
 		t->reply = reply_tmp;
 		t->lineno = entry_lineno;
+		t->order = order++;
 		check_tmp = NULL;
 		reply_tmp = NULL;
 
