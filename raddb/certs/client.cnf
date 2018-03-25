@@ -46,6 +46,7 @@ distinguished_name	= client
 default_bits		= 2048
 input_password		= whatever
 output_password		= whatever
+string_mask		= utf8only
 
 [ client ]
 countryName		= FR
