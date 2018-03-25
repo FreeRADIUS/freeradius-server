@@ -764,6 +764,7 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 			if (!cp || (strcmp(cf_pair_value(cp), "yes") != 0)) {
 				fprintf(stdout, "Skipping, missing feature \"%s\"", p);
 				if (fp != stdin) fclose(fp);
+				talloc_free(tp_ctx);
 				return; /* Skip this file */
 			}
 			continue;
