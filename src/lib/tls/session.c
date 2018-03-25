@@ -1301,23 +1301,22 @@ int tls_session_handshake(REQUEST *request, tls_session_t *session)
 
 		char cipher_desc[256], cipher_desc_clean[256];
 		char *p = cipher_desc, *q = cipher_desc_clean;
-		bool space = false;
 
 		cipher = SSL_get_current_cipher(session->ssl);
 		SSL_CIPHER_description(cipher, cipher_desc, sizeof(cipher_desc));
 		/*
 		 *	Cleanup the output from OpenSSL
+		 *	Seems to print info in a tabular format.
 		 */
-		while (*p++ != '\0') {
-			if (*p == ' ') {
-				if (space) continue;
-				space = true;
-			} else {
-				space = false;
+		while (*p != '\0') {
+			if (isspace(*p)) {
+				*q++ = *p;
+				while (isspace(*++p));
+				continue;
 			}
-			*q++ = *p;
+			*q++ = *p++;
 		}
-		q[0] = '\0';
+		*q = '\0';
 
 		RDEBUG2("Cipher suite: %s", cipher_desc_clean);
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
