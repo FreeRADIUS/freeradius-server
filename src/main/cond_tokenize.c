@@ -1117,6 +1117,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, 
 							 *	by module.c, so we can't enforce strictness here.
 							 */
 							c->pass2_fixup = PASS2_FIXUP_TYPE;
+							break;
 
 						default:
 						bad_type:
