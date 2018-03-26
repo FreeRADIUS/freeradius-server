@@ -340,6 +340,10 @@ void tls_session_info_cb(SSL const *ssl, int where, int ret)
 		if ((ret & 0xff) == SSL_AD_CLOSE_NOTIFY) return;
 
 		if (where & SSL_CB_READ) {
+			TALLOC_CTX	*ctx;
+			VALUE_PAIR	**list;
+			fr_value_box_t	value;
+
 			REDEBUG("Client sent %s TLS alert: %s", SSL_alert_type_string_long(ret),
 			        SSL_alert_desc_string_long(ret));
 
@@ -354,9 +358,23 @@ void tls_session_info_cb(SSL const *ssl, int where, int ret)
 			default:
 				break;
 			}
+
+			RADIUS_LIST_AND_CTX(ctx, list, request, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+
+			memset(&value, 0, sizeof(value));
+			value.type = FR_TYPE_UINT8;
+			value.vb_uint8 = ret & 0xff;
+			value.enumv = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_TLS_CLIENT_ERROR_CODE);
+
+			if (!list || (fr_pair_update_by_num(ctx, list, 0,
+			    FR_TLS_CLIENT_ERROR_CODE, TAG_ANY, &value) < 0)) {
+				RWDEBUG("Failed updating &TLS-Client-Error-Code");
+			} else {
+				RDEBUG2("&TLS-Client-Error-Code := %pV", &value);
+			}
 		} else {
 			REDEBUG("Sending client %s TLS alert: %s %i", SSL_alert_type_string_long(ret),
-			       SSL_alert_desc_string_long(ret), ret & 0xff);
+				SSL_alert_desc_string_long(ret), ret & 0xff);
 		}
 		return;
 	}
