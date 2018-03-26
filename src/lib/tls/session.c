@@ -364,10 +364,11 @@ void tls_session_info_cb(SSL const *ssl, int where, int ret)
 			memset(&value, 0, sizeof(value));
 			value.type = FR_TYPE_UINT8;
 			value.vb_uint8 = ret & 0xff;
-			value.enumv = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_TLS_CLIENT_ERROR_CODE);
+			value.enumv = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal),
+								FR_TLS_CLIENT_ERROR_CODE);
 
 			if (!list || (fr_pair_update_by_num(ctx, list, 0,
-			    FR_TLS_CLIENT_ERROR_CODE, TAG_ANY, &value) < 0)) {
+			    				    FR_TLS_CLIENT_ERROR_CODE, TAG_ANY, &value) < 0)) {
 				RWDEBUG("Failed updating &TLS-Client-Error-Code");
 			} else {
 				RDEBUG2("&TLS-Client-Error-Code := %pV", &value);
