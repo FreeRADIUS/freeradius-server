@@ -179,7 +179,7 @@ static int server_parse(UNUSED TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED
 	/*
 	 *	Now parse the listeners
 	 */
-	cf_section_parse(out, server, server_cs);
+	if (cf_section_parse(out, server, server_cs) < 0) return -1;
 
 	return 0;
 }
