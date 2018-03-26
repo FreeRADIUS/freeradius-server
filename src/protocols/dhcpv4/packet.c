@@ -232,11 +232,11 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 		 *	DHCP Opcode is request
 		 */
 		vp = fr_pair_find_by_num(head, DHCP_MAGIC_VENDOR, 256, TAG_ANY);
-		if (vp && vp->vp_uint32 == 3) {
+		if (vp && vp->vp_uint8 == 1) {
 			/*
 			 *	Vendor is "MSFT 98"
 			 */
-			vp = fr_pair_find_by_num(head, DHCP_MAGIC_VENDOR, 63, TAG_ANY);
+			vp = fr_pair_find_by_num(head, DHCP_MAGIC_VENDOR, 60, TAG_ANY);
 			if (vp && (strcmp(vp->vp_strvalue, "MSFT 98") == 0)) {
 				vp = fr_pair_find_by_num(head, DHCP_MAGIC_VENDOR, 262, TAG_ANY);
 
@@ -262,7 +262,7 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 	maxms = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 57, TAG_ANY);
 	mtu = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 26, TAG_ANY);
 
-	if (mtu && (mtu->vp_uint32 < DEFAULT_PACKET_SIZE)) {
+	if (mtu && (mtu->vp_uint16 < DEFAULT_PACKET_SIZE)) {
 		fr_strerror_printf("Client says MTU is smaller than minimum permitted by the specification");
 		return -1;
 	}
@@ -271,12 +271,12 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 	 *	Client says maximum message size is smaller than minimum permitted
 	 *	by the specification: fixing it.
 	 */
-	if (maxms && (maxms->vp_uint32 < DEFAULT_PACKET_SIZE)) maxms->vp_uint32 = DEFAULT_PACKET_SIZE;
+	if (maxms && (maxms->vp_uint16 < DEFAULT_PACKET_SIZE)) maxms->vp_uint16 = DEFAULT_PACKET_SIZE;
 
 	/*
 	 *	Client says MTU is smaller than maximum message size: fixing it
 	 */
-	if (maxms && mtu && (maxms->vp_uint32 > mtu->vp_uint32)) maxms->vp_uint32 = mtu->vp_uint32;
+	if (maxms && mtu && (maxms->vp_uint16 > mtu->vp_uint16)) maxms->vp_uint16 = mtu->vp_uint16;
 
 	return 0;
 }
