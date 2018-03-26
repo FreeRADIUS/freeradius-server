@@ -1646,6 +1646,7 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 		net = ntohl(src->vb_uint32);
 		memcpy(&dst->vb_ip.addr.v4, (uint8_t *)&net, sizeof(dst->vb_ip.addr.v4.s_addr));
 		dst->vb_ip.prefix = 32;
+		break;
 	}
 
 	default:
