@@ -1576,6 +1576,7 @@ static int dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t *da)
 			fr_strerror_printf("Failed inserting IPv6 version of combo attribute");
 			goto error;
 		}
+		break;
 	}
 
 	case FR_TYPE_COMBO_IP_PREFIX:
@@ -1599,7 +1600,9 @@ static int dict_attr_add_by_name(fr_dict_t *dict, fr_dict_attr_t *da)
 			fr_strerror_printf("Failed inserting IPv6 version of combo attribute");
 			goto error;
 		}
+		break;
 	}
+
 	default:
 		break;
 	}
