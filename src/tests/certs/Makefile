@@ -23,10 +23,17 @@ print:
 	@openssl x509 -text -in rsa/ca.pem
 	@openssl x509 -text -in rsa/server.pem
 	@openssl x509 -text -in rsa/client.pem
+	@openssl x509 -text -in ecc/ca.pem
+	@openssl x509 -text -in ecc/server.pem
+	@openssl x509 -text -in ecc/client.pem
 
 .PHONY: verify
 verify:
 	@openssl verify -CAfile rsa/ca.pem rsa/server.pem
 	@openssl verify -CAfile rsa/ca.pem rsa/ocsp.pem
-	@c_rehash .
+	@c_rehash rsa/
 	@openssl verify -CApath rsa rsa/client.pem
+	@openssl verify -CAfile ecc/ca.pem ecc/server.pem
+	@openssl verify -CAfile ecc/ca.pem ecc/ocsp.pem
+	@c_rehash ecc/
+	@openssl verify -CApath ecc ecc/client.pem
