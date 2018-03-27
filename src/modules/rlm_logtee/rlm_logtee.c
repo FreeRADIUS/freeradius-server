@@ -254,7 +254,11 @@ static void _logtee_conn_writable(UNUSED fr_event_list_t *el, int sock, UNUSED i
 	 *	Fixme in general...
 	 */
 	while ((msg = fr_fring_next(t->fring))) {
-		if (write(sock, msg, talloc_array_length(msg) - 1) < 0) {
+		ssize_t slen;
+
+		slen = write(sock, msg, talloc_array_length(msg) - 1) ;
+	write_error:
+		if (slen < 0) {
 			switch (errno) {
 			case EAGAIN:
 #if defined(EWOULDBLOCK) && EWOULDBLOCK != EAGAIN
@@ -281,7 +285,9 @@ static void _logtee_conn_writable(UNUSED fr_event_list_t *el, int sock, UNUSED i
 				rad_assert(0);
 			}
 		}
-		(void) write(sock, t->inst->delimiter, t->inst->delimiter_len);
+
+		slen = write(sock, t->inst->delimiter, t->inst->delimiter_len);
+		if (slen < 0) goto write_error;
 	}
 
 	logtee_fd_idle(t);
