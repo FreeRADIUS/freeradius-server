@@ -622,7 +622,9 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		 *	the point in the file where we were reading from.
 		 */
 		(void) lseek(inst->fd, track->done_offset, SEEK_SET);
-		(void) write(inst->fd, "Done", 4);
+		if (write(inst->fd, "Done", 4) < 0) {
+			ERROR("%s - Failed marking entry as done: %s", inst->name, fr_syserror(errno));
+		}
 		(void) lseek(inst->fd, inst->read_offset, SEEK_SET);
 	}
 
