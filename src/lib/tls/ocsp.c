@@ -331,6 +331,11 @@ int tls_ocsp_check(REQUEST *request, SSL *ssl,
 		break;
 	}
 
+	if (issuer_cert == NULL) {
+		RWDEBUG("Could not get issuer certificate");
+		goto skipped;
+	}
+
 	/*
 	 *	Setup logging for this OCSP operation
 	 */

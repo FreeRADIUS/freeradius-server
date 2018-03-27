@@ -324,11 +324,12 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	 */
 	if (my_ok && conf->ocsp.enable){
 		RDEBUG2("Starting OCSP Request");
-		if (X509_STORE_CTX_get1_issuer(&issuer_cert, x509_ctx, cert) != 1) {
-			RERROR("Couldn't get issuer_cert for %s", common_name);
-		} else {
-			my_ok = tls_ocsp_check(request, ssl, conf->ocsp.store, issuer_cert, cert, &(conf->ocsp), false);
+		issuer_cert = X509_STORE_CTX_get0_current_issuer(x509_ctx);
+		if (issuer_cert == NULL) {
+			RDEBUG("Couldn't get issuer_cert for %s", common_name);
 		}
+
+		my_ok = tls_ocsp_check(request, ssl, conf->ocsp.store, issuer_cert, cert, &(conf->ocsp), false);
 	}
 #endif
 
