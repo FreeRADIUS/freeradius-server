@@ -180,7 +180,7 @@ void fr_strerror_printf(char const *fmt, ...)
 
 		ret = fr_thread_local_set(fr_strerror_buffer, buffer);
 		if (ret != 0) {
-			fr_perror("Failed setting up TLS for libradius error buffer: %s", fr_syserror(ret));
+			fr_perror("Failed setting up thread-local storage for libradius error buffer: %s", fr_syserror(ret));
 			free(buffer);
 			return;
 		}
@@ -263,7 +263,7 @@ char const *fr_syserror(int num)
 
 		ret = fr_thread_local_set(fr_syserror_buffer, buffer);
 		if (ret != 0) {
-			fr_perror("Failed setting up TLS for system error buffer: %s", fr_syserror(ret));
+			fr_perror("Failed setting up thread-local storage for system error buffer");
 			free(buffer);
 			return NULL;
 		}
