@@ -106,7 +106,7 @@ AC_DEFUN([AX_CC_NO_UNKNOWN_WARNING_OPTION_FLAG],[
 
   CFLAGS_SAVED=$CFLAGS
   CFLAGS="-Werror -Wno-unknown-warning-option"
-    
+
   AC_COMPILE_IFELSE(
     [AC_LANG_PROGRAM([], [[
     /*
@@ -115,14 +115,14 @@ AC_DEFUN([AX_CC_NO_UNKNOWN_WARNING_OPTION_FLAG],[
      */
     #if defined(__GNUC__) && !defined(__clang__)
         gcc sucks
-    #endif    
-    
+    #endif
+
     return 0;
     ]])],
     [ax_cv_cc_no_unknown_warning_option_flag=yes],
     [ax_cv_cc_no_unknown_warning_option_flag=no])
 
-  CFLAGS="$CFLAGS_SAVED"    
+  CFLAGS="$CFLAGS_SAVED"
   ])
 ])
 
@@ -158,6 +158,24 @@ AC_DEFUN([AX_CC_WDOCUMENTATION_FLAG],[
       [return 0;],
       [ax_cv_cc_wdocumentation_flag="yes"],
       [ax_cv_cc_wdocumentation_flag="no"])
+    AC_LANG_POP
+
+    CFLAGS="$CFLAGS_SAVED"
+  ])
+])
+
+AC_DEFUN([AX_CC_IMPLICIT_FALLTHROUGH_FLAG],[
+  AC_CACHE_CHECK([for the compiler flag "-Wimplicit-fallthrough"], [ax_cv_cc_wimplicit_fallthrough_flag],[
+
+    CFLAGS_SAVED=$CFLAGS
+    CFLAGS="$CFLAGS -Werror -Wimplicit-fallthrough"
+
+    AC_LANG_PUSH(C)
+    AC_TRY_COMPILE(
+      [],
+      [return 0;],
+      [ax_cv_cc_wimplicit_fallthrough_flag="yes"],
+      [ax_cv_cc_wimplicit_fallthrough_flag="no"])
     AC_LANG_POP
 
     CFLAGS="$CFLAGS_SAVED"

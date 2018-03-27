@@ -1612,6 +1612,14 @@ if test "x$developer" = "xyes"; then
   fi
 
   dnl #
+  dnl #  Older versions of GCC don't support this, but 7 seems to
+  dnl #
+  AX_CC_IMPLICIT_FALLTHROUGH_FLAG
+  if test "x$ax_cv_cc_wimplicit_fallthrough_flag" = "xyes"; then
+    devcflags="$devcflags -Wimplicit-fallthrough"
+  fi
+
+  dnl #
   dnl #  If running with clang, add in ASAN
   dnl #
   if test "x$llvm_address_sanitizer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
