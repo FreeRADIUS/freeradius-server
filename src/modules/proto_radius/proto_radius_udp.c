@@ -69,7 +69,7 @@ typedef struct fr_radius_dynamic_client_t {
 	uint32_t			max_pending_packets;	//!< maximum accepted pending packets
 	uint32_t			num_pending_packets;	//!< how many packets are received, but not accepted
 
-	uint32_t			lifetime;		//!< of the dynamic client, in seconds.
+	uint32_t			idle_timeout;		//!< of the dynamic client, in seconds.
 } fr_radius_dynamic_client_t;
 
 #ifdef HAVE_PTHREAD_H
@@ -100,7 +100,6 @@ typedef struct proto_radius_udp_child_t {
 	fr_ipaddr_t			src_ipaddr;		//!< source IP for connected sockets
 	uint16_t			src_port;      		//!< Source port for connected sockets.
 	int				if_index;		//!< index of receiving interface
-	bool				expired;		//!< is this socket expired?
 
 	uint8_t const			*packet;		//!< for injected packets
 	size_t				packet_len;		//!< length of the injected packet
@@ -169,7 +168,7 @@ static const CONF_PARSER dynamic_client_config[] = {
 	{ FR_CONF_OFFSET("max_pending_clients", FR_TYPE_UINT32, fr_radius_dynamic_client_t, max_pending_clients), .dflt = "256" },
 	{ FR_CONF_OFFSET("max_pending_packets", FR_TYPE_UINT32, fr_radius_dynamic_client_t, max_pending_packets), .dflt = "65536" },
 
-	{ FR_CONF_OFFSET("lifetime", FR_TYPE_UINT32, fr_radius_dynamic_client_t, lifetime), .dflt = "600" },
+	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_UINT32, fr_radius_dynamic_client_t, idle_timeout), .dflt = "600" },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -229,20 +228,60 @@ static const CONF_PARSER priority_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static void dynamic_client_timer(proto_radius_udp_t *inst, RADCLIENT *client, uint32_t timer);
+
 /*
  *	@todo - put packets to be cleaned up in a heap or linked list,
  *	and then have one cleanup delay per rlm_radius_udp_t.  That
  *	way we can have a timer which fires periodically, and then
  *	cleans up multiple packets.
  */
-static void mod_cleanup_delay(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
+static void mod_cleanup_packet(UNUSED fr_event_list_t *el, struct timeval *now, void *uctx)
 {
-	fr_tracking_entry_t *track = uctx;
-	// proto_radius_udp_t const *inst = talloc_parent(track->ft);
+	fr_tracking_entry_t		*track = uctx;
+	proto_radius_udp_address_t	*address = (proto_radius_udp_address_t *) &track->src_dst[0];
+	RADCLIENT			*client = address->client;
+	proto_radius_udp_t		*inst = talloc_parent(track->ft);
 
-	DEBUG2("TIMER - proto_radius cleanup delay for ID %d", track->data[1]);
+	/*
+	 *	So that all cleanup paths can come here, not just the
+	 *	timeout ones.
+	 */
+	if (now) {
+		DEBUG2("TIMER - proto_radius cleanup delay for ID %d", track->data[1]);
+	} else {
+		DEBUG2("proto_radius cleaning up ID %d", track->data[1]);
+	}
 
 	(void) fr_radius_tracking_entry_delete(track->ft, track, track->timestamp);
+
+	/*
+	 *	The client isn't dynamic, stop here.
+	 */
+	if (!client->dynamic) return;
+
+	/*
+	 *	One less packet to deal with.
+	 */
+	rad_assert(client->outstanding > 0);
+	client->outstanding--;
+
+	/*
+	 *	There are still outstanding packets, don't clean up
+	 *	the client.  And also clean up any old idle timer.
+	 */
+	if (client->outstanding) {
+		if (client->ev) talloc_const_free(client->ev);
+		return;
+	}
+
+	/*
+	 *	There are no outstanding packets, set up a timer to
+	 *	delete the socket after idle_timeout.  If someone uses
+	 *	it within that time frame, we'll just delete the
+	 *	cleanup timer.
+	 */
+	dynamic_client_timer(inst, client, inst->dynamic_clients.idle_timeout);
 }
 
 /** Return the src address associated with the packet_ctx
@@ -592,8 +631,6 @@ static ssize_t dynamic_client_alloc(proto_radius_udp_t *inst, uint8_t *packet, s
 	return packet_len;
 }
 
-static void dynamic_client_timer(proto_radius_udp_t *inst, RADCLIENT *client, uint32_t timer);
-
 static void dynamic_client_expire(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
 {
 	RADCLIENT *client = uctx;
@@ -601,21 +638,13 @@ static void dynamic_client_expire(UNUSED fr_event_list_t *el, UNUSED struct time
 
 	DEBUG("TIMER - checking dynamic client %s for expiration.", client->shortname);
 
-	/*
-	 *	The client has expired, and no one is using it.
-	 *	Remove it from the expired list, and free it.
-	 */
-	if (client->expired) {
-		DEBUG("%s - deleting client %s.", inst->name, client->shortname);
-		rad_assert(client->outstanding == 0);
-		client_free(client);
-		return;
-	}
+	rad_assert(client->dynamic);
 
 	/*
 	 *	It's a negative cache entry.  Just delete it.
 	 */
 	if (client->negative) {
+		DEBUG("%s - deleting negative client %s.", inst->name, client->shortname);
 		rad_assert(client->outstanding == 0);
 		client_delete(inst->dynamic_clients.negative, client);
 		inst->dynamic_clients.num_negative_clients--;
@@ -624,59 +653,27 @@ static void dynamic_client_expire(UNUSED fr_event_list_t *el, UNUSED struct time
 	}
 
 	/*
-	 *	Mark the client as "expired", so that any new packets
-	 *	will result in us trying to re-define it.  Remove it
-	 *	from the main list, BUT add it to the "expired" list.
+	 *	There are still packets using this socket, wait for
+	 *	them to all finish.
 	 */
-	client->expired = true;
-	client_delete(inst->dynamic_clients.clients, client);
-
-	/*
-	 *	There are no active requests using this client.  It
-	 *	can be deleted.  However, we only free the client when
-	 *	we're sure that all packets associated with the client
-	 *	have timed out.
-	 *
-	 *	@todo - move to a tracking table per client (or per
-	 *	connection).  That way we know that when we delete the
-	 *	client or close the connection, we can free all
-	 *	packets associated with it.  Even if the packets are
-	 *	in "cleanup_delay" state.
-	 */
-	if (client->outstanding == 0) {
-		DEBUG("%s - marking dynamic client %s for deletion.", inst->name, client->shortname);
-		dynamic_client_timer(inst, client, inst->cleanup_delay + 5);
+	if (client->outstanding > 0) {
+		DEBUG("%s - waiting for packets to finish processing for client %s", inst->name, client->shortname);
 		return;
 	}
 
 	/*
-	 *	Else there are still packets in the workers, wake up
-	 *	in another 30 seconds and try again.
+	 *	The client has expired, and no one is using it.
 	 */
-	DEBUG("%s - there are still outstanding packets for client %s, will try again in 30s.",
-	      inst->name, client->shortname);
-	dynamic_client_timer(inst, client, 30);
+	DEBUG("%s - deleting client %s.", inst->name, client->shortname);
+	client_delete(inst->dynamic_clients.clients, client);
+	client_free(client);
 }
 
 static void dynamic_client_timer(proto_radius_udp_t *inst, RADCLIENT *client, uint32_t timer)
 {
 	struct timeval when;
 
-	/*
-	 *	This client lives forever.  Don't expire it!
-	 */
-	if (!timer) return;
-
-	/*
-	 *	It's not active, AND it's not a negative cache.  We
-	 *	had some other error trying to insert a "good" client
-	 *	into the list of known clients.  Just nuke it, and
-	 *	allow another packet to try to recreate it.
-	 */
-	if (!client->expired && !client->active && !client->negative) {
-		talloc_free(client);
-		return;
-	}
+	rad_assert(timer > 0);
 
 	gettimeofday(&when, NULL);
 	when.tv_sec += timer;
@@ -1180,7 +1177,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 
 				DEBUG3("SAME packet - cleanup");
 				(void) fr_event_timer_insert(NULL, inst->el, &track->ev,
-							     &tv, mod_cleanup_delay, track);
+							     &tv, mod_cleanup_packet, track);
 			}
 
 			inst->stats.total_dup_requests++;
@@ -1257,7 +1254,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 
 	inst->stats.total_requests++;
 	rad_assert(address.client != NULL);
-	address.client->outstanding++;
+	if (address.client->dynamic) address.client->outstanding++;
 
 return_packet:
 	*packet_ctx = track;
@@ -1331,17 +1328,6 @@ static int mod_inject(void *instance, uint8_t *buffer, size_t buffer_len, fr_tim
 	return 0;
 }
 
-static void connection_expire(UNUSED fr_event_list_t *el, UNUSED struct timeval *now, void *uctx)
-{
-	proto_radius_udp_t *inst = uctx;
-
-	inst->child.expired = true;
-
-	DEBUG("TIMER - expiring socket %s", inst->name);
-	fr_network_listen_read(inst->nr, inst->child.listen);
-}
-
-
 static ssize_t mod_write(void *instance, void *packet_ctx,
 			 fr_time_t request_time, uint8_t *buffer, size_t buffer_len)
 {
@@ -1406,7 +1392,12 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			/*
 			 *	Do NOT delete the tracking table
 			 *	entry.  The packet has to be
-			 *	re-injected!.
+			 *	re-injected!
+			 *
+			 *	But, add a timer to clean up the
+			 *	negative cache entry in 30s.
+			 *
+			 *	@todo - make this timer configurable
 			 */
 			dynamic_client_timer(inst, client, 30);
 			return buffer_len;
@@ -1467,11 +1458,6 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			inst->dynamic_clients.num_pending_packets--;
 		}
 
-		/*
-		 *	Set up the lifetime for the newly defined
-		 *	client.
-		 */
-		dynamic_client_timer(inst, newclient, inst->dynamic_clients.lifetime);
 		talloc_free(client);
 
 		/*
@@ -1500,27 +1486,6 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		DEBUG3("Suppressing reply as we have a newer packet");
 		(void) fr_radius_tracking_entry_delete(track->ft, track, request_time);
 		return buffer_len;
-	}
-
-	/*
-	 *	One less packet outstanding.
-	 */
-	rad_assert(address->client->outstanding > 0);
-	address->client->outstanding--;
-
-	/*
-	 *	We may need to clean up this socket.
-	 */
-	if (inst->connected && !address->client->outstanding) {
-		struct timeval when;
-
-		gettimeofday(&when, NULL);
-		when.tv_sec += 30;
-
-		if (fr_event_timer_insert(inst, inst->el, &inst->child.ev,
-					  &when, connection_expire, inst) < 0) {
-			ERROR("Failed adding timeout for connected socket.  It will be permanent!");
-		}
 	}
 
 	inst->stats.total_responses++;
@@ -1554,10 +1519,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 					&address->src_ipaddr, address->src_port);
 		}
 
-		/*
-		 *	Delete our extra copy of the tracking structure.
-		 */
-		(void) fr_radius_tracking_entry_delete(track->ft, track, track->timestamp);
+		mod_cleanup_packet(NULL, NULL, track);
 		return buffer_len;
 	}
 
@@ -1570,11 +1532,13 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 				     &address->dst_ipaddr, address->dst_port,
 				     address->if_index,
 				     &address->src_ipaddr, address->src_port);
+			/*
+			 *	This whole socket is dead.  Stop processing all packets
+			 */
 		if (data_size < 0) {
-		done:
-			if (track->ev) (void) fr_event_timer_delete(inst->el, &track->ev);
-			(void) fr_radius_tracking_entry_delete(track->ft, track, request_time);
-			return data_size;
+			mod_cleanup_packet(NULL, NULL, track);
+			rad_assert(0 == 1);
+			fr_exit(EXIT_FAILURE);
 		}
 
 	} else {
@@ -1600,7 +1564,11 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	 */
 	if (!inst->cleanup_delay) {
 		DEBUG3("Deleting tracking table entry");
-		goto done;
+
+	done:
+		if (track->ev) (void) fr_event_timer_delete(inst->el, &track->ev);
+		mod_cleanup_packet(NULL, NULL, track);
+		return data_size;
 	}
 
 	/*
@@ -1623,7 +1591,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	 *	Set cleanup timer.
 	 */
 	if (fr_event_timer_insert(NULL, inst->el, &track->ev,
-				  &tv, mod_cleanup_delay, track) < 0) {
+				  &tv, mod_cleanup_packet, track) < 0) {
 		DEBUG3("Failed adding cleanup timer");
 		goto done;
 	}
@@ -2036,9 +2004,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		FR_INTEGER_BOUND_CHECK("max_pending_packets", inst->dynamic_clients.max_pending_clients, >=, 256);
 		FR_INTEGER_BOUND_CHECK("max_pending_packets", inst->dynamic_clients.max_pending_clients, <=, 65536);
 
-		if (inst->dynamic_clients.lifetime) {
-			FR_INTEGER_BOUND_CHECK("lifetime", inst->dynamic_clients.lifetime, >=, 30);
-			FR_INTEGER_BOUND_CHECK("lifetime", inst->dynamic_clients.lifetime, <=, 86400);
+		if (inst->dynamic_clients.idle_timeout) {
+			FR_INTEGER_BOUND_CHECK("idle_timeout", inst->dynamic_clients.idle_timeout, >=, 30);
+			FR_INTEGER_BOUND_CHECK("idle_timeout", inst->dynamic_clients.idle_timeout, <=, 86400);
 		}
 	}
 
