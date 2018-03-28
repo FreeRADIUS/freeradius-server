@@ -315,8 +315,8 @@ typedef void (*fr_fifo_free_t)(void *);
  *	- A new fifo on success.
  *	- NULL on failure.
  */
-#define fr_fifo_talloc_create(_ctx, _talloc_type, _max_entries, _free_node) \
-	_fr_fifo_create(_ctx, #_talloc_type, _max_entries, _free_node)
+#define fr_fifo_talloc_create(_ctx, _talloc_type, _max_entries, _node_free) \
+	_fr_fifo_create(_ctx, #_talloc_type, _max_entries, _node_free)
 
 /** Creates a fifo
  *
@@ -330,8 +330,8 @@ typedef void (*fr_fifo_free_t)(void *);
  *	- A new fifo on success.
  *	- NULL on failure.
  */
-#define fr_fifo_create(_ctx, _max_entries, _free_node) \
-	_fr_fifo_create(_ctx, NULL, _max_entries, _free_node)
+#define fr_fifo_create(_ctx, _max_entries, _node_free) \
+	_fr_fifo_create(_ctx, NULL, _max_entries, _node_free)
 
 fr_fifo_t	*_fr_fifo_create(TALLOC_CTX *ctx, char const *type, int max_entries, fr_fifo_free_t free_node);
 int		fr_fifo_push(fr_fifo_t *fi, void *data);
