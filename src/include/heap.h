@@ -54,7 +54,7 @@ typedef struct fr_heap_t fr_heap_t;
  *	- NULL on error.
  */
 #define fr_heap_talloc_create(_cmp, _talloc_type, _field) \
-	_fr_heap_create(_cmp, #_talloc_type, (size_t)offsetof(_talloc_type), _field))
+	_fr_heap_create(_cmp, #_talloc_type, (size_t)offsetof(_talloc_type, _field))
 
 fr_heap_t	*_fr_heap_create(fr_heap_cmp_t cmp, char const *talloc_type, size_t offset);
 

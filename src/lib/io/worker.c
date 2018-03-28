@@ -1336,13 +1336,13 @@ nomem:
 	WORKER_HEAP_INIT(to_decode, worker_message_cmp, fr_channel_data_t, channel.heap_id);
 	WORKER_HEAP_INIT(localized, worker_message_cmp, fr_channel_data_t, channel.heap_id);
 
-	worker->runnable = fr_heap_create(worker_runnable_cmp, REQUEST, runnable_id);
+	worker->runnable = fr_heap_talloc_create(worker_runnable_cmp, REQUEST, runnable_id);
 	if (!worker->runnable) {
 		fr_strerror_printf("Failed creating runnable heap");
 		goto fail;
 	}
 
-	worker->time_order = fr_heap_create(worker_time_order_cmp, REQUEST, time_order_id);
+	worker->time_order = fr_heap_talloc_create(worker_time_order_cmp, REQUEST, time_order_id);
 	if (!worker->time_order) {
 		fr_strerror_printf("Failed creating time_order heap");
 		goto fail;

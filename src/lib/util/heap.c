@@ -109,6 +109,10 @@ int fr_heap_insert(fr_heap_t *hp, void *data)
 {
 	int32_t child = hp->num_elements;
 
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+	if (hp->type) (void)_talloc_get_type_abort(data, hp->type, __location__);
+#endif
+
 	/*
 	 *	Heap is full.  Double it's size.
 	 */
