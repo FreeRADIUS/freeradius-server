@@ -191,8 +191,6 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 		parent = 0;
 
 	} else {		/* extract from the middle */
-		if (hp->offset < 0) return 0;
-
 		parent = *((int32_t *)(((uint8_t *)data) + hp->offset));
 
 		/*
