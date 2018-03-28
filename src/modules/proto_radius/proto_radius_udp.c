@@ -1076,8 +1076,12 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 		 *	source address, returning the longest prefix
 		 *	match with a known network.
 		 */
-		network = fr_trie_lookup(inst->dynamic_clients.trie, &address.src_ipaddr, address.src_ipaddr.prefix);
-		if (!network) goto unknown;
+		network = fr_trie_lookup(inst->dynamic_clients.trie, &address.src_ipaddr.addr, address.src_ipaddr.prefix);
+		if (!network) {
+			DEBUG("%s - Source IP address %pV was not within a known network",
+			      inst->name, fr_box_ipaddr(address.src_ipaddr));
+			goto unknown;
+		}
 
 		DEBUG("Found matching network.  Checking for dynamic client definition.");
 
