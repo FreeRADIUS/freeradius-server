@@ -93,17 +93,13 @@ fr_heap_t *_fr_heap_create(fr_heap_cmp_t cmp, char const *type, size_t offset)
  *	heap is also stored in the element itself at the given offset
  *	in bytes.
  */
-#define SET_OFFSET(heap, node) \
-    if (heap->offset >= 0) \
-	    *((int32_t *)(((uint8_t *)heap->p[node]) + heap->offset)) = node
+#define SET_OFFSET(heap, node) *((int32_t *)(((uint8_t *)heap->p[node]) + heap->offset)) = node
 
 /*
  *	RESET_OFFSET is used for sanity checks. It sets offset to an
  *	invalid value.
  */
-#define RESET_OFFSET(heap, node) \
-    if (heap->offset >= 0) \
-	    *((int32_t *)(((uint8_t *)heap->p[node]) + heap->offset)) = -1
+#define RESET_OFFSET(heap, node) *((int32_t *)(((uint8_t *)heap->p[node]) + heap->offset)) = -1
 
 int fr_heap_insert(fr_heap_t *hp, void *data)
 {
