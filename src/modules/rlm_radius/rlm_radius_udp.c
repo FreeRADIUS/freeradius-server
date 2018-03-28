@@ -100,7 +100,7 @@ typedef struct rlm_radius_udp_connection_t {
 	char const     		*name;			//!< From IP PORT to IP PORT.
 
 	fr_dlist_t		entry;			//!< In the linked list of connections.
-	int			heap_id;		//!< For the active heap.
+	size_t			heap_id;		//!< For the active heap.
 	rlm_radius_udp_connection_state_t state;	//!< State of the connection.
 
 	fr_event_timer_t const	*idle_ev;		//!< Idle timeout event.
@@ -147,7 +147,7 @@ struct rlm_radius_udp_request_t {
 	rlm_radius_request_state_t state;		//!< state of this request
 
 	fr_dlist_t		entry;			//!< in the connection list of packets.
-	int			heap_id;		//!< for the "to be sent" queue.
+	size_t			heap_id;		//!< for the "to be sent" queue.
 
 	VALUE_PAIR		*extra;			//!< VPs for debugging, like Proxy-State.
 

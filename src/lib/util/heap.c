@@ -90,7 +90,7 @@ fr_heap_t *fr_heap_create(fr_heap_cmp_t cmp, ssize_t offset)
  */
 #define SET_OFFSET(heap, node) \
     if (heap->offset >= 0) \
-	    *((int *)(((uint8_t *)heap->p[node]) + heap->offset)) = node
+	    *((size_t *)(((uint8_t *)heap->p[node]) + heap->offset)) = node
 
 /*
  *	RESET_OFFSET is used for sanity checks. It sets offset to an
@@ -98,7 +98,7 @@ fr_heap_t *fr_heap_create(fr_heap_cmp_t cmp, ssize_t offset)
  */
 #define RESET_OFFSET(heap, node) \
     if (heap->offset >= 0) \
-	    *((int *)(((uint8_t *)heap->p[node]) + heap->offset)) = -1
+	    *((size_t *)(((uint8_t *)heap->p[node]) + heap->offset)) = -1
 
 int fr_heap_insert(fr_heap_t *hp, void *data)
 {
@@ -267,7 +267,7 @@ static bool fr_heap_check(fr_heap_t *hp, void *data)
 
 typedef struct heap_thing {
 	int data;
-	int heap;		/* for the heap */
+	size_t heap;		/* for the heap */
 } heap_thing;
 
 

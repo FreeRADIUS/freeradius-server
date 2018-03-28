@@ -60,7 +60,7 @@ typedef struct fr_network_inject_t {
 } fr_network_inject_t;
 
 typedef struct fr_network_worker_t {
-	int			heap_id;		//!< workers are in a heap
+	size_t			heap_id;		//!< workers are in a heap
 	fr_time_t		cpu_time;		//!< how much CPU time this worker has spent
 	fr_time_t		predicted;		//!< predicted processing time for one packet
 

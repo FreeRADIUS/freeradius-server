@@ -35,7 +35,7 @@ typedef struct rlm_cache_rbtree {
 
 typedef struct rlm_cache_rbtree_entry {
 	rlm_cache_entry_t	fields;		//!< Entry data.
-	size_t			offset;		//!< Offset used for heap.
+	size_t			heap_id;	//!< Offset used for heap.
 } rlm_cache_rbtree_entry_t;
 
 /** Compare two entries by key
@@ -118,7 +118,7 @@ static int mod_instantiate(UNUSED rlm_cache_config_t const *config, void *instan
 	/*
 	 *	The heap of entries to expire.
 	 */
-	driver->heap = fr_heap_create(cache_heap_cmp, offsetof(rlm_cache_rbtree_entry_t, offset));
+	driver->heap = fr_heap_create(cache_heap_cmp, offsetof(rlm_cache_rbtree_entry_t, heap_id));
 	if (!driver->heap) {
 		ERROR("Failed to create heap for the cache");
 		return -1;
