@@ -49,7 +49,39 @@ typedef int (*rb_comparator_t)(void const *one, void const *two);
 typedef int (*rb_walker_t)(void *ctx, void *data);
 typedef void (*rb_free_t)(void *data);
 
-rbtree_t	*rbtree_create(TALLOC_CTX *ctx, rb_comparator_t compare, rb_free_t node_free, int flags);
+/** Creates a red black that verifies elements are of a specific talloc type
+ *
+ * @param[in] _ctx		to tie tree lifetime to.
+ *				If ctx is freed, tree will free any nodes, calling the
+ *				free function if set.
+ * @param[in] _cmp		Comparator used to compare nodes.
+ * @param[in] _talloc_type	of elements.
+ * @param[in] _node_free	Optional function used to free data if tree nodes are
+ *				deleted or replaced.
+ * @param[in] _flags		To modify tree behaviour.
+ */
+#define		rbtree_talloc_create(_ctx, _cmp, _talloc_type, _node_free, _flags) \
+		_rbtree_create(_ctx, _cmp, #_talloc_type, _node_free, _flags)
+
+/** Creates a red black tree
+ *
+ * @param[in] _ctx		to tie tree lifetime to.
+ *				If ctx is freed, tree will free any nodes, calling the
+ *				free function if set.
+ * @param[in] _cmp		Comparator used to compare nodes.
+ * @param[in] _node_free	Optional function used to free data if tree nodes are
+ *				deleted or replaced.
+ * @param[in] _flags		To modify tree behaviour.
+ * @return
+ *	- A new rbtree on success.
+ *	- NULL on failure.
+ */
+#define		rbtree_create(_ctx, _cmp, _node_free, _flags) \
+		_rbtree_create(_ctx, _cmp, NULL, _node_free, _flags)
+
+rbtree_t	*_rbtree_create(TALLOC_CTX *ctx, rb_comparator_t compare,
+				char const *type, rb_free_t node_free, int flags);
+
 void		rbtree_node_talloc_free(void *data);
 bool		rbtree_insert(rbtree_t *tree, void const *data);
 rbnode_t	*rbtree_insert_node(rbtree_t *tree, void *data);

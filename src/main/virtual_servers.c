@@ -631,8 +631,9 @@ int virtual_server_namespace_register(char const *namespace, fr_virtual_server_c
 		 *	so it shouldn't be parented from
 		 *	virtual_server_root.
 		 */
-		MEM(vns_tree = rbtree_create(NULL,
-					     _virtual_namespace_cmp, _virtual_namespace_free, RBTREE_FLAG_REPLACE));
+		MEM(vns_tree = rbtree_talloc_create(NULL,
+						    _virtual_namespace_cmp, fr_virtual_namespace_t,
+						    _virtual_namespace_free, RBTREE_FLAG_REPLACE));
 
 		if (!cf_data_add(virtual_server_root, vns_tree, "vns_tree", true)) {
 			ERROR("Failed adding namespace tree data to config");

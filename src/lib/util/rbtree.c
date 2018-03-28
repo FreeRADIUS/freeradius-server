@@ -57,6 +57,7 @@ struct rbtree_t {
 	bool			lock;
 	pthread_mutex_t		mutex;
 	bool			being_freed;	//!< Prevent double frees in talloc_destructor.
+	char const		*type;		//!< Talloc type to check elements against.
 
 	TALLOC_CTX		*node_ctx;	//!< Freed last by the destructor, to ensure
 						//!< the tree is still functional.
@@ -149,7 +150,8 @@ static int _tree_free(rbtree_t *tree)
  *
  * @note Due to the node memory being allocated from a different pool to the main
  */
-rbtree_t *rbtree_create(TALLOC_CTX *ctx, rb_comparator_t compare, rb_free_t node_free, int flags)
+rbtree_t *_rbtree_create(TALLOC_CTX *ctx, rb_comparator_t compare,
+			 char const *type, rb_free_t node_free, int flags)
 {
 	rbtree_t *tree;
 
@@ -170,6 +172,7 @@ rbtree_t *rbtree_create(TALLOC_CTX *ctx, rb_comparator_t compare, rb_free_t node
 
 	talloc_set_destructor(tree, _tree_free);
 	tree->free = node_free;
+	tree->type = type;
 
 	return tree;
 }
@@ -299,6 +302,11 @@ rbnode_t *rbtree_insert_node(rbtree_t *tree, void *data)
 	rbnode_t *current, *parent, *x;
 
 	if (unlikely(tree->being_freed)) return NULL;
+
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+	if (tree->type) (void)_talloc_get_type_abort(data, tree->type, __location__);
+#endif
+
 	if (tree->lock) pthread_mutex_lock(&tree->mutex);
 
 	/* find where node belongs */

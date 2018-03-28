@@ -123,8 +123,9 @@ void trigger_exec_init(CONF_SECTION const *cs)
 	trigger_exec_main = cs;
 	trigger_exec_subcs = cf_section_find(cs, "trigger", NULL);
 
-	MEM(trigger_last_fired_tree = rbtree_create(talloc_null_ctx(),
-						    _trigger_last_fired_cmp, _trigger_last_fired_free, 0));
+	MEM(trigger_last_fired_tree = rbtree_talloc_create(talloc_null_ctx(),
+							   _trigger_last_fired_cmp, trigger_last_fired_t,
+							   _trigger_last_fired_free, 0));
 
 	trigger_mutex = talloc(talloc_null_ctx(), pthread_mutex_t);
 	pthread_mutex_init(trigger_mutex, 0);

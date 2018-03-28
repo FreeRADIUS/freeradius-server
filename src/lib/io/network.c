@@ -1011,7 +1011,7 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t c
 	/*
 	 *	Create the various heaps.
 	 */
-	nr->sockets = rbtree_create(nr, socket_cmp, NULL, RBTREE_FLAG_NONE);
+	nr->sockets = rbtree_talloc_create(nr, socket_cmp, fr_network_socket_t, NULL, RBTREE_FLAG_NONE);
 	if (!nr->sockets) {
 		fr_strerror_printf_push("Failed creating tree for sockets");
 		goto fail2;

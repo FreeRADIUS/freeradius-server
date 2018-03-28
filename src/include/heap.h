@@ -47,7 +47,7 @@ typedef struct fr_heap_t fr_heap_t;
 /** Creates a heap that verifies elements are of a specific talloc type
  *
  * @param[in] _cmp		Comparator used to compare elements.
- * @param[in] _talloc_type	Of elements.
+ * @param[in] _talloc_type	of elements.
  * @param[in] _field		to store heap indexes in.
  * @return
  *	- A new heap.

@@ -885,13 +885,13 @@ static int dl_init(void)
 	if (dl) return 0;
 
 	dl = talloc_zero(NULL, dl_loader_t);
-	dl->tree = rbtree_create(dl, dl_handle_cmp, NULL, 0);
+	dl->tree = rbtree_talloc_create(dl, dl_handle_cmp, dl_t, NULL, 0);
 	if (!dl->tree) {
 		ERROR("Failed initialising dl->tree");
 		return -1;
 	}
 
-	dl->inst_tree = rbtree_create(dl, dl_inst_cmp, NULL, 0);
+	dl->inst_tree = rbtree_talloc_create(dl, dl_inst_cmp, dl_instance_t, NULL, 0);
 	if (!dl->inst_tree) {
 		ERROR("Failed initialising dl->inst_tree");
 		return -1;

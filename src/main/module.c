@@ -603,8 +603,8 @@ int modules_thread_instantiate(CONF_SECTION *root, fr_event_list_t *el)
 
 	thread_inst_tree = module_thread_inst_tree;
 	if (!thread_inst_tree) {
-		MEM(thread_inst_tree = rbtree_create(NULL, _module_thread_inst_tree_cmp,
-						     _module_thread_instance_free, 0));
+		MEM(thread_inst_tree = rbtree_talloc_create(NULL, _module_thread_inst_tree_cmp,
+							    module_thread_instance_t, _module_thread_instance_free, 0));
 		fr_thread_local_set_destructor(module_thread_inst_tree,
 					       _module_thread_inst_tree_free, thread_inst_tree);
 	}

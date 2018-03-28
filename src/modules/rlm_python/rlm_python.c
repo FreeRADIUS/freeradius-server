@@ -667,7 +667,8 @@ static rlm_rcode_t do_python(rlm_python_t const *inst, REQUEST *request, PyObjec
 	 */
 	thread_tree = local_thread_state;
 	if (!thread_tree) {
-		thread_tree = rbtree_create(NULL, _python_inst_cmp, _python_thread_entry_free, 0);
+		thread_tree = rbtree_talloc_create(NULL, _python_inst_cmp, python_thread_state_t,
+						   _python_thread_entry_free, 0);
 		if (!thread_tree) {
 			RERROR("Failed allocating thread state tree");
 			return RLM_MODULE_FAIL;

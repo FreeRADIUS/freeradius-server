@@ -107,7 +107,7 @@ fr_tracking_t *fr_radius_tracking_create(TALLOC_CTX *ctx, size_t src_dst_size,
 	/*
 	 *	The socket is unconnected.  We need to track entries by src/dst ip/port.
 	 */
-	ft->tree = rbtree_create(ft, entry_cmp, entry_free, RBTREE_FLAG_NONE);
+	ft->tree = rbtree_talloc_create(ft, entry_cmp, fr_tracking_entry_t, entry_free, RBTREE_FLAG_NONE);
 	return ft;
 }
 

@@ -157,7 +157,8 @@ retry:
 	 *	If needed, allocate a subtree.
 	 */
 	if (!id->subtree[id->next_id]) {
-		id->subtree[id->next_id] = rbtree_create(id, rr_cmp, NULL, RBTREE_FLAG_NONE);
+		id->subtree[id->next_id] = rbtree_talloc_create(id, rr_cmp, rlm_radius_request_t,
+								NULL, RBTREE_FLAG_NONE);
 		if (!id->subtree[id->next_id]) return NULL;
 	}
 

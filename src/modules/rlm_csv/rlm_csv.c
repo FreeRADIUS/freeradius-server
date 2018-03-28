@@ -365,7 +365,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
-	inst->tree = rbtree_create(inst, csv_entry_cmp, NULL, 0);
+	inst->tree = rbtree_talloc_create(inst, csv_entry_cmp, rlm_csv_entry_t, NULL, 0);
 	if (!inst->tree) goto oom;
 
 	/*
