@@ -1447,8 +1447,6 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		 *	allocated one.
 		 */
 		while ((entry = FR_DLIST_FIRST(client->packets)) != NULL) {
-			if (entry->next == entry->prev) break; /* temporary hack */
-
 			saved = fr_ptr_to_type(dynamic_packet_t, entry, entry);
 			(void) talloc_get_type_abort(saved, dynamic_packet_t);
 
