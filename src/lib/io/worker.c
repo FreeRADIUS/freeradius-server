@@ -1089,7 +1089,7 @@ static int fr_worker_pre_event(void *ctx, struct timeval *wake)
 		return 0;
 	}
 
-	DEBUG3("\t%ssleeping running %zd, localized %zd, to_decode %zd",
+	DEBUG3("\t%ssleeping running %u, localized %u, to_decode %u",
 	       worker->name,
 	       fr_heap_num_elements(worker->runnable),
 	       fr_heap_num_elements(worker->localized.heap),

@@ -36,8 +36,9 @@ RCSID("$Id$")
 
 struct fr_heap_t {
 	size_t		size;			//!< Number of nodes allocated.
-	size_t		num_elements;		//!< Number of nodes used.
-	int32_t		offset;			//!< Offset of heap index in element structure.
+	size_t		offset;			//!< Offset of heap index in element structure.
+
+	int32_t		num_elements;		//!< Number of nodes used.
 
 	char const	*type;			//!< Type of elements.
 	fr_heap_cmp_t	cmp;			//!< Comparator function.
@@ -106,12 +107,12 @@ fr_heap_t *_fr_heap_create(fr_heap_cmp_t cmp, char const *type, size_t offset)
 
 int fr_heap_insert(fr_heap_t *hp, void *data)
 {
-	size_t child = hp->num_elements;
+	int32_t child = hp->num_elements;
 
 	/*
 	 *	Heap is full.  Double it's size.
 	 */
-	if (child == hp->size) {
+	if ((size_t)child == hp->size) {
 		void	**n;
 		size_t	n_size = hp->size * 2;
 
@@ -193,7 +194,7 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 		/*
 		 *	Out of bounds.
 		 */
-		if ((parent < 0) || ((size_t) parent >= hp->num_elements)) return 0;
+		if ((parent < 0) || (parent >= hp->num_elements)) return 0;
 	}
 
 	RESET_OFFSET(hp, parent);
@@ -264,11 +265,11 @@ void *fr_heap_peek_tail(fr_heap_t *hp)
 	return hp->p[hp->num_elements - 1];
 }
 
-size_t fr_heap_num_elements(fr_heap_t *hp)
+uint32_t fr_heap_num_elements(fr_heap_t *hp)
 {
 	if (!hp) return 0;
 
-	return hp->num_elements;
+	return (uint32_t)hp->num_elements;
 }
 
 

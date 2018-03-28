@@ -64,7 +64,7 @@ void		*fr_heap_pop(fr_heap_t *hp) CC_HINT(nonnull);
 void		*fr_heap_peek(fr_heap_t *hp);
 void		*fr_heap_peek_tail(fr_heap_t *hp);
 
-size_t		fr_heap_num_elements(fr_heap_t *hp);
+uint32_t	fr_heap_num_elements(fr_heap_t *hp);
 
 #ifdef __cplusplus
 }
