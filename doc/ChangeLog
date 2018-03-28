@@ -5,6 +5,8 @@ FreeRADIUS 3.0.17 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	* "stats home server" now supports "src IPADDR",
 	  to specify home server also by source IP.  Fixes #2169.
 	* Add Dockerfiles for a selection of common systems.
+	* Increase number of permitted file descriptors, for
+	  systems with many home servers.
 
 	Bug fixes
 	* Don't call post-proxy twice when proxying to
@@ -34,6 +36,7 @@ FreeRADIUS 3.0.17 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	* Remove broken radclient option "-i".
 	* Fix "users" file (and hints, etc). So that it does not
 	  get confused about entry ordering with multiple $INCLUDEs.
+	* Fix rlm_sql to expand the un-escaped string, not the raw string.
 
 FreeRADIUS 3.0.16 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	Feature improvements
