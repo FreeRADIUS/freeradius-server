@@ -25,6 +25,7 @@
  */
 RCSIDH(heap_h, "$Id$")
 
+#include <stdint.h>
 #include <sys/types.h>
 
 #ifdef __cplusplus
