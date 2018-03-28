@@ -35,11 +35,14 @@ RCSID("$Id$")
  */
 
 struct fr_heap_t {
-	size_t size;
-	size_t num_elements;
-	int32_t offset;
-	fr_heap_cmp_t cmp;
-	void **p;
+	size_t		size;			//!< Number of nodes allocated.
+	size_t		num_elements;		//!< Number of nodes used.
+	int32_t		offset;			//!< Offset of heap index in element structure.
+
+	char const	*type;			//!< Type of elements.
+	fr_heap_cmp_t	cmp;			//!< Comparator function.
+
+	void		**p;			//!< Array of nodes.
 };
 
 /*
@@ -54,7 +57,7 @@ struct fr_heap_t {
 
 static int fr_heap_bubble(fr_heap_t *hp, size_t child);
 
-fr_heap_t *fr_heap_create(fr_heap_cmp_t cmp, ssize_t offset)
+fr_heap_t *_fr_heap_create(fr_heap_cmp_t cmp, char const *type, size_t offset)
 {
 	fr_heap_t *fh;
 
@@ -70,6 +73,7 @@ fr_heap_t *fr_heap_create(fr_heap_cmp_t cmp, ssize_t offset)
 		return NULL;
 	}
 
+	fh->type = type;
 	fh->cmp = cmp;
 	fh->offset = offset;
 

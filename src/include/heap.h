@@ -31,17 +31,40 @@ RCSIDH(heap_h, "$Id$")
 extern "C" {
 #endif
 
-typedef int (*fr_heap_cmp_t)(void const *, void const *);
+typedef int (*fr_heap_cmp_t)(void const *a, void const *b);
 
 typedef struct fr_heap_t fr_heap_t;
-fr_heap_t *fr_heap_create(fr_heap_cmp_t cmp, ssize_t offset);
 
-int fr_heap_insert(fr_heap_t *hp, void *data);
-int fr_heap_extract(fr_heap_t *hp, void *data);
-void *fr_heap_pop(fr_heap_t *hp) CC_HINT(nonnull);
-void *fr_heap_peek(fr_heap_t *hp);
-void *fr_heap_peek_tail(fr_heap_t *hp);
-size_t fr_heap_num_elements(fr_heap_t *hp);
+/** Creates a heap that can be used with non-talloced elements
+ *
+ * @param[in] _cmp		Comparator used to compare elements.
+ * @param[in] _type		Of elements.
+ * @param[in] _field		to store heap indexes in.
+ */
+#define fr_heap_create(_cmp, _type, _field) \
+	_fr_heap_create(_cmp, NULL, (size_t)offsetof(_type, _field))
+
+/** Creates a heap that verifies elements are of a specific talloc type
+ *
+ * @param[in] _cmp		Comparator used to compare elements.
+ * @param[in] _talloc_type	Of elements.
+ * @param[in] _field		to store heap indexes in.
+ * @return
+ *	- A new heap.
+ *	- NULL on error.
+ */
+#define fr_heap_talloc_create(_cmp, _talloc_type, _field) \
+	_fr_heap_create(_cmp, #_talloc_type, (size_t)offsetof(_talloc_type), _field))
+
+fr_heap_t	*_fr_heap_create(fr_heap_cmp_t cmp, char const *talloc_type, size_t offset);
+
+int		fr_heap_insert(fr_heap_t *hp, void *data);
+int		fr_heap_extract(fr_heap_t *hp, void *data);
+void		*fr_heap_pop(fr_heap_t *hp) CC_HINT(nonnull);
+void		*fr_heap_peek(fr_heap_t *hp);
+void		*fr_heap_peek_tail(fr_heap_t *hp);
+
+size_t		fr_heap_num_elements(fr_heap_t *hp);
 
 #ifdef __cplusplus
 }
