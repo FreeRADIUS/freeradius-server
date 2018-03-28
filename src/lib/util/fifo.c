@@ -31,6 +31,8 @@ struct fr_fifo_t {
 	unsigned int	max;		//!< How many elements were created in the fifo.
 	fr_fifo_free_t	free_node;	//!< Function to call to free nodes when the fifo is freed.
 
+	char const	*type;		//!< Type of elements.
+
 	void *data[1];
 };
 
@@ -71,13 +73,14 @@ static int _fifo_free(fr_fifo_t *fi)
  *	the callers must synchronise their access.
  *
  * @param[in] ctx	to allocate fifo array in.
+ * @param[in] type	Talloc type of elements (may be NULL).
  * @param[in] max	The maximum number of elements allowed.
  * @param[in] free_node	Function to use to free node data if the fifo is freed.
  * @return
  *	- A new fifo queue.
  *	- NULL on error.
  */
-fr_fifo_t *fr_fifo_create(TALLOC_CTX *ctx, int max, fr_fifo_free_t free_node)
+fr_fifo_t *_fr_fifo_create(TALLOC_CTX *ctx, char const *type, int max, fr_fifo_free_t free_node)
 {
 	fr_fifo_t *fi;
 
@@ -89,6 +92,7 @@ fr_fifo_t *fr_fifo_create(TALLOC_CTX *ctx, int max, fr_fifo_free_t free_node)
 	talloc_set_destructor(fi, _fifo_free);
 
 	fi->max = max;
+	fi->type = type;
 	fi->free_node = free_node;
 
 	return fi;
@@ -107,6 +111,10 @@ int fr_fifo_push(fr_fifo_t *fi, void *data)
 	if (!fi || !data) return -1;
 
 	if (fi->num >= fi->max) return -1;
+
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+	if (fi->type) _talloc_get_type_abort(data, fi->type, __location__);
+#endif
 
 	fi->data[fi->last++] = data;
 	if (fi->last >= fi->max) fi->last = 0;

@@ -301,7 +301,39 @@ int		fr_crypt_check(char const *password, char const *reference_crypt);
  */
 typedef struct	fr_fifo_t fr_fifo_t;
 typedef void (*fr_fifo_free_t)(void *);
-fr_fifo_t	*fr_fifo_create(TALLOC_CTX *ctx, int max_entries, fr_fifo_free_t freeNode);
+
+/** Creates a fifo that verifies elements are of a specific talloc type
+ *
+ * @param[in] _ctx		to tie fifo lifetime to.
+ *				If ctx is freed, fifo will free any nodes, calling the
+ *				free function if set.
+ * @param[in] _max_entries	Maximum number of entries.
+ * @param[in] _talloc_type	of elements.
+ * @param[in] _node_free	Optional function used to free data if tree nodes are
+ *				deleted or replaced.
+ * @return
+ *	- A new fifo on success.
+ *	- NULL on failure.
+ */
+#define fr_fifo_talloc_create(_ctx, _talloc_type, _max_entries, _free_node) \
+	_fr_fifo_create(_ctx, #_talloc_type, _max_entries, _free_node)
+
+/** Creates a fifo
+ *
+ * @param[in] _ctx		to tie fifo lifetime to.
+ *				If ctx is freed, fifo will free any nodes, calling the
+ *				free function if set.
+ * @param[in] _max_entries	Maximum number of entries.
+ * @param[in] _node_free	Optional function used to free data if tree nodes are
+ *				deleted or replaced.
+ * @return
+ *	- A new fifo on success.
+ *	- NULL on failure.
+ */
+#define fr_fifo_create(_ctx, _max_entries, _free_node) \
+	_fr_fifo_create(_ctx, NULL, _max_entries, _free_node)
+
+fr_fifo_t	*_fr_fifo_create(TALLOC_CTX *ctx, char const *type, int max_entries, fr_fifo_free_t free_node);
 int		fr_fifo_push(fr_fifo_t *fi, void *data);
 void		*fr_fifo_pop(fr_fifo_t *fi);
 void		*fr_fifo_peek(fr_fifo_t *fi);

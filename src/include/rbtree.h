@@ -59,6 +59,9 @@ typedef void (*rb_free_t)(void *data);
  * @param[in] _node_free	Optional function used to free data if tree nodes are
  *				deleted or replaced.
  * @param[in] _flags		To modify tree behaviour.
+ * @return
+ *	- A new rbtree on success.
+ *	- NULL on failure.
  */
 #define		rbtree_talloc_create(_ctx, _cmp, _talloc_type, _node_free, _flags) \
 		_rbtree_create(_ctx, _cmp, #_talloc_type, _node_free, _flags)
