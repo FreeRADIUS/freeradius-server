@@ -122,7 +122,7 @@ int fr_heap_insert(fr_heap_t *hp, void *data)
 		 *	integer overflow.  Tho TBH, that should really never
 		 *	happen.
 		 */
-		if (n_size >= INT32_MAX) {
+		if (n_size > INT32_MAX) {
 			fr_strerror_printf("Heap is full");
 			return 0;
 		}
