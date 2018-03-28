@@ -88,7 +88,7 @@ typedef struct fr_channel_data_t {
 		 */
 		struct {
 			fr_channel_t		*ch;		//!< channel where this messages was received
-			size_t			heap_id;	//!< for the various queues
+			int32_t			heap_id;	//!< for the various queues
 		} channel;
 	};
 

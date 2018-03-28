@@ -78,7 +78,7 @@ struct fr_event_timer {
 	TALLOC_CTX		*linked_ctx;		//!< talloc ctx this event was bound to.
 
 	fr_event_timer_t const	**parent;		//!< Previous timer.
-	size_t			heap_id;			//!< Where to store opaque heap data.
+	int32_t			heap_id;	       	//!< Where to store opaque heap data.
 };
 
 typedef enum {

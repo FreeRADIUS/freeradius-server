@@ -47,7 +47,7 @@ static int connection_check(fr_pool_t *pool, REQUEST *request);
 struct fr_pool_connection {
 	fr_pool_connection_t	*prev;			//!< Previous connection in list.
 	fr_pool_connection_t	*next;			//!< Next connection in list.
-	size_t		heap_id;			//!< For the next connection heap.
+	int32_t		heap_id;			//!< For the next connection heap.
 
 	time_t		created;		//!< Time connection was created.
 	struct timeval 	last_reserved;		//!< Last time the connection was reserved.

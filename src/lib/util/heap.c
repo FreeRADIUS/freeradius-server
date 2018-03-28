@@ -37,7 +37,7 @@ RCSID("$Id$")
 struct fr_heap_t {
 	size_t size;
 	size_t num_elements;
-	ssize_t offset;
+	int32_t offset;
 	fr_heap_cmp_t cmp;
 	void **p;
 };
@@ -90,7 +90,7 @@ fr_heap_t *fr_heap_create(fr_heap_cmp_t cmp, ssize_t offset)
  */
 #define SET_OFFSET(heap, node) \
     if (heap->offset >= 0) \
-	    *((size_t *)(((uint8_t *)heap->p[node]) + heap->offset)) = node
+	    *((int32_t *)(((uint8_t *)heap->p[node]) + heap->offset)) = node
 
 /*
  *	RESET_OFFSET is used for sanity checks. It sets offset to an
@@ -98,11 +98,21 @@ fr_heap_t *fr_heap_create(fr_heap_cmp_t cmp, ssize_t offset)
  */
 #define RESET_OFFSET(heap, node) \
     if (heap->offset >= 0) \
-	    *((size_t *)(((uint8_t *)heap->p[node]) + heap->offset)) = -1
+	    *((int32_t *)(((uint8_t *)heap->p[node]) + heap->offset)) = -1
 
 int fr_heap_insert(fr_heap_t *hp, void *data)
 {
 	size_t child = hp->num_elements;
+
+	/*
+	 *	heap_id is a 32-bit signed integer.  If the heap will
+	 *	grow to contain more than 2B elements, disallow
+	 *	integer overflow.  Tho TBH, that should really never
+	 *	happen.
+	 */
+	if (hp->size >= INT32_MAX) {
+		return 0;
+	}
 
 	/*
 	 *	Heap is full.  Double it's size.
@@ -165,7 +175,7 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 	} else {		/* extract from the middle */
 		if (hp->offset < 0) return 0;
 
-		parent = *((int *)(((uint8_t *)data) + hp->offset));
+		parent = *((int32_t *)(((uint8_t *)data) + hp->offset));
 
 		/*
 		 *	Out of bounds.
@@ -267,7 +277,7 @@ static bool fr_heap_check(fr_heap_t *hp, void *data)
 
 typedef struct heap_thing {
 	int data;
-	size_t heap;		/* for the heap */
+	int32_t heap_id;		/* for the heap */
 } heap_thing;
 
 
@@ -297,7 +307,7 @@ int main(int argc, char **argv)
 		skip = atoi(argv[1]);
 	}
 
-	hp = fr_heap_create(heap_cmp, offsetof(heap_thing, heap));
+	hp = fr_heap_create(heap_cmp, offsetof(heap_thing, heap_id));
 	if (!hp) {
 		fprintf(stderr, "Failed creating heap!\n");
 		fr_exit(1);
