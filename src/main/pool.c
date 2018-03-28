@@ -1001,7 +1001,7 @@ fr_pool_t *fr_pool_init(TALLOC_CTX *ctx,
 	 *	https://code.facebook.com/posts/1499322996995183/solving-the-mystery-of-link-imbalance-a-metastable-failure-state-at-scale/
 	 */
 	if (!pool->spread) {
-		pool->heap = fr_heap_create(last_reserved_cmp, offsetof(fr_pool_t, heap));
+		pool->heap = fr_heap_create(last_reserved_cmp, offsetof(fr_pool_connection_t, heap_id));
 	/*
 	 *	For some types of connections we need to used a different
 	 *	algorithm, because load balancing benefits are secondary
@@ -1021,7 +1021,7 @@ fr_pool_t *fr_pool_init(TALLOC_CTX *ctx,
 	 *	That way we maximise time between connection use.
 	 */
 	} else {
-		pool->heap = fr_heap_create(last_released_cmp, offsetof(fr_pool_t, heap));
+		pool->heap = fr_heap_create(last_released_cmp, offsetof(fr_pool_connection_t, heap_id));
 	}
 	if (!pool->heap) {
 		ERROR("%s: Failed creating connection heap", __FUNCTION__);
