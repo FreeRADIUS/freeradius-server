@@ -2137,7 +2137,9 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "                        - noreq    - could be matched with the response.\n");
 	fprintf(output, "                        - reused   - ID too soon.\n");
 	fprintf(output, "                        - error    - decoding the packet.\n");
-	fprintf(output, "  -f <filter>           PCAP filter (default is 'udp port <port> or <port + 1> or %i')\n", FR_COA_UDP_PORT);
+	fprintf(output, "  -f <filter>           PCAP filter (default is 'udp port <port> or <port + 1> or %i'\n",
+		FR_COA_UDP_PORT);
+	fprintf(output, "                                     with extra rules to allow .1Q tagged packets)\n");
 	fprintf(output, "  -h                    This help message.\n");
 	fprintf(output, "  -i <interface>        Capture packets from interface (defaults to all if supported).\n");
 	fprintf(output, "  -I <file>             Read packets from <file>\n");
@@ -2521,8 +2523,13 @@ int main(int argc, char *argv[])
 #endif
 
 	if (!conf->pcap_filter) {
-		snprintf(buffer, sizeof(buffer), "udp port %d or %d or %d",
-			 port, port + 1, FR_COA_UDP_PORT);
+		/*
+		 *	Using the VLAN keyword strips off the .1q tag
+		 *	allowing the UDP filter to work.  Without this
+		 *	tagged packaets aren't processed.
+		 */
+		snprintf(buffer, sizeof(buffer), "(vlan and (udp port %d or %d or %d)) or (udp port %d or %d or %d)",
+			 port, port + 1, FR_COA_UDP_PORT, port, port + 1, FR_COA_UDP_PORT);
 		conf->pcap_filter = buffer;
 	}
 
