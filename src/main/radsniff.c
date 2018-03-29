@@ -2179,8 +2179,6 @@ int main(int argc, char *argv[])
 	char errbuf[PCAP_ERRBUF_SIZE];			/* Error buffer */
 	int port = FR_AUTH_UDP_PORT;
 
-	char buffer[1024];
-
 	int opt;
 	char const *radius_dir = RADDBDIR;
 	char const *dict_dir = DICTDIR;
@@ -2523,14 +2521,15 @@ int main(int argc, char *argv[])
 #endif
 
 	if (!conf->pcap_filter) {
+		conf->pcap_filter = talloc_asprintf(conf, "udp port %d or %d or %d", port, port + 1, FR_COA_UDP_PORT);
+
 		/*
 		 *	Using the VLAN keyword strips off the .1q tag
 		 *	allowing the UDP filter to work.  Without this
-		 *	tagged packaets aren't processed.
+		 *	tagged packets aren't processed.
 		 */
-		snprintf(buffer, sizeof(buffer), "(vlan and (udp port %d or %d or %d)) or (udp port %d or %d or %d)",
-			 port, port + 1, FR_COA_UDP_PORT, port, port + 1, FR_COA_UDP_PORT);
-		conf->pcap_filter = buffer;
+		conf->pcap_filter_vlan = talloc_asprintf(conf, "(vlan and (%s)) or (%s)",
+							 conf->pcap_filter, conf->pcap_filter);
 	}
 
 	if (fr_dict_from_file(conf, &dict, dict_dir, FR_DICTIONARY_FILE, "radius") < 0) {
@@ -2656,7 +2655,7 @@ int main(int argc, char *argv[])
 		     dev_p = dev_p->next) {
 			int link_layer;
 
-			/* Don't use the any devices, it's horribly broken */
+			/* Don't use the any device, it's horribly broken */
 			if (!strcmp(dev_p->name, "any")) continue;
 
 			link_layer = fr_pcap_if_link_layer(errbuf, dev_p);
@@ -2772,8 +2771,15 @@ int main(int argc, char *argv[])
 			}
 
 			if (conf->pcap_filter) {
-				if (fr_pcap_apply_filter(in_p, conf->pcap_filter) < 0) {
-					ERROR("Failed applying filter");
+				/*
+				 *	Not all link layers support VLAN tags
+				 *	and this is the easiest way to discover
+				 *	which do and which don't.
+				 */
+				if ((!conf->pcap_filter_vlan ||
+				     (fr_pcap_apply_filter(in_p, conf->pcap_filter_vlan) < 0)) &&
+				     (fr_pcap_apply_filter(in_p, conf->pcap_filter) < 0)) {
+					ERROR("Failed applying filter: %s", fr_strerror());
 					goto finish;
 				}
 			}

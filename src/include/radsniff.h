@@ -265,6 +265,8 @@ struct rs {
 	char			*radius_secret;		//!< Secret to decode encrypted attributes.
 
 	char			*pcap_filter;		//!< PCAP filter string applied to live capture devices.
+	char			*pcap_filter_vlan;	//!< Variant of the normal filter to apply to devices
+							///< which support VLAN tags.
 
 	char			*list_attributes;	//!< Raw attribute filter string.
 	fr_dict_attr_t const 	*list_da[RS_MAX_ATTRS]; //!< Output CSV with these attribute values.
