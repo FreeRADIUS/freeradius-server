@@ -134,6 +134,28 @@ typedef struct {
 	char const		*name;				//!< Vendor name.
 } fr_dict_vendor_t;
 
+/** Specifies an attribute which must be present for the module to function
+ *
+ */
+typedef struct fr_dict_attr_autoload {
+	fr_dict_attr_t const	**out;				//!< Where to write a pointer to the resolved
+								//!< #fr_dict_attr_t.
+	fr_dict_t const		**dict;				//!< The protocol dictionary the attribute should
+								//!< be resolved in.
+	char const		*name;				//!< of the attribute.
+	fr_type_t			type;				//!< of the attribute.  Mismatch is a fatal error.
+} fr_dict_attr_autoload_t;
+
+/** Specifies a dictionary which must be loaded/loadable for the module to function
+ *
+ */
+typedef struct fr_dict_autoload {
+	fr_dict_t const		**out;				//!< Where to write a pointer to the loaded/resolved
+								//!< #fr_dict_t.
+	char const		*base_dir;			//!< Directory structure beneath share.
+	char const		*proto;				//!< The protocol dictionary name.
+} fr_dict_autoload_t;
+
 /*
  *	Dictionary constants
  */
@@ -324,6 +346,17 @@ int			fr_dict_protocol_afrom_file(TALLOC_CTX *ctx, fr_dict_t **out,
 						    char const *dir, char const *proto_name);
 
 int			fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename);
+/** @} */
+
+/** @name Autoloader interface
+ *
+ * @{
+ */
+int			fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load);
+
+int			fr_dict_autoload(fr_dict_autoload_t const *to_load);
+
+void			fr_dict_autofree(fr_dict_autoload_t const *to_free);
 /** @} */
 
 /** @name Dictionary testing and validation

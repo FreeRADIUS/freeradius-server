@@ -959,6 +959,68 @@ static int virtual_module_bootstrap(CONF_SECTION *modules, CONF_SECTION *vm_cs)
 	return 0;
 }
 
+/** Callback to automatically load dictionaries required by modules
+ *
+ * @param[in] module	being loaded.
+ * @param[in] symbol	An array of fr_dict_autoload_t to load.
+ * @param[in] user_ctx	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int _module_dict_autoload(dl_t const *module, void *symbol, UNUSED void *user_ctx)
+{
+	fr_dict_autoload_t const *p = *((fr_dict_autoload_t **)symbol);
+
+	while ((p++)->out) {
+		DEBUG2("%s: Loading %s dictionary", module->name, p->proto);
+
+		if (fr_dict_autoload(p) < 0) {
+			ERROR("Failed loading dictionary: %s", fr_strerror());
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+/** Callback to automatically free a dictionary when the module is unloaded
+ *
+ * @param[in] module	being loaded.
+ * @param[in] symbol	An array of fr_dict_autoload_t to load.
+ * @param[in] user_ctx	unused.
+ */
+static void _module_dict_autofree(UNUSED dl_t const *module, void *symbol, UNUSED void *user_ctx)
+{
+	fr_dict_autoload_t const *p = *((fr_dict_autoload_t **)symbol);
+
+	while ((p++)->proto) fr_dict_autofree(p);
+}
+
+/** Callback to automatically resolve attributes and check the types are correct
+ *
+ * @param[in] module	being loaded.
+ * @param[in] symbol	An array of fr_dict_autoload_t to load.
+ * @param[in] user_ctx	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int _module_dict_attr_autoload(dl_t const *module, void *symbol, UNUSED void *user_ctx)
+{
+	fr_dict_attr_autoload_t const *p = *((fr_dict_attr_autoload_t **)symbol);
+
+	while ((p++)->out) {
+		DEBUG4("%s: Resolving attr %s", module->name, p->name);
+		if (fr_dict_attr_autoload(p) < 0) {
+			ERROR("%s: %s", module->name, fr_strerror());
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
 /** Bootstrap modules and virtual modules
  *
  * Parse the module config sections, and load and call each module's init() function.
@@ -974,6 +1036,13 @@ int modules_bootstrap(CONF_SECTION *root)
 	CONF_SECTION *cs, *modules;
 
 	instance_ctx = talloc_init("module instance context");
+
+	/*
+	 *	Register dictionary autoload callbacks
+	 */
+	dl_symbol_init_cb_register("dict", _module_dict_autoload, NULL);
+	dl_symbol_init_cb_unregister("dict_attr", _module_dict_attr_autoload);
+	dl_symbol_free_cb_register("dict", _module_dict_autofree, NULL);
 
 	/*
 	 *	Remember where the modules were stored.

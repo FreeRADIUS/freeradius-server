@@ -5137,6 +5137,78 @@ int fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename)
 	return dict_from_file(dict, dir, filename, NULL, 0);
 }
 
+/** Process a dict_attr_autoload element to load/verify a dictionary attribute
+ *
+ * @param[in] to_load	attribute definition
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load)
+{
+	fr_dict_attr_t const	*da;
+
+	if (!to_load->dict || !*to_load->dict) {
+		fr_strerror_printf("Missing dictionary required for attribute autoresolution");
+		return -1;
+	}
+
+	da = fr_dict_attr_by_name(*to_load->dict, to_load->name);
+	if (!da) {
+		fr_strerror_printf("Attribute \"%s\" not found in %s dictionary", to_load->name,
+				   (*to_load->dict)->root->name);
+		return -1;
+	}
+
+	if (da->type != to_load->type) {
+		fr_strerror_printf("Attribute \"%s\" should be type %s, but defined as type %s", da->name,
+				   fr_int2str(dict_attr_types, to_load->type, "?Unknown?"),
+				   fr_int2str(dict_attr_types, da->type, "?Unknown?"));
+		return -1;
+	}
+
+	if (to_load->out) *(to_load->out) = da;
+
+	return 0;
+}
+
+/** Process a dict_autoload element to load a protocol
+ *
+ * @param[in] to_load	dictionary definition.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_dict_autoload(fr_dict_autoload_t const *to_load)
+{
+	fr_dict_t *dict = NULL;
+
+	if (!to_load->out || !to_load->base_dir || to_load->proto) {
+		fr_strerror_printf("autoload missing parameter");
+		return -1;
+	}
+
+	if (fr_dict_protocol_afrom_file(NULL, &dict, to_load->base_dir, to_load->proto) < 0) return -1;
+
+	if (to_load->out) *(to_load->out) = dict;
+
+	return 0;
+}
+
+/** Decrement the reference count on a previously loaded dictionary
+ *
+ * @param[in] to_free	previously loaded dictionary to free.
+ */
+void fr_dict_autofree(fr_dict_autoload_t const *to_free)
+{
+	fr_dict_t const **dict = to_free->out;
+
+	if (!*dict) return;
+
+	talloc_decrease_ref_count(*dict);
+	*dict = NULL;
+}
+
 static void _fr_dict_dump(fr_dict_attr_t const *da, unsigned int lvl)
 {
 	unsigned int		i;
