@@ -46,6 +46,68 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t const *dict_radius;
+static fr_dict_t const *dict_freeradius;
+
+static fr_dict_attr_t const *attr_calling_station_id;
+static fr_dict_attr_t const *attr_eap_msk;
+static fr_dict_attr_t const *attr_eap_emsk;
+
+static fr_dict_attr_t const *attr_wimax_msk;
+static fr_dict_attr_t const *attr_wimax_mn_nai;
+static fr_dict_attr_t const *attr_wimax_ip_technology;
+static fr_dict_attr_t const *attr_wimax_hha_ip_mip4;
+static fr_dict_attr_t const *attr_wimax_mn_hha_mip4_key;
+static fr_dict_attr_t const *attr_wimax_mn_hha_mip4_spi;
+static fr_dict_attr_t const *attr_wimax_hha_ip_mip4;
+static fr_dict_attr_t const *attr_wimax_hha_ip_mip6;
+static fr_dict_attr_t const *attr_wimax_mn_hha_mip6_key;
+static fr_dict_attr_t const *attr_wimax_mn_hha_mip6_spi;
+static fr_dict_attr_t const *attr_wimax_fa_rk_key;
+static fr_dict_attr_t const *attr_wimax_fa_rk_spi;
+static fr_dict_attr_t const *attr_wimax_rrq_mn_ha_spi;
+static fr_dict_attr_t const *attr_wimax_rrq_ha_ip;
+static fr_dict_attr_t const *attr_wimax_ha_rk_key_requested;
+
+static fr_dict_attr_t const *attr_mschap_mppe_send_key;
+static fr_dict_attr_t const *attr_mschap_mppe_recv_key;
+
+extern fr_dict_attr_autoload_t rlm_wimax_dict_attr[];
+fr_dict_attr_autoload_t rlm_wimax_dict_attr[] = {
+	{ .out = &attr_calling_station_id, .name = "Calling-Station-ID", .type = FR_TYPE_STRING, .dict = &dict_radius },
+
+	{ .out = &attr_eap_msk, .name = "EAP-MSK", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_eap_emsk, .name = "EAP-EMSK", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+
+	{ .out = &attr_wimax_msk, .name = "WiMAX-MSK", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_wimax_mn_nai, .name = "WiMAX-MN-NAI", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_wimax_ip_technology, .name = "WiMAX-IP-Technology", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_wimax_hha_ip_mip4, .name = "WiMAX-hHA-IP-MIP4", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius  },
+	{ .out = &attr_wimax_mn_hha_mip4_key, .name = "WiMAX-MN-hHA-MIP4-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_wimax_mn_hha_mip4_spi, .name = "WiMAX-MN-hHA-MIP4-SPI", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_wimax_hha_ip_mip4, .name = "WiMAX-hHA-IP-MIP4", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
+	{ .out = &attr_wimax_hha_ip_mip6, .name = "WiMAX-hHA-IP-MIP6", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
+	{ .out = &attr_wimax_mn_hha_mip6_key, .name = "WiMAX-MN-hHA-MIP6-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_wimax_mn_hha_mip6_spi, .name = "WiMAX-MN-hHA-MIP6-SPI", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_wimax_fa_rk_key, .name = "WiMAX-FA-RK-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_wimax_fa_rk_spi, .name = "WiMAX-FA-RK-SPI", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_wimax_rrq_mn_ha_spi, .name = "WiMAX-RRQ-MN-HA-SPI", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_wimax_rrq_ha_ip, .name = "WiMAX-RRQ-HA-IP", .type = FR_TYPE_COMBO_IP_ADDR, .dict = &dict_radius },
+	{ .out = &attr_wimax_ha_rk_key_requested, .name = "WiMAX-HA-RK-Key-Requested", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+
+	{ .out = &attr_mschap_mppe_send_key, .name = "MSCHAP-MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_mschap_mppe_recv_key, .name = "MSCHAP-MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+
+	{ NULL }
+};
+
+extern fr_dict_autoload_t rlm_wimax_dict[];
+fr_dict_autoload_t rlm_wimax_dict[] = {
+	{ .out = &dict_radius, .proto = "radius" },
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
+
 /*
  *	Find the named user in this modules database.  Create the set
  *	of attribute-value pairs to check and reply with for this user
@@ -59,7 +121,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 	/*
 	 *	Fix Calling-Station-Id.  Damn you, WiMAX!
 	 */
-	vp = fr_pair_find_by_num(request->packet->vps, 0, FR_CALLING_STATION_ID, TAG_ANY);
+	vp = fr_pair_find_by_da(request->packet->vps, attr_calling_station_id, TAG_ANY);
 	if (vp && (vp->vp_length == 6)) {
 		int	i;
 		char	*p;
@@ -111,8 +173,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 	uint8_t			mip_rk_1[EVP_MAX_MD_SIZE], mip_rk_2[EVP_MAX_MD_SIZE];
 	uint8_t			mip_rk[2 * EVP_MAX_MD_SIZE];
 
-	msk = fr_pair_find_by_num(request->reply->vps, 0, FR_EAP_MSK, TAG_ANY);
-	emsk = fr_pair_find_by_num(request->reply->vps, 0, FR_EAP_EMSK, TAG_ANY);
+	msk = fr_pair_find_by_da(request->reply->vps, attr_eap_msk, TAG_ANY);
+	emsk = fr_pair_find_by_da(request->reply->vps, attr_eap_emsk, TAG_ANY);
 	if (!msk || !emsk) {
 		RDEBUG("No EAP-MSK or EAP-EMSK.  Cannot create WiMAX keys");
 		return RLM_MODULE_NOOP;
@@ -123,13 +185,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 	 *	the WiMAX-MSK so that the client has a key available.
 	 */
 	if (inst->delete_mppe_keys) {
-		fr_pair_delete_by_num(&request->reply->vps, VENDORPEC_MICROSOFT, FR_MSCHAP_MPPE_SEND_KEY, TAG_ANY);
-		fr_pair_delete_by_num(&request->reply->vps, VENDORPEC_MICROSOFT, FR_MSCHAP_MPPE_RECV_KEY, TAG_ANY);
+		fr_pair_delete_by_da(&request->reply->vps, attr_mschap_mppe_send_key, TAG_ANY);
+		fr_pair_delete_by_da(&request->reply->vps, attr_mschap_mppe_recv_key, TAG_ANY);
 
-		vp = pair_make_reply("WiMAX-MSK", NULL, T_OP_EQ);
-		if (vp) {
-			fr_pair_value_memcpy(vp, msk->vp_octets, msk->vp_length);
-		}
+		MEM(vp = pair_update_reply(attr_wimax_msk, TAG_ANY));
+		fr_pair_value_memcpy(vp, msk->vp_octets, msk->vp_length);
 	}
 
 	/*
@@ -196,10 +256,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 	/*
 	 *	Calculate mobility keys
 	 */
-	mn_nai = fr_pair_find_by_num(request->packet->vps, 0, FR_WIMAX_MN_NAI, TAG_ANY);
-	if (!mn_nai) mn_nai = fr_pair_find_by_num(request->reply->vps, 0, FR_WIMAX_MN_NAI, TAG_ANY);
+	mn_nai = fr_pair_find_by_da(request->packet->vps, attr_wimax_mn_nai, TAG_ANY);
+	if (!mn_nai) mn_nai = fr_pair_find_by_da(request->reply->vps, attr_wimax_mn_nai, TAG_ANY);
 	if (!mn_nai) {
-		RWDEBUG("WiMAX-MN-NAI was not found in the request or in the reply");
+		RWDEBUG("%s was not found in the request or in the reply", attr_wimax_mn_nai->name);
 		RWDEBUG("We cannot calculate MN-HA keys");
 	}
 
@@ -207,9 +267,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 	 *	WiMAX-IP-Technology
 	 */
 	vp = NULL;
-	if (mn_nai) vp = fr_pair_find_by_num(request->reply->vps, VENDORPEC_WIMAX, 23, TAG_ANY);
+	if (mn_nai) vp = fr_pair_find_by_da(request->reply->vps, attr_wimax_ip_technology, TAG_ANY);
 	if (!vp) {
-		RWDEBUG("WiMAX-IP-Technology not found in reply");
+		RWDEBUG("%s not found in reply", attr_wimax_ip_technology->name);
 		RWDEBUG("Not calculating MN-HA keys");
 	}
 
@@ -218,9 +278,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 		/*
 		 *	Look for WiMAX-hHA-IP-MIP4
 		 */
-		ip = fr_pair_find_by_num(request->reply->vps, VENDORPEC_WIMAX, 6, TAG_ANY);
+		ip = fr_pair_find_by_da(request->reply->vps, attr_wimax_hha_ip_mip4, TAG_ANY);
 		if (!ip) {
-			RWDEBUG("WiMAX-hHA-IP-MIP4 not found.  Cannot calculate MN-HA-PMIP4 key");
+			RWDEBUG("%s not found.  Cannot calculate MN-HA-PMIP4 key", attr_wimax_hha_ip_mip4->name);
 			break;
 		}
 
@@ -238,29 +298,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 		/*
 		 *	Put MN-HA-PMIP4 into WiMAX-MN-hHA-MIP4-Key
 		 */
-		vp = fr_pair_find_by_num(request->reply->vps, VENDORPEC_WIMAX, 10, TAG_ANY);
-		if (!vp) {
-			vp = radius_pair_create(request->reply, &request->reply->vps,
-					       10, VENDORPEC_WIMAX);
-		}
-		if (!vp) {
-			RWDEBUG("Failed creating WiMAX-MN-hHA-MIP4-Key");
-			break;
-		}
+		MEM(vp = pair_update_reply(attr_wimax_mn_hha_mip4_key, TAG_ANY));
 		fr_pair_value_memcpy(vp, &mip_rk_1[0], rk1_len);
 
 		/*
 		 *	Put MN-HA-PMIP4-SPI into WiMAX-MN-hHA-MIP4-SPI
 		 */
-		vp = fr_pair_find_by_num(request->reply->vps, VENDORPEC_WIMAX, 11, TAG_ANY);
-		if (!vp) {
-			vp = radius_pair_create(request->reply, &request->reply->vps,
-					       11, VENDORPEC_WIMAX);
-		}
-		if (!vp) {
-			RWDEBUG("Failed creating WiMAX-MN-hHA-MIP4-SPI");
-			break;
-		}
+		MEM(vp = pair_update_reply(attr_wimax_mn_hha_mip4_spi, TAG_ANY));
 		vp->vp_uint32 = mip_spi + 1;
 		break;
 
@@ -268,9 +312,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 		/*
 		 *	Look for WiMAX-hHA-IP-MIP4
 		 */
-		ip = fr_pair_find_by_num(request->reply->vps, VENDORPEC_WIMAX, 6, TAG_ANY);
+		ip = fr_pair_find_by_da(request->reply->vps, attr_wimax_hha_ip_mip4, TAG_ANY);
 		if (!ip) {
-			RWDEBUG("WiMAX-hHA-IP-MIP4 not found.  Cannot calculate MN-HA-CMIP4 key");
+			RWDEBUG("%s not found.  Cannot calculate MN-HA-CMIP4 key", attr_wimax_hha_ip_mip4->name);
 			break;
 		}
 
@@ -288,29 +332,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 		/*
 		 *	Put MN-HA-CMIP4 into WiMAX-MN-hHA-MIP4-Key
 		 */
-		vp = fr_pair_find_by_num(request->reply->vps, VENDORPEC_WIMAX, 10, TAG_ANY);
-		if (!vp) {
-			vp = radius_pair_create(request->reply, &request->reply->vps,
-					       10, VENDORPEC_WIMAX);
-		}
-		if (!vp) {
-			RWDEBUG("Failed creating WiMAX-MN-hHA-MIP4-Key");
-			break;
-		}
+		MEM(vp = pair_update_reply(attr_wimax_mn_hha_mip4_key, TAG_ANY));
 		fr_pair_value_memcpy(vp, &mip_rk_1[0], rk1_len);
 
 		/*
 		 *	Put MN-HA-CMIP4-SPI into WiMAX-MN-hHA-MIP4-SPI
 		 */
-		vp = fr_pair_find_by_num(request->reply->vps, VENDORPEC_WIMAX, 11, TAG_ANY);
-		if (!vp) {
-			vp = radius_pair_create(request->reply, &request->reply->vps,
-					       11, VENDORPEC_WIMAX);
-		}
-		if (!vp) {
-			RWDEBUG("Failed creating WiMAX-MN-hHA-MIP4-SPI");
-			break;
-		}
+		MEM(vp = pair_update_reply(attr_wimax_mn_hha_mip4_spi, TAG_ANY));
 		vp->vp_uint32 = mip_spi;
 		break;
 
@@ -318,9 +346,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 		/*
 		 *	Look for WiMAX-hHA-IP-MIP6
 		 */
-		ip = fr_pair_find_by_num(request->reply->vps, VENDORPEC_WIMAX, 7, TAG_ANY);
+		ip = fr_pair_find_by_da(request->reply->vps, attr_wimax_hha_ip_mip6, TAG_ANY);
 		if (!ip) {
-			RWDEBUG("WiMAX-hHA-IP-MIP6 not found.  Cannot calculate MN-HA-CMIP6 key");
+			RWDEBUG("%s not found.  Cannot calculate MN-HA-CMIP6 key", attr_wimax_hha_ip_mip6->name);
 			break;
 		}
 
@@ -338,29 +366,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 		/*
 		 *	Put MN-HA-CMIP6 into WiMAX-MN-hHA-MIP6-Key
 		 */
-		vp = fr_pair_find_by_num(request->reply->vps, VENDORPEC_WIMAX, 12, TAG_ANY);
-		if (!vp) {
-			vp = radius_pair_create(request->reply, &request->reply->vps,
-					       12, VENDORPEC_WIMAX);
-		}
-		if (!vp) {
-			RWDEBUG("Failed creating WiMAX-MN-hHA-MIP6-Key");
-			break;
-		}
+		MEM(pair_update_reply(attr_wimax_mn_hha_mip6_key, TAG_ANY));
 		fr_pair_value_memcpy(vp, &mip_rk_1[0], rk1_len);
 
 		/*
 		 *	Put MN-HA-CMIP6-SPI into WiMAX-MN-hHA-MIP6-SPI
 		 */
-		vp = fr_pair_find_by_num(request->reply->vps, VENDORPEC_WIMAX, 13, TAG_ANY);
-		if (!vp) {
-			vp = radius_pair_create(request->reply, &request->reply->vps,
-					       13, VENDORPEC_WIMAX);
-		}
-		if (!vp) {
-			RWDEBUG("Failed creating WiMAX-MN-hHA-MIP6-SPI");
-			break;
-		}
+		MEM(pair_update_reply(attr_wimax_mn_hha_mip6_spi, TAG_ANY));
 		vp->vp_uint32 = mip_spi + 2;
 		break;
 
@@ -373,7 +385,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 	 *
 	 *	FA-RK= H(MIP-RK, "FA-RK")
 	 */
-	fa_rk = fr_pair_find_by_num(request->reply->vps, VENDORPEC_WIMAX, 14, TAG_ANY);
+	fa_rk = fr_pair_find_by_da(request->reply->vps, attr_wimax_fa_rk_key, TAG_ANY);
 	if (fa_rk && (fa_rk->vp_length <= 1)) {
 		HMAC_Init_ex(hmac, mip_rk, rk_len, EVP_sha1(), NULL);
 
@@ -389,16 +401,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 	 *	really MIP-SPI.  Clear?  Of course.  This is WiMAX.
 	 */
 	if (fa_rk) {
-		vp = fr_pair_find_by_num(request->reply->vps, VENDORPEC_WIMAX, 61, TAG_ANY);
-		if (!vp) {
-			vp = radius_pair_create(request->reply, &request->reply->vps,
-					       61, VENDORPEC_WIMAX);
-		}
-		if (!vp) {
-			RWDEBUG("Failed creating WiMAX-FA-RK-SPI");
-		} else {
-			vp->vp_uint32 = mip_spi;
-		}
+		MEM(vp = pair_update_reply(attr_wimax_fa_rk_spi, TAG_ANY));
+		vp->vp_uint32 = mip_spi;
 	}
 
 	/*
@@ -406,7 +410,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 	 *
 	 *	WiMAX-RRQ-MN-HA-SPI
 	 */
-	vp = fr_pair_find_by_num(request->packet->vps, VENDORPEC_WIMAX, 20, TAG_ANY);
+	vp = fr_pair_find_by_da(request->packet->vps, attr_wimax_rrq_mn_ha_spi, TAG_ANY);
 	if (vp) {
 		RDEBUG("Client requested MN-HA key: Should use SPI to look up key from storage");
 		if (!mn_nai) {
@@ -416,15 +420,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 		/*
 		 *	WiMAX-RRQ-HA-IP
 		 */
-		if (!fr_pair_find_by_num(request->packet->vps, VENDORPEC_WIMAX, 18, TAG_ANY)) {
+		if (!fr_pair_find_by_da(request->packet->vps, attr_wimax_rrq_ha_ip, TAG_ANY)) {
 			RWDEBUG("HA-IP was not found!");
 		}
-
 
 		/*
 		 *	WiMAX-HA-RK-Key-Requested
 		 */
-		vp = fr_pair_find_by_num(request->packet->vps, VENDORPEC_WIMAX, 58, TAG_ANY);
+		vp = fr_pair_find_by_da(request->packet->vps, attr_wimax_ha_rk_key_requested, TAG_ANY);
 		if (vp && (vp->vp_uint32 == 1)) {
 			RDEBUG("Client requested HA-RK: Should use IP to look it up from storage");
 		}
@@ -437,7 +440,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 
 	return RLM_MODULE_UPDATED;
 }
-
 
 /*
  *	The module name should be the only globally exported symbol.
