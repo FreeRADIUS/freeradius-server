@@ -210,16 +210,6 @@ typedef enum {
 } rad_master_state_t;
 #define REQUEST_MASTER_NUM_STATES (REQUEST_COUNTED + 1)
 
-typedef enum {
-	REQUEST_QUEUED = 1,
-	REQUEST_RUNNING,
-	REQUEST_PROXIED,
-	REQUEST_RESPONSE_DELAY,
-	REQUEST_CLEANUP_DELAY,
-	REQUEST_DONE
-} rad_child_state_t;
-#define REQUEST_CHILD_NUM_STATES (REQUEST_DONE + 1)
-
 typedef enum fr_request_state_t {
 	REQUEST_INIT = 0,
 	REQUEST_RECV,
