@@ -95,6 +95,21 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t const *dict_freeradius;
+static fr_dict_attr_t const *attr_rest_http_status_code;
+
+extern fr_dict_attr_autoload_t dict_attr_autoload_rest[];
+fr_dict_attr_autoload_t dict_attr_autoload_rest[] = {
+	{ .out = &attr_rest_http_status_code, .name = "REST-HTTP-Status-Code", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ NULL }
+};
+
+extern fr_dict_autoload_t dict_autoload_rest[];
+fr_dict_autoload_t dict_autoload_rest[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
+
 /** Update the status attribute
  *
  * @param[in] request	The current request.
@@ -108,30 +123,20 @@ static int rlm_rest_status_update(REQUEST *request, void *handle)
 	TALLOC_CTX	*ctx;
 	VALUE_PAIR	**list;
 	int		code;
-	fr_value_box_t	value;
+	VALUE_PAIR	*vp;
 
 	RADIUS_LIST_AND_CTX(ctx, list, request, REQUEST_CURRENT, PAIR_LIST_REQUEST);
 	code = rest_get_handle_code(handle);
 	if (!code) {
-		fr_pair_delete_by_num(list, 0, FR_REST_HTTP_STATUS_CODE, TAG_ANY);
+		fr_pair_delete_by_da(list, attr_rest_http_status_code, TAG_ANY);
 		RDEBUG2("&REST-HTTP-Status-Code !* ANY");
 		return -1;
 	}
 
 	RDEBUG2("&REST-HTTP-Status-Code := %i", code);
 
-	memset(&value, 0, sizeof(value));	/* Required to zero out next/enumv fields */
-	value.type = FR_TYPE_UINT32;
-	value.vb_uint32 = code;
-
-	/*
-	 *	Find the reply list, and appropriate context in the
-	 *	current request.
-	 */
-	if (!list || (fr_pair_update_by_num(ctx, list, 0, FR_REST_HTTP_STATUS_CODE, TAG_ANY, &value) < 0)) {
-		REDEBUG("Failed updating &REST-HTTP-Status-Code");
-		return -1;
-	}
+	MEM(vp = pair_update_request(attr_rest_http_status_code, TAG_ANY));;
+	vp->vp_uint32 = code;
 
 	return 0;
 }
