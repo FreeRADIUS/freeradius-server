@@ -449,7 +449,7 @@ void * CC_HINT(hot) fr_cursor_remove(fr_cursor_t *cursor)
 	 *	This ensures if the iterator skips the item
 	 *	we just replaced, it doesn't become current.
 	 */
-	fr_cursor_next(cursor);
+	cursor->current = cursor_next(&cursor->prev, cursor, cursor->current);
 
 	/*
 	 *	Set v->next to NULL
