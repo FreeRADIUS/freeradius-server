@@ -75,9 +75,6 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 
 	char const	**identity_p;
 	char const	*identity = NULL;
-#ifdef HAVE_OPENSSL_OCSP_H
-	X509		*issuer_cert;
-#endif
 
 	char		subject[1024];
 	char		common_name[1024];
@@ -323,12 +320,17 @@ int tls_validate_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	 *	Fixme: Do we want to store the matching TLS-Client-cert-Filename?
 	 */
 	if (my_ok && conf->ocsp.enable){
-		RDEBUG2("Starting OCSP Request");
-		issuer_cert = X509_STORE_CTX_get0_current_issuer(x509_ctx);
-		if (issuer_cert == NULL) {
-			RDEBUG("Couldn't get issuer_cert for %s", common_name);
-		}
+		X509	*issuer_cert;
 
+		RDEBUG2("Starting OCSP Request");
+
+		/*
+		 *	If we don't have an issuer, then we can't send
+		 *	and OCSP request, but pass the NULL issuer in
+		 *	so tls_ocsp_check can decide on the correct
+		 *	return code.
+		 */
+		issuer_cert = X509_STORE_CTX_get0_current_issuer(x509_ctx);
 		my_ok = tls_ocsp_check(request, ssl, conf->ocsp.store, issuer_cert, cert, &(conf->ocsp), false);
 	}
 #endif
