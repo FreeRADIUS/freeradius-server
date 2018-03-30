@@ -50,6 +50,14 @@ typedef struct arp_over_ether {
 	uint8_t		tpa[4];			//!< Target protocol address.
 } arp_over_ether_t;
 
+static fr_dict_t const *dict_arp;
+
+extern fr_dict_autoload_t proto_arp_dict[];
+fr_dict_autoload_t proto_arp_dict[] = {
+	{ .out = &dict_arp, .proto = "arp" },
+	{ NULL }
+};
+
 static rlm_rcode_t arp_process(REQUEST *request)
 {
 	CONF_SECTION *unlang;
@@ -188,7 +196,7 @@ static int arp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 
 		if (!fr_cond_assert((size_t)(end - p) < len)) return -1; /* Should have been detected in socket_recv */
 
-		da = fr_dict_attr_by_name(NULL, header_names[i].name);
+		da = fr_dict_attr_by_name(dict_arp, header_names[i].name);
 		if (!da) return 0;
 
 		MEM(vp = fr_pair_afrom_da(request->packet, da));
@@ -304,7 +312,6 @@ static int arp_socket_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *list
 	return 0;
 }
 
-
 extern rad_protocol_t proto_arp;
 rad_protocol_t proto_arp = {
 	.magic		= RLM_MODULE_INIT,
@@ -312,6 +319,7 @@ rad_protocol_t proto_arp = {
 	.inst_size	= sizeof(arp_socket_t),
 	.transports	= 0,
 	.tls		= false,
+
 	.bootstrap	= arp_socket_bootstrap,
 	.compile	= arp_socket_compile,
 	.parse		= arp_socket_parse,

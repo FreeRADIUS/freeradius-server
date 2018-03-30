@@ -228,6 +228,14 @@ typedef struct bfd_socket_t {
 	rbtree_t	*session_tree;
 } bfd_socket_t;
 
+static fr_dict_t const *dict_bfd;
+
+extern fr_dict_autoload_t proto_bfd_dict[];
+fr_dict_autoload_t proto_bfd_dict[] = {
+	{ .out = &dict_bfd, .proto = "bfd" },
+	{ NULL }
+};
+
 static int bfd_start_packets(bfd_state_t *session);
 static int bfd_start_control(bfd_state_t *session);
 static int bfd_stop_control(bfd_state_t *session);
