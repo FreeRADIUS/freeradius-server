@@ -51,6 +51,14 @@ static CONF_PARSER const proto_vmps_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+fr_dict_t const *dict_vqp;
+
+extern fr_dict_autoload_t proto_vmps_dict[];
+fr_dict_autoload_t proto_vmps_dict[] = {
+	{ .out = &dict_vqp, .proto = "vqp" },
+	{ NULL }
+};
+
 /** Wrapper around dl_instance which translates the packet-type into a submodule name
  *
  * @param[in] ctx	to allocate data in (instance of proto_vmps).
