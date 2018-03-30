@@ -181,7 +181,7 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 	max = hp->num_elements - 1;
 
 	/*
-	 *	Extract element.  Default is the first one.
+	 *	Extract element.  Default is the first one (pop)
 	 */
 	if (!data) {
 		parent = 0;
@@ -246,8 +246,7 @@ void *fr_heap_pop(fr_heap_t *hp)
 	if (hp->num_elements == 0) return NULL;
 
 	data = hp->p[0];
-
-	(void) fr_heap_extract(hp, data);
+	(void) fr_heap_extract(hp, NULL);
 
 	return data;
 }
