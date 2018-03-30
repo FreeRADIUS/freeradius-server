@@ -968,6 +968,7 @@ static int virtual_module_bootstrap(CONF_SECTION *modules, CONF_SECTION *vm_cs)
  *	- 0 on success.
  *	- -1 on failure.
  */
+#if 0
 static int _module_dict_autoload(dl_t const *module, void *symbol, UNUSED void *user_ctx)
 {
 	fr_dict_autoload_t const *p = *((fr_dict_autoload_t **)symbol);
@@ -996,6 +997,7 @@ static void _module_dict_autofree(UNUSED dl_t const *module, void *symbol, UNUSE
 
 	while ((p++)->proto) fr_dict_autofree(p);
 }
+#endif
 
 /** Callback to automatically resolve attributes and check the types are correct
  *
@@ -1040,9 +1042,9 @@ int modules_bootstrap(CONF_SECTION *root)
 	/*
 	 *	Register dictionary autoload callbacks
 	 */
-	dl_symbol_init_cb_register("dict", _module_dict_autoload, NULL);
+//	dl_symbol_init_cb_register("dict", _module_dict_autoload, NULL);
 	dl_symbol_init_cb_unregister("dict_attr", _module_dict_attr_autoload);
-	dl_symbol_free_cb_register("dict", _module_dict_autofree, NULL);
+//	dl_symbol_free_cb_register("dict", _module_dict_autofree, NULL);
 
 	/*
 	 *	Remember where the modules were stored.
