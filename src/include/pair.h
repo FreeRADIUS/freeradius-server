@@ -221,6 +221,15 @@ int		fr_pair_update_by_num(TALLOC_CTX *ctx, VALUE_PAIR **list,
 
 void		fr_pair_delete_by_num(VALUE_PAIR **head, unsigned int vendor, unsigned int attr, int8_t tag);
 
+void		fr_pair_delete_by_child_num(VALUE_PAIR **head, fr_dict_attr_t const *parent,
+					    unsigned int attr, int8_t tag);
+
+VALUE_PAIR	*fr_pair_update_by_da(TALLOC_CTX *ctx, VALUE_PAIR **list,
+				      fr_dict_attr_t const *da, int8_t tag,
+				      bool skip_if_exists);
+
+void		fr_pair_delete_by_da(VALUE_PAIR **head, fr_dict_attr_t const *da, int8_t tag);
+
 void		*fr_pair_iter_next_by_da(void **prev, void *to_eval, void *uctx);
 
 /* Sorting */

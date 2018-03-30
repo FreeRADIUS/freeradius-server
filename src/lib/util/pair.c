@@ -855,6 +855,26 @@ void fr_pair_delete_by_num(VALUE_PAIR **head, unsigned int vendor, unsigned int 
 	}
 }
 
+/** Delete matching pairs
+ *
+ * Delete matching pairs from the attribute list.
+ *
+ * @param[in,out] head VP in list.
+ * @param[in] attr to match.
+ * @param[in] parent to match.
+ * @param[in] tag to match. TAG_ANY matches any tag, TAG_NONE matches tagless VPs.
+ *
+ */
+void fr_pair_delete_by_child_num(VALUE_PAIR **head, fr_dict_attr_t const *parent, unsigned int attr, int8_t tag)
+{
+	fr_dict_attr_t const *da;
+
+	da = fr_dict_attr_child_by_num(parent, attr);
+	if (!da) return;
+
+	fr_pair_delete_by_da(head, da, tag);
+}
+
 /** An iterator for use by #fr_cursor_iter_init or #fr_cursor_talloc_iter_init
  *
  * @note The #fr_dict_attr_t to match should be passed in as the uctx value when initialising the iterator.
@@ -875,6 +895,78 @@ void *fr_pair_iter_next_by_da(void **prev, void *to_eval, void *uctx)
 
 	*prev = to_eval;
 	return NULL;
+}
+
+/** Create a new VALUE_PAIR or replaces the value of the head pair in the specified list
+ *
+ * If skip_if_exists is true, will return NULL if a pair matching the specified #fr_dict_attr_t
+ * and tag already exists, else will allocate a new VALUE_PAIR, prepend the VALUE_PAIR to the list,
+ * and return the new VALUE_PAIR.
+ *
+ * If skip_if_exists is false, will return the existing VALUE_PAIR (if found),  else will allocate
+ * a new VALUE_PAIR, prepend the VALUE_PAIR to the list, and return the new VALUE_PAIR.
+ *
+ * @param[in] ctx		to allocate new #VALUE_PAIR in.
+ * @param[in,out] list		in search and insert into it.
+ * @param[in] da		of attribute to update.
+ * @param[in] tag		of attribute to update.
+ * @param[in] skip_if_exists	If true, return NULL if a pair with matching #fr_dict_attr_t
+ *				and tag exists in the list.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+VALUE_PAIR *fr_pair_update_by_da(TALLOC_CTX *ctx, VALUE_PAIR **list,
+				 fr_dict_attr_t const *da, int8_t tag,
+				 bool skip_if_exists)
+{
+	vp_cursor_t cursor;
+	VALUE_PAIR *vp;
+
+	(void)fr_pair_cursor_init(&cursor, list);
+	vp = fr_pair_cursor_next_by_da(&cursor, da, tag);
+	if (vp) {
+		VP_VERIFY(vp);
+		if (skip_if_exists) return NULL;
+		return vp;
+	}
+
+	vp = fr_pair_afrom_da(ctx, da);
+	if (!vp) return NULL;
+	vp->tag = tag;
+
+	fr_pair_cursor_prepend(&cursor, vp);
+
+	return 0;
+}
+
+/** Delete matching pairs
+ *
+ * Delete matching pairs from the attribute list.
+ *
+ * @param[in,out]	head VP in list.
+ * @param[in] da	to match.
+ * @param[in] tag	to match. TAG_ANY matches any tag, TAG_NONE matches tagless VPs.
+ *
+ * @todo should take DAs and do a point comparison.
+ */
+void fr_pair_delete_by_da(VALUE_PAIR **head, fr_dict_attr_t const *da, int8_t tag)
+{
+	VALUE_PAIR *i, *next;
+	VALUE_PAIR **last = head;
+
+	if (!da) return;
+
+	for (i = *head; i; i = next) {
+		VP_VERIFY(i);
+		next = i->next;
+		if ((i->da == da) && (!i->da->flags.has_tag || TAG_EQ(tag, i->tag))) {
+			*last = next;
+			talloc_free(i);
+		} else {
+			last = &i->next;
+		}
+	}
 }
 
 /** Order attributes by their da, and tag
