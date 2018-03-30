@@ -56,7 +56,7 @@ struct fr_heap_t {
 /* #define HEAP_RIGHT(_x) (2 * (_x) + 2 ) */
 #define	HEAP_SWAP(_a, _b) { void *_tmp = _a; _a = _b; _b = _tmp; }
 
-static int fr_heap_bubble(fr_heap_t *hp, int32_t child);
+static void fr_heap_bubble(fr_heap_t *hp, int32_t child);
 
 fr_heap_t *_fr_heap_create(fr_heap_cmp_t cmp, char const *type, size_t offset)
 {
@@ -101,6 +101,14 @@ fr_heap_t *_fr_heap_create(fr_heap_cmp_t cmp, char const *type, size_t offset)
  */
 #define RESET_OFFSET(_heap, _node) *((int32_t *)(((uint8_t *)_heap->p[_node]) + _heap->offset)) = -1
 
+/** Insert a new element into the heap
+ *
+ * @param[in] hp	The heap to insert an element into.
+ * @param[in] data	Data to insert into the heap.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure (heap full or malloc error).
+ */
 int fr_heap_insert(fr_heap_t *hp, void *data)
 {
 	int32_t child = hp->num_elements;
@@ -124,13 +132,13 @@ int fr_heap_insert(fr_heap_t *hp, void *data)
 		 */
 		if (n_size > INT32_MAX) {
 			fr_strerror_printf("Heap is full");
-			return 0;
+			return -1;
 		}
 
 		n = talloc_realloc(hp, hp->p, void *, n_size);
 		if (!n) {
 			fr_strerror_printf("Failed expanding heap");
-			return 0;
+			return -1;
 		}
 		hp->size = n_size;
 		hp->p = n;
@@ -139,11 +147,12 @@ int fr_heap_insert(fr_heap_t *hp, void *data)
 	hp->p[child] = data;
 	hp->num_elements++;
 
-	return fr_heap_bubble(hp, child);
+ 	fr_heap_bubble(hp, child);
+
+	return 0;
 }
 
-
-static int fr_heap_bubble(fr_heap_t *hp, int32_t child)
+static void fr_heap_bubble(fr_heap_t *hp, int32_t child)
 {
 	/*
 	 *	Bubble up the element.
@@ -164,19 +173,22 @@ static int fr_heap_bubble(fr_heap_t *hp, int32_t child)
 		child = parent;
 	}
 	SET_OFFSET(hp, child);
-
-	return 1;
 }
 
 
-/*
- *	Remove the top element, or object.
+/** Remove the top element, or object
+ *
+ * @param[in] hp	The heap to insert an element into.
+ * @param[in] data	Data to insert into the heap.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure (no elements or data not found).
  */
 int fr_heap_extract(fr_heap_t *hp, void *data)
 {
 	int32_t parent, child, max;
 
-	if (!hp || (hp->num_elements == 0)) return 0;
+	if (!hp || (hp->num_elements == 0)) return -1;
 
 	max = hp->num_elements - 1;
 
@@ -192,7 +204,7 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 		/*
 		 *	Out of bounds.
 		 */
-		if ((parent < 0) || (parent >= hp->num_elements)) return 0;
+		if ((parent < 0) || (parent >= hp->num_elements)) return -1;
 	}
 
 	RESET_OFFSET(hp, parent);
@@ -222,10 +234,12 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 		 *	reusing the insert code
 		 */
 		hp->p[parent] = hp->p[max];
-		return fr_heap_bubble(hp, parent);
+
+		fr_heap_bubble(hp, parent);
+		return 0;
 	}
 
-	return 1;
+	return 0;
 }
 
 
@@ -326,7 +340,7 @@ int main(int argc, char **argv)
 
 	for (i = 0; i < ARRAY_SIZE; i++) {
 		array[i].data = rand() % 65537;
-		if (!fr_heap_insert(hp, &array[i])) {
+		if (fr_heap_insert(hp, &array[i]) < 0) {
 			fprintf(stderr, "Failed inserting %d\n", i);
 			fr_exit(1);
 		}
@@ -352,7 +366,7 @@ int main(int argc, char **argv)
 		for (i = 0; i < ARRAY_SIZE / skip; i++) {
 			entry = i * skip;
 
-			if (!fr_heap_extract(hp, &array[entry])) {
+			if (fr_heap_extract(hp, &array[entry]) < 0) {
 				fprintf(stderr, "Failed removing %d\n", entry);
 			}
 
@@ -381,7 +395,7 @@ int main(int argc, char **argv)
 
 		printf("%d\t%d\n", i, t->data);
 
-		if (!fr_heap_extract(hp, NULL)) {
+		if (fr_heap_extract(hp, NULL) < 0) {
 			fprintf(stderr, "Failed extracting %d\n", i);
 			fr_exit(1);
 		}

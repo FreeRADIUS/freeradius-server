@@ -990,7 +990,7 @@ static int _event_timer_free(fr_event_timer_t *ev)
 	/*
 	 *	Events MUST be in the heap
 	 */
-	if (!fr_cond_assert(ret == 1)) {
+	if (!fr_cond_assert(ret == 0)) {
 		fr_strerror_printf("Event not found in heap");
 		return -1;
 	}
@@ -1095,8 +1095,7 @@ int fr_event_timer_insert(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t
 	ev->linked_ctx = ctx;
 	ev->parent = ev_p;
 
-	if (unlikely(!fr_heap_insert(el->times, ev))) {
-		fr_strerror_printf("Failed inserting event into heap");
+	if (unlikely(fr_heap_insert(el->times, ev) < 0)) {
 		talloc_free(ev);
 		return -1;
 	}

@@ -810,7 +810,11 @@ static unlang_action_t unlang_subrequest(REQUEST *request,
 
 		if (child_instruction->type == UNLANG_TYPE_DETACH) {
 			rad_assert(child->backlog != NULL);
-			fr_heap_insert(child->backlog, child);
+
+			if (fr_heap_insert(child->backlog, child) < 0) {
+				RPERROR("Failed inserting child into backlog");
+				return UNLANG_ACTION_STOP_PROCESSING;
+			}
 
 			RDEBUG2("- detaching child request (%s)", child->name);
 
