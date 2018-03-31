@@ -20,6 +20,7 @@ FreeRADIUS 4.0.0 Sun 10 Jul 2016 15:48:14 EDT urgency=medium
 	  file.
 	* radsniff stats (-W) now operates on PCAP files too.
 	* radsniff stats can be printed in CSV format.
+	* radsniff processes .1Q tagged packets by default.
 	* Improved internal state API, to simplify multiround
 	  authentication.
 	* ipaddr = * 'just works' for most DHCP configurations.
@@ -33,6 +34,7 @@ FreeRADIUS 4.0.0 Sun 10 Jul 2016 15:48:14 EDT urgency=medium
 	  of multiple LDAP objects to RADIUS attributes.
 	* Both the rlm_ldap map and xlat functions support server
 	  side sort control specifiers in their URLs.
+	* rlm_eap supports RSA/ECC key agility.
 
 	Bug fixes
 	* Attribute names in unlang MUST be prefixed with &
