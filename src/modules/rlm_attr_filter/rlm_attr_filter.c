@@ -51,6 +51,36 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
+
+static fr_dict_attr_t const *attr_stripped_user_name;
+static fr_dict_attr_t const *attr_fall_through;
+static fr_dict_attr_t const *attr_filter_relax;
+
+static fr_dict_attr_t const *attr_user_name;
+static fr_dict_attr_t const *attr_user_password;
+static fr_dict_attr_t const *attr_vendor_specific;
+
+extern fr_dict_attr_autoload_t rlm_cache_dict_attr[];
+fr_dict_attr_autoload_t rlm_cache_dict_attr[] = {
+	{ .out = &attr_stripped_user_name, .name = "Stripped-User-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_fall_through, .name = "Fall-Through", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
+	{ .out = &attr_filter_relax, .name = "Filter-Relaxed", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
+
+	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_vendor_specific, .name = "Vendor-Specific", .type = FR_TYPE_VSA, .dict = &dict_radius },
+	{ NULL }
+};
+
+extern fr_dict_autoload_t rlm_attr_filter_dict[];
+fr_dict_autoload_t rlm_attr_filter_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
 static void check_pair(REQUEST *request, VALUE_PAIR *check_item, VALUE_PAIR *reply_item, int *pass, int *fail)
 {
 	int compare;
@@ -198,20 +228,13 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 		for (check_item = fr_pair_cursor_init(&check, &pl->check);
 		     check_item;
 		     check_item = fr_pair_cursor_next(&check)) {
-		     	if (fr_dict_attr_is_top_level(check_item->da)) switch (check_item->da->attr) {
-			case FR_FALL_THROUGH:
+		     	if (check_item->da == attr_fall_through) {
 				if (check_item->vp_uint32 == 1) {
 					fall_through = 1;
 					continue;
 				}
-				break;
-
-			case FR_RELAX_FILTER:
+		     	} else if (check_item->da == attr_filter_relax) {
 				relax_filter = check_item->vp_uint32;
-				continue;
-
-			default:
-				break;
 		     	}
 
 			/*
@@ -250,7 +273,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 				 *  Vendor-Specific is special, and matches any VSA if the
 				 *  comparison is always true.
 				 */
-				if ((check_item->da->attr == FR_VENDOR_SPECIFIC) &&
+				if ((check_item->da == attr_vendor_specific) &&
 				    (fr_dict_vendor_num_by_da(input_item->da) != 0) &&
 				    (check_item->op == T_OP_CMP_TRUE)) {
 					pass++;
@@ -301,16 +324,15 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 	packet->vps = output;
 
 	if (request->packet->code == FR_CODE_ACCESS_REQUEST) {
-		request->username = fr_pair_find_by_num(request->packet->vps, 0, FR_STRIPPED_USER_NAME, TAG_ANY);
-		if (!request->username) {
-			request->username = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_NAME, TAG_ANY);
-		}
-		request->password = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_PASSWORD, TAG_ANY);
+		request->username = fr_pair_find_by_da(request->packet->vps, attr_stripped_user_name, TAG_ANY);
+		if (!request->username) request->username = fr_pair_find_by_da(request->packet->vps,
+									       attr_user_name, TAG_ANY);
+		request->password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
 	}
 
 	return RLM_MODULE_UPDATED;
 
-	error:
+error:
 	fr_pair_list_free(&output);
 	return RLM_MODULE_FAIL;
 }

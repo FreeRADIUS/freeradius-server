@@ -17,8 +17,8 @@ FLAGS	internal
 #		server-side attributes which can go in a reply list
 
 # 	These attributes CAN go in the reply item list.
-ATTRIBUTE	Fall-Through				500	integer
-ATTRIBUTE	Relax-Filter				501	integer
+ATTRIBUTE	Fall-Through				500	bool
+ATTRIBUTE	Relax-Filter				501	bool
 #
 # Exec-Program and Exec-Program-Wait are no longer supported in v4.
 #
@@ -855,12 +855,6 @@ VALUE	Post-Proxy-Type			Fail			256
 #
 #	Experimental Non-Protocol Integer Translations for FreeRADIUS
 #
-VALUE	Fall-Through			No			0
-VALUE	Fall-Through			Yes			1
-
-VALUE	Relax-Filter			No			0
-VALUE	Relax-Filter			Yes			1
-
 VALUE	Strip-User-Name			No			0
 VALUE	Strip-User-Name			Yes			1
 
