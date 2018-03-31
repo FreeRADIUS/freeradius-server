@@ -137,19 +137,20 @@ typedef struct {
 /** Specifies an attribute which must be present for the module to function
  *
  */
-typedef struct fr_dict_attr_autoload {
+typedef struct {
 	fr_dict_attr_t const	**out;				//!< Where to write a pointer to the resolved
 								//!< #fr_dict_attr_t.
 	fr_dict_t const		**dict;				//!< The protocol dictionary the attribute should
-								//!< be resolved in.
+								///< be resolved in. ** so it's a compile time
+								///< constant.
 	char const		*name;				//!< of the attribute.
-	fr_type_t			type;				//!< of the attribute.  Mismatch is a fatal error.
+	fr_type_t		type;				//!< of the attribute.  Mismatch is a fatal error.
 } fr_dict_attr_autoload_t;
 
 /** Specifies a dictionary which must be loaded/loadable for the module to function
  *
  */
-typedef struct fr_dict_autoload {
+typedef struct {
 	fr_dict_t const		**out;				//!< Where to write a pointer to the loaded/resolved
 								//!< #fr_dict_t.
 	char const		*base_dir;			//!< Directory structure beneath share.

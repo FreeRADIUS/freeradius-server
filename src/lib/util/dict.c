@@ -5148,10 +5148,17 @@ int fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load)
 {
 	fr_dict_attr_t const	*da;
 
-	if (!to_load->dict || !*to_load->dict) {
+	if (!to_load->dict) {
+		fr_strerror_printf("Invalid autoload entry, missing dictionary pointer");
+		return -1;
+	}
+
+#if 0
+	if (!*to_load->dict) {
 		fr_strerror_printf("Missing dictionary required for attribute autoresolution");
 		return -1;
 	}
+#endif
 
 	da = fr_dict_attr_by_name(*to_load->dict, to_load->name);
 	if (!da) {

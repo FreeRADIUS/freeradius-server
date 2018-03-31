@@ -937,7 +937,7 @@ VALUE_PAIR *fr_pair_update_by_da(TALLOC_CTX *ctx, VALUE_PAIR **list,
 
 	fr_pair_cursor_prepend(&cursor, vp);
 
-	return 0;
+	return vp;
 }
 
 /** Delete matching pairs

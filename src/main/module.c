@@ -993,9 +993,12 @@ static int _module_dict_autoload(dl_t const *module, void *symbol, UNUSED void *
  */
 static void _module_dict_autofree(UNUSED dl_t const *module, void *symbol, UNUSED void *user_ctx)
 {
-	fr_dict_autoload_t const *p = *((fr_dict_autoload_t **)symbol);
+	fr_dict_autoload_t const *p = ((fr_dict_autoload_t *)symbol);
 
-	while ((p++)->proto) fr_dict_autofree(p);
+	while (p->proto) {
+		fr_dict_autofree(p);
+		p++;
+	}
 }
 #endif
 
@@ -1010,14 +1013,15 @@ static void _module_dict_autofree(UNUSED dl_t const *module, void *symbol, UNUSE
  */
 static int _module_dict_attr_autoload(dl_t const *module, void *symbol, UNUSED void *user_ctx)
 {
-	fr_dict_attr_autoload_t const *p = *((fr_dict_attr_autoload_t **)symbol);
+	fr_dict_attr_autoload_t const *p = (fr_dict_attr_autoload_t *)symbol;
 
-	while ((p++)->out) {
+	while (p->out) {
 		DEBUG4("%s: Resolving attr %s", module->name, p->name);
 		if (fr_dict_attr_autoload(p) < 0) {
 			ERROR("%s: %s", module->name, fr_strerror());
 			return -1;
 		}
+		p++;
 	}
 
 	return 0;
@@ -1043,7 +1047,7 @@ int modules_bootstrap(CONF_SECTION *root)
 	 *	Register dictionary autoload callbacks
 	 */
 //	dl_symbol_init_cb_register("dict", _module_dict_autoload, NULL);
-	dl_symbol_init_cb_unregister("dict_attr", _module_dict_attr_autoload);
+	dl_symbol_init_cb_register("dict_attr", _module_dict_attr_autoload, NULL);
 //	dl_symbol_free_cb_register("dict", _module_dict_autofree, NULL);
 
 	/*
