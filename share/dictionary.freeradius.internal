@@ -267,24 +267,12 @@ ATTRIBUTE	REST-HTTP-Status-Code			1162	integer
 ATTRIBUTE	Cache-Expires				1170	date
 ATTRIBUTE	Cache-Created				1171	date
 ATTRIBUTE	Cache-TTL				1172	signed
-ATTRIBUTE	Cache-Status-Only			1173	integer
-ATTRIBUTE	Cache-Merge-New				1174	integer
+ATTRIBUTE	Cache-Status-Only			1173	bool
+ATTRIBUTE	Cache-Merge-New				1174	bool
 ATTRIBUTE	Cache-Entry-Hits			1175	integer
 
-ATTRIBUTE	Cache-Allow-Merge			1176	integer
-ATTRIBUTE	Cache-Allow-Insert			1177	integer
-
-VALUE	Cache-Status-Only		no			0
-VALUE	Cache-Status-Only		yes			1
-
-VALUE	Cache-Merge-New			no			0
-VALUE	Cache-Merge-New			yes			1
-
-VALUE	Cache-Allow-Merge		no			0
-VALUE	Cache-Allow-Merge		yes			1
-
-VALUE	Cache-Allow-Insert		no			0
-VALUE	Cache-Allow-Insert		yes			1
+ATTRIBUTE	Cache-Allow-Merge			1176	bool
+ATTRIBUTE	Cache-Allow-Insert			1177	bool
 
 # 1178-1179 - unused
 

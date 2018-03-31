@@ -48,6 +48,32 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t const *dict_freeradius;
+
+static fr_dict_attr_t const *attr_cache_merge_new;
+static fr_dict_attr_t const *attr_cache_status_only;
+static fr_dict_attr_t const *attr_cache_allow_merge;
+static fr_dict_attr_t const *attr_cache_allow_insert;
+static fr_dict_attr_t const *attr_cache_ttl;
+static fr_dict_attr_t const *attr_cache_entry_hits;
+
+extern fr_dict_attr_autoload_t rlm_cache_dict_attr[];
+fr_dict_attr_autoload_t rlm_cache_dict_attr[] = {
+	{ .out = &attr_cache_merge_new, .name = "Cache-Merge-New", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
+	{ .out = &attr_cache_status_only, .name = "Cache-Status-Only", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
+	{ .out = &attr_cache_allow_merge, .name = "Cache-Allow-Merge", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
+	{ .out = &attr_cache_allow_insert, .name = "Cache-Allow-Insert", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
+	{ .out = &attr_cache_ttl, .name = "Cache-TTL", .type = FR_TYPE_INT32, .dict = &dict_freeradius },
+	{ .out = &attr_cache_entry_hits, .name = "Cache-Entry-Hits", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ NULL }
+};
+
+extern fr_dict_autoload_t rlm_cache_dict[];
+fr_dict_autoload_t rlm_cache_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
+
 /** Get exclusive use of a handle to access the cache
  *
  */
@@ -157,12 +183,7 @@ static rlm_rcode_t cache_merge(rlm_cache_t const *inst, REQUEST *request, rlm_ca
 
 	if (inst->config.stats) {
 		rad_assert(request->packet != NULL);
-		vp = fr_pair_find_by_num(request->packet->vps, 0, FR_CACHE_ENTRY_HITS, TAG_ANY);
-		if (!vp) {
-			vp = fr_pair_afrom_num(request->packet, 0, FR_CACHE_ENTRY_HITS);
-			rad_assert(vp != NULL);
-			fr_pair_add(&request->packet->vps, vp);
-		}
+		vp = pair_update_request(attr_cache_entry_hits, TAG_ANY);
 		vp->vp_uint32 = c->hits;
 	}
 
@@ -438,8 +459,8 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 	/*
 	 *	Check to see if we need to merge the entry into the request
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, FR_CACHE_MERGE_NEW, TAG_ANY);
-	if (vp && (vp->vp_uint32 > 0)) merge = true;
+	vp = fr_pair_find_by_da(request->control, attr_cache_merge_new, TAG_ANY);
+	if (vp && vp->vp_bool) merge = true;
 
 	if (merge) cache_merge(inst, request, c);
 
@@ -576,8 +597,8 @@ static rlm_rcode_t mod_cache_it(void *instance, UNUSED void *thread, REQUEST *re
 	 *	If Cache-Status-Only == yes, only return whether we found a
 	 *	valid cache entry
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, FR_CACHE_STATUS_ONLY, TAG_ANY);
-	if (vp && vp->vp_uint32) {
+	vp = fr_pair_find_by_da(request->control, attr_cache_status_only, TAG_ANY);
+	if (vp && vp->vp_bool) {
 		RINDENT();
 		RDEBUG3("status-only: yes");
 		REXDENT();
@@ -596,13 +617,13 @@ static rlm_rcode_t mod_cache_it(void *instance, UNUSED void *thread, REQUEST *re
 	/*
 	 *	Figure out what operation we're doing
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, FR_CACHE_ALLOW_MERGE, TAG_ANY);
-	if (vp) merge = (bool)vp->vp_uint32;
+	vp = fr_pair_find_by_da(request->control, attr_cache_allow_merge, TAG_ANY);
+	if (vp) merge = vp->vp_bool;
 
-	vp = fr_pair_find_by_num(request->control, 0, FR_CACHE_ALLOW_INSERT, TAG_ANY);
-	if (vp) insert = (bool)vp->vp_uint32;
+	vp = fr_pair_find_by_da(request->control, attr_cache_allow_insert, TAG_ANY);
+	if (vp) insert = vp->vp_bool;
 
-	vp = fr_pair_find_by_num(request->control, 0, FR_CACHE_TTL, TAG_ANY);
+	vp = fr_pair_find_by_da(request->control, attr_cache_ttl, TAG_ANY);
 	if (vp) {
 		if (vp->vp_int32 == 0) {
 			expire = true;
