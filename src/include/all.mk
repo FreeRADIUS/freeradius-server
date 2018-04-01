@@ -69,6 +69,7 @@ src/include/autoconf.sed: src/include/autoconf.h
 RFC_DICTS := $(filter-out %~,$(wildcard share/dictionary.rfc*)) \
     share/dictionary.vqp share/dictionary.freeradius \
     share/dictionary.freeradius.snmp \
+    share/dictionary.dhcpv4 \
     share/dictionary.dhcpv6 \
     share/dictionary.eap.aka \
     share/dictionary.eap.sim \
