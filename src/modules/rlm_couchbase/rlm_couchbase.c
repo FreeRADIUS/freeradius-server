@@ -65,6 +65,24 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t const *dict_radius;
+
+static fr_dict_attr_t const *attr_acct_status_type;
+static fr_dict_attr_t const *attr_event_timestamp;
+
+extern fr_dict_attr_autoload_t rlm_couchbase_dict_attr[];
+fr_dict_attr_autoload_t rlm_couchbase_dict_attr[] = {
+	{ .out = &attr_acct_status_type, .name = "Acct-Status-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_event_timestamp, .name = "Event-Timestamp", .type = FR_TYPE_DATE, .dict = &dict_radius },
+	{ NULL }
+};
+
+extern fr_dict_autoload_t rlm_couchbase_dict[];
+fr_dict_autoload_t rlm_couchbase_dict[] = {
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
 /** Handle authorization requests using Couchbase document data
  *
  * Attempt to fetch the document assocaited with the requested user by
@@ -183,7 +201,7 @@ static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *
 	rad_assert(request->packet != NULL);
 
 	/* sanity check */
-	if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_ACCT_STATUS_TYPE, TAG_ANY)) == NULL) {
+	if ((vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type, TAG_ANY)) == NULL) {
 		/* log debug */
 		RDEBUG("could not find status type in packet");
 		/* return */
@@ -263,7 +281,7 @@ static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *
 	switch (status) {
 	case FR_STATUS_START:
 		/* add start time */
-		if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_EVENT_TIMESTAMP, TAG_ANY)) != NULL) {
+		if ((vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type, TAG_ANY)) != NULL) {
 			/* add to json object */
 			json_object_object_add(cookie->jobj, "startTimestamp",
 					       mod_value_pair_to_json_object(request, vp));
@@ -272,7 +290,7 @@ static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *
 
 	case FR_STATUS_STOP:
 		/* add stop time */
-		if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_EVENT_TIMESTAMP, TAG_ANY)) != NULL) {
+		if ((vp = fr_pair_find_by_da(request->packet->vps, attr_event_timestamp, TAG_ANY)) != NULL) {
 			/* add to json object */
 			json_object_object_add(cookie->jobj, "stopTimestamp",
 					       mod_value_pair_to_json_object(request, vp));
