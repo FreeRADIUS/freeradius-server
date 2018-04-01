@@ -1,5 +1,6 @@
 SUBMAKEFILES := \
     radclient.mk \
+    radict.mk \
     radiusd.mk \
     radsniff.mk \
     radmin.mk \
