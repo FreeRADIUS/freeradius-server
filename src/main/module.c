@@ -1046,9 +1046,10 @@ int modules_bootstrap(CONF_SECTION *root)
 	/*
 	 *	Register dictionary autoload callbacks
 	 */
-//	dl_symbol_init_cb_register("dict", _module_dict_autoload, NULL);
-	dl_symbol_init_cb_register("dict_attr", _module_dict_attr_autoload, NULL);
-//	dl_symbol_free_cb_register("dict", _module_dict_autofree, NULL);
+//	dl_symbol_init_cb_register(DL_DICT_PRIORITY, "dict", _module_dict_autoload, NULL);
+//	dl_symbol_free_cb_register(DL_DICT_PRIORITY, "dict", _module_dict_autofree, NULL);
+	dl_symbol_init_cb_register(DL_DICT_ATTR_PRIORITY, "dict_attr", _module_dict_attr_autoload, NULL);
+
 
 	/*
 	 *	Remember where the modules were stored.

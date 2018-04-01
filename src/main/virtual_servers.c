@@ -318,7 +318,6 @@ int virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const 
 
 	while ((subcs = cf_section_find_next(server_cs, subcs, subcs_name, CF_IDENT_ANY))) {
 		char const	*name2;
-		fr_value_box_t	value = { .type = FR_TYPE_UINT32 };
 		fr_dict_enum_t	*dv;
 
 		name2 = cf_section_name2(subcs);
@@ -334,18 +333,15 @@ int virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const 
 		dv = fr_dict_enum_by_alias(da, name2);
 		if (dv) continue;
 
+		cf_log_debug(subcs, "Creating %s = %s", da->name, name2);
+
 		/*
 		 *	Create a new unique value with a meaningless
 		 *	number.  You can't look at it from outside of
 		 *	this code, so it doesn't matter.  The only
 		 *	requirement is that it's unique.
 		 */
-		do {
-			value.vb_uint32 = (fr_rand() & 0x00ffffff) + 1;
-		} while (fr_dict_enum_by_value(da, &value));
-
-		cf_log_debug(subcs, "Creating %s = %s", da->name, name2);
-		if (fr_dict_enum_add_alias(da, name2, &value, true, false) < 0) {
+		if (fr_dict_enum_add_alias_next(da, name2) < 0) {
 			PERROR("Failed adding section value");
 			return -1;
 		}

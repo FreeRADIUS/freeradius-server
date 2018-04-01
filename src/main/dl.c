@@ -60,6 +60,7 @@ char const	*radlib_dir;
  */
 typedef struct dl_symbol_init dl_symbol_init_t;
 struct dl_symbol_init {
+	unsigned int		priority;	//!< Call priority
 	char const		*symbol;	//!< to search for.  May be NULL in which case func is always called.
 	dl_init_t		func;		//!< to call when symbol is found in a module's symbol table.
 	void			*ctx;		//!< User data to pass to func.
@@ -72,6 +73,7 @@ struct dl_symbol_init {
  */
 typedef struct dl_symbol_free dl_symbol_free_t;
 struct dl_symbol_free {
+	unsigned int		priority;	//!< Call priority
 	char const		*symbol;	//!< to search for.  May be NULL in which case func is always called.
 	dl_free_t		func;		//!< to call when symbol is found in a module's symbol table.
 	void			*ctx;		//!< User data to pass to func.
@@ -377,6 +379,8 @@ static int _dl_free(dl_t *module)
  *
  * @note Will replace ctx data for callbacks with the same symbol/func.
  *
+ * @param[in] priority	Execution priority.  Callbacks with a higher priority get
+ *			called first.
  * @param[in] symbol	that determines whether func should be called. "<modname>_" is
  *			added as a prefix to the symbol.  The prefix is added because
  *			some modules are loaded with RTLD_GLOBAL into the global symbol
@@ -388,20 +392,21 @@ static int _dl_free(dl_t *module)
  *	- 0 on success (or already registered).
  *	- -1 on failure.
  */
-int dl_symbol_init_cb_register(char const *symbol, dl_init_t func, void *ctx)
+int dl_symbol_init_cb_register(unsigned int priority, char const *symbol, dl_init_t func, void *ctx)
 {
-	dl_symbol_init_t	*new;
+	dl_symbol_init_t	*n, *p;
 	fr_cursor_t		cursor;
 
 	dl_symbol_init_cb_unregister(symbol, func);
 
-	MEM(new = talloc(NULL, dl_symbol_init_t));
-	new->symbol = symbol;
-	new->func = func;
-	new->ctx = ctx;
+	MEM(n = talloc(NULL, dl_symbol_init_t));
+	n->priority = priority;
+	n->symbol = symbol;
+	n->func = func;
+	n->ctx = ctx;
 
-	fr_cursor_init(&cursor, &dl->sym_init);
-	fr_cursor_append(&cursor, new);
+	for (p = fr_cursor_init(&cursor, &dl->sym_init); p && (p->priority >= priority); fr_cursor_next(&cursor));
+	fr_cursor_insert(&cursor, n);
 
 	return 0;
 }
@@ -430,6 +435,8 @@ void dl_symbol_init_cb_unregister(char const *symbol, dl_init_t func)
  *
  * @note Will replace ctx data for callbacks with the same symbol/func.
  *
+ * @param[in] priority	Execution priority.  Callbacks with a higher priority get
+ *			called first.
  * @param[in] symbol	that determines whether func should be called. "<modname>_" is
  *			added as a prefix to the symbol.  The prefix is added because
  *			some modules are loaded with RTLD_GLOBAL into the global symbol
@@ -441,19 +448,21 @@ void dl_symbol_init_cb_unregister(char const *symbol, dl_init_t func)
  *	- 0 on success (or already registered).
  *	- -1 on failure.
  */
-int dl_symbol_free_cb_register(char const *symbol, dl_free_t func, void *ctx)
+int dl_symbol_free_cb_register(unsigned int priority, char const *symbol, dl_free_t func, void *ctx)
 {
-	dl_symbol_free_t	*new;
+	dl_symbol_free_t	*n, *p;
 	fr_cursor_t		cursor;
 
 	dl_symbol_free_cb_unregister(symbol, func);
 
-	MEM(new = talloc(NULL, dl_symbol_free_t));
-	new->symbol = symbol;
-	new->func = func;
-	new->ctx = ctx;
-	fr_cursor_init(&cursor, &dl->sym_free);
-	fr_cursor_append(&cursor, new);
+	MEM(n = talloc(NULL, dl_symbol_free_t));
+	n->priority = priority;
+	n->symbol = symbol;
+	n->func = func;
+	n->ctx = ctx;
+
+	for (p = fr_cursor_init(&cursor, &dl->sym_free); p && (p->priority >= priority); fr_cursor_next(&cursor));
+	fr_cursor_insert(&cursor, n);
 
 	return 0;
 }
@@ -897,12 +906,12 @@ static int dl_init(void)
 		return -1;
 	}
 
-	if (dl_symbol_init_cb_register(NULL, dl_load_func, NULL) < 0) {
+	if (dl_symbol_init_cb_register(DL_INSTANTIATE_PRIORITY, NULL, dl_load_func, NULL) < 0) {
 		ERROR("Failed registering load() callback");
 		return -1;
 	}
 
-	if (dl_symbol_free_cb_register(NULL, dl_unload_func, NULL) < 0) {
+	if (dl_symbol_free_cb_register(DL_INSTANTIATE_PRIORITY, NULL, dl_unload_func, NULL) < 0) {
 		ERROR("Failed registering unload() callback");
 		return -1;
 	}

@@ -207,6 +207,8 @@ int			fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent, char const
 int			fr_dict_enum_add_alias(fr_dict_attr_t const *da, char const *alias,
 					       fr_value_box_t const *value, bool coerce, bool replace);
 
+int			fr_dict_enum_add_alias_next(fr_dict_attr_t const *da, char const *alias) CC_HINT(nonnull);
+
 int			fr_dict_str_to_argv(char *str, char **argv, int max_argc);
 /** @} */
 

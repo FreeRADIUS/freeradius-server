@@ -161,11 +161,18 @@ struct dl_instance {
 	dl_instance_t const	*parent;	//!< Parent module's instance (if any).
 };
 
-int			dl_symbol_init_cb_register(char const *symbol, dl_init_t func, void *ctx);
+#define DL_DICT_PRIORITY	11		//!< Callback priority for dictionary autoloading
+#define DL_DICT_ATTR_PRIORITY	10		//!< Callback priority for attribute resolution
+#define DL_INSTANTIATE_PRIORITY	5		//!< Callback priority for bootstrap callback
+
+
+int			dl_symbol_init_cb_register(unsigned int priority, char const *symbol,
+						   dl_init_t func, void *ctx);
 
 void			dl_symbol_init_cb_unregister(char const *symbol, dl_init_t func);
 
-int			dl_symbol_free_cb_register(char const *symbol, dl_free_t func, void *ctx);
+int			dl_symbol_free_cb_register(unsigned int priority, char const *symbol,
+						   dl_free_t func, void *ctx);
 
 void			dl_symbol_free_cb_unregister(char const *symbol, dl_free_t func);
 
