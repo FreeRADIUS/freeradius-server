@@ -80,6 +80,38 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
+
+static fr_dict_attr_t const *attr_packet_type;
+
+static fr_dict_attr_t const *attr_packet_src_ipv4_address;
+static fr_dict_attr_t const *attr_packet_dst_ipv4_address;
+static fr_dict_attr_t const *attr_packet_src_ipv6_address;
+static fr_dict_attr_t const *attr_packet_dst_ipv6_address;
+static fr_dict_attr_t const *attr_packet_src_port;
+static fr_dict_attr_t const *attr_packet_dst_port;
+
+extern fr_dict_attr_autoload_t rlm_detail_dict_attr[];
+fr_dict_attr_autoload_t rlm_detail_dict_attr[] = {
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+
+	{ .out = &attr_packet_src_ipv4_address, .name = "Packet-Src-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_packet_dst_ipv4_address, .name = "Packet-Dst-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_packet_src_ipv6_address, .name = "Packet-Src-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_packet_dst_ipv6_address, .name = "Packet-Dst-IPv6-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_packet_src_port, .name = "Packet-Src-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
+	{ .out = &attr_packet_dst_port, .name = "Packet-Dst-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
+
+	{ NULL }
+};
+
+extern fr_dict_autoload_t rlm_detail_dict[];
+fr_dict_autoload_t rlm_detail_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
 
 /*
  *	Clean up.
@@ -242,13 +274,8 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 		 *	Numbers, if not.
 		 */
 		if (is_radius_code(packet->code)) {
-			fr_dict_attr_t const	*da;
-
-			da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
-			rad_assert(da != NULL);
-
 			WRITE("\tPacket-Type = %s\n",
-			      fr_dict_enum_alias_by_value(da, fr_box_uint32(packet->code)));
+			      fr_dict_enum_alias_by_value(attr_packet_type, fr_box_uint32(packet->code)));
 		} else {
 			WRITE("\tPacket-Type = %u\n", packet->code);
 		}
@@ -262,18 +289,18 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 
 		switch (packet->src_ipaddr.af) {
 		case AF_INET:
-			src_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_SRC_IP_ADDRESS);
+			src_vp.da = attr_packet_src_ipv4_address;
 			fr_value_box_shallow(&src_vp.data, &packet->src_ipaddr, true);
 
-			dst_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_DST_IP_ADDRESS);
+			dst_vp.da = attr_packet_dst_ipv4_address;
 			fr_value_box_shallow(&dst_vp.data, &packet->dst_ipaddr, true);
 			break;
 
 		case AF_INET6:
-			src_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_SRC_IPV6_ADDRESS);
+			src_vp.da = attr_packet_src_ipv6_address;
 			fr_value_box_shallow(&src_vp.data, &packet->src_ipaddr, true);
 
-			dst_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_DST_IPV6_ADDRESS);
+			dst_vp.da = attr_packet_dst_ipv6_address;
 			fr_value_box_shallow(&dst_vp.data, &packet->dst_ipaddr, true);
 			break;
 
@@ -284,10 +311,10 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 		detail_fr_pair_fprint(request, out, &src_vp);
 		detail_fr_pair_fprint(request, out, &dst_vp);
 
-		src_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_SRC_PORT);
+		src_vp.da = attr_packet_src_port;
 		fr_value_box_shallow(&src_vp.data, packet->src_port, true);
 
-		dst_vp.da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_DST_PORT);
+		dst_vp.da = attr_packet_dst_port;
 		fr_value_box_shallow(&dst_vp.data, packet->dst_port, true);
 
 		detail_fr_pair_fprint(request, out, &src_vp);
