@@ -56,17 +56,17 @@ static fr_dict_t const *dict_radius;
 
 static fr_dict_attr_t const *attr_stripped_user_name;
 static fr_dict_attr_t const *attr_fall_through;
-static fr_dict_attr_t const *attr_filter_relax;
+static fr_dict_attr_t const *attr_relax_filter;
 
 static fr_dict_attr_t const *attr_user_name;
 static fr_dict_attr_t const *attr_user_password;
 static fr_dict_attr_t const *attr_vendor_specific;
 
-extern fr_dict_attr_autoload_t rlm_cache_dict_attr[];
-fr_dict_attr_autoload_t rlm_cache_dict_attr[] = {
+extern fr_dict_attr_autoload_t rlm_attr_filter_dict_attr[];
+fr_dict_attr_autoload_t rlm_attr_filter_dict_attr[] = {
 	{ .out = &attr_stripped_user_name, .name = "Stripped-User-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_fall_through, .name = "Fall-Through", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
-	{ .out = &attr_filter_relax, .name = "Filter-Relaxed", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
+	{ .out = &attr_relax_filter, .name = "Relax-Filter", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
@@ -233,7 +233,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void const *instance
 					fall_through = 1;
 					continue;
 				}
-		     	} else if (check_item->da == attr_filter_relax) {
+		     	} else if (check_item->da == attr_relax_filter) {
 				relax_filter = check_item->vp_uint32;
 		     	}
 
