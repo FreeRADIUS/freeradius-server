@@ -89,7 +89,7 @@ listen {
 
 #  Packets received on the socket will be processed through one
 #  of the following sections, named after the DHCP packet type.
-#  See dictionary.dhcp for the packet types.
+#  See dictionary.dhcpv4 for the packet types.
 
 #  Return packets will be sent to, in preference order:
 #     DHCP-Gateway-IP-Address

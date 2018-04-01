@@ -45,7 +45,7 @@ $(BUILD_DIR)/share:
 #  We need $INCLUDE in the output file, so we pass 2 parameters to 'echo'
 #  No idea how portable that is...
 #
-$(BUILD_DIR)/share/dictionary: $(top_srcdir)/share/dictionary $(top_srcdir)/share/dictionary.dhcp $(top_srcdir)/src/tests/unit/dictionary.unit | $(BUILD_DIR)/share
+$(BUILD_DIR)/share/dictionary: $(top_srcdir)/share/dictionary $(top_srcdir)/share/dictionary.dhcpv4 $(top_srcdir)/src/tests/unit/dictionary.unit | $(BUILD_DIR)/share
 	${Q}rm -f $@
 	${Q}for x in $^; do \
 		echo '$$INCLUDE ' "$$x" >> $@; \

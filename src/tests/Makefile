@@ -39,7 +39,7 @@ dictionary:
 	@echo "# test dictionary not install.  Delete at any time." > dictionary
 	@echo '$$INCLUDE ' $(top_builddir)/share/dictionary >> dictionary
 	@echo '$$INCLUDE ' $(top_builddir)/src/tests/dictionary.test >> dictionary
-	@echo '$$INCLUDE ' $(top_builddir)/share/dictionary.dhcp >> dictionary
+	@echo '$$INCLUDE ' $(top_builddir)/share/dictionary.dhcpv4 >> dictionary
 	@echo '$$INCLUDE ' $(top_builddir)/share/dictionary.vqp >> dictionary
 
 test.conf: dictionary

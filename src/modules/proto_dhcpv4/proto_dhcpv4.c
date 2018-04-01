@@ -1103,7 +1103,7 @@ static int dhcp_load(void)
 {
 	int ret;
 
-	ret = fr_dict_read(main_config.dict, main_config.dictionary_dir, "dictionary.dhcp");
+	ret = fr_dict_read(main_config.dict, main_config.dictionary_dir, "dictionary.dhcpv4");
 	if (fr_dhcpv4_init() < 0) {
 		PERROR("Failed initialising DHCP");
 		return -1;

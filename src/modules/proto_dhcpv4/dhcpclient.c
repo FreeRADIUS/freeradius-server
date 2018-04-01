@@ -640,8 +640,8 @@ int main(int argc, char **argv)
 	 */
 	da = fr_dict_attr_by_name(NULL, "DHCP-Message-Type");
 	if (!da) {
-		if (fr_dict_read(dict, dict_dir, "dictionary.dhcp") < 0) {
-			ERROR("Failed reading dictionary.dhcp");
+		if (fr_dict_read(dict, dict_dir, "dictionary.dhcpv4") < 0) {
+			ERROR("Failed reading dictionary.dhcpv4");
 			exit(EXIT_FAILURE);
 		}
 	}
