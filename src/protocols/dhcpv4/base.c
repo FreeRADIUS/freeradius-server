@@ -122,10 +122,10 @@ int8_t fr_dhcpv4_attr_cmp(void const *a, void const *b)
 	/*
 	 *	DHCP-Message-Type is first, for simplicity.
 	 */
-	if (((my_a->da->parent->type != FR_TYPE_TLV) && (my_a->da->attr == FR_DHCPV4_MESSAGE_TYPE)) &&
-	    ((my_b->da->parent->type == FR_TYPE_TLV) || (my_b->da->attr != FR_DHCPV4_MESSAGE_TYPE))) return -1;
-	if (((my_a->da->parent->type == FR_TYPE_TLV) || (my_a->da->attr != FR_DHCPV4_MESSAGE_TYPE)) &&
-	    ((my_b->da->parent->type != FR_TYPE_TLV) && (my_b->da->attr == FR_DHCPV4_MESSAGE_TYPE))) return +1;
+	if (((my_a->da->parent->type != FR_TYPE_TLV) && (my_a->da->attr == FR_DHCP_MESSAGE_TYPE)) &&
+	    ((my_b->da->parent->type == FR_TYPE_TLV) || (my_b->da->attr != FR_DHCP_MESSAGE_TYPE))) return -1;
+	if (((my_a->da->parent->type == FR_TYPE_TLV) || (my_a->da->attr != FR_DHCP_MESSAGE_TYPE)) &&
+	    ((my_b->da->parent->type != FR_TYPE_TLV) && (my_b->da->attr == FR_DHCP_MESSAGE_TYPE))) return +1;
 
 	/*
 	 *	Relay-Agent is last.
@@ -196,7 +196,7 @@ RADIUS_PACKET *fr_dhcpv4_packet_ok(uint8_t const *data, ssize_t data_len, fr_ipa
 	memcpy(&magic, data + 4, 4);
 	pkt_id = ntohl(magic);
 
-	code = fr_dhcpv4_packet_get_option((dhcp_packet_t const *) data, data_len, FR_DHCPV4_MESSAGE_TYPE);
+	code = fr_dhcpv4_packet_get_option((dhcp_packet_t const *) data, data_len, FR_DHCP_MESSAGE_TYPE);
 	if (!code) {
 		fr_strerror_printf("No message-type option was found in the packet");
 		return NULL;
@@ -215,7 +215,7 @@ RADIUS_PACKET *fr_dhcpv4_packet_ok(uint8_t const *data, ssize_t data_len, fr_ipa
 	}
 
 	packet->data_len = data_len;
-	packet->code = code[2] | FR_DHCPV4_OFFSET;
+	packet->code = code[2] | FR_DHCP_OFFSET;
 	packet->id = pkt_id;
 
 	packet->dst_port = dst_port;
@@ -258,7 +258,7 @@ RADIUS_PACKET *fr_dhcpv4_packet_ok(uint8_t const *data, ssize_t data_len, fr_ipa
  */
 int fr_dhcpv4_init(void)
 {
-	dhcp_option_82 = fr_dict_attr_by_num(NULL, DHCP_MAGIC_VENDOR, FR_DHCPV4_OPTION_82);
+	dhcp_option_82 = fr_dict_attr_by_num(NULL, DHCP_MAGIC_VENDOR, FR_DHCP_OPTION_82);
 	if (!dhcp_option_82) {
 		fr_strerror_printf("Missing dictionary attribute for DHCP-Option-82");
 		return -1;

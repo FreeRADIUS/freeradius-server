@@ -339,7 +339,7 @@ int fr_dhcpv4_packet_encode(RADIUS_PACKET *packet)
 	packet->data = talloc_zero_array(packet, uint8_t, packet->data_len);
 
 	/* XXX Ugly ... should be set by the caller */
-	if (packet->code == 0) packet->code = FR_DHCPV4_NAK;
+	if (packet->code == 0) packet->code = FR_DHCP_NAK;
 
 	/* store xid */
 	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, FR_DHCP_TRANSACTION_ID, TAG_ANY))) {
@@ -503,7 +503,7 @@ int fr_dhcpv4_packet_encode(RADIUS_PACKET *packet)
 
 	p[0] = 0x35;		/* DHCP-Message-Type */
 	p[1] = 1;
-	p[2] = packet->code - FR_DHCPV4_OFFSET;
+	p[2] = packet->code - FR_DHCP_OFFSET;
 	p += 3;
 
 	/*

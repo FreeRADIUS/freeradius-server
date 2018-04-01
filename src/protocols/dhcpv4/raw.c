@@ -296,7 +296,7 @@ RADIUS_PACKET *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *link_lay
 	TALLOC_FREE(raw_packet);
 	packet->id = xid;
 
-	code = fr_dhcpv4_packet_get_option((dhcp_packet_t const *) packet->data, packet->data_len, FR_DHCPV4_MESSAGE_TYPE);
+	code = fr_dhcpv4_packet_get_option((dhcp_packet_t const *) packet->data, packet->data_len, FR_DHCP_MESSAGE_TYPE);
 	if (!code) {
 		fr_strerror_printf("No message-type option was found in the packet");
 		fr_radius_free(&packet);
@@ -309,7 +309,7 @@ RADIUS_PACKET *fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *link_lay
 		return NULL;
 	}
 
-	packet->code = code[2] | FR_DHCPV4_OFFSET;
+	packet->code = code[2] | FR_DHCP_OFFSET;
 
 	/*
 	 *	Create a unique vector from the MAC address and the

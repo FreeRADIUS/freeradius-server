@@ -13,8 +13,8 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_DHCPV4_H
-#define _FR_DHCPV4_H
+#ifndef _FR_DHCP_H
+#define _FR_DHCP_H
 /**
  * $Id$
  *
@@ -32,6 +32,7 @@ extern "C" {
 
 #include <freeradius-devel/pcap.h>
 #include <freeradius-devel/packet.h>
+#include <freeradius-devel/dhcpv4.h>
 
 #define DHCP_CHADDR_LEN	(16)
 #define DHCP_SNAME_LEN	(64)
@@ -42,25 +43,25 @@ extern "C" {
 /*
  *	This is a horrible hack.
  */
-#define FR_DHCPV4_OFFSET		(1024)
+#define FR_DHCP_OFFSET		(1024)
 
 typedef enum {
-	FR_DHCPV4_DISCOVER = (FR_DHCPV4_OFFSET + 1),
-	FR_DHCPV4_OFFER =	(FR_DHCPV4_OFFSET + 2),
-	FR_DHCPV4_REQUEST	= (FR_DHCPV4_OFFSET+ 3),
-	FR_DHCPV4_DECLINE	= (FR_DHCPV4_OFFSET + 4),
-	FR_DHCPV4_ACK = (FR_DHCPV4_OFFSET + 5),
-	FR_DHCPV4_NAK = (FR_DHCPV4_OFFSET + 6),
-	FR_DHCPV4_RELEASE = (FR_DHCPV4_OFFSET + 7),
-	FR_DHCPV4_INFORM = (FR_DHCPV4_OFFSET + 8),
-	FR_DHCPV4_FORCE_RENEW = (FR_DHCPV4_OFFSET + 9),
-	FR_DHCPV4_LEASE_QUERY = (FR_DHCPV4_OFFSET + 10),
-	FR_DHCPV4_LEASE_UNASSIGNED = (FR_DHCPV4_OFFSET + 11),
-	FR_DHCPV4_LEASE_UNKNOWN = (FR_DHCPV4_OFFSET + 12),
-	FR_DHCPV4_LEASE_ACTIVE = (FR_DHCPV4_OFFSET + 13),
-	FR_DHCPV4_BULK_LEASE_QUERY = (FR_DHCPV4_OFFSET + 14),
-	FR_DHCPV4_LEASE_QUERY_DONE = (FR_DHCPV4_OFFSET + 15),
-	FR_DHCPV4_MAX = (FR_DHCPV4_OFFSET + 16)
+	FR_DHCP_DISCOVER = (FR_DHCP_OFFSET + 1),
+	FR_DHCP_OFFER =	(FR_DHCP_OFFSET + 2),
+	FR_DHCP_REQUEST	= (FR_DHCP_OFFSET+ 3),
+	FR_DHCP_DECLINE	= (FR_DHCP_OFFSET + 4),
+	FR_DHCP_ACK = (FR_DHCP_OFFSET + 5),
+	FR_DHCP_NAK = (FR_DHCP_OFFSET + 6),
+	FR_DHCP_RELEASE = (FR_DHCP_OFFSET + 7),
+	FR_DHCP_INFORM = (FR_DHCP_OFFSET + 8),
+	FR_DHCP_FORCE_RENEW = (FR_DHCP_OFFSET + 9),
+	FR_DHCP_LEASE_QUERY = (FR_DHCP_OFFSET + 10),
+	FR_DHCP_LEASE_UNASSIGNED = (FR_DHCP_OFFSET + 11),
+	FR_DHCP_LEASE_UNKNOWN = (FR_DHCP_OFFSET + 12),
+	FR_DHCP_LEASE_ACTIVE = (FR_DHCP_OFFSET + 13),
+	FR_DHCP_BULK_LEASE_QUERY = (FR_DHCP_OFFSET + 14),
+	FR_DHCP_LEASE_QUERY_DONE = (FR_DHCP_OFFSET + 15),
+	FR_DHCP_MAX = (FR_DHCP_OFFSET + 16)
 } fr_dhcpv4_codes_t;
 
 typedef struct dhcp_packet_t {
@@ -95,15 +96,10 @@ typedef struct dhcp_packet_t {
 #define DHCP_FILE_FIELD	  	(1)
 #define DHCP_SNAME_FIELD  	(2)
 
-#define FR_DHCPV4_OPTION_82 (82)
+#define FR_DHCP_OPTION_82 (82)
 #define DHCP_PACK_OPTION1(x,y) ((x) | ((y) << 8))
 #define DHCP_BASE_ATTR(x) (x & 0xff)
 #define DHCP_UNPACK_OPTION1(x) (((x) & 0xff00) >> 8)
-
-#define FR_DHCPV4_MESSAGE_TYPE   (53)
-#define FR_DHCPV4_YOUR_IP_ADDRESS (264)
-#define FR_DHCPV4_SUBNET_MASK    (1)
-#define FR_DHCPV4_IP_ADDRESS_LEASE_TIME (51)
 
 #ifndef INADDR_BROADCAST
 #  define INADDR_BROADCAST INADDR_NONE
@@ -209,4 +205,4 @@ int		fr_dhcpv4_udp_add_arp_entry(int fd, char const *interface, fr_ipaddr_t cons
 }
 #endif
 
-#endif /* _FR_DHCPV4_H */
+#endif /* _FR_DHCP_H */
