@@ -56,7 +56,6 @@ static fr_dict_attr_t const *attr_eap_emsk;
 static fr_dict_attr_t const *attr_wimax_msk;
 static fr_dict_attr_t const *attr_wimax_mn_nai;
 static fr_dict_attr_t const *attr_wimax_ip_technology;
-static fr_dict_attr_t const *attr_wimax_hha_ip_mip4;
 static fr_dict_attr_t const *attr_wimax_mn_hha_mip4_key;
 static fr_dict_attr_t const *attr_wimax_mn_hha_mip4_spi;
 static fr_dict_attr_t const *attr_wimax_hha_ip_mip4;
@@ -82,7 +81,6 @@ fr_dict_attr_autoload_t rlm_wimax_dict_attr[] = {
 	{ .out = &attr_wimax_msk, .name = "WiMAX-MSK", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_wimax_mn_nai, .name = "WiMAX-MN-NAI", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_wimax_ip_technology, .name = "WiMAX-IP-Technology", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ .out = &attr_wimax_hha_ip_mip4, .name = "WiMAX-hHA-IP-MIP4", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius  },
 	{ .out = &attr_wimax_mn_hha_mip4_key, .name = "WiMAX-MN-hHA-MIP4-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_wimax_mn_hha_mip4_spi, .name = "WiMAX-MN-hHA-MIP4-SPI", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_wimax_hha_ip_mip4, .name = "WiMAX-hHA-IP-MIP4", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
