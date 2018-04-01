@@ -216,6 +216,47 @@ int fr_dhcpv4_packet_decode(RADIUS_PACKET *packet)
 			}
 			p += len;
 		}
+
+		/*
+		 *	If option Overload is present in the 'options' field, then fields 'file' and/or 'sname'
+		 *	are used to hold more options. They are partitioned and must be interpreted in sequence.
+		 */
+		vp = fr_pair_find_by_num(head, DHCP_MAGIC_VENDOR, 52, TAG_ANY);
+		if (vp) {
+			if ((vp->vp_uint8 & 1) == 1) {
+				/*
+				 *	The 'file' field is used to hold options.
+				 *	It must be interpreted before 'sname'.
+				 */
+				p = packet->data + 44;
+				end = p + 64;
+				while (p < end) {
+					len = fr_dhcpv4_decode_option(packet, &cursor, p, end - p, &packet_ctx);
+					if (len <= 0) {
+						fr_pair_list_free(&head);
+						return len;
+					}
+					p += len;
+				}
+				fr_pair_delete_by_num(&head, DHCP_MAGIC_VENDOR, 269, TAG_ANY);
+			}
+			if ((vp->vp_uint8 & 2) == 2) {
+				/*
+				 *	The 'sname' field is used to hold options.
+				 */
+				p = packet->data + 108;
+				end = p + 128;
+				while (p < end) {
+					len = fr_dhcpv4_decode_option(packet, &cursor, p, end - p, &packet_ctx);
+					if (len <= 0) {
+						fr_pair_list_free(&head);
+						return len;
+					}
+					p += len;
+				}
+				fr_pair_delete_by_num(&head, DHCP_MAGIC_VENDOR, 268, TAG_ANY);
+			}
+		}
 	}
 
 	/*
