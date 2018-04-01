@@ -44,10 +44,32 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
-#define VENDORPEC_SM  11406
-#define	SM_AUTHTYPE	101
-#define	SM_CHALLENGE	102
-#define	SM_RESPONSE     103
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
+
+static fr_dict_attr_t const *attr_cleartext_password;
+
+static fr_dict_attr_t const *attr_sandy_mail_authtype;
+static fr_dict_attr_t const *attr_sandy_mail_challenge;
+static fr_dict_attr_t const *attr_sandy_mail_response;
+
+extern fr_dict_attr_autoload_t rlm_cram_dict_attr[];
+fr_dict_attr_autoload_t rlm_cram_dict_attr[] = {
+	{ .out = &attr_cleartext_password, .name = "Cleartext-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+
+	{ .out = &attr_sandy_mail_authtype, .name = "Sandy-Mail-Authtype", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_sandy_mail_challenge, .name = "Sandy-Mail-Challenge", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_sandy_mail_response, .name = "Sandy-Mail-Response", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+
+	{ NULL }
+};
+
+extern fr_dict_autoload_t rlm_cram_dict[];
+fr_dict_autoload_t rlm_cram_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
 
 static void calc_apop_digest(uint8_t *buffer, uint8_t const *challenge,
 			     size_t challen, char const *password)
@@ -128,25 +150,25 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 	VALUE_PAIR *authtype, *challenge, *response, *password;
 
 
-	password = fr_pair_find_by_num(request->control, 0, FR_CLEARTEXT_PASSWORD, TAG_ANY);
+	password = fr_pair_find_by_da(request->control, attr_cleartext_password, TAG_ANY);
 	if (!password) {
 		REDEBUG("&Cleartext-Password is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
-	authtype = fr_pair_find_by_num(request->packet->vps, VENDORPEC_SM, SM_AUTHTYPE, TAG_ANY);
 
+	authtype = fr_pair_find_by_da(request->packet->vps, attr_sandy_mail_authtype, TAG_ANY);
 	if (!authtype) {
 		REDEBUG("Required attribute &Sandy-Mail-Authtype missing");
 		return RLM_MODULE_INVALID;
 	}
-	challenge = fr_pair_find_by_num(request->packet->vps, VENDORPEC_SM, SM_CHALLENGE, TAG_ANY);
 
+	challenge = fr_pair_find_by_da(request->packet->vps, attr_sandy_mail_challenge, TAG_ANY);
 	if (!challenge) {
 		REDEBUG("Required attribute &Sandy-Mail-Challenge missing");
 		return RLM_MODULE_INVALID;
 	}
-	response = fr_pair_find_by_num(request->packet->vps, VENDORPEC_SM, SM_RESPONSE, TAG_ANY);
 
+	response = fr_pair_find_by_da(request->packet->vps, attr_sandy_mail_response, TAG_ANY);
 	if (!response) {
 		REDEBUG("Required attribute &Sandy-Mail-Response missing");
 		return RLM_MODULE_INVALID;
