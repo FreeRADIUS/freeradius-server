@@ -5173,7 +5173,7 @@ int fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load)
 	da = fr_dict_attr_by_name(*to_load->dict, to_load->name);
 	if (!da) {
 		fr_strerror_printf("Attribute \"%s\" not found in %s dictionary", to_load->name,
-				   (*to_load->dict)->root->name);
+				   *to_load->dict ? (*to_load->dict)->root->name : "internal");
 		return -1;
 	}
 
