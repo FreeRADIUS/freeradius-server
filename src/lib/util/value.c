@@ -3148,6 +3148,52 @@ int fr_value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_
 	return 0;
 }
 
+/** Increment a boxed value
+ *
+ * Implements safe integer overflow.
+ *
+ * @param[in] vb	to increment.
+ */
+void fr_value_box_increment(fr_value_box_t *vb)
+{
+	switch (vb->type) {
+	case FR_TYPE_UINT8:
+		vb->vb_uint8 = vb->vb_uint8 == UINT8_MAX ? 0 : vb->vb_uint8 + 1;
+		return;
+
+	case FR_TYPE_UINT16:
+		vb->vb_uint16 = vb->vb_uint16 == UINT16_MAX ? 0 : vb->vb_uint16 + 1;
+		return;
+
+	case FR_TYPE_UINT32:
+		vb->vb_uint32 = vb->vb_uint32 == UINT32_MAX ? 0 : vb->vb_uint32 + 1;
+		return;
+
+	case FR_TYPE_UINT64:
+		vb->vb_uint64 = vb->vb_uint64 == UINT64_MAX ? 0 : vb->vb_uint64 + 1;
+		return;
+
+	case FR_TYPE_INT8:
+		vb->vb_int8 = vb->vb_int8 == INT8_MAX ? INT8_MIN : vb->vb_int8 + 1;
+		return;
+
+	case FR_TYPE_INT16:
+		vb->vb_int16 = vb->vb_int16 == INT16_MAX ? INT16_MIN : vb->vb_int16 + 1;
+		return;
+
+	case FR_TYPE_INT32:
+		vb->vb_int32 = vb->vb_int32 == INT32_MAX ? INT32_MIN : vb->vb_int32 + 1;
+		return;
+
+	case FR_TYPE_INT64:
+		vb->vb_int64 = vb->vb_int64 == INT64_MAX ? INT64_MIN : vb->vb_int64 + 1;
+		return;
+
+	default:
+		return;
+	}
+}
+
 /** Convert integer encoded as string to a fr_value_box_t type
  *
  * @param[out] dst		where to write parsed value.
