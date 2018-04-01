@@ -2384,7 +2384,7 @@ char const *fr_pair_value_enum(VALUE_PAIR const *vp, char buff[20])
 		return vp->vp_bool ? "yes" : "no";
 
 	default:
-		enumv = fr_dict_enum_by_value(NULL, vp->da, &vp->data);
+		enumv = fr_dict_enum_by_value(vp->da, &vp->data);
 		break;
 	}
 

@@ -228,7 +228,7 @@ static rlm_rcode_t module_method_call(rlm_components_t comp, int idx, REQUEST *r
 		da = fr_dict_attr_by_num(NULL, 0, section_type_value[comp].attr);
 		if (!da) return RLM_MODULE_FAIL;
 
-		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32((uint32_t)idx));
+		dv = fr_dict_enum_by_value(da, fr_box_uint32((uint32_t)idx));
 		if (!dv) return RLM_MODULE_FAIL;
 
 		subcs = cf_section_find(cs, da->name, dv->alias);
@@ -331,7 +331,7 @@ int virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const 
 		 *	If the value already exists, don't
 		 *	create it again.
 		 */
-		dv = fr_dict_enum_by_alias(NULL, da, name2);
+		dv = fr_dict_enum_by_alias(da, name2);
 		if (dv) continue;
 
 		/*
@@ -342,7 +342,7 @@ int virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const 
 		 */
 		do {
 			value.vb_uint32 = (fr_rand() & 0x00ffffff) + 1;
-		} while (fr_dict_enum_by_value(NULL, da, &value));
+		} while (fr_dict_enum_by_value(da, &value));
 
 		cf_log_debug(subcs, "Creating %s = %s", da->name, name2);
 		if (fr_dict_enum_add_alias(da, name2, &value, true, false) < 0) {

@@ -800,8 +800,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 
 	if (!inst->identity) inst->identity = talloc_typed_asprintf(inst, "freeradius-%s", RADIUSD_VERSION_STRING);
 
-	enumv = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE), "MS-CHAP");
-	if (!enumv) enumv = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE), "MSCHAP");
+	enumv = fr_dict_enum_by_alias(fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE), "MS-CHAP");
+	if (!enumv) enumv = fr_dict_enum_by_alias(fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE), "MSCHAP");
 	if (!enumv) {
 		cf_log_err(cs, "Failed to find 'Auth-Type MS-CHAP' section.  Cannot authenticate users.");
 		return -1;

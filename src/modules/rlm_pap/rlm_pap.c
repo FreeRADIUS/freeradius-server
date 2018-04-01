@@ -135,7 +135,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		inst->name = cf_section_name1(conf);
 	}
 
-	dval = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE), inst->name);
+	dval = fr_dict_enum_by_alias(fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE), inst->name);
 	if (dval) {
 		inst->auth_type = dval->value->vb_uint32;
 	} else {

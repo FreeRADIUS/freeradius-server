@@ -73,7 +73,7 @@ static ssize_t sim_xlat_id_method(TALLOC_CTX *ctx, char **out, UNUSED size_t out
 		goto error;
 	}
 
-	method = fr_dict_enum_alias_by_value(NULL, da, fr_box_uint32(method_hint));
+	method = fr_dict_enum_alias_by_value(da, fr_box_uint32(method_hint));
 	if (!method) {
 		REDEBUG("Missing Sim-Method-Hint value");
 		goto error;
@@ -130,7 +130,7 @@ static ssize_t sim_xlat_id_type(TALLOC_CTX *ctx, char **out, UNUSED size_t outle
 		goto error;
 	}
 
-	method = fr_dict_enum_alias_by_value(NULL, da, fr_box_uint32(type_hint));
+	method = fr_dict_enum_alias_by_value(da, fr_box_uint32(type_hint));
 	if (!method) {
 		REDEBUG("Missing Sim-Method-Hint value");
 		goto error;

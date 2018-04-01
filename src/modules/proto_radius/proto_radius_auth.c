@@ -77,7 +77,7 @@ static void auth_message(char const *msg, REQUEST *request, int goodpass)
 			auth_type = fr_pair_find_by_num(request->control, 0, FR_AUTH_TYPE, TAG_ANY);
 			if (auth_type) {
 				snprintf(clean_password, sizeof(clean_password), "<via Auth-Type = %s>",
-					 fr_dict_enum_alias_by_value(NULL, auth_type->da, &auth_type->data));
+					 fr_dict_enum_alias_by_value(auth_type->da, &auth_type->data));
 			} else {
 				strcpy(clean_password, "<no User-Password attribute>");
 			}
@@ -221,7 +221,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 			}
 
 			RWDEBUG("Ignoring extra Auth-Type = %s",
-				fr_dict_enum_alias_by_value(NULL, auth_type->da, &vp->data));
+				fr_dict_enum_alias_by_value(auth_type->da, &vp->data));
 		}
 
 		/*
@@ -276,7 +276,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		 *	Find the appropriate Auth-Type by name.
 		 */
 		vp = auth_type;
-		dv = fr_dict_enum_by_value(NULL, vp->da, &vp->data);
+		dv = fr_dict_enum_by_value(vp->da, &vp->data);
 		if (!dv) {
 			REDEBUG2("Unknown Auth-Type %d found: rejecting the user", vp->vp_uint32);
 			request->reply->code = FR_CODE_ACCESS_REJECT;
@@ -398,7 +398,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 			}
 		}
 
-		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
+		dv = fr_dict_enum_by_value(da, fr_box_uint32(request->reply->code));
 		unlang = NULL;
 		if (dv) unlang = cf_section_find(request->server_cs, "send", dv->alias);
 
@@ -459,12 +459,12 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 				if (!da) da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
 				rad_assert(da != NULL);
 
-				dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
+				dv = fr_dict_enum_by_value(da, fr_box_uint32(request->reply->code));
 				RWDEBUG("Failed running 'send %s', trying 'send Access-Reject'.", dv->alias);
 
 				request->reply->code = FR_CODE_ACCESS_REJECT;
 
-				dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
+				dv = fr_dict_enum_by_value(da, fr_box_uint32(request->reply->code));
 				unlang = NULL;
 				if (!dv) goto send_reply;
 

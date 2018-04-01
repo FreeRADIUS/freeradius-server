@@ -3351,7 +3351,7 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 			goto parse;
 		}
 
-		enumv = fr_dict_enum_by_alias(NULL, dst_enumv, alias);
+		enumv = fr_dict_enum_by_alias(dst_enumv, alias);
 		if (tmp) talloc_free(tmp);
 		if (!enumv) goto parse;
 
@@ -3753,7 +3753,7 @@ char *fr_value_box_asprint(TALLOC_CTX *ctx, fr_value_box_t const *data, char quo
 	if (data->enumv) {
 		fr_dict_enum_t const	*dv;
 
-		dv = fr_dict_enum_by_value(NULL, data->enumv, data);
+		dv = fr_dict_enum_by_value(data->enumv, data);
 		if (dv) return talloc_typed_strdup(ctx, dv->alias);
 	}
 
@@ -4204,7 +4204,7 @@ size_t fr_value_box_snprint(char *out, size_t outlen, fr_value_box_t const *data
 	if (data->enumv) {
 		fr_dict_enum_t const	*dv;
 
-		dv = fr_dict_enum_by_value(NULL, data->enumv, data);
+		dv = fr_dict_enum_by_value(data->enumv, data);
 		if (dv) return strlcpy(out, dv->alias, outlen);
 	}
 

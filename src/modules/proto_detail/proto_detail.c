@@ -102,7 +102,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PAR
 	 *	Allow the process module to be specified by
 	 *	packet type.
 	 */
-	type_enum = fr_dict_enum_by_alias(NULL, da, type_str);
+	type_enum = fr_dict_enum_by_alias(da, type_str);
 	if (!type_enum) {
 		cf_log_err(ci, "Invalid type \"%s\"", type_str);
 		return -1;
@@ -538,7 +538,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		 *	function.  The only difference is what kind of
 		 *	packet is created.
 		 */
-		inst->code = fr_dict_enum_by_alias(NULL, da, cf_pair_value(cp))->value->vb_uint32;
+		inst->code = fr_dict_enum_by_alias(da, cf_pair_value(cp))->value->vb_uint32;
 		break;
 	}
 

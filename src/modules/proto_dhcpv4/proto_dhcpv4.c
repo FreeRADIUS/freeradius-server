@@ -371,7 +371,7 @@ static rlm_rcode_t dhcp_process(REQUEST *request)
 
 	vp = fr_pair_find_by_num(request->packet->vps, DHCP_MAGIC_VENDOR, 53, TAG_ANY); /* DHCP-Message-Type */
 	if (vp) {
-		fr_dict_enum_t *dv = fr_dict_enum_by_value(NULL, vp->da, &vp->data);
+		fr_dict_enum_t *dv = fr_dict_enum_by_value(vp->da, &vp->data);
 
 		if (dv) {
 			CONF_SECTION *server, *unlang;
@@ -1083,7 +1083,7 @@ static int dhcp_listen_compile(CONF_SECTION *server_cs, CONF_SECTION *listen_cs)
 			cf_log_debug(subcs, "Loading dhcp {...}");
 		}
 
-		dv = fr_dict_enum_by_alias(NULL, da, name2);
+		dv = fr_dict_enum_by_alias(da, name2);
 		if (!dv) {
 			cf_log_err(subcs, "Server contains 'dhcp %s {...}, but there is no such value for "
 				   "DHCP-Message-Type", name2);

@@ -379,7 +379,7 @@ const char *fr_json_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR **vps, const cha
 				json_object_object_add(vp_object, "mapping", mapping);
 			}
 
-			dv = fr_dict_enum_by_value(NULL, vp->da, &vp->data);
+			dv = fr_dict_enum_by_value(vp->da, &vp->data);
 			if (dv) {
 				struct json_object *mapped_value;
 

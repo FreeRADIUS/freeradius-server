@@ -600,7 +600,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	For backwards compatibility
 	 */
-	if (!fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE), inst->xlat_name)) {
+	if (!fr_dict_enum_by_alias(fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE), inst->xlat_name)) {
 		inst->auth_type = "MS-CHAP";
 	} else {
 		inst->auth_type = inst->xlat_name;

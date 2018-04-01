@@ -313,7 +313,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	 */
 	if (!inst->inner_eap_module) inst->inner_eap_module = "eap";
 
-	dv = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE), inst->inner_eap_module);
+	dv = fr_dict_enum_by_alias(fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE), inst->inner_eap_module);
 	if (!dv) {
 		WARN("Failed to find 'Auth-Type %s' section in virtual server %s.  "
 		     "The server cannot proxy inner-tunnel EAP packets",

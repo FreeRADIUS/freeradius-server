@@ -248,7 +248,7 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, REQUEST *request, R
 			rad_assert(da != NULL);
 
 			WRITE("\tPacket-Type = %s\n",
-			      fr_dict_enum_alias_by_value(NULL, da, fr_box_uint32(packet->code)));
+			      fr_dict_enum_alias_by_value(da, fr_box_uint32(packet->code)));
 		} else {
 			WRITE("\tPacket-Type = %u\n", packet->code);
 		}

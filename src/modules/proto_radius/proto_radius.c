@@ -103,14 +103,14 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PAR
 	 *	Allow the process module to be specified by
 	 *	packet type.
 	 */
-	type_enum = fr_dict_enum_by_alias(NULL, da, type_str);
+	type_enum = fr_dict_enum_by_alias(da, type_str);
 	if (!type_enum) {
 		size_t i;
 
 		for (i = 0; i < (sizeof(type_lib_table) / sizeof(*type_lib_table)); i++) {
 			name = type_lib_table[i];
 			if (name && (strcmp(name, type_str) == 0)) {
-				type_enum = fr_dict_enum_by_value(NULL, da, fr_box_uint32(i));
+				type_enum = fr_dict_enum_by_value(da, fr_box_uint32(i));
 				break;
 			}
 		}
@@ -503,7 +503,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		 *	Check that the packet type is known.
 		 */
 		packet_type = cf_section_name2(subcs);
-		dv = fr_dict_enum_by_alias(NULL, da, packet_type);
+		dv = fr_dict_enum_by_alias(da, packet_type);
 		if (!dv || (dv->value->vb_uint32 > FR_CODE_DO_NOT_RESPOND) ||
 		    !code2component[dv->value->vb_uint32]) {
 			cf_log_err(subcs, "Invalid RADIUS packet type in '%s %s {...}'",

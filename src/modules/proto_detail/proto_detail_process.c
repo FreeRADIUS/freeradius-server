@@ -55,7 +55,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 	switch (request->request_state) {
 	case REQUEST_INIT:
 		radlog_request(L_DBG, L_DBG_LVL_1, request, "Received %s ID %i",
-			       fr_dict_enum_alias_by_value(NULL, da, fr_box_uint32(request->reply->code)),
+			       fr_dict_enum_alias_by_value(da, fr_box_uint32(request->reply->code)),
 			       request->packet->id);
 		rdebug_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
 
@@ -177,7 +177,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 
 		} else {
 			radlog_request(L_DBG, L_DBG_LVL_1, request, "Sent %s ID %i",
-				       fr_dict_enum_alias_by_value(NULL, da, fr_box_uint32(request->reply->code)),
+				       fr_dict_enum_alias_by_value(da, fr_box_uint32(request->reply->code)),
 				       request->reply->id);
 		}
 

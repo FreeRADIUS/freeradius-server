@@ -79,7 +79,7 @@ eap_type_t eap_name2type(char const *name)
 {
 	fr_dict_enum_t	*dv;
 
-	dv = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_EAP_TYPE), name);
+	dv = fr_dict_enum_by_alias(fr_dict_attr_by_num(NULL, 0, FR_EAP_TYPE), name);
 	if (!dv) return FR_EAP_INVALID;
 
 	if (dv->value->vb_uint32 >= FR_EAP_MAX_TYPES) return FR_EAP_INVALID;
@@ -95,7 +95,7 @@ char const *eap_type2name(eap_type_t method)
 {
 	fr_dict_enum_t	*dv;
 
-	dv = fr_dict_enum_by_value(NULL, fr_dict_attr_by_num(NULL, 0, FR_EAP_TYPE), fr_box_uint32(method));
+	dv = fr_dict_enum_by_value(fr_dict_attr_by_num(NULL, 0, FR_EAP_TYPE), fr_box_uint32(method));
 	if (dv) return dv->alias;
 
 	return "unknown";

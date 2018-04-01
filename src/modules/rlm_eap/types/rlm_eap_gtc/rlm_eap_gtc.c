@@ -203,7 +203,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 		return -1;
 	}
 
-	dval = fr_dict_enum_by_alias(NULL, fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE), inst->auth_type_name);
+	dval = fr_dict_enum_by_alias(fr_dict_attr_by_num(NULL, 0, FR_AUTH_TYPE), inst->auth_type_name);
 	if (!dval) {
 		cf_log_err_by_name(cs, "auth_type", "Unknown Auth-Type %s", inst->auth_type_name);
 		return -1;

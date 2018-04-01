@@ -111,7 +111,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		if (!da) da = fr_dict_attr_by_num(NULL, 0, FR_PACKET_TYPE);
 		rad_assert(da != NULL);
 
-		dv = fr_dict_enum_by_value(NULL, da, fr_box_uint32(request->reply->code));
+		dv = fr_dict_enum_by_value(da, fr_box_uint32(request->reply->code));
 		unlang = NULL;
 		if (dv) unlang = cf_section_find(request->server_cs, "send", dv->alias);
 
