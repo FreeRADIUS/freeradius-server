@@ -54,7 +54,7 @@ fr_dict_attr_autoload_t rlm_chap_dict_attr[] = {
 };
 
 extern fr_dict_autoload_t rlm_chap_dict[];
-fr_dict_autoload_t rlm_attr_filter_dict[] = {
+fr_dict_autoload_t rlm_chap_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
 	{ NULL }
