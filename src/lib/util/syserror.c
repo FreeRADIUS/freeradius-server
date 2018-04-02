@@ -34,9 +34,9 @@ fr_thread_local_setup(char *, fr_syserror_buffer)		/* macro */
  *	Explicitly cleanup the memory allocated to the error buffer,
  *	just in case valgrind complains about it.
  */
-static void _fr_logging_free(void *arg)
+static void _fr_logging_free(UNUSED void *arg)
 {
-	talloc_free(arg);
+	TALLOC_FREE(fr_syserror_buffer);	/* Set to NULL in case the buffer needs to be recreated */
 }
 
 /** POSIX-2008 errno macros
