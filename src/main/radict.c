@@ -223,5 +223,5 @@ int main(int argc, char *argv[])
 finish:
 	talloc_free(autofree);
 
-	return found ? 0 : 64;
+	return found ? ret : 64;
 }
