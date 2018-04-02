@@ -29,6 +29,12 @@ RCSID("$Id$")
 #define FR_SYSERROR_BUFSIZE (2048)
 
 fr_thread_local_setup(char *, fr_syserror_buffer)		/* macro */
+static _Thread_local bool logging_stop;	//!< Due to ordering issues we may get errors being
+					///< logged from within other thread local destructors
+					///< which cause a crash on exit if the logging buffer
+					///< has already been freed.
+
+#define HAVE_DEFINITION(_errno) ((_errno) < (int)(sizeof(fr_syserror_macro_names) / sizeof(*fr_syserror_macro_names)))
 
 /*
  *	Explicitly cleanup the memory allocated to the error buffer,
@@ -36,7 +42,8 @@ fr_thread_local_setup(char *, fr_syserror_buffer)		/* macro */
  */
 static void _fr_logging_free(UNUSED void *arg)
 {
-	TALLOC_FREE(fr_syserror_buffer);	/* Set to NULL in case the buffer needs to be recreated */
+	TALLOC_FREE(fr_syserror_buffer);
+	logging_stop = true;
 }
 
 /** POSIX-2008 errno macros
@@ -158,6 +165,17 @@ char const *fr_syserror(int num)
 
 	buffer = fr_syserror_buffer;
 	if (!buffer) {
+		/*
+		 *	Try and produce something useful,
+		 *	even if the thread is exiting.
+		 */
+		if (logging_stop) {
+			if (HAVE_DEFINITION(num)) {
+				return fr_syserror_macro_names[num];
+			}
+			return "";
+		}
+
 		buffer = talloc_array(NULL, char, FR_SYSERROR_BUFSIZE);
 		if (!buffer) {
 			fr_perror("Failed allocating memory for system error buffer");
@@ -175,7 +193,7 @@ char const *fr_syserror(int num)
 	 *	Prefix system errors with the macro name and number
 	 *	if we're debugging.
 	 */
-	if (num < (int)(sizeof(fr_syserror_macro_names) / sizeof(*fr_syserror_macro_names))) {
+	if (HAVE_DEFINITION(num)) {
 		p += snprintf(p, end - p, "%s: ", fr_syserror_macro_names[num]);
 	} else {
 		p += snprintf(p, end - p, "errno %i: ", num);

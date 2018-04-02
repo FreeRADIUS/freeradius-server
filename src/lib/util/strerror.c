@@ -49,14 +49,19 @@ typedef struct {
 } fr_log_buffer_t;
 
 fr_thread_local_setup(fr_log_buffer_t *, fr_strerror_buffer)	/* macro */
+static _Thread_local bool logging_stop;	//!< Due to ordering issues we may get errors being
+					///< logged from within other thread local destructors
+					///< which cause a crash on exit if the logging buffer
+					///< has already been freed.
 
 /*
  *	Explicitly cleanup the memory allocated to the error buffer,
  *	just in case valgrind complains about it.
  */
-static void _fr_logging_free(void *arg)
+static void _fr_logging_free(UNUSED void *arg)
 {
-	talloc_free(arg);
+	TALLOC_FREE(fr_strerror_buffer);
+	logging_stop = true;
 }
 
 /** Reset cursor state
@@ -76,6 +81,8 @@ static inline void fr_strerror_clear(fr_log_buffer_t *buffer)
 static inline fr_log_buffer_t *fr_strerror_init(void)
 {
 	fr_log_buffer_t *buffer;
+
+	if (logging_stop) return NULL;	/* No more logging */
 
 	buffer = fr_strerror_buffer;
 	if (!buffer) {
