@@ -564,12 +564,12 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 		fr_dlist_remove(entry);
 
 		/*
-		 *	We can't free the context, because the event
-		 *	loop is allocated from it.  And the per-module
-		 *	thread instance data isn't freed until the
-		 *	thread is freed, which happens asynchronously.
-		 *	We can't catch that, so the best bet in the
-		 *	short term is to just leak this memory on exit.
+		 *	Ensure that the thread has exited before
+		 *	cleaning up the context.
+		 *
+		 *	This also ensures that the child threads have
+		 *	exited before the main thread cleans up the
+		 *	module instances.
 		 */
 		sw = fr_ptr_to_type(fr_schedule_worker_t, entry, entry);
 		if (pthread_join(sw->pthread_id, NULL) != 0) {
