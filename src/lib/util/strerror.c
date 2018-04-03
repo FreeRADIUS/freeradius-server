@@ -58,9 +58,14 @@ static _Thread_local bool logging_stop;	//!< Due to ordering issues we may get e
  *	Explicitly cleanup the memory allocated to the error buffer,
  *	just in case valgrind complains about it.
  */
-static void _fr_logging_free(UNUSED void *arg)
+static void _fr_logging_free(void *arg)
 {
-	TALLOC_FREE(fr_strerror_buffer);
+	/*
+	 *	Free arg instead of thread local storage
+	 *	as address sanitizer does a better job
+	 *	of tracking and doesn't report a leak.
+	 */
+	talloc_free(arg);
 	logging_stop = true;
 }
 
