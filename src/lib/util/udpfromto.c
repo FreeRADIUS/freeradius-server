@@ -472,7 +472,7 @@ int sendfromto(int fd, void *buf, size_t len, int flags,
 		pkt->ipi_spec_dst = s4->sin_addr;
 		pkt->ipi_ifindex = if_index;
 
-#  elif define(IP_SENDSRCADDR)
+#  elif defined(IP_SENDSRCADDR)
 		struct cmsghdr *cmsg;
 		struct in_addr *in;
 
