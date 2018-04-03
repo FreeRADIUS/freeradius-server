@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file module_unlang.c
+ * @file unlang/module.c
  * @brief Defines functions for calling modules asynchronously
  *
  * @copyright 2018 The FreeRADIUS server project
@@ -50,7 +50,7 @@ static inline void safe_unlock(module_instance_t *instance)
 }
 
 static unlang_action_t module_unlang_call(REQUEST *request,
-				     	  rlm_rcode_t *presult, int *priority)
+					  rlm_rcode_t *presult, int *priority)
 {
 	module_unlang_call_t		*sp;
 	unlang_stack_t			*stack = request->stack;
@@ -271,9 +271,9 @@ void module_unlang_init(void)
 {
 	unlang_op_register(UNLANG_TYPE_MODULE_CALL,
 			   &(unlang_op_t){
-			   	.name = "module",
-			   	.func = module_unlang_call,
-			   	.signal = module_unlang_signal,
-			   	.resume = module_unlang_resume
+				.name = "module",
+				.func = module_unlang_call,
+				.signal = module_unlang_signal,
+				.resume = module_unlang_resume
 			   });
 }

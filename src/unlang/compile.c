@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file unlang_compile.c
+ * @file unlang/compile.c
  * @brief Functions to convert configuration sections into unlang structures.
  *
  * @copyright 2006-2016 The FreeRADIUS server project

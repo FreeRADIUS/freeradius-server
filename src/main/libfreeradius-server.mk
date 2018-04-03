@@ -13,9 +13,7 @@ SOURCES	:=	cond_eval.c \
 		log.c \
 		map_proc.c \
 		map.c \
-		map_unlang.c \
 		module.c \
-		module_unlang.c \
 		regex.c \
 		request.c \
 		trigger.c \
@@ -24,14 +22,10 @@ SOURCES	:=	cond_eval.c \
 		virtual_servers.c \
 		pair.c \
 		pool.c \
-		unlang_compile.c \
-		unlang_interpret.c \
-		unlang_op.c \
 		xlat_eval.c \
 		xlat_func.c \
 		xlat_inst.c \
 		xlat_tokenize.c \
-		xlat_unlang.c
 
 # This lets the linker determine which version of the SSLeay functions to use.
 TGT_LDLIBS	:= $(LIBS) $(GPERFTOOLS_LIBS)

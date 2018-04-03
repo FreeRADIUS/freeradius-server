@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file unlang_interpret.c
+ * @file unlang/interpret.c
  * @brief Execute compiled unlang structures using an iterative interpreter.
  *
  * @copyright 2006-2016 The FreeRADIUS server project

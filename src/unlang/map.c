@@ -18,7 +18,7 @@
  * $Id$
  *
  * @brief map and unlang integration.
- * @file main/map_unlang.c
+ * @file unlang/map.c
  *
  * @ingroup AVP
  *
@@ -32,7 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/map.h>
 #include <freeradius-devel/xlat.h>
 
-#include "map_proc_priv.h"
+#include "../main/map_proc_priv.h"
 #include "unlang_priv.h"
 
 typedef enum {
@@ -151,7 +151,7 @@ static unlang_action_t unlang_update(REQUEST *request, rlm_rcode_t *presult, int
 			 */
 			if (update_state->lhs_result &&
 			    (fr_value_box_list_concat(update_state, update_state->lhs_result, &update_state->lhs_result,
-			    			      FR_TYPE_STRING, true) < 0)) {
+						      FR_TYPE_STRING, true) < 0)) {
 				RPEDEBUG("Failed concatenating LHS expansion results");
 				goto error;
 			}
@@ -181,7 +181,7 @@ static unlang_action_t unlang_update(REQUEST *request, rlm_rcode_t *presult, int
 			 */
 			if (update_state->rhs_result &&
 			    (fr_value_box_list_concat(update_state, update_state->rhs_result, &update_state->rhs_result,
-			    			      FR_TYPE_STRING, true) < 0)) {
+						      FR_TYPE_STRING, true) < 0)) {
 				RPEDEBUG("Failed concatenating RHS expansion results");
 				goto error;
 			}
@@ -222,7 +222,7 @@ static unlang_action_t unlang_update(REQUEST *request, rlm_rcode_t *presult, int
 			int ret;
 
 			ret = map_list_mod_apply(request, vlm);
-		     	if (!fr_cond_assert(ret == 0)) goto error;
+			if (!fr_cond_assert(ret == 0)) goto error;
 		}
 
 	}

@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file xlat_unlang.c
+ * @file unlang/xlat.c
  * @brief Integration between the unlang interpreter and xlats
  *
  * @copyright 2018  The FreeRADIUS server project
@@ -29,7 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 
 #include <ctype.h>
-#include "xlat_priv.h"
+#include "../main/xlat_priv.h"
 #include "unlang_priv.h"	/* Fixme - Should create a proper semi-public interface for the interpret */
 
 /** Hold the result of an inline xlat expansion

@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @file unlang_interpret.c
+ * @file unlang/interpret.c
  * @brief Execute compiled unlang structures using an iterative interpreter.
  *
  * @copyright 2006-2016 The FreeRADIUS server project
@@ -1645,23 +1645,23 @@ void unlang_op_initialize(void)
 {
 	unlang_op_register(UNLANG_TYPE_FUNCTION,
 			   &(unlang_op_t){
-			   	.name = "function",
-			   	.func = unlang_function_call,
-			   	.debug_braces = false
+				.name = "function",
+				.func = unlang_function_call,
+				.debug_braces = false
 			   });
 
 	unlang_op_register(UNLANG_TYPE_GROUP,
 			   &(unlang_op_t){
-			   	.name = "group",
-			   	.func = unlang_group,
-			   	.debug_braces = true
+				.name = "group",
+				.func = unlang_group,
+				.debug_braces = true
 			   });
 
 	unlang_op_register(UNLANG_TYPE_LOAD_BALANCE,
 			   &(unlang_op_t){
-			   	.name = "load-balance group",
-			   	.func = unlang_load_balance,
-			   	.debug_braces = true
+				.name = "load-balance group",
+				.func = unlang_load_balance,
+				.debug_braces = true
 			   });
 
 	unlang_op_register(UNLANG_TYPE_REDUNDANT_LOAD_BALANCE,

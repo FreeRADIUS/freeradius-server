@@ -141,7 +141,7 @@ CPPFLAGS		:= $(OPENSSL_CPPFLAGS) $(CPPFLAGS)
 #
 LIBFREERADIUS_SERVER	:= libfreeradius-tls.a
 endif
-LIBFREERADIUS_SERVER	+= libfreeradius-server.a
+LIBFREERADIUS_SERVER	+= libfreeradius-server.a libfreeradius-unlang.a
 
 ifneq ($(WITH_OPENSSL_MD5),)
 WITH_OPENSSL_DIGEST = 1
