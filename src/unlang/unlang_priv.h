@@ -368,7 +368,7 @@ rlm_rcode_t	unlang_run(REQUEST *request);
 
 unlang_resume_t *unlang_resume_alloc(REQUEST *request, void *callback, void *signal, void *rctx);
 
-void		map_unlang_init(void);
+void		unlang_map_init(void);
 
 void		unlang_op_initialize(void);
 

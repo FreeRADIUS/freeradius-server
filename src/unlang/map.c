@@ -296,7 +296,7 @@ static unlang_action_t unlang_map(REQUEST *request, rlm_rcode_t *presult, int *p
 	return *presult == RLM_MODULE_YIELD ? UNLANG_ACTION_YIELD : UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-void map_unlang_init(void)
+void unlang_map_init(void)
 {
 	unlang_op_register(UNLANG_TYPE_UPDATE,
 			   &(unlang_op_t){

@@ -1765,7 +1765,7 @@ void unlang_op_initialize(void)
 				.debug_braces = true
 			   });
 
-	map_unlang_init();
+	unlang_map_init();
 	unlang_module_init();
 #endif
 }
