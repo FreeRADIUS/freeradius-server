@@ -79,7 +79,7 @@ typedef size_t (*xlat_escape_t)(REQUEST *request, char *out, size_t outlen, char
  * @param[in] rctx		a local context for the callback.
  * @param[in] fired		the time the timeout event actually fired.
  */
-typedef	void (*fr_xlat_unlang_timeout_t)(REQUEST *request, void *instance, void *thread, void *rctx,
+typedef	void (*fr_unlang_xlat_timeout_t)(REQUEST *request, void *instance, void *thread, void *rctx,
 					 struct timeval *fired);
 
 /** A callback when the FD is ready for reading
@@ -95,7 +95,7 @@ typedef	void (*fr_xlat_unlang_timeout_t)(REQUEST *request, void *instance, void 
  * @param[in] rctx		a local context for the callback.
  * @param[in] fd		the file descriptor.
  */
-typedef void (*fr_xlat_unlang_fd_event_t)(REQUEST *request, void *instance, void *thread, void *rctx, int fd);
+typedef void (*fr_unlang_xlat_fd_event_t)(REQUEST *request, void *instance, void *thread, void *rctx, int fd);
 
 /** xlat callback function
  *
@@ -299,15 +299,15 @@ int		xlat_bootstrap(xlat_exp_t *root);
 void		xlat_instances_free(void);
 
 /*
- *	xlat_unlang.c
+ *	unlang/xlat.c
  */
-int		xlat_unlang_event_timeout_add(REQUEST *request, fr_xlat_unlang_timeout_t callback,
+int		unlang_xlat_event_timeout_add(REQUEST *request, fr_unlang_xlat_timeout_t callback,
 					      void const *ctx, struct timeval *when);
 
-void		xlat_unlang_push(TALLOC_CTX *ctx, fr_value_box_t **out,
+void		unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_t **out,
 				 REQUEST *request, xlat_exp_t const *exp, bool top_frame);
 
-xlat_action_t	xlat_unlang_yield(REQUEST *request,
+xlat_action_t	unlang_xlat_yield(REQUEST *request,
 				  xlat_func_resume_t callback, xlat_func_signal_t signal,
 				  void *rctx);
 #ifdef __cplusplus

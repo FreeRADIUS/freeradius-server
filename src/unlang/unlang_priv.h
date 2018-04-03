@@ -214,7 +214,7 @@ typedef struct {
 	int			exec;
 	char			*xlat_name;
 	xlat_exp_t		*exp;				//!< First xlat node to execute.
-} xlat_unlang_inline_t;
+} unlang_xlat_inline_t;
 
 /** A module stack entry
  *
@@ -336,13 +336,13 @@ static inline unlang_t *unlang_group_to_generic(unlang_group_t *p)
 	return (unlang_t *)p;
 }
 
-static inline xlat_unlang_inline_t *unlang_generic_to_xlat_inline(unlang_t *p)
+static inline unlang_xlat_inline_t *unlang_generic_to_xlat_inline(unlang_t *p)
 {
 	rad_assert(p->type == UNLANG_TYPE_XLAT_INLINE);
-	return talloc_get_type_abort(p, xlat_unlang_inline_t);
+	return talloc_get_type_abort(p, unlang_xlat_inline_t);
 }
 
-static inline unlang_t *xlat_unlang_inline_to_generic(xlat_unlang_inline_t *p)
+static inline unlang_t *unlang_xlat_inline_to_generic(unlang_xlat_inline_t *p)
 {
 	return (unlang_t *)p;
 }

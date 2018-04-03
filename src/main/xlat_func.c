@@ -1182,9 +1182,9 @@ int xlat_init(void)
 #endif
 
 	/*
-	 *	Registers async xlat operations
+	 *	Registers async xlat operations in the `unlang` interpreter.
 	 */
-	xlat_unlang_init();
+	unlang_xlat_init();
 
 	/*
 	 *	Create the function tree

@@ -64,15 +64,15 @@ typedef struct {
 typedef struct {
 	REQUEST				*request;			//!< Request this event pertains to.
 	int				fd;				//!< File descriptor to wait on.
-	fr_xlat_unlang_timeout_t	timeout;			//!< Function to call on timeout.
-	fr_xlat_unlang_fd_event_t	fd_read;			//!< Function to call when FD is readable.
-	fr_xlat_unlang_fd_event_t	fd_write;			//!< Function to call when FD is writable.
-	fr_xlat_unlang_fd_event_t	fd_error;			//!< Function to call when FD has errored.
+	fr_unlang_xlat_timeout_t	timeout;			//!< Function to call on timeout.
+	fr_unlang_xlat_fd_event_t	fd_read;			//!< Function to call when FD is readable.
+	fr_unlang_xlat_fd_event_t	fd_write;			//!< Function to call when FD is writable.
+	fr_unlang_xlat_fd_event_t	fd_error;			//!< Function to call when FD has errored.
 	void const			*inst;				//!< Module instance to pass to callbacks.
 	void				*thread;			//!< Thread specific xlat instance.
 	void const			*ctx;				//!< ctx data to pass to callbacks.
 	fr_event_timer_t const		*ev;				//!< Event in this worker's event heap.
-} xlat_unlang_event_t;
+} unlang_xlat_event_t;
 
 
 /** Static instruction for performing xlat evaluations
@@ -101,7 +101,7 @@ static unlang_t xlat_instruction = {
  *
  * @return 0
  */
-static int _xlat_unlang_event_free(xlat_unlang_event_t *ev)
+static int _unlang_xlat_event_free(unlang_xlat_event_t *ev)
 {
 	if (ev->ev) {
 		(void) fr_event_timer_delete(ev->request->el, &(ev->ev));
@@ -122,9 +122,9 @@ static int _xlat_unlang_event_free(xlat_unlang_event_t *ev)
  * @param[in] ctx	unlang_event_t structure holding callbacks.
  *
  */
-static void xlat_unlang_event_timeout_handler(UNUSED fr_event_list_t *el, struct timeval *now, void *ctx)
+static void unlang_xlat_event_timeout_handler(UNUSED fr_event_list_t *el, struct timeval *now, void *ctx)
 {
-	xlat_unlang_event_t *ev = talloc_get_type_abort(ctx, xlat_unlang_event_t);
+	unlang_xlat_event_t *ev = talloc_get_type_abort(ctx, unlang_xlat_event_t);
 	void *mutable_ctx;
 	void *mutable_inst;
 
@@ -135,18 +135,18 @@ static void xlat_unlang_event_timeout_handler(UNUSED fr_event_list_t *el, struct
 	talloc_free(ev);
 }
 
-int xlat_unlang_event_timeout_add(REQUEST *request, fr_xlat_unlang_timeout_t callback,
+int unlang_xlat_event_timeout_add(REQUEST *request, fr_unlang_xlat_timeout_t callback,
 				  void const *ctx, struct timeval *when)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	xlat_unlang_event_t		*ev;
+	unlang_xlat_event_t		*ev;
 	unlang_frame_state_xlat_t	*xs = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
 
 	rad_assert(stack->depth > 0);
 	rad_assert(frame->instruction->type == UNLANG_TYPE_XLAT);
 
-	ev = talloc_zero(request, xlat_unlang_event_t);
+	ev = talloc_zero(request, unlang_xlat_event_t);
 	if (!ev) return -1;
 
 	ev->request = request;
@@ -157,7 +157,7 @@ int xlat_unlang_event_timeout_add(REQUEST *request, fr_xlat_unlang_timeout_t cal
 	ev->ctx = ctx;
 
 	if (fr_event_timer_insert(request, request->el, &ev->ev,
-				  when, xlat_unlang_event_timeout_handler, ev) < 0) {
+				  when, unlang_xlat_event_timeout_handler, ev) < 0) {
 		RPEDEBUG("Failed inserting event");
 		talloc_free(ev);
 		return -1;
@@ -165,7 +165,7 @@ int xlat_unlang_event_timeout_add(REQUEST *request, fr_xlat_unlang_timeout_t cal
 
 	(void) request_data_add(request, ctx, -1, ev, true, false, false);
 
-	talloc_set_destructor(ev, _xlat_unlang_event_free);
+	talloc_set_destructor(ev, _unlang_xlat_event_free);
 
 	return 0;
 }
@@ -180,7 +180,7 @@ int xlat_unlang_event_timeout_add(REQUEST *request, fr_xlat_unlang_timeout_t cal
  * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
  *				Set to UNLANG_SUB_FRAME if the interprer should continue.
  */
-void xlat_unlang_push(TALLOC_CTX *ctx, fr_value_box_t **out,
+void unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_t **out,
 		      REQUEST *request, xlat_exp_t const *exp, bool top_frame)
 {
 
@@ -210,7 +210,7 @@ void xlat_unlang_push(TALLOC_CTX *ctx, fr_value_box_t **out,
  * Calls the xlat interpreter and translates its wants and needs into
  * unlang_action_t codes.
  */
-static unlang_action_t xlat_unlang(REQUEST *request,
+static unlang_action_t unlang_xlat(REQUEST *request,
 				   rlm_rcode_t *presult, UNUSED int *priority)
 {
 	unlang_stack_t			*stack = request->stack;
@@ -238,7 +238,7 @@ static unlang_action_t xlat_unlang(REQUEST *request,
 		 *	multiple sibling nodes.
 		 */
 		talloc_list_free(&xs->rhead);
-		xlat_unlang_push(xs->ctx, &xs->rhead, request, child, false);
+		unlang_xlat_push(xs->ctx, &xs->rhead, request, child, false);
 		return UNLANG_ACTION_PUSHED_CHILD;
 
 	case XLAT_ACTION_YIELD:
@@ -272,7 +272,7 @@ static unlang_action_t xlat_unlang(REQUEST *request,
  * @param[in] rctx	to pass to the callbacks.
  * @return always returns RLM_MODULE_YIELD.
  */
-xlat_action_t xlat_unlang_yield(REQUEST *request,
+xlat_action_t unlang_xlat_yield(REQUEST *request,
 				xlat_func_resume_t callback, xlat_func_signal_t signal,
 				void *rctx)
 {
@@ -324,7 +324,7 @@ xlat_action_t xlat_unlang_yield(REQUEST *request,
  *	- UNLANG_ACTION_YIELD	if yielding.
  *	- UNLANG_ACTION_CALCULATE_RESULT if done.
  */
-static unlang_action_t xlat_unlang_resume(REQUEST *request, rlm_rcode_t *presult, void *rctx)
+static unlang_action_t unlang_xlat_resume(REQUEST *request, rlm_rcode_t *presult, void *rctx)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -361,13 +361,13 @@ static unlang_action_t xlat_unlang_resume(REQUEST *request, rlm_rcode_t *presult
 /** Evaluates "naked" xlats in the config
  *
  */
-static unlang_action_t xlat_unlang_inline(REQUEST *request,
+static unlang_action_t unlang_xlat_inline(REQUEST *request,
 					  UNUSED rlm_rcode_t *presult, UNUSED int *priority)
 {
 	unlang_stack_t		*stack = request->stack;
 	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
 	unlang_t		*instruction = frame->instruction;
-	xlat_unlang_inline_t	*mx = unlang_generic_to_xlat_inline(instruction);
+	unlang_xlat_inline_t	*mx = unlang_generic_to_xlat_inline(instruction);
 
 	if (!mx->exec) {
 		TALLOC_CTX *pool;
@@ -376,7 +376,7 @@ static unlang_action_t xlat_unlang_inline(REQUEST *request,
 		MEM(frame->state = state = talloc_zero(stack, unlang_frame_state_xlat_inline_t));
 		MEM(pool = talloc_pool(frame->state, 1024));	/* Pool to absorb some allocs */
 
-		xlat_unlang_push(pool, &state->result, request, mx->exp, false);
+		unlang_xlat_push(pool, &state->result, request, mx->exp, false);
 		return UNLANG_ACTION_PUSHED_CHILD;
 	} else {
 		RDEBUG("`%s`", mx->xlat_name);
@@ -389,13 +389,13 @@ static unlang_action_t xlat_unlang_inline(REQUEST *request,
 /** Register xlat operation with the interpreter
  *
  */
-void xlat_unlang_init(void)
+void unlang_xlat_init(void)
 {
 	unlang_op_register(UNLANG_TYPE_XLAT,
 			   &(unlang_op_t){
 				.name = "xlat_eval",
-				.func = xlat_unlang,
-				.resume = xlat_unlang_resume,
+				.func = unlang_xlat,
+				.resume = unlang_xlat_resume,
 				.debug_braces = false
 			   });
 
@@ -403,7 +403,7 @@ void xlat_unlang_init(void)
 	unlang_op_register(UNLANG_TYPE_XLAT_INLINE,
 			   &(unlang_op_t){
 				.name = "xlat_inline",
-				.func = xlat_unlang_inline,
+				.func = unlang_xlat_inline,
 				.debug_braces = false
 			   });
 }

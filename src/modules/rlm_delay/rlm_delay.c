@@ -269,12 +269,12 @@ static xlat_action_t xlat_delay(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 yield:
 	RDEBUG3("Current time %pV, resume time %pV", fr_box_timeval(*yielded_at), fr_box_timeval(resume_at));
 
-	if (xlat_unlang_event_timeout_add(request, _delay_done, yielded_at, &resume_at) < 0) {
+	if (unlang_xlat_event_timeout_add(request, _delay_done, yielded_at, &resume_at) < 0) {
 		RPEDEBUG("Adding event failed");
 		return XLAT_ACTION_FAIL;
 	}
 
-	return xlat_unlang_yield(request, xlat_delay_resume, xlat_delay_cancel, yielded_at);
+	return unlang_xlat_yield(request, xlat_delay_resume, xlat_delay_cancel, yielded_at);
 }
 
 static int mod_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, void *uctx)
