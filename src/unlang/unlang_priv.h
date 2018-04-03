@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file main/unlang_priv.h
+ * @file unlang/unlang_priv.h
  * @brief Private interpreter structures and functions
  *
  * @author Alan DeKok <aland@freeradius.org>
