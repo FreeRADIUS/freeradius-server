@@ -49,14 +49,14 @@ static inline void safe_unlock(module_instance_t *instance)
 	if (instance->mutex) pthread_mutex_unlock(instance->mutex);
 }
 
-static unlang_action_t unlang_module_call(REQUEST *request,
+static unlang_action_t unlang_module(REQUEST *request,
 					  rlm_rcode_t *presult, int *priority)
 {
-	unlang_module_call_t		*sp;
+	unlang_module_t		*sp;
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
-	unlang_frame_state_modcall_t	*ms;
+	unlang_frame_state_module_t	*ms;
 	int				stack_depth = stack->depth;
 	char const 			*caller;
 
@@ -68,7 +68,7 @@ static unlang_action_t unlang_module_call(REQUEST *request,
 	 *	Process a stand-alone child, and fall through
 	 *	to dealing with it's parent.
 	 */
-	sp = unlang_generic_to_module_call(instruction);
+	sp = unlang_generic_to_module(instruction);
 	rad_assert(sp);
 
 	RDEBUG4("[%i] %s - %s (%s)", stack->depth, __FUNCTION__,
@@ -82,7 +82,7 @@ static unlang_action_t unlang_module_call(REQUEST *request,
 		goto done;
 	}
 
-	frame->state = ms = talloc_zero(stack, unlang_frame_state_modcall_t);
+	frame->state = ms = talloc_zero(stack, unlang_frame_state_module_t);
 
 	/*
 	 *	Grab the thread/module specific data if any exists.
@@ -149,7 +149,7 @@ done:
  * If there is no #fr_unlang_module_signal_t callback defined, the action is ignored.
  *
  * @param[in] request		The current request.
- * @param[in] rctx		createed by #unlang_module_call.
+ * @param[in] rctx		createed by #unlang_module.
  * @param[in] action		to signal.
  */
 static void unlang_module_signal(REQUEST *request, void *rctx, fr_state_signal_t action)
@@ -157,10 +157,10 @@ static void unlang_module_signal(REQUEST *request, void *rctx, fr_state_signal_t
 	unlang_stack_frame_t		*frame;
 	unlang_stack_t			*stack = request->stack;
 	unlang_resume_t			*mr;
-	unlang_module_call_t		*mc;
+	unlang_module_t		*mc;
 	char const 			*caller;
 
-	unlang_frame_state_modcall_t	*ms = NULL;
+	unlang_frame_state_module_t	*ms = NULL;
 
 	rad_assert(stack->depth > 0);
 
@@ -169,8 +169,8 @@ static void unlang_module_signal(REQUEST *request, void *rctx, fr_state_signal_t
 	mr = unlang_generic_to_resume(frame->instruction);
 	if (!mr->signal) return;
 
-	mc = unlang_generic_to_module_call(mr->parent);
-	ms = talloc_get_type_abort(frame->state, unlang_frame_state_modcall_t);
+	mc = unlang_generic_to_module(mr->parent);
+	ms = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
 
 	caller = request->module;
 	request->module = mc->module_instance->name;
@@ -186,15 +186,15 @@ static unlang_action_t unlang_module_resume(REQUEST *request, rlm_rcode_t *presu
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
 	unlang_resume_t			*mr = unlang_generic_to_resume(instruction);
-	unlang_module_call_t		*mc = unlang_generic_to_module_call(mr->parent);
+	unlang_module_t		*mc = unlang_generic_to_module(mr->parent);
 	int				stack_depth = stack->depth;
 	char const			*caller;
 
-	unlang_frame_state_modcall_t	*ms = NULL;
+	unlang_frame_state_module_t	*ms = NULL;
 
-	rad_assert(mr->parent->type == UNLANG_TYPE_MODULE_CALL);
+	rad_assert(mr->parent->type == UNLANG_TYPE_MODULE);
 
-	ms = talloc_get_type_abort(frame->state, unlang_frame_state_modcall_t);
+	ms = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
 
 	/*
 	 *	Lock is noop unless instance->mutex is set.
@@ -269,10 +269,10 @@ rlm_rcode_t unlang_module_push_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
 
 void unlang_module_init(void)
 {
-	unlang_op_register(UNLANG_TYPE_MODULE_CALL,
+	unlang_op_register(UNLANG_TYPE_MODULE,
 			   &(unlang_op_t){
 				.name = "module",
-				.func = unlang_module_call,
+				.func = unlang_module,
 				.signal = unlang_module_signal,
 				.resume = unlang_module_resume
 			   });

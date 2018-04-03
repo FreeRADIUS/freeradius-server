@@ -990,14 +990,14 @@ int unlang_event_module_timeout_add(REQUEST *request, fr_unlang_module_timeout_t
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_event_t			*ev;
-	unlang_module_call_t		*sp;
-	unlang_frame_state_modcall_t	*ms = talloc_get_type_abort(frame->state,
-								    unlang_frame_state_modcall_t);
+	unlang_module_t		*sp;
+	unlang_frame_state_module_t	*ms = talloc_get_type_abort(frame->state,
+								    unlang_frame_state_module_t);
 
 	rad_assert(stack->depth > 0);
-	rad_assert((frame->instruction->type == UNLANG_TYPE_MODULE_CALL) ||
+	rad_assert((frame->instruction->type == UNLANG_TYPE_MODULE) ||
 		   (frame->instruction->type == UNLANG_TYPE_RESUME));
-	sp = unlang_generic_to_module_call(frame->instruction);
+	sp = unlang_generic_to_module(frame->instruction);
 
 	ev = talloc_zero(request, unlang_event_t);
 	if (!ev) return -1;
@@ -1075,15 +1075,15 @@ int unlang_event_fd_add(REQUEST *request,
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_event_t			*ev;
-	unlang_module_call_t		*sp;
-	unlang_frame_state_modcall_t	*ms = talloc_get_type_abort(frame->state,
-									       unlang_frame_state_modcall_t);
+	unlang_module_t		*sp;
+	unlang_frame_state_module_t	*ms = talloc_get_type_abort(frame->state,
+								    unlang_frame_state_module_t);
 
 	rad_assert(stack->depth > 0);
 
-	rad_assert((frame->instruction->type == UNLANG_TYPE_MODULE_CALL) ||
+	rad_assert((frame->instruction->type == UNLANG_TYPE_MODULE) ||
 		   (frame->instruction->type == UNLANG_TYPE_RESUME));
-	sp = unlang_generic_to_module_call(frame->instruction);
+	sp = unlang_generic_to_module(frame->instruction);
 
 	ev = talloc_zero(request, unlang_event_t);
 	if (!ev) return -1;
@@ -1439,7 +1439,7 @@ rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_module_resume_t call
 	REQUEST_VERIFY(request);	/* Check the yielded request is sane */
 
 	switch (frame->instruction->type) {
-	case UNLANG_TYPE_MODULE_CALL:
+	case UNLANG_TYPE_MODULE:
 		mr = unlang_resume_alloc(request, callback, cancel, rctx);
 		if (!fr_cond_assert(mr)) {
 			return RLM_MODULE_FAIL;
@@ -1448,7 +1448,7 @@ rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_module_resume_t call
 
 	case UNLANG_TYPE_RESUME:
 		mr = talloc_get_type_abort(frame->instruction, unlang_resume_t);
-		rad_assert(mr->parent->type == UNLANG_TYPE_MODULE_CALL);
+		rad_assert(mr->parent->type == UNLANG_TYPE_MODULE);
 
 		/*
 		 *	Re-use the current RESUME frame, but over-ride

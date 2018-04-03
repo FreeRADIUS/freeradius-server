@@ -52,12 +52,12 @@ static uint64_t unlang_active_callers(unlang_t *instruction)
 	default:
 		return 0;
 
-	case UNLANG_TYPE_MODULE_CALL:
+	case UNLANG_TYPE_MODULE:
 	{
 		module_thread_instance_t *thread;
-		unlang_module_call_t *sp;
+		unlang_module_t *sp;
 
-		sp = unlang_generic_to_module_call(instruction);
+		sp = unlang_generic_to_module(instruction);
 		rad_assert(sp != NULL);
 
 		thread = module_thread_instance_find(sp->module_instance);
@@ -296,15 +296,15 @@ static unlang_action_t unlang_load_balance(REQUEST *request,
 				uint64_t active_callers;
 				unlang_t *child = redundant->child;
 
-				if (child->type != UNLANG_TYPE_MODULE_CALL) {
+				if (child->type != UNLANG_TYPE_MODULE) {
 					active_callers = unlang_active_callers(child);
 					RDEBUG3("load-balance child %d sub-section has %" PRIu64 " active", num, active_callers);
 
 				} else {
 					module_thread_instance_t *thread;
-					unlang_module_call_t *sp;
+					unlang_module_t *sp;
 
-					sp = unlang_generic_to_module_call(child);
+					sp = unlang_generic_to_module(child);
 					rad_assert(sp != NULL);
 
 					thread = module_thread_instance_find(sp->module_instance);
