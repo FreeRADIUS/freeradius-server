@@ -86,7 +86,6 @@ static int mod_detach(void *instance)
 {
 	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
 
-	if (driver->heap) talloc_free(driver->heap);
 	if (driver->cache) {
 		rbtree_walk(driver->cache, RBTREE_DELETE_ORDER, _cache_entry_free, NULL);
 		talloc_free(driver->cache);
@@ -118,7 +117,7 @@ static int mod_instantiate(UNUSED rlm_cache_config_t const *config, void *instan
 	/*
 	 *	The heap of entries to expire.
 	 */
-	driver->heap = fr_heap_talloc_create(cache_heap_cmp, rlm_cache_rbtree_entry_t, heap_id);
+	driver->heap = fr_heap_talloc_create(driver, cache_heap_cmp, rlm_cache_rbtree_entry_t, heap_id);
 	if (!driver->heap) {
 		ERROR("Failed to create heap for the cache");
 		return -1;

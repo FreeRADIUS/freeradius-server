@@ -38,15 +38,17 @@ typedef struct fr_heap_t fr_heap_t;
 
 /** Creates a heap that can be used with non-talloced elements
  *
+ * @param[in] _ctx		Talloc ctx to allocate heap in.
  * @param[in] _cmp		Comparator used to compare elements.
  * @param[in] _type		Of elements.
  * @param[in] _field		to store heap indexes in.
  */
-#define fr_heap_create(_cmp, _type, _field) \
-	_fr_heap_create(_cmp, NULL, (size_t)offsetof(_type, _field))
+#define fr_heap_create(_ctx, _cmp, _type, _field) \
+	_fr_heap_create(_ctx, _cmp, NULL, (size_t)offsetof(_type, _field))
 
 /** Creates a heap that verifies elements are of a specific talloc type
  *
+ * @param[in] _ctx		Talloc ctx to allocate heap in.
  * @param[in] _cmp		Comparator used to compare elements.
  * @param[in] _talloc_type	of elements.
  * @param[in] _field		to store heap indexes in.
@@ -54,10 +56,10 @@ typedef struct fr_heap_t fr_heap_t;
  *	- A new heap.
  *	- NULL on error.
  */
-#define fr_heap_talloc_create(_cmp, _talloc_type, _field) \
-	_fr_heap_create(_cmp, #_talloc_type, (size_t)offsetof(_talloc_type, _field))
+#define fr_heap_talloc_create(_ctx, _cmp, _talloc_type, _field) \
+	_fr_heap_create(_ctx, _cmp, #_talloc_type, (size_t)offsetof(_talloc_type, _field))
 
-fr_heap_t	*_fr_heap_create(fr_heap_cmp_t cmp, char const *talloc_type, size_t offset);
+fr_heap_t	*_fr_heap_create(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *talloc_type, size_t offset);
 
 int		fr_heap_insert(fr_heap_t *hp, void *data);
 int		fr_heap_extract(fr_heap_t *hp, void *data);

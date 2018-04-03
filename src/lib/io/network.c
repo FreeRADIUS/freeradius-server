@@ -699,7 +699,7 @@ static void fr_network_socket_callback(void *ctx, void const *data, size_t data_
 	rad_assert(s != NULL);
 	memcpy(&s->listen, data, sizeof(s->listen));
 
-	MEM(s->waiting = fr_heap_create(waiting_cmp, fr_channel_data_t, channel.heap_id));
+	MEM(s->waiting = fr_heap_create(s, waiting_cmp, fr_channel_data_t, channel.heap_id));
 	FR_DLIST_INIT(s->entry);
 
 	talloc_set_destructor(s, _network_socket_free);
@@ -773,7 +773,7 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 	rad_assert(s != NULL);
 	memcpy(&s->listen, data, sizeof(s->listen));
 
-	MEM(s->waiting = fr_heap_create(waiting_cmp, fr_channel_data_t, channel.heap_id));
+	MEM(s->waiting = fr_heap_create(s, waiting_cmp, fr_channel_data_t, channel.heap_id));
 	FR_DLIST_INIT(s->entry);
 
 	talloc_set_destructor(s, _network_socket_free);
@@ -1017,7 +1017,7 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_log_t c
 		goto fail2;
 	}
 
-	nr->replies = fr_heap_create(reply_cmp, fr_channel_data_t, channel.heap_id);
+	nr->replies = fr_heap_create(nr, reply_cmp, fr_channel_data_t, channel.heap_id);
 	if (!nr->replies) {
 		fr_strerror_printf_push("Failed creating heap for replies");
 		goto fail2;

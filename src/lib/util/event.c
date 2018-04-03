@@ -1786,8 +1786,6 @@ static int _event_list_free(fr_event_list_t *el)
 
 	while ((ev = fr_heap_peek(el->times)) != NULL) fr_event_timer_delete(el, &ev);
 
-	talloc_free(el->times);
-
 	talloc_free_children(el);
 
 	if (el->kq >= 0) close(el->kq);
@@ -1817,7 +1815,7 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 	el->kq = -1;	/* So destructor can be used before kqueue() provides us with fd */
 	talloc_set_destructor(el, _event_list_free);
 
-	el->times = fr_heap_talloc_create(fr_event_timer_cmp, fr_event_timer_t, heap_id);
+	el->times = fr_heap_talloc_create(el, fr_event_timer_cmp, fr_event_timer_t, heap_id);
 	if (!el->times) {
 		fr_strerror_printf("Failed allocating event heap");
 	error:

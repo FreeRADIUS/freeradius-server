@@ -492,9 +492,8 @@ static void _module_thread_instance_free(void *to_free)
 {
 	module_thread_instance_t *ti = talloc_get_type_abort(to_free, module_thread_instance_t);
 
-	if (ti->module->thread_detach) {
-		(void) ti->module->thread_detach(ti->el, ti->data);
-	}
+	DEBUG3("Worker cleaning up %s thread instance data (%p/%p)", ti->module->name, ti, ti->data);
+	if (ti->module->thread_detach) (void) ti->module->thread_detach(ti->el, ti->data);
 
 	talloc_free(ti);
 }
@@ -506,6 +505,8 @@ static void _module_thread_instance_free(void *to_free)
 static void _module_thread_inst_tree_free(void *to_free)
 {
 	rbtree_t *thread_inst_tree = talloc_get_type_abort(to_free , rbtree_t);
+
+	DEBUG3("Worker cleaning up thread instance tree");
 
 	talloc_free(thread_inst_tree);
 }
@@ -563,19 +564,17 @@ static int _module_thread_instantiate(void *instance, void *ctx)
 		MEM(type_name = talloc_typed_asprintf(NULL, "rlm_%s_thread_t", mi->module->name));
 		talloc_set_name(ti->data, "%s", type_name);
 		talloc_free(type_name);
-
 	}
 
+	DEBUG3("Worker alloced %s thread instance data (%p/%p)", ti->module->name, ti, ti->data);
 	if (mi->module->thread_instantiate) {
 		ret = mi->module->thread_instantiate(mi->dl_inst->conf, mi->dl_inst->data,
-							   thread_inst_ctx->el, ti->data);
+						     thread_inst_ctx->el, ti->data);
 		if (ret < 0) {
-			ERROR("Thread instantiation failed for module \"%s\"",
-			      mi->name);
+			ERROR("Thread instantiation failed for module \"%s\"", mi->name);
 			return -1;
 		}
 	}
-
 
 	rbtree_insert(thread_inst_ctx->tree, ti);
 
