@@ -380,7 +380,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 
 #ifdef HAVE_PTHREAD_H
 	(void) pthread_attr_init(&attr);
-	(void) pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+	(void) pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
 	/*
 	 *	Create the list which holds the workers.
@@ -571,8 +571,13 @@ int fr_schedule_destroy(fr_schedule_t *sc)
 		 *	We can't catch that, so the best bet in the
 		 *	short term is to just leak this memory on exit.
 		 */
-//		sw = fr_ptr_to_type(fr_schedule_worker_t, entry, entry);
-//		talloc_free(sw->ctx);
+		sw = fr_ptr_to_type(fr_schedule_worker_t, entry, entry);
+		if (pthread_join(sw->pthread_id, NULL) != 0) {
+			fr_log(sc->log, L_ERR, "Failed joining worker %i: %s", sw->id, fr_syserror(errno));
+		} else {
+			fr_log(sc->log, L_INFO, "Worker %i exited", sw->id);
+		}
+		talloc_free(sw->ctx);
 	}
 
 	TALLOC_FREE(sc->sn->ctx);
