@@ -46,7 +46,7 @@ extern "C" {
 
 /** Types of unlang_t nodes
  *
- * Here are our basic types: unlang_t, unlang_group_t, and module_unlang_call_t. For an
+ * Here are our basic types: unlang_t, unlang_group_t, and unlang_module_call_t. For an
  * explanation of what they are all about, see doc/configurable_failover.rst
  */
 typedef enum {
@@ -170,7 +170,7 @@ typedef struct {
 	unlang_t		self;
 	module_instance_t	*module_instance;	//!< Instance of the module we're calling.
 	module_method_t		method;
-} module_unlang_call_t;
+} unlang_module_call_t;
 
 /** Pushed onto the interpreter stack by a yielding module, indicates the resumption point
  *
@@ -308,15 +308,15 @@ extern char const *const comp2str[];
 
 /** @name Conversion functions for converting #unlang_t to its specialisations
  *
- * Simple conversions: #module_unlang_call_t and #unlang_group_t are subclasses of #unlang_t,
+ * Simple conversions: #unlang_module_call_t and #unlang_group_t are subclasses of #unlang_t,
  * so we often want to go back and forth between them.
  *
  * @{
  */
-static inline module_unlang_call_t *unlang_generic_to_module_call(unlang_t *p)
+static inline unlang_module_call_t *unlang_generic_to_module_call(unlang_t *p)
 {
 	rad_assert(p->type == UNLANG_TYPE_MODULE_CALL);
-	return talloc_get_type_abort(p, module_unlang_call_t);
+	return talloc_get_type_abort(p, unlang_module_call_t);
 }
 
 static inline unlang_group_t *unlang_generic_to_group(unlang_t *p)
@@ -326,7 +326,7 @@ static inline unlang_group_t *unlang_generic_to_group(unlang_t *p)
 	return (unlang_group_t *)p;
 }
 
-static inline unlang_t *module_unlang_call_to_generic(module_unlang_call_t *p)
+static inline unlang_t *unlang_module_call_to_generic(unlang_module_call_t *p)
 {
 	return (unlang_t *)p;
 }

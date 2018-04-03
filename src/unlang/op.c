@@ -55,7 +55,7 @@ static uint64_t unlang_active_callers(unlang_t *instruction)
 	case UNLANG_TYPE_MODULE_CALL:
 	{
 		module_thread_instance_t *thread;
-		module_unlang_call_t *sp;
+		unlang_module_call_t *sp;
 
 		sp = unlang_generic_to_module_call(instruction);
 		rad_assert(sp != NULL);
@@ -302,7 +302,7 @@ static unlang_action_t unlang_load_balance(REQUEST *request,
 
 				} else {
 					module_thread_instance_t *thread;
-					module_unlang_call_t *sp;
+					unlang_module_call_t *sp;
 
 					sp = unlang_generic_to_module_call(child);
 					rad_assert(sp != NULL);
@@ -1766,6 +1766,6 @@ void unlang_op_initialize(void)
 			   });
 
 	map_unlang_init();
-	module_unlang_init();
+	unlang_module_init();
 #endif
 }

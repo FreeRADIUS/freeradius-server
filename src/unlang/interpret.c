@@ -990,7 +990,7 @@ int unlang_event_module_timeout_add(REQUEST *request, fr_unlang_module_timeout_t
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_event_t			*ev;
-	module_unlang_call_t		*sp;
+	unlang_module_call_t		*sp;
 	unlang_frame_state_modcall_t	*ms = talloc_get_type_abort(frame->state,
 								    unlang_frame_state_modcall_t);
 
@@ -1075,7 +1075,7 @@ int unlang_event_fd_add(REQUEST *request,
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_event_t			*ev;
-	module_unlang_call_t		*sp;
+	unlang_module_call_t		*sp;
 	unlang_frame_state_modcall_t	*ms = talloc_get_type_abort(frame->state,
 									       unlang_frame_state_modcall_t);
 
@@ -1139,7 +1139,7 @@ int unlang_event_fd_delete(REQUEST *request, void const *ctx, int fd)
  * This is typically called via an "async" action, i.e. an action
  * outside of the normal processing of the request.
  *
- * If there is no #fr_module_unlang_signal_t callback defined, the action is ignored.
+ * If there is no #fr_unlang_module_signal_t callback defined, the action is ignored.
  *
  * @param[in] request		The current request.
  * @param[in] action		to signal.
@@ -1427,8 +1427,8 @@ static unlang_action_t unlang_resume(REQUEST *request, rlm_rcode_t *presult, int
  *	- RLM_MODULE_FAIL (or asserts) if the current frame is not a module call or
  *	  resume frame.
  */
-rlm_rcode_t unlang_module_yield(REQUEST *request, fr_module_unlang_resume_t callback,
-				fr_module_unlang_signal_t cancel, void *rctx)
+rlm_rcode_t unlang_module_yield(REQUEST *request, fr_unlang_module_resume_t callback,
+				fr_unlang_module_signal_t cancel, void *rctx)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];

@@ -162,7 +162,7 @@ typedef void (*fr_unlang_module_fd_event_t)(REQUEST *request, void *instance, vo
  * @param[in] rctx		a local context for the callback.
  * @return a normal rlm_rcode_t.
  */
-typedef rlm_rcode_t (*fr_module_unlang_resume_t)(REQUEST *request, void *instance, void *thread, void *rctx);
+typedef rlm_rcode_t (*fr_unlang_module_resume_t)(REQUEST *request, void *instance, void *thread, void *rctx);
 
 /** A callback when the request gets a fr_state_signal_t.
  *
@@ -177,7 +177,7 @@ typedef rlm_rcode_t (*fr_module_unlang_resume_t)(REQUEST *request, void *instanc
  * @param[in] rctx		Resume ctx for the callback.
  * @param[in] action		which is signalling the request.
  */
-typedef void (*fr_module_unlang_signal_t)(REQUEST *request, void *instance, void *thread,
+typedef void (*fr_unlang_module_signal_t)(REQUEST *request, void *instance, void *thread,
 					  void *rctx, fr_state_signal_t action);
 
 /** Struct exported by a rlm_* module
@@ -302,7 +302,7 @@ int		virtual_server_namespace_register(char const *namespace, fr_virtual_server_
 void		fr_request_async_bootstrap(REQUEST *request, fr_event_list_t *el); /* for unit_test_module */
 
 /*
- *	module_unlang.c
+ *	unlang_module.c
  */
 int		unlang_event_module_timeout_add(REQUEST *request, fr_unlang_module_timeout_t callback,
 						void const *ctx, struct timeval *timeout);
@@ -317,15 +317,15 @@ int		unlang_event_timeout_delete(REQUEST *request, void const *ctx);
 
 int		unlang_event_fd_delete(REQUEST *request, void const *ctx, int fd);
 
-rlm_rcode_t	module_unlang_push_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
+rlm_rcode_t	unlang_module_push_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
 					REQUEST *request, xlat_exp_t const *xlat,
-					fr_module_unlang_resume_t callback,
-					fr_module_unlang_signal_t signal_callback, void *uctx);
+					fr_unlang_module_resume_t callback,
+					fr_unlang_module_signal_t signal_callback, void *uctx);
 
-rlm_rcode_t	unlang_module_yield(REQUEST *request, fr_module_unlang_resume_t callback,
-				    fr_module_unlang_signal_t signal_callback, void *ctx);
+rlm_rcode_t	unlang_module_yield(REQUEST *request, fr_unlang_module_resume_t callback,
+				    fr_unlang_module_signal_t signal_callback, void *ctx);
 
-void		module_unlang_init(void);
+void		unlang_module_init(void);
 #ifdef __cplusplus
 }
 #endif

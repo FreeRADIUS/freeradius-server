@@ -49,10 +49,10 @@ static inline void safe_unlock(module_instance_t *instance)
 	if (instance->mutex) pthread_mutex_unlock(instance->mutex);
 }
 
-static unlang_action_t module_unlang_call(REQUEST *request,
+static unlang_action_t unlang_module_call(REQUEST *request,
 					  rlm_rcode_t *presult, int *priority)
 {
-	module_unlang_call_t		*sp;
+	unlang_module_call_t		*sp;
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
@@ -146,18 +146,18 @@ done:
  * This is typically called via an "async" action, i.e. an action
  * outside of the normal processing of the request.
  *
- * If there is no #fr_module_unlang_signal_t callback defined, the action is ignored.
+ * If there is no #fr_unlang_module_signal_t callback defined, the action is ignored.
  *
  * @param[in] request		The current request.
- * @param[in] rctx		createed by #module_unlang_call.
+ * @param[in] rctx		createed by #unlang_module_call.
  * @param[in] action		to signal.
  */
-static void module_unlang_signal(REQUEST *request, void *rctx, fr_state_signal_t action)
+static void unlang_module_signal(REQUEST *request, void *rctx, fr_state_signal_t action)
 {
 	unlang_stack_frame_t		*frame;
 	unlang_stack_t			*stack = request->stack;
 	unlang_resume_t			*mr;
-	module_unlang_call_t		*mc;
+	unlang_module_call_t		*mc;
 	char const 			*caller;
 
 	unlang_frame_state_modcall_t	*ms = NULL;
@@ -174,19 +174,19 @@ static void module_unlang_signal(REQUEST *request, void *rctx, fr_state_signal_t
 
 	caller = request->module;
 	request->module = mc->module_instance->name;
-	((fr_module_unlang_signal_t)mr->signal)(request,
+	((fr_unlang_module_signal_t)mr->signal)(request,
 						mc->module_instance->dl_inst->data, ms->thread->data,
 						rctx, action);
 	request->module = caller;
 }
 
-static unlang_action_t module_unlang_resume(REQUEST *request, rlm_rcode_t *presult, UNUSED void *rctx)
+static unlang_action_t unlang_module_resume(REQUEST *request, rlm_rcode_t *presult, UNUSED void *rctx)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_t			*instruction = frame->instruction;
 	unlang_resume_t			*mr = unlang_generic_to_resume(instruction);
-	module_unlang_call_t		*mc = unlang_generic_to_module_call(mr->parent);
+	unlang_module_call_t		*mc = unlang_generic_to_module_call(mr->parent);
 	int				stack_depth = stack->depth;
 	char const			*caller;
 
@@ -202,7 +202,7 @@ static unlang_action_t module_unlang_resume(REQUEST *request, rlm_rcode_t *presu
 	caller = request->module;
 	request->module = mc->module_instance->name;
 	safe_lock(mc->module_instance);
-	*presult = request->rcode = ((fr_module_unlang_resume_t)mr->callback)(request,
+	*presult = request->rcode = ((fr_unlang_module_resume_t)mr->callback)(request,
 									      mc->module_instance->dl_inst->data,
 									      ms->thread->data, mr->rctx);
 	safe_unlock(mc->module_instance);
@@ -249,10 +249,10 @@ static unlang_action_t module_unlang_resume(REQUEST *request, rlm_rcode_t *presu
  * @return
  *	- RLM_MODULE_YIELD.
  */
-rlm_rcode_t module_unlang_push_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
+rlm_rcode_t unlang_module_push_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
 				    REQUEST *request, xlat_exp_t const *exp,
-				    fr_module_unlang_resume_t resume,
-				    fr_module_unlang_signal_t signal, void *rctx)
+				    fr_unlang_module_resume_t resume,
+				    fr_unlang_module_signal_t signal, void *rctx)
 {
 	/*
 	 *	Push the resumption point
@@ -267,13 +267,13 @@ rlm_rcode_t module_unlang_push_xlat(TALLOC_CTX *ctx, fr_value_box_t **out,
 	return RLM_MODULE_YIELD;	/* This may allow us to do optimisations in future */
 }
 
-void module_unlang_init(void)
+void unlang_module_init(void)
 {
 	unlang_op_register(UNLANG_TYPE_MODULE_CALL,
 			   &(unlang_op_t){
 				.name = "module",
-				.func = module_unlang_call,
-				.signal = module_unlang_signal,
-				.resume = module_unlang_resume
+				.func = unlang_module_call,
+				.signal = unlang_module_signal,
+				.resume = unlang_module_resume
 			   });
 }
