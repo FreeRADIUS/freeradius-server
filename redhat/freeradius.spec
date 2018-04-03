@@ -784,6 +784,10 @@ fi
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_json.so
 
+%files libfreeradius-unlang
+%defattr(-,root,root)
+%{_libdir}/freeradius/libfreeradius-unlang.so
+
 %files libfreeradius-util
 %defattr(-,root,root)
 %{_libdir}/freeradius/libfreeradius-util.so
