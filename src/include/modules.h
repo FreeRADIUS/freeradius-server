@@ -231,14 +231,16 @@ typedef struct {
  * Stores module and thread specific data.
  */
 typedef struct {
+	void				*data;		//!< Thread specific instance data.
+
 	fr_event_list_t			*el;		//!< Event list associated with this thread.
+
+	rad_module_t const		*module;	//!< Public module structure.  Cached for convenience,
+							///< and to prevent use-after-free if the global data
+							///< is freed before the thread instance data.
 
 	void				*mod_inst;	//!< Avoids thread_inst->inst->dl_inst->data.
 							///< This is in the hot path, so it makes sense.
-
-	module_instance_t		*inst;		//!< Non-thread local instance of this
-
-	void				*data;		//!< Thread specific instance data.
 
 	uint64_t			total_calls;	//! total number of times we've been called
 	uint64_t			active_callers; //! number of active callers.  i.e. number of current yields
