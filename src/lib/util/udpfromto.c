@@ -471,9 +471,8 @@ int sendfromto(int fd, void *buf, size_t len, int flags,
 		memset(pkt, 0, sizeof(*pkt));
 		pkt->ipi_spec_dst = s4->sin_addr;
 		pkt->ipi_ifindex = if_index;
-#  endif
 
-#  ifdef IP_SENDSRCADDR
+#  elif define(IP_SENDSRCADDR)
 		struct cmsghdr *cmsg;
 		struct in_addr *in;
 
