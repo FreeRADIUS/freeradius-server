@@ -1,7 +1,7 @@
 /*
- * Copyright (c) Dan Harkins, 2012
+ * @copyright (c) Dan Harkins, 2012
  *
- *  Copyright holder grants permission for redistribution and use in source
+ *  @copyright holder grants permission for redistribution and use in source
  *  and binary forms, with or without modification, provided that the
  *  following conditions are met:
  *     1. Redistribution of source code must retain the above copyright

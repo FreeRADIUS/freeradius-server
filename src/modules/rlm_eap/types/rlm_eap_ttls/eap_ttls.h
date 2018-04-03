@@ -17,8 +17,8 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2003 Alan DeKok <aland@freeradius.org>
- * Copyright 2006 The FreeRADIUS server project
+ * @copyright 2003 Alan DeKok <aland@freeradius.org>
+ * @copyright 2006 The FreeRADIUS server project
  */
 #ifndef _EAP_TTLS_H
 #define _EAP_TTLS_H

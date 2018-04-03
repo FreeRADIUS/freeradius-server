@@ -17,8 +17,8 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2014  Network RADIUS SARL
- * Copyright 2014  The FreeRADIUS server project
+ * @copyright 2014  Network RADIUS SARL
+ * @copyright 2014  The FreeRADIUS server project
  */
 
 #ifndef _EAP_CHBIND_H

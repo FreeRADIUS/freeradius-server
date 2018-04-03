@@ -1,4 +1,4 @@
-/* Copyright 2006 The FreeRADIUS server project */
+/* @copyright 2006 The FreeRADIUS server project */
 
 #ifndef _SMBDES_H
 #define _SMBDES_H

@@ -13,8 +13,8 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2017 The FreeRADIUS server project
- * Copyright 2017 Network RADIUS SARL <info@networkradius.com>
+ * @copyright 2017 The FreeRADIUS server project
+ * @copyright 2017 Network RADIUS SARL <info@networkradius.com>
  */
 #ifndef _FR_TACACS_H
 #define _FR_TACACS_H

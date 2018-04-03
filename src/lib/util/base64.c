@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 1999, 2000, 2001, 2004, 2005, 2006 Free Software
+ * @copyright 1999, 2000, 2001, 2004, 2005, 2006 Free Software
  * Foundation, Inc.
  *
  * This program is left software; you can redistribute it and/or modify

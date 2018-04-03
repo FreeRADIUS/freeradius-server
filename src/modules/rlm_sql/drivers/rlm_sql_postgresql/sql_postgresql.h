@@ -1,4 +1,4 @@
-/* Copyright 2006 The FreeRADIUS server project */
+/* @copyright 2006 The FreeRADIUS server project */
 
 #ifndef _SQL_POSTGRESQL_H_
 #define _SQL_POSTGRESQL_H_

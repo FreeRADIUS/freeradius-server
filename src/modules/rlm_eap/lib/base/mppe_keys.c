@@ -17,8 +17,8 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2002  Axis Communications AB
- * Copyright 2006  The FreeRADIUS server project
+ * @copyright 2002  Axis Communications AB
+ * @copyright 2006  The FreeRADIUS server project
  * Authors: Henrik Eriksson <henriken@axis.com> & Lars Viklund <larsv@axis.com>
  */
 

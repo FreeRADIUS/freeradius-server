@@ -1,7 +1,7 @@
 /*
- * Copyright 2001-2010 Georges Menie (www.menie.org)
- * Copyright 2010 Salvatore Sanfilippo (adapted to Redis coding style)
- * Copyright 2015 Arran Cudbard-Bell (adapted to FreeRADIUS coding style)
+ * @copyright 2001-2010 Georges Menie (www.menie.org)
+ * @copyright 2010 Salvatore Sanfilippo (adapted to Redis coding style)
+ * @copyright 2015 Arran Cudbard-Bell (adapted to FreeRADIUS coding style)
  *
  * All rights reserved.
  * Redistribution and use in source and binary forms, with or without

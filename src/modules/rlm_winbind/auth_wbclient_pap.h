@@ -1,4 +1,4 @@
-/* Copyright 2016 The FreeRADIUS server project */
+/* @copyright 2016 The FreeRADIUS server project */
 
 #ifndef _AUTH_WBCLIENT_PAP_H
 #define _AUTH_WBCLIENT_PAP_H

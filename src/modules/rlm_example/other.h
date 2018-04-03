@@ -1,4 +1,4 @@
-/* Copyright 2006 The FreeRADIUS server project */
+/* @copyright 2006 The FreeRADIUS server project */
 
 #ifndef _OTHER_H
 #define _OTHER_H

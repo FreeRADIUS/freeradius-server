@@ -1,4 +1,4 @@
-/* Copyright 2006 The FreeRADIUS server project */
+/* @copyright 2006 The FreeRADIUS server project */
 
 #ifndef _MSCHAP_H
 #define _MSCHAP_H

@@ -1,4 +1,4 @@
-/* Copyright 2016 The FreeRADIUS server project */
+/* @copyright 2016 The FreeRADIUS server project */
 
 #ifndef _RLM_WBCLIENT_H
 #define _RLM_WBCLIENT_H

@@ -1,4 +1,4 @@
-/* Copyright 2006-2015 The FreeRADIUS server project */
+/* @copyright 2006-2015 The FreeRADIUS server project */
 
 #ifndef _RLM_MSCHAP_H
 #define _RLM_MSCHAP_H
