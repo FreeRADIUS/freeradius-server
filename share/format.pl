@@ -69,6 +69,12 @@ while (@ARGV) {
 	s/\s*$/\n/;
 
 	#
+	#  Suppress leading whitespace, so long as it's
+	#  not followed by a comment..
+	#
+	s/^\s*([^#])/$1/;
+
+	#
 	#  Remember the vendor
 	#
 	if (/^VENDOR\s+([-\w]+)\s+(\w+)(.*)/) {
