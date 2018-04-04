@@ -566,8 +566,7 @@ static int _module_thread_instantiate(void *instance, void *ctx)
 		talloc_free(type_name);
 	}
 
-	DEBUG4("Worker %i alloced %s thread instance data (%p/%p)",
-	       fr_schedule_worker_id(), ti->module->name, ti, ti->data);
+	DEBUG4("Worker alloced %s thread instance data (%p/%p)", ti->module->name, ti, ti->data);
 	if (mi->module->thread_instantiate) {
 		ret = mi->module->thread_instantiate(mi->dl_inst->conf, mi->dl_inst->data,
 						     thread_inst_ctx->el, ti->data);
