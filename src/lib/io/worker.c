@@ -1463,7 +1463,7 @@ void fr_worker(fr_worker_t *worker)
 		 */
 		wait_for_event = (fr_heap_num_elements(worker->runnable) == 0);
 		if (wait_for_event) {
-			INFO("Worker %i ready to process requests", fr_schedule_worker_id());
+			DEBUG2("Worker %i ready to process requests", fr_schedule_worker_id());
 		}
 
 		/*
