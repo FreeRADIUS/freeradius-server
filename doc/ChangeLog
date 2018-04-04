@@ -7,6 +7,9 @@ FreeRADIUS 3.0.17 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	* Add Dockerfiles for a selection of common systems.
 	* Increase number of permitted file descriptors, for
 	  systems with many home servers.
+	* Add TLS-Client-Cert-X509v3-Extended-Key-Usage-OIDs.
+	  Patch from Isaac Boukris.  Fixes #2205.
+	* Update main READMEs.  Patches from Matthew Newton.
 
 	Bug fixes
 	* Don't call post-proxy twice when proxying to
@@ -37,6 +40,8 @@ FreeRADIUS 3.0.17 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	* Fix "users" file (and hints, etc). So that it does not
 	  get confused about entry ordering with multiple $INCLUDEs.
 	* Fix rlm_sql to expand the un-escaped string, not the raw string.
+	* Link default and inner-tunnel only if they exist.  Fixes #2206.
+	* Don't use both IP_PKTINFO and IP_SENDSRCADDR.
 
 FreeRADIUS 3.0.16 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	Feature improvements
