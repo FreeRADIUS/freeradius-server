@@ -139,6 +139,16 @@ struct fr_schedule_t {
 	fr_schedule_network_t *sn;		//!< pointer to the (one) network thread
 };
 
+static _Thread_local int worker_id;		//!< Internal ID of the current worker thread.
+
+/** Return the worker id for the current thread
+ *
+ * @return worker ID
+ */
+int fr_schedule_worker_id(void)
+{
+	return worker_id;
+}
 
 /** Initialize and run the worker thread.
  *
@@ -152,6 +162,8 @@ static void *fr_schedule_worker_thread(void *arg)
 	fr_schedule_t *sc = sw->sc;
 	fr_schedule_child_status_t status = FR_CHILD_FAIL;
 	char buffer[32];
+
+	worker_id = sw->id;		/* Store the current worker ID */
 
 	sw->ctx = ctx = talloc_init("worker %d", sw->id);
 	if (!ctx) {
@@ -235,7 +247,7 @@ fail:
 static void *fr_schedule_network_thread(void *arg)
 {
 	TALLOC_CTX			*ctx;
-	fr_schedule_network_t		*sn = arg;
+	fr_schedule_network_t		*sn = talloc_get_type_abort(arg, fr_schedule_network_t);
 	fr_schedule_t			*sc = sn->sc;
 	fr_schedule_child_status_t	status = FR_CHILD_FAIL;
 	fr_event_list_t			*el;

@@ -27,6 +27,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/io/schedule.h>
 
 #include <ctype.h>
 
@@ -97,6 +98,10 @@ static int _xlat_thread_inst_detach(xlat_thread_inst_t *thread_inst)
 static void _xlat_thread_inst_free(void *to_free)
 {
 	xlat_thread_inst_t *thread_inst = talloc_get_type_abort(to_free, xlat_thread_inst_t);
+
+	DEBUG4("Worker %i cleaning up xlat thread instance (%p/%p)", fr_schedule_worker_id(),
+	       thread_inst, thread_inst->data);
+
 	talloc_free(thread_inst);
 }
 
@@ -108,7 +113,7 @@ static void _xlat_thread_inst_tree_free(void *to_free)
 {
 	rbtree_t *thread_inst_tree = talloc_get_type_abort(to_free , rbtree_t);
 
-	DEBUG3("Worker cleaning up xlat thread instance tree");
+	DEBUG4("Worker %i cleaning up xlat thread instance tree", fr_schedule_worker_id());
 	talloc_free(thread_inst_tree);
 }
 
@@ -155,6 +160,9 @@ static xlat_thread_inst_t *xlat_thread_inst_alloc(TALLOC_CTX *ctx, xlat_inst_t *
 		talloc_set_name_const(thread_inst->data, inst->node->xlat->thread_inst_type);
 #endif
 	}
+
+	DEBUG4("Worker %i alloced xlat thread instance (%p/%p)", fr_schedule_worker_id(),
+	       thread_inst, thread_inst->data);
 
 	return thread_inst;
 }

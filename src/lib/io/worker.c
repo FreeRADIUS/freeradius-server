@@ -65,6 +65,7 @@ RCSID("$Id$")
 #include <freeradius-devel/io/channel.h>
 #include <freeradius-devel/io/message.h>
 #include <freeradius-devel/io/listen.h>
+#include <freeradius-devel/io/schedule.h>
 
 /**
  *  Track things by priority and time.
@@ -660,7 +661,7 @@ static void worker_reset_timer(fr_worker_t *worker)
 	worker->next_cleanup = cleanup;
 	fr_time_to_timeval(&when, cleanup);
 
-	DEBUG2("Resetting worker cleanup timer to +%ds", worker->max_request_time);
+	DEBUG2("Resetting worker %i cleanup timer to +%ds", worker->max_request_time, fr_schedule_worker_id());
 	if (fr_event_timer_insert(worker, worker->el, &worker->ev_cleanup,
 				  &when, fr_worker_max_request_time, worker) < 0) {
 		ERROR("Failed inserting max_request_time timer.");
@@ -768,7 +769,7 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	 */
 	request = fr_heap_pop(worker->runnable);
 	if (request) {
-		DEBUG3("Worker found runnable request.");
+		DEBUG3("Worker %i found runnable request", fr_schedule_worker_id());
 		REQUEST_VERIFY(request);
 		rad_assert(request->runnable_id < 0);
 		fr_time_tracking_resume(&request->async->tracking, now);
@@ -785,11 +786,11 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 			WORKER_HEAP_POP(to_decode, cd, request.list);
 		}
 		if (!cd) {
-			DEBUG3("Worker localized and decode lists are empty.");
+			DEBUG3("Worker %i localized and decode lists are empty", fr_schedule_worker_id());
 			return NULL;
 		}
 
-		DEBUG3("Worker found request to decode.");
+		DEBUG3("Worker %i found request to decode", fr_schedule_worker_id());
 		worker->num_decoded++;
 	} while (!cd);
 
@@ -1103,7 +1104,7 @@ static int fr_worker_pre_event(void *ctx, struct timeval *wake)
 	 *	are still sleeping.
 	 */
 	if (worker->was_sleeping) {
-		DEBUG3("\tworker was sleeping, not re-signaling");
+		DEBUG3("Worker %i was sleeping, not re-signaling", fr_schedule_worker_id());
 		return 0;
 	}
 
@@ -1460,7 +1461,7 @@ void fr_worker(fr_worker_t *worker)
 		 */
 		wait_for_event = (fr_heap_num_elements(worker->runnable) == 0);
 		if (wait_for_event) {
-			DEBUG("Ready to process requests.");
+			INFO("Worker %i ready to process requests", fr_schedule_worker_id());
 		}
 
 		/*

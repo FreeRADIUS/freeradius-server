@@ -492,7 +492,8 @@ static void _module_thread_instance_free(void *to_free)
 {
 	module_thread_instance_t *ti = talloc_get_type_abort(to_free, module_thread_instance_t);
 
-	DEBUG3("Worker cleaning up %s thread instance data (%p/%p)", ti->module->name, ti, ti->data);
+	DEBUG4("Worker %i cleaning up %s thread instance data (%p/%p)",
+	       fr_schedule_worker_id(), ti->module->name, ti, ti->data);
 	if (ti->module->thread_detach) (void) ti->module->thread_detach(ti->el, ti->data);
 
 	talloc_free(ti);
@@ -506,7 +507,7 @@ static void _module_thread_inst_tree_free(void *to_free)
 {
 	rbtree_t *thread_inst_tree = talloc_get_type_abort(to_free , rbtree_t);
 
-	DEBUG3("Worker cleaning up thread instance tree");
+	DEBUG4("Worker %i cleaning up thread instance tree", fr_schedule_worker_id());
 
 	talloc_free(thread_inst_tree);
 }
@@ -566,7 +567,8 @@ static int _module_thread_instantiate(void *instance, void *ctx)
 		talloc_free(type_name);
 	}
 
-	DEBUG3("Worker alloced %s thread instance data (%p/%p)", ti->module->name, ti, ti->data);
+	DEBUG4("Worker %i alloced %s thread instance data (%p/%p)",
+	       fr_schedule_worker_id(), ti->module->name, ti, ti->data);
 	if (mi->module->thread_instantiate) {
 		ret = mi->module->thread_instantiate(mi->dl_inst->conf, mi->dl_inst->data,
 						     thread_inst_ctx->el, ti->data);
