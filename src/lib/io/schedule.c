@@ -157,10 +157,10 @@ int fr_schedule_worker_id(void)
  */
 static void *fr_schedule_worker_thread(void *arg)
 {
-	TALLOC_CTX *ctx;
-	fr_schedule_worker_t *sw = arg;
-	fr_schedule_t *sc = sw->sc;
-	fr_schedule_child_status_t status = FR_CHILD_FAIL;
+	TALLOC_CTX			*ctx;
+	fr_schedule_worker_t		*sw = talloc_get_type_abort(arg, fr_schedule_worker_t);
+	fr_schedule_t			*sc = sw->sc;
+	fr_schedule_child_status_t	status = FR_CHILD_FAIL;
 	char buffer[32];
 
 	worker_id = sw->id;		/* Store the current worker ID */
