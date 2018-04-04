@@ -52,7 +52,6 @@ extern struct timeval sd_watchdog_interval;
 static fr_event_timer_t const *sd_watchdog_ev;
 #endif
 
-static bool spawn_workers = false;
 static bool just_started = true;
 time_t fr_start_time = (time_t)-1;
 static fr_event_list_t *event_list = NULL;
@@ -358,21 +357,6 @@ int radius_event_start(UNUSED bool have_children)
 		DEBUG("%s: #### Skipping IP addresses and Ports ####",
 		       main_config.name);
 		return 0;
-	}
-
-	/*
-	 *	Perform thread specific module instantiation for single-threaded mode.
-	 */
-	if (!spawn_workers) {
-		if (modules_thread_instantiate(main_config.config, event_list) < 0) {
-			ERROR("Failed to instantiate thread-specific data for modules");
-			return -1;
-		}
-
-		if (xlat_thread_instantiate() < 0) {
-			ERROR("Failed to instantiate thread-specific data for xlats");
-			return -1;
-		}
 	}
 
 	/*
