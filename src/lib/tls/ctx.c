@@ -247,6 +247,7 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t const *chai
 			if (!SSL_CTX_build_cert_chain(ctx, mode)) {
 				tls_strerror_printf(NULL);
 				PERROR("Failed verifying chain");
+				return -1;
 			}
 			break;
 
