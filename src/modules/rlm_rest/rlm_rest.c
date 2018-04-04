@@ -98,14 +98,14 @@ static const CONF_PARSER module_config[] = {
 static fr_dict_t const *dict_freeradius;
 static fr_dict_attr_t const *attr_rest_http_status_code;
 
-extern fr_dict_attr_autoload_t dict_attr_autoload_rest[];
-fr_dict_attr_autoload_t dict_attr_autoload_rest[] = {
+extern fr_dict_attr_autoload_t rlm_rest_dict_attr[];
+fr_dict_attr_autoload_t rlm_rest_dict_attr[] = {
 	{ .out = &attr_rest_http_status_code, .name = "REST-HTTP-Status-Code", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ NULL }
 };
 
-extern fr_dict_autoload_t dict_autoload_rest[];
-fr_dict_autoload_t dict_autoload_rest[] = {
+extern fr_dict_autoload_t rlm_rest_dict[];
+fr_dict_autoload_t rlm_rest_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ NULL }
 };
