@@ -222,6 +222,7 @@ $INCLUDE dictionary.meru
 $INCLUDE dictionary.microsemi
 $INCLUDE dictionary.microsoft
 $INCLUDE dictionary.mikrotik
+$INCLUDE dictionary.mimosa
 $INCLUDE dictionary.motorola
 $INCLUDE dictionary.motorola.wimax
 $INCLUDE dictionary.navini
