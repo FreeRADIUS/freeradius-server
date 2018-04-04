@@ -547,7 +547,7 @@ static int _module_thread_instantiate(void *instance, void *ctx)
 	_thread_intantiate_ctx_t	*thread_inst_ctx = ctx;
 	int				ret;
 
-	MEM(ti = talloc_zero(NULL, module_thread_instance_t));
+	MEM(ti = talloc_zero(thread_inst_ctx->tree, module_thread_instance_t));
 	ti->el = thread_inst_ctx->el;
 	ti->module = mi->module;
 	ti->mod_inst = mi->dl_inst->data;	/* For efficient lookups */

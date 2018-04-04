@@ -107,6 +107,8 @@ static void _xlat_thread_inst_free(void *to_free)
 static void _xlat_thread_inst_tree_free(void *to_free)
 {
 	rbtree_t *thread_inst_tree = talloc_get_type_abort(to_free , rbtree_t);
+
+	DEBUG3("Worker cleaning up xlat thread instance tree");
 	talloc_free(thread_inst_tree);
 }
 
@@ -299,12 +301,12 @@ int xlat_instantiate_ephemeral(xlat_exp_t *root)
 /** Walker callback for xlat_inst_tree
  *
  */
-static int _xlat_thread_instantiate(UNUSED void *ctx, void *data)
+static int _xlat_thread_instantiate(void *ctx, void *data)
 {
 	xlat_thread_inst_t	*thread_inst;
 	xlat_inst_t		*inst = talloc_get_type_abort(data, xlat_inst_t);
 
-	thread_inst = xlat_thread_inst_alloc(NULL, data);
+	thread_inst = xlat_thread_inst_alloc(ctx, data);
 	if (!thread_inst) return -1;
 
 	DEBUG3("Instantiating xlat \"%s\" node %p, instance %p, new thread instance %p",
@@ -313,7 +315,8 @@ static int _xlat_thread_instantiate(UNUSED void *ctx, void *data)
 	if (inst->node->xlat->thread_instantiate) {
 		int ret;
 
-		ret = inst->node->xlat->thread_instantiate(inst->data, thread_inst->data, inst->node, inst->node->xlat->uctx);
+		ret = inst->node->xlat->thread_instantiate(inst->data, thread_inst->data,
+							   inst->node, inst->node->xlat->uctx);
 		if (ret < 0) {
 			talloc_free(thread_inst);
 			return -1;
@@ -373,7 +376,7 @@ int xlat_thread_instantiate(void)
 	/*
 	 *	Walk the inst tree, creating thread specific instances.
 	 */
-	ret = rbtree_walk(xlat_inst_tree, RBTREE_PRE_ORDER, _xlat_thread_instantiate, NULL);
+	ret = rbtree_walk(xlat_inst_tree, RBTREE_PRE_ORDER, _xlat_thread_instantiate, xlat_thread_inst_tree);
 	if (ret < 0) {
 		_xlat_thread_inst_tree_free(xlat_thread_inst_tree);	/* Destroy the thread_inst_tree if instantiation fails */
 		return -1;
