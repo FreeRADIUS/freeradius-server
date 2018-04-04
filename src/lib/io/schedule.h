@@ -34,7 +34,17 @@ extern "C" {
 #endif
 
 typedef struct fr_schedule_t fr_schedule_t;
-typedef int (*fr_schedule_thread_instantiate_t)(void *ctx, fr_event_list_t *el);
+
+/** Setup a new thread
+ *
+ * @param[in] ctx	to allocate any thread specific memory in.
+ * @param[in] el	Event list used by the thread.
+ * @param[in] uctx	User data passed to callback.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+typedef int (*fr_schedule_thread_instantiate_t)(TALLOC_CTX *ctx, fr_event_list_t *el, void *uctx);
 
 int			fr_schedule_worker_id(void);
 

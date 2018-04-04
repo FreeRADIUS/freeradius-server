@@ -39,7 +39,7 @@ static rbtree_t *xlat_inst_tree;
 
 /** Holds thread specific instance data created by xlat_instantiate
  */
-fr_thread_local_setup(rbtree_t *, xlat_thread_inst_tree)
+static _Thread_local rbtree_t *xlat_thread_inst_tree;
 
 /** Compare two xlat instances based on node pointer
  *
@@ -102,18 +102,6 @@ static void _xlat_thread_inst_free(void *to_free)
 	DEBUG4("Worker cleaning up xlat thread instance (%p/%p)", thread_inst, thread_inst->data);
 
 	talloc_free(thread_inst);
-}
-
-/** Frees the thread local instance free and any thread local instance data
- *
- * @param[in] to_free	Thread specific module instance tree to free.
- */
-static void _xlat_thread_inst_tree_free(void *to_free)
-{
-	rbtree_t *thread_inst_tree = talloc_get_type_abort(to_free , rbtree_t);
-
-	DEBUG4("Worker cleaning up xlat thread instance tree");
-	talloc_free(thread_inst_tree);
 }
 
 /** Create thread instances where needed
@@ -365,18 +353,22 @@ xlat_thread_inst_t *xlat_thread_instance_find(xlat_exp_t const *node)
  * This should be called directly after the modules_thread_instantiate() function.
  *
  * Memory will be freed automatically when the thread exits.
+ *
+ * @param[in] ctx	to bind instance tree lifetime to.  Must not be
+ *			shared between multiple threads.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-int xlat_thread_instantiate(void)
+int xlat_thread_instantiate(TALLOC_CTX *ctx)
 {
 	int ret;
 
 	if (!xlat_inst_tree) return 0;
 
 	if (!xlat_thread_inst_tree) {
-		MEM(xlat_thread_inst_tree = rbtree_talloc_create(NULL, _xlat_thread_inst_cmp,
+		MEM(xlat_thread_inst_tree = rbtree_talloc_create(ctx, _xlat_thread_inst_cmp,
 								 xlat_thread_inst_t, _xlat_thread_inst_free, 0));
-		fr_thread_local_set_destructor(xlat_thread_inst_tree,
-					       _xlat_thread_inst_tree_free, xlat_thread_inst_tree);
 	}
 
 	/*
@@ -384,7 +376,7 @@ int xlat_thread_instantiate(void)
 	 */
 	ret = rbtree_walk(xlat_inst_tree, RBTREE_PRE_ORDER, _xlat_thread_instantiate, xlat_thread_inst_tree);
 	if (ret < 0) {
-		_xlat_thread_inst_tree_free(xlat_thread_inst_tree);	/* Destroy the thread_inst_tree if instantiation fails */
+		TALLOC_FREE(xlat_thread_inst_tree);
 		return -1;
 	}
 

@@ -193,7 +193,7 @@ static void *fr_schedule_worker_thread(void *arg)
 	 *	@todo make this a registry
 	 */
 	if (sc->worker_thread_instantiate &&
-	    (sc->worker_thread_instantiate(sc->worker_instantiate_ctx, fr_worker_el(sw->worker)) < 0)) {
+	    (sc->worker_thread_instantiate(sw->ctx, fr_worker_el(sw->worker), sc->worker_instantiate_ctx) < 0)) {
 		fr_log(sc->log, L_ERR, "Worker %d - Failed calling thread instantiate: %s", sw->id, fr_strerror());
 		goto fail;
 	}
@@ -374,6 +374,7 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		sc->single_network = fr_network_create(sc, el, sc->log, sc->lvl);
 		if (!sc->single_network) {
 			fr_log(sc->log, L_ERR, "Failed creating network: %s", fr_strerror());
+		st_fail:
 			talloc_free(sc);
 			return NULL;
 		}
@@ -381,12 +382,18 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 		sc->single_worker = fr_worker_create(sc, el, sc->log, sc->lvl);
 		if (!sc->single_worker) {
 			fr_log(sc->log, L_ERR, "Failed creating worker: %s", fr_strerror());
-			talloc_free(sc);
-			return NULL;
+			goto st_fail;
+		}
+
+		if (sc->worker_thread_instantiate &&
+		    (sc->worker_thread_instantiate(ctx, el, sc->worker_instantiate_ctx) < 0)) {
+			fr_log(sc->log, L_ERR, "Failed calling thread instantiate: %s", fr_strerror());
+			goto st_fail;
 		}
 
 		(void) fr_network_worker_add(sc->single_network, sc->single_worker);
 		fr_log(sc->log, L_DBG, "Scheduler created in single-threaded mode");
+
 		return sc;
 	}
 

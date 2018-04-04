@@ -290,7 +290,7 @@ int		xlat_instantiate_ephemeral(xlat_exp_t *root);
 
 xlat_thread_inst_t *xlat_thread_instance_find(xlat_exp_t const *node);
 
-int		xlat_thread_instantiate(void);
+int		xlat_thread_instantiate(TALLOC_CTX *ctx);
 
 int		xlat_instantiate(void);
 
