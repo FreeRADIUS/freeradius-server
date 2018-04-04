@@ -263,8 +263,8 @@ static unlang_action_t unlang_xlat(REQUEST *request,
  * timer or I/O event the module was waiting for occurs.
  *
  * @note The module function which calls #unlang_module_yield should return control
- *	of the C stack to the unlang interpreter immediately after calling #unlang_module_yield.
- *	A common pattern is to use ``return unlang_module_yield(...)``.
+ *	of the C stack to the unlang interpreter immediately after calling #unlang_xlat_yield.
+ *	A common pattern is to use ``return unlang_xlat_yield(...)``.
  *
  * @param[in] request		The current request.
  * @param[in] callback		to call on unlang_resumable().
