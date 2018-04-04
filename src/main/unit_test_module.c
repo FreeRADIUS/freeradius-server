@@ -664,6 +664,8 @@ int main(int argc, char *argv[])
 	RADCLIENT		*client = NULL;
 	CONF_SECTION		*unlang;
 	char			*auth_type;
+
+	TALLOC_CTX		*thread_ctx = talloc_init("thread_ctx");
 	fr_talloc_fault_setup();
 
 	/*
@@ -865,11 +867,6 @@ int main(int argc, char *argv[])
 	rad_assert(el != NULL);
 
 	/*
-	 *	Perform any thread specific instantiation
-	 */
-	if (modules_thread_instantiate(main_config.config, el) < 0) goto exit_failure;
-
-	/*
 	 *	And then load the virtual servers.
 	 */
 	if (virtual_servers_instantiate() < 0) goto exit_failure;
@@ -878,7 +875,12 @@ int main(int argc, char *argv[])
 	 *	Call xlat instantiation functions (after the xlats have been compiled)
 	 */
 	if (xlat_instantiate() < 0) exit(EXIT_FAILURE);
-	if (xlat_thread_instantiate() < 0) goto exit_failure;
+
+	/*
+	 *	Simulate thread specific instantiation
+	 */
+	if (modules_thread_instantiate(thread_ctx, main_config.config, el) < 0) goto exit_failure;
+	if (xlat_thread_instantiate(thread_ctx) < 0) goto exit_failure;
 
 	state = fr_state_tree_init(NULL, main_config.max_requests * 2, 10);
 
@@ -1074,6 +1076,11 @@ done:
 finish:
 	talloc_free(request);
 	talloc_free(state);
+
+	/*
+	 *	Free thread data
+	 */
+	talloc_free(thread_ctx);
 
 	/*
 	 *	Free the event list.
