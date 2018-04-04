@@ -48,7 +48,7 @@ static inline int __fr_thread_local_destructor_##_n(pthread_destructor_t *ctx)\
 	func(_n);\
 	return 0;\
 }\
-static inline _t __fr_thread_local_set_destructor_##_n(pthread_destructor_t func, void *value)\
+static inline int __fr_thread_local_set_destructor_##_n(pthread_destructor_t func, void *value)\
 {\
 	static pthread_destructor_t *ctx;\
 	if (!ctx) {\
@@ -57,7 +57,7 @@ static inline _t __fr_thread_local_set_destructor_##_n(pthread_destructor_t func
 		*ctx = func;\
 	}\
 	_n = value;\
-	return _n;\
+	return 0;\
 }
 #  define fr_thread_local_set_destructor(_n, _f, _v) __fr_thread_local_set_destructor_##_n(_f, _v)
 #else
@@ -81,15 +81,17 @@ static void __fr_thread_local_key_init_##_n(void)\
 {\
 	(void) pthread_key_create(&__fr_thread_local_key_##_n, __fr_thread_local_destroy_##_n);\
 }\
-static _t __fr_thread_local_set_destructor_##_n(pthread_destructor_t func, void *value)\
+static int __fr_thread_local_set_destructor_##_n(pthread_destructor_t func, void *value)\
 {\
 	__fr_thread_local_destructor_##_n = func;\
-	if (_n) return _n; \
-	if (!value) return _n; \
+	if (!value) { \
+		errno = EINVAL; \
+		return -1; \
+	} \
 	(void) pthread_once(&__fr_thread_local_once_##_n, __fr_thread_local_key_init_##_n);\
 	(void) pthread_setspecific(__fr_thread_local_key_##_n, value);\
 	_n = value;\
-	return _n;\
+	return 0;\
 }
 /** Set a destructor for thread local storage to free the memory on thread exit
  *
