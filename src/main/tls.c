@@ -2274,6 +2274,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	 */
 	if (certs && (sk_X509_EXTENSION_num(ext_list) > 0)) {
 		int i, len;
+		EXTENDED_KEY_USAGE *eku;
 		char *p;
 		BIO *out;
 
@@ -2319,6 +2320,24 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		}
 
 		BIO_free_all(out);
+
+		/* Export raw EKU OIDs to allow matching a single OID regardless of its name */
+		eku = X509_get_ext_d2i(client_cert, NID_ext_key_usage, NULL, NULL);
+		if (eku != NULL) {
+			for (i = 0; i < sk_ASN1_OBJECT_num(eku); i++) {
+				len = OBJ_obj2txt(value, sizeof(value), sk_ASN1_OBJECT_value(eku, i), 1);
+				if ((len > 0) && ((unsigned) len < sizeof(value))) {
+					vp = fr_pair_make(talloc_ctx, certs,
+							  "TLS-Client-Cert-X509v3-Extended-Key-Usage-OID",
+							  value, T_OP_ADD);
+					rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+				}
+				else {
+					RDEBUG("Failed to get EKU OID at index %d", i);
+				}
+			}
+			EXTENDED_KEY_USAGE_free(eku);
+		}
 	}
 
 	REXDENT();

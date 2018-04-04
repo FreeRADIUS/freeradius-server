@@ -533,8 +533,9 @@ ATTRIBUTE	TLS-Client-Cert-X509v3-Basic-Constraints 1930	string
 ATTRIBUTE	TLS-Client-Cert-Subject-Alt-Name-Dns	1931	string
 ATTRIBUTE	TLS-Client-Cert-Subject-Alt-Name-Upn	1932	string
 ATTRIBUTE	TLS-PSK-Identity			1933	string
+ATTRIBUTE	TLS-Client-Cert-X509v3-Extended-Key-Usage-OID 1936	string
 
-# 1934 - 1939: reserved for future cert attributes
+# 1937 - 1939: reserved for future cert attributes
 
 # 1940 - 1949: reserved for TLS session caching, mostly in 3.1
 
