@@ -1447,14 +1447,13 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 		}
 
 		/*
-		 *	See if the home server is already listed
-		 *	in the pool.  If so, do nothing else.
+		 *	Don't check for duplicate home servers.  If
+		 *	the user specifies that, well, they can do it.
+		 *
+		 *	Allowing duplicates means that all of the
+		 *	realm->server[] entries are filled, which is
+		 *	what the rest of the code assumes.
 		 */
-		if (pool) for (i = 0; i < pool->num_home_servers; i++) {
-			if (pool->servers[i] == home) {
-				return 1;
-			}
-		}
 	}
 
 	/*
@@ -2731,6 +2730,30 @@ home_server_t *home_server_find(fr_ipaddr_t *ipaddr, uint16_t port,
 	memset(&myhome, 0, sizeof(myhome));
 	myhome.ipaddr = *ipaddr;
 	myhome.src_ipaddr.af = ipaddr->af;
+	myhome.port = port;
+#ifdef WITH_TCP
+	myhome.proto = proto;
+#else
+	myhome.proto = IPPROTO_UDP;
+#endif
+	myhome.server = NULL;	/* we're not called for internal proxying */
+
+	return rbtree_finddata(home_servers_byaddr, &myhome);
+}
+
+home_server_t *home_server_find_bysrc(fr_ipaddr_t *ipaddr, uint16_t port,
+				int proto,
+				fr_ipaddr_t *src_ipaddr)
+{
+	home_server_t myhome;
+
+	if (!src_ipaddr) return home_server_find(ipaddr, port, proto);
+
+	if (src_ipaddr->af != ipaddr->af) return NULL;
+
+	memset(&myhome, 0, sizeof(myhome));
+	myhome.ipaddr = *ipaddr;
+	myhome.src_ipaddr = *src_ipaddr;
 	myhome.port = port;
 #ifdef WITH_TCP
 	myhome.proto = proto;

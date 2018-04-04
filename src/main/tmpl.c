@@ -1222,6 +1222,13 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 		return -1;
 	}
 
+	/*
+	 *	Copy over any additional fields needed...
+	 */
+	if ((vpt->type == TMPL_TYPE_ATTR) && vp->da->flags.has_tag) {
+		vp->tag = vpt->tmpl_tag;
+	}
+
 	*out = vp;
 	return 0;
 }

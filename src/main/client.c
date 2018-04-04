@@ -1341,7 +1341,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 			 *	We could reuse the CONF_PAIR buff, this just keeps things
 			 *	consistent between client_afrom_cs, and client_afrom_query.
 			 */
-			*p = talloc_strdup(c, strvalue);
+			*p = talloc_strdup(c, vp->vp_strvalue);
 
 			/*
 			 *	This is fairly nasty... In order to figure out the CONF_PAIR

@@ -68,11 +68,6 @@ struct xlat_exp {
 	xlat_t const *xlat;	//!< The xlat expansion to expand format with.
 };
 
-typedef struct xlat_out {
-	char const *out;	//!< Output data.
-	size_t len;		//!< Length of the output string.
-} xlat_out_t;
-
 static rbtree_t *xlat_root = NULL;
 
 #ifdef WITH_UNLANG
@@ -484,6 +479,7 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 			RINDENT();
 			RDEBUG2("as %s%*s: %s", type->name, pad, " ", value);
 			REXDENT();
+			talloc_free(value);
 
 		next_type:
 			talloc_free(dst);

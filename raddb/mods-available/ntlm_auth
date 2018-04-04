@@ -6,6 +6,12 @@
 #
 #	https://bugzilla.samba.org/show_bug.cgi?id=6563
 #
+#  Depending on the AD / Samba configuration, you may also need to add:
+#
+#	--allow-mschapv2
+#
+#  to the list of command-line options.
+#
 exec ntlm_auth {
 	wait = yes
 	program = "/path/to/ntlm_auth --request-nt-key --domain=MYDOMAIN --username=%{mschap:User-Name} --password=%{User-Password}"

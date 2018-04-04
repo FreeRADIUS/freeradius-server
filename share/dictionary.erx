@@ -15,6 +15,9 @@
 #	http://www.juniper.net/techpubs/software/junos/junos112/radius-dictionary/unisphereDictionary_for_JUNOS_v11-2.dct
 #	http://www.juniper.net/techpubs/en_US/junos10.3/topics/reference/general/aaa-subscriber-access-radius-vsa.html
 #
+# Juniper now publishes a single 'current' document for the latest OS with all supported VSAs here:
+#       https://www.juniper.net/documentation/en_US/junos/topics/reference/general/aaa-subscriber-access-radius-vsa.html
+#
 # In this file, we keep the ERX prefix and the JUNOSe attribute names
 # for backwards compatibility
 #
@@ -222,9 +225,40 @@ ATTRIBUTE	ERX-Tx-Connect-Speed			162	integer
 ATTRIBUTE	ERX-Rx-Connect-Speed			163	integer
 
 # ATTRIBUTE 164 - 173 RESERVED
+ATTRIBUTE	ERX-Service-Activate-Type		173	integer
 ATTRIBUTE	ERX-Client-Profile-Name			174	string
 ATTRIBUTE	ERX-Redirect-GW-Address			175	ipaddr
 ATTRIBUTE	ERX-APN-Name				176	string
+
+ATTRIBUTE	ERX-Service-Volume-Gigawords		179	integer
+ATTRIBUTE	ERX-Update-Service			180	string
+ATTRIBUTE	ERX-DHCPv6-Guided-Relay-Server		181	ipv6addr
+ATTRIBUTE	ERX-Acc-Loop-Remote-Id			182	string
+ATTRIBUTE	ERX-Acc-Loop-Encap			183	octets
+ATTRIBUTE	ERX-Inner-Vlan-Map-Id			184	integer
+ATTRIBUTE	ERX-Core-Facing-Interface		185	string
+ATTRIBUTE	ERX-DHCP-First-Relay-IPv4-Address	189	ipaddr
+ATTRIBUTE	ERX-DHCP-First-Relay-IPv6-Address	190	ipv6addr
+ATTRIBUTE	ERX-Input-Interface-Filter		191	string
+ATTRIBUTE	ERX-Output-Interface-Filter		192	string
+ATTRIBUTE	ERX-Pim-Enable				193	integer
+ATTRIBUTE	ERX-Bulk-CoA-Transaction-Id		194	integer
+ATTRIBUTE	ERX-Bulk-CoA-Identifier			195	integer
+ATTRIBUTE	ERX-IPv4-Input-Service-Set		196	string
+ATTRIBUTE	ERX-IPv4-Output-Service-Set		197	string
+ATTRIBUTE	ERX-IPv4-Input-Service-Filter		198	string
+ATTRIBUTE	ERX-IPv4-Output-Service-Filter		199	string
+ATTRIBUTE	ERX-IPv6-Input-Service-Set		200	string
+ATTRIBUTE	ERX-IPv6-Output-Service-Set		201	string
+ATTRIBUTE	ERX-IPv6-Input-Service-Filter		202	string
+ATTRIBUTE	ERX-IPv6-Output-Service-Filter		203	string
+ATTRIBUTE	ERX-Adv-Pcef-Profile-Name		204	string
+ATTRIBUTE	ERX-Adv-Pcef-Rule-Name			205	string
+ATTRIBUTE	ERX-Re-Authentication-Catalyst		206	integer
+ATTRIBUTE	ERX-DHCPv6-Options			207	octets
+ATTRIBUTE	ERX-DHCP-Header				208	octets
+ATTRIBUTE	ERX-DHCPv6-Header			209	octets
+ATTRIBUTE	ERX-Acct-Request-Reason			210	octets
 
 #
 #  Values	Attribute		Name			Number
@@ -338,5 +372,26 @@ VALUE	ERX-DSL-Type			UNKNOWN			7
 
 VALUE	ERX-PPP-Monitor-Ingress-Only	disabled		0
 VALUE	ERX-PPP-Monitor-Ingress-Only	enabled			1
+
+VALUE	ERX-Service-Activate-Type	dynamic			1
+VALUE	ERX-Service-Activate-Type	opscript		1
+
+VALUE	ERX-Pim-Enable			disabled		0
+VALUE	ERX-Pim-Enable			enabled			1
+
+VALUE	ERX-Re-Authentication-Catalyst	disabled		0
+VALUE	ERX-Re-Authentication-Catalyst	client-renew		1
+
+VALUE	ERX-Acct-Request-Reason		Acct-Start-Ack		1
+VALUE	ERX-Acct-Request-Reason		Periodic		2
+VALUE	ERX-Acct-Request-Reason		IP-Active		4
+VALUE	ERX-Acct-Request-Reason		IP-Inactive		8
+VALUE	ERX-Acct-Request-Reason		IPv6-Active		16
+VALUE	ERX-Acct-Request-Reason		IPv6-Inactive		32
+VALUE	ERX-Acct-Request-Reason		Session-Active		64
+VALUE	ERX-Acct-Request-Reason		Session-Inactive	128
+VALUE	ERX-Acct-Request-Reason		Line-Speed-Change	256
+VALUE	ERX-Acct-Request-Reason		Address-Assignment-Change 512
+VALUE	ERX-Acct-Request-Reason		CoA-Complete		1024
 
 END-VENDOR	ERX

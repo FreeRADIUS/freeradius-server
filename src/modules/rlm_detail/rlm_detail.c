@@ -224,7 +224,7 @@ static int detail_write(FILE *out, rlm_detail_t *inst, REQUEST *request, RADIUS_
 	VALUE_PAIR *vp;
 	char timestamp[256];
 
-	if (!packet->vps) {
+	if ((packet->code == PW_CODE_ACCOUNTING_REQUEST) && !packet->vps) {
 		RWDEBUG("Skipping empty packet");
 		return 0;
 	}

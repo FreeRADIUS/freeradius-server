@@ -1,8 +1,42 @@
 FreeRADIUS 3.0.17 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	Feature improvements
+	* Add CURLOPT_CAINFO.  Patch from Nicolas C.
+	  #2167
+	* "stats home server" now supports "src IPADDR",
+	  to specify home server also by source IP.  Fixes #2169.
+	* Add Dockerfiles for a selection of common systems.
+	* Increase number of permitted file descriptors, for
+	  systems with many home servers.
+
 	Bug fixes
 	* Don't call post-proxy twice when proxying to
 	  a virtual server.  Matthew Newton, #2161.
+	* Use "raw" string value for shared secrets and dynamic clients.
+	  It now parses strings with backslashes and "special characters"
+	  correctly.  Fixes #2168.
+	* Fix RuntimeDirectory for RedHat, from Alan Buxey.
+	* Relax checks in 'if' parser from Isaac Bourkis
+	* Minor cleanups for %{debug_attr:&request} from Isaac Boukris.
+	* Be more aggressive about cleaning up cached certificate attributes,
+	  due to deficiencies in OpenSSL.  Reported by Nicolas Reich.
+	* Be more accepting when parsing IPv6 addresses.  Bug noted
+	  by Klara Mall.
+	* Fix double free in rlm_sql.  Fixes #2180.
+	* rlm_detail now writes empty Access-Accept packets.
+	* rlm_python can now create tagged attributes.
+	* Don't crash on duplicate realm + authhost / accthost.
+	  Bug found by Richard Palmer.
+	* Allow partial certificate chain to trusted CA.  Fixes #2162
+	* Treat SSL_read() returning zero as error.  Fixes #2164.
+	* detail writer now checks if the file was renamed or deleted.
+	* Add User-Name to Access-Accept if EAP-Message exists,
+	  not Stripped-User-Name.
+	* RedHat Systemd updates.  Fixes #2184
+	* Use correct API for State variable in rlm_securid.
+	* Remove broken radclient option "-i".
+	* Fix "users" file (and hints, etc). So that it does not
+	  get confused about entry ordering with multiple $INCLUDEs.
+	* Fix rlm_sql to expand the un-escaped string, not the raw string.
 
 FreeRADIUS 3.0.16 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	Feature improvements

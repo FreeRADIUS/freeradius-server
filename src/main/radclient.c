@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radclient.h>
 #include <freeradius-devel/radpaths.h>
+#include <freeradius-devel/udpfromto.h>
 #include <freeradius-devel/conf.h>
 #include <ctype.h>
 
@@ -58,7 +59,6 @@ static fr_ipaddr_t client_ipaddr;
 static uint16_t client_port = 0;
 
 static int sockfd;
-static int last_used_id = -1;
 
 #ifdef WITH_TCP
 static char const *proto = NULL;
@@ -96,7 +96,6 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "                         If a second file is provided, it will be used to verify responses\n");
 	fprintf(stderr, "  -F                     Print the file name, packet number and reply code.\n");
 	fprintf(stderr, "  -h                     Print usage help information.\n");
-	fprintf(stderr, "  -i <id>                Set request id to 'id'.  Values may be 0..255\n");
 	fprintf(stderr, "  -n <num>               Send N requests/s\n");
 	fprintf(stderr, "  -p <num>               Send 'num' packets from a file in parallel.\n");
 	fprintf(stderr, "  -q                     Do not print anything out.\n");
@@ -859,12 +858,25 @@ static int send_one_packet(rc_request_t *request)
 				mysockfd = fr_socket_client_tcp(NULL,
 								&request->packet->dst_ipaddr,
 								request->packet->dst_port, false);
+				if (mysockfd < 0) {
+					ERROR("Failed opening socket");
+					exit(1);
+				}
 			} else
 #endif
-			mysockfd = fr_socket(&client_ipaddr, 0);
-			if (mysockfd < 0) {
-				ERROR("Failed opening socket");
-				exit(1);
+			{
+				mysockfd = fr_socket(&client_ipaddr, 0);
+				if (mysockfd < 0) {
+					ERROR("Failed opening socket");
+					exit(1);
+				}
+
+#ifdef WITH_UDPFROMTO
+				if (udpfromto_init(mysockfd) < 0) {
+					ERROR("Failed initializing socket");
+					exit(1);
+				}
+#endif
 			}
 			if (!fr_packet_list_socket_add(pl, mysockfd, ipproto,
 						       &request->packet->dst_ipaddr,
@@ -1030,32 +1042,6 @@ static int recv_one_packet(int wait_time)
 		return -1;	/* bad packet */
 	}
 
-	/*
-	 *	We don't use udpfromto.  So if we bind to "*", we want
-	 *	to find replies sent to 192.0.2.4.  Therefore, we
-	 *	force all replies to have the one address we know
-	 *	about, no matter what real address they were sent to.
-	 *
-	 *	This only works if were not using any of the
-	 *	Packet-* attributes, or running with 'auto'.
-	 */
-	reply->dst_ipaddr = client_ipaddr;
-	reply->dst_port = client_port;
-
-#ifdef WITH_TCP
-
-	/*
-	 *	TCP sockets don't use recvmsg(), and thus don't get
-	 *	the source IP/port.  However, since they're TCP, we
-	 *	know what the source IP/port is, because that's where
-	 *	we connected to.
-	 */
-	if (ipproto == IPPROTO_TCP) {
-		reply->src_ipaddr = server_ipaddr;
-		reply->src_port = server_port;
-	}
-#endif
-
 	packet_p = fr_packet_list_find_byreply(pl, reply);
 	if (!packet_p) {
 		ERROR("Received reply to request we did not send. (id=%d socket %d)",
@@ -1195,7 +1181,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	while ((c = getopt(argc, argv, "46c:d:D:f:Fhi:n:p:qr:sS:t:vx"
+	while ((c = getopt(argc, argv, "46c:d:D:f:Fhn:p:qr:sS:t:vx"
 #ifdef WITH_TCP
 		"P:"
 #endif
@@ -1245,15 +1231,6 @@ int main(int argc, char **argv)
 
 		case 'F':
 			print_filename = true;
-			break;
-
-		case 'i':	/* currently broken */
-			if (!isdigit((int) *optarg))
-				usage();
-			last_used_id = atoi(optarg);
-			if ((last_used_id < 0) || (last_used_id > 255)) {
-				usage();
-			}
 			break;
 
 		case 'n':
@@ -1458,12 +1435,25 @@ int main(int argc, char **argv)
 #ifdef WITH_TCP
 	if (proto) {
 		sockfd = fr_socket_client_tcp(NULL, &server_ipaddr, server_port, false);
+		if (sockfd < 0) {
+			ERROR("Error opening socket");
+			exit(1);
+		}
 	} else
 #endif
-	sockfd = fr_socket(&client_ipaddr, client_port);
-	if (sockfd < 0) {
-		ERROR("Error opening socket");
-		exit(1);
+	{
+		sockfd = fr_socket(&client_ipaddr, client_port);
+		if (sockfd < 0) {
+			ERROR("Error opening socket");
+			exit(1);
+		}
+
+#ifdef WITH_UDPFROMTO
+		if (udpfromto_init(sockfd) < 0) {
+			ERROR("Failed initializing socket");
+			exit(1);
+		}
+#endif
 	}
 
 	pl = fr_packet_list_create(1);

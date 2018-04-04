@@ -35,6 +35,7 @@ URL: http://www.freeradius.org/
 Source0: ftp://ftp.freeradius.org/pub/radius/freeradius-server-%{version}.tar.bz2
 %if %{?_unitdir:1}%{!?_unitdir:0}
 Source100: radiusd.service
+Source104: freeradius-tmpfiles-conf
 %else
 Source100: freeradius-radiusd-init
 %define initddir %{?_initddir:%{_initddir}}%{!?_initddir:%{_initrddir}}
@@ -58,7 +59,8 @@ BuildRequires: pam-devel
 BuildRequires: zlib-devel
 BuildRequires: net-snmp-devel
 BuildRequires: net-snmp-utils
-%{?el7:BuildRequires: samba-winbind-devel}
+%{?el7:BuildRequires: libwbclient-devel}
+%{?el7:BuildRequires: samba-devel}
 %{?el6:BuildRequires: samba4-devel}
 BuildRequires: readline-devel
 BuildRequires: libpcap-devel
@@ -74,8 +76,7 @@ Requires: libpcap
 Requires: readline
 Requires: libtalloc
 Requires: net-snmp
-%{?el7:Requires: samba-libs}
-%{?el7:Requires: samba-winbind-clients}
+%{?el7:Requires: libwbclient}
 %{?el6:Requires: samba4-libs}
 %{?el6:Requires: samba4-winbind-clients}
 Requires: zlib
@@ -388,6 +389,7 @@ touch $RPM_BUILD_ROOT/var/log/radius/{radutmp,radius.log}
 # For systemd based systems, that define _unitdir, install the radiusd unit
 %if %{?_unitdir:1}%{!?_unitdir:0}
 install -D -m 755 redhat/radiusd.service $RPM_BUILD_ROOT/%{_unitdir}/radiusd.service
+install -D -m 644 %{SOURCE104} $RPM_BUILD_ROOT/%{_prefix}/lib/tmpfiles.d/radiusd.conf
 # For SystemV install the init script
 %else
 install -D -m 755 redhat/freeradius-radiusd-init $RPM_BUILD_ROOT/%{initddir}/radiusd
@@ -499,6 +501,7 @@ fi
 
 %if %{?_unitdir:1}%{!?_unitdir:0}
 %{_unitdir}/radiusd.service
+%config(noreplace) %{_prefix}/lib/tmpfiles.d/radiusd.conf
 %else
 %{initddir}/radiusd
 %endif

@@ -2563,38 +2563,6 @@ static int set_ecdh_curve(SSL_CTX *ctx, char const *ecdh_curve, bool disable_sin
 #endif
 #endif
 
-/*
- * DIE OPENSSL DIE DIE DIE
- *
- * What a palaver, just to free some data attached the
- * session. We need to do this because the "remove" callback
- * is called when refcount > 0 sometimes, if another thread
- * is using the session
- */
-static void sess_free_vps(UNUSED void *parent, void *data_ptr,
-                                UNUSED CRYPTO_EX_DATA *ad, UNUSED int idx,
-                                UNUSED long argl, UNUSED void *argp)
-{
-        VALUE_PAIR *vp = data_ptr;
-        if (!vp) return;
-
-        DEBUG2(LOG_PREFIX ": Freeing cached session VPs");
-
-        fr_pair_list_free(&vp);
-}
-
-static void sess_free_certs(UNUSED void *parent, void *data_ptr,
-                                UNUSED CRYPTO_EX_DATA *ad, UNUSED int idx,
-                                UNUSED long argl, UNUSED void *argp)
-{
-        VALUE_PAIR **certs = data_ptr;
-        if (!certs) return;
-
-        DEBUG2(LOG_PREFIX ": Freeing cached session Certificates");
-
-        fr_pair_list_free(certs);
-}
-
 /** Add all the default ciphers and message digests reate our context.
  *
  * This should be called exactly once from main, before reading the main config
@@ -2610,7 +2578,7 @@ int tls_global_init(bool spawn_flag, bool check)
 	/*
 	 *	Initialize the index for the certificates.
 	 */
-	fr_tls_ex_index_certs = SSL_SESSION_get_ex_new_index(0, NULL, NULL, NULL, sess_free_certs);
+	fr_tls_ex_index_certs = SSL_SESSION_get_ex_new_index(0, NULL, NULL, NULL, NULL);
 
 	/*
 	 *	If we're linking with OpenSSL too, then we need
@@ -2914,6 +2882,9 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client)
 
 	/* Load the CAs we trust */
 load_ca:
+#if defined(X509_V_FLAG_PARTIAL_CHAIN)
+	X509_STORE_set_flags(SSL_CTX_get_cert_store(ctx), X509_V_FLAG_PARTIAL_CHAIN);
+#endif
 	if (conf->ca_file || conf->ca_path) {
 		if (!SSL_CTX_load_verify_locations(ctx, conf->ca_file, conf->ca_path)) {
 			tls_error_log(NULL, "Failed reading Trusted root CA list \"%s\"",
@@ -3163,7 +3134,7 @@ post_ca:
 
 		SSL_CTX_set_quiet_shutdown(ctx, 1);
 		if (fr_tls_ex_index_vps < 0)
-			fr_tls_ex_index_vps = SSL_SESSION_get_ex_new_index(0, NULL, NULL, NULL, sess_free_vps);
+			fr_tls_ex_index_vps = SSL_SESSION_get_ex_new_index(0, NULL, NULL, NULL, NULL);
 	}
 
 	/*
@@ -3685,7 +3656,7 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 	 *      data buffer.
 	 */
 	err = SSL_read(ssn->ssl, ssn->clean_out.data, sizeof(ssn->clean_out.data));
-	if (err < 0) {
+	if (err <= 0) {
 		int code;
 
 		RDEBUG("SSL_read Error");
@@ -3708,8 +3679,6 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 		}
 		return FR_TLS_FAIL;
 	}
-
-	if (err == 0) RWDEBUG("No data inside of the tunnel");
 
 	/*
 	 *	Passed all checks, successfully decrypted data
