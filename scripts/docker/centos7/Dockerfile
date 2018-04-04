@@ -1,8 +1,5 @@
 ARG from=centos:centos7
-FROM ${from}
-
-ARG source=https://github.com/FreeRADIUS/freeradius-server.git
-ARG release=v3.0.x
+FROM ${from} as build
 
 #
 #  Install build tools
@@ -20,6 +17,9 @@ WORKDIR /usr/local/src/repositories
 #
 #  Shallow clone the FreeRADIUS source
 #
+ARG source=https://github.com/FreeRADIUS/freeradius-server.git
+ARG release=v3.0.x
+
 RUN git clone --depth 1 --single-branch --branch ${release} ${source}
 WORKDIR freeradius-server
 
@@ -71,7 +71,7 @@ RUN mv $BUILDDIR/RPMS/*/*.rpm /root/rpms/
 #  Clean environment and run the server
 #
 FROM ${from}
-COPY --from=0 /root/rpms /root/rpms
+COPY --from=build /root/rpms /tmp/
 
 # Use LTB's openldap packages intead of the distribution version to avoid linking against NSS
 RUN echo $'[ltb-project]\n\
@@ -80,12 +80,16 @@ baseurl=https://ltb-project.org/rpm/$releasever/$basearch\n\
 enabled=1\n\
 gpgcheck=1\n\
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project'\
-> /etc/yum.repos.d/ltb-project.repo
-RUN rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
+> /etc/yum.repos.d/ltb-project.repo \
+    && rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project \
+    \
 # EPEL repository for freetds and hiredis
-RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+    && yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm \
+    \
+    && yum install -y /tmp/*.rpm
 
-RUN yum install -y /root/rpms/*.rpm
+COPY docker-entrypoint.sh /
 
 EXPOSE 1812/udp 1813/udp
-CMD ["/usr/sbin/radiusd", "-X"]
+ENTRYPOINT ["/docker-entrypoint.sh"]
+CMD ["radiusd"]

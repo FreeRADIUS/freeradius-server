@@ -1,16 +1,14 @@
 ARG from=alpine:latest
-FROM ${from}
-
-ARG release=v3.0.x
-ARG source=https://github.com/FreeRADIUS/freeradius-server.git
+FROM ${from} as build
 
 #
-#  We really need this stuff
+#  Install build tools
 #
-RUN apk add --update git gcc make
+RUN apk update
+RUN apk add git gcc make
 
 #
-#  Setup a src dir in /usr/local
+#  Create build directory
 #
 RUN mkdir -p /usr/local/src/repositories
 WORKDIR /usr/local/src/repositories
@@ -18,11 +16,14 @@ WORKDIR /usr/local/src/repositories
 #
 #  Shallow clone the FreeRADIUS source
 #
+ARG source=https://github.com/FreeRADIUS/freeradius-server.git
+ARG release=v3.0.x
+
 RUN git clone --depth 1 --single-branch --branch ${release} ${source}
 WORKDIR freeradius-server
 
 #
-#  Install build dependencies for v3.0.x
+#  Install build dependencies
 #
 # essential
 RUN apk add libc-dev talloc-dev
@@ -50,25 +51,32 @@ RUN rm /opt/lib/*.a
 #  Clean environment and run the server
 #
 FROM ${from}
+COPY --from=build /opt /opt
 
-COPY --from=0 /opt /opt
-
-# needed for the server to start
-RUN apk add --update talloc libressl pcre libwbclient
-
+#
+# These are needed for the server to start
+#
+RUN apk update \
+    && apk add talloc libressl pcre libwbclient \
+    \
 #
 #  Libraries that are needed dependent on which modules are used
-#  Some of these (especially the languages) are huge...
+#  Some of these (especially the languages) are huge. A reasonable
+#  selection has been enabled here. If you use modules needing
+#  other dependencies then install any others required in your
+#  local Dockerfile.
 #
-RUN apk add libcurl json-c
+    && apk add libcurl json-c libldap hiredis sqlite-dev \
 #RUN apk add libidn krb5
-RUN apk add libldap
 #RUN apk add unbound-libs
 #RUN apk add ruby-libs perl python2
-RUN apk add hiredis
 #RUN apk add libmemcached gdbm libcouchbase
-#RUN apk add postgresql-dev mariadb-dev unixodbc-dev sqlite-dev
-RUN apk add sqlite-dev
+#RUN apk add postgresql-dev mariadb-dev unixodbc-dev
+    \
+    && ln -s /opt/etc/raddb /etc/raddb
+
+COPY docker-entrypoint.sh /
 
 EXPOSE 1812/udp 1813/udp
-CMD ["/opt/sbin/radiusd", "-X"]
+ENTRYPOINT ["/docker-entrypoint.sh"]
+CMD ["radiusd"]

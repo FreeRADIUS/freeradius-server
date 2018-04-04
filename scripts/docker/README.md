@@ -1,85 +1,179 @@
-# Docker build server images
+# What is FreeRADIUS?
 
-The dockerfiles in this directory are pre-configured with all the
-dependencies necessary to build FreeRADIUS packages.
+The FreeRADIUS Server Project is a high performance and highly
+configurable multi-protocol policy server, supporting RADIUS, DHCPv4
+and VMPS. Using RADIUS allows authentication and authorization for a network
+to be centralized, and minimizes the number of changes that have to
+be done when adding or deleting new users to a network.
 
-Each directory has a Dockerfile for the relevant distribution.
+FreeRADIUS can authenticate users on systems such as 802.1x
+(WiFi), dialup, PPPoE, VPN's, VoIP, and many others.  It supports
+back-end databases such as MySQL, PostgreSQL, Oracle, Microsoft
+Active Directory, Redis, OpenLDAP. It is used daily to
+authenticate the Internet access for hundreds of millions of
+people, in sites ranging from 10 to 10 million+ users.
+
+> [wikipedia.org/wiki/FreeRADIUS](https://en.wikipedia.org/wiki/FreeRADIUS)
 
 
-## Building images
+# How to use this image
 
-As with any Dockerfile you'll first need to build the image.
+## Starting the server
+
+```console
+$ docker run --name my-radius -d freeradius/freeradius-server
+```
+
+However, the server will need to be configured, as the image
+contains only the default FreeRADIUS configuration. A minimally
+required configuration will include a `clients.conf` and "users" file.
+
+
+## Defining the configuration
+
+Create a local `Dockerfile` based on the required image and
+COPY in the server configuration.
+
+```Dockerfile
+FROM freeradius/freeradius-server:latest
+COPY raddb/ /etc/raddb/
+```
+
+The `raddb` directory could contain, for example:
+
+```
+clients.conf
+mods-config/
+mods-config/files/
+mods-config/files/authorize
+```
+
+Where `clients.conf` contains a simple client definition
+
+```
+client dockernet {
+	ipaddr = 172.17.0.0/16
+	secret = testing123
+}
+```
+
+and the `authorise` "users" file contains a test user:
+
+```
+bob	Cleartext-Password := "test"
+```
+
+
+## Forwarding ports
+
+To forward external ports to the server, typically 1812/udp and/or
+1813/udp, start the server with
+
+```console
+$ docker run --name my-radius -p 1812-1813:1812-1813/udp freeradius/freeradius-server
+```
+
+
+## Testing the configuration
+
+It should now be possible to test authentication against the
+server from the host machine, using the `radtest` utility supplied
+with FreeRADIUS and the credentials defined above:
+
+```console
+$ radtest bob test 127.0.0.1 0 testing123
+```
+
+which should return an "Access-Accept".
+
+
+## Running in debug mode
+
+FreeRADIUS should always be tested in debug mode, using option
+`-X`. Coloured debug output also requres `-t` be passed to docker.
+
+```console
+$ docker run --name my-radius -t -d freeradius/freeradius-server -X
+```
+
+
+## Security notes
+
+The configuration in the docker image comes with self-signed
+certificates for convenience. These should not be used in a
+production environment, but replaced with new certificates.
+
+
+## Debugging
+
+By default if you try to use `gdb` in a Docker container, the
+pattach call will fail, and you will not be able to trace
+processes.
+
+In order to allow tracing, the ``--privileged`` flag must be
+passed to ``docker run``, this restores any Linux ``cap``
+privileges that would not ordinarily be given.
+
+
+# Image variants
+
+## `freeradius/freeradius-server:<version>`
+
+The de facto image which should be used unless you know you need
+another image. It is based on
+[Ubuntu Linux](https://hub.docker.com/_/ubuntu/) Docker images.
+
+
+## `freeradius/freeradius-server:<version>-alpine`
+
+Image based on the [Alpine Linux](https://hub.docker.com/_/alpine/)
+Docker images, which are much smaller than most Linux
+distributions. To keep the basic size as small as possible, this
+image does not include libraries for all modules that have been
+built (especially the languages such as Perl or Python). Therefore
+these extra libraries will need to be installed with `apk add` in
+your own Dockerfile if you intend on using modules that require
+them.
+
+
+# Building Docker images
+
+The FreeRADIUS source contains Dockerfiles for several Linux
+distributions. They are in
+[`freeradius-server/scripts/docker/<os_name>`](https://github.com/FreeRADIUS/freeradius-server/tree/v3.0.x/scripts/docker).
+
+Build an image with
 
 ```bash
-cd scripts/docker/<os_name>
-docker build . -t freeradius/<os_name>:v3.0.x
+$ cd scripts/docker/<os_name>
+$ docker build . -t freeradius-<os_name>
 ```
 
 This will download the OS base image, install/build any dependencies
-as necessary, and perform a shallow clone of the FreeRADIUS source.
-
-The image will be tagged in the local ``freeradius/`` repository.
+as necessary, perform a shallow clone of the FreeRADIUS source and
+build the server.
 
 Once built, running ``docker images`` should show the image.
 
 ```bash
 $ docker images
-REPOSITORY                 TAG                 IMAGE ID            CREATED             SIZE
-freeradius/alpine   v3.0.x              83e45ae94d21        18 hours ago        88.6MB
-alpine              latest              3fd9065eaf02        7 weeks ago         4.15MB
+REPOSITORY           TAG            IMAGE ID            CREATED             SIZE
+freeradius-ubuntu16  latest         289b3c7aca94        4 minutes ago       218MB
+freeradius-alpine    latest         d7fb3041bea2        2 hours ago         88.6MB
 ```
 
+## Build args
 
-## Running
+Two ARGs are defined in the Dockerfiles that specify the source
+repository and git tag that the release will be built from. These
+are
 
-The ``docker run`` command is used to create new containers from
-images.  The command takes flags, and an image identifier.  In the
-example below the ``-it`` flags tell docker to open an interactive
-terminal on the container.
+- source: the git repository URL
+- release: the git commit/tag
 
-```bash
-$ docker run -it freeradius/alpine
-FreeRADIUS Version 3.0.17
-Copyright (C) 1999-2017 The FreeRADIUS server project and contributors
-...
+To build the image from a specific repository and git tag, set one
+or both of these args:
+
+```console
+$ docker build . --build-arg=release=v3.0.x --build-arg=source=https://github.com/FreeRADIUS/freeradius-server.git -t freeradius-<os_name>
 ```
-
-When ``docker run`` is used to execute an image a new container is
-created from the image.  This stores any changes you make, whilst
-leaving the original container image unchanged.
-
-You can attach multiple terminals to a docker container with
-``docker attach <hash>`` where hash is the temporary container id,
-found from running ``docker container ls``.
-
-You may also give your containers explicit container IDs by passing
-``--name <name>`` to the ``docker run`` command.
-
-
-## Debugging
-
-By default if you try to use GDB in a docker container, the pattach
-call will fail, and you will not be able to trace processes.
-
-In order to allow tracing, the ``--privileged`` flag must be passed to
-``docker run``, this restores any Linux ``cap`` privileges that would
-not ordinarily be given.
-
-
-## Networking
-
-When docker is installed it creates a bridge interface.  By default,
-any containers created will get an interface on this bridge.
-
-Docker provides IP addresses for containers on this bridge
-automatically, but as they are all in a private IP range they are not
-routable from outside the host running docker.
-
-The easiest way to get packets in and out of a container is to pass
-the ``-p`` flag to docker run.  This binds a port in the container, to
-a port on the docker host (similar to port forwarding).
-
-See
-[here](https://docs.docker.com/engine/userguide/networking/#embedded-dns-server)
-for more details on docker networking.
-
