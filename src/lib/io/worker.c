@@ -756,6 +756,7 @@ static void fr_worker_check_timeouts(fr_worker_t *worker, fr_time_t now)
  */
 static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 {
+	bool			is_dup;
 	int			ret = -1;
 	fr_channel_data_t	*cd;
 	REQUEST			*request;
@@ -871,6 +872,7 @@ nak:
 	/*
 	 *	We're done with this message.
 	 */
+	is_dup = cd->request.is_dup;
 	fr_message_done(&cd->m);
 
 	/*
@@ -886,7 +888,7 @@ nak:
 			 *	Ignore duplicate packets where we've
 			 *	already sent the reply.
 			 */
-			if (cd->request.is_dup) {
+			if (is_dup) {
 				RDEBUG("Got duplicate packet notice after we had sent a reply - ignoring");
 				fr_channel_null_reply(request->async->channel);
 				return NULL;
