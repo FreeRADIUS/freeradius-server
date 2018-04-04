@@ -319,6 +319,8 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 		 */
 		if (conf->psk_query && !*conf->psk_query) {
 			ERROR("Invalid PSK Configuration: psk_query cannot be empty");
+		error:
+			SSL_CTX_free(ctx);
 			return NULL;
 		}
 
@@ -331,7 +333,7 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 
 	} else if (conf->psk_query) {
 		ERROR("Invalid PSK Configuration: psk_query cannot be used for outgoing connections");
-		return NULL;
+		goto error;
 	}
 
 	/*
@@ -342,7 +344,7 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 	    (conf->psk_identity && !*conf->psk_identity) ||
 	    (conf->psk_password && !*conf->psk_password)) {
 		ERROR("Invalid PSK Configuration: psk_identity or psk_password are empty");
-		return NULL;
+		goto error;
 	}
 
 	if (conf->psk_identity) {
@@ -351,7 +353,7 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 
 		if (conf->chains || conf->ca_file || conf->ca_path) {
 			ERROR("When PSKs are used, No certificate configuration is permitted");
-			return NULL;
+			goto error;
 		}
 
 		if (client) {
@@ -361,7 +363,7 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 		psk_len = strlen(conf->psk_password);
 		if (strlen(conf->psk_password) > (2 * PSK_MAX_PSK_LEN)) {
 			ERROR("psk_hexphrase is too long (max %d)", PSK_MAX_PSK_LEN);
-			return NULL;
+			goto error;
 		}
 
 		/*
@@ -371,7 +373,7 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 		hex_len = fr_hex2bin(buffer, sizeof(buffer), conf->psk_password, psk_len);
 		if (psk_len != (2 * hex_len)) {
 			ERROR("psk_hexphrase is not all hex");
-			return NULL;
+			goto error;
 		}
 
 		goto post_ca;
@@ -431,7 +433,7 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 		if (!SSL_CTX_load_verify_locations(ctx, conf->ca_file, conf->ca_path)) {
 			tls_log_error(NULL, "Failed reading Trusted root CA list \"%s\"",
 				      conf->ca_file);
-			return NULL;
+			goto error;
 		}
 	}
 
@@ -454,7 +456,7 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 			size_t i;
 
 			for (i = 0; i < chains_conf; i++) {
-				if (tls_ctx_load_cert_chain(ctx, conf->chains[i]) < 0) return NULL;
+				if (tls_ctx_load_cert_chain(ctx, conf->chains[i]) < 0) goto error;
 			}
 		}
 
@@ -508,7 +510,7 @@ SSL_CTX *tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 				DEBUG3("%s chain", tls_utils_x509_pkey_type(our_cert));
 				if (!SSL_CTX_get0_chain_certs(ctx, &our_chain)) {
 					tls_log_error(NULL, "Failed retrieving chain certificates");
-					return NULL;
+					goto error;
 				}
 
 				for (i = sk_X509_num(our_chain); i > 0 ; i--) {
@@ -551,12 +553,12 @@ post_ca:
 		if (conf->tls_min_version > conf->tls_max_version) {
 			ERROR("tls_min_version (%f) must be <= tls_max_version (%f)",
 			      conf->tls_min_version, conf->tls_max_version);
-			return NULL;
+			goto error;
 		}
 
 		if (conf->tls_max_version < (float) 1.0) {
 			ERROR("tls_max_version must be >= 1.0 as SSLv2 and SSLv3 are permanently disabled");
-			return NULL;
+			goto error;
 		}
 
 #  ifdef TLS1_4_VERSION
@@ -571,7 +573,7 @@ post_ca:
 
 		if (!SSL_CTX_set_max_proto_version(ctx, max_version)) {
 			tls_log_error(NULL, "Failed setting TLS maximum version");
-			return NULL;
+			goto error;
 		}
 	}
 
@@ -580,7 +582,7 @@ post_ca:
 
 		if (conf->tls_min_version < (float) 1.0) {
 			ERROR("tls_min_version must be >= 1.0 as SSLv2 and SSLv3 are permanently disabled");
-			return NULL;
+			goto error;
 		}
 #  ifdef TLS1_4_VERSION
 		else if (conf->tls_min_version >= (float) 1.4) min_version = TLS1_4_VERSION;
@@ -594,7 +596,7 @@ post_ca:
 
 		if (!SSL_CTX_set_min_proto_version(ctx, min_version)) {
 			tls_log_error(NULL, "Failed setting TLS minimum version");
-			return NULL;
+			goto error;
 		}
 	}
 #else
@@ -609,7 +611,7 @@ post_ca:
 
 		if (conf->tls_min_version < (float) 1.0) {
 			ERROR("SSLv2 and SSLv3 are permanently disabled due to critical security issues");
-			return NULL;
+			goto error;
 		}
 
 		/*
@@ -637,7 +639,7 @@ post_ca:
 
 		if ((ctx_options & ctx_tls_versions) == ctx_tls_versions) {
 			ERROR("You have disabled all available TLS versions.  EAP will not work");
-			return NULL;
+			goto error;
 		}
 	}
 #endif
@@ -705,7 +707,7 @@ post_ca:
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL
 #ifndef OPENSSL_NO_ECDH
 	if (ctx_ecdh_curve_set(ctx, conf->ecdh_curve, conf->disable_single_dh_use) < 0) {
-		return NULL;
+		goto error;
 	}
 #endif
 #endif
@@ -721,7 +723,7 @@ post_ca:
 		cert_vpstore = SSL_CTX_get_cert_store(ctx);
 		if (cert_vpstore == NULL) {
 			tls_log_error(NULL, "Error reading Certificate Store");
-	    		return NULL;
+	    		goto error;
 		}
 		X509_STORE_set_flags(cert_vpstore, X509_V_FLAG_CRL_CHECK | X509_V_FLAG_CRL_CHECK_ALL);
 	}
@@ -762,7 +764,7 @@ post_ca:
 	if (conf->random_file) {
 		if (!(RAND_load_file(conf->random_file, 1024 * 10))) {
 			tls_log_error(NULL, "Failed loading randomness");
-			return NULL;
+			goto error;
 		}
 	}
 
@@ -772,7 +774,7 @@ post_ca:
 	if (conf->cipher_list) {
 		if (!SSL_CTX_set_cipher_list(ctx, conf->cipher_list)) {
 			tls_log_error(NULL, "Failed setting cipher list");
-			return NULL;
+			goto error;
 		}
 	}
 
@@ -787,7 +789,7 @@ post_ca:
 		ssl = SSL_new(ctx);
 		if (!ssl) {
 			tls_log_error(NULL, "Failed creating temporary SSL session");
-			return NULL;
+			goto error;
 		}
 
 		DEBUG3("Configured ciphers (by priority)");
@@ -812,7 +814,7 @@ post_ca:
 		char *dh_file;
 
 		memcpy(&dh_file, &conf->dh_file, sizeof(dh_file));
-		if (ctx_dh_params_load(ctx, dh_file) < 0) return NULL;
+		if (ctx_dh_params_load(ctx, dh_file) < 0) goto error;
 	}
 
 	return ctx;
