@@ -848,9 +848,6 @@ static REQUEST *fr_worker_get_request(fr_worker_t *worker, fr_time_t now)
 	}
 
 	if (ret < 0) {
-		RINDENT();
-		REDEBUG("%s FAILED decoding packet", worker->name);
-		REXDENT();
 		talloc_free(ctx);
 nak:
 		fr_worker_nak(worker, cd, now);
