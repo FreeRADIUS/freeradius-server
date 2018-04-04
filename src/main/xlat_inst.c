@@ -99,8 +99,7 @@ static void _xlat_thread_inst_free(void *to_free)
 {
 	xlat_thread_inst_t *thread_inst = talloc_get_type_abort(to_free, xlat_thread_inst_t);
 
-	DEBUG4("Worker %i cleaning up xlat thread instance (%p/%p)", fr_schedule_worker_id(),
-	       thread_inst, thread_inst->data);
+	DEBUG4("Worker cleaning up xlat thread instance (%p/%p)", thread_inst, thread_inst->data);
 
 	talloc_free(thread_inst);
 }
@@ -113,7 +112,7 @@ static void _xlat_thread_inst_tree_free(void *to_free)
 {
 	rbtree_t *thread_inst_tree = talloc_get_type_abort(to_free , rbtree_t);
 
-	DEBUG4("Worker %i cleaning up xlat thread instance tree", fr_schedule_worker_id());
+	DEBUG4("Worker cleaning up xlat thread instance tree");
 	talloc_free(thread_inst_tree);
 }
 
@@ -161,8 +160,7 @@ static xlat_thread_inst_t *xlat_thread_inst_alloc(TALLOC_CTX *ctx, xlat_inst_t *
 #endif
 	}
 
-	DEBUG4("Worker %i alloced xlat thread instance (%p/%p)", fr_schedule_worker_id(),
-	       thread_inst, thread_inst->data);
+	DEBUG4("Worker alloced xlat thread instance (%p/%p)", thread_inst, thread_inst->data);
 
 	return thread_inst;
 }
