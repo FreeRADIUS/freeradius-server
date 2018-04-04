@@ -1133,6 +1133,8 @@ int unlang_event_fd_delete(REQUEST *request, void const *ctx, int fd)
 	return 0;
 }
 
+
+
 /** Send a signal (usually stop) to a request
  *
  * This is typically called via an "async" action, i.e. an action
@@ -1140,10 +1142,15 @@ int unlang_event_fd_delete(REQUEST *request, void const *ctx, int fd)
  *
  * If there is no #fr_unlang_module_signal_t callback defined, the action is ignored.
  *
+ * The signaling stops at the "limit" frame.  This is so that keywords
+ * such as "timeout" and "limit" can signal frames *lower* than theirs
+ * to stop, but then continue with their own work.
+ *
  * @param[in] request		The current request.
  * @param[in] action		to signal.
+ * @param[in] limit		the frame at which to stop signaling.
  */
-void unlang_signal(REQUEST *request, fr_state_signal_t action)
+static void unlang_signal_frames(REQUEST *request, fr_state_signal_t action, int limit)
 {
 	unlang_stack_frame_t	*frame;
 	unlang_stack_t		*stack = request->stack;
@@ -1163,7 +1170,7 @@ void unlang_signal(REQUEST *request, fr_state_signal_t action)
 	 *	stack, as modules can push xlats and function
 	 *	calls.
 	 */
-	for (i = depth; i > 0; i--) {
+	for (i = depth; i > limit; i--) {
 		stack->depth = i;			/* We could also pass in the frame to the signal function */
 		frame = &stack->frame[stack->depth];
 
@@ -1184,6 +1191,22 @@ void unlang_signal(REQUEST *request, fr_state_signal_t action)
 		unlang_ops[mr->parent->type].signal(request, mr->rctx, action);
 	}
 	stack->depth = depth;				/* Reset */
+}
+
+
+/** Send a signal (usually stop) to a request
+ *
+ * This is typically called via an "async" action, i.e. an action
+ * outside of the normal processing of the request.
+ *
+ * If there is no #fr_unlang_module_signal_t callback defined, the action is ignored.
+ *
+ * @param[in] request		The current request.
+ * @param[in] action		to signal.
+ */
+void unlang_signal(REQUEST *request, fr_state_signal_t action)
+{
+	return unlang_signal_frames(request, action, 0);
 }
 
 int unlang_stack_depth(REQUEST *request)
