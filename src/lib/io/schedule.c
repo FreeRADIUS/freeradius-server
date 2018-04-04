@@ -385,8 +385,11 @@ fr_schedule_t *fr_schedule_create(TALLOC_CTX *ctx, fr_event_list_t *el,
 			goto st_fail;
 		}
 
+		/*
+		 *	Parent thread-specific data from the single_worker
+		 */
 		if (sc->worker_thread_instantiate &&
-		    (sc->worker_thread_instantiate(ctx, el, sc->worker_instantiate_ctx) < 0)) {
+		    (sc->worker_thread_instantiate(sc->single_worker, el, sc->worker_instantiate_ctx) < 0)) {
 			fr_log(sc->log, L_ERR, "Failed calling thread instantiate: %s", fr_strerror());
 			goto st_fail;
 		}
