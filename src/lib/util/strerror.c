@@ -66,6 +66,8 @@ static void _fr_logging_free(void *arg)
 	 *	of tracking and doesn't report a leak.
 	 */
 	talloc_free(arg);
+	fr_strerror_buffer = NULL;
+
 	logging_stop = true;
 }
 
@@ -321,7 +323,8 @@ void fr_perror(char const *fmt, ...)
  */
 void fr_strerror_free(void)
 {
-	talloc_free(fr_strerror_buffer);
+	TALLOC_FREE(fr_strerror_buffer);
+	logging_stop = true;
 }
 
 #ifdef TESTING_STRERROR
