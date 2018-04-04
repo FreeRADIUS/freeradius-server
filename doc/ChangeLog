@@ -42,6 +42,7 @@ FreeRADIUS 3.0.17 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	* Fix rlm_sql to expand the un-escaped string, not the raw string.
 	* Link default and inner-tunnel only if they exist.  Fixes #2206.
 	* Don't use both IP_PKTINFO and IP_SENDSRCADDR.
+	* Always install signal handler for SIGINT (needed by Docker).
 
 FreeRADIUS 3.0.16 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	Feature improvements
