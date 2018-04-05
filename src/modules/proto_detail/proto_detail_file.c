@@ -338,6 +338,7 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 	if (fr_event_filter_insert(inst, inst->el, fd, FR_EVENT_FILTER_VNODE,
 				   &funcs, NULL, inst) < 0) {
 		PERROR("Failed adding work socket to event loop");
+		close(fd);
 		goto detach;
 	}
 
@@ -345,6 +346,7 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 	 *	Remember this for later.
 	 */
 	inst->vnode_fd = fd;
+	fd = -1;
 
 	/*
 	 *	Yuck.
@@ -404,8 +406,6 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 		}
 
 	detach:
-		close(fd);	/* our FD for the work file */
-
 		if (listen) (void) listen->app_io->detach(listen->app_io_instance);
 		talloc_free(listen);
 		return -1;
