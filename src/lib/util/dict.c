@@ -3005,7 +3005,7 @@ fr_dict_t *fr_dict_by_attr_name(fr_dict_attr_t const **found, char const *name)
 	ret = fr_hash_table_walk(protocol_by_name, _dict_attr_find_in_dicts, &search);
 	if (ret == 0) return NULL;
 
-	if (found) *found = search.found_da;
+	*found = search.found_da;
 
 	return search.found_dict;
 }
