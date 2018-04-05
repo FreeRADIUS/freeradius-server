@@ -2982,7 +2982,7 @@ fr_dict_t *fr_dict_by_da(fr_dict_attr_t const *da)
  *
  * @note This is O(n) and will only return the first instance of the dictionary.
  *
- * @param[out] found	the attribute that was resolved from the name.
+ * @param[out] found	the attribute that was resolved from the name. May be NULL.
  * @param[in] name	the name of the attribute.
  * @return
  *	- the dictionary the attribute was found in.
@@ -2998,14 +2998,14 @@ fr_dict_t *fr_dict_by_attr_name(fr_dict_attr_t const **found, char const *name)
 				};
 	int			ret;
 
-	*found = NULL;
+	if (found) *found = NULL;
 
 	if (!name || !*name) return NULL;
 
 	ret = fr_hash_table_walk(protocol_by_name, _dict_attr_find_in_dicts, &search);
 	if (ret == 0) return NULL;
 
-	*found = search.found_da;
+	if (found) *found = search.found_da;
 
 	return search.found_dict;
 }
