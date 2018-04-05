@@ -359,7 +359,7 @@ static int _dl_free(dl_t *module)
 	 *	Only dlclose() handle if we're *NOT* running under valgrind
 	 *	as it unloads the symbols valgrind needs.
 	 */
-	if (!RUNNING_ON_VALGRIND) dlclose(module->handle);        /* ignore any errors */
+	if (!RUNNING_ON_VALGRIND || (fr_get_lsan_state() == 1)) dlclose(module->handle);        /* ignore any errors */
 
 	module->handle = NULL;
 
