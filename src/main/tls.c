@@ -1750,6 +1750,11 @@ static ocsp_status_t ocsp_check(REQUEST *request, X509_STORE *store, X509 *issue
 #endif
 	VALUE_PAIR	*vp;
 
+	if (issuer_cert == NULL) {
+		RWDEBUG("Could not get issuer certificate");
+		goto skipped;
+	}
+
 	/*
 	 * Create OCSP Request
 	 */
@@ -2410,30 +2415,29 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 			} else {
 				RDEBUG2("Starting OCSP Request");
-				if ((X509_STORE_CTX_get1_issuer(&issuer_cert, ctx, client_cert) != 1) ||
-				    !issuer_cert) {
-					/*
-					 *	Allow for external verify.
-					 */
-					RERROR("Couldn't get issuer_cert for %s", common_name);
-					do_verify = true;
 
-				} else {
-					/*
-					 *	Do the full OCSP checks.
-					 *
-					 *	If they fail, don't run the external verify.  We don't want
-					 *	to allow admins to force authentication success for bad
-					 *	certificates.
-					 *
-					 *	If the OCSP checks succeed, check whether we still want to
-					 *	run the external verification routine.  If it's marked as
-					 *	"skip verify on OK", then we don't do verify.
-					 */
-					my_ok = ocsp_check(request, ocsp_store, issuer_cert, client_cert, conf);
-					if (my_ok != OCSP_STATUS_FAILED) {
-						do_verify = !conf->verify_skip_if_ocsp_ok;
-					}
+				/*
+				 *	If we don't have an issuer, then we can't send
+				 *	and OCSP request, but pass the NULL issuer in
+				 *	so ocsp_check can decide on the correct
+				 *	return code.
+				 */
+				issuer_cert = X509_STORE_CTX_get0_current_issuer(ctx);
+
+				/*
+				 *	Do the full OCSP checks.
+				 *
+				 *	If they fail, don't run the external verify.  We don't want
+				 *	to allow admins to force authentication success for bad
+				 *	certificates.
+				 *
+				 *	If the OCSP checks succeed, check whether we still want to
+				 *	run the external verification routine.  If it's marked as
+				 *	"skip verify on OK", then we don't do verify.
+				 */
+				my_ok = ocsp_check(request, ocsp_store, issuer_cert, client_cert, conf);
+				if (my_ok != OCSP_STATUS_FAILED) {
+					do_verify = !conf->verify_skip_if_ocsp_ok;
 				}
 			}
 		}
