@@ -457,7 +457,7 @@ redo:
 	fr_dlist_remove(entry);
 
 	saved = fr_ptr_to_type(dynamic_packet_t, entry, entry);
-	rad_assert(saved);
+	(void) talloc_get_type_abort(saved, dynamic_packet_t);
 	rad_assert(saved->packet != NULL);
 	rad_assert(saved->track != NULL);
 
