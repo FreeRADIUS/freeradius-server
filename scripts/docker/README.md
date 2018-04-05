@@ -24,9 +24,11 @@ people, in sites ranging from 10 to 10 million+ users.
 $ docker run --name my-radius -d freeradius/freeradius-server
 ```
 
-However, the server will need to be configured, as the image
-contains only the default FreeRADIUS configuration. A minimally
-required configuration will include a `clients.conf` and "users" file.
+The image contains only the default FreeRADIUS configuration which
+has no users, and accepts test clients on 127.0.0.1. In order to
+use it in production, you will need to add clients to the
+`clients.conf` file, and users to the "users" file in
+`mods-config/files/authorize`.
 
 
 ## Defining the configuration
@@ -96,13 +98,15 @@ FreeRADIUS should always be tested in debug mode, using option
 $ docker run --name my-radius -t -d freeradius/freeradius-server -X
 ```
 
+Guidelines for how to read and interpret the debug output are on the
+[FreeRADIUS Wiki](https://wiki.freeradius.org/radiusd-X).
 
 ## Security notes
 
 The configuration in the docker image comes with self-signed
 certificates for convenience. These should not be used in a
-production environment, but replaced with new certificates.
-
+production environment, but replaced with new certificates. See
+the file `raddb/certs/README` for more information.
 
 ## Debugging
 
