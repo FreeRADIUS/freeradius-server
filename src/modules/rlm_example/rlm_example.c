@@ -82,8 +82,10 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
-	paircompare_register_byname("Example-Paircmp", fr_dict_attr_by_num(NULL, 0, FR_USER_NAME), false,
-				    rlm_example_cmp, inst);
+	if (paircompare_register_byname("Example-Paircmp", fr_dict_attr_by_num(NULL, 0, FR_USER_NAME), false,
+					rlm_example_cmp, inst) < 0) {
+		return -1;
+	}
 
 	return 0;
 }
