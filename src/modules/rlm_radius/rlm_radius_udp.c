@@ -2648,7 +2648,10 @@ fr_radius_client_io_t rlm_radius_udp = {
 	.magic			= RLM_MODULE_INIT,
 	.name			= "radius_udp",
 	.inst_size		= sizeof(rlm_radius_udp_t),
+
 	.request_inst_size 	= sizeof(rlm_radius_udp_request_t),
+	.request_inst_type	= "rlm_radius_udp_request_t",
+
 	.thread_inst_size	= sizeof(rlm_radius_udp_thread_t),
 
 	.config			= module_config,

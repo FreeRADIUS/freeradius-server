@@ -527,6 +527,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_process(void *instance, void *thread, RE
 		talloc_free(link);
 		return RLM_MODULE_FAIL;
 	}
+	if (inst->io->request_inst_type) talloc_set_name_const(link->request_io_ctx, inst->io->request_inst_type);
 
 	link->request = request;
 

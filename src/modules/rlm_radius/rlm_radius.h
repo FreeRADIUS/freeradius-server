@@ -73,6 +73,7 @@ typedef struct fr_radius_client_io_t {
 	size_t				thread_inst_size;	//!< Size of data to allocate to the thread instance.
 
 	size_t				request_inst_size;	//!< size of the data per request
+	char const			*request_inst_type;	//!< Talloc type of the request_inst.
 
 	fr_radius_io_push_t		push;			//!< push a REQUEST to an IO submodule
 	fr_radius_io_signal_t		signal;			//!< send a signal to an IO module
