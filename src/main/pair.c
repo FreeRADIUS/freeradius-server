@@ -347,7 +347,9 @@ static bool otherattr(fr_dict_attr_t const *attribute, fr_dict_attr_t const **fr
  * @param first_only will decide if we loop over the request attributes or stop on the first one.
  * @param func comparison function.
  * @param instance argument to comparison function.
- * @return 0
+ * @return
+ *	- 0 on success
+ *	- <0 on error
  */
 int paircompare_register_byname(char const *name, fr_dict_attr_t const *from,
 				bool first_only, RAD_COMPARE_FUNC func, void *instance)
