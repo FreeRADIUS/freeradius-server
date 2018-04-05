@@ -12580,7 +12580,7 @@ else
 
 
     CFLAGS_SAVED=$CFLAGS
-    CFLAGS="$CFLAGS -Werror -Weverything -Wno-unused-macros -Wno-unreachable-code-return"
+    CFLAGS="$CFLAGS -Werror -Weverything -Wno-reserved-id-macro -Wno-unused-macros -Wno-unreachable-code-return"
 
     ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
