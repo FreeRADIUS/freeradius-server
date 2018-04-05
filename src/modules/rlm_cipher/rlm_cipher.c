@@ -1137,13 +1137,13 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 			verify_name = talloc_asprintf(inst, "%s_verify", inst->xlat_name);
 
 			xlat_async_register(inst, decrypt_name, cipher_rsa_decrypt_xlat,
-				    	    cipher_xlat_instantiate, rlm_cipher_t *, NULL,
-				    	    cipher_xlat_thread_instantiate, rlm_cipher_rsa_thread_inst_t *,
+					    cipher_xlat_instantiate, rlm_cipher_t, NULL,
+					    cipher_xlat_thread_instantiate, rlm_cipher_rsa_thread_inst_t,
 				    	    NULL, inst);
 
 			xlat_async_register(inst, verify_name, cipher_rsa_verify_xlat,
-					    cipher_xlat_instantiate, rlm_cipher_t *, NULL,
-					    cipher_xlat_thread_instantiate, rlm_cipher_rsa_thread_inst_t *,
+					    cipher_xlat_instantiate, rlm_cipher_t, NULL,
+					    cipher_xlat_thread_instantiate, rlm_cipher_rsa_thread_inst_t,
 					    NULL, inst);
 
 			talloc_free(decrypt_name);
