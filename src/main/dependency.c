@@ -37,6 +37,10 @@ char const	*radiusd_version_short = RADIUSD_VERSION_STRING;
 #  include <openssl/opensslv.h>
 #  include <openssl/engine.h>
 
+#ifdef HAVE_VALGRIND_H
+#  include <valgrind.h>
+#endif
+
 static long ssl_built = OPENSSL_VERSION_NUMBER;
 
 /** Check built and linked versions of OpenSSL match
@@ -505,6 +509,25 @@ void dependency_init_features(CONF_SECTION *cs)
 				false
 #endif
 				);
+
+#ifdef HAVE_SANITIZER_COMMON_INTERFACE_DEFS_H
+	/*
+	 *	Are we running under Leak Sanitizer
+	 */
+	dependency_feature_add(cs, "runtime-lsan", (fr_get_lsan_state() == 1));
+#endif
+
+#ifdef HAVE_VALGRIND_H
+	/*
+	 *	Are we running under valgrind
+	 */
+	dependency_feature_add(cs, "runtime-valgrind", RUNNING_ON_VALGRIND);
+#endif
+
+	/*
+	 *	Are we running under a debugger
+	 */
+	dependency_feature_add(cs, "runtime-debugger", (fr_get_debug_state() == 1));
 }
 
 /** Initialise core version flags

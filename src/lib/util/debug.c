@@ -204,7 +204,7 @@ int fr_get_lsan_state(void)
  *	- -1 if we can't tell because of an error.
  *	- -2 if we can't tell because we don't have the CAP_SYS_PTRACE capability.
  */
-static int fr_get_debug_state(void)
+int fr_get_debug_state(void)
 {
 	int pid;
 

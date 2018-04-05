@@ -55,6 +55,7 @@ typedef int (*fr_fault_cb_t)(int signum);
 typedef struct fr_bt_marker fr_bt_marker_t;
 
 int		fr_get_lsan_state(void);
+int		fr_get_debug_state(void);
 void		fr_debug_state_store(void);
 char const	*fr_debug_state_to_msg(fr_debug_state_t state);
 void		fr_debug_break(bool always);
