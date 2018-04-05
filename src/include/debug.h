@@ -54,6 +54,7 @@ typedef void (*fr_fault_log_t)(char const *msg, ...) CC_HINT(format (printf, 1, 
 typedef int (*fr_fault_cb_t)(int signum);
 typedef struct fr_bt_marker fr_bt_marker_t;
 
+int		fr_get_lsan_state(void);
 void		fr_debug_state_store(void);
 char const	*fr_debug_state_to_msg(fr_debug_state_t state);
 void		fr_debug_break(bool always);

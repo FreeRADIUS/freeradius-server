@@ -356,6 +356,10 @@
 /* Define to 1 if you have the <resource.h> header file. */
 #undef HAVE_RESOURCE_H
 
+/* Define to 1 if you have the <sanitizer/common_interface_defs.h> header
+   file. */
+#undef HAVE_SANITIZER_COMMON_INTERFACE_DEFS_H
+
 /* Define to 1 if you have the <semaphore.h> header file. */
 #undef HAVE_SEMAPHORE_H
 

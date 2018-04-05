@@ -789,6 +789,7 @@ AC_CHECK_HEADERS( \
   prot.h \
   pwd.h \
   resource.h \
+  sanitizer/common_interface_defs.h \
   semaphore.h \
   sia.h \
   siad.h \

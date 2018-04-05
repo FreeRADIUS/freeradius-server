@@ -21,12 +21,20 @@
  * @copyright 2013  The FreeRADIUS server project
  * @copyright 2013  Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <unistd.h>
+#include <string.h>
+#include <errno.h>
 #include <assert.h>
-#include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/libradius.h>
 #include <pthread.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+
+#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/libradius.h>
 
 #if defined(HAVE_MALLOPT) && defined(HAVE_MALLOC_H)
 #  include <malloc.h>
@@ -107,6 +115,81 @@ static TALLOC_CTX *talloc_autofree_ctx;
 #  ifdef HAVE_CAPABILITY_H
 #    include <sys/capability.h>
 #  endif
+
+#ifdef HAVE_SANITIZER_COMMON_INTERFACE_DEFS_H
+#  include <sanitizer/common_interface_defs.h>
+#endif
+
+#ifdef HAVE_SANITIZER_COMMON_INTERFACE_DEFS_H
+static int lsan_test_pipe[2] = {-1, -1};
+static int lsan_test_pid = -1;
+
+/** Callback for LSAN - do not rename
+ *
+ */
+int CC_HINT(used) __lsan_is_turned_off(void)
+{
+	uint8_t ret = 1;
+
+	/* Parent */
+	if (lsan_test_pid != 0) return 0;
+
+	/* Child */
+	if (write(lsan_test_pipe[1], &ret, sizeof(ret)) < 0) {
+		fprintf(stderr, "Writing LSAN status failed: %s", strerror(errno));
+	}
+	close(lsan_test_pipe[1]);
+	return 0;
+}
+
+/** Determine if we're running under LSAN (Leak Sanitizer)
+ *
+ * @return
+ *	- 0 if we're not.
+ *	- 1 if we are.
+ *	- -1 if we can't tell because of an error.
+ *	- -2 if we can't tell because we were compiled with support for the LSAN interface.
+ */
+int fr_get_lsan_state(void)
+{
+	uint8_t ret = 0;
+
+	if (pipe(lsan_test_pipe) < 0) {
+		fr_strerror_printf("Failed opening internal pipe: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	lsan_test_pid = fork();
+	if (lsan_test_pid == -1) {
+		fr_strerror_printf("Error forking: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	/* Child */
+	if (lsan_test_pid == 0) {
+		close(lsan_test_pipe[0]);	/* Close parent's side */
+		exit(EXIT_SUCCESS);		/* Results in LSAN calling __lsan_is_turned_off via onexit handler */
+	}
+
+	/* Parent */
+	close(lsan_test_pipe[1]);		/* Close child's side */
+
+	while ((read(lsan_test_pipe[0], &ret, sizeof(ret)) < 0) && (errno == EINTR));
+
+	close(lsan_test_pipe[0]);		/* Close our side (so we don't leak FDs) */
+
+	/* Collect child */
+	waitpid(lsan_test_pid, NULL, 0);
+
+	return ret;
+}
+#else
+int fr_get_lsan_state(void)
+{
+	fr_strerror_printf("Not built with support for LSAN interface");
+	return -2;
+}
+#endif
 
 /** Determine if we're running under a debugger by attempting to attach using pattach
  *
