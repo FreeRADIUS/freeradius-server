@@ -123,6 +123,7 @@ static TALLOC_CTX *talloc_autofree_ctx;
 #ifdef HAVE_SANITIZER_COMMON_INTERFACE_DEFS_H
 static int lsan_test_pipe[2] = {-1, -1};
 static int lsan_test_pid = -1;
+static int lsan_state = INT_MAX;
 
 /** Callback for LSAN - do not rename
  *
@@ -154,6 +155,8 @@ int fr_get_lsan_state(void)
 {
 	uint8_t ret = 0;
 
+	if (lsan_state != INT_MAX) return lsan_state;/* Use cached result */
+
 	if (pipe(lsan_test_pipe) < 0) {
 		fr_strerror_printf("Failed opening internal pipe: %s", fr_syserror(errno));
 		return -1;
@@ -180,6 +183,8 @@ int fr_get_lsan_state(void)
 
 	/* Collect child */
 	waitpid(lsan_test_pid, NULL, 0);
+
+	lsan_state = ret;			/* Cache test results */
 
 	return ret;
 }
