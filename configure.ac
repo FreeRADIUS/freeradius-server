@@ -1610,7 +1610,24 @@ if test "x$developer" = "xyes"; then
   dnl #
   AX_CC_WEVERYTHING_FLAG
   if test "x$ax_cv_cc_weverything_flag" = "xyes"; then
-    devcflags="$devflags -W -Weverything -Wformat=2 -Wno-disabled-macro-expansion -Wno-missing-field-initializers -Wno-date-time -Wno-padded -Wno-gnu-zero-variadic-macro-arguments -Wno-shorten-64-to-32 -Wno-sign-conversion -Wno-conversion -Wno-switch-enum -Wno-gnu-statement-expression -Wno-extended-offsetof -Wno-cast-align -Wno-documentation-unknown-command -Wno-covered-switch-default -Wno-packed -DWITH_VERIFY_PTR=1"
+    devcflags="$devflags -W -Weverything -Wformat=2 -DWITH_VERIFY_PTR=1" \
+    	-Wno-disabled-macro-expansion \
+    	-Wno-missing-field-initializers \
+    	-Wno-date-time \
+    	-Wno-padded \
+    	-Wno-gnu-zero-variadic-macro-arguments \
+    	-Wno-shorten-64-to-32 \
+    	-Wno-sign-conversion \
+    	-Wno-conversion \
+    	-Wno-switch-enum \
+    	-Wno-gnu-statement-expression \
+    	-Wno-extended-offsetof \
+    	-Wno-cast-align \
+    	-Wno-documentation-unknown-command \
+    	-Wno-covered-switch-default \
+    	-Wno-packed \
+    	-Wno-reserved-id-macro \
+    	-Wno-format-pedantic
   else
     if test "x$GCC" = "xyes"; then
       devcflags="$devflags -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef -Wformat-y2k -Wno-missing-field-initializers -Wno-format-extra-args -Wno-format-zero-length -Wno-cast-align -Wformat-nonliteral -Wformat-security -Wformat=2 -DWITH_VERIFY_PTR=1"
