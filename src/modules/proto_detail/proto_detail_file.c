@@ -392,13 +392,11 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 
 	if (!fr_schedule_socket_add(inst->parent->sc, listen)) {
 	error:
-		if (inst->vnode_fd >= 0) {
-			if (fr_event_fd_delete(inst->el, inst->vnode_fd, FR_EVENT_FILTER_VNODE) < 0) {
-				PERROR("Failed removing DELETE callback when opening work file");
-			}
-			close(inst->vnode_fd);
-			inst->vnode_fd = -1;
+		if (fr_event_fd_delete(inst->el, inst->vnode_fd, FR_EVENT_FILTER_VNODE) < 0) {
+			PERROR("Failed removing DELETE callback when opening work file");
 		}
+		close(inst->vnode_fd);
+		inst->vnode_fd = -1;
 
 		if (opened) {
 			(void) listen->app_io->close(listen->app_io_instance);
