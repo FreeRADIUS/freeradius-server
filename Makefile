@@ -302,6 +302,30 @@ dist-tag: freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz freeradius-server-$
 	@echo "git tag release_`echo $(RADIUSD_VERSION_STRING) | tr .- __`"
 
 #
+#	Docker-related targets
+#
+.PHONY: docker
+docker:
+	docker build scripts/docker/ubuntu16 --build-arg=release=release_`echo $(RADIUSD_VERSION_STRING) | tr .- __` -t freeradius/freeradius-server:$(RADIUSD_VERSION_STRING)
+	docker build scripts/docker/alpine --build-arg=release=release_`echo $(RADIUSD_VERSION_STRING) | tr .- __` -t freeradius/freeradius-server:$(RADIUSD_VERSION_STRING)-alpine
+
+.PHONY: docker-push
+docker-push: docker
+	docker push freeradius/freeradius-server:$(RADIUSD_VERSION_STRING)
+	docker push freeradius/freeradius-server:$(RADIUSD_VERSION_STRING)-alpine
+
+.PHONY: docker-tag-latest
+docker-tag-latest: docker
+	docker tag freeradius/freeradius-server:$(RADIUSD_VERSION_STRING) freeradius/freeradius-server:latest
+
+.PHONY: docker-push-latest
+docker-push-latest: docker-push docker-tag-latest
+	docker push freeradius/freeradius-server:latest
+
+.PHONY: docker-publish
+docker-publish: docker-push-latest
+
+#
 #	Build a debian package
 #
 .PHONY: deb
