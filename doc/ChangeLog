@@ -10,6 +10,7 @@ FreeRADIUS 3.0.17 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	* Add TLS-Client-Cert-X509v3-Extended-Key-Usage-OIDs.
 	  Patch from Isaac Boukris.  Fixes #2205.
 	* Update main READMEs.  Patches from Matthew Newton.
+	* Added dictionary.mimosa
 
 	Bug fixes
 	* Don't call post-proxy twice when proxying to
@@ -43,6 +44,9 @@ FreeRADIUS 3.0.17 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	* Link default and inner-tunnel only if they exist.  Fixes #2206.
 	* Don't use both IP_PKTINFO and IP_SENDSRCADDR.
 	* Always install signal handler for SIGINT (needed by Docker).
+	* Fix intermediate CA flow for OCSP.  Fixes #2160.
+	  Intermediate certs which are not self-signed will now be
+	  checked.
 
 FreeRADIUS 3.0.16 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	Feature improvements
