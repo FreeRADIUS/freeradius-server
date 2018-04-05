@@ -1462,6 +1462,8 @@ static inline VALUE_PAIR *map_list_mod_to_vp(TALLOC_CTX *ctx, vp_tmpl_t const *a
 	VALUE_PAIR *vp;
 
 	vp = fr_pair_afrom_da(ctx, attr->tmpl_da);
+	if (!vp) return NULL;
+
 	vp->tag = attr->tmpl_tag;
 
 	if (fr_value_box_copy(vp, &vp->data, value) < 0) {
