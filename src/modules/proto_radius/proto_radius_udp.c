@@ -1377,7 +1377,12 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		 *	IP to a negative cache as a DoS prevention.
 		 */
 		if (buffer_len == 1) {
+			bool found;
+
+			found = (client_find(inst->dynamic_clients.negative, &client->ipaddr, IPPROTO_UDP) != NULL);
+
 			if ((inst->dynamic_clients.num_negative_clients <= 1024) &&
+			    !found &&
 			    client_add(inst->dynamic_clients.negative, client)) {
 				client->negative = true;
 				inst->dynamic_clients.num_negative_clients++;
@@ -1391,6 +1396,14 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 				fr_dlist_remove(&saved->entry);
 				talloc_free(saved);
 				inst->dynamic_clients.num_pending_packets--;
+			}
+
+			/*
+			 *	It's a duplicate negative client... just discard it.
+			 */
+			if (found) {
+				talloc_free(client);
+				return buffer_len;
 			}
 
 			/*
