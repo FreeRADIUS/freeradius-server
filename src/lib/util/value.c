@@ -1879,6 +1879,22 @@ static inline int fr_value_box_cast_to_ethernet(TALLOC_CTX *ctx, fr_value_box_t 
 		if (fr_value_box_fixed_size_from_ocets(dst, dst_type, dst_enumv, src) < 0) return -1;
 		break;
 
+	case FR_TYPE_UINT64: {
+		uint8_t array[8];
+		uint64_t i;
+
+		i = htonll(src->vb_uint64);
+		memcpy(array, &i, 8);
+
+		/*
+		 *	For OUIs in the DB.
+		 */
+		if ((array[0] != 0) || (array[1] != 0)) return -1;
+
+		memcpy(dst->vb_ether, &array[2], 6);
+		break;
+	}
+
 	default:
 		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
 				   fr_int2str(dict_attr_types, src->type, "<INVALID>"),
@@ -2327,23 +2343,6 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		dst->enumv = dst_enumv;
 
 		return 0;
-	}
-
-	if ((src->type == FR_TYPE_UINT64) &&
-	    (dst_type == FR_TYPE_ETHERNET)) {
-		uint8_t array[8];
-		uint64_t i;
-
-		i = htonll(src->vb_uint64);
-		memcpy(array, &i, 8);
-
-		/*
-		 *	For OUIs in the DB.
-		 */
-		if ((array[0] != 0) || (array[1] != 0)) return -1;
-
-		memcpy(dst->vb_ether, &array[2], 6);
-		goto fixed_length;
 	}
 
 	/*
