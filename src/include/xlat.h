@@ -207,7 +207,8 @@ typedef int (*xlat_thread_instantiate_t)(void *xlat_inst, void *xlat_thread_inst
  * Detach should close all handles associated with the xlat instance, and
  * free any memory allocated during instantiate.
  *
- * @param[in] instance to free.
+ * @param[in] xlat_inst		to free.
+ * @param[in] uctx		passed to the xlat registration function.
  * @return
  *	- 0 on success.
  *	- -1 if detach failed.
@@ -222,7 +223,8 @@ typedef int (*xlat_detach_t)(void *xlat_inst, void *uctx);
  * Detach should close all handles associated with the xlat instance, and
  * free any memory allocated during instantiate.
  *
- * @param[in] instance to free.
+ * @param[in] xlat_thread_inst	to free.
+ * @param[in] uctx		passed to the xlat registration function.
  * @return
  *	- 0 on success.
  *	- -1 if detach failed.

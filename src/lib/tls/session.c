@@ -122,7 +122,7 @@ inline static unsigned int record_to_buff(tls_record_t *record, void *out, unsig
 /** Return the static private key password we have configured
  *
  * @param[out] buf	Where to write the password to.
- * @param[in] num	The length of buf.
+ * @param[in] size	The length of buf.
  * @param[in] rwflag
  *			- 0 if password used for decryption.
  *			- 1 if password used for encryption.

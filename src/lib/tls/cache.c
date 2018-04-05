@@ -81,7 +81,7 @@ static int tls_cache_session_id_to_vp(REQUEST *request, uint8_t const *key, size
 /** Execute the virtual server configured to perform cache actions
  *
  * @param[in] request		The current request.
- * @param[in] section		to execute.
+ * @param[in] action		to execute.
  * @return the rcode from the virtual server.
  */
 int tls_cache_process(REQUEST *request, CONF_SECTION *action)

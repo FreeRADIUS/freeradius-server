@@ -74,7 +74,6 @@ typedef void (*unlang_op_signal_t)(REQUEST *request, void *rctx, fr_state_signal
  * @param[in] request		The current request.
  * @param[in] rctx		A structure allocated by the initial #unlang_op_call_t to store
  *				the result of the async execution.
- * @param[in] action		We're being signalled with.
  */
 typedef void (*unlang_op_resumable_t)(REQUEST *request, void *rctx);
 
