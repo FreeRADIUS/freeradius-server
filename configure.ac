@@ -71,6 +71,13 @@ dnl #
 dnl #############################################################
 
 dnl #
+dnl #  Unset ASAN_OPTIONS and LSAN_OPTIONS so they don't interfere
+dnl #  with the build process.
+dnl #
+unset ASAN_OPTIONS
+unset LSAN_OPTIONS
+
+dnl #
 dnl #  See if we have Git.
 dnl #
 AC_CHECK_PROG(GIT, git, yes, no)
