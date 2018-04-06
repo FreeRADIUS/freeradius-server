@@ -172,6 +172,10 @@ static ssize_t encode_rfc_hdr(uint8_t *out, ssize_t outlen,
 		if (len < 0) return len;
 		if (len == 0) {
 			FR_PROTO_TRACE("No more space in option");
+			if (out[1] == 0) {
+				/* Couldn't encode anything: don't leave behind these two octets. */
+				p -= 2;
+			}
 			break; /* Packed as much as we can */
 		}
 
