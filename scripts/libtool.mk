@@ -104,6 +104,9 @@ define ADD_TARGET_RULE.la
     ifneq "${ANALYZE.c}" ""
         scan.${1}: $${${1}_PLISTS}
     endif
+
+    .PHONY: $(DIR)
+    $(DIR)/: ${1}
 endef
 
 # ADD_LOCAL_RULE.exe - Parametric "function" that adds a rule to build
@@ -121,6 +124,9 @@ define ADD_LOCAL_RULE.exe
                 $${${1}_LDFLAGS} $${${1}_OBJS} $${${1}_LOCAL_PRLIBS} \
                 $${LDLIBS} $${${1}_LDLIBS}
 	    $(Q)$${${1}_POSTMAKE}
+
+    .PHONY: $(DIR)
+    $(DIR)/: ${1}
 endef
 
 # ADD_LOCAL_RULE.la - Parametric "function" that adds a rule to build

@@ -213,6 +213,9 @@ define ADD_TARGET_RULE.exe
     ifneq "${ANALYZE.c}" ""
         scan.${1}: $${${1}_PLISTS}
     endif
+
+    .PHONY: $(DIR)
+    $(DIR)/: ${1}
 endef
 
 # ADD_TARGET_RULE.a - Build a static library target.
@@ -234,6 +237,9 @@ define ADD_TARGET_RULE.a
     ifneq "${ANALYZE.c}" ""
         scan.${1}: $${${1}_PLISTS}
     endif
+
+    .PHONY: $(DIR)
+    $(DIR)/: ${1}
 endef
 
 # ADD_TARGET_RULE.so - Build a ".so" target.
