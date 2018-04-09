@@ -71,6 +71,44 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
+
+static fr_dict_attr_t const *attr_auth_type;
+static fr_dict_attr_t const *attr_group;
+static fr_dict_attr_t const *attr_group_name;
+static fr_dict_attr_t const *attr_user_name;
+static fr_dict_attr_t const *attr_login_ip_host;
+static fr_dict_attr_t const *attr_framed_ip_address;
+static fr_dict_attr_t const *attr_framed_protocol;
+static fr_dict_attr_t const *attr_nas_ip_address;
+static fr_dict_attr_t const *attr_nas_port;
+static fr_dict_attr_t const *attr_acct_status_type;
+static fr_dict_attr_t const *attr_acct_delay_time;
+
+extern fr_dict_attr_autoload_t rlm_unix_dict_attr[];
+fr_dict_attr_autoload_t rlm_unix_dict_attr[] = {
+	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_group, .name = "Group", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_group_name, .name = "Group-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_login_ip_host, .name = "Login-IP-Host", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
+	{ .out = &attr_framed_ip_address, .name = "Framed-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
+	{ .out = &attr_framed_protocol, .name = "Framed-Protocol", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_nas_ip_address, .name = "NAS-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
+	{ .out = &attr_nas_port, .name = "NAS-Port", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_acct_status_type, .name = "Acct-Status-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_acct_delay_time, .name = "Acct-Delay-Time", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ NULL }
+};
+
+extern fr_dict_autoload_t rlm_unix_dict[];
+fr_dict_autoload_t rlm_unix_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
 /*
  *	The Group = handler.
  */
@@ -129,46 +167,18 @@ static int groupcmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE_PAIR *
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	rlm_unix_t		*inst = instance;
-	fr_dict_attr_t const	*group_da, *user_name_da;
-
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
-	group_da = fr_dict_attr_by_num(fr_dict_internal, 0, FR_GROUP);
-	if (!group_da) {
-		PERROR("&Group attribute not found in dictionary");
-		return -1;
-	}
-
-	user_name_da = fr_dict_attr_by_num(NULL, 0, FR_USER_NAME);
-	if (!user_name_da) {
-		ERROR("&User-Name attribute not found in dictionary");
-		return -1;
-	}
-
 	/* FIXME - delay these until a group file has been read so we know
 	 * groupcmp can actually do something */
-	paircompare_register(group_da, user_name_da, false, groupcmp, inst);
+	paircompare_register(attr_group, attr_user_name, false, groupcmp, inst);
 
-#ifdef FR_GROUP_NAME /* compat */
-	{
-		fr_dict_attr_t const *group_name_da;
+	/* Compat */
+	paircompare_register(attr_group_name, attr_user_name, true, groupcmp, inst);
 
-		group_name_da = fr_dict_attr_by_num(fr_dict_internal, 0, FR_GROUP_NAME);
-		if (!group_name_da) {
-			ERROR("&Group-Name attribute not found in dictionary");
-			return -1;
-		}
-		paircompare_register(group_name_da, user_name_da, true, groupcmp, inst);
-	}
-#endif
-
-	if (paircompare_register_byname("Unix-Group",
-				        user_name_da,
-				        false,
-					groupcmp,
-					inst) < 0) {
+	if (paircompare_register_byname("Unix-Group", attr_user_name, false, groupcmp, inst) < 0) {
 		PERROR("Failed registering Unix-Group");
 		return -1;
 	}
@@ -393,7 +403,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	/*
 	 *	Which type is this.
 	 */
-	if ((vp = fr_pair_find_by_num(request->packet->vps, 0, FR_ACCT_STATUS_TYPE, TAG_ANY)) == NULL) {
+	if ((vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type, TAG_ANY)) == NULL) {
 		RDEBUG("no Accounting-Status-Type attribute in request");
 		return RLM_MODULE_NOOP;
 	}
@@ -410,7 +420,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	 *	We're only interested in accounting messages
 	 *	with a username in it.
 	 */
-	if (fr_pair_find_by_num(request->packet->vps, 0, FR_USER_NAME, TAG_ANY) == NULL)
+	if (fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY) == NULL)
 		return RLM_MODULE_NOOP;
 
 	t = request->packet->timestamp.tv_sec;
@@ -422,38 +432,30 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
-		if (!fr_dict_attr_is_top_level(vp->da)) continue;
-
-		switch (vp->da->attr) {
-		case FR_USER_NAME:
+		if (vp->da == attr_user_name) {
 			if (vp->vp_length >= sizeof(ut.ut_name)) {
 				memcpy(ut.ut_name, vp->vp_strvalue, sizeof(ut.ut_name));
 			} else {
 				strlcpy(ut.ut_name, vp->vp_strvalue, sizeof(ut.ut_name));
 			}
-			break;
 
-		case FR_LOGIN_IP_HOST:
-		case FR_FRAMED_IP_ADDRESS:
+		} else if (vp->da == attr_login_ip_host ||
+			   vp->da == attr_framed_ip_address) {
 			framed_address = vp->vp_ipv4addr;
-				break;
-#ifdef USER_PROCESS
-		case FR_FRAMED_PROTOCOL:
-			protocol = vp->vp_uint32;
-			break;
-#endif
-		case FR_NAS_IP_ADDRESS:
-			nas_address = vp->vp_ipv4addr;
-			break;
 
-		case FR_NAS_PORT:
+#ifdef USER_PROCESS
+		} else if (vp->da == attr_framed_protocol) {
+			protocol = vp->vp_uint32;
+#endif
+		} else if (vp->da == attr_nas_ip_address) {
+			nas_address = vp->vp_ipv4addr;
+
+		} else if (vp->da == attr_nas_port) {
 			nas_port = vp->vp_uint32;
 			port_seen = true;
-			break;
 
-		case FR_ACCT_DELAY_TIME:
+		} else if (vp->da == attr_acct_delay_time) {
 			delay = vp->vp_ipv4addr;
-			break;
 		}
 	}
 
