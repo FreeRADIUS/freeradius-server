@@ -166,6 +166,22 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t const *dict_radius;
+
+static fr_dict_attr_t const *attr_user_name;
+
+extern fr_dict_attr_autoload_t rlm_test_dict_attr[];
+fr_dict_attr_autoload_t rlm_test_dict_attr[] = {
+	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ NULL }
+};
+
+extern fr_dict_autoload_t rlm_test_dict[];
+fr_dict_autoload_t rlm_test_dict[] = {
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
 static int rlm_test_cmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE_PAIR *thing, VALUE_PAIR *check,
 			UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
 {
@@ -213,7 +229,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 {
 	rlm_test_t *inst = instance;
 
-	if (paircompare_register_byname("test-Paircmp", fr_dict_attr_by_num(NULL, 0, FR_USER_NAME), false,
+	if (paircompare_register_byname("test-Paircmp", attr_user_name, false,
 					rlm_test_cmp, inst) < 0) {
 		PERROR("Failed registering \"test-Paircmp\"");
 		return -1;
