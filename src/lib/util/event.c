@@ -618,12 +618,16 @@ static int _event_fd_delete(fr_event_fd_t *ef)
 		 */
 		count = fr_event_build_evset(evset, sizeof(evset)/sizeof(*evset), &ef->active, ef, &funcs, &ef->active);
 		if (count > 0) {
+			int ret;
+
 			/*
-			 *	If this fails, assert on debug builds, but ignore it at run-time.
+			 *	If this fails, assert on debug builds.
 			 */
-			if (kevent(el->kq, evset, count, NULL, 0, NULL) < 0) {
-				(void) fr_cond_assert_msg(false, "FD was closed without being removed from the KQ: %s",
-							  fr_syserror(errno));
+			ret = kevent(el->kq, evset, count, NULL, 0, NULL);
+			if (!fr_cond_assert_msg(ret >= 0,
+						"FD was closed without being removed from the KQ: %s",
+						fr_syserror(errno)) {
+				return -1;	/* Prevent the free, and leave the fd in the trees */
 			}
 		}
 
@@ -693,10 +697,18 @@ int fr_event_fd_delete(fr_event_list_t *el, int fd, fr_event_filter_t filter)
 	}
 
 	/*
-	 *	Destructor may prevent ef from being
-	 *	freed if kevent de-registration fails.
+	 *	Free will normally fail if it's
+	 *	a deferred free. There is a special
+	 *	case for kevent failures though.
+	 *
+	 *	We distinguish between the two by
+	 *	looking to see if the ef is still
+	 *	in the even tree.
+	 *
+	 *	Talloc returning -1 guarantees the
+	 *	memory has not been freed.
 	 */
-	if (unlikely(talloc_free(ef) < 0)) return -1;
+	if ((talloc_free(ef) == -1) && ef->is_registered) return -1;
 
 	return 0;
 }
