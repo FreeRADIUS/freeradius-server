@@ -16,6 +16,10 @@ BEGIN-VENDOR	ADSL-Forum
 #  DHCP options.
 #
 ATTRIBUTE	ADSL-Forum-DHCP-Vendor-Specific		0	tlv
+ATTRIBUTE	ADSL-Forum-Device-Manufacturer-OUI	0.1	octets
+ATTRIBUTE	ADSL-Forum-Device-Serial-Number		0.2	string
+ATTRIBUTE	ADSL-Forum-Device-Product-Class		0.3	string
+ATTRIBUTE	ADSL-Forum-Gateway-Manufacturer-OUI	0.4	octets
 
 #
 #  The first two attributes are prefixed with "ADSL-" because of
