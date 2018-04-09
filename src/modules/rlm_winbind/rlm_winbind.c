@@ -50,6 +50,28 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
+
+static fr_dict_attr_t const *attr_user_name;
+static fr_dict_attr_t const *attr_user_password;
+static fr_dict_attr_t const *attr_auth_type;
+
+extern fr_dict_attr_autoload_t rlm_winbind_dict_attr[];
+fr_dict_attr_autoload_t rlm_winbind_dict_attr[] = {
+	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ NULL }
+};
+
+extern fr_dict_autoload_t rlm_winbind_dict[];
+fr_dict_autoload_t rlm_winbind_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
 /** Group comparison for Winbind-Group
  *
  * @param instance	Instance of this module
@@ -303,12 +325,10 @@ static void *mod_conn_create(TALLOC_CTX *ctx, UNUSED void *instance, UNUSED stru
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	rlm_winbind_t		*inst = instance;
-	fr_dict_attr_t const	*user_name_da;
 	char const		*group_attribute;
 	char			buffer[256];
 
-	user_name_da = fr_dict_attr_by_num(NULL, 0, FR_USER_NAME);
-	if (!user_name_da) {
+	if (!attr_user_name) {
 		ERROR("Unable to find User-Name attribute in dictionary");
 		return -1;
 	}
@@ -325,7 +345,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		group_attribute = "Winbind-Group";
 	}
 
-	if (paircompare_register_byname(group_attribute, user_name_da, false,
+	if (paircompare_register_byname(group_attribute, attr_user_name, false,
 					winbind_group_cmp, inst) < 0) {
 		PERROR("Error registering group comparison");
 		return -1;
@@ -437,12 +457,12 @@ static int mod_detach(UNUSED void *instance)
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
 {
-	if (!request->password || (request->password->da->attr != FR_USER_PASSWORD)) {
+	if (!request->password || (request->password->da != attr_user_password)) {
 		RDEBUG("No User-Password found in the request; not doing winbind authentication.");
 		return RLM_MODULE_NOOP;
 	}
 
-	if (fr_pair_find_by_num(request->control, 0, FR_AUTH_TYPE, TAG_ANY) != NULL) {
+	if (fr_pair_find_by_da(request->control, attr_auth_type, TAG_ANY) != NULL) {
 		RWDEBUG2("Auth-type already set, not setting to winbind");
 		return RLM_MODULE_NOOP;
 	}
@@ -470,7 +490,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	 *	Check the admin hasn't been silly
 	 */
 	if (!request->password || !fr_dict_attr_is_top_level(request->password->da) ||
-	    (request->password->da->attr != FR_USER_PASSWORD)) {
+	    (request->password->da != attr_user_password)) {
 		REDEBUG("You set 'Auth-Type = winbind' for a request that does not contain a User-Password attribute!");
 		return RLM_MODULE_INVALID;
 	}
