@@ -47,6 +47,7 @@ FreeRADIUS 3.0.17 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	* Fix intermediate CA flow for OCSP.  Fixes #2160.
 	  Intermediate certs which are not self-signed will now be
 	  checked.
+	* sqlippool now returns "fail" if it fails IP allocation.
 
 FreeRADIUS 3.0.16 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	Feature improvements
