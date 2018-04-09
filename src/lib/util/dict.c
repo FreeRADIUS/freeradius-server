@@ -4433,10 +4433,11 @@ static int _dict_from_file(dict_from_file_ctx_t *ctx,
 	if ((fp = fopen(fn, "r")) == NULL) {
 		if (!src_file) {
 			fr_strerror_printf_push("%s: Couldn't open dictionary '%s': %s",
-					   "Error reading dictionary", fn, fr_syserror(errno));
+						"Error reading dictionary", fn, fr_syserror(errno));
 		} else {
 			fr_strerror_printf_push("%s: %s[%d]: Couldn't open dictionary '%s': %s",
-					   "Error reading dictionary", src_file, src_line, fn, fr_syserror(errno));
+						"Error reading dictionary", src_file, src_line, fn,
+						fr_syserror(errno));
 		}
 		return -2;
 	}
