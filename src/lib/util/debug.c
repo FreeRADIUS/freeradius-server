@@ -125,6 +125,7 @@ static int lsan_test_pipe[2] = {-1, -1};
 static int lsan_test_pid = -1;
 static int lsan_state = INT_MAX;
 
+DIAG_OFF(missing-prototypes)
 /** Callback for LSAN - do not rename
  *
  */
@@ -142,6 +143,7 @@ int CC_HINT(used) __lsan_is_turned_off(void)
 	close(lsan_test_pipe[1]);
 	return 0;
 }
+DIAG_ON(missing-prototypes)
 
 /** Determine if we're running under LSAN (Leak Sanitizer)
  *
