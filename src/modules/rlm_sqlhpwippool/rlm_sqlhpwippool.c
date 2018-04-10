@@ -41,9 +41,6 @@
 
 #include "rlm_sql.h"
 
-#define VENDORPEC_ASN 23782
-#define ASN_IP_POOL_NAME 1
-
 #define RLM_NETVIM_MAX_ROWS 1000000
 #define RLM_NETVIM_TMP_PREFIX "auth-tmp-"
 
@@ -77,6 +74,30 @@ static CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("free_after", FR_TYPE_UINT32, rlm_sqlhpwippool_t, free_after), .dflt = "300" },
 	{ FR_CONF_OFFSET("sync_after", FR_TYPE_UINT32, rlm_sqlhpwippool_t, sync_after), .dflt = "25" },
 	CONF_PARSER_TERMINATOR
+};
+
+static fr_dict_t const *dict_radius;
+
+static fr_dict_attr_t const *attr_framed_ip_address;
+static fr_dict_attr_t const *attr_nas_ip_address;
+static fr_dict_attr_t const *attr_acct_status_type;
+static fr_dict_attr_t const *attr_acct_unique_session_id;
+static fr_dict_attr_t const *attr_asn_ip_pool_name;
+
+extern fr_dict_attr_autoload_t rlm_sqlhpwippool_dict_attr[];
+fr_dict_attr_autoload_t rlm_sqlhpwippool_dict_attr[] = {
+	{ .out = &attr_framed_ip_address, .name = "Framed-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
+	{ .out = &attr_nas_ip_address, .name = "NAS-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
+	{ .out = &attr_acct_status_type, .name = "Acct-Status-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_acct_unique_session_id, .name = "Acct-Unique-Session-Id", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_asn_ip_pool_name, .name = "ASN-IP-Pool-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ NULL }
+};
+
+extern fr_dict_autoload_t rlm_sqlhpwippool_dict[];
+fr_dict_autoload_t rlm_sqlhpwippool_dict[] = {
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
 };
 
 DIAG_OFF(format-nonliteral)
@@ -310,14 +331,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 
 
 	/* if IP is already there, then nothing to do */
-	vp = fr_pair_find_by_num(request->reply->vps, 0, FR_FRAMED_IP_ADDRESS, TAG_ANY);
+	vp = fr_pair_find_by_da(request->reply->vps, attr_framed_ip_address, TAG_ANY);
 	if (vp) {
 		RDEBUG2("IP address already in the reply packet - exiting");
 		return RLM_MODULE_NOOP;
 	}
 
 	/* if no pool name, we don't need to do anything */
-	vp = fr_pair_find_by_num(request->reply->vps, VENDORPEC_ASN, ASN_IP_POOL_NAME, TAG_ANY);
+	vp = fr_pair_find_by_da(request->reply->vps, attr_asn_ip_pool_name, TAG_ANY);
 	if (vp) {
 		pname = vp->vp_strvalue;
 		RDEBUG2("pool name = '%s'", pname);
@@ -328,7 +349,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 	}
 
 	/* if no NAS IP address, assign 0 */
-	vp = fr_pair_find_by_num(request->packet->vps, 0, FR_NAS_IP_ADDRESS, TAG_ANY);
+	vp = fr_pair_find_by_da(request->packet->vps, attr_nas_ip_address, TAG_ANY);
 	if (vp) {
 		nasip = ntohl(vp->vp_ipv4addr);
 	}
@@ -580,7 +601,7 @@ fr_pool_connection_release(inst->sql_inst->pool, request, sqlsock);
 	}
 
 	/* add IP address to reply packet */
-	vp = radius_pair_create(request->reply, &request->reply->vps, FR_FRAMED_IP_ADDRESS, 0);
+	vp = pair_add_reply(attr_framed_ip_address, TAG_ANY);
 	vp->vp_ipv4addr = ip.s_addr;
 
 	RDEBUG2("Returning %s", inet_ntoa(ip));
@@ -600,16 +621,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	rlm_sqlhpwippool_t *inst = (rlm_sqlhpwippool_t *) instance;
 
 	/* if no unique session ID, don't even try */
-	vp = fr_pair_find_by_num(request->packet->vps, 0, FR_ACCT_UNIQUE_SESSION_ID, TAG_ANY);
+	vp = fr_pair_find_by_da(request->packet->vps, attr_acct_unique_session_id, TAG_ANY);
 	if (vp) {
 		sessid = vp->vp_strvalue;
 	}
 	else {
-		REDEBUG("Unique session ID not found");
+		REDEBUG("Acct-Unique-Session-Id not found");
 		return RLM_MODULE_FAIL;
 	}
 
-	vp = fr_pair_find_by_num(request->packet->vps, 0, FR_ACCT_STATUS_TYPE, TAG_ANY);
+	vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type, TAG_ANY);
 	if (vp) {
 		acct_type = vp->vp_uint32;
 	}
@@ -637,7 +658,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	switch (acct_type) {
 	case FR_STATUS_START:
 	case FR_STATUS_ALIVE:
-		vp = fr_pair_find_by_num(request->packet->vps, 0, FR_FRAMED_IP_ADDRESS, TAG_ANY);
+		vp = fr_pair_find_by_da(request->packet->vps, attr_framed_ip_address, TAG_ANY);
 		if (!vp) {
 			REDEBUG("No framed IP");
 			fr_pool_connection_release(inst->sql_inst->pool, request, sqlsock);
@@ -677,7 +698,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 
 	case FR_STATUS_ACCOUNTING_OFF:
 	case FR_STATUS_ACCOUNTING_ON:
-		vp = fr_pair_find_by_num(request->packet->vps, 0, FR_NAS_IP_ADDRESS, TAG_ANY);
+		vp = fr_pair_find_by_da(request->packet->vps, attr_nas_ip_address, TAG_ANY);
 		if (!vp) {
 			REDEBUG("No NAS IP");
 			fr_pool_connection_release(inst->sql_inst->pool, request, sqlsock);
