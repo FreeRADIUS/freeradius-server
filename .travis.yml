@@ -40,7 +40,7 @@ addons:
   apt:
     sources:
     - couchbase-trusty
-    - llvm-toolchain-trusty-5.0
+    - llvm-toolchain-trusty-6.0
     # For newer GCC
     - ubuntu-toolchain-r-test
     # For newer libkqueue
@@ -48,7 +48,7 @@ addons:
     packages:
     - autoconf
     - build-essential
-    - clang-5.0
+    - clang-6.0
     - debhelper
     - devscripts
     - dh-make
@@ -98,7 +98,7 @@ addons:
     - libykclient-dev
     - libyubikey-dev
     # Needed for llvm-symbolizer
-    - llvm-5.0
+    - llvm-6.0
     # For rendering clang scan results
     - lynx
     - slapd
@@ -110,8 +110,8 @@ services:
 before_install:
 - rvm --install --default --binary use 2.4
 - if [ "${CC}" == 'gcc' ]; then sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 60 && sudo update-alternatives --config gcc; fi
-- if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-5.0 60 && sudo update-alternatives --config clang; fi
-- if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-5.0 60 && sudo update-alternatives --config llvm-symbolizer; fi
+- if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-6.0 60 && sudo update-alternatives --config clang; fi
+- if [ "${CC}" == 'clang' ]; then sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-6.0 60 && sudo update-alternatives --config llvm-symbolizer; fi
 - $CC --version
 before_script:
 - ./scripts/travis/build.sh
