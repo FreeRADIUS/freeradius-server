@@ -1350,10 +1350,11 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	 *	as required.
 	 */
 	if (inst->dynamic_clients_is_set && address->client->dynamic && !address->client->active) {
-		RADCLIENT *client = address->client;
-		RADCLIENT *newclient;
-		fr_dlist_t *entry;
-		dynamic_packet_t *saved;
+		RADCLIENT		*client = address->client;
+		RADCLIENT		*newclient;
+		fr_dlist_t		*entry;
+		dynamic_packet_t	*saved;
+		bool			found = false;
 
 		/*
 		 *	@todo - maybe just duplicate the new client
@@ -1377,8 +1378,6 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		 *	IP to a negative cache as a DoS prevention.
 		 */
 		if (buffer_len == 1) {
-			bool found;
-
 			found = (client_find(inst->dynamic_clients.negative, &client->ipaddr, IPPROTO_UDP) != NULL);
 
 			if ((inst->dynamic_clients.num_negative_clients <= 1024) &&
