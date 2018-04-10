@@ -897,6 +897,32 @@ void *fr_pair_iter_next_by_da(void **prev, void *to_eval, void *uctx)
 	return NULL;
 }
 
+/** Create a new VALUE_PAIR
+ *
+ * @param[in] ctx		to allocate new #VALUE_PAIR in.
+ * @param[in,out] list		in search and insert into it.
+ * @param[in] da		of attribute to update.
+ * @param[in] tag		of attribute to update.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+VALUE_PAIR *fr_pair_add_by_da(TALLOC_CTX *ctx, VALUE_PAIR **list,
+			      fr_dict_attr_t const *da, int8_t tag)
+{
+	vp_cursor_t	cursor;
+	VALUE_PAIR	*vp;
+
+	(void)fr_pair_cursor_init(&cursor, list);
+	vp = fr_pair_afrom_da(ctx, da);
+	if (!vp) return NULL;
+	vp->tag = tag;
+
+	fr_pair_cursor_prepend(&cursor, vp);
+
+	return vp;
+}
+
 /** Create a new VALUE_PAIR or replaces the value of the head pair in the specified list
  *
  * If skip_if_exists is true, will return NULL if a pair matching the specified #fr_dict_attr_t
@@ -920,8 +946,8 @@ VALUE_PAIR *fr_pair_update_by_da(TALLOC_CTX *ctx, VALUE_PAIR **list,
 				 fr_dict_attr_t const *da, int8_t tag,
 				 bool skip_if_exists)
 {
-	vp_cursor_t cursor;
-	VALUE_PAIR *vp;
+	vp_cursor_t	cursor;
+	VALUE_PAIR	*vp;
 
 	(void)fr_pair_cursor_init(&cursor, list);
 	vp = fr_pair_cursor_next_by_da(&cursor, da, tag);

@@ -527,24 +527,45 @@ int radius_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, char con
 #define pair_make_reply(_a, _b, _c) fr_pair_make(request->reply, &request->reply->vps, _a, _b, _c)
 #define pair_make_config(_a, _b, _c) fr_pair_make(request, &request->control, _a, _b, _c)
 
+/** Allocate a VALUE_PAIR in the request list
+ *
+ * @param[in] _da	#fr_dict_attr_t of the pair to be found or allocated.
+ * @param[in] _tag	tag of the attribute to be found or allocated.
+ */
+#define pair_add_request(_da, _tag) fr_pair_add_by_da(request->packet, &request->packet->vps, _da, _tag)
+
+/** Allocate a VALUE_PAIR in the reply list
+ *
+ * @param[in] _da	#fr_dict_attr_t of the pair to be found or allocated.
+ * @param[in] _tag	tag of the attribute to be found or allocated.
+ */
+#define pair_add_reply(_da, _tag) fr_pair_add_by_da(request->reply, &request->reply->vps, _da, _tag)
+
+/** Allocate a VALUE_PAIR in the control list
+ *
+ * @param[in] _da	#fr_dict_attr_t of the pair to be found or allocated.
+ * @param[in] _tag	tag of the attribute to be found or allocated.
+ */
+#define pair_add_control(_da, _tag) fr_pair_add_by_da(request, &request->control, _da, _tag)
+
 /** Return or allocate a VALUE_PAIR in the request list
  *
- * @param[in] _da #fr_dict_attr_t of the pair to be found or allocated.
- * @param[in] _tag tag of the attribute to be found or allocated.
+ * @param[in] _da	#fr_dict_attr_t of the pair to be found or allocated.
+ * @param[in] _tag	tag of the attribute to be found or allocated.
  */
 #define pair_update_request(_da, _tag) fr_pair_update_by_da(request->packet, &request->packet->vps, _da, _tag, false)
 
 /** Return or allocate a VALUE_PAIR in the reply list
  *
- * @param[in] _da #fr_dict_attr_t of the pair to be found or allocated.
- * @param[in] _tag tag of the attribute to be found or allocated.
+ * @param[in] _da	#fr_dict_attr_t of the pair to be found or allocated.
+ * @param[in] _tag	tag of the attribute to be found or allocated.
  */
 #define pair_update_reply(_da, _tag) fr_pair_update_by_da(request->reply, &request->reply->vps, _da, _tag, false)
 
 /** Return or allocate a VALUE_PAIR in the control list
  *
- * @param[in] _da #fr_dict_attr_t of the pair to be found or allocated.
- * @param[in] _tag tag of the attribute to be found or allocated.
+ * @param[in] _da	#fr_dict_attr_t of the pair to be found or allocated.
+ * @param[in] _tag	tag of the attribute to be found or allocated.
  */
 #define pair_update_control(_da, _tag) fr_pair_update_by_da(request, &request->control, _da, _tag, false)
 
