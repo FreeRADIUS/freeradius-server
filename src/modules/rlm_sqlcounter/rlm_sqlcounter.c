@@ -91,6 +91,24 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t const *dict_radius;
+
+static fr_dict_attr_t const *attr_user_name;
+static fr_dict_attr_t const *attr_session_timeout;
+
+extern fr_dict_attr_autoload_t rlm_sqlcounter_dict_attr[];
+fr_dict_attr_autoload_t rlm_sqlcounter_dict_attr[] = {
+	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_session_timeout, .name = "Session-Timeout", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ NULL }
+};
+
+extern fr_dict_autoload_t rlm_sqlcounter_dict[];
+fr_dict_autoload_t rlm_sqlcounter_dict[] = {
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
 static int find_next_reset(rlm_sqlcounter_t *inst, time_t timeval)
 {
 	int		ret = 0;
@@ -409,7 +427,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	 *      The REAL username, after stripping.
 	 */
 	if ((inst->key_attr->tmpl_list == PAIR_LIST_REQUEST) &&
-	    fr_dict_attr_is_top_level(inst->key_attr->tmpl_da) && (inst->key_attr->tmpl_da->attr == FR_USER_NAME)) {
+	    (inst->key_attr->tmpl_da == attr_user_name)) {
 		key_vp = request->username;
 	} else {
 		tmpl_find_vp(&key_vp, request, inst->key_attr);
@@ -482,8 +500,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		 *	limit, so that the user will not need to login
 		 *	again.  Do this only for Session-Timeout.
 		 */
-		if ((fr_dict_attr_is_top_level(inst->reply_attr->tmpl_da) &&
-		     (inst->reply_attr->tmpl_da->attr == FR_SESSION_TIMEOUT)) &&
+		if ((inst->reply_attr->tmpl_da == attr_session_timeout) &&
 		    inst->reset_time && (res >= (uint64_t)(inst->reset_time - request->packet->timestamp.tv_sec))) {
 			uint64_t to_reset = inst->reset_time - request->packet->timestamp.tv_sec;
 
