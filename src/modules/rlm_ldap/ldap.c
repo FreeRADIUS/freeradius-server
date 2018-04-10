@@ -1551,6 +1551,10 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	}
 #endif /* HAVE_LDAP_START_TLS_S */
 
+	if (inst->sasl_secprops) {
+		do_ldap_option(LDAP_OPT_X_SASL_SECPROPS, "SASL_SECPROPS", inst->sasl_secprops);
+	}
+
 	status = rlm_ldap_bind(inst, NULL, &conn, conn->inst->admin_identity, conn->inst->admin_password,
 			       &(conn->inst->admin_sasl), false);
 	if (status != LDAP_PROC_SUCCESS) {
