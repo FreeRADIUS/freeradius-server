@@ -346,7 +346,6 @@ static int work_exists(proto_detail_file_t *inst, int fd)
 	 *	Remember this for later.
 	 */
 	inst->vnode_fd = fd;
-	fd = -1;
 
 	/*
 	 *	Yuck.
