@@ -27,6 +27,16 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/*
+ *	Reduce spurious errors from clang scan by having
+ *	all paths that find the da to be NULL, result
+ *	in program exit.
+ */
+#ifdef __clang_analyzer__
+#  define WITH_VERIFY_PTR	1
+#endif
+
 /*
  *	The ubiquitous stringify macros
  */
