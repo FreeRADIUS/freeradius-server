@@ -169,6 +169,26 @@ static CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
+
+static fr_dict_attr_t const *attr_pool_name;
+static fr_dict_attr_t const *attr_acct_status_type;
+
+extern fr_dict_attr_autoload_t rlm_sqlippool_dict_attr[];
+fr_dict_attr_autoload_t rlm_sqlippool_dict_attr[] = {
+	{ .out = &attr_pool_name, .name = "Pool-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_acct_status_type, .name = "Acct-Status-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ NULL }
+};
+
+extern fr_dict_autoload_t rlm_sqlippool_dict[];
+fr_dict_autoload_t rlm_sqlippool_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
 /*
  *	Replace %<whatever> in a string.
  *
@@ -464,7 +484,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 		return do_logging(request, inst->log_exists, RLM_MODULE_NOOP);
 	}
 
-	if (fr_pair_find_by_num(request->control, 0, FR_POOL_NAME, TAG_ANY) == NULL) {
+	if (fr_pair_find_by_da(request->control, attr_pool_name, TAG_ANY) == NULL) {
 		RDEBUG("No Pool-Name defined");
 
 		return do_logging(request, inst->log_nopool, RLM_MODULE_NOOP);
@@ -648,7 +668,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *
 	rlm_sqlippool_t		*inst = (rlm_sqlippool_t *) instance;
 	rlm_sql_handle_t	*handle;
 
-	vp = fr_pair_find_by_num(request->packet->vps, 0, FR_ACCT_STATUS_TYPE, TAG_ANY);
+	vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type, TAG_ANY);
 	if (!vp) {
 		RDEBUG("Could not find account status type in packet");
 		return RLM_MODULE_NOOP;
