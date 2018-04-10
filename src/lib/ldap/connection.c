@@ -337,6 +337,8 @@ int fr_ldap_connection_configure(fr_ldap_connection_t *c, fr_ldap_config_t const
 	}
 #  endif
 
+	if (config->sasl_secprops) do_ldap_option(LDAP_OPT_X_SASL_SECPROPS, "sasl_secprops", config->sasl_secprops);
+
 	if (config->start_tls) {
 		if (config->port == 636) {
 			WARN("Told to Start TLS on LDAPS port this will probably fail, please correct the "

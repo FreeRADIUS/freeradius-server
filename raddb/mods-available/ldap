@@ -408,6 +408,14 @@ ldap {
 		#
 #		session_tracking = yes
 
+		#
+		#  SASL Security Properties (see SASL_SECPROPS in ldap.conf man page).
+		#  Note - uncomment when using GSS-API sasl mechanism along with TLS
+		#  encryption against Active-Directory LDAP servers (this disables
+		#  sealing and signing at the GSS level as required by AD).
+		#
+#		sasl_secprops = 'noanonymous,noplain,maxssf=0'
+
 		#  Seconds to wait for LDAP query to finish. default: 20
 		res_timeout = 10
 

@@ -196,6 +196,8 @@ typedef struct {
 
 	fr_ldap_sasl_t		admin_sasl;		//!< SASL parameters used when binding as the admin.
 
+	const char		*sasl_secprops;		//!< SASL Security Properties to set.
+
 	int			dereference;		//!< libldap value specifying dereferencing behaviour.
 	char const		*dereference_str;	//!< When to dereference (never, searching, finding, always)
 
