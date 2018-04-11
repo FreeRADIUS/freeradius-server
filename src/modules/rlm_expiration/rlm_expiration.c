@@ -38,7 +38,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 
 	check_item = fr_pair_find_by_num(request->control, 0, FR_EXPIRATION, TAG_ANY);
 	if (check_item != NULL) {
-		char date[50];
 		/*
 		*      Has this user's password expired?
 		*
@@ -47,15 +46,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 		*      why they're being rejected.
 		*/
 		if (((time_t) check_item->vp_date) <= request->packet->timestamp.tv_sec) {
-			fr_pair_value_snprint(date, sizeof(date), check_item, 0);
-			REDEBUG("Account expired at '%s'", date);
+			REDEBUG("Account expired at '%pV'", &check_item->data);
 
 			return RLM_MODULE_USERLOCK;
 		} else {
-			if (RDEBUG_ENABLED) {
-				fr_pair_value_snprint(date, sizeof(date), check_item, 0);
-				RDEBUG("Account will expire at '%s'", date);
-			}
+			if (RDEBUG_ENABLED) RDEBUG("Account will expire at '%pV'", &check_item->data);
 		}
 
 		/*
