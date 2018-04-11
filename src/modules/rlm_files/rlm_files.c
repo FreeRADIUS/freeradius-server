@@ -64,6 +64,22 @@ typedef struct rlm_files_t {
 	rbtree_t *postauth_users;
 } rlm_files_t;
 
+static fr_dict_t const *dict_freeradius;
+
+static fr_dict_attr_t const *attr_fall_through;
+
+extern fr_dict_attr_autoload_t rlm_files_dict_attr[];
+fr_dict_attr_autoload_t rlm_files_dict_attr[] = {
+	{ .out = &attr_fall_through, .name = "Fall-Through", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
+
+	{ NULL }
+};
+
+extern fr_dict_autoload_t rlm_files_dict[];
+fr_dict_autoload_t rlm_files_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
 
 /*
  *     See if a VALUE_PAIR list contains Fall-Through = Yes
@@ -71,7 +87,7 @@ typedef struct rlm_files_t {
 static int fall_through(VALUE_PAIR *vp)
 {
 	VALUE_PAIR *tmp;
-	tmp = fr_pair_find_by_num(vp, 0, FR_FALL_THROUGH, TAG_ANY);
+	tmp = fr_pair_find_by_da(vp, attr_fall_through, TAG_ANY);
 
 	return tmp ? tmp->vp_uint32 : 0;
 }
@@ -389,7 +405,7 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
 	/*
 	 *	Remove server internal parameters.
 	 */
-	fr_pair_delete_by_num(&reply_packet->vps, 0, FR_FALL_THROUGH, TAG_ANY);
+	fr_pair_delete_by_da(&reply_packet->vps, attr_fall_through, TAG_ANY);
 
 	/*
 	 *	See if we succeeded.
