@@ -48,6 +48,8 @@ FreeRADIUS 3.0.17 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	  Intermediate certs which are not self-signed will now be
 	  checked.
 	* sqlippool now returns "fail" if it fails IP allocation.
+	* Fix rlm_yubikey to look for correct attribute in replay
+	  attack check.
 
 FreeRADIUS 3.0.16 Thu 11 Jan 2018 12:00:00 EST urgency=low
 	Feature improvements
