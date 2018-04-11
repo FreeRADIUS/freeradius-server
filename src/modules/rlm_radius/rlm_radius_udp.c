@@ -1583,8 +1583,11 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	 *	We're replicating, so we don't care about the
 	 *	responses.  Don't do any retransmission
 	 *	timers, etc.
+	 *
+	 *	Instead, just set the return code to OK, and return.
 	 */
 	if (c->inst->replicate && (u != c->status_u)) {
+		u->link->rcode = RLM_MODULE_OK;
 		return 2;
 	}
 
