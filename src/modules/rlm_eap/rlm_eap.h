@@ -54,6 +54,7 @@ typedef struct rlm_eap {
 	bool				cisco_accounting_username_bug;
 
 	char const			*name;				//!< Name of this instance.
+	fr_dict_enum_t			*auth_type;
 
 	fr_randctx			rand_pool;			//!< Pool of random data.
 } rlm_eap_t;

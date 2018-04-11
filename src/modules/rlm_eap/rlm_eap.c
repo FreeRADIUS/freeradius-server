@@ -63,6 +63,39 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
+
+static fr_dict_attr_t const *attr_auth_type;
+static fr_dict_attr_t const *attr_post_auth_type;
+static fr_dict_attr_t const *attr_eap_type;
+
+static fr_dict_attr_t const *attr_cisco_avpair;
+static fr_dict_attr_t const *attr_eap_message;
+static fr_dict_attr_t const *attr_message_authenticator;
+static fr_dict_attr_t const *attr_user_name;
+
+extern fr_dict_attr_autoload_t rlm_eap_dict_attr[];
+fr_dict_attr_autoload_t rlm_eap_dict_attr[] = {
+	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_eap_type, .name = "EAP-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_post_auth_type, .name = "Post-Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+
+	{ .out = &attr_cisco_avpair, .name = "Cisco-AvPair", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_message_authenticator, .name = "Message-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
+
+	{ NULL }
+};
+
+extern fr_dict_autoload_t rlm_eap_dict[];
+fr_dict_autoload_t rlm_eap_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
 static rlm_rcode_t mod_post_proxy(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
 static rlm_rcode_t mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
 static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
@@ -237,7 +270,7 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 	 *	Pick one type out of the one they asked for,
 	 *	as they may have asked for many.
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, FR_EAP_TYPE, TAG_ANY);
+	vp = fr_pair_find_by_da(request->control, attr_eap_type, TAG_ANY);
 	for (i = 0; i < nak->length; i++) {
 		/*
 		 *	Type 0 is valid, and means there are no
@@ -389,7 +422,7 @@ static rlm_rcode_t mod_authenticate_result(REQUEST *request, void *instance, UNU
 		/*
 		 *	Doesn't exist, add it in.
 		 */
-		vp = fr_pair_find_by_num(request->reply->vps, 0, FR_USER_NAME, TAG_ANY);
+		vp = fr_pair_find_by_da(request->reply->vps, attr_user_name, TAG_ANY);
 		if (!vp) {
 			vp = fr_pair_copy(request->reply, request->username);
 			fr_pair_add(&request->reply->vps, vp);
@@ -503,7 +536,7 @@ static rlm_rcode_t eap_method_select(rlm_eap_t *inst, void *thread, eap_session_
 		/*
 		 *	Allow per-user configuration of EAP types.
 		 */
-		vp = fr_pair_find_by_num(eap_session->request->control, 0, FR_EAP_TYPE, TAG_ANY);
+		vp = fr_pair_find_by_da(eap_session->request->control, attr_eap_type, TAG_ANY);
 		if (vp) {
 			RDEBUG2("Setting method from &control:EAP-Type");
 			next = vp->vp_uint32;
@@ -597,7 +630,7 @@ static rlm_rcode_t mod_authenticate(void *instance, void *thread, REQUEST *reque
 	eap_session_t		*eap_session;
 	eap_packet_raw_t	*eap_packet;
 
-	if (!fr_pair_find_by_num(request->packet->vps, 0, FR_EAP_MESSAGE, TAG_ANY)) {
+	if (!fr_pair_find_by_da(request->packet->vps, attr_eap_message, TAG_ANY)) {
 		REDEBUG("You set 'Auth-Type = EAP' for a request that does not contain an EAP-Message attribute!");
 		return RLM_MODULE_INVALID;
 	}
@@ -682,13 +715,12 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 	 *	each EAP sub-module to look for eap_session->request->username,
 	 *	and to get excited if it doesn't appear.
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, FR_AUTH_TYPE, TAG_ANY);
-	if ((!vp) || (vp->vp_uint32 != FR_AUTH_TYPE_REJECT)) {
-		vp = pair_make_config("Auth-Type", inst->name, T_OP_EQ);
-		if (!vp) {
-			RPEDEBUG("Failed to create Auth-Type %s", inst->name);
-			return RLM_MODULE_FAIL;
-		}
+	MEM(vp = pair_update_control(attr_auth_type, TAG_ANY));
+	if (vp->vp_uint32 != FR_AUTH_TYPE_REJECT) {
+		RDEBUG("&control:%s := %s", attr_auth_type->name, inst->auth_type->alias);
+
+		fr_value_box_copy(vp, &vp->data, inst->auth_type->value);
+		vp->data.enumv = vp->da;
 	} else {
 		RWDEBUG2("Auth-Type already set.  Not setting to EAP");
 	}
@@ -783,13 +815,8 @@ static rlm_rcode_t mod_post_proxy(void *instance, UNUSED void *thread, REQUEST *
 		 *	Access-Accept.
 		 */
 		if ((request->reply->code == FR_CODE_ACCESS_ACCEPT) && request->username) {
-			/*
-			 *	Doesn't exist, add it in.
-			 */
-			vp = fr_pair_find_by_num(request->reply->vps, 0, FR_USER_NAME, TAG_ANY);
-			if (!vp) {
-				pair_make_reply("User-Name", request->username->vp_strvalue, T_OP_EQ);
-			}
+			vp = pair_update_reply(attr_user_name, TAG_ANY);
+			fr_pair_value_bstrncpy(vp, request->username->vp_strvalue, request->username->vp_length);
 		}
 
 		eap_session_freeze(&eap_session);
@@ -812,7 +839,7 @@ static rlm_rcode_t mod_post_proxy(void *instance, UNUSED void *thread, REQUEST *
 	 *	attribute (1)
 	 */
 	fr_pair_cursor_init(&cursor, &request->proxy->reply->vps);
-	while ((vp = fr_pair_cursor_next_by_num(&cursor, 9, 1, TAG_ANY))) {
+	while ((vp = fr_pair_cursor_next_by_da(&cursor, attr_cisco_avpair, TAG_ANY))) {
 		/*
 		 *	If it's "leap:session-key", then stop.
 		 *
@@ -893,16 +920,15 @@ static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *r
 	/*
 	 *	Only build a failure message if something previously rejected the request
 	 */
-	vp = fr_pair_find_by_num(request->control, 0, FR_POST_AUTH_TYPE, TAG_ANY);
-
+	vp = fr_pair_find_by_da(request->control, attr_post_auth_type, TAG_ANY);
 	if (!vp || (vp->vp_uint32 != FR_POST_AUTH_TYPE_REJECT)) return RLM_MODULE_NOOP;
 
-	if (!fr_pair_find_by_num(request->packet->vps, 0, FR_EAP_MESSAGE, TAG_ANY)) {
+	if (!fr_pair_find_by_da(request->packet->vps, attr_eap_message, TAG_ANY)) {
 		RDEBUG3("Request didn't contain an EAP-Message, not inserting EAP-Failure");
 		return RLM_MODULE_NOOP;
 	}
 
-	if (fr_pair_find_by_num(request->reply->vps, 0, FR_EAP_MESSAGE, TAG_ANY)) {
+	if (fr_pair_find_by_da(request->reply->vps, attr_eap_message, TAG_ANY)) {
 		RDEBUG3("Reply already contained an EAP-Message, not inserting EAP-Failure");
 		return RLM_MODULE_NOOP;
 	}
@@ -936,12 +962,8 @@ static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *r
 	 *	Make sure there's a message authenticator attribute in the response
 	 *	RADIUS protocol code will calculate the correct value later...
 	 */
-	vp = fr_pair_find_by_num(request->reply->vps, 0, FR_MESSAGE_AUTHENTICATOR, TAG_ANY);
-	if (!vp) {
-		vp = fr_pair_afrom_num(request->reply, 0, FR_MESSAGE_AUTHENTICATOR);
-		fr_pair_value_memsteal(vp, talloc_zero_array(vp, uint8_t, AUTH_VECTOR_LEN));
-		fr_pair_add(&(request->reply->vps), vp);
-	}
+	MEM(vp = pair_update_reply(attr_message_authenticator, TAG_ANY));
+	fr_pair_value_memsteal(vp, talloc_zero_array(vp, uint8_t, AUTH_VECTOR_LEN));
 
 	return RLM_MODULE_UPDATED;
 }
@@ -1002,6 +1024,13 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 
 		count++;
 	}
+
+	if (fr_dict_enum_add_alias_next(attr_auth_type, inst->name) < 0) {
+		PERROR("Failed adding %s alias", inst->name);
+		return -1;
+	}
+	inst->auth_type = fr_dict_enum_by_alias(attr_auth_type, inst->name);
+	rad_assert(inst->name);
 
 	if (count == 0) {
 		cf_log_err(cs, "No EAP method configured, module cannot do anything");
