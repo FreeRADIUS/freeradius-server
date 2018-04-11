@@ -115,6 +115,27 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
+
+static fr_dict_attr_t const *attr_fall_through;
+static fr_dict_attr_t const *attr_user_profile;
+static fr_dict_attr_t const *attr_user_name;
+
+extern fr_dict_attr_autoload_t rlm_sql_dict_attr[];
+fr_dict_attr_autoload_t rlm_sql_dict_attr[] = {
+	{ .out = &attr_fall_through, .name = "Fall-Through", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
+	{ .out = &attr_user_profile, .name = "User-Profile", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ NULL }
+};
+
+extern fr_dict_autoload_t rlm_sql_dict[];
+fr_dict_autoload_t rlm_sql_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
 static size_t sql_escape_for_xlat_func(REQUEST *request, char *out, size_t outlen, char const *in, void *arg);
 
 /*
@@ -123,7 +144,7 @@ static size_t sql_escape_for_xlat_func(REQUEST *request, char *out, size_t outle
 static sql_fall_through_t fall_through(VALUE_PAIR *vp)
 {
 	VALUE_PAIR *tmp;
-	tmp = fr_pair_find_by_num(vp, 0, FR_FALL_THROUGH, TAG_ANY);
+	tmp = fr_pair_find_by_da(vp, attr_fall_through, TAG_ANY);
 
 	return tmp ? tmp->vp_uint32 : FALL_THROUGH_DEFAULT;
 }
@@ -1043,7 +1064,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		/*
 		 *	Checks if attribute already exists.
 		 */
-		if (paircompare_register_byname(group_attribute, fr_dict_attr_by_num(NULL, 0, FR_USER_NAME),
+		if (paircompare_register_byname(group_attribute, attr_user_name,
 						false, sql_groupcmp, inst) < 0) {
 			PERROR("Failed registering group comparison");
 			goto error;
@@ -1341,7 +1362,7 @@ skipreply:
 		 *  Check for a default_profile or for a User-Profile.
 		 */
 		RDEBUG3("... falling-through to profile processing");
-		user_profile = fr_pair_find_by_num(request->control, 0, FR_USER_PROFILE, TAG_ANY);
+		user_profile = fr_pair_find_by_da(request->control, attr_user_profile, TAG_ANY);
 
 		char const *profile = user_profile ?
 				      user_profile->vp_strvalue :
