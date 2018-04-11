@@ -34,6 +34,37 @@ typedef struct rlm_soh_t {
 	bool dhcp;
 } rlm_soh_t;
 
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
+
+static fr_dict_attr_t const *attr_soh_supported;
+static fr_dict_attr_t const *attr_soh_ms_machine_os_vendor;
+static fr_dict_attr_t const *attr_soh_ms_machine_os_version;
+static fr_dict_attr_t const *attr_soh_ms_machine_os_release;
+static fr_dict_attr_t const *attr_soh_ms_machine_os_build;
+static fr_dict_attr_t const *attr_soh_ms_machine_sp_version;
+static fr_dict_attr_t const *attr_soh_ms_machine_sp_release;
+static fr_dict_attr_t const *attr_ms_quarantine_soh;
+
+extern fr_dict_attr_autoload_t rlm_soh_dict_attr[];
+fr_dict_attr_autoload_t rlm_soh_dict_attr[] = {
+	{ .out = &attr_soh_supported, .name = "SoH-Supported", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_machine_os_vendor, .name = "SoH-MS-Machine-OS-vendor", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_machine_os_version, .name = "SoH-MS-Machine-OS-version", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_machine_os_release, .name = "SoH-MS-Machine-OS-release", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_machine_os_build, .name = "SoH-MS-Machine-OS-build", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_machine_sp_version, .name = "SoH-MS-Machine-SP-version", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_soh_ms_machine_sp_release, .name = "SoH-MS-Machine-SP-release", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_ms_quarantine_soh, .name = "MS-Quarantine-SOH", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ NULL }
+};
+
+extern fr_dict_autoload_t rlm_soh_dict[];
+fr_dict_autoload_t rlm_soh_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
 
 /*
  * Not sure how to make this useful yet...
@@ -48,19 +79,19 @@ static ssize_t soh_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	/*
 	 * There will be no point unless SoH-Supported = yes
 	 */
-	vp[0] = fr_pair_find_by_num(request->packet->vps, 0, FR_SOH_SUPPORTED, TAG_ANY);
+	vp[0] = fr_pair_find_by_da(request->packet->vps, attr_soh_supported, TAG_ANY);
 	if (!vp[0])
 		return 0;
 
 
 	if (strncasecmp(fmt, "OS", 2) == 0) {
 		/* OS vendor */
-		vp[0] = fr_pair_find_by_num(request->packet->vps, 0, FR_SOH_MS_MACHINE_OS_VENDOR, TAG_ANY);
-		vp[1] = fr_pair_find_by_num(request->packet->vps, 0, FR_SOH_MS_MACHINE_OS_VERSION, TAG_ANY);
-		vp[2] = fr_pair_find_by_num(request->packet->vps, 0, FR_SOH_MS_MACHINE_OS_RELEASE, TAG_ANY);
-		vp[3] = fr_pair_find_by_num(request->packet->vps, 0, FR_SOH_MS_MACHINE_OS_BUILD, TAG_ANY);
-		vp[4] = fr_pair_find_by_num(request->packet->vps, 0, FR_SOH_MS_MACHINE_SP_VERSION, TAG_ANY);
-		vp[5] = fr_pair_find_by_num(request->packet->vps, 0, FR_SOH_MS_MACHINE_SP_RELEASE, TAG_ANY);
+		vp[0] = fr_pair_find_by_da(request->packet->vps, attr_soh_ms_machine_os_vendor, TAG_ANY);
+		vp[1] = fr_pair_find_by_da(request->packet->vps, attr_soh_ms_machine_os_version, TAG_ANY);
+		vp[2] = fr_pair_find_by_da(request->packet->vps, attr_soh_ms_machine_os_release, TAG_ANY);
+		vp[3] = fr_pair_find_by_da(request->packet->vps, attr_soh_ms_machine_os_build, TAG_ANY);
+		vp[4] = fr_pair_find_by_da(request->packet->vps, attr_soh_ms_machine_sp_version, TAG_ANY);
+		vp[5] = fr_pair_find_by_da(request->packet->vps, attr_soh_ms_machine_sp_release, TAG_ANY);
 
 		if (vp[0] && vp[0]->vp_uint32 == VENDORPEC_MICROSOFT) {
 			if (!vp[1]) {
@@ -192,7 +223,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 	int rv;
 
 	/* try to find the MS-SoH payload */
-	vp = fr_pair_find_by_num(request->packet->vps, VENDORPEC_MICROSOFT, FR_MS_QUARANTINE_SOH, TAG_ANY);
+	vp = fr_pair_find_by_da(request->packet->vps, attr_ms_quarantine_soh, TAG_ANY);
 	if (!vp) {
 		RDEBUG("SoH radius VP not found");
 		return RLM_MODULE_NOOP;
