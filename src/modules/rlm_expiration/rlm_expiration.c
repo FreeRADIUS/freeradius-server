@@ -29,6 +29,29 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
+
+static fr_dict_attr_t const *attr_expiration;
+
+static fr_dict_attr_t const *attr_session_timeout;
+
+extern fr_dict_attr_autoload_t rlm_expiration_dict_attr[];
+fr_dict_attr_autoload_t rlm_expiration_dict_attr[] = {
+	{ .out = &attr_expiration, .name = "Expiration", .type = FR_TYPE_DATE, .dict = &dict_freeradius },
+
+	{ .out = &attr_session_timeout, .name = "Session-Timeout", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+
+	{ NULL }
+};
+
+extern fr_dict_autoload_t rlm_expiration_dict[];
+fr_dict_autoload_t rlm_expiration_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
 /*
  *      Check if account has expired, and if user may login now.
  */
@@ -36,7 +59,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 {
 	VALUE_PAIR *vp, *check_item = NULL;
 
-	check_item = fr_pair_find_by_num(request->control, 0, FR_EXPIRATION, TAG_ANY);
+	check_item = fr_pair_find_by_da(request->control, attr_expiration, TAG_ANY);
 	if (check_item != NULL) {
 		/*
 		*      Has this user's password expired?
@@ -57,11 +80,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 		 *	Else the account hasn't expired, but it may do so
 		 *	in the future.  Set Session-Timeout.
 		 */
-		vp = fr_pair_find_by_num(request->reply->vps, 0, FR_SESSION_TIMEOUT, TAG_ANY);
-		if (!vp) {
-			vp = radius_pair_create(request->reply, &request->reply->vps, FR_SESSION_TIMEOUT, 0);
-			vp->vp_date = (uint32_t) (((time_t) check_item->vp_date) - request->packet->timestamp.tv_sec);
-		} else if (vp->vp_date > ((uint32_t) (((time_t) check_item->vp_date) - request->packet->timestamp.tv_sec))) {
+		vp = pair_update_reply(attr_session_timeout, TAG_ANY);
+		if ((vp->vp_date == 0) ||
+		    (vp->vp_date >
+		     ((uint32_t) (((time_t) check_item->vp_date) - request->packet->timestamp.tv_sec)))) {
 			vp->vp_date = (uint32_t) (((time_t) check_item->vp_date) - request->packet->timestamp.tv_sec);
 		}
 	} else {
@@ -81,9 +103,9 @@ static int expirecmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *req
 
 	now = (req) ? req->packet->timestamp.tv_sec : time(NULL);
 
-	if (now <= ((time_t) check->vp_date))
-		return 0;
-	return +1;
+	if (now <= ((time_t) check->vp_date)) return 0;
+
+	return 1;
 }
 
 
@@ -102,7 +124,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 	/*
 	 *	Register the expiration comparison operation.
 	 */
-	paircompare_register(fr_dict_attr_by_num(NULL, 0, FR_EXPIRATION), NULL, false, expirecmp, instance);
+	paircompare_register(attr_expiration, NULL, false, expirecmp, instance);
 	return 0;
 }
 
