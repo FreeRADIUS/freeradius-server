@@ -28,7 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/modules.h>
 
 typedef struct {
-	char const		*auth_type_str;		//!< Auth-Type value for this module instance.
+	char const		*name;		//!< Auth-Type value for this module instance.
 	fr_dict_enum_t		*auth_type;
 } rlm_chap_t;
 
@@ -197,14 +197,14 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	rlm_chap_t	*inst = instance;
 
-	inst->auth_type_str = cf_section_name2(conf);
-	if (!inst->auth_type_str) inst->auth_type_str = cf_section_name1(conf);
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) inst->name = cf_section_name1(conf);
 
-	if (fr_dict_enum_add_alias_next(attr_auth_type, inst->auth_type_str) < 0) {
+	if (fr_dict_enum_add_alias_next(attr_auth_type, inst->name) < 0) {
 		PERROR("Failed adding %s alias", attr_auth_type->name);
 		return -1;
 	}
-	inst->auth_type = fr_dict_enum_by_alias(attr_auth_type, inst->auth_type_str);
+	inst->auth_type = fr_dict_enum_by_alias(attr_auth_type, inst->name);
 	rad_assert(inst->auth_type);
 
 	return 0;
