@@ -49,14 +49,26 @@ static const CONF_PARSER module_config[] = {
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
 
-static fr_dict_attr_t const *attr_user_password;
 static fr_dict_attr_t const *attr_auth_type;
+static fr_dict_attr_t const *attr_user_password;
+static fr_dict_attr_t const *attr_yubikey_key;
+static fr_dict_attr_t const *attr_yubikey_public_id;
+static fr_dict_attr_t const *attr_yubikey_private_id;
+static fr_dict_attr_t const *attr_yubikey_counter;
+static fr_dict_attr_t const *attr_yubikey_timestamp;
+static fr_dict_attr_t const *attr_yubikey_random;
 static fr_dict_attr_t const *attr_yubikey_otp;
 
 extern fr_dict_attr_autoload_t rlm_yubikey_dict_attr[];
 fr_dict_attr_autoload_t rlm_yubikey_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_yubikey_key, .name = "Yubikey-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_yubikey_public_id, .name = "Yubikey-Public-ID", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_yubikey_private_id, .name = "Yubikey-Private-ID", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_yubikey_counter, .name = "Yubikey-Counter", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_yubikey_timestamp, .name = "Yubikey-Timestamp", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_yubikey_random, .name = "Yubikey-Random", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_yubikey_otp, .name = "Yubikey-OTP", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ NULL }
 };
@@ -286,11 +298,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		 *	Insert a new request attribute just containing the OTP
 		 *	portion.
 		 */
-		vp = pair_make_request("Yubikey-OTP", otp, T_OP_SET);
-		if (!vp) {
-			REDEBUG("Failed creating 'Yubikey-OTP' attribute");
-			return RLM_MODULE_FAIL;
-		}
+		MEM(vp = pair_update_request(attr_yubikey_otp, TAG_ANY));
+		fr_pair_value_strcpy(vp, otp);
 
 		/*
 		 *	Replace the existing string buffer for the password
@@ -323,19 +332,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	 *	It's left up to the user if they want to decode it or not.
 	 */
 	if (inst->id_len) {
-		vp = fr_pair_make(request, &request->packet->vps, "Yubikey-Public-ID", NULL, T_OP_SET);
-		if (!vp) {
-			REDEBUG("Failed creating Yubikey-Public-ID");
-
-			return RLM_MODULE_FAIL;
-		}
-
+		MEM(vp = pair_update_request(attr_yubikey_public_id, TAG_ANY));
 		fr_pair_value_bstrncpy(vp, passcode, inst->id_len);
 	}
 
 	dval = fr_dict_enum_by_alias(attr_auth_type, inst->name);
 	if (dval) {
-		vp = pair_add_control(attr_auth_type, TAG_ANY);
+		MEM(vp = pair_add_control(attr_auth_type, TAG_ANY));
 		fr_value_box_copy(NULL, &vp->data, dval->value);
 	}
 
