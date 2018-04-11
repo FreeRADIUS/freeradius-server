@@ -77,6 +77,7 @@ static fr_dict_t const *dict_radius;
 static fr_dict_attr_t const *attr_auth_type;
 static fr_dict_attr_t const *attr_group;
 static fr_dict_attr_t const *attr_group_name;
+static fr_dict_attr_t const *attr_crypt_password;
 static fr_dict_attr_t const *attr_user_name;
 static fr_dict_attr_t const *attr_login_ip_host;
 static fr_dict_attr_t const *attr_framed_ip_address;
@@ -91,6 +92,7 @@ fr_dict_attr_autoload_t rlm_unix_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_group, .name = "Group", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_group_name, .name = "Group-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_crypt_password, .name = "Crypt-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_login_ip_host, .name = "Login-IP-Host", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
 	{ .out = &attr_framed_ip_address, .name = "Framed-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
@@ -191,8 +193,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
  *	Pull the users password from where-ever, and add it to
  *	the given vp list.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
+	rlm_unix_t	*inst = instance;
 	char const	*name;
 	char const	*encrypted_pass;
 #ifdef HAVE_GETSPNAM
@@ -328,8 +331,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 	if (encrypted_pass[0] == 0)
 		return RLM_MODULE_NOOP;
 
-	vp = pair_make_config("Crypt-Password", encrypted_pass, T_OP_SET);
-	if (!vp) return RLM_MODULE_FAIL;
+	MEM(vp = pair_update_control(attr_crypt_password, TAG_ANY));
+	fr_pair_value_strcpy(vp, encrypted_pass);
 
 	return RLM_MODULE_UPDATED;
 }
