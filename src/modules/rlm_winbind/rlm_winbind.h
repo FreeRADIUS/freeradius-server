@@ -12,7 +12,8 @@
  */
 typedef struct rlm_winbind_t {
 	char const		*name;
-	fr_pool_t    *wb_pool;
+	fr_pool_t		*wb_pool;
+	fr_dict_enum_t		*auth_type;
 
 	/* main config */
 	vp_tmpl_t		*wb_username;

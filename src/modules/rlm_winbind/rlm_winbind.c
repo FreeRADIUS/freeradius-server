@@ -328,13 +328,14 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	char const		*group_attribute;
 	char			buffer[256];
 
-	if (!attr_user_name) {
-		ERROR("Unable to find User-Name attribute in dictionary");
-		return -1;
-	}
-
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
+
+	if (fr_dict_enum_add_alias_next(attr_auth_type, inst->name) < 0) {
+		PERROR("Failed adding %s alias", inst->name);
+		return -1;
+	}
+	inst->auth_type = fr_dict_enum_by_alias(attr_auth_type, inst->name);
 
 	if (inst->group_attribute) {
 		group_attribute = inst->group_attribute;
@@ -455,20 +456,25 @@ static int mod_detach(UNUSED void *instance)
  *	- #RLM_MODULE_NOOP unable to use winbind authentication
  *	- #RLM_MODULE_OK Auth-Type has been set to winbind
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
+	rlm_winbind_t const *inst = instance;
+	VALUE_PAIR *vp;
+
 	if (!request->password || (request->password->da != attr_user_password)) {
 		RDEBUG("No User-Password found in the request; not doing winbind authentication.");
 		return RLM_MODULE_NOOP;
 	}
 
 	if (fr_pair_find_by_da(request->control, attr_auth_type, TAG_ANY) != NULL) {
-		RWDEBUG2("Auth-type already set, not setting to winbind");
+		RWDEBUG2("Auth-Type already set, not setting to winbind");
 		return RLM_MODULE_NOOP;
 	}
 
 	RDEBUG("Setting Auth-Type to winbind");
-	pair_make_config("Auth-Type", "winbind", T_OP_EQ);
+	MEM(vp = pair_add_control(attr_auth_type, TAG_ANY));
+	fr_value_box_copy(vp, &vp->data, inst->auth_type->value);
+	vp->data.enumv = vp->da;
 
 	return RLM_MODULE_OK;
 }
