@@ -72,9 +72,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 			REDEBUG("Account expired at '%pV'", &check_item->data);
 
 			return RLM_MODULE_USERLOCK;
-		} else {
-			if (RDEBUG_ENABLED) RDEBUG("Account will expire at '%pV'", &check_item->data);
 		}
+		RDEBUG("Account will expire at '%pV'", &check_item->data);
 
 		/*
 		 *	Else the account hasn't expired, but it may do so
