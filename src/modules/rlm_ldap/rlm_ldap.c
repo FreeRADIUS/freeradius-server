@@ -140,7 +140,7 @@ static CONF_PARSER option_config[] = {
 
 	{ FR_CONF_OFFSET("rebind", FR_TYPE_BOOL, rlm_ldap_t, handle_config.rebind) },
 
-	{ FR_CONF_OFFSET("sasl_secprops", PW_TYPE_STRING, rlm_ldap_t, handle_config.sasl_secprops) },
+	{ FR_CONF_OFFSET("sasl_secprops", FR_TYPE_STRING, rlm_ldap_t, handle_config.sasl_secprops) },
 
 #ifdef LDAP_OPT_NETWORK_TIMEOUT
 	/* timeout on network activity */
