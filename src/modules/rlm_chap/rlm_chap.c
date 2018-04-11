@@ -193,37 +193,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 	return RLM_MODULE_OK;
 }
 
-
-/*
- *	Access-Requests can have the CHAP-Challenge implicitly taken
- *	from the request authenticator.  If the NAS has done that,
- *	then we need to copy the data to a real CHAP-Challenge
- *	attribute when proxying.  Otherwise when we proxy the request,
- *	the new authenticator is different, and the CHAP calculations
- *	will fail.
- */
-static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
-{
-	VALUE_PAIR *vp;
-
-	/*
-	 *	For Access-Requests, which have CHAP-Password,
-	 *	and no CHAP-Challenge, copy it over from the request.
-	 */
-	if (request->packet->code != FR_CODE_ACCESS_REQUEST) return RLM_MODULE_NOOP;
-
-	if (!fr_pair_find_by_num(request->proxy->packet->vps, 0, FR_CHAP_PASSWORD, TAG_ANY)) return RLM_MODULE_NOOP;
-
-	if (fr_pair_find_by_num(request->proxy->packet->vps, 0, FR_CHAP_CHALLENGE, TAG_ANY)) return RLM_MODULE_NOOP;
-
-	vp = radius_pair_create(request->proxy->packet, &request->proxy->packet->vps, FR_CHAP_CHALLENGE, 0);
-	if (!vp) return RLM_MODULE_FAIL;
-
-	fr_pair_value_memcpy(vp, request->packet->vector, sizeof(request->packet->vector));
-
-	return RLM_MODULE_OK;
-}
-
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	rlm_chap_t	*inst = instance;
@@ -259,6 +228,5 @@ rad_module_t rlm_chap = {
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,
-		[MOD_PRE_PROXY]		= mod_pre_proxy
 	},
 };
