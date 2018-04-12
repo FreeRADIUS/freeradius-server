@@ -61,6 +61,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 
 	check_item = fr_pair_find_by_da(request->control, attr_expiration, TAG_ANY);
 	if (check_item != NULL) {
+		uint32_t left;
+
 		/*
 		*      Has this user's password expired?
 		*
@@ -75,15 +77,23 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 		}
 		RDEBUG("Account will expire at '%pV'", &check_item->data);
 
+		left = (uint32_t)(((time_t) check_item->vp_date) - request->packet->timestamp.tv_sec);
+
 		/*
 		 *	Else the account hasn't expired, but it may do so
 		 *	in the future.  Set Session-Timeout.
 		 */
-		vp = pair_update_reply(attr_session_timeout, TAG_ANY);
-		if ((vp->vp_date == 0) ||
-		    (vp->vp_date >
-		     ((uint32_t) (((time_t) check_item->vp_date) - request->packet->timestamp.tv_sec)))) {
-			vp->vp_date = (uint32_t) (((time_t) check_item->vp_date) - request->packet->timestamp.tv_sec);
+		MEM(vp = pair_update_reply(attr_session_timeout, TAG_ANY));
+		vp = fr_pair_find_by_da(request->reply->vps, attr_session_timeout, TAG_ANY);
+		if (vp) {	/* just update... */
+			if (vp->vp_uint32 > left) {
+				vp->vp_uint32 = left;
+				RDEBUG("&reply:Session-vp := %pV", &vp->data);
+			}
+		} else {
+			vp = pair_add_reply(attr_session_timeout, 0);
+			vp->vp_uint32 = left;
+			RDEBUG("&reply:Session-vp := %pV", &vp->data);
 		}
 	} else {
 		return RLM_MODULE_NOOP;
