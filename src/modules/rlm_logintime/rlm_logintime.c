@@ -153,7 +153,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 {
 	rlm_logintime_t const	*inst = instance;
 	VALUE_PAIR		*ends, *vp;
-	uint32_t		left;
+	int32_t			left;
 
 	ends = fr_pair_find_by_da(request->control, attr_login_time, TAG_ANY);
 	if (!ends) return RLM_MODULE_NOOP;
@@ -172,9 +172,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	/*
 	 *      Do nothing, login time is not controlled (unendsed).
 	 */
-	if (left == 0) {
-		return RLM_MODULE_OK;
-	}
+	if (left == 0) return RLM_MODULE_OK;
 
 	/*
 	 *      The min_time setting is to deal with NAS that won't allow Session-vp values below a certain value
@@ -182,7 +180,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	 *
 	 *	We don't know were going to get another chance to lock out the user, so we need to do it now.
 	 */
-	if (left < (int) inst->min_time) {
+	if ((uint32_t)left < inst->min_time) {
 		REDEBUG("Login outside of allowed time-slot (session end %s, with lockout %i seconds before)",
 			ends->vp_strvalue, inst->min_time);
 
@@ -201,12 +199,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	vp = fr_pair_find_by_da(request->reply->vps, attr_session_timeout, TAG_ANY);
 	if (vp) {	/* just update... */
 		if (vp->vp_uint32 > left) {
-			vp->vp_uint32 = left;
+			vp->vp_uint32 = (uint32_t)left;
 			RDEBUG("&reply:Session-vp := %pV", &vp->data);
 		}
 	} else {
 		vp = pair_add_reply(attr_session_timeout, 0);
-		vp->vp_uint32 = left;
+		vp->vp_uint32 = (uint32_t)left;
 		RDEBUG("&reply:Session-vp := %pV", &vp->data);
 	}
 
