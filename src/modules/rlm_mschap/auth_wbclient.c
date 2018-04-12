@@ -43,8 +43,8 @@ RCSID("$Id$")
 
 /** Use Winbind to normalise a username
  *
- * @param[in] food	The talloc context where the result is parented from
- * @param[in] ctx	The winbind context
+ * @param[in] ctx	The talloc context where the result is parented from
+ * @param[in] wb_ctx	The winbind context
  * @param[in] dom_name	The domain of the user
  * @param[in] name	The username (without the domain) to be normalised
  * @return
