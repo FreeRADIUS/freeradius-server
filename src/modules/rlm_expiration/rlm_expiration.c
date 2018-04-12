@@ -86,13 +86,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 		MEM(vp = pair_update_reply(attr_session_timeout, TAG_ANY));
 		vp = fr_pair_find_by_da(request->reply->vps, attr_session_timeout, TAG_ANY);
 		if (vp) {	/* just update... */
-			if (vp->vp_uint32 > left) {
-				vp->vp_uint32 = left;
+			if (vp->vp_uint32 > (uint32_t)left) {
+				vp->vp_uint32 = (uint32_t)left;
 				RDEBUG("&reply:Session-vp := %pV", &vp->data);
 			}
 		} else {
 			vp = pair_add_reply(attr_session_timeout, 0);
-			vp->vp_uint32 = left;
+			vp->vp_uint32 = (uint32_t)left;
 			RDEBUG("&reply:Session-vp := %pV", &vp->data);
 		}
 	} else {
