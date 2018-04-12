@@ -130,7 +130,7 @@ static ssize_t test_encode(void const *instance, REQUEST *request, uint8_t *cons
 	return data_len;
 }
 
-static size_t test_nak(void const *packet_ctx, uint8_t *const packet, size_t packet_len, uint8_t *reply, UNUSED size_t reply_len)
+static size_t test_nak(UNUSED void const *instance, UNUSED void *packet_ctx, uint8_t *const packet, size_t packet_len, uint8_t *reply, UNUSED size_t reply_len)
 {
 	uint32_t number;
 

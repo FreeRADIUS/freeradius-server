@@ -142,13 +142,14 @@ typedef ssize_t (*fr_io_encode_t)(void const *instance, REQUEST *request, uint8_
  *  "do not respond", even if duplicates come in.
  *
  * @param[in] instance		the context for this function.
+ * @param[out] packet_ctx	the  packet_ctx struct containing request specific data.
  * @param[in] packet		the packet to NAK
  * @param[in] packet_len	length of the packet to NAK
  * @param[in] reply		the NAK reply
  * @param[in] reply_len		length of the buffer where the reply should be placed.
  * @return length of the data in the reply buffer.
  */
-typedef size_t (*fr_io_nak_t)(void const *instance, uint8_t *const packet, size_t packet_len,
+typedef size_t (*fr_io_nak_t)(void const *instance, void *packet_ctx, uint8_t *const packet, size_t packet_len,
 			      uint8_t *reply, size_t reply_len);
 
 /** Read from a socket.

@@ -105,7 +105,7 @@ static ssize_t test_encode(void const *instance, REQUEST *request, uint8_t *buff
 	return 20;
 }
 
-static size_t test_nak(void const *ctx, uint8_t *const packet, size_t packet_len, UNUSED uint8_t *reply, UNUSED size_t reply_len)
+static size_t test_nak(void const *ctx, UNUSED void *packet_ctx, uint8_t *const packet, size_t packet_len, UNUSED uint8_t *reply, UNUSED size_t reply_len)
 {
 	MPRINT1("\t\tNAK !!! request %d - data %p %p size %zd\n", packet[1], ctx, packet, packet_len);
 
