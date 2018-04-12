@@ -635,112 +635,6 @@ static void *mod_conn_create(TALLOC_CTX *ctx, UNUSED void *instance, UNUSED stru
 }
 #endif
 
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
-{
-	char const		*name;
-	rlm_mschap_t		*inst = instance;
-
-	/*
-	 *	Create the dynamic translation.
-	 */
-	name = cf_section_name2(conf);
-	if (!name) name = cf_section_name1(conf);
-	inst->xlat_name = name;
-	xlat_register(inst, inst->xlat_name, mschap_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-
-	return 0;
-}
-
-/*
- *	Create instance for our module. Allocate space for
- *	instance structure and read configuration parameters
- */
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
-{
-	rlm_mschap_t		*inst = instance;
-
-	/*
-	 *	For backwards compatibility
-	 */
-	if (!fr_dict_enum_by_alias(attr_auth_type, inst->xlat_name)) {
-		inst->auth_type = "MS-CHAP";
-	} else {
-		inst->auth_type = inst->xlat_name;
-	}
-
-	/*
-	 *	Set auth method
-	 */
-	inst->method = AUTH_INTERNAL;
-
-	if (inst->wb_username) {
-#ifdef WITH_AUTH_WINBIND
-		inst->method = AUTH_WBCLIENT;
-
-		inst->wb_pool = module_connection_pool_init(conf, inst, mod_conn_create, NULL, NULL, NULL, NULL);
-		if (!inst->wb_pool) {
-			cf_log_err(conf, "Unable to initialise winbind connection pool");
-			return -1;
-		}
-#else
-		cf_log_err(conf, "'winbind' auth not enabled at compiled time");
-		return -1;
-#endif
-	}
-
-	/* preserve existing behaviour: this option overrides all */
-	if (inst->ntlm_auth) {
-		inst->method = AUTH_NTLMAUTH_EXEC;
-	}
-
-	switch (inst->method) {
-	case AUTH_INTERNAL:
-		DEBUG("%s: using internal authentication", inst->xlat_name);
-		break;
-	case AUTH_NTLMAUTH_EXEC:
-		DEBUG("%s : authenticating by calling 'ntlm_auth'", inst->xlat_name);
-		break;
-#ifdef WITH_AUTH_WINBIND
-	case AUTH_WBCLIENT:
-		DEBUG("%s : authenticating directly to winbind", inst->xlat_name);
-		break;
-#endif
-	}
-
-	/*
-	 *	Check ntlm_auth_timeout is sane
-	 */
-	if (!inst->ntlm_auth_timeout) {
-		inst->ntlm_auth_timeout = EXEC_TIMEOUT;
-	}
-	if (inst->ntlm_auth_timeout < 1) {
-		cf_log_err(conf, "ntml_auth_timeout '%d' is too small (minimum: 1)",
-			      inst->ntlm_auth_timeout);
-		return -1;
-	}
-	if (inst->ntlm_auth_timeout > 10) {
-		cf_log_err(conf, "ntlm_auth_timeout '%d' is too large (maximum: 10)",
-			      inst->ntlm_auth_timeout);
-		return -1;
-	}
-
-	return 0;
-}
-
-/*
- *	Tidy up instance
- */
-static int mod_detach(UNUSED void *instance)
-{
-#ifdef WITH_AUTH_WINBIND
-	rlm_mschap_t *inst = instance;
-
-	fr_pool_free(inst->wb_pool);
-#endif
-
-	return 0;
-}
-
 /*
  *	add_reply() adds either MS-CHAP2-Success or MS-CHAP-Error
  *	attribute to reply packet
@@ -1046,7 +940,8 @@ ntlm_auth_err:
 		 *  The new NT hash - this should be preferred over the
 		 *  cleartext password as it avoids unicode hassles.
 		 */
-		new_hash = pair_make_request("MS-CHAP-New-NT-Password", NULL, T_OP_EQ);
+
+		new_hash = pair_update_request(attr_ms_chap_new_nt_password, 0);
 		q = talloc_array(new_hash, uint8_t, NT_DIGEST_LENGTH);
 		fr_pair_value_memsteal(new_hash, q);
 		fr_md4_calc(q, p, passlen);
@@ -1056,7 +951,7 @@ ntlm_auth_err:
 		 *  matches the old_hash value from the client.
 		 */
 		smbhash(old_nt_hash_expected, nt_password->vp_octets, q);
-		smbhash(old_nt_hash_expected+8, nt_password->vp_octets+8, q + 7);
+		smbhash(old_nt_hash_expected + 8, nt_password->vp_octets + 8, q + 7);
 		if (memcmp(old_nt_hash_expected, old_nt_hash, NT_DIGEST_LENGTH)!=0) {
 			REDEBUG("Old NT hash value from client does not match our value");
 			return -1;
@@ -1068,7 +963,7 @@ ntlm_auth_err:
 		 *
 		 *  First pass: get the length of the converted string.
 		 */
-		new_pass = pair_make_request("MS-CHAP-New-Cleartext-Password", NULL, T_OP_EQ);
+		new_pass = pair_update_request(attr_ms_chap_new_cleartext_password, 0);
 		new_pass->vp_length = 0;
 
 		i = 0;
@@ -1419,13 +1314,12 @@ static void mppe_chap2_gen_keys128(uint8_t const *nt_hashhash, uint8_t const *re
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_mschap_t const *inst = instance;
-	VALUE_PAIR *challenge = NULL;
+	rlm_mschap_t const 	*inst = instance;
+	VALUE_PAIR		*challenge = NULL;
+	VALUE_PAIR		*vp;
 
 	challenge = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_challenge, TAG_ANY);
-	if (!challenge) {
-		return RLM_MODULE_NOOP;
-	}
+	if (!challenge) return RLM_MODULE_NOOP;
 
 	if (!fr_pair_find_by_da(request->packet->vps, attr_ms_chap_response, TAG_ANY) &&
 	    !fr_pair_find_by_da(request->packet->vps, attr_ms_chap2_response, TAG_ANY) &&
@@ -1435,20 +1329,19 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	}
 
 	if (fr_pair_find_by_da(request->control, attr_auth_type, TAG_ANY)) {
-		RWDEBUG2("Auth-Type already set.  Not setting to MS-CHAP");
+		RWDEBUG2("Auth-Type already set.  Not setting to %s", inst->auth_type->alias);
 		return RLM_MODULE_NOOP;
 	}
-
-	RDEBUG2("Found MS-CHAP attributes.  Setting 'Auth-Type  = %s'", inst->xlat_name);
 
 	/*
 	 *	Set Auth-Type to MS-CHAP.  The authentication code
 	 *	will take care of turning cleartext passwords into
 	 *	NT/LM passwords.
 	 */
-	if (!pair_make_config("Auth-Type", inst->auth_type, T_OP_EQ)) {
-		return RLM_MODULE_FAIL;
-	}
+	RDEBUG2("Found MS-CHAP attributes.  Setting 'Auth-Type = %s'", inst->auth_type->alias);
+	MEM(vp = pair_add_control(attr_auth_type, 0));
+	fr_value_box_copy(vp, &vp->data, inst->auth_type->value);
+	vp->data.enumv = vp->da;
 
 	return RLM_MODULE_OK;
 }
@@ -1916,7 +1809,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 		 *	password change, add them into the request and then
 		 *	continue with the authentication.
 		 */
-		MEM(response = pair_update_reply(attr_ms_chap2_response, 0));
+		MEM(response = pair_update_request(attr_ms_chap2_response, 0));
 		p = talloc_array(response, uint8_t, 50);
 
 		/* ident & flags */
@@ -2177,6 +2070,112 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 	return RLM_MODULE_OK;
 #undef inst
 }
+
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+{
+	char const		*name;
+	rlm_mschap_t		*inst = instance;
+
+	/*
+	 *	Create the dynamic translation.
+	 */
+	name = cf_section_name2(conf);
+	if (!name) name = cf_section_name1(conf);
+	inst->name = name;
+
+	if (fr_dict_enum_add_alias_next(attr_auth_type, inst->name) < 0) {
+		PERROR("Failed adding %s alias", attr_auth_type->name);
+		return -1;
+	}
+	inst->auth_type = fr_dict_enum_by_alias(attr_auth_type, inst->name);
+	rad_assert(inst->auth_type);
+
+	xlat_register(inst, inst->name, mschap_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+
+	return 0;
+}
+
+/*
+ *	Create instance for our module. Allocate space for
+ *	instance structure and read configuration parameters
+ */
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
+{
+	rlm_mschap_t		*inst = instance;
+
+	/*
+	 *	Set auth method
+	 */
+	inst->method = AUTH_INTERNAL;
+
+	if (inst->wb_username) {
+#ifdef WITH_AUTH_WINBIND
+		inst->method = AUTH_WBCLIENT;
+
+		inst->wb_pool = module_connection_pool_init(conf, inst, mod_conn_create, NULL, NULL, NULL, NULL);
+		if (!inst->wb_pool) {
+			cf_log_err(conf, "Unable to initialise winbind connection pool");
+			return -1;
+		}
+#else
+		cf_log_err(conf, "'winbind' auth not enabled at compiled time");
+		return -1;
+#endif
+	}
+
+	/* preserve existing behaviour: this option overrides all */
+	if (inst->ntlm_auth) {
+		inst->method = AUTH_NTLMAUTH_EXEC;
+	}
+
+	switch (inst->method) {
+	case AUTH_INTERNAL:
+		DEBUG("%s: using internal authentication", inst->name);
+		break;
+	case AUTH_NTLMAUTH_EXEC:
+		DEBUG("%s : authenticating by calling 'ntlm_auth'", inst->name);
+		break;
+#ifdef WITH_AUTH_WINBIND
+	case AUTH_WBCLIENT:
+		DEBUG("%s : authenticating directly to winbind", inst->name);
+		break;
+#endif
+	}
+
+	/*
+	 *	Check ntlm_auth_timeout is sane
+	 */
+	if (!inst->ntlm_auth_timeout) {
+		inst->ntlm_auth_timeout = EXEC_TIMEOUT;
+	}
+	if (inst->ntlm_auth_timeout < 1) {
+		cf_log_err(conf, "ntml_auth_timeout '%d' is too small (minimum: 1)",
+			      inst->ntlm_auth_timeout);
+		return -1;
+	}
+	if (inst->ntlm_auth_timeout > 10) {
+		cf_log_err(conf, "ntlm_auth_timeout '%d' is too large (maximum: 10)",
+			      inst->ntlm_auth_timeout);
+		return -1;
+	}
+
+	return 0;
+}
+
+/*
+ *	Tidy up instance
+ */
+static int mod_detach(UNUSED void *instance)
+{
+#ifdef WITH_AUTH_WINBIND
+	rlm_mschap_t *inst = instance;
+
+	fr_pool_free(inst->wb_pool);
+#endif
+
+	return 0;
+}
+
 
 extern rad_module_t rlm_mschap;
 rad_module_t rlm_mschap = {

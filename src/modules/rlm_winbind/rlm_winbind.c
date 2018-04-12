@@ -467,7 +467,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	}
 
 	if (fr_pair_find_by_da(request->control, attr_auth_type, TAG_ANY) != NULL) {
-		RWDEBUG2("Auth-Type already set, not setting to winbind");
+		RWDEBUG2("Auth-Type already set, not setting to %s", inst->auth_type->alias);
 		return RLM_MODULE_NOOP;
 	}
 

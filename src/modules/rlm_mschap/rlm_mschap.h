@@ -25,26 +25,29 @@ extern fr_dict_attr_t const *attr_ms_chap_response;
 extern fr_dict_attr_t const *attr_ms_chap2_response;
 extern fr_dict_attr_t const *attr_ms_chap2_success;
 
-typedef struct rlm_mschap_t {
+typedef struct {
+	char const		*name;
+	fr_dict_enum_t		*auth_type;
+
 	bool			use_mppe;
 	bool			require_encryption;
 	bool			require_strong;
 	bool			with_ntdomain_hack;	/* this should be in another module */
-	char const		*xlat_name;
+
 	char const		*ntlm_auth;
 	uint32_t		ntlm_auth_timeout;
 	char const		*ntlm_cpw;
 	char const		*ntlm_cpw_username;
 	char const		*ntlm_cpw_domain;
 	char const		*local_cpw;
-	char const		*auth_type;
+
 	bool			allow_retry;
 	char const		*retry_msg;
 	MSCHAP_AUTH_METHOD	method;
 	vp_tmpl_t		*wb_username;
 	vp_tmpl_t		*wb_domain;
 #ifdef WITH_AUTH_WINBIND
-	fr_pool_t	*wb_pool;
+	fr_pool_t		*wb_pool;
 	bool			wb_retry_with_normalised_username;
 #endif
 #ifdef __APPLE__
