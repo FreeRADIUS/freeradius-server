@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,9 +14,6 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_TLS_H
-#define _FR_TLS_H
-
 #ifdef WITH_TLS
 /**
  * $Id$
@@ -548,4 +546,3 @@ int		tls_utils_asn1time_to_epoch(time_t *out, ASN1_TIME const *asn1);
 }
 #endif
 #endif /* WITH_TLS */
-#endif /* _FR_TLS_H */

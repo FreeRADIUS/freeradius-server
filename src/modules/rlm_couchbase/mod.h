@@ -1,3 +1,4 @@
+#pragma once
 /*
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -23,10 +24,6 @@
  * @author Aaron Hurt <ahurt@anbcs.com>
  * @copyright 2013-2014 The FreeRADIUS Server Project.
  */
-
-#ifndef _mod_h_
-#define _mod_h_
-
 RCSIDH(mod_h, "$Id$")
 
 #include <freeradius-devel/radiusd.h>
@@ -91,5 +88,3 @@ int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps);
 int mod_client_map_section(CONF_SECTION *client, CONF_SECTION const *map, json_object *json, char const *docid);
 
 int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SECTION *map);
-
-#endif /* _mod_h_ */

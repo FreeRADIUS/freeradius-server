@@ -1,3 +1,4 @@
+#pragma once
 /*
  *   This program is is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -25,14 +26,9 @@
  * @copyright 2013 Hacking projects [http://www.hackingprojects.net/]
  * @copyright 2009 Sylvain Munaut <tnt@246tNt.com>
  */
-#ifndef _COMP128_H
-#define _COMP128_H
-
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
 
 void comp128v1(uint8_t sres[4], uint8_t kc[8], uint8_t const ki[16], uint8_t const rand[16]);
 void comp128v23(uint8_t sres[4], uint8_t kc[8], uint8_t const ki[16], uint8_t const rand[16], bool v2);
-
-#endif

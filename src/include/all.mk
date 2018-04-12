@@ -106,12 +106,10 @@ src/include/%.h: share/dictionary.% share/dictionary.vqp share/dictionary.freera
 #
 src/include/features.h: src/include/features-h src/include/autoconf.h
 	${Q}$(ECHO) HEADER $@
-	${Q}echo "#ifndef _FR_FEATURES_H" > $@
-	${Q}echo "#define _FR_FEATURES_H" >> $@
+	${Q}echo "#pragma once" > $@
 	${Q}cat $< >> $@
 	${Q}grep "^#define[ ]*WITH_" src/include/autoconf.h >> $@
 	${Q}grep "^#define[ ]*RADIUSD_VERSION" src/include/autoconf.h >> $@
-	${Q}echo "#endif /* _FR_FEATURES_H */" >> $@
 #
 #  Use the SED script we built earlier to make permanent substitutions
 #  of definitions in missing-h to build missing.h

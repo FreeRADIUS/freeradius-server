@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,9 +14,6 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_TALLOC_H
-#define _FR_TALLOC_H
-
 #include <talloc.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -102,5 +100,4 @@ static inline void *_talloc_list_get_type_abort(void *head, size_t offset, char 
 #  define talloc_get_type_abort_const(ptr, type) (const type *)(ptr)
 #else
 #  define talloc_get_type_abort_const talloc_get_type_abort
-#endif
 #endif

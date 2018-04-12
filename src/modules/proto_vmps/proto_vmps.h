@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,10 +14,6 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _PROTO_VMPS_H
-#define _PROTO_VMPS_H
-
-#include "vqp.h"
 
 /*
  * $Id$
@@ -26,6 +23,7 @@
  *
  * @copyright 2017 Alan DeKok <aland@freeradius.org>
  */
+#include "vqp.h"
 
 /** Return the VMPS client associated with the request
  *
@@ -80,5 +78,3 @@ typedef struct {
 	fr_listen_t const		*listen;			//!< The listener structure which describes
 									///< the I/O path.
 } proto_vmps_t;
-
-#endif	/* _PROTO_VMPS_H */

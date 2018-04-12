@@ -1,6 +1,4 @@
-#ifndef _RLM_SECURID_H
-#define _RLM_SECURID_H
-
+#pragma once
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
@@ -88,6 +86,3 @@ void		     securid_sessionlist_free(rlm_securid_t *inst,REQUEST *request) CC_HIN
 int		     securid_sessionlist_add(rlm_securid_t *inst, REQUEST *request, SECURID_SESSION *session)
 		     CC_HINT(nonnull);
 SECURID_SESSION	     *securid_sessionlist_find(rlm_securid_t *inst, REQUEST *request) CC_HINT(nonnull);
-
-
-#endif

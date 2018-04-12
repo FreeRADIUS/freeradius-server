@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,8 +14,7 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_NET_H
-#define _FR_NET_H
+
 /**
  * $Id$
  *
@@ -151,4 +151,3 @@ uint16_t	fr_udp_checksum(uint8_t const *data, uint16_t len, uint16_t checksum,
 			 	struct in_addr const src_addr, struct in_addr const dst_addr);
 int		fr_udp_header_check(uint8_t const *data, uint16_t remaining, ip_header_t const *ip);
 uint16_t	fr_ip_header_checksum(uint8_t const *data, uint8_t ihl);
-#endif /* _FR_NET_H */

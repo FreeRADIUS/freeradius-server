@@ -1,5 +1,4 @@
-#ifndef _RLM_EXPR_H
-#define _RLM_EXPR_H
+#pragma once
 /*
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -21,5 +20,3 @@
 RCSIDH(rlm_expr_h, "$Id$")
 
 void pair_builtincompare_add(void *instance);
-
-#endif

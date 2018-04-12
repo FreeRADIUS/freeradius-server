@@ -1,3 +1,4 @@
+#pragma once
 /*
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -24,8 +25,6 @@
  * @copyright 2016 Alan DeKok <aland@freeradius.org>
  * @copyright 2016 The FreeRADIUS server project
  */
-#ifndef _EAP_FAST_H
-#define _EAP_FAST_H
 RCSIDH(eap_fast_h, "$Id$")
 
 #include "eap_tls.h"
@@ -257,5 +256,3 @@ FR_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session)
 ssize_t		eap_fast_decode_pair(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
 			     	     uint8_t const *data, size_t data_len,
 			     	     UNUSED void *decoder_ctx);
-
-#endif /* _EAP_FAST_H */

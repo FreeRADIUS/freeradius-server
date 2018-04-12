@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,9 +14,6 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_LOG_H
-#define _FR_LOG_H
-
 #include <stdint.h>
 #include <string.h>
 #include <stdbool.h>
@@ -132,6 +130,3 @@ int	fr_log_perror(fr_log_t const *log, fr_log_type_t type, char const *msg, ...)
 	CC_HINT(format (printf, 3, 4)) CC_HINT(nonnull (1));
 
 bool	fr_rate_limit_enabled(void);
-
-
-#endif /* _FR_LOG_H */

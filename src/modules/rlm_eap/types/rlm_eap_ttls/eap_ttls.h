@@ -1,3 +1,4 @@
+#pragma once
 /*
  * eap_ttls.h
  *
@@ -20,9 +21,6 @@
  * @copyright 2003 Alan DeKok <aland@freeradius.org>
  * @copyright 2006 The FreeRADIUS server project
  */
-#ifndef _EAP_TTLS_H
-#define _EAP_TTLS_H
-
 RCSIDH(eap_ttls_h, "$Id$")
 
 #include "eap_tls.h"
@@ -37,5 +35,3 @@ typedef struct ttls_tunnel_t {
  *	Process the TTLS portion of an EAP-TTLS request.
  */
 FR_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session) CC_HINT(nonnull);
-
-#endif /* _EAP_TTLS_H */

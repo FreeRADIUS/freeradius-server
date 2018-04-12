@@ -1,3 +1,4 @@
+#pragma once
 /*
  * @copyright (c) Dan Harkins, 2012
  *
@@ -30,10 +31,6 @@
  * this code cannot simply be copied and put under a different distribution
  * license (including the GNU public license).
  */
-
-#ifndef _RLM_EAP_PWD_H
-#define _RLM_EAP_PWD_H
-
 #include "eap_pwd.h"
 
 #include <freeradius-devel/radiusd.h>
@@ -47,5 +44,3 @@ typedef struct rlm_eap_pwd {
     char const	*server_id;
     char const	*virtual_server;
 } rlm_eap_pwd_t;
-
-#endif  /* _RLM_EAP_PWD_H */

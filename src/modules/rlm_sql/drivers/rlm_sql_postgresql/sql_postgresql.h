@@ -1,8 +1,5 @@
+#pragma once
 /* @copyright 2006 The FreeRADIUS server project */
-
-#ifndef _SQL_POSTGRESQL_H_
-#define _SQL_POSTGRESQL_H_
-
 RCSIDH(sql_postgresql_h, "$Id$")
 
 /** Error Codes and required information
@@ -246,5 +243,3 @@ static pgerror errorcodes[] = {
 
 	{ NULL, NULL, 0 }
 };
-
-#endif /*_SQL_POSTGRESQL_H_*/

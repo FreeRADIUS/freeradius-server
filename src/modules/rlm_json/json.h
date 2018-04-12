@@ -1,3 +1,4 @@
+#pragma once
 /*
  *   This program is is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -25,8 +26,6 @@
  * @copyright 2015  Network RADIUS SARL <info@networkradius.com>
  * @copyright 2015  The FreeRADIUS Server Project
  */
-#ifndef _FR_JSON_H
-#define _FR_JSON_H
 RCSIDH(json_h, "$Id$")
 
 #include "config.h"
@@ -71,4 +70,3 @@ void		fr_json_version_print(void);
 
 const char	*fr_json_afrom_pair_list(TALLOC_CTX *ctx, VALUE_PAIR **vps, const char *prefix);
 #endif
-#endif /* _FR_JSON_H */

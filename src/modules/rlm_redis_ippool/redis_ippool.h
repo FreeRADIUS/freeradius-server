@@ -1,3 +1,4 @@
+#pragma once
 /*
  *   This program is is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -24,10 +25,6 @@
  * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2015 The FreeRADIUS server project
  */
-
-#ifndef _REDIS_IPPOOL_H
-#define	_REDIS_IPPOOL_H
-
 RCSIDH(redis_ippool_h, "$Id$")
 
 /*
@@ -125,5 +122,3 @@ do { \
 		(_ip)->prefix = _net; \
 	} \
 } while (0)
-
-#endif /* _REDIS_IPPOOL_H */

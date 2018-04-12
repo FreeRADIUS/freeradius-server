@@ -1,3 +1,4 @@
+#pragma once
 /*
  *   This program is is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License, cursor 2 of the
@@ -12,8 +13,6 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_CURSOR_H
-#define _FR_CURSOR_H
 #include <freeradius-devel/build.h>
 
 /**
@@ -148,4 +147,3 @@ static inline void fr_cursor_free_item(fr_cursor_t *cursor)
 
 	talloc_free(fr_cursor_remove(cursor));
 }
-#endif

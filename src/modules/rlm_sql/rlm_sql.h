@@ -1,3 +1,4 @@
+#pragma once
 /*
  *   This program is is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -24,9 +25,6 @@
  * @copyright 2000  Mike Machado <mike@innercite.com>
  * @copyright 2000  Alan DeKok <aland@ox.org>
  */
-#ifndef _RLM_SQL_H
-#define _RLM_SQL_H
-
 RCSIDH(rlm_sql_h, "$Id$")
 
 #ifndef LOG_PREFIX
@@ -248,4 +246,3 @@ sql_rcode_t	rlm_sql_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handl
 int		rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle);
 void		rlm_sql_print_error(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t *handle, bool force_debug);
 int		sql_set_user(rlm_sql_t const *inst, REQUEST *request, char const *username);
-#endif

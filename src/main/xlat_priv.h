@@ -1,3 +1,4 @@
+#pragma once
 /*
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -25,9 +26,6 @@
  * @copyright 2000,2006  The FreeRADIUS server project
  * @copyright 2000  Alan DeKok <aland@ox.org>
  */
-#ifndef _FR_XLAT_PRIV_H
-#define _FR_XLAT_PRIV_H
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -168,6 +166,4 @@ void		unlang_xlat_init(void);
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif

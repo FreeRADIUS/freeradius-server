@@ -1,3 +1,4 @@
+#pragma once
 /*
  *   This program is is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License, cursor 2 of the
@@ -12,9 +13,6 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_PAIR_CURSOR_H
-#define _FR_PAIR_CURSOR_H
-#include <freeradius-devel/pair.h>
 
 /**
  * $Id$
@@ -25,6 +23,8 @@
  * @copyright 2016  The FreeRADIUS server project
  */
 RCSIDH(pair_cursor_h, "$Id$")
+
+#include <freeradius-devel/pair.h>
 
 VALUE_PAIR	*fr_pair_cursor_init(vp_cursor_t *cursor, VALUE_PAIR * const *node);
 void		fr_pair_cursor_copy(vp_cursor_t *out, vp_cursor_t *in);
@@ -52,5 +52,3 @@ void		fr_pair_cursor_merge(vp_cursor_t *cursor, VALUE_PAIR *vp);
 VALUE_PAIR	*fr_pair_cursor_remove(vp_cursor_t *cursor);
 VALUE_PAIR	*fr_pair_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new);
 void		fr_pair_cursor_free(vp_cursor_t *cursor);
-
-#endif /* _FR_PAIR_CURSOR_H */

@@ -1,3 +1,4 @@
+#pragma once
 /*
  * @copyright (c) Dan Harkins, 2012
  *
@@ -30,10 +31,6 @@
  * this code cannot simply be copied and put under a different distribution
  * license (including the GNU public license).
  */
-
-#ifndef _EAP_PWD_H
-#define _EAP_PWD_H
-
 RCSIDH(eap_pwd_h, "$Id$")
 #include "eap.h"
 
@@ -117,5 +114,3 @@ int compute_keys(pwd_session_t *sess, uint8_t *peer_confirm,
 #ifdef PRINTBUF
 void print_buf(char *str, uint8_t *buf, int len);
 #endif  /* PRINTBUF */
-
-#endif  /* _EAP_PWD_H */

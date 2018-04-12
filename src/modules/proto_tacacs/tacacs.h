@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,9 +17,6 @@
  * @copyright 2017 The FreeRADIUS server project
  * @copyright 2017 Network RADIUS SARL <info@networkradius.com>
  */
-#ifndef _FR_TACACS_H
-#define _FR_TACACS_H
-
 #define TACACS_MAX_PACKET_SIZE		4096
 
 #define TAC_PLUS_MAJOR_VER		12
@@ -242,5 +240,3 @@ int tacacs_encode(RADIUS_PACKET * const packet, char const * const secret);
 int tacacs_send(RADIUS_PACKET * const packet, RADIUS_PACKET const * const original, char const * const secret);
 
 extern fr_dict_attr_t const *dict_tacacs_root;
-
-#endif /* _FR_TACACS_H */

@@ -1,5 +1,4 @@
-#ifndef _FR_MD5_H
-#define _FR_MD5_H
+#pragma once
 /**
  * $Id$
  *
@@ -89,5 +88,3 @@ void	fr_md5_calc(uint8_t *out, uint8_t const *in, size_t inlen);
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* _FR_MD5_H */

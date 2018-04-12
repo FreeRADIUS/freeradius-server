@@ -1,3 +1,4 @@
+#pragma once
 /*
  * eap_types.h  Header file containing the interfaces for all EAP types.
  *
@@ -23,9 +24,6 @@
  * @copyright 2003  Alan DeKok <aland@freeradius.org>
  * @copyright 2006  The FreeRADIUS server project
  */
-#ifndef _EAP_TYPES_H
-#define _EAP_TYPES_H
-
 RCSIDH(eap_methods_h, "$Id$")
 
 #include <freeradius-devel/radiusd.h>
@@ -147,5 +145,3 @@ int			eap_wireformat(eap_packet_t *reply);
 VALUE_PAIR		*eap_packet2vp(RADIUS_PACKET *packet, eap_packet_raw_t const *reply);
 eap_packet_raw_t	*eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps);
 void			eap_add_reply(REQUEST *request, char const *name, uint8_t const *value, int len);
-
-#endif /* _EAP_TYPES_H */

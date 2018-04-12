@@ -1,5 +1,4 @@
-#ifndef _FR_MD4_H
-#define _FR_MD4_H
+#pragma once
 /**
  * $Id$
  *
@@ -85,4 +84,3 @@ void fr_md4_calc(uint8_t out[MD4_DIGEST_LENGTH], uint8_t const *in, size_t inlen
 #ifdef __cplusplus
 }
 #endif
-#endif /* _FR_MD4_H */

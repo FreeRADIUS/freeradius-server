@@ -1,3 +1,4 @@
+#pragma once
 /*
  *   This program is is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -25,9 +26,6 @@
  * @copyright 2003 Michael Richardson <mcr@sandelman.ottawa.on.ca>
  * @copyright 2003-2016 The FreeRADIUS server project
  */
-#ifndef _SIM_PROTO_H
-#define _SIM_PROTO_H
-
 RCSIDH(sim_h, "$Id$")
 
 #include <assert.h>
@@ -301,4 +299,3 @@ void		fr_sim_fips186_2prf(uint8_t out[160], uint8_t mk[20])
  */
 void		sim_xlat_register(void);
 void		sim_xlat_unregister(void);
-#endif /* _SIM_PROTO_H */

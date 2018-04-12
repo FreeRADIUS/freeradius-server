@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,8 +14,7 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_VERSION_H
-#define _FR_VERSION_H
+
 /**
  * $Id$
  *
@@ -84,5 +84,3 @@ RCSIDH(version_h, "$Id$")
  *	Version check.
  */
 int fr_check_lib_magic(uint64_t magic);
-
-#endif /* _FR_VERSION_H */

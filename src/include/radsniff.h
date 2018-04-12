@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,8 +14,7 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_RADSNIFF_H
-#define _FR_RADSNIFF_H
+
 /**
  * $Id$
  *
@@ -341,6 +341,4 @@ rs_stats_tmpl_t *rs_stats_collectd_init_latency(TALLOC_CTX *ctx, rs_stats_tmpl_t
 void rs_stats_collectd_do_stats(rs_t *conf, rs_stats_tmpl_t *tmpls, struct timeval *now);
 int rs_stats_collectd_open(rs_t *conf);
 int rs_stats_collectd_close(rs_t *conf);
-
-#endif
 #endif

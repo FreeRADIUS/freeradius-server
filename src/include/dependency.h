@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,8 +14,7 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_DEPENDENCY_H
-#define _FR_DEPENDENCY_H
+
 /**
  * $Id$
  *
@@ -39,5 +39,3 @@ int		dependency_version_number_add(CONF_SECTION *cs, char const *name, char cons
 void		dependency_init_features(CONF_SECTION *cs);
 void		dependency_version_numbers_init(CONF_SECTION *cs);
 void		dependency_version_print(void);
-
-#endif /* _FR_DEPENDENCY_H */

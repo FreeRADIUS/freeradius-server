@@ -1,8 +1,5 @@
+#pragma once
 /* @copyright 2006-2015 The FreeRADIUS server project */
-
-#ifndef _RLM_MSCHAP_H
-#define _RLM_MSCHAP_H
-
 RCSIDH(rlm_mschap_h, "$Id$")
 
 #include "config.h"
@@ -54,6 +51,3 @@ typedef struct rlm_mschap_t {
 	bool			open_directory;
 #endif
 } rlm_mschap_t;
-
-#endif
-

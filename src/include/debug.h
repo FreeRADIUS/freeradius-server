@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,8 +14,7 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_DEBUG_H
-#define _FR_DEBUG_H
+
 /*
  * $Id$
  *
@@ -114,4 +114,3 @@ void		NEVER_RETURNS _fr_exit(char const *file, int line, int status);
 
 void		NEVER_RETURNS _fr_exit_now(char const *file, int line, int status);
 #  define	fr_exit_now(_x) _fr_exit_now(__FILE__, __LINE__, (_x))
-#endif /* _FR_DEBUG_H */

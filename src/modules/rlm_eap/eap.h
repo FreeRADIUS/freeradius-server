@@ -1,3 +1,4 @@
+#pragma once
 /*
  * eap.h    Header file containing the interfaces for all EAP types.
  *
@@ -21,9 +22,6 @@
  * @copyright 2003  Alan DeKok <aland@freeradius.org>
  * @copyright 2006  The FreeRADIUS server project
  */
-#ifndef _EAP_H
-#define _EAP_H
-
 RCSIDH(eap_h, "$Id$")
 
 #include <freeradius-devel/radiusd.h>
@@ -125,5 +123,3 @@ typedef struct eap_tunnel_data_t {
 
 rlm_rcode_t	eap_virtual_server(REQUEST *request, REQUEST *fake,
 				   eap_session_t *eap_session, char const *virtual_server);
-
-#endif /*_EAP_H*/

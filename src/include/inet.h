@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,8 +14,7 @@
  *  along with this program; if not, write to the Free Software Foundation,
  *  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
-#ifndef _FR_INET_H
-#define _FR_INET_H
+
 /**
  * $Id$
  *
@@ -151,4 +151,3 @@ int	fr_ipaddr_from_sockaddr(struct sockaddr_storage const *sa, socklen_t salen,
 #ifdef __cplusplus
 }
 #endif
-#endif /* _FR_INET_H */

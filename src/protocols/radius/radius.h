@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,8 +14,7 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_RADIUS_RADIUS_H
-#define _FR_RADIUS_RADIUS_H
+
 /*
  * $Id$
  *
@@ -167,5 +167,3 @@ ssize_t		fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr
 
 ssize_t		fr_radius_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, uint8_t const *data, size_t data_len,
 				      void *decoder_ctx);
-
-#endif	/* _FR_RADIUS_RADIUS_H */

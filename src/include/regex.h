@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,8 +14,6 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_REGEX_H
-#define _FR_REGEX_H
 #ifdef HAVE_REGEX
 /**
  * $Id$
@@ -76,4 +75,3 @@ int	regex_exec(regex_t *preg, char const *string, size_t len, regmatch_t pmatch[
 }
 #  endif
 #endif
-#endif /* _FR_REGEX_H */

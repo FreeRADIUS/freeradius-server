@@ -1,3 +1,4 @@
+#pragma once
 /*
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -23,10 +24,6 @@
  * @author Aaron Hurt <ahurt@anbcs.com>
  * @copyright 2013-2014 The FreeRADIUS Server Project.
  */
-
-#ifndef _jsonc_missing_h_
-#define _jsonc_missing_h_
-
 RCSIDH(jsonc_missing_h, "$Id$")
 #include "config.h"
 #ifdef HAVE_JSON
@@ -99,4 +96,3 @@ enum json_tokener_error json_tokener_get_error(json_tokener *tok);
 		val = (struct json_object *)ctn.data, entry) : 0); entry = entry->next)
 #endif /* defined(__GNUC__) && !defined(__STRICT_ANSI__) */
 #endif
-#endif /* _jsonc_missing_h_ */

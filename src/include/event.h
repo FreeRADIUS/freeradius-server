@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,8 +14,7 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_EVENT_H
-#define _FR_EVENT_H
+
 /**
  * $Id$
  *
@@ -238,4 +238,3 @@ fr_event_list_t	*fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 #ifdef __cplusplus
 }
 #endif
-#endif /* _FR_EVENT_H */

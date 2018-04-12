@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,8 +14,6 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_IO_LISTEN_H
-#define _FR_IO_LISTEN_H
 #include <freeradius-devel/io/io.h>
 #include <freeradius-devel/io/application.h>
 
@@ -64,4 +63,3 @@ typedef struct fr_ip_srcdst_t {
 	uint16_t			src_port;
 	uint16_t 			dst_port;
 } fr_ip_srcdst_t;
-#endif

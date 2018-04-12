@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,8 +14,7 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_PAIR_H
-#define _FR_PAIR_H
+
 /**
  * $Id$
  *
@@ -298,4 +298,3 @@ FR_TOKEN 	fr_pair_raw_from_str(char const **ptr, VALUE_PAIR_RAW *raw);
 #ifdef __cplusplus
 }
 #endif
-#endif /* _PAIR_H */

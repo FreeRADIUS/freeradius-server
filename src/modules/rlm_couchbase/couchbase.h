@@ -1,3 +1,4 @@
+#pragma once
 /*
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -23,10 +24,6 @@
  * @author Aaron Hurt <ahurt@anbcs.com>
  * @copyright 2013-2014 The FreeRADIUS Server Project.
  */
-
-#ifndef _couchbase_h_
-#define _couchbase_h_
-
 RCSIDH(couchbase_h, "$Id$")
 
 #include <libcouchbase/couchbase.h>
@@ -84,5 +81,3 @@ lcb_error_t couchbase_get_key(lcb_t instance, const void *cookie, const char *ke
 
 /* query a couchbase view via http */
 lcb_error_t couchbase_query_view(lcb_t instance, const void *cookie, const char *path, const char *post);
-
-#endif /* _couchbase_h_ */

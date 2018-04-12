@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,8 +14,7 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_PROTO_H
-#define _FR_PROTO_H
+
 /**
  * $Id$
  *
@@ -57,4 +57,3 @@ void fr_proto_tlv_stack_build(fr_dict_attr_t const **tlv_stack, fr_dict_attr_t c
 #ifdef __cplusplus
 }
 #endif
-#endif /* _FR_PROTO_H */

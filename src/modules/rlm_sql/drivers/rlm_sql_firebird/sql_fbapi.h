@@ -1,3 +1,4 @@
+#pragma once
 /*
  * sql_fbapi.h Part of Firebird rlm_sql driver
  *
@@ -18,11 +19,6 @@
  * @copyright 2006  The FreeRADIUS server project
  * @copyright 2006  Vitaly Bodzhgua <vitaly@eastera.net>
  */
-
-
-#ifndef _SQL_FBAPI_H_
-#define _SQL_FBAPI_H_
-
 RCSIDH(sql_fbapi_h, "$Id$")
 
 #include <stdlib.h>
@@ -85,5 +81,3 @@ int fb_close_cursor(rlm_sql_firebird_conn_t *conn);
 int fb_rollback(rlm_sql_firebird_conn_t *conn);
 int fb_commit(rlm_sql_firebird_conn_t *conn);
 void fb_store_row(rlm_sql_firebird_conn_t *conn);
-
-#endif

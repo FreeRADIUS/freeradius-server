@@ -1,3 +1,4 @@
+#pragma once
 /*
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -24,8 +25,6 @@
  * @copyright 2016 Alan DeKok <aland@freeradius.org>
  * @copyright 2016 The FreeRADIUS server project
  */
-#ifndef _EAP_FAST_CRYPTO_H
-#define _EAP_FAST_CRYPTO_H
 RCSIDH(eap_fast_crypto_h, "$Id$")
 
 int eap_fast_encrypt(uint8_t const *plaintext, size_t plaintext_len,
@@ -36,4 +35,3 @@ int eap_fast_encrypt(uint8_t const *plaintext, size_t plaintext_len,
 int eap_fast_decrypt(uint8_t const *ciphertext, size_t ciphertext_len,
 		     uint8_t const *aad, size_t aad_len,
 		     uint8_t const *tag, uint8_t const *key, uint8_t const *iv, uint8_t *plaintext);
-#endif /*  _EAP_FAST_CRYPTO_H */

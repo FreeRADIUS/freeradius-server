@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,8 +14,7 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _RAD_DL_H
-#define _RAD_DL_H
+
 /**
  * $Id$
  *
@@ -190,5 +190,3 @@ int			dl_instance(TALLOC_CTX *ctx, dl_instance_t **out,
 #ifdef __cplusplus
 }
 #endif
-
-#endif	/* _RAD_DL_H */

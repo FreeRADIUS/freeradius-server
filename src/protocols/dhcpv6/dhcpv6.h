@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,8 +14,7 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_DHCPV6_H
-#define _FR_DHCPV6_H
+
 /**
  * $Id$
  *
@@ -58,4 +58,3 @@ ssize_t		fr_dhcpv6_encode_option(uint8_t *out, size_t outlen, fr_cursor_t *curso
  */
 ssize_t		fr_dhcpv6_decode_option(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 					uint8_t const *data, size_t data_len, void *decoder_ctx);
-#endif

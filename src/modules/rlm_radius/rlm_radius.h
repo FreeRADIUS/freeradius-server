@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,9 +14,6 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _RLM_RADIUS_H
-#define _RLM_RADIUS_H
-
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
@@ -147,5 +145,3 @@ struct rlm_radius_link_t {
 	rlm_rcode_t		rcode;			//!< from the transport
 	void			*request_io_ctx;	//!< IO submodule tracking for this request
 };
-
-#endif	/* _RLM_RADIUS_H */

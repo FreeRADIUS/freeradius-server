@@ -1,5 +1,4 @@
-#ifndef _FR_SHA1_H
-#define _FR_SHA1_H
+#pragma once
 /**
  * $Id$
  *
@@ -57,4 +56,3 @@ void fr_hmac_sha1(uint8_t digest[SHA1_DIGEST_LENGTH], uint8_t const *text, size_
 #ifdef __cplusplus
 }
 #endif
-#endif /* _FR_SHA1_H */

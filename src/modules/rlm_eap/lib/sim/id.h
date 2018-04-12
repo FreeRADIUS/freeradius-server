@@ -1,3 +1,4 @@
+#pragma once
 /*
  *   This program is is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -20,9 +21,6 @@
  *
  * @copyright 2017 The FreeRADIUS server project
  */
-#ifndef _EAP_SIM_ID_TYPE_H
-#define _EAP_SIM_ID_TYPE_H
-
 #include <sys/types.h>
 #include <freeradius-devel/token.h>
 
@@ -103,4 +101,3 @@ uint8_t		fr_sim_id_3gpp_pseudonym_key_index(char const encr_id[SIM_3GPP_PSEUDONY
 
 int		fr_sim_id_3gpp_pseudonym_decrypt(char out[SIM_IMSI_MAX_LEN],
 				     		 char const encr_id[SIM_3GPP_PSEUDONYM_LEN], uint8_t const key[16]);
-#endif	/* _EAP_SIM_ID_TYPE_H */

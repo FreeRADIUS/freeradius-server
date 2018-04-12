@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,9 +14,6 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_TEST_POINT_H
-#define _FR_TEST_POINT_H
-
 #include "proto.h"
 #include "pair.h"
 
@@ -57,4 +55,3 @@ typedef struct {
 	fr_test_point_ctx_alloc_t	test_ctx;	//!< Allocate a test ctx for the encoder.
 	fr_pair_encode_t		func;		//!< Encoder for pairs.
 } fr_test_point_pair_encode_t;
-#endif /* _FR_TEST_POINT_H */

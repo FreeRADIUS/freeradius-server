@@ -1,3 +1,4 @@
+#pragma once
 /*
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -14,8 +15,6 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-#ifndef _RLM_EAP_H
-#define _RLM_EAP_H
 /**
  * $Id$
  * @file rlm_eap.h
@@ -87,5 +86,3 @@ eap_session_t 	*eap_session_continue(eap_packet_raw_t **eap_packet, rlm_eap_t co
  */
 eap_round_t	*eap_round_alloc(eap_session_t *eap_session) CC_HINT(nonnull);
 eap_session_t	*eap_session_alloc(rlm_eap_t const *inst, REQUEST *request) CC_HINT(nonnull);
-
-#endif /*_RLM_EAP_H*/

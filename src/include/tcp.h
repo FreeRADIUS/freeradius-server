@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,8 +14,7 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_TCP_H
-#define _FR_TCP_H
+
 /**
  * $Id$
  *
@@ -27,4 +27,3 @@ RCSIDH(tcp_h, "$Id$")
 
 int fr_tcp_read_packet(RADIUS_PACKET *packet, uint32_t max_attributes, bool require_ma);
 RADIUS_PACKET *fr_tcp_recv(int sockfd, int flags);
-#endif /* _FR_TCP_H */

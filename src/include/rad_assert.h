@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,9 +14,7 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_RAD_ASSERT_H
-#define _FR_RAD_ASSERT_H
-#include <stdbool.h>
+
 /**
  * $Id$
  *
@@ -25,6 +24,8 @@
  * @copyright 2000,2001,2006  The FreeRADIUS server project
  */
 RCSIDH(rad_assert_h, "$Id$")
+
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -58,4 +59,3 @@ bool fr_assert_exit(char const *file, unsigned int line, char const *expr);
 #ifdef __cplusplus
 }
 #endif
-#endif /* _FR_RAD_ASSERT_H */

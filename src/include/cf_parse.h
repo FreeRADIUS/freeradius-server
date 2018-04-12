@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,8 +14,7 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_CF_PARSE_H
-#define _FR_CF_PARSE_H
+
 /**
  * $Id$
  *
@@ -468,5 +468,3 @@ int		_cf_section_rules_push(CONF_SECTION *cs, CONF_PARSER const *rules, char con
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* _FR_CF_PARSE_H */

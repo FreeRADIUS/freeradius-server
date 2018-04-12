@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,8 +14,7 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_THREADS_H
-#define _FR_THREADS_H
+
 /**
  * $Id$
  *
@@ -105,4 +105,3 @@ static int __fr_thread_local_set_destructor_##_n(pthread_destructor_t func, void
  */
 #  define fr_thread_local_set_destructor(_n, _f, _v) __fr_thread_local_set_destructor_##_n(_f, _v)
 #endif
-#endif /* _FR_THREADS_H */

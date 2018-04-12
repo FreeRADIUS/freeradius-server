@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,8 +14,7 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _FR_MAP_PROC_H
-#define _FR_MAP_PROC_H
+
 /**
  * $Id$
  *
@@ -81,4 +81,3 @@ rlm_rcode_t	map_proc(REQUEST *request, map_proc_inst_t const *inst, fr_value_box
 #ifdef __cplusplus
 }
 #endif
-#endif	/* _FR_MAP_PROC_H */

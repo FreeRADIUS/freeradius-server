@@ -1,3 +1,4 @@
+#pragma once
 /*
  *   This program is is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -13,8 +14,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _EAP_AKA_COMMON_H
-#define _EAP_AKA_COMMON_H
+
 /**
  * $Id$
  * @file rlm_eap/lib/sim/eap_aka_common.h
@@ -41,4 +41,3 @@ typedef enum eap_aka_subtype {
 	EAP_AKA_CLIENT_ERROR		= 14,
 	EAP_AKA_MAX_SUBTYPE		= 15
 } eap_aka_subtype_t;
-#endif

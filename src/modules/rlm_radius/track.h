@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,10 +14,6 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef _RLM_RADIUS_TRACK_H
-#define _RLM_RADIUS_TRACK_H
-
-#include "rlm_radius.h"
 
 /*
  * $Id$
@@ -27,6 +24,7 @@
  * @copyright 2017 Alan DeKok <aland@freeradius.org>
  */
 
+#include "rlm_radius.h"
 typedef struct rlm_radius_retransmit_t {
 	struct timeval		start;		//!< when we started sending the packet
 	uint32_t		count;		//!< how many times we sent this packet
@@ -78,5 +76,3 @@ void rr_track_use_authenticator(rlm_radius_id_t *id, bool flag) CC_HINT(nonnull)
 
 int rr_track_start(rlm_radius_retransmit_t *timer) CC_HINT(nonnull);
 int rr_track_retry(rlm_radius_retransmit_t *timer, struct timeval *now) CC_HINT(nonnull);
-
-#endif	/* _RLM_RADIUS_TRACK_H */

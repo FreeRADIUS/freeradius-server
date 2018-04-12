@@ -1,3 +1,4 @@
+#pragma once
 /*
  * eap_peap.h
  *
@@ -20,9 +21,6 @@
  * @copyright 2003 Alan DeKok <aland@freeradius.org>
  * @copyright 2006 The FreeRADIUS server project
  */
-#ifndef _EAP_PEAP_H
-#define _EAP_PEAP_H
-
 RCSIDH(eap_peap_h, "$Id$")
 
 #include "eap_tls.h"
@@ -69,4 +67,3 @@ typedef struct peap_tunnel_t {
  *	Process the PEAP portion of an EAP-PEAP request.
  */
 rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_session, fr_dict_enum_t const *enumv) CC_HINT(nonnull(1,2));
-#endif /* _EAP_PEAP_H */

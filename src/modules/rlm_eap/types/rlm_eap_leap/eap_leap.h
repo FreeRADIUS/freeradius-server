@@ -1,6 +1,4 @@
-#ifndef _EAP_LEAP_H
-#define _EAP_LEAP_H
-
+#pragma once
 RCSIDH(eap_leap_h, "$Id$")
 
 #include "eap.h"
@@ -68,5 +66,3 @@ leap_packet_t	*eap_leap_stage6(REQUEST *request, leap_packet_t *packet, VALUE_PA
 				leap_session_t *session);
 
 void eap_leap_mschap(unsigned char const *win_password, unsigned char const *challenge, unsigned char *response);
-
-#endif /*_EAP_LEAP_H*/
