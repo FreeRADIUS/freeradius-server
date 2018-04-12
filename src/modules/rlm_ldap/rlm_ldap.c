@@ -223,6 +223,29 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
+
+static fr_dict_attr_t const *attr_cleartext_password;
+
+static fr_dict_attr_t const *attr_user_name;
+
+extern fr_dict_attr_autoload_t rlm_ldap_dict_attr[];
+fr_dict_attr_autoload_t rlm_ldap_dict_attr[] = {
+	{ .out = &attr_cleartext_password, .name = "Cleartext-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+
+	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
+
+	{ NULL }
+};
+
+extern fr_dict_autoload_t rlm_ldap_dict[];
+fr_dict_autoload_t rlm_ldap_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
 static ssize_t ldap_escape_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 			 	UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
 			 	REQUEST *request, char const *fmt)
@@ -953,18 +976,16 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 	/*
 	 *	We already have a Cleartext-Password.  Skip edir.
 	 */
-	if (fr_pair_find_by_num(request->control, 0, FR_CLEARTEXT_PASSWORD, TAG_ANY)) {
-		goto skip_edir;
-	}
+	if (fr_pair_find_by_da(request->control, attr_cleartext_password, TAG_ANY)) goto skip_edir;
 
 	/*
 	 *      Retrieve Universal Password if we use eDirectory
 	 */
 	if (inst->edir) {
-		VALUE_PAIR *vp;
-		int res = 0;
-		char password[256];
-		size_t pass_size = sizeof(password);
+		VALUE_PAIR	*vp;
+		int		res = 0;
+		char		password[256];
+		size_t		pass_size = sizeof(password);
 
 		/*
 		 *	Retrive universal password
@@ -980,7 +1001,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 		/*
 		 *	Add Cleartext-Password attribute to the request
 		 */
-		vp = radius_pair_create(request, &request->control, FR_CLEARTEXT_PASSWORD, 0);
+		MEM(vp = pair_update_control(attr_cleartext_password, 0));
 		fr_pair_value_bstrncpy(vp, password, pass_size);
 
 		if (RDEBUG_ENABLED3) {
@@ -1442,8 +1463,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		group_attribute = "LDAP-Group";
 	}
 
-	if (paircompare_register_byname(group_attribute, fr_dict_attr_by_num(NULL, 0, FR_USER_NAME),
-					false, rlm_ldap_groupcmp, inst) < 0) {
+	if (paircompare_register_byname(group_attribute, attr_user_name, false, rlm_ldap_groupcmp, inst) < 0) {
 		PERROR("Error registering group comparison");
 		goto error;
 	}
