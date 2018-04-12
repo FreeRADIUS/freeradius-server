@@ -1,3 +1,4 @@
+#pragma once
 /*
  * An implementation of C11 stdatomic.h directly borrowed from FreeBSD
  * (original copyright follows), with minor modifications for
@@ -44,10 +45,6 @@
  *
  * $FreeBSD: src/include/stdatomic.h,v 1.10.2.2 2012/05/30 19:21:54 theraven Exp $
  */
-
-#ifndef _STDATOMIC_H_
-#define	_STDATOMIC_H_
-
 #include <stddef.h>
 #include <stdint.h>
 
@@ -365,5 +362,3 @@ typedef atomic_bool			atomic_flag;
 	atomic_flag_clear_explicit(object, memory_order_seq_cst)
 #define	atomic_flag_test_and_set(object)				\
 	atomic_flag_test_and_set_explicit(object, memory_order_seq_cst)
-
-#endif /* !_STDATOMIC_H_ */

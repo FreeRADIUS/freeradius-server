@@ -81,7 +81,7 @@ HEADERS	+= $(notdir ${HEADERS_RFC})
 .PRECIOUS: $(HEADERS_RFC)
 
 NORMALIZE	:= tr -- '[:lower:]/.-' '[:upper:]___' | sed 's/^/\#define /;s/241_//;'
-HEADER		:= "/* AUTO_GENERATED FILE.  DO NOT EDIT */"
+HEADER		:= "/* AUTO_GENERATED FILE.  DO NOT EDIT */\n\#pragma once"
 
 src/include/attributes.h: share/dictionary.freeradius.internal
 	${Q}$(ECHO) HEADER $@
