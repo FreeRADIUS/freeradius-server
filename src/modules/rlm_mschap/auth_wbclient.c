@@ -165,6 +165,7 @@ int do_auth_wbclient(rlm_mschap_t const *inst, REQUEST *request,
 	if (err == WBC_ERR_AUTH_ERROR && inst->wb_retry_with_normalised_username) {
 		VALUE_PAIR 	*vp_response;
 		VALUE_PAIR	*vp_challenge;
+		VALUE_PAIR	*vp_chap_user_name;
 		char		*normalised_username = NULL;
 
 		normalised_username = wbclient_normalise_username(request, wb_ctx, authparams.domain_name,
@@ -177,25 +178,21 @@ int do_auth_wbclient(rlm_mschap_t const *inst, REQUEST *request,
 		authparams.account_name = normalised_username;
 
 		/* Set FR_MS_CHAP_USER_NAME */
-		if (!fr_pair_make(request->packet, &request->packet->vps, "MS-CHAP-User-Name",
-				  normalised_username, T_OP_SET)) {
-			RERROR("Failed creating MS-CHAP-User-Name");
-			goto done;
-		}
+		MEM(vp_chap_user_name = pair_update_request(attr_ms_chap_user_name, 0));
+		fr_pair_value_bstrncpy(vp_chap_user_name,
+				       normalised_username, talloc_array_length(normalised_username) - 1);
 
 		RDEBUG2("Retrying authentication request user='%s' domain='%s'",
 			authparams.account_name, authparams.domain_name);
 
 		/* Recalculate hash */
-		vp_challenge = fr_pair_find_by_num(request->packet->vps, FR_MSCHAP_CHALLENGE,
-						   VENDORPEC_MICROSOFT, TAG_ANY);
+		vp_challenge = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_challenge, TAG_ANY);
 		if (!vp_challenge) {
 			RERROR("Unable to get MS-CHAP-Challenge");
 			goto done;
 		}
 
-		vp_response = fr_pair_find_by_num(request->packet->vps, FR_MSCHAP2_RESPONSE,
-						  VENDORPEC_MICROSOFT, TAG_ANY);
+		vp_response = fr_pair_find_by_da(request->packet->vps, attr_ms_chap2_response, TAG_ANY);
 		if (!vp_response) {
 			RERROR("Unable to get MS-CHAP2-Response");
 			goto done;

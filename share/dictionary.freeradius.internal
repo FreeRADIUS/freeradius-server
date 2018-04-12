@@ -127,7 +127,7 @@ ATTRIBUTE	Rewrite-Rule				1078	string
 # SQL-Group is now dynamically created
 ATTRIBUTE	Response-Packet-Type			1080	integer virtual
 ATTRIBUTE	Digest-HA1				1081	string
-ATTRIBUTE	MS-CHAP-Use-NTLM-Auth			1082	integer
+ATTRIBUTE	MS-CHAP-Use-NTLM-Auth			1082	bool
 ATTRIBUTE	NTLM-User-Name				1083	string
 ATTRIBUTE	MS-CHAP-User-Name			1083	string
 ATTRIBUTE	Packet-Src-IP-Address			1084	ipaddr virtual
@@ -1025,9 +1025,3 @@ VALUE	EAP-Code			Request			1
 VALUE	EAP-Code			Response		2
 VALUE	EAP-Code			Success			3
 VALUE	EAP-Code			Failure			4
-
-#
-#  For MS-CHAP, do we run ntlm_auth, or not.
-#
-VALUE	MS-CHAP-Use-NTLM-Auth		No			0
-VALUE	MS-CHAP-Use-NTLM-Auth		Yes			1

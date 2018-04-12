@@ -1,7 +1,6 @@
-/* @copyright 2006 The FreeRADIUS server project */
+#pragma once
 
-#ifndef _MSCHAP_H
-#define _MSCHAP_H
+/* @copyright 2006 The FreeRADIUS server project */
 
 RCSIDH(mschap_h, "$Id$")
 
@@ -19,7 +18,4 @@ void mschap_auth_response(char const *username,
 			  uint8_t const *peer_challenge, uint8_t const *auth_challenge,
 			  char *response);
 void mschap_add_reply(REQUEST *request, unsigned char ident,
-		      char const *name, char const *value, size_t len);
-
-
-#endif /*_MSCHAP_H*/
+		      fr_dict_attr_t const *da, char const *value, size_t len);

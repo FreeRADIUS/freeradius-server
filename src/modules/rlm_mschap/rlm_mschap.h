@@ -22,6 +22,12 @@ typedef enum {
 #endif
 } MSCHAP_AUTH_METHOD;
 
+extern fr_dict_attr_t const *attr_ms_chap_user_name;
+extern fr_dict_attr_t const *attr_ms_chap_challenge;
+extern fr_dict_attr_t const *attr_ms_chap_response;
+extern fr_dict_attr_t const *attr_ms_chap2_response;
+extern fr_dict_attr_t const *attr_ms_chap2_success;
+
 typedef struct rlm_mschap_t {
 	bool			use_mppe;
 	bool			require_encryption;

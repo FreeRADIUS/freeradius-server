@@ -21,24 +21,20 @@
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API
 
-#include	<freeradius-devel/radiusd.h>
-#include	<freeradius-devel/modules.h>
-#include	<freeradius-devel/rad_assert.h>
-#include	<freeradius-devel/md5.h>
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/modules.h>
+#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/md5.h>
 
-#include 	<ctype.h>
+#include <ctype.h>
 
-#include	"smbdes.h"
+#include "smbdes.h"
+#include "rlm_mschap.h"
+#include "mschap.h"
 
 #include <DirectoryService/DirectoryService.h>
 
 #define kActiveDirLoc "/Active Directory/"
-
-/*
- *	In rlm_mschap.c
- */
-void mschap_add_reply(REQUEST *request, VALUE_PAIR** vp, unsigned char ident,
-		      char const* name, char const* value, int len);
 
 /*
  *	Only used by rlm_mschap.c
@@ -293,7 +289,6 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	   peerchal	=   response->vp_strvalue + 2 (16 octets)
 	   p24			=   response->vp_strvalue + 26 (24 octets)
 	*/
-
 	pStepBuff = dsDataBufferAllocate(dsRef, 4096);
 	tDataBuff = dsDataBufferAllocate(dsRef, 4096);
 	pAuthType = dsDataNodeAllocateString(dsRef, kDSStdAuthMSCHAP2);
@@ -381,10 +376,10 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 				mschap_reply[0] = 'S';
 				mschap_reply[1] = '=';
 				memcpy(&(mschap_reply[2]), &(pStepBuff->fBufferData[4]), len);
-				mschap_add_reply(request, &request->reply->vps,
+				mschap_add_reply(request,
 						 *response->vp_strvalue,
-						 "MS-CHAP2-Success",
-						 mschap_reply, len+2);
+						 attr_ms_chap2_success,
+						 mschap_reply, len + 2);
 				RDEBUG2("dsDoDirNodeAuth returns stepbuff: %s (len=%zu)\n", mschap_reply, len);
 			}
 		}
