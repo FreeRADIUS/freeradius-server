@@ -48,6 +48,32 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
+
+static fr_dict_attr_t const *attr_current_time;
+static fr_dict_attr_t const *attr_login_time;
+static fr_dict_attr_t const *attr_time_of_day;
+
+static fr_dict_attr_t const *attr_session_timeout;
+
+extern fr_dict_attr_autoload_t rlm_logintime_dict_attr[];
+fr_dict_attr_autoload_t rlm_logintime_dict_attr[] = {
+	{ .out = &attr_current_time, .name = "Current-Time", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_login_time, .name = "Login-Time", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_time_of_day, .name = "Time-Of-Day", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+
+	{ .out = &attr_session_timeout, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
+
+	{ NULL }
+};
+
+extern fr_dict_autoload_t rlm_logintime_dict[];
+fr_dict_autoload_t rlm_logintime_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
 
 /*
  *      Compare the current time to a range.
@@ -58,9 +84,7 @@ static int timecmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *reque
 	/*
 	 *      If there's a request, use that timestamp.
 	 */
-	if (timestr_match(check->vp_strvalue,
-	req ? req->packet->timestamp.tv_sec : time(NULL)) >= 0)
-		return 0;
+	if (timestr_match(check->vp_strvalue, req ? req->packet->timestamp.tv_sec : time(NULL)) >= 0) return 0;
 
 	return -1;
 }
@@ -127,14 +151,12 @@ static int time_of_day(UNUSED void *instance, REQUEST *request,
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
 {
-	rlm_logintime_t const *inst = instance;
-	VALUE_PAIR *ends, *timeout;
-	int left;
+	rlm_logintime_t const	*inst = instance;
+	VALUE_PAIR		*ends, *vp;
+	uint32_t		left;
 
-	ends = fr_pair_find_by_num(request->control, 0, FR_LOGIN_TIME, TAG_ANY);
-	if (!ends) {
-		return RLM_MODULE_NOOP;
-	}
+	ends = fr_pair_find_by_da(request->control, attr_login_time, TAG_ANY);
+	if (!ends) return RLM_MODULE_NOOP;
 
 	/*
 	 *      Authentication is OK. Now see if this user may login at this time of the day.
@@ -155,8 +177,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	}
 
 	/*
-	 *      The min_time setting is to deal with NAS that won't allow Session-Timeout values below a certain value
-	 *	For example some Alcatel Lucent products won't allow a Session-Timeout < 300 (5 minutes).
+	 *      The min_time setting is to deal with NAS that won't allow Session-vp values below a certain value
+	 *	For example some Alcatel Lucent products won't allow a Session-vp < 300 (5 minutes).
 	 *
 	 *	We don't know were going to get another chance to lock out the user, so we need to do it now.
 	 */
@@ -170,22 +192,23 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	/* else left > inst->min_time */
 
 	/*
-	 *	There's time left in the users session, inform the NAS by including a Session-Timeout
+	 *	There's time left in the users session, inform the NAS by including a Session-vp
 	 *	attribute in the reply, or modifying the existing one.
 	 */
 	RDEBUG("Login within allowed time-slot, %d seconds left in this session", left);
 
-	timeout = fr_pair_find_by_num(request->reply->vps, 0, FR_SESSION_TIMEOUT, TAG_ANY);
-	if (timeout) {	/* just update... */
-		if (timeout->vp_uint32 > (unsigned int) left) {
-			timeout->vp_uint32 = left;
+	MEM(vp = pair_update_reply(attr_session_timeout, TAG_ANY));
+	vp = fr_pair_find_by_da(request->reply->vps, attr_session_timeout, TAG_ANY);
+	if (vp) {	/* just update... */
+		if (vp->vp_uint32 > left) {
+			vp->vp_uint32 = left;
+			RDEBUG("&reply:Session-vp := %pV", &vp->data);
 		}
 	} else {
-		timeout = radius_pair_create(request->reply, &request->reply->vps, FR_SESSION_TIMEOUT, 0);
-		timeout->vp_uint32 = left;
+		vp = pair_add_reply(attr_session_timeout, 0);
+		vp->vp_uint32 = left;
+		RDEBUG("&reply:Session-vp := %pV", &vp->data);
 	}
-
-	RDEBUG("reply:Session-Timeout set to %d", left);
 
 	return RLM_MODULE_OK;
 }
@@ -213,8 +236,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 * Register a Current-Time comparison function
 	 */
-	paircompare_register(fr_dict_attr_by_num(NULL, 0, FR_CURRENT_TIME), NULL, true, timecmp, inst);
-	paircompare_register(fr_dict_attr_by_num(NULL, 0, FR_TIME_OF_DAY), NULL, true, time_of_day, inst);
+	paircompare_register(attr_current_time, NULL, true, timecmp, inst);
+	paircompare_register(attr_time_of_day, NULL, true, time_of_day, inst);
 
 	return 0;
 }
