@@ -59,6 +59,16 @@ typedef struct rlm_eap {
 } rlm_eap_t;
 
 /*
+ *	Dictionary attributes used by the EAP module
+ */
+extern fr_dict_attr_t const *attr_eap_type;
+
+extern fr_dict_attr_t const *attr_eap_message;
+extern fr_dict_attr_t const *attr_message_authenticator;
+extern fr_dict_attr_t const *attr_state;
+extern fr_dict_attr_t const *attr_user_name;
+
+/*
  *	EAP Method selection
  */
 int      	eap_method_instantiate(rlm_eap_method_t **out, rlm_eap_t *inst, eap_type_t num, CONF_SECTION *cs);

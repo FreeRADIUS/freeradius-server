@@ -158,7 +158,7 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 
 	eap_packet = (eap_packet_raw_t *)reply->packet;
 
-	vp = radius_pair_create(request->reply, &request->reply->vps, FR_EAP_MESSAGE, 0);
+	vp = pair_add_reply(attr_eap_message, 0);
 	if (!vp) return RLM_MODULE_INVALID;
 
 	vp->vp_length = eap_packet->length[0] * 256 + eap_packet->length[1];
@@ -172,11 +172,12 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 	 *	Don't add a Message-Authenticator if
 	 *	it's already there.
 	 */
-	vp = fr_pair_find_by_num(request->reply->vps, 0, FR_MESSAGE_AUTHENTICATOR, TAG_ANY);
+	vp = fr_pair_find_by_da(request->reply->vps, attr_message_authenticator, TAG_ANY);
 	if (!vp) {
-		vp = fr_pair_afrom_num(request->reply, 0, FR_MESSAGE_AUTHENTICATOR);
-		fr_pair_value_memsteal(vp, talloc_zero_array(vp, uint8_t, AUTH_VECTOR_LEN));
-		fr_pair_add(&(request->reply->vps), vp);
+		static uint8_t auth_vector[AUTH_VECTOR_LEN] = { 0x00 };
+
+		MEM(vp = pair_add_reply(attr_message_authenticator, 0));
+		fr_pair_value_memcpy(vp, auth_vector, sizeof(auth_vector));
 	}
 
 	/* Set request reply code, but only if it's not already set. */
@@ -234,7 +235,7 @@ int eap_start(rlm_eap_t const *inst, REQUEST *request)
 	VALUE_PAIR *vp;
 	VALUE_PAIR *eap_msg;
 
-	eap_msg = fr_pair_find_by_num(request->packet->vps, 0, FR_EAP_MESSAGE, TAG_ANY);
+	eap_msg = fr_pair_find_by_da(request->packet->vps, attr_eap_message, TAG_ANY);
 	if (!eap_msg) {
 		RDEBUG2("No EAP-Message, not doing EAP");
 		return RLM_MODULE_NOOP;
@@ -244,7 +245,7 @@ int eap_start(rlm_eap_t const *inst, REQUEST *request)
 	 *	Look for EAP-Type = None (FreeRADIUS specific attribute)
 	 *	this allows you to NOT do EAP for some users.
 	 */
-	vp = fr_pair_find_by_num(request->packet->vps, 0, FR_EAP_TYPE, TAG_ANY);
+	vp = fr_pair_find_by_da(request->packet->vps, attr_eap_type, TAG_ANY);
 	if (vp && vp->vp_uint32 == 0) {
 		RDEBUG2("Found EAP-Message, but EAP-Type = None, so we're not doing EAP");
 		return RLM_MODULE_NOOP;
@@ -269,9 +270,8 @@ int eap_start(rlm_eap_t const *inst, REQUEST *request)
 		uint8_t *p;
 
 		RDEBUG2("Got EAP_START message");
-		vp = fr_pair_afrom_num(request->reply, 0, FR_EAP_MESSAGE);
-		if (!vp) return RLM_MODULE_FAIL;
-		fr_pair_add(&request->reply->vps, vp);
+
+		MEM(vp = pair_add_reply(attr_eap_message, 0));
 
 		/*
 		 *	Manually create an EAP Identity request
@@ -312,11 +312,8 @@ int eap_start(rlm_eap_t const *inst, REQUEST *request)
 	 *	Create an EAP-Type containing the EAP-type
 	 *	from the packet.
 	 */
-	vp = fr_pair_afrom_num(request->packet, 0, FR_EAP_TYPE);
-	if (vp) {
-		vp->vp_uint32 = eap_msg->vp_octets[4];
-		fr_pair_add(&(request->packet->vps), vp);
-	}
+	vp = pair_add_request(attr_eap_type, 0);
+	if (vp) vp->vp_uint32 = eap_msg->vp_octets[4];
 
 	/*
 	 *	From now on, we're supposed to be handling the
@@ -442,8 +439,8 @@ rlm_rcode_t eap_fail(eap_session_t *eap_session)
 	/*
 	 *	Delete any previous replies.
 	 */
-	fr_pair_delete_by_num(&eap_session->request->reply->vps, 0, FR_EAP_MESSAGE, TAG_ANY);
-	fr_pair_delete_by_num(&eap_session->request->reply->vps, 0, FR_STATE, TAG_ANY);
+	fr_pair_delete_by_da(&eap_session->request->reply->vps, attr_eap_message, TAG_ANY);
+	fr_pair_delete_by_da(&eap_session->request->reply->vps, attr_state, TAG_ANY);
 
 	talloc_free(eap_session->this_round->request);
 	eap_session->this_round->request = talloc_zero(eap_session->this_round, eap_packet_t);
@@ -828,7 +825,7 @@ eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t c
 	if (eap_packet->data[0] != FR_EAP_IDENTITY) {
 		eap_session = eap_session_thaw(request);
 		if (!eap_session) {
-			vp = fr_pair_find_by_num(request->packet->vps, 0, FR_STATE, TAG_ANY);
+			vp = fr_pair_find_by_da(request->packet->vps, attr_state, TAG_ANY);
 			if (!vp) {
 				REDEBUG("EAP requires the State attribute to work, but no State exists in the Access-Request packet.");
 				REDEBUG("The RADIUS client is broken.  No amount of changing FreeRADIUS will fix the RADIUS client.");
@@ -896,7 +893,7 @@ eap_session_t *eap_session_continue(eap_packet_raw_t **eap_packet_p, rlm_eap_t c
 		request_data_add(request, NULL, REQUEST_DATA_EAP_SESSION, eap_session, true, true, true);
 	}
 
-	vp = fr_pair_find_by_num(request->packet->vps, 0, FR_USER_NAME, TAG_ANY);
+	vp = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
 	if (!vp) {
 	       /*
 		*	NAS did not set the User-Name

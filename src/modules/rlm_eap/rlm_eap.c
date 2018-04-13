@@ -68,12 +68,13 @@ static fr_dict_t const *dict_radius;
 
 static fr_dict_attr_t const *attr_auth_type;
 static fr_dict_attr_t const *attr_post_auth_type;
-static fr_dict_attr_t const *attr_eap_type;
+fr_dict_attr_t const *attr_eap_type;
 
 static fr_dict_attr_t const *attr_cisco_avpair;
-static fr_dict_attr_t const *attr_eap_message;
-static fr_dict_attr_t const *attr_message_authenticator;
-static fr_dict_attr_t const *attr_user_name;
+fr_dict_attr_t const *attr_eap_message;
+fr_dict_attr_t const *attr_message_authenticator;
+fr_dict_attr_t const *attr_state;
+fr_dict_attr_t const *attr_user_name;
 
 extern fr_dict_attr_autoload_t rlm_eap_dict_attr[];
 fr_dict_attr_autoload_t rlm_eap_dict_attr[] = {
@@ -84,6 +85,7 @@ fr_dict_attr_autoload_t rlm_eap_dict_attr[] = {
 	{ .out = &attr_cisco_avpair, .name = "Cisco-AvPair", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_message_authenticator, .name = "Message-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 
 	{ NULL }
