@@ -42,10 +42,18 @@ sqlippool {
 	#  by putting IPv6 addresses into the pool, and changing the following
 	#  line to "Framed-IPv6-Prefix"
 	#
+	#  Note that you MUST use separate pools for each attribute.  i.e. one pool
+	#  for Framed-IP-Address, a different one for Framed-IPv6-prefix, etc.
+	#
+	#  This means configuring separate "sqlippool" instances, and different
+	#  "ippool_table" in SQL.  Then, populate the pool with addresses and
+	#  it will all just work.
+	#
 	attribute_name = Framed-IP-Address
 
 	#
-	#  Assign the IP address, even if the attribute already exists
+	#  Assign the IP address, even if the above attribute already exists
+	#  in the reply.
 	#
 #	allow_duplicates = no
 
