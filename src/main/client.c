@@ -450,6 +450,8 @@ static const CONF_PARSER client_config[] = {
 	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING, RADCLIENT, server) },
 	{ FR_CONF_OFFSET("response_window", FR_TYPE_TIMEVAL, RADCLIENT, response_window) },
 
+	{ FR_CONF_OFFSET("track_connections", FR_TYPE_BOOL, RADCLIENT, use_connected) },
+
 #ifdef WITH_TCP
 	{ FR_CONF_POINTER("proto", FR_TYPE_STRING, &hs_proto) },
 	{ FR_CONF_POINTER("limit", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) limit_config },
@@ -965,6 +967,11 @@ RADCLIENT *client_afrom_request(TALLOC_CTX *ctx, REQUEST *request)
 
 		case FR_FREERADIUS_CLIENT_SHORTNAME:
 			attr = "shortname";
+			value = vp->vp_strvalue;
+			break;
+
+		case FR_FREERADIUS_CLIENT_TRACK_CONNECTIONS:
+			attr = "track_connections";
 			value = vp->vp_strvalue;
 			break;
 

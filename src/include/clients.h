@@ -49,6 +49,7 @@ typedef struct radclient {
 	bool			dynamic;		//!< Whether the client was dynamically defined.
 	bool			active;			//!< for dynamic clients
 	bool			negative;		//!< negative cache entry
+	bool			use_connected;		//!< do we use connected sockets for this client
 
 #ifdef WITH_TLS
 	bool			tls_required;		//!< whether TLS encryption is required.
