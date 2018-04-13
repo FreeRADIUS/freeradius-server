@@ -349,14 +349,6 @@ static int data_cmp(const void *one, const void *two)
 	return fr_ipaddr_cmp(&a->ipaddr, &b->ipaddr);
 }
 
-static void data_free(void *one)
-{
-	rlm_stats_data_t *a = one;
-
-	talloc_free(a);
-}
-
-
 /** Instantiate thread data for the submodule.
  *
  */
@@ -373,8 +365,8 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	pthread_mutex_init(&t->src_mutex, NULL);
 	pthread_mutex_init(&t->dst_mutex, NULL);
 #endif
-	t->src = rbtree_talloc_create(t, data_cmp, rlm_stats_data_t, data_free, RBTREE_FLAG_NONE);
-	t->dst = rbtree_talloc_create(t, data_cmp, rlm_stats_data_t, data_free, RBTREE_FLAG_NONE);
+	t->src = rbtree_talloc_create(t, data_cmp, rlm_stats_data_t, NULL, RBTREE_FLAG_NONE);
+	t->dst = rbtree_talloc_create(t, data_cmp, rlm_stats_data_t, NULL, RBTREE_FLAG_NONE);
 
 	PTHREAD_MUTEX_LOCK(&inst->mutex);
 	fr_dlist_insert_head(&inst->entry, &t->entry);
