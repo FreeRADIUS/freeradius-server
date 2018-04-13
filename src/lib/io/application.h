@@ -111,4 +111,5 @@ typedef struct fr_app_io_t {
 	fr_io_signal_t			error;		//!< There was an error on the socket.
 	fr_io_open_t			close;		//!< Close the transport.
 	fr_io_nak_t			nak;		//!< Function to send a NAK.
+	void				*private;	//!< any private APIs it needs to export.
 } fr_app_io_t;
