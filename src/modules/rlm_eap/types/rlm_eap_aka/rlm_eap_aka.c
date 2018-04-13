@@ -50,7 +50,7 @@ FR_NAME_NUMBER const aka_state_table[] = {
 static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session);
 
 static CONF_PARSER submodule_config[] = {
-	{ FR_CONF_OFFSET("network_id", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_eap_aka_t, network_id ) },
+	{ FR_CONF_OFFSET("network_name", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_eap_aka_t, network_name ) },
 	{ FR_CONF_OFFSET("request_identity", FR_TYPE_BOOL, rlm_eap_aka_t, request_identity ), .dflt = "no" },
 	{ FR_CONF_OFFSET("protected_success", FR_TYPE_BOOL, rlm_eap_aka_t, protected_success ), .dflt = "no" },
 	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING, rlm_eap_aka_t, virtual_server) },
@@ -1082,8 +1082,8 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 		eap_aka_session->type = FR_EAP_AKA_PRIME;
 		eap_aka_session->kdf = FR_EAP_AKA_KDF_VALUE_EAP_AKA_PRIME_WITH_CK_PRIME_IK_PRIME;
 		eap_aka_session->checkcode_md = eap_aka_session->mac_md = EVP_sha256();
-		eap_aka_session->keys.network = (uint8_t *) talloc_bstrndup(eap_aka_session, inst->network_id,
-									    talloc_array_length(inst->network_id) - 1);
+		eap_aka_session->keys.network = (uint8_t *) talloc_bstrndup(eap_aka_session, inst->network_name,
+									    talloc_array_length(inst->network_name) - 1);
 		eap_aka_session->keys.network_len = talloc_array_length(eap_aka_session->keys.network) - 1;
 		switch (method) {
 		default:
@@ -1100,7 +1100,7 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 	case FR_EAP_AKA:
 		RDEBUG2("New EAP-AKA session");
 		eap_aka_session->type = FR_EAP_AKA;
-		eap_aka_session->kdf = 0;
+		eap_aka_session->kdf = FR_EAP_AKA_KDF_VALUE_EAP_AKA;	/* Not actually sent */
 		eap_aka_session->checkcode_md = eap_aka_session->mac_md = EVP_sha1();
 		eap_aka_session->send_at_bidding = true;
 		switch (method) {

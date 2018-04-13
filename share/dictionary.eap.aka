@@ -33,6 +33,7 @@ VALUE	EAP-AKA-Client-Error-Code	Unable-To-Process-Packet		0
 ATTRIBUTE	EAP-AKA-KDF-Input			23	string
 ATTRIBUTE	EAP-AKA-KDF				24	short
 
+VALUE	EAP-AKA-KDF			EAP-AKA					0
 VALUE	EAP-AKA-KDF			EAP-AKA-Prime-With-CK-Prime-IK-Prime	1
 
 #
