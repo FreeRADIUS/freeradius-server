@@ -1972,7 +1972,7 @@ void *fr_trie_remove(fr_trie_t *ft, void const *key, size_t keylen)
  *	- NULL on not found
  *	- void* user ctx on found
  */
-void *fr_trie_lookup(fr_trie_t *ft, void const *key, size_t keylen)
+void *fr_trie_lookup(fr_trie_t const *ft, void const *key, size_t keylen)
 {
 	if (keylen > MAX_KEY_BITS) return NULL;
 
@@ -1992,7 +1992,7 @@ void *fr_trie_lookup(fr_trie_t *ft, void const *key, size_t keylen)
  *	- NULL on not found
  *	- void* user ctx on found
  */
-void *fr_trie_match(fr_trie_t *ft, void const *key, size_t keylen)
+void *fr_trie_match(fr_trie_t const *ft, void const *key, size_t keylen)
 {
 	if (keylen > MAX_KEY_BITS) return NULL;
 
