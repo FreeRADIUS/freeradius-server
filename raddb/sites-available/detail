@@ -47,7 +47,17 @@ virtual_server detail {
 		#  soon as it gets a response to that entry, the
 		#  listener reads a second entry.
 		#
-		#  
+		#  Packets from the detail listener are low priority,
+		#  so they are procesed only when there is nothing
+		#  else to do.  i.e. if the server receives many
+		#  Access-Request or Accounting-Request packets from
+		#  the network, they will be processed *before* any
+		#  packets from the detail file.
+		#
+		#  This behavior ensures that the detail file is read
+		#  as fast as possible.  At the same time, it ensures
+		#  that the detail file does not affect higher
+		#  priority packets from the network.
 		#
 
 		#
