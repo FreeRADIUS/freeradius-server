@@ -312,8 +312,8 @@ int eap_start(rlm_eap_t const *inst, REQUEST *request)
 	 *	Create an EAP-Type containing the EAP-type
 	 *	from the packet.
 	 */
-	vp = pair_add_request(attr_eap_type, 0);
-	if (vp) vp->vp_uint32 = eap_msg->vp_octets[4];
+	MEM(vp = pair_add_request(attr_eap_type, 0));
+	vp->vp_uint32 = eap_msg->vp_octets[4];
 
 	/*
 	 *	From now on, we're supposed to be handling the
