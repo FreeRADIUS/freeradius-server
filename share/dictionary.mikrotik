@@ -54,5 +54,4 @@ VALUE	Mikrotik-Wireless-Enc-Algo	TKIP			4
 VALUE	Mikrotik-Wireless-VLANID-Type	802.1q			0
 VALUE	Mikrotik-Wireless-VLANID-Type	802.1ad			1
 
-
 END-VENDOR	Mikrotik

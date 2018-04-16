@@ -32,7 +32,6 @@ VALUE	FreeRADIUS-Stats4-Type		Global			1
 VALUE	FreeRADIUS-Stats4-Type		Client			2
 VALUE	FreeRADIUS-Stats4-Type		Listener		3
 
-
 #
 #  All of the counters are in a sub-TLV
 #
@@ -71,7 +70,6 @@ ATTRIBUTE	FreeRADIUS-Stats4-CoA-Request		15.9.43	integer64
 ATTRIBUTE	FreeRADIUS-Stats4-CoA-ACK		15.9.44	integer64
 ATTRIBUTE	FreeRADIUS-Stats4-CoA-NAK		15.9.45	integer64
 ATTRIBUTE	FreeRADIUS-Stats4-Protocol-Error	15.9.52	integer64
-
 
 #
 #  Attributes 127 through 187 are for statistics produced by

@@ -371,24 +371,24 @@ ATTRIBUTE	SIM-IMSI				1205	string
 
 # The algorithm the SIM card uses (Milenage for UMTS, COMP128 for others)
 ATTRIBUTE	SIM-Algo-Version			1206	integer
-VALUE		SIM-Algo-Version	Comp128v1		0
-VALUE		SIM-Algo-Version	Comp128v2		1
-VALUE		SIM-Algo-Version	Comp128v3		2
-VALUE		SIM-Algo-Version	Milenage		3
+VALUE	SIM-Algo-Version		Comp128v1		0
+VALUE	SIM-Algo-Version		Comp128v2		1
+VALUE	SIM-Algo-Version		Comp128v3		2
+VALUE	SIM-Algo-Version		Milenage		3
 
 ATTRIBUTE	SIM-Method-Hint				1207	integer
 
-VALUE		SIM-Method-Hint		Unknown			0
-VALUE		SIM-Method-Hint		SIM			1
-VALUE		SIM-Method-Hint		AKA			2
-VALUE		SIM-Method-Hint		AKA-Prime		3
+VALUE	SIM-Method-Hint			Unknown			0
+VALUE	SIM-Method-Hint			SIM			1
+VALUE	SIM-Method-Hint			AKA			2
+VALUE	SIM-Method-Hint			AKA-Prime		3
 
 ATTRIBUTE	SIM-Identity-Type			1208	integer
 
-VALUE		SIM-Identity-Type	Unknown			0
-VALUE		SIM-Identity-Type	Permanent		1
-VALUE		SIM-Identity-Type	Pseudonym		2
-VALUE		SIM-Identity-Type	Fastauth		3
+VALUE	SIM-Identity-Type		Unknown			0
+VALUE	SIM-Identity-Type		Permanent		1
+VALUE	SIM-Identity-Type		Pseudonym		2
+VALUE	SIM-Identity-Type		Fastauth		3
 
 #
 #	AKA - Temporary root until we have protocol specific dictionaries.
@@ -690,41 +690,41 @@ ATTRIBUTE	TLS-OCSP-Response			1945	octets
 
 ATTRIBUTE	TLS-Client-Error-Code			1946	uint8
 
-VALUE		TLS-Client-Error-Code	Close-Notify			0
-VALUE		TLS-Client-Error-Code	End-Of-Early-Data		1
-VALUE		TLS-Client-Error-Code	Unexpected-Message		10
-VALUE		TLS-Client-Error-Code	Bad-Record-Mac			20
-VALUE		TLS-Client-Error-Code	Decryption-Failed		21
-VALUE		TLS-Client-Error-Code	Record-Overflow			22
-VALUE		TLS-Client-Error-Code	Decompression-Failure		30
-VALUE		TLS-Client-Error-Code	Handshake-Failure		40
-VALUE		TLS-Client-Error-Code	No-Certificate			41
-VALUE		TLS-Client-Error-Code	Bad-Certificate			42
-VALUE		TLS-Client-Error-Code	Unsupported-Certificate		43
-VALUE		TLS-Client-Error-Code	Certificate-Revoked		44
-VALUE		TLS-Client-Error-Code	Certificate-Expired		45
-VALUE		TLS-Client-Error-Code	Certificate-Unknown		46
-VALUE		TLS-Client-Error-Code	Illegal-Parameter		47
-VALUE		TLS-Client-Error-Code	Unknown-CA			48
-VALUE		TLS-Client-Error-Code	Access-Denied			49
-VALUE		TLS-Client-Error-Code	Decode-Error			50
-VALUE		TLS-Client-Error-Code	Decrypt-Error			51
-VALUE		TLS-Client-Error-Code	Export-Restriction		60
-VALUE		TLS-Client-Error-Code	Protocol-Version		70
-VALUE		TLS-Client-Error-Code	Insufficient-Security		71
-VALUE		TLS-Client-Error-Code	Internal-Error			80
-VALUE		TLS-Client-Error-Code	Inappropriate-Fallback		86
-VALUE		TLS-Client-Error-Code	User-Cancelled			90
-VALUE		TLS-Client-Error-Code	No-Renegotiation		100
-VALUE		TLS-Client-Error-Code	Missing-Extension		109
-VALUE		TLS-Client-Error-Code	Unsupported-Extension		110
-VALUE		TLS-Client-Error-Code	Certificate-Unobtainable	111
-VALUE		TLS-Client-Error-Code	Unrecognized-Name		112
-VALUE		TLS-Client-Error-Code	Bad-Certificate-Status-Response	113
-VALUE		TLS-Client-Error-Code	Bad-Certificate-Hash-Value	114
-VALUE		TLS-Client-Error-Code	Unknown-PSK-Identity		115
-VALUE		TLS-Client-Error-Code	Certificate-Required		116
-VALUE		TLS-Client-Error-Code	No-Application-Protocol		120
+VALUE	TLS-Client-Error-Code		Close-Notify		0
+VALUE	TLS-Client-Error-Code		End-Of-Early-Data	1
+VALUE	TLS-Client-Error-Code		Unexpected-Message	10
+VALUE	TLS-Client-Error-Code		Bad-Record-Mac		20
+VALUE	TLS-Client-Error-Code		Decryption-Failed	21
+VALUE	TLS-Client-Error-Code		Record-Overflow		22
+VALUE	TLS-Client-Error-Code		Decompression-Failure	30
+VALUE	TLS-Client-Error-Code		Handshake-Failure	40
+VALUE	TLS-Client-Error-Code		No-Certificate		41
+VALUE	TLS-Client-Error-Code		Bad-Certificate		42
+VALUE	TLS-Client-Error-Code		Unsupported-Certificate	43
+VALUE	TLS-Client-Error-Code		Certificate-Revoked	44
+VALUE	TLS-Client-Error-Code		Certificate-Expired	45
+VALUE	TLS-Client-Error-Code		Certificate-Unknown	46
+VALUE	TLS-Client-Error-Code		Illegal-Parameter	47
+VALUE	TLS-Client-Error-Code		Unknown-CA		48
+VALUE	TLS-Client-Error-Code		Access-Denied		49
+VALUE	TLS-Client-Error-Code		Decode-Error		50
+VALUE	TLS-Client-Error-Code		Decrypt-Error		51
+VALUE	TLS-Client-Error-Code		Export-Restriction	60
+VALUE	TLS-Client-Error-Code		Protocol-Version	70
+VALUE	TLS-Client-Error-Code		Insufficient-Security	71
+VALUE	TLS-Client-Error-Code		Internal-Error		80
+VALUE	TLS-Client-Error-Code		Inappropriate-Fallback	86
+VALUE	TLS-Client-Error-Code		User-Cancelled		90
+VALUE	TLS-Client-Error-Code		No-Renegotiation	100
+VALUE	TLS-Client-Error-Code		Missing-Extension	109
+VALUE	TLS-Client-Error-Code		Unsupported-Extension	110
+VALUE	TLS-Client-Error-Code		Certificate-Unobtainable 111
+VALUE	TLS-Client-Error-Code		Unrecognized-Name	112
+VALUE	TLS-Client-Error-Code		Bad-Certificate-Status-Response 113
+VALUE	TLS-Client-Error-Code		Bad-Certificate-Hash-Value 114
+VALUE	TLS-Client-Error-Code		Unknown-PSK-Identity	115
+VALUE	TLS-Client-Error-Code		Certificate-Required	116
+VALUE	TLS-Client-Error-Code		No-Application-Protocol	120
 
 ATTRIBUTE	SoH-MS-Machine-OS-vendor		2100	integer
 VALUE	SoH-MS-Machine-OS-vendor	Microsoft		311

@@ -184,7 +184,7 @@ ATTRIBUTE	DHCPv6-NTP-Server			56	tlv
 BEGIN-TLV	DHCPv6-NTP-Server
 ATTRIBUTE	DHCPv6-NTP-Server-Address		1	ipv6addr
 ATTRIBUTE	DHCPv6-NTP-Server-Multicast-Address	2	ipv6addr
-ATTRIBUTE 	DHCPv6-NTP-Server-FQDN			3	octets		# Domain name
+ATTRIBUTE	DHCPv6-NTP-Server-FQDN			3	octets		# Domain name
 END-TLV		DHCPv6-NTP-Server
 
 #
@@ -204,39 +204,39 @@ ATTRIBUTE	DHCPv6-Bootfile-URL			59	string
 ATTRIBUTE	DHCPv6-Bootfile-Param			60	string array
 ATTRIBUTE	DHCPv6-Client-Arch-Type			61	uint16 array
 
-VALUE		DHCPv6-Client-Arch-Type		x86-BIOS				0
-VALUE		DHCPv6-Client-Arch-Type		NEC-PC98				1
-VALUE		DHCPv6-Client-Arch-Type		Itanium					2
-VALUE		DHCPv6-Client-Arch-Type		DEC-Alpha				3
-VALUE		DHCPv6-Client-Arch-Type		Arc-x86					4
-VALUE		DHCPv6-Client-Arch-Type		Intel-Lean-Client			5
-VALUE		DHCPv6-Client-Arch-Type		x86-UEFI				6
-VALUE		DHCPv6-Client-Arch-Type		x64-UEFI				7
-VALUE		DHCPv6-Client-Arch-Type		EFI-Xscale				8
-VALUE		DHCPv6-Client-Arch-Type		EBC					9
-VALUE		DHCPv6-Client-Arch-Type		ARM-32-bit-UEFI				10
-VALUE		DHCPv6-Client-Arch-Type		ARM-64-bit-UEFI				11
-VALUE		DHCPv6-Client-Arch-Type		PowerPC-Open-Firmware			12
-VALUE		DHCPv6-Client-Arch-Type		PowerPC-ePAPR				13
-VALUE		DHCPv6-Client-Arch-Type		POWER-OPAL-v3				14
-VALUE		DHCPv6-Client-Arch-Type		x86-UEFI-Boot-From-HTTP			15
-VALUE		DHCPv6-Client-Arch-Type		x64-UEFI-Boot-From-HTTP			16
-VALUE		DHCPv6-Client-Arch-Type		EBC-Boot-From-HTTP			17
-VALUE		DHCPv6-Client-Arch-Type		ARM-UEFI-32-Boot-From-HTTP		18
-VALUE		DHCPv6-Client-Arch-Type		ARM-UEFI-64-Boot-From-HTTP		19
-VALUE		DHCPv6-Client-Arch-Type		PCAT-BIOS-Boot-From-HTTP		20
-VALUE		DHCPv6-Client-Arch-Type		ARM-32-Uboot				21
-VALUE		DHCPv6-Client-Arch-Type		ARM-64-Uboot				22
-VALUE		DHCPv6-Client-Arch-Type		ARM-Uboot-32-Boot-From-HTTP		23
-VALUE		DHCPv6-Client-Arch-Type		ARM-Uboot-64-Boot-From-HTTP		24
-VALUE		DHCPv6-Client-Arch-Type		RISC-V-32-Bit-UEFI			25
-VALUE		DHCPv6-Client-Arch-Type		RISC-V-32-Bit-UEFI-Boot-From-HTTP	26
-VALUE		DHCPv6-Client-Arch-Type		RISC-V-64-Bit-UEFI			27
-VALUE		DHCPv6-Client-Arch-Type		RISC-V-64-Bit-UEFI-Boot-From-HTTP	28
-VALUE		DHCPv6-Client-Arch-Type		RISC-V-128-Bit-UEFI			29
-VALUE		DHCPv6-Client-Arch-Type		RISC-V-128-Bit-UEFI-Boot-From-HTTP	30
-VALUE		DHCPv6-Client-Arch-Type		S390-Basic				31
-VALUE		DHCPv6-Client-Arch-Type		S390-Extended				32
+VALUE	DHCPv6-Client-Arch-Type		x86-BIOS		0
+VALUE	DHCPv6-Client-Arch-Type		NEC-PC98		1
+VALUE	DHCPv6-Client-Arch-Type		Itanium			2
+VALUE	DHCPv6-Client-Arch-Type		DEC-Alpha		3
+VALUE	DHCPv6-Client-Arch-Type		Arc-x86			4
+VALUE	DHCPv6-Client-Arch-Type		Intel-Lean-Client	5
+VALUE	DHCPv6-Client-Arch-Type		x86-UEFI		6
+VALUE	DHCPv6-Client-Arch-Type		x64-UEFI		7
+VALUE	DHCPv6-Client-Arch-Type		EFI-Xscale		8
+VALUE	DHCPv6-Client-Arch-Type		EBC			9
+VALUE	DHCPv6-Client-Arch-Type		ARM-32-bit-UEFI		10
+VALUE	DHCPv6-Client-Arch-Type		ARM-64-bit-UEFI		11
+VALUE	DHCPv6-Client-Arch-Type		PowerPC-Open-Firmware	12
+VALUE	DHCPv6-Client-Arch-Type		PowerPC-ePAPR		13
+VALUE	DHCPv6-Client-Arch-Type		POWER-OPAL-v3		14
+VALUE	DHCPv6-Client-Arch-Type		x86-UEFI-Boot-From-HTTP	15
+VALUE	DHCPv6-Client-Arch-Type		x64-UEFI-Boot-From-HTTP	16
+VALUE	DHCPv6-Client-Arch-Type		EBC-Boot-From-HTTP	17
+VALUE	DHCPv6-Client-Arch-Type		ARM-UEFI-32-Boot-From-HTTP 18
+VALUE	DHCPv6-Client-Arch-Type		ARM-UEFI-64-Boot-From-HTTP 19
+VALUE	DHCPv6-Client-Arch-Type		PCAT-BIOS-Boot-From-HTTP 20
+VALUE	DHCPv6-Client-Arch-Type		ARM-32-Uboot		21
+VALUE	DHCPv6-Client-Arch-Type		ARM-64-Uboot		22
+VALUE	DHCPv6-Client-Arch-Type		ARM-Uboot-32-Boot-From-HTTP 23
+VALUE	DHCPv6-Client-Arch-Type		ARM-Uboot-64-Boot-From-HTTP 24
+VALUE	DHCPv6-Client-Arch-Type		RISC-V-32-Bit-UEFI	25
+VALUE	DHCPv6-Client-Arch-Type		RISC-V-32-Bit-UEFI-Boot-From-HTTP 26
+VALUE	DHCPv6-Client-Arch-Type		RISC-V-64-Bit-UEFI	27
+VALUE	DHCPv6-Client-Arch-Type		RISC-V-64-Bit-UEFI-Boot-From-HTTP 28
+VALUE	DHCPv6-Client-Arch-Type		RISC-V-128-Bit-UEFI	29
+VALUE	DHCPv6-Client-Arch-Type		RISC-V-128-Bit-UEFI-Boot-From-HTTP 30
+VALUE	DHCPv6-Client-Arch-Type		S390-Basic		31
+VALUE	DHCPv6-Client-Arch-Type		S390-Extended		32
 
 ATTRIBUTE	DHCPv6-Client-Network-Interface-ID	62	octets		# Complex struct see RFC 5970
 
@@ -320,7 +320,9 @@ ATTRIBUTE	DHCPv6-PCP-Server			86	ipv6addr array
 #
 #  RFC 7341 - DHCPv4-over-DHCPv6 (DHCP 4o6) Transport
 #
-ATTRIBUTE	DHCPv6-DHCPv4-Msg			87	octets		# Foreign protocol (DHCPv4)
+BEGIN-VENDOR	DHCP
+
+ATTRIBUTE	DHCPv6-DHCPv4-Msg			87	octets		# Foreign protocol (v4)
 
 #
 #  RFC 7598 - DHCPv6 Options for Configuration of Softwire Address
@@ -340,11 +342,11 @@ ATTRIBUTE	DHCPv6-S46-Cont-LW			96	octets		# Complex struct see RFC 7598
 #	      A DHCPv6-Based Prioritization Mechanism
 #
 ATTRIBUTE	DHCPv6-S46-Priority			111	uint16 array
-VALUE		DHCPv6-S46-Priority		DS-Lite					64
-VALUE		DHCPv6-S46-Priority		DHCPv4-Over-DHCPv6			88
-VALUE		DHCPv6-S46-Priority		MAP-E					94
-VALUE		DHCPv6-S46-Priority		MAP-T					95
-VALUE		DHCPv6-S46-Priority		Lightweight-4-Over-6			96
+VALUE	DHCPv6-S46-Priority		DS-Lite			64
+VALUE	DHCPv6-S46-Priority		DHCPv4-Over-DHCPv6	88
+VALUE	DHCPv6-S46-Priority		MAP-E			94
+VALUE	DHCPv6-S46-Priority		MAP-T			95
+VALUE	DHCPv6-S46-Priority		Lightweight-4-Over-6	96
 
 #
 #  RFC 7600 - IPv4 Residual Deployment via IPv6 - A Stateless Solution (4rd)
@@ -376,19 +378,19 @@ ATTRIBUTE	DHCPv6-MPL-Parameters			104	octets		# Complex struct see RFC 7774
 #
 ATTRIBUTE	DHCPv6-ANI-Access-Technology-Type	105	uint16
 
-VALUE		DHCPv6-ANI-Access-Technology-Type	Virtual				1
-VALUE		DHCPv6-ANI-Access-Technology-Type	PPP				2
-VALUE		DHCPv6-ANI-Access-Technology-Type	IEEE802-3			3
-VALUE		DHCPv6-ANI-Access-Technology-Type	IEEE802-11abg			4
-VALUE		DHCPv6-ANI-Access-Technology-Type	IEEE802-16e			5
-VALUE		DHCPv6-ANI-Access-Technology-Type	3GPP-GERAN			6
-VALUE		DHCPv6-ANI-Access-Technology-Type	3GPP-UTRAN			7
-VALUE		DHCPv6-ANI-Access-Technology-Type	3GPP-E-UTRAN			8
-VALUE		DHCPv6-ANI-Access-Technology-Type	3GPP2-eHRPD			9
-VALUE		DHCPv6-ANI-Access-Technology-Type	3GPP-HRPD			10
-VALUE		DHCPv6-ANI-Access-Technology-Type	3GPP2-1xRTT			11
-VALUE		DHCPv6-ANI-Access-Technology-Type	3GPP2-UMB			12
-VALUE		DHCPv6-ANI-Access-Technology-Type	3GPP2-NB-IOT			13
+VALUE	DHCPv6-ANI-Access-Technology-Type Virtual		1
+VALUE	DHCPv6-ANI-Access-Technology-Type PPP			2
+VALUE	DHCPv6-ANI-Access-Technology-Type IEEE802-3		3
+VALUE	DHCPv6-ANI-Access-Technology-Type IEEE802-11abg		4
+VALUE	DHCPv6-ANI-Access-Technology-Type IEEE802-16e		5
+VALUE	DHCPv6-ANI-Access-Technology-Type 3GPP-GERAN		6
+VALUE	DHCPv6-ANI-Access-Technology-Type 3GPP-UTRAN		7
+VALUE	DHCPv6-ANI-Access-Technology-Type 3GPP-E-UTRAN		8
+VALUE	DHCPv6-ANI-Access-Technology-Type 3GPP2-eHRPD		9
+VALUE	DHCPv6-ANI-Access-Technology-Type 3GPP-HRPD		10
+VALUE	DHCPv6-ANI-Access-Technology-Type 3GPP2-1xRTT		11
+VALUE	DHCPv6-ANI-Access-Technology-Type 3GPP2-UMB		12
+VALUE	DHCPv6-ANI-Access-Technology-Type 3GPP2-NB-IOT		13
 
 ATTRIBUTE	DHCPv6-ANI-Network-Name			106	string
 ATTRIBUTE	DHCPv6-ANI-Access-Point-Name		107	string
@@ -405,17 +407,17 @@ ATTRIBUTE	DHCPv6-Prefix64				113	octets		# Complex (and stupid) struct
 #  RFC 8156 - DHCPv6 Failover Protocol
 #
 ATTRIBUTE	DHCPv6-Failover-Binding-Status		114	uint8
-VALUE		DHCPv6-Failover-Binding-Status		Active				1
-VALUE		DHCPv6-Failover-Binding-Status		Expired				2
-VALUE		DHCPv6-Failover-Binding-Status		Released			3
-VALUE		DHCPv6-Failover-Binding-Status		Pending-Free			4
-VALUE		DHCPv6-Failover-Binding-Status		Free				5
-VALUE		DHCPv6-Failover-Binding-Status		Free-Bakcup			6
-VALUE		DHCPv6-Failover-Binding-Status		Abandoned			7
-VALUE		DHCPv6-Failover-Binding-Status		Reset				8
+VALUE	DHCPv6-Failover-Binding-Status	Active			1
+VALUE	DHCPv6-Failover-Binding-Status	Expired			2
+VALUE	DHCPv6-Failover-Binding-Status	Released		3
+VALUE	DHCPv6-Failover-Binding-Status	Pending-Free		4
+VALUE	DHCPv6-Failover-Binding-Status	Free			5
+VALUE	DHCPv6-Failover-Binding-Status	Free-Bakcup		6
+VALUE	DHCPv6-Failover-Binding-Status	Abandoned		7
+VALUE	DHCPv6-Failover-Binding-Status	Reset			8
 
 ATTRIBUTE	DHCPv6-Failover-Connect-Flags		115	uint16
-VALUE		DHCPv6-Failover-Connect-Flags		Fixed-PD-Length			1
+VALUE	DHCPv6-Failover-Connect-Flags	Fixed-PD-Length		1
 
 ATTRIBUTE	DHCPv6-Failover-DNS-Removal-Info	116	tlv
 
@@ -424,10 +426,10 @@ ATTRIBUTE	DHCPv6-Failover-DNS-Host-Name		117	octets			# Domain name
 ATTRIBUTE	DHCPv6-Failover-DNS-Zone-Name		118	octets			# Zone name
 
 ATTRIBUTE	DHCPv6-Failover-DNS-Flags		119	uint16
-VALUE		DHCPv6-Failover-DNS-Flags		Fwd-Up-To-Date			0x01
-VALUE		DHCPv6-Failover-DNS-Flags		Rev-Up-To-Date			0x02
-VALUE		DHCPv6-Failover-DNS-Flags		Synthesized-Name		0x04
-VALUE		DHCPv6-Failover-DNS-Flags		Using-Requested-FQDN		0x08
+VALUE	DHCPv6-Failover-DNS-Flags	Fwd-Up-To-Date		0x01
+VALUE	DHCPv6-Failover-DNS-Flags	Rev-Up-To-Date		0x02
+VALUE	DHCPv6-Failover-DNS-Flags	Synthesized-Name	0x04
+VALUE	DHCPv6-Failover-DNS-Flags	Using-Requested-FQDN	0x08
 END-TLV		DHCPv6-Failover-DNS-Removal-Info
 
 ATTRIBUTE	DHCPv6-Failover-Expiration-Time		120	date
@@ -443,21 +445,21 @@ ATTRIBUTE	DHCPv6-Failover-Reconfigure-Data	129	octets		# Complex struct see RFC 
 ATTRIBUTE	DHCPv6-Failover-Relationship-Name	130	string
 
 ATTRIBUTE	DHCPv6-Failover-Server-Flags		131	uint8
-VALUE		DHCPv6-Failover-Server-Flags		Communicated			0x01
-VALUE		DHCPv6-Failover-Server-Flags		Startup				0x02
-VALUE		DHCPv6-Failover-Server-Flags		ACK-Startup			0x04
+VALUE	DHCPv6-Failover-Server-Flags	Communicated		0x01
+VALUE	DHCPv6-Failover-Server-Flags	Startup			0x02
+VALUE	DHCPv6-Failover-Server-Flags	ACK-Startup		0x04
 
 ATTRIBUTE	DHCPv6-Failover-Server-State		132	uint8
-VALUE		DHCPv6-Failover-Server-State		Startup				1
-VALUE		DHCPv6-Failover-Server-State		Normal				2
-VALUE		DHCPv6-Failover-Server-State		Communications-Interrupted	3
-VALUE		DHCPv6-Failover-Server-State		Partner-Down			4
-VALUE		DHCPv6-Failover-Server-State		Potential-Conflict		5
-VALUE		DHCPv6-Failover-Server-State		Recover				6
-VALUE		DHCPv6-Failover-Server-State		Recover-Wait			7
-VALUE		DHCPv6-Failover-Server-State		Recover-Done			8
-VALUE		DHCPv6-Failover-Server-State		Resolution-Interrupted		9
-VALUE		DHCPv6-Failover-Server-State		Conflict-Done			10
+VALUE	DHCPv6-Failover-Server-State	Startup			1
+VALUE	DHCPv6-Failover-Server-State	Normal			2
+VALUE	DHCPv6-Failover-Server-State	Communications-Interrupted 3
+VALUE	DHCPv6-Failover-Server-State	Partner-Down		4
+VALUE	DHCPv6-Failover-Server-State	Potential-Conflict	5
+VALUE	DHCPv6-Failover-Server-State	Recover			6
+VALUE	DHCPv6-Failover-Server-State	Recover-Wait		7
+VALUE	DHCPv6-Failover-Server-State	Recover-Done		8
+VALUE	DHCPv6-Failover-Server-State	Resolution-Interrupted	9
+VALUE	DHCPv6-Failover-Server-State	Conflict-Done		10
 
 ATTRIBUTE	DHCPv6-Failover-Start-Time-Of-State	133	date
 ATTRIBUTE	DHCPv6-Failover-State-Expiration-Time	134	uint32
@@ -474,40 +476,42 @@ ATTRIBUTE	DHCPv6-ANDSF-Address			143	ipv6addr
 FLAGS	internal
 
 ATTRIBUTE	DHCPv6-Msg-Type				65536	uint8
-VALUE		DHCPv6-Msg-Type				Solicit				1
-VALUE		DHCPv6-Msg-Type				Advertise			2
-VALUE		DHCPv6-Msg-Type				Request				3
-VALUE		DHCPv6-Msg-Type				Confirm				4
-VALUE		DHCPv6-Msg-Type				Renew				5
-VALUE		DHCPv6-Msg-Type				Rebind				6
-VALUE		DHCPv6-Msg-Type				Reply				7
-VALUE		DHCPv6-Msg-Type				Release				8
-VALUE		DHCPv6-Msg-Type				Decline				9
-VALUE		DHCPv6-Msg-Type				Reconfigure			10
-VALUE		DHCPv6-Msg-Type				Information-Request		11
-VALUE		DHCPv6-Msg-Type				Relay-Forward			12
-VALUE		DHCPv6-Msg-Type				Relay-Reply			13
-VALUE		DHCPv6-Msg-Type				Lease-Query			14
-VALUE		DHCPv6-Msg-Type				Lease-Query-Reply		15
-VALUE		DHCPv6-Msg-Type				Lease-Query-Done		16
-VALUE		DHCPv6-Msg-Type				Lease-Query-Data		17
-VALUE		DHCPv6-Msg-Type				Reconfigure-Request		18
-VALUE		DHCPv6-Msg-Type				Reconfigure-Reply		19
-VALUE		DHCPv6-Msg-Type				DHCPv4-Query			20
-VALUE		DHCPv6-Msg-Type				DHCPv4-Response			21
-VALUE		DHCPv6-Msg-Type				Active-Lease-Query		22
-VALUE		DHCPv6-Msg-Type				Start-TLS			23
-VALUE		DHCPv6-Msg-Type				Bind-Update			24
-VALUE		DHCPv6-Msg-Type				Bind-Reply			25
-VALUE		DHCPv6-Msg-Type				Pool-Request			26
-VALUE		DHCPv6-Msg-Type				Pool-Response			27
-VALUE		DHCPv6-Msg-Type				Update-Request			28
-VALUE		DHCPv6-Msg-Type				Update-Request-All		29
-VALUE		DHCPv6-Msg-Type				Update-Done			30
-VALUE		DHCPv6-Msg-Type				Connect				31
-VALUE		DHCPv6-Msg-Type				Connect-Reply			32
-VALUE		DHCPv6-Msg-Type				Disconnect			33
-VALUE		DHCPv6-Msg-Type				State				34
-VALUE		DHCPv6-Msg-Type				Contact				35
+VALUE	DHCPv6-Msg-Type			Solicit			1
+VALUE	DHCPv6-Msg-Type			Advertise		2
+VALUE	DHCPv6-Msg-Type			Request			3
+VALUE	DHCPv6-Msg-Type			Confirm			4
+VALUE	DHCPv6-Msg-Type			Renew			5
+VALUE	DHCPv6-Msg-Type			Rebind			6
+VALUE	DHCPv6-Msg-Type			Reply			7
+VALUE	DHCPv6-Msg-Type			Release			8
+VALUE	DHCPv6-Msg-Type			Decline			9
+VALUE	DHCPv6-Msg-Type			Reconfigure		10
+VALUE	DHCPv6-Msg-Type			Information-Request	11
+VALUE	DHCPv6-Msg-Type			Relay-Forward		12
+VALUE	DHCPv6-Msg-Type			Relay-Reply		13
+VALUE	DHCPv6-Msg-Type			Lease-Query		14
+VALUE	DHCPv6-Msg-Type			Lease-Query-Reply	15
+VALUE	DHCPv6-Msg-Type			Lease-Query-Done	16
+VALUE	DHCPv6-Msg-Type			Lease-Query-Data	17
+VALUE	DHCPv6-Msg-Type			Reconfigure-Request	18
+VALUE	DHCPv6-Msg-Type			Reconfigure-Reply	19
+VALUE	DHCPv6-Msg-Type			DHCPv4-Query		20
+VALUE	DHCPv6-Msg-Type			DHCPv4-Response		21
+VALUE	DHCPv6-Msg-Type			Active-Lease-Query	22
+VALUE	DHCPv6-Msg-Type			Start-TLS		23
+VALUE	DHCPv6-Msg-Type			Bind-Update		24
+VALUE	DHCPv6-Msg-Type			Bind-Reply		25
+VALUE	DHCPv6-Msg-Type			Pool-Request		26
+VALUE	DHCPv6-Msg-Type			Pool-Response		27
+VALUE	DHCPv6-Msg-Type			Update-Request		28
+VALUE	DHCPv6-Msg-Type			Update-Request-All	29
+VALUE	DHCPv6-Msg-Type			Update-Done		30
+VALUE	DHCPv6-Msg-Type			Connect			31
+VALUE	DHCPv6-Msg-Type			Connect-Reply		32
+VALUE	DHCPv6-Msg-Type			Disconnect		33
+VALUE	DHCPv6-Msg-Type			State			34
+VALUE	DHCPv6-Msg-Type			Contact			35
 
 ATTRIBUTE	DHCPv6-Transaction-ID			65537	uint64		# Actually 48bits
+
+END-VENDOR	DHCP
