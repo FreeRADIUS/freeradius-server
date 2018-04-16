@@ -320,9 +320,7 @@ ATTRIBUTE	DHCPv6-PCP-Server			86	ipv6addr array
 #
 #  RFC 7341 - DHCPv4-over-DHCPv6 (DHCP 4o6) Transport
 #
-BEGIN-VENDOR	DHCP
-
-ATTRIBUTE	DHCPv6-DHCPv4-Msg			87	octets		# Foreign protocol (v4)
+ATTRIBUTE	DHCPv6-DHCPv4-Msg			87	octets		# Foreign protocol (DHCPv4)
 
 #
 #  RFC 7598 - DHCPv6 Options for Configuration of Softwire Address
@@ -513,5 +511,3 @@ VALUE	DHCPv6-Msg-Type			State			34
 VALUE	DHCPv6-Msg-Type			Contact			35
 
 ATTRIBUTE	DHCPv6-Transaction-ID			65537	uint64		# Actually 48bits
-
-END-VENDOR	DHCP
