@@ -664,7 +664,7 @@ static size_t load_test_point_by_command(void **symbol, char *command, size_t of
 	return p - command;
 }
 
-static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *root_dir, char const *filename)
+static int process_file(CONF_SECTION *features, fr_dict_t *dict, const char *root_dir, char const *filename)
 {
 	int		lineno;
 	size_t		i, outlen;
@@ -765,7 +765,7 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 				fprintf(stdout, "Skipping, missing feature \"%s\"\n", p);
 				if (fp != stdin) fclose(fp);
 				talloc_free(tp_ctx);
-				return; /* Skip this file */
+				return 0; /* Skip this file */
 			}
 			continue;
 		}
@@ -773,9 +773,12 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 		if (strcmp(test_type, "raw") == 0) {
 			outlen = encode_rfc(p + 4, data, sizeof(data));
 			if (outlen == 0) {
-				fprintf(stderr, "Parse error in line %d of %s\n",
-					lineno, directory);
-				exit(EXIT_FAILURE);
+				fprintf(stderr, "Parse error in line %d of %s\n", lineno, directory);
+			error:
+				unload_proto_library();	/* Cleanup */
+				talloc_free(tp_ctx);
+
+				return -1;
 			}
 
 		print_hex:
@@ -792,8 +795,7 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 			for (i = 0; i < outlen; i++) {
 				if (sizeof(output) < (3*i)) break;
 
-				snprintf(output + 3*i, sizeof(output) - (3*i) - 1,
-					 "%02x ", data[i]);
+				snprintf(output + (3 * i), sizeof(output) - (3 * i) - 1, "%02x ", data[i]);
 			}
 			outlen = strlen(output);
 			output[outlen - 1] = '\0';
@@ -807,13 +809,13 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 			if (((p[4] == '\0') || (p[5] == '\0')) && (output[0] != '\0')) {
 				fprintf(stderr, "Mismatch at line %d of %s\n\tgot      : %s\n\texpected :\n",
 					lineno, directory, output);
-				exit(EXIT_FAILURE);
+				goto error;
 			}
 
 			if (strcmp(p + 5, output) != 0) {
 				fprintf(stderr, "Mismatch at line %d of %s\n\tgot      : %s\n\texpected : %s\n",
 					lineno, directory, output, p + 5);
-				exit(EXIT_FAILURE);
+				goto error;
 			}
 			fr_strerror();	/* Clear the error buffer */
 			continue;
@@ -867,7 +869,7 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 				len = encode_hex(p + 14, data, sizeof(data));
 				if (len == 0) {
 					fprintf(stderr, "Failed decoding hex string at line %d of %s\n", lineno, directory);
-					exit(EXIT_FAILURE);
+					goto error;
 				}
 			}
 
@@ -997,7 +999,7 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 				len = encode_hex(p + 14, data, sizeof(data));
 				if (len == 0) {
 					fprintf(stderr, "Failed decoding hex string at line %d of %s\n", lineno, directory);
-					exit(EXIT_FAILURE);
+					goto error;
 				}
 			}
 
@@ -1101,7 +1103,7 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 				if (len == 0) {
 					fprintf(stderr, "Failed decoding hex string at line %d of %s\n",
 						lineno, directory);
-					exit(EXIT_FAILURE);
+					goto error;
 				}
 			}
 
@@ -1114,7 +1116,7 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 				}
 				if (dec_len > len) {
 					fprintf(stderr, "Internal sanity check failed at %d\n", __LINE__);
-					exit(EXIT_FAILURE);
+					goto error;
 				}
 				attr += dec_len;
 				len -= dec_len;
@@ -1232,7 +1234,7 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 
 		fprintf(stderr, "Unknown input at line %d of %s: %s\n", lineno, directory, p);
 
-		exit(EXIT_FAILURE);
+		goto error;
 
 	next:
 		continue;
@@ -1242,9 +1244,11 @@ static void process_file(CONF_SECTION *features, fr_dict_t *dict, const char *ro
 
 	unload_proto_library();	/* Cleanup */
 	talloc_free(tp_ctx);
+
+	return 0;
 }
 
-static void NEVER_RETURNS usage(void)
+static void usage(void)
 {
 	fprintf(stderr, "usage: unit_test_attribute [OPTS] filename\n");
 	fprintf(stderr, "  -d <raddb>             Set user dictionary directory (defaults to " RADDBDIR ").\n");
@@ -1252,8 +1256,6 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -x                     Debugging mode.\n");
 	fprintf(stderr, "  -f                     Print features.\n");
 	fprintf(stderr, "  -M                     Show talloc memory report.\n");
-
-	exit(EXIT_FAILURE);
 }
 
 int main(int argc, char *argv[])
@@ -1264,13 +1266,14 @@ int main(int argc, char *argv[])
 	int		*inst = &c;
 	CONF_SECTION	*cs, *features;
 	fr_dict_t	*dict = NULL;
+	int		ret = EXIT_SUCCESS;
 
 	TALLOC_CTX	*autofree = talloc_init("main");
 
 #ifndef NDEBUG
 	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("unit_test_attribute");
-		exit(EXIT_FAILURE);
+		goto done;
 	}
 #endif
 	/*
@@ -1300,7 +1303,7 @@ int main(int argc, char *argv[])
 			     cp = cf_pair_find_next(features, cp, CF_IDENT_ANY)) {
 				fprintf(stdout, "%s %s\n", cf_pair_attr(cp), cf_pair_value(cp));
 			}
-			exit(EXIT_SUCCESS);
+			goto done;
 		}
 
 		case 'x':
@@ -1318,6 +1321,8 @@ int main(int argc, char *argv[])
 		case 'h':
 		default:
 			usage();
+			ret = EXIT_FAILURE;
+			goto done;
 	}
 	argc -= (optind - 1);
 	argv += (optind - 1);
@@ -1327,38 +1332,42 @@ int main(int argc, char *argv[])
 	 */
 	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
 		fr_perror("unit_test_attribute");
-		return 1;
+		ret = EXIT_FAILURE;
+		goto done;
 	}
 
 	if (fr_dict_from_file(autofree, &dict, dict_dir, FR_DICTIONARY_FILE, "radius") < 0) {
 		fr_perror("unit_test_attribute");
-		return 1;
+		ret = EXIT_FAILURE;
+		goto done;
 	}
 
 	if (fr_dict_read(dict, radius_dir, FR_DICTIONARY_FILE) == -1) {
 		fr_log_perror(&default_log, L_ERR, "Failed to initialize the dictionaries");
-		return 1;
+		ret = EXIT_FAILURE;
+		goto done;
 	}
 
 	if (xlat_register(inst, "test", xlat_test, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true) < 0) {
 		fprintf(stderr, "Failed registering xlat");
-		return 1;
+		ret = EXIT_FAILURE;
+		goto done;
 	}
 
 	if (argc < 2) {
-		process_file(features, dict, NULL, "-");
-
+		if (process_file(features, dict, NULL, "-") < 0) ret = EXIT_FAILURE;
 	} else {
-		process_file(features, dict, NULL, argv[1]);
+		if (process_file(features, dict, NULL, argv[1]) < 0) ret = EXIT_FAILURE;
 	}
 
 	/*
 	 *	Try really hard to free any allocated
 	 *	memory, so we get clean talloc reports.
 	 */
+done:
 	xlat_free();
 	fr_strerror_free();
 	talloc_free(autofree);
 
-	return 0;
+	return ret;
 }
