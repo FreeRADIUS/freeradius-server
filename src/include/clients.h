@@ -48,7 +48,6 @@ typedef struct radclient {
 	bool			message_authenticator;	//!< Require RADIUS message authenticator in requests.
 	bool			dynamic;		//!< Whether the client was dynamically defined.
 	bool			active;			//!< for dynamic clients
-	bool			negative;		//!< negative cache entry
 	bool			use_connected;		//!< do we use connected sockets for this client
 
 #ifdef WITH_TLS
@@ -80,16 +79,6 @@ typedef struct radclient {
 	int			proto;			//!< Protocol number.
 #ifdef WITH_TCP
 	fr_socket_limit_t	limit;			//!< Connections per client (TCP clients only).
-#endif
-
-#ifdef WITH_DYNAMIC_CLIENTS
-	fr_dlist_t		packets;		//!< list of pending packets
-	uint32_t		outstanding;		//!< number of requests outstanding
-	uint32_t		received;		//!< number of requests received but not yet processed
-	time_t			created;		//!< When the client was created.
-	fr_ipaddr_t		network;		//!< encapsulating network
-	void			*ctx;			//!< for timeouts
-	fr_event_timer_t const	*ev;			//!< cleanup timer for dynamic clients
 #endif
 } RADCLIENT;
 

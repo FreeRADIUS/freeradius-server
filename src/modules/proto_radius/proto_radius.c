@@ -36,6 +36,24 @@ extern fr_app_t proto_radius;
 static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
 
+static CONF_PARSER const limit_config[] = {
+	{ FR_CONF_OFFSET("cleanup_delay", FR_TYPE_TIMEVAL, proto_radius_t, cleanup_delay), .dflt = "5.0" } ,
+	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_TIMEVAL, proto_radius_t, cleanup_delay), .dflt = "30.0" } ,
+	{ FR_CONF_OFFSET("nak_lifetime", FR_TYPE_TIMEVAL, proto_radius_t, cleanup_delay), .dflt = "30.0" } ,
+
+	{ FR_CONF_OFFSET("max_connections", FR_TYPE_UINT32, proto_radius_t, max_connections), .dflt = "1024" } ,
+	{ FR_CONF_OFFSET("max_clients", FR_TYPE_UINT32, proto_radius_t, max_clients), .dflt = "256" } ,
+	{ FR_CONF_OFFSET("max_pending_packets", FR_TYPE_UINT32, proto_radius_t, max_pending_packets), .dflt = "256" } ,
+
+	/*
+	 *	For performance tweaking.  NOT for normal humans.
+	 */
+	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, proto_radius_t, max_packet_size) } ,
+	{ FR_CONF_OFFSET("num_messages", FR_TYPE_UINT32, proto_radius_t, num_messages) } ,
+
+	CONF_PARSER_TERMINATOR
+};
+
 /** How to parse a RADIUS listen section
  *
  */
@@ -46,19 +64,44 @@ static CONF_PARSER const proto_radius_config[] = {
 	  .func = transport_parse },
 
 	/*
-	 *	Security
+	 *	Check whether or not the *trailing* bits of a
+	 *	Tunnel-Password are zero, as they should be.
 	 */
 	{ FR_CONF_OFFSET("tunnel_password_zeros", FR_TYPE_BOOL, proto_radius_t, tunnel_password_zeros) } ,
 
-	/*
-	 *	For performance tweaking.  NOT for normal humans.
-	 */
-	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, proto_radius_t, max_packet_size) } ,
-	{ FR_CONF_OFFSET("num_messages", FR_TYPE_UINT32, proto_radius_t, num_messages) } ,
-	{ FR_CONF_OFFSET("max_attributes", FR_TYPE_UINT32, proto_radius_t, max_attributes), .dflt = STRINGIFY(RADIUS_MAX_ATTRIBUTES) } ,
+	{ FR_CONF_POINTER("limit", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) limit_config },
 
 	CONF_PARSER_TERMINATOR
 };
+
+
+/*
+ *	Allow configurable priorities for each listener.
+ */
+static uint32_t priorities[FR_MAX_PACKET_CODE] = {
+	[FR_CODE_ACCESS_REQUEST] = PRIORITY_HIGH,
+	[FR_CODE_ACCOUNTING_REQUEST] = PRIORITY_LOW,
+	[FR_CODE_COA_REQUEST] = PRIORITY_NORMAL,
+	[FR_CODE_DISCONNECT_REQUEST] = PRIORITY_NORMAL,
+	[FR_CODE_STATUS_SERVER] = PRIORITY_NOW,
+};
+
+
+static const CONF_PARSER priority_config[] = {
+	{ FR_CONF_OFFSET("Access-Request", FR_TYPE_UINT32, proto_radius_t, priorities[FR_CODE_ACCESS_REQUEST]),
+	  .dflt = STRINGIFY(PRIORITY_HIGH) },
+	{ FR_CONF_OFFSET("Accounting-Request", FR_TYPE_UINT32, proto_radius_t, priorities[FR_CODE_ACCOUNTING_REQUEST]),
+	  .dflt = STRINGIFY(PRIORITY_LOW) },
+	{ FR_CONF_OFFSET("CoA-Request", FR_TYPE_UINT32, proto_radius_t, priorities[FR_CODE_COA_REQUEST]),
+	  .dflt = STRINGIFY(PRIORITY_NORMAL) },
+	{ FR_CONF_OFFSET("Disconnect-Request", FR_TYPE_UINT32, proto_radius_t, priorities[FR_CODE_DISCONNECT_REQUEST]),
+	  .dflt = STRINGIFY(PRIORITY_NORMAL) },
+	{ FR_CONF_OFFSET("Status-Server", FR_TYPE_UINT32, proto_radius_t, priorities[FR_CODE_STATUS_SERVER]),
+	  .dflt = STRINGIFY(PRIORITY_NOW) },
+
+	CONF_PARSER_TERMINATOR
+};
+
 
 /** Wrapper around dl_instance which translates the packet-type into a submodule name
  *
@@ -209,7 +252,9 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
 static int mod_decode(void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
 {
 	proto_radius_t const *inst = talloc_get_type_abort_const(instance, proto_radius_t);
-	RADCLIENT *client;
+	proto_radius_track_t const *track = talloc_get_type_abort_const(request->async->packet_ctx, proto_radius_track_t);
+	proto_radius_address_t *address = track->address;
+	RADCLIENT const *client;
 
 	rad_assert(data[0] < FR_MAX_PACKET_CODE);
 
@@ -218,11 +263,7 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 		fr_radius_print_hex(fr_log_fp, data, data_len);
 	}
 
-	client = inst->app_io_private->client(inst->app_io, request->async->packet_ctx);
-	if (!client) {
-		RPEDEBUG("Failed getting client from packet");
-		return -1;
-	}
+	client = address->radclient;
 
 	/*
 	 *	Hacks for now until we have a lower-level decode routine.
@@ -235,31 +276,148 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 	request->packet->data = talloc_memdup(request->packet, data, data_len);
 	request->packet->data_len = data_len;
 
-	if (fr_radius_packet_decode(request->packet, NULL,
-				    inst->max_attributes, inst->tunnel_password_zeros, client->secret) < 0) {
+	/*
+	 *	Note that we don't set a limit on max_attributes here.
+	 *	That MUST be set and checked in the underlying
+	 *	transport, via a call to fr_radius_ok().
+	 */
+	if (fr_radius_packet_decode(request->packet, NULL, 0,
+				    inst->tunnel_password_zeros, client->secret) < 0) {
 		RPEDEBUG("Failed decoding packet");
 		return -1;
 	}
 
 	/*
-	 *	Let the app_io take care of populating additional fields in the request
+	 *	Set the rest of the fields.
+	 */
+	memcpy(&request->client, &client, sizeof(client)); /* const issues */
+
+	request->packet->if_index = address->if_index;
+	request->packet->src_ipaddr = address->src_ipaddr;
+	request->packet->src_port = address->src_port;
+	request->packet->dst_ipaddr = address->dst_ipaddr;
+	request->packet->dst_port = address->dst_port;
+
+	request->reply->if_index = address->if_index;
+	request->reply->src_ipaddr = address->dst_ipaddr;
+	request->reply->src_port = address->dst_port;
+	request->reply->dst_ipaddr = address->src_ipaddr;
+	request->reply->dst_port = address->src_port;
+
+	request->root = &main_config;
+	REQUEST_VERIFY(request);
+
+	/*
+	 *	If we're defining a dynamic client, this packet is
+	 *	fake.  We don't have a secret, so we mash all of the
+	 *	encrypted attributes to sane (i.e. non-hurtful)
+	 *	values.
+	 */
+	if (!client->active) {
+		vp_cursor_t cursor;
+		VALUE_PAIR *vp;
+
+		rad_assert(client->dynamic);
+
+		for (vp = fr_pair_cursor_init(&cursor, &request->packet->vps);
+		     vp != NULL;
+		     vp = fr_pair_cursor_next(&cursor)) {
+			if (vp->da->flags.encrypt != FLAG_ENCRYPT_NONE) {
+				switch (vp->da->type) {
+				default:
+					break;
+
+				case FR_TYPE_UINT32:
+					vp->vp_uint32 = 0;
+					break;
+
+				case FR_TYPE_IPV4_ADDR:
+					vp->vp_ipv4addr = INADDR_ANY;
+					break;
+
+				case FR_TYPE_OCTETS:
+					fr_pair_value_memcpy(vp, (uint8_t const *) "", 1);
+					break;
+
+				case FR_TYPE_STRING:
+					fr_pair_value_strcpy(vp, "");
+					break;
+				}
+			}
+		}
+
+		/*
+		 *	If this packet is trying to define a connected
+		 *	socket, tell the dynamic client code.
+		 */
+		if (track->client->connected) {
+			(void) pair_make_request("FreeRADIUS-Client-Connected", "true", T_OP_EQ);
+		}
+	}
+
+	if (!inst->app_io->decode) return 0;
+
+	/*
+	 *	Let the app_io do anything it needs to do.
 	 */
 	return inst->app_io->decode(inst->app_io_instance, request, data, data_len);
 }
 
 static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
 {
-	ssize_t data_len;
-
 	proto_radius_t const *inst = talloc_get_type_abort_const(instance, proto_radius_t);
-	RADCLIENT *client;
+	proto_radius_track_t const *track = talloc_get_type_abort_const(request->async->packet_ctx, proto_radius_track_t);
+	proto_radius_address_t *address = track->address;
+	ssize_t data_len;
+	RADCLIENT const *client;
 
 	/*
 	 *	The packet timed out.  Tell the network side that the packet is dead.
 	 */
 	if (buffer_len == 1) {
-		buffer[0] = 1;
+		*buffer = true;
 		return 1;
+	}
+
+	/*
+	 *	"Do not respond"
+	 */
+	if ((request->reply->code == FR_CODE_DO_NOT_RESPOND) ||
+	    (request->reply->code == 0) || (request->reply->code >= FR_MAX_PACKET_CODE)) {
+		*buffer = false;
+		return 1;
+	}
+
+	client = address->radclient;
+	rad_assert(client);
+
+	/*
+	 *	Dynamic client stuff
+	 */
+	if (client->dynamic && !client->active) {
+		RADCLIENT *new_client;
+
+		rad_assert(buffer_len >= sizeof(client));
+
+		/*
+		 *	Allocate the client.  If that fails, send back a NAK.
+		 *
+		 *	@todo - deal with NUMA zones?  Or just deal with this
+		 *	client being in different memory.
+		 *
+		 *	Maybe we should create a CONF_SECTION from the client,
+		 *	and pass *that* back to mod_write(), which can then
+		 *	parse it to create the actual client....
+		 */
+		new_client = client_afrom_request(NULL, request);
+		if (!new_client) {
+			PERROR("Failed creating new client");
+			buffer[0] = true;
+			return 1;
+		}
+
+		memcpy(buffer, &new_client, sizeof(new_client));
+		return sizeof(new_client);
 	}
 
 	/*
@@ -270,18 +428,6 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 		data_len = inst->app_io->encode(inst->app_io_instance, request, buffer, buffer_len);
 		if (data_len > 0) return data_len;
 	}
-
-	/*
-	 *	"Do not respond"
-	 */
-	if ((request->reply->code == FR_CODE_DO_NOT_RESPOND) ||
-	    (request->reply->code == 0) || (request->reply->code >= FR_MAX_PACKET_CODE)) {
-		*buffer = 0;
-		return 1;
-	}
-
-	client = inst->app_io_private->client(inst->app_io, request->async->packet_ctx);
-	rad_assert(client);
 
 #ifdef WITH_UDPFROMTO
 	/*
@@ -321,6 +467,7 @@ static void mod_process_set(void const *instance, REQUEST *request)
 {
 	proto_radius_t const *inst = talloc_get_type_abort_const(instance, proto_radius_t);
 	fr_io_process_t process;
+	proto_radius_track_t *track = request->async->packet_ctx;
 
 	rad_assert(request->packet->code != 0);
 	rad_assert(request->packet->code <= FR_CODE_MAX);
@@ -328,21 +475,27 @@ static void mod_process_set(void const *instance, REQUEST *request)
 	request->server_cs = inst->server_cs;
 
 	/*
-	 *	New packets get processed through proto_radius_dynamic_client
+	 *	'track' can be NULL when there's no network listener.
 	 */
-	if (request->client->dynamic && !request->client->active) {
-		rad_assert(request->async->process != NULL);
+	if (inst->app_io && (track->dynamic == request->async->recv_time)) {
+		fr_app_process_t const	*app_process;
+
+		app_process = (fr_app_process_t const *) inst->dynamic_submodule->module->common;
+
+		request->async->process = app_process->process;
+		track->dynamic = 0;
 		return;
 	}
 
 	process = inst->process_by_code[request->packet->code];
 	if (!process) {
-		REDEBUG("No module available to handle packet code %i", request->packet->code);
+		REDEBUG("proto_radius - No module available to handle packet code %i", request->packet->code);
 		return;
 	}
 
 	request->async->process = process;
 }
+
 
 /** Open listen sockets/connect to external event source
  *
@@ -365,9 +518,6 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	 */
 	listen = talloc_zero(inst, fr_listen_t);
 
-	listen->app_io = inst->app_io;
-	listen->app_io_instance = inst->app_io_instance;
-
 	listen->app = &proto_radius;
 	listen->app_instance = instance;
 	listen->server_cs = inst->server_cs;
@@ -382,16 +532,31 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	 *	Open the socket, and add it to the scheduler.
 	 */
 	if (inst->app_io) {
+		/*
+		 *	Set the listener to call our master trampoline function.
+		 */
+		listen->app_io = &proto_radius_master_io;
+		listen->app_io_instance = inst;
+
+		/*
+		 *	Don't set the connection for the main socket.  It's not connected.
+		 */
 		if (inst->app_io->open(inst->app_io_instance) < 0) {
 			cf_log_err(conf, "Failed opening %s interface", inst->app_io->name);
 			talloc_free(listen);
 			return -1;
 		}
 
+		/*
+		 *	Add the socket to the scheduler, which might
+		 *	end up in a different thread.
+		 */
 		if (!fr_schedule_socket_add(sc, listen)) {
 			talloc_free(listen);
 			return -1;
 		}
+	} else {
+		rad_assert(!inst->dynamic_clients);
 	}
 
 	inst->listen = listen;	/* Probably won't need it, but doesn't hurt */
@@ -446,9 +611,34 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Instantiate the I/O module
 	 */
-	if (inst->app_io && inst->app_io->instantiate &&
-	    (inst->app_io->instantiate(inst->app_io_instance,
-				       inst->app_io_conf) < 0)) {
+	if (inst->app_io) {
+		if (inst->app_io->instantiate &&
+		    (inst->app_io->instantiate(inst->app_io_instance,
+					       inst->app_io_conf) < 0)) {
+			cf_log_err(conf, "Instantiation failed for \"%s\"", inst->app_io->name);
+			return -1;
+		}
+	}
+
+	/*
+	 *	Instantiate proto_radius_dynamic_client
+	 */
+	if (inst->dynamic_clients) {
+		fr_app_process_t const	*app_process;
+
+		app_process = (fr_app_process_t const *)inst->dynamic_submodule->module->common;
+		if (app_process->instantiate && (app_process->instantiate(inst->dynamic_submodule->data, conf) < 0)) {
+
+			cf_log_err(conf, "Instantiation failed for \"%s\"", app_process->name);
+			return -1;
+		}
+	}
+
+	/*
+	 *	Create the trie of clients for this socket.
+	 */
+	inst->trie = fr_trie_alloc(inst);
+	if (!inst->trie) {
 		cf_log_err(conf, "Instantiation failed for \"%s\"", inst->app_io->name);
 		return -1;
 	}
@@ -465,9 +655,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Compile each "send/recv + RADIUS packet type" section.
 	 *	This is so that the submodules don't need to do this.
-	 *
-	 *	@todo - this loop is run on the virtual server for
-	 *	every "listen" section in it.  Which isn't efficient.
 	 */
 	i = 0;
 	for (ci = cf_item_next(server, NULL);
@@ -492,6 +679,10 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 			continue;
 		}
 
+		/*
+		 *	One more "recv" or "send" section has been
+		 *	found.
+		 */
 		i++;
 
 		/*
@@ -589,6 +780,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	return 0;
 }
 
+
 /** Bootstrap the application
  *
  * Bootstrap I/O and type submodules.
@@ -604,10 +796,12 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	proto_radius_t 		*inst = talloc_get_type_abort(instance, proto_radius_t);
 	size_t			i = 0;
 	CONF_PAIR		*cp = NULL;
+	CONF_SECTION		*subcs;
 
 	/*
 	 *	The listener is inside of a virtual server.
 	 */
+	inst->magic = PR_MAIN_MAGIC;
 	inst->server_cs = cf_item_to_section(cf_parent(conf));
 
 	/*
@@ -654,16 +848,69 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	Bootstrap the I/O module
 	 */
 	inst->app_io = (fr_app_io_t const *) inst->io_submodule->module->common;
+
 	inst->app_io_instance = inst->io_submodule->data;
 	inst->app_io_conf = inst->io_submodule->conf;
-	inst->app_io_private = dl_instance_symbol(dl_instance_find(inst->app_io_instance),
-						  "proto_radius_app_io_private");
-	rad_assert(inst->app_io_private);
+
+	inst->app_io_private = inst->app_io->private;
+	rad_assert(inst->app_io_private != NULL);
 
 	if (inst->app_io->bootstrap && (inst->app_io->bootstrap(inst->app_io_instance,
 								inst->app_io_conf) < 0)) {
 		cf_log_err(inst->app_io_conf, "Bootstrap failed for \"%s\"", inst->app_io->name);
 		return -1;
+	}
+
+	/*
+	 *	Get various information after bootstrapping the IO
+	 *	module.
+	 */
+	inst->app_io_private->network_get(inst->app_io_instance, &inst->ipproto, &inst->dynamic_clients, &inst->networks);
+
+	/*
+	 *	We will need this for dynamic clients and connected sockets.
+	 */
+	inst->dl_inst = dl_instance_find(inst);
+	rad_assert(inst != NULL);
+
+	/*
+	 *	Load proto_radius_dynamic_client
+	 */
+	if (inst->dynamic_clients) {
+		if (dl_instance(inst, &inst->dynamic_submodule,
+				conf, inst->dl_inst, "dynamic_client", DL_TYPE_SUBMODULE) < 0) {
+			cf_log_err(conf, "Failed finding proto_radius_dynamic_client");
+			return -1;
+		}
+
+		/*
+		 *	Don't bootstrap the dynamic submodule.  We're
+		 *	not even sure what that means...
+		 */
+
+		// check max_clients?
+	}
+
+	FR_TIMEVAL_BOUND_CHECK("idle_timeout", &inst->idle_timeout, >=, 1, 0);
+	FR_TIMEVAL_BOUND_CHECK("idle_timeout", &inst->idle_timeout, <=, 600, 0);
+
+	FR_TIMEVAL_BOUND_CHECK("nak_lifetime", &inst->nak_lifetime, >=, 1, 0);
+	FR_TIMEVAL_BOUND_CHECK("nak_lifetime", &inst->nak_lifetime, <=, 600, 0);
+
+	FR_TIMEVAL_BOUND_CHECK("cleanup_delay", &inst->cleanup_delay, <=, 30, 0);
+
+	/*
+	 *	Hide this for now.  It's only for people who know what
+	 *	they're doing.
+	 */
+	subcs = cf_section_find(conf, "priority", NULL);
+	if (subcs) {
+		if (cf_section_rules_push(subcs, priority_config) < 0) return -1;
+		if (cf_section_parse(NULL, NULL, subcs) < 0) return -1;
+
+	} else {
+		rad_assert(sizeof(inst->priorities) == sizeof(priorities));
+		memcpy(&inst->priorities, &priorities, sizeof(priorities));
 	}
 
 	return 0;

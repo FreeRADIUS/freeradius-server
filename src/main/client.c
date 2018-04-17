@@ -931,11 +931,6 @@ RADCLIENT *client_afrom_request(TALLOC_CTX *ctx, REQUEST *request)
 
 		if (!fr_dict_attr_is_top_level(vp->da)) continue;
 
-		if ((vp->da->attr < FR_FREERADIUS_CLIENT_IP_ADDRESS) ||
-		    (vp->da->attr > FR_FREERADIUS_CLIENT_NAS_TYPE)) {
-			continue;
-		}
-
 		switch (vp->da->attr) {
 		case FR_FREERADIUS_CLIENT_IP_ADDRESS:
 			attr = "ipv4addr";
@@ -974,7 +969,11 @@ RADCLIENT *client_afrom_request(TALLOC_CTX *ctx, REQUEST *request)
 
 		case FR_FREERADIUS_CLIENT_TRACK_CONNECTIONS:
 			attr = "track_connections";
-			value = vp->vp_strvalue;
+			if (vp->vp_bool) {
+				value = "true";
+			} else {
+				value = "false";
+			}
 			break;
 
 		default:
@@ -1097,6 +1096,7 @@ RADCLIENT *client_clone(TALLOC_CTX *ctx, RADCLIENT const *parent)
 	COPY_FIELD(server_cs);
 	COPY_FIELD(cs);
 	COPY_FIELD(proto);
+	COPY_FIELD(use_connected);
 
 #ifdef WITH_TLS
 	COPY_FIELD(tls_required);

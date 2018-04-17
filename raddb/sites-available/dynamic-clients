@@ -55,112 +55,123 @@ server dynamic_clients {
 
 		transport = udp
 
+		#
+		#  Limits for this socket.
+		#
+		limit {
+			#
+			#  Limit the number of dynamic clients which
+			#  can be defined.
+			#
+			#  If there are no dynamic clients, this
+			#  configuration item is ignored.
+			#
+			#  The special value of "0" means "no limit".
+			#  We do not recommend this.
+			#
+			max_clients = 256
+
+			#
+			#  Limit the total number of connections which
+			#  used.  Each connection opens a new socket,
+			#  so be aware of system file descriptor
+			#  limitations.
+			#
+			#  If the listeners do not use connected
+			#  sockets, then this configuration item is
+			#  ignored.
+			#
+			max_connections = 256
+
+			#
+			#  Free a dynamic client, or close a
+			#  connection if it does not receive
+			#  a packet within this time.
+			#
+			#  Useful range of values: 5 to 600
+			#
+			idle_timeout = 60.0
+
+			#
+			#  If a dynamic client is disallowed, it is
+			#  placed onto a "NAK" blacklist for a period
+			#  of time.  This blacklist helps to prevent
+			#  DoS attacks.
+			#
+			#  After "nak_timeout" seconds, the blacklist
+			#  entry will be removed, and the IP will be
+			#  allowed to try again to define a dynamic
+			#  client.
+			#
+			#  Useful range of values: 1 to 600
+			#
+			nak_lifetime = 30.0
+
+			#
+			#  cleanup_delay: The time to wait (in
+			#  seconds) before cleaning up a reply to an
+			#  Access-Request packet.
+			#
+			#  The reply is normally cached internally for
+			#  a short period of time, after it is sent to
+			#  the NAS.  The reply packet may be lost in
+			#  the network, and the NAS will not see it.
+			#  The NAS will then re-send the request, and
+			#  the server will respond quickly with the
+			#  cached reply.
+			#
+			#  If this value is set too low, then
+			#  duplicate requests from the NAS MAY NOT be
+			#  detected, and will instead be handled as
+			#  separate requests.
+			#
+			#  If this value is set too high, then the
+			#  server will use more memory for no benefit.
+			#
+			#  Useful range of values: 2 to 10
+			#
+			cleanup_delay = 5.0
+		}
+
 		udp {
 			ipaddr = *
 			port = 2812
-			cleanup_delay = 5
 
 			#
-			#  All of the dynamic client configuration
-			#  is located in the "dynamic_clients"
-			#  subsection.
+			#  Whether or not we allow dynamic clients.
 			#
-			dynamic_clients {
-				#
-				#  Packets will be accepted ONLY from
-				#  these networks.  You can list as many
-				#  'network' items as you need.
-				#
-				network = 192.0.2.0/24
-				network = 127.0.0.0/8
+			#  If set to true, then packets from unknown
+			#  clients are passed throug the "new client"
+			#  subsection below.  See that section for
+			#  more information.
+			#
+			dynamic_clients = true
 
+			#
+			#  If dynamic clients are allowed, then limit
+			#  them to only a small set of source
+			#  networks.
+			#
+			#  If dynamic clients are not allowed, then
+			#  this section is ignored.
+			#
+			allow {
 				#
-				#  The following configuration items
-				#  help protect the server from DoS
-				#  attacks.  If the list of networks
-				#  above include the open Internet,
-				#  then these limits should be set as
-				#  low as possible.
+				#  Allow packets from these networks
+				#  to define dynamic clients.
 				#
-				#  If the list of networks above is
-				#  limited to secure and local
-				#  networks, then these limits can be
-				#  set higher.
+				#  Packets from all other sources will
+				#  be rejected.
 				#
-
+				#  Even if a packet is from an allowed
+				#  network, it still must be allowed
+				#  by the "new client" subsection.
 				#
-				#  The maximum number of dynamic
-				#  clients which will be allocated.
-				#  This should be set to the smallest
-				#  number possible.
+				#  There is no limit to the number of
+				#  networks which can be listed here.
 				#
-				max_clients = 65536
-
-				#
-				#  The server can process multiple
-				#  "new client" requests at the same
-				#  time.  For security and DoS issues,
-				#  this should be limited to a small
-				#  value.
-				#
-				max_pending_clients = 256
-
-				#
-				#  While the server is trying to
-				#  define a new client, it may receive
-				#  more than one packet from that
-				#  client.  These packets are placed
-				#  onto a "pending" queue until the
-				#  client is defined (or not).
-				#
-				#  If the client is defined, the
-				#  packets are processed as normal.
-				#
-				#  If the client is not defined, the
-				#  packets are discarded.
-				#
-				#  This configuration item allows
-				#  administrators to protect the
-				#  server against DoS attacks, by
-				#  limiting the number of pending
-				#  packets.
-				#
-				max_pending_packets = 4096
-
-				#
-				#  Lifetime of the dynamic client.
-				#  Allowed values are 600..86400.
-				#
-				#  When a client expires, it is NOT
-				#  deleted immediately.  Instead, the
-				#  server waits until all outstanding
-				#  packets have been processed before
-				#  deleting the client.
-				#
-				#  If there is a steady stream of
-				#  packets from the dynamic client,
-				#  Then the client is *renewed* every
-				#  'lifetime' seconds.
-				#
-				#  What this means is that the old
-				#  packets are still processed, and
-				#  replies are sent.  But new packets
-				#  are placed onto a "pending" queue.
-				#
-				#  If the client is defined the same
-				#  as previously, then the lifetime is
-				#  extended, and the pending packets
-				#  are processed.
-				#
-				#  If the client is not renewed, then
-				#  the pending packets are discarded.
-				#
-				#  Allowed values: 30..86400
-				#
-				#  The special value of "0" means that
-				#  the client lives forever.
-				#
-				lifetime = 3600
+				network = 127/8
+				network = 192.0.2/24
 			}
 		}
 	}
