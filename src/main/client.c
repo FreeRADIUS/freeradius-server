@@ -904,15 +904,16 @@ RADCLIENT *client_afrom_request(TALLOC_CTX *ctx, REQUEST *request)
 {
 	static int	cnt;
 	CONF_SECTION	*cs;
-	char		buffer[128];
+	char		src_buf[128], buffer[256];
 	vp_cursor_t	cursor;
 	VALUE_PAIR	*vp;
 	RADCLIENT	*c;
-	fr_ipaddr_t	ipaddr;
 
 	if (!request) return NULL;
 
-	snprintf(buffer, sizeof(buffer), "dynamic%i", cnt++);
+	fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(request->packet->src_ipaddr), 0);
+
+	snprintf(buffer, sizeof(buffer), "dynamic_%i_%s", cnt++, src_buf);
 
 	cs = cf_section_alloc(ctx, NULL, "client", buffer);
 
