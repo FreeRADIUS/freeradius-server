@@ -434,18 +434,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
 static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 {
 	proto_radius_udp_t	*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
-	dl_instance_t const	*dl_inst;
-	proto_radius_t		*parent;
 	size_t			i, num;
-
-	/*
-	 *	Find the dl_instance_t holding our instance data
-	 *	so we can find out what the parent of our instance
-	 *	was.
-	 */
-	dl_inst = dl_instance_find(instance);
-	rad_assert(dl_inst);
-	parent = talloc_get_type_abort(dl_inst->parent->data, proto_radius_t);
 
 	inst->cs = cs;
 
