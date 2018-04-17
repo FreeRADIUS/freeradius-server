@@ -1,4 +1,4 @@
-FreeRADIUS 3.0.17 Thu 11 Jan 2018 12:00:00 EST urgency=low
+FreeRADIUS 3.0.17 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	Feature improvements
 	* Add CURLOPT_CAINFO.  Patch from Nicolas C.
 	  #2167
