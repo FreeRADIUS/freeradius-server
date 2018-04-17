@@ -148,7 +148,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	}
 
 	if (packet_len > inst->max_packet_size) {
-		DEBUG2("proto_radius_udp got 'too long' packet size %zd > %zd", data_size, inst->max_packet_size);
+		DEBUG2("proto_radius_udp got 'too long' packet size %zd > %u", data_size, inst->max_packet_size);
 		inst->stats.total_malformed_requests++;
 		return 0;
 	}
