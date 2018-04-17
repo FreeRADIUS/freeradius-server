@@ -191,7 +191,6 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 
 	int				flags;
 	ssize_t				data_size;
-	fr_time_t			reply_time;
 
 	/*
 	 *	@todo - share a stats interface with the parent?  or
@@ -199,11 +198,6 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	 *	can update them, too.. <sigh>
 	 */
 	inst->stats.total_responses++;
-
-	/*
-	 *	Figure out when we've sent the reply.
-	 */
-	reply_time = fr_time();
 
 	flags = UDP_FLAGS_CONNECTED * (inst->connection != NULL);
 
