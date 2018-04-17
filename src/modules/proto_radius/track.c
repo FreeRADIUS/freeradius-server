@@ -246,6 +246,7 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_entry_t **p_ent
 	/*
 	 *	Over-write an existing entry.
 	 */
+	memcpy(&entry->data[0], packet, sizeof(entry->data));
 	entry->timestamp = timestamp;
 	entry->uses++;
 
@@ -270,10 +271,6 @@ fr_tracking_status_t fr_radius_tracking_entry_insert(fr_tracking_entry_t **p_ent
 	 *	the same data as the previous entry.
 	 */
 
-	/*
-	 *	Copy the new packet over top of the old one.
-	 */
-	memcpy(&entry->data[0], packet, sizeof(entry->data));
 	*p_entry = entry;
 
 	return FR_TRACKING_UPDATED;
