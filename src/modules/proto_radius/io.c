@@ -1251,7 +1251,7 @@ static int mod_inject(void *instance, uint8_t *buffer, size_t buffer_len, fr_tim
 
 /** Get the file descriptor for this socket.
  *
- * @param[in] const_instance of the RADIUS UDP I/O path.
+ * @param[in] const_instance of the RADIUS I/O path.
  * @return the file descriptor
  */
 static int mod_fd(void const *const_instance)
@@ -1270,7 +1270,7 @@ static int mod_fd(void const *const_instance)
 
 /** Set the event list for a new socket
  *
- * @param[in] instance of the RADIUS UDP I/O path.
+ * @param[in] instance of the RADIUS I/O path.
  * @param[in] el the event list
  * @param[in] nr context from the network side
  */
@@ -1961,7 +1961,7 @@ reread:
 
 /** Close the socket.
  *
- * @param[in] instance
+ * @param[in] instance of the RADIUS I/O path.
  * @return
  *	- <0 on error
  *	- 0 on success
