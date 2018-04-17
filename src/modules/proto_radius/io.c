@@ -1251,7 +1251,7 @@ static int mod_inject(void *instance, uint8_t *buffer, size_t buffer_len, fr_tim
 
 /** Get the file descriptor for this socket.
  *
- * @param[in] instance of the RADIUS UDP I/O path.
+ * @param[in] const_instance of the RADIUS UDP I/O path.
  * @return the file descriptor
  */
 static int mod_fd(void const *const_instance)
