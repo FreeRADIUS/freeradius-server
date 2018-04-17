@@ -269,6 +269,7 @@ static proto_radius_connection_t *proto_radius_connection_alloc(proto_radius_t *
 	/*
 	 *	Set this radclient to be dynamic, and active.
 	 */
+	radclient->dynamic = true;
 	radclient->active = true;
 
 	/*
@@ -471,7 +472,8 @@ static RADCLIENT *proto_radius_radclient_alloc(proto_radius_t *inst, proto_radiu
 
 	client->src_ipaddr = address->dst_ipaddr;
 
-	client->proto = IPPROTO_UDP;
+	client->proto = inst->ipproto;
+	client->dynamic = true;
 
 	return client;
 }
