@@ -784,7 +784,8 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 			}
 			break;
 		default:
-			rad_assert(0);
+			cf_log_err(cs, "ipaddr was not defined");
+			goto error;
 		}
 #else
 		WARN("Server not built with udpfromto, ignoring client src_ipaddr");
