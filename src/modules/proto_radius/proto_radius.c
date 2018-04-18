@@ -38,8 +38,8 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSE
 
 static CONF_PARSER const limit_config[] = {
 	{ FR_CONF_OFFSET("cleanup_delay", FR_TYPE_TIMEVAL, proto_radius_t, cleanup_delay), .dflt = "5.0" } ,
-	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_TIMEVAL, proto_radius_t, cleanup_delay), .dflt = "30.0" } ,
-	{ FR_CONF_OFFSET("nak_lifetime", FR_TYPE_TIMEVAL, proto_radius_t, cleanup_delay), .dflt = "30.0" } ,
+	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_TIMEVAL, proto_radius_t, idle_timeout), .dflt = "30.0" } ,
+	{ FR_CONF_OFFSET("nak_lifetime", FR_TYPE_TIMEVAL, proto_radius_t, nak_lifetime), .dflt = "30.0" } ,
 
 	{ FR_CONF_OFFSET("max_connections", FR_TYPE_UINT32, proto_radius_t, max_connections), .dflt = "1024" } ,
 	{ FR_CONF_OFFSET("max_clients", FR_TYPE_UINT32, proto_radius_t, max_clients), .dflt = "256" } ,
