@@ -1990,6 +1990,9 @@ static int mod_close(void *instance)
 	 */
 	if (connection) {
 		DEBUG("Closing connection %s", connection->name);
+		if (connection->client->pending) {
+			TALLOC_FREE(connection->client->pending); /* for any pending packets */
+		}
 		talloc_free(connection->dl_inst);
 	}
 
