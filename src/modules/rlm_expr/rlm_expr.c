@@ -972,6 +972,7 @@ static ssize_t toupper_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
  * This needs to die, and hopefully will die, when xlat functions accept
  * xlat node structures.
  *
+ * @param ctx		Talloc ctx for temporary allocations.
  * @param out		fr_value_box_t containing a shallow copy of the attribute,
  *			or the fmt string.
  * @param request	current request.
@@ -980,7 +981,7 @@ static ssize_t toupper_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
  *	- The length of the data.
  *	- -1 on failure.
  */
-static int fr_value_box_from_fmt(fr_value_box_t *out, REQUEST *request, char const *fmt)
+static int fr_value_box_from_fmt(TALLOC_CTX *ctx, fr_value_box_t *out, REQUEST *request, char const *fmt)
 {
 	VALUE_PAIR *vp;
 
@@ -1004,7 +1005,7 @@ static int fr_value_box_from_fmt(fr_value_box_t *out, REQUEST *request, char con
 	 */
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return -1;
 
-	fr_value_box_copy(NULL, out, &vp->data);
+	fr_value_box_copy(ctx, out, &vp->data);
 
 	return 0;
 }
@@ -1033,8 +1034,11 @@ static int fr_value_box_to_bin(TALLOC_CTX *ctx, REQUEST *request, uint8_t **out,
 
 #define VALUE_FROM_FMT(_tmp_ctx, _p, _len, _request, _fmt) \
 	fr_value_box_t _value; \
-	if (fr_value_box_from_fmt(&_value, _request, _fmt) < 0) return -1; \
-	if (!_tmp_ctx) _tmp_ctx = talloc_new(_request); \
+	if (!_tmp_ctx) MEM(_tmp_ctx = talloc_new(_request)); \
+	if (fr_value_box_from_fmt(_tmp_ctx, &_value, _request, _fmt) < 0) { \
+		talloc_free(_tmp_ctx); \
+		return -1; \
+	} \
 	if (fr_value_box_to_bin(_tmp_ctx, _request, &_p, &_len, &_value) < 0) { \
 		talloc_free(_tmp_ctx); \
 		return -1; \
