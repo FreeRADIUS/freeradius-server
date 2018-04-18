@@ -1013,6 +1013,11 @@ have_client:
 			 */
 			pending = proto_radius_pending_alloc(client, buffer, packet_len,
 							     track, *priority);
+			if (!pending) {
+				fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(client->src_ipaddr), 0);
+				DEBUG("Failed tracking packet from client %s - discarding packet", src_buf);
+				return 0;
+			}
 
 			if (fr_heap_num_elements(client->pending) > 1) {
 				fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(client->src_ipaddr), 0);
@@ -1811,6 +1816,8 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			/*
 			 *	Remove this connection from the parents list of connections.
 			 */
+			rad_assert(connection->parent != NULL);
+
 			pthread_mutex_lock(&connection->parent->mutex);
 			(void) fr_hash_table_delete(connection->parent->ht, connection);
 			pthread_mutex_unlock(&connection->parent->mutex);
