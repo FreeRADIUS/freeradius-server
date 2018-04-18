@@ -81,11 +81,12 @@ HEADERS	+= $(notdir ${HEADERS_RFC})
 .PRECIOUS: $(HEADERS_RFC)
 
 NORMALIZE	:= tr -- '[:lower:]/.-' '[:upper:]___' | sed 's/^/\#define /;s/241_//;'
-HEADER		:= "/* AUTO_GENERATED FILE.  DO NOT EDIT */\n\#pragma once"
+HEADER		:= "/* AUTO_GENERATED FILE.  DO NOT EDIT */"
 
 src/include/attributes.h: share/dictionary.freeradius.internal
 	${Q}$(ECHO) HEADER $@
 	${Q}echo ${HEADER} > $@
+	${Q}echo "#pragma once" >> $@
 	${Q}grep ^ATTRIBUTE $<  | awk '{print "FR_"$$2 " " $$3 }' | ${NORMALIZE}  >> $@
 	${Q}echo " " >> $@
 	${Q}grep -- 'Auth-Type' $< | grep ^VALUE | awk '{print "FR_"$$2 "_" $$3 " " $$4 }' | ${NORMALIZE}  >> $@
@@ -93,6 +94,7 @@ src/include/attributes.h: share/dictionary.freeradius.internal
 src/include/%.h: share/dictionary.% share/dictionary.vqp share/dictionary.freeradius.snmp
 	${Q}$(ECHO) HEADER $@
 	${Q}echo ${HEADER} > $@
+	${Q}echo "#pragma once" >> $@
 	${Q}grep ^ATTRIBUTE $<  | awk '{print "FR_"$$2 " " $$3 }' | ${NORMALIZE} >> $@
 	${Q}grep ^VALUE $<  | awk '{print "FR_"$$2"_VALUE_"$$3 " " $$4 }' | ${NORMALIZE} >> $@
 
