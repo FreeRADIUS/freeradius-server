@@ -1554,7 +1554,6 @@ static void packet_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 		struct timeval when;
 
 		gettimeofday(&when, NULL);
-
 		fr_timeval_add(&when, &when, &inst->cleanup_delay);
 		
 		if (fr_event_timer_insert(client, el, &track->ev,
@@ -1607,9 +1606,12 @@ static void packet_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 	rad_assert(client->state != PR_CLIENT_PENDING);
 
 	/*
-	 *	And call the client expiry timer to clean up the client.
+	 *	If necessary, call the client expiry timer to clean up
+	 *	the client.
 	 */
-	client_expiry_timer(el, now, client);
+	if (client->packets == 0) {
+		client_expiry_timer(el, now, client);
+	}
 }
 
 static ssize_t mod_write(void *instance, void *packet_ctx,
