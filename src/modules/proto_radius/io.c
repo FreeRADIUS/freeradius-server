@@ -190,7 +190,6 @@ static proto_radius_pending_packet_t *pending_packet_pop(proto_radius_t *inst)
 		 */
 		talloc_free(inst->pending_clients);
 		inst->pending_clients = NULL;
-		rad_assert(inst->num_pending_packets == 0);
 		return NULL;
 	}
 
