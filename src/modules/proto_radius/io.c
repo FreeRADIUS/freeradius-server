@@ -621,6 +621,14 @@ static proto_radius_pending_packet_t *proto_radius_pending_alloc(proto_radius_cl
 		return NULL;
 	}
 
+	/*
+	 *	We only track pending packets for the
+	 *	main socket.  For connected sockets,
+	 *	we pause the FD, so the number of
+	 *	pending packets will always be small.
+	 */
+	if (!client->connected) client->inst->num_pending_packets++;
+
 	return pending;
 }
 
@@ -1030,14 +1038,6 @@ have_client:
 			 *	dynamic client.
 			 */
 			track->dynamic = recv_time;
-
-			/*
-			 *	We only track pending packets for the
-			 *	main socket.  For connected sockets,
-			 *	we pause the FD, so the number of
-			 *	pending packets will always be small.
-			 */
-			if (!connection) inst->num_pending_packets++;
 
 		} else {
 			/*
