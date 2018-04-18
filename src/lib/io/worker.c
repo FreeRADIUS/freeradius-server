@@ -512,6 +512,14 @@ static void fr_worker_send_reply(fr_worker_t *worker, REQUEST *request, size_t s
 	worker->num_active--;
 
 	/*
+	 *	Nothing to do, delete max_request_time timers.
+	 */
+	if (!worker->num_active) {
+		talloc_const_free(worker->ev_cleanup);
+		worker->ev_cleanup = NULL;
+	}
+
+	/*
 	 *	Fill in the rest of the fields in the channel message.
 	 *
 	 *	sequence / ack will be filled in by fr_channel_send_reply()
@@ -606,7 +614,7 @@ static void fr_worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED struct
 	REQUEST *request;
 	fr_worker_t *worker = talloc_get_type_abort(uctx, fr_worker_t);
 
-	DEBUG2("TIMER - worker max_request_time");
+	DEBUG2("TIMER - worker max_request_time - %d active requests", worker->num_active);
 
 	/*
 	 *	Look at the oldest requests, and see if they need to
@@ -627,7 +635,10 @@ static void fr_worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED struct
 		fr_worker_send_reply(worker, request, 1);
 	}
 
-	if (!worker->num_active) worker_reset_timer(worker);
+	/*
+	 *	There are still active requests.  Reset the timer.
+	 */
+	if (worker->num_active) worker_reset_timer(worker);
 }
 
 /** See when we next need to service the time_order heap for "too old"
