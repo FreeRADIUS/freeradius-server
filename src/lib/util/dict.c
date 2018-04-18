@@ -2430,6 +2430,7 @@ ssize_t fr_dict_unknown_afrom_oid_str(TALLOC_CTX *ctx, fr_dict_attr_t **out,
 	 *	Invert the talloc hierarchy, so that if the unknown
 	 *	attribute is freed, any unknown parents are also freed.
 	 */
+	talloc_steal(ctx, n);
 	for (our_parent = n->parent, our_ctx = n;
 	     our_parent && our_parent->flags.is_unknown;
 	     our_parent = our_parent->parent) {
