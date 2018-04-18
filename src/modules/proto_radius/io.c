@@ -1804,8 +1804,9 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			/*
 			 *	Remove the pending client from the trie.
 			 */
-			if (!client->connected) {
+			if (!connection) {
 				rad_assert(client->in_trie);
+				rad_assert(!client->connected);
 				(void) fr_trie_remove(inst->trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix);
 				rad_assert(inst->num_clients > 0);
 				inst->num_clients--;
@@ -1816,8 +1817,6 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			/*
 			 *	Remove this connection from the parents list of connections.
 			 */
-			rad_assert(connection->parent != NULL);
-
 			pthread_mutex_lock(&connection->parent->mutex);
 			(void) fr_hash_table_delete(connection->parent->ht, connection);
 			pthread_mutex_unlock(&connection->parent->mutex);
