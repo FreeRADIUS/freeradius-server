@@ -363,7 +363,7 @@ static ssize_t sim_xlat_3gpp_pseudonym_encrypt(TALLOC_CTX *ctx, char **out, UNUS
 	key_len = talloc_array_length(key);
 	if (key_len != 16) {
 		REDEBUG2("Encryption key incorrect length, expected %i bytes, got %zu bytes", 16, key_len);
-		return -1;
+		goto error;
 	}
 
 	/*
@@ -372,9 +372,9 @@ static ssize_t sim_xlat_3gpp_pseudonym_encrypt(TALLOC_CTX *ctx, char **out, UNUS
 	 */
 	id_len = talloc_array_length(id) - 1;
 	if (id_len != (SIM_IMSI_MAX_LEN + 1)) {	/* +1 for ID tag */
-		REDEBUG2("IMSI incorrect length, expected %i bytes, got %zu bytes",
-			 SIM_IMSI_MAX_LEN + 1, id_len);
-		return -1;
+		REDEBUG2("IMSI incorrect length, expected %i bytes, got %zu bytes", SIM_IMSI_MAX_LEN + 1,
+			 id_len);
+		goto error;
 	}
 
 	if (fr_sim_id_type(&type_hint, &method_hint, id, id_len) < 0) {
