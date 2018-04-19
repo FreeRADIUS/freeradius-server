@@ -240,13 +240,13 @@ static ssize_t sim_xlat_3gpp_pseudonym_decrypt(TALLOC_CTX *ctx, char **out, UNUS
 	if (id_len != (SIM_3GPP_PSEUDONYM_LEN + 1)) {
 		REDEBUG2("3gpp pseudonym incorrect length, expected %i bytes, got %zu bytes",
 			 SIM_3GPP_PSEUDONYM_LEN + 1, id_len);
-		return -1;
+		goto error;
 	}
 
 	key_len = talloc_array_length(key);
 	if (key_len != 16) {
 		REDEBUG2("Decryption key incorrect length, expected %i bytes, got %zu bytes", 16, key_len);
-		return -1;
+		goto error;
 	}
 
 	tag = fr_sim_id_3gpp_pseudonym_tag(id);
@@ -265,13 +265,13 @@ static ssize_t sim_xlat_3gpp_pseudonym_decrypt(TALLOC_CTX *ctx, char **out, UNUS
 
 	default:
 		REDEBUG2("Unexpected tag value (%u) in SIM ID \"%pS\"", tag, id);
-		return -1;
+		goto error;
 	}
 
 	RDEBUG2("Decrypting \"%pS\"", id);
 	if (fr_sim_id_3gpp_pseudonym_decrypt(decrypted, id, key) < 0) {
 		RPEDEBUG2("Failed decrypting SIM ID");
-		return -1;
+		goto error;
 	}
 
 	/*
