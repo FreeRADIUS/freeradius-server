@@ -42,6 +42,10 @@ static void		*python_dlhandle;
 static PyThreadState	*main_interpreter;	//!< Main interpreter (cext safe)
 static PyObject		*main_module;		//!< Pthon configuration dictionary.
 
+#if PY_VERSION_HEX > 0x03050000
+static wchar_t		*wide_name;		//!< Special wide char encoding of radiusd name.
+#endif
+
 /** Specifies the module.function to load for processing a section
  *
  */
@@ -62,11 +66,11 @@ typedef struct rlm_python_t {
 	char const	*python_path;		//!< Path to search for python files in.
 
 #if PY_VERSION_HEX > 0x03050000
-	wchar_t		*wide_name;		//!< Special wide char encoding of radiusd name.
 	wchar_t		*wide_path;		//!< Special wide char encoding of radiusd path.
-#endif
-	PyObject	*module;		//!< Local, interpreter specific module, containing
 						//!< FreeRADIUS functions.
+#endif
+
+	PyObject	*module;		//!< Local, interpreter specific module, containing
 	bool		cext_compat;		//!< Whether or not to create sub-interpreters per module
 						//!< instance.
 
@@ -863,36 +867,6 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 	int i;
 
 	/*
-	 *	Explicitly load libpython, so symbols will be available to lib-dynload modules
-	 */
-	if (python_instances == 0) {
-		INFO("Python version: %s", Py_GetVersion());
-
-		python_dlhandle = dlopen("libpython" STRINGIFY(PY_MAJOR_VERSION) "." STRINGIFY(PY_MINOR_VERSION) ".so",
-					 RTLD_NOW | RTLD_GLOBAL);
-		if (!python_dlhandle) WARN("Failed loading libpython symbols into global symbol table: %s", dlerror());
-
-#if PY_VERSION_HEX > 0x03050000
-		{
-			inst->wide_name = Py_DecodeLocale(main_config.name, strlen(main_config.name));
-			Py_SetProgramName(inst->wide_name);		/* The value of argv[0] as a wide char string */
-		}
-#else
-		{
-			char *name;
-
-			memcpy(&name, &main_config.name, sizeof(name));
-			Py_SetProgramName(name);		/* The value of argv[0] as a wide char string */
-		}
-#endif
-
-		Py_InitializeEx(0);			/* Don't override signal handlers - noop on subs calls */
-		PyEval_InitThreads(); 			/* This also grabs a lock (which we then need to release) */
-		main_interpreter = PyThreadState_Get();	/* Store reference to the main interpreter */
-	}
-	rad_assert(PyEval_ThreadsInitialized());
-
-	/*
 	 *	Increment the reference counter
 	 */
 	python_instances++;
@@ -1097,18 +1071,62 @@ static int mod_detach(void *instance)
 	if (!inst->cext_compat) python_interpreter_free(inst->sub_interpreter);
 
 	if ((--python_instances) == 0) {
-		PyThreadState_Swap(main_interpreter); /* Swap to the main thread */
-		Py_Finalize();
-		dlclose(python_dlhandle);
-
 #if PY_VERSION_HEX > 0x03050000
-		if (inst->wide_name) PyMem_RawFree(inst->wide_name);
 		if (inst->wide_path) PyMem_RawFree(inst->wide_path);
 #endif
 	}
 
 
 	return ret;
+}
+
+static int mod_load(void)
+{
+	rad_assert(!Py_IsInitialized());
+
+	INFO("Python version: %s", Py_GetVersion());
+
+	/*
+	 *	Explicitly load libpython, so symbols will be available to lib-dynload modules
+	 */
+	python_dlhandle = dlopen("libpython" STRINGIFY(PY_MAJOR_VERSION) "." STRINGIFY(PY_MINOR_VERSION) ".so",
+				 RTLD_NOW | RTLD_GLOBAL);
+	if (!python_dlhandle) WARN("Failed loading libpython symbols into global symbol table: %s", dlerror());
+
+	Py_InitializeEx(0);			/* Don't override signal handlers - noop on subs calls */
+	PyEval_InitThreads(); 			/* This also grabs a lock (which we then need to release) */
+	rad_assert(PyEval_ThreadsInitialized());
+	main_interpreter = PyThreadState_Get();	/* Store reference to the main interpreter */
+
+	/*
+	 *	Set program name (i.e. the software calling the interpreter)
+	 */
+#if PY_VERSION_HEX > 0x03050000
+	{
+		wide_name = Py_DecodeLocale(main_config.name, strlen(main_config.name));
+		Py_SetProgramName(wide_name);		/* The value of argv[0] as a wide char string */
+	}
+#else
+	{
+		char *name;
+
+		memcpy(&name, &main_config.name, sizeof(name));
+		Py_SetProgramName(name);		/* The value of argv[0] as a wide char string */
+	}
+#endif
+
+	return 0;
+}
+
+static void mod_unload(void)
+{
+	PyThreadState_Swap(main_interpreter); /* Swap to the main thread */
+	Py_Finalize();
+	dlclose(python_dlhandle);
+
+#if PY_VERSION_HEX > 0x03050000
+	if (wide_name) PyMem_RawFree(wide_name);
+#endif
 }
 
 /*
@@ -1127,6 +1145,8 @@ rad_module_t rlm_python = {
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(rlm_python_t),
 	.config		= module_config,
+	.load		= mod_load,
+	.unload		= mod_unload,
 	.instantiate	= mod_instantiate,
 	.detach		= mod_detach,
 	.methods = {
