@@ -629,7 +629,7 @@ int rad_expand_xlat(REQUEST *request, char const *cmd,
 	int left;
 
 	if (strlen(cmd) > (argv_buflen - 1)) {
-		ERROR("rad_expand_xlat: Command line is too long");
+		fr_strerror_printf("Expansion string is too long for output buffer");
 		return -1;
 	}
 
@@ -637,7 +637,7 @@ int rad_expand_xlat(REQUEST *request, char const *cmd,
 	 *	Check for bad escapes.
 	 */
 	if (cmd[strlen(cmd) - 1] == '\\') {
-		ERROR("rad_expand_xlat: Command line has final backslash, without a following character");
+		fr_strerror_printf("Expansion string ends with a trailing backslash - invalid escape sequence");
 		return -1;
 	}
 
@@ -670,7 +670,7 @@ int rad_expand_xlat(REQUEST *request, char const *cmd,
 		 */
 		while (*from && (*from != ' ') && (*from != '\t')) {
 			if (to >= argv_buf + argv_buflen - 1) {
-				ERROR("rad_expand_xlat: Ran out of space in command line");
+				fr_strerror_printf("Expansion string is too long for output buffer");
 				return -1;
 			}
 
@@ -679,7 +679,7 @@ int rad_expand_xlat(REQUEST *request, char const *cmd,
 			case '\'':
 				length = rad_copy_string_bare(to, from);
 				if (length < 0) {
-					ERROR("rad_expand_xlat: Invalid string passed as argument");
+					fr_strerror_printf("Invalid quoted string in expansion");
 					return -1;
 				}
 				from += length+2;
@@ -692,7 +692,7 @@ int rad_expand_xlat(REQUEST *request, char const *cmd,
 
 					length = rad_copy_variable(to, from);
 					if (length < 0) {
-						ERROR("rad_expand_xlat: Invalid variable expansion passed as argument");
+						fr_strerror_printf("Invalid variable in expansion");
 						return -1;
 					}
 					from += length;
@@ -718,7 +718,7 @@ int rad_expand_xlat(REQUEST *request, char const *cmd,
 	 *	We have to have SOMETHING, at least.
 	 */
 	if (argc <= 0) {
-		ERROR("rad_expand_xlat: Empty command line");
+		fr_strerror_printf("Expansion string is empty");
 		return -1;
 	}
 
@@ -747,7 +747,7 @@ int rad_expand_xlat(REQUEST *request, char const *cmd,
 				 */
 				sublen = 0;
 			} else {
-				ERROR("rad_expand_xlat: xlat failed");
+				fr_strerror_printf("Failed expanding substring");
 				return -1;
 			}
 		}
@@ -759,7 +759,7 @@ int rad_expand_xlat(REQUEST *request, char const *cmd,
 		left--;
 
 		if (left <= 0) {
-			ERROR("rad_expand_xlat: Ran out of space while expanding arguments");
+			fr_strerror_printf("Ran out of space while expanding arguments");
 			return -1;
 		}
 	}
