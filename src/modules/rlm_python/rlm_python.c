@@ -37,6 +37,16 @@ RCSID("$Id$")
 #include <Python.h>
 #include <dlfcn.h>
 
+#ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
+#  include <sanitizer/lsan_interface.h>
+#endif
+
+#ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
+#  define LSAN_DISABLE(_x) __lsan_disable(); _x; __lsan_enable()
+#else
+#  define LSAN_DISABLE
+#endif
+
 static uint32_t		python_instances = 0;
 static void		*python_dlhandle;
 
@@ -659,7 +669,7 @@ static int python_function_load(python_func_def_t *def)
 
 	if (def->module_name == NULL || def->function_name == NULL) return 0;
 
-	def->module = PyImport_ImportModule(def->module_name);
+	LSAN_DISABLE(def->module = PyImport_ImportModuleNoBlock(def->module_name));
 	if (!def->module) {
 		ERROR("%s - Module '%s' not found", funcname, def->module_name);
 
@@ -777,7 +787,7 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 	 *	These will be destroyed on Py_Finalize().
 	 */
 	if (!inst->cext_compat) {
-		inst->sub_interpreter = Py_NewInterpreter();
+		LSAN_DISABLE(inst->sub_interpreter = Py_NewInterpreter());
 	} else {
 		inst->sub_interpreter = main_interpreter;
 	}
@@ -1023,7 +1033,7 @@ static int mod_load(void)
 				 RTLD_NOW | RTLD_GLOBAL);
 	if (!python_dlhandle) WARN("Failed loading libpython symbols into global symbol table: %s", dlerror());
 
-	Py_InitializeEx(0);			/* Don't override signal handlers - noop on subs calls */
+	LSAN_DISABLE(Py_InitializeEx(0));	/* Don't override signal handlers - noop on subs calls */
 	PyEval_InitThreads(); 			/* This also grabs a lock (which we then need to release) */
 	rad_assert(PyEval_ThreadsInitialized());
 	main_interpreter = PyThreadState_Get();	/* Store reference to the main interpreter */
