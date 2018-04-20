@@ -201,7 +201,9 @@ typedef struct proto_radius_t {
 									///< the I/O path.
 	fr_schedule_t			*sc;				//!< the scheduler
 
-	int				ipproto;			//!< IP proto
+	int				ipproto;			//!< IP proto by number
+	char const			*transport;			//!< transport, typically name of IP proto
+
 	fr_event_list_t			*el;				//!< event list, for the master socket.
 	fr_network_t			*nr;				//!< network for the master socket
 

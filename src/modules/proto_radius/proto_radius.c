@@ -229,6 +229,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
 {
 	char const	*name = cf_pair_value(cf_item_to_pair(ci));
 	dl_instance_t	*parent_inst;
+	proto_radius_t	*inst;
 	CONF_SECTION	*listen_cs = cf_item_to_section(cf_parent(ci));
 	CONF_SECTION	*transport_cs;
 
@@ -242,6 +243,13 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
 
 	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_instance_t, "proto_radius"));
 	rad_assert(parent_inst);
+
+	/*
+	 *	Set the allowed codes so that we can compile them as
+	 *	necessary.
+	 */
+	inst = talloc_get_type_abort(parent_inst->data, proto_radius_t);
+	inst->transport = name;
 
 	return dl_instance(ctx, out, transport_cs, parent_inst, name, DL_TYPE_SUBMODULE);
 }

@@ -235,8 +235,8 @@ static proto_radius_connection_t *proto_radius_connection_alloc(proto_radius_t *
 	 *	called when the instance data is freed.
 	 */
 	if (!nak) {
-		if (dl_instance(NULL, &dl_inst, NULL, inst->dl_inst, "udp", DL_TYPE_SUBMODULE) < 0) {
-			DEBUG("Failed to find proto_radius_%s", "udp");
+		if (dl_instance(NULL, &dl_inst, NULL, inst->dl_inst, inst->transport, DL_TYPE_SUBMODULE) < 0) {
+			DEBUG("Failed to find proto_radius_%s", inst->transport);
 			return NULL;
 		}
 		rad_assert(dl_inst != NULL);
