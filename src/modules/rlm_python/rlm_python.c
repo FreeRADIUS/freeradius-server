@@ -950,6 +950,13 @@ static int mod_detach(void *instance)
 	PYTHON_FUNC_DESTROY(authenticate);
 	PYTHON_FUNC_DESTROY(preacct);
 	PYTHON_FUNC_DESTROY(accounting);
+	PYTHON_FUNC_DESTROY(pre_proxy);
+	PYTHON_FUNC_DESTROY(post_proxy);
+	PYTHON_FUNC_DESTROY(post_auth);
+#ifdef WITH_COA
+	PYTHON_FUNC_DESTROY(recv_coa);
+	PYTHON_FUNC_DESTROY(send_coa);
+#endif
 	PYTHON_FUNC_DESTROY(detach);
 
 	Py_DecRef(inst->pythonconf_dict);
