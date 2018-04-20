@@ -128,6 +128,8 @@ static int lsan_state = INT_MAX;
 /** Callback for LSAN - do not rename
  *
  */
+const char CC_HINT(used) *__lsan_default_suppressions(void);
+
 const char CC_HINT(used) *__lsan_default_suppressions(void)
 {
 	return
@@ -144,6 +146,8 @@ const char CC_HINT(used) *__lsan_default_suppressions(void)
 /** Callback for LSAN - do not rename
  *
  */
+int CC_HINT(used) __lsan_is_turned_off(void);
+
 int CC_HINT(used) __lsan_is_turned_off(void)
 {
 	uint8_t ret = 1;
