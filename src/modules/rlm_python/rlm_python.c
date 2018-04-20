@@ -32,6 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/lsan.h>
 
 #include <Python.h>
 #include <dlfcn.h>

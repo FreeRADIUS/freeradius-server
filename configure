@@ -7520,7 +7520,7 @@ for ac_header in \
   prot.h \
   pwd.h \
   resource.h \
-  sanitizer/common_interface_defs.h \
+  sanitizer/lsan_interface.h \
   semaphore.h \
   sia.h \
   siad.h \

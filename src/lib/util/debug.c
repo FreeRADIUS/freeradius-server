@@ -116,11 +116,11 @@ static TALLOC_CTX *talloc_autofree_ctx;
 #    include <sys/capability.h>
 #  endif
 
-#ifdef HAVE_SANITIZER_COMMON_INTERFACE_DEFS_H
-#  include <sanitizer/common_interface_defs.h>
+#ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
+#  include <sanitizer/lsan_interface.h>
 #endif
 
-#ifdef HAVE_SANITIZER_COMMON_INTERFACE_DEFS_H
+#ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
 static int lsan_test_pipe[2] = {-1, -1};
 static int lsan_test_pid = -1;
 static int lsan_state = INT_MAX;
