@@ -101,7 +101,7 @@ static int rediswho_command(rlm_rediswho_t const *inst, REQUEST *request, char c
 
 	argc = rad_expand_xlat(request, fmt, MAX_REDIS_ARGS, argv, false, sizeof(argv_buf), argv_buf);
 	if (argc < 0) {
-		REDEBUG("Invalid command: %s - %s", fmt, fr_strerror());
+		RPEDEBUG("Invalid command: %s", fmt);
 		return -1;
 	}
 

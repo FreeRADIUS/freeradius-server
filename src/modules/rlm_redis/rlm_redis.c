@@ -208,7 +208,7 @@ static ssize_t redis_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 
 		argc = rad_expand_xlat(request, p, MAX_REDIS_ARGS, argv, false, sizeof(argv_buf), argv_buf);
 		if (argc <= 0) {
-			REDEBUG("Invalid command: %s - %s", p, fr_strerror());
+			RPEDEBUG("Invalid command: %s", p);
 			fr_pool_connection_release(pool, request, conn);
 			return -1;
 		}
@@ -253,7 +253,7 @@ static ssize_t redis_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
 	 */
 	argc = rad_expand_xlat(request, p, MAX_REDIS_ARGS, argv, false, sizeof(argv_buf), argv_buf);
 	if (argc <= 0) {
-		REDEBUG("Invalid command: %s - %s", p, fr_strerror());
+		RPEDEBUG("Invalid command: %s", p);
 		ret = -1;
 		goto finish;
 	}
