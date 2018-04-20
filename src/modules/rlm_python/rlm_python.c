@@ -609,7 +609,7 @@ static rlm_rcode_t do_python(rlm_python_t const *inst, rlm_python_thread_t *this
 	 */
 	if (!pFunc) return RLM_MODULE_NOOP;
 
-	RDEBUG3("Using thread state %p", this_thread->state);
+	RDEBUG3("Using thread state %p/%p", inst, this_thread->state);
 
 	PyEval_RestoreThread(this_thread->state);	/* Swap in our local thread state */
 	ret = do_python_single(request, pFunc, funcname);
@@ -664,8 +664,7 @@ static int python_function_load(python_func_def_t *def)
 
 	error:
 		python_error_log();
-		ERROR("%s - Failed to import python function '%s.%s'",
-		      funcname, def->module_name, def->function_name);
+		ERROR("%s - Failed to import python function '%s.%s'", funcname, def->module_name, def->function_name);
 		Py_XDECREF(def->function);
 		def->function = NULL;
 		Py_XDECREF(def->module);
@@ -978,7 +977,8 @@ static int mod_detach(void *instance)
 	return ret;
 }
 
-static int mod_thread_instantiate(CONF_SECTION const *conf, void *instance, fr_event_list_t *el, void *thread)
+static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instance,
+				  UNUSED fr_event_list_t *el, void *thread)
 {
 	PyThreadState		*state;
 	rlm_python_t		*inst = instance;
