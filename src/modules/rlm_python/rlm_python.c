@@ -98,10 +98,9 @@ typedef struct rlm_python_t {
  * Multiple instances of python create multiple interpreters and each
  * thread must have a PyThreadState per interpreter, to track execution.
  */
-typedef struct python_thread_state {
-	PyThreadState		*state;		//!< Module instance/thread specific state.
-	rlm_python_t const	*inst;		//!< Module instance that created this thread state.
-} python_thread_state_t;
+typedef struct {
+	PyThreadState	*state;			//!< Module instance/thread specific state.
+} rlm_python_thread_t;
 
 /*
  *	A mapping of configuration file names to internal variables.
@@ -167,11 +166,6 @@ static struct {
 
 	{ NULL, 0 },
 };
-
-/*
- *	This allows us to initialise PyThreadState on a per thread basis
- */
-fr_thread_local_setup(rbtree_t *, local_thread_state)	/* macro */
 
 /*
  *	radiusd Python functions
@@ -601,114 +595,20 @@ static void python_interpreter_free(PyThreadState *interp)
 	PyEval_ReleaseLock();
 }
 
-/** Destroy a thread state
- *
- * @param thread to destroy.
- * @return 0
- */
-static int _python_thread_free(python_thread_state_t *thread)
-{
-	PyEval_RestoreThread(thread->state);	/* Swap in our local thread state */
-	PyThreadState_Clear(thread->state);
-	PyEval_SaveThread();
-
-	PyThreadState_Delete(thread->state);	/* Don't need to hold lock for this */
-
-	return 0;
-}
-
-/** Callback for rbtree delete walker
- *
- */
-static void _python_thread_entry_free(void *arg)
-{
-	talloc_free(arg);
-}
-
-/** Cleanup any thread local storage on pthread_exit()
- *
- * @param arg The thread currently exiting.
- */
-static void _python_thread_tree_free(void *arg)
-{
-	rad_assert(arg == local_thread_state);
-
-	rbtree_t *tree = talloc_get_type_abort(arg, rbtree_t);
-	talloc_free(tree);	/* Needs to be this not talloc_free to execute delete walker */
-
-	local_thread_state = NULL;	/* Prevent double free in unit_test_module env */
-}
-
-/** Compare instance pointers
- *
- */
-static int _python_inst_cmp(const void *a, const void *b)
-{
-	python_thread_state_t const *a_p = a, *b_p = b;
-
-	return (a_p->inst < b_p->inst) - (a_p->inst > b_p->inst);
-}
-
 /** Thread safe call to a python function
  *
  * Will swap in thread state specific to module/thread.
  */
-static rlm_rcode_t do_python(rlm_python_t const *inst, REQUEST *request, PyObject *pFunc, char const *funcname)
+static rlm_rcode_t do_python(rlm_python_t const *inst, rlm_python_thread_t *this_thread,
+			     REQUEST *request, PyObject *pFunc, char const *funcname)
 {
 	int			ret;
-	rbtree_t		*thread_tree;
-	python_thread_state_t	*this_thread;
-	python_thread_state_t	find;
 
 	/*
 	 *	It's a NOOP if the function wasn't defined
 	 */
 	if (!pFunc) return RLM_MODULE_NOOP;
 
-	/*
-	 *	Check to see if we've got a thread state tree
-	 *	If not, create one.
-	 */
-	thread_tree = local_thread_state;
-	if (!thread_tree) {
-		thread_tree = rbtree_talloc_create(NULL, _python_inst_cmp, python_thread_state_t,
-						   _python_thread_entry_free, 0);
-		if (!thread_tree) {
-			RERROR("Failed allocating thread state tree");
-			return RLM_MODULE_FAIL;
-		}
-		fr_thread_local_set_destructor(local_thread_state, _python_thread_tree_free, thread_tree);
-	}
-
-	find.inst = inst;
-	/*
-	 *	Find the thread state associated with this instance
-	 *	and this thread, or create a new thread state.
-	 */
-	this_thread = rbtree_finddata(thread_tree, &find);
-	if (!this_thread) {
-		PyThreadState *state;
-
-		state = PyThreadState_New(inst->sub_interpreter->interp);
-
-		RDEBUG3("Initialised new thread state %p", state);
-		if (!state) {
-			REDEBUG("Failed initialising local PyThreadState on first run");
-			return RLM_MODULE_FAIL;
-		}
-
-		this_thread = talloc(NULL, python_thread_state_t);
-		this_thread->inst = inst;
-		this_thread->state = state;
-		talloc_set_destructor(this_thread, _python_thread_free);
-
-		if (!rbtree_insert(thread_tree, this_thread)) {
-			RERROR("Failed inserting thread state into TLS tree");
-			talloc_free(this_thread);
-
-			return RLM_MODULE_FAIL;
-		}
-	}
 	RDEBUG3("Using thread state %p", this_thread->state);
 
 	PyEval_RestoreThread(this_thread->state);	/* Swap in our local thread state */
@@ -719,8 +619,9 @@ static rlm_rcode_t do_python(rlm_python_t const *inst, REQUEST *request, PyObjec
 }
 
 #define MOD_FUNC(x) \
-static rlm_rcode_t CC_HINT(nonnull) mod_##x(void *instance, UNUSED void *thread, REQUEST *request) { \
-	return do_python((rlm_python_t const *) instance, request, ((rlm_python_t const *)instance)->x.function, #x);\
+static rlm_rcode_t CC_HINT(nonnull) mod_##x(void *instance, void *thread, REQUEST *request) { \
+	return do_python((rlm_python_t const *) instance, (rlm_python_thread_t *)thread, \
+			 request, ((rlm_python_t const *)instance)->x.function, #x);\
 }
 
 MOD_FUNC(authenticate)
@@ -1057,15 +958,6 @@ static int mod_detach(void *instance)
 	PyEval_SaveThread();
 
 	/*
-	 *	Force cleaning up of threads if this is *NOT* a worker
-	 *	thread, which happens if this is being called from
-	 *	unit_test_module framework, and probably with the server running
-	 *	in debug mode.
-	 */
-	talloc_free(local_thread_state);
-	local_thread_state = NULL;
-
-	/*
 	 *	Only destroy if it's a subinterpreter
 	 */
 	if (!inst->cext_compat) python_interpreter_free(inst->sub_interpreter);
@@ -1076,8 +968,38 @@ static int mod_detach(void *instance)
 #endif
 	}
 
-
 	return ret;
+}
+
+static int mod_thread_instantiate(CONF_SECTION const *conf, void *instance, fr_event_list_t *el, void *thread)
+{
+	PyThreadState		*state;
+	rlm_python_t		*inst = instance;
+	rlm_python_thread_t	*this_thread = thread;
+
+	state = PyThreadState_New(inst->sub_interpreter->interp);
+	if (!state) {
+		ERROR("Failed initialising local PyThreadState");
+		return -1;
+	}
+
+	DEBUG3("Initialised new thread state %p", state);
+	this_thread->state = state;
+
+	return 0;
+}
+
+static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
+{
+	rlm_python_thread_t	*this_thread = thread;
+
+	PyEval_RestoreThread(this_thread->state);	/* Swap in our local thread state */
+	PyThreadState_Clear(this_thread->state);
+	PyEval_SaveThread();
+
+	PyThreadState_Delete(this_thread->state);	/* Don't need to hold lock for this */
+
+	return 0;
 }
 
 static int mod_load(void)
@@ -1140,15 +1062,23 @@ static void mod_unload(void)
  */
 extern rad_module_t rlm_python;
 rad_module_t rlm_python = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "python",
-	.type		= RLM_TYPE_THREAD_SAFE,
-	.inst_size	= sizeof(rlm_python_t),
-	.config		= module_config,
-	.load		= mod_load,
-	.unload		= mod_unload,
-	.instantiate	= mod_instantiate,
-	.detach		= mod_detach,
+	.magic			= RLM_MODULE_INIT,
+	.name			= "python",
+	.type			= RLM_TYPE_THREAD_SAFE,
+
+	.inst_size		= sizeof(rlm_python_t),
+	.thread_inst_size	= sizeof(rlm_python_thread_t),
+
+	.config			= module_config,
+	.load			= mod_load,
+	.unload			= mod_unload,
+
+	.instantiate		= mod_instantiate,
+	.detach			= mod_detach,
+
+	.thread_instantiate	= mod_thread_instantiate,
+	.thread_detach		= mod_thread_detach,
+
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,
