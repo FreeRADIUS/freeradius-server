@@ -789,7 +789,6 @@ AC_CHECK_HEADERS( \
   prot.h \
   pwd.h \
   resource.h \
-  sanitizer/lsan_interface.h \
   semaphore.h \
   sia.h \
   siad.h \
@@ -1653,14 +1652,16 @@ if test "x$developer" = "xyes"; then
     dnl #  -fno-omit-frame-pointer	- Always keep the frame pointer in a register
     dnl #  -fno-optimize-sibling-calls	- Don't optimize away tail recursion.
     dnl #
-    devcflags="$devcflags -fsanitize=address -fno-omit-frame-pointer -fno-optimize-sibling-calls"
+    CFLAGS="$CFLAGS -fsanitize=address -fno-omit-frame-pointer -fno-optimize-sibling-calls"
 
     AX_CC_SANITZE_ADDRESS_USE_AFTER_SCOPE_FLAG
     if test "x$ax_cv_cc_sanitize_address_use_after_scope" = "xyes"; then
-      devcflags="$devcflags -fsanitize-address-use-after-scope"
+      cflags="$CFLAGS -fsanitize-address-use-after-scope"
     fi
 
-    devldflags="$devldflags -fsanitize=address"
+    AC_CHECK_HEADERS(sanitizer/lsan_interface.h)
+
+    LDFLAGS="$LDFLAGS -fsanitize=address"
   fi
 
   AC_MSG_NOTICE([Developer CFLAGS are "$devcflags"])

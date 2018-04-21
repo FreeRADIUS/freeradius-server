@@ -37,16 +37,6 @@ RCSID("$Id$")
 #include <Python.h>
 #include <dlfcn.h>
 
-#ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
-#  include <sanitizer/lsan_interface.h>
-#endif
-
-#ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
-#  define LSAN_DISABLE(_x) __lsan_disable(); _x; __lsan_enable()
-#else
-#  define LSAN_DISABLE
-#endif
-
 static uint32_t		python_instances = 0;
 static void		*python_dlhandle;
 

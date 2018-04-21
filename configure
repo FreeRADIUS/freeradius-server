@@ -7520,7 +7520,6 @@ for ac_header in \
   prot.h \
   pwd.h \
   resource.h \
-  sanitizer/lsan_interface.h \
   semaphore.h \
   sia.h \
   siad.h \
@@ -12700,7 +12699,7 @@ $as_echo "$ax_cv_cc_wimplicit_fallthrough_flag" >&6; }
   fi
 
         if test "x$llvm_address_sanitizer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
-                        devcflags="$devcflags -fsanitize=address -fno-omit-frame-pointer -fno-optimize-sibling-calls"
+                        CFLAGS="$CFLAGS -fsanitize=address -fno-omit-frame-pointer -fno-optimize-sibling-calls"
 
 
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for the compiler flag \"-fsanitize-address-use-after-scope\"" >&5
@@ -12750,10 +12749,23 @@ fi
 $as_echo "$ax_cv_cc_sanitize_address_use_after_scope" >&6; }
 
     if test "x$ax_cv_cc_sanitize_address_use_after_scope" = "xyes"; then
-      devcflags="$devcflags -fsanitize-address-use-after-scope"
+      cflags="$CFLAGS -fsanitize-address-use-after-scope"
     fi
 
-    devldflags="$devldflags -fsanitize=address"
+    for ac_header in sanitizer/lsan_interface.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "sanitizer/lsan_interface.h" "ac_cv_header_sanitizer_lsan_interface_h" "$ac_includes_default"
+if test "x$ac_cv_header_sanitizer_lsan_interface_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_SANITIZER_LSAN_INTERFACE_H 1
+_ACEOF
+
+fi
+
+done
+
+
+    LDFLAGS="$LDFLAGS -fsanitize=address"
   fi
 
   { $as_echo "$as_me:${as_lineno-$LINENO}: Developer CFLAGS are \"$devcflags\"" >&5
