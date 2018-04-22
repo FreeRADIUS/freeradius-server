@@ -118,7 +118,7 @@ int do_auth_wbclient(rlm_mschap_t const *inst, REQUEST *request,
 			  request, inst->wb_username, NULL, NULL);
 	if (len < 0) {
 		REDEBUG2("Unable to expand winbind_username");
-		goto done;
+		goto finish;
 	}
 
 	if (inst->wb_domain) {
@@ -126,7 +126,7 @@ int do_auth_wbclient(rlm_mschap_t const *inst, REQUEST *request,
 				  request, inst->wb_domain, NULL, NULL);
 		if (len < 0) {
 			REDEBUG2("Unable to expand winbind_domain");
-			goto done;
+			goto finish;
 		}
 	} else {
 		RWDEBUG2("No domain specified; authentication may fail because of this");
@@ -155,7 +155,7 @@ int do_auth_wbclient(rlm_mschap_t const *inst, REQUEST *request,
 	wb_ctx = fr_pool_connection_get(inst->wb_pool, request);
 	if (wb_ctx == NULL) {
 		RERROR("Unable to get winbind connection from pool");
-		goto done;
+		goto finish;
 	}
 
 	RDEBUG2("sending authentication request user='%s' domain='%s'",
@@ -170,10 +170,10 @@ int do_auth_wbclient(rlm_mschap_t const *inst, REQUEST *request,
 
 		normalised_username = wbclient_normalise_username(request, wb_ctx, authparams.domain_name,
 								  authparams.account_name);
-		if (!normalised_username) goto done;
+		if (!normalised_username) goto release;
 
 		RDEBUG2("Starting retry, normalised username %s to %s", authparams.account_name, normalised_username);
-		if (strcmp(authparams.account_name, normalised_username) == 0) goto done;
+		if (strcmp(authparams.account_name, normalised_username) == 0) goto release;
 
 		authparams.account_name = normalised_username;
 
@@ -189,13 +189,13 @@ int do_auth_wbclient(rlm_mschap_t const *inst, REQUEST *request,
 		vp_challenge = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_challenge, TAG_ANY);
 		if (!vp_challenge) {
 			RERROR("Unable to get MS-CHAP-Challenge");
-			goto done;
+			goto release;
 		}
 
 		vp_response = fr_pair_find_by_da(request->packet->vps, attr_ms_chap2_response, TAG_ANY);
 		if (!vp_response) {
 			RERROR("Unable to get MS-CHAP2-Response");
-			goto done;
+			goto release;
 		}
 
 		mschap_challenge_hash(vp_response->vp_octets + 2,
@@ -204,7 +204,7 @@ int do_auth_wbclient(rlm_mschap_t const *inst, REQUEST *request,
 				      authparams.password.response.challenge);
 
 		err = wbcCtxAuthenticateUserEx(wb_ctx, &authparams, &info, &error);
-done:
+release:
 		talloc_free(normalised_username);
 	}
 
@@ -270,7 +270,7 @@ done:
 		break;
 	}
 
-done:
+finish:
 	if (info) wbcFreeMemory(info);
 	if (error) wbcFreeMemory(error);
 
