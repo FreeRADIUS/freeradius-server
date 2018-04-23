@@ -387,6 +387,26 @@ static int mod_fd(void const *instance)
 	return inst->sockfd;
 }
 
+static int mod_compare(UNUSED void const *instance, void const *one, void const *two)
+{
+	int rcode;
+
+	uint8_t const *a = one;
+	uint8_t const *b = two;
+
+	/*
+	 *	The tree is ordered by IDs, which are (hopefully)
+	 *	pseudo-randomly distributed.
+	 */
+	rcode = (a[1] < b[1]) - (a[1] > b[1]);
+	if (rcode != 0) return rcode;
+
+	/*
+	 *	Then ordered by code, which is usally the same.
+	 */
+	return (a[0] < b[0]) - (a[0] > b[0]);
+}
+
 
 static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
 {
@@ -658,5 +678,6 @@ fr_app_io_t proto_radius_udp = {
 	.write			= mod_write,
 	.close			= mod_close,
 	.fd			= mod_fd,
+	.compare		= mod_compare,
 	.private		= &proto_radius_app_io_private,
 };

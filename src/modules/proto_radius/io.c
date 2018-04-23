@@ -146,16 +146,11 @@ static int track_cmp(void const *one, void const *two)
 	int rcode;
 
 	/*
-	 *	The tree is ordered by IDs, which are (hopefully)
-	 *	pseudo-randomly distributed.
+	 *	Call the per-protocol comparison function, if it
+	 *	exists.
 	 */
-	rcode = (a->packet[1] < b->packet[1]) - (a->packet[1] > b->packet[1]);
-	if (rcode != 0) return rcode;
-
-	/*
-	 *	Then ordered by ID, which is usally the same.
-	 */
-	rcode = (a->packet[0] < b->packet[0]) - (a->packet[0] > b->packet[0]);
+	rcode = a->client->inst->app_io->compare(a->client->inst->app_io_instance,
+						 a->packet, b->packet);
 	if (rcode != 0) return rcode;
 
 	/*
