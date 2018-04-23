@@ -35,7 +35,7 @@ typedef struct {
 	uint16_t 			dst_port;
 
 	RADCLIENT const			*radclient;		//!< old-style client definition
-} proto_radius_address_t;
+} fr_io_address_t;
 
 
 typedef struct {
@@ -53,10 +53,10 @@ typedef struct {
 	 *	definition.
 	 */
 	fr_time_t			dynamic;	//!< timestamp for packet doing dynamic client definition
-	proto_radius_address_t   	*address;	//!< of this packet.. shared between multiple packets
-	struct proto_radius_client_t	*client;	//!< for this packet
+	fr_io_address_t   	*address;	//!< of this packet.. shared between multiple packets
+	struct fr_io_client_t	*client;	//!< for this packet
 	uint8_t				packet[20];	//!< original RADIUS packet.
-} proto_radius_track_t;
+} fr_io_track_t;
 
 /** A saved packet
  *
@@ -65,10 +65,10 @@ typedef struct {
 	int			heap_id;
 	uint32_t		priority;
 	fr_time_t		recv_time;
-	proto_radius_track_t	*track;
+	fr_io_track_t	*track;
 	uint8_t			*buffer;
 	size_t			buffer_len;
-} proto_radius_pending_packet_t;
+} fr_io_pending_packet_t;
 
 
 /** Client states
@@ -81,13 +81,13 @@ typedef enum {
 	PR_CLIENT_DYNAMIC,				//!< dynamically defined client
 	PR_CLIENT_CONNECTED,				//!< dynamically defined client in a connected socket
 	PR_CLIENT_PENDING,				//!< dynamic client pending definition
-} proto_radius_client_state_t;
+} fr_io_client_state_t;
 
 /** Client definitions for proto_radius
  *
  */
-typedef struct proto_radius_client_t {
-	proto_radius_client_state_t	state;		//!< state of this client
+typedef struct fr_io_client_t {
+	fr_io_client_state_t	state;		//!< state of this client
 	fr_ipaddr_t			src_ipaddr;	//!< packets come from this address
 	fr_ipaddr_t			network;	//!< network for dynamic clients
 	RADCLIENT			*radclient;	//!< old-style definition of this client
@@ -109,7 +109,7 @@ typedef struct proto_radius_client_t {
 
 	pthread_mutex_t			mutex;		//!< for parent / child signaling
 	fr_hash_table_t			*ht;		//!< for tracking connected sockets
-} proto_radius_client_t;
+} fr_io_client_t;
 
 /** Track a connection
  *
@@ -128,10 +128,10 @@ typedef struct {
 	int				magic;		//!< sparkles and unicorns
 	char const			*name;		//!< taken from proto_radius_TRANSPORT
 	int				packets;	//!< number of packets using this connection
-	proto_radius_address_t   	*address;      	//!< full information about the connection.
+	fr_io_address_t   	*address;      	//!< full information about the connection.
 	fr_listen_t			*listen;	//!< listener for this socket
-	proto_radius_client_t		*client;	//!< our local client (pending or connected).
-	proto_radius_client_t		*parent;	//!< points to the parent client.
+	fr_io_client_t		*client;	//!< our local client (pending or connected).
+	fr_io_client_t		*parent;	//!< points to the parent client.
 	dl_instance_t   		*dl_inst;	//!< for submodule
 
 	bool				dead;		//!< roundabout way to get the network side to close a socket
@@ -140,13 +140,13 @@ typedef struct {
 	void				*app_io_instance; //!< as described
 	fr_event_list_t			*el;		//!< event list for this connection
 	fr_network_t			*nr;		//!< network for this connection
-} proto_radius_connection_t;
+} fr_io_connection_t;
 
-typedef int (*proto_radius_connection_set_t)(void *instance, proto_radius_connection_t *connection);
+typedef int (*fr_io_connection_set_t)(void *instance, fr_io_connection_t *connection);
 typedef void (*proto_radius_network_get_t)(void *instance, int *ipproto, bool *dynamic_clients, fr_trie_t const **trie);
 
 typedef struct {
-	proto_radius_connection_set_t	connection_set;
+	fr_io_connection_set_t	connection_set;
 	proto_radius_network_get_t	network_get;
 } proto_radius_app_io_t;
 

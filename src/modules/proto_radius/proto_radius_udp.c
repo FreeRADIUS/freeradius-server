@@ -65,7 +65,7 @@ typedef struct proto_radius_udp_t {
 	fr_ipaddr_t			*allow;			//!< allowed networks for dynamic clients
 	fr_ipaddr_t			*deny;			//!< denied networks for dynamic clients
 
-	proto_radius_connection_t	*connection;		//!< for connected sockets.
+	fr_io_connection_t	*connection;		//!< for connected sockets.
 
 } proto_radius_udp_t;
 
@@ -102,7 +102,7 @@ static const CONF_PARSER udp_listen_config[] = {
 static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time, uint8_t *buffer, size_t buffer_len, size_t *leftover, UNUSED uint32_t *priority, UNUSED bool *is_dup)
 {
 	proto_radius_udp_t		*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
-	proto_radius_address_t		*address, **address_p;
+	fr_io_address_t		*address, **address_p;
 
 	int				flags;
 	ssize_t				data_size;
@@ -118,7 +118,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	 *	Where the addresses should go.  This is a special case
 	 *	for proto_radius.
 	 */
-	address_p = (proto_radius_address_t **) packet_ctx;
+	address_p = (fr_io_address_t **) packet_ctx;
 	address = *address_p;
 	recv_time_p = *recv_time;
 
@@ -188,8 +188,8 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			 UNUSED fr_time_t request_time, uint8_t *buffer, size_t buffer_len)
 {
 	proto_radius_udp_t		*inst = talloc_get_type_abort(instance, proto_radius_udp_t);
-	proto_radius_track_t		*track = talloc_get_type_abort(packet_ctx, proto_radius_track_t);
-	proto_radius_address_t		*address = track->address;
+	fr_io_track_t		*track = talloc_get_type_abort(packet_ctx, fr_io_track_t);
+	fr_io_address_t		*address = track->address;
 
 	int				flags;
 	ssize_t				data_size;
@@ -277,7 +277,7 @@ static int mod_close(void *instance)
 }
 
 
-static int mod_connection_set(void *instance, proto_radius_connection_t *connection)
+static int mod_connection_set(void *instance, fr_io_connection_t *connection)
 {
 	proto_radius_udp_t *inst = talloc_get_type_abort(instance, proto_radius_udp_t);
 

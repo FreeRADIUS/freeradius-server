@@ -47,8 +47,8 @@ static fr_event_update_t resume_read[] = {
  */
 static int pending_packet_cmp(void const *one, void const *two)
 {
-	proto_radius_pending_packet_t const *a = one;
-	proto_radius_pending_packet_t const *b = two;
+	fr_io_pending_packet_t const *a = one;
+	fr_io_pending_packet_t const *b = two;
 	int rcode;
 
 	/*
@@ -78,11 +78,11 @@ static int pending_packet_cmp(void const *one, void const *two)
  */
 static int pending_client_cmp(void const *one, void const *two)
 {
-	proto_radius_pending_packet_t const *a;
-	proto_radius_pending_packet_t const *b;
+	fr_io_pending_packet_t const *a;
+	fr_io_pending_packet_t const *b;
 
-	proto_radius_client_t const *c1 = one;
-	proto_radius_client_t const *c2 = two;
+	fr_io_client_t const *c1 = one;
+	fr_io_client_t const *c2 = two;
 
 	a = fr_heap_peek(c1->pending);
 	b = fr_heap_peek(c2->pending);
@@ -97,8 +97,8 @@ static int pending_client_cmp(void const *one, void const *two)
 static int address_cmp(void const *one, void const *two)
 {
 	int rcode;
-	proto_radius_address_t const *a = one;
-	proto_radius_address_t const *b = two;
+	fr_io_address_t const *a = one;
+	fr_io_address_t const *b = two;
 
 	rcode = (a->src_port - b->src_port);
 	if (rcode != 0) return rcode;
@@ -118,7 +118,7 @@ static int address_cmp(void const *one, void const *two)
 static uint32_t connection_hash(void const *ctx)
 {
 	uint32_t hash;
-	proto_radius_connection_t const *c = ctx;
+	fr_io_connection_t const *c = ctx;
 
 	hash = fr_hash(&c->address->src_ipaddr, sizeof(c->address->src_ipaddr));
 	hash = fr_hash_update(&c->address->src_port, sizeof(c->address->src_port), hash);
@@ -132,8 +132,8 @@ static uint32_t connection_hash(void const *ctx)
 
 static int connection_cmp(void const *one, void const *two)
 {
-	proto_radius_connection_t const *a = one;
-	proto_radius_connection_t const *b = two;
+	fr_io_connection_t const *a = one;
+	fr_io_connection_t const *b = two;
 
 	return address_cmp(a->address, b->address);
 }
@@ -141,8 +141,8 @@ static int connection_cmp(void const *one, void const *two)
 
 static int track_cmp(void const *one, void const *two)
 {
-	proto_radius_track_t const *a = one;
-	proto_radius_track_t const *b = two;
+	fr_io_track_t const *a = one;
+	fr_io_track_t const *b = two;
 	int rcode;
 
 	/*
@@ -171,10 +171,10 @@ static int track_cmp(void const *one, void const *two)
 }
 
 
-static proto_radius_pending_packet_t *pending_packet_pop(proto_radius_t *inst)
+static fr_io_pending_packet_t *pending_packet_pop(proto_radius_t *inst)
 {
-	proto_radius_client_t *client;
-	proto_radius_pending_packet_t *pending;
+	fr_io_client_t *client;
+	fr_io_pending_packet_t *pending;
 
 	client = fr_heap_pop(inst->pending_clients);
 	if (!client) {
@@ -210,12 +210,12 @@ static proto_radius_pending_packet_t *pending_packet_pop(proto_radius_t *inst)
  *
  *  Called ONLY from the master socket.
  */
-static proto_radius_connection_t *proto_radius_connection_alloc(proto_radius_t *inst, proto_radius_client_t *client,
-								proto_radius_address_t *address,
-								proto_radius_connection_t *nak)
+static fr_io_connection_t *fr_io_connection_alloc(proto_radius_t *inst, fr_io_client_t *client,
+								fr_io_address_t *address,
+								fr_io_connection_t *nak)
 {
 	int rcode;
-	proto_radius_connection_t *connection;
+	fr_io_connection_t *connection;
 	dl_instance_t *dl_inst = NULL;
 	fr_listen_t *listen;
 	RADCLIENT *radclient;
@@ -239,15 +239,15 @@ static proto_radius_connection_t *proto_radius_connection_alloc(proto_radius_t *
 		dl_inst = talloc_init("nak");
 	}
 
-	MEM(connection = talloc_zero(dl_inst, proto_radius_connection_t));
+	MEM(connection = talloc_zero(dl_inst, fr_io_connection_t));
 	MEM(connection->address = talloc_memdup(connection, address, sizeof(*address)));
-	(void) talloc_set_name_const(connection->address, "proto_radius_address_t");
+	(void) talloc_set_name_const(connection->address, "fr_io_address_t");
 
 	connection->magic = PR_CONNECTION_MAGIC;
 	connection->parent = client;
 	connection->dl_inst = dl_inst;
 
-	MEM(connection->client = talloc_zero(connection, proto_radius_client_t));
+	MEM(connection->client = talloc_zero(connection, fr_io_client_t));
 	MEM(connection->client->radclient = radclient = client_clone(connection->client, client->radclient));
 	connection->client->heap_id = -1;
 	connection->client->connected = true;
@@ -258,7 +258,7 @@ static proto_radius_connection_t *proto_radius_connection_alloc(proto_radius_t *
 	 *	#todo - unify the code with static clients?
 	 */
 	if (inst->app_io->track_duplicates) {
-		MEM(connection->client->table = rbtree_talloc_create(client, track_cmp, proto_radius_track_t,
+		MEM(connection->client->table = rbtree_talloc_create(client, track_cmp, fr_io_track_t,
 								     NULL, RBTREE_FLAG_NONE));
 	}
 
@@ -282,7 +282,7 @@ static proto_radius_connection_t *proto_radius_connection_alloc(proto_radius_t *
 	 *	client.
 	 */
 	MEM(connection->client->pending = fr_heap_create(connection->client, pending_packet_cmp,
-							 proto_radius_pending_packet_t, heap_id));
+							 fr_io_pending_packet_t, heap_id));
 
 	/*
 	 *	Clients for connected sockets are always a /32 or /128.
@@ -427,10 +427,10 @@ static proto_radius_connection_t *proto_radius_connection_alloc(proto_radius_t *
  *	And here we go into the rabbit hole...
  *
  *	@todo future - have a similar structure
- *	proto_radius_connection_io, which will duplicate some code,
+ *	fr_io_connection_io, which will duplicate some code,
  *	but may make things simpler?
  */
-static void get_inst(void *instance, proto_radius_t **inst, proto_radius_connection_t **connection,
+static void get_inst(void *instance, proto_radius_t **inst, fr_io_connection_t **connection,
 		     void **app_io_instance)
 {
 	int magic;
@@ -451,7 +451,7 @@ static void get_inst(void *instance, proto_radius_t **inst, proto_radius_connect
 }
 
 
-static RADCLIENT *proto_radius_radclient_alloc(proto_radius_t *inst, proto_radius_address_t *address)
+static RADCLIENT *proto_radius_radclient_alloc(proto_radius_t *inst, fr_io_address_t *address)
 {
 	RADCLIENT *client;
 	char src_buf[128];
@@ -475,11 +475,11 @@ static RADCLIENT *proto_radius_radclient_alloc(proto_radius_t *inst, proto_radiu
 }
 
 
-static proto_radius_track_t *proto_radius_track_add(proto_radius_client_t *client,
-						    proto_radius_address_t *address,
+static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
+						    fr_io_address_t *address,
 						    uint8_t const *packet, fr_time_t recv_time, bool *is_dup)
 {
-	proto_radius_track_t my_track, *track = NULL;
+	fr_io_track_t my_track, *track = NULL;
 
 	my_track.address = address;
 	my_track.client = client;
@@ -489,16 +489,16 @@ static proto_radius_track_t *proto_radius_track_add(proto_radius_client_t *clien
 	if (!track) {
 		*is_dup = false;
 
-		MEM(track = talloc_zero(client, proto_radius_track_t));
-		talloc_get_type_abort(track, proto_radius_track_t);
+		MEM(track = talloc_zero(client, fr_io_track_t));
+		talloc_get_type_abort(track, fr_io_track_t);
 
-		MEM(track->address = talloc_zero(track, proto_radius_address_t));
+		MEM(track->address = talloc_zero(track, fr_io_address_t));
 		memcpy(track->address, address, sizeof(*address));
 		track->address->radclient = client->radclient;
 
 		track->client = client;
 		if (client->connected) {
-			proto_radius_connection_t *connection = talloc_parent(client);
+			fr_io_connection_t *connection = talloc_parent(client);
 
 			track->address = connection->address;
 		}
@@ -509,7 +509,7 @@ static proto_radius_track_t *proto_radius_track_add(proto_radius_client_t *clien
 		return track;
 	}
 
-	talloc_get_type_abort(track, proto_radius_track_t);
+	talloc_get_type_abort(track, fr_io_track_t);
 
 	/*
 	 *	Is it exactly the same packet?
@@ -562,9 +562,9 @@ static proto_radius_track_t *proto_radius_track_add(proto_radius_client_t *clien
 	return track;
 }
 
-static int pending_free(proto_radius_pending_packet_t *pending)
+static int pending_free(fr_io_pending_packet_t *pending)
 {
-	proto_radius_track_t *track = pending->track;
+	fr_io_track_t *track = pending->track;
 
 	/*
 	 *	Note that we don't check timestamps, replies, etc.  If
@@ -591,14 +591,14 @@ static int pending_free(proto_radius_pending_packet_t *pending)
 	return 0;
 }
 
-static proto_radius_pending_packet_t *proto_radius_pending_alloc(proto_radius_client_t *client,
+static fr_io_pending_packet_t *proto_radius_pending_alloc(fr_io_client_t *client,
 								 uint8_t const *buffer, size_t packet_len,
-								 proto_radius_track_t *track,
+								 fr_io_track_t *track,
 								 int priority)
 {
-	proto_radius_pending_packet_t *pending;
+	fr_io_pending_packet_t *pending;
 
-	MEM(pending = talloc_zero(client->pending, proto_radius_pending_packet_t));
+	MEM(pending = talloc_zero(client->pending, fr_io_pending_packet_t));
 
 	MEM(pending->buffer = talloc_memdup(pending, buffer, packet_len));
 	pending->buffer_len = packet_len;
@@ -637,7 +637,7 @@ static proto_radius_pending_packet_t *proto_radius_pending_alloc(proto_radius_cl
  */
 static int count_connections(void *ctx, UNUSED uint8_t const *key, UNUSED int keylen, void *data)
 {
-	proto_radius_client_t *client = data;
+	fr_io_client_t *client = data;
 	int connections;
 
 	/*
@@ -667,11 +667,11 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	proto_radius_t *inst;
 	ssize_t packet_len;
 	fr_time_t recv_time;
-	proto_radius_client_t *client;
-	proto_radius_address_t address;
-	proto_radius_connection_t my_connection, *connection;
-	proto_radius_pending_packet_t *pending;
-	proto_radius_track_t *track;
+	fr_io_client_t *client;
+	fr_io_address_t address;
+	fr_io_connection_t my_connection, *connection;
+	fr_io_pending_packet_t *pending;
+	fr_io_track_t *track;
 	void *app_io_instance;
 
 	get_inst(instance, &inst, &connection, &app_io_instance);
@@ -759,7 +759,7 @@ redo:
 		goto have_client;
 
 	} else {
-		proto_radius_address_t *local_address = &address;
+		fr_io_address_t *local_address = &address;
 		fr_time_t *local_recv_time = &recv_time;
 
 		/*
@@ -839,7 +839,7 @@ redo:
 	 */
 	if (!client) {
 		RADCLIENT *radclient = NULL;
-		proto_radius_client_state_t state;
+		fr_io_client_state_t state;
 		fr_ipaddr_t const *network = NULL;
 		char src_buf[128];
 
@@ -897,7 +897,7 @@ redo:
 		 *	holds our state which really shouldn't go into
 		 *	RADCLIENT.
 		 */
-		MEM(client = talloc_zero(inst, proto_radius_client_t));
+		MEM(client = talloc_zero(inst, fr_io_client_t));
 		client->state = state;
 		client->src_ipaddr = radclient->ipaddr;
 		client->radclient = radclient;
@@ -923,14 +923,14 @@ redo:
 		 */
 		if (state == PR_CLIENT_PENDING) {
 			MEM(client->pending = fr_heap_create(client, pending_packet_cmp,
-							     proto_radius_pending_packet_t, heap_id));
+							     fr_io_pending_packet_t, heap_id));
 		}
 
 		/*
 		 *	Create the packet tracking table for this client.
 		 */
 		if (inst->app_io->track_duplicates) {
-			MEM(client->table = rbtree_talloc_create(client, track_cmp, proto_radius_track_t,
+			MEM(client->table = rbtree_talloc_create(client, track_cmp, fr_io_track_t,
 								 NULL, RBTREE_FLAG_NONE));
 		}
 
@@ -989,7 +989,7 @@ have_client:
 		 *	"live" packets.
 		 */
 		if (!track) {
-			track = proto_radius_track_add(client, &address, buffer, recv_time, is_dup);
+			track = fr_io_track_add(client, &address, buffer, recv_time, is_dup);
 			if (!track) {
 				DEBUG("Failed tracking packet from client %s - discarding it.", client->radclient->shortname);
 				return 0;
@@ -1138,7 +1138,7 @@ have_client:
 			}
 		}
 
-		connection = proto_radius_connection_alloc(inst, client, &address, NULL);
+		connection = fr_io_connection_alloc(inst, client, &address, NULL);
 		if (!connection) {
 			DEBUG("Failed to allocate connection from client %s.  Discarding packet.", client->radclient->shortname);
 			return 0;
@@ -1185,9 +1185,9 @@ static int mod_inject(void *instance, uint8_t *buffer, size_t buffer_len, fr_tim
 	size_t		packet_len;
 	decode_fail_t	reason;
 	bool		is_dup = false;
-	proto_radius_connection_t *connection;
-	proto_radius_pending_packet_t *pending;
-	proto_radius_track_t *track;
+	fr_io_connection_t *connection;
+	fr_io_pending_packet_t *pending;
+	fr_io_track_t *track;
 
 	get_inst(instance, &inst, &connection, NULL);
 
@@ -1234,14 +1234,14 @@ static int mod_inject(void *instance, uint8_t *buffer, size_t buffer_len, fr_tim
 	/*
 	 *	Track this packet, because that's what mod_read expects.
 	 */
-	track = proto_radius_track_add(connection->client, connection->address, buffer,
+	track = fr_io_track_add(connection->client, connection->address, buffer,
 				       recv_time, &is_dup);
 	if (!track) {
 		DEBUG2("Failed injecting packet to tracking table");
 		return -1;
 	}
 
-	talloc_get_type_abort(track, proto_radius_track_t);
+	talloc_get_type_abort(track, fr_io_track_t);
 
 	/*
 	 *	@todo future - what to do with duplicates?
@@ -1269,7 +1269,7 @@ static int mod_inject(void *instance, uint8_t *buffer, size_t buffer_len, fr_tim
 static int mod_fd(void const *const_instance)
 {
 	proto_radius_t *inst;
-	proto_radius_connection_t *connection;
+	fr_io_connection_t *connection;
 	void *app_io_instance;
 	void *instance;
 
@@ -1289,7 +1289,7 @@ static int mod_fd(void const *const_instance)
 static void mod_event_list_set(void *instance, fr_event_list_t *el, void *nr)
 {
 	proto_radius_t *inst;
-	proto_radius_connection_t *connection;
+	fr_io_connection_t *connection;
 	void *app_io_instance;
 
 	get_inst(instance, &inst, &connection, &app_io_instance);
@@ -1341,9 +1341,9 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el, void *nr)
 
 static void client_expiry_timer(fr_event_list_t *el, struct timeval *now, void *uctx)
 {
-	proto_radius_client_t *client = uctx;
+	fr_io_client_t *client = uctx;
 	proto_radius_t *inst;
-	proto_radius_connection_t *connection;
+	fr_io_connection_t *connection;
 	struct timeval when;
 	struct timeval *delay;
 	int packets, connections;
@@ -1402,7 +1402,7 @@ static void client_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 		 *	parents list of connections, and delete it.
 		 */
 		if (connection) {
-			proto_radius_client_t *parent = connection->parent;
+			fr_io_client_t *parent = connection->parent;
 
 			pthread_mutex_lock(&parent->mutex);
 			(void) fr_hash_table_delete(parent->ht, connection);
@@ -1548,8 +1548,8 @@ reset_timer:
 
 static void packet_expiry_timer(fr_event_list_t *el, struct timeval *now, void *uctx)
 {
-	proto_radius_track_t *track = talloc_get_type_abort(uctx, proto_radius_track_t);
-	proto_radius_client_t *client = track->client;
+	fr_io_track_t *track = talloc_get_type_abort(uctx, fr_io_track_t);
+	fr_io_client_t *client = track->client;
 	proto_radius_t *inst = client->inst;
 
 	/*
@@ -1627,9 +1627,9 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			 fr_time_t request_time, uint8_t *buffer, size_t buffer_len)
 {
 	proto_radius_t *inst;
-	proto_radius_connection_t *connection;
-	proto_radius_track_t *track = packet_ctx;
-	proto_radius_client_t *client;
+	fr_io_connection_t *connection;
+	fr_io_track_t *track = packet_ctx;
+	fr_io_client_t *client;
 	RADCLIENT *radclient;
 	void *app_io_instance;
 	int packets;
@@ -1746,7 +1746,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		 *	too.
 		 */
 		if (connection) {
-			connection = proto_radius_connection_alloc(inst, client, connection->address, connection);
+			connection = fr_io_connection_alloc(inst, client, connection->address, connection);
 			client_expiry_timer(connection->el, NULL, connection->client);
 
 			errno = ECONNREFUSED;
@@ -1943,7 +1943,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	 */
 	if (!inst->pending_clients) {		
 		MEM(inst->pending_clients = fr_heap_create(client, pending_client_cmp,
-							   proto_radius_client_t, heap_id));
+							   fr_io_client_t, heap_id));
 	}
 
 	rad_assert(client->heap_id < 0);
@@ -1985,7 +1985,7 @@ reread:
 static int mod_close(void *instance)
 {
 	proto_radius_t *inst;
-	proto_radius_connection_t *connection;
+	fr_io_connection_t *connection;
 	void *app_io_instance;
 	int rcode;
 
@@ -2013,7 +2013,7 @@ static int mod_close(void *instance)
 static int mod_detach(void *instance)
 {
 	proto_radius_t *inst;
-	proto_radius_connection_t *connection;
+	fr_io_connection_t *connection;
 	void *app_io_instance;
 	int rcode;
 

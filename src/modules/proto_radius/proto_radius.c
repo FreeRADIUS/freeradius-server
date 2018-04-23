@@ -260,8 +260,8 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
 static int mod_decode(void const *instance, REQUEST *request, uint8_t *const data, size_t data_len)
 {
 	proto_radius_t const *inst = talloc_get_type_abort_const(instance, proto_radius_t);
-	proto_radius_track_t const *track = talloc_get_type_abort_const(request->async->packet_ctx, proto_radius_track_t);
-	proto_radius_address_t *address = track->address;
+	fr_io_track_t const *track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
+	fr_io_address_t *address = track->address;
 	RADCLIENT const *client;
 
 	rad_assert(data[0] < FR_MAX_PACKET_CODE);
@@ -374,8 +374,8 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
 {
 	proto_radius_t const *inst = talloc_get_type_abort_const(instance, proto_radius_t);
-	proto_radius_track_t const *track = talloc_get_type_abort_const(request->async->packet_ctx, proto_radius_track_t);
-	proto_radius_address_t *address = track->address;
+	fr_io_track_t const *track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
+	fr_io_address_t *address = track->address;
 	ssize_t data_len;
 	RADCLIENT const *client;
 
@@ -475,7 +475,7 @@ static void mod_process_set(void const *instance, REQUEST *request)
 {
 	proto_radius_t const *inst = talloc_get_type_abort_const(instance, proto_radius_t);
 	fr_io_process_t process;
-	proto_radius_track_t *track = request->async->packet_ctx;
+	fr_io_track_t *track = request->async->packet_ctx;
 
 	rad_assert(request->packet->code != 0);
 	rad_assert(request->packet->code <= FR_CODE_MAX);
