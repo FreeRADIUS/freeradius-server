@@ -391,7 +391,7 @@ static proto_radius_connection_t *proto_radius_connection_alloc(proto_radius_t *
 	pthread_mutex_unlock(&client->mutex);
 	
 	if (rcode < 0) {
-		ERROR("proto_radius - Failed inserting connection into tracking table.  Closing it, and diuscarding all packets for connection %s.", connection->name);
+		ERROR("proto_%s - Failed inserting connection into tracking table.  Closing it, and discarding all packets for connection %s.", inst->app_io->name, connection->name);
 		goto cleanup;
 	}
 
@@ -406,10 +406,10 @@ static proto_radius_connection_t *proto_radius_connection_alloc(proto_radius_t *
 		return connection;
 	}
 
-	DEBUG("proto_radius - starting connection %s", connection->name);
+	DEBUG("proto_%s - starting connection %s", inst->app_io->name, connection->name);
 	connection->nr = fr_schedule_socket_add(inst->sc, connection->listen);
 	if (!connection->nr) {
-		ERROR("proto_radius - Failed inserting connection into scheduler.  Closing it, and diuscarding all packets for connection %s.", connection->name);
+		ERROR("proto_%s - Failed inserting connection into scheduler.  Closing it, and diuscarding all packets for connection %s.", inst->app_io->name, connection->name);
 		pthread_mutex_lock(&client->mutex);
 		(void) fr_hash_table_delete(client->ht, connection);
 		pthread_mutex_unlock(&client->mutex);
@@ -802,14 +802,15 @@ redo:
 
 			fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(address.src_ipaddr), 0);
 
-			DEBUG2("proto_radius - ignoring packet %d from IP %s. It is not configured as 'type = ...'",
-			       buffer[0], src_buf);
+			DEBUG2("proto_%s - ignoring packet %d from IP %s. It is not configured as 'type = ...'",
+			       inst->app_io->name, buffer[0], src_buf);
 			return 0;
 		}
 
 		*priority = inst->priorities[buffer[0]];
-		if (connection) DEBUG2("proto_radius - Received %s ID %d length %d from connection %s",
-				       fr_packet_codes[buffer[0]], buffer[1], (int) packet_len, connection->name);
+		if (connection) DEBUG2("proto_%s - Received %s ID %d length %d from connection %s",
+				       inst->app_io->name, fr_packet_codes[buffer[0]], buffer[1],
+				       (int) packet_len, connection->name);
 	}
 
 	/*
@@ -860,8 +861,8 @@ redo:
 		} else if (inst->dynamic_clients) {
 			if (inst->max_clients && (inst->num_clients >= inst->max_clients)) {
 				fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(address.src_ipaddr), 0);
-				DEBUG("proto_radius - ignoring packet code %d from client IP address %s - too many dynamic clients are defined",
-				      buffer[0], src_buf);
+				DEBUG("proto_%s - ignoring packet code %d from client IP address %s - too many dynamic clients are defined",
+				      inst->app_io->name, buffer[0], src_buf);
 				return 0;
 			}
 
@@ -886,8 +887,8 @@ redo:
 		} else {
 		ignore:
 			fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(address.src_ipaddr), 0);
-			DEBUG("proto_radius - ignoring packet code %d from unknown client IP address %s",
-			      buffer[0], src_buf);
+			DEBUG("proto_%s - ignoring packet code %d from unknown client IP address %s",
+			      inst->app_io->name, buffer[0], src_buf);
 			return 0;
 		}
 
@@ -949,7 +950,7 @@ redo:
 		 *	allowed clients.
 		 */
 		if (fr_trie_insert(inst->trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix, client)) {
-			ERROR("proto_radius - Failed inserting client %s into tracking table.  Discarding client, and all packts for it.", client->radclient->shortname);
+			ERROR("proto_%s - Failed inserting client %s into tracking table.  Discarding client, and all packts for it.", inst->app_io->name, client->radclient->shortname);
 			talloc_free(client);
 			return -1;
 		}
@@ -1502,9 +1503,9 @@ idle_timeout:
 		 */
 		if (client->ready_to_delete) {
 			if (connection) {
-				DEBUG("proto_radius - idle timeout for connection %s", connection->name);
+				DEBUG("proto_%s - idle timeout for connection %s", inst->app_io->name, connection->name);
 			} else {
-				DEBUG("proto_radius - idle timeout for client %s", client->radclient->shortname);
+				DEBUG("proto_%s - idle timeout for client %s", inst->app_io->name, client->radclient->shortname);
 			}
 			goto delete_client;
 		}
@@ -1536,8 +1537,8 @@ reset_timer:
 
 	if (fr_event_timer_insert(client, el, &client->ev,
 				  &when, client_expiry_timer, client) < 0) {
-		ERROR("proto_radius - Failed adding timeout for dynamic client %s.  It will be permanent!",
-			client->radclient->shortname);
+		ERROR("proto_%s - Failed adding timeout for dynamic client %s.  It will be permanent!",
+		      inst->app_io->name, client->radclient->shortname);
 		return;
 	}
 
@@ -1568,7 +1569,8 @@ static void packet_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 			return;
 		}
 
-		DEBUG("proto_radius - Failed adding cleanup_delay for packet.  Discarding packet immediately");
+		DEBUG("proto_%s - Failed adding cleanup_delay for packet.  Discarding packet immediately",
+			inst->app_io->name);
 	}
 
 	/*
@@ -1576,9 +1578,9 @@ static void packet_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 	 *	timeout ones.
 	 */
 	if (now) {
-		DEBUG2("TIMER - proto_radius cleanup delay for ID %d", track->packet[1]);
+		DEBUG2("TIMER - proto_%s - cleanup delay for ID %d", inst->app_io->name, track->packet[1]);
 	} else {
-		DEBUG2("proto_radius - cleaning up ID %d", track->packet[1]);
+		DEBUG2("proto_%s - cleaning up ID %d", inst->app_io->name, track->packet[1]);
 	}
 
 	/*
