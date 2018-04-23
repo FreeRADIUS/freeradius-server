@@ -155,7 +155,7 @@ server dynamic_clients {
 			#  If dynamic clients are not allowed, then
 			#  this section is ignored.
 			#
-			allow {
+			networks {
 				#
 				#  Allow packets from these networks
 				#  to define dynamic clients.
@@ -170,8 +170,25 @@ server dynamic_clients {
 				#  There is no limit to the number of
 				#  networks which can be listed here.
 				#
-				network = 127/8
-				network = 192.0.2/24
+				allow = 127/8
+				allow = 192.0.2/24
+
+				#
+				#  The default is to deny all networks
+				#  which are not in the "allow" list.
+				#
+				#  However, it may be useful to allow
+				#  a large range, and then deny a
+				#  subset of IPs in that range.  For
+				#  that situation, use a "deny"
+				#
+				#  In this example, 127.0.0.1 can be
+				#  used to define a dynamic client.
+				#  But the (hypothetical) 127.1.0.1
+				#  address cannot be usef to define
+				#  a dynamic client.
+				#
+				deny = 127.1/16
 			}
 		}
 	}

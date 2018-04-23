@@ -868,8 +868,16 @@ redo:
 				return 0;
 			}
 
+			/*
+			 *	Look up the allowed networks.
+			 */
 			network = fr_trie_lookup(inst->networks, &address.src_ipaddr.addr, address.src_ipaddr.prefix);
 			if (!network) goto ignore;
+
+			/*
+			 *	It exists, but it's a "deny" rule, ignore it.
+			 */
+			if (network->af == AF_UNSPEC) goto ignore;
 
 			/*
 			 *	Allocate our local radclient as a
