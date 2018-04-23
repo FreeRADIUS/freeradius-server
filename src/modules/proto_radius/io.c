@@ -257,8 +257,10 @@ static proto_radius_connection_t *proto_radius_connection_alloc(proto_radius_t *
 	 *
 	 *	#todo - unify the code with static clients?
 	 */
-	MEM(connection->client->table = rbtree_talloc_create(client, track_cmp, proto_radius_track_t,
-							     NULL, RBTREE_FLAG_NONE));
+	if (inst->app_io->track_duplicates) {
+		MEM(connection->client->table = rbtree_talloc_create(client, track_cmp, proto_radius_track_t,
+								     NULL, RBTREE_FLAG_NONE));
+	}
 
 	/*
 	 *	Set this radclient to be dynamic, and active.
@@ -477,13 +479,13 @@ static proto_radius_track_t *proto_radius_track_add(proto_radius_client_t *clien
 						    proto_radius_address_t *address,
 						    uint8_t const *packet, fr_time_t recv_time, bool *is_dup)
 {
-	proto_radius_track_t my_track, *track;
+	proto_radius_track_t my_track, *track = NULL;
 
 	my_track.address = address;
 	my_track.client = client;
 	memcpy(my_track.packet, packet, sizeof(my_track.packet));
 
-	track = rbtree_finddata(client->table, &my_track);
+	if (client->inst->app_io->track_duplicates) track = rbtree_finddata(client->table, &my_track);
 	if (!track) {
 		*is_dup = false;
 
@@ -580,7 +582,7 @@ static int pending_free(proto_radius_pending_packet_t *pending)
 	 *	delete it.
 	 */
 	if (track->packets == 0) {
-		(void) rbtree_deletebydata(track->client->table, track);
+		if (track->client->inst->app_io->track_duplicates) (void) rbtree_deletebydata(track->client->table, track);
 
 		// @todo - put this into a slab allocator
 		talloc_free(track);
@@ -926,8 +928,10 @@ redo:
 		/*
 		 *	Create the packet tracking table for this client.
 		 */
-		MEM(client->table = rbtree_talloc_create(client, track_cmp, proto_radius_track_t,
-							 NULL, RBTREE_FLAG_NONE));
+		if (inst->app_io->track_duplicates) {
+			MEM(client->table = rbtree_talloc_create(client, track_cmp, proto_radius_track_t,
+								 NULL, RBTREE_FLAG_NONE));
+		}
 
 		/*
 		 *	Allow connected sockets to be set on a
@@ -1584,7 +1588,7 @@ static void packet_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 	track->packets--;
 
 	if (track->packets == 0) {
-		(void) rbtree_deletebydata(client->table, track);
+		if (inst->app_io->track_duplicates) (void) rbtree_deletebydata(client->table, track);
 		talloc_free(track);
 
 	} else {
@@ -1722,7 +1726,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	 */
 	if (buffer_len == 1) {
 		client->state = PR_CLIENT_NAK;
-		talloc_free(client->table);
+		if (client->table) talloc_free(client->table);
 		talloc_free(client->pending);
 		rad_assert(client->packets == 0);
 
