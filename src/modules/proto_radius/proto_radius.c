@@ -838,7 +838,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	The listener is inside of a virtual server.
 	 */
 	inst->magic = PR_MAIN_MAGIC;
-	inst->io.server_cs = cf_item_to_section(cf_parent(conf));
 
 	/*
 	 *	Bootstrap the process modules
@@ -881,7 +880,20 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	if (!inst->io_submodule) return 0;
 
 	/*
-	 *	Bootstrap the I/O module
+	 *	Bootstrap the protocol agnostic IO handler.
+	 */
+	inst->io.server_cs = cf_item_to_section(cf_parent(conf));
+	inst->io.app = &proto_radius;
+	inst->io.app_instance = inst;
+
+	/*
+	 *	We will need this for dynamic clients and connected sockets.
+	 */
+	inst->io.dl_inst = dl_instance_find(inst);
+	rad_assert(inst != NULL);
+
+	/*
+	 *	Bootstrap the application IO handler.
 	 */
 	inst->app_io = (fr_app_io_t const *) inst->io_submodule->module->common;
 
@@ -898,16 +910,10 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	}
 
 	/*
-	 *	Get various information after bootstrapping the IO
-	 *	module.
+	 *	Get various information after bootstrapping the
+	 *	application IO module.
 	 */
 	inst->app_io_private->network_get(inst->app_io_instance, &inst->io.ipproto, &inst->io.dynamic_clients, &inst->io.networks);
-
-	/*
-	 *	We will need this for dynamic clients and connected sockets.
-	 */
-	inst->io.dl_inst = dl_instance_find(inst);
-	rad_assert(inst != NULL);
 
 	/*
 	 *	Load proto_radius_dynamic_client
@@ -927,6 +933,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		// check max_clients?
 	}
 
+	/*
+	 *	These timers are usually protocol specific.
+	 */
 	FR_TIMEVAL_BOUND_CHECK("idle_timeout", &inst->io.idle_timeout, >=, 1, 0);
 	FR_TIMEVAL_BOUND_CHECK("idle_timeout", &inst->io.idle_timeout, <=, 600, 0);
 

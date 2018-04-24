@@ -136,7 +136,6 @@ typedef struct {
 
 	bool				dead;		//!< roundabout way to get the network side to close a socket
 	bool				paused;		//!< event filter doesn't like resuming something that isn't paused
-
 	void				*app_io_instance; //!< as described
 	fr_event_list_t			*el;		//!< event list for this connection
 	fr_network_t			*nr;		//!< network for this connection
@@ -172,6 +171,9 @@ typedef struct {
 	bool				dynamic_clients;		//!< do we have dynamic clients.
 
 	CONF_SECTION			*server_cs;			//!< server CS for this listener
+
+	fr_app_t			*app;				//!< main protocol handler
+	void				*app_instance;			//!< instance data for main protocol handler
 
 	fr_listen_t const		*listen;			//!< The listener structure which describes
 									///< the I/O path.

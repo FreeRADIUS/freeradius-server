@@ -683,6 +683,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	fr_io_pending_packet_t *pending;
 	fr_io_track_t *track;
 	void *app_io_instance;
+	int value;
 
 	get_inst(instance, &inst, &connection, &app_io_instance);
 
@@ -802,7 +803,12 @@ redo:
 		}
 
 		rad_assert(packet_len >= 20);
-		rad_assert(inst->priorities[buffer[0]] != 0);
+
+		value = inst->io.app->priority(inst, buffer, packet_len);
+		if (value <= 0) {
+			return value;
+		}
+		*priority = value;
 
 		/*
 		 *	Not allowed?  Complain and discard it.
@@ -817,7 +823,6 @@ redo:
 			return 0;
 		}
 
-		*priority = inst->priorities[buffer[0]];
 		if (connection) DEBUG2("proto_%s - Received %s ID %d length %d from connection %s",
 				       inst->app_io->name, fr_packet_codes[buffer[0]], buffer[1],
 				       (int) packet_len, connection->name);
@@ -1192,6 +1197,7 @@ have_client:
 static int mod_inject(void *instance, uint8_t *buffer, size_t buffer_len, fr_time_t recv_time)
 {
 	proto_radius_t	*inst;
+	int		priority;
 	bool		is_dup = false;
 	fr_io_connection_t *connection;
 	fr_io_pending_packet_t *pending;
@@ -1201,6 +1207,11 @@ static int mod_inject(void *instance, uint8_t *buffer, size_t buffer_len, fr_tim
 
 	if (!connection) {
 		DEBUG2("Received injected packet for an unconnected socket.");
+		return -1;
+	}
+
+	priority = inst->io.app->priority(inst, buffer, buffer_len);
+	if (priority <= 0) {
 		return -1;
 	}
 	
@@ -1225,7 +1236,7 @@ static int mod_inject(void *instance, uint8_t *buffer, size_t buffer_len, fr_tim
 	 *	Remember to restore this packet later.
 	 */
 	pending = fr_io_pending_alloc(connection->client, buffer, buffer_len,
-				      track, inst->priorities[buffer[0]]);
+				      track, priority);
 	if (!pending) {
 		DEBUG2("Failed injecting packet due to allocation error");
 		return -1;
