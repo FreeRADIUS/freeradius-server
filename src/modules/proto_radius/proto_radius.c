@@ -37,13 +37,13 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER con
 static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, CONF_PARSER const *rule);
 
 static CONF_PARSER const limit_config[] = {
-	{ FR_CONF_OFFSET("cleanup_delay", FR_TYPE_TIMEVAL, proto_radius_t, cleanup_delay), .dflt = "5.0" } ,
-	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_TIMEVAL, proto_radius_t, idle_timeout), .dflt = "30.0" } ,
-	{ FR_CONF_OFFSET("nak_lifetime", FR_TYPE_TIMEVAL, proto_radius_t, nak_lifetime), .dflt = "30.0" } ,
+	{ FR_CONF_OFFSET("cleanup_delay", FR_TYPE_TIMEVAL, proto_radius_t, io.cleanup_delay), .dflt = "5.0" } ,
+	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_TIMEVAL, proto_radius_t, io.idle_timeout), .dflt = "30.0" } ,
+	{ FR_CONF_OFFSET("nak_lifetime", FR_TYPE_TIMEVAL, proto_radius_t, io.nak_lifetime), .dflt = "30.0" } ,
 
-	{ FR_CONF_OFFSET("max_connections", FR_TYPE_UINT32, proto_radius_t, max_connections), .dflt = "1024" } ,
-	{ FR_CONF_OFFSET("max_clients", FR_TYPE_UINT32, proto_radius_t, max_clients), .dflt = "256" } ,
-	{ FR_CONF_OFFSET("max_pending_packets", FR_TYPE_UINT32, proto_radius_t, max_pending_packets), .dflt = "256" } ,
+	{ FR_CONF_OFFSET("max_connections", FR_TYPE_UINT32, proto_radius_t, io.max_connections), .dflt = "1024" } ,
+	{ FR_CONF_OFFSET("max_clients", FR_TYPE_UINT32, proto_radius_t, io.max_clients), .dflt = "256" } ,
+	{ FR_CONF_OFFSET("max_pending_packets", FR_TYPE_UINT32, proto_radius_t, io.max_pending_packets), .dflt = "256" } ,
 
 	/*
 	 *	For performance tweaking.  NOT for normal humans.
@@ -249,7 +249,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CON
 	 *	necessary.
 	 */
 	inst = talloc_get_type_abort(parent_inst->data, proto_radius_t);
-	inst->transport = name;
+	inst->io.transport = name;
 
 	return dl_instance(ctx, out, transport_cs, parent_inst, name, DL_TYPE_SUBMODULE);
 }
@@ -480,7 +480,7 @@ static void mod_process_set(void const *instance, REQUEST *request)
 	rad_assert(request->packet->code != 0);
 	rad_assert(request->packet->code <= FR_CODE_MAX);
 
-	request->server_cs = inst->server_cs;
+	request->server_cs = inst->io.server_cs;
 
 	/*
 	 *	'track' can be NULL when there's no network listener.
@@ -528,7 +528,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 
 	listen->app = &proto_radius;
 	listen->app_instance = instance;
-	listen->server_cs = inst->server_cs;
+	listen->server_cs = inst->io.server_cs;
 
 	/*
 	 *	Set configurable parameters for message ring buffer.
@@ -564,11 +564,11 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 			return -1;
 		}
 	} else {
-		rad_assert(!inst->dynamic_clients);
+		rad_assert(!inst->io.dynamic_clients);
 	}
 
-	inst->listen = listen;	/* Probably won't need it, but doesn't hurt */
-	inst->sc = sc;
+	inst->io.listen = listen;	/* Probably won't need it, but doesn't hurt */
+	inst->io.sc = sc;
 
 	return 0;
 }
@@ -631,7 +631,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Instantiate proto_radius_dynamic_client
 	 */
-	if (inst->dynamic_clients) {
+	if (inst->io.dynamic_clients) {
 		fr_app_process_t const	*app_process;
 
 		app_process = (fr_app_process_t const *)inst->dynamic_submodule->module->common;
@@ -645,8 +645,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Create the trie of clients for this socket.
 	 */
-	inst->trie = fr_trie_alloc(inst);
-	if (!inst->trie) {
+	inst->io.trie = fr_trie_alloc(inst);
+	if (!inst->io.trie) {
 		cf_log_err(conf, "Instantiation failed for \"%s\"", inst->app_io->name);
 		return -1;
 	}
@@ -810,7 +810,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	The listener is inside of a virtual server.
 	 */
 	inst->magic = PR_MAIN_MAGIC;
-	inst->server_cs = cf_item_to_section(cf_parent(conf));
+	inst->io.server_cs = cf_item_to_section(cf_parent(conf));
 
 	/*
 	 *	Bootstrap the process modules
@@ -835,13 +835,13 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		 *	here by packet name, and doesn't need to troll
 		 *	through all of the listeners.
 		 */
-		if (!cf_data_find(inst->server_cs, fr_io_process_t, value)) {
+		if (!cf_data_find(inst->io.server_cs, fr_io_process_t, value)) {
 			fr_io_process_t *process_p;
 
-			process_p = talloc(inst->server_cs, fr_io_process_t);
+			process_p = talloc(inst->io.server_cs, fr_io_process_t);
 			*process_p = app_process->process;
 
-			(void) cf_data_add(inst->server_cs, process_p, value, NULL);
+			(void) cf_data_add(inst->io.server_cs, process_p, value, NULL);
 		}
 
 		i++;
@@ -873,20 +873,20 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	Get various information after bootstrapping the IO
 	 *	module.
 	 */
-	inst->app_io_private->network_get(inst->app_io_instance, &inst->ipproto, &inst->dynamic_clients, &inst->networks);
+	inst->app_io_private->network_get(inst->app_io_instance, &inst->io.ipproto, &inst->io.dynamic_clients, &inst->io.networks);
 
 	/*
 	 *	We will need this for dynamic clients and connected sockets.
 	 */
-	inst->dl_inst = dl_instance_find(inst);
+	inst->io.dl_inst = dl_instance_find(inst);
 	rad_assert(inst != NULL);
 
 	/*
 	 *	Load proto_radius_dynamic_client
 	 */
-	if (inst->dynamic_clients) {
+	if (inst->io.dynamic_clients) {
 		if (dl_instance(inst, &inst->dynamic_submodule,
-				conf, inst->dl_inst, "dynamic_client", DL_TYPE_SUBMODULE) < 0) {
+				conf, inst->io.dl_inst, "dynamic_client", DL_TYPE_SUBMODULE) < 0) {
 			cf_log_err(conf, "Failed finding proto_radius_dynamic_client");
 			return -1;
 		}
@@ -899,13 +899,13 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		// check max_clients?
 	}
 
-	FR_TIMEVAL_BOUND_CHECK("idle_timeout", &inst->idle_timeout, >=, 1, 0);
-	FR_TIMEVAL_BOUND_CHECK("idle_timeout", &inst->idle_timeout, <=, 600, 0);
+	FR_TIMEVAL_BOUND_CHECK("idle_timeout", &inst->io.idle_timeout, >=, 1, 0);
+	FR_TIMEVAL_BOUND_CHECK("idle_timeout", &inst->io.idle_timeout, <=, 600, 0);
 
-	FR_TIMEVAL_BOUND_CHECK("nak_lifetime", &inst->nak_lifetime, >=, 1, 0);
-	FR_TIMEVAL_BOUND_CHECK("nak_lifetime", &inst->nak_lifetime, <=, 600, 0);
+	FR_TIMEVAL_BOUND_CHECK("nak_lifetime", &inst->io.nak_lifetime, >=, 1, 0);
+	FR_TIMEVAL_BOUND_CHECK("nak_lifetime", &inst->io.nak_lifetime, <=, 600, 0);
 
-	FR_TIMEVAL_BOUND_CHECK("cleanup_delay", &inst->cleanup_delay, <=, 30, 0);
+	FR_TIMEVAL_BOUND_CHECK("cleanup_delay", &inst->io.cleanup_delay, <=, 30, 0);
 
 	/*
 	 *	Hide this for now.  It's only for people who know what

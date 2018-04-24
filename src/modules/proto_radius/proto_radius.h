@@ -152,12 +152,49 @@ typedef struct {
 
 extern fr_app_io_t proto_radius_master_io;
 
+typedef struct {
+	dl_instance_t const    		*dl_inst;			//!< our parent dl_inst
+
+	uint32_t			max_connections;		//!< maximum number of connections to allow
+	uint32_t			max_clients;			//!< maximum number of dynamic clients to allow
+	uint32_t			max_pending_packets;		//!< maximum number of pending packets
+
+	// @todo - count num_nak_clients, and num_nak_connections, too
+	uint32_t			num_connections;		//!< number of dynamic connections
+	uint32_t			num_clients;			//!< number of dynamic clients
+	uint32_t			num_pending_packets;   		//!< number of pending packets
+
+	struct timeval			cleanup_delay;			//!< for Access-Request packets
+	struct timeval			idle_timeout;			//!< for dynamic clients
+	struct timeval			nak_lifetime;			//!< lifetime of NAKed clients
+	struct timeval			check_interval;			//!< polling for closed sockets
+
+	bool				dynamic_clients;		//!< do we have dynamic clients.
+
+	CONF_SECTION			*server_cs;			//!< server CS for this listener
+
+	fr_listen_t const		*listen;			//!< The listener structure which describes
+									///< the I/O path.
+	fr_schedule_t			*sc;				//!< the scheduler
+
+	int				ipproto;			//!< IP proto by number
+	char const			*transport;			//!< transport, typically name of IP proto
+
+	fr_event_list_t			*el;				//!< event list, for the master socket.
+	fr_network_t			*nr;				//!< network for the master socket
+
+	fr_trie_t			*trie;				//!< trie of clients
+	fr_trie_t const			*networks;     			//!< trie of allowed networks
+	fr_heap_t			*pending_clients;		//!< heap of pending clients
+} fr_io_instance_t;
+
 /** An instance of a proto_radius listen section
  *
  */
 typedef struct proto_radius_t {
-	int				magic;		//!< sparkles and unicorns
-	CONF_SECTION			*server_cs;			//!< server CS for this listener
+	int				magic;				//!< sparkles and unicorns
+
+	fr_io_instance_t		io;				//!< wrapper for IO abstraction
 
 	dl_instance_t const    		*dl_inst;			//!< our dl_inst
 	dl_instance_t			*io_submodule;			//!< As provided by the transport_parse
@@ -176,39 +213,10 @@ typedef struct proto_radius_t {
 
 	uint32_t			max_packet_size;		//!< for message ring buffer.
 	uint32_t			num_messages;			//!< for message ring buffer.
-	uint32_t			max_connections;		//!< maximum number of connections to allow
-	uint32_t			max_clients;			//!< maximum number of dynamic clients to allow
-	uint32_t			max_pending_packets;		//!< maximum number of pending packets
-
-	// @todo - count num_nak_clients, and num_nak_connections, too
-	uint32_t			num_connections;		//!< number of dynamic connections
-	uint32_t			num_clients;			//!< number of dynamic clients
-	uint32_t			num_pending_packets;   		//!< number of pending packets
-
-	struct timeval			cleanup_delay;			//!< for Access-Request packets
-	struct timeval			idle_timeout;			//!< for dynamic clients
-	struct timeval			nak_lifetime;			//!< lifetime of NAKed clients
-	struct timeval			check_interval;			//!< polling for closed sockets
 
 	bool				tunnel_password_zeros;		//!< check for trailing zeroes in Tunnel-Password.
 
-	bool				dynamic_clients;		//!< do we have dynamic clients.
-
 	bool				code_allowed[FR_CODE_MAX + 1];	//!< Allowed packet codes.
-
-	fr_listen_t const		*listen;			//!< The listener structure which describes
-									///< the I/O path.
-	fr_schedule_t			*sc;				//!< the scheduler
-
-	int				ipproto;			//!< IP proto by number
-	char const			*transport;			//!< transport, typically name of IP proto
-
-	fr_event_list_t			*el;				//!< event list, for the master socket.
-	fr_network_t			*nr;				//!< network for the master socket
-
-	fr_trie_t			*trie;				//!< trie of clients
-	fr_trie_t const			*networks;     			//!< trie of allowed networks
-	fr_heap_t			*pending_clients;		//!< heap of pending clients
 
 	uint32_t			priorities[FR_MAX_PACKET_CODE];	//!< priorities for individual packets
 } proto_radius_t;

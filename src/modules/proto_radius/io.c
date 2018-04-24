@@ -176,15 +176,15 @@ static fr_io_pending_packet_t *pending_packet_pop(proto_radius_t *inst)
 	fr_io_client_t *client;
 	fr_io_pending_packet_t *pending;
 
-	client = fr_heap_pop(inst->pending_clients);
+	client = fr_heap_pop(inst->io.pending_clients);
 	if (!client) {
 		/*
 		 *	99% of the time we don't have pending clients.
 		 *	So we might as well free this, so that the
 		 *	caller doesn't keep checking us for every packet.
 		 */
-		talloc_free(inst->pending_clients);
-		inst->pending_clients = NULL;
+		talloc_free(inst->io.pending_clients);
+		inst->io.pending_clients = NULL;
 		return NULL;
 	}
 
@@ -196,11 +196,11 @@ static fr_io_pending_packet_t *pending_packet_pop(proto_radius_t *inst)
 	 *	the heap.
 	 */
 	if (fr_heap_num_elements(client->pending) > 0) {
-		(void) fr_heap_insert(inst->pending_clients, client);
+		(void) fr_heap_insert(inst->io.pending_clients, client);
 	}
 
-	rad_assert(inst->num_pending_packets > 0);
-	inst->num_pending_packets--;
+	rad_assert(inst->io.num_pending_packets > 0);
+	inst->io.num_pending_packets--;
 
 	return pending;
 }
@@ -230,8 +230,8 @@ static fr_io_connection_t *fr_io_connection_alloc(proto_radius_t *inst, fr_io_cl
 	 *	called when the instance data is freed.
 	 */
 	if (!nak) {
-		if (dl_instance(NULL, &dl_inst, NULL, inst->dl_inst, inst->transport, DL_TYPE_SUBMODULE) < 0) {
-			DEBUG("Failed to find proto_radius_%s", inst->transport);
+		if (dl_instance(NULL, &dl_inst, NULL, inst->io.dl_inst, inst->io.transport, DL_TYPE_SUBMODULE) < 0) {
+			DEBUG("Failed to find proto_radius_%s", inst->io.transport);
 			return NULL;
 		}
 		rad_assert(dl_inst != NULL);
@@ -350,7 +350,7 @@ static fr_io_connection_t *fr_io_connection_alloc(proto_radius_t *inst, fr_io_cl
 		 *	i.e. we can't add things to it.  Instead, we have to
 		 *	put all variable data into the connection.
 		 */
-		memcpy(listen, inst->listen, sizeof(*listen));
+		memcpy(listen, inst->io.listen, sizeof(*listen));
 
 		/*
 		 *	Glue in the connection to the listener.
@@ -407,7 +407,7 @@ static fr_io_connection_t *fr_io_connection_alloc(proto_radius_t *inst, fr_io_cl
 	}
 
 	DEBUG("proto_%s - starting connection %s", inst->app_io->name, connection->name);
-	connection->nr = fr_schedule_socket_add(inst->sc, connection->listen);
+	connection->nr = fr_schedule_socket_add(inst->io.sc, connection->listen);
 	if (!connection->nr) {
 		ERROR("proto_%s - Failed inserting connection into scheduler.  Closing it, and diuscarding all packets for connection %s.", inst->app_io->name, connection->name);
 		pthread_mutex_lock(&client->mutex);
@@ -468,7 +468,7 @@ static RADCLIENT *proto_radius_radclient_alloc(proto_radius_t *inst, fr_io_addre
 
 	client->src_ipaddr = address->dst_ipaddr;
 
-	client->proto = inst->ipproto;
+	client->proto = inst->io.ipproto;
 	client->dynamic = true;
 
 	return client;
@@ -591,7 +591,7 @@ static int pending_free(fr_io_pending_packet_t *pending)
 	return 0;
 }
 
-static fr_io_pending_packet_t *proto_radius_pending_alloc(fr_io_client_t *client,
+static fr_io_pending_packet_t *fr_io_pending_alloc(fr_io_client_t *client,
 								 uint8_t const *buffer, size_t packet_len,
 								 fr_io_track_t *track,
 								 int priority)
@@ -623,7 +623,7 @@ static fr_io_pending_packet_t *proto_radius_pending_alloc(fr_io_client_t *client
 	 *	we pause the FD, so the number of
 	 *	pending packets will always be small.
 	 */
-	if (!client->connected) client->inst->num_pending_packets++;
+	if (!client->connected) client->inst->io.num_pending_packets++;
 
 	return pending;
 }
@@ -698,7 +698,7 @@ redo:
 
 		pending = fr_heap_pop(connection->client->pending);
 
-	} else if (inst->pending_clients) {
+	} else if (inst->io.pending_clients) {
 		pending = pending_packet_pop(inst);
 
 	} else {
@@ -818,7 +818,7 @@ redo:
 	 *	connected socket).
 	 */
 	if (!connection) {
-		client = fr_trie_lookup(inst->trie, &address.src_ipaddr.addr, address.src_ipaddr.prefix);
+		client = fr_trie_lookup(inst->io.trie, &address.src_ipaddr.addr, address.src_ipaddr.prefix);
 		rad_assert(!client || !client->connected);
 
 	} else {
@@ -848,7 +848,7 @@ redo:
 		 */
 		rad_assert(!connection);
 
-		radclient = client_find(NULL, &address.src_ipaddr, inst->ipproto);
+		radclient = client_find(NULL, &address.src_ipaddr, inst->io.ipproto);
 		if (radclient) {
 			state = PR_CLIENT_STATIC;
 
@@ -858,8 +858,8 @@ redo:
 			MEM(radclient = client_clone(inst, radclient));
 			radclient->active = true;
 
-		} else if (inst->dynamic_clients) {
-			if (inst->max_clients && (inst->num_clients >= inst->max_clients)) {
+		} else if (inst->io.dynamic_clients) {
+			if (inst->io.max_clients && (inst->io.num_clients >= inst->io.max_clients)) {
 				fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(address.src_ipaddr), 0);
 				DEBUG("proto_%s - ignoring packet code %d from client IP address %s - too many dynamic clients are defined",
 				      inst->app_io->name, buffer[0], src_buf);
@@ -869,7 +869,7 @@ redo:
 			/*
 			 *	Look up the allowed networks.
 			 */
-			network = fr_trie_lookup(inst->networks, &address.src_ipaddr.addr, address.src_ipaddr.prefix);
+			network = fr_trie_lookup(inst->io.networks, &address.src_ipaddr.addr, address.src_ipaddr.prefix);
 			if (!network) goto ignore;
 
 			/*
@@ -949,14 +949,14 @@ redo:
 		 *	Add the newly defined client to the trie of
 		 *	allowed clients.
 		 */
-		if (fr_trie_insert(inst->trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix, client)) {
+		if (fr_trie_insert(inst->io.trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix, client)) {
 			ERROR("proto_%s - Failed inserting client %s into tracking table.  Discarding client, and all packts for it.", inst->app_io->name, client->radclient->shortname);
 			talloc_free(client);
 			return -1;
 		}
 
 		client->in_trie = true;
-		if (client->state == PR_CLIENT_PENDING) inst->num_clients++;
+		if (client->state == PR_CLIENT_PENDING) inst->io.num_clients++;
 	}
 
 have_client:
@@ -1016,7 +1016,7 @@ have_client:
 			 *	for connected sockets, we don't need
 			 *	to track pending packets.
 			 */
-			if (!connection && inst->max_pending_packets && (inst->num_pending_packets >= inst->max_pending_packets)) {
+			if (!connection && inst->io.max_pending_packets && (inst->io.num_pending_packets >= inst->io.max_pending_packets)) {
 				fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(client->src_ipaddr), 0);
 
 				DEBUG("Too many pending packets for client %s - discarding packet", src_buf);
@@ -1026,7 +1026,7 @@ have_client:
 			/*
 			 *	Allocate the pending packet structure.
 			 */
-			pending = proto_radius_pending_alloc(client, buffer, packet_len,
+			pending = fr_io_pending_alloc(client, buffer, packet_len,
 							     track, *priority);
 			if (!pending) {
 				fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(client->src_ipaddr), 0);
@@ -1081,7 +1081,7 @@ have_client:
 	 *	the state, the child socket will take care of handling
 	 *	the packet.  e.g. dynamic clients, etc.
 	 */
-	if (inst->ipproto == IPPROTO_UDP) {
+	if (inst->io.ipproto == IPPROTO_UDP) {
 		bool nak = false;
 
 		my_connection.address = &address;
@@ -1120,18 +1120,18 @@ have_client:
 	 *	No existing connection, create one.
 	 */
 	if (!connection) {
-		if (inst->max_connections) {
+		if (inst->io.max_connections) {
 			/*
 			 *	We've hit the connection limit.  Walk
 			 *	over all clients with connections, and
 			 *	count the number of connections used.
 			 */
-			if (inst->num_connections >= inst->max_connections) {
-				inst->num_connections = 0;
+			if (inst->io.num_connections >= inst->io.max_connections) {
+				inst->io.num_connections = 0;
 
-				(void) fr_trie_walk(inst->trie, &inst->num_connections, count_connections);
+				(void) fr_trie_walk(inst->io.trie, &inst->io.num_connections, count_connections);
 
-				if ((inst->num_connections + 1) >= inst->max_connections) {
+				if ((inst->io.num_connections + 1) >= inst->io.max_connections) {
 					DEBUG("Too many open connections.  Ignoring dynamic client %s.  Discarding packet.", client->radclient->shortname);
 					return 0;
 				}
@@ -1152,7 +1152,7 @@ have_client:
 		 *	limit, and then walk over the clients to reset
 		 *	the count.
 		 */
-		inst->num_connections++;
+		inst->io.num_connections++;
 	}
 
 	DEBUG("Sending packet to connection %s", connection->name);
@@ -1182,8 +1182,6 @@ have_client:
 static int mod_inject(void *instance, uint8_t *buffer, size_t buffer_len, fr_time_t recv_time)
 {
 	proto_radius_t	*inst;
-	size_t		packet_len;
-	decode_fail_t	reason;
 	bool		is_dup = false;
 	fr_io_connection_t *connection;
 	fr_io_pending_packet_t *pending;
@@ -1196,41 +1194,6 @@ static int mod_inject(void *instance, uint8_t *buffer, size_t buffer_len, fr_tim
 		return -1;
 	}
 	
-	/*
-	 *	We should still sanity check the packet.
-	 */
-	if (buffer_len < 20) {
-		DEBUG2("Failed injecting 'too short' packet size %zd", buffer_len);
-		return -1;
-	}
-
-	if ((buffer[0] == 0) || (buffer[0] > FR_MAX_PACKET_CODE)) {
-		DEBUG("Failed injecting invalid packet code %d", buffer[0]);
-		return -1;
-	}
-
-	if (!inst->process_by_code[buffer[0]]) {
-		DEBUG("Failed injecting unexpected packet code %d", buffer[0]);
-		return -1;
-	}
-
-	rad_assert(inst->priorities[buffer[0]] != 0);
-
-	/*
-	 *	Initialize the packet length.
-	 */
-	packet_len = buffer_len;
-
-	/*
-	 *	If it's not a RADIUS packet, ignore it.  Note that the
-	 *	transport reader SHOULD have already checked
-	 *	max_attributes.
-	 */
-	if (!fr_radius_ok(buffer, &packet_len, 0, false, &reason)) {
-		DEBUG2("Failed injecting malformed packet");
-		return -1;
-	}
-
 	/*
 	 *	Track this packet, because that's what mod_read expects.
 	 */
@@ -1251,8 +1214,8 @@ static int mod_inject(void *instance, uint8_t *buffer, size_t buffer_len, fr_tim
 	/*
 	 *	Remember to restore this packet later.
 	 */
-	pending = proto_radius_pending_alloc(connection->client, buffer, buffer_len,
-					     track, inst->priorities[buffer[0]]);
+	pending = fr_io_pending_alloc(connection->client, buffer, buffer_len,
+				      track, inst->priorities[buffer[0]]);
 	if (!pending) {
 		DEBUG2("Failed injecting packet due to allocation error");
 		return -1;
@@ -1297,7 +1260,7 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el, void *nr)
 	/*
 	 *	Dynamic clients require an event list for cleanups.
 	 */
-	if (!inst->dynamic_clients) {
+	if (!inst->io.dynamic_clients) {
 		/*
 		 *	Only Access-Request gets a cleanup delay.
 		 */
@@ -1306,15 +1269,15 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el, void *nr)
 		/*
 		 *	And then, only if cleanup delay is non-zero.
 		 */
-		if ((inst->cleanup_delay.tv_sec == 0) &&
-		    (inst->cleanup_delay.tv_usec == 0)) {
+		if ((inst->io.cleanup_delay.tv_sec == 0) &&
+		    (inst->io.cleanup_delay.tv_usec == 0)) {
 			return;
 		}
 	}
 
 	if (!connection) {
-		inst->el = el;
-		inst->nr = nr;
+		inst->io.el = el;
+		inst->io.nr = nr;
 
 	} else {
 		connection->el = el;
@@ -1364,16 +1327,16 @@ static void client_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 		switch (client->state) {
 		case PR_CLIENT_CONNECTED:
 			rad_assert(connection != NULL);
-			delay = &inst->idle_timeout;
+			delay = &inst->io.idle_timeout;
 			break;
 
 		case PR_CLIENT_DYNAMIC:
-			delay = &inst->idle_timeout;
+			delay = &inst->io.idle_timeout;
 			break;
 
 		case PR_CLIENT_NAK:
 			rad_assert(!connection);
-			delay = &inst->nak_lifetime;
+			delay = &inst->io.nak_lifetime;
 			break;
 
 		default:
@@ -1420,10 +1383,10 @@ static void client_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 
 		rad_assert(client->in_trie);
 		rad_assert(!client->connected);
-		(void) fr_trie_remove(inst->trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix);
+		(void) fr_trie_remove(inst->io.trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix);
 
-		rad_assert(inst->num_clients > 0);
-		inst->num_clients--;
+		rad_assert(inst->io.num_clients > 0);
+		inst->io.num_clients--;
 		talloc_free(client);
 		return;
 	}
@@ -1515,7 +1478,7 @@ idle_timeout:
 		 *	idle timeut.
 		 */
 		client->ready_to_delete = true;
-		delay = &inst->idle_timeout;
+		delay = &inst->io.idle_timeout;
 		goto reset_timer;
 	}
 
@@ -1529,7 +1492,7 @@ idle_timeout:
 	 *	if the total number of clients is limited.
 	 */
 	client->ready_to_delete = false;
-	delay = &inst->check_interval;
+	delay = &inst->io.check_interval;
 
 reset_timer:
 	gettimeofday(&when, NULL);
@@ -1557,12 +1520,12 @@ static void packet_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 	 *	for Access-Request packets.
 	 */
 	if (!now && (track->packet[0] == FR_CODE_ACCESS_REQUEST) &&
-	    ((inst->cleanup_delay.tv_sec | inst->cleanup_delay.tv_usec) != 0)) {
+	    ((inst->io.cleanup_delay.tv_sec | inst->io.cleanup_delay.tv_usec) != 0)) {
 
 		struct timeval when;
 
 		gettimeofday(&when, NULL);
-		fr_timeval_add(&when, &when, &inst->cleanup_delay);
+		fr_timeval_add(&when, &when, &inst->io.cleanup_delay);
 		
 		if (fr_event_timer_insert(client, el, &track->ev,
 					  &when, packet_expiry_timer, track) == 0) {
@@ -1664,7 +1627,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			 *	idle timeouts.
 			 */
 			if ((packets == 0) && (client->state != PR_CLIENT_STATIC)) {
-				client_expiry_timer(connection ? connection->el : inst->el, NULL, client);
+				client_expiry_timer(connection ? connection->el : inst->io.el, NULL, client);
 			}
 			return buffer_len;
 		}		
@@ -1676,7 +1639,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		 *	has timed out, and we don't respond.
 		 */
 		if (buffer_len < 20) {
-			packet_expiry_timer(connection ? connection->el : inst->el, NULL, track);
+			packet_expiry_timer(connection ? connection->el : inst->io.el, NULL, track);
 			track->reply_len = 1; /* don't respond */
 			return buffer_len;
 		}
@@ -1699,7 +1662,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		/*
 		 *	Expire the packet (if necessary).
 		 */
-		packet_expiry_timer(connection ? connection->el : inst->el, NULL, track);
+		packet_expiry_timer(connection ? connection->el : inst->io.el, NULL, track);
 
 		return packet_len;
 	}
@@ -1710,7 +1673,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	 *	If there's a connected socket and no dynamic clients, then the
 	 *	client state is set to CONNECTED when the client is created.
 	 */
-	rad_assert(inst->dynamic_clients);
+	rad_assert(inst->io.dynamic_clients);
 
 	/*
 	 *	The request has timed out trying to define the dynamic
@@ -1753,7 +1716,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			return -1;
 		}
 
-		client_expiry_timer(connection ? connection->el : inst->el, NULL, client);
+		client_expiry_timer(connection ? connection->el : inst->io.el, NULL, client);
 		return buffer_len;
 	}
 
@@ -1817,9 +1780,9 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			if (!connection) {
 				rad_assert(client->in_trie);
 				rad_assert(!client->connected);
-				(void) fr_trie_remove(inst->trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix);
-				rad_assert(inst->num_clients > 0);
-				inst->num_clients--;
+				(void) fr_trie_remove(inst->io.trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix);
+				rad_assert(inst->io.num_clients > 0);
+				inst->io.num_clients--;
 				talloc_free(client);
 				return buffer_len;
 			}
@@ -1864,8 +1827,8 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	talloc_free(radclient);
 
 	radclient = client->radclient; /* laziness */
-	radclient->server_cs = inst->server_cs;
-	radclient->server = cf_section_name2(inst->server_cs);
+	radclient->server_cs = inst->io.server_cs;
+	radclient->server = cf_section_name2(inst->io.server_cs);
 	radclient->cs = NULL;
 
 	/*
@@ -1941,13 +1904,13 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	 *	pending packet, and process it.
 	 *
 	 */
-	if (!inst->pending_clients) {		
-		MEM(inst->pending_clients = fr_heap_create(client, pending_client_cmp,
+	if (!inst->io.pending_clients) {
+		MEM(inst->io.pending_clients = fr_heap_create(client, pending_client_cmp,
 							   fr_io_client_t, heap_id));
 	}
 
 	rad_assert(client->heap_id < 0);
-	(void) fr_heap_insert(inst->pending_clients, client);
+	(void) fr_heap_insert(inst->io.pending_clients, client);
 
 finish:
 	/*
@@ -1955,7 +1918,7 @@ finish:
 	 *	timed out, so there's nothing more to do.  In that case, set up the expiry timers.
 	 */
 	if (packets == 0) {
-		client_expiry_timer(connection ? connection->el : inst->el, NULL, client);
+		client_expiry_timer(connection ? connection->el : inst->io.el, NULL, client);
 	}
 
 reread:
@@ -1968,7 +1931,7 @@ reread:
 		if (connection) {
 			fr_network_listen_read(connection->nr, connection->listen);
 		} else {
-			fr_network_listen_read(inst->nr, inst->listen);
+			fr_network_listen_read(inst->io.nr, inst->io.listen);
 		}
 	}
 
