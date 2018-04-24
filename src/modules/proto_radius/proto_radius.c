@@ -505,6 +505,34 @@ static void mod_process_set(void const *instance, REQUEST *request)
 }
 
 
+static int mod_priority(void const *instance, uint8_t const *buffer, UNUSED size_t buflen)
+{
+	proto_radius_t const *inst = talloc_get_type_abort_const(instance, proto_radius_t);
+
+	rad_assert(buffer[0] > 0);
+	rad_assert(buffer[0] < FR_MAX_PACKET_CODE);
+
+	/*
+	 *	Disallowed packet
+	 */
+	if (!inst->priorities[buffer[0]]) {
+		DEBUG("proto_radius - Ignoring unsupported packet code %d", buffer[0]);
+		return -1;
+	}
+
+	/*
+	 *	@todo - if we cared, we could also return -1 for "this
+	 *	is a bad packet".  But that's really only for
+	 *	mod_inject, as we assume that app_io->read() always
+	 *	returns good packets.
+	 */
+
+	/*
+	 *	Return the configured priority.
+	 */
+	return inst->priorities[buffer[0]];
+}
+
 /** Open listen sockets/connect to external event source
  *
  * @param[in] instance	Ctx data for this application.
@@ -935,5 +963,6 @@ fr_app_t proto_radius = {
 	.open		= mod_open,
 	.decode		= mod_decode,
 	.encode		= mod_encode,
-	.process_set	= mod_process_set
+	.process_set	= mod_process_set,
+	.priority	= mod_priority
 };

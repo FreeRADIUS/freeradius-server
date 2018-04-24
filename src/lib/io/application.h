@@ -43,6 +43,18 @@ typedef int (*fr_app_bootstrap_t)( void *instance, CONF_SECTION *cs);
  */
 typedef void (*fr_app_process_set_t)(void const *instance, REQUEST *request);
 
+/** Set the priority of a packet
+ *
+ * @param[in] instance	of the #fr_app_t.
+ * @param[in] buffer	raw packet
+ * @param[in] buflen	length of the packet
+ * @return
+ *	-1 - error, drop the packet
+ *	0  - no error, but we still drop the packet
+ *	*  - the priority of this packet
+ */
+typedef int (*fr_app_priority_get_t)(void const *instance, uint8_t const *buffer, size_t buflen);
+
 /** Called by the network thread to pass an event list for the module to use for timer events
  */
 typedef void (*fr_app_event_list_set_t)(void *instance, fr_event_list_t *el, void *nr);
@@ -67,6 +79,7 @@ typedef struct {
 							///< Here for convenience, so that encode operations common
 							///< to all #fr_app_io_t can be performed by the #fr_app_t.
 	fr_app_process_set_t		process_set;
+	fr_app_priority_get_t		priority;	//!< function to get priority of a packet
 } fr_app_t;
 
 /** Public structure describing an application (protocol) specialisation
