@@ -804,24 +804,20 @@ redo:
 
 		rad_assert(packet_len >= 20);
 
+		/*
+		 *	Not allowed?  Discard it.  The other function
+		 *	has done any complaining, if necessary.
+		 */
 		value = inst->io.app->priority(inst, buffer, packet_len);
 		if (value <= 0) {
-			return value;
-		}
-		*priority = value;
-
-		/*
-		 *	Not allowed?  Complain and discard it.
-		 */
-		if (!inst->process_by_code[buffer[0]]) {
 			char src_buf[128];
 
 			fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(address.src_ipaddr), 0);
-
 			DEBUG2("proto_%s - ignoring packet %d from IP %s. It is not configured as 'type = ...'",
 			       inst->io.app_io->name, buffer[0], src_buf);
 			return 0;
 		}
+		*priority = value;
 
 		if (connection) DEBUG2("proto_%s - Received %s ID %d length %d from connection %s",
 				       inst->io.app_io->name, fr_packet_codes[buffer[0]], buffer[1],

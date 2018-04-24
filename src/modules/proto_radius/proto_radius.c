@@ -515,10 +515,9 @@ static int mod_priority(void const *instance, uint8_t const *buffer, UNUSED size
 	/*
 	 *	Disallowed packet
 	 */
-	if (!inst->priorities[buffer[0]]) {
-		DEBUG("proto_radius - Ignoring unsupported packet code %d", buffer[0]);
-		return -1;
-	}
+	if (!inst->priorities[buffer[0]]) return 0;
+
+	if (!inst->process_by_code[buffer[0]]) return -1;
 
 	/*
 	 *	@todo - if we cared, we could also return -1 for "this
