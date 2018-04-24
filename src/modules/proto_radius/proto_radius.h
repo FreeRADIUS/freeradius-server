@@ -142,7 +142,7 @@ typedef struct {
 	fr_network_t			*nr;		//!< network for this connection
 } fr_io_connection_t;
 
-typedef int (*fr_io_connection_set_t)(void *instance, fr_io_connection_t *connection);
+typedef int (*fr_io_connection_set_t)(void *instance, fr_io_address_t *connection);
 typedef void (*proto_radius_network_get_t)(void *instance, int *ipproto, bool *dynamic_clients, fr_trie_t const **trie);
 
 typedef struct {

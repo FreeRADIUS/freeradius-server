@@ -339,6 +339,8 @@ static fr_io_connection_t *fr_io_connection_alloc(proto_radius_t *inst, fr_io_cl
 	}
 
 	if (!nak) {
+		char src_buf[128], dst_buf[128];
+
 		/*
 		 *	Create the listener, based on our listener.
 		 */
@@ -371,13 +373,21 @@ static fr_io_connection_t *fr_io_connection_alloc(proto_radius_t *inst, fr_io_cl
 		 *
 		 *	This also sets connection->name.
 		 */
-		if ((inst->app_io_private->connection_set(connection->app_io_instance, connection) < 0) ||
+		if ((inst->app_io_private->connection_set(connection->app_io_instance, connection->address) < 0) ||
 		    (inst->app_io->instantiate(connection->app_io_instance, inst->app_io_conf) < 0) ||
 		    (inst->app_io->open(connection->app_io_instance) < 0)) {
 			DEBUG("Failed opening connected socket.");
 			talloc_free(dl_inst);
 			return NULL;
 		}
+
+		fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(connection->address->src_ipaddr), 0);
+		fr_value_box_snprint(dst_buf, sizeof(dst_buf), fr_box_ipaddr(connection->address->dst_ipaddr), 0);
+
+		connection->name = talloc_typed_asprintf(inst, "proto_%s from client %s port %u to server %s port %u",
+							 inst->app_io->name,
+							 src_buf, connection->address->src_port,
+							 dst_buf, connection->address->dst_port);
 	}
 
 	/*

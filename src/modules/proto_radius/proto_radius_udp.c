@@ -65,7 +65,7 @@ typedef struct proto_radius_udp_t {
 	fr_ipaddr_t			*allow;			//!< allowed networks for dynamic clients
 	fr_ipaddr_t			*deny;			//!< denied networks for dynamic clients
 
-	fr_io_connection_t	*connection;		//!< for connected sockets.
+	fr_io_address_t			*connection;		//!< for connected sockets.
 
 } proto_radius_udp_t;
 
@@ -277,7 +277,7 @@ static int mod_close(void *instance)
 }
 
 
-static int mod_connection_set(void *instance, fr_io_connection_t *connection)
+static int mod_connection_set(void *instance, fr_io_address_t *connection)
 {
 	proto_radius_udp_t *inst = talloc_get_type_abort(instance, proto_radius_udp_t);
 
@@ -345,7 +345,7 @@ static int mod_open(void *instance)
 		socklen_t salen;
 		struct sockaddr_storage src;
 
-		if (fr_ipaddr_to_sockaddr(&inst->connection->address->src_ipaddr, inst->connection->address->src_port,
+		if (fr_ipaddr_to_sockaddr(&inst->connection->src_ipaddr, inst->connection->src_port,
 					  &src, &salen) < 0) {
 			close(sockfd);
 			ERROR("Failed getting IP address");
@@ -416,8 +416,6 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
 	/*
 	 *	Get our name.
 	 */
-//	rad_assert(inst->name == NULL);
-
 	if (fr_ipaddr_is_inaddr_any(&inst->ipaddr)) {
 		if (inst->ipaddr.af == AF_INET) {
 			strlcpy(dst_buf, "*", sizeof(dst_buf));
@@ -436,11 +434,10 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
 	} else {
 		char src_buf[128];
 
-		fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(inst->connection->address->src_ipaddr), 0);
+		fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(inst->connection->src_ipaddr), 0);
 
 		inst->name = talloc_typed_asprintf(inst, "proto udp from client %s port %u to server %s port %u",
-						   src_buf, inst->connection->address->src_port, dst_buf, inst->port);
-		inst->connection->name = inst->name;
+						   src_buf, inst->connection->src_port, dst_buf, inst->port);
 	}
 
 	return 0;
