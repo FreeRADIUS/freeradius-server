@@ -363,12 +363,12 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 		}
 	}
 
-	if (!inst->app_io->decode) return 0;
+	if (!inst->io.app_io->decode) return 0;
 
 	/*
 	 *	Let the app_io do anything it needs to do.
 	 */
-	return inst->app_io->decode(inst->app_io_instance, request, data, data_len);
+	return inst->io.app_io->decode(inst->io.app_io_instance, request, data, data_len);
 }
 
 static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffer, size_t buffer_len)
@@ -432,8 +432,8 @@ static ssize_t mod_encode(void const *instance, REQUEST *request, uint8_t *buffe
 	 *	If the app_io encodes the packet, then we don't need
 	 *	to do that.
 	 */
-	if (inst->app_io->encode) {
-		data_len = inst->app_io->encode(inst->app_io_instance, request, buffer, buffer_len);
+	if (inst->io.app_io->encode) {
+		data_len = inst->io.app_io->encode(inst->io.app_io_instance, request, buffer, buffer_len);
 		if (data_len > 0) return data_len;
 	}
 
@@ -485,7 +485,7 @@ static void mod_process_set(void const *instance, REQUEST *request)
 	/*
 	 *	'track' can be NULL when there's no network listener.
 	 */
-	if (inst->app_io && (track->dynamic == request->async->recv_time)) {
+	if (inst->io.app_io && (track->dynamic == request->async->recv_time)) {
 		fr_app_process_t const	*app_process;
 
 		app_process = (fr_app_process_t const *) inst->dynamic_submodule->module->common;
@@ -567,7 +567,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	/*
 	 *	Open the socket, and add it to the scheduler.
 	 */
-	if (inst->app_io) {
+	if (inst->io.app_io) {
 		/*
 		 *	Set the listener to call our master trampoline function.
 		 */
@@ -577,8 +577,8 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 		/*
 		 *	Don't set the connection for the main socket.  It's not connected.
 		 */
-		if (inst->app_io->open(inst->app_io_instance) < 0) {
-			cf_log_err(conf, "Failed opening %s interface", inst->app_io->name);
+		if (inst->io.app_io->open(inst->io.app_io_instance) < 0) {
+			cf_log_err(conf, "Failed opening %s interface", inst->io.app_io->name);
 			talloc_free(listen);
 			return -1;
 		}
@@ -647,11 +647,11 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Instantiate the I/O module
 	 */
-	if (inst->app_io) {
-		if (inst->app_io->instantiate &&
-		    (inst->app_io->instantiate(inst->app_io_instance,
-					       inst->app_io_conf) < 0)) {
-			cf_log_err(conf, "Instantiation failed for \"%s\"", inst->app_io->name);
+	if (inst->io.app_io) {
+		if (inst->io.app_io->instantiate &&
+		    (inst->io.app_io->instantiate(inst->io.app_io_instance,
+					       inst->io.app_io_conf) < 0)) {
+			cf_log_err(conf, "Instantiation failed for \"%s\"", inst->io.app_io->name);
 			return -1;
 		}
 	}
@@ -675,7 +675,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 */
 	inst->io.trie = fr_trie_alloc(inst);
 	if (!inst->io.trie) {
-		cf_log_err(conf, "Instantiation failed for \"%s\"", inst->app_io->name);
+		cf_log_err(conf, "Instantiation failed for \"%s\"", inst->io.app_io->name);
 		return -1;
 	}
 
@@ -803,7 +803,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 *	These configuration items are not printed by default,
 	 *	because normal people shouldn't be touching them.
 	 */
-	if (!inst->max_packet_size && inst->app_io) inst->max_packet_size = inst->app_io->default_message_size;
+	if (!inst->max_packet_size && inst->io.app_io) inst->max_packet_size = inst->io.app_io->default_message_size;
 
 	if (!inst->num_messages) inst->num_messages = 256;
 
@@ -895,17 +895,17 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Bootstrap the application IO handler.
 	 */
-	inst->app_io = (fr_app_io_t const *) inst->io_submodule->module->common;
+	inst->io.app_io = (fr_app_io_t const *) inst->io_submodule->module->common;
 
-	inst->app_io_instance = inst->io_submodule->data;
-	inst->app_io_conf = inst->io_submodule->conf;
+	inst->io.app_io_instance = inst->io_submodule->data;
+	inst->io.app_io_conf = inst->io_submodule->conf;
 
-	inst->app_io_private = inst->app_io->private;
+	inst->app_io_private = inst->io.app_io->private;
 	rad_assert(inst->app_io_private != NULL);
 
-	if (inst->app_io->bootstrap && (inst->app_io->bootstrap(inst->app_io_instance,
-								inst->app_io_conf) < 0)) {
-		cf_log_err(inst->app_io_conf, "Bootstrap failed for \"%s\"", inst->app_io->name);
+	if (inst->io.app_io->bootstrap && (inst->io.app_io->bootstrap(inst->io.app_io_instance,
+								inst->io.app_io_conf) < 0)) {
+		cf_log_err(inst->io.app_io_conf, "Bootstrap failed for \"%s\"", inst->io.app_io->name);
 		return -1;
 	}
 
@@ -913,7 +913,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	Get various information after bootstrapping the
 	 *	application IO module.
 	 */
-	inst->app_io_private->network_get(inst->app_io_instance, &inst->io.ipproto, &inst->io.dynamic_clients, &inst->io.networks);
+	inst->app_io_private->network_get(inst->io.app_io_instance, &inst->io.ipproto, &inst->io.dynamic_clients, &inst->io.networks);
 
 	/*
 	 *	Load proto_radius_dynamic_client

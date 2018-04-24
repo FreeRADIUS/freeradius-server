@@ -175,6 +175,10 @@ typedef struct {
 	fr_app_t			*app;				//!< main protocol handler
 	void				*app_instance;			//!< instance data for main protocol handler
 
+	fr_app_io_t const		*app_io;			//!< Easy access to the app_io handle.
+	void				*app_io_instance;		//!< Easy access to the app_io instance.
+	CONF_SECTION			*app_io_conf;			//!< Easy access to the app_io's config section.
+
 	fr_listen_t const		*listen;			//!< The listener structure which describes
 									///< the I/O path.
 	fr_schedule_t			*sc;				//!< the scheduler
@@ -203,9 +207,6 @@ typedef struct proto_radius_t {
 									///< callback.  Broken out into the
 									///< app_io_* fields below for convenience.
 
-	fr_app_io_t const		*app_io;			//!< Easy access to the app_io handle.
-	void				*app_io_instance;		//!< Easy access to the app_io instance.
-	CONF_SECTION			*app_io_conf;			//!< Easy access to the app_io's config section.
 	proto_radius_app_io_t		*app_io_private;		//!< Internal interface for proto_radius.
 
 	dl_instance_t			**type_submodule;		//!< Instance of the various types

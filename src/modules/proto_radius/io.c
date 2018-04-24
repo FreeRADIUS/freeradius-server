@@ -149,7 +149,7 @@ static int track_cmp(void const *one, void const *two)
 	 *	Call the per-protocol comparison function, if it
 	 *	exists.
 	 */
-	rcode = a->client->inst->app_io->compare(a->client->inst->app_io_instance,
+	rcode = a->client->inst->io.app_io->compare(a->client->inst->io.app_io_instance,
 						 a->packet, b->packet);
 	if (rcode != 0) return rcode;
 
@@ -257,7 +257,7 @@ static fr_io_connection_t *fr_io_connection_alloc(proto_radius_t *inst, fr_io_cl
 	 *
 	 *	#todo - unify the code with static clients?
 	 */
-	if (inst->app_io->track_duplicates) {
+	if (inst->io.app_io->track_duplicates) {
 		MEM(connection->client->table = rbtree_talloc_create(client, track_cmp, fr_io_track_t,
 								     NULL, RBTREE_FLAG_NONE));
 	}
@@ -366,7 +366,7 @@ static fr_io_connection_t *fr_io_connection_alloc(proto_radius_t *inst, fr_io_cl
 		 *	Bootstrap the configuration.  There shouldn't
 		 *	be need to re-parse it.
 		 */
-		memcpy(connection->app_io_instance, inst->app_io_instance, inst->app_io->inst_size);
+		memcpy(connection->app_io_instance, inst->io.app_io_instance, inst->io.app_io->inst_size);
 
 		/*
 		 *	Instantiate the child, and open the socket.
@@ -374,8 +374,8 @@ static fr_io_connection_t *fr_io_connection_alloc(proto_radius_t *inst, fr_io_cl
 		 *	This also sets connection->name.
 		 */
 		if ((inst->app_io_private->connection_set(connection->app_io_instance, connection->address) < 0) ||
-		    (inst->app_io->instantiate(connection->app_io_instance, inst->app_io_conf) < 0) ||
-		    (inst->app_io->open(connection->app_io_instance) < 0)) {
+		    (inst->io.app_io->instantiate(connection->app_io_instance, inst->io.app_io_conf) < 0) ||
+		    (inst->io.app_io->open(connection->app_io_instance) < 0)) {
 			DEBUG("Failed opening connected socket.");
 			talloc_free(dl_inst);
 			return NULL;
@@ -385,7 +385,7 @@ static fr_io_connection_t *fr_io_connection_alloc(proto_radius_t *inst, fr_io_cl
 		fr_value_box_snprint(dst_buf, sizeof(dst_buf), fr_box_ipaddr(connection->address->dst_ipaddr), 0);
 
 		connection->name = talloc_typed_asprintf(inst, "proto_%s from client %s port %u to server %s port %u",
-							 inst->app_io->name,
+							 inst->io.app_io->name,
 							 src_buf, connection->address->src_port,
 							 dst_buf, connection->address->dst_port);
 	}
@@ -401,7 +401,7 @@ static fr_io_connection_t *fr_io_connection_alloc(proto_radius_t *inst, fr_io_cl
 	pthread_mutex_unlock(&client->mutex);
 	
 	if (rcode < 0) {
-		ERROR("proto_%s - Failed inserting connection into tracking table.  Closing it, and discarding all packets for connection %s.", inst->app_io->name, connection->name);
+		ERROR("proto_%s - Failed inserting connection into tracking table.  Closing it, and discarding all packets for connection %s.", inst->io.app_io->name, connection->name);
 		goto cleanup;
 	}
 
@@ -416,10 +416,10 @@ static fr_io_connection_t *fr_io_connection_alloc(proto_radius_t *inst, fr_io_cl
 		return connection;
 	}
 
-	DEBUG("proto_%s - starting connection %s", inst->app_io->name, connection->name);
+	DEBUG("proto_%s - starting connection %s", inst->io.app_io->name, connection->name);
 	connection->nr = fr_schedule_socket_add(inst->io.sc, connection->listen);
 	if (!connection->nr) {
-		ERROR("proto_%s - Failed inserting connection into scheduler.  Closing it, and diuscarding all packets for connection %s.", inst->app_io->name, connection->name);
+		ERROR("proto_%s - Failed inserting connection into scheduler.  Closing it, and diuscarding all packets for connection %s.", inst->io.app_io->name, connection->name);
 		pthread_mutex_lock(&client->mutex);
 		(void) fr_hash_table_delete(client->ht, connection);
 		pthread_mutex_unlock(&client->mutex);
@@ -449,7 +449,7 @@ static void get_inst(void *instance, proto_radius_t **inst, fr_io_connection_t *
 	if (magic == PR_MAIN_MAGIC) {
 		*inst = instance;
 		*connection = NULL;
-		if (app_io_instance) *app_io_instance = (*inst)->app_io_instance;
+		if (app_io_instance) *app_io_instance = (*inst)->io.app_io_instance;
 
 	} else {
 		rad_assert(magic == PR_CONNECTION_MAGIC);
@@ -495,7 +495,7 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 	my_track.client = client;
 	memcpy(my_track.packet, packet, sizeof(my_track.packet));
 
-	if (client->inst->app_io->track_duplicates) track = rbtree_finddata(client->table, &my_track);
+	if (client->inst->io.app_io->track_duplicates) track = rbtree_finddata(client->table, &my_track);
 	if (!track) {
 		*is_dup = false;
 
@@ -592,7 +592,7 @@ static int pending_free(fr_io_pending_packet_t *pending)
 	 *	delete it.
 	 */
 	if (track->packets == 0) {
-		if (track->client->inst->app_io->track_duplicates) (void) rbtree_deletebydata(track->client->table, track);
+		if (track->client->inst->io.app_io->track_duplicates) (void) rbtree_deletebydata(track->client->table, track);
 
 		// @todo - put this into a slab allocator
 		talloc_free(track);
@@ -795,7 +795,7 @@ redo:
 		 *		and run THAT through the dynamic client definition,
 		 *		instead of using RADIUS packets.
 		 */
-		packet_len = inst->app_io->read(app_io_instance, (void **) &local_address, &local_recv_time,
+		packet_len = inst->io.app_io->read(app_io_instance, (void **) &local_address, &local_recv_time,
 					  buffer, buffer_len, leftover, priority, is_dup);
 		if (packet_len <= 0) {
 			DEBUG("NO DATA %d", (int) packet_len);
@@ -819,12 +819,12 @@ redo:
 			fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(address.src_ipaddr), 0);
 
 			DEBUG2("proto_%s - ignoring packet %d from IP %s. It is not configured as 'type = ...'",
-			       inst->app_io->name, buffer[0], src_buf);
+			       inst->io.app_io->name, buffer[0], src_buf);
 			return 0;
 		}
 
 		if (connection) DEBUG2("proto_%s - Received %s ID %d length %d from connection %s",
-				       inst->app_io->name, fr_packet_codes[buffer[0]], buffer[1],
+				       inst->io.app_io->name, fr_packet_codes[buffer[0]], buffer[1],
 				       (int) packet_len, connection->name);
 	}
 
@@ -877,7 +877,7 @@ redo:
 			if (inst->io.max_clients && (inst->io.num_clients >= inst->io.max_clients)) {
 				fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(address.src_ipaddr), 0);
 				DEBUG("proto_%s - ignoring packet code %d from client IP address %s - too many dynamic clients are defined",
-				      inst->app_io->name, buffer[0], src_buf);
+				      inst->io.app_io->name, buffer[0], src_buf);
 				return 0;
 			}
 
@@ -903,7 +903,7 @@ redo:
 		ignore:
 			fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(address.src_ipaddr), 0);
 			DEBUG("proto_%s - ignoring packet code %d from unknown client IP address %s",
-			      inst->app_io->name, buffer[0], src_buf);
+			      inst->io.app_io->name, buffer[0], src_buf);
 			return 0;
 		}
 
@@ -944,7 +944,7 @@ redo:
 		/*
 		 *	Create the packet tracking table for this client.
 		 */
-		if (inst->app_io->track_duplicates) {
+		if (inst->io.app_io->track_duplicates) {
 			MEM(client->table = rbtree_talloc_create(client, track_cmp, fr_io_track_t,
 								 NULL, RBTREE_FLAG_NONE));
 		}
@@ -965,7 +965,7 @@ redo:
 		 *	allowed clients.
 		 */
 		if (fr_trie_insert(inst->io.trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix, client)) {
-			ERROR("proto_%s - Failed inserting client %s into tracking table.  Discarding client, and all packts for it.", inst->app_io->name, client->radclient->shortname);
+			ERROR("proto_%s - Failed inserting client %s into tracking table.  Discarding client, and all packts for it.", inst->io.app_io->name, client->radclient->shortname);
 			talloc_free(client);
 			return -1;
 		}
@@ -1261,7 +1261,7 @@ static int mod_fd(void const *const_instance)
 
 	get_inst((void *) instance, &inst, &connection, &app_io_instance);
 
-	return inst->app_io->fd(app_io_instance);
+	return inst->io.app_io->fd(app_io_instance);
 }
 
 /** Set the event list for a new socket
@@ -1316,7 +1316,7 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el, void *nr)
 
 			connection->paused = true;
 			(void) fr_event_filter_update(connection->el,
-						      inst->app_io->fd(connection->app_io_instance),
+						      inst->io.app_io->fd(connection->app_io_instance),
 						      FR_EVENT_FILTER_IO, pause_read);
 		}
 	}
@@ -1487,9 +1487,9 @@ idle_timeout:
 		 */
 		if (client->ready_to_delete) {
 			if (connection) {
-				DEBUG("proto_%s - idle timeout for connection %s", inst->app_io->name, connection->name);
+				DEBUG("proto_%s - idle timeout for connection %s", inst->io.app_io->name, connection->name);
 			} else {
-				DEBUG("proto_%s - idle timeout for client %s", inst->app_io->name, client->radclient->shortname);
+				DEBUG("proto_%s - idle timeout for client %s", inst->io.app_io->name, client->radclient->shortname);
 			}
 			goto delete_client;
 		}
@@ -1522,7 +1522,7 @@ reset_timer:
 	if (fr_event_timer_insert(client, el, &client->ev,
 				  &when, client_expiry_timer, client) < 0) {
 		ERROR("proto_%s - Failed adding timeout for dynamic client %s.  It will be permanent!",
-		      inst->app_io->name, client->radclient->shortname);
+		      inst->io.app_io->name, client->radclient->shortname);
 		return;
 	}
 
@@ -1554,7 +1554,7 @@ static void packet_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 		}
 
 		DEBUG("proto_%s - Failed adding cleanup_delay for packet.  Discarding packet immediately",
-			inst->app_io->name);
+			inst->io.app_io->name);
 	}
 
 	/*
@@ -1562,9 +1562,9 @@ static void packet_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 	 *	timeout ones.
 	 */
 	if (now) {
-		DEBUG2("TIMER - proto_%s - cleanup delay for ID %d", inst->app_io->name, track->packet[1]);
+		DEBUG2("TIMER - proto_%s - cleanup delay for ID %d", inst->io.app_io->name, track->packet[1]);
 	} else {
-		DEBUG2("proto_%s - cleaning up ID %d", inst->app_io->name, track->packet[1]);
+		DEBUG2("proto_%s - cleaning up ID %d", inst->io.app_io->name, track->packet[1]);
 	}
 
 	/*
@@ -1574,7 +1574,7 @@ static void packet_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 	track->packets--;
 
 	if (track->packets == 0) {
-		if (inst->app_io->track_duplicates) (void) rbtree_deletebydata(client->table, track);
+		if (inst->io.app_io->track_duplicates) (void) rbtree_deletebydata(client->table, track);
 		talloc_free(track);
 
 	} else {
@@ -1670,7 +1670,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		 *	network via the underlying transport write.
 		 */
 
-		packet_len = inst->app_io->write(app_io_instance, track, request_time,
+		packet_len = inst->io.app_io->write(app_io_instance, track, request_time,
 						 buffer, buffer_len);
 		if (packet_len > 0) {
 			rad_assert(buffer_len == (size_t) packet_len);
@@ -1881,7 +1881,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		 */
 		if (connection->paused) {
 			(void) fr_event_filter_update(connection->el,
-						      inst->app_io->fd(connection->app_io_instance),
+						      inst->io.app_io->fd(connection->app_io_instance),
 						      FR_EVENT_FILTER_IO, resume_read);
 		}
 
@@ -1975,7 +1975,7 @@ static int mod_close(void *instance)
 
 	get_inst(instance, &inst, &connection, &app_io_instance);
 
-	rcode = inst->app_io->close(app_io_instance);
+	rcode = inst->io.app_io->close(app_io_instance);
 	if (rcode < 0) return rcode;
 
 	/*
@@ -2003,7 +2003,7 @@ static int mod_detach(void *instance)
 
 	get_inst(instance, &inst, &connection, &app_io_instance);
 
-	rcode = inst->app_io->detach(app_io_instance);
+	rcode = inst->io.app_io->detach(app_io_instance);
 	if (rcode < 0) return rcode;
 
 	return 0;
