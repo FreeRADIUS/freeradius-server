@@ -545,7 +545,7 @@ static void get_inst(void *instance, fr_io_instance_t **inst, fr_io_connection_t
 }
 
 
-static RADCLIENT *proto_radius_radclient_alloc(fr_io_instance_t *inst, fr_io_address_t *address)
+static RADCLIENT *radclient_alloc(fr_io_instance_t *inst, fr_io_address_t *address)
 {
 	RADCLIENT *client;
 	char src_buf[128];
@@ -972,7 +972,7 @@ redo:
 			 *	Allocate our local radclient as a
 			 *	placeholder for the dynamic client.
 			 */
-			radclient = proto_radius_radclient_alloc(inst, &address);
+			radclient = radclient_alloc(inst, &address);
 			state = PR_CLIENT_PENDING;
 
 		} else {
@@ -1198,10 +1198,10 @@ have_client:
 		 *	track that we want to start a new connection,
 		 *	but we don't have a packet for it...
 		 *
-		 *	TBH, we probably want read() and
-		 *	write() to be in the listener, so that
-		 *	proto_radius can set those to itself, and then
-		 *	call the underlying app_io mod_read/write.
+		 *	TBH, we probably want read() and write() to be
+		 *	in the listener, so that the IO handler can
+		 *	set those to itself, and then call the
+		 *	underlying app_io mod_read/write.
 		 */
 		connection = NULL;
 		rad_assert(0 == 1);
