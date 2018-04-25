@@ -895,6 +895,15 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	FR_TIMEVAL_BOUND_CHECK("cleanup_delay", &inst->io.cleanup_delay, <=, 30, 0);
 
 	/*
+	 *	No Access-Request packets, then no cleanup delay.
+	 */
+	if (!inst->code_allowed[FR_CODE_ACCESS_REQUEST]) {
+		inst->io.cleanup_delay.tv_sec = 0;
+		inst->io.cleanup_delay.tv_usec = 0;
+		WARN("proto_radius - setting 'cleanup_delay = 0' as this listener does not receive Access-Request packets");
+	}
+
+	/*
 	 *	Hide this for now.  It's only for people who know what
 	 *	they're doing.
 	 */

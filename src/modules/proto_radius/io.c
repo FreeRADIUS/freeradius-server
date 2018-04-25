@@ -1275,23 +1275,24 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el, void *nr)
 	get_inst(instance, &inst, &connection, &app_io_instance);
 
 	/*
-	 *	Dynamic clients require an event list for cleanups.
+	 *	We're not doing IO, so there are no timers for
+	 *	cleaning up packets, dynamic clients, or connections.
 	 */
-	if (!inst->io.dynamic_clients) {
-		/*
-		 *	Only Access-Request gets a cleanup delay.
-		 */
-		if (!inst->code_allowed[FR_CODE_ACCESS_REQUEST]) return;
+	if (!inst->io.submodule) return;
 
-		/*
-		 *	And then, only if cleanup delay is non-zero.
-		 */
-		if ((inst->io.cleanup_delay.tv_sec == 0) &&
-		    (inst->io.cleanup_delay.tv_usec == 0)) {
-			return;
-		}
+	/*
+	 *	No dynamic clients AND no packet cleanups?  We don't
+	 *	need timers.
+	 */
+	if (!inst->io.dynamic_clients &&
+	    (inst->io.cleanup_delay.tv_sec == 0) &&
+	    (inst->io.cleanup_delay.tv_usec == 0)) {
+		return;
 	}
 
+	/*
+	 *	Set event list and network side for this socket.
+	 */
 	if (!connection) {
 		inst->io.el = el;
 		inst->io.nr = nr;
