@@ -180,6 +180,13 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 	 *	proto_radius sets the priority
 	 */
 
+	/*
+	 *	Print out what we received.
+	 */
+	DEBUG2("proto_radius_udp - Received %s ID %d length %d %s",
+	       fr_packet_codes[buffer[0]], buffer[1],
+	       (int) packet_len, inst->name);
+
 	return packet_len;
 }
 
