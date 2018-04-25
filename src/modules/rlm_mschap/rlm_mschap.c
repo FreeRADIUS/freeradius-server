@@ -2071,30 +2071,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void
 #undef inst
 }
 
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
-{
-	char const		*name;
-	rlm_mschap_t		*inst = instance;
-
-	/*
-	 *	Create the dynamic translation.
-	 */
-	name = cf_section_name2(conf);
-	if (!name) name = cf_section_name1(conf);
-	inst->name = name;
-
-	if (fr_dict_enum_add_alias_next(attr_auth_type, inst->name) < 0) {
-		PERROR("Failed adding %s alias", attr_auth_type->name);
-		return -1;
-	}
-	inst->auth_type = fr_dict_enum_by_alias(attr_auth_type, inst->name);
-	rad_assert(inst->auth_type);
-
-	xlat_register(inst, inst->name, mschap_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-
-	return 0;
-}
-
 /*
  *	Create instance for our module. Allocate space for
  *	instance structure and read configuration parameters
@@ -2158,6 +2134,30 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 			      inst->ntlm_auth_timeout);
 		return -1;
 	}
+
+	return 0;
+}
+
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+{
+	char const		*name;
+	rlm_mschap_t		*inst = instance;
+
+	/*
+	 *	Create the dynamic translation.
+	 */
+	name = cf_section_name2(conf);
+	if (!name) name = cf_section_name1(conf);
+	inst->name = name;
+
+	if (fr_dict_enum_add_alias_next(attr_auth_type, inst->name) < 0) {
+		PERROR("Failed adding %s alias", attr_auth_type->name);
+		return -1;
+	}
+	inst->auth_type = fr_dict_enum_by_alias(attr_auth_type, inst->name);
+	rad_assert(inst->auth_type);
+
+	xlat_register(inst, inst->name, mschap_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
 
 	return 0;
 }
