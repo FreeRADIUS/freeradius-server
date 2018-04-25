@@ -879,37 +879,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	if (!inst->io.submodule) return 0;
 
 	/*
-	 *	Tell the master handler about the main protocol instance.
-	 */
-	inst->io.app = &proto_radius;
-	inst->io.app_instance = inst;
-
-	/*
-	 *	Bootstrap the master IO handler.
-	 */
-	if (proto_radius_master_io.bootstrap(inst, conf) < 0) {
-		return -1;
-	}
-
-	/*
-	 *	Load proto_radius_dynamic_client
-	 */
-	if (inst->io.dynamic_clients) {
-		if (dl_instance(inst, &inst->dynamic_submodule,
-				conf, inst->io.dl_inst, "dynamic_client", DL_TYPE_SUBMODULE) < 0) {
-			cf_log_err(conf, "Failed finding proto_radius_dynamic_client");
-			return -1;
-		}
-
-		/*
-		 *	Don't bootstrap the dynamic submodule.  We're
-		 *	not even sure what that means...
-		 */
-
-		// check max_clients?
-	}
-
-	/*
 	 *	These timers are usually protocol specific.
 	 */
 	FR_TIMEVAL_BOUND_CHECK("idle_timeout", &inst->io.idle_timeout, >=, 1, 0);
@@ -933,6 +902,39 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		rad_assert(sizeof(inst->priorities) == sizeof(priorities));
 		memcpy(&inst->priorities, &priorities, sizeof(priorities));
 	}
+
+	/*
+	 *	Tell the master handler about the main protocol instance.
+	 */
+	inst->io.app = &proto_radius;
+	inst->io.app_instance = inst;
+
+	/*
+	 *	Bootstrap the master IO handler.
+	 */
+	if (proto_radius_master_io.bootstrap(inst, conf) < 0) {
+		return -1;
+	}
+
+	/*
+	 *	proto_radius_udp determines if we have dynamic clients
+	 *	or not.
+	 */
+	if (!inst->io.dynamic_clients) return 0;
+
+	/*
+	 *	Load proto_radius_dynamic_client
+	 */
+	if (dl_instance(inst, &inst->dynamic_submodule,
+			conf, inst->io.dl_inst, "dynamic_client", DL_TYPE_SUBMODULE) < 0) {
+		cf_log_err(conf, "Failed finding proto_radius_dynamic_client");
+		return -1;
+	}
+
+	/*
+	 *	Don't bootstrap the dynamic submodule.  We're
+	 *	not even sure what that means...
+	 */
 
 	return 0;
 }
