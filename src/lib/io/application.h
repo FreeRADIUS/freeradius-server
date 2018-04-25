@@ -126,5 +126,6 @@ typedef struct fr_app_io_t {
 	fr_io_nak_t			nak;		//!< Function to send a NAK.
 	fr_io_data_cmp_t		compare;	//!< compare two packets
 	fr_io_connection_set_t		connection_set;	//!< set src/dst IP/port of a connection
+	fr_io_network_get_t		network_get;	//!< get dynamic network information
 	void				*private;	//!< any private APIs it needs to export.
 } fr_app_io_t;

@@ -36,6 +36,7 @@ extern "C" {
 #endif
 
 typedef struct fr_listen fr_listen_t;
+typedef struct fr_trie_t fr_trie_t;
 
 /**
  *  Tell an async process function if it should run or exit.
@@ -315,6 +316,8 @@ typedef struct {
 } fr_io_address_t;
 
 typedef int (*fr_io_connection_set_t)(void *instance, fr_io_address_t *connection);
+
+typedef void (*fr_io_network_get_t)(void *instance, int *ipproto, bool *dynamic_clients, fr_trie_t const **trie);
 
 #ifdef __cplusplus
 }

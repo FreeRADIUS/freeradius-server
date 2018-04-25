@@ -652,10 +652,6 @@ static int mod_detach(void *instance)
 }
 #endif
 
-static proto_radius_app_io_t proto_radius_app_io_private = {
-	.network_get		= mod_network_get,
-};
-
 extern fr_app_io_t proto_radius_udp;
 fr_app_io_t proto_radius_udp = {
 	.magic			= RLM_MODULE_INIT,
@@ -676,6 +672,5 @@ fr_app_io_t proto_radius_udp = {
 	.fd			= mod_fd,
 	.compare		= mod_compare,
 	.connection_set		= mod_connection_set,
-
-	.private		= &proto_radius_app_io_private,
+	.network_get		= mod_network_get,
 };

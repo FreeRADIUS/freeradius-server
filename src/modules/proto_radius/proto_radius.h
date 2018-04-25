@@ -130,12 +130,6 @@ typedef struct {
 	fr_network_t			*nr;		//!< network for this connection
 } fr_io_connection_t;
 
-typedef void (*proto_radius_network_get_t)(void *instance, int *ipproto, bool *dynamic_clients, fr_trie_t const **trie);
-
-typedef struct {
-	proto_radius_network_get_t	network_get;
-} proto_radius_app_io_t;
-
 extern fr_app_io_t proto_radius_master_io;
 
 typedef struct {
@@ -194,8 +188,6 @@ typedef struct proto_radius_t {
 	fr_io_instance_t		io;				//!< wrapper for IO abstraction
 
 	dl_instance_t const    		*dl_inst;			//!< our dl_inst
-
-	proto_radius_app_io_t		*app_io_private;		//!< Internal interface for proto_radius.
 
 	dl_instance_t			**type_submodule;		//!< Instance of the various types
 	dl_instance_t			*dynamic_submodule;		//!< proto_radius_dynamic_client

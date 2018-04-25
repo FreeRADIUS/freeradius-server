@@ -2046,17 +2046,13 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		return -1;
 	}
 
-	/*
-	 *	@todo - move these to public APIs
-	 */
-	inst->app_io_private = inst->io.app_io->private;
-	rad_assert(inst->app_io_private != NULL);
+	if (!inst->io.app_io->network_get) return 0;
 
 	/*
 	 *	Get various information after bootstrapping the
 	 *	application IO module.
 	 */
-	inst->app_io_private->network_get(inst->io.app_io_instance, &inst->io.ipproto, &inst->io.dynamic_clients, &inst->io.networks);
+	inst->io.app_io->network_get(inst->io.app_io_instance, &inst->io.ipproto, &inst->io.dynamic_clients, &inst->io.networks);
 
 	return 0;
 }
