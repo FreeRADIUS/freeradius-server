@@ -353,14 +353,6 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 				}
 			}
 		}
-
-		/*
-		 *	If this packet is trying to define a connected
-		 *	socket, tell the dynamic client code.
-		 */
-		if (track->client->connected) {
-			(void) pair_make_request("FreeRADIUS-Client-Connected", "true", T_OP_EQ);
-		}
 	}
 
 	if (!inst->io.app_io->decode) return 0;
