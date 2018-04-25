@@ -315,7 +315,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 	 */
 	if (!nak) {
 		if (dl_instance(NULL, &dl_inst, NULL, inst->dl_inst, inst->transport, DL_TYPE_SUBMODULE) < 0) {
-			DEBUG("Failed to find proto_%s", inst->app->name, inst->transport);
+			DEBUG("Failed to find proto_%s_%s", inst->app->name, inst->transport);
 			return NULL;
 		}
 		rad_assert(dl_inst != NULL);
