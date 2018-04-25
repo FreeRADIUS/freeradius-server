@@ -644,46 +644,11 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	CONF_SECTION		*server = cf_item_to_section(cf_parent(conf));
 
 	/*
-	 *	Instantiate the I/O module
-	 */
-	if (inst->io.app_io) {
-		if (inst->io.app_io->instantiate &&
-		    (inst->io.app_io->instantiate(inst->io.app_io_instance,
-					       inst->io.app_io_conf) < 0)) {
-			cf_log_err(conf, "Instantiation failed for \"%s\"", inst->io.app_io->name);
-			return -1;
-		}
-	}
-
-	/*
-	 *	Instantiate proto_radius_dynamic_client
-	 */
-	if (inst->io.dynamic_clients) {
-		fr_app_process_t const	*app_process;
-
-		app_process = (fr_app_process_t const *)inst->dynamic_submodule->module->common;
-		if (app_process->instantiate && (app_process->instantiate(inst->dynamic_submodule->data, conf) < 0)) {
-
-			cf_log_err(conf, "Instantiation failed for \"%s\"", app_process->name);
-			return -1;
-		}
-	}
-
-	/*
-	 *	Create the trie of clients for this socket.
-	 */
-	inst->io.trie = fr_trie_alloc(inst);
-	if (!inst->io.trie) {
-		cf_log_err(conf, "Instantiation failed for \"%s\"", inst->io.app_io->name);
-		return -1;
-	}
-
-	/*
 	 *	Needed to populate the code array
 	 */
 	da = fr_dict_attr_by_name(NULL, "Packet-Type");
 	if (!da) {
-		ERROR("Missing definiton for Packet-Type");
+		ERROR("Missing definition for Packet-Type");
 		return -1;
 	}
 
@@ -799,6 +764,11 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	}
 
 	/*
+	 *	No IO module, it's an empty listener.
+	 */
+	if (!inst->io.submodule) return 0;
+
+	/*
 	 *	These configuration items are not printed by default,
 	 *	because normal people shouldn't be touching them.
 	 */
@@ -811,6 +781,41 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 1024);
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65535);
+
+	/*
+	 *	Instantiate the master io submodule
+	 */
+	if (proto_radius_master_io.instantiate(inst, conf) < 0) {
+		return -1;
+
+	}
+
+	/*
+	 *	No dynamic clients, nothing more to do.
+	 */
+	if (!inst->io.dynamic_clients) return 0;
+
+	/*
+	 *	Instantiate proto_radius_dynamic_client
+	 */
+	{
+		fr_app_process_t const	*app_process;
+
+		app_process = (fr_app_process_t const *)inst->dynamic_submodule->module->common;
+		if (app_process->instantiate && (app_process->instantiate(inst->dynamic_submodule->data, conf) < 0)) {
+			cf_log_err(conf, "Instantiation failed for \"%s\"", app_process->name);
+			return -1;
+		}
+	}
+
+	/*
+	 *	Create the trie of clients for this socket.
+	 */
+	inst->io.trie = fr_trie_alloc(inst);
+	if (!inst->io.trie) {
+		cf_log_err(conf, "Instantiation failed for \"%s\"", inst->io.app_io->name);
+		return -1;
+	}
 
 	return 0;
 }

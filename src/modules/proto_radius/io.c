@@ -2049,13 +2049,29 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	return 0;
 }
 
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
+{
+	proto_radius_t		*inst = talloc_get_type_abort(instance, proto_radius_t);
+
+	rad_assert(inst->io.app_io != NULL);
+
+	if (inst->io.app_io->instantiate &&
+	    (inst->io.app_io->instantiate(inst->io.app_io_instance,
+					  inst->io.app_io_conf) < 0)) {
+		cf_log_err(conf, "Instantiation failed for \"%s\"", inst->io.app_io->name);
+		return -1;
+	}
+
+	return 0;
+}
+
 fr_app_io_t proto_radius_master_io = {
 	.magic			= RLM_MODULE_INIT,
 	.name			= "radius_master_io",
 
 	.detach			= mod_detach,
 	.bootstrap		= mod_bootstrap,
-//	.instantiate		= mod_instantiate,
+	.instantiate		= mod_instantiate,
 
 	.default_message_size	= 4096,
 	.track_duplicates	= true,
