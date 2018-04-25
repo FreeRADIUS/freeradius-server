@@ -146,8 +146,6 @@ RADCLIENT	*client_findbynumber(RADCLIENT_LIST const *clients, int number);
 
 RADCLIENT	*client_read(char const *filename, CONF_SECTION *server_cs, bool check_dns);
 
-
-RADCLIENT	*client_clone(TALLOC_CTX *ctx, RADCLIENT const *parent);
 #ifdef __cplusplus
 }
 #endif

@@ -289,6 +289,53 @@ static fr_io_pending_packet_t *pending_packet_pop(fr_io_instance_t *inst)
 	return pending;
 }
 
+static RADCLIENT *radclient_clone(TALLOC_CTX *ctx, RADCLIENT const *parent)
+{
+	RADCLIENT *c;
+
+	if (!parent) return NULL;
+
+	c = talloc_zero(ctx, RADCLIENT);
+	if (!c) return NULL;
+
+	/*
+	 *	Do NOT set ipaddr or src_ipaddr.  The caller MUST do this!
+	 */
+
+#define DUP_FIELD(_x) do { if (parent->_x) {c->_x = talloc_strdup(c, parent->_x); if (!c->_x) {goto error;}}} while (0)
+#define COPY_FIELD(_x) c->_x = parent->_x
+
+	DUP_FIELD(longname);
+	DUP_FIELD(shortname);
+	DUP_FIELD(secret);
+	DUP_FIELD(nas_type);
+	DUP_FIELD(server);
+	DUP_FIELD(nas_type);
+
+	COPY_FIELD(message_authenticator);
+	/* dynamic MUST be false */
+	COPY_FIELD(server_cs);
+	COPY_FIELD(cs);
+	COPY_FIELD(proto);
+	COPY_FIELD(use_connected);
+
+#ifdef WITH_TLS
+	COPY_FIELD(tls_required);
+#endif
+
+	return c;
+
+	/*
+	 *	@todo - fill in other fields, too!
+	 */
+
+error:
+	talloc_free(c);
+	return NULL;
+}
+#undef COPY_FIELD
+#undef DUP_FIELD
+
 
 /** Create a new connection.
  *
@@ -332,7 +379,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 	connection->dl_inst = dl_inst;
 
 	MEM(connection->client = talloc_zero(connection, fr_io_client_t));
-	MEM(connection->client->radclient = radclient = client_clone(connection->client, client->radclient));
+	MEM(connection->client->radclient = radclient = radclient_clone(connection->client, client->radclient));
 	connection->client->heap_id = -1;
 	connection->client->connected = true;
 
@@ -946,7 +993,7 @@ redo:
 			/*
 			 *	Make our own copy that we can modify it.
 			 */
-			MEM(radclient = client_clone(inst, radclient));
+			MEM(radclient = radclient_clone(inst, radclient));
 			radclient->active = true;
 
 		} else if (inst->dynamic_clients) {
