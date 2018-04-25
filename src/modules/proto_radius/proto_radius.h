@@ -26,7 +26,6 @@
 
 #include <freeradius-devel/trie.h>
 
-
 typedef struct {
 	fr_event_timer_t const		*ev;		//!< when we clean up this tracking entry
 	fr_time_t			timestamp;	//!< when this packet was received
