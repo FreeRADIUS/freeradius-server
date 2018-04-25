@@ -16,8 +16,8 @@
 
 /**
  * $Id$
- * @file proto_radius/io.c
- * @brief RADIUS master IO handler
+ * @file io/master.c
+ * @brief Master IO handler
  *
  * @copyright 2018 Alan DeKok (aland@freeradius.org)
  */
@@ -26,10 +26,11 @@
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/unlang.h>
-#include <freeradius-devel/io/schedule.h>
-#include <freeradius-devel/io/application.h>
+#include <freeradius-devel/io/master.h>
 #include <freeradius-devel/rad_assert.h>
-#include "proto_radius.h"
+
+#define PR_CONNECTION_MAGIC (0x434f4e4e)
+#define PR_MAIN_MAGIC	    (0x4d4149e4)
 
 /** A saved packet
  *
@@ -56,7 +57,7 @@ typedef enum {
 	PR_CLIENT_PENDING,				//!< dynamic client pending definition
 } fr_io_client_state_t;
 
-/** Client definitions for proto_radius
+/** Client definitions for master IO
  *
  */
 typedef struct fr_io_client_t {
@@ -99,7 +100,7 @@ typedef struct fr_io_client_t {
  */
 typedef struct {
 	int				magic;		//!< sparkles and unicorns
-	char const			*name;		//!< taken from proto_radius_TRANSPORT
+	char const			*name;		//!< taken from proto_FOO_TRANSPORT
 	int				packets;	//!< number of packets using this connection
 	fr_io_address_t   		*address;      	//!< full information about the connection.
 	fr_listen_t			*listen;	//!< listener for this socket
@@ -314,7 +315,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 	 */
 	if (!nak) {
 		if (dl_instance(NULL, &dl_inst, NULL, inst->dl_inst, inst->transport, DL_TYPE_SUBMODULE) < 0) {
-			DEBUG("Failed to find proto_radius_%s", inst->transport);
+			DEBUG("Failed to find proto_%s", inst->app->name, inst->transport);
 			return NULL;
 		}
 		rad_assert(dl_inst != NULL);
@@ -440,7 +441,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 		/*
 		 *	Glue in the connection to the listener.
 		 */
-		listen->app_io = &proto_radius_master_io;
+		listen->app_io = &fr_master_app_io;
 		listen->app_io_instance = connection;
 
 		connection->app_io_instance = dl_inst->data;
@@ -482,7 +483,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_
 	rcode = fr_hash_table_insert(client->ht, connection);
 	client->ready_to_delete = false;
 	pthread_mutex_unlock(&client->mutex);
-	
+
 	if (rcode < 0) {
 		ERROR("proto_%s - Failed inserting connection into tracking table.  Closing it, and discarding all packets for connection %s.", inst->app_io->name, connection->name);
 		goto cleanup;
@@ -669,7 +670,7 @@ static int pending_free(fr_io_pending_packet_t *pending)
 	 */
 	rad_assert(track->packets > 0);
 	track->packets--;
-	
+
 	/*
 	 *	No more packets using this tracking entry,
 	 *	delete it.
@@ -901,10 +902,6 @@ redo:
 			return 0;
 		}
 		*priority = value;
-
-		if (connection) DEBUG2("proto_%s - Received %s ID %d length %d from connection %s",
-				       inst->app_io->name, fr_packet_codes[buffer[0]], buffer[1],
-				       (int) packet_len, connection->name);
 	}
 
 	/*
@@ -1293,7 +1290,7 @@ static int mod_inject(void *instance, uint8_t *buffer, size_t buffer_len, fr_tim
 	if (priority <= 0) {
 		return -1;
 	}
-	
+
 	/*
 	 *	Track this packet, because that's what mod_read expects.
 	 */
@@ -1491,7 +1488,7 @@ static void client_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 		talloc_free(client);
 		return;
 	}
-	
+
 	/*
 	 *	It's a dynamically defined client.  If no one is using
 	 *	it, clean it up after an idle timeout.
@@ -1627,7 +1624,7 @@ static void packet_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 
 		gettimeofday(&when, NULL);
 		fr_timeval_add(&when, &when, &inst->cleanup_delay);
-		
+
 		if (fr_event_timer_insert(client, el, &track->ev,
 					  &when, packet_expiry_timer, track) == 0) {
 			return;
@@ -1731,10 +1728,10 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 				client_expiry_timer(connection ? connection->el : inst->el, NULL, client);
 			}
 			return buffer_len;
-		}		
+		}
 
 		rad_assert(track->reply == NULL);
-		
+
 		/*
 		 *	We have a NAK packet, or the request
 		 *	has timed out, and we don't respond.
@@ -2156,7 +2153,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	return 0;
 }
 
-fr_app_io_t proto_radius_master_io = {
+fr_app_io_t fr_master_app_io = {
 	.magic			= RLM_MODULE_INIT,
 	.name			= "radius_master_io",
 

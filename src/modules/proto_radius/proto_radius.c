@@ -27,8 +27,6 @@
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/unlang.h>
-#include <freeradius-devel/io/schedule.h>
-#include <freeradius-devel/io/application.h>
 #include <freeradius-devel/rad_assert.h>
 #include "proto_radius.h"
 
@@ -562,7 +560,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 		/*
 		 *	Set the listener to call our master trampoline function.
 		 */
-		listen->app_io = &proto_radius_master_io;
+		listen->app_io = &fr_master_app_io;
 		listen->app_io_instance = inst;
 
 		/*
@@ -777,7 +775,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Instantiate the master io submodule
 	 */
-	if (proto_radius_master_io.instantiate(&inst->io, conf) < 0) {
+	if (fr_master_app_io.instantiate(&inst->io, conf) < 0) {
 		return -1;
 
 	}
@@ -919,7 +917,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Bootstrap the master IO handler.
 	 */
-	if (proto_radius_master_io.bootstrap(&inst->io, conf) < 0) {
+	if (fr_master_app_io.bootstrap(&inst->io, conf) < 0) {
 		return -1;
 	}
 

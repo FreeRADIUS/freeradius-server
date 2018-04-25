@@ -23,7 +23,7 @@
  *
  * @copyright 2016 Alan DeKok <aland@freeradius.org>
  */
-RCSIDH(transport_h, "$Id$")
+RCSIDH(io_h, "$Id$")
 
 #include <talloc.h>
 
