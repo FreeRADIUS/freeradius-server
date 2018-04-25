@@ -785,7 +785,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Instantiate the master io submodule
 	 */
-	if (proto_radius_master_io.instantiate(inst, conf) < 0) {
+	if (proto_radius_master_io.instantiate(&inst->io, conf) < 0) {
 		return -1;
 
 	}
@@ -837,11 +837,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	size_t			i = 0;
 	CONF_PAIR		*cp = NULL;
 	CONF_SECTION		*subcs;
-
-	/*
-	 *	The listener is inside of a virtual server.
-	 */
-	inst->magic = PR_MAIN_MAGIC;
 
 	/*
 	 *	Bootstrap the process modules
@@ -924,9 +919,15 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->io.app_instance = inst;
 
 	/*
+	 *	We will need this for dynamic clients and connected sockets.
+	 */
+	inst->io.dl_inst = dl_instance_find(inst);
+	rad_assert(inst != NULL);
+
+	/*
 	 *	Bootstrap the master IO handler.
 	 */
-	if (proto_radius_master_io.bootstrap(inst, conf) < 0) {
+	if (proto_radius_master_io.bootstrap(&inst->io, conf) < 0) {
 		return -1;
 	}
 

@@ -149,7 +149,7 @@ static int track_cmp(void const *one, void const *two)
 	 *	Call the per-protocol comparison function, if it
 	 *	exists.
 	 */
-	rcode = a->client->inst->io.app_io->compare(a->client->inst->io.app_io_instance,
+	rcode = a->client->inst->app_io->compare(a->client->inst->app_io_instance,
 						 a->packet, b->packet);
 	if (rcode != 0) return rcode;
 
@@ -171,20 +171,20 @@ static int track_cmp(void const *one, void const *two)
 }
 
 
-static fr_io_pending_packet_t *pending_packet_pop(proto_radius_t *inst)
+static fr_io_pending_packet_t *pending_packet_pop(fr_io_instance_t *inst)
 {
 	fr_io_client_t *client;
 	fr_io_pending_packet_t *pending;
 
-	client = fr_heap_pop(inst->io.pending_clients);
+	client = fr_heap_pop(inst->pending_clients);
 	if (!client) {
 		/*
 		 *	99% of the time we don't have pending clients.
 		 *	So we might as well free this, so that the
 		 *	caller doesn't keep checking us for every packet.
 		 */
-		talloc_free(inst->io.pending_clients);
-		inst->io.pending_clients = NULL;
+		talloc_free(inst->pending_clients);
+		inst->pending_clients = NULL;
 		return NULL;
 	}
 
@@ -196,11 +196,11 @@ static fr_io_pending_packet_t *pending_packet_pop(proto_radius_t *inst)
 	 *	the heap.
 	 */
 	if (fr_heap_num_elements(client->pending) > 0) {
-		(void) fr_heap_insert(inst->io.pending_clients, client);
+		(void) fr_heap_insert(inst->pending_clients, client);
 	}
 
-	rad_assert(inst->io.num_pending_packets > 0);
-	inst->io.num_pending_packets--;
+	rad_assert(inst->num_pending_packets > 0);
+	inst->num_pending_packets--;
 
 	return pending;
 }
@@ -210,7 +210,7 @@ static fr_io_pending_packet_t *pending_packet_pop(proto_radius_t *inst)
  *
  *  Called ONLY from the master socket.
  */
-static fr_io_connection_t *fr_io_connection_alloc(proto_radius_t *inst, fr_io_client_t *client,
+static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t *inst, fr_io_client_t *client,
 								fr_io_address_t *address,
 								fr_io_connection_t *nak)
 {
@@ -230,8 +230,8 @@ static fr_io_connection_t *fr_io_connection_alloc(proto_radius_t *inst, fr_io_cl
 	 *	called when the instance data is freed.
 	 */
 	if (!nak) {
-		if (dl_instance(NULL, &dl_inst, NULL, inst->io.dl_inst, inst->io.transport, DL_TYPE_SUBMODULE) < 0) {
-			DEBUG("Failed to find proto_radius_%s", inst->io.transport);
+		if (dl_instance(NULL, &dl_inst, NULL, inst->dl_inst, inst->transport, DL_TYPE_SUBMODULE) < 0) {
+			DEBUG("Failed to find proto_radius_%s", inst->transport);
 			return NULL;
 		}
 		rad_assert(dl_inst != NULL);
@@ -257,7 +257,7 @@ static fr_io_connection_t *fr_io_connection_alloc(proto_radius_t *inst, fr_io_cl
 	 *
 	 *	#todo - unify the code with static clients?
 	 */
-	if (inst->io.app_io->track_duplicates) {
+	if (inst->app_io->track_duplicates) {
 		MEM(connection->client->table = rbtree_talloc_create(client, track_cmp, fr_io_track_t,
 								     NULL, RBTREE_FLAG_NONE));
 	}
@@ -352,7 +352,7 @@ static fr_io_connection_t *fr_io_connection_alloc(proto_radius_t *inst, fr_io_cl
 		 *	i.e. we can't add things to it.  Instead, we have to
 		 *	put all variable data into the connection.
 		 */
-		memcpy(listen, inst->io.listen, sizeof(*listen));
+		memcpy(listen, inst->listen, sizeof(*listen));
 
 		/*
 		 *	Glue in the connection to the listener.
@@ -366,16 +366,16 @@ static fr_io_connection_t *fr_io_connection_alloc(proto_radius_t *inst, fr_io_cl
 		 *	Bootstrap the configuration.  There shouldn't
 		 *	be need to re-parse it.
 		 */
-		memcpy(connection->app_io_instance, inst->io.app_io_instance, inst->io.app_io->inst_size);
+		memcpy(connection->app_io_instance, inst->app_io_instance, inst->app_io->inst_size);
 
 		/*
 		 *	Instantiate the child, and open the socket.
 		 *
 		 *	This also sets connection->name.
 		 */
-		if ((inst->io.app_io->connection_set(connection->app_io_instance, connection->address) < 0) ||
-		    (inst->io.app_io->instantiate(connection->app_io_instance, inst->io.app_io_conf) < 0) ||
-		    (inst->io.app_io->open(connection->app_io_instance) < 0)) {
+		if ((inst->app_io->connection_set(connection->app_io_instance, connection->address) < 0) ||
+		    (inst->app_io->instantiate(connection->app_io_instance, inst->app_io_conf) < 0) ||
+		    (inst->app_io->open(connection->app_io_instance) < 0)) {
 			DEBUG("Failed opening connected socket.");
 			talloc_free(dl_inst);
 			return NULL;
@@ -385,7 +385,7 @@ static fr_io_connection_t *fr_io_connection_alloc(proto_radius_t *inst, fr_io_cl
 		fr_value_box_snprint(dst_buf, sizeof(dst_buf), fr_box_ipaddr(connection->address->dst_ipaddr), 0);
 
 		connection->name = talloc_typed_asprintf(inst, "proto_%s from client %s port %u to server %s port %u",
-							 inst->io.app_io->name,
+							 inst->app_io->name,
 							 src_buf, connection->address->src_port,
 							 dst_buf, connection->address->dst_port);
 	}
@@ -401,7 +401,7 @@ static fr_io_connection_t *fr_io_connection_alloc(proto_radius_t *inst, fr_io_cl
 	pthread_mutex_unlock(&client->mutex);
 	
 	if (rcode < 0) {
-		ERROR("proto_%s - Failed inserting connection into tracking table.  Closing it, and discarding all packets for connection %s.", inst->io.app_io->name, connection->name);
+		ERROR("proto_%s - Failed inserting connection into tracking table.  Closing it, and discarding all packets for connection %s.", inst->app_io->name, connection->name);
 		goto cleanup;
 	}
 
@@ -416,10 +416,10 @@ static fr_io_connection_t *fr_io_connection_alloc(proto_radius_t *inst, fr_io_cl
 		return connection;
 	}
 
-	DEBUG("proto_%s - starting connection %s", inst->io.app_io->name, connection->name);
-	connection->nr = fr_schedule_socket_add(inst->io.sc, connection->listen);
+	DEBUG("proto_%s - starting connection %s", inst->app_io->name, connection->name);
+	connection->nr = fr_schedule_socket_add(inst->sc, connection->listen);
 	if (!connection->nr) {
-		ERROR("proto_%s - Failed inserting connection into scheduler.  Closing it, and diuscarding all packets for connection %s.", inst->io.app_io->name, connection->name);
+		ERROR("proto_%s - Failed inserting connection into scheduler.  Closing it, and diuscarding all packets for connection %s.", inst->app_io->name, connection->name);
 		pthread_mutex_lock(&client->mutex);
 		(void) fr_hash_table_delete(client->ht, connection);
 		pthread_mutex_unlock(&client->mutex);
@@ -440,7 +440,7 @@ static fr_io_connection_t *fr_io_connection_alloc(proto_radius_t *inst, fr_io_cl
  *	fr_io_connection_io, which will duplicate some code,
  *	but may make things simpler?
  */
-static void get_inst(void *instance, proto_radius_t **inst, fr_io_connection_t **connection,
+static void get_inst(void *instance, fr_io_instance_t **inst, fr_io_connection_t **connection,
 		     void **app_io_instance)
 {
 	int magic;
@@ -449,7 +449,7 @@ static void get_inst(void *instance, proto_radius_t **inst, fr_io_connection_t *
 	if (magic == PR_MAIN_MAGIC) {
 		*inst = instance;
 		*connection = NULL;
-		if (app_io_instance) *app_io_instance = (*inst)->io.app_io_instance;
+		if (app_io_instance) *app_io_instance = (*inst)->app_io_instance;
 
 	} else {
 		rad_assert(magic == PR_CONNECTION_MAGIC);
@@ -461,7 +461,7 @@ static void get_inst(void *instance, proto_radius_t **inst, fr_io_connection_t *
 }
 
 
-static RADCLIENT *proto_radius_radclient_alloc(proto_radius_t *inst, fr_io_address_t *address)
+static RADCLIENT *proto_radius_radclient_alloc(fr_io_instance_t *inst, fr_io_address_t *address)
 {
 	RADCLIENT *client;
 	char src_buf[128];
@@ -478,7 +478,7 @@ static RADCLIENT *proto_radius_radclient_alloc(proto_radius_t *inst, fr_io_addre
 
 	client->src_ipaddr = address->dst_ipaddr;
 
-	client->proto = inst->io.ipproto;
+	client->proto = inst->ipproto;
 	client->dynamic = true;
 
 	return client;
@@ -495,7 +495,7 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 	my_track.client = client;
 	memcpy(my_track.packet, packet, sizeof(my_track.packet));
 
-	if (client->inst->io.app_io->track_duplicates) track = rbtree_finddata(client->table, &my_track);
+	if (client->inst->app_io->track_duplicates) track = rbtree_finddata(client->table, &my_track);
 	if (!track) {
 		*is_dup = false;
 
@@ -592,7 +592,7 @@ static int pending_free(fr_io_pending_packet_t *pending)
 	 *	delete it.
 	 */
 	if (track->packets == 0) {
-		if (track->client->inst->io.app_io->track_duplicates) (void) rbtree_deletebydata(track->client->table, track);
+		if (track->client->inst->app_io->track_duplicates) (void) rbtree_deletebydata(track->client->table, track);
 
 		// @todo - put this into a slab allocator
 		talloc_free(track);
@@ -633,7 +633,7 @@ static fr_io_pending_packet_t *fr_io_pending_alloc(fr_io_client_t *client,
 	 *	we pause the FD, so the number of
 	 *	pending packets will always be small.
 	 */
-	if (!client->connected) client->inst->io.num_pending_packets++;
+	if (!client->connected) client->inst->num_pending_packets++;
 
 	return pending;
 }
@@ -674,7 +674,7 @@ static int count_connections(void *ctx, UNUSED uint8_t const *key, UNUSED int ke
 static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time_p,
 			uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority, bool *is_dup)
 {
-	proto_radius_t *inst;
+	fr_io_instance_t *inst;
 	ssize_t packet_len;
 	fr_time_t recv_time;
 	fr_io_client_t *client;
@@ -709,7 +709,7 @@ redo:
 
 		pending = fr_heap_pop(connection->client->pending);
 
-	} else if (inst->io.pending_clients) {
+	} else if (inst->pending_clients) {
 		pending = pending_packet_pop(inst);
 
 	} else {
@@ -795,7 +795,7 @@ redo:
 		 *		and run THAT through the dynamic client definition,
 		 *		instead of using RADIUS packets.
 		 */
-		packet_len = inst->io.app_io->read(app_io_instance, (void **) &local_address, &local_recv_time,
+		packet_len = inst->app_io->read(app_io_instance, (void **) &local_address, &local_recv_time,
 					  buffer, buffer_len, leftover, priority, is_dup);
 		if (packet_len <= 0) {
 			DEBUG("NO DATA %d", (int) packet_len);
@@ -808,19 +808,19 @@ redo:
 		 *	Not allowed?  Discard it.  The other function
 		 *	has done any complaining, if necessary.
 		 */
-		value = inst->io.app->priority(inst, buffer, packet_len);
+		value = inst->app->priority(inst, buffer, packet_len);
 		if (value <= 0) {
 			char src_buf[128];
 
 			fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(address.src_ipaddr), 0);
 			DEBUG2("proto_%s - ignoring packet %d from IP %s. It is not configured as 'type = ...'",
-			       inst->io.app_io->name, buffer[0], src_buf);
+			       inst->app_io->name, buffer[0], src_buf);
 			return 0;
 		}
 		*priority = value;
 
 		if (connection) DEBUG2("proto_%s - Received %s ID %d length %d from connection %s",
-				       inst->io.app_io->name, fr_packet_codes[buffer[0]], buffer[1],
+				       inst->app_io->name, fr_packet_codes[buffer[0]], buffer[1],
 				       (int) packet_len, connection->name);
 	}
 
@@ -829,7 +829,7 @@ redo:
 	 *	connected socket).
 	 */
 	if (!connection) {
-		client = fr_trie_lookup(inst->io.trie, &address.src_ipaddr.addr, address.src_ipaddr.prefix);
+		client = fr_trie_lookup(inst->trie, &address.src_ipaddr.addr, address.src_ipaddr.prefix);
 		rad_assert(!client || !client->connected);
 
 	} else {
@@ -859,7 +859,7 @@ redo:
 		 */
 		rad_assert(!connection);
 
-		radclient = client_find(NULL, &address.src_ipaddr, inst->io.ipproto);
+		radclient = client_find(NULL, &address.src_ipaddr, inst->ipproto);
 		if (radclient) {
 			state = PR_CLIENT_STATIC;
 
@@ -869,18 +869,18 @@ redo:
 			MEM(radclient = client_clone(inst, radclient));
 			radclient->active = true;
 
-		} else if (inst->io.dynamic_clients) {
-			if (inst->io.max_clients && (inst->io.num_clients >= inst->io.max_clients)) {
+		} else if (inst->dynamic_clients) {
+			if (inst->max_clients && (inst->num_clients >= inst->max_clients)) {
 				fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(address.src_ipaddr), 0);
 				DEBUG("proto_%s - ignoring packet code %d from client IP address %s - too many dynamic clients are defined",
-				      inst->io.app_io->name, buffer[0], src_buf);
+				      inst->app_io->name, buffer[0], src_buf);
 				return 0;
 			}
 
 			/*
 			 *	Look up the allowed networks.
 			 */
-			network = fr_trie_lookup(inst->io.networks, &address.src_ipaddr.addr, address.src_ipaddr.prefix);
+			network = fr_trie_lookup(inst->networks, &address.src_ipaddr.addr, address.src_ipaddr.prefix);
 			if (!network) goto ignore;
 
 			/*
@@ -899,7 +899,7 @@ redo:
 		ignore:
 			fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(address.src_ipaddr), 0);
 			DEBUG("proto_%s - ignoring packet code %d from unknown client IP address %s",
-			      inst->io.app_io->name, buffer[0], src_buf);
+			      inst->app_io->name, buffer[0], src_buf);
 			return 0;
 		}
 
@@ -940,7 +940,7 @@ redo:
 		/*
 		 *	Create the packet tracking table for this client.
 		 */
-		if (inst->io.app_io->track_duplicates) {
+		if (inst->app_io->track_duplicates) {
 			MEM(client->table = rbtree_talloc_create(client, track_cmp, fr_io_track_t,
 								 NULL, RBTREE_FLAG_NONE));
 		}
@@ -960,14 +960,14 @@ redo:
 		 *	Add the newly defined client to the trie of
 		 *	allowed clients.
 		 */
-		if (fr_trie_insert(inst->io.trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix, client)) {
-			ERROR("proto_%s - Failed inserting client %s into tracking table.  Discarding client, and all packts for it.", inst->io.app_io->name, client->radclient->shortname);
+		if (fr_trie_insert(inst->trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix, client)) {
+			ERROR("proto_%s - Failed inserting client %s into tracking table.  Discarding client, and all packts for it.", inst->app_io->name, client->radclient->shortname);
 			talloc_free(client);
 			return -1;
 		}
 
 		client->in_trie = true;
-		if (client->state == PR_CLIENT_PENDING) inst->io.num_clients++;
+		if (client->state == PR_CLIENT_PENDING) inst->num_clients++;
 	}
 
 have_client:
@@ -1027,7 +1027,7 @@ have_client:
 			 *	for connected sockets, we don't need
 			 *	to track pending packets.
 			 */
-			if (!connection && inst->io.max_pending_packets && (inst->io.num_pending_packets >= inst->io.max_pending_packets)) {
+			if (!connection && inst->max_pending_packets && (inst->num_pending_packets >= inst->max_pending_packets)) {
 				fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(client->src_ipaddr), 0);
 
 				DEBUG("Too many pending packets for client %s - discarding packet", src_buf);
@@ -1092,7 +1092,7 @@ have_client:
 	 *	the state, the child socket will take care of handling
 	 *	the packet.  e.g. dynamic clients, etc.
 	 */
-	if (inst->io.ipproto == IPPROTO_UDP) {
+	if (inst->ipproto == IPPROTO_UDP) {
 		bool nak = false;
 
 		my_connection.address = &address;
@@ -1131,18 +1131,18 @@ have_client:
 	 *	No existing connection, create one.
 	 */
 	if (!connection) {
-		if (inst->io.max_connections) {
+		if (inst->max_connections) {
 			/*
 			 *	We've hit the connection limit.  Walk
 			 *	over all clients with connections, and
 			 *	count the number of connections used.
 			 */
-			if (inst->io.num_connections >= inst->io.max_connections) {
-				inst->io.num_connections = 0;
+			if (inst->num_connections >= inst->max_connections) {
+				inst->num_connections = 0;
 
-				(void) fr_trie_walk(inst->io.trie, &inst->io.num_connections, count_connections);
+				(void) fr_trie_walk(inst->trie, &inst->num_connections, count_connections);
 
-				if ((inst->io.num_connections + 1) >= inst->io.max_connections) {
+				if ((inst->num_connections + 1) >= inst->max_connections) {
 					DEBUG("Too many open connections.  Ignoring dynamic client %s.  Discarding packet.", client->radclient->shortname);
 					return 0;
 				}
@@ -1163,7 +1163,7 @@ have_client:
 		 *	limit, and then walk over the clients to reset
 		 *	the count.
 		 */
-		inst->io.num_connections++;
+		inst->num_connections++;
 	}
 
 	DEBUG("Sending packet to connection %s", connection->name);
@@ -1192,7 +1192,7 @@ have_client:
  */
 static int mod_inject(void *instance, uint8_t *buffer, size_t buffer_len, fr_time_t recv_time)
 {
-	proto_radius_t	*inst;
+	fr_io_instance_t	*inst;
 	int		priority;
 	bool		is_dup = false;
 	fr_io_connection_t *connection;
@@ -1206,7 +1206,7 @@ static int mod_inject(void *instance, uint8_t *buffer, size_t buffer_len, fr_tim
 		return -1;
 	}
 
-	priority = inst->io.app->priority(inst, buffer, buffer_len);
+	priority = inst->app->priority(inst, buffer, buffer_len);
 	if (priority <= 0) {
 		return -1;
 	}
@@ -1248,7 +1248,7 @@ static int mod_inject(void *instance, uint8_t *buffer, size_t buffer_len, fr_tim
  */
 static int mod_fd(void const *const_instance)
 {
-	proto_radius_t *inst;
+	fr_io_instance_t *inst;
 	fr_io_connection_t *connection;
 	void *app_io_instance;
 	void *instance;
@@ -1257,7 +1257,7 @@ static int mod_fd(void const *const_instance)
 
 	get_inst((void *) instance, &inst, &connection, &app_io_instance);
 
-	return inst->io.app_io->fd(app_io_instance);
+	return inst->app_io->fd(app_io_instance);
 }
 
 /** Set the event list for a new socket
@@ -1268,7 +1268,7 @@ static int mod_fd(void const *const_instance)
  */
 static void mod_event_list_set(void *instance, fr_event_list_t *el, void *nr)
 {
-	proto_radius_t *inst;
+	fr_io_instance_t *inst;
 	fr_io_connection_t *connection;
 	void *app_io_instance;
 
@@ -1278,15 +1278,15 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el, void *nr)
 	 *	We're not doing IO, so there are no timers for
 	 *	cleaning up packets, dynamic clients, or connections.
 	 */
-	if (!inst->io.submodule) return;
+	if (!inst->submodule) return;
 
 	/*
 	 *	No dynamic clients AND no packet cleanups?  We don't
 	 *	need timers.
 	 */
-	if (!inst->io.dynamic_clients &&
-	    (inst->io.cleanup_delay.tv_sec == 0) &&
-	    (inst->io.cleanup_delay.tv_usec == 0)) {
+	if (!inst->dynamic_clients &&
+	    (inst->cleanup_delay.tv_sec == 0) &&
+	    (inst->cleanup_delay.tv_usec == 0)) {
 		return;
 	}
 
@@ -1294,8 +1294,8 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el, void *nr)
 	 *	Set event list and network side for this socket.
 	 */
 	if (!connection) {
-		inst->io.el = el;
-		inst->io.nr = nr;
+		inst->el = el;
+		inst->nr = nr;
 
 	} else {
 		connection->el = el;
@@ -1313,7 +1313,7 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el, void *nr)
 
 			connection->paused = true;
 			(void) fr_event_filter_update(connection->el,
-						      inst->io.app_io->fd(connection->app_io_instance),
+						      inst->app_io->fd(connection->app_io_instance),
 						      FR_EVENT_FILTER_IO, pause_read);
 		}
 	}
@@ -1323,7 +1323,7 @@ static void mod_event_list_set(void *instance, fr_event_list_t *el, void *nr)
 static void client_expiry_timer(fr_event_list_t *el, struct timeval *now, void *uctx)
 {
 	fr_io_client_t *client = uctx;
-	proto_radius_t *inst;
+	fr_io_instance_t *inst;
 	fr_io_connection_t *connection;
 	struct timeval when;
 	struct timeval *delay;
@@ -1345,16 +1345,16 @@ static void client_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 		switch (client->state) {
 		case PR_CLIENT_CONNECTED:
 			rad_assert(connection != NULL);
-			delay = &inst->io.idle_timeout;
+			delay = &inst->idle_timeout;
 			break;
 
 		case PR_CLIENT_DYNAMIC:
-			delay = &inst->io.idle_timeout;
+			delay = &inst->idle_timeout;
 			break;
 
 		case PR_CLIENT_NAK:
 			rad_assert(!connection);
-			delay = &inst->io.nak_lifetime;
+			delay = &inst->nak_lifetime;
 			break;
 
 		default:
@@ -1401,10 +1401,10 @@ static void client_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 
 		rad_assert(client->in_trie);
 		rad_assert(!client->connected);
-		(void) fr_trie_remove(inst->io.trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix);
+		(void) fr_trie_remove(inst->trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix);
 
-		rad_assert(inst->io.num_clients > 0);
-		inst->io.num_clients--;
+		rad_assert(inst->num_clients > 0);
+		inst->num_clients--;
 		talloc_free(client);
 		return;
 	}
@@ -1484,9 +1484,9 @@ idle_timeout:
 		 */
 		if (client->ready_to_delete) {
 			if (connection) {
-				DEBUG("proto_%s - idle timeout for connection %s", inst->io.app_io->name, connection->name);
+				DEBUG("proto_%s - idle timeout for connection %s", inst->app_io->name, connection->name);
 			} else {
-				DEBUG("proto_%s - idle timeout for client %s", inst->io.app_io->name, client->radclient->shortname);
+				DEBUG("proto_%s - idle timeout for client %s", inst->app_io->name, client->radclient->shortname);
 			}
 			goto delete_client;
 		}
@@ -1496,7 +1496,7 @@ idle_timeout:
 		 *	idle timeut.
 		 */
 		client->ready_to_delete = true;
-		delay = &inst->io.idle_timeout;
+		delay = &inst->idle_timeout;
 		goto reset_timer;
 	}
 
@@ -1510,7 +1510,7 @@ idle_timeout:
 	 *	if the total number of clients is limited.
 	 */
 	client->ready_to_delete = false;
-	delay = &inst->io.check_interval;
+	delay = &inst->check_interval;
 
 reset_timer:
 	gettimeofday(&when, NULL);
@@ -1519,7 +1519,7 @@ reset_timer:
 	if (fr_event_timer_insert(client, el, &client->ev,
 				  &when, client_expiry_timer, client) < 0) {
 		ERROR("proto_%s - Failed adding timeout for dynamic client %s.  It will be permanent!",
-		      inst->io.app_io->name, client->radclient->shortname);
+		      inst->app_io->name, client->radclient->shortname);
 		return;
 	}
 
@@ -1531,19 +1531,19 @@ static void packet_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 {
 	fr_io_track_t *track = talloc_get_type_abort(uctx, fr_io_track_t);
 	fr_io_client_t *client = track->client;
-	proto_radius_t *inst = client->inst;
+	fr_io_instance_t *inst = client->inst;
 
 	/*
 	 *	We're called from mod_write().  Set a cleanup_delay
 	 *	for Access-Request packets.
 	 */
 	if (!now && (track->packet[0] == FR_CODE_ACCESS_REQUEST) &&
-	    ((inst->io.cleanup_delay.tv_sec | inst->io.cleanup_delay.tv_usec) != 0)) {
+	    ((inst->cleanup_delay.tv_sec | inst->cleanup_delay.tv_usec) != 0)) {
 
 		struct timeval when;
 
 		gettimeofday(&when, NULL);
-		fr_timeval_add(&when, &when, &inst->io.cleanup_delay);
+		fr_timeval_add(&when, &when, &inst->cleanup_delay);
 		
 		if (fr_event_timer_insert(client, el, &track->ev,
 					  &when, packet_expiry_timer, track) == 0) {
@@ -1551,7 +1551,7 @@ static void packet_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 		}
 
 		DEBUG("proto_%s - Failed adding cleanup_delay for packet.  Discarding packet immediately",
-			inst->io.app_io->name);
+			inst->app_io->name);
 	}
 
 	/*
@@ -1559,9 +1559,9 @@ static void packet_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 	 *	timeout ones.
 	 */
 	if (now) {
-		DEBUG2("TIMER - proto_%s - cleanup delay for ID %d", inst->io.app_io->name, track->packet[1]);
+		DEBUG2("TIMER - proto_%s - cleanup delay for ID %d", inst->app_io->name, track->packet[1]);
 	} else {
-		DEBUG2("proto_%s - cleaning up ID %d", inst->io.app_io->name, track->packet[1]);
+		DEBUG2("proto_%s - cleaning up ID %d", inst->app_io->name, track->packet[1]);
 	}
 
 	/*
@@ -1571,7 +1571,7 @@ static void packet_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 	track->packets--;
 
 	if (track->packets == 0) {
-		if (inst->io.app_io->track_duplicates) (void) rbtree_deletebydata(client->table, track);
+		if (inst->app_io->track_duplicates) (void) rbtree_deletebydata(client->table, track);
 		talloc_free(track);
 
 	} else {
@@ -1607,7 +1607,7 @@ static void packet_expiry_timer(fr_event_list_t *el, struct timeval *now, void *
 static ssize_t mod_write(void *instance, void *packet_ctx,
 			 fr_time_t request_time, uint8_t *buffer, size_t buffer_len)
 {
-	proto_radius_t *inst;
+	fr_io_instance_t *inst;
 	fr_io_connection_t *connection;
 	fr_io_track_t *track = packet_ctx;
 	fr_io_client_t *client;
@@ -1645,7 +1645,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			 *	idle timeouts.
 			 */
 			if ((packets == 0) && (client->state != PR_CLIENT_STATIC)) {
-				client_expiry_timer(connection ? connection->el : inst->io.el, NULL, client);
+				client_expiry_timer(connection ? connection->el : inst->el, NULL, client);
 			}
 			return buffer_len;
 		}		
@@ -1657,7 +1657,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		 *	has timed out, and we don't respond.
 		 */
 		if (buffer_len < 20) {
-			packet_expiry_timer(connection ? connection->el : inst->io.el, NULL, track);
+			packet_expiry_timer(connection ? connection->el : inst->el, NULL, track);
 			track->reply_len = 1; /* don't respond */
 			return buffer_len;
 		}
@@ -1667,7 +1667,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		 *	network via the underlying transport write.
 		 */
 
-		packet_len = inst->io.app_io->write(app_io_instance, track, request_time,
+		packet_len = inst->app_io->write(app_io_instance, track, request_time,
 						 buffer, buffer_len);
 		if (packet_len > 0) {
 			rad_assert(buffer_len == (size_t) packet_len);
@@ -1680,7 +1680,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		/*
 		 *	Expire the packet (if necessary).
 		 */
-		packet_expiry_timer(connection ? connection->el : inst->io.el, NULL, track);
+		packet_expiry_timer(connection ? connection->el : inst->el, NULL, track);
 
 		return packet_len;
 	}
@@ -1691,7 +1691,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	 *	If there's a connected socket and no dynamic clients, then the
 	 *	client state is set to CONNECTED when the client is created.
 	 */
-	rad_assert(inst->io.dynamic_clients);
+	rad_assert(inst->dynamic_clients);
 
 	/*
 	 *	The request has timed out trying to define the dynamic
@@ -1734,7 +1734,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			return -1;
 		}
 
-		client_expiry_timer(connection ? connection->el : inst->io.el, NULL, client);
+		client_expiry_timer(connection ? connection->el : inst->el, NULL, client);
 		return buffer_len;
 	}
 
@@ -1798,9 +1798,9 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 			if (!connection) {
 				rad_assert(client->in_trie);
 				rad_assert(!client->connected);
-				(void) fr_trie_remove(inst->io.trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix);
-				rad_assert(inst->io.num_clients > 0);
-				inst->io.num_clients--;
+				(void) fr_trie_remove(inst->trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix);
+				rad_assert(inst->num_clients > 0);
+				inst->num_clients--;
 				talloc_free(client);
 				return buffer_len;
 			}
@@ -1845,8 +1845,8 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	talloc_free(radclient);
 
 	radclient = client->radclient; /* laziness */
-	radclient->server_cs = inst->io.server_cs;
-	radclient->server = cf_section_name2(inst->io.server_cs);
+	radclient->server_cs = inst->server_cs;
+	radclient->server = cf_section_name2(inst->server_cs);
 	radclient->cs = NULL;
 
 	/*
@@ -1878,7 +1878,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 		 */
 		if (connection->paused) {
 			(void) fr_event_filter_update(connection->el,
-						      inst->io.app_io->fd(connection->app_io_instance),
+						      inst->app_io->fd(connection->app_io_instance),
 						      FR_EVENT_FILTER_IO, resume_read);
 		}
 
@@ -1891,9 +1891,9 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	/*
 	 *	Disallow unsupported configurations.
 	 */
-	if (radclient->use_connected && !inst->io.app_io->connection_set) {
+	if (radclient->use_connected && !inst->app_io->connection_set) {
 		DEBUG("proto_%s - cannot use connected sockets as underlying 'transport = %s' does not support it.",
-		      inst->io.app_io->name, inst->io.transport);
+		      inst->app_io->name, inst->transport);
 		goto error;
 	}
 
@@ -1933,13 +1933,13 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	 *	pending packet, and process it.
 	 *
 	 */
-	if (!inst->io.pending_clients) {
-		MEM(inst->io.pending_clients = fr_heap_create(client, pending_client_cmp,
+	if (!inst->pending_clients) {
+		MEM(inst->pending_clients = fr_heap_create(client, pending_client_cmp,
 							   fr_io_client_t, heap_id));
 	}
 
 	rad_assert(client->heap_id < 0);
-	(void) fr_heap_insert(inst->io.pending_clients, client);
+	(void) fr_heap_insert(inst->pending_clients, client);
 
 finish:
 	/*
@@ -1947,7 +1947,7 @@ finish:
 	 *	timed out, so there's nothing more to do.  In that case, set up the expiry timers.
 	 */
 	if (packets == 0) {
-		client_expiry_timer(connection ? connection->el : inst->io.el, NULL, client);
+		client_expiry_timer(connection ? connection->el : inst->el, NULL, client);
 	}
 
 reread:
@@ -1960,7 +1960,7 @@ reread:
 		if (connection) {
 			fr_network_listen_read(connection->nr, connection->listen);
 		} else {
-			fr_network_listen_read(inst->io.nr, inst->io.listen);
+			fr_network_listen_read(inst->nr, inst->listen);
 		}
 	}
 
@@ -1976,14 +1976,14 @@ reread:
  */
 static int mod_close(void *instance)
 {
-	proto_radius_t *inst;
+	fr_io_instance_t *inst;
 	fr_io_connection_t *connection;
 	void *app_io_instance;
 	int rcode;
 
 	get_inst(instance, &inst, &connection, &app_io_instance);
 
-	rcode = inst->io.app_io->close(app_io_instance);
+	rcode = inst->app_io->close(app_io_instance);
 	if (rcode < 0) return rcode;
 
 	/*
@@ -2004,14 +2004,14 @@ static int mod_close(void *instance)
 
 static int mod_detach(void *instance)
 {
-	proto_radius_t *inst;
+	fr_io_instance_t *inst;
 	fr_io_connection_t *connection;
 	void *app_io_instance;
 	int rcode;
 
 	get_inst(instance, &inst, &connection, &app_io_instance);
 
-	rcode = inst->io.app_io->detach(app_io_instance);
+	rcode = inst->app_io->detach(app_io_instance);
 	if (rcode < 0) return rcode;
 
 	return 0;
@@ -2019,54 +2019,54 @@ static int mod_detach(void *instance)
 
 static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 {
-	proto_radius_t *inst = instance;
+	fr_io_instance_t *inst = instance;
+
+	/*
+	 *	Set our magic so that we know if we're a connection or
+	 *	an instance.
+	 */
+	inst->magic = PR_MAIN_MAGIC;
 
 	/*
 	 *	Bootstrap the protocol agnostic IO handler.
 	 */
-	inst->io.server_cs = cf_item_to_section(cf_parent(cs));
-
-	/*
-	 *	We will need this for dynamic clients and connected sockets.
-	 */
-	inst->io.dl_inst = dl_instance_find(inst);
-	rad_assert(inst != NULL);
+	inst->server_cs = cf_item_to_section(cf_parent(cs));
 
 	/*
 	 *	Find and bootstrap the application IO handler.
 	 */
-	inst->io.app_io = (fr_app_io_t const *) inst->io.submodule->module->common;
+	inst->app_io = (fr_app_io_t const *) inst->submodule->module->common;
 
-	inst->io.app_io_instance = inst->io.submodule->data;
-	inst->io.app_io_conf = inst->io.submodule->conf;
+	inst->app_io_instance = inst->submodule->data;
+	inst->app_io_conf = inst->submodule->conf;
 
-	if (inst->io.app_io->bootstrap && (inst->io.app_io->bootstrap(inst->io.app_io_instance,
-								inst->io.app_io_conf) < 0)) {
-		cf_log_err(inst->io.app_io_conf, "Bootstrap failed for \"%s\"", inst->io.app_io->name);
+	if (inst->app_io->bootstrap && (inst->app_io->bootstrap(inst->app_io_instance,
+								inst->app_io_conf) < 0)) {
+		cf_log_err(inst->app_io_conf, "Bootstrap failed for \"%s\"", inst->app_io->name);
 		return -1;
 	}
 
-	if (!inst->io.app_io->network_get) return 0;
+	if (!inst->app_io->network_get) return 0;
 
 	/*
 	 *	Get various information after bootstrapping the
 	 *	application IO module.
 	 */
-	inst->io.app_io->network_get(inst->io.app_io_instance, &inst->io.ipproto, &inst->io.dynamic_clients, &inst->io.networks);
+	inst->app_io->network_get(inst->app_io_instance, &inst->ipproto, &inst->dynamic_clients, &inst->networks);
 
 	return 0;
 }
 
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
-	proto_radius_t		*inst = talloc_get_type_abort(instance, proto_radius_t);
+	fr_io_instance_t		*inst = instance;
 
-	rad_assert(inst->io.app_io != NULL);
+	rad_assert(inst->app_io != NULL);
 
-	if (inst->io.app_io->instantiate &&
-	    (inst->io.app_io->instantiate(inst->io.app_io_instance,
-					  inst->io.app_io_conf) < 0)) {
-		cf_log_err(conf, "Instantiation failed for \"%s\"", inst->io.app_io->name);
+	if (inst->app_io->instantiate &&
+	    (inst->app_io->instantiate(inst->app_io_instance,
+					  inst->app_io_conf) < 0)) {
+		cf_log_err(conf, "Instantiation failed for \"%s\"", inst->app_io->name);
 		return -1;
 	}
 

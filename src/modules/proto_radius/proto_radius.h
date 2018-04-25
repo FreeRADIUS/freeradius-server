@@ -89,7 +89,7 @@ typedef struct fr_io_client_t {
 	bool				ready_to_delete; //!< are we ready to delete this client?
 	bool				in_trie;	//!< is the client in the trie?
 
-	struct proto_radius_t		*inst;		//!< parent instance for proto_radius
+	struct fr_io_instance_t		*inst;		//!< parent instance for master IO handler
 	fr_event_timer_t const		*ev;		//!< when we clean up the client
 	rbtree_t			*table;		//!< tracking table for packets
 
@@ -132,7 +132,9 @@ typedef struct {
 
 extern fr_app_io_t proto_radius_master_io;
 
-typedef struct {
+typedef struct fr_io_instance_t {
+	int				magic;				//!< sparkles and unicorns
+
 	dl_instance_t const    		*dl_inst;			//!< our parent dl_inst
 
 	uint32_t			max_connections;		//!< maximum number of connections to allow
@@ -183,11 +185,7 @@ typedef struct {
  *
  */
 typedef struct proto_radius_t {
-	int				magic;				//!< sparkles and unicorns
-
 	fr_io_instance_t		io;				//!< wrapper for IO abstraction
-
-	dl_instance_t const    		*dl_inst;			//!< our dl_inst
 
 	dl_instance_t			**type_submodule;		//!< Instance of the various types
 	dl_instance_t			*dynamic_submodule;		//!< proto_radius_dynamic_client
