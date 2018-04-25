@@ -986,7 +986,7 @@ redo:
 		 */
 		rad_assert(!connection);
 
-		radclient = client_find(NULL, &address.src_ipaddr, inst->ipproto);
+		radclient = inst->app_io->client_find(inst->app_io_instance, &address.src_ipaddr, inst->ipproto);
 		if (radclient) {
 			state = PR_CLIENT_STATIC;
 

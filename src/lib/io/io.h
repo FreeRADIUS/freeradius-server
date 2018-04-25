@@ -317,6 +317,10 @@ typedef struct {
 
 typedef int (*fr_io_connection_set_t)(void *instance, fr_io_address_t *connection);
 
+typedef struct radclient RADCLIENT;
+
+typedef RADCLIENT *(*fr_io_client_find_t)(void *instance, fr_ipaddr_t const *ipaddr, int ipproto);
+
 typedef void (*fr_io_network_get_t)(void *instance, int *ipproto, bool *dynamic_clients, fr_trie_t const **trie);
 
 #ifdef __cplusplus

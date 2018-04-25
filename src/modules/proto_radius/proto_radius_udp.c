@@ -647,6 +647,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	return 0;
 }
 
+static RADCLIENT *mod_client_find(UNUSED void *instance, fr_ipaddr_t const *ipaddr, int ipproto)
+{
+	return client_find(NULL, ipaddr, ipproto);
+}
+
 #if 0
 static int mod_detach(void *instance)
 {
@@ -680,4 +685,5 @@ fr_app_io_t proto_radius_udp = {
 	.compare		= mod_compare,
 	.connection_set		= mod_connection_set,
 	.network_get		= mod_network_get,
+	.client_find		= mod_client_find,
 };

@@ -127,5 +127,6 @@ typedef struct fr_app_io_t {
 	fr_io_data_cmp_t		compare;	//!< compare two packets
 	fr_io_connection_set_t		connection_set;	//!< set src/dst IP/port of a connection
 	fr_io_network_get_t		network_get;	//!< get dynamic network information
+	fr_io_client_find_t		client_find;	//!< find radclient
 	void				*private;	//!< any private APIs it needs to export.
 } fr_app_io_t;
