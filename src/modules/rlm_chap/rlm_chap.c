@@ -84,11 +84,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	}
 
 	if (fr_pair_find_by_da(request->control, attr_auth_type, TAG_ANY) != NULL) {
-		RWDEBUG2("&control:Auth-Type already set.  Not setting to CHAP");
+		RWDEBUG2("&control:%s already set.  Not setting to %pV", attr_auth_type->name, inst->auth_type->alias);
 		return RLM_MODULE_NOOP;
 	}
 
-	RDEBUG("&control:%s := %s", attr_auth_type->name, inst->auth_type->alias);
+	RDEBUG("&control:%s = %s", attr_auth_type->name, inst->auth_type->alias);
 
 	MEM(vp = pair_update_control(attr_auth_type, TAG_ANY));
 	fr_value_box_copy(vp, &vp->data, inst->auth_type->value);

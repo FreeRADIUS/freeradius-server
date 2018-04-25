@@ -717,15 +717,16 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 	 *	each EAP sub-module to look for eap_session->request->username,
 	 *	and to get excited if it doesn't appear.
 	 */
-	MEM(vp = pair_update_control(attr_auth_type, TAG_ANY));
-	if (vp->vp_uint32 != FR_AUTH_TYPE_REJECT) {
-		RDEBUG("&control:%s := %s", attr_auth_type->name, inst->auth_type->alias);
-
-		fr_value_box_copy(vp, &vp->data, inst->auth_type->value);
-		vp->data.enumv = vp->da;
-	} else {
-		RWDEBUG2("Auth-Type already set.  Not setting to EAP");
+	if (fr_pair_find_by_da(request->control, attr_auth_type, TAG_ANY) != NULL) {
+		RWDEBUG2("&control:%s already set.  Not setting to %pV", attr_auth_type->name, inst->auth_type->alias);
+		return RLM_MODULE_NOOP;
 	}
+
+	RDEBUG("&control:%s = %s", attr_auth_type->name, inst->auth_type->alias);
+
+	MEM(vp = pair_update_control(attr_auth_type, TAG_ANY));
+	fr_value_box_copy(vp, &vp->data, inst->auth_type->value);
+	vp->data.enumv = vp->da;
 
 	if (status == RLM_MODULE_OK) return RLM_MODULE_OK;
 
