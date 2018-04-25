@@ -60,7 +60,7 @@ static CONF_PARSER const limit_config[] = {
 static CONF_PARSER const proto_radius_config[] = {
 	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY, proto_radius_t,
 			  type_submodule), .func = type_parse },
-	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, proto_radius_t, io_submodule),
+	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, proto_radius_t, io.submodule),
 	  .func = transport_parse },
 
 	/*
@@ -876,43 +876,20 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	No IO module, it's an empty listener.
 	 */
-	if (!inst->io_submodule) return 0;
+	if (!inst->io.submodule) return 0;
 
 	/*
-	 *	Bootstrap the protocol agnostic IO handler.
+	 *	Tell the master handler about the main protocol instance.
 	 */
-	inst->io.server_cs = cf_item_to_section(cf_parent(conf));
 	inst->io.app = &proto_radius;
 	inst->io.app_instance = inst;
 
 	/*
-	 *	We will need this for dynamic clients and connected sockets.
+	 *	Bootstrap the master IO handler.
 	 */
-	inst->io.dl_inst = dl_instance_find(inst);
-	rad_assert(inst != NULL);
-
-	/*
-	 *	Bootstrap the application IO handler.
-	 */
-	inst->io.app_io = (fr_app_io_t const *) inst->io_submodule->module->common;
-
-	inst->io.app_io_instance = inst->io_submodule->data;
-	inst->io.app_io_conf = inst->io_submodule->conf;
-
-	inst->app_io_private = inst->io.app_io->private;
-	rad_assert(inst->app_io_private != NULL);
-
-	if (inst->io.app_io->bootstrap && (inst->io.app_io->bootstrap(inst->io.app_io_instance,
-								inst->io.app_io_conf) < 0)) {
-		cf_log_err(inst->io.app_io_conf, "Bootstrap failed for \"%s\"", inst->io.app_io->name);
+	if (proto_radius_master_io.bootstrap(inst, conf) < 0) {
 		return -1;
 	}
-
-	/*
-	 *	Get various information after bootstrapping the
-	 *	application IO module.
-	 */
-	inst->app_io_private->network_get(inst->io.app_io_instance, &inst->io.ipproto, &inst->io.dynamic_clients, &inst->io.networks);
 
 	/*
 	 *	Load proto_radius_dynamic_client

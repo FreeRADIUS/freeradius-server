@@ -172,6 +172,10 @@ typedef struct {
 
 	CONF_SECTION			*server_cs;			//!< server CS for this listener
 
+	dl_instance_t			*submodule;			//!< As provided by the transport_parse
+									///< callback.  Broken out into the
+									///< app_io_* fields below for convenience.
+
 	fr_app_t			*app;				//!< main protocol handler
 	void				*app_instance;			//!< instance data for main protocol handler
 
@@ -203,9 +207,6 @@ typedef struct proto_radius_t {
 	fr_io_instance_t		io;				//!< wrapper for IO abstraction
 
 	dl_instance_t const    		*dl_inst;			//!< our dl_inst
-	dl_instance_t			*io_submodule;			//!< As provided by the transport_parse
-									///< callback.  Broken out into the
-									///< app_io_* fields below for convenience.
 
 	proto_radius_app_io_t		*app_io_private;		//!< Internal interface for proto_radius.
 

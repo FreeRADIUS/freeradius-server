@@ -2005,13 +2005,56 @@ static int mod_detach(void *instance)
 	return 0;
 }
 
+static int mod_bootstrap(void *instance, CONF_SECTION *cs)
+{
+	proto_radius_t *inst = instance;
+
+	/*
+	 *	Bootstrap the protocol agnostic IO handler.
+	 */
+	inst->io.server_cs = cf_item_to_section(cf_parent(cs));
+
+	/*
+	 *	We will need this for dynamic clients and connected sockets.
+	 */
+	inst->io.dl_inst = dl_instance_find(inst);
+	rad_assert(inst != NULL);
+
+	/*
+	 *	Find and bootstrap the application IO handler.
+	 */
+	inst->io.app_io = (fr_app_io_t const *) inst->io.submodule->module->common;
+
+	inst->io.app_io_instance = inst->io.submodule->data;
+	inst->io.app_io_conf = inst->io.submodule->conf;
+
+	if (inst->io.app_io->bootstrap && (inst->io.app_io->bootstrap(inst->io.app_io_instance,
+								inst->io.app_io_conf) < 0)) {
+		cf_log_err(inst->io.app_io_conf, "Bootstrap failed for \"%s\"", inst->io.app_io->name);
+		return -1;
+	}
+
+	/*
+	 *	@todo - move these to public APIs
+	 */
+	inst->app_io_private = inst->io.app_io->private;
+	rad_assert(inst->app_io_private != NULL);
+
+	/*
+	 *	Get various information after bootstrapping the
+	 *	application IO module.
+	 */
+	inst->app_io_private->network_get(inst->io.app_io_instance, &inst->io.ipproto, &inst->io.dynamic_clients, &inst->io.networks);
+
+	return 0;
+}
 
 fr_app_io_t proto_radius_master_io = {
 	.magic			= RLM_MODULE_INIT,
 	.name			= "radius_master_io",
 
 	.detach			= mod_detach,
-//	.bootstrap		= mod_bootstrap,
+	.bootstrap		= mod_bootstrap,
 //	.instantiate		= mod_instantiate,
 
 	.default_message_size	= 4096,
