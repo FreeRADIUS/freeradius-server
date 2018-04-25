@@ -373,7 +373,7 @@ static fr_io_connection_t *fr_io_connection_alloc(proto_radius_t *inst, fr_io_cl
 		 *
 		 *	This also sets connection->name.
 		 */
-		if ((inst->app_io_private->connection_set(connection->app_io_instance, connection->address) < 0) ||
+		if ((inst->io.app_io->connection_set(connection->app_io_instance, connection->address) < 0) ||
 		    (inst->io.app_io->instantiate(connection->app_io_instance, inst->io.app_io_conf) < 0) ||
 		    (inst->io.app_io->open(connection->app_io_instance) < 0)) {
 			DEBUG("Failed opening connected socket.");
@@ -1889,6 +1889,16 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	rad_assert(client->use_connected == false); /* we weren't sure until now */
 
 	/*
+	 *	Disallow unsupported configurations.
+	 */
+	if (radclient->use_connected && !inst->io.app_io->connection_set) {
+		DEBUG("proto_%s - cannot use connected sockets as underlying 'transport = %s' does not support it.",
+		      inst->io.app_io->name, inst->io.transport);
+		goto error;
+	}
+
+
+	/*
 	 *	Dynamic clients can spawn new connections.
 	 */
 	client->use_connected = radclient->use_connected;
@@ -1899,6 +1909,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	 */
 	if (client->use_connected) {
 		rad_assert(connection == NULL);
+
 
 		/*
 		 *	Leave the state as PENDING.  Each connection

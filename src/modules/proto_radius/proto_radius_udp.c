@@ -653,7 +653,6 @@ static int mod_detach(void *instance)
 #endif
 
 static proto_radius_app_io_t proto_radius_app_io_private = {
-	.connection_set		= mod_connection_set,
 	.network_get		= mod_network_get,
 };
 
@@ -676,5 +675,7 @@ fr_app_io_t proto_radius_udp = {
 	.close			= mod_close,
 	.fd			= mod_fd,
 	.compare		= mod_compare,
+	.connection_set		= mod_connection_set,
+
 	.private		= &proto_radius_app_io_private,
 };

@@ -299,6 +299,23 @@ typedef int (*fr_io_signal_t)(void const *instance);
  *
  */
 typedef	fr_io_final_t (*fr_io_process_t)(REQUEST *request, fr_io_action_t action);
+
+/*
+ *	Structures and definitions for the master IO handler.
+ */
+typedef struct {
+	fr_ipaddr_t			src_ipaddr;
+	fr_ipaddr_t			dst_ipaddr;
+	int				if_index;
+
+	uint16_t			src_port;
+	uint16_t 			dst_port;
+
+	RADCLIENT const			*radclient;		//!< old-style client definition
+} fr_io_address_t;
+
+typedef int (*fr_io_connection_set_t)(void *instance, fr_io_address_t *connection);
+
 #ifdef __cplusplus
 }
 #endif

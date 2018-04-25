@@ -26,17 +26,6 @@
 
 #include <freeradius-devel/trie.h>
 
-typedef struct {
-	fr_ipaddr_t			src_ipaddr;
-	fr_ipaddr_t			dst_ipaddr;
-	int				if_index;
-
-	uint16_t			src_port;
-	uint16_t 			dst_port;
-
-	RADCLIENT const			*radclient;		//!< old-style client definition
-} fr_io_address_t;
-
 
 typedef struct {
 	fr_event_timer_t const		*ev;		//!< when we clean up this tracking entry
@@ -141,11 +130,9 @@ typedef struct {
 	fr_network_t			*nr;		//!< network for this connection
 } fr_io_connection_t;
 
-typedef int (*fr_io_connection_set_t)(void *instance, fr_io_address_t *connection);
 typedef void (*proto_radius_network_get_t)(void *instance, int *ipproto, bool *dynamic_clients, fr_trie_t const **trie);
 
 typedef struct {
-	fr_io_connection_set_t		connection_set;
 	proto_radius_network_get_t	network_get;
 } proto_radius_app_io_t;
 
