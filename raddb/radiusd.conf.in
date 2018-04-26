@@ -208,7 +208,7 @@ max_request_time = 30
 #  If this value is set too high, then the server will cache too many
 #  requests, and some new requests may get blocked.  (See 'max_requests'.)
 #
-#  Useful range of values: 2 to 10
+#  Useful range of values: 2 to 30
 #
 cleanup_delay = 5
 
