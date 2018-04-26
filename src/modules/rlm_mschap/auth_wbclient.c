@@ -92,7 +92,7 @@ int do_auth_wbclient(rlm_mschap_t const *inst, REQUEST *request,
 	struct				wbcContext *wb_ctx = NULL;
 	struct				wbcAuthUserParams authparams;
 	wbcErr				err;
-	size_t				len;
+	ssize_t				slen;
 	struct wbcAuthUserInfo		*info = NULL;
 	struct wbcAuthErrorInfo		*error = NULL;
 	char				user_name_buf[500];
@@ -114,17 +114,17 @@ int do_auth_wbclient(rlm_mschap_t const *inst, REQUEST *request,
 	/*
 	 * Get the username and domain from the configuration
 	 */
-	len = tmpl_expand(&authparams.account_name, user_name_buf, sizeof(user_name_buf),
-			  request, inst->wb_username, NULL, NULL);
-	if (len < 0) {
+	slen = tmpl_expand(&authparams.account_name, user_name_buf, sizeof(user_name_buf),
+			   request, inst->wb_username, NULL, NULL);
+	if (slen < 0) {
 		REDEBUG2("Unable to expand winbind_username");
 		goto finish;
 	}
 
 	if (inst->wb_domain) {
-		len = tmpl_expand(&authparams.domain_name, domain_name_buf, sizeof(domain_name_buf),
-				  request, inst->wb_domain, NULL, NULL);
-		if (len < 0) {
+		slen = tmpl_expand(&authparams.domain_name, domain_name_buf, sizeof(domain_name_buf),
+				   request, inst->wb_domain, NULL, NULL);
+		if (slen < 0) {
 			REDEBUG2("Unable to expand winbind_domain");
 			goto finish;
 		}
