@@ -1085,6 +1085,10 @@ static void request_cleanup_delay(REQUEST *request, int action)
 	switch (action) {
 	case FR_ACTION_DUP:
 		if (request->reply->code != 0) {
+			DEBUG("(%u) Sending duplicate reply to "
+			      "client %s port %d - ID: %u",
+			      request->number, request->client->shortname,
+			      request->packet->src_port,request->packet->id);
 			request->listener->send(request->listener, request);
 		} else {
 			RDEBUG("No reply.  Ignoring retransmit");
