@@ -773,13 +773,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65535);
 
 	/*
-	 *	Create the trie of clients for this socket.
+	 *	Set talloc ctx for master IO.
 	 */
-	inst->io.trie = fr_trie_alloc(inst);
-	if (!inst->io.trie) {
-		cf_log_err(conf, "Instantiation failed for \"%s\"", inst->io.app_io->name);
-		return -1;
-	}
+	inst->io.ctx = inst;
 
 	/*
 	 *	Instantiate the master io submodule

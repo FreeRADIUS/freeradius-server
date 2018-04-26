@@ -60,7 +60,8 @@ typedef struct {
 typedef struct fr_io_instance_t {
 	int				magic;				//!< sparkles and unicorns
 
-	dl_instance_t const    		*dl_inst;			//!< our parent dl_inst
+	TALLOC_CTX			*ctx;				//!< this struct might not be talloc'd
+	dl_instance_t const   		*dl_inst;			//!< our parent dl_inst
 
 	uint32_t			max_connections;		//!< maximum number of connections to allow
 	uint32_t			max_clients;			//!< maximum number of dynamic clients to allow

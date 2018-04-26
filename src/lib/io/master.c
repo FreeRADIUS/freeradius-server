@@ -2061,7 +2061,7 @@ static ssize_t mod_write(void *instance, void *packet_ctx,
 	 *
 	 */
 	if (!inst->pending_clients) {
-		MEM(inst->pending_clients = fr_heap_create(client, pending_client_cmp,
+		MEM(inst->pending_clients = fr_heap_create(inst->ctx, pending_client_cmp,
 							   fr_io_client_t, heap_id));
 	}
 
@@ -2164,7 +2164,7 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *cs)
 
 	if (inst->app_io->bootstrap && (inst->app_io->bootstrap(inst->app_io_instance,
 								inst->app_io_conf) < 0)) {
-		cf_log_err(inst->app_io_conf, "Bootstrap failed for \"%s\"", inst->app_io->name);
+		cf_log_err(inst->app_io_conf, "Bootstrap failed for \"proto_%s\"", inst->app_io->name);
 		return -1;
 	}
 
@@ -2185,10 +2185,19 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 	rad_assert(inst->app_io != NULL);
 
+	/*
+	 *	Create the trie of clients for this socket.
+	 */
+	inst->trie = fr_trie_alloc(inst->ctx);
+	if (!inst->trie) {
+		cf_log_err(conf, "Instantiation failed for \"proto_%s\"", inst->app_io->name);
+		return -1;
+	}
+
 	if (inst->app_io->instantiate &&
 	    (inst->app_io->instantiate(inst->app_io_instance,
 					  inst->app_io_conf) < 0)) {
-		cf_log_err(conf, "Instantiation failed for \"%s\"", inst->app_io->name);
+		cf_log_err(conf, "Instantiation failed for \"proto_%s\"", inst->app_io->name);
 		return -1;
 	}
 
