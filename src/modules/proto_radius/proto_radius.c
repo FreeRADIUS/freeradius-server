@@ -773,6 +773,15 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65535);
 
 	/*
+	 *	Create the trie of clients for this socket.
+	 */
+	inst->io.trie = fr_trie_alloc(inst);
+	if (!inst->io.trie) {
+		cf_log_err(conf, "Instantiation failed for \"%s\"", inst->io.app_io->name);
+		return -1;
+	}
+
+	/*
 	 *	Instantiate the master io submodule
 	 */
 	if (fr_master_app_io.instantiate(&inst->io, conf) < 0) {
@@ -796,15 +805,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 			cf_log_err(conf, "Instantiation failed for \"%s\"", app_process->name);
 			return -1;
 		}
-	}
-
-	/*
-	 *	Create the trie of clients for this socket.
-	 */
-	inst->io.trie = fr_trie_alloc(inst);
-	if (!inst->io.trie) {
-		cf_log_err(conf, "Instantiation failed for \"%s\"", inst->io.app_io->name);
-		return -1;
 	}
 
 	return 0;
