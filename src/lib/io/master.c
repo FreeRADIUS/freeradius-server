@@ -2155,11 +2155,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	inst->magic = PR_MAIN_MAGIC;
 
 	/*
-	 *	Bootstrap the protocol agnostic IO handler.
-	 */
-	inst->server_cs = cf_item_to_section(cf_parent(cs));
-
-	/*
 	 *	Find and bootstrap the application IO handler.
 	 */
 	inst->app_io = (fr_app_io_t const *) inst->submodule->module->common;

@@ -470,10 +470,7 @@ static void mod_process_set(void const *instance, REQUEST *request)
 	rad_assert(request->packet->code != 0);
 	rad_assert(request->packet->code <= FR_CODE_MAX);
 
-	/*
-	 *	It's already set for the unit tests.
-	 */
-	if (!request->server_cs) request->server_cs = inst->io.server_cs;
+	request->server_cs = inst->io.server_cs;
 
 	/*
 	 *	'track' can be NULL when there's no network listener.
@@ -865,6 +862,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 		i++;
 	}
+
+	/*
+	 *	Ensure that the server CONF_SECTION is always set.
+	 */
+	inst->io.server_cs = cf_item_to_section(cf_parent(conf));
 
 	/*
 	 *	No IO module, it's an empty listener.
