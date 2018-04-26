@@ -470,7 +470,10 @@ static void mod_process_set(void const *instance, REQUEST *request)
 	rad_assert(request->packet->code != 0);
 	rad_assert(request->packet->code <= FR_CODE_MAX);
 
-	request->server_cs = inst->io.server_cs;
+	/*
+	 *	It's already set for the unit tests.
+	 */
+	if (!request->server_cs) request->server_cs = inst->io.server_cs;
 
 	/*
 	 *	'track' can be NULL when there's no network listener.
