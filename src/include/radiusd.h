@@ -122,16 +122,8 @@ typedef struct main_config {
 	bool		spawn_workers;			//!< Should the server spawn threads.
 	char const      *pid_file;			//!< Path to write out PID file.
 
-#ifdef WITH_PROXY
-	bool		proxy_requests;			//!< Toggle to enable/disable proxying globally.
-#endif
-	struct timeval	reject_delay;			//!< How long to wait before sending an Access-Reject.
-	bool		status_server;			//!< Whether to respond to status-server messages.
-
-
 	uint32_t	max_request_time;		//!< How long a request can be processed for before
 							//!< timing out.
-	uint32_t	cleanup_delay;			//!< How long before cleaning up cached responses.
 	uint32_t	continuation_timeout;		//!< How long to wait before cleaning up state entries.
 	uint32_t	max_requests;
 

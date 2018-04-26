@@ -172,25 +172,6 @@ pidfile = ${run_dir}/${name}.pid
 #
 max_request_time = 30
 
-#  cleanup_delay: The time to wait (in seconds) before cleaning up
-#  a reply which was sent to the NAS.
-#
-#  The RADIUS request is normally cached internally for a short period
-#  of time, after the reply is sent to the NAS.  The reply packet may be
-#  lost in the network, and the NAS will not see it.  The NAS will then
-#  re-send the request, and the server will respond quickly with the
-#  cached reply.
-#
-#  If this value is set too low, then duplicate requests from the NAS
-#  MAY NOT be detected, and will instead be handled as separate requests.
-#
-#  If this value is set too high, then the server will cache too many
-#  requests, and some new requests may get blocked.  (See 'max_requests'.)
-#
-#  Useful range of values: 2 to 10
-#
-cleanup_delay = 5
-
 #  max_requests: The maximum number of requests which the server keeps
 #  track of.  This should be 256 multiplied by the number of clients.
 #  e.g. With 4 clients, this number should be 1024.
@@ -466,44 +447,6 @@ security {
 	#
 	#  Setting this number to 0 means "allow any number of attributes"
 	max_attributes = 200
-
-	#
-	#  reject_delay: When sending an Access-Reject, it can be
-	#  delayed for a few seconds.  This may help slow down a DoS
-	#  attack.  It also helps to slow down people trying to brute-force
-	#  crack a users password.
-	#
-	#  Setting this number to 0 means "send rejects immediately"
-	#
-	#  If this number is set higher than 'cleanup_delay', then the
-	#  rejects will be sent at 'cleanup_delay' time, when the request
-	#  is deleted from the internal cache of requests.
-	#
-	#  As of Version 3.0.5, "reject_delay" has sub-second resolution.
-	#  e.g. "reject_delay =  1.4" seconds is possible.
-	#
-	#  Useful ranges: 1 to 5
-	reject_delay = 1
-
-	#
-	#  status_server: Whether or not the server will respond
-	#  to Status-Server requests.
-	#
-	#  When sent a Status-Server message, the server responds with
-	#  an Access-Accept or Accounting-Response packet.
-	#
-	#  This is mainly useful for administrators who want to "ping"
-	#  the server, without adding test users, or creating fake
-	#  accounting packets.
-	#
-	#  It's also useful when a NAS marks a RADIUS server "dead".
-	#  The NAS can periodically "ping" the server with a Status-Server
-	#  packet.  If the server responds, it must be alive, and the
-	#  NAS can start using it for real requests.
-	#
-	#  See also raddb/sites-available/status
-	#
-	status_server = yes
 
 @openssl_version_check_config@
 }

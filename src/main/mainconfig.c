@@ -176,16 +176,12 @@ static const CONF_PARSER server_config[] = {
 	{ FR_CONF_POINTER("panic_action", FR_TYPE_STRING, &main_config.panic_action) },
 	{ FR_CONF_POINTER("hostname_lookups", FR_TYPE_BOOL, &fr_dns_lookups), .dflt = "no" },
 	{ FR_CONF_POINTER("max_request_time", FR_TYPE_UINT32, &main_config.max_request_time), .dflt = STRINGIFY(MAX_REQUEST_TIME) },
-	{ FR_CONF_POINTER("cleanup_delay", FR_TYPE_UINT32, &main_config.cleanup_delay), .dflt = STRINGIFY(CLEANUP_DELAY) },
 	{ FR_CONF_POINTER("continuation_timeout", FR_TYPE_UINT32, &main_config.continuation_timeout), .dflt = "15" },
 	{ FR_CONF_POINTER("max_requests", FR_TYPE_UINT32, &main_config.max_requests), .dflt = STRINGIFY(MAX_REQUESTS) },
 	{ FR_CONF_POINTER("pidfile", FR_TYPE_STRING, &main_config.pid_file), .dflt = "${run_dir}/radiusd.pid"},
 
 	{ FR_CONF_POINTER("debug_level", FR_TYPE_UINT32, &main_config.debug_level), .dflt = "0" },
 
-#ifdef WITH_PROXY
-	{ FR_CONF_POINTER("proxy_requests", FR_TYPE_BOOL, &main_config.proxy_requests), .dflt = "yes" },
-#endif
 	{ FR_CONF_POINTER("log", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) log_config },
 
 	{ FR_CONF_POINTER("resources", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) resources },
@@ -230,9 +226,6 @@ static const CONF_PARSER security_config[] = {
 #endif
 	{ FR_CONF_POINTER("chroot", FR_TYPE_STRING, &chroot_dir) },
 	{ FR_CONF_POINTER("allow_core_dumps", FR_TYPE_BOOL, &main_config.allow_core_dumps), .dflt = "no" },
-
-	{ FR_CONF_POINTER("reject_delay", FR_TYPE_TIMEVAL, &main_config.reject_delay), .dflt = STRINGIFY(0) },
-	{ FR_CONF_POINTER("status_server", FR_TYPE_BOOL, &main_config.status_server), .dflt = "no" },
 
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 	{ FR_CONF_POINTER("allow_vulnerable_openssl", FR_TYPE_STRING, &main_config.allow_vulnerable_openssl), .dflt = "no" },
@@ -927,18 +920,6 @@ do {\
 
 	FR_INTEGER_COND_CHECK("max_request_time", main_config.max_request_time,
 			      (main_config.max_request_time != 0), 100);
-
-	/*
-	 *	reject_delay can be zero.  OR 1 though 10.
-	 */
-	if ((main_config.reject_delay.tv_sec != 0) || (main_config.reject_delay.tv_usec != 0)) {
-		FR_TIMEVAL_BOUND_CHECK("reject_delay", &main_config.reject_delay, >=, 1, 0);
-	}
-	FR_TIMEVAL_BOUND_CHECK("reject_delay", &main_config.reject_delay, <=, 10, 0);
-
-	FR_INTEGER_BOUND_CHECK("cleanup_delay", main_config.cleanup_delay, <=, 10);
-
-	FR_TIMEVAL_BOUND_CHECK("reject_delay", &main_config.reject_delay, <=, main_config.cleanup_delay, 0);
 
 	/*
 	 *	For now we don't do connected sockets.

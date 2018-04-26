@@ -32,6 +32,18 @@ only the changes from v3.0 to v4.0
 THE CONFIGURATION MAY CHANGE.  THE BEHAVIOR MAY CHANGE.  THE
 DOCUMENTATION MAY CHANGE.**
 
+## radiusd.conf
+
+The following configurations have been removed.  See the new `listen`
+sections for their replacements.
+
+`cleanup_delay` - replaced with `cleanup_delay` in a `listen` section
+
+`reject_delay` - see `mods-available/delay`.  You should list `delay`
+last in any `send Access-Reject section.
+
+`status_server` - see `type = Status-Server` in a new `listen` section.
+
 ## Virtual Servers
 
 There are some changes to the virtual servers in v4.  First, every
