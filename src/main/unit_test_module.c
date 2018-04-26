@@ -129,6 +129,7 @@ static REQUEST *request_from_file(FILE *fp, fr_event_list_t *el, RADCLIENT *clie
 
 	request->master_state = REQUEST_ACTIVE;
 	request->server_cs = virtual_server_find("default");
+	rad_assert(request->server_cs != NULL);
 
 	request->root = &main_config;
 
@@ -978,6 +979,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Simulate an authorize section
 	 */
+	rad_assert(request->server_cs != NULL);
 	unlang = cf_section_find(request->server_cs, "recv", "Access-Request");
 	if (!unlang) {
 		REDEBUG("Failed to find 'recv Access-Request' section");
