@@ -2144,7 +2144,7 @@ static int mod_detach(void *instance)
 	return 0;
 }
 
-static int mod_bootstrap(void *instance, CONF_SECTION *cs)
+static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *cs)
 {
 	fr_io_instance_t *inst = instance;
 
