@@ -336,7 +336,16 @@ int rad_postauth(REQUEST *request)
 			process_post_auth(PW_POST_AUTH_TYPE_REJECT, request);
 		}
 
-		fr_state_discard(request, request->packet);
+		/*
+		 *	Only discard session state when we're sending
+		 *	packets to the network.  The State attribute
+		 *	is use both for the outer session and copied
+		 *	to the inner-tunnel session for (e.g.) PEAP.
+		 *	So we don't want to delete the information in
+		 *	the inner tunnel, and then have it no longer
+		 *	accessible from the outer session.
+		 */
+		if (!request->parent) fr_state_discard(request, request->packet);
 		result = RLM_MODULE_REJECT;
 		break;
 	/*
