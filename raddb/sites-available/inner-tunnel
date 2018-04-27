@@ -180,7 +180,7 @@ recv Access-Request {
 #  PAP authentication, when a back-end database listed
 #  in the 'authorize' section supplies a password.  The
 #  password can be clear-text, or encrypted.
-authenticate PAP {
+authenticate pap {
 	pap
 }
 
@@ -189,13 +189,13 @@ authenticate PAP {
 #  A back-end database listed in the 'authorize' section
 #  MUST supply a CLEAR TEXT password.  Encrypted passwords
 #  won't work.
-authenticate CHAP {
+authenticate chap {
 	chap
 }
 
 #
 #  MSCHAP authentication.
-authenticate MS-CHAP {
+authenticate ms-chap {
 	mschap
 }
 
@@ -216,7 +216,7 @@ authenticate pam {
 #  authentication server, and knows what to do with authentication.
 #  LDAP servers do not.
 #
-#authenticate LDAP {
+#authenticate ldap {
 #	ldap
 #}
 

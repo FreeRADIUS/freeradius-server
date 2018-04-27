@@ -252,15 +252,15 @@ server tacacs {
 
 	# Proxying of TACACS+ requests is NOT supported.
 
-	authenticate MSCHAP {
+	authenticate mschap {
 		mschap
 	}
 
-	authenticate CHAP {
+	authenticate chap {
 		chap
 	}
 
-	authenticate PAP {
+	authenticate pap {
 		pap
 	}
 }
