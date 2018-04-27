@@ -50,8 +50,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 
 	switch (request->request_state) {
 	case REQUEST_INIT:
-		radlog_request(L_DBG, L_DBG_LVL_1, request, "Received %s ID %i",
-			       fr_packet_codes[request->packet->code], request->packet->id);
+		RDEBUG("Received %s ID %i", fr_packet_codes[request->packet->code], request->packet->id);
 		rdebug_pair_list(L_DBG_LVL_1, request, request->packet->vps, "");
 
 		request->component = "radius";
@@ -173,8 +172,7 @@ static fr_io_final_t mod_process(REQUEST *request, fr_io_action_t action)
 		 *	This is an internally generated request.  Don't print IP addresses.
 		 */
 		if (request->parent) {
-			radlog_request(L_DBG, L_DBG_LVL_1, request, "Sent %s ID %i",
-				       fr_packet_codes[request->reply->code], request->reply->id);
+			RDEBUG("Sent %s ID %i", fr_packet_codes[request->reply->code], request->reply->id);
 			rdebug_pair_list(L_DBG_LVL_1, request, request->reply->vps, "");
 			return FR_IO_DONE;
 		}

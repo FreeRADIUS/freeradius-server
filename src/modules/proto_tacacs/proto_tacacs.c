@@ -41,20 +41,20 @@ static void tacacs_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool re
 	if (!packet) return;
 	if (!RDEBUG_ENABLED) return;
 
-	radlog_request(L_DBG, L_DBG_LVL_1, request, "%s %s Id %u from %s%s%s:%i to %s%s%s:%i "
-		       "length %zu",
-		       received ? "Received" : "Sending",
-		       tacacs_lookup_packet_code(request->packet),
-		       tacacs_session_id(request->packet),
-		       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
-		       fr_inet_ntop(src_ipaddr, sizeof(src_ipaddr), &packet->src_ipaddr),
-		       packet->src_ipaddr.af == AF_INET6 ? "]" : "",
-		       packet->src_port,
-		       packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
-		       fr_inet_ntop(dst_ipaddr, sizeof(dst_ipaddr), &packet->dst_ipaddr),
-		       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
-		       packet->dst_port,
-		       packet->data_len);
+	RDEBUG("%s %s Id %u from %s%s%s:%i to %s%s%s:%i "
+	       "length %zu",
+	       received ? "Received" : "Sending",
+	       tacacs_lookup_packet_code(request->packet),
+	       tacacs_session_id(request->packet),
+	       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
+	       fr_inet_ntop(src_ipaddr, sizeof(src_ipaddr), &packet->src_ipaddr),
+	       packet->src_ipaddr.af == AF_INET6 ? "]" : "",
+	       packet->src_port,
+	       packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
+	       fr_inet_ntop(dst_ipaddr, sizeof(dst_ipaddr), &packet->dst_ipaddr),
+	       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
+	       packet->dst_port,
+	       packet->data_len);
 
 	rdebug_pair_list(L_DBG_LVL_1, request, packet->vps, NULL);
 }
