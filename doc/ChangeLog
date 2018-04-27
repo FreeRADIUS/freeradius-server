@@ -1,7 +1,12 @@
 FreeRADIUS 3.0.18 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	Feature improvements
+	* cleanup_delay can now be 30 seconds.  This helps
+	  with proxies which have packet loss.
 
 	Bug fixes
+	* The session-state list is no longer cleaned in the
+	  inner-tunnel.  This lets the outer Access-Reject
+	  section access session-state.
 
 FreeRADIUS 3.0.17 Tue 17 Apr 2018 14:00:00 EDT urgency=low
 	Feature improvements
