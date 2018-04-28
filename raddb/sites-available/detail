@@ -7,7 +7,7 @@
 #	$Id$
 #
 ######################################################################
-virtual_server detail {
+server detail {
 	#
 	#  In v4, all "server" sections MUST start with a "namespace"
 	#  parameter.  This tells the server which protocol is being used.
@@ -103,22 +103,7 @@ virtual_server detail {
 			#
 			filename = "${confdir}/detail-*"
 
-			#
-			#  The name of the current working file.
-			#  If ommitted, it is the directory from
-			#  the 'filename' above, with "/detail.work"
-			#  appended to it.
-			#
-			#  As of v4, you can have multiple detail file
-			#  readers in the same directory.  The only
-			#  caveat is that the wildcards CANNOT overlap.
-			#
-			#  The best way to enforce that is to give the
-			#  the files different prefixes.
-			#
-			filename.work = "${confdir}/detail.work"
-
-			#
+		#
 			#  If there are no detail files in the directory,
 			#  the listener will periodically wake up to check
 			#  for new entries.
@@ -135,6 +120,21 @@ virtual_server detail {
 		#  subsection above.
 		#
 		work {
+			#
+			#  The name of the current working file.
+			#  If ommitted, it is the directory from
+			#  the 'filename' above, with "/detail.work"
+			#  appended to it.
+			#
+			#  As of v4, you can have multiple detail file
+			#  readers in the same directory.  The only
+			#  caveat is that the wildcards CANNOT overlap.
+			#
+			#  The best way to enforce that is to give the
+			#  the files different prefixes.
+			#
+			filename.work = "${confdir}/detail.work"
+
 			#
 			#  Track progress through the detail file.  When the detail
 			#  file is large, and the server is re-started, it will
