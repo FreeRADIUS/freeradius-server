@@ -69,6 +69,29 @@ static CONF_PARSER const proto_detail_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
+
+static fr_dict_attr_t const *attr_packet_type;
+static fr_dict_attr_t const *attr_event_timestamp;
+static fr_dict_attr_t const *attr_acct_delay_time;
+
+extern fr_dict_attr_autoload_t proto_detail_dict_attr[];
+fr_dict_attr_autoload_t proto_detail_dict_attr[] = {
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_event_timestamp, .name = "Event-Timestamp", .type = FR_TYPE_DATE, .dict = &dict_radius },
+	{ .out = &attr_acct_delay_time, .name = "Acct-Delay-Time", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ NULL }
+};
+
+extern fr_dict_autoload_t proto_detail_dict[];
+fr_dict_autoload_t proto_detail_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+
+	{ NULL }
+};
+
 /** Wrapper around dl_instance which translates the packet-type into a submodule name
  *
  * @param[in] ctx	to allocate data in (instance of proto_detail).
@@ -84,7 +107,6 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PAR
 	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
 	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(ci));
 	dl_instance_t		*parent_inst;
-	fr_dict_attr_t const	*da;
 	fr_dict_enum_t const	*type_enum;
 	uint32_t		code;
 	dl_instance_t		*process_dl;
@@ -92,17 +114,11 @@ static int type_parse(TALLOC_CTX *ctx, void *out, CONF_ITEM *ci, UNUSED CONF_PAR
 
 	rad_assert(listen_cs && (strcmp(cf_section_name1(listen_cs), "listen") == 0));
 
-	da = fr_dict_attr_by_name(NULL, "Packet-Type");
-	if (!da) {
-		ERROR("Missing definiton for Packet-Type");
-		return -1;
-	}
-
 	/*
 	 *	Allow the process module to be specified by
 	 *	packet type.
 	 */
-	type_enum = fr_dict_enum_by_alias(da, type_str);
+	type_enum = fr_dict_enum_by_alias(attr_packet_type, type_str);
 	if (!type_enum) {
 		cf_log_err(ci, "Invalid type \"%s\"", type_str);
 		return -1;
@@ -343,24 +359,15 @@ static int mod_decode(void const *instance, REQUEST *request, uint8_t *const dat
 		 *	"Timestamp" field is when we wrote the packet to the
 		 *	detail file, which could have been much later.
 		 */
-		vp = fr_pair_find_by_num(request->packet->vps, 0, FR_EVENT_TIMESTAMP, TAG_ANY);
-		if (vp) {
-			timestamp = vp->vp_uint32;
-		}
+		vp = fr_pair_find_by_da(request->packet->vps, attr_event_timestamp, TAG_ANY);
+		if (vp) timestamp = vp->vp_uint32;
 
 		/*
 		 *	Look for Acct-Delay-Time, and update
 		 *	based on Acct-Delay-Time += (time(NULL) - timestamp)
 		 */
-		vp = fr_pair_find_by_num(request->packet->vps, 0, FR_ACCT_DELAY_TIME, TAG_ANY);
-		if (!vp) {
-			vp = fr_pair_afrom_num(request->packet, 0, FR_ACCT_DELAY_TIME);
-			rad_assert(vp != NULL);
-			fr_pair_cursor_append(&cursor, vp);
-		}
-		if (timestamp != 0) {
-			vp->vp_uint32 += time(NULL) - timestamp;
-		}
+		MEM(vp = pair_update_request(attr_acct_delay_time, 0));
+		if (timestamp != 0) vp->vp_uint32 += time(NULL) - timestamp;
 	}
 
 	/*
@@ -496,8 +503,6 @@ static uint32_t priorities[FR_MAX_PACKET_CODE] = {
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	proto_detail_t		*inst = talloc_get_type_abort(instance, proto_detail_t);
-
-	fr_dict_attr_t const	*da;
 	CONF_PAIR		*cp = NULL;
 
 	/*
@@ -508,15 +513,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	    (inst->app_io->instantiate(inst->app_io_instance,
 				       inst->app_io_conf) < 0)) {
 		cf_log_err(conf, "Instantiation failed for \"%s\"", inst->app_io->name);
-		return -1;
-	}
-
-	/*
-	 *	Needed to populate the code array
-	 */
-	da = fr_dict_attr_by_name(NULL, "Packet-Type");
-	if (!da) {
-		ERROR("Missing definiton for Packet-Type");
 		return -1;
 	}
 
@@ -538,7 +534,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		 *	function.  The only difference is what kind of
 		 *	packet is created.
 		 */
-		inst->code = fr_dict_enum_by_alias(da, cf_pair_value(cp))->value->vb_uint32;
+		inst->code = fr_dict_enum_by_alias(attr_packet_type, cf_pair_value(cp))->value->vb_uint32;
 		break;
 	}
 

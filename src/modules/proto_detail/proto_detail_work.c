@@ -85,6 +85,23 @@ static const CONF_PARSER file_listen_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t const *dict_freeradius;
+
+static fr_dict_attr_t const *attr_packet_transmit_counter;
+
+extern fr_dict_attr_autoload_t proto_detail_work_dict_attr[];
+fr_dict_attr_autoload_t proto_detail_work_dict_attr[] = {
+	{ .out = &attr_packet_transmit_counter, .name = "Packet-Transmit-Counter", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ NULL }
+};
+
+extern fr_dict_autoload_t proto_detail_work_dict[];
+fr_dict_autoload_t proto_detail_work_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+
+	{ NULL }
+};
+
 /*
  *	All of the decoding is done by proto_detail.c
  */
@@ -102,9 +119,8 @@ static int mod_decode(void const *instance, REQUEST *request, UNUSED uint8_t *co
 	request->reply->id = track->id;
 	REQUEST_VERIFY(request);
 
-	vp = fr_pair_make(request->packet, &request->packet->vps,
-			  "Packet-Transmit-Counter", NULL, T_OP_EQ);
-	if (vp) vp->vp_uint32 = track->count;
+	MEM(vp = pair_update_request(attr_packet_transmit_counter, 0));
+	vp->vp_uint32 = track->count;
 
 	return 0;
 }
@@ -160,8 +176,7 @@ static ssize_t mod_read(void *instance, void **packet_ctx, fr_time_t **recv_time
 		rad_assert(buffer_len >= track->packet_len);
 		memcpy(buffer, track->packet, track->packet_len);
 
-		DEBUG("Retrying packet %d (retransmission %u)",
-		      track->id, track->count);
+		DEBUG("Retrying packet %d (retransmission %u)", track->id, track->count);
 		*packet_ctx = track;
 		*recv_time = &track->timestamp;
 		*priority = inst->parent->priority;
