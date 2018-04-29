@@ -46,15 +46,13 @@ fr_dict_t **dict_end = dicts;
 #define DEBUG(fmt, ...)		if (fr_log_fp && (fr_debug_lvl > 1)) fprintf(fr_log_fp , fmt "\n", ## __VA_ARGS__)
 #define INFO(fmt, ...)		if (fr_log_fp && (fr_debug_lvl > 0)) fprintf(fr_log_fp , fmt "\n", ## __VA_ARGS__)
 
-static void NEVER_RETURNS usage(void)
+static void usage(void)
 {
 	fprintf(stderr, "usage: radict [OPTS] <attribute> [attribute...]\n");
 	fprintf(stderr, "  -D <dictdir>     Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(stderr, "  -x               Debugging mode.\n");
 	fprintf(stderr, "");
 	fprintf(stderr, "Very simple interface to extract attribute definitions from FreeRADIUS dictionaries\n");
-
-	exit(1);
 }
 
 static int load_dicts(TALLOC_CTX *ctx, char const *dict_dir)
@@ -125,12 +123,15 @@ static int load_dicts(TALLOC_CTX *ctx, char const *dict_dir)
 static void da_print_info_td(fr_dict_t const *dict, fr_dict_attr_t const *da)
 {
 	char oid_str[512];
+	char flags[256];
 
 	(void)fr_dict_print_attr_oid(oid_str, sizeof(oid_str), NULL, da);
 
+	fr_dict_snprint_flags(flags, sizeof(flags), &da->flags);
+
 	/* Protocol Name Type */
-	printf("%s\t%s\t%s\t%s\n", fr_dict_root(dict)->name, oid_str, da->name,
-	       fr_int2str(dict_attr_types, da->type, "?Unknown?"));
+	printf("%s\t%s\t%s\t%s\t%s\n", fr_dict_root(dict)->name, oid_str, da->name,
+	       fr_int2str(dict_attr_types, da->type, "?Unknown?"), flags);
 }
 
 int main(int argc, char *argv[])
@@ -164,7 +165,7 @@ int main(int argc, char *argv[])
 		case 'h':
 		default:
 			usage();
-			break;
+			goto finish;
 	}
 	argc -= optind;
 	argv += optind;
@@ -179,7 +180,8 @@ int main(int argc, char *argv[])
 	}
 
 	INFO("Loading dictionary: %s/%s", dict_dir, FR_DICTIONARY_FILE);
-	if (fr_dict_internal_afrom_file(autofree, dict_end++, dict_dir, FR_DICTIONARY_FILE) < 0) {
+
+	if (fr_dict_internal_afrom_file(autofree, dict_end++, dict_dir, NULL) < 0) {
 		fr_perror("radict");
 		ret = 1;
 		goto finish;
