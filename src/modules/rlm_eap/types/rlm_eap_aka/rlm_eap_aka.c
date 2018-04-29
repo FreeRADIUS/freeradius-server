@@ -57,6 +57,60 @@ static CONF_PARSER submodule_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_eap_aka;
+
+extern fr_dict_autoload_t rlm_eap_aka_dict[];
+fr_dict_autoload_t rlm_eap_aka_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_eap_aka, .proto = "eap-aka" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_eap_aka_root;
+static fr_dict_attr_t const *attr_eap_aka_subtype;
+static fr_dict_attr_t const *attr_sim_amf;
+static fr_dict_attr_t const *attr_eap_aka_any_id_req;
+static fr_dict_attr_t const *attr_eap_aka_autn;
+static fr_dict_attr_t const *attr_eap_aka_bidding;
+static fr_dict_attr_t const *attr_eap_aka_checkcode;
+static fr_dict_attr_t const *attr_eap_aka_client_error_code;
+static fr_dict_attr_t const *attr_eap_aka_encr_data;
+static fr_dict_attr_t const *attr_eap_aka_fullauth_id_req;
+static fr_dict_attr_t const *attr_eap_aka_identity;
+static fr_dict_attr_t const *attr_eap_aka_kdf;
+static fr_dict_attr_t const *attr_eap_aka_kdf_input;
+static fr_dict_attr_t const *attr_eap_aka_mac;
+static fr_dict_attr_t const *attr_eap_aka_notification;
+static fr_dict_attr_t const *attr_eap_aka_permanent_id_req;
+static fr_dict_attr_t const *attr_eap_aka_rand;
+static fr_dict_attr_t const *attr_eap_aka_res;
+static fr_dict_attr_t const *attr_eap_aka_result_ind;
+
+extern fr_dict_attr_autoload_t rlm_eap_aka_attr[];
+fr_dict_attr_autoload_t rlm_eap_aka_attr[] = {
+	{ .out = &attr_eap_aka_root, .name = "EAP-AKA-Root", .type = FR_TYPE_TLV, .dict = &dict_freeradius},
+	{ .out = &attr_eap_aka_subtype, .name = "EAP-AKA-Subtype", .type = FR_TYPE_UINT32, .dict = &dict_freeradius},
+	{ .out = &attr_sim_amf, .name = "SIM-AMF", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius},
+	{ .out = &attr_eap_aka_any_id_req, .name = "EAP-AKA-Any-ID-Req", .type = FR_TYPE_BOOL, .dict = &dict_eap_aka},
+	{ .out = &attr_eap_aka_autn, .name = "EAP-AKA-AUTN", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka},
+	{ .out = &attr_eap_aka_bidding, .name = "EAP-AKA-Bidding", .type = FR_TYPE_UINT16, .dict = &dict_eap_aka},
+	{ .out = &attr_eap_aka_checkcode, .name = "EAP-AKA-Checkcode", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka},
+	{ .out = &attr_eap_aka_client_error_code, .name = "EAP-AKA-Client-Error-Code", .type = FR_TYPE_UINT16, .dict = &dict_eap_aka},
+	{ .out = &attr_eap_aka_encr_data, .name = "EAP-AKA-Encr-Data", .type = FR_TYPE_TLV, .dict = &dict_eap_aka},
+	{ .out = &attr_eap_aka_fullauth_id_req, .name = "EAP-AKA-Fullauth-ID-Req", .type = FR_TYPE_BOOL, .dict = &dict_eap_aka},
+	{ .out = &attr_eap_aka_identity, .name = "EAP-AKA-Identity", .type = FR_TYPE_STRING, .dict = &dict_eap_aka},
+	{ .out = &attr_eap_aka_kdf, .name = "EAP-AKA-KDF", .type = FR_TYPE_UINT16, .dict = &dict_eap_aka},
+	{ .out = &attr_eap_aka_kdf_input, .name = "EAP-AKA-KDF-Input", .type = FR_TYPE_STRING, .dict = &dict_eap_aka},
+	{ .out = &attr_eap_aka_mac, .name = "EAP-AKA-MAC", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka},
+	{ .out = &attr_eap_aka_notification, .name = "EAP-AKA-Notification", .type = FR_TYPE_UINT16, .dict = &dict_eap_aka},
+	{ .out = &attr_eap_aka_permanent_id_req, .name = "EAP-AKA-Permanent-ID-Req", .type = FR_TYPE_BOOL, .dict = &dict_eap_aka},
+	{ .out = &attr_eap_aka_rand, .name = "EAP-AKA-RAND", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka},
+	{ .out = &attr_eap_aka_res, .name = "EAP-AKA-RES", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka},
+	{ .out = &attr_eap_aka_result_ind, .name = "EAP-AKA-Result-Ind", .type = FR_TYPE_BOOL, .dict = &dict_eap_aka},
+	{ NULL }
+};
+
 static int eap_aka_compose(eap_session_t *eap_session)
 {
 	eap_aka_session_t	*eap_aka_session = talloc_get_type_abort(eap_session->opaque, eap_aka_session_t);
@@ -78,7 +132,6 @@ static int eap_aka_compose(eap_session_t *eap_session)
 					.hmac_extra = NULL,
 					.hmac_extra_len = 0
 				};
-	fr_dict_attr_t const	*encr = fr_dict_attr_child_by_num(dict_sim_root, FR_EAP_AKA_ENCR_DATA);
 
 	fr_cursor_init(&cursor, &eap_session->request->reply->vps);
 	fr_cursor_init(&to_encode, &head);
@@ -96,7 +149,7 @@ static int eap_aka_compose(eap_session_t *eap_session)
 		 *	added by policy, and seem to cause
 		 *	wpa_supplicant to fail if sent before the challenge.
 		 */
-		if (!eap_aka_session->allow_encrypted && fr_dict_parent_common(encr, vp->da, true)) {
+		if (!eap_aka_session->allow_encrypted && fr_dict_parent_common(attr_eap_aka_encr_data, vp->da, true)) {
 			RWDEBUG("Silently discarding &reply:%s: Encrypted attributes not allowed in this round",
 				vp->da->name);
 			talloc_free(vp);
@@ -166,7 +219,7 @@ static int eap_aka_send_identity_request(eap_session_t *eap_session)
 	/*
 	 *	Set the subtype to identity request
 	 */
-	vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_SUBTYPE);
+	vp = fr_pair_afrom_da(packet, attr_eap_aka_subtype);
 	vp->vp_uint16 = FR_EAP_AKA_SUBTYPE_VALUE_AKA_IDENTITY;
 	fr_cursor_append(&cursor, vp);
 
@@ -175,15 +228,15 @@ static int eap_aka_send_identity_request(eap_session_t *eap_session)
 	 */
 	switch (eap_aka_session->id_req) {
 	case SIM_ANY_ID_REQ:
-		vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_ANY_ID_REQ);
+		vp = fr_pair_afrom_da(packet, attr_eap_aka_any_id_req);
 		break;
 
 	case SIM_PERMANENT_ID_REQ:
-		vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_PERMANENT_ID_REQ);
+		vp = fr_pair_afrom_da(packet, attr_eap_aka_permanent_id_req);
 		break;
 
 	case SIM_FULLAUTH_ID_REQ:
-		vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_FULLAUTH_ID_REQ);
+		vp = fr_pair_afrom_da(packet, attr_eap_aka_fullauth_id_req);
 		break;
 
 	default:
@@ -259,9 +312,8 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	if (eap_aka_session->type == FR_EAP_AKA_PRIME) {
 		uint8_t	amf_buff[2] = { 0x80, 0x00 };	/* Set the AMF separation bit high */
 
-		vp = fr_pair_afrom_child_num(packet, fr_dict_root(fr_dict_internal), FR_SIM_AMF);
+		MEM(vp = pair_update_control(attr_sim_amf, 0));
 		fr_pair_value_memcpy(vp, amf_buff, sizeof(amf_buff));
-		fr_pair_replace(&request->control, vp);
 	}
 
 	/*
@@ -276,7 +328,7 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	/*
 	 *	Don't leave the AMF hanging around
 	 */
-	if (eap_aka_session->type == FR_EAP_AKA_PRIME) fr_pair_delete_by_num(&request->control, 0, FR_SIM_AMF, TAG_ANY);
+	if (eap_aka_session->type == FR_EAP_AKA_PRIME) fr_pair_delete_by_da(&request->control, attr_sim_amf, TAG_ANY);
 
 	/*
 	 *	All set, calculate keys!
@@ -298,7 +350,7 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	/*
 	 *	Set the subtype to challenge
 	 */
-	MEM(vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_SUBTYPE));
+	MEM(vp = fr_pair_afrom_da(packet, attr_eap_aka_subtype));
 	vp->vp_uint16 = FR_EAP_AKA_SUBTYPE_VALUE_AKA_CHALLENGE;
 	fr_pair_replace(to_peer, vp);
 
@@ -306,7 +358,7 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	 *	Indicate we'd like to use protected success messages
 	 */
 	if (eap_aka_session->send_result_ind) {
-		MEM(vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_RESULT_IND));
+		MEM(vp = fr_pair_afrom_da(packet, attr_eap_aka_result_ind));
 		vp->vp_bool = true;
 		fr_pair_replace(to_peer, vp);
 	}
@@ -316,7 +368,7 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	 *	if it's able to...
 	 */
 	if (eap_aka_session->send_at_bidding) {
-		MEM(vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_BIDDING));
+		MEM(vp = fr_pair_afrom_da(packet, attr_eap_aka_bidding));
 		vp->vp_uint16 = FR_EAP_AKA_BIDDING_VALUE_PREFER_AKA_PRIME;
 		fr_pair_replace(to_peer, vp);
 	}
@@ -331,11 +383,11 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 			fr_pair_list_free(&packet->vps);
 			return -1;
 		}
-		MEM(vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_KDF_INPUT));
+		MEM(vp = fr_pair_afrom_da(packet, attr_eap_aka_kdf_input));
 		fr_pair_value_bstrncpy(vp, eap_aka_session->keys.network, eap_aka_session->keys.network_len);
 		fr_pair_replace(to_peer, vp);
 
-		MEM(vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_KDF));
+		MEM(vp = fr_pair_afrom_da(packet, attr_eap_aka_kdf));
 		vp->vp_uint16 = eap_aka_session->kdf;
 		fr_pair_replace(to_peer, vp);
 	}
@@ -343,7 +395,7 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	/*
 	 *	Okay, we got the challenge! Put it into an attribute.
 	 */
-	MEM(vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_RAND));
+	MEM(vp = fr_pair_afrom_da(packet, attr_eap_aka_rand));
 	fr_pair_value_memcpy(vp, eap_aka_session->keys.umts.vector.rand, SIM_VECTOR_UMTS_RAND_SIZE);
 	fr_pair_replace(to_peer, vp);
 
@@ -351,7 +403,7 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	 *	Send the AUTN value to the client, so it can authenticate
 	 *	whoever has knowledge of the Ki.
 	 */
-	MEM(vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_AUTN));
+	MEM(vp = fr_pair_afrom_da(packet, attr_eap_aka_autn));
 	fr_pair_value_memcpy(vp, eap_aka_session->keys.umts.vector.autn, SIM_VECTOR_UMTS_AUTN_SIZE);
 	fr_pair_replace(to_peer, vp);
 
@@ -359,7 +411,7 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 	 *	need to include an AT_MAC attribute so that it will get
 	 *	calculated.
 	 */
-	MEM(vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_MAC));
+	MEM(vp = fr_pair_afrom_da(packet, attr_eap_aka_mac));
 	fr_pair_replace(to_peer, vp);
 
 	/*
@@ -376,14 +428,14 @@ static int eap_aka_send_challenge(eap_session_t *eap_session)
 		}
 		eap_aka_session->checkcode_len = slen;
 
-		MEM(vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_CHECKCODE));
+		MEM(vp = fr_pair_afrom_da(packet, attr_eap_aka_checkcode));
 		fr_pair_value_memcpy(vp, eap_aka_session->checkcode, slen);
 	/*
 	 *	If we don't have checkcode data, then we exchanged
 	 *	no identity packets, so checkcode is zero.
 	 */
 	} else {
-		MEM(vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_CHECKCODE));
+		MEM(vp = fr_pair_afrom_da(packet, attr_eap_aka_checkcode));
 		eap_aka_session->checkcode_len = 0;
 	}
 	fr_pair_replace(to_peer, vp);
@@ -423,11 +475,11 @@ static int eap_aka_send_eap_success_notification(eap_session_t *eap_session)
 	/*
 	 *	Set the subtype to notification
 	 */
-	vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_SUBTYPE);
+	vp = fr_pair_afrom_da(packet, attr_eap_aka_subtype);
 	vp->vp_uint16 = FR_EAP_AKA_SUBTYPE_VALUE_AKA_NOTIFICATION;
 	fr_cursor_append(&cursor, vp);
 
-	vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_NOTIFICATION);
+	vp = fr_pair_afrom_da(packet, attr_eap_aka_notification);
 	vp->vp_uint16 = FR_EAP_AKA_NOTIFICATION_VALUE_SUCCESS;
 	fr_cursor_append(&cursor, vp);
 
@@ -435,7 +487,7 @@ static int eap_aka_send_eap_success_notification(eap_session_t *eap_session)
 	 *	Need to include an AT_MAC attribute so that it will get
 	 *	calculated.
 	 */
-	vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_MAC);
+	vp = fr_pair_afrom_da(packet, attr_eap_aka_mac);
 	fr_pair_replace(&packet->vps, vp);
 
 	/*
@@ -488,9 +540,9 @@ static int eap_aka_send_eap_failure_notification(eap_session_t *eap_session)
 
 	fr_cursor_init(&cursor, &packet->vps);
 
-	vp = fr_pair_find_by_child_num(packet->vps, dict_sim_root, FR_EAP_AKA_NOTIFICATION, TAG_ANY);
+	vp = fr_pair_find_by_da(packet->vps, attr_eap_aka_notification, TAG_ANY);
 	if (!vp) {
-		vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_AKA_NOTIFICATION);
+		vp = fr_pair_afrom_da(packet, attr_eap_aka_notification);
 		vp->vp_uint16 = FR_EAP_AKA_NOTIFICATION_VALUE_GENERAL_FAILURE;
 		fr_cursor_append(&cursor, vp);
 	}
@@ -512,7 +564,7 @@ static int eap_aka_send_eap_failure_notification(eap_session_t *eap_session)
 	/*
 	 *	Set the subtype to notification
 	 */
-	vp = fr_pair_afrom_child_num(packet, dict_aka_root, FR_EAP_AKA_SUBTYPE);
+	vp = fr_pair_afrom_da(packet, attr_eap_aka_subtype);
 	vp->vp_uint16 = FR_EAP_AKA_SUBTYPE_VALUE_AKA_NOTIFICATION;
 	fr_cursor_append(&cursor, vp);
 
@@ -522,7 +574,7 @@ static int eap_aka_send_eap_failure_notification(eap_session_t *eap_session)
 	 *	protect notifications.
 	 */
 	if (eap_aka_session->challenge_success) {
-		vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_AKA_MAC);
+		vp = fr_pair_afrom_da(packet, attr_eap_aka_mac);
 		fr_pair_replace(&packet->vps, vp);
 	}
 
@@ -642,7 +694,7 @@ static int process_eap_aka_identity(eap_session_t *eap_session, VALUE_PAIR *vps)
 	/*
 	 *	See if we got an AT_IDENTITY
 	 */
-	id = fr_pair_find_by_child_num(vps, dict_aka_root, FR_EAP_AKA_IDENTITY, TAG_ANY);
+	id = fr_pair_find_by_da(vps, attr_eap_aka_identity, TAG_ANY);
 	if (id) {
 	 	if (fr_sim_id_type(&type, &method,
 				   eap_session->identity, talloc_array_length(eap_session->identity) - 1) < 0) {
@@ -704,7 +756,7 @@ static int process_eap_aka_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 	ssize_t			slen;
 	VALUE_PAIR		*vp = NULL, *mac, *checkcode;
 
-	mac = fr_pair_find_by_child_num(vps, dict_aka_root, FR_EAP_AKA_MAC, TAG_ANY);
+	mac = fr_pair_find_by_da(vps, attr_eap_aka_mac, TAG_ANY);
 	if (!mac) {
 		REDEBUG("Missing AT_MAC attribute");
 		return -1;
@@ -741,7 +793,7 @@ static int process_eap_aka_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 	 *	means they don't support it, and we can't validate
 	 *	their view of the identity packets.
 	 */
-	checkcode = fr_pair_find_by_child_num(vps, dict_aka_root, FR_EAP_AKA_CHECKCODE, TAG_ANY);
+	checkcode = fr_pair_find_by_da(vps, attr_eap_aka_checkcode, TAG_ANY);
 	if (checkcode) {
 		if (checkcode->vp_length != eap_aka_session->checkcode_len) {
 			REDEBUG("Checkcode length (%zu) does not match calculated checkcode length (%zu)",
@@ -765,7 +817,7 @@ static int process_eap_aka_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 		RDEBUG2("Peer didn't include EAP-AKA-Checkcode, skipping checkcode validation");
 	}
 
-	vp = fr_pair_find_by_child_num(vps, dict_aka_root, FR_EAP_AKA_RES, TAG_ANY);
+	vp = fr_pair_find_by_da(vps, attr_eap_aka_res, TAG_ANY);
 	if (!vp) {
 		REDEBUG("Missing EAP-AKA-RES from challenge response");
 		return -1;
@@ -794,7 +846,7 @@ static int process_eap_aka_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 	 *	send a success notification, otherwise send a
 	 *	normal EAP-Success.
 	 */
-	if (fr_pair_find_by_child_num(vps, dict_aka_root, FR_EAP_AKA_RESULT_IND, TAG_ANY)) {
+	if (fr_pair_find_by_da(vps, attr_eap_aka_result_ind, TAG_ANY)) {
 		eap_aka_state_enter(eap_session, EAP_AKA_SERVER_SUCCESS_NOTIFICATION);
 		return 1;
 	}
@@ -860,7 +912,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		rdebug_pair_list(L_DBG_LVL_2, request, vp, NULL);
 	}
 
-	subtype_vp = fr_pair_find_by_child_num(vps, dict_aka_root, FR_EAP_AKA_SUBTYPE, TAG_ANY);
+	subtype_vp = fr_pair_find_by_da(vps, attr_eap_aka_subtype, TAG_ANY);
 	if (!subtype_vp) {
 		REDEBUG("Missing EAP-AKA-Subtype");
 		eap_aka_state_enter(eap_session, EAP_AKA_SERVER_FAILURE_NOTIFICATION);
@@ -891,7 +943,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		{
 			char buff[20];
 
-			vp = fr_pair_find_by_child_num(vps, dict_aka_root, FR_EAP_AKA_CLIENT_ERROR_CODE, TAG_ANY);
+			vp = fr_pair_find_by_da(vps, attr_eap_aka_client_error_code, TAG_ANY);
 			if (!vp) {
 				REDEBUG("EAP-AKA Peer rejected AKA-Identity (%s) with client-error message but "
 					"has not supplied a client error code",
@@ -910,7 +962,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		{
 			char buff[20];
 
-			vp = fr_pair_afrom_child_num(vps, dict_aka_root, FR_EAP_AKA_NOTIFICATION);
+			vp = fr_pair_afrom_da(vps, attr_eap_aka_notification);
 			if (!vp) {
 				REDEBUG2("Received AKA-Notification with no notification code");
 				eap_aka_state_enter(eap_session, EAP_AKA_SERVER_FAILURE_NOTIFICATION);
@@ -980,7 +1032,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		{
 			char buff[20];
 
-			vp = fr_pair_find_by_child_num(vps, dict_aka_root, FR_EAP_AKA_CLIENT_ERROR_CODE, TAG_ANY);
+			vp = fr_pair_find_by_da(vps, attr_eap_aka_client_error_code, TAG_ANY);
 			if (!vp) {
 				REDEBUG("EAP-AKA Peer rejected AKA-Challenge with client-error message but "
 					"has not supplied a client error code");

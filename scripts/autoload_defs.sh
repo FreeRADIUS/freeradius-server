@@ -162,6 +162,10 @@ for i in ${RESOLVED[*]}; do
 		TYPE="FR_TYPE_EXTENDED"
 		;;
 
+	'tlv')
+		TYPE="FR_TYPE_TLV"
+		;;
+
 	*)
 		TYPE="FR_UNKNOWN"
 		;;
