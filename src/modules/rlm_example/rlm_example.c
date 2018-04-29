@@ -55,6 +55,12 @@ static const CONF_PARSER module_config[] = {
 
 static fr_dict_t const *dict_radius;
 
+extern fr_dict_autoload_t rlm_example_dict[];
+fr_dict_autoload_t rlm_example_dict[] = {
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
 static fr_dict_attr_t const *attr_user_name;
 static fr_dict_attr_t const *attr_reply_message;
 static fr_dict_attr_t const *attr_state;
@@ -65,12 +71,6 @@ fr_dict_attr_autoload_t rlm_example_dict_attr[] = {
 	{ .out = &attr_reply_message, .name = "Reply-Message", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 
-	{ NULL }
-};
-
-extern fr_dict_autoload_t rlm_example_dict[];
-fr_dict_autoload_t rlm_example_dict[] = {
-	{ .out = &dict_radius, .proto = "radius" },
 	{ NULL }
 };
 

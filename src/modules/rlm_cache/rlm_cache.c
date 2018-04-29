@@ -50,6 +50,12 @@ static const CONF_PARSER module_config[] = {
 
 static fr_dict_t const *dict_freeradius;
 
+extern fr_dict_autoload_t rlm_cache_dict[];
+fr_dict_autoload_t rlm_cache_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
+
 static fr_dict_attr_t const *attr_cache_merge_new;
 static fr_dict_attr_t const *attr_cache_status_only;
 static fr_dict_attr_t const *attr_cache_allow_merge;
@@ -65,12 +71,6 @@ fr_dict_attr_autoload_t rlm_cache_dict_attr[] = {
 	{ .out = &attr_cache_allow_insert, .name = "Cache-Allow-Insert", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 	{ .out = &attr_cache_ttl, .name = "Cache-TTL", .type = FR_TYPE_INT32, .dict = &dict_freeradius },
 	{ .out = &attr_cache_entry_hits, .name = "Cache-Entry-Hits", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ NULL }
-};
-
-extern fr_dict_autoload_t rlm_cache_dict[];
-fr_dict_autoload_t rlm_cache_dict[] = {
-	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ NULL }
 };
 

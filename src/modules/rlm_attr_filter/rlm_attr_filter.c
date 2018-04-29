@@ -54,6 +54,13 @@ static const CONF_PARSER module_config[] = {
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
 
+extern fr_dict_autoload_t rlm_attr_filter_dict[];
+fr_dict_autoload_t rlm_attr_filter_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
 static fr_dict_attr_t const *attr_stripped_user_name;
 static fr_dict_attr_t const *attr_fall_through;
 static fr_dict_attr_t const *attr_relax_filter;
@@ -71,13 +78,6 @@ fr_dict_attr_autoload_t rlm_attr_filter_dict_attr[] = {
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_vendor_specific, .name = "Vendor-Specific", .type = FR_TYPE_VSA, .dict = &dict_radius },
-	{ NULL }
-};
-
-extern fr_dict_autoload_t rlm_attr_filter_dict[];
-fr_dict_autoload_t rlm_attr_filter_dict[] = {
-	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ .out = &dict_radius, .proto = "radius" },
 	{ NULL }
 };
 

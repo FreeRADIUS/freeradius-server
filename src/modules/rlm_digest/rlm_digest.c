@@ -31,6 +31,13 @@ RCSID("$Id$")
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
 
+extern fr_dict_autoload_t rlm_digest_dict[];
+fr_dict_autoload_t rlm_digest_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
 static const fr_dict_attr_t *attr_auth_type;
 static const fr_dict_attr_t *attr_cleartext_password;
 
@@ -67,13 +74,6 @@ fr_dict_attr_autoload_t rlm_digest_dict_attr[] = {
 	{ .out = &attr_digest_uri, .name = "Digest-Uri", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_digest_user_name, .name = "Digest-User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 
-	{ NULL }
-};
-
-extern fr_dict_autoload_t rlm_digest_dict[];
-fr_dict_autoload_t rlm_digest_dict[] = {
-	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ .out = &dict_radius, .proto = "radius" },
 	{ NULL }
 };
 

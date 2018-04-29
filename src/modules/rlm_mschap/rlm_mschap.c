@@ -99,6 +99,13 @@ static const CONF_PARSER module_config[] = {
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
 
+extern fr_dict_autoload_t rlm_expiration_dict[];
+fr_dict_autoload_t rlm_expiration_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
 static fr_dict_attr_t const *attr_auth_type;
 static fr_dict_attr_t const *attr_cleartext_password;
 static fr_dict_attr_t const *attr_nt_password;
@@ -155,13 +162,6 @@ fr_dict_attr_autoload_t rlm_mschap_dict_attr[] = {
 	{ .out = &attr_ms_mppe_encryption_types, .name = "MS-MPPE-Encryption-Types", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_ms_chap2_cpw, .name = "MS-CHAP2-CPW", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 
-	{ NULL }
-};
-
-extern fr_dict_autoload_t rlm_expiration_dict[];
-fr_dict_autoload_t rlm_expiration_dict[] = {
-	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ .out = &dict_radius, .proto = "radius" },
 	{ NULL }
 };
 

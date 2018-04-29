@@ -35,6 +35,13 @@ typedef struct {
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
 
+extern fr_dict_autoload_t rlm_chap_dict[];
+fr_dict_autoload_t rlm_chap_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
 static fr_dict_attr_t const *attr_auth_type;
 static fr_dict_attr_t const *attr_cleartext_password;
 
@@ -50,13 +57,6 @@ fr_dict_attr_autoload_t rlm_chap_dict_attr[] = {
 	{ .out = &attr_chap_password, .name = "Chap-Password", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_chap_challenge, .name = "Chap-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
-	{ NULL }
-};
-
-extern fr_dict_autoload_t rlm_chap_dict[];
-fr_dict_autoload_t rlm_chap_dict[] = {
-	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ .out = &dict_radius, .proto = "radius" },
 	{ NULL }
 };
 

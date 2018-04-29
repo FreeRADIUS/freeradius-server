@@ -49,6 +49,13 @@ static const CONF_PARSER module_config[] = {
 static fr_dict_t const *dict_radius;
 static fr_dict_t const *dict_freeradius;
 
+extern fr_dict_autoload_t rlm_wimax_dict[];
+fr_dict_autoload_t rlm_wimax_dict[] = {
+	{ .out = &dict_radius, .proto = "radius" },
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
+
 static fr_dict_attr_t const *attr_calling_station_id;
 static fr_dict_attr_t const *attr_eap_msk;
 static fr_dict_attr_t const *attr_eap_emsk;
@@ -96,13 +103,6 @@ fr_dict_attr_autoload_t rlm_wimax_dict_attr[] = {
 	{ .out = &attr_mschap_mppe_send_key, .name = "MSCHAP-MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_mschap_mppe_recv_key, .name = "MSCHAP-MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 
-	{ NULL }
-};
-
-extern fr_dict_autoload_t rlm_wimax_dict[];
-fr_dict_autoload_t rlm_wimax_dict[] = {
-	{ .out = &dict_radius, .proto = "radius" },
-	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ NULL }
 };
 

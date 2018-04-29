@@ -47,6 +47,13 @@ RCSID("$Id$")
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
 
+extern fr_dict_autoload_t rlm_cram_dict[];
+fr_dict_autoload_t rlm_cram_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
 static fr_dict_attr_t const *attr_cleartext_password;
 
 static fr_dict_attr_t const *attr_sandy_mail_authtype;
@@ -61,13 +68,6 @@ fr_dict_attr_autoload_t rlm_cram_dict_attr[] = {
 	{ .out = &attr_sandy_mail_challenge, .name = "Sandy-Mail-Challenge", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_sandy_mail_response, .name = "Sandy-Mail-Response", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 
-	{ NULL }
-};
-
-extern fr_dict_autoload_t rlm_cram_dict[];
-fr_dict_autoload_t rlm_cram_dict[] = {
-	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ .out = &dict_radius, .proto = "radius" },
 	{ NULL }
 };
 

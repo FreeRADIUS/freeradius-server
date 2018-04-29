@@ -118,6 +118,13 @@ static const CONF_PARSER module_config[] = {
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
 
+extern fr_dict_autoload_t rlm_sql_dict[];
+fr_dict_autoload_t rlm_sql_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
 static fr_dict_attr_t const *attr_fall_through;
 static fr_dict_attr_t const *attr_user_profile;
 static fr_dict_attr_t const *attr_user_name;
@@ -130,12 +137,6 @@ fr_dict_attr_autoload_t rlm_sql_dict_attr[] = {
 	{ NULL }
 };
 
-extern fr_dict_autoload_t rlm_sql_dict[];
-fr_dict_autoload_t rlm_sql_dict[] = {
-	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
-};
 static size_t sql_escape_for_xlat_func(REQUEST *request, char *out, size_t outlen, char const *in, void *arg);
 
 /*

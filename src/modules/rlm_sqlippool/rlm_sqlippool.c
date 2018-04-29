@@ -172,6 +172,13 @@ static CONF_PARSER module_config[] = {
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
 
+extern fr_dict_autoload_t rlm_sqlippool_dict[];
+fr_dict_autoload_t rlm_sqlippool_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
 static fr_dict_attr_t const *attr_pool_name;
 static fr_dict_attr_t const *attr_acct_status_type;
 
@@ -179,13 +186,6 @@ extern fr_dict_attr_autoload_t rlm_sqlippool_dict_attr[];
 fr_dict_attr_autoload_t rlm_sqlippool_dict_attr[] = {
 	{ .out = &attr_pool_name, .name = "Pool-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_acct_status_type, .name = "Acct-Status-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ NULL }
-};
-
-extern fr_dict_autoload_t rlm_sqlippool_dict[];
-fr_dict_autoload_t rlm_sqlippool_dict[] = {
-	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ .out = &dict_radius, .proto = "radius" },
 	{ NULL }
 };
 

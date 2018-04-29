@@ -51,6 +51,13 @@ static const CONF_PARSER module_config[] = {
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
 
+extern fr_dict_autoload_t rlm_logintime_dict[];
+fr_dict_autoload_t rlm_logintime_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
 static fr_dict_attr_t const *attr_current_time;
 static fr_dict_attr_t const *attr_login_time;
 static fr_dict_attr_t const *attr_time_of_day;
@@ -65,13 +72,6 @@ fr_dict_attr_autoload_t rlm_logintime_dict_attr[] = {
 
 	{ .out = &attr_session_timeout, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 
-	{ NULL }
-};
-
-extern fr_dict_autoload_t rlm_logintime_dict[];
-fr_dict_autoload_t rlm_logintime_dict[] = {
-	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ .out = &dict_radius, .proto = "radius" },
 	{ NULL }
 };
 

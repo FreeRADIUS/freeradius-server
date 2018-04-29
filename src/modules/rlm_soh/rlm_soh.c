@@ -37,6 +37,13 @@ typedef struct rlm_soh_t {
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
 
+extern fr_dict_autoload_t rlm_soh_dict[];
+fr_dict_autoload_t rlm_soh_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
 static fr_dict_attr_t const *attr_soh_supported;
 static fr_dict_attr_t const *attr_soh_ms_machine_os_vendor;
 static fr_dict_attr_t const *attr_soh_ms_machine_os_version;
@@ -56,13 +63,6 @@ fr_dict_attr_autoload_t rlm_soh_dict_attr[] = {
 	{ .out = &attr_soh_ms_machine_sp_version, .name = "SoH-MS-Machine-SP-version", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_soh_ms_machine_sp_release, .name = "SoH-MS-Machine-SP-release", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_ms_quarantine_soh, .name = "MS-Quarantine-SOH", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ NULL }
-};
-
-extern fr_dict_autoload_t rlm_soh_dict[];
-fr_dict_autoload_t rlm_soh_dict[] = {
-	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ .out = &dict_radius, .proto = "radius" },
 	{ NULL }
 };
 

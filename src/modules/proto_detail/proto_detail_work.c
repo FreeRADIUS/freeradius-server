@@ -87,18 +87,18 @@ static const CONF_PARSER file_listen_config[] = {
 
 static fr_dict_t const *dict_freeradius;
 
+extern fr_dict_autoload_t proto_detail_work_dict[];
+fr_dict_autoload_t proto_detail_work_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+
+	{ NULL }
+};
+
 static fr_dict_attr_t const *attr_packet_transmit_counter;
 
 extern fr_dict_attr_autoload_t proto_detail_work_dict_attr[];
 fr_dict_attr_autoload_t proto_detail_work_dict_attr[] = {
 	{ .out = &attr_packet_transmit_counter, .name = "Packet-Transmit-Counter", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ NULL }
-};
-
-extern fr_dict_autoload_t proto_detail_work_dict[];
-fr_dict_autoload_t proto_detail_work_dict[] = {
-	{ .out = &dict_freeradius, .proto = "freeradius" },
-
 	{ NULL }
 };
 

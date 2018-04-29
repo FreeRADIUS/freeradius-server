@@ -66,18 +66,18 @@ typedef struct rlm_files_t {
 
 static fr_dict_t const *dict_freeradius;
 
+extern fr_dict_autoload_t rlm_files_dict[];
+fr_dict_autoload_t rlm_files_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
+
 static fr_dict_attr_t const *attr_fall_through;
 
 extern fr_dict_attr_autoload_t rlm_files_dict_attr[];
 fr_dict_attr_autoload_t rlm_files_dict_attr[] = {
 	{ .out = &attr_fall_through, .name = "Fall-Through", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 
-	{ NULL }
-};
-
-extern fr_dict_autoload_t rlm_files_dict[];
-fr_dict_autoload_t rlm_files_dict[] = {
-	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ NULL }
 };
 

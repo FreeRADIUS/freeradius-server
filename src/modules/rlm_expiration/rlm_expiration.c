@@ -32,6 +32,13 @@ RCSID("$Id$")
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
 
+extern fr_dict_autoload_t rlm_expiration_dict[];
+fr_dict_autoload_t rlm_expiration_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
 static fr_dict_attr_t const *attr_expiration;
 
 static fr_dict_attr_t const *attr_session_timeout;
@@ -42,13 +49,6 @@ fr_dict_attr_autoload_t rlm_expiration_dict_attr[] = {
 
 	{ .out = &attr_session_timeout, .name = "Session-Timeout", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 
-	{ NULL }
-};
-
-extern fr_dict_autoload_t rlm_expiration_dict[];
-fr_dict_autoload_t rlm_expiration_dict[] = {
-	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ .out = &dict_radius, .proto = "radius" },
 	{ NULL }
 };
 
