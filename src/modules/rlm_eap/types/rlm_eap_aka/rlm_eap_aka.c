@@ -120,7 +120,7 @@ static int eap_aka_compose(eap_session_t *eap_session)
 	REQUEST			*request = eap_session->request;
 	ssize_t			ret;
 	fr_sim_encode_ctx_t	encoder_ctx = {
-					.root = dict_aka_root,
+					.root = attr_eap_aka_root,
 					.keys = &eap_aka_session->keys,
 
 					.iv = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -137,7 +137,7 @@ static int eap_aka_compose(eap_session_t *eap_session)
 	fr_cursor_init(&to_encode, &head);
 
 	while ((vp = fr_cursor_current(&cursor))) {
-		if (!fr_dict_parent_common(dict_aka_root, vp->da, true)) {
+		if (!fr_dict_parent_common(attr_eap_aka_root, vp->da, true)) {
 			fr_cursor_next(&cursor);
 			continue;
 		}
@@ -865,7 +865,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 
 	fr_sim_decode_ctx_t	ctx = {
 					.keys = &eap_aka_session->keys,
-					.root = dict_aka_root
+					.root = attr_eap_aka_root
 				};
 	VALUE_PAIR		*vp, *vps, *subtype_vp;
 	fr_cursor_t		cursor;
@@ -1329,11 +1329,6 @@ static int mod_load(void)
 {
 	if (virtual_server_namespace_register("eap-aka", mod_namespace_load) < 0) return -1;
 
-	dict_aka_root = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_EAP_AKA_ROOT);
-	if (!dict_aka_root) {
-		ERROR("Missing EAP-AKA-Root attribute");
-		return -1;
-	}
 	if (fr_sim_global_init() < 0) return -1;
 	sim_xlat_register();
 
