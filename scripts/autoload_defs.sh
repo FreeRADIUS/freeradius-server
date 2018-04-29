@@ -6,7 +6,7 @@ NEED_RADIUS=false
 
 IFS=$'\n'
 for i in $@; do
-	ATTR_DEFS+=($(grep -o -E 'FR_[[:alnum:]_]*' "$i" | sort | uniq | sed -e 's/^FR_//' | sed -e 's/_/-/g'))
+	ATTR_DEFS+=($(grep -o -E 'FR_[[:alnum:]_]*' "$i" | sort -k 3 | uniq | sed -e 's/^FR_//' | sed -e 's/_/-/g'))
 done
 
 for i in $@; do
@@ -16,7 +16,7 @@ for i in $@; do
 	fi
 done
 
-RESOLVED=($(radict -- ${ATTR_DEFS[*]} | sort -k5,3))
+RESOLVED=($(radict -- ${ATTR_DEFS[*]} | grep -oE ".*\t.*\t.*\t.*\t(internal)?" | sort -s -r -k5 | uniq))
 
 for i in ${RESOLVED[*]}; do
 	if echo $i | cut -f 5 | grep 'internal' > /dev/null; then
@@ -157,6 +157,11 @@ for i in ${RESOLVED[*]}; do
 	'date')
 		TYPE="FR_TYPE_DATE"
 		;;
+
+	'extended')
+		TYPE="FR_TYPE_EXTENDED"
+		;;
+
 	*)
 		TYPE="FR_UNKNOWN"
 		;;
