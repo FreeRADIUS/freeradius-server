@@ -133,7 +133,7 @@ server detail {
 			#  The best way to enforce that is to give the
 			#  the files different prefixes.
 			#
-			filename.work = "${confdir}/detail.work"
+			filename = "${confdir}/detail.work"
 
 			#
 			#  Track progress through the detail file.  When the detail
