@@ -825,6 +825,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	CONF_SECTION		*subcs;
 
 	/*
+	 *	Ensure that the server CONF_SECTION is always set.
+	 */
+	inst->io.server_cs = cf_item_to_section(cf_parent(conf));
+
+	/*
 	 *	Bootstrap the process modules
 	 */
 	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
@@ -850,6 +855,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		if (!cf_data_find(inst->io.server_cs, fr_io_process_t, value)) {
 			fr_io_process_t *process_p;
 
+			rad_assert(inst->io.server_cs);	/* Ensure we don't leak memory */
+
 			process_p = talloc(inst->io.server_cs, fr_io_process_t);
 			*process_p = app_process->process;
 
@@ -858,11 +865,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 		i++;
 	}
-
-	/*
-	 *	Ensure that the server CONF_SECTION is always set.
-	 */
-	inst->io.server_cs = cf_item_to_section(cf_parent(conf));
 
 	/*
 	 *	No IO module, it's an empty listener.
