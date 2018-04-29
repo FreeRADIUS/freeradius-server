@@ -147,6 +147,26 @@ static CONF_PARSER const type_interval_config[FR_MAX_PACKET_CODE] = {
 	[FR_CODE_DISCONNECT_REQUEST] = { FR_CONF_POINTER("Disconnect-Request", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) disconnect_config },
 };
 
+static fr_dict_t const *dict_radius;
+
+extern fr_dict_autoload_t rlm_radius_dict[];
+fr_dict_autoload_t rlm_radius_dict[] = {
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_chap_challenge;
+static fr_dict_attr_t const *attr_chap_password;
+static fr_dict_attr_t const *attr_proxy_state;
+
+extern fr_dict_attr_autoload_t rlm_radius_attr[];
+fr_dict_attr_autoload_t rlm_radius_attr[] = {
+	{ .out = &attr_chap_challenge, .name = "CHAP-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
+	{ .out = &attr_chap_password, .name = "CHAP-Password", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
+	{ .out = &attr_proxy_state, .name = "Proxy-State", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
+	{ NULL }
+};
+
 /** Set which types of packets we can parse
  *
  * @param[in] ctx	to allocate data in (instance of rlm_radius).
@@ -435,11 +455,11 @@ static void radius_fixups(rlm_radius_t *inst, REQUEST *request)
 	/*
 	 *	Check for proxy loops.
 	 */
-	if (radlog_debug_enabled(L_DBG, L_DBG_LVL_1, request)) {
+	if (RDEBUG_ENABLED) {
 		vp_cursor_t cursor;
 
 		fr_pair_cursor_init(&cursor, &request->packet->vps);
-		while ((vp = fr_pair_cursor_next_by_num(&cursor, 0, FR_PROXY_STATE, TAG_ANY)) != NULL) {
+		while ((vp = fr_pair_cursor_next_by_da(&cursor, attr_proxy_state, TAG_ANY)) != NULL) {
 			if (vp->vp_length != 4) continue;
 
 			if (memcmp(&inst->proxy_state, vp->vp_octets, 4) == 0) {
@@ -459,12 +479,10 @@ static void radius_fixups(rlm_radius_t *inst, REQUEST *request)
 	 *	request->proxy->packet authenticator is
 	 *	different.
 	 */
-	if (fr_pair_find_by_num(request->packet->vps, 0, FR_CHAP_PASSWORD, TAG_ANY) &&
-	    !fr_pair_find_by_num(request->packet->vps, 0, FR_CHAP_CHALLENGE, TAG_ANY)) {
-		vp = fr_pair_afrom_num(request->packet, 0, FR_CHAP_CHALLENGE);
-
+	if (fr_pair_find_by_da(request->packet->vps, attr_chap_password, TAG_ANY) &&
+	    !fr_pair_find_by_da(request->packet->vps, attr_chap_challenge, TAG_ANY)) {
+	    	MEM(vp = pair_add_request(attr_chap_challenge, 0));
 		fr_pair_value_memcpy(vp, request->packet->vector, sizeof(request->packet->vector));
-		fr_pair_add(&request->packet->vps, vp);
 	}
 }
 
