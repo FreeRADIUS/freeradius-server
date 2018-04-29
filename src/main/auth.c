@@ -478,13 +478,11 @@ int rad_authenticate(REQUEST *request)
 			rad_authlog("Login incorrect (Home Server says so)",
 				    request, 0);
 			request->reply->code = PW_CODE_ACCESS_REJECT;
-			fr_state_discard(request, request->packet);
 			return RLM_MODULE_REJECT;
 
 		default:
 			rad_authlog("Login incorrect (Home Server failed to respond)",
 				    request, 0);
-			fr_state_discard(request, request->packet);
 			return RLM_MODULE_REJECT;
 		}
 	}
