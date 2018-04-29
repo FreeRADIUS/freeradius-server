@@ -2527,7 +2527,7 @@ fr_dict_attr_t const *fr_dict_attr_known(fr_dict_t *dict, fr_dict_attr_t const *
 	return NULL;
 }
 
-static void dict_snprint_flags(char *out, size_t outlen, fr_dict_attr_flags_t flags)
+ssize_t fr_dict_snprint_flags(char *out, size_t outlen, fr_dict_attr_flags_t const *flags)
 {
 	char *p = out, *end = p + outlen;
 	size_t len;
@@ -2536,15 +2536,16 @@ static void dict_snprint_flags(char *out, size_t outlen, fr_dict_attr_flags_t fl
 
 #define FLAG_SET(_flag) \
 do { \
-	if (flags._flag) {\
+	if (flags->_flag) {\
 		p += strlcpy(p, STRINGIFY(_flag)",", end - p);\
-		if (p >= end) return;\
+		if (p >= end) return -1;\
 	}\
 } while (0)
 
 	FLAG_SET(is_root);
 	FLAG_SET(is_unknown);
 	FLAG_SET(is_raw);
+	FLAG_SET(is_reference);
 	FLAG_SET(internal);
 	FLAG_SET(has_tag);
 	FLAG_SET(array);
@@ -2552,24 +2553,27 @@ do { \
 	FLAG_SET(concat);
 	FLAG_SET(virtual);
 	FLAG_SET(compare);
+	FLAG_SET(named);
 
-	if (flags.encrypt) {
-		p += snprintf(p, end - p, "encrypt=%i,", flags.encrypt);
-		if (p >= end) return;
+	if (flags->encrypt) {
+		p += snprintf(p, end - p, "encrypt=%i,", flags->encrypt);
+		if (p >= end) return -1;
 	}
 
-	if (flags.length) {
-		p += snprintf(p, end - p, "length=%i,", flags.length);
-		if (p >= end) return;
+	if (flags->length) {
+		p += snprintf(p, end - p, "length=%i,", flags->length);
+		if (p >= end) return -1;
 	}
 
-	if (!out[0]) return;
+	if (!out[0]) return -1;
 
 	/*
 	 *	Trim the comma
 	 */
 	len = strlen(out);
 	if (out[len - 1] == ',') out[len - 1] = '\0';
+
+	return len;
 }
 
 void fr_dict_print(fr_dict_attr_t const *da, int depth)
@@ -2578,7 +2582,7 @@ void fr_dict_print(fr_dict_attr_t const *da, int depth)
 	unsigned int i;
 	char const *name;
 
-	dict_snprint_flags(buff, sizeof(buff), da->flags);
+	fr_dict_snprint_flags(buff, sizeof(buff), &da->flags);
 
 	switch (da->type) {
 	case FR_TYPE_VSA:
