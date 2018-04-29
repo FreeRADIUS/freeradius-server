@@ -183,14 +183,41 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_IS_SET_OFFSET("recv_buff", FR_TYPE_UINT32, rlm_radius_udp_t, recv_buff) },
 	{ FR_CONF_IS_SET_OFFSET("send_buff", FR_TYPE_UINT32, rlm_radius_udp_t, send_buff) },
 
-	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, rlm_radius_udp_t, max_packet_size),
-	  .dflt = "4096" },
+	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, rlm_radius_udp_t, max_packet_size), .dflt = "4096" },
 
 	{ FR_CONF_OFFSET("src_ipaddr", FR_TYPE_COMBO_IP_ADDR, rlm_radius_udp_t, src_ipaddr) },
 	{ FR_CONF_OFFSET("src_ipv4addr", FR_TYPE_IPV4_ADDR, rlm_radius_udp_t, src_ipaddr) },
 	{ FR_CONF_OFFSET("src_ipv6addr", FR_TYPE_IPV6_ADDR, rlm_radius_udp_t, src_ipaddr) },
 
 	CONF_PARSER_TERMINATOR
+};
+
+static fr_dict_t const *dict_radius;
+
+extern fr_dict_autoload_t rlm_radius_udp_dict[];
+fr_dict_autoload_t rlm_radius_udp_dict[] = {
+	{ .out = &dict_radius, .proto = "radius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_acct_delay_time;
+static fr_dict_attr_t const *attr_event_timestamp;
+static fr_dict_attr_t const *attr_extended_attribute_1;
+static fr_dict_attr_t const *attr_message_authenticator;
+static fr_dict_attr_t const *attr_nas_identifier;
+static fr_dict_attr_t const *attr_original_packet_code;
+static fr_dict_attr_t const *attr_proxy_state;
+
+extern fr_dict_attr_autoload_t rlm_radius_udp_attr[];
+fr_dict_attr_autoload_t rlm_radius_udp_attr[] = {
+	{ .out = &attr_acct_delay_time, .name = "Acct-Delay-Time", .type = FR_TYPE_UINT32, .dict = &dict_radius},
+	{ .out = &attr_event_timestamp, .name = "Event-Timestamp", .type = FR_TYPE_DATE, .dict = &dict_radius},
+	{ .out = &attr_extended_attribute_1, .name = "Extended-Attribute-1", .type = FR_TYPE_EXTENDED, .dict = &dict_radius},
+	{ .out = &attr_message_authenticator, .name = "Message-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
+	{ .out = &attr_nas_identifier, .name = "NAS-Identifier", .type = FR_TYPE_STRING, .dict = &dict_radius},
+	{ .out = &attr_original_packet_code, .name = "Original-Packet-Code", .type = FR_TYPE_UINT32, .dict = &dict_radius},
+	{ .out = &attr_proxy_state, .name = "Proxy-State", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
+	{ NULL }
 };
 
 static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int fd_errno, void *uctx);
@@ -908,7 +935,7 @@ check_active:
 			/*
 			 *	Must be an extended attribute.
 			 */
-			if (attr[0] != FR_EXTENDED_ATTRIBUTE_1) continue;
+			if (attr[0] != (uint8_t)attr_extended_attribute_1->attr) continue;
 
 			/*
 			 *	ATTR + LEN + EXT-Attr + uint32
@@ -918,7 +945,7 @@ check_active:
 			/*
 			 *	See if there's an original packet code.
 			 */
-			if (attr[2] != FR_ORIGINAL_PACKET_CODE) continue;
+			if (attr[2] != (uint8_t)attr_original_packet_code->attr) continue;
 
 			/*
 			 *	Has to be an 8-bit number.
@@ -1097,7 +1124,7 @@ static int retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 			/*
 			 *	Append the attribute.
 			 */
-			attr[0] = FR_ACCT_DELAY_TIME;
+			attr[0] = (uint8_t)attr_acct_delay_time->attr;
 			attr[1] = 6;
 			memset(attr + 2, 0, 4);
 
@@ -1140,7 +1167,7 @@ static int retransmit_packet(rlm_radius_udp_request_t *u, struct timeval *now)
 		end = u->packet + u->packet_len;
 
 		while (attr < end) {
-			if (attr[0] != FR_EVENT_TIMESTAMP) {
+			if (attr[0] != (uint8_t)attr_event_timestamp->attr) {
 				attr += attr[1];
 				continue;
 			}
@@ -1357,9 +1384,9 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	 *	packet.  This is the only editing we do on the input
 	 *	request.
 	 */
-	if (fr_pair_find_by_num(request->packet->vps, 0, FR_MESSAGE_AUTHENTICATOR, TAG_ANY)) {
+	if (fr_pair_find_by_da(request->packet->vps, attr_message_authenticator, TAG_ANY)) {
 		require_ma = true;
-		fr_pair_delete_by_num(&request->packet->vps, 0, FR_MESSAGE_AUTHENTICATOR, TAG_ANY);
+		fr_pair_delete_by_da(&request->packet->vps, attr_message_authenticator, TAG_ANY);
 	}
 
 	/*
@@ -1394,7 +1421,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 		VALUE_PAIR *vp;
 
 		proxy_state = 0;
-		vp = fr_pair_find_by_num(request->packet->vps, 0, FR_EVENT_TIMESTAMP, TAG_ANY);
+		vp = fr_pair_find_by_da(request->packet->vps, attr_event_timestamp, TAG_ANY);
 		if (vp) vp->vp_uint32 = time(NULL);
 	}
 
@@ -1450,7 +1477,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 
 		rad_assert((size_t) (packet_len + 6) <= c->buflen);
 
-		attr[0] = FR_PROXY_STATE;
+		attr[0] = (uint8_t)attr_proxy_state->attr;
 		attr[1] = 6;
 		memcpy(attr + 2, &c->inst->parent->proxy_state, 4);
 
@@ -1459,7 +1486,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 		c->buffer[2] = (hdr_len >> 8) & 0xff;
 		c->buffer[3] = hdr_len & 0xff;
 
-		vp = fr_pair_afrom_num(u, 0, FR_PROXY_STATE);
+		vp = fr_pair_afrom_da(u, attr_proxy_state);
 		fr_pair_value_memcpy(vp, attr + 2, 4);
 		fr_pair_add(&u->extra, vp);
 
@@ -1482,7 +1509,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 
 		msg = c->buffer + packet_len;
 
-		msg[0] = FR_MESSAGE_AUTHENTICATOR;
+		msg[0] = (uint8_t)attr_message_authenticator->attr;
 		msg[1] = 18;
 		memset(msg + 2, 0, 16);
 
@@ -1512,7 +1539,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 		for (attr = c->buffer + 20;
 		     attr < end;
 		     attr += attr[1]) {
-			if (attr[0] != FR_ACCT_DELAY_TIME) continue;
+			if (attr[0] != (uint8_t)attr_acct_delay_time->attr) continue;
 			if (attr[1] != 6) continue;
 
 			u->acct_delay_time = attr + 2;
@@ -1546,7 +1573,7 @@ static int conn_write(rlm_radius_udp_connection_t *c, rlm_radius_udp_request_t *
 	if (msg) {
 		VALUE_PAIR *vp;
 
-		vp = fr_pair_afrom_num(u, 0, FR_MESSAGE_AUTHENTICATOR);
+		vp = fr_pair_afrom_da(u, attr_message_authenticator);
 		fr_pair_value_memcpy(vp, msg + 2, 16);
 		fr_pair_add(&u->extra, vp);
 
@@ -2045,8 +2072,12 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, UNUSED int f
 		 *	Create the packet contents.
 		 */
 		if (c->inst->parent->status_check == FR_CODE_STATUS_SERVER) {
-			pair_make_request("NAS-Identifier", "status check - are you alive?", T_OP_EQ);
-			pair_make_request("Event-Timestamp", "0", T_OP_EQ);
+			VALUE_PAIR *vp;
+
+			MEM(vp = pair_add_request(attr_nas_identifier, 0));
+			fr_pair_value_strcpy(vp, "status check - are you alive?");
+
+			MEM(pair_add_request(attr_event_timestamp, 0));
 		} else {
 			vp_map_t *map;
 
@@ -2063,9 +2094,7 @@ static fr_connection_state_t _conn_open(UNUSED fr_event_list_t *el, UNUSED int f
 			 *	will be the time at which the packet
 			 *	is sent.
 			 */
-			if (!fr_pair_find_by_num(request->packet->vps, 0, FR_EVENT_TIMESTAMP, TAG_ANY)) {
-				pair_make_request("Event-Timestamp", "0", T_OP_EQ);
-			}
+			MEM(pair_update_request(attr_event_timestamp, 0));
 		}
 
 		DEBUG3("Status check packet will be %s", fr_packet_codes[u->code]);
