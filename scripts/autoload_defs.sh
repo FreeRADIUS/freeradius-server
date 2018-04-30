@@ -6,7 +6,10 @@ NEED_RADIUS=false
 
 IFS=$'\n'
 for i in $@; do
-	ATTR_DEFS+=($(grep -o -E 'FR_[[:alnum:]_]*' "$i" | sort -k 3 | uniq | sed -e 's/^FR_//' | sed -e 's/_/-/g'))
+	ATTR_DEFS+=($(grep -o -E 'FR_[[:alnum:]_]*' "$i" | sort | uniq | sed -e 's/^FR_//;s/_/-/g'))
+	ATTR_DEFS+=($(grep -E 'fr_pair_make' "$i" | cut -d ',' -f 3 | sed -e 's/"//g;s/^ *//;s/ *$//'))
+	ATTR_DEFS+=($(grep -E 'pair_make_(request|reply|config)' "$i" | cut -d ',' -f 1 | sed -e 's/^.*(//;s/"//g;s/^ *//;s/ *$//'))
+	ATTR_DEFS+=($(grep -E 'fr_dict_attr_by_name' "$i" | cut -d ',' -f 2 | sed -e 's/"//g;s/^ *//;s/ *$//;s/);//'))
 done
 
 for i in $@; do
@@ -16,7 +19,7 @@ for i in $@; do
 	fi
 done
 
-RESOLVED=($(radict -- ${ATTR_DEFS[*]} | grep -oE ".*\t.*\t.*\t.*\t(internal)?" | sort -s -r -k5 | uniq))
+RESOLVED=($(radict -- ${ATTR_DEFS[*]} | grep -oE ".*\t.*\t.*\t.*\t(internal)?" | sort -k3 | sort -s -r -k5 | uniq))
 
 for i in ${RESOLVED[*]}; do
 	if echo $i | cut -f 5 | grep 'internal' > /dev/null; then
@@ -171,7 +174,7 @@ for i in ${RESOLVED[*]}; do
 		;;
 	esac
 
-	printf "\t{ .out = &attr_%s, .name = \"%s\", .type = %s, .dict = &%s},\n" $VAR $NAME $TYPE $DICT
+	printf "\t{ .out = &attr_%s, .name = \"%s\", .type = %s, .dict = &%s },\n" $VAR $NAME $TYPE $DICT
 done
 
 printf "\t{ NULL }\n"
