@@ -60,8 +60,8 @@ done
 
 echo
 
-printf "extern fr_dict_attr_autoload_t %s_attr[];\n" $FILE
-printf "fr_dict_attr_autoload_t %s_attr[] = {\n" $FILE
+printf "extern fr_dict_attr_autoload_t %s_dict_attr[];\n" $FILE
+printf "fr_dict_attr_autoload_t %s_dict_attr[] = {\n" $FILE
 
 for i in ${RESOLVED[*]}; do
 	if echo $i | cut -f 5 | grep 'internal' > /dev/null; then

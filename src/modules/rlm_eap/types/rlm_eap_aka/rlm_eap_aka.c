@@ -87,8 +87,8 @@ static fr_dict_attr_t const *attr_eap_aka_rand;
 static fr_dict_attr_t const *attr_eap_aka_res;
 static fr_dict_attr_t const *attr_eap_aka_result_ind;
 
-extern fr_dict_attr_autoload_t rlm_eap_aka_attr[];
-fr_dict_attr_autoload_t rlm_eap_aka_attr[] = {
+extern fr_dict_attr_autoload_t rlm_eap_aka_dict_attr[];
+fr_dict_attr_autoload_t rlm_eap_aka_dict_attr[] = {
 	{ .out = &attr_eap_aka_root, .name = "EAP-AKA-Root", .type = FR_TYPE_TLV, .dict = &dict_freeradius},
 	{ .out = &attr_eap_aka_subtype, .name = "EAP-AKA-Subtype", .type = FR_TYPE_UINT32, .dict = &dict_freeradius},
 	{ .out = &attr_sim_amf, .name = "SIM-AMF", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius},
@@ -1134,8 +1134,8 @@ static rlm_rcode_t mod_session_init(void *instance, eap_session_t *eap_session)
 		eap_aka_session->type = FR_EAP_AKA_PRIME;
 		eap_aka_session->kdf = FR_EAP_AKA_KDF_VALUE_EAP_AKA_PRIME_WITH_CK_PRIME_IK_PRIME;
 		eap_aka_session->checkcode_md = eap_aka_session->mac_md = EVP_sha256();
-		eap_aka_session->keys.network = (uint8_t *) talloc_bstrndup(eap_aka_session, inst->network_name,
-									    talloc_array_length(inst->network_name) - 1);
+		eap_aka_session->keys.network = (uint8_t *)talloc_bstrndup(eap_aka_session, inst->network_name,
+									   talloc_array_length(inst->network_name) - 1);
 		eap_aka_session->keys.network_len = talloc_array_length(eap_aka_session->keys.network) - 1;
 		switch (method) {
 		default:
