@@ -56,6 +56,58 @@ static CONF_PARSER submodule_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_eap_sim;
+
+extern fr_dict_autoload_t rlm_eap_sim_dict[];
+fr_dict_autoload_t rlm_eap_sim_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ .out = &dict_eap_sim, .proto = "eap-sim" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_eap_sim_mk;
+static fr_dict_attr_t const *attr_eap_sim_root;
+static fr_dict_attr_t const *attr_eap_sim_subtype;
+static fr_dict_attr_t const *attr_eap_sim_any_id_req;
+static fr_dict_attr_t const *attr_eap_sim_client_error_code;
+static fr_dict_attr_t const *attr_eap_sim_counter;
+static fr_dict_attr_t const *attr_eap_sim_encr_data;
+static fr_dict_attr_t const *attr_eap_sim_fullauth_id_req;
+static fr_dict_attr_t const *attr_eap_sim_identity;
+static fr_dict_attr_t const *attr_eap_sim_mac;
+static fr_dict_attr_t const *attr_eap_sim_nonce_mt;
+static fr_dict_attr_t const *attr_eap_sim_nonce_s;
+static fr_dict_attr_t const *attr_eap_sim_notification;
+static fr_dict_attr_t const *attr_eap_sim_permanent_id_req;
+static fr_dict_attr_t const *attr_eap_sim_rand;
+static fr_dict_attr_t const *attr_eap_sim_result_ind;
+static fr_dict_attr_t const *attr_eap_sim_selected_version;
+static fr_dict_attr_t const *attr_eap_sim_version_list;
+
+extern fr_dict_attr_autoload_t rlm_eap_sim_dict_attr[];
+fr_dict_attr_autoload_t rlm_eap_sim_dict_attr[] = {
+	{ .out = &attr_eap_sim_mk, .name = "EAP-SIM-MK", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius},
+	{ .out = &attr_eap_sim_root, .name = "EAP-SIM-Root", .type = FR_TYPE_TLV, .dict = &dict_freeradius},
+	{ .out = &attr_eap_sim_subtype, .name = "EAP-SIM-Subtype", .type = FR_TYPE_UINT32, .dict = &dict_freeradius},
+	{ .out = &attr_eap_sim_any_id_req, .name = "EAP-SIM-Any-ID-Req", .type = FR_TYPE_BOOL, .dict = &dict_eap_sim},
+	{ .out = &attr_eap_sim_client_error_code, .name = "EAP-SIM-Client-Error-Code", .type = FR_TYPE_UINT16, .dict = &dict_eap_sim},
+	{ .out = &attr_eap_sim_counter, .name = "EAP-SIM-Counter", .type = FR_TYPE_UINT16, .dict = &dict_eap_sim},
+	{ .out = &attr_eap_sim_encr_data, .name = "EAP-SIM-Encr-Data", .type = FR_TYPE_TLV, .dict = &dict_eap_sim},
+	{ .out = &attr_eap_sim_fullauth_id_req, .name = "EAP-SIM-Fullauth-ID-Req", .type = FR_TYPE_BOOL, .dict = &dict_eap_sim},
+	{ .out = &attr_eap_sim_identity, .name = "EAP-SIM-Identity", .type = FR_TYPE_STRING, .dict = &dict_eap_sim},
+	{ .out = &attr_eap_sim_mac, .name = "EAP-SIM-MAC", .type = FR_TYPE_OCTETS, .dict = &dict_eap_sim},
+	{ .out = &attr_eap_sim_nonce_mt, .name = "EAP-SIM-Nonce-MT", .type = FR_TYPE_OCTETS, .dict = &dict_eap_sim},
+	{ .out = &attr_eap_sim_nonce_s, .name = "EAP-SIM-Nonce-S", .type = FR_TYPE_OCTETS, .dict = &dict_eap_sim},
+	{ .out = &attr_eap_sim_notification, .name = "EAP-SIM-Notification", .type = FR_TYPE_UINT16, .dict = &dict_eap_sim},
+	{ .out = &attr_eap_sim_permanent_id_req, .name = "EAP-SIM-Permanent-ID-Req", .type = FR_TYPE_BOOL, .dict = &dict_eap_sim},
+	{ .out = &attr_eap_sim_rand, .name = "EAP-SIM-RAND", .type = FR_TYPE_OCTETS, .dict = &dict_eap_sim},
+	{ .out = &attr_eap_sim_result_ind, .name = "EAP-SIM-Result-Ind", .type = FR_TYPE_BOOL, .dict = &dict_eap_sim},
+	{ .out = &attr_eap_sim_selected_version, .name = "EAP-SIM-Selected-Version", .type = FR_TYPE_UINT16, .dict = &dict_eap_sim},
+	{ .out = &attr_eap_sim_version_list, .name = "EAP-SIM-Version-List", .type = FR_TYPE_UINT16, .dict = &dict_eap_sim},
+	{ NULL }
+};
+
 /*
  *	build a reply to be sent.
  */
@@ -67,7 +119,7 @@ static int eap_sim_compose(eap_session_t *eap_session, uint8_t const *hmac_extra
 	VALUE_PAIR		*head = NULL, *vp;
 	REQUEST			*request = eap_session->request;
 	fr_sim_encode_ctx_t	encoder_ctx = {
-					.root = dict_sim_root,
+					.root = attr_eap_sim_root,
 					.keys = &eap_sim_session->keys,
 
 					.iv = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -81,7 +133,6 @@ static int eap_sim_compose(eap_session_t *eap_session, uint8_t const *hmac_extra
 				};
 
 	ssize_t			ret;
-	fr_dict_attr_t const	*encr = fr_dict_attr_child_by_num(dict_sim_root, FR_EAP_SIM_ENCR_DATA);
 
 	/* we will set the ID on requests, since we have to HMAC it */
 	eap_session->this_round->set_request_id = true;
@@ -90,7 +141,7 @@ static int eap_sim_compose(eap_session_t *eap_session, uint8_t const *hmac_extra
 	fr_cursor_init(&to_encode, &head);
 
 	while ((vp = fr_cursor_current(&cursor))) {
-		if (!fr_dict_parent_common(dict_sim_root, vp->da, true)) {
+		if (!fr_dict_parent_common(attr_eap_sim_root, vp->da, true)) {
 			fr_cursor_next(&cursor);
 			continue;
 		}
@@ -102,7 +153,7 @@ static int eap_sim_compose(eap_session_t *eap_session, uint8_t const *hmac_extra
 		 *	added by policy, and seem to cause
 		 *	wpa_supplicant to fail if sent before the challenge.
 		 */
-		if (!eap_sim_session->allow_encrypted && fr_dict_parent_common(encr, vp->da, true)) {
+		if (!eap_sim_session->allow_encrypted && fr_dict_parent_common(attr_eap_sim_encr_data, vp->da, true)) {
 			RWDEBUG("Silently discarding &reply:%s: Encrypted attributes not allowed in this round",
 				vp->da->name);
 			talloc_free(vp);
@@ -153,7 +204,7 @@ static int eap_sim_send_start(eap_session_t *eap_session)
 	/*
 	 *	Add appropriate TLVs for the EAP things we wish to send.
 	 */
-	vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_VERSION_LIST);
+	vp = fr_pair_afrom_da(packet, attr_eap_sim_version_list);
 	vp->vp_uint16 = EAP_SIM_VERSION;
 	fr_pair_add(vps, vp);
 
@@ -167,15 +218,15 @@ static int eap_sim_send_start(eap_session_t *eap_session)
 	 */
 	switch (eap_sim_session->id_req) {
 	case SIM_ANY_ID_REQ:
-		vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_ANY_ID_REQ);
+		vp = fr_pair_afrom_da(packet, attr_eap_sim_any_id_req);
 		break;
 
 	case SIM_PERMANENT_ID_REQ:
-		vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_PERMANENT_ID_REQ);
+		vp = fr_pair_afrom_da(packet, attr_eap_sim_permanent_id_req);
 		break;
 
 	case SIM_FULLAUTH_ID_REQ:
-		vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_FULLAUTH_ID_REQ);
+		vp = fr_pair_afrom_da(packet, attr_eap_sim_fullauth_id_req);
 		break;
 
 	default:
@@ -185,7 +236,7 @@ static int eap_sim_send_start(eap_session_t *eap_session)
 	fr_pair_replace(vps, vp);
 
 	/* the SUBTYPE, set to start. */
-	vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_SUBTYPE);
+	vp = fr_pair_afrom_da(packet, attr_eap_sim_subtype);
 	vp->vp_uint16 = EAP_SIM_START;
 	fr_pair_replace(vps, vp);
 
@@ -253,22 +304,22 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	/*
 	 *	Okay, we got the challenges! Put them into attributes.
 	 */
-	MEM(vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_RAND));
+	MEM(vp = fr_pair_afrom_da(packet, attr_eap_sim_rand));
 	fr_pair_value_memcpy(vp, eap_sim_session->keys.gsm.vector[0].rand, SIM_VECTOR_GSM_RAND_SIZE);
 	fr_pair_add(to_peer, vp);
 
-	MEM(vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_RAND));
+	MEM(vp = fr_pair_afrom_da(packet, attr_eap_sim_rand));
 	fr_pair_value_memcpy(vp, eap_sim_session->keys.gsm.vector[1].rand, SIM_VECTOR_GSM_RAND_SIZE);
 	fr_pair_add(to_peer, vp);
 
-	MEM(vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_RAND));
+	MEM(vp = fr_pair_afrom_da(packet, attr_eap_sim_rand));
 	fr_pair_value_memcpy(vp, eap_sim_session->keys.gsm.vector[2].rand, SIM_VECTOR_GSM_RAND_SIZE);
 	fr_pair_add(to_peer, vp);
 
 	/*
 	 *	Set subtype to challenge.
 	 */
-	vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_SUBTYPE);
+	vp = fr_pair_afrom_da(packet, attr_eap_sim_subtype);
 	vp->vp_uint16 = EAP_SIM_CHALLENGE;
 	fr_pair_replace(to_peer, vp);
 
@@ -276,7 +327,7 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	 *	Indicate we'd like to use protected success messages
 	 */
 	if (eap_sim_session->send_result_ind) {
-		MEM(vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_RESULT_IND));
+		MEM(vp = fr_pair_afrom_da(packet, attr_eap_sim_result_ind));
 		vp->vp_bool = true;
 		fr_pair_replace(to_peer, vp);
 	}
@@ -285,7 +336,7 @@ static int eap_sim_send_challenge(eap_session_t *eap_session)
 	 *	Need to include an AT_MAC attribute so that it will get
 	 *	calculated.
 	 */
-	vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_MAC);
+	vp = fr_pair_afrom_da(packet, attr_eap_sim_mac);
 	fr_pair_replace(to_peer, vp);
 
 	/*
@@ -330,7 +381,7 @@ static int eap_sim_send_reauthentication(eap_session_t *eap_session)
 	 *	are missing or malformed, return an error code
 	 *	and the state machine will jump to the start state.
 	 */
-	mk = fr_pair_find_by_child_num(request->control, dict_sim_root, FR_EAP_SIM_MK, TAG_ANY);
+	mk = fr_pair_find_by_da(request->control, attr_eap_sim_mk, TAG_ANY);
 	if (!mk) {
 		RWDEBUG2("Missing &control:EAP-SIM-MK, skipping session resumption");
 		return -1;
@@ -340,7 +391,7 @@ static int eap_sim_send_reauthentication(eap_session_t *eap_session)
 			SIM_MK_SIZE, mk->vp_length);
 		return -1;
 	}
-	counter = fr_pair_find_by_child_num(request->control, dict_sim_root, FR_EAP_SIM_COUNTER, TAG_ANY);
+	counter = fr_pair_find_by_da(request->control, attr_eap_sim_counter, TAG_ANY);
 	if (!counter) {
 		RWDEBUG2("Missing &control:EAP-SIM-Counter, skipping session resumption");
 		return -1;
@@ -359,14 +410,14 @@ static int eap_sim_send_reauthentication(eap_session_t *eap_session)
 	/*
 	 *	Set subtype to challenge.
 	 */
-	vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_SUBTYPE);
+	vp = fr_pair_afrom_da(packet, attr_eap_sim_subtype);
 	vp->vp_uint16 = EAP_SIM_REAUTH;
 	fr_pair_replace(to_peer, vp);
 
 	/*
 	 *	Add nonce_s
 	 */
-	MEM(vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_NONCE_S));
+	MEM(vp = fr_pair_afrom_da(packet, attr_eap_sim_nonce_s));
 	fr_pair_value_memcpy(vp, eap_sim_session->keys.reauth.nonce_s, sizeof(eap_sim_session->keys.reauth.nonce_s));
 	fr_pair_replace(to_peer, vp);
 
@@ -374,7 +425,7 @@ static int eap_sim_send_reauthentication(eap_session_t *eap_session)
 	 *	Indicate we'd like to use protected success messages
 	 */
 	if (eap_sim_session->send_result_ind) {
-		MEM(vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_RESULT_IND));
+		MEM(vp = fr_pair_afrom_da(packet, attr_eap_sim_result_ind));
 		vp->vp_bool = true;
 		fr_pair_replace(to_peer, vp);
 	}
@@ -383,7 +434,7 @@ static int eap_sim_send_reauthentication(eap_session_t *eap_session)
 	 *	Need to include an AT_MAC attribute so that it will get
 	 *	calculated.
 	 */
-	vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_MAC);
+	vp = fr_pair_afrom_da(packet, attr_eap_sim_mac);
 	fr_pair_replace(to_peer, vp);
 
 	/*
@@ -424,11 +475,11 @@ static int eap_sim_send_eap_success_notification(eap_session_t *eap_session)
 	/*
 	 *	Set the subtype to notification
 	 */
-	vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_SUBTYPE);
+	vp = fr_pair_afrom_da(packet, attr_eap_sim_subtype);
 	vp->vp_uint16 = FR_EAP_SIM_SUBTYPE_VALUE_SIM_NOTIFICATION;
 	fr_cursor_append(&cursor, vp);
 
-	vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_NOTIFICATION);
+	vp = fr_pair_afrom_da(packet, attr_eap_sim_notification);
 	vp->vp_uint16 = FR_EAP_SIM_NOTIFICATION_VALUE_SUCCESS;
 	fr_cursor_append(&cursor, vp);
 
@@ -436,7 +487,7 @@ static int eap_sim_send_eap_success_notification(eap_session_t *eap_session)
 	 *	Need to include an AT_MAC attribute so that it will get
 	 *	calculated.
 	 */
-	vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_MAC);
+	vp = fr_pair_afrom_da(packet, attr_eap_sim_mac);
 	fr_pair_replace(&packet->vps, vp);
 
 	/*
@@ -486,9 +537,9 @@ static int eap_sim_send_eap_failure_notification(eap_session_t *eap_session)
 
 	fr_cursor_init(&cursor, &packet->vps);
 
-	vp = fr_pair_find_by_child_num(packet->vps, dict_sim_root, FR_EAP_SIM_NOTIFICATION, TAG_ANY);
+	vp = fr_pair_find_by_da(packet->vps, attr_eap_sim_notification, TAG_ANY);
 	if (!vp) {
-		vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_NOTIFICATION);
+		vp = fr_pair_afrom_da(packet, attr_eap_sim_notification);
 		vp->vp_uint16 = FR_EAP_SIM_NOTIFICATION_VALUE_GENERAL_FAILURE;
 		fr_cursor_append(&cursor, vp);
 	}
@@ -510,7 +561,7 @@ static int eap_sim_send_eap_failure_notification(eap_session_t *eap_session)
 	/*
 	 *	Set the subtype to notification
 	 */
-	vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_SUBTYPE);
+	vp = fr_pair_afrom_da(packet, attr_eap_sim_subtype);
 	vp->vp_uint16 = FR_EAP_SIM_SUBTYPE_VALUE_SIM_NOTIFICATION;
 	fr_cursor_append(&cursor, vp);
 
@@ -520,7 +571,7 @@ static int eap_sim_send_eap_failure_notification(eap_session_t *eap_session)
 	 *	protect notifications.
 	 */
 	if (eap_sim_session->challenge_success) {
-		vp = fr_pair_afrom_child_num(packet, dict_sim_root, FR_EAP_SIM_MAC);
+		vp = fr_pair_afrom_da(packet, attr_eap_sim_mac);
 		fr_pair_replace(&packet->vps, vp);
 	}
 
@@ -649,8 +700,8 @@ static int process_eap_sim_start(eap_session_t *eap_session, VALUE_PAIR *vps)
 	 *	and SELECTED_VERSION from the peer, else
 	 *	the packet is invalid.
 	 */
-	nonce_vp = fr_pair_find_by_child_num(vps, dict_sim_root, FR_EAP_SIM_NONCE_MT, TAG_ANY);
-	selected_version_vp = fr_pair_find_by_child_num(vps, dict_sim_root, FR_EAP_SIM_SELECTED_VERSION, TAG_ANY);
+	nonce_vp = fr_pair_find_by_da(vps, attr_eap_sim_nonce_mt, TAG_ANY);
+	selected_version_vp = fr_pair_find_by_da(vps, attr_eap_sim_selected_version, TAG_ANY);
 	if (!nonce_vp || !selected_version_vp) {
 		REDEBUG2("Client did not select a version and send a NONCE");
 		return -1;
@@ -681,7 +732,7 @@ static int process_eap_sim_start(eap_session_t *eap_session, VALUE_PAIR *vps)
 	/*
 	 *	See if we got an AT_IDENTITY
 	 */
-	id = fr_pair_find_by_child_num(vps, dict_sim_root, FR_EAP_SIM_IDENTITY, TAG_ANY);
+	id = fr_pair_find_by_da(vps, attr_eap_sim_identity, TAG_ANY);
 	if (id) {
 	 	if (fr_sim_id_type(&type, &method,
 				   eap_session->identity, talloc_array_length(eap_session->identity) - 1) < 0) {
@@ -752,7 +803,7 @@ static int process_eap_sim_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 	p += SIM_VECTOR_GSM_SRES_SIZE;
 	memcpy(p, eap_sim_session->keys.gsm.vector[2].sres, SIM_VECTOR_GSM_SRES_SIZE);
 
-	mac = fr_pair_find_by_child_num(vps, dict_sim_root, FR_EAP_SIM_MAC, TAG_ANY);
+	mac = fr_pair_find_by_da(vps, attr_eap_sim_mac, TAG_ANY);
 	if (!mac) {
 		REDEBUG("Missing AT_MAC attribute");
 		return -1;
@@ -790,7 +841,7 @@ static int process_eap_sim_challenge(eap_session_t *eap_session, VALUE_PAIR *vps
 	 *	send a success notification, otherwise send a
 	 *	normal EAP-Success.
 	 */
-	if (fr_pair_find_by_child_num(vps, dict_sim_root, FR_EAP_SIM_RESULT_IND, TAG_ANY)) {
+	if (fr_pair_find_by_da(vps, attr_eap_sim_result_ind, TAG_ANY)) {
 		eap_sim_state_enter(eap_session, EAP_SIM_SERVER_SUCCESS_NOTIFICATION);
 		return 1;
 	}
@@ -809,7 +860,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	eap_sim_session_t	*eap_sim_session = talloc_get_type_abort(eap_session->opaque, eap_sim_session_t);
 	fr_sim_decode_ctx_t	ctx = {
 					.keys = &eap_sim_session->keys,
-					.root = dict_sim_root
+					.root = attr_eap_sim_root
 				};
 	VALUE_PAIR		*subtype_vp, *from_peer, *vp;
 	fr_cursor_t		cursor;
@@ -818,7 +869,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 
 	int			ret;
 
-	rad_assert(dict_sim_root);
+	rad_assert(attr_eap_sim_root);
 
 	/*
 	 *	VPS is the data from the client
@@ -850,7 +901,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		rdebug_pair_list(L_DBG_LVL_2, request, vp, NULL);
 	}
 
-	subtype_vp = fr_pair_find_by_child_num(from_peer, dict_sim_root, FR_EAP_SIM_SUBTYPE, TAG_ANY);
+	subtype_vp = fr_pair_find_by_da(from_peer, attr_eap_sim_subtype, TAG_ANY);
 	if (!subtype_vp) {
 		REDEBUG("Missing EAP-SIM-Subtype");
 		eap_sim_state_enter(eap_session, EAP_SIM_SERVER_FAILURE_NOTIFICATION);
@@ -881,7 +932,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		{
 			char buff[20];
 
-			vp = fr_pair_find_by_child_num(from_peer, dict_sim_root, FR_EAP_SIM_CLIENT_ERROR_CODE, TAG_ANY);
+			vp = fr_pair_find_by_da(from_peer, attr_eap_sim_client_error_code, TAG_ANY);
 			if (!vp) {
 				REDEBUG("EAP-SIM Peer rejected SIM-Start (%s) with client-error message but "
 					"has not supplied a client error code",
@@ -900,7 +951,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		{
 			char buff[20];
 
-			vp = fr_pair_afrom_child_num(from_peer, dict_sim_root, FR_EAP_SIM_NOTIFICATION);
+			vp = fr_pair_afrom_da(from_peer, attr_eap_sim_notification);
 			if (!vp) {
 				REDEBUG2("Received SIM-Notification with no notification code");
 				eap_sim_state_enter(eap_session, EAP_SIM_SERVER_FAILURE_NOTIFICATION);
@@ -962,7 +1013,7 @@ static rlm_rcode_t mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		{
 			char buff[20];
 
-			vp = fr_pair_find_by_child_num(from_peer, dict_sim_root, FR_EAP_SIM_CLIENT_ERROR_CODE, TAG_ANY);
+			vp = fr_pair_find_by_da(from_peer, attr_eap_sim_client_error_code, TAG_ANY);
 			if (!vp) {
 				REDEBUG("EAP-SIM Peer rejected SIM-Challenge with client-error message but "
 					"has not supplied a client error code");
@@ -1092,11 +1143,6 @@ static rlm_rcode_t mod_session_init(UNUSED void *instance, eap_session_t *eap_se
 
 static int mod_load(void)
 {
-	dict_sim_root = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_EAP_SIM_ROOT);
-	if (!dict_sim_root) {
-		ERROR("Missing EAP-SIM-Root attribute");
-		return -1;
-	}
 	if (fr_sim_global_init() < 0) return -1;
 	sim_xlat_register();
 
