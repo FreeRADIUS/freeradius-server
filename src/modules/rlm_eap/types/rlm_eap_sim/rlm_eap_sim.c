@@ -69,6 +69,7 @@ fr_dict_autoload_t rlm_eap_sim_dict[] = {
 static fr_dict_attr_t const *attr_eap_sim_mk;
 static fr_dict_attr_t const *attr_eap_sim_root;
 static fr_dict_attr_t const *attr_eap_sim_subtype;
+
 static fr_dict_attr_t const *attr_eap_sim_any_id_req;
 static fr_dict_attr_t const *attr_eap_sim_client_error_code;
 static fr_dict_attr_t const *attr_eap_sim_counter;
@@ -87,24 +88,25 @@ static fr_dict_attr_t const *attr_eap_sim_version_list;
 
 extern fr_dict_attr_autoload_t rlm_eap_sim_dict_attr[];
 fr_dict_attr_autoload_t rlm_eap_sim_dict_attr[] = {
-	{ .out = &attr_eap_sim_mk, .name = "EAP-SIM-MK", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius},
-	{ .out = &attr_eap_sim_root, .name = "EAP-SIM-Root", .type = FR_TYPE_TLV, .dict = &dict_freeradius},
-	{ .out = &attr_eap_sim_subtype, .name = "EAP-SIM-Subtype", .type = FR_TYPE_UINT32, .dict = &dict_freeradius},
-	{ .out = &attr_eap_sim_any_id_req, .name = "EAP-SIM-Any-ID-Req", .type = FR_TYPE_BOOL, .dict = &dict_eap_sim},
-	{ .out = &attr_eap_sim_client_error_code, .name = "EAP-SIM-Client-Error-Code", .type = FR_TYPE_UINT16, .dict = &dict_eap_sim},
-	{ .out = &attr_eap_sim_counter, .name = "EAP-SIM-Counter", .type = FR_TYPE_UINT16, .dict = &dict_eap_sim},
-	{ .out = &attr_eap_sim_encr_data, .name = "EAP-SIM-Encr-Data", .type = FR_TYPE_TLV, .dict = &dict_eap_sim},
-	{ .out = &attr_eap_sim_fullauth_id_req, .name = "EAP-SIM-Fullauth-ID-Req", .type = FR_TYPE_BOOL, .dict = &dict_eap_sim},
-	{ .out = &attr_eap_sim_identity, .name = "EAP-SIM-Identity", .type = FR_TYPE_STRING, .dict = &dict_eap_sim},
-	{ .out = &attr_eap_sim_mac, .name = "EAP-SIM-MAC", .type = FR_TYPE_OCTETS, .dict = &dict_eap_sim},
-	{ .out = &attr_eap_sim_nonce_mt, .name = "EAP-SIM-Nonce-MT", .type = FR_TYPE_OCTETS, .dict = &dict_eap_sim},
-	{ .out = &attr_eap_sim_nonce_s, .name = "EAP-SIM-Nonce-S", .type = FR_TYPE_OCTETS, .dict = &dict_eap_sim},
-	{ .out = &attr_eap_sim_notification, .name = "EAP-SIM-Notification", .type = FR_TYPE_UINT16, .dict = &dict_eap_sim},
-	{ .out = &attr_eap_sim_permanent_id_req, .name = "EAP-SIM-Permanent-ID-Req", .type = FR_TYPE_BOOL, .dict = &dict_eap_sim},
-	{ .out = &attr_eap_sim_rand, .name = "EAP-SIM-RAND", .type = FR_TYPE_OCTETS, .dict = &dict_eap_sim},
-	{ .out = &attr_eap_sim_result_ind, .name = "EAP-SIM-Result-Ind", .type = FR_TYPE_BOOL, .dict = &dict_eap_sim},
-	{ .out = &attr_eap_sim_selected_version, .name = "EAP-SIM-Selected-Version", .type = FR_TYPE_UINT16, .dict = &dict_eap_sim},
-	{ .out = &attr_eap_sim_version_list, .name = "EAP-SIM-Version-List", .type = FR_TYPE_UINT16, .dict = &dict_eap_sim},
+	{ .out = &attr_eap_sim_mk, .name = "EAP-SIM-MK", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_eap_sim_root, .name = "EAP-SIM-Root", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
+	{ .out = &attr_eap_sim_subtype, .name = "EAP-SIM-Subtype", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+
+	{ .out = &attr_eap_sim_any_id_req, .name = "EAP-SIM-Any-ID-Req", .type = FR_TYPE_BOOL, .dict = &dict_eap_sim },
+	{ .out = &attr_eap_sim_client_error_code, .name = "EAP-SIM-Client-Error-Code", .type = FR_TYPE_UINT16, .dict = &dict_eap_sim },
+	{ .out = &attr_eap_sim_counter, .name = "EAP-SIM-Counter", .type = FR_TYPE_UINT16, .dict = &dict_eap_sim },
+	{ .out = &attr_eap_sim_encr_data, .name = "EAP-SIM-Encr-Data", .type = FR_TYPE_TLV, .dict = &dict_eap_sim },
+	{ .out = &attr_eap_sim_fullauth_id_req, .name = "EAP-SIM-Fullauth-ID-Req", .type = FR_TYPE_BOOL, .dict = &dict_eap_sim },
+	{ .out = &attr_eap_sim_identity, .name = "EAP-SIM-Identity", .type = FR_TYPE_STRING, .dict = &dict_eap_sim },
+	{ .out = &attr_eap_sim_mac, .name = "EAP-SIM-MAC", .type = FR_TYPE_OCTETS, .dict = &dict_eap_sim },
+	{ .out = &attr_eap_sim_nonce_mt, .name = "EAP-SIM-Nonce-MT", .type = FR_TYPE_OCTETS, .dict = &dict_eap_sim },
+	{ .out = &attr_eap_sim_nonce_s, .name = "EAP-SIM-Nonce-S", .type = FR_TYPE_OCTETS, .dict = &dict_eap_sim },
+	{ .out = &attr_eap_sim_notification, .name = "EAP-SIM-Notification", .type = FR_TYPE_UINT16, .dict = &dict_eap_sim },
+	{ .out = &attr_eap_sim_permanent_id_req, .name = "EAP-SIM-Permanent-ID-Req", .type = FR_TYPE_BOOL, .dict = &dict_eap_sim },
+	{ .out = &attr_eap_sim_rand, .name = "EAP-SIM-RAND", .type = FR_TYPE_OCTETS, .dict = &dict_eap_sim },
+	{ .out = &attr_eap_sim_result_ind, .name = "EAP-SIM-Result-Ind", .type = FR_TYPE_BOOL, .dict = &dict_eap_sim },
+	{ .out = &attr_eap_sim_selected_version, .name = "EAP-SIM-Selected-Version", .type = FR_TYPE_UINT16, .dict = &dict_eap_sim },
+	{ .out = &attr_eap_sim_version_list, .name = "EAP-SIM-Version-List", .type = FR_TYPE_UINT16, .dict = &dict_eap_sim },
 	{ NULL }
 };
 

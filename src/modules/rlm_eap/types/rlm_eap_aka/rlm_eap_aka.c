@@ -70,6 +70,7 @@ fr_dict_autoload_t rlm_eap_aka_dict[] = {
 static fr_dict_attr_t const *attr_eap_aka_root;
 static fr_dict_attr_t const *attr_eap_aka_subtype;
 static fr_dict_attr_t const *attr_sim_amf;
+
 static fr_dict_attr_t const *attr_eap_aka_any_id_req;
 static fr_dict_attr_t const *attr_eap_aka_autn;
 static fr_dict_attr_t const *attr_eap_aka_bidding;
@@ -89,25 +90,26 @@ static fr_dict_attr_t const *attr_eap_aka_result_ind;
 
 extern fr_dict_attr_autoload_t rlm_eap_aka_dict_attr[];
 fr_dict_attr_autoload_t rlm_eap_aka_dict_attr[] = {
-	{ .out = &attr_eap_aka_root, .name = "EAP-AKA-Root", .type = FR_TYPE_TLV, .dict = &dict_freeradius},
-	{ .out = &attr_eap_aka_subtype, .name = "EAP-AKA-Subtype", .type = FR_TYPE_UINT32, .dict = &dict_freeradius},
-	{ .out = &attr_sim_amf, .name = "SIM-AMF", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius},
-	{ .out = &attr_eap_aka_any_id_req, .name = "EAP-AKA-Any-ID-Req", .type = FR_TYPE_BOOL, .dict = &dict_eap_aka},
-	{ .out = &attr_eap_aka_autn, .name = "EAP-AKA-AUTN", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka},
-	{ .out = &attr_eap_aka_bidding, .name = "EAP-AKA-Bidding", .type = FR_TYPE_UINT16, .dict = &dict_eap_aka},
-	{ .out = &attr_eap_aka_checkcode, .name = "EAP-AKA-Checkcode", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka},
-	{ .out = &attr_eap_aka_client_error_code, .name = "EAP-AKA-Client-Error-Code", .type = FR_TYPE_UINT16, .dict = &dict_eap_aka},
-	{ .out = &attr_eap_aka_encr_data, .name = "EAP-AKA-Encr-Data", .type = FR_TYPE_TLV, .dict = &dict_eap_aka},
-	{ .out = &attr_eap_aka_fullauth_id_req, .name = "EAP-AKA-Fullauth-ID-Req", .type = FR_TYPE_BOOL, .dict = &dict_eap_aka},
-	{ .out = &attr_eap_aka_identity, .name = "EAP-AKA-Identity", .type = FR_TYPE_STRING, .dict = &dict_eap_aka},
-	{ .out = &attr_eap_aka_kdf, .name = "EAP-AKA-KDF", .type = FR_TYPE_UINT16, .dict = &dict_eap_aka},
-	{ .out = &attr_eap_aka_kdf_input, .name = "EAP-AKA-KDF-Input", .type = FR_TYPE_STRING, .dict = &dict_eap_aka},
-	{ .out = &attr_eap_aka_mac, .name = "EAP-AKA-MAC", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka},
-	{ .out = &attr_eap_aka_notification, .name = "EAP-AKA-Notification", .type = FR_TYPE_UINT16, .dict = &dict_eap_aka},
-	{ .out = &attr_eap_aka_permanent_id_req, .name = "EAP-AKA-Permanent-ID-Req", .type = FR_TYPE_BOOL, .dict = &dict_eap_aka},
-	{ .out = &attr_eap_aka_rand, .name = "EAP-AKA-RAND", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka},
-	{ .out = &attr_eap_aka_res, .name = "EAP-AKA-RES", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka},
-	{ .out = &attr_eap_aka_result_ind, .name = "EAP-AKA-Result-Ind", .type = FR_TYPE_BOOL, .dict = &dict_eap_aka},
+	{ .out = &attr_eap_aka_root, .name = "EAP-AKA-Root", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
+	{ .out = &attr_eap_aka_subtype, .name = "EAP-AKA-Subtype", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+	{ .out = &attr_sim_amf, .name = "SIM-AMF", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+
+	{ .out = &attr_eap_aka_any_id_req, .name = "EAP-AKA-Any-ID-Req", .type = FR_TYPE_BOOL, .dict = &dict_eap_aka },
+	{ .out = &attr_eap_aka_autn, .name = "EAP-AKA-AUTN", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka },
+	{ .out = &attr_eap_aka_bidding, .name = "EAP-AKA-Bidding", .type = FR_TYPE_UINT16, .dict = &dict_eap_aka },
+	{ .out = &attr_eap_aka_checkcode, .name = "EAP-AKA-Checkcode", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka },
+	{ .out = &attr_eap_aka_client_error_code, .name = "EAP-AKA-Client-Error-Code", .type = FR_TYPE_UINT16, .dict = &dict_eap_aka },
+	{ .out = &attr_eap_aka_encr_data, .name = "EAP-AKA-Encr-Data", .type = FR_TYPE_TLV, .dict = &dict_eap_aka },
+	{ .out = &attr_eap_aka_fullauth_id_req, .name = "EAP-AKA-Fullauth-ID-Req", .type = FR_TYPE_BOOL, .dict = &dict_eap_aka },
+	{ .out = &attr_eap_aka_identity, .name = "EAP-AKA-Identity", .type = FR_TYPE_STRING, .dict = &dict_eap_aka },
+	{ .out = &attr_eap_aka_kdf, .name = "EAP-AKA-KDF", .type = FR_TYPE_UINT16, .dict = &dict_eap_aka },
+	{ .out = &attr_eap_aka_kdf_input, .name = "EAP-AKA-KDF-Input", .type = FR_TYPE_STRING, .dict = &dict_eap_aka },
+	{ .out = &attr_eap_aka_mac, .name = "EAP-AKA-MAC", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka },
+	{ .out = &attr_eap_aka_notification, .name = "EAP-AKA-Notification", .type = FR_TYPE_UINT16, .dict = &dict_eap_aka },
+	{ .out = &attr_eap_aka_permanent_id_req, .name = "EAP-AKA-Permanent-ID-Req", .type = FR_TYPE_BOOL, .dict = &dict_eap_aka },
+	{ .out = &attr_eap_aka_rand, .name = "EAP-AKA-RAND", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka },
+	{ .out = &attr_eap_aka_res, .name = "EAP-AKA-RES", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka },
+	{ .out = &attr_eap_aka_result_ind, .name = "EAP-AKA-Result-Ind", .type = FR_TYPE_BOOL, .dict = &dict_eap_aka },
 	{ NULL }
 };
 
