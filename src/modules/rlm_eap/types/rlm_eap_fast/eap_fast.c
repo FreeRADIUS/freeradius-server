@@ -380,7 +380,7 @@ unexpected:
 		}
 		break;
 	case EAP_FAST_AUTHENTICATION:
-		if (present != 1 << attr_eap_fast_eap_payload->attr) {
+		if (present != (uint32_t)(1 << attr_eap_fast_eap_payload->attr)) {
 			RDEBUG("Unexpected TLVs in authentication stage");
 			goto unexpected;
 		}
