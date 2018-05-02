@@ -75,8 +75,8 @@ static fr_dict_attr_t const *attr_wimax_rrq_mn_ha_spi;
 static fr_dict_attr_t const *attr_wimax_rrq_ha_ip;
 static fr_dict_attr_t const *attr_wimax_ha_rk_key_requested;
 
-static fr_dict_attr_t const *attr_mschap_mppe_send_key;
-static fr_dict_attr_t const *attr_mschap_mppe_recv_key;
+static fr_dict_attr_t const *attr_ms_mppe_send_key;
+static fr_dict_attr_t const *attr_ms_mppe_recv_key;
 
 extern fr_dict_attr_autoload_t rlm_wimax_dict_attr[];
 fr_dict_attr_autoload_t rlm_wimax_dict_attr[] = {
@@ -100,8 +100,8 @@ fr_dict_attr_autoload_t rlm_wimax_dict_attr[] = {
 	{ .out = &attr_wimax_rrq_ha_ip, .name = "WiMAX-RRQ-HA-IP", .type = FR_TYPE_COMBO_IP_ADDR, .dict = &dict_radius },
 	{ .out = &attr_wimax_ha_rk_key_requested, .name = "WiMAX-HA-RK-Key-Requested", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 
-	{ .out = &attr_mschap_mppe_send_key, .name = "MSCHAP-MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_mschap_mppe_recv_key, .name = "MSCHAP-MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_send_key, .name = "MS-MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
+	{ .out = &attr_ms_mppe_recv_key, .name = "MS-MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 
 	{ NULL }
 };
@@ -183,8 +183,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *t
 	 *	the WiMAX-MSK so that the client has a key available.
 	 */
 	if (inst->delete_mppe_keys) {
-		fr_pair_delete_by_da(&request->reply->vps, attr_mschap_mppe_send_key, TAG_ANY);
-		fr_pair_delete_by_da(&request->reply->vps, attr_mschap_mppe_recv_key, TAG_ANY);
+		fr_pair_delete_by_da(&request->reply->vps, attr_ms_mppe_send_key, TAG_ANY);
+		fr_pair_delete_by_da(&request->reply->vps, attr_ms_mppe_recv_key, TAG_ANY);
 
 		MEM(vp = pair_update_reply(attr_wimax_msk, TAG_ANY));
 		fr_pair_value_memcpy(vp, msk->vp_octets, msk->vp_length);
